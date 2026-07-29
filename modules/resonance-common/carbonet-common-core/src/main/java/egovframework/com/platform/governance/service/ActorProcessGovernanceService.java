@@ -781,7 +781,8 @@ public class ActorProcessGovernanceService {
                     (select framework_try_jsonb(screen_contract.field_contract) from framework_professional_screen_contract screen_contract where screen_contract.process_code=? and screen_contract.step_code=? order by case screen_contract.audience when 'USER' then 0 else 1 end limit 1),
                     '[]'::jsonb
                   )) field
-                 where coalesce((field->>'required')::boolean,false)
+                 where nullif(field->>'fieldCode','') is not null
+                   and coalesce((field->>'required')::boolean,false)
                    and coalesce((field->>'editable')::boolean,false)
                    and coalesce(nullif(btrim((?::jsonb)->>(field->>'fieldCode')),''),'')=''
                  order by coalesce((field->>'fieldOrder')::integer,9999),field->>'fieldCode'
@@ -835,7 +836,8 @@ public class ActorProcessGovernanceService {
                 (select framework_try_jsonb(screen_contract.field_contract) from framework_professional_screen_contract screen_contract where screen_contract.process_code=? and screen_contract.step_code=? order by case screen_contract.audience when 'USER' then 0 else 1 end limit 1),
                 '[]'::jsonb
               )) field
-             where coalesce((field->>'required')::boolean,false)
+             where nullif(field->>'fieldCode','') is not null
+               and coalesce((field->>'required')::boolean,false)
                and coalesce((field->>'editable')::boolean,false)
             """,String.class,process,step,process,step);
         jdbc.update("""
@@ -1148,7 +1150,8 @@ public class ActorProcessGovernanceService {
                            (select framework_try_jsonb(screen_contract.field_contract) from framework_professional_screen_contract screen_contract where screen_contract.process_code=framework_screen_space_spec.process_code and screen_contract.step_code=framework_screen_space_spec.step_code order by case screen_contract.audience when 'USER' then 0 else 1 end limit 1),
                            '[]'::jsonb
                          )) field
-                        where coalesce((field->>'editable')::boolean,false)
+                        where nullif(field->>'fieldCode','') is not null
+                          and coalesce((field->>'editable')::boolean,false)
                      ),(
                        select jsonb_agg(jsonb_build_object(
                          'code',field_name,
