@@ -14,6 +14,7 @@ frontend_required=false
 backend_required=false
 database_required=false
 infrastructure_required=false
+backstage_required=false
 catalog_only=true
 declare -a tests=()
 declare -a reasons=()
@@ -65,6 +66,15 @@ while IFS= read -r path; do
       backend_required=true; catalog_only=false
       add_test "backend:related-test"
       add_reason "backend-test"
+      ;;
+    platform/control-plane/backstage/*|deploy/k8s/control-plane/backstage.yaml)
+      # Backstage owns the design/development/operations control-plane UI and
+      # has an independent image and rollout. Never rebuild Carbonet for it,
+      # but do require its dedicated deployment pipeline.
+      infrastructure_required=true; backstage_required=true
+      add_test "control-plane:validate"
+      add_test "backstage:build-deploy"
+      add_reason "backstage-runtime"
       ;;
     platform/control-plane/*|deploy/k8s/control-plane/*)
       # Backstage catalog and control-plane boundary declarations describe
@@ -129,11 +139,12 @@ if [[ "$FORMAT" == "env" ]]; then
   printf 'PLAN_BACKEND_REQUIRED=%q\n' "$backend_required"
   printf 'PLAN_DATABASE_REQUIRED=%q\n' "$database_required"
   printf 'PLAN_INFRASTRUCTURE_REQUIRED=%q\n' "$infrastructure_required"
+  printf 'PLAN_BACKSTAGE_REQUIRED=%q\n' "$backstage_required"
   printf 'PLAN_CATALOG_ONLY=%q\n' "$catalog_only"
   printf 'PLAN_TESTS=%q\n' "$tests_csv"
   printf 'PLAN_REASONS=%q\n' "$reasons_csv"
 else
-  printf 'runtime=%s frontend=%s backend=%s database=%s infrastructure=%s catalogOnly=%s\n' \
-    "$runtime_required" "$frontend_required" "$backend_required" "$database_required" "$infrastructure_required" "$catalog_only"
+  printf 'runtime=%s frontend=%s backend=%s database=%s infrastructure=%s backstage=%s catalogOnly=%s\n' \
+    "$runtime_required" "$frontend_required" "$backend_required" "$database_required" "$infrastructure_required" "$backstage_required" "$catalog_only"
   printf 'tests=%s\nreasons=%s\n' "$tests_csv" "$reasons_csv"
 fi

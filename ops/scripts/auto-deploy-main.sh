@@ -174,7 +174,7 @@ if [[ "$deployed_commit" == "$target_commit" ]]; then
 fi
 
 eval "$(bash ops/scripts/plan-incremental-work.sh "$deployed_commit" "$target_commit" --format env)"
-echo "[auto-deploy] incremental plan: runtime=$PLAN_RUNTIME_REQUIRED frontend=$PLAN_FRONTEND_REQUIRED backend=$PLAN_BACKEND_REQUIRED database=$PLAN_DATABASE_REQUIRED"
+echo "[auto-deploy] incremental plan: runtime=$PLAN_RUNTIME_REQUIRED frontend=$PLAN_FRONTEND_REQUIRED backend=$PLAN_BACKEND_REQUIRED database=$PLAN_DATABASE_REQUIRED backstage=$PLAN_BACKSTAGE_REQUIRED"
 echo "[auto-deploy] selected checks: $PLAN_TESTS ($PLAN_REASONS)"
 
 # Database availability is a hard prerequisite for Flyway and every runtime
@@ -301,6 +301,20 @@ restore_live_frontend_overlay() {
   merge_overlay_backup=""
 }
 
+deploy_backstage_if_required() {
+  [[ "${PLAN_BACKSTAGE_REQUIRED:-false}" == "true" ]] || return 0
+  echo "[auto-deploy] Backstage-only image build and rollout started"
+  bash ops/scripts/resonance-backstage-deploy.sh
+  local status
+  status="$(curl -k -sS -o /dev/null -w '%{http_code}' --max-time 10 \
+    https://backstage.172.16.1.232.nip.io/.backstage/health/v1/readiness || true)"
+  if [[ "$status" != "200" ]]; then
+    echo "[auto-deploy] refusing success marker: Backstage readiness returned $status" >&2
+    exit 24
+  fi
+  echo "[auto-deploy] Backstage runtime verified"
+}
+
 # The standard build updates tracked generated bundles and Gradle state. They are
 # deployment artifacts, not server-authored source changes, so restore only these
 # known paths before the fast-forward merge.
@@ -348,6 +362,7 @@ if [[ "$PLAN_RUNTIME_REQUIRED" != "true" ]]; then
   done < <(git diff --name-only --diff-filter=ACMR "$deployed_commit" "$target_commit")
   bash ops/scripts/sync-unified-asset-catalog.sh
   bash ops/scripts/validate-e4b-selectable-assets.sh
+  deploy_backstage_if_required
   printf '%s\n' "$target_commit" > "${DEPLOY_STATE_FILE}.tmp"
   mv "${DEPLOY_STATE_FILE}.tmp" "$DEPLOY_STATE_FILE"
   echo "[auto-deploy] catalog-only update completed without application rollout: $target_commit"
@@ -584,6 +599,7 @@ if [[ "$PLAN_FRONTEND_REQUIRED" != "true" \
    && "$PLAN_INFRASTRUCTURE_REQUIRED" == "true" ]]; then
   bash -n ops/scripts/auto-deploy-main.sh
   bash -n ops/scripts/plan-incremental-work.sh
+  bash ops/scripts/test-plan-incremental-work.sh
   bash -n ops/scripts/resonance-full-screen-deploy-gate.sh
   bash -n projects/carbonet-frontend/source/scripts/run-full-screen-smoke.sh
   if [[ ",$PLAN_TESTS," == *",control-plane:validate,"* ]]; then
@@ -657,6 +673,7 @@ else
   # the healthy runtime. Mixed/frontend/database changes retain the full gate.
   bash ops/scripts/resonance-full-screen-deploy-gate.sh accept-fast
 fi
+deploy_backstage_if_required
 printf '%s\n' "$target_commit" > "${DEPLOY_STATE_FILE}.tmp"
 mv "${DEPLOY_STATE_FILE}.tmp" "$DEPLOY_STATE_FILE"
 sudo docker image prune -a -f >/dev/null || true
