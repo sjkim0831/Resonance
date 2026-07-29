@@ -34,12 +34,27 @@ password="$(
 )"
 test -n "$password"
 
-token="$(
-  BACKSTAGE_E2E_USERNAME="$USERNAME" \
-  BACKSTAGE_E2E_PASSWORD="$password" \
-    bash "$ROOT/ops/scripts/resonance-backstage-oidc-token.sh" "$USERNAME"
-)"
-test -n "$token"
+token=""
+token_error="$(mktemp)"
+for attempt in $(seq 1 6); do
+  if token="$(
+    BACKSTAGE_E2E_USERNAME="$USERNAME" \
+    BACKSTAGE_E2E_PASSWORD="$password" \
+      bash "$ROOT/ops/scripts/resonance-backstage-oidc-token.sh" "$USERNAME" \
+      2>"$token_error"
+  )" && [[ -n "$token" ]]; then
+    break
+  fi
+  token=""
+  sleep $((attempt * 2))
+done
+if [[ -z "$token" ]]; then
+  echo "[backstage-e2e] OIDC login did not become ready after bounded retries" >&2
+  sed -n '1,20p' "$token_error" >&2
+  rm -f "$token_error"
+  exit 1
+fi
+rm -f "$token_error"
 catalog_user_url="${BACKSTAGE_URL}/api/catalog/entities/by-name/user/default/${USERNAME}"
 catalog_ready=false
 for _ in $(seq 1 30); do
