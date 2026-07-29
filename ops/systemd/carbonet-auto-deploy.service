@@ -7,6 +7,6 @@ Wants=network-online.target
 Type=oneshot
 User=sjkim
 WorkingDirectory=/opt/Resonance
-ExecStart=/usr/bin/bash /opt/Resonance/ops/scripts/auto-deploy-main.sh
+ExecStart=/usr/bin/bash /opt/resonance-data/deploy/auto-deploy-main-launcher.sh
 Nice=10
 

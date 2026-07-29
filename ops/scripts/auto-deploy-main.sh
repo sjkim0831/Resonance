@@ -598,6 +598,7 @@ if [[ "$PLAN_FRONTEND_REQUIRED" != "true" \
    && "$PLAN_DATABASE_REQUIRED" != "true" \
    && "$PLAN_INFRASTRUCTURE_REQUIRED" == "true" ]]; then
   bash -n ops/scripts/auto-deploy-main.sh
+  bash -n ops/scripts/auto-deploy-main-launcher.sh
   bash -n ops/scripts/plan-incremental-work.sh
   bash ops/scripts/test-plan-incremental-work.sh
   bash -n ops/scripts/resonance-full-screen-deploy-gate.sh
