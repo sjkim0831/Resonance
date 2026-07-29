@@ -16,6 +16,7 @@ const systemOperationsRouteRef = createRouteRef();
 const systemDevelopmentRouteRef = createRouteRef();
 const systemSecurityRouteRef = createRouteRef();
 const migrationCutoverRouteRef = createRouteRef();
+const systemRecoveryRouteRef = createRouteRef();
 
 const screenDesignsPage = PageBlueprint.make({
   params: {
@@ -170,6 +171,20 @@ const migrationCutoverPage = PageBlueprint.make({
   },
 });
 
+const systemRecoveryPage = PageBlueprint.make({
+  name: 'system-recovery',
+  params: {
+    routeRef: systemRecoveryRouteRef,
+    path: '/system-recovery',
+    title: '시스템 백업·복구 제어',
+    icon: <DashboardIcon />,
+    loader: () =>
+      import('./SystemRecoveryControlPage').then(module => (
+        <module.SystemRecoveryControlPage />
+      )),
+  },
+});
+
 export const ccusScreenDesignsPlugin = createFrontendPlugin({
   pluginId: 'ccus-screen-designs',
   title: 'CCUS 화면 설계',
@@ -186,6 +201,7 @@ export const ccusScreenDesignsPlugin = createFrontendPlugin({
     systemDevelopment: systemDevelopmentRouteRef,
     systemSecurity: systemSecurityRouteRef,
     migrationCutover: migrationCutoverRouteRef,
+    systemRecovery: systemRecoveryRouteRef,
   },
   extensions: [
     screenDesignsPage,
@@ -199,5 +215,6 @@ export const ccusScreenDesignsPlugin = createFrontendPlugin({
     systemDevelopmentPage,
     systemSecurityPage,
     migrationCutoverPage,
+    systemRecoveryPage,
   ],
 });

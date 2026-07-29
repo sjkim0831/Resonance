@@ -74,29 +74,49 @@ const recoveryRoutes = new Set([
 ]);
 
 const systemEntries: CutoverLedgerEntry[] = remainingSystemScreens.map(
-  ([route, name]) => ({
-    assetId: `system-management:${route.split('/').pop()}`,
-    category: 'SYSTEM_MANAGEMENT',
-    sourceRoute: route,
-    sourceName: name,
-    targetRoute: recoveryRoutes.has(route)
-      ? '/system-recovery'
-      : '/system-operations',
-    targetPlugin: recoveryRoutes.has(route)
-      ? 'ccus-screen-designs/system-recovery'
-      : 'ccus-screen-designs/system-operations',
-    migrationStatus: 'CLASSIFIED',
-    implementation: 'SHELL',
-    apiContracts: [],
-    databaseContracts: [],
-    permissionContracts: [],
-    testEvidence: [],
-    cutoverBlockedBy: [
-      'Backstage 네이티브 기능 미검증',
-      '인증 사용자 E2E 증적 없음',
-      '원본 메뉴 숨김·리다이렉트 비활성',
-    ],
-  }),
+  ([route, name]) => {
+    const recovery = recoveryRoutes.has(route);
+    return {
+      assetId: `system-management:${route.split('/').pop()}`,
+      category: 'SYSTEM_MANAGEMENT',
+      sourceRoute: route,
+      sourceName: name,
+      targetRoute: recovery ? '/system-recovery' : '/system-operations',
+      targetPlugin: recovery
+        ? 'ccus-screen-designs/system-recovery'
+        : 'ccus-screen-designs/system-operations',
+      migrationStatus: 'CLASSIFIED',
+      implementation: recovery ? 'PARTIAL' : 'SHELL',
+      apiContracts: recovery
+        ? [
+            'GET /api/resonance-recovery/summary',
+            'POST /api/resonance-recovery/commands',
+          ]
+        : [],
+      databaseContracts: recovery
+        ? [
+            'resonance_recovery__policy',
+            'resonance_recovery__command',
+            'resonance_recovery__audit',
+          ]
+        : [],
+      permissionContracts: recovery
+        ? ['RESONANCE_RECOVERY_OPERATOR_REFS']
+        : [],
+      testEvidence: [],
+      cutoverBlockedBy: recovery
+        ? [
+            '운영 실행 워커 미연결',
+            '인증 사용자 명령 E2E 증적 없음',
+            '원본 메뉴 숨김·리다이렉트 비활성',
+          ]
+        : [
+            'Backstage 네이티브 기능 미검증',
+            '인증 사용자 E2E 증적 없음',
+            '원본 메뉴 숨김·리다이렉트 비활성',
+          ],
+    } satisfies CutoverLedgerEntry;
+  },
 );
 
 export const MIGRATION_CUTOVER_LEDGER = [
