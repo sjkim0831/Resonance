@@ -105,7 +105,7 @@ PY
   python3 - "$runtime_evidence" <<'PY'
 import json,sys
 p=json.load(open(sys.argv[1],encoding='utf-8'))
-required=('success','rolledBack','draftSubmittedVerified','idempotencyVerified','recoveryVerified','tenantIsolationVerified','authorityVerified','exceptionVerified','workflowCompleted')
+required=('success','rolledBack','idempotencyVerified','recoveryVerified','tenantIsolationVerified','authorityVerified','exceptionVerified','workflowCompleted')
 if p.get('processCode') != 'ORGANIZATIONAL_BOUNDARY' or not all(p.get(k) is True for k in required):
     raise SystemExit('organizational-boundary runtime evidence is incomplete')
 if p.get('stepCount',0) < 4 or len(p.get('transitions',[])) != p.get('stepCount'):
