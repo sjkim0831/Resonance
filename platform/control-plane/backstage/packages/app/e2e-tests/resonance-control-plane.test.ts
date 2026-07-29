@@ -24,11 +24,18 @@ async function signIn(page: Page) {
   }
 
   await page.goto('/');
+  const sidebar = page.getByRole('navigation', { name: 'sidebar nav' });
   const signInButton = page
     .getByRole('button')
     .filter({ hasText: /Resonance|로그인|Sign in/i })
     .first();
-  await expect(signInButton).toBeVisible();
+  await Promise.race([
+    sidebar.waitFor({ state: 'attached', timeout: 60_000 }),
+    signInButton.waitFor({ state: 'visible', timeout: 60_000 }),
+  ]);
+  if (await sidebar.isVisible()) {
+    return;
+  }
 
   const popupPromise = page.waitForEvent('popup');
   await signInButton.click();
@@ -62,8 +69,12 @@ test('authenticated Resonance control-plane routes render without runtime errors
   });
   page.on('response', response => {
     const request = response.request();
+    const isIdentityAdminApi = response
+      .url()
+      .includes('/api/resonance-identity-admin/');
     if (
-      response.status() >= 500 &&
+      (response.status() >= 500 ||
+        (isIdentityAdminApi && response.status() >= 400)) &&
       ['document', 'fetch', 'xhr', 'script'].includes(request.resourceType())
     ) {
       runtimeErrors.push(
