@@ -14,6 +14,7 @@ DESIGN_FACTORY="$ROOT/apps/carbonet-api/src/main/resources/db/migration/postgres
 ORCHESTRATOR="$ROOT/ops/scripts/run-project-auto-completion-orchestrator.sh"
 ORGANIZATIONAL_BOUNDARY_GATE="$ROOT/ops/scripts/validate-organizational-boundary-runtime.sh"
 AUTO_DEPLOY="$ROOT/ops/scripts/auto-deploy-main.sh"
+VALIDATION_HARNESS="$ROOT/ops/scripts/run-post-deploy-validation-groups.sh"
 
 test -s "$MIGRATION"
 grep -Fq 'framework_contract_completion_queue' "$MIGRATION"
@@ -52,6 +53,7 @@ test -s "$ORGANIZATIONAL_BOUNDARY_GATE"
 grep -Fq 'CARBONET_ORG_BOUNDARY_PROMOTE_JOBS' "$ORGANIZATIONAL_BOUNDARY_GATE"
 grep -Fq 'framework_professional_design_graph_quality' "$ORGANIZATIONAL_BOUNDARY_GATE"
 grep -Fq 'RUNTIME_ASSURANCE_VERIFIED' "$ORGANIZATIONAL_BOUNDARY_GATE"
-grep -Fq 'validate-organizational-boundary-runtime.sh' "$AUTO_DEPLOY"
+grep -Fq 'run-post-deploy-validation-groups.sh' "$AUTO_DEPLOY"
+grep -Fq 'validate-organizational-boundary-runtime.sh' "$VALIDATION_HARNESS"
 
 echo '[contract-completion] PASS deterministic queue, fail-closed verification, orchestrator integration'
