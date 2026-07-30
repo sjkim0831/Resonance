@@ -86,6 +86,12 @@ git -C "${CARBONET_DEPLOY_ORIGINAL_ROOT:-$ROOT_DIR}" worktree prune
 # backup, or build. A blocked run leaves the timer active for a later retry.
 bash "$POLICY_ROOT/ops/scripts/deploy-capacity-gate.sh"
 
+# A runaway reports controller previously consumed more than 24 CPU cores and
+# made otherwise incremental builds and three-pod rollouts appear slow. Keep
+# Kyverno's configured exclusions enabled and cap the auxiliary reporting
+# workload before spending resources on a build.
+bash "$POLICY_ROOT/ops/scripts/ensure-kyverno-resource-guard.sh"
+
 # Image/Gradle packaging can leave generated frontend trees owned by root.
 # Normalize only when a foreign-owned entry is detected so the next Git
 # fast-forward/restore cannot fail before the deployment plan is evaluated.
