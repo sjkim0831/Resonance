@@ -395,6 +395,7 @@ sync_keycloak_actor_assignments_if_required() {
       ops/scripts/resonance-keycloak-carbonet-identity-sync.sh \
       ops/scripts/resonance-keycloak-carbonet-identity-sync-install.sh \
       ops/scripts/validate-keycloak-carbonet-identity-sync.sh \
+      ops/scripts/resonance-keycloak-e2e-scope-sync.sh \
       ops/scripts/resonance-actor-process-role-e2e.sh \
       | grep -q .; then
     return 0
@@ -403,6 +404,7 @@ sync_keycloak_actor_assignments_if_required() {
   # application deployment path. It can take several minutes because it
   # reconciles every identity. The periodic identity sync below applies the
   # already-provisioned attributes to Carbonet without another realm rebuild.
+  bash ops/scripts/resonance-keycloak-e2e-scope-sync.sh
   RESONANCE_ROOT="$ROOT_DIR" \
     bash ops/scripts/resonance-keycloak-carbonet-identity-sync-install.sh
   bash ops/scripts/resonance-keycloak-carbonet-identity-sync.sh

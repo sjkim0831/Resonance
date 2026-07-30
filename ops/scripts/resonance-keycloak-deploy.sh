@@ -357,7 +357,7 @@ migrate_users() {
         "$K" update "users/$uid" -r "$REALM" \
           -s enabled=true -s email="$USERNAME@resonance.local" \
           -s firstName=Resonance -s lastName="$GROUP" \
-          -s "attributes.resonanceProjectScopes=[\"$PROJECT_SCOPE\"]" \
+          -s "attributes={\"resonanceProjectScopes\":[\"$PROJECT_SCOPE\"]}" \
           -s emailVerified=true -s "requiredActions=[]" >/dev/null
         "$K" set-password -r "$REALM" --username "$USERNAME" \
           --new-password "$TEST_PASSWORD" --temporary=false >/dev/null
