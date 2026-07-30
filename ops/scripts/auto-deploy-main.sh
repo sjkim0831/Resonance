@@ -257,8 +257,10 @@ if [[ -n "$tracked_source_changes" ]]; then
   source_overlay="$source_root/projects/carbonet-frontend/src/main/resources/static/react-app"
   clean_overlay="$clean_worktree/projects/carbonet-frontend/src/main/resources/static/react-app"
   mkdir -p "$clean_worktree/var/run" "$clean_worktree/var/logs" "$clean_overlay"
-  if [[ "$PLAN_FRONTEND_REQUIRED" == "true" && -f "$source_overlay/index.html" ]]; then
-    rsync -a --delete "$source_overlay/" "$clean_overlay/"
+  if [[ -f "$source_overlay/index.html" ]]; then
+    # Both worktrees live on /opt. A read-only hard-link snapshot preserves the
+    # verified frontend closure without copying its full hashed asset graph.
+    cp -al "$source_overlay/." "$clean_overlay/"
     node "$clean_worktree/ops/scripts/verify-react-asset-closure.mjs" "$clean_overlay"
   fi
   ROOT_DIR="$clean_worktree"
@@ -297,7 +299,7 @@ live_frontend_overlay="$ROOT_DIR/projects/carbonet-frontend/src/main/resources/s
 merge_overlay_backup="$(mktemp -d "$ROOT_DIR/var/run/pre-merge-overlay.XXXXXX")"
 merge_overlay_backup_valid=false
 if [[ -f "$live_frontend_overlay/index.html" ]]; then
-  rsync -a "$live_frontend_overlay/" "$merge_overlay_backup/"
+  cp -al "$live_frontend_overlay/." "$merge_overlay_backup/"
   if node "$ROOT_DIR/ops/scripts/verify-react-asset-closure.mjs" "$merge_overlay_backup" >/dev/null 2>&1; then
     merge_overlay_backup_valid=true
   elif [[ "$PLAN_FRONTEND_REQUIRED" == "true" ]]; then
