@@ -131,6 +131,9 @@ if kubectl -n "$NAMESPACE" get secret resonance-keycloak-integrated-admin \
   integrated_password=
 fi
 
+sql_batch="$(mktemp)"
+trap 'rm -f "$sql_batch"' EXIT
+printf 'BEGIN;\n' >"$sql_batch"
 synced=0
 while IFS= read -r user; do
   subject="$(jq -r '.id // ""' <<<"$user")"
@@ -183,7 +186,6 @@ while IFS= read -r user; do
 
   sql="$(
     cat <<SQL
-BEGIN;
 DO \$sync\$
 DECLARE
   v_username text := convert_from(decode('$(hex "$username")','hex'),'UTF8');
@@ -395,14 +397,19 @@ BEGIN
   END IF;
 END
 \$sync\$;
-COMMIT;
 SQL
   )"
-  kubectl -n carbonet-prod exec "$leader" -c patroni -- \
-    psql -v ON_ERROR_STOP=1 -h 127.0.0.1 -U postgres -d carbonet \
-    -c "$sql" >/dev/null
+  printf '%s\n' "$sql" >>"$sql_batch"
   synced=$((synced + 1))
 done < <(jq -c '.[]' <<<"$users_json")
 
+# Execute every projection in one PostgreSQL session and one transaction.
+# This removes one kubectl+psql round trip per account and guarantees that a
+# failure cannot leave only a prefix of the Keycloak identities synchronized.
+printf 'COMMIT;\n' >>"$sql_batch"
+kubectl -n carbonet-prod exec -i "$leader" -c patroni -- \
+  psql -v ON_ERROR_STOP=1 -h 127.0.0.1 -U postgres -d carbonet \
+  -q <"$sql_batch"
+
 integrated_hash=
-echo "[identity-sync] PASS users=$synced source=Keycloak target=Carbonet"
+echo "[identity-sync] PASS users=$synced source=Keycloak target=Carbonet mode=atomic-batch dbSessions=1"
