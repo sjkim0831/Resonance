@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.nio.charset.StandardCharsets;
@@ -122,12 +123,22 @@ public class ActorProcessControlPlaneBridgeController {
 
     @GetMapping("/dashboard")
     public ResponseEntity<?> dashboard(
-            @RequestHeader(value = "X-Resonance-Token", defaultValue = "") String suppliedToken) {
+            @RequestHeader(value = "X-Resonance-Token", defaultValue = "") String suppliedToken,
+            @RequestParam(value = "dataset", defaultValue = "") String dataset) {
         if (!authorized(suppliedToken)) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(Map.of("success", false, "message", "Invalid control-plane bridge token."));
         }
-        return ResponseEntity.ok(governance.dashboard());
+        Map<String, Object> dashboard = governance.dashboard();
+        if (dataset.isBlank()) {
+            return ResponseEntity.ok(dashboard);
+        }
+        if (!dataset.matches("^[A-Za-z][A-Za-z0-9]*$")) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "success", false,
+                    "message", "Invalid dataset key."));
+        }
+        return ResponseEntity.ok(Map.of(dataset, dashboard.getOrDefault(dataset, List.of())));
     }
 
     @PostMapping("/commands")

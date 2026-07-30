@@ -701,7 +701,13 @@ export default createBackendPlugin({
               return;
             }
             const runtimeResponse = await fetch(
-              `${runtimeBaseUrl}/api/internal/actor-process/dashboard`,
+              `${runtimeBaseUrl}/api/internal/actor-process/dashboard${
+                request.query.dataset
+                  ? `?dataset=${encodeURIComponent(
+                      String(request.query.dataset),
+                    )}`
+                  : ''
+              }`,
               {
                 headers: {
                   accept: 'application/json',
