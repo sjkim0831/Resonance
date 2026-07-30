@@ -67,22 +67,9 @@ validate_emission_workflow_group() {
   start_emission_lane organizational-boundary organizational_boundary_lane
   start_emission_lane governance-change governance_change_lane
   start_emission_lane report report_lane
-  for lane_index in "${!lane_pids[@]}"; do
-    lane_name="${lane_names[$lane_index]}"
-    lane_pid="${lane_pids[$lane_index]}"
-    if wait "$lane_pid"; then
-      cat "$lane_dir/$lane_name.log"
-    else
-      lane_failed=1
-      echo "[emission-lane] FAIL name=$lane_name" >&2
-      cat "$lane_dir/$lane_name.log" >&2
-    fi
-  done
-  (( lane_failed == 0 )) || return 1
-
-  # Cross-domain journeys run only after every prerequisite lane has passed,
-  # but they are read-only against independent authentication contexts. Keep
-  # the prerequisite barrier while avoiding another serial network round trip.
+  # These journeys validate stable runtime/DB state and do not consume evidence
+  # produced by the five lanes above. They share the same fail-closed barrier,
+  # so starting them here removes an unnecessary second validation wave.
   start_emission_lane customer-journey \
     bash ops/scripts/validate-customer-work-journey.sh
   if [[ "${VALIDATE_ACTOR_ACCOUNT:-true}" == "true" ]]; then
@@ -91,12 +78,7 @@ validate_emission_workflow_group() {
   else
     echo "[actor-account-journey] skipped only for an explicit operator benchmark"
   fi
-  lane_failed=0
-  first_cross_lane=$((${#lane_pids[@]} - 2))
-  if [[ "${VALIDATE_ACTOR_ACCOUNT:-true}" != "true" ]]; then
-    first_cross_lane=$((${#lane_pids[@]} - 1))
-  fi
-  for ((lane_index=first_cross_lane; lane_index<${#lane_pids[@]}; lane_index++)); do
+  for lane_index in "${!lane_pids[@]}"; do
     lane_name="${lane_names[$lane_index]}"
     lane_pid="${lane_pids[$lane_index]}"
     if wait "$lane_pid"; then
