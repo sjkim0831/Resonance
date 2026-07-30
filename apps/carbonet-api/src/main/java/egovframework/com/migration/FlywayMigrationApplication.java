@@ -28,7 +28,10 @@ public class FlywayMigrationApplication {
     public static void main(String[] args) {
         SpringApplication application = new SpringApplication(FlywayMigrationApplication.class);
         application.setWebApplicationType(WebApplicationType.NONE);
-        application.setLazyInitialization(true);
+        // This context contains only auto-configuration required by Flyway.
+        // Eager ordering is intentional: lazy DataSource creation can let an
+        // actuator health contributor seal Hikari before property binding.
+        application.setLazyInitialization(false);
         try (ConfigurableApplicationContext ignored = application.run(args)) {
             // FlywayAutoConfiguration completes before the context is returned.
         }
