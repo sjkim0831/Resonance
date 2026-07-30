@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { Content, Header, Page } from '@backstage/core-components';
 import { fetchApiRef, useApi } from '@backstage/core-plugin-api';
 import {
@@ -54,6 +54,132 @@ type OperationsSummary = {
 };
 type RuntimeRow = Record<string, unknown>;
 type RuntimeDashboard = Record<string, unknown>;
+type CommandField = {
+  name: string;
+  label: string;
+  required?: boolean;
+  defaultValue?: string;
+  type?: 'text' | 'number' | 'textarea';
+};
+type TabCommand = {
+  command: string;
+  label: string;
+  description: string;
+  fields: CommandField[];
+};
+
+const TAB_COMMANDS: Record<string, TabCommand> = {
+  actors: {
+    command: 'actor.save',
+    label: '액터 등록·수정',
+    description: '역할, 책임, 목적과 보유 역량을 동일한 액터 코드로 등록하거나 갱신합니다.',
+    fields: [
+      { name: 'actorCode', label: '액터 코드', required: true },
+      { name: 'actorName', label: '액터명', required: true },
+      { name: 'actorNameEn', label: '영문명' },
+      { name: 'actorType', label: '액터 유형', defaultValue: 'BUSINESS' },
+      { name: 'purpose', label: '업무 목적', required: true, type: 'textarea' },
+      { name: 'capabilityCodes', label: '역량 코드' },
+    ],
+  },
+  processes: {
+    command: 'process.save',
+    label: '프로세스 등록·수정',
+    description: '업무 종류와 시작·완료 조건을 포함한 실행 가능한 프로세스를 저장합니다.',
+    fields: [
+      { name: 'processCode', label: '프로세스 코드', required: true },
+      { name: 'processName', label: '프로세스명', required: true },
+      { name: 'domainCode', label: '업무 종류 코드', required: true },
+      { name: 'version', label: '버전', defaultValue: '1.0.0' },
+      { name: 'goal', label: '목표', required: true, type: 'textarea' },
+      { name: 'startCondition', label: '시작 조건', required: true },
+      { name: 'completionCondition', label: '완료 조건', required: true },
+    ],
+  },
+  steps: {
+    command: 'step.save',
+    label: '단계 등록·수정',
+    description: '액터, 명령, 상태 전이, 완료 조건을 연결하고 개발 작업을 자동 생성합니다.',
+    fields: [
+      { name: 'processCode', label: '프로세스 코드', required: true },
+      { name: 'stepOrder', label: '단계 순서', required: true, type: 'number' },
+      { name: 'stepCode', label: '단계 코드', required: true },
+      { name: 'stepName', label: '단계명', required: true },
+      { name: 'actorCode', label: '담당 액터', required: true },
+      { name: 'fromState', label: '시작 상태', required: true },
+      { name: 'commandCode', label: '실행 명령', required: true },
+      { name: 'toState', label: '완료 상태', required: true },
+      { name: 'completionRule', label: '완료 조건', required: true, type: 'textarea' },
+    ],
+  },
+  assignments: {
+    command: 'assignment.save',
+    label: '계정·액터 배정',
+    description: '계정에 프로젝트별 액터와 데이터 접근 범위를 배정합니다.',
+    fields: [
+      { name: 'accountId', label: '계정 ID', required: true },
+      { name: 'tenantId', label: '테넌트 ID', defaultValue: 'DEFAULT' },
+      { name: 'projectId', label: '프로젝트 ID', defaultValue: '*' },
+      { name: 'actorCode', label: '액터 코드', required: true },
+      { name: 'dataScope', label: '데이터 범위', defaultValue: '*' },
+      { name: 'validUntil', label: '유효 종료일' },
+    ],
+  },
+  'test-scenarios': {
+    command: 'case.save',
+    label: '테스트 시나리오 등록',
+    description: '정상·권한·격리·예외·복구 기대값을 프로세스에 연결합니다.',
+    fields: [
+      { name: 'caseCode', label: '시나리오 코드', required: true },
+      { name: 'processCode', label: '프로세스 코드', required: true },
+      { name: 'caseName', label: '시나리오명', required: true },
+      { name: 'caseType', label: '유형', defaultValue: 'HAPPY_PATH' },
+      { name: 'preconditions', label: '사전 조건', required: true, type: 'textarea' },
+      { name: 'stepsJson', label: '단계 JSON', defaultValue: '[]', type: 'textarea' },
+      { name: 'assertionsJson', label: '기대값 JSON', defaultValue: '[]', type: 'textarea' },
+    ],
+  },
+  'design-release': {
+    command: 'design.validate',
+    label: '프로세스 설계 검증',
+    description: '액터·상태·데이터·라우트·테스트 계약의 누락과 충돌을 검증합니다.',
+    fields: [{ name: 'processCode', label: '프로세스 코드', required: true }],
+  },
+  'development-plan': {
+    command: 'development.plan',
+    label: '개발 계획 생성',
+    description: '선택 단계에 필요한 설계·DB·API·화면·테스트 작업을 자동 생성합니다.',
+    fields: [
+      { name: 'processCode', label: '프로세스 코드', required: true },
+      { name: 'stepCode', label: '단계 코드', required: true },
+    ],
+  },
+  frontend: {
+    command: 'development.preflight',
+    label: '화면 개발 사전검사',
+    description: '설계 메모, 공통 디자인, 액터 계약과 안전 테스트 준비 상태를 검사합니다.',
+    fields: [
+      { name: 'processCode', label: '프로세스 코드', required: true },
+      { name: 'stepCode', label: '단계 코드', required: true },
+    ],
+  },
+  backend: {
+    command: 'backend.verify',
+    label: '백엔드 계약 검증',
+    description: '프로세스별 API·DB·권한·롤백 계약을 검증하고 증적을 기록합니다.',
+    fields: [{ name: 'sourceCommit', label: '소스 커밋' }],
+  },
+  execution: {
+    command: 'execution.start',
+    label: '프로세스 실행 시작',
+    description: '프로젝트와 액터 범위를 지정하여 실제 업무 실행 인스턴스를 시작합니다.',
+    fields: [
+      { name: 'processCode', label: '프로세스 코드', required: true },
+      { name: 'projectId', label: '프로젝트 ID', required: true },
+      { name: 'actorCode', label: '시작 액터', required: true },
+    ],
+  },
+};
 
 const columnLabels: Record<string, string> = {
   actorCode: '액터 코드',
@@ -164,6 +290,9 @@ export function ActorProcessControlPage(props: {
   );
   const [rowFilter, setRowFilter] = useState('');
   const [message, setMessage] = useState('');
+  const [selectedRow, setSelectedRow] = useState<RuntimeRow | null>(null);
+  const [commandPending, setCommandPending] = useState(false);
+  const [commandResult, setCommandResult] = useState('');
   const [loading, setLoading] = useState(true);
   const [workspaceId, setWorkspaceId] =
     useState<ActorProcessWorkspaceId>(initialWorkspace);
@@ -183,6 +312,7 @@ export function ActorProcessControlPage(props: {
   const selectedProject =
     projects.find(item => item.projectId === projectId) ?? projects[0];
   const datasetKey = ACTOR_PROCESS_DATASET_BY_TAB[selectedTab.id];
+  const activeCommand = TAB_COMMANDS[selectedTab.id];
   const sourceRows = Array.isArray(runtimeDashboard[datasetKey])
     ? (runtimeDashboard[datasetKey] as RuntimeRow[])
     : [];
@@ -305,6 +435,56 @@ export function ActorProcessControlPage(props: {
     // 선택 탭이 바뀔 때 필요한 데이터셋만 지연 조회합니다.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [datasetKey]);
+
+  useEffect(() => {
+    setSelectedRow(null);
+    setCommandResult('');
+  }, [selectedTab.id]);
+
+  const executeTabCommand = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!activeCommand || commandPending) return;
+    setCommandPending(true);
+    setCommandResult('');
+    const formData = new FormData(event.currentTarget);
+    const values = Object.fromEntries(formData.entries());
+    const body: Record<string, unknown> = {
+      command: activeCommand.command,
+      ...values,
+    };
+    activeCommand.fields
+      .filter(field => field.type === 'number')
+      .forEach(field => {
+        const raw = body[field.name];
+        if (raw !== '' && raw !== undefined) body[field.name] = Number(raw);
+      });
+    try {
+      const response = await fetchApi.fetch(
+        '/api/resonance-projects/actor-process/commands',
+        {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify(body),
+        },
+      );
+      const payload = (await response.json()) as Record<string, unknown>;
+      if (!response.ok) {
+        throw new Error(
+          String(payload.message ?? payload.error ?? `HTTP ${response.status}`),
+        );
+      }
+      setCommandResult(
+        `처리 완료\n${JSON.stringify(payload, null, 2)}`,
+      );
+      await loadRuntimeDataset(datasetKey);
+    } catch (error) {
+      setCommandResult(
+        `처리 실패\n${error instanceof Error ? error.message : String(error)}`,
+      );
+    } finally {
+      setCommandPending(false);
+    }
+  };
 
   const saveDesignRelease = async () => {
     setMessage('설계 계약을 검증하고 저장하는 중입니다.');
@@ -580,6 +760,90 @@ export function ActorProcessControlPage(props: {
                 </Box>
               </Grid>
             </Grid>
+            {activeCommand && (
+              <Box
+                mt={3}
+                p={2}
+                style={{
+                  border: '1px solid #bfdbfe',
+                  borderRadius: 10,
+                  background: '#f8fbff',
+                }}
+              >
+                <Typography variant="h6">{activeCommand.label}</Typography>
+                <Typography variant="body2" color="textSecondary">
+                  {activeCommand.description}
+                </Typography>
+                <form
+                  key={`${selectedTab.id}-${String(
+                    selectedRow?.actorCode ??
+                      selectedRow?.processCode ??
+                      selectedRow?.stepCode ??
+                      'new',
+                  )}`}
+                  onSubmit={executeTabCommand}
+                >
+                  <Grid container spacing={2} style={{ marginTop: 4 }}>
+                    {activeCommand.fields.map(field => (
+                      <Grid
+                        item
+                        xs={12}
+                        md={field.type === 'textarea' ? 12 : 6}
+                        key={field.name}
+                      >
+                        <TextField
+                          fullWidth
+                          size="small"
+                          variant="outlined"
+                          name={field.name}
+                          label={field.label}
+                          required={field.required}
+                          type={field.type === 'number' ? 'number' : 'text'}
+                          multiline={field.type === 'textarea'}
+                          rows={field.type === 'textarea' ? 3 : undefined}
+                          defaultValue={
+                            selectedRow?.[field.name] ??
+                            (field.name === 'projectId'
+                              ? projectId
+                              : field.defaultValue ?? '')
+                          }
+                        />
+                      </Grid>
+                    ))}
+                  </Grid>
+                  <Box mt={2} display="flex" alignItems="center" gridGap={12}>
+                    <Button
+                      type="submit"
+                      variant="contained"
+                      color="primary"
+                      disabled={commandPending}
+                    >
+                      {commandPending ? '처리 중…' : activeCommand.label}
+                    </Button>
+                    <Typography variant="caption" color="textSecondary">
+                      표의 행을 선택하면 등록값을 불러와 수정할 수 있습니다.
+                    </Typography>
+                  </Box>
+                </form>
+                {commandResult && (
+                  <Box
+                    component="pre"
+                    mt={2}
+                    p={2}
+                    style={{
+                      marginBottom: 0,
+                      whiteSpace: 'pre-wrap',
+                      overflowWrap: 'anywhere',
+                      borderRadius: 6,
+                      background: '#eaf2f8',
+                      fontSize: 12,
+                    }}
+                  >
+                    {commandResult}
+                  </Box>
+                )}
+              </Box>
+            )}
             <Box
               mt={3}
               display="flex"
@@ -638,7 +902,15 @@ export function ActorProcessControlPage(props: {
                   </thead>
                   <tbody>
                     {visibleRows.map((row, index) => (
-                      <tr key={`${selectedTab.id}-${index}`}>
+                      <tr
+                        key={`${selectedTab.id}-${index}`}
+                        onClick={() => setSelectedRow(row)}
+                        style={{
+                          cursor: 'pointer',
+                          background:
+                            selectedRow === row ? '#e8f2ff' : undefined,
+                        }}
+                      >
                         {visibleColumns.map(column => (
                           <td
                             key={column}
@@ -666,6 +938,44 @@ export function ActorProcessControlPage(props: {
                 </Box>
               )}
             </Box>
+            {selectedRow && (
+              <Box
+                mt={2}
+                p={2}
+                style={{
+                  border: '1px solid #dbe4ea',
+                  borderRadius: 8,
+                  background: '#f8fafc',
+                }}
+              >
+                <Box
+                  display="flex"
+                  justifyContent="space-between"
+                  alignItems="center"
+                >
+                  <Typography variant="subtitle2">
+                    선택 항목 전체 상세
+                  </Typography>
+                  <Button size="small" onClick={() => setSelectedRow(null)}>
+                    닫기
+                  </Button>
+                </Box>
+                <Box
+                  component="pre"
+                  mt={1}
+                  style={{
+                    marginBottom: 0,
+                    maxHeight: 360,
+                    overflow: 'auto',
+                    whiteSpace: 'pre-wrap',
+                    overflowWrap: 'anywhere',
+                    fontSize: 12,
+                  }}
+                >
+                  {JSON.stringify(selectedRow, null, 2)}
+                </Box>
+              </Box>
+            )}
             <Box mt={3} display="flex" gridGap={8} flexWrap="wrap">
               <Button
                 variant="contained"

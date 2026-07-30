@@ -130,6 +130,70 @@ public class ActorProcessControlPlaneBridgeController {
         return ResponseEntity.ok(governance.dashboard());
     }
 
+    @PostMapping("/commands")
+    public ResponseEntity<?> executeGovernanceCommand(
+            @RequestHeader(value = "X-Resonance-Token", defaultValue = "") String suppliedToken,
+            @RequestHeader(value = "X-Resonance-Actor", defaultValue = "BACKSTAGE_CONTROL_PLANE") String actor,
+            @RequestBody Map<String, Object> body) {
+        if (!authorized(suppliedToken)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("success", false, "message", "Invalid control-plane bridge token."));
+        }
+        try {
+            String command = required(body, "command").toLowerCase();
+            Object result;
+            switch (command) {
+                case "actor.save" -> {
+                    governance.createActor(body);
+                    result = Map.of("success", true, "command", command, "actorCode", required(body, "actorCode"));
+                }
+                case "process.save" -> {
+                    governance.createProcess(body);
+                    result = Map.of("success", true, "command", command, "processCode", required(body, "processCode"));
+                }
+                case "step.save" -> result = governance.addStep(body, actor);
+                case "assignment.save" -> {
+                    governance.assignActor(body);
+                    result = Map.of("success", true, "command", command, "accountId", required(body, "accountId"));
+                }
+                case "case.save" -> {
+                    governance.createCase(body);
+                    result = Map.of("success", true, "command", command, "caseCode", required(body, "caseCode"));
+                }
+                case "artifact.save" -> {
+                    governance.saveArtifact(body);
+                    result = Map.of("success", true, "command", command, "artifactCode", required(body, "artifactCode"));
+                }
+                case "design.validate" ->
+                        result = governance.validateProcessDesign(required(body, "processCode"), actor);
+                case "design.graph" ->
+                        result = governance.generateProfessionalDesignGraph(
+                                String.valueOf(body.getOrDefault("processCode", "")), actor);
+                case "development.plan" ->
+                        result = governance.generateDevelopmentPlan(
+                                required(body, "processCode"), required(body, "stepCode"), actor);
+                case "development.preflight" ->
+                        result = governance.runScreenDevelopmentPreflight(
+                                required(body, "processCode"), required(body, "stepCode"), actor);
+                case "backend.verify" ->
+                        result = governance.verifyBackendProcessContracts(
+                                String.valueOf(body.getOrDefault("sourceCommit", "")), actor);
+                case "execution.start" -> result = governance.startProcessExecution(body, actor);
+                case "standard.install" -> result = governance.installStandardPack();
+                default -> {
+                    return ResponseEntity.unprocessableEntity().body(Map.of(
+                            "success", false,
+                            "message", "Unsupported Actor Process command: " + command));
+                }
+            }
+            return ResponseEntity.ok(result);
+        } catch (Exception exception) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "success", false,
+                    "message", exception.getMessage() == null ? "Actor Process command failed." : exception.getMessage()));
+        }
+    }
+
     @PostMapping("/control-assets/cutover")
     @Transactional
     public ResponseEntity<?> cutoverControlAssetMenus(
