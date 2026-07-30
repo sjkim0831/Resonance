@@ -823,7 +823,7 @@ export function ActorProcessControlPage(props: {
     <Page themeId="tool">
       <Header
         title="Actor·Process 프로젝트 제어"
-        subtitle="Backstage를 설계·개발·운영의 단일 기준으로 사용하고 Resonance 실행 환경을 제어합니다."
+        subtitle="Backstage를 업무 운영·설계·검증·개발·배포의 단일 기준으로 사용하고 Resonance 실행 환경을 제어합니다."
       />
       <Content>
         {loading && <LinearProgress />}
