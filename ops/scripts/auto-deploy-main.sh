@@ -257,7 +257,7 @@ if [[ -n "$tracked_source_changes" ]]; then
   source_overlay="$source_root/projects/carbonet-frontend/src/main/resources/static/react-app"
   clean_overlay="$clean_worktree/projects/carbonet-frontend/src/main/resources/static/react-app"
   mkdir -p "$clean_worktree/var/run" "$clean_worktree/var/logs" "$clean_overlay"
-  if [[ -f "$source_overlay/index.html" ]]; then
+  if [[ "$PLAN_FRONTEND_REQUIRED" == "true" && -f "$source_overlay/index.html" ]]; then
     rsync -a --delete "$source_overlay/" "$clean_overlay/"
     node "$clean_worktree/ops/scripts/verify-react-asset-closure.mjs" "$clean_overlay"
   fi

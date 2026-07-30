@@ -72,13 +72,16 @@ install_backstage_dependencies() {
     echo "[backstage] dependency cache lock timed out" >&2
     return 1
   }
-  if [[ ! -d "$APP/node_modules" && -d "$cache_modules" ]]; then
+  if [[ ! -d "$APP/node_modules" && -d "$cache_modules" && -f "$cache_state" ]]; then
     echo "[backstage] restoring immutable dependency tree from cache $cache_key"
     cp -al -- "$cache_modules" "$APP/node_modules"
-    if [[ -f "$cache_state" ]]; then
-      mkdir -p "$APP/.yarn"
-      cp -a -- "$cache_state" "$APP/.yarn/install-state.gz"
-    fi
+    mkdir -p "$APP/.yarn"
+    cp -a -- "$cache_state" "$APP/.yarn/install-state.gz"
+    # The key is derived from the immutable lockfile, root manifest and tool
+    # versions. Re-running Yarn mutates/rebuilds an otherwise exact hard-linked
+    # tree and costs 15-20 seconds on every isolated deployment.
+    flock -u 8
+    return 0
   fi
   if corepack yarn install --immutable; then
     if [[ ! -d "$cache_modules" ]]; then
