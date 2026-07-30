@@ -1,0 +1,10 @@
+# Verified actor journey adoption: PREVENTIVE_MAINTENANCE / PM_EXECUTE
+
+- Job: 19722
+- Job type: TEST
+- Source commit: 6246a3476a1decdd21381a782c6296898a80a2ff
+- Requirement: 격리·잠금표찰·작업허가 후 정비와 부품 사용을 기록한다.
+- Validation result: {"strategy":"APPROVED_FULL_STACK_PACKAGE","processCode":"PREVENTIVE_MAINTENANCE","stepCode":"PM_EXECUTE","dimension":"TEST","package":"/opt/Resonance/var/ai-worktrees/job-19722/projects/carbonet-backend-metadata/process-runtime/generated/PREVENTIVE_MAINTENANCE/PREVENTIVE_MAINTENANCE__PM_EXECUTE.json","evidence":"/opt/Resonance/var/ai-worktrees/job-19722/var/test-evidence/process-package-tests/PREVENTIVE_MAINTENANCE__PM_EXECUTE.json","status":"PASSED"}
+- Live runtime evidence: /opt/Resonance/var/ai-worktrees/job-19722/var/test-evidence/process-package-tests/PREVENTIVE_MAINTENANCE__PM_EXECUTE.json
+
+The deterministic validator requires executable SQL scenarios, authenticated and protected APIs, actor and tenant isolation, linked user/admin pages, a real rolled-back state transition, idempotency, runtime p95 evidence, and two ready replicas.
