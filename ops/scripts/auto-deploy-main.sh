@@ -961,9 +961,18 @@ fi
 
 # The candidate-image migration Job is the only schema migration owner.
 # Runtime pods keep both engines disabled so replicas never contend for DDL.
+RUNTIME_JVM_PROFILE="$ROOT_DIR/ops/config/runtime-jvm-profile.env"
+[[ -r "$RUNTIME_JVM_PROFILE" ]] || {
+  echo "[auto-deploy] refusing deployment: runtime JVM profile is missing" >&2
+  exit 8
+}
+# shellcheck source=ops/config/runtime-jvm-profile.env
+source "$RUNTIME_JVM_PROFILE"
+: "${CARBONET_RUNTIME_JAVA_OPTS:?runtime JAVA_OPTS profile is required}"
 kubectl -n "$NAMESPACE" set env deployment/"$DEPLOYMENT" \
   CARBONET_FLYWAY_ENABLED=false \
-  CARBONET_LIQUIBASE_ENABLED=false
+  CARBONET_LIQUIBASE_ENABLED=false \
+  "JAVA_OPTS=$CARBONET_RUNTIME_JAVA_OPTS"
 
 IMMUTABLE_FRONTEND_IMAGE=true \
 SKIP_FRONTEND="$skip_frontend" \
