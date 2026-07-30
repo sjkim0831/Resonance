@@ -95,7 +95,9 @@ for (const taskCode of expectedTaskCodes) {
 if (reviewerTasks.some(row =>
   !row.taskStatus ||
   !row.actorCode ||
-  !row.assigneeId ||
+  // A future task may remain deliberately unassigned while its predecessors
+  // keep it BLOCKED. Active and completed work must always have an assignee.
+  (!row.assigneeId && row.taskStatus !== 'BLOCKED') ||
   !row.completionRule ||
   !row.targetUrl
 )) {
