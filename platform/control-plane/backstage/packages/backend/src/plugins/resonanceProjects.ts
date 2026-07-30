@@ -683,6 +683,33 @@ export default createBackendPlugin({
           });
         });
         router.get(
+          '/actor-process/runtime-dashboard',
+          async (_request, response) => {
+            const runtimeBaseUrl = String(
+              process.env.CARBONET_RUNTIME_BASE_URL ??
+                'http://carbonet-api.carbonet-prod.svc.cluster.local:8080',
+            ).replace(/\/+$/, '');
+            const bridgeToken = String(process.env.RESONANCE_OPS_TOKEN ?? '');
+            if (!bridgeToken) {
+              response
+                .status(503)
+                .json({ message: 'control-plane bridge token is missing' });
+              return;
+            }
+            const runtimeResponse = await fetch(
+              `${runtimeBaseUrl}/api/internal/actor-process/dashboard`,
+              {
+                headers: {
+                  accept: 'application/json',
+                  'x-resonance-token': bridgeToken,
+                },
+              },
+            );
+            const body = await runtimeResponse.text();
+            response.status(runtimeResponse.status).send(body);
+          },
+        );
+        router.get(
           '/screen-space/work-pack/emission',
           async (_request, response) => {
             response.json({

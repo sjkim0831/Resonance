@@ -12,6 +12,7 @@ import {
   MenuItem,
   Paper,
   Select,
+  TextField,
   Typography,
   makeStyles,
 } from '@material-ui/core';
@@ -20,6 +21,7 @@ import SaveIcon from '@material-ui/icons/Save';
 import PublishIcon from '@material-ui/icons/Publish';
 import {
   ACTOR_PROCESS_TAB_COUNT,
+  ACTOR_PROCESS_DATASET_BY_TAB,
   ACTOR_PROCESS_WORKSPACES,
   ActorProcessTab,
   ActorProcessWorkspaceId,
@@ -49,6 +51,34 @@ type OperationsSummary = {
     designAssetCount?: number;
   };
   taskStatuses?: Record<string, number>;
+};
+type RuntimeRow = Record<string, unknown>;
+type RuntimeDashboard = Record<string, unknown>;
+
+const columnLabels: Record<string, string> = {
+  actorCode: '액터 코드',
+  actorName: '액터명',
+  actorType: '유형',
+  processCode: '프로세스 코드',
+  processName: '프로세스명',
+  stepCode: '단계 코드',
+  stepName: '단계명',
+  routePath: '화면 경로',
+  status: '상태',
+  executionStatus: '실행 상태',
+  taskStatus: '작업 상태',
+  jobStatus: '작업 상태',
+  readinessStatus: '준비 상태',
+  validationStatus: '검증 상태',
+  resultStatus: '결과',
+  createdAt: '등록 시각',
+  updatedAt: '수정 시각',
+};
+
+const displayValue = (value: unknown) => {
+  if (value == null || value === '') return '-';
+  if (typeof value === 'object') return JSON.stringify(value);
+  return String(value);
 };
 
 const useStyles = makeStyles(theme => ({
@@ -129,6 +159,10 @@ export function ActorProcessControlPage(props: {
   const [designVersion, setDesignVersion] = useState(1);
   const [release, setRelease] = useState<DesignRelease | null>(null);
   const [summary, setSummary] = useState<OperationsSummary>({});
+  const [runtimeDashboard, setRuntimeDashboard] = useState<RuntimeDashboard>(
+    {},
+  );
+  const [rowFilter, setRowFilter] = useState('');
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(true);
   const [workspaceId, setWorkspaceId] =
@@ -148,6 +182,23 @@ export function ActorProcessControlPage(props: {
   );
   const selectedProject =
     projects.find(item => item.projectId === projectId) ?? projects[0];
+  const datasetKey = ACTOR_PROCESS_DATASET_BY_TAB[selectedTab.id];
+  const sourceRows = Array.isArray(runtimeDashboard[datasetKey])
+    ? (runtimeDashboard[datasetKey] as RuntimeRow[])
+    : [];
+  const visibleRows = sourceRows
+    .filter(row =>
+      JSON.stringify(row).toLowerCase().includes(rowFilter.toLowerCase()),
+    )
+    .slice(0, 100);
+  const visibleColumns = [
+    ...new Set(
+      visibleRows
+        .slice(0, 20)
+        .flatMap(row => Object.keys(row))
+        .filter(key => !/json|payload|content|description/i.test(key)),
+    ),
+  ].slice(0, 7);
   const tasks = selectedProject?.tasks ?? [];
   const completedTasks = tasks.filter(task =>
     ['COMPLETED', 'VERIFIED', 'PROMOTED'].includes(task.status),
@@ -176,10 +227,14 @@ export function ActorProcessControlPage(props: {
   const loadDashboard = async () => {
     setLoading(true);
     try {
-      const [projectResponse, summaryResponse] = await Promise.all([
-        fetchApi.fetch('/api/resonance-projects'),
-        fetchApi.fetch('/api/resonance-projects/operations/summary'),
-      ]);
+      const [projectResponse, summaryResponse, runtimeResponse] =
+        await Promise.all([
+          fetchApi.fetch('/api/resonance-projects'),
+          fetchApi.fetch('/api/resonance-projects/operations/summary'),
+          fetchApi.fetch(
+            '/api/resonance-projects/actor-process/runtime-dashboard',
+          ),
+        ]);
       if (projectResponse.ok) {
         const payload = (await projectResponse.json()) as {
           projects?: ProjectOption[];
@@ -197,10 +252,17 @@ export function ActorProcessControlPage(props: {
       if (summaryResponse.ok) {
         setSummary((await summaryResponse.json()) as OperationsSummary);
       }
+      if (runtimeResponse.ok) {
+        setRuntimeDashboard((await runtimeResponse.json()) as RuntimeDashboard);
+      } else {
+        throw new Error(
+          `Actor·Process runtime dashboard ${runtimeResponse.status}`,
+        );
+      }
       await loadReleases(projectId);
     } catch {
       setMessage(
-        '제어 plane 데이터를 불러오지 못했습니다. 잠시 후 다시 시도하세요.',
+        'Actor·Process 운영 데이터를 불러오지 못했습니다. 잠시 후 다시 시도하세요.',
       );
     } finally {
       setLoading(false);
@@ -421,7 +483,19 @@ export function ActorProcessControlPage(props: {
                   }`}
                   role="button"
                   tabIndex={0}
-                  onClick={() => setTabId(item.id)}
+                  onClick={() => {
+                    setTabId(item.id);
+                    setRowFilter('');
+                    window.history.replaceState(
+                      null,
+                      '',
+                      `${window.location.pathname}?workspace=${
+                        workspace.id
+                      }&tab=${item.id}&projectId=${encodeURIComponent(
+                        projectId,
+                      )}`,
+                    );
+                  }}
                 >
                   <Typography variant="subtitle2">{item.label}</Typography>
                   <Typography variant="caption">{item.capability}</Typography>
@@ -475,13 +549,91 @@ export function ActorProcessControlPage(props: {
                 </Box>
               </Grid>
             </Grid>
-            <Box mt={3}>
-              <Typography variant="subtitle2">실행 기준</Typography>
-              <Typography variant="body2">
-                설계는 Backstage에서 버전·검증·승인하고, 개발 태스크는 승격된
-                계약만 사용합니다. 실제 고객 업무 데이터와 상태 전이는
-                Resonance에서 처리하며 결과 증적을 다시 Backstage에 기록합니다.
-              </Typography>
+            <Box
+              mt={3}
+              display="flex"
+              alignItems="center"
+              justifyContent="space-between"
+              gridGap={12}
+              flexWrap="wrap"
+            >
+              <Box>
+                <Typography variant="subtitle2">실제 운영 데이터</Typography>
+                <Typography variant="body2" color="textSecondary">
+                  Resonance 원본 데이터셋 {datasetKey} · 전체{' '}
+                  {sourceRows.length}건 · 최대 100건 표시
+                </Typography>
+              </Box>
+              <TextField
+                variant="outlined"
+                size="small"
+                label="현재 탭 검색"
+                value={rowFilter}
+                onChange={event => setRowFilter(event.target.value)}
+              />
+            </Box>
+            <Box
+              mt={2}
+              style={{
+                overflowX: 'auto',
+                border: '1px solid #dbe4ea',
+                borderRadius: 8,
+              }}
+            >
+              {visibleRows.length > 0 ? (
+                <table
+                  style={{
+                    width: '100%',
+                    minWidth: 760,
+                    borderCollapse: 'collapse',
+                    fontSize: 13,
+                  }}
+                >
+                  <thead style={{ background: '#f1f5f9' }}>
+                    <tr>
+                      {visibleColumns.map(column => (
+                        <th
+                          key={column}
+                          style={{
+                            padding: 12,
+                            textAlign: 'left',
+                            borderBottom: '1px solid #cbd5e1',
+                          }}
+                        >
+                          {columnLabels[column] ?? column}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {visibleRows.map((row, index) => (
+                      <tr key={`${selectedTab.id}-${index}`}>
+                        {visibleColumns.map(column => (
+                          <td
+                            key={column}
+                            style={{
+                              padding: 12,
+                              borderBottom: '1px solid #e2e8f0',
+                              maxWidth: 320,
+                              overflowWrap: 'anywhere',
+                            }}
+                          >
+                            {displayValue(row[column])}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              ) : (
+                <Box p={3}>
+                  <Typography variant="body2" color="textSecondary">
+                    {rowFilter
+                      ? '검색 조건에 맞는 데이터가 없습니다.'
+                      : '이 기능에 등록된 운영 데이터가 없습니다. 설계에서 필요한 항목을 등록하면 이곳에 즉시 표시됩니다.'}
+                  </Typography>
+                </Box>
+              )}
             </Box>
             <Box mt={3} display="flex" gridGap={8} flexWrap="wrap">
               <Button
@@ -490,7 +642,7 @@ export function ActorProcessControlPage(props: {
                 href={routeForWorkspace[workspace.id]}
                 startIcon={<LaunchIcon />}
               >
-                {workspace.label} 작업공간 열기
+                {workspace.label} 공통 관리 열기
               </Button>
               {workspace.id === 'operate' && (
                 <Button

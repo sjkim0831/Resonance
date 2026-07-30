@@ -11,6 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -117,6 +118,16 @@ public class ActorProcessControlPlaneBridgeController {
                     "success", false,
                     "message", exception.getMessage() == null ? "Design release application failed." : exception.getMessage()));
         }
+    }
+
+    @GetMapping("/dashboard")
+    public ResponseEntity<?> dashboard(
+            @RequestHeader(value = "X-Resonance-Token", defaultValue = "") String suppliedToken) {
+        if (!authorized(suppliedToken)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("success", false, "message", "Invalid control-plane bridge token."));
+        }
+        return ResponseEntity.ok(governance.dashboard());
     }
 
     @PostMapping("/control-assets/cutover")

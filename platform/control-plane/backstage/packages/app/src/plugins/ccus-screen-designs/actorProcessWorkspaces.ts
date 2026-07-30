@@ -14,6 +14,33 @@ export type ActorProcessWorkspace = {
   tabs: ActorProcessTab[];
 };
 
+export const ACTOR_PROCESS_DATASET_BY_TAB: Record<string, string> = {
+  actors: 'actors',
+  processes: 'processes',
+  steps: 'steps',
+  'screen-flow': 'screenBlueprints',
+  'data-contracts': 'professionalScreenContracts',
+  'test-scenarios': 'cases',
+  'design-assets': 'referenceAssets',
+  'design-release': 'designValidationRuns',
+  'development-plan': 'processDevelopmentProgress',
+  'generation-queue': 'developmentJobs',
+  frontend: 'screenDevelopmentGates',
+  backend: 'backendProcessReadiness',
+  database: 'pageDesigns',
+  'automated-tests': 'qualityGateResults',
+  artifacts: 'artifacts',
+  promotion: 'deliveryQueue',
+  'work-dashboard': 'processExecutions',
+  execution: 'processExecutionEvents',
+  assignments: 'assignments',
+  completion: 'projectCompletionRuns',
+  runtime: 'automationMetrics',
+  deployments: 'deliveryQueue',
+  incidents: 'customerJourneyGaps',
+  audit: 'developmentEvents',
+};
+
 const tab = (
   id: string,
   label: string,
@@ -73,7 +100,7 @@ export const ACTOR_PROCESS_WORKSPACES: ActorProcessWorkspace[] = [
       tab(
         'design-release',
         '설계 검증·승인',
-        '누락과 충돌을 검사하고 개발 기준 버전을 승격합니다.',
+        '누락과 충돌을 검사하고 개발 기준 버전으로 승격합니다.',
         'DESIGN_RELEASE',
       ),
     ],
@@ -93,7 +120,7 @@ export const ACTOR_PROCESS_WORKSPACES: ActorProcessWorkspace[] = [
       tab(
         'generation-queue',
         '생성·작업 큐',
-        '공통 제너레이터 작업과 담당 실행기를 관리합니다.',
+        '공통 제너레이터 작업과 실행기를 관리합니다.',
         'GENERATION_QUEUE',
       ),
       tab(
