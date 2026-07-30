@@ -54,8 +54,10 @@ const actorProcessEntries: CutoverLedgerEntry[] =
       capabilities: [
         workspace.id === 'design'
           ? 'DESIGN'
-          : workspace.id === 'develop'
+          : workspace.id === 'delivery'
           ? 'DEVELOPMENT'
+          : workspace.id === 'verify'
+          ? 'DESIGN'
           : 'OPERATIONS',
       ],
       apiContracts: [
