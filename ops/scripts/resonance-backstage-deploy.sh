@@ -281,7 +281,7 @@ wait_for_runtime() {
       "$BACKSTAGE_URL/.backstage/health/v1/readiness" >/dev/null; then
       return 0
     fi
-    sleep 2
+    sleep 0.5
   done
   echo "[backstage] readiness did not converge at $BACKSTAGE_URL" >&2
   return 1
@@ -308,7 +308,7 @@ wait_for_catalog() {
         return 0
       fi
     fi
-    sleep 2
+    sleep 0.5
   done
   echo "[backstage] catalog did not reach $BACKSTAGE_MIN_CATALOG_ENTITIES entities" >&2
   return 1
@@ -325,7 +325,7 @@ wait_for_catalog_database() {
       echo "[backstage] catalog ready in database: $count entities"
       return 0
     fi
-    sleep 2
+    sleep 0.5
   done
   echo "[backstage] catalog database did not reach $BACKSTAGE_MIN_CATALOG_ENTITIES entities" >&2
   return 1

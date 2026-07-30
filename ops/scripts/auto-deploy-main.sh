@@ -443,8 +443,19 @@ if [[ "$PLAN_RUNTIME_REQUIRED" != "true" ]]; then
   while IFS= read -r changed_script; do
     [[ "$changed_script" == *.sh && -f "$changed_script" ]] && bash -n "$changed_script"
   done < <(git diff --name-only --diff-filter=ACMR "$deployed_commit" "$target_commit")
-  bash ops/scripts/sync-unified-asset-catalog.sh
-  bash ops/scripts/validate-e4b-selectable-assets.sh
+  backstage_only_change=false
+  if [[ "$PLAN_BACKSTAGE_REQUIRED" == "true" ]] &&
+    ! git diff --name-only "$deployed_commit" "$target_commit" |
+      grep -Ev '^(platform/control-plane/backstage/|deploy/k8s/control-plane/backstage\.yaml$|ops/scripts/(resonance-backstage-deploy|test-backstage-fast-deploy-policy)\.sh$)' |
+      grep -q .; then
+    backstage_only_change=true
+  fi
+  if [[ "$backstage_only_change" == "true" ]]; then
+    echo "[auto-deploy] Backstage-only change: preserving the verified unified asset catalog"
+  else
+    bash ops/scripts/sync-unified-asset-catalog.sh
+    bash ops/scripts/validate-e4b-selectable-assets.sh
+  fi
   sync_backstage_catalog_if_required
   deploy_backstage_if_required
   run_backstage_visual_e2e_if_required
