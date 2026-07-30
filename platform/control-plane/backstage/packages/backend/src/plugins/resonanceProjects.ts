@@ -1706,6 +1706,110 @@ export default createBackendPlugin({
             });
           },
         );
+        router.post(
+          '/control-assets/:projectId/verify-native',
+          async (request, response) => {
+            const projectId = normalizeProjectId(request.params.projectId);
+            const targets: { assetId?: unknown; targetUrl?: unknown }[] =
+              Array.isArray(request.body?.targets) ? request.body.targets : [];
+            const evidence =
+              request.body?.evidence &&
+              typeof request.body.evidence === 'object'
+                ? request.body.evidence
+                : {};
+            const targetUrls = new Set<string>(
+              targets
+                .map((target: { targetUrl?: unknown }) =>
+                  String(target.targetUrl ?? '').trim(),
+                )
+                .filter(Boolean),
+            );
+            const assetIds: string[] = targets.map(target =>
+              String(target.assetId ?? '').trim(),
+            );
+            const allowedTargetPrefixes = [
+              '/resonance-',
+              '/actor-process-',
+              '/design-assets',
+              '/ccus-screen-designs',
+              '/ccus-screen-space',
+              '/system-',
+            ];
+            if (
+              !assetIds.length ||
+              assetIds.some(assetId => !assetId) ||
+              new Set(assetIds).size !== assetIds.length ||
+              [...targetUrls].some(
+                targetUrl =>
+                  !allowedTargetPrefixes.some(prefix =>
+                    targetUrl.startsWith(prefix),
+                  ),
+              ) ||
+              String(evidence.testStatus ?? '') !== 'PASS' ||
+              !String(evidence.verifiedBy ?? '').trim()
+            ) {
+              response.status(400).json({
+                message:
+                  'unique assets, allowed target URLs and PASS evidence are required',
+              });
+              return;
+            }
+
+            const now = new Date();
+            const verified = await knex.transaction(async transaction => {
+              const assets = await transaction(
+                'resonance_projects__control_asset_migration',
+              )
+                .select('*')
+                .where({ project_id: projectId })
+                .whereIn('asset_id', assetIds)
+                .forUpdate();
+              if (assets.length !== assetIds.length) {
+                throw new Error('one or more control assets were not found');
+              }
+              const invalid = assets.filter(
+                asset =>
+                  asset.ownership_lane !== 'BACKSTAGE_NATIVE' ||
+                  !['NATIVE_READY', 'MIGRATED', 'VERIFIED'].includes(
+                    asset.migration_status,
+                  ),
+              );
+              if (invalid.length) {
+                throw new Error(
+                  `assets are not native-ready: ${invalid
+                    .map(asset => asset.asset_id)
+                    .join(', ')}`,
+                );
+              }
+
+              for (const target of targets) {
+                const assetId = String(target.assetId).trim();
+                const targetUrl = String(target.targetUrl).trim();
+                await transaction('resonance_projects__control_asset_migration')
+                  .where({ project_id: projectId, asset_id: assetId })
+                  .update({
+                    migration_status: 'VERIFIED',
+                    verification_evidence: JSON.stringify({
+                      ...evidence,
+                      targetUrl,
+                      assetId,
+                      verifiedAt: now.toISOString(),
+                    }),
+                    updated_at: now,
+                  });
+              }
+              return assets.length;
+            });
+
+            response.json({
+              projectId,
+              verified,
+              targetCount: targetUrls.size,
+              migrationStatus: 'VERIFIED',
+              updatedAt: now,
+            });
+          },
+        );
         router.get('/', async (_request, response) => {
           const rows = await knex('resonance_projects__project')
             .select('*')
