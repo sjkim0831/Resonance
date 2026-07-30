@@ -174,6 +174,8 @@ schema_backup_dir=""
 schema_restore_database=""
 runtime_asset_sync_pid=""
 runtime_asset_sync_log=""
+runtime_screen_gate_pid=""
+runtime_screen_gate_log=""
 # A disconnected kubectl/pg_dump pipeline can survive the systemd process and
 # retain ACCESS SHARE locks indefinitely. Reap only deploy-owned sessions that
 # have exceeded five minutes before Flyway can be blocked. Normal full dumps
@@ -196,6 +198,10 @@ cleanup_deploy() {
   if [[ -n "$runtime_asset_sync_pid" ]] && kill -0 "$runtime_asset_sync_pid" 2>/dev/null; then
     kill "$runtime_asset_sync_pid" 2>/dev/null || true
     wait "$runtime_asset_sync_pid" 2>/dev/null || true
+  fi
+  if [[ -n "$runtime_screen_gate_pid" ]] && kill -0 "$runtime_screen_gate_pid" 2>/dev/null; then
+    kill "$runtime_screen_gate_pid" 2>/dev/null || true
+    wait "$runtime_screen_gate_pid" 2>/dev/null || true
   fi
   cleanup_remote_backup
   if [[ -n "$schema_restore_database" ]]; then
@@ -1017,19 +1023,35 @@ if [[ -n "$runtime_asset_sync_pid" ]]; then
     exit 18
   fi
 fi
+# Browser rendering and the domain validators are independent read/validation
+# lanes after rollout health is UP. Start the bounded browser canary alongside
+# the three validation groups and join both fail-closed. This removes a
+# sequential five-second tail without reducing test coverage.
+if [[ "$PLAN_FRONTEND_REQUIRED" == "true" ]]; then
+  runtime_screen_gate_log="$ROOT_DIR/var/logs/runtime-screen-gate-${target_commit:0:10}.log"
+  (
+    FULL_SCREEN_SMOKE_CHANGED_ONLY=false \
+    FULL_SCREEN_SMOKE_ROUTE_PATTERN='^/(home|emission/project_list|emission/project/create|emission/my-tasks|home/certificate-verify|admin|admin/system/menu|admin/system/actor-process|admin/emission/survey-admin|admin/emission/survey-admin-data|admin/emission/survey-report|admin/emission/survey-report-print)([?#]|$)' \
+      bash ops/scripts/resonance-full-screen-deploy-gate.sh verify
+  ) >"$runtime_screen_gate_log" 2>&1 &
+  runtime_screen_gate_pid="$!"
+  echo "[auto-deploy] bounded browser gate running concurrently pid=$runtime_screen_gate_pid"
+fi
+
 # These groups use independent tables and contracts. Ordering remains strict
 # inside a group; the reusable harness provides bounded parallelism, isolated
 # logs, and one fail-closed result for both deployment and operator testing.
 UNIFIED_ASSET_SYNC_PRECOMPLETED="$asset_sync_precompleted" \
   bash ops/scripts/run-post-deploy-validation-groups.sh "$ROOT_DIR" "$target_commit" "$deployed_commit"
 if [[ "$PLAN_FRONTEND_REQUIRED" == "true" ]]; then
-  # A normal deployment must finish inside the operational feedback window.
-  # Domain/API/schema validators above already cover the changed backend and
-  # Flyway contracts. Exercise a bounded cross-domain browser canary here;
-  # the scheduled full-screen sweep remains responsible for all 1,844 routes.
-  FULL_SCREEN_SMOKE_CHANGED_ONLY=false \
-  FULL_SCREEN_SMOKE_ROUTE_PATTERN='^/(home|emission/project_list|emission/project/create|emission/my-tasks|home/certificate-verify|admin|admin/system/menu|admin/system/actor-process|admin/emission/survey-admin|admin/emission/survey-admin-data|admin/emission/survey-report|admin/emission/survey-report-print)([?#]|$)' \
-    bash ops/scripts/resonance-full-screen-deploy-gate.sh verify
+  if wait "$runtime_screen_gate_pid"; then
+    cat "$runtime_screen_gate_log"
+    runtime_screen_gate_pid=""
+  else
+    echo "[auto-deploy] refusing success marker: concurrent browser gate failed" >&2
+    cat "$runtime_screen_gate_log" >&2
+    exit 19
+  fi
 else
   # Backend/database-only commits already pass the domain runtime/API/schema
   # gates above. A
