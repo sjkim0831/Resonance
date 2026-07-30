@@ -5,13 +5,9 @@ NAMESPACE="${CARBONET_K8S_NAMESPACE:-carbonet-prod}"; DATABASE="${POSTGRES_DB:-c
 USER_NAME="${POSTGRES_ADMIN_USER:-postgres}"; CONTAINER="${CARBONET_POSTGRES_CONTAINER:-patroni}"
 BASE_URL="${CARBONET_RUNTIME_BASE_URL:-http://127.0.0.1}"; SOURCE_COMMIT="$(git -C "$ROOT" rev-parse HEAD)"
 COOKIE_JAR="$(mktemp)"; TIMINGS="$(mktemp)"; API_BODY="$(mktemp)"; PAGE_BODY="$(mktemp)"; trap 'rm -f "$COOKIE_JAR" "$TIMINGS" "$API_BODY" "$PAGE_BODY"' EXIT
-leader=""
-while IFS= read -r pod; do
-  recovery="$(kubectl -n "$NAMESPACE" exec "$pod" -c "$CONTAINER" -- psql -h 127.0.0.1 -U "$USER_NAME" -d "$DATABASE" -Atqc 'select pg_is_in_recovery()' 2>/dev/null || true)"
-  [[ "$recovery" == "f" ]] && { leader="$pod"; break; }
-done < <(kubectl -n "$NAMESPACE" get pods -l app=postgres-patroni -o name | sed 's#^pod/##')
-[[ -n "$leader" ]] || exit 1
-psqlq(){ kubectl -n "$NAMESPACE" exec "$leader" -c "$CONTAINER" -- psql -h 127.0.0.1 -U "$USER_NAME" -d "$DATABASE" -Atqc "$1"; }
+source "$ROOT/ops/scripts/lib/carbonet-postgres-query.sh"
+carbonet_postgres_query_init
+psqlq(){ carbonet_postgres_query "$1"; }
 project_id="$(psqlq "select project_id from emission_calculation_run group by project_id order by max(calculated_at) desc limit 1")"
 [[ -n "$project_id" ]] || { echo '[calculation-runtime] FAIL no calculated project' >&2; exit 1; }
 curl -fsS -c "$COOKIE_JAR" -H 'Content-Type: application/json' -X POST "$BASE_URL/admin/login/actionLogin" --data '{"userId":"webmaster","userPw":"rhdxhd12","userSe":"USR"}' >/dev/null

@@ -16,13 +16,9 @@ API_BODY="$(mktemp)"
 PAGE_BODY="$(mktemp)"
 trap 'rm -f "$COOKIE_JAR" "$TIMINGS" "$API_BODY" "$PAGE_BODY"' EXIT
 
-leader=""
-while IFS= read -r pod; do
-  recovery="$(kubectl -n "$NAMESPACE" exec "$pod" -c "$CONTAINER" -- psql -h 127.0.0.1 -U "$USER_NAME" -d "$DATABASE" -Atqc 'select pg_is_in_recovery()' 2>/dev/null || true)"
-  [[ "$recovery" == "f" ]] && { leader="$pod"; break; }
-done < <(kubectl -n "$NAMESPACE" get pods -l app=postgres-patroni -o name | sed 's#^pod/##')
-[[ -n "$leader" ]] || { echo "[activity-runtime] FAIL PostgreSQL leader missing" >&2; exit 1; }
-psqlq(){ kubectl -n "$NAMESPACE" exec "$leader" -c "$CONTAINER" -- psql -h 127.0.0.1 -U "$USER_NAME" -d "$DATABASE" -Atqc "$1"; }
+source "$ROOT/ops/scripts/lib/carbonet-postgres-query.sh"
+carbonet_postgres_query_init
+psqlq(){ carbonet_postgres_query "$1"; }
 
 project_id="$(psqlq "select project.project_id from emission_project_registry project join framework_project_actor_assignment actor on actor.project_id=project.project_id where project.project_status<>'DELETED' group by project.project_id,project.created_at having count(distinct actor.actor_code)>=5 order by project.created_at desc limit 1")"
 [[ -n "$project_id" ]] || { echo "[activity-runtime] FAIL no testable emission project" >&2; exit 1; }
