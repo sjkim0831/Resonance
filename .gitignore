@@ -15,6 +15,7 @@ build/
 test-results/
 coverage/
 .nyc_output/
+*.tsbuildinfo
 
 # Gradle / Resonance build tool cache
 .gradle/
