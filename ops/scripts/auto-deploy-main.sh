@@ -147,12 +147,14 @@ if [[ -z "$POSTGRES_POD" ]]; then
 fi
 echo "[auto-deploy] PostgreSQL backup leader: $POSTGRES_POD"
 backup_application_name="carbonet-auto-deploy-$$"
+schema_backup_dir=""
 # A disconnected kubectl/pg_dump pipeline can survive the systemd process and
 # retain ACCESS SHARE locks indefinitely. Reap only deploy-owned sessions that
-# are far older than any configured backup timeout before Flyway can be blocked.
+# have exceeded five minutes before Flyway can be blocked. Normal full dumps
+# remain protected by their active systemd service and current application name.
 kubectl -n "$NAMESPACE" exec "$POSTGRES_POD" -c "$POSTGRES_CONTAINER" -- \
   psql -h 127.0.0.1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" -X -q -At \
-  -c "select pg_terminate_backend(pid) from pg_stat_activity where application_name like 'carbonet-auto-deploy-%' and backend_start < current_timestamp - interval '2 hours' and pid<>pg_backend_pid()" \
+  -c "select pg_terminate_backend(pid) from pg_stat_activity where application_name like 'carbonet-auto-deploy-%' and application_name<>'$backup_application_name' and coalesce(xact_start,query_start,backend_start) < current_timestamp - interval '5 minutes' and pid<>pg_backend_pid()" \
   >/dev/null 2>&1 || true
 cleanup_remote_backup() {
   # A terminated `kubectl exec` can leave pg_dump alive inside the pod. End
@@ -166,6 +168,9 @@ cleanup_remote_backup() {
 }
 cleanup_deploy() {
   cleanup_remote_backup
+  if [[ -n "$schema_backup_dir" ]]; then
+    rm -rf -- "$schema_backup_dir"
+  fi
   if [[ -n "${CARBONET_DEPLOY_SNAPSHOT_PATH:-}" ]]; then
     rm -f -- "$CARBONET_DEPLOY_SNAPSHOT_PATH"
   fi
@@ -519,6 +524,7 @@ menu_backup_only=false
 governance_backup_only=false
 activity_backup_only=false
 identity_backup_only=false
+schema_backup_only=false
 if [[ "$PLAN_DATABASE_REQUIRED" == "true" && "${CARBONET_FORCE_PREDEPLOY_BACKUP:-false}" != "true" ]]; then
   database_change_files="$(git diff --name-only "$deployed_commit" "$target_commit" -- \
     apps/carbonet-api/src/main/resources/db/migration/postgresql)"
@@ -527,10 +533,69 @@ if [[ "$PLAN_DATABASE_REQUIRED" == "true" && "${CARBONET_FORCE_PREDEPLOY_BACKUP:
   [[ "$backup_scope" == "governance" ]] && governance_backup_only=true
   [[ "$backup_scope" == "activity" ]] && activity_backup_only=true
   [[ "$backup_scope" == "identity" ]] && identity_backup_only=true
+  database_change_statuses="$(git diff --name-status "$deployed_commit" "$target_commit" -- \
+    apps/carbonet-api/src/main/resources/db/migration/postgresql)"
+  if [[ -n "$database_change_files" ]] \
+    && ! grep -Ev '^A[[:space:]]' <<<"$database_change_statuses" | grep -q . \
+    && python3 ops/scripts/classify-safe-additive-ddl.py $database_change_files; then
+    schema_backup_only=true
+    menu_backup_only=false
+    governance_backup_only=false
+    activity_backup_only=false
+    identity_backup_only=false
+    backup_scope="safe-additive-schema"
+  fi
   echo "[auto-deploy] database backup scope: $backup_scope"
 fi
 if [[ "$backup_required" == "true" ]]; then
-  if [[ "$menu_backup_only" == "true" ]]; then
+  if [[ "$schema_backup_only" == "true" ]]; then
+    backup_file="$BACKUP_DIR/carbonet-schema-$timestamp-$current_commit.tar"
+    schema_backup_dir="$(mktemp -d)"
+    echo "[auto-deploy] safe additive DDL detected; creating schema and Flyway-history backup"
+    if ! timeout --signal=TERM --kill-after=30s "$BACKUP_TIMEOUT_SECONDS" \
+        kubectl -n "$NAMESPACE" exec "$POSTGRES_POD" -c "$POSTGRES_CONTAINER" -- \
+          env "PGAPPNAME=$backup_application_name" "PGOPTIONS=-c statement_timeout=${BACKUP_TIMEOUT_SECONDS}s -c lock_timeout=30s" \
+          pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" --format=custom \
+            --schema-only --no-owner --no-privileges -h 127.0.0.1 \
+        > "$schema_backup_dir/schema.dump"; then
+      echo "[auto-deploy] refusing deployment: schema backup failed" >&2
+      exit 14
+    fi
+    if ! timeout --signal=TERM --kill-after=30s "$BACKUP_TIMEOUT_SECONDS" \
+      kubectl -n "$NAMESPACE" exec "$POSTGRES_POD" -c "$POSTGRES_CONTAINER" -- \
+        env "PGAPPNAME=$backup_application_name" "PGOPTIONS=-c statement_timeout=${BACKUP_TIMEOUT_SECONDS}s -c lock_timeout=30s" \
+        pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" --format=custom \
+          --data-only --no-owner --no-privileges -h 127.0.0.1 \
+          -t carbonet_flyway_schema_history > "$schema_backup_dir/flyway-history.dump"; then
+      echo "[auto-deploy] refusing deployment: Flyway-history backup failed" >&2
+      exit 14
+    fi
+    git diff --name-status "$deployed_commit" "$target_commit" -- \
+      apps/carbonet-api/src/main/resources/db/migration/postgresql \
+      > "$schema_backup_dir/migrations.manifest"
+    git diff "$deployed_commit" "$target_commit" -- \
+      apps/carbonet-api/src/main/resources/db/migration/postgresql \
+      > "$schema_backup_dir/migrations.patch"
+    for archive in schema.dump flyway-history.dump; do
+      if [[ "$(stat -c %s "$schema_backup_dir/$archive")" -lt 512 ]] \
+        || ! kubectl -n "$NAMESPACE" exec -i "$POSTGRES_POD" -c "$POSTGRES_CONTAINER" -- \
+          pg_restore --list < "$schema_backup_dir/$archive" >/dev/null; then
+        echo "[auto-deploy] refusing deployment: $archive restore catalog is invalid" >&2
+        exit 18
+      fi
+    done
+    tar -C "$schema_backup_dir" -cf "$backup_file" \
+      schema.dump flyway-history.dump migrations.manifest migrations.patch
+    backup_bytes="$(stat -c %s "$backup_file")"
+    if [[ "$backup_bytes" -lt 2048 ]] || ! tar -tf "$backup_file" | grep -q '^schema.dump$'; then
+      rm -f "$backup_file"
+      echo "[auto-deploy] refusing deployment: schema backup package is invalid (${backup_bytes} bytes)" >&2
+      exit 11
+    fi
+    rm -rf "$schema_backup_dir"
+    schema_backup_dir=""
+    echo "[auto-deploy] schema backup restore catalogs verified: $backup_file (${backup_bytes} bytes)"
+  elif [[ "$menu_backup_only" == "true" ]]; then
     backup_file="$BACKUP_DIR/carbonet-menu-$timestamp-$current_commit.sql.gz"
     echo "[auto-deploy] menu-only migration detected; creating targeted transactional backup"
     if ! timeout --signal=TERM --kill-after=30s "$BACKUP_TIMEOUT_SECONDS" \
