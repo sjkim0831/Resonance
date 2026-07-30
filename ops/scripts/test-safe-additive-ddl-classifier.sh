@@ -38,6 +38,7 @@ grep -q 'backup_scope="safe-additive-schema"' "$DEPLOY_SCRIPT"
 grep -q 'pg_dump -U' "$DEPLOY_SCRIPT"
 grep -q -- '--format=custom' "$DEPLOY_SCRIPT"
 grep -q 'pg_restore --list' "$DEPLOY_SCRIPT"
+grep -q 'restoredFlywayRows' "$DEPLOY_SCRIPT"
 grep -q "interval '5 minutes'" "$DEPLOY_SCRIPT"
 
 echo "[safe-additive-ddl] PASS safe=1 unsafe=6 archive=custom restoreCatalog=verified orphanReap=5m fail-closed=true"

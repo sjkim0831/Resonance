@@ -148,6 +148,7 @@ fi
 echo "[auto-deploy] PostgreSQL backup leader: $POSTGRES_POD"
 backup_application_name="carbonet-auto-deploy-$$"
 schema_backup_dir=""
+schema_restore_database=""
 # A disconnected kubectl/pg_dump pipeline can survive the systemd process and
 # retain ACCESS SHARE locks indefinitely. Reap only deploy-owned sessions that
 # have exceeded five minutes before Flyway can be blocked. Normal full dumps
@@ -168,6 +169,12 @@ cleanup_remote_backup() {
 }
 cleanup_deploy() {
   cleanup_remote_backup
+  if [[ -n "$schema_restore_database" ]]; then
+    kubectl -n "$NAMESPACE" exec "$POSTGRES_POD" -c "$POSTGRES_CONTAINER" -- \
+      psql -U "$POSTGRES_USER" -h 127.0.0.1 -d postgres \
+        -c "drop database if exists \"$schema_restore_database\" with (force)" \
+      >/dev/null 2>&1 || true
+  fi
   if [[ -n "$schema_backup_dir" ]]; then
     rm -rf -- "$schema_backup_dir"
   fi
@@ -584,6 +591,32 @@ if [[ "$backup_required" == "true" ]]; then
         exit 18
       fi
     done
+    schema_restore_database="carbonet_schema_verify_${timestamp//-/_}_$$"
+    kubectl -n "$NAMESPACE" exec "$POSTGRES_POD" -c "$POSTGRES_CONTAINER" -- \
+      psql -U "$POSTGRES_USER" -h 127.0.0.1 -d postgres -v ON_ERROR_STOP=1 \
+        -c "create database \"$schema_restore_database\"" >/dev/null
+    if ! kubectl -n "$NAMESPACE" exec -i "$POSTGRES_POD" -c "$POSTGRES_CONTAINER" -- \
+      pg_restore -U "$POSTGRES_USER" -h 127.0.0.1 -d "$schema_restore_database" \
+        --schema-only --no-owner --no-privileges -t carbonet_flyway_schema_history \
+        < "$schema_backup_dir/schema.dump" \
+      || ! kubectl -n "$NAMESPACE" exec -i "$POSTGRES_POD" -c "$POSTGRES_CONTAINER" -- \
+        pg_restore -U "$POSTGRES_USER" -h 127.0.0.1 -d "$schema_restore_database" \
+          --data-only --no-owner --no-privileges -t carbonet_flyway_schema_history \
+          < "$schema_backup_dir/flyway-history.dump"; then
+      echo "[auto-deploy] refusing deployment: Flyway-history restore verification failed" >&2
+      exit 19
+    fi
+    restored_history_count="$(kubectl -n "$NAMESPACE" exec "$POSTGRES_POD" -c "$POSTGRES_CONTAINER" -- \
+      psql -U "$POSTGRES_USER" -h 127.0.0.1 -d "$schema_restore_database" -Atqc \
+        "select count(*) from carbonet_flyway_schema_history")"
+    [[ "$restored_history_count" =~ ^[1-9][0-9]*$ ]] || {
+      echo "[auto-deploy] refusing deployment: restored Flyway history is empty" >&2
+      exit 19
+    }
+    kubectl -n "$NAMESPACE" exec "$POSTGRES_POD" -c "$POSTGRES_CONTAINER" -- \
+      psql -U "$POSTGRES_USER" -h 127.0.0.1 -d postgres -v ON_ERROR_STOP=1 \
+        -c "drop database \"$schema_restore_database\" with (force)" >/dev/null
+    schema_restore_database=""
     tar -C "$schema_backup_dir" -cf "$backup_file" \
       schema.dump flyway-history.dump migrations.manifest migrations.patch
     backup_bytes="$(stat -c %s "$backup_file")"
@@ -594,7 +627,7 @@ if [[ "$backup_required" == "true" ]]; then
     fi
     rm -rf "$schema_backup_dir"
     schema_backup_dir=""
-    echo "[auto-deploy] schema backup restore catalogs verified: $backup_file (${backup_bytes} bytes)"
+    echo "[auto-deploy] schema backup verified: $backup_file (${backup_bytes} bytes, restoredFlywayRows=${restored_history_count})"
   elif [[ "$menu_backup_only" == "true" ]]; then
     backup_file="$BACKUP_DIR/carbonet-menu-$timestamp-$current_commit.sql.gz"
     echo "[auto-deploy] menu-only migration detected; creating targeted transactional backup"
