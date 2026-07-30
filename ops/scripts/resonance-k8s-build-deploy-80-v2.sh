@@ -383,6 +383,13 @@ build_frontend() {
   local start_time=$(date +%s)
   local staging_dir
   staging_dir="$(mktemp -d "$ROOT_DIR/var/run/react-build.XXXXXX")"
+  local previous_manifest
+  previous_manifest="$(mktemp "$ROOT_DIR/var/run/react-previous-manifest.XXXXXX.json")"
+  if [[ -s "$OVERLAY_HOST_PATH/.vite/manifest.json" ]]; then
+    cp "$OVERLAY_HOST_PATH/.vite/manifest.json" "$previous_manifest"
+  else
+    printf '{}\n' >"$previous_manifest"
+  fi
 
   # Generated screen definitions are runtime materialization assets and are
   # intentionally not committed one-by-one. A clean deployment worktree must
@@ -415,6 +422,10 @@ build_frontend() {
     root_cmd cp "$staging_dir/index.html" "$OVERLAY_HOST_PATH/.index.html.next"
     root_cmd mv -f "$OVERLAY_HOST_PATH/.index.html.next" "$OVERLAY_HOST_PATH/index.html"
     node "$ROOT_DIR/ops/scripts/verify-react-asset-closure.mjs" "$OVERLAY_HOST_PATH"
+    node "$ROOT_DIR/ops/scripts/prune-react-asset-generations.mjs" \
+      "$OVERLAY_HOST_PATH" "$previous_manifest"
+    node "$ROOT_DIR/ops/scripts/verify-react-asset-closure.mjs" "$OVERLAY_HOST_PATH"
+    rm -f "$previous_manifest"
     rm -rf "$staging_dir"
   }
 

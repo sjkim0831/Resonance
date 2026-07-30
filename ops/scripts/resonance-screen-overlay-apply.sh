@@ -153,6 +153,12 @@ if [[ "$SKIP_FRONTEND_BUILD" != "true" ]]; then
   ensure_generated_screen_assets
   echo "[screen-overlay-apply] isolated npm build only; no gradle, no image, no rollout"
   staging_dir="$(mktemp -d "$STATUS_DIR/react-overlay-build.XXXXXX")"
+  previous_manifest="$(mktemp "$STATUS_DIR/react-previous-manifest.XXXXXX.json")"
+  if [[ -s "$OVERLAY_DIR/.vite/manifest.json" ]]; then
+    cp "$OVERLAY_DIR/.vite/manifest.json" "$previous_manifest"
+  else
+    printf '{}\n' >"$previous_manifest"
+  fi
   skip_build_typecheck=false
   if [[ "$FRONTEND_TYPECHECK_MODE" == "noemit" ]]; then
     echo "[screen-overlay-apply] typecheck mode=noemit (single pass, no project build metadata writes)"
@@ -178,6 +184,10 @@ if [[ "$SKIP_FRONTEND_BUILD" != "true" ]]; then
   cp "$staging_dir/index.html" "$OVERLAY_DIR/.index.html.next"
   mv -f "$OVERLAY_DIR/.index.html.next" "$OVERLAY_DIR/index.html"
   node "$ROOT_DIR/ops/scripts/verify-react-asset-closure.mjs" "$OVERLAY_DIR"
+  node "$ROOT_DIR/ops/scripts/prune-react-asset-generations.mjs" \
+    "$OVERLAY_DIR" "$previous_manifest"
+  node "$ROOT_DIR/ops/scripts/verify-react-asset-closure.mjs" "$OVERLAY_DIR"
+  rm -f "$previous_manifest"
   rm -rf "$staging_dir"
 else
   echo "[screen-overlay-apply] frontend build skipped by SKIP_FRONTEND_BUILD=true"
