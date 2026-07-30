@@ -47,24 +47,38 @@ async function signIn(page: Page) {
     );
   }
 
-  await page.goto('/');
   const sidebar = page.getByRole('navigation', { name: 'sidebar nav' });
   const signInButton = page
     .getByRole('button')
     .filter({ hasText: /Resonance|로그인|Sign in/i })
     .first();
-  const readySurface = await Promise.all([
-    sidebar
-      .waitFor({ state: 'attached', timeout: 30_000 })
-      .then(() => 'sidebar' as const)
-      .catch(() => null),
-    signInButton
-      .waitFor({ state: 'visible', timeout: 30_000 })
-      .then(() => 'sign-in' as const)
-      .catch(() => null),
-  ]);
+  let readySurface: Array<'sidebar' | 'sign-in' | null> = [];
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    const response = await page.goto('/', {
+      waitUntil: 'domcontentloaded',
+      timeout: 20_000,
+    });
+    if (!response || response.status() >= 500) {
+      await page.waitForTimeout(attempt * 1_000);
+      continue;
+    }
+    readySurface = await Promise.all([
+      sidebar
+        .waitFor({ state: 'attached', timeout: 20_000 })
+        .then(() => 'sidebar' as const)
+        .catch(() => null),
+      signInButton
+        .waitFor({ state: 'visible', timeout: 20_000 })
+        .then(() => 'sign-in' as const)
+        .catch(() => null),
+    ]);
+    if (readySurface.some(Boolean)) break;
+    await page.waitForTimeout(attempt * 1_000);
+  }
   if (!readySurface.some(Boolean)) {
-    throw new Error('Backstage did not expose a sidebar or sign-in action');
+    throw new Error(
+      'Backstage did not expose a sidebar or sign-in action after 3 readiness attempts',
+    );
   }
   if (await sidebar.isVisible()) {
     return;
