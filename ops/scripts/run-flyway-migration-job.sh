@@ -49,10 +49,6 @@ for current in pod["containers"]:
             "-Dfile.encoding=UTF-8",
             "-cp", "/app/runtime/BOOT-INF/classes:/app/runtime/BOOT-INF/lib/*",
             "egovframework.com.migration.FlywayMigrationApplication",
-            "--spring.config.additional-location=optional:file:/app/config/",
-            "--spring.profiles.active=prod",
-            "--spring.main.banner-mode=off",
-            "--spring.jmx.enabled=false",
         ],
         "resources": {
             "requests": {"cpu": "100m", "memory": "256Mi"},
@@ -106,7 +102,7 @@ if ! kubectl -n "$namespace" wait --for=condition=complete "job/$job" --timeout=
 fi
 
 kubectl -n "$namespace" logs "job/$job" --all-containers=true >"$log_dir/$job.log"
-if ! grep -Eq 'Schema .* is up to date|Successfully applied|Successfully validated' "$log_dir/$job.log"; then
+if ! grep -q 'FLYWAY_MIGRATION_PASS' "$log_dir/$job.log"; then
   echo "[flyway-job] completion evidence was not found (log=$log_dir/$job.log)" >&2
   exit 1
 fi

@@ -1,39 +1,67 @@
 package egovframework.com.migration;
 
-import org.springframework.boot.SpringApplication;
-import org.springframework.boot.SpringBootConfiguration;
-import org.springframework.boot.WebApplicationType;
-import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
-import org.springframework.boot.autoconfigure.data.jpa.JpaRepositoriesAutoConfiguration;
-import org.springframework.boot.autoconfigure.liquibase.LiquibaseAutoConfiguration;
-import org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration;
-import org.springframework.context.ConfigurableApplicationContext;
+import org.flywaydb.core.Flyway;
+import org.flywaydb.core.api.MigrationVersion;
+import org.flywaydb.core.api.output.MigrateResult;
+
+import java.util.Map;
 
 /**
- * Minimal, non-web deployment entry point which owns schema migration.
- *
- * <p>The runtime deployment keeps Flyway disabled so three application pods do
- * not validate and contend for the same schema on every rollout. The
- * deployment pipeline runs this class once from the candidate image and only
- * promotes that image after this process exits successfully.</p>
+ * Minimal deployment entry point which owns schema migration without starting
+ * Spring, JPA, Actuator, web, session, or application component scanning.
  */
-@SpringBootConfiguration
-@EnableAutoConfiguration(exclude = {
-        HibernateJpaAutoConfiguration.class,
-        JpaRepositoriesAutoConfiguration.class,
-        LiquibaseAutoConfiguration.class
-})
-public class FlywayMigrationApplication {
+public final class FlywayMigrationApplication {
+
+    private FlywayMigrationApplication() {
+    }
 
     public static void main(String[] args) {
-        SpringApplication application = new SpringApplication(FlywayMigrationApplication.class);
-        application.setWebApplicationType(WebApplicationType.NONE);
-        // This context contains only auto-configuration required by Flyway.
-        // Eager ordering is intentional: lazy DataSource creation can let an
-        // actuator health contributor seal Hikari before property binding.
-        application.setLazyInitialization(false);
-        try (ConfigurableApplicationContext ignored = application.run(args)) {
-            // FlywayAutoConfiguration completes before the context is returned.
+        String host = env("POSTGRES_HOST", "postgres-haproxy");
+        String database = env("POSTGRES_DB", "carbonet");
+        String url = env(
+                "SPRING_DATASOURCE_URL",
+                "jdbc:postgresql://" + host + ":5432/" + database + "?sslmode=disable"
+        );
+        String user = env("SPRING_FLYWAY_USER", env("POSTGRES_USER", "postgres"));
+        String password = requiredEnv("SPRING_FLYWAY_PASSWORD");
+
+        Flyway flyway = Flyway.configure()
+                .dataSource(url, user, password)
+                .locations("classpath:db/migration/postgresql")
+                .table("carbonet_flyway_schema_history")
+                .baselineOnMigrate(true)
+                .baselineVersion(MigrationVersion.fromVersion("20260710000000"))
+                .baselineDescription("Existing Carbonet schema before managed migrations")
+                .validateOnMigrate(true)
+                .outOfOrder(false)
+                .cleanDisabled(true)
+                .placeholders(Map.of("appName", "carbonet", "managedBy", "flyway"))
+                .load();
+
+        MigrateResult result = flyway.migrate();
+        System.out.printf(
+                "FLYWAY_MIGRATION_PASS database=%s initial=%s target=%s executed=%d success=%s%n",
+                database,
+                result.initialSchemaVersion,
+                result.targetSchemaVersion,
+                result.migrationsExecuted,
+                result.success
+        );
+        if (!result.success) {
+            throw new IllegalStateException("Flyway migration did not complete successfully");
         }
+    }
+
+    private static String env(String name, String fallback) {
+        String value = System.getenv(name);
+        return value == null || value.isBlank() ? fallback : value;
+    }
+
+    private static String requiredEnv(String name) {
+        String value = System.getenv(name);
+        if (value == null || value.isBlank()) {
+            throw new IllegalStateException("Required deployment environment is missing: " + name);
+        }
+        return value;
     }
 }
