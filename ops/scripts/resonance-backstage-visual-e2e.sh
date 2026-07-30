@@ -116,7 +116,9 @@ fi
 timeout --signal=TERM --kill-after=15s 180s corepack yarn playwright test \
   packages/app/e2e-tests/resonance-control-plane.test.ts \
   --project=app \
-  --workers=1
+  --workers=1 \
+  --retries=0 \
+  --reporter=line
 
 find "$evidence_dir" -maxdepth 1 -type f -name '*.png' -printf '%f\n' | sort \
   >"${evidence_dir}/screenshots.txt"
