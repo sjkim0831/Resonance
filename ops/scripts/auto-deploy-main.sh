@@ -19,7 +19,11 @@ POLICY_ROOT="${CARBONET_DEPLOY_ORIGINAL_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}
 bash "$POLICY_ROOT/ops/scripts/verify-kilo-m3-policy.sh"
 bash "$POLICY_ROOT/ops/scripts/verify-hermes-nvidia-two-tier.sh"
 bash "$POLICY_ROOT/ops/scripts/verify-hermes-project-work-policy.sh"
-bash "$POLICY_ROOT/ops/scripts/test-backstage-fast-deploy-policy.sh"
+if [[ -f "$POLICY_ROOT/ops/scripts/test-backstage-fast-deploy-policy.sh" ]]; then
+  bash "$POLICY_ROOT/ops/scripts/test-backstage-fast-deploy-policy.sh"
+else
+  echo "[auto-deploy] fast-deploy policy is introduced by the pending commit; validating after bootstrap"
+fi
 
 ROOT_DIR="${CARBONET_DEPLOY_ROOT:-${CARBONET_DEPLOY_ORIGINAL_ROOT:-/opt/Resonance}}"
 PLAN_SCRIPT="${CARBONET_DEPLOY_PLAN_SCRIPT:-ops/scripts/plan-incremental-work.sh}"
