@@ -104,6 +104,7 @@ const systemEntries: CutoverLedgerEntry[] = RESONANCE_CONTROL_ASSETS.filter(
 type LegacySystemMenu = {
   menuCode: string;
   name: string;
+  sourceRoute?: string;
   targetPlugin: keyof typeof targetRouteByPlugin;
   capabilities: ControlCapability[];
 };
@@ -128,6 +129,7 @@ const legacySystemMenus: LegacySystemMenu[] = [
   {
     menuCode: 'A1110198',
     name: 'Ops 통합 관제',
+    sourceRoute: '/admin/system/ops-bridge',
     targetPlugin: 'ccus-screen-designs/system-operations',
     capabilities: ['OPERATIONS'],
   },
@@ -152,12 +154,14 @@ const legacySystemMenus: LegacySystemMenu[] = [
   {
     menuCode: 'A1110303',
     name: '로그인 이력',
+    sourceRoute: '/admin/member/login_history',
     targetPlugin: 'ccus-screen-designs/system-security',
     capabilities: ['OPERATIONS'],
   },
   {
     menuCode: 'A1110304',
     name: '감사 로그',
+    sourceRoute: '/admin/emission/audit-log',
     targetPlugin: 'ccus-screen-designs/system-security',
     capabilities: ['OPERATIONS'],
   },
@@ -216,9 +220,7 @@ const legacySystemEntries: CutoverLedgerEntry[] = legacySystemMenus.map(
     assetId: `legacy-system-menu:${menu.menuCode}`,
     category: 'SYSTEM_MANAGEMENT',
     sourceRoute:
-      menu.menuCode === 'A1110198'
-        ? '/admin/system/ops-bridge'
-        : `/admin/system/menu?menuCode=${menu.menuCode}`,
+      menu.sourceRoute ?? `/admin/system/menu?menuCode=${menu.menuCode}`,
     sourceName: menu.name,
     targetRoute: targetRouteByPlugin[menu.targetPlugin],
     targetPlugin: menu.targetPlugin,

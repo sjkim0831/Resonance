@@ -40,6 +40,14 @@ describe('migrationCutoverRegistry', () => {
     expect(
       residuals.every(entry => entry.migrationStatus === 'NATIVE_READY'),
     ).toBe(true);
+    expect(
+      residuals.find(entry => entry.assetId === 'legacy-system-menu:A1110303')
+        ?.sourceRoute,
+    ).toBe('/admin/member/login_history');
+    expect(
+      residuals.find(entry => entry.assetId === 'legacy-system-menu:A1110304')
+        ?.sourceRoute,
+    ).toBe('/admin/emission/audit-log');
   });
 
   it('keeps project execution screens outside control-plane cutover', () => {
