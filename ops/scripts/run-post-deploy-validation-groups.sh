@@ -47,6 +47,22 @@ validate_emission_workflow_group() {
     ) >"$lane_dir/$lane_name.log" 2>&1 &
     lane_pids+=("$!")
   }
+  wait_emission_lanes() {
+    local lane_index
+    for lane_index in "${!lane_pids[@]}"; do
+      lane_name="${lane_names[$lane_index]}"
+      lane_pid="${lane_pids[$lane_index]}"
+      if wait "$lane_pid"; then
+        cat "$lane_dir/$lane_name.log"
+      else
+        lane_failed=1
+        echo "[emission-lane] FAIL name=$lane_name" >&2
+        cat "$lane_dir/$lane_name.log" >&2
+      fi
+    done
+    lane_names=()
+    lane_pids=()
+  }
   activity_lane() {
     bash ops/scripts/complete-activity-data-evidence-jobs.sh
     bash ops/scripts/validate-activity-workflow-links.sh
@@ -66,14 +82,10 @@ validate_emission_workflow_group() {
     bash ops/scripts/complete-report-certification-evidence-jobs.sh
     bash ops/scripts/validate-report-certification-runtime.sh
   }
-  start_emission_lane activity activity_lane
-  start_emission_lane calculation calculation_lane
-  start_emission_lane organizational-boundary organizational_boundary_lane
-  start_emission_lane governance-change governance_change_lane
-  start_emission_lane report report_lane
-  # These journeys validate stable runtime/DB state and do not consume evidence
-  # produced by the five lanes above. They share the same fail-closed barrier,
-  # so starting them here removes an unnecessary second validation wave.
+  # New JVMs are CPU/JIT cold. Two broad journeys first exercise authentication,
+  # workflow, page and persistence paths without allowing seven heavy lanes to
+  # saturate the runtime simultaneously. The five independent domain lanes then
+  # execute in parallel against the warmed candidate.
   start_emission_lane customer-journey \
     bash ops/scripts/validate-customer-work-journey.sh
   if [[ "${VALIDATE_ACTOR_ACCOUNT:-true}" == "true" ]]; then
@@ -82,17 +94,15 @@ validate_emission_workflow_group() {
   else
     echo "[actor-account-journey] skipped only for an explicit operator benchmark"
   fi
-  for lane_index in "${!lane_pids[@]}"; do
-    lane_name="${lane_names[$lane_index]}"
-    lane_pid="${lane_pids[$lane_index]}"
-    if wait "$lane_pid"; then
-      cat "$lane_dir/$lane_name.log"
-    else
-      lane_failed=1
-      echo "[emission-lane] FAIL name=$lane_name" >&2
-      cat "$lane_dir/$lane_name.log" >&2
-    fi
-  done
+  wait_emission_lanes
+  (( lane_failed == 0 )) || { rm -rf "$lane_dir"; return 1; }
+
+  start_emission_lane activity activity_lane
+  start_emission_lane calculation calculation_lane
+  start_emission_lane organizational-boundary organizational_boundary_lane
+  start_emission_lane governance-change governance_change_lane
+  start_emission_lane report report_lane
+  wait_emission_lanes
   rm -rf "$lane_dir"
   (( lane_failed == 0 )) || return 1
 }
