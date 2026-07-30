@@ -69,16 +69,40 @@ export const buildProcessGraph = <T extends ProcessGraphStep>(steps: T[]) => {
         });
       });
 
+    const correctionTarget = orderedSteps.find(isCorrectionStep);
+    const supportsCorrection =
+      String(from.stepCode ?? '').includes('VALIDATE') ||
+      String(from.stepCode ?? '').includes('APPROVE') ||
+      String(from.toState ?? '') === 'VERIFIED';
+    if (
+      supportsCorrection &&
+      correctionTarget &&
+      correctionTarget !== from &&
+      !edges.some(
+        edge =>
+          edge.from === from &&
+          edge.to === correctionTarget &&
+          edge.kind === 'CORRECTION',
+      )
+    ) {
+      edges.push({
+        from,
+        to: correctionTarget,
+        kind: 'CORRECTION',
+        condition: '보완 필요 또는 승인 반려',
+      });
+    }
+
     if (
       from.exceptionRule &&
       !edges.some(
         edge =>
           edge.from === from &&
-          (edge.kind === 'CORRECTION' || edge.kind === 'RECOVERY'),
+          edge.kind === 'EXCEPTION' &&
+          edge.condition === String(from.exceptionRule),
       )
     ) {
-      const recoveryTarget =
-        orderedSteps.find(isCorrectionStep) ?? orderedSteps[0];
+      const recoveryTarget = correctionTarget ?? orderedSteps[0];
       if (recoveryTarget && recoveryTarget !== from) {
         edges.push({
           from,
@@ -91,7 +115,11 @@ export const buildProcessGraph = <T extends ProcessGraphStep>(steps: T[]) => {
   });
 
   const incoming = new Set(edges.map(edge => String(edge.to.stepCode ?? '')));
-  const outgoing = new Set(edges.map(edge => String(edge.from.stepCode ?? '')));
+  const outgoing = new Set(
+    edges
+      .filter(edge => edge.kind === 'NORMAL')
+      .map(edge => String(edge.from.stepCode ?? '')),
+  );
 
   return {
     steps: orderedSteps,

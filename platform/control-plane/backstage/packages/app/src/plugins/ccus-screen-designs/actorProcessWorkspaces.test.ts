@@ -106,6 +106,14 @@ describe('actorProcessWorkspaces', () => {
     expect(
       graph.edges.some(
         edge =>
+          edge.from.stepCode === 'VALIDATE' &&
+          edge.to.stepCode === 'CORRECT' &&
+          edge.kind === 'CORRECTION',
+      ),
+    ).toBe(true);
+    expect(
+      graph.edges.some(
+        edge =>
           edge.from.stepCode === 'CORRECT' &&
           edge.to.stepCode === 'VALIDATE' &&
           edge.kind === 'RECOVERY',
