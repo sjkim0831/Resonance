@@ -10,6 +10,8 @@ import org.springframework.orm.jpa.JpaTransactionManager;
 import org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean;
 import org.springframework.orm.jpa.vendor.HibernateJpaVendorAdapter;
 import org.springframework.transaction.PlatformTransactionManager;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import jakarta.persistence.EntityManagerFactory;
 import javax.sql.DataSource;
@@ -21,6 +23,8 @@ import java.util.Arrays;
 @EnableJpaAuditing
 @RequiredArgsConstructor
 public class JpaConfig {
+
+    private static final Logger log = LoggerFactory.getLogger(JpaConfig.class);
 
     // Keep startup scanning bounded; the deployment closure guard rejects any
     // new @Entity package until it is explicitly added to this contract.
@@ -66,6 +70,7 @@ public class JpaConfig {
                         .map(String::trim)
                         .filter(value -> !value.isEmpty())
                         .toArray(String[]::new);
+        log.info("JPA entity package closure active. packageCount={}", entityPackages.length);
         factoryBean.setPackagesToScan(entityPackages);
         factoryBean.setPersistenceUnitName("default");
         factoryBean.setEntityManagerFactoryInterface(EntityManagerFactory.class);
