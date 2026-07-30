@@ -10,6 +10,9 @@ const screenSpaceRouteRef = createRouteRef();
 const projectControlRouteRef = createRouteRef();
 const controlAssetsRouteRef = createRouteRef();
 const actorProcessControlRouteRef = createRouteRef();
+const actorProcessDesignRouteRef = createRouteRef();
+const actorProcessDevelopmentRouteRef = createRouteRef();
+const actorProcessOperationsRouteRef = createRouteRef();
 const designAssetControlRouteRef = createRouteRef();
 const identityAdministrationRouteRef = createRouteRef();
 const systemOperationsRouteRef = createRouteRef();
@@ -83,6 +86,48 @@ const actorProcessControlPage = PageBlueprint.make({
     loader: () =>
       import('./ActorProcessControlPage').then(module => (
         <module.ActorProcessControlPage />
+      )),
+  },
+});
+
+const actorProcessDesignPage = PageBlueprint.make({
+  name: 'actor-process-design',
+  params: {
+    routeRef: actorProcessDesignRouteRef,
+    path: '/actor-process-design',
+    title: 'Actor·Process 설계',
+    icon: <DashboardIcon />,
+    loader: () =>
+      import('./ActorProcessControlPage').then(module => (
+        <module.ActorProcessControlPage initialWorkspaceId="design" />
+      )),
+  },
+});
+
+const actorProcessDevelopmentPage = PageBlueprint.make({
+  name: 'actor-process-development',
+  params: {
+    routeRef: actorProcessDevelopmentRouteRef,
+    path: '/actor-process-development',
+    title: 'Actor·Process 개발',
+    icon: <DashboardIcon />,
+    loader: () =>
+      import('./ActorProcessControlPage').then(module => (
+        <module.ActorProcessControlPage initialWorkspaceId="develop" />
+      )),
+  },
+});
+
+const actorProcessOperationsPage = PageBlueprint.make({
+  name: 'actor-process-operations',
+  params: {
+    routeRef: actorProcessOperationsRouteRef,
+    path: '/actor-process-operations',
+    title: 'Actor·Process 운영',
+    icon: <DashboardIcon />,
+    loader: () =>
+      import('./ActorProcessControlPage').then(module => (
+        <module.ActorProcessControlPage initialWorkspaceId="operate" />
       )),
   },
 });
@@ -195,6 +240,9 @@ export const ccusScreenDesignsPlugin = createFrontendPlugin({
     projectControl: projectControlRouteRef,
     controlAssets: controlAssetsRouteRef,
     actorProcessControl: actorProcessControlRouteRef,
+    actorProcessDesign: actorProcessDesignRouteRef,
+    actorProcessDevelopment: actorProcessDevelopmentRouteRef,
+    actorProcessOperations: actorProcessOperationsRouteRef,
     designAssetControl: designAssetControlRouteRef,
     identityAdministration: identityAdministrationRouteRef,
     systemOperations: systemOperationsRouteRef,
@@ -209,6 +257,9 @@ export const ccusScreenDesignsPlugin = createFrontendPlugin({
     projectControlPage,
     controlAssetsPage,
     actorProcessControlPage,
+    actorProcessDesignPage,
+    actorProcessDevelopmentPage,
+    actorProcessOperationsPage,
     designAssetControlPage,
     identityAdministrationPage,
     systemOperationsPage,

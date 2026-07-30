@@ -160,16 +160,16 @@ const validateDesignContract = (
   const workspaces = Array.isArray(contract.workspaces)
     ? contract.workspaces
     : [];
-  if (workspaces.length !== 4) {
-    failures.push('exactly 4 actor-process workspaces are required');
+  if (workspaces.length !== 3) {
+    failures.push('exactly 3 actor-process workspaces are required');
   }
   const tabs = workspaces.flatMap(workspace => {
     if (!workspace || typeof workspace !== 'object') return [];
     const candidate = (workspace as { tabs?: unknown }).tabs;
     return Array.isArray(candidate) ? candidate : [];
   });
-  if (tabs.length !== 33) {
-    failures.push('exactly 33 actor-process functions are required');
+  if (tabs.length !== 24) {
+    failures.push('exactly 24 actor-process functions are required');
   }
   const tabIds = tabs
     .map(tab =>
@@ -181,7 +181,26 @@ const validateDesignContract = (
   if (new Set(tabIds).size !== tabIds.length) {
     failures.push('actor-process function ids must be unique');
   }
-  const requiredContext = ['projectId', 'tenantId', 'designVersion'];
+  const workspaceIds = workspaces
+    .map(workspace =>
+      workspace && typeof workspace === 'object'
+        ? String((workspace as { id?: unknown }).id ?? '')
+        : '',
+    )
+    .filter(Boolean);
+  for (const required of ['design', 'develop', 'operate']) {
+    if (!workspaceIds.includes(required)) {
+      failures.push(`missing actor-process workspace: ${required}`);
+    }
+  }
+  const requiredContext = [
+    'projectId',
+    'tenantId',
+    'designVersion',
+    'actorCode',
+    'processCode',
+    'stepCode',
+  ];
   const contextFields = Array.isArray(contract.contextFields)
     ? contract.contextFields.map(String)
     : [];
@@ -1860,6 +1879,51 @@ export default createBackendPlugin({
               });
               return;
             }
+            const runtimeBaseUrl = String(
+              process.env.CARBONET_RUNTIME_BASE_URL ??
+                'http://carbonet-api.carbonet-prod.svc.cluster.local:8080',
+            ).replace(/\/+$/, '');
+            const bridgeToken = String(process.env.RESONANCE_OPS_TOKEN ?? '');
+            if (!bridgeToken) {
+              response.status(503).json({
+                message:
+                  'Resonance control-plane bridge token is not configured',
+              });
+              return;
+            }
+            const contract =
+              typeof release.contract_payload === 'string'
+                ? JSON.parse(release.contract_payload)
+                : release.contract_payload;
+            const publicationResponse = await fetch(
+              `${runtimeBaseUrl}/api/internal/actor-process/design-releases`,
+              {
+                method: 'POST',
+                headers: {
+                  accept: 'application/json',
+                  'content-type': 'application/json',
+                  'x-resonance-token': bridgeToken,
+                },
+                body: JSON.stringify({
+                  projectId,
+                  designVersion,
+                  contractSha256: release.contract_sha256,
+                  contract,
+                }),
+              },
+            );
+            const publication = (await publicationResponse.json()) as Record<
+              string,
+              unknown
+            >;
+            if (!publicationResponse.ok || publication.success !== true) {
+              response.status(502).json({
+                message:
+                  'Resonance rejected the promoted Backstage design contract',
+                publication,
+              });
+              return;
+            }
             const now = new Date();
             await knex.transaction(async transaction => {
               await transaction('resonance_projects__design_release')
@@ -1903,6 +1967,8 @@ export default createBackendPlugin({
               designVersion,
               status: 'PROMOTED',
               contractSha256: release.contract_sha256,
+              sourceOfTruth: 'BACKSTAGE',
+              resonancePublication: publication,
             });
           },
         );

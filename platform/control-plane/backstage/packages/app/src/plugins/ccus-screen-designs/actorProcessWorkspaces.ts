@@ -1,13 +1,10 @@
-export type ActorProcessWorkspaceId =
-  | 'operate'
-  | 'design'
-  | 'verify'
-  | 'delivery';
+export type ActorProcessWorkspaceId = 'design' | 'develop' | 'operate';
 
 export type ActorProcessTab = {
   id: string;
   label: string;
   description: string;
+  capability: string;
 };
 
 export type ActorProcessWorkspace = {
@@ -17,76 +14,180 @@ export type ActorProcessWorkspace = {
   tabs: ActorProcessTab[];
 };
 
-const tab = (id: string, label: string, description: string) => ({
-  id,
-  label,
-  description,
-});
+const tab = (
+  id: string,
+  label: string,
+  description: string,
+  capability: string,
+) => ({ id, label, description, capability });
 
 export const ACTOR_PROCESS_WORKSPACES: ActorProcessWorkspace[] = [
-  {
-    id: 'operate',
-    label: '업무 운영',
-    description:
-      '업무 종류·액터·프로젝트 문맥에서 전체 흐름과 실제 실행을 관리합니다.',
-    tabs: [
-      tab('work-dashboard', '업무 운영 지도', '선택 프로젝트의 전체 업무 흐름과 현재 단계를 조회합니다.'),
-      tab('work-completion', '완료·개발 현황', '업무별 완료율과 개발 준비 상태를 확인합니다.'),
-      tab('process-map', '전체 프로세스 설계도', '프로세스와 단계 관계를 순서대로 확인합니다.'),
-      tab('execution', '종단간 업무 실행', '프로젝트 업무 실행을 시작하고 단계 명령을 수행합니다.'),
-      tab('work-types', '업무 종류', '프로세스의 최상위 업무 분류를 관리합니다.'),
-      tab('actors', '액터', '역할·책임·권한 범위를 정의합니다.'),
-      tab('assignments', '계정 배정', '계정·테넌트·프로젝트에 액터를 배정합니다.'),
-      tab('account-readiness', '액터 계정 검증', '계정·권한·업무 연결의 준비 상태를 검사합니다.'),
-      tab('processes', '프로세스', '업무 목표·시작·완료 조건을 관리합니다.'),
-      tab('steps', '단계', '상태 전이·수행 액터·완료 규칙을 관리합니다.'),
-    ],
-  },
   {
     id: 'design',
     label: '설계',
     description:
-      '프로세스·화면·필드·메뉴·공통 기능 계약을 프로젝트별 설계 원장으로 관리합니다.',
+      '액터, 프로세스, 화면, 데이터와 테스트 계약을 하나의 버전으로 설계하고 승인합니다.',
     tabs: [
-      tab('vertical-screen-map', '전체 화면 세로 지도', '프로세스 순서로 전체 화면을 나열합니다.'),
-      tab('screen-flow-canvas', '전체 화면 순서도', '화면 호출·분기·팝업 관계를 시각화합니다.'),
-      tab('common-centered-canvas', '공통 중심 시스템 지도', '공통 섹션·컴포넌트·스키마 재사용을 확인합니다.'),
-      tab('process-archetypes', '프로세스 원형 60', '표준 프로세스 원형과 적용 화면을 관리합니다.'),
-      tab('design-canvas', '전체 화면 캔버스', '확대·축소 가능한 설계 캔버스를 제공합니다.'),
-      tab('professional', '전문가 준비도', '전문성·완전성·연계 준비도를 평가합니다.'),
-      tab('page-fields', '페이지·컬럼 설계', '페이지 입출력 필드와 데이터 계약을 편집합니다.'),
-      tab('screen-contracts', '화면 완성 계약', '기능·상태·권한·테스트·완료 조건을 관리합니다.'),
-      tab('registration-coverage', '프로젝트 등록 요건', '프로젝트 업무 시작 전 준비 정보를 검사합니다.'),
-      tab('common-features', '공통 특수기능', '재사용 가능한 공통 기능 패키지를 관리합니다.'),
-      tab('menu-bindings', '액터·프로세스 메뉴', '메뉴·화면·프로세스·액터 관계를 관리합니다.'),
-      tab('screen-space', '가상 화면 공간', '메타데이터 조합 화면 공간을 확인합니다.'),
-      tab('references', '레퍼런스 자동설계', '요구·참조 문서와 설계 근거를 연결합니다.'),
-      tab('generation', '대량 화면 생성', '승인 설계에서 화면 패키지를 생성합니다.'),
+      tab(
+        'actors',
+        '액터·권한',
+        '역할, 책임, 데이터 범위와 명령 권한을 정의합니다.',
+        'ACTOR_POLICY',
+      ),
+      tab(
+        'processes',
+        '프로세스',
+        '업무 목적, 시작·종료 조건과 담당 액터를 정의합니다.',
+        'PROCESS_DEFINITION',
+      ),
+      tab(
+        'steps',
+        '단계·상태 전이',
+        '단계 순서, 분기, 완료 조건과 다음 상태를 정의합니다.',
+        'STATE_MACHINE',
+      ),
+      tab(
+        'screen-flow',
+        '화면 흐름',
+        '단계별 화면, 팝업, 공통 화면과 이동 경로를 연결합니다.',
+        'SCREEN_FLOW',
+      ),
+      tab(
+        'data-contracts',
+        '데이터 계약',
+        '화면·API·DB 간 입력, 출력, 필드와 타입을 일치시킵니다.',
+        'DATA_CONTRACT',
+      ),
+      tab(
+        'test-scenarios',
+        '테스트 시나리오',
+        '정상·권한·격리·예외·복구 기대값을 정의합니다.',
+        'TEST_CONTRACT',
+      ),
+      tab(
+        'design-assets',
+        '공통 디자인 자산',
+        '테마, 섹션, 컴포넌트와 CSS 재사용 계약을 선택합니다.',
+        'DESIGN_ASSET',
+      ),
+      tab(
+        'design-release',
+        '설계 검증·승인',
+        '누락과 충돌을 검사하고 개발 기준 버전을 승격합니다.',
+        'DESIGN_RELEASE',
+      ),
     ],
   },
   {
-    id: 'verify',
-    label: '검증',
+    id: 'develop',
+    label: '개발',
     description:
-      '설계 정확도·고객 여정·디자인·규정·예외·복구를 검증합니다.',
+      '승격된 설계를 Resonance 생성 계약으로 전달하고 구현·검증 증적을 관리합니다.',
     tabs: [
-      tab('design-assurance', '설계 정확도', '액터·상태·데이터·KPI·화면 계약 일치를 검사합니다.'),
-      tab('customer-journey', '고객 여정 자동검증', '사용자 업무가 시작부터 완료까지 도달하는지 검사합니다.'),
-      tab('design', '디자인 사전검증', '공통 디자인 자산 재사용과 접근성을 검사합니다.'),
-      tab('rules', '개발 규칙', '프로젝트에 적용할 개발·검증 규칙을 관리합니다.'),
-      tab('simulation', '시나리오·실행', '테스트 시나리오와 실행 증적을 관리합니다.'),
+      tab(
+        'development-plan',
+        '개발 계획',
+        '설계 기준으로 화면·API·DB·테스트 작업을 산출합니다.',
+        'DEVELOPMENT_PLAN',
+      ),
+      tab(
+        'generation-queue',
+        '생성·작업 큐',
+        '공통 제너레이터 작업과 담당 실행기를 관리합니다.',
+        'GENERATION_QUEUE',
+      ),
+      tab(
+        'frontend',
+        '프론트엔드',
+        'KRDS 공통 섹션 기반 화면과 모바일 결과를 추적합니다.',
+        'FRONTEND_BUILD',
+      ),
+      tab(
+        'backend',
+        '백엔드·API',
+        '명령, 조회, 상태 전이와 트랜잭션 구현을 추적합니다.',
+        'BACKEND_BUILD',
+      ),
+      tab(
+        'database',
+        'DB·마이그레이션',
+        '스키마, 컬럼, 인덱스와 롤백 계약을 관리합니다.',
+        'DATABASE_BUILD',
+      ),
+      tab(
+        'automated-tests',
+        '자동 테스트',
+        '계약·단위·통합·E2E 결과와 실패 원인을 확인합니다.',
+        'TEST_EXECUTION',
+      ),
+      tab(
+        'artifacts',
+        '산출물·증적',
+        '소스, 빌드, 스크린샷과 검증 증적을 연결합니다.',
+        'EVIDENCE',
+      ),
+      tab(
+        'promotion',
+        '통합·승격',
+        '모든 게이트 통과 후 Resonance 배포 대상으로 승격합니다.',
+        'PROMOTION',
+      ),
     ],
   },
   {
-    id: 'delivery',
-    label: '개발·배포',
+    id: 'operate',
+    label: '운영',
     description:
-      '승격된 설계에서 작업·산출물·품질 게이트와 배포 상태를 추적합니다.',
+      '프로젝트의 실제 업무 실행, 서비스 상태, 배포와 복구를 통합 운영합니다.',
     tabs: [
-      tab('delivery', '개발 실행 큐', '개발 작업 우선순위·점유·재시도를 관리합니다.'),
-      tab('automation', '프로세스 자동개발', '설계 기반 자동개발 작업을 실행합니다.'),
-      tab('artifacts', '개발 산출물', '메뉴·화면·API·DB·테스트 증적을 관리합니다.'),
-      tab('overview', '전체 현황', '프로젝트 개발·검증·배포 완성도를 확인합니다.'),
+      tab(
+        'work-dashboard',
+        '업무 운영 지도',
+        '액터별 실제 업무와 현재 단계를 실시간 조회합니다.',
+        'WORK_DASHBOARD',
+      ),
+      tab(
+        'execution',
+        '프로세스 실행',
+        '프로젝트 업무를 시작하고 단계 명령을 수행합니다.',
+        'PROCESS_EXECUTION',
+      ),
+      tab(
+        'assignments',
+        '계정·액터 배정',
+        '계정에 프로젝트별 액터와 데이터 범위를 배정합니다.',
+        'ACTOR_ASSIGNMENT',
+      ),
+      tab(
+        'completion',
+        '완료·개발 현황',
+        '프로세스와 화면별 완료, 차단, 재시도 상태를 봅니다.',
+        'COMPLETION_STATUS',
+      ),
+      tab(
+        'runtime',
+        '런타임 상태',
+        'Resonance, DB, 인증과 연계 서비스 상태를 확인합니다.',
+        'RUNTIME_HEALTH',
+      ),
+      tab(
+        'deployments',
+        '빌드·배포',
+        '변경 범위, 증분 빌드, 배포와 롤백을 관리합니다.',
+        'DEPLOYMENT',
+      ),
+      tab(
+        'incidents',
+        '장애·자가복구',
+        '장애 감지, 원인, 자동 복구와 재발 방지 증적을 관리합니다.',
+        'INCIDENT_RECOVERY',
+      ),
+      tab(
+        'audit',
+        '감사·변경 이력',
+        '설계부터 실제 업무까지 변경 주체와 결과를 추적합니다.',
+        'AUDIT_TRAIL',
+      ),
     ],
   },
 ];

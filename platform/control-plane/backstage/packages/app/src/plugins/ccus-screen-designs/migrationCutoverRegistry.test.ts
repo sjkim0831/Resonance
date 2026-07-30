@@ -5,7 +5,7 @@ import {
 
 describe('migrationCutoverRegistry', () => {
   it('records all actor-process tabs and remaining system screens', () => {
-    expect(MIGRATION_CUTOVER_SUMMARY.actorProcessTabs).toBe(33);
+    expect(MIGRATION_CUTOVER_SUMMARY.actorProcessTabs).toBe(24);
     expect(MIGRATION_CUTOVER_SUMMARY.systemScreens).toBe(11);
     expect(MIGRATION_CUTOVER_SUMMARY.total).toBe(44);
     expect(
