@@ -12,8 +12,8 @@ import java.util.List;
  */
 public final class DeploymentCanary {
 
-    public static final String CONTRACT_VERSION = "1.6.0";
-    public static final String REVISION = "2026-07-31T01:10:00+09:00";
+    public static final String CONTRACT_VERSION = "1.7.0";
+    public static final String REVISION = "2026-07-31T01:18:00+09:00";
     public static final List<String> REQUIRED_CHECKS = List.of(
             "incremental-java-compilation",
             "immutable-image",
