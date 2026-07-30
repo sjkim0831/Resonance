@@ -6,6 +6,7 @@ DEPLOY="$ROOT/ops/scripts/resonance-backstage-deploy.sh"
 MANIFEST="$ROOT/deploy/k8s/control-plane/backstage.yaml"
 
 grep -Fq 'DEPENDENCY_CACHE_ROOT=' "$DEPLOY"
+grep -Fq "sha256sum \"\$APP/yarn.lock\" \"\$APP/package.json\" | awk '{print \$1}'" "$DEPLOY"
 grep -Fq 'cp -al -- "$cache_modules" "$APP/node_modules"' "$DEPLOY"
 grep -Fq 'flock -w 300 8' "$DEPLOY"
 grep -Fq 'resonance.io/catalog-digest' "$DEPLOY"

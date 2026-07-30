@@ -57,7 +57,7 @@ install_backstage_dependencies() {
   local cache_key cache_dir cache_modules cache_state cache_lock
   cache_key="$(
     {
-      sha256sum "$APP/yarn.lock" "$APP/package.json"
+      sha256sum "$APP/yarn.lock" "$APP/package.json" | awk '{print $1}'
       node --version
       corepack yarn --version
     } | sha256sum | awk '{print $1}'
