@@ -71,6 +71,7 @@ public class CarbonetSecurityOverrideConfig {
                 "/api/runtime/project-info",
                 "/api/runtime/info",
                 "/api/internal/screen-space/**",
+                "/api/internal/actor-process/**",
                 "/api/platform/**",
                 "/en/api/platform/**",
                 "/admin/api/**",
