@@ -7,13 +7,20 @@ DB_USER="${POSTGRES_ADMIN_USER:-postgres}"
 BASE="${CARBONET_RUNTIME_BASE_URL:-http://127.0.0.1}"
 PROJECT="${CARBONET_ACTOR_TEST_PROJECT:-PRJ-2026-001}"
 PASSWORD="${CARBONET_ACTOR_TEST_PASSWORD:-}"
+ROOT="${CARBONET_DEPLOY_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
+POSTGRES_ADAPTER="$ROOT/ops/scripts/lib/carbonet-postgres-query.sh"
 
-leader=""
-while read -r pod; do
-  [[ "$(kubectl -n "$NS" exec "$pod" -c patroni -- psql -h 127.0.0.1 -U "$DB_USER" -d "$DB" -Atqc 'select pg_is_in_recovery()' 2>/dev/null || true)" == f ]] && { leader="$pod"; break; }
-done < <(kubectl -n "$NS" get pods -l app=postgres-patroni -o name | sed 's#pod/##')
-[[ -n "$leader" ]] || { echo '[actor-account-journey] FAIL PostgreSQL leader missing' >&2; exit 1; }
-q(){ kubectl -n "$NS" exec "$leader" -c patroni -- psql -h 127.0.0.1 -U "$DB_USER" -d "$DB" -Atqc "$1"; }
+[[ -f "$POSTGRES_ADAPTER" ]] || {
+  echo '[actor-account-journey] FAIL PostgreSQL query adapter missing' >&2
+  exit 1
+}
+# shellcheck source=ops/scripts/lib/carbonet-postgres-query.sh
+source "$POSTGRES_ADAPTER"
+CARBONET_PG_NAMESPACE="$NS"
+POSTGRES_DB="$DB"
+POSTGRES_ADMIN_USER="$DB_USER"
+carbonet_postgres_query_init
+q(){ carbonet_postgres_query "$1"; }
 
 segregation="$(q "select count(*)=5 and count(distinct user_id)=5 and count(*) filter(where actor_code in ('CALCULATOR','VERIFIER','APPROVER'))=3 and count(distinct user_id) filter(where actor_code in ('CALCULATOR','VERIFIER','APPROVER'))=3 from framework_project_actor_assignment where project_id='$PROJECT' and active_yn='Y' and actor_code in ('COMPANY_MANAGER','SITE_DATA_OWNER','CALCULATOR','VERIFIER','APPROVER')")"
 [[ "$segregation" == t ]] || { echo '[actor-account-journey] FAIL project actor segregation' >&2; exit 1; }
@@ -113,6 +120,8 @@ if {row.get("taskCode") for row in assigned} != expected:
     sys.exit(f"actual task assignment mismatch account={os.environ['ACCOUNT']}")
 if any(str(row.get("assignee","")).lower()!=os.environ["ACCOUNT"].lower() for row in assigned):
     sys.exit(f"actual task assignee mismatch account={os.environ['ACCOUNT']}")
+if any(not row.get("targetUrl") for row in assigned):
+    sys.exit(f"actual task target missing account={os.environ['ACCOUNT']}")
 if any(not row.get("targetUrl") for row in flow):
     sys.exit(f"workflow target missing account={os.environ['ACCOUNT']}")
 if any(row.get("actionable") is True and row.get("actorActionable") is not True for row in flow):
@@ -132,7 +141,7 @@ PY
   done < <(PROJECT="$PROJECT" BODY="$body" python3 - <<'PY'
 import json,os
 payload=json.load(open(os.environ["BODY"],encoding="utf-8"))
-targets={row.get("targetUrl","") for row in payload.get("workflows",[]) if row.get("projectId")==os.environ["PROJECT"]}
+targets={row.get("targetUrl","") for row in payload.get("items",[]) if row.get("projectId")==os.environ["PROJECT"]}
 print("\n".join(sorted(target for target in targets if target)))
 PY
   )

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.."&&pwd)";NS="${CARBONET_K8S_NAMESPACE:-carbonet-prod}";DB="${POSTGRES_DB:-carbonet}";U="${POSTGRES_ADMIN_USER:-postgres}";BASE="${CARBONET_RUNTIME_BASE_URL:-http://127.0.0.1}";COMMIT="$(git -C "$ROOT" rev-parse HEAD)";COOKIE="$(mktemp)";TIMES="$(mktemp)";API_BODY="$(mktemp)";PAGE_BODY="$(mktemp)";trap 'rm -f "$COOKIE" "$TIMES" "$API_BODY" "$PAGE_BODY"' EXIT
-leader="";while read -r p;do [[ "$(kubectl -n "$NS" exec "$p" -c patroni -- psql -h 127.0.0.1 -U "$U" -d "$DB" -Atqc 'select pg_is_in_recovery()' 2>/dev/null||true)" == f ]]&&{ leader="$p";break;};done < <(kubectl -n "$NS" get pods -l app=postgres-patroni -o name|sed 's#pod/##');[[ -n "$leader" ]]||exit 1;q(){ kubectl -n "$NS" exec "$leader" -c patroni -- psql -h 127.0.0.1 -U "$U" -d "$DB" -Atqc "$1";}
+ROOT="${CARBONET_DEPLOY_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.."&&pwd)}";NS="${CARBONET_K8S_NAMESPACE:-carbonet-prod}";DB="${POSTGRES_DB:-carbonet}";U="${POSTGRES_ADMIN_USER:-postgres}";BASE="${CARBONET_RUNTIME_BASE_URL:-http://127.0.0.1}";COMMIT="$(git -C "$ROOT" rev-parse HEAD)";COOKIE="$(mktemp)";TIMES="$(mktemp)";API_BODY="$(mktemp)";PAGE_BODY="$(mktemp)";MEMBER_TARGETS="$(mktemp)";REQUEST_TMP="$(mktemp -d)";trap 'rm -f "$COOKIE" "$TIMES" "$API_BODY" "$PAGE_BODY" "$MEMBER_TARGETS"; rm -rf "$REQUEST_TMP"' EXIT
+POSTGRES_ADAPTER="$ROOT/ops/scripts/lib/carbonet-postgres-query.sh";[[ -f "$POSTGRES_ADAPTER" ]]||{ echo '[customer-journey] FAIL PostgreSQL query adapter missing' >&2;exit 1;};source "$POSTGRES_ADAPTER";CARBONET_PG_NAMESPACE="$NS";POSTGRES_DB="$DB";POSTGRES_ADMIN_USER="$U";carbonet_postgres_query_init;q(){ carbonet_postgres_query "$1";}
 IFS='|' read -r project cert report_id <<<"$(q "select p.project_id||'|'||r.certificate_id||'|'||r.report_id from emission_project_registry p join emission_project_report r on r.project_id=p.project_id where r.report_status='FINALIZED' and r.certificate_status='ACTIVE' and r.certificate_id is not null and exists(select 1 from emission_project_task t where t.project_id=p.project_id group by t.project_id having count(*)=7 and count(*)filter(where task_status='DONE')>=6) order by r.issued_at desc nulls last limit 1")";[[ -n "$cert" ]]||{ echo '[customer-journey] FAIL certified seven-step fixture missing' >&2;exit 1;}
 curl -fsS -c "$COOKIE" -H 'Content-Type: application/json' -X POST "$BASE/admin/login/actionLogin" --data '{"userId":"webmaster","userPw":"rhdxhd12","userSe":"USR"}' >/dev/null
 
@@ -15,7 +15,16 @@ if [[ "$regulatory_id" == 0 ]]; then
   curl -fsS -b "$COOKIE" -H 'Content-Type: application/json' -X POST "$BASE/home/api/emission-projects/$project/regulatory-submissions/$regulatory_id/transition" --data "{\"action\":\"RECORD_RECEIPT\",\"receiptNo\":\"AUTO-$project\"}" >/dev/null
   curl -fsS -b "$COOKIE" -H 'Content-Type: application/json' -X POST "$BASE/home/api/emission-projects/$project/regulatory-submissions/$regulatory_id/transition" --data '{"action":"ACCEPT"}' >/dev/null
 fi
-apis=(/home/api/emission-tasks "/home/api/emission-projects/$project/completion" "/home/api/emission-projects/$project/activities" "/home/api/emission-projects/$project/calculation" "/home/api/emission-projects/$project/review-workflow" "/home/api/emission-projects/$project/reports" "/home/api/emission-projects/$project/regulatory-submissions" /home/api/report-access-history);for p in "${apis[@]}";do code="$(curl -sS -b "$COOKIE" -o "$API_BODY" -w '%{http_code}' "$BASE$p")";[[ "$code" == 200 ]]||{ echo "[customer-journey] FAIL api=$p status=$code" >&2;exit 1;};grep -Eq '^\s*[\{\[]' "$API_BODY"||exit 1;done
+export BASE COOKIE REQUEST_TMP
+apis=(/home/api/emission-tasks "/home/api/emission-projects/$project/completion" "/home/api/emission-projects/$project/activities" "/home/api/emission-projects/$project/calculation" "/home/api/emission-projects/$project/review-workflow" "/home/api/emission-projects/$project/reports" "/home/api/emission-projects/$project/regulatory-submissions" /home/api/report-access-history)
+printf '%s\0' "${apis[@]}" | xargs -0 -r -n1 -P8 bash -c '
+  target="$1"; body="$(mktemp "$REQUEST_TMP/api.XXXXXX")"
+  code="$(curl -sS -b "$COOKIE" -o "$body" -w "%{http_code}" "$BASE$target")"
+  if [[ "$code" != 200 ]] || ! grep -Eq "^[[:space:]]*[\\{\\[]" "$body"; then
+    echo "[customer-journey] FAIL api=$target status=$code" >&2
+    exit 1
+  fi
+' _
 curl -fsS -b "$COOKIE" "$BASE/home/api/emission-tasks" >"$API_BODY"
 python3 - "$API_BODY" <<'PY'
 import json,sys
@@ -29,16 +38,33 @@ if len(member_codes)!=17 or len(member_steps)<68:
 if any(not row.get("userPath") and not row.get("adminPath") for row in member_steps):
     raise SystemExit("member guide route gap: every step requires at least one audience-appropriate route")
 PY
-while IFS= read -r target;do [[ -n "$target" ]]||continue;code="$(curl -sS -L -b "$COOKIE" -o /dev/null -w '%{http_code}' "$BASE$target")";[[ "$code" == 200 ]]||{ echo "[customer-journey] FAIL member-guide-page=$target status=$code" >&2;exit 1;};done < <(python3 - "$API_BODY" <<'PY'
+python3 - "$API_BODY" >"$MEMBER_TARGETS" <<'PY'
 import json,sys
 p=json.load(open(sys.argv[1],encoding="utf-8"));codes={r.get("processCode") for r in p.get("processCatalog",[]) if str(r.get("domainCode","")).upper()=="MEMBER"}
 print("\n".join(sorted({path for r in p.get("processCatalogSteps",[]) if r.get("processCode") in codes for path in (r.get("userPath"),r.get("adminPath")) if path})))
 PY
-)
-for p in "/home/api/emission-projects/$project/activities" "/home/api/emission-projects/$project/calculation" "/home/api/emission-projects/$project/reports" "/home/api/emission-projects/$project/regulatory-submissions" /home/api/report-access-history;do code="$(curl -sS -o /dev/null -w '%{http_code}' "$BASE$p")";[[ "$code" == 401||"$code" == 403 ]]||{ echo "[customer-journey] FAIL protection=$p status=$code" >&2;exit 1;};done
+tr '\n' '\0' <"$MEMBER_TARGETS" | xargs -0 -r -n1 -P8 bash -c '
+  target="$1"; code="$(curl -sS -L -b "$COOKIE" -o /dev/null -w "%{http_code}" "$BASE$target")"
+  [[ "$code" == 200 ]] || { echo "[customer-journey] FAIL member-guide-page=$target status=$code" >&2; exit 1; }
+' _
+protected=("/home/api/emission-projects/$project/activities" "/home/api/emission-projects/$project/calculation" "/home/api/emission-projects/$project/reports" "/home/api/emission-projects/$project/regulatory-submissions" /home/api/report-access-history)
+printf '%s\0' "${protected[@]}" | xargs -0 -r -n1 -P5 bash -c '
+  target="$1"; code="$(curl -sS -o /dev/null -w "%{http_code}" "$BASE$target")"
+  [[ "$code" == 401 || "$code" == 403 ]] || { echo "[customer-journey] FAIL protection=$target status=$code" >&2; exit 1; }
+' _
 valid="$(curl -fsS "$BASE/api/public/report-certificates/$cert")";grep -q '"valid":true'<<<"$valid"||exit 1
-pages=(/emission/my-tasks /emission/deadline-status "/emission/project/detail?projectId=$project" "/emission/activity-data?projectId=$project" "/emission/calculation?projectId=$project" "/emission/validate?projectId=$project" "/emission/report_submit?projectId=$project" "/emission/report-submission?projectId=$project" "/emission/report-download?projectId=$project" /home/certificate-verify /admin/emission/project-operations "/admin/emission/regulatory-submissions?projectId=$project" /admin/system/actor-process);for p in "${pages[@]}";do code="$(curl -sS -L -b "$COOKIE" -o "$PAGE_BODY" -w '%{http_code}' "$BASE$p")";[[ "$code" == 200 ]]||{ echo "[customer-journey] FAIL page=$p status=$code" >&2;exit 1;};grep -qi '<!doctype html' "$PAGE_BODY"||exit 1;done
-for _ in $(seq 1 20);do curl -sS -b "$COOKIE" -o /dev/null -w '%{time_total}\n' "$BASE/home/api/emission-projects/$project/completion">>"$TIMES";done;p95="$(sort -n "$TIMES"|awk 'NR==19{printf "%d",$1*1000}')";[[ "$p95" -le 2500 ]]||exit 1
+pages=(/emission/my-tasks /emission/deadline-status "/emission/project/detail?projectId=$project" "/emission/activity-data?projectId=$project" "/emission/calculation?projectId=$project" "/emission/validate?projectId=$project" "/emission/report_submit?projectId=$project" "/emission/report-submission?projectId=$project" "/emission/report-download?projectId=$project" /home/certificate-verify /admin/emission/project-operations "/admin/emission/regulatory-submissions?projectId=$project" /admin/system/actor-process)
+printf '%s\0' "${pages[@]}" | xargs -0 -r -n1 -P8 bash -c '
+  target="$1"; body="$(mktemp "$REQUEST_TMP/page.XXXXXX")"
+  code="$(curl -sS -L -b "$COOKIE" -o "$body" -w "%{http_code}" "$BASE$target")"
+  if [[ "$code" != 200 ]] || ! grep -qi "<!doctype html" "$body"; then
+    echo "[customer-journey] FAIL page=$target status=$code" >&2
+    exit 1
+  fi
+' _
+export project
+seq 1 20 | xargs -r -n1 -P10 bash -c 'curl -sS -b "$COOKIE" -o /dev/null -w "%{time_total}\n" "$BASE/home/api/emission-projects/$project/completion"' _ >"$TIMES"
+p95="$(sort -n "$TIMES"|awk 'NR==19{printf "%d",$1*1000}')";[[ "$p95" -le 2500 ]]||exit 1
 read -r desired ready available<<<"$(kubectl -n "$NS" get deploy carbonet-runtime -o jsonpath='{.spec.replicas} {.status.readyReplicas} {.status.availableReplicas}')";[[ -n "$desired"&&"$desired" -gt 0&&"$ready" -ge "$desired"&&"$available" -ge "$desired" ]]||{ echo "[customer-work-journey] FAIL replicas desired=$desired ready=$ready available=$available" >&2;exit 1;}
 gate="$(q "select (select count(*) from framework_process_step where process_code='CUSTOMER_WORK_COORDINATION')=7 and (select count(*) from framework_professional_screen_readiness where process_code='CUSTOMER_WORK_COORDINATION' and readiness_score=100)=14 and (select count(distinct actor_code) from framework_process_step where process_code='CUSTOMER_WORK_COORDINATION')>=6 and (select count(*) from emission_project_task where project_id='$project')=7 and (select count(*) from emission_project_task where project_id='$project' and task_status='DONE')=7 and exists(select 1 from emission_regulatory_submission where project_id='$project' and status='ACCEPTED' and external_receipt_no is not null and length(package_hash)=64) and not exists(select 1 from emission_project_task where project_id='$project' and target_url similar to '%(data_input|simulate)%') and exists(select 1 from emission_calculation_run r join emission_calculation_item i on i.calculation_id=r.calculation_id where r.project_id='$project' group by r.calculation_id,r.total_emission having abs(r.total_emission-sum(i.emission_value))<0.000001) and (select count(distinct case_type) from framework_simulation_case where process_code='CUSTOMER_WORK_COORDINATION')>=5")";[[ "$gate" == t ]]||{ echo '[customer-journey] FAIL actor/task/state/data/design gate' >&2;exit 1;}
 sql="begin;update framework_development_job set job_status='COMPLETED',approval_status='APPROVED',quality_status='PASSED',evidence_ref='runtime:cross-process-customer-journey',last_error=null,completed_at=current_timestamp,updated_at=current_timestamp where process_code='CUSTOMER_WORK_COORDINATION';update framework_process_artifact set delivery_status='VERIFIED',evidence_ref='runtime:cross-process-customer-journey',updated_at=current_timestamp where process_code='CUSTOMER_WORK_COORDINATION';insert into framework_customer_journey_validation_run(project_id,validation_status,actor_count,task_count,authenticated_api_count,protected_api_count,page_count,p95_millis,evidence_json,source_commit)values('$project','PASSED',6,7,${#apis[@]},5,${#pages[@]},$p95,'{\"certificate\":\"$cert\",\"regulatorySubmissionId\":$regulatory_id,\"taskLineage\":\"7/7\",\"formula\":\"reconciled\"}','$COMMIT');commit;";q "$sql">/dev/null

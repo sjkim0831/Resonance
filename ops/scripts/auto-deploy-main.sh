@@ -980,7 +980,10 @@ sync_backstage_catalog_if_required
 deploy_backstage_if_required
 run_backstage_visual_e2e_if_required
 run_backstage_identity_e2e_if_required
-sync_keycloak_actor_assignments_if_required
+# The identity-contracts post-deploy group above already performs one atomic
+# Keycloak-to-Carbonet synchronization and verification. Do not repeat the
+# same account writes on the runtime path; catalog/frontend-only paths still
+# call sync_keycloak_actor_assignments_if_required before their success marker.
 run_actor_process_role_e2e_if_required
 run_backstage_screen_space_e2e_if_required
 printf '%s\n' "$target_commit" > "${DEPLOY_STATE_FILE}.tmp"
