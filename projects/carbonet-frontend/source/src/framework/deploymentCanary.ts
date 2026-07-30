@@ -7,7 +7,7 @@
  */
 export const FRONTEND_DEPLOYMENT_CANARY = Object.freeze({
   contractVersion: "1.0.0",
-  revision: "2026-07-30T23:55:00+09:00",
+  revision: "2026-07-31T00:00:00+09:00",
   requiredChecks: [
     "typescript",
     "vite-asset-closure",
@@ -18,4 +18,3 @@ export const FRONTEND_DEPLOYMENT_CANARY = Object.freeze({
     "deploy-performance-slo",
   ],
 } as const);
-
