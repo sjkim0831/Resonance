@@ -113,7 +113,7 @@ if [[ ! -d node_modules ]]; then
   fi
   ln -s "${dependency_cache}/node_modules" node_modules
 fi
-corepack yarn playwright test \
+timeout --signal=TERM --kill-after=15s 180s corepack yarn playwright test \
   packages/app/e2e-tests/resonance-control-plane.test.ts \
   --project=app \
   --workers=1

@@ -108,7 +108,12 @@ test('authenticated Resonance control-plane routes render without runtime errors
 
   for (const [route, expectedTitle] of routes) {
     const errorOffset = runtimeErrors.length;
-    const response = await page.goto(route, { waitUntil: 'networkidle' });
+    // Backstage keeps catalog/auth requests active in the background. Waiting
+    // for global network idleness can hang after the page is already usable.
+    const response = await page.goto(route, {
+      waitUntil: 'domcontentloaded',
+      timeout: 20_000,
+    });
     expect(response?.status(), `${route} document response`).toBe(200);
     await expect(
       page.getByText(expectedTitle, { exact: true }).first(),
