@@ -685,6 +685,10 @@ export default createBackendPlugin({
         router.get(
           '/actor-process/runtime-dashboard',
           async (request, response) => {
+            response.setHeader(
+              'Cache-Control',
+              'no-store, no-cache, must-revalidate',
+            );
             const runtimeBaseUrl = String(
               process.env.CARBONET_RUNTIME_BASE_URL ??
                 'http://carbonet-api.carbonet-prod.svc.cluster.local:8080',

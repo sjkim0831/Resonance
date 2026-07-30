@@ -229,6 +229,7 @@ export function ActorProcessControlPage(props: {
       `/api/resonance-projects/actor-process/runtime-dashboard?dataset=${encodeURIComponent(
         targetDatasetKey,
       )}`,
+      { cache: 'no-store' },
     );
     if (!response.ok) {
       throw new Error(`Actor·Process runtime dataset ${response.status}`);
@@ -248,6 +249,7 @@ export function ActorProcessControlPage(props: {
             `/api/resonance-projects/actor-process/runtime-dashboard?dataset=${encodeURIComponent(
               datasetKey,
             )}`,
+            { cache: 'no-store' },
           ),
         ]);
       if (projectResponse.ok) {
