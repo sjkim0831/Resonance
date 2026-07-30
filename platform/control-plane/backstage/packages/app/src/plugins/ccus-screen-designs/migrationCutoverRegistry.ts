@@ -1,12 +1,14 @@
-import { ACTOR_PROCESS_WORKSPACES } from './actorProcessWorkspaces';
+import {
+  ACTOR_PROCESS_TAB_COUNT,
+  ACTOR_PROCESS_WORKSPACES,
+} from './actorProcessWorkspaces';
+import {
+  ControlCapability,
+  ControlMigrationStatus,
+  RESONANCE_CONTROL_ASSETS,
+} from './controlAssetRegistry';
 
-export type CutoverReadiness =
-  | 'DISCOVERED'
-  | 'CLASSIFIED'
-  | 'NATIVE_READY'
-  | 'MIGRATED'
-  | 'VERIFIED'
-  | 'RETIRED_SOURCE';
+export type CutoverReadiness = ControlMigrationStatus;
 
 export type CutoverLedgerEntry = {
   assetId: string;
@@ -17,11 +19,24 @@ export type CutoverLedgerEntry = {
   targetPlugin: string;
   migrationStatus: CutoverReadiness;
   implementation: 'SHELL' | 'PARTIAL' | 'NATIVE';
+  capabilities: ControlCapability[];
   apiContracts: string[];
   databaseContracts: string[];
   permissionContracts: string[];
   testEvidence: string[];
   cutoverBlockedBy: string[];
+};
+
+const targetRouteByPlugin: Record<string, string> = {
+  'ccus-screen-designs/actor-process-control': '/actor-process-control',
+  'ccus-screen-designs/design-assets': '/design-assets',
+  'ccus-screen-designs/screen-designs': '/ccus-screen-designs',
+  'ccus-screen-designs/screen-space': '/ccus-screen-space',
+  'ccus-screen-designs/project-control': '/resonance-projects',
+  'ccus-screen-designs/system-operations': '/system-operations',
+  'ccus-screen-designs/system-development': '/system-development',
+  'ccus-screen-designs/system-security': '/system-security',
+  'ccus-screen-designs/control-plane': '/resonance-control-assets',
 };
 
 const actorProcessEntries: CutoverLedgerEntry[] =
@@ -31,93 +46,59 @@ const actorProcessEntries: CutoverLedgerEntry[] =
       category: 'ACTOR_PROCESS_TAB' as const,
       sourceRoute: `/admin/system/actor-process?workspace=${workspace.id}&tab=${tab.id}`,
       sourceName: `${workspace.label} / ${tab.label}`,
-      targetRoute: `/actor-process-control?workspace=${workspace.id}&tab=${tab.id}`,
-      targetPlugin: 'ccus-screen-designs/actor-process-control',
-      migrationStatus: 'CLASSIFIED' as const,
-      implementation: 'SHELL' as const,
-      apiContracts: [],
-      databaseContracts: [],
-      permissionContracts: [],
-      testEvidence: [],
-      cutoverBlockedBy: [
-        '실행 API 계약 미등록',
-        'DB 계약 미등록',
-        '권한 정책 미등록',
-        '인증 사용자 E2E 증적 없음',
+      targetRoute: `/actor-process-${workspace.id}?tab=${tab.id}`,
+      targetPlugin: `ccus-screen-designs/actor-process-${workspace.id}`,
+      migrationStatus: 'NATIVE_READY' as const,
+      implementation: 'NATIVE' as const,
+      capabilities: [
+        workspace.id === 'design'
+          ? 'DESIGN'
+          : workspace.id === 'develop'
+          ? 'DEVELOPMENT'
+          : 'OPERATIONS',
       ],
+      apiContracts: [
+        'GET /api/resonance-projects',
+        'POST /api/resonance-projects/actor-process/designs',
+      ],
+      databaseContracts: ['framework_actor_process_design_release'],
+      permissionContracts: ['BACKSTAGE_ACTOR_PROCESS_OPERATOR'],
+      testEvidence: ['actor-process-workspace-contract'],
+      cutoverBlockedBy: ['인증 사용자 E2E 검증 필요'],
     })),
   );
 
-const remainingSystemScreens = [
-  ['/admin/system/backup', '백업 관리'],
-  ['/admin/system/backup_config', '백업 설정'],
-  ['/admin/system/batch', '배치 관리'],
-  ['/admin/system/consent-history', '동의 이력'],
-  ['/admin/system/db-promotion-policy', 'DB 승격 정책'],
-  ['/admin/system/db-sync-deploy', 'DB 동기화·배포'],
-  ['/admin/system/error-log', '오류 로그'],
-  ['/admin/system/infra', '인프라 관리'],
-  ['/admin/system/notification', '알림 관리'],
-  ['/admin/system/restore', '복구 관리'],
-  [
-    '/admin/system/screen-menu-assignment-management',
-    '화면·메뉴 연결 관리',
-  ],
-] as const;
-
-const recoveryRoutes = new Set([
-  '/admin/system/backup',
-  '/admin/system/backup_config',
-  '/admin/system/db-promotion-policy',
-  '/admin/system/db-sync-deploy',
-  '/admin/system/restore',
-]);
-
-const systemEntries: CutoverLedgerEntry[] = remainingSystemScreens.map(
-  ([route, name]) => {
-    const recovery = recoveryRoutes.has(route);
-    return {
-      assetId: `system-management:${route.split('/').pop()}`,
-      category: 'SYSTEM_MANAGEMENT',
-      sourceRoute: route,
-      sourceName: name,
-      targetRoute: recovery ? '/system-recovery' : '/system-operations',
-      targetPlugin: recovery
-        ? 'ccus-screen-designs/system-recovery'
-        : 'ccus-screen-designs/system-operations',
-      migrationStatus: 'CLASSIFIED',
-      implementation: recovery ? 'PARTIAL' : 'SHELL',
-      apiContracts: recovery
-        ? [
-            'GET /api/resonance-recovery/summary',
-            'POST /api/resonance-recovery/commands',
-          ]
-        : [],
-      databaseContracts: recovery
-        ? [
-            'resonance_recovery__policy',
-            'resonance_recovery__command',
-            'resonance_recovery__audit',
-          ]
-        : [],
-      permissionContracts: recovery
-        ? ['RESONANCE_RECOVERY_OPERATOR_REFS']
-        : [],
-      testEvidence: [],
-      cutoverBlockedBy: recovery
-        ? [
-            '운영 실행 워커 미연결',
-            '인증 사용자 명령 E2E 증적 없음',
-            '원본 메뉴 숨김·리다이렉트 비활성',
-          ]
-        : [
-            'Backstage 네이티브 기능 미검증',
-            '인증 사용자 E2E 증적 없음',
-            '원본 메뉴 숨김·리다이렉트 비활성',
-          ],
-    } satisfies CutoverLedgerEntry;
-  },
-);
+const systemEntries: CutoverLedgerEntry[] = RESONANCE_CONTROL_ASSETS.filter(
+  asset =>
+    asset.ownershipLane === 'BACKSTAGE_NATIVE' &&
+    asset.routePath.startsWith('/admin/') &&
+    asset.routePath !== '/admin/system/actor-process',
+).map(asset => {
+  const native = asset.migrationStatus === 'NATIVE_READY';
+  return {
+    assetId: `system-management:${asset.routePath}`,
+    category: 'SYSTEM_MANAGEMENT',
+    sourceRoute: asset.routePath,
+    sourceName: asset.screenName,
+    targetRoute:
+      targetRouteByPlugin[asset.targetPlugin] ?? '/resonance-control-assets',
+    targetPlugin: asset.targetPlugin,
+    migrationStatus: asset.migrationStatus,
+    implementation: native ? 'NATIVE' : 'SHELL',
+    capabilities: asset.capabilities,
+    apiContracts: asset.dataContracts.filter(contract =>
+      /api|endpoint|command|query/i.test(contract),
+    ),
+    databaseContracts: asset.dataContracts.filter(
+      contract => !/api|endpoint|command|query/i.test(contract),
+    ),
+    permissionContracts: asset.actorCodes,
+    testEvidence: asset.requiredScenarios,
+    cutoverBlockedBy: native
+      ? ['인증 사용자 E2E 검증 필요']
+      : ['Backstage 네이티브 기능 구현 필요', '인증 사용자 E2E 검증 필요'],
+  } satisfies CutoverLedgerEntry;
+});
 
 export const MIGRATION_CUTOVER_LEDGER = [
   ...actorProcessEntries,
@@ -126,7 +107,7 @@ export const MIGRATION_CUTOVER_LEDGER = [
 
 export const MIGRATION_CUTOVER_SUMMARY = {
   total: MIGRATION_CUTOVER_LEDGER.length,
-  actorProcessTabs: actorProcessEntries.length,
+  actorProcessTabs: ACTOR_PROCESS_TAB_COUNT,
   systemScreens: systemEntries.length,
   nativeReady: MIGRATION_CUTOVER_LEDGER.filter(
     entry => entry.migrationStatus === 'NATIVE_READY',
@@ -149,7 +130,7 @@ export const toControlAssetPayload = (entry: CutoverLedgerEntry) => ({
   ownershipLane: 'BACKSTAGE_NATIVE',
   migrationStatus: entry.migrationStatus,
   targetPlugin: entry.targetPlugin,
-  capabilities: ['OPERATIONS', 'DESIGN', 'DEVELOPMENT'],
+  capabilities: entry.capabilities,
   dependencyContracts: [
     ...entry.apiContracts,
     ...entry.databaseContracts,

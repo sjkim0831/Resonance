@@ -46,27 +46,29 @@ export function MigrationCutoverPage() {
 
   const synchronize = async () => {
     setSaving(true);
-    setMessage('이관 대장을 DB에 기록하는 중입니다.');
+    setMessage('이관 원장을 DB에 기록하는 중입니다.');
     try {
       const response = await fetchApi.fetch(
         '/api/resonance-projects/control-assets/CCUS-PLATFORM/sync',
         {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({
-            assets: rows.map(toControlAssetPayload),
-          }),
+          body: JSON.stringify({ assets: rows.map(toControlAssetPayload) }),
         },
       );
       const payload = (await response.json()) as {
         synchronized?: number;
         message?: string;
       };
-      if (!response.ok) throw new Error(payload.message ?? `API ${response.status}`);
-      setMessage(`${payload.synchronized ?? rows.length}개 이관 항목을 DB에 기록했습니다.`);
+      if (!response.ok) {
+        throw new Error(payload.message ?? `API ${response.status}`);
+      }
+      setMessage(
+        `${payload.synchronized ?? rows.length}개 이관 항목을 DB에 기록했습니다.`,
+      );
     } catch (error) {
       setMessage(
-        `이관 대장 기록 실패: ${
+        `이관 원장 기록 실패: ${
           error instanceof Error ? error.message : String(error)
         }`,
       );
@@ -78,15 +80,15 @@ export function MigrationCutoverPage() {
   return (
     <Page themeId="tool">
       <Header
-        title="Resonance → Backstage 이관 대장"
-        subtitle="기능·API·DB·권한·테스트 증적이 모두 확인된 항목만 원본 메뉴 전환 대상으로 승인합니다."
+        title="Resonance → Backstage 이관 원장"
+        subtitle="기능·API·DB·권한·테스트 증적을 확인한 항목만 원본 메뉴 전환 대상으로 승인합니다."
       />
       <Content>
         <Box className={classes.summary}>
           {[
             ['전체 이관 단위', MIGRATION_CUTOVER_SUMMARY.total],
             ['액터·프로세스 탭', MIGRATION_CUTOVER_SUMMARY.actorProcessTabs],
-            ['잔여 시스템 화면', MIGRATION_CUTOVER_SUMMARY.systemScreens],
+            ['시스템 관리 화면', MIGRATION_CUTOVER_SUMMARY.systemScreens],
             ['전환 가능', MIGRATION_CUTOVER_SUMMARY.cutoverEligible],
           ].map(([label, value]) => (
             <Paper className={classes.metric} key={String(label)}>
@@ -104,7 +106,7 @@ export function MigrationCutoverPage() {
             disabled={saving}
             onClick={() => void synchronize()}
           >
-            DB 이관 대장 동기화
+            DB 이관 원장 동기화
           </Button>
           <Typography variant="body2">{message}</Typography>
         </Box>
@@ -117,13 +119,19 @@ export function MigrationCutoverPage() {
                 <Typography variant="caption">{entry.sourceRoute}</Typography>
               </Box>
               <Box>
-                <Typography variant="body2">대상: {entry.targetRoute}</Typography>
+                <Typography variant="body2">
+                  대상: {entry.targetRoute}
+                </Typography>
                 <Typography variant="caption">{entry.category}</Typography>
               </Box>
               <Box>
                 <Chip size="small" label={entry.migrationStatus} />
                 <Box mt={0.5}>
-                  <Chip size="small" variant="outlined" label={entry.implementation} />
+                  <Chip
+                    size="small"
+                    variant="outlined"
+                    label={entry.implementation}
+                  />
                 </Box>
               </Box>
               <Box>
