@@ -342,7 +342,12 @@ export default createBackendPlugin({
           const [{ count }] = await knex('resonance_recovery__policy').count({
             count: '*',
           });
-          response.json({ status: 'UP', policyCount: Number(count) });
+          response.json({
+            status: 'UP',
+            policyCount: Number(count),
+            recoverySchemaVersion: 2,
+            offsiteFullRestoreReporting: true,
+          });
         });
         router.get('/summary', async (request, response) => {
           await resolveUser(request);
