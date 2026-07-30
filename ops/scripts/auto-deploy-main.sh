@@ -924,32 +924,80 @@ if [[ "$health_status" != *'"status":"UP"'* ]]; then
   echo "[auto-deploy] refusing success marker: health check is not UP" >&2
   exit 17
 fi
-bash ops/scripts/validate-admin-menu-coverage.sh
-bash ops/scripts/validate-home-menu-coverage.sh
-bash ops/scripts/sync-unified-asset-catalog.sh
-bash ops/scripts/validate-e4b-selectable-assets.sh
-bash ops/scripts/validate-emission-project-workflow.sh
-bash ops/scripts/validate-emission-activity-collection.sh
-bash ops/scripts/complete-activity-data-evidence-jobs.sh
-bash ops/scripts/validate-activity-workflow-links.sh
-bash ops/scripts/validate-activity-data-runtime.sh
-bash ops/scripts/complete-emission-calculation-evidence-jobs.sh
-bash ops/scripts/validate-emission-calculation-runtime.sh
-bash ops/scripts/validate-organizational-boundary-runtime.sh
-bash ops/scripts/validate-governance-change-runtime.sh
-bash ops/scripts/complete-report-certification-evidence-jobs.sh
-bash ops/scripts/validate-report-certification-runtime.sh
-bash ops/scripts/validate-customer-work-journey.sh
-bash ops/scripts/validate-actor-account-customer-journey.sh
-bash ops/scripts/validate-design-direct-development.sh
-bash ops/scripts/validate-common-design-assets.sh
-RESONANCE_ROOT="$ROOT_DIR" \
-  bash ops/scripts/resonance-keycloak-carbonet-identity-sync-install.sh
-bash ops/scripts/resonance-keycloak-carbonet-identity-sync.sh
-bash ops/scripts/validate-keycloak-carbonet-identity-sync.sh
-bash ops/scripts/validate-project-auto-completion.sh
-bash ops/scripts/validate-contract-completion-algorithm.sh
-bash ops/scripts/validate-unified-work-design-runtime.sh
+# These three groups use independent tables and contracts. Preserve ordering
+# inside each workflow, but execute the groups concurrently so verification
+# remains fail-closed without adding every duration to the deployment path.
+validation_log_dir="$ROOT_DIR/var/logs/deploy-validation/$(date +%Y%m%d-%H%M%S)-${target_commit:0:10}"
+mkdir -p "$validation_log_dir"
+declare -a validation_names=()
+declare -a validation_pids=()
+
+validate_menu_asset_design_group() {
+  bash ops/scripts/validate-admin-menu-coverage.sh
+  bash ops/scripts/validate-home-menu-coverage.sh
+  bash ops/scripts/sync-unified-asset-catalog.sh
+  bash ops/scripts/validate-e4b-selectable-assets.sh
+  bash ops/scripts/validate-design-direct-development.sh
+  bash ops/scripts/validate-common-design-assets.sh
+}
+
+validate_emission_workflow_group() {
+  bash ops/scripts/validate-emission-project-workflow.sh
+  bash ops/scripts/validate-emission-activity-collection.sh
+  bash ops/scripts/complete-activity-data-evidence-jobs.sh
+  bash ops/scripts/validate-activity-workflow-links.sh
+  bash ops/scripts/validate-activity-data-runtime.sh
+  bash ops/scripts/complete-emission-calculation-evidence-jobs.sh
+  bash ops/scripts/validate-emission-calculation-runtime.sh
+  bash ops/scripts/validate-organizational-boundary-runtime.sh
+  bash ops/scripts/validate-governance-change-runtime.sh
+  bash ops/scripts/complete-report-certification-evidence-jobs.sh
+  bash ops/scripts/validate-report-certification-runtime.sh
+  bash ops/scripts/validate-customer-work-journey.sh
+  bash ops/scripts/validate-actor-account-customer-journey.sh
+}
+
+validate_identity_design_group() {
+  RESONANCE_ROOT="$ROOT_DIR" \
+    bash ops/scripts/resonance-keycloak-carbonet-identity-sync-install.sh
+  bash ops/scripts/resonance-keycloak-carbonet-identity-sync.sh
+  bash ops/scripts/validate-keycloak-carbonet-identity-sync.sh
+  bash ops/scripts/validate-project-auto-completion.sh
+  bash ops/scripts/validate-contract-completion-algorithm.sh
+  bash ops/scripts/validate-unified-work-design-runtime.sh
+}
+
+start_validation_group() {
+  local name="$1"
+  local function_name="$2"
+  validation_names+=("$name")
+  (
+    started="$(date +%s)"
+    "$function_name"
+    echo "[validation-group] PASS name=$name duration=$(( $(date +%s) - started ))s"
+  ) >"$validation_log_dir/$name.log" 2>&1 &
+  validation_pids+=("$!")
+}
+
+start_validation_group "menu-assets-design" validate_menu_asset_design_group
+start_validation_group "emission-workflow" validate_emission_workflow_group
+start_validation_group "identity-contracts" validate_identity_design_group
+
+validation_failed=0
+for index in "${!validation_pids[@]}"; do
+  name="${validation_names[$index]}"
+  if wait "${validation_pids[$index]}"; then
+    cat "$validation_log_dir/$name.log"
+  else
+    validation_failed=1
+    echo "[auto-deploy] validation group failed: $name (log=$validation_log_dir/$name.log)" >&2
+    cat "$validation_log_dir/$name.log" >&2
+  fi
+done
+if (( validation_failed != 0 )); then
+  echo "[auto-deploy] refusing success marker: one or more parallel validation groups failed" >&2
+  exit 18
+fi
 if [[ "$PLAN_FRONTEND_REQUIRED" == "true" ]]; then
   # A normal deployment must finish inside the operational feedback window.
   # Domain/API/schema validators above already cover the changed backend and
