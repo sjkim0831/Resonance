@@ -5,6 +5,26 @@ import path from 'node:path';
 const username = process.env.BACKSTAGE_E2E_USERNAME;
 const password = process.env.BACKSTAGE_E2E_PASSWORD;
 const evidenceDir = process.env.RESONANCE_E2E_EVIDENCE_DIR;
+const designDocumentTitles = [
+  '업무·요구사항',
+  '액터·RACI',
+  '권한·데이터 범위',
+  '프로세스·분기',
+  '상태 전이',
+  '화면 흐름·라우팅',
+  '액티브 UI·레이아웃',
+  '테마·섹션·컴포넌트',
+  '필드·데이터 사전',
+  '입출력·데이터 연계',
+  'DB·스키마',
+  'API·이벤트',
+  '업무 규칙·계산식',
+  '검증·오류·예외',
+  '알림·기한·에스컬레이션',
+  '테스트 시나리오·기대값',
+  '개발 태스크·산출물·증적',
+  '배포·감사·복구',
+] as const;
 
 const routes = [
   ['/ccus-screen-designs', 'CCUS 플랫폼 1,000 화면 설계'],
@@ -148,5 +168,70 @@ test('authenticated Resonance control-plane routes render without runtime errors
       runtimeErrors.slice(errorOffset),
       `${route} emitted runtime errors`,
     ).toEqual([]);
+  }
+
+  const controlRoute =
+    '/actor-process-control?workspace=operate&tab=work-dashboard&projectId=CCUS-PLATFORM';
+  const runtimeResponse = page.waitForResponse(
+    response =>
+      response
+        .url()
+        .includes(
+          '/api/resonance-projects/actor-process/runtime-dashboard?dataset=processes',
+        ) && response.request().method() === 'GET',
+  );
+  await page.goto(controlRoute, {
+    waitUntil: 'domcontentloaded',
+    timeout: 20_000,
+  });
+  expect((await runtimeResponse).status()).toBe(200);
+  await expect(page.getByText('프로세스 계약 지도')).toBeVisible();
+  await expect(page.getByText('고객 여정 시뮬레이션')).toBeVisible();
+  await expect(
+    page.getByText('액터·화면·데이터·테스트 실행 준비도'),
+  ).toBeVisible();
+  await expect(page.getByRole('button', { name: /정상 업무/ })).toBeVisible();
+  await expect(
+    page.getByRole('button', { name: /권한·직무분리/ }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole('button', { name: /테넌트·프로젝트 격리/ }),
+  ).toBeVisible();
+  await expect(page.getByRole('button', { name: /오류·예외/ })).toBeVisible();
+  await expect(
+    page.getByRole('button', { name: /복구·재처리/ }),
+  ).toBeVisible();
+
+  await page.getByRole('button', { name: '설계 워크벤치 열기' }).click();
+  const designDialog = page.getByRole('dialog');
+  await expect(designDialog).toBeVisible();
+  for (const title of designDocumentTitles) {
+    await expect(
+      designDialog.getByRole('button', { name: new RegExp(`^${title}`) }),
+    ).toBeVisible();
+  }
+  expect(designDocumentTitles).toHaveLength(18);
+  await designDialog.getByRole('button', { name: '닫기' }).click();
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto(controlRoute, {
+    waitUntil: 'domcontentloaded',
+    timeout: 20_000,
+  });
+  await expect(page.getByText('고객 여정 시뮬레이션')).toBeVisible();
+  expect(
+    await page.evaluate(
+      () =>
+        document.documentElement.scrollWidth <=
+        document.documentElement.clientWidth + 1,
+    ),
+    'mobile page must not create body-level horizontal overflow',
+  ).toBe(true);
+  await expect(page.getByRole('button', { name: /정상 업무/ })).toBeVisible();
+  if (evidenceDir) {
+    await page.screenshot({
+      path: path.join(evidenceDir, 'actor-process-control-mobile.png'),
+      fullPage: true,
+    });
   }
 });
