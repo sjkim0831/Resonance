@@ -260,6 +260,181 @@ const displayValue = (value: unknown) => {
   return String(value);
 };
 
+function WorkOperationsMap({
+  dashboard,
+  projectId,
+  onSelect,
+}: {
+  dashboard: RuntimeDashboard;
+  projectId: string;
+  onSelect: (row: RuntimeRow) => void;
+}) {
+  const processes = (dashboard.processes ?? []) as RuntimeRow[];
+  const steps = (dashboard.steps ?? []) as RuntimeRow[];
+  const actors = (dashboard.actors ?? []) as RuntimeRow[];
+  const executions = (dashboard.processExecutions ?? []) as RuntimeRow[];
+  const selectedProcess =
+    processes.find(row =>
+      executions.some(
+        execution => execution.processCode === row.processCode,
+      ),
+    ) ?? processes[0];
+  const processCode = String(selectedProcess?.processCode ?? '');
+  const processSteps = steps
+    .filter(row => !processCode || String(row.processCode) === processCode)
+    .sort(
+      (a, b) =>
+        Number(a.stepOrder ?? a.sortOrder ?? 0) -
+        Number(b.stepOrder ?? b.sortOrder ?? 0),
+    )
+    .slice(0, 12);
+  const activeExecution = executions.find(
+    row => !processCode || String(row.processCode) === processCode,
+  );
+  const activeStepCode = String(
+    activeExecution?.currentStepCode ?? activeExecution?.stepCode ?? '',
+  );
+  const activeStep =
+    processSteps.find(row => String(row.stepCode) === activeStepCode) ??
+    processSteps[0];
+  const actor = actors.find(
+    row => String(row.actorCode) === String(activeStep?.actorCode ?? ''),
+  );
+
+  return (
+    <Box mt={3}>
+      <Grid container spacing={2}>
+        <Grid item xs={12} lg={3}>
+          <Paper variant="outlined" style={{ padding: 16, height: '100%' }}>
+            <Typography variant="overline">1. 업무 선택</Typography>
+            <Typography variant="h6">프로젝트·액터</Typography>
+            <Box mt={2}>
+              <Chip size="small" color="primary" label={projectId} />
+            </Box>
+            <Typography variant="subtitle2" style={{ marginTop: 16 }}>
+              {displayValue(selectedProcess?.processName) ||
+                '등록된 프로세스 없음'}
+            </Typography>
+            <Typography variant="body2" color="textSecondary">
+              {processCode || '-'}
+            </Typography>
+            <Typography variant="body2" style={{ marginTop: 12 }}>
+              담당 액터: {displayValue(actor?.actorName ?? activeStep?.actorCode)}
+            </Typography>
+            <Typography variant="caption" color="textSecondary">
+              전체 프로세스 {processes.length}개 · 액터 {actors.length}개
+            </Typography>
+          </Paper>
+        </Grid>
+        <Grid item xs={12} lg={6}>
+          <Paper variant="outlined" style={{ padding: 16, height: '100%' }}>
+            <Typography variant="overline">2. 전체 업무 실행 순서</Typography>
+            <Typography variant="h6">
+              {displayValue(selectedProcess?.processName)}
+            </Typography>
+            <Box
+              mt={2}
+              display="flex"
+              alignItems="stretch"
+              gridGap={8}
+              style={{ overflowX: 'auto', paddingBottom: 8 }}
+            >
+              {processSteps.length ? (
+                processSteps.map((step, index) => {
+                  const selected =
+                    String(step.stepCode) === String(activeStep?.stepCode);
+                  return (
+                    <Box
+                      key={`${step.stepCode}-${index}`}
+                      onClick={() => onSelect(step)}
+                      role="button"
+                      tabIndex={0}
+                      style={{
+                        flex: '0 0 150px',
+                        padding: 12,
+                        borderRadius: 8,
+                        cursor: 'pointer',
+                        border: selected
+                          ? '2px solid #005ea8'
+                          : '1px solid #cbd5e1',
+                        background: selected ? '#e8f2ff' : '#fff',
+                      }}
+                    >
+                      <Typography variant="caption">{index + 1}단계</Typography>
+                      <Typography variant="subtitle2">
+                        {displayValue(step.stepName)}
+                      </Typography>
+                      <Typography variant="caption" color="textSecondary">
+                        {displayValue(step.actorCode)}
+                      </Typography>
+                    </Box>
+                  );
+                })
+              ) : (
+                <Typography variant="body2" color="textSecondary">
+                  이 프로세스에 등록된 단계가 없습니다.
+                </Typography>
+              )}
+            </Box>
+          </Paper>
+        </Grid>
+        <Grid item xs={12} lg={3}>
+          <Paper variant="outlined" style={{ padding: 16, height: '100%' }}>
+            <Typography variant="overline">3. 실시간 업무 길잡이</Typography>
+            <Typography variant="h6">
+              {displayValue(activeStep?.stepName) || '시작할 단계 없음'}
+            </Typography>
+            <Typography variant="body2" style={{ marginTop: 12 }}>
+              완료 조건
+            </Typography>
+            <Typography variant="body2" color="textSecondary">
+              {displayValue(
+                activeStep?.completionRule ??
+                  activeStep?.completionCondition,
+              )}
+            </Typography>
+            <Box mt={2}>
+              <Chip
+                size="small"
+                label={displayValue(
+                  activeExecution?.executionStatus ??
+                    activeExecution?.status ??
+                    '설계 상태',
+                )}
+              />
+            </Box>
+          </Paper>
+        </Grid>
+      </Grid>
+      <Box mt={2}>
+        <Paper variant="outlined" style={{ padding: 16 }}>
+          <Typography variant="overline">
+            4. 설계·입출력·화면·API·테스트·태스크 증적
+          </Typography>
+          <Box mt={1} display="flex" gridGap={8} flexWrap="wrap">
+            {[
+              ['액터', actors.length],
+              ['프로세스', processes.length],
+              ['단계', steps.length],
+              ['실행 업무', executions.length],
+              [
+                '테스트',
+                ((dashboard.cases ?? []) as RuntimeRow[]).length,
+              ],
+              [
+                '개발 태스크',
+                ((dashboard.developmentJobs ?? []) as RuntimeRow[]).length,
+              ],
+            ].map(([label, count]) => (
+              <Chip key={String(label)} label={`${label} ${count}개`} />
+            ))}
+          </Box>
+        </Paper>
+      </Box>
+    </Box>
+  );
+}
+
 const useStyles = makeStyles(theme => ({
   context: {
     padding: theme.spacing(2.5),
@@ -307,9 +482,10 @@ const useStyles = makeStyles(theme => ({
 }));
 
 const routeForWorkspace: Record<ActorProcessWorkspaceId, string> = {
-  design: '/design-assets',
-  develop: '/system-development',
   operate: '/system-operations',
+  design: '/design-assets',
+  verify: '/system-development',
+  delivery: '/system-development',
 };
 
 export function ActorProcessControlPage(props: {
@@ -488,6 +664,27 @@ export function ActorProcessControlPage(props: {
     // 선택 탭이 바뀔 때 필요한 데이터셋만 지연 조회합니다.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [datasetKey]);
+
+  useEffect(() => {
+    if (selectedTab.id !== 'work-dashboard') return;
+    const required = [
+      'processes',
+      'steps',
+      'actors',
+      'cases',
+      'developmentJobs',
+      'processExecutions',
+    ];
+    required
+      .filter(key => runtimeDashboard[key] === undefined)
+      .forEach(key => {
+        void loadRuntimeDataset(key).catch(() => {
+          setMessage(`업무 운영 지도 데이터(${key})를 불러오지 못했습니다.`);
+        });
+      });
+    // 업무 운영 지도는 여러 원본 데이터셋을 조합하므로 필요한 것만 병렬 지연 조회합니다.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedTab.id]);
 
   useEffect(() => {
     setSelectedRow(null);
@@ -779,6 +976,13 @@ export function ActorProcessControlPage(props: {
             <Typography variant="body1" style={{ marginTop: 16 }}>
               {selectedTab.description}
             </Typography>
+            {selectedTab.id === 'work-dashboard' && (
+              <WorkOperationsMap
+                dashboard={runtimeDashboard}
+                projectId={projectId}
+                onSelect={setSelectedRow}
+              />
+            )}
             <Grid container spacing={2} style={{ marginTop: 8 }}>
               <Grid item xs={12} sm={6} md={3}>
                 <Box className={classes.metric}>

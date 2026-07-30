@@ -113,7 +113,7 @@ const actorProcessDevelopmentPage = PageBlueprint.make({
     icon: <DashboardIcon />,
     loader: () =>
       import('./ActorProcessControlPage').then(module => (
-        <module.ActorProcessControlPage initialWorkspaceId="develop" />
+        <module.ActorProcessControlPage initialWorkspaceId="delivery" />
       )),
   },
 });

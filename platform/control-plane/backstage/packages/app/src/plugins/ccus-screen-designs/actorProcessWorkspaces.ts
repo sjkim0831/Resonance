@@ -1,4 +1,8 @@
-export type ActorProcessWorkspaceId = 'design' | 'develop' | 'operate';
+export type ActorProcessWorkspaceId =
+  | 'operate'
+  | 'design'
+  | 'verify'
+  | 'delivery';
 
 export type ActorProcessTab = {
   id: string;
@@ -50,6 +54,38 @@ const tab = (
 
 export const ACTOR_PROCESS_WORKSPACES: ActorProcessWorkspace[] = [
   {
+    id: 'operate',
+    label: '업무 운영',
+    description:
+      '업무 종류와 액터를 선택하고 전체 흐름, 현재 단계, 길잡이와 실제 실행을 함께 관리합니다.',
+    tabs: [
+      tab(
+        'work-dashboard',
+        '업무 운영 지도',
+        '업무 종류·액터·프로젝트별 전체 순서와 현재 실행 단계를 한 화면에서 확인합니다.',
+        'WORK_DASHBOARD',
+      ),
+      tab(
+        'execution',
+        '종단간 업무 실행',
+        '프로젝트 업무를 시작하고 단계별 명령과 다음 업무를 수행합니다.',
+        'PROCESS_EXECUTION',
+      ),
+      tab(
+        'assignments',
+        '계정·액터 배정',
+        '계정에 프로젝트별 액터와 데이터 범위를 배정합니다.',
+        'ACTOR_ASSIGNMENT',
+      ),
+      tab(
+        'completion',
+        '완료·개발 현황',
+        '프로세스와 화면별 완료, 차단, 재시도 상태를 봅니다.',
+        'COMPLETION_STATUS',
+      ),
+    ],
+  },
+  {
     id: 'design',
     label: '설계',
     description:
@@ -86,12 +122,6 @@ export const ACTOR_PROCESS_WORKSPACES: ActorProcessWorkspace[] = [
         'DATA_CONTRACT',
       ),
       tab(
-        'test-scenarios',
-        '테스트 시나리오',
-        '정상·권한·격리·예외·복구 기대값을 정의합니다.',
-        'TEST_CONTRACT',
-      ),
-      tab(
         'design-assets',
         '공통 디자인 자산',
         '테마, 섹션, 컴포넌트와 CSS 재사용 계약을 선택합니다.',
@@ -106,8 +136,40 @@ export const ACTOR_PROCESS_WORKSPACES: ActorProcessWorkspace[] = [
     ],
   },
   {
-    id: 'develop',
-    label: '개발',
+    id: 'verify',
+    label: '검증',
+    description:
+      '설계 정확성, 고객 여정과 정상·예외·권한·격리·복구 시나리오를 검증합니다.',
+    tabs: [
+      tab(
+        'test-scenarios',
+        '테스트 시나리오',
+        '정상·권한·격리·예외·복구 기대값을 정의합니다.',
+        'TEST_CONTRACT',
+      ),
+      tab(
+        'automated-tests',
+        '자동 테스트',
+        '계약·단위·통합·E2E 결과와 실패 원인을 확인합니다.',
+        'TEST_EXECUTION',
+      ),
+      tab(
+        'incidents',
+        '예외·복구 검증',
+        '장애 감지, 격리, 자동 복구와 재발 방지 증적을 검증합니다.',
+        'INCIDENT_RECOVERY',
+      ),
+      tab(
+        'audit',
+        '검증·감사 이력',
+        '설계부터 실제 업무까지 검증 주체와 결과를 추적합니다.',
+        'AUDIT_TRAIL',
+      ),
+    ],
+  },
+  {
+    id: 'delivery',
+    label: '개발·배포',
     description:
       '승격된 설계를 Resonance 생성 계약으로 전달하고 구현·검증 증적을 관리합니다.',
     tabs: [
@@ -142,12 +204,6 @@ export const ACTOR_PROCESS_WORKSPACES: ActorProcessWorkspace[] = [
         'DATABASE_BUILD',
       ),
       tab(
-        'automated-tests',
-        '자동 테스트',
-        '계약·단위·통합·E2E 결과와 실패 원인을 확인합니다.',
-        'TEST_EXECUTION',
-      ),
-      tab(
         'artifacts',
         '산출물·증적',
         '소스, 빌드, 스크린샷과 검증 증적을 연결합니다.',
@@ -158,38 +214,6 @@ export const ACTOR_PROCESS_WORKSPACES: ActorProcessWorkspace[] = [
         '통합·승격',
         '모든 게이트 통과 후 Resonance 배포 대상으로 승격합니다.',
         'PROMOTION',
-      ),
-    ],
-  },
-  {
-    id: 'operate',
-    label: '운영',
-    description:
-      '프로젝트의 실제 업무 실행, 서비스 상태, 배포와 복구를 통합 운영합니다.',
-    tabs: [
-      tab(
-        'work-dashboard',
-        '업무 운영 지도',
-        '액터별 실제 업무와 현재 단계를 실시간 조회합니다.',
-        'WORK_DASHBOARD',
-      ),
-      tab(
-        'execution',
-        '프로세스 실행',
-        '프로젝트 업무를 시작하고 단계 명령을 수행합니다.',
-        'PROCESS_EXECUTION',
-      ),
-      tab(
-        'assignments',
-        '계정·액터 배정',
-        '계정에 프로젝트별 액터와 데이터 범위를 배정합니다.',
-        'ACTOR_ASSIGNMENT',
-      ),
-      tab(
-        'completion',
-        '완료·개발 현황',
-        '프로세스와 화면별 완료, 차단, 재시도 상태를 봅니다.',
-        'COMPLETION_STATUS',
       ),
       tab(
         'runtime',
@@ -202,18 +226,6 @@ export const ACTOR_PROCESS_WORKSPACES: ActorProcessWorkspace[] = [
         '빌드·배포',
         '변경 범위, 증분 빌드, 배포와 롤백을 관리합니다.',
         'DEPLOYMENT',
-      ),
-      tab(
-        'incidents',
-        '장애·자가복구',
-        '장애 감지, 원인, 자동 복구와 재발 방지 증적을 관리합니다.',
-        'INCIDENT_RECOVERY',
-      ),
-      tab(
-        'audit',
-        '감사·변경 이력',
-        '설계부터 실제 업무까지 변경 주체와 결과를 추적합니다.',
-        'AUDIT_TRAIL',
       ),
     ],
   },
