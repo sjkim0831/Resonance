@@ -1,4 +1,4 @@
-import { spawnSync } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 
 const npm = process.platform === "win32" ? "npm.cmd" : "npm";
 const npx = process.platform === "win32" ? "npx.cmd" : "npx";
@@ -13,6 +13,22 @@ function run(command, args) {
   const result = spawnSync(command, args, { env, stdio: "inherit", shell: requiresWindowsCommandShell });
   if (result.error) throw result.error;
   if (result.status !== 0) process.exit(result.status ?? 1);
+}
+
+function runAsync(command, args) {
+  const requiresWindowsCommandShell = process.platform === "win32" && (command === npm || command === npx);
+  return new Promise((resolve, reject) => {
+    const child = spawn(command, args, {
+      env,
+      stdio: "inherit",
+      shell: requiresWindowsCommandShell,
+    });
+    child.once("error", reject);
+    child.once("exit", (code, signal) => {
+      if (code === 0) resolve();
+      else reject(new Error(`${command} ${args.join(" ")} failed (${signal || code || "unknown"})`));
+    });
+  });
 }
 
 function generate(key, script, outputs, inputs) {
@@ -54,8 +70,17 @@ if (process.argv.includes("--build")) {
   run(npm, ["run", "audit:route-registry"]);
   if (skipBuildTypecheck) {
     console.log("[frontend-pipeline] project-reference typecheck skipped; external noEmit evidence required");
+    run(npx, ["vite", "build"]);
   } else {
-    run(npx, ["tsc", "-b"]);
+    console.log("[frontend-pipeline] typecheck and Vite build run concurrently; both remain fail-closed");
+    try {
+      await Promise.all([
+        runAsync(npx, ["tsc", "-b"]),
+        runAsync(npx, ["vite", "build"]),
+      ]);
+    } catch (error) {
+      console.error(`[frontend-pipeline] parallel build failed: ${error instanceof Error ? error.message : error}`);
+      process.exit(1);
+    }
   }
-  run(npx, ["vite", "build"]);
 }
