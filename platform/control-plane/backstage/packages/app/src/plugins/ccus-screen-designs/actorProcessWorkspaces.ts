@@ -20,8 +20,89 @@ export type ActorProcessWorkspace = {
 
 export type ProcessGraphStep = {
   stepCode?: unknown;
+  stepName?: unknown;
+  stepOrder?: unknown;
+  actorCode?: unknown;
   fromState?: unknown;
   toState?: unknown;
+  inputContract?: unknown;
+  outputContract?: unknown;
+  exceptionRule?: unknown;
+  userPath?: unknown;
+  adminPath?: unknown;
+};
+
+export type ProcessGraphEdge<T extends ProcessGraphStep> = {
+  from: T;
+  to: T;
+  kind: 'NORMAL' | 'CORRECTION' | 'RECOVERY' | 'EXCEPTION';
+  condition: string;
+};
+
+const isCorrectionStep = (step: ProcessGraphStep) =>
+  String(step.fromState ?? '') === 'CORRECTION_REQUIRED' ||
+  String(step.stepCode ?? '').includes('CORRECT');
+
+export const buildProcessGraph = <T extends ProcessGraphStep>(steps: T[]) => {
+  const orderedSteps = [...steps].sort(
+    (left, right) => Number(left.stepOrder ?? 0) - Number(right.stepOrder ?? 0),
+  );
+  const edges: ProcessGraphEdge<T>[] = [];
+
+  orderedSteps.forEach(from => {
+    orderedSteps
+      .filter(
+        to =>
+          String(to.fromState ?? '') === String(from.toState ?? '') &&
+          String(to.stepCode ?? '') !== String(from.stepCode ?? ''),
+      )
+      .forEach(to => {
+        const correction = isCorrectionStep(to);
+        const recovery =
+          !correction &&
+          Number(to.stepOrder ?? 0) <= Number(from.stepOrder ?? 0);
+        edges.push({
+          from,
+          to,
+          kind: correction ? 'CORRECTION' : recovery ? 'RECOVERY' : 'NORMAL',
+          condition: String(to.fromState ?? from.toState ?? ''),
+        });
+      });
+
+    if (
+      from.exceptionRule &&
+      !edges.some(
+        edge =>
+          edge.from === from &&
+          (edge.kind === 'CORRECTION' || edge.kind === 'RECOVERY'),
+      )
+    ) {
+      const recoveryTarget =
+        orderedSteps.find(isCorrectionStep) ?? orderedSteps[0];
+      if (recoveryTarget && recoveryTarget !== from) {
+        edges.push({
+          from,
+          to: recoveryTarget,
+          kind: 'EXCEPTION',
+          condition: String(from.exceptionRule),
+        });
+      }
+    }
+  });
+
+  const incoming = new Set(edges.map(edge => String(edge.to.stepCode ?? '')));
+  const outgoing = new Set(edges.map(edge => String(edge.from.stepCode ?? '')));
+
+  return {
+    steps: orderedSteps,
+    edges,
+    entrySteps: orderedSteps.filter(
+      step => !incoming.has(String(step.stepCode ?? '')),
+    ),
+    terminalSteps: orderedSteps.filter(
+      step => !outgoing.has(String(step.stepCode ?? '')),
+    ),
+  };
 };
 
 export const resolveProcessBranches = <T extends ProcessGraphStep>(

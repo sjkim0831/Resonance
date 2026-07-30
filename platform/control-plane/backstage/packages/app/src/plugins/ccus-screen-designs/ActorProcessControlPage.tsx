@@ -29,6 +29,7 @@ import {
   ACTOR_PROCESS_WORKSPACES,
   ActorProcessTab,
   ActorProcessWorkspaceId,
+  buildProcessGraph,
   resolveProcessBranches,
 } from './actorProcessWorkspaces';
 import { RESONANCE_PROJECT_REGISTRY } from './generatedProjectRegistry';
@@ -518,6 +519,10 @@ function WorkOperationsMap({
         Number(b.stepOrder ?? b.sortOrder ?? 0),
     )
     .slice(0, 12);
+  const processGraph = useMemo(
+    () => buildProcessGraph(processSteps),
+    [processSteps],
+  );
   const activeExecution =
     scopedExecutions.find(
       row =>
@@ -978,8 +983,7 @@ function WorkOperationsMap({
                   </Box>
                 </Paper>
               )}
-              {String(activeStep?.stepCode) ===
-                'EMISSION_PROJECT_CORRECT' && (
+              {String(activeStep?.stepCode) === 'EMISSION_PROJECT_CORRECT' && (
                 <Paper
                   variant="outlined"
                   style={{
@@ -1032,6 +1036,214 @@ function WorkOperationsMap({
           </Paper>
         </Grid>
       </Grid>
+      <Paper
+        variant="outlined"
+        style={{ marginTop: 16, padding: 16, overflow: 'hidden' }}
+      >
+        <Box
+          display="flex"
+          justifyContent="space-between"
+          alignItems="flex-start"
+          gridGap={16}
+          flexWrap="wrap"
+        >
+          <Box>
+            <Typography variant="overline">프로세스 계약 지도</Typography>
+            <Typography variant="h6">정상·분기·복구·입출력 흐름</Typography>
+            <Typography variant="body2" color="textSecondary">
+              단계의 상태 계약을 기준으로 화면, 담당 액터, 입력·출력과 예외 복구
+              경로를 함께 추적합니다.
+            </Typography>
+          </Box>
+          <Box display="flex" gridGap={8} flexWrap="wrap">
+            <Chip size="small" label={`단계 ${processGraph.steps.length}개`} />
+            <Chip
+              size="small"
+              color="primary"
+              label={`연결 ${processGraph.edges.length}개`}
+            />
+            <Chip
+              size="small"
+              label={`종료 ${processGraph.terminalSteps.length}개`}
+            />
+          </Box>
+        </Box>
+        <Box
+          mt={2}
+          display="flex"
+          alignItems="stretch"
+          gridGap={12}
+          style={{ overflowX: 'auto', paddingBottom: 12 }}
+        >
+          {processGraph.steps.map((step, index) => {
+            const code = String(step.stepCode ?? '');
+            const selected =
+              code === String(activeStep?.stepCode ?? selectedStepCode);
+            const normalTargets = processGraph.edges.filter(
+              edge =>
+                String(edge.from.stepCode ?? '') === code &&
+                edge.kind === 'NORMAL',
+            );
+            const exceptionTargets = processGraph.edges.filter(
+              edge =>
+                String(edge.from.stepCode ?? '') === code &&
+                edge.kind !== 'NORMAL',
+            );
+            const screenPath = String(step.userPath ?? step.adminPath ?? '');
+            return (
+              <Box
+                key={code || index}
+                display="flex"
+                alignItems="center"
+                gridGap={12}
+              >
+                <Paper
+                  role="button"
+                  tabIndex={0}
+                  variant="outlined"
+                  onClick={() => {
+                    setSelectedStepCode(code);
+                    onSelect(step);
+                  }}
+                  style={{
+                    width: 260,
+                    minHeight: 250,
+                    padding: 14,
+                    cursor: 'pointer',
+                    borderWidth: selected ? 2 : 1,
+                    borderColor: selected ? '#005ea8' : '#cbd5e1',
+                    background: selected ? '#f0f7ff' : '#fff',
+                  }}
+                >
+                  <Box
+                    display="flex"
+                    justifyContent="space-between"
+                    alignItems="center"
+                    gridGap={8}
+                  >
+                    <Chip size="small" label={`${index + 1}단계`} />
+                    <Typography variant="caption" color="textSecondary">
+                      {displayValue(step.actorCode)}
+                    </Typography>
+                  </Box>
+                  <Typography
+                    variant="subtitle1"
+                    style={{ marginTop: 10, fontWeight: 700 }}
+                  >
+                    {displayValue(step.stepName)}
+                  </Typography>
+                  <Typography
+                    variant="caption"
+                    display="block"
+                    color="textSecondary"
+                  >
+                    {displayValue(step.fromState)} →{' '}
+                    {displayValue(step.toState)}
+                  </Typography>
+                  <Box mt={1}>
+                    <Typography variant="caption" display="block">
+                      입력
+                    </Typography>
+                    <Typography variant="body2" color="textSecondary">
+                      {displayValue(step.inputContract)}
+                    </Typography>
+                  </Box>
+                  <Box mt={1}>
+                    <Typography variant="caption" display="block">
+                      출력
+                    </Typography>
+                    <Typography variant="body2" color="textSecondary">
+                      {displayValue(step.outputContract)}
+                    </Typography>
+                  </Box>
+                  <Box mt={1}>
+                    <Typography variant="caption" display="block">
+                      화면·경로
+                    </Typography>
+                    <Typography variant="body2" color="textSecondary">
+                      {screenPath || '화면 계약 필요'}
+                    </Typography>
+                  </Box>
+                  {exceptionTargets.length > 0 && (
+                    <Box
+                      mt={1}
+                      p={1}
+                      style={{
+                        borderRadius: 6,
+                        color: '#7c2d12',
+                        background: '#fff7ed',
+                      }}
+                    >
+                      <Typography variant="caption">
+                        예외·복구:{' '}
+                        {exceptionTargets
+                          .map(edge => displayValue(edge.to.stepName))
+                          .join(', ')}
+                      </Typography>
+                    </Box>
+                  )}
+                </Paper>
+                {index < processGraph.steps.length - 1 && (
+                  <Box
+                    minWidth={88}
+                    textAlign="center"
+                    aria-label={`${displayValue(step.stepName)} 다음 상태 연결`}
+                  >
+                    <Typography
+                      variant="caption"
+                      display="block"
+                      color="primary"
+                    >
+                      {normalTargets.length > 0
+                        ? normalTargets
+                            .map(edge => edge.condition)
+                            .filter(Boolean)
+                            .join(', ')
+                        : '상태 계약 확인'}
+                    </Typography>
+                    <Typography
+                      aria-hidden="true"
+                      style={{ color: '#005ea8', fontSize: 24 }}
+                    >
+                      →
+                    </Typography>
+                  </Box>
+                )}
+              </Box>
+            );
+          })}
+        </Box>
+        {processGraph.edges.some(edge => edge.kind !== 'NORMAL') && (
+          <Box
+            p={1.5}
+            display="flex"
+            gridGap={8}
+            flexWrap="wrap"
+            style={{ borderRadius: 8, background: '#f8fafc' }}
+          >
+            {processGraph.edges
+              .filter(edge => edge.kind !== 'NORMAL')
+              .map((edge, index) => (
+                <Chip
+                  key={`${String(edge.from.stepCode)}-${String(
+                    edge.to.stepCode,
+                  )}-${index}`}
+                  size="small"
+                  variant="outlined"
+                  label={`${edge.kind}: ${displayValue(
+                    edge.from.stepName,
+                  )} → ${displayValue(edge.to.stepName)}`}
+                  style={{
+                    color:
+                      edge.kind === 'CORRECTION' || edge.kind === 'EXCEPTION'
+                        ? '#9a3412'
+                        : '#1e40af',
+                  }}
+                />
+              ))}
+          </Box>
+        )}
+      </Paper>
       <Box mt={2}>
         <Paper variant="outlined" style={{ padding: 16 }}>
           <Typography variant="overline">

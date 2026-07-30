@@ -2,6 +2,7 @@ import {
   ACTOR_PROCESS_DATASET_BY_TAB,
   ACTOR_PROCESS_TAB_COUNT,
   ACTOR_PROCESS_WORKSPACES,
+  buildProcessGraph,
   resolveProcessBranches,
 } from './actorProcessWorkspaces';
 
@@ -61,5 +62,63 @@ describe('actorProcessWorkspaces', () => {
     const correction = resolveProcessBranches(steps, steps[1]);
     expect(correction.nextStep?.stepCode).toBe('EMISSION_PROJECT_VALIDATE');
     expect(correction.supportsCorrectionBranch).toBe(false);
+  });
+
+  it('builds normal, correction, and recovery paths from state contracts', () => {
+    const steps = [
+      {
+        stepOrder: 1,
+        stepCode: 'COLLECT',
+        fromState: 'READY',
+        toState: 'COLLECTED',
+      },
+      {
+        stepOrder: 2,
+        stepCode: 'VALIDATE',
+        fromState: 'COLLECTED',
+        toState: 'VERIFIED',
+        exceptionRule: 'validation failed',
+      },
+      {
+        stepOrder: 3,
+        stepCode: 'CORRECT',
+        fromState: 'CORRECTION_REQUIRED',
+        toState: 'COLLECTED',
+      },
+      {
+        stepOrder: 4,
+        stepCode: 'APPROVE',
+        fromState: 'VERIFIED',
+        toState: 'APPROVED',
+      },
+    ];
+
+    const graph = buildProcessGraph(steps);
+
+    expect(
+      graph.edges.some(
+        edge =>
+          edge.from.stepCode === 'VALIDATE' &&
+          edge.to.stepCode === 'APPROVE' &&
+          edge.kind === 'NORMAL',
+      ),
+    ).toBe(true);
+    expect(
+      graph.edges.some(
+        edge =>
+          edge.from.stepCode === 'CORRECT' &&
+          edge.to.stepCode === 'VALIDATE' &&
+          edge.kind === 'RECOVERY',
+      ),
+    ).toBe(true);
+    expect(
+      graph.edges.some(
+        edge =>
+          edge.from.stepCode === 'VALIDATE' &&
+          edge.to.stepCode === 'CORRECT' &&
+          edge.kind === 'EXCEPTION',
+      ),
+    ).toBe(true);
+    expect(graph.terminalSteps.map(step => step.stepCode)).toContain('APPROVE');
   });
 });
