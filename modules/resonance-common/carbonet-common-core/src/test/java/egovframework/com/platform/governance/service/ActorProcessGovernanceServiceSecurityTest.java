@@ -69,6 +69,22 @@ class ActorProcessGovernanceServiceSecurityTest {
     }
 
     @Test
+    void orphanedEmissionExecutionFailsClosedInsteadOfUsingAGenericDraft() {
+        when(jdbc.queryForList(argThat(sql -> sql.contains("from emission_project_task")),
+                any(Object[].class))).thenReturn(List.of());
+
+        IllegalStateException failure=assertThrows(IllegalStateException.class,
+                () -> service.verifyDomainCompletion(Map.of(
+                        "processCode","EMISSION_PROJECT",
+                        "stepCode","EMISSION_PROJECT_COLLECT",
+                        "projectId","DELETED_PROJECT",
+                        "tenantId","TENANT_A")));
+
+        assertTrue(failure.getMessage().contains("missing or orphaned"));
+        assertTrue(failure.getMessage().contains("DELETED_PROJECT"));
+    }
+
+    @Test
     void startRequiresCurrentAccountsActorAssignment() {
         when(jdbc.queryForList(anyString(), any(Object[].class))).thenReturn(List.of(Map.of(
                 "step_code", "STEP_1", "actor_code", "COMPANY_MANAGER", "from_state", "READY")));

@@ -440,28 +440,36 @@ function WorkOperationsMap({
   const steps = (dashboard.steps ?? []) as RuntimeRow[];
   const actors = (dashboard.actors ?? []) as RuntimeRow[];
   const executions = (dashboard.processExecutions ?? []) as RuntimeRow[];
+  const runnableExecutions = useMemo(
+    () => executions.filter(row => row.domainOrphaned !== true),
+    [executions],
+  );
   const runtimeProjects = useMemo(
     () => [
       ...new Set(
-        executions.map(row => String(row.projectId ?? '')).filter(Boolean),
+        runnableExecutions
+          .map(row => String(row.projectId ?? ''))
+          .filter(Boolean),
       ),
     ],
-    [executions],
+    [runnableExecutions],
   );
   useEffect(() => {
     if (
       runtimeProjects.length > 0 &&
       !runtimeProjects.includes(runtimeProjectId)
     ) {
-      const running = executions.find(
+      const running = runnableExecutions.find(
         row => String(row.executionStatus) === 'RUNNING',
       );
       setRuntimeProjectId(String(running?.projectId ?? runtimeProjects[0]));
     }
-  }, [executions, runtimeProjectId, runtimeProjects]);
+  }, [runnableExecutions, runtimeProjectId, runtimeProjects]);
   const scopedExecutions = runtimeProjectId
-    ? executions.filter(row => String(row.projectId) === runtimeProjectId)
-    : executions;
+    ? runnableExecutions.filter(
+        row => String(row.projectId) === runtimeProjectId,
+      )
+    : runnableExecutions;
   const executionProcess =
     processes.find(row =>
       scopedExecutions.some(

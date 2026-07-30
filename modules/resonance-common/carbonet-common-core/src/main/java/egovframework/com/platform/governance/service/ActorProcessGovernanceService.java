@@ -29,6 +29,22 @@ public class ActorProcessGovernanceService {
     private final CodexProvisioningService codexProvisioningService;
 
     public List<Map<String, Object>> dashboardDataset(String dataset) {
+        if ("processExecutions".equals(dataset)) {
+            return jdbc.queryForList("""
+                select execution.*,
+                       case
+                         when execution.process_code<>'EMISSION_PROJECT' then false
+                         when project.project_id is null then true
+                         else false
+                       end as domain_orphaned
+                  from framework_process_execution execution
+                  left join emission_project_registry project
+                    on project.project_id=execution.project_id
+                   and project.tenant_id=execution.tenant_id
+                 order by execution.updated_at desc
+                 limit 1000
+                """).stream().map(this::camelCaseColumns).toList();
+        }
         String relation = switch (dataset) {
             case "actors" -> "framework_actor_definition";
             case "workTypes" -> "framework_business_work_type";
@@ -48,7 +64,6 @@ public class ActorProcessGovernanceService {
             case "qualityGateResults" -> "framework_development_job_gate_result";
             case "artifacts" -> "framework_process_artifact";
             case "deliveryQueue" -> "framework_design_delivery_revision";
-            case "processExecutions" -> "framework_process_execution";
             case "processExecutionEvents" -> "framework_process_execution_event";
             case "assignments" -> "framework_account_actor_assignment";
             case "projectCompletionRuns" -> "framework_project_completion_run";
@@ -981,7 +996,11 @@ public class ActorProcessGovernanceService {
              where t.project_id=? and p.tenant_id=? and t.task_code=?
              limit 1
             """,execution.get("projectId"),execution.get("tenantId"),taskCode);
-        if(tasks.isEmpty())return false;
+        if(tasks.isEmpty()){
+            throw new IllegalStateException(String.format(
+                    "Emission project workflow binding is missing or orphaned: tenant=%s, project=%s, step=%s.",
+                    execution.get("tenantId"),execution.get("projectId"),execution.get("stepCode")));
+        }
         Map<String,Object> task=tasks.get(0);
         if("DONE".equals(String.valueOf(task.get("taskStatus"))))return true;
         if("ACTIVITY_DATA".equals(taskCode)){
