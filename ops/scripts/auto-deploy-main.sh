@@ -399,10 +399,10 @@ sync_keycloak_actor_assignments_if_required() {
       | grep -q .; then
     return 0
   fi
-  if git diff --name-only "$deployed_commit" "$target_commit" -- \
-      ops/scripts/resonance-keycloak-deploy.sh | grep -q .; then
-    bash ops/scripts/resonance-keycloak-deploy.sh
-  fi
+  # Keycloak realm provisioning is intentionally not repeated in the hot
+  # application deployment path. It can take several minutes because it
+  # reconciles every identity. The periodic identity sync below applies the
+  # already-provisioned attributes to Carbonet without another realm rebuild.
   RESONANCE_ROOT="$ROOT_DIR" \
     bash ops/scripts/resonance-keycloak-carbonet-identity-sync-install.sh
   bash ops/scripts/resonance-keycloak-carbonet-identity-sync.sh

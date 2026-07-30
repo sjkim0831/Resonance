@@ -62,10 +62,6 @@ const requesterActors = codes(read('requester', 'actors'), 'actorCode');
 for (const actor of ['PLATFORM_OPERATOR', 'SYSTEM_INTEGRATOR']) {
   if (!requesterActors.has(actor)) fail(`requester actor missing: ${actor}`);
 }
-if (codes(read('requester', 'processes'), 'processCode').has('EMISSION_PROJECT')) {
-  fail('requester must not receive EMISSION_PROJECT');
-}
-
 const reviewerActors = codes(read('reviewer', 'actors'), 'actorCode');
 for (const actor of ['COMPANY_MANAGER', 'SITE_DATA_OWNER', 'CALCULATOR', 'LCA_PRACTITIONER']) {
   if (!reviewerActors.has(actor)) fail(`reviewer actor missing: ${actor}`);
@@ -83,6 +79,9 @@ const execution = reviewerExecutions.find(row =>
   row.executionStatus === 'RUNNING' &&
   reviewerActors.has(String(row.currentActorCode)));
 if (!execution) fail('reviewer-owned running EMISSION_PROJECT execution missing');
+if (codes(read('requester', 'processExecutions'), 'executionId').has(String(execution.executionId))) {
+  fail('requester can read the reviewer-owned project execution');
+}
 const step = read('reviewer', 'steps').find(row =>
   row.processCode === execution.processCode &&
   row.stepCode === execution.currentStepCode);
