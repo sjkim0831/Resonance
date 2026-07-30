@@ -115,17 +115,30 @@ RESPONSE_FILE="$run_dir/reviewer-command.json" node -e '
   if (value.success !== true || value.validated !== true || value.committed !== false) process.exit(1);
 '
 
-for denied in requester approver; do
-  token_variable="${denied}_token"
-  denied_status="$(curl --cacert "$CA_CERT" -sS -o "$run_dir/$denied-command.json" -w '%{http_code}' \
-    -H "authorization: Bearer ${!token_variable}" \
-    -H 'content-type: application/json' \
-    -d "$payload" \
-    "$BACKSTAGE_URL/api/resonance-projects/actor-process/commands")"
-  [[ "$denied_status" == "403" ]] || {
-    echo "[actor-process-role-e2e] $denied denial expected HTTP 403, received $denied_status" >&2
-    exit 4
-  }
-done
+requester_status="$(curl --cacert "$CA_CERT" -sS -o "$run_dir/requester-command.json" -w '%{http_code}' \
+  -H "authorization: Bearer $requester_token" \
+  -H 'content-type: application/json' -d "$payload" \
+  "$BACKSTAGE_URL/api/resonance-projects/actor-process/commands")"
+[[ "$requester_status" == "403" ]] || {
+  echo "[actor-process-role-e2e] requester denial expected HTTP 403, received $requester_status" >&2
+  exit 4
+}
 
-echo "[actor-process-role-e2e] command PASS: 1 allowed, 2 denied, 0 workflow mutations"
+approver_status="$(curl --cacert "$CA_CERT" -sS -o "$run_dir/approver-command.json" -w '%{http_code}' \
+  -H "authorization: Bearer $approver_token" \
+  -H 'content-type: application/json' -d "$payload" \
+  "$BACKSTAGE_URL/api/resonance-projects/actor-process/commands")"
+[[ "$approver_status" == "200" ]] || {
+  echo "[actor-process-role-e2e] system-master override expected HTTP 200, received $approver_status" >&2
+  exit 5
+}
+
+anonymous_status="$(curl --cacert "$CA_CERT" -sS -o "$run_dir/anonymous-command.json" -w '%{http_code}' \
+  -H 'content-type: application/json' -d "$payload" \
+  "$BACKSTAGE_URL/api/resonance-projects/actor-process/commands")"
+[[ "$anonymous_status" == "401" ]] || {
+  echo "[actor-process-role-e2e] anonymous denial expected HTTP 401, received $anonymous_status" >&2
+  exit 6
+}
+
+echo "[actor-process-role-e2e] command PASS: 2 allowed, 1 forbidden, 1 unauthenticated, 0 workflow mutations"

@@ -14,9 +14,9 @@ for command in kubectl jq base64 openssl flock xxd; do
 done
 
 exec 9>"$LOCK_FILE"
-flock -n 9 || {
-  echo "[identity-sync] another synchronization is running"
-  exit 0
+flock -w 60 9 || {
+  echo "[identity-sync] synchronization lock timed out after 60 seconds" >&2
+  exit 3
 }
 
 find_leader() {

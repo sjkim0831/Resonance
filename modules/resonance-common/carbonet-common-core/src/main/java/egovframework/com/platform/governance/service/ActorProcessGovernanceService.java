@@ -137,7 +137,7 @@ public class ActorProcessGovernanceService {
               left join comtnentrprsmber member
                 on member.esntl_id=security.scrty_dtrmn_trget_id
              where lower(coalesce(employee.emplyr_id,member.entrprs_mber_id,''))=lower(?)
-               and security.author_code in ('ROLE_SYSTEM_MASTER','ROLE_SYSTEM_ADMIN')
+               and security.author_code='ROLE_SYSTEM_MASTER'
             """,Integer.class,accountId);
         return count!=null&&count>0;
     }
