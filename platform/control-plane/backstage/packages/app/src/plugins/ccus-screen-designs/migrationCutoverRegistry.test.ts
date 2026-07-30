@@ -18,14 +18,28 @@ describe('migrationCutoverRegistry', () => {
       ACTOR_PROCESS_TAB_COUNT,
     );
     expect(MIGRATION_CUTOVER_SUMMARY.systemScreens).toBe(
-      expectedSystemScreens,
+      expectedSystemScreens + 16,
     );
     expect(MIGRATION_CUTOVER_SUMMARY.total).toBe(
-      ACTOR_PROCESS_TAB_COUNT + expectedSystemScreens,
+      ACTOR_PROCESS_TAB_COUNT + expectedSystemScreens + 16,
     );
     expect(
       new Set(MIGRATION_CUTOVER_LEDGER.map(entry => entry.assetId)).size,
     ).toBe(MIGRATION_CUTOVER_LEDGER.length);
+  });
+
+  it('tracks every residual A111 control-plane menu as a reversible cutover', () => {
+    const residuals = MIGRATION_CUTOVER_LEDGER.filter(entry =>
+      entry.assetId.startsWith('legacy-system-menu:'),
+    );
+
+    expect(residuals).toHaveLength(16);
+    expect(residuals.every(entry => entry.implementation === 'NATIVE')).toBe(
+      true,
+    );
+    expect(
+      residuals.every(entry => entry.migrationStatus === 'NATIVE_READY'),
+    ).toBe(true);
   });
 
   it('keeps project execution screens outside control-plane cutover', () => {
