@@ -1312,6 +1312,7 @@ export function ActorProcessControlPage(props: {
                 onOpenTab={openControlTab}
               />
             )}
+            {selectedTab.id !== 'work-dashboard' && (
             <Grid container spacing={2} style={{ marginTop: 8 }}>
               <Grid item xs={12} sm={6} md={3}>
                 <Box className={classes.metric}>
@@ -1346,6 +1347,7 @@ export function ActorProcessControlPage(props: {
                 </Box>
               </Grid>
             </Grid>
+            )}
             {activeCommand && (
               <Box
                 mt={3}
@@ -1430,6 +1432,8 @@ export function ActorProcessControlPage(props: {
                 )}
               </Box>
             )}
+            {selectedTab.id !== 'work-dashboard' && (
+              <>
             <Box
               mt={3}
               display="flex"
@@ -1561,6 +1565,8 @@ export function ActorProcessControlPage(props: {
                   {JSON.stringify(selectedRow, null, 2)}
                 </Box>
               </Box>
+            )}
+              </>
             )}
             <Box mt={3} display="flex" gridGap={8} flexWrap="wrap">
               <Button
