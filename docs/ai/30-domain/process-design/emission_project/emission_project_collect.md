@@ -62,6 +62,22 @@
 
 ## State transition and concurrency rules
 
+### Runtime completion source of truth
+
+- The `EMISSION_PROJECT_COLLECT` step is domain-backed. A generic
+  `framework_process_work_draft` never proves completion and cannot advance it.
+- The authoritative completion chain is:
+  `emission_activity_data` saved → latest `emission_activity_quality_run.submit_ready`
+  is true → `emission_activity_submission` submitted → every active
+  `emission_activity_request` accepted by the company manager.
+- `emission_project_task.ACTIVITY_DATA = DONE` is the consolidated completion
+  signal. The same transaction advances `framework_process_execution`; retries
+  remain idempotent.
+- Control-plane validation reads these domain records and reports saved row,
+  quality, submitted snapshot, and open-request counts. It is rollback-only.
+- Control-plane advancement is recovery-only and is blocked while the domain
+  task is incomplete, even if a generic draft happens to exist.
+
 - The server validates tenantId, projectId, actorCode, commandCode, current state, and version before every transition.
 - Repeated commands use an idempotency key and return the existing result without duplicating data or workflow events.
 - Conflicting edits return a version conflict, preserve both audit contexts, and require the actor to reload before retrying.

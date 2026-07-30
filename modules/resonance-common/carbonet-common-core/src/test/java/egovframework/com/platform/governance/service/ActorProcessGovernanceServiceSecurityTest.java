@@ -10,6 +10,8 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.argThat;
@@ -22,6 +24,49 @@ class ActorProcessGovernanceServiceSecurityTest {
     private final JdbcTemplate jdbc = mock(JdbcTemplate.class);
     private final ActorProcessGovernanceService service = new ActorProcessGovernanceService(
             jdbc, mock(ScreenDevelopmentNoteService.class), mock(CodexProvisioningService.class));
+
+    @Test
+    void nonDomainProcessKeepsUsingTheMetadataDraftContract() {
+        assertFalse(service.verifyDomainCompletion(Map.of(
+                "processCode","CONTENT_PUBLISH",
+                "stepCode","CONTENT_DRAFT")));
+    }
+
+    @Test
+    void completedEmissionDomainTaskDoesNotRequireADuplicateGenericDraft() {
+        when(jdbc.queryForList(argThat(sql -> sql.contains("from emission_project_task")),
+                any(Object[].class))).thenReturn(List.of(Map.of(
+                        "taskStatus","DONE","blockedReason","","targetUrl","/emission/activity-data")));
+
+        assertTrue(service.verifyDomainCompletion(Map.of(
+                "processCode","EMISSION_PROJECT",
+                "stepCode","EMISSION_PROJECT_COLLECT",
+                "projectId","PROJECT_A",
+                "tenantId","TENANT_A")));
+    }
+
+    @Test
+    void incompleteActivityCollectionReportsTheRealDomainReadiness() {
+        when(jdbc.queryForList(argThat(sql -> sql.contains("from emission_project_task")),
+                any(Object[].class))).thenReturn(List.of(Map.of(
+                        "taskStatus","IN_PROGRESS","blockedReason","","targetUrl","/emission/activity-data")));
+        when(jdbc.queryForMap(argThat(sql -> sql.contains("emission_activity_quality_run")),
+                any(Object[].class))).thenReturn(Map.of(
+                        "activityCount",4L,"qualityReady",true,
+                        "submittedCount",1L,"openRequestCount",1L));
+
+        IllegalStateException failure=assertThrows(IllegalStateException.class,
+                () -> service.verifyDomainCompletion(Map.of(
+                        "processCode","EMISSION_PROJECT",
+                        "stepCode","EMISSION_PROJECT_COLLECT",
+                        "projectId","PROJECT_A",
+                        "tenantId","TENANT_A")));
+
+        assertTrue(failure.getMessage().contains("saved=4"));
+        assertTrue(failure.getMessage().contains("qualityReady=true"));
+        assertTrue(failure.getMessage().contains("openRequests=1"));
+        assertTrue(failure.getMessage().contains("/emission/activity-data"));
+    }
 
     @Test
     void startRequiresCurrentAccountsActorAssignment() {

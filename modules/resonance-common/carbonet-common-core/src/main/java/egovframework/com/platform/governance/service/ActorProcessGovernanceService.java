@@ -931,6 +931,7 @@ public class ActorProcessGovernanceService {
             throw new IllegalStateException(
                     "현재 단계 액터에 활성 계정이 배정되지 않았습니다: "+execution.get("actorCode"));
         }
+        boolean domainCompletionVerified=verifyDomainCompletion(execution);
         Map<String,Object> request=new LinkedHashMap<>();
         request.put("tenantId",execution.get("tenantId"));
         request.put("projectId",execution.get("projectId"));
@@ -946,10 +947,73 @@ public class ActorProcessGovernanceService {
         if(options.containsKey("requestedToState")){
             request.put("requestedToState",String.valueOf(options.get("requestedToState")));
         }
-        request.put("requireDraft",String.valueOf(options.getOrDefault("requireDraft","true")));
+        request.put("requireDraft",String.valueOf(
+                domainCompletionVerified ? false : options.getOrDefault("requireDraft","true")));
         return Map.of(
                 "request",request,
                 "accountId",String.valueOf(accounts.get(0).get("accountId")));
+    }
+
+    /**
+     * Metadata-driven screens use framework_process_work_draft as their source
+     * of truth. A domain workflow must instead be completed through its own
+     * transactional API. This adapter prevents the control plane from advancing
+     * a real emission project merely because a generic draft exists.
+     */
+    boolean verifyDomainCompletion(Map<String,Object> execution) {
+        if(!"EMISSION_PROJECT".equals(String.valueOf(execution.get("processCode"))))return false;
+        String taskCode=switch(String.valueOf(execution.get("stepCode"))){
+            case "EMISSION_PROJECT_SETUP" -> "BASIC_INFO";
+            case "EMISSION_PROJECT_COLLECT","EMISSION_PROJECT_CORRECT" -> "ACTIVITY_DATA";
+            case "EMISSION_PROJECT_CALCULATE" -> "CALCULATION";
+            case "EMISSION_PROJECT_VALIDATE" -> "VERIFICATION";
+            case "EMISSION_PROJECT_APPROVE" -> "APPROVAL";
+            case "EMISSION_PROJECT_REPORT" -> "REPORT";
+            case "EMISSION_PROJECT_REGULATORY_SUBMISSION" -> "REGULATORY_SUBMISSION";
+            default -> "";
+        };
+        if(taskCode.isBlank())return false;
+        List<Map<String,Object>> tasks=jdbc.queryForList("""
+            select t.task_status as "taskStatus",coalesce(t.blocked_reason,'') as "blockedReason",
+                   t.target_url as "targetUrl"
+              from emission_project_task t
+              join emission_project_registry p on p.project_id=t.project_id
+             where t.project_id=? and p.tenant_id=? and t.task_code=?
+             limit 1
+            """,execution.get("projectId"),execution.get("tenantId"),taskCode);
+        if(tasks.isEmpty())return false;
+        Map<String,Object> task=tasks.get(0);
+        if("DONE".equals(String.valueOf(task.get("taskStatus"))))return true;
+        if("ACTIVITY_DATA".equals(taskCode)){
+            Map<String,Object> readiness=jdbc.queryForMap("""
+                select
+                  (select count(*) from emission_activity_data
+                    where project_id=? and tenant_id=?) as "activityCount",
+                  coalesce((select submit_ready from emission_activity_quality_run
+                    where project_id=? and tenant_id=?
+                    order by executed_at desc,run_id desc limit 1),false) as "qualityReady",
+                  (select count(*) from emission_activity_submission
+                    where project_id=? and tenant_id=? and submission_state='SUBMITTED') as "submittedCount",
+                  (select count(*) from emission_activity_request
+                    where project_id=? and tenant_id=?
+                      and request_status in ('REQUESTED','IN_PROGRESS','SUBMITTED','CORRECTION_REQUIRED')) as "openRequestCount"
+                """,
+                execution.get("projectId"),execution.get("tenantId"),
+                execution.get("projectId"),execution.get("tenantId"),
+                execution.get("projectId"),execution.get("tenantId"),
+                execution.get("projectId"),execution.get("tenantId"));
+            throw new IllegalStateException(String.format(
+                    "Activity data is not complete: saved=%s, qualityReady=%s, submitted=%s, openRequests=%s. "
+                            +"Complete collection, quality check, submission, and manager acceptance in %s.",
+                    readiness.get("activityCount"),readiness.get("qualityReady"),
+                    readiness.get("submittedCount"),readiness.get("openRequestCount"),
+                    task.get("targetUrl")));
+        }
+        throw new IllegalStateException(String.format(
+                "Domain task %s is %s. Complete it in %s%s.",
+                taskCode,task.get("taskStatus"),task.get("targetUrl"),
+                String.valueOf(task.get("blockedReason")).isBlank()
+                        ? "" : " ("+task.get("blockedReason")+")"));
     }
 
     /**
