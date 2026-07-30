@@ -218,6 +218,12 @@ public class ActorProcessControlPlaneBridgeController {
                         result = governance.verifyBackendProcessContracts(
                                 String.valueOf(body.getOrDefault("sourceCommit", "")), actor);
                 case "execution.start" -> result = governance.startProcessExecution(body, actor);
+                case "execution.validate" -> result =
+                        governance.validateProcessCommandFromControlPlane(
+                                java.util.UUID.fromString(required(body, "executionId")), body, actor);
+                case "execution.advance" -> result =
+                        governance.advanceProcessCommandFromControlPlane(
+                                java.util.UUID.fromString(required(body, "executionId")), body, actor);
                 case "standard.install" -> result = governance.installStandardPack();
                 default -> {
                     return ResponseEntity.unprocessableEntity().body(Map.of(

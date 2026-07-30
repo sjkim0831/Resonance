@@ -155,7 +155,7 @@ export const ACTOR_PROCESS_WORKSPACES: ActorProcessWorkspace[] = [
       ),
       tab(
         'incidents',
-        '예외·복구 검증',
+        '장애·자가복구',
         '장애 감지, 격리, 자동 복구와 재발 방지 증적을 검증합니다.',
         'INCIDENT_RECOVERY',
       ),

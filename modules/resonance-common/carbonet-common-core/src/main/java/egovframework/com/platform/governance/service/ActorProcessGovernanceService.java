@@ -860,6 +860,98 @@ public class ActorProcessGovernanceService {
     }
 
     /**
+     * Runs the same command path used by customer screens, but resolves the account
+     * assigned to the current step instead of trusting a control-plane supplied
+     * account id. Validation is always rolled back; advancement is committed.
+     */
+    @Transactional
+    public Map<String,Object> validateProcessCommandFromControlPlane(
+            UUID executionId, Map<String,Object> options, String operator) {
+        Map<String,Object> context=controlPlaneExecutionCommand(executionId,options);
+        Map<String,Object> result=executeProcessCommand(
+                executionId,
+                (Map<String,Object>)context.get("request"),
+                String.valueOf(context.get("accountId")));
+        TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
+        Map<String,Object> response=new LinkedHashMap<>(result);
+        response.put("success",true);
+        response.put("validated",true);
+        response.put("committed",false);
+        response.put("operator",operator);
+        response.put("accountId",context.get("accountId"));
+        response.put("executionId",executionId);
+        return response;
+    }
+
+    @Transactional
+    public Map<String,Object> advanceProcessCommandFromControlPlane(
+            UUID executionId, Map<String,Object> options, String operator) {
+        Map<String,Object> context=controlPlaneExecutionCommand(executionId,options);
+        Map<String,Object> result=executeProcessCommand(
+                executionId,
+                (Map<String,Object>)context.get("request"),
+                String.valueOf(context.get("accountId")));
+        Map<String,Object> response=new LinkedHashMap<>(result);
+        response.put("committed",true);
+        response.put("operator",operator);
+        response.put("accountId",context.get("accountId"));
+        response.put("executionId",executionId);
+        return response;
+    }
+
+    private Map<String,Object> controlPlaneExecutionCommand(
+            UUID executionId, Map<String,Object> options) {
+        List<Map<String,Object>> rows=jdbc.queryForList("""
+            select e.tenant_id as "tenantId",e.project_id as "projectId",
+                   e.process_code as "processCode",e.current_step_code as "stepCode",
+                   e.execution_status as "executionStatus",
+                   s.actor_code as "actorCode",s.command_code as "commandCode"
+              from framework_process_execution e
+              join framework_process_step s
+                on s.process_code=e.process_code and s.step_code=e.current_step_code
+             where e.execution_id=?
+            """,executionId);
+        if(rows.isEmpty())throw new IllegalArgumentException("프로세스 실행 건이 없습니다.");
+        Map<String,Object> execution=rows.get(0);
+        if(!"RUNNING".equals(String.valueOf(execution.get("executionStatus")))){
+            throw new IllegalStateException("실행 중인 프로세스가 아닙니다.");
+        }
+        List<Map<String,Object>> accounts=jdbc.queryForList("""
+            select account_id as "accountId"
+              from framework_account_actor_assignment
+             where tenant_id=? and project_id=? and actor_code=?
+               and assignment_status='ACTIVE'
+               and (valid_from is null or valid_from<=current_date)
+               and (valid_until is null or valid_until>=current_date)
+             order by account_id
+             limit 1
+            """,execution.get("tenantId"),execution.get("projectId"),execution.get("actorCode"));
+        if(accounts.isEmpty()){
+            throw new IllegalStateException(
+                    "현재 단계 액터에 활성 계정이 배정되지 않았습니다: "+execution.get("actorCode"));
+        }
+        Map<String,Object> request=new LinkedHashMap<>();
+        request.put("tenantId",execution.get("tenantId"));
+        request.put("projectId",execution.get("projectId"));
+        request.put("processCode",execution.get("processCode"));
+        request.put("stepCode",execution.get("stepCode"));
+        request.put("actorCode",execution.get("actorCode"));
+        request.put("commandCode",execution.get("commandCode"));
+        request.put("idempotencyKey",String.valueOf(
+                options.getOrDefault("idempotencyKey","backstage-"+UUID.randomUUID())));
+        request.put("requestJson",String.valueOf(
+                options.getOrDefault("requestJson","{\"source\":\"BACKSTAGE_CONTROL_PLANE\"}")));
+        request.put("resultJson",String.valueOf(options.getOrDefault("resultJson","{}")));
+        if(options.containsKey("requestedToState")){
+            request.put("requestedToState",String.valueOf(options.get("requestedToState")));
+        }
+        request.put("requireDraft",String.valueOf(options.getOrDefault("requireDraft","true")));
+        return Map.of(
+                "request",request,
+                "accountId",String.valueOf(accounts.get(0).get("accountId")));
+    }
+
+    /**
      * Executes the real process runtime against an isolated transaction and always rolls it back.
      * This is intentionally database-driven: the fixture is selected from active actor assignments
      * and current process contracts, so new generated processes are covered without Java changes.

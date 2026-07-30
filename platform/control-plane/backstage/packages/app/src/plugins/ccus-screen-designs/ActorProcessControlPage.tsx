@@ -85,7 +85,8 @@ const TAB_COMMANDS: Record<string, TabCommand> = {
   actors: {
     command: 'actor.save',
     label: '액터 등록·수정',
-    description: '역할, 책임, 목적과 보유 역량을 동일한 액터 코드로 등록하거나 갱신합니다.',
+    description:
+      '역할, 책임, 목적과 보유 역량을 동일한 액터 코드로 등록하거나 갱신합니다.',
     fields: [
       { name: 'actorCode', label: '액터 코드', required: true },
       { name: 'actorName', label: '액터명', required: true },
@@ -98,7 +99,8 @@ const TAB_COMMANDS: Record<string, TabCommand> = {
   processes: {
     command: 'process.save',
     label: '프로세스 등록·수정',
-    description: '업무 종류와 시작·완료 조건을 포함한 실행 가능한 프로세스를 저장합니다.',
+    description:
+      '업무 종류와 시작·완료 조건을 포함한 실행 가능한 프로세스를 저장합니다.',
     fields: [
       { name: 'processCode', label: '프로세스 코드', required: true },
       { name: 'processName', label: '프로세스명', required: true },
@@ -112,7 +114,8 @@ const TAB_COMMANDS: Record<string, TabCommand> = {
   steps: {
     command: 'step.save',
     label: '단계 등록·수정',
-    description: '액터, 명령, 상태 전이, 완료 조건을 연결하고 개발 작업을 자동 생성합니다.',
+    description:
+      '액터, 명령, 상태 전이, 완료 조건을 연결하고 개발 작업을 자동 생성합니다.',
     fields: [
       { name: 'processCode', label: '프로세스 코드', required: true },
       { name: 'stepOrder', label: '단계 순서', required: true, type: 'number' },
@@ -122,7 +125,12 @@ const TAB_COMMANDS: Record<string, TabCommand> = {
       { name: 'fromState', label: '시작 상태', required: true },
       { name: 'commandCode', label: '실행 명령', required: true },
       { name: 'toState', label: '완료 상태', required: true },
-      { name: 'completionRule', label: '완료 조건', required: true, type: 'textarea' },
+      {
+        name: 'completionRule',
+        label: '완료 조건',
+        required: true,
+        type: 'textarea',
+      },
     ],
   },
   'screen-flow': {
@@ -144,7 +152,12 @@ const TAB_COMMANDS: Record<string, TabCommand> = {
         type: 'textarea',
       },
       { name: 'bindingOptions', label: '연결 옵션 JSON', defaultValue: '{}' },
-      { name: 'sortOrder', label: '표시 순서', defaultValue: '1', type: 'number' },
+      {
+        name: 'sortOrder',
+        label: '표시 순서',
+        defaultValue: '1',
+        type: 'number',
+      },
     ],
   },
   'data-contracts': {
@@ -153,29 +166,117 @@ const TAB_COMMANDS: Record<string, TabCommand> = {
     description:
       '선택 화면의 업무 목적, 진입·종료 조건, 필드, 명령, 상태, API, DB, 증적과 품질 검증 계약을 한 트랜잭션으로 저장합니다.',
     fields: [
-      { name: 'contractId', label: '화면 계약 ID', required: true, type: 'number' },
-      { name: 'businessPurpose', label: '업무 목적', required: true, type: 'textarea' },
-      { name: 'entryCondition', label: '진입 조건', required: true, type: 'textarea' },
-      { name: 'exitCondition', label: '종료 조건', required: true, type: 'textarea' },
-      { name: 'kpiContract', label: 'KPI 계약 JSON', defaultValue: '[]', type: 'textarea' },
-      { name: 'sectionContract', label: '섹션 계약 JSON', defaultValue: '[]', type: 'textarea' },
-      { name: 'fieldContract', label: '필드 계약 JSON', defaultValue: '[]', type: 'textarea' },
-      { name: 'commandContract', label: '명령 계약 JSON', defaultValue: '[]', type: 'textarea' },
-      { name: 'stateContract', label: '상태 계약 JSON', defaultValue: '[]', type: 'textarea' },
-      { name: 'apiContract', label: 'API 계약 JSON', defaultValue: '[]', type: 'textarea' },
-      { name: 'dataContract', label: 'DB·데이터 계약 JSON', defaultValue: '[]', type: 'textarea' },
-      { name: 'evidenceContract', label: '증적 계약 JSON', defaultValue: '[]', type: 'textarea' },
-      { name: 'responsiveContract', label: '반응형 계약', defaultValue: '360px, 768px, 1280px 검증' },
-      { name: 'accessibilityContract', label: '접근성 계약', defaultValue: 'KRDS 및 WCAG 2.1 AA' },
-      { name: 'securityContract', label: '보안 계약', defaultValue: '테넌트·프로젝트·액터 권한 서버 검증' },
+      {
+        name: 'contractId',
+        label: '화면 계약 ID',
+        required: true,
+        type: 'number',
+      },
+      {
+        name: 'businessPurpose',
+        label: '업무 목적',
+        required: true,
+        type: 'textarea',
+      },
+      {
+        name: 'entryCondition',
+        label: '진입 조건',
+        required: true,
+        type: 'textarea',
+      },
+      {
+        name: 'exitCondition',
+        label: '종료 조건',
+        required: true,
+        type: 'textarea',
+      },
+      {
+        name: 'kpiContract',
+        label: 'KPI 계약 JSON',
+        defaultValue: '[]',
+        type: 'textarea',
+      },
+      {
+        name: 'sectionContract',
+        label: '섹션 계약 JSON',
+        defaultValue: '[]',
+        type: 'textarea',
+      },
+      {
+        name: 'fieldContract',
+        label: '필드 계약 JSON',
+        defaultValue: '[]',
+        type: 'textarea',
+      },
+      {
+        name: 'commandContract',
+        label: '명령 계약 JSON',
+        defaultValue: '[]',
+        type: 'textarea',
+      },
+      {
+        name: 'stateContract',
+        label: '상태 계약 JSON',
+        defaultValue: '[]',
+        type: 'textarea',
+      },
+      {
+        name: 'apiContract',
+        label: 'API 계약 JSON',
+        defaultValue: '[]',
+        type: 'textarea',
+      },
+      {
+        name: 'dataContract',
+        label: 'DB·데이터 계약 JSON',
+        defaultValue: '[]',
+        type: 'textarea',
+      },
+      {
+        name: 'evidenceContract',
+        label: '증적 계약 JSON',
+        defaultValue: '[]',
+        type: 'textarea',
+      },
+      {
+        name: 'responsiveContract',
+        label: '반응형 계약',
+        defaultValue: '360px, 768px, 1280px 검증',
+      },
+      {
+        name: 'accessibilityContract',
+        label: '접근성 계약',
+        defaultValue: 'KRDS 및 WCAG 2.1 AA',
+      },
+      {
+        name: 'securityContract',
+        label: '보안 계약',
+        defaultValue: '테넌트·프로젝트·액터 권한 서버 검증',
+      },
       { name: 'apiVerified', label: 'API 검증', defaultValue: 'false' },
       { name: 'databaseVerified', label: 'DB 검증', defaultValue: 'false' },
       { name: 'authorityVerified', label: '권한 검증', defaultValue: 'false' },
-      { name: 'responsiveVerified', label: '반응형 검증', defaultValue: 'false' },
-      { name: 'accessibilityVerified', label: '접근성 검증', defaultValue: 'false' },
-      { name: 'exceptionStatesVerified', label: '예외 상태 검증', defaultValue: 'false' },
+      {
+        name: 'responsiveVerified',
+        label: '반응형 검증',
+        defaultValue: 'false',
+      },
+      {
+        name: 'accessibilityVerified',
+        label: '접근성 검증',
+        defaultValue: 'false',
+      },
+      {
+        name: 'exceptionStatesVerified',
+        label: '예외 상태 검증',
+        defaultValue: 'false',
+      },
       { name: 'auditEvidenceRef', label: '감사 증적 경로' },
-      { name: 'contractStatus', label: '계약 상태', defaultValue: 'REVIEW_REQUIRED' },
+      {
+        name: 'contractStatus',
+        label: '계약 상태',
+        defaultValue: 'REVIEW_REQUIRED',
+      },
     ],
   },
   assignments: {
@@ -200,21 +301,38 @@ const TAB_COMMANDS: Record<string, TabCommand> = {
       { name: 'processCode', label: '프로세스 코드', required: true },
       { name: 'caseName', label: '시나리오명', required: true },
       { name: 'caseType', label: '유형', defaultValue: 'HAPPY_PATH' },
-      { name: 'preconditions', label: '사전 조건', required: true, type: 'textarea' },
-      { name: 'stepsJson', label: '단계 JSON', defaultValue: '[]', type: 'textarea' },
-      { name: 'assertionsJson', label: '기대값 JSON', defaultValue: '[]', type: 'textarea' },
+      {
+        name: 'preconditions',
+        label: '사전 조건',
+        required: true,
+        type: 'textarea',
+      },
+      {
+        name: 'stepsJson',
+        label: '단계 JSON',
+        defaultValue: '[]',
+        type: 'textarea',
+      },
+      {
+        name: 'assertionsJson',
+        label: '기대값 JSON',
+        defaultValue: '[]',
+        type: 'textarea',
+      },
     ],
   },
   'design-release': {
     command: 'design.validate',
     label: '프로세스 설계 검증',
-    description: '액터·상태·데이터·라우트·테스트 계약의 누락과 충돌을 검증합니다.',
+    description:
+      '액터·상태·데이터·라우트·테스트 계약의 누락과 충돌을 검증합니다.',
     fields: [{ name: 'processCode', label: '프로세스 코드', required: true }],
   },
   'development-plan': {
     command: 'development.plan',
     label: '개발 계획 생성',
-    description: '선택 단계에 필요한 설계·DB·API·화면·테스트 작업을 자동 생성합니다.',
+    description:
+      '선택 단계에 필요한 설계·DB·API·화면·테스트 작업을 자동 생성합니다.',
     fields: [
       { name: 'processCode', label: '프로세스 코드', required: true },
       { name: 'stepCode', label: '단계 코드', required: true },
@@ -223,7 +341,8 @@ const TAB_COMMANDS: Record<string, TabCommand> = {
   frontend: {
     command: 'development.preflight',
     label: '화면 개발 사전검사',
-    description: '설계 메모, 공통 디자인, 액터 계약과 안전 테스트 준비 상태를 검사합니다.',
+    description:
+      '설계 메모, 공통 디자인, 액터 계약과 안전 테스트 준비 상태를 검사합니다.',
     fields: [
       { name: 'processCode', label: '프로세스 코드', required: true },
       { name: 'stepCode', label: '단계 코드', required: true },
@@ -232,13 +351,15 @@ const TAB_COMMANDS: Record<string, TabCommand> = {
   backend: {
     command: 'backend.verify',
     label: '백엔드 계약 검증',
-    description: '프로세스별 API·DB·권한·롤백 계약을 검증하고 증적을 기록합니다.',
+    description:
+      '프로세스별 API·DB·권한·롤백 계약을 검증하고 증적을 기록합니다.',
     fields: [{ name: 'sourceCommit', label: '소스 커밋' }],
   },
   execution: {
     command: 'execution.start',
     label: '프로세스 실행 시작',
-    description: '프로젝트와 액터 범위를 지정하여 실제 업무 실행 인스턴스를 시작합니다.',
+    description:
+      '프로젝트와 액터 범위를 지정하여 실제 업무 실행 인스턴스를 시작합니다.',
     fields: [
       { name: 'processCode', label: '프로세스 코드', required: true },
       { name: 'projectId', label: '프로젝트 ID', required: true },
@@ -278,6 +399,7 @@ function WorkOperationsMap({
   projectId,
   onSelect,
   onOpenTab,
+  executeRuntimeCommand,
   loadDesignDocuments,
   saveDesignDocument,
 }: {
@@ -285,6 +407,10 @@ function WorkOperationsMap({
   projectId: string;
   onSelect: (row: RuntimeRow) => void;
   onOpenTab: (tabId: string) => void;
+  executeRuntimeCommand: (
+    command: 'execution.validate' | 'execution.advance',
+    executionId: string,
+  ) => Promise<Record<string, unknown>>;
   loadDesignDocuments: (
     processCode: string,
     stepCode: string,
@@ -305,15 +431,40 @@ function WorkOperationsMap({
   const [selectedProcessCode, setSelectedProcessCode] = useState('');
   const [selectedActorCode, setSelectedActorCode] = useState('');
   const [selectedWorkType, setSelectedWorkType] = useState('');
+  const [runtimeProjectId, setRuntimeProjectId] = useState('');
+  const [runtimeCommandPending, setRuntimeCommandPending] = useState(false);
+  const [runtimeCommandResult, setRuntimeCommandResult] = useState('');
   const [designWorkbenchOpen, setDesignWorkbenchOpen] = useState(false);
   const processes = (dashboard.processes ?? []) as RuntimeRow[];
   const workTypes = (dashboard.workTypes ?? []) as RuntimeRow[];
   const steps = (dashboard.steps ?? []) as RuntimeRow[];
   const actors = (dashboard.actors ?? []) as RuntimeRow[];
   const executions = (dashboard.processExecutions ?? []) as RuntimeRow[];
+  const runtimeProjects = useMemo(
+    () => [
+      ...new Set(
+        executions.map(row => String(row.projectId ?? '')).filter(Boolean),
+      ),
+    ],
+    [executions],
+  );
+  useEffect(() => {
+    if (
+      runtimeProjects.length > 0 &&
+      !runtimeProjects.includes(runtimeProjectId)
+    ) {
+      const running = executions.find(
+        row => String(row.executionStatus) === 'RUNNING',
+      );
+      setRuntimeProjectId(String(running?.projectId ?? runtimeProjects[0]));
+    }
+  }, [executions, runtimeProjectId, runtimeProjects]);
+  const scopedExecutions = runtimeProjectId
+    ? executions.filter(row => String(row.projectId) === runtimeProjectId)
+    : executions;
   const executionProcess =
     processes.find(row =>
-      executions.some(
+      scopedExecutions.some(
         execution => execution.processCode === row.processCode,
       ),
     ) ?? processes[0];
@@ -344,17 +495,12 @@ function WorkOperationsMap({
         String(
           filteredProcesses.find(
             row =>
-              String(row.processCode) ===
-              String(executionProcess?.processCode),
+              String(row.processCode) === String(executionProcess?.processCode),
           )?.processCode ?? filteredProcesses[0].processCode,
         ),
       );
     }
-  }, [
-    executionProcess?.processCode,
-    filteredProcesses,
-    selectedProcessCode,
-  ]);
+  }, [executionProcess?.processCode, filteredProcesses, selectedProcessCode]);
   const processSteps = steps
     .filter(row => !processCode || String(row.processCode) === processCode)
     .sort(
@@ -363,9 +509,15 @@ function WorkOperationsMap({
         Number(b.stepOrder ?? b.sortOrder ?? 0),
     )
     .slice(0, 12);
-  const activeExecution = executions.find(
-    row => !processCode || String(row.processCode) === processCode,
-  );
+  const activeExecution =
+    scopedExecutions.find(
+      row =>
+        (!processCode || String(row.processCode) === processCode) &&
+        String(row.executionStatus) === 'RUNNING',
+    ) ??
+    scopedExecutions.find(
+      row => !processCode || String(row.processCode) === processCode,
+    );
   const activeStepCode = String(
     activeExecution?.currentStepCode ?? activeExecution?.stepCode ?? '',
   );
@@ -419,6 +571,33 @@ function WorkOperationsMap({
     row => String(row.stepCode) === String(activeStep?.stepCode),
   );
   const nextStep = processSteps[activeIndex + 1];
+  const runRuntimeCommand = async (
+    command: 'execution.validate' | 'execution.advance',
+  ) => {
+    const executionId = String(activeExecution?.executionId ?? '');
+    if (!executionId || runtimeCommandPending) return;
+    setRuntimeCommandPending(true);
+    setRuntimeCommandResult('');
+    try {
+      const result = await executeRuntimeCommand(command, executionId);
+      setRuntimeCommandResult(
+        command === 'execution.validate'
+          ? '완료 조건·필수 데이터·액터 권한을 검증했습니다. 실제 데이터는 변경하지 않았습니다.'
+          : String(result.executionStatus) === 'COMPLETED'
+          ? '프로세스의 모든 업무가 완료되었습니다.'
+          : `다음 업무로 전환했습니다: ${displayValue(result.nextStepCode)}`,
+      );
+      if (command === 'execution.advance') {
+        setSelectedStepCode(String(result.nextStepCode ?? ''));
+      }
+    } catch (error) {
+      setRuntimeCommandResult(
+        error instanceof Error ? error.message : String(error),
+      );
+    } finally {
+      setRuntimeCommandPending(false);
+    }
+  };
   const detailRows: Record<
     'design' | 'data' | 'screen' | 'test' | 'task',
     Array<Array<unknown>>
@@ -481,8 +660,7 @@ function WorkOperationsMap({
             </Typography>
             <Typography variant="h6">통합 설계 문서·액티브 UI 관리</Typography>
             <Typography variant="body2">
-              선택한 프로세스·단계·화면의 설계 문서 18종을 버전으로
-              관리합니다.
+              선택한 프로세스·단계·화면의 설계 문서 18종을 버전으로 관리합니다.
             </Typography>
           </Box>
           <Button
@@ -502,6 +680,34 @@ function WorkOperationsMap({
             <Box mt={2}>
               <Chip size="small" color="primary" label={projectId} />
             </Box>
+            <FormControl
+              variant="outlined"
+              size="small"
+              fullWidth
+              style={{ marginTop: 16 }}
+            >
+              <InputLabel>실행 업무 프로젝트</InputLabel>
+              <Select
+                value={runtimeProjectId}
+                label="실행 업무 프로젝트"
+                onChange={event => {
+                  setRuntimeProjectId(String(event.target.value));
+                  setSelectedProcessCode('');
+                  setSelectedStepCode('');
+                  setRuntimeCommandResult('');
+                }}
+              >
+                {runtimeProjects.map(value => (
+                  <MenuItem key={value} value={value}>
+                    {value}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            <Typography variant="caption" color="textSecondary">
+              상단 프로젝트는 설계 범위이며, 실행 업무 프로젝트는 고객
+              업무·상태·권한 범위입니다.
+            </Typography>
             <FormControl
               variant="outlined"
               size="small"
@@ -583,7 +789,8 @@ function WorkOperationsMap({
                     key={String(row.processCode)}
                     value={String(row.processCode)}
                   >
-                    {displayValue(row.processName)} ({displayValue(row.processCode)})
+                    {displayValue(row.processName)} (
+                    {displayValue(row.processCode)})
                   </MenuItem>
                 ))}
               </Select>
@@ -607,7 +814,8 @@ function WorkOperationsMap({
                     key={String(row.actorCode)}
                     value={String(row.actorCode)}
                   >
-                    {displayValue(row.actorName)} ({displayValue(row.actorCode)})
+                    {displayValue(row.actorName)} ({displayValue(row.actorCode)}
+                    )
                   </MenuItem>
                 ))}
               </Select>
@@ -616,9 +824,8 @@ function WorkOperationsMap({
               선택 액터: {displayValue(selectedActor?.actorName)}
             </Typography>
             <Typography variant="caption" display="block" color="textSecondary">
-              현재 단계 담당: {displayValue(
-                stepActor?.actorName ?? activeStep?.actorCode,
-              )}
+              현재 단계 담당:{' '}
+              {displayValue(stepActor?.actorName ?? activeStep?.actorCode)}
             </Typography>
             <Typography variant="caption" color="textSecondary">
               전체 프로세스 {processes.length}개 · 액터 {actors.length}개
@@ -691,8 +898,7 @@ function WorkOperationsMap({
             </Typography>
             <Typography variant="body2" color="textSecondary">
               {displayValue(
-                activeStep?.completionRule ??
-                  activeStep?.completionCondition,
+                activeStep?.completionRule ?? activeStep?.completionCondition,
               )}
             </Typography>
             <Box mt={2}>
@@ -726,24 +932,38 @@ function WorkOperationsMap({
               )}
               <Button
                 variant="outlined"
-                onClick={() => setDetailTab('test')}
+                disabled={
+                  !activeExecution?.executionId ||
+                  runtimeCommandPending ||
+                  String(activeExecution?.executionStatus) !== 'RUNNING'
+                }
+                onClick={() => void runRuntimeCommand('execution.validate')}
               >
-                완료 조건 검증
+                {runtimeCommandPending ? '처리 중...' : '완료 조건 검증'}
               </Button>
               <Button
                 variant="outlined"
-                disabled={!nextStep}
-                onClick={() => {
-                  if (!nextStep) return;
-                  setSelectedStepCode(String(nextStep.stepCode));
-                  onSelect(nextStep);
-                }}
+                disabled={
+                  !activeExecution?.executionId ||
+                  runtimeCommandPending ||
+                  String(activeExecution?.executionStatus) !== 'RUNNING'
+                }
+                onClick={() => void runRuntimeCommand('execution.advance')}
               >
                 {nextStep
                   ? `다음 작업: ${displayValue(nextStep.stepName)} →`
-                  : '마지막 업무입니다'}
+                  : '현재 업무 완료'}
               </Button>
             </Box>
+            {runtimeCommandResult && (
+              <Typography
+                variant="body2"
+                color="textSecondary"
+                style={{ marginTop: 12 }}
+              >
+                {runtimeCommandResult}
+              </Typography>
+            )}
           </Paper>
         </Grid>
       </Grid>
@@ -758,10 +978,7 @@ function WorkOperationsMap({
               ['프로세스', processes.length],
               ['단계', steps.length],
               ['실행 업무', executions.length],
-              [
-                '테스트',
-                ((dashboard.cases ?? []) as RuntimeRow[]).length,
-              ],
+              ['테스트', ((dashboard.cases ?? []) as RuntimeRow[]).length],
               [
                 '개발 태스크',
                 ((dashboard.developmentJobs ?? []) as RuntimeRow[]).length,
@@ -820,10 +1037,7 @@ function WorkOperationsMap({
               <thead style={{ background: '#f1f5f9' }}>
                 <tr>
                   {['구분', '내용', '계약·상태'].map(head => (
-                    <th
-                      key={head}
-                      style={{ padding: 12, textAlign: 'left' }}
-                    >
+                    <th key={head} style={{ padding: 12, textAlign: 'left' }}>
                       {head}
                     </th>
                   ))}
@@ -900,15 +1114,36 @@ function WorkOperationsMap({
 const DESIGN_DOCUMENT_GROUPS = [
   [
     '업무·거버넌스',
-    ['REQUIREMENT', 'ACTOR_RACI', 'AUTHORITY', 'PROCESS', 'STATE', 'NAVIGATION'],
+    [
+      'REQUIREMENT',
+      'ACTOR_RACI',
+      'AUTHORITY',
+      'PROCESS',
+      'STATE',
+      'NAVIGATION',
+    ],
   ],
   [
     '화면·데이터',
-    ['ACTIVE_UI', 'DESIGN_ASSET', 'FIELD_DICTIONARY', 'DATA_HANDOFF', 'DATABASE', 'API'],
+    [
+      'ACTIVE_UI',
+      'DESIGN_ASSET',
+      'FIELD_DICTIONARY',
+      'DATA_HANDOFF',
+      'DATABASE',
+      'API',
+    ],
   ],
   [
     '품질·운영',
-    ['BUSINESS_RULE', 'VALIDATION', 'NOTIFICATION', 'TEST', 'TASK_EVIDENCE', 'RELEASE_AUDIT'],
+    [
+      'BUSINESS_RULE',
+      'VALIDATION',
+      'NOTIFICATION',
+      'TEST',
+      'TASK_EVIDENCE',
+      'RELEASE_AUDIT',
+    ],
   ],
 ] as const;
 
@@ -997,8 +1232,8 @@ function DesignWorkbenchDialog({
       <DialogTitle style={{ background: '#052b57', color: '#fff' }}>
         통합 설계 워크벤치
         <Typography variant="body2" style={{ color: '#bfdbfe' }}>
-          {displayValue(process?.processName)} · {displayValue(step?.stepName)} ·
-          설계 준비 {ready}/18
+          {displayValue(process?.processName)} · {displayValue(step?.stepName)}{' '}
+          · 설계 준비 {ready}/18
         </Typography>
       </DialogTitle>
       <DialogContent style={{ padding: 0 }}>
@@ -1024,8 +1259,7 @@ function DesignWorkbenchDialog({
                       style={{
                         justifyContent: 'space-between',
                         marginTop: 4,
-                        background:
-                          selectedType === type ? '#e8f2ff' : '#fff',
+                        background: selectedType === type ? '#e8f2ff' : '#fff',
                         border:
                           selectedType === type
                             ? '1px solid #005ea8'
@@ -1056,7 +1290,9 @@ function DesignWorkbenchDialog({
                   size="small"
                   label="설계서 제목"
                   value={current.title}
-                  onChange={event => updateCurrent({ title: event.target.value })}
+                  onChange={event =>
+                    updateCurrent({ title: event.target.value })
+                  }
                 />
                 <FormControl
                   variant="outlined"
@@ -1156,8 +1392,8 @@ function DesignWorkbenchDialog({
               style={{ border: '1px solid #f59e0b', background: '#fffbeb' }}
             >
               <Typography variant="caption">
-                18종 설계서와 화면·API·테스트·태스크 증적이 일치해야 개발
-                완료로 판정합니다.
+                18종 설계서와 화면·API·테스트·태스크 증적이 일치해야 개발 완료로
+                판정합니다.
               </Typography>
             </Box>
           </Grid>
@@ -1333,19 +1569,22 @@ export function ActorProcessControlPage(props: {
     if (latest) setDesignVersion(latest.designVersion);
   };
 
-  const loadRuntimeDataset = async (targetDatasetKey: string) => {
-    const response = await fetchApi.fetch(
-      `/api/resonance-projects/actor-process/runtime-dashboard?dataset=${encodeURIComponent(
-        targetDatasetKey,
-      )}`,
-      { cache: 'no-store' },
-    );
-    if (!response.ok) {
-      throw new Error(`Actor·Process runtime dataset ${response.status}`);
-    }
-    const payload = (await response.json()) as RuntimeDashboard;
-    setRuntimeDashboard(current => ({ ...current, ...payload }));
-  };
+  const loadRuntimeDataset = useCallback(
+    async (targetDatasetKey: string) => {
+      const response = await fetchApi.fetch(
+        `/api/resonance-projects/actor-process/runtime-dashboard?dataset=${encodeURIComponent(
+          targetDatasetKey,
+        )}`,
+        { cache: 'no-store' },
+      );
+      if (!response.ok) {
+        throw new Error(`Actor·Process runtime dataset ${response.status}`);
+      }
+      const payload = (await response.json()) as RuntimeDashboard;
+      setRuntimeDashboard(current => ({ ...current, ...payload }));
+    },
+    [fetchApi],
+  );
   const loadDesignDocuments = useCallback(
     async (processCode: string, stepCode: string, routePath: string) => {
       const parameters = new URLSearchParams({
@@ -1390,6 +1629,35 @@ export function ActorProcessControlPage(props: {
       }
     },
     [fetchApi],
+  );
+  const executeRuntimeCommand = useCallback(
+    async (
+      command: 'execution.validate' | 'execution.advance',
+      executionId: string,
+    ) => {
+      const response = await fetchApi.fetch(
+        '/api/resonance-projects/actor-process/commands',
+        {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            command,
+            executionId,
+            requireDraft: true,
+          }),
+        },
+      );
+      const payload = (await response.json()) as Record<string, unknown>;
+      if (!response.ok) {
+        throw new Error(
+          String(payload.message ?? payload.error ?? `HTTP ${response.status}`),
+        );
+      }
+      await loadRuntimeDataset('processExecutions');
+      await loadRuntimeDataset('processExecutionEvents');
+      return payload;
+    },
+    [fetchApi, loadRuntimeDataset],
   );
 
   const loadDashboard = async () => {
@@ -1520,9 +1788,7 @@ export function ActorProcessControlPage(props: {
           String(payload.message ?? payload.error ?? `HTTP ${response.status}`),
         );
       }
-      setCommandResult(
-        `처리 완료\n${JSON.stringify(payload, null, 2)}`,
-      );
+      setCommandResult(`처리 완료\n${JSON.stringify(payload, null, 2)}`);
       await loadRuntimeDataset(datasetKey);
     } catch (error) {
       setCommandResult(
@@ -1796,45 +2062,46 @@ export function ActorProcessControlPage(props: {
                 projectId={projectId}
                 onSelect={setSelectedRow}
                 onOpenTab={openControlTab}
+                executeRuntimeCommand={executeRuntimeCommand}
                 loadDesignDocuments={loadDesignDocuments}
                 saveDesignDocument={saveDesignDocument}
               />
             )}
             {selectedTab.id !== 'work-dashboard' && (
-            <Grid container spacing={2} style={{ marginTop: 8 }}>
-              <Grid item xs={12} sm={6} md={3}>
-                <Box className={classes.metric}>
-                  <Typography variant="caption">프로젝트</Typography>
-                  <Typography variant="h6">
-                    {summary.inventory?.projectCount ?? projects.length}
-                  </Typography>
-                </Box>
+              <Grid container spacing={2} style={{ marginTop: 8 }}>
+                <Grid item xs={12} sm={6} md={3}>
+                  <Box className={classes.metric}>
+                    <Typography variant="caption">프로젝트</Typography>
+                    <Typography variant="h6">
+                      {summary.inventory?.projectCount ?? projects.length}
+                    </Typography>
+                  </Box>
+                </Grid>
+                <Grid item xs={12} sm={6} md={3}>
+                  <Box className={classes.metric}>
+                    <Typography variant="caption">개발 태스크</Typography>
+                    <Typography variant="h6">
+                      {summary.inventory?.taskCount ?? tasks.length}
+                    </Typography>
+                  </Box>
+                </Grid>
+                <Grid item xs={12} sm={6} md={3}>
+                  <Box className={classes.metric}>
+                    <Typography variant="caption">제어 자산</Typography>
+                    <Typography variant="h6">
+                      {summary.inventory?.controlAssetCount ?? 0}
+                    </Typography>
+                  </Box>
+                </Grid>
+                <Grid item xs={12} sm={6} md={3}>
+                  <Box className={classes.metric}>
+                    <Typography variant="caption">디자인 자산</Typography>
+                    <Typography variant="h6">
+                      {summary.inventory?.designAssetCount ?? 0}
+                    </Typography>
+                  </Box>
+                </Grid>
               </Grid>
-              <Grid item xs={12} sm={6} md={3}>
-                <Box className={classes.metric}>
-                  <Typography variant="caption">개발 태스크</Typography>
-                  <Typography variant="h6">
-                    {summary.inventory?.taskCount ?? tasks.length}
-                  </Typography>
-                </Box>
-              </Grid>
-              <Grid item xs={12} sm={6} md={3}>
-                <Box className={classes.metric}>
-                  <Typography variant="caption">제어 자산</Typography>
-                  <Typography variant="h6">
-                    {summary.inventory?.controlAssetCount ?? 0}
-                  </Typography>
-                </Box>
-              </Grid>
-              <Grid item xs={12} sm={6} md={3}>
-                <Box className={classes.metric}>
-                  <Typography variant="caption">디자인 자산</Typography>
-                  <Typography variant="h6">
-                    {summary.inventory?.designAssetCount ?? 0}
-                  </Typography>
-                </Box>
-              </Grid>
-            </Grid>
             )}
             {activeCommand && (
               <Box
@@ -1922,138 +2189,140 @@ export function ActorProcessControlPage(props: {
             )}
             {selectedTab.id !== 'work-dashboard' && (
               <>
-            <Box
-              mt={3}
-              display="flex"
-              alignItems="center"
-              justifyContent="space-between"
-              gridGap={12}
-              flexWrap="wrap"
-            >
-              <Box>
-                <Typography variant="subtitle2">실제 운영 데이터</Typography>
-                <Typography variant="body2" color="textSecondary">
-                  Resonance 원본 데이터셋 {datasetKey} · 전체{' '}
-                  {sourceRows.length}건 · 최대 100건 표시
-                </Typography>
-              </Box>
-              <TextField
-                variant="outlined"
-                size="small"
-                label="현재 탭 검색"
-                value={rowFilter}
-                onChange={event => setRowFilter(event.target.value)}
-              />
-            </Box>
-            <Box
-              mt={2}
-              style={{
-                overflowX: 'auto',
-                border: '1px solid #dbe4ea',
-                borderRadius: 8,
-              }}
-            >
-              {visibleRows.length > 0 ? (
-                <table
+                <Box
+                  mt={3}
+                  display="flex"
+                  alignItems="center"
+                  justifyContent="space-between"
+                  gridGap={12}
+                  flexWrap="wrap"
+                >
+                  <Box>
+                    <Typography variant="subtitle2">
+                      실제 운영 데이터
+                    </Typography>
+                    <Typography variant="body2" color="textSecondary">
+                      Resonance 원본 데이터셋 {datasetKey} · 전체{' '}
+                      {sourceRows.length}건 · 최대 100건 표시
+                    </Typography>
+                  </Box>
+                  <TextField
+                    variant="outlined"
+                    size="small"
+                    label="현재 탭 검색"
+                    value={rowFilter}
+                    onChange={event => setRowFilter(event.target.value)}
+                  />
+                </Box>
+                <Box
+                  mt={2}
                   style={{
-                    width: '100%',
-                    minWidth: 760,
-                    borderCollapse: 'collapse',
-                    fontSize: 13,
+                    overflowX: 'auto',
+                    border: '1px solid #dbe4ea',
+                    borderRadius: 8,
                   }}
                 >
-                  <thead style={{ background: '#f1f5f9' }}>
-                    <tr>
-                      {visibleColumns.map(column => (
-                        <th
-                          key={column}
-                          style={{
-                            padding: 12,
-                            textAlign: 'left',
-                            borderBottom: '1px solid #cbd5e1',
-                          }}
-                        >
-                          {columnLabels[column] ?? column}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {visibleRows.map((row, index) => (
-                      <tr
-                        key={`${selectedTab.id}-${index}`}
-                        onClick={() => setSelectedRow(row)}
-                        style={{
-                          cursor: 'pointer',
-                          background:
-                            selectedRow === row ? '#e8f2ff' : undefined,
-                        }}
-                      >
-                        {visibleColumns.map(column => (
-                          <td
-                            key={column}
+                  {visibleRows.length > 0 ? (
+                    <table
+                      style={{
+                        width: '100%',
+                        minWidth: 760,
+                        borderCollapse: 'collapse',
+                        fontSize: 13,
+                      }}
+                    >
+                      <thead style={{ background: '#f1f5f9' }}>
+                        <tr>
+                          {visibleColumns.map(column => (
+                            <th
+                              key={column}
+                              style={{
+                                padding: 12,
+                                textAlign: 'left',
+                                borderBottom: '1px solid #cbd5e1',
+                              }}
+                            >
+                              {columnLabels[column] ?? column}
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {visibleRows.map((row, index) => (
+                          <tr
+                            key={`${selectedTab.id}-${index}`}
+                            onClick={() => setSelectedRow(row)}
                             style={{
-                              padding: 12,
-                              borderBottom: '1px solid #e2e8f0',
-                              maxWidth: 320,
-                              overflowWrap: 'anywhere',
+                              cursor: 'pointer',
+                              background:
+                                selectedRow === row ? '#e8f2ff' : undefined,
                             }}
                           >
-                            {displayValue(row[column])}
-                          </td>
+                            {visibleColumns.map(column => (
+                              <td
+                                key={column}
+                                style={{
+                                  padding: 12,
+                                  borderBottom: '1px solid #e2e8f0',
+                                  maxWidth: 320,
+                                  overflowWrap: 'anywhere',
+                                }}
+                              >
+                                {displayValue(row[column])}
+                              </td>
+                            ))}
+                          </tr>
                         ))}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              ) : (
-                <Box p={3}>
-                  <Typography variant="body2" color="textSecondary">
-                    {rowFilter
-                      ? '검색 조건에 맞는 데이터가 없습니다.'
-                      : '이 기능에 등록된 운영 데이터가 없습니다. 설계에서 필요한 항목을 등록하면 이곳에 즉시 표시됩니다.'}
-                  </Typography>
+                      </tbody>
+                    </table>
+                  ) : (
+                    <Box p={3}>
+                      <Typography variant="body2" color="textSecondary">
+                        {rowFilter
+                          ? '검색 조건에 맞는 데이터가 없습니다.'
+                          : '이 기능에 등록된 운영 데이터가 없습니다. 설계에서 필요한 항목을 등록하면 이곳에 즉시 표시됩니다.'}
+                      </Typography>
+                    </Box>
+                  )}
                 </Box>
-              )}
-            </Box>
-            {selectedRow && (
-              <Box
-                mt={2}
-                p={2}
-                style={{
-                  border: '1px solid #dbe4ea',
-                  borderRadius: 8,
-                  background: '#f8fafc',
-                }}
-              >
-                <Box
-                  display="flex"
-                  justifyContent="space-between"
-                  alignItems="center"
-                >
-                  <Typography variant="subtitle2">
-                    선택 항목 전체 상세
-                  </Typography>
-                  <Button size="small" onClick={() => setSelectedRow(null)}>
-                    닫기
-                  </Button>
-                </Box>
-                <Box
-                  component="pre"
-                  mt={1}
-                  style={{
-                    marginBottom: 0,
-                    maxHeight: 360,
-                    overflow: 'auto',
-                    whiteSpace: 'pre-wrap',
-                    overflowWrap: 'anywhere',
-                    fontSize: 12,
-                  }}
-                >
-                  {JSON.stringify(selectedRow, null, 2)}
-                </Box>
-              </Box>
-            )}
+                {selectedRow && (
+                  <Box
+                    mt={2}
+                    p={2}
+                    style={{
+                      border: '1px solid #dbe4ea',
+                      borderRadius: 8,
+                      background: '#f8fafc',
+                    }}
+                  >
+                    <Box
+                      display="flex"
+                      justifyContent="space-between"
+                      alignItems="center"
+                    >
+                      <Typography variant="subtitle2">
+                        선택 항목 전체 상세
+                      </Typography>
+                      <Button size="small" onClick={() => setSelectedRow(null)}>
+                        닫기
+                      </Button>
+                    </Box>
+                    <Box
+                      component="pre"
+                      mt={1}
+                      style={{
+                        marginBottom: 0,
+                        maxHeight: 360,
+                        overflow: 'auto',
+                        whiteSpace: 'pre-wrap',
+                        overflowWrap: 'anywhere',
+                        fontSize: 12,
+                      }}
+                    >
+                      {JSON.stringify(selectedRow, null, 2)}
+                    </Box>
+                  </Box>
+                )}
               </>
             )}
             <Box mt={3} display="flex" gridGap={8} flexWrap="wrap">
