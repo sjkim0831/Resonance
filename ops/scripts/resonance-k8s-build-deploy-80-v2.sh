@@ -760,24 +760,17 @@ rollout_image() {
     log_detail "Previous deployment image: $PRE_ROLLOUT_IMAGE"
   fi
 
-  local image_sha
-  image_sha="$(root_cmd sh -c "docker inspect '$IMAGE_NAME' --format='{{.Id}}' 2>/dev/null" | sed 's/sha256://' | cut -c1-12)" || image_sha=""
-
-  log_cmd "ctr -n k8s.io images list | grep $IMAGE_NAME"
+  log_cmd "ctr -n k8s.io images list -q | grep -Fqx $IMAGE_NAME"
   local ctr_found=false
 
-  if [[ -n "$image_sha" ]]; then
-    if root_cmd ctr -n k8s.io images list 2>/dev/null | grep -q "$image_sha"; then
-      ctr_found=true
-      log_success "Image verified in containerd (SHA: ${image_sha:0:12})"
-    fi
-  fi
-
-  if ! "$ctr_found"; then
-    if root_cmd ctr -n k8s.io images list 2>/dev/null | grep -q "$IMAGE_NAME"; then
-      ctr_found=true
-      log_success "Image verified in containerd"
-    fi
+  # Capture the complete reference list before matching. With pipefail enabled,
+  # `ctr images list | grep -q` can report failure after grep exits early and
+  # ctr receives SIGPIPE, causing an unnecessary registry pull.
+  local ctr_references
+  ctr_references="$(root_cmd ctr -n k8s.io images list -q 2>/dev/null || true)"
+  if grep -Fqx "$IMAGE_NAME" <<<"$ctr_references"; then
+    ctr_found=true
+    log_success "Image verified in containerd"
   fi
 
   if ! "$ctr_found"; then
