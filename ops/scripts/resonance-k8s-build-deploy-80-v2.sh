@@ -863,7 +863,15 @@ verify_runtime() {
   log_step "Verify"
 
   local pod
-  pod="$(kubectl -n $NAMESPACE get pods -l app=$DEPLOYMENT --field-selector=status.phase=Running -o jsonpath='{.items[0].metadata.name}' 2>/dev/null)"
+  pod="$(
+    kubectl -n "$NAMESPACE" get pods -l "app=$DEPLOYMENT" \
+      --field-selector=status.phase=Running -o json 2>/dev/null |
+      jq -r --arg image "$IMAGE_NAME" '
+        [.items[]
+          | select(any(.spec.containers[]; .image == $image))
+          | select(any(.status.conditions[]?; .type == "Ready" and .status == "True"))
+          | .metadata.name][0] // empty'
+  )"
 
   if [[ -z "$pod" ]]; then
     rollback_and_fail "VERIFICATION_FAILED" \
@@ -891,7 +899,17 @@ verify_runtime() {
     rollback_and_fail "HOME_SMOKE_TEST_FAILED" "Public home page did not return a successful response" \
       "kubectl -n $NAMESPACE exec $pod -- curl -i http://localhost:8080/home"
   fi
-  if ! kubectl -n "$NAMESPACE" exec "$pod" -- curl -sf --max-time 15 -o /dev/null "http://localhost:8080/assets/react/.vite/manifest.json"; then
+  local manifest_ready=false
+  for manifest_attempt in 1 2 3 4 5; do
+    if kubectl -n "$NAMESPACE" exec "$pod" -- \
+      curl -sf --max-time 15 -o /dev/null \
+        "http://localhost:8080/assets/react/.vite/manifest.json"; then
+      manifest_ready=true
+      break
+    fi
+    sleep 1
+  done
+  if [[ "$manifest_ready" != true ]]; then
     rollback_and_fail "REACT_MANIFEST_SMOKE_TEST_FAILED" "Immutable React manifest is unavailable" \
       "kubectl -n $NAMESPACE exec $pod -- curl -i http://localhost:8080/assets/react/.vite/manifest.json"
   fi

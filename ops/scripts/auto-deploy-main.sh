@@ -338,6 +338,16 @@ if [[ -n "$tracked_source_changes" ]]; then
   export ROOT_DIR CARBONET_DEPLOY_ROOT="$clean_worktree" CARBONET_CLEAN_WORKTREE_ACTIVE=true
   cd "$ROOT_DIR"
   current_commit="$target_commit"
+  # A failed build may leave copied frontend assets in the persistent worktree
+  # even when HEAD already equals the next target. Restore generated tracked
+  # outputs on every invocation, not only while advancing the worktree.
+  for generated_path in \
+    apps/carbonet-api/src/main/resources/static/react-app \
+    projects/carbonet-assets/static/react-app \
+    projects/carbonet-frontend/source/tsconfig.app.tsbuildinfo; do
+    [[ -n "$(git -C "$clean_worktree" ls-files -- "$generated_path")" ]] &&
+      git -C "$clean_worktree" restore --worktree -- "$generated_path"
+  done
   tracked_source_changes="$(git diff --name-only -- \
     . \
     ':(exclude)projects/carbonet-frontend/src/main/resources/static/react-app/**')"
