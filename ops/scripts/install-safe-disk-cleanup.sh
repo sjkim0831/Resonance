@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-root="${RESONANCE_REPO:-/opt/Resonance}"
+root="${RESONANCE_REPO:-/opt/Resonance/var/deploy-worktrees/runtime-build}"
 for unit in resonance-safe-disk-cleanup.service resonance-safe-disk-cleanup.timer; do
   sudo install -m 0644 "$root/ops/systemd/$unit" "/etc/systemd/system/$unit"
 done

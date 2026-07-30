@@ -8,7 +8,7 @@ Environment=CHECK_PATH=/opt
 Environment=HIGH_WATER_PERCENT=78
 Environment=LOW_WATER_PERCENT=74
 Environment=STALE_DAYS=7
-ExecStart=/usr/bin/bash /opt/Resonance/ops/scripts/resonance-safe-disk-cleanup.sh --apply
+ExecStart=/usr/bin/bash /opt/Resonance/var/deploy-worktrees/runtime-build/ops/scripts/resonance-safe-disk-cleanup.sh --apply
 Nice=10
 IOSchedulingClass=idle
 TimeoutStartSec=300
