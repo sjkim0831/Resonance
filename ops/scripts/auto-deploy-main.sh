@@ -574,11 +574,10 @@ if [[ "$PLAN_RUNTIME_REQUIRED" != "true" ]]; then
     backstage_only_change=true
   fi
   if [[ "$backstage_only_change" == "true" ]]; then
-    echo "[auto-deploy] Backstage-only change: preserving the verified unified asset catalog"
-  else
-    bash ops/scripts/sync-unified-asset-catalog.sh "$deployed_commit" "$target_commit"
-    bash ops/scripts/validate-e4b-selectable-assets.sh
+    echo "[auto-deploy] Backstage-only change: synchronizing source assets without an application rollout"
   fi
+  bash ops/scripts/sync-unified-asset-catalog.sh "$deployed_commit" "$target_commit"
+  bash ops/scripts/validate-e4b-selectable-assets.sh
   sync_backstage_catalog_if_required
   deploy_backstage_if_required
   run_backstage_visual_e2e_if_required
@@ -925,6 +924,8 @@ if [[ "$PLAN_FRONTEND_REQUIRED" != "true" \
     exit 17
   fi
   node "$ROOT_DIR/ops/scripts/verify-react-asset-closure.mjs" "$live_frontend_overlay"
+  bash ops/scripts/sync-unified-asset-catalog.sh "$deployed_commit" "$target_commit"
+  bash ops/scripts/validate-e4b-selectable-assets.sh
   rm -f "$ROOT_DIR/var/run/full-screen-deploy-gate/active.env"
   printf '%s\n' "$target_commit" > "${DEPLOY_STATE_FILE}.tmp"
   mv "${DEPLOY_STATE_FILE}.tmp" "$DEPLOY_STATE_FILE"
