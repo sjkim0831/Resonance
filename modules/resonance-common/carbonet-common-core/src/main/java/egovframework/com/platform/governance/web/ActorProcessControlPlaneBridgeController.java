@@ -3,10 +3,14 @@ package egovframework.com.platform.governance.web;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import egovframework.com.platform.governance.service.ActorProcessGovernanceService;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.core.task.TaskExecutor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
@@ -24,16 +28,19 @@ public class ActorProcessControlPlaneBridgeController {
     private final JdbcTemplate jdbc;
     private final ObjectMapper mapper;
     private final ActorProcessGovernanceService governance;
+    private final TaskExecutor taskExecutor;
     private final String bridgeToken;
 
     public ActorProcessControlPlaneBridgeController(
             JdbcTemplate jdbc,
             ObjectMapper mapper,
             ActorProcessGovernanceService governance,
+            @Qualifier("applicationTaskExecutor") TaskExecutor taskExecutor,
             @Value("${resonance.ops.token:}") String bridgeToken) {
         this.jdbc = jdbc;
         this.mapper = mapper;
         this.governance = governance;
+        this.taskExecutor = taskExecutor;
         this.bridgeToken = bridgeToken;
     }
 
@@ -72,6 +79,40 @@ public class ActorProcessControlPlaneBridgeController {
                       generation_result=null
                     """, projectId, designVersion, checksum, contractJson);
 
+            jdbc.update("""
+                    update framework_actor_process_design_release
+                       set release_status='QUEUED',applied_at=null,
+                           generation_result=cast(? as jsonb)
+                     where project_id=? and design_version=?
+                    """, mapper.writeValueAsString(Map.of(
+                    "status", "QUEUED",
+                    "maxScreens", 1000
+            )), projectId, designVersion);
+
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    taskExecutor.execute(() -> compilePromotedRelease(projectId, designVersion));
+                }
+            });
+
+            Map<String, Object> response = new LinkedHashMap<>();
+            response.put("success", true);
+            response.put("projectId", projectId);
+            response.put("designVersion", designVersion);
+            response.put("sourceOfTruth", "BACKSTAGE");
+            response.put("releaseStatus", "QUEUED");
+            response.put("generation", Map.of("status", "QUEUED", "maxScreens", 1000));
+            return ResponseEntity.ok(response);
+        } catch (Exception exception) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "success", false,
+                    "message", exception.getMessage() == null ? "Design release application failed." : exception.getMessage()));
+        }
+    }
+
+    private void compilePromotedRelease(String projectId, int designVersion) {
+        try {
             Map<String, Object> generation = governance.compileAndQueueScreens(
                     Map.of("processCode", "", "maxScreens", 1000),
                     "BACKSTAGE_CONTROL_PLANE");
@@ -82,20 +123,26 @@ public class ActorProcessControlPlaneBridgeController {
                        set release_status=?,applied_at=current_timestamp,
                            generation_result=cast(? as jsonb)
                      where project_id=? and design_version=?
-                    """, releaseStatus, mapper.writeValueAsString(generation), projectId, designVersion);
-
-            Map<String, Object> response = new LinkedHashMap<>();
-            response.put("success", true);
-            response.put("projectId", projectId);
-            response.put("designVersion", designVersion);
-            response.put("sourceOfTruth", "BACKSTAGE");
-            response.put("releaseStatus", releaseStatus);
-            response.put("generation", generation);
-            return ResponseEntity.ok(response);
+                    """, releaseStatus, writeJson(generation), projectId, designVersion);
         } catch (Exception exception) {
-            return ResponseEntity.badRequest().body(Map.of(
-                    "success", false,
-                    "message", exception.getMessage() == null ? "Design release application failed." : exception.getMessage()));
+            jdbc.update("""
+                    update framework_actor_process_design_release
+                       set release_status='FAILED',
+                           generation_result=cast(? as jsonb)
+                     where project_id=? and design_version=?
+                    """, writeJson(Map.of(
+                    "status", "FAILED",
+                    "message", exception.getMessage() == null
+                            ? "Design generation failed." : exception.getMessage()
+            )), projectId, designVersion);
+        }
+    }
+
+    private String writeJson(Object value) {
+        try {
+            return mapper.writeValueAsString(value);
+        } catch (Exception exception) {
+            return "{\"status\":\"FAILED\",\"message\":\"Result serialization failed.\"}";
         }
     }
 
