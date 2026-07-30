@@ -907,10 +907,10 @@ if [[ "$PLAN_FRONTEND_REQUIRED" != "true" \
   exit 0
 fi
 
-# Flyway is the only schema migration owner. Liquibase stays disabled to avoid
-# two migration engines changing the same schema during a rollout.
+# The candidate-image migration Job is the only schema migration owner.
+# Runtime pods keep both engines disabled so replicas never contend for DDL.
 kubectl -n "$NAMESPACE" set env deployment/"$DEPLOYMENT" \
-  CARBONET_FLYWAY_ENABLED=true \
+  CARBONET_FLYWAY_ENABLED=false \
   CARBONET_LIQUIBASE_ENABLED=false
 
 IMMUTABLE_FRONTEND_IMAGE=true \
@@ -976,4 +976,4 @@ run_backstage_screen_space_e2e_if_required
 printf '%s\n' "$target_commit" > "${DEPLOY_STATE_FILE}.tmp"
 mv "${DEPLOY_STATE_FILE}.tmp" "$DEPLOY_STATE_FILE"
 sudo docker image prune -a -f >/dev/null || true
-echo "[auto-deploy] deployed $target_commit with Flyway enabled"
+echo "[auto-deploy] deployed $target_commit after one-shot Flyway verification; runtime migration disabled"
