@@ -183,6 +183,7 @@ test('authenticated Resonance control-plane routes render without runtime errors
   await expect(page.getByText('프로세스 계약 지도')).toBeVisible();
   await expect(page.getByText('실제 프로젝트 실행 업무')).toBeVisible();
   await expect(page.getByText('설계 → 개발 자동 실행')).toBeVisible();
+  await expect(page.getByText('자동 개발 실행 타임라인')).toBeVisible();
   await expect(
     page.getByRole('button', { name: /자동 개발 시작/ }),
   ).toBeVisible();

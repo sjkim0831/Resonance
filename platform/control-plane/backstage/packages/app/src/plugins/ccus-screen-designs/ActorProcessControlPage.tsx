@@ -405,6 +405,7 @@ function WorkOperationsMap({
   onOpenTab,
   executeRuntimeCommand,
   executeDevelopmentPipeline,
+  retryDevelopmentJob,
   loadDesignDocuments,
   saveDesignDocument,
 }: {
@@ -420,6 +421,7 @@ function WorkOperationsMap({
     processCode: string,
     stepCode: string,
   ) => Promise<Record<string, unknown>>;
+  retryDevelopmentJob: (jobId: string) => Promise<Record<string, unknown>>;
   loadDesignDocuments: (
     processCode: string,
     stepCode: string,
@@ -630,6 +632,18 @@ function WorkOperationsMap({
   const executableJobs = jobs.filter(row =>
     ['PLANNED', 'RETRY'].includes(String(row.jobStatus ?? '')),
   );
+  const jobIds = new Set(jobs.map(row => String(row.jobId ?? '')));
+  const developmentEvents = (
+    (dashboard.developmentEvents ?? []) as RuntimeRow[]
+  ).filter(row => jobIds.has(String(row.jobId ?? '')));
+  const qualityGateResults = (
+    (dashboard.qualityGateResults ?? []) as RuntimeRow[]
+  ).filter(row => jobIds.has(String(row.jobId ?? '')));
+  const jobStatusCounts = jobs.reduce<Record<string, number>>((counts, row) => {
+    const status = String(row.jobStatus ?? 'UNKNOWN');
+    counts[status] = (counts[status] ?? 0) + 1;
+    return counts;
+  }, {});
   const artifacts = ((dashboard.artifacts ?? []) as RuntimeRow[]).filter(
     row =>
       String(row.processCode) === processCode &&
@@ -710,6 +724,23 @@ function WorkOperationsMap({
           : `자동 개발 파이프라인이 준비되었습니다: ${displayValue(
               status,
             )}. 생성 작업은 품질 게이트 통과 후에만 배포됩니다.`,
+      );
+    } catch (error) {
+      setDevelopmentPipelineResult(
+        error instanceof Error ? error.message : String(error),
+      );
+    } finally {
+      setDevelopmentPipelinePending(false);
+    }
+  };
+  const runDevelopmentRetry = async (jobId: string) => {
+    if (!jobId || developmentPipelinePending) return;
+    setDevelopmentPipelinePending(true);
+    setDevelopmentPipelineResult('');
+    try {
+      await retryDevelopmentJob(jobId);
+      setDevelopmentPipelineResult(
+        `개발 작업 ${jobId}을 RETRY 상태로 전환했습니다. 실행기가 의존성과 품질 게이트를 다시 확인합니다.`,
       );
     } catch (error) {
       setDevelopmentPipelineResult(
@@ -1246,6 +1277,139 @@ function WorkOperationsMap({
                 {developmentPipelineResult}
               </Typography>
             )}
+            <Paper
+              variant="outlined"
+              style={{ marginTop: 12, padding: 12, background: '#f8fafc' }}
+            >
+              <Box
+                display="flex"
+                justifyContent="space-between"
+                alignItems="center"
+                gridGap={8}
+                flexWrap="wrap"
+              >
+                <Box>
+                  <Typography variant="subtitle2">
+                    자동 개발 실행 타임라인
+                  </Typography>
+                  <Typography variant="caption" color="textSecondary">
+                    생성·테스트·배포 게이트의 현재 상태와 증적을 실시간 데이터로
+                    표시합니다.
+                  </Typography>
+                </Box>
+                <Box display="flex" gridGap={4} flexWrap="wrap">
+                  {Object.entries(jobStatusCounts).map(([status, count]) => (
+                    <Chip
+                      key={status}
+                      size="small"
+                      color={
+                        status === 'VERIFIED'
+                          ? 'primary'
+                          : status === 'FAILED'
+                          ? 'secondary'
+                          : 'default'
+                      }
+                      label={`${status} ${count}`}
+                    />
+                  ))}
+                </Box>
+              </Box>
+              <Box mt={1.5} display="grid" gridGap={8}>
+                {jobs.length === 0 && (
+                  <Typography variant="body2" color="textSecondary">
+                    선택 단계에 등록된 개발 작업이 없습니다.
+                  </Typography>
+                )}
+                {jobs.slice(0, 8).map(job => {
+                  const jobId = String(job.jobId ?? '');
+                  const status = String(job.jobStatus ?? 'UNKNOWN');
+                  const latestEvent = developmentEvents.find(
+                    event => String(event.jobId ?? '') === jobId,
+                  );
+                  const latestGate = qualityGateResults.find(
+                    gate => String(gate.jobId ?? '') === jobId,
+                  );
+                  const targetPath = String(job.targetPath ?? '');
+                  const canRetry = ['FAILED', 'RETRY'].includes(status);
+                  return (
+                    <Paper
+                      key={jobId}
+                      variant="outlined"
+                      style={{ padding: 10, background: '#fff' }}
+                    >
+                      <Box
+                        display="flex"
+                        justifyContent="space-between"
+                        alignItems="flex-start"
+                        gridGap={8}
+                        flexWrap="wrap"
+                      >
+                        <Box style={{ minWidth: 0, flex: 1 }}>
+                          <Typography variant="body2">
+                            {displayValue(job.jobName ?? job.jobType)}
+                          </Typography>
+                          <Typography variant="caption" color="textSecondary">
+                            {displayValue(job.jobType)} · 최근 이벤트{' '}
+                            {displayValue(
+                              latestEvent?.eventType ?? job.updatedAt,
+                            )}
+                          </Typography>
+                          {Boolean(job.lastError || latestGate?.summary) && (
+                            <Typography
+                              variant="caption"
+                              color="error"
+                              display="block"
+                            >
+                              {displayValue(
+                                job.lastError ?? latestGate?.summary,
+                              )}
+                            </Typography>
+                          )}
+                          {Boolean(
+                            job.evidenceRef || latestGate?.evidenceRef,
+                          ) && (
+                            <Typography
+                              variant="caption"
+                              color="textSecondary"
+                              display="block"
+                            >
+                              증적:{' '}
+                              {displayValue(
+                                job.evidenceRef ?? latestGate?.evidenceRef,
+                              )}
+                            </Typography>
+                          )}
+                        </Box>
+                        <Box display="flex" gridGap={6} alignItems="center">
+                          <Chip size="small" label={status} />
+                          {targetPath.startsWith('/') && (
+                            <Button
+                              size="small"
+                              variant="outlined"
+                              href={targetPath}
+                              target="_blank"
+                            >
+                              미리보기
+                            </Button>
+                          )}
+                          {canRetry && (
+                            <Button
+                              size="small"
+                              variant="outlined"
+                              color="secondary"
+                              disabled={developmentPipelinePending}
+                              onClick={() => void runDevelopmentRetry(jobId)}
+                            >
+                              안전 재시도
+                            </Button>
+                          )}
+                        </Box>
+                      </Box>
+                    </Paper>
+                  );
+                })}
+              </Box>
+            </Paper>
           </Paper>
         </Grid>
       </Grid>
@@ -2364,6 +2528,34 @@ export function ActorProcessControlPage(props: {
     },
     [fetchApi, loadRuntimeDataset],
   );
+  const retryDevelopmentJob = useCallback(
+    async (jobId: string) => {
+      const response = await fetchApi.fetch(
+        '/api/resonance-projects/actor-process/commands',
+        {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            command: 'development.retry',
+            jobId,
+          }),
+        },
+      );
+      const payload = (await response.json()) as Record<string, unknown>;
+      if (!response.ok) {
+        throw new Error(
+          String(payload.message ?? payload.error ?? `HTTP ${response.status}`),
+        );
+      }
+      await Promise.all([
+        loadRuntimeDataset('developmentJobs'),
+        loadRuntimeDataset('developmentEvents'),
+        loadRuntimeDataset('qualityGateResults'),
+      ]);
+      return payload;
+    },
+    [fetchApi, loadRuntimeDataset],
+  );
 
   const loadDashboard = async () => {
     setLoading(true);
@@ -2443,6 +2635,8 @@ export function ActorProcessControlPage(props: {
       'cases',
       'artifacts',
       'developmentJobs',
+      'developmentEvents',
+      'qualityGateResults',
       'customerJourneyGaps',
       'processExecutions',
       'emissionProjectTasks',
@@ -2771,6 +2965,7 @@ export function ActorProcessControlPage(props: {
                 onOpenTab={openControlTab}
                 executeRuntimeCommand={executeRuntimeCommand}
                 executeDevelopmentPipeline={executeDevelopmentPipeline}
+                retryDevelopmentJob={retryDevelopmentJob}
                 loadDesignDocuments={loadDesignDocuments}
                 saveDesignDocument={saveDesignDocument}
               />

@@ -238,6 +238,13 @@ public class ActorProcessControlPlaneBridgeController {
                     }
                     result = governance.executeDevelopmentPipeline(body, actor);
                 }
+                case "development.retry" -> {
+                    if (!governance.isControlPlaneAdministrator(account)) {
+                        throw new SecurityException("Administrator authority is required to retry development work.");
+                    }
+                    result = governance.retryDevelopmentJob(
+                            Long.parseLong(required(body, "jobId")), actor);
+                }
                 case "backend.verify" ->
                         result = governance.verifyBackendProcessContracts(
                                 String.valueOf(body.getOrDefault("sourceCommit", "")), actor);

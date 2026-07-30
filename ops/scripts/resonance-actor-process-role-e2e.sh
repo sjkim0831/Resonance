@@ -167,13 +167,24 @@ development_denied_status="$(curl --cacert "$CA_CERT" -sS \
   exit 5
 }
 
+retry_denied_status="$(curl --cacert "$CA_CERT" -sS \
+  -o "$run_dir/requester-development-retry.json" -w '%{http_code}' \
+  -H "authorization: Bearer $requester_token" \
+  -H 'content-type: application/json' \
+  -d '{"command":"development.retry","jobId":"1"}' \
+  "$BACKSTAGE_URL/api/resonance-projects/actor-process/commands")"
+[[ "$retry_denied_status" == "403" ]] || {
+  echo "[actor-process-role-e2e] requester retry denial expected HTTP 403, received $retry_denied_status" >&2
+  exit 6
+}
+
 approver_status="$(curl --cacert "$CA_CERT" -sS -o "$run_dir/approver-command.json" -w '%{http_code}' \
   -H "authorization: Bearer $approver_token" \
   -H 'content-type: application/json' -d "$payload" \
   "$BACKSTAGE_URL/api/resonance-projects/actor-process/commands")"
 [[ "$approver_status" == "200" ]] || {
   echo "[actor-process-role-e2e] system-master override expected HTTP 200, received $approver_status" >&2
-  exit 6
+  exit 7
 }
 
 anonymous_status="$(curl --cacert "$CA_CERT" -sS -o "$run_dir/anonymous-command.json" -w '%{http_code}' \
@@ -181,7 +192,7 @@ anonymous_status="$(curl --cacert "$CA_CERT" -sS -o "$run_dir/anonymous-command.
   "$BACKSTAGE_URL/api/resonance-projects/actor-process/commands")"
 [[ "$anonymous_status" == "401" ]] || {
   echo "[actor-process-role-e2e] anonymous denial expected HTTP 401, received $anonymous_status" >&2
-  exit 7
+  exit 8
 }
 
-echo "[actor-process-role-e2e] command PASS: 2 allowed, 2 forbidden, 1 unauthenticated, 0 workflow mutations"
+echo "[actor-process-role-e2e] command PASS: 2 allowed, 3 forbidden, 1 unauthenticated, 0 workflow mutations"
