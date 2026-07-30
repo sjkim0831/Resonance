@@ -350,6 +350,7 @@ export default createBackendPlugin({
             deploymentTargetSeconds: 60,
             dependencyCacheEnabled: true,
             dependencyCacheStrategy: 'content-addressed-hardlink',
+            optimizedDeployValidation: true,
           });
         });
         router.get('/summary', async (request, response) => {
