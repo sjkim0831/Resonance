@@ -3,11 +3,10 @@ package egovframework.com.platform.governance.web;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import egovframework.com.platform.governance.service.ActorProcessGovernanceService;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.core.task.TaskExecutor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
@@ -20,7 +19,12 @@ import org.springframework.web.bind.annotation.RestController;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
+import jakarta.annotation.PreDestroy;
 
 @RestController
 @RequestMapping("/api/internal/actor-process")
@@ -28,19 +32,21 @@ public class ActorProcessControlPlaneBridgeController {
     private final JdbcTemplate jdbc;
     private final ObjectMapper mapper;
     private final ActorProcessGovernanceService governance;
-    private final TaskExecutor taskExecutor;
+    private final ExecutorService generationExecutor = Executors.newSingleThreadExecutor(runnable -> {
+        Thread thread = new Thread(runnable, "actor-process-generation");
+        thread.setDaemon(true);
+        return thread;
+    });
     private final String bridgeToken;
 
     public ActorProcessControlPlaneBridgeController(
             JdbcTemplate jdbc,
             ObjectMapper mapper,
             ActorProcessGovernanceService governance,
-            @Qualifier("applicationTaskExecutor") TaskExecutor taskExecutor,
             @Value("${resonance.ops.token:}") String bridgeToken) {
         this.jdbc = jdbc;
         this.mapper = mapper;
         this.governance = governance;
-        this.taskExecutor = taskExecutor;
         this.bridgeToken = bridgeToken;
     }
 
@@ -92,7 +98,7 @@ public class ActorProcessControlPlaneBridgeController {
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
                 @Override
                 public void afterCommit() {
-                    taskExecutor.execute(() -> compilePromotedRelease(projectId, designVersion));
+                    generationExecutor.execute(() -> compilePromotedRelease(projectId, designVersion));
                 }
             });
 
@@ -112,6 +118,21 @@ public class ActorProcessControlPlaneBridgeController {
     }
 
     private void compilePromotedRelease(String projectId, int designVersion) {
+        int claimed = jdbc.update("""
+                update framework_actor_process_design_release
+                   set release_status='RUNNING',received_at=current_timestamp
+                 where project_id=? and design_version=?
+                   and (
+                     release_status='QUEUED'
+                     or (
+                       release_status='RUNNING'
+                       and received_at < current_timestamp - interval '15 minutes'
+                     )
+                   )
+                """, projectId, designVersion);
+        if (claimed != 1) {
+            return;
+        }
         try {
             Map<String, Object> generation = governance.compileAndQueueScreens(
                     Map.of("processCode", "", "maxScreens", 1000),
@@ -136,6 +157,33 @@ public class ActorProcessControlPlaneBridgeController {
                             ? "Design generation failed." : exception.getMessage()
             )), projectId, designVersion);
         }
+    }
+
+    @Scheduled(
+            fixedDelayString = "${resonance.actor-process.generation-recovery-delay-ms:60000}",
+            initialDelayString = "${resonance.actor-process.generation-recovery-initial-delay-ms:60000}")
+    public void recoverQueuedDesignGeneration() {
+        List<Map<String, Object>> releases = jdbc.queryForList("""
+                select project_id,design_version
+                  from framework_actor_process_design_release
+                 where release_status='QUEUED'
+                    or (
+                      release_status='RUNNING'
+                      and received_at < current_timestamp - interval '15 minutes'
+                    )
+                 order by received_at
+                 limit 10
+                """);
+        for (Map<String, Object> release : releases) {
+            String projectId = String.valueOf(release.get("project_id"));
+            int designVersion = ((Number) release.get("design_version")).intValue();
+            generationExecutor.execute(() -> compilePromotedRelease(projectId, designVersion));
+        }
+    }
+
+    @PreDestroy
+    public void shutdownGenerationExecutor() {
+        generationExecutor.shutdown();
     }
 
     private String writeJson(Object value) {
