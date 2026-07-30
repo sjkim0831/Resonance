@@ -16,10 +16,18 @@ COOKIE_JAR="$(mktemp)"; DASHBOARD="$(mktemp)"; PAGE="$(mktemp)"
 trap 'rm -f "$COOKIE_JAR" "$DASHBOARD" "$PAGE"' EXIT
 
 leader=""
-while IFS= read -r pod; do
-  recovery="$(kubectl -n "$NAMESPACE" exec "$pod" -c "$CONTAINER" -- psql -h 127.0.0.1 -U "$USER_NAME" -d "$DATABASE" -Atqc 'select pg_is_in_recovery()' 2>/dev/null || true)"
-  [[ "$recovery" == f ]] && { leader="$pod"; break; }
-done < <(kubectl -n "$NAMESPACE" get pods -l app=postgres-patroni -o name | sed 's#^pod/##')
+for attempt in 1 2 3 4 5; do
+  while IFS= read -r pod; do
+    recovery="$(kubectl -n "$NAMESPACE" exec "$pod" -c "$CONTAINER" -- \
+      psql -h 127.0.0.1 -U "$USER_NAME" -d "$DATABASE" -Atqc \
+      'select pg_is_in_recovery()' 2>/dev/null || true)"
+    [[ "$recovery" == f ]] && { leader="$pod"; break; }
+  done < <(kubectl -n "$NAMESPACE" get pods -l app=postgres-patroni -o name 2>/dev/null |
+    sed 's#^pod/##')
+  [[ -n "$leader" ]] && break
+  echo "[governance-change-runtime] leader discovery retry $attempt/5" >&2
+  sleep 2
+done
 [[ -n "$leader" ]] || { echo '[governance-change-runtime] FAIL PostgreSQL leader missing' >&2; exit 1; }
 psqlq(){ kubectl -n "$NAMESPACE" exec "$leader" -c "$CONTAINER" -- psql -h 127.0.0.1 -U "$USER_NAME" -d "$DATABASE" -Atqc "$1"; }
 
