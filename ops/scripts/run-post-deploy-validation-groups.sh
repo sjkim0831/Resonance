@@ -14,8 +14,12 @@ declare -a pids=()
 validate_menu_asset_design_group() {
   bash ops/scripts/validate-admin-menu-coverage.sh
   bash ops/scripts/validate-home-menu-coverage.sh
-  bash ops/scripts/sync-unified-asset-catalog.sh "$base_revision" "$revision"
-  bash ops/scripts/validate-e4b-selectable-assets.sh
+  if [[ "${UNIFIED_ASSET_SYNC_PRECOMPLETED:-false}" == "true" ]]; then
+    echo "[asset-catalog] precompleted during build and rollout"
+  else
+    bash ops/scripts/sync-unified-asset-catalog.sh "$base_revision" "$revision"
+    bash ops/scripts/validate-e4b-selectable-assets.sh
+  fi
   bash ops/scripts/validate-design-direct-development.sh
   bash ops/scripts/validate-common-design-assets.sh
 }

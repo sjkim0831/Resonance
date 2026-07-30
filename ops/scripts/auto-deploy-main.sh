@@ -172,6 +172,8 @@ echo "[auto-deploy] PostgreSQL backup leader: $POSTGRES_POD"
 backup_application_name="carbonet-auto-deploy-$$"
 schema_backup_dir=""
 schema_restore_database=""
+runtime_asset_sync_pid=""
+runtime_asset_sync_log=""
 # A disconnected kubectl/pg_dump pipeline can survive the systemd process and
 # retain ACCESS SHARE locks indefinitely. Reap only deploy-owned sessions that
 # have exceeded five minutes before Flyway can be blocked. Normal full dumps
@@ -191,6 +193,10 @@ cleanup_remote_backup() {
     >/dev/null 2>&1 || true
 }
 cleanup_deploy() {
+  if [[ -n "$runtime_asset_sync_pid" ]] && kill -0 "$runtime_asset_sync_pid" 2>/dev/null; then
+    kill "$runtime_asset_sync_pid" 2>/dev/null || true
+    wait "$runtime_asset_sync_pid" 2>/dev/null || true
+  fi
   cleanup_remote_backup
   if [[ -n "$schema_restore_database" ]]; then
     kubectl -n "$NAMESPACE" exec "$POSTGRES_POD" -c "$POSTGRES_CONTAINER" -- \
@@ -939,6 +945,20 @@ if [[ "$PLAN_FRONTEND_REQUIRED" != "true" \
   exit 0
 fi
 
+# Source catalog closure is independent of a backend-only image build and
+# rollout. Overlap its complete 41k+ file audit with those CPU/network waits,
+# then join fail-closed before runtime validation. Schema-changing releases
+# retain sequential ordering because Flyway may alter catalog contracts.
+if [[ "$PLAN_DATABASE_REQUIRED" != "true" ]]; then
+  runtime_asset_sync_log="$ROOT_DIR/var/logs/runtime-asset-sync-${target_commit:0:10}.log"
+  (
+    bash ops/scripts/sync-unified-asset-catalog.sh "$deployed_commit" "$target_commit"
+    bash ops/scripts/validate-e4b-selectable-assets.sh
+  ) >"$runtime_asset_sync_log" 2>&1 &
+  runtime_asset_sync_pid="$!"
+  echo "[auto-deploy] source asset closure running concurrently with runtime build pid=$runtime_asset_sync_pid"
+fi
+
 # The candidate-image migration Job is the only schema migration owner.
 # Runtime pods keep both engines disabled so replicas never contend for DDL.
 kubectl -n "$NAMESPACE" set env deployment/"$DEPLOYMENT" \
@@ -956,10 +976,23 @@ if [[ "$health_status" != *'"status":"UP"'* ]]; then
   echo "[auto-deploy] refusing success marker: health check is not UP" >&2
   exit 17
 fi
+asset_sync_precompleted=false
+if [[ -n "$runtime_asset_sync_pid" ]]; then
+  if wait "$runtime_asset_sync_pid"; then
+    cat "$runtime_asset_sync_log"
+    asset_sync_precompleted=true
+    runtime_asset_sync_pid=""
+  else
+    echo "[auto-deploy] refusing success marker: concurrent source asset closure failed" >&2
+    cat "$runtime_asset_sync_log" >&2
+    exit 18
+  fi
+fi
 # These groups use independent tables and contracts. Ordering remains strict
 # inside a group; the reusable harness provides bounded parallelism, isolated
 # logs, and one fail-closed result for both deployment and operator testing.
-bash ops/scripts/run-post-deploy-validation-groups.sh "$ROOT_DIR" "$target_commit" "$deployed_commit"
+UNIFIED_ASSET_SYNC_PRECOMPLETED="$asset_sync_precompleted" \
+  bash ops/scripts/run-post-deploy-validation-groups.sh "$ROOT_DIR" "$target_commit" "$deployed_commit"
 if [[ "$PLAN_FRONTEND_REQUIRED" == "true" ]]; then
   # A normal deployment must finish inside the operational feedback window.
   # Domain/API/schema validators above already cover the changed backend and
