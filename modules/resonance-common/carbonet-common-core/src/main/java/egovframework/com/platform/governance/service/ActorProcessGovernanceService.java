@@ -469,6 +469,37 @@ public class ActorProcessGovernanceService {
     }
 
     /**
+     * Runs the governed design-to-delivery handoff for one selected process
+     * step. Preflight is fail-closed, so implementation cannot be reopened
+     * before actor, screen, test and common-design contracts pass.
+     */
+    @Transactional public Map<String,Object> executeDevelopmentPipeline(Map<String,Object> body,String actor){
+        String process=req(body,"processCode");
+        String step=req(body,"stepCode");
+        Map<String,Object> preflight=runScreenDevelopmentPreflight(process,step,actor);
+        Map<String,Object> result=new LinkedHashMap<>();
+        result.put("success",true);
+        result.put("processCode",process);
+        result.put("stepCode",step);
+        result.put("preflight",preflight);
+        if(!Boolean.TRUE.equals(preflight.get("passed"))){
+            result.put("status","DESIGN_REQUIRED");
+            result.put("queued",false);
+            result.put("nextAction",preflight.get("failureSummary"));
+            return result;
+        }
+        Map<String,Object> delivery=executeDesignDirectDevelopment(
+                Map.of("processCode",process,"force",Boolean.TRUE.equals(body.get("force"))),actor);
+        result.put("status",delivery.get("status"));
+        result.put("queued",Set.of("READY_TO_EXECUTE","UNCHANGED").contains(String.valueOf(delivery.get("status"))));
+        result.put("delivery",delivery);
+        result.put("pipeline",List.of("DESIGN_VALIDATED","SCREEN_PREFLIGHT_PASSED",
+                "CODE_GENERATION_QUEUED","QUALITY_GATES_REQUIRED","DEPLOYMENT_GATE_REQUIRED"));
+        result.put("nextAction",delivery.get("nextAction"));
+        return result;
+    }
+
+    /**
      * Saves a route design and recompiles every bound process in one
      * transaction. Renderable blueprint contracts are returned immediately so
      * metadata-driven pages do not require a frontend rebuild.

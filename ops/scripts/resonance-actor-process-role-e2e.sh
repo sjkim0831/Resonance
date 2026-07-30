@@ -153,13 +153,27 @@ requester_status="$(curl --cacert "$CA_CERT" -sS -o "$run_dir/requester-command.
   exit 4
 }
 
+development_payload="$(printf '{"command":"development.execute","processCode":"EMISSION_PROJECT","stepCode":"%s","force":false}' "$(
+  node -e 'const rows=JSON.parse(require("fs").readFileSync(process.argv[1],"utf8")).steps ?? []; console.log(rows.find(row => row.processCode === "EMISSION_PROJECT")?.stepCode ?? "EMISSION_PROJECT_SETUP")' \
+    "$run_dir/reviewer-steps.json"
+)")"
+development_denied_status="$(curl --cacert "$CA_CERT" -sS \
+  -o "$run_dir/requester-development-command.json" -w '%{http_code}' \
+  -H "authorization: Bearer $requester_token" \
+  -H 'content-type: application/json' -d "$development_payload" \
+  "$BACKSTAGE_URL/api/resonance-projects/actor-process/commands")"
+[[ "$development_denied_status" == "403" ]] || {
+  echo "[actor-process-role-e2e] requester development denial expected HTTP 403, received $development_denied_status" >&2
+  exit 5
+}
+
 approver_status="$(curl --cacert "$CA_CERT" -sS -o "$run_dir/approver-command.json" -w '%{http_code}' \
   -H "authorization: Bearer $approver_token" \
   -H 'content-type: application/json' -d "$payload" \
   "$BACKSTAGE_URL/api/resonance-projects/actor-process/commands")"
 [[ "$approver_status" == "200" ]] || {
   echo "[actor-process-role-e2e] system-master override expected HTTP 200, received $approver_status" >&2
-  exit 5
+  exit 6
 }
 
 anonymous_status="$(curl --cacert "$CA_CERT" -sS -o "$run_dir/anonymous-command.json" -w '%{http_code}' \
@@ -167,7 +181,7 @@ anonymous_status="$(curl --cacert "$CA_CERT" -sS -o "$run_dir/anonymous-command.
   "$BACKSTAGE_URL/api/resonance-projects/actor-process/commands")"
 [[ "$anonymous_status" == "401" ]] || {
   echo "[actor-process-role-e2e] anonymous denial expected HTTP 401, received $anonymous_status" >&2
-  exit 6
+  exit 7
 }
 
-echo "[actor-process-role-e2e] command PASS: 2 allowed, 1 forbidden, 1 unauthenticated, 0 workflow mutations"
+echo "[actor-process-role-e2e] command PASS: 2 allowed, 2 forbidden, 1 unauthenticated, 0 workflow mutations"

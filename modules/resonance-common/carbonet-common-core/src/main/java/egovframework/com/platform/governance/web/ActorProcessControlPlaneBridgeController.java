@@ -232,6 +232,12 @@ public class ActorProcessControlPlaneBridgeController {
                 case "development.preflight" ->
                         result = governance.runScreenDevelopmentPreflight(
                                 required(body, "processCode"), required(body, "stepCode"), actor);
+                case "development.execute" -> {
+                    if (!governance.isControlPlaneAdministrator(account)) {
+                        throw new SecurityException("Administrator authority is required to execute the development pipeline.");
+                    }
+                    result = governance.executeDevelopmentPipeline(body, actor);
+                }
                 case "backend.verify" ->
                         result = governance.verifyBackendProcessContracts(
                                 String.valueOf(body.getOrDefault("sourceCommit", "")), actor);

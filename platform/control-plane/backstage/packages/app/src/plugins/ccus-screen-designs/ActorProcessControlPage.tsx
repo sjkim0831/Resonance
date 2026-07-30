@@ -404,6 +404,7 @@ function WorkOperationsMap({
   onSelect,
   onOpenTab,
   executeRuntimeCommand,
+  executeDevelopmentPipeline,
   loadDesignDocuments,
   saveDesignDocument,
 }: {
@@ -414,6 +415,10 @@ function WorkOperationsMap({
   executeRuntimeCommand: (
     command: 'execution.validate' | 'execution.advance',
     executionId: string,
+  ) => Promise<Record<string, unknown>>;
+  executeDevelopmentPipeline: (
+    processCode: string,
+    stepCode: string,
   ) => Promise<Record<string, unknown>>;
   loadDesignDocuments: (
     processCode: string,
@@ -438,6 +443,10 @@ function WorkOperationsMap({
   const [runtimeProjectId, setRuntimeProjectId] = useState('');
   const [runtimeCommandPending, setRuntimeCommandPending] = useState(false);
   const [runtimeCommandResult, setRuntimeCommandResult] = useState('');
+  const [developmentPipelinePending, setDevelopmentPipelinePending] =
+    useState(false);
+  const [developmentPipelineResult, setDevelopmentPipelineResult] =
+    useState('');
   const [selectedScenarioType, setSelectedScenarioType] =
     useState<(typeof REQUIRED_SIMULATION_TYPES)[number]>('HAPPY_PATH');
   const [designWorkbenchOpen, setDesignWorkbenchOpen] = useState(false);
@@ -618,6 +627,9 @@ function WorkOperationsMap({
       String(row.processCode) === processCode &&
       (!row.stepCode || String(row.stepCode) === String(activeStep?.stepCode)),
   );
+  const executableJobs = jobs.filter(row =>
+    ['PLANNED', 'RETRY'].includes(String(row.jobStatus ?? '')),
+  );
   const artifacts = ((dashboard.artifacts ?? []) as RuntimeRow[]).filter(
     row =>
       String(row.processCode) === processCode &&
@@ -682,6 +694,29 @@ function WorkOperationsMap({
       );
     } finally {
       setRuntimeCommandPending(false);
+    }
+  };
+  const runDevelopmentPipeline = async () => {
+    const stepCode = String(activeStep?.stepCode ?? '');
+    if (!processCode || !stepCode || developmentPipelinePending) return;
+    setDevelopmentPipelinePending(true);
+    setDevelopmentPipelineResult('');
+    try {
+      const result = await executeDevelopmentPipeline(processCode, stepCode);
+      const status = String(result.status ?? '');
+      setDevelopmentPipelineResult(
+        status === 'DESIGN_REQUIRED'
+          ? `설계 보완 필요: ${displayValue(result.nextAction)}`
+          : `자동 개발 파이프라인이 준비되었습니다: ${displayValue(
+              status,
+            )}. 생성 작업은 품질 게이트 통과 후에만 배포됩니다.`,
+      );
+    } catch (error) {
+      setDevelopmentPipelineResult(
+        error instanceof Error ? error.message : String(error),
+      );
+    } finally {
+      setDevelopmentPipelinePending(false);
     }
   };
   const detailRows: Record<
@@ -1158,6 +1193,40 @@ function WorkOperationsMap({
                   ? `상태 동기화 복구: ${displayValue(nextStep.stepName)} →`
                   : '현재 업무 완료 상태 복구'}
               </Button>
+              <Paper
+                variant="outlined"
+                style={{
+                  padding: 12,
+                  borderColor: executableJobs.length ? '#2563eb' : '#cbd5e1',
+                  background: executableJobs.length ? '#eff6ff' : '#f8fafc',
+                }}
+              >
+                <Typography variant="subtitle2">
+                  설계 → 개발 자동 실행
+                </Typography>
+                <Typography variant="caption" color="textSecondary">
+                  선택 단계의 PLANNED/RETRY 작업 {executableJobs.length}건을
+                  설계·공통자산·테스트 사전검사 후 생성 큐에 등록합니다.
+                  테스트와 배포 게이트를 통과하지 못하면 운영 반영되지 않습니다.
+                </Typography>
+                <Box mt={1}>
+                  <Button
+                    size="small"
+                    variant="contained"
+                    color="primary"
+                    disabled={
+                      executableJobs.length === 0 ||
+                      developmentPipelinePending ||
+                      !activeStep?.stepCode
+                    }
+                    onClick={() => void runDevelopmentPipeline()}
+                  >
+                    {developmentPipelinePending
+                      ? '자동화 실행 중…'
+                      : `자동 개발 시작 (${executableJobs.length})`}
+                  </Button>
+                </Box>
+              </Paper>
             </Box>
             {runtimeCommandResult && (
               <Typography
@@ -1166,6 +1235,15 @@ function WorkOperationsMap({
                 style={{ marginTop: 12 }}
               >
                 {runtimeCommandResult}
+              </Typography>
+            )}
+            {developmentPipelineResult && (
+              <Typography
+                variant="body2"
+                color="textSecondary"
+                style={{ marginTop: 8 }}
+              >
+                {developmentPipelineResult}
               </Typography>
             )}
           </Paper>
@@ -2256,6 +2334,36 @@ export function ActorProcessControlPage(props: {
     },
     [fetchApi, loadRuntimeDataset],
   );
+  const executeDevelopmentPipeline = useCallback(
+    async (processCode: string, stepCode: string) => {
+      const response = await fetchApi.fetch(
+        '/api/resonance-projects/actor-process/commands',
+        {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            command: 'development.execute',
+            processCode,
+            stepCode,
+            force: false,
+          }),
+        },
+      );
+      const payload = (await response.json()) as Record<string, unknown>;
+      if (!response.ok) {
+        throw new Error(
+          String(payload.message ?? payload.error ?? `HTTP ${response.status}`),
+        );
+      }
+      await Promise.all([
+        loadRuntimeDataset('developmentJobs'),
+        loadRuntimeDataset('artifacts'),
+        loadRuntimeDataset('deliveryQueue'),
+      ]);
+      return payload;
+    },
+    [fetchApi, loadRuntimeDataset],
+  );
 
   const loadDashboard = async () => {
     setLoading(true);
@@ -2662,6 +2770,7 @@ export function ActorProcessControlPage(props: {
                 onSelect={setSelectedRow}
                 onOpenTab={openControlTab}
                 executeRuntimeCommand={executeRuntimeCommand}
+                executeDevelopmentPipeline={executeDevelopmentPipeline}
                 loadDesignDocuments={loadDesignDocuments}
                 saveDesignDocument={saveDesignDocument}
               />
