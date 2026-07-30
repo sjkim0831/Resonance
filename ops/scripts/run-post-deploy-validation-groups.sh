@@ -24,7 +24,7 @@ validate_emission_workflow_group() {
   bash ops/scripts/validate-emission-project-workflow.sh
   bash ops/scripts/validate-emission-activity-collection.sh
 
-  # These four lanes own independent evidence tables and runtime contracts.
+  # These five lanes own independent evidence tables and runtime contracts.
   # Execute each lane in order internally, but overlap the lanes so a cold
   # runtime does not multiply network and PostgreSQL round-trip latency.
   local lane_dir lane_failed lane_name lane_pid
@@ -52,8 +52,10 @@ validate_emission_workflow_group() {
     bash ops/scripts/complete-emission-calculation-evidence-jobs.sh
     bash ops/scripts/validate-emission-calculation-runtime.sh
   }
-  boundary_lane() {
+  organizational_boundary_lane() {
     bash ops/scripts/validate-organizational-boundary-runtime.sh
+  }
+  governance_change_lane() {
     bash ops/scripts/validate-governance-change-runtime.sh
   }
   report_lane() {
@@ -62,7 +64,8 @@ validate_emission_workflow_group() {
   }
   start_emission_lane activity activity_lane
   start_emission_lane calculation calculation_lane
-  start_emission_lane boundary boundary_lane
+  start_emission_lane organizational-boundary organizational_boundary_lane
+  start_emission_lane governance-change governance_change_lane
   start_emission_lane report report_lane
   for lane_index in "${!lane_pids[@]}"; do
     lane_name="${lane_names[$lane_index]}"
@@ -75,16 +78,37 @@ validate_emission_workflow_group() {
       cat "$lane_dir/$lane_name.log" >&2
     fi
   done
-  rm -rf "$lane_dir"
   (( lane_failed == 0 )) || return 1
 
-  # Cross-domain journeys run only after every prerequisite lane has passed.
-  bash ops/scripts/validate-customer-work-journey.sh
+  # Cross-domain journeys run only after every prerequisite lane has passed,
+  # but they are read-only against independent authentication contexts. Keep
+  # the prerequisite barrier while avoiding another serial network round trip.
+  start_emission_lane customer-journey \
+    bash ops/scripts/validate-customer-work-journey.sh
   if [[ "${VALIDATE_ACTOR_ACCOUNT:-true}" == "true" ]]; then
-    bash ops/scripts/validate-actor-account-customer-journey.sh
+    start_emission_lane actor-account-journey \
+      bash ops/scripts/validate-actor-account-customer-journey.sh
   else
     echo "[actor-account-journey] skipped only for an explicit operator benchmark"
   fi
+  lane_failed=0
+  first_cross_lane=$((${#lane_pids[@]} - 2))
+  if [[ "${VALIDATE_ACTOR_ACCOUNT:-true}" != "true" ]]; then
+    first_cross_lane=$((${#lane_pids[@]} - 1))
+  fi
+  for ((lane_index=first_cross_lane; lane_index<${#lane_pids[@]}; lane_index++)); do
+    lane_name="${lane_names[$lane_index]}"
+    lane_pid="${lane_pids[$lane_index]}"
+    if wait "$lane_pid"; then
+      cat "$lane_dir/$lane_name.log"
+    else
+      lane_failed=1
+      echo "[emission-lane] FAIL name=$lane_name" >&2
+      cat "$lane_dir/$lane_name.log" >&2
+    fi
+  done
+  rm -rf "$lane_dir"
+  (( lane_failed == 0 )) || return 1
 }
 
 validate_identity_design_group() {
