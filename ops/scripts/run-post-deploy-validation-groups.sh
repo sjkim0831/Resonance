@@ -82,10 +82,10 @@ validate_emission_workflow_group() {
     bash ops/scripts/complete-report-certification-evidence-jobs.sh
     bash ops/scripts/validate-report-certification-runtime.sh
   }
-  # New JVMs are CPU/JIT cold. Two broad journeys first exercise authentication,
-  # workflow, page and persistence paths without allowing seven heavy lanes to
-  # saturate the runtime simultaneously. The five independent domain lanes then
-  # execute in parallel against the warmed candidate.
+  # These journeys validate stable runtime/DB state and do not consume evidence
+  # produced by the five lanes below. Keep one fail-closed barrier: splitting a
+  # cold JVM into two waves increased total verification time without reducing
+  # load or improving readiness.
   start_emission_lane customer-journey \
     bash ops/scripts/validate-customer-work-journey.sh
   if [[ "${VALIDATE_ACTOR_ACCOUNT:-true}" == "true" ]]; then
@@ -94,9 +94,6 @@ validate_emission_workflow_group() {
   else
     echo "[actor-account-journey] skipped only for an explicit operator benchmark"
   fi
-  wait_emission_lanes
-  (( lane_failed == 0 )) || { rm -rf "$lane_dir"; return 1; }
-
   start_emission_lane activity activity_lane
   start_emission_lane calculation calculation_lane
   start_emission_lane organizational-boundary organizational_boundary_lane
