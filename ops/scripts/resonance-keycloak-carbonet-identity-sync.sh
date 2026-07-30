@@ -75,6 +75,20 @@ users_json="$(
     /opt/keycloak/bin/kcadm.sh get users -r "$REALM" \
     --fields id,username,email,firstName,lastName,enabled,attributes --format json
 )"
+# Keycloak's collection endpoint intentionally returns a brief representation
+# and omits custom attributes. Enrich the bounded E2E identities that carry
+# project scopes so the authorization projection is not silently widened to *.
+for scoped_username in resonance-requester resonance-reviewer resonance-approver; do
+  scoped_id="$(jq -r --arg username "$scoped_username" \
+    '.[] | select(.username == $username) | .id' <<<"$users_json" | head -n1)"
+  [[ -n "$scoped_id" ]] || continue
+  scoped_user="$(
+    kubectl -n "$NAMESPACE" exec "$keycloak_pod" -c keycloak -- \
+      /opt/keycloak/bin/kcadm.sh get "users/$scoped_id" -r "$REALM"
+  )"
+  users_json="$(jq -c --arg id "$scoped_id" --argjson detail "$scoped_user" \
+    'map(if .id == $id then . + $detail else . end)' <<<"$users_json")"
+done
 groups_catalog="$(
   kubectl -n "$NAMESPACE" exec "$keycloak_pod" -c keycloak -- \
     /opt/keycloak/bin/kcadm.sh get groups -r "$REALM" \
@@ -265,21 +279,15 @@ BEGIN
 
   UPDATE framework_account_actor_assignment assignment
      SET assignment_status='SUSPENDED'
-   WHERE assignment.assignment_id IN (
-     SELECT link.assignment_id
-       FROM framework_identity_actor_assignment_link link
-      WHERE lower(link.account_id)=lower(v_username)
-        AND NOT EXISTS (
-          SELECT 1
-            FROM framework_identity_group_actor_policy actor_policy
-           WHERE actor_policy.active_yn='Y'
-             AND v_groups ? actor_policy.group_name
-             AND actor_policy.group_name=link.group_name
-             AND actor_policy.actor_code=link.actor_code
-             AND link.tenant_id=v_tenant_id
-             AND v_project_scopes ? link.project_id
-        )
-   );
+   WHERE lower(assignment.account_id)=lower(v_username)
+     AND assignment.tenant_id=v_tenant_id
+     AND assignment.actor_code IN (
+       SELECT actor_policy.actor_code
+         FROM framework_identity_group_actor_policy actor_policy
+        WHERE actor_policy.active_yn='Y'
+          AND v_groups ? actor_policy.group_name
+     )
+     AND NOT (v_project_scopes ? assignment.project_id);
   UPDATE framework_identity_actor_assignment_link link
      SET active_yn='N',updated_at=current_timestamp
    WHERE lower(link.account_id)=lower(v_username)
