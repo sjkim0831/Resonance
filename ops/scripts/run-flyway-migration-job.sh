@@ -80,6 +80,13 @@ job = {
             "spec": {
                 "restartPolicy": "Never",
                 "serviceAccountName": pod.get("serviceAccountName", "default"),
+                "securityContext": {
+                    "runAsUser": 1000,
+                    "runAsGroup": 1000,
+                    "runAsNonRoot": True,
+                    "fsGroup": 1000,
+                    "seccompProfile": {"type": "RuntimeDefault"},
+                },
                 "containers": containers,
                 "volumes": pod.get("volumes", []),
             },
