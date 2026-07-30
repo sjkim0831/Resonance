@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+current_gate="bootstrap"
+trap 'rc=$?; if [[ $rc -ne 0 ]]; then echo "[screen-space-runtime-e2e] FAIL gate=$current_gate rc=$rc" >&2; fi' EXIT
+
 ROOT="${RESONANCE_ROOT:-/opt/Resonance}"
 NAMESPACE="${NAMESPACE:-resonance-ops}"
 SECRET_NAME="${BACKSTAGE_E2E_SECRET_NAME:-resonance-keycloak-integrated-admin}"
@@ -24,6 +27,7 @@ bridge_token="$(
     -o jsonpath='{.data.RESONANCE_OPS_TOKEN}' | base64 -d
 )"
 
+current_gate="load-work-pack"
 work_pack="$(
   curl --silent --show-error --fail \
     --cacert "$CA_CERT" \
@@ -31,6 +35,7 @@ work_pack="$(
     "$API/screen-space/work-pack/emission"
 )"
 
+current_gate="validate-work-pack"
 jq -e '
   . as $root
   | .workPackCode == "EMISSION_PROJECT_END_TO_END"
@@ -72,6 +77,7 @@ payload="$(
   }'
 )"
 
+current_gate="materialize-registered-screen"
 materialized="$(
   curl --silent --show-error --fail \
     --cacert "$CA_CERT" \
@@ -82,6 +88,7 @@ materialized="$(
     "$API/screen-space/materialize"
 )"
 coordinate="$(jq -er '.coordinate' <<<"$materialized")"
+current_gate="validate-registered-screen"
 jq -e '
   .success == true
   and .status == "VERIFIED"
@@ -92,6 +99,7 @@ jq -e '
   and (.screenSpec.composition.responsive == ["DESKTOP","TABLET","MOBILE"])
 ' <<<"$materialized" >/dev/null
 
+current_gate="verify-registered-runtime-publication"
 curl --silent --show-error --fail \
   -H "X-Resonance-Token: $bridge_token" \
   "$CARBONET_URL/api/internal/screen-space/specs?routePath=%2Femission%2Fproject%2Fcreate" \
@@ -102,6 +110,7 @@ curl --silent --show-error --fail \
       and (.specSha256 | length) == 64
     ' >/dev/null
 
+current_gate="verify-protected-existing-route"
 curl --silent --show-error --fail \
   "$CARBONET_URL/home/api/process-executions/screen-contract?routePath=%2Femission%2Fproject%2Fcreate" \
   | jq -e '
@@ -120,6 +129,7 @@ runtime_payload="$(
     | .routePath = "/generated/screen-space-runtime-e2e"
   ' <<<"$payload"
 )"
+current_gate="materialize-runtime-screen"
 runtime_materialized="$(
   curl --silent --show-error --fail \
     --cacert "$CA_CERT" \
@@ -130,6 +140,7 @@ runtime_materialized="$(
     "$API/screen-space/materialize"
 )"
 runtime_coordinate="$(jq -er '.coordinate' <<<"$runtime_materialized")"
+current_gate="validate-runtime-screen"
 jq -e '
   .success == true
   and .status == "VERIFIED"
@@ -137,6 +148,7 @@ jq -e '
   and .runtimePublication.status == "PUBLISHED"
 ' <<<"$runtime_materialized" >/dev/null
 
+current_gate="verify-runtime-screen-contract"
 curl --silent --show-error --fail \
   "$CARBONET_URL/home/api/process-executions/screen-contract?routePath=%2Fgenerated%2Fscreen-space-runtime-e2e" \
   | jq -e --arg coordinate "$runtime_coordinate" '
@@ -154,6 +166,7 @@ curl --silent --show-error --fail \
       and (.traceabilityJson | fromjson | .specSha256 | length) == 64
     ' >/dev/null
 
+current_gate="verify-backstage-screen-index"
 curl --silent --show-error --fail \
   --cacert "$CA_CERT" \
   -H "authorization: Bearer $token" \
@@ -167,4 +180,5 @@ curl --silent --show-error --fail \
         )
     ' >/dev/null
 
+current_gate="complete"
 echo "[screen-space-runtime-e2e] PASS stages=7 coordinate=$coordinate runtimeCoordinate=$runtime_coordinate protectedExisting=true status=VERIFIED"

@@ -33,10 +33,19 @@ async function signIn(page: Page) {
     .getByRole('button')
     .filter({ hasText: /Resonance|로그인|Sign in/i })
     .first();
-  await Promise.race([
-    sidebar.waitFor({ state: 'attached', timeout: 60_000 }),
-    signInButton.waitFor({ state: 'visible', timeout: 60_000 }),
+  const readySurface = await Promise.all([
+    sidebar
+      .waitFor({ state: 'attached', timeout: 30_000 })
+      .then(() => 'sidebar' as const)
+      .catch(() => null),
+    signInButton
+      .waitFor({ state: 'visible', timeout: 30_000 })
+      .then(() => 'sign-in' as const)
+      .catch(() => null),
   ]);
+  if (!readySurface.some(Boolean)) {
+    throw new Error('Backstage did not expose a sidebar or sign-in action');
+  }
   if (await sidebar.isVisible()) {
     return;
   }
