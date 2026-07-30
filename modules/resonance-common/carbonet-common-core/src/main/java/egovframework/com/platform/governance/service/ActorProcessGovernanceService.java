@@ -919,13 +919,14 @@ public class ActorProcessGovernanceService {
         List<Map<String,Object>> accounts=jdbc.queryForList("""
             select account_id as "accountId"
               from framework_account_actor_assignment
-             where tenant_id=? and project_id=? and actor_code=?
+             where tenant_id=? and (project_id=? or project_id='*') and actor_code=?
                and assignment_status='ACTIVE'
                and (valid_from is null or valid_from<=current_date)
                and (valid_until is null or valid_until>=current_date)
-             order by account_id
+             order by case when project_id=? then 0 else 1 end,account_id
              limit 1
-            """,execution.get("tenantId"),execution.get("projectId"),execution.get("actorCode"));
+            """,execution.get("tenantId"),execution.get("projectId"),execution.get("actorCode"),
+                execution.get("projectId"));
         if(accounts.isEmpty()){
             throw new IllegalStateException(
                     "현재 단계 액터에 활성 계정이 배정되지 않았습니다: "+execution.get("actorCode"));
@@ -1165,7 +1166,7 @@ public class ActorProcessGovernanceService {
     }
 
     private void requireActorAssignment(String tenant,String project,String actor,String user){
-        Integer count=jdbc.queryForObject("select count(*) from framework_account_actor_assignment where tenant_id=? and project_id=? and actor_code=? and lower(account_id)=lower(?) and assignment_status='ACTIVE' and (valid_from is null or valid_from<=current_date) and (valid_until is null or valid_until>=current_date)",Integer.class,tenant,project,actor,user);
+        Integer count=jdbc.queryForObject("select count(*) from framework_account_actor_assignment where tenant_id=? and (project_id=? or project_id='*') and actor_code=? and lower(account_id)=lower(?) and assignment_status='ACTIVE' and (valid_from is null or valid_from<=current_date) and (valid_until is null or valid_until>=current_date)",Integer.class,tenant,project,actor,user);
         if(count==null||count==0)throw new SecurityException("프로젝트에 활성 액터 배정이 없습니다: "+actor);
     }
 

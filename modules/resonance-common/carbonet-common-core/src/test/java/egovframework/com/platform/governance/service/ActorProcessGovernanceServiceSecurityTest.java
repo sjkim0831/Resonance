@@ -34,7 +34,9 @@ class ActorProcessGovernanceServiceSecurityTest {
                 "tenantId", "TENANT_A", "projectId", "PROJECT_A", "processCode", "PROCESS_A",
                 "actorCode", "COMPANY_MANAGER"), "user-a"));
 
-        verify(jdbc).queryForObject(argThat(sql -> sql.contains("lower(account_id)=lower(?)")),
+        verify(jdbc).queryForObject(argThat(sql ->
+                        sql.contains("(project_id=? or project_id='*')")
+                                && sql.contains("lower(account_id)=lower(?)")),
                 org.mockito.ArgumentMatchers.eq(Integer.class), any(Object[].class));
     }
 
