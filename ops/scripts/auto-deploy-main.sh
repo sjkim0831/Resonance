@@ -256,10 +256,12 @@ if [[ -n "$tracked_source_changes" ]]; then
   fi
   source_overlay="$source_root/projects/carbonet-frontend/src/main/resources/static/react-app"
   clean_overlay="$clean_worktree/projects/carbonet-frontend/src/main/resources/static/react-app"
-  mkdir -p "$clean_worktree/var/run" "$clean_worktree/var/logs" "$clean_overlay"
+  mkdir -p "$clean_worktree/var/run" "$clean_worktree/var/logs"
   if [[ -f "$source_overlay/index.html" ]]; then
     # Both worktrees live on /opt. A read-only hard-link snapshot preserves the
     # verified frontend closure without copying its full hashed asset graph.
+    rm -rf -- "$clean_overlay"
+    mkdir -p "$clean_overlay"
     cp -al "$source_overlay/." "$clean_overlay/"
     node "$clean_worktree/ops/scripts/verify-react-asset-closure.mjs" "$clean_overlay"
   fi
