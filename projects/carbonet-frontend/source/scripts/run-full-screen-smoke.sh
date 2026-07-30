@@ -8,6 +8,16 @@ export FULL_SCREEN_SMOKE_MANIFEST="${FULL_SCREEN_SMOKE_MANIFEST:-$cache_dir/mani
 export FULL_SCREEN_SMOKE_RESULT_DIR="$result_dir"
 export FULL_SCREEN_SMOKE_BASELINE="${FULL_SCREEN_SMOKE_BASELINE:-$cache_dir/last-success.json}"
 
+# Interrupted operator runs can leave Playwright's default output owned by a
+# different account. Repair only these bounded generated directories before
+# the fail-closed browser gate starts; source files are never changed here.
+for generated_output in "$root_dir/test-results" "$root_dir/playwright-report"; do
+  [[ -e "$generated_output" ]] || continue
+  if [[ ! -w "$generated_output" ]]; then
+    sudo -n chown -R "$(id -u):$(id -g)" "$generated_output"
+  fi
+done
+
 case "$result_dir" in
   "$root_dir"/.cache/full-screen-smoke/*) ;;
   *) echo "unsafe smoke result directory: $result_dir" >&2; exit 2 ;;
