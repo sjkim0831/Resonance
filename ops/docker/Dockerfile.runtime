@@ -12,12 +12,20 @@ ENV PROJECT_ID=${PROJECT_ID}
 ENV JAVA_OPTS="-Xms256m -Xmx512m"
 ENV SERVER_PORT=8080
 
-RUN mkdir -p /app/config /app/lib /app/db /opt/reference /var/logs
+RUN mkdir -p /app/config /app/lib /app/db /app/runtime /opt/reference /var/logs
 WORKDIR /app
 
 COPY carbonet-api.jar /app/carbonet-api.jar
 COPY lib/ /app/lib/
 COPY config/ /app/config/
 
+# Spring Boot's executable JAR otherwise opens hundreds of nested dependency
+# archives during every pod start. Extract its launcher layout once while the
+# image is built; this preserves the same application and classpath while
+# turning runtime class loading into ordinary filesystem reads.
+RUN java -Djarmode=tools -jar /app/carbonet-api.jar extract \
+      --launcher --destination /app/runtime \
+    && rm -f /app/carbonet-api.jar
+
 EXPOSE ${SERVER_PORT}
-ENTRYPOINT ["sh", "-c", "exec java ${JAVA_OPTS} -Dloader.path=lib/ -jar carbonet-api.jar --spring.profiles.active=prod --app.project-id=${PROJECT_ID} --server.port=${SERVER_PORT:-8080}"]
+ENTRYPOINT ["sh", "-c", "exec java ${JAVA_OPTS} -cp /app/runtime org.springframework.boot.loader.launch.JarLauncher --spring.config.additional-location=optional:file:/app/config/ --spring.profiles.active=prod --app.project-id=${PROJECT_ID} --server.port=${SERVER_PORT:-8080}"]
