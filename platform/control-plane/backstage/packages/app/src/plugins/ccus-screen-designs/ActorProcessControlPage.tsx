@@ -275,17 +275,31 @@ function WorkOperationsMap({
     'design' | 'data' | 'screen' | 'test' | 'task'
   >('design');
   const [selectedStepCode, setSelectedStepCode] = useState('');
+  const [selectedProcessCode, setSelectedProcessCode] = useState('');
+  const [selectedActorCode, setSelectedActorCode] = useState('');
   const processes = (dashboard.processes ?? []) as RuntimeRow[];
   const steps = (dashboard.steps ?? []) as RuntimeRow[];
   const actors = (dashboard.actors ?? []) as RuntimeRow[];
   const executions = (dashboard.processExecutions ?? []) as RuntimeRow[];
-  const selectedProcess =
+  const executionProcess =
     processes.find(row =>
       executions.some(
         execution => execution.processCode === row.processCode,
       ),
     ) ?? processes[0];
+  const selectedProcess =
+    processes.find(
+      row => String(row.processCode) === selectedProcessCode,
+    ) ?? executionProcess;
   const processCode = String(selectedProcess?.processCode ?? '');
+  useEffect(() => {
+    if (
+      processes.length > 0 &&
+      !processes.some(row => String(row.processCode) === selectedProcessCode)
+    ) {
+      setSelectedProcessCode(String(executionProcess?.processCode ?? ''));
+    }
+  }, [executionProcess?.processCode, processes, selectedProcessCode]);
   const processSteps = steps
     .filter(row => !processCode || String(row.processCode) === processCode)
     .sort(
@@ -317,9 +331,21 @@ function WorkOperationsMap({
       );
     }
   }, [activeStepCode, processSteps, selectedStepCode]);
-  const actor = actors.find(
+  const stepActor = actors.find(
     row => String(row.actorCode) === String(activeStep?.actorCode ?? ''),
   );
+  const selectedActor =
+    actors.find(row => String(row.actorCode) === selectedActorCode) ??
+    stepActor ??
+    actors[0];
+  useEffect(() => {
+    if (
+      actors.length > 0 &&
+      !actors.some(row => String(row.actorCode) === selectedActorCode)
+    ) {
+      setSelectedActorCode(String(stepActor?.actorCode ?? actors[0].actorCode));
+    }
+  }, [actors, selectedActorCode, stepActor?.actorCode]);
   const cases = ((dashboard.cases ?? []) as RuntimeRow[]).filter(
     row => String(row.processCode) === processCode,
   );
@@ -345,7 +371,7 @@ function WorkOperationsMap({
     design: [
       ['프로세스', selectedProcess?.processName, processCode],
       ['단계', activeStep?.stepName, activeStep?.stepCode],
-      ['담당 액터', actor?.actorName, activeStep?.actorCode],
+      ['담당 액터', stepActor?.actorName, activeStep?.actorCode],
       [
         '상태 전이',
         activeStep?.transitionRule ?? activeStep?.completionRule,
@@ -385,15 +411,72 @@ function WorkOperationsMap({
             <Box mt={2}>
               <Chip size="small" color="primary" label={projectId} />
             </Box>
-            <Typography variant="subtitle2" style={{ marginTop: 16 }}>
-              {displayValue(selectedProcess?.processName) ||
-                '등록된 프로세스 없음'}
-            </Typography>
-            <Typography variant="body2" color="textSecondary">
-              {processCode || '-'}
-            </Typography>
+            <FormControl
+              variant="outlined"
+              size="small"
+              fullWidth
+              style={{ marginTop: 16 }}
+            >
+              <InputLabel>프로세스 선택</InputLabel>
+              <Select
+                value={processCode}
+                label="프로세스 선택"
+                onChange={event => {
+                  const nextCode = String(event.target.value);
+                  setSelectedProcessCode(nextCode);
+                  setSelectedStepCode('');
+                  const firstStep = steps
+                    .filter(row => String(row.processCode) === nextCode)
+                    .sort(
+                      (a, b) =>
+                        Number(a.stepOrder ?? 0) - Number(b.stepOrder ?? 0),
+                    )[0];
+                  if (firstStep?.actorCode) {
+                    setSelectedActorCode(String(firstStep.actorCode));
+                  }
+                }}
+              >
+                {processes.map(row => (
+                  <MenuItem
+                    key={String(row.processCode)}
+                    value={String(row.processCode)}
+                  >
+                    {displayValue(row.processName)} ({displayValue(row.processCode)})
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            <FormControl
+              variant="outlined"
+              size="small"
+              fullWidth
+              style={{ marginTop: 12 }}
+            >
+              <InputLabel>액터 선택</InputLabel>
+              <Select
+                value={String(selectedActor?.actorCode ?? '')}
+                label="액터 선택"
+                onChange={event =>
+                  setSelectedActorCode(String(event.target.value))
+                }
+              >
+                {actors.map(row => (
+                  <MenuItem
+                    key={String(row.actorCode)}
+                    value={String(row.actorCode)}
+                  >
+                    {displayValue(row.actorName)} ({displayValue(row.actorCode)})
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
             <Typography variant="body2" style={{ marginTop: 12 }}>
-              담당 액터: {displayValue(actor?.actorName ?? activeStep?.actorCode)}
+              선택 액터: {displayValue(selectedActor?.actorName)}
+            </Typography>
+            <Typography variant="caption" display="block" color="textSecondary">
+              현재 단계 담당: {displayValue(
+                stepActor?.actorName ?? activeStep?.actorCode,
+              )}
             </Typography>
             <Typography variant="caption" color="textSecondary">
               전체 프로세스 {processes.length}개 · 액터 {actors.length}개
