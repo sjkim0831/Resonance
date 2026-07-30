@@ -913,6 +913,26 @@ if [[ "$PLAN_FRONTEND_REQUIRED" == "true" \
   exit 0
 fi
 
+# A measured JVM profile changes only the Deployment environment. Promote it
+# through a guarded rolling restart and the complete runtime validation suite;
+# the promoter restores the previous profile automatically on any failure.
+if [[ "$PLAN_RUNTIME_REQUIRED" == "true" \
+   && "$PLAN_FRONTEND_REQUIRED" != "true" \
+   && "$PLAN_BACKEND_REQUIRED" != "true" \
+   && "$PLAN_DATABASE_REQUIRED" != "true" \
+   && ",$PLAN_TESTS," == *",runtime:startup-profile,"* ]]; then
+  CARBONET_DEPLOY_ROOT="$ROOT_DIR" \
+    bash ops/scripts/promote-runtime-startup-profile.sh
+  bash ops/scripts/sync-unified-asset-catalog.sh "$deployed_commit" "$target_commit"
+  bash ops/scripts/validate-e4b-selectable-assets.sh
+  rm -f "$ROOT_DIR/var/run/full-screen-deploy-gate/active.env"
+  printf '%s\n' "$target_commit" > "${DEPLOY_STATE_FILE}.tmp"
+  mv "${DEPLOY_STATE_FILE}.tmp" "$DEPLOY_STATE_FILE"
+  record_deploy_performance runtime
+  echo "[auto-deploy] JVM profile promoted without Java/frontend rebuild: $target_commit"
+  exit 0
+fi
+
 # Test/deployment automation changes do not alter the running application.
 # Validate their syntax and planning contract, then advance the marker without
 # rebuilding React, Java, or an immutable image.

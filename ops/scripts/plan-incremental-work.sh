@@ -100,6 +100,13 @@ while IFS= read -r path; do
       add_test "control-plane:validate"
       add_reason "control-plane-only"
       ;;
+    ops/config/runtime-jvm-profile.env)
+      # JVM tuning is a declarative runtime setting. Roll it with the measured
+      # startup-profile promoter; never rebuild identical Java or React bytes.
+      runtime_required=true; infrastructure_required=true; catalog_only=false
+      add_test "runtime:startup-profile"
+      add_reason "runtime-jvm-profile"
+      ;;
     ops/docker/*|deploy/*|manifests/*)
       runtime_required=true; backend_required=true; infrastructure_required=true; catalog_only=false
       add_test "deployment:preflight"
