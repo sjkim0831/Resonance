@@ -347,6 +347,7 @@ export default createBackendPlugin({
             policyCount: Number(count),
             recoverySchemaVersion: 2,
             offsiteFullRestoreReporting: true,
+            deploymentTargetSeconds: 60,
           });
         });
         router.get('/summary', async (request, response) => {
