@@ -684,7 +684,7 @@ export default createBackendPlugin({
         });
         router.get(
           '/actor-process/runtime-dashboard',
-          async (_request, response) => {
+          async (request, response) => {
             const runtimeBaseUrl = String(
               process.env.CARBONET_RUNTIME_BASE_URL ??
                 'http://carbonet-api.carbonet-prod.svc.cluster.local:8080',
@@ -706,7 +706,25 @@ export default createBackendPlugin({
               },
             );
             const body = await runtimeResponse.text();
-            response.status(runtimeResponse.status).send(body);
+            if (!runtimeResponse.ok) {
+              response.status(runtimeResponse.status).send(body);
+              return;
+            }
+            const dataset = String(request.query.dataset ?? '').trim();
+            if (!dataset) {
+              response.status(runtimeResponse.status).send(body);
+              return;
+            }
+            if (!/^[A-Za-z][A-Za-z0-9]*$/.test(dataset)) {
+              response.status(400).json({ message: 'invalid dataset key' });
+              return;
+            }
+            const dashboard = JSON.parse(body) as Record<string, unknown>;
+            response.json({
+              [dataset]: Array.isArray(dashboard[dataset])
+                ? dashboard[dataset]
+                : [],
+            });
           },
         );
         router.get(

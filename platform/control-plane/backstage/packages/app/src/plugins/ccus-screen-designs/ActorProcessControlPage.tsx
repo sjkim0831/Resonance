@@ -224,6 +224,19 @@ export function ActorProcessControlPage(props: {
     if (latest) setDesignVersion(latest.designVersion);
   };
 
+  const loadRuntimeDataset = async (targetDatasetKey: string) => {
+    const response = await fetchApi.fetch(
+      `/api/resonance-projects/actor-process/runtime-dashboard?dataset=${encodeURIComponent(
+        targetDatasetKey,
+      )}`,
+    );
+    if (!response.ok) {
+      throw new Error(`Actor·Process runtime dataset ${response.status}`);
+    }
+    const payload = (await response.json()) as RuntimeDashboard;
+    setRuntimeDashboard(current => ({ ...current, ...payload }));
+  };
+
   const loadDashboard = async () => {
     setLoading(true);
     try {
@@ -232,7 +245,9 @@ export function ActorProcessControlPage(props: {
           fetchApi.fetch('/api/resonance-projects'),
           fetchApi.fetch('/api/resonance-projects/operations/summary'),
           fetchApi.fetch(
-            '/api/resonance-projects/actor-process/runtime-dashboard',
+            `/api/resonance-projects/actor-process/runtime-dashboard?dataset=${encodeURIComponent(
+              datasetKey,
+            )}`,
           ),
         ]);
       if (projectResponse.ok) {
@@ -253,7 +268,8 @@ export function ActorProcessControlPage(props: {
         setSummary((await summaryResponse.json()) as OperationsSummary);
       }
       if (runtimeResponse.ok) {
-        setRuntimeDashboard((await runtimeResponse.json()) as RuntimeDashboard);
+        const payload = (await runtimeResponse.json()) as RuntimeDashboard;
+        setRuntimeDashboard(current => ({ ...current, ...payload }));
       } else {
         throw new Error(
           `Actor·Process runtime dashboard ${runtimeResponse.status}`,
@@ -274,6 +290,19 @@ export function ActorProcessControlPage(props: {
     // projectId 변경 시 선택 프로젝트의 릴리스와 태스크를 다시 조회합니다.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectId]);
+
+  useEffect(() => {
+    if (!datasetKey || runtimeDashboard[datasetKey] !== undefined) {
+      return;
+    }
+    void loadRuntimeDataset(datasetKey).catch(() => {
+      setMessage(
+        '선택한 Actor·Process 운영 데이터를 불러오지 못했습니다. 잠시 후 다시 시도하세요.',
+      );
+    });
+    // 선택 탭이 바뀔 때 필요한 데이터셋만 지연 조회합니다.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [datasetKey]);
 
   const saveDesignRelease = async () => {
     setMessage('설계 계약을 검증하고 저장하는 중입니다.');
