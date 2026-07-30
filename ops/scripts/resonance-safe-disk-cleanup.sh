@@ -69,6 +69,16 @@ if [[ -d "$user_home/.local/share/kilo/log" ]]; then
   run find "$user_home/.local/share/kilo/log" -depth -type d -empty -delete
 fi
 
+# Interrupted model downloads are not runnable model assets. Restrict cleanup to
+# the fixed AI root and stale temporary suffixes so complete model files and
+# active services are never touched.
+ai_root="/opt/util/ai"
+if [[ -d "$ai_root" && "$(readlink -f "$ai_root")" == "$ai_root" ]]; then
+  run find "$ai_root" -xdev -type f \
+    \( -name '*.incomplete' -o -name '*.part' -o -name '*.tmp' \) \
+    -mtime "+$STALE_DAYS" -delete
+fi
+
 command -v crictl >/dev/null && run crictl rmi --prune
 if command -v docker >/dev/null; then
   run docker image prune -f

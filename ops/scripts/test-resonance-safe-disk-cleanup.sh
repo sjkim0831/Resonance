@@ -21,6 +21,8 @@ output="$(
   bash "$cleanup"
 )"
 grep -q "cleanup skipped: below high-water threshold" <<<"$output"
+grep -q 'ai_root="/opt/util/ai"' "$cleanup"
+grep -q "'\*.incomplete'" "$cleanup"
 
 if CHECK_PATH=/ HIGH_WATER_PERCENT=74 LOW_WATER_PERCENT=78 bash "$cleanup" >/dev/null 2>&1; then
   echo "expected invalid hysteresis thresholds to fail" >&2
