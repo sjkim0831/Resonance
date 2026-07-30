@@ -14,6 +14,7 @@ if [[ "${CARBONET_DEPLOY_SNAPSHOT_ACTIVE:-false}" != "true" ]]; then
 fi
 
 POLICY_ROOT="${CARBONET_DEPLOY_ORIGINAL_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
+DEPLOY_STARTED_EPOCH_MS="$(date +%s%3N)"
 
 # Agent policy is deterministic and must pass before any model-generated change can deploy.
 bash "$POLICY_ROOT/ops/scripts/verify-kilo-m3-policy.sh"
@@ -43,6 +44,14 @@ MIN_BACKUP_BYTES="${CARBONET_MIN_BACKUP_BYTES:-1048576}"
 BACKUP_TIMEOUT_SECONDS="${CARBONET_BACKUP_TIMEOUT_SECONDS:-1200}"
 KUBECONFIG="${CARBONET_KUBECONFIG:-${KUBECONFIG:-/home/sjkim/.kube/config}}"
 export KUBECONFIG
+
+record_deploy_performance() {
+  local mode="$1"
+  local elapsed_ms=$(( $(date +%s%3N) - DEPLOY_STARTED_EPOCH_MS ))
+  CARBONET_DEPLOY_ROOT="$ROOT_DIR" \
+    bash "$ROOT_DIR/ops/scripts/record-deploy-performance.sh" \
+      "$mode" "$target_commit" "$elapsed_ms"
+}
 
 if [[ ! -r "$KUBECONFIG" ]]; then
   echo "[auto-deploy] refusing deployment: kubeconfig is not readable ($KUBECONFIG)" >&2
@@ -567,6 +576,11 @@ if [[ "$PLAN_RUNTIME_REQUIRED" != "true" ]]; then
   run_actor_process_role_e2e_if_required
   printf '%s\n' "$target_commit" > "${DEPLOY_STATE_FILE}.tmp"
   mv "${DEPLOY_STATE_FILE}.tmp" "$DEPLOY_STATE_FILE"
+  if [[ "$PLAN_BACKSTAGE_REQUIRED" == "true" ]]; then
+    record_deploy_performance backstage
+  else
+    record_deploy_performance catalog
+  fi
   echo "[auto-deploy] catalog-only update completed without application rollout: $target_commit"
   exit 0
 fi
@@ -874,6 +888,7 @@ if [[ "$PLAN_FRONTEND_REQUIRED" == "true" \
   bash ops/scripts/validate-e4b-selectable-assets.sh
   printf '%s\n' "$target_commit" > "${DEPLOY_STATE_FILE}.tmp"
   mv "${DEPLOY_STATE_FILE}.tmp" "$DEPLOY_STATE_FILE"
+  record_deploy_performance frontend
   echo "[auto-deploy] frontend overlay deployed without Java/image build or rollout: $target_commit"
   exit 0
 fi
@@ -903,6 +918,7 @@ if [[ "$PLAN_FRONTEND_REQUIRED" != "true" \
   rm -f "$ROOT_DIR/var/run/full-screen-deploy-gate/active.env"
   printf '%s\n' "$target_commit" > "${DEPLOY_STATE_FILE}.tmp"
   mv "${DEPLOY_STATE_FILE}.tmp" "$DEPLOY_STATE_FILE"
+  record_deploy_performance automation
   echo "[auto-deploy] automation-only change validated without frontend/backend build: $target_commit"
   exit 0
 fi
@@ -953,5 +969,6 @@ run_actor_process_role_e2e_if_required
 run_backstage_screen_space_e2e_if_required
 printf '%s\n' "$target_commit" > "${DEPLOY_STATE_FILE}.tmp"
 mv "${DEPLOY_STATE_FILE}.tmp" "$DEPLOY_STATE_FILE"
+record_deploy_performance runtime
 sudo docker image prune -a -f >/dev/null || true
 echo "[auto-deploy] deployed $target_commit after one-shot Flyway verification; runtime migration disabled"
