@@ -158,6 +158,47 @@ export function MigrationCutoverPage() {
     }
   };
 
+  const retireSource = async () => {
+    setSaving(true);
+    setMessage('검증된 Resonance 원본 메뉴를 안전하게 전환하는 중입니다.');
+    try {
+      const verifiedRows = nativeRows.filter(
+        entry => ledger[entry.assetId] === 'VERIFIED',
+      );
+      if (verifiedRows.length !== nativeRows.length) {
+        throw new Error('모든 네이티브 항목의 인증 검증이 먼저 필요합니다.');
+      }
+      const response = await fetchApi.fetch(
+        '/api/resonance-projects/control-assets/CCUS-PLATFORM/retire-source',
+        {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            assetIds: verifiedRows.map(entry => entry.assetId),
+          }),
+        },
+      );
+      const payload = await response.json();
+      if (!response.ok) {
+        throw new Error(payload.message ?? `API ${response.status}`);
+      }
+      setMessage(
+        `${payload.retired}개 항목을 Backstage로 전환했습니다. Resonance 메뉴 ${
+          payload.bridgeResult?.changedMenus ?? 0
+        }개는 복구 가능 상태로 보관됩니다.`,
+      );
+      await loadLedger();
+    } catch (error) {
+      setMessage(
+        `원본 메뉴 전환 실패: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <Page themeId="tool">
       <Header
@@ -196,6 +237,14 @@ export function MigrationCutoverPage() {
             onClick={() => void verifyNative()}
           >
             인증 E2E 결과 일괄 반영
+          </Button>
+          <Button
+            variant="outlined"
+            color="secondary"
+            disabled={saving || verifiedCount !== nativeRows.length}
+            onClick={() => void retireSource()}
+          >
+            검증 완료 원본 메뉴 전환
           </Button>
           <Typography variant="body2">{message}</Typography>
         </Box>

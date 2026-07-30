@@ -19,8 +19,10 @@ import org.springframework.web.bind.annotation.RestController;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -114,6 +116,115 @@ public class ActorProcessControlPlaneBridgeController {
             return ResponseEntity.badRequest().body(Map.of(
                     "success", false,
                     "message", exception.getMessage() == null ? "Design release application failed." : exception.getMessage()));
+        }
+    }
+
+    @PostMapping("/control-assets/cutover")
+    @Transactional
+    public ResponseEntity<?> cutoverControlAssetMenus(
+            @RequestHeader(value = "X-Resonance-Token", defaultValue = "") String suppliedToken,
+            @RequestBody Map<String, Object> body) {
+        if (!authorized(suppliedToken)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("success", false, "message", "Invalid control-plane bridge token."));
+        }
+        try {
+            String projectId = required(body, "projectId").toUpperCase();
+            String action = required(body, "action").toUpperCase();
+            Object rawRoutes = body.get("sourceRoutes");
+            if (!(rawRoutes instanceof List<?> routeValues) || routeValues.isEmpty()
+                    || (!"RETIRE".equals(action) && !"RESTORE".equals(action))) {
+                return ResponseEntity.unprocessableEntity().body(Map.of(
+                        "success", false,
+                        "message", "RETIRE or RESTORE with sourceRoutes is required."));
+            }
+            Set<String> routes = new LinkedHashSet<>();
+            for (Object value : routeValues) {
+                String route = String.valueOf(value == null ? "" : value).trim();
+                int queryIndex = route.indexOf('?');
+                if (queryIndex >= 0) {
+                    route = route.substring(0, queryIndex);
+                }
+                if (!route.startsWith("/admin/")) {
+                    throw new IllegalArgumentException("Only admin control-plane routes can be cut over.");
+                }
+                routes.add(route);
+            }
+
+            int changed = 0;
+            int matched = 0;
+            for (String route : routes) {
+                List<Map<String, Object>> menus = jdbc.queryForList("""
+                        select m.menu_code,
+                               coalesce(m.use_at, 'Y') as menu_use_at,
+                               coalesce(d.use_at, 'Y') as detail_use_at
+                          from comtnmenuinfo m
+                          left join comtccmmndetailcode d on d.code=m.menu_code
+                         where m.menu_url=?
+                            or ('/' || m.menu_url)=?
+                        """, route, route);
+                matched += menus.size();
+                for (Map<String, Object> menu : menus) {
+                    String menuCode = String.valueOf(menu.get("menu_code"));
+                    if ("RETIRE".equals(action)) {
+                        jdbc.update("""
+                                insert into framework_control_plane_menu_cutover(
+                                  menu_code,project_id,source_route,
+                                  previous_menu_use_at,previous_detail_use_at,
+                                  cutover_status,retired_at,updated_at
+                                ) values(?,?,?,?,?,'RETIRED',current_timestamp,current_timestamp)
+                                on conflict(menu_code) do update set
+                                  project_id=excluded.project_id,
+                                  source_route=excluded.source_route,
+                                  cutover_status='RETIRED',
+                                  retired_at=current_timestamp,
+                                  restored_at=null,
+                                  updated_at=current_timestamp
+                                """, menuCode, projectId, route,
+                                String.valueOf(menu.get("menu_use_at")),
+                                String.valueOf(menu.get("detail_use_at")));
+                        changed += jdbc.update(
+                                "update comtnmenuinfo set use_at='N' where menu_code=? and coalesce(use_at,'Y')<>'N'",
+                                menuCode);
+                        jdbc.update("update comtccmmndetailcode set use_at='N' where code=?", menuCode);
+                    } else {
+                        List<Map<String, Object>> snapshots = jdbc.queryForList("""
+                                select previous_menu_use_at,previous_detail_use_at
+                                  from framework_control_plane_menu_cutover
+                                 where menu_code=? and cutover_status='RETIRED'
+                                """, menuCode);
+                        if (snapshots.isEmpty()) {
+                            continue;
+                        }
+                        Map<String, Object> snapshot = snapshots.get(0);
+                        changed += jdbc.update(
+                                "update comtnmenuinfo set use_at=? where menu_code=?",
+                                String.valueOf(snapshot.get("previous_menu_use_at")), menuCode);
+                        jdbc.update(
+                                "update comtccmmndetailcode set use_at=? where code=?",
+                                String.valueOf(snapshot.get("previous_detail_use_at")), menuCode);
+                        jdbc.update("""
+                                update framework_control_plane_menu_cutover
+                                   set cutover_status='RESTORED',restored_at=current_timestamp,
+                                       updated_at=current_timestamp
+                                 where menu_code=?
+                                """, menuCode);
+                    }
+                }
+            }
+            return ResponseEntity.ok(Map.of(
+                    "success", true,
+                    "projectId", projectId,
+                    "action", action,
+                    "routeCount", routes.size(),
+                    "matchedMenus", matched,
+                    "changedMenus", changed,
+                    "reversible", true));
+        } catch (Exception exception) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "success", false,
+                    "message", exception.getMessage() == null
+                            ? "Control-plane menu cutover failed." : exception.getMessage()));
         }
     }
 

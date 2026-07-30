@@ -1810,6 +1810,127 @@ export default createBackendPlugin({
             });
           },
         );
+        router.post(
+          '/control-assets/:projectId/retire-source',
+          async (request, response) => {
+            const projectId = normalizeProjectId(request.params.projectId);
+            const assetIds = Array.isArray(request.body?.assetIds)
+              ? request.body.assetIds.map((value: unknown) =>
+                  String(value).trim(),
+                )
+              : [];
+            if (
+              !assetIds.length ||
+              assetIds.some((assetId: string) => !assetId) ||
+              new Set(assetIds).size !== assetIds.length
+            ) {
+              response
+                .status(400)
+                .json({ message: 'unique assetIds required' });
+              return;
+            }
+            const assets = await knex(
+              'resonance_projects__control_asset_migration',
+            )
+              .select('*')
+              .where({ project_id: projectId })
+              .whereIn('asset_id', assetIds);
+            if (
+              assets.length !== assetIds.length ||
+              assets.some(
+                asset =>
+                  asset.ownership_lane !== 'BACKSTAGE_NATIVE' ||
+                  !['VERIFIED', 'RETIRED_SOURCE'].includes(
+                    asset.migration_status,
+                  ),
+              )
+            ) {
+              response.status(409).json({
+                message: 'all assets must be verified Backstage native assets',
+              });
+              return;
+            }
+
+            const runtimeBaseUrl = String(
+              process.env.CARBONET_RUNTIME_BASE_URL ??
+                'http://carbonet-api.carbonet-prod.svc.cluster.local:8080',
+            ).replace(/\/+$/, '');
+            const bridgeToken = String(process.env.RESONANCE_OPS_TOKEN ?? '');
+            if (!bridgeToken) {
+              response
+                .status(503)
+                .json({ message: 'control-plane bridge token is missing' });
+              return;
+            }
+            const sourceRoutes = [
+              ...new Set(
+                assets.map(asset =>
+                  String(asset.route_path).split('?')[0].trim(),
+                ),
+              ),
+            ];
+            const bridgeResponse = await fetch(
+              `${runtimeBaseUrl}/api/internal/actor-process/control-assets/cutover`,
+              {
+                method: 'POST',
+                headers: {
+                  accept: 'application/json',
+                  'content-type': 'application/json',
+                  'x-resonance-token': bridgeToken,
+                },
+                body: JSON.stringify({
+                  projectId,
+                  action: 'RETIRE',
+                  sourceRoutes,
+                }),
+              },
+            );
+            const bridgeResult = (await bridgeResponse.json()) as Record<
+              string,
+              unknown
+            >;
+            if (!bridgeResponse.ok || bridgeResult.success !== true) {
+              response.status(502).json({
+                message: 'Resonance menu cutover failed',
+                bridgeResult,
+              });
+              return;
+            }
+
+            const now = new Date();
+            await knex.transaction(async transaction => {
+              for (const asset of assets) {
+                const previousEvidence =
+                  asset.verification_evidence &&
+                  typeof asset.verification_evidence === 'object'
+                    ? asset.verification_evidence
+                    : {};
+                await transaction('resonance_projects__control_asset_migration')
+                  .where({
+                    project_id: projectId,
+                    asset_id: asset.asset_id,
+                  })
+                  .update({
+                    migration_status: 'RETIRED_SOURCE',
+                    verification_evidence: JSON.stringify({
+                      ...previousEvidence,
+                      cutover: bridgeResult,
+                      retiredAt: now.toISOString(),
+                    }),
+                    updated_at: now,
+                  });
+              }
+            });
+            response.json({
+              projectId,
+              retired: assets.length,
+              sourceRoutes: sourceRoutes.length,
+              bridgeResult,
+              migrationStatus: 'RETIRED_SOURCE',
+              reversible: true,
+            });
+          },
+        );
         router.get('/', async (_request, response) => {
           const rows = await knex('resonance_projects__project')
             .select('*')
