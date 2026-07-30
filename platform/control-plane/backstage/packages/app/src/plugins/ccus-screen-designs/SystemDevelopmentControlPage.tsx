@@ -19,20 +19,6 @@ import {
   ControlAssetRecord,
 } from './controlAssetRegistry';
 
-const developmentRoutes = new Set([
-  '/admin/system/api-management',
-  '/admin/system/feature-management',
-  '/admin/system/controller-management',
-  '/admin/system/function-console',
-  '/admin/system/module',
-  '/admin/system/code',
-  '/admin/system/column-management',
-  '/admin/system/full-stack-management',
-  '/admin/system/package-governance',
-  '/admin/system/version-management',
-  '/admin/system/codex-provision',
-]);
-
 const useStyles = makeStyles(theme => ({
   hero: {
     padding: theme.spacing(3),
@@ -96,7 +82,8 @@ export function SystemDevelopmentControlPage() {
     () =>
       RESONANCE_CONTROL_ASSETS.filter(
         asset =>
-          developmentRoutes.has(asset.routePath) && includesQuery(asset, query),
+          asset.targetPlugin === 'ccus-screen-designs/system-development' &&
+          includesQuery(asset, query),
       ),
     [query],
   );

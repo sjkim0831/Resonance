@@ -30,15 +30,6 @@ type OperationsSummary = {
   taskStatuses: Record<string, number>;
 };
 
-const operationalRoutes = new Set([
-  '/admin/system/monitoring-dashboard',
-  '/admin/system/db-monitoring',
-  '/admin/system/batch-monitoring',
-  '/admin/system/cron-monitoring',
-  '/admin/system/git-build-monitoring',
-  '/admin/system/performance',
-]);
-
 const useStyles = makeStyles(theme => ({
   hero: {
     padding: theme.spacing(3),
@@ -82,8 +73,8 @@ export function SystemOperationsControlPage() {
   const [loading, setLoading] = useState(false);
   const assets = useMemo(
     () =>
-      RESONANCE_CONTROL_ASSETS.filter(asset =>
-        operationalRoutes.has(asset.routePath),
+      RESONANCE_CONTROL_ASSETS.filter(
+        asset => asset.targetPlugin === 'ccus-screen-designs/system-operations',
       ),
     [],
   );

@@ -36,6 +36,7 @@ const targetRouteByPlugin: Record<string, string> = {
   'ccus-screen-designs/system-operations': '/system-operations',
   'ccus-screen-designs/system-development': '/system-development',
   'ccus-screen-designs/system-security': '/system-security',
+  'ccus-screen-designs/system-recovery': '/system-recovery',
   'ccus-screen-designs/control-plane': '/resonance-control-assets',
 };
 

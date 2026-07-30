@@ -52,16 +52,6 @@ type NetworkRule = {
   createdAt: string;
 };
 
-const securityRoutes = new Set([
-  '/admin/system/authority-management',
-  '/admin/system/access_history',
-  '/admin/system/security-audit',
-  '/admin/system/security-monitoring',
-  '/admin/system/security-policy',
-  '/admin/system/blocklist',
-  '/admin/system/ip_whitelist',
-]);
-
 const useStyles = makeStyles(theme => ({
   hero: {
     padding: theme.spacing(3),
@@ -112,8 +102,8 @@ export function SystemSecurityControlPage() {
   });
   const assets = useMemo(
     () =>
-      RESONANCE_CONTROL_ASSETS.filter(asset =>
-        securityRoutes.has(asset.routePath),
+      RESONANCE_CONTROL_ASSETS.filter(
+        asset => asset.targetPlugin === 'ccus-screen-designs/system-security',
       ),
     [],
   );

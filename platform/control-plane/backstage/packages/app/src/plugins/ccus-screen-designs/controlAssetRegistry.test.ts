@@ -12,6 +12,7 @@ const nativeTargets = new Set([
   'ccus-screen-designs/system-operations',
   'ccus-screen-designs/system-development',
   'ccus-screen-designs/system-security',
+  'ccus-screen-designs/system-recovery',
 ]);
 
 describe('controlAssetRegistry', () => {
@@ -124,5 +125,28 @@ describe('controlAssetRegistry', () => {
         targetPlugin: 'ccus-screen-designs/system-security',
       });
     }
+  });
+
+  it('classifies every Korean admin control-plane route natively', () => {
+    const classified = RESONANCE_CONTROL_ASSETS.filter(
+      asset =>
+        asset.ownershipLane === 'BACKSTAGE_NATIVE' &&
+        asset.migrationStatus === 'CLASSIFIED' &&
+        asset.routePath.startsWith('/admin/'),
+    );
+    expect(classified).toEqual([]);
+  });
+
+  it('keeps generated trade contracts in the Resonance business runtime', () => {
+    expect(
+      RESONANCE_CONTROL_ASSETS.find(
+        asset =>
+          asset.routePath ===
+          '/admin/generated/trade-contract/trade-contract-s4',
+      ),
+    ).toMatchObject({
+      ownershipLane: 'RESONANCE_RUNTIME',
+      targetPlugin: 'resonance/business-runtime',
+    });
   });
 });

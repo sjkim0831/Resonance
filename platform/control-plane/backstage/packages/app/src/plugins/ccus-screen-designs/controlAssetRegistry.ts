@@ -53,6 +53,7 @@ const nativeDesignAssetRoutes = new Set([
   '/admin/system/screen-management',
   '/admin/system/menu',
   '/admin/system/menu-management',
+  '/admin/system/screen-menu-assignment-management',
   '/admin/system/design-management',
 ]);
 
@@ -89,6 +90,21 @@ const nativeProjectControlRoutes = new Set([
 ]);
 
 const nativeSystemOperationsRoutes = new Set([
+  '/admin/external/connection_list',
+  '/admin/external/keys',
+  '/admin/external/logs',
+  '/admin/external/maintenance',
+  '/admin/external/monitoring',
+  '/admin/external/retry',
+  '/admin/external/schema',
+  '/admin/external/sync',
+  '/admin/external/usage',
+  '/admin/external/webhooks',
+  '/admin/monitoring/center',
+  '/admin/system/batch',
+  '/admin/system/error-log',
+  '/admin/system/infra',
+  '/admin/system/notification',
   '/admin/system/monitoring-dashboard',
   '/admin/system/db-monitoring',
   '/admin/system/batch-monitoring',
@@ -112,6 +128,7 @@ const nativeSystemDevelopmentRoutes = new Set([
 ]);
 
 const nativeSystemSecurityRoutes = new Set([
+  '/admin/system/consent-history',
   '/admin/system/authority-management',
   '/admin/system/access_history',
   '/admin/system/security-audit',
@@ -119,6 +136,44 @@ const nativeSystemSecurityRoutes = new Set([
   '/admin/system/security-policy',
   '/admin/system/blocklist',
   '/admin/system/ip_whitelist',
+]);
+
+const nativeSystemRecoveryRoutes = new Set([
+  '/admin/system/backup',
+  '/admin/system/backup_config',
+  '/admin/system/db-promotion-policy',
+  '/admin/system/db-sync-deploy',
+  '/admin/system/restore',
+]);
+
+const generatedNativeTargets: {
+  pattern: RegExp;
+  targetPlugin: string;
+}[] = [
+  {
+    pattern: /^\/admin\/generated\/api-usage-monitoring\//,
+    targetPlugin: 'ccus-screen-designs/system-operations',
+  },
+  {
+    pattern: /^\/admin\/generated\/background-db-version-impact\//,
+    targetPlugin: 'ccus-screen-designs/system-development',
+  },
+  {
+    pattern: /^\/admin\/generated\/builder-generator-operation\//,
+    targetPlugin: 'ccus-screen-designs/system-development',
+  },
+  {
+    pattern: /^\/admin\/generated\/design-asset-governance\//,
+    targetPlugin: 'ccus-screen-designs/design-assets',
+  },
+  {
+    pattern: /^\/admin\/generated\/menu-access-control\//,
+    targetPlugin: 'ccus-screen-designs/system-security',
+  },
+];
+
+const resonanceBusinessRoutes = new Set([
+  '/admin/generated/trade-contract/trade-contract-s4',
 ]);
 
 const ownershipFor = (
@@ -129,6 +184,25 @@ const ownershipFor = (
   'ownershipLane' | 'migrationStatus' | 'targetPlugin' | 'dependencyContracts'
 > => {
   const searchable = `${record.routePath} ${record.screenName}`;
+  if (resonanceBusinessRoutes.has(record.routePath)) {
+    return {
+      ownershipLane: 'RESONANCE_RUNTIME',
+      migrationStatus: 'CLASSIFIED',
+      targetPlugin: 'resonance/business-runtime',
+      dependencyContracts: [...new Set(record.dataContracts)],
+    };
+  }
+  const generatedTarget = generatedNativeTargets.find(target =>
+    target.pattern.test(record.routePath),
+  );
+  if (generatedTarget) {
+    return {
+      ownershipLane: 'BACKSTAGE_NATIVE',
+      migrationStatus: 'NATIVE_READY',
+      targetPlugin: generatedTarget.targetPlugin,
+      dependencyContracts: [...new Set(record.dataContracts)],
+    };
+  }
   const isActorProcess = record.routePath === '/admin/system/actor-process';
   if (isActorProcess) {
     return {
@@ -191,6 +265,14 @@ const ownershipFor = (
       ownershipLane: 'BACKSTAGE_NATIVE',
       migrationStatus: 'NATIVE_READY',
       targetPlugin: 'ccus-screen-designs/system-security',
+      dependencyContracts: [...new Set(record.dataContracts)],
+    };
+  }
+  if (nativeSystemRecoveryRoutes.has(record.routePath)) {
+    return {
+      ownershipLane: 'BACKSTAGE_NATIVE',
+      migrationStatus: 'NATIVE_READY',
+      targetPlugin: 'ccus-screen-designs/system-recovery',
       dependencyContracts: [...new Set(record.dataContracts)],
     };
   }

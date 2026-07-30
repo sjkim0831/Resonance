@@ -48,8 +48,8 @@ export function MigrationCutoverPage() {
     () => rows.filter(entry => entry.implementation === 'NATIVE'),
     [rows],
   );
-  const verifiedCount = nativeRows.filter(
-    entry => ledger[entry.assetId] === 'VERIFIED',
+  const completedCount = nativeRows.filter(entry =>
+    ['VERIFIED', 'RETIRED_SOURCE'].includes(ledger[entry.assetId]),
   ).length;
 
   const loadLedger = async () => {
@@ -122,10 +122,14 @@ export function MigrationCutoverPage() {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({
-            targets: nativeRows.map(entry => ({
-              assetId: entry.assetId,
-              targetUrl: entry.targetRoute.split('?')[0],
-            })),
+            targets: nativeRows
+              .filter(entry =>
+                ['NATIVE_READY', 'MIGRATED'].includes(ledger[entry.assetId]),
+              )
+              .map(entry => ({
+                assetId: entry.assetId,
+                targetUrl: entry.targetRoute.split('?')[0],
+              })),
             evidence: {
               testStatus: 'PASS',
               verifiedBy: 'authenticated-backstage-e2e',
@@ -165,8 +169,8 @@ export function MigrationCutoverPage() {
       const verifiedRows = nativeRows.filter(
         entry => ledger[entry.assetId] === 'VERIFIED',
       );
-      if (verifiedRows.length !== nativeRows.length) {
-        throw new Error('모든 네이티브 항목의 인증 검증이 먼저 필요합니다.');
+      if (!verifiedRows.length) {
+        throw new Error('전환할 검증 완료 항목이 없습니다.');
       }
       const response = await fetchApi.fetch(
         '/api/resonance-projects/control-assets/CCUS-PLATFORM/retire-source',
@@ -211,7 +215,7 @@ export function MigrationCutoverPage() {
             ['전체 이관 단위', MIGRATION_CUTOVER_SUMMARY.total],
             ['액터·프로세스 탭', MIGRATION_CUTOVER_SUMMARY.actorProcessTabs],
             ['시스템 관리 화면', MIGRATION_CUTOVER_SUMMARY.systemScreens],
-            ['인증 검증 완료', verifiedCount],
+            ['검증·전환 완료', completedCount],
           ].map(([label, value]) => (
             <Paper className={classes.metric} key={String(label)}>
               <Typography variant="body2">{label}</Typography>
@@ -241,7 +245,10 @@ export function MigrationCutoverPage() {
           <Button
             variant="outlined"
             color="secondary"
-            disabled={saving || verifiedCount !== nativeRows.length}
+            disabled={
+              saving ||
+              !nativeRows.some(entry => ledger[entry.assetId] === 'VERIFIED')
+            }
             onClick={() => void retireSource()}
           >
             검증 완료 원본 메뉴 전환
