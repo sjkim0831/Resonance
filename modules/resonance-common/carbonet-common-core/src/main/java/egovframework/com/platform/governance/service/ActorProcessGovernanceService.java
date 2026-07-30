@@ -1022,7 +1022,7 @@ public class ActorProcessGovernanceService {
                     """,execution.get("tenantId"),execution.get("projectId"),execution.get("actorCode"),
                         requestingAccount,execution.get("projectId"));
         if(accounts.isEmpty()){
-            throw new IllegalStateException(
+            throw new SecurityException(
                     "현재 단계 액터에 활성 계정이 배정되지 않았습니다: "+execution.get("actorCode"));
         }
         boolean domainCompletionVerified=verifyDomainCompletion(execution);

@@ -250,6 +250,12 @@ public class ActorProcessControlPlaneBridgeController {
                 }
             }
             return ResponseEntity.ok(result);
+        } catch (SecurityException exception) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of(
+                    "success", false,
+                    "message", exception.getMessage() == null
+                            ? "Actor or project assignment is required."
+                            : exception.getMessage()));
         } catch (Exception exception) {
             return ResponseEntity.badRequest().body(Map.of(
                     "success", false,

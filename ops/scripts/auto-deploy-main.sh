@@ -371,6 +371,44 @@ run_backstage_identity_e2e_if_required() {
     bash ops/scripts/resonance-identity-admin-e2e.sh
 }
 
+run_actor_process_role_e2e_if_required() {
+  if [[ "${PLAN_BACKSTAGE_REQUIRED:-false}" != "true" \
+     && ",${PLAN_TESTS:-}," != *",backstage:build-deploy,"* \
+     && ",${PLAN_TESTS:-}," != *",backstage:visual-e2e,"* ]]; then
+    if ! git diff --name-only "$deployed_commit" "$target_commit" -- \
+        modules/resonance-common/carbonet-common-core/src/main/java/egovframework/com/platform/governance \
+        ops/scripts/resonance-actor-process-role-e2e.sh \
+        ops/scripts/resonance-keycloak-deploy.sh \
+        ops/scripts/resonance-keycloak-carbonet-identity-sync.sh \
+        | grep -q .; then
+      return 0
+    fi
+  fi
+  RESONANCE_ROOT="$ROOT_DIR" \
+    bash ops/scripts/resonance-actor-process-role-e2e.sh
+}
+
+sync_keycloak_actor_assignments_if_required() {
+  if ! git diff --name-only "$deployed_commit" "$target_commit" -- \
+      ops/scripts/auto-deploy-main.sh \
+      ops/scripts/resonance-keycloak-deploy.sh \
+      ops/scripts/resonance-keycloak-carbonet-identity-sync.sh \
+      ops/scripts/resonance-keycloak-carbonet-identity-sync-install.sh \
+      ops/scripts/validate-keycloak-carbonet-identity-sync.sh \
+      ops/scripts/resonance-actor-process-role-e2e.sh \
+      | grep -q .; then
+    return 0
+  fi
+  if git diff --name-only "$deployed_commit" "$target_commit" -- \
+      ops/scripts/resonance-keycloak-deploy.sh | grep -q .; then
+    bash ops/scripts/resonance-keycloak-deploy.sh
+  fi
+  RESONANCE_ROOT="$ROOT_DIR" \
+    bash ops/scripts/resonance-keycloak-carbonet-identity-sync-install.sh
+  bash ops/scripts/resonance-keycloak-carbonet-identity-sync.sh
+  bash ops/scripts/validate-keycloak-carbonet-identity-sync.sh
+}
+
 run_backstage_screen_space_e2e_if_required() {
   if [[ "${PLAN_BACKSTAGE_REQUIRED:-false}" != "true" \
      && ",${PLAN_TESTS:-}," != *",backstage:build-deploy,"* ]]; then
@@ -459,17 +497,8 @@ if [[ "$PLAN_RUNTIME_REQUIRED" != "true" ]]; then
   sync_backstage_catalog_if_required
   deploy_backstage_if_required
   run_backstage_visual_e2e_if_required
-  if git diff --name-only "$deployed_commit" "$target_commit" -- \
-      ops/scripts/auto-deploy-main.sh \
-      ops/scripts/resonance-keycloak-carbonet-identity-sync.sh \
-      ops/scripts/resonance-keycloak-carbonet-identity-sync-install.sh \
-      ops/scripts/validate-keycloak-carbonet-identity-sync.sh \
-      | grep -q .; then
-    RESONANCE_ROOT="$ROOT_DIR" \
-      bash ops/scripts/resonance-keycloak-carbonet-identity-sync-install.sh
-    bash ops/scripts/resonance-keycloak-carbonet-identity-sync.sh
-    bash ops/scripts/validate-keycloak-carbonet-identity-sync.sh
-  fi
+  sync_keycloak_actor_assignments_if_required
+  run_actor_process_role_e2e_if_required
   printf '%s\n' "$target_commit" > "${DEPLOY_STATE_FILE}.tmp"
   mv "${DEPLOY_STATE_FILE}.tmp" "$DEPLOY_STATE_FILE"
   echo "[auto-deploy] catalog-only update completed without application rollout: $target_commit"
@@ -789,6 +818,8 @@ sync_backstage_catalog_if_required
 deploy_backstage_if_required
 run_backstage_visual_e2e_if_required
 run_backstage_identity_e2e_if_required
+sync_keycloak_actor_assignments_if_required
+run_actor_process_role_e2e_if_required
 run_backstage_screen_space_e2e_if_required
 printf '%s\n' "$target_commit" > "${DEPLOY_STATE_FILE}.tmp"
 mv "${DEPLOY_STATE_FILE}.tmp" "$DEPLOY_STATE_FILE"

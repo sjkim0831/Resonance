@@ -332,14 +332,17 @@ migrate_users() {
     done
 
   for spec in \
-    "resonance-requester:platform-engineering" \
-    "resonance-reviewer:carbon-operations" \
-    "resonance-approver:verification-governance"; do
+    "resonance-requester:platform-engineering:*" \
+    "resonance-reviewer:carbon-operations:PRJ-2026-AD5D0F" \
+    "resonance-approver:verification-governance:*"; do
     username="${spec%%:*}"
-    group="${spec#*:}"
+    group_and_scope="${spec#*:}"
+    group="${group_and_scope%%:*}"
+    project_scope="${group_and_scope#*:}"
     kubectl -n "$NAMESPACE" exec "$pod" -c keycloak -- env \
       TEST_PASSWORD="$test_password" \
-      USERNAME="$username" GROUP="$group" REALM="$REALM" bash -ceu '
+      USERNAME="$username" GROUP="$group" PROJECT_SCOPE="$project_scope" \
+      REALM="$REALM" bash -ceu '
         K=/opt/keycloak/bin/kcadm.sh
         uid=$("$K" get users -r "$REALM" -q username="$USERNAME" \
           --fields id --format csv --noquotes | head -n1)
@@ -354,6 +357,7 @@ migrate_users() {
         "$K" update "users/$uid" -r "$REALM" \
           -s enabled=true -s email="$USERNAME@resonance.local" \
           -s firstName=Resonance -s lastName="$GROUP" \
+          -s "attributes.resonanceProjectScopes=[\"$PROJECT_SCOPE\"]" \
           -s emailVerified=true -s "requiredActions=[]" >/dev/null
         "$K" set-password -r "$REALM" --username "$USERNAME" \
           --new-password "$TEST_PASSWORD" --temporary=false >/dev/null
