@@ -14,6 +14,7 @@ const routes = [
   ['/actor-process-control', 'Actor·Process 프로젝트 제어'],
   ['/design-assets', '공통 디자인 자산 관리'],
   ['/identity-administration', 'Resonance 통합계정 관리'],
+  ['/system-recovery', 'PC 외부 백업 전체 복원 검증'],
 ] as const;
 
 async function signIn(page: Page) {
