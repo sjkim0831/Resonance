@@ -43,6 +43,14 @@ spring:
       initialize-schema: never
       table-name: SPRING_SESSION
       cleanup-cron: "${CARBONET_SESSION_CLEANUP_CRON:0 * * * * *}"
+  data:
+    jpa:
+      repositories:
+        # Repository proxies are created immediately, while query parsing and
+        # implementation bootstrap happen only when a workflow uses them.
+        # This removes unrelated admin repositories from every pod's critical
+        # startup path without changing transactions or persistence contracts.
+        bootstrap-mode: ${SPRING_DATA_JPA_REPOSITORIES_BOOTSTRAP_MODE:lazy}
   flyway:
     enabled: ${CARBONET_FLYWAY_ENABLED:false}
     locations: classpath:db/migration/postgresql
