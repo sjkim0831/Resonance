@@ -737,6 +737,73 @@ export default createBackendPlugin({
             });
           },
         );
+        router.get(
+          '/actor-process/design-documents',
+          async (request, response) => {
+            const runtimeBaseUrl = String(
+              process.env.CARBONET_RUNTIME_BASE_URL ??
+                'http://carbonet-api.carbonet-prod.svc.cluster.local:8080',
+            ).replace(/\/+$/, '');
+            const bridgeToken = String(process.env.RESONANCE_OPS_TOKEN ?? '');
+            if (!bridgeToken) {
+              response
+                .status(503)
+                .json({ message: 'control-plane bridge token is missing' });
+              return;
+            }
+            const parameters = new URLSearchParams({
+              processCode: String(request.query.processCode ?? ''),
+              stepCode: String(request.query.stepCode ?? ''),
+              routePath: String(request.query.routePath ?? ''),
+            });
+            const runtimeResponse = await fetch(
+              `${runtimeBaseUrl}/api/internal/actor-process/design-documents?${parameters}`,
+              {
+                headers: {
+                  accept: 'application/json',
+                  'x-resonance-token': bridgeToken,
+                },
+              },
+            );
+            response
+              .status(runtimeResponse.status)
+              .type('application/json')
+              .send(await runtimeResponse.text());
+          },
+        );
+        router.post(
+          '/actor-process/design-documents',
+          async (request, response) => {
+            const runtimeBaseUrl = String(
+              process.env.CARBONET_RUNTIME_BASE_URL ??
+                'http://carbonet-api.carbonet-prod.svc.cluster.local:8080',
+            ).replace(/\/+$/, '');
+            const bridgeToken = String(process.env.RESONANCE_OPS_TOKEN ?? '');
+            if (!bridgeToken) {
+              response
+                .status(503)
+                .json({ message: 'control-plane bridge token is missing' });
+              return;
+            }
+            const runtimeResponse = await fetch(
+              `${runtimeBaseUrl}/api/internal/actor-process/design-documents`,
+              {
+                method: 'POST',
+                headers: {
+                  accept: 'application/json',
+                  'content-type': 'application/json',
+                  'x-resonance-token': bridgeToken,
+                  'x-resonance-actor': 'BACKSTAGE_CONTROL_PLANE',
+                },
+                body: JSON.stringify(request.body ?? {}),
+              },
+            );
+            response
+              .status(runtimeResponse.status)
+              .type('application/json')
+              .send(await runtimeResponse.text());
+          },
+        );
         router.post(
           '/actor-process/commands',
           async (request, response) => {

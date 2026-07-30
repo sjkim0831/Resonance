@@ -1,10 +1,14 @@
-import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import { Content, Header, Page } from '@backstage/core-components';
 import { fetchApiRef, useApi } from '@backstage/core-plugin-api';
 import {
   Box,
   Button,
   Chip,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   FormControl,
   Grid,
   InputLabel,
@@ -66,6 +70,15 @@ type TabCommand = {
   label: string;
   description: string;
   fields: CommandField[];
+};
+type DesignDocument = {
+  documentType: string;
+  title: string;
+  content: string;
+  status: string;
+  revision: number;
+  updatedBy?: string;
+  updatedAt?: string;
 };
 
 const TAB_COMMANDS: Record<string, TabCommand> = {
@@ -265,11 +278,25 @@ function WorkOperationsMap({
   projectId,
   onSelect,
   onOpenTab,
+  loadDesignDocuments,
+  saveDesignDocument,
 }: {
   dashboard: RuntimeDashboard;
   projectId: string;
   onSelect: (row: RuntimeRow) => void;
   onOpenTab: (tabId: string) => void;
+  loadDesignDocuments: (
+    processCode: string,
+    stepCode: string,
+    routePath: string,
+  ) => Promise<DesignDocument[]>;
+  saveDesignDocument: (
+    document: DesignDocument & {
+      processCode: string;
+      stepCode: string;
+      routePath: string;
+    },
+  ) => Promise<void>;
 }) {
   const [detailTab, setDetailTab] = useState<
     'design' | 'data' | 'screen' | 'test' | 'task'
@@ -277,7 +304,10 @@ function WorkOperationsMap({
   const [selectedStepCode, setSelectedStepCode] = useState('');
   const [selectedProcessCode, setSelectedProcessCode] = useState('');
   const [selectedActorCode, setSelectedActorCode] = useState('');
+  const [selectedWorkType, setSelectedWorkType] = useState('');
+  const [designWorkbenchOpen, setDesignWorkbenchOpen] = useState(false);
   const processes = (dashboard.processes ?? []) as RuntimeRow[];
+  const workTypes = (dashboard.workTypes ?? []) as RuntimeRow[];
   const steps = (dashboard.steps ?? []) as RuntimeRow[];
   const actors = (dashboard.actors ?? []) as RuntimeRow[];
   const executions = (dashboard.processExecutions ?? []) as RuntimeRow[];
@@ -287,19 +317,44 @@ function WorkOperationsMap({
         execution => execution.processCode === row.processCode,
       ),
     ) ?? processes[0];
+  const filteredProcesses = selectedWorkType
+    ? processes.filter(
+        row =>
+          String(row.domainCode ?? row.workTypeCode ?? '') === selectedWorkType,
+      )
+    : processes;
   const selectedProcess =
-    processes.find(
+    filteredProcesses.find(
       row => String(row.processCode) === selectedProcessCode,
-    ) ?? executionProcess;
+    ) ??
+    filteredProcesses.find(
+      row => String(row.processCode) === String(executionProcess?.processCode),
+    ) ??
+    filteredProcesses[0] ??
+    executionProcess;
   const processCode = String(selectedProcess?.processCode ?? '');
   useEffect(() => {
     if (
-      processes.length > 0 &&
-      !processes.some(row => String(row.processCode) === selectedProcessCode)
+      filteredProcesses.length > 0 &&
+      !filteredProcesses.some(
+        row => String(row.processCode) === selectedProcessCode,
+      )
     ) {
-      setSelectedProcessCode(String(executionProcess?.processCode ?? ''));
+      setSelectedProcessCode(
+        String(
+          filteredProcesses.find(
+            row =>
+              String(row.processCode) ===
+              String(executionProcess?.processCode),
+          )?.processCode ?? filteredProcesses[0].processCode,
+        ),
+      );
     }
-  }, [executionProcess?.processCode, processes, selectedProcessCode]);
+  }, [
+    executionProcess?.processCode,
+    filteredProcesses,
+    selectedProcessCode,
+  ]);
   const processSteps = steps
     .filter(row => !processCode || String(row.processCode) === processCode)
     .sort(
@@ -403,6 +458,42 @@ function WorkOperationsMap({
 
   return (
     <Box mt={3}>
+      <Paper
+        elevation={0}
+        style={{
+          marginBottom: 16,
+          padding: 16,
+          borderRadius: 10,
+          color: '#fff',
+          background: 'linear-gradient(110deg,#052b57,#174ea6)',
+        }}
+      >
+        <Box
+          display="flex"
+          justifyContent="space-between"
+          alignItems="center"
+          gridGap={16}
+          flexWrap="wrap"
+        >
+          <Box>
+            <Typography variant="overline" style={{ color: '#bfdbfe' }}>
+              INTEGRATED DESIGN WORKBENCH
+            </Typography>
+            <Typography variant="h6">통합 설계 문서·액티브 UI 관리</Typography>
+            <Typography variant="body2">
+              선택한 프로세스·단계·화면의 설계 문서 18종을 버전으로
+              관리합니다.
+            </Typography>
+          </Box>
+          <Button
+            variant="contained"
+            onClick={() => setDesignWorkbenchOpen(true)}
+            style={{ background: '#fff', color: '#174ea6' }}
+          >
+            설계 워크벤치 열기
+          </Button>
+        </Box>
+      </Paper>
       <Grid container spacing={2}>
         <Grid item xs={12} lg={3}>
           <Paper variant="outlined" style={{ padding: 16, height: '100%' }}>
@@ -411,6 +502,38 @@ function WorkOperationsMap({
             <Box mt={2}>
               <Chip size="small" color="primary" label={projectId} />
             </Box>
+            <FormControl
+              variant="outlined"
+              size="small"
+              fullWidth
+              style={{ marginTop: 16 }}
+            >
+              <InputLabel>업무 종류 선택</InputLabel>
+              <Select
+                value={selectedWorkType}
+                label="업무 종류 선택"
+                onChange={event => {
+                  setSelectedWorkType(String(event.target.value));
+                  setSelectedProcessCode('');
+                  setSelectedStepCode('');
+                }}
+              >
+                <MenuItem value="">전체 업무</MenuItem>
+                {workTypes.map(row => {
+                  const code = String(
+                    row.workTypeCode ?? row.domainCode ?? row.typeCode ?? '',
+                  );
+                  return (
+                    <MenuItem key={code} value={code}>
+                      {displayValue(
+                        row.workTypeName ?? row.domainName ?? row.typeName,
+                      )}{' '}
+                      ({code})
+                    </MenuItem>
+                  );
+                })}
+              </Select>
+            </FormControl>
             <FormControl
               variant="outlined"
               size="small"
@@ -436,7 +559,7 @@ function WorkOperationsMap({
                   }
                 }}
               >
-                {processes.map(row => (
+                {filteredProcesses.map(row => (
                   <MenuItem
                     key={String(row.processCode)}
                     value={String(row.processCode)}
@@ -741,7 +864,305 @@ function WorkOperationsMap({
           </Button>
         </Box>
       </Paper>
+      <DesignWorkbenchDialog
+        open={designWorkbenchOpen}
+        onClose={() => setDesignWorkbenchOpen(false)}
+        process={selectedProcess}
+        step={activeStep}
+        routePath={route}
+        loadDocuments={loadDesignDocuments}
+        saveDocument={saveDesignDocument}
+        onOpenTab={onOpenTab}
+      />
     </Box>
+  );
+}
+
+const DESIGN_DOCUMENT_GROUPS = [
+  [
+    '업무·거버넌스',
+    ['REQUIREMENT', 'ACTOR_RACI', 'AUTHORITY', 'PROCESS', 'STATE', 'NAVIGATION'],
+  ],
+  [
+    '화면·데이터',
+    ['ACTIVE_UI', 'DESIGN_ASSET', 'FIELD_DICTIONARY', 'DATA_HANDOFF', 'DATABASE', 'API'],
+  ],
+  [
+    '품질·운영',
+    ['BUSINESS_RULE', 'VALIDATION', 'NOTIFICATION', 'TEST', 'TASK_EVIDENCE', 'RELEASE_AUDIT'],
+  ],
+] as const;
+
+function DesignWorkbenchDialog({
+  open,
+  onClose,
+  process,
+  step,
+  routePath,
+  loadDocuments,
+  saveDocument,
+  onOpenTab,
+}: {
+  open: boolean;
+  onClose: () => void;
+  process: RuntimeRow;
+  step: RuntimeRow;
+  routePath: string;
+  loadDocuments: (
+    processCode: string,
+    stepCode: string,
+    routePath: string,
+  ) => Promise<DesignDocument[]>;
+  saveDocument: (
+    document: DesignDocument & {
+      processCode: string;
+      stepCode: string;
+      routePath: string;
+    },
+  ) => Promise<void>;
+  onOpenTab: (tabId: string) => void;
+}) {
+  const processCode = String(process?.processCode ?? '');
+  const stepCode = String(step?.stepCode ?? '');
+  const [documents, setDocuments] = useState<DesignDocument[]>([]);
+  const [selectedType, setSelectedType] = useState('REQUIREMENT');
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState('');
+  const current = documents.find(row => row.documentType === selectedType);
+  const ready = documents.filter(row =>
+    ['READY', 'APPROVED', 'VERIFIED'].includes(row.status),
+  ).length;
+
+  useEffect(() => {
+    if (!open || !processCode) return;
+    setBusy(true);
+    setMessage('');
+    void loadDocuments(processCode, stepCode, routePath)
+      .then(setDocuments)
+      .catch(error =>
+        setMessage(error instanceof Error ? error.message : String(error)),
+      )
+      .finally(() => setBusy(false));
+  }, [loadDocuments, open, processCode, routePath, stepCode]);
+
+  const updateCurrent = (patch: Partial<DesignDocument>) => {
+    setDocuments(rows =>
+      rows.map(row =>
+        row.documentType === selectedType ? { ...row, ...patch } : row,
+      ),
+    );
+  };
+  const save = async () => {
+    if (!current) return;
+    setBusy(true);
+    setMessage('');
+    try {
+      await saveDocument({
+        ...current,
+        processCode,
+        stepCode,
+        routePath,
+      });
+      const refreshed = await loadDocuments(processCode, stepCode, routePath);
+      setDocuments(refreshed);
+      setMessage(`${current.title} 저장과 새 버전 생성을 완료했습니다.`);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : String(error));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onClose={onClose} fullWidth maxWidth="xl">
+      <DialogTitle style={{ background: '#052b57', color: '#fff' }}>
+        통합 설계 워크벤치
+        <Typography variant="body2" style={{ color: '#bfdbfe' }}>
+          {displayValue(process?.processName)} · {displayValue(step?.stepName)} ·
+          설계 준비 {ready}/18
+        </Typography>
+      </DialogTitle>
+      <DialogContent style={{ padding: 0 }}>
+        <Grid container>
+          <Grid
+            item
+            xs={12}
+            md={3}
+            style={{ padding: 16, background: '#f8fafc' }}
+          >
+            {DESIGN_DOCUMENT_GROUPS.map(([group, types]) => (
+              <Box key={group} mb={2}>
+                <Typography variant="overline">{group}</Typography>
+                {types.map(type => {
+                  const document = documents.find(
+                    row => row.documentType === type,
+                  );
+                  return (
+                    <Button
+                      key={type}
+                      fullWidth
+                      onClick={() => setSelectedType(type)}
+                      style={{
+                        justifyContent: 'space-between',
+                        marginTop: 4,
+                        background:
+                          selectedType === type ? '#e8f2ff' : '#fff',
+                        border:
+                          selectedType === type
+                            ? '1px solid #005ea8'
+                            : '1px solid #e2e8f0',
+                      }}
+                    >
+                      <span>{document?.title ?? type}</span>
+                      <span>
+                        {document &&
+                        ['READY', 'APPROVED', 'VERIFIED'].includes(
+                          document.status,
+                        )
+                          ? '●'
+                          : '○'}
+                      </span>
+                    </Button>
+                  );
+                })}
+              </Box>
+            ))}
+          </Grid>
+          <Grid item xs={12} md={6} style={{ padding: 20 }}>
+            {current ? (
+              <>
+                <TextField
+                  fullWidth
+                  variant="outlined"
+                  size="small"
+                  label="설계서 제목"
+                  value={current.title}
+                  onChange={event => updateCurrent({ title: event.target.value })}
+                />
+                <FormControl
+                  variant="outlined"
+                  size="small"
+                  fullWidth
+                  style={{ marginTop: 12 }}
+                >
+                  <InputLabel>설계 상태</InputLabel>
+                  <Select
+                    value={current.status}
+                    label="설계 상태"
+                    onChange={event =>
+                      updateCurrent({ status: String(event.target.value) })
+                    }
+                  >
+                    <MenuItem value="DRAFT">초안</MenuItem>
+                    <MenuItem value="READY">개발 준비</MenuItem>
+                    <MenuItem value="IN_REVIEW">검토 중</MenuItem>
+                    <MenuItem value="APPROVED">승인</MenuItem>
+                    <MenuItem value="VERIFIED">검증 완료</MenuItem>
+                  </Select>
+                </FormControl>
+                <TextField
+                  fullWidth
+                  multiline
+                  minRows={16}
+                  variant="outlined"
+                  label="설계 내용"
+                  placeholder="목적, 액터, 선행조건, 입력, 처리 규칙, 출력, 예외, 완료 조건과 연결 화면을 구조적으로 기록합니다."
+                  value={current.content}
+                  onChange={event =>
+                    updateCurrent({ content: event.target.value })
+                  }
+                  style={{ marginTop: 12 }}
+                />
+                <Typography variant="caption" color="textSecondary">
+                  버전 {current.revision} · {current.updatedBy ?? '미저장'} ·{' '}
+                  {current.updatedAt ?? '-'} · {current.content.length}자
+                </Typography>
+              </>
+            ) : (
+              <Typography variant="body2" color="textSecondary">
+                {busy
+                  ? '설계 문서를 불러오는 중입니다.'
+                  : '설계 문서를 선택하세요.'}
+              </Typography>
+            )}
+          </Grid>
+          <Grid
+            item
+            xs={12}
+            md={3}
+            style={{ padding: 16, background: '#f8fafc' }}
+          >
+            <Typography variant="h6">현재 설계 문맥</Typography>
+            <Typography variant="body2" style={{ marginTop: 12 }}>
+              프로세스: {displayValue(process?.processName)} ({processCode})
+            </Typography>
+            <Typography variant="body2" style={{ marginTop: 8 }}>
+              단계: {displayValue(step?.stepName)} ({stepCode})
+            </Typography>
+            <Typography variant="body2" style={{ marginTop: 8 }}>
+              액터: {displayValue(step?.actorCode)}
+            </Typography>
+            <Typography variant="body2" style={{ marginTop: 8 }}>
+              화면: {routePath || '연결 필요'}
+            </Typography>
+            <Box mt={3} display="grid" gridGap={8}>
+              <Button
+                variant="outlined"
+                onClick={() => onOpenTab('data-contracts')}
+              >
+                페이지·컬럼 설계
+              </Button>
+              <Button
+                variant="outlined"
+                onClick={() => onOpenTab('design-assets')}
+              >
+                테마·섹션·컴포넌트
+              </Button>
+              <Button
+                variant="outlined"
+                onClick={() => onOpenTab('test-scenarios')}
+              >
+                테스트 시나리오
+              </Button>
+              <Button
+                variant="outlined"
+                onClick={() => onOpenTab('generation-queue')}
+              >
+                개발 태스크
+              </Button>
+            </Box>
+            <Box
+              mt={3}
+              p={2}
+              style={{ border: '1px solid #f59e0b', background: '#fffbeb' }}
+            >
+              <Typography variant="caption">
+                18종 설계서와 화면·API·테스트·태스크 증적이 일치해야 개발
+                완료로 판정합니다.
+              </Typography>
+            </Box>
+          </Grid>
+        </Grid>
+      </DialogContent>
+      <DialogActions>
+        <Typography
+          variant="body2"
+          color="textSecondary"
+          style={{ marginRight: 'auto' }}
+        >
+          {message || '설계 변경은 버전으로 보존됩니다.'}
+        </Typography>
+        <Button onClick={onClose}>닫기</Button>
+        <Button
+          variant="contained"
+          color="primary"
+          disabled={busy || !current}
+          onClick={() => void save()}
+        >
+          {busy ? '처리 중…' : '저장·버전 생성'}
+        </Button>
+      </DialogActions>
+    </Dialog>
   );
 }
 
@@ -906,6 +1327,51 @@ export function ActorProcessControlPage(props: {
     const payload = (await response.json()) as RuntimeDashboard;
     setRuntimeDashboard(current => ({ ...current, ...payload }));
   };
+  const loadDesignDocuments = useCallback(
+    async (processCode: string, stepCode: string, routePath: string) => {
+      const parameters = new URLSearchParams({
+        processCode,
+        stepCode,
+        routePath,
+      });
+      const response = await fetchApi.fetch(
+        `/api/resonance-projects/actor-process/design-documents?${parameters}`,
+        { cache: 'no-store' },
+      );
+      const payload = (await response.json()) as {
+        message?: string;
+        documents?: DesignDocument[];
+      };
+      if (!response.ok) {
+        throw new Error(payload.message ?? '설계 문서 조회에 실패했습니다.');
+      }
+      return payload.documents ?? [];
+    },
+    [fetchApi],
+  );
+  const saveDesignDocument = useCallback(
+    async (
+      document: DesignDocument & {
+        processCode: string;
+        stepCode: string;
+        routePath: string;
+      },
+    ) => {
+      const response = await fetchApi.fetch(
+        '/api/resonance-projects/actor-process/design-documents',
+        {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify(document),
+        },
+      );
+      const payload = (await response.json()) as { message?: string };
+      if (!response.ok) {
+        throw new Error(payload.message ?? '설계 문서 저장에 실패했습니다.');
+      }
+    },
+    [fetchApi],
+  );
 
   const loadDashboard = async () => {
     setLoading(true);
@@ -981,6 +1447,7 @@ export function ActorProcessControlPage(props: {
       'processes',
       'steps',
       'actors',
+      'workTypes',
       'cases',
       'artifacts',
       'developmentJobs',
@@ -1310,6 +1777,8 @@ export function ActorProcessControlPage(props: {
                 projectId={projectId}
                 onSelect={setSelectedRow}
                 onOpenTab={openControlTab}
+                loadDesignDocuments={loadDesignDocuments}
+                saveDesignDocument={saveDesignDocument}
               />
             )}
             {selectedTab.id !== 'work-dashboard' && (

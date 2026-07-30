@@ -33,6 +33,29 @@ import jakarta.annotation.PreDestroy;
 @RestController
 @RequestMapping("/api/internal/actor-process")
 public class ActorProcessControlPlaneBridgeController {
+    private static final Map<String, String> DESIGN_DOCUMENT_TYPES = new LinkedHashMap<>();
+    private static final Set<String> DESIGN_DOCUMENT_STATUSES =
+            Set.of("DRAFT", "READY", "IN_REVIEW", "APPROVED", "VERIFIED");
+    static {
+        DESIGN_DOCUMENT_TYPES.put("REQUIREMENT", "업무·요구사항");
+        DESIGN_DOCUMENT_TYPES.put("ACTOR_RACI", "액터·RACI");
+        DESIGN_DOCUMENT_TYPES.put("AUTHORITY", "권한·데이터 범위");
+        DESIGN_DOCUMENT_TYPES.put("PROCESS", "프로세스·분기");
+        DESIGN_DOCUMENT_TYPES.put("STATE", "상태 전이");
+        DESIGN_DOCUMENT_TYPES.put("NAVIGATION", "화면 흐름·라우트");
+        DESIGN_DOCUMENT_TYPES.put("ACTIVE_UI", "액티브 UI·레이아웃");
+        DESIGN_DOCUMENT_TYPES.put("DESIGN_ASSET", "테마·섹션·컴포넌트");
+        DESIGN_DOCUMENT_TYPES.put("FIELD_DICTIONARY", "필드·데이터 사전");
+        DESIGN_DOCUMENT_TYPES.put("DATA_HANDOFF", "입출력·데이터 인계");
+        DESIGN_DOCUMENT_TYPES.put("DATABASE", "DB·스키마");
+        DESIGN_DOCUMENT_TYPES.put("API", "API·이벤트");
+        DESIGN_DOCUMENT_TYPES.put("BUSINESS_RULE", "업무 규칙·계산식");
+        DESIGN_DOCUMENT_TYPES.put("VALIDATION", "검증·오류·예외");
+        DESIGN_DOCUMENT_TYPES.put("NOTIFICATION", "알림·기한·에스컬레이션");
+        DESIGN_DOCUMENT_TYPES.put("TEST", "테스트 시나리오·기대값");
+        DESIGN_DOCUMENT_TYPES.put("TASK_EVIDENCE", "개발 태스크·산출물·증적");
+        DESIGN_DOCUMENT_TYPES.put("RELEASE_AUDIT", "배포·감사·복구");
+    }
     private final JdbcTemplate jdbc;
     private final ObjectMapper mapper;
     private final ActorProcessGovernanceService governance;
@@ -208,6 +231,90 @@ public class ActorProcessControlPlaneBridgeController {
                     "success", false,
                     "message", exception.getMessage() == null ? "Actor Process command failed." : exception.getMessage()));
         }
+    }
+
+    @GetMapping("/design-documents")
+    public ResponseEntity<?> designDocuments(
+            @RequestHeader(value = "X-Resonance-Token", defaultValue = "") String suppliedToken,
+            @RequestParam String processCode,
+            @RequestParam(defaultValue = "") String stepCode,
+            @RequestParam(defaultValue = "") String routePath) {
+        if (!authorized(suppliedToken)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("success", false, "message", "Invalid control-plane bridge token."));
+        }
+        List<Map<String, Object>> saved = jdbc.queryForList("""
+                select document_id as "documentId",document_type as "documentType",
+                       title,content,status,revision,updated_by as "updatedBy",
+                       updated_at as "updatedAt"
+                  from integrated_design_document
+                 where process_code=? and step_code=? and route_path=? and active_yn='Y'
+                """, processCode, stepCode, routePath);
+        Map<String, Map<String, Object>> byType = new LinkedHashMap<>();
+        saved.forEach(row -> byType.put(String.valueOf(row.get("documentType")), row));
+        List<Map<String, Object>> documents = DESIGN_DOCUMENT_TYPES.entrySet().stream().map(entry -> {
+            Map<String, Object> row = new LinkedHashMap<>();
+            row.put("documentType", entry.getKey());
+            row.put("title", entry.getValue());
+            row.put("content", "");
+            row.put("status", "DRAFT");
+            row.put("revision", 0);
+            row.putAll(byType.getOrDefault(entry.getKey(), Map.of()));
+            return row;
+        }).toList();
+        long ready = documents.stream()
+                .filter(row -> Set.of("READY", "APPROVED", "VERIFIED").contains(row.get("status")))
+                .count();
+        return ResponseEntity.ok(Map.of(
+                "processCode", processCode,
+                "stepCode", stepCode,
+                "routePath", routePath,
+                "documents", documents,
+                "total", DESIGN_DOCUMENT_TYPES.size(),
+                "ready", ready));
+    }
+
+    @PostMapping("/design-documents")
+    @Transactional
+    public ResponseEntity<?> saveDesignDocument(
+            @RequestHeader(value = "X-Resonance-Token", defaultValue = "") String suppliedToken,
+            @RequestHeader(value = "X-Resonance-Actor", defaultValue = "BACKSTAGE_CONTROL_PLANE") String actor,
+            @RequestBody Map<String, Object> body) {
+        if (!authorized(suppliedToken)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("success", false, "message", "Invalid control-plane bridge token."));
+        }
+        String processCode = required(body, "processCode");
+        String stepCode = String.valueOf(body.getOrDefault("stepCode", "")).trim();
+        String routePath = String.valueOf(body.getOrDefault("routePath", "")).trim();
+        String documentType = required(body, "documentType").toUpperCase();
+        if (!DESIGN_DOCUMENT_TYPES.containsKey(documentType)) {
+            return ResponseEntity.unprocessableEntity().body(Map.of(
+                    "success", false, "message", "Unsupported design document type."));
+        }
+        String title = String.valueOf(body.getOrDefault(
+                "title", DESIGN_DOCUMENT_TYPES.get(documentType))).trim();
+        String status = String.valueOf(body.getOrDefault("status", "DRAFT")).trim().toUpperCase();
+        if (!DESIGN_DOCUMENT_STATUSES.contains(status)) {
+            status = "DRAFT";
+        }
+        jdbc.update("""
+                insert into integrated_design_document(
+                  process_code,step_code,route_path,document_type,title,content,status,updated_by)
+                values(?,?,?,?,?,?,?,?)
+                on conflict(process_code,step_code,route_path,document_type) do update set
+                  title=excluded.title,content=excluded.content,status=excluded.status,
+                  active_yn='Y',updated_by=excluded.updated_by
+                """, processCode, stepCode, routePath, documentType, title,
+                String.valueOf(body.getOrDefault("content", "")), status, actor);
+        Long revision = jdbc.queryForObject("""
+                select revision from integrated_design_document
+                 where process_code=? and step_code=? and route_path=? and document_type=?
+                """, Long.class, processCode, stepCode, routePath, documentType);
+        return ResponseEntity.ok(Map.of(
+                "success", true,
+                "documentType", documentType,
+                "revision", revision == null ? 0 : revision));
     }
 
     @PostMapping("/control-assets/cutover")
