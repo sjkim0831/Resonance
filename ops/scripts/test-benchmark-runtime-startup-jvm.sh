@@ -7,6 +7,8 @@ bash -n "$script"
 
 grep -q 'resonance.ai/startup-benchmark' "$script"
 grep -q 'minimumImprovementPercent' "$script"
+grep -q 'workloadGate' "$script"
+grep -q 'workloadP95Ms' "$script"
 grep -q 'recommendation' "$script"
 grep -q 'CANDIDATE' "$script"
 grep -q 'REJECT' "$script"

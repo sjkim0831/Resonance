@@ -86,8 +86,12 @@ run_trial() {
       | .spec.containers[0].readinessProbe.failureThreshold = 120
     ' "$deployment_json" >"$pod_file"
 
-  local started_ms ready_ms elapsed_ms app_seconds status log_file
-  started_ms="$(date +%s%3N)"
+  local started_seconds ready_seconds elapsed_ms app_seconds status log_file
+  local pod_ip timings_file workload_p95_ms
+  # Seconds are deliberately used here. `%3N` is not portable across every
+  # `date` implementation installed on deployment hosts and previously yielded
+  # invalid elapsed values even though the application log measurement was sound.
+  started_seconds="$(date +%s)"
   kubectl -n "$namespace" apply -f "$pod_file" >/dev/null
   if kubectl -n "$namespace" wait \
       --for=condition=Ready "pod/$pod_name" \
@@ -96,8 +100,8 @@ run_trial() {
   else
     status="TIMEOUT"
   fi
-  ready_ms="$(date +%s%3N)"
-  elapsed_ms=$((ready_ms - started_ms))
+  ready_seconds="$(date +%s)"
+  elapsed_ms=$(((ready_seconds - started_seconds) * 1000))
   log_file="$run_dir/${variant}-${trial}.log"
   kubectl -n "$namespace" logs "$pod_name" >"$log_file" 2>&1 || true
   app_seconds="$(
@@ -105,6 +109,25 @@ run_trial() {
       "$log_file" | tail -n 1
   )"
   [[ -n "$app_seconds" ]] || app_seconds="null"
+
+  workload_p95_ms="null"
+  if [[ "$status" == "PASS" ]]; then
+    pod_ip="$(kubectl -n "$namespace" get pod "$pod_name" -o jsonpath='{.status.podIP}')"
+    timings_file="$run_dir/${variant}-${trial}.timings"
+    : >"$timings_file"
+    # Warm the same integrated search path used by the production performance
+    # contract, then compare 20 requests without routing benchmark traffic
+    # through the live Service.
+    curl -fsS -L -o /dev/null "http://${pod_ip}:8080/home/search?q=carbon"
+    for _ in $(seq 1 20); do
+      curl -fsS -L -o /dev/null -w '%{time_total}\n' \
+        "http://${pod_ip}:8080/home/search?q=carbon" >>"$timings_file"
+    done
+    workload_p95_ms="$(
+      sort -n "$timings_file" | awk 'NR==19 {printf "%d", $1 * 1000}'
+    )"
+    [[ "$workload_p95_ms" =~ ^[0-9]+$ ]] || workload_p95_ms="null"
+  fi
 
   jq -cn \
     --arg variant "$variant" \
@@ -114,9 +137,11 @@ run_trial() {
     --arg javaOpts "$java_opts" \
     --argjson readyMs "$elapsed_ms" \
     --argjson appSeconds "$app_seconds" \
+    --argjson workloadP95Ms "$workload_p95_ms" \
     '{
       variant:$variant,trial:$trial,status:$status,image:$image,
-      javaOpts:$javaOpts,readyMs:$readyMs,appSeconds:$appSeconds
+      javaOpts:$javaOpts,readyMs:$readyMs,appSeconds:$appSeconds,
+      workloadP95Ms:$workloadP95Ms
     }' | tee -a "$results_file"
 
   kubectl -n "$namespace" delete pod "$pod_name" \
@@ -143,16 +168,26 @@ jq -s \
         end;
     ([.[] | select(.variant == "baseline" and .status == "PASS") | .appSeconds] | median) as $baseline
     | ([.[] | select(.variant == "tier1" and .status == "PASS") | .appSeconds] | median) as $candidate
+    | ([.[] | select(.variant == "baseline" and .status == "PASS") | .workloadP95Ms] | median) as $baselineP95
+    | ([.[] | select(.variant == "tier1" and .status == "PASS") | .workloadP95Ms] | median) as $candidateP95
     | (if $baseline != null and $candidate != null and $baseline > 0
        then (($baseline - $candidate) * 100 / $baseline)
        else null end) as $improvement
+    | (if $baselineP95 != null and $candidateP95 != null
+       then ($candidateP95 <= 2500 and $candidateP95 <= ($baselineP95 * 1.25))
+       else false end) as $workloadGate
     | {
         baselineMedianSeconds:$baseline,
         candidateMedianSeconds:$candidate,
         improvementPercent:$improvement,
+        baselineWorkloadP95Ms:$baselineP95,
+        candidateWorkloadP95Ms:$candidateP95,
+        workloadGate:$workloadGate,
         minimumImprovementPercent:$minimumImprovementPercent,
         recommendation:
-          (if $improvement != null and $improvement >= $minimumImprovementPercent
+          (if $improvement != null
+              and $improvement >= $minimumImprovementPercent
+              and $workloadGate
            then "CANDIDATE"
            else "REJECT" end)
       }
@@ -160,4 +195,3 @@ jq -s \
 
 cat "$summary_file"
 ln -sfn "$run_dir" "$state_root/latest"
-
