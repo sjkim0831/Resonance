@@ -22,6 +22,8 @@ import java.util.Arrays;
 @RequiredArgsConstructor
 public class JpaConfig {
 
+    // Keep startup scanning bounded; the deployment closure guard rejects any
+    // new @Entity package until it is explicitly added to this contract.
     private static final String[] DEFAULT_ENTITY_PACKAGES = {
             "egovframework.com.feature.auth.domain.entity",
             "egovframework.com.feature.emission.domain.entity"
