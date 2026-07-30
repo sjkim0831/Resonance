@@ -264,11 +264,17 @@ function WorkOperationsMap({
   dashboard,
   projectId,
   onSelect,
+  onOpenTab,
 }: {
   dashboard: RuntimeDashboard;
   projectId: string;
   onSelect: (row: RuntimeRow) => void;
+  onOpenTab: (tabId: string) => void;
 }) {
+  const [detailTab, setDetailTab] = useState<
+    'design' | 'data' | 'screen' | 'test' | 'task'
+  >('design');
+  const [selectedStepCode, setSelectedStepCode] = useState('');
   const processes = (dashboard.processes ?? []) as RuntimeRow[];
   const steps = (dashboard.steps ?? []) as RuntimeRow[];
   const actors = (dashboard.actors ?? []) as RuntimeRow[];
@@ -295,11 +301,79 @@ function WorkOperationsMap({
     activeExecution?.currentStepCode ?? activeExecution?.stepCode ?? '',
   );
   const activeStep =
+    processSteps.find(row => String(row.stepCode) === selectedStepCode) ??
     processSteps.find(row => String(row.stepCode) === activeStepCode) ??
     processSteps[0];
+  useEffect(() => {
+    if (
+      processSteps.length > 0 &&
+      !processSteps.some(row => String(row.stepCode) === selectedStepCode)
+    ) {
+      setSelectedStepCode(
+        String(
+          processSteps.find(row => String(row.stepCode) === activeStepCode)
+            ?.stepCode ?? processSteps[0].stepCode,
+        ),
+      );
+    }
+  }, [activeStepCode, processSteps, selectedStepCode]);
   const actor = actors.find(
     row => String(row.actorCode) === String(activeStep?.actorCode ?? ''),
   );
+  const cases = ((dashboard.cases ?? []) as RuntimeRow[]).filter(
+    row => String(row.processCode) === processCode,
+  );
+  const jobs = ((dashboard.developmentJobs ?? []) as RuntimeRow[]).filter(
+    row =>
+      String(row.processCode) === processCode &&
+      (!row.stepCode || String(row.stepCode) === String(activeStep?.stepCode)),
+  );
+  const artifacts = ((dashboard.artifacts ?? []) as RuntimeRow[]).filter(
+    row =>
+      String(row.processCode) === processCode &&
+      (!row.stepCode || String(row.stepCode) === String(activeStep?.stepCode)),
+  );
+  const route = String(activeStep?.userPath ?? activeStep?.adminPath ?? '');
+  const activeIndex = processSteps.findIndex(
+    row => String(row.stepCode) === String(activeStep?.stepCode),
+  );
+  const nextStep = processSteps[activeIndex + 1];
+  const detailRows: Record<
+    'design' | 'data' | 'screen' | 'test' | 'task',
+    Array<Array<unknown>>
+  > = {
+    design: [
+      ['프로세스', selectedProcess?.processName, processCode],
+      ['단계', activeStep?.stepName, activeStep?.stepCode],
+      ['담당 액터', actor?.actorName, activeStep?.actorCode],
+      [
+        '상태 전이',
+        activeStep?.transitionRule ?? activeStep?.completionRule,
+        activeStep?.automationStatus ?? activeExecution?.executionStatus,
+      ],
+    ],
+    data: [
+      ['입력 계약', activeStep?.inputContract, '필수 입력'],
+      ['출력 계약', activeStep?.outputContract, '다음 단계 전달'],
+      ['완료 조건', activeStep?.completionRule, '상태 전이 기준'],
+      ['예외 규칙', activeStep?.exceptionRule, '실패·복구'],
+    ],
+    screen: artifacts.map(row => [
+      row.artifactType,
+      row.artifactName,
+      row.targetPath ?? row.contractRef,
+    ]),
+    test: cases.map(row => [
+      row.caseType,
+      row.caseName,
+      row.status ?? row.expectedResult,
+    ]),
+    task: jobs.map(row => [
+      row.jobType,
+      row.jobName ?? row.jobId,
+      row.jobStatus ?? row.evidenceRef,
+    ]),
+  };
 
   return (
     <Box mt={3}>
@@ -346,7 +420,10 @@ function WorkOperationsMap({
                   return (
                     <Box
                       key={`${step.stepCode}-${index}`}
-                      onClick={() => onSelect(step)}
+                      onClick={() => {
+                        setSelectedStepCode(String(step.stepCode));
+                        onSelect(step);
+                      }}
                       role="button"
                       tabIndex={0}
                       style={{
@@ -403,6 +480,45 @@ function WorkOperationsMap({
                 )}
               />
             </Box>
+            <Box mt={2} display="grid" gridGap={8}>
+              {route.startsWith('/') ? (
+                <Button
+                  variant="contained"
+                  color="primary"
+                  href={route}
+                  target="_blank"
+                >
+                  업무 화면 열기
+                </Button>
+              ) : (
+                <Button
+                  variant="contained"
+                  color="primary"
+                  onClick={() => onOpenTab('data-contracts')}
+                >
+                  화면·필드 설계하기
+                </Button>
+              )}
+              <Button
+                variant="outlined"
+                onClick={() => setDetailTab('test')}
+              >
+                완료 조건 검증
+              </Button>
+              <Button
+                variant="outlined"
+                disabled={!nextStep}
+                onClick={() => {
+                  if (!nextStep) return;
+                  setSelectedStepCode(String(nextStep.stepCode));
+                  onSelect(nextStep);
+                }}
+              >
+                {nextStep
+                  ? `다음 작업: ${displayValue(nextStep.stepName)} →`
+                  : '마지막 업무입니다'}
+              </Button>
+            </Box>
           </Paper>
         </Grid>
       </Grid>
@@ -431,6 +547,117 @@ function WorkOperationsMap({
           </Box>
         </Paper>
       </Box>
+      <Paper variant="outlined" style={{ marginTop: 16, overflow: 'hidden' }}>
+        <Box
+          display="flex"
+          style={{
+            overflowX: 'auto',
+            borderBottom: '1px solid #dbe4ea',
+            background: '#f8fafc',
+          }}
+        >
+          {(
+            [
+              ['design', '설계'],
+              ['data', '입출력 데이터'],
+              ['screen', '화면·API'],
+              ['test', '테스트'],
+              ['task', '태스크·증적'],
+            ] as const
+          ).map(([id, label]) => (
+            <Button
+              key={id}
+              onClick={() => setDetailTab(id)}
+              style={{
+                minHeight: 48,
+                borderRadius: 0,
+                borderBottom:
+                  detailTab === id
+                    ? '3px solid #005ea8'
+                    : '3px solid transparent',
+                background: detailTab === id ? '#fff' : 'transparent',
+              }}
+            >
+              {label}
+            </Button>
+          ))}
+        </Box>
+        <Box p={2} style={{ overflowX: 'auto' }}>
+          {detailRows[detailTab].length ? (
+            <table
+              style={{
+                width: '100%',
+                minWidth: 700,
+                borderCollapse: 'collapse',
+                fontSize: 13,
+              }}
+            >
+              <thead style={{ background: '#f1f5f9' }}>
+                <tr>
+                  {['구분', '내용', '계약·상태'].map(head => (
+                    <th
+                      key={head}
+                      style={{ padding: 12, textAlign: 'left' }}
+                    >
+                      {head}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {detailRows[detailTab].map((row, index) => (
+                  <tr key={`${detailTab}-${index}`}>
+                    {row.map((cell, cellIndex) => (
+                      <td
+                        key={cellIndex}
+                        style={{
+                          padding: 12,
+                          borderTop: '1px solid #e2e8f0',
+                          overflowWrap: 'anywhere',
+                        }}
+                      >
+                        {displayValue(cell)}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : (
+            <Typography variant="body2" color="textSecondary">
+              선택한 단계에 연결된 {detailTab} 데이터가 없습니다.
+            </Typography>
+          )}
+        </Box>
+        <Box
+          p={2}
+          display="flex"
+          justifyContent="flex-end"
+          gridGap={8}
+          flexWrap="wrap"
+          style={{ borderTop: '1px solid #dbe4ea', background: '#f8fafc' }}
+        >
+          <Button
+            variant="outlined"
+            onClick={() => onOpenTab('data-contracts')}
+          >
+            설계 수정
+          </Button>
+          <Button
+            variant="outlined"
+            onClick={() => onOpenTab('test-scenarios')}
+          >
+            테스트 실행
+          </Button>
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={() => onOpenTab('generation-queue')}
+          >
+            개발 요청
+          </Button>
+        </Box>
+      </Paper>
     </Box>
   );
 }
@@ -672,6 +899,7 @@ export function ActorProcessControlPage(props: {
       'steps',
       'actors',
       'cases',
+      'artifacts',
       'developmentJobs',
       'processExecutions',
     ];
@@ -816,6 +1044,23 @@ export function ActorProcessControlPage(props: {
       `${
         window.location.pathname
       }?workspace=${id}&projectId=${encodeURIComponent(projectId)}`,
+    );
+  };
+
+  const openControlTab = (targetTabId: string) => {
+    const targetWorkspace = ACTOR_PROCESS_WORKSPACES.find(item =>
+      item.tabs.some(tab => tab.id === targetTabId),
+    );
+    if (!targetWorkspace) return;
+    setWorkspaceId(targetWorkspace.id);
+    setTabId(targetTabId);
+    setRowFilter('');
+    window.history.replaceState(
+      null,
+      '',
+      `${window.location.pathname}?workspace=${
+        targetWorkspace.id
+      }&tab=${targetTabId}&projectId=${encodeURIComponent(projectId)}`,
     );
   };
 
@@ -981,6 +1226,7 @@ export function ActorProcessControlPage(props: {
                 dashboard={runtimeDashboard}
                 projectId={projectId}
                 onSelect={setSelectedRow}
+                onOpenTab={openControlTab}
               />
             )}
             <Grid container spacing={2} style={{ marginTop: 8 }}>
