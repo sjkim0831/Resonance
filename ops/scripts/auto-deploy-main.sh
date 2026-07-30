@@ -344,6 +344,7 @@ if [[ -n "$tracked_source_changes" ]]; then
   for generated_path in \
     apps/carbonet-api/src/main/resources/static/react-app \
     projects/carbonet-assets/static/react-app \
+    projects/carbonet-frontend/src/main/resources/static/react-app \
     projects/carbonet-frontend/source/tsconfig.app.tsbuildinfo; do
     [[ -n "$(git -C "$clean_worktree" ls-files -- "$generated_path")" ]] &&
       git -C "$clean_worktree" restore --worktree -- "$generated_path"

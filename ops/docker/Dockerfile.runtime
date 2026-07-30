@@ -25,7 +25,15 @@ ENV SERVER_PORT=8080
 RUN mkdir -p /app/config /app/lib /app/db /app/runtime /opt/reference /var/logs
 WORKDIR /app
 
-COPY --from=extractor /extract/runtime/ /app/runtime/
+# Preserve Spring Boot's natural layers. Dependencies and launcher classes are
+# stable across normal Java edits, while BOOT-INF/classes is the small changing
+# layer. A one-class edit therefore no longer invalidates/transfers all JARs.
+COPY --from=extractor /extract/runtime/org/ /app/runtime/org/
+COPY --from=extractor /extract/runtime/META-INF/ /app/runtime/META-INF/
+COPY --from=extractor /extract/runtime/BOOT-INF/lib/ /app/runtime/BOOT-INF/lib/
+COPY --from=extractor /extract/runtime/BOOT-INF/classpath.idx /app/runtime/BOOT-INF/classpath.idx
+COPY --from=extractor /extract/runtime/BOOT-INF/layers.idx /app/runtime/BOOT-INF/layers.idx
+COPY --from=extractor /extract/runtime/BOOT-INF/classes/ /app/runtime/BOOT-INF/classes/
 COPY lib/ /app/lib/
 COPY config/ /app/config/
 
