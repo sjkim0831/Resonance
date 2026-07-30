@@ -1,0 +1,12 @@
+[Unit]
+Description=Check Resonance disk pressure every 15 minutes
+
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec=15min
+RandomizedDelaySec=60
+Persistent=true
+Unit=resonance-safe-disk-cleanup.service
+
+[Install]
+WantedBy=timers.target
