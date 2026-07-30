@@ -2,6 +2,7 @@ import {
   ACTOR_PROCESS_DATASET_BY_TAB,
   ACTOR_PROCESS_TAB_COUNT,
   ACTOR_PROCESS_WORKSPACES,
+  buildCustomerJourneySimulation,
   buildProcessGraph,
   resolveProcessBranches,
 } from './actorProcessWorkspaces';
@@ -128,5 +129,49 @@ describe('actorProcessWorkspaces', () => {
       ),
     ).toBe(true);
     expect(graph.terminalSteps.map(step => step.stepCode)).toContain('APPROVE');
+  });
+
+  it('calculates customer journey readiness without hiding missing safety tests', () => {
+    const steps = [
+      {
+        processCode: 'EMISSION_PROJECT',
+        stepOrder: 1,
+        stepCode: 'COLLECT',
+        actorCode: 'DATA_OWNER',
+        fromState: 'READY',
+        toState: 'COLLECTED',
+        inputContract: '{}',
+        outputContract: '{}',
+        userPath: '/emission/data',
+      },
+    ];
+    const simulation = buildCustomerJourneySimulation(
+      steps,
+      [
+        {
+          processCode: 'EMISSION_PROJECT',
+          caseType: 'HAPPY_PATH',
+          status: 'APPROVED',
+        },
+      ],
+      [{ processCode: 'EMISSION_PROJECT', stepCode: 'COLLECT' }],
+      [
+        {
+          processCode: 'EMISSION_PROJECT',
+          stepCode: 'COLLECT',
+          jobStatus: 'VERIFIED',
+        },
+      ],
+      [],
+    );
+
+    expect(simulation.journeySteps[0].readinessPercent).toBe(100);
+    expect(simulation.missingScenarioTypes).toEqual([
+      'AUTHORITY',
+      'ISOLATION',
+      'EXCEPTION',
+      'RECOVERY',
+    ]);
+    expect(simulation.readinessPercent).toBe(100);
   });
 });

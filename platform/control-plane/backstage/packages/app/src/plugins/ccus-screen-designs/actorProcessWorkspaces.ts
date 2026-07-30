@@ -39,6 +39,143 @@ export type ProcessGraphEdge<T extends ProcessGraphStep> = {
   condition: string;
 };
 
+export const REQUIRED_SIMULATION_TYPES = [
+  'HAPPY_PATH',
+  'AUTHORITY',
+  'ISOLATION',
+  'EXCEPTION',
+  'RECOVERY',
+] as const;
+
+const rowValue = (row: Record<string, unknown>, camel: string, snake: string) =>
+  row[camel] ?? row[snake];
+
+export const buildCustomerJourneySimulation = <
+  T extends ProcessGraphStep & Record<string, unknown>,
+>(
+  steps: T[],
+  cases: Array<Record<string, unknown>>,
+  artifacts: Array<Record<string, unknown>>,
+  jobs: Array<Record<string, unknown>>,
+  gaps: Array<Record<string, unknown>>,
+) => {
+  const graph = buildProcessGraph(steps);
+  const processCode = String(steps[0]?.processCode ?? '');
+  const processCases = cases.filter(
+    row =>
+      String(rowValue(row, 'processCode', 'process_code') ?? '') ===
+      processCode,
+  );
+  const scenarioCoverage = REQUIRED_SIMULATION_TYPES.map(type => {
+    const matches = processCases.filter(
+      row => String(rowValue(row, 'caseType', 'case_type') ?? '') === type,
+    );
+    return {
+      type,
+      count: matches.length,
+      approved: matches.some(row =>
+        ['APPROVED', 'PASSED'].includes(
+          String(rowValue(row, 'status', 'case_status') ?? ''),
+        ),
+      ),
+      cases: matches,
+    };
+  });
+
+  const journeySteps = graph.steps.map(step => {
+    const stepCode = String(step.stepCode ?? '');
+    const route = String(step.userPath ?? step.adminPath ?? '');
+    const stepArtifacts = artifacts.filter(
+      row =>
+        String(rowValue(row, 'processCode', 'process_code') ?? '') ===
+          processCode &&
+        (!rowValue(row, 'stepCode', 'step_code') ||
+          String(rowValue(row, 'stepCode', 'step_code')) === stepCode),
+    );
+    const stepJobs = jobs.filter(
+      row =>
+        String(rowValue(row, 'processCode', 'process_code') ?? '') ===
+          processCode &&
+        (!rowValue(row, 'stepCode', 'step_code') ||
+          String(rowValue(row, 'stepCode', 'step_code')) === stepCode),
+    );
+    const stepGaps = gaps.filter(row => {
+      const objectCode = String(
+        rowValue(row, 'objectCode', 'object_code') ?? '',
+      );
+      const targetUrl = String(
+        rowValue(row, 'targetUrl', 'target_url') ?? '',
+      );
+      return (
+        objectCode === processCode ||
+        objectCode === stepCode ||
+        (route && targetUrl.split('?')[0] === route.split('?')[0])
+      );
+    });
+    const contractReady = Boolean(
+      step.actorCode &&
+        step.fromState &&
+        step.toState &&
+        step.inputContract &&
+        step.outputContract,
+    );
+    const screenReady = Boolean(route);
+    const testReady = processCases.length > 0;
+    const developmentReady =
+      stepJobs.length > 0 &&
+      stepJobs.every(row =>
+        ['COMPLETED', 'VERIFIED', 'PROMOTED'].includes(
+          String(rowValue(row, 'jobStatus', 'job_status') ?? ''),
+        ),
+      );
+    const blockerCount = stepGaps.filter(
+      row => String(row.severity ?? '') === 'BLOCKER',
+    ).length;
+    const score = [
+      contractReady,
+      screenReady,
+      testReady,
+      stepArtifacts.length > 0,
+      developmentReady,
+      blockerCount === 0,
+    ].filter(Boolean).length;
+    return {
+      step,
+      route,
+      contractReady,
+      screenReady,
+      testReady,
+      artifactCount: stepArtifacts.length,
+      developmentReady,
+      blockerCount,
+      readinessPercent: Math.round((score / 6) * 100),
+    };
+  });
+
+  return {
+    processCode,
+    graph,
+    scenarioCoverage,
+    journeySteps,
+    missingScenarioTypes: scenarioCoverage
+      .filter(item => item.count === 0)
+      .map(item => item.type),
+    blockerCount: journeySteps.reduce(
+      (total, step) => total + step.blockerCount,
+      0,
+    ),
+    readinessPercent:
+      journeySteps.length === 0
+        ? 0
+        : Math.round(
+            journeySteps.reduce(
+              (total, step) => total + step.readinessPercent,
+              0,
+            ) / journeySteps.length,
+          ),
+  };
+};
+
 const isCorrectionStep = (step: ProcessGraphStep) =>
   String(step.fromState ?? '') === 'CORRECTION_REQUIRED' ||
   String(step.stepCode ?? '').includes('CORRECT');

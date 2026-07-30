@@ -29,7 +29,9 @@ import {
   ACTOR_PROCESS_WORKSPACES,
   ActorProcessTab,
   ActorProcessWorkspaceId,
+  buildCustomerJourneySimulation,
   buildProcessGraph,
+  REQUIRED_SIMULATION_TYPES,
   resolveProcessBranches,
 } from './actorProcessWorkspaces';
 import { RESONANCE_PROJECT_REGISTRY } from './generatedProjectRegistry';
@@ -436,6 +438,8 @@ function WorkOperationsMap({
   const [runtimeProjectId, setRuntimeProjectId] = useState('');
   const [runtimeCommandPending, setRuntimeCommandPending] = useState(false);
   const [runtimeCommandResult, setRuntimeCommandResult] = useState('');
+  const [selectedScenarioType, setSelectedScenarioType] =
+    useState<(typeof REQUIRED_SIMULATION_TYPES)[number]>('HAPPY_PATH');
   const [designWorkbenchOpen, setDesignWorkbenchOpen] = useState(false);
   const processes = (dashboard.processes ?? []) as RuntimeRow[];
   const workTypes = (dashboard.workTypes ?? []) as RuntimeRow[];
@@ -580,6 +584,27 @@ function WorkOperationsMap({
       String(row.processCode) === processCode &&
       (!row.stepCode || String(row.stepCode) === String(activeStep?.stepCode)),
   );
+  const customerJourney = useMemo(
+    () =>
+      buildCustomerJourneySimulation(
+        processSteps,
+        (dashboard.cases ?? []) as RuntimeRow[],
+        (dashboard.artifacts ?? []) as RuntimeRow[],
+        (dashboard.developmentJobs ?? []) as RuntimeRow[],
+        (dashboard.customerJourneyGaps ?? []) as RuntimeRow[],
+      ),
+    [
+      dashboard.artifacts,
+      dashboard.cases,
+      dashboard.customerJourneyGaps,
+      dashboard.developmentJobs,
+      processSteps,
+    ],
+  );
+  const selectedScenario =
+    customerJourney.scenarioCoverage.find(
+      scenario => scenario.type === selectedScenarioType,
+    ) ?? customerJourney.scenarioCoverage[0];
   const route = String(activeStep?.userPath ?? activeStep?.adminPath ?? '');
   const runtimeRoute = route.startsWith('/')
     ? `${route}${route.includes('?') ? '&' : '?'}projectId=${encodeURIComponent(
@@ -1243,6 +1268,203 @@ function WorkOperationsMap({
               ))}
           </Box>
         )}
+      </Paper>
+      <Paper variant="outlined" style={{ marginTop: 16, padding: 16 }}>
+        <Box
+          display="flex"
+          justifyContent="space-between"
+          alignItems="flex-start"
+          gridGap={16}
+          flexWrap="wrap"
+        >
+          <Box>
+            <Typography variant="overline">고객 여정 시뮬레이션</Typography>
+            <Typography variant="h6">
+              액터·화면·데이터·테스트 실행 준비도
+            </Typography>
+            <Typography variant="body2" color="textSecondary">
+              정상, 권한, 데이터 격리, 예외, 복구 시나리오를 동일한 업무
+              단계에 투영하여 고객이 실제 업무를 끝낼 수 있는지 검토합니다.
+            </Typography>
+          </Box>
+          <Box display="flex" gridGap={8} flexWrap="wrap">
+            <Chip
+              color={
+                customerJourney.blockerCount > 0 ? 'secondary' : 'primary'
+              }
+              label={`차단 ${customerJourney.blockerCount}건`}
+            />
+            <Chip
+              label={`실행 준비도 ${customerJourney.readinessPercent}%`}
+            />
+          </Box>
+        </Box>
+        <Grid container spacing={2} style={{ marginTop: 4 }}>
+          <Grid item xs={12} md={4}>
+            <Box display="grid" gridGap={8}>
+              {customerJourney.scenarioCoverage.map(scenario => {
+                const labels: Record<string, string> = {
+                  HAPPY_PATH: '정상 업무',
+                  AUTHORITY: '권한·직무분리',
+                  ISOLATION: '테넌트·프로젝트 격리',
+                  EXCEPTION: '오류·예외',
+                  RECOVERY: '복구·재처리',
+                };
+                const selected = scenario.type === selectedScenarioType;
+                return (
+                  <Button
+                    key={scenario.type}
+                    variant={selected ? 'contained' : 'outlined'}
+                    color={selected ? 'primary' : 'default'}
+                    onClick={() => setSelectedScenarioType(scenario.type)}
+                    style={{
+                      minHeight: 48,
+                      justifyContent: 'space-between',
+                      textTransform: 'none',
+                    }}
+                  >
+                    <span>{labels[scenario.type] ?? scenario.type}</span>
+                    <span>
+                      {scenario.count}건 ·{' '}
+                      {scenario.approved ? '승인' : '검토 필요'}
+                    </span>
+                  </Button>
+                );
+              })}
+            </Box>
+            <Box
+              mt={2}
+              p={1.5}
+              style={{
+                borderRadius: 8,
+                background:
+                  customerJourney.missingScenarioTypes.length > 0
+                    ? '#fff7ed'
+                    : '#f0fdf4',
+              }}
+            >
+              <Typography variant="subtitle2">
+                5대 안전 시나리오 계약
+              </Typography>
+              <Typography variant="body2" color="textSecondary">
+                {customerJourney.missingScenarioTypes.length > 0
+                  ? `미등록: ${customerJourney.missingScenarioTypes.join(
+                      ', ',
+                    )}`
+                  : '필수 시나리오가 모두 등록되었습니다.'}
+              </Typography>
+              <Button
+                size="small"
+                style={{ marginTop: 8 }}
+                onClick={() => onOpenTab('test-scenarios')}
+              >
+                테스트 시나리오 관리
+              </Button>
+            </Box>
+          </Grid>
+          <Grid item xs={12} md={8}>
+            <Paper
+              variant="outlined"
+              style={{ padding: 14, marginBottom: 12 }}
+            >
+              <Typography variant="subtitle1" style={{ fontWeight: 700 }}>
+                {displayValue(selectedScenario?.type)}
+              </Typography>
+              <Typography variant="body2" color="textSecondary">
+                등록 {selectedScenario?.count ?? 0}건 · 승인 여부{' '}
+                {selectedScenario?.approved ? '충족' : '검토 필요'}
+              </Typography>
+              {(selectedScenario?.cases ?? []).slice(0, 3).map(row => (
+                <Box
+                  key={String(row.caseCode ?? row.case_code)}
+                  mt={1}
+                  p={1}
+                  style={{ borderRadius: 6, background: '#f8fafc' }}
+                >
+                  <Typography variant="body2">
+                    {displayValue(row.caseName ?? row.case_name)}
+                  </Typography>
+                  <Typography variant="caption" color="textSecondary">
+                    {displayValue(row.preconditions)} ·{' '}
+                    {displayValue(row.status ?? row.case_status)}
+                  </Typography>
+                </Box>
+              ))}
+            </Paper>
+            <Box style={{ overflowX: 'auto' }}>
+              <table
+                style={{
+                  width: '100%',
+                  minWidth: 760,
+                  borderCollapse: 'collapse',
+                  fontSize: 13,
+                }}
+              >
+                <thead style={{ background: '#f1f5f9' }}>
+                  <tr>
+                    {[
+                      '순서·업무',
+                      '담당 액터',
+                      '화면',
+                      '계약',
+                      '증적',
+                      '개발',
+                      '차단',
+                      '준비도',
+                    ].map(head => (
+                      <th
+                        key={head}
+                        style={{ padding: 10, textAlign: 'left' }}
+                      >
+                        {head}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {customerJourney.journeySteps.map((item, index) => (
+                    <tr key={String(item.step.stepCode ?? index)}>
+                      <td
+                        style={{
+                          padding: 10,
+                          borderTop: '1px solid #e2e8f0',
+                        }}
+                      >
+                        {index + 1}. {displayValue(item.step.stepName)}
+                      </td>
+                      <td style={{ borderTop: '1px solid #e2e8f0' }}>
+                        {displayValue(item.step.actorCode)}
+                      </td>
+                      <td style={{ borderTop: '1px solid #e2e8f0' }}>
+                        {item.screenReady ? '연결' : '미연결'}
+                      </td>
+                      <td style={{ borderTop: '1px solid #e2e8f0' }}>
+                        {item.contractReady ? '완료' : '보완'}
+                      </td>
+                      <td style={{ borderTop: '1px solid #e2e8f0' }}>
+                        {item.artifactCount}건
+                      </td>
+                      <td style={{ borderTop: '1px solid #e2e8f0' }}>
+                        {item.developmentReady ? '검증됨' : '진행 중'}
+                      </td>
+                      <td style={{ borderTop: '1px solid #e2e8f0' }}>
+                        {item.blockerCount}건
+                      </td>
+                      <td
+                        style={{
+                          borderTop: '1px solid #e2e8f0',
+                          fontWeight: 700,
+                        }}
+                      >
+                        {item.readinessPercent}%
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </Box>
+          </Grid>
+        </Grid>
       </Paper>
       <Box mt={2}>
         <Paper variant="outlined" style={{ padding: 16 }}>
@@ -2015,6 +2237,7 @@ export function ActorProcessControlPage(props: {
       'cases',
       'artifacts',
       'developmentJobs',
+      'customerJourneyGaps',
       'processExecutions',
     ];
     required
