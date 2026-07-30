@@ -95,21 +95,21 @@ spec:
           lifecycle:
             preStop:
               exec:
-                command: ["sh", "-c", "sleep 3"]
+                command: ["sh", "-c", "sleep 2"]
           startupProbe:
             httpGet:
               path: /actuator/health/liveness
               port: http
-            failureThreshold: 60
-            periodSeconds: 2
-            timeoutSeconds: 2
+            failureThreshold: 90
+            periodSeconds: 1
+            timeoutSeconds: 1
           readinessProbe:
             httpGet:
               path: /actuator/health/readiness
               port: http
             initialDelaySeconds: 0
-            periodSeconds: 2
-            timeoutSeconds: 2
+            periodSeconds: 1
+            timeoutSeconds: 1
           livenessProbe:
             httpGet:
               path: /actuator/health/liveness

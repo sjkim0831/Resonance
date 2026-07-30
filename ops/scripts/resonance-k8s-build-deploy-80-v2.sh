@@ -677,28 +677,44 @@ build_image() {
       "docker build --build-arg PROJECT_ID=$PROJECT_ID -t $IMAGE_NAME $RELEASE_DIR 2>&1 | tail -50"
   fi
 
+  # Registry durability and the node-local containerd import are independent.
+  # Run them concurrently: rollout only needs the containerd image, while the
+  # registry copy remains the reboot/self-heal source.
+  local push_pid=""
+  local push_success=true
   if [[ "$PUSH_IMAGE" == "true" ]]; then
-    log_detail "Pushing image to local registry..."
-    if root_cmd docker push "$IMAGE_NAME" >>"$DOCKER_ERROR_LOG" 2>&1; then
-      log_success "Image pushed to local registry"
-    else
-      log_warning "Image push failed; continuing with containerd import for single-node rollout"
-      tail -20 "$DOCKER_ERROR_LOG" >> "$DIAGNOSTIC_LOG" 2>/dev/null || true
-    fi
+    log_detail "Pushing image to local registry in parallel..."
+    (root_cmd docker push "$IMAGE_NAME" >>"$DOCKER_ERROR_LOG" 2>&1) &
+    push_pid=$!
   fi
 
-  log_detail "Importing to containerd..."
+  log_detail "Importing to containerd in parallel..."
   local import_success=false
   local import_err="/opt/Resonance/var/run/ctr-import-$$.log"
   local tmp_tar="/opt/Resonance/var/run/docker-save-$$.tar"
 
-  # The registry is local to this node. Pulling it directly lets containerd
-  # reuse existing layers and avoids serializing the whole image to a tarball.
-  # Preserve docker-save/import as a self-healing fallback for registry faults.
-  if sudo ctr -n k8s.io images pull --plain-http "$IMAGE_NAME" \
-      >"$import_err" 2>&1; then
+  if sudo docker save "$IMAGE_NAME" 2>>"$import_err" |
+      sudo ctr -n k8s.io images import - >"$import_err" 2>&1; then
     import_success=true
-    log_success "Image pulled directly into containerd"
+    log_success "Image streamed directly into containerd"
+  fi
+
+  if [[ -n "$push_pid" ]]; then
+    if wait "$push_pid"; then
+      log_success "Image pushed to local registry"
+    else
+      push_success=false
+      log_warning "Image push failed; the node-local containerd import remains usable"
+      tail -20 "$DOCKER_ERROR_LOG" >> "$DIAGNOSTIC_LOG" 2>/dev/null || true
+    fi
+  fi
+
+  # If streaming failed but the durable registry copy succeeded, recover by
+  # pulling the image through the independent path before slower retries.
+  if [[ "$import_success" != true && "$push_success" == true && "$PUSH_IMAGE" == "true" ]] &&
+      sudo ctr -n k8s.io images pull --plain-http "$IMAGE_NAME" >"$import_err" 2>&1; then
+    import_success=true
+    log_success "Image import recovered through the local registry"
   fi
 
   for ((i=1; i<=3; i++)); do
@@ -787,7 +803,7 @@ rollout_image() {
   # probe remains the safety gate; two-second polling detects readiness without
   # adding ten-second quantisation, and old pods still drain before SIGTERM.
   kubectl -n "$NAMESPACE" patch "deployment/$DEPLOYMENT" --type='strategic' \
-    -p="{\"spec\":{\"minReadySeconds\":0,\"progressDeadlineSeconds\":180,\"strategy\":{\"type\":\"RollingUpdate\",\"rollingUpdate\":{\"maxSurge\":3,\"maxUnavailable\":0}},\"template\":{\"spec\":{\"terminationGracePeriodSeconds\":15,\"containers\":[{\"name\":\"$CONTAINER\",\"env\":[{\"name\":\"SPRING_MAIN_LAZY_INITIALIZATION\",\"value\":\"true\"}],\"lifecycle\":{\"preStop\":{\"exec\":{\"command\":[\"sh\",\"-c\",\"sleep 3\"]}}},\"startupProbe\":{\"httpGet\":{\"path\":\"/actuator/health/liveness\",\"port\":8080},\"failureThreshold\":60,\"periodSeconds\":2,\"timeoutSeconds\":2},\"readinessProbe\":{\"httpGet\":{\"path\":\"/actuator/health/readiness\",\"port\":8080},\"initialDelaySeconds\":0,\"periodSeconds\":2,\"timeoutSeconds\":2,\"failureThreshold\":3},\"livenessProbe\":{\"httpGet\":{\"path\":\"/actuator/health/liveness\",\"port\":8080},\"initialDelaySeconds\":0,\"periodSeconds\":10,\"timeoutSeconds\":2,\"failureThreshold\":3}}]}}}}" \
+    -p="{\"spec\":{\"minReadySeconds\":0,\"progressDeadlineSeconds\":180,\"strategy\":{\"type\":\"RollingUpdate\",\"rollingUpdate\":{\"maxSurge\":3,\"maxUnavailable\":0}},\"template\":{\"spec\":{\"terminationGracePeriodSeconds\":15,\"containers\":[{\"name\":\"$CONTAINER\",\"env\":[{\"name\":\"SPRING_MAIN_LAZY_INITIALIZATION\",\"value\":\"true\"}],\"lifecycle\":{\"preStop\":{\"exec\":{\"command\":[\"sh\",\"-c\",\"sleep 2\"]}}},\"startupProbe\":{\"httpGet\":{\"path\":\"/actuator/health/liveness\",\"port\":8080},\"failureThreshold\":90,\"periodSeconds\":1,\"timeoutSeconds\":1},\"readinessProbe\":{\"httpGet\":{\"path\":\"/actuator/health/readiness\",\"port\":8080},\"initialDelaySeconds\":0,\"periodSeconds\":1,\"timeoutSeconds\":1,\"failureThreshold\":5},\"livenessProbe\":{\"httpGet\":{\"path\":\"/actuator/health/liveness\",\"port\":8080},\"initialDelaySeconds\":0,\"periodSeconds\":10,\"timeoutSeconds\":2,\"failureThreshold\":3}}]}}}}" \
     >/dev/null || rollback_and_fail "ROLLOUT_STRATEGY_FAILED" "Failed to apply bounded parallel rollout strategy" "kubectl -n $NAMESPACE get deployment/$DEPLOYMENT -o yaml"
 
   log_cmd "kubectl set image deployment/$DEPLOYMENT $CONTAINER=$IMAGE_NAME"

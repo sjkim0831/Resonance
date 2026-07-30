@@ -43,7 +43,7 @@ spec:
           lifecycle:
             preStop:
               exec:
-                command: ["sh", "-c", "sleep 3"]
+                command: ["sh", "-c", "sleep 2"]
 PATCH
 
 kubectl -n "$NAMESPACE" set env "deployment/$DEPLOYMENT" \
