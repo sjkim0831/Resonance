@@ -141,10 +141,6 @@ public class ActorProcessControlPlaneBridgeController {
             Set<String> routes = new LinkedHashSet<>();
             for (Object value : routeValues) {
                 String route = String.valueOf(value == null ? "" : value).trim();
-                int queryIndex = route.indexOf('?');
-                if (queryIndex >= 0) {
-                    route = route.substring(0, queryIndex);
-                }
                 if (!route.startsWith("/admin/")) {
                     throw new IllegalArgumentException("Only admin control-plane routes can be cut over.");
                 }

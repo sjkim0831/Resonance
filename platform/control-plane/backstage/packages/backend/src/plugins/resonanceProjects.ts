@@ -1863,11 +1863,7 @@ export default createBackendPlugin({
               return;
             }
             const sourceRoutes = [
-              ...new Set(
-                assets.map(asset =>
-                  String(asset.route_path).split('?')[0].trim(),
-                ),
-              ),
+              ...new Set(assets.map(asset => String(asset.route_path).trim())),
             ];
             const bridgeResponse = await fetch(
               `${runtimeBaseUrl}/api/internal/actor-process/control-assets/cutover`,
