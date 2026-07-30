@@ -90,7 +90,11 @@ bash "$POLICY_ROOT/ops/scripts/deploy-capacity-gate.sh"
 # made otherwise incremental builds and three-pod rollouts appear slow. Keep
 # Kyverno's configured exclusions enabled and cap the auxiliary reporting
 # workload before spending resources on a build.
-bash "$POLICY_ROOT/ops/scripts/ensure-kyverno-resource-guard.sh"
+if [[ -f "$POLICY_ROOT/ops/scripts/ensure-kyverno-resource-guard.sh" ]]; then
+  bash "$POLICY_ROOT/ops/scripts/ensure-kyverno-resource-guard.sh"
+else
+  echo "[auto-deploy] Kyverno resource guard is introduced by the pending commit; validating after bootstrap"
+fi
 
 # Image/Gradle packaging can leave generated frontend trees owned by root.
 # Normalize only when a foreign-owned entry is detected so the next Git
@@ -335,6 +339,10 @@ if [[ -n "$tracked_source_changes" ]]; then
   fi
   echo "[auto-deploy] isolated deployment worktree ready: $ROOT_DIR"
 fi
+
+# Run the target revision as well. This bootstraps a newly introduced guard and
+# verifies that the exact revision being promoted owns the live resource cap.
+bash "$ROOT_DIR/ops/scripts/ensure-kyverno-resource-guard.sh"
 
 if ! git merge-base --is-ancestor "$current_commit" "$target_commit"; then
   echo "[auto-deploy] refusing non-fast-forward update: $current_commit -> $target_commit" >&2
