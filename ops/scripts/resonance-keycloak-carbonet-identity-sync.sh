@@ -6,7 +6,7 @@ REALM="${KEYCLOAK_REALM:-resonance}"
 LOCK_FILE="${IDENTITY_SYNC_LOCK_FILE:-/tmp/resonance-keycloak-carbonet-identity-sync.lock}"
 MANAGED_GROUPS='["platform-engineering","carbon-operations","verification-governance"]'
 
-for command in kubectl jq base64 openssl flock xxd; do
+for command in kubectl jq base64 openssl flock xxd curl; do
   command -v "$command" >/dev/null || {
     echo "[identity-sync] missing command: $command" >&2
     exit 1
@@ -34,18 +34,6 @@ find_leader() {
   return 1
 }
 
-find_keycloak_pod() {
-  kubectl -n "$NAMESPACE" get pods \
-    -l app.kubernetes.io/name=resonance-keycloak \
-    --field-selector=status.phase=Running \
-    -o json |
-    jq -r '
-      [.items[]
-       | select(any(.status.conditions[]?; .type == "Ready" and .status == "True"))
-       | .metadata.name][0] // empty
-    '
-}
-
 hex() {
   printf '%s' "$1" | xxd -p -c 1000000
 }
@@ -54,26 +42,39 @@ leader="$(find_leader)" || {
   echo "[identity-sync] writable Patroni leader was not found" >&2
   exit 2
 }
-keycloak_pod="$(find_keycloak_pod)"
-[[ -n "$keycloak_pod" ]] || {
-  echo "[identity-sync] Keycloak pod was not found" >&2
+keycloak_service_ip="$(
+  kubectl -n "$NAMESPACE" get service resonance-keycloak \
+    -o jsonpath='{.spec.clusterIP}'
+)"
+[[ -n "$keycloak_service_ip" && "$keycloak_service_ip" != "None" ]] || {
+  echo "[identity-sync] Keycloak service endpoint was not found" >&2
   exit 2
 }
+keycloak_admin_url="${KEYCLOAK_ADMIN_URL:-http://${keycloak_service_ip}:8080}"
 
 admin_password="$(
   kubectl -n "$NAMESPACE" get secret resonance-keycloak \
     -o jsonpath='{.data.KC_BOOTSTRAP_ADMIN_PASSWORD}' | base64 -d
 )"
-kubectl -n "$NAMESPACE" exec "$keycloak_pod" -c keycloak -- \
-  /opt/keycloak/bin/kcadm.sh config credentials \
-  --server http://localhost:8080 --realm master \
-  --user resonance-admin --password "$admin_password" >/dev/null
+admin_token="$(
+  curl -fsS --max-time 10 \
+    -X POST "$keycloak_admin_url/realms/master/protocol/openid-connect/token" \
+    --data-urlencode 'client_id=admin-cli' \
+    --data-urlencode 'username=resonance-admin' \
+    --data-urlencode "password=$admin_password" \
+    --data-urlencode 'grant_type=password' |
+    jq -er '.access_token'
+)"
 admin_password=
 
+keycloak_get() {
+  curl -fsS --max-time 10 \
+    -H "Authorization: Bearer $admin_token" \
+    "$keycloak_admin_url$1"
+}
+
 users_json="$(
-  kubectl -n "$NAMESPACE" exec "$keycloak_pod" -c keycloak -- \
-    /opt/keycloak/bin/kcadm.sh get users -r "$REALM" \
-    --fields id,username,email,firstName,lastName,enabled,attributes --format json
+  keycloak_get "/admin/realms/$REALM/users?max=1000&briefRepresentation=false"
 )"
 # Keycloak's collection endpoint intentionally returns a brief representation
 # and omits custom attributes. Enrich the bounded E2E identities that carry
@@ -82,27 +83,18 @@ for scoped_username in resonance-requester resonance-reviewer resonance-approver
   scoped_id="$(jq -r --arg username "$scoped_username" \
     '.[] | select(.username == $username) | .id' <<<"$users_json" | head -n1)"
   [[ -n "$scoped_id" ]] || continue
-  scoped_user="$(
-    kubectl -n "$NAMESPACE" exec "$keycloak_pod" -c keycloak -- \
-      /opt/keycloak/bin/kcadm.sh get "users/$scoped_id" -r "$REALM"
-  )"
+  scoped_user="$(keycloak_get "/admin/realms/$REALM/users/$scoped_id")"
   users_json="$(jq -c --arg id "$scoped_id" --argjson detail "$scoped_user" \
     'map(if .id == $id then . + $detail else . end)' <<<"$users_json")"
 done
 groups_catalog="$(
-  kubectl -n "$NAMESPACE" exec "$keycloak_pod" -c keycloak -- \
-    /opt/keycloak/bin/kcadm.sh get groups -r "$REALM" \
-    --fields id,name --format json
+  keycloak_get "/admin/realms/$REALM/groups?max=1000&briefRepresentation=true"
 )"
 group_memberships='{}'
 while IFS= read -r managed_group; do
   group_id="$(jq -r --arg name "$managed_group" '.[] | select(.name == $name) | .id' <<<"$groups_catalog" | head -n1)"
   [[ -n "$group_id" ]] || continue
-  members="$(
-    kubectl -n "$NAMESPACE" exec "$keycloak_pod" -c keycloak -- \
-      /opt/keycloak/bin/kcadm.sh get "groups/$group_id/members" -r "$REALM" \
-      --fields id --format json
-  )"
+  members="$(keycloak_get "/admin/realms/$REALM/groups/$group_id/members?max=1000")"
   group_memberships="$(
     jq -c --arg group "$managed_group" --argjson members "$members" '
       reduce $members[] as $member (.;
@@ -111,6 +103,7 @@ while IFS= read -r managed_group; do
     ' <<<"$group_memberships"
   )"
 done < <(jq -r '.[]' <<<"$MANAGED_GROUPS")
+admin_token=
 
 integrated_username=""
 integrated_hash=""
