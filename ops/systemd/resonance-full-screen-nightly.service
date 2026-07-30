@@ -1,15 +1,15 @@
 [Unit]
-Description=Resonance nightly full 1000-screen regression sweep
+Description=Resonance nightly full TypeScript and 1000-screen regression sweep
 After=network-online.target kubelet.service
 Wants=network-online.target
 
 [Service]
 Type=oneshot
 User=sjkim
-WorkingDirectory=/opt/Resonance/projects/carbonet-frontend/source
+WorkingDirectory=/opt/Resonance
 Environment=FULL_SCREEN_SMOKE_CHANGED_ONLY=false
 Environment=FULL_SCREEN_SMOKE_WORKERS=4
-ExecStart=/usr/bin/bash scripts/run-full-screen-smoke.sh
+ExecStart=/usr/bin/bash /opt/Resonance/var/deploy-worktrees/runtime-build/ops/scripts/run-nightly-frontend-contracts.sh
 Nice=10
 IOSchedulingClass=best-effort
 IOSchedulingPriority=7
