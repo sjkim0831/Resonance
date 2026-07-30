@@ -3,6 +3,7 @@ set -euo pipefail
 
 root="${1:-$(pwd)}"
 revision="${2:-$(git -C "$root" rev-parse HEAD)}"
+base_revision="${3:-}"
 cd "$root"
 
 log_dir="$root/var/logs/deploy-validation/$(date +%Y%m%d-%H%M%S)-${revision:0:10}"
@@ -13,7 +14,7 @@ declare -a pids=()
 validate_menu_asset_design_group() {
   bash ops/scripts/validate-admin-menu-coverage.sh
   bash ops/scripts/validate-home-menu-coverage.sh
-  bash ops/scripts/sync-unified-asset-catalog.sh
+  bash ops/scripts/sync-unified-asset-catalog.sh "$base_revision" "$revision"
   bash ops/scripts/validate-e4b-selectable-assets.sh
   bash ops/scripts/validate-design-direct-development.sh
   bash ops/scripts/validate-common-design-assets.sh

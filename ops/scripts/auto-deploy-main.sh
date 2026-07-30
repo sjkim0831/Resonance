@@ -557,7 +557,7 @@ if [[ "$PLAN_RUNTIME_REQUIRED" != "true" ]]; then
   if [[ "$backstage_only_change" == "true" ]]; then
     echo "[auto-deploy] Backstage-only change: preserving the verified unified asset catalog"
   else
-    bash ops/scripts/sync-unified-asset-catalog.sh
+    bash ops/scripts/sync-unified-asset-catalog.sh "$deployed_commit" "$target_commit"
     bash ops/scripts/validate-e4b-selectable-assets.sh
   fi
   sync_backstage_catalog_if_required
@@ -870,7 +870,7 @@ if [[ "$PLAN_FRONTEND_REQUIRED" == "true" \
   FULL_SCREEN_SMOKE_CHANGED_ONLY=false \
   FULL_SCREEN_SMOKE_ROUTE_PATTERN='^/(home|emission/project_list|emission/project/create|emission/my-tasks|home/certificate-verify|admin|admin/system/menu|admin/system/actor-process|admin/emission/survey-admin|admin/emission/survey-admin-data|admin/emission/survey-report|admin/emission/survey-report-print)([?#]|$)' \
     bash ops/scripts/resonance-full-screen-deploy-gate.sh verify
-  bash ops/scripts/sync-unified-asset-catalog.sh
+  bash ops/scripts/sync-unified-asset-catalog.sh "$deployed_commit" "$target_commit"
   bash ops/scripts/validate-e4b-selectable-assets.sh
   printf '%s\n' "$target_commit" > "${DEPLOY_STATE_FILE}.tmp"
   mv "${DEPLOY_STATE_FILE}.tmp" "$DEPLOY_STATE_FILE"
@@ -927,7 +927,7 @@ fi
 # These groups use independent tables and contracts. Ordering remains strict
 # inside a group; the reusable harness provides bounded parallelism, isolated
 # logs, and one fail-closed result for both deployment and operator testing.
-bash ops/scripts/run-post-deploy-validation-groups.sh "$ROOT_DIR" "$target_commit"
+bash ops/scripts/run-post-deploy-validation-groups.sh "$ROOT_DIR" "$target_commit" "$deployed_commit"
 if [[ "$PLAN_FRONTEND_REQUIRED" == "true" ]]; then
   # A normal deployment must finish inside the operational feedback window.
   # Domain/API/schema validators above already cover the changed backend and
