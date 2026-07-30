@@ -7,6 +7,7 @@ const env = {
   NODE_OPTIONS: `--max-old-space-size=${process.env.CARBONET_NODE_HEAP_MB || "8192"} ${process.env.NODE_OPTIONS || ""}`.trim(),
 };
 const skipBuildTypecheck = process.env.CARBONET_SKIP_BUILD_TYPECHECK === "true";
+const forceFullTypecheck = process.env.CARBONET_FORCE_FULL_TYPECHECK === "true";
 
 function run(command, args) {
   const requiresWindowsCommandShell = process.platform === "win32" && (command === npm || command === npx);
@@ -74,9 +75,18 @@ if (process.argv.includes("--build")) {
     run(npx, ["vite", "build"]);
   } else {
     console.log("[frontend-pipeline] typecheck and Vite build run concurrently; both remain fail-closed");
+    const typecheckArgs = forceFullTypecheck
+      ? ["tsc", "-p", "tsconfig.app.json", "--pretty", "false"]
+      : [
+          "tsc", "-p", "tsconfig.app.json",
+          "--incremental",
+          "--tsBuildInfoFile", "tsconfig.app.tsbuildinfo",
+          "--pretty", "false",
+        ];
+    console.log(`[frontend-pipeline] typecheck mode=${forceFullTypecheck ? "full" : "incremental"}`);
     try {
       await Promise.all([
-        runAsync(npx, ["tsc", "-b"]),
+        runAsync(npx, typecheckArgs),
         runAsync(npx, ["vite", "build"]),
       ]);
     } catch (error) {

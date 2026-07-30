@@ -15,6 +15,8 @@
     "dev": "NODE_OPTIONS=\"--max-old-space-size=${CARBONET_NODE_HEAP_MB:-8192} ${NODE_OPTIONS:-}\" vite",
     "prebuild": "node scripts/run-frontend-pipeline.mjs",
     "build": "node scripts/run-frontend-pipeline.mjs --build",
+    "typecheck:full": "tsc -p tsconfig.app.json --pretty false",
+    "typecheck:incremental": "tsc -p tsconfig.app.json --incremental --tsBuildInfoFile tsconfig.app.tsbuildinfo --pretty false",
     "preview": "vite preview",
     "audit:component-standardization": "node scripts/component-standardization-audit.mjs",
     "audit:framework-contract-metadata": "node scripts/check-framework-contract-metadata.mjs",
