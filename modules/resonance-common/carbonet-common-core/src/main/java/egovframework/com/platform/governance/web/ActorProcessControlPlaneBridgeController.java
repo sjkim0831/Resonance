@@ -129,16 +129,15 @@ public class ActorProcessControlPlaneBridgeController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(Map.of("success", false, "message", "Invalid control-plane bridge token."));
         }
-        Map<String, Object> dashboard = governance.dashboard();
         if (dataset.isBlank()) {
-            return ResponseEntity.ok(dashboard);
+            return ResponseEntity.ok(governance.dashboard());
         }
         if (!dataset.matches("^[A-Za-z][A-Za-z0-9]*$")) {
             return ResponseEntity.badRequest().body(Map.of(
                     "success", false,
                     "message", "Invalid dataset key."));
         }
-        return ResponseEntity.ok(Map.of(dataset, dashboard.getOrDefault(dataset, List.of())));
+        return ResponseEntity.ok(Map.of(dataset, governance.dashboardDataset(dataset)));
     }
 
     @PostMapping("/commands")

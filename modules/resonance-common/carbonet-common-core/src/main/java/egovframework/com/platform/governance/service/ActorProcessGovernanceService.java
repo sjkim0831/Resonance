@@ -28,6 +28,39 @@ public class ActorProcessGovernanceService {
     private final ScreenDevelopmentNoteService screenDevelopmentNoteService;
     private final CodexProvisioningService codexProvisioningService;
 
+    public List<Map<String, Object>> dashboardDataset(String dataset) {
+        String relation = switch (dataset) {
+            case "actors" -> "framework_actor_definition";
+            case "processes" -> "framework_process_definition";
+            case "steps" -> "framework_process_step";
+            case "screenBlueprints" -> "framework_screen_blueprint";
+            case "professionalScreenContracts" -> "framework_professional_screen_readiness";
+            case "cases" -> "framework_simulation_case";
+            case "referenceAssets" -> "framework_reference_asset";
+            case "designValidationRuns" -> "framework_process_design_validation_run";
+            case "processDevelopmentProgress" -> "framework_process_development_progress";
+            case "developmentJobs" -> "framework_development_job";
+            case "screenDevelopmentGates" -> "framework_screen_development_gate_run";
+            case "backendProcessReadiness" -> "framework_process_design_assurance_matrix";
+            case "pageDesigns" -> "framework_page_design_readiness";
+            case "qualityGateResults" -> "framework_development_job_gate_result";
+            case "artifacts" -> "framework_process_artifact";
+            case "deliveryQueue" -> "framework_design_delivery_revision";
+            case "processExecutions" -> "framework_process_execution";
+            case "processExecutionEvents" -> "framework_process_execution_event";
+            case "assignments" -> "framework_account_actor_assignment";
+            case "projectCompletionRuns" -> "framework_project_completion_run";
+            case "automationMetrics" -> "framework_automation_metric";
+            case "customerJourneyGaps" -> "framework_customer_journey_gap";
+            case "developmentEvents" -> "framework_development_job_event";
+            default -> "";
+        };
+        if (relation.isBlank()) {
+            return List.of();
+        }
+        return jdbc.queryForList("select * from " + relation + " limit 1000");
+    }
+
     public Map<String,Object> dashboard() {
         Map<String,Object> out=new LinkedHashMap<>();
         out.put("actors",jdbc.queryForList("select actor_code as \"actorCode\",actor_name as \"actorName\",actor_name_en as \"actorNameEn\",actor_type as \"actorType\",purpose,capability_codes as \"capabilityCodes\",responsibility_text as responsibility,accountability_text as accountability,competency_requirements as competency,conflict_actor_codes as \"conflictActorCodes\",max_concurrent_assignments as \"maxConcurrentAssignments\",review_cycle_days as \"reviewCycleDays\",delegation_allowed as \"delegationAllowed\",use_at as \"useAt\" from framework_actor_definition order by actor_type,actor_code"));
