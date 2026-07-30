@@ -213,6 +213,13 @@ cleanup_deploy() {
   if [[ -n "$schema_backup_dir" ]]; then
     rm -rf -- "$schema_backup_dir"
   fi
+  current_root="$(realpath -m "${ROOT_DIR:-/}")"
+  persistent_root="$(realpath -m "${persistent_build_worktree:-/nonexistent}")"
+  if [[ "$current_root" == "$persistent_root" &&
+        -x "$current_root/ops/scripts/normalize-deploy-generated-assets.sh" ]]; then
+    bash "$current_root/ops/scripts/normalize-deploy-generated-assets.sh" "$current_root" ||
+      echo "[auto-deploy] WARN generated worktree normalization failed" >&2
+  fi
   if [[ -n "${CARBONET_DEPLOY_SNAPSHOT_PATH:-}" ]]; then
     rm -f -- "$CARBONET_DEPLOY_SNAPSHOT_PATH"
   fi
