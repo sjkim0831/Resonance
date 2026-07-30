@@ -178,6 +178,28 @@ retry_denied_status="$(curl --cacert "$CA_CERT" -sS \
   exit 6
 }
 
+rollback_request_denied_status="$(curl --cacert "$CA_CERT" -sS \
+  -o "$run_dir/requester-development-rollback-request.json" -w '%{http_code}' \
+  -H "authorization: Bearer $requester_token" \
+  -H 'content-type: application/json' \
+  -d '{"command":"development.rollback.request","jobId":"1","reason":"role-e2e"}' \
+  "$BACKSTAGE_URL/api/resonance-projects/actor-process/commands")"
+[[ "$rollback_request_denied_status" == "403" ]] || {
+  echo "[actor-process-role-e2e] requester rollback request denial expected HTTP 403, received $rollback_request_denied_status" >&2
+  exit 7
+}
+
+rollback_approve_denied_status="$(curl --cacert "$CA_CERT" -sS \
+  -o "$run_dir/requester-development-rollback-approve.json" -w '%{http_code}' \
+  -H "authorization: Bearer $requester_token" \
+  -H 'content-type: application/json' \
+  -d '{"command":"development.rollback.approve","rollbackRequestId":"1"}' \
+  "$BACKSTAGE_URL/api/resonance-projects/actor-process/commands")"
+[[ "$rollback_approve_denied_status" == "403" ]] || {
+  echo "[actor-process-role-e2e] requester rollback approval denial expected HTTP 403, received $rollback_approve_denied_status" >&2
+  exit 8
+}
+
 approver_status="$(curl --cacert "$CA_CERT" -sS -o "$run_dir/approver-command.json" -w '%{http_code}' \
   -H "authorization: Bearer $approver_token" \
   -H 'content-type: application/json' -d "$payload" \
@@ -195,4 +217,4 @@ anonymous_status="$(curl --cacert "$CA_CERT" -sS -o "$run_dir/anonymous-command.
   exit 8
 }
 
-echo "[actor-process-role-e2e] command PASS: 2 allowed, 3 forbidden, 1 unauthenticated, 0 workflow mutations"
+echo "[actor-process-role-e2e] command PASS: 2 allowed, 5 forbidden, 1 unauthenticated, 0 workflow mutations"

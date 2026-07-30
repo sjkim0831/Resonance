@@ -406,6 +406,8 @@ function WorkOperationsMap({
   executeRuntimeCommand,
   executeDevelopmentPipeline,
   retryDevelopmentJob,
+  requestDevelopmentRollback,
+  approveDevelopmentRollback,
   loadDesignDocuments,
   saveDesignDocument,
 }: {
@@ -422,6 +424,13 @@ function WorkOperationsMap({
     stepCode: string,
   ) => Promise<Record<string, unknown>>;
   retryDevelopmentJob: (jobId: string) => Promise<Record<string, unknown>>;
+  requestDevelopmentRollback: (
+    jobId: string,
+    reason: string,
+  ) => Promise<Record<string, unknown>>;
+  approveDevelopmentRollback: (
+    rollbackRequestId: string,
+  ) => Promise<Record<string, unknown>>;
   loadDesignDocuments: (
     processCode: string,
     stepCode: string,
@@ -639,6 +648,9 @@ function WorkOperationsMap({
   const qualityGateResults = (
     (dashboard.qualityGateResults ?? []) as RuntimeRow[]
   ).filter(row => jobIds.has(String(row.jobId ?? '')));
+  const rollbackRequests = (
+    (dashboard.rollbackRequests ?? []) as RuntimeRow[]
+  ).filter(row => jobIds.has(String(row.sourceJobId ?? '')));
   const jobStatusCounts = jobs.reduce<Record<string, number>>((counts, row) => {
     const status = String(row.jobStatus ?? 'UNKNOWN');
     counts[status] = (counts[status] ?? 0) + 1;
@@ -741,6 +753,55 @@ function WorkOperationsMap({
       await retryDevelopmentJob(jobId);
       setDevelopmentPipelineResult(
         `개발 작업 ${jobId}을 RETRY 상태로 전환했습니다. 실행기가 의존성과 품질 게이트를 다시 확인합니다.`,
+      );
+    } catch (error) {
+      setDevelopmentPipelineResult(
+        error instanceof Error ? error.message : String(error),
+      );
+    } finally {
+      setDevelopmentPipelinePending(false);
+    }
+  };
+  const runRollbackRequest = async (jobId: string) => {
+    if (!jobId || developmentPipelinePending) return;
+    const reason = window.prompt(
+      '롤백 요청 사유를 입력하세요. 요청자와 다른 관리자의 승인이 필요합니다.',
+      '운영 안정성 복구',
+    );
+    if (reason === null) return;
+    setDevelopmentPipelinePending(true);
+    setDevelopmentPipelineResult('');
+    try {
+      const result = await requestDevelopmentRollback(jobId, reason);
+      setDevelopmentPipelineResult(
+        `롤백 요청 ${displayValue(
+          result.rollbackRequestId,
+        )}이 등록되었습니다. 사전 검증을 통과했으며 다른 관리자의 승인을 기다립니다.`,
+      );
+    } catch (error) {
+      setDevelopmentPipelineResult(
+        error instanceof Error ? error.message : String(error),
+      );
+    } finally {
+      setDevelopmentPipelinePending(false);
+    }
+  };
+  const runRollbackApproval = async (rollbackRequestId: string) => {
+    if (!rollbackRequestId || developmentPipelinePending) return;
+    if (
+      !window.confirm(
+        `롤백 요청 ${rollbackRequestId}을 승인하고 안전 실행 큐에 등록하시겠습니까?`,
+      )
+    )
+      return;
+    setDevelopmentPipelinePending(true);
+    setDevelopmentPipelineResult('');
+    try {
+      const result = await approveDevelopmentRollback(rollbackRequestId);
+      setDevelopmentPipelineResult(
+        `롤백 작업 ${displayValue(
+          result.rollbackJobId,
+        )}이 승인된 실행 큐에 등록되었습니다. 실패 시 현재 운영 버전을 유지합니다.`,
       );
     } catch (error) {
       setDevelopmentPipelineResult(
@@ -1331,6 +1392,16 @@ function WorkOperationsMap({
                   );
                   const targetPath = String(job.targetPath ?? '');
                   const canRetry = ['FAILED', 'RETRY'].includes(status);
+                  const rollbackRequest = rollbackRequests.find(
+                    request => String(request.sourceJobId ?? '') === jobId,
+                  );
+                  const canRequestRollback =
+                    ['VERIFIED', 'COMPLETED'].includes(status) &&
+                    String(job.qualityStatus ?? '') === 'VERIFIED' &&
+                    Boolean(job.rollbackRef) &&
+                    !rollbackRequest;
+                  const canApproveRollback =
+                    String(rollbackRequest?.requestStatus ?? '') === 'PENDING';
                   return (
                     <Paper
                       key={jobId}
@@ -1403,8 +1474,50 @@ function WorkOperationsMap({
                               안전 재시도
                             </Button>
                           )}
+                          {canRequestRollback && (
+                            <Button
+                              size="small"
+                              variant="outlined"
+                              color="secondary"
+                              disabled={developmentPipelinePending}
+                              onClick={() => void runRollbackRequest(jobId)}
+                            >
+                              롤백 요청
+                            </Button>
+                          )}
+                          {canApproveRollback && (
+                            <Button
+                              size="small"
+                              variant="contained"
+                              color="secondary"
+                              disabled={developmentPipelinePending}
+                              onClick={() =>
+                                void runRollbackApproval(
+                                  String(
+                                    rollbackRequest?.rollbackRequestId ?? '',
+                                  ),
+                                )
+                              }
+                            >
+                              롤백 승인
+                            </Button>
+                          )}
                         </Box>
                       </Box>
+                      {rollbackRequest && (
+                        <Typography
+                          variant="caption"
+                          color="textSecondary"
+                          display="block"
+                          style={{ marginTop: 6 }}
+                        >
+                          롤백 #
+                          {displayValue(rollbackRequest.rollbackRequestId)} ·{' '}
+                          {displayValue(rollbackRequest.requestStatus)} · 사전
+                          검증 {displayValue(rollbackRequest.preflightStatus)} ·
+                          요청자 {displayValue(rollbackRequest.requestedBy)}
+                        </Typography>
+                      )}
                     </Paper>
                   );
                 })}
@@ -2556,6 +2669,46 @@ export function ActorProcessControlPage(props: {
     },
     [fetchApi, loadRuntimeDataset],
   );
+  const runRollbackCommand = useCallback(
+    async (
+      command: 'development.rollback.request' | 'development.rollback.approve',
+      body: Record<string, unknown>,
+    ) => {
+      const response = await fetchApi.fetch(
+        '/api/resonance-projects/actor-process/commands',
+        {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ command, ...body }),
+        },
+      );
+      const payload = (await response.json()) as Record<string, unknown>;
+      if (!response.ok) {
+        throw new Error(
+          String(payload.message ?? payload.error ?? `HTTP ${response.status}`),
+        );
+      }
+      await Promise.all([
+        loadRuntimeDataset('developmentJobs'),
+        loadRuntimeDataset('developmentEvents'),
+        loadRuntimeDataset('rollbackRequests'),
+      ]);
+      return payload;
+    },
+    [fetchApi, loadRuntimeDataset],
+  );
+  const requestDevelopmentRollback = useCallback(
+    (jobId: string, reason: string) =>
+      runRollbackCommand('development.rollback.request', { jobId, reason }),
+    [runRollbackCommand],
+  );
+  const approveDevelopmentRollback = useCallback(
+    (rollbackRequestId: string) =>
+      runRollbackCommand('development.rollback.approve', {
+        rollbackRequestId,
+      }),
+    [runRollbackCommand],
+  );
 
   const loadDashboard = async () => {
     setLoading(true);
@@ -2636,6 +2789,7 @@ export function ActorProcessControlPage(props: {
       'artifacts',
       'developmentJobs',
       'developmentEvents',
+      'rollbackRequests',
       'qualityGateResults',
       'customerJourneyGaps',
       'processExecutions',
@@ -2966,6 +3120,8 @@ export function ActorProcessControlPage(props: {
                 executeRuntimeCommand={executeRuntimeCommand}
                 executeDevelopmentPipeline={executeDevelopmentPipeline}
                 retryDevelopmentJob={retryDevelopmentJob}
+                requestDevelopmentRollback={requestDevelopmentRollback}
+                approveDevelopmentRollback={approveDevelopmentRollback}
                 loadDesignDocuments={loadDesignDocuments}
                 saveDesignDocument={saveDesignDocument}
               />

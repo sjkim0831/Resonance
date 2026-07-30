@@ -245,6 +245,21 @@ public class ActorProcessControlPlaneBridgeController {
                     result = governance.retryDevelopmentJob(
                             Long.parseLong(required(body, "jobId")), actor);
                 }
+                case "development.rollback.request" -> {
+                    if (!governance.isControlPlaneAdministrator(account)) {
+                        throw new SecurityException("Administrator authority is required to request rollback.");
+                    }
+                    result = governance.requestDevelopmentRollback(
+                            Long.parseLong(required(body, "jobId")),
+                            String.valueOf(body.getOrDefault("reason", "")), actor);
+                }
+                case "development.rollback.approve" -> {
+                    if (!governance.isControlPlaneAdministrator(account)) {
+                        throw new SecurityException("Administrator authority is required to approve rollback.");
+                    }
+                    result = governance.approveDevelopmentRollback(
+                            Long.parseLong(required(body, "rollbackRequestId")), actor);
+                }
                 case "backend.verify" ->
                         result = governance.verifyBackendProcessContracts(
                                 String.valueOf(body.getOrDefault("sourceCommit", "")), actor);

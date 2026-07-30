@@ -122,6 +122,7 @@ public class ActorProcessGovernanceService {
             case "automationMetrics" -> "framework_automation_metric";
             case "customerJourneyGaps" -> "framework_customer_journey_gap";
             case "developmentEvents" -> "framework_development_job_event";
+            case "rollbackRequests" -> "framework_development_rollback_request";
             default -> "";
         };
         if (relation.isBlank()) {
@@ -234,6 +235,7 @@ public class ActorProcessGovernanceService {
         out.put("qualityGateResults",jdbc.queryForList("select result_id as \"resultId\",job_id as \"jobId\",gate_code as \"gateCode\",result,summary,evidence_ref as \"evidenceRef\",checked_at as \"executedAt\" from framework_development_job_gate_result order by result_id desc limit 300"));
         out.put("processDevelopmentProgress",jdbc.queryForList("select process_code as \"processCode\",required_jobs as \"requiredJobs\",verified_jobs as \"verifiedJobs\",failed_jobs as \"failedJobs\",parallel_jobs as \"parallelJobs\",completion_percent as \"completionPercent\" from framework_process_development_progress order by process_code"));
         out.put("developmentEvents",jdbc.queryForList("select e.event_id as \"eventId\",e.job_id as \"jobId\",e.event_type as \"eventType\",e.from_status as \"fromStatus\",e.to_status as \"toStatus\",e.worker_id as \"workerId\",e.created_at as \"createdAt\" from framework_development_job_event e order by e.event_id desc limit 200"));
+        out.put("rollbackRequests",jdbc.queryForList("select rollback_request_id as \"rollbackRequestId\",source_job_id as \"sourceJobId\",rollback_job_id as \"rollbackJobId\",rollback_ref as \"rollbackRef\",request_reason as \"requestReason\",request_status as \"requestStatus\",preflight_status as \"preflightStatus\",preflight_summary as \"preflightSummary\",requested_by as \"requestedBy\",requested_at as \"requestedAt\",approved_by as \"approvedBy\",approved_at as \"approvedAt\",completed_at as \"completedAt\" from framework_development_rollback_request order by rollback_request_id desc limit 200"));
         out.put("screenDevelopmentGates",jdbc.queryForList("select gate_run_id as \"gateRunId\",process_code as \"processCode\",step_code as \"stepCode\",route_path as \"routePath\",page_id as \"pageId\",gate_status as \"gateStatus\",readiness_score as \"readinessScore\",design_note_passed as \"designNotePassed\",selected_mockup_passed as \"selectedMockupPassed\",actor_contract_passed as \"actorContractPassed\",safety_tests_passed as \"safetyTestsPassed\",design_asset_checked as \"designAssetChecked\",failure_summary as \"failureSummary\",executed_by as \"executedBy\",executed_at as \"executedAt\" from framework_screen_development_gate_run order by gate_run_id desc limit 300"));
         out.put("commonFeaturePackages",jdbc.queryForList("select feature_code as \"featureCode\",feature_name as \"featureName\",feature_version as \"featureVersion\",feature_category as \"featureCategory\",description,api_contract as \"apiContract\",data_contract as \"dataContract\",ui_contract as \"uiContract\",event_contract as \"eventContract\",permission_contract as \"permissionContract\",test_contract as \"testContract\",install_strategy as \"installStrategy\" from framework_common_feature_package where active_yn='Y' order by feature_category,feature_code"));
         out.put("screenFeatureBindings",jdbc.queryForList("select process_code as \"processCode\",step_code as \"stepCode\",audience,route_path as \"routePath\",feature_code as \"featureCode\",binding_options as \"bindingOptions\",required_yn as \"requiredYn\" from framework_screen_feature_binding order by process_code,step_code,audience,route_path,feature_code"));
@@ -1528,6 +1530,46 @@ public class ActorProcessGovernanceService {
         List<Map<String,Object>> rows=jdbc.queryForList("select job_status from framework_development_job where job_id=? for update",jobId);if(rows.isEmpty())throw new IllegalArgumentException("작업이 존재하지 않습니다.");
         String from=String.valueOf(rows.get(0).get("job_status"));if(!"FAILED".equals(from))throw new IllegalArgumentException("실패 작업만 재시도할 수 있습니다.");
         jdbc.update("update framework_development_job set job_status='RETRY',worker_id=null,lease_token=null,lease_until=null,updated_at=current_timestamp where job_id=?",jobId);event(jobId,"RETRY_REQUESTED",from,"RETRY",actor,"{}");return Map.of("success",true,"jobId",jobId);
+    }
+
+    @Transactional public Map<String,Object> requestDevelopmentRollback(long jobId,String reason,String actor){
+        List<Map<String,Object>> rows=jdbc.queryForList("select job_id,process_code,step_code,job_type,target_path,job_status,quality_status,rollback_ref from framework_development_job where job_id=? for update",jobId);
+        if(rows.isEmpty())throw new IllegalArgumentException("개발 작업이 존재하지 않습니다.");
+        Map<String,Object> job=rows.get(0);
+        String status=String.valueOf(job.get("job_status")),quality=String.valueOf(job.get("quality_status"));
+        String rollbackRef=job.get("rollback_ref")==null?"":String.valueOf(job.get("rollback_ref")).trim();
+        if(!List.of("VERIFIED","COMPLETED").contains(status)||!"VERIFIED".equals(quality))
+            throw new IllegalStateException("검증 완료된 개발 작업만 롤백할 수 있습니다.");
+        if(rollbackRef.isBlank())throw new IllegalStateException("불변 롤백 기준이 등록되지 않았습니다.");
+        Integer failedGates=jdbc.queryForObject("select count(*) from framework_quality_gate gate where gate.mandatory=true and gate.use_at='Y' and not exists(select 1 from framework_development_job_gate_result result where result.job_id=? and result.gate_code=gate.gate_code and result.result='PASSED')",Integer.class,jobId);
+        Integer runningTargets=jdbc.queryForObject("select count(*) from framework_development_job where coalesce(target_path,'')=coalesce(?, '') and job_status='RUNNING'",Integer.class,job.get("target_path"));
+        String preflight=failedGates!=null&&failedGates>0?"FAILED":runningTargets!=null&&runningTargets>0?"FAILED":"PASSED";
+        String summary="mandatoryGateFailures="+failedGates+", runningTargetJobs="+runningTargets;
+        if(!"PASSED".equals(preflight))throw new IllegalStateException("롤백 사전 검증 실패: "+summary);
+        Long requestId=jdbc.queryForObject("insert into framework_development_rollback_request(source_job_id,rollback_ref,request_reason,preflight_status,preflight_summary,requested_by) values(?,?,?,?,?,?) returning rollback_request_id",Long.class,jobId,rollbackRef,reason==null||reason.isBlank()?"운영 안정성 복구":reason.trim(),preflight,summary,actor);
+        event(jobId,"ROLLBACK_REQUESTED",status,status,actor,"{\"rollbackRequestId\":"+requestId+"}");
+        return Map.of("success",true,"rollbackRequestId",requestId,"sourceJobId",jobId,"status","PENDING","preflightStatus",preflight);
+    }
+
+    @Transactional public Map<String,Object> approveDevelopmentRollback(long requestId,String actor){
+        List<Map<String,Object>> rows=jdbc.queryForList("select request.*,job.process_code,job.step_code,job.target_path,job.job_status,job.quality_status from framework_development_rollback_request request join framework_development_job job on job.job_id=request.source_job_id where request.rollback_request_id=? for update",requestId);
+        if(rows.isEmpty())throw new IllegalArgumentException("롤백 요청이 존재하지 않습니다.");
+        Map<String,Object> request=rows.get(0);
+        if(!"PENDING".equals(String.valueOf(request.get("request_status"))))throw new IllegalStateException("승인 대기 중인 롤백 요청만 승인할 수 있습니다.");
+        if(actor.equalsIgnoreCase(String.valueOf(request.get("requested_by"))))throw new SecurityException("요청자와 승인자는 서로 달라야 합니다.");
+        if(!"PASSED".equals(String.valueOf(request.get("preflight_status"))))throw new IllegalStateException("사전 검증을 통과하지 못한 롤백 요청입니다.");
+        if(!List.of("VERIFIED","COMPLETED").contains(String.valueOf(request.get("job_status")))||!"VERIFIED".equals(String.valueOf(request.get("quality_status"))))throw new IllegalStateException("승인 시점에 원본 작업의 검증 상태가 변경되어 현재 운영 버전을 유지합니다.");
+        String process=String.valueOf(request.get("process_code")),step=String.valueOf(request.get("step_code")),target=String.valueOf(request.get("target_path"));
+        Integer running=jdbc.queryForObject("select count(*) from framework_development_job where coalesce(target_path,'')=coalesce(?, '') and job_status='RUNNING'",Integer.class,target);
+        if(running!=null&&running>0)throw new IllegalStateException("동일 대상의 실행 중 작업이 있어 현재 운영 버전을 유지합니다.");
+        String rollbackTarget=target==null||"null".equals(target)?"":target;
+        String specification="{\"sourceJobId\":"+request.get("source_job_id")+",\"rollbackRequestId\":"+requestId+",\"rollbackRef\":\""+jsonEscape(String.valueOf(request.get("rollback_ref")))+"\",\"failClosed\":true}";
+        queueJob(process,step,"ROLLBACK","승인된 안전 롤백",rollbackTarget,specification,actor);
+        Long rollbackJobId=jdbc.queryForObject("select job_id from framework_development_job where process_code=? and step_code=? and job_type='ROLLBACK' and target_path=?",Long.class,process,step,rollbackTarget);
+        jdbc.update("update framework_development_job set approval_status='APPROVED',job_status='PLANNED',quality_status='PENDING',specification_json=?,rollback_ref=?,worker_id=null,lease_token=null,lease_until=null,last_error=null,updated_at=current_timestamp where job_id=?",specification,request.get("rollback_ref"),rollbackJobId);
+        jdbc.update("update framework_development_rollback_request set rollback_job_id=?,request_status='QUEUED',approved_by=?,approved_at=current_timestamp,updated_at=current_timestamp where rollback_request_id=?",rollbackJobId,actor,requestId);
+        event(((Number)request.get("source_job_id")).longValue(),"ROLLBACK_APPROVED",String.valueOf(request.get("job_status")),"QUEUED",actor,"{\"rollbackRequestId\":"+requestId+",\"rollbackJobId\":"+rollbackJobId+"}");
+        return Map.of("success",true,"rollbackRequestId",requestId,"rollbackJobId",rollbackJobId,"status","QUEUED","failClosed",true);
     }
 
     @Transactional public Map<String,Object> requestDevelopmentJob(long jobId,String actor){

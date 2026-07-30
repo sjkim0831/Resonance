@@ -185,6 +185,11 @@ test('authenticated Resonance control-plane routes render without runtime errors
   await expect(page.getByText('설계 → 개발 자동 실행')).toBeVisible();
   await expect(page.getByText('자동 개발 실행 타임라인')).toBeVisible();
   await expect(
+    page.getByText(
+      '생성·테스트·배포 게이트의 현재 상태와 증적을 실시간 데이터로 표시합니다.',
+    ),
+  ).toBeVisible();
+  await expect(
     page.getByRole('button', { name: /자동 개발 시작/ }),
   ).toBeVisible();
   await expect(page.getByText('고객 여정 시뮬레이션')).toBeVisible();
