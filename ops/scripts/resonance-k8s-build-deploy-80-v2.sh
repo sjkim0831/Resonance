@@ -794,6 +794,26 @@ rollout_image() {
       "ctr -n k8s.io images list | grep $IMAGE_NAME; docker images | grep $IMAGE_NAME"
   fi
 
+  # Migrate exactly once from the candidate image. A failed migration leaves
+  # the current deployment untouched; successful runtime pods no longer spend
+  # startup time validating the same 277 migrations three times.
+  if [[ "${RUN_FLYWAY_MIGRATION_JOB:-true}" == "true" ]]; then
+    if ! CARBONET_K8S_NAMESPACE="$NAMESPACE" \
+      CARBONET_K8S_DEPLOYMENT="$DEPLOYMENT" \
+      CARBONET_K8S_CONTAINER="$CONTAINER" \
+      bash "$ROOT_DIR/ops/scripts/run-flyway-migration-job.sh" "$IMAGE_NAME"; then
+      rollback_and_fail "FLYWAY_JOB_FAILED" \
+        "Candidate image database migration failed before rollout" \
+        "Inspect $ROOT_DIR/var/logs/flyway-jobs and the failed Kubernetes Job"
+    fi
+    kubectl -n "$NAMESPACE" set env "deployment/$DEPLOYMENT" \
+      CARBONET_FLYWAY_ENABLED=false \
+      CARBONET_LIQUIBASE_ENABLED=false >/dev/null ||
+      rollback_and_fail "RUNTIME_MIGRATION_DISABLE_FAILED" \
+        "Failed to disable per-pod migration after the deployment migration passed" \
+        "kubectl -n $NAMESPACE set env deployment/$DEPLOYMENT CARBONET_FLYWAY_ENABLED=false"
+  fi
+
   log_detail "Ensuring the canonical reference library is mounted read-only..."
   kubectl -n "$NAMESPACE" patch "deployment/$DEPLOYMENT" --type='strategic' \
     -p="{\"spec\":{\"template\":{\"spec\":{\"volumes\":[{\"name\":\"reference-root\",\"hostPath\":{\"path\":\"/opt/reference\",\"type\":\"DirectoryOrCreate\"}}],\"containers\":[{\"name\":\"$CONTAINER\",\"volumeMounts\":[{\"name\":\"reference-root\",\"mountPath\":\"/opt/reference\",\"readOnly\":true}]}]}}}}" \
