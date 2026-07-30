@@ -223,9 +223,6 @@ eval "$(bash "$PLAN_SCRIPT" "$deployed_commit" "$target_commit" --format env)"
 PLAN_BACKSTAGE_REQUIRED="${PLAN_BACKSTAGE_REQUIRED:-false}"
 echo "[auto-deploy] incremental plan: runtime=$PLAN_RUNTIME_REQUIRED frontend=$PLAN_FRONTEND_REQUIRED backend=$PLAN_BACKEND_REQUIRED database=$PLAN_DATABASE_REQUIRED backstage=$PLAN_BACKSTAGE_REQUIRED"
 echo "[auto-deploy] selected checks: $PLAN_TESTS ($PLAN_REASONS)"
-if [[ "$PLAN_BACKEND_REQUIRED" == "true" ]]; then
-  bash ops/scripts/validate-jpa-entity-package-closure.sh "$ROOT_DIR"
-fi
 
 # Database availability is a hard prerequisite for Flyway and every runtime
 # health gate. Keep the Patroni image independently recoverable even when
@@ -860,6 +857,11 @@ echo "[auto-deploy] frontend build required: $([[ "$skip_frontend" == "true" ]] 
 # frontend build will replace it only after closure validation.
 git merge --ff-only "$target_commit"
 restore_live_frontend_overlay
+if [[ "$PLAN_BACKEND_REQUIRED" == "true" ]]; then
+  # Run guards introduced by the pending commit only after that exact revision
+  # is present in the selected deployment worktree.
+  bash ops/scripts/validate-jpa-entity-package-closure.sh "$ROOT_DIR"
+fi
 bash ops/scripts/validate-deterministic-development-policy.sh
 # Applied Flyway files are immutable. Detect a checksum drift before spending
 # time on Java/image builds and before Kubernetes starts a doomed rollout.
