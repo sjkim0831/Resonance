@@ -349,6 +349,7 @@ export default createBackendPlugin({
             offsiteFullRestoreReporting: true,
             deploymentTargetSeconds: 60,
             dependencyCacheEnabled: true,
+            dependencyCacheStrategy: 'content-addressed-hardlink',
           });
         });
         router.get('/summary', async (request, response) => {
