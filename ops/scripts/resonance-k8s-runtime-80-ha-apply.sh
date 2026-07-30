@@ -26,27 +26,28 @@ kubectl -n "$NAMESPACE" get svc "$SERVICE" -o yaml >"$BACKUP_DIR/$SERVICE.svc.$t
 
 kubectl -n "$NAMESPACE" patch deployment "$DEPLOYMENT" --type strategic --patch-file /dev/stdin <<'PATCH'
 spec:
-  replicas: 2
-  minReadySeconds: 20
+  replicas: 3
+  minReadySeconds: 0
   revisionHistoryLimit: 5
   progressDeadlineSeconds: 600
   strategy:
     type: RollingUpdate
     rollingUpdate:
       maxUnavailable: 0
-      maxSurge: 1
+      maxSurge: 3
   template:
     spec:
-      terminationGracePeriodSeconds: 60
+      terminationGracePeriodSeconds: 15
       containers:
         - name: carbonet-runtime
           lifecycle:
             preStop:
               exec:
-                command: ["sh", "-c", "sleep 10"]
+                command: ["sh", "-c", "sleep 3"]
 PATCH
 
 kubectl -n "$NAMESPACE" set env "deployment/$DEPLOYMENT" \
+  SPRING_MAIN_LAZY_INITIALIZATION=true \
   SPRING_DATASOURCE_URL="jdbc:postgresql://postgresql.carbonet-prod.svc.cluster.local:5432/carbonet?charset=UTF-8&connectTimeout=5&queryTimeout=30" \
   SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE=2 \
   SPRING_DATASOURCE_HIKARI_MINIMUM_IDLE=0 \
@@ -66,4 +67,4 @@ kubectl -n "$NAMESPACE" patch service "$SERVICE" --type json -p='[
 
 kubectl -n "$NAMESPACE" rollout status "deployment/$DEPLOYMENT" --timeout="${ROLLOUT_TIMEOUT:-420s}"
 kubectl -n "$NAMESPACE" get deploy,svc,pod -o wide
-log_event OK "runtime is exposed on 80 and 32947 with two ready replicas"
+log_event OK "runtime is exposed on 80 and 32947 with three ready replicas and bounded rollout delays"

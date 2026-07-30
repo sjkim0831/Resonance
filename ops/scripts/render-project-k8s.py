@@ -37,14 +37,14 @@ metadata:
     framework: resonance
     project: {resource_id}
 spec:
-  replicas: 2
-  minReadySeconds: 10
+  replicas: 3
+  minReadySeconds: 0
   revisionHistoryLimit: 5
   strategy:
     type: RollingUpdate
     rollingUpdate:
       maxUnavailable: 0
-      maxSurge: 1
+      maxSurge: 3
   selector:
     matchLabels:
       app: {app}
@@ -55,7 +55,7 @@ spec:
         framework: resonance
         project: {resource_id}
     spec:
-      terminationGracePeriodSeconds: 60
+      terminationGracePeriodSeconds: 15
       securityContext:
         runAsNonRoot: true
         runAsUser: 1000
@@ -80,6 +80,8 @@ spec:
               value: "8080"
             - name: SPRING_PROFILES_ACTIVE
               value: prod
+            - name: SPRING_MAIN_LAZY_INITIALIZATION
+              value: "true"
             - name: TOKEN_ACCESS_SECRET
               valueFrom:
                 secretKeyRef:
@@ -93,25 +95,28 @@ spec:
           lifecycle:
             preStop:
               exec:
-                command: ["sh", "-c", "sleep 10"]
+                command: ["sh", "-c", "sleep 3"]
           startupProbe:
             httpGet:
               path: /actuator/health/liveness
               port: http
             failureThreshold: 60
-            periodSeconds: 5
+            periodSeconds: 2
+            timeoutSeconds: 2
           readinessProbe:
             httpGet:
               path: /actuator/health/readiness
               port: http
-            periodSeconds: 5
-            timeoutSeconds: 3
+            initialDelaySeconds: 0
+            periodSeconds: 2
+            timeoutSeconds: 2
           livenessProbe:
             httpGet:
               path: /actuator/health/liveness
               port: http
-            periodSeconds: 15
-            timeoutSeconds: 3
+            initialDelaySeconds: 0
+            periodSeconds: 10
+            timeoutSeconds: 2
           resources:
             requests:
               cpu: 250m

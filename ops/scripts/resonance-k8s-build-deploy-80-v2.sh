@@ -783,11 +783,11 @@ rollout_image() {
     -p="{\"spec\":{\"template\":{\"spec\":{\"volumes\":[{\"name\":\"reference-root\",\"hostPath\":{\"path\":\"/opt/reference\",\"type\":\"DirectoryOrCreate\"}}],\"containers\":[{\"name\":\"$CONTAINER\",\"volumeMounts\":[{\"name\":\"reference-root\",\"mountPath\":\"/opt/reference\",\"readOnly\":true}]}]}}}}" \
     >/dev/null || rollback_and_fail "REFERENCE_MOUNT_FAILED" "Failed to mount /opt/reference read-only" "kubectl -n $NAMESPACE describe deployment/$DEPLOYMENT"
 
-  # Preserve the cluster's zero-unavailable admission policy while starting
-  # all replacement pods in parallel. maxUnavailable=0 keeps the previous
-  # revision serving until every replacement passes its probes.
-  kubectl -n "$NAMESPACE" patch "deployment/$DEPLOYMENT" --type='merge' \
-    -p='{"spec":{"strategy":{"type":"RollingUpdate","rollingUpdate":{"maxSurge":3,"maxUnavailable":0}}}}' \
+  # Preserve zero downtime while removing fixed rollout delays. The startup
+  # probe remains the safety gate; two-second polling detects readiness without
+  # adding ten-second quantisation, and old pods still drain before SIGTERM.
+  kubectl -n "$NAMESPACE" patch "deployment/$DEPLOYMENT" --type='strategic' \
+    -p="{\"spec\":{\"minReadySeconds\":0,\"progressDeadlineSeconds\":180,\"strategy\":{\"type\":\"RollingUpdate\",\"rollingUpdate\":{\"maxSurge\":3,\"maxUnavailable\":0}},\"template\":{\"spec\":{\"terminationGracePeriodSeconds\":15,\"containers\":[{\"name\":\"$CONTAINER\",\"env\":[{\"name\":\"SPRING_MAIN_LAZY_INITIALIZATION\",\"value\":\"true\"}],\"lifecycle\":{\"preStop\":{\"exec\":{\"command\":[\"sh\",\"-c\",\"sleep 3\"]}}},\"startupProbe\":{\"httpGet\":{\"path\":\"/actuator/health/liveness\",\"port\":8080},\"failureThreshold\":60,\"periodSeconds\":2,\"timeoutSeconds\":2},\"readinessProbe\":{\"httpGet\":{\"path\":\"/actuator/health/readiness\",\"port\":8080},\"initialDelaySeconds\":0,\"periodSeconds\":2,\"timeoutSeconds\":2,\"failureThreshold\":3},\"livenessProbe\":{\"httpGet\":{\"path\":\"/actuator/health/liveness\",\"port\":8080},\"initialDelaySeconds\":0,\"periodSeconds\":10,\"timeoutSeconds\":2,\"failureThreshold\":3}}]}}}}" \
     >/dev/null || rollback_and_fail "ROLLOUT_STRATEGY_FAILED" "Failed to apply bounded parallel rollout strategy" "kubectl -n $NAMESPACE get deployment/$DEPLOYMENT -o yaml"
 
   log_cmd "kubectl set image deployment/$DEPLOYMENT $CONTAINER=$IMAGE_NAME"
@@ -815,13 +815,21 @@ rollout_image() {
       "Failed to set runtime port or E4B endpoint" \
       "kubectl -n $NAMESPACE set env deployment/$DEPLOYMENT SERVER_PORT=8080 CARBONET_KRDS_AI_BASE_URL=$E4B_RUNTIME_BASE_URL"
 
-  log_detail "Waiting for rollout (timeout: 600s)..."
-  if ! kubectl -n "$NAMESPACE" rollout status "deployment/$DEPLOYMENT" --timeout=600s 2>"$KUBECTL_ERROR_LOG"; then
+  log_detail "Waiting for rollout (timeout: 180s; target: <=60s)..."
+  local rollout_started rollout_elapsed
+  rollout_started="$(date +%s)"
+  if ! kubectl -n "$NAMESPACE" rollout status "deployment/$DEPLOYMENT" --timeout=180s 2>"$KUBECTL_ERROR_LOG"; then
     log_error "Rollout status failed:"
     tail -30 "$KUBECTL_ERROR_LOG"
     rollback_and_fail "ROLLOUT_FAILED" \
       "Rollout timeout or failed" \
       "kubectl -n $NAMESPACE rollout status deployment/$DEPLOYMENT --timeout=120s"
+  fi
+  rollout_elapsed=$(( $(date +%s) - rollout_started ))
+  if (( rollout_elapsed > 60 )); then
+    log_warning "Rollout exceeded the 60s performance target (${rollout_elapsed}s); availability and health gates still passed"
+  else
+    log_success "Rollout performance target passed (${rollout_elapsed}s <= 60s)"
   fi
 
   log_success "Rolled out"
