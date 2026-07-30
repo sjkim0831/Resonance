@@ -18,7 +18,7 @@ export const ACTOR_PROCESS_DATASET_BY_TAB: Record<string, string> = {
   actors: 'actors',
   processes: 'processes',
   steps: 'steps',
-  'screen-flow': 'screenBlueprints',
+  'screen-flow': 'screenArchetypeBindings',
   'data-contracts': 'professionalScreenContracts',
   'test-scenarios': 'cases',
   'design-assets': 'referenceAssets',

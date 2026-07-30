@@ -34,6 +34,7 @@ public class ActorProcessGovernanceService {
             case "processes" -> "framework_process_definition";
             case "steps" -> "framework_process_step";
             case "screenBlueprints" -> "framework_screen_blueprint";
+            case "screenArchetypeBindings" -> "framework_screen_process_archetype_binding";
             case "professionalScreenContracts" -> "framework_professional_screen_readiness";
             case "cases" -> "framework_simulation_case";
             case "referenceAssets" -> "framework_reference_asset";
@@ -58,7 +59,28 @@ public class ActorProcessGovernanceService {
         if (relation.isBlank()) {
             return List.of();
         }
-        return jdbc.queryForList("select * from " + relation + " limit 1000");
+        return jdbc.queryForList("select * from " + relation + " limit 1000")
+                .stream()
+                .map(this::camelCaseColumns)
+                .toList();
+    }
+
+    private Map<String, Object> camelCaseColumns(Map<String, Object> row) {
+        Map<String, Object> converted = new LinkedHashMap<>();
+        row.forEach((key, value) -> {
+            StringBuilder name = new StringBuilder();
+            boolean upper = false;
+            for (char character : key.toCharArray()) {
+                if (character == '_') {
+                    upper = true;
+                } else {
+                    name.append(upper ? Character.toUpperCase(character) : character);
+                    upper = false;
+                }
+            }
+            converted.put(name.toString(), value);
+        });
+        return converted;
     }
 
     public Map<String,Object> dashboard() {

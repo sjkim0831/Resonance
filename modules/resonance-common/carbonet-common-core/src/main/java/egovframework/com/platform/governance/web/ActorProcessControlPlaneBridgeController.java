@@ -162,6 +162,12 @@ public class ActorProcessControlPlaneBridgeController {
                     result = Map.of("success", true, "command", command, "processCode", required(body, "processCode"));
                 }
                 case "step.save" -> result = governance.addStep(body, actor);
+                case "screen.bind-archetype" ->
+                        result = governance.bindScreenProcessArchetype(body, actor);
+                case "screen.contract.save" ->
+                        result = governance.saveProfessionalScreenContract(body, actor);
+                case "screen.design.generate" ->
+                        result = governance.saveDesignAndGenerate(body, actor);
                 case "assignment.save" -> {
                     governance.assignActor(body);
                     result = Map.of("success", true, "command", command, "accountId", required(body, "accountId"));
