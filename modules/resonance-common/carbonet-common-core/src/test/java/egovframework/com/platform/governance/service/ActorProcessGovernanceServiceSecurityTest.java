@@ -26,6 +26,34 @@ class ActorProcessGovernanceServiceSecurityTest {
             jdbc, mock(ScreenDevelopmentNoteService.class), mock(CodexProvisioningService.class));
 
     @Test
+    void controlPlaneAdministratorComesFromExistingAuthorityData() {
+        when(jdbc.queryForObject(argThat(sql -> sql.contains("ROLE_SYSTEM_MASTER")),
+                org.mockito.ArgumentMatchers.eq(Integer.class), any(Object[].class)))
+                .thenReturn(1);
+
+        assertTrue(service.isControlPlaneAdministrator("platform-admin"));
+    }
+
+    @Test
+    void controlPlaneCommandRequiresTheAuthenticatedAccount() {
+        UUID executionId=UUID.randomUUID();
+        when(jdbc.queryForList(argThat(sql -> sql.contains("from framework_process_execution e")),
+                any(Object[].class))).thenReturn(List.of(Map.of(
+                        "tenantId","TENANT_A","projectId","PROJECT_A",
+                        "processCode","EMISSION_PROJECT","stepCode","EMISSION_PROJECT_COLLECT",
+                        "executionStatus","RUNNING","actorCode","SITE_DATA_OWNER",
+                        "commandCode","SUBMIT_ACTIVITY_DATA")));
+
+        SecurityException failure=assertThrows(SecurityException.class,
+                () -> service.validateProcessCommandFromControlPlane(
+                        executionId,Map.of(),"BACKSTAGE_CONTROL_PLANE"));
+
+        assertTrue(failure.getMessage().contains("Authenticated control-plane account"));
+        verify(jdbc,never()).queryForList(argThat(sql -> sql.contains(
+                "from framework_account_actor_assignment")),any(Object[].class));
+    }
+
+    @Test
     void nonDomainProcessKeepsUsingTheMetadataDraftContract() {
         assertFalse(service.verifyDomainCompletion(Map.of(
                 "processCode","CONTENT_PUBLISH",

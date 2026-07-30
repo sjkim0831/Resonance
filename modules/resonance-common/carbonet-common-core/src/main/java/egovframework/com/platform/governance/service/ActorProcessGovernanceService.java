@@ -31,7 +31,7 @@ public class ActorProcessGovernanceService {
     public List<Map<String, Object>> dashboardDataset(String dataset) {
         if ("processExecutions".equals(dataset)) {
             return jdbc.queryForList("""
-                select execution.*,
+                select execution.*,step.actor_code as current_actor_code,
                        case
                          when execution.process_code<>'EMISSION_PROJECT' then false
                          when project.project_id is null then true
@@ -41,6 +41,9 @@ public class ActorProcessGovernanceService {
                   left join emission_project_registry project
                     on project.project_id=execution.project_id
                    and project.tenant_id=execution.tenant_id
+                  left join framework_process_step step
+                    on step.process_code=execution.process_code
+                   and step.step_code=execution.current_step_code
                  order by execution.updated_at desc
                  limit 1000
                 """).stream().map(this::camelCaseColumns).toList();
@@ -79,6 +82,64 @@ public class ActorProcessGovernanceService {
                 .stream()
                 .map(this::camelCaseColumns)
                 .toList();
+    }
+
+    public List<Map<String,Object>> dashboardDataset(String dataset,String accountId) {
+        String account=accountId==null?"":accountId.trim();
+        if(account.isBlank())throw new SecurityException("Authenticated control-plane account is required.");
+        List<Map<String,Object>> rows=dashboardDataset(dataset);
+        if(isControlPlaneAdministrator(account))return rows;
+        List<Map<String,Object>> assignments=jdbc.queryForList("""
+            select actor_code as "actorCode",project_id as "projectId"
+              from framework_account_actor_assignment
+             where lower(account_id)=lower(?) and assignment_status='ACTIVE'
+               and (valid_from is null or valid_from<=current_date)
+               and (valid_until is null or valid_until>=current_date)
+            """,account);
+        Set<String> actors=assignments.stream()
+                .map(row->String.valueOf(row.get("actorCode"))).collect(java.util.stream.Collectors.toSet());
+        Set<String> projects=assignments.stream()
+                .map(row->String.valueOf(row.get("projectId"))).collect(java.util.stream.Collectors.toSet());
+        Set<String> processes=dashboardDataset("steps").stream()
+                .filter(row->actors.contains(String.valueOf(row.get("actorCode"))))
+                .map(row->String.valueOf(row.get("processCode")))
+                .collect(java.util.stream.Collectors.toSet());
+        Set<String> executionIds=new HashSet<>();
+        if(!projects.isEmpty()){
+            dashboardDataset("processExecutions").stream()
+                    .filter(row->projects.contains("*")||projects.contains(String.valueOf(row.get("projectId"))))
+                    .filter(row->actors.contains(String.valueOf(row.get("currentActorCode"))))
+                    .map(row->String.valueOf(row.get("executionId"))).forEach(executionIds::add);
+        }
+        return rows.stream().filter(row->switch(dataset){
+            case "actors" -> actors.contains(String.valueOf(row.get("actorCode")));
+            case "assignments" -> account.equalsIgnoreCase(String.valueOf(row.get("accountId")));
+            case "processes","cases","artifacts","developmentJobs" ->
+                    processes.contains(String.valueOf(row.get("processCode")));
+            case "steps" -> actors.contains(String.valueOf(row.get("actorCode")))
+                    && processes.contains(String.valueOf(row.get("processCode")));
+            case "processExecutions" -> (projects.contains("*")
+                    ||projects.contains(String.valueOf(row.get("projectId"))))
+                    && actors.contains(String.valueOf(row.get("currentActorCode")))
+                    && !Boolean.TRUE.equals(row.get("domainOrphaned"));
+            case "processExecutionEvents" -> executionIds.contains(String.valueOf(row.get("executionId")));
+            case "workTypes" -> true;
+            default -> false;
+        }).toList();
+    }
+
+    public boolean isControlPlaneAdministrator(String accountId) {
+        Integer count=jdbc.queryForObject("""
+            select count(*)
+              from comtnemplyrscrtyestbs security
+              left join comtnemplyrinfo employee
+                on employee.esntl_id=security.scrty_dtrmn_trget_id
+              left join comtnentrprsmber member
+                on member.esntl_id=security.scrty_dtrmn_trget_id
+             where lower(coalesce(employee.emplyr_id,member.entrprs_mber_id,''))=lower(?)
+               and security.author_code in ('ROLE_SYSTEM_MASTER','ROLE_SYSTEM_ADMIN','ROLE_OPERATION_ADMIN')
+            """,Integer.class,accountId);
+        return count!=null&&count>0;
     }
 
     private Map<String, Object> camelCaseColumns(Map<String, Object> row) {
@@ -931,17 +992,35 @@ public class ActorProcessGovernanceService {
         if(!"RUNNING".equals(String.valueOf(execution.get("executionStatus")))){
             throw new IllegalStateException("실행 중인 프로세스가 아닙니다.");
         }
-        List<Map<String,Object>> accounts=jdbc.queryForList("""
-            select account_id as "accountId"
-              from framework_account_actor_assignment
-             where tenant_id=? and (project_id=? or project_id='*') and actor_code=?
-               and assignment_status='ACTIVE'
-               and (valid_from is null or valid_from<=current_date)
-               and (valid_until is null or valid_until>=current_date)
-             order by case when project_id=? then 0 else 1 end,account_id
-             limit 1
-            """,execution.get("tenantId"),execution.get("projectId"),execution.get("actorCode"),
-                execution.get("projectId"));
+        String requestingAccount=String.valueOf(options.getOrDefault("requestingAccount","")).trim();
+        if(requestingAccount.isBlank()){
+            throw new SecurityException("Authenticated control-plane account is required.");
+        }
+        boolean administrator=isControlPlaneAdministrator(requestingAccount);
+        List<Map<String,Object>> accounts=administrator
+                ? jdbc.queryForList("""
+                    select account_id as "accountId"
+                      from framework_account_actor_assignment
+                     where tenant_id=? and (project_id=? or project_id='*') and actor_code=?
+                       and assignment_status='ACTIVE'
+                       and (valid_from is null or valid_from<=current_date)
+                       and (valid_until is null or valid_until>=current_date)
+                     order by case when project_id=? then 0 else 1 end,account_id
+                     limit 1
+                    """,execution.get("tenantId"),execution.get("projectId"),execution.get("actorCode"),
+                        execution.get("projectId"))
+                : jdbc.queryForList("""
+                    select account_id as "accountId"
+                      from framework_account_actor_assignment
+                     where tenant_id=? and (project_id=? or project_id='*') and actor_code=?
+                       and lower(account_id)=lower(?)
+                       and assignment_status='ACTIVE'
+                       and (valid_from is null or valid_from<=current_date)
+                       and (valid_until is null or valid_until>=current_date)
+                     order by case when project_id=? then 0 else 1 end
+                     limit 1
+                    """,execution.get("tenantId"),execution.get("projectId"),execution.get("actorCode"),
+                        requestingAccount,execution.get("projectId"));
         if(accounts.isEmpty()){
             throw new IllegalStateException(
                     "현재 단계 액터에 활성 계정이 배정되지 않았습니다: "+execution.get("actorCode"));

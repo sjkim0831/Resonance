@@ -147,12 +147,18 @@ public class ActorProcessControlPlaneBridgeController {
     @GetMapping("/dashboard")
     public ResponseEntity<?> dashboard(
             @RequestHeader(value = "X-Resonance-Token", defaultValue = "") String suppliedToken,
+            @RequestHeader(value = "X-Resonance-Account", defaultValue = "") String account,
             @RequestParam(value = "dataset", defaultValue = "") String dataset) {
         if (!authorized(suppliedToken)) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(Map.of("success", false, "message", "Invalid control-plane bridge token."));
         }
         if (dataset.isBlank()) {
+            if (account.isBlank() || !governance.isControlPlaneAdministrator(account)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of(
+                        "success", false,
+                        "message", "Administrator authority is required for the unscoped dashboard."));
+            }
             return ResponseEntity.ok(governance.dashboard());
         }
         if (!dataset.matches("^[A-Za-z][A-Za-z0-9]*$")) {
@@ -160,19 +166,31 @@ public class ActorProcessControlPlaneBridgeController {
                     "success", false,
                     "message", "Invalid dataset key."));
         }
-        return ResponseEntity.ok(Map.of(dataset, governance.dashboardDataset(dataset)));
+        try {
+            return ResponseEntity.ok(Map.of(dataset, governance.dashboardDataset(dataset, account)));
+        } catch (SecurityException exception) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of(
+                    "success", false,
+                    "message", exception.getMessage()));
+        }
     }
 
     @PostMapping("/commands")
     public ResponseEntity<?> executeGovernanceCommand(
             @RequestHeader(value = "X-Resonance-Token", defaultValue = "") String suppliedToken,
             @RequestHeader(value = "X-Resonance-Actor", defaultValue = "BACKSTAGE_CONTROL_PLANE") String actor,
+            @RequestHeader(value = "X-Resonance-Account", defaultValue = "") String account,
             @RequestBody Map<String, Object> body) {
         if (!authorized(suppliedToken)) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(Map.of("success", false, "message", "Invalid control-plane bridge token."));
         }
         try {
+            if (account.isBlank()) {
+                throw new SecurityException("Authenticated control-plane account is required.");
+            }
+            body = new LinkedHashMap<>(body);
+            body.put("requestingAccount", account);
             String command = required(body, "command").toLowerCase();
             Object result;
             switch (command) {

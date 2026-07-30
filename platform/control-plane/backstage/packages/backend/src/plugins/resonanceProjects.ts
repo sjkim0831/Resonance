@@ -578,6 +578,21 @@ export default createBackendPlugin({
             roles: assignments.map(row => String(row.role_code)),
           };
         };
+        const resolveRuntimeAccount = async (request: Request) => {
+          const credentials = await httpAuth.credentials(request, {
+            allow: ['user'],
+          });
+          const user = await userInfo.getUserInfo(credentials);
+          const accountId = user.userEntityRef.split('/').at(-1)?.trim() ?? '';
+          if (!accountId || !/^[A-Za-z0-9._@-]{2,120}$/.test(accountId)) {
+            const error = new Error(
+              'authenticated runtime account is invalid',
+            ) as Error & { statusCode?: number };
+            error.statusCode = 403;
+            throw error;
+          }
+          return { accountId, userEntityRef: user.userEntityRef };
+        };
         const requireDesignAssetRole = async (
           request: Request,
           projectId: string,
@@ -700,6 +715,7 @@ export default createBackendPlugin({
                 .json({ message: 'control-plane bridge token is missing' });
               return;
             }
+            const runtimeIdentity = await resolveRuntimeAccount(request);
             const runtimeResponse = await fetch(
               `${runtimeBaseUrl}/api/internal/actor-process/dashboard${
                 request.query.dataset
@@ -712,6 +728,7 @@ export default createBackendPlugin({
                 headers: {
                   accept: 'application/json',
                   'x-resonance-token': bridgeToken,
+                  'x-resonance-account': runtimeIdentity.accountId,
                 },
               },
             );
@@ -818,6 +835,7 @@ export default createBackendPlugin({
                 .json({ message: 'control-plane bridge token is missing' });
               return;
             }
+            const runtimeIdentity = await resolveRuntimeAccount(request);
             const runtimeResponse = await fetch(
               `${runtimeBaseUrl}/api/internal/actor-process/commands`,
               {
@@ -826,7 +844,8 @@ export default createBackendPlugin({
                   accept: 'application/json',
                   'content-type': 'application/json',
                   'x-resonance-token': bridgeToken,
-                  'x-resonance-actor': 'BACKSTAGE_CONTROL_PLANE',
+                  'x-resonance-actor': runtimeIdentity.userEntityRef,
+                  'x-resonance-account': runtimeIdentity.accountId,
                 },
                 body: JSON.stringify(request.body ?? {}),
               },

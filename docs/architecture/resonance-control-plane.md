@@ -27,6 +27,21 @@ Backstage is the outer portal and catalog. Resonance remains the design and gene
 5. Health, route, actor-process, contract and rollback tests must pass.
 6. Production drift is reconciled from Git, not repaired by compiling on the host.
 
+## Runtime identity and work scope
+
+1. Backstage resolves the authenticated `userEntityRef`; the account segment is
+   forwarded to Resonance only across the token-authenticated internal bridge.
+2. Resonance derives administrator access from the existing Carbonet authority
+   tables. Account names are never hardcoded in the portal.
+3. Non-administrators receive only active actor assignments within their
+   validity period. Project, current-step actor, process, step, event, test, and
+   development evidence datasets are filtered from that server-side scope.
+4. A command is accepted only when the requesting account owns the actor of the
+   current project step. Hiding a button is never treated as authorization.
+5. System, operation, and master administrators retain the complete operational
+   view, while every command remains audited with the authenticated Backstage
+   entity reference.
+
 ## Bootstrap
 
 ```bash
