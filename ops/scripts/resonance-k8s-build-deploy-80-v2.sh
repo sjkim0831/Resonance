@@ -37,7 +37,6 @@ SKIP_OVERLAY_SYNC="${SKIP_OVERLAY_SYNC:-false}"
 IMMUTABLE_FRONTEND_IMAGE="${IMMUTABLE_FRONTEND_IMAGE:-false}"
 INCREMENTAL="${INCREMENTAL:-true}"
 PRE_ROLLOUT_IMAGE="${PRE_ROLLOUT_IMAGE:-}"
-IMAGE_PUSH_PID=""
 
 RELEASE_DIR="$ROOT_DIR/var/releases/$PROJECT_ID/image-context"
 RUN_DIR="$ROOT_DIR/var/run"
@@ -678,17 +677,31 @@ build_image() {
       "docker build --build-arg PROJECT_ID=$PROJECT_ID -t $IMAGE_NAME $RELEASE_DIR 2>&1 | tail -50"
   fi
 
-  # Import without a competing full-image registry read. The durable push is
-  # started after import and overlaps pod startup/rollout instead.
-  log_detail "Importing image to containerd..."
+  # Prefer the content-addressed registry path. docker save/ctr import reads
+  # the complete 1.6 GiB image even when only one class changed, while push
+  # and pull transfer only the changed Spring Boot layer.
   local import_success=false
   local import_err="/opt/Resonance/var/run/ctr-import-$$.log"
   local tmp_tar="/opt/Resonance/var/run/docker-save-$$.tar"
 
-  if sudo docker save "$IMAGE_NAME" 2>>"$import_err" |
-      sudo ctr -n k8s.io images import - >"$import_err" 2>&1; then
+  if [[ "$PUSH_IMAGE" == "true" ]]; then
+    log_detail "Publishing changed layers to the local registry..."
+    if root_cmd docker push "$IMAGE_NAME" >>"$DOCKER_ERROR_LOG" 2>&1 &&
+       sudo ctr -n k8s.io images pull --plain-http "$IMAGE_NAME" \
+         >"$import_err" 2>&1; then
+      import_success=true
+      log_success "Changed layers published and loaded into containerd"
+    else
+      log_warning "Layer-aware registry transfer failed; using full local import"
+      tail -20 "$DOCKER_ERROR_LOG" >>"$DIAGNOSTIC_LOG" 2>/dev/null || true
+    fi
+  fi
+
+  if [[ "$import_success" != true ]] &&
+     sudo docker save "$IMAGE_NAME" 2>>"$import_err" |
+       sudo ctr -n k8s.io images import - >"$import_err" 2>&1; then
     import_success=true
-    log_success "Image streamed directly into containerd"
+    log_success "Image streamed directly into containerd fallback"
   fi
 
   for ((i=1; i<=3; i++)); do
@@ -721,12 +734,6 @@ build_image() {
       "sudo docker save '$IMAGE_NAME' | sudo ctr -n k8s.io images import -"
   fi
   log_success "Image imported to containerd"
-
-  if [[ "$PUSH_IMAGE" == "true" ]]; then
-    log_detail "Pushing durable registry copy during rollout..."
-    (root_cmd docker push "$IMAGE_NAME" >>"$DOCKER_ERROR_LOG" 2>&1) &
-    IMAGE_PUSH_PID=$!
-  fi
 
   local elapsed=$(( $(date +%s) - start_time ))
   log_success "Image built and imported in ${elapsed}s"
@@ -839,21 +846,6 @@ rollout_image() {
     log_warning "Rollout exceeded the 60s performance target (${rollout_elapsed}s); availability and health gates still passed"
   else
     log_success "Rollout performance target passed (${rollout_elapsed}s <= 60s)"
-  fi
-
-  # Durability remains a fail-closed deployment condition, but registry I/O is
-  # hidden behind the rollout instead of extending the service-ready path.
-  if [[ -n "$IMAGE_PUSH_PID" ]]; then
-    if wait "$IMAGE_PUSH_PID"; then
-      log_success "Image pushed to local registry during rollout"
-      IMAGE_PUSH_PID=""
-    else
-      IMAGE_PUSH_PID=""
-      tail -20 "$DOCKER_ERROR_LOG" >>"$DIAGNOSTIC_LOG" 2>/dev/null || true
-      rollback_and_fail "IMAGE_PUSH_FAILED" \
-        "Runtime is ready but its durable registry image failed to publish" \
-        "docker push '$IMAGE_NAME'"
-    fi
   fi
 
   log_success "Rolled out"
