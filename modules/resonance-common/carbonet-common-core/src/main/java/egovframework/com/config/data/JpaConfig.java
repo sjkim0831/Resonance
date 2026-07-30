@@ -15,11 +15,17 @@ import jakarta.persistence.EntityManagerFactory;
 import javax.sql.DataSource;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Arrays;
 
 @Configuration
 @EnableJpaAuditing
 @RequiredArgsConstructor
 public class JpaConfig {
+
+    private static final String[] DEFAULT_ENTITY_PACKAGES = {
+            "egovframework.com.feature.auth.domain.entity",
+            "egovframework.com.feature.emission.domain.entity"
+    };
 
     private final DataSource dataSource;
 
@@ -35,6 +41,9 @@ public class JpaConfig {
     @Value("${spring.jpa.properties.hibernate.format_sql:false}")
     private boolean formatSql;
 
+    @Value("${carbonet.jpa.entity-packages:}")
+    private String configuredEntityPackages;
+
     @Bean
     @Primary
     public LocalContainerEntityManagerFactoryBean entityManagerFactory(EntityManagerFactoryBuilder builder) {
@@ -49,7 +58,13 @@ public class JpaConfig {
 
         LocalContainerEntityManagerFactoryBean factoryBean = new LocalContainerEntityManagerFactoryBean();
         factoryBean.setDataSource(dataSource);
-        factoryBean.setPackagesToScan("egovframework.com");  // 엔티티 클래스가 위치한 패키지 지정
+        String[] entityPackages = configuredEntityPackages == null || configuredEntityPackages.isBlank()
+                ? DEFAULT_ENTITY_PACKAGES
+                : Arrays.stream(configuredEntityPackages.split(","))
+                        .map(String::trim)
+                        .filter(value -> !value.isEmpty())
+                        .toArray(String[]::new);
+        factoryBean.setPackagesToScan(entityPackages);
         factoryBean.setPersistenceUnitName("default");
         factoryBean.setEntityManagerFactoryInterface(EntityManagerFactory.class);
         factoryBean.setJpaPropertyMap(properties);

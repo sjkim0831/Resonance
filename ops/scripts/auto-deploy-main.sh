@@ -223,6 +223,9 @@ eval "$(bash "$PLAN_SCRIPT" "$deployed_commit" "$target_commit" --format env)"
 PLAN_BACKSTAGE_REQUIRED="${PLAN_BACKSTAGE_REQUIRED:-false}"
 echo "[auto-deploy] incremental plan: runtime=$PLAN_RUNTIME_REQUIRED frontend=$PLAN_FRONTEND_REQUIRED backend=$PLAN_BACKEND_REQUIRED database=$PLAN_DATABASE_REQUIRED backstage=$PLAN_BACKSTAGE_REQUIRED"
 echo "[auto-deploy] selected checks: $PLAN_TESTS ($PLAN_REASONS)"
+if [[ "$PLAN_BACKEND_REQUIRED" == "true" ]]; then
+  bash ops/scripts/validate-jpa-entity-package-closure.sh "$ROOT_DIR"
+fi
 
 # Database availability is a hard prerequisite for Flyway and every runtime
 # health gate. Keep the Patroni image independently recoverable even when
