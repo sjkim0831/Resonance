@@ -5,8 +5,8 @@ set -euo pipefail
 # backups, database storage, Docker volumes, or images used by running containers.
 APPLY=0
 CHECK_PATH="${CHECK_PATH:-/opt}"
-HIGH_WATER_PERCENT="${HIGH_WATER_PERCENT:-78}"
-LOW_WATER_PERCENT="${LOW_WATER_PERCENT:-74}"
+HIGH_WATER_PERCENT="${HIGH_WATER_PERCENT:-82}"
+LOW_WATER_PERCENT="${LOW_WATER_PERCENT:-78}"
 STALE_DAYS="${STALE_DAYS:-7}"
 REPO="${RESONANCE_REPO:-/opt/Resonance}"
 RESONANCE_USER="${RESONANCE_USER:-$(stat -c %U "$REPO" 2>/dev/null || echo sjkim)}"
