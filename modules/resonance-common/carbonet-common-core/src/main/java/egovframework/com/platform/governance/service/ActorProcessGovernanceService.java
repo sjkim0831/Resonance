@@ -173,9 +173,7 @@ public class ActorProcessGovernanceService {
                     && !Boolean.TRUE.equals(row.get("domainOrphaned"));
             case "processExecutionEvents" -> executionIds.contains(String.valueOf(row.get("executionId")));
             case "emissionProjectTasks" -> (projects.contains("*")
-                    || projects.contains(String.valueOf(row.get("projectId"))))
-                    && (actors.contains(String.valueOf(row.get("actorCode")))
-                    || account.equalsIgnoreCase(String.valueOf(row.get("assigneeId"))));
+                    || projects.contains(String.valueOf(row.get("projectId"))));
             case "workTypes" -> true;
             default -> false;
         }).toList();

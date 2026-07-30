@@ -172,20 +172,26 @@ test('authenticated Resonance control-plane routes render without runtime errors
 
   const controlRoute =
     '/actor-process-control?workspace=operate&tab=work-dashboard&projectId=CCUS-PLATFORM';
-  const runtimeResponse = page.waitForResponse(
-    response =>
-      response
-        .url()
-        .includes(
-          '/api/resonance-projects/actor-process/runtime-dashboard?dataset=processes',
-        ) && response.request().method() === 'GET',
+  // The route was already visited in the navigation sweep above. Backstage
+  // keeps the mounted page and its dataset cache when only query parameters
+  // change, so waiting for a second browser response can consume the entire
+  // deployment timeout even though the screen is ready.
+  const runtimeResponse = await page.request.get(
+    '/api/resonance-projects/actor-process/runtime-dashboard?dataset=processes',
   );
+  const taskResponse = await page.request.get(
+    '/api/resonance-projects/actor-process/runtime-dashboard?dataset=emissionProjectTasks',
+  );
+  expect(runtimeResponse.status()).toBe(200);
+  expect(taskResponse.status()).toBe(200);
+  const taskPayload = await taskResponse.json();
+  expect(taskPayload.emissionProjectTasks?.length).toBeGreaterThan(0);
   await page.goto(controlRoute, {
     waitUntil: 'domcontentloaded',
     timeout: 20_000,
   });
-  expect((await runtimeResponse).status()).toBe(200);
   await expect(page.getByText('프로세스 계약 지도')).toBeVisible();
+  await expect(page.getByText('실제 프로젝트 실행 업무')).toBeVisible();
   await expect(page.getByText('고객 여정 시뮬레이션')).toBeVisible();
   await expect(
     page.getByText('액터·화면·데이터·테스트 실행 준비도'),
@@ -198,9 +204,7 @@ test('authenticated Resonance control-plane routes render without runtime errors
     page.getByRole('button', { name: /테넌트·프로젝트 격리/ }),
   ).toBeVisible();
   await expect(page.getByRole('button', { name: /오류·예외/ })).toBeVisible();
-  await expect(
-    page.getByRole('button', { name: /복구·재처리/ }),
-  ).toBeVisible();
+  await expect(page.getByRole('button', { name: /복구·재처리/ })).toBeVisible();
 
   await page.getByRole('button', { name: '설계 워크벤치 열기' }).click();
   const designDialog = page.getByRole('dialog');
