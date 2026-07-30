@@ -9,6 +9,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 
 import java.util.Arrays;
@@ -44,6 +45,7 @@ public class AdminScreenManagementMenuBootstrapSupport {
     private final MenuFeatureManageService menuFeatureManageService;
 
     @EventListener(ApplicationReadyEvent.class)
+    @Async("applicationReadyBootstrapExecutor")
     public void ensureScreenManagementMenus() {
         log.info("Legacy screen management cleanup skipped because A0060501/A0060502 are normalized backup menus.");
         provisionScreenMenu(
