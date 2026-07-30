@@ -14,7 +14,7 @@ if [[ "${CARBONET_DEPLOY_SNAPSHOT_ACTIVE:-false}" != "true" ]]; then
 fi
 
 POLICY_ROOT="${CARBONET_DEPLOY_ORIGINAL_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
-DEPLOY_STARTED_EPOCH_MS="$(date +%s%3N)"
+DEPLOY_STARTED_EPOCH_SECONDS="$(date +%s)"
 
 # Agent policy is deterministic and must pass before any model-generated change can deploy.
 bash "$POLICY_ROOT/ops/scripts/verify-kilo-m3-policy.sh"
@@ -47,7 +47,7 @@ export KUBECONFIG
 
 record_deploy_performance() {
   local mode="$1"
-  local elapsed_ms=$(( $(date +%s%3N) - DEPLOY_STARTED_EPOCH_MS ))
+  local elapsed_ms=$(( ($(date +%s) - DEPLOY_STARTED_EPOCH_SECONDS) * 1000 ))
   CARBONET_DEPLOY_ROOT="$ROOT_DIR" \
     bash "$ROOT_DIR/ops/scripts/record-deploy-performance.sh" \
       "$mode" "$target_commit" "$elapsed_ms"
