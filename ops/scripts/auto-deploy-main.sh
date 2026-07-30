@@ -63,13 +63,17 @@ cd "$ROOT_DIR"
 # from completed or interrupted runs before Kubernetes evaluates DiskPressure;
 # otherwise the single node can taint itself before Patroni/etcd health checks.
 deploy_worktree_root="${CARBONET_CLEAN_WORKTREE_BASE:-${CARBONET_DEPLOY_ORIGINAL_ROOT:-$ROOT_DIR}/var/deploy-worktrees}"
+persistent_build_worktree="$deploy_worktree_root/runtime-build"
 while IFS= read -r stale_worktree; do
   [[ -n "$stale_worktree" ]] || continue
   stale_real="$(realpath -m "$stale_worktree")"
   root_real="$(realpath -m "$ROOT_DIR")"
   case "$stale_real" in
     "$deploy_worktree_root"/*)
-      [[ "$stale_real" == "$root_real" ]] || git -C "${CARBONET_DEPLOY_ORIGINAL_ROOT:-$ROOT_DIR}" worktree remove --force "$stale_real"
+      # Keep one operator-owned worktree so Gradle task outputs survive between
+      # commits. Per-commit worktrees made every Java deployment a cold build.
+      [[ "$stale_real" == "$root_real" || "$stale_real" == "$(realpath -m "$persistent_build_worktree")" ]] ||
+        git -C "${CARBONET_DEPLOY_ORIGINAL_ROOT:-$ROOT_DIR}" worktree remove --force "$stale_real"
       ;;
     *) echo "[auto-deploy] refusing unsafe stale worktree path: $stale_real" >&2; exit 23 ;;
   esac
@@ -255,15 +259,46 @@ if [[ -n "$tracked_source_changes" ]]; then
 
   # Server-authored or operator-owned changes in /opt/Resonance must never be
   # overwritten, but they also must not block unrelated commits forever. Build
-  # the exact remote commit in a detached, commit-addressed worktree and keep
-  # the live verified frontend closure as its immutable input.
+  # the exact remote commit in a dedicated clean worktree. Reusing this one
+  # worktree retains untracked Gradle outputs and turns unchanged modules into
+  # sub-second UP-TO-DATE checks without touching operator-owned source.
   source_root="$ROOT_DIR"
   clean_worktree_base="${CARBONET_CLEAN_WORKTREE_BASE:-$source_root/var/deploy-worktrees}"
-  clean_worktree="$clean_worktree_base/${target_commit:0:16}"
+  clean_worktree="$clean_worktree_base/runtime-build"
   mkdir -p "$clean_worktree_base"
   if [[ ! -e "$clean_worktree/.git" ]]; then
-    echo "[auto-deploy] tracked operator changes detected; creating isolated deployment worktree"
+    echo "[auto-deploy] tracked operator changes detected; creating persistent isolated build worktree"
     git worktree add --detach "$clean_worktree" "$target_commit"
+  elif [[ "$(git -C "$clean_worktree" rev-parse HEAD)" != "$target_commit" ]]; then
+    # Only generated assets may be dirty in this operator-owned worktree.
+    # Restore those tracked files, retain untracked build/ directories, then
+    # advance strictly by fast-forward so a rewritten branch fails closed.
+    persistent_build_artifacts=(
+      .gradle
+      apps/carbonet-api/src/main/resources/static/react-app
+      projects/carbonet-assets/static/react-app
+      projects/carbonet-backend-metadata/builder/platform-builder-store.json
+      projects/carbonet-backend-metadata/customer-trace/customer-approval-ledger.json
+      projects/carbonet-backend-metadata/git-build-monitoring-status.json
+      projects/carbonet-frontend/src/main/resources/static/react-app
+      projects/carbonet-frontend/source/.cache/full-screen-smoke
+      projects/carbonet-frontend/source/src/generated/screen-generation/generatedScreenFamily.ts
+      projects/carbonet-frontend/source/src/features/builder-studio/pageCompletenessInventory.ts
+      projects/carbonet-frontend/source/src/features/builder-studio/routeSourceInventory.ts
+      projects/carbonet-frontend/source/tsconfig.app.tsbuildinfo
+      projects/carbonet-frontend/target
+    )
+    for generated_path in "${persistent_build_artifacts[@]}"; do
+      [[ -n "$(git -C "$clean_worktree" ls-files -- "$generated_path")" ]] &&
+        git -C "$clean_worktree" restore --worktree -- "$generated_path"
+    done
+    unexpected_build_changes="$(git -C "$clean_worktree" diff --name-only)"
+    if [[ -n "$unexpected_build_changes" ]]; then
+      echo "[auto-deploy] refusing deployment: persistent build worktree contains source changes" >&2
+      printf '%s\n' "$unexpected_build_changes" >&2
+      exit 24
+    fi
+    git -C "$clean_worktree" merge --ff-only "$target_commit"
   fi
   if [[ "$(git -C "$clean_worktree" rev-parse HEAD)" != "$target_commit" ]]; then
     echo "[auto-deploy] refusing deployment: isolated worktree commit mismatch" >&2
