@@ -512,6 +512,25 @@ function WorkOperationsMap({
               <Select
                 value={selectedWorkType}
                 label="업무 종류 선택"
+                displayEmpty
+                renderValue={value => {
+                  const code = String(value ?? '');
+                  if (!code) return '전체 업무';
+                  const selected = workTypes.find(
+                    row =>
+                      String(
+                        row.workTypeCode ??
+                          row.domainCode ??
+                          row.typeCode ??
+                          '',
+                      ) === code,
+                  );
+                  return `${displayValue(
+                    selected?.workTypeName ??
+                      selected?.domainName ??
+                      selected?.typeName,
+                  )} (${code})`;
+                }}
                 onChange={event => {
                   setSelectedWorkType(String(event.target.value));
                   setSelectedProcessCode('');
