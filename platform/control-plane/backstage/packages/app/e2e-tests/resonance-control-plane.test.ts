@@ -207,7 +207,9 @@ test('authenticated Resonance control-plane routes render without runtime errors
   await expect(designDialog).toBeVisible();
   for (const title of designDocumentTitles) {
     await expect(
-      designDialog.getByRole('button', { name: new RegExp(`^${title}`) }),
+      designDialog
+        .getByRole('button', { name: new RegExp(`^${title}`) })
+        .first(),
     ).toBeVisible();
   }
   expect(designDocumentTitles).toHaveLength(18);
