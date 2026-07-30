@@ -27,6 +27,38 @@ latest_valid_backup() {
   return 1
 }
 
+refresh_role_backup() {
+  local pod tmp output
+  pod="$(
+    kubectl -n "$NAMESPACE" get pods -l app=postgres-patroni \
+      -o jsonpath='{range .items[*]}{.metadata.name}{" "}{.metadata.labels.role}{"\n"}{end}' \
+      | awk '$2 == "master" || $2 == "primary" || $2 == "leader" { print $1; exit }'
+  )"
+  if [[ -z "$pod" ]]; then
+    pod="$(
+      kubectl -n "$NAMESPACE" get pods -l app=postgres-patroni \
+        -o jsonpath='{.items[0].metadata.name}'
+    )"
+  fi
+  [[ -n "$pod" ]] || return 1
+
+  output="$BACKUP_ROOT/postgres-roles-$(date +%Y%m%d%H%M%S)-storage-guard.sql.gz"
+  tmp="$output.tmp"
+  rm -f "$tmp"
+  if ! kubectl -n "$NAMESPACE" exec "$pod" -c patroni -- \
+      pg_dumpall -U postgres --roles-only -h 127.0.0.1 \
+      | gzip -1 > "$tmp"; then
+    rm -f "$tmp"
+    return 1
+  fi
+  if [[ "$(stat -c %s "$tmp")" -lt 100 ]] || ! gzip -t "$tmp"; then
+    rm -f "$tmp"
+    return 1
+  fi
+  mv "$tmp" "$output"
+  echo "[postgres-storage-guard] refreshed PostgreSQL role backup: $output"
+}
+
 [[ "$STORAGE_ROOT" == /opt/resonance-data/postgresql ]] || fail "unexpected storage root: $STORAGE_ROOT"
 [[ -d "$DATA_ROOT" ]] || fail "Patroni data root is missing"
 
@@ -64,7 +96,13 @@ done < <(kubectl -n "$NAMESPACE" get pods -l app=postgres-patroni -o name | sed 
 latest_data_backup="$(latest_valid_backup 'carbonet-*.sql.gz' '+100k' || true)"
 latest_role_backup="$(latest_valid_backup 'postgres-roles-*.sql.gz' '+100c' || true)"
 [[ -n "$latest_data_backup" ]] || fail "no valid data backup from the last 24 hours"
-[[ -n "$latest_role_backup" ]] || fail "no valid role backup from the last 24 hours"
+if [[ -z "$latest_role_backup" ]]; then
+  # Role metadata is small and safe to refresh online. Self-heal it instead of
+  # permanently stopping application deployments at the 24-hour boundary.
+  refresh_role_backup || fail "no valid role backup and automatic refresh failed"
+  latest_role_backup="$(latest_valid_backup 'postgres-roles-*.sql.gz' '+100c' || true)"
+  [[ -n "$latest_role_backup" ]] || fail "refreshed role backup did not pass validation"
+fi
 
 # A failed guard deliberately pauses deployments. Once every storage boundary,
 # quorum marker, and backup check is healthy again, recover the timer as well.

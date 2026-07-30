@@ -281,6 +281,13 @@ if ! git merge-base --is-ancestor "$current_commit" "$target_commit"; then
   exit 3
 fi
 
+# Validate the exact pending commit after selecting its clean worktree. The
+# bootstrap check above may legitimately run against the previously deployed
+# tree when a new policy file is introduced by the pending commit.
+if [[ "$PLAN_BACKSTAGE_REQUIRED" == "true" ]]; then
+  bash "$ROOT_DIR/ops/scripts/test-backstage-fast-deploy-policy.sh"
+fi
+
 # The React hostPath is the live runtime closure, while index.html and the Vite
 # manifest are still tracked for repository compatibility. Preserve the live
 # closure before restoring generated worktree files: otherwise a catalog-only

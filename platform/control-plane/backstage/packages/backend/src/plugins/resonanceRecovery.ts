@@ -348,6 +348,7 @@ export default createBackendPlugin({
             recoverySchemaVersion: 2,
             offsiteFullRestoreReporting: true,
             deploymentTargetSeconds: 60,
+            dependencyCacheEnabled: true,
           });
         });
         router.get('/summary', async (request, response) => {
