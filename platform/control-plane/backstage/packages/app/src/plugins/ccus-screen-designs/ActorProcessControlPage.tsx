@@ -29,6 +29,7 @@ import {
   ACTOR_PROCESS_WORKSPACES,
   ActorProcessTab,
   ActorProcessWorkspaceId,
+  resolveProcessBranches,
 } from './actorProcessWorkspaces';
 import { RESONANCE_PROJECT_REGISTRY } from './generatedProjectRegistry';
 
@@ -575,10 +576,13 @@ function WorkOperationsMap({
       (!row.stepCode || String(row.stepCode) === String(activeStep?.stepCode)),
   );
   const route = String(activeStep?.userPath ?? activeStep?.adminPath ?? '');
-  const activeIndex = processSteps.findIndex(
-    row => String(row.stepCode) === String(activeStep?.stepCode),
-  );
-  const nextStep = processSteps[activeIndex + 1];
+  const runtimeRoute = route.startsWith('/')
+    ? `${route}${route.includes('?') ? '&' : '?'}projectId=${encodeURIComponent(
+        runtimeProjectId,
+      )}`
+    : route;
+  const { nextStep, correctionStep, supportsCorrectionBranch } =
+    resolveProcessBranches(processSteps, activeStep);
   const runRuntimeCommand = async (
     command: 'execution.validate' | 'execution.advance',
   ) => {
@@ -924,7 +928,7 @@ function WorkOperationsMap({
                 <Button
                   variant="contained"
                   color="primary"
-                  href={route}
+                  href={runtimeRoute}
                   target="_blank"
                 >
                   업무 화면 열기
@@ -937,6 +941,59 @@ function WorkOperationsMap({
                 >
                   화면·필드 설계하기
                 </Button>
+              )}
+              {supportsCorrectionBranch && (
+                <Paper
+                  variant="outlined"
+                  style={{
+                    padding: 12,
+                    borderColor: '#b8c7dc',
+                    background: '#f8fafc',
+                  }}
+                >
+                  <Typography variant="subtitle2">처리 결과 분기</Typography>
+                  <Typography variant="caption" color="textSecondary">
+                    판정과 사유는 실제 업무 화면에서 저장하며, 길잡이는 저장된
+                    결과에 따라 다음 단계만 개방합니다.
+                  </Typography>
+                  <Box mt={1} display="grid" gridGap={8}>
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      color="primary"
+                      href={runtimeRoute}
+                      target="_blank"
+                    >
+                      정상 처리 → {displayValue(nextStep?.stepName)}
+                    </Button>
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      color="secondary"
+                      href={runtimeRoute}
+                      target="_blank"
+                    >
+                      보완 요청 → {displayValue(correctionStep?.stepName)}
+                    </Button>
+                  </Box>
+                </Paper>
+              )}
+              {String(activeStep?.stepCode) ===
+                'EMISSION_PROJECT_CORRECT' && (
+                <Paper
+                  variant="outlined"
+                  style={{
+                    padding: 12,
+                    borderColor: '#f59e0b',
+                    background: '#fffbeb',
+                  }}
+                >
+                  <Typography variant="subtitle2">보완·재산정 경로</Typography>
+                  <Typography variant="caption" color="textSecondary">
+                    보완자료와 변경 사유를 저장하고 재산정한 뒤 재검증 단계로
+                    돌아갑니다.
+                  </Typography>
+                </Paper>
               )}
               <Button
                 variant="outlined"
@@ -959,8 +1016,8 @@ function WorkOperationsMap({
                 onClick={() => void runRuntimeCommand('execution.advance')}
               >
                 {nextStep
-                  ? `다음 작업: ${displayValue(nextStep.stepName)} →`
-                  : '현재 업무 완료'}
+                  ? `상태 동기화 복구: ${displayValue(nextStep.stepName)} →`
+                  : '현재 업무 완료 상태 복구'}
               </Button>
             </Box>
             {runtimeCommandResult && (

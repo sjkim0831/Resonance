@@ -18,6 +18,37 @@ export type ActorProcessWorkspace = {
   tabs: ActorProcessTab[];
 };
 
+export type ProcessGraphStep = {
+  stepCode?: unknown;
+  fromState?: unknown;
+  toState?: unknown;
+};
+
+export const resolveProcessBranches = <T extends ProcessGraphStep>(
+  steps: T[],
+  activeStep?: T,
+) => {
+  const stepCode = String(activeStep?.stepCode ?? '');
+  const nextStep = steps.find(
+    step =>
+      String(step.fromState ?? '') === String(activeStep?.toState ?? '') &&
+      String(step.stepCode ?? '') !== stepCode,
+  );
+  const correctionStep = steps.find(
+    step =>
+      String(step.fromState ?? '') === 'CORRECTION_REQUIRED' ||
+      String(step.stepCode ?? '') === 'EMISSION_PROJECT_CORRECT',
+  );
+  return {
+    nextStep,
+    correctionStep,
+    supportsCorrectionBranch: [
+      'EMISSION_PROJECT_VALIDATE',
+      'EMISSION_PROJECT_APPROVE',
+    ].includes(stepCode),
+  };
+};
+
 export const ACTOR_PROCESS_DATASET_BY_TAB: Record<string, string> = {
   actors: 'actors',
   processes: 'processes',

@@ -82,6 +82,14 @@
 - Repeated commands use an idempotency key and return the existing result without duplicating data or workflow events.
 - Conflicting edits return a version conflict, preserve both audit contexts, and require the actor to reload before retrying.
 - Completion opens only the next process task; rejection or correction follows the explicitly designed branch and never skips a required actor.
+- The guide resolves the next step from `toState → fromState`, never from the
+  visual array index. The canonical branches are:
+  `VALIDATE passed → APPROVE`,
+  `VALIDATE/APPROVE correction requested → CORRECT`,
+  and `CORRECT resubmitted → VALIDATE`.
+- Pass, rejection, correction reason, and resubmission evidence are written only
+  by the authenticated domain screen. The control plane displays both branch
+  destinations and reserves direct advancement for state-drift recovery.
 
 ## Executable scenario matrix
 
