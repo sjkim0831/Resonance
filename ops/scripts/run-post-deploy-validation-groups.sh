@@ -135,4 +135,24 @@ if (( failed != 0 )); then
   echo "[validation-groups] refusing success: one or more groups failed" >&2
   exit 1
 fi
+
+# The application runtime must never depend on host-only interactive tools.
+# Catch capability-gating regressions before a release is marked successful.
+runtime_namespace="${CARBONET_NAMESPACE:-carbonet-prod}"
+runtime_selector="${CARBONET_RUNTIME_SELECTOR:-app=carbonet-runtime}"
+runtime_capability_log="$log_dir/runtime-capabilities.log"
+if ! kubectl -n "$runtime_namespace" logs -l "$runtime_selector" \
+    --since=5m --prefix=true >"$runtime_capability_log" 2>&1; then
+  echo "[runtime-capability] FAIL unable to inspect candidate runtime logs" >&2
+  cat "$runtime_capability_log" >&2
+  exit 1
+fi
+if grep -Fq 'Cannot run program "tmux"' "$runtime_capability_log" \
+    || grep -Fq 'Failed to ensure tmux lane session' "$runtime_capability_log"; then
+  echo "[runtime-capability] FAIL runtime attempted to invoke unavailable tmux" >&2
+  grep -F 'tmux' "$runtime_capability_log" | tail -20 >&2
+  exit 1
+fi
+echo "[runtime-capability] PASS host-only tmux dependency is capability-gated"
+
 echo "[validation-groups] PASS groups=3 duration=$(( $(date +%s) - started ))s logDir=$log_dir"
