@@ -1,19 +1,7 @@
-UPDATE comtnmenuinfo
-SET menu_nm = CASE menu_code
-                  WHEN 'A106' THEN '기준정보'
-                  WHEN 'A110' THEN '외부 연계'
-                  ELSE menu_nm
-              END,
-    menu_nm_en = CASE menu_code
-                     WHEN 'A106' THEN 'Master Data'
-                     WHEN 'A110' THEN 'External Integration'
-                     ELSE menu_nm_en
-                 END,
-    use_at = 'Y',
-    expsr_at = 'Y',
-    last_updt_pnttm = CURRENT_TIMESTAMP
-WHERE menu_code IN ('A106', 'A110');
-
+-- comtnmenuinfo already contains the correct Korean names. The GNB resolves
+-- the visible domain label from the authority detail catalog; restore that
+-- catalog only. Updating comtnmenuinfo would invoke the semantic-binding
+-- trigger and is unrelated to this display repair.
 UPDATE comtccmmndetailcode
 SET code_nm = CASE code
                   WHEN 'A106' THEN '기준정보'
