@@ -206,7 +206,10 @@ bash "$POLICY_ROOT/ops/scripts/deploy-capacity-gate.sh"
 
 root_usage="$(df -P / | awk 'NR==2 {gsub(/%/,"",$5); print $5}')"
 if [[ "$root_usage" -ge 88 ]]; then
-  echo "[auto-deploy] root usage ${root_usage}%: pruning unused Docker images before build"
+  echo "[auto-deploy] root usage ${root_usage}%: pruning unused Docker build cache and images before build"
+  # BuildKit cache is separate from the image store and can grow by tens of
+  # gigabytes even when image pruning reports nothing reclaimable.
+  sudo docker builder prune -a -f >/dev/null
   sudo docker image prune -a -f >/dev/null
   sudo apt-get clean
   root_usage="$(df -P / | awk 'NR==2 {gsub(/%/,"",$5); print $5}')"
