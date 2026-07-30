@@ -40,10 +40,21 @@ const keptIds = new Set(keptRoutes.map(route => route.id));
 const unitPattern = /const GENERATED_SCREEN_PAGE_UNITS = \[\n([\s\S]*?)\n\] as const satisfies PageUnitsOf<typeof GENERATED_SCREEN_ROUTES>;/;
 const unitMatch = source.match(unitPattern);
 if (!unitMatch) throw new Error("Generated page unit array was not found.");
-const keptUnits = unitMatch[1].split("\n").filter(line => {
+const unitById = new Map();
+for (const line of unitMatch[1].split("\n")) {
   const id = line.match(/\bid:\s*"([^"]+)"/)?.[1];
-  return !id || keptIds.has(id);
-}).join("\n");
+  if (!id) continue;
+  if (unitById.has(id)) throw new Error(`Duplicate generated page unit id: ${id}`);
+  unitById.set(id, line);
+}
+const missingUnitIds = [...keptIds].filter(id => !unitById.has(id));
+if (missingUnitIds.length) {
+  throw new Error(`Generated routes without page units: ${missingUnitIds.slice(0, 10).join(",")}`);
+}
+// Rebuild in route order instead of filtering the previous unit list. This
+// makes route and page-unit identity equal by construction, including when a
+// prior interrupted build had already deduplicated only one side.
+const keptUnits = keptRoutes.map(route => unitById.get(route.id)).join("\n");
 
 const next = source
   .replace(routePattern, `const GENERATED_SCREEN_ROUTES = ${JSON.stringify(keptRoutes, null, 2)} as const satisfies RouteDefinitionsOf;`)
