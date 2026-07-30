@@ -1,5 +1,5 @@
 [Unit]
-Description=Resonance nightly full TypeScript and 1000-screen regression sweep
+Description=Resonance nightly full TypeScript contract and 1000-screen regression sweep
 After=network-online.target kubelet.service
 Wants=network-online.target
 
