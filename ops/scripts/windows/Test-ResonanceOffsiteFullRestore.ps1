@@ -3,11 +3,74 @@ param(
     [string]$BackupDirectory = "$env:USERPROFILE\Downloads\Resonance-Backups",
     [string]$Image = "postgres:16",
     [string]$KeyFile = "$env:LOCALAPPDATA\Resonance\backup-aes.key",
-    [int]$KeepEvidence = 30
+    [string]$ReporterTokenFile = "$env:LOCALAPPDATA\Resonance\backup-reporter.token",
+    [string]$StatusEndpoint = "https://backstage.172.16.1.232.nip.io/api/resonance-recovery/worker/offsite-restore-drill",
+    [int]$KeepEvidence = 30,
+    [switch]$PublishEvidenceOnly
 )
 
 $ErrorActionPreference = "Stop"
 $ProgressPreference = "SilentlyContinue"
+
+function Publish-RestoreDrillStatus {
+    param([System.Collections.IDictionary]$Payload)
+    if (-not (Test-Path -LiteralPath $ReporterTokenFile)) {
+        return
+    }
+    Add-Type -AssemblyName System.Security
+    $protected = [IO.File]::ReadAllBytes($ReporterTokenFile)
+    $tokenBytes = [Security.Cryptography.ProtectedData]::Unprotect(
+        $protected,
+        [Text.Encoding]::UTF8.GetBytes("ResonancePostgresBackup/v1"),
+        [Security.Cryptography.DataProtectionScope]::CurrentUser
+    )
+    $token = [Text.Encoding]::UTF8.GetString($tokenBytes)
+    $previousCallback = [Net.ServicePointManager]::ServerCertificateValidationCallback
+    try {
+        [Net.ServicePointManager]::ServerCertificateValidationCallback = { $true }
+        Invoke-RestMethod `
+            -Method Post `
+            -Uri $StatusEndpoint `
+            -Headers @{ Authorization = "Bearer $token" } `
+            -ContentType "application/json" `
+            -Body ($Payload | ConvertTo-Json -Compress) | Out-Null
+    } finally {
+        [Net.ServicePointManager]::ServerCertificateValidationCallback = $previousCallback
+        $token = $null
+        [Array]::Clear($tokenBytes, 0, $tokenBytes.Length)
+        [Array]::Clear($protected, 0, $protected.Length)
+    }
+}
+
+if ($PublishEvidenceOnly) {
+    $latestEvidence = Get-ChildItem `
+        -LiteralPath (Join-Path $BackupDirectory "evidence") `
+        -File -Filter "offsite-restore-drill-*.json" |
+        Sort-Object LastWriteTimeUtc -Descending |
+        Select-Object -First 1
+    if (-not $latestEvidence) {
+        throw "No offsite restore drill evidence is available to publish."
+    }
+    $saved = Get-Content -Raw -LiteralPath $latestEvidence.FullName |
+        ConvertFrom-Json
+    Publish-RestoreDrillStatus ([ordered]@{
+        reporterId = "$env:COMPUTERNAME-$env:USERNAME"
+        status = $saved.status
+        backupName = $saved.encryptedBackup
+        sha256 = $saved.sourceSha256
+        isolation = $saved.isolation
+        durationSeconds = $saved.durationSeconds
+        schemaCount = $saved.checks.schemaCount
+        tableCount = $saved.checks.tableCount
+        traceEventCount = $saved.checks.traceEventCount
+        unifiedAssetCount = $saved.checks.unifiedAssetCount
+        startedAt = $saved.startedAt
+        finishedAt = $saved.finishedAt
+        errorMessage = ""
+    })
+    Write-Output "PUBLISHED $($latestEvidence.Name)"
+    exit 0
+}
 
 $mutex = New-Object Threading.Mutex($false, "Local\ResonanceOffsiteRestoreDrill")
 if (-not $mutex.WaitOne(0)) {
@@ -131,7 +194,7 @@ try {
     $status = Get-Content -Raw -LiteralPath (
         $encrypted.FullName -replace "\.rsbk$", ".replication.json"
     ) | ConvertFrom-Json
-    [ordered]@{
+    $evidence = [ordered]@{
         status = "VERIFIED"
         isolation = "docker-network-none"
         runId = $runId
@@ -147,7 +210,24 @@ try {
             traceEventCount = $traceCount
             unifiedAssetCount = $assetCount
         }
-    } | ConvertTo-Json -Depth 5 | Set-Content -Encoding UTF8 -LiteralPath $evidencePath
+    }
+    $evidence | ConvertTo-Json -Depth 5 |
+        Set-Content -Encoding UTF8 -LiteralPath $evidencePath
+    Publish-RestoreDrillStatus ([ordered]@{
+        reporterId = "$env:COMPUTERNAME-$env:USERNAME"
+        status = "VERIFIED"
+        backupName = $encrypted.Name
+        sha256 = $status.sourceSha256
+        isolation = $evidence.isolation
+        durationSeconds = $evidence.durationSeconds
+        schemaCount = $schemaCount
+        tableCount = $tableCount
+        traceEventCount = $traceCount
+        unifiedAssetCount = $assetCount
+        startedAt = $evidence.startedAt
+        finishedAt = $evidence.finishedAt
+        errorMessage = ""
+    })
 
     Get-ChildItem -LiteralPath $evidenceDirectory -File `
         -Filter "offsite-restore-drill-*.json" |
@@ -156,6 +236,28 @@ try {
         Remove-Item -Force
 
     Get-Content -Raw -LiteralPath $evidencePath
+} catch {
+    $finishedAt = [DateTime]::UtcNow
+    try {
+        Publish-RestoreDrillStatus ([ordered]@{
+            reporterId = "$env:COMPUTERNAME-$env:USERNAME"
+            status = "FAILED"
+            backupName = $encrypted.Name
+            sha256 = ""
+            isolation = "docker-network-none"
+            durationSeconds = [int]($finishedAt - $startedAt).TotalSeconds
+            schemaCount = 0
+            tableCount = 0
+            traceEventCount = 0
+            unifiedAssetCount = 0
+            startedAt = $startedAt.ToString("o")
+            finishedAt = $finishedAt.ToString("o")
+            errorMessage = $_.Exception.Message
+        })
+    } catch {
+        Write-Warning "Unable to publish failed restore drill status."
+    }
+    throw
 } finally {
     try {
         Remove-Item -Force -ErrorAction SilentlyContinue -LiteralPath $plainDump

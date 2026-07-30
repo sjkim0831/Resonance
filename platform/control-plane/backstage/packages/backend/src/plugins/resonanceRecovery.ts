@@ -110,6 +110,39 @@ export default createBackendPlugin({
             },
           );
         }
+        if (
+          !(await knex.schema.hasTable(
+            'resonance_recovery__offsite_restore_drill',
+          ))
+        ) {
+          await knex.schema.createTable(
+            'resonance_recovery__offsite_restore_drill',
+            table => {
+              table.uuid('drill_id').primary();
+              table.string('reporter_id', 160).notNullable();
+              table.string('status', 32).notNullable();
+              table.string('backup_name', 320).notNullable().defaultTo('');
+              table.string('sha256', 64).notNullable().defaultTo('');
+              table.string('isolation', 120).notNullable().defaultTo('');
+              table.integer('duration_seconds').notNullable().defaultTo(0);
+              table.bigInteger('schema_count').notNullable().defaultTo(0);
+              table.bigInteger('table_count').notNullable().defaultTo(0);
+              table.bigInteger('trace_event_count').notNullable().defaultTo(0);
+              table
+                .bigInteger('unified_asset_count')
+                .notNullable()
+                .defaultTo(0);
+              table.text('error_message').notNullable().defaultTo('');
+              table.timestamp('started_at', { useTz: true }).nullable();
+              table.timestamp('finished_at', { useTz: true }).nullable();
+              table.timestamp('reported_at', { useTz: true }).notNullable();
+              table.index(
+                ['reporter_id', 'reported_at'],
+                'resonance_offsite_restore_reporter_idx',
+              );
+            },
+          );
+        }
         const commandColumns = [
           [
             'attempt_count',
@@ -220,6 +253,8 @@ export default createBackendPlugin({
               staleAfterHours: 12,
               requireEncryption: true,
               requireRestoreVerification: true,
+              restoreIntervalDays: 7,
+              restoreStaleAfterDays: 8,
             },
           ],
         ] as const;
@@ -311,7 +346,14 @@ export default createBackendPlugin({
         });
         router.get('/summary', async (request, response) => {
           await resolveUser(request);
-          const [policies, commands, workers, drillCommands, offsiteStatuses] =
+          const [
+            policies,
+            commands,
+            workers,
+            drillCommands,
+            offsiteStatuses,
+            offsiteRestoreDrills,
+          ] =
             await Promise.all([
               knex('resonance_recovery__policy')
                 .select('*')
@@ -334,6 +376,10 @@ export default createBackendPlugin({
                 .orderBy('created_at', 'desc')
                 .limit(50),
               knex('resonance_recovery__offsite_status')
+                .select('*')
+                .orderBy('reported_at', 'desc')
+                .limit(20),
+              knex('resonance_recovery__offsite_restore_drill')
                 .select('*')
                 .orderBy('reported_at', 'desc')
                 .limit(20),
@@ -441,6 +487,26 @@ export default createBackendPlugin({
               : latestOffsite?.status === 'VERIFIED'
               ? 'HEALTHY'
               : 'STALE';
+          const latestOffsiteRestore = offsiteRestoreDrills[0];
+          const offsiteRestoreFinishedAt = latestOffsiteRestore?.finished_at
+            ? new Date(latestOffsiteRestore.finished_at)
+            : null;
+          const offsiteRestoreStale =
+            !offsiteRestoreFinishedAt ||
+            Date.now() - offsiteRestoreFinishedAt.getTime() >
+              Number(offsitePolicy.restoreStaleAfterDays ?? 8) *
+                24 *
+                60 *
+                60 *
+                1000;
+          const offsiteRestoreHealth =
+            latestOffsiteRestore?.status === 'FAILED'
+              ? 'FAILED'
+              : offsiteRestoreStale
+              ? 'STALE'
+              : latestOffsiteRestore?.status === 'VERIFIED'
+              ? 'HEALTHY'
+              : 'STALE';
           response.json({
             checkedAt: new Date().toISOString(),
             executionMode: 'QUEUED',
@@ -494,6 +560,37 @@ export default createBackendPlugin({
               completedAt: offsiteCompletedAt?.toISOString() ?? null,
               reportedAt: latestOffsite?.reported_at ?? null,
               errorMessage: latestOffsite?.error_message ?? '',
+            },
+            offsiteRestoreDrill: {
+              health: offsiteRestoreHealth,
+              intervalDays: Number(
+                offsitePolicy.restoreIntervalDays ?? 7,
+              ),
+              staleAfterDays: Number(
+                offsitePolicy.restoreStaleAfterDays ?? 8,
+              ),
+              latestStatus:
+                latestOffsiteRestore?.status ?? 'NOT_REPORTED',
+              reporterId: latestOffsiteRestore?.reporter_id ?? null,
+              backupName: latestOffsiteRestore?.backup_name ?? null,
+              sha256: latestOffsiteRestore?.sha256 ?? null,
+              isolation: latestOffsiteRestore?.isolation ?? null,
+              durationSeconds: Number(
+                latestOffsiteRestore?.duration_seconds ?? 0,
+              ),
+              schemaCount: Number(latestOffsiteRestore?.schema_count ?? 0),
+              tableCount: Number(latestOffsiteRestore?.table_count ?? 0),
+              traceEventCount: Number(
+                latestOffsiteRestore?.trace_event_count ?? 0,
+              ),
+              unifiedAssetCount: Number(
+                latestOffsiteRestore?.unified_asset_count ?? 0,
+              ),
+              startedAt: latestOffsiteRestore?.started_at ?? null,
+              finishedAt:
+                offsiteRestoreFinishedAt?.toISOString() ?? null,
+              reportedAt: latestOffsiteRestore?.reported_at ?? null,
+              errorMessage: latestOffsiteRestore?.error_message ?? '',
             },
             workers: workers.map(worker => ({
               workerId: worker.worker_id,
@@ -1019,6 +1116,91 @@ export default createBackendPlugin({
           });
           response.json({ success: true, reporterId, status, reportedAt });
         });
+
+        router.post(
+          '/worker/offsite-restore-drill',
+          async (request, response) => {
+            requireWorker(request);
+            const reporterId = String(request.body?.reporterId ?? '')
+              .trim()
+              .slice(0, 160);
+            const status = String(request.body?.status ?? '').toUpperCase();
+            if (!reporterId || !['VERIFIED', 'FAILED'].includes(status)) {
+              response.status(400).json({
+                message: 'valid reporterId and status are required',
+              });
+              return;
+            }
+            const parseTimestamp = (value: unknown) => {
+              if (!value) return null;
+              const parsed = new Date(String(value));
+              return Number.isNaN(parsed.getTime()) ? null : parsed;
+            };
+            const startedAt = parseTimestamp(request.body?.startedAt);
+            const finishedAt = parseTimestamp(request.body?.finishedAt);
+            if (
+              (request.body?.startedAt && !startedAt) ||
+              (request.body?.finishedAt && !finishedAt)
+            ) {
+              response.status(400).json({
+                message: 'startedAt or finishedAt is invalid',
+              });
+              return;
+            }
+            const nonNegative = (value: unknown) =>
+              Math.max(0, Math.trunc(Number(value ?? 0)));
+            const reportedAt = new Date();
+            const row = {
+              drill_id: randomUUID(),
+              reporter_id: reporterId,
+              status,
+              backup_name: String(request.body?.backupName ?? '').slice(
+                0,
+                320,
+              ),
+              sha256: String(request.body?.sha256 ?? '')
+                .toLowerCase()
+                .slice(0, 64),
+              isolation: String(request.body?.isolation ?? '').slice(0, 120),
+              duration_seconds: nonNegative(request.body?.durationSeconds),
+              schema_count: nonNegative(request.body?.schemaCount),
+              table_count: nonNegative(request.body?.tableCount),
+              trace_event_count: nonNegative(request.body?.traceEventCount),
+              unified_asset_count: nonNegative(
+                request.body?.unifiedAssetCount,
+              ),
+              error_message: String(request.body?.errorMessage ?? '').slice(
+                0,
+                2000,
+              ),
+              started_at: startedAt,
+              finished_at: finishedAt,
+              reported_at: reportedAt,
+            };
+            await knex('resonance_recovery__offsite_restore_drill').insert(row);
+            await knex('resonance_recovery__audit').insert({
+              command_id: null,
+              action_code: `OFFSITE_RESTORE_DRILL_${status}`,
+              actor_ref: `worker:${reporterId}`,
+              details: JSON.stringify({
+                backupName: row.backup_name,
+                sha256: row.sha256,
+                durationSeconds: row.duration_seconds,
+                tableCount: row.table_count,
+                traceEventCount: row.trace_event_count,
+                unifiedAssetCount: row.unified_asset_count,
+              }),
+              created_at: reportedAt,
+            });
+            response.json({
+              success: true,
+              drillId: row.drill_id,
+              reporterId,
+              status,
+              reportedAt,
+            });
+          },
+        );
 
         httpRouter.addAuthPolicy({
           path: '/health',

@@ -56,6 +56,23 @@ type RecoverySummary = {
     completedAt: string | null;
     errorMessage: string;
   };
+  offsiteRestoreDrill: {
+    health: 'HEALTHY' | 'FAILED' | 'STALE';
+    intervalDays: number;
+    staleAfterDays: number;
+    latestStatus: string;
+    reporterId: string | null;
+    backupName: string | null;
+    isolation: string | null;
+    durationSeconds: number;
+    schemaCount: number;
+    tableCount: number;
+    traceEventCount: number;
+    unifiedAssetCount: number;
+    startedAt: string | null;
+    finishedAt: string | null;
+    errorMessage: string;
+  };
   policies: {
     code: string;
     name: string;
@@ -203,6 +220,112 @@ export function SystemRecoveryControlPage() {
               }
             />
           </Box>
+        </Paper>
+
+        <Paper className={classes.panel}>
+          <Box
+            display="flex"
+            alignItems="center"
+            justifyContent="space-between"
+            flexWrap="wrap"
+          >
+            <Box>
+              <Typography variant="h6">PC 외부 백업 전체 복원 검증</Typography>
+              <Typography variant="body2">
+                암호화된 외부 백업을 네트워크 차단 환경에서 실제 PostgreSQL로
+                전체 복원하고 핵심 데이터를 검증합니다.
+              </Typography>
+            </Box>
+            <Chip
+              color={
+                summary?.offsiteRestoreDrill.health === 'HEALTHY'
+                  ? 'primary'
+                  : 'default'
+              }
+              label={
+                summary?.offsiteRestoreDrill.health === 'HEALTHY'
+                  ? '정상'
+                  : summary?.offsiteRestoreDrill.health === 'FAILED'
+                  ? '실패'
+                  : '확인 필요'
+              }
+            />
+          </Box>
+          <Box className={classes.form} mt={2}>
+            <Box>
+              <Typography variant="caption">자동 실행 주기</Typography>
+              <Typography variant="body1">
+                {summary?.offsiteRestoreDrill.intervalDays ?? 7}일
+              </Typography>
+            </Box>
+            <Box>
+              <Typography variant="caption">최근 전체 복원</Typography>
+              <Typography variant="body1">
+                {summary?.offsiteRestoreDrill.finishedAt
+                  ? new Date(
+                      summary.offsiteRestoreDrill.finishedAt,
+                    ).toLocaleString('ko-KR')
+                  : '검증 기록 없음'}
+              </Typography>
+            </Box>
+            <Box>
+              <Typography variant="caption">복원 소요시간</Typography>
+              <Typography variant="body1">
+                {summary?.offsiteRestoreDrill.durationSeconds
+                  ? `${Math.floor(
+                      summary.offsiteRestoreDrill.durationSeconds / 60,
+                    )}분 ${
+                      summary.offsiteRestoreDrill.durationSeconds % 60
+                    }초`
+                  : '-'}
+              </Typography>
+            </Box>
+            <Box>
+              <Typography variant="caption">격리 방식</Typography>
+              <Typography variant="body1">
+                {summary?.offsiteRestoreDrill.isolation ?? '-'}
+              </Typography>
+            </Box>
+            <Box>
+              <Typography variant="caption">테이블</Typography>
+              <Typography variant="body1">
+                {summary?.offsiteRestoreDrill.tableCount.toLocaleString() ??
+                  '-'}
+              </Typography>
+            </Box>
+            <Box>
+              <Typography variant="caption">추적 이벤트</Typography>
+              <Typography variant="body1">
+                {summary?.offsiteRestoreDrill.traceEventCount.toLocaleString() ??
+                  '-'}
+              </Typography>
+            </Box>
+            <Box>
+              <Typography variant="caption">통합 자산</Typography>
+              <Typography variant="body1">
+                {summary?.offsiteRestoreDrill.unifiedAssetCount.toLocaleString() ??
+                  '-'}
+              </Typography>
+            </Box>
+            <Box>
+              <Typography variant="caption">백업 파일</Typography>
+              <Typography variant="body1">
+                {summary?.offsiteRestoreDrill.backupName ?? '-'}
+              </Typography>
+            </Box>
+          </Box>
+          {summary?.offsiteRestoreDrill.health !== 'HEALTHY' ? (
+            <Box mt={2} className={classes.warning}>
+              <Typography variant="body2">
+                외부 백업 전체 복원이 실패했거나 최근{' '}
+                {summary?.offsiteRestoreDrill.staleAfterDays ?? 8}일 동안
+                성공 기록이 없습니다.
+                {summary?.offsiteRestoreDrill.errorMessage
+                  ? ` ${summary.offsiteRestoreDrill.errorMessage}`
+                  : ' PC 예약 작업, Docker 및 암호화 키 상태를 확인하세요.'}
+              </Typography>
+            </Box>
+          ) : null}
         </Paper>
 
         <Paper className={classes.panel}>
