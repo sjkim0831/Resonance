@@ -31,6 +31,7 @@ public class ActorProcessGovernanceService {
     public List<Map<String, Object>> dashboardDataset(String dataset) {
         String relation = switch (dataset) {
             case "actors" -> "framework_actor_definition";
+            case "workTypes" -> "framework_business_work_type";
             case "processes" -> "framework_process_definition";
             case "steps" -> "framework_process_step";
             case "screenBlueprints" -> "framework_screen_blueprint";
