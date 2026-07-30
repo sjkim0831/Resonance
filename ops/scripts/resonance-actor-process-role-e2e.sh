@@ -42,7 +42,7 @@ requester_token="$(token_for resonance-requester)"
 reviewer_token="$(token_for resonance-reviewer)"
 approver_token="$(token_for resonance-approver)"
 
-for dataset in actors processes steps processExecutions; do
+for dataset in actors processes steps processExecutions emissionProjectTasks; do
   fetch_dataset "$requester_token" "$dataset" "$run_dir/requester-$dataset.json"
   fetch_dataset "$reviewer_token" "$dataset" "$run_dir/reviewer-$dataset.json"
   fetch_dataset "$approver_token" "$dataset" "$run_dir/approver-$dataset.json"
@@ -73,6 +73,33 @@ const reviewerExecutions = read('reviewer', 'processExecutions');
 if (!reviewerExecutions.length) fail('reviewer has no executable project workflow');
 if (reviewerExecutions.some(row => String(row.projectId) !== projectId)) {
   fail('reviewer project isolation failed');
+}
+const reviewerTasks = read('reviewer', 'emissionProjectTasks');
+if (!reviewerTasks.length) fail('reviewer has no emission project tasks');
+if (reviewerTasks.some(row => String(row.projectId) !== projectId)) {
+  fail('reviewer emission task project isolation failed');
+}
+const expectedTaskCodes = [
+  'BASIC_INFO',
+  'ACTIVITY_DATA',
+  'CALCULATION',
+  'VERIFICATION',
+  'APPROVAL',
+  'REPORT',
+  'REGULATORY_SUBMISSION',
+];
+const reviewerTaskCodes = codes(reviewerTasks, 'taskCode');
+for (const taskCode of expectedTaskCodes) {
+  if (!reviewerTaskCodes.has(taskCode)) fail(`reviewer task missing: ${taskCode}`);
+}
+if (reviewerTasks.some(row =>
+  !row.taskStatus ||
+  !row.actorCode ||
+  !row.assigneeId ||
+  !row.completionRule ||
+  !row.targetUrl
+)) {
+  fail('reviewer task execution contract is incomplete');
 }
 const execution = reviewerExecutions.find(row =>
   row.processCode === 'EMISSION_PROJECT' &&

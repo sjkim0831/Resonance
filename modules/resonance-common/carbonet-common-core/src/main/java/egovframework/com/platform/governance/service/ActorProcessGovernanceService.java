@@ -48,6 +48,55 @@ public class ActorProcessGovernanceService {
                  limit 1000
                 """).stream().map(this::camelCaseColumns).toList();
         }
+        if ("emissionProjectTasks".equals(dataset)) {
+            return jdbc.queryForList("""
+                select task.task_id as "taskId",
+                       task.project_id as "projectId",
+                       project.tenant_id as "tenantId",
+                       project.project_name as "projectName",
+                       task.task_code as "taskCode",
+                       task.task_name as "taskName",
+                       task.step_order as "stepOrder",
+                       task.task_status as "taskStatus",
+                       task.process_code as "processCode",
+                       task.process_step_code as "processStepCode",
+                       task.actor_code as "actorCode",
+                       task.assignee_id as "assigneeId",
+                       task.priority,
+                       task.due_date as "dueDate",
+                       task.predecessor_codes as "predecessorCodes",
+                       task.completion_rule as "completionRule",
+                       task.blocked_reason as "blockedReason",
+                       task.target_url as "targetUrl",
+                       task.started_at as "startedAt",
+                       task.completed_at as "completedAt",
+                       task.completed_by as "completedBy",
+                       (task.task_status='DONE') as "completionSatisfied",
+                       case
+                         when task.task_status='DONE' then
+                           concat('완료',case when task.completed_by is not null
+                             then concat(' · ',task.completed_by) else '' end)
+                         when coalesce(task.blocked_reason,'')<>'' then task.blocked_reason
+                         else coalesce(task.completion_rule,'완료 조건 확인 필요')
+                       end as "completionEvidence",
+                       next_task.task_name as "nextTaskName",
+                       next_task.actor_code as "nextActorCode",
+                       next_task.target_url as "nextTaskUrl"
+                  from emission_project_task task
+                  join emission_project_registry project
+                    on project.project_id=task.project_id
+                  left join lateral (
+                    select following.task_name,following.actor_code,following.target_url
+                      from emission_project_task following
+                     where following.project_id=task.project_id
+                       and following.step_order>task.step_order
+                     order by following.step_order
+                     limit 1
+                  ) next_task on true
+                 order by project.project_id,task.step_order,task.task_id
+                 limit 2000
+                """);
+        }
         String relation = switch (dataset) {
             case "actors" -> "framework_actor_definition";
             case "workTypes" -> "framework_business_work_type";
@@ -123,6 +172,10 @@ public class ActorProcessGovernanceService {
                     && actors.contains(String.valueOf(row.get("currentActorCode")))
                     && !Boolean.TRUE.equals(row.get("domainOrphaned"));
             case "processExecutionEvents" -> executionIds.contains(String.valueOf(row.get("executionId")));
+            case "emissionProjectTasks" -> (projects.contains("*")
+                    || projects.contains(String.valueOf(row.get("projectId"))))
+                    && (actors.contains(String.valueOf(row.get("actorCode")))
+                    || account.equalsIgnoreCase(String.valueOf(row.get("assigneeId"))));
             case "workTypes" -> true;
             default -> false;
         }).toList();

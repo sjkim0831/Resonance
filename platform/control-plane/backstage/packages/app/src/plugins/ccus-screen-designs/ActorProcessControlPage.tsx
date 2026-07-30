@@ -446,6 +446,8 @@ function WorkOperationsMap({
   const steps = (dashboard.steps ?? []) as RuntimeRow[];
   const actors = (dashboard.actors ?? []) as RuntimeRow[];
   const executions = (dashboard.processExecutions ?? []) as RuntimeRow[];
+  const emissionProjectTasks = (dashboard.emissionProjectTasks ??
+    []) as RuntimeRow[];
   const runnableExecutions = useMemo(
     () => executions.filter(row => row.domainOrphaned !== true),
     [executions],
@@ -543,6 +545,43 @@ function WorkOperationsMap({
     processSteps.find(row => String(row.stepCode) === selectedStepCode) ??
     processSteps.find(row => String(row.stepCode) === activeStepCode) ??
     processSteps[0];
+  const scopedProjectTasks = useMemo(
+    () =>
+      emissionProjectTasks
+        .filter(
+          row =>
+            !runtimeProjectId ||
+            String(row.projectId ?? '') === runtimeProjectId,
+        )
+        .sort((a, b) => Number(a.stepOrder ?? 0) - Number(b.stepOrder ?? 0)),
+    [emissionProjectTasks, runtimeProjectId],
+  );
+  const taskForStep = (step?: RuntimeRow) => {
+    const stepCode = String(step?.stepCode ?? '');
+    const fallbackTaskCode =
+      stepCode === 'EMISSION_PROJECT_SETUP'
+        ? 'BASIC_INFO'
+        : stepCode === 'EMISSION_PROJECT_COLLECT' ||
+          stepCode === 'EMISSION_PROJECT_CORRECT'
+        ? 'ACTIVITY_DATA'
+        : stepCode === 'EMISSION_PROJECT_CALCULATE'
+        ? 'CALCULATION'
+        : stepCode === 'EMISSION_PROJECT_VALIDATE'
+        ? 'VERIFICATION'
+        : stepCode === 'EMISSION_PROJECT_APPROVE'
+        ? 'APPROVAL'
+        : stepCode === 'EMISSION_PROJECT_REPORT'
+        ? 'REPORT'
+        : stepCode === 'EMISSION_PROJECT_REGULATORY_SUBMISSION'
+        ? 'REGULATORY_SUBMISSION'
+        : '';
+    return scopedProjectTasks.find(
+      row =>
+        String(row.processStepCode ?? '') === stepCode ||
+        (fallbackTaskCode && String(row.taskCode ?? '') === fallbackTaskCode),
+    );
+  };
+  const activeProjectTask = taskForStep(activeStep);
   useEffect(() => {
     if (
       processSteps.length > 0 &&
@@ -605,7 +644,12 @@ function WorkOperationsMap({
     customerJourney.scenarioCoverage.find(
       scenario => scenario.type === selectedScenarioType,
     ) ?? customerJourney.scenarioCoverage[0];
-  const route = String(activeStep?.userPath ?? activeStep?.adminPath ?? '');
+  const route = String(
+    activeProjectTask?.targetUrl ??
+      activeStep?.userPath ??
+      activeStep?.adminPath ??
+      '',
+  );
   const runtimeRoute = route.startsWith('/')
     ? `${route}${route.includes('?') ? '&' : '?'}projectId=${encodeURIComponent(
         runtimeProjectId,
@@ -891,6 +935,7 @@ function WorkOperationsMap({
                 processSteps.map((step, index) => {
                   const selected =
                     String(step.stepCode) === String(activeStep?.stepCode);
+                  const projectTask = taskForStep(step);
                   return (
                     <Box
                       key={`${step.stepCode}-${index}`}
@@ -918,6 +963,24 @@ function WorkOperationsMap({
                       <Typography variant="caption" color="textSecondary">
                         {displayValue(step.actorCode)}
                       </Typography>
+                      {projectTask && (
+                        <Box mt={1} display="flex" gridGap={4} flexWrap="wrap">
+                          <Chip
+                            size="small"
+                            label={displayValue(projectTask.taskStatus)}
+                            color={
+                              String(projectTask.taskStatus) === 'DONE'
+                                ? 'primary'
+                                : 'default'
+                            }
+                          />
+                          <Chip
+                            size="small"
+                            variant="outlined"
+                            label={displayValue(projectTask.assigneeId)}
+                          />
+                        </Box>
+                      )}
                     </Box>
                   );
                 })
@@ -947,12 +1010,59 @@ function WorkOperationsMap({
               <Chip
                 size="small"
                 label={displayValue(
-                  activeExecution?.executionStatus ??
+                  activeProjectTask?.taskStatus ??
+                    activeExecution?.executionStatus ??
                     activeExecution?.status ??
                     '설계 상태',
                 )}
               />
             </Box>
+            {activeProjectTask && (
+              <Box
+                mt={2}
+                p={1.5}
+                style={{
+                  borderRadius: 8,
+                  border: '1px solid #cbd5e1',
+                  background: '#f8fafc',
+                }}
+              >
+                <Typography variant="subtitle2">
+                  실제 프로젝트 실행 업무
+                </Typography>
+                <Typography variant="body2" style={{ marginTop: 6 }}>
+                  {displayValue(activeProjectTask.taskName)}
+                </Typography>
+                <Typography
+                  variant="caption"
+                  display="block"
+                  color="textSecondary"
+                >
+                  담당자 {displayValue(activeProjectTask.assigneeId)} · 마감일{' '}
+                  {displayValue(activeProjectTask.dueDate)}
+                </Typography>
+                <Typography
+                  variant="caption"
+                  display="block"
+                  color="textSecondary"
+                  style={{ marginTop: 6 }}
+                >
+                  완료 근거:{' '}
+                  {displayValue(activeProjectTask.completionEvidence)}
+                </Typography>
+                {Boolean(activeProjectTask.nextTaskName) && (
+                  <Typography
+                    variant="caption"
+                    display="block"
+                    color="primary"
+                    style={{ marginTop: 6, fontWeight: 700 }}
+                  >
+                    다음 인계: {displayValue(activeProjectTask.nextTaskName)} ·{' '}
+                    {displayValue(activeProjectTask.nextActorCode)}
+                  </Typography>
+                )}
+              </Box>
+            )}
             <Box mt={2} display="grid" gridGap={8}>
               {route.startsWith('/') ? (
                 <Button
@@ -1283,20 +1393,16 @@ function WorkOperationsMap({
               액터·화면·데이터·테스트 실행 준비도
             </Typography>
             <Typography variant="body2" color="textSecondary">
-              정상, 권한, 데이터 격리, 예외, 복구 시나리오를 동일한 업무
-              단계에 투영하여 고객이 실제 업무를 끝낼 수 있는지 검토합니다.
+              정상, 권한, 데이터 격리, 예외, 복구 시나리오를 동일한 업무 단계에
+              투영하여 고객이 실제 업무를 끝낼 수 있는지 검토합니다.
             </Typography>
           </Box>
           <Box display="flex" gridGap={8} flexWrap="wrap">
             <Chip
-              color={
-                customerJourney.blockerCount > 0 ? 'secondary' : 'primary'
-              }
+              color={customerJourney.blockerCount > 0 ? 'secondary' : 'primary'}
               label={`차단 ${customerJourney.blockerCount}건`}
             />
-            <Chip
-              label={`실행 준비도 ${customerJourney.readinessPercent}%`}
-            />
+            <Chip label={`실행 준비도 ${customerJourney.readinessPercent}%`} />
           </Box>
         </Box>
         <Grid container spacing={2} style={{ marginTop: 4 }}>
@@ -1348,9 +1454,7 @@ function WorkOperationsMap({
               </Typography>
               <Typography variant="body2" color="textSecondary">
                 {customerJourney.missingScenarioTypes.length > 0
-                  ? `미등록: ${customerJourney.missingScenarioTypes.join(
-                      ', ',
-                    )}`
+                  ? `미등록: ${customerJourney.missingScenarioTypes.join(', ')}`
                   : '필수 시나리오가 모두 등록되었습니다.'}
               </Typography>
               <Button
@@ -1363,10 +1467,7 @@ function WorkOperationsMap({
             </Box>
           </Grid>
           <Grid item xs={12} md={8}>
-            <Paper
-              variant="outlined"
-              style={{ padding: 14, marginBottom: 12 }}
-            >
+            <Paper variant="outlined" style={{ padding: 14, marginBottom: 12 }}>
               <Typography variant="subtitle1" style={{ fontWeight: 700 }}>
                 {displayValue(selectedScenario?.type)}
               </Typography>
@@ -1412,10 +1513,7 @@ function WorkOperationsMap({
                       '차단',
                       '준비도',
                     ].map(head => (
-                      <th
-                        key={head}
-                        style={{ padding: 10, textAlign: 'left' }}
-                      >
+                      <th key={head} style={{ padding: 10, textAlign: 'left' }}>
                         {head}
                       </th>
                     ))}
@@ -2239,6 +2337,7 @@ export function ActorProcessControlPage(props: {
       'developmentJobs',
       'customerJourneyGaps',
       'processExecutions',
+      'emissionProjectTasks',
     ];
     required
       .filter(key => runtimeDashboard[key] === undefined)
