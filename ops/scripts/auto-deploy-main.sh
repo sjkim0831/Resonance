@@ -19,6 +19,7 @@ POLICY_ROOT="${CARBONET_DEPLOY_ORIGINAL_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}
 bash "$POLICY_ROOT/ops/scripts/verify-kilo-m3-policy.sh"
 bash "$POLICY_ROOT/ops/scripts/verify-hermes-nvidia-two-tier.sh"
 bash "$POLICY_ROOT/ops/scripts/verify-hermes-project-work-policy.sh"
+bash "$POLICY_ROOT/ops/scripts/test-backstage-fast-deploy-policy.sh"
 
 ROOT_DIR="${CARBONET_DEPLOY_ROOT:-${CARBONET_DEPLOY_ORIGINAL_ROOT:-/opt/Resonance}}"
 PLAN_SCRIPT="${CARBONET_DEPLOY_PLAN_SCRIPT:-ops/scripts/plan-incremental-work.sh}"

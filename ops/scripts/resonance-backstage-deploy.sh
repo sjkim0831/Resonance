@@ -4,6 +4,7 @@ set -euo pipefail
 ROOT="${RESONANCE_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
 APP="$ROOT/platform/control-plane/backstage"
 BUILD_TMP_ROOT="${BACKSTAGE_BUILD_TMP_ROOT:-/opt/resonance-data/control-plane/build-tmp/backstage}"
+DEPENDENCY_CACHE_ROOT="${BACKSTAGE_DEPENDENCY_CACHE_ROOT:-/opt/resonance-data/control-plane/dependency-cache/backstage}"
 mkdir -p "$BUILD_TMP_ROOT"
 TMPDIR="$(mktemp -d "$BUILD_TMP_ROOT/run.XXXXXXXX")"
 case "$(readlink -f "$TMPDIR")" in
@@ -53,7 +54,44 @@ run_yarn_script_if_defined() {
 }
 
 install_backstage_dependencies() {
+  local cache_key cache_dir cache_modules cache_state cache_lock
+  cache_key="$(
+    {
+      sha256sum "$APP/yarn.lock" "$APP/package.json"
+      node --version
+      corepack yarn --version
+    } | sha256sum | awk '{print $1}'
+  )"
+  cache_dir="$DEPENDENCY_CACHE_ROOT/$cache_key"
+  cache_modules="$cache_dir/node_modules"
+  cache_state="$cache_dir/install-state.gz"
+  cache_lock="$DEPENDENCY_CACHE_ROOT/.cache.lock"
+  mkdir -p "$DEPENDENCY_CACHE_ROOT"
+  exec 8>"$cache_lock"
+  flock -w 300 8 || {
+    echo "[backstage] dependency cache lock timed out" >&2
+    return 1
+  }
+  if [[ ! -d "$APP/node_modules" && -d "$cache_modules" ]]; then
+    echo "[backstage] restoring immutable dependency tree from cache $cache_key"
+    cp -al -- "$cache_modules" "$APP/node_modules"
+    if [[ -f "$cache_state" ]]; then
+      mkdir -p "$APP/.yarn"
+      cp -a -- "$cache_state" "$APP/.yarn/install-state.gz"
+    fi
+  fi
   if corepack yarn install --immutable; then
+    if [[ ! -d "$cache_modules" ]]; then
+      local cache_tmp
+      cache_tmp="$(mktemp -d "$DEPENDENCY_CACHE_ROOT/.${cache_key}.XXXXXX")"
+      cp -al -- "$APP/node_modules" "$cache_tmp/node_modules"
+      if [[ -f "$APP/.yarn/install-state.gz" ]]; then
+        cp -a -- "$APP/.yarn/install-state.gz" "$cache_tmp/install-state.gz"
+      fi
+      mv -- "$cache_tmp" "$cache_dir"
+      echo "[backstage] dependency cache populated $cache_key"
+    fi
+    flock -u 8
     return 0
   fi
   local modules_path resolved_app resolved_modules
@@ -71,9 +109,12 @@ install_backstage_dependencies() {
       return 2
       ;;
   esac
+  flock -u 8
 }
 
-for command in git node corepack docker kubectl openssl curl; do require "$command"; done
+for command in git node corepack docker kubectl openssl curl flock sha256sum; do
+  require "$command"
+done
 docker buildx version >/dev/null 2>&1 || {
   echo "[backstage] Docker buildx is required (Ubuntu package: docker-buildx)" >&2
   exit 1
@@ -406,9 +447,21 @@ case "$mode" in
     kubectl apply -f "$MANIFEST"
     kubectl -n "$NAMESPACE" set image deployment/resonance-backstage backstage="$image"
     configure_auth_mode
-    # A ConfigMap update preserves the image but must create a new pod so the
-    # catalog snapshot and database-backed catalog converge immediately.
-    kubectl -n "$NAMESPACE" rollout restart deployment/resonance-backstage
+    # Roll out exactly once. The image, auth mode and catalog digest together
+    # define the pod template; an unchanged digest must not restart a healthy
+    # runtime, while a catalog-only change still converges immediately.
+    catalog_digest="$(
+      sha256sum \
+        "$ROOT/platform/control-plane/catalog/organization.yaml" \
+        "$ROOT/platform/control-plane/catalog/systems.yaml" \
+        "$ROOT/platform/control-plane/catalog/components.yaml" \
+        "$ROOT/platform/control-plane/catalog/apis.yaml" \
+        "$ROOT/platform/control-plane/catalog/resources.yaml" \
+        "$ROOT/platform/control-plane/catalog/environments.yaml" |
+        sha256sum | awk '{print $1}'
+    )"
+    kubectl -n "$NAMESPACE" patch deployment resonance-backstage --type=merge \
+      -p="{\"spec\":{\"template\":{\"metadata\":{\"annotations\":{\"resonance.io/catalog-digest\":\"$catalog_digest\"}}}}}"
     kubectl -n "$NAMESPACE" rollout status deployment/resonance-backstage --timeout=600s
     wait_for_runtime
     if [[ "$OIDC_READY" == "true" ]]; then
