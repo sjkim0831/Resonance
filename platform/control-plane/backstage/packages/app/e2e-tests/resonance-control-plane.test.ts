@@ -173,19 +173,9 @@ test('authenticated Resonance control-plane routes render without runtime errors
   const controlRoute =
     '/actor-process-control?workspace=operate&tab=work-dashboard&projectId=CCUS-PLATFORM';
   // The route was already visited in the navigation sweep above. Backstage
-  // keeps the mounted page and its dataset cache when only query parameters
-  // change, so waiting for a second browser response can consume the entire
-  // deployment timeout even though the screen is ready.
-  const runtimeResponse = await page.request.get(
-    '/api/resonance-projects/actor-process/runtime-dashboard?dataset=processes',
-  );
-  const taskResponse = await page.request.get(
-    '/api/resonance-projects/actor-process/runtime-dashboard?dataset=emissionProjectTasks',
-  );
-  expect(runtimeResponse.status()).toBe(200);
-  expect(taskResponse.status()).toBe(200);
-  const taskPayload = await taskResponse.json();
-  expect(taskPayload.emissionProjectTasks?.length).toBeGreaterThan(0);
+  // keeps the mounted page and its authenticated fetchApi dataset cache when
+  // only query parameters change, so the rendered work contract is the stable
+  // readiness signal. APIRequestContext does not carry Backstage's OAuth token.
   await page.goto(controlRoute, {
     waitUntil: 'domcontentloaded',
     timeout: 20_000,
