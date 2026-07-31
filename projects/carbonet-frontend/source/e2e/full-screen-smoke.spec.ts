@@ -51,7 +51,10 @@ const routesById = new Map(manifest.routes.map((route) => [route.id, route]));
 
 test.use({ viewport: { width: 1440, height: 1000 } });
 test.describe.configure({ mode: "parallel" });
-test.setTimeout(5 * 60_000);
+// A full shard can contain more than 200 DB-rendered screens. The timeout must
+// cover the shard itself rather than aborting valid work while it is waiting
+// for dynamic contracts under load.
+test.setTimeout(12 * 60_000);
 
 async function ensureAdminSession(page: Page) {
   await page.goto(`${baseUrl}/admin/login/loginView`, { waitUntil: "domcontentloaded" });
@@ -92,17 +95,14 @@ async function inspectRoute(page: Page, route: SmokeRoute, testInfo: TestInfo, a
   let status = 0;
   let navigationError = "";
   try {
-    if (attempt === 1) {
-      const response = await page.request.get(`${baseUrl}${route.routePath}`, { failOnStatusCode: false, timeout: 6_000 });
-      status = response.status();
-      await page.evaluate((targetPath) => {
-        window.history.pushState({}, "", targetPath);
-        window.dispatchEvent(new PopStateEvent("popstate"));
-      }, route.routePath);
-    } else {
-      const response = await page.goto(`${baseUrl}${route.routePath}`, { waitUntil: "domcontentloaded", timeout: 12_000 });
-      status = response?.status() || 0;
-    }
+    // Direct navigation matches real customer access and gives each route a
+    // clean React lifecycle. Reusing one document with pushState left pending
+    // effects from the previous screen and produced false blank/API failures.
+    const response = await page.goto(`${baseUrl}${route.routePath}`, {
+      waitUntil: "domcontentloaded",
+      timeout: 12_000
+    });
+    status = response?.status() || 0;
     await page.waitForFunction(() => {
       const text = (document.body?.innerText || "").trim();
       return !/관리자 화면을 준비하고 있습니다|Bootstrap loaded\. Waiting for React app mount|Loading admin shell|화면 준비 중/.test(text);
