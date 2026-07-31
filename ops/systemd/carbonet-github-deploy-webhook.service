@@ -1,0 +1,21 @@
+[Unit]
+Description=Resonance authenticated GitHub deploy webhook
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=sjkim
+Group=sjkim
+ExecStart=/usr/bin/python3 /opt/resonance-data/control-plane/bin/resonance-github-deploy-webhook.py
+Restart=always
+RestartSec=2s
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/resonance-data/deploy/github-webhook
+ReadOnlyPaths=/etc/resonance/github-deploy-webhook.secret
+
+[Install]
+WantedBy=multi-user.target
