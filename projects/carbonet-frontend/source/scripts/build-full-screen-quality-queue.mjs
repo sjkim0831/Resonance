@@ -12,7 +12,16 @@ const queuePath = path.resolve(process.env.FULL_SCREEN_QUALITY_QUEUE || path.joi
 const historyPath = path.resolve(process.env.FULL_SCREEN_QUALITY_HISTORY || path.join(cache, "quality-history.json"));
 
 const readJson = async (file, fallback) => { try { return JSON.parse(await readFile(file, "utf8")); } catch { return fallback; } };
-const normalizeRoute = (value) => { try { return new URL(String(value), "http://quality.local").pathname.replace(/\/$/, "") || "/"; } catch { return String(value).split("?")[0].replace(/\/$/, "") || "/"; } };
+// Runtime routes are historically mixed-case (`/signin/loginView`) while the
+// canonical DB graph stores normalized lower-case keys.  Quality traceability
+// is semantic and must not report a missing design solely because of casing.
+const normalizeRoute = (value) => {
+  try {
+    return (new URL(String(value), "http://quality.local").pathname.replace(/\/$/, "") || "/").toLowerCase();
+  } catch {
+    return (String(value).split("?")[0].replace(/\/$/, "") || "/").toLowerCase();
+  }
+};
 const semanticRouteKey = (value) => {
   const parts = normalizeRoute(value).split("/").filter(Boolean);
   return `${parts[0] === "admin" ? "admin" : "user"}|${parts.slice(-2).join("/")}`;
