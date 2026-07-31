@@ -43,6 +43,13 @@ type OperationsSummary = {
       teamsDelivery?: string;
     };
   };
+  deploymentAlerts: {
+    createdAt?: string;
+    status?: string;
+    category?: string;
+    targetCommit?: string;
+    teamsDelivery?: string;
+  }[];
 };
 
 const useStyles = makeStyles(theme => ({
@@ -199,6 +206,34 @@ export function SystemOperationsControlPage() {
             </Typography>
           </Box>
         </Paper>
+
+        {(summary?.deploymentAlerts?.length ?? 0) > 0 ? (
+          <Paper className={classes.panel}>
+            <Typography variant="h6">최근 자동 배포 경보</Typography>
+            {summary?.deploymentAlerts.map(alert => (
+              <Box
+                className={classes.row}
+                key={`${alert.targetCommit}-${alert.createdAt}`}
+              >
+                <Box>
+                  <Typography variant="subtitle1">
+                    {alert.status ?? 'FAILED'} · {alert.category ?? 'UNKNOWN'}
+                  </Typography>
+                  <Typography variant="caption">
+                    {alert.createdAt ?? '발생 시각 확인 전'}
+                  </Typography>
+                </Box>
+                <Chip
+                  size="small"
+                  label={alert.teamsDelivery ?? 'NOT_CONFIGURED'}
+                />
+                <Typography variant="body2">
+                  {alert.targetCommit?.slice(0, 12) ?? '커밋 확인 전'}
+                </Typography>
+              </Box>
+            ))}
+          </Paper>
+        ) : null}
 
         <Paper className={classes.panel}>
           <Box display="flex" alignItems="center" gridGap={8} mb={1}>

@@ -688,6 +688,19 @@ export default createBackendPlugin({
             // The first deployment may precede status publication. Keep the
             // API available and make the missing evidence explicit.
           }
+          let deploymentAlerts: Record<string, unknown>[] = [];
+          try {
+            deploymentAlerts = (
+              await readFile('/app/deploy-status/deploy-alerts.jsonl', 'utf8')
+            )
+              .split('\n')
+              .filter(Boolean)
+              .slice(-10)
+              .reverse()
+              .map(line => JSON.parse(line) as Record<string, unknown>);
+          } catch {
+            // No failures have been recorded yet.
+          }
           response.json({
             checkedAt: new Date().toISOString(),
             services: [
@@ -712,6 +725,7 @@ export default createBackendPlugin({
             },
             taskStatuses,
             deployment,
+            deploymentAlerts,
           });
         });
         router.get(
