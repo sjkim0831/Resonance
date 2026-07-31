@@ -18,6 +18,8 @@ kind: Deployment
 metadata:
   name: resonance-backstage
   namespace: resonance-ops
+  annotations:
+    resonance.io/visual-e2e-contract: impact-gate-plus-nightly-full
   labels:
     app.kubernetes.io/name: resonance-backstage
     app.kubernetes.io/part-of: resonance-control-plane
