@@ -906,6 +906,8 @@ if [[ "$PLAN_RUNTIME_REQUIRED" != "true" ]]; then
       ops/scripts/apply-backup-cronjobs.sh \
       ops/scripts/reconcile-post-reboot-runtime.sh \
       ops/scripts/test-post-reboot-runtime-recovery.sh \
+      ops/scripts/postgres-storage-guard.sh \
+      ops/scripts/test-postgres-storage-guard-install.sh \
       ops/scripts/patroni-auto-heal.sh \
       ops/scripts/test-patroni-auto-heal-safety.sh \
       ops/scripts/postgres-isolated-restore-drill.sh \
@@ -920,6 +922,8 @@ if [[ "$PLAN_RUNTIME_REQUIRED" != "true" ]]; then
       ops/systemd/carbonet-github-webhook-reconcile.service \
       ops/systemd/carbonet-github-webhook-reconcile.timer \
       ops/systemd/carbonet-post-reboot-recovery.service \
+      ops/systemd/postgres-storage-guard.service \
+      ops/systemd/postgres-storage-guard.timer \
       ops/systemd/carbonet-patroni-auto-heal.service \
       ops/systemd/carbonet-patroni-auto-heal.timer \
       ops/systemd/carbonet-postgres-restore-drill.service \
@@ -973,6 +977,26 @@ if [[ "$PLAN_RUNTIME_REQUIRED" != "true" ]]; then
     sync_post_reboot_recovery_if_required
     sync_patroni_auto_heal_if_required
     sync_postgres_restore_drill_if_required
+    if git diff --name-only "$deployed_commit" "$target_commit" -- \
+        ops/scripts/postgres-storage-guard.sh \
+        ops/scripts/test-postgres-storage-guard-install.sh \
+        ops/systemd/postgres-storage-guard.service \
+        ops/systemd/postgres-storage-guard.timer | grep -q .; then
+      bash ops/scripts/test-postgres-storage-guard-install.sh
+      sudo -n install -d -m 0755 -o root -g root \
+        /opt/resonance-data/control-plane/bin
+      sudo -n install -m 0750 -o root -g root \
+        ops/scripts/postgres-storage-guard.sh \
+        /opt/resonance-data/control-plane/bin/postgres-storage-guard.sh
+      sudo -n install -m 0644 ops/systemd/postgres-storage-guard.service \
+        /etc/systemd/system/postgres-storage-guard.service
+      sudo -n install -m 0644 ops/systemd/postgres-storage-guard.timer \
+        /etc/systemd/system/postgres-storage-guard.timer
+      sudo -n systemctl daemon-reload
+      sudo -n systemctl enable --now postgres-storage-guard.timer >/dev/null
+      sudo -n systemctl restart postgres-storage-guard.service
+      echo "[auto-deploy] PostgreSQL storage guard runtime synchronized"
+    fi
     if git diff --name-only "$deployed_commit" "$target_commit" -- \
         ops/scripts/resonance-backstage-full-e2e.sh \
         ops/systemd/resonance-backstage-full-e2e.service \
