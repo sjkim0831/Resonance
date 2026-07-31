@@ -3,8 +3,10 @@ set -euo pipefail
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 script="$root/ops/scripts/postgres-isolated-restore-drill.sh"
+reporter="$root/ops/scripts/report-latest-postgres-restore-drill.sh"
 
 bash -n "$script"
+bash -n "$reporter"
 grep -q 'namespace.*carbonet-restore-drill' <(tr '[:upper:]' '[:lower:]' <"$script")
 grep -q 'pg_restore -U postgres --exit-on-error.*--jobs=2' "$script"
 grep -q 'exec -i "$POD" -- psql' "$script"
@@ -18,6 +20,8 @@ grep -q 'cpu: "2"' "$script"
 grep -q 'worker/offsite-restore-drill' "$script"
 grep -q 'RESONANCE_RECOVERY_WORKER_TOKEN' "$script"
 grep -q 'Backstage recovery dashboard synchronized' "$script"
+grep -q 'worker/offsite-restore-drill' "$reporter"
+grep -q 'RESONANCE_RECOVERY_WORKER_TOKEN' "$reporter"
 grep -q 'sudo -n rm -rf -- "$WORK_DIR"' "$script"
 grep -q 'chmod 0777 "$WORK_DIR/data"' "$script"
 grep -q 'OnCalendar=Sun' \
