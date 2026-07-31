@@ -27,5 +27,8 @@ grep -Fq "route === '/system-recovery'" "$E2E_SPEC"
 grep -Fq 'BACKSTAGE_E2E_STORAGE_STATE="$auth_state"' "$E2E_RUNNER"
 grep -Fq 'chmod 0600 "$auth_state"' "$E2E_RUNNER"
 grep -Fq 'storageState: process.env.BACKSTAGE_E2E_STORAGE_STATE' "$PLAYWRIGHT_CONFIG"
+grep -Fq 'Backstage visual E2E running concurrently' "$AUTO_DEPLOY"
+grep -Fq 'wait_backstage_visual_e2e' "$AUTO_DEPLOY"
+grep -Fq 'concurrent Backstage visual E2E failed' "$AUTO_DEPLOY"
 
 echo "PASS Backstage deploy reuses dependencies, performs one fast rollout, and scopes E2E by impact"

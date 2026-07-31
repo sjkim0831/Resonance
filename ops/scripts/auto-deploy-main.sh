@@ -253,6 +253,8 @@ runtime_screen_gate_pid=""
 runtime_screen_gate_log=""
 catalog_identity_sync_pid=""
 catalog_identity_sync_log=""
+backstage_visual_e2e_pid=""
+backstage_visual_e2e_log=""
 # A disconnected kubectl/pg_dump pipeline can survive the systemd process and
 # retain ACCESS SHARE locks indefinitely. Reap only deploy-owned sessions that
 # have exceeded five minutes before Flyway can be blocked. Normal full dumps
@@ -283,6 +285,10 @@ cleanup_deploy() {
   if [[ -n "$catalog_identity_sync_pid" ]] && kill -0 "$catalog_identity_sync_pid" 2>/dev/null; then
     kill "$catalog_identity_sync_pid" 2>/dev/null || true
     wait "$catalog_identity_sync_pid" 2>/dev/null || true
+  fi
+  if [[ -n "$backstage_visual_e2e_pid" ]] && kill -0 "$backstage_visual_e2e_pid" 2>/dev/null; then
+    kill "$backstage_visual_e2e_pid" 2>/dev/null || true
+    wait "$backstage_visual_e2e_pid" 2>/dev/null || true
   fi
   cleanup_remote_backup
   if [[ -n "$schema_restore_database" ]]; then
@@ -569,6 +575,26 @@ run_backstage_visual_e2e_if_required() {
   RESONANCE_BACKSTAGE_E2E_SCOPE="$e2e_scope" \
   RESONANCE_ROOT="$ROOT_DIR" \
     bash ops/scripts/resonance-backstage-visual-e2e.sh
+}
+
+start_backstage_visual_e2e() {
+  backstage_visual_e2e_log="$ROOT_DIR/var/logs/backstage-visual-e2e-${target_commit:0:10}.log"
+  (
+    run_backstage_visual_e2e_if_required
+  ) >"$backstage_visual_e2e_log" 2>&1 &
+  backstage_visual_e2e_pid="$!"
+  echo "[auto-deploy] Backstage visual E2E running concurrently pid=$backstage_visual_e2e_pid"
+}
+
+wait_backstage_visual_e2e() {
+  if wait "$backstage_visual_e2e_pid"; then
+    cat "$backstage_visual_e2e_log"
+    backstage_visual_e2e_pid=""
+  else
+    echo "[auto-deploy] refusing success marker: concurrent Backstage visual E2E failed" >&2
+    cat "$backstage_visual_e2e_log" >&2
+    exit 26
+  fi
 }
 
 run_backstage_identity_e2e_if_required() {
@@ -892,7 +918,7 @@ if [[ "$PLAN_RUNTIME_REQUIRED" != "true" ]]; then
   bash ops/scripts/sync-unified-asset-catalog.sh "$deployed_commit" "$target_commit"
   sync_backstage_catalog_if_required
   deploy_backstage_if_required
-  run_backstage_visual_e2e_if_required
+  start_backstage_visual_e2e
   if wait "$catalog_identity_sync_pid"; then
     cat "$catalog_identity_sync_log"
     catalog_identity_sync_pid=""
@@ -902,6 +928,7 @@ if [[ "$PLAN_RUNTIME_REQUIRED" != "true" ]]; then
     exit 25
   fi
   run_actor_process_role_e2e_if_required
+  wait_backstage_visual_e2e
   record_deploy_phase "catalog_apply_and_verify"
   printf '%s\n' "$target_commit" > "${DEPLOY_STATE_FILE}.tmp"
   mv "${DEPLOY_STATE_FILE}.tmp" "$DEPLOY_STATE_FILE"
@@ -1382,13 +1409,14 @@ else
 fi
 sync_backstage_catalog_if_required
 deploy_backstage_if_required
-run_backstage_visual_e2e_if_required
 run_backstage_identity_e2e_if_required
+start_backstage_visual_e2e
 # The identity-contracts post-deploy group above already performs one atomic
 # Keycloak-to-Carbonet synchronization and verification. Do not repeat the
 # same account writes on the runtime path; catalog/frontend-only paths still
 # call sync_keycloak_actor_assignments_if_required before their success marker.
 run_actor_process_role_e2e_if_required
+wait_backstage_visual_e2e
 run_backstage_screen_space_e2e_if_required
 sync_postgres_backup_cronjobs_if_required
 sync_post_reboot_recovery_if_required
