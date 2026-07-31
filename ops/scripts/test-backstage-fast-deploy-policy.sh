@@ -12,7 +12,8 @@ MANIFEST="$ROOT/deploy/k8s/control-plane/backstage.yaml"
 grep -Fq 'DEPENDENCY_CACHE_ROOT=' "$DEPLOY"
 grep -Fq "sha256sum \"\$APP/yarn.lock\" \"\$APP/package.json\" | awk '{print \$1}'" "$DEPLOY"
 grep -Fq 'cp -al -- "$cache_modules" "$APP/node_modules"' "$DEPLOY"
-grep -Fq 'cmp -s "$APP/.yarn/install-state.gz" "$cache_state"' "$DEPLOY"
+grep -Fq '.resonance-immutable-cache-key' "$DEPLOY"
+grep -Fq '"$(cat "$state_marker")" == "$cache_key"' "$DEPLOY"
 grep -Fq 'dependency state matches immutable cache' "$DEPLOY"
 grep -Fq 'flock -w 300 8' "$DEPLOY"
 grep -Fq 'resonance.io/catalog-digest' "$DEPLOY"
@@ -40,6 +41,10 @@ grep -Fq 'build_backstage_application' "$DEPLOY"
 grep -Fq 'corepack yarn tsc >"$typecheck_log" 2>&1 &' "$DEPLOY"
 grep -Fq 'corepack yarn build:backend >"$bundle_log" 2>&1 &' "$DEPLOY"
 grep -Fq 'concurrent application build failed' "$DEPLOY"
+if grep -Fq "awk '/^Driver:/ {print \$2; exit}'" "$DEPLOY"; then
+  echo "buildx capability detection must not trigger SIGPIPE under pipefail" >&2
+  exit 1
+fi
 
 eval "$(sed -n '/^derive_backstage_e2e_routes() {/,/^run_backstage_visual_e2e_if_required() {/p' "$AUTO_DEPLOY" | sed '$d')"
 deployed_commit=base

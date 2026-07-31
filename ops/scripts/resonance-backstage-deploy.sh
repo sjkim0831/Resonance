@@ -92,7 +92,7 @@ build_backstage_application() {
 }
 
 install_backstage_dependencies() {
-  local cache_key cache_dir cache_modules cache_state cache_lock
+  local cache_key cache_dir cache_modules cache_state cache_lock state_marker
   cache_key="$(
     {
       sha256sum "$APP/yarn.lock" "$APP/package.json" | awk '{print $1}'
@@ -104,6 +104,7 @@ install_backstage_dependencies() {
   cache_modules="$cache_dir/node_modules"
   cache_state="$cache_dir/install-state.gz"
   cache_lock="$DEPENDENCY_CACHE_ROOT/.cache.lock"
+  state_marker="$APP/node_modules/.resonance-immutable-cache-key"
   mkdir -p "$DEPENDENCY_CACHE_ROOT"
   exec 8>"$cache_lock"
   flock -w 300 8 || {
@@ -113,9 +114,8 @@ install_backstage_dependencies() {
   if [[ -d "$APP/node_modules" &&
         -x "$APP/node_modules/.bin/backstage-cli" &&
         -x "$APP/node_modules/.bin/tsc" &&
-        -f "$APP/.yarn/install-state.gz" &&
-        -f "$cache_state" ]] &&
-      cmp -s "$APP/.yarn/install-state.gz" "$cache_state"; then
+        -f "$state_marker" &&
+        "$(cat "$state_marker")" == "$cache_key" ]]; then
     echo "[backstage] dependency state matches immutable cache $cache_key; install skipped"
     flock -u 8
     return 0
@@ -125,6 +125,7 @@ install_backstage_dependencies() {
     cp -al -- "$cache_modules" "$APP/node_modules"
     mkdir -p "$APP/.yarn"
     cp -a -- "$cache_state" "$APP/.yarn/install-state.gz"
+    printf '%s\n' "$cache_key" >"$state_marker"
     # The key is derived from the immutable lockfile, root manifest and tool
     # versions. Re-running Yarn mutates/rebuilds an otherwise exact hard-linked
     # tree and costs 15-20 seconds on every isolated deployment.
@@ -132,6 +133,7 @@ install_backstage_dependencies() {
     return 0
   fi
   if corepack yarn install --immutable; then
+    printf '%s\n' "$cache_key" >"$state_marker"
     if [[ ! -d "$cache_modules" ]]; then
       local cache_tmp
       cache_tmp="$(mktemp -d "$DEPENDENCY_CACHE_ROOT/.${cache_key}.XXXXXX")"
@@ -154,6 +156,7 @@ install_backstage_dependencies() {
       echo "[backstage] dependency link failed; rebuilding the isolated node_modules tree once" >&2
       rm -rf -- "$resolved_modules"
       corepack yarn install --immutable
+      printf '%s\n' "$cache_key" >"$state_marker"
       ;;
     *)
       echo "[backstage] refusing unsafe node_modules cleanup: $resolved_modules" >&2
@@ -163,7 +166,7 @@ install_backstage_dependencies() {
   flock -u 8
 }
 
-for command in git node corepack docker kubectl openssl curl flock sha256sum cmp; do
+for command in git node corepack docker kubectl openssl curl flock sha256sum; do
   require "$command"
 done
 docker buildx version >/dev/null 2>&1 || {
@@ -448,7 +451,9 @@ case "$mode" in
       )
       finish_phase application-build
       start_phase image-build
-      buildx_driver="$(docker buildx inspect 2>/dev/null | awk '/^Driver:/ {print $2; exit}')"
+      # Do not exit awk early: with pipefail, closing the pipe can make buildx
+      # report SIGPIPE (255) and abort a healthy deployment.
+      buildx_driver="$(docker buildx inspect 2>/dev/null | awk '/^Driver:/ {print $2}')"
       if [[ "$buildx_driver" == "docker" || -z "$buildx_driver" ]]; then
         # The Docker driver keeps a daemon-local incremental layer cache but
         # cannot export type=local caches. Selecting by capability prevents a
