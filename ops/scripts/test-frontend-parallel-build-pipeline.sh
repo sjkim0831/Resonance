@@ -7,7 +7,7 @@ pipeline="$ROOT_DIR/projects/carbonet-frontend/source/scripts/run-frontend-pipel
 grep -Fq 'run(process.execPath, ["scripts/dedupe-generated-route-family.mjs"])' "$pipeline"
 grep -Fq 'const validationTasks = [' "$pipeline"
 grep -Fq '...validationTasks,' "$pipeline"
-grep -Fq 'runAsync(npx, typecheckArgs)' "$pipeline"
+grep -Fq 'node_modules/typescript/bin/tsc' "$pipeline"
 grep -Fq 'runAsync(bundlerCommand, bundlerArgs)' "$pipeline"
 
 dedupe_line="$(grep -n 'run(process.execPath, \["scripts/dedupe-generated-route-family.mjs"\])' "$pipeline" | head -1 | cut -d: -f1)"

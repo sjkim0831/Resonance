@@ -3,7 +3,6 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const npm = process.platform === "win32" ? "npm.cmd" : "npm";
-const npx = process.platform === "win32" ? "npx.cmd" : "npx";
 const scriptRoot = path.dirname(fileURLToPath(import.meta.url));
 const frontendRoot = path.resolve(scriptRoot, "..");
 const frontendBundler = process.env.CARBONET_FRONTEND_BUNDLER === "rolldown" ? "rolldown" : "vite";
@@ -15,19 +14,18 @@ const skipBuildTypecheck = process.env.CARBONET_SKIP_BUILD_TYPECHECK === "true";
 const forceFullTypecheck = process.env.CARBONET_FORCE_FULL_TYPECHECK === "true";
 
 function run(command, args) {
-  const requiresWindowsCommandShell = process.platform === "win32" && (command === npm || command === npx);
+  const requiresWindowsCommandShell = process.platform === "win32" && command === npm;
   const result = spawnSync(command, args, { env, stdio: "inherit", shell: requiresWindowsCommandShell });
   if (result.error) throw result.error;
   if (result.status !== 0) process.exit(result.status ?? 1);
 }
 
 function runAsync(command, args) {
-  const requiresWindowsCommandShell = process.platform === "win32" && (command === npm || command === npx);
   return new Promise((resolve, reject) => {
     const child = spawn(command, args, {
       env,
       stdio: "inherit",
-      shell: requiresWindowsCommandShell,
+      shell: process.platform === "win32" && command === npm,
     });
     child.once("error", reject);
     child.once("exit", (code, signal) => {
@@ -100,9 +98,9 @@ if (process.argv.includes("--build")) {
   } else {
     console.log(`[frontend-pipeline] validations, typecheck and ${frontendBundler} build run concurrently; all remain fail-closed`);
     const typecheckArgs = forceFullTypecheck
-      ? ["tsc", "-p", "tsconfig.app.json", "--pretty", "false"]
+      ? ["-p", "tsconfig.app.json", "--pretty", "false"]
       : [
-          "tsc", "-p", "tsconfig.app.json",
+          "-p", "tsconfig.app.json",
           "--incremental",
           "--tsBuildInfoFile", "tsconfig.app.tsbuildinfo",
           "--pretty", "false",
@@ -112,7 +110,7 @@ if (process.argv.includes("--build")) {
     try {
       await Promise.all([
         ...validationTasks,
-        runAsync(npx, typecheckArgs),
+        runAsync(process.execPath, [path.join(frontendRoot, "node_modules/typescript/bin/tsc"), ...typecheckArgs]),
         runAsync(bundlerCommand, bundlerArgs),
       ]);
     } catch (error) {
