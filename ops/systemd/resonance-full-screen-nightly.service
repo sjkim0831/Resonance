@@ -6,7 +6,8 @@ Wants=network-online.target
 [Service]
 Type=oneshot
 User=sjkim
-WorkingDirectory=/opt/Resonance
+WorkingDirectory=/opt/Resonance/var/deploy-worktrees/runtime-build
+EnvironmentFile=-/etc/resonance/secrets/admin-smoke.env
 Environment=FULL_SCREEN_SMOKE_CHANGED_ONLY=false
 Environment=FULL_SCREEN_SMOKE_WORKERS=4
 ExecStart=/usr/bin/bash /opt/Resonance/var/deploy-worktrees/runtime-build/ops/scripts/run-nightly-frontend-contracts.sh
