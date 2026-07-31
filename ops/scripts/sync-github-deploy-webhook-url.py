@@ -20,6 +20,7 @@ URL_PATTERN = re.compile(r"https://[a-z0-9-]+\.trycloudflare\.com")
 STATE_DIR = Path("/opt/resonance-data/deploy/github-webhook")
 PUBLIC_URL_FILE = STATE_DIR / "public-url"
 HOOK_ID_FILE = STATE_DIR / "github-hook-id"
+STABLE_FUNNEL_FILE = STATE_DIR / "tailscale-funnel-url"
 CONTAINER = os.environ.get(
     "GITHUB_DEPLOY_WEBHOOK_TUNNEL_CONTAINER",
     "resonance-deploy-webhook-tunnel",
@@ -85,6 +86,15 @@ def tailscale_funnel_url() -> str | None:
         ):
             return f"https://{host.removesuffix(':443')}"
     return None
+
+
+def configured_funnel_url() -> str | None:
+    if not STABLE_FUNNEL_FILE.exists():
+        return None
+    value = STABLE_FUNNEL_FILE.read_text().strip().rstrip("/")
+    if re.fullmatch(r"https://[a-z0-9.-]+\.ts\.net", value):
+        return value
+    raise RuntimeError("invalid configured Tailscale Funnel URL")
 
 
 def remove_quick_tunnel() -> None:
@@ -213,7 +223,7 @@ def atomic_write(path: Path, value: str) -> None:
 
 
 def main() -> int:
-    stable_funnel = tailscale_funnel_url()
+    stable_funnel = configured_funnel_url() or tailscale_funnel_url()
     tunnel_url = stable_funnel or current_tunnel_url()
     wait_public_health(tunnel_url)
     expected = f"{tunnel_url}{HOOK_PATH}"

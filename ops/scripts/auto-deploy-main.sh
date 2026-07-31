@@ -732,7 +732,10 @@ if [[ "$PLAN_RUNTIME_REQUIRED" != "true" ]]; then
       sudo -n systemctl restart carbonet-github-deploy-webhook.service
       sudo -n systemctl enable --now \
         carbonet-github-webhook-reconcile.timer >/dev/null
-      python3 /opt/resonance-data/control-plane/bin/sync-github-deploy-webhook-url.py
+      if ! python3 \
+          /opt/resonance-data/control-plane/bin/sync-github-deploy-webhook-url.py; then
+        echo "[auto-deploy] warning: webhook URL reconciliation deferred to timer" >&2
+      fi
       echo "[auto-deploy] GitHub webhook runtime synchronized"
     fi
   fi

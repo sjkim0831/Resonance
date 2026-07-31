@@ -40,8 +40,12 @@ grep -q 'consecutive_successes >= 3' \
   "$root/ops/scripts/sync-github-deploy-webhook-url.py"
 grep -q 'stable_funnel or current_tunnel_url' \
   "$root/ops/scripts/sync-github-deploy-webhook-url.py"
+grep -q 'configured_funnel_url() or tailscale_funnel_url()' \
+  "$root/ops/scripts/sync-github-deploy-webhook-url.py"
 grep -q 'transport = \"tailscale\"' \
   "$root/ops/scripts/sync-github-deploy-webhook-url.py"
+grep -q 'webhook URL reconciliation deferred to timer' \
+  "$root/ops/scripts/auto-deploy-main.sh"
 grep -q -- '--protocol http2' \
   "$root/ops/scripts/install-resonance-github-deploy-webhook.sh"
 printf '%s\n' "GITHUB_DEPLOY_WEBHOOK_CONTRACT_PASS"
