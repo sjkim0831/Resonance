@@ -422,13 +422,18 @@ if [[ -n "$tracked_source_changes" ]]; then
   source_overlay="$source_root/projects/carbonet-frontend/src/main/resources/static/react-app"
   clean_overlay="$clean_worktree/projects/carbonet-frontend/src/main/resources/static/react-app"
   mkdir -p "$clean_worktree/var/run" "$clean_worktree/var/logs"
-  if [[ -f "$source_overlay/index.html" ]]; then
+  if [[ -f "$source_overlay/index.html" && "$PLAN_RUNTIME_REQUIRED" == "true" ]]; then
     # Both worktrees live on /opt. A read-only hard-link snapshot preserves the
     # verified frontend closure without copying its full hashed asset graph.
     rm -rf -- "$clean_overlay"
     mkdir -p "$clean_overlay"
     cp -al "$source_overlay/." "$clean_overlay/"
     node "$clean_worktree/ops/scripts/verify-react-asset-closure.mjs" "$clean_overlay"
+  elif [[ "$PLAN_RUNTIME_REQUIRED" != "true" ]]; then
+    # Catalog/automation commits never mutate or serve this isolated overlay.
+    # The checked-out closure is sufficient; copying and checking the live 313
+    # file graph here would be pure repeated work.
+    echo "[auto-deploy] isolated frontend overlay copy skipped for catalog-only work"
   fi
   ROOT_DIR="$clean_worktree"
   export ROOT_DIR CARBONET_DEPLOY_ROOT="$clean_worktree" CARBONET_CLEAN_WORKTREE_ACTIVE=true
@@ -480,7 +485,9 @@ fi
 live_frontend_overlay="$ROOT_DIR/projects/carbonet-frontend/src/main/resources/static/react-app"
 merge_overlay_backup="$(mktemp -d "$ROOT_DIR/var/run/pre-merge-overlay.XXXXXX")"
 merge_overlay_backup_valid=false
-if [[ -f "$live_frontend_overlay/index.html" ]]; then
+if [[ -f "$live_frontend_overlay/index.html" \
+   && ! ("${CARBONET_CLEAN_WORKTREE_ACTIVE:-false}" == "true" \
+     && "$PLAN_RUNTIME_REQUIRED" != "true") ]]; then
   cp -al "$live_frontend_overlay/." "$merge_overlay_backup/"
   if node "$ROOT_DIR/ops/scripts/verify-react-asset-closure.mjs" "$merge_overlay_backup" >/dev/null 2>&1; then
     merge_overlay_backup_valid=true
@@ -491,6 +498,12 @@ if [[ -f "$live_frontend_overlay/index.html" ]]; then
     rm -rf "$merge_overlay_backup"
     exit 20
   fi
+elif [[ "${CARBONET_CLEAN_WORKTREE_ACTIVE:-false}" == "true" \
+     && "$PLAN_RUNTIME_REQUIRED" != "true" ]]; then
+  # This worktree is not the mounted production overlay and catalog-only work
+  # cannot alter runtime assets. Preserve the real live closure by doing
+  # nothing instead of snapshotting and restoring an unused checkout.
+  echo "[auto-deploy] isolated overlay snapshot skipped for catalog-only work"
 fi
 
 restore_live_frontend_overlay() {
@@ -665,9 +678,11 @@ if [[ "$PLAN_RUNTIME_REQUIRED" != "true" ]]; then
   done < <(git diff --name-only --diff-filter=ACMR "$deployed_commit" "$target_commit")
   if git diff --name-only "$deployed_commit" "$target_commit" -- \
       ops/scripts/auto-deploy-main.sh \
-      ops/scripts/test-catalog-identity-parallel-deploy.sh |
+      ops/scripts/test-catalog-identity-parallel-deploy.sh \
+      ops/scripts/test-catalog-overlay-fast-path.sh |
       grep -q .; then
     bash ops/scripts/test-catalog-identity-parallel-deploy.sh
+    bash ops/scripts/test-catalog-overlay-fast-path.sh
   fi
   backstage_only_change=false
   if [[ "$PLAN_BACKSTAGE_REQUIRED" == "true" ]] &&
