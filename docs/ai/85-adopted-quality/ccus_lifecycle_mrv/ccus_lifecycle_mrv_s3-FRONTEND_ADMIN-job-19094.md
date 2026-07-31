@@ -2,7 +2,7 @@
 
 - Job: 19094
 - Job type: FRONTEND_ADMIN
-- Source commit: 502af31cf393c31e49ebefeb48956d8c4f2ce48f
+- Source commit: 749f6bfe179050bd2bafc4ff73b328d88ac17a3d
 - Validation result: {"strategy":"APPROVED_FULL_STACK_PACKAGE","processCode":"CCUS_LIFECYCLE_MRV","stepCode":"CCUS_LIFECYCLE_MRV_S3","dimension":"FRONTEND_ADMIN","package":"/opt/Resonance/var/ai-worktrees/job-19094/projects/carbonet-backend-metadata/process-runtime/generated/CCUS_LIFECYCLE_MRV/CCUS_LIFECYCLE_MRV__CCUS_LIFECYCLE_MRV_S3.json","evidence":"/opt/Resonance/var/ai-worktrees/job-19094/var/test-evidence/process-package-tests/CCUS_LIFECYCLE_MRV__CCUS_LIFECYCLE_MRV_S3.json","status":"PASSED"}
 
 The exact approved step package supplies the matching USER or ADMIN route,
