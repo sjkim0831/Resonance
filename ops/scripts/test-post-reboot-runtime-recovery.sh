@@ -7,6 +7,8 @@ grep -q 'init-addr last,libc,none' \
   "$root/ops/kubernetes/postgres-haproxy-config.yaml"
 grep -q 'POST_REBOOT_RUNTIME_RECOVERY_PASS' \
   "$root/ops/scripts/reconcile-post-reboot-runtime.sh"
+grep -q 'Kubernetes mutation not ready; retry=' \
+  "$root/ops/scripts/reconcile-post-reboot-runtime.sh"
 grep -q 'WantedBy=multi-user.target' \
   "$root/ops/systemd/carbonet-post-reboot-recovery.service"
 grep -q 'post-reboot runtime recovery synchronized' \
