@@ -70,7 +70,7 @@ async function signIn(page: Page) {
     }
     readySurface = await Promise.all([
       sidebar
-        .waitFor({ state: 'attached', timeout: 20_000 })
+        .waitFor({ state: 'visible', timeout: 20_000 })
         .then(() => 'sidebar' as const)
         .catch(() => null),
       signInButton
@@ -90,9 +90,10 @@ async function signIn(page: Page) {
     return;
   }
 
-  const popupPromise = page.waitForEvent('popup');
-  await signInButton.click();
-  const popup = await popupPromise;
+  const [popup] = await Promise.all([
+    page.waitForEvent('popup', { timeout: 20_000 }),
+    signInButton.click({ timeout: 20_000 }),
+  ]);
   await popup.waitForLoadState('domcontentloaded');
   await popup.locator('#username').fill(username);
   await popup.locator('#password').fill(password);
