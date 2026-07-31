@@ -672,6 +672,23 @@ if [[ -n "$remaining_generated_changes" ]]; then
   exit 13
 fi
 
+sync_postgres_backup_cronjobs_if_required() {
+  local live_paths=""
+  live_paths="$(
+    kubectl -n "$NAMESPACE" get cronjob postgres-carbonet-hourly-backup \
+      -o jsonpath='{.spec.jobTemplate.spec.template.spec.volumes[*].hostPath.path}' \
+      2>/dev/null || true
+  )"
+  if git diff --name-only "$deployed_commit" "$target_commit" -- \
+      ops/scripts/apply-backup-cronjobs.sh |
+      grep -q . ||
+    [[ "$live_paths" != *"/opt/resonance-data/backups/postgres/primary"* ||
+      "$live_paths" != *"/opt/resonance-data/backups/postgres/mirror"* ]]; then
+    bash ops/scripts/apply-backup-cronjobs.sh
+    echo "[auto-deploy] PostgreSQL backup CronJobs synchronized"
+  fi
+}
+
 # Documentation, design metadata, catalog and automation-only changes do not
 # alter the running application. Fast-forward and refresh the searchable source
 # catalog without an unnecessary DB dump, JVM build, image build or rollout.
@@ -739,12 +756,7 @@ if [[ "$PLAN_RUNTIME_REQUIRED" != "true" ]]; then
       fi
       echo "[auto-deploy] GitHub webhook runtime synchronized"
     fi
-    if git diff --name-only "$deployed_commit" "$target_commit" -- \
-        ops/scripts/apply-backup-cronjobs.sh |
-        grep -q .; then
-      bash ops/scripts/apply-backup-cronjobs.sh
-      echo "[auto-deploy] PostgreSQL backup CronJobs synchronized"
-    fi
+    sync_postgres_backup_cronjobs_if_required
   fi
   backstage_only_change=false
   if [[ "$PLAN_BACKSTAGE_REQUIRED" == "true" ]] &&
@@ -1267,6 +1279,7 @@ run_backstage_identity_e2e_if_required
 # call sync_keycloak_actor_assignments_if_required before their success marker.
 run_actor_process_role_e2e_if_required
 run_backstage_screen_space_e2e_if_required
+sync_postgres_backup_cronjobs_if_required
 record_deploy_phase "postdeploy_validation"
 printf '%s\n' "$target_commit" > "${DEPLOY_STATE_FILE}.tmp"
 mv "${DEPLOY_STATE_FILE}.tmp" "$DEPLOY_STATE_FILE"
