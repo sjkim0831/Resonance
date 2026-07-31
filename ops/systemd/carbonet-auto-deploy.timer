@@ -2,8 +2,10 @@
 Description=Check Carbonet main for deployable commits
 
 [Timer]
-OnCalendar=*-*-* *:*:00
-RandomizedDelaySec=15s
+# GitHub push events dispatch immediately through the self-hosted runner.
+# This timer is a low-frequency recovery net for missed/disabled events.
+OnCalendar=*-*-* *:0/10:00
+RandomizedDelaySec=30s
 Persistent=true
 Unit=carbonet-auto-deploy.service
 

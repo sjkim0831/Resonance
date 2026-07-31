@@ -687,12 +687,17 @@ if [[ "$PLAN_RUNTIME_REQUIRED" != "true" ]]; then
       ops/scripts/test-atomic-asset-e4b-validation.sh \
       ops/scripts/test-catalog-identity-parallel-deploy.sh \
       ops/scripts/test-catalog-overlay-fast-path.sh \
-      ops/scripts/test-no-change-preflight-fast-path.sh |
+      ops/scripts/test-no-change-preflight-fast-path.sh \
+      ops/scripts/install-resonance-github-runner.sh \
+      ops/scripts/test-push-deploy-dispatch.sh \
+      ops/systemd/carbonet-auto-deploy.timer \
+      .github/workflows/carbonet-push-deploy.yml |
       grep -q .; then
     bash ops/scripts/test-catalog-identity-parallel-deploy.sh
     bash ops/scripts/test-catalog-overlay-fast-path.sh
     bash ops/scripts/test-atomic-asset-e4b-validation.sh
     bash ops/scripts/test-no-change-preflight-fast-path.sh
+    bash ops/scripts/test-push-deploy-dispatch.sh
   fi
   backstage_only_change=false
   if [[ "$PLAN_BACKSTAGE_REQUIRED" == "true" ]] &&
