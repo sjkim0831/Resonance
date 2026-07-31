@@ -60,6 +60,10 @@ export default defineConfig({
     outDir: buildTarget,
     emptyOutDir: true,
     manifest: true,
+    // Hundreds of immutable chunks are verified by the asset-closure gate.
+    // Recomputing every gzip size during each deploy adds latency without
+    // changing emitted bytes or the fail-closed publication contract.
+    reportCompressedSize: false,
     rollupOptions: {
       output: {
         manualChunks(id) {

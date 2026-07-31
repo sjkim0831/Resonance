@@ -15,6 +15,8 @@ CARBONET_NODE_HEAP_MB="${CARBONET_NODE_HEAP_MB:-8192}"
 SKIP_FRONTEND_BUILD="${SKIP_FRONTEND_BUILD:-false}"
 FRONTEND_TYPECHECK_MODE="${FRONTEND_TYPECHECK_MODE:-project}"
 UPDATE_GIT_METADATA="${UPDATE_GIT_METADATA:-true}"
+SKIP_OVERLAY_BACKUP="${SKIP_OVERLAY_BACKUP:-false}"
+DEFER_REACT_MOUNT_VERIFY="${DEFER_REACT_MOUNT_VERIFY:-false}"
 SHARED_FRONTEND_NODE_MODULES="${SHARED_FRONTEND_NODE_MODULES:-/opt/Resonance/projects/carbonet-frontend/source/node_modules}"
 SHARED_GENERATED_SCREEN_DIR="${SHARED_GENERATED_SCREEN_DIR:-/opt/Resonance/projects/carbonet-frontend/source/src/generated/screen-generation}"
 
@@ -145,8 +147,12 @@ else
   kubectl -n "$NAMESPACE" exec "$pod" -- sh -lc 'test -d /app/react-app-overlay && test -f /app/react-app-overlay/index.html'
 fi
 
-echo "[screen-overlay-apply] backup overlay"
-bash "$GUARD_SCRIPT" backup >/dev/null
+if [[ "$SKIP_OVERLAY_BACKUP" == "true" ]]; then
+  echo "[screen-overlay-apply] overlay backup supplied by outer deployment snapshot"
+else
+  echo "[screen-overlay-apply] backup overlay"
+  bash "$GUARD_SCRIPT" backup >/dev/null
+fi
 
 if [[ "$SKIP_FRONTEND_BUILD" != "true" ]]; then
   ensure_frontend_dependencies
@@ -206,7 +212,9 @@ if [[ -r "$smoke_secret" ]]; then
   source "$smoke_secret"
   set +a
 fi
-if ! (cd "$SOURCE_DIR" && BASE_URL="$BASE_URL" node "$ROOT_DIR/ops/scripts/verify-react-mount.mjs"); then
+if [[ "$DEFER_REACT_MOUNT_VERIFY" == "true" ]]; then
+  echo "[screen-overlay-apply] React mount verification delegated to the bounded browser gate"
+elif ! (cd "$SOURCE_DIR" && BASE_URL="$BASE_URL" node "$ROOT_DIR/ops/scripts/verify-react-mount.mjs"); then
   echo "[screen-overlay-apply] React mount failed; restore latest known overlay backup" >&2
   bash "$GUARD_SCRIPT" restore-latest
   BASE_URL="$BASE_URL" bash "$GUARD_SCRIPT" verify-all
