@@ -8,6 +8,13 @@ export FULL_SCREEN_SMOKE_MANIFEST="${FULL_SCREEN_SMOKE_MANIFEST:-$cache_dir/mani
 export FULL_SCREEN_SMOKE_RESULT_DIR="$result_dir"
 export FULL_SCREEN_SMOKE_BASELINE="${FULL_SCREEN_SMOKE_BASELINE:-$cache_dir/last-success.json}"
 
+# Prefer the host-managed Chromium binary when available. This decouples the
+# deployment gate from Playwright's package-specific browser cache revision,
+# which can legitimately change after a lockfile update.
+if [[ -z "${PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH:-}" && -x /snap/bin/chromium ]]; then
+  export PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/snap/bin/chromium
+fi
+
 # Interrupted operator runs can leave Playwright's default output owned by a
 # different account. Repair only these bounded generated directories before
 # the fail-closed browser gate starts; source files are never changed here.
