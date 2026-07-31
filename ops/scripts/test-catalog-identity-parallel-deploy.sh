@@ -12,7 +12,7 @@ import sys
 
 source = Path(sys.argv[1]).read_text(encoding="utf-8")
 start = source.index('catalog_identity_sync_log="$ROOT_DIR/var/logs/catalog-identity-sync-')
-end = source.index('record_deploy_phase "catalog_apply_and_verify"', start)
+end = source.index('record_deploy_phase "backstage_visual_e2e"', start)
 block = source[start:end]
 
 required = [
@@ -35,6 +35,13 @@ assert positions['wait "$catalog_identity_sync_pid"'] < positions[
 ]
 assert "concurrent identity reconciliation failed" in block
 assert 'exit 25' in block
+for phase in [
+    'catalog_sync',
+    'backstage_build_rollout',
+    'identity_reconcile',
+    'actor_role_e2e',
+]:
+    assert f'record_deploy_phase "{phase}"' in block
 
 cleanup_start = source.index("cleanup_deploy() {")
 cleanup_end = source.index("trap cleanup_deploy", cleanup_start)

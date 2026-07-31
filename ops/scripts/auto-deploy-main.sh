@@ -972,7 +972,9 @@ if [[ "$PLAN_RUNTIME_REQUIRED" != "true" ]]; then
   echo "[auto-deploy] identity reconciliation running concurrently pid=$catalog_identity_sync_pid"
   bash ops/scripts/sync-unified-asset-catalog.sh "$deployed_commit" "$target_commit"
   sync_backstage_catalog_if_required
+  record_deploy_phase "catalog_sync"
   deploy_backstage_if_required
+  record_deploy_phase "backstage_build_rollout"
   start_backstage_visual_e2e
   if wait "$catalog_identity_sync_pid"; then
     cat "$catalog_identity_sync_log"
@@ -982,9 +984,11 @@ if [[ "$PLAN_RUNTIME_REQUIRED" != "true" ]]; then
     cat "$catalog_identity_sync_log" >&2
     exit 25
   fi
+  record_deploy_phase "identity_reconcile"
   run_actor_process_role_e2e_if_required
+  record_deploy_phase "actor_role_e2e"
   wait_backstage_visual_e2e
-  record_deploy_phase "catalog_apply_and_verify"
+  record_deploy_phase "backstage_visual_e2e"
   printf '%s\n' "$target_commit" > "${DEPLOY_STATE_FILE}.tmp"
   mv "${DEPLOY_STATE_FILE}.tmp" "$DEPLOY_STATE_FILE"
   if [[ "$PLAN_BACKSTAGE_REQUIRED" == "true" ]]; then
