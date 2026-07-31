@@ -7,6 +7,8 @@ DRILL_ROOT="${RESTORE_DRILL_ROOT:-/opt/resonance-data/restore-drills}"
 IMAGE="${RESTORE_DRILL_IMAGE:-postgres:16}"
 TIMEOUT="${RESTORE_DRILL_TIMEOUT:-3600s}"
 KEEP_DATA="${RESTORE_DRILL_KEEP_DATA:-false}"
+PRODUCTION_HEALTH_URL="${RESTORE_DRILL_PRODUCTION_HEALTH_URL:-http://127.0.0.1/actuator/health}"
+RUNTIME_RECOVERY_SCRIPT="${RESTORE_DRILL_RUNTIME_RECOVERY_SCRIPT:-/opt/resonance-data/control-plane/bin/reconcile-post-reboot-runtime.sh}"
 RUN_ID="${RESTORE_DRILL_RUN_ID:-$(date -u +%Y%m%dT%H%M%SZ)}"
 POD="postgres-restore-${RUN_ID,,}"
 POD="${POD//[^a-z0-9-]/-}"
@@ -37,6 +39,12 @@ cleanup() {
   fi
 }
 trap cleanup EXIT
+
+production_health="$(curl -fsS --max-time 10 "$PRODUCTION_HEALTH_URL" || true)"
+[[ "$production_health" == *'"status":"UP"'* ]] || {
+  echo "[restore-drill] refused because production health is not UP" >&2
+  exit 3
+}
 
 (cd "$BACKUP_ROOT" && sha256sum -c "$backup_name.sha256")
 kubectl create namespace "$NAMESPACE" --dry-run=client -o yaml | kubectl apply -f - >/dev/null
@@ -80,7 +88,7 @@ spec:
           cpu: "500m"
           memory: "1Gi"
         limits:
-          cpu: "4"
+          cpu: "2"
           memory: "8Gi"
       readinessProbe:
         exec:
@@ -108,7 +116,7 @@ YAML
 kubectl -n "$NAMESPACE" wait --for=condition=Ready "pod/$POD" --timeout=180s
 started_epoch="$(date +%s)"
 kubectl -n "$NAMESPACE" exec "$POD" -- \
-  pg_restore -U postgres --exit-on-error --no-owner --no-acl --jobs=4 \
+  pg_restore -U postgres --exit-on-error --no-owner --no-acl --jobs=2 \
   --dbname=carbonet_restore "/backup/$backup_name"
 completed_epoch="$(date +%s)"
 
@@ -159,5 +167,19 @@ path = pathlib.Path("$REPORT")
 path.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n")
 print(json.dumps(report, ensure_ascii=False))
 PY
+
+cleanup
+trap - EXIT
+
+production_health="$(curl -fsS --max-time 10 "$PRODUCTION_HEALTH_URL" || true)"
+if [[ "$production_health" != *'"status":"UP"'* && -x "$RUNTIME_RECOVERY_SCRIPT" ]]; then
+  echo "[restore-drill] production health degraded; invoking bounded runtime recovery" >&2
+  bash "$RUNTIME_RECOVERY_SCRIPT"
+  production_health="$(curl -fsS --max-time 10 "$PRODUCTION_HEALTH_URL" || true)"
+fi
+[[ "$production_health" == *'"status":"UP"'* ]] || {
+  echo "[restore-drill] production health did not recover" >&2
+  exit 31
+}
 
 [[ "$status" == "PASS" ]]
