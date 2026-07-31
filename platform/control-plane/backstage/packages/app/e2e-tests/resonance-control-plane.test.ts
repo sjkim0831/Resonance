@@ -11,6 +11,7 @@ const requestedRoutes = (process.env.RESONANCE_BACKSTAGE_E2E_ROUTES ?? '')
   .map(route => route.trim())
   .filter(Boolean);
 const storageStatePath = process.env.BACKSTAGE_E2E_STORAGE_STATE;
+// Visual-only changes must exercise the deployed runtime without rebuilding it.
 const designDocumentTitles = [
   '업무·요구사항',
   '액터·RACI',
