@@ -703,6 +703,20 @@ if [[ "$PLAN_RUNTIME_REQUIRED" != "true" ]]; then
     bash ops/scripts/test-no-change-preflight-fast-path.sh
     bash ops/scripts/test-push-deploy-dispatch.sh
     bash ops/scripts/test-github-deploy-webhook.sh
+    if git diff --name-only "$deployed_commit" "$target_commit" -- \
+        ops/scripts/resonance-github-deploy-webhook.py \
+        ops/systemd/carbonet-github-deploy-webhook.service |
+        grep -q .; then
+      sudo -n install -m 0750 -o root -g root \
+        ops/scripts/resonance-github-deploy-webhook.py \
+        /opt/resonance-data/control-plane/bin/resonance-github-deploy-webhook.py
+      sudo -n install -m 0644 \
+        ops/systemd/carbonet-github-deploy-webhook.service \
+        /etc/systemd/system/carbonet-github-deploy-webhook.service
+      sudo -n systemctl daemon-reload
+      sudo -n systemctl restart carbonet-github-deploy-webhook.service
+      echo "[auto-deploy] GitHub webhook runtime synchronized"
+    fi
   fi
   backstage_only_change=false
   if [[ "$PLAN_BACKSTAGE_REQUIRED" == "true" ]] &&

@@ -24,4 +24,6 @@ grep -q 'chown root:sjkim /etc/resonance/github-deploy-webhook.secret' \
   "$root/ops/scripts/install-resonance-github-deploy-webhook.sh"
 grep -q -- '--network host' \
   "$root/ops/scripts/install-resonance-github-deploy-webhook.sh"
+grep -q 'GitHub webhook runtime synchronized' \
+  "$root/ops/scripts/auto-deploy-main.sh"
 printf '%s\n' "GITHUB_DEPLOY_WEBHOOK_CONTRACT_PASS"
