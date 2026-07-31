@@ -61,6 +61,7 @@ export default defineConfig({
       ? { executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE }
       : undefined,
     viewport: { width: 1440, height: 1000 },
+    storageState: process.env.BACKSTAGE_E2E_STORAGE_STATE || undefined,
     screenshot: 'only-on-failure',
     trace: 'on-first-retry',
   },
