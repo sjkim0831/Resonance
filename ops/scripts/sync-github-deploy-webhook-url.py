@@ -62,6 +62,41 @@ def current_tunnel_url() -> str:
     raise RuntimeError("quick tunnel URL unavailable after 45 seconds")
 
 
+def tailscale_funnel_url() -> str | None:
+    result = subprocess.run(
+        ("tailscale", "funnel", "status", "--json"),
+        text=True,
+        capture_output=True,
+        check=False,
+        timeout=20,
+    )
+    if result.returncode != 0:
+        return None
+    try:
+        status = json.loads(result.stdout)
+    except json.JSONDecodeError:
+        return None
+    allowed = status.get("AllowFunnel", {})
+    for host, config in status.get("Web", {}).items():
+        handlers = config.get("Handlers", {})
+        if (
+            allowed.get(host) is True
+            and handlers.get("/", {}).get("Proxy") == "http://127.0.0.1:9088"
+        ):
+            return f"https://{host.removesuffix(':443')}"
+    return None
+
+
+def remove_quick_tunnel() -> None:
+    subprocess.run(
+        ("sudo", "-n", "docker", "rm", "-f", CONTAINER),
+        text=True,
+        capture_output=True,
+        check=False,
+        timeout=20,
+    )
+
+
 def ensure_tunnel() -> None:
     result = subprocess.run(
         (
@@ -178,7 +213,8 @@ def atomic_write(path: Path, value: str) -> None:
 
 
 def main() -> int:
-    tunnel_url = current_tunnel_url()
+    stable_funnel = tailscale_funnel_url()
+    tunnel_url = stable_funnel or current_tunnel_url()
     wait_public_health(tunnel_url)
     expected = f"{tunnel_url}{HOOK_PATH}"
     token = github_token()
@@ -196,7 +232,14 @@ def main() -> int:
     else:
         status = "unchanged"
     atomic_write(PUBLIC_URL_FILE, f"{tunnel_url}\n")
-    print(f"GITHUB_WEBHOOK_URL_SYNC_PASS status={status}")
+    if stable_funnel:
+        remove_quick_tunnel()
+        transport = "tailscale"
+    else:
+        transport = "cloudflare-fallback"
+    print(
+        f"GITHUB_WEBHOOK_URL_SYNC_PASS status={status} transport={transport}"
+    )
     return 0
 
 
