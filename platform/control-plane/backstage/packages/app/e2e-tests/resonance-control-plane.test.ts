@@ -98,6 +98,88 @@ async function signIn(page: Page) {
   ).toBeAttached({ timeout: 30_000 });
 }
 
+async function verifyRoute(
+  page: Page,
+  [route, expectedTitle]: (typeof routes)[number],
+) {
+  const runtimeErrors: string[] = [];
+  page.on('pageerror', error =>
+    runtimeErrors.push(`pageerror: ${error.message}`),
+  );
+  page.on('console', message => {
+    if (message.type() === 'error') {
+      runtimeErrors.push(
+        `console: ${message.text()} (${message.location().url || 'unknown'})`,
+      );
+    }
+  });
+  page.on('response', response => {
+    const request = response.request();
+    const isIdentityAdminApi = response
+      .url()
+      .includes('/api/resonance-identity-admin/');
+    if (
+      (response.status() >= 500 ||
+        (isIdentityAdminApi && response.status() >= 400)) &&
+      ['document', 'fetch', 'xhr', 'script'].includes(request.resourceType())
+    ) {
+      runtimeErrors.push(
+        `http ${response.status()}: ${request.method()} ${response.url()}`,
+      );
+    }
+  });
+  page.on('requestfailed', request => {
+    if (request.failure()?.errorText === 'net::ERR_ABORTED') {
+      return;
+    }
+    if (
+      ['document', 'fetch', 'xhr', 'script'].includes(request.resourceType())
+    ) {
+      runtimeErrors.push(
+        `requestfailed: ${request.method()} ${request.url()} (${
+          request.failure()?.errorText
+        })`,
+      );
+    }
+  });
+
+  const response = await page.goto(route, {
+    waitUntil: 'domcontentloaded',
+    timeout: 20_000,
+  });
+  expect(response?.status(), `${route} document response`).toBe(200);
+  await expect(
+    page.getByText(expectedTitle, { exact: true }).first(),
+  ).toBeVisible();
+  await expect(page.locator('body')).not.toContainText(
+    /React app did not mount|Unexpected token '<'|페이지 처리 중 오류가 발생했습니다|Something went wrong/i,
+  );
+  expect(
+    (await page.locator('body').innerText()).trim().length,
+  ).toBeGreaterThan(200);
+
+  if (route === '/system-recovery') {
+    await expect(page.getByText('외부 백업 전체 복원 검증')).toBeVisible();
+    await expect(page.getByText('복구 관리자 작업')).toBeVisible();
+    await expect(page.getByText(/carbonet_\d{8}_\d{6}\.dump/)).toBeVisible();
+    await expect(
+      page.getByText(/등록된 복구 작업이 없습니다.|조치 필요|해결/).first(),
+    ).toBeVisible();
+    await expect(page.getByText('정상', { exact: true }).first()).toBeVisible();
+  }
+
+  if (evidenceDir) {
+    await page.screenshot({
+      path: path.join(
+        evidenceDir,
+        `${route.slice(1).replaceAll('/', '-')}.png`,
+      ),
+      fullPage: true,
+    });
+  }
+  expect(runtimeErrors, `${route} emitted runtime errors`).toEqual([]);
+}
+
 test('authenticated Resonance control-plane routes render without runtime errors', async ({
   page,
 }) => {
@@ -149,51 +231,18 @@ test('authenticated Resonance control-plane routes render without runtime errors
     fs.mkdirSync(evidenceDir, { recursive: true });
   }
 
-  for (const [route, expectedTitle] of routes) {
-    const errorOffset = runtimeErrors.length;
-    // Backstage keeps catalog/auth requests active in the background. Waiting
-    // for global network idleness can hang after the page is already usable.
-    const response = await page.goto(route, {
-      waitUntil: 'domcontentloaded',
-      timeout: 20_000,
-    });
-    expect(response?.status(), `${route} document response`).toBe(200);
-    await expect(
-      page.getByText(expectedTitle, { exact: true }).first(),
-    ).toBeVisible();
-    await expect(page.locator('body')).not.toContainText(
-      /React app did not mount|Unexpected token '<'|페이지 처리 중 오류가 발생했습니다|Something went wrong/i,
+  const routeConcurrency = 4;
+  for (let offset = 0; offset < routes.length; offset += routeConcurrency) {
+    await Promise.all(
+      routes.slice(offset, offset + routeConcurrency).map(async routeSpec => {
+        const routePage = await page.context().newPage();
+        try {
+          await verifyRoute(routePage, routeSpec);
+        } finally {
+          await routePage.close();
+        }
+      }),
     );
-    expect(
-      (await page.locator('body').innerText()).trim().length,
-    ).toBeGreaterThan(200);
-
-    if (evidenceDir) {
-      await page.screenshot({
-        path: path.join(
-          evidenceDir,
-          `${route.slice(1).replaceAll('/', '-')}.png`,
-        ),
-        fullPage: true,
-      });
-    }
-
-    expect(
-      runtimeErrors.slice(errorOffset),
-      `${route} emitted runtime errors`,
-    ).toEqual([]);
-
-    if (route === '/system-recovery') {
-      await expect(page.getByText('외부 백업 전체 복원 검증')).toBeVisible();
-      await expect(page.getByText('복구 관리자 작업')).toBeVisible();
-      await expect(page.getByText(/carbonet_\d{8}_\d{6}\.dump/)).toBeVisible();
-      await expect(
-        page.getByText(/등록된 복구 작업이 없습니다.|조치 필요|해결/).first(),
-      ).toBeVisible();
-      await expect(
-        page.getByText('정상', { exact: true }).first(),
-      ).toBeVisible();
-    }
   }
 
   const controlRoute =
@@ -273,6 +322,7 @@ test('authenticated Resonance control-plane routes render without runtime errors
     ),
     'mobile recovery page must not create body-level horizontal overflow',
   ).toBe(true);
+  expect(runtimeErrors, 'interactive route emitted runtime errors').toEqual([]);
   if (evidenceDir) {
     await page.screenshot({
       path: path.join(evidenceDir, 'actor-process-control-mobile.png'),
