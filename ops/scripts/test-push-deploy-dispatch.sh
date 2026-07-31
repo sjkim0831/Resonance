@@ -8,10 +8,16 @@ installer="$root/ops/scripts/install-resonance-github-runner.sh"
 
 bash -n "$installer"
 grep -q 'resonance-deploy' "$workflow"
-grep -q 'systemctl start --no-block carbonet-auto-deploy.service' "$workflow"
+grep -q 'systemctl start carbonet-auto-deploy.service' "$workflow"
 grep -q 'carbonet-main-success.commit' "$workflow"
 grep -q 'actuator/health' "$workflow"
 grep -q 'merge-base --is-ancestor' "$workflow"
+grep -q 'DEPLOY_EVENT_GATE_PASS' "$workflow"
+if grep -q 'sleep 1' "$workflow"; then
+  echo "push workflow must not use polling sleeps" >&2
+  exit 1
+fi
+[[ "$(grep -c '^      - name:' "$workflow")" == "1" ]]
 grep -q 'OnCalendar=.*0/10' "$timer"
 grep -q '/opt/resonance-data/github-runner' "$installer"
 grep -q 'systemctl is-active --quiet' "$installer"

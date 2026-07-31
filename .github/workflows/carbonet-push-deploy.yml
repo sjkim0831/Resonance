@@ -19,44 +19,36 @@ jobs:
       - resonance-deploy
     timeout-minutes: 20
     steps:
-      - name: Start fail-closed deployment
-        shell: bash
-        run: |
-          set -euo pipefail
-          sudo -n systemctl start --no-block carbonet-auto-deploy.service
-
-      - name: Verify deployed revision and runtime health
+      - name: Deploy and verify
         shell: bash
         env:
           EXPECTED_REVISION: ${{ github.sha }}
         run: |
           set -euo pipefail
+          started_ms="$(date +%s%3N)"
           marker=/opt/resonance-data/deploy/carbonet-main-success.commit
-          deadline=$((SECONDS + 900))
-          while (( SECONDS < deadline )); do
-            deployed="$(cat "$marker" 2>/dev/null || true)"
-            service_state="$(systemctl is-active carbonet-auto-deploy.service || true)"
-            revision_satisfied=false
-            if [[ "$deployed" == "$EXPECTED_REVISION" ]]; then
-              revision_satisfied=true
-            elif [[ -n "$deployed" ]] &&
-              git -C /opt/Resonance cat-file -e "$EXPECTED_REVISION^{commit}" 2>/dev/null &&
-              git -C /opt/Resonance cat-file -e "$deployed^{commit}" 2>/dev/null &&
-              git -C /opt/Resonance merge-base --is-ancestor "$EXPECTED_REVISION" "$deployed"; then
-              revision_satisfied=true
-              echo "push revision superseded by deployed descendant: $deployed"
-            fi
-            if [[ "$revision_satisfied" == "true" && "$service_state" != "active" ]]; then
-              curl -fsS --max-time 10 http://127.0.0.1/actuator/health |
-                grep -q '"status":"UP"'
-              echo "DEPLOY_EVENT_GATE_PASS revision=$EXPECTED_REVISION"
-              exit 0
-            fi
-            if [[ "$service_state" == "failed" ]]; then
-              sudo -n journalctl -u carbonet-auto-deploy.service -n 120 --no-pager >&2
-              exit 1
-            fi
-            sleep 1
-          done
-          echo "deployment marker did not reach $EXPECTED_REVISION within 900 seconds" >&2
-          exit 1
+          if ! sudo -n systemctl start carbonet-auto-deploy.service; then
+            sudo -n journalctl -u carbonet-auto-deploy.service -n 120 --no-pager >&2
+            exit 1
+          fi
+
+          deployed="$(cat "$marker" 2>/dev/null || true)"
+          revision_satisfied=false
+          if [[ "$deployed" == "$EXPECTED_REVISION" ]]; then
+            revision_satisfied=true
+          elif [[ -n "$deployed" ]] &&
+            git -C /opt/Resonance cat-file -e "$EXPECTED_REVISION^{commit}" 2>/dev/null &&
+            git -C /opt/Resonance cat-file -e "$deployed^{commit}" 2>/dev/null &&
+            git -C /opt/Resonance merge-base --is-ancestor "$EXPECTED_REVISION" "$deployed"; then
+            revision_satisfied=true
+            echo "push revision superseded by deployed descendant: $deployed"
+          fi
+          if [[ "$revision_satisfied" != "true" ]]; then
+            echo "deployment marker mismatch expected=$EXPECTED_REVISION actual=${deployed:-missing}" >&2
+            exit 1
+          fi
+
+          curl -fsS --max-time 10 http://127.0.0.1/actuator/health |
+            grep -q '"status":"UP"'
+          elapsed_ms=$(( $(date +%s%3N) - started_ms ))
+          echo "DEPLOY_EVENT_GATE_PASS revision=$EXPECTED_REVISION elapsedMs=$elapsed_ms"
