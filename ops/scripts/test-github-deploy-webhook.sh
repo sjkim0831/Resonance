@@ -18,4 +18,6 @@ grep -q 'chmod 0640 /etc/resonance/github-deploy-webhook.secret' \
   "$root/ops/scripts/install-resonance-github-deploy-webhook.sh"
 grep -q 'chown root:sjkim /etc/resonance/github-deploy-webhook.secret' \
   "$root/ops/scripts/install-resonance-github-deploy-webhook.sh"
+grep -q -- '--network host' \
+  "$root/ops/scripts/install-resonance-github-deploy-webhook.sh"
 printf '%s\n' "GITHUB_DEPLOY_WEBHOOK_CONTRACT_PASS"
