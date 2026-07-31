@@ -22,7 +22,7 @@ release_json="$(curl -fsSL --max-time 20 \
 runner_version="$(jq -r '.tag_name | ltrimstr("v")' <<<"$release_json")"
 asset_url="$(jq -r '
   .assets[]
-  | select(.name | test("^actions-runner-linux-x64-[0-9.]+\\\\.tar\\\\.gz$"))
+  | select(.name | test("^actions-runner-linux-x64-[0-9.]+\\.tar\\.gz$"))
   | .browser_download_url
 ' <<<"$release_json" | head -n 1)"
 [[ -n "$runner_version" && -n "$asset_url" ]] || {
