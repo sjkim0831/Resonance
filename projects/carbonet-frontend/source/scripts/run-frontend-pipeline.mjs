@@ -1,7 +1,12 @@
 import { spawn, spawnSync } from "node:child_process";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 const npm = process.platform === "win32" ? "npm.cmd" : "npm";
 const npx = process.platform === "win32" ? "npx.cmd" : "npx";
+const scriptRoot = path.dirname(fileURLToPath(import.meta.url));
+const frontendRoot = path.resolve(scriptRoot, "..");
+const frontendBundler = process.env.CARBONET_FRONTEND_BUNDLER === "rolldown" ? "rolldown" : "vite";
 const env = {
   ...process.env,
   NODE_OPTIONS: `--max-old-space-size=${process.env.CARBONET_NODE_HEAP_MB || "8192"} ${process.env.NODE_OPTIONS || ""}`.trim(),
@@ -74,7 +79,7 @@ if (process.argv.includes("--build")) {
     console.log("[frontend-pipeline] project-reference typecheck skipped; external noEmit evidence required");
     run(npx, ["vite", "build"]);
   } else {
-    console.log("[frontend-pipeline] typecheck and Vite build run concurrently; both remain fail-closed");
+    console.log(`[frontend-pipeline] typecheck and ${frontendBundler} build run concurrently; both remain fail-closed`);
     const typecheckArgs = forceFullTypecheck
       ? ["tsc", "-p", "tsconfig.app.json", "--pretty", "false"]
       : [
@@ -84,10 +89,15 @@ if (process.argv.includes("--build")) {
           "--pretty", "false",
         ];
     console.log(`[frontend-pipeline] typecheck mode=${forceFullTypecheck ? "full" : "incremental"}`);
+    const bundlerCommand = process.execPath;
+    const bundlerArgs = frontendBundler === "rolldown"
+      ? [path.join(frontendRoot, "node_modules/rolldown-vite/bin/vite.js"), "build"]
+      : [path.join(frontendRoot, "node_modules/vite/bin/vite.js"), "build"];
+    console.log(`[frontend-pipeline] bundler=${frontendBundler}`);
     try {
       await Promise.all([
         runAsync(npx, typecheckArgs),
-        runAsync(npx, ["vite", "build"]),
+        runAsync(bundlerCommand, bundlerArgs),
       ]);
     } catch (error) {
       console.error(`[frontend-pipeline] parallel build failed: ${error instanceof Error ? error.message : error}`);

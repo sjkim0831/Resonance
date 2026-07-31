@@ -14,6 +14,7 @@ BASE_URL="${BASE_URL:-http://127.0.0.1}"
 CARBONET_NODE_HEAP_MB="${CARBONET_NODE_HEAP_MB:-8192}"
 SKIP_FRONTEND_BUILD="${SKIP_FRONTEND_BUILD:-false}"
 FRONTEND_TYPECHECK_MODE="${FRONTEND_TYPECHECK_MODE:-project}"
+FRONTEND_BUNDLER="${FRONTEND_BUNDLER:-rolldown}"
 UPDATE_GIT_METADATA="${UPDATE_GIT_METADATA:-true}"
 SKIP_OVERLAY_BACKUP="${SKIP_OVERLAY_BACKUP:-false}"
 DEFER_REACT_MOUNT_VERIFY="${DEFER_REACT_MOUNT_VERIFY:-false}"
@@ -134,6 +135,26 @@ ensure_generated_screen_assets() {
   }
 }
 
+ensure_frontend_bundler() {
+  [[ "$FRONTEND_BUNDLER" == "rolldown" ]] || return 0
+  local rolldown_entry="$SOURCE_DIR/node_modules/rolldown-vite/bin/vite.js"
+  [[ -f "$rolldown_entry" ]] && return 0
+
+  # The isolated worktree reuses the stable dependency directory. Install the
+  # exact lockfile-pinned acceleration package there once; subsequent deploys
+  # remain offline and take the normal fast path.
+  local shared_source_dir
+  shared_source_dir="$(dirname "$SHARED_FRONTEND_NODE_MODULES")"
+  echo "[screen-overlay-apply] installing lockfile-pinned rolldown-vite dependency"
+  npm install --prefix "$shared_source_dir" \
+    --no-save --package-lock=false --ignore-scripts --no-audit --no-fund \
+    rolldown-vite@7.3.1
+  [[ -f "$rolldown_entry" ]] || {
+    echo "[screen-overlay-apply] rolldown-vite installation did not provide $rolldown_entry" >&2
+    exit 1
+  }
+}
+
 echo "[screen-overlay-apply] mode=all-screens-no-redeploy started=$started_iso"
 echo "[screen-overlay-apply] source=$SOURCE_DIR"
 echo "[screen-overlay-apply] overlay=$OVERLAY_DIR"
@@ -156,6 +177,7 @@ fi
 
 if [[ "$SKIP_FRONTEND_BUILD" != "true" ]]; then
   ensure_frontend_dependencies
+  ensure_frontend_bundler
   ensure_generated_screen_assets
   echo "[screen-overlay-apply] isolated npm build only; no gradle, no image, no rollout"
   staging_dir="$(mktemp -d "$STATUS_DIR/react-overlay-build.XXXXXX")"
@@ -175,13 +197,25 @@ if [[ "$SKIP_FRONTEND_BUILD" != "true" ]]; then
     rm -rf "$staging_dir"
     exit 2
   fi
-  if ! (cd "$SOURCE_DIR" && \
+  run_frontend_build() {
+    local bundler="$1"
+    (cd "$SOURCE_DIR" && \
     CARBONET_NODE_HEAP_MB="$CARBONET_NODE_HEAP_MB" \
     CARBONET_SKIP_BUILD_TYPECHECK="$skip_build_typecheck" \
+    CARBONET_FRONTEND_BUNDLER="$bundler" \
     VITE_OUT_DIR="$staging_dir" \
-    npm run build); then
-    rm -rf "$staging_dir"
-    exit 1
+    npm run build)
+  }
+  if ! run_frontend_build "$FRONTEND_BUNDLER"; then
+    if [[ "$FRONTEND_BUNDLER" == "rolldown" ]]; then
+      echo "[screen-overlay-apply] Rolldown failed; retrying the proven Vite bundler once" >&2
+      rm -rf "$staging_dir"
+      mkdir -p "$staging_dir"
+      run_frontend_build "vite" || { rm -rf "$staging_dir"; exit 1; }
+    else
+      rm -rf "$staging_dir"
+      exit 1
+    fi
   fi
   node "$ROOT_DIR/ops/scripts/verify-react-asset-closure.mjs" "$staging_dir"
   # Copy immutable assets before atomically replacing the entry document. Do
