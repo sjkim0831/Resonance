@@ -46,8 +46,9 @@ ensure_kubeconfig() {
   if [[ -n "${KUBECONFIG:-}" && -r "${KUBECONFIG:-}" ]]; then
     return 0
   fi
-  if [[ -r "$HOME/.kube/config" ]]; then
-    export KUBECONFIG="$HOME/.kube/config"
+  local home_dir="${HOME:-}"
+  if [[ -n "$home_dir" && -r "$home_dir/.kube/config" ]]; then
+    export KUBECONFIG="$home_dir/.kube/config"
     return 0
   fi
   if [[ -r /etc/kubernetes/admin.conf ]]; then

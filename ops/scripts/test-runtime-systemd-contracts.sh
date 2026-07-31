@@ -15,5 +15,6 @@ grep -Fq 'trap cleanup_generated_links EXIT' "$runner"
 
 grep -Fq 'WorkingDirectory=/opt/Resonance/var/deploy-worktrees/runtime-build' "$recovery"
 grep -Fq 'exec /bin/bash /opt/Resonance/var/deploy-worktrees/runtime-build/ops/scripts/resonance-up.sh' "$recovery"
+grep -Fq 'local home_dir="${HOME:-}"' "$root/ops/scripts/resonance-up.sh"
 
 echo "PASS: runtime-managed systemd units use the verified worktree and credential aliases"
