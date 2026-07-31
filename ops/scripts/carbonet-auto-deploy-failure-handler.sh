@@ -24,7 +24,7 @@ if grep -Eqi 'visual E2E|playwright|screenshot|browser regression' "$evidence"; 
   category=E2E
 elif grep -Eqi 'no valid .*backup|Flyway.*(fail|error)|Patroni.*(fail|not ready)|PostgreSQL.*(fail|not ready|unavailable)|database migration.*(fail|error)|schema backup.*(fail|invalid)' "$evidence"; then
   category=DATABASE
-elif grep -Eqi 'capacity-gate|DiskPressure|no space left|insufficient (disk|memory)|out of memory|OOM' "$evidence"; then
+elif grep -Eqi 'capacity-gate.*(FAIL|BLOCK|refus)|DiskPressure=True|no space left|insufficient (disk|memory)|out of memory|OOMKilled' "$evidence"; then
   category=CAPACITY
 elif grep -Eqi 'asset closure|asset-catalog|missing .*asset|bundle|chunk' "$evidence"; then
   category=ASSET

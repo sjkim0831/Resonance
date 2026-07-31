@@ -43,7 +43,7 @@ if [[ -s "$webhook_file" ]]; then
   fi
 fi
 
-alert="$(jq -n \
+alert="$(jq -cn \
   --arg createdAt "$(date -Iseconds)" \
   --arg status "$status" \
   --arg category "$category" \

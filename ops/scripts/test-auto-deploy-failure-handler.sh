@@ -23,6 +23,7 @@ grep -q 'arg status RUNNING' "$deploy"
 grep -q 'carbonet-deploy-notify.sh' "$handler"
 grep -q 'notification-dedupe' "$notifier"
 grep -q 'application/vnd.microsoft.card.adaptive' "$notifier"
+grep -q 'capacity-gate.*(FAIL|BLOCK|refus)' "$handler"
 
 if command -v jq >/dev/null 2>&1; then
   fixture="$(mktemp -d)"
