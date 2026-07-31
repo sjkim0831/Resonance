@@ -7,10 +7,11 @@ import path from "node:path";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const inventoryPath = path.join(root, "src/features/builder-studio/routeSourceInventory.ts");
 const fallbackRoutes = [
-  "/home", "/emission/project_list", "/emission/project/create", "/emission/my-tasks",
-  "/home/certificate-verify", "/admin", "/admin/system/menu", "/admin/system/actor-process",
-  "/admin/emission/survey-admin", "/admin/emission/survey-admin-data",
-  "/admin/emission/survey-report", "/admin/emission/survey-report-print"
+  "/home",
+  "/emission/project_list",
+  "/home/certificate-verify",
+  "/admin/system/actor-process",
+  "/admin/emission/survey-report-print"
 ];
 
 function escapeRegex(value) {
