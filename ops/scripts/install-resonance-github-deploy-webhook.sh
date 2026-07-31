@@ -17,8 +17,8 @@ sudo -n install -d -m 0750 -o sjkim -g sjkim "$state_dir" "$state_dir/deliveries
 sudo -n install -d -m 0755 "$bin_dir" /etc/resonance
 printf '%s' "$secret" |
   sudo -n tee /etc/resonance/github-deploy-webhook.secret >/dev/null
-sudo -n chmod 0600 /etc/resonance/github-deploy-webhook.secret
-sudo -n chown root:root /etc/resonance/github-deploy-webhook.secret
+sudo -n chmod 0640 /etc/resonance/github-deploy-webhook.secret
+sudo -n chown root:sjkim /etc/resonance/github-deploy-webhook.secret
 sudo -n install -m 0750 -o sjkim -g sjkim \
   "$root/ops/scripts/resonance-github-deploy-webhook.py" \
   "$bin_dir/resonance-github-deploy-webhook.py"
