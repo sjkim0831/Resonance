@@ -57,6 +57,10 @@ test.describe.configure({ mode: "parallel" });
 test.setTimeout(12 * 60_000);
 
 async function ensureAdminSession(page: Page) {
+  if (process.env.FULL_SCREEN_SMOKE_PREAUTHENTICATED === "true") {
+    await page.goto(`${baseUrl}/admin`, { waitUntil: "domcontentloaded" });
+    if (!/\/admin\/login\/loginView$/.test(new URL(page.url()).pathname)) return;
+  }
   await page.goto(`${baseUrl}/admin/login/loginView`, { waitUntil: "domcontentloaded" });
   if (!/\/admin\/login\/loginView$/.test(new URL(page.url()).pathname)) return;
   if (!username || !password) throw new Error("FULL_SCREEN_SMOKE_ADMIN_USER and FULL_SCREEN_SMOKE_ADMIN_PASSWORD are required");

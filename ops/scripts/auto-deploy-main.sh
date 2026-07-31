@@ -1014,6 +1014,7 @@ if [[ "$PLAN_FRONTEND_REQUIRED" != "true" \
   bash ops/scripts/test-postdeploy-parallel-browser-gate.sh
   bash ops/scripts/test-frontend-parallel-build-pipeline.sh
   bash ops/scripts/test-fast-overlay-snapshot.sh
+  bash ops/scripts/test-shared-smoke-auth-state.sh
   if [[ ",$PLAN_TESTS," == *",control-plane:validate,"* ]]; then
     bash ops/scripts/resonance-control-plane.sh validate
   fi

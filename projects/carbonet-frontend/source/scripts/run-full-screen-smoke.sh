@@ -7,6 +7,11 @@ result_dir="${FULL_SCREEN_SMOKE_RESULT_DIR:-$cache_dir/results}"
 export FULL_SCREEN_SMOKE_MANIFEST="${FULL_SCREEN_SMOKE_MANIFEST:-$cache_dir/manifest.json}"
 export FULL_SCREEN_SMOKE_RESULT_DIR="$result_dir"
 export FULL_SCREEN_SMOKE_BASELINE="${FULL_SCREEN_SMOKE_BASELINE:-$cache_dir/last-success.json}"
+auth_state_path=""
+cleanup_smoke_secrets() {
+  [[ -z "$auth_state_path" ]] || rm -f -- "$auth_state_path"
+}
+trap cleanup_smoke_secrets EXIT
 
 # Prefer the host-managed Chromium binary when available. This decouples the
 # deployment gate from Playwright's package-specific browser cache revision,
@@ -31,6 +36,21 @@ case "$result_dir" in
 esac
 mkdir -p "$result_dir"
 rm -f "$result_dir"/shard-*.json
+
+# Authenticate once through the same JSON endpoint used by the React login
+# form, then give every isolated browser context the resulting cookie state.
+# If preparation fails, the existing per-shard UI login remains the fail-safe.
+auth_state_path="$cache_dir/auth-state-$$.json"
+rm -f -- "$auth_state_path"
+export FULL_SCREEN_SMOKE_STORAGE_STATE="$auth_state_path"
+if node "$root_dir/scripts/prepare-full-screen-auth-state.mjs"; then
+  export FULL_SCREEN_SMOKE_PREAUTHENTICATED=true
+else
+  rm -f -- "$auth_state_path"
+  auth_state_path=""
+  unset FULL_SCREEN_SMOKE_STORAGE_STATE FULL_SCREEN_SMOKE_PREAUTHENTICATED
+  printf '[full-screen-smoke] shared authentication unavailable; using per-shard UI login\n' >&2
+fi
 
 bash "$root_dir/scripts/export-full-screen-smoke-manifest.sh"
 if [[ "${FULL_SCREEN_SMOKE_SKIP_QUALITY_REFRESH:-false}" != "true" ]]; then
