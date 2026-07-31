@@ -626,10 +626,12 @@ run_backstage_visual_e2e_if_required() {
      && ",$PLAN_TESTS," != *",backstage:catalog-sync,"* ]]; then
     return
   fi
-  local e2e_scope="${RESONANCE_BACKSTAGE_E2E_SCOPE:-full}"
+  local e2e_scope="${RESONANCE_BACKSTAGE_E2E_SCOPE:-full}" display_scope
   local e2e_routes="${RESONANCE_BACKSTAGE_E2E_ROUTES:-${backstage_e2e_effective_routes:-}}"
   [[ -n "$e2e_routes" ]] || e2e_routes="$(derive_backstage_e2e_routes)"
-  echo "[auto-deploy] Backstage visual E2E scope: $e2e_scope routes=${e2e_routes:-all}"
+  display_scope="$e2e_scope"
+  [[ -n "$e2e_routes" ]] && display_scope=impact
+  echo "[auto-deploy] Backstage visual E2E scope: $display_scope routes=${e2e_routes:-all}"
   BACKSTAGE_E2E_USERNAME="${BACKSTAGE_E2E_USERNAME:-sjkim}" \
   BACKSTAGE_E2E_SECRET_NAME="${BACKSTAGE_E2E_SECRET_NAME:-resonance-keycloak-integrated-admin}" \
   RESONANCE_BACKSTAGE_E2E_SCOPE="$e2e_scope" \
