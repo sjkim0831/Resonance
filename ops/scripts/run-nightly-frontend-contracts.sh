@@ -58,11 +58,11 @@ trap cleanup_generated_links EXIT
 }
 
 cd "$frontend"
-echo "[nightly-frontend-contracts] full TypeScript validation started"
-npm run typecheck:full
+echo "[nightly-frontend-contracts] TypeScript validation started"
+bash scripts/run-contract-typecheck.sh
 echo "[nightly-frontend-contracts] generated route identity validation started"
 npm run audit:generated-route-family
 echo "[nightly-frontend-contracts] 1000-screen browser regression started"
 FULL_SCREEN_SMOKE_CHANGED_ONLY=false \
   bash scripts/run-full-screen-smoke.sh
-echo "[nightly-frontend-contracts] PASS typecheck=full routeIdentity=closed browser=full"
+echo "[nightly-frontend-contracts] PASS typecheck=governed routeIdentity=closed browser=full"
