@@ -8,6 +8,9 @@ E2E_SPEC="$ROOT/platform/control-plane/backstage/packages/app/e2e-tests/resonanc
 E2E_RUNNER="$ROOT/ops/scripts/resonance-backstage-visual-e2e.sh"
 PLAYWRIGHT_CONFIG="$ROOT/platform/control-plane/backstage/playwright.config.ts"
 MANIFEST="$ROOT/deploy/k8s/control-plane/backstage.yaml"
+FULL_E2E_RUNNER="$ROOT/ops/scripts/resonance-backstage-full-e2e.sh"
+FULL_E2E_SERVICE="$ROOT/ops/systemd/resonance-backstage-full-e2e.service"
+FULL_E2E_TIMER="$ROOT/ops/systemd/resonance-backstage-full-e2e.timer"
 
 grep -Fq 'DEPENDENCY_CACHE_ROOT=' "$DEPLOY"
 grep -Fq "sha256sum \"\$APP/yarn.lock\" \"\$APP/package.json\" | awk '{print \$1}'" "$DEPLOY"
@@ -63,10 +66,19 @@ git() {
 }
 [[ "$(derive_backstage_e2e_routes)" == "/system-recovery" ]]
 git() {
+  printf '%s\n' deploy/k8s/control-plane/backstage.yaml
+}
+[[ "$(derive_backstage_e2e_routes)" == "/actor-process-control,/identity-administration,/system-operations" ]]
+git() {
   printf '%s\n' \
     platform/control-plane/backstage/packages/app/src/plugins/ccus-screen-designs/plugin.tsx
 }
 [[ -z "$(derive_backstage_e2e_routes)" ]]
-unset -f git derive_backstage_e2e_routes add_route
+unset -f git derive_backstage_e2e_routes add_route add_core_routes
+
+grep -Fq 'resonance-backstage-full-e2e.timer' "$AUTO_DEPLOY"
+grep -Fq 'RESONANCE_BACKSTAGE_E2E_SCOPE=full' "$FULL_E2E_RUNNER"
+grep -Fq 'resonance-backstage-full-e2e.sh' "$FULL_E2E_SERVICE"
+grep -Fq 'OnCalendar=*-*-* 02:40:00 Asia/Seoul' "$FULL_E2E_TIMER"
 
 echo "PASS Backstage deploy reuses dependencies, performs one fast rollout, and scopes E2E by impact"

@@ -1,0 +1,11 @@
+[Unit]
+Description=Run full Backstage visual regression every night
+
+[Timer]
+OnCalendar=*-*-* 02:40:00 Asia/Seoul
+Persistent=true
+RandomizedDelaySec=10m
+Unit=resonance-backstage-full-e2e.service
+
+[Install]
+WantedBy=timers.target

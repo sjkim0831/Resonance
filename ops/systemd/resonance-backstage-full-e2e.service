@@ -1,0 +1,17 @@
+[Unit]
+Description=Resonance Backstage full authenticated visual regression
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=sjkim
+Group=sjkim
+ExecStart=/opt/resonance-data/control-plane/bin/resonance-backstage-full-e2e.sh
+TimeoutStartSec=300
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7
+
+[Install]
+WantedBy=multi-user.target

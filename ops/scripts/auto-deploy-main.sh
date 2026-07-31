@@ -560,6 +560,11 @@ derive_backstage_e2e_routes() {
   add_route() {
     [[ ",$routes," == *",$1,"* ]] || routes="${routes:+$routes,}$1"
   }
+  add_core_routes() {
+    add_route /actor-process-control
+    add_route /identity-administration
+    add_route /system-operations
+  }
   while IFS= read -r file; do
     [[ -n "$file" ]] || continue
     case "$file" in
@@ -597,6 +602,17 @@ derive_backstage_e2e_routes() {
       platform/control-plane/backstage/packages/app/src/plugins/ccus-screen-designs/SystemRecoveryControlPage.tsx|\
       platform/control-plane/backstage/packages/backend/src/plugins/resonanceRecovery.ts)
         add_route /system-recovery ;;
+      deploy/k8s/control-plane/backstage.yaml|\
+      ops/scripts/auto-deploy-main.sh|\
+      ops/scripts/resonance-backstage-deploy.sh|\
+      ops/scripts/resonance-backstage-full-e2e.sh|\
+      ops/scripts/test-backstage-fast-deploy-policy.sh|\
+      ops/scripts/test-catalog-identity-parallel-deploy.sh|\
+      ops/systemd/resonance-backstage-full-e2e.service|\
+      ops/systemd/resonance-backstage-full-e2e.timer|\
+      platform/control-plane/backstage/app-config*.yaml|\
+      platform/control-plane/backstage/packages/backend/Dockerfile)
+        add_core_routes ;;
       *) full=true ;;
     esac
   done < <(git diff --name-only "$deployed_commit" "$target_commit")
@@ -903,6 +919,9 @@ if [[ "$PLAN_RUNTIME_REQUIRED" != "true" ]]; then
       ops/systemd/carbonet-patroni-auto-heal.timer \
       ops/systemd/carbonet-postgres-restore-drill.service \
       ops/systemd/carbonet-postgres-restore-drill.timer \
+      ops/scripts/resonance-backstage-full-e2e.sh \
+      ops/systemd/resonance-backstage-full-e2e.service \
+      ops/systemd/resonance-backstage-full-e2e.timer \
       ops/kubernetes/postgres-haproxy-config.yaml \
       .github/workflows/carbonet-push-deploy.yml |
       grep -q .; then
@@ -949,6 +968,21 @@ if [[ "$PLAN_RUNTIME_REQUIRED" != "true" ]]; then
     sync_post_reboot_recovery_if_required
     sync_patroni_auto_heal_if_required
     sync_postgres_restore_drill_if_required
+    if git diff --name-only "$deployed_commit" "$target_commit" -- \
+        ops/scripts/resonance-backstage-full-e2e.sh \
+        ops/systemd/resonance-backstage-full-e2e.service \
+        ops/systemd/resonance-backstage-full-e2e.timer | grep -q .; then
+      sudo -n install -m 0750 -o sjkim -g sjkim \
+        ops/scripts/resonance-backstage-full-e2e.sh \
+        /opt/resonance-data/control-plane/bin/resonance-backstage-full-e2e.sh
+      sudo -n install -m 0644 ops/systemd/resonance-backstage-full-e2e.service \
+        /etc/systemd/system/resonance-backstage-full-e2e.service
+      sudo -n install -m 0644 ops/systemd/resonance-backstage-full-e2e.timer \
+        /etc/systemd/system/resonance-backstage-full-e2e.timer
+      sudo -n systemctl daemon-reload
+      sudo -n systemctl enable --now resonance-backstage-full-e2e.timer >/dev/null
+      echo "[auto-deploy] nightly full Backstage E2E synchronized"
+    fi
   fi
   backstage_only_change=false
   if [[ "$PLAN_BACKSTAGE_REQUIRED" == "true" ]] &&
