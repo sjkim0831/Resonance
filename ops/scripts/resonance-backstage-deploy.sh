@@ -427,11 +427,18 @@ case "$mode" in
     ensure_auth_secret
     ensure_ingress_https_port
     finish_phase preflight
-    # Tag by the Backstage source tree rather than the repository commit.
-    # Documentation, deployment-script, or Carbonet changes then reuse the
-    # already verified image without rebuilding an identical application.
-    tag="$(git -C "$ROOT" rev-parse HEAD:platform/control-plane/backstage | cut -c1-12)"
+    # Tag only production runtime inputs. E2E specifications and documentation
+    # still run their own gates but cannot invalidate an identical image.
+    tag="$(bash "$ROOT/ops/scripts/resonance-backstage-runtime-fingerprint.sh" "$ROOT" HEAD | cut -c1-12)"
     image="$IMAGE_REPOSITORY:$tag"
+    legacy_tag="$(git -C "$ROOT" rev-parse HEAD:platform/control-plane/backstage | cut -c1-12)"
+    legacy_image="$IMAGE_REPOSITORY:$legacy_tag"
+    if ! docker image inspect "$image" >/dev/null 2>&1 &&
+      docker image inspect "$legacy_image" >/dev/null 2>&1; then
+      docker tag "$legacy_image" "$image"
+      docker push "$image"
+      echo "[backstage] promoted verified legacy image to runtime fingerprint: $image"
+    fi
 
     # An immutable image with the same source-tree hash has already passed all
     # dependency-backed generators, TypeScript checks and the backend build.

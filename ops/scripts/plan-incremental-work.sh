@@ -34,6 +34,15 @@ add_reason() {
 while IFS= read -r path; do
   [[ -z "$path" ]] && continue
   case "$path" in
+    ops/scripts/resonance-backstage-deploy.sh|\
+    ops/scripts/resonance-backstage-runtime-fingerprint.sh|\
+    ops/scripts/test-backstage-runtime-fingerprint.sh|\
+    ops/scripts/test-backstage-fast-deploy-policy.sh)
+      infrastructure_required=true; backstage_required=true
+      add_test "control-plane:validate"
+      add_test "backstage:build-deploy"
+      add_reason "backstage-deploy-contract"
+      ;;
     projects/carbonet-frontend/source/scripts/run-full-screen-smoke.sh|\
     projects/carbonet-frontend/source/scripts/finalize-full-screen-smoke.mjs|\
     projects/carbonet-frontend/source/scripts/generate-full-screen-smoke-manifest.mjs|\

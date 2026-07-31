@@ -605,7 +605,9 @@ derive_backstage_e2e_routes() {
       deploy/k8s/control-plane/backstage.yaml|\
       ops/scripts/auto-deploy-main.sh|\
       ops/scripts/resonance-backstage-deploy.sh|\
+      ops/scripts/resonance-backstage-runtime-fingerprint.sh|\
       ops/scripts/resonance-backstage-full-e2e.sh|\
+      ops/scripts/test-backstage-runtime-fingerprint.sh|\
       ops/scripts/test-backstage-fast-deploy-policy.sh|\
       ops/scripts/test-catalog-identity-parallel-deploy.sh|\
       ops/systemd/resonance-backstage-full-e2e.service|\
