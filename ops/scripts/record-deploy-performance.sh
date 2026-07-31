@@ -9,6 +9,9 @@ state_dir="${CARBONET_DEPLOY_PERFORMANCE_DIR:-$root/var/run/deploy-performance}"
 history_file="$state_dir/history.jsonl"
 latest_file="$state_dir/latest.json"
 diagnostic_file="$state_dir/diagnostic-required.env"
+phase_history_file="$state_dir/phase-history.jsonl"
+phase_latest_file="$state_dir/phase-latest.json"
+phase_file="${CARBONET_DEPLOY_PHASE_FILE:-}"
 
 [[ "$elapsed_ms" =~ ^[0-9]+$ ]] || {
   echo "[deploy-performance] invalid elapsed milliseconds: $elapsed_ms" >&2
@@ -48,6 +51,68 @@ fi
 mkdir -p "$state_dir"
 exec 8>"$state_dir/.lock"
 flock -w 5 8
+
+phase_summary='[]'
+slowest_phase=""
+slowest_phase_ms=0
+regressed_phases='[]'
+if [[ -n "$phase_file" && -s "$phase_file" ]]; then
+  if ! jq -e -s '
+      length > 0 and
+      all(.[]; (.phase | type == "string") and
+        (.durationMs | type == "number") and .durationMs >= 0)
+    ' "$phase_file" >/dev/null; then
+    echo "[deploy-performance] invalid phase telemetry: $phase_file" >&2
+    exit 3
+  fi
+
+  phase_summary="$(
+    jq -s '
+      group_by(.phase)
+      | map({phase:.[0].phase,durationMs:(map(.durationMs) | add)})
+      | sort_by(-.durationMs)
+    ' "$phase_file"
+  )"
+  slowest_phase="$(jq -r '.[0].phase // ""' <<<"$phase_summary")"
+  slowest_phase_ms="$(jq -r '.[0].durationMs // 0' <<<"$phase_summary")"
+
+  phase_baselines='{}'
+  if [[ -s "$phase_history_file" ]]; then
+    phase_baselines="$(
+      jq -s '
+        group_by(.phase)
+        | map({
+            key:.[0].phase,
+            value:(
+              map(.durationMs) | .[-20:] | sort |
+              {
+                sampleCount:length,
+                p50Ms:(if length == 0 then 0 else .[length / 2 | floor] end),
+                p95Ms:(if length == 0 then 0 else .[((length * 95 / 100) | ceil) - 1] end)
+              }
+            )
+          })
+        | from_entries
+      ' "$phase_history_file"
+    )"
+  fi
+
+  phase_summary="$(
+    jq -c --argjson baselines "$phase_baselines" '
+      map(
+        . as $phase |
+        ($baselines[$phase.phase] // {sampleCount:0,p50Ms:0,p95Ms:0}) as $baseline |
+        . + $baseline + {
+          regressed:(
+            $baseline.sampleCount >= 5 and $baseline.p50Ms > 0 and
+            $phase.durationMs > (($baseline.p50Ms * 125 / 100) | ceil)
+          )
+        }
+      )
+    ' <<<"$phase_summary"
+  )"
+  regressed_phases="$(jq -c '[.[] | select(.regressed) | .phase]' <<<"$phase_summary")"
+fi
 
 baseline_ms="$(
   if [[ -s "$history_file" ]]; then
@@ -95,18 +160,47 @@ record="$(
     --argjson baselineMs "$baseline_ms" \
     --argjson regressionLimitMs "$regression_limit_ms" \
     --argjson buildDurationSeconds "$build_duration_seconds" \
+    --arg slowestPhase "$slowest_phase" \
+    --argjson slowestPhaseMs "$slowest_phase_ms" \
+    --argjson phaseSummary "$phase_summary" \
+    --argjson regressedPhases "$regressed_phases" \
     '{
       timestamp:$timestamp,mode:$mode,revision:$revision,status:$status,
       reason:$reason,elapsedMs:$elapsedMs,sloElapsedMs:$sloElapsedMs,
       targetMs:$targetMs,verificationTargetMs:$verificationTargetMs,
       hardLimitMs:$hardLimitMs,baselineMs:$baselineMs,
       regressionLimitMs:$regressionLimitMs,
-      buildDurationSeconds:$buildDurationSeconds
+      buildDurationSeconds:$buildDurationSeconds,
+      slowestPhase:$slowestPhase,slowestPhaseMs:$slowestPhaseMs,
+      phaseSummary:$phaseSummary,regressedPhases:$regressedPhases
     }'
 )"
 printf '%s\n' "$record" >>"$history_file"
 printf '%s\n' "$record" >"${latest_file}.tmp"
 mv "${latest_file}.tmp" "$latest_file"
+
+if [[ "$(jq 'length' <<<"$phase_summary")" -gt 0 ]]; then
+  jq -c --arg timestamp "$(date -Iseconds)" --arg mode "$mode" --arg revision "$revision" '
+    .[] | {
+      timestamp:$timestamp,mode:$mode,revision:$revision,
+      phase:.phase,durationMs:.durationMs
+    }
+  ' <<<"$phase_summary" >>"$phase_history_file"
+  jq -cn \
+    --arg timestamp "$(date -Iseconds)" \
+    --arg mode "$mode" \
+    --arg revision "$revision" \
+    --arg slowestPhase "$slowest_phase" \
+    --argjson slowestPhaseMs "$slowest_phase_ms" \
+    --argjson phases "$phase_summary" \
+    --argjson regressedPhases "$regressed_phases" \
+    '{
+      timestamp:$timestamp,mode:$mode,revision:$revision,
+      slowestPhase:$slowestPhase,slowestPhaseMs:$slowestPhaseMs,
+      phases:$phases,regressedPhases:$regressedPhases
+    }' >"${phase_latest_file}.tmp"
+  mv "${phase_latest_file}.tmp" "$phase_latest_file"
+fi
 
 if [[ "$status" == "SLO_BREACH" ]]; then
   cat >"${diagnostic_file}.tmp" <<EOF
@@ -120,5 +214,5 @@ EOF
   echo "[deploy-performance] WARN mode=$mode ready=${slo_elapsed_ms}ms verified=${elapsed_ms}ms target=${target_ms}ms verificationTarget=${verification_target_ms}ms baseline=${baseline_ms}ms reason=$reason" >&2
 else
   rm -f "$diagnostic_file"
-  echo "[deploy-performance] PASS mode=$mode ready=${slo_elapsed_ms}ms verified=${elapsed_ms}ms target=${target_ms}ms verificationTarget=${verification_target_ms}ms baseline=${baseline_ms}ms"
+  echo "[deploy-performance] PASS mode=$mode ready=${slo_elapsed_ms}ms verified=${elapsed_ms}ms target=${target_ms}ms verificationTarget=${verification_target_ms}ms baseline=${baseline_ms}ms slowest=${slowest_phase:-none}:${slowest_phase_ms}ms"
 fi

@@ -15,6 +15,23 @@ fi
 
 POLICY_ROOT="${CARBONET_DEPLOY_ORIGINAL_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
 DEPLOY_STARTED_EPOCH_SECONDS="$(date +%s)"
+DEPLOY_STARTED_EPOCH_MILLISECONDS="$(date +%s%3N)"
+DEPLOY_PHASE_LAST_MILLISECONDS="$DEPLOY_STARTED_EPOCH_MILLISECONDS"
+DEPLOY_PHASE_FILE="$(mktemp /tmp/carbonet-deploy-phases.XXXXXX.jsonl)"
+
+record_deploy_phase() {
+  local phase="$1"
+  local now_ms duration_ms
+  now_ms="$(date +%s%3N)"
+  duration_ms=$((now_ms - DEPLOY_PHASE_LAST_MILLISECONDS))
+  jq -cn \
+    --arg phase "$phase" \
+    --argjson durationMs "$duration_ms" \
+    --argjson finishedAtMs "$now_ms" \
+    '{phase:$phase,durationMs:$durationMs,finishedAtMs:$finishedAtMs}' \
+    >>"$DEPLOY_PHASE_FILE"
+  DEPLOY_PHASE_LAST_MILLISECONDS="$now_ms"
+}
 
 # Agent policy is deterministic and must pass before any model-generated change can deploy.
 bash "$POLICY_ROOT/ops/scripts/verify-kilo-m3-policy.sh"
@@ -25,6 +42,7 @@ if [[ -f "$POLICY_ROOT/ops/scripts/test-backstage-fast-deploy-policy.sh" ]]; the
 else
   echo "[auto-deploy] fast-deploy policy is introduced by the pending commit; validating after bootstrap"
 fi
+record_deploy_phase "policy"
 
 ROOT_DIR="${CARBONET_DEPLOY_ROOT:-${CARBONET_DEPLOY_ORIGINAL_ROOT:-/opt/Resonance}}"
 PLAN_SCRIPT="${CARBONET_DEPLOY_PLAN_SCRIPT:-ops/scripts/plan-incremental-work.sh}"
@@ -49,6 +67,7 @@ record_deploy_performance() {
   local mode="$1"
   local elapsed_ms=$(( ($(date +%s) - DEPLOY_STARTED_EPOCH_SECONDS) * 1000 ))
   CARBONET_DEPLOY_ROOT="$ROOT_DIR" \
+  CARBONET_DEPLOY_PHASE_FILE="$DEPLOY_PHASE_FILE" \
     bash "$ROOT_DIR/ops/scripts/record-deploy-performance.sh" \
       "$mode" "$target_commit" "$elapsed_ms"
 }
@@ -202,6 +221,7 @@ if [[ -z "$POSTGRES_POD" ]]; then
   exit 12
 fi
 echo "[auto-deploy] PostgreSQL backup leader: $POSTGRES_POD"
+record_deploy_phase "platform_preflight"
 backup_application_name="carbonet-auto-deploy-$$"
 schema_backup_dir=""
 schema_restore_database=""
@@ -256,6 +276,7 @@ cleanup_deploy() {
   if [[ -n "${CARBONET_DEPLOY_SNAPSHOT_PATH:-}" ]]; then
     rm -f -- "$CARBONET_DEPLOY_SNAPSHOT_PATH"
   fi
+  rm -f -- "${DEPLOY_PHASE_FILE:-}"
 }
 trap cleanup_deploy EXIT INT TERM
 git fetch --prune "$REMOTE" "$BRANCH"
@@ -272,6 +293,7 @@ if [[ "$deployed_commit" == "$target_commit" ]]; then
 fi
 
 eval "$(bash "$PLAN_SCRIPT" "$deployed_commit" "$target_commit" --format env)"
+record_deploy_phase "fetch_and_plan"
 PLAN_BACKSTAGE_REQUIRED="${PLAN_BACKSTAGE_REQUIRED:-false}"
 echo "[auto-deploy] incremental plan: runtime=$PLAN_RUNTIME_REQUIRED frontend=$PLAN_FRONTEND_REQUIRED backend=$PLAN_BACKEND_REQUIRED database=$PLAN_DATABASE_REQUIRED backstage=$PLAN_BACKSTAGE_REQUIRED"
 echo "[auto-deploy] selected checks: $PLAN_TESTS ($PLAN_REASONS)"
@@ -422,6 +444,7 @@ if [[ -n "$tracked_source_changes" ]]; then
   fi
   echo "[auto-deploy] isolated deployment worktree ready: $ROOT_DIR"
 fi
+record_deploy_phase "worktree_prepare"
 
 # Run the target revision as well. This bootstraps a newly introduced guard and
 # verifies that the exact revision being promoted owns the live resource cap.
@@ -970,6 +993,7 @@ if [[ "$PLAN_FRONTEND_REQUIRED" == "true" \
     bash ops/scripts/resonance-full-screen-deploy-gate.sh verify
   bash ops/scripts/sync-unified-asset-catalog.sh "$deployed_commit" "$target_commit"
   bash ops/scripts/validate-e4b-selectable-assets.sh
+  record_deploy_phase "frontend_build_and_verify"
   printf '%s\n' "$target_commit" > "${DEPLOY_STATE_FILE}.tmp"
   mv "${DEPLOY_STATE_FILE}.tmp" "$DEPLOY_STATE_FILE"
   record_deploy_performance frontend
@@ -989,6 +1013,7 @@ if [[ "$PLAN_RUNTIME_REQUIRED" == "true" \
     bash ops/scripts/promote-runtime-startup-profile.sh
   bash ops/scripts/sync-unified-asset-catalog.sh "$deployed_commit" "$target_commit"
   bash ops/scripts/validate-e4b-selectable-assets.sh
+  record_deploy_phase "runtime_profile_and_verify"
   rm -f "$ROOT_DIR/var/run/full-screen-deploy-gate/active.env"
   printf '%s\n' "$target_commit" > "${DEPLOY_STATE_FILE}.tmp"
   mv "${DEPLOY_STATE_FILE}.tmp" "$DEPLOY_STATE_FILE"
@@ -1015,6 +1040,7 @@ if [[ "$PLAN_FRONTEND_REQUIRED" != "true" \
   bash ops/scripts/test-frontend-parallel-build-pipeline.sh
   bash ops/scripts/test-fast-overlay-snapshot.sh
   bash ops/scripts/test-shared-smoke-auth-state.sh
+  bash ops/scripts/test-deploy-phase-telemetry.sh
   if [[ ",$PLAN_TESTS," == *",control-plane:validate,"* ]]; then
     bash ops/scripts/resonance-control-plane.sh validate
   fi
@@ -1026,6 +1052,7 @@ if [[ "$PLAN_FRONTEND_REQUIRED" != "true" \
   node "$ROOT_DIR/ops/scripts/verify-react-asset-closure.mjs" "$live_frontend_overlay"
   bash ops/scripts/sync-unified-asset-catalog.sh "$deployed_commit" "$target_commit"
   bash ops/scripts/validate-e4b-selectable-assets.sh
+  record_deploy_phase "automation_validation"
   rm -f "$ROOT_DIR/var/run/full-screen-deploy-gate/active.env"
   printf '%s\n' "$target_commit" > "${DEPLOY_STATE_FILE}.tmp"
   mv "${DEPLOY_STATE_FILE}.tmp" "$DEPLOY_STATE_FILE"
@@ -1074,6 +1101,7 @@ if [[ "$health_status" != *'"status":"UP"'* ]]; then
   echo "[auto-deploy] refusing success marker: health check is not UP" >&2
   exit 17
 fi
+record_deploy_phase "build_rollout_health"
 asset_sync_precompleted=false
 if [[ -n "$runtime_asset_sync_pid" ]]; then
   if wait "$runtime_asset_sync_pid"; then
@@ -1133,6 +1161,7 @@ run_backstage_identity_e2e_if_required
 # call sync_keycloak_actor_assignments_if_required before their success marker.
 run_actor_process_role_e2e_if_required
 run_backstage_screen_space_e2e_if_required
+record_deploy_phase "postdeploy_validation"
 printf '%s\n' "$target_commit" > "${DEPLOY_STATE_FILE}.tmp"
 mv "${DEPLOY_STATE_FILE}.tmp" "$DEPLOY_STATE_FILE"
 record_deploy_performance runtime
