@@ -923,6 +923,7 @@ if [[ "$PLAN_RUNTIME_REQUIRED" != "true" ]]; then
       ops/scripts/postgres-storage-guard.sh \
       ops/scripts/test-postgres-storage-guard-install.sh \
       ops/scripts/carbonet-auto-deploy-failure-handler.sh \
+      ops/scripts/carbonet-deploy-notify.sh \
       ops/scripts/test-auto-deploy-failure-handler.sh \
       ops/scripts/patroni-auto-heal.sh \
       ops/scripts/test-patroni-auto-heal-safety.sh \
@@ -961,6 +962,7 @@ if [[ "$PLAN_RUNTIME_REQUIRED" != "true" ]]; then
     bash ops/scripts/test-post-reboot-runtime-recovery.sh
     if git diff --name-only "$deployed_commit" "$target_commit" -- \
         ops/scripts/carbonet-auto-deploy-failure-handler.sh \
+        ops/scripts/carbonet-deploy-notify.sh \
         ops/scripts/test-auto-deploy-failure-handler.sh \
         ops/scripts/record-deploy-performance.sh \
         ops/systemd/carbonet-auto-deploy.service \
@@ -971,6 +973,9 @@ if [[ "$PLAN_RUNTIME_REQUIRED" != "true" ]]; then
       sudo -n install -m 0750 -o root -g root \
         ops/scripts/carbonet-auto-deploy-failure-handler.sh \
         /opt/resonance-data/control-plane/bin/carbonet-auto-deploy-failure-handler.sh
+      sudo -n install -m 0750 -o root -g root \
+        ops/scripts/carbonet-deploy-notify.sh \
+        /opt/resonance-data/control-plane/bin/carbonet-deploy-notify.sh
       sudo -n install -m 0644 ops/systemd/carbonet-auto-deploy.service \
         /etc/systemd/system/carbonet-auto-deploy.service
       sudo -n install -m 0644 \

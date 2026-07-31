@@ -38,6 +38,10 @@ type OperationsSummary = {
     retryAllowed?: boolean;
     retryAttempted?: boolean;
     evidence?: string;
+    alert?: {
+      createdAt?: string;
+      teamsDelivery?: string;
+    };
   };
 };
 
@@ -188,6 +192,9 @@ export function SystemOperationsControlPage() {
                 : '자동 복구 미실행'}
               {typeof summary?.deployment?.elapsedMs === 'number'
                 ? ` · ${summary.deployment.elapsedMs}ms`
+                : ''}
+              {summary?.deployment?.alert?.teamsDelivery
+                ? ` · Teams ${summary.deployment.alert.teamsDelivery}`
                 : ''}
             </Typography>
           </Box>

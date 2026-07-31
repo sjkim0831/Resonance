@@ -60,4 +60,5 @@ jq -n \
   >"${status_file}.tmp"
 chmod 0644 "${status_file}.tmp"
 mv "${status_file}.tmp" "$status_file"
+bash /opt/resonance-data/control-plane/bin/carbonet-deploy-notify.sh
 echo "[deploy-failure] category=$category status=$status retry=$retry_attempted evidence=$evidence"
