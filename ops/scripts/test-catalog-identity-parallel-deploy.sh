@@ -19,7 +19,6 @@ required = [
     "sync_keycloak_actor_assignments_if_required",
     'catalog_identity_sync_pid="$!"',
     "bash ops/scripts/sync-unified-asset-catalog.sh",
-    "bash ops/scripts/validate-e4b-selectable-assets.sh",
     'wait "$catalog_identity_sync_pid"',
     "run_actor_process_role_e2e_if_required",
 ]
@@ -28,7 +27,7 @@ positions = {token: block.index(token) for token in required}
 assert positions['catalog_identity_sync_pid="$!"'] < positions[
     "bash ops/scripts/sync-unified-asset-catalog.sh"
 ]
-assert positions["bash ops/scripts/validate-e4b-selectable-assets.sh"] < positions[
+assert positions["bash ops/scripts/sync-unified-asset-catalog.sh"] < positions[
     'wait "$catalog_identity_sync_pid"'
 ]
 assert positions['wait "$catalog_identity_sync_pid"'] < positions[

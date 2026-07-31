@@ -245,6 +245,48 @@ BEGIN
   END IF;
 END $$;
 
+-- E4B selection integrity belongs to the same atomic contract as source
+-- catalog synchronization. Validate it before COMMIT so deployment never
+-- needs a second leader discovery/session and a failed invariant rolls back
+-- the catalog mutation rather than observing it after the fact.
+DO $$
+DECLARE
+  active_duplicate_count integer;
+  broken_relation_count integer;
+  page_count integer;
+  classified_page_count integer;
+BEGIN
+  SELECT count(*) INTO active_duplicate_count
+  FROM framework_asset_canonical_map map
+  JOIN framework_unified_asset asset
+    ON asset.asset_id=map.duplicate_asset_id
+  WHERE asset.active_yn='Y';
+
+  SELECT count(*) INTO broken_relation_count
+  FROM framework_unified_asset_relation relation
+  LEFT JOIN framework_unified_asset source
+    ON source.asset_id=relation.source_asset_id
+  LEFT JOIN framework_unified_asset target
+    ON target.asset_id=relation.target_asset_id
+  WHERE relation.active_yn='Y'
+    AND (source.active_yn<>'Y' OR target.active_yn<>'Y');
+
+  SELECT count(*) INTO page_count
+  FROM framework_e4b_selectable_asset
+  WHERE asset_type='PAGE';
+
+  SELECT count(*) INTO classified_page_count
+  FROM framework_e4b_page_development_queue;
+
+  IF active_duplicate_count <> 0
+     OR broken_relation_count <> 0
+     OR page_count <> classified_page_count THEN
+    RAISE EXCEPTION
+      'E4B asset integrity failed active_duplicates=% broken_relations=% pages=% classified=%',
+      active_duplicate_count,broken_relation_count,page_count,classified_page_count;
+  END IF;
+END $$;
+
 INSERT INTO framework_asset_catalog_sync_run(sync_scope,discovered_count,relation_count,changed_count,duration_ms,result,executed_by)
 SELECT :'sync_scope',
        CASE WHEN (SELECT is_full FROM asset_sync_control)
@@ -297,4 +339,4 @@ else
     -v is_full="$([[ "$sync_mode" == "full" ]] && echo true || echo false)" -q \
     -f /tmp/sync-unified-source-assets.sql
 fi
-echo "[asset-catalog] mode=$sync_mode tracked=$(wc -l < "$manifest_tsv") changed=$(wc -l < "$tsv") deleted=$(wc -l < "$deleted_tsv") closure=verified dbMode=$CARBONET_PG_MODE base=${BASE_REVISION:-none} target=$TARGET_REVISION"
+echo "[asset-catalog] mode=$sync_mode tracked=$(wc -l < "$manifest_tsv") changed=$(wc -l < "$tsv") deleted=$(wc -l < "$deleted_tsv") closure=verified e4b=verified dbMode=$CARBONET_PG_MODE base=${BASE_REVISION:-none} target=$TARGET_REVISION"

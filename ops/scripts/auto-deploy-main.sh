@@ -677,11 +677,14 @@ if [[ "$PLAN_RUNTIME_REQUIRED" != "true" ]]; then
   done < <(git diff --name-only --diff-filter=ACMR "$deployed_commit" "$target_commit")
   if git diff --name-only "$deployed_commit" "$target_commit" -- \
       ops/scripts/auto-deploy-main.sh \
+      ops/scripts/sync-unified-asset-catalog.sh \
+      ops/scripts/test-atomic-asset-e4b-validation.sh \
       ops/scripts/test-catalog-identity-parallel-deploy.sh \
       ops/scripts/test-catalog-overlay-fast-path.sh |
       grep -q .; then
     bash ops/scripts/test-catalog-identity-parallel-deploy.sh
     bash ops/scripts/test-catalog-overlay-fast-path.sh
+    bash ops/scripts/test-atomic-asset-e4b-validation.sh
   fi
   backstage_only_change=false
   if [[ "$PLAN_BACKSTAGE_REQUIRED" == "true" ]] &&
@@ -704,7 +707,6 @@ if [[ "$PLAN_RUNTIME_REQUIRED" != "true" ]]; then
   catalog_identity_sync_pid="$!"
   echo "[auto-deploy] identity reconciliation running concurrently pid=$catalog_identity_sync_pid"
   bash ops/scripts/sync-unified-asset-catalog.sh "$deployed_commit" "$target_commit"
-  bash ops/scripts/validate-e4b-selectable-assets.sh
   sync_backstage_catalog_if_required
   deploy_backstage_if_required
   run_backstage_visual_e2e_if_required
@@ -1040,7 +1042,6 @@ if [[ "$PLAN_FRONTEND_REQUIRED" == "true" \
   FULL_SCREEN_SMOKE_ROUTE_PATTERN="$frontend_smoke_pattern" \
     bash ops/scripts/resonance-full-screen-deploy-gate.sh verify
   bash ops/scripts/sync-unified-asset-catalog.sh "$deployed_commit" "$target_commit"
-  bash ops/scripts/validate-e4b-selectable-assets.sh
   record_deploy_phase "frontend_build_and_verify"
   printf '%s\n' "$target_commit" > "${DEPLOY_STATE_FILE}.tmp"
   mv "${DEPLOY_STATE_FILE}.tmp" "$DEPLOY_STATE_FILE"
@@ -1060,7 +1061,6 @@ if [[ "$PLAN_RUNTIME_REQUIRED" == "true" \
   CARBONET_DEPLOY_ROOT="$ROOT_DIR" \
     bash ops/scripts/promote-runtime-startup-profile.sh
   bash ops/scripts/sync-unified-asset-catalog.sh "$deployed_commit" "$target_commit"
-  bash ops/scripts/validate-e4b-selectable-assets.sh
   record_deploy_phase "runtime_profile_and_verify"
   rm -f "$ROOT_DIR/var/run/full-screen-deploy-gate/active.env"
   printf '%s\n' "$target_commit" > "${DEPLOY_STATE_FILE}.tmp"
@@ -1099,7 +1099,6 @@ if [[ "$PLAN_FRONTEND_REQUIRED" != "true" \
   fi
   node "$ROOT_DIR/ops/scripts/verify-react-asset-closure.mjs" "$live_frontend_overlay"
   bash ops/scripts/sync-unified-asset-catalog.sh "$deployed_commit" "$target_commit"
-  bash ops/scripts/validate-e4b-selectable-assets.sh
   record_deploy_phase "automation_validation"
   rm -f "$ROOT_DIR/var/run/full-screen-deploy-gate/active.env"
   printf '%s\n' "$target_commit" > "${DEPLOY_STATE_FILE}.tmp"
@@ -1117,7 +1116,6 @@ if [[ "$PLAN_DATABASE_REQUIRED" != "true" ]]; then
   runtime_asset_sync_log="$ROOT_DIR/var/logs/runtime-asset-sync-${target_commit:0:10}.log"
   (
     bash ops/scripts/sync-unified-asset-catalog.sh "$deployed_commit" "$target_commit"
-    bash ops/scripts/validate-e4b-selectable-assets.sh
   ) >"$runtime_asset_sync_log" 2>&1 &
   runtime_asset_sync_pid="$!"
   echo "[auto-deploy] source asset closure running concurrently with runtime build pid=$runtime_asset_sync_pid"
