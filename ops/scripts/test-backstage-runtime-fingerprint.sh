@@ -15,14 +15,14 @@ printf 'runtime-v1\n' >"$tmp/platform/control-plane/backstage/packages/app/src/A
 printf 'test-v1\n' >"$tmp/platform/control-plane/backstage/packages/app/e2e-tests/app.test.ts"
 git -C "$tmp" add .
 git -C "$tmp" commit -qm base
-base="$($FINGERPRINT "$tmp")"
+base="$(bash "$FINGERPRINT" "$tmp")"
 
 printf 'test-v2\n' >"$tmp/platform/control-plane/backstage/packages/app/e2e-tests/app.test.ts"
 git -C "$tmp" add . && git -C "$tmp" commit -qm test-only
-[[ "$($FINGERPRINT "$tmp")" == "$base" ]]
+[[ "$(bash "$FINGERPRINT" "$tmp")" == "$base" ]]
 
 printf 'runtime-v2\n' >"$tmp/platform/control-plane/backstage/packages/app/src/App.tsx"
 git -C "$tmp" add . && git -C "$tmp" commit -qm runtime
-[[ "$($FINGERPRINT "$tmp")" != "$base" ]]
+[[ "$(bash "$FINGERPRINT" "$tmp")" != "$base" ]]
 
 echo BACKSTAGE_RUNTIME_FINGERPRINT_PASS
