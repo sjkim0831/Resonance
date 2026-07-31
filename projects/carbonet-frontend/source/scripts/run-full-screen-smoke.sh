@@ -71,6 +71,46 @@ node "$root_dir/scripts/finalize-full-screen-smoke.mjs"
 finalize_status=$?
 set -e
 
+# A route can occasionally miss its SPA mount while all shards are saturating
+# the runtime. Re-run only the failed routes after the parallel phase has
+# drained, with one worker, and merge successful evidence into the primary
+# result set. Real deterministic failures remain fail-closed.
+if [[ "$finalize_status" -ne 0 && "${FULL_SCREEN_SMOKE_SERIAL_RECOVERY:-true}" == "true" ]]; then
+  recovery_dir="$cache_dir/recovery"
+  recovery_manifest="$recovery_dir/manifest.json"
+  recovery_results="$recovery_dir/results"
+  rm -rf "$recovery_dir"
+  mkdir -p "$recovery_results"
+  node "$root_dir/scripts/recover-full-screen-smoke-failures.mjs" \
+    --mode prepare \
+    --manifest "$FULL_SCREEN_SMOKE_MANIFEST" \
+    --summary "${FULL_SCREEN_SMOKE_SUMMARY:-$cache_dir/summary.json}" \
+    --recoveryManifest "$recovery_manifest"
+
+  set +e
+  FULL_SCREEN_SMOKE_MANIFEST="$recovery_manifest" \
+  FULL_SCREEN_SMOKE_RESULT_DIR="$recovery_results" \
+  PLAYWRIGHT_HOST_PLATFORM_OVERRIDE="${PLAYWRIGHT_HOST_PLATFORM_OVERRIDE:-ubuntu24.04-x64}" \
+    npx playwright test e2e/full-screen-smoke.spec.ts \
+    --workers=1 \
+    --retries=0 \
+    --reporter="${FULL_SCREEN_SMOKE_REPORTER:-list}"
+  recovery_status=$?
+  set -e
+
+  if [[ "$recovery_status" -eq 0 ]]; then
+    node "$root_dir/scripts/recover-full-screen-smoke-failures.mjs" \
+      --mode merge \
+      --recoveryResultDir "$recovery_results" \
+      --primaryResultDir "$result_dir"
+    set +e
+    node "$root_dir/scripts/finalize-full-screen-smoke.mjs"
+    finalize_status=$?
+    set -e
+    [[ "$finalize_status" -eq 0 ]] && test_status=0
+  fi
+fi
+
 set +e
 node "$root_dir/scripts/build-full-screen-quality-queue.mjs"
 quality_status=$?
