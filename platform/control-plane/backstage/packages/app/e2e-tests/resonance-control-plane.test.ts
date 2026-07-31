@@ -182,6 +182,18 @@ test('authenticated Resonance control-plane routes render without runtime errors
       runtimeErrors.slice(errorOffset),
       `${route} emitted runtime errors`,
     ).toEqual([]);
+
+    if (route === '/system-recovery') {
+      await expect(page.getByText('외부 백업 전체 복원 검증')).toBeVisible();
+      await expect(page.getByText('복구 관리자 작업')).toBeVisible();
+      await expect(page.getByText(/carbonet_\d{8}_\d{6}\.dump/)).toBeVisible();
+      await expect(
+        page.getByText(/등록된 복구 작업이 없습니다.|조치 필요|해결/).first(),
+      ).toBeVisible();
+      await expect(
+        page.getByText('정상', { exact: true }).first(),
+      ).toBeVisible();
+    }
   }
 
   const controlRoute =
@@ -248,6 +260,19 @@ test('authenticated Resonance control-plane routes render without runtime errors
     'mobile page must not create body-level horizontal overflow',
   ).toBe(true);
   await expect(page.getByRole('button', { name: /정상 업무/ })).toBeVisible();
+  await page.goto('/system-recovery', {
+    waitUntil: 'domcontentloaded',
+    timeout: 20_000,
+  });
+  await expect(page.getByText('복구 관리자 작업')).toBeVisible();
+  expect(
+    await page.evaluate(
+      () =>
+        document.documentElement.scrollWidth <=
+        document.documentElement.clientWidth + 1,
+    ),
+    'mobile recovery page must not create body-level horizontal overflow',
+  ).toBe(true);
   if (evidenceDir) {
     await page.screenshot({
       path: path.join(evidenceDir, 'actor-process-control-mobile.png'),
