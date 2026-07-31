@@ -276,9 +276,9 @@ test('authenticated Resonance control-plane routes render without runtime errors
   // Route rendering and the independent actor-role contract gate run in
   // parallel at deployment level; keep browser fan-out bounded and repeatable.
   // Full regression has no concurrent deployment workload, so it can use
-  // twelve pages. Impact-scoped deploy gates stay at four to protect rollout
+  // sixteen pages. Impact-scoped deploy gates stay at four to protect rollout
   // and role-contract checks that run beside the browser test.
-  const routeConcurrency = targetedRouteMode ? 4 : 12;
+  const routeConcurrency = targetedRouteMode ? 4 : 16;
   for (
     let offset = 0;
     offset < selectedRoutes.length;
