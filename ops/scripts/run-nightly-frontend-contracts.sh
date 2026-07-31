@@ -10,6 +10,7 @@ frontend="$root/projects/carbonet-frontend/source"
 generated="$frontend/src/generated/screen-generation"
 shared_generated="${SHARED_GENERATED_SCREEN_DIR:-/opt/Resonance/projects/carbonet-frontend/source/src/generated/screen-generation}"
 created_links=()
+quality_artifact_dir="${FULL_SCREEN_QUALITY_ARTIFACT_DIR:-/opt/resonance-data/quality/full-screen/latest}"
 
 # The shared smoke credential file predates the full-screen suite and exposes
 # ADMIN_SMOKE_* names. Keep that file compatible without duplicating secrets.
@@ -34,10 +35,21 @@ if [[ ! -e "$generated/generatedScreenTypes.ts" && -f "$shared_generated/generat
   created_links+=("$generated/generatedScreenTypes.ts")
 fi
 cleanup_generated_links() {
+  local exit_status=$?
   local path
+  mkdir -p "$quality_artifact_dir" 2>/dev/null || true
+  if [[ -d "$frontend/.cache/full-screen-smoke" && -d "$quality_artifact_dir" ]]; then
+    cp -a "$frontend/.cache/full-screen-smoke/." "$quality_artifact_dir/" 2>/dev/null || true
+  fi
   for path in "${created_links[@]}"; do
     [[ -L "$path" ]] && rm -f "$path"
   done
+  git -C "$root" restore --worktree -- \
+    projects/carbonet-frontend/source/.cache/full-screen-smoke 2>/dev/null || true
+  git -C "$root" clean -ffd -- \
+    projects/carbonet-frontend/source/.cache/full-screen-smoke >/dev/null 2>&1 || true
+  /usr/bin/bash "$root/ops/scripts/normalize-deploy-generated-assets.sh" "$root" >/dev/null 2>&1 || true
+  return "$exit_status"
 }
 trap cleanup_generated_links EXIT
 [[ -d "$generated/definitions" && -f "$generated/generatedScreenTypes.ts" ]] || {
