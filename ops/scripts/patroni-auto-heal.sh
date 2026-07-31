@@ -8,6 +8,9 @@ STATE_DIR="${PATRONI_HEAL_STATE_DIR:-/opt/resonance-data/control-plane/state/pat
 LOG_FILE="${PATRONI_HEAL_LOG_FILE:-/opt/Resonance/var/log/patroni-auto-heal.log}"
 COOLDOWN_SECONDS="${PATRONI_REINIT_COOLDOWN_SECONDS:-21600}"
 WAIT_SECONDS="${PATRONI_REINIT_WAIT_SECONDS:-900}"
+FAILURE_THRESHOLD="${PATRONI_FAILURE_THRESHOLD:-3}"
+BACKUP_MAX_AGE_SECONDS="${PATRONI_BACKUP_MAX_AGE_SECONDS:-93600}"
+BACKUP_ROOT="${PATRONI_BACKUP_ROOT:-/opt/resonance-data/backups/postgres}"
 DRY_RUN="${PATRONI_AUTO_HEAL_DRY_RUN:-false}"
 
 mkdir -p "$STATE_DIR" "$(dirname "$LOG_FILE")"
@@ -78,6 +81,60 @@ assert_cooldown() {
   fi
 }
 
+observe_stable_failure() {
+  local target="$1" observation_file="$STATE_DIR/failure-observation" previous_target count
+  previous_target=""
+  count=0
+  if [[ -f "$observation_file" ]]; then
+    read -r previous_target count <"$observation_file" || true
+  fi
+  [[ "$previous_target" == "$target" ]] || count=0
+  count=$((count + 1))
+  printf '%s %s\n' "$target" "$count" >"$observation_file"
+  if (( count < FAILURE_THRESHOLD )); then
+    log "OBSERVE: target=$target consecutive=$count/$FAILURE_THRESHOLD; no mutation"
+    exit 0
+  fi
+  rm -f "$observation_file"
+}
+
+assert_recent_verified_backup() {
+  local primary_dir="$BACKUP_ROOT/primary/hourly"
+  local mirror_dir="$BACKUP_ROOT/mirror/hourly"
+  local primary_dump primary_name mirror_dump now modified
+  primary_dump="$(find "$primary_dir" -maxdepth 1 -type f -name '*.dump' -printf '%T@ %p\n' |
+    sort -nr | head -1 | cut -d' ' -f2-)"
+  [[ -n "$primary_dump" ]] || {
+    log "REFUSED: no primary backup"
+    exit 27
+  }
+  primary_name="$(basename "$primary_dump")"
+  mirror_dump="$mirror_dir/$primary_name"
+  [[ -f "$primary_dump.sha256" && -f "$mirror_dump" && -f "$mirror_dump.sha256" ]] || {
+    log "REFUSED: backup mirror or checksum missing name=$primary_name"
+    exit 28
+  }
+  now="$(date +%s)"
+  modified="$(stat -c %Y "$primary_dump")"
+  if (( now - modified > BACKUP_MAX_AGE_SECONDS )); then
+    log "REFUSED: latest backup is stale name=$primary_name age=$((now - modified))s"
+    exit 29
+  fi
+  [[ "$(stat -c %s "$primary_dump")" == "$(stat -c %s "$mirror_dump")" ]] || {
+    log "REFUSED: primary/mirror backup sizes differ name=$primary_name"
+    exit 30
+  }
+  (
+    cd "$primary_dir"
+    sha256sum -c "$primary_name.sha256"
+  ) >/dev/null
+  (
+    cd "$mirror_dir"
+    sha256sum -c "$primary_name.sha256"
+  ) >/dev/null
+  log "BACKUP_OK name=$primary_name size=$(stat -c %s "$primary_dump")"
+}
+
 wait_for_streaming() {
   local pod="$1" target="$2" deadline=$((SECONDS + WAIT_SECONDS)) payload state lag
   while (( SECONDS < deadline )); do
@@ -114,12 +171,15 @@ main() {
   }
 
   if [[ -z "$target" ]]; then
+    rm -f "$STATE_DIR/failure-observation"
     log "PASS: all Patroni members are healthy"
     exit 0
   fi
 
+  observe_stable_failure "$target"
   assert_cooldown "$target"
   assert_rollout_idle
+  assert_recent_verified_backup
   log "SAFE_REINIT target=$target coordinator=$pod"
   if [[ "$DRY_RUN" == "true" ]]; then
     log "DRY_RUN: reinit skipped"

@@ -1,0 +1,15 @@
+[Unit]
+Description=Guarded Carbonet Patroni replica auto-heal
+After=network-online.target kubelet.service containerd.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=sjkim
+Group=sjkim
+ExecStart=/usr/bin/bash /opt/resonance-data/control-plane/bin/patroni-auto-heal.sh
+TimeoutStartSec=1200
+Nice=10
+
+[Install]
+WantedBy=multi-user.target

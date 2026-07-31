@@ -9,6 +9,8 @@ grep -q 'assert_rollout_idle' "$script"
 grep -q 'len(healthy_replicas)<1' "$script"
 grep -q 'len(targets)>1' "$script"
 grep -q 'PATRONI_REINIT_COOLDOWN_SECONDS' "$script"
+grep -q 'PATRONI_FAILURE_THRESHOLD' "$script"
+grep -q 'assert_recent_verified_backup' "$script"
 grep -q 'flock -n 9' "$script"
 grep -q 'patronictl -c /tmp/patroni.yml reinit' "$script"
 grep -q 'state.*streaming.*lag.*0' "$script"
@@ -17,5 +19,10 @@ if grep -Eq 'kubectl delete pod.*postgres-patroni|postgres-patroni-0.*patronictl
   echo "unsafe fixed-member or whole-cluster deletion path remains" >&2
   exit 1
 fi
+
+grep -q 'OnUnitActiveSec=1min' \
+  "$root/ops/systemd/carbonet-patroni-auto-heal.timer"
+grep -q '/opt/resonance-data/control-plane/bin/patroni-auto-heal.sh' \
+  "$root/ops/systemd/carbonet-patroni-auto-heal.service"
 
 echo "PATRONI_AUTO_HEAL_SAFETY_PASS"

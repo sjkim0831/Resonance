@@ -713,6 +713,33 @@ sync_post_reboot_recovery_if_required() {
   fi
 }
 
+sync_patroni_auto_heal_if_required() {
+  if git diff --name-only "$deployed_commit" "$target_commit" -- \
+      ops/scripts/patroni-auto-heal.sh \
+      ops/scripts/test-patroni-auto-heal-safety.sh \
+      ops/systemd/carbonet-patroni-auto-heal.service \
+      ops/systemd/carbonet-patroni-auto-heal.timer |
+      grep -q . ||
+    ! systemctl is-enabled --quiet carbonet-patroni-auto-heal.timer; then
+    bash ops/scripts/test-patroni-auto-heal-safety.sh
+    sudo -n install -d -m 0755 /opt/resonance-data/control-plane/bin
+    sudo -n install -m 0750 -o sjkim -g sjkim \
+      ops/scripts/patroni-auto-heal.sh \
+      /opt/resonance-data/control-plane/bin/patroni-auto-heal.sh
+    sudo -n install -m 0644 \
+      ops/systemd/carbonet-patroni-auto-heal.service \
+      /etc/systemd/system/carbonet-patroni-auto-heal.service
+    sudo -n install -m 0644 \
+      ops/systemd/carbonet-patroni-auto-heal.timer \
+      /etc/systemd/system/carbonet-patroni-auto-heal.timer
+    sudo -n systemctl daemon-reload
+    sudo -n systemctl enable --now carbonet-patroni-auto-heal.timer >/dev/null
+    PATRONI_AUTO_HEAL_DRY_RUN=true \
+      bash /opt/resonance-data/control-plane/bin/patroni-auto-heal.sh
+    echo "[auto-deploy] guarded Patroni auto-heal synchronized"
+  fi
+}
+
 # Documentation, design metadata, catalog and automation-only changes do not
 # alter the running application. Fast-forward and refresh the searchable source
 # catalog without an unnecessary DB dump, JVM build, image build or rollout.
@@ -734,6 +761,8 @@ if [[ "$PLAN_RUNTIME_REQUIRED" != "true" ]]; then
       ops/scripts/apply-backup-cronjobs.sh \
       ops/scripts/reconcile-post-reboot-runtime.sh \
       ops/scripts/test-post-reboot-runtime-recovery.sh \
+      ops/scripts/patroni-auto-heal.sh \
+      ops/scripts/test-patroni-auto-heal-safety.sh \
       ops/scripts/resonance-github-deploy-webhook.py \
       ops/scripts/sync-github-deploy-webhook-url.py \
       ops/scripts/test-github-deploy-webhook.sh \
@@ -743,6 +772,8 @@ if [[ "$PLAN_RUNTIME_REQUIRED" != "true" ]]; then
       ops/systemd/carbonet-github-webhook-reconcile.service \
       ops/systemd/carbonet-github-webhook-reconcile.timer \
       ops/systemd/carbonet-post-reboot-recovery.service \
+      ops/systemd/carbonet-patroni-auto-heal.service \
+      ops/systemd/carbonet-patroni-auto-heal.timer \
       ops/kubernetes/postgres-haproxy-config.yaml \
       .github/workflows/carbonet-push-deploy.yml |
       grep -q .; then
@@ -787,6 +818,7 @@ if [[ "$PLAN_RUNTIME_REQUIRED" != "true" ]]; then
     fi
     sync_postgres_backup_cronjobs_if_required
     sync_post_reboot_recovery_if_required
+    sync_patroni_auto_heal_if_required
   fi
   backstage_only_change=false
   if [[ "$PLAN_BACKSTAGE_REQUIRED" == "true" ]] &&
