@@ -50,10 +50,11 @@ append_asset() {
   printf '%s\t%s\t%s\n' "$path" "$type" "$hash" >> "$tsv"
 }
 
-# A complete lightweight manifest makes every run authoritative without
-# rewriting every asset row. Keep classification in one awk process: invoking
-# a shell function 40k+ times made this otherwise cheap index scan take 15s.
-git ls-files -s | awk '
+build_complete_manifest() {
+  # Full/nightly reconciliation remains authoritative. Incremental deploys use
+  # the Git revision delta as their bounded contract and avoid sending 40k+
+  # unchanged rows through PostgreSQL on every commit.
+  git ls-files -s | awk '
 function asset_type(path, lower) {
   lower=tolower(path)
   if (lower ~ /\.java$/) return "JAVA_CLASS"
@@ -81,6 +82,7 @@ function asset_type(path, lower) {
   hash=fields[2]
   if (path != "" && hash != "") print path "\t" asset_type(path) "\t" hash
 }' > "$manifest_tsv"
+}
 
 sync_mode="full"
 if [[ -n "$BASE_REVISION" ]] &&
@@ -100,6 +102,7 @@ if [[ -n "$BASE_REVISION" ]] &&
 fi
 
 if [[ "$sync_mode" == "full" ]]; then
+  build_complete_manifest
   cp "$manifest_tsv" "$tsv"
 fi
 
@@ -108,6 +111,8 @@ BEGIN;
 CREATE TEMP TABLE source_asset_stage(asset_path text,asset_type varchar(40),content_hash varchar(64)) ON COMMIT DROP;
 CREATE TEMP TABLE deleted_asset_stage(asset_path text) ON COMMIT DROP;
 CREATE TEMP TABLE source_manifest_stage(asset_path text,asset_type varchar(40),content_hash varchar(64)) ON COMMIT DROP;
+CREATE TEMP TABLE asset_sync_control(is_full boolean) ON COMMIT DROP;
+INSERT INTO asset_sync_control VALUES (:'is_full'::boolean);
 \copy source_asset_stage FROM '/tmp/unified-source-assets.tsv' WITH (FORMAT text,DELIMITER E'\t');
 \copy deleted_asset_stage FROM '/tmp/unified-source-assets-deleted.tsv' WITH (FORMAT text);
 \copy source_manifest_stage FROM '/tmp/unified-source-assets-manifest.tsv' WITH (FORMAT text,DELIMITER E'\t');
@@ -146,6 +151,13 @@ WHERE relation.source_asset_id IN (
 UPDATE framework_unified_asset asset
 SET active_yn='N',updated_at=current_timestamp
 WHERE asset.source_system='GIT' AND asset.active_yn='Y'
+  AND EXISTS (
+    SELECT 1 FROM deleted_asset_stage deleted WHERE deleted.asset_path=asset.asset_path
+  );
+UPDATE framework_unified_asset asset
+SET active_yn='N',updated_at=current_timestamp
+WHERE (SELECT is_full FROM asset_sync_control)
+  AND asset.source_system='GIT' AND asset.active_yn='Y'
   AND NOT EXISTS (
     SELECT 1 FROM source_manifest_stage manifest WHERE manifest.asset_path=asset.asset_path
   );
@@ -156,6 +168,9 @@ DECLARE
   stale_count integer;
   hash_mismatch_count integer;
   duplicate_count integer;
+  changed_missing_count integer;
+  changed_hash_mismatch_count integer;
+  deleted_active_count integer;
   missing_examples text;
 BEGIN
   SELECT count(*) INTO missing_count
@@ -180,7 +195,8 @@ BEGIN
   ) missing;
   SELECT count(*) INTO stale_count
   FROM framework_unified_asset asset
-  WHERE asset.source_system='GIT' AND asset.active_yn='Y'
+  WHERE (SELECT is_full FROM asset_sync_control)
+    AND asset.source_system='GIT' AND asset.active_yn='Y'
     AND NOT EXISTS (
       SELECT 1 FROM source_manifest_stage manifest WHERE manifest.asset_path=asset.asset_path
     );
@@ -199,15 +215,43 @@ BEGIN
     GROUP BY asset_path
     HAVING count(*) > 1
   ) duplicate;
-  IF missing_count > 0 OR stale_count > 0 OR hash_mismatch_count > 0 OR duplicate_count > 0 THEN
+  SELECT count(*) INTO changed_missing_count
+  FROM source_asset_stage changed
+  LEFT JOIN framework_unified_asset asset
+    ON asset.source_system='GIT'
+   AND asset.asset_path=changed.asset_path
+   AND asset.active_yn='Y'
+  WHERE asset.asset_id IS NULL;
+  SELECT count(*) INTO changed_hash_mismatch_count
+  FROM source_asset_stage changed
+  JOIN framework_unified_asset asset
+    ON asset.source_system='GIT'
+   AND asset.asset_path=changed.asset_path
+   AND asset.active_yn='Y'
+  WHERE asset.content_hash IS DISTINCT FROM changed.content_hash;
+  SELECT count(*) INTO deleted_active_count
+  FROM deleted_asset_stage deleted
+  JOIN framework_unified_asset asset
+    ON asset.source_system='GIT'
+   AND asset.asset_path=deleted.asset_path
+   AND asset.active_yn='Y';
+  IF missing_count > 0 OR stale_count > 0 OR hash_mismatch_count > 0 OR duplicate_count > 0
+     OR changed_missing_count > 0 OR changed_hash_mismatch_count > 0 OR deleted_active_count > 0 THEN
     RAISE EXCEPTION
-      'unified asset closure failed missing=% stale=% hash_mismatch=% duplicate=% examples=%',
-      missing_count, stale_count, hash_mismatch_count, duplicate_count, coalesce(missing_examples, '-');
+      'unified asset closure failed missing=% stale=% hash_mismatch=% duplicate=% changed_missing=% changed_hash_mismatch=% deleted_active=% examples=%',
+      missing_count, stale_count, hash_mismatch_count, duplicate_count,
+      changed_missing_count, changed_hash_mismatch_count, deleted_active_count,
+      coalesce(missing_examples, '-');
   END IF;
 END $$;
 
 INSERT INTO framework_asset_catalog_sync_run(sync_scope,discovered_count,relation_count,changed_count,duration_ms,result,executed_by)
-SELECT :'sync_scope',(SELECT count(*) FROM source_manifest_stage),(SELECT count(*) FROM framework_unified_asset_relation WHERE active_yn='Y'),
+SELECT :'sync_scope',
+       CASE WHEN (SELECT is_full FROM asset_sync_control)
+         THEN (SELECT count(*) FROM source_manifest_stage)
+         ELSE (SELECT count(*) FROM framework_unified_asset WHERE source_system='GIT' AND active_yn='Y')
+       END,
+       (SELECT count(*) FROM framework_unified_asset_relation WHERE active_yn='Y'),
        (SELECT count(*) FROM source_asset_stage)+(SELECT count(*) FROM deleted_asset_stage),0,'COMPLETED','AUTO_DEPLOY';
 COMMIT;
 SQL
@@ -238,6 +282,7 @@ if [[ "$CARBONET_PG_MODE" == "direct" ]]; then
       -h "$CARBONET_PG_HOST" -p "$CARBONET_PG_PORT" \
       -U "$CARBONET_PG_USER" -d "$CARBONET_PG_DATABASE" \
       -v ON_ERROR_STOP=1 -v sync_scope="GIT_SOURCE_${sync_mode^^}" \
+      -v is_full="$([[ "$sync_mode" == "full" ]] && echo true || echo false)" \
       -f "$sql"
 else
   leader="$CARBONET_PG_LEADER"
@@ -248,7 +293,8 @@ else
   kubectl -n "$NAMESPACE" cp "$sql" "$leader:/tmp/sync-unified-source-assets.sql" -c "$POSTGRES_CONTAINER"
   kubectl -n "$NAMESPACE" exec "$leader" -c "$POSTGRES_CONTAINER" -- \
     psql -h 127.0.0.1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" \
-    -v ON_ERROR_STOP=1 -v sync_scope="GIT_SOURCE_${sync_mode^^}" -q \
+    -v ON_ERROR_STOP=1 -v sync_scope="GIT_SOURCE_${sync_mode^^}" \
+    -v is_full="$([[ "$sync_mode" == "full" ]] && echo true || echo false)" -q \
     -f /tmp/sync-unified-source-assets.sql
 fi
 echo "[asset-catalog] mode=$sync_mode tracked=$(wc -l < "$manifest_tsv") changed=$(wc -l < "$tsv") deleted=$(wc -l < "$deleted_tsv") closure=verified dbMode=$CARBONET_PG_MODE base=${BASE_REVISION:-none} target=$TARGET_REVISION"
