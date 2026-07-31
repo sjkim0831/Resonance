@@ -33,5 +33,27 @@ grep -Fq 'storageState: process.env.BACKSTAGE_E2E_STORAGE_STATE' "$PLAYWRIGHT_CO
 grep -Fq 'Backstage visual E2E running concurrently' "$AUTO_DEPLOY"
 grep -Fq 'wait_backstage_visual_e2e' "$AUTO_DEPLOY"
 grep -Fq 'concurrent Backstage visual E2E failed' "$AUTO_DEPLOY"
+grep -Fq 'actor-process role E2E skipped for unrelated routes' "$AUTO_DEPLOY"
+
+eval "$(sed -n '/^derive_backstage_e2e_routes() {/,/^run_backstage_visual_e2e_if_required() {/p' "$AUTO_DEPLOY" | sed '$d')"
+deployed_commit=base
+target_commit=target
+git() {
+  printf '%s\n' \
+    platform/control-plane/backstage/packages/app/src/plugins/ccus-screen-designs/SystemOperationsControlPage.tsx
+}
+[[ "$(derive_backstage_e2e_routes)" == "/system-operations" ]]
+git() {
+  printf '%s\n' \
+    platform/control-plane/backstage/packages/app/src/plugins/ccus-screen-designs/SystemRecoveryControlPage.tsx \
+    platform/control-plane/backstage/packages/backend/src/plugins/resonanceRecovery.ts
+}
+[[ "$(derive_backstage_e2e_routes)" == "/system-recovery" ]]
+git() {
+  printf '%s\n' \
+    platform/control-plane/backstage/packages/app/src/plugins/ccus-screen-designs/plugin.tsx
+}
+[[ -z "$(derive_backstage_e2e_routes)" ]]
+unset -f git derive_backstage_e2e_routes add_route
 
 echo "PASS Backstage deploy reuses dependencies, performs one fast rollout, and scopes E2E by impact"

@@ -255,6 +255,7 @@ catalog_identity_sync_pid=""
 catalog_identity_sync_log=""
 backstage_visual_e2e_pid=""
 backstage_visual_e2e_log=""
+backstage_e2e_effective_routes=""
 # A disconnected kubectl/pg_dump pipeline can survive the systemd process and
 # retain ACCESS SHARE locks indefinitely. Reap only deploy-owned sessions that
 # have exceeded five minutes before Flyway can be blocked. Normal full dumps
@@ -610,7 +611,7 @@ run_backstage_visual_e2e_if_required() {
     return
   fi
   local e2e_scope="${RESONANCE_BACKSTAGE_E2E_SCOPE:-full}"
-  local e2e_routes="${RESONANCE_BACKSTAGE_E2E_ROUTES:-}"
+  local e2e_routes="${RESONANCE_BACKSTAGE_E2E_ROUTES:-${backstage_e2e_effective_routes:-}}"
   [[ -n "$e2e_routes" ]] || e2e_routes="$(derive_backstage_e2e_routes)"
   echo "[auto-deploy] Backstage visual E2E scope: $e2e_scope routes=${e2e_routes:-all}"
   BACKSTAGE_E2E_USERNAME="${BACKSTAGE_E2E_USERNAME:-sjkim}" \
@@ -622,6 +623,9 @@ run_backstage_visual_e2e_if_required() {
 }
 
 start_backstage_visual_e2e() {
+  backstage_e2e_effective_routes="${RESONANCE_BACKSTAGE_E2E_ROUTES:-}"
+  [[ -n "$backstage_e2e_effective_routes" ]] ||
+    backstage_e2e_effective_routes="$(derive_backstage_e2e_routes)"
   backstage_visual_e2e_log="$ROOT_DIR/var/logs/backstage-visual-e2e-${target_commit:0:10}.log"
   (
     run_backstage_visual_e2e_if_required
@@ -651,6 +655,13 @@ run_backstage_identity_e2e_if_required() {
 }
 
 run_actor_process_role_e2e_if_required() {
+  if [[ -n "${backstage_e2e_effective_routes:-}" ]] &&
+    [[ ",${backstage_e2e_effective_routes}," != *",/actor-process-"* ]] &&
+    [[ ",${backstage_e2e_effective_routes}," != *",/identity-administration,"* ]] &&
+    [[ ",${backstage_e2e_effective_routes}," != *",/resonance-projects,"* ]]; then
+    echo "[auto-deploy] actor-process role E2E skipped for unrelated routes: $backstage_e2e_effective_routes"
+    return 0
+  fi
   if [[ "${PLAN_BACKSTAGE_REQUIRED:-false}" != "true" \
      && ",${PLAN_TESTS:-}," != *",backstage:build-deploy,"* \
      && ",${PLAN_TESTS:-}," != *",backstage:visual-e2e,"* ]]; then
