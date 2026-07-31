@@ -674,6 +674,7 @@ if [[ "$PLAN_RUNTIME_REQUIRED" != "true" ]]; then
   run_backstage_visual_e2e_if_required
   sync_keycloak_actor_assignments_if_required
   run_actor_process_role_e2e_if_required
+  record_deploy_phase "catalog_apply_and_verify"
   printf '%s\n' "$target_commit" > "${DEPLOY_STATE_FILE}.tmp"
   mv "${DEPLOY_STATE_FILE}.tmp" "$DEPLOY_STATE_FILE"
   if [[ "$PLAN_BACKSTAGE_REQUIRED" == "true" ]]; then
