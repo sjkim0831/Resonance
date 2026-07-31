@@ -38,15 +38,40 @@ fetch_dataset() {
     -o "$output"
 }
 
-requester_token="$(token_for resonance-requester)"
-reviewer_token="$(token_for resonance-reviewer)"
-approver_token="$(token_for resonance-approver)"
-
-for dataset in actors processes steps processExecutions emissionProjectTasks; do
-  fetch_dataset "$requester_token" "$dataset" "$run_dir/requester-$dataset.json"
-  fetch_dataset "$reviewer_token" "$dataset" "$run_dir/reviewer-$dataset.json"
-  fetch_dataset "$approver_token" "$dataset" "$run_dir/approver-$dataset.json"
+declare -a token_pids=()
+for account in requester reviewer approver; do
+  token_for "resonance-$account" >"$run_dir/$account.token" &
+  token_pids+=("$!")
 done
+token_failed=false
+for pid in "${token_pids[@]}"; do
+  wait "$pid" || token_failed=true
+done
+[[ "$token_failed" == false ]] || {
+  echo "[actor-process-role-e2e] concurrent token acquisition failed" >&2
+  exit 3
+}
+requester_token="$(cat "$run_dir/requester.token")"
+reviewer_token="$(cat "$run_dir/reviewer.token")"
+approver_token="$(cat "$run_dir/approver.token")"
+[[ -n "$requester_token" && -n "$reviewer_token" && -n "$approver_token" ]]
+
+declare -a dataset_pids=()
+for dataset in actors processes steps processExecutions emissionProjectTasks; do
+  for role in requester reviewer approver; do
+    token_variable="${role}_token"
+    fetch_dataset "${!token_variable}" "$dataset" "$run_dir/$role-$dataset.json" &
+    dataset_pids+=("$!")
+  done
+done
+dataset_failed=false
+for pid in "${dataset_pids[@]}"; do
+  wait "$pid" || dataset_failed=true
+done
+[[ "$dataset_failed" == false ]] || {
+  echo "[actor-process-role-e2e] concurrent dataset fetch failed" >&2
+  exit 3
+}
 
 RUN_DIR="$run_dir" TEST_PROJECT_ID="$TEST_PROJECT_ID" node <<'NODE'
 const fs = require('fs');
