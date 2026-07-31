@@ -420,7 +420,8 @@ case "$mode" in
     start_phase preflight
     bash "$ROOT/ops/scripts/resonance-control-plane.sh" validate
     # Exercise the complete API admission chain before dependency installation,
-    # image construction, secret mutation, or rollout.
+    # image construction, secret mutation, or rollout. The independent nightly
+    # job retains the full 16-route visual regression.
     bash "$ROOT/ops/scripts/resonance-kubernetes-admission-preflight.sh" "$NAMESPACE"
     ensure_tls
     ensure_auth_secret
