@@ -1,0 +1,49 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-patroni-haproxy-config
+  namespace: carbonet-prod
+data:
+  haproxy.cfg: |
+    global
+      maxconn 2000
+      log stdout format raw local0
+
+    defaults
+      log global
+      mode tcp
+      option tcplog
+      option redispatch
+      retries 3
+      timeout connect 5s
+      timeout client 30m
+      timeout server 30m
+      maxconn 1500
+
+    listen stats
+      bind *:7000
+      mode http
+      stats enable
+      stats uri /
+      stats refresh 30s
+      stats admin if TRUE
+
+    listen postgres-primary
+      bind *:5432
+      mode tcp
+      option httpchk OPTIONS /primary
+      http-check expect status 200
+      default-server init-addr last,libc,none inter 3s fall 3 rise 2 on-marked-down shutdown-sessions
+      server patroni0 postgres-patroni-0.postgres-patroni.carbonet-prod.svc.cluster.local:5432 maxconn 300 check port 8008
+      server patroni1 postgres-patroni-1.postgres-patroni.carbonet-prod.svc.cluster.local:5432 maxconn 300 check port 8008
+      server patroni2 postgres-patroni-2.postgres-patroni.carbonet-prod.svc.cluster.local:5432 maxconn 300 check port 8008
+
+    listen postgres-replica
+      bind *:5433
+      mode tcp
+      option httpchk OPTIONS /replica
+      http-check expect status 200
+      default-server init-addr last,libc,none inter 3s fall 3 rise 2 on-marked-down shutdown-sessions
+      server patroni0 postgres-patroni-0.postgres-patroni.carbonet-prod.svc.cluster.local:5432 maxconn 200 check port 8008
+      server patroni1 postgres-patroni-1.postgres-patroni.carbonet-prod.svc.cluster.local:5432 maxconn 200 check port 8008
+      server patroni2 postgres-patroni-2.postgres-patroni.carbonet-prod.svc.cluster.local:5432 maxconn 200 check port 8008

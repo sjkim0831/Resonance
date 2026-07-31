@@ -1,0 +1,15 @@
+[Unit]
+Description=Recover Carbonet database proxy and runtime after reboot
+After=network-online.target kubelet.service containerd.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=sjkim
+Group=sjkim
+ExecStart=/usr/bin/bash /opt/resonance-data/control-plane/bin/reconcile-post-reboot-runtime.sh
+TimeoutStartSec=900
+Nice=10
+
+[Install]
+WantedBy=multi-user.target
