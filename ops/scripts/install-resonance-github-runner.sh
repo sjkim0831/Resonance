@@ -58,9 +58,15 @@ if ! sudo -n test -s "$runner_root/.runner"; then
 fi
 service_name="$(sudo -n cat "$runner_root/.service" 2>/dev/null || true)"
 if [[ -z "$service_name" || ! -f "/etc/systemd/system/$service_name" ]]; then
-  sudo -n "$runner_root/svc.sh" install "$runner_user" >/dev/null
+  (
+    cd "$runner_root"
+    sudo -n ./svc.sh install "$runner_user" >/dev/null
+  )
 fi
-sudo -n "$runner_root/svc.sh" start >/dev/null
+(
+  cd "$runner_root"
+  sudo -n ./svc.sh start >/dev/null
+)
 
 service_name="$(cat "$runner_root/.service")"
 sudo -n systemctl is-active --quiet "$service_name"

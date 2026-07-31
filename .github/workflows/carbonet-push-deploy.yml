@@ -36,7 +36,17 @@ jobs:
           while (( SECONDS < deadline )); do
             deployed="$(cat "$marker" 2>/dev/null || true)"
             service_state="$(systemctl is-active carbonet-auto-deploy.service || true)"
-            if [[ "$deployed" == "$EXPECTED_REVISION" && "$service_state" != "active" ]]; then
+            revision_satisfied=false
+            if [[ "$deployed" == "$EXPECTED_REVISION" ]]; then
+              revision_satisfied=true
+            elif [[ -n "$deployed" ]] &&
+              git -C /opt/Resonance cat-file -e "$EXPECTED_REVISION^{commit}" 2>/dev/null &&
+              git -C /opt/Resonance cat-file -e "$deployed^{commit}" 2>/dev/null &&
+              git -C /opt/Resonance merge-base --is-ancestor "$EXPECTED_REVISION" "$deployed"; then
+              revision_satisfied=true
+              echo "push revision superseded by deployed descendant: $deployed"
+            fi
+            if [[ "$revision_satisfied" == "true" && "$service_state" != "active" ]]; then
               curl -fsS --max-time 10 http://127.0.0.1/actuator/health |
                 grep -q '"status":"UP"'
               echo "DEPLOY_EVENT_GATE_PASS revision=$EXPECTED_REVISION"
