@@ -7,6 +7,9 @@ if [[ -d "$candidate/projects/carbonet-frontend/source" ]]; then
   root="$candidate"
 fi
 frontend="$root/projects/carbonet-frontend/source"
+generated="$frontend/src/generated/screen-generation"
+shared_generated="${SHARED_GENERATED_SCREEN_DIR:-/opt/Resonance/projects/carbonet-frontend/source/src/generated/screen-generation}"
+created_links=()
 
 # The shared smoke credential file predates the full-screen suite and exposes
 # ADMIN_SMOKE_* names. Keep that file compatible without duplicating secrets.
@@ -15,6 +18,30 @@ export FULL_SCREEN_SMOKE_ADMIN_PASSWORD="${FULL_SCREEN_SMOKE_ADMIN_PASSWORD:-${A
 
 [[ -d "$frontend" && -x "$frontend/node_modules/.bin/tsc" ]] || {
   echo "[nightly-frontend-contracts] frontend dependencies are unavailable: $frontend" >&2
+  exit 2
+}
+
+# Generated definitions are DB materializations and intentionally remain
+# outside Git. Materialize the same verified-worktree links used by deployment,
+# then remove only links created by this run.
+mkdir -p "$generated"
+if [[ ! -e "$generated/definitions" && -d "$shared_generated/definitions" ]]; then
+  ln -s "$shared_generated/definitions" "$generated/definitions"
+  created_links+=("$generated/definitions")
+fi
+if [[ ! -e "$generated/generatedScreenTypes.ts" && -f "$shared_generated/generatedScreenTypes.ts" ]]; then
+  ln -s "$shared_generated/generatedScreenTypes.ts" "$generated/generatedScreenTypes.ts"
+  created_links+=("$generated/generatedScreenTypes.ts")
+fi
+cleanup_generated_links() {
+  local path
+  for path in "${created_links[@]}"; do
+    [[ -L "$path" ]] && rm -f "$path"
+  done
+}
+trap cleanup_generated_links EXIT
+[[ -d "$generated/definitions" && -f "$generated/generatedScreenTypes.ts" ]] || {
+  echo "[nightly-frontend-contracts] generated screen assets are unavailable" >&2
   exit 2
 }
 
