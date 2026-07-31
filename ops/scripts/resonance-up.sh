@@ -6,7 +6,7 @@ NAMESPACE="${NAMESPACE:-carbonet-prod}"
 WEB_DEPLOYMENT="${WEB_DEPLOYMENT:-carbonet-runtime}"
 WEB_SERVICE="${WEB_SERVICE:-carbonet-runtime}"
 DB_STATEFULSET="${DB_STATEFULSET:-postgres-patroni}"
-HEALTH_URL="${HEALTH_URL:-http://127.0.0.1:8080/actuator/health}"
+HEALTH_URL="${HEALTH_URL:-}"
 RUN_DIR="$ROOT_DIR/var/run"
 EVENT_LOG="$ROOT_DIR/var/ai-runtime/resonance-up-events.jsonl"
 LOCK_FILE="$RUN_DIR/resonance-up.lock"
@@ -96,7 +96,6 @@ recover_db() {
 
 recover_web() {
   log "ensure web deployment $WEB_DEPLOYMENT"
-  kubectl -n "$NAMESPACE" scale "deployment/$WEB_DEPLOYMENT" --replicas="${WEB_REPLICAS:-2}" || true
   kubectl -n "$NAMESPACE" rollout status "deployment/$WEB_DEPLOYMENT" --timeout=240s || {
     log "restart web deployment $WEB_DEPLOYMENT"
     kubectl -n "$NAMESPACE" rollout restart "deployment/$WEB_DEPLOYMENT" || true
@@ -128,141 +127,27 @@ ensure_endpoints() {
     waited=$((waited + 3))
   done
 
-  repair_endpoints
-}
-
-repair_endpoints() {
-  log "repair endpoints for $WEB_SERVICE"
-
-  local pod_ips
-  pod_ips=$(kubectl -n "$NAMESPACE" get pods -l app="$WEB_SERVICE" \
-    --field-selector=status.phase=Running \
-    -o jsonpath='{range .items[*]}{.status.podIP}{"\n"}{end}' 2>/dev/null | grep -v '^$')
-
-  local pod_count
-  pod_count=$(echo "$pod_ips" | grep -c . || echo 0)
-
-  if [[ "$pod_count" -eq 0 ]]; then
-    log "no running pods found, skipping endpoint repair"
-    return 1
-  fi
-
-  log "found $pod_count running pods: $(echo "$pod_ips" | tr '\n' ' ')"
-
-  kubectl -n "$NAMESPACE" delete endpoints "$WEB_SERVICE" --ignore-not-found=true >/dev/null 2>&1 || true
-
-  local endpoint_yaml
-  endpoint_yaml=$(cat <<EOF
-apiVersion: v1
-kind: Endpoints
-metadata:
-  name: $WEB_SERVICE
-  namespace: $NAMESPACE
-  labels:
-    app: $WEB_SERVICE
-subsets:
-- addresses:
-$(echo "$pod_ips" | sed 's/^/  - ip: /')
-  ports:
-  - port: 8080
-    protocol: TCP
-EOF
-)
-
-  printf '%s' "$endpoint_yaml" | kubectl apply -f - >/dev/null 2>&1
-
-  if [[ $? -eq 0 ]]; then
-    log "endpoints created manually"
-    return 0
-  fi
-
-  log "manual endpoint creation failed, attempting service recreation"
-  recover_service
-  return $?
-}
-
-recover_service() {
-  log "recover service $WEB_SERVICE by recreation"
-
-  kubectl -n "$NAMESPACE" delete service "$WEB_SERVICE" --ignore-not-found=true >/dev/null 2>&1 || true
-  sleep 3
-
-  local new_yaml
-  new_yaml=$(cat <<EOF
-apiVersion: v1
-kind: Service
-metadata:
-  name: $WEB_SERVICE
-  namespace: $NAMESPACE
-  labels:
-    app: $WEB_SERVICE
-spec:
-  type: NodePort
-  selector:
-    app: $WEB_SERVICE
-  ports:
-  - name: http
-    port: 80
-    targetPort: 8080
-    nodePort: 80
-  - name: http-alt-32947
-    port: 32947
-    targetPort: 8080
-    nodePort: 32947
-EOF
-)
-
-  printf '%s' "$new_yaml" | kubectl apply -f - >/dev/null 2>&1
-
-  if [[ $? -eq 0 ]]; then
-    log "service recreated, waiting for endpoints"
-    sleep 5
-    return 0
-  fi
-
-  log "service recreation failed"
-  return 1
+  log "endpoints unavailable; restart deployment without rewriting Service or Endpoints"
+  kubectl -n "$NAMESPACE" rollout restart "deployment/$WEB_DEPLOYMENT"
+  kubectl -n "$NAMESPACE" rollout status "deployment/$WEB_DEPLOYMENT" --timeout=420s
+  [[ -n "$(kubectl -n "$NAMESPACE" get endpoints "$WEB_SERVICE" -o jsonpath='{.subsets[*].addresses[*].ip}' 2>/dev/null)" ]]
 }
 
 ensure_port_80() {
-  log "ensure service $WEB_SERVICE port 80"
-  kubectl -n "$NAMESPACE" patch "service/$WEB_SERVICE" --type merge -p '{"spec":{"type":"NodePort"}}' >/dev/null 2>&1 || true
-  kubectl -n "$NAMESPACE" patch "service/$WEB_SERVICE" --type json -p='[{"op":"replace","path":"/spec/ports","value":[{"name":"http","port":80,"targetPort":8080,"nodePort":80,"protocol":"TCP"},{"name":"http-alt-32947","port":32947,"targetPort":8080,"nodePort":32947,"protocol":"TCP"}]}]' >/dev/null 2>&1 || true
-
-  log "ensure java opts on $WEB_DEPLOYMENT (no resource limits)"
-  kubectl -n "$NAMESPACE" patch "deployment/$WEB_DEPLOYMENT" --type json -p='[
-    {"op":"remove","path":"/spec/template/spec/containers/0/resources"}
-  ]' >/dev/null 2>&1 || true
-  kubectl -n "$NAMESPACE" set env deployment/$WEB_DEPLOYMENT \
-    JAVA_OPTS="-XX:+UseContainerSupport -XX:InitialRAMPercentage=30 -XX:MaxRAMPercentage=50 -XX:+UseG1GC -XX:+ExitOnOutOfMemoryError -Dfile.encoding=UTF-8" \
-    -n "$NAMESPACE" >/dev/null 2>&1 || true
-
-  log "ensure HA policy"
-  kubectl -n "$NAMESPACE" scale "deployment/$WEB_DEPLOYMENT" --replicas=2 >/dev/null 2>&1 || true
-  kubectl -n "$NAMESPACE" patch "deployment/$WEB_DEPLOYMENT" --type strategic --patch-file /dev/stdin <<'PATCH' >/dev/null 2>&1 || true
-spec:
-  replicas: 2
-  minReadySeconds: 20
-  revisionHistoryLimit: 5
-  progressDeadlineSeconds: 600
-  strategy:
-    type: RollingUpdate
-    rollingUpdate:
-      maxUnavailable: 0
-      maxSurge: 1
-  template:
-    spec:
-      terminationGracePeriodSeconds: 60
-      containers:
-        - name: carbonet-runtime
-          lifecycle:
-            preStop:
-              exec:
-                command: ["sh", "-c", "sleep 10"]
-PATCH
+  log "validate service $WEB_SERVICE without mutating deployment or service policy"
+  kubectl -n "$NAMESPACE" get "service/$WEB_SERVICE" >/dev/null
 }
 
 health_check() {
+  if [[ -z "$HEALTH_URL" ]]; then
+    local node_port
+    node_port="$(kubectl -n "$NAMESPACE" get "service/$WEB_SERVICE" -o jsonpath='{.spec.ports[0].nodePort}')"
+    [[ "$node_port" =~ ^[0-9]+$ ]] || {
+      log "NodePort unavailable for $WEB_SERVICE"
+      return 1
+    }
+    HEALTH_URL="http://127.0.0.1:${node_port}/actuator/health"
+  fi
   log "health check $HEALTH_URL"
   for _ in $(seq 1 60); do
     if curl -fsS --max-time 5 "$HEALTH_URL" >"$RUN_DIR/resonance-up-health.json"; then
@@ -292,14 +177,8 @@ main() {
   ensure_port_80
   ensure_endpoints
   health_check || {
-    log 'health failed, running self-heal then retry'
-    if [[ -x "$ROOT_DIR/ops/scripts/resonance-k8s-self-heal.sh" ]]; then
-      bash "$ROOT_DIR/ops/scripts/resonance-k8s-self-heal.sh" || true
-    fi
-    health_check || {
-      log_event FAIL HEALTH_FAILED 'health check failed after repair attempts'
-      exit 1
-    }
+    log_event FAIL HEALTH_FAILED 'health check failed after bounded recovery'
+    exit 1
   }
   snapshot
   log_event OK READY 'resonance is up'
