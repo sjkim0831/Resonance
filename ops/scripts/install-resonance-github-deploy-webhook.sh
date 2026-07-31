@@ -53,7 +53,18 @@ done
 }
 printf '%s\n' "$public_url" >"${url_file}.tmp"
 mv "${url_file}.tmp" "$url_file"
-curl -fsS --max-time 10 "$public_url/health" |
-  grep -q '"status":"UP"'
+public_ready=false
+for _ in $(seq 1 60); do
+  if curl -fsS --max-time 5 "$public_url/health" 2>/dev/null |
+    grep -q '"status":"UP"'; then
+    public_ready=true
+    break
+  fi
+  sleep 1
+done
+[[ "$public_ready" == "true" ]] || {
+  echo "[deploy-webhook-install] public webhook health did not become ready" >&2
+  exit 4
+}
 sudo -n systemctl is-active --quiet carbonet-github-deploy-webhook.service
 echo "[deploy-webhook-install] PASS url=$public_url/hooks/github/deploy"
