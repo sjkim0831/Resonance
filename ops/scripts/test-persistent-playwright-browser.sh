@@ -16,5 +16,6 @@ grep -Fq -- '--disable-dev-shm-usage' "$frontend/scripts/playwright-browser-serv
 grep -Fq 'resonance-playwright-browser-server.service' "$frontend/scripts/ensure-playwright-browser-server.sh"
 grep -Fq 'Restart=always' "$frontend/scripts/ensure-playwright-browser-server.sh"
 grep -Fq 'sudo -n systemctl restart "$service_name"' "$frontend/scripts/ensure-playwright-browser-server.sh"
+grep -Fq 'systemctl is-failed --quiet "$service_name"' "$frontend/scripts/ensure-playwright-browser-server.sh"
 
 echo "[persistent-playwright-browser-test] PASS"

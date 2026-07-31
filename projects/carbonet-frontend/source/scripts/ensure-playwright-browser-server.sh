@@ -46,7 +46,6 @@ Environment=PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=${PLAYWRIGHT_CHROMIUM_EXECUTABLE
 ExecStart=$node_bin $root_dir/scripts/playwright-browser-server.mjs --state-dir $state_dir
 Restart=always
 RestartSec=1
-NoNewPrivileges=true
 
 [Install]
 WantedBy=multi-user.target
@@ -67,6 +66,10 @@ EOF
 
   for _ in {1..50}; do
     server_is_current && break
+    if command -v systemctl >/dev/null 2>&1 &&
+       systemctl is-failed --quiet "$service_name" 2>/dev/null; then
+      break
+    fi
     sleep 0.1
   done
 fi
