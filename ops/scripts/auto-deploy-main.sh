@@ -900,6 +900,10 @@ bash ops/scripts/resonance-full-screen-deploy-gate.sh capture
 if [[ "$PLAN_FRONTEND_REQUIRED" == "true" \
    && "$PLAN_BACKEND_REQUIRED" != "true" \
    && "$PLAN_DATABASE_REQUIRED" != "true" ]]; then
+  frontend_smoke_pattern="$(node \
+    projects/carbonet-frontend/source/scripts/derive-frontend-smoke-route-pattern.mjs \
+    "$deployed_commit" "$target_commit")"
+  echo "[auto-deploy] frontend smoke impact pattern=$frontend_smoke_pattern"
   BASE_URL="${CARBONET_PUBLIC_BASE_URL:-http://127.0.0.1}" \
   OVERLAY_DIR="${CARBONET_LIVE_FRONTEND_OVERLAY_DIR:-/opt/Resonance/projects/carbonet-frontend/src/main/resources/static/react-app}" \
   STATUS_DIR="${CARBONET_LIVE_STATUS_DIR:-/opt/Resonance/var/run}" \
@@ -915,7 +919,7 @@ if [[ "$PLAN_FRONTEND_REQUIRED" == "true" \
   # common bundle regression can never result in a zero-screen deploy gate.
   # The scheduled nightly sweep remains the global 1,000-screen safety net.
   FULL_SCREEN_SMOKE_CHANGED_ONLY=false \
-  FULL_SCREEN_SMOKE_ROUTE_PATTERN='^/(home|emission/project_list|emission/project/create|emission/my-tasks|home/certificate-verify|admin|admin/system/menu|admin/system/actor-process|admin/emission/survey-admin|admin/emission/survey-admin-data|admin/emission/survey-report|admin/emission/survey-report-print)([?#]|$)' \
+  FULL_SCREEN_SMOKE_ROUTE_PATTERN="$frontend_smoke_pattern" \
     bash ops/scripts/resonance-full-screen-deploy-gate.sh verify
   bash ops/scripts/sync-unified-asset-catalog.sh "$deployed_commit" "$target_commit"
   bash ops/scripts/validate-e4b-selectable-assets.sh
