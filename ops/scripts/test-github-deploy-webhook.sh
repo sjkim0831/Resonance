@@ -40,7 +40,7 @@ grep -q 'consecutive_successes >= 3' \
   "$root/ops/scripts/sync-github-deploy-webhook-url.py"
 grep -q 'stable_funnel or current_tunnel_url' \
   "$root/ops/scripts/sync-github-deploy-webhook-url.py"
-grep -q 'configured_funnel_url() or tailscale_funnel_url()' \
+grep -q 'ensure_configured_funnel(configured_url)' \
   "$root/ops/scripts/sync-github-deploy-webhook-url.py"
 grep -q 'verify_local_webhook_health()' \
   "$root/ops/scripts/sync-github-deploy-webhook-url.py"

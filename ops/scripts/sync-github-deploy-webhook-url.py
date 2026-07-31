@@ -97,6 +97,25 @@ def configured_funnel_url() -> str | None:
     raise RuntimeError("invalid configured Tailscale Funnel URL")
 
 
+def ensure_configured_funnel(configured_url: str) -> str | None:
+    active_url = tailscale_funnel_url()
+    if active_url == configured_url:
+        return configured_url
+    result = subprocess.run(
+        (
+            "sudo", "-n", "tailscale", "funnel",
+            "--bg", "--yes", "9088",
+        ),
+        text=True,
+        capture_output=True,
+        check=False,
+        timeout=30,
+    )
+    if result.returncode == 0 and tailscale_funnel_url() == configured_url:
+        return configured_url
+    return None
+
+
 def remove_quick_tunnel() -> None:
     subprocess.run(
         ("sudo", "-n", "docker", "rm", "-f", CONTAINER),
@@ -230,7 +249,12 @@ def atomic_write(path: Path, value: str) -> None:
 
 
 def main() -> int:
-    stable_funnel = configured_funnel_url() or tailscale_funnel_url()
+    configured_url = configured_funnel_url()
+    stable_funnel = (
+        ensure_configured_funnel(configured_url)
+        if configured_url
+        else tailscale_funnel_url()
+    )
     tunnel_url = stable_funnel or current_tunnel_url()
     if stable_funnel:
         # Tailnet MagicDNS resolves the Funnel hostname to this node's private
