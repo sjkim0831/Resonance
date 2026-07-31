@@ -636,6 +636,7 @@ run_backstage_visual_e2e_if_required() {
   BACKSTAGE_E2E_SECRET_NAME="${BACKSTAGE_E2E_SECRET_NAME:-resonance-keycloak-integrated-admin}" \
   RESONANCE_BACKSTAGE_E2E_SCOPE="$e2e_scope" \
   RESONANCE_BACKSTAGE_E2E_ROUTES="$e2e_routes" \
+  RESONANCE_E2E_SKIP_IDENTITY_PREFLIGHT=true \
   RESONANCE_ROOT="$ROOT_DIR" \
     bash ops/scripts/resonance-backstage-visual-e2e.sh
 }

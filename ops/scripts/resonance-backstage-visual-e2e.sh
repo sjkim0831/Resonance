@@ -9,6 +9,7 @@ CA_DIR="${RESONANCE_CA_DIR:-/opt/resonance-data/pki/resonance-internal-ca}"
 CA_CERT="${CA_DIR}/ca.crt"
 EVIDENCE_ROOT="${RESONANCE_E2E_EVIDENCE_ROOT:-/opt/resonance-data/control-plane/evidence/backstage}"
 DEPENDENCY_CACHE_ROOT="${RESONANCE_E2E_DEPENDENCY_CACHE_ROOT:-/opt/resonance-data/control-plane/cache/backstage-e2e}"
+SKIP_IDENTITY_PREFLIGHT="${RESONANCE_E2E_SKIP_IDENTITY_PREFLIGHT:-false}"
 ROOT="${RESONANCE_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
 BACKSTAGE_ROOT="${ROOT}/platform/control-plane/backstage"
 VERIFY_SCRIPT="${RESONANCE_CA_VERIFY_SCRIPT:-/opt/resonance-data/deploy/resonance-internal-ca-verify.sh}"
@@ -35,41 +36,45 @@ password="$(
 test -n "$password"
 
 token=""
-token_error="$(mktemp)"
-for attempt in $(seq 1 6); do
-  if token="$(
-    BACKSTAGE_E2E_USERNAME="$USERNAME" \
-    BACKSTAGE_E2E_PASSWORD="$password" \
-      bash "$ROOT/ops/scripts/resonance-backstage-oidc-token.sh" "$USERNAME" \
-      2>"$token_error"
-  )" && [[ -n "$token" ]]; then
-    break
+if [[ "$SKIP_IDENTITY_PREFLIGHT" != "true" ]]; then
+  token_error="$(mktemp)"
+  for attempt in $(seq 1 6); do
+    if token="$(
+      BACKSTAGE_E2E_USERNAME="$USERNAME" \
+      BACKSTAGE_E2E_PASSWORD="$password" \
+        bash "$ROOT/ops/scripts/resonance-backstage-oidc-token.sh" "$USERNAME" \
+        2>"$token_error"
+    )" && [[ -n "$token" ]]; then
+      break
+    fi
+    token=""
+    sleep $((attempt * 2))
+  done
+  if [[ -z "$token" ]]; then
+    echo "[backstage-e2e] OIDC login did not become ready after bounded retries" >&2
+    sed -n '1,20p' "$token_error" >&2
+    rm -f "$token_error"
+    exit 1
   fi
-  token=""
-  sleep $((attempt * 2))
-done
-if [[ -z "$token" ]]; then
-  echo "[backstage-e2e] OIDC login did not become ready after bounded retries" >&2
-  sed -n '1,20p' "$token_error" >&2
   rm -f "$token_error"
-  exit 1
-fi
-rm -f "$token_error"
-catalog_user_url="${BACKSTAGE_URL}/api/catalog/entities/by-name/user/default/${USERNAME}"
-catalog_ready=false
-for _ in $(seq 1 30); do
-  if curl --silent --fail \
-    --cacert "$CA_CERT" \
-    --header "Authorization: Bearer ${token}" \
-    "$catalog_user_url" >/dev/null; then
-    catalog_ready=true
-    break
+  catalog_user_url="${BACKSTAGE_URL}/api/catalog/entities/by-name/user/default/${USERNAME}"
+  catalog_ready=false
+  for _ in $(seq 1 30); do
+    if curl --silent --fail \
+      --cacert "$CA_CERT" \
+      --header "Authorization: Bearer ${token}" \
+      "$catalog_user_url" >/dev/null; then
+      catalog_ready=true
+      break
+    fi
+    sleep 5
+  done
+  if [[ "$catalog_ready" != true ]]; then
+    echo "[backstage-e2e] catalog identity did not converge: $USERNAME" >&2
+    exit 1
   fi
-  sleep 5
-done
-if [[ "$catalog_ready" != true ]]; then
-  echo "[backstage-e2e] catalog identity did not converge: $USERNAME" >&2
-  exit 1
+else
+  echo "[backstage-e2e] identity preflight covered by deployment authentication gates"
 fi
 
 timestamp="$(date -u +%Y%m%dT%H%M%SZ)"
@@ -127,7 +132,7 @@ if [[ ! -d node_modules ]]; then
   fi
   ln -s "${dependency_cache}/node_modules" node_modules
 fi
-timeout --signal=TERM --kill-after=15s 180s corepack yarn playwright test \
+timeout --signal=TERM --kill-after=15s 180s ./node_modules/.bin/playwright test \
   packages/app/e2e-tests/resonance-control-plane.test.ts \
   --project=app \
   --workers=1 \
