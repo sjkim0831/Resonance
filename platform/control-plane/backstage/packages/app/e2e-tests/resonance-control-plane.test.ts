@@ -188,6 +188,12 @@ async function verifyRoute(
     await expect(page.getByText('정상', { exact: true }).first()).toBeVisible();
   }
 
+  if (route === '/system-operations') {
+    await expect(page.getByText('자동 배포 복구 현황')).toBeVisible();
+    await expect(page.getByText('최근 배포 SUCCESS')).toBeVisible();
+    await expect(page.getByText('NONE', { exact: true })).toBeVisible();
+  }
+
   if (evidenceDir) {
     await page.screenshot({
       path: path.join(
