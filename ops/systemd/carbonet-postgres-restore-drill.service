@@ -1,0 +1,17 @@
+[Unit]
+Description=Isolated Carbonet PostgreSQL backup restore drill
+After=network-online.target kubelet.service containerd.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=sjkim
+Group=sjkim
+ExecStart=/usr/bin/bash /opt/resonance-data/control-plane/bin/postgres-isolated-restore-drill.sh
+TimeoutStartSec=3600
+Nice=15
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7
+
+[Install]
+WantedBy=multi-user.target

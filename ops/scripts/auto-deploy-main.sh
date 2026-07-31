@@ -740,6 +740,34 @@ sync_patroni_auto_heal_if_required() {
   fi
 }
 
+sync_postgres_restore_drill_if_required() {
+  if git diff --name-only "$deployed_commit" "$target_commit" -- \
+      ops/scripts/postgres-isolated-restore-drill.sh \
+      ops/scripts/test-postgres-isolated-restore-drill.sh \
+      ops/systemd/carbonet-postgres-restore-drill.service \
+      ops/systemd/carbonet-postgres-restore-drill.timer |
+      grep -q . ||
+    ! systemctl is-enabled --quiet carbonet-postgres-restore-drill.timer; then
+    bash ops/scripts/test-postgres-isolated-restore-drill.sh
+    sudo -n install -d -m 2770 -o sjkim -g sjkim \
+      /opt/resonance-data/restore-drills \
+      /opt/resonance-data/restore-drills/work \
+      /opt/resonance-data/restore-drills/reports
+    sudo -n install -m 0750 -o sjkim -g sjkim \
+      ops/scripts/postgres-isolated-restore-drill.sh \
+      /opt/resonance-data/control-plane/bin/postgres-isolated-restore-drill.sh
+    sudo -n install -m 0644 \
+      ops/systemd/carbonet-postgres-restore-drill.service \
+      /etc/systemd/system/carbonet-postgres-restore-drill.service
+    sudo -n install -m 0644 \
+      ops/systemd/carbonet-postgres-restore-drill.timer \
+      /etc/systemd/system/carbonet-postgres-restore-drill.timer
+    sudo -n systemctl daemon-reload
+    sudo -n systemctl enable --now carbonet-postgres-restore-drill.timer >/dev/null
+    echo "[auto-deploy] isolated PostgreSQL restore drill synchronized"
+  fi
+}
+
 # Documentation, design metadata, catalog and automation-only changes do not
 # alter the running application. Fast-forward and refresh the searchable source
 # catalog without an unnecessary DB dump, JVM build, image build or rollout.
@@ -763,6 +791,8 @@ if [[ "$PLAN_RUNTIME_REQUIRED" != "true" ]]; then
       ops/scripts/test-post-reboot-runtime-recovery.sh \
       ops/scripts/patroni-auto-heal.sh \
       ops/scripts/test-patroni-auto-heal-safety.sh \
+      ops/scripts/postgres-isolated-restore-drill.sh \
+      ops/scripts/test-postgres-isolated-restore-drill.sh \
       ops/scripts/resonance-github-deploy-webhook.py \
       ops/scripts/sync-github-deploy-webhook-url.py \
       ops/scripts/test-github-deploy-webhook.sh \
@@ -774,6 +804,8 @@ if [[ "$PLAN_RUNTIME_REQUIRED" != "true" ]]; then
       ops/systemd/carbonet-post-reboot-recovery.service \
       ops/systemd/carbonet-patroni-auto-heal.service \
       ops/systemd/carbonet-patroni-auto-heal.timer \
+      ops/systemd/carbonet-postgres-restore-drill.service \
+      ops/systemd/carbonet-postgres-restore-drill.timer \
       ops/kubernetes/postgres-haproxy-config.yaml \
       .github/workflows/carbonet-push-deploy.yml |
       grep -q .; then
@@ -819,6 +851,7 @@ if [[ "$PLAN_RUNTIME_REQUIRED" != "true" ]]; then
     sync_postgres_backup_cronjobs_if_required
     sync_post_reboot_recovery_if_required
     sync_patroni_auto_heal_if_required
+    sync_postgres_restore_drill_if_required
   fi
   backstage_only_change=false
   if [[ "$PLAN_BACKSTAGE_REQUIRED" == "true" ]] &&
