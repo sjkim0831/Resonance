@@ -13,5 +13,7 @@ grep -Fq 'prepare-full-screen-auth-state.mjs' "$runner"
 grep -Fq 'trap cleanup_smoke_secrets EXIT' "$runner"
 grep -Fq 'chmod(output, 0o600)' "$frontend/scripts/prepare-full-screen-auth-state.mjs"
 grep -Fq 'using per-shard UI login' "$runner"
+grep -Fq 'FULL_SCREEN_SMOKE_SHARDS="${FULL_SCREEN_SMOKE_SHARDS:-1}"' \
+  "$ROOT_DIR/ops/scripts/resonance-full-screen-deploy-gate.sh"
 
 echo "[shared-smoke-auth-state-test] PASS"
