@@ -190,7 +190,7 @@ async function verifyRoute(
 
   if (route === '/system-operations') {
     await expect(page.getByText('자동 배포 복구 현황')).toBeVisible();
-    await expect(page.getByText('최근 배포 SUCCESS')).toBeVisible();
+    await expect(page.getByText('자동 배포 RUNNING')).toBeVisible();
     await expect(page.getByText('NONE', { exact: true })).toBeVisible();
   }
 

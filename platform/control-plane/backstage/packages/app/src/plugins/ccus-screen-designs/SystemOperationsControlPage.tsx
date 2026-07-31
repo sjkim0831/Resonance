@@ -169,7 +169,7 @@ export function SystemOperationsControlPage() {
           <Box className={classes.row}>
             <Box>
               <Typography variant="subtitle1">
-                최근 배포 {summary?.deployment?.status ?? 'UNKNOWN'}
+                자동 배포 {summary?.deployment?.status ?? 'UNKNOWN'}
               </Typography>
               <Typography variant="caption">
                 {summary?.deployment?.targetCommit?.slice(0, 10) ?? '커밋 확인 전'}

@@ -103,6 +103,20 @@ if [[ "$deployed_commit" == "$target_commit" ]]; then
   exit 0
 fi
 
+# Publish the in-flight state before any mutable platform work. Authenticated
+# E2E verifies RUNNING, and record-deploy-performance atomically promotes it to
+# SUCCESS only after every fail-closed gate completes.
+deploy_status_file="${CARBONET_DEPLOY_STATUS_FILE:-/opt/resonance-data/deploy/deploy-status.json}"
+jq -n \
+  --arg checkedAt "$(date -Iseconds)" \
+  --arg status RUNNING \
+  --arg category NONE \
+  --arg targetCommit "$target_commit" \
+  '{checkedAt:$checkedAt,status:$status,category:$category,targetCommit:$targetCommit,retryAllowed:false,retryAttempted:false,evidence:""}' \
+  >"${deploy_status_file}.tmp"
+chmod 0644 "${deploy_status_file}.tmp"
+mv "${deploy_status_file}.tmp" "$deploy_status_file"
+
 if [[ ! -r "$KUBECONFIG" ]]; then
   echo "[auto-deploy] refusing deployment: kubeconfig is not readable ($KUBECONFIG)" >&2
   exit 8
