@@ -15,14 +15,18 @@ fi
 
 POLICY_ROOT="${CARBONET_DEPLOY_ORIGINAL_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
 DEPLOY_STARTED_EPOCH_SECONDS="$(date +%s)"
-DEPLOY_STARTED_EPOCH_MILLISECONDS="$(date +%s%3N)"
+monotonic_milliseconds() {
+  awk '{printf "%.0f\n", $1 * 1000}' /proc/uptime
+}
+
+DEPLOY_STARTED_EPOCH_MILLISECONDS="$(monotonic_milliseconds)"
 DEPLOY_PHASE_LAST_MILLISECONDS="$DEPLOY_STARTED_EPOCH_MILLISECONDS"
 DEPLOY_PHASE_FILE="$(mktemp /tmp/carbonet-deploy-phases.XXXXXX.jsonl)"
 
 record_deploy_phase() {
   local phase="$1"
   local now_ms duration_ms
-  now_ms="$(date +%s%3N)"
+  now_ms="$(monotonic_milliseconds)"
   duration_ms=$((now_ms - DEPLOY_PHASE_LAST_MILLISECONDS))
   jq -cn \
     --arg phase "$phase" \

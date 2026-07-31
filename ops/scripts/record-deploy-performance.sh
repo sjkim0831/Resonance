@@ -63,6 +63,7 @@ if [[ -n "$phase_file" && -s "$phase_file" ]]; then
         (.durationMs | type == "number") and .durationMs >= 0)
     ' "$phase_file" >/dev/null; then
     echo "[deploy-performance] invalid phase telemetry: $phase_file" >&2
+    jq -c . "$phase_file" >&2 || true
     exit 3
   fi
 
