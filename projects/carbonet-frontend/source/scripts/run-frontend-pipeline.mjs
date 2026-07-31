@@ -71,15 +71,34 @@ if (!process.argv.includes("--build")) {
 }
 
 if (process.argv.includes("--build")) {
+  // Dedupe can rewrite generated route-family sources and therefore must
+  // complete before both validation and bundling. The remaining checks are
+  // read-only and independent; run them alongside typecheck and bundling so
+  // frontend deploy latency is the longest lane, not the sum of every lane.
   run(process.execPath, ["scripts/dedupe-generated-route-family.mjs"]);
-  run(process.execPath, ["scripts/check-generated-route-family-integrity.mjs"]);
-  run(process.execPath, ["scripts/check-generated-prototype-isolation.mjs"]);
-  run(npm, ["run", "audit:route-registry"]);
+  const validationTasks = [
+    runAsync(process.execPath, ["scripts/check-generated-route-family-integrity.mjs"]),
+    runAsync(process.execPath, ["scripts/check-generated-prototype-isolation.mjs"]),
+    runAsync(process.execPath, ["scripts/check-route-registry-uniqueness.mjs"]),
+  ];
+  const bundlerCommand = process.execPath;
+  const bundlerArgs = frontendBundler === "rolldown"
+    ? [path.join(frontendRoot, "node_modules/rolldown-vite/bin/vite.js"), "build"]
+    : [path.join(frontendRoot, "node_modules/vite/bin/vite.js"), "build"];
   if (skipBuildTypecheck) {
     console.log("[frontend-pipeline] project-reference typecheck skipped; external noEmit evidence required");
-    run(npx, ["vite", "build"]);
+    console.log(`[frontend-pipeline] bundler=${frontendBundler}`);
+    try {
+      await Promise.all([
+        ...validationTasks,
+        runAsync(bundlerCommand, bundlerArgs),
+      ]);
+    } catch (error) {
+      console.error(`[frontend-pipeline] parallel validation/build failed: ${error instanceof Error ? error.message : error}`);
+      process.exit(1);
+    }
   } else {
-    console.log(`[frontend-pipeline] typecheck and ${frontendBundler} build run concurrently; both remain fail-closed`);
+    console.log(`[frontend-pipeline] validations, typecheck and ${frontendBundler} build run concurrently; all remain fail-closed`);
     const typecheckArgs = forceFullTypecheck
       ? ["tsc", "-p", "tsconfig.app.json", "--pretty", "false"]
       : [
@@ -89,13 +108,10 @@ if (process.argv.includes("--build")) {
           "--pretty", "false",
         ];
     console.log(`[frontend-pipeline] typecheck mode=${forceFullTypecheck ? "full" : "incremental"}`);
-    const bundlerCommand = process.execPath;
-    const bundlerArgs = frontendBundler === "rolldown"
-      ? [path.join(frontendRoot, "node_modules/rolldown-vite/bin/vite.js"), "build"]
-      : [path.join(frontendRoot, "node_modules/vite/bin/vite.js"), "build"];
     console.log(`[frontend-pipeline] bundler=${frontendBundler}`);
     try {
       await Promise.all([
+        ...validationTasks,
         runAsync(npx, typecheckArgs),
         runAsync(bundlerCommand, bundlerArgs),
       ]);

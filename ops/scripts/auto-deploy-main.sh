@@ -1012,6 +1012,7 @@ if [[ "$PLAN_FRONTEND_REQUIRED" != "true" \
   bash -n projects/carbonet-frontend/source/scripts/run-full-screen-smoke.sh
   bash ops/scripts/test-fast-browser-deploy-gate.sh
   bash ops/scripts/test-postdeploy-parallel-browser-gate.sh
+  bash ops/scripts/test-frontend-parallel-build-pipeline.sh
   if [[ ",$PLAN_TESTS," == *",control-plane:validate,"* ]]; then
     bash ops/scripts/resonance-control-plane.sh validate
   fi
