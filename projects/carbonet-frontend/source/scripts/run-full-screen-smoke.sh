@@ -61,6 +61,13 @@ detect_safe_workers() {
 }
 
 smoke_workers="$(detect_safe_workers)"
+if [[ -f "$root_dir/node_modules/@playwright/test/cli.js" ]]; then
+  playwright_command=(node "$root_dir/node_modules/@playwright/test/cli.js")
+else
+  # Developer worktrees may intentionally rely on npm's executable resolver.
+  # Production keeps the exact dependency installed and takes the direct path.
+  playwright_command=(npx playwright)
+fi
 printf '[full-screen-smoke] workers=%s cpu=%s load=%s memAvailableKb=%s\n' \
   "$smoke_workers" \
   "$(getconf _NPROCESSORS_ONLN 2>/dev/null || printf '?')" \
@@ -68,7 +75,7 @@ printf '[full-screen-smoke] workers=%s cpu=%s load=%s memAvailableKb=%s\n' \
   "$(awk '/MemAvailable:/ {print $2}' /proc/meminfo 2>/dev/null || printf '?')"
 set +e
 PLAYWRIGHT_HOST_PLATFORM_OVERRIDE="${PLAYWRIGHT_HOST_PLATFORM_OVERRIDE:-ubuntu24.04-x64}" \
-  npx playwright test e2e/full-screen-smoke.spec.ts \
+  "${playwright_command[@]}" test e2e/full-screen-smoke.spec.ts \
   --workers="$smoke_workers" \
   --retries="${FULL_SCREEN_SMOKE_RETRIES:-1}" \
   --reporter="${FULL_SCREEN_SMOKE_REPORTER:-list}"
@@ -100,7 +107,7 @@ if [[ "$finalize_status" -ne 0 && "${FULL_SCREEN_SMOKE_SERIAL_RECOVERY:-true}" =
   FULL_SCREEN_SMOKE_MANIFEST="$recovery_manifest" \
   FULL_SCREEN_SMOKE_RESULT_DIR="$recovery_results" \
   PLAYWRIGHT_HOST_PLATFORM_OVERRIDE="${PLAYWRIGHT_HOST_PLATFORM_OVERRIDE:-ubuntu24.04-x64}" \
-    npx playwright test e2e/full-screen-smoke.spec.ts \
+    "${playwright_command[@]}" test e2e/full-screen-smoke.spec.ts \
     --workers=1 \
     --retries=0 \
     --reporter="${FULL_SCREEN_SMOKE_REPORTER:-list}"
