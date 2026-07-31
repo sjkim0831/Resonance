@@ -414,25 +414,36 @@ case "$mode" in
       )
       finish_phase application-build
       start_phase image-build
-      build_cache_args=()
-      mkdir -p "$(dirname "$BUILDKIT_CACHE_ROOT")"
-      if [[ -s "$BUILDKIT_CACHE_ROOT/index.json" ]]; then
-        build_cache_args+=(--cache-from "type=local,src=$BUILDKIT_CACHE_ROOT")
+      buildx_driver="$(docker buildx inspect 2>/dev/null | awk '/^Driver:/ {print $2; exit}')"
+      if [[ "$buildx_driver" == "docker" || -z "$buildx_driver" ]]; then
+        # The Docker driver keeps a daemon-local incremental layer cache but
+        # cannot export type=local caches. Selecting by capability prevents a
+        # cache optimization from breaking an otherwise healthy rollout.
+        DOCKER_BUILDKIT=1 docker build \
+          -t "$image" \
+          -f "$APP/packages/backend/Dockerfile" \
+          "$APP"
+      else
+        build_cache_args=()
+        mkdir -p "$(dirname "$BUILDKIT_CACHE_ROOT")"
+        if [[ -s "$BUILDKIT_CACHE_ROOT/index.json" ]]; then
+          build_cache_args+=(--cache-from "type=local,src=$BUILDKIT_CACHE_ROOT")
+        fi
+        rm -rf -- "$BUILDKIT_CACHE_ROOT.next"
+        docker buildx build \
+          --load \
+          "${build_cache_args[@]}" \
+          --cache-to "type=local,dest=$BUILDKIT_CACHE_ROOT.next,mode=max" \
+          -t "$image" \
+          -f "$APP/packages/backend/Dockerfile" \
+          "$APP"
+        rm -rf -- "$BUILDKIT_CACHE_ROOT.previous"
+        if [[ -d "$BUILDKIT_CACHE_ROOT" ]]; then
+          mv -- "$BUILDKIT_CACHE_ROOT" "$BUILDKIT_CACHE_ROOT.previous"
+        fi
+        mv -- "$BUILDKIT_CACHE_ROOT.next" "$BUILDKIT_CACHE_ROOT"
+        rm -rf -- "$BUILDKIT_CACHE_ROOT.previous"
       fi
-      rm -rf -- "$BUILDKIT_CACHE_ROOT.next"
-      docker buildx build \
-        --load \
-        "${build_cache_args[@]}" \
-        --cache-to "type=local,dest=$BUILDKIT_CACHE_ROOT.next,mode=max" \
-        -t "$image" \
-        -f "$APP/packages/backend/Dockerfile" \
-        "$APP"
-      rm -rf -- "$BUILDKIT_CACHE_ROOT.previous"
-      if [[ -d "$BUILDKIT_CACHE_ROOT" ]]; then
-        mv -- "$BUILDKIT_CACHE_ROOT" "$BUILDKIT_CACHE_ROOT.previous"
-      fi
-      mv -- "$BUILDKIT_CACHE_ROOT.next" "$BUILDKIT_CACHE_ROOT"
-      rm -rf -- "$BUILDKIT_CACHE_ROOT.previous"
       finish_phase image-build
       start_phase image-push
       docker push "$image"
