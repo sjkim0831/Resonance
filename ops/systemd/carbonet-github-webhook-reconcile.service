@@ -1,0 +1,16 @@
+[Unit]
+Description=Reconcile Resonance GitHub webhook with the current tunnel URL
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=sjkim
+Group=sjkim
+ExecStart=/usr/bin/python3 /opt/resonance-data/control-plane/bin/sync-github-deploy-webhook-url.py
+Nice=10
+NoNewPrivileges=false
+PrivateTmp=true
+ProtectHome=read-only
+ProtectSystem=strict
+ReadWritePaths=/opt/resonance-data/deploy/github-webhook

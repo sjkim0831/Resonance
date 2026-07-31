@@ -691,10 +691,13 @@ if [[ "$PLAN_RUNTIME_REQUIRED" != "true" ]]; then
       ops/scripts/install-resonance-github-runner.sh \
       ops/scripts/install-resonance-github-deploy-webhook.sh \
       ops/scripts/resonance-github-deploy-webhook.py \
+      ops/scripts/sync-github-deploy-webhook-url.py \
       ops/scripts/test-github-deploy-webhook.sh \
       ops/scripts/test-push-deploy-dispatch.sh \
       ops/systemd/carbonet-auto-deploy.timer \
       ops/systemd/carbonet-github-deploy-webhook.service \
+      ops/systemd/carbonet-github-webhook-reconcile.service \
+      ops/systemd/carbonet-github-webhook-reconcile.timer \
       .github/workflows/carbonet-push-deploy.yml |
       grep -q .; then
     bash ops/scripts/test-catalog-identity-parallel-deploy.sh
@@ -705,7 +708,10 @@ if [[ "$PLAN_RUNTIME_REQUIRED" != "true" ]]; then
     bash ops/scripts/test-github-deploy-webhook.sh
     if git diff --name-only "$deployed_commit" "$target_commit" -- \
         ops/scripts/resonance-github-deploy-webhook.py \
-        ops/systemd/carbonet-github-deploy-webhook.service |
+        ops/scripts/sync-github-deploy-webhook-url.py \
+        ops/systemd/carbonet-github-deploy-webhook.service \
+        ops/systemd/carbonet-github-webhook-reconcile.service \
+        ops/systemd/carbonet-github-webhook-reconcile.timer |
         grep -q .; then
       sudo -n install -m 0750 -o root -g root \
         ops/scripts/resonance-github-deploy-webhook.py \
@@ -713,8 +719,20 @@ if [[ "$PLAN_RUNTIME_REQUIRED" != "true" ]]; then
       sudo -n install -m 0644 \
         ops/systemd/carbonet-github-deploy-webhook.service \
         /etc/systemd/system/carbonet-github-deploy-webhook.service
+      sudo -n install -m 0750 -o sjkim -g sjkim \
+        ops/scripts/sync-github-deploy-webhook-url.py \
+        /opt/resonance-data/control-plane/bin/sync-github-deploy-webhook-url.py
+      sudo -n install -m 0644 \
+        ops/systemd/carbonet-github-webhook-reconcile.service \
+        /etc/systemd/system/carbonet-github-webhook-reconcile.service
+      sudo -n install -m 0644 \
+        ops/systemd/carbonet-github-webhook-reconcile.timer \
+        /etc/systemd/system/carbonet-github-webhook-reconcile.timer
       sudo -n systemctl daemon-reload
       sudo -n systemctl restart carbonet-github-deploy-webhook.service
+      sudo -n systemctl enable --now \
+        carbonet-github-webhook-reconcile.timer >/dev/null
+      python3 /opt/resonance-data/control-plane/bin/sync-github-deploy-webhook-url.py
       echo "[auto-deploy] GitHub webhook runtime synchronized"
     fi
   fi

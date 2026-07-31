@@ -22,11 +22,21 @@ sudo -n chown root:sjkim /etc/resonance/github-deploy-webhook.secret
 sudo -n install -m 0750 -o root -g root \
   "$root/ops/scripts/resonance-github-deploy-webhook.py" \
   "$bin_dir/resonance-github-deploy-webhook.py"
+sudo -n install -m 0750 -o sjkim -g sjkim \
+  "$root/ops/scripts/sync-github-deploy-webhook-url.py" \
+  "$bin_dir/sync-github-deploy-webhook-url.py"
 sudo -n install -m 0644 \
   "$root/ops/systemd/carbonet-github-deploy-webhook.service" \
   /etc/systemd/system/carbonet-github-deploy-webhook.service
+sudo -n install -m 0644 \
+  "$root/ops/systemd/carbonet-github-webhook-reconcile.service" \
+  /etc/systemd/system/carbonet-github-webhook-reconcile.service
+sudo -n install -m 0644 \
+  "$root/ops/systemd/carbonet-github-webhook-reconcile.timer" \
+  /etc/systemd/system/carbonet-github-webhook-reconcile.timer
 sudo -n systemctl daemon-reload
 sudo -n systemctl enable --now carbonet-github-deploy-webhook.service >/dev/null
+sudo -n systemctl enable --now carbonet-github-webhook-reconcile.timer >/dev/null
 sudo -n systemctl restart carbonet-github-deploy-webhook.service
 
 sudo -n docker rm -f "$container" >/dev/null 2>&1 || true
@@ -67,4 +77,5 @@ done
   exit 4
 }
 sudo -n systemctl is-active --quiet carbonet-github-deploy-webhook.service
+python3 "$bin_dir/sync-github-deploy-webhook-url.py"
 echo "[deploy-webhook-install] PASS url=$public_url/hooks/github/deploy"

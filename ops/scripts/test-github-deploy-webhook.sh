@@ -3,6 +3,8 @@ set -euo pipefail
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 python3 "$root/ops/scripts/resonance-github-deploy-webhook.py" --self-test
+python3 -m py_compile \
+  "$root/ops/scripts/sync-github-deploy-webhook-url.py"
 bash -n "$root/ops/scripts/install-resonance-github-deploy-webhook.sh"
 grep -q 'X-Hub-Signature-256' \
   "$root/ops/scripts/resonance-github-deploy-webhook.py"
@@ -26,4 +28,8 @@ grep -q -- '--network host' \
   "$root/ops/scripts/install-resonance-github-deploy-webhook.sh"
 grep -q 'GitHub webhook runtime synchronized' \
   "$root/ops/scripts/auto-deploy-main.sh"
+grep -q 'OnUnitActiveSec=60s' \
+  "$root/ops/systemd/carbonet-github-webhook-reconcile.timer"
+grep -q 'GITHUB_WEBHOOK_URL_SYNC_PASS' \
+  "$root/ops/scripts/sync-github-deploy-webhook-url.py"
 printf '%s\n' "GITHUB_DEPLOY_WEBHOOK_CONTRACT_PASS"
