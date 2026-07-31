@@ -63,11 +63,13 @@ write_marker() {
   manifest_hash="$(sha256sum "$OVERLAY_DIR/.vite/manifest.json" | awk '{print $1}')"
   python3 - "$MARKER_FILE" "$hash" "$ts" "$index_hash" "$manifest_hash" <<'PY'
 import json
+import os
 import sys
 from pathlib import Path
 
 path = Path(sys.argv[1])
-path.write_text(json.dumps({
+tmp = path.with_name(f".{path.name}.{os.getpid()}.next")
+tmp.write_text(json.dumps({
     "sourceHash": sys.argv[2],
     "builtAt": sys.argv[3],
     "indexHash": sys.argv[4],
@@ -75,6 +77,7 @@ path.write_text(json.dumps({
     "sourceDir": "projects/carbonet-frontend/source",
     "overlayDir": "projects/carbonet-frontend/src/main/resources/static/react-app"
 }, ensure_ascii=False, indent=2) + "\n")
+os.replace(tmp, path)
 PY
   echo "[guard] marker written hash=$hash"
 }

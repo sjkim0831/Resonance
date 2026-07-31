@@ -29,12 +29,26 @@ load_active() {
   [[ -s "$ACTIVE_FILE" ]] || fail "deployment snapshot is missing: $ACTIVE_FILE"
   # shellcheck disable=SC1090
   source "$ACTIVE_FILE"
+  SNAPSHOT_FORMAT="${SNAPSHOT_FORMAT:-legacy-gzip}"
   require_safe_path "$SNAPSHOT_DIR" "$STATE_DIR"
+}
+
+prune_snapshots() {
+  local keep="${FULL_SCREEN_GATE_SNAPSHOT_RETENTION:-3}" snapshot
+  local -a stale_snapshots=()
+  mapfile -t stale_snapshots < <(
+    find "$STATE_DIR/snapshots" -mindepth 1 -maxdepth 1 -type d -printf '%T@ %p\n' 2>/dev/null |
+      sort -rn | tail -n "+$((keep + 1))" | cut -d' ' -f2-
+  )
+  for snapshot in "${stale_snapshots[@]:-}"; do
+    require_safe_path "$snapshot" "$STATE_DIR"
+    rm -rf -- "$snapshot"
+  done
 }
 
 capture() {
   mkdir -p "$STATE_DIR" "$REPORT_DIR"
-  local snapshot_id snapshot_dir runtime_image web_image git_sha
+  local snapshot_id snapshot_dir runtime_image web_image git_sha snapshot_format
   snapshot_id="$(date +%Y%m%d-%H%M%S)-$$"
   snapshot_dir="$STATE_DIR/snapshots/$snapshot_id"
   require_safe_path "$snapshot_dir" "$STATE_DIR"
@@ -44,27 +58,55 @@ capture() {
   web_image="$(kubectl -n "$NAMESPACE" get deployment "$WEB_DEPLOYMENT" -o jsonpath='{.spec.template.spec.containers[0].image}')"
   git_sha="$(git -C "$ROOT_DIR" rev-parse HEAD)"
   test -s "$OVERLAY_DIR/index.html"
-  tar -C "$OVERLAY_DIR" -czf "$snapshot_dir/frontend-overlay.tar.gz" .
+  # Overlay updates use rsync's temporary-file-and-rename path and atomically
+  # replace index/marker files. A hard-link tree therefore preserves the old
+  # inodes as a complete rollback closure in milliseconds. Fall back to a
+  # portable uncompressed tar only when the directories are on different
+  # filesystems or hard links are unavailable.
+  snapshot_format="hardlink-tree"
+  mkdir -p "$snapshot_dir/frontend-overlay"
+  if ! cp -al "$OVERLAY_DIR/." "$snapshot_dir/frontend-overlay/"; then
+    rm -rf "$snapshot_dir/frontend-overlay"
+    snapshot_format="plain-tar"
+    tar -C "$OVERLAY_DIR" -cf "$snapshot_dir/frontend-overlay.tar" .
+  fi
   kubectl -n "$NAMESPACE" get configmap carbonet-web-nginx -o jsonpath='{.data.nginx\.conf}' > "$snapshot_dir/nginx.conf"
   test -s "$snapshot_dir/nginx.conf"
 
   cat > "$ACTIVE_FILE.tmp" <<EOF
 SNAPSHOT_ID='$snapshot_id'
 SNAPSHOT_DIR='$snapshot_dir'
+SNAPSHOT_FORMAT='$snapshot_format'
 RUNTIME_IMAGE='$runtime_image'
 WEB_IMAGE='$web_image'
 GIT_SHA='$git_sha'
 EOF
   mv "$ACTIVE_FILE.tmp" "$ACTIVE_FILE"
-  log "captured snapshot=$snapshot_id runtime=$runtime_image web=$web_image git=$git_sha"
+  log "captured snapshot=$snapshot_id format=$snapshot_format runtime=$runtime_image web=$web_image git=$git_sha"
 }
 
 restore() {
   load_active
-  local restore_dir current_runtime current_web
-  restore_dir="$(mktemp -d "$STATE_DIR/restore.XXXXXX")"
-  require_safe_path "$restore_dir" "$STATE_DIR"
-  tar -C "$restore_dir" -xzf "$SNAPSHOT_DIR/frontend-overlay.tar.gz"
+  local restore_dir current_runtime current_web restore_is_temp=false
+  case "$SNAPSHOT_FORMAT" in
+    hardlink-tree)
+      restore_dir="$SNAPSHOT_DIR/frontend-overlay"
+      test -s "$restore_dir/index.html"
+      ;;
+    plain-tar)
+      restore_dir="$(mktemp -d "$STATE_DIR/restore.XXXXXX")"
+      restore_is_temp=true
+      require_safe_path "$restore_dir" "$STATE_DIR"
+      tar -C "$restore_dir" -xf "$SNAPSHOT_DIR/frontend-overlay.tar"
+      ;;
+    legacy-gzip)
+      restore_dir="$(mktemp -d "$STATE_DIR/restore.XXXXXX")"
+      restore_is_temp=true
+      require_safe_path "$restore_dir" "$STATE_DIR"
+      tar -C "$restore_dir" -xzf "$SNAPSHOT_DIR/frontend-overlay.tar.gz"
+      ;;
+    *) fail "unsupported snapshot format: $SNAPSHOT_FORMAT" ;;
+  esac
   node "$ROOT_DIR/ops/scripts/verify-react-asset-closure.mjs" "$restore_dir"
   rsync -a --exclude='/index.html' "$restore_dir/" "$OVERLAY_DIR/"
   cp "$restore_dir/index.html" "$OVERLAY_DIR/.index.html.rollback"
@@ -85,7 +127,7 @@ restore() {
   kubectl -n "$NAMESPACE" rollout status "deployment/$RUNTIME_DEPLOYMENT" --timeout=600s
   kubectl -n "$NAMESPACE" rollout status "deployment/$WEB_DEPLOYMENT" --timeout=180s
   curl -fsS --max-time 15 "$BASE_URL/actuator/health" | grep -q '"status":"UP"'
-  rm -rf "$restore_dir"
+  [[ "$restore_is_temp" == "true" ]] && rm -rf "$restore_dir"
   log "restored snapshot=$SNAPSHOT_ID"
 }
 
@@ -165,6 +207,7 @@ NODE
     return 1
   fi
   rm -f "$ACTIVE_FILE"
+  prune_snapshots
   find "$REPORT_DIR" -mindepth 1 -maxdepth 1 -type d -mtime +14 -exec rm -rf -- {} +
   log "PASS report=$run_report"
 }
@@ -176,6 +219,7 @@ accept_fast() {
   [[ "$health_status" == *'"status":"UP"'* ]] || fail "fast gate health check is not UP"
   node "$ROOT_DIR/ops/scripts/verify-react-asset-closure.mjs" "$OVERLAY_DIR"
   rm -f "$ACTIVE_FILE"
+  prune_snapshots
   log "PASS fast runtime gate snapshot=$SNAPSHOT_ID"
 }
 
