@@ -42,6 +42,8 @@ grep -q 'stable_funnel or current_tunnel_url' \
   "$root/ops/scripts/sync-github-deploy-webhook-url.py"
 grep -q 'configured_funnel_url() or tailscale_funnel_url()' \
   "$root/ops/scripts/sync-github-deploy-webhook-url.py"
+grep -q 'verify_local_webhook_health()' \
+  "$root/ops/scripts/sync-github-deploy-webhook-url.py"
 grep -q 'transport = \"tailscale\"' \
   "$root/ops/scripts/sync-github-deploy-webhook-url.py"
 grep -q 'webhook URL reconciliation deferred to timer' \

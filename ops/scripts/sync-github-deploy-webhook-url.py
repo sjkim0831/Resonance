@@ -160,6 +160,13 @@ def wait_public_health(tunnel_url: str) -> None:
     raise RuntimeError("quick tunnel public health unavailable after 45 seconds")
 
 
+def verify_local_webhook_health() -> None:
+    with urllib.request.urlopen("http://127.0.0.1:9088/health", timeout=5) as response:
+        payload = json.loads(response.read())
+        if response.status != 200 or payload.get("status") != "UP":
+            raise RuntimeError("local deploy webhook health is not UP")
+
+
 def github_token() -> str:
     output = run(
         "git",
@@ -225,7 +232,15 @@ def atomic_write(path: Path, value: str) -> None:
 def main() -> int:
     stable_funnel = configured_funnel_url() or tailscale_funnel_url()
     tunnel_url = stable_funnel or current_tunnel_url()
-    wait_public_health(tunnel_url)
+    if stable_funnel:
+        # Tailnet MagicDNS resolves the Funnel hostname to this node's private
+        # Tailscale IP, so checking the public certificate from the same node
+        # reaches the local :443 ingress instead of the Funnel edge. Verify the
+        # local origin and the active Funnel config; GitHub delivery is the
+        # authoritative external end-to-end check.
+        verify_local_webhook_health()
+    else:
+        wait_public_health(tunnel_url)
     expected = f"{tunnel_url}{HOOK_PATH}"
     token = github_token()
     hook_id = resolve_hook_id(token)
