@@ -14,6 +14,18 @@ export FULL_SCREEN_SMOKE_BASELINE="${FULL_SCREEN_SMOKE_BASELINE:-$cache_dir/last
 if [[ -z "${PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH:-}" && -x /snap/bin/chromium ]]; then
   export PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/snap/bin/chromium
 fi
+if [[ "${FULL_SCREEN_SMOKE_PERSISTENT_BROWSER:-true}" == "true" ]]; then
+  PLAYWRIGHT_WS_ENDPOINT="$(
+    bash "$root_dir/scripts/ensure-playwright-browser-server.sh" 2>/dev/null || true
+  )"
+  if [[ "$PLAYWRIGHT_WS_ENDPOINT" == ws://127.0.0.1:* ]]; then
+    export PLAYWRIGHT_WS_ENDPOINT
+    printf '[full-screen-smoke] persistentBrowser=reused endpoint=localhost\n'
+  else
+    unset PLAYWRIGHT_WS_ENDPOINT
+    printf '[full-screen-smoke] persistentBrowser=unavailable fallback=direct-launch\n'
+  fi
+fi
 
 # Interrupted operator runs can leave Playwright's default output owned by a
 # different account. Repair only these bounded generated directories before
@@ -81,6 +93,23 @@ PLAYWRIGHT_HOST_PLATFORM_OVERRIDE="${PLAYWRIGHT_HOST_PLATFORM_OVERRIDE:-ubuntu24
   --reporter="${FULL_SCREEN_SMOKE_REPORTER:-list}"
 test_status=$?
 set -e
+
+# A stale remote endpoint must never block deployment verification. Retry the
+# same bounded manifest once with Playwright's proven direct-launch path. Real
+# route failures still fail closed and continue into the serial recovery lane.
+if [[ "$test_status" -ne 0 && -n "${PLAYWRIGHT_WS_ENDPOINT:-}" ]]; then
+  printf '[full-screen-smoke] persistent browser run failed; retrying direct launch once\n' >&2
+  unset PLAYWRIGHT_WS_ENDPOINT
+  rm -f "$result_dir"/shard-*.json
+  set +e
+  PLAYWRIGHT_HOST_PLATFORM_OVERRIDE="${PLAYWRIGHT_HOST_PLATFORM_OVERRIDE:-ubuntu24.04-x64}" \
+    "${playwright_command[@]}" test e2e/full-screen-smoke.spec.ts \
+    --workers="$smoke_workers" \
+    --retries="${FULL_SCREEN_SMOKE_RETRIES:-1}" \
+    --reporter="${FULL_SCREEN_SMOKE_REPORTER:-list}"
+  test_status=$?
+  set -e
+fi
 
 set +e
 node "$root_dir/scripts/finalize-full-screen-smoke.mjs"
