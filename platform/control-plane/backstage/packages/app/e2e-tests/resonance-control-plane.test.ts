@@ -5,6 +5,7 @@ import path from 'node:path';
 const username = process.env.BACKSTAGE_E2E_USERNAME;
 const password = process.env.BACKSTAGE_E2E_PASSWORD;
 const evidenceDir = process.env.RESONANCE_E2E_EVIDENCE_DIR;
+const e2eScope = process.env.RESONANCE_BACKSTAGE_E2E_SCOPE ?? 'full';
 const designDocumentTitles = [
   '업무·요구사항',
   '액터·RACI',
@@ -39,6 +40,10 @@ const routes = [
   ['/identity-administration', 'Resonance 통합계정 관리'],
   ['/system-recovery', 'PC 외부 백업 전체 복원 검증'],
 ] as const;
+const selectedRoutes =
+  e2eScope === 'recovery'
+    ? routes.filter(([route]) => route === '/system-recovery')
+    : routes;
 
 async function signIn(page: Page) {
   if (!username || !password) {
@@ -235,17 +240,48 @@ test('authenticated Resonance control-plane routes render without runtime errors
   }
 
   const routeConcurrency = 4;
-  for (let offset = 0; offset < routes.length; offset += routeConcurrency) {
+  for (
+    let offset = 0;
+    offset < selectedRoutes.length;
+    offset += routeConcurrency
+  ) {
     await Promise.all(
-      routes.slice(offset, offset + routeConcurrency).map(async routeSpec => {
-        const routePage = await page.context().newPage();
-        try {
-          await verifyRoute(routePage, routeSpec);
-        } finally {
-          await routePage.close();
-        }
-      }),
+      selectedRoutes
+        .slice(offset, offset + routeConcurrency)
+        .map(async routeSpec => {
+          const routePage = await page.context().newPage();
+          try {
+            await verifyRoute(routePage, routeSpec);
+          } finally {
+            await routePage.close();
+          }
+        }),
     );
+  }
+
+  if (e2eScope === 'recovery') {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/system-recovery', {
+      waitUntil: 'domcontentloaded',
+      timeout: 20_000,
+    });
+    await expect(page.getByText('복구 관리자 작업')).toBeVisible();
+    expect(
+      await page.evaluate(
+        () =>
+          document.documentElement.scrollWidth <=
+          document.documentElement.clientWidth + 1,
+      ),
+      'mobile recovery page must not create body-level horizontal overflow',
+    ).toBe(true);
+    if (evidenceDir) {
+      await page.screenshot({
+        path: path.join(evidenceDir, 'system-recovery-mobile.png'),
+        fullPage: true,
+      });
+    }
+    expect(runtimeErrors, 'recovery route emitted runtime errors').toEqual([]);
+    return;
   }
 
   const controlRoute =
