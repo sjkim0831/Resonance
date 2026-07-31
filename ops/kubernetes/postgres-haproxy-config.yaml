@@ -20,6 +20,13 @@ data:
       timeout server 30m
       maxconn 1500
 
+    resolvers kubernetes
+      nameserver kube-dns 10.96.0.10:53
+      resolve_retries 3
+      timeout resolve 1s
+      timeout retry 1s
+      hold valid 10s
+
     listen stats
       bind *:7000
       mode http
@@ -33,7 +40,7 @@ data:
       mode tcp
       option httpchk OPTIONS /primary
       http-check expect status 200
-      default-server init-addr last,libc,none inter 3s fall 3 rise 2 on-marked-down shutdown-sessions
+      default-server resolvers kubernetes resolve-prefer ipv4 init-addr last,libc,none inter 3s fall 3 rise 2 on-marked-down shutdown-sessions
       server patroni0 postgres-patroni-0.postgres-patroni.carbonet-prod.svc.cluster.local:5432 maxconn 300 check port 8008
       server patroni1 postgres-patroni-1.postgres-patroni.carbonet-prod.svc.cluster.local:5432 maxconn 300 check port 8008
       server patroni2 postgres-patroni-2.postgres-patroni.carbonet-prod.svc.cluster.local:5432 maxconn 300 check port 8008
@@ -43,7 +50,7 @@ data:
       mode tcp
       option httpchk OPTIONS /replica
       http-check expect status 200
-      default-server init-addr last,libc,none inter 3s fall 3 rise 2 on-marked-down shutdown-sessions
+      default-server resolvers kubernetes resolve-prefer ipv4 init-addr last,libc,none inter 3s fall 3 rise 2 on-marked-down shutdown-sessions
       server patroni0 postgres-patroni-0.postgres-patroni.carbonet-prod.svc.cluster.local:5432 maxconn 200 check port 8008
       server patroni1 postgres-patroni-1.postgres-patroni.carbonet-prod.svc.cluster.local:5432 maxconn 200 check port 8008
       server patroni2 postgres-patroni-2.postgres-patroni.carbonet-prod.svc.cluster.local:5432 maxconn 200 check port 8008
