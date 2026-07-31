@@ -119,10 +119,11 @@ for generated_tree in \
   fi
 done
 
-postgres_data_path="$(kubectl -n "$NAMESPACE" get statefulset postgres-patroni \
-  -o jsonpath='{.spec.template.spec.volumes[?(@.name=="patroni-data-root")].hostPath.path}' 2>/dev/null || true)"
-postgres_wal_path="$(kubectl -n "$NAMESPACE" get statefulset postgres-patroni \
-  -o jsonpath='{.spec.template.spec.volumes[?(@.name=="wal-archive")].hostPath.path}' 2>/dev/null || true)"
+mapfile -t postgres_paths < <(kubectl -n "$NAMESPACE" get statefulset postgres-patroni \
+  -o jsonpath='{.spec.template.spec.volumes[?(@.name=="patroni-data-root")].hostPath.path}{"\n"}{.spec.template.spec.volumes[?(@.name=="wal-archive")].hostPath.path}{"\n"}' \
+  2>/dev/null || true)
+postgres_data_path="${postgres_paths[0]:-}"
+postgres_wal_path="${postgres_paths[1]:-}"
 for protected_path in "$postgres_data_path" "$postgres_wal_path"; do
   if [[ -z "$protected_path" || "$protected_path" == "$ROOT_DIR"/* || "$protected_path" != /opt/resonance-data/postgresql/* ]]; then
     echo "[auto-deploy] refusing deployment: PostgreSQL storage is not isolated ($protected_path)" >&2
@@ -134,8 +135,15 @@ done
 # writable leader. Without this gate pg_dump can emit only an empty gzip
 # header and the rollout then replaces healthy application pods with pods
 # that cannot connect to PostgreSQL.
-ready_patroni="$(kubectl -n "$NAMESPACE" get pods -l app=postgres-patroni \
-  -o jsonpath='{range .items[*]}{.status.containerStatuses[0].ready}{"\n"}{end}' 2>/dev/null | grep -c '^true$' || true)"
+mapfile -t patroni_rows < <(kubectl -n "$NAMESPACE" get pods -l app=postgres-patroni \
+  -o jsonpath='{range .items[*]}{.metadata.name}{"|"}{.status.containerStatuses[0].ready}{"\n"}{end}' \
+  2>/dev/null || true)
+patroni_pods=()
+ready_patroni=0
+for patroni_row in "${patroni_rows[@]}"; do
+  patroni_pods+=("${patroni_row%%|*}")
+  [[ "${patroni_row##*|}" == "true" ]] && ready_patroni=$((ready_patroni + 1))
+done
 if [[ "$ready_patroni" -lt 2 ]]; then
   echo "[auto-deploy] refusing deployment: Patroni quorum is not ready ($ready_patroni/3)" >&2
   exit 10
@@ -144,25 +152,50 @@ fi
 # Readiness alone is insufficient: a running Patroni process can report a
 # recoverable state after its hostPath was unlinked. Require the PostgreSQL
 # control marker on every member before any backup or rollout is attempted.
-while IFS= read -r candidate; do
-  if ! kubectl -n "$NAMESPACE" exec "$candidate" -c "$POSTGRES_CONTAINER" -- \
-    test -s "/home/postgres/pgdata/${candidate}/pgroot/data/PG_VERSION"; then
+patroni_data_check_dir="$(mktemp -d /tmp/carbonet-patroni-data-check.XXXXXX)"
+declare -a patroni_data_pids=()
+for candidate in "${patroni_pods[@]}"; do
+  (
+    kubectl -n "$NAMESPACE" exec "$candidate" -c "$POSTGRES_CONTAINER" -- \
+      test -s "/home/postgres/pgdata/${candidate}/pgroot/data/PG_VERSION"
+  ) >"$patroni_data_check_dir/$candidate.log" 2>&1 &
+  patroni_data_pids+=("$!")
+done
+for candidate_index in "${!patroni_pods[@]}"; do
+  candidate="${patroni_pods[$candidate_index]}"
+  if ! wait "${patroni_data_pids[$candidate_index]}"; then
+    cat "$patroni_data_check_dir/$candidate.log" >&2
+    rm -rf "$patroni_data_check_dir"
     echo "[auto-deploy] refusing deployment: PostgreSQL data directory is missing on $candidate" >&2
     exit 15
   fi
-done < <(kubectl -n "$NAMESPACE" get pods -l app=postgres-patroni -o name | sed 's#^pod/##')
+done
+rm -rf "$patroni_data_check_dir"
 
 # Patroni can promote any ordinal. Never assume postgres-patroni-0 is the
 # writable leader: pg_dump on a recovering replica can be cancelled by WAL
 # replay and would unnecessarily block every deployment.
 if [[ -z "$POSTGRES_POD" ]]; then
-  while IFS= read -r candidate; do
-    if [[ "$(kubectl -n "$NAMESPACE" exec "$candidate" -c "$POSTGRES_CONTAINER" -- \
-      psql -h 127.0.0.1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Atqc 'select pg_is_in_recovery()' 2>/dev/null || true)" == "f" ]]; then
+  patroni_role_dir="$(mktemp -d /tmp/carbonet-patroni-role-check.XXXXXX)"
+  declare -a patroni_role_pids=()
+  for candidate in "${patroni_pods[@]}"; do
+    (
+      kubectl -n "$NAMESPACE" exec "$candidate" -c "$POSTGRES_CONTAINER" -- \
+        psql -h 127.0.0.1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" \
+          -Atqc 'select pg_is_in_recovery()' 2>/dev/null || true
+    ) >"$patroni_role_dir/$candidate" &
+    patroni_role_pids+=("$!")
+  done
+  for candidate_index in "${!patroni_pods[@]}"; do
+    wait "${patroni_role_pids[$candidate_index]}" || true
+  done
+  for candidate in "${patroni_pods[@]}"; do
+    if [[ "$(tr -d '[:space:]' <"$patroni_role_dir/$candidate")" == "f" ]]; then
       POSTGRES_POD="$candidate"
       break
     fi
-  done < <(kubectl -n "$NAMESPACE" get pods -l app=postgres-patroni -o name | sed 's#^pod/##')
+  done
+  rm -rf "$patroni_role_dir"
 fi
 if [[ -z "$POSTGRES_POD" ]]; then
   echo "[auto-deploy] refusing deployment: writable PostgreSQL leader was not found" >&2
@@ -246,17 +279,29 @@ echo "[auto-deploy] selected checks: $PLAN_TESTS ($PLAN_REASONS)"
 # Database availability is a hard prerequisite for Flyway and every runtime
 # health gate. Keep the Patroni image independently recoverable even when
 # Docker/containerd or registry retention removes unused application layers.
-bash ops/scripts/ensure-protected-runtime-images.sh
+if [[ "$PLAN_BACKEND_REQUIRED" == "true" || "$PLAN_DATABASE_REQUIRED" == "true" ]]; then
+  bash ops/scripts/ensure-protected-runtime-images.sh
+else
+  echo "[auto-deploy] protected runtime image check skipped for non-image deployment"
+fi
 
 # Keep pre-deploy restore points bounded before build and backup I/O begins.
 # Containerd and PostgreSQL backups share /opt; allowing unlimited dump history
 # can taint the only Kubernetes node with DiskPressure and stall every rollout.
-bash ops/scripts/prune-predeploy-backups.sh
-bash ops/scripts/deduplicate-verified-postgres-backups.sh
+if [[ "$PLAN_DATABASE_REQUIRED" == "true" ]]; then
+  bash ops/scripts/prune-predeploy-backups.sh
+  bash ops/scripts/deduplicate-verified-postgres-backups.sh
+else
+  echo "[auto-deploy] PostgreSQL backup maintenance deferred for non-database deployment"
+fi
 
 # Recheck after backup pruning because concurrent workloads can consume the
 # reservation while the deployment plan is being prepared.
-bash "$POLICY_ROOT/ops/scripts/deploy-capacity-gate.sh"
+if [[ "$PLAN_BACKEND_REQUIRED" == "true" || "$PLAN_DATABASE_REQUIRED" == "true" ]]; then
+  bash "$POLICY_ROOT/ops/scripts/deploy-capacity-gate.sh"
+else
+  echo "[auto-deploy] second capacity check skipped; initial reservation remains valid"
+fi
 
 root_usage="$(df -P / | awk 'NR==2 {gsub(/%/,"",$5); print $5}')"
 if [[ "$root_usage" -ge 88 ]]; then
