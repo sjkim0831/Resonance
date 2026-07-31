@@ -36,4 +36,8 @@ grep -q 'docker\", \"run\", \"-d\"' \
   "$root/ops/scripts/sync-github-deploy-webhook-url.py"
 grep -q 'wait_public_health' \
   "$root/ops/scripts/sync-github-deploy-webhook-url.py"
+grep -q 'consecutive_successes >= 3' \
+  "$root/ops/scripts/sync-github-deploy-webhook-url.py"
+grep -q -- '--protocol http2' \
+  "$root/ops/scripts/install-resonance-github-deploy-webhook.sh"
 printf '%s\n' "GITHUB_DEPLOY_WEBHOOK_CONTRACT_PASS"

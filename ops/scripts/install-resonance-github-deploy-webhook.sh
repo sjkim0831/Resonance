@@ -45,7 +45,8 @@ sudo -n docker run -d \
   --restart unless-stopped \
   --network host \
   cloudflare/cloudflared:latest \
-  tunnel --no-autoupdate --url http://127.0.0.1:9088 >/dev/null
+  tunnel --no-autoupdate --protocol http2 \
+  --url http://127.0.0.1:9088 >/dev/null
 
 public_url=""
 for _ in $(seq 1 60); do

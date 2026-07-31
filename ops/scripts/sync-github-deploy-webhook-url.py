@@ -88,13 +88,14 @@ def ensure_tunnel() -> None:
         "--restart", "unless-stopped",
         "--network", "host",
         TUNNEL_IMAGE,
-        "tunnel", "--no-autoupdate",
+        "tunnel", "--no-autoupdate", "--protocol", "http2",
         "--url", "http://127.0.0.1:9088",
     )
 
 
 def wait_public_health(tunnel_url: str) -> None:
     deadline = time.monotonic() + 45
+    consecutive_successes = 0
     while time.monotonic() < deadline:
         try:
             with urllib.request.urlopen(
@@ -102,9 +103,14 @@ def wait_public_health(tunnel_url: str) -> None:
             ) as response:
                 payload = json.loads(response.read())
                 if response.status == 200 and payload.get("status") == "UP":
-                    return
+                    consecutive_successes += 1
+                    if consecutive_successes >= 3:
+                        return
+                    time.sleep(1)
+                    continue
         except (urllib.error.URLError, json.JSONDecodeError):
             pass
+        consecutive_successes = 0
         time.sleep(1)
     raise RuntimeError("quick tunnel public health unavailable after 45 seconds")
 
