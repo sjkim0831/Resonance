@@ -42,5 +42,11 @@ cleanup_end = source.index("trap cleanup_deploy", cleanup_start)
 cleanup = source[cleanup_start:cleanup_end]
 assert 'kill "$catalog_identity_sync_pid"' in cleanup
 
+identity_start = source.index("sync_keycloak_actor_assignments_if_required() {")
+identity_end = source.index("run_backstage_screen_space_e2e_if_required() {", identity_start)
+identity = source[identity_start:identity_end]
+assert "ops/scripts/auto-deploy-main.sh" not in identity
+assert "no identity contract change" in identity
+
 print("CATALOG_IDENTITY_PARALLEL_DEPLOY_PASS")
 PY

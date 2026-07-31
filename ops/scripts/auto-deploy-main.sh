@@ -570,7 +570,6 @@ run_actor_process_role_e2e_if_required() {
 
 sync_keycloak_actor_assignments_if_required() {
   if ! git diff --name-only "$deployed_commit" "$target_commit" -- \
-      ops/scripts/auto-deploy-main.sh \
       ops/scripts/resonance-keycloak-deploy.sh \
       ops/scripts/resonance-keycloak-carbonet-identity-sync.sh \
       ops/scripts/resonance-keycloak-carbonet-identity-sync-install.sh \
@@ -578,6 +577,7 @@ sync_keycloak_actor_assignments_if_required() {
       ops/scripts/resonance-keycloak-e2e-scope-sync.sh \
       ops/scripts/resonance-actor-process-role-e2e.sh \
       | grep -q .; then
+    echo "[auto-deploy] identity reconciliation skipped: no identity contract change"
     return 0
   fi
   # Keycloak realm provisioning is intentionally not repeated in the hot
