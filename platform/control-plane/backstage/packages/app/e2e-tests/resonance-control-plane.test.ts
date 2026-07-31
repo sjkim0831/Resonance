@@ -58,7 +58,7 @@ async function signIn(page: Page) {
     .getByRole('button')
     .filter({ hasText: /Resonance|로그인|Sign in/i })
     .first();
-  let readySurface: Array<'sidebar' | 'sign-in' | null> = [];
+  let readySurface: 'sidebar' | 'sign-in' | null = null;
   for (let attempt = 1; attempt <= 3; attempt += 1) {
     const response = await page.goto('/', {
       waitUntil: 'domcontentloaded',
@@ -68,25 +68,23 @@ async function signIn(page: Page) {
       await page.waitForTimeout(attempt * 1_000);
       continue;
     }
-    readySurface = await Promise.all([
+    readySurface = await Promise.race([
       sidebar
-        .waitFor({ state: 'visible', timeout: 20_000 })
-        .then(() => 'sidebar' as const)
-        .catch(() => null),
+        .waitFor({ state: 'attached', timeout: 20_000 })
+        .then(() => 'sidebar' as const),
       signInButton
         .waitFor({ state: 'visible', timeout: 20_000 })
-        .then(() => 'sign-in' as const)
-        .catch(() => null),
-    ]);
-    if (readySurface.some(Boolean)) break;
+        .then(() => 'sign-in' as const),
+    ]).catch(() => null);
+    if (readySurface) break;
     await page.waitForTimeout(attempt * 1_000);
   }
-  if (!readySurface.some(Boolean)) {
+  if (!readySurface) {
     throw new Error(
       'Backstage did not expose a sidebar or sign-in action after 3 readiness attempts',
     );
   }
-  if (await sidebar.isVisible()) {
+  if (readySurface === 'sidebar') {
     return;
   }
 
