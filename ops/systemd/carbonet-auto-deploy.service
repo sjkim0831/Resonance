@@ -2,6 +2,7 @@
 Description=Carbonet main branch automatic build, migration, and deployment
 After=network-online.target
 Wants=network-online.target
+OnFailure=carbonet-auto-deploy-failure-handler.service
 
 [Service]
 Type=oneshot

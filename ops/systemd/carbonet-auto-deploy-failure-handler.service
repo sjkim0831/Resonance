@@ -1,0 +1,10 @@
+[Unit]
+Description=Classify Carbonet deployment failures and schedule one safe retry
+After=carbonet-auto-deploy.service
+
+[Service]
+Type=oneshot
+User=root
+ExecStart=/usr/bin/bash /opt/resonance-data/control-plane/bin/carbonet-auto-deploy-failure-handler.sh
+Nice=15
+

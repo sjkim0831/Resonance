@@ -28,6 +28,17 @@ type OperationsSummary = {
   }[];
   inventory: Record<string, number>;
   taskStatuses: Record<string, number>;
+  deployment: {
+    checkedAt?: string;
+    status?: string;
+    category?: string;
+    targetCommit?: string;
+    mode?: string;
+    elapsedMs?: number;
+    retryAllowed?: boolean;
+    retryAttempted?: boolean;
+    evidence?: string;
+  };
 };
 
 const useStyles = makeStyles(theme => ({
@@ -149,6 +160,38 @@ export function SystemOperationsControlPage() {
             </Grid>
           ))}
         </Grid>
+
+        <Paper className={classes.panel}>
+          <Box display="flex" alignItems="center" gridGap={8} mb={1}>
+            <TimelineIcon color="primary" />
+            <Typography variant="h6">자동 배포 복구 현황</Typography>
+          </Box>
+          <Box className={classes.row}>
+            <Box>
+              <Typography variant="subtitle1">
+                최근 배포 {summary?.deployment?.status ?? 'UNKNOWN'}
+              </Typography>
+              <Typography variant="caption">
+                {summary?.deployment?.targetCommit?.slice(0, 10) ?? '커밋 확인 전'}
+              </Typography>
+            </Box>
+            <Chip
+              size="small"
+              color={summary?.deployment?.status === 'SUCCESS' ? 'primary' : 'default'}
+              label={summary?.deployment?.category ?? 'NO_EVIDENCE'}
+            />
+            <Typography variant="body2">
+              {summary?.deployment?.retryAttempted
+                ? '안전한 자동 복구 1회 실행됨'
+                : summary?.deployment?.retryAllowed
+                ? '자동 복구 가능'
+                : '자동 복구 미실행'}
+              {typeof summary?.deployment?.elapsedMs === 'number'
+                ? ` · ${summary.deployment.elapsedMs}ms`
+                : ''}
+            </Typography>
+          </Box>
+        </Paper>
 
         <Paper className={classes.panel}>
           <Box display="flex" alignItems="center" gridGap={8} mb={1}>

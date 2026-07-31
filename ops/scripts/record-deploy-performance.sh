@@ -180,6 +180,22 @@ printf '%s\n' "$record" >>"$history_file"
 printf '%s\n' "$record" >"${latest_file}.tmp"
 mv "${latest_file}.tmp" "$latest_file"
 
+# Publish the last successful deployment in the same bounded contract consumed
+# by the operations dashboard. A systemd OnFailure handler overwrites this file
+# only when a later deployment fails.
+deploy_status_file="${CARBONET_DEPLOY_STATUS_FILE:-/opt/resonance-data/deploy/deploy-status.json}"
+jq -n \
+  --arg checkedAt "$(date -Iseconds)" \
+  --arg status SUCCESS \
+  --arg category NONE \
+  --arg targetCommit "$revision" \
+  --arg mode "$mode" \
+  --argjson elapsedMs "$elapsed_ms" \
+  '{checkedAt:$checkedAt,status:$status,category:$category,targetCommit:$targetCommit,mode:$mode,elapsedMs:$elapsedMs,retryAllowed:false,retryAttempted:false,evidence:""}' \
+  >"${deploy_status_file}.tmp"
+chmod 0644 "${deploy_status_file}.tmp"
+mv "${deploy_status_file}.tmp" "$deploy_status_file"
+
 if [[ "$(jq 'length' <<<"$phase_summary")" -gt 0 ]]; then
   jq -c --arg timestamp "$(date -Iseconds)" --arg mode "$mode" --arg revision "$revision" '
     .[] | {

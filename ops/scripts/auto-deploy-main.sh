@@ -908,6 +908,8 @@ if [[ "$PLAN_RUNTIME_REQUIRED" != "true" ]]; then
       ops/scripts/test-post-reboot-runtime-recovery.sh \
       ops/scripts/postgres-storage-guard.sh \
       ops/scripts/test-postgres-storage-guard-install.sh \
+      ops/scripts/carbonet-auto-deploy-failure-handler.sh \
+      ops/scripts/test-auto-deploy-failure-handler.sh \
       ops/scripts/patroni-auto-heal.sh \
       ops/scripts/test-patroni-auto-heal-safety.sh \
       ops/scripts/postgres-isolated-restore-drill.sh \
@@ -918,6 +920,8 @@ if [[ "$PLAN_RUNTIME_REQUIRED" != "true" ]]; then
       ops/scripts/test-github-deploy-webhook.sh \
       ops/scripts/test-push-deploy-dispatch.sh \
       ops/systemd/carbonet-auto-deploy.timer \
+      ops/systemd/carbonet-auto-deploy.service \
+      ops/systemd/carbonet-auto-deploy-failure-handler.service \
       ops/systemd/carbonet-github-deploy-webhook.service \
       ops/systemd/carbonet-github-webhook-reconcile.service \
       ops/systemd/carbonet-github-webhook-reconcile.timer \
@@ -941,6 +945,26 @@ if [[ "$PLAN_RUNTIME_REQUIRED" != "true" ]]; then
     bash ops/scripts/test-push-deploy-dispatch.sh
     bash ops/scripts/test-github-deploy-webhook.sh
     bash ops/scripts/test-post-reboot-runtime-recovery.sh
+    if git diff --name-only "$deployed_commit" "$target_commit" -- \
+        ops/scripts/carbonet-auto-deploy-failure-handler.sh \
+        ops/scripts/test-auto-deploy-failure-handler.sh \
+        ops/scripts/record-deploy-performance.sh \
+        ops/systemd/carbonet-auto-deploy.service \
+        ops/systemd/carbonet-auto-deploy-failure-handler.service | grep -q .; then
+      bash ops/scripts/test-auto-deploy-failure-handler.sh
+      sudo -n install -d -m 0755 -o root -g root \
+        /opt/resonance-data/control-plane/bin
+      sudo -n install -m 0750 -o root -g root \
+        ops/scripts/carbonet-auto-deploy-failure-handler.sh \
+        /opt/resonance-data/control-plane/bin/carbonet-auto-deploy-failure-handler.sh
+      sudo -n install -m 0644 ops/systemd/carbonet-auto-deploy.service \
+        /etc/systemd/system/carbonet-auto-deploy.service
+      sudo -n install -m 0644 \
+        ops/systemd/carbonet-auto-deploy-failure-handler.service \
+        /etc/systemd/system/carbonet-auto-deploy-failure-handler.service
+      sudo -n systemctl daemon-reload
+      echo "[auto-deploy] failure classification and one-shot recovery synchronized"
+    fi
     if git diff --name-only "$deployed_commit" "$target_commit" -- \
         ops/scripts/resonance-github-deploy-webhook.py \
         ops/scripts/sync-github-deploy-webhook-url.py \

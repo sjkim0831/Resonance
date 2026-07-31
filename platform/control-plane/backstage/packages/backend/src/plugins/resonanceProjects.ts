@@ -4,6 +4,7 @@ import {
 } from '@backstage/backend-plugin-api';
 import { Router, json, type Request } from 'express';
 import { createHash } from 'node:crypto';
+import { readFile } from 'node:fs/promises';
 
 type ProjectInput = {
   projectId?: string;
@@ -672,6 +673,20 @@ export default createBackendPlugin({
           const taskStatuses = Object.fromEntries(
             taskStatusRows.map(row => [row.status, Number(row.count)]),
           );
+          let deployment: Record<string, unknown> = {
+            status: 'UNKNOWN',
+            category: 'NO_EVIDENCE',
+            retryAllowed: false,
+            retryAttempted: false,
+          };
+          try {
+            deployment = JSON.parse(
+              await readFile('/app/deploy-status/deploy-status.json', 'utf8'),
+            ) as Record<string, unknown>;
+          } catch {
+            // The first deployment may precede status publication. Keep the
+            // API available and make the missing evidence explicit.
+          }
           response.json({
             checkedAt: new Date().toISOString(),
             services: [
@@ -695,6 +710,7 @@ export default createBackendPlugin({
               designAssetCount,
             },
             taskStatuses,
+            deployment,
           });
         });
         router.get(

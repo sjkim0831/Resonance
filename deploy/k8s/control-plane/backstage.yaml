@@ -101,6 +101,9 @@ spec:
             - name: resonance-internal-ca
               mountPath: /app/internal-ca
               readOnly: true
+            - name: resonance-deploy-status
+              mountPath: /app/deploy-status
+              readOnly: true
           readinessProbe:
             httpGet:
               path: /.backstage/health/v1/readiness
@@ -171,6 +174,10 @@ spec:
           configMap:
             name: resonance-internal-ca
             optional: true
+        - name: resonance-deploy-status
+          hostPath:
+            path: /opt/resonance-data/deploy
+            type: Directory
 ---
 apiVersion: v1
 kind: Service
