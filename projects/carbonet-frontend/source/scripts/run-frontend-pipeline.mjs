@@ -2,7 +2,6 @@ import { spawn, spawnSync } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-const npm = process.platform === "win32" ? "npm.cmd" : "npm";
 const scriptRoot = path.dirname(fileURLToPath(import.meta.url));
 const frontendRoot = path.resolve(scriptRoot, "..");
 const frontendBundler = process.env.CARBONET_FRONTEND_BUNDLER === "rolldown" ? "rolldown" : "vite";
@@ -14,8 +13,7 @@ const skipBuildTypecheck = process.env.CARBONET_SKIP_BUILD_TYPECHECK === "true";
 const forceFullTypecheck = process.env.CARBONET_FORCE_FULL_TYPECHECK === "true";
 
 function run(command, args) {
-  const requiresWindowsCommandShell = process.platform === "win32" && command === npm;
-  const result = spawnSync(command, args, { env, stdio: "inherit", shell: requiresWindowsCommandShell });
+  const result = spawnSync(command, args, { env, stdio: "inherit" });
   if (result.error) throw result.error;
   if (result.status !== 0) process.exit(result.status ?? 1);
 }
@@ -25,7 +23,6 @@ function runAsync(command, args) {
     const child = spawn(command, args, {
       env,
       stdio: "inherit",
-      shell: process.platform === "win32" && command === npm,
     });
     child.once("error", reject);
     child.once("exit", (code, signal) => {
@@ -35,37 +32,38 @@ function runAsync(command, args) {
   });
 }
 
-function generate(key, script, outputs, inputs) {
-  run(process.execPath, [
-    "scripts/run-incremental-generator.mjs",
-    key,
-    script,
-    outputs.join(","),
-    ...inputs,
-  ]);
-}
-
 if (!process.argv.includes("--build")) {
-  generate("system-component-catalog", "scripts/generate-system-component-catalog.mjs", [
-    "src/generated/systemComponentCatalog.json",
-  ], ["src/features", "src/app/routes"]);
-  generate("framework-contract-metadata", "scripts/generate-framework-contract-metadata.mjs", [
-    "src/generated/frameworkContractMetadata.json",
-  ], ["../../../modules/resonance-common/carbonet-contract-metadata/src/main/resources/framework/contracts"]);
-  generate("verification-center-inventory", "scripts/generate-verification-center-inventory.mjs", [
-    "src/generated/verificationCenterInventory.json",
-  ], [
-    "src/platform/screen-registry/pageManifests.ts",
-    "e2e",
-    "../src/test",
-    "../../../docs/ai/40-backend/controller-service-map.csv",
-    "../../../docs/ai/20-ui/event-map.csv",
+  const generateAsync = (key, script, outputs, inputs) =>
+    runAsync(process.execPath, [
+      "scripts/run-incremental-generator.mjs",
+      key,
+      script,
+      outputs.join(","),
+      ...inputs,
+    ]);
+  console.log("[frontend-pipeline] four independent generators and customer-journey audit run concurrently");
+  await Promise.all([
+    generateAsync("system-component-catalog", "scripts/generate-system-component-catalog.mjs", [
+      "src/generated/systemComponentCatalog.json",
+    ], ["src/features", "src/app/routes"]),
+    generateAsync("framework-contract-metadata", "scripts/generate-framework-contract-metadata.mjs", [
+      "src/generated/frameworkContractMetadata.json",
+    ], ["../../../modules/resonance-common/carbonet-contract-metadata/src/main/resources/framework/contracts"]),
+    generateAsync("verification-center-inventory", "scripts/generate-verification-center-inventory.mjs", [
+      "src/generated/verificationCenterInventory.json",
+    ], [
+      "src/platform/screen-registry/pageManifests.ts",
+      "e2e",
+      "../src/test",
+      "../../../docs/ai/40-backend/controller-service-map.csv",
+      "../../../docs/ai/20-ui/event-map.csv",
+    ]),
+    generateAsync("page-completeness-inventory", "scripts/generate-page-completeness-inventory.mjs", [
+      "src/features/builder-studio/pageCompletenessInventory.ts",
+      "src/features/builder-studio/routeSourceInventory.ts",
+    ], ["src/app/routes", "src/platform/routes", "src/features"]),
+    runAsync(process.execPath, ["scripts/check-customer-journey-governance.mjs"]),
   ]);
-  generate("page-completeness-inventory", "scripts/generate-page-completeness-inventory.mjs", [
-    "src/features/builder-studio/pageCompletenessInventory.ts",
-    "src/features/builder-studio/routeSourceInventory.ts",
-  ], ["src/app/routes", "src/platform/routes", "src/features"]);
-  run(npm, ["run", "audit:customer-journey"]);
 }
 
 if (process.argv.includes("--build")) {
