@@ -4,7 +4,7 @@
 
 set -euo pipefail
 
-BACKUP_DIR="${BACKUP_DIR:-/opt/Resonance/var/postgres-backups-ha}"
+BACKUP_DIR="${BACKUP_DIR:-/opt/resonance-data/backups/postgres/mirror}"
 KEEP_FULL="${KEEP_FULL:-3}"
 KEEP_INCREMENTAL="${KEEP_INCREMENTAL:-7}"
 KEEP_UNLOAD="${KEEP_UNLOAD:-2}"
@@ -16,9 +16,9 @@ BLUE='\033[0;34m'
 NC='\033[0m'
 
 log() { echo -e "[$(date '+%H:%M:%S')] ${*}"; }
-log_ok() { log "${GREEN}✓${NC} $*"; }
-log_warn() { log "${YELLOW}⚠${NC} $*"; }
-log_err() { log "${RED}✗${NC} $*"; }
+log_ok() { log "${GREEN}??{NC} $*"; }
+log_warn() { log "${YELLOW}??{NC} $*"; }
+log_err() { log "${RED}??{NC} $*"; }
 
 list_backups() {
     local type="$1"

@@ -9,10 +9,10 @@ prepare_backup_directory() {
   local expected="$1" resolved
   resolved="$(readlink -m -- "$expected")"
   case "$resolved" in
-    /opt/Resonance/var/postgres-backups|\
-    /opt/Resonance/var/postgres-backups-ha|\
-    /opt/Resonance/var/postgres-basebackups|\
-    /opt/Resonance/var/postgres-basebackups-ha|\
+    /opt/resonance-data/backups/postgres/primary|\
+    /opt/resonance-data/backups/postgres/mirror|\
+    /opt/resonance-data/backups/postgres/base|\
+    /opt/resonance-data/backups/postgres/base-mirror|\
     /opt/resonance-data/postgresql/wal-archive) ;;
     *) echo "Refusing unexpected backup path: $resolved" >&2; return 2 ;;
   esac
@@ -24,10 +24,10 @@ prepare_backup_directory() {
 }
 
 for backup_directory in \
-  /opt/Resonance/var/postgres-backups \
-  /opt/Resonance/var/postgres-backups-ha \
-  /opt/Resonance/var/postgres-basebackups \
-  /opt/Resonance/var/postgres-basebackups-ha \
+  /opt/resonance-data/backups/postgres/primary \
+  /opt/resonance-data/backups/postgres/mirror \
+  /opt/resonance-data/backups/postgres/base \
+  /opt/resonance-data/backups/postgres/base-mirror \
   /opt/resonance-data/postgresql/wal-archive; do
   prepare_backup_directory "$backup_directory"
 done
@@ -85,9 +85,9 @@ spec:
             - {name: mirror, mountPath: /mirror}
           volumes:
           - name: backups
-            hostPath: {path: /opt/Resonance/var/postgres-backups, type: DirectoryOrCreate}
+            hostPath: {path: /opt/resonance-data/backups/postgres/primary, type: DirectoryOrCreate}
           - name: mirror
-            hostPath: {path: /opt/Resonance/var/postgres-backups-ha, type: DirectoryOrCreate}
+            hostPath: {path: /opt/resonance-data/backups/postgres/mirror, type: DirectoryOrCreate}
 ---
 apiVersion: batch/v1
 kind: CronJob
@@ -141,9 +141,9 @@ spec:
             - {name: mirror, mountPath: /mirror}
           volumes:
           - name: backups
-            hostPath: {path: /opt/Resonance/var/postgres-backups, type: DirectoryOrCreate}
+            hostPath: {path: /opt/resonance-data/backups/postgres/primary, type: DirectoryOrCreate}
           - name: mirror
-            hostPath: {path: /opt/Resonance/var/postgres-backups-ha, type: DirectoryOrCreate}
+            hostPath: {path: /opt/resonance-data/backups/postgres/mirror, type: DirectoryOrCreate}
 ---
 apiVersion: batch/v1
 kind: CronJob
@@ -228,9 +228,9 @@ spec:
             - {name: mirror, mountPath: /mirror}
           volumes:
           - name: base
-            hostPath: {path: /opt/Resonance/var/postgres-basebackups, type: DirectoryOrCreate}
+            hostPath: {path: /opt/resonance-data/backups/postgres/base, type: DirectoryOrCreate}
           - name: mirror
-            hostPath: {path: /opt/Resonance/var/postgres-basebackups-ha, type: DirectoryOrCreate}
+            hostPath: {path: /opt/resonance-data/backups/postgres/base-mirror, type: DirectoryOrCreate}
 ---
 apiVersion: batch/v1
 kind: CronJob

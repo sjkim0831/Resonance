@@ -27,7 +27,7 @@ resolve_root_dir() {
 ROOT_DIR="$(resolve_root_dir)"
 CONFIG_DIR="$ROOT_DIR/ops/config"
 LOG_DIR="$ROOT_DIR/var/logs"
-BACKUP_DIR_DEFAULT="/opt/Resonance/var/postgres-backups-ha"
+BACKUP_DIR_DEFAULT="/opt/resonance-data/backups/postgres/mirror"
 BACKUP_DIR_FALLBACK="$ROOT_DIR/var/backups/db-sync"
 BACKUP_RUN_STAMP="${BACKUP_RUN_STAMP:-$(date '+%Y%m%d-%H%M%S')}"
 RELEASE_ROOT_DIR_DEFAULT="$ROOT_DIR/var/releases"
@@ -2342,7 +2342,7 @@ source "$ROOT_DIR/ops/scripts/build.sh" 2>/dev/null || true
 init_build_tool
 CONFIG_DIR="$ROOT_DIR/ops/config"
 LOG_DIR="$ROOT_DIR/var/logs"
-BACKUP_DIR_DEFAULT="/opt/Resonance/var/postgres-backups-ha"
+BACKUP_DIR_DEFAULT="/opt/resonance-data/backups/postgres/mirror"
 BACKUP_DIR_FALLBACK="$ROOT_DIR/var/backups/db-sync"
 BACKUP_RUN_STAMP="${BACKUP_RUN_STAMP:-$(date '+%Y%m%d-%H%M%S')}"
 RELEASE_ROOT_DIR_DEFAULT="$ROOT_DIR/var/releases"

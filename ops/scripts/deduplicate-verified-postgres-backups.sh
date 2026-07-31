@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-primary="${POSTGRES_BACKUP_PRIMARY_DIR:-/opt/Resonance/var/postgres-backups}"
-mirror="${POSTGRES_BACKUP_MIRROR_DIR:-/opt/Resonance/var/postgres-backups-ha}"
+primary="${POSTGRES_BACKUP_PRIMARY_DIR:-/opt/resonance-data/backups/postgres/primary}"
+mirror="${POSTGRES_BACKUP_MIRROR_DIR:-/opt/resonance-data/backups/postgres/mirror}"
 min_age_minutes="${POSTGRES_BACKUP_DEDUPE_MIN_AGE_MINUTES:-10}"
 
-[[ "$primary" == /opt/Resonance/var/postgres-backups ]] || {
+[[ "$primary" == /opt/resonance-data/backups/postgres/primary ]] || {
   echo "[backup-dedupe] refusing unexpected primary path: $primary" >&2
   exit 2
 }
-[[ "$mirror" == /opt/Resonance/var/postgres-backups-ha ]] || {
+[[ "$mirror" == /opt/resonance-data/backups/postgres/mirror ]] || {
   echo "[backup-dedupe] refusing unexpected mirror path: $mirror" >&2
   exit 2
 }

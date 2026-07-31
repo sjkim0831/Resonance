@@ -690,6 +690,7 @@ if [[ "$PLAN_RUNTIME_REQUIRED" != "true" ]]; then
       ops/scripts/test-no-change-preflight-fast-path.sh \
       ops/scripts/install-resonance-github-runner.sh \
       ops/scripts/install-resonance-github-deploy-webhook.sh \
+      ops/scripts/apply-backup-cronjobs.sh \
       ops/scripts/resonance-github-deploy-webhook.py \
       ops/scripts/sync-github-deploy-webhook-url.py \
       ops/scripts/test-github-deploy-webhook.sh \
@@ -737,6 +738,12 @@ if [[ "$PLAN_RUNTIME_REQUIRED" != "true" ]]; then
         echo "[auto-deploy] warning: webhook URL reconciliation deferred to timer" >&2
       fi
       echo "[auto-deploy] GitHub webhook runtime synchronized"
+    fi
+    if git diff --name-only "$deployed_commit" "$target_commit" -- \
+        ops/scripts/apply-backup-cronjobs.sh |
+        grep -q .; then
+      bash ops/scripts/apply-backup-cronjobs.sh
+      echo "[auto-deploy] PostgreSQL backup CronJobs synchronized"
     fi
   fi
   backstage_only_change=false

@@ -1,8 +1,8 @@
 #!/bin/bash
 # Backup cleanup cron job - removes old backups to prevent disk pressure
 
-BACKUP_ROOT="/opt/Resonance/var/postgres-backups"
-HA_BACKUP_ROOT="/opt/Resonance/var/postgres-backups-ha"
+BACKUP_ROOT="/opt/resonance-data/backups/postgres/primary"
+HA_BACKUP_ROOT="/opt/resonance-data/backups/postgres/mirror"
 LOG_FILE="/opt/Resonance/var/logs/cron/backup_cleanup.log"
 
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] Backup cleanup started" >> "$LOG_FILE"

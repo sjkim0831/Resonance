@@ -1,6 +1,5 @@
 #!/bin/bash
-# Backup Guardian v3 - 백업 검증 + 재백업
-#============================================
+# Backup Guardian v3 - 백업 검�?+ ?�백??#============================================
 
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; BLUE='\033[0;34m'; NC='\033[0m'
 
@@ -8,7 +7,7 @@ NAMESPACE="carbonet-prod"
 DB_NAME="carbonet"
 POD="postgres-patroni-0"
 LOG_DB="/opt/Resonance/var/lib/pg_operations.db"
-BACKUP_DIR="/opt/Resonance/var/postgres-backups"
+BACKUP_DIR="/opt/resonance-data/backups/postgres/primary"
 RETENTION_DAYS=7
 
 EXPECTED_SCHEMA=140000
@@ -16,9 +15,9 @@ EXPECTED_OBJECTS=64000000
 EXPECTED_INDEXES=13000
 
 log() { echo -e "${BLUE}[$(date +%H:%M:%S)]${NC} $1"; echo "[$(date +%H:%M:%S)] $1" >> "$LOG_FILE"; }
-log_ok() { echo -e "${GREEN}[$(date +%H:%M:%S)] ✓${NC} $1"; echo "[$(date +%H:%M:%S)] ✓ $1" >> "$LOG_FILE"; }
-log_err() { echo -e "${RED}[$(date +%H:%M:%S)] ✗${NC} $1"; echo "[$(date +%H:%M:%S)] ✗ $1" >> "$LOG_FILE"; }
-log_warn() { echo -e "${YELLOW}[$(date +%H:%M:%S)] ⚠${NC} $1"; echo "[$(date +%H:%M:%S)] ⚠ $1" >> "$LOG_FILE"; }
+log_ok() { echo -e "${GREEN}[$(date +%H:%M:%S)] ??{NC} $1"; echo "[$(date +%H:%M:%S)] ??$1" >> "$LOG_FILE"; }
+log_err() { echo -e "${RED}[$(date +%H:%M:%S)] ??{NC} $1"; echo "[$(date +%H:%M:%S)] ??$1" >> "$LOG_FILE"; }
+log_warn() { echo -e "${YELLOW}[$(date +%H:%M:%S)] ??{NC} $1"; echo "[$(date +%H:%M:%S)] ??$1" >> "$LOG_FILE"; }
 
 mkdir -p "$BACKUP_DIR" /opt/Resonance/var/log 2>/dev/null
 
@@ -28,18 +27,18 @@ do_verify() {
     local backup_path="$1"
     local issues=0
     
-    log "검증: $backup_path"
+    log "검�? $backup_path"
     
     if [ -f "$backup_path/unloaddb/${DB_NAME}_schema" ]; then
         local size=$(stat -c%s "$backup_path/unloaddb/${DB_NAME}_schema" 2>/dev/null || echo 0)
         if [ $size -gt $EXPECTED_SCHEMA ]; then
             log_ok "Schema: OK"
         else
-            log_warn "Schema: 작음"
+            log_warn "Schema: ?�음"
             issues=$((issues + 1))
         fi
     else
-        log_err "Schema: 없음"
+        log_err "Schema: ?�음"
         issues=$((issues + 1))
     fi
     
@@ -48,11 +47,11 @@ do_verify() {
         if [ $size -gt $EXPECTED_OBJECTS ]; then
             log_ok "Objects: OK"
         else
-            log_warn "Objects: 작음"
+            log_warn "Objects: ?�음"
             issues=$((issues + 1))
         fi
     else
-        log_err "Objects: 없음"
+        log_err "Objects: ?�음"
         issues=$((issues + 1))
     fi
     
@@ -61,11 +60,11 @@ do_verify() {
         if [ $size -gt $EXPECTED_INDEXES ]; then
             log_ok "Indexes: OK"
         else
-            log_warn "Indexes: 작음"
+            log_warn "Indexes: ?�음"
             issues=$((issues + 1))
         fi
     else
-        log_err "Indexes: 없음"
+        log_err "Indexes: ?�음"
         issues=$((issues + 1))
     fi
     
@@ -73,7 +72,7 @@ do_verify() {
 }
 
 do_create() {
-    log "새 백업 생성..."
+    log "??백업 ?�성..."
     local timestamp=$(date +%Y%m%d)
     local backup_path="$BACKUP_DIR/${DB_NAME}-live-unload-$timestamp"
     
@@ -85,7 +84,7 @@ do_create() {
     kubectl cp "$NAMESPACE/$POD:$backup_file" "$backup_path/carbonet_backup.dump" 2>&1 | tail -2
 
     if [ -f "$backup_path/carbonet_backup.dump" ]; then
-        log_ok "백업 완료: $backup_path"
+        log_ok "백업 ?�료: $backup_path"
         local size=$(du -sm "$backup_path" 2>/dev/null | cut -f1)
         python3 << PYEOF
 import sqlite3
@@ -96,7 +95,7 @@ conn.close()
 PYEOF
         return 0
     else
-        log_err "백업 실패"
+        log_err "백업 ?�패"
         return 1
     fi
 }
@@ -107,20 +106,20 @@ main() {
     local latest=$(find "$BACKUP_DIR" -maxdepth 1 -type d -name "${DB_NAME}-live-unload-*" 2>/dev/null | sort -r | head -1)
     
     if [ -z "$latest" ]; then
-        log_warn "백업 없음 - 새로 생성"
+        log_warn "백업 ?�음 - ?�로 ?�성"
         do_create
     else
         log "최신: $latest"
         if do_verify "$latest"; then
-            log_ok "백업 정상"
+            log_ok "백업 ?�상"
         else
-            log_warn "재백업 필요"
+            log_warn "?�백???�요"
             do_create
         fi
     fi
     
     find "$BACKUP_DIR" -maxdepth 1 -type d -name "${DB_NAME}-live-unload-*" -mtime +$RETENTION_DAYS -exec rm -rf {} \; 2>/dev/null
-    log_ok "완료"
+    log_ok "?�료"
 }
 
 CMD="$1"

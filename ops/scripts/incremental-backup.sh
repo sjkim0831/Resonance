@@ -8,7 +8,7 @@ NAMESPACE="${NAMESPACE:-carbonet-prod}"
 POD_NAME="postgres-patroni-0"
 DB_NAME="${DB_NAME:-carbonet}"
 DB_PATH="/var/lib/postgresql/data"
-BACKUP_DIR="${BACKUP_DIR:-/opt/Resonance/var/postgres-backups-ha}"
+BACKUP_DIR="${BACKUP_DIR:-/opt/resonance-data/backups/postgres/mirror}"
 TRACK_DIR="${BACKUP_DIR}/.tracking"
 MARKER_FILE="${TRACK_DIR}/last_backup.mark"
 
@@ -19,9 +19,9 @@ BLUE='\033[0;34m'
 NC='\033[0m'
 
 log() { echo -e "[$(date '+%H:%M:%S')] ${*}"; }
-log_ok() { log "${GREEN}✓${NC} $*"; }
-log_warn() { log "${YELLOW}⚠${NC} $*"; }
-log_err() { log "${RED}✗${NC} $*"; }
+log_ok() { log "${GREEN}??{NC} $*"; }
+log_warn() { log "${YELLOW}??{NC} $*"; }
+log_err() { log "${RED}??{NC} $*"; }
 log_step() { log "${BLUE}[STEP]${NC} $*"; }
 
 exec_in_pod() {
