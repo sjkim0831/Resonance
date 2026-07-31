@@ -9,18 +9,23 @@ chmod 0750 "$evidence_dir"
 
 timestamp="$(date -Iseconds)"
 run_key="$(systemctl show carbonet-auto-deploy.service -p ExecMainStartTimestampMonotonic --value 2>/dev/null || date +%s)"
+invocation_id="$(systemctl show carbonet-auto-deploy.service -p InvocationID --value 2>/dev/null || true)"
 evidence="$evidence_dir/${run_key}.log"
-journalctl -u carbonet-auto-deploy.service -n 400 --no-pager >"$evidence"
+if [[ -n "$invocation_id" ]]; then
+  journalctl "_SYSTEMD_INVOCATION_ID=$invocation_id" --no-pager >"$evidence"
+else
+  journalctl -u carbonet-auto-deploy.service -n 400 --no-pager >"$evidence"
+fi
 chmod 0640 "$evidence"
 
 category=UNKNOWN
 retry_allowed=false
-if grep -Eqi 'no valid .*backup|Flyway|Patroni|PostgreSQL|database migration|schema backup' "$evidence"; then
+if grep -Eqi 'visual E2E|playwright|screenshot|browser regression' "$evidence"; then
+  category=E2E
+elif grep -Eqi 'no valid .*backup|Flyway.*(fail|error)|Patroni.*(fail|not ready)|PostgreSQL.*(fail|not ready|unavailable)|database migration.*(fail|error)|schema backup.*(fail|invalid)' "$evidence"; then
   category=DATABASE
 elif grep -Eqi 'capacity-gate|DiskPressure|no space left|insufficient (disk|memory)|out of memory|OOM' "$evidence"; then
   category=CAPACITY
-elif grep -Eqi 'visual E2E|playwright|screenshot|browser regression' "$evidence"; then
-  category=E2E
 elif grep -Eqi 'asset closure|asset-catalog|missing .*asset|bundle|chunk' "$evidence"; then
   category=ASSET
 elif grep -Eqi 'gradle|compile|build failed|docker build|buildx' "$evidence"; then
@@ -56,4 +61,3 @@ jq -n \
 chmod 0644 "${status_file}.tmp"
 mv "${status_file}.tmp" "$status_file"
 echo "[deploy-failure] category=$category status=$status retry=$retry_attempted evidence=$evidence"
-

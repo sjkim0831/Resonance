@@ -656,6 +656,7 @@ export default createBackendPlugin({
         });
         router.get('/operations/summary', async (_request, response) => {
           const countRows = async (tableName: string) => {
+            if (!(await knex.schema.hasTable(tableName))) return 0;
             const [{ count }] = await knex(tableName).count({ count: '*' });
             return Number(count);
           };
