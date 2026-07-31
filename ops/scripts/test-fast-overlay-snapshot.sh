@@ -10,6 +10,8 @@ grep -Fq 'cp -al "$OVERLAY_DIR/." "$snapshot_dir/frontend-overlay/"' "$gate"
 grep -Fq 'snapshot_format="plain-tar"' "$gate"
 grep -Fq 'SNAPSHOT_FORMAT="${SNAPSHOT_FORMAT:-legacy-gzip}"' "$gate"
 grep -Fq 'FULL_SCREEN_GATE_SNAPSHOT_RETENTION:-3' "$gate"
+grep -Fq 'sudo -n rm -rf -- "$snapshot"' "$gate"
+grep -Fq 'stale snapshot cleanup deferred' "$gate"
 grep -Fq 'os.replace(tmp, path)' "$guard"
 
 if grep -Fq 'tar -C "$OVERLAY_DIR" -czf' "$gate"; then

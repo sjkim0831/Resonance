@@ -42,7 +42,14 @@ prune_snapshots() {
   )
   for snapshot in "${stale_snapshots[@]:-}"; do
     require_safe_path "$snapshot" "$STATE_DIR"
-    rm -rf -- "$snapshot"
+    if ! rm -rf -- "$snapshot" 2>/dev/null; then
+      # Historical deploy services occasionally created snapshots as root.
+      # The path guard above confines elevated deletion to this gate's own
+      # snapshot subtree. Cleanup must never invalidate an otherwise healthy
+      # deployment, so retain and warn if non-interactive sudo is unavailable.
+      sudo -n rm -rf -- "$snapshot" 2>/dev/null ||
+        log "WARN: stale snapshot cleanup deferred path=$snapshot"
+    fi
   done
 }
 
