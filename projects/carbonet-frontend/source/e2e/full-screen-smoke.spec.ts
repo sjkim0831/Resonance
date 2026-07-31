@@ -56,10 +56,23 @@ test.describe.configure({ mode: "parallel" });
 // for dynamic contracts under load.
 test.setTimeout(12 * 60_000);
 
+async function waitForAdminMount(page: Page) {
+  await page.waitForFunction(() => {
+    const text = (document.body?.innerText || "").trim();
+    const root = document.querySelector("#root");
+    return text.length >= 20 &&
+      (root?.children.length || 0) > 0 &&
+      !/관리자 화면을 준비하고 있습니다|Bootstrap loaded\. Waiting for React app mount|Loading admin shell/.test(text);
+  }, undefined, { polling: 100, timeout: 5_000 }).catch(() => undefined);
+}
+
 async function ensureAdminSession(page: Page) {
   if (process.env.FULL_SCREEN_SMOKE_PREAUTHENTICATED === "true") {
     await page.goto(`${baseUrl}/admin`, { waitUntil: "domcontentloaded" });
-    if (!/\/admin\/login\/loginView$/.test(new URL(page.url()).pathname)) return;
+    if (!/\/admin\/login\/loginView$/.test(new URL(page.url()).pathname)) {
+      await waitForAdminMount(page);
+      return;
+    }
   }
   await page.goto(`${baseUrl}/admin/login/loginView`, { waitUntil: "domcontentloaded" });
   if (!/\/admin\/login\/loginView$/.test(new URL(page.url()).pathname)) return;
@@ -70,10 +83,7 @@ async function ensureAdminSession(page: Page) {
     page.waitForURL((url) => !/\/admin\/login\/loginView$/.test(url.pathname), { timeout: 15_000 }),
     page.getByRole("button", { name: /로그인/ }).click()
   ]);
-  await page.waitForFunction(() => {
-    const text = (document.body?.innerText || "").trim();
-    return !/관리자 화면을 준비하고 있습니다|Bootstrap loaded\. Waiting for React app mount|Loading admin shell/.test(text);
-  }, undefined, { polling: 100, timeout: 5_000 }).catch(() => undefined);
+  await waitForAdminMount(page);
 }
 
 async function inspectRoute(page: Page, route: SmokeRoute, testInfo: TestInfo, attempt: number) {
