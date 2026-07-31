@@ -18,6 +18,7 @@ block = source[start:end]
 required = [
     "sync_keycloak_actor_assignments_if_required",
     'catalog_identity_sync_pid="$!"',
+    "test-only visual E2E started concurrently with catalog synchronization",
     "bash ops/scripts/sync-unified-asset-catalog.sh",
     'wait "$catalog_identity_sync_pid"',
     "run_actor_process_role_e2e_if_required",
@@ -25,6 +26,11 @@ required = [
 positions = {token: block.index(token) for token in required}
 
 assert positions['catalog_identity_sync_pid="$!"'] < positions[
+    "test-only visual E2E started concurrently with catalog synchronization"
+]
+assert positions[
+    "test-only visual E2E started concurrently with catalog synchronization"
+] < positions[
     "bash ops/scripts/sync-unified-asset-catalog.sh"
 ]
 assert positions["bash ops/scripts/sync-unified-asset-catalog.sh"] < positions[
@@ -35,6 +41,8 @@ assert positions['wait "$catalog_identity_sync_pid"'] < positions[
 ]
 assert "concurrent identity reconciliation failed" in block
 assert 'exit 25' in block
+assert 'if [[ -z "$backstage_visual_e2e_pid" ]]; then' in block
+assert block.count("start_backstage_visual_e2e") == 2
 for phase in [
     'catalog_sync',
     'backstage_build_rollout',

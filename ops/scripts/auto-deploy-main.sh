@@ -1009,12 +1009,23 @@ if [[ "$PLAN_RUNTIME_REQUIRED" != "true" ]]; then
   ) >"$catalog_identity_sync_log" 2>&1 &
   catalog_identity_sync_pid="$!"
   echo "[auto-deploy] identity reconciliation running concurrently pid=$catalog_identity_sync_pid"
+  # A visual-E2E-only change cannot alter the running Backstage image. Start
+  # its full browser regression beside catalog/identity synchronization and
+  # join all gates before advancing the deploy marker. Runtime/image changes
+  # intentionally keep the later post-rollout start so E2E sees the candidate.
+  if [[ "$PLAN_BACKSTAGE_REQUIRED" != "true" \
+     && ",$PLAN_TESTS," == *",backstage:visual-e2e,"* ]]; then
+    start_backstage_visual_e2e
+    echo "[auto-deploy] test-only visual E2E started concurrently with catalog synchronization"
+  fi
   bash ops/scripts/sync-unified-asset-catalog.sh "$deployed_commit" "$target_commit"
   sync_backstage_catalog_if_required
   record_deploy_phase "catalog_sync"
   deploy_backstage_if_required
   record_deploy_phase "backstage_build_rollout"
-  start_backstage_visual_e2e
+  if [[ -z "$backstage_visual_e2e_pid" ]]; then
+    start_backstage_visual_e2e
+  fi
   if wait "$catalog_identity_sync_pid"; then
     cat "$catalog_identity_sync_log"
     catalog_identity_sync_pid=""
