@@ -227,6 +227,9 @@ test('authenticated Resonance control-plane routes render without runtime errors
   });
 
   await signIn(page);
+  // Backstage performs an optional OIDC refresh before the first interactive
+  // login. Its expected 401 is not an authenticated application runtime error.
+  runtimeErrors.length = 0;
   if (evidenceDir) {
     fs.mkdirSync(evidenceDir, { recursive: true });
   }
