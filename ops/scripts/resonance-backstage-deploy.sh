@@ -5,6 +5,7 @@ ROOT="${RESONANCE_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
 APP="$ROOT/platform/control-plane/backstage"
 BUILD_TMP_ROOT="${BACKSTAGE_BUILD_TMP_ROOT:-/opt/resonance-data/control-plane/build-tmp/backstage}"
 DEPENDENCY_CACHE_ROOT="${BACKSTAGE_DEPENDENCY_CACHE_ROOT:-/opt/resonance-data/control-plane/dependency-cache/backstage}"
+BUILDKIT_CACHE_ROOT="${BACKSTAGE_BUILDKIT_CACHE_ROOT:-/opt/resonance-data/control-plane/build-cache/backstage-buildkit}"
 mkdir -p "$BUILD_TMP_ROOT"
 TMPDIR="$(mktemp -d "$BUILD_TMP_ROOT/run.XXXXXXXX")"
 case "$(readlink -f "$TMPDIR")" in
@@ -40,6 +41,18 @@ require() {
     echo "[backstage] missing command: $1" >&2
     exit 1
   }
+}
+
+phase_started_at=0
+deploy_started_at="$(date +%s)"
+start_phase() {
+  phase_started_at="$(date +%s)"
+  echo "[backstage][timing] start $1"
+}
+finish_phase() {
+  local phase_name="$1" elapsed
+  elapsed="$(( $(date +%s) - phase_started_at ))"
+  echo "[backstage][timing] finish $phase_name seconds=$elapsed"
 }
 
 run_yarn_script_if_defined() {
@@ -366,6 +379,7 @@ case "$mode" in
     echo "[backstage] PASS configuration and TypeScript contracts are valid"
     ;;
   deploy)
+    start_phase preflight
     bash "$ROOT/ops/scripts/resonance-control-plane.sh" validate
     # Exercise the complete API admission chain before dependency installation,
     # image construction, secret mutation, or rollout.
@@ -373,6 +387,7 @@ case "$mode" in
     ensure_tls
     ensure_auth_secret
     ensure_ingress_https_port
+    finish_phase preflight
     # Tag by the Backstage source tree rather than the repository commit.
     # Documentation, deployment-script, or Carbonet changes then reuse the
     # already verified image without rebuilding an identical application.
@@ -384,6 +399,7 @@ case "$mode" in
     # Do not materialize node_modules in a disposable worktree merely to deploy
     # that exact image again after a transient readiness or browser-test error.
     if ! docker image inspect "$image" >/dev/null 2>&1; then
+      start_phase application-build
       (
         cd "$APP"
         install_backstage_dependencies
@@ -396,12 +412,36 @@ case "$mode" in
         corepack yarn tsc
         corepack yarn build:backend
       )
-      DOCKER_BUILDKIT=1 docker build -t "$image" -f "$APP/packages/backend/Dockerfile" "$APP"
+      finish_phase application-build
+      start_phase image-build
+      build_cache_args=()
+      mkdir -p "$(dirname "$BUILDKIT_CACHE_ROOT")"
+      if [[ -s "$BUILDKIT_CACHE_ROOT/index.json" ]]; then
+        build_cache_args+=(--cache-from "type=local,src=$BUILDKIT_CACHE_ROOT")
+      fi
+      rm -rf -- "$BUILDKIT_CACHE_ROOT.next"
+      docker buildx build \
+        --load \
+        "${build_cache_args[@]}" \
+        --cache-to "type=local,dest=$BUILDKIT_CACHE_ROOT.next,mode=max" \
+        -t "$image" \
+        -f "$APP/packages/backend/Dockerfile" \
+        "$APP"
+      rm -rf -- "$BUILDKIT_CACHE_ROOT.previous"
+      if [[ -d "$BUILDKIT_CACHE_ROOT" ]]; then
+        mv -- "$BUILDKIT_CACHE_ROOT" "$BUILDKIT_CACHE_ROOT.previous"
+      fi
+      mv -- "$BUILDKIT_CACHE_ROOT.next" "$BUILDKIT_CACHE_ROOT"
+      rm -rf -- "$BUILDKIT_CACHE_ROOT.previous"
+      finish_phase image-build
+      start_phase image-push
       docker push "$image"
+      finish_phase image-push
     else
       echo "[backstage] reusing verified application image without dependency install: $image"
     fi
 
+    start_phase runtime-config
     find_patroni_leader
 
     if kubectl -n "$NAMESPACE" get secret resonance-backstage-database >/dev/null 2>&1; then
@@ -465,6 +505,8 @@ case "$mode" in
     )"
     kubectl -n "$NAMESPACE" patch deployment resonance-backstage --type=merge \
       -p="{\"spec\":{\"template\":{\"metadata\":{\"annotations\":{\"resonance.io/catalog-digest\":\"$catalog_digest\"}}}}}"
+    finish_phase runtime-config
+    start_phase rollout-readiness
     kubectl -n "$NAMESPACE" rollout status deployment/resonance-backstage --timeout=600s
     wait_for_runtime
     if [[ "$OIDC_READY" == "true" ]]; then
@@ -472,6 +514,8 @@ case "$mode" in
     else
       wait_for_catalog
     fi
+    finish_phase rollout-readiness
+    echo "[backstage][timing] total seconds=$(( $(date +%s) - deploy_started_at )) target=60"
     echo "[backstage] PASS deployed $image at $BACKSTAGE_URL"
     ;;
   status)
