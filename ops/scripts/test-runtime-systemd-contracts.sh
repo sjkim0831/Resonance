@@ -8,6 +8,7 @@ runner="$root/ops/scripts/run-nightly-frontend-contracts.sh"
 
 grep -Fq 'WorkingDirectory=/opt/Resonance/var/deploy-worktrees/runtime-build' "$nightly"
 grep -Fq 'EnvironmentFile=-/etc/resonance/secrets/admin-smoke.env' "$nightly"
+grep -Fq 'Environment=FULL_SCREEN_SMOKE_RETRIES=0' "$nightly"
 grep -Fq 'FULL_SCREEN_SMOKE_ADMIN_USER="${FULL_SCREEN_SMOKE_ADMIN_USER:-${ADMIN_SMOKE_USER:-}}"' "$runner"
 grep -Fq 'FULL_SCREEN_SMOKE_ADMIN_PASSWORD="${FULL_SCREEN_SMOKE_ADMIN_PASSWORD:-${ADMIN_SMOKE_PASSWORD:-}}"' "$runner"
 grep -Fq 'SHARED_GENERATED_SCREEN_DIR:-/opt/Resonance/projects/carbonet-frontend/source/src/generated/screen-generation' "$runner"
