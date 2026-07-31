@@ -66,7 +66,7 @@ const useStyles = makeStyles(theme => ({
 }));
 
 export function SystemOperationsControlPage() {
-  // Smoke target for immutable dependencies plus concurrent validation/build.
+  // Build-performance smoke target; this comment intentionally changes source.
   const classes = useStyles();
   const fetchApi = useApi(fetchApiRef);
   const [summary, setSummary] = useState<OperationsSummary>();
