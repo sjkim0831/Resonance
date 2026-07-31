@@ -78,6 +78,7 @@ unset -f git derive_backstage_e2e_routes add_route add_core_routes
 
 grep -Fq 'resonance-backstage-full-e2e.timer' "$AUTO_DEPLOY"
 grep -Fq 'RESONANCE_BACKSTAGE_E2E_SCOPE=full' "$FULL_E2E_RUNNER"
+grep -Fq '[[ -f "$RUNNER" ]]' "$FULL_E2E_RUNNER"
 grep -Fq 'resonance-backstage-full-e2e.sh' "$FULL_E2E_SERVICE"
 grep -Fq 'OnCalendar=*-*-* 02:40:00 Asia/Seoul' "$FULL_E2E_TIMER"
 

@@ -3,7 +3,7 @@ set -euo pipefail
 
 ROOT="${RESONANCE_FULL_E2E_ROOT:-/opt/Resonance/var/deploy-worktrees/runtime-build}"
 RUNNER="$ROOT/ops/scripts/resonance-backstage-visual-e2e.sh"
-[[ -x "$RUNNER" ]] || {
+[[ -f "$RUNNER" ]] || {
   echo "[backstage-full-e2e] current runtime worktree runner is missing: $RUNNER" >&2
   exit 2
 }
