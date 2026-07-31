@@ -110,6 +110,16 @@ install_backstage_dependencies() {
     echo "[backstage] dependency cache lock timed out" >&2
     return 1
   }
+  if [[ -d "$APP/node_modules" &&
+        -x "$APP/node_modules/.bin/backstage-cli" &&
+        -x "$APP/node_modules/.bin/tsc" &&
+        -f "$APP/.yarn/install-state.gz" &&
+        -f "$cache_state" ]] &&
+      cmp -s "$APP/.yarn/install-state.gz" "$cache_state"; then
+    echo "[backstage] dependency state matches immutable cache $cache_key; install skipped"
+    flock -u 8
+    return 0
+  fi
   if [[ ! -d "$APP/node_modules" && -d "$cache_modules" && -f "$cache_state" ]]; then
     echo "[backstage] restoring immutable dependency tree from cache $cache_key"
     cp -al -- "$cache_modules" "$APP/node_modules"
@@ -153,7 +163,7 @@ install_backstage_dependencies() {
   flock -u 8
 }
 
-for command in git node corepack docker kubectl openssl curl flock sha256sum; do
+for command in git node corepack docker kubectl openssl curl flock sha256sum cmp; do
   require "$command"
 done
 docker buildx version >/dev/null 2>&1 || {

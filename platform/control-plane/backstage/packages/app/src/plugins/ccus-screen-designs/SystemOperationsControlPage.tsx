@@ -66,7 +66,7 @@ const useStyles = makeStyles(theme => ({
 }));
 
 export function SystemOperationsControlPage() {
-  // This route is the smoke target for concurrent typecheck and bundle builds.
+  // Smoke target for immutable dependencies plus concurrent validation/build.
   const classes = useStyles();
   const fetchApi = useApi(fetchApiRef);
   const [summary, setSummary] = useState<OperationsSummary>();
