@@ -6,6 +6,10 @@ const username = process.env.BACKSTAGE_E2E_USERNAME;
 const password = process.env.BACKSTAGE_E2E_PASSWORD;
 const evidenceDir = process.env.RESONANCE_E2E_EVIDENCE_DIR;
 const e2eScope = process.env.RESONANCE_BACKSTAGE_E2E_SCOPE ?? 'full';
+const requestedRoutes = (process.env.RESONANCE_BACKSTAGE_E2E_ROUTES ?? '')
+  .split(',')
+  .map(route => route.trim())
+  .filter(Boolean);
 const storageStatePath = process.env.BACKSTAGE_E2E_STORAGE_STATE;
 const designDocumentTitles = [
   '업무·요구사항',
@@ -39,12 +43,22 @@ const routes = [
   ['/actor-process-operations', 'Actor·Process 프로젝트 제어'],
   ['/design-assets', '공통 디자인 자산 관리'],
   ['/identity-administration', 'Resonance 통합계정 관리'],
+  ['/system-operations', '시스템 운영 관제'],
+  ['/system-development', '개발 자산 제어'],
+  ['/system-security', '보안·권한 관제'],
+  ['/migration-cutover', 'Resonance → Backstage 이관 원장'],
   ['/system-recovery', 'PC 외부 백업 전체 복원 검증'],
 ] as const;
 const selectedRoutes =
-  e2eScope === 'recovery'
+  requestedRoutes.length > 0
+    ? routes.filter(([route]) => requestedRoutes.includes(route))
+    : e2eScope === 'recovery'
     ? routes.filter(([route]) => route === '/system-recovery')
     : routes;
+const targetedRouteMode = requestedRoutes.length > 0 || e2eScope === 'recovery';
+const actorRouteSelected = selectedRoutes.some(([route]) =>
+  route.startsWith('/actor-process-'),
+);
 
 async function signIn(page: Page) {
   if (!username || !password) {
@@ -199,6 +213,16 @@ test('authenticated Resonance control-plane routes render without runtime errors
   page,
 }) => {
   test.setTimeout(120_000);
+  if (
+    requestedRoutes.length > 0 &&
+    selectedRoutes.length !== new Set(requestedRoutes).size
+  ) {
+    throw new Error(
+      `Unknown Backstage E2E route requested: ${requestedRoutes
+        .filter(route => !routes.some(([knownRoute]) => knownRoute === route))
+        .join(',')}`,
+    );
+  }
   const runtimeErrors: string[] = [];
 
   page.on('pageerror', error =>
@@ -271,28 +295,35 @@ test('authenticated Resonance control-plane routes render without runtime errors
     );
   }
 
-  if (e2eScope === 'recovery') {
+  if (targetedRouteMode && !actorRouteSelected) {
     await page.setViewportSize({ width: 390, height: 844 });
-    await page.goto('/system-recovery', {
-      waitUntil: 'domcontentloaded',
-      timeout: 20_000,
-    });
-    await expect(page.getByText('복구 관리자 작업')).toBeVisible();
-    expect(
-      await page.evaluate(
-        () =>
-          document.documentElement.scrollWidth <=
-          document.documentElement.clientWidth + 1,
-      ),
-      'mobile recovery page must not create body-level horizontal overflow',
-    ).toBe(true);
-    if (evidenceDir) {
-      await page.screenshot({
-        path: path.join(evidenceDir, 'system-recovery-mobile.png'),
-        fullPage: true,
+    for (const [route, expectedTitle] of selectedRoutes) {
+      await page.goto(route, {
+        waitUntil: 'domcontentloaded',
+        timeout: 20_000,
       });
+      await expect(
+        page.getByText(expectedTitle, { exact: true }).first(),
+      ).toBeVisible();
+      expect(
+        await page.evaluate(
+          () =>
+            document.documentElement.scrollWidth <=
+            document.documentElement.clientWidth + 1,
+        ),
+        `${route} mobile page must not create body-level horizontal overflow`,
+      ).toBe(true);
+      if (evidenceDir) {
+        await page.screenshot({
+          path: path.join(
+            evidenceDir,
+            `${route.slice(1).replaceAll('/', '-')}-mobile.png`,
+          ),
+          fullPage: true,
+        });
+      }
     }
-    expect(runtimeErrors, 'recovery route emitted runtime errors').toEqual([]);
+    expect(runtimeErrors, 'targeted route emitted runtime errors').toEqual([]);
     await persistStorageState(page);
     return;
   }

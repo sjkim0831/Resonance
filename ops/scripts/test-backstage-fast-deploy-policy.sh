@@ -22,7 +22,10 @@ grep -A8 'path: /.backstage/health/v1/readiness' "$MANIFEST" |
   grep -Fq 'periodSeconds: 2'
 grep -Fq 'Backstage visual E2E scope:' "$AUTO_DEPLOY"
 grep -Fq 'RESONANCE_BACKSTAGE_E2E_SCOPE="$e2e_scope"' "$AUTO_DEPLOY"
+grep -Fq 'derive_backstage_e2e_routes' "$AUTO_DEPLOY"
+grep -Fq 'RESONANCE_BACKSTAGE_E2E_ROUTES="$e2e_routes"' "$AUTO_DEPLOY"
 grep -Fq "e2eScope === 'recovery'" "$E2E_SPEC"
+grep -Fq 'requestedRoutes.length > 0' "$E2E_SPEC"
 grep -Fq "route === '/system-recovery'" "$E2E_SPEC"
 grep -Fq 'BACKSTAGE_E2E_STORAGE_STATE="$auth_state"' "$E2E_RUNNER"
 grep -Fq 'chmod 0600 "$auth_state"' "$E2E_RUNNER"

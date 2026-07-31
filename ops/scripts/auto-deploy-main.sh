@@ -554,6 +554,55 @@ deploy_backstage_if_required() {
   echo "[auto-deploy] Backstage runtime verified"
 }
 
+derive_backstage_e2e_routes() {
+  local file routes="" full=false
+  add_route() {
+    [[ ",$routes," == *",$1,"* ]] || routes="${routes:+$routes,}$1"
+  }
+  while IFS= read -r file; do
+    [[ -n "$file" ]] || continue
+    case "$file" in
+      platform/control-plane/backstage/packages/app/src/plugins/ccus-screen-designs/ScreenDesignCatalogPage.tsx)
+        add_route /ccus-screen-designs ;;
+      platform/control-plane/backstage/packages/app/src/plugins/ccus-screen-designs/ScreenSpaceRuntimePage.tsx|\
+      platform/control-plane/backstage/packages/app/src/plugins/ccus-screen-designs/ScreenSpaceEnginePage.tsx|\
+      platform/control-plane/backstage/packages/app/src/plugins/ccus-screen-designs/screenSpaceEngine.ts)
+        add_route /ccus-screen-space ;;
+      platform/control-plane/backstage/packages/app/src/plugins/ccus-screen-designs/ResonanceProjectControlPage.tsx|\
+      platform/control-plane/backstage/packages/backend/src/plugins/resonanceProjects.ts)
+        add_route /resonance-projects ;;
+      platform/control-plane/backstage/packages/app/src/plugins/ccus-screen-designs/ResonanceControlAssetsPage.tsx)
+        add_route /resonance-control-assets ;;
+      platform/control-plane/backstage/packages/app/src/plugins/ccus-screen-designs/ActorProcessControlPage.tsx|\
+      platform/control-plane/backstage/packages/app/src/plugins/ccus-screen-designs/actorProcessWorkspaces.ts)
+        add_route /actor-process-control
+        add_route /actor-process-design
+        add_route /actor-process-development
+        add_route /actor-process-operations ;;
+      platform/control-plane/backstage/packages/app/src/plugins/ccus-screen-designs/DesignAssetControlPage.tsx)
+        add_route /design-assets ;;
+      platform/control-plane/backstage/packages/app/src/plugins/ccus-screen-designs/IdentityAdministrationPage.tsx|\
+      platform/control-plane/backstage/packages/backend/src/plugins/resonanceIdentityAdmin.ts)
+        add_route /identity-administration ;;
+      platform/control-plane/backstage/packages/app/src/plugins/ccus-screen-designs/SystemOperationsControlPage.tsx)
+        add_route /system-operations ;;
+      platform/control-plane/backstage/packages/app/src/plugins/ccus-screen-designs/SystemDevelopmentControlPage.tsx)
+        add_route /system-development ;;
+      platform/control-plane/backstage/packages/app/src/plugins/ccus-screen-designs/SystemSecurityControlPage.tsx)
+        add_route /system-security ;;
+      platform/control-plane/backstage/packages/app/src/plugins/ccus-screen-designs/MigrationCutoverPage.tsx|\
+      platform/control-plane/backstage/packages/app/src/plugins/ccus-screen-designs/migrationCutoverRegistry.ts)
+        add_route /migration-cutover ;;
+      platform/control-plane/backstage/packages/app/src/plugins/ccus-screen-designs/SystemRecoveryControlPage.tsx|\
+      platform/control-plane/backstage/packages/backend/src/plugins/resonanceRecovery.ts)
+        add_route /system-recovery ;;
+      *) full=true ;;
+    esac
+  done < <(git diff --name-only "$deployed_commit" "$target_commit")
+  [[ "$full" == true ]] && return 0
+  printf '%s\n' "$routes"
+}
+
 run_backstage_visual_e2e_if_required() {
   if [[ "$PLAN_BACKSTAGE_REQUIRED" != "true" \
      && ",$PLAN_TESTS," != *",backstage:visual-e2e,"* \
@@ -561,18 +610,13 @@ run_backstage_visual_e2e_if_required() {
     return
   fi
   local e2e_scope="${RESONANCE_BACKSTAGE_E2E_SCOPE:-full}"
-  local changed_files
-  changed_files="$(git diff --name-only "$deployed_commit" "$target_commit")"
-  if [[ -n "$changed_files" ]] &&
-    ! printf '%s\n' "$changed_files" |
-      grep -Ev '^platform/control-plane/backstage/packages/(app/src/plugins/ccus-screen-designs/SystemRecoveryControlPage\.tsx|backend/src/plugins/resonanceRecovery\.ts)$' |
-      grep -q .; then
-    e2e_scope="recovery"
-  fi
-  echo "[auto-deploy] Backstage visual E2E scope: $e2e_scope"
+  local e2e_routes="${RESONANCE_BACKSTAGE_E2E_ROUTES:-}"
+  [[ -n "$e2e_routes" ]] || e2e_routes="$(derive_backstage_e2e_routes)"
+  echo "[auto-deploy] Backstage visual E2E scope: $e2e_scope routes=${e2e_routes:-all}"
   BACKSTAGE_E2E_USERNAME="${BACKSTAGE_E2E_USERNAME:-sjkim}" \
   BACKSTAGE_E2E_SECRET_NAME="${BACKSTAGE_E2E_SECRET_NAME:-resonance-keycloak-integrated-admin}" \
   RESONANCE_BACKSTAGE_E2E_SCOPE="$e2e_scope" \
+  RESONANCE_BACKSTAGE_E2E_ROUTES="$e2e_routes" \
   RESONANCE_ROOT="$ROOT_DIR" \
     bash ops/scripts/resonance-backstage-visual-e2e.sh
 }
