@@ -233,6 +233,8 @@ runtime_asset_sync_pid=""
 runtime_asset_sync_log=""
 runtime_screen_gate_pid=""
 runtime_screen_gate_log=""
+catalog_identity_sync_pid=""
+catalog_identity_sync_log=""
 # A disconnected kubectl/pg_dump pipeline can survive the systemd process and
 # retain ACCESS SHARE locks indefinitely. Reap only deploy-owned sessions that
 # have exceeded five minutes before Flyway can be blocked. Normal full dumps
@@ -259,6 +261,10 @@ cleanup_deploy() {
   if [[ -n "$runtime_screen_gate_pid" ]] && kill -0 "$runtime_screen_gate_pid" 2>/dev/null; then
     kill "$runtime_screen_gate_pid" 2>/dev/null || true
     wait "$runtime_screen_gate_pid" 2>/dev/null || true
+  fi
+  if [[ -n "$catalog_identity_sync_pid" ]] && kill -0 "$catalog_identity_sync_pid" 2>/dev/null; then
+    kill "$catalog_identity_sync_pid" 2>/dev/null || true
+    wait "$catalog_identity_sync_pid" 2>/dev/null || true
   fi
   cleanup_remote_backup
   if [[ -n "$schema_restore_database" ]]; then
@@ -657,6 +663,12 @@ if [[ "$PLAN_RUNTIME_REQUIRED" != "true" ]]; then
   while IFS= read -r changed_script; do
     [[ "$changed_script" == *.sh && -f "$changed_script" ]] && bash -n "$changed_script"
   done < <(git diff --name-only --diff-filter=ACMR "$deployed_commit" "$target_commit")
+  if git diff --name-only "$deployed_commit" "$target_commit" -- \
+      ops/scripts/auto-deploy-main.sh \
+      ops/scripts/test-catalog-identity-parallel-deploy.sh |
+      grep -q .; then
+    bash ops/scripts/test-catalog-identity-parallel-deploy.sh
+  fi
   backstage_only_change=false
   if [[ "$PLAN_BACKSTAGE_REQUIRED" == "true" ]] &&
     ! git diff --name-only "$deployed_commit" "$target_commit" |
@@ -667,12 +679,29 @@ if [[ "$PLAN_RUNTIME_REQUIRED" != "true" ]]; then
   if [[ "$backstage_only_change" == "true" ]]; then
     echo "[auto-deploy] Backstage-only change: synchronizing source assets without an application rollout"
   fi
+  # Identity reconciliation and source-catalog indexing read independent
+  # systems. Run them concurrently, then join fail-closed before role E2E and
+  # the success marker. This removes the longest sequential tail without
+  # weakening either contract.
+  catalog_identity_sync_log="$ROOT_DIR/var/logs/catalog-identity-sync-${target_commit:0:10}.log"
+  (
+    sync_keycloak_actor_assignments_if_required
+  ) >"$catalog_identity_sync_log" 2>&1 &
+  catalog_identity_sync_pid="$!"
+  echo "[auto-deploy] identity reconciliation running concurrently pid=$catalog_identity_sync_pid"
   bash ops/scripts/sync-unified-asset-catalog.sh "$deployed_commit" "$target_commit"
   bash ops/scripts/validate-e4b-selectable-assets.sh
   sync_backstage_catalog_if_required
   deploy_backstage_if_required
   run_backstage_visual_e2e_if_required
-  sync_keycloak_actor_assignments_if_required
+  if wait "$catalog_identity_sync_pid"; then
+    cat "$catalog_identity_sync_log"
+    catalog_identity_sync_pid=""
+  else
+    echo "[auto-deploy] refusing success marker: concurrent identity reconciliation failed" >&2
+    cat "$catalog_identity_sync_log" >&2
+    exit 25
+  fi
   run_actor_process_role_e2e_if_required
   record_deploy_phase "catalog_apply_and_verify"
   printf '%s\n' "$target_commit" > "${DEPLOY_STATE_FILE}.tmp"
