@@ -6,6 +6,7 @@ const username = process.env.BACKSTAGE_E2E_USERNAME;
 const password = process.env.BACKSTAGE_E2E_PASSWORD;
 const evidenceDir = process.env.RESONANCE_E2E_EVIDENCE_DIR;
 const e2eScope = process.env.RESONANCE_BACKSTAGE_E2E_SCOPE ?? 'full';
+const storageStatePath = process.env.BACKSTAGE_E2E_STORAGE_STATE;
 const designDocumentTitles = [
   '업무·요구사항',
   '액터·RACI',
@@ -185,6 +186,16 @@ async function verifyRoute(
   expect(runtimeErrors, `${route} emitted runtime errors`).toEqual([]);
 }
 
+async function persistStorageState(page: Page) {
+  if (!storageStatePath) return;
+  fs.mkdirSync(path.dirname(storageStatePath), {
+    recursive: true,
+    mode: 0o700,
+  });
+  await page.context().storageState({ path: storageStatePath });
+  fs.chmodSync(storageStatePath, 0o600);
+}
+
 test('authenticated Resonance control-plane routes render without runtime errors', async ({
   page,
 }) => {
@@ -281,6 +292,7 @@ test('authenticated Resonance control-plane routes render without runtime errors
       });
     }
     expect(runtimeErrors, 'recovery route emitted runtime errors').toEqual([]);
+    await persistStorageState(page);
     return;
   }
 
@@ -362,6 +374,7 @@ test('authenticated Resonance control-plane routes render without runtime errors
     'mobile recovery page must not create body-level horizontal overflow',
   ).toBe(true);
   expect(runtimeErrors, 'interactive route emitted runtime errors').toEqual([]);
+  await persistStorageState(page);
   if (evidenceDir) {
     await page.screenshot({
       path: path.join(evidenceDir, 'actor-process-control-mobile.png'),
