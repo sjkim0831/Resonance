@@ -249,6 +249,8 @@ test('authenticated Resonance control-plane routes render without runtime errors
     fs.mkdirSync(evidenceDir, { recursive: true });
   }
 
+  // Route rendering and the independent actor-role contract gate run in
+  // parallel at deployment level; keep browser fan-out bounded on the host.
   const routeConcurrency = 4;
   for (
     let offset = 0;
