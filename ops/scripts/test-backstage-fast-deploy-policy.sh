@@ -34,6 +34,10 @@ grep -Fq 'Backstage visual E2E running concurrently' "$AUTO_DEPLOY"
 grep -Fq 'wait_backstage_visual_e2e' "$AUTO_DEPLOY"
 grep -Fq 'concurrent Backstage visual E2E failed' "$AUTO_DEPLOY"
 grep -Fq 'actor-process role E2E skipped for unrelated routes' "$AUTO_DEPLOY"
+grep -Fq 'build_backstage_application' "$DEPLOY"
+grep -Fq 'corepack yarn tsc >"$typecheck_log" 2>&1 &' "$DEPLOY"
+grep -Fq 'corepack yarn build:backend >"$bundle_log" 2>&1 &' "$DEPLOY"
+grep -Fq 'concurrent application build failed' "$DEPLOY"
 
 eval "$(sed -n '/^derive_backstage_e2e_routes() {/,/^run_backstage_visual_e2e_if_required() {/p' "$AUTO_DEPLOY" | sed '$d')"
 deployed_commit=base

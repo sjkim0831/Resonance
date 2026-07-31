@@ -66,6 +66,31 @@ run_yarn_script_if_defined() {
   fi
 }
 
+build_backstage_application() {
+  local typecheck_log bundle_log typecheck_pid bundle_pid typecheck_rc bundle_rc
+  typecheck_log="$TMPDIR/typecheck.log"
+  bundle_log="$TMPDIR/backend-bundle.log"
+  # TypeScript validation only reads the source graph while the Backstage
+  # package build writes packages/backend/dist. Running both concurrently
+  # removes the typecheck duration from the critical path without weakening
+  # either fail-closed gate.
+  corepack yarn tsc >"$typecheck_log" 2>&1 &
+  typecheck_pid="$!"
+  corepack yarn build:backend >"$bundle_log" 2>&1 &
+  bundle_pid="$!"
+  typecheck_rc=0
+  bundle_rc=0
+  wait "$typecheck_pid" || typecheck_rc="$?"
+  wait "$bundle_pid" || bundle_rc="$?"
+  cat "$typecheck_log"
+  cat "$bundle_log"
+  if (( typecheck_rc != 0 || bundle_rc != 0 )); then
+    echo "[backstage] concurrent application build failed: typecheck=$typecheck_rc bundle=$bundle_rc" >&2
+    return 1
+  fi
+  echo "[backstage] TypeScript and backend bundle gates completed concurrently"
+}
+
 install_backstage_dependencies() {
   local cache_key cache_dir cache_modules cache_state cache_lock
   cache_key="$(
@@ -409,8 +434,7 @@ case "$mode" in
         run_yarn_script_if_defined validate:actor-process-control
         run_yarn_script_if_defined validate:design-release-bridge
         run_yarn_script_if_defined generate:project-registry
-        corepack yarn tsc
-        corepack yarn build:backend
+        build_backstage_application
       )
       finish_phase application-build
       start_phase image-build

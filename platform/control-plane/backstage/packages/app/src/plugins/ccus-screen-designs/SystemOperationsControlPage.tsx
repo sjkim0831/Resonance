@@ -66,7 +66,7 @@ const useStyles = makeStyles(theme => ({
 }));
 
 export function SystemOperationsControlPage() {
-  // This route is the deployment smoke target for source-impact builds.
+  // This route is the smoke target for concurrent typecheck and bundle builds.
   const classes = useStyles();
   const fetchApi = useApi(fetchApiRef);
   const [summary, setSummary] = useState<OperationsSummary>();
