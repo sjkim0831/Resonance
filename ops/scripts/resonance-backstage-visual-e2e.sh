@@ -20,7 +20,7 @@ else
   curl --silent --show-error --fail --cacert "$CA_CERT" "${BACKSTAGE_URL}/"
 fi
 
-for command in kubectl base64 corepack flock sha256sum jq; do
+for command in kubectl base64 corepack flock sha256sum; do
   command -v "$command" >/dev/null || {
     echo "[backstage-e2e] missing command: $command" >&2
     exit 1
@@ -94,20 +94,6 @@ export NODE_EXTRA_CA_CERTS="$CA_CERT"
 export BACKSTAGE_E2E_USERNAME="$USERNAME"
 export BACKSTAGE_E2E_PASSWORD="$password"
 export RESONANCE_E2E_EVIDENCE_DIR="$evidence_dir"
-auth_state_dir="${DEPENDENCY_CACHE_ROOT}/auth"
-auth_state_name="${USERNAME//[^a-zA-Z0-9_.-]/_}.json"
-auth_state="${auth_state_dir}/${auth_state_name}"
-mkdir -p -m 0700 "$auth_state_dir"
-if [[ -f "$auth_state" ]] &&
-  ! jq -e '.cookies and .origins' "$auth_state" >/dev/null 2>&1; then
-  rm -f "$auth_state"
-fi
-touch "$auth_state"
-chmod 0600 "$auth_state"
-if [[ ! -s "$auth_state" ]]; then
-  printf '{"cookies":[],"origins":[]}\n' >"$auth_state"
-fi
-export BACKSTAGE_E2E_STORAGE_STATE="$auth_state"
 test -x "$PLAYWRIGHT_CHROMIUM_EXECUTABLE"
 
 cd "$BACKSTAGE_ROOT"
