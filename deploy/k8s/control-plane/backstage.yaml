@@ -103,8 +103,8 @@ spec:
             httpGet:
               path: /.backstage/health/v1/readiness
               port: http
-            initialDelaySeconds: 2
-            periodSeconds: 2
+            initialDelaySeconds: 0
+            periodSeconds: 1
             timeoutSeconds: 3
             failureThreshold: 60
           livenessProbe:
@@ -139,8 +139,10 @@ spec:
             httpGet:
               path: /components.yaml
               port: catalog
-            initialDelaySeconds: 2
-            periodSeconds: 10
+            initialDelaySeconds: 0
+            periodSeconds: 1
+            timeoutSeconds: 1
+            failureThreshold: 30
           resources:
             requests:
               cpu: 10m

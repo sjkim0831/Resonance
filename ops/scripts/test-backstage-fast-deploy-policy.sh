@@ -22,7 +22,9 @@ if grep -Fq 'rollout restart deployment/resonance-backstage' "$DEPLOY"; then
   exit 1
 fi
 grep -A8 'path: /.backstage/health/v1/readiness' "$MANIFEST" |
-  grep -Fq 'periodSeconds: 2'
+  grep -Fq 'periodSeconds: 1'
+grep -A8 'path: /components.yaml' "$MANIFEST" |
+  grep -Fq 'periodSeconds: 1'
 grep -Fq 'Backstage visual E2E scope:' "$AUTO_DEPLOY"
 grep -Fq 'RESONANCE_BACKSTAGE_E2E_SCOPE="$e2e_scope"' "$AUTO_DEPLOY"
 grep -Fq 'derive_backstage_e2e_routes' "$AUTO_DEPLOY"
