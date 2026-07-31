@@ -8,6 +8,7 @@ pid_file="$state_dir/pid"
 version_file="$state_dir/playwright-version"
 lock_file="$state_dir/start.lock"
 log_file="$state_dir/server.log"
+service_name="${FULL_SCREEN_SMOKE_BROWSER_SERVICE_NAME:-resonance-playwright-browser-server.service}"
 expected_version="$(node -p "require('$root_dir/node_modules/@playwright/test/package.json').version")"
 mkdir -p "$state_dir"
 
@@ -28,10 +29,41 @@ if ! server_is_current; then
     kill "$stale_pid" 2>/dev/null || true
   fi
   rm -f "$endpoint_file" "$pid_file" "$version_file"
-  nohup env \
-    PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH="${PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH:-}" \
-    node "$root_dir/scripts/playwright-browser-server.mjs" --state-dir "$state_dir" \
-    >>"$log_file" 2>&1 </dev/null &
+  if command -v systemctl >/dev/null 2>&1 && sudo -n true 2>/dev/null; then
+    node_bin="$(command -v node)"
+    unit_file="$state_dir/$service_name"
+    cat >"$unit_file" <<EOF
+[Unit]
+Description=Resonance persistent Playwright browser server
+After=network.target
+
+[Service]
+Type=simple
+User=$(id -un)
+WorkingDirectory=$root_dir
+Environment=HOME=$HOME
+Environment=PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=${PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH:-}
+ExecStart=$node_bin $root_dir/scripts/playwright-browser-server.mjs --state-dir $state_dir
+Restart=always
+RestartSec=1
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target
+EOF
+    sudo -n install -m 0644 "$unit_file" "/etc/systemd/system/$service_name"
+    sudo -n systemctl daemon-reload
+    sudo -n systemctl enable "$service_name" >/dev/null
+    sudo -n systemctl restart "$service_name"
+  else
+    # Local development and minimal containers may not own a systemd manager.
+    # They retain a best-effort daemon; production always uses the independent
+    # restartable unit so deploy-service cgroup cleanup cannot terminate it.
+    nohup env \
+      PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH="${PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH:-}" \
+      node "$root_dir/scripts/playwright-browser-server.mjs" --state-dir "$state_dir" \
+      >>"$log_file" 2>&1 </dev/null &
+  fi
 
   for _ in {1..50}; do
     server_is_current && break
@@ -40,6 +72,7 @@ if ! server_is_current; then
 fi
 server_is_current || {
   echo "[playwright-browser-server] failed to become ready; direct launch fallback will be used" >&2
+  sudo -n systemctl status "$service_name" --no-pager -n 20 >&2 2>/dev/null || true
   tail -n 20 "$log_file" >&2 || true
   exit 1
 }
