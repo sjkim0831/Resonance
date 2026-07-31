@@ -95,8 +95,7 @@ class DeployWebhookHandler(BaseHTTPRequestHandler):
         temporary.write_text(revision + "\n", encoding="ascii")
         os.replace(temporary, desired_file)
         result = subprocess.run(
-            ["sudo", "-n", "systemctl", "start", "--no-block",
-             "carbonet-auto-deploy.service"],
+            ["systemctl", "start", "--no-block", "carbonet-auto-deploy.service"],
             check=False,
             capture_output=True,
             text=True,

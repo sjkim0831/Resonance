@@ -19,7 +19,7 @@ printf '%s' "$secret" |
   sudo -n tee /etc/resonance/github-deploy-webhook.secret >/dev/null
 sudo -n chmod 0640 /etc/resonance/github-deploy-webhook.secret
 sudo -n chown root:sjkim /etc/resonance/github-deploy-webhook.secret
-sudo -n install -m 0750 -o sjkim -g sjkim \
+sudo -n install -m 0750 -o root -g root \
   "$root/ops/scripts/resonance-github-deploy-webhook.py" \
   "$bin_dir/resonance-github-deploy-webhook.py"
 sudo -n install -m 0644 \

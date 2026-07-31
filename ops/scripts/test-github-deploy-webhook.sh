@@ -12,6 +12,10 @@ grep -q 'sjkim0831/Resonance' \
   "$root/ops/scripts/resonance-github-deploy-webhook.py"
 grep -q 'NoNewPrivileges=true' \
   "$root/ops/systemd/carbonet-github-deploy-webhook.service"
+grep -q 'User=root' \
+  "$root/ops/systemd/carbonet-github-deploy-webhook.service"
+grep -Fq '["systemctl", "start", "--no-block"' \
+  "$root/ops/scripts/resonance-github-deploy-webhook.py"
 grep -q 'ReadWritePaths=/opt/resonance-data/deploy/github-webhook' \
   "$root/ops/systemd/carbonet-github-deploy-webhook.service"
 grep -q 'chmod 0640 /etc/resonance/github-deploy-webhook.secret' \
