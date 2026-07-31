@@ -32,4 +32,8 @@ grep -q 'OnUnitActiveSec=60s' \
   "$root/ops/systemd/carbonet-github-webhook-reconcile.timer"
 grep -q 'GITHUB_WEBHOOK_URL_SYNC_PASS' \
   "$root/ops/scripts/sync-github-deploy-webhook-url.py"
+grep -q 'docker\", \"run\", \"-d\"' \
+  "$root/ops/scripts/sync-github-deploy-webhook-url.py"
+grep -q 'wait_public_health' \
+  "$root/ops/scripts/sync-github-deploy-webhook-url.py"
 printf '%s\n' "GITHUB_DEPLOY_WEBHOOK_CONTRACT_PASS"

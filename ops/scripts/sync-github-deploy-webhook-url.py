@@ -9,6 +9,7 @@ import re
 import subprocess
 import sys
 import tempfile
+import time
 import urllib.error
 import urllib.request
 from pathlib import Path
@@ -22,6 +23,10 @@ HOOK_ID_FILE = STATE_DIR / "github-hook-id"
 CONTAINER = os.environ.get(
     "GITHUB_DEPLOY_WEBHOOK_TUNNEL_CONTAINER",
     "resonance-deploy-webhook-tunnel",
+)
+TUNNEL_IMAGE = os.environ.get(
+    "GITHUB_DEPLOY_WEBHOOK_TUNNEL_IMAGE",
+    "cloudflare/cloudflared:latest",
 )
 
 
@@ -38,18 +43,70 @@ def run(*args: str, input_text: str | None = None) -> str:
 
 
 def current_tunnel_url() -> str:
+    ensure_tunnel()
+    deadline = time.monotonic() + 45
+    last_logs = ""
+    while time.monotonic() < deadline:
+        result = subprocess.run(
+            ("sudo", "-n", "docker", "logs", CONTAINER),
+            text=True,
+            capture_output=True,
+            check=True,
+            timeout=20,
+        )
+        last_logs = result.stdout + result.stderr
+        matches = URL_PATTERN.findall(last_logs)
+        if matches:
+            return matches[-1]
+        time.sleep(1)
+    raise RuntimeError("quick tunnel URL unavailable after 45 seconds")
+
+
+def ensure_tunnel() -> None:
     result = subprocess.run(
-        ("sudo", "-n", "docker", "logs", CONTAINER),
+        (
+            "sudo", "-n", "docker", "inspect", "-f",
+            "{{.State.Running}}", CONTAINER,
+        ),
         text=True,
         capture_output=True,
-        check=True,
+        check=False,
         timeout=20,
     )
-    logs = result.stdout + result.stderr
-    matches = URL_PATTERN.findall(logs)
-    if not matches:
-        raise RuntimeError("quick tunnel URL unavailable")
-    return matches[-1]
+    if result.returncode == 0 and result.stdout.strip() == "true":
+        return
+    subprocess.run(
+        ("sudo", "-n", "docker", "rm", "-f", CONTAINER),
+        text=True,
+        capture_output=True,
+        check=False,
+        timeout=20,
+    )
+    run(
+        "sudo", "-n", "docker", "run", "-d",
+        "--name", CONTAINER,
+        "--restart", "unless-stopped",
+        "--network", "host",
+        TUNNEL_IMAGE,
+        "tunnel", "--no-autoupdate",
+        "--url", "http://127.0.0.1:9088",
+    )
+
+
+def wait_public_health(tunnel_url: str) -> None:
+    deadline = time.monotonic() + 45
+    while time.monotonic() < deadline:
+        try:
+            with urllib.request.urlopen(
+                f"{tunnel_url}/health", timeout=5
+            ) as response:
+                payload = json.loads(response.read())
+                if response.status == 200 and payload.get("status") == "UP":
+                    return
+        except (urllib.error.URLError, json.JSONDecodeError):
+            pass
+        time.sleep(1)
+    raise RuntimeError("quick tunnel public health unavailable after 45 seconds")
 
 
 def github_token() -> str:
@@ -116,6 +173,7 @@ def atomic_write(path: Path, value: str) -> None:
 
 def main() -> int:
     tunnel_url = current_tunnel_url()
+    wait_public_health(tunnel_url)
     expected = f"{tunnel_url}{HOOK_PATH}"
     token = github_token()
     hook_id = resolve_hook_id(token)
