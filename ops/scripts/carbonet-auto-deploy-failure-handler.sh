@@ -20,7 +20,10 @@ chmod 0640 "$evidence"
 
 category=UNKNOWN
 retry_allowed=false
-if grep -Eqi 'visual E2E|playwright|screenshot|browser regression' "$evidence"; then
+if grep -Eqi 'connection reset|connection refused|temporary failure|timed out|timeout|TLS handshake|unable to connect|i/o timeout|HTTP 50[234]|requested URL returned error: 50[234]|concurrent token acquisition failed' "$evidence"; then
+  category=NETWORK_TRANSIENT
+  retry_allowed=true
+elif grep -Eqi 'visual E2E|playwright|screenshot|browser regression' "$evidence"; then
   category=E2E
 elif grep -Eqi 'no valid .*backup|Flyway.*(fail|error)|Patroni.*(fail|not ready)|PostgreSQL.*(fail|not ready|unavailable)|database migration.*(fail|error)|schema backup.*(fail|invalid)' "$evidence"; then
   category=DATABASE
@@ -30,9 +33,6 @@ elif grep -Eqi 'asset closure|asset-catalog|missing .*asset|bundle|chunk' "$evid
   category=ASSET
 elif grep -Eqi 'gradle|compile|build failed|docker build|buildx' "$evidence"; then
   category=BUILD
-elif grep -Eqi 'connection reset|connection refused|temporary failure|timed out|timeout|TLS handshake|unable to connect|i/o timeout' "$evidence"; then
-  category=NETWORK_TRANSIENT
-  retry_allowed=true
 fi
 
 target="$(git ls-remote https://github.com/sjkim0831/Resonance.git refs/heads/main 2>/dev/null | awk '{print $1}' || true)"

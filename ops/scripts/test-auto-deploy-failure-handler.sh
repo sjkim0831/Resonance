@@ -45,6 +45,8 @@ fi
 
 e2e_line="$(grep -n "category=E2E" "$handler" | head -1 | cut -d: -f1)"
 database_line="$(grep -n "category=DATABASE" "$handler" | head -1 | cut -d: -f1)"
+network_line="$(grep -n "category=NETWORK_TRANSIENT" "$handler" | head -1 | cut -d: -f1)"
+[[ "$network_line" -lt "$e2e_line" ]]
 [[ "$e2e_line" -lt "$database_line" ]]
 
 echo "AUTO_DEPLOY_FAILURE_HANDLER_PASS"
