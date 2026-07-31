@@ -75,20 +75,39 @@ record_deploy_performance() {
       "$mode" "$target_commit" "$elapsed_ms"
 }
 
-if [[ ! -r "$KUBECONFIG" ]]; then
-  echo "[auto-deploy] refusing deployment: kubeconfig is not readable ($KUBECONFIG)" >&2
-  exit 8
-fi
-
 mkdir -p \
   "$(dirname "$LOCK_FILE")" \
-  "$BACKUP_DIR" \
   "$(dirname "$DEPLOY_STATE_FILE")" \
   "$(dirname "$BACKSTAGE_DEPLOY_STATE_FILE")"
 exec 9>"$LOCK_FILE"
 flock -n 9 || { echo "[auto-deploy] another deployment is running"; exit 0; }
 
 cd "$ROOT_DIR"
+
+# Poll Git before touching Kubernetes, PostgreSQL, worktrees, or backup
+# storage. The one-minute timer normally observes no change; that path should
+# finish as a cheap remote comparison instead of exercising every platform
+# safety gate. Changed revisions still pass every existing gate below.
+git fetch --quiet --prune "$REMOTE" "$BRANCH"
+target_commit="$(git rev-parse "$REMOTE/$BRANCH")"
+current_commit="$(git rev-parse HEAD)"
+deployed_commit="$(cat "$DEPLOY_STATE_FILE" 2>/dev/null || true)"
+if ! git cat-file -e "${deployed_commit}^{commit}" 2>/dev/null; then
+  deployed_commit="$current_commit"
+fi
+record_deploy_phase "remote_change_detection"
+if [[ "$deployed_commit" == "$target_commit" ]]; then
+  no_change_elapsed_ms=$(( $(monotonic_milliseconds) - DEPLOY_STARTED_EPOCH_MILLISECONDS ))
+  echo "[auto-deploy] already deployed: $deployed_commit (${no_change_elapsed_ms}ms)"
+  rm -f -- "$DEPLOY_PHASE_FILE" "${CARBONET_DEPLOY_SNAPSHOT_PATH:-}"
+  exit 0
+fi
+
+if [[ ! -r "$KUBECONFIG" ]]; then
+  echo "[auto-deploy] refusing deployment: kubeconfig is not readable ($KUBECONFIG)" >&2
+  exit 8
+fi
+mkdir -p "$BACKUP_DIR"
 
 # Detached deployment worktrees are disposable build inputs. Remove leftovers
 # from completed or interrupted runs before Kubernetes evaluates DiskPressure;
@@ -113,8 +132,8 @@ done < <(git -C "${CARBONET_DEPLOY_ORIGINAL_ROOT:-$ROOT_DIR}" worktree list --po
 git -C "${CARBONET_DEPLOY_ORIGINAL_ROOT:-$ROOT_DIR}" worktree prune
 
 # Reserve both the post-deploy safety floor and worst-case build/backup work
-# space after reclaiming disposable worktrees, but before Git fetch, database
-# backup, or build. A blocked run leaves the timer active for a later retry.
+# space after reclaiming disposable worktrees, but before database backup or
+# build. A blocked run leaves the timer active for a later retry.
 bash "$POLICY_ROOT/ops/scripts/deploy-capacity-gate.sh"
 
 # A runaway reports controller previously consumed more than 24 CPU cores and
@@ -288,21 +307,8 @@ cleanup_deploy() {
   rm -f -- "${DEPLOY_PHASE_FILE:-}"
 }
 trap cleanup_deploy EXIT INT TERM
-git fetch --prune "$REMOTE" "$BRANCH"
-target_commit="$(git rev-parse "$REMOTE/$BRANCH")"
-current_commit="$(git rev-parse HEAD)"
-deployed_commit="$(cat "$DEPLOY_STATE_FILE" 2>/dev/null || true)"
-if ! git cat-file -e "${deployed_commit}^{commit}" 2>/dev/null; then
-  deployed_commit="$current_commit"
-fi
-
-if [[ "$deployed_commit" == "$target_commit" ]]; then
-  echo "[auto-deploy] already deployed: $deployed_commit"
-  exit 0
-fi
-
 eval "$(bash "$PLAN_SCRIPT" "$deployed_commit" "$target_commit" --format env)"
-record_deploy_phase "fetch_and_plan"
+record_deploy_phase "incremental_plan"
 PLAN_BACKSTAGE_REQUIRED="${PLAN_BACKSTAGE_REQUIRED:-false}"
 echo "[auto-deploy] incremental plan: runtime=$PLAN_RUNTIME_REQUIRED frontend=$PLAN_FRONTEND_REQUIRED backend=$PLAN_BACKEND_REQUIRED database=$PLAN_DATABASE_REQUIRED backstage=$PLAN_BACKSTAGE_REQUIRED"
 echo "[auto-deploy] selected checks: $PLAN_TESTS ($PLAN_REASONS)"
@@ -680,11 +686,13 @@ if [[ "$PLAN_RUNTIME_REQUIRED" != "true" ]]; then
       ops/scripts/sync-unified-asset-catalog.sh \
       ops/scripts/test-atomic-asset-e4b-validation.sh \
       ops/scripts/test-catalog-identity-parallel-deploy.sh \
-      ops/scripts/test-catalog-overlay-fast-path.sh |
+      ops/scripts/test-catalog-overlay-fast-path.sh \
+      ops/scripts/test-no-change-preflight-fast-path.sh |
       grep -q .; then
     bash ops/scripts/test-catalog-identity-parallel-deploy.sh
     bash ops/scripts/test-catalog-overlay-fast-path.sh
     bash ops/scripts/test-atomic-asset-e4b-validation.sh
+    bash ops/scripts/test-no-change-preflight-fast-path.sh
   fi
   backstage_only_change=false
   if [[ "$PLAN_BACKSTAGE_REQUIRED" == "true" ]] &&
