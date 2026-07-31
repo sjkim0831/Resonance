@@ -219,8 +219,18 @@ for (const shard of manifest.shards) {
       const deterministicClientFailure = result.status >= 400 && result.status < 500;
       if (!result.ok && !deterministicClientFailure) {
         await page.waitForTimeout(120);
-        const retry = await inspectRoute(page, route, testInfo, 2);
-        result = { ...retry, recovered: retry.ok };
+        // A previous runtime screen can keep asynchronous queries alive after
+        // history navigation. Retrying in the same Page therefore attributes
+        // stale API/console failures to the next route. Use a fresh Page in the
+        // already authenticated BrowserContext so the recovery result belongs
+        // exclusively to this route without repeating login.
+        const retryPage = await page.context().newPage();
+        try {
+          const retry = await inspectRoute(retryPage, route, testInfo, 2);
+          result = { ...retry, recovered: retry.ok };
+        } finally {
+          await retryPage.close().catch(() => undefined);
+        }
       }
       results.push(result);
       mkdirSync(resultDir, { recursive: true });
