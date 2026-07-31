@@ -7,6 +7,8 @@ Wants=network-online.target
 Type=oneshot
 User=sjkim
 Group=sjkim
+Environment=BACKSTAGE_E2E_USERNAME=sjkim
+Environment=BACKSTAGE_E2E_SECRET_NAME=resonance-keycloak-integrated-admin
 ExecStart=/opt/resonance-data/control-plane/bin/resonance-backstage-full-e2e.sh
 TimeoutStartSec=300
 Nice=10

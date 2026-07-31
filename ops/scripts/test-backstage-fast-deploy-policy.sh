@@ -80,6 +80,8 @@ grep -Fq 'resonance-backstage-full-e2e.timer' "$AUTO_DEPLOY"
 grep -Fq 'RESONANCE_BACKSTAGE_E2E_SCOPE=full' "$FULL_E2E_RUNNER"
 grep -Fq '[[ -f "$RUNNER" ]]' "$FULL_E2E_RUNNER"
 grep -Fq 'resonance-backstage-full-e2e.sh' "$FULL_E2E_SERVICE"
+grep -Fq 'BACKSTAGE_E2E_USERNAME=sjkim' "$FULL_E2E_SERVICE"
+grep -Fq 'BACKSTAGE_E2E_SECRET_NAME=resonance-keycloak-integrated-admin' "$FULL_E2E_SERVICE"
 grep -Fq 'OnCalendar=*-*-* 02:40:00 Asia/Seoul' "$FULL_E2E_TIMER"
 
 echo "PASS Backstage deploy reuses dependencies, performs one fast rollout, and scopes E2E by impact"
