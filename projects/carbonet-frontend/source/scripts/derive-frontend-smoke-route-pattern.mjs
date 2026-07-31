@@ -7,7 +7,7 @@ import path from "node:path";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const inventoryPath = path.join(root, "src/features/builder-studio/routeSourceInventory.ts");
 const fallbackRoutes = [
-  "/home",
+  "/signin/loginView",
   "/emission/project_list",
   "/home/certificate-verify",
   "/admin/system/actor-process",

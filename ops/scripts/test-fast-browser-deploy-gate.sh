@@ -32,7 +32,7 @@ NODE
 pattern="$(node "$FRONTEND/scripts/derive-frontend-smoke-route-pattern.mjs" \
   --changed-file projects/carbonet-frontend/source/src/main.tsx)"
 for route in \
-  /home \
+  /signin/loginView \
   /emission/project_list \
   /home/certificate-verify \
   /admin/system/actor-process \
