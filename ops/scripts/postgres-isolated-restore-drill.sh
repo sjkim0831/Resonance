@@ -9,6 +9,9 @@ TIMEOUT="${RESTORE_DRILL_TIMEOUT:-3600s}"
 KEEP_DATA="${RESTORE_DRILL_KEEP_DATA:-false}"
 PRODUCTION_HEALTH_URL="${RESTORE_DRILL_PRODUCTION_HEALTH_URL:-http://127.0.0.1/actuator/health}"
 RUNTIME_RECOVERY_SCRIPT="${RESTORE_DRILL_RUNTIME_RECOVERY_SCRIPT:-/opt/resonance-data/control-plane/bin/reconcile-post-reboot-runtime.sh}"
+RECOVERY_API_BASE="${RESTORE_DRILL_RECOVERY_API_BASE:-https://backstage.172.16.1.232.nip.io/api/resonance-recovery}"
+RECOVERY_CA_CERT="${RESTORE_DRILL_RECOVERY_CA_CERT:-/opt/resonance-data/pki/resonance-internal-ca/ca.crt}"
+REPORTER_ID="${RESTORE_DRILL_REPORTER_ID:-$(hostname)-isolated-postgres}"
 RUN_ID="${RESTORE_DRILL_RUN_ID:-$(date -u +%Y%m%dT%H%M%SZ)}"
 POD="postgres-restore-${RUN_ID,,}"
 POD="${POD//[^a-z0-9-]/-}"
@@ -124,6 +127,7 @@ metrics="$(
   kubectl -n "$NAMESPACE" exec -i "$POD" -- psql -U postgres -d carbonet_restore \
     -v ON_ERROR_STOP=1 -At -F '|' <<'SQL'
 select count(*) from information_schema.tables where table_schema='public';
+select count(*) from information_schema.schemata where schema_name not in ('pg_catalog','information_schema') and schema_name not like 'pg_toast%';
 select count(*) from pg_indexes where schemaname='public';
 select count(*) from pg_constraint c join pg_namespace n on n.oid=c.connamespace where n.nspname='public';
 select count(*) from pg_index i join pg_class c on c.oid=i.indexrelid join pg_namespace n on n.oid=c.relnamespace where n.nspname='public' and not i.indisvalid;
@@ -134,12 +138,13 @@ SQL
 )"
 mapfile -t values <<<"$metrics"
 tables="${values[0]:-0}"
-indexes="${values[1]:-0}"
-constraints="${values[2]:-0}"
-invalid_indexes="${values[3]:-0}"
-unvalidated_constraints="${values[4]:-0}"
-database_bytes="${values[5]:-0}"
-failed_migrations="${values[6]:-0}"
+schemas="${values[1]:-0}"
+indexes="${values[2]:-0}"
+constraints="${values[3]:-0}"
+invalid_indexes="${values[4]:-0}"
+unvalidated_constraints="${values[5]:-0}"
+database_bytes="${values[6]:-0}"
+failed_migrations="${values[7]:-0}"
 
 status="PASS"
 [[ "$tables" -gt 0 && "$invalid_indexes" == 0 &&
@@ -155,6 +160,7 @@ report = {
   "backupBytes": int("$(stat -c %s "$backup")"),
   "durationSeconds": $((completed_epoch - started_epoch)),
   "tables": int("$tables"),
+  "schemas": int("$schemas"),
   "indexes": int("$indexes"),
   "constraints": int("$constraints"),
   "invalidIndexes": int("$invalid_indexes"),
@@ -181,5 +187,57 @@ fi
   echo "[restore-drill] production health did not recover" >&2
   exit 31
 }
+
+token="$(
+  kubectl -n resonance-ops get secret resonance-ops-bridge \
+    -o jsonpath='{.data.RESONANCE_RECOVERY_WORKER_TOKEN}' | base64 -d
+)"
+[[ "${#token}" -ge 32 && -r "$RECOVERY_CA_CERT" ]] || {
+  echo "[restore-drill] Backstage recovery reporter credential is unavailable" >&2
+  exit 32
+}
+checksum="$(awk 'NR==1 {print $1}' "$backup.sha256")"
+reported_status="VERIFIED"
+error_message=""
+if [[ "$status" != "PASS" ]]; then
+  reported_status="FAILED"
+  error_message="restore integrity checks failed"
+fi
+payload="$(
+  jq -nc \
+    --arg reporterId "$REPORTER_ID" \
+    --arg status "$reported_status" \
+    --arg backupName "$backup_name" \
+    --arg sha256 "$checksum" \
+    --arg isolation "KUBERNETES_EPHEMERAL_POSTGRES" \
+    --arg startedAt "$(date -u -d "@$started_epoch" +%FT%TZ)" \
+    --arg finishedAt "$(date -u -d "@$completed_epoch" +%FT%TZ)" \
+    --arg errorMessage "$error_message" \
+    --argjson durationSeconds "$((completed_epoch - started_epoch))" \
+    --argjson schemaCount "$schemas" \
+    --argjson tableCount "$tables" \
+    '{
+      reporterId:$reporterId,
+      status:$status,
+      backupName:$backupName,
+      sha256:$sha256,
+      isolation:$isolation,
+      durationSeconds:$durationSeconds,
+      schemaCount:$schemaCount,
+      tableCount:$tableCount,
+      traceEventCount:0,
+      unifiedAssetCount:0,
+      errorMessage:$errorMessage,
+      startedAt:$startedAt,
+      finishedAt:$finishedAt
+    }'
+)"
+curl --silent --show-error --fail --retry 3 --retry-delay 5 \
+  --cacert "$RECOVERY_CA_CERT" \
+  -H "authorization: Bearer $token" \
+  -H 'content-type: application/json' \
+  -d "$payload" \
+  "$RECOVERY_API_BASE/worker/offsite-restore-drill" >/dev/null
+echo "[restore-drill] Backstage recovery dashboard synchronized"
 
 [[ "$status" == "PASS" ]]

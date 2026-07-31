@@ -93,7 +93,9 @@ export default createBackendPlugin({
             table.timestamp('last_seen_at', { useTz: true }).notNullable();
           });
         }
-        if (!(await knex.schema.hasTable('resonance_recovery__offsite_status'))) {
+        if (
+          !(await knex.schema.hasTable('resonance_recovery__offsite_status'))
+        ) {
           await knex.schema.createTable(
             'resonance_recovery__offsite_status',
             table => {
@@ -142,6 +144,26 @@ export default createBackendPlugin({
               );
             },
           );
+        }
+        if (!(await knex.schema.hasTable('resonance_recovery__task'))) {
+          await knex.schema.createTable('resonance_recovery__task', table => {
+            table.uuid('task_id').primary();
+            table.string('task_key', 240).notNullable().unique();
+            table.string('task_type', 80).notNullable();
+            table.string('status', 32).notNullable();
+            table.string('severity', 32).notNullable();
+            table.string('title', 320).notNullable();
+            table.jsonb('details').notNullable();
+            table.string('source_reporter', 160).notNullable();
+            table.uuid('source_drill_id').nullable();
+            table.timestamp('created_at', { useTz: true }).notNullable();
+            table.timestamp('updated_at', { useTz: true }).notNullable();
+            table.timestamp('resolved_at', { useTz: true }).nullable();
+            table.index(
+              ['status', 'updated_at'],
+              'resonance_recovery_task_status_idx',
+            );
+          });
         }
         const commandColumns = [
           [
@@ -362,37 +384,39 @@ export default createBackendPlugin({
             drillCommands,
             offsiteStatuses,
             offsiteRestoreDrills,
-          ] =
-            await Promise.all([
-              knex('resonance_recovery__policy')
-                .select('*')
-                .orderBy('policy_code'),
-              knex('resonance_recovery__command')
-                .select('*')
-                .orderBy('created_at', 'desc')
-                .limit(50),
-              knex('resonance_recovery__worker')
-                .select('*')
-                .where(
-                  'last_seen_at',
-                  '>',
-                  new Date(Date.now() - 3 * 60 * 1000),
-                )
-                .orderBy('last_seen_at', 'desc'),
-              knex('resonance_recovery__command')
-                .select('*')
-                .where({ command_type: 'RESTORE_DRILL' })
-                .orderBy('created_at', 'desc')
-                .limit(50),
-              knex('resonance_recovery__offsite_status')
-                .select('*')
-                .orderBy('reported_at', 'desc')
-                .limit(20),
-              knex('resonance_recovery__offsite_restore_drill')
-                .select('*')
-                .orderBy('reported_at', 'desc')
-                .limit(20),
-            ]);
+            recoveryTasks,
+          ] = await Promise.all([
+            knex('resonance_recovery__policy')
+              .select('*')
+              .orderBy('policy_code'),
+            knex('resonance_recovery__command')
+              .select('*')
+              .orderBy('created_at', 'desc')
+              .limit(50),
+            knex('resonance_recovery__worker')
+              .select('*')
+              .where('last_seen_at', '>', new Date(Date.now() - 3 * 60 * 1000))
+              .orderBy('last_seen_at', 'desc'),
+            knex('resonance_recovery__command')
+              .select('*')
+              .where({ command_type: 'RESTORE_DRILL' })
+              .orderBy('created_at', 'desc')
+              .limit(50),
+            knex('resonance_recovery__offsite_status')
+              .select('*')
+              .orderBy('reported_at', 'desc')
+              .limit(20),
+            knex('resonance_recovery__offsite_restore_drill')
+              .select('*')
+              .orderBy('reported_at', 'desc')
+              .limit(20),
+            knex('resonance_recovery__task')
+              .select('*')
+              .orderByRaw(
+                "case when status = 'OPEN' then 0 else 1 end, updated_at desc",
+              )
+              .limit(20),
+          ]);
           const parseJsonObject = (value: unknown) => {
             if (value && typeof value === 'object') {
               return value as Record<string, any>;
@@ -474,9 +498,7 @@ export default createBackendPlugin({
           const offsitePolicyRow = policies.find(
             policy => policy.policy_code === 'OFFSITE_BACKUP_SCHEDULE',
           );
-          const offsitePolicy = parseJsonObject(
-            offsitePolicyRow?.policy_value,
-          );
+          const offsitePolicy = parseJsonObject(offsitePolicyRow?.policy_value);
           const offsiteStaleAfterHours = Number(
             offsitePolicy.staleAfterHours ?? 12,
           );
@@ -548,8 +570,7 @@ export default createBackendPlugin({
               file: successfulBackupResult.file ?? null,
               bytes: Number(successfulBackupResult.bytes ?? 0),
               sha256: successfulBackupResult.sha256 ?? null,
-              verificationMode:
-                successfulBackupResult.verificationMode ?? null,
+              verificationMode: successfulBackupResult.verificationMode ?? null,
               verified: successfulBackupResult.verified === true,
             },
             offsiteBackup: {
@@ -572,14 +593,9 @@ export default createBackendPlugin({
             },
             offsiteRestoreDrill: {
               health: offsiteRestoreHealth,
-              intervalDays: Number(
-                offsitePolicy.restoreIntervalDays ?? 7,
-              ),
-              staleAfterDays: Number(
-                offsitePolicy.restoreStaleAfterDays ?? 8,
-              ),
-              latestStatus:
-                latestOffsiteRestore?.status ?? 'NOT_REPORTED',
+              intervalDays: Number(offsitePolicy.restoreIntervalDays ?? 7),
+              staleAfterDays: Number(offsitePolicy.restoreStaleAfterDays ?? 8),
+              latestStatus: latestOffsiteRestore?.status ?? 'NOT_REPORTED',
               reporterId: latestOffsiteRestore?.reporter_id ?? null,
               backupName: latestOffsiteRestore?.backup_name ?? null,
               sha256: latestOffsiteRestore?.sha256 ?? null,
@@ -596,11 +612,24 @@ export default createBackendPlugin({
                 latestOffsiteRestore?.unified_asset_count ?? 0,
               ),
               startedAt: latestOffsiteRestore?.started_at ?? null,
-              finishedAt:
-                offsiteRestoreFinishedAt?.toISOString() ?? null,
+              finishedAt: offsiteRestoreFinishedAt?.toISOString() ?? null,
               reportedAt: latestOffsiteRestore?.reported_at ?? null,
               errorMessage: latestOffsiteRestore?.error_message ?? '',
             },
+            recoveryTasks: recoveryTasks.map(task => ({
+              taskId: task.task_id,
+              taskKey: task.task_key,
+              taskType: task.task_type,
+              status: task.status,
+              severity: task.severity,
+              title: task.title,
+              details: parseJsonObject(task.details),
+              sourceReporter: task.source_reporter,
+              sourceDrillId: task.source_drill_id,
+              createdAt: task.created_at,
+              updatedAt: task.updated_at,
+              resolvedAt: task.resolved_at,
+            })),
             workers: workers.map(worker => ({
               workerId: worker.worker_id,
               version: worker.worker_version,
@@ -1078,10 +1107,7 @@ export default createBackendPlugin({
           const completedAtValue = request.body?.completedAt
             ? new Date(String(request.body.completedAt))
             : null;
-          if (
-            completedAtValue &&
-            Number.isNaN(completedAtValue.getTime())
-          ) {
+          if (completedAtValue && Number.isNaN(completedAtValue.getTime())) {
             response.status(400).json({ message: 'completedAt is invalid' });
             return;
           }
@@ -1163,10 +1189,7 @@ export default createBackendPlugin({
               drill_id: randomUUID(),
               reporter_id: reporterId,
               status,
-              backup_name: String(request.body?.backupName ?? '').slice(
-                0,
-                320,
-              ),
+              backup_name: String(request.body?.backupName ?? '').slice(0, 320),
               sha256: String(request.body?.sha256 ?? '')
                 .toLowerCase()
                 .slice(0, 64),
@@ -1175,9 +1198,7 @@ export default createBackendPlugin({
               schema_count: nonNegative(request.body?.schemaCount),
               table_count: nonNegative(request.body?.tableCount),
               trace_event_count: nonNegative(request.body?.traceEventCount),
-              unified_asset_count: nonNegative(
-                request.body?.unifiedAssetCount,
-              ),
+              unified_asset_count: nonNegative(request.body?.unifiedAssetCount),
               error_message: String(request.body?.errorMessage ?? '').slice(
                 0,
                 2000,
@@ -1201,6 +1222,57 @@ export default createBackendPlugin({
               }),
               created_at: reportedAt,
             });
+            const taskKey = `RESTORE_DRILL_FAILURE:${reporterId}`;
+            if (status === 'FAILED') {
+              await knex('resonance_recovery__task')
+                .insert({
+                  task_id: randomUUID(),
+                  task_key: taskKey,
+                  task_type: 'RESTORE_DRILL_FAILURE',
+                  status: 'OPEN',
+                  severity: 'CRITICAL',
+                  title: `격리 복원 검증 실패: ${
+                    row.backup_name || reporterId
+                  }`,
+                  details: JSON.stringify({
+                    backupName: row.backup_name,
+                    errorMessage: row.error_message,
+                    durationSeconds: row.duration_seconds,
+                    isolation: row.isolation,
+                  }),
+                  source_reporter: reporterId,
+                  source_drill_id: row.drill_id,
+                  created_at: reportedAt,
+                  updated_at: reportedAt,
+                  resolved_at: null,
+                })
+                .onConflict('task_key')
+                .merge({
+                  status: 'OPEN',
+                  severity: 'CRITICAL',
+                  title: `격리 복원 검증 실패: ${
+                    row.backup_name || reporterId
+                  }`,
+                  details: JSON.stringify({
+                    backupName: row.backup_name,
+                    errorMessage: row.error_message,
+                    durationSeconds: row.duration_seconds,
+                    isolation: row.isolation,
+                  }),
+                  source_drill_id: row.drill_id,
+                  updated_at: reportedAt,
+                  resolved_at: null,
+                });
+            } else {
+              await knex('resonance_recovery__task')
+                .where({ task_key: taskKey, status: 'OPEN' })
+                .update({
+                  status: 'RESOLVED',
+                  source_drill_id: row.drill_id,
+                  updated_at: reportedAt,
+                  resolved_at: reportedAt,
+                });
+            }
             response.json({
               success: true,
               drillId: row.drill_id,

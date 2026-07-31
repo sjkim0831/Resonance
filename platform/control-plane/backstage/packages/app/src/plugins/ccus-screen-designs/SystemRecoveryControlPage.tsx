@@ -73,6 +73,20 @@ type RecoverySummary = {
     finishedAt: string | null;
     errorMessage: string;
   };
+  recoveryTasks: {
+    taskId: string;
+    taskKey: string;
+    taskType: string;
+    status: 'OPEN' | 'RESOLVED';
+    severity: string;
+    title: string;
+    details: Record<string, unknown>;
+    sourceReporter: string;
+    sourceDrillId: string | null;
+    createdAt: string;
+    updatedAt: string;
+    resolvedAt: string | null;
+  }[];
   policies: {
     code: string;
     name: string;
@@ -274,9 +288,7 @@ export function SystemRecoveryControlPage() {
                 {summary?.offsiteRestoreDrill.durationSeconds
                   ? `${Math.floor(
                       summary.offsiteRestoreDrill.durationSeconds / 60,
-                    )}분 ${
-                      summary.offsiteRestoreDrill.durationSeconds % 60
-                    }초`
+                    )}분 ${summary.offsiteRestoreDrill.durationSeconds % 60}초`
                   : '-'}
               </Typography>
             </Box>
@@ -318,14 +330,42 @@ export function SystemRecoveryControlPage() {
             <Box mt={2} className={classes.warning}>
               <Typography variant="body2">
                 외부 백업 전체 복원이 실패했거나 최근{' '}
-                {summary?.offsiteRestoreDrill.staleAfterDays ?? 8}일 동안
-                성공 기록이 없습니다.
+                {summary?.offsiteRestoreDrill.staleAfterDays ?? 8}일 동안 성공
+                기록이 없습니다.
                 {summary?.offsiteRestoreDrill.errorMessage
                   ? ` ${summary.offsiteRestoreDrill.errorMessage}`
                   : ' PC 예약 작업, Docker 및 암호화 키 상태를 확인하세요.'}
               </Typography>
             </Box>
           ) : null}
+          <Box mt={2}>
+            <Typography variant="subtitle2">복구 관리자 작업</Typography>
+            {(summary?.recoveryTasks ?? []).length === 0 ? (
+              <Typography variant="body2">
+                등록된 복구 작업이 없습니다.
+              </Typography>
+            ) : (
+              (summary?.recoveryTasks ?? []).map(task => (
+                <Box className={classes.row} key={task.taskId}>
+                  <Box>
+                    <Typography variant="subtitle1">{task.title}</Typography>
+                    <Typography variant="caption">
+                      {new Date(task.updatedAt).toLocaleString('ko-KR')} ·{' '}
+                      {task.sourceReporter}
+                    </Typography>
+                  </Box>
+                  <Chip
+                    size="small"
+                    color={task.status === 'OPEN' ? 'secondary' : 'default'}
+                    label={task.status === 'OPEN' ? '조치 필요' : '해결'}
+                  />
+                  <Typography variant="body2">
+                    {String(task.details.errorMessage ?? '복원 검증 상태 확인')}
+                  </Typography>
+                </Box>
+              ))
+            )}
+          </Box>
         </Paper>
 
         <Paper className={classes.panel}>
@@ -402,9 +442,8 @@ export function SystemRecoveryControlPage() {
           summary?.backupSchedule.health === 'STALE' ? (
             <Box mt={2} className={classes.warning}>
               <Typography variant="body2">
-                최근 {summary.backupSchedule.staleAfterHours}시간 내 검증된
-                원본 백업이 없습니다. 작업자 연결과 PostgreSQL 상태를
-                확인하세요.
+                최근 {summary.backupSchedule.staleAfterHours}시간 내 검증된 원본
+                백업이 없습니다. 작업자 연결과 PostgreSQL 상태를 확인하세요.
               </Typography>
             </Box>
           ) : null}
@@ -420,8 +459,8 @@ export function SystemRecoveryControlPage() {
             <Box>
               <Typography variant="h6">독립 저장소 암호화 백업</Typography>
               <Typography variant="body2">
-                운영 서버와 다른 물리 장치에 암호화 복제하고 실제 복원
-                해시까지 확인합니다.
+                운영 서버와 다른 물리 장치에 암호화 복제하고 실제 복원 해시까지
+                확인합니다.
               </Typography>
             </Box>
             <Chip
@@ -452,9 +491,9 @@ export function SystemRecoveryControlPage() {
               <Typography variant="caption">최근 성공</Typography>
               <Typography variant="body1">
                 {summary?.offsiteBackup.completedAt
-                  ? new Date(
-                      summary.offsiteBackup.completedAt,
-                    ).toLocaleString('ko-KR')
+                  ? new Date(summary.offsiteBackup.completedAt).toLocaleString(
+                      'ko-KR',
+                    )
                   : '성공 기록 없음'}
               </Typography>
             </Box>
