@@ -14,7 +14,6 @@ if [[ "${CARBONET_DEPLOY_SNAPSHOT_ACTIVE:-false}" != "true" ]]; then
 fi
 
 POLICY_ROOT="${CARBONET_DEPLOY_ORIGINAL_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
-DEPLOY_STARTED_EPOCH_SECONDS="$(date +%s)"
 monotonic_milliseconds() {
   awk '{printf "%.0f\n", $1 * 1000}' /proc/uptime
 }
@@ -69,7 +68,7 @@ export KUBECONFIG
 
 record_deploy_performance() {
   local mode="$1"
-  local elapsed_ms=$(( ($(date +%s) - DEPLOY_STARTED_EPOCH_SECONDS) * 1000 ))
+  local elapsed_ms=$(( $(monotonic_milliseconds) - DEPLOY_STARTED_EPOCH_MILLISECONDS ))
   CARBONET_DEPLOY_ROOT="$ROOT_DIR" \
   CARBONET_DEPLOY_PHASE_FILE="$DEPLOY_PHASE_FILE" \
     bash "$ROOT_DIR/ops/scripts/record-deploy-performance.sh" \
