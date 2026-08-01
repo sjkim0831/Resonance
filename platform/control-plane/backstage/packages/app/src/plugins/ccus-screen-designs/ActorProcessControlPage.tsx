@@ -38,6 +38,7 @@ import {
   resolveProcessBranches,
 } from './actorProcessWorkspaces';
 import { RESONANCE_PROJECT_REGISTRY } from './generatedProjectRegistry';
+import { getSharedProjectId, useSharedProjectSelection } from './useSharedProjectSelection';
 
 type ProjectOption = (typeof RESONANCE_PROJECT_REGISTRY)[number] & {
   status?: string;
@@ -5740,9 +5741,11 @@ export function ActorProcessControlPage(props: {
   );
   const [projectId, setProjectId] = useState(
     query.get('projectId') ??
+      getSharedProjectId() ??
       RESONANCE_PROJECT_REGISTRY[0]?.projectId ??
       'CCUS-PLATFORM',
   );
+  useSharedProjectSelection(projectId, setProjectId);
   const [designVersion, setDesignVersion] = useState(1);
   const [release, setRelease] = useState<DesignRelease | null>(null);
   const [summary, setSummary] = useState<OperationsSummary>({});

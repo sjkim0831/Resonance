@@ -11,6 +11,7 @@ import {
   decodeRequirementDocument,
   type RequirementDocumentInput,
 } from './requirementAutomation';
+import { registerProjectLifecycleRoutes } from './projectLifecycleRoutes';
 
 type ProjectInput = {
   projectId?: string;
@@ -2890,6 +2891,8 @@ export default createBackendPlugin({
             taskStatus: 'PLANNED',
           });
         });
+
+        registerProjectLifecycleRoutes({ router, knex, logger });
 
         httpRouter.addAuthPolicy({
           path: '/health',

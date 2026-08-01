@@ -33,6 +33,8 @@ import {
   ResonanceProjectRecord,
 } from './generatedProjectRegistry';
 import { RequirementAutomationPanel } from './RequirementAutomationPanel';
+import { ProjectLifecycleActions } from './ProjectLifecycleActions';
+import { useSharedProjectSelection } from './useSharedProjectSelection';
 
 type ApiProject = {
   projectId: string;
@@ -172,8 +174,11 @@ export function ResonanceProjectControlPage() {
   const [saving, setSaving] = useState(false);
   const [apiMessage, setApiMessage] = useState('');
   const [selectedId, setSelectedId] = useState(
-    RESONANCE_PROJECT_REGISTRY[0]?.projectId ?? '',
+    () => new URLSearchParams(window.location.search).get('projectId') ??
+      window.localStorage.getItem('resonance.selectedProjectId') ??
+      RESONANCE_PROJECT_REGISTRY[0]?.projectId ?? '',
   );
+  useSharedProjectSelection(selectedId, setSelectedId);
   const [tab, setTab] = useState(0);
   const refreshProjects = useCallback(async () => {
     try {
@@ -348,6 +353,14 @@ export function ResonanceProjectControlPage() {
                     label={selected.runtimeStatus}
                     color={statusColor(selected.runtimeStatus)}
                   />
+                  <Box mt={1} display="flex" style={{ gap: 8 }}>
+                    <ProjectLifecycleActions
+                      projectId={selected.projectId}
+                      projectName={selected.projectName}
+                      owner={selected.owner}
+                      onError={setApiMessage}
+                    />
+                  </Box>
                 </Box>
               </Box>
               <Box mt={2}>

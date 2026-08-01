@@ -20,6 +20,7 @@ import {
 import CloseIcon from '@material-ui/icons/Close';
 import LaunchIcon from '@material-ui/icons/Launch';
 import SearchIcon from '@material-ui/icons/Search';
+import { getSharedProjectId, useSharedProjectSelection } from './useSharedProjectSelection';
 import {
   CONTROL_ASSET_SUMMARY,
   ControlAssetRecord,
@@ -103,7 +104,8 @@ export function ResonanceControlAssetsPage() {
   const [projects, setProjects] = useState<
     { projectId: string; projectName: string }[]
   >([]);
-  const [projectId, setProjectId] = useState('CCUS-PLATFORM');
+  const [projectId, setProjectId] = useState(() => getSharedProjectId());
+  useSharedProjectSelection(projectId, setProjectId);
   const [syncStatus, setSyncStatus] = useState('');
   const [ledger, setLedger] = useState<
     Record<

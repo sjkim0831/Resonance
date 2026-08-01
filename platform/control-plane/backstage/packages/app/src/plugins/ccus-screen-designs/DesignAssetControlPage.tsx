@@ -18,6 +18,7 @@ import {
 } from '@material-ui/core';
 import CloseIcon from '@material-ui/icons/Close';
 import SearchIcon from '@material-ui/icons/Search';
+import { getSharedProjectId, useSharedProjectSelection } from './useSharedProjectSelection';
 
 type AssetType = 'THEME' | 'CSS' | 'SECTION' | 'COMPONENT' | 'SCREEN' | 'MENU';
 type DesignAsset = {
@@ -121,7 +122,8 @@ export function DesignAssetControlPage() {
   const fetchApi = useApi(fetchApiRef);
   const [tab, setTab] = useState(0);
   const [query, setQuery] = useState('');
-  const [projectId, setProjectId] = useState('CCUS-PLATFORM');
+  const [projectId, setProjectId] = useState(() => getSharedProjectId());
+  useSharedProjectSelection(projectId, setProjectId);
   const [projects, setProjects] = useState<
     { projectId: string; projectName: string }[]
   >([]);
