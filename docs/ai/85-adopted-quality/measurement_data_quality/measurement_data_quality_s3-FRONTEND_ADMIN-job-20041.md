@@ -2,7 +2,7 @@
 
 - Job: 20041
 - Job type: FRONTEND_ADMIN
-- Source commit: a5b5a5dcb4e0120496c49668c0fb72849ccbace6
+- Source commit: 572079b8ccf931d30a1a2c7c7e7f91605f453da7
 - Validation result: {"strategy":"APPROVED_FULL_STACK_PACKAGE","processCode":"MEASUREMENT_DATA_QUALITY","stepCode":"MEASUREMENT_DATA_QUALITY_S3","dimension":"FRONTEND_ADMIN","package":"/opt/Resonance/var/ai-worktrees/job-20041/projects/carbonet-backend-metadata/process-runtime/generated/MEASUREMENT_DATA_QUALITY/MEASUREMENT_DATA_QUALITY__MEASUREMENT_DATA_QUALITY_S3.json","evidence":"/opt/Resonance/var/ai-worktrees/job-20041/var/test-evidence/process-package-tests/MEASUREMENT_DATA_QUALITY__MEASUREMENT_DATA_QUALITY_S3.json","status":"PASSED"}
 
 The exact approved step package supplies the matching USER or ADMIN route,
