@@ -2289,6 +2289,16 @@ public class ActorProcessGovernanceService {
               next_process_code=excluded.next_process_code,sequence_status=excluded.sequence_status,
               updated_at=current_timestamp
             """,process);
+        jdbc.update("""
+            insert into framework_process_navigation_binding(process_code,menu_code,step_code,actor_code,audience,
+              navigation_type,target_path,business_screen_implemented,binding_status,binding_source,verified_at)
+            select s.process_code,'H108',s.step_code,s.actor_code,'USER','DESIGN_WORKSPACE',
+              '/admin/system/actor-process?process='||s.process_code,false,'ACTIVE','REQUIREMENT_AUTOMATION',current_timestamp
+            from framework_process_step s where s.process_code=? order by s.step_order limit 1
+            on conflict(process_code) do update set step_code=excluded.step_code,actor_code=excluded.actor_code,
+              target_path=excluded.target_path,binding_status='ACTIVE',binding_source=excluded.binding_source,
+              verified_at=current_timestamp,updated_at=current_timestamp
+            """,process);
         Integer pages=jdbc.queryForObject("select count(*) from framework_page_design where process_code=?",Integer.class,process);
         return pages==null?0:pages;
     }
