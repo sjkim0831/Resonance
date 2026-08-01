@@ -2,7 +2,7 @@
 
 - Job: 21099
 - Job type: FRONTEND_ADMIN
-- Source commit: d77cf71cffce306302f5faa335e142451bd2a7eb
+- Source commit: 42b15671c6bd8c62048beb6bb0c07b419315fe9e
 - Validation result: {"strategy":"APPROVED_FULL_STACK_PACKAGE","processCode":"CO2_LOT_TAG_MANAGEMENT","stepCode":"CLT_RECONCILE","dimension":"FRONTEND_ADMIN","package":"/opt/Resonance/var/ai-worktrees/job-21099/projects/carbonet-backend-metadata/process-runtime/generated/CO2_LOT_TAG_MANAGEMENT/CO2_LOT_TAG_MANAGEMENT__CLT_RECONCILE.json","evidence":"/opt/Resonance/var/ai-worktrees/job-21099/var/test-evidence/process-package-tests/CO2_LOT_TAG_MANAGEMENT__CLT_RECONCILE.json","status":"PASSED"}
 
 The exact approved step package supplies the matching USER or ADMIN route,
