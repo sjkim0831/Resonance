@@ -1217,6 +1217,10 @@ public class EmissionProjectRegistryService {
     public int delete(String id,String tenantId,String actor,boolean override) {
         String tenant=requiredValue(tenantId,"tenantId");
         requireProjectActor(id,tenant,requiredValue(actor,"actor"),"COMPANY_MANAGER",override);
+        // Regulatory packages deliberately RESTRICT report deletion so issued
+        // evidence cannot disappear accidentally. Project deletion is the
+        // explicit aggregate teardown path, therefore remove that child first.
+        jdbc.update("DELETE FROM emission_regulatory_submission WHERE project_id=? AND tenant_id=?",id,tenant);
         jdbc.update("DELETE FROM emission_project_report WHERE project_id=? AND tenant_id=?",id,tenant);
         jdbc.update("DELETE FROM emission_submission_review WHERE project_id=? AND tenant_id=?",id,tenant);
         jdbc.update("DELETE FROM emission_activity_submission WHERE project_id=? AND tenant_id=?",id,tenant);
