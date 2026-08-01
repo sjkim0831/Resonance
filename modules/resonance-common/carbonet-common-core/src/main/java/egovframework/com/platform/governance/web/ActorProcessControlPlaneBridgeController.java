@@ -657,6 +657,10 @@ public class ActorProcessControlPlaneBridgeController {
             stepRequest.put("rollbackCommandCode", "ROLLBACK_" + stepCode);
             governance.addStep(stepRequest, "BACKSTAGE_REQUIREMENT_AUTOMATION");
         }
+        int safetyScenarioTypes = governance.ensureGeneratedProcessSafetyCases(processCode);
+        if (safetyScenarioTypes < 5) {
+            throw new IllegalStateException("Requirement process safety harness is incomplete: " + processCode);
+        }
         return order;
     }
 

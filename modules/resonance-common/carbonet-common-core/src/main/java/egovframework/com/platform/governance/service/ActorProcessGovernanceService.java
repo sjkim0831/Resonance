@@ -2138,6 +2138,19 @@ public class ActorProcessGovernanceService {
     @Transactional public void createCase(Map<String,Object>b){
         jdbc.update("insert into framework_simulation_case(case_code,process_code,case_name,case_type,preconditions,steps_json,assertions_json) values(?,?,?,?,?,?,?) on conflict(case_code) do update set case_name=excluded.case_name,case_type=excluded.case_type,preconditions=excluded.preconditions,steps_json=excluded.steps_json,assertions_json=excluded.assertions_json,updated_at=current_timestamp",req(b,"caseCode"),req(b,"processCode"),req(b,"caseName"),def(b,"caseType","HAPPY_PATH"),req(b,"preconditions"),req(b,"stepsJson"),req(b,"assertionsJson"));
     }
+
+    /** Installs the mandatory safety harness before a generated process is compiled. */
+    @Transactional public int ensureGeneratedProcessSafetyCases(String processCode){
+        String process=req(Map.of("processCode",processCode),"processCode");
+        Integer processCount=jdbc.queryForObject(
+            "select count(*) from framework_process_definition where process_code=?",Integer.class,process);
+        if(processCount==null||processCount==0)throw new IllegalArgumentException("Process not found: "+process);
+        seedCases(process);
+        Integer caseTypes=jdbc.queryForObject(
+            "select count(distinct case_type) from framework_simulation_case where process_code=? and case_type in ('HAPPY_PATH','AUTHORITY','ISOLATION','EXCEPTION','RECOVERY')",
+            Integer.class,process);
+        return caseTypes==null?0:caseTypes;
+    }
     @Transactional public void saveArtifact(Map<String,Object>b){
         jdbc.update("insert into framework_process_artifact(process_code,step_code,artifact_code,artifact_type,artifact_name,target_path,contract_ref,required,delivery_status,owner_actor_code,acceptance_criteria,evidence_ref,notes) values(?,?,?,?,?,?,?,?,?,?,?,nullif(?,''),nullif(?,'')) on conflict(process_code,artifact_code) do update set step_code=excluded.step_code,artifact_type=excluded.artifact_type,artifact_name=excluded.artifact_name,target_path=excluded.target_path,contract_ref=excluded.contract_ref,required=excluded.required,delivery_status=excluded.delivery_status,owner_actor_code=excluded.owner_actor_code,acceptance_criteria=excluded.acceptance_criteria,evidence_ref=excluded.evidence_ref,notes=excluded.notes,updated_at=current_timestamp",req(b,"processCode"),str(b,"stepCode"),req(b,"artifactCode"),req(b,"artifactType"),req(b,"artifactName"),str(b,"targetPath"),str(b,"contractRef"),!"false".equalsIgnoreCase(str(b,"required")),def(b,"status","PLANNED"),req(b,"ownerActorCode"),req(b,"acceptanceCriteria"),str(b,"evidenceRef"),str(b,"notes"));
     }
