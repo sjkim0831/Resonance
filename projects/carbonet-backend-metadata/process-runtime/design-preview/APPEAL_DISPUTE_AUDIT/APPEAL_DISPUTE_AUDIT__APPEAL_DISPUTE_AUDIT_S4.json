@@ -149,7 +149,11 @@
             "fieldName": "프로세스 코드",
             "fieldGroup": "공통",
             "fieldOrder": 30,
-            "validation": {},
+            "validation": {
+              "source": "SERVER_CONTEXT",
+              "required": true,
+              "immutable": true
+            },
             "apiProperty": "processCode",
             "controlType": "HIDDEN",
             "sourceTable": "framework_process_definition",
@@ -170,7 +174,11 @@
             "fieldName": "단계 코드",
             "fieldGroup": "공통",
             "fieldOrder": 40,
-            "validation": {},
+            "validation": {
+              "source": "SERVER_CONTEXT",
+              "required": true,
+              "immutable": true
+            },
             "apiProperty": "stepCode",
             "controlType": "HIDDEN",
             "sourceTable": "framework_process_step",
@@ -191,7 +199,11 @@
             "fieldName": "업무 레코드 ID",
             "fieldGroup": "공통",
             "fieldOrder": 50,
-            "validation": {},
+            "validation": {
+              "source": "SERVER_CONTEXT",
+              "required": false,
+              "immutable": true
+            },
             "apiProperty": "recordId",
             "controlType": "HIDDEN",
             "sourceTable": null,
@@ -235,7 +247,14 @@
             "fieldName": "담당 액터",
             "fieldGroup": "공통",
             "fieldOrder": 70,
-            "validation": {},
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
             "apiProperty": "ownerActorCode",
             "controlType": "ACTOR_SELECT",
             "sourceTable": "framework_process_definition",
@@ -279,7 +298,11 @@
             "fieldName": "등록 일시",
             "fieldGroup": "공통",
             "fieldOrder": 90,
-            "validation": {},
+            "validation": {
+              "type": "date-time",
+              "nullable": true,
+              "required": false
+            },
             "apiProperty": "createdAt",
             "controlType": "DATETIME",
             "sourceTable": "framework_process_definition",
@@ -300,7 +323,11 @@
             "fieldName": "최종 수정 일시",
             "fieldGroup": "공통",
             "fieldOrder": 100,
-            "validation": {},
+            "validation": {
+              "type": "date-time",
+              "nullable": true,
+              "required": false
+            },
             "apiProperty": "updatedAt",
             "controlType": "DATETIME",
             "sourceTable": "framework_process_definition",
@@ -344,7 +371,14 @@
             "fieldName": "관리 자원 코드",
             "fieldGroup": "SYSTEM",
             "fieldOrder": 200,
-            "validation": {},
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
             "apiProperty": "resourceCode",
             "controlType": "CODE_INPUT",
             "sourceTable": null,
@@ -365,7 +399,14 @@
             "fieldName": "관리 자원명",
             "fieldGroup": "SYSTEM",
             "fieldOrder": 210,
-            "validation": {},
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
             "apiProperty": "resourceName",
             "controlType": "TEXT",
             "sourceTable": null,
@@ -386,7 +427,14 @@
             "fieldName": "자원 유형",
             "fieldGroup": "SYSTEM",
             "fieldOrder": 220,
-            "validation": {},
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
             "apiProperty": "resourceType",
             "controlType": "TYPE_SELECT",
             "sourceTable": null,
@@ -407,7 +455,14 @@
             "fieldName": "자원 버전",
             "fieldGroup": "SYSTEM",
             "fieldOrder": 230,
-            "validation": {},
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
             "apiProperty": "resourceVersion",
             "controlType": "VERSION",
             "sourceTable": null,
@@ -428,7 +483,14 @@
             "fieldName": "변경 사유",
             "fieldGroup": "SYSTEM",
             "fieldOrder": 240,
-            "validation": {},
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
             "apiProperty": "changeReason",
             "controlType": "TEXTAREA",
             "sourceTable": null,
@@ -449,7 +511,14 @@
             "fieldName": "배포 상태",
             "fieldGroup": "SYSTEM",
             "fieldOrder": 250,
-            "validation": {},
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": true,
+              "required": false,
+              "maxLength": 4000,
+              "minLength": 0
+            },
             "apiProperty": "deploymentStatus",
             "controlType": "STATUS_BADGE",
             "sourceTable": null,
@@ -470,7 +539,14 @@
             "fieldName": "업무 메모",
             "fieldGroup": "업무 처리",
             "fieldOrder": 400,
-            "validation": {},
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": true,
+              "required": false,
+              "maxLength": 4000,
+              "minLength": 0
+            },
             "apiProperty": "taskComment",
             "controlType": "TEXTAREA",
             "sourceTable": null,
@@ -491,7 +567,11 @@
             "fieldName": "마감 일시",
             "fieldGroup": "업무 처리",
             "fieldOrder": 410,
-            "validation": {},
+            "validation": {
+              "type": "date-time",
+              "nullable": true,
+              "required": false
+            },
             "apiProperty": "dueAt",
             "controlType": "DATETIME",
             "sourceTable": null,
@@ -512,7 +592,14 @@
             "fieldName": "다음 담당 액터",
             "fieldGroup": "업무 처리",
             "fieldOrder": 420,
-            "validation": {},
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": true,
+              "required": false,
+              "maxLength": 4000,
+              "minLength": 0
+            },
             "apiProperty": "nextActorCode",
             "controlType": "ACTOR_VIEW",
             "sourceTable": null,
@@ -636,7 +723,11 @@
             "fieldName": "프로세스 코드",
             "fieldGroup": "공통",
             "fieldOrder": 30,
-            "validation": {},
+            "validation": {
+              "source": "SERVER_CONTEXT",
+              "required": true,
+              "immutable": true
+            },
             "apiProperty": "processCode",
             "controlType": "HIDDEN",
             "sourceTable": "framework_process_definition",
@@ -657,7 +748,11 @@
             "fieldName": "단계 코드",
             "fieldGroup": "공통",
             "fieldOrder": 40,
-            "validation": {},
+            "validation": {
+              "source": "SERVER_CONTEXT",
+              "required": true,
+              "immutable": true
+            },
             "apiProperty": "stepCode",
             "controlType": "HIDDEN",
             "sourceTable": "framework_process_step",
@@ -678,7 +773,11 @@
             "fieldName": "업무 레코드 ID",
             "fieldGroup": "공통",
             "fieldOrder": 50,
-            "validation": {},
+            "validation": {
+              "source": "SERVER_CONTEXT",
+              "required": false,
+              "immutable": true
+            },
             "apiProperty": "recordId",
             "controlType": "HIDDEN",
             "sourceTable": null,
@@ -722,7 +821,14 @@
             "fieldName": "담당 액터",
             "fieldGroup": "공통",
             "fieldOrder": 70,
-            "validation": {},
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
             "apiProperty": "ownerActorCode",
             "controlType": "ACTOR_SELECT",
             "sourceTable": "framework_process_definition",
@@ -766,7 +872,11 @@
             "fieldName": "등록 일시",
             "fieldGroup": "공통",
             "fieldOrder": 90,
-            "validation": {},
+            "validation": {
+              "type": "date-time",
+              "nullable": true,
+              "required": false
+            },
             "apiProperty": "createdAt",
             "controlType": "DATETIME",
             "sourceTable": "framework_process_definition",
@@ -787,7 +897,11 @@
             "fieldName": "최종 수정 일시",
             "fieldGroup": "공통",
             "fieldOrder": 100,
-            "validation": {},
+            "validation": {
+              "type": "date-time",
+              "nullable": true,
+              "required": false
+            },
             "apiProperty": "updatedAt",
             "controlType": "DATETIME",
             "sourceTable": "framework_process_definition",
@@ -831,7 +945,14 @@
             "fieldName": "관리 자원 코드",
             "fieldGroup": "SYSTEM",
             "fieldOrder": 200,
-            "validation": {},
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
             "apiProperty": "resourceCode",
             "controlType": "CODE_INPUT",
             "sourceTable": null,
@@ -852,7 +973,14 @@
             "fieldName": "관리 자원명",
             "fieldGroup": "SYSTEM",
             "fieldOrder": 210,
-            "validation": {},
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
             "apiProperty": "resourceName",
             "controlType": "TEXT",
             "sourceTable": null,
@@ -873,7 +1001,14 @@
             "fieldName": "자원 유형",
             "fieldGroup": "SYSTEM",
             "fieldOrder": 220,
-            "validation": {},
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
             "apiProperty": "resourceType",
             "controlType": "TYPE_SELECT",
             "sourceTable": null,
@@ -894,7 +1029,14 @@
             "fieldName": "자원 버전",
             "fieldGroup": "SYSTEM",
             "fieldOrder": 230,
-            "validation": {},
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
             "apiProperty": "resourceVersion",
             "controlType": "VERSION",
             "sourceTable": null,
@@ -915,7 +1057,14 @@
             "fieldName": "변경 사유",
             "fieldGroup": "SYSTEM",
             "fieldOrder": 240,
-            "validation": {},
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
             "apiProperty": "changeReason",
             "controlType": "TEXTAREA",
             "sourceTable": null,
@@ -936,7 +1085,14 @@
             "fieldName": "배포 상태",
             "fieldGroup": "SYSTEM",
             "fieldOrder": 250,
-            "validation": {},
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": true,
+              "required": false,
+              "maxLength": 4000,
+              "minLength": 0
+            },
             "apiProperty": "deploymentStatus",
             "controlType": "STATUS_BADGE",
             "sourceTable": null,
@@ -957,7 +1113,14 @@
             "fieldName": "업무 메모",
             "fieldGroup": "업무 처리",
             "fieldOrder": 400,
-            "validation": {},
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": true,
+              "required": false,
+              "maxLength": 4000,
+              "minLength": 0
+            },
             "apiProperty": "taskComment",
             "controlType": "TEXTAREA",
             "sourceTable": null,
@@ -978,7 +1141,11 @@
             "fieldName": "마감 일시",
             "fieldGroup": "업무 처리",
             "fieldOrder": 410,
-            "validation": {},
+            "validation": {
+              "type": "date-time",
+              "nullable": true,
+              "required": false
+            },
             "apiProperty": "dueAt",
             "controlType": "DATETIME",
             "sourceTable": null,
@@ -999,7 +1166,14 @@
             "fieldName": "다음 담당 액터",
             "fieldGroup": "업무 처리",
             "fieldOrder": 420,
-            "validation": {},
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": true,
+              "required": false,
+              "maxLength": 4000,
+              "minLength": 0
+            },
             "apiProperty": "nextActorCode",
             "controlType": "ACTOR_VIEW",
             "sourceTable": null,
@@ -1430,12 +1604,14 @@
       }
     ],
     "transactional": true,
-    "schemaSetVersion": 1,
+    "schemaSetVersion": 2,
     "migrationRequired": true,
     "primaryEntities": [
       "framework_process_definition"
     ],
-    "historyRequired": true
+    "historyRequired": true,
+    "indexesRequired": true,
+    "foreignKeysRequired": true
   },
   "tests": [
     {
@@ -1683,8 +1859,8 @@
       "errorSummary": true
     }
   },
-  "sourceHash": "01d94da259f0942aeb2954749f9f1039",
+  "sourceHash": "089cbb897c27d74a35f8743f68b3911feaf975b4e45652e062ea6f4f55107046",
   "approvalStatus": "REVIEW_REQUIRED",
   "generationStatus": "BLOCKED",
-  "packageHash": "be359c85fba859880d7f99e589ef2dc263937584cb8300dc101c3aa791ed9783"
+  "packageHash": "435c02673062a9f4c894f69ce405c01e29537152b163abbeedc7c7c40bd362ad"
 }
