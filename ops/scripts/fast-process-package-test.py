@@ -109,6 +109,8 @@ def test_package(path: Path) -> dict[str, Any]:
 
     require(database.get("transactional") is True, "transaction", failures)
     require(database.get("historyRequired") is True, "history", failures)
+    require(database.get("indexesRequired") is True, "database indexes", failures)
+    require(database.get("foreignKeysRequired") is True, "database foreign keys", failures)
     if database.get("migrationRequired") is True:
         require(bool(database.get("primaryEntities")), "database primary entities", failures)
     security = nonfunctional.get("security", {})

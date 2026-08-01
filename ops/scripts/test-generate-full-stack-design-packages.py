@@ -67,6 +67,8 @@ class GroupFieldsByAudienceTest(unittest.TestCase):
             ["emission_event", "emission_record"],
         )
         self.assertTrue(persistence["historyRequired"])
+        self.assertTrue(persistence["indexesRequired"])
+        self.assertTrue(persistence["foreignKeysRequired"])
 
 
 if __name__ == "__main__":

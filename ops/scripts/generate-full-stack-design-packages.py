@@ -157,6 +157,12 @@ def persistence_for_step(step: dict[str, Any]) -> dict[str, Any]:
             persistence["primaryEntities"] = primary_entities
     if persistence.get("transactional") is True and step["command_contract"]:
         persistence.setdefault("historyRequired", True)
+        # The common command runtime persists mutable workflow state and its
+        # immutable event history. Every generated database contract therefore
+        # requires lookup indexes and validated relationships, even when older
+        # design rows predate these explicit flags.
+        persistence.setdefault("indexesRequired", True)
+        persistence.setdefault("foreignKeysRequired", True)
     if (
         not step["screen_contract"]
         and not step["field_contract"]
