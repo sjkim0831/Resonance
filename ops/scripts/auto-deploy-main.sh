@@ -959,6 +959,7 @@ if [[ "$PLAN_RUNTIME_REQUIRED" != "true" ]]; then
       ops/scripts/test-catalog-overlay-fast-path.sh \
       ops/scripts/test-no-change-preflight-fast-path.sh \
       ops/scripts/resonance-k8s-build-deploy-80-v2.sh \
+      ops/scripts/test-candidate-release-rollout-gate.sh \
       ops/scripts/test-frontend-parallel-build-pipeline.sh \
       ops/scripts/install-resonance-github-runner.sh \
       ops/scripts/install-resonance-github-deploy-webhook.sh \
@@ -1002,6 +1003,7 @@ if [[ "$PLAN_RUNTIME_REQUIRED" != "true" ]]; then
     bash ops/scripts/test-catalog-overlay-fast-path.sh
     bash ops/scripts/test-atomic-asset-e4b-validation.sh
     bash ops/scripts/test-no-change-preflight-fast-path.sh
+    bash ops/scripts/test-candidate-release-rollout-gate.sh
     bash ops/scripts/test-frontend-parallel-build-pipeline.sh
     bash ops/scripts/test-push-deploy-dispatch.sh
     bash ops/scripts/test-github-deploy-webhook.sh
@@ -1517,6 +1519,7 @@ if [[ "$PLAN_FRONTEND_REQUIRED" != "true" \
   bash -n projects/carbonet-frontend/source/scripts/run-full-screen-smoke.sh
   bash ops/scripts/test-fast-browser-deploy-gate.sh
   bash ops/scripts/test-postdeploy-parallel-browser-gate.sh
+  bash ops/scripts/test-candidate-release-rollout-gate.sh
   bash ops/scripts/test-frontend-parallel-build-pipeline.sh
   bash ops/scripts/test-fast-overlay-snapshot.sh
   bash ops/scripts/test-shared-smoke-auth-state.sh
@@ -1573,7 +1576,9 @@ SKIP_FRONTEND="$skip_frontend" \
 SKIP_NOTIFY="${SKIP_NOTIFY:-true}" \
   bash ops/scripts/resonance-k8s-build-deploy-80-v2.sh
 
-kubectl -n "$NAMESPACE" rollout status deployment/"$DEPLOYMENT" --timeout=600s
+# The build/deploy script already gates the exact candidate release pods and
+# verifies the runtime. Do not wait a second time for old pods to finish their
+# protected connection drain.
 health_status="$(curl -fsS --max-time 10 http://127.0.0.1/actuator/health || true)"
 if [[ "$health_status" != *'"status":"UP"'* ]]; then
   echo "[auto-deploy] refusing success marker: health check is not UP" >&2

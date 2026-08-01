@@ -827,13 +827,21 @@ rollout_image() {
     -p="{\"spec\":{\"minReadySeconds\":0,\"progressDeadlineSeconds\":180,\"strategy\":{\"type\":\"RollingUpdate\",\"rollingUpdate\":{\"maxSurge\":3,\"maxUnavailable\":0}},\"template\":{\"spec\":{\"terminationGracePeriodSeconds\":15,\"containers\":[{\"name\":\"$CONTAINER\",\"env\":[{\"name\":\"SPRING_MAIN_LAZY_INITIALIZATION\",\"value\":\"true\"},{\"name\":\"SPRING_DATA_JPA_REPOSITORIES_BOOTSTRAP_MODE\",\"value\":\"lazy\"}],\"lifecycle\":{\"preStop\":{\"exec\":{\"command\":[\"sh\",\"-c\",\"sleep 2\"]}}},\"startupProbe\":{\"httpGet\":{\"path\":\"/actuator/health/liveness\",\"port\":8080},\"failureThreshold\":90,\"periodSeconds\":1,\"timeoutSeconds\":1},\"readinessProbe\":{\"httpGet\":{\"path\":\"/actuator/health/readiness\",\"port\":8080},\"initialDelaySeconds\":0,\"periodSeconds\":1,\"timeoutSeconds\":1,\"failureThreshold\":5},\"livenessProbe\":{\"httpGet\":{\"path\":\"/actuator/health/liveness\",\"port\":8080},\"initialDelaySeconds\":0,\"periodSeconds\":10,\"timeoutSeconds\":2,\"failureThreshold\":3}}]}}}}" \
     >/dev/null || rollback_and_fail "ROLLOUT_STRATEGY_FAILED" "Failed to apply bounded parallel rollout strategy" "kubectl -n $NAMESPACE get deployment/$DEPLOYMENT -o yaml"
 
-  log_cmd "kubectl set image deployment/$DEPLOYMENT $CONTAINER=$IMAGE_NAME"
-  if ! kubectl -n "$NAMESPACE" set image "deployment/$DEPLOYMENT" "$CONTAINER=$IMAGE_NAME" 2>"$KUBECTL_ERROR_LOG"; then
-    log_error "kubectl set image failed:"
+  # Stamp the image and a unique release label in one pod-template mutation.
+  # This lets us wait for the candidate pods themselves instead of waiting for
+  # the old ReplicaSet's protected preStop drain to finish.
+  local candidate_release_id
+  candidate_release_id="$(date -u +%Y%m%d%H%M%S)-$$"
+  CANDIDATE_RELEASE_ID="$candidate_release_id"
+  log_cmd "kubectl patch deployment/$DEPLOYMENT image=$IMAGE_NAME release-id=$candidate_release_id"
+  if ! kubectl -n "$NAMESPACE" patch "deployment/$DEPLOYMENT" --type='strategic' \
+    -p="{\"spec\":{\"template\":{\"metadata\":{\"labels\":{\"resonance.ai/release-id\":\"$candidate_release_id\"}},\"spec\":{\"containers\":[{\"name\":\"$CONTAINER\",\"image\":\"$IMAGE_NAME\"}]}}}}" \
+    2>"$KUBECTL_ERROR_LOG" >/dev/null; then
+    log_error "kubectl candidate patch failed:"
     tail -20 "$KUBECTL_ERROR_LOG"
     rollback_and_fail "SET_IMAGE_FAILED" \
-      "Failed to set deployment image" \
-      "kubectl -n $NAMESPACE set image deployment/$DEPLOYMENT $CONTAINER=$IMAGE_NAME"
+      "Failed to set deployment image and candidate release label" \
+      "kubectl -n $NAMESPACE get deployment/$DEPLOYMENT -o yaml"
   fi
 
   log_detail "Ensuring imagePullPolicy allows local registry reuse..."
@@ -852,15 +860,26 @@ rollout_image() {
       "Failed to set runtime port or E4B endpoint" \
       "kubectl -n $NAMESPACE set env deployment/$DEPLOYMENT SERVER_PORT=8080 CARBONET_KRDS_AI_BASE_URL=$E4B_RUNTIME_BASE_URL"
 
-  log_detail "Waiting for rollout (timeout: 180s; target: <=60s)..."
+  log_detail "Waiting for candidate pods (timeout: 180s; protected old-pod drain continues asynchronously)..."
   local rollout_started rollout_elapsed
   rollout_started="$(date +%s)"
-  if ! kubectl -n "$NAMESPACE" rollout status "deployment/$DEPLOYMENT" --timeout=180s 2>"$KUBECTL_ERROR_LOG"; then
-    log_error "Rollout status failed:"
+  local desired_replicas candidate_selector candidate_count
+  desired_replicas="$(kubectl -n "$NAMESPACE" get "deployment/$DEPLOYMENT" -o jsonpath='{.spec.replicas}')"
+  candidate_selector="app=$DEPLOYMENT,resonance.ai/release-id=$candidate_release_id"
+  candidate_count=0
+  for _ in $(seq 1 180); do
+    candidate_count="$(kubectl -n "$NAMESPACE" get pods -l "$candidate_selector" --no-headers 2>/dev/null | wc -l | tr -d ' ')"
+    [[ "$candidate_count" == "$desired_replicas" ]] && break
+    sleep 1
+  done
+  if [[ "$candidate_count" != "$desired_replicas" ]] || \
+    ! kubectl -n "$NAMESPACE" wait --for=condition=Ready pod \
+      -l "$candidate_selector" --timeout=180s 2>"$KUBECTL_ERROR_LOG"; then
+    log_error "Candidate readiness gate failed:"
     tail -30 "$KUBECTL_ERROR_LOG"
     rollback_and_fail "ROLLOUT_FAILED" \
-      "Rollout timeout or failed" \
-      "kubectl -n $NAMESPACE rollout status deployment/$DEPLOYMENT --timeout=120s"
+      "Candidate pods did not reach the desired Ready replica count" \
+      "kubectl -n $NAMESPACE get pods -l '$candidate_selector' -o wide"
   fi
   rollout_elapsed=$(( $(date +%s) - rollout_started ))
   if (( rollout_elapsed > 60 )); then
@@ -876,8 +895,12 @@ verify_runtime() {
   log_step "Verify"
 
   local pod
+  local pod_selector="app=$DEPLOYMENT"
+  if [[ -n "${CANDIDATE_RELEASE_ID:-}" ]]; then
+    pod_selector+=",resonance.ai/release-id=$CANDIDATE_RELEASE_ID"
+  fi
   pod="$(
-    kubectl -n "$NAMESPACE" get pods -l "app=$DEPLOYMENT" \
+    kubectl -n "$NAMESPACE" get pods -l "$pod_selector" \
       --field-selector=status.phase=Running -o json 2>/dev/null |
       jq -r --arg image "$IMAGE_NAME" '
         [.items[]
