@@ -558,8 +558,17 @@ deploy_backstage_if_required() {
   fi
   echo "[auto-deploy] Backstage-only image build and rollout started"
   bash ops/scripts/resonance-backstage-deploy.sh
-  status="$(curl -k -sS -o /dev/null -w '%{http_code}' --max-time 10 \
-    https://backstage.172.16.1.232.nip.io/.backstage/health/v1/readiness || true)"
+  # The ingress endpoint can briefly return 502 while its upstream switches
+  # from the terminating pod to the newly ready pod. Require a stable 200, but
+  # absorb only that bounded post-rollout propagation window.
+  status=""
+  for attempt in 1 2 3 4 5; do
+    status="$(curl -k -sS -o /dev/null -w '%{http_code}' --max-time 10 \
+      https://backstage.172.16.1.232.nip.io/.backstage/health/v1/readiness || true)"
+    [[ "$status" == "200" ]] && break
+    echo "[auto-deploy] Backstage ingress readiness attempt $attempt/5 returned $status" >&2
+    sleep 2
+  done
   if [[ "$status" != "200" ]]; then
     echo "[auto-deploy] refusing success marker: Backstage readiness returned $status" >&2
     exit 24
