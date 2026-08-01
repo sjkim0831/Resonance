@@ -527,7 +527,17 @@ public class EmissionProjectRegistryService {
         String projectId=text(task.get("projectId"));
         String code=jdbc.queryForObject("SELECT task_code FROM emission_project_task WHERE task_id=?",String.class,task.get("id"));
         boolean satisfied=switch(code) {
-            case "BASIC_INFO" -> Boolean.TRUE.equals(jdbc.queryForObject("SELECT project_name<>'' AND site_name<>'' AND period_start IS NOT NULL AND period_end IS NOT NULL FROM emission_project_registry WHERE project_id=?",Boolean.class,projectId));
+            case "BASIC_INFO" -> Boolean.TRUE.equals(jdbc.queryForObject("""
+                    SELECT project_name<>'' AND site_name<>''
+                       AND reporting_year IS NOT NULL AND period_start IS NOT NULL AND period_end IS NOT NULL
+                       AND organization_boundary IS NOT NULL AND emission_standard IS NOT NULL
+                       AND methodology_version IS NOT NULL AND verification_level IS NOT NULL
+                       AND collection_cycle IS NOT NULL AND materiality_threshold IS NOT NULL
+                       AND (SELECT count(DISTINCT actor_code) FROM framework_project_actor_assignment assignment
+                            WHERE assignment.project_id=project.project_id AND assignment.active_yn='Y'
+                              AND assignment.actor_code IN ('COMPANY_MANAGER','SITE_DATA_OWNER','CALCULATOR','VERIFIER','APPROVER'))=5
+                    FROM emission_project_registry project WHERE project_id=?
+                    """,Boolean.class,projectId));
             case "ACTIVITY_DATA" -> count("SELECT count(*) FROM emission_activity_submission WHERE project_id=? AND submission_state IN ('SUBMITTED','IN_VERIFICATION','VERIFIED','APPROVED')",projectId)>0;
             case "CALCULATION" -> count("SELECT count(*) FROM emission_calculation_run WHERE project_id=?",projectId)>0;
             case "VERIFICATION" -> count("SELECT count(*) FROM emission_submission_review WHERE project_id=? AND review_stage='VERIFICATION' AND decision='PASSED'",projectId)>0;
