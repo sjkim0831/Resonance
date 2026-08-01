@@ -2,7 +2,7 @@
 
 - Job: 21046
 - Job type: BACKEND
-- Source commit: 79ee3790d21bf87a9f4e45c94d91a6dcfd79cdf1
+- Source commit: 99739eb575dbd4d2e463ea350e295ae693b36323
 - Requirement: 공정 투입·배출 자료로 예상 성분과 필수 시험·장비·채취계획을 정한다.
 - Validation result: {"strategy":"APPROVED_FULL_STACK_PACKAGE","processCode":"CO2_QUALITY_ANALYSIS","stepCode":"CQA_PLAN","dimension":"BACKEND","package":"/opt/Resonance/var/ai-worktrees/job-21046/projects/carbonet-backend-metadata/process-runtime/generated/CO2_QUALITY_ANALYSIS/CO2_QUALITY_ANALYSIS__CQA_PLAN.json","evidence":"/opt/Resonance/var/ai-worktrees/job-21046/var/test-evidence/process-package-tests/CO2_QUALITY_ANALYSIS__CQA_PLAN.json","status":"PASSED"}
 
