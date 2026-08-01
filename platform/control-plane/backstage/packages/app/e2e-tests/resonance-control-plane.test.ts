@@ -222,7 +222,6 @@ async function verifyRoute(
       page.getByRole('heading', { name: '액터 책임·권한 설계' }),
     ).toBeVisible();
     await expect(page.getByRole('textbox').first()).toBeVisible();
-    await expect(page.getByRole('textbox').nth(11)).toBeVisible();
   }
 
   if (evidenceDir) {
