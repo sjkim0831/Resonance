@@ -2,7 +2,7 @@
 
 - Job: 21310
 - Job type: DATABASE
-- Source commit: 041e956db9c36cdad83925dc978e70317e4bbb93
+- Source commit: ac7b3b11736159a160d7ea0166c93e13355b961c
 - Requirement: 승인된 계약 버전으로 멱등 수집을 실행하고 원천 생성시각, 수신시각, 건수, 체크섬, 스키마 검사, 재시도 정책과 원본 증적을 기록한다.
 - Validation result: {"strategy":"APPROVED_FULL_STACK_PACKAGE","processCode":"DATA_INTEGRATION","stepCode":"DATA_INTEGRATION_02_WORK","dimension":"DATABASE","package":"/opt/Resonance/var/ai-worktrees/job-21310/projects/carbonet-backend-metadata/process-runtime/generated/DATA_INTEGRATION/DATA_INTEGRATION__DATA_INTEGRATION_02_WORK.json","evidence":"/opt/Resonance/var/ai-worktrees/job-21310/var/test-evidence/process-package-tests/DATA_INTEGRATION__DATA_INTEGRATION_02_WORK.json","status":"PASSED"}
 
