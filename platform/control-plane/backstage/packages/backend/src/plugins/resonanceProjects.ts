@@ -5,6 +5,12 @@ import {
 import { Router, json, type Request } from 'express';
 import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
+import {
+  analyzeRequirementText,
+  buildRequirementDesignContract,
+  decodeRequirementDocument,
+  type RequirementDocumentInput,
+} from './requirementAutomation';
 
 type ProjectInput = {
   projectId?: string;
@@ -553,6 +559,66 @@ export default createBackendPlugin({
               table.index(
                 ['project_id', 'process_code', 'step_code'],
                 'resonance_screen_space_process_step_idx',
+              );
+            },
+          );
+        }
+        if (
+          !(await knex.schema.hasTable('resonance_projects__requirement_document'))
+        ) {
+          await knex.schema.createTable(
+            'resonance_projects__requirement_document',
+            table => {
+              table.string('document_id', 64).primary();
+              table.string('project_id', 64).notNullable();
+              table.string('file_name', 240).notNullable();
+              table.string('mime_type', 160).notNullable();
+              table.bigInteger('byte_size').notNullable();
+              table.string('document_sha256', 64).notNullable();
+              table.string('text_sha256', 64).notNullable();
+              table.text('extracted_text').notNullable();
+              table.string('analysis_status', 32).notNullable();
+              table.integer('requirement_count').notNullable();
+              table.integer('design_version').notNullable();
+              table.string('process_code', 80).notNullable();
+              table.string('created_by', 160).notNullable();
+              table.timestamp('created_at', { useTz: true }).notNullable();
+              table.unique(
+                ['project_id', 'document_sha256'],
+                'resonance_requirement_document_project_hash_uq',
+              );
+              table.index(
+                ['project_id', 'created_at'],
+                'resonance_requirement_document_project_idx',
+              );
+            },
+          );
+        }
+        if (
+          !(await knex.schema.hasTable('resonance_projects__requirement_item'))
+        ) {
+          await knex.schema.createTable(
+            'resonance_projects__requirement_item',
+            table => {
+              table.string('requirement_id', 120).primary();
+              table.string('document_id', 64).notNullable();
+              table.string('project_id', 64).notNullable();
+              table.integer('sort_order').notNullable();
+              table.string('title', 240).notNullable();
+              table.text('description').notNullable();
+              table.string('actor_code', 80).notNullable();
+              table.string('process_code', 80).notNullable();
+              table.string('step_code', 100).notNullable();
+              table.string('route_path', 500).notNullable();
+              table.string('endpoint_method', 12).notNullable();
+              table.string('endpoint_path', 500).notNullable();
+              table.jsonb('field_contract').notNullable();
+              table.jsonb('acceptance_criteria').notNullable();
+              table.string('implementation_status', 40).notNullable();
+              table.timestamp('created_at', { useTz: true }).notNullable();
+              table.index(
+                ['project_id', 'process_code', 'sort_order'],
+                'resonance_requirement_item_process_idx',
               );
             },
           );
@@ -2216,6 +2282,308 @@ export default createBackendPlugin({
             })),
           });
         });
+        router.get('/:projectId/requirements', async (request, response) => {
+          const projectId = normalizeProjectId(request.params.projectId);
+          const documents = await knex(
+            'resonance_projects__requirement_document',
+          )
+            .where({ project_id: projectId })
+            .select(
+              'document_id',
+              'file_name',
+              'mime_type',
+              'byte_size',
+              'document_sha256',
+              'analysis_status',
+              'requirement_count',
+              'design_version',
+              'process_code',
+              'created_by',
+              'created_at',
+            )
+            .orderBy('created_at', 'desc');
+          response.json({
+            projectId,
+            documents: documents.map(document => ({
+              documentId: document.document_id,
+              fileName: document.file_name,
+              mimeType: document.mime_type,
+              byteSize: Number(document.byte_size),
+              documentSha256: document.document_sha256,
+              status: document.analysis_status,
+              requirementCount: document.requirement_count,
+              designVersion: document.design_version,
+              processCode: document.process_code,
+              createdBy: document.created_by,
+              createdAt: document.created_at,
+            })),
+          });
+        });
+        router.get(
+          '/:projectId/requirements/:documentId',
+          async (request, response) => {
+            const projectId = normalizeProjectId(request.params.projectId);
+            const documentId = String(request.params.documentId);
+            const document = await knex(
+              'resonance_projects__requirement_document',
+            )
+              .where({ project_id: projectId, document_id: documentId })
+              .first();
+            if (!document) {
+              response.status(404).json({ message: 'Requirement document not found' });
+              return;
+            }
+            const requirements = await knex(
+              'resonance_projects__requirement_item',
+            )
+              .where({ project_id: projectId, document_id: documentId })
+              .orderBy('sort_order', 'asc');
+            response.json({ projectId, document, requirements });
+          },
+        );
+        router.post(
+          '/:projectId/requirements/automate',
+          async (request, response) => {
+            const projectId = normalizeProjectId(request.params.projectId);
+            const project = await knex('resonance_projects__project')
+              .where({ project_id: projectId })
+              .first();
+            if (!project) {
+              response.status(404).json({ message: 'Project not found' });
+              return;
+            }
+            const account = await resolveRuntimeAccount(request);
+            let document: ReturnType<typeof decodeRequirementDocument>;
+            try {
+              document = decodeRequirementDocument(
+                (request.body ?? {}) as RequirementDocumentInput,
+              );
+            } catch (error) {
+              response.status(422).json({
+                success: false,
+                message: error instanceof Error ? error.message : String(error),
+              });
+              return;
+            }
+            const existing = await knex(
+              'resonance_projects__requirement_document',
+            )
+              .where({
+                project_id: projectId,
+                document_sha256: document.documentSha256,
+              })
+              .first();
+            if (existing) {
+              response.status(200).json({
+                success: true,
+                idempotent: true,
+                projectId,
+                documentId: existing.document_id,
+                designVersion: existing.design_version,
+                processCode: existing.process_code,
+                requirementCount: existing.requirement_count,
+                status: existing.analysis_status,
+              });
+              return;
+            }
+            const analysis = analyzeRequirementText(
+              projectId,
+              document.fileName,
+              document.text,
+            );
+            const [{ max }] = await knex(
+              'resonance_projects__design_release',
+            )
+              .where({ project_id: projectId })
+              .max({ max: 'design_version' });
+            const designVersion = Math.max(
+              Number(project.design_version ?? 1),
+              Number(max ?? 0),
+            ) + 1;
+            const contract = buildRequirementDesignContract({
+              projectId,
+              designVersion,
+              document,
+              analysis,
+            });
+            const validation = validateDesignContract(projectId, contract);
+            if (validation.status !== 'VERIFIED') {
+              response.status(422).json({
+                success: false,
+                message: 'Generated design contract failed validation',
+                validation,
+              });
+              return;
+            }
+            const contractSha256 = createHash('sha256')
+              .update(JSON.stringify(contract))
+              .digest('hex');
+            const documentId = document.documentSha256;
+            const now = new Date();
+            await knex.transaction(async transaction => {
+              await transaction(
+                'resonance_projects__requirement_document',
+              ).insert({
+                document_id: documentId,
+                project_id: projectId,
+                file_name: document.fileName,
+                mime_type: document.mimeType,
+                byte_size: document.byteSize,
+                document_sha256: document.documentSha256,
+                text_sha256: document.textSha256,
+                extracted_text: document.text,
+                analysis_status: 'DESIGN_VALIDATED',
+                requirement_count: analysis.requirements.length,
+                design_version: designVersion,
+                process_code: analysis.processCode,
+                created_by: account.userEntityRef,
+                created_at: now,
+              });
+              await transaction('resonance_projects__requirement_item').insert(
+                analysis.requirements.map((item, index) => ({
+                  requirement_id: item.requirementId,
+                  document_id: documentId,
+                  project_id: projectId,
+                  sort_order: index + 1,
+                  title: item.title,
+                  description: item.description,
+                  actor_code: item.actorCode,
+                  process_code: item.processCode,
+                  step_code: item.stepCode,
+                  route_path: item.routePath,
+                  endpoint_method: item.endpoint.method,
+                  endpoint_path: item.endpoint.path,
+                  field_contract: JSON.stringify(item.fields),
+                  acceptance_criteria: JSON.stringify(item.acceptanceCriteria),
+                  implementation_status: 'GENERATION_QUEUED',
+                  created_at: now,
+                })),
+              );
+              await transaction('resonance_projects__design_release').insert({
+                project_id: projectId,
+                design_version: designVersion,
+                release_status: 'VALIDATED',
+                contract_payload: JSON.stringify(contract),
+                contract_sha256: contractSha256,
+                validation_report: JSON.stringify(validation),
+                created_by: account.userEntityRef,
+                created_at: now,
+                updated_at: now,
+              });
+              await transaction('resonance_projects__task').insert(
+                [
+                  ['REQUIREMENT_ANALYSIS', 'COMPLETED'],
+                  ['DESIGN_GENERATION', 'COMPLETED'],
+                  ['ENDPOINT_GENERATION', 'PLANNED'],
+                  ['CONTRACT_TEST', 'PLANNED'],
+                ].map(([taskType, status]) => ({
+                  project_id: projectId,
+                  task_type: taskType,
+                  status,
+                  payload: JSON.stringify({
+                    documentId,
+                    designVersion,
+                    processCode: analysis.processCode,
+                    requirementCount: analysis.requirements.length,
+                    contractSha256,
+                  }),
+                  created_at: now,
+                  updated_at: now,
+                  finished_at: status === 'COMPLETED' ? now : null,
+                })),
+              );
+            });
+            let publication: Record<string, unknown> = {
+              success: false,
+              status: 'AWAITING_PROMOTION',
+            };
+            if (request.body?.autoPromote === true) {
+              const runtimeBaseUrl = String(
+                process.env.CARBONET_RUNTIME_BASE_URL ??
+                  'http://carbonet-api.carbonet-prod.svc.cluster.local:8080',
+              ).replace(/\/+$/, '');
+              const bridgeToken = String(process.env.RESONANCE_OPS_TOKEN ?? '');
+              if (!bridgeToken) {
+                response.status(503).json({
+                  success: false,
+                  projectId,
+                  documentId,
+                  designVersion,
+                  message: 'Design is stored, but the runtime bridge token is missing',
+                });
+                return;
+              }
+              const publicationResponse = await fetch(
+                `${runtimeBaseUrl}/api/internal/actor-process/design-releases`,
+                {
+                  method: 'POST',
+                  headers: {
+                    accept: 'application/json',
+                    'content-type': 'application/json',
+                    'x-resonance-token': bridgeToken,
+                  },
+                  body: JSON.stringify({
+                    projectId,
+                    designVersion,
+                    contractSha256,
+                    contract,
+                  }),
+                },
+              );
+              publication = (await publicationResponse.json()) as Record<
+                string,
+                unknown
+              >;
+              if (!publicationResponse.ok || publication.success !== true) {
+                response.status(502).json({
+                  success: false,
+                  projectId,
+                  documentId,
+                  designVersion,
+                  message: 'Runtime rejected the generated design contract',
+                  publication,
+                });
+                return;
+              }
+              await knex.transaction(async transaction => {
+                await transaction('resonance_projects__design_release')
+                  .where({ project_id: projectId, design_version: designVersion })
+                  .update({
+                    release_status: 'PROMOTED',
+                    promoted_at: new Date(),
+                    updated_at: new Date(),
+                  });
+                await transaction('resonance_projects__project')
+                  .where({ project_id: projectId })
+                  .update({
+                    design_version: designVersion,
+                    status: 'GENERATION_QUEUED',
+                    updated_at: new Date(),
+                  });
+                await transaction('resonance_projects__requirement_document')
+                  .where({ project_id: projectId, document_id: documentId })
+                  .update({ analysis_status: 'GENERATION_QUEUED' });
+              });
+            }
+            response.status(201).json({
+              success: true,
+              idempotent: false,
+              projectId,
+              documentId,
+              designVersion,
+              processCode: analysis.processCode,
+              requirementCount: analysis.requirements.length,
+              screenCount: analysis.requirements.length,
+              endpointCount: analysis.requirements.length,
+              contractSha256,
+              status:
+                request.body?.autoPromote === true
+                  ? 'GENERATION_QUEUED'
+                  : 'DESIGN_VALIDATED',
+              publication,
+            });
+          },
+        );
         router.post(
           '/:projectId/design-releases',
           async (request, response) => {

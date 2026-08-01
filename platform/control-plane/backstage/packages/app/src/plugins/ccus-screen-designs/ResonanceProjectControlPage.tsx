@@ -27,10 +27,12 @@ import CodeIcon from '@material-ui/icons/Code';
 import DashboardIcon from '@material-ui/icons/Dashboard';
 import LaunchIcon from '@material-ui/icons/Launch';
 import StorageIcon from '@material-ui/icons/Storage';
+import DescriptionIcon from '@material-ui/icons/Description';
 import {
   RESONANCE_PROJECT_REGISTRY,
   ResonanceProjectRecord,
 } from './generatedProjectRegistry';
+import { RequirementAutomationPanel } from './RequirementAutomationPanel';
 
 type ApiProject = {
   projectId: string;
@@ -356,6 +358,7 @@ export function ResonanceProjectControlPage() {
                   <Tab icon={<AccountTreeIcon />} label="설계" />
                   <Tab icon={<CodeIcon />} label="개발" />
                   <Tab icon={<StorageIcon />} label="운영" />
+                  <Tab icon={<DescriptionIcon />} label="요구분석 자동화" />
                 </Tabs>
               </Box>
             </Paper>
@@ -484,6 +487,9 @@ export function ResonanceProjectControlPage() {
                   </Button>
                 )}
               </Paper>
+            )}
+            {tab === 4 && (
+              <RequirementAutomationPanel projectId={selected.projectId} />
             )}
           </Box>
         </Box>
