@@ -4,14 +4,16 @@ set -euo pipefail
 NAMESPACE="${CARBONET_K8S_NAMESPACE:-carbonet-prod}"
 DB="${POSTGRES_DB:-carbonet}"
 USER_NAME="${POSTGRES_ADMIN_USER:-postgres}"
-leader=""
+leader="${RESONANCE_POSTGRES_LEADER_POD:-}"
 
-while IFS= read -r pod; do
-  if [[ "$(kubectl -n "$NAMESPACE" exec "$pod" -c patroni -- psql -h 127.0.0.1 -U "$USER_NAME" -d "$DB" -Atqc 'select pg_is_in_recovery()' 2>/dev/null || true)" == "f" ]]; then
-    leader="$pod"
-    break
-  fi
-done < <(kubectl -n "$NAMESPACE" get pods -l app=postgres-patroni -o name | sed 's#^pod/##')
+if [[ -z "$leader" ]]; then
+  while IFS= read -r pod; do
+    if [[ "$(kubectl -n "$NAMESPACE" exec "$pod" -c patroni -- psql -h 127.0.0.1 -U "$USER_NAME" -d "$DB" -Atqc 'select pg_is_in_recovery()' 2>/dev/null || true)" == "f" ]]; then
+      leader="$pod"
+      break
+    fi
+  done < <(kubectl -n "$NAMESPACE" get pods -l app=postgres-patroni -o name | sed 's#^pod/##')
+fi
 
 [[ -n "$leader" ]] || {
   echo "[unified-work-design] Patroni leader was not found" >&2

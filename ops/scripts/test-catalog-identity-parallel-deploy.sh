@@ -3,8 +3,10 @@ set -euo pipefail
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 script="$root/ops/scripts/auto-deploy-main.sh"
+validation_groups="$root/ops/scripts/run-post-deploy-validation-groups.sh"
 
 bash -n "$script"
+bash -n "$validation_groups"
 
 python3 - "$script" <<'PY'
 from pathlib import Path
@@ -75,3 +77,17 @@ assert "parallel actor/process E2E failed" in e2e
 
 print("CATALOG_IDENTITY_PARALLEL_DEPLOY_PASS")
 PY
+
+grep -q 'resolve_postgres_leader_once' "$validation_groups"
+grep -q 'export RESONANCE_POSTGRES_LEADER_POD=' "$validation_groups"
+for cached_consumer in \
+  validate-emission-project-workflow.sh \
+  validate-emission-activity-collection.sh \
+  complete-activity-data-evidence-jobs.sh \
+  complete-emission-calculation-evidence-jobs.sh \
+  complete-report-certification-evidence-jobs.sh \
+  validate-unified-work-design-runtime.sh; do
+  grep -q 'RESONANCE_POSTGRES_LEADER_POD' "$root/ops/scripts/$cached_consumer"
+done
+
+echo "POSTDEPLOY_POSTGRES_LEADER_CACHE_PASS consumers=6"

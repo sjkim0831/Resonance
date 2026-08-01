@@ -11,6 +11,25 @@ mkdir -p "$log_dir"
 declare -a names=()
 declare -a pids=()
 
+resolve_postgres_leader_once() {
+  local namespace database user_name pod
+  namespace="${CARBONET_K8S_NAMESPACE:-carbonet-prod}"
+  database="${POSTGRES_DB:-carbonet}"
+  user_name="${POSTGRES_ADMIN_USER:-postgres}"
+  if [[ -n "${RESONANCE_POSTGRES_LEADER_POD:-}" ]]; then
+    return
+  fi
+  while IFS= read -r pod; do
+    if [[ "$(kubectl -n "$namespace" exec "$pod" -c patroni -- psql -h 127.0.0.1 -U "$user_name" -d "$database" -Atqc 'select pg_is_in_recovery()' 2>/dev/null || true)" == "f" ]]; then
+      export RESONANCE_POSTGRES_LEADER_POD="$pod"
+      echo "[validation-groups] PostgreSQL leader resolved once pod=$pod"
+      return
+    fi
+  done < <(kubectl -n "$namespace" get pods -l app=postgres-patroni -o name | sed 's#^pod/##')
+  echo "[validation-groups] PostgreSQL leader not found" >&2
+  return 1
+}
+
 validate_menu_asset_design_group() {
   bash ops/scripts/validate-admin-menu-coverage.sh
   bash ops/scripts/validate-home-menu-coverage.sh
@@ -127,6 +146,7 @@ start_group() {
 }
 
 started="$(date +%s)"
+resolve_postgres_leader_once
 start_group "menu-assets-design" validate_menu_asset_design_group
 start_group "emission-workflow" validate_emission_workflow_group
 start_group "identity-contracts" validate_identity_design_group

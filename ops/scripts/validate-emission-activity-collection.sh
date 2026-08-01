@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
-NAMESPACE="${CARBONET_K8S_NAMESPACE:-carbonet-prod}"; DB="${POSTGRES_DB:-carbonet}"; USER_NAME="${POSTGRES_ADMIN_USER:-postgres}"; leader=""
-while IFS= read -r pod; do
-  [[ "$(kubectl -n "$NAMESPACE" exec "$pod" -c patroni -- psql -h 127.0.0.1 -U "$USER_NAME" -d "$DB" -Atqc 'select pg_is_in_recovery()' 2>/dev/null || true)" == "f" ]] && { leader="$pod"; break; }
-done < <(kubectl -n "$NAMESPACE" get pods -l app=postgres-patroni -o name | sed 's#^pod/##')
+NAMESPACE="${CARBONET_K8S_NAMESPACE:-carbonet-prod}"; DB="${POSTGRES_DB:-carbonet}"; USER_NAME="${POSTGRES_ADMIN_USER:-postgres}"; leader="${RESONANCE_POSTGRES_LEADER_POD:-}"
+if [[ -z "$leader" ]]; then
+  while IFS= read -r pod; do
+    [[ "$(kubectl -n "$NAMESPACE" exec "$pod" -c patroni -- psql -h 127.0.0.1 -U "$USER_NAME" -d "$DB" -Atqc 'select pg_is_in_recovery()' 2>/dev/null || true)" == "f" ]] && { leader="$pod"; break; }
+  done < <(kubectl -n "$NAMESPACE" get pods -l app=postgres-patroni -o name | sed 's#^pod/##')
+fi
 [[ -n "$leader" ]] || { echo "[activity-collection] writable PostgreSQL leader not found" >&2; exit 1; }
 read -r submitted unsealed transition_errors <<<"$(kubectl -n "$NAMESPACE" exec "$leader" -c patroni -- psql -h 127.0.0.1 -U "$USER_NAME" -d "$DB" -At -F ' ' -c "SELECT
  (SELECT count(*) FROM emission_activity_submission WHERE submission_state<>'DRAFT'),

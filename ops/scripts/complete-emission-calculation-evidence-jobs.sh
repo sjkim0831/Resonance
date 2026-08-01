@@ -17,11 +17,13 @@ for route in /emission/project/detail /emission/calculation /emission/validate /
   grep -Fq "$route" "$ROUTES" || { echo "[calculation-evidence] FAIL route=$route" >&2; exit 1; }
 done
 
-leader=""
-while IFS= read -r pod; do
-  recovery="$(kubectl -n "$NAMESPACE" exec "$pod" -c "$CONTAINER" -- psql -h 127.0.0.1 -U "$USER_NAME" -d "$DATABASE" -Atqc 'select pg_is_in_recovery()' 2>/dev/null || true)"
-  [[ "$recovery" == "f" ]] && { leader="$pod"; break; }
-done < <(kubectl -n "$NAMESPACE" get pods -l app=postgres-patroni -o name | sed 's#^pod/##')
+leader="${RESONANCE_POSTGRES_LEADER_POD:-}"
+if [[ -z "$leader" ]]; then
+  while IFS= read -r pod; do
+    recovery="$(kubectl -n "$NAMESPACE" exec "$pod" -c "$CONTAINER" -- psql -h 127.0.0.1 -U "$USER_NAME" -d "$DATABASE" -Atqc 'select pg_is_in_recovery()' 2>/dev/null || true)"
+    [[ "$recovery" == "f" ]] && { leader="$pod"; break; }
+  done < <(kubectl -n "$NAMESPACE" get pods -l app=postgres-patroni -o name | sed 's#^pod/##')
+fi
 [[ -n "$leader" ]] || { echo "[calculation-evidence] FAIL PostgreSQL leader missing" >&2; exit 1; }
 
 sql="do \$\$
