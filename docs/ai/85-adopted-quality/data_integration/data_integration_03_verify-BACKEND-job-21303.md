@@ -2,7 +2,7 @@
 
 - Job: 21303
 - Job type: BACKEND
-- Source commit: cb8a1d06f87f002b5dfee2cb5c196c948b81f1c8
+- Source commit: 1f9c9c2fe15a16f039f070dfbeaaedae1ac225f9
 - Requirement: 검증자는 스키마 적합성, 누락·중복·이상치, 원천 대사, 품질 점수, 격리 데이터와 보완 결과를 검증하고 재실행 전후 증적을 비교한다.
 - Validation result: {"strategy":"APPROVED_FULL_STACK_PACKAGE","processCode":"DATA_INTEGRATION","stepCode":"DATA_INTEGRATION_03_VERIFY","dimension":"BACKEND","package":"/opt/Resonance/var/ai-worktrees/job-21303/projects/carbonet-backend-metadata/process-runtime/generated/DATA_INTEGRATION/DATA_INTEGRATION__DATA_INTEGRATION_03_VERIFY.json","evidence":"/opt/Resonance/var/ai-worktrees/job-21303/var/test-evidence/process-package-tests/DATA_INTEGRATION__DATA_INTEGRATION_03_VERIFY.json","status":"PASSED"}
 
