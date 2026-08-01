@@ -835,7 +835,7 @@ public class ActorProcessGovernanceService {
         if(!(processes instanceof List<?> processList)||processList.isEmpty())throw new IllegalArgumentException("at least one process is required");
         Map<String,Object> specification=new LinkedHashMap<>();
         specification.put("schemaVersion","1.0.0");specification.put("actors",actors);specification.put("processCodes",processes);
-        specification.put("qualityGate",List.of("ACTOR","PROCESS_STEP","VALID_SCREEN","HAPPY_PATH_TEST","ATOMIC_ROLLBACK"));
+        specification.put("qualityGate",List.of("ACTOR","PROCESS_STEP","VALID_SCREEN","HAPPY_PATH","AUTHORITY","ISOLATION","EXCEPTION","RECOVERY","ATOMIC_ROLLBACK"));
         boolean approve=bool(b,"approve");
         jdbc.update("insert into framework_project_delivery_blueprint(blueprint_code,blueprint_name,blueprint_version,domain_code,specification,blueprint_status,approved_by,approved_at) values(?,?,?,?,cast(? as jsonb),?,case when ? then ? else null end,case when ? then current_timestamp else null end) on conflict(blueprint_code) do update set blueprint_name=excluded.blueprint_name,blueprint_version=excluded.blueprint_version,domain_code=excluded.domain_code,specification=excluded.specification,blueprint_status=excluded.blueprint_status,approved_by=excluded.approved_by,approved_at=excluded.approved_at,updated_at=current_timestamp",code,req(b,"blueprintName"),def(b,"blueprintVersion","1.0.0"),req(b,"domainCode").toUpperCase(Locale.ROOT),toJson(specification),approve?"APPROVED":"DRAFT",approve,actor,approve);
         Map<String,Object> validation=jsonMap(jdbc.queryForObject("select framework_validate_project_delivery_blueprint(?)::text",String.class,code));

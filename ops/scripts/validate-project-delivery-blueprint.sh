@@ -3,6 +3,7 @@ set -Eeuo pipefail
 
 ROOT="${1:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
 MIGRATION="$ROOT/apps/carbonet-api/src/main/resources/db/migration/postgresql/V20260801113000__install_atomic_project_delivery_blueprints.sql"
+SAFETY_MIGRATION="$ROOT/apps/carbonet-api/src/main/resources/db/migration/postgresql/V20260802090000__require_five_safety_scenarios_for_project_delivery.sql"
 
 [[ -s "$MIGRATION" ]]
 grep -Fq 'framework_project_delivery_blueprint' "$MIGRATION"
@@ -14,5 +15,9 @@ grep -Fq 'framework_refresh_screen_generation_impact(1000,process_code_value)' "
 grep -Fq "'mutated',false" "$MIGRATION"
 grep -Fq 'PROJECT_DELIVERY_ROLLED_BACK' "$MIGRATION"
 grep -Fq 'framework_project_delivery_status' "$MIGRATION"
+[[ -s "$SAFETY_MIGRATION" ]]
+grep -Fq "'HAPPY_PATH','AUTHORITY','ISOLATION','EXCEPTION','RECOVERY'" "$SAFETY_MIGRATION"
+grep -Fq 'FIVE_SAFETY_SCENARIOS_MISSING' "$SAFETY_MIGRATION"
+grep -Fq 'processWithoutFiveSafetyScenariosCount' "$SAFETY_MIGRATION"
 
-echo 'PASS project delivery blueprint: validate -> atomic actor/process/task install -> incremental screen impact -> rollback guard'
+echo 'PASS project delivery blueprint: five-scenario validate -> atomic actor/process/task install -> incremental screen impact -> rollback guard'
