@@ -2,7 +2,7 @@
 
 - Job: 21190
 - Job type: FRONTEND_ADMIN
-- Source commit: 50daa6a6b48891f70b1f8094d278d9bb1ac20cce
+- Source commit: 8239fc08352a187234dd42193df9f34a9295290d
 - Validation result: {"strategy":"APPROVED_FULL_STACK_PACKAGE","processCode":"CO2_QUALITY_ANALYSIS","stepCode":"CQA_TEST","dimension":"FRONTEND_ADMIN","package":"/opt/Resonance/var/ai-worktrees/job-21190/projects/carbonet-backend-metadata/process-runtime/generated/CO2_QUALITY_ANALYSIS/CO2_QUALITY_ANALYSIS__CQA_TEST.json","evidence":"/opt/Resonance/var/ai-worktrees/job-21190/var/test-evidence/process-package-tests/CO2_QUALITY_ANALYSIS__CQA_TEST.json","status":"PASSED"}
 
 The exact approved step package supplies the matching USER or ADMIN route,
