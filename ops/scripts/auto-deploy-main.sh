@@ -720,6 +720,8 @@ run_actor_process_role_e2e_if_required() {
   fi
   RESONANCE_ROOT="$ROOT_DIR" \
     bash ops/scripts/resonance-actor-process-role-e2e.sh
+  RESONANCE_ROOT="$ROOT_DIR" \
+    bash ops/scripts/resonance-project-delivery-e2e.sh
 }
 
 sync_keycloak_actor_assignments_if_required() {

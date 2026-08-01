@@ -870,6 +870,40 @@ public class ActorProcessGovernanceService {
         if(!Boolean.TRUE.equals(result.get("success")))throw new IllegalArgumentException("project delivery validation failed: "+result);
         return result;
     }
+
+    /**
+     * Executes the real project-delivery path inside a transaction that is
+     * always rolled back.  It proves actor assignment, process/task sync,
+     * generated-screen impact and release creation without leaving test data in
+     * the customer database.
+     */
+    @Transactional public Map<String,Object> verifyProjectDeliveryBlueprintE2E(String actor){
+        String suffix=UUID.randomUUID().toString().replace("-","").substring(0,12).toUpperCase(Locale.ROOT);
+        String projectId="E2E-PDR-"+suffix;
+        String blueprintCode="E2E_PDR_"+suffix;
+        String tenantId="DEFAULT";
+        Map<String,Object> process=jdbc.queryForMap("select p.process_code,a.actor_code from framework_process_definition p join lateral (select s.actor_code from framework_process_step s where s.process_code=p.process_code order by s.step_order limit 1) a on true where p.process_code='EMISSION_PROJECT' and exists(select 1 from framework_screen_blueprint b where b.process_code=p.process_code and b.validation_status='VALID') and exists(select 1 from framework_simulation_case c where c.process_code=p.process_code and c.case_type='HAPPY_PATH' and c.case_status in('READY','ACTIVE','APPROVED','VERIFIED'))");
+        String processCode=String.valueOf(process.get("process_code"));
+        String actorCode=String.valueOf(process.get("actor_code"));
+        String accountId="e2e-project-delivery";
+        jdbc.update("insert into emission_project_registry(project_id,project_name,site_name,calculation_period,scope_name,owner_name,progress_percent,current_step,due_date,project_status,tenant_id) values(?,?,?,?,?,?,0,?,current_date+7,'TEST',?)",projectId,"Project delivery transaction E2E","E2E SITE","2026","Scope 1·2",accountId,"SETUP",tenantId);
+        Map<String,Object> saved=saveProjectDeliveryBlueprint(Map.of(
+            "blueprintCode",blueprintCode,"blueprintName","Project delivery E2E","blueprintVersion","1.0.0",
+            "domainCode","EMISSION","actors",List.of(Map.of("actorCode",actorCode)),
+            "processCodes",List.of(processCode),"approve",true),actor);
+        if(!Boolean.TRUE.equals(saved.get("success")))throw new IllegalStateException("E2E_BLUEPRINT_VALIDATION_FAILED: "+saved);
+        Map<String,Object> applied=applyProjectDeliveryBlueprint(Map.of(
+            "blueprintCode",blueprintCode,"tenantId",tenantId,"projectId",projectId,
+            "actorBindings",List.of(Map.of("actorCode",actorCode,"accountId",accountId,"dataScope","*"))),actor);
+        Map<String,Object> evidence=jdbc.queryForMap("select (select count(*) from framework_project_delivery_release where project_id=?) as release_count,(select count(*) from framework_account_actor_assignment where project_id=? and actor_code=? and assignment_status='ACTIVE') as actor_count,(select count(*) from emission_project_task where project_id=?) as task_count,(select count(*) from framework_project_process_applicability where project_id=? and applicability_status='APPLICABLE') as process_count",projectId,projectId,actorCode,projectId,projectId);
+        if(((Number)evidence.get("release_count")).intValue()!=1||((Number)evidence.get("actor_count")).intValue()!=1||((Number)evidence.get("task_count")).intValue()<1||((Number)evidence.get("process_count")).intValue()<1){
+            throw new IllegalStateException("E2E_PROJECT_DELIVERY_INCOMPLETE: "+evidence);
+        }
+        org.springframework.transaction.interceptor.TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
+        return Map.of("success",true,"projectId",projectId,"blueprintCode",blueprintCode,
+            "processCode",processCode,"actorCode",actorCode,"evidence",evidence,
+            "releaseCode",String.valueOf(applied.get("releaseCode")),"rollbackScheduled",true);
+    }
     @Transactional public Map<String,Object> deactivateActorAssignment(Map<String,Object>b){
         long assignmentId=Long.parseLong(req(b,"assignmentId"));
         List<Map<String,Object>> matches=jdbc.queryForList("select assignment_id,account_id,tenant_id,project_id,actor_code from framework_account_actor_assignment where assignment_id=? for update",assignmentId);

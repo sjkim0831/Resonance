@@ -291,6 +291,12 @@ public class ActorProcessControlPlaneBridgeController {
                 case "backend.verify" ->
                         result = governance.verifyBackendProcessContracts(
                                 String.valueOf(body.getOrDefault("sourceCommit", "")), actor);
+                case "project-delivery.e2e" -> {
+                    if (!governance.isControlPlaneAdministrator(account)) {
+                        throw new SecurityException("Administrator authority is required to run project delivery E2E.");
+                    }
+                    result = governance.verifyProjectDeliveryBlueprintE2E(actor);
+                }
                 case "execution.start" -> result = governance.startProcessExecution(body, actor);
                 case "execution.validate" -> result =
                         governance.validateProcessCommandFromControlPlane(
