@@ -30,6 +30,7 @@ const browser = await chromium.launch({
   ...(executablePath ? { executablePath } : {}),
 });
 const routeResults = [];
+const workflowResults = [];
 let taskCount = 0;
 let transitionVerified = false;
 const startedAt = Date.now();
@@ -58,6 +59,11 @@ try {
         .sort((left, right) => Number(left.stepOrder || 0) - Number(right.stepOrder || 0));
       if (!tasks.length) throw new Error(`assigned task route missing account=${account} project=${projectId}`);
       taskCount += tasks.length;
+      const workflow = (tasksPayload.workflows || [])
+        .filter((task) => String(task.projectId) === projectId)
+        .sort((left, right) => Number(left.stepOrder || 0) - Number(right.stepOrder || 0));
+      if (workflow.length !== 7) throw new Error(`workflow length account=${account} expected=7 actual=${workflow.length}`);
+      workflowResults.push({ account, workflow });
 
       const context = await browser.newContext({
         storageState: await api.storageState(),
@@ -137,6 +143,37 @@ try {
   const ownerApi = await authenticatedApi("qaowner26");
   let disposableProjectId = "";
   try {
+    const expectedCodes = ["BASIC_INFO", "ACTIVITY_DATA", "CALCULATION", "VERIFICATION", "APPROVAL", "REPORT", "REGULATORY_SUBMISSION"];
+    for (const { account, workflow } of workflowResults) {
+      if (workflow.map((task) => task.taskCode).join(",") !== expectedCodes.join(",")) {
+        throw new Error(`seven-step order mismatch account=${account}`);
+      }
+      if (workflow.some((task) => task.status !== "DONE" || task.completionSatisfied !== true || !task.completionRule || !task.targetUrl)) {
+        throw new Error(`seven-step completion evidence incomplete account=${account}`);
+      }
+      if (workflow.slice(0, -1).some((task, index) => task.nextTaskName !== workflow[index + 1].name)) {
+        throw new Error(`seven-step handoff mismatch account=${account}`);
+      }
+    }
+
+    const completionResponse = await ownerApi.get(`/home/api/emission-projects/${encodeURIComponent(projectId)}/completion`, { failOnStatusCode: false });
+    if (completionResponse.status() !== 200) throw new Error(`project completion HTTP ${completionResponse.status()}`);
+    const completion = await completionResponse.json();
+    const checklist = Array.isArray(completion.checklist) ? completion.checklist : [];
+    const metrics = completion.metrics || {};
+    if (checklist.length !== 7 || checklist.some((task) => task.status !== "DONE")) {
+      throw new Error("completion checklist is not 7/7 DONE");
+    }
+    const artifactCounts = [metrics.activityCount, metrics.approvedSubmissions, metrics.finalizedReports, metrics.activeCertificates];
+    if (artifactCounts.some((value) => Number(value || 0) < 1) || Number(metrics.totalEmission || 0) <= 0) {
+      throw new Error(`business artifacts incomplete metrics=${JSON.stringify(metrics)}`);
+    }
+    const certifiedReport = (completion.reports || []).find((report) => report.certificateId && report.certificateStatus === "ACTIVE");
+    if (!certifiedReport) throw new Error("active report certificate missing");
+    const certificateResponse = await ownerApi.get(`/api/public/report-certificates/${encodeURIComponent(certifiedReport.certificateId)}`, { failOnStatusCode: false });
+    const certificate = await certificateResponse.json().catch(() => ({}));
+    if (certificateResponse.status() !== 200 || certificate.valid !== true) throw new Error("public certificate verification failed");
+
     const optionsResponse = await ownerApi.get("/home/api/emission-projects/options", { failOnStatusCode: false });
     if (optionsResponse.status() !== 200) throw new Error(`project options HTTP ${optionsResponse.status()}`);
     const options = await optionsResponse.json();
@@ -245,4 +282,4 @@ try {
 }
 
 const uniqueRoutes = new Set(routeResults.map((result) => result.target));
-console.log(`[project-task-browser-e2e] PASS project=${projectId} accounts=${accounts.length} tasks=${taskCount} uniqueRoutes=${uniqueRoutes.size} anonymous=blocked transition=${transitionVerified ? "committed-and-rolled-back" : "missing"} durationMs=${Date.now() - startedAt}`);
+console.log(`[project-task-browser-e2e] PASS project=${projectId} accounts=${accounts.length} tasks=${taskCount} workflow=7/7 artifacts=5 certificate=valid uniqueRoutes=${uniqueRoutes.size} anonymous=blocked transition=${transitionVerified ? "committed-and-rolled-back" : "missing"} durationMs=${Date.now() - startedAt}`);
