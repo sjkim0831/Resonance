@@ -722,14 +722,36 @@ run_actor_process_role_e2e_if_required() {
       return 0
     fi
   fi
-  RESONANCE_ROOT="$ROOT_DIR" \
-    bash ops/scripts/resonance-actor-process-role-e2e.sh
-  RESONANCE_ROOT="$ROOT_DIR" \
-    bash ops/scripts/resonance-project-delivery-e2e.sh
-  RESONANCE_ROOT="$ROOT_DIR" \
-    bash ops/scripts/resonance-project-task-browser-e2e.sh
-  RESONANCE_ROOT="$ROOT_DIR" \
-    bash ops/scripts/resonance-seven-step-disposable-e2e.sh
+  local parallel_log_dir="$ROOT_DIR/var/logs/actor-process-parallel-${target_commit:0:10}"
+  local actor_pid delivery_pid browser_pid lifecycle_pid
+  local actor_status delivery_status browser_status lifecycle_status
+  rm -rf "$parallel_log_dir"
+  mkdir -p "$parallel_log_dir"
+
+  (RESONANCE_ROOT="$ROOT_DIR" bash ops/scripts/resonance-actor-process-role-e2e.sh) \
+    >"$parallel_log_dir/actor-role.log" 2>&1 & actor_pid=$!
+  (RESONANCE_ROOT="$ROOT_DIR" bash ops/scripts/resonance-project-delivery-e2e.sh) \
+    >"$parallel_log_dir/project-delivery.log" 2>&1 & delivery_pid=$!
+  (RESONANCE_ROOT="$ROOT_DIR" bash ops/scripts/resonance-project-task-browser-e2e.sh) \
+    >"$parallel_log_dir/browser.log" 2>&1 & browser_pid=$!
+  (RESONANCE_ROOT="$ROOT_DIR" bash ops/scripts/resonance-seven-step-disposable-e2e.sh) \
+    >"$parallel_log_dir/seven-step.log" 2>&1 & lifecycle_pid=$!
+
+  set +e
+  wait "$actor_pid"; actor_status=$?
+  wait "$delivery_pid"; delivery_status=$?
+  wait "$browser_pid"; browser_status=$?
+  wait "$lifecycle_pid"; lifecycle_status=$?
+  set -e
+  cat "$parallel_log_dir/actor-role.log"
+  cat "$parallel_log_dir/project-delivery.log"
+  cat "$parallel_log_dir/browser.log"
+  cat "$parallel_log_dir/seven-step.log"
+  if ((actor_status != 0 || delivery_status != 0 || browser_status != 0 || lifecycle_status != 0)); then
+    echo "[auto-deploy] parallel actor/process E2E failed actor=$actor_status delivery=$delivery_status browser=$browser_status lifecycle=$lifecycle_status logs=$parallel_log_dir" >&2
+    return 1
+  fi
+  echo "[auto-deploy] parallel actor/process E2E PASS jobs=4 logs=$parallel_log_dir"
 }
 
 sync_keycloak_actor_assignments_if_required() {

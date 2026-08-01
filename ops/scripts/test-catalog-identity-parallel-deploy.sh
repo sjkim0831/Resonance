@@ -62,5 +62,16 @@ identity = source[identity_start:identity_end]
 assert "ops/scripts/auto-deploy-main.sh" not in identity
 assert "no identity contract change" in identity
 
+e2e_start = source.index("run_actor_process_role_e2e_if_required() {")
+e2e_end = source.index("sync_keycloak_actor_assignments_if_required() {", e2e_start)
+e2e = source[e2e_start:e2e_end]
+for job in ["actor_pid", "delivery_pid", "browser_pid", "lifecycle_pid"]:
+    assert f'{job}=$!' in e2e
+    assert f'wait "${job}"' in e2e
+for status in ["actor_status", "delivery_status", "browser_status", "lifecycle_status"]:
+    assert f'{status} != 0' in e2e
+assert "parallel actor/process E2E PASS jobs=4" in e2e
+assert "parallel actor/process E2E failed" in e2e
+
 print("CATALOG_IDENTITY_PARALLEL_DEPLOY_PASS")
 PY
