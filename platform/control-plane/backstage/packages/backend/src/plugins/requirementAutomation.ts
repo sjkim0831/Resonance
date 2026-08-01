@@ -22,15 +22,6 @@ export type RequirementItem = {
   acceptanceCriteria: string[];
 };
 
-const safeCode = (value: string, fallback: string) => {
-  const code = value
-    .normalize('NFKD')
-    .replace(/[^A-Za-z0-9]+/g, '_')
-    .replace(/^_+|_+$/g, '')
-    .toUpperCase();
-  return (code || fallback).slice(0, 60);
-};
-
 const digest = (value: string) =>
   createHash('sha256').update(value).digest('hex');
 
