@@ -613,9 +613,12 @@ public class EmissionProjectRegistryService {
         }
         if(!step.equals(String.valueOf(found.get("currentStepCode")))&&found.containsKey("currentStepCode"))return;
         Integer sequence=jdbc.queryForObject("select count(*)+1 from framework_process_execution_event where execution_id=? and step_code=?",Integer.class,UUID.fromString(String.valueOf(found.get("executionId"))),step);
-        Map<String,Object> body=new LinkedHashMap<>();body.put("tenantId",tenant);body.put("projectId",projectId);body.put("processCode","EMISSION_PROJECT");body.put("stepCode",step);body.put("actorCode",actorMap.get(taskCode));body.put("commandCode",commandMap.get(taskCode));body.put("idempotencyKey","TASK-"+projectId+"-"+taskCode+"-"+sequence);body.put("requestJson","{\"source\":\"emission-project-service\"}");
+        String processActor=actorMap.get(taskCode);
+        String processUser=jdbc.query("select user_id from framework_project_actor_assignment where project_id=? and actor_code=? and active_yn='Y' order by assigned_at desc limit 1",rs->rs.next()?rs.getString(1):null,projectId,processActor);
+        if(processUser==null||processUser.isBlank())throw new IllegalStateException("PROJECT_PROCESS_ACTOR_MISSING:"+processActor);
+        Map<String,Object> body=new LinkedHashMap<>();body.put("tenantId",tenant);body.put("projectId",projectId);body.put("processCode","EMISSION_PROJECT");body.put("stepCode",step);body.put("actorCode",processActor);body.put("commandCode",commandMap.get(taskCode));body.put("idempotencyKey","TASK-"+projectId+"-"+taskCode+"-"+sequence);body.put("requestJson","{\"source\":\"emission-project-service\",\"businessActor\":\""+user.replace("\\","\\\\").replace("\"","\\\"")+"\"}");
         if(!requestedToState.isBlank())body.put("requestedToState",requestedToState);
-        processGovernanceService.executeProcessCommand(UUID.fromString(String.valueOf(found.get("executionId"))),body,user);
+        processGovernanceService.executeProcessCommand(UUID.fromString(String.valueOf(found.get("executionId"))),body,processUser);
     }
 
     public Map<String,Object> submissions(String projectId,String tenantId) {
