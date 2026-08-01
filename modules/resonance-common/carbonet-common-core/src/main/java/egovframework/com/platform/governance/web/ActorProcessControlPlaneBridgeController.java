@@ -579,7 +579,7 @@ public class ActorProcessControlPlaneBridgeController {
                 "workTypeNameEn", "Requirement Automation",
                 "description", "요구분석서에서 검증된 실행 설계와 개발 작업",
                 "sortOrder", 5,
-                "useAt", "Y")));
+                "useAt", "N")));
         LinkedHashSet<String> actorCodes = new LinkedHashSet<>();
         for (Object stepValue : steps) {
             if (!(stepValue instanceof Map<?, ?> step)) {
@@ -602,7 +602,7 @@ public class ActorProcessControlPlaneBridgeController {
         governance.createProcess(new LinkedHashMap<>(Map.ofEntries(
                 Map.entry("processCode", processCode),
                 Map.entry("processName", processCode + " 요구분석 실행"),
-                Map.entry("domainCode", "REQUIREMENT_AUTOMATION"),
+                Map.entry("domainCode", "DATA_GOVERNANCE"),
                 Map.entry("version", "1.0.0"),
                 Map.entry("goal", "업로드된 요구분석서를 실행 가능한 화면·API·데이터 계약으로 완성"),
                 Map.entry("startCondition", "검증된 요구분석서와 프로젝트가 존재"),
@@ -685,9 +685,10 @@ public class ActorProcessControlPlaneBridgeController {
             fixedDelayString = "${resonance.actor-process.generation-recovery-delay-ms:60000}",
             initialDelayString = "${resonance.actor-process.generation-recovery-initial-delay-ms:2000}")
     public void recoverQueuedDesignGeneration() {
+        jdbc.update("update framework_business_work_type set use_at='N',updated_at=current_timestamp where work_type_code='REQUIREMENT_AUTOMATION'");
         List<String> requirementProcesses = jdbc.queryForList("""
                 select process_code from framework_process_definition
-                 where domain_code='REQUIREMENT_AUTOMATION'
+                 where process_code like 'REQ\_%' escape '\'
                  order by process_code
                 """, String.class);
         for (String processCode : requirementProcesses) {

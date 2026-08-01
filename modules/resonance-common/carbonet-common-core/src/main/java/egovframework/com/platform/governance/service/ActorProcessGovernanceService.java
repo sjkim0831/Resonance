@@ -2185,6 +2185,7 @@ public class ActorProcessGovernanceService {
     /** Builds the page, field, and step-handoff design catalogs used by the unified work map. */
     @Transactional public int ensureGeneratedProcessPageDesigns(String processCode,String actor){
         String process=req(Map.of("processCode",processCode),"processCode");
+        jdbc.update("update framework_process_definition set domain_code='DATA_GOVERNANCE',updated_at=current_timestamp where process_code=?",process);
         jdbc.update("""
             with ordered as (
               select s.*,lag(s.step_code) over(order by s.step_order) upstream_step,
@@ -2264,7 +2265,7 @@ public class ActorProcessGovernanceService {
             insert into framework_process_execution_topology(process_code,work_type_code,stage_code,execution_wave,
               lane_code,lane_order,execution_mode,join_strategy,predecessor_process_codes,successor_process_codes,
               shared_milestone_code,required_for_join,applicability_rule,topology_status)
-            values(?,'REQUIREMENT_AUTOMATION','REQUIREMENT_DELIVERY',1,'PRIMARY',1,'SEQUENTIAL','ALL',
+            values(?,'DATA_GOVERNANCE','REQUIREMENT_DELIVERY',1,'PRIMARY',1,'SEQUENTIAL','ALL',
               '[]'::jsonb,'[]'::jsonb,?||'_REQUIREMENT_DELIVERY_W1',true,'ALWAYS','DESIGN_COMPLETE')
             on conflict(process_code) do update set work_type_code=excluded.work_type_code,
               stage_code=excluded.stage_code,execution_wave=excluded.execution_wave,lane_code=excluded.lane_code,
@@ -2279,9 +2280,9 @@ public class ActorProcessGovernanceService {
         jdbc.update("""
             insert into framework_business_process_sequence(work_type_code,process_code,workflow_order,
               workflow_phase,process_role,prerequisite_process_codes,next_process_code,sequence_status)
-            select 'REQUIREMENT_AUTOMATION',?,coalesce(max(workflow_order),0)+10,
+            select 'DATA_GOVERNANCE',?,coalesce(max(workflow_order),0)+10,
               'REQUIREMENT_DELIVERY','ENTRY','','','ACTIVE'
-            from framework_business_process_sequence where work_type_code='REQUIREMENT_AUTOMATION'
+            from framework_business_process_sequence where work_type_code='DATA_GOVERNANCE'
             on conflict(process_code) do update set work_type_code=excluded.work_type_code,
               workflow_phase=excluded.workflow_phase,process_role=excluded.process_role,
               prerequisite_process_codes=excluded.prerequisite_process_codes,
