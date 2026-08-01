@@ -20,7 +20,7 @@ chmod 0640 "$evidence"
 
 category=UNKNOWN
 retry_allowed=false
-if grep -Eqi 'connection reset|connection refused|temporary failure|timed out|timeout|TLS handshake|unable to connect|i/o timeout|HTTP 50[234]|requested URL returned error: 50[234]|concurrent token acquisition failed' "$evidence"; then
+if grep -Eqi 'connection reset|connection refused|temporary failure|timed out|timeout|TLS handshake|unable to connect|i/o timeout|HTTP 50[234]|requested URL returned error: 50[234]|readiness returned 50[234]|concurrent token acquisition failed' "$evidence"; then
   category=NETWORK_TRANSIENT
   retry_allowed=true
 elif grep -Eqi 'visual E2E|playwright|screenshot|browser regression' "$evidence"; then
