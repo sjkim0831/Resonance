@@ -31,19 +31,25 @@ const browser = await chromium.launch({
 });
 const routeResults = [];
 let taskCount = 0;
+let transitionVerified = false;
 const startedAt = Date.now();
+
+async function authenticatedApi(account) {
+  const api = await request.newContext({ baseURL: baseUrl, ignoreHTTPSErrors: true });
+  const login = await api.post("/signin/actionLogin", {
+    data: { userId: account, userPw: password, userSe: "USR" },
+    failOnStatusCode: false,
+  });
+  if (login.status() !== 200) throw new Error(`login failed account=${account} status=${login.status()}`);
+  const payload = await login.json();
+  if (payload?.status === "loginFailure") throw new Error(`login rejected account=${account}`);
+  return api;
+}
 
 try {
   for (const account of accounts) {
-    const api = await request.newContext({ baseURL: baseUrl, ignoreHTTPSErrors: true });
+    const api = await authenticatedApi(account);
     try {
-      const login = await api.post("/signin/actionLogin", {
-        data: { userId: account, userPw: password, userSe: "USR" },
-        failOnStatusCode: false,
-      });
-      if (login.status() !== 200) throw new Error(`login failed account=${account} status=${login.status()}`);
-      const loginPayload = await login.json();
-      if (loginPayload?.status === "loginFailure") throw new Error(`login rejected account=${account}`);
       const tasksResponse = await api.get("/home/api/emission-tasks", { failOnStatusCode: false });
       if (tasksResponse.status() !== 200) throw new Error(`task API failed account=${account} status=${tasksResponse.status()}`);
       const tasksPayload = await tasksResponse.json();
@@ -125,9 +131,117 @@ try {
   } finally {
     await anonymous.close();
   }
+
+  // Use a disposable project to prove that a visible UI action commits the
+  // task transition, rejects the wrong actor, and leaves no test data behind.
+  const ownerApi = await authenticatedApi("qaowner26");
+  let disposableProjectId = "";
+  try {
+    const optionsResponse = await ownerApi.get("/home/api/emission-projects/options", { failOnStatusCode: false });
+    if (optionsResponse.status() !== 200) throw new Error(`project options HTTP ${optionsResponse.status()}`);
+    const options = await optionsResponse.json();
+    if (!options?.readiness?.ready || !Array.isArray(options.sites) || !options.sites.length) {
+      throw new Error("disposable project readiness is incomplete");
+    }
+    const now = new Date();
+    const year = String(now.getUTCFullYear());
+    const marker = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const projectName = `브라우저 전환 검증 ${marker}`;
+    const createResponse = await ownerApi.post("/home/api/emission-projects", {
+      data: {
+        clientRequestId: `browser-transition-${marker}`,
+        name: projectName,
+        site: options.sites[0],
+        owner: "qaowner26",
+        dataOwner: "qadata26",
+        calculator: "qacalc26",
+        verifier: "qaverify26",
+        approver: "qaapprove26",
+        reportingYear: year,
+        periodStart: `${year}-01-01`,
+        periodEnd: `${year}-12-31`,
+        dueDate: `${year}-12-31`,
+        scopes: ["Scope 1", "Scope 2"],
+        organizationBoundary: "OPERATIONAL_CONTROL",
+        emissionStandard: "ISO_14064_1",
+        methodologyVersion: "2018",
+        verificationLevel: "LIMITED",
+        collectionCycle: "MONTHLY",
+        materialityThreshold: "5",
+      },
+      failOnStatusCode: false,
+    });
+    const created = await createResponse.json().catch(() => ({}));
+    if (createResponse.status() !== 200 || !created.id) {
+      throw new Error(`disposable project create failed HTTP ${createResponse.status()} ${created.message || ""}`);
+    }
+    disposableProjectId = String(created.id);
+
+    let actionable = null;
+    let actionAccount = "";
+    let actionApi = null;
+    for (const account of accounts) {
+      const api = account === "qaowner26" ? ownerApi : await authenticatedApi(account);
+      const payload = await (await api.get("/home/api/emission-tasks")).json();
+      const candidate = (payload.items || []).find((task) =>
+        String(task.projectId) === disposableProjectId && task.actionable === true && task.status === "READY");
+      if (candidate) {
+        actionable = candidate;
+        actionAccount = account;
+        actionApi = api;
+        break;
+      }
+      if (api !== ownerApi) await api.dispose();
+    }
+    if (!actionable || !actionApi) throw new Error("disposable project has no actionable READY task");
+
+    const context = await browser.newContext({ storageState: await actionApi.storageState(), ignoreHTTPSErrors: true });
+    try {
+      const page = await context.newPage();
+      await page.goto(`${baseUrl}/emission/my-tasks`, { waitUntil: "domcontentloaded", timeout: 15_000 });
+      await page.waitForFunction((name) => (document.body?.innerText || "").includes(String(name)), projectName, { timeout: 8_000 });
+      const projectLabel = page.getByText(projectName, { exact: false }).last();
+      const taskCard = projectLabel.locator("xpath=ancestor::article[1]");
+      const start = taskCard.getByRole("button", { name: "업무 시작", exact: true });
+      await start.waitFor({ state: "visible", timeout: 5_000 });
+      const [transitionResponse] = await Promise.all([
+        page.waitForResponse((response) => response.url().includes(`/home/api/emission-tasks/${actionable.id}/status`) && response.request().method() === "POST"),
+        start.click(),
+      ]);
+      if (transitionResponse.status() !== 200) throw new Error(`browser task transition HTTP ${transitionResponse.status()}`);
+    } finally {
+      await context.close();
+    }
+    const afterPayload = await (await actionApi.get("/home/api/emission-tasks")).json();
+    const after = (afterPayload.items || []).find((task) => Number(task.id) === Number(actionable.id));
+    if (after?.status !== "IN_PROGRESS") throw new Error(`browser transition not persisted status=${after?.status}`);
+
+    const wrongAccount = accounts.find((account) => account !== actionAccount) || "qacalc26";
+    const wrongApi = await authenticatedApi(wrongAccount);
+    try {
+      const denied = await wrongApi.post(`/home/api/emission-tasks/${actionable.id}/status`, {
+        data: { status: "IN_PROGRESS" }, failOnStatusCode: false,
+      });
+      if (denied.status() !== 403) throw new Error(`wrong actor transition expected 403 received ${denied.status()}`);
+    } finally {
+      await wrongApi.dispose();
+    }
+    if (actionApi !== ownerApi) await actionApi.dispose();
+    transitionVerified = true;
+  } finally {
+    if (disposableProjectId) {
+      const deleted = await ownerApi.delete(`/home/api/emission-projects/${encodeURIComponent(disposableProjectId)}`, { failOnStatusCode: false });
+      if (deleted.status() !== 200) throw new Error(`disposable project cleanup HTTP ${deleted.status()}`);
+      const remaining = await (await ownerApi.get("/home/api/emission-tasks")).json();
+      if ((remaining.items || []).some((task) => String(task.projectId) === disposableProjectId)) {
+        throw new Error("disposable project tasks remain after cleanup");
+      }
+    }
+    await ownerApi.dispose();
+  }
 } finally {
   await browser.close();
 }
 
 const uniqueRoutes = new Set(routeResults.map((result) => result.target));
-console.log(`[project-task-browser-e2e] PASS project=${projectId} accounts=${accounts.length} tasks=${taskCount} uniqueRoutes=${uniqueRoutes.size} anonymous=blocked durationMs=${Date.now() - startedAt}`);
+console.log(`[project-task-browser-e2e] PASS project=${projectId} accounts=${accounts.length} tasks=${taskCount} uniqueRoutes=${uniqueRoutes.size} anonymous=blocked transition=${transitionVerified ? "committed-and-rolled-back" : "missing"} durationMs=${Date.now() - startedAt}`);
