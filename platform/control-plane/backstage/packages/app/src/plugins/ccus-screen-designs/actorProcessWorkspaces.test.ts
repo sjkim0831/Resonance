@@ -23,13 +23,13 @@ describe('actorProcessWorkspaces', () => {
 
   it('tracks source parity without promoting partial UI restoration', () => {
     expect(ACTOR_PROCESS_SOURCE_TAB_COUNT).toBe(32);
-    expect(ACTOR_PROCESS_FULL_UI_COUNT).toBe(3);
-    expect(ACTOR_PROCESS_PARTIAL_UI_COUNT).toBe(21);
+    expect(ACTOR_PROCESS_FULL_UI_COUNT).toBe(4);
+    expect(ACTOR_PROCESS_PARTIAL_UI_COUNT).toBe(20);
     expect(
       ACTOR_PROCESS_WORKSPACES.flatMap(workspace => workspace.tabs)
         .filter(tab => tab.uiRestoration === 'FULL')
         .map(tab => tab.id),
-    ).toEqual(['work-dashboard', 'execution', 'assignments']);
+    ).toEqual(['work-dashboard', 'execution', 'assignments', 'completion']);
   });
 
   it('uses readable Korean labels instead of menu-code fallbacks', () => {

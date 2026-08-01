@@ -2771,6 +2771,542 @@ function ActorAssignmentWorkspace({
   );
 }
 
+function CompletionDevelopmentWorkspace({
+  dashboard,
+  projectId,
+  onRetry,
+  onOpenTab,
+}: {
+  dashboard: RuntimeDashboard;
+  projectId: string;
+  onRetry: (jobId: string) => Promise<Record<string, unknown>>;
+  onOpenTab: (tabId: string) => void;
+}) {
+  const progressRows = (dashboard.processDevelopmentProgress ??
+    []) as RuntimeRow[];
+  const jobs = (dashboard.developmentJobs ?? []) as RuntimeRow[];
+  const gates = (dashboard.qualityGateResults ?? []) as RuntimeRow[];
+  const gaps = (dashboard.customerJourneyGaps ?? []) as RuntimeRow[];
+  const artifacts = (dashboard.artifacts ?? []) as RuntimeRow[];
+  const runs = (dashboard.projectCompletionRuns ?? []) as RuntimeRow[];
+  const [selectedProcess, setSelectedProcess] = useState('');
+  const [statusFilter, setStatusFilter] = useState('ALL');
+  const [retryingJob, setRetryingJob] = useState('');
+  const [message, setMessage] = useState('');
+
+  const summaries = progressRows.map(row => {
+    const processCode = String(row.processCode ?? '');
+    const requiredJobs = Number(row.requiredJobs ?? 0);
+    const verifiedJobs = Number(row.verifiedJobs ?? 0);
+    const failedJobs = Number(row.failedJobs ?? 0);
+    const processGaps = gaps.filter(
+      gap => String(gap.objectCode ?? '') === processCode,
+    );
+    const blockers = processGaps.filter(
+      gap => gap.severity === 'BLOCKER',
+    ).length;
+    const processJobs = jobs.filter(
+      job => String(job.processCode ?? '') === processCode,
+    );
+    const requiredArtifacts = artifacts.filter(
+      artifact =>
+        String(artifact.processCode ?? '') === processCode &&
+        artifact.required !== false,
+    );
+    const verifiedArtifacts = requiredArtifacts.filter(artifact =>
+      ['VERIFIED', 'PROMOTED', 'COMPLETED'].includes(
+        String(artifact.deliveryStatus ?? artifact.status ?? ''),
+      ),
+    ).length;
+    const complete =
+      requiredJobs > 0 &&
+      verifiedJobs >= requiredJobs &&
+      failedJobs === 0 &&
+      blockers === 0 &&
+      verifiedArtifacts >= requiredArtifacts.length;
+    let status = 'PLANNED';
+    if (
+      verifiedJobs > 0 ||
+      processJobs.some(job => job.jobStatus === 'RUNNING')
+    )
+      status = 'RUNNING';
+    if (failedJobs > 0 || blockers > 0) status = 'BLOCKED';
+    if (complete) status = 'VERIFIED';
+    return {
+      ...row,
+      processCode,
+      requiredJobs,
+      verifiedJobs,
+      failedJobs,
+      blockers,
+      requiredArtifacts: requiredArtifacts.length,
+      verifiedArtifacts,
+      completionPercent: Number(row.completionPercent ?? 0),
+      status,
+      complete,
+      processJobs,
+      processGaps,
+    };
+  });
+  const visible = summaries.filter(
+    row => statusFilter === 'ALL' || row.status === statusFilter,
+  );
+  const selected =
+    summaries.find(row => row.processCode === selectedProcess) ?? visible[0];
+  const selectedJobs = selected?.processJobs ?? [];
+  const latestRun = runs[0];
+  const totalRequired = summaries.reduce(
+    (total, row) => total + row.requiredJobs,
+    0,
+  );
+  const totalVerified = summaries.reduce(
+    (total, row) => total + row.verifiedJobs,
+    0,
+  );
+  const totalFailed = summaries.reduce(
+    (total, row) => total + row.failedJobs,
+    0,
+  );
+  const totalBlockers = summaries.reduce(
+    (total, row) => total + row.blockers,
+    0,
+  );
+  const completionPercent =
+    totalRequired === 0 ? 0 : Math.round((totalVerified / totalRequired) * 100);
+  let completionMessage = '필수 개발 게이트를 통과했습니다.';
+  if (totalVerified < totalRequired) {
+    completionMessage = '검증되지 않은 필수 작업이 남아 있습니다.';
+  }
+  if (totalFailed > 0 || totalBlockers > 0) {
+    completionMessage = '실패 작업과 차단 이슈를 먼저 해결해야 합니다.';
+  }
+  if (totalRequired === 0) {
+    completionMessage = '필수 개발 작업이 생성되지 않아 완료할 수 없습니다.';
+  }
+
+  const retry = async (jobId: string) => {
+    setRetryingJob(jobId);
+    setMessage('');
+    try {
+      await onRetry(jobId);
+      setMessage(`개발 작업 ${jobId}을 안전 재시도 큐에 등록했습니다.`);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : String(error));
+    } finally {
+      setRetryingJob('');
+    }
+  };
+
+  const statusColor = (status: string): 'primary' | 'secondary' | 'default' => {
+    if (status === 'VERIFIED') return 'primary';
+    if (status === 'BLOCKED') return 'secondary';
+    return 'default';
+  };
+
+  return (
+    <Box mt={3}>
+      <Box
+        p={2}
+        style={{
+          border: '1px solid #bfdbfe',
+          borderRadius: 10,
+          background: '#f8fbff',
+        }}
+      >
+        <Box
+          display="flex"
+          justifyContent="space-between"
+          alignItems="center"
+          flexWrap="wrap"
+          gridGap={12}
+        >
+          <Box>
+            <Typography variant="overline">
+              PROJECT COMPLETION CONTROL
+            </Typography>
+            <Typography variant="h6">{projectId} 완료·개발 게이트</Typography>
+            <Typography variant="body2" color="textSecondary">
+              필수 작업·품질·증적·차단 조건이 모두 충족될 때만 완료로
+              판정합니다.
+            </Typography>
+          </Box>
+          <Box minWidth={220}>
+            <Typography variant="caption">
+              전체 개발 완성도 {completionPercent}%
+            </Typography>
+            <LinearProgress
+              variant="determinate"
+              value={Math.min(completionPercent, 100)}
+              style={{ height: 9, borderRadius: 8, marginTop: 6 }}
+            />
+          </Box>
+        </Box>
+      </Box>
+
+      <Grid container spacing={2} style={{ marginTop: 4 }}>
+        {[
+          [
+            '검증 프로세스',
+            summaries.filter(row => row.complete).length,
+            `${summaries.length}개 중`,
+          ],
+          ['필수 작업', `${totalVerified}/${totalRequired}`, '검증 완료'],
+          ['실패 작업', totalFailed, '재시도 필요'],
+          ['차단 이슈', totalBlockers, '해결 전 완료 불가'],
+        ].map(([label, value, note]) => (
+          <Grid item xs={6} md={3} key={String(label)}>
+            <Paper variant="outlined" style={{ padding: 16, height: '100%' }}>
+              <Typography variant="caption" color="textSecondary">
+                {label}
+              </Typography>
+              <Typography variant="h5">{value}</Typography>
+              <Typography variant="caption" color="textSecondary">
+                {note}
+              </Typography>
+            </Paper>
+          </Grid>
+        ))}
+      </Grid>
+
+      <Grid container spacing={2} style={{ marginTop: 4 }}>
+        <Grid item xs={12} md={7}>
+          <Paper variant="outlined" style={{ padding: 18, height: '100%' }}>
+            <Box
+              display="flex"
+              justifyContent="space-between"
+              alignItems="center"
+              flexWrap="wrap"
+              gridGap={8}
+            >
+              <Box>
+                <Typography variant="h6">프로세스별 완료 판정</Typography>
+                <Typography variant="body2" color="textSecondary">
+                  행을 선택하면 작업·게이트·증적과 실패 원인을 확인합니다.
+                </Typography>
+              </Box>
+              <FormControl
+                size="small"
+                variant="outlined"
+                style={{ minWidth: 150 }}
+              >
+                <InputLabel>상태</InputLabel>
+                <Select
+                  label="상태"
+                  value={statusFilter}
+                  onChange={event =>
+                    setStatusFilter(String(event.target.value))
+                  }
+                >
+                  {['ALL', 'PLANNED', 'RUNNING', 'BLOCKED', 'VERIFIED'].map(
+                    status => (
+                      <MenuItem key={status} value={status}>
+                        {status}
+                      </MenuItem>
+                    ),
+                  )}
+                </Select>
+              </FormControl>
+            </Box>
+            <Box mt={2} style={{ overflowX: 'auto' }}>
+              <table
+                style={{
+                  width: '100%',
+                  minWidth: 650,
+                  borderCollapse: 'collapse',
+                  fontSize: 13,
+                }}
+              >
+                <thead style={{ background: '#f1f5f9' }}>
+                  <tr>
+                    {[
+                      '프로세스',
+                      '필수 작업',
+                      '증적',
+                      '차단',
+                      '완성도',
+                      '판정',
+                    ].map(label => (
+                      <th
+                        key={label}
+                        style={{ padding: 10, textAlign: 'left' }}
+                      >
+                        {label}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {visible.map(row => (
+                    <tr
+                      key={row.processCode}
+                      onClick={() => setSelectedProcess(row.processCode)}
+                      style={{
+                        cursor: 'pointer',
+                        background:
+                          selected?.processCode === row.processCode
+                            ? '#e8f2ff'
+                            : undefined,
+                      }}
+                    >
+                      <td
+                        style={{
+                          padding: 10,
+                          borderTop: '1px solid #e2e8f0',
+                          fontWeight: 600,
+                        }}
+                      >
+                        {row.processCode}
+                      </td>
+                      <td
+                        style={{ padding: 10, borderTop: '1px solid #e2e8f0' }}
+                      >
+                        {row.verifiedJobs}/{row.requiredJobs}
+                      </td>
+                      <td
+                        style={{ padding: 10, borderTop: '1px solid #e2e8f0' }}
+                      >
+                        {row.verifiedArtifacts}/{row.requiredArtifacts}
+                      </td>
+                      <td
+                        style={{ padding: 10, borderTop: '1px solid #e2e8f0' }}
+                      >
+                        {row.blockers + row.failedJobs}
+                      </td>
+                      <td
+                        style={{ padding: 10, borderTop: '1px solid #e2e8f0' }}
+                      >
+                        {displayValue(row.completionPercent)}%
+                      </td>
+                      <td
+                        style={{ padding: 10, borderTop: '1px solid #e2e8f0' }}
+                      >
+                        <Chip
+                          size="small"
+                          color={statusColor(row.status)}
+                          label={row.status}
+                        />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {visible.length === 0 && (
+                <Box p={3}>
+                  <Typography color="textSecondary">
+                    조건에 맞는 프로세스가 없습니다.
+                  </Typography>
+                </Box>
+              )}
+            </Box>
+          </Paper>
+        </Grid>
+
+        <Grid item xs={12} md={5}>
+          <Paper variant="outlined" style={{ padding: 18, height: '100%' }}>
+            <Typography variant="h6">최근 자동 완료 실행</Typography>
+            {latestRun ? (
+              <Box mt={1} display="grid" gridGap={8}>
+                <Box display="flex" justifyContent="space-between">
+                  <Typography variant="body2">실행 상태</Typography>
+                  <Chip
+                    size="small"
+                    label={displayValue(latestRun.runStatus)}
+                  />
+                </Box>
+                <Box display="flex" justifyContent="space-between">
+                  <Typography variant="body2">선택 프로세스</Typography>
+                  <Typography variant="body2">
+                    {displayValue(latestRun.selectedProcessCount)}
+                  </Typography>
+                </Box>
+                <Box display="flex" justifyContent="space-between">
+                  <Typography variant="body2">완료/차단</Typography>
+                  <Typography variant="body2">
+                    {displayValue(latestRun.completedProcessCount)} /{' '}
+                    {displayValue(latestRun.blockedProcessCount)}
+                  </Typography>
+                </Box>
+                <Box display="flex" justifyContent="space-between">
+                  <Typography variant="body2">재시도 작업</Typography>
+                  <Typography variant="body2">
+                    {displayValue(latestRun.retriedJobCount)}
+                  </Typography>
+                </Box>
+                <Typography variant="caption" color="textSecondary">
+                  {displayValue(latestRun.startedAt)} →{' '}
+                  {displayValue(latestRun.completedAt)}
+                </Typography>
+              </Box>
+            ) : (
+              <Typography
+                variant="body2"
+                color="textSecondary"
+                style={{ marginTop: 12 }}
+              >
+                자동 완료 실행 이력이 없습니다.
+              </Typography>
+            )}
+            <Box
+              mt={2}
+              p={1.5}
+              style={{
+                background:
+                  totalRequired > 0 && totalFailed === 0 && totalBlockers === 0
+                    ? '#ecfdf5'
+                    : '#fff7ed',
+              }}
+            >
+              <Typography variant="body2">{completionMessage}</Typography>
+            </Box>
+          </Paper>
+        </Grid>
+      </Grid>
+
+      {selected && (
+        <Paper variant="outlined" style={{ padding: 18, marginTop: 16 }}>
+          <Box
+            display="flex"
+            justifyContent="space-between"
+            alignItems="center"
+            flexWrap="wrap"
+            gridGap={8}
+          >
+            <Box>
+              <Typography variant="overline">선택 프로세스</Typography>
+              <Typography variant="h6">{selected.processCode}</Typography>
+            </Box>
+            <Box display="flex" gridGap={8} flexWrap="wrap">
+              <Button
+                size="small"
+                variant="outlined"
+                onClick={() => onOpenTab('generation-queue')}
+              >
+                작업 큐
+              </Button>
+              <Button
+                size="small"
+                variant="outlined"
+                onClick={() => onOpenTab('automated-tests')}
+              >
+                품질 게이트
+              </Button>
+              <Button
+                size="small"
+                variant="outlined"
+                onClick={() => onOpenTab('incidents')}
+              >
+                차단 이슈
+              </Button>
+            </Box>
+          </Box>
+          <Grid container spacing={2} style={{ marginTop: 2 }}>
+            <Grid item xs={12} md={8}>
+              <Typography variant="subtitle2">개발 작업</Typography>
+              <Box mt={1} display="grid" gridGap={8}>
+                {selectedJobs.slice(0, 20).map(job => {
+                  const jobId = String(job.jobId ?? '');
+                  const failed = ['FAILED', 'RETRY'].includes(
+                    String(job.jobStatus ?? ''),
+                  );
+                  const latestGate = gates.find(
+                    gate => String(gate.jobId ?? '') === jobId,
+                  );
+                  return (
+                    <Box
+                      key={jobId}
+                      p={1.5}
+                      style={{ border: '1px solid #e2e8f0', borderRadius: 8 }}
+                    >
+                      <Box
+                        display="flex"
+                        justifyContent="space-between"
+                        alignItems="center"
+                        gridGap={8}
+                      >
+                        <Box>
+                          <Typography
+                            variant="body2"
+                            style={{ fontWeight: 600 }}
+                          >
+                            {displayValue(job.jobName)}
+                          </Typography>
+                          <Typography variant="caption" color="textSecondary">
+                            {displayValue(job.jobType)} ·{' '}
+                            {displayValue(job.targetPath)}
+                          </Typography>
+                        </Box>
+                        <Box display="flex" alignItems="center" gridGap={6}>
+                          <Chip
+                            size="small"
+                            label={displayValue(job.jobStatus)}
+                          />
+                          {failed && (
+                            <Button
+                              size="small"
+                              color="secondary"
+                              disabled={retryingJob === jobId}
+                              onClick={() => void retry(jobId)}
+                            >
+                              재시도
+                            </Button>
+                          )}
+                        </Box>
+                      </Box>
+                      <Typography variant="caption" color="textSecondary">
+                        게이트: {displayValue(latestGate?.result)} · 증적:{' '}
+                        {displayValue(job.evidenceRef)} · 오류:{' '}
+                        {displayValue(job.lastError)}
+                      </Typography>
+                    </Box>
+                  );
+                })}
+                {selectedJobs.length === 0 && (
+                  <Typography variant="body2" color="textSecondary">
+                    필수 개발 작업이 아직 생성되지 않았습니다.
+                  </Typography>
+                )}
+              </Box>
+            </Grid>
+            <Grid item xs={12} md={4}>
+              <Typography variant="subtitle2">차단·보완 사항</Typography>
+              <Box mt={1} display="grid" gridGap={8}>
+                {selected.processGaps.map((gap, index) => (
+                  <Box
+                    key={`${gap.objectCode}-${index}`}
+                    p={1.5}
+                    style={{
+                      background:
+                        gap.severity === 'BLOCKER' ? '#fff1f2' : '#fffbeb',
+                      borderRadius: 8,
+                    }}
+                  >
+                    <Typography variant="body2" style={{ fontWeight: 600 }}>
+                      {displayValue(gap.reason)}
+                    </Typography>
+                    <Typography variant="caption">
+                      {displayValue(gap.remediation)}
+                    </Typography>
+                  </Box>
+                ))}
+                {selected.processGaps.length === 0 && (
+                  <Typography variant="body2" color="textSecondary">
+                    등록된 차단 이슈가 없습니다.
+                  </Typography>
+                )}
+              </Box>
+            </Grid>
+          </Grid>
+          {message && (
+            <Box mt={2} p={1.5} style={{ background: '#eef5fa' }}>
+              <Typography variant="body2">{message}</Typography>
+            </Box>
+          )}
+        </Paper>
+      )}
+    </Box>
+  );
+}
+
 const useStyles = makeStyles(theme => ({
   context: {
     padding: theme.spacing(2.5),
@@ -3218,6 +3754,25 @@ export function ActorProcessControlPage(props: {
   }, [selectedTab.id]);
 
   useEffect(() => {
+    if (selectedTab.id !== 'completion') return;
+    [
+      'processDevelopmentProgress',
+      'developmentJobs',
+      'qualityGateResults',
+      'customerJourneyGaps',
+      'artifacts',
+    ]
+      .filter(key => runtimeDashboard[key] === undefined)
+      .forEach(key => {
+        void loadRuntimeDataset(key).catch(() => {
+          setMessage(`완료·개발 현황 데이터(${key})를 불러오지 못했습니다.`);
+        });
+      });
+    // 완료 판정은 작업·품질·증적·차단 데이터 계약을 함께 검증합니다.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedTab.id]);
+
+  useEffect(() => {
     setSelectedRow(null);
     setCommandResult('');
   }, [selectedTab.id]);
@@ -3622,9 +4177,20 @@ export function ActorProcessControlPage(props: {
                 onCommand={executeAssignmentCommand}
               />
             )}
-            {!['work-dashboard', 'execution', 'assignments'].includes(
-              selectedTab.id,
-            ) && (
+            {selectedTab.id === 'completion' && (
+              <CompletionDevelopmentWorkspace
+                dashboard={runtimeDashboard}
+                projectId={projectId}
+                onRetry={retryDevelopmentJob}
+                onOpenTab={openControlTab}
+              />
+            )}
+            {![
+              'work-dashboard',
+              'execution',
+              'assignments',
+              'completion',
+            ].includes(selectedTab.id) && (
               <Grid container spacing={2} style={{ marginTop: 8 }}>
                 <Grid item xs={12} sm={6} md={3}>
                   <Box className={classes.metric}>
@@ -3660,91 +4226,94 @@ export function ActorProcessControlPage(props: {
                 </Grid>
               </Grid>
             )}
-            {activeCommand && selectedTab.id !== 'assignments' && (
-              <Box
-                mt={3}
-                p={2}
-                style={{
-                  border: '1px solid #bfdbfe',
-                  borderRadius: 10,
-                  background: '#f8fbff',
-                }}
-              >
-                <Typography variant="h6">{activeCommand.label}</Typography>
-                <Typography variant="body2" color="textSecondary">
-                  {activeCommand.description}
-                </Typography>
-                <form
-                  key={`${selectedTab.id}-${String(
-                    selectedRow?.actorCode ??
-                      selectedRow?.processCode ??
-                      selectedRow?.stepCode ??
-                      'new',
-                  )}`}
-                  onSubmit={executeTabCommand}
+            {activeCommand &&
+              !['assignments', 'completion'].includes(selectedTab.id) && (
+                <Box
+                  mt={3}
+                  p={2}
+                  style={{
+                    border: '1px solid #bfdbfe',
+                    borderRadius: 10,
+                    background: '#f8fbff',
+                  }}
                 >
-                  <Grid container spacing={2} style={{ marginTop: 4 }}>
-                    {activeCommand.fields.map(field => (
-                      <Grid
-                        item
-                        xs={12}
-                        md={field.type === 'textarea' ? 12 : 6}
-                        key={field.name}
-                      >
-                        <TextField
-                          fullWidth
-                          size="small"
-                          variant="outlined"
-                          name={field.name}
-                          label={field.label}
-                          required={field.required}
-                          type={field.type === 'number' ? 'number' : 'text'}
-                          multiline={field.type === 'textarea'}
-                          rows={field.type === 'textarea' ? 3 : undefined}
-                          defaultValue={
-                            selectedRow?.[field.name] ??
-                            (field.name === 'projectId'
-                              ? projectId
-                              : field.defaultValue ?? '')
-                          }
-                        />
-                      </Grid>
-                    ))}
-                  </Grid>
-                  <Box mt={2} display="flex" alignItems="center" gridGap={12}>
-                    <Button
-                      type="submit"
-                      variant="contained"
-                      color="primary"
-                      disabled={commandPending}
-                    >
-                      {commandPending ? '처리 중…' : activeCommand.label}
-                    </Button>
-                    <Typography variant="caption" color="textSecondary">
-                      표의 행을 선택하면 등록값을 불러와 수정할 수 있습니다.
-                    </Typography>
-                  </Box>
-                </form>
-                {commandResult && (
-                  <Box
-                    component="pre"
-                    mt={2}
-                    p={2}
-                    style={{
-                      marginBottom: 0,
-                      whiteSpace: 'pre-wrap',
-                      overflowWrap: 'anywhere',
-                      borderRadius: 6,
-                      background: '#eaf2f8',
-                      fontSize: 12,
-                    }}
+                  <Typography variant="h6">{activeCommand.label}</Typography>
+                  <Typography variant="body2" color="textSecondary">
+                    {activeCommand.description}
+                  </Typography>
+                  <form
+                    key={`${selectedTab.id}-${String(
+                      selectedRow?.actorCode ??
+                        selectedRow?.processCode ??
+                        selectedRow?.stepCode ??
+                        'new',
+                    )}`}
+                    onSubmit={executeTabCommand}
                   >
-                    {commandResult}
-                  </Box>
-                )}
-              </Box>
-            )}
-            {!['work-dashboard', 'assignments'].includes(selectedTab.id) && (
+                    <Grid container spacing={2} style={{ marginTop: 4 }}>
+                      {activeCommand.fields.map(field => (
+                        <Grid
+                          item
+                          xs={12}
+                          md={field.type === 'textarea' ? 12 : 6}
+                          key={field.name}
+                        >
+                          <TextField
+                            fullWidth
+                            size="small"
+                            variant="outlined"
+                            name={field.name}
+                            label={field.label}
+                            required={field.required}
+                            type={field.type === 'number' ? 'number' : 'text'}
+                            multiline={field.type === 'textarea'}
+                            rows={field.type === 'textarea' ? 3 : undefined}
+                            defaultValue={
+                              selectedRow?.[field.name] ??
+                              (field.name === 'projectId'
+                                ? projectId
+                                : field.defaultValue ?? '')
+                            }
+                          />
+                        </Grid>
+                      ))}
+                    </Grid>
+                    <Box mt={2} display="flex" alignItems="center" gridGap={12}>
+                      <Button
+                        type="submit"
+                        variant="contained"
+                        color="primary"
+                        disabled={commandPending}
+                      >
+                        {commandPending ? '처리 중…' : activeCommand.label}
+                      </Button>
+                      <Typography variant="caption" color="textSecondary">
+                        표의 행을 선택하면 등록값을 불러와 수정할 수 있습니다.
+                      </Typography>
+                    </Box>
+                  </form>
+                  {commandResult && (
+                    <Box
+                      component="pre"
+                      mt={2}
+                      p={2}
+                      style={{
+                        marginBottom: 0,
+                        whiteSpace: 'pre-wrap',
+                        overflowWrap: 'anywhere',
+                        borderRadius: 6,
+                        background: '#eaf2f8',
+                        fontSize: 12,
+                      }}
+                    >
+                      {commandResult}
+                    </Box>
+                  )}
+                </Box>
+              )}
+            {!['work-dashboard', 'assignments', 'completion'].includes(
+              selectedTab.id,
+            ) && (
               <>
                 <Box
                   mt={3}

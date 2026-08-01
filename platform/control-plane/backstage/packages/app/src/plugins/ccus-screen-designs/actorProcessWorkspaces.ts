@@ -331,7 +331,12 @@ const tab = (
   label,
   description,
   capability,
-  uiRestoration: ['work-dashboard', 'execution', 'assignments'].includes(id)
+  uiRestoration: [
+    'work-dashboard',
+    'execution',
+    'assignments',
+    'completion',
+  ].includes(id)
     ? ('FULL' as const)
     : ('PARTIAL' as const),
 });
