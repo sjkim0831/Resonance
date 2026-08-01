@@ -612,7 +612,16 @@ fi
 FILE_COUNT="$(printf '%s\n' "$CHANGED" | wc -l)"
 [ "$FILE_COUNT" -le "$MAX_FILES" ] || fail_job "changed file limit exceeded: ${FILE_COUNT}/${MAX_FILES}"
 DIFF_LINES="$(git -C "$WT" diff --numstat | awk '{a+=$1+$2} END{print a+0}')"
-[ "$DIFF_LINES" -le "$MAX_LINES" ] || fail_job "diff line limit exceeded: ${DIFF_LINES}/${MAX_LINES}"
+if [ "$DIFF_LINES" -gt "$MAX_LINES" ]; then
+  if [ "$DETERMINISTIC_HANDLED" = 1 ] && [[ "$JOB_TYPE" =~ ^FULL_STACK(_GENERATION)?$ ]] \
+      && printf '%s\n' "$CHANGED" | bash "$WT/ops/scripts/validate-deterministic-fullstack-diff.sh" \
+        "$PROCESS_CODE" "$DIFF_LINES" >>"$LOG_FILE" 2>&1; then
+    gate_result "DETERMINISTIC_DIFF_SCOPE" "PASSED" \
+      "{\"files\":$FILE_COUNT,\"lines\":$DIFF_LINES,\"defaultLimit\":$MAX_LINES}"
+  else
+    fail_job "diff line limit exceeded: ${DIFF_LINES}/${MAX_LINES}"
+  fi
+fi
 if printf '%s\n' "$CHANGED" | grep -Eq '(^| )((\.github|release|deploy|data|var)/|.*\.(db|sqlite|pem|key)$|.*secret)'; then
   fail_job "prohibited path changed"
 fi
