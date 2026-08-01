@@ -216,15 +216,13 @@ async function verifyRoute(
     await expect(page.getByText('액터 사전', { exact: true })).toBeVisible();
     await expect(page.getByText('액터 책임·권한 설계')).toBeVisible();
     await expect(
-      page.getByText('액터 코드', { exact: true }).first(),
+      page.getByRole('heading', { name: '액터 사전' }),
     ).toBeVisible();
     await expect(
-      page.getByText('수행 책임(Responsibility)', { exact: true }).first(),
+      page.getByRole('heading', { name: '액터 책임·권한 설계' }),
     ).toBeVisible();
-    await expect(
-      page.getByText('최종 책무(Accountability)', { exact: true }).first(),
-    ).toBeVisible();
-    await expect(page.locator('input').first()).toBeVisible();
+    await expect(page.getByRole('textbox').first()).toBeVisible();
+    await expect(page.getByRole('textbox').nth(11)).toBeVisible();
   }
 
   if (evidenceDir) {
