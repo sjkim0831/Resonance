@@ -70,4 +70,19 @@ describe('migrationCutoverRegistry', () => {
       ),
     ).toBe(true);
   });
+
+  it('does not mark partially restored actor-process tabs as native', () => {
+    const actorTabs = MIGRATION_CUTOVER_LEDGER.filter(
+      entry => entry.category === 'ACTOR_PROCESS_TAB',
+    );
+    const native = actorTabs.filter(entry => entry.implementation === 'NATIVE');
+    const partial = actorTabs.filter(entry => entry.implementation === 'PARTIAL');
+
+    expect(native).toHaveLength(1);
+    expect(native[0].assetId).toBe('actor-process:operate:work-dashboard');
+    expect(partial).toHaveLength(23);
+    expect(partial.every(entry => entry.migrationStatus === 'CLASSIFIED')).toBe(
+      true,
+    );
+  });
 });

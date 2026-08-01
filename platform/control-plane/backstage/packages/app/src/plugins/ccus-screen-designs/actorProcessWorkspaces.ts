@@ -9,6 +9,7 @@ export type ActorProcessTab = {
   label: string;
   description: string;
   capability: string;
+  uiRestoration: 'FULL' | 'PARTIAL';
 };
 
 export type ActorProcessWorkspace = {
@@ -327,7 +328,13 @@ const tab = (
   label: string,
   description: string,
   capability: string,
-) => ({ id, label, description, capability });
+) => ({
+  id,
+  label,
+  description,
+  capability,
+  uiRestoration: id === 'work-dashboard' ? ('FULL' as const) : ('PARTIAL' as const),
+});
 
 export const ACTOR_PROCESS_WORKSPACES: ActorProcessWorkspace[] = [
   {
@@ -512,3 +519,13 @@ export const ACTOR_PROCESS_TAB_COUNT = ACTOR_PROCESS_WORKSPACES.reduce(
   (count, workspace) => count + workspace.tabs.length,
   0,
 );
+
+// Resonance 원본의 4개 작업공간, 32개 기능 탭을 이관 기준선으로 유지한다.
+// Backstage는 일부 기능을 24개 탭으로 통합하므로 탭 수와 UI 복원 수준을
+// 별도로 추적해야 미완성 화면을 네이티브 완료로 오인하지 않는다.
+export const ACTOR_PROCESS_SOURCE_TAB_COUNT = 32;
+export const ACTOR_PROCESS_FULL_UI_COUNT = ACTOR_PROCESS_WORKSPACES.flatMap(
+  workspace => workspace.tabs,
+).filter(item => item.uiRestoration === 'FULL').length;
+export const ACTOR_PROCESS_PARTIAL_UI_COUNT =
+  ACTOR_PROCESS_TAB_COUNT - ACTOR_PROCESS_FULL_UI_COUNT;

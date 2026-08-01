@@ -25,6 +25,9 @@ import SaveIcon from '@material-ui/icons/Save';
 import PublishIcon from '@material-ui/icons/Publish';
 import {
   ACTOR_PROCESS_TAB_COUNT,
+  ACTOR_PROCESS_FULL_UI_COUNT,
+  ACTOR_PROCESS_PARTIAL_UI_COUNT,
+  ACTOR_PROCESS_SOURCE_TAB_COUNT,
   ACTOR_PROCESS_DATASET_BY_TAB,
   ACTOR_PROCESS_WORKSPACES,
   ActorProcessTab,
@@ -3067,8 +3070,20 @@ export function ActorProcessControlPage(props: {
         <Box className={classes.layout} mt={2}>
           <Paper className={classes.detail} elevation={0}>
             <Typography variant="overline">
-              전체 {ACTOR_PROCESS_TAB_COUNT}개 제어 기능
+              원본 {ACTOR_PROCESS_SOURCE_TAB_COUNT}개 · 이관 {ACTOR_PROCESS_TAB_COUNT}개
             </Typography>
+            <Box display="flex" gridGap={8} mt={1} mb={1} flexWrap="wrap">
+              <Chip
+                size="small"
+                color="primary"
+                label={`UI 완전 복원 ${ACTOR_PROCESS_FULL_UI_COUNT}개`}
+              />
+              <Chip
+                size="small"
+                variant="outlined"
+                label={`UI 부분 복원 ${ACTOR_PROCESS_PARTIAL_UI_COUNT}개`}
+              />
+            </Box>
             <Typography variant="h6">{workspace.label}</Typography>
             <Box mt={2}>
               {workspace.tabs.map(item => (
@@ -3094,7 +3109,9 @@ export function ActorProcessControlPage(props: {
                   }}
                 >
                   <Typography variant="subtitle2">{item.label}</Typography>
-                  <Typography variant="caption">{item.capability}</Typography>
+                  <Typography variant="caption">
+                    {item.capability} · {item.uiRestoration === 'FULL' ? 'UI 완전 복원' : 'UI 복원 필요'}
+                  </Typography>
                 </Box>
               ))}
             </Box>

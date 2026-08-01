@@ -49,8 +49,14 @@ const actorProcessEntries: CutoverLedgerEntry[] =
       sourceName: `${workspace.label} / ${tab.label}`,
       targetRoute: `/actor-process-${workspace.id}?tab=${tab.id}`,
       targetPlugin: `ccus-screen-designs/actor-process-${workspace.id}`,
-      migrationStatus: 'NATIVE_READY' as const,
-      implementation: 'NATIVE' as const,
+      migrationStatus:
+        tab.uiRestoration === 'FULL'
+          ? ('NATIVE_READY' as const)
+          : ('CLASSIFIED' as const),
+      implementation:
+        tab.uiRestoration === 'FULL'
+          ? ('NATIVE' as const)
+          : ('PARTIAL' as const),
       capabilities: [
         workspace.id === 'design'
           ? 'DESIGN'
@@ -67,7 +73,10 @@ const actorProcessEntries: CutoverLedgerEntry[] =
       databaseContracts: ['framework_actor_process_design_release'],
       permissionContracts: ['BACKSTAGE_ACTOR_PROCESS_OPERATOR'],
       testEvidence: ['actor-process-workspace-contract'],
-      cutoverBlockedBy: ['인증 사용자 E2E 검증 필요'],
+      cutoverBlockedBy:
+        tab.uiRestoration === 'FULL'
+          ? ['인증 사용자 E2E 검증 필요']
+          : ['Resonance 원본 전용 UI 복원 필요', '인증 사용자 E2E 검증 필요'],
     })),
   );
 

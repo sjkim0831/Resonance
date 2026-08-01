@@ -1,6 +1,9 @@
 import {
   ACTOR_PROCESS_DATASET_BY_TAB,
   ACTOR_PROCESS_TAB_COUNT,
+  ACTOR_PROCESS_FULL_UI_COUNT,
+  ACTOR_PROCESS_PARTIAL_UI_COUNT,
+  ACTOR_PROCESS_SOURCE_TAB_COUNT,
   ACTOR_PROCESS_WORKSPACES,
   buildCustomerJourneySimulation,
   buildProcessGraph,
@@ -16,6 +19,17 @@ describe('actorProcessWorkspaces', () => {
     expect(
       tabs.every(tab => Boolean(ACTOR_PROCESS_DATASET_BY_TAB[tab.id])),
     ).toBe(true);
+  });
+
+  it('tracks source parity without promoting partial UI restoration', () => {
+    expect(ACTOR_PROCESS_SOURCE_TAB_COUNT).toBe(32);
+    expect(ACTOR_PROCESS_FULL_UI_COUNT).toBe(1);
+    expect(ACTOR_PROCESS_PARTIAL_UI_COUNT).toBe(23);
+    expect(
+      ACTOR_PROCESS_WORKSPACES.flatMap(workspace => workspace.tabs).filter(
+        tab => tab.uiRestoration === 'FULL',
+      ).map(tab => tab.id),
+    ).toEqual(['work-dashboard']);
   });
 
   it('uses readable Korean labels instead of menu-code fallbacks', () => {
