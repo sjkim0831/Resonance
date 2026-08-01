@@ -688,7 +688,7 @@ public class ActorProcessControlPlaneBridgeController {
         jdbc.update("update framework_business_work_type set use_at='N',updated_at=current_timestamp where work_type_code='REQUIREMENT_AUTOMATION'");
         List<String> requirementProcesses = jdbc.queryForList("""
                 select process_code from framework_process_definition
-                 where process_code like 'REQ\_%' escape '\'
+                 where left(process_code,4)='REQ_'
                  order by process_code
                 """, String.class);
         for (String processCode : requirementProcesses) {
