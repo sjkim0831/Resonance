@@ -9,7 +9,7 @@ WorkingDirectory=/opt/Resonance
 EnvironmentFile=/etc/resonance/process-development-worker.env
 Environment=HOME=/home/sjkim
 Environment=PATH=/home/sjkim/.local/bin:/usr/local/bin:/usr/bin:/bin
-ExecStart=/usr/bin/bash /opt/Resonance/ops/scripts/run-project-auto-completion-orchestrator.sh
+ExecStart=/usr/bin/bash /opt/resonance-data/control-plane/bin/run-project-auto-completion-orchestrator.sh
 Nice=15
 CPUQuota=250%
 MemoryMax=10G

@@ -5,6 +5,8 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 WORKER="$ROOT_DIR/ops/scripts/run-process-development-worker.sh"
 AUTO_DEPLOY="$ROOT_DIR/ops/scripts/auto-deploy-main.sh"
 UNIT="$ROOT_DIR/ops/systemd/resonance-process-development-worker.service"
+ORCHESTRATOR="$ROOT_DIR/ops/scripts/run-project-auto-completion-orchestrator.sh"
+ORCHESTRATOR_UNIT="$ROOT_DIR/ops/systemd/resonance-project-auto-completion.service"
 
 fail() {
   echo "[process-worker-deploy-marker-test] FAIL: $*" >&2
@@ -28,5 +30,11 @@ grep -Fq 'sync_process_development_worker_if_required()' "$AUTO_DEPLOY" \
   || fail "auto-deploy does not synchronize the worker control plane"
 grep -Fq '/opt/resonance-data/control-plane/bin/run-process-development-worker.sh' "$AUTO_DEPLOY" \
   || fail "auto-deploy does not install the worker script"
+grep -Fq 'bash "$PROCESS_DEVELOPMENT_DISPATCHER"' "$ORCHESTRATOR" \
+  || fail "orchestrator does not use the colocated control-plane dispatcher"
+grep -Fq 'ExecStart=/usr/bin/bash /opt/resonance-data/control-plane/bin/run-project-auto-completion-orchestrator.sh' "$ORCHESTRATOR_UNIT" \
+  || fail "systemd orchestrator does not use the persistent control-plane copy"
+grep -Fq '/opt/resonance-data/control-plane/bin/run-project-auto-completion-orchestrator.sh' "$AUTO_DEPLOY" \
+  || fail "auto-deploy does not install the orchestrator script"
 
 echo "[process-worker-deploy-marker-test] PASS"

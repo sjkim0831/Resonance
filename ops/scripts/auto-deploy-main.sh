@@ -947,8 +947,11 @@ sync_process_development_worker_if_required() {
       ops/scripts/run-process-development-dispatcher.sh \
       ops/scripts/run-process-development-worker.sh \
       ops/scripts/test-process-worker-deploy-marker.sh \
+      ops/scripts/run-project-auto-completion-orchestrator.sh \
       ops/systemd/resonance-process-development-worker.service \
-      ops/systemd/resonance-process-development-worker.timer | \
+      ops/systemd/resonance-process-development-worker.timer \
+      ops/systemd/resonance-project-auto-completion.service \
+      ops/systemd/resonance-project-auto-completion.timer | \
       grep -q . || \
     ! systemctl cat resonance-process-development-worker.service 2>/dev/null | \
       grep -Fq '/opt/resonance-data/control-plane/bin/run-process-development-dispatcher.sh'; then
@@ -961,14 +964,25 @@ sync_process_development_worker_if_required() {
     sudo -n install -m 0750 -o sjkim -g sjkim \
       ops/scripts/run-process-development-worker.sh \
       /opt/resonance-data/control-plane/bin/run-process-development-worker.sh
+    sudo -n install -m 0750 -o sjkim -g sjkim \
+      ops/scripts/run-project-auto-completion-orchestrator.sh \
+      /opt/resonance-data/control-plane/bin/run-project-auto-completion-orchestrator.sh
     sudo -n install -m 0644 \
       ops/systemd/resonance-process-development-worker.service \
       /etc/systemd/system/resonance-process-development-worker.service
     sudo -n install -m 0644 \
       ops/systemd/resonance-process-development-worker.timer \
       /etc/systemd/system/resonance-process-development-worker.timer
+    sudo -n install -m 0644 \
+      ops/systemd/resonance-project-auto-completion.service \
+      /etc/systemd/system/resonance-project-auto-completion.service
+    sudo -n install -m 0644 \
+      ops/systemd/resonance-project-auto-completion.timer \
+      /etc/systemd/system/resonance-project-auto-completion.timer
     sudo -n systemctl daemon-reload
-    sudo -n systemctl enable --now resonance-process-development-worker.timer >/dev/null
+    sudo -n systemctl enable --now \
+      resonance-process-development-worker.timer \
+      resonance-project-auto-completion.timer >/dev/null
     echo "[auto-deploy] process development worker control plane synchronized"
   fi
 }
@@ -994,6 +1008,7 @@ if [[ "$PLAN_RUNTIME_REQUIRED" != "true" ]]; then
       ops/scripts/run-process-development-worker.sh \
       ops/scripts/run-process-development-dispatcher.sh \
       ops/scripts/test-process-worker-deploy-marker.sh \
+      ops/scripts/run-project-auto-completion-orchestrator.sh \
       ops/scripts/test-frontend-parallel-build-pipeline.sh \
       ops/scripts/install-resonance-github-runner.sh \
       ops/scripts/install-resonance-github-deploy-webhook.sh \
@@ -1029,6 +1044,8 @@ if [[ "$PLAN_RUNTIME_REQUIRED" != "true" ]]; then
       ops/systemd/carbonet-postgres-restore-drill.timer \
       ops/systemd/resonance-process-development-worker.service \
       ops/systemd/resonance-process-development-worker.timer \
+      ops/systemd/resonance-project-auto-completion.service \
+      ops/systemd/resonance-project-auto-completion.timer \
       ops/scripts/resonance-backstage-full-e2e.sh \
       ops/systemd/resonance-backstage-full-e2e.service \
       ops/systemd/resonance-backstage-full-e2e.timer \

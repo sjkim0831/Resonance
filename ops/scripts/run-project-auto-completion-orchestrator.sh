@@ -2,6 +2,7 @@
 set -Eeuo pipefail
 ROOT_DIR="${ROOT_DIR:-/opt/Resonance}"; NAMESPACE="${K8S_NAMESPACE:-carbonet-prod}"; DB="${PGDATABASE:-carbonet}"; DB_USER="${PGUSER:-postgres}"; MAX_PARALLEL_WORKERS="${MAX_PARALLEL_WORKERS:-3}"
 PROJECT_WORK_RUNNER="${PROJECT_WORK_RUNNER:-$ROOT_DIR/ops/scripts/run-hermes-project-work.sh}"
+PROCESS_DEVELOPMENT_DISPATCHER="${PROCESS_DEVELOPMENT_DISPATCHER:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/run-process-development-dispatcher.sh}"
 LOCK_FILE="${PROJECT_AUTO_COMPLETION_LOCK:-/tmp/resonance-project-auto-completion.lock}"
 exec 9>"$LOCK_FILE"
 if [[ "${PROJECT_AUTO_COMPLETION_WAIT_FOR_LOCK:-false}" == "true" ]]; then
@@ -1062,7 +1063,7 @@ if [[ "$executable" -gt 0 ]]; then
   ROOT_DIR="$ROOT_DIR" MAX_PARALLEL_WORKERS="$MAX_PARALLEL_WORKERS" \
     PGDATABASE="$DB" PGUSER="$DB_USER" PGPASSWORD="${PGPASSWORD:-local-trust}" \
     POSTGRES_POD="$leader" PGHOST="127.0.0.1" K8S_NAMESPACE="$NAMESPACE" \
-    PROJECT_WORK_RUNNER="$PROJECT_WORK_RUNNER" bash "$ROOT_DIR/ops/scripts/run-process-development-dispatcher.sh" || dispatcher_failed=1
+    PROJECT_WORK_RUNNER="$PROJECT_WORK_RUNNER" bash "$PROCESS_DEVELOPMENT_DISPATCHER" || dispatcher_failed=1
 fi
 screen_generation_result='{"status":"NOT_INSTALLED"}'
 if [[ "$(psqlq -c "select (to_regprocedure('framework_incremental_screen_generation_snapshot(integer,character varying)') is not null)::integer;")" == "1" ]]; then
