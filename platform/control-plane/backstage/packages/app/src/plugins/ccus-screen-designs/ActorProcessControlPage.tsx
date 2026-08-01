@@ -404,6 +404,7 @@ const displayValue = (value: unknown) => {
 function WorkOperationsMap({
   dashboard,
   projectId,
+  mode = 'dashboard',
   onSelect,
   onOpenTab,
   executeRuntimeCommand,
@@ -416,6 +417,7 @@ function WorkOperationsMap({
 }: {
   dashboard: RuntimeDashboard;
   projectId: string;
+  mode?: 'dashboard' | 'execution';
   onSelect: (row: RuntimeRow) => void;
   onOpenTab: (tabId: string) => void;
   executeRuntimeCommand: (
@@ -872,20 +874,30 @@ function WorkOperationsMap({
         >
           <Box>
             <Typography variant="overline" style={{ color: '#bfdbfe' }}>
-              INTEGRATED DESIGN WORKBENCH
+              {mode === 'execution'
+                ? 'END-TO-END PROCESS EXECUTION'
+                : 'INTEGRATED DESIGN WORKBENCH'}
             </Typography>
-            <Typography variant="h6">통합 설계 문서·액티브 UI 관리</Typography>
+            <Typography variant="h6">
+              {mode === 'execution'
+                ? '프로젝트 업무 실행·완료 전환'
+                : '통합 설계 문서·액티브 UI 관리'}
+            </Typography>
             <Typography variant="body2">
-              선택한 프로세스·단계·화면의 설계 문서 18종을 버전으로 관리합니다.
+              {mode === 'execution'
+                ? '실제 프로젝트와 담당 액터를 선택하고 완료 조건 검증, 업무 화면 실행, 다음 단계 전환을 한곳에서 수행합니다.'
+                : '선택한 프로세스·단계·화면의 설계 문서 18종을 버전으로 관리합니다.'}
             </Typography>
           </Box>
-          <Button
-            variant="contained"
-            onClick={() => setDesignWorkbenchOpen(true)}
-            style={{ background: '#fff', color: '#174ea6' }}
-          >
-            설계 워크벤치 열기
-          </Button>
+          {mode === 'dashboard' && (
+            <Button
+              variant="contained"
+              onClick={() => setDesignWorkbenchOpen(true)}
+              style={{ background: '#fff', color: '#174ea6' }}
+            >
+              설계 워크벤치 열기
+            </Button>
+          )}
         </Box>
       </Paper>
       <Grid container spacing={2}>
@@ -1288,40 +1300,43 @@ function WorkOperationsMap({
                   ? `상태 동기화 복구: ${displayValue(nextStep.stepName)} →`
                   : '현재 업무 완료 상태 복구'}
               </Button>
-              <Paper
-                variant="outlined"
-                style={{
-                  padding: 12,
-                  borderColor: executableJobs.length ? '#2563eb' : '#cbd5e1',
-                  background: executableJobs.length ? '#eff6ff' : '#f8fafc',
-                }}
-              >
-                <Typography variant="subtitle2">
-                  설계 → 개발 자동 실행
-                </Typography>
-                <Typography variant="caption" color="textSecondary">
-                  선택 단계의 PLANNED/RETRY 작업 {executableJobs.length}건을
-                  설계·공통자산·테스트 사전검사 후 생성 큐에 등록합니다.
-                  테스트와 배포 게이트를 통과하지 못하면 운영 반영되지 않습니다.
-                </Typography>
-                <Box mt={1}>
-                  <Button
-                    size="small"
-                    variant="contained"
-                    color="primary"
-                    disabled={
-                      executableJobs.length === 0 ||
-                      developmentPipelinePending ||
-                      !activeStep?.stepCode
-                    }
-                    onClick={() => void runDevelopmentPipeline()}
-                  >
-                    {developmentPipelinePending
-                      ? '자동화 실행 중…'
-                      : `자동 개발 시작 (${executableJobs.length})`}
-                  </Button>
-                </Box>
-              </Paper>
+              {mode === 'dashboard' && (
+                <Paper
+                  variant="outlined"
+                  style={{
+                    padding: 12,
+                    borderColor: executableJobs.length ? '#2563eb' : '#cbd5e1',
+                    background: executableJobs.length ? '#eff6ff' : '#f8fafc',
+                  }}
+                >
+                  <Typography variant="subtitle2">
+                    설계 → 개발 자동 실행
+                  </Typography>
+                  <Typography variant="caption" color="textSecondary">
+                    선택 단계의 PLANNED/RETRY 작업 {executableJobs.length}건을
+                    설계·공통자산·테스트 사전검사 후 생성 큐에 등록합니다.
+                    테스트와 배포 게이트를 통과하지 못하면 운영 반영되지
+                    않습니다.
+                  </Typography>
+                  <Box mt={1}>
+                    <Button
+                      size="small"
+                      variant="contained"
+                      color="primary"
+                      disabled={
+                        executableJobs.length === 0 ||
+                        developmentPipelinePending ||
+                        !activeStep?.stepCode
+                      }
+                      onClick={() => void runDevelopmentPipeline()}
+                    >
+                      {developmentPipelinePending
+                        ? '자동화 실행 중…'
+                        : `자동 개발 시작 (${executableJobs.length})`}
+                    </Button>
+                  </Box>
+                </Paper>
+              )}
             </Box>
             {runtimeCommandResult && (
               <Typography
@@ -1332,7 +1347,7 @@ function WorkOperationsMap({
                 {runtimeCommandResult}
               </Typography>
             )}
-            {developmentPipelineResult && (
+            {mode === 'dashboard' && developmentPipelineResult && (
               <Typography
                 variant="body2"
                 color="textSecondary"
@@ -1341,191 +1356,194 @@ function WorkOperationsMap({
                 {developmentPipelineResult}
               </Typography>
             )}
-            <Paper
-              variant="outlined"
-              style={{ marginTop: 12, padding: 12, background: '#f8fafc' }}
-            >
-              <Box
-                display="flex"
-                justifyContent="space-between"
-                alignItems="center"
-                gridGap={8}
-                flexWrap="wrap"
+            {mode === 'dashboard' && (
+              <Paper
+                variant="outlined"
+                style={{ marginTop: 12, padding: 12, background: '#f8fafc' }}
               >
-                <Box>
-                  <Typography variant="subtitle2">
-                    자동 개발 실행 타임라인
-                  </Typography>
-                  <Typography variant="caption" color="textSecondary">
-                    생성·테스트·배포 게이트의 현재 상태와 증적을 실시간 데이터로
-                    표시합니다.
-                  </Typography>
+                <Box
+                  display="flex"
+                  justifyContent="space-between"
+                  alignItems="center"
+                  gridGap={8}
+                  flexWrap="wrap"
+                >
+                  <Box>
+                    <Typography variant="subtitle2">
+                      자동 개발 실행 타임라인
+                    </Typography>
+                    <Typography variant="caption" color="textSecondary">
+                      생성·테스트·배포 게이트의 현재 상태와 증적을 실시간
+                      데이터로 표시합니다.
+                    </Typography>
+                  </Box>
+                  <Box display="flex" gridGap={4} flexWrap="wrap">
+                    {Object.entries(jobStatusCounts).map(([status, count]) => (
+                      <Chip
+                        key={status}
+                        size="small"
+                        color={
+                          status === 'VERIFIED'
+                            ? 'primary'
+                            : status === 'FAILED'
+                            ? 'secondary'
+                            : 'default'
+                        }
+                        label={`${status} ${count}`}
+                      />
+                    ))}
+                  </Box>
                 </Box>
-                <Box display="flex" gridGap={4} flexWrap="wrap">
-                  {Object.entries(jobStatusCounts).map(([status, count]) => (
-                    <Chip
-                      key={status}
-                      size="small"
-                      color={
-                        status === 'VERIFIED'
-                          ? 'primary'
-                          : status === 'FAILED'
-                          ? 'secondary'
-                          : 'default'
-                      }
-                      label={`${status} ${count}`}
-                    />
-                  ))}
-                </Box>
-              </Box>
-              <Box mt={1.5} display="grid" gridGap={8}>
-                {jobs.length === 0 && (
-                  <Typography variant="body2" color="textSecondary">
-                    선택 단계에 등록된 개발 작업이 없습니다.
-                  </Typography>
-                )}
-                {jobs.slice(0, 8).map(job => {
-                  const jobId = String(job.jobId ?? '');
-                  const status = String(job.jobStatus ?? 'UNKNOWN');
-                  const latestEvent = developmentEvents.find(
-                    event => String(event.jobId ?? '') === jobId,
-                  );
-                  const latestGate = qualityGateResults.find(
-                    gate => String(gate.jobId ?? '') === jobId,
-                  );
-                  const targetPath = String(job.targetPath ?? '');
-                  const canRetry = ['FAILED', 'RETRY'].includes(status);
-                  const rollbackRequest = rollbackRequests.find(
-                    request => String(request.sourceJobId ?? '') === jobId,
-                  );
-                  const canRequestRollback =
-                    ['VERIFIED', 'COMPLETED'].includes(status) &&
-                    String(job.qualityStatus ?? '') === 'VERIFIED' &&
-                    Boolean(job.rollbackRef) &&
-                    !rollbackRequest;
-                  const canApproveRollback =
-                    String(rollbackRequest?.requestStatus ?? '') === 'PENDING';
-                  return (
-                    <Paper
-                      key={jobId}
-                      variant="outlined"
-                      style={{ padding: 10, background: '#fff' }}
-                    >
-                      <Box
-                        display="flex"
-                        justifyContent="space-between"
-                        alignItems="flex-start"
-                        gridGap={8}
-                        flexWrap="wrap"
+                <Box mt={1.5} display="grid" gridGap={8}>
+                  {jobs.length === 0 && (
+                    <Typography variant="body2" color="textSecondary">
+                      선택 단계에 등록된 개발 작업이 없습니다.
+                    </Typography>
+                  )}
+                  {jobs.slice(0, 8).map(job => {
+                    const jobId = String(job.jobId ?? '');
+                    const status = String(job.jobStatus ?? 'UNKNOWN');
+                    const latestEvent = developmentEvents.find(
+                      event => String(event.jobId ?? '') === jobId,
+                    );
+                    const latestGate = qualityGateResults.find(
+                      gate => String(gate.jobId ?? '') === jobId,
+                    );
+                    const targetPath = String(job.targetPath ?? '');
+                    const canRetry = ['FAILED', 'RETRY'].includes(status);
+                    const rollbackRequest = rollbackRequests.find(
+                      request => String(request.sourceJobId ?? '') === jobId,
+                    );
+                    const canRequestRollback =
+                      ['VERIFIED', 'COMPLETED'].includes(status) &&
+                      String(job.qualityStatus ?? '') === 'VERIFIED' &&
+                      Boolean(job.rollbackRef) &&
+                      !rollbackRequest;
+                    const canApproveRollback =
+                      String(rollbackRequest?.requestStatus ?? '') ===
+                      'PENDING';
+                    return (
+                      <Paper
+                        key={jobId}
+                        variant="outlined"
+                        style={{ padding: 10, background: '#fff' }}
                       >
-                        <Box style={{ minWidth: 0, flex: 1 }}>
-                          <Typography variant="body2">
-                            {displayValue(job.jobName ?? job.jobType)}
-                          </Typography>
-                          <Typography variant="caption" color="textSecondary">
-                            {displayValue(job.jobType)} · 최근 이벤트{' '}
-                            {displayValue(
-                              latestEvent?.eventType ?? job.updatedAt,
-                            )}
-                          </Typography>
-                          {Boolean(job.lastError || latestGate?.summary) && (
-                            <Typography
-                              variant="caption"
-                              color="error"
-                              display="block"
-                            >
-                              {displayValue(
-                                job.lastError ?? latestGate?.summary,
-                              )}
-                            </Typography>
-                          )}
-                          {Boolean(
-                            job.evidenceRef || latestGate?.evidenceRef,
-                          ) && (
-                            <Typography
-                              variant="caption"
-                              color="textSecondary"
-                              display="block"
-                            >
-                              증적:{' '}
-                              {displayValue(
-                                job.evidenceRef ?? latestGate?.evidenceRef,
-                              )}
-                            </Typography>
-                          )}
-                        </Box>
-                        <Box display="flex" gridGap={6} alignItems="center">
-                          <Chip size="small" label={status} />
-                          {targetPath.startsWith('/') && (
-                            <Button
-                              size="small"
-                              variant="outlined"
-                              href={targetPath}
-                              target="_blank"
-                            >
-                              미리보기
-                            </Button>
-                          )}
-                          {canRetry && (
-                            <Button
-                              size="small"
-                              variant="outlined"
-                              color="secondary"
-                              disabled={developmentPipelinePending}
-                              onClick={() => void runDevelopmentRetry(jobId)}
-                            >
-                              안전 재시도
-                            </Button>
-                          )}
-                          {canRequestRollback && (
-                            <Button
-                              size="small"
-                              variant="outlined"
-                              color="secondary"
-                              disabled={developmentPipelinePending}
-                              onClick={() => void runRollbackRequest(jobId)}
-                            >
-                              롤백 요청
-                            </Button>
-                          )}
-                          {canApproveRollback && (
-                            <Button
-                              size="small"
-                              variant="contained"
-                              color="secondary"
-                              disabled={developmentPipelinePending}
-                              onClick={() =>
-                                void runRollbackApproval(
-                                  String(
-                                    rollbackRequest?.rollbackRequestId ?? '',
-                                  ),
-                                )
-                              }
-                            >
-                              롤백 승인
-                            </Button>
-                          )}
-                        </Box>
-                      </Box>
-                      {rollbackRequest && (
-                        <Typography
-                          variant="caption"
-                          color="textSecondary"
-                          display="block"
-                          style={{ marginTop: 6 }}
+                        <Box
+                          display="flex"
+                          justifyContent="space-between"
+                          alignItems="flex-start"
+                          gridGap={8}
+                          flexWrap="wrap"
                         >
-                          롤백 #
-                          {displayValue(rollbackRequest.rollbackRequestId)} ·{' '}
-                          {displayValue(rollbackRequest.requestStatus)} · 사전
-                          검증 {displayValue(rollbackRequest.preflightStatus)} ·
-                          요청자 {displayValue(rollbackRequest.requestedBy)}
-                        </Typography>
-                      )}
-                    </Paper>
-                  );
-                })}
-              </Box>
-            </Paper>
+                          <Box style={{ minWidth: 0, flex: 1 }}>
+                            <Typography variant="body2">
+                              {displayValue(job.jobName ?? job.jobType)}
+                            </Typography>
+                            <Typography variant="caption" color="textSecondary">
+                              {displayValue(job.jobType)} · 최근 이벤트{' '}
+                              {displayValue(
+                                latestEvent?.eventType ?? job.updatedAt,
+                              )}
+                            </Typography>
+                            {Boolean(job.lastError || latestGate?.summary) && (
+                              <Typography
+                                variant="caption"
+                                color="error"
+                                display="block"
+                              >
+                                {displayValue(
+                                  job.lastError ?? latestGate?.summary,
+                                )}
+                              </Typography>
+                            )}
+                            {Boolean(
+                              job.evidenceRef || latestGate?.evidenceRef,
+                            ) && (
+                              <Typography
+                                variant="caption"
+                                color="textSecondary"
+                                display="block"
+                              >
+                                증적:{' '}
+                                {displayValue(
+                                  job.evidenceRef ?? latestGate?.evidenceRef,
+                                )}
+                              </Typography>
+                            )}
+                          </Box>
+                          <Box display="flex" gridGap={6} alignItems="center">
+                            <Chip size="small" label={status} />
+                            {targetPath.startsWith('/') && (
+                              <Button
+                                size="small"
+                                variant="outlined"
+                                href={targetPath}
+                                target="_blank"
+                              >
+                                미리보기
+                              </Button>
+                            )}
+                            {canRetry && (
+                              <Button
+                                size="small"
+                                variant="outlined"
+                                color="secondary"
+                                disabled={developmentPipelinePending}
+                                onClick={() => void runDevelopmentRetry(jobId)}
+                              >
+                                안전 재시도
+                              </Button>
+                            )}
+                            {canRequestRollback && (
+                              <Button
+                                size="small"
+                                variant="outlined"
+                                color="secondary"
+                                disabled={developmentPipelinePending}
+                                onClick={() => void runRollbackRequest(jobId)}
+                              >
+                                롤백 요청
+                              </Button>
+                            )}
+                            {canApproveRollback && (
+                              <Button
+                                size="small"
+                                variant="contained"
+                                color="secondary"
+                                disabled={developmentPipelinePending}
+                                onClick={() =>
+                                  void runRollbackApproval(
+                                    String(
+                                      rollbackRequest?.rollbackRequestId ?? '',
+                                    ),
+                                  )
+                                }
+                              >
+                                롤백 승인
+                              </Button>
+                            )}
+                          </Box>
+                        </Box>
+                        {rollbackRequest && (
+                          <Typography
+                            variant="caption"
+                            color="textSecondary"
+                            display="block"
+                            style={{ marginTop: 6 }}
+                          >
+                            롤백 #
+                            {displayValue(rollbackRequest.rollbackRequestId)} ·{' '}
+                            {displayValue(rollbackRequest.requestStatus)} · 사전
+                            검증 {displayValue(rollbackRequest.preflightStatus)}{' '}
+                            · 요청자 {displayValue(rollbackRequest.requestedBy)}
+                          </Typography>
+                        )}
+                      </Paper>
+                    );
+                  })}
+                </Box>
+              </Paper>
+            )}
           </Paper>
         </Grid>
       </Grid>
@@ -1922,146 +1940,152 @@ function WorkOperationsMap({
           </Grid>
         </Grid>
       </Paper>
-      <Box mt={2}>
-        <Paper variant="outlined" style={{ padding: 16 }}>
-          <Typography variant="overline">
-            4. 설계·입출력·화면·API·테스트·태스크 증적
-          </Typography>
-          <Box mt={1} display="flex" gridGap={8} flexWrap="wrap">
-            {[
-              ['액터', actors.length],
-              ['프로세스', processes.length],
-              ['단계', steps.length],
-              ['실행 업무', executions.length],
-              ['테스트', ((dashboard.cases ?? []) as RuntimeRow[]).length],
+      {mode === 'dashboard' && (
+        <Box mt={2}>
+          <Paper variant="outlined" style={{ padding: 16 }}>
+            <Typography variant="overline">
+              4. 설계·입출력·화면·API·테스트·태스크 증적
+            </Typography>
+            <Box mt={1} display="flex" gridGap={8} flexWrap="wrap">
+              {[
+                ['액터', actors.length],
+                ['프로세스', processes.length],
+                ['단계', steps.length],
+                ['실행 업무', executions.length],
+                ['테스트', ((dashboard.cases ?? []) as RuntimeRow[]).length],
+                [
+                  '개발 태스크',
+                  ((dashboard.developmentJobs ?? []) as RuntimeRow[]).length,
+                ],
+              ].map(([label, count]) => (
+                <Chip key={String(label)} label={`${label} ${count}개`} />
+              ))}
+            </Box>
+          </Paper>
+        </Box>
+      )}
+      {mode === 'dashboard' && (
+        <Paper variant="outlined" style={{ marginTop: 16, overflow: 'hidden' }}>
+          <Box
+            display="flex"
+            style={{
+              overflowX: 'auto',
+              borderBottom: '1px solid #dbe4ea',
+              background: '#f8fafc',
+            }}
+          >
+            {(
               [
-                '개발 태스크',
-                ((dashboard.developmentJobs ?? []) as RuntimeRow[]).length,
-              ],
-            ].map(([label, count]) => (
-              <Chip key={String(label)} label={`${label} ${count}개`} />
+                ['design', '설계'],
+                ['data', '입출력 데이터'],
+                ['screen', '화면·API'],
+                ['test', '테스트'],
+                ['task', '태스크·증적'],
+              ] as const
+            ).map(([id, label]) => (
+              <Button
+                key={id}
+                onClick={() => setDetailTab(id)}
+                style={{
+                  minHeight: 48,
+                  borderRadius: 0,
+                  borderBottom:
+                    detailTab === id
+                      ? '3px solid #005ea8'
+                      : '3px solid transparent',
+                  background: detailTab === id ? '#fff' : 'transparent',
+                }}
+              >
+                {label}
+              </Button>
             ))}
           </Box>
-        </Paper>
-      </Box>
-      <Paper variant="outlined" style={{ marginTop: 16, overflow: 'hidden' }}>
-        <Box
-          display="flex"
-          style={{
-            overflowX: 'auto',
-            borderBottom: '1px solid #dbe4ea',
-            background: '#f8fafc',
-          }}
-        >
-          {(
-            [
-              ['design', '설계'],
-              ['data', '입출력 데이터'],
-              ['screen', '화면·API'],
-              ['test', '테스트'],
-              ['task', '태스크·증적'],
-            ] as const
-          ).map(([id, label]) => (
-            <Button
-              key={id}
-              onClick={() => setDetailTab(id)}
-              style={{
-                minHeight: 48,
-                borderRadius: 0,
-                borderBottom:
-                  detailTab === id
-                    ? '3px solid #005ea8'
-                    : '3px solid transparent',
-                background: detailTab === id ? '#fff' : 'transparent',
-              }}
-            >
-              {label}
-            </Button>
-          ))}
-        </Box>
-        <Box p={2} style={{ overflowX: 'auto' }}>
-          {detailRows[detailTab].length ? (
-            <table
-              style={{
-                width: '100%',
-                minWidth: 700,
-                borderCollapse: 'collapse',
-                fontSize: 13,
-              }}
-            >
-              <thead style={{ background: '#f1f5f9' }}>
-                <tr>
-                  {['구분', '내용', '계약·상태'].map(head => (
-                    <th key={head} style={{ padding: 12, textAlign: 'left' }}>
-                      {head}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {detailRows[detailTab].map((row, index) => (
-                  <tr key={`${detailTab}-${index}`}>
-                    {row.map((cell, cellIndex) => (
-                      <td
-                        key={cellIndex}
-                        style={{
-                          padding: 12,
-                          borderTop: '1px solid #e2e8f0',
-                          overflowWrap: 'anywhere',
-                        }}
-                      >
-                        {displayValue(cell)}
-                      </td>
+          <Box p={2} style={{ overflowX: 'auto' }}>
+            {detailRows[detailTab].length ? (
+              <table
+                style={{
+                  width: '100%',
+                  minWidth: 700,
+                  borderCollapse: 'collapse',
+                  fontSize: 13,
+                }}
+              >
+                <thead style={{ background: '#f1f5f9' }}>
+                  <tr>
+                    {['구분', '내용', '계약·상태'].map(head => (
+                      <th key={head} style={{ padding: 12, textAlign: 'left' }}>
+                        {head}
+                      </th>
                     ))}
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          ) : (
-            <Typography variant="body2" color="textSecondary">
-              선택한 단계에 연결된 {detailTab} 데이터가 없습니다.
-            </Typography>
-          )}
-        </Box>
-        <Box
-          p={2}
-          display="flex"
-          justifyContent="flex-end"
-          gridGap={8}
-          flexWrap="wrap"
-          style={{ borderTop: '1px solid #dbe4ea', background: '#f8fafc' }}
-        >
-          <Button
-            variant="outlined"
-            onClick={() => onOpenTab('data-contracts')}
+                </thead>
+                <tbody>
+                  {detailRows[detailTab].map((row, index) => (
+                    <tr key={`${detailTab}-${index}`}>
+                      {row.map((cell, cellIndex) => (
+                        <td
+                          key={cellIndex}
+                          style={{
+                            padding: 12,
+                            borderTop: '1px solid #e2e8f0',
+                            overflowWrap: 'anywhere',
+                          }}
+                        >
+                          {displayValue(cell)}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : (
+              <Typography variant="body2" color="textSecondary">
+                선택한 단계에 연결된 {detailTab} 데이터가 없습니다.
+              </Typography>
+            )}
+          </Box>
+          <Box
+            p={2}
+            display="flex"
+            justifyContent="flex-end"
+            gridGap={8}
+            flexWrap="wrap"
+            style={{ borderTop: '1px solid #dbe4ea', background: '#f8fafc' }}
           >
-            설계 수정
-          </Button>
-          <Button
-            variant="outlined"
-            onClick={() => onOpenTab('test-scenarios')}
-          >
-            테스트 실행
-          </Button>
-          <Button
-            variant="contained"
-            color="primary"
-            onClick={() => onOpenTab('generation-queue')}
-          >
-            개발 요청
-          </Button>
-        </Box>
-      </Paper>
-      <DesignWorkbenchDialog
-        open={designWorkbenchOpen}
-        onClose={() => setDesignWorkbenchOpen(false)}
-        process={selectedProcess}
-        step={activeStep}
-        routePath={route}
-        loadDocuments={loadDesignDocuments}
-        saveDocument={saveDesignDocument}
-        onOpenTab={onOpenTab}
-      />
+            <Button
+              variant="outlined"
+              onClick={() => onOpenTab('data-contracts')}
+            >
+              설계 수정
+            </Button>
+            <Button
+              variant="outlined"
+              onClick={() => onOpenTab('test-scenarios')}
+            >
+              테스트 실행
+            </Button>
+            <Button
+              variant="contained"
+              color="primary"
+              onClick={() => onOpenTab('generation-queue')}
+            >
+              개발 요청
+            </Button>
+          </Box>
+        </Paper>
+      )}
+      {mode === 'dashboard' && (
+        <DesignWorkbenchDialog
+          open={designWorkbenchOpen}
+          onClose={() => setDesignWorkbenchOpen(false)}
+          process={selectedProcess}
+          step={activeStep}
+          routePath={route}
+          loadDocuments={loadDesignDocuments}
+          saveDocument={saveDesignDocument}
+          onOpenTab={onOpenTab}
+        />
+      )}
     </Box>
   );
 }
@@ -2782,7 +2806,7 @@ export function ActorProcessControlPage(props: {
   }, [datasetKey]);
 
   useEffect(() => {
-    if (selectedTab.id !== 'work-dashboard') return;
+    if (!['work-dashboard', 'execution'].includes(selectedTab.id)) return;
     const required = [
       'processes',
       'steps',
@@ -3070,7 +3094,8 @@ export function ActorProcessControlPage(props: {
         <Box className={classes.layout} mt={2}>
           <Paper className={classes.detail} elevation={0}>
             <Typography variant="overline">
-              원본 {ACTOR_PROCESS_SOURCE_TAB_COUNT}개 · 이관 {ACTOR_PROCESS_TAB_COUNT}개
+              원본 {ACTOR_PROCESS_SOURCE_TAB_COUNT}개 · 이관{' '}
+              {ACTOR_PROCESS_TAB_COUNT}개
             </Typography>
             <Box display="flex" gridGap={8} mt={1} mb={1} flexWrap="wrap">
               <Chip
@@ -3110,7 +3135,10 @@ export function ActorProcessControlPage(props: {
                 >
                   <Typography variant="subtitle2">{item.label}</Typography>
                   <Typography variant="caption">
-                    {item.capability} · {item.uiRestoration === 'FULL' ? 'UI 완전 복원' : 'UI 복원 필요'}
+                    {item.capability} ·{' '}
+                    {item.uiRestoration === 'FULL'
+                      ? 'UI 완전 복원'
+                      : 'UI 복원 필요'}
                   </Typography>
                 </Box>
               ))}
@@ -3143,7 +3171,23 @@ export function ActorProcessControlPage(props: {
                 saveDesignDocument={saveDesignDocument}
               />
             )}
-            {selectedTab.id !== 'work-dashboard' && (
+            {selectedTab.id === 'execution' && (
+              <WorkOperationsMap
+                dashboard={runtimeDashboard}
+                projectId={projectId}
+                mode="execution"
+                onSelect={setSelectedRow}
+                onOpenTab={openControlTab}
+                executeRuntimeCommand={executeRuntimeCommand}
+                executeDevelopmentPipeline={executeDevelopmentPipeline}
+                retryDevelopmentJob={retryDevelopmentJob}
+                requestDevelopmentRollback={requestDevelopmentRollback}
+                approveDevelopmentRollback={approveDevelopmentRollback}
+                loadDesignDocuments={loadDesignDocuments}
+                saveDesignDocument={saveDesignDocument}
+              />
+            )}
+            {!['work-dashboard', 'execution'].includes(selectedTab.id) && (
               <Grid container spacing={2} style={{ marginTop: 8 }}>
                 <Grid item xs={12} sm={6} md={3}>
                   <Box className={classes.metric}>

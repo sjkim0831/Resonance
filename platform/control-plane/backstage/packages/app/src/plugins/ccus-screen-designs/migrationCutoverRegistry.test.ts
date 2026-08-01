@@ -76,11 +76,15 @@ describe('migrationCutoverRegistry', () => {
       entry => entry.category === 'ACTOR_PROCESS_TAB',
     );
     const native = actorTabs.filter(entry => entry.implementation === 'NATIVE');
-    const partial = actorTabs.filter(entry => entry.implementation === 'PARTIAL');
+    const partial = actorTabs.filter(
+      entry => entry.implementation === 'PARTIAL',
+    );
 
-    expect(native).toHaveLength(1);
-    expect(native[0].assetId).toBe('actor-process:operate:work-dashboard');
-    expect(partial).toHaveLength(23);
+    expect(native.map(entry => entry.assetId)).toEqual([
+      'actor-process:operate:work-dashboard',
+      'actor-process:operate:execution',
+    ]);
+    expect(partial).toHaveLength(22);
     expect(partial.every(entry => entry.migrationStatus === 'CLASSIFIED')).toBe(
       true,
     );

@@ -104,9 +104,7 @@ export const buildCustomerJourneySimulation = <
       const objectCode = String(
         rowValue(row, 'objectCode', 'object_code') ?? '',
       );
-      const targetUrl = String(
-        rowValue(row, 'targetUrl', 'target_url') ?? '',
-      );
+      const targetUrl = String(rowValue(row, 'targetUrl', 'target_url') ?? '');
       return (
         objectCode === processCode ||
         objectCode === stepCode ||
@@ -333,7 +331,9 @@ const tab = (
   label,
   description,
   capability,
-  uiRestoration: id === 'work-dashboard' ? ('FULL' as const) : ('PARTIAL' as const),
+  uiRestoration: ['work-dashboard', 'execution'].includes(id)
+    ? ('FULL' as const)
+    : ('PARTIAL' as const),
 });
 
 export const ACTOR_PROCESS_WORKSPACES: ActorProcessWorkspace[] = [
