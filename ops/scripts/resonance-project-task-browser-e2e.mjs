@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { createRequire } from "node:module";
+import { existsSync } from "node:fs";
 import path from "node:path";
 import process from "node:process";
 
@@ -11,7 +12,13 @@ const { chromium, request } = require("@playwright/test");
 const baseUrl = String(process.env.CARBONET_RUNTIME_BASE_URL || "http://127.0.0.1").replace(/\/$/, "");
 const projectId = String(process.env.CARBONET_ACTOR_TEST_PROJECT || "PRJ-2026-001");
 const password = String(process.env.CARBONET_ACTOR_TEST_PASSWORD || "");
-const executablePath = String(process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || "");
+const configuredExecutable = String(process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || "");
+const executablePath = configuredExecutable || [
+  "/snap/bin/chromium",
+  "/usr/bin/chromium",
+  "/usr/bin/chromium-browser",
+  "/usr/bin/google-chrome",
+].find((candidate) => existsSync(candidate)) || "";
 const accounts = ["qaowner26", "qadata26", "qacalc26", "qaverify26", "qaapprove26"];
 const fatalText = /React app did not mount|Bootstrap loaded\. Waiting for React app mount|페이지 처리 중 오류가 발생했습니다|An unexpected error occurred|운영 관리 대시보드/;
 const loginPath = /\/signin\/loginView\/?$/;
