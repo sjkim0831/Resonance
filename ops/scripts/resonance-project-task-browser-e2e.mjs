@@ -86,7 +86,8 @@ try {
             }));
             if ((response?.status() || 0) >= 400) throw new Error(`page HTTP ${response?.status()}`);
             if (loginPath.test(state.pathname)) throw new Error("authenticated task redirected to login");
-            if (fatalText.test(state.text)) throw new Error(`fatal UI account=${account} task=${task.taskCode} target=${target.pathname}`);
+            const fatalMatch = state.text.match(fatalText)?.[0];
+            if (fatalMatch) throw new Error(`fatal UI=${JSON.stringify(fatalMatch)} account=${account} task=${task.taskCode} target=${target.pathname}`);
             if (target.pathname !== "/admin" && state.headings.some((heading) => heading === "운영 관리 대시보드")) {
               throw new Error(`fallback dashboard account=${account} task=${task.taskCode} target=${target.pathname}`);
             }
