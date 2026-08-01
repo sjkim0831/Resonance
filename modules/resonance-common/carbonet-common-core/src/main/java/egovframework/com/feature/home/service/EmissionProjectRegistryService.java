@@ -1223,6 +1223,7 @@ public class EmissionProjectRegistryService {
         jdbc.update("DELETE FROM emission_regulatory_submission WHERE project_id=? AND tenant_id=?",id,tenant);
         jdbc.update("DELETE FROM emission_project_report WHERE project_id=? AND tenant_id=?",id,tenant);
         jdbc.update("DELETE FROM emission_submission_review WHERE project_id=? AND tenant_id=?",id,tenant);
+        jdbc.update("DELETE FROM emission_activity_request WHERE project_id=? AND tenant_id=?",id,tenant);
         jdbc.update("DELETE FROM emission_activity_submission WHERE project_id=? AND tenant_id=?",id,tenant);
         jdbc.update("DELETE FROM emission_activity_quality_run WHERE project_id=? AND tenant_id=?",id,tenant);
         jdbc.update("DELETE FROM emission_calculation_run WHERE project_id=?",id);
