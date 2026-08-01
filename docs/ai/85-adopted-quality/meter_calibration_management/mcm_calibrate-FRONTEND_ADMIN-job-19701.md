@@ -2,7 +2,7 @@
 
 - Job: 19701
 - Job type: FRONTEND_ADMIN
-- Source commit: 5e3698299b0832d2bd9c23c42741735b138d0b7d
+- Source commit: cf17483c471b4ca3a4fa65f19e922068867c6a41
 - Validation result: {"strategy":"APPROVED_FULL_STACK_PACKAGE","processCode":"METER_CALIBRATION_MANAGEMENT","stepCode":"MCM_CALIBRATE","dimension":"FRONTEND_ADMIN","package":"/opt/Resonance/var/ai-worktrees/job-19701/projects/carbonet-backend-metadata/process-runtime/generated/METER_CALIBRATION_MANAGEMENT/METER_CALIBRATION_MANAGEMENT__MCM_CALIBRATE.json","evidence":"/opt/Resonance/var/ai-worktrees/job-19701/var/test-evidence/process-package-tests/METER_CALIBRATION_MANAGEMENT__MCM_CALIBRATE.json","status":"PASSED"}
 
 The exact approved step package supplies the matching USER or ADMIN route,
