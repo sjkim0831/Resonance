@@ -195,6 +195,9 @@ public class ActorProcessControlPlaneBridgeController {
             Object result;
             switch (command) {
                 case "actor.save" -> {
+                    if (!governance.isControlPlaneAdministrator(account)) {
+                        throw new SecurityException("Administrator authority is required to save an actor definition.");
+                    }
                     governance.createActor(body);
                     result = Map.of("success", true, "command", command, "actorCode", required(body, "actorCode"));
                 }
@@ -210,6 +213,9 @@ public class ActorProcessControlPlaneBridgeController {
                 case "screen.design.generate" ->
                         result = governance.saveDesignAndGenerate(body, actor);
                 case "assignment.save" -> {
+                    if (!governance.isControlPlaneAdministrator(account)) {
+                        throw new SecurityException("Administrator authority is required to save an actor assignment.");
+                    }
                     governance.assignActor(body);
                     result = Map.of("success", true, "command", command, "accountId", required(body, "accountId"));
                 }

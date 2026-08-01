@@ -739,7 +739,16 @@ public class ActorProcessGovernanceService {
     }
 
     @Transactional public void createActor(Map<String,Object>b){
-        jdbc.update("insert into framework_actor_definition(actor_code,actor_name,actor_name_en,actor_type,purpose,capability_codes,delegation_allowed) values(?,?,?,?,?,?,?) on conflict(actor_code) do update set actor_name=excluded.actor_name,actor_name_en=excluded.actor_name_en,actor_type=excluded.actor_type,purpose=excluded.purpose,capability_codes=excluded.capability_codes,delegation_allowed=excluded.delegation_allowed,updated_at=current_timestamp",req(b,"actorCode"),req(b,"actorName"),str(b,"actorNameEn"),def(b,"actorType","BUSINESS"),req(b,"purpose"),str(b,"capabilityCodes"),bool(b,"delegationAllowed"));
+        String actorCode=req(b,"actorCode").trim().toUpperCase(Locale.ROOT);
+        String purpose=req(b,"purpose");
+        if(!actorCode.matches("^[A-Z][A-Z0-9_]{1,59}$"))throw new IllegalArgumentException("actorCode must use uppercase letters, numbers, and underscores");
+        String useAt=def(b,"useAt","Y").trim().toUpperCase(Locale.ROOT);
+        if(!useAt.matches("^[YN]$"))throw new IllegalArgumentException("useAt must be Y or N");
+        if("N".equals(useAt)){
+            Integer activeAssignments=jdbc.queryForObject("select count(*) from framework_account_actor_assignment where actor_code=? and assignment_status='ACTIVE' and (valid_until is null or valid_until>=current_date)",Integer.class,actorCode);
+            if(activeAssignments!=null&&activeAssignments>0)throw new IllegalArgumentException("ACTIVE_ACTOR_ASSIGNMENTS_EXIST");
+        }
+        jdbc.update("insert into framework_actor_definition(actor_code,actor_name,actor_name_en,actor_type,purpose,capability_codes,delegation_allowed,use_at,responsibility_text,accountability_text,competency_requirements,conflict_actor_codes,max_concurrent_assignments,review_cycle_days) values(?,?,?,?,?,?,?,?,?,?,?,?,?,?) on conflict(actor_code) do update set actor_name=excluded.actor_name,actor_name_en=excluded.actor_name_en,actor_type=excluded.actor_type,purpose=excluded.purpose,capability_codes=excluded.capability_codes,delegation_allowed=excluded.delegation_allowed,use_at=excluded.use_at,responsibility_text=excluded.responsibility_text,accountability_text=excluded.accountability_text,competency_requirements=excluded.competency_requirements,conflict_actor_codes=excluded.conflict_actor_codes,max_concurrent_assignments=excluded.max_concurrent_assignments,review_cycle_days=excluded.review_cycle_days,updated_at=current_timestamp",actorCode,req(b,"actorName"),str(b,"actorNameEn"),def(b,"actorType","BUSINESS"),purpose,str(b,"capabilityCodes"),bool(b,"delegationAllowed"),useAt,def(b,"responsibility",purpose),def(b,"accountability",purpose),def(b,"competency",purpose),str(b,"conflictActorCodes"),integerOr(b,"maxConcurrentAssignments",0),integerOr(b,"reviewCycleDays",365));
     }
     @Transactional public void saveWorkType(Map<String,Object>b){
         String code=req(b,"workTypeCode").trim().toUpperCase(Locale.ROOT);

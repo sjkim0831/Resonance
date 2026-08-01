@@ -336,6 +336,7 @@ const tab = (
     'execution',
     'assignments',
     'completion',
+    'actors',
   ].includes(id)
     ? ('FULL' as const)
     : ('PARTIAL' as const),

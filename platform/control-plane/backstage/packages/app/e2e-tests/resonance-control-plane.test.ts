@@ -212,6 +212,14 @@ async function verifyRoute(
     ).toBeVisible();
   }
 
+  if (route === '/actor-process-design') {
+    await expect(page.getByText('액터 사전', { exact: true })).toBeVisible();
+    await expect(page.getByText('액터 책임·권한 설계')).toBeVisible();
+    await expect(page.getByLabel('액터 코드')).toBeVisible();
+    await expect(page.getByLabel('수행 책임(Responsibility)')).toBeVisible();
+    await expect(page.getByLabel('최종 책무(Accountability)')).toBeVisible();
+  }
+
   if (evidenceDir) {
     await page.screenshot({
       path: path.join(

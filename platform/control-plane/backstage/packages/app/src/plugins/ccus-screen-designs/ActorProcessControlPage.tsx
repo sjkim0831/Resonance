@@ -2400,6 +2400,596 @@ function DesignWorkbenchDialog({
   );
 }
 
+type ActorPolicyDraft = {
+  actorCode: string;
+  actorName: string;
+  actorNameEn: string;
+  actorType: string;
+  purpose: string;
+  capabilityCodes: string;
+  responsibility: string;
+  accountability: string;
+  competency: string;
+  conflictActorCodes: string;
+  maxConcurrentAssignments: string;
+  reviewCycleDays: string;
+  delegationAllowed: string;
+  useAt: string;
+};
+
+const emptyActorPolicy = (): ActorPolicyDraft => ({
+  actorCode: '',
+  actorName: '',
+  actorNameEn: '',
+  actorType: 'BUSINESS',
+  purpose: '',
+  capabilityCodes: '',
+  responsibility: '',
+  accountability: '',
+  competency: '',
+  conflictActorCodes: '',
+  maxConcurrentAssignments: '0',
+  reviewCycleDays: '365',
+  delegationAllowed: 'false',
+  useAt: 'Y',
+});
+
+function ActorPolicyWorkspace({
+  actors,
+  assignments,
+  steps,
+  pending,
+  result,
+  onSave,
+  onOpenAssignments,
+}: {
+  actors: RuntimeRow[];
+  assignments: RuntimeRow[];
+  steps: RuntimeRow[];
+  pending: boolean;
+  result: string;
+  onSave: (values: Record<string, unknown>) => Promise<void>;
+  onOpenAssignments: () => void;
+}) {
+  const [draft, setDraft] = useState<ActorPolicyDraft>(emptyActorPolicy);
+  const [selectedCode, setSelectedCode] = useState('');
+  const [search, setSearch] = useState('');
+  const activeActors = actors.filter(
+    actor => String(actor.useAt ?? 'Y') === 'Y',
+  );
+  const activeAssignments = assignments.filter(assignment => {
+    const validUntil = String(assignment.validUntil ?? '');
+    return (
+      String(assignment.status ?? 'ACTIVE') === 'ACTIVE' &&
+      (!validUntil || validUntil >= new Date().toISOString().slice(0, 10))
+    );
+  });
+  const assignedCodes = new Set(
+    activeAssignments.map(row => String(row.actorCode ?? '')),
+  );
+  const unassigned = activeActors.filter(
+    actor => !assignedCodes.has(String(actor.actorCode ?? '')),
+  ).length;
+  const visibleActors = actors.filter(actor =>
+    JSON.stringify(actor).toLowerCase().includes(search.toLowerCase()),
+  );
+  const selected = actors.find(
+    actor => String(actor.actorCode ?? '') === selectedCode,
+  );
+  const selectedAssignments = activeAssignments.filter(
+    row => String(row.actorCode ?? '') === selectedCode,
+  );
+  const selectedSteps = steps.filter(
+    row => String(row.actorCode ?? '') === selectedCode,
+  );
+  const update = (field: keyof ActorPolicyDraft, value: string) =>
+    setDraft(current => ({ ...current, [field]: value }));
+  const selectActor = (actor: RuntimeRow) => {
+    const actorCode = String(actor.actorCode ?? '');
+    setSelectedCode(actorCode);
+    setDraft({
+      actorCode,
+      actorName: String(actor.actorName ?? ''),
+      actorNameEn: String(actor.actorNameEn ?? ''),
+      actorType: String(actor.actorType ?? 'BUSINESS'),
+      purpose: String(actor.purpose ?? ''),
+      capabilityCodes: String(actor.capabilityCodes ?? ''),
+      responsibility: String(actor.responsibility ?? ''),
+      accountability: String(actor.accountability ?? ''),
+      competency: String(actor.competency ?? ''),
+      conflictActorCodes: String(actor.conflictActorCodes ?? ''),
+      maxConcurrentAssignments: String(actor.maxConcurrentAssignments ?? '0'),
+      reviewCycleDays: String(actor.reviewCycleDays ?? '365'),
+      delegationAllowed: String(actor.delegationAllowed ?? false),
+      useAt: String(actor.useAt ?? 'Y'),
+    });
+  };
+  const reset = () => {
+    setSelectedCode('');
+    setDraft(emptyActorPolicy());
+  };
+  const activeDeactivationBlocked =
+    draft.useAt === 'N' && selectedAssignments.length > 0;
+  const requiredMissing = [
+    draft.actorCode,
+    draft.actorName,
+    draft.purpose,
+    draft.responsibility,
+    draft.accountability,
+    draft.competency,
+  ].some(value => !value.trim());
+  let saveLabel = selectedCode ? '액터 갱신' : '액터 등록';
+  if (pending) saveLabel = '저장 중…';
+
+  return (
+    <Box mt={3}>
+      <Grid container spacing={2}>
+        {[
+          ['등록 액터', actors.length],
+          ['활성 액터', activeActors.length],
+          ['활성 배정', activeAssignments.length],
+          ['미배정 액터', unassigned],
+        ].map(([label, value]) => (
+          <Grid item xs={6} md={3} key={String(label)}>
+            <Paper variant="outlined" style={{ padding: 16, height: '100%' }}>
+              <Typography variant="caption" color="textSecondary">
+                {label}
+              </Typography>
+              <Typography variant="h5">{value}</Typography>
+            </Paper>
+          </Grid>
+        ))}
+      </Grid>
+
+      <Grid container spacing={2} style={{ marginTop: 4 }}>
+        <Grid item xs={12} md={4}>
+          <Paper variant="outlined" style={{ padding: 16, height: '100%' }}>
+            <Box
+              display="flex"
+              justifyContent="space-between"
+              alignItems="center"
+            >
+              <Typography variant="h6">액터 사전</Typography>
+              <Button size="small" onClick={reset}>
+                신규
+              </Button>
+            </Box>
+            <TextField
+              fullWidth
+              size="small"
+              variant="outlined"
+              label="액터 검색"
+              value={search}
+              onChange={event => setSearch(event.target.value)}
+              style={{ marginTop: 12 }}
+            />
+            <Box
+              mt={1.5}
+              display="grid"
+              gridGap={8}
+              style={{ maxHeight: 680, overflowY: 'auto' }}
+            >
+              {visibleActors.map(actor => {
+                const actorCode = String(actor.actorCode ?? '');
+                const assignmentCount = activeAssignments.filter(
+                  row => String(row.actorCode ?? '') === actorCode,
+                ).length;
+                const stepCount = steps.filter(
+                  row => String(row.actorCode ?? '') === actorCode,
+                ).length;
+                return (
+                  <Box
+                    key={actorCode}
+                    p={1.5}
+                    onClick={() => selectActor(actor)}
+                    style={{
+                      cursor: 'pointer',
+                      border: '1px solid #dbe4ea',
+                      borderRadius: 8,
+                      background:
+                        selectedCode === actorCode ? '#e8f2ff' : '#fff',
+                    }}
+                  >
+                    <Box
+                      display="flex"
+                      justifyContent="space-between"
+                      alignItems="center"
+                      gridGap={8}
+                    >
+                      <Box>
+                        <Typography variant="body2" style={{ fontWeight: 700 }}>
+                          {displayValue(actor.actorName)}
+                        </Typography>
+                        <Typography variant="caption" color="textSecondary">
+                          {actorCode} · {displayValue(actor.actorType)}
+                        </Typography>
+                      </Box>
+                      <Chip
+                        size="small"
+                        color={
+                          String(actor.useAt ?? 'Y') === 'Y'
+                            ? 'primary'
+                            : 'default'
+                        }
+                        label={
+                          String(actor.useAt ?? 'Y') === 'Y' ? '활성' : '비활성'
+                        }
+                      />
+                    </Box>
+                    <Typography variant="caption" color="textSecondary">
+                      계정 {assignmentCount} · 프로세스 단계 {stepCount}
+                    </Typography>
+                  </Box>
+                );
+              })}
+            </Box>
+          </Paper>
+        </Grid>
+
+        <Grid item xs={12} md={8}>
+          <Paper variant="outlined" style={{ padding: 20 }}>
+            <Box
+              display="flex"
+              justifyContent="space-between"
+              alignItems="center"
+              flexWrap="wrap"
+              gridGap={8}
+            >
+              <Box>
+                <Typography variant="overline">
+                  ACTOR RESPONSIBILITY & POLICY
+                </Typography>
+                <Typography variant="h6">액터 책임·권한 설계</Typography>
+              </Box>
+              {selected && (
+                <Chip
+                  label={`${selectedAssignments.length}개 계정 배정 · ${selectedSteps.length}개 단계 사용`}
+                />
+              )}
+            </Box>
+            <form
+              onSubmit={event => {
+                event.preventDefault();
+                if (!requiredMissing && !activeDeactivationBlocked)
+                  void onSave({
+                    ...draft,
+                    delegationAllowed: draft.delegationAllowed === 'true',
+                    maxConcurrentAssignments: Number(
+                      draft.maxConcurrentAssignments,
+                    ),
+                    reviewCycleDays: Number(draft.reviewCycleDays),
+                  });
+              }}
+            >
+              <Grid container spacing={2} style={{ marginTop: 4 }}>
+                <Grid item xs={12} md={4}>
+                  <TextField
+                    fullWidth
+                    required
+                    disabled={Boolean(selectedCode)}
+                    size="small"
+                    variant="outlined"
+                    label="액터 코드"
+                    helperText="영문 대문자·숫자·밑줄"
+                    value={draft.actorCode}
+                    onChange={event =>
+                      update('actorCode', event.target.value.toUpperCase())
+                    }
+                  />
+                </Grid>
+                <Grid item xs={12} md={4}>
+                  <TextField
+                    fullWidth
+                    required
+                    size="small"
+                    variant="outlined"
+                    label="액터명"
+                    value={draft.actorName}
+                    onChange={event => update('actorName', event.target.value)}
+                  />
+                </Grid>
+                <Grid item xs={12} md={4}>
+                  <TextField
+                    fullWidth
+                    size="small"
+                    variant="outlined"
+                    label="영문명"
+                    value={draft.actorNameEn}
+                    onChange={event =>
+                      update('actorNameEn', event.target.value)
+                    }
+                  />
+                </Grid>
+                <Grid item xs={12} md={4}>
+                  <FormControl fullWidth size="small" variant="outlined">
+                    <InputLabel>액터 유형</InputLabel>
+                    <Select
+                      label="액터 유형"
+                      value={draft.actorType}
+                      onChange={event =>
+                        update('actorType', String(event.target.value))
+                      }
+                    >
+                      {[
+                        'BUSINESS',
+                        'REVIEW',
+                        'APPROVAL',
+                        'OPERATION',
+                        'AUDIT',
+                        'EXTERNAL',
+                        'SYSTEM',
+                      ].map(value => (
+                        <MenuItem key={value} value={value}>
+                          {value}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Grid>
+                <Grid item xs={12} md={4}>
+                  <FormControl fullWidth size="small" variant="outlined">
+                    <InputLabel>위임 허용</InputLabel>
+                    <Select
+                      label="위임 허용"
+                      value={draft.delegationAllowed}
+                      onChange={event =>
+                        update('delegationAllowed', String(event.target.value))
+                      }
+                    >
+                      <MenuItem value="true">허용</MenuItem>
+                      <MenuItem value="false">불가</MenuItem>
+                    </Select>
+                  </FormControl>
+                </Grid>
+                <Grid item xs={12} md={4}>
+                  <FormControl fullWidth size="small" variant="outlined">
+                    <InputLabel>사용 상태</InputLabel>
+                    <Select
+                      label="사용 상태"
+                      value={draft.useAt}
+                      onChange={event =>
+                        update('useAt', String(event.target.value))
+                      }
+                    >
+                      <MenuItem value="Y">활성</MenuItem>
+                      <MenuItem value="N">비활성</MenuItem>
+                    </Select>
+                  </FormControl>
+                </Grid>
+                <Grid item xs={12}>
+                  <TextField
+                    fullWidth
+                    required
+                    multiline
+                    rows={2}
+                    size="small"
+                    variant="outlined"
+                    label="업무 목적"
+                    value={draft.purpose}
+                    onChange={event => update('purpose', event.target.value)}
+                  />
+                </Grid>
+                <Grid item xs={12} md={6}>
+                  <TextField
+                    fullWidth
+                    required
+                    multiline
+                    rows={3}
+                    size="small"
+                    variant="outlined"
+                    label="수행 책임(Responsibility)"
+                    value={draft.responsibility}
+                    onChange={event =>
+                      update('responsibility', event.target.value)
+                    }
+                  />
+                </Grid>
+                <Grid item xs={12} md={6}>
+                  <TextField
+                    fullWidth
+                    required
+                    multiline
+                    rows={3}
+                    size="small"
+                    variant="outlined"
+                    label="최종 책무(Accountability)"
+                    value={draft.accountability}
+                    onChange={event =>
+                      update('accountability', event.target.value)
+                    }
+                  />
+                </Grid>
+                <Grid item xs={12} md={6}>
+                  <TextField
+                    fullWidth
+                    required
+                    multiline
+                    rows={2}
+                    size="small"
+                    variant="outlined"
+                    label="필수 역량·자격"
+                    value={draft.competency}
+                    onChange={event => update('competency', event.target.value)}
+                  />
+                </Grid>
+                <Grid item xs={12} md={6}>
+                  <TextField
+                    fullWidth
+                    multiline
+                    rows={2}
+                    size="small"
+                    variant="outlined"
+                    label="명령·역량 코드"
+                    helperText="쉼표로 구분"
+                    value={draft.capabilityCodes}
+                    onChange={event =>
+                      update('capabilityCodes', event.target.value)
+                    }
+                  />
+                </Grid>
+                <Grid item xs={12} md={4}>
+                  <TextField
+                    fullWidth
+                    size="small"
+                    variant="outlined"
+                    label="충돌 액터 코드"
+                    helperText="동시 보유 금지 역할"
+                    value={draft.conflictActorCodes}
+                    onChange={event =>
+                      update('conflictActorCodes', event.target.value)
+                    }
+                  />
+                </Grid>
+                <Grid item xs={12} md={4}>
+                  <TextField
+                    fullWidth
+                    size="small"
+                    type="number"
+                    variant="outlined"
+                    label="동시 배정 한도"
+                    inputProps={{ min: 0 }}
+                    value={draft.maxConcurrentAssignments}
+                    onChange={event =>
+                      update('maxConcurrentAssignments', event.target.value)
+                    }
+                  />
+                </Grid>
+                <Grid item xs={12} md={4}>
+                  <TextField
+                    fullWidth
+                    size="small"
+                    type="number"
+                    variant="outlined"
+                    label="정기 검토 주기(일)"
+                    inputProps={{ min: 1 }}
+                    value={draft.reviewCycleDays}
+                    onChange={event =>
+                      update('reviewCycleDays', event.target.value)
+                    }
+                  />
+                </Grid>
+              </Grid>
+              {activeDeactivationBlocked && (
+                <Box
+                  mt={2}
+                  p={1.5}
+                  style={{ background: '#fff1f2', border: '1px solid #fda4af' }}
+                >
+                  <Typography variant="body2">
+                    활성 계정 배정 {selectedAssignments.length}건을 먼저
+                    해제해야 액터를 비활성화할 수 있습니다.
+                  </Typography>
+                </Box>
+              )}
+              <Box
+                mt={2}
+                display="flex"
+                alignItems="center"
+                gridGap={8}
+                flexWrap="wrap"
+              >
+                <Button
+                  type="submit"
+                  variant="contained"
+                  color="primary"
+                  disabled={
+                    pending || requiredMissing || activeDeactivationBlocked
+                  }
+                >
+                  {saveLabel}
+                </Button>
+                <Button variant="outlined" onClick={onOpenAssignments}>
+                  계정·액터 배정 열기
+                </Button>
+              </Box>
+            </form>
+            {result && (
+              <Box
+                component="pre"
+                mt={2}
+                p={2}
+                style={{
+                  whiteSpace: 'pre-wrap',
+                  background: '#eef5fa',
+                  fontSize: 12,
+                }}
+              >
+                {result}
+              </Box>
+            )}
+          </Paper>
+
+          {selected && (
+            <Grid container spacing={2} style={{ marginTop: 4 }}>
+              <Grid item xs={12} md={6}>
+                <Paper
+                  variant="outlined"
+                  style={{ padding: 16, height: '100%' }}
+                >
+                  <Typography variant="subtitle2">
+                    계정·프로젝트 배정
+                  </Typography>
+                  <Box mt={1} display="grid" gridGap={6}>
+                    {selectedAssignments.slice(0, 12).map(row => (
+                      <Box
+                        key={String(row.assignmentId)}
+                        display="flex"
+                        justifyContent="space-between"
+                      >
+                        <Typography variant="body2">
+                          {displayValue(row.accountId)}
+                        </Typography>
+                        <Typography variant="caption">
+                          {displayValue(row.projectId)} ·{' '}
+                          {displayValue(row.dataScope)}
+                        </Typography>
+                      </Box>
+                    ))}
+                    {selectedAssignments.length === 0 && (
+                      <Typography variant="body2" color="textSecondary">
+                        활성 배정이 없습니다.
+                      </Typography>
+                    )}
+                  </Box>
+                </Paper>
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <Paper
+                  variant="outlined"
+                  style={{ padding: 16, height: '100%' }}
+                >
+                  <Typography variant="subtitle2">
+                    프로세스 단계 사용처
+                  </Typography>
+                  <Box mt={1} display="grid" gridGap={6}>
+                    {selectedSteps.slice(0, 12).map(row => (
+                      <Box key={`${row.processCode}-${row.stepCode}`}>
+                        <Typography variant="body2">
+                          {displayValue(row.stepName)}
+                        </Typography>
+                        <Typography variant="caption" color="textSecondary">
+                          {displayValue(row.processCode)} ·{' '}
+                          {displayValue(row.fromState)} →{' '}
+                          {displayValue(row.toState)}
+                        </Typography>
+                      </Box>
+                    ))}
+                    {selectedSteps.length === 0 && (
+                      <Typography variant="body2" color="textSecondary">
+                        연결된 프로세스 단계가 없습니다.
+                      </Typography>
+                    )}
+                  </Box>
+                </Paper>
+              </Grid>
+            </Grid>
+          )}
+        </Grid>
+      </Grid>
+    </Box>
+  );
+}
+
 type ActorAssignmentDraft = {
   accountId: string;
   tenantId: string;
@@ -3773,6 +4363,19 @@ export function ActorProcessControlPage(props: {
   }, [selectedTab.id]);
 
   useEffect(() => {
+    if (selectedTab.id !== 'actors') return;
+    ['assignments', 'steps']
+      .filter(key => runtimeDashboard[key] === undefined)
+      .forEach(key => {
+        void loadRuntimeDataset(key).catch(() => {
+          setMessage(`액터·권한 설계 데이터(${key})를 불러오지 못했습니다.`);
+        });
+      });
+    // 액터의 계정 배정과 실제 프로세스 사용처를 함께 검증합니다.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedTab.id]);
+
+  useEffect(() => {
     setSelectedRow(null);
     setCommandResult('');
   }, [selectedTab.id]);
@@ -3846,6 +4449,40 @@ export function ActorProcessControlPage(props: {
       await Promise.all([
         loadRuntimeDataset('assignments'),
         loadRuntimeDataset('actorAccountReadiness'),
+      ]);
+    } catch (error) {
+      setCommandResult(
+        `처리 실패\n${error instanceof Error ? error.message : String(error)}`,
+      );
+    } finally {
+      setCommandPending(false);
+    }
+  };
+
+  const executeActorCommand = async (values: Record<string, unknown>) => {
+    if (commandPending) return;
+    setCommandPending(true);
+    setCommandResult('');
+    try {
+      const response = await fetchApi.fetch(
+        '/api/resonance-projects/actor-process/commands',
+        {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ command: 'actor.save', ...values }),
+        },
+      );
+      const payload = (await response.json()) as Record<string, unknown>;
+      if (!response.ok) {
+        throw new Error(
+          String(payload.message ?? payload.error ?? `HTTP ${response.status}`),
+        );
+      }
+      setCommandResult(`처리 완료\n${JSON.stringify(payload, null, 2)}`);
+      await Promise.all([
+        loadRuntimeDataset('actors'),
+        loadRuntimeDataset('assignments'),
+        loadRuntimeDataset('steps'),
       ]);
     } catch (error) {
       setCommandResult(
@@ -4162,6 +4799,25 @@ export function ActorProcessControlPage(props: {
                 saveDesignDocument={saveDesignDocument}
               />
             )}
+            {selectedTab.id === 'actors' && (
+              <ActorPolicyWorkspace
+                actors={sourceRows}
+                assignments={
+                  Array.isArray(runtimeDashboard.assignments)
+                    ? (runtimeDashboard.assignments as RuntimeRow[])
+                    : []
+                }
+                steps={
+                  Array.isArray(runtimeDashboard.steps)
+                    ? (runtimeDashboard.steps as RuntimeRow[])
+                    : []
+                }
+                pending={commandPending}
+                result={commandResult}
+                onSave={executeActorCommand}
+                onOpenAssignments={() => openControlTab('assignments')}
+              />
+            )}
             {selectedTab.id === 'assignments' && (
               <ActorAssignmentWorkspace
                 rows={sourceRows}
@@ -4190,6 +4846,7 @@ export function ActorProcessControlPage(props: {
               'execution',
               'assignments',
               'completion',
+              'actors',
             ].includes(selectedTab.id) && (
               <Grid container spacing={2} style={{ marginTop: 8 }}>
                 <Grid item xs={12} sm={6} md={3}>
@@ -4227,7 +4884,9 @@ export function ActorProcessControlPage(props: {
               </Grid>
             )}
             {activeCommand &&
-              !['assignments', 'completion'].includes(selectedTab.id) && (
+              !['assignments', 'completion', 'actors'].includes(
+                selectedTab.id,
+              ) && (
                 <Box
                   mt={3}
                   p={2}
@@ -4311,9 +4970,12 @@ export function ActorProcessControlPage(props: {
                   )}
                 </Box>
               )}
-            {!['work-dashboard', 'assignments', 'completion'].includes(
-              selectedTab.id,
-            ) && (
+            {![
+              'work-dashboard',
+              'assignments',
+              'completion',
+              'actors',
+            ].includes(selectedTab.id) && (
               <>
                 <Box
                   mt={3}
