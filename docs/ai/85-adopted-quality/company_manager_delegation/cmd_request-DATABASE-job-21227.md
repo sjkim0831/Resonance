@@ -2,7 +2,7 @@
 
 - Job: 21227
 - Job type: DATABASE
-- Source commit: a04a109a5bc4d283c15834c1071064aca36355ec
+- Source commit: 1083cd653b94bdd4a936a647e16a7919df042cfe
 - Requirement: 위임 범위·기간·사유·후임자 재직·미결업무를 확인한다.
 - Validation result: {"strategy":"APPROVED_FULL_STACK_PACKAGE","processCode":"COMPANY_MANAGER_DELEGATION","stepCode":"CMD_REQUEST","dimension":"DATABASE","package":"/opt/Resonance/var/ai-worktrees/job-21227/projects/carbonet-backend-metadata/process-runtime/generated/COMPANY_MANAGER_DELEGATION/COMPANY_MANAGER_DELEGATION__CMD_REQUEST.json","evidence":"/opt/Resonance/var/ai-worktrees/job-21227/var/test-evidence/process-package-tests/COMPANY_MANAGER_DELEGATION__CMD_REQUEST.json","status":"PASSED"}
 
