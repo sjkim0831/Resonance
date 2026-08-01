@@ -11,10 +11,12 @@ import { CommonCenteredSystemCanvas } from "./CommonCenteredSystemCanvas";
 import { CustomerWorkDevelopmentDashboard } from "./CustomerWorkDevelopmentDashboard";
 import { IntegratedWorkOperationsMap } from "./IntegratedWorkOperationsMap";
 import { ProcessArchetypeCatalog } from "./ProcessArchetypeCatalog";
+import { ProjectDeliveryBlueprintPanel } from "./ProjectDeliveryBlueprintPanel";
 
 type Row = Record<string, unknown>;
 type Payload = { deliveryQueue?:Row[]; deliverySummary?:Row; workTypes?:Row[]; actors: Row[]; assignments: Row[]; actorAccountReadiness?:Row[]; processes: Row[]; steps: Row[]; cases: Row[]; runs: Row[]; artifacts:Row[]; developmentRules:Row[]; developmentJobs:Row[]; developmentEvents:Row[]; jobDependencies:Row[]; qualityGates:Row[]; qualityGateResults:Row[]; processDevelopmentProgress:Row[]; screenTypes:Row[]; referenceAssets:Row[]; automationMetrics:Row[]; screenDevelopmentGates:Row[]; processExecutions:Row[]; processExecutionEvents:Row[]; commonFeaturePackages?:Row[]; screenFeatureBindings?:Row[]; featureInstallations?:Row[]; designValidationRuns?:Row[]; screenBlueprints?:Row[]; generationBatches?:Row[]; professionalReadiness?:Row[]; professionalSummary?:Row; professionalScreenContracts?:Row[]; professionalScreenSummary?:Row; pageDesigns?:Row[]; pageDesignSummary?:Row; professionalFactoryRuns?:Row[]; screenAssetAssemblies?:Row[]; projectRegistrationCoverage?:Row[]; projectRegistrationSummary?:Row; customerJourneyGaps?:Row[]; customerJourneySummary?:Row; actorProcessMenus?:Row[]; actorProcessMenuSummary?:Row; processArchetypes?:Row[]; screenArchetypeBindings?:Row[]; backendProcessReadiness?:Row[]; projectCompletionRuns?:Row[]; referenceSummary?:Row; summary?: Row };
 type AssurancePayload={designAssurance?:Row[];designAssuranceSummary?:Row};
+type DeliveryPayload={deliveryBlueprints?:Row[];deliveryReleases?:Row[];deliveryProjects?:Row[]};
 type DesignInventory={counts:Row;themes:Row[];sections:Row[];components:Row[];mappings:Row[];duplicates:Row[];recentPreflights:Row[]};
 const empty: Payload = { workTypes:[], actors: [], assignments: [], processes: [], steps: [], cases: [], runs: [], artifacts:[], developmentRules:[], developmentJobs:[], developmentEvents:[], jobDependencies:[], qualityGates:[], qualityGateResults:[], processDevelopmentProgress:[], screenTypes:[], referenceAssets:[], automationMetrics:[], screenDevelopmentGates:[], processExecutions:[], processExecutionEvents:[] };
 const value = (row: Row, key: string) => String(row[key] ?? "");
@@ -45,7 +47,7 @@ const WORKSPACES:WorkspaceDefinition[] = [
 export function ActorProcessGovernancePage() {
   const en = isEnglish();
   const base = buildLocalizedPath("/admin/api/system/actor-process", "/en/admin/api/system/actor-process");
-  const [data, setData] = useState<Payload & AssurancePayload>(empty);
+  const [data, setData] = useState<Payload & AssurancePayload & DeliveryPayload>(empty);
   const [tab, setTab] = useState("work-dashboard");
   const [processFilter, setProcessFilter] = useState(() => new URLSearchParams(location.search).get("process") || "");
   const [preflightProcess,setPreflightProcess]=useState("");
@@ -135,6 +137,16 @@ export function ActorProcessGovernancePage() {
       </section>
       {message && <p className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 font-bold text-emerald-800">{message}</p>}
       {error && <p className="rounded-xl border border-red-200 bg-red-50 p-4 font-bold text-red-700">{error}</p>}
+      <button type="button" onClick={()=>setTab("project-delivery")} className={`min-h-11 rounded-lg px-4 py-2 text-sm font-black ${tab==="project-delivery"?"bg-[#246beb] text-white":"border border-blue-300 bg-white text-[#174ea6]"}`}>프로젝트 업무팩</button>
+      {tab === "project-delivery" && <ProjectDeliveryBlueprintPanel
+        actors={data.actors}
+        blueprints={data.deliveryBlueprints??[]}
+        busy={busy}
+        onPost={post}
+        processes={data.processes}
+        projects={data.deliveryProjects??[]}
+        releases={data.deliveryReleases??[]}
+      />}
       <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
         <div className="grid border-b border-slate-200 lg:grid-cols-4" aria-label="액터 프로세스 통합 작업공간">
           {WORKSPACES.map((workspace,index)=><button

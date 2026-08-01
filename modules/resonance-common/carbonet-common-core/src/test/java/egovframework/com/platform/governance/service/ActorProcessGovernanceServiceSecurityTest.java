@@ -222,4 +222,21 @@ class ActorProcessGovernanceServiceSecurityTest {
 
         verify(jdbc, never()).update(argThat(sql -> sql != null && sql.startsWith("update framework_process_work_draft")), any(Object[].class));
     }
+
+    @Test
+    void projectDeliveryRequiresEveryBlueprintActorBindingBeforeMutation() {
+        when(jdbc.queryForObject(argThat(sql -> sql.contains("select specification::text")),
+                org.mockito.ArgumentMatchers.eq(String.class), any(Object[].class)))
+                .thenReturn("{\"actors\":[{\"actorCode\":\"COMPANY_MANAGER\"},{\"actorCode\":\"SITE_DATA_OWNER\"}],\"processCodes\":[\"ACTIVITY_DATA\"]}");
+
+        IllegalArgumentException failure=assertThrows(IllegalArgumentException.class,
+                () -> service.applyProjectDeliveryBlueprint(Map.of(
+                        "blueprintCode","EMISSION_STANDARD","tenantId","TENANT_A","projectId","PROJECT_A",
+                        "actorBindings",List.of(Map.of("actorCode","COMPANY_MANAGER","accountId","manager-a"))),
+                        "webmaster"));
+
+        assertTrue(failure.getMessage().contains("every blueprint actor"));
+        verify(jdbc,never()).queryForObject(argThat(sql -> sql.contains("framework_apply_project_delivery_blueprint")),
+                org.mockito.ArgumentMatchers.eq(String.class),any(Object[].class));
+    }
 }
