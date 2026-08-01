@@ -666,6 +666,11 @@ public class ActorProcessControlPlaneBridgeController {
         if (readyDesignContracts < steps.size()) {
             throw new IllegalStateException("Requirement screen design contracts are incomplete: " + processCode);
         }
+        int pageDesigns = governance.ensureGeneratedProcessPageDesigns(
+                processCode, "BACKSTAGE_REQUIREMENT_AUTOMATION");
+        if (pageDesigns < steps.size()) {
+            throw new IllegalStateException("Requirement page and field designs are incomplete: " + processCode);
+        }
         return order;
     }
 
@@ -678,8 +683,18 @@ public class ActorProcessControlPlaneBridgeController {
 
     @Scheduled(
             fixedDelayString = "${resonance.actor-process.generation-recovery-delay-ms:60000}",
-            initialDelayString = "${resonance.actor-process.generation-recovery-initial-delay-ms:60000}")
+            initialDelayString = "${resonance.actor-process.generation-recovery-initial-delay-ms:2000}")
     public void recoverQueuedDesignGeneration() {
+        List<String> requirementProcesses = jdbc.queryForList("""
+                select process_code from framework_process_definition
+                 where domain_code='REQUIREMENT_AUTOMATION'
+                 order by process_code
+                """, String.class);
+        for (String processCode : requirementProcesses) {
+            governance.ensureGeneratedProcessSafetyCases(processCode);
+            governance.ensureGeneratedProcessDesignContracts(processCode, "REQUIREMENT_SELF_HEALER");
+            governance.ensureGeneratedProcessPageDesigns(processCode, "REQUIREMENT_SELF_HEALER");
+        }
         List<Map<String, Object>> releases = jdbc.queryForList("""
                 select project_id,design_version
                   from framework_actor_process_design_release

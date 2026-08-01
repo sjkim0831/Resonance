@@ -2181,6 +2181,88 @@ public class ActorProcessGovernanceService {
             Integer.class,process);
         return ready==null?0:ready;
     }
+
+    /** Builds the page, field, and step-handoff design catalogs used by the unified work map. */
+    @Transactional public int ensureGeneratedProcessPageDesigns(String processCode,String actor){
+        String process=req(Map.of("processCode",processCode),"processCode");
+        jdbc.update("""
+            with ordered as (
+              select s.*,lag(s.step_code) over(order by s.step_order) upstream_step,
+                lead(s.step_code) over(order by s.step_order) downstream_step
+              from framework_process_step s where s.process_code=?
+            ), pages as (
+              select o.*,'USER'::varchar audience,o.user_path route_path from ordered o where o.requires_user_page
+              union all
+              select o.*,'ADMIN'::varchar audience,o.admin_path route_path from ordered o where o.requires_admin_page
+            )
+            insert into framework_page_design(process_code,step_code,audience,page_code,page_title,page_purpose,
+              screen_type,planned_route_path,actual_route_path,route_status,primary_entity,upstream_step_code,
+              downstream_step_code,actor_code,entry_condition,exit_condition,responsive_contract,
+              accessibility_contract,security_contract,exception_contract,design_status,updated_by)
+            select process_code,step_code,audience,process_code||'_'||step_code||'_'||audience,step_name,
+              coalesce(nullif(requirement_text,''),step_name||' 업무를 완료한다.'),'WORKSPACE',route_path,null,
+              'DESIGN_ONLY','framework_business_record',upstream_step,downstream_step,actor_code,
+              from_state||' 상태와 액터·프로젝트 권한을 검증한다.',
+              coalesce(nullif(completion_rule,''),to_state||' 상태 전이')||' 및 감사 증적을 저장한다.',
+              '{"mobile":"single-column","tablet":"adaptive-two-column","desktop":"task-grid","overflow":"wrap-or-scroll"}'::jsonb,
+              '{"standard":"WCAG 2.1 AA","keyboard":true,"labels":true,"focusManagement":true}'::jsonb,
+              jsonb_build_object('actorCode',actor_code,'tenantIsolation',true,'projectIsolation',true,'auditRequired',true),
+              '{"states":["loading","empty","validation-error","forbidden","conflict","server-error","recovery"],"retry":"idempotent-only"}'::jsonb,
+              'DESIGN_COMPLETE',?
+            from pages
+            on conflict(process_code,step_code,audience) do update set page_title=excluded.page_title,
+              page_purpose=excluded.page_purpose,planned_route_path=excluded.planned_route_path,
+              actor_code=excluded.actor_code,entry_condition=excluded.entry_condition,exit_condition=excluded.exit_condition,
+              design_status='DESIGN_COMPLETE',updated_by=excluded.updated_by,updated_at=current_timestamp
+            """,process,actor);
+        jdbc.update("""
+            insert into framework_page_field_definition(page_design_id,field_order,field_group,field_code,field_name,
+              data_type,control_type,required,editable,list_visible,search_enabled,api_property,mapping_status,
+              validation_contract,privacy_class,permission_code,evidence_required,responsive_priority,help_text,design_source)
+            select d.page_design_id,f.ord,'COMMON',f.code,f.name,f.dtype,f.control,f.required,f.editable,
+              f.list_visible,f.search_enabled,f.code,f.mapping_status,'{}'::jsonb,'INTERNAL',d.actor_code||':'||d.audience,
+              f.evidence_required,f.ord*10,f.help,'REQUIREMENT_AUTOMATION'
+            from framework_page_design d cross join (values
+              (1,'tenantId','테넌트','STRING','HIDDEN',true,false,false,false,'CONTEXT',false,'테넌트 격리 키'),
+              (2,'projectId','프로젝트','STRING','PROJECT_SELECTOR',true,true,true,true,'CONTEXT',false,'프로젝트 선택'),
+              (3,'processCode','프로세스','STRING','HIDDEN',true,false,false,false,'CONTEXT',false,'프로세스 식별자'),
+              (4,'stepCode','업무 단계','STRING','HIDDEN',true,false,false,false,'CONTEXT',false,'단계 식별자'),
+              (5,'actorCode','담당 액터','STRING','ACTOR_SELECTOR',true,true,true,true,'CONTEXT',false,'담당 액터'),
+              (6,'statusCode','처리 상태','STRING','STATUS',false,false,true,true,'LOGICAL_CONTRACT',false,'현재 처리 상태'),
+              (7,'rowVersion','데이터 버전','INTEGER','HIDDEN',false,false,false,false,'LOGICAL_CONTRACT',false,'동시 수정 방지'),
+              (8,'businessData','업무 입력','JSON','DYNAMIC_FORM',false,true,false,false,'LOGICAL_CONTRACT',true,'요구사항 기반 입력'),
+              (9,'evidenceFiles','증적 파일','FILE_LIST','FILE_UPLOAD',false,true,false,false,'LOGICAL_CONTRACT',true,'검증 증적'),
+              (10,'auditHistory','변경 이력','JSON','AUDIT_TIMELINE',false,false,false,false,'LOGICAL_CONTRACT',true,'감사 이력')
+            ) f(ord,code,name,dtype,control,required,editable,list_visible,search_enabled,mapping_status,evidence_required,help)
+            where d.process_code=?
+            on conflict(page_design_id,field_code) do update set field_order=excluded.field_order,
+              field_name=excluded.field_name,control_type=excluded.control_type,required=excluded.required,
+              editable=excluded.editable,list_visible=excluded.list_visible,search_enabled=excluded.search_enabled,
+              permission_code=excluded.permission_code,evidence_required=excluded.evidence_required,
+              help_text=excluded.help_text,updated_at=current_timestamp
+            """,process);
+        jdbc.update("""
+            with ordered as (
+              select s.*,lead(s.step_code) over(order by s.step_order) next_step
+              from framework_process_step s where s.process_code=?
+            )
+            insert into framework_process_data_handoff(process_code,from_step_code,to_process_code,to_step_code,
+              handoff_type,context_keys,payload_contract,integrity_contract,authorization_contract,failure_contract)
+            select process_code,step_code,process_code,next_step,'STEP',
+              '["tenantId","projectId","processCode","stepCode","actorCode","rowVersion"]'::jsonb,
+              jsonb_build_object('source',output_contract,'targetStep',next_step),
+              '{"versionRequired":true,"checksumRequired":true,"auditRequired":true}'::jsonb,
+              jsonb_build_object('fromActor',actor_code,'tenantIsolation',true,'projectIsolation',true),
+              '{"onMissing":"BLOCK_AND_NOTIFY","onConflict":"RELOAD_AND_RETRY","onUnauthorized":"DENY_AND_AUDIT"}'::jsonb
+            from ordered where next_step is not null
+            on conflict(process_code,from_step_code,to_process_code,to_step_code,handoff_type) do update set
+              context_keys=excluded.context_keys,payload_contract=excluded.payload_contract,
+              integrity_contract=excluded.integrity_contract,authorization_contract=excluded.authorization_contract,
+              failure_contract=excluded.failure_contract,updated_at=current_timestamp
+            """,process);
+        Integer pages=jdbc.queryForObject("select count(*) from framework_page_design where process_code=?",Integer.class,process);
+        return pages==null?0:pages;
+    }
     @Transactional public void saveArtifact(Map<String,Object>b){
         jdbc.update("insert into framework_process_artifact(process_code,step_code,artifact_code,artifact_type,artifact_name,target_path,contract_ref,required,delivery_status,owner_actor_code,acceptance_criteria,evidence_ref,notes) values(?,?,?,?,?,?,?,?,?,?,?,nullif(?,''),nullif(?,'')) on conflict(process_code,artifact_code) do update set step_code=excluded.step_code,artifact_type=excluded.artifact_type,artifact_name=excluded.artifact_name,target_path=excluded.target_path,contract_ref=excluded.contract_ref,required=excluded.required,delivery_status=excluded.delivery_status,owner_actor_code=excluded.owner_actor_code,acceptance_criteria=excluded.acceptance_criteria,evidence_ref=excluded.evidence_ref,notes=excluded.notes,updated_at=current_timestamp",req(b,"processCode"),str(b,"stepCode"),req(b,"artifactCode"),req(b,"artifactType"),req(b,"artifactName"),str(b,"targetPath"),str(b,"contractRef"),!"false".equalsIgnoreCase(str(b,"required")),def(b,"status","PLANNED"),req(b,"ownerActorCode"),req(b,"acceptanceCriteria"),str(b,"evidenceRef"),str(b,"notes"));
     }
