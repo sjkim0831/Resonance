@@ -10,7 +10,7 @@ cd "$TMP_DIR"
 git init -q
 git config user.name planner-test
 git config user.email planner-test@example.invalid
-mkdir -p docs tests projects/carbonet-frontend/source/src projects/carbonet-frontend/source/scripts apps/carbonet-api/src/main/java/example \
+mkdir -p docs tests ops/scripts projects/carbonet-frontend/source/src projects/carbonet-frontend/source/scripts apps/carbonet-api/src/main/java/example \
   apps/carbonet-api/src/main/resources/db/migration projects/carbonet-backend-metadata/process-runtime/generated \
   platform/control-plane/catalog platform/control-plane/backstage/packages/app/src deploy/k8s/control-plane
 printf 'base\n' > README.md
@@ -42,10 +42,18 @@ eval "$(bash "$PLANNER" "$frontend" "$frontend_test_automation" --format env)"
 [[ "$PLAN_INFRASTRUCTURE_REQUIRED" == true ]]
 [[ "$PLAN_TESTS" == *"automation:full-screen-smoke"* ]]
 
+printf '#!/usr/bin/env bash\n' > ops/scripts/resonance-k8s-build-deploy-80-v2.sh
+git add . && git commit -qm build-deploy-engine
+build_deploy_engine="$(git rev-parse HEAD)"
+eval "$(bash "$PLANNER" "$frontend_test_automation" "$build_deploy_engine" --format env)"
+[[ "$PLAN_RUNTIME_REQUIRED" == false ]]
+[[ "$PLAN_INFRASTRUCTURE_REQUIRED" == true ]]
+[[ "$PLAN_TESTS" == *"automation:shell-syntax"* ]]
+
 printf 'class App {}\n' > apps/carbonet-api/src/main/java/example/App.java
 git add . && git commit -qm backend
 backend="$(git rev-parse HEAD)"
-eval "$(bash "$PLANNER" "$frontend_test_automation" "$backend" --format env)"
+eval "$(bash "$PLANNER" "$build_deploy_engine" "$backend" --format env)"
 [[ "$PLAN_RUNTIME_REQUIRED" == true ]]
 [[ "$PLAN_FRONTEND_REQUIRED" == false ]]
 [[ "$PLAN_BACKEND_REQUIRED" == true ]]

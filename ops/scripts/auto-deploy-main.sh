@@ -958,6 +958,8 @@ if [[ "$PLAN_RUNTIME_REQUIRED" != "true" ]]; then
       ops/scripts/test-catalog-identity-parallel-deploy.sh \
       ops/scripts/test-catalog-overlay-fast-path.sh \
       ops/scripts/test-no-change-preflight-fast-path.sh \
+      ops/scripts/resonance-k8s-build-deploy-80-v2.sh \
+      ops/scripts/test-frontend-parallel-build-pipeline.sh \
       ops/scripts/install-resonance-github-runner.sh \
       ops/scripts/install-resonance-github-deploy-webhook.sh \
       ops/scripts/apply-backup-cronjobs.sh \
@@ -1000,6 +1002,7 @@ if [[ "$PLAN_RUNTIME_REQUIRED" != "true" ]]; then
     bash ops/scripts/test-catalog-overlay-fast-path.sh
     bash ops/scripts/test-atomic-asset-e4b-validation.sh
     bash ops/scripts/test-no-change-preflight-fast-path.sh
+    bash ops/scripts/test-frontend-parallel-build-pipeline.sh
     bash ops/scripts/test-push-deploy-dispatch.sh
     bash ops/scripts/test-github-deploy-webhook.sh
     bash ops/scripts/test-post-reboot-runtime-recovery.sh
