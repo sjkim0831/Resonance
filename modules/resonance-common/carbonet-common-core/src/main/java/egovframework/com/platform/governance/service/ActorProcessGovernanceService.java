@@ -2275,6 +2275,16 @@ public class ActorProcessGovernanceService {
               applicability_rule=excluded.applicability_rule,topology_status=excluded.topology_status,
               updated_at=current_timestamp
             """,process,process);
+        jdbc.update("""
+            insert into framework_business_process_sequence(work_type_code,process_code,workflow_order,
+              workflow_phase,process_role,prerequisite_process_codes,next_process_code,sequence_status)
+            values('REQUIREMENT_AUTOMATION',?,10,'REQUIREMENT_DELIVERY','ENTRY','','','ACTIVE')
+            on conflict(work_type_code,process_code) do update set workflow_order=excluded.workflow_order,
+              workflow_phase=excluded.workflow_phase,process_role=excluded.process_role,
+              prerequisite_process_codes=excluded.prerequisite_process_codes,
+              next_process_code=excluded.next_process_code,sequence_status=excluded.sequence_status,
+              updated_at=current_timestamp
+            """,process);
         Integer pages=jdbc.queryForObject("select count(*) from framework_page_design where process_code=?",Integer.class,process);
         return pages==null?0:pages;
     }
