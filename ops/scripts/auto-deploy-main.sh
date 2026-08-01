@@ -714,6 +714,8 @@ run_actor_process_role_e2e_if_required() {
         ops/scripts/resonance-actor-process-role-e2e.sh \
         ops/scripts/resonance-project-task-browser-e2e.mjs \
         ops/scripts/resonance-project-task-browser-e2e.sh \
+        ops/scripts/resonance-seven-step-disposable-e2e.mjs \
+        ops/scripts/resonance-seven-step-disposable-e2e.sh \
         ops/scripts/resonance-keycloak-deploy.sh \
         ops/scripts/resonance-keycloak-carbonet-identity-sync.sh \
         | grep -q .; then
@@ -726,6 +728,8 @@ run_actor_process_role_e2e_if_required() {
     bash ops/scripts/resonance-project-delivery-e2e.sh
   RESONANCE_ROOT="$ROOT_DIR" \
     bash ops/scripts/resonance-project-task-browser-e2e.sh
+  RESONANCE_ROOT="$ROOT_DIR" \
+    bash ops/scripts/resonance-seven-step-disposable-e2e.sh
 }
 
 sync_keycloak_actor_assignments_if_required() {
