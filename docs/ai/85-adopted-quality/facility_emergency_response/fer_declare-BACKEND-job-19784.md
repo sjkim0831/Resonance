@@ -2,7 +2,7 @@
 
 - Job: 19784
 - Job type: BACKEND
-- Source commit: 897a64106ad7d91b8b0a1db1f195dd51da34d925
+- Source commit: 5a2970093170a97a47294fff149a226e8267319c
 - Requirement: 누출·압력·화재·인명 위험을 분류하고 비상 단계를 선언한다.
 - Validation result: {"strategy":"APPROVED_FULL_STACK_PACKAGE","processCode":"FACILITY_EMERGENCY_RESPONSE","stepCode":"FER_DECLARE","dimension":"BACKEND","package":"/opt/Resonance/var/ai-worktrees/job-19784/projects/carbonet-backend-metadata/process-runtime/generated/FACILITY_EMERGENCY_RESPONSE/FACILITY_EMERGENCY_RESPONSE__FER_DECLARE.json","evidence":"/opt/Resonance/var/ai-worktrees/job-19784/var/test-evidence/process-package-tests/FACILITY_EMERGENCY_RESPONSE__FER_DECLARE.json","status":"PASSED"}
 
