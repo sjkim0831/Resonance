@@ -34,9 +34,9 @@ snapshot_script="$snapshot_dir/auto-deploy-main.sh"
 snapshot_plan="$snapshot_dir/plan-incremental-work.sh"
 trap 'rm -rf -- "$snapshot_dir"' EXIT INT TERM
 
-git -C "$ROOT_DIR" show \
+git -C "$ROOT_DIR" show --format= --no-textconv \
   "$target_commit:ops/scripts/auto-deploy-main.sh" >"$snapshot_script"
-git -C "$ROOT_DIR" show \
+git -C "$ROOT_DIR" show --format= --no-textconv \
   "$target_commit:ops/scripts/plan-incremental-work.sh" >"$snapshot_plan"
 chmod 700 "$snapshot_script" "$snapshot_plan"
 
