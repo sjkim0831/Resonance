@@ -207,7 +207,9 @@ async function verifyRoute(
     await page.getByText('완료·개발 현황', { exact: true }).first().click();
     await expect(page.getByText('프로세스별 완료 판정')).toBeVisible();
     await expect(page.getByText('최근 자동 완료 실행')).toBeVisible();
-    await expect(page.getByText('필수 작업', { exact: true })).toBeVisible();
+    await expect(
+      page.getByRole('columnheader', { name: '필수 작업' }),
+    ).toBeVisible();
   }
 
   if (evidenceDir) {
