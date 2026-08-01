@@ -2,7 +2,7 @@
 
 - Job: 21287
 - Job type: DATABASE
-- Source commit: 5a0e4754c4973d1d4aa49911d197a8fc9864c318
+- Source commit: 242d47e6fd5a216281ed3403840b79550590993f
 - Requirement: 업무 사건과 법적 문구·언어·대상·동의·기한·우선채널을 확정한다.
 - Validation result: {"strategy":"APPROVED_FULL_STACK_PACKAGE","processCode":"LEGAL_NOTIFICATION_DELIVERY","stepCode":"LND_COMPOSE","dimension":"DATABASE","package":"/opt/Resonance/var/ai-worktrees/job-21287/projects/carbonet-backend-metadata/process-runtime/generated/LEGAL_NOTIFICATION_DELIVERY/LEGAL_NOTIFICATION_DELIVERY__LND_COMPOSE.json","evidence":"/opt/Resonance/var/ai-worktrees/job-21287/var/test-evidence/process-package-tests/LEGAL_NOTIFICATION_DELIVERY__LND_COMPOSE.json","status":"PASSED"}
 
