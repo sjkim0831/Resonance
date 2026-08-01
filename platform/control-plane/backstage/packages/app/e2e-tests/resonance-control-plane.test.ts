@@ -201,7 +201,7 @@ async function verifyRoute(
     await expect(page.getByText('계정별 업무 액터·데이터 범위')).toBeVisible();
     await expect(page.getByText('유효 배정', { exact: true })).toBeVisible();
     await expect(
-      page.getByText('프로젝트 범위', { exact: true }),
+      page.getByText('프로젝트 범위', { exact: true }).first(),
     ).toBeVisible();
     await expect(page.getByText('배정 저장', { exact: true })).toBeVisible();
   }
