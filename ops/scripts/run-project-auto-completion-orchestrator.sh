@@ -57,7 +57,7 @@ done < <(psqlq -c "
     and updated_at < current_timestamp - interval '${ORPHAN_WORKER_GRACE_MINUTES:-5} minutes';")
 run_id="$(cat /proc/sys/kernel/random/uuid)"
 psqlq -c "insert into framework_project_completion_run(run_id) values('$run_id');" >/dev/null
-trap 'psqlq -c "update framework_project_completion_run set run_status='"'"'FAILED'"'"',completed_at=current_timestamp where run_id='"'"'$run_id'"'"';" >/dev/null 2>&1 || true' ERR
+trap 'failed_line=$LINENO; echo "[project-auto-completion] ERROR line=$failed_line" >&2; psqlq -c "update framework_project_completion_run set run_status='"'"'FAILED'"'"',result_json=jsonb_build_object('"'"'failedLine'"'"',$failed_line),completed_at=current_timestamp where run_id='"'"'$run_id'"'"';" >/dev/null 2>&1 || true' ERR
 selected="$(psqlq -c "select count(*) from framework_process_delivery_priority_queue where next_action<>'COMPLETE';")"
 design_evidence_adopted="$(psqlq -c "
 with candidate as (
