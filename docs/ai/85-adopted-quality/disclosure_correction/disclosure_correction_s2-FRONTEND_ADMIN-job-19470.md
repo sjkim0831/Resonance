@@ -2,7 +2,7 @@
 
 - Job: 19470
 - Job type: FRONTEND_ADMIN
-- Source commit: d9a42b5b86e62e66bfcfcbea4c2b28d5791b39d6
+- Source commit: 96ffe9806f1eccfce110f48971284dd7509579d2
 - Validation result: {"strategy":"APPROVED_FULL_STACK_PACKAGE","processCode":"DISCLOSURE_CORRECTION","stepCode":"DISCLOSURE_CORRECTION_S2","dimension":"FRONTEND_ADMIN","package":"/opt/Resonance/var/ai-worktrees/job-19470/projects/carbonet-backend-metadata/process-runtime/generated/DISCLOSURE_CORRECTION/DISCLOSURE_CORRECTION__DISCLOSURE_CORRECTION_S2.json","evidence":"/opt/Resonance/var/ai-worktrees/job-19470/var/test-evidence/process-package-tests/DISCLOSURE_CORRECTION__DISCLOSURE_CORRECTION_S2.json","status":"PASSED"}
 
 The exact approved step package supplies the matching USER or ADMIN route,
