@@ -4,6 +4,7 @@ set -euo pipefail
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 script="$root/ops/scripts/auto-deploy-main.sh"
 validation_groups="$root/ops/scripts/run-post-deploy-validation-groups.sh"
+browser_e2e="$root/ops/scripts/resonance-project-task-browser-e2e.mjs"
 
 bash -n "$script"
 bash -n "$validation_groups"
@@ -91,3 +92,16 @@ for cached_consumer in \
 done
 
 echo "POSTDEPLOY_POSTGRES_LEADER_CACHE_PASS consumers=6"
+
+python3 - "$browser_e2e" <<'PY'
+from pathlib import Path
+import sys
+
+source = Path(sys.argv[1]).read_text(encoding="utf-8")
+parallel = source.index("await Promise.all(accounts.map(async (account) => {")
+barrier = source.index("const protectedTarget = routeResults[0]?.target", parallel)
+transition = source.index("const ownerApi = await authenticatedApi", barrier)
+assert parallel < barrier < transition
+assert source.count("await Promise.all(accounts.map(async (account) => {") == 1
+print("PROJECT_TASK_BROWSER_ACCOUNT_PARALLEL_PASS accounts=5 transition=single-after-barrier")
+PY

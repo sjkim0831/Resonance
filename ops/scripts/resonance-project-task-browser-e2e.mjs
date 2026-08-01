@@ -48,7 +48,11 @@ async function authenticatedApi(account) {
 }
 
 try {
-  for (const account of accounts) {
+  // Each account owns an isolated API session and browser context. Running
+  // these read-only route checks concurrently avoids paying cold page/runtime
+  // latency five times. The state-changing transition proof remains below
+  // this barrier and therefore still executes exactly once.
+  await Promise.all(accounts.map(async (account) => {
     const api = await authenticatedApi(account);
     try {
       const tasksResponse = await api.get("/home/api/emission-tasks", { failOnStatusCode: false });
@@ -118,7 +122,7 @@ try {
     } finally {
       await api.dispose();
     }
-  }
+  }));
 
   const protectedTarget = routeResults[0]?.target;
   if (!protectedTarget) throw new Error("no protected task route was verified");
