@@ -75,7 +75,9 @@ try {
             const response = await page.goto(target.href, { waitUntil: "domcontentloaded", timeout: 15_000 });
             await page.waitForFunction(() => {
               const root = document.querySelector("#root");
-              return (root?.children.length || 0) > 0 && (document.body?.innerText || "").trim().length >= 20;
+              const text = (document.body?.innerText || "").trim();
+              return (root?.children.length || 0) > 0 && text.length >= 20 &&
+                !/Bootstrap loaded\. Waiting for React app mount|React app did not mount/.test(text);
             }, undefined, { timeout: 8_000 });
             const state = await page.evaluate(() => ({
               text: (document.body?.innerText || "").trim(),
