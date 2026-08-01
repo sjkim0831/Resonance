@@ -2,7 +2,7 @@
 
 - Job: 21283
 - Job type: BACKEND
-- Source commit: db8ed0225c95ef7e0856cf896d324429884aad86
+- Source commit: fd75e49f1f537455de587fc2eb2f4d4df2fd85c6
 - Requirement: 미승인 차이가 있으면 배포를 차단하고 승인된 차이만 기준 버전에 반영한다.
 - Validation result: {"strategy":"APPROVED_FULL_STACK_PACKAGE","processCode":"CALCULATION_ENGINE_PARITY","stepCode":"CEP_GATE","dimension":"BACKEND","package":"/opt/Resonance/var/ai-worktrees/job-21283/projects/carbonet-backend-metadata/process-runtime/generated/CALCULATION_ENGINE_PARITY/CALCULATION_ENGINE_PARITY__CEP_GATE.json","evidence":"/opt/Resonance/var/ai-worktrees/job-21283/var/test-evidence/process-package-tests/CALCULATION_ENGINE_PARITY__CEP_GATE.json","status":"PASSED"}
 
