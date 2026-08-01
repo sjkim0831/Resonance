@@ -942,6 +942,37 @@ sync_postgres_restore_drill_if_required() {
   fi
 }
 
+sync_process_development_worker_if_required() {
+  if git diff --name-only "$deployed_commit" "$target_commit" -- \
+      ops/scripts/run-process-development-dispatcher.sh \
+      ops/scripts/run-process-development-worker.sh \
+      ops/scripts/test-process-worker-deploy-marker.sh \
+      ops/systemd/resonance-process-development-worker.service \
+      ops/systemd/resonance-process-development-worker.timer | \
+      grep -q . || \
+    ! systemctl cat resonance-process-development-worker.service 2>/dev/null | \
+      grep -Fq '/opt/resonance-data/control-plane/bin/run-process-development-dispatcher.sh'; then
+    bash ops/scripts/test-process-worker-deploy-marker.sh
+    sudo -n install -d -m 0755 -o root -g root \
+      /opt/resonance-data/control-plane/bin
+    sudo -n install -m 0750 -o sjkim -g sjkim \
+      ops/scripts/run-process-development-dispatcher.sh \
+      /opt/resonance-data/control-plane/bin/run-process-development-dispatcher.sh
+    sudo -n install -m 0750 -o sjkim -g sjkim \
+      ops/scripts/run-process-development-worker.sh \
+      /opt/resonance-data/control-plane/bin/run-process-development-worker.sh
+    sudo -n install -m 0644 \
+      ops/systemd/resonance-process-development-worker.service \
+      /etc/systemd/system/resonance-process-development-worker.service
+    sudo -n install -m 0644 \
+      ops/systemd/resonance-process-development-worker.timer \
+      /etc/systemd/system/resonance-process-development-worker.timer
+    sudo -n systemctl daemon-reload
+    sudo -n systemctl enable --now resonance-process-development-worker.timer >/dev/null
+    echo "[auto-deploy] process development worker control plane synchronized"
+  fi
+}
+
 # Documentation, design metadata, catalog and automation-only changes do not
 # alter the running application. Fast-forward and refresh the searchable source
 # catalog without an unnecessary DB dump, JVM build, image build or rollout.
@@ -961,6 +992,7 @@ if [[ "$PLAN_RUNTIME_REQUIRED" != "true" ]]; then
       ops/scripts/resonance-k8s-build-deploy-80-v2.sh \
       ops/scripts/test-candidate-release-rollout-gate.sh \
       ops/scripts/run-process-development-worker.sh \
+      ops/scripts/run-process-development-dispatcher.sh \
       ops/scripts/test-process-worker-deploy-marker.sh \
       ops/scripts/test-frontend-parallel-build-pipeline.sh \
       ops/scripts/install-resonance-github-runner.sh \
@@ -995,6 +1027,8 @@ if [[ "$PLAN_RUNTIME_REQUIRED" != "true" ]]; then
       ops/systemd/carbonet-patroni-auto-heal.timer \
       ops/systemd/carbonet-postgres-restore-drill.service \
       ops/systemd/carbonet-postgres-restore-drill.timer \
+      ops/systemd/resonance-process-development-worker.service \
+      ops/systemd/resonance-process-development-worker.timer \
       ops/scripts/resonance-backstage-full-e2e.sh \
       ops/systemd/resonance-backstage-full-e2e.service \
       ops/systemd/resonance-backstage-full-e2e.timer \
@@ -1071,6 +1105,7 @@ if [[ "$PLAN_RUNTIME_REQUIRED" != "true" ]]; then
     sync_post_reboot_recovery_if_required
     sync_patroni_auto_heal_if_required
     sync_postgres_restore_drill_if_required
+    sync_process_development_worker_if_required
     if git diff --name-only "$deployed_commit" "$target_commit" -- \
         ops/scripts/postgres-storage-guard.sh \
         ops/scripts/test-postgres-storage-guard-install.sh \

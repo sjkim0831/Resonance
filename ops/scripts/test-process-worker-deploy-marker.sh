@@ -3,6 +3,8 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 WORKER="$ROOT_DIR/ops/scripts/run-process-development-worker.sh"
+AUTO_DEPLOY="$ROOT_DIR/ops/scripts/auto-deploy-main.sh"
+UNIT="$ROOT_DIR/ops/systemd/resonance-process-development-worker.service"
 
 fail() {
   echo "[process-worker-deploy-marker-test] FAIL: $*" >&2
@@ -19,5 +21,12 @@ if sed -n '/for _ in $(seq 1 90)/,/deployment_is_ready ||/p' "$WORKER" \
   | grep -Fq 'git -C "$ROOT_DIR" rev-parse HEAD'; then
   fail "worker still treats the mutable root checkout as deployment evidence"
 fi
+
+grep -Fq 'ExecStart=/usr/bin/bash /opt/resonance-data/control-plane/bin/run-process-development-dispatcher.sh' "$UNIT" \
+  || fail "systemd worker does not use the persistent control-plane copy"
+grep -Fq 'sync_process_development_worker_if_required()' "$AUTO_DEPLOY" \
+  || fail "auto-deploy does not synchronize the worker control plane"
+grep -Fq '/opt/resonance-data/control-plane/bin/run-process-development-worker.sh' "$AUTO_DEPLOY" \
+  || fail "auto-deploy does not install the worker script"
 
 echo "[process-worker-deploy-marker-test] PASS"

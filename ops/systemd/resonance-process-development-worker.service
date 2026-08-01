@@ -12,7 +12,7 @@ Environment=HOME=/home/sjkim
 Environment=PATH=/home/sjkim/.local/bin:/usr/local/bin:/usr/bin:/bin
 Environment=AI_SEARCH_INDEX_ROOT=/var/lib/resonance-ai-search-index
 StateDirectory=resonance-ai-search-index
-ExecStart=/usr/bin/bash /opt/Resonance/ops/scripts/run-process-development-dispatcher.sh
+ExecStart=/usr/bin/bash /opt/resonance-data/control-plane/bin/run-process-development-dispatcher.sh
 Nice=15
 CPUQuota=200%
 MemoryMax=8G
