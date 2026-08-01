@@ -2268,6 +2268,7 @@ public class ActorProcessGovernanceService {
             values(?,'DATA_GOVERNANCE','REQUIREMENT_DELIVERY',1,'PRIMARY',1,'SEQUENTIAL','ALL',
               '[]'::jsonb,'[]'::jsonb,?||'_REQUIREMENT_DELIVERY_W1',true,'ALWAYS','DESIGN_COMPLETE')
             on conflict(process_code) do update set work_type_code=excluded.work_type_code,
+              workflow_order=excluded.workflow_order,
               stage_code=excluded.stage_code,execution_wave=excluded.execution_wave,lane_code=excluded.lane_code,
               lane_order=excluded.lane_order,execution_mode=excluded.execution_mode,join_strategy=excluded.join_strategy,
               predecessor_process_codes=excluded.predecessor_process_codes,
