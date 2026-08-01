@@ -214,6 +214,16 @@ spec:
               cp "/base/$name" "/mirror/$name"
               cp "/base/$name.sha256" "/mirror/$name.sha256"
               (cd /mirror && sha256sum -c "$name.sha256")
+              start_lsn=$(sed -n 's/.*write-ahead log start point: \([^ ]*\).*/\1/p' /base/basebackup-last.log | tail -1)
+              test -n "$start_lsn"
+              retain_from=$(psql -h postgres-haproxy.carbonet-prod.svc.cluster.local -U postgres -d postgres -Atqc \
+                "select pg_walfile_name('$start_lsn'::pg_lsn)")
+              case "$retain_from" in
+                [0-9A-F][0-9A-F][0-9A-F][0-9A-F][0-9A-F][0-9A-F][0-9A-F][0-9A-F][0-9A-F][0-9A-F][0-9A-F][0-9A-F][0-9A-F][0-9A-F][0-9A-F][0-9A-F][0-9A-F][0-9A-F][0-9A-F][0-9A-F][0-9A-F][0-9A-F][0-9A-F][0-9A-F]) ;;
+                *) echo "invalid WAL retention marker: $retain_from" >&2; exit 4 ;;
+              esac
+              printf '%s\n' "$retain_from" > /wal-archive/.retain-from.tmp
+              mv /wal-archive/.retain-from.tmp /wal-archive/.retain-from
               rm -rf "$dir"
               find /base /mirror -maxdepth 1 -type f -name 'carbonet_base_*' -mtime +14 -delete
             env:
@@ -226,11 +236,14 @@ spec:
             volumeMounts:
             - {name: base, mountPath: /base}
             - {name: mirror, mountPath: /mirror}
+            - {name: wal-archive, mountPath: /wal-archive}
           volumes:
           - name: base
             hostPath: {path: /opt/resonance-data/backups/postgres/base, type: DirectoryOrCreate}
           - name: mirror
             hostPath: {path: /opt/resonance-data/backups/postgres/base-mirror, type: DirectoryOrCreate}
+          - name: wal-archive
+            hostPath: {path: /opt/resonance-data/postgresql/wal-archive, type: Directory}
 ---
 apiVersion: batch/v1
 kind: CronJob
@@ -257,12 +270,26 @@ spec:
             - |
               set -eu
               before=$(find /wal-archive -maxdepth 1 -type f | wc -l)
-              # Timeline history is tiny and remains necessary when recovery
-              # crosses a Patroni promotion. Retain it independently of WAL age.
-              find /wal-archive -maxdepth 1 -type f -mtime +14 \
-                ! -name '*.history' -delete
+              marker=/wal-archive/.retain-from
+              if [ -s "$marker" ]; then
+                retain_from=$(cat "$marker")
+                case "$retain_from" in
+                  [0-9A-F][0-9A-F][0-9A-F][0-9A-F][0-9A-F][0-9A-F][0-9A-F][0-9A-F][0-9A-F][0-9A-F][0-9A-F][0-9A-F][0-9A-F][0-9A-F][0-9A-F][0-9A-F][0-9A-F][0-9A-F][0-9A-F][0-9A-F][0-9A-F][0-9A-F][0-9A-F][0-9A-F]) ;;
+                  *) echo "invalid WAL retention marker: $retain_from" >&2; exit 4 ;;
+                esac
+                find /wal-archive -maxdepth 1 -type f ! -name '*.history' ! -name '.*' \
+                  | sed 's#.*/##' \
+                  | awk -v keep="$retain_from" '$0 < keep' \
+                  | while IFS= read -r wal; do rm -f -- "/wal-archive/$wal"; done
+                policy="verified_basebackup marker=$retain_from"
+              else
+                # Safe fallback before the first verified base-backup marker.
+                find /wal-archive -maxdepth 1 -type f -mtime +14 \
+                  ! -name '*.history' ! -name '.*' -delete
+                policy="age_fallback retention_days=14"
+              fi
               after=$(find /wal-archive -maxdepth 1 -type f | wc -l)
-              echo "WAL retention complete: before=$before after=$after retention_days=14"
+              echo "WAL retention complete: before=$before after=$after policy=$policy"
             securityContext: {runAsNonRoot: true, runAsUser: 1000, runAsGroup: 1000, allowPrivilegeEscalation: false, capabilities: {drop: ["ALL"]}}
             volumeMounts:
             - {name: wal-archive, mountPath: /wal-archive}
