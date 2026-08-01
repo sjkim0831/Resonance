@@ -339,6 +339,7 @@ const tab = (
     'actors',
     'processes',
     'steps',
+    'screen-flow',
   ].includes(id)
     ? ('FULL' as const)
     : ('PARTIAL' as const),

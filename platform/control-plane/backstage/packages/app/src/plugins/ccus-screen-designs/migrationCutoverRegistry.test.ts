@@ -88,8 +88,9 @@ describe('migrationCutoverRegistry', () => {
       'actor-process:design:actors',
       'actor-process:design:processes',
       'actor-process:design:steps',
+      'actor-process:design:screen-flow',
     ]);
-    expect(partial).toHaveLength(17);
+    expect(partial).toHaveLength(16);
     expect(partial.every(entry => entry.migrationStatus === 'CLASSIFIED')).toBe(
       true,
     );

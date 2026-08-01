@@ -3130,6 +3130,216 @@ function ProcessStepWorkspace({
   );
 }
 
+type ScreenFlowDraft = {
+  routePath: string;
+  archetypeCode: string;
+  bindingRole: string;
+  processCode: string;
+  stepCode: string;
+  actorCode: string;
+  entryCondition: string;
+  completionCondition: string;
+  bindingOptions: string;
+  sortOrder: string;
+};
+
+const emptyScreenFlow = (): ScreenFlowDraft => ({
+  routePath: '',
+  archetypeCode: '',
+  bindingRole: 'PRIMARY',
+  processCode: '',
+  stepCode: '',
+  actorCode: '',
+  entryCondition: '',
+  completionCondition: '',
+  bindingOptions: '{}',
+  sortOrder: '1',
+});
+
+function ScreenFlowWorkspace({
+  bindings,
+  archetypes,
+  processes,
+  steps,
+  actors,
+  pending,
+  result,
+  onSave,
+}: {
+  bindings: RuntimeRow[];
+  archetypes: RuntimeRow[];
+  processes: RuntimeRow[];
+  steps: RuntimeRow[];
+  actors: RuntimeRow[];
+  pending: boolean;
+  result: string;
+  onSave: (values: Record<string, unknown>) => Promise<void>;
+}) {
+  const [draft, setDraft] = useState<ScreenFlowDraft>(emptyScreenFlow());
+  const [selectedId, setSelectedId] = useState('');
+  const update = (field: keyof ScreenFlowDraft, value: string) =>
+    setDraft(current => ({ ...current, [field]: value }));
+  const processSteps = steps.filter(
+    row => String(row.processCode ?? '') === draft.processCode,
+  );
+  const selectBinding = (row: RuntimeRow) => {
+    setSelectedId(String(row.bindingId ?? ''));
+    setDraft({
+      routePath: String(row.routePath ?? ''),
+      archetypeCode: String(row.archetypeCode ?? ''),
+      bindingRole: String(row.bindingRole ?? 'PRIMARY'),
+      processCode: String(row.processCode ?? ''),
+      stepCode: String(row.stepCode ?? ''),
+      actorCode: String(row.actorCode ?? ''),
+      entryCondition: String(row.entryCondition ?? ''),
+      completionCondition: String(row.completionCondition ?? ''),
+      bindingOptions: String(row.bindingOptions ?? '{}'),
+      sortOrder: String(row.sortOrder ?? '1'),
+    });
+  };
+  const invalidRoute = !draft.routePath.startsWith('/');
+  const invalidOptions = !draft.bindingOptions.trim().startsWith('{');
+  const missingRequired = [
+    draft.routePath,
+    draft.archetypeCode,
+    draft.processCode,
+    draft.stepCode,
+    draft.actorCode,
+    draft.entryCondition,
+    draft.completionCondition,
+  ].some(value => !value.trim());
+  const primaryRoutes = new Set(
+    bindings
+      .filter(row => String(row.bindingRole) === 'PRIMARY')
+      .map(row => String(row.routePath)),
+  ).size;
+  const unlinked = bindings.filter(
+    row => !row.processCode || !row.stepCode || !row.actorCode,
+  ).length;
+
+  return (
+    <Box mt={3}>
+      <Grid container spacing={2}>
+        {[
+          ['활성 화면 연결', bindings.length],
+          ['주 화면 경로', primaryRoutes],
+          ['프로세스 원형', archetypes.length],
+          ['연결 보완 필요', unlinked],
+        ].map(([label, value]) => (
+          <Grid item xs={6} md={3} key={String(label)}>
+            <Paper variant="outlined" style={{ padding: 16, height: '100%' }}>
+              <Typography variant="caption" color="textSecondary">
+                {label}
+              </Typography>
+              <Typography variant="h5">{value}</Typography>
+            </Paper>
+          </Grid>
+        ))}
+      </Grid>
+      <Grid container spacing={2} style={{ marginTop: 4 }}>
+        <Grid item xs={12} md={4}>
+          <Paper variant="outlined" style={{ padding: 16, height: '100%' }}>
+            <Box display="flex" justifyContent="space-between" alignItems="center">
+              <Typography variant="h6">화면·단계 연결 목록</Typography>
+              <Button size="small" onClick={() => { setSelectedId(''); setDraft(emptyScreenFlow()); }}>
+                신규 연결
+              </Button>
+            </Box>
+            <Box mt={1.5} display="grid" gridGap={8} style={{ maxHeight: 900, overflowY: 'auto' }}>
+              {bindings.map(row => (
+                <Box
+                  key={String(row.bindingId)}
+                  p={1.5}
+                  onClick={() => selectBinding(row)}
+                  style={{
+                    cursor: 'pointer',
+                    border: '1px solid #dbe4ea',
+                    borderRadius: 8,
+                    background: selectedId === String(row.bindingId) ? '#e8f2ff' : '#fff',
+                  }}
+                >
+                  <Typography variant="body2" style={{ fontWeight: 700, wordBreak: 'break-all' }}>
+                    {displayValue(row.routePath)}
+                  </Typography>
+                  <Box mt={0.5} display="flex" gridGap={6} flexWrap="wrap">
+                    <Chip size="small" label={displayValue(row.bindingRole)} />
+                    <Chip size="small" variant="outlined" label={displayValue(row.archetypeCode)} />
+                  </Box>
+                  <Typography variant="caption" color="textSecondary">
+                    {displayValue(row.processCode)} · {displayValue(row.stepCode)} · {displayValue(row.actorCode)}
+                  </Typography>
+                </Box>
+              ))}
+            </Box>
+          </Paper>
+        </Grid>
+        <Grid item xs={12} md={8}>
+          <Paper variant="outlined" style={{ padding: 20 }}>
+            <Typography variant="overline">SCREEN FLOW & NAVIGATION CONTRACT</Typography>
+            <Typography variant="h6">화면·프로세스 흐름 전문 설계</Typography>
+            <Typography variant="body2" color="textSecondary">
+              라우트, 프로세스 원형, 단계, 액터, 진입·완료 조건과 팝업·공통 화면 옵션을 한 계약으로 저장합니다.
+            </Typography>
+            <form onSubmit={event => {
+              event.preventDefault();
+              if (missingRequired || invalidRoute || invalidOptions) return;
+              void onSave({ ...draft, sortOrder: Number(draft.sortOrder) });
+            }}>
+              <Grid container spacing={2} style={{ marginTop: 4 }}>
+                <Grid item xs={12} md={8}>
+                  <TextField fullWidth required size="small" variant="outlined" label="화면 라우트" error={invalidRoute} helperText={invalidRoute ? '/로 시작하는 등록 라우트가 필요합니다.' : '쿼리 문자열은 저장 시 정규화됩니다.'} value={draft.routePath} onChange={event => update('routePath', event.target.value)} />
+                </Grid>
+                <Grid item xs={6} md={2}>
+                  <TextField fullWidth required select size="small" variant="outlined" label="연결 역할" value={draft.bindingRole} onChange={event => update('bindingRole', String(event.target.value))}>
+                    {['PRIMARY', 'SUBPROCESS', 'EXCEPTION', 'COMMON'].map(value => <MenuItem key={value} value={value}>{value}</MenuItem>)}
+                  </TextField>
+                </Grid>
+                <Grid item xs={6} md={2}>
+                  <TextField fullWidth required type="number" size="small" variant="outlined" label="표시 순서" inputProps={{ min: 1 }} value={draft.sortOrder} onChange={event => update('sortOrder', event.target.value)} />
+                </Grid>
+                <Grid item xs={12} md={6}>
+                  <TextField fullWidth required select size="small" variant="outlined" label="프로세스 원형" value={draft.archetypeCode} onChange={event => update('archetypeCode', String(event.target.value))}>
+                    {archetypes.map(row => <MenuItem key={String(row.archetypeCode)} value={String(row.archetypeCode)}>{displayValue(row.archetypeName)} ({displayValue(row.archetypeCode)})</MenuItem>)}
+                  </TextField>
+                </Grid>
+                <Grid item xs={12} md={6}>
+                  <TextField fullWidth required select size="small" variant="outlined" label="업무 프로세스" value={draft.processCode} onChange={event => setDraft(current => ({ ...current, processCode: String(event.target.value), stepCode: '' }))}>
+                    {processes.map(row => <MenuItem key={String(row.processCode)} value={String(row.processCode)}>{displayValue(row.processName)} ({displayValue(row.processCode)})</MenuItem>)}
+                  </TextField>
+                </Grid>
+                <Grid item xs={12} md={6}>
+                  <TextField fullWidth required select size="small" variant="outlined" label="프로세스 단계" value={draft.stepCode} onChange={event => update('stepCode', String(event.target.value))}>
+                    {processSteps.sort((a, b) => Number(a.stepOrder) - Number(b.stepOrder)).map(row => <MenuItem key={String(row.stepCode)} value={String(row.stepCode)}>{displayValue(row.stepOrder)}. {displayValue(row.stepName)}</MenuItem>)}
+                  </TextField>
+                </Grid>
+                <Grid item xs={12} md={6}>
+                  <TextField fullWidth required select size="small" variant="outlined" label="담당 액터" value={draft.actorCode} onChange={event => update('actorCode', String(event.target.value))}>
+                    {actors.filter(row => String(row.useAt ?? 'Y') === 'Y').map(row => <MenuItem key={String(row.actorCode)} value={String(row.actorCode)}>{displayValue(row.actorName)} ({displayValue(row.actorCode)})</MenuItem>)}
+                  </TextField>
+                </Grid>
+                <Grid item xs={12} md={6}>
+                  <TextField fullWidth required multiline rows={3} size="small" variant="outlined" label="진입 조건" value={draft.entryCondition} onChange={event => update('entryCondition', event.target.value)} />
+                </Grid>
+                <Grid item xs={12} md={6}>
+                  <TextField fullWidth required multiline rows={3} size="small" variant="outlined" label="완료·이탈 조건" value={draft.completionCondition} onChange={event => update('completionCondition', event.target.value)} />
+                </Grid>
+                <Grid item xs={12}>
+                  <TextField fullWidth multiline rows={5} size="small" variant="outlined" label="화면 흐름 옵션 JSON" error={invalidOptions} helperText="nextRoute, previousRoute, popupRoutes, commonRoutes, visibilityRule, guideContract를 정의할 수 있습니다." value={draft.bindingOptions} onChange={event => update('bindingOptions', event.target.value)} />
+                </Grid>
+              </Grid>
+              <Box mt={2} display="flex" gridGap={8} flexWrap="wrap">
+                <Button type="submit" variant="contained" color="primary" disabled={pending || missingRequired || invalidRoute || invalidOptions}>{pending ? '저장 중' : selectedId ? '화면 흐름 갱신' : '화면 흐름 등록'}</Button>
+                {draft.routePath.startsWith('/') && <Button variant="outlined" startIcon={<LaunchIcon />} href={draft.routePath} target="_blank">실제 화면 열기</Button>}
+              </Box>
+            </form>
+            {result && <Box component="pre" mt={2} p={2} style={{ whiteSpace: 'pre-wrap', background: '#eef5fa', fontSize: 12 }}>{result}</Box>}
+          </Paper>
+        </Grid>
+      </Grid>
+    </Box>
+  );
+}
+
 type ProcessDefinitionDraft = {
   processCode: string;
   processName: string;
@@ -5801,6 +6011,19 @@ export function ActorProcessControlPage(props: {
   }, [selectedTab.id]);
 
   useEffect(() => {
+    if (selectedTab.id !== 'screen-flow') return;
+    ['processArchetypes', 'processes', 'steps', 'actors']
+      .filter(key => runtimeDashboard[key] === undefined)
+      .forEach(key => {
+        void loadRuntimeDataset(key).catch(() => {
+          setMessage(`화면 흐름 설계 데이터(${key})를 불러오지 못했습니다.`);
+        });
+      });
+    // 화면 흐름 편집기는 원형·프로세스·단계·액터 계약을 함께 검증합니다.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedTab.id]);
+
+  useEffect(() => {
     setSelectedRow(null);
     setCommandResult('');
   }, [selectedTab.id]);
@@ -5971,6 +6194,41 @@ export function ActorProcessControlPage(props: {
       await Promise.all([
         loadRuntimeDataset('steps'),
         loadRuntimeDataset('developmentJobs'),
+      ]);
+    } catch (error) {
+      setCommandResult(
+        `처리 실패\n${error instanceof Error ? error.message : String(error)}`,
+      );
+    } finally {
+      setCommandPending(false);
+    }
+  };
+
+  const executeScreenFlowCommand = async (
+    values: Record<string, unknown>,
+  ) => {
+    if (commandPending) return;
+    setCommandPending(true);
+    setCommandResult('');
+    try {
+      const response = await fetchApi.fetch(
+        '/api/resonance-projects/actor-process/commands',
+        {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ command: 'screen.bind-archetype', ...values }),
+        },
+      );
+      const payload = (await response.json()) as Record<string, unknown>;
+      if (!response.ok) {
+        throw new Error(
+          String(payload.message ?? payload.error ?? `HTTP ${response.status}`),
+        );
+      }
+      setCommandResult(`처리 완료\n${JSON.stringify(payload, null, 2)}`);
+      await Promise.all([
+        loadRuntimeDataset('screenArchetypeBindings'),
+        loadRuntimeDataset('processArchetypes'),
       ]);
     } catch (error) {
       setCommandResult(
@@ -6344,6 +6602,34 @@ export function ActorProcessControlPage(props: {
                 onOpenFlow={() => openControlTab('screen-flow')}
               />
             )}
+            {selectedTab.id === 'screen-flow' && (
+              <ScreenFlowWorkspace
+                bindings={sourceRows}
+                archetypes={
+                  Array.isArray(runtimeDashboard.processArchetypes)
+                    ? (runtimeDashboard.processArchetypes as RuntimeRow[])
+                    : []
+                }
+                processes={
+                  Array.isArray(runtimeDashboard.processes)
+                    ? (runtimeDashboard.processes as RuntimeRow[])
+                    : []
+                }
+                steps={
+                  Array.isArray(runtimeDashboard.steps)
+                    ? (runtimeDashboard.steps as RuntimeRow[])
+                    : []
+                }
+                actors={
+                  Array.isArray(runtimeDashboard.actors)
+                    ? (runtimeDashboard.actors as RuntimeRow[])
+                    : []
+                }
+                pending={commandPending}
+                result={commandResult}
+                onSave={executeScreenFlowCommand}
+              />
+            )}
             {selectedTab.id === 'assignments' && (
               <ActorAssignmentWorkspace
                 rows={sourceRows}
@@ -6375,6 +6661,7 @@ export function ActorProcessControlPage(props: {
               'actors',
               'processes',
               'steps',
+              'screen-flow',
             ].includes(selectedTab.id) && (
               <Grid container spacing={2} style={{ marginTop: 8 }}>
                 <Grid item xs={12} sm={6} md={3}>
@@ -6418,6 +6705,7 @@ export function ActorProcessControlPage(props: {
                 'actors',
                 'processes',
                 'steps',
+                'screen-flow',
               ].includes(selectedTab.id) && (
                 <Box
                   mt={3}

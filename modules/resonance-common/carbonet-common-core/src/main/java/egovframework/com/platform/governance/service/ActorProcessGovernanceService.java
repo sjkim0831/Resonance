@@ -291,16 +291,27 @@ public class ActorProcessGovernanceService {
         String route=ScreenDevelopmentNoteService.cleanRoute(req(body,"routePath"));
         String archetype=req(body,"archetypeCode").trim().toUpperCase(Locale.ROOT);
         String role=def(body,"bindingRole","PRIMARY").trim().toUpperCase(Locale.ROOT);
+        String process=req(body,"processCode").trim().toUpperCase(Locale.ROOT);
+        String step=req(body,"stepCode").trim().toUpperCase(Locale.ROOT);
+        String actorCode=req(body,"actorCode").trim().toUpperCase(Locale.ROOT);
+        String entryCondition=req(body,"entryCondition").trim();
+        String completionCondition=req(body,"completionCondition").trim();
+        String bindingOptions=def(body,"bindingOptions","{}");
         if(!Set.of("PRIMARY","SUBPROCESS","EXCEPTION","COMMON").contains(role))throw new IllegalArgumentException("Unsupported bindingRole: "+role);
+        validateJsonObject(bindingOptions,"bindingOptions");
         Integer archetypeCount=jdbc.queryForObject("select count(*) from framework_process_archetype where archetype_code=? and active_yn='Y'",Integer.class,archetype);
         if(archetypeCount==null||archetypeCount==0)throw new IllegalArgumentException("ACTIVE_ARCHETYPE_NOT_FOUND: "+archetype);
         Integer screenCount=jdbc.queryForObject("select count(*) from framework_screen_resource where route_key=lower(split_part(?,'?',1))",Integer.class,route);
         if(screenCount==null||screenCount==0)throw new IllegalArgumentException("REGISTERED_SCREEN_NOT_FOUND: "+route);
+        Integer stepCount=jdbc.queryForObject("select count(*) from framework_process_step where process_code=? and step_code=?",Integer.class,process,step);
+        if(stepCount==null||stepCount==0)throw new IllegalArgumentException("REGISTERED_PROCESS_STEP_NOT_FOUND: "+process+" / "+step);
+        Integer actorCount=jdbc.queryForObject("select count(*) from framework_actor_definition where actor_code=? and use_at='Y'",Integer.class,actorCode);
+        if(actorCount==null||actorCount==0)throw new IllegalArgumentException("ACTIVE_ACTOR_NOT_FOUND: "+actorCode);
         if("PRIMARY".equals(role))jdbc.update("update framework_screen_process_archetype_binding set active_yn='N',updated_at=current_timestamp where route_path=? and binding_role='PRIMARY' and active_yn='Y'",route);
         jdbc.update("delete from framework_screen_process_archetype_binding where route_path=? and archetype_code=? and coalesce(process_code,'')=? and coalesce(step_code,'')=?",
-            route,archetype,str(body,"processCode"),str(body,"stepCode"));
+            route,archetype,process,step);
         jdbc.update("insert into framework_screen_process_archetype_binding(route_path,archetype_code,binding_role,process_code,step_code,actor_code,entry_condition,completion_condition,binding_options,sort_order,created_by) values(?,?,?,nullif(?,''),nullif(?,''),nullif(?,''),nullif(?,''),nullif(?,''),?::jsonb,?,?)",
-            route,archetype,role,str(body,"processCode"),str(body,"stepCode"),str(body,"actorCode"),str(body,"entryCondition"),str(body,"completionCondition"),def(body,"bindingOptions","{}"),integerOr(body,"sortOrder",1),actor);
+            route,archetype,role,process,step,actorCode,entryCondition,completionCondition,bindingOptions,integerOr(body,"sortOrder",1),actor);
         Map<String,Object> coverage=jdbc.queryForMap("select count(*) as \"bindingCount\",count(*) filter(where binding_role='PRIMARY') as \"primaryCount\",count(distinct archetype_code) as \"archetypeCount\" from framework_screen_process_archetype_binding where route_path=? and active_yn='Y'",route);
         return Map.of("success",true,"routePath",route,"archetypeCode",archetype,"bindingRole",role,"coverage",coverage);
     }

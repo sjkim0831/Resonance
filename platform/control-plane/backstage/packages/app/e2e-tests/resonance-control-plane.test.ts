@@ -246,6 +246,14 @@ async function verifyRoute(
     await expect(
       page.getByText('출력 데이터 계약(JSON)').first(),
     ).toBeVisible();
+    await page.getByText('화면 흐름', { exact: true }).first().click();
+    await expect(
+      page.getByRole('heading', { name: '화면·단계 연결 목록' }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole('heading', { name: '화면·프로세스 흐름 전문 설계' }),
+    ).toBeVisible();
+    await expect(page.getByText('화면 흐름 옵션 JSON').first()).toBeVisible();
   }
 
   if (evidenceDir) {

@@ -214,8 +214,12 @@ public class ActorProcessControlPlaneBridgeController {
                     }
                     result = governance.addStep(body, actor);
                 }
-                case "screen.bind-archetype" ->
-                        result = governance.bindScreenProcessArchetype(body, actor);
+                case "screen.bind-archetype" -> {
+                    if (!governance.isControlPlaneAdministrator(account)) {
+                        throw new SecurityException("Administrator authority is required to bind a screen flow.");
+                    }
+                    result = governance.bindScreenProcessArchetype(body, actor);
+                }
                 case "screen.contract.save" ->
                         result = governance.saveProfessionalScreenContract(body, actor);
                 case "screen.design.generate" ->
