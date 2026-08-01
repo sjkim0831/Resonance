@@ -53,7 +53,9 @@ try {
   mark("BASIC_INFO", { status: "DONE" });
 
   const dueDate = `${year}-12-31`;
-  const requestCreated = await call(clients.owner, "post", `/home/api/emission-projects/${projectId}/activity-requests`, {
+  const initialRequests = await call(clients.owner, "get", `/home/api/emission-projects/${projectId}/activity-requests`);
+  const precreated = (initialRequests.items || []).find((item) => item.status === "REQUESTED" && String(item.assignee).toLowerCase() === users.data);
+  const requestCreated = precreated || await call(clients.owner, "post", `/home/api/emission-projects/${projectId}/activity-requests`, {
     title: "Monthly electricity evidence", detail: "Disposable full-lifecycle verification request",
     requestedItems: "Electricity usage and source reference", assignee: users.data, dueDate,
   });
@@ -110,10 +112,16 @@ try {
   mark("REGULATORY_SUBMISSION", { status: "DONE", regulatoryId });
 
   const completion = await call(clients.owner, "get", `/home/api/emission-projects/${projectId}/completion`);
-  const checklist = Array.isArray(completion.checklist) ? completion.checklist : [];
-  if (checklist.length !== 7 || checklist.some((item) => item.status !== "DONE")) throw new Error(`completion is not 7/7 ${JSON.stringify(checklist)}`);
+  const allTasks = Array.isArray(completion.checklist) ? completion.checklist : [];
+  const canonicalCodes = ["BASIC_INFO", "ACTIVITY_DATA", "CALCULATION", "VERIFICATION", "APPROVAL", "REPORT", "REGULATORY_SUBMISSION"];
+  const checklist = canonicalCodes.map((code) => allTasks.find((item) => item.code === code)).filter(Boolean);
+  if (checklist.length !== 7 || checklist.some((item) => item.status !== "DONE")) throw new Error(`canonical completion is not 7/7 ${JSON.stringify(checklist)}`);
   evidence.finishedAt = new Date().toISOString(); evidence.durationMs = Date.now() - Date.parse(evidence.startedAt);
-  evidence.completion = { checklist: checklist.map(({ code, status }) => ({ code, status })), metrics: completion.metrics };
+  evidence.completion = {
+    checklist: checklist.map(({ code, status }) => ({ code, status })),
+    extensionTaskCount: allTasks.length - checklist.length,
+    metrics: completion.metrics,
+  };
 } finally {
   if (projectId && clients.owner) {
     const removed = await call(clients.owner, "delete", `/home/api/emission-projects/${projectId}`, undefined, [200]).catch((error) => ({ success: false, error: error.message }));
