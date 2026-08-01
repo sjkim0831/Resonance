@@ -53,31 +53,25 @@ export function registerProjectLifecycleRoutes(options: {
         updated_at: now,
       });
 
-      const copyRows = async (
-        table: string,
-        idColumn: string,
-        transform: (row: Record<string, unknown>) => Record<string, unknown>,
-      ) => {
-        const rows = await transaction(table).where({ project_id: sourceProjectId });
-        if (rows.length) {
-          await transaction(table).insert(rows.map((row: Record<string, unknown>) => {
-            const { [idColumn]: _id, ...copy } = row;
-            return { ...copy, ...transform(copy), project_id: projectId };
-          }));
-        }
-        counts[table] = rows.length;
-      };
-
-      await copyRows('resonance_projects__design_asset_snapshot', 'snapshot_id', () => ({ synced_at: now }));
-      await copyRows('resonance_projects__design_asset_role_assignment', 'assignment_id', () => ({ created_at: now }));
-      await copyRows('resonance_projects__control_asset_migration', 'migration_id', () => ({
-        migration_status: 'PLANNED', verification_evidence: null, created_at: now, updated_at: now,
-      }));
+      const roles = await transaction('resonance_projects__design_asset_role_assignment')
+        .where({ project_id: sourceProjectId });
+      if (roles.length) {
+        await transaction('resonance_projects__design_asset_role_assignment').insert(
+          roles.map(({ assignment_id: _id, ...row }: Record<string, unknown>) => ({
+            ...row, project_id: projectId, created_at: now,
+          })),
+        );
+      }
+      counts.roleAssignments = roles.length;
       await transaction('resonance_projects__task').insert({
         project_id: projectId,
         task_type: 'PROJECT_COPY_BOOTSTRAP',
         status: 'PLANNED',
-        payload: JSON.stringify({ sourceProjectId, copiedConfiguration: counts }),
+        payload: JSON.stringify({
+          sourceProjectId,
+          copiedConfiguration: counts,
+          steps: ['REGENERATE_DESIGN_ASSETS', 'REGISTER_CONTROL_ASSETS', 'VALIDATE_CONTRACTS'],
+        }),
         created_at: now,
         updated_at: now,
       });
@@ -89,7 +83,10 @@ export function registerProjectLifecycleRoutes(options: {
       sourceProjectId,
       projectId,
       copied,
-      excluded: ['runtime executions', 'task history', 'audit history', 'requirement uploads'],
+      excluded: [
+        'runtime executions', 'task history', 'audit history', 'requirement uploads',
+        'materialized design assets (queued for regeneration)',
+      ],
     });
   });
 

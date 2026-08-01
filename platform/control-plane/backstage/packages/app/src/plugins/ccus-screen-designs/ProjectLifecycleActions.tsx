@@ -98,7 +98,7 @@ export function ProjectLifecycleActions(props: {
         <DialogTitle>프로젝트 복사</DialogTitle>
         <DialogContent>
           <Typography variant="body2" color="textSecondary">
-            설계 자산, 역할 및 제어 설정을 복사합니다. 실행·감사 이력과 업로드 원본은 제외합니다.
+            프로젝트 계약과 권한을 즉시 복사하고 설계·제어 자산은 새 프로젝트용으로 재생성합니다. 실행·감사 이력과 업로드 원본은 제외합니다.
           </Typography>
           <Box mt={2}>
             <TextField fullWidth required variant="outlined" size="small" label="새 프로젝트 ID"
