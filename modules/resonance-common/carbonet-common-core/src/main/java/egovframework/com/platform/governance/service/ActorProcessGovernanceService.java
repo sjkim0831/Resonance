@@ -2260,6 +2260,21 @@ public class ActorProcessGovernanceService {
               integrity_contract=excluded.integrity_contract,authorization_contract=excluded.authorization_contract,
               failure_contract=excluded.failure_contract,updated_at=current_timestamp
             """,process);
+        jdbc.update("""
+            insert into framework_process_execution_topology(process_code,work_type_code,stage_code,execution_wave,
+              lane_code,lane_order,execution_mode,join_strategy,predecessor_process_codes,successor_process_codes,
+              shared_milestone_code,required_for_join,applicability_rule,topology_status)
+            values(?,'REQUIREMENT_AUTOMATION','REQUIREMENT_DELIVERY',1,'PRIMARY',1,'SEQUENTIAL','ALL',
+              '[]'::jsonb,'[]'::jsonb,?||'_REQUIREMENT_DELIVERY_W1',true,'ALWAYS','DESIGN_COMPLETE')
+            on conflict(process_code) do update set work_type_code=excluded.work_type_code,
+              stage_code=excluded.stage_code,execution_wave=excluded.execution_wave,lane_code=excluded.lane_code,
+              lane_order=excluded.lane_order,execution_mode=excluded.execution_mode,join_strategy=excluded.join_strategy,
+              predecessor_process_codes=excluded.predecessor_process_codes,
+              successor_process_codes=excluded.successor_process_codes,
+              shared_milestone_code=excluded.shared_milestone_code,required_for_join=excluded.required_for_join,
+              applicability_rule=excluded.applicability_rule,topology_status=excluded.topology_status,
+              updated_at=current_timestamp
+            """,process,process);
         Integer pages=jdbc.queryForObject("select count(*) from framework_page_design where process_code=?",Integer.class,process);
         return pages==null?0:pages;
     }
