@@ -2400,6 +2400,377 @@ function DesignWorkbenchDialog({
   );
 }
 
+type ActorAssignmentDraft = {
+  accountId: string;
+  tenantId: string;
+  projectId: string;
+  actorCode: string;
+  dataScope: string;
+  validUntil: string;
+};
+
+const emptyActorAssignment = (projectId: string): ActorAssignmentDraft => ({
+  accountId: '',
+  tenantId: 'DEFAULT',
+  projectId: projectId || '*',
+  actorCode: '',
+  dataScope: '*',
+  validUntil: '',
+});
+
+function ActorAssignmentWorkspace({
+  rows,
+  actors,
+  projects,
+  projectId,
+  pending,
+  result,
+  onCommand,
+}: {
+  rows: RuntimeRow[];
+  actors: RuntimeRow[];
+  projects: ProjectOption[];
+  projectId: string;
+  pending: boolean;
+  result: string;
+  onCommand: (
+    command: 'assignment.save' | 'assignment.deactivate',
+    values: Record<string, unknown>,
+  ) => Promise<void>;
+}) {
+  const [draft, setDraft] = useState<ActorAssignmentDraft>(() =>
+    emptyActorAssignment(projectId),
+  );
+  const [selectedId, setSelectedId] = useState('');
+  const today = new Date().toISOString().slice(0, 10);
+  const activeRows = rows.filter(row => {
+    const validUntil = String(row.validUntil ?? '');
+    return (
+      String(row.status ?? 'ACTIVE') === 'ACTIVE' &&
+      (!validUntil || validUntil >= today)
+    );
+  });
+  const expiredRows = rows.filter(row => {
+    const validUntil = String(row.validUntil ?? '');
+    return Boolean(validUntil && validUntil < today);
+  });
+  const accountCount = new Set(rows.map(row => String(row.accountId ?? '')))
+    .size;
+  const projectCoverage = new Set(
+    activeRows
+      .map(row => String(row.projectId ?? ''))
+      .filter(value => value && value !== '*'),
+  ).size;
+  const duplicate = rows.find(
+    row =>
+      String(row.assignmentId ?? '') !== selectedId &&
+      String(row.accountId ?? '') === draft.accountId.trim() &&
+      String(row.tenantId ?? 'DEFAULT') === draft.tenantId.trim() &&
+      String(row.projectId ?? '*') === draft.projectId &&
+      String(row.actorCode ?? '') === draft.actorCode,
+  );
+  const selected = rows.find(
+    row => String(row.assignmentId ?? '') === selectedId,
+  );
+  let submitLabel = '배정 저장';
+  if (selectedId) submitLabel = '배정 갱신';
+  if (pending) submitLabel = '처리 중…';
+  const selectRow = (row: RuntimeRow) => {
+    setSelectedId(String(row.assignmentId ?? ''));
+    setDraft({
+      accountId: String(row.accountId ?? ''),
+      tenantId: String(row.tenantId ?? 'DEFAULT'),
+      projectId: String(row.projectId ?? '*'),
+      actorCode: String(row.actorCode ?? ''),
+      dataScope: String(row.dataScope ?? '*'),
+      validUntil: String(row.validUntil ?? ''),
+    });
+  };
+  const update = (field: keyof ActorAssignmentDraft, value: string) =>
+    setDraft(current => ({ ...current, [field]: value }));
+  const reset = () => {
+    setSelectedId('');
+    setDraft(emptyActorAssignment(projectId));
+  };
+
+  return (
+    <Box mt={3}>
+      <Grid container spacing={2}>
+        {[
+          ['배정 계정', accountCount],
+          ['유효 배정', activeRows.length],
+          ['프로젝트 적용', projectCoverage],
+          ['만료 확인', expiredRows.length],
+        ].map(([label, value]) => (
+          <Grid item xs={6} md={3} key={String(label)}>
+            <Paper variant="outlined" style={{ padding: 16, height: '100%' }}>
+              <Typography variant="caption" color="textSecondary">
+                {label}
+              </Typography>
+              <Typography variant="h5">{value}</Typography>
+            </Paper>
+          </Grid>
+        ))}
+      </Grid>
+
+      <Paper variant="outlined" style={{ padding: 20, marginTop: 16 }}>
+        <Box display="flex" justifyContent="space-between" flexWrap="wrap">
+          <Box>
+            <Typography variant="h6">계정별 업무 액터·데이터 범위</Typography>
+            <Typography variant="body2" color="textSecondary">
+              한 계정에 여러 액터를 배정할 수 있으며, 프로젝트와 유효기간까지
+              서버에서 검증합니다.
+            </Typography>
+          </Box>
+          <Button onClick={reset}>신규 배정</Button>
+        </Box>
+        <form
+          onSubmit={event => {
+            event.preventDefault();
+            if (!duplicate) void onCommand('assignment.save', draft);
+          }}
+        >
+          <Grid container spacing={2} style={{ marginTop: 4 }}>
+            <Grid item xs={12} md={6}>
+              <TextField
+                fullWidth
+                required
+                size="small"
+                variant="outlined"
+                label="계정 ID"
+                value={draft.accountId}
+                onChange={event => update('accountId', event.target.value)}
+              />
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <TextField
+                fullWidth
+                required
+                size="small"
+                variant="outlined"
+                label="테넌트 ID"
+                value={draft.tenantId}
+                onChange={event => update('tenantId', event.target.value)}
+              />
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <FormControl fullWidth size="small" variant="outlined">
+                <InputLabel>프로젝트 범위</InputLabel>
+                <Select
+                  label="프로젝트 범위"
+                  value={draft.projectId}
+                  onChange={event =>
+                    update('projectId', String(event.target.value))
+                  }
+                >
+                  <MenuItem value="*">전체 프로젝트(*)</MenuItem>
+                  {projects.map(project => (
+                    <MenuItem key={project.projectId} value={project.projectId}>
+                      {project.projectName} · {project.projectId}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <FormControl fullWidth required size="small" variant="outlined">
+                <InputLabel>액터</InputLabel>
+                <Select
+                  label="액터"
+                  value={draft.actorCode}
+                  onChange={event =>
+                    update('actorCode', String(event.target.value))
+                  }
+                >
+                  {actors.map(actor => (
+                    <MenuItem
+                      key={String(actor.actorCode)}
+                      value={String(actor.actorCode)}
+                    >
+                      {displayValue(actor.actorName)} ·{' '}
+                      {displayValue(actor.actorCode)}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <TextField
+                fullWidth
+                required
+                size="small"
+                variant="outlined"
+                label="데이터 범위"
+                helperText="* 또는 조직·사업장·데이터 범위 코드"
+                value={draft.dataScope}
+                onChange={event => update('dataScope', event.target.value)}
+              />
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <TextField
+                fullWidth
+                size="small"
+                variant="outlined"
+                label="유효 종료일"
+                type="date"
+                InputLabelProps={{ shrink: true }}
+                inputProps={{ min: today }}
+                value={draft.validUntil}
+                onChange={event => update('validUntil', event.target.value)}
+              />
+            </Grid>
+          </Grid>
+          {duplicate && (
+            <Box
+              mt={2}
+              p={1.5}
+              style={{ background: '#fff7ed', border: '1px solid #fdba74' }}
+            >
+              <Typography variant="body2">
+                같은 계정·테넌트·프로젝트·액터 배정이 이미 존재합니다. 목록에서
+                해당 행을 선택해 수정하세요.
+              </Typography>
+            </Box>
+          )}
+          <Box mt={2} display="flex" gridGap={8} flexWrap="wrap">
+            <Button
+              type="submit"
+              variant="contained"
+              color="primary"
+              disabled={pending || Boolean(duplicate)}
+            >
+              {submitLabel}
+            </Button>
+            {selected && String(selected.status ?? 'ACTIVE') === 'ACTIVE' && (
+              <Button
+                variant="outlined"
+                color="secondary"
+                disabled={pending}
+                onClick={() =>
+                  void onCommand('assignment.deactivate', {
+                    assignmentId: selected.assignmentId,
+                  })
+                }
+              >
+                배정 비활성화
+              </Button>
+            )}
+          </Box>
+        </form>
+        {result && (
+          <Box
+            component="pre"
+            mt={2}
+            p={2}
+            style={{
+              whiteSpace: 'pre-wrap',
+              background: '#eef5fa',
+              fontSize: 12,
+            }}
+          >
+            {result}
+          </Box>
+        )}
+      </Paper>
+
+      <Box
+        mt={2}
+        style={{
+          overflowX: 'auto',
+          border: '1px solid #dbe4ea',
+          borderRadius: 8,
+        }}
+      >
+        <table
+          style={{
+            width: '100%',
+            minWidth: 900,
+            borderCollapse: 'collapse',
+            fontSize: 13,
+          }}
+        >
+          <thead style={{ background: '#f1f5f9' }}>
+            <tr>
+              {[
+                '계정',
+                '테넌트',
+                '프로젝트',
+                '액터',
+                '데이터 범위',
+                '유효기간',
+                '상태',
+              ].map(label => (
+                <th key={label} style={{ padding: 12, textAlign: 'left' }}>
+                  {label}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map(row => {
+              const validUntil = String(row.validUntil ?? '');
+              const expired = Boolean(validUntil && validUntil < today);
+              const active =
+                String(row.status ?? 'ACTIVE') === 'ACTIVE' && !expired;
+              let statusLabel = '비활성';
+              if (active) statusLabel = '활성';
+              if (expired) statusLabel = '만료';
+              const actor = actors.find(
+                item => String(item.actorCode) === String(row.actorCode),
+              );
+              return (
+                <tr
+                  key={String(row.assignmentId)}
+                  onClick={() => selectRow(row)}
+                  style={{
+                    cursor: 'pointer',
+                    background:
+                      String(row.assignmentId) === selectedId
+                        ? '#e8f2ff'
+                        : undefined,
+                  }}
+                >
+                  {[
+                    row.accountId,
+                    row.tenantId,
+                    row.projectId,
+                    actor?.actorName ?? row.actorCode,
+                    row.dataScope,
+                  ].map((value, index) => (
+                    <td
+                      key={index}
+                      style={{ padding: 12, borderTop: '1px solid #e2e8f0' }}
+                    >
+                      {displayValue(value)}
+                    </td>
+                  ))}
+                  <td style={{ padding: 12, borderTop: '1px solid #e2e8f0' }}>
+                    {validUntil || '제한 없음'}
+                  </td>
+                  <td style={{ padding: 12, borderTop: '1px solid #e2e8f0' }}>
+                    <Chip
+                      size="small"
+                      color={active ? 'primary' : 'default'}
+                      label={statusLabel}
+                    />
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+        {rows.length === 0 && (
+          <Box p={3}>
+            <Typography color="textSecondary">
+              등록된 배정이 없습니다.
+            </Typography>
+          </Box>
+        )}
+      </Box>
+    </Box>
+  );
+}
+
 const useStyles = makeStyles(theme => ({
   context: {
     padding: theme.spacing(2.5),
@@ -2834,6 +3205,19 @@ export function ActorProcessControlPage(props: {
   }, [selectedTab.id]);
 
   useEffect(() => {
+    if (selectedTab.id !== 'assignments') return;
+    ['actors', 'actorAccountReadiness']
+      .filter(key => runtimeDashboard[key] === undefined)
+      .forEach(key => {
+        void loadRuntimeDataset(key).catch(() => {
+          setMessage(`계정·액터 배정 데이터(${key})를 불러오지 못했습니다.`);
+        });
+      });
+    // 계정·액터 전용 화면은 액터 사전과 계정 준비 상태를 함께 사용합니다.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedTab.id]);
+
+  useEffect(() => {
     setSelectedRow(null);
     setCommandResult('');
   }, [selectedTab.id]);
@@ -2872,6 +3256,42 @@ export function ActorProcessControlPage(props: {
       }
       setCommandResult(`처리 완료\n${JSON.stringify(payload, null, 2)}`);
       await loadRuntimeDataset(datasetKey);
+    } catch (error) {
+      setCommandResult(
+        `처리 실패\n${error instanceof Error ? error.message : String(error)}`,
+      );
+    } finally {
+      setCommandPending(false);
+    }
+  };
+
+  const executeAssignmentCommand = async (
+    command: 'assignment.save' | 'assignment.deactivate',
+    values: Record<string, unknown>,
+  ) => {
+    if (commandPending) return;
+    setCommandPending(true);
+    setCommandResult('');
+    try {
+      const response = await fetchApi.fetch(
+        '/api/resonance-projects/actor-process/commands',
+        {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ command, ...values }),
+        },
+      );
+      const payload = (await response.json()) as Record<string, unknown>;
+      if (!response.ok) {
+        throw new Error(
+          String(payload.message ?? payload.error ?? `HTTP ${response.status}`),
+        );
+      }
+      setCommandResult(`처리 완료\n${JSON.stringify(payload, null, 2)}`);
+      await Promise.all([
+        loadRuntimeDataset('assignments'),
+        loadRuntimeDataset('actorAccountReadiness'),
+      ]);
     } catch (error) {
       setCommandResult(
         `처리 실패\n${error instanceof Error ? error.message : String(error)}`,
@@ -3187,7 +3607,24 @@ export function ActorProcessControlPage(props: {
                 saveDesignDocument={saveDesignDocument}
               />
             )}
-            {!['work-dashboard', 'execution'].includes(selectedTab.id) && (
+            {selectedTab.id === 'assignments' && (
+              <ActorAssignmentWorkspace
+                rows={sourceRows}
+                actors={
+                  Array.isArray(runtimeDashboard.actors)
+                    ? (runtimeDashboard.actors as RuntimeRow[])
+                    : []
+                }
+                projects={projects}
+                projectId={projectId}
+                pending={commandPending}
+                result={commandResult}
+                onCommand={executeAssignmentCommand}
+              />
+            )}
+            {!['work-dashboard', 'execution', 'assignments'].includes(
+              selectedTab.id,
+            ) && (
               <Grid container spacing={2} style={{ marginTop: 8 }}>
                 <Grid item xs={12} sm={6} md={3}>
                   <Box className={classes.metric}>
@@ -3223,7 +3660,7 @@ export function ActorProcessControlPage(props: {
                 </Grid>
               </Grid>
             )}
-            {activeCommand && (
+            {activeCommand && selectedTab.id !== 'assignments' && (
               <Box
                 mt={3}
                 p={2}
@@ -3307,7 +3744,7 @@ export function ActorProcessControlPage(props: {
                 )}
               </Box>
             )}
-            {selectedTab.id !== 'work-dashboard' && (
+            {!['work-dashboard', 'assignments'].includes(selectedTab.id) && (
               <>
                 <Box
                   mt={3}

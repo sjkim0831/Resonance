@@ -757,6 +757,22 @@ public class ActorProcessGovernanceService {
             jdbc.update("insert into emission_project_history(project_id,event_type,event_description,actor_name) values (?,'ACTOR_ASSIGNED',?||' 역할의 주 담당자가 '||?||'(으)로 배정되었습니다.',?)",projectId,actorCode,accountId,accountId);
         }
     }
+    @Transactional public Map<String,Object> deactivateActorAssignment(Map<String,Object>b){
+        long assignmentId=Long.parseLong(req(b,"assignmentId"));
+        List<Map<String,Object>> matches=jdbc.queryForList("select assignment_id,account_id,tenant_id,project_id,actor_code from framework_account_actor_assignment where assignment_id=? for update",assignmentId);
+        if(matches.isEmpty())throw new IllegalArgumentException("ACTOR_ASSIGNMENT_NOT_FOUND");
+        Map<String,Object> assignment=matches.get(0);
+        String accountId=String.valueOf(assignment.get("account_id"));
+        String projectId=String.valueOf(assignment.get("project_id"));
+        String actorCode=String.valueOf(assignment.get("actor_code"));
+        jdbc.update("update framework_account_actor_assignment set assignment_status='INACTIVE' where assignment_id=?",assignmentId);
+        if(!"*".equals(projectId)){
+            jdbc.update("update framework_project_actor_assignment set active_yn='N' where project_id=? and actor_code=? and user_id=?",projectId,actorCode,accountId);
+            jdbc.update("update emission_project_task set assignee_id=null,updated_at=current_timestamp where project_id=? and actor_code=? and assignee_id=?",projectId,actorCode,accountId);
+            jdbc.update("insert into emission_project_history(project_id,event_type,event_description,actor_name) values (?,'ACTOR_UNASSIGNED',?||' 액터에서 '||?||' 계정 배정을 해제했습니다.',?)",projectId,actorCode,accountId,accountId);
+        }
+        return Map.of("success",true,"assignmentId",assignmentId,"accountId",accountId,"projectId",projectId,"actorCode",actorCode,"status","INACTIVE");
+    }
     @Transactional public void createProcess(Map<String,Object>b){
         String domainCode=req(b,"domainCode").trim().toUpperCase(Locale.ROOT);
         Integer enabled=jdbc.queryForObject("select count(*) from framework_business_work_type where work_type_code=? and use_at='Y'",Integer.class,domainCode);

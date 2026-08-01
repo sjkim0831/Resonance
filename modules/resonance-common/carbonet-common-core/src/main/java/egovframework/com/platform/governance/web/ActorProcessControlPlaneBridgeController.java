@@ -213,6 +213,12 @@ public class ActorProcessControlPlaneBridgeController {
                     governance.assignActor(body);
                     result = Map.of("success", true, "command", command, "accountId", required(body, "accountId"));
                 }
+                case "assignment.deactivate" -> {
+                    if (!governance.isControlPlaneAdministrator(account)) {
+                        throw new SecurityException("Administrator authority is required to deactivate an actor assignment.");
+                    }
+                    result = governance.deactivateActorAssignment(body);
+                }
                 case "case.save" -> {
                     governance.createCase(body);
                     result = Map.of("success", true, "command", command, "caseCode", required(body, "caseCode"));
