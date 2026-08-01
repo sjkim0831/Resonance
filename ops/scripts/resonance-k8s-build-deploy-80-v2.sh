@@ -1034,9 +1034,35 @@ main() {
 
   if [[ "$IMMUTABLE_FRONTEND_IMAGE" == "true" ]]; then
     log_step "Immutable Frontend Build"
-    build_frontend
-    prepare_immutable_frontend
-    build_maven
+    if [[ "$SKIP_FRONTEND" != "true" && "$SKIP_BACKEND" != "true" ]]; then
+      # Java compilation does not consume the candidate React closure. Warm
+      # Gradle classes in parallel with Vite, then force only resources and the
+      # executable JAR to be reassembled after the verified frontend promotion.
+      # This preserves the immutable-JAR contract without serializing both
+      # complete builds.
+      local immutable_frontend_pid immutable_backend_pid
+      local immutable_frontend_exit=0 immutable_backend_exit=0
+      local immutable_parallel_started
+      immutable_parallel_started="$(date +%s)"
+      build_frontend & immutable_frontend_pid=$!
+      build_maven & immutable_backend_pid=$!
+      set +e
+      wait "$immutable_frontend_pid"; immutable_frontend_exit=$?
+      wait "$immutable_backend_pid"; immutable_backend_exit=$?
+      set -e
+      if (( immutable_frontend_exit != 0 || immutable_backend_exit != 0 )); then
+        rollback_and_fail "IMMUTABLE_PARALLEL_BUILD_FAILED" \
+          "Frontend/backend prebuild failed frontend=$immutable_frontend_exit backend=$immutable_backend_exit" \
+          "Inspect $FRONTEND_ERROR_LOG and $MAVEN_ERROR_LOG"
+      fi
+      log_success "Immutable prebuilds completed concurrently in $(( $(date +%s) - immutable_parallel_started ))s"
+      prepare_immutable_frontend
+      build_maven
+    else
+      build_frontend
+      prepare_immutable_frontend
+      build_maven
+    fi
     verify_immutable_frontend_jar
     SKIP_OVERLAY_SYNC=true
     kubectl -n "$NAMESPACE" set env deployment/"$DEPLOYMENT" \
