@@ -661,6 +661,11 @@ public class ActorProcessControlPlaneBridgeController {
         if (safetyScenarioTypes < 5) {
             throw new IllegalStateException("Requirement process safety harness is incomplete: " + processCode);
         }
+        int readyDesignContracts = governance.ensureGeneratedProcessDesignContracts(
+                processCode, "BACKSTAGE_REQUIREMENT_AUTOMATION");
+        if (readyDesignContracts < steps.size()) {
+            throw new IllegalStateException("Requirement screen design contracts are incomplete: " + processCode);
+        }
         return order;
     }
 

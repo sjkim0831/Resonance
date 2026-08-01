@@ -2151,6 +2151,36 @@ public class ActorProcessGovernanceService {
             Integer.class,process);
         return caseTypes==null?0:caseTypes;
     }
+
+    /** Materializes complete design contracts without claiming implementation verification. */
+    @Transactional public int ensureGeneratedProcessDesignContracts(String processCode,String actor){
+        String process=req(Map.of("processCode",processCode),"processCode");
+        ensureProfessionalContracts(process,actor);
+        jdbc.update("""
+            update framework_professional_screen_contract c set
+              business_purpose=coalesce(nullif(s.requirement_text,''),s.step_name)||' 업무를 추적 가능한 방식으로 완료한다.',
+              entry_condition=s.from_state||' 상태이며 '||s.actor_code||' 액터가 프로젝트에 배정되어 있다.',
+              exit_condition=coalesce(nullif(s.completion_rule,''),s.to_state||' 상태 전이 조건')||' 완료 증적과 감사 이력이 저장된다.',
+              kpi_contract='["처리 건수","완료율","기한 준수율","오류 건수"]',
+              section_contract='["업무 요약","입력 및 검증","처리 결과","증적 및 이력","다음 업무"]',
+              field_contract=json_build_array(json_build_object('input',coalesce(nullif(s.input_contract,''),'{}')::jsonb),json_build_object('output',coalesce(nullif(s.output_contract,''),'{}')::jsonb))::text,
+              command_contract=json_build_array(s.command_code,'SAVE_DRAFT','ATTACH_EVIDENCE',coalesce(nullif(s.rollback_command_code,''),'ROLLBACK_'||s.step_code))::text,
+              state_contract='["LOADING","EMPTY","ERROR","FORBIDDEN","READY","PROCESSING","COMPLETED"]',
+              api_contract=json_build_array(json_build_object('contract',coalesce(nullif(s.api_contract,''),'{}')::jsonb))::text,
+              data_contract=json_build_array('tenantId','projectId','processCode','stepCode','actorCode','statusCode','rowVersion','createdAt','updatedAt',json_build_object('input',coalesce(nullif(s.input_contract,''),'{}')::jsonb),json_build_object('output',coalesce(nullif(s.output_contract,''),'{}')::jsonb))::text,
+              evidence_contract='["REQUEST","RESPONSE","DB_REREAD","AUTHORITY","E2E","ROLLBACK"]',
+              responsive_contract='KRDS responsive contract for mobile 360px, tablet 768px, and desktop 1280px.',
+              accessibility_contract='KRDS and WCAG 2.1 AA keyboard, focus, label, contrast, and error-message contract.',
+              security_contract='Server-enforced tenant, project, actor, command, optimistic-lock, and audit policy.',
+              contract_status='REVIEW_REQUIRED',updated_by=?,updated_at=current_timestamp
+            from framework_process_step s
+            where c.process_code=s.process_code and c.step_code=s.step_code and c.process_code=?
+            """,actor,process);
+        Integer ready=jdbc.queryForObject(
+            "select count(*) from framework_professional_screen_design_readiness where process_code=? and design_readiness_score=100",
+            Integer.class,process);
+        return ready==null?0:ready;
+    }
     @Transactional public void saveArtifact(Map<String,Object>b){
         jdbc.update("insert into framework_process_artifact(process_code,step_code,artifact_code,artifact_type,artifact_name,target_path,contract_ref,required,delivery_status,owner_actor_code,acceptance_criteria,evidence_ref,notes) values(?,?,?,?,?,?,?,?,?,?,?,nullif(?,''),nullif(?,'')) on conflict(process_code,artifact_code) do update set step_code=excluded.step_code,artifact_type=excluded.artifact_type,artifact_name=excluded.artifact_name,target_path=excluded.target_path,contract_ref=excluded.contract_ref,required=excluded.required,delivery_status=excluded.delivery_status,owner_actor_code=excluded.owner_actor_code,acceptance_criteria=excluded.acceptance_criteria,evidence_ref=excluded.evidence_ref,notes=excluded.notes,updated_at=current_timestamp",req(b,"processCode"),str(b,"stepCode"),req(b,"artifactCode"),req(b,"artifactType"),req(b,"artifactName"),str(b,"targetPath"),str(b,"contractRef"),!"false".equalsIgnoreCase(str(b,"required")),def(b,"status","PLANNED"),req(b,"ownerActorCode"),req(b,"acceptanceCriteria"),str(b,"evidenceRef"),str(b,"notes"));
     }
