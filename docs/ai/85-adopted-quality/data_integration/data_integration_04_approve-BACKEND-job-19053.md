@@ -2,7 +2,7 @@
 
 - Job: 19053
 - Job type: BACKEND
-- Source commit: cb8a1d06f87f002b5dfee2cb5c196c948b81f1c8
+- Source commit: 1f9c9c2fe15a16f039f070dfbeaaedae1ac225f9
 - Requirement: 승인자는 연계 계획, 원본 무결성, 품질 검증, 잔여 위험, 예외 조건, 적용 일정, 롤백 기준과 감사 증적을 직무분리 원칙으로 검토한다.
 - Validation result: {"strategy":"APPROVED_FULL_STACK_PACKAGE","processCode":"DATA_INTEGRATION","stepCode":"DATA_INTEGRATION_04_APPROVE","dimension":"BACKEND","package":"/opt/Resonance/var/ai-worktrees/job-19053/projects/carbonet-backend-metadata/process-runtime/generated/DATA_INTEGRATION/DATA_INTEGRATION__DATA_INTEGRATION_04_APPROVE.json","evidence":"/opt/Resonance/var/ai-worktrees/job-19053/var/test-evidence/process-package-tests/DATA_INTEGRATION__DATA_INTEGRATION_04_APPROVE.json","status":"PASSED"}
 
