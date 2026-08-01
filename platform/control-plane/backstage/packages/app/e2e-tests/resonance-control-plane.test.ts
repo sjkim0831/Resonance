@@ -222,6 +222,17 @@ async function verifyRoute(
       page.getByRole('heading', { name: '액터 책임·권한 설계' }),
     ).toBeVisible();
     await expect(page.getByRole('textbox').first()).toBeVisible();
+    await page.getByText('프로세스', { exact: true }).first().click();
+    await expect(
+      page.getByRole('heading', { name: '프로세스 사전' }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole('heading', { name: '프로세스 정의·수명주기 설계' }),
+    ).toBeVisible();
+    await expect(
+      page.getByText('등록 프로세스', { exact: true }),
+    ).toBeVisible();
+    await expect(page.getByText('전체 단계', { exact: true })).toBeVisible();
   }
 
   if (evidenceDir) {

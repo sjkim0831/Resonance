@@ -783,10 +783,53 @@ public class ActorProcessGovernanceService {
         return Map.of("success",true,"assignmentId",assignmentId,"accountId",accountId,"projectId",projectId,"actorCode",actorCode,"status","INACTIVE");
     }
     @Transactional public void createProcess(Map<String,Object>b){
+        String processCode=req(b,"processCode").trim().toUpperCase(Locale.ROOT);
+        if(!processCode.matches("[A-Z0-9_]{3,80}"))throw new IllegalArgumentException("INVALID_PROCESS_CODE");
         String domainCode=req(b,"domainCode").trim().toUpperCase(Locale.ROOT);
         Integer enabled=jdbc.queryForObject("select count(*) from framework_business_work_type where work_type_code=? and use_at='Y'",Integer.class,domainCode);
         if(enabled==null||enabled==0)throw new IllegalArgumentException("ACTIVE_WORK_TYPE_NOT_FOUND: "+domainCode);
-        jdbc.update("insert into framework_process_definition(process_code,process_name,domain_code,process_version,goal,start_condition,completion_condition,parent_process_code,process_level,automation_mode) values(?,?,?,?,?,?,?,nullif(?,''),?,?) on conflict(process_code) do update set process_name=excluded.process_name,domain_code=excluded.domain_code,process_version=excluded.process_version,goal=excluded.goal,start_condition=excluded.start_condition,completion_condition=excluded.completion_condition,parent_process_code=excluded.parent_process_code,process_level=excluded.process_level,automation_mode=excluded.automation_mode,updated_at=current_timestamp",req(b,"processCode"),req(b,"processName"),domainCode,def(b,"version","1.0.0"),req(b,"goal"),req(b,"startCondition"),req(b,"completionCondition"),str(b,"parentProcessCode"),integerOr(b,"processLevel",str(b,"parentProcessCode").isEmpty()?1:2),def(b,"automationMode","ASSISTED"));
+        String ownerActorCode=req(b,"ownerActorCode").trim().toUpperCase(Locale.ROOT);
+        Integer actorCount=jdbc.queryForObject("select count(*) from framework_actor_definition where actor_code=? and use_at='Y'",Integer.class,ownerActorCode);
+        if(actorCount==null||actorCount==0)throw new IllegalArgumentException("ACTIVE_OWNER_ACTOR_NOT_FOUND: "+ownerActorCode);
+        String parentProcessCode=str(b,"parentProcessCode").trim().toUpperCase(Locale.ROOT);
+        if(processCode.equals(parentProcessCode))throw new IllegalArgumentException("PROCESS_CANNOT_PARENT_ITSELF");
+        if(!parentProcessCode.isEmpty()){
+            Integer parentCount=jdbc.queryForObject("select count(*) from framework_process_definition where process_code=?",Integer.class,parentProcessCode);
+            if(parentCount==null||parentCount==0)throw new IllegalArgumentException("PARENT_PROCESS_NOT_FOUND: "+parentProcessCode);
+        }
+        String processStatus=def(b,"processStatus","DRAFT").toUpperCase(Locale.ROOT);
+        String automationMode=def(b,"automationMode","ASSISTED").toUpperCase(Locale.ROOT);
+        String riskLevel=def(b,"riskLevel","MEDIUM").toUpperCase(Locale.ROOT);
+        String lifecycleStatus=def(b,"lifecycleStatus","DRAFT").toUpperCase(Locale.ROOT);
+        if(!Set.of("DRAFT","DEVELOPMENT_READY","IN_DEVELOPMENT","ACTIVE","SUSPENDED","RETIRED").contains(processStatus))throw new IllegalArgumentException("INVALID_PROCESS_STATUS");
+        if(!Set.of("MANUAL","ASSISTED","AUTOMATED").contains(automationMode))throw new IllegalArgumentException("INVALID_AUTOMATION_MODE");
+        if(!Set.of("LOW","MEDIUM","HIGH","CRITICAL").contains(riskLevel))throw new IllegalArgumentException("INVALID_RISK_LEVEL");
+        if(!Set.of("DRAFT","DESIGN","VALIDATED","PROMOTED","ACTIVE","DEPRECATED","RETIRED").contains(lifecycleStatus))throw new IllegalArgumentException("INVALID_LIFECYCLE_STATUS");
+        String effectiveFrom=str(b,"effectiveFrom"),effectiveUntil=str(b,"effectiveUntil");
+        if(!effectiveFrom.isEmpty()&&!effectiveUntil.isEmpty()&&effectiveFrom.compareTo(effectiveUntil)>0)throw new IllegalArgumentException("INVALID_EFFECTIVE_DATE_RANGE");
+        jdbc.update("""
+            insert into framework_process_definition(
+              process_code,process_name,domain_code,process_version,goal,start_condition,completion_condition,
+              parent_process_code,process_level,automation_mode,development_order,prerequisite_codes,
+              process_status,owner_actor_code,risk_level,sla_hours,review_cycle_days,regulation_refs,
+              lifecycle_status,effective_from,effective_until)
+            values(?,?,?,?,?,?,?,nullif(?,''),?,?,?,?,?,?,?,?,?,?,?,nullif(?,'')::date,nullif(?,'')::date)
+            on conflict(process_code) do update set
+              process_name=excluded.process_name,domain_code=excluded.domain_code,process_version=excluded.process_version,
+              goal=excluded.goal,start_condition=excluded.start_condition,completion_condition=excluded.completion_condition,
+              parent_process_code=excluded.parent_process_code,process_level=excluded.process_level,
+              automation_mode=excluded.automation_mode,development_order=excluded.development_order,
+              prerequisite_codes=excluded.prerequisite_codes,process_status=excluded.process_status,
+              owner_actor_code=excluded.owner_actor_code,risk_level=excluded.risk_level,sla_hours=excluded.sla_hours,
+              review_cycle_days=excluded.review_cycle_days,regulation_refs=excluded.regulation_refs,
+              lifecycle_status=excluded.lifecycle_status,effective_from=excluded.effective_from,
+              effective_until=excluded.effective_until,updated_at=current_timestamp
+            """,processCode,req(b,"processName"),domainCode,def(b,"version","1.0.0"),req(b,"goal"),
+            req(b,"startCondition"),req(b,"completionCondition"),parentProcessCode,
+            integerOr(b,"processLevel",parentProcessCode.isEmpty()?1:2),automationMode,
+            integerOr(b,"developmentOrder",0),str(b,"prerequisiteCodes"),processStatus,ownerActorCode,riskLevel,
+            integerOr(b,"slaHours",0),integerOr(b,"reviewCycleDays",365),str(b,"regulationRefs"),
+            lifecycleStatus,effectiveFrom,effectiveUntil);
     }
     @Transactional public Map<String,Object> addStep(Map<String,Object>b,String actor){
         String process=req(b,"processCode"),step=req(b,"stepCode"); int order=integer(b,"stepOrder");

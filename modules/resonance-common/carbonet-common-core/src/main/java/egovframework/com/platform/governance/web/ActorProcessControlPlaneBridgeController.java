@@ -202,6 +202,9 @@ public class ActorProcessControlPlaneBridgeController {
                     result = Map.of("success", true, "command", command, "actorCode", required(body, "actorCode"));
                 }
                 case "process.save" -> {
+                    if (!governance.isControlPlaneAdministrator(account)) {
+                        throw new SecurityException("Administrator authority is required to save a process definition.");
+                    }
                     governance.createProcess(body);
                     result = Map.of("success", true, "command", command, "processCode", required(body, "processCode"));
                 }

@@ -236,6 +236,17 @@ actor_save_denied_status="$(curl --cacert "$CA_CERT" -sS \
   exit 9
 }
 
+process_save_denied_status="$(curl --cacert "$CA_CERT" -sS \
+  -o "$run_dir/requester-process-save.json" -w '%{http_code}' \
+  -H "authorization: Bearer $requester_token" \
+  -H 'content-type: application/json' \
+  -d '{"command":"process.save"}' \
+  "$BACKSTAGE_URL/api/resonance-projects/actor-process/commands")"
+[[ "$process_save_denied_status" == "403" ]] || {
+  echo "[actor-process-role-e2e] requester process save denial expected HTTP 403, received $process_save_denied_status" >&2
+  exit 10
+}
+
 assignment_save_denied_status="$(curl --cacert "$CA_CERT" -sS \
   -o "$run_dir/requester-assignment-save.json" -w '%{http_code}' \
   -H "authorization: Bearer $requester_token" \
@@ -264,4 +275,4 @@ anonymous_status="$(curl --cacert "$CA_CERT" -sS -o "$run_dir/anonymous-command.
   exit 8
 }
 
-echo "[actor-process-role-e2e] command PASS: 2 allowed, 7 forbidden, 1 unauthenticated, 0 workflow mutations"
+echo "[actor-process-role-e2e] command PASS: 2 allowed, 8 forbidden, 1 unauthenticated, 0 workflow mutations"
