@@ -2,7 +2,7 @@
 
 - Job: 21213
 - Job type: BACKEND
-- Source commit: 48dc6117f1ebfb3e2cf8828c2570e9ae576637cd
+- Source commit: 91c820321167ea1b0fe9c12ef195fc3929ccdc54
 - Requirement: 인증 종류·물량·요율로 수수료와 세금계산서 발행정보를 생성한다.
 - Validation result: {"strategy":"APPROVED_FULL_STACK_PACKAGE","processCode":"CERTIFICATE_FEE_TAX_REFUND","stepCode":"CFTR_BILL","dimension":"BACKEND","package":"/opt/Resonance/var/ai-worktrees/job-21213/projects/carbonet-backend-metadata/process-runtime/generated/CERTIFICATE_FEE_TAX_REFUND/CERTIFICATE_FEE_TAX_REFUND__CFTR_BILL.json","evidence":"/opt/Resonance/var/ai-worktrees/job-21213/var/test-evidence/process-package-tests/CERTIFICATE_FEE_TAX_REFUND__CFTR_BILL.json","status":"PASSED"}
 
