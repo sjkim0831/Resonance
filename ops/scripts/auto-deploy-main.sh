@@ -960,6 +960,8 @@ if [[ "$PLAN_RUNTIME_REQUIRED" != "true" ]]; then
       ops/scripts/test-no-change-preflight-fast-path.sh \
       ops/scripts/resonance-k8s-build-deploy-80-v2.sh \
       ops/scripts/test-candidate-release-rollout-gate.sh \
+      ops/scripts/run-process-development-worker.sh \
+      ops/scripts/test-process-worker-deploy-marker.sh \
       ops/scripts/test-frontend-parallel-build-pipeline.sh \
       ops/scripts/install-resonance-github-runner.sh \
       ops/scripts/install-resonance-github-deploy-webhook.sh \
@@ -1004,6 +1006,7 @@ if [[ "$PLAN_RUNTIME_REQUIRED" != "true" ]]; then
     bash ops/scripts/test-atomic-asset-e4b-validation.sh
     bash ops/scripts/test-no-change-preflight-fast-path.sh
     bash ops/scripts/test-candidate-release-rollout-gate.sh
+    bash ops/scripts/test-process-worker-deploy-marker.sh
     bash ops/scripts/test-frontend-parallel-build-pipeline.sh
     bash ops/scripts/test-push-deploy-dispatch.sh
     bash ops/scripts/test-github-deploy-webhook.sh
@@ -1520,6 +1523,7 @@ if [[ "$PLAN_FRONTEND_REQUIRED" != "true" \
   bash ops/scripts/test-fast-browser-deploy-gate.sh
   bash ops/scripts/test-postdeploy-parallel-browser-gate.sh
   bash ops/scripts/test-candidate-release-rollout-gate.sh
+  bash ops/scripts/test-process-worker-deploy-marker.sh
   bash ops/scripts/test-frontend-parallel-build-pipeline.sh
   bash ops/scripts/test-fast-overlay-snapshot.sh
   bash ops/scripts/test-shared-smoke-auth-state.sh

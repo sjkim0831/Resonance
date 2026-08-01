@@ -2,6 +2,8 @@
 set -Eeuo pipefail
 
 ROOT_DIR="${ROOT_DIR:-/opt/Resonance}"
+DEPLOY_STATE_FILE="${CARBONET_DEPLOY_STATE_FILE:-/opt/resonance-data/deploy/carbonet-main-success.commit}"
+DEPLOY_WORKTREE="${CARBONET_DEPLOY_WORKTREE:-$ROOT_DIR/var/deploy-worktrees/runtime-build}"
 WORKTREE_ROOT="${WORKTREE_ROOT:-$ROOT_DIR/var/ai-worktrees}"
 LOG_ROOT="${LOG_ROOT:-$ROOT_DIR/var/ai-worker-logs}"
 PROJECT_WORK_RUNNER="${PROJECT_WORK_RUNNER:-$ROOT_DIR/ops/scripts/run-hermes-project-work.sh}"
@@ -42,6 +44,18 @@ runtime_is_healthy() {
   local health_url
   health_url="$(runtime_health_url)" || return 1
   curl -fsS --max-time 10 "$health_url" | jq -e '.status == "UP"' >/dev/null
+}
+deployed_commit() {
+  local deployed=""
+  if [[ -r "$DEPLOY_STATE_FILE" ]]; then
+    deployed="$(tr -d '[:space:]' <"$DEPLOY_STATE_FILE")"
+  fi
+  if [[ ! "$deployed" =~ ^[0-9a-f]{40}$ ]] \
+    && [[ -d "$DEPLOY_WORKTREE/.git" || -f "$DEPLOY_WORKTREE/.git" ]]; then
+    deployed="$(git -C "$DEPLOY_WORKTREE" rev-parse HEAD 2>/dev/null || true)"
+  fi
+  [[ "$deployed" =~ ^[0-9a-f]{40}$ ]] || return 1
+  printf '%s\n' "$deployed"
 }
 deployment_is_ready() {
   local counts desired updated ready available
@@ -701,13 +715,16 @@ else
 fi
 
 for _ in $(seq 1 90); do
-  DEPLOYED="$(git -C "$ROOT_DIR" rev-parse HEAD 2>/dev/null || true)"
-  if git -C "$ROOT_DIR" merge-base --is-ancestor "$RESULT_COMMIT" "$DEPLOYED" 2>/dev/null \
+  DEPLOYED="$(deployed_commit || true)"
+  if [[ -n "$DEPLOYED" ]] \
+    && git -C "$WT" merge-base --is-ancestor "$RESULT_COMMIT" "$DEPLOYED" 2>/dev/null \
     && deployment_is_ready && runtime_is_healthy; then break; fi
   sleep 10
 done
-DEPLOYED="$(git -C "$ROOT_DIR" rev-parse HEAD 2>/dev/null || true)"
-git -C "$ROOT_DIR" merge-base --is-ancestor "$RESULT_COMMIT" "$DEPLOYED" 2>/dev/null || fail_job "result commit was not deployed"
+DEPLOYED="$(deployed_commit || true)"
+[[ -n "$DEPLOYED" ]] \
+  && git -C "$WT" merge-base --is-ancestor "$RESULT_COMMIT" "$DEPLOYED" 2>/dev/null \
+  || fail_job "result commit was not deployed according to the canonical deploy marker"
 deployment_is_ready || fail_job "deployment replica readiness check failed"
 runtime_is_healthy || fail_job "deployment health check failed"
 
