@@ -340,6 +340,7 @@ const tab = (
     'processes',
     'steps',
     'screen-flow',
+    'data-contracts',
   ].includes(id)
     ? ('FULL' as const)
     : ('PARTIAL' as const),

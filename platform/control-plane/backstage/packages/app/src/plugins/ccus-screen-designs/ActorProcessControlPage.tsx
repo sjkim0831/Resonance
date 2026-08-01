@@ -3340,6 +3340,169 @@ function ScreenFlowWorkspace({
   );
 }
 
+type DataContractDraft = {
+  contractId: string;
+  businessPurpose: string;
+  entryCondition: string;
+  exitCondition: string;
+  kpiContract: string;
+  sectionContract: string;
+  fieldContract: string;
+  commandContract: string;
+  stateContract: string;
+  apiContract: string;
+  dataContract: string;
+  evidenceContract: string;
+  responsiveContract: string;
+  accessibilityContract: string;
+  securityContract: string;
+  apiVerified: string;
+  databaseVerified: string;
+  authorityVerified: string;
+  responsiveVerified: string;
+  accessibilityVerified: string;
+  exceptionStatesVerified: string;
+  auditEvidenceRef: string;
+  contractStatus: string;
+};
+
+const emptyDataContract = (): DataContractDraft => ({
+  contractId: '',
+  businessPurpose: '',
+  entryCondition: '',
+  exitCondition: '',
+  kpiContract: '[]',
+  sectionContract: '[]',
+  fieldContract: '[]',
+  commandContract: '[]',
+  stateContract: '["LOADING","EMPTY","ERROR","FORBIDDEN","READY"]',
+  apiContract: '[]',
+  dataContract: '[]',
+  evidenceContract: '[]',
+  responsiveContract: '360px, 768px, 1280px 검증',
+  accessibilityContract: 'KRDS 및 WCAG 2.1 AA',
+  securityContract: '테넌트·프로젝트·액터 권한 서버 검증',
+  apiVerified: 'false',
+  databaseVerified: 'false',
+  authorityVerified: 'false',
+  responsiveVerified: 'false',
+  accessibilityVerified: 'false',
+  exceptionStatesVerified: 'false',
+  auditEvidenceRef: '',
+  contractStatus: 'REVIEW_REQUIRED',
+});
+
+function DataContractWorkspace({
+  contracts,
+  pending,
+  result,
+  onSave,
+}: {
+  contracts: RuntimeRow[];
+  pending: boolean;
+  result: string;
+  onSave: (values: Record<string, unknown>) => Promise<void>;
+}) {
+  const [draft, setDraft] = useState<DataContractDraft>(emptyDataContract());
+  const [selectedId, setSelectedId] = useState('');
+  const [processFilter, setProcessFilter] = useState('');
+  const update = (field: keyof DataContractDraft, value: string) =>
+    setDraft(current => ({ ...current, [field]: value }));
+  const processes = [...new Set(contracts.map(row => String(row.processCode ?? '')).filter(Boolean))];
+  const visible = contracts.filter(row => !processFilter || String(row.processCode) === processFilter);
+  const jsonFields: Array<[keyof DataContractDraft, string]> = [
+    ['kpiContract', 'KPI 계약 JSON'],
+    ['sectionContract', '섹션 계약 JSON'],
+    ['fieldContract', '필드 계약 JSON'],
+    ['commandContract', '명령 계약 JSON'],
+    ['stateContract', '상태·예외 계약 JSON'],
+    ['apiContract', 'API 계약 JSON'],
+    ['dataContract', 'DB·데이터 계약 JSON'],
+    ['evidenceContract', '증적 계약 JSON'],
+  ];
+  const verificationFields: Array<[keyof DataContractDraft, string]> = [
+    ['apiVerified', 'API'],
+    ['databaseVerified', 'DB'],
+    ['authorityVerified', '권한'],
+    ['responsiveVerified', '반응형'],
+    ['accessibilityVerified', '접근성'],
+    ['exceptionStatesVerified', '예외 상태'],
+  ];
+  const invalidJson = jsonFields.some(([field]) => {
+    try { return !Array.isArray(JSON.parse(draft[field])); } catch { return true; }
+  });
+  const missing = [draft.contractId, draft.businessPurpose, draft.entryCondition, draft.exitCondition].some(value => !value.trim());
+  const selectContract = (row: RuntimeRow) => {
+    const next = emptyDataContract();
+    (Object.keys(next) as Array<keyof DataContractDraft>).forEach(key => {
+      if (row[key] !== undefined && row[key] !== null) next[key] = String(row[key]);
+    });
+    setSelectedId(String(row.contractId ?? ''));
+    setDraft(next);
+  };
+  const complete = contracts.filter(row => Number(row.readinessScore ?? 0) === 100).length;
+  const fields = contracts.reduce((sum, row) => {
+    try { return sum + JSON.parse(String(row.fieldContract ?? '[]')).length; } catch { return sum; }
+  }, 0);
+
+  return (
+    <Box mt={3}>
+      <Grid container spacing={2}>
+        {[
+          ['전체 화면 계약', contracts.length],
+          ['완전성 100점', complete],
+          ['정의된 필드', fields],
+          ['보완 필요', contracts.length - complete],
+        ].map(([label, value]) => <Grid item xs={6} md={3} key={String(label)}><Paper variant="outlined" style={{ padding: 16, height: '100%' }}><Typography variant="caption" color="textSecondary">{label}</Typography><Typography variant="h5">{value}</Typography></Paper></Grid>)}
+      </Grid>
+      <Grid container spacing={2} style={{ marginTop: 4 }}>
+        <Grid item xs={12} md={4}>
+          <Paper variant="outlined" style={{ padding: 16, height: '100%' }}>
+            <Typography variant="h6">화면·API·DB 계약 목록</Typography>
+            <Box mt={1.5}><TextField fullWidth select size="small" variant="outlined" label="프로세스 필터" value={processFilter} onChange={event => setProcessFilter(String(event.target.value))}><MenuItem value="">전체 프로세스</MenuItem>{processes.map(value => <MenuItem key={value} value={value}>{value}</MenuItem>)}</TextField></Box>
+            <Box mt={1.5} display="grid" gridGap={8} style={{ maxHeight: 1000, overflowY: 'auto' }}>
+              {visible.map(row => <Box key={String(row.contractId)} p={1.5} onClick={() => selectContract(row)} style={{ cursor: 'pointer', border: '1px solid #dbe4ea', borderRadius: 8, background: selectedId === String(row.contractId) ? '#e8f2ff' : '#fff' }}>
+                <Box display="flex" justifyContent="space-between" gridGap={8}><Typography variant="body2" style={{ fontWeight: 700 }}>{displayValue(row.screenName)}</Typography><Chip size="small" label={`${displayValue(row.readinessScore)}점`} /></Box>
+                <Typography variant="caption" color="textSecondary">{displayValue(row.processCode)} · {displayValue(row.stepCode)} · {displayValue(row.audience)}</Typography>
+                <Typography variant="caption" style={{ display: 'block', wordBreak: 'break-all' }}>{displayValue(row.routePath)}</Typography>
+              </Box>)}
+            </Box>
+          </Paper>
+        </Grid>
+        <Grid item xs={12} md={8}>
+          <Paper variant="outlined" style={{ padding: 20 }}>
+            <Typography variant="overline">SCREEN · API · DATABASE CONTRACT</Typography>
+            <Typography variant="h6">전문 데이터 계약 설계</Typography>
+            {!selectedId ? <Box mt={2} p={3} style={{ background: '#f5f7fa', borderRadius: 8 }}><Typography color="textSecondary">왼쪽에서 화면 계약을 선택하세요. 계약은 기존 등록 화면을 기준으로만 수정됩니다.</Typography></Box> : <form onSubmit={event => {
+              event.preventDefault();
+              if (missing || invalidJson) return;
+              const values: Record<string, unknown> = { ...draft, contractId: Number(draft.contractId) };
+              verificationFields.forEach(([field]) => { values[field] = draft[field] === 'true'; });
+              void onSave(values);
+            }}>
+              <Grid container spacing={2} style={{ marginTop: 4 }}>
+                <Grid item xs={12}><TextField fullWidth required multiline rows={2} size="small" variant="outlined" label="업무 목적" value={draft.businessPurpose} onChange={event => update('businessPurpose', event.target.value)} /></Grid>
+                <Grid item xs={12} md={6}><TextField fullWidth required multiline rows={2} size="small" variant="outlined" label="진입 조건" value={draft.entryCondition} onChange={event => update('entryCondition', event.target.value)} /></Grid>
+                <Grid item xs={12} md={6}><TextField fullWidth required multiline rows={2} size="small" variant="outlined" label="완료·이탈 조건" value={draft.exitCondition} onChange={event => update('exitCondition', event.target.value)} /></Grid>
+                {jsonFields.map(([field, label]) => <Grid item xs={12} md={6} key={field}><TextField fullWidth multiline rows={5} size="small" variant="outlined" label={label} error={(() => { try { return !Array.isArray(JSON.parse(draft[field])); } catch { return true; } })()} value={draft[field]} onChange={event => update(field, event.target.value)} /></Grid>)}
+                <Grid item xs={12} md={4}><TextField fullWidth size="small" variant="outlined" label="반응형 계약" value={draft.responsiveContract} onChange={event => update('responsiveContract', event.target.value)} /></Grid>
+                <Grid item xs={12} md={4}><TextField fullWidth size="small" variant="outlined" label="접근성 계약" value={draft.accessibilityContract} onChange={event => update('accessibilityContract', event.target.value)} /></Grid>
+                <Grid item xs={12} md={4}><TextField fullWidth size="small" variant="outlined" label="보안 계약" value={draft.securityContract} onChange={event => update('securityContract', event.target.value)} /></Grid>
+                {verificationFields.map(([field, label]) => <Grid item xs={6} md={2} key={field}><TextField fullWidth select size="small" variant="outlined" label={`${label} 검증`} value={draft[field]} onChange={event => update(field, String(event.target.value))}><MenuItem value="true">완료</MenuItem><MenuItem value="false">미완료</MenuItem></TextField></Grid>)}
+                <Grid item xs={12} md={8}><TextField fullWidth size="small" variant="outlined" label="감사 증적 경로" value={draft.auditEvidenceRef} onChange={event => update('auditEvidenceRef', event.target.value)} /></Grid>
+                <Grid item xs={12} md={4}><TextField fullWidth select size="small" variant="outlined" label="계약 상태" value={draft.contractStatus} onChange={event => update('contractStatus', String(event.target.value))}>{['DRAFT','REVIEW_REQUIRED','APPROVED','VERIFIED'].map(value => <MenuItem key={value} value={value}>{value}</MenuItem>)}</TextField></Grid>
+              </Grid>
+              {invalidJson && <Typography variant="body2" color="error" style={{ marginTop: 8 }}>모든 JSON 계약은 배열 형식이어야 합니다.</Typography>}
+              <Box mt={2} display="flex" gridGap={8}><Button type="submit" variant="contained" color="primary" disabled={pending || missing || invalidJson}>{pending ? '저장 중' : '데이터 계약 저장·검증'}</Button></Box>
+            </form>}
+            {result && <Box component="pre" mt={2} p={2} style={{ whiteSpace: 'pre-wrap', background: '#eef5fa', fontSize: 12 }}>{result}</Box>}
+          </Paper>
+        </Grid>
+      </Grid>
+    </Box>
+  );
+}
+
 type ProcessDefinitionDraft = {
   processCode: string;
   processName: string;
@@ -6024,6 +6187,19 @@ export function ActorProcessControlPage(props: {
   }, [selectedTab.id]);
 
   useEffect(() => {
+    if (selectedTab.id !== 'data-contracts') return;
+    ['processes', 'steps']
+      .filter(key => runtimeDashboard[key] === undefined)
+      .forEach(key => {
+        void loadRuntimeDataset(key).catch(() => {
+          setMessage(`데이터 계약 연계 데이터(${key})를 불러오지 못했습니다.`);
+        });
+      });
+    // 데이터 계약은 프로세스 단계의 입출력과 함께 검토합니다.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedTab.id]);
+
+  useEffect(() => {
     setSelectedRow(null);
     setCommandResult('');
   }, [selectedTab.id]);
@@ -6234,6 +6410,35 @@ export function ActorProcessControlPage(props: {
       setCommandResult(
         `처리 실패\n${error instanceof Error ? error.message : String(error)}`,
       );
+    } finally {
+      setCommandPending(false);
+    }
+  };
+
+  const executeDataContractCommand = async (
+    values: Record<string, unknown>,
+  ) => {
+    if (commandPending) return;
+    setCommandPending(true);
+    setCommandResult('');
+    try {
+      const response = await fetchApi.fetch(
+        '/api/resonance-projects/actor-process/commands',
+        {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ command: 'screen.contract.save', ...values }),
+        },
+      );
+      const payload = (await response.json()) as Record<string, unknown>;
+      if (!response.ok) throw new Error(String(payload.message ?? payload.error ?? `HTTP ${response.status}`));
+      setCommandResult(`처리 완료\n${JSON.stringify(payload, null, 2)}`);
+      await Promise.all([
+        loadRuntimeDataset('professionalScreenContracts'),
+        loadRuntimeDataset('processDevelopmentProgress'),
+      ]);
+    } catch (error) {
+      setCommandResult(`처리 실패\n${error instanceof Error ? error.message : String(error)}`);
     } finally {
       setCommandPending(false);
     }
@@ -6630,6 +6835,14 @@ export function ActorProcessControlPage(props: {
                 onSave={executeScreenFlowCommand}
               />
             )}
+            {selectedTab.id === 'data-contracts' && (
+              <DataContractWorkspace
+                contracts={sourceRows}
+                pending={commandPending}
+                result={commandResult}
+                onSave={executeDataContractCommand}
+              />
+            )}
             {selectedTab.id === 'assignments' && (
               <ActorAssignmentWorkspace
                 rows={sourceRows}
@@ -6662,6 +6875,7 @@ export function ActorProcessControlPage(props: {
               'processes',
               'steps',
               'screen-flow',
+              'data-contracts',
             ].includes(selectedTab.id) && (
               <Grid container spacing={2} style={{ marginTop: 8 }}>
                 <Grid item xs={12} sm={6} md={3}>
@@ -6706,6 +6920,7 @@ export function ActorProcessControlPage(props: {
                 'processes',
                 'steps',
                 'screen-flow',
+                'data-contracts',
               ].includes(selectedTab.id) && (
                 <Box
                   mt={3}

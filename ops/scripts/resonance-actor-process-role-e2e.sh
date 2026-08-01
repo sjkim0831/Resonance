@@ -269,6 +269,17 @@ screen_flow_denied_status="$(curl --cacert "$CA_CERT" -sS \
   exit 10
 }
 
+data_contract_denied_status="$(curl --cacert "$CA_CERT" -sS \
+  -o "$run_dir/requester-data-contract-save.json" -w '%{http_code}' \
+  -H "authorization: Bearer $requester_token" \
+  -H 'content-type: application/json' \
+  -d '{"command":"screen.contract.save"}' \
+  "$BACKSTAGE_URL/api/resonance-projects/actor-process/commands")"
+[[ "$data_contract_denied_status" == "403" ]] || {
+  echo "[actor-process-role-e2e] requester data contract denial expected HTTP 403, received $data_contract_denied_status" >&2
+  exit 10
+}
+
 assignment_save_denied_status="$(curl --cacert "$CA_CERT" -sS \
   -o "$run_dir/requester-assignment-save.json" -w '%{http_code}' \
   -H "authorization: Bearer $requester_token" \
@@ -297,4 +308,4 @@ anonymous_status="$(curl --cacert "$CA_CERT" -sS -o "$run_dir/anonymous-command.
   exit 8
 }
 
-echo "[actor-process-role-e2e] command PASS: 2 allowed, 10 forbidden, 1 unauthenticated, 0 workflow mutations"
+echo "[actor-process-role-e2e] command PASS: 2 allowed, 11 forbidden, 1 unauthenticated, 0 workflow mutations"

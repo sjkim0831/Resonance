@@ -23,8 +23,8 @@ describe('actorProcessWorkspaces', () => {
 
   it('tracks source parity without promoting partial UI restoration', () => {
     expect(ACTOR_PROCESS_SOURCE_TAB_COUNT).toBe(32);
-    expect(ACTOR_PROCESS_FULL_UI_COUNT).toBe(8);
-    expect(ACTOR_PROCESS_PARTIAL_UI_COUNT).toBe(16);
+    expect(ACTOR_PROCESS_FULL_UI_COUNT).toBe(9);
+    expect(ACTOR_PROCESS_PARTIAL_UI_COUNT).toBe(15);
     expect(
       ACTOR_PROCESS_WORKSPACES.flatMap(workspace => workspace.tabs)
         .filter(tab => tab.uiRestoration === 'FULL')
@@ -38,6 +38,7 @@ describe('actorProcessWorkspaces', () => {
       'processes',
       'steps',
       'screen-flow',
+      'data-contracts',
     ]);
   });
 

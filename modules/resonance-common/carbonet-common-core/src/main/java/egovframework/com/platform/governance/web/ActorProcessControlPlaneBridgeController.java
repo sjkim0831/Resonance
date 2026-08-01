@@ -220,8 +220,12 @@ public class ActorProcessControlPlaneBridgeController {
                     }
                     result = governance.bindScreenProcessArchetype(body, actor);
                 }
-                case "screen.contract.save" ->
-                        result = governance.saveProfessionalScreenContract(body, actor);
+                case "screen.contract.save" -> {
+                    if (!governance.isControlPlaneAdministrator(account)) {
+                        throw new SecurityException("Administrator authority is required to save a screen data contract.");
+                    }
+                    result = governance.saveProfessionalScreenContract(body, actor);
+                }
                 case "screen.design.generate" ->
                         result = governance.saveDesignAndGenerate(body, actor);
                 case "assignment.save" -> {
