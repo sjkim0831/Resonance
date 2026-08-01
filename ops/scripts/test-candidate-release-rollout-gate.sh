@@ -13,6 +13,7 @@ fail() {
 grep -Fq 'resonance.ai/release-id' "$DEPLOY_SCRIPT" || fail "candidate release label is missing"
 grep -Fq 'candidate_selector="app=$DEPLOYMENT,resonance.ai/release-id=$candidate_release_id"' "$DEPLOY_SCRIPT" || fail "candidate selector is missing"
 grep -Fq 'wait --for=condition=Ready pod' "$DEPLOY_SCRIPT" || fail "candidate Ready gate is missing"
+grep -Fq '\"startupProbe\":{\"httpGet\":{\"path\":\"/home\"' "$DEPLOY_SCRIPT" || fail "startup probe does not gate the public home route"
 grep -Fq 'pod_selector+=",resonance.ai/release-id=$CANDIDATE_RELEASE_ID"' "$DEPLOY_SCRIPT" || fail "verification is not pinned to candidate pods"
 
 runtime_rollout_waits="$(grep -Ec '^[[:space:]]*kubectl .*rollout status deployment/"\$DEPLOYMENT"' "$AUTO_DEPLOY_SCRIPT" || true)"
