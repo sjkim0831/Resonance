@@ -711,6 +711,8 @@ run_actor_process_role_e2e_if_required() {
      && ",${PLAN_TESTS:-}," != *",backstage:visual-e2e,"* ]]; then
     if ! git diff --name-only "$deployed_commit" "$target_commit" -- \
         modules/resonance-common/carbonet-common-core/src/main/java/egovframework/com/platform/governance \
+        ops/scripts/auto-deploy-main.sh \
+        ops/scripts/test-catalog-identity-parallel-deploy.sh \
         ops/scripts/resonance-actor-process-role-e2e.sh \
         ops/scripts/resonance-project-task-browser-e2e.mjs \
         ops/scripts/resonance-project-task-browser-e2e.sh \
