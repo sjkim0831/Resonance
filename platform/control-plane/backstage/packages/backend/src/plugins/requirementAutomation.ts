@@ -94,9 +94,9 @@ export const analyzeRequirementText = (
     const requirementId = `${processCode}_R${order}`;
     const stepCode = `${processCode}_S${order}`;
     const actorCode = inferActor(line);
-    const method = inferMethod(line);
+    const businessOperation = inferMethod(line);
     const routePath = `/generated/${projectId.toLowerCase()}/${processCode.toLowerCase()}/s${order}`;
-    const endpointPath = `/api/runtime/projects/${projectId.toLowerCase()}/processes/${processCode.toLowerCase()}/steps/s${order}`;
+    const endpointPath = '/admin/api/system/actor-process/executions/{executionId}/commands';
     return {
       requirementId,
       title: line.slice(0, 120),
@@ -106,13 +106,14 @@ export const analyzeRequirementText = (
       stepCode,
       screenName: line.slice(0, 80),
       routePath,
-      endpoint: { method, path: endpointPath },
+      endpoint: { method: 'POST', path: endpointPath },
       fields: [
         { fieldCode: 'projectId', label: '프로젝트 ID', type: 'string', required: true },
         { fieldCode: 'actorCode', label: '수행 액터', type: 'string', required: true },
         { fieldCode: 'statusCode', label: '업무 상태', type: 'string', required: true },
-        { fieldCode: 'payload', label: '업무 입력 데이터', type: 'object', required: method !== 'GET' },
-        { fieldCode: 'rowVersion', label: '동시성 버전', type: 'integer', required: method !== 'GET' },
+        { fieldCode: 'commandCode', label: '업무 명령', type: businessOperation, required: true },
+        { fieldCode: 'payload', label: '업무 입력 데이터', type: 'object', required: businessOperation !== 'GET' },
+        { fieldCode: 'rowVersion', label: '동시성 버전', type: 'integer', required: businessOperation !== 'GET' },
       ],
       acceptanceCriteria: [
         '권한이 있는 액터만 접근할 수 있다.',
@@ -177,11 +178,10 @@ export const buildRequirementDesignContract = ({
     commonTheme: 'KRDS_GOV_DEFAULT',
     commonLayout: 'COMMON_KRDS_TASK_LAYOUT',
     genericEndpoints: [
-      '/runtime/query',
-      '/runtime/command',
-      '/runtime/transition',
-      '/runtime/validate',
-      '/runtime/export',
+      '/admin/api/system/actor-process/executions/start',
+      '/admin/api/system/actor-process/executions/{executionId}/commands',
+      '/admin/api/system/actor-process/process-design',
+      '/admin/api/system/actor-process/backend/verify',
     ],
   },
   qualityGates: [

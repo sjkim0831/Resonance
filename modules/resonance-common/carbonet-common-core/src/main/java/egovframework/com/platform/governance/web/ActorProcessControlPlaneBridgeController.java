@@ -98,6 +98,7 @@ public class ActorProcessControlPlaneBridgeController {
             }
 
             String contractJson = mapper.writeValueAsString(contract);
+            int importedSteps = importRequirementProcessContract((Map<?, ?>) contract);
             jdbc.update("""
                     insert into framework_actor_process_design_release(
                       project_id,design_version,contract_sha256,contract_payload,release_status
@@ -136,6 +137,7 @@ public class ActorProcessControlPlaneBridgeController {
             response.put("sourceOfTruth", "BACKSTAGE");
             response.put("releaseStatus", "QUEUED");
             response.put("generation", Map.of("status", "QUEUED", "maxScreens", 1000));
+            response.put("importedRequirementSteps", importedSteps);
             return ResponseEntity.ok(response);
         } catch (Exception exception) {
             return ResponseEntity.badRequest().body(Map.of(
@@ -554,6 +556,115 @@ public class ActorProcessControlPlaneBridgeController {
                             ? "Design generation failed." : exception.getMessage()
             )), projectId, designVersion);
         }
+    }
+
+    private int importRequirementProcessContract(Map<?, ?> contract) {
+        Object sourceValue = contract.get("source");
+        if (!(sourceValue instanceof Map<?, ?> source)
+                || !"REQUIREMENT_DOCUMENT".equals(String.valueOf(source.get("type")))) {
+            return 0;
+        }
+        Object processValue = contract.get("process");
+        if (!(processValue instanceof Map<?, ?> process)) {
+            throw new IllegalArgumentException("Requirement process contract is missing.");
+        }
+        String processCode = requiredRaw(process, "processCode").toUpperCase();
+        Object stepsValue = process.get("steps");
+        if (!(stepsValue instanceof List<?> steps) || steps.isEmpty() || steps.size() > 1000) {
+            throw new IllegalArgumentException("Requirement process must contain 1-1000 steps.");
+        }
+        governance.saveWorkType(new LinkedHashMap<>(Map.of(
+                "workTypeCode", "REQUIREMENT_AUTOMATION",
+                "workTypeName", "요구분석 자동 개발",
+                "workTypeNameEn", "Requirement Automation",
+                "description", "요구분석서에서 검증된 실행 설계와 개발 작업",
+                "sortOrder", 5,
+                "useAt", "Y")));
+        LinkedHashSet<String> actorCodes = new LinkedHashSet<>();
+        for (Object stepValue : steps) {
+            if (!(stepValue instanceof Map<?, ?> step)) {
+                throw new IllegalArgumentException("Requirement step must be an object.");
+            }
+            actorCodes.add(requiredRaw(step, "actorCode").toUpperCase());
+        }
+        for (String actorCode : actorCodes) {
+            governance.createActor(new LinkedHashMap<>(Map.of(
+                    "actorCode", actorCode,
+                    "actorName", actorCode,
+                    "actorNameEn", actorCode,
+                    "actorType", actorCode.contains("ADMIN") ? "ADMIN" : "BUSINESS",
+                    "purpose", "요구분석서 기반 " + actorCode + " 업무 수행",
+                    "capabilityCodes", "REQUIREMENT_AUTOMATION",
+                    "delegationAllowed", false,
+                    "useAt", "Y")));
+        }
+        String ownerActor = actorCodes.iterator().next();
+        governance.createProcess(new LinkedHashMap<>(Map.ofEntries(
+                Map.entry("processCode", processCode),
+                Map.entry("processName", processCode + " 요구분석 실행"),
+                Map.entry("domainCode", "REQUIREMENT_AUTOMATION"),
+                Map.entry("version", "1.0.0"),
+                Map.entry("goal", "업로드된 요구분석서를 실행 가능한 화면·API·데이터 계약으로 완성"),
+                Map.entry("startCondition", "검증된 요구분석서와 프로젝트가 존재"),
+                Map.entry("completionCondition", "모든 단계 구현·계약 테스트·DB 재조회 검증 완료"),
+                Map.entry("automationMode", "AUTOMATED"),
+                Map.entry("processStatus", "DEVELOPMENT_READY"),
+                Map.entry("lifecycleStatus", "VALIDATED"),
+                Map.entry("ownerActorCode", ownerActor),
+                Map.entry("riskLevel", "MEDIUM"),
+                Map.entry("developmentOrder", 1))));
+        int order = 0;
+        for (Object stepValue : steps) {
+            Map<?, ?> step = (Map<?, ?>) stepValue;
+            order++;
+            String stepCode = requiredRaw(step, "stepCode").toUpperCase();
+            String actorCode = requiredRaw(step, "actorCode").toUpperCase();
+            String fromState = order == 1 ? "DRAFT" : "STEP_" + (order - 1) + "_COMPLETED";
+            String toState = order == steps.size() ? "COMPLETED" : "STEP_" + order + "_COMPLETED";
+            String routePath = requiredRaw(step, "routePath");
+            Object endpointValue = step.get("endpoint");
+            String apiContract = endpointValue instanceof Map<?, ?> endpoint
+                    ? writeJson(endpoint) : "{}";
+            Object fieldValue = step.get("fields");
+            String inputContract = fieldValue instanceof List<?> fields
+                    ? writeJson(Map.of("fields", fields)) : "{}";
+            String requirement = requiredRaw(step, "description");
+            LinkedHashMap<String, Object> stepRequest = new LinkedHashMap<>();
+            stepRequest.put("processCode", processCode);
+            stepRequest.put("stepCode", stepCode);
+            stepRequest.put("stepOrder", order);
+            stepRequest.put("stepName", requiredRaw(step, "screenName"));
+            stepRequest.put("stepType", "TASK");
+            stepRequest.put("actorCode", actorCode);
+            stepRequest.put("fromState", fromState);
+            stepRequest.put("commandCode", "EXECUTE_" + stepCode);
+            stepRequest.put("toState", toState);
+            stepRequest.put("completionRule", "필수 필드, 권한, DB 재조회, 증적 검증을 통과한다.");
+            stepRequest.put("requirementText", requirement);
+            stepRequest.put("inputContract", inputContract);
+            stepRequest.put("outputContract", writeJson(Map.of(
+                    "projectId", "string", "processCode", processCode,
+                    "stepCode", stepCode, "statusCode", toState, "rowVersion", "integer")));
+            stepRequest.put("requiresUserPage", !actorCode.contains("ADMIN"));
+            stepRequest.put("requiresAdminPage", actorCode.contains("ADMIN"));
+            stepRequest.put("requiresApi", true);
+            stepRequest.put("requiresDatabase", true);
+            stepRequest.put("requiresNotification", true);
+            stepRequest.put(actorCode.contains("ADMIN") ? "adminPath" : "userPath", routePath);
+            stepRequest.put("apiContract", apiContract);
+            stepRequest.put("evidenceRequired", true);
+            stepRequest.put("evidenceTypes", "REQUEST,RESPONSE,DB_REREAD,E2E,ROLLBACK");
+            stepRequest.put("rollbackCommandCode", "ROLLBACK_" + stepCode);
+            governance.addStep(stepRequest, "BACKSTAGE_REQUIREMENT_AUTOMATION");
+        }
+        return order;
+    }
+
+    private static String requiredRaw(Map<?, ?> body, String key) {
+        Object value = body.get(key);
+        String text = value == null ? "" : String.valueOf(value).trim();
+        if (text.isEmpty()) throw new IllegalArgumentException(key + " is required");
+        return text;
     }
 
     @Scheduled(
