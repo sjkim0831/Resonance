@@ -2,7 +2,7 @@
 
 - Job: 19718
 - Job type: DATABASE
-- Source commit: 4188fe42b70f8b022c52a6ef3747651c66206d31
+- Source commit: 268a6b82812034d160f540f07acf9926478e7cc5
 - Requirement: 격리·잠금표찰·작업허가 후 정비와 부품 사용을 기록한다.
 - Validation result: {"strategy":"APPROVED_FULL_STACK_PACKAGE","processCode":"PREVENTIVE_MAINTENANCE","stepCode":"PM_EXECUTE","dimension":"DATABASE","package":"/opt/Resonance/var/ai-worktrees/job-19718/projects/carbonet-backend-metadata/process-runtime/generated/PREVENTIVE_MAINTENANCE/PREVENTIVE_MAINTENANCE__PM_EXECUTE.json","evidence":"/opt/Resonance/var/ai-worktrees/job-19718/var/test-evidence/process-package-tests/PREVENTIVE_MAINTENANCE__PM_EXECUTE.json","status":"PASSED"}
 
