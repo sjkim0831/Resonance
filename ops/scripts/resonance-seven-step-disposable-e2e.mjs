@@ -119,7 +119,7 @@ try {
   evidence.finishedAt = new Date().toISOString(); evidence.durationMs = Date.now() - Date.parse(evidence.startedAt);
   evidence.completion = {
     checklist: checklist.map(({ code, status }) => ({ code, status })),
-    extensionTaskCount: allTasks.length - checklist.length,
+    extensionTaskCount: Array.isArray(completion.extensionTasks) ? completion.extensionTasks.length : 0,
     metrics: completion.metrics,
   };
 } finally {
