@@ -2400,6 +2400,736 @@ function DesignWorkbenchDialog({
   );
 }
 
+type ProcessStepDraft = {
+  processCode: string;
+  stepOrder: string;
+  stepCode: string;
+  stepName: string;
+  parentStepCode: string;
+  stepType: string;
+  actorCode: string;
+  fromState: string;
+  commandCode: string;
+  toState: string;
+  completionRule: string;
+  requirementText: string;
+  inputContract: string;
+  outputContract: string;
+  requiresUserPage: string;
+  requiresAdminPage: string;
+  requiresApi: string;
+  requiresDatabase: string;
+  requiresNotification: string;
+  userPath: string;
+  adminPath: string;
+  apiContract: string;
+  slaHours: string;
+  escalationActorCode: string;
+  evidenceRequired: string;
+  evidenceTypes: string;
+  segregationActorCodes: string;
+  rollbackCommandCode: string;
+  decisionRule: string;
+};
+
+const emptyProcessStep = (processCode = ''): ProcessStepDraft => ({
+  processCode,
+  stepOrder: '1',
+  stepCode: '',
+  stepName: '',
+  parentStepCode: '',
+  stepType: 'TASK',
+  actorCode: '',
+  fromState: 'DRAFT',
+  commandCode: '',
+  toState: 'COMPLETED',
+  completionRule: '',
+  requirementText: '',
+  inputContract: '{}',
+  outputContract: '{}',
+  requiresUserPage: 'false',
+  requiresAdminPage: 'false',
+  requiresApi: 'false',
+  requiresDatabase: 'false',
+  requiresNotification: 'false',
+  userPath: '',
+  adminPath: '',
+  apiContract: '',
+  slaHours: '0',
+  escalationActorCode: '',
+  evidenceRequired: 'true',
+  evidenceTypes: '',
+  segregationActorCodes: '',
+  rollbackCommandCode: '',
+  decisionRule: '',
+});
+
+function ProcessStepWorkspace({
+  steps,
+  processes,
+  actors,
+  pending,
+  result,
+  onSave,
+  onOpenFlow,
+}: {
+  steps: RuntimeRow[];
+  processes: RuntimeRow[];
+  actors: RuntimeRow[];
+  pending: boolean;
+  result: string;
+  onSave: (values: Record<string, unknown>) => Promise<void>;
+  onOpenFlow: () => void;
+}) {
+  const initialProcess = String(processes[0]?.processCode ?? '');
+  const [processCode, setProcessCode] = useState(initialProcess);
+  const [selectedCode, setSelectedCode] = useState('');
+  const [draft, setDraft] = useState<ProcessStepDraft>(
+    emptyProcessStep(initialProcess),
+  );
+  useEffect(() => {
+    if (!processCode && processes.length) {
+      const first = String(processes[0].processCode ?? '');
+      setProcessCode(first);
+      setDraft(emptyProcessStep(first));
+    }
+  }, [processCode, processes]);
+  const processSteps = steps.filter(
+    row => String(row.processCode ?? '') === processCode,
+  );
+  const sortedSteps = [...processSteps].sort(
+    (a, b) => Number(a.stepOrder ?? 0) - Number(b.stepOrder ?? 0),
+  );
+  const missingContracts = processSteps.filter(
+    row =>
+      !String(row.completionRule ?? '').trim() ||
+      !String(row.inputContract ?? '').trim() ||
+      !String(row.outputContract ?? '').trim(),
+  ).length;
+  const update = (field: keyof ProcessStepDraft, value: string) =>
+    setDraft(current => ({ ...current, [field]: value }));
+  const changeProcess = (value: string) => {
+    setProcessCode(value);
+    setSelectedCode('');
+    setDraft(emptyProcessStep(value));
+  };
+  const selectStep = (row: RuntimeRow) => {
+    const boolText = (value: unknown, fallback = false) =>
+      String(value ?? fallback);
+    const code = String(row.stepCode ?? '');
+    setSelectedCode(code);
+    setDraft({
+      processCode: String(row.processCode ?? processCode),
+      stepOrder: String(row.stepOrder ?? '1'),
+      stepCode: code,
+      stepName: String(row.stepName ?? ''),
+      parentStepCode: String(row.parentStepCode ?? ''),
+      stepType: String(row.stepType ?? 'TASK'),
+      actorCode: String(row.actorCode ?? ''),
+      fromState: String(row.fromState ?? ''),
+      commandCode: String(row.commandCode ?? ''),
+      toState: String(row.toState ?? ''),
+      completionRule: String(row.completionRule ?? ''),
+      requirementText: String(row.requirementText ?? ''),
+      inputContract: String(row.inputContract ?? '{}'),
+      outputContract: String(row.outputContract ?? '{}'),
+      requiresUserPage: boolText(row.requiresUserPage),
+      requiresAdminPage: boolText(row.requiresAdminPage),
+      requiresApi: boolText(row.requiresApi),
+      requiresDatabase: boolText(row.requiresDatabase),
+      requiresNotification: boolText(row.requiresNotification),
+      userPath: String(row.userPath ?? ''),
+      adminPath: String(row.adminPath ?? ''),
+      apiContract: String(row.apiContract ?? ''),
+      slaHours: String(row.slaHours ?? '0'),
+      escalationActorCode: String(row.escalationActorCode ?? ''),
+      evidenceRequired: boolText(row.evidenceRequired, true),
+      evidenceTypes: String(row.evidenceTypes ?? ''),
+      segregationActorCodes: String(row.segregationActorCodes ?? ''),
+      rollbackCommandCode: String(row.rollbackCommandCode ?? ''),
+      decisionRule: String(row.decisionRule ?? ''),
+    });
+  };
+  const newStep = () => {
+    setSelectedCode('');
+    setDraft(
+      emptyProcessStep(processCode || String(processes[0]?.processCode ?? '')),
+    );
+  };
+  const requiredMissing = [
+    draft.processCode,
+    draft.stepCode,
+    draft.stepName,
+    draft.actorCode,
+    draft.fromState,
+    draft.commandCode,
+    draft.toState,
+    draft.completionRule,
+  ].some(value => !value.trim());
+  const invalidInput = !draft.inputContract.trim().startsWith('{');
+  const invalidOutput = !draft.outputContract.trim().startsWith('{');
+  const pageContractMissing = Boolean(
+    (draft.requiresUserPage === 'true' && !draft.userPath.trim()) ||
+      (draft.requiresAdminPage === 'true' && !draft.adminPath.trim()) ||
+      (draft.requiresApi === 'true' && !draft.apiContract.trim()),
+  );
+  const booleanFields: Array<[keyof ProcessStepDraft, string]> = [
+    ['requiresUserPage', '사용자 화면'],
+    ['requiresAdminPage', '관리자 화면'],
+    ['requiresApi', 'API'],
+    ['requiresDatabase', 'DB'],
+    ['requiresNotification', '알림'],
+    ['evidenceRequired', '증적 필수'],
+  ];
+
+  return (
+    <Box mt={3}>
+      <Grid container spacing={2}>
+        {[
+          ['전체 단계', steps.length],
+          ['선택 프로세스 단계', processSteps.length],
+          ['계약 보완 필요', missingContracts],
+          [
+            '자동화 준비',
+            processSteps.filter(
+              row => String(row.automationStatus) !== 'PLANNED',
+            ).length,
+          ],
+        ].map(([label, value]) => (
+          <Grid item xs={6} md={3} key={String(label)}>
+            <Paper variant="outlined" style={{ padding: 16, height: '100%' }}>
+              <Typography variant="caption" color="textSecondary">
+                {label}
+              </Typography>
+              <Typography variant="h5">{value}</Typography>
+            </Paper>
+          </Grid>
+        ))}
+      </Grid>
+      <Box mt={2}>
+        <TextField
+          fullWidth
+          select
+          size="small"
+          variant="outlined"
+          label="설계할 프로세스"
+          value={processCode}
+          onChange={event => changeProcess(String(event.target.value))}
+        >
+          {processes.map(row => (
+            <MenuItem
+              key={String(row.processCode)}
+              value={String(row.processCode)}
+            >
+              {displayValue(row.processName)} ({displayValue(row.processCode)})
+            </MenuItem>
+          ))}
+        </TextField>
+      </Box>
+
+      <Grid container spacing={2} style={{ marginTop: 4 }}>
+        <Grid item xs={12} md={4}>
+          <Paper variant="outlined" style={{ padding: 16, height: '100%' }}>
+            <Box
+              display="flex"
+              justifyContent="space-between"
+              alignItems="center"
+            >
+              <Typography variant="h6">단계 실행 순서</Typography>
+              <Button size="small" onClick={newStep}>
+                신규 단계
+              </Button>
+            </Box>
+            <Box
+              mt={1.5}
+              display="grid"
+              gridGap={8}
+              style={{ maxHeight: 900, overflowY: 'auto' }}
+            >
+              {sortedSteps.map(row => {
+                const code = String(row.stepCode ?? '');
+                return (
+                  <Box
+                    key={code}
+                    p={1.5}
+                    onClick={() => selectStep(row)}
+                    style={{
+                      cursor: 'pointer',
+                      border: '1px solid #dbe4ea',
+                      borderRadius: 8,
+                      background: selectedCode === code ? '#e8f2ff' : '#fff',
+                    }}
+                  >
+                    <Box
+                      display="flex"
+                      justifyContent="space-between"
+                      gridGap={8}
+                    >
+                      <Typography variant="body2" style={{ fontWeight: 700 }}>
+                        {displayValue(row.stepOrder)}.{' '}
+                        {displayValue(row.stepName)}
+                      </Typography>
+                      <Chip size="small" label={displayValue(row.stepType)} />
+                    </Box>
+                    <Typography variant="caption" color="textSecondary">
+                      {displayValue(row.actorCode)} ·{' '}
+                      {displayValue(row.fromState)} →{' '}
+                      {displayValue(row.toState)}
+                    </Typography>
+                  </Box>
+                );
+              })}
+              {!sortedSteps.length && (
+                <Typography variant="body2" color="textSecondary">
+                  등록된 단계가 없습니다.
+                </Typography>
+              )}
+            </Box>
+          </Paper>
+        </Grid>
+
+        <Grid item xs={12} md={8}>
+          <Paper variant="outlined" style={{ padding: 20 }}>
+            <Typography variant="overline">
+              STATE TRANSITION & EXECUTION CONTRACT
+            </Typography>
+            <Typography variant="h6">단계·상태 전이 전문 설계</Typography>
+            <form
+              onSubmit={event => {
+                event.preventDefault();
+                if (
+                  requiredMissing ||
+                  invalidInput ||
+                  invalidOutput ||
+                  pageContractMissing
+                )
+                  return;
+                const values: Record<string, unknown> = {
+                  ...draft,
+                  stepOrder: Number(draft.stepOrder),
+                  slaHours: Number(draft.slaHours),
+                };
+                booleanFields.forEach(([field]) => {
+                  values[field] = draft[field] === 'true';
+                });
+                void onSave(values);
+              }}
+            >
+              <Grid container spacing={2} style={{ marginTop: 4 }}>
+                <Grid item xs={6} md={3}>
+                  <TextField
+                    fullWidth
+                    required
+                    type="number"
+                    size="small"
+                    variant="outlined"
+                    label="단계 순서"
+                    inputProps={{ min: 1 }}
+                    value={draft.stepOrder}
+                    onChange={event => update('stepOrder', event.target.value)}
+                  />
+                </Grid>
+                <Grid item xs={6} md={3}>
+                  <TextField
+                    fullWidth
+                    required
+                    disabled={Boolean(selectedCode)}
+                    size="small"
+                    variant="outlined"
+                    label="단계 코드"
+                    value={draft.stepCode}
+                    onChange={event =>
+                      update('stepCode', event.target.value.toUpperCase())
+                    }
+                  />
+                </Grid>
+                <Grid item xs={12} md={6}>
+                  <TextField
+                    fullWidth
+                    required
+                    size="small"
+                    variant="outlined"
+                    label="단계명"
+                    value={draft.stepName}
+                    onChange={event => update('stepName', event.target.value)}
+                  />
+                </Grid>
+                <Grid item xs={12} md={4}>
+                  <TextField
+                    fullWidth
+                    select
+                    size="small"
+                    variant="outlined"
+                    label="단계 유형"
+                    value={draft.stepType}
+                    onChange={event =>
+                      update('stepType', String(event.target.value))
+                    }
+                  >
+                    {[
+                      'TASK',
+                      'DECISION',
+                      'APPROVAL',
+                      'SYSTEM',
+                      'MILESTONE',
+                    ].map(value => (
+                      <MenuItem key={value} value={value}>
+                        {value}
+                      </MenuItem>
+                    ))}
+                  </TextField>
+                </Grid>
+                <Grid item xs={12} md={4}>
+                  <TextField
+                    fullWidth
+                    required
+                    select
+                    size="small"
+                    variant="outlined"
+                    label="담당 액터"
+                    value={draft.actorCode}
+                    onChange={event =>
+                      update('actorCode', String(event.target.value))
+                    }
+                  >
+                    {actors
+                      .filter(row => String(row.useAt ?? 'Y') === 'Y')
+                      .map(row => (
+                        <MenuItem
+                          key={String(row.actorCode)}
+                          value={String(row.actorCode)}
+                        >
+                          {displayValue(row.actorName)} (
+                          {displayValue(row.actorCode)})
+                        </MenuItem>
+                      ))}
+                  </TextField>
+                </Grid>
+                <Grid item xs={12} md={4}>
+                  <TextField
+                    fullWidth
+                    select
+                    size="small"
+                    variant="outlined"
+                    label="상위 단계"
+                    value={draft.parentStepCode}
+                    onChange={event =>
+                      update('parentStepCode', String(event.target.value))
+                    }
+                  >
+                    <MenuItem value="">없음</MenuItem>
+                    {sortedSteps
+                      .filter(row => String(row.stepCode) !== draft.stepCode)
+                      .map(row => (
+                        <MenuItem
+                          key={String(row.stepCode)}
+                          value={String(row.stepCode)}
+                        >
+                          {displayValue(row.stepName)}
+                        </MenuItem>
+                      ))}
+                  </TextField>
+                </Grid>
+                <Grid item xs={12} md={4}>
+                  <TextField
+                    fullWidth
+                    required
+                    size="small"
+                    variant="outlined"
+                    label="시작 상태"
+                    value={draft.fromState}
+                    onChange={event =>
+                      update('fromState', event.target.value.toUpperCase())
+                    }
+                  />
+                </Grid>
+                <Grid item xs={12} md={4}>
+                  <TextField
+                    fullWidth
+                    required
+                    size="small"
+                    variant="outlined"
+                    label="실행 명령"
+                    value={draft.commandCode}
+                    onChange={event =>
+                      update('commandCode', event.target.value.toUpperCase())
+                    }
+                  />
+                </Grid>
+                <Grid item xs={12} md={4}>
+                  <TextField
+                    fullWidth
+                    required
+                    size="small"
+                    variant="outlined"
+                    label="완료 상태"
+                    value={draft.toState}
+                    onChange={event =>
+                      update('toState', event.target.value.toUpperCase())
+                    }
+                  />
+                </Grid>
+                <Grid item xs={12} md={6}>
+                  <TextField
+                    fullWidth
+                    required
+                    multiline
+                    rows={2}
+                    size="small"
+                    variant="outlined"
+                    label="완료 조건"
+                    value={draft.completionRule}
+                    onChange={event =>
+                      update('completionRule', event.target.value)
+                    }
+                  />
+                </Grid>
+                <Grid item xs={12} md={6}>
+                  <TextField
+                    fullWidth
+                    multiline
+                    rows={2}
+                    size="small"
+                    variant="outlined"
+                    label="업무 요구사항"
+                    value={draft.requirementText}
+                    onChange={event =>
+                      update('requirementText', event.target.value)
+                    }
+                  />
+                </Grid>
+                <Grid item xs={12} md={6}>
+                  <TextField
+                    fullWidth
+                    required
+                    multiline
+                    rows={4}
+                    size="small"
+                    variant="outlined"
+                    label="입력 데이터 계약(JSON)"
+                    error={invalidInput}
+                    value={draft.inputContract}
+                    onChange={event =>
+                      update('inputContract', event.target.value)
+                    }
+                  />
+                </Grid>
+                <Grid item xs={12} md={6}>
+                  <TextField
+                    fullWidth
+                    required
+                    multiline
+                    rows={4}
+                    size="small"
+                    variant="outlined"
+                    label="출력 데이터 계약(JSON)"
+                    error={invalidOutput}
+                    value={draft.outputContract}
+                    onChange={event =>
+                      update('outputContract', event.target.value)
+                    }
+                  />
+                </Grid>
+                {booleanFields.map(([field, label]) => (
+                  <Grid item xs={6} md={2} key={field}>
+                    <TextField
+                      fullWidth
+                      select
+                      size="small"
+                      variant="outlined"
+                      label={label}
+                      value={draft[field]}
+                      onChange={event =>
+                        update(field, String(event.target.value))
+                      }
+                    >
+                      <MenuItem value="true">필요</MenuItem>
+                      <MenuItem value="false">불필요</MenuItem>
+                    </TextField>
+                  </Grid>
+                ))}
+                <Grid item xs={12} md={4}>
+                  <TextField
+                    fullWidth
+                    size="small"
+                    variant="outlined"
+                    label="사용자 화면 경로"
+                    error={draft.requiresUserPage === 'true' && !draft.userPath}
+                    value={draft.userPath}
+                    onChange={event => update('userPath', event.target.value)}
+                  />
+                </Grid>
+                <Grid item xs={12} md={4}>
+                  <TextField
+                    fullWidth
+                    size="small"
+                    variant="outlined"
+                    label="관리자 화면 경로"
+                    error={
+                      draft.requiresAdminPage === 'true' && !draft.adminPath
+                    }
+                    value={draft.adminPath}
+                    onChange={event => update('adminPath', event.target.value)}
+                  />
+                </Grid>
+                <Grid item xs={12} md={4}>
+                  <TextField
+                    fullWidth
+                    size="small"
+                    variant="outlined"
+                    label="API 계약"
+                    error={draft.requiresApi === 'true' && !draft.apiContract}
+                    value={draft.apiContract}
+                    onChange={event =>
+                      update('apiContract', event.target.value)
+                    }
+                  />
+                </Grid>
+                <Grid item xs={6} md={3}>
+                  <TextField
+                    fullWidth
+                    type="number"
+                    size="small"
+                    variant="outlined"
+                    label="SLA(시간)"
+                    inputProps={{ min: 0 }}
+                    value={draft.slaHours}
+                    onChange={event => update('slaHours', event.target.value)}
+                  />
+                </Grid>
+                <Grid item xs={6} md={3}>
+                  <TextField
+                    fullWidth
+                    select
+                    size="small"
+                    variant="outlined"
+                    label="에스컬레이션 액터"
+                    value={draft.escalationActorCode}
+                    onChange={event =>
+                      update('escalationActorCode', String(event.target.value))
+                    }
+                  >
+                    <MenuItem value="">없음</MenuItem>
+                    {actors
+                      .filter(row => String(row.useAt ?? 'Y') === 'Y')
+                      .map(row => (
+                        <MenuItem
+                          key={String(row.actorCode)}
+                          value={String(row.actorCode)}
+                        >
+                          {displayValue(row.actorName)}
+                        </MenuItem>
+                      ))}
+                  </TextField>
+                </Grid>
+                <Grid item xs={12} md={6}>
+                  <TextField
+                    fullWidth
+                    size="small"
+                    variant="outlined"
+                    label="필수 증적 유형"
+                    value={draft.evidenceTypes}
+                    onChange={event =>
+                      update('evidenceTypes', event.target.value)
+                    }
+                  />
+                </Grid>
+                <Grid item xs={12} md={6}>
+                  <TextField
+                    fullWidth
+                    size="small"
+                    variant="outlined"
+                    label="직무분리 액터 코드"
+                    value={draft.segregationActorCodes}
+                    onChange={event =>
+                      update('segregationActorCodes', event.target.value)
+                    }
+                  />
+                </Grid>
+                <Grid item xs={12} md={6}>
+                  <TextField
+                    fullWidth
+                    size="small"
+                    variant="outlined"
+                    label="롤백 명령"
+                    value={draft.rollbackCommandCode}
+                    onChange={event =>
+                      update(
+                        'rollbackCommandCode',
+                        event.target.value.toUpperCase(),
+                      )
+                    }
+                  />
+                </Grid>
+                <Grid item xs={12}>
+                  <TextField
+                    fullWidth
+                    multiline
+                    rows={2}
+                    size="small"
+                    variant="outlined"
+                    label="의사결정·분기 규칙"
+                    value={draft.decisionRule}
+                    onChange={event =>
+                      update('decisionRule', event.target.value)
+                    }
+                  />
+                </Grid>
+              </Grid>
+              {pageContractMissing && (
+                <Typography
+                  variant="body2"
+                  color="error"
+                  style={{ marginTop: 8 }}
+                >
+                  필요로 표시한 화면·API의 경로 계약을 입력하세요.
+                </Typography>
+              )}
+              <Box mt={2} display="flex" gridGap={8} flexWrap="wrap">
+                <Button
+                  type="submit"
+                  variant="contained"
+                  color="primary"
+                  disabled={
+                    pending ||
+                    requiredMissing ||
+                    invalidInput ||
+                    invalidOutput ||
+                    pageContractMissing
+                  }
+                >
+                  {pending
+                    ? '저장 중…'
+                    : selectedCode
+                    ? '단계 갱신'
+                    : '단계 등록'}
+                </Button>
+                <Button variant="outlined" onClick={onOpenFlow}>
+                  화면 흐름 연결
+                </Button>
+              </Box>
+            </form>
+            {result && (
+              <Box
+                component="pre"
+                mt={2}
+                p={2}
+                style={{
+                  whiteSpace: 'pre-wrap',
+                  background: '#eef5fa',
+                  fontSize: 12,
+                }}
+              >
+                {result}
+              </Box>
+            )}
+          </Paper>
+        </Grid>
+      </Grid>
+    </Box>
+  );
+}
+
 type ProcessDefinitionDraft = {
   processCode: string;
   processName: string;
@@ -5056,6 +5786,21 @@ export function ActorProcessControlPage(props: {
   }, [selectedTab.id]);
 
   useEffect(() => {
+    if (selectedTab.id !== 'steps') return;
+    ['processes', 'actors']
+      .filter(key => runtimeDashboard[key] === undefined)
+      .forEach(key => {
+        void loadRuntimeDataset(key).catch(() => {
+          setMessage(
+            `단계·상태 전이 설계 데이터(${key})를 불러오지 못했습니다.`,
+          );
+        });
+      });
+    // 상태 전이 편집은 프로세스와 활성 액터 계약을 함께 검증합니다.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedTab.id]);
+
+  useEffect(() => {
     setSelectedRow(null);
     setCommandResult('');
   }, [selectedTab.id]);
@@ -5194,6 +5939,39 @@ export function ActorProcessControlPage(props: {
       }
       setCommandResult(`처리 완료\n${JSON.stringify(payload, null, 2)}`);
       await loadRuntimeDataset('processes');
+    } catch (error) {
+      setCommandResult(
+        `처리 실패\n${error instanceof Error ? error.message : String(error)}`,
+      );
+    } finally {
+      setCommandPending(false);
+    }
+  };
+
+  const executeStepCommand = async (values: Record<string, unknown>) => {
+    if (commandPending) return;
+    setCommandPending(true);
+    setCommandResult('');
+    try {
+      const response = await fetchApi.fetch(
+        '/api/resonance-projects/actor-process/commands',
+        {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ command: 'step.save', ...values }),
+        },
+      );
+      const payload = (await response.json()) as Record<string, unknown>;
+      if (!response.ok) {
+        throw new Error(
+          String(payload.message ?? payload.error ?? `HTTP ${response.status}`),
+        );
+      }
+      setCommandResult(`처리 완료\n${JSON.stringify(payload, null, 2)}`);
+      await Promise.all([
+        loadRuntimeDataset('steps'),
+        loadRuntimeDataset('developmentJobs'),
+      ]);
     } catch (error) {
       setCommandResult(
         `처리 실패\n${error instanceof Error ? error.message : String(error)}`,
@@ -5547,6 +6325,25 @@ export function ActorProcessControlPage(props: {
                 onOpenSteps={() => openControlTab('steps')}
               />
             )}
+            {selectedTab.id === 'steps' && (
+              <ProcessStepWorkspace
+                steps={sourceRows}
+                processes={
+                  Array.isArray(runtimeDashboard.processes)
+                    ? (runtimeDashboard.processes as RuntimeRow[])
+                    : []
+                }
+                actors={
+                  Array.isArray(runtimeDashboard.actors)
+                    ? (runtimeDashboard.actors as RuntimeRow[])
+                    : []
+                }
+                pending={commandPending}
+                result={commandResult}
+                onSave={executeStepCommand}
+                onOpenFlow={() => openControlTab('screen-flow')}
+              />
+            )}
             {selectedTab.id === 'assignments' && (
               <ActorAssignmentWorkspace
                 rows={sourceRows}
@@ -5577,6 +6374,7 @@ export function ActorProcessControlPage(props: {
               'completion',
               'actors',
               'processes',
+              'steps',
             ].includes(selectedTab.id) && (
               <Grid container spacing={2} style={{ marginTop: 8 }}>
                 <Grid item xs={12} sm={6} md={3}>
@@ -5614,9 +6412,13 @@ export function ActorProcessControlPage(props: {
               </Grid>
             )}
             {activeCommand &&
-              !['assignments', 'completion', 'actors', 'processes'].includes(
-                selectedTab.id,
-              ) && (
+              ![
+                'assignments',
+                'completion',
+                'actors',
+                'processes',
+                'steps',
+              ].includes(selectedTab.id) && (
                 <Box
                   mt={3}
                   p={2}

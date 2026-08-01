@@ -233,6 +233,15 @@ async function verifyRoute(
       page.getByText('등록 프로세스', { exact: true }),
     ).toBeVisible();
     await expect(page.getByText('전체 단계', { exact: true })).toBeVisible();
+    await page.getByText('단계·상태 전이', { exact: true }).first().click();
+    await expect(
+      page.getByRole('heading', { name: '단계 실행 순서' }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole('heading', { name: '단계·상태 전이 전문 설계' }),
+    ).toBeVisible();
+    await expect(page.getByText('입력 데이터 계약(JSON)')).toBeVisible();
+    await expect(page.getByText('출력 데이터 계약(JSON)')).toBeVisible();
   }
 
   if (evidenceDir) {

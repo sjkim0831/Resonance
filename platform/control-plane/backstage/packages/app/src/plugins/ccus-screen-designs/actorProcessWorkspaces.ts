@@ -338,6 +338,7 @@ const tab = (
     'completion',
     'actors',
     'processes',
+    'steps',
   ].includes(id)
     ? ('FULL' as const)
     : ('PARTIAL' as const),

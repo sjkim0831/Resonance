@@ -208,7 +208,12 @@ public class ActorProcessControlPlaneBridgeController {
                     governance.createProcess(body);
                     result = Map.of("success", true, "command", command, "processCode", required(body, "processCode"));
                 }
-                case "step.save" -> result = governance.addStep(body, actor);
+                case "step.save" -> {
+                    if (!governance.isControlPlaneAdministrator(account)) {
+                        throw new SecurityException("Administrator authority is required to save a process step.");
+                    }
+                    result = governance.addStep(body, actor);
+                }
                 case "screen.bind-archetype" ->
                         result = governance.bindScreenProcessArchetype(body, actor);
                 case "screen.contract.save" ->
