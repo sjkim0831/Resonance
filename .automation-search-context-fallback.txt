@@ -1,6 +1,6 @@
-process=DISCLOSURE_CORRECTION
-step=DISCLOSURE_CORRECTION_S3
-type=BACKEND
-target=schema-set/disclosure_correction/disclosure_correction_s3/backend
+process=BACKGROUND_DB_VERSION_IMPACT
+step=BACKGROUND_DB_VERSION_IMPACT_S1
+type=FRONTEND_ADMIN
+target=schema-set/background_db_version_impact/background_db_version_impact_s1/frontend_admin
 
 Search index preparation failed. Use the approved specification and exact target only; do not broaden scope.
