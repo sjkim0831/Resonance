@@ -303,7 +303,11 @@ guard_frontend_overlay() {
       "chmod +x $FRONTEND_GUARD_SCRIPT"
   fi
   log_detail "Frontend overlay guard: $action"
-  if ! "$FRONTEND_GUARD_SCRIPT" "$action" >> "$DIAGNOSTIC_LOG" 2>&1; then
+  # The build is promoted to the shared live hostPath, while ROOT_DIR may be a
+  # persistent isolated worktree containing a rollback snapshot. Always bind
+  # the guard to the exact overlay and source used by this candidate build.
+  if ! OVERLAY_DIR="$OVERLAY_HOST_PATH" SOURCE_DIR="$FRONTEND_DIR" \
+      "$FRONTEND_GUARD_SCRIPT" "$action" >> "$DIAGNOSTIC_LOG" 2>&1; then
     rollback_and_fail "FRONTEND_OVERLAY_GUARD_FAILED" \
       "Frontend overlay guard failed: $action" \
       "$FRONTEND_GUARD_SCRIPT $action"
