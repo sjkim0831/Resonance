@@ -2,7 +2,7 @@
 
 - Job: 21272
 - Job type: DATABASE
-- Source commit: 95255aa8dbe9a2e72f7d2b79791fc52a46eb1038
+- Source commit: cd075202ac7345b1dadb498037e2b8b64e8181c9
 - Requirement: 기준 입력·수식·계수·LCI·단위·반올림·기대결과를 버전 잠금한다.
 - Validation result: {"strategy":"APPROVED_FULL_STACK_PACKAGE","processCode":"CALCULATION_ENGINE_PARITY","stepCode":"CEP_BASELINE","dimension":"DATABASE","package":"/opt/Resonance/var/ai-worktrees/job-21272/projects/carbonet-backend-metadata/process-runtime/generated/CALCULATION_ENGINE_PARITY/CALCULATION_ENGINE_PARITY__CEP_BASELINE.json","evidence":"/opt/Resonance/var/ai-worktrees/job-21272/var/test-evidence/process-package-tests/CALCULATION_ENGINE_PARITY__CEP_BASELINE.json","status":"PASSED"}
 
