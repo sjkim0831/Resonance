@@ -2,7 +2,7 @@
 
 - Job: 19763
 - Job type: DATABASE
-- Source commit: 26b1e9da430e19b5299bf0cac6bc9cdd72d4808c
+- Source commit: 12c6a773fd2473d95b37a599dc263fc67cebc80a
 - Requirement: 주입 실적·정압·환산량·플룸·미소진동·관측정을 기록한다.
 - Validation result: {"strategy":"APPROVED_FULL_STACK_PACKAGE","processCode":"CO2_INJECTION_STORAGE_OPERATION","stepCode":"CISO_OPERATE","dimension":"DATABASE","package":"/opt/Resonance/var/ai-worktrees/job-19763/projects/carbonet-backend-metadata/process-runtime/generated/CO2_INJECTION_STORAGE_OPERATION/CO2_INJECTION_STORAGE_OPERATION__CISO_OPERATE.json","evidence":"/opt/Resonance/var/ai-worktrees/job-19763/var/test-evidence/process-package-tests/CO2_INJECTION_STORAGE_OPERATION__CISO_OPERATE.json","status":"PASSED"}
 
