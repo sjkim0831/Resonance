@@ -64,10 +64,12 @@ export function ActorProcessGovernancePage() {
 
   const load = useCallback(async () => {
     try {
-      const response = await fetch(base, { credentials: "include" });
+      const response = await fetch(`${base}/dashboard/core`, { credentials: "include" });
+      const contentType = response.headers.get("content-type") ?? "";
+      if (!contentType.includes("application/json")) throw new Error(`설계 데이터 API가 JSON을 반환하지 않았습니다. (${response.status})`);
       const body = await response.json();
       if (!response.ok) throw new Error(body.message || "조회에 실패했습니다.");
-      setData(body);
+      setData(previous => ({ ...previous, ...body }));
       setError("");
     } catch (reason) { setError(reason instanceof Error ? reason.message : "조회에 실패했습니다."); }
   }, [base]);

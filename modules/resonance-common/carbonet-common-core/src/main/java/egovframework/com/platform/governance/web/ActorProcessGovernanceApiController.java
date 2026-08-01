@@ -15,6 +15,7 @@ import java.util.UUID;
 public class ActorProcessGovernanceApiController {
     private final ActorProcessGovernanceService service;
     @GetMapping public Map<String,Object> dashboard(){return service.dashboard();}
+    @GetMapping("/dashboard/core") public Map<String,Object> dashboardCore(){return service.dashboardCore();}
     @GetMapping("/executable-screens") public Map<String,Object> executableScreens(@RequestParam(defaultValue="") String status,@RequestParam(defaultValue="0") int page,@RequestParam(defaultValue="100") int size){return service.executableScreens(status,page,size);}
     @GetMapping("/process-design") public ResponseEntity<?> processDesign(@RequestParam String processCode){try{return ResponseEntity.ok(service.processDesign(processCode));}catch(Exception e){return bad(e);}}
     @GetMapping("/cases") public ResponseEntity<?> cases(@RequestParam String processCode){try{return ResponseEntity.ok(service.simulationCases(processCode));}catch(Exception e){return bad(e);}}

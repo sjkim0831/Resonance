@@ -19,6 +19,7 @@ import java.util.UUID;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Locale;
+import java.math.BigDecimal;
 import java.util.stream.Stream;
 
 @Service
@@ -286,6 +287,32 @@ public class ActorProcessGovernanceService {
         out.put("deliveryQueue",jdbc.queryForList("select process_code as \"processCode\",process_name as \"processName\",domain_code as \"domainCode\",development_order as \"developmentOrder\",process_status as \"processStatus\",step_count as \"stepCount\",actor_bound_steps as \"actorBoundSteps\",test_count as \"testCount\",test_type_count as \"testTypeCount\",passed_tests as \"passedTests\",required_tasks as \"requiredTasks\",completed_tasks as \"completedTasks\",blocked_tasks as \"blockedTasks\",required_artifacts as \"requiredArtifacts\",verified_artifacts as \"verifiedArtifacts\",screen_contracts as \"screenContracts\",ready_screens as \"readyScreens\",completion_score as \"completionScore\",next_action as \"nextAction\",delivery_priority as priority from framework_process_delivery_priority_queue order by case delivery_priority when 'BLOCKER' then 0 when 'HIGH' then 1 when 'MEDIUM' then 2 when 'LOW' then 3 else 4 end,development_order,process_code"));
         out.put("deliverySummary",jdbc.queryForMap("select count(*) as \"totalProcesses\",count(*) filter(where next_action='COMPLETE') as \"completeProcesses\",count(*) filter(where delivery_priority='BLOCKER') as blockers,count(*) filter(where delivery_priority='HIGH') as \"highPriority\",coalesce(round(avg(completion_score),1),0) as \"averageScore\" from framework_process_delivery_priority_queue"));
         out.put("summary",jdbc.queryForMap("select count(*) as \"processCount\",count(*) filter(where process_status='DEVELOPMENT_READY') as \"readyCount\",count(*) filter(where process_status<>'DEVELOPMENT_READY') as \"draftCount\",coalesce(round(100.0*count(*) filter(where process_status='DEVELOPMENT_READY')/nullif(count(*),0)),0) as \"readinessPercent\" from framework_process_definition"));
+        return out;
+    }
+
+    /**
+     * Small, bounded bootstrap payload for the interactive control plane.
+     * The complete dashboard contains large design and evidence datasets and can
+     * exceed the browser/gateway response deadline.  Keep the first paint and
+     * project-delivery transaction independent from those optional datasets.
+     */
+    public Map<String,Object> dashboardCore() {
+        Map<String,Object> out=new LinkedHashMap<>();
+        out.put("actors", dashboardDataset("actors"));
+        out.put("workTypes", dashboardDataset("workTypes"));
+        out.put("assignments", dashboardDataset("assignments"));
+        out.put("processes", dashboardDataset("processes"));
+        out.put("steps", dashboardDataset("steps"));
+        out.put("cases", dashboardDataset("cases"));
+        out.put("artifacts", dashboardDataset("artifacts"));
+        out.put("developmentJobs", dashboardDataset("developmentJobs"));
+        out.put("processExecutions", dashboardDataset("processExecutions"));
+        out.put("deliveryBlueprints",jdbc.queryForList("select blueprint_code as \"blueprintCode\",blueprint_name as \"blueprintName\",blueprint_version as \"blueprintVersion\",domain_code as \"domainCode\",blueprint_status as \"blueprintStatus\",specification_hash as \"specificationHash\",specification::text as specification,approved_by as \"approvedBy\",approved_at as \"approvedAt\",updated_at as \"updatedAt\" from framework_project_delivery_blueprint order by updated_at desc"));
+        out.put("deliveryReleases",jdbc.queryForList("select release_id as \"releaseId\",release_code as \"releaseCode\",blueprint_code as \"blueprintCode\",blueprint_version as \"blueprintVersion\",tenant_id as \"tenantId\",project_id as \"projectId\",release_status as \"releaseStatus\",validation_result::text as \"validationResult\",generation_result::text as \"generationResult\",requested_by as \"requestedBy\",created_at as \"createdAt\",promoted_at as \"promotedAt\" from framework_project_delivery_release order by created_at desc limit 100"));
+        out.put("deliveryProjects",jdbc.queryForList("select project_id as \"projectId\",tenant_id as \"tenantId\",project_name as \"projectName\",project_status as \"projectStatus\" from emission_project_registry where project_status<>'DELETED' order by created_at desc limit 200"));
+        out.put("summary",Map.of(
+                "readyCount",jdbc.queryForObject("select count(*) from framework_process_definition where process_status='DEVELOPMENT_READY'",Long.class),
+                "readinessPercent",jdbc.queryForObject("select case when count(*)=0 then 0 else round(100.0*count(*) filter(where process_status='DEVELOPMENT_READY')/count(*),1) end from framework_process_definition",BigDecimal.class)));
         return out;
     }
 
