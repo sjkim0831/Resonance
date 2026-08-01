@@ -20,7 +20,7 @@ const executablePath = configuredExecutable || [
   "/usr/bin/google-chrome",
 ].find((candidate) => existsSync(candidate)) || "";
 const accounts = ["qaowner26", "qadata26", "qacalc26", "qaverify26", "qaapprove26"];
-const fatalText = /React app did not mount|Bootstrap loaded\. Waiting for React app mount|페이지 처리 중 오류가 발생했습니다|An unexpected error occurred|운영 관리 대시보드/;
+const fatalText = /React app did not mount|Bootstrap loaded\. Waiting for React app mount|페이지 처리 중 오류가 발생했습니다|An unexpected error occurred/;
 const loginPath = /\/signin\/loginView\/?$/;
 
 if (!password) throw new Error("CARBONET_ACTOR_TEST_PASSWORD is required");
@@ -81,11 +81,15 @@ try {
               text: (document.body?.innerText || "").trim(),
               rootChildren: document.querySelector("#root")?.children.length || 0,
               pathname: location.pathname,
+              headings: [...document.querySelectorAll("h1,h2,[role=heading]")].map((node) => (node.textContent || "").trim()),
               projectVisible: (document.body?.innerText || "").includes(new URL(location.href).searchParams.get("projectId") || ""),
             }));
             if ((response?.status() || 0) >= 400) throw new Error(`page HTTP ${response?.status()}`);
             if (loginPath.test(state.pathname)) throw new Error("authenticated task redirected to login");
-            if (fatalText.test(state.text)) throw new Error("fatal or fallback UI rendered");
+            if (fatalText.test(state.text)) throw new Error(`fatal UI account=${account} task=${task.taskCode} target=${target.pathname}`);
+            if (target.pathname !== "/admin" && state.headings.some((heading) => heading === "운영 관리 대시보드")) {
+              throw new Error(`fallback dashboard account=${account} task=${task.taskCode} target=${target.pathname}`);
+            }
             if (pageErrors.length) throw new Error(`page errors: ${pageErrors.join(" | ")}`);
             if (serverFailures.length) throw new Error(`server failures: ${serverFailures.join(" | ")}`);
             routeResults.push({ account, taskCode: task.taskCode, target: target.pathname, ok: true });
