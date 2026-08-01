@@ -5,6 +5,7 @@ NAMESPACE="${CARBONET_K8S_NAMESPACE:-carbonet-prod}"
 STORAGE_ROOT="${CARBONET_POSTGRES_STORAGE_ROOT:-/opt/resonance-data/postgresql}"
 DATA_ROOT="$STORAGE_ROOT/patroni"
 BACKUP_ROOT="${CARBONET_DB_BACKUP_DIR:-/opt/resonance-backups/postgresql/pre-deploy}"
+SCHEDULED_BACKUP_ROOT="${CARBONET_SCHEDULED_DB_BACKUP_ROOT:-/opt/resonance-data/backups/postgres}"
 DEPLOY_TIMER="${CARBONET_DEPLOY_TIMER:-carbonet-auto-deploy.timer}"
 
 fail() {
@@ -23,6 +24,27 @@ latest_valid_backup() {
     fi
     echo "[postgres-storage-guard] WARN: skipping incomplete backup: $candidate" >&2
   done < <(find "$BACKUP_ROOT" -maxdepth 1 -type f -name "$pattern" -mmin -1440 -size "$min_size" \
+    -printf '%T@ %p\n' 2>/dev/null | sort -nr | cut -d' ' -f2-)
+  return 1
+}
+
+latest_valid_scheduled_backup() {
+  local candidate relative mirror checksum manifest
+  while IFS= read -r candidate; do
+    [[ -n "$candidate" ]] || continue
+    checksum="$candidate.sha256"
+    manifest="$candidate.manifest"
+    relative="${candidate#"$SCHEDULED_BACKUP_ROOT/primary/"}"
+    mirror="$SCHEDULED_BACKUP_ROOT/mirror/$relative"
+    [[ -s "$checksum" && -s "$manifest" && -s "$mirror" ]] || continue
+    if (cd "$(dirname "$candidate")" && sha256sum -c "$(basename "$checksum")" >/dev/null 2>&1) &&
+      cmp -s "$candidate" "$mirror"; then
+      printf '%s\n' "$candidate"
+      return 0
+    fi
+    echo "[postgres-storage-guard] WARN: skipping invalid scheduled backup: $candidate" >&2
+  done < <(find "$SCHEDULED_BACKUP_ROOT/primary/hourly" "$SCHEDULED_BACKUP_ROOT/primary/daily" \
+    -maxdepth 1 -type f -name 'carbonet_*.dump' -mmin -1440 -size +100k \
     -printf '%T@ %p\n' 2>/dev/null | sort -nr | cut -d' ' -f2-)
   return 1
 }
@@ -94,6 +116,9 @@ done < <(kubectl -n "$NAMESPACE" get pods -l app=postgres-patroni -o name | sed 
 [[ "$ready_members" -ge 2 ]] || fail "Patroni quorum is not ready ($ready_members/3)"
 
 latest_data_backup="$(latest_valid_backup 'carbonet-*.sql.gz' '+100k' || true)"
+if [[ -z "$latest_data_backup" ]]; then
+  latest_data_backup="$(latest_valid_scheduled_backup || true)"
+fi
 latest_role_backup="$(latest_valid_backup 'postgres-roles-*.sql.gz' '+100c' || true)"
 [[ -n "$latest_data_backup" ]] || fail "no valid data backup from the last 24 hours"
 if [[ -z "$latest_role_backup" ]]; then
