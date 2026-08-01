@@ -2275,11 +2275,14 @@ public class ActorProcessGovernanceService {
               applicability_rule=excluded.applicability_rule,topology_status=excluded.topology_status,
               updated_at=current_timestamp
             """,process,process);
+        jdbc.queryForList("select pg_advisory_xact_lock(hashtext(?))","requirement-automation-sequence");
         jdbc.update("""
             insert into framework_business_process_sequence(work_type_code,process_code,workflow_order,
               workflow_phase,process_role,prerequisite_process_codes,next_process_code,sequence_status)
-            values('REQUIREMENT_AUTOMATION',?,10,'REQUIREMENT_DELIVERY','ENTRY','','','ACTIVE')
-            on conflict(work_type_code,process_code) do update set workflow_order=excluded.workflow_order,
+            select 'REQUIREMENT_AUTOMATION',?,coalesce(max(workflow_order),0)+10,
+              'REQUIREMENT_DELIVERY','ENTRY','','','ACTIVE'
+            from framework_business_process_sequence where work_type_code='REQUIREMENT_AUTOMATION'
+            on conflict(process_code) do update set work_type_code=excluded.work_type_code,
               workflow_phase=excluded.workflow_phase,process_role=excluded.process_role,
               prerequisite_process_codes=excluded.prerequisite_process_codes,
               next_process_code=excluded.next_process_code,sequence_status=excluded.sequence_status,
