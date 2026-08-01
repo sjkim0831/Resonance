@@ -25,6 +25,10 @@ import javax.sql.DataSource;
 @ComponentScan(
         basePackages = { "egovframework.com", "org.egovframe.boot", "com.resonance" },
         excludeFilters = {
+                // CarbonetApplication is the legacy standalone entry point. If it is
+                // discovered here, its nested component scan traverses the runtime a
+                // second time and registers a competing dataSource bean.
+                @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE, classes = CarbonetApplication.class),
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "egovframework\\.com\\.platform\\.screenbuilder\\..*"),
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "egovframework\\.com\\.feature\\.admin\\.screenbuilder\\..*"),
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "egovframework\\.com\\.framework\\.builder\\..*"),

@@ -1566,6 +1566,7 @@ RUNTIME_JVM_PROFILE="$ROOT_DIR/ops/config/runtime-jvm-profile.env"
 # shellcheck source=ops/config/runtime-jvm-profile.env
 source "$RUNTIME_JVM_PROFILE"
 : "${CARBONET_RUNTIME_JAVA_OPTS:?runtime JAVA_OPTS profile is required}"
+bash ops/scripts/test-carbonet-api-scan-isolation.sh
 kubectl -n "$NAMESPACE" set env deployment/"$DEPLOYMENT" \
   CARBONET_FLYWAY_ENABLED=false \
   CARBONET_LIQUIBASE_ENABLED=false \
