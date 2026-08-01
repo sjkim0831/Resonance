@@ -587,13 +587,19 @@ build_maven() {
 
 prepare_immutable_frontend() {
   [[ "$IMMUTABLE_FRONTEND_IMAGE" == "true" ]] || return 0
-  local frontend_dir="$ROOT_DIR/projects/carbonet-frontend/src/main/resources/static/react-app"
+  # build_frontend promotes the verified candidate atomically to the guarded
+  # host overlay. The persistent build worktree contains the previous rollback
+  # snapshot, so using it here can package stale or pruned chunks. Assemble the
+  # immutable JAR from the exact candidate closure that passed the overlay
+  # guard instead.
+  local frontend_dir="${IMMUTABLE_FRONTEND_SOURCE_DIR:-$OVERLAY_HOST_PATH}"
   local backend_dir="$ROOT_DIR/apps/carbonet-api/src/main/resources/static/react-app"
   node "$ROOT_DIR/ops/scripts/verify-react-asset-closure.mjs" "$frontend_dir"
   root_cmd rm -rf "$backend_dir"
   root_cmd mkdir -p "$backend_dir"
   root_cmd cp -a "$frontend_dir/." "$backend_dir/"
   node "$ROOT_DIR/ops/scripts/verify-react-asset-closure.mjs" "$backend_dir"
+  log "Immutable JAR candidate sourced from verified overlay: $frontend_dir"
 
   # The immutable asset directory is copied immediately before the backend
   # build. Gradle can otherwise reuse an up-to-date processResources/bootJar

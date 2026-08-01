@@ -42,5 +42,7 @@ assert backend < wait_backend
 assert wait_frontend < assemble and wait_backend < assemble < final_jar
 assert 'SKIP_FRONTEND" != "true" && "$SKIP_BACKEND" != "true"' in block
 assert 'IMMUTABLE_PARALLEL_BUILD_FAILED' in block
+assert 'IMMUTABLE_FRONTEND_SOURCE_DIR:-$OVERLAY_HOST_PATH' in source
+assert 'Immutable JAR candidate sourced from verified overlay' in source
 print("IMMUTABLE_FRONTEND_BACKEND_PARALLEL_PASS final-jar-after-barrier=true")
 PY
