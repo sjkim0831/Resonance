@@ -92,7 +92,7 @@ dependencies {
     testImplementation("org.mockito:mockito-core")
     // AuthService exposes Spring Data pagination types. Keep them available to
     // isolated Mockito contract tests without promoting JPA into the runtime API.
-    testImplementation("org.springframework.boot:spring-boot-starter-data-jpa")
+    testImplementation("org.springframework.data:spring-data-commons")
 }
 
 tasks.test { useJUnitPlatform() }
