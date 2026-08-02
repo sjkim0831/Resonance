@@ -41,6 +41,13 @@ begin
      set contract_status='VERIFIED',api_verified=true,database_verified=true,
          authority_verified=true,responsive_verified=true,accessibility_verified=true,
          exception_states_verified=true,
+         menu_code=coalesce(nullif(menu_code,''),(
+           select menu.menu_code from comtnmenuinfo menu
+           where lower(split_part(menu.menu_url,'?',1))='/admin/emission/survey-admin-data'
+             and menu.use_at='Y' and menu.expsr_at='Y'
+           order by menu.menu_code limit 1
+         )),
+         menu_visibility='VISIBLE',menu_verified=true,
          audit_evidence_ref=concat_ws(';',nullif(audit_evidence_ref,''),
            'activity-runtime:survey-admin-data+controller+service+common-assets'),
          updated_by='ACTIVITY_DATA_EVIDENCE_RECONCILIATION',updated_at=current_timestamp
@@ -61,6 +68,12 @@ begin
    where step.process_code='ACTIVITY_DATA' and coalesce(coverage.common_assets_ready,false)=false;
   if missing_tables>0 or invalid_contracts>0 or uncovered_routes>0 then
     raise exception 'activity evidence gate failed tables=% contracts=% routes=%',missing_tables,invalid_contracts,uncovered_routes;
+  end if;
+
+  perform framework_sync_professional_contract_screen_graph('ACTIVITY_DATA');
+  if (select count(*) from framework_professional_screen_readiness
+      where process_code='ACTIVITY_DATA' and readiness_score=100)<>9 then
+    raise exception 'activity evidence gate failed ready screens are not 9/9';
   end if;
 
   update framework_development_job set job_status='COMPLETED',approval_status='APPROVED',quality_status='PASSED',
