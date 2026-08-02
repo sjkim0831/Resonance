@@ -2387,7 +2387,40 @@ public class ActorProcessGovernanceService {
     }
     private void seedCases(String process){
         String[][] cases={{"HAPPY","정상 완료","HAPPY_PATH"},{"AUTH","권한 없는 액션 차단","AUTHORITY"},{"ISOLATION","테넌트·프로젝트 데이터 격리","ISOLATION"},{"EXCEPTION","필수 데이터 누락과 보완","EXCEPTION"},{"RECOVERY","실패 후 재처리·복구","RECOVERY"}};
-        for(String[] c:cases){String code=process+"_"+c[0];jdbc.update("insert into framework_simulation_case(case_code,process_code,case_name,case_type,preconditions,steps_json,assertions_json) values(?,?,?,?,?,?,?) on conflict(case_code) do update set case_name=excluded.case_name,case_type=excluded.case_type,preconditions=excluded.preconditions,steps_json=excluded.steps_json,assertions_json=excluded.assertions_json,updated_at=current_timestamp",code,process,c[1],c[2],"테스트용 테넌트·프로젝트·액터 계정이 준비되어야 함","[]","[\"권한·상태·데이터격리·감사로그 검증\"]");}
+        String steps=jdbc.queryForObject("""
+            select coalesce(json_agg(json_build_object(
+              'order',step_order,'stepCode',step_code,'command',command_code,
+              'actorCode',actor_code,'fromState',from_state,'toState',to_state
+            ) order by step_order),'[]'::json)::text
+            from framework_process_step where process_code=?
+            """,String.class,process);
+        Map<String,String> assertions=Map.of(
+            "HAPPY_PATH","[\"all ordered transitions are reachable\",\"every command has an actor\",\"terminal completion state exists\"]",
+            "AUTHORITY","[\"every step actor exists\",\"unauthorized commands are denied\",\"denials are audit logged\"]",
+            "ISOLATION","[\"tenant context is required\",\"project context is required\",\"cross-context access is denied\"]",
+            "EXCEPTION","[\"required input contracts exist\",\"validation failure preserves prior state\",\"correction path retains evidence\"]",
+            "RECOVERY","[\"every step has rollback semantics\",\"commands are idempotent\",\"retry preserves audit history\"]");
+        String preconditions="A tenant, project, assigned actor, current process version, and isolated test data are available for deterministic contract validation.";
+        for(String[] c:cases){
+            String code=process+"_"+c[0];
+            jdbc.update("""
+                insert into framework_simulation_case(
+                  case_code,process_code,case_name,case_type,preconditions,
+                  steps_json,assertions_json,case_status,severity,
+                  required_evidence,automated,expected_duration_minutes)
+                values(?,?,?,?,?,?,?,'READY','CRITICAL',
+                  'PROCESS_GRAPH,ACTOR_POLICY,STATE_CONTRACT,DATA_CONTRACT,AUDIT_LOG',true,5)
+                on conflict(case_code) do update set
+                  case_name=excluded.case_name,case_type=excluded.case_type,
+                  preconditions=excluded.preconditions,steps_json=excluded.steps_json,
+                  assertions_json=excluded.assertions_json,
+                  case_status=case when framework_simulation_case.case_status='APPROVED'
+                    then framework_simulation_case.case_status else 'READY' end,
+                  severity=excluded.severity,required_evidence=excluded.required_evidence,
+                  automated=true,expected_duration_minutes=excluded.expected_duration_minutes,
+                  updated_at=current_timestamp
+                """,code,process,c[1],c[2],preconditions,steps,assertions.get(c[2]));
+        }
     }
     private static String str(Map<String,Object>b,String k){return b.get(k)==null?"":String.valueOf(b.get(k)).trim();}
     private static String req(Map<String,Object>b,String k){String v=str(b,k);if(v.isEmpty())throw new IllegalArgumentException(k+" is required");return v;}

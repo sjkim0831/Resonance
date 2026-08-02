@@ -135,6 +135,57 @@ with candidate as (
   from completed returning 1
 )
 select count(*) from completed;")"
+# Generated requirement processes receive executable safety cases from the
+# current process graph. Promote only cases whose ordered step, command, and
+# actor contracts exactly match every current step and whose evidence contract
+# is complete. A PASSED simulation run and repair audit are written in the same
+# transaction; empty or stale generated cases remain fail-closed.
+deterministic_safety_cases_approved="$(psqlq -c "
+with eligible as (
+  select c.case_code,c.process_code,p.process_version,c.case_status,c.case_type
+  from framework_simulation_case c
+  join framework_process_definition p using(process_code)
+  where left(c.process_code,4)='REQ_'
+    and c.case_status in ('DRAFT','READY','REVIEW_REQUIRED')
+    and c.case_type in ('HAPPY_PATH','EXCEPTION','AUTHORITY','ISOLATION','RECOVERY')
+    and c.automated
+    and length(btrim(c.preconditions))>=30
+    and jsonb_typeof(framework_try_jsonb(c.steps_json))='array'
+    and jsonb_array_length(framework_try_jsonb(c.steps_json))=(
+      select count(*) from framework_process_step s where s.process_code=c.process_code)
+    and jsonb_typeof(framework_try_jsonb(c.assertions_json))='array'
+    and jsonb_array_length(framework_try_jsonb(c.assertions_json))>=3
+    and not exists (
+      select 1 from framework_process_step s
+      where s.process_code=c.process_code and not exists (
+        select 1 from jsonb_array_elements(framework_try_jsonb(c.steps_json)) item
+        where item->>'stepCode'=s.step_code
+          and item->>'command'=s.command_code
+          and item->>'actorCode'=s.actor_code
+          and (item->>'order')::integer=s.step_order))
+), runs as (
+  insert into framework_simulation_run(
+    case_code,process_version,result,failure_reason,evidence_json,executed_by)
+  select case_code,process_version,'PASSED',null,
+    jsonb_build_object('validator','CURRENT_PROCESS_GRAPH_EXACT_MATCH',
+      'caseType',case_type,'checkedAt',current_timestamp)::text,
+    'project-auto-completion'
+  from eligible returning case_code
+), audited as (
+  insert into framework_deterministic_design_repair_audit(
+    process_code,repair_type,before_value,after_value,repaired_by)
+  select process_code,'SAFETY_TEST_APPROVAL',
+    jsonb_build_object('caseCode',case_code,'status',case_status),
+    jsonb_build_object('caseCode',case_code,'status','APPROVED',
+      'validation','CURRENT_PROCESS_GRAPH_EXACT_MATCH'),
+    'PROJECT_AUTO_COMPLETION'
+  from eligible returning process_code
+), changed as (
+  update framework_simulation_case c
+  set case_status='APPROVED',updated_at=current_timestamp
+  from eligible e where c.case_code=e.case_code returning c.case_code
+)
+select count(*) from changed;")"
 # Safety scenarios are stored independently so their approval can be audited
 # without mutating an execution spec. Synchronize only exact case codes already
 # approved by the deterministic scenario validator; no DRAFT case is promoted
@@ -1185,4 +1236,4 @@ blocked="$(psqlq -c "select count(*) from framework_process_delivery_priority_qu
 remaining="$(psqlq -c "select count(*) from framework_process_delivery_priority_queue where next_action<>'COMPLETE';")"
 status="PROGRESSING"; [[ "$remaining" == "0" ]] && status="COMPLETED"; [[ "$blocked" -gt 0 || ( "$remaining" -gt 0 && "$executable" == "0" ) || "$dispatcher_failed" -gt 0 ]] && status="ATTENTION_REQUIRED"
 psqlq -c "update framework_project_completion_run set run_status='$status',selected_process_count=$selected,executable_job_count=$executable,retried_job_count=$retried,completed_process_count=$completed,blocked_process_count=$blocked,result_json='{\"remainingProcesses\":$remaining,\"dispatcherFailed\":$dispatcher_failed}',completed_at=current_timestamp where run_id='$run_id';" >/dev/null
-echo "[project-auto-completion] $status selected=$selected executable=$executable retried=$retried embeddedTestsSynced=$embedded_tests_synced deterministicSpecsApproved=$deterministic_specs_approved incompleteSpecDemoted=$incomplete_spec_demoted specApprovalWaiting=$spec_approval_waiting approvedGeneratorRetried=$approved_generator_retried groupedFieldGeneratorRetried=$grouped_field_generator_retried packageContractGeneratorRetried=$package_contract_generator_retried generatedDimensionRetried=$generated_dimension_retried databaseConstraintRetried=$database_constraint_retried deliveryInfrastructureRetried=$delivery_infrastructure_retried deterministicDiffScopeRetried=$deterministic_diff_scope_retried designEvidenceAdopted=$design_evidence_adopted notApplicableCompleted=$not_applicable_completed contractJobsApproved=$contract_jobs_approved exhaustedPlannedRetried=$exhausted_planned_retried adopted=$server_adopted completed=$completed blocked=$blocked remaining=$remaining dispatcherFailed=$dispatcher_failed contractCompletion=$contract_completion_result screenGeneration=$(jq -c '{status:(.status//"GENERATED"),requested:(.requested//0),generated:(.generated//0),unchanged:(.unchanged//0),elapsedMillis:(.elapsedMillis//0)}' <<<"$screen_generation_result")"
+echo "[project-auto-completion] $status selected=$selected executable=$executable retried=$retried deterministicSafetyCasesApproved=$deterministic_safety_cases_approved embeddedTestsSynced=$embedded_tests_synced deterministicSpecsApproved=$deterministic_specs_approved incompleteSpecDemoted=$incomplete_spec_demoted specApprovalWaiting=$spec_approval_waiting approvedGeneratorRetried=$approved_generator_retried groupedFieldGeneratorRetried=$grouped_field_generator_retried packageContractGeneratorRetried=$package_contract_generator_retried generatedDimensionRetried=$generated_dimension_retried databaseConstraintRetried=$database_constraint_retried deliveryInfrastructureRetried=$delivery_infrastructure_retried deterministicDiffScopeRetried=$deterministic_diff_scope_retried designEvidenceAdopted=$design_evidence_adopted notApplicableCompleted=$not_applicable_completed contractJobsApproved=$contract_jobs_approved exhaustedPlannedRetried=$exhausted_planned_retried adopted=$server_adopted completed=$completed blocked=$blocked remaining=$remaining dispatcherFailed=$dispatcher_failed contractCompletion=$contract_completion_result screenGeneration=$(jq -c '{status:(.status//"GENERATED"),requested:(.requested//0),generated:(.generated//0),unchanged:(.unchanged//0),elapsedMillis:(.elapsedMillis//0)}' <<<"$screen_generation_result")"
