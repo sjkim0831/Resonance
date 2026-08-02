@@ -2,7 +2,7 @@
 
 - Job: 19689
 - Job type: BACKEND
-- Source commit: e9ef65702f9758126536e4ab6b811bcce497b3fc
+- Source commit: 1ffd17bb3c188c0cf84f2ae963f38a34ccd16f7a
 - Requirement: 계측기 사양·범위·정확도·측정지점·MRV 용도를 등록한다.
 - Validation result: {"strategy":"APPROVED_FULL_STACK_PACKAGE","processCode":"METER_CALIBRATION_MANAGEMENT","stepCode":"MCM_REGISTER","dimension":"BACKEND","package":"/opt/Resonance/var/ai-worktrees/job-19689/projects/carbonet-backend-metadata/process-runtime/generated/METER_CALIBRATION_MANAGEMENT/METER_CALIBRATION_MANAGEMENT__MCM_REGISTER.json","evidence":"/opt/Resonance/var/ai-worktrees/job-19689/var/test-evidence/process-package-tests/METER_CALIBRATION_MANAGEMENT__MCM_REGISTER.json","status":"PASSED"}
 
