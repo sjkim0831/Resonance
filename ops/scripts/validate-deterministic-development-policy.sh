@@ -12,7 +12,7 @@ jq -e '
   .allowUnverifiedCompletion == false and
   .defaultExecutionOrder[0] == "EXACT_EXISTING_IMPLEMENTATION" and
   .defaultExecutionOrder[-1] == "AI_ESCALATION" and
-  (.deterministicJobTypes | sort == ["ACTOR_TEST","API","API_QUALITY","BACKEND","BACKEND_QUALITY","DATABASE","DATABASE_QUALITY","DEPLOYMENT","DESIGN","DESIGN_PREFLIGHT","FRONTEND_ADMIN","FRONTEND_USER","FULL_STACK","FULL_STACK_GENERATION","INTEGRATION","NOTIFICATION","PERFORMANCE","REFERENCE_ANALYSIS","SEARCH","TEST"])
+  (.deterministicJobTypes | sort == ["ACTOR_TEST","API","API_QUALITY","BACKEND","BACKEND_QUALITY","CLASS_PROPERTY_COMMON","COMPONENT_COMMON","DATABASE","DATABASE_QUALITY","DEPLOYMENT","DESIGN","DESIGN_PREFLIGHT","FRONTEND_ADMIN","FRONTEND_USER","FULL_STACK","FULL_STACK_GENERATION","INTEGRATION","NOTIFICATION","PERFORMANCE","REFERENCE_ANALYSIS","SEARCH","TEST"])
 ' "$POLICY" >/dev/null
 bash -n "$WORKER"
 bash -n "$RUNNER"
@@ -103,6 +103,8 @@ grep -Fq 'exact step package missing' "$RUNNER"
 grep -Fq 'fast-process-package-test.py" "$generated_step_package"' "$RUNNER"
 grep -Fq 'main push rejected after 3 guarded attempts' "$WORKER"
 grep -Fq 'GENERATED_DIMENSION_V7_RETRY' "$ROOT/ops/scripts/run-project-auto-completion-orchestrator.sh"
+grep -Fq 'COMMON_CONTRACT_V1_RETRY' "$ROOT/ops/scripts/run-project-auto-completion-orchestrator.sh"
+grep -Fq 'COMPONENT_COMMON|CLASS_PROPERTY_COMMON)' "$RUNNER"
 grep -Fq '.frontend.required == false and (.frontend.pages | length) == 0' "$ROOT/ops/scripts/validate-generated-process-dimension.sh"
 grep -Fq 'EXACT_GENERATED_DIMENSION_FALLBACK' "$WORKER"
 grep -Fq "j.job_type='FRONTEND_ADMIN' and step.requires_admin_page=false" "$ROOT/ops/scripts/run-project-auto-completion-orchestrator.sh"

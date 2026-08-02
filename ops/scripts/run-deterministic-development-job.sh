@@ -143,6 +143,37 @@ professional field contract, shared KRDS layout, responsive behavior,
 accessibility, server authorization, and actor/process traceability.
 EOF
     ;;
+  COMPONENT_COMMON|CLASS_PROPERTY_COMMON)
+    if [[ ! -s "$generated_step_package" ]]; then
+      FULL_STACK_PACKAGE_OUT="$WT/projects/carbonet-backend-metadata/process-runtime/generated" \
+        bash "$WT/ops/scripts/generate-full-stack-design-packages.sh" "$WT" "$PROCESS" >/dev/null
+    fi
+    [[ -s "$generated_step_package" ]] || exit 3
+    jq -e '
+      (.frontend.pages | length) > 0
+      and all(.frontend.pages[];
+        .layout == "COMMON_KRDS_TASK_LAYOUT"
+        and .theme == "COMMON_KRDS_GOV"
+        and (.sections | length) >= 5
+        and (.fields | length) >= 8
+        and all(.fields[]; (.code | type == "string" and length > 0)))
+    ' "$generated_step_package" >/dev/null
+    artifact="docs/ai/85-adopted-quality/$slug_process/$slug_step-$JOB_TYPE-job-$JOB_ID.md"
+    mkdir -p "$WT/$(dirname "$artifact")"
+    cat >"$WT/$artifact" <<EOF
+# Verified common design contract: $PROCESS / $STEP
+
+- Job: $JOB_ID
+- Job type: $JOB_TYPE
+- Package: $generated_step_package
+- Shared layout: COMMON_KRDS_TASK_LAYOUT
+- Shared theme: COMMON_KRDS_GOV
+
+The approved package uses the registered common layout, theme, five task
+sections, responsive contract, and canonical runtime field codes. No
+page-specific component or CSS duplicate was introduced.
+EOF
+    ;;
   API|API_QUALITY|BACKEND|BACKEND_QUALITY)
     if [[ -s "$generated_step_package" ]]; then
       if ! adoption_json="$(bash "$generated_dimension_validator" "$WT" "$PROCESS" "$STEP" "$JOB_TYPE")"; then
