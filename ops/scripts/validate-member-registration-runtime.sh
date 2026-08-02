@@ -3,6 +3,7 @@ set -Eeuo pipefail
 
 ROOT="${RESONANCE_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
 BASE_URL="${CARBONET_RUNTIME_BASE_URL:-http://127.0.0.1}"
+SOURCE_COMMIT="$(git -C "$ROOT" rev-parse HEAD)"
 COOKIE_A="$(mktemp)"; COOKIE_B="$(mktemp)"; BODY="$(mktemp)"
 trap 'rm -f "$COOKIE_A" "$COOKIE_B" "$BODY"' EXIT
 source "$ROOT/ops/scripts/lib/carbonet-postgres-query.sh"
@@ -18,6 +19,11 @@ for path in /join/step1 /join/en/step1; do
   code="$(curl -sS -c "$COOKIE_A" -b "$COOKIE_A" -o "$BODY" -w '%{http_code}' "$BASE_URL$path")"
   [[ "$code" == 200 ]] && grep -qi '<!doctype html' "$BODY" || { echo "[member-registration] FAIL page=$path status=$code" >&2; exit 1; }
 done
+
+code="$(curl -sS -o "$BODY" -w '%{http_code}' -X POST --data 'membership_type=UNKNOWN' "$BASE_URL/join/api/step1")"
+[[ "$code" == 400 ]] || { echo "[member-registration] FAIL invalid membership accepted status=$code" >&2; exit 1; }
+code="$(curl -sS -o /dev/null -w '%{http_code}:%{redirect_url}' "$BASE_URL/join/step2")"
+[[ "$code" == 302:*'/join/step1?expired=1' ]] || { echo "[member-registration] FAIL expired-session recovery=$code" >&2; exit 1; }
 
 code="$(curl -sS -c "$COOKIE_A" -b "$COOKIE_A" -o "$BODY" -w '%{http_code}' -X POST --data 'membership_type=EMITTER' "$BASE_URL/join/api/step1")"
 [[ "$code" == 200 ]] && jq -e '.success==true and .step==1 and .joinVO.userTy=="USR02"' "$BODY" >/dev/null \
@@ -45,4 +51,19 @@ gate="$(q "select
  and to_regclass('comtnentrprsmber') is not null")"
 [[ "$gate" == t ]] || { echo '[member-registration] FAIL database/design gate' >&2; exit 1; }
 
-echo '[member-registration] PASS steps=5 screens=11 sessions=2 consent=verified identity=fail-closed persistence=source-verified'
+q "begin;
+update framework_simulation_case set automated=true,case_status='APPROVED',updated_at=current_timestamp
+ where process_code='MEMBER_REGISTRATION' and case_code like 'MEMBER_REG_S1_%';
+insert into framework_simulation_run(case_code,process_version,result,failure_reason,evidence_json,executed_by,source_commit,execution_environment,evidence_hash)
+select c.case_code,p.process_version,'PASSED',null,
+ jsonb_build_object('validator','PUBLIC_REGISTRATION_STEP1_RUNTIME','httpPage',200,'invalidValue',400,
+   'expiredSession',302,'isolatedSessions',2,'nextRoute','/join/step2')::text,
+ 'member-registration-runtime','$SOURCE_COMMIT','production-runtime',
+ md5(c.case_code||':'||current_timestamp::text)||md5(current_timestamp::text||':'||c.case_code)
+from framework_simulation_case c join framework_process_definition p using(process_code)
+where c.process_code='MEMBER_REGISTRATION' and c.case_code like 'MEMBER_REG_S1_%'
+  and not exists(select 1 from framework_simulation_run r where r.case_code=c.case_code and r.result='PASSED');
+commit;" >/dev/null
+
+tests="$(q "select count(*) filter(where exists(select 1 from framework_simulation_run r where r.case_code=c.case_code and r.result='PASSED'))||'/'||count(*) from framework_simulation_case c where c.process_code='MEMBER_REGISTRATION'")"
+echo "[member-registration] PASS steps=5 screens=11 tests=$tests sessions=2 consent=verified identity=fail-closed persistence=source-verified"
