@@ -2,7 +2,7 @@
 
 - Job: 21243
 - Job type: BACKEND
-- Source commit: c4134b294002fa02e96ea2ebe91d500593d22cf3
+- Source commit: c820bc658137957b9379ac4f65f12079ff908be8
 - Requirement: 데이터별 처리목적·법정기간·분쟁·감사 보류 여부를 판정한다.
 - Validation result: {"strategy":"APPROVED_FULL_STACK_PACKAGE","processCode":"PRIVACY_RETENTION_DESTRUCTION","stepCode":"PRD_CLASSIFY","dimension":"BACKEND","package":"/opt/Resonance/var/ai-worktrees/job-21243/projects/carbonet-backend-metadata/process-runtime/generated/PRIVACY_RETENTION_DESTRUCTION/PRIVACY_RETENTION_DESTRUCTION__PRD_CLASSIFY.json","evidence":"/opt/Resonance/var/ai-worktrees/job-21243/var/test-evidence/process-package-tests/PRIVACY_RETENTION_DESTRUCTION__PRD_CLASSIFY.json","status":"PASSED"}
 
