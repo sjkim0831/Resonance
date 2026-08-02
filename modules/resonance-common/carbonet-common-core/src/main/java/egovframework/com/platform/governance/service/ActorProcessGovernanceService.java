@@ -2321,6 +2321,22 @@ public class ActorProcessGovernanceService {
         ensureGeneratedScreenDevelopmentAssets(process,actor);
         jdbc.queryForObject("select framework_generate_professional_design_graph(?,?)::text",String.class,process,actor);
         jdbc.queryForObject("select framework_compile_process_execution_specs(?)",Integer.class,process);
+        jdbc.update("""
+            update framework_step_execution_spec e set
+              handoff_contract=jsonb_build_array(jsonb_build_object('handoffType','TERMINAL','toState',s.to_state,
+                'contextKeys',jsonb_build_array('tenantId','projectId','processCode','stepCode','actorCode','rowVersion'))),
+              source_hash=md5(e.actor_contract::text||e.business_contract::text||e.transition_contract::text||
+                e.input_contract::text||e.output_contract::text||e.screen_contract::text||e.field_contract::text||
+                e.command_contract::text||e.api_contract::text||e.persistence_contract::text||
+                jsonb_build_array(jsonb_build_object('handoffType','TERMINAL','toState',s.to_state,
+                  'contextKeys',jsonb_build_array('tenantId','projectId','processCode','stepCode','actorCode','rowVersion')))::text||
+                e.test_contract::text||e.guide_contract::text||e.nonfunctional_contract::text),
+              updated_at=current_timestamp
+            from framework_process_step s
+            where e.process_code=s.process_code and e.step_code=s.step_code and e.process_code=?
+              and e.handoff_contract='[]'::jsonb and not exists(select 1 from framework_process_step n
+                where n.process_code=s.process_code and n.step_order>s.step_order)
+            """,process);
         Integer pages=jdbc.queryForObject("select count(*) from framework_page_design where process_code=?",Integer.class,process);
         return pages==null?0:pages;
     }
