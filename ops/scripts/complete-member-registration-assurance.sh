@@ -64,7 +64,7 @@ with candidate as (
   updated_at=current_timestamp from candidate c where j.job_id=c.job_id returning j.job_id,c.job_status
 )
 insert into framework_development_job_event(job_id,event_type,from_status,to_status,worker_id,detail_json)
-select job_id,'MEMBER_REGISTRATION_ASSURANCE_VERIFIED',job_status,'COMPLETED','member-registration-assurance',
+select job_id,'MEMBER_ASSURANCE_VERIFIED',job_status,'COMPLETED','member-registration-assurance',
  jsonb_build_object('commit','$SOURCE_COMMIT','tests',10,'screens',11) from changed where job_status<>'COMPLETED';
 update framework_process_artifact set delivery_status='VERIFIED',evidence_ref='$evidence',updated_at=current_timestamp
  where process_code='MEMBER_REGISTRATION' and required;
