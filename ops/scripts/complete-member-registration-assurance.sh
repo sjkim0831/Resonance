@@ -10,7 +10,7 @@ COOKIE="$(mktemp)"; BODY="$(mktemp)"
 trap 'rm -f "$COOKIE" "$BODY"' EXIT
 
 bash "$ROOT/ops/scripts/validate-member-registration-runtime.sh" >/dev/null
-"$ROOT/gradlew" -p "$ROOT" :modules:resonance-common:carbonet-common-core:test \
+bash "$ROOT/gradlew" -p "$ROOT" :modules:resonance-common:carbonet-common-core:test \
   --tests egovframework.com.feature.member.MemberRegistrationIdentityFlowTest \
   --no-daemon --console=plain >/dev/null
 
