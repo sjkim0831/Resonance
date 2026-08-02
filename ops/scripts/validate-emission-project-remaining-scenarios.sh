@@ -20,7 +20,8 @@ for type in "${types[@]}"; do
   path="${row%|*}"; reference_id="${row##*|}"
   [[ -n "$path" && -f "$REFERENCE_ROOT/$path" ]] || { echo "[emission-scenarios] missing analyzed $type reference: $path" >&2; exit 1; }
   count="$(q "select count(*) from framework_reference_expectation where process_code='EMISSION_PROJECT' and reference_id=$reference_id")"
-  [[ "$count" -ge 5 ]] || { echo "[emission-scenarios] insufficient $type expectations: $count" >&2; exit 1; }
+  required="$(q "select jsonb_array_length(framework_try_jsonb(assertions_json)) from framework_simulation_case where case_code='EMISSION_PROJECT_REFERENCE_$type'")"
+  [[ "$count" -ge "$required" ]] || { echo "[emission-scenarios] insufficient $type expectations: $count/$required" >&2; exit 1; }
 done
 
 q "insert into emission_project_registry(project_id,project_name,site_name,calculation_period,scope_name,owner_name,current_step,due_date,project_status,reporting_year,period_start,period_end,tenant_id) values('$project','마감 안전성 자동 검증','자동 검증 사업장','2026-01-01 ~ 2026-12-31','Scope 1','webmaster','활동자료 수집',current_date-1,'TEST',2026,date '2026-01-01',date '2026-12-31','DEFAULT'); insert into emission_activity_data(project_id,activity_name,category,activity_period,quantity,unit,evidence_note) values('$project','자동 검증 전력','ENERGY','2026-07',1,'kWh','마감 안전성 검증 증적')" >/dev/null
