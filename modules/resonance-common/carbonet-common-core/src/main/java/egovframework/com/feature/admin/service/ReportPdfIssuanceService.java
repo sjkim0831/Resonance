@@ -42,6 +42,7 @@ public class ReportPdfIssuanceService {
         }
         @SuppressWarnings("unchecked")
         Map<String, Object> record = (Map<String, Object>) rawRecord;
+        ReportIssuanceContractValidator.validate(record);
         String html = String.valueOf(request.getOrDefault("html", ""));
         validateHtml(html);
 

@@ -30,6 +30,7 @@ public class ReportVerificationRegistryService {
 
     @Transactional
     public Map<String, Object> issue(Map<String, Object> request, String actorId) {
+        ReportIssuanceContractValidator.validate(request);
         String certificateId = required(request, "certificateId");
         String payloadHash = required(request, "payloadHash");
         String integrityCode = required(request, "integrityCode");
