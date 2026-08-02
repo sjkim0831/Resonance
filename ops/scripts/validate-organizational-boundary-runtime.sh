@@ -66,7 +66,9 @@ read -r desired ready available <<<"$(kubectl -n "$NAMESPACE" get deploy carbone
 db_gate="$(psqlq "select
  (select count(*) from framework_process_step where process_code='ORGANIZATIONAL_BOUNDARY' and nullif(api_contract,'') is not null)=4
  and (select count(*) from framework_professional_design_graph_quality where process_code='ORGANIZATIONAL_BOUNDARY' and design_status='READY')=4
+ and (select count(*) from framework_professional_screen_readiness where process_code='ORGANIZATIONAL_BOUNDARY')=8
  and (select count(*) from framework_professional_screen_readiness where process_code='ORGANIZATIONAL_BOUNDARY' and readiness_score=100)=8
+ and not exists(select 1 from framework_professional_screen_readiness where process_code='ORGANIZATIONAL_BOUNDARY' and lower(split_part(route_path,'?',1)) like '%/planned/%')
  and (select count(distinct case when case_type in('EXCEPTION','VALIDATION') then 'EXCEPTION' else case_type end) from framework_simulation_case where process_code='ORGANIZATIONAL_BOUNDARY' and case_type in('HAPPY_PATH','AUTHORITY','ISOLATION','RECOVERY','EXCEPTION','VALIDATION'))=5
  and (select count(distinct case when c.case_type in('EXCEPTION','VALIDATION') then 'EXCEPTION' else c.case_type end) from framework_simulation_case c where c.process_code='ORGANIZATIONAL_BOUNDARY' and c.case_type in('HAPPY_PATH','AUTHORITY','ISOLATION','RECOVERY','EXCEPTION','VALIDATION') and exists(select 1 from framework_simulation_run r where r.case_code=c.case_code and r.result='PASSED'))=5
  and to_regclass('emission_organizational_boundary') is not null
