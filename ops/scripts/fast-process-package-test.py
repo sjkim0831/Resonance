@@ -14,8 +14,9 @@ from typing import Any
 REQUIRED_SCENARIOS = {"HAPPY_PATH", "EXCEPTION", "AUTHORITY", "ISOLATION", "RECOVERY"}
 SERVER_CONTEXT_FIELDS = {
     "tenantId", "projectId", "processCode", "stepCode", "actorCode", "fromState",
-    "stepOrder", "idempotencyKey",
+    "stepOrder", "idempotencyKey", "commandCode",
 }
+UI_FIELD_ALIASES = {"payload": "businessData"}
 
 
 def stable(value: Any) -> str:
@@ -92,9 +93,19 @@ def test_package(path: Path) -> dict[str, Any]:
         require(page.get("theme") == "COMMON_KRDS_GOV", "common theme", failures)
         require(len(page.get("fields", [])) >= 8, "professional field contract", failures)
         field_codes = {field.get("code") for field in page.get("fields", [])}
-        client_input_fields = set(step.get("input", {})) - SERVER_CONTEXT_FIELDS
+        input_contract = step.get("input", {})
+        declared_fields = input_contract.get("fields") if isinstance(input_contract, dict) else None
+        if isinstance(declared_fields, list):
+            input_field_codes = {
+                field.get("fieldCode") for field in declared_fields
+                if isinstance(field, dict) and field.get("fieldCode")
+            }
+        else:
+            input_field_codes = set(input_contract) if isinstance(input_contract, dict) else set()
+        client_input_fields = input_field_codes - SERVER_CONTEXT_FIELDS
         for field in client_input_fields:
-            require(field in field_codes, f"required field {field}", failures)
+            rendered_field = UI_FIELD_ALIASES.get(field, field)
+            require(rendered_field in field_codes, f"required field {field}", failures)
         accessibility = page.get("accessibility", {})
         require(accessibility.get("keyboard") is True, "keyboard accessibility", failures)
         responsive = page.get("responsive", {})
