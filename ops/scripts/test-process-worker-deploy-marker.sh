@@ -44,8 +44,11 @@ grep -Fq 'generate-full-stack-design-packages.sh' <<<"$frontend_branch" \
   || fail "generated frontend cannot materialize its missing step package deterministically"
 grep -Fq 'exact frontend step package missing after generation' <<<"$frontend_branch" \
   || fail "generated frontend does not fail closed after package generation"
-grep -Fq "FRONTEND_PACKAGE_GENERATOR_V1_RETRY" "$ORCHESTRATOR" \
+grep -Fq "FRONTEND_PACKAGE_V1_RETRY" "$ORCHESTRATOR" \
   || fail "orchestrator cannot release a previously exhausted frontend after deterministic package generation is installed"
+frontend_retry_code="$(grep -o "FRONTEND_PACKAGE_V1_RETRY" "$ORCHESTRATOR" | head -1)"
+[[ "${#frontend_retry_code}" -le 30 ]] \
+  || fail "frontend package recovery event exceeds the database event_type contract"
 grep -Fq 'frontendPackageRetried=$frontend_package_retried' "$ORCHESTRATOR" \
   || fail "frontend package recovery is missing from orchestrator reporting"
 

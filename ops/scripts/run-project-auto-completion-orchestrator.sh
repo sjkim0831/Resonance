@@ -992,7 +992,7 @@ with candidate as (
     and jsonb_array_length(s.field_contract)>0
     and not exists (
       select 1 from framework_development_job_event e
-      where e.job_id=j.job_id and e.event_type='FRONTEND_PACKAGE_GENERATOR_V1_RETRY'
+      where e.job_id=j.job_id and e.event_type='FRONTEND_PACKAGE_V1_RETRY'
     )
 ), released as (
   update framework_development_job j
@@ -1002,7 +1002,7 @@ with candidate as (
   from candidate c where j.job_id=c.job_id returning j.job_id,c.job_status
 ), logged as (
   insert into framework_development_job_event(job_id,event_type,from_status,to_status,worker_id,detail_json)
-  select job_id,'FRONTEND_PACKAGE_GENERATOR_V1_RETRY',job_status,'RETRY','project-auto-completion',
+  select job_id,'FRONTEND_PACKAGE_V1_RETRY',job_status,'RETRY','project-auto-completion',
          jsonb_build_object('reason','approved frontend released after deterministic step-package self-generation')
   from released returning 1
 )
