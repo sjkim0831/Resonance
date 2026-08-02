@@ -17,6 +17,7 @@ import { AdminPageShell } from "../admin-entry/AdminPageShell";
 import { PageStatusNotice, WarningPanel } from "../admin-ui/common";
 import { AdminWorkspacePageFrame } from "../admin-ui/pageFrames";
 import { AdminSelect, MemberButton, MemberButtonGroup } from "../member/common";
+import { validateReportRequiredFields } from "../report-required-fields/reportRequiredFields";
 import {
   loadEmissionSurveyReportSession,
   saveEmissionSurveyReportSession,
@@ -1713,6 +1714,7 @@ export function EmissionSurveyReportPrintPage() {
   const [verificationBusy, setVerificationBusy] = useState(false);
   const [pdfDownloadMode, setPdfDownloadMode] = useState(false);
   const [pdfDesignDraft, setPdfDesignDraft] = useState<ReportPdfDesignDraft | null>(null);
+  const [missingRequiredLabels, setMissingRequiredLabels] = useState<string[]>([]);
 
   const chartSections = useMemo(
     () => (effectiveReport?.sectionSummaries || []).filter((section) => section.totalEmission > 0 || section.sharePercent > 0),
@@ -2055,10 +2057,27 @@ export function EmissionSurveyReportPrintPage() {
       return nextReport;
     });
   };
+  const validateBeforePdfIssuance = () => {
+    const rows = effectiveReport.rows || [];
+    const outputRows = buildOutputNormalizationRows(rows);
+    const missing = validateReportRequiredFields([
+      { key: "productName", label: en ? "Product name / report title" : "제품명·리포트 제목", value: effectiveReport.productName || effectiveReport.pageTitle, elementId: "survey-report-product-name" },
+      { key: "totalEmission", label: en ? "Total carbon emission" : "총 탄소배출량", value: totalEmission, elementId: "survey-report-total-emission", valid: (value) => Number.isFinite(Number(value)) && Number(value) >= 0 },
+      { key: "outputRows", label: en ? "Product / byproduct rows" : "제품·부산물 행", value: outputRows.length > 0 },
+      { key: "outputMass", label: en ? "Total output mass" : "총 산출물 질량", value: normalization.outputQuantityTotal, valid: (value) => Number(value) > 0 },
+      { key: "materialNames", label: en ? "Material names" : "물질명", value: rows.every((row) => String(row.materialName || "").trim().length > 0) },
+      { key: "units", label: en ? "Units" : "단위", value: rows.every((row) => String(row.unit || "").trim().length > 0) },
+      { key: "outputAmounts", label: en ? "Product / byproduct mass" : "제품·부산물 질량", value: outputRows.every((row) => Number.isFinite(row.originalAmount) && row.originalAmount > 0) },
+      { key: "sectionShares", label: en ? "Section allocation ratio total (100%)" : "섹션 배출 비율 합계(100%)", value: sectionShareReady }
+    ]);
+    setMissingRequiredLabels(missing.map((field) => field.label));
+    return missing.length === 0;
+  };
   const handleDownloadPdf = async (draft: ReportPdfDesignDraft | null = null) => {
     if (!effectiveReport) {
       return;
     }
+    if (!validateBeforePdfIssuance()) return;
     setVerificationBusy(true);
     setVerificationMessage("");
     try {
@@ -3178,6 +3197,7 @@ export function EmissionSurveyReportPrintPage() {
           ) : null}
         </div>
       </div>
+      {missingRequiredLabels.length > 0 ? <div aria-live="assertive" className="print-hidden mx-auto mb-4 max-w-5xl rounded-2xl border border-red-300 bg-red-50 px-5 py-4 text-sm font-bold text-red-700" role="alert">{en ? `${missingRequiredLabels.length} required report items are missing: ` : `레포트 필수 항목 ${missingRequiredLabels.length}개를 확인해 주세요: `}{missingRequiredLabels.join(", ")}</div> : null}
 
       {en && englishMaterialNameLoading ? (
         <div
@@ -3212,7 +3232,9 @@ export function EmissionSurveyReportPrintPage() {
               <h1 className="krds-type-report-cover-title print-report-title max-w-2xl text-4xl font-black leading-tight tracking-[-0.055em]">
                 <EditableText
                   className="krds-type-report-cover-title print-report-title max-w-2xl bg-transparent text-4xl font-black leading-tight tracking-[-0.055em] text-white"
+                  id="survey-report-product-name"
                   onCommit={(value) => setDraftReport((current) => current ? { ...current, productName: value } : current)}
+                  required
                   value={en ? resolveEnglishMaterialName(effectiveReport.productName || effectiveReport.pageTitle, englishNameMap) : (effectiveReport.productName || effectiveReport.pageTitle)}
                 />
               </h1>
@@ -3221,7 +3243,9 @@ export function EmissionSurveyReportPrintPage() {
               <p className="print-report-total-label text-[11px] font-bold uppercase tracking-[0.14em] text-cyan-100">{en ? "Total Footprint" : "총 탄소배출량"}</p>
               <EditableNumber
                 className="krds-type-report-total mt-3 inline-block w-32 max-w-full bg-transparent text-right text-3xl font-black tracking-[-0.05em] text-white"
+                id="survey-report-total-emission"
                 onCommit={updateTotalEmission}
+                required
                 value={totalEmission}
               />
               <p className="print-report-total-unit mt-1 text-xs text-slate-300">kg CO2e</p>
@@ -4141,6 +4165,7 @@ export function EmissionSurveyLcaSummaryPrintPage() {
   const [verificationRecord, setVerificationRecord] = useState<ReportVerificationRecord | null>(null);
   const [downloadBusy, setDownloadBusy] = useState(false);
   const [downloadMessage, setDownloadMessage] = useState("");
+  const [missingRequiredLabels, setMissingRequiredLabels] = useState<string[]>([]);
   const [pdfDownloadMode, setPdfDownloadMode] = useState(false);
   const lcaSoftware = defaultLcaSoftwareLabel();
 
@@ -4181,6 +4206,20 @@ export function EmissionSurveyLcaSummaryPrintPage() {
   const totalEmissionPerMass = normalizedOutputMass > 0 ? totalEmission / normalizedOutputMass : totalEmission;
   const lcaDocumentTitle = buildLcaSummaryDocumentTitle(companyName, en);
   const handleDownloadDocument = async () => {
+    const missing = validateReportRequiredFields([
+      { key: "companyName", label: en ? "Company name" : "기업명", value: companyName, elementId: "lca-company-name" },
+      { key: "productFamily", label: en ? "Product category" : "제품 구분", value: productFamily, elementId: "lca-product-family" },
+      { key: "functionalUnit", label: en ? "Functional unit" : "기능단위", value: functionalUnit, elementId: "lca-functional-unit" },
+      { key: "productModel", label: en ? "Product name" : "제품명", value: productModel, elementId: "lca-product-model" },
+      { key: "productDescription", label: en ? "Product description" : "제품 일반 정보", value: productDescription, elementId: "lca-product-description" },
+      { key: "productType", label: en ? "Model name" : "모델명", value: productType, elementId: "lca-product-type" },
+      { key: "referenceFlow", label: en ? "Reference flow" : "기준흐름", value: referenceFlow, elementId: "lca-reference-flow" },
+      { key: "inputRows", label: en ? "LCI input rows" : "LCI 투입물 행", value: inputRows.length > 0 },
+      { key: "outputRows", label: en ? "Product / byproduct rows" : "제품·부산물 행", value: outputRows.length > 0 },
+      { key: "normalizedOutputMass", label: en ? "Normalized output mass" : "정규화 산출물 질량", value: normalizedOutputMass, valid: (value) => Number(value) > 0 }
+    ]);
+    setMissingRequiredLabels(missing.map((field) => field.label));
+    if (missing.length > 0) return;
     setDownloadBusy(true);
     setDownloadMessage("");
     try {
@@ -4439,11 +4478,12 @@ export function EmissionSurveyLcaSummaryPrintPage() {
           </button>
         </div>
       </div>
+      {missingRequiredLabels.length > 0 ? <div aria-live="assertive" className="print-hidden mx-auto mb-4 max-w-[900px] rounded-2xl border border-red-300 bg-red-50 px-5 py-4 text-sm font-bold text-red-700" role="alert">{en ? `${missingRequiredLabels.length} required LCA report items are missing: ` : `LCA 레포트 필수 항목 ${missingRequiredLabels.length}개를 확인해 주세요: `}{missingRequiredLabels.join(", ")}</div> : null}
 
       <article className={`lca-sheet mx-auto max-w-[900px] rounded-[20px] border border-white bg-white p-6 text-[12px] shadow-[0_28px_80px_rgba(15,23,42,0.18)] ${pdfDownloadMode ? "lca-pdf-download-mode" : ""}`} ref={lcaArticleRef}>
         <header className="text-center">
           <div className="inline-flex flex-wrap items-center justify-center gap-2 text-3xl font-black tracking-[-0.04em] text-slate-950">
-            <EditableText className={`${textFieldClass} lca-fill !w-auto min-w-[170px] text-center text-2xl`} onCommit={setCompanyName} placeholder="* 기업명(예: 00건설)" value={companyName} />
+            <EditableText className={`${textFieldClass} lca-fill !w-auto min-w-[170px] text-center text-2xl`} id="lca-company-name" onCommit={setCompanyName} placeholder="* 기업명(예: 00건설)" value={companyName} />
             <span>{en ? "Product LCA Summary" : "제품 LCA 수행 개요"}</span>
           </div>
         </header>
@@ -4492,9 +4532,9 @@ export function EmissionSurveyLcaSummaryPrintPage() {
           <h2 className="mb-5 text-base font-black text-slate-950">{en ? "Summary" : "결과 요약"}</h2>
           <p className="lca-overview-copy leading-6 text-slate-800">
             {en ? "The target " : "당사가 생산하는 "}
-            <EditableText className={`${textFieldClass} lca-fill inline-block !w-auto min-w-[260px] align-middle`} onCommit={setProductFamily} placeholder="* 구분(예: 건설기계)(제품명: 모델, A123-4)" value={productFamily} />
+            <EditableText className={`${textFieldClass} lca-fill inline-block !w-auto min-w-[260px] align-middle`} id="lca-product-family" onCommit={setProductFamily} placeholder="* 구분(예: 건설기계)(제품명: 모델, A123-4)" value={productFamily} />
             {en ? " product was assessed according to ISO 14040 and ISO 14044 procedures. The scope was set as Cradle to Gate, including raw material acquisition, processing, and product manufacturing. The functional unit was defined as " : " 제품은 ISO14040 및 ISO14044 지침의 일반적 절차와 요구 사항에 따라 LCA를 수행하였다. 영향 평가의 대상 범위는 ISO14025, ISO/TS14067에 따라 Cradle to Gate로 설정하여, 원료채취 및 가공, 제품 제조를 포함하고 있다. 평가대상의 기준단위는 "}
-            <EditableText className={`${textFieldClass} lca-fill inline-block !w-auto min-w-[260px] align-middle`} onCommit={setFunctionalUnit} placeholder={`* 산정된 탄소배출량의 단위\n예: 단위 제품 생산당, 단위 작동 시간당 등`} value={functionalUnit} />
+            <EditableText className={`${textFieldClass} lca-fill inline-block !w-auto min-w-[260px] align-middle`} id="lca-functional-unit" onCommit={setFunctionalUnit} placeholder={`* 산정된 탄소배출량의 단위\n예: 단위 제품 생산당, 단위 작동 시간당 등`} value={functionalUnit} />
             {en ? "." : " 배출량으로 정의하였다."}
           </p>
           <p className="lca-overview-copy mt-2 leading-6 text-slate-800">
@@ -4514,11 +4554,11 @@ export function EmissionSurveyLcaSummaryPrintPage() {
             <tbody>
               <tr>
                 <td className={`${tableLabelClass} w-[28%]`}><span className={cellContentClass}>{en ? "Product model" : "제품모델"}</span></td>
-                <td className={tableCellClass} colSpan={4}><span className={cellContentClass}><EditableText className={`${textFieldClass} lca-fill`} onCommit={setProductModel} placeholder="* 제품명으로 수정" value={productModel} /></span></td>
+                <td className={tableCellClass} colSpan={4}><span className={cellContentClass}><EditableText className={`${textFieldClass} lca-fill`} id="lca-product-model" onCommit={setProductModel} placeholder="* 제품명으로 수정" value={productModel} /></span></td>
               </tr>
               <tr>
                 <td className={tableLabelClass}><span className={cellContentClass}>{en ? "General information" : "제품 일반 정보"}</span></td>
-                <td className={tableCellClass} colSpan={4}><span className={cellContentClass}><EditableText className={`${textFieldClass} lca-fill`} maxLength={300} multiline onCommit={setProductDescription} placeholder={`* 모델명으로 수정\n제품 일반 정보를 입력`} value={productDescription} /></span></td>
+                <td className={tableCellClass} colSpan={4}><span className={cellContentClass}><EditableText className={`${textFieldClass} lca-fill`} id="lca-product-description" maxLength={300} multiline onCommit={setProductDescription} placeholder={`* 모델명으로 수정\n제품 일반 정보를 입력`} value={productDescription} /></span></td>
               </tr>
               <tr>
                 <td className={`${tableLabelClass} w-[28%] align-middle`} rowSpan={2}><span className={cellContentClass}>Product Spec.</span></td>
@@ -4529,13 +4569,13 @@ export function EmissionSurveyLcaSummaryPrintPage() {
               </tr>
               <tr>
                 <td className={`${tableCellClass} text-center`}><span className={centerCellContentClass}><EditableText className={`${textFieldClass} lca-fill text-center`} onCommit={setProductModel} placeholder="* 제품명" value={productModel} /></span></td>
-                <td className={`${tableCellClass} text-center`}><span className={centerCellContentClass}><EditableText className={`${textFieldClass} lca-fill text-center`} onCommit={setProductType} placeholder="* 모델명" value={productType} /></span></td>
+                <td className={`${tableCellClass} text-center`}><span className={centerCellContentClass}><EditableText className={`${textFieldClass} lca-fill text-center`} id="lca-product-type" onCommit={setProductType} placeholder="* 모델명" value={productType} /></span></td>
                 <td className={`${tableCellClass} text-center`}><span className={centerCellContentClass}><EditableText className={`${textFieldClass} lca-fill text-center`} onCommit={setEquipmentWeight} placeholder="장비중량(ton)" value={equipmentWeight} /></span></td>
                 <td className={`${tableCellClass} text-center`}><span className={centerCellContentClass}><EditableText className={`${textFieldClass} lca-fill text-center`} onCommit={setBucketCapacity} placeholder="버킷 용량(m2)" value={bucketCapacity} /></span></td>
               </tr>
               <tr>
                 <td className={`${tableLabelClass} w-[28%]`}><span className={cellContentClass}>{en ? "Reference flow" : "중량정보(기준흐름)"}</span></td>
-                <td className={tableCellClass} colSpan={4}><span className={cellContentClass}><EditableText className={`${textFieldClass} lca-fill`} onCommit={setReferenceFlow} placeholder="* 중량정보(기준흐름)" value={referenceFlow} /></span></td>
+                <td className={tableCellClass} colSpan={4}><span className={cellContentClass}><EditableText className={`${textFieldClass} lca-fill`} id="lca-reference-flow" onCommit={setReferenceFlow} placeholder="* 중량정보(기준흐름)" value={referenceFlow} /></span></td>
               </tr>
             </tbody>
           </table>
@@ -4657,12 +4697,16 @@ function EditableNumber({
   value,
   onCommit,
   className = "",
-  digits = 2
+  digits = 2,
+  id,
+  required = false
 }: {
   value: number;
   onCommit: (value: number) => void;
   className?: string;
   digits?: number;
+  id?: string;
+  required?: boolean;
 }) {
   const [draft, setDraft] = useState(formatNumber(value, digits));
   const [focused, setFocused] = useState(false);
@@ -4675,6 +4719,7 @@ function EditableNumber({
     <>
       <input
         className={`print-input-control print:border-0 print:bg-transparent print:p-0 ${className}`.trim()}
+        id={id}
         inputMode="decimal"
         onBlur={() => {
           setFocused(false);
@@ -4691,6 +4736,7 @@ function EditableNumber({
             event.currentTarget.blur();
           }
         }}
+        required={required}
         value={draft}
       />
       <span className={`print-input-text ${className}`.trim()}>{draft || formatNumber(value, digits)}</span>
@@ -4704,7 +4750,9 @@ function EditableText({
   className = "",
   multiline = false,
   placeholder = "",
-  maxLength = 500
+  maxLength = 500,
+  id,
+  required = false
 }: {
   value: string;
   onCommit: (value: string) => void;
@@ -4712,6 +4760,8 @@ function EditableText({
   multiline?: boolean;
   placeholder?: string;
   maxLength?: number;
+  id?: string;
+  required?: boolean;
 }) {
   const [draft, setDraft] = useState(value);
   const requiredClassName = placeholder.trim().startsWith("*") ? "lca-required-field" : "";
@@ -4723,6 +4773,7 @@ function EditableText({
       <>
         <textarea
           className={`print-input-control w-full ${requiredClassName} ${className}`.trim()}
+          id={id}
           maxLength={maxLength}
           onBlur={() => onCommit(draft)}
           onChange={(event) => setDraft(event.target.value)}
@@ -4733,6 +4784,7 @@ function EditableText({
             }
           }}
           placeholder={placeholder}
+          required={required || Boolean(requiredClassName)}
           rows={3}
           value={draft}
         />
@@ -4744,6 +4796,7 @@ function EditableText({
     <>
       <input
         className={`print-input-control w-full ${requiredClassName} ${className}`.trim()}
+        id={id}
         maxLength={maxLength}
         onBlur={() => onCommit(draft)}
         onChange={(event) => setDraft(event.target.value)}
@@ -4753,6 +4806,7 @@ function EditableText({
           }
         }}
         placeholder={placeholder}
+        required={required || Boolean(requiredClassName)}
         value={draft}
       />
       <span className="print-input-text">{draft.trim() || "-"}</span>

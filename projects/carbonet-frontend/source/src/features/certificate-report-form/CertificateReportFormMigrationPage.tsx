@@ -3,6 +3,7 @@ import { useFrontendSession } from "../../app/hooks/useFrontendSession";
 import { logGovernanceScope } from "../../app/policy/debug";
 import { UserGovernmentBar, UserLanguageToggle, UserPortalFooter } from "../../components/user-shell/UserPortalChrome";
 import { buildLocalizedPath, isEnglish, navigate } from "../../lib/navigation/runtime";
+import { reportRequiredErrorClass, validateReportRequiredFields } from "../report-required-fields/reportRequiredFields";
 
 type StepState = "completed" | "active" | "upcoming";
 
@@ -221,6 +222,24 @@ export function CertificateReportFormMigrationPage() {
   const [periodEnd, setPeriodEnd] = useState("2026-03-31");
   const [fuelUsage, setFuelUsage] = useState("124.50");
   const [electricityUsage, setElectricityUsage] = useState("18.30");
+  const [missingRequiredKeys, setMissingRequiredKeys] = useState<string[]>([]);
+
+  function validateBeforeNext() {
+    const missing = validateReportRequiredFields([
+      { key: "reportType", label: content.reportTypeLabel, value: reportType, elementId: "report-type" },
+      { key: "assignee", label: content.assigneeLabel, value: assignee, elementId: "report-assignee" },
+      { key: "title", label: content.titleLabel, value: title, elementId: "report-title" },
+      { key: "company", label: content.companyLabel, value: company, elementId: "report-company" },
+      { key: "site", label: content.siteLabel, value: site, elementId: "report-site" },
+      { key: "facility", label: content.facilityLabel, value: facility, elementId: "report-facility" },
+      { key: "periodStart", label: `${content.periodLabel} (${en ? "start" : "시작"})`, value: periodStart, elementId: "report-period-start" },
+      { key: "periodEnd", label: `${content.periodLabel} (${en ? "end" : "종료"})`, value: periodEnd, elementId: "report-period-end", valid: (value) => String(value || "").trim().length > 0 && (!periodStart || String(value) >= periodStart) },
+      { key: "fuelUsage", label: content.fuelUsageLabel, value: fuelUsage, elementId: "report-fuel-usage", valid: (value) => String(value || "").trim().length > 0 && Number.isFinite(Number(value)) && Number(value) >= 0 },
+      { key: "electricityUsage", label: content.electricityUsageLabel, value: electricityUsage, elementId: "report-electricity-usage", valid: (value) => String(value || "").trim().length > 0 && Number.isFinite(Number(value)) && Number(value) >= 0 }
+    ]);
+    setMissingRequiredKeys(missing.map((field) => field.key));
+    if (missing.length === 0) navigate(buildLocalizedPath("/certificate/report_edit", "/en/certificate/report_edit"));
+  }
 
   const estimatedEmission = useMemo(() => {
     const fuel = Number.parseFloat(fuelUsage || "0");
@@ -339,6 +358,7 @@ export function CertificateReportFormMigrationPage() {
           </section>
           <section className="mx-auto grid max-w-7xl gap-8 px-4 pb-16 lg:grid-cols-[minmax(0,2fr),360px] lg:px-8">
             <div className="space-y-8">
+              {missingRequiredKeys.length > 0 ? <div aria-live="assertive" className="rounded-2xl border border-red-300 bg-red-50 px-5 py-4 text-sm font-bold text-red-700" role="alert">{en ? `${missingRequiredKeys.length} required report fields are missing.` : `레포트 필수 항목 ${missingRequiredKeys.length}개를 입력해 주세요.`}</div> : null}
               <article className="gov-card p-7" data-help-id="certificate-report-form-basic">
                 <h3 className="flex items-center gap-2 text-xl font-black">
                   <span className="h-6 w-1.5 rounded-full bg-[var(--kr-gov-blue)]" />
@@ -347,25 +367,25 @@ export function CertificateReportFormMigrationPage() {
                 <div className="mt-6 grid gap-6 md:grid-cols-2">
                   <label>
                     <span className="gov-label required-mark">{content.reportTypeLabel}</span>
-                    <select className="gov-input" value={reportType} onChange={(event) => setReportType(event.target.value)}>
+                    <select className={`gov-input${reportRequiredErrorClass(missingRequiredKeys, "reportType")}`} id="report-type" required value={reportType} onChange={(event) => setReportType(event.target.value)}>
                       {content.reportTypes.map((item) => <option key={item} value={item}>{item}</option>)}
                     </select>
                   </label>
                   <label>
                     <span className="gov-label required-mark">{content.assigneeLabel}</span>
-                    <input className="gov-input" value={assignee} onChange={(event) => setAssignee(event.target.value)} />
+                    <input className={`gov-input${reportRequiredErrorClass(missingRequiredKeys, "assignee")}`} id="report-assignee" required value={assignee} onChange={(event) => setAssignee(event.target.value)} />
                   </label>
                   <label className="md:col-span-2">
                     <span className="gov-label required-mark">{content.titleLabel}</span>
-                    <input className="gov-input" value={title} onChange={(event) => setTitle(event.target.value)} />
+                    <input className={`gov-input${reportRequiredErrorClass(missingRequiredKeys, "title")}`} id="report-title" required value={title} onChange={(event) => setTitle(event.target.value)} />
                   </label>
                   <label>
                     <span className="gov-label required-mark">{content.companyLabel}</span>
-                    <input className="gov-input" value={company} onChange={(event) => setCompany(event.target.value)} />
+                    <input className={`gov-input${reportRequiredErrorClass(missingRequiredKeys, "company")}`} id="report-company" required value={company} onChange={(event) => setCompany(event.target.value)} />
                   </label>
                   <label>
                     <span className="gov-label required-mark">{content.siteLabel}</span>
-                    <input className="gov-input" value={site} onChange={(event) => setSite(event.target.value)} />
+                    <input className={`gov-input${reportRequiredErrorClass(missingRequiredKeys, "site")}`} id="report-site" required value={site} onChange={(event) => setSite(event.target.value)} />
                   </label>
                 </div>
               </article>
@@ -378,7 +398,7 @@ export function CertificateReportFormMigrationPage() {
                   <div className="grid gap-6 md:grid-cols-2">
                     <label>
                       <span className="gov-label required-mark">{content.facilityLabel}</span>
-                      <select className="gov-input" value={facility} onChange={(event) => setFacility(event.target.value)}>
+                      <select className={`gov-input${reportRequiredErrorClass(missingRequiredKeys, "facility")}`} id="report-facility" required value={facility} onChange={(event) => setFacility(event.target.value)}>
                         {content.facilities.map((item) => <option key={item} value={item}>{item}</option>)}
                       </select>
                       <p className="mt-2 text-xs text-[var(--kr-gov-text-secondary)]">{content.facilityHelp}</p>
@@ -386,16 +406,16 @@ export function CertificateReportFormMigrationPage() {
                     <div>
                       <span className="gov-label required-mark">{content.periodLabel}</span>
                       <div className="flex items-center gap-2">
-                        <input className="gov-input" type="date" value={periodStart} onChange={(event) => setPeriodStart(event.target.value)} />
+                        <input className={`gov-input${reportRequiredErrorClass(missingRequiredKeys, "periodStart")}`} id="report-period-start" required type="date" value={periodStart} onChange={(event) => setPeriodStart(event.target.value)} />
                         <span className="text-slate-400">~</span>
-                        <input className="gov-input" type="date" value={periodEnd} onChange={(event) => setPeriodEnd(event.target.value)} />
+                        <input className={`gov-input${reportRequiredErrorClass(missingRequiredKeys, "periodEnd")}`} id="report-period-end" required type="date" value={periodEnd} onChange={(event) => setPeriodEnd(event.target.value)} />
                       </div>
                     </div>
                   </div>
                   <div className="border-t border-dashed border-[var(--kr-gov-border-light)] pt-6">
                     <span className="gov-label required-mark">{content.fuelUsageLabel}</span>
                     <div className="flex gap-2">
-                      <input className="gov-input text-right" type="number" step="0.01" value={fuelUsage} onChange={(event) => setFuelUsage(event.target.value)} />
+                      <input className={`gov-input text-right${reportRequiredErrorClass(missingRequiredKeys, "fuelUsage")}`} id="report-fuel-usage" min="0" required type="number" step="0.01" value={fuelUsage} onChange={(event) => setFuelUsage(event.target.value)} />
                       <span className="flex items-center rounded-xl border border-[var(--kr-gov-border-light)] bg-slate-100 px-4 text-sm font-bold">{content.fuelUnit}</span>
                     </div>
                     <div className="mt-4 rounded-2xl border border-[var(--kr-gov-border-light)] bg-slate-50 p-4 text-sm">
@@ -420,7 +440,7 @@ export function CertificateReportFormMigrationPage() {
                   <div>
                     <span className="gov-label required-mark">{content.electricityUsageLabel}</span>
                     <div className="flex gap-2">
-                      <input className="gov-input text-right" type="number" step="0.01" value={electricityUsage} onChange={(event) => setElectricityUsage(event.target.value)} />
+                      <input className={`gov-input text-right${reportRequiredErrorClass(missingRequiredKeys, "electricityUsage")}`} id="report-electricity-usage" min="0" required type="number" step="0.01" value={electricityUsage} onChange={(event) => setElectricityUsage(event.target.value)} />
                       <span className="flex items-center rounded-xl border border-[var(--kr-gov-border-light)] bg-slate-100 px-4 text-sm font-bold">{content.electricityUnit}</span>
                     </div>
                   </div>
@@ -441,7 +461,7 @@ export function CertificateReportFormMigrationPage() {
                 </button>
                 <div className="flex flex-wrap gap-3">
                   <button className="gov-btn border border-[var(--kr-gov-blue)] bg-white px-5 py-3 text-[var(--kr-gov-blue)] hover:bg-blue-50" type="button">{content.saveDraft}</button>
-                  <button className="gov-btn bg-[var(--kr-gov-blue)] px-5 py-3 text-white hover:bg-[var(--kr-gov-blue-hover)]" type="button" onClick={() => navigate(buildLocalizedPath("/certificate/report_edit", "/en/certificate/report_edit"))}>
+                  <button className="gov-btn bg-[var(--kr-gov-blue)] px-5 py-3 text-white hover:bg-[var(--kr-gov-blue-hover)]" type="button" onClick={validateBeforeNext}>
                     {content.nextStep}
                     <span className="material-symbols-outlined">arrow_forward</span>
                   </button>

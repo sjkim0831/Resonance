@@ -11,6 +11,7 @@ import { buildLocalizedPath, getNavigationEventName, getSearchParam, isEnglish, 
 import { HeaderBrand, HeaderMobileMenu } from "../home-entry/HomeEntrySections";
 import { LOCALIZED_CONTENT } from "../home-entry/homeEntryContent";
 import type { HomeMenuItem, HomePayload } from "../home-entry/homeEntryTypes";
+import { reportRequiredErrorClass, validateReportRequiredFields } from "../report-required-fields/reportRequiredFields";
 
 const GOV_SYMBOL = "/img/egovframework/kr_gov_symbol.png";
 const GOV_SYMBOL_FALLBACK = "/img/egovframework/kr_gov_symbol.svg";
@@ -369,6 +370,12 @@ export function EmissionReportSubmitMigrationPage() {
   const initialResultDetail = useMemo(() => readBootstrappedEmissionResultDetailPageData(), []);
   const canUseInitialResultDetail = matchesInitialResultDetailPayload(initialResultDetail, resultId);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [facility, setFacility] = useState(content.facilities[0] || "");
+  const [periodStart, setPeriodStart] = useState("2025-07-01");
+  const [periodEnd, setPeriodEnd] = useState("2025-07-31");
+  const [usage, setUsage] = useState("");
+  const [electricityUsage, setElectricityUsage] = useState("");
+  const [missingRequiredKeys, setMissingRequiredKeys] = useState<string[]>([]);
   const payloadState = useAsyncValue<HomePayload>(
     () => fetchHomePayload(),
     [en],
@@ -422,6 +429,19 @@ export function EmissionReportSubmitMigrationPage() {
     evidenceCount: String(Number(resultDetail?.evidenceCount || evidenceRows.length || 0)),
     siteCount: String(Number(resultDetail?.siteCount || siteRows.length || 0))
   };
+
+  function validateBeforeVerification() {
+    const missing = validateReportRequiredFields([
+      { key: "result", label: en ? "Linked calculation result" : "연결된 산정 결과", value: resultFound, elementId: "report-result-context" },
+      { key: "facility", label: content.facilityLabel, value: facility, elementId: "facility-select" },
+      { key: "periodStart", label: `${content.periodLabel} (${en ? "start" : "시작"})`, value: periodStart, elementId: "period-start" },
+      { key: "periodEnd", label: `${content.periodLabel} (${en ? "end" : "종료"})`, value: periodEnd, elementId: "period-end", valid: (value) => String(value || "").trim().length > 0 && (!periodStart || String(value) >= periodStart) },
+      { key: "usage", label: content.usageLabel, value: usage, elementId: "usage-input", valid: (value) => String(value || "").trim().length > 0 && Number.isFinite(Number(value)) && Number(value) >= 0 },
+      { key: "electricityUsage", label: content.electricityLabel, value: electricityUsage, elementId: "electricity-input", valid: (value) => String(value || "").trim().length > 0 && Number.isFinite(Number(value)) && Number(value) >= 0 }
+    ]);
+    setMissingRequiredKeys(missing.map((field) => field.key));
+    if (missing.length === 0) navigate(appendResultId("/emission/validate", "/en/emission/validate", resultId));
+  }
 
   useEffect(() => {
     logGovernanceScope("PAGE", "emission-report-submit", {
@@ -546,9 +566,10 @@ export function EmissionReportSubmitMigrationPage() {
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
               <div className="lg:col-span-2 space-y-8">
+                {missingRequiredKeys.length > 0 ? <div aria-live="assertive" className="rounded-[var(--kr-gov-radius)] border border-red-300 bg-red-50 px-5 py-4 text-sm font-bold text-red-700" role="alert">{en ? `${missingRequiredKeys.length} required submission fields are missing.` : `보고서 제출 필수 항목 ${missingRequiredKeys.length}개를 입력해 주세요.`}</div> : null}
                 <section className="bg-white p-8 rounded-[var(--kr-gov-radius)] border border-[var(--kr-gov-border-light)] shadow-sm" data-help-id="emission-report-submit-result-context">
                   <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                    <div>
+                    <div id="report-result-context" tabIndex={-1}>
                       <p className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--kr-gov-text-secondary)]">
                         {resultId || (en ? "Draft without linked result" : "산정 결과 미연결 초안")}
                       </p>
@@ -590,7 +611,7 @@ export function EmissionReportSubmitMigrationPage() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div>
                         <label className="gov-label required-mark" htmlFor="facility-select">{content.facilityLabel}</label>
-                        <select className="gov-input" defaultValue={content.facilities[0]} id="facility-select">
+                        <select className={`gov-input${reportRequiredErrorClass(missingRequiredKeys, "facility")}`} id="facility-select" required value={facility} onChange={(event) => setFacility(event.target.value)}>
                           {content.facilities.map((facility) => (
                             <option key={facility} value={facility}>{facility}</option>
                           ))}
@@ -600,9 +621,9 @@ export function EmissionReportSubmitMigrationPage() {
                       <div>
                         <label className="gov-label required-mark" htmlFor="period-start">{content.periodLabel}</label>
                         <div className="flex items-center gap-2">
-                          <input className="gov-input" defaultValue="2025-07-01" id="period-start" type="date" />
+                          <input className={`gov-input${reportRequiredErrorClass(missingRequiredKeys, "periodStart")}`} id="period-start" required type="date" value={periodStart} onChange={(event) => setPeriodStart(event.target.value)} />
                           <span className="text-gray-400">~</span>
-                          <input className="gov-input" defaultValue="2025-07-31" type="date" />
+                          <input className={`gov-input${reportRequiredErrorClass(missingRequiredKeys, "periodEnd")}`} id="period-end" required type="date" value={periodEnd} onChange={(event) => setPeriodEnd(event.target.value)} />
                         </div>
                       </div>
                     </div>
@@ -610,7 +631,7 @@ export function EmissionReportSubmitMigrationPage() {
                     <div className="border-t border-dashed border-[var(--kr-gov-border-light)] pt-6">
                       <label className="gov-label required-mark" htmlFor="usage-input">{content.usageLabel}</label>
                       <div className="flex gap-2">
-                        <input className="gov-input text-right" id="usage-input" placeholder="0.00" type="number" />
+                        <input className={`gov-input text-right${reportRequiredErrorClass(missingRequiredKeys, "usage")}`} id="usage-input" min="0" placeholder="0.00" required type="number" value={usage} onChange={(event) => setUsage(event.target.value)} />
                         <span className="bg-gray-100 border border-[var(--kr-gov-border-light)] px-4 py-2.5 rounded-[var(--kr-gov-radius)] text-sm font-bold flex items-center">{content.usageUnit}</span>
                       </div>
                       <div className="mt-4 p-4 bg-gray-50 rounded-[var(--kr-gov-radius)] text-sm border border-[var(--kr-gov-border-light)]">
@@ -636,7 +657,7 @@ export function EmissionReportSubmitMigrationPage() {
                     <div>
                       <label className="gov-label required-mark" htmlFor="electricity-input">{content.electricityLabel}</label>
                       <div className="flex gap-2">
-                        <input className="gov-input text-right" id="electricity-input" placeholder="0.00" type="number" />
+                        <input className={`gov-input text-right${reportRequiredErrorClass(missingRequiredKeys, "electricityUsage")}`} id="electricity-input" min="0" placeholder="0.00" required type="number" value={electricityUsage} onChange={(event) => setElectricityUsage(event.target.value)} />
                         <span className="bg-gray-100 border border-[var(--kr-gov-border-light)] px-4 py-2.5 rounded-[var(--kr-gov-radius)] text-sm font-bold flex items-center">{content.electricityUnit}</span>
                       </div>
                     </div>
@@ -686,7 +707,7 @@ export function EmissionReportSubmitMigrationPage() {
                   </button>
                   <div className="flex gap-3 self-end">
                     <button className="gov-btn border border-[var(--kr-gov-blue)] text-[var(--kr-gov-blue)] hover:bg-blue-50 px-8 h-14 bg-white" type="button">{content.saveDraft}</button>
-                    <button className="gov-btn bg-[var(--kr-gov-blue)] text-white hover:bg-[var(--kr-gov-blue-hover)] px-10 h-14 shadow-lg" type="button" onClick={() => navigate(appendResultId("/emission/validate", "/en/emission/validate", resultId))}>
+                    <button className="gov-btn bg-[var(--kr-gov-blue)] text-white hover:bg-[var(--kr-gov-blue-hover)] px-10 h-14 shadow-lg" type="button" onClick={validateBeforeVerification}>
                       {content.nextStep}
                       <span className="material-symbols-outlined">arrow_forward</span>
                     </button>
