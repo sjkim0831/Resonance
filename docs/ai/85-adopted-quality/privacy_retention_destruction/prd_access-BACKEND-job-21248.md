@@ -2,7 +2,7 @@
 
 - Job: 21248
 - Job type: BACKEND
-- Source commit: c4134b294002fa02e96ea2ebe91d500593d22cf3
+- Source commit: c820bc658137957b9379ac4f65f12079ff908be8
 - Requirement: 열람 목적·범위·기한·추가인증을 검증해 일시적으로 마스킹을 해제한다.
 - Validation result: {"strategy":"APPROVED_FULL_STACK_PACKAGE","processCode":"PRIVACY_RETENTION_DESTRUCTION","stepCode":"PRD_ACCESS","dimension":"BACKEND","package":"/opt/Resonance/var/ai-worktrees/job-21248/projects/carbonet-backend-metadata/process-runtime/generated/PRIVACY_RETENTION_DESTRUCTION/PRIVACY_RETENTION_DESTRUCTION__PRD_ACCESS.json","evidence":"/opt/Resonance/var/ai-worktrees/job-21248/var/test-evidence/process-package-tests/PRIVACY_RETENTION_DESTRUCTION__PRD_ACCESS.json","status":"PASSED"}
 
