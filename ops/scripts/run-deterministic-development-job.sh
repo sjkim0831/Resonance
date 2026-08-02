@@ -119,7 +119,14 @@ The deterministic validator requires persisted step-specific workflow events, au
 EOF
     ;;
   FRONTEND_USER|FRONTEND_ADMIN)
-    [[ -s "$generated_step_package" ]] || exit 3
+    if [[ ! -s "$generated_step_package" ]]; then
+      FULL_STACK_PACKAGE_OUT="$WT/projects/carbonet-backend-metadata/process-runtime/generated" \
+        bash "$WT/ops/scripts/generate-full-stack-design-packages.sh" "$WT" "$PROCESS" >/dev/null
+    fi
+    [[ -s "$generated_step_package" ]] || {
+      echo "[deterministic-development] exact frontend step package missing after generation: $PROCESS/$STEP" >&2
+      exit 4
+    }
     adoption_json="$(bash "$generated_dimension_validator" "$WT" "$PROCESS" "$STEP" "$JOB_TYPE")" || exit $?
     artifact="docs/ai/85-adopted-quality/$slug_process/$slug_step-$JOB_TYPE-job-$JOB_ID.md"
     mkdir -p "$WT/$(dirname "$artifact")"

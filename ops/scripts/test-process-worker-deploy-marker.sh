@@ -7,6 +7,7 @@ AUTO_DEPLOY="$ROOT_DIR/ops/scripts/auto-deploy-main.sh"
 UNIT="$ROOT_DIR/ops/systemd/resonance-process-development-worker.service"
 ORCHESTRATOR="$ROOT_DIR/ops/scripts/run-project-auto-completion-orchestrator.sh"
 ORCHESTRATOR_UNIT="$ROOT_DIR/ops/systemd/resonance-project-auto-completion.service"
+DETERMINISTIC_RUNNER="$ROOT_DIR/ops/scripts/run-deterministic-development-job.sh"
 
 fail() {
   echo "[process-worker-deploy-marker-test] FAIL: $*" >&2
@@ -38,5 +39,10 @@ grep -Fq 'ExecStart=/usr/bin/bash /opt/resonance-data/control-plane/bin/run-proj
   || fail "systemd orchestrator does not use the persistent control-plane copy"
 grep -Fq '/opt/resonance-data/control-plane/bin/run-project-auto-completion-orchestrator.sh' "$AUTO_DEPLOY" \
   || fail "auto-deploy does not install the orchestrator script"
+frontend_branch="$(sed -n '/FRONTEND_USER|FRONTEND_ADMIN)/,/API|API_QUALITY|BACKEND|BACKEND_QUALITY)/p' "$DETERMINISTIC_RUNNER")"
+grep -Fq 'generate-full-stack-design-packages.sh' <<<"$frontend_branch" \
+  || fail "generated frontend cannot materialize its missing step package deterministically"
+grep -Fq 'exact frontend step package missing after generation' <<<"$frontend_branch" \
+  || fail "generated frontend does not fail closed after package generation"
 
 echo "[process-worker-deploy-marker-test] PASS"
