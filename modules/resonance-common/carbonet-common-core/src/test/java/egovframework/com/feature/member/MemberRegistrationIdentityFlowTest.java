@@ -114,6 +114,14 @@ class MemberRegistrationIdentityFlowTest {
         when(evidence.getOriginalFilename()).thenReturn("business-registration.pdf");
         when(evidence.getSize()).thenReturn(128L);
         when(evidence.getContentType()).thenReturn("application/pdf");
+        ResponseEntity<Map<String, Object>> missingRequired = controller.step4SubmitApi(
+                null, "member-test", "Password1!", "", "test-company", "INSTT-TEST",
+                "representative", "1234567890", "123456", "test-address", "detail-address", "environment",
+                "010", "1234", "5678", "member-test@example.com", List.of(evidence), httpSession);
+        assertEquals(400, missingRequired.getStatusCode().value());
+        assertEquals("REQUIRED_FIELDS_MISSING", missingRequired.getBody().get("errorCode"));
+        assertEquals(List.of("mberNm"), missingRequired.getBody().get("missingFields"));
+
         ResponseEntity<Map<String, Object>> submitted = controller.step4SubmitApi(
                 null, "member-test", "Password1!", "테스트 담당자", "테스트 기업", "INSTT-TEST",
                 "대표자", "1234567890", "123456", "테스트 주소", "상세 주소", "환경팀",

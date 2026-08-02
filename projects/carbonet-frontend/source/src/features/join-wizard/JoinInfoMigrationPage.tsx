@@ -24,6 +24,12 @@ import {
 } from "../../lib/api/joinSession";
 import type { CompanySearchPayload } from "../../lib/api/memberTypes";
 import { buildLocalizedPath, isEnglish, navigate } from "../../lib/navigation/runtime";
+import {
+  findMissingJoinStep4Fields,
+  focusFirstMissingJoinField,
+  requiredFieldLabel,
+  type JoinRequiredFieldKey
+} from "./joinRequiredFields";
 
 type JoinFormState = {
   mberId: string;
@@ -214,6 +220,7 @@ export function JoinInfoMigrationPage() {
   const [submitting, setSubmitting] = useState(false);
   const [idChecked, setIdChecked] = useState(false);
   const [emailChecked, setEmailChecked] = useState(false);
+  const [missingRequiredFields, setMissingRequiredFields] = useState<JoinRequiredFieldKey[]>([]);
   const [idMessage, setIdMessage] = useState("");
   const [emailMessage, setEmailMessage] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
@@ -286,6 +293,7 @@ export function JoinInfoMigrationPage() {
 
   function updateField<K extends keyof JoinFormState>(key: K, value: JoinFormState[K]) {
     setForm((current) => ({ ...current, [key]: value }));
+    setMissingRequiredFields((current) => current.filter((field) => field !== key));
     if (key === "mberId") {
       setIdChecked(false);
       setIdMessage("");
@@ -376,6 +384,7 @@ export function JoinInfoMigrationPage() {
       next[index] = { ...next[index], file: nextFile };
       return next;
     });
+    setMissingRequiredFields((current) => current.filter((field) => field !== "fileUploads"));
   }
 
   function addFileRow() {
@@ -411,6 +420,16 @@ export function JoinInfoMigrationPage() {
       insttId: form.insttId,
       uploadedFileCount: uploadRows.map((row) => row.file).filter(Boolean).length
     });
+    const uploadedFiles = uploadRows
+      .map((row) => row.file)
+      .filter((file): file is File => Boolean(file && file.size > 0));
+    const missingFields = findMissingJoinStep4Fields(form, uploadedFiles.length);
+    if (missingFields.length > 0) {
+      setMissingRequiredFields(missingFields);
+      focusFirstMissingJoinField(missingFields);
+      return;
+    }
+    setMissingRequiredFields([]);
     const passwordRegex = /^(?=.*[!@#$%^&*(),.?":{}|<>+=\-_`~]).{9,}$/;
     if (!idChecked) {
       window.alert(copy.needIdCheck);
@@ -428,14 +447,6 @@ export function JoinInfoMigrationPage() {
       window.alert(copy.pwMismatch);
       return;
     }
-    const uploadedFiles = uploadRows
-      .map((row) => row.file)
-      .filter((file): file is File => Boolean(file && file.size > 0));
-    if (uploadedFiles.length === 0) {
-      window.alert(copy.needFile);
-      return;
-    }
-
     setSubmitting(true);
     setActionError("");
     try {
@@ -586,7 +597,13 @@ export function JoinInfoMigrationPage() {
           {error ? <div className="mb-6 rounded-[var(--kr-gov-radius)] border border-[var(--kr-gov-error)]/30 bg-[var(--kr-gov-error)]/5 px-4 py-3 text-sm text-[var(--kr-gov-error)]">{error}</div> : null}
 
           <div className="bg-white border border-[var(--kr-gov-border-light)] rounded-lg shadow-sm overflow-hidden p-8 md:p-12">
-            <form className="space-y-10" onSubmit={(event) => { event.preventDefault(); void handleSubmit(); }}>
+            <form className="space-y-10" noValidate onSubmit={(event) => { event.preventDefault(); void handleSubmit(); }}>
+              {missingRequiredFields.length > 0 ? (
+                <div aria-live="assertive" className="rounded-[var(--kr-gov-radius)] border border-[var(--kr-gov-error)]/40 bg-[var(--kr-gov-error)]/5 px-4 py-3 text-sm text-[var(--kr-gov-error)]" role="alert">
+                  <strong>{en ? `${missingRequiredFields.length} required fields are missing.` : `필수 항목 ${missingRequiredFields.length}개를 입력해 주세요.`}</strong>
+                  <p className="mt-1">{missingRequiredFields.map((field) => requiredFieldLabel(field, en)).join(", ")}</p>
+                </div>
+              ) : null}
               <section data-help-id="join-step4-user">
                 <h3 className="section-title">
                   <span className="material-symbols-outlined text-[var(--kr-gov-blue)]">person</span>
@@ -617,13 +634,13 @@ export function JoinInfoMigrationPage() {
                   <div className="md:col-span-2 space-y-1">
                     <label className="form-label">{copy.phone} <span className="text-red-500">*</span></label>
                     <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2">
-                      <AppSelect className="min-w-0" onChange={(event) => updateField("moblphonNo1", event.target.value)} value={form.moblphonNo1}>
+                      <AppSelect className="min-w-0" id="phone-1" onChange={(event) => updateField("moblphonNo1", event.target.value)} value={form.moblphonNo1}>
                         <option>010</option><option>011</option><option>02</option>
                       </AppSelect>
                       <span className="flex items-center">-</span>
-                      <AppInput className="min-w-0" onChange={(event) => updateField("moblphonNo2", event.target.value)} required type="text" value={form.moblphonNo2} />
+                      <AppInput className="min-w-0" id="phone-2" onChange={(event) => updateField("moblphonNo2", event.target.value)} required type="text" value={form.moblphonNo2} />
                       <span className="flex items-center">-</span>
-                      <AppInput className="min-w-0" onChange={(event) => updateField("moblphonNo3", event.target.value)} required type="text" value={form.moblphonNo3} />
+                      <AppInput className="min-w-0" id="phone-3" onChange={(event) => updateField("moblphonNo3", event.target.value)} required type="text" value={form.moblphonNo3} />
                     </div>
                   </div>
                   <div className="md:col-span-2 space-y-1">

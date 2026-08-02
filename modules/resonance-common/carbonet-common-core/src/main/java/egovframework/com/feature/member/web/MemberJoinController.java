@@ -320,15 +320,35 @@ public class MemberJoinController {
             response.put("message", "본인확인 단계부터 다시 진행해 주세요.");
             return ResponseEntity.badRequest().body(response);
         }
-        if (!hasText(mberId) || !hasText(password) || !hasText(mberNm) || !hasText(insttNm) || !hasText(insttId)
-                || !hasText(representativeName) || !hasText(bizrno) || !hasText(zip) || !hasText(adres)
-                || !hasText(tel1) || !hasText(tel2) || !hasText(tel3) || !hasText(email)) {
+        Map<String, String> requiredFields = new java.util.LinkedHashMap<>();
+        requiredFields.put("mberId", mberId);
+        requiredFields.put("password", password);
+        requiredFields.put("mberNm", mberNm);
+        requiredFields.put("insttNm", insttNm);
+        requiredFields.put("insttId", insttId);
+        requiredFields.put("representativeName", representativeName);
+        requiredFields.put("bizrno", bizrno);
+        requiredFields.put("zip", zip);
+        requiredFields.put("adres", adres);
+        requiredFields.put("moblphonNo1", tel1);
+        requiredFields.put("moblphonNo2", tel2);
+        requiredFields.put("moblphonNo3", tel3);
+        requiredFields.put("applcntEmailAdres", email);
+        List<String> missingFields = requiredFields.entrySet().stream()
+                .filter(entry -> !hasText(entry.getValue()))
+                .map(Map.Entry::getKey)
+                .toList();
+        if (!missingFields.isEmpty()) {
             response.put("success", false);
+            response.put("errorCode", "REQUIRED_FIELDS_MISSING");
+            response.put("missingFields", missingFields);
             response.put("message", "필수 입력값을 모두 입력해 주세요.");
             return ResponseEntity.badRequest().body(response);
         }
         if (!hasValidEvidenceFiles(fileUploads)) {
             response.put("success", false);
+            response.put("errorCode", "REQUIRED_FIELDS_MISSING");
+            response.put("missingFields", List.of("fileUploads"));
             response.put("message", "증빙 파일을 1개 이상 업로드해 주세요.");
             return ResponseEntity.badRequest().body(response);
         }
