@@ -1,0 +1,969 @@
+{
+  "schemaVersion": "2.0.0",
+  "process": {
+    "code": "REQ_922B221066F1",
+    "name": "REQ_922B221066F1 요구분석 실행",
+    "domain": "DATA_GOVERNANCE",
+    "workType": "DATA_GOVERNANCE",
+    "goal": "업로드된 요구분석서를 실행 가능한 화면·API·데이터 계약으로 완성"
+  },
+  "step": {
+    "code": "REQ_922B221066F1_S001",
+    "version": 1,
+    "actor": {
+      "actorCode": "COMPANY_MANAGER",
+      "ownerActorCode": "COMPANY_MANAGER",
+      "tenantIsolation": true,
+      "projectIsolation": true,
+      "delegationChecked": true,
+      "segregationOfDuties": true
+    },
+    "business": {
+      "goal": "업로드된 요구분석서를 실행 가능한 화면·API·데이터 계약으로 완성",
+      "slaHours": 0,
+      "stepName": "기업 담당자는 배출량 프로젝트를 등록한다.",
+      "riskLevel": "MEDIUM",
+      "domainCode": "DATA_GOVERNANCE",
+      "processName": "REQ_922B221066F1 요구분석 실행",
+      "requirement": "기업 담당자는 배출량 프로젝트를 등록한다.",
+      "completionRule": "필수 필드, 권한, DB 재조회, 증적 검증을 통과한다.",
+      "regulationRefs": ""
+    },
+    "transition": {
+      "toState": "STEP_1_COMPLETED",
+      "stepType": "TASK",
+      "fromState": "DRAFT",
+      "stepOrder": 1,
+      "commandCode": "EXECUTE_REQ_922B221066F1_S001",
+      "auditRequired": true,
+      "completionRule": "필수 필드, 권한, DB 재조회, 증적 검증을 통과한다.",
+      "optimisticLock": true,
+      "parentStepCode": null,
+      "idempotencyRequired": true
+    },
+    "input": {
+      "fields": [
+        {
+          "type": "string",
+          "label": "프로젝트 ID",
+          "required": true,
+          "fieldCode": "projectId"
+        },
+        {
+          "type": "string",
+          "label": "수행 액터",
+          "required": true,
+          "fieldCode": "actorCode"
+        },
+        {
+          "type": "string",
+          "label": "업무 상태",
+          "required": true,
+          "fieldCode": "statusCode"
+        },
+        {
+          "type": "POST",
+          "label": "업무 명령",
+          "required": true,
+          "fieldCode": "commandCode"
+        },
+        {
+          "type": "object",
+          "label": "업무 입력 데이터",
+          "required": true,
+          "fieldCode": "payload"
+        },
+        {
+          "type": "integer",
+          "label": "동시성 버전",
+          "required": true,
+          "fieldCode": "rowVersion"
+        }
+      ]
+    },
+    "output": {
+      "toState": "STEP_1_COMPLETED",
+      "stepCode": "REQ_922B221066F1_S001",
+      "projectId": "string",
+      "rowVersion": "integer",
+      "statusCode": "STEP_1_COMPLETED",
+      "processCode": "REQ_922B221066F1"
+    },
+    "guide": {
+      "title": "기업 담당자는 배출량 프로젝트를 등록한다.",
+      "purpose": "기업 담당자는 배출량 프로젝트를 등록한다.",
+      "stepCode": "REQ_922B221066F1_S001",
+      "userPath": "/generated/ccus-platform/req_922b221066f1/s001",
+      "actorCode": "COMPANY_MANAGER",
+      "adminPath": "",
+      "stepOrder": 1,
+      "processCode": "REQ_922B221066F1",
+      "nextStepCode": "REQ_922B221066F1_S002",
+      "workTypeCode": "DATA_GOVERNANCE",
+      "entryCondition": "DRAFT",
+      "completionCondition": "필수 필드, 권한, DB 재조회, 증적 검증을 통과한다."
+    }
+  },
+  "frontend": {
+    "renderer": "COMMON_SDUI_RUNTIME",
+    "required": true,
+    "pages": [
+      {
+        "pageCode": "REQ_922B221066F1_REQ_922B221066F1_S001_USER",
+        "route": "/generated/ccus-platform/req_922b221066f1/s001",
+        "routeStatus": "DESIGN_ONLY",
+        "audience": "USER",
+        "screenType": "WORKSPACE",
+        "title": "기업 담당자는 배출량 프로젝트를 등록한다.",
+        "purpose": "기업 담당자는 배출량 프로젝트를 등록한다.",
+        "layout": "COMMON_KRDS_TASK_LAYOUT",
+        "theme": "COMMON_KRDS_GOV",
+        "sections": [
+          "TASK_CONTEXT",
+          "TASK_ACTIONS",
+          "TASK_CONTENT",
+          "TASK_EVIDENCE",
+          "TASK_HANDOFF"
+        ],
+        "fields": [
+          {
+            "route": "/generated/ccus-platform/req_922b221066f1/s001",
+            "audience": "USER",
+            "dataType": "STRING",
+            "editable": false,
+            "pageCode": "REQ_922B221066F1_REQ_922B221066F1_S001_USER",
+            "required": true,
+            "fieldCode": "tenantId",
+            "fieldName": "테넌트",
+            "fieldGroup": "COMMON",
+            "fieldOrder": 1,
+            "validation": {},
+            "apiProperty": "tenantId",
+            "controlType": "HIDDEN",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "CONTEXT",
+            "permissionCode": "COMPANY_MANAGER:USER",
+            "evidenceRequired": false,
+            "code": "tenantId"
+          },
+          {
+            "route": "/generated/ccus-platform/req_922b221066f1/s001",
+            "audience": "USER",
+            "dataType": "STRING",
+            "editable": true,
+            "pageCode": "REQ_922B221066F1_REQ_922B221066F1_S001_USER",
+            "required": true,
+            "fieldCode": "projectId",
+            "fieldName": "프로젝트",
+            "fieldGroup": "COMMON",
+            "fieldOrder": 2,
+            "validation": {},
+            "apiProperty": "projectId",
+            "controlType": "PROJECT_SELECTOR",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "CONTEXT",
+            "permissionCode": "COMPANY_MANAGER:USER",
+            "evidenceRequired": false,
+            "code": "projectId"
+          },
+          {
+            "route": "/generated/ccus-platform/req_922b221066f1/s001",
+            "audience": "USER",
+            "dataType": "STRING",
+            "editable": false,
+            "pageCode": "REQ_922B221066F1_REQ_922B221066F1_S001_USER",
+            "required": true,
+            "fieldCode": "processCode",
+            "fieldName": "프로세스",
+            "fieldGroup": "COMMON",
+            "fieldOrder": 3,
+            "validation": {},
+            "apiProperty": "processCode",
+            "controlType": "HIDDEN",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "CONTEXT",
+            "permissionCode": "COMPANY_MANAGER:USER",
+            "evidenceRequired": false,
+            "code": "processCode"
+          },
+          {
+            "route": "/generated/ccus-platform/req_922b221066f1/s001",
+            "audience": "USER",
+            "dataType": "STRING",
+            "editable": false,
+            "pageCode": "REQ_922B221066F1_REQ_922B221066F1_S001_USER",
+            "required": true,
+            "fieldCode": "stepCode",
+            "fieldName": "업무 단계",
+            "fieldGroup": "COMMON",
+            "fieldOrder": 4,
+            "validation": {},
+            "apiProperty": "stepCode",
+            "controlType": "HIDDEN",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "CONTEXT",
+            "permissionCode": "COMPANY_MANAGER:USER",
+            "evidenceRequired": false,
+            "code": "stepCode"
+          },
+          {
+            "route": "/generated/ccus-platform/req_922b221066f1/s001",
+            "audience": "USER",
+            "dataType": "STRING",
+            "editable": true,
+            "pageCode": "REQ_922B221066F1_REQ_922B221066F1_S001_USER",
+            "required": true,
+            "fieldCode": "actorCode",
+            "fieldName": "담당 액터",
+            "fieldGroup": "COMMON",
+            "fieldOrder": 5,
+            "validation": {},
+            "apiProperty": "actorCode",
+            "controlType": "ACTOR_SELECTOR",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "CONTEXT",
+            "permissionCode": "COMPANY_MANAGER:USER",
+            "evidenceRequired": false,
+            "code": "actorCode"
+          },
+          {
+            "route": "/generated/ccus-platform/req_922b221066f1/s001",
+            "audience": "USER",
+            "dataType": "STRING",
+            "editable": false,
+            "pageCode": "REQ_922B221066F1_REQ_922B221066F1_S001_USER",
+            "required": false,
+            "fieldCode": "statusCode",
+            "fieldName": "처리 상태",
+            "fieldGroup": "COMMON",
+            "fieldOrder": 6,
+            "validation": {},
+            "apiProperty": "statusCode",
+            "controlType": "STATUS",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "COMPANY_MANAGER:USER",
+            "evidenceRequired": false,
+            "code": "statusCode"
+          },
+          {
+            "route": "/generated/ccus-platform/req_922b221066f1/s001",
+            "audience": "USER",
+            "dataType": "INTEGER",
+            "editable": false,
+            "pageCode": "REQ_922B221066F1_REQ_922B221066F1_S001_USER",
+            "required": false,
+            "fieldCode": "rowVersion",
+            "fieldName": "데이터 버전",
+            "fieldGroup": "COMMON",
+            "fieldOrder": 7,
+            "validation": {},
+            "apiProperty": "rowVersion",
+            "controlType": "HIDDEN",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "COMPANY_MANAGER:USER",
+            "evidenceRequired": false,
+            "code": "rowVersion"
+          },
+          {
+            "route": "/generated/ccus-platform/req_922b221066f1/s001",
+            "audience": "USER",
+            "dataType": "JSON",
+            "editable": true,
+            "pageCode": "REQ_922B221066F1_REQ_922B221066F1_S001_USER",
+            "required": false,
+            "fieldCode": "businessData",
+            "fieldName": "업무 입력",
+            "fieldGroup": "COMMON",
+            "fieldOrder": 8,
+            "validation": {},
+            "apiProperty": "businessData",
+            "controlType": "DYNAMIC_FORM",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "COMPANY_MANAGER:USER",
+            "evidenceRequired": true,
+            "code": "businessData"
+          },
+          {
+            "route": "/generated/ccus-platform/req_922b221066f1/s001",
+            "audience": "USER",
+            "dataType": "FILE_LIST",
+            "editable": true,
+            "pageCode": "REQ_922B221066F1_REQ_922B221066F1_S001_USER",
+            "required": false,
+            "fieldCode": "evidenceFiles",
+            "fieldName": "증적 파일",
+            "fieldGroup": "COMMON",
+            "fieldOrder": 9,
+            "validation": {},
+            "apiProperty": "evidenceFiles",
+            "controlType": "FILE_UPLOAD",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "COMPANY_MANAGER:USER",
+            "evidenceRequired": true,
+            "code": "evidenceFiles"
+          },
+          {
+            "route": "/generated/ccus-platform/req_922b221066f1/s001",
+            "audience": "USER",
+            "dataType": "JSON",
+            "editable": false,
+            "pageCode": "REQ_922B221066F1_REQ_922B221066F1_S001_USER",
+            "required": false,
+            "fieldCode": "auditHistory",
+            "fieldName": "변경 이력",
+            "fieldGroup": "COMMON",
+            "fieldOrder": 10,
+            "validation": {},
+            "apiProperty": "auditHistory",
+            "controlType": "AUDIT_TIMELINE",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "COMPANY_MANAGER:USER",
+            "evidenceRequired": true,
+            "code": "auditHistory"
+          }
+        ],
+        "commands": [
+          {
+            "actorCode": "COMPANY_MANAGER",
+            "entryState": "DRAFT",
+            "commandCode": "EXECUTE_REQ_922B221066F1_S001",
+            "resultState": "STEP_1_COMPLETED",
+            "auditRequired": true,
+            "validationRequired": true,
+            "serverAuthorization": true
+          }
+        ],
+        "states": {
+          "retry": "idempotent-only",
+          "states": [
+            "loading",
+            "empty",
+            "validation-error",
+            "forbidden",
+            "conflict",
+            "server-error",
+            "recovery"
+          ]
+        },
+        "responsive": {
+          "mobile": "single-column",
+          "tablet": "adaptive-two-column",
+          "desktop": "task-grid",
+          "overflow": "wrap-or-scroll"
+        },
+        "accessibility": {
+          "labels": true,
+          "keyboard": true,
+          "standard": "WCAG 2.1 AA",
+          "focusManagement": true
+        }
+      }
+    ]
+  },
+  "backend": {
+    "runtime": "COMMON_PROCESS_COMMAND_RUNTIME",
+    "apis": [
+      {
+        "actorGuard": true,
+        "rowVersion": true,
+        "tenantGuard": true,
+        "projectGuard": true,
+        "errorContract": [
+          "VALIDATION_ERROR",
+          "FORBIDDEN",
+          "CONFLICT",
+          "DEPENDENCY_BLOCKED",
+          "SERVER_ERROR"
+        ],
+        "transactional": true,
+        "idempotencyKey": true,
+        "declaredContract": "{\"method\":\"POST\",\"path\":\"/admin/api/system/actor-process/executions/{executionId}/commands\"}"
+      }
+    ],
+    "commands": [
+      {
+        "actorCode": "COMPANY_MANAGER",
+        "entryState": "DRAFT",
+        "commandCode": "EXECUTE_REQ_922B221066F1_S001",
+        "resultState": "STEP_1_COMPLETED",
+        "auditRequired": true,
+        "validationRequired": true,
+        "serverAuthorization": true
+      }
+    ],
+    "authorization": {
+      "actorCode": "COMPANY_MANAGER",
+      "ownerActorCode": "COMPANY_MANAGER",
+      "tenantIsolation": true,
+      "projectIsolation": true,
+      "delegationChecked": true,
+      "segregationOfDuties": true
+    },
+    "handoffs": [
+      {
+        "failure": {
+          "onMissing": "BLOCK_AND_NOTIFY",
+          "onConflict": "RELOAD_AND_RETRY",
+          "onUnauthorized": "DENY_AND_AUDIT"
+        },
+        "payload": {
+          "source": "{\"toState\": \"STEP_1_COMPLETED\", \"stepCode\": \"REQ_922B221066F1_S001\", \"projectId\": \"string\", \"rowVersion\": \"integer\", \"statusCode\": \"STEP_1_COMPLETED\", \"processCode\": \"REQ_922B221066F1\"}",
+          "targetStep": "REQ_922B221066F1_S002"
+        },
+        "integrity": {
+          "auditRequired": true,
+          "versionRequired": true,
+          "checksumRequired": true
+        },
+        "toStepCode": "REQ_922B221066F1_S002",
+        "contextKeys": [
+          "tenantId",
+          "projectId",
+          "processCode",
+          "stepCode",
+          "actorCode",
+          "rowVersion"
+        ],
+        "handoffType": "STEP",
+        "authorization": {
+          "fromActor": "COMPANY_MANAGER",
+          "tenantIsolation": true,
+          "projectIsolation": true
+        },
+        "toProcessCode": "REQ_922B221066F1"
+      }
+    ]
+  },
+  "database": {
+    "mappings": [
+      {
+        "fields": [
+          {
+            "required": true,
+            "fieldCode": "tenantId",
+            "apiProperty": "tenantId",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "CONTEXT"
+          },
+          {
+            "required": true,
+            "fieldCode": "projectId",
+            "apiProperty": "projectId",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "CONTEXT"
+          },
+          {
+            "required": true,
+            "fieldCode": "processCode",
+            "apiProperty": "processCode",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "CONTEXT"
+          },
+          {
+            "required": true,
+            "fieldCode": "stepCode",
+            "apiProperty": "stepCode",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "CONTEXT"
+          },
+          {
+            "required": true,
+            "fieldCode": "actorCode",
+            "apiProperty": "actorCode",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "CONTEXT"
+          },
+          {
+            "required": false,
+            "fieldCode": "statusCode",
+            "apiProperty": "statusCode",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": false,
+            "fieldCode": "rowVersion",
+            "apiProperty": "rowVersion",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": false,
+            "fieldCode": "businessData",
+            "apiProperty": "businessData",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": false,
+            "fieldCode": "evidenceFiles",
+            "apiProperty": "evidenceFiles",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": false,
+            "fieldCode": "auditHistory",
+            "apiProperty": "auditHistory",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          }
+        ],
+        "audience": "USER",
+        "pageCode": "REQ_922B221066F1_REQ_922B221066F1_S001_USER",
+        "primaryEntity": "framework_business_record"
+      }
+    ],
+    "transactional": true,
+    "schemaSetVersion": 5,
+    "migrationRequired": true,
+    "primaryEntities": [
+      "framework_business_record"
+    ],
+    "historyRequired": true,
+    "indexesRequired": true,
+    "foreignKeysRequired": true
+  },
+  "tests": [
+    {
+      "name": "권한 없는 액션 차단",
+      "type": "AUTHORITY",
+      "steps": [
+        {
+          "order": 1,
+          "command": "EXECUTE_REQ_922B221066F1_S001",
+          "toState": "STEP_1_COMPLETED",
+          "stepCode": "REQ_922B221066F1_S001",
+          "actorCode": "COMPANY_MANAGER",
+          "fromState": "DRAFT"
+        },
+        {
+          "order": 2,
+          "command": "EXECUTE_REQ_922B221066F1_S002",
+          "toState": "STEP_2_COMPLETED",
+          "stepCode": "REQ_922B221066F1_S002",
+          "actorCode": "COMPANY_MANAGER",
+          "fromState": "STEP_1_COMPLETED"
+        },
+        {
+          "order": 3,
+          "command": "EXECUTE_REQ_922B221066F1_S003",
+          "toState": "STEP_3_COMPLETED",
+          "stepCode": "REQ_922B221066F1_S003",
+          "actorCode": "VERIFIER",
+          "fromState": "STEP_2_COMPLETED"
+        },
+        {
+          "order": 4,
+          "command": "EXECUTE_REQ_922B221066F1_S004",
+          "toState": "STEP_4_COMPLETED",
+          "stepCode": "REQ_922B221066F1_S004",
+          "actorCode": "COMPANY_MANAGER",
+          "fromState": "STEP_3_COMPLETED"
+        },
+        {
+          "order": 5,
+          "command": "EXECUTE_REQ_922B221066F1_S005",
+          "toState": "STEP_5_COMPLETED",
+          "stepCode": "REQ_922B221066F1_S005",
+          "actorCode": "PLATFORM_ADMIN",
+          "fromState": "STEP_4_COMPLETED"
+        },
+        {
+          "order": 6,
+          "command": "EXECUTE_REQ_922B221066F1_S006",
+          "toState": "STEP_6_COMPLETED",
+          "stepCode": "REQ_922B221066F1_S006",
+          "actorCode": "COMPANY_MANAGER",
+          "fromState": "STEP_5_COMPLETED"
+        },
+        {
+          "order": 7,
+          "command": "EXECUTE_REQ_922B221066F1_S007",
+          "toState": "COMPLETED",
+          "stepCode": "REQ_922B221066F1_S007",
+          "actorCode": "BUSINESS_USER",
+          "fromState": "STEP_6_COMPLETED"
+        }
+      ],
+      "status": "APPROVED",
+      "caseCode": "REQ_922B221066F1_AUTH",
+      "assertions": [
+        "every step actor exists",
+        "unauthorized commands are denied",
+        "denials are audit logged"
+      ],
+      "preconditions": "A tenant, project, assigned actor, current process version, and isolated test data are available for deterministic contract validation."
+    },
+    {
+      "name": "필수 데이터 누락과 보완",
+      "type": "EXCEPTION",
+      "steps": [
+        {
+          "order": 1,
+          "command": "EXECUTE_REQ_922B221066F1_S001",
+          "toState": "STEP_1_COMPLETED",
+          "stepCode": "REQ_922B221066F1_S001",
+          "actorCode": "COMPANY_MANAGER",
+          "fromState": "DRAFT"
+        },
+        {
+          "order": 2,
+          "command": "EXECUTE_REQ_922B221066F1_S002",
+          "toState": "STEP_2_COMPLETED",
+          "stepCode": "REQ_922B221066F1_S002",
+          "actorCode": "COMPANY_MANAGER",
+          "fromState": "STEP_1_COMPLETED"
+        },
+        {
+          "order": 3,
+          "command": "EXECUTE_REQ_922B221066F1_S003",
+          "toState": "STEP_3_COMPLETED",
+          "stepCode": "REQ_922B221066F1_S003",
+          "actorCode": "VERIFIER",
+          "fromState": "STEP_2_COMPLETED"
+        },
+        {
+          "order": 4,
+          "command": "EXECUTE_REQ_922B221066F1_S004",
+          "toState": "STEP_4_COMPLETED",
+          "stepCode": "REQ_922B221066F1_S004",
+          "actorCode": "COMPANY_MANAGER",
+          "fromState": "STEP_3_COMPLETED"
+        },
+        {
+          "order": 5,
+          "command": "EXECUTE_REQ_922B221066F1_S005",
+          "toState": "STEP_5_COMPLETED",
+          "stepCode": "REQ_922B221066F1_S005",
+          "actorCode": "PLATFORM_ADMIN",
+          "fromState": "STEP_4_COMPLETED"
+        },
+        {
+          "order": 6,
+          "command": "EXECUTE_REQ_922B221066F1_S006",
+          "toState": "STEP_6_COMPLETED",
+          "stepCode": "REQ_922B221066F1_S006",
+          "actorCode": "COMPANY_MANAGER",
+          "fromState": "STEP_5_COMPLETED"
+        },
+        {
+          "order": 7,
+          "command": "EXECUTE_REQ_922B221066F1_S007",
+          "toState": "COMPLETED",
+          "stepCode": "REQ_922B221066F1_S007",
+          "actorCode": "BUSINESS_USER",
+          "fromState": "STEP_6_COMPLETED"
+        }
+      ],
+      "status": "APPROVED",
+      "caseCode": "REQ_922B221066F1_EXCEPTION",
+      "assertions": [
+        "required input contracts exist",
+        "validation failure preserves prior state",
+        "correction path retains evidence"
+      ],
+      "preconditions": "A tenant, project, assigned actor, current process version, and isolated test data are available for deterministic contract validation."
+    },
+    {
+      "name": "정상 완료",
+      "type": "HAPPY_PATH",
+      "steps": [
+        {
+          "order": 1,
+          "command": "EXECUTE_REQ_922B221066F1_S001",
+          "toState": "STEP_1_COMPLETED",
+          "stepCode": "REQ_922B221066F1_S001",
+          "actorCode": "COMPANY_MANAGER",
+          "fromState": "DRAFT"
+        },
+        {
+          "order": 2,
+          "command": "EXECUTE_REQ_922B221066F1_S002",
+          "toState": "STEP_2_COMPLETED",
+          "stepCode": "REQ_922B221066F1_S002",
+          "actorCode": "COMPANY_MANAGER",
+          "fromState": "STEP_1_COMPLETED"
+        },
+        {
+          "order": 3,
+          "command": "EXECUTE_REQ_922B221066F1_S003",
+          "toState": "STEP_3_COMPLETED",
+          "stepCode": "REQ_922B221066F1_S003",
+          "actorCode": "VERIFIER",
+          "fromState": "STEP_2_COMPLETED"
+        },
+        {
+          "order": 4,
+          "command": "EXECUTE_REQ_922B221066F1_S004",
+          "toState": "STEP_4_COMPLETED",
+          "stepCode": "REQ_922B221066F1_S004",
+          "actorCode": "COMPANY_MANAGER",
+          "fromState": "STEP_3_COMPLETED"
+        },
+        {
+          "order": 5,
+          "command": "EXECUTE_REQ_922B221066F1_S005",
+          "toState": "STEP_5_COMPLETED",
+          "stepCode": "REQ_922B221066F1_S005",
+          "actorCode": "PLATFORM_ADMIN",
+          "fromState": "STEP_4_COMPLETED"
+        },
+        {
+          "order": 6,
+          "command": "EXECUTE_REQ_922B221066F1_S006",
+          "toState": "STEP_6_COMPLETED",
+          "stepCode": "REQ_922B221066F1_S006",
+          "actorCode": "COMPANY_MANAGER",
+          "fromState": "STEP_5_COMPLETED"
+        },
+        {
+          "order": 7,
+          "command": "EXECUTE_REQ_922B221066F1_S007",
+          "toState": "COMPLETED",
+          "stepCode": "REQ_922B221066F1_S007",
+          "actorCode": "BUSINESS_USER",
+          "fromState": "STEP_6_COMPLETED"
+        }
+      ],
+      "status": "APPROVED",
+      "caseCode": "REQ_922B221066F1_HAPPY",
+      "assertions": [
+        "all ordered transitions are reachable",
+        "every command has an actor",
+        "terminal completion state exists"
+      ],
+      "preconditions": "A tenant, project, assigned actor, current process version, and isolated test data are available for deterministic contract validation."
+    },
+    {
+      "name": "테넌트·프로젝트 데이터 격리",
+      "type": "ISOLATION",
+      "steps": [
+        {
+          "order": 1,
+          "command": "EXECUTE_REQ_922B221066F1_S001",
+          "toState": "STEP_1_COMPLETED",
+          "stepCode": "REQ_922B221066F1_S001",
+          "actorCode": "COMPANY_MANAGER",
+          "fromState": "DRAFT"
+        },
+        {
+          "order": 2,
+          "command": "EXECUTE_REQ_922B221066F1_S002",
+          "toState": "STEP_2_COMPLETED",
+          "stepCode": "REQ_922B221066F1_S002",
+          "actorCode": "COMPANY_MANAGER",
+          "fromState": "STEP_1_COMPLETED"
+        },
+        {
+          "order": 3,
+          "command": "EXECUTE_REQ_922B221066F1_S003",
+          "toState": "STEP_3_COMPLETED",
+          "stepCode": "REQ_922B221066F1_S003",
+          "actorCode": "VERIFIER",
+          "fromState": "STEP_2_COMPLETED"
+        },
+        {
+          "order": 4,
+          "command": "EXECUTE_REQ_922B221066F1_S004",
+          "toState": "STEP_4_COMPLETED",
+          "stepCode": "REQ_922B221066F1_S004",
+          "actorCode": "COMPANY_MANAGER",
+          "fromState": "STEP_3_COMPLETED"
+        },
+        {
+          "order": 5,
+          "command": "EXECUTE_REQ_922B221066F1_S005",
+          "toState": "STEP_5_COMPLETED",
+          "stepCode": "REQ_922B221066F1_S005",
+          "actorCode": "PLATFORM_ADMIN",
+          "fromState": "STEP_4_COMPLETED"
+        },
+        {
+          "order": 6,
+          "command": "EXECUTE_REQ_922B221066F1_S006",
+          "toState": "STEP_6_COMPLETED",
+          "stepCode": "REQ_922B221066F1_S006",
+          "actorCode": "COMPANY_MANAGER",
+          "fromState": "STEP_5_COMPLETED"
+        },
+        {
+          "order": 7,
+          "command": "EXECUTE_REQ_922B221066F1_S007",
+          "toState": "COMPLETED",
+          "stepCode": "REQ_922B221066F1_S007",
+          "actorCode": "BUSINESS_USER",
+          "fromState": "STEP_6_COMPLETED"
+        }
+      ],
+      "status": "APPROVED",
+      "caseCode": "REQ_922B221066F1_ISOLATION",
+      "assertions": [
+        "tenant context is required",
+        "project context is required",
+        "cross-context access is denied"
+      ],
+      "preconditions": "A tenant, project, assigned actor, current process version, and isolated test data are available for deterministic contract validation."
+    },
+    {
+      "name": "실패 후 재처리·복구",
+      "type": "RECOVERY",
+      "steps": [
+        {
+          "order": 1,
+          "command": "EXECUTE_REQ_922B221066F1_S001",
+          "toState": "STEP_1_COMPLETED",
+          "stepCode": "REQ_922B221066F1_S001",
+          "actorCode": "COMPANY_MANAGER",
+          "fromState": "DRAFT"
+        },
+        {
+          "order": 2,
+          "command": "EXECUTE_REQ_922B221066F1_S002",
+          "toState": "STEP_2_COMPLETED",
+          "stepCode": "REQ_922B221066F1_S002",
+          "actorCode": "COMPANY_MANAGER",
+          "fromState": "STEP_1_COMPLETED"
+        },
+        {
+          "order": 3,
+          "command": "EXECUTE_REQ_922B221066F1_S003",
+          "toState": "STEP_3_COMPLETED",
+          "stepCode": "REQ_922B221066F1_S003",
+          "actorCode": "VERIFIER",
+          "fromState": "STEP_2_COMPLETED"
+        },
+        {
+          "order": 4,
+          "command": "EXECUTE_REQ_922B221066F1_S004",
+          "toState": "STEP_4_COMPLETED",
+          "stepCode": "REQ_922B221066F1_S004",
+          "actorCode": "COMPANY_MANAGER",
+          "fromState": "STEP_3_COMPLETED"
+        },
+        {
+          "order": 5,
+          "command": "EXECUTE_REQ_922B221066F1_S005",
+          "toState": "STEP_5_COMPLETED",
+          "stepCode": "REQ_922B221066F1_S005",
+          "actorCode": "PLATFORM_ADMIN",
+          "fromState": "STEP_4_COMPLETED"
+        },
+        {
+          "order": 6,
+          "command": "EXECUTE_REQ_922B221066F1_S006",
+          "toState": "STEP_6_COMPLETED",
+          "stepCode": "REQ_922B221066F1_S006",
+          "actorCode": "COMPANY_MANAGER",
+          "fromState": "STEP_5_COMPLETED"
+        },
+        {
+          "order": 7,
+          "command": "EXECUTE_REQ_922B221066F1_S007",
+          "toState": "COMPLETED",
+          "stepCode": "REQ_922B221066F1_S007",
+          "actorCode": "BUSINESS_USER",
+          "fromState": "STEP_6_COMPLETED"
+        }
+      ],
+      "status": "APPROVED",
+      "caseCode": "REQ_922B221066F1_RECOVERY",
+      "assertions": [
+        "every step has rollback semantics",
+        "commands are idempotent",
+        "retry preserves audit history"
+      ],
+      "preconditions": "A tenant, project, assigned actor, current process version, and isolated test data are available for deterministic contract validation."
+    }
+  ],
+  "testExecution": {
+    "runner": "FAST_PROCESS_CONTRACT_RUNNER",
+    "requiredLanes": [
+      "CONTRACT",
+      "AUTHORITY",
+      "ISOLATION",
+      "RECOVERY",
+      "LIVE_SMOKE"
+    ],
+    "requiredScenarioTypes": [
+      "HAPPY_PATH",
+      "EXCEPTION",
+      "AUTHORITY",
+      "ISOLATION",
+      "RECOVERY"
+    ],
+    "cacheKeySource": "packageHash",
+    "parallelSafe": true,
+    "targetSeconds": 5,
+    "liveSmokeRequiredForVerified": true,
+    "evidenceRequired": true
+  },
+  "nonfunctional": {
+    "recovery": {
+      "retry": "idempotent-only",
+      "resumeFromLastVerifiedState": true
+    },
+    "security": {
+      "audit": true,
+      "tenantIsolation": true,
+      "projectIsolation": true,
+      "serverAuthorization": true
+    },
+    "responsive": {
+      "mobile": "single-column",
+      "tablet": "adaptive-two-column",
+      "desktop": "task-optimized",
+      "noTextOverflow": true
+    },
+    "performance": {
+      "targetP95Ms": 500,
+      "paginationRequired": true,
+      "searchIndexRequired": true
+    },
+    "accessibility": {
+      "focus": true,
+      "keyboard": true,
+      "standard": "WCAG 2.1 AA",
+      "errorSummary": true
+    }
+  },
+  "sourceHash": "bedaae1164d51025f9d97477b9f206e46a2db1b2b14ba8d0652e2178fb32675e",
+  "approvalStatus": "APPROVED",
+  "generationStatus": "GENERATED",
+  "packageHash": "14145dd615589debb6af0fd16cf9d661a90307175ea2227a80b77e736f46e641"
+}
