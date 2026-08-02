@@ -7,5 +7,6 @@ SERVICE="$ROOT/modules/resonance-common/carbonet-common-core/src/main/java/egovf
 grep -Fq 'framework_compile_process_execution_specs(requested_process varchar)' "$MIGRATION"
 grep -Fq "framework_refresh_step_schema_set(requested_process,step_row.step_code" "$MIGRATION"
 grep -Fq "ON CONFLICT(process_code,step_code) DO NOTHING" "$MIGRATION"
+grep -Fq "select framework_generate_professional_design_graph(?,?)::text" "$SERVICE"
 grep -Fq "select framework_compile_process_execution_specs(?)" "$SERVICE"
 echo '[new-process-spec-compilation] PASS'
