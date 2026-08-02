@@ -1,0 +1,3335 @@
+{
+  "schemaVersion": "2.0.0",
+  "process": {
+    "code": "EMISSION_PROJECT",
+    "name": "탄소배출 프로젝트 수행",
+    "domain": "EMISSION",
+    "workType": "EMISSION",
+    "goal": "프로젝트 생성부터 자료수집, 산정, 검증, 승인, 보고서 발급까지 감사 가능한 흐름으로 완료한다."
+  },
+  "step": {
+    "code": "EMISSION_PROJECT_REPORT",
+    "version": 1,
+    "actor": {
+      "actorCode": "COMPANY_MANAGER",
+      "ownerActorCode": "COMPANY_MANAGER",
+      "tenantIsolation": true,
+      "projectIsolation": true,
+      "delegationChecked": true,
+      "segregationOfDuties": true
+    },
+    "business": {
+      "goal": "프로젝트 생성부터 자료수집, 산정, 검증, 승인, 보고서 발급까지 감사 가능한 흐름으로 완료한다.",
+      "slaHours": 720,
+      "stepName": "보고서 생성·제출·진위 확인",
+      "riskLevel": "MEDIUM",
+      "domainCode": "EMISSION",
+      "processName": "탄소배출 프로젝트 수행",
+      "requirement": "승인된 결과로 검증 가능한 보고서를 생성·제출·발급한다.",
+      "completionRule": "확정 데이터로 보고서가 발급되고 정규화 데이터셋·OCR·시각 지문으로 원본 진위 검증을 통과한다.",
+      "regulationRefs": "조직 적용 방법론·내부통제 기준·관련 법규"
+    },
+    "transition": {
+      "toState": "COMPLETED",
+      "stepType": "TASK",
+      "fromState": "APPROVED",
+      "stepOrder": 7,
+      "commandCode": "PUBLISH_REPORT",
+      "auditRequired": true,
+      "completionRule": "확정 데이터로 보고서가 발급되고 정규화 데이터셋·OCR·시각 지문으로 원본 진위 검증을 통과한다.",
+      "optimisticLock": true,
+      "parentStepCode": null,
+      "idempotencyRequired": true
+    },
+    "input": {
+      "stepCode": "EMISSION_PROJECT_REPORT",
+      "fromState": "APPROVED",
+      "processCode": "EMISSION_PROJECT"
+    },
+    "output": {
+      "toState": "COMPLETED",
+      "completionRule": "확정 결과 기반 보고서가 생성·제출되고 다운로드 및 진위검증 가능함"
+    },
+    "guide": {
+      "title": "보고서 생성·제출·진위 확인",
+      "purpose": "승인된 결과로 검증 가능한 보고서를 생성·제출·발급한다.",
+      "stepCode": "EMISSION_PROJECT_REPORT",
+      "userPath": "/emission/report_submit",
+      "actorCode": "COMPANY_MANAGER",
+      "adminPath": "/admin/emission/survey-report",
+      "stepOrder": 7,
+      "processCode": "EMISSION_PROJECT",
+      "nextStepCode": null,
+      "workTypeCode": "EMISSION",
+      "entryCondition": "APPROVED",
+      "completionCondition": "확정 데이터로 보고서가 발급되고 정규화 데이터셋·OCR·시각 지문으로 원본 진위 검증을 통과한다."
+    }
+  },
+  "frontend": {
+    "renderer": "COMMON_SDUI_RUNTIME",
+    "required": true,
+    "pages": [
+      {
+        "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_REPORT_ADMIN",
+        "route": "/admin/emission/survey-report",
+        "routeStatus": "IMPLEMENTED",
+        "audience": "ADMIN",
+        "screenType": "REPORT_DOCUMENT",
+        "title": "보고서 생성·제출·진위 확인 관리",
+        "purpose": "승인된 결과로 검증 가능한 보고서를 생성·제출·발급한다.",
+        "layout": "COMMON_KRDS_TASK_LAYOUT",
+        "theme": "COMMON_KRDS_GOV",
+        "sections": [
+          "TASK_CONTEXT",
+          "TASK_ACTIONS",
+          "TASK_CONTENT",
+          "TASK_EVIDENCE",
+          "TASK_HANDOFF"
+        ],
+        "fields": [
+          {
+            "route": "/admin/emission/survey-report",
+            "audience": "ADMIN",
+            "dataType": "STRING",
+            "editable": false,
+            "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_REPORT_ADMIN",
+            "required": true,
+            "fieldCode": "tenantId",
+            "fieldName": "테넌트",
+            "fieldGroup": "공통",
+            "fieldOrder": 10,
+            "validation": {
+              "minLength": 1
+            },
+            "apiProperty": "tenantId",
+            "controlType": "HIDDEN",
+            "sourceTable": "emission_project_registry",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "tenant_id",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "COMPANY_MANAGER:ADMIN",
+            "evidenceRequired": false,
+            "code": "tenantId"
+          },
+          {
+            "route": "/admin/emission/survey-report",
+            "audience": "ADMIN",
+            "dataType": "STRING",
+            "editable": true,
+            "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_REPORT_ADMIN",
+            "required": true,
+            "fieldCode": "projectId",
+            "fieldName": "프로젝트",
+            "fieldGroup": "공통",
+            "fieldOrder": 20,
+            "validation": {
+              "minLength": 1
+            },
+            "apiProperty": "projectId",
+            "controlType": "PROJECT_SELECT",
+            "sourceTable": "emission_project_registry",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "project_id",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "COMPANY_MANAGER:ADMIN",
+            "evidenceRequired": false,
+            "code": "projectId"
+          },
+          {
+            "route": "/admin/emission/survey-report",
+            "audience": "ADMIN",
+            "dataType": "CODE",
+            "editable": false,
+            "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_REPORT_ADMIN",
+            "required": true,
+            "fieldCode": "processCode",
+            "fieldName": "프로세스 코드",
+            "fieldGroup": "공통",
+            "fieldOrder": 30,
+            "validation": {
+              "source": "SERVER_CONTEXT",
+              "required": true,
+              "immutable": true
+            },
+            "apiProperty": "processCode",
+            "controlType": "HIDDEN",
+            "sourceTable": "framework_process_definition",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "process_code",
+            "mappingStatus": "CONTEXT",
+            "permissionCode": "COMPANY_MANAGER:ADMIN",
+            "evidenceRequired": false,
+            "code": "processCode"
+          },
+          {
+            "route": "/admin/emission/survey-report",
+            "audience": "ADMIN",
+            "dataType": "CODE",
+            "editable": false,
+            "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_REPORT_ADMIN",
+            "required": true,
+            "fieldCode": "stepCode",
+            "fieldName": "단계 코드",
+            "fieldGroup": "공통",
+            "fieldOrder": 40,
+            "validation": {
+              "source": "SERVER_CONTEXT",
+              "required": true,
+              "immutable": true
+            },
+            "apiProperty": "stepCode",
+            "controlType": "HIDDEN",
+            "sourceTable": "framework_process_step",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "step_code",
+            "mappingStatus": "CONTEXT",
+            "permissionCode": "COMPANY_MANAGER:ADMIN",
+            "evidenceRequired": false,
+            "code": "stepCode"
+          },
+          {
+            "route": "/admin/emission/survey-report",
+            "audience": "ADMIN",
+            "dataType": "UUID",
+            "editable": false,
+            "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_REPORT_ADMIN",
+            "required": false,
+            "fieldCode": "recordId",
+            "fieldName": "업무 레코드 ID",
+            "fieldGroup": "공통",
+            "fieldOrder": 50,
+            "validation": {
+              "source": "SERVER_CONTEXT",
+              "required": false,
+              "immutable": true
+            },
+            "apiProperty": "recordId",
+            "controlType": "HIDDEN",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "COMPANY_MANAGER:ADMIN",
+            "evidenceRequired": false,
+            "code": "recordId"
+          },
+          {
+            "route": "/admin/emission/survey-report",
+            "audience": "ADMIN",
+            "dataType": "CODE",
+            "editable": false,
+            "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_REPORT_ADMIN",
+            "required": true,
+            "fieldCode": "statusCode",
+            "fieldName": "처리 상태",
+            "fieldGroup": "공통",
+            "fieldOrder": 60,
+            "validation": {
+              "codeGroup": "WORK_STATUS"
+            },
+            "apiProperty": "statusCode",
+            "controlType": "STATUS_BADGE",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "COMPANY_MANAGER:ADMIN",
+            "evidenceRequired": false,
+            "code": "statusCode"
+          },
+          {
+            "route": "/admin/emission/survey-report",
+            "audience": "ADMIN",
+            "dataType": "CODE",
+            "editable": true,
+            "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_REPORT_ADMIN",
+            "required": true,
+            "fieldCode": "ownerActorCode",
+            "fieldName": "담당 액터",
+            "fieldGroup": "공통",
+            "fieldOrder": 70,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "ownerActorCode",
+            "controlType": "ACTOR_SELECT",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "COMPANY_MANAGER:ADMIN",
+            "evidenceRequired": false,
+            "code": "ownerActorCode"
+          },
+          {
+            "route": "/admin/emission/survey-report",
+            "audience": "ADMIN",
+            "dataType": "INTEGER",
+            "editable": false,
+            "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_REPORT_ADMIN",
+            "required": true,
+            "fieldCode": "rowVersion",
+            "fieldName": "데이터 버전",
+            "fieldGroup": "공통",
+            "fieldOrder": 80,
+            "validation": {
+              "min": 0
+            },
+            "apiProperty": "rowVersion",
+            "controlType": "HIDDEN",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "COMPANY_MANAGER:ADMIN",
+            "evidenceRequired": false,
+            "code": "rowVersion"
+          },
+          {
+            "route": "/admin/emission/survey-report",
+            "audience": "ADMIN",
+            "dataType": "DATETIME",
+            "editable": false,
+            "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_REPORT_ADMIN",
+            "required": false,
+            "fieldCode": "createdAt",
+            "fieldName": "등록 일시",
+            "fieldGroup": "공통",
+            "fieldOrder": 90,
+            "validation": {
+              "type": "date-time",
+              "nullable": true,
+              "required": false
+            },
+            "apiProperty": "createdAt",
+            "controlType": "DATETIME",
+            "sourceTable": "emission_project_registry",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "created_at",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "COMPANY_MANAGER:ADMIN",
+            "evidenceRequired": false,
+            "code": "createdAt"
+          },
+          {
+            "route": "/admin/emission/survey-report",
+            "audience": "ADMIN",
+            "dataType": "DATETIME",
+            "editable": false,
+            "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_REPORT_ADMIN",
+            "required": false,
+            "fieldCode": "updatedAt",
+            "fieldName": "최종 수정 일시",
+            "fieldGroup": "공통",
+            "fieldOrder": 100,
+            "validation": {
+              "type": "date-time",
+              "nullable": true,
+              "required": false
+            },
+            "apiProperty": "updatedAt",
+            "controlType": "DATETIME",
+            "sourceTable": "emission_project_registry",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "updated_at",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "COMPANY_MANAGER:ADMIN",
+            "evidenceRequired": false,
+            "code": "updatedAt"
+          },
+          {
+            "route": "/admin/emission/survey-report",
+            "audience": "ADMIN",
+            "dataType": "INTEGER",
+            "editable": false,
+            "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_REPORT_ADMIN",
+            "required": false,
+            "fieldCode": "evidenceCount",
+            "fieldName": "증빙 수",
+            "fieldGroup": "공통",
+            "fieldOrder": 110,
+            "validation": {
+              "min": 0
+            },
+            "apiProperty": "evidenceCount",
+            "controlType": "EVIDENCE_LINK",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "COMPANY_MANAGER:ADMIN",
+            "evidenceRequired": false,
+            "code": "evidenceCount"
+          },
+          {
+            "route": "/admin/emission/survey-report",
+            "audience": "ADMIN",
+            "dataType": "YEAR",
+            "editable": true,
+            "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_REPORT_ADMIN",
+            "required": true,
+            "fieldCode": "reportingYear",
+            "fieldName": "보고연도",
+            "fieldGroup": "EMISSION",
+            "fieldOrder": 200,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "reportingYear",
+            "controlType": "YEAR",
+            "sourceTable": "emission_project_registry",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "reporting_year",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "COMPANY_MANAGER:ADMIN",
+            "evidenceRequired": false,
+            "code": "reportingYear"
+          },
+          {
+            "route": "/admin/emission/survey-report",
+            "audience": "ADMIN",
+            "dataType": "STRING",
+            "editable": true,
+            "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_REPORT_ADMIN",
+            "required": true,
+            "fieldCode": "organizationId",
+            "fieldName": "조직",
+            "fieldGroup": "EMISSION",
+            "fieldOrder": 210,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "organizationId",
+            "controlType": "ORGANIZATION_SELECT",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "COMPANY_MANAGER:ADMIN",
+            "evidenceRequired": false,
+            "code": "organizationId"
+          },
+          {
+            "route": "/admin/emission/survey-report",
+            "audience": "ADMIN",
+            "dataType": "STRING",
+            "editable": true,
+            "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_REPORT_ADMIN",
+            "required": true,
+            "fieldCode": "siteId",
+            "fieldName": "사업장",
+            "fieldGroup": "EMISSION",
+            "fieldOrder": 220,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "siteId",
+            "controlType": "SITE_SELECT",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "COMPANY_MANAGER:ADMIN",
+            "evidenceRequired": false,
+            "code": "siteId"
+          },
+          {
+            "route": "/admin/emission/survey-report",
+            "audience": "ADMIN",
+            "dataType": "STRING",
+            "editable": true,
+            "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_REPORT_ADMIN",
+            "required": false,
+            "fieldCode": "facilityId",
+            "fieldName": "배출시설",
+            "fieldGroup": "EMISSION",
+            "fieldOrder": 230,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": true,
+              "required": false,
+              "maxLength": 4000,
+              "minLength": 0
+            },
+            "apiProperty": "facilityId",
+            "controlType": "FACILITY_SELECT",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "COMPANY_MANAGER:ADMIN",
+            "evidenceRequired": false,
+            "code": "facilityId"
+          },
+          {
+            "route": "/admin/emission/survey-report",
+            "audience": "ADMIN",
+            "dataType": "CODE",
+            "editable": true,
+            "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_REPORT_ADMIN",
+            "required": true,
+            "fieldCode": "scopeCode",
+            "fieldName": "Scope",
+            "fieldGroup": "EMISSION",
+            "fieldOrder": 240,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "scopeCode",
+            "controlType": "SCOPE_SELECT",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "COMPANY_MANAGER:ADMIN",
+            "evidenceRequired": false,
+            "code": "scopeCode"
+          },
+          {
+            "route": "/admin/emission/survey-report",
+            "audience": "ADMIN",
+            "dataType": "DECIMAL",
+            "editable": true,
+            "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_REPORT_ADMIN",
+            "required": false,
+            "fieldCode": "activityValue",
+            "fieldName": "활동량",
+            "fieldGroup": "EMISSION",
+            "fieldOrder": 250,
+            "validation": {
+              "type": "number",
+              "finite": true,
+              "nullable": true,
+              "required": false
+            },
+            "apiProperty": "activityValue",
+            "controlType": "NUMBER",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "COMPANY_MANAGER:ADMIN",
+            "evidenceRequired": false,
+            "code": "activityValue"
+          },
+          {
+            "route": "/admin/emission/survey-report",
+            "audience": "ADMIN",
+            "dataType": "CODE",
+            "editable": true,
+            "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_REPORT_ADMIN",
+            "required": false,
+            "fieldCode": "unitCode",
+            "fieldName": "단위",
+            "fieldGroup": "EMISSION",
+            "fieldOrder": 260,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": true,
+              "required": false,
+              "maxLength": 4000,
+              "minLength": 0
+            },
+            "apiProperty": "unitCode",
+            "controlType": "UNIT_SELECT",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "COMPANY_MANAGER:ADMIN",
+            "evidenceRequired": false,
+            "code": "unitCode"
+          },
+          {
+            "route": "/admin/emission/survey-report",
+            "audience": "ADMIN",
+            "dataType": "STRING",
+            "editable": true,
+            "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_REPORT_ADMIN",
+            "required": false,
+            "fieldCode": "factorId",
+            "fieldName": "배출계수",
+            "fieldGroup": "EMISSION",
+            "fieldOrder": 270,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": true,
+              "required": false,
+              "maxLength": 4000,
+              "minLength": 0
+            },
+            "apiProperty": "factorId",
+            "controlType": "FACTOR_SEARCH",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "COMPANY_MANAGER:ADMIN",
+            "evidenceRequired": false,
+            "code": "factorId"
+          },
+          {
+            "route": "/admin/emission/survey-report",
+            "audience": "ADMIN",
+            "dataType": "DECIMAL",
+            "editable": true,
+            "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_REPORT_ADMIN",
+            "required": false,
+            "fieldCode": "emissionValue",
+            "fieldName": "배출량",
+            "fieldGroup": "EMISSION",
+            "fieldOrder": 280,
+            "validation": {
+              "type": "number",
+              "finite": true,
+              "nullable": true,
+              "required": false
+            },
+            "apiProperty": "emissionValue",
+            "controlType": "CALCULATED_NUMBER",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "COMPANY_MANAGER:ADMIN",
+            "evidenceRequired": false,
+            "code": "emissionValue"
+          },
+          {
+            "route": "/admin/emission/survey-report",
+            "audience": "ADMIN",
+            "dataType": "CODE",
+            "editable": true,
+            "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_REPORT_ADMIN",
+            "required": true,
+            "fieldCode": "qualityStatus",
+            "fieldName": "데이터 품질",
+            "fieldGroup": "EMISSION",
+            "fieldOrder": 290,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "qualityStatus",
+            "controlType": "QUALITY_BADGE",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "COMPANY_MANAGER:ADMIN",
+            "evidenceRequired": false,
+            "code": "qualityStatus"
+          },
+          {
+            "route": "/admin/emission/survey-report",
+            "audience": "ADMIN",
+            "dataType": "INTEGER",
+            "editable": true,
+            "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_REPORT_ADMIN",
+            "required": true,
+            "fieldCode": "documentVersion",
+            "fieldName": "문서 버전",
+            "fieldGroup": "업무 처리",
+            "fieldOrder": 400,
+            "validation": {
+              "type": "number",
+              "finite": true,
+              "nullable": false,
+              "required": true
+            },
+            "apiProperty": "documentVersion",
+            "controlType": "VERSION",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "COMPANY_MANAGER:ADMIN",
+            "evidenceRequired": false,
+            "code": "documentVersion"
+          },
+          {
+            "route": "/admin/emission/survey-report",
+            "audience": "ADMIN",
+            "dataType": "CODE",
+            "editable": true,
+            "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_REPORT_ADMIN",
+            "required": true,
+            "fieldCode": "languageCode",
+            "fieldName": "문서 언어",
+            "fieldGroup": "업무 처리",
+            "fieldOrder": 410,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "languageCode",
+            "controlType": "LANGUAGE_SELECT",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "COMPANY_MANAGER:ADMIN",
+            "evidenceRequired": false,
+            "code": "languageCode"
+          },
+          {
+            "route": "/admin/emission/survey-report",
+            "audience": "ADMIN",
+            "dataType": "HASH",
+            "editable": true,
+            "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_REPORT_ADMIN",
+            "required": false,
+            "fieldCode": "documentHash",
+            "fieldName": "문서 해시",
+            "fieldGroup": "업무 처리",
+            "fieldOrder": 420,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": true,
+              "required": false,
+              "maxLength": 4000,
+              "minLength": 0
+            },
+            "apiProperty": "documentHash",
+            "controlType": "HASH_VIEW",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "COMPANY_MANAGER:ADMIN",
+            "evidenceRequired": true,
+            "code": "documentHash"
+          },
+          {
+            "route": "/admin/emission/survey-report",
+            "audience": "ADMIN",
+            "dataType": "CODE",
+            "editable": true,
+            "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_REPORT_ADMIN",
+            "required": false,
+            "fieldCode": "downloadFormat",
+            "fieldName": "다운로드 형식",
+            "fieldGroup": "업무 처리",
+            "fieldOrder": 430,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": true,
+              "required": false,
+              "maxLength": 4000,
+              "minLength": 0
+            },
+            "apiProperty": "downloadFormat",
+            "controlType": "FORMAT_SELECT",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "COMPANY_MANAGER:ADMIN",
+            "evidenceRequired": false,
+            "code": "downloadFormat"
+          },
+          {
+            "route": "/admin/emission/survey-report",
+            "audience": "ADMIN",
+            "dataType": "STRING",
+            "editable": true,
+            "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_REPORT_ADMIN",
+            "required": true,
+            "fieldCode": "contract_023ff6ee260a",
+            "fieldName": "보고서 버전",
+            "fieldGroup": "기존 전문 설계",
+            "fieldOrder": 601,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "contract_023ff6ee260a",
+            "controlType": "DOMAIN_CONTROL",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "COMPANY_MANAGER:ADMIN",
+            "evidenceRequired": false,
+            "code": "contract_023ff6ee260a"
+          },
+          {
+            "route": "/admin/emission/survey-report",
+            "audience": "ADMIN",
+            "dataType": "STRING",
+            "editable": true,
+            "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_REPORT_ADMIN",
+            "required": true,
+            "fieldCode": "contract_681191ac7b10",
+            "fieldName": "산정 버전",
+            "fieldGroup": "기존 전문 설계",
+            "fieldOrder": 602,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "contract_681191ac7b10",
+            "controlType": "DOMAIN_CONTROL",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "COMPANY_MANAGER:ADMIN",
+            "evidenceRequired": false,
+            "code": "contract_681191ac7b10"
+          },
+          {
+            "route": "/admin/emission/survey-report",
+            "audience": "ADMIN",
+            "dataType": "STRING",
+            "editable": true,
+            "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_REPORT_ADMIN",
+            "required": true,
+            "fieldCode": "contract_23eb275e790b",
+            "fieldName": "언어",
+            "fieldGroup": "기존 전문 설계",
+            "fieldOrder": 603,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "contract_23eb275e790b",
+            "controlType": "DOMAIN_CONTROL",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "COMPANY_MANAGER:ADMIN",
+            "evidenceRequired": false,
+            "code": "contract_23eb275e790b"
+          },
+          {
+            "route": "/admin/emission/survey-report",
+            "audience": "ADMIN",
+            "dataType": "STRING",
+            "editable": true,
+            "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_REPORT_ADMIN",
+            "required": true,
+            "fieldCode": "contract_34e86dd7a4ba",
+            "fieldName": "제출처",
+            "fieldGroup": "기존 전문 설계",
+            "fieldOrder": 604,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "contract_34e86dd7a4ba",
+            "controlType": "DOMAIN_CONTROL",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "COMPANY_MANAGER:ADMIN",
+            "evidenceRequired": false,
+            "code": "contract_34e86dd7a4ba"
+          },
+          {
+            "route": "/admin/emission/survey-report",
+            "audience": "ADMIN",
+            "dataType": "STRING",
+            "editable": true,
+            "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_REPORT_ADMIN",
+            "required": true,
+            "fieldCode": "contract_52fb4aed3b91",
+            "fieldName": "총 배출량",
+            "fieldGroup": "기존 전문 설계",
+            "fieldOrder": 605,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "contract_52fb4aed3b91",
+            "controlType": "DOMAIN_CONTROL",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "COMPANY_MANAGER:ADMIN",
+            "evidenceRequired": false,
+            "code": "contract_52fb4aed3b91"
+          },
+          {
+            "route": "/admin/emission/survey-report",
+            "audience": "ADMIN",
+            "dataType": "STRING",
+            "editable": true,
+            "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_REPORT_ADMIN",
+            "required": true,
+            "fieldCode": "contract_704973d44519",
+            "fieldName": "Scope 결과",
+            "fieldGroup": "기존 전문 설계",
+            "fieldOrder": 606,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "contract_704973d44519",
+            "controlType": "DOMAIN_CONTROL",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "COMPANY_MANAGER:ADMIN",
+            "evidenceRequired": false,
+            "code": "contract_704973d44519"
+          },
+          {
+            "route": "/admin/emission/survey-report",
+            "audience": "ADMIN",
+            "dataType": "STRING",
+            "editable": true,
+            "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_REPORT_ADMIN",
+            "required": true,
+            "fieldCode": "contract_1057b71501e1",
+            "fieldName": "제품·부산물",
+            "fieldGroup": "기존 전문 설계",
+            "fieldOrder": 607,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "contract_1057b71501e1",
+            "controlType": "DOMAIN_CONTROL",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "COMPANY_MANAGER:ADMIN",
+            "evidenceRequired": false,
+            "code": "contract_1057b71501e1"
+          },
+          {
+            "route": "/admin/emission/survey-report",
+            "audience": "ADMIN",
+            "dataType": "STRING",
+            "editable": true,
+            "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_REPORT_ADMIN",
+            "required": true,
+            "fieldCode": "contract_51aceccca925",
+            "fieldName": "정규화 데이터셋",
+            "fieldGroup": "기존 전문 설계",
+            "fieldOrder": 608,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "contract_51aceccca925",
+            "controlType": "DOMAIN_CONTROL",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "COMPANY_MANAGER:ADMIN",
+            "evidenceRequired": false,
+            "code": "contract_51aceccca925"
+          },
+          {
+            "route": "/admin/emission/survey-report",
+            "audience": "ADMIN",
+            "dataType": "STRING",
+            "editable": true,
+            "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_REPORT_ADMIN",
+            "required": true,
+            "fieldCode": "contract_f529c51ee65a",
+            "fieldName": "OCR",
+            "fieldGroup": "기존 전문 설계",
+            "fieldOrder": 609,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "contract_f529c51ee65a",
+            "controlType": "DOMAIN_CONTROL",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "COMPANY_MANAGER:ADMIN",
+            "evidenceRequired": false,
+            "code": "contract_f529c51ee65a"
+          },
+          {
+            "route": "/admin/emission/survey-report",
+            "audience": "ADMIN",
+            "dataType": "STRING",
+            "editable": true,
+            "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_REPORT_ADMIN",
+            "required": true,
+            "fieldCode": "contract_5149310e180b",
+            "fieldName": "시각지문",
+            "fieldGroup": "기존 전문 설계",
+            "fieldOrder": 610,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "contract_5149310e180b",
+            "controlType": "DOMAIN_CONTROL",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "COMPANY_MANAGER:ADMIN",
+            "evidenceRequired": false,
+            "code": "contract_5149310e180b"
+          },
+          {
+            "route": "/admin/emission/survey-report",
+            "audience": "ADMIN",
+            "dataType": "STRING",
+            "editable": true,
+            "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_REPORT_ADMIN",
+            "required": true,
+            "fieldCode": "contract_91c27081e798",
+            "fieldName": "발급상태",
+            "fieldGroup": "기존 전문 설계",
+            "fieldOrder": 611,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "contract_91c27081e798",
+            "controlType": "DOMAIN_CONTROL",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "COMPANY_MANAGER:ADMIN",
+            "evidenceRequired": false,
+            "code": "contract_91c27081e798"
+          }
+        ],
+        "commands": [
+          {
+            "actorCode": "COMPANY_MANAGER",
+            "entryState": "APPROVED",
+            "commandCode": "PUBLISH_REPORT",
+            "resultState": "COMPLETED",
+            "auditRequired": true,
+            "validationRequired": true,
+            "serverAuthorization": true
+          }
+        ],
+        "states": {
+          "retry": "idempotent commands only",
+          "states": [
+            "loading",
+            "empty",
+            "validation-error",
+            "authority-denied",
+            "conflict",
+            "dependency-blocked",
+            "server-error",
+            "recovery"
+          ]
+        },
+        "responsive": {
+          "mobile": "single-column and priority fields",
+          "tablet": "adaptive two-column",
+          "desktop": "task-optimized grid",
+          "overflow": "wrap-or-scroll-with-sticky-key-column"
+        },
+        "accessibility": {
+          "labels": true,
+          "keyboard": true,
+          "standard": "WCAG 2.1 AA",
+          "errorSummary": true,
+          "focusManagement": true
+        }
+      },
+      {
+        "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_REPORT_USER",
+        "route": "/emission/report_submit",
+        "routeStatus": "IMPLEMENTED",
+        "audience": "USER",
+        "screenType": "REPORT_DOCUMENT",
+        "title": "보고서 생성·제출·진위 확인",
+        "purpose": "승인된 결과로 검증 가능한 보고서를 생성·제출·발급한다.",
+        "layout": "COMMON_KRDS_TASK_LAYOUT",
+        "theme": "COMMON_KRDS_GOV",
+        "sections": [
+          "TASK_CONTEXT",
+          "TASK_ACTIONS",
+          "TASK_CONTENT",
+          "TASK_EVIDENCE",
+          "TASK_HANDOFF"
+        ],
+        "fields": [
+          {
+            "route": "/emission/report_submit",
+            "audience": "USER",
+            "dataType": "STRING",
+            "editable": false,
+            "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_REPORT_USER",
+            "required": true,
+            "fieldCode": "tenantId",
+            "fieldName": "테넌트",
+            "fieldGroup": "공통",
+            "fieldOrder": 10,
+            "validation": {
+              "minLength": 1
+            },
+            "apiProperty": "tenantId",
+            "controlType": "HIDDEN",
+            "sourceTable": "emission_project_registry",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "tenant_id",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "COMPANY_MANAGER:USER",
+            "evidenceRequired": false,
+            "code": "tenantId"
+          },
+          {
+            "route": "/emission/report_submit",
+            "audience": "USER",
+            "dataType": "STRING",
+            "editable": true,
+            "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_REPORT_USER",
+            "required": true,
+            "fieldCode": "projectId",
+            "fieldName": "프로젝트",
+            "fieldGroup": "공통",
+            "fieldOrder": 20,
+            "validation": {
+              "minLength": 1
+            },
+            "apiProperty": "projectId",
+            "controlType": "PROJECT_SELECT",
+            "sourceTable": "emission_project_registry",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "project_id",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "COMPANY_MANAGER:USER",
+            "evidenceRequired": false,
+            "code": "projectId"
+          },
+          {
+            "route": "/emission/report_submit",
+            "audience": "USER",
+            "dataType": "CODE",
+            "editable": false,
+            "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_REPORT_USER",
+            "required": true,
+            "fieldCode": "processCode",
+            "fieldName": "프로세스 코드",
+            "fieldGroup": "공통",
+            "fieldOrder": 30,
+            "validation": {
+              "source": "SERVER_CONTEXT",
+              "required": true,
+              "immutable": true
+            },
+            "apiProperty": "processCode",
+            "controlType": "HIDDEN",
+            "sourceTable": "framework_process_definition",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "process_code",
+            "mappingStatus": "CONTEXT",
+            "permissionCode": "COMPANY_MANAGER:USER",
+            "evidenceRequired": false,
+            "code": "processCode"
+          },
+          {
+            "route": "/emission/report_submit",
+            "audience": "USER",
+            "dataType": "CODE",
+            "editable": false,
+            "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_REPORT_USER",
+            "required": true,
+            "fieldCode": "stepCode",
+            "fieldName": "단계 코드",
+            "fieldGroup": "공통",
+            "fieldOrder": 40,
+            "validation": {
+              "source": "SERVER_CONTEXT",
+              "required": true,
+              "immutable": true
+            },
+            "apiProperty": "stepCode",
+            "controlType": "HIDDEN",
+            "sourceTable": "framework_process_step",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "step_code",
+            "mappingStatus": "CONTEXT",
+            "permissionCode": "COMPANY_MANAGER:USER",
+            "evidenceRequired": false,
+            "code": "stepCode"
+          },
+          {
+            "route": "/emission/report_submit",
+            "audience": "USER",
+            "dataType": "UUID",
+            "editable": false,
+            "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_REPORT_USER",
+            "required": false,
+            "fieldCode": "recordId",
+            "fieldName": "업무 레코드 ID",
+            "fieldGroup": "공통",
+            "fieldOrder": 50,
+            "validation": {
+              "source": "SERVER_CONTEXT",
+              "required": false,
+              "immutable": true
+            },
+            "apiProperty": "recordId",
+            "controlType": "HIDDEN",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "COMPANY_MANAGER:USER",
+            "evidenceRequired": false,
+            "code": "recordId"
+          },
+          {
+            "route": "/emission/report_submit",
+            "audience": "USER",
+            "dataType": "CODE",
+            "editable": false,
+            "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_REPORT_USER",
+            "required": true,
+            "fieldCode": "statusCode",
+            "fieldName": "처리 상태",
+            "fieldGroup": "공통",
+            "fieldOrder": 60,
+            "validation": {
+              "codeGroup": "WORK_STATUS"
+            },
+            "apiProperty": "statusCode",
+            "controlType": "STATUS_BADGE",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "COMPANY_MANAGER:USER",
+            "evidenceRequired": false,
+            "code": "statusCode"
+          },
+          {
+            "route": "/emission/report_submit",
+            "audience": "USER",
+            "dataType": "CODE",
+            "editable": true,
+            "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_REPORT_USER",
+            "required": true,
+            "fieldCode": "ownerActorCode",
+            "fieldName": "담당 액터",
+            "fieldGroup": "공통",
+            "fieldOrder": 70,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "ownerActorCode",
+            "controlType": "ACTOR_SELECT",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "COMPANY_MANAGER:USER",
+            "evidenceRequired": false,
+            "code": "ownerActorCode"
+          },
+          {
+            "route": "/emission/report_submit",
+            "audience": "USER",
+            "dataType": "INTEGER",
+            "editable": false,
+            "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_REPORT_USER",
+            "required": true,
+            "fieldCode": "rowVersion",
+            "fieldName": "데이터 버전",
+            "fieldGroup": "공통",
+            "fieldOrder": 80,
+            "validation": {
+              "min": 0
+            },
+            "apiProperty": "rowVersion",
+            "controlType": "HIDDEN",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "COMPANY_MANAGER:USER",
+            "evidenceRequired": false,
+            "code": "rowVersion"
+          },
+          {
+            "route": "/emission/report_submit",
+            "audience": "USER",
+            "dataType": "DATETIME",
+            "editable": false,
+            "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_REPORT_USER",
+            "required": false,
+            "fieldCode": "createdAt",
+            "fieldName": "등록 일시",
+            "fieldGroup": "공통",
+            "fieldOrder": 90,
+            "validation": {
+              "type": "date-time",
+              "nullable": true,
+              "required": false
+            },
+            "apiProperty": "createdAt",
+            "controlType": "DATETIME",
+            "sourceTable": "emission_project_registry",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "created_at",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "COMPANY_MANAGER:USER",
+            "evidenceRequired": false,
+            "code": "createdAt"
+          },
+          {
+            "route": "/emission/report_submit",
+            "audience": "USER",
+            "dataType": "DATETIME",
+            "editable": false,
+            "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_REPORT_USER",
+            "required": false,
+            "fieldCode": "updatedAt",
+            "fieldName": "최종 수정 일시",
+            "fieldGroup": "공통",
+            "fieldOrder": 100,
+            "validation": {
+              "type": "date-time",
+              "nullable": true,
+              "required": false
+            },
+            "apiProperty": "updatedAt",
+            "controlType": "DATETIME",
+            "sourceTable": "emission_project_registry",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "updated_at",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "COMPANY_MANAGER:USER",
+            "evidenceRequired": false,
+            "code": "updatedAt"
+          },
+          {
+            "route": "/emission/report_submit",
+            "audience": "USER",
+            "dataType": "INTEGER",
+            "editable": false,
+            "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_REPORT_USER",
+            "required": false,
+            "fieldCode": "evidenceCount",
+            "fieldName": "증빙 수",
+            "fieldGroup": "공통",
+            "fieldOrder": 110,
+            "validation": {
+              "min": 0
+            },
+            "apiProperty": "evidenceCount",
+            "controlType": "EVIDENCE_LINK",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "COMPANY_MANAGER:USER",
+            "evidenceRequired": false,
+            "code": "evidenceCount"
+          },
+          {
+            "route": "/emission/report_submit",
+            "audience": "USER",
+            "dataType": "YEAR",
+            "editable": true,
+            "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_REPORT_USER",
+            "required": true,
+            "fieldCode": "reportingYear",
+            "fieldName": "보고연도",
+            "fieldGroup": "EMISSION",
+            "fieldOrder": 200,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "reportingYear",
+            "controlType": "YEAR",
+            "sourceTable": "emission_project_registry",
+            "privacyClass": "INTERNAL",
+            "sourceColumn": "reporting_year",
+            "mappingStatus": "DB_RESOLVED",
+            "permissionCode": "COMPANY_MANAGER:USER",
+            "evidenceRequired": false,
+            "code": "reportingYear"
+          },
+          {
+            "route": "/emission/report_submit",
+            "audience": "USER",
+            "dataType": "STRING",
+            "editable": true,
+            "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_REPORT_USER",
+            "required": true,
+            "fieldCode": "organizationId",
+            "fieldName": "조직",
+            "fieldGroup": "EMISSION",
+            "fieldOrder": 210,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "organizationId",
+            "controlType": "ORGANIZATION_SELECT",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "COMPANY_MANAGER:USER",
+            "evidenceRequired": false,
+            "code": "organizationId"
+          },
+          {
+            "route": "/emission/report_submit",
+            "audience": "USER",
+            "dataType": "STRING",
+            "editable": true,
+            "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_REPORT_USER",
+            "required": true,
+            "fieldCode": "siteId",
+            "fieldName": "사업장",
+            "fieldGroup": "EMISSION",
+            "fieldOrder": 220,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "siteId",
+            "controlType": "SITE_SELECT",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "COMPANY_MANAGER:USER",
+            "evidenceRequired": false,
+            "code": "siteId"
+          },
+          {
+            "route": "/emission/report_submit",
+            "audience": "USER",
+            "dataType": "STRING",
+            "editable": true,
+            "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_REPORT_USER",
+            "required": false,
+            "fieldCode": "facilityId",
+            "fieldName": "배출시설",
+            "fieldGroup": "EMISSION",
+            "fieldOrder": 230,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": true,
+              "required": false,
+              "maxLength": 4000,
+              "minLength": 0
+            },
+            "apiProperty": "facilityId",
+            "controlType": "FACILITY_SELECT",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "COMPANY_MANAGER:USER",
+            "evidenceRequired": false,
+            "code": "facilityId"
+          },
+          {
+            "route": "/emission/report_submit",
+            "audience": "USER",
+            "dataType": "CODE",
+            "editable": true,
+            "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_REPORT_USER",
+            "required": true,
+            "fieldCode": "scopeCode",
+            "fieldName": "Scope",
+            "fieldGroup": "EMISSION",
+            "fieldOrder": 240,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "scopeCode",
+            "controlType": "SCOPE_SELECT",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "COMPANY_MANAGER:USER",
+            "evidenceRequired": false,
+            "code": "scopeCode"
+          },
+          {
+            "route": "/emission/report_submit",
+            "audience": "USER",
+            "dataType": "DECIMAL",
+            "editable": true,
+            "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_REPORT_USER",
+            "required": false,
+            "fieldCode": "activityValue",
+            "fieldName": "활동량",
+            "fieldGroup": "EMISSION",
+            "fieldOrder": 250,
+            "validation": {
+              "type": "number",
+              "finite": true,
+              "nullable": true,
+              "required": false
+            },
+            "apiProperty": "activityValue",
+            "controlType": "NUMBER",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "COMPANY_MANAGER:USER",
+            "evidenceRequired": false,
+            "code": "activityValue"
+          },
+          {
+            "route": "/emission/report_submit",
+            "audience": "USER",
+            "dataType": "CODE",
+            "editable": true,
+            "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_REPORT_USER",
+            "required": false,
+            "fieldCode": "unitCode",
+            "fieldName": "단위",
+            "fieldGroup": "EMISSION",
+            "fieldOrder": 260,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": true,
+              "required": false,
+              "maxLength": 4000,
+              "minLength": 0
+            },
+            "apiProperty": "unitCode",
+            "controlType": "UNIT_SELECT",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "COMPANY_MANAGER:USER",
+            "evidenceRequired": false,
+            "code": "unitCode"
+          },
+          {
+            "route": "/emission/report_submit",
+            "audience": "USER",
+            "dataType": "STRING",
+            "editable": true,
+            "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_REPORT_USER",
+            "required": false,
+            "fieldCode": "factorId",
+            "fieldName": "배출계수",
+            "fieldGroup": "EMISSION",
+            "fieldOrder": 270,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": true,
+              "required": false,
+              "maxLength": 4000,
+              "minLength": 0
+            },
+            "apiProperty": "factorId",
+            "controlType": "FACTOR_SEARCH",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "COMPANY_MANAGER:USER",
+            "evidenceRequired": false,
+            "code": "factorId"
+          },
+          {
+            "route": "/emission/report_submit",
+            "audience": "USER",
+            "dataType": "DECIMAL",
+            "editable": true,
+            "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_REPORT_USER",
+            "required": false,
+            "fieldCode": "emissionValue",
+            "fieldName": "배출량",
+            "fieldGroup": "EMISSION",
+            "fieldOrder": 280,
+            "validation": {
+              "type": "number",
+              "finite": true,
+              "nullable": true,
+              "required": false
+            },
+            "apiProperty": "emissionValue",
+            "controlType": "CALCULATED_NUMBER",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "COMPANY_MANAGER:USER",
+            "evidenceRequired": false,
+            "code": "emissionValue"
+          },
+          {
+            "route": "/emission/report_submit",
+            "audience": "USER",
+            "dataType": "CODE",
+            "editable": true,
+            "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_REPORT_USER",
+            "required": true,
+            "fieldCode": "qualityStatus",
+            "fieldName": "데이터 품질",
+            "fieldGroup": "EMISSION",
+            "fieldOrder": 290,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "qualityStatus",
+            "controlType": "QUALITY_BADGE",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "COMPANY_MANAGER:USER",
+            "evidenceRequired": false,
+            "code": "qualityStatus"
+          },
+          {
+            "route": "/emission/report_submit",
+            "audience": "USER",
+            "dataType": "INTEGER",
+            "editable": true,
+            "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_REPORT_USER",
+            "required": true,
+            "fieldCode": "documentVersion",
+            "fieldName": "문서 버전",
+            "fieldGroup": "업무 처리",
+            "fieldOrder": 400,
+            "validation": {
+              "type": "number",
+              "finite": true,
+              "nullable": false,
+              "required": true
+            },
+            "apiProperty": "documentVersion",
+            "controlType": "VERSION",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "COMPANY_MANAGER:USER",
+            "evidenceRequired": false,
+            "code": "documentVersion"
+          },
+          {
+            "route": "/emission/report_submit",
+            "audience": "USER",
+            "dataType": "CODE",
+            "editable": true,
+            "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_REPORT_USER",
+            "required": true,
+            "fieldCode": "languageCode",
+            "fieldName": "문서 언어",
+            "fieldGroup": "업무 처리",
+            "fieldOrder": 410,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "languageCode",
+            "controlType": "LANGUAGE_SELECT",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "COMPANY_MANAGER:USER",
+            "evidenceRequired": false,
+            "code": "languageCode"
+          },
+          {
+            "route": "/emission/report_submit",
+            "audience": "USER",
+            "dataType": "HASH",
+            "editable": true,
+            "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_REPORT_USER",
+            "required": false,
+            "fieldCode": "documentHash",
+            "fieldName": "문서 해시",
+            "fieldGroup": "업무 처리",
+            "fieldOrder": 420,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": true,
+              "required": false,
+              "maxLength": 4000,
+              "minLength": 0
+            },
+            "apiProperty": "documentHash",
+            "controlType": "HASH_VIEW",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "COMPANY_MANAGER:USER",
+            "evidenceRequired": true,
+            "code": "documentHash"
+          },
+          {
+            "route": "/emission/report_submit",
+            "audience": "USER",
+            "dataType": "CODE",
+            "editable": true,
+            "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_REPORT_USER",
+            "required": false,
+            "fieldCode": "downloadFormat",
+            "fieldName": "다운로드 형식",
+            "fieldGroup": "업무 처리",
+            "fieldOrder": 430,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": true,
+              "required": false,
+              "maxLength": 4000,
+              "minLength": 0
+            },
+            "apiProperty": "downloadFormat",
+            "controlType": "FORMAT_SELECT",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "COMPANY_MANAGER:USER",
+            "evidenceRequired": false,
+            "code": "downloadFormat"
+          },
+          {
+            "route": "/emission/report_submit",
+            "audience": "USER",
+            "dataType": "STRING",
+            "editable": true,
+            "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_REPORT_USER",
+            "required": true,
+            "fieldCode": "contract_023ff6ee260a",
+            "fieldName": "보고서 버전",
+            "fieldGroup": "기존 전문 설계",
+            "fieldOrder": 601,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "contract_023ff6ee260a",
+            "controlType": "DOMAIN_CONTROL",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "COMPANY_MANAGER:USER",
+            "evidenceRequired": false,
+            "code": "contract_023ff6ee260a"
+          },
+          {
+            "route": "/emission/report_submit",
+            "audience": "USER",
+            "dataType": "STRING",
+            "editable": true,
+            "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_REPORT_USER",
+            "required": true,
+            "fieldCode": "contract_681191ac7b10",
+            "fieldName": "산정 버전",
+            "fieldGroup": "기존 전문 설계",
+            "fieldOrder": 602,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "contract_681191ac7b10",
+            "controlType": "DOMAIN_CONTROL",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "COMPANY_MANAGER:USER",
+            "evidenceRequired": false,
+            "code": "contract_681191ac7b10"
+          },
+          {
+            "route": "/emission/report_submit",
+            "audience": "USER",
+            "dataType": "STRING",
+            "editable": true,
+            "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_REPORT_USER",
+            "required": true,
+            "fieldCode": "contract_23eb275e790b",
+            "fieldName": "언어",
+            "fieldGroup": "기존 전문 설계",
+            "fieldOrder": 603,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "contract_23eb275e790b",
+            "controlType": "DOMAIN_CONTROL",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "COMPANY_MANAGER:USER",
+            "evidenceRequired": false,
+            "code": "contract_23eb275e790b"
+          },
+          {
+            "route": "/emission/report_submit",
+            "audience": "USER",
+            "dataType": "STRING",
+            "editable": true,
+            "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_REPORT_USER",
+            "required": true,
+            "fieldCode": "contract_34e86dd7a4ba",
+            "fieldName": "제출처",
+            "fieldGroup": "기존 전문 설계",
+            "fieldOrder": 604,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "contract_34e86dd7a4ba",
+            "controlType": "DOMAIN_CONTROL",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "COMPANY_MANAGER:USER",
+            "evidenceRequired": false,
+            "code": "contract_34e86dd7a4ba"
+          },
+          {
+            "route": "/emission/report_submit",
+            "audience": "USER",
+            "dataType": "STRING",
+            "editable": true,
+            "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_REPORT_USER",
+            "required": true,
+            "fieldCode": "contract_52fb4aed3b91",
+            "fieldName": "총 배출량",
+            "fieldGroup": "기존 전문 설계",
+            "fieldOrder": 605,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "contract_52fb4aed3b91",
+            "controlType": "DOMAIN_CONTROL",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "COMPANY_MANAGER:USER",
+            "evidenceRequired": false,
+            "code": "contract_52fb4aed3b91"
+          },
+          {
+            "route": "/emission/report_submit",
+            "audience": "USER",
+            "dataType": "STRING",
+            "editable": true,
+            "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_REPORT_USER",
+            "required": true,
+            "fieldCode": "contract_704973d44519",
+            "fieldName": "Scope 결과",
+            "fieldGroup": "기존 전문 설계",
+            "fieldOrder": 606,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "contract_704973d44519",
+            "controlType": "DOMAIN_CONTROL",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "COMPANY_MANAGER:USER",
+            "evidenceRequired": false,
+            "code": "contract_704973d44519"
+          },
+          {
+            "route": "/emission/report_submit",
+            "audience": "USER",
+            "dataType": "STRING",
+            "editable": true,
+            "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_REPORT_USER",
+            "required": true,
+            "fieldCode": "contract_1057b71501e1",
+            "fieldName": "제품·부산물",
+            "fieldGroup": "기존 전문 설계",
+            "fieldOrder": 607,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "contract_1057b71501e1",
+            "controlType": "DOMAIN_CONTROL",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "COMPANY_MANAGER:USER",
+            "evidenceRequired": false,
+            "code": "contract_1057b71501e1"
+          },
+          {
+            "route": "/emission/report_submit",
+            "audience": "USER",
+            "dataType": "STRING",
+            "editable": true,
+            "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_REPORT_USER",
+            "required": true,
+            "fieldCode": "contract_51aceccca925",
+            "fieldName": "정규화 데이터셋",
+            "fieldGroup": "기존 전문 설계",
+            "fieldOrder": 608,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "contract_51aceccca925",
+            "controlType": "DOMAIN_CONTROL",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "COMPANY_MANAGER:USER",
+            "evidenceRequired": false,
+            "code": "contract_51aceccca925"
+          },
+          {
+            "route": "/emission/report_submit",
+            "audience": "USER",
+            "dataType": "STRING",
+            "editable": true,
+            "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_REPORT_USER",
+            "required": true,
+            "fieldCode": "contract_f529c51ee65a",
+            "fieldName": "OCR",
+            "fieldGroup": "기존 전문 설계",
+            "fieldOrder": 609,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "contract_f529c51ee65a",
+            "controlType": "DOMAIN_CONTROL",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "COMPANY_MANAGER:USER",
+            "evidenceRequired": false,
+            "code": "contract_f529c51ee65a"
+          },
+          {
+            "route": "/emission/report_submit",
+            "audience": "USER",
+            "dataType": "STRING",
+            "editable": true,
+            "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_REPORT_USER",
+            "required": true,
+            "fieldCode": "contract_5149310e180b",
+            "fieldName": "시각지문",
+            "fieldGroup": "기존 전문 설계",
+            "fieldOrder": 610,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "contract_5149310e180b",
+            "controlType": "DOMAIN_CONTROL",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "COMPANY_MANAGER:USER",
+            "evidenceRequired": false,
+            "code": "contract_5149310e180b"
+          },
+          {
+            "route": "/emission/report_submit",
+            "audience": "USER",
+            "dataType": "STRING",
+            "editable": true,
+            "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_REPORT_USER",
+            "required": true,
+            "fieldCode": "contract_91c27081e798",
+            "fieldName": "발급상태",
+            "fieldGroup": "기존 전문 설계",
+            "fieldOrder": 611,
+            "validation": {
+              "trim": true,
+              "type": "string",
+              "nullable": false,
+              "required": true,
+              "maxLength": 4000,
+              "minLength": 1
+            },
+            "apiProperty": "contract_91c27081e798",
+            "controlType": "DOMAIN_CONTROL",
+            "sourceTable": null,
+            "privacyClass": "INTERNAL",
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT",
+            "permissionCode": "COMPANY_MANAGER:USER",
+            "evidenceRequired": false,
+            "code": "contract_91c27081e798"
+          }
+        ],
+        "commands": [
+          {
+            "actorCode": "COMPANY_MANAGER",
+            "entryState": "APPROVED",
+            "commandCode": "PUBLISH_REPORT",
+            "resultState": "COMPLETED",
+            "auditRequired": true,
+            "validationRequired": true,
+            "serverAuthorization": true
+          }
+        ],
+        "states": {
+          "retry": "idempotent commands only",
+          "states": [
+            "loading",
+            "empty",
+            "validation-error",
+            "authority-denied",
+            "conflict",
+            "dependency-blocked",
+            "server-error",
+            "recovery"
+          ]
+        },
+        "responsive": {
+          "mobile": "single-column and priority fields",
+          "tablet": "adaptive two-column",
+          "desktop": "task-optimized grid",
+          "overflow": "wrap-or-scroll-with-sticky-key-column"
+        },
+        "accessibility": {
+          "labels": true,
+          "keyboard": true,
+          "standard": "WCAG 2.1 AA",
+          "errorSummary": true,
+          "focusManagement": true
+        }
+      }
+    ]
+  },
+  "backend": {
+    "runtime": "COMMON_PROCESS_COMMAND_RUNTIME",
+    "apis": [
+      {
+        "actorGuard": true,
+        "rowVersion": true,
+        "tenantGuard": true,
+        "projectGuard": true,
+        "errorContract": [
+          "VALIDATION_ERROR",
+          "FORBIDDEN",
+          "CONFLICT",
+          "DEPENDENCY_BLOCKED",
+          "SERVER_ERROR"
+        ],
+        "transactional": true,
+        "idempotencyKey": true,
+        "declaredContract": "emission-report-workflow"
+      }
+    ],
+    "commands": [
+      {
+        "actorCode": "COMPANY_MANAGER",
+        "entryState": "APPROVED",
+        "commandCode": "PUBLISH_REPORT",
+        "resultState": "COMPLETED",
+        "auditRequired": true,
+        "validationRequired": true,
+        "serverAuthorization": true
+      }
+    ],
+    "authorization": {
+      "actorCode": "COMPANY_MANAGER",
+      "ownerActorCode": "COMPANY_MANAGER",
+      "tenantIsolation": true,
+      "projectIsolation": true,
+      "delegationChecked": true,
+      "segregationOfDuties": true
+    },
+    "handoffs": [
+      {
+        "failure": {
+          "onInvalid": "DESIGN_REVIEW_REQUIRED",
+          "onInapplicable": "SKIP_WITH_AUDIT",
+          "onMissingNextProcess": "WORKFLOW_COMPLETE"
+        },
+        "payload": {
+          "toInput": {
+            "tenantId": "required",
+            "actorCode": "COMPANY_MANAGER",
+            "projectId": "required",
+            "stepOrder": 1,
+            "processCode": "ORGANIZATIONAL_BOUNDARY",
+            "idempotencyKey": "required"
+          },
+          "fromOutput": {
+            "toState": "COMPLETED",
+            "completionRule": "확정 결과 기반 보고서가 생성·제출되고 다운로드 및 진위검증 가능함"
+          },
+          "completionCondition": "승인된 산정 결과와 검증 가능한 보고서가 존재하고 모든 상태 전이와 증적이 기록되어 있다."
+        },
+        "integrity": {
+          "handoffAudit": true,
+          "immutableOutputVersion": true,
+          "completedProcessRequired": true
+        },
+        "toStepCode": "ORGANIZATIONAL_BOUNDARY_S1",
+        "contextKeys": [
+          "tenantId",
+          "projectId",
+          "recordId",
+          "completedProcessCode",
+          "outputVersion"
+        ],
+        "handoffType": "PROCESS",
+        "authorization": {
+          "toActor": "COMPANY_MANAGER",
+          "fromActor": "COMPANY_MANAGER",
+          "segregationChecked": true,
+          "projectApplicabilityRequired": true
+        },
+        "toProcessCode": "ORGANIZATIONAL_BOUNDARY"
+      }
+    ]
+  },
+  "database": {
+    "mappings": [
+      {
+        "fields": [
+          {
+            "required": true,
+            "fieldCode": "tenantId",
+            "apiProperty": "tenantId",
+            "sourceTable": "emission_project_registry",
+            "sourceColumn": "tenant_id",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "projectId",
+            "apiProperty": "projectId",
+            "sourceTable": "emission_project_registry",
+            "sourceColumn": "project_id",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "processCode",
+            "apiProperty": "processCode",
+            "sourceTable": "framework_process_definition",
+            "sourceColumn": "process_code",
+            "mappingStatus": "CONTEXT"
+          },
+          {
+            "required": true,
+            "fieldCode": "stepCode",
+            "apiProperty": "stepCode",
+            "sourceTable": "framework_process_step",
+            "sourceColumn": "step_code",
+            "mappingStatus": "CONTEXT"
+          },
+          {
+            "required": false,
+            "fieldCode": "recordId",
+            "apiProperty": "recordId",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "statusCode",
+            "apiProperty": "statusCode",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "ownerActorCode",
+            "apiProperty": "ownerActorCode",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "rowVersion",
+            "apiProperty": "rowVersion",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": false,
+            "fieldCode": "createdAt",
+            "apiProperty": "createdAt",
+            "sourceTable": "emission_project_registry",
+            "sourceColumn": "created_at",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": false,
+            "fieldCode": "updatedAt",
+            "apiProperty": "updatedAt",
+            "sourceTable": "emission_project_registry",
+            "sourceColumn": "updated_at",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": false,
+            "fieldCode": "evidenceCount",
+            "apiProperty": "evidenceCount",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "reportingYear",
+            "apiProperty": "reportingYear",
+            "sourceTable": "emission_project_registry",
+            "sourceColumn": "reporting_year",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "organizationId",
+            "apiProperty": "organizationId",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "siteId",
+            "apiProperty": "siteId",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": false,
+            "fieldCode": "facilityId",
+            "apiProperty": "facilityId",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "scopeCode",
+            "apiProperty": "scopeCode",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": false,
+            "fieldCode": "activityValue",
+            "apiProperty": "activityValue",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": false,
+            "fieldCode": "unitCode",
+            "apiProperty": "unitCode",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": false,
+            "fieldCode": "factorId",
+            "apiProperty": "factorId",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": false,
+            "fieldCode": "emissionValue",
+            "apiProperty": "emissionValue",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "qualityStatus",
+            "apiProperty": "qualityStatus",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "documentVersion",
+            "apiProperty": "documentVersion",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "languageCode",
+            "apiProperty": "languageCode",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": false,
+            "fieldCode": "documentHash",
+            "apiProperty": "documentHash",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": false,
+            "fieldCode": "downloadFormat",
+            "apiProperty": "downloadFormat",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "contract_023ff6ee260a",
+            "apiProperty": "contract_023ff6ee260a",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "contract_681191ac7b10",
+            "apiProperty": "contract_681191ac7b10",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "contract_23eb275e790b",
+            "apiProperty": "contract_23eb275e790b",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "contract_34e86dd7a4ba",
+            "apiProperty": "contract_34e86dd7a4ba",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "contract_52fb4aed3b91",
+            "apiProperty": "contract_52fb4aed3b91",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "contract_704973d44519",
+            "apiProperty": "contract_704973d44519",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "contract_1057b71501e1",
+            "apiProperty": "contract_1057b71501e1",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "contract_51aceccca925",
+            "apiProperty": "contract_51aceccca925",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "contract_f529c51ee65a",
+            "apiProperty": "contract_f529c51ee65a",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "contract_5149310e180b",
+            "apiProperty": "contract_5149310e180b",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "contract_91c27081e798",
+            "apiProperty": "contract_91c27081e798",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          }
+        ],
+        "audience": "ADMIN",
+        "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_REPORT_ADMIN",
+        "primaryEntity": "emission_project_registry"
+      },
+      {
+        "fields": [
+          {
+            "required": true,
+            "fieldCode": "tenantId",
+            "apiProperty": "tenantId",
+            "sourceTable": "emission_project_registry",
+            "sourceColumn": "tenant_id",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "projectId",
+            "apiProperty": "projectId",
+            "sourceTable": "emission_project_registry",
+            "sourceColumn": "project_id",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "processCode",
+            "apiProperty": "processCode",
+            "sourceTable": "framework_process_definition",
+            "sourceColumn": "process_code",
+            "mappingStatus": "CONTEXT"
+          },
+          {
+            "required": true,
+            "fieldCode": "stepCode",
+            "apiProperty": "stepCode",
+            "sourceTable": "framework_process_step",
+            "sourceColumn": "step_code",
+            "mappingStatus": "CONTEXT"
+          },
+          {
+            "required": false,
+            "fieldCode": "recordId",
+            "apiProperty": "recordId",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "statusCode",
+            "apiProperty": "statusCode",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "ownerActorCode",
+            "apiProperty": "ownerActorCode",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "rowVersion",
+            "apiProperty": "rowVersion",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": false,
+            "fieldCode": "createdAt",
+            "apiProperty": "createdAt",
+            "sourceTable": "emission_project_registry",
+            "sourceColumn": "created_at",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": false,
+            "fieldCode": "updatedAt",
+            "apiProperty": "updatedAt",
+            "sourceTable": "emission_project_registry",
+            "sourceColumn": "updated_at",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": false,
+            "fieldCode": "evidenceCount",
+            "apiProperty": "evidenceCount",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "reportingYear",
+            "apiProperty": "reportingYear",
+            "sourceTable": "emission_project_registry",
+            "sourceColumn": "reporting_year",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "organizationId",
+            "apiProperty": "organizationId",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "siteId",
+            "apiProperty": "siteId",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": false,
+            "fieldCode": "facilityId",
+            "apiProperty": "facilityId",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "scopeCode",
+            "apiProperty": "scopeCode",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": false,
+            "fieldCode": "activityValue",
+            "apiProperty": "activityValue",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": false,
+            "fieldCode": "unitCode",
+            "apiProperty": "unitCode",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": false,
+            "fieldCode": "factorId",
+            "apiProperty": "factorId",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": false,
+            "fieldCode": "emissionValue",
+            "apiProperty": "emissionValue",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "qualityStatus",
+            "apiProperty": "qualityStatus",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "documentVersion",
+            "apiProperty": "documentVersion",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "languageCode",
+            "apiProperty": "languageCode",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": false,
+            "fieldCode": "documentHash",
+            "apiProperty": "documentHash",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": false,
+            "fieldCode": "downloadFormat",
+            "apiProperty": "downloadFormat",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "contract_023ff6ee260a",
+            "apiProperty": "contract_023ff6ee260a",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "contract_681191ac7b10",
+            "apiProperty": "contract_681191ac7b10",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "contract_23eb275e790b",
+            "apiProperty": "contract_23eb275e790b",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "contract_34e86dd7a4ba",
+            "apiProperty": "contract_34e86dd7a4ba",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "contract_52fb4aed3b91",
+            "apiProperty": "contract_52fb4aed3b91",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "contract_704973d44519",
+            "apiProperty": "contract_704973d44519",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "contract_1057b71501e1",
+            "apiProperty": "contract_1057b71501e1",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "contract_51aceccca925",
+            "apiProperty": "contract_51aceccca925",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "contract_f529c51ee65a",
+            "apiProperty": "contract_f529c51ee65a",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "contract_5149310e180b",
+            "apiProperty": "contract_5149310e180b",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          },
+          {
+            "required": true,
+            "fieldCode": "contract_91c27081e798",
+            "apiProperty": "contract_91c27081e798",
+            "sourceTable": null,
+            "sourceColumn": null,
+            "mappingStatus": "LOGICAL_CONTRACT"
+          }
+        ],
+        "audience": "USER",
+        "pageCode": "EMISSION_PROJECT_EMISSION_PROJECT_REPORT_USER",
+        "primaryEntity": "emission_project_registry"
+      }
+    ],
+    "transactional": true,
+    "schemaSetVersion": 2,
+    "migrationRequired": true,
+    "primaryEntities": [
+      "emission_project_registry"
+    ],
+    "historyRequired": true,
+    "indexesRequired": true,
+    "foreignKeysRequired": true
+  },
+  "tests": [
+    {
+      "name": "타 사업장 활동자료 접근 차단",
+      "type": "AUTHORITY",
+      "steps": [
+        {
+          "actor": "SITE_DATA_OWNER",
+          "action": "GET_OTHER_SITE_ACTIVITY"
+        },
+        {
+          "action": "SUBMIT_OTHER_SITE_ACTIVITY"
+        }
+      ],
+      "status": "APPROVED",
+      "caseCode": "EMISSION_COLLECT_AUTH",
+      "assertions": [
+        {
+          "httpStatus": 403
+        },
+        {
+          "dataLeak": false
+        },
+        {
+          "audit": "ACCESS_DENIED"
+        }
+      ],
+      "preconditions": "SITE_DATA_OWNER가 다른 사업장 프로젝트 ID를 알고 있음"
+    },
+    {
+      "name": "권한 없는 작업 차단",
+      "type": "AUTHORITY",
+      "steps": [
+        "권한 없는 액션 시도",
+        "담당 액터의 정상 액션 수행"
+      ],
+      "status": "APPROVED",
+      "caseCode": "EMISSION_PROJECT_AUTH",
+      "assertions": [
+        "비인가 액션은 차단됨",
+        "거부 시도가 감사 기록에 남음"
+      ],
+      "preconditions": "서로 다른 역할의 계정이 준비됨"
+    },
+    {
+      "name": "탄소배출 프로젝트 수행 · 미배정 액터 권한 차단",
+      "type": "AUTHORITY",
+      "steps": [
+        {
+          "executor": "backend-contract-self-test",
+          "scenario": "AUTHORITY",
+          "processCode": "EMISSION_PROJECT"
+        }
+      ],
+      "status": "APPROVED",
+      "caseCode": "EMISSION_PROJECT_AUTHORITY",
+      "assertions": [
+        "계정·테넌트·프로젝트·액터 배정으로 검증함"
+      ],
+      "preconditions": "테스트용 테넌트·프로젝트·액터 배정과 트랜잭션 격리 환경이 준비되어야 한다."
+    },
+    {
+      "name": "검증·승인 액터 권한 분리",
+      "type": "AUTHORITY",
+      "steps": [
+        "자료담당자 승인 시도",
+        "검증자 승인 시도",
+        "승인자 승인"
+      ],
+      "status": "APPROVED",
+      "caseCode": "EMISSION_REVIEW_AUTHORITY",
+      "assertions": [
+        "비인가 액션=403",
+        "승인자만 APPROVED 전이"
+      ],
+      "preconditions": "자료담당자·검증자·승인자가 각각 배정되어 있다."
+    },
+    {
+      "name": "동일 버전 중복 제출 멱등 처리",
+      "type": "EXCEPTION",
+      "steps": [
+        {
+          "actor": "SITE_DATA_OWNER",
+          "action": "SUBMIT_ACTIVITY_DATA"
+        },
+        {
+          "action": "REPEAT_SAME_REQUEST"
+        }
+      ],
+      "status": "APPROVED",
+      "caseCode": "EMISSION_COLLECT_DUPLICATE",
+      "assertions": [
+        {
+          "singleSubmission": true
+        },
+        {
+          "singleAuditTransition": true
+        },
+        {
+          "state": "DATA_SUBMITTED"
+        }
+      ],
+      "preconditions": "동일 프로젝트·동일 자료 버전이 이미 제출 완료"
+    },
+    {
+      "name": "필수 활동자료 누락 제출 차단",
+      "type": "EXCEPTION",
+      "steps": [
+        {
+          "actor": "SITE_DATA_OWNER",
+          "action": "SUBMIT_ACTIVITY_DATA"
+        }
+      ],
+      "status": "APPROVED",
+      "caseCode": "EMISSION_COLLECT_REQUIRED",
+      "assertions": [
+        {
+          "httpStatus": 400
+        },
+        {
+          "state": "PLANNED"
+        },
+        {
+          "errorCode": "ACTIVITY_REQUIRED_FIELDS_MISSING"
+        },
+        {
+          "noPartialWrite": true
+        }
+      ],
+      "preconditions": "담당자 권한은 있으나 필수 항목 또는 증빙이 누락"
+    },
+    {
+      "name": "탄소배출 프로젝트 수행 · 잘못된 명령과 입력 차단",
+      "type": "EXCEPTION",
+      "steps": [
+        {
+          "executor": "backend-contract-self-test",
+          "scenario": "EXCEPTION",
+          "processCode": "EMISSION_PROJECT"
+        }
+      ],
+      "status": "APPROVED",
+      "caseCode": "EMISSION_PROJECT_EXCEPTION",
+      "assertions": [
+        "필수 계약·증적·오류 제약이 존재함"
+      ],
+      "preconditions": "테스트용 테넌트·프로젝트·액터 배정과 트랜잭션 격리 환경이 준비되어야 한다."
+    },
+    {
+      "name": "검증 보완 요청과 재제출",
+      "type": "EXCEPTION",
+      "steps": [
+        "검증 시작",
+        "보완 요청",
+        "자료 수정",
+        "재제출"
+      ],
+      "status": "APPROVED",
+      "caseCode": "EMISSION_REVIEW_CORRECTION",
+      "assertions": [
+        "반려사유 필수",
+        "ACTIVITY_DATA Task 재활성화",
+        "버전 증가",
+        "이전 이력 보존"
+      ],
+      "preconditions": "제출 완료 자료에 검증 오류가 존재한다."
+    },
+    {
+      "name": "사업장 담당자 활동자료 정상 제출",
+      "type": "HAPPY_PATH",
+      "steps": [
+        {
+          "path": "/emission/data_input",
+          "actor": "SITE_DATA_OWNER",
+          "action": "OPEN"
+        },
+        {
+          "data": "quantity,unit,period,evidence",
+          "action": "SAVE_ACTIVITY"
+        },
+        {
+          "action": "SUBMIT_ACTIVITY_DATA"
+        }
+      ],
+      "status": "APPROVED",
+      "caseCode": "EMISSION_COLLECT_HAPPY",
+      "assertions": [
+        {
+          "state": "DATA_SUBMITTED"
+        },
+        {
+          "submissionVersion": 1
+        },
+        {
+          "audit": "SUBMIT_ACTIVITY_DATA"
+        },
+        {
+          "locked": true
+        }
+      ],
+      "preconditions": "SITE_DATA_OWNER가 대상 프로젝트·사업장에 배정되고 마감 전이며 필수 활동자료와 증빙이 존재"
+    },
+    {
+      "name": "정상 업무 완료",
+      "type": "HAPPY_PATH",
+      "steps": [
+        "순서대로 업무 수행",
+        "완료 조건 검증",
+        "다음 업무 개방"
+      ],
+      "status": "APPROVED",
+      "caseCode": "EMISSION_PROJECT_HAPPY",
+      "assertions": [
+        "최종 상태가 완료됨",
+        "필수 산출물과 감사 이력이 존재함"
+      ],
+      "preconditions": "담당 액터와 프로젝트 데이터가 준비됨"
+    },
+    {
+      "name": "탄소배출 프로젝트 수행 · 정상 상태 전이",
+      "type": "HAPPY_PATH",
+      "steps": [
+        {
+          "executor": "backend-contract-self-test",
+          "scenario": "HAPPY_PATH",
+          "processCode": "EMISSION_PROJECT"
+        }
+      ],
+      "status": "APPROVED",
+      "caseCode": "EMISSION_PROJECT_HAPPY_PATH",
+      "assertions": [
+        "모든 단계·상태·명령 계약이 완전함"
+      ],
+      "preconditions": "테스트용 테넌트·프로젝트·액터 배정과 트랜잭션 격리 환경이 준비되어야 한다."
+    },
+    {
+      "name": "검증 통과 후 승인·확정",
+      "type": "HAPPY_PATH",
+      "steps": [
+        "검증 시작",
+        "검증 통과",
+        "승인"
+      ],
+      "status": "APPROVED",
+      "caseCode": "EMISSION_REVIEW_HAPPY",
+      "assertions": [
+        "상태=APPROVED",
+        "산정버전 잠금",
+        "REPORT Task 활성화",
+        "검증·승인 이력 보존"
+      ],
+      "preconditions": "제출 완료 자료와 산정 결과, 검증자·승인자 배정이 존재한다."
+    },
+    {
+      "name": "프로젝트·사업장 데이터 격리",
+      "type": "ISOLATION",
+      "steps": [
+        {
+          "actor": "SITE_DATA_OWNER",
+          "action": "SAVE_ACTIVITY",
+          "tenant": "TENANT_A"
+        },
+        {
+          "actor": "SITE_DATA_OWNER",
+          "action": "SEARCH_ACTIVITY",
+          "tenant": "TENANT_B"
+        }
+      ],
+      "status": "APPROVED",
+      "caseCode": "EMISSION_COLLECT_ISOLATION",
+      "assertions": [
+        {
+          "tenantAWriteCount": 1
+        },
+        {
+          "tenantBVisibleCount": 0
+        },
+        {
+          "crossTenantLeak": false
+        },
+        {
+          "audit": "ISOLATION_VERIFIED"
+        }
+      ],
+      "preconditions": "서로 다른 테넌트와 사업장에 동일 이름의 프로젝트가 존재"
+    },
+    {
+      "name": "탄소배출 프로젝트 수행 · 테넌트·프로젝트 격리",
+      "type": "ISOLATION",
+      "steps": [
+        {
+          "executor": "backend-contract-self-test",
+          "scenario": "ISOLATION",
+          "processCode": "EMISSION_PROJECT"
+        }
+      ],
+      "status": "APPROVED",
+      "caseCode": "EMISSION_PROJECT_ISOLATION",
+      "assertions": [
+        "실행 문맥과 유일 실행 제약이 존재함"
+      ],
+      "preconditions": "테스트용 테넌트·프로젝트·액터 배정과 트랜잭션 격리 환경이 준비되어야 한다."
+    },
+    {
+      "name": "검증·승인 교차 테넌트 차단",
+      "type": "ISOLATION",
+      "steps": [
+        "A 계정으로 B 제출 검증",
+        "A 계정으로 B 제출 승인"
+      ],
+      "status": "APPROVED",
+      "caseCode": "EMISSION_REVIEW_TENANT",
+      "assertions": [
+        "모든 교차 접근=403",
+        "B 상태·이력 불변"
+      ],
+      "preconditions": "서로 다른 두 테넌트에 프로젝트와 제출 건이 존재한다."
+    },
+    {
+      "name": "업로드 실패 복구와 재처리",
+      "type": "RECOVERY",
+      "steps": [
+        {
+          "actor": "SITE_DATA_OWNER",
+          "action": "UPLOAD_ACTIVITY_EXCEL"
+        },
+        {
+          "actor": "SYSTEM_AUTOMATION",
+          "action": "FAIL_STORAGE_TRANSIENT"
+        },
+        {
+          "actor": "SYSTEM_AUTOMATION",
+          "action": "RETRY_IMPORT"
+        }
+      ],
+      "status": "APPROVED",
+      "caseCode": "EMISSION_COLLECT_RECOVERY",
+      "assertions": [
+        {
+          "firstState": "IMPORT_FAILED"
+        },
+        {
+          "noPartialWrite": true
+        },
+        {
+          "retryCount": 1
+        },
+        {
+          "finalState": "DATA_SAVED"
+        },
+        {
+          "sourceChecksumPreserved": true
+        }
+      ],
+      "preconditions": "엑셀 업로드 도중 일시적 저장소 오류가 발생하고 원본 파일 무결성이 유지됨"
+    },
+    {
+      "name": "탄소배출 프로젝트 수행 · 중복 실행·실패 복구",
+      "type": "RECOVERY",
+      "steps": [
+        {
+          "executor": "backend-contract-self-test",
+          "scenario": "RECOVERY",
+          "processCode": "EMISSION_PROJECT"
+        }
+      ],
+      "status": "APPROVED",
+      "caseCode": "EMISSION_PROJECT_RECOVERY",
+      "assertions": [
+        "멱등키와 롤백 명령 계약이 존재함"
+      ],
+      "preconditions": "테스트용 테넌트·프로젝트·액터 배정과 트랜잭션 격리 환경이 준비되어야 한다."
+    },
+    {
+      "name": "마감 후 제출 차단 및 관리자 예외 경로",
+      "type": "SAFETY",
+      "steps": [
+        {
+          "actor": "SITE_DATA_OWNER",
+          "action": "SUBMIT_ACTIVITY_DATA"
+        },
+        {
+          "actor": "PLATFORM_OPERATOR",
+          "action": "EXTEND_DEADLINE"
+        },
+        {
+          "actor": "SITE_DATA_OWNER",
+          "action": "SUBMIT_ACTIVITY_DATA"
+        }
+      ],
+      "status": "APPROVED",
+      "caseCode": "EMISSION_COLLECT_DEADLINE",
+      "assertions": [
+        {
+          "firstHttpStatus": 409
+        },
+        {
+          "errorCode": "SUBMISSION_DEADLINE_EXPIRED"
+        },
+        {
+          "extensionAudit": true
+        },
+        {
+          "finalState": "DATA_SUBMITTED"
+        }
+      ],
+      "preconditions": "프로젝트 자료 제출 마감일이 지났고 연장 승인 없음"
+    }
+  ],
+  "testExecution": {
+    "runner": "FAST_PROCESS_CONTRACT_RUNNER",
+    "requiredLanes": [
+      "CONTRACT",
+      "AUTHORITY",
+      "ISOLATION",
+      "RECOVERY",
+      "LIVE_SMOKE"
+    ],
+    "requiredScenarioTypes": [
+      "HAPPY_PATH",
+      "EXCEPTION",
+      "AUTHORITY",
+      "ISOLATION",
+      "RECOVERY"
+    ],
+    "cacheKeySource": "packageHash",
+    "parallelSafe": true,
+    "targetSeconds": 5,
+    "liveSmokeRequiredForVerified": true,
+    "evidenceRequired": true
+  },
+  "nonfunctional": {
+    "recovery": {
+      "retry": "idempotent-only",
+      "resumeFromLastVerifiedState": true
+    },
+    "security": {
+      "audit": true,
+      "tenantIsolation": true,
+      "projectIsolation": true,
+      "serverAuthorization": true
+    },
+    "responsive": {
+      "mobile": "single-column",
+      "tablet": "adaptive-two-column",
+      "desktop": "task-optimized",
+      "noTextOverflow": true
+    },
+    "performance": {
+      "targetP95Ms": 500,
+      "paginationRequired": true,
+      "searchIndexRequired": true
+    },
+    "accessibility": {
+      "focus": true,
+      "keyboard": true,
+      "standard": "WCAG 2.1 AA",
+      "errorSummary": true
+    }
+  },
+  "sourceHash": "40fb5b7ec23b46797356af25dd41ed47344a1a4a4115345299a3b39a71f90419",
+  "approvalStatus": "APPROVED",
+  "generationStatus": "READY",
+  "packageHash": "b8a7925834799b2e49124aa8111fdd9b181047c2cc380245c6b407bafc2bef5d"
+}

@@ -1,0 +1,57 @@
+{
+  "schemaVersion": "2.0.0",
+  "packageCount": 7,
+  "skippedReviewRequired": 0,
+  "packages": [
+    {
+      "processCode": "EMISSION_PROJECT",
+      "stepCode": "EMISSION_PROJECT_APPROVE",
+      "package": "EMISSION_PROJECT__EMISSION_PROJECT_APPROVE.json",
+      "packageHash": "2619b61d4ed7bb85c898ce2c6469401dc95eb39f04bba641bd582478de6685be",
+      "pages": 2
+    },
+    {
+      "processCode": "EMISSION_PROJECT",
+      "stepCode": "EMISSION_PROJECT_CALCULATE",
+      "package": "EMISSION_PROJECT__EMISSION_PROJECT_CALCULATE.json",
+      "packageHash": "5a51681bde01a4d3e706659821e9551c15b5f70f4b9148b119ee7e6e96bdafe9",
+      "pages": 2
+    },
+    {
+      "processCode": "EMISSION_PROJECT",
+      "stepCode": "EMISSION_PROJECT_COLLECT",
+      "package": "EMISSION_PROJECT__EMISSION_PROJECT_COLLECT.json",
+      "packageHash": "a98957424618be727e8c7402f000159b161047effcd4865ff8a44b787480a692",
+      "pages": 2
+    },
+    {
+      "processCode": "EMISSION_PROJECT",
+      "stepCode": "EMISSION_PROJECT_CORRECT",
+      "package": "EMISSION_PROJECT__EMISSION_PROJECT_CORRECT.json",
+      "packageHash": "458b9aaaf9b1cc90211eca95f120aa97bab5667acecb266f9f0ea1ecf1f91ab2",
+      "pages": 2
+    },
+    {
+      "processCode": "EMISSION_PROJECT",
+      "stepCode": "EMISSION_PROJECT_REPORT",
+      "package": "EMISSION_PROJECT__EMISSION_PROJECT_REPORT.json",
+      "packageHash": "b8a7925834799b2e49124aa8111fdd9b181047c2cc380245c6b407bafc2bef5d",
+      "pages": 2
+    },
+    {
+      "processCode": "EMISSION_PROJECT",
+      "stepCode": "EMISSION_PROJECT_SETUP",
+      "package": "EMISSION_PROJECT__EMISSION_PROJECT_SETUP.json",
+      "packageHash": "8c643b820937142ebdcd54c74d555f79027d1314ae7db75a4e9a19fa3bc553e1",
+      "pages": 2
+    },
+    {
+      "processCode": "EMISSION_PROJECT",
+      "stepCode": "EMISSION_PROJECT_VALIDATE",
+      "package": "EMISSION_PROJECT__EMISSION_PROJECT_VALIDATE.json",
+      "packageHash": "fd58b9de4c0e4d2e7cdbffa5f4fa51fc10edd687b8d89683e01005f5f0cd18e5",
+      "pages": 2
+    }
+  ],
+  "manifestHash": "9fc3dea3bd6e86faa11365189778d2b5045ab4c2ae8f1d21ab36aefcfd0de9b4"
+}
