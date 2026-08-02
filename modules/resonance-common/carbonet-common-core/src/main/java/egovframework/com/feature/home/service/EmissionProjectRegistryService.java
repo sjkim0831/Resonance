@@ -703,7 +703,9 @@ public class EmissionProjectRegistryService {
         String state=String.valueOf(rows.get(0).get("state"));
         if("SUBMITTED".equals(state)) return Map.of("id",submissionId,"state",state,"duplicate",true);
         Object deadlineValue=rows.get(0).get("deadline");
-        if(deadlineValue!=null&&LocalDate.parse(String.valueOf(deadlineValue)).isBefore(LocalDate.now())&&!Boolean.TRUE.equals(body.get("deadlineExtended"))) throw new IllegalStateException("SUBMISSION_DEADLINE_EXPIRED");
+        boolean deadlineExpired=deadlineValue!=null&&LocalDate.parse(String.valueOf(deadlineValue)).isBefore(LocalDate.now());
+        boolean administratorExtension=override&&Boolean.TRUE.equals(body.get("deadlineExtended"));
+        if(deadlineExpired&&!administratorExtension) throw new IllegalStateException("SUBMISSION_DEADLINE_EXPIRED");
         Object raw=body.get("activityIds");
         if(!(raw instanceof List<?> ids)||ids.isEmpty()) throw new IllegalArgumentException("ACTIVITY_REQUIRED_FIELDS_MISSING");
         Map<String,Object> quality=runQuality(projectId,tenant,user,override);
@@ -716,6 +718,7 @@ public class EmissionProjectRegistryService {
             jdbc.update("INSERT INTO emission_activity_submission_evidence(submission_id,activity_id,evidence_type,evidence_name,uploaded_actor) SELECT ?,activity_id,'REFERENCE',left(evidence_note,200),? FROM emission_activity_data WHERE activity_id=? AND project_id=? AND nullif(trim(evidence_note),'') IS NOT NULL ON CONFLICT(submission_id,activity_id,evidence_type) DO NOTHING",submissionId,user,activityId,projectId);
             jdbc.update("INSERT INTO emission_activity_submission_evidence(submission_id,activity_id,evidence_type,evidence_path,evidence_name,evidence_sha256,uploaded_actor) SELECT ?,activity_id,'FILE_'||evidence_id,'db://activity-evidence/'||evidence_id,original_name,sha256,? FROM emission_activity_evidence WHERE tenant_id=? AND project_id=? AND activity_id=? ON CONFLICT(submission_id,activity_id,evidence_type) DO NOTHING",submissionId,user,tenant,projectId,activityId);
         }
+        if(deadlineExpired) jdbc.update("INSERT INTO emission_activity_submission_event(submission_id,event_type,event_actor,previous_state,new_state,event_note) VALUES (?,'DEADLINE_EXTENDED',?,'DRAFT','DRAFT','관리자 권한으로 제출 기한 예외를 승인했습니다.')",submissionId,user);
         jdbc.update("UPDATE emission_activity_submission SET submission_state='SUBMITTED',submitted_actor=?,submitted_at=current_timestamp,quality_run_id=?,submitted_item_count=(SELECT count(*) FROM emission_activity_submission_item WHERE submission_id=?),snapshot_hash=(SELECT md5(coalesce((SELECT string_agg(source_hash,'|' ORDER BY activity_id) FROM emission_activity_submission_item WHERE submission_id=?),'')||'|'||coalesce((SELECT string_agg(evidence_sha256,'|' ORDER BY activity_id,evidence_type) FROM emission_activity_submission_evidence WHERE submission_id=? AND evidence_sha256 IS NOT NULL),''))),updated_at=current_timestamp WHERE submission_id=?",user,quality.get("runId"),submissionId,submissionId,submissionId,submissionId);
         jdbc.update("INSERT INTO emission_activity_submission_event(submission_id,event_type,event_actor,previous_state,new_state,event_note) VALUES (?,'SUBMITTED',?,'DRAFT','SUBMITTED','활동자료 제출 완료')",submissionId,user);
         jdbc.update("UPDATE emission_project_registry SET current_step='활동자료 제출',progress_percent=greatest(progress_percent,30),updated_at=current_timestamp WHERE project_id=?",projectId);
