@@ -12,12 +12,14 @@ import egovframework.com.feature.auth.external.service.AuthTokenLoginService;
 import egovframework.com.feature.auth.external.service.ExternalAuthProvider;
 import egovframework.com.feature.auth.external.service.ExternalAuthService;
 import egovframework.com.feature.auth.service.AuthService;
+import egovframework.com.feature.member.model.vo.EntrprsManageVO;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.util.ObjectUtils;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -95,6 +97,11 @@ public class ExternalAuthServiceImpl implements ExternalAuthService {
         ExternalAuthIdentity identity = provider.complete(session, request, servletRequest);
         sessions.remove(request.getTxId());
 
+        Map<String, Object> joinResult = completePendingJoinIdentity(servletRequest, identity);
+        if (joinResult != null) {
+            return joinResult;
+        }
+
         String linkUserId = firstNonBlank(request.getUserId(), session.getLinkedUserId());
         String linkUserSe = firstNonBlank(request.getUserSe(), session.getLinkedUserSe());
 
@@ -121,6 +128,43 @@ public class ExternalAuthServiceImpl implements ExternalAuthService {
 
         return withExternalIdentity(authTokenLoginService.issueLogin(loginResult, false, servletRequest, servletResponse),
                 identity, false);
+    }
+
+    /**
+     * A registration identity check belongs to the existing join HTTP session,
+     * not to an already persisted login account. Keep the two flows separate and
+     * only enrich a session that already passed the member-type and consent steps.
+     */
+    private Map<String, Object> completePendingJoinIdentity(HttpServletRequest request,
+            ExternalAuthIdentity identity) {
+        HttpSession httpSession = request == null ? null : request.getSession(false);
+        if (httpSession == null) {
+            return null;
+        }
+        Object pending = httpSession.getAttribute("joinVO");
+        if (!(pending instanceof EntrprsManageVO)) {
+            return null;
+        }
+        Object stepValue = httpSession.getAttribute("joinStep");
+        int joinStep = stepValue instanceof Number ? ((Number) stepValue).intValue() : 0;
+        if (joinStep < 2 || ObjectUtils.isEmpty(identity.getAuthCi()) || ObjectUtils.isEmpty(identity.getAuthDi())) {
+            return failure("JOIN_IDENTITY_STATE_INVALID", "회원가입 동의 단계와 본인확인 결과를 다시 확인해 주세요.");
+        }
+
+        EntrprsManageVO joinVO = (EntrprsManageVO) pending;
+        joinVO.setAuthTy(identity.getAuthTy());
+        joinVO.setAuthDn(identity.getAuthDn());
+        joinVO.setAuthCi(identity.getAuthCi());
+        joinVO.setAuthDi(identity.getAuthDi());
+        httpSession.setAttribute("joinVO", joinVO);
+        httpSession.setAttribute("joinStep", 3);
+
+        Map<String, Object> payload = withExternalIdentity(new ConcurrentHashMap<>(), identity, false);
+        payload.put("status", "joinVerificationSuccess");
+        payload.put("success", true);
+        payload.put("certified", true);
+        payload.put("nextUrl", "/join/step4");
+        return payload;
     }
 
     private Map<String, Object> withExternalIdentity(Map<String, Object> payload, ExternalAuthIdentity identity,

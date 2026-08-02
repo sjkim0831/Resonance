@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { StandardUserFooter } from "../../components/user-shell/StandardUserFooter";
 import { logGovernanceScope } from "../../app/policy/debug";
-import { resetJoinSession, saveJoinStep3 } from "../../lib/api/joinSession";
+import { completeJoinExternalAuth, resetJoinSession, saveJoinStep3, startJoinExternalAuth } from "../../lib/api/joinSession";
 import { buildLocalizedPath, isEnglish, navigate } from "../../lib/navigation/runtime";
 
 type AuthOption = {
@@ -140,6 +140,21 @@ export function JoinAuthMigrationPage() {
     setError("");
     setSubmittingMethod(method);
     try {
+      const started = await startJoinExternalAuth(method);
+      if (!started.txId) {
+        throw new Error(started.message || (en ? "Failed to start identity verification." : "본인확인을 시작하지 못했습니다."));
+      }
+      if (started.nextAction === "COMPLETE") {
+        await completeJoinExternalAuth(method, started.txId);
+      } else if (started.nextAction === "REDIRECT" && started.urlScheme) {
+        if (/^https?:\/\//i.test(started.urlScheme)) {
+          window.location.href = started.urlScheme;
+          return;
+        }
+        throw new Error(started.message || (en ? "Complete verification in the provider application." : "인증기관 앱에서 본인확인을 완료해 주세요."));
+      } else {
+        throw new Error(started.message || (en ? "Identity provider configuration is required." : "본인확인 기관 연동 설정이 필요합니다."));
+      }
       await saveJoinStep3(method);
       navigate(buildLocalizedPath("/join/step4", "/join/en/step4"));
     } catch (nextError) {

@@ -39,6 +39,16 @@ type JoinCompanyReapplySubmitPayload = {
 };
 
 type JoinActionResponse = { success?: boolean; message?: string } & Record<string, unknown>;
+export type JoinExternalAuthStartResponse = JoinActionResponse & {
+  txId?: string;
+  nextAction?: "COMPLETE" | "REDIRECT" | "CONFIGURE";
+  urlScheme?: string;
+};
+export type JoinExternalAuthCompleteResponse = JoinActionResponse & {
+  status?: string;
+  certified?: boolean;
+  nextUrl?: string;
+};
 type JoinFormFieldPayload = Record<string, string | undefined>;
 type JoinStepPayload = Record<string, string>;
 
@@ -158,6 +168,25 @@ export async function saveJoinStep2(marketingYn: string, requiredConsents = true
 
 export async function saveJoinStep3(authMethod: string) {
   return postJoinStep("/join/api/step3", { auth_method: authMethod }, "Failed to save join step3");
+}
+
+export async function startJoinExternalAuth(methodCode: string) {
+  return postJson<JoinExternalAuthStartResponse>("/signin/external-auth/start", {
+    methodCode,
+    returnUrl: "/join/step3"
+  });
+}
+
+export async function completeJoinExternalAuth(methodCode: string, txId: string) {
+  const response = await postJson<JoinExternalAuthCompleteResponse>("/signin/external-auth/complete", {
+    methodCode,
+    txId
+  });
+  if (!response.success || response.status !== "joinVerificationSuccess") {
+    throw new Error(response.message || "Identity verification did not update the registration session");
+  }
+  invalidateJoinSessionCache();
+  return response;
 }
 
 export async function submitJoinStep4(payload: JoinStep4SubmitPayload) {
