@@ -44,5 +44,9 @@ grep -Fq 'generate-full-stack-design-packages.sh' <<<"$frontend_branch" \
   || fail "generated frontend cannot materialize its missing step package deterministically"
 grep -Fq 'exact frontend step package missing after generation' <<<"$frontend_branch" \
   || fail "generated frontend does not fail closed after package generation"
+grep -Fq "FRONTEND_PACKAGE_GENERATOR_V1_RETRY" "$ORCHESTRATOR" \
+  || fail "orchestrator cannot release a previously exhausted frontend after deterministic package generation is installed"
+grep -Fq 'frontendPackageRetried=$frontend_package_retried' "$ORCHESTRATOR" \
+  || fail "frontend package recovery is missing from orchestrator reporting"
 
 echo "[process-worker-deploy-marker-test] PASS"
