@@ -44,6 +44,20 @@ case "$DIMENSION" in
         and .theme == "COMMON_KRDS_GOV")
     ' "$PACKAGE" >/dev/null
     ;;
+  UI_QUALITY|COMPONENT_COMMON|CLASS_PROPERTY_COMMON)
+    jq -e '
+      (.frontend.pages | length) > 0
+      and all(.frontend.pages[];
+        .layout == "COMMON_KRDS_TASK_LAYOUT"
+        and .theme == "COMMON_KRDS_GOV"
+        and (.sections | length) >= 5
+        and (.fields | length) >= 8
+        and all(.fields[]; (.code | type == "string" and length > 0))
+        and .accessibility.keyboard == true
+        and (.responsive.mobile | type == "string" and length > 0)
+        and (.responsive.desktop | type == "string" and length > 0))
+    ' "$PACKAGE" >/dev/null
+    ;;
   API|API_QUALITY|BACKEND|BACKEND_QUALITY)
     jq -e '
       (.backend.apis | length) > 0
