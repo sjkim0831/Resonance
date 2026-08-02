@@ -780,6 +780,8 @@ public class ActorProcessGovernanceService {
         for(Map<String,Object> row:routes){
             String route=ScreenDevelopmentNoteService.cleanRoute(String.valueOf(row.get("route_path")));
             if(route.isBlank())continue;
+            Integer covered=jdbc.queryForObject("select count(*) from framework_common_design_asset_coverage where route_path=lower(?) and common_assets_ready",Integer.class,route);
+            if(covered!=null&&covered>0)continue;
             String pageId=jdbc.queryForObject("select 'AUTO_'||upper(substr(md5(lower(?)),1,16))",String.class,route);
             Map<String,Object> request=new LinkedHashMap<>();
             request.put("pageId",pageId);request.put("pageName",String.valueOf(row.get("stepName")));request.put("routePath",route);
@@ -2313,8 +2315,79 @@ public class ActorProcessGovernanceService {
               target_path=excluded.target_path,binding_status='ACTIVE',binding_source=excluded.binding_source,
               verified_at=current_timestamp,updated_at=current_timestamp
             """,process);
+        ensureGeneratedScreenDevelopmentAssets(process,actor);
         Integer pages=jdbc.queryForObject("select count(*) from framework_page_design where process_code=?",Integer.class,process);
         return pages==null?0:pages;
+    }
+
+    /**
+     * Materializes an editable design note, one selected HTML proposal, and the
+     * canonical common-design binding for generated routes. Existing operator
+     * notes and proposals are never overwritten. This satisfies design input
+     * gates only; it deliberately does not claim frontend implementation.
+     */
+    private void ensureGeneratedScreenDevelopmentAssets(String process,String actor){
+        List<Map<String,Object>> screens=jdbc.queryForList("""
+            select s.step_code,s.step_name,s.actor_code,s.from_state,s.to_state,s.command_code,
+                   coalesce(nullif(s.requirement_text,''),s.step_name) requirement_text,
+                   coalesce(nullif(s.completion_rule,''),s.to_state||' state transition') completion_rule,
+                   route.route_path
+              from framework_process_step s
+              cross join lateral unnest(array_remove(array[s.user_path,s.admin_path],null)) route(route_path)
+             where s.process_code=? and nullif(trim(route.route_path),'') is not null
+             order by s.step_order,route.route_path
+            """,process);
+        for(Map<String,Object> screen:screens){
+            String route=ScreenDevelopmentNoteService.cleanRoute(String.valueOf(screen.get("route_path")));
+            String routeKey=route.toLowerCase(Locale.ROOT);
+            String step=String.valueOf(screen.get("step_code"));
+            String title=String.valueOf(screen.get("step_name"));
+            String pageId=jdbc.queryForObject("select 'AUTO_'||upper(substr(md5(lower(?)),1,16))",String.class,route);
+            String design="KRDS responsive workspace for actor "+screen.get("actor_code")+
+                "; state "+screen.get("from_state")+" -> "+screen.get("to_state")+
+                "; sections: summary, input and validation, evidence, audit history, next task.";
+            String function="Execute "+screen.get("command_code")+" for "+process+"/"+step+
+                " with tenant, project, actor, row-version, validation, evidence, and idempotent retry contracts.";
+            String acceptance=String.valueOf(screen.get("completion_rule"))+
+                "; persist result, reread database state, record audit evidence, and enable only the valid next transition.";
+            jdbc.update("""
+                insert into framework_screen_development_note(route_key,route_path,page_id,page_title,design_note,
+                  function_note,acceptance_note,development_status,updated_by)
+                values(?,?,?,?,?,?,?,'READY',?) on conflict(route_key) do nothing
+                """,routeKey,route,pageId,title,design,function,acceptance,actor);
+
+            String prompt="Render the approved KRDS common workspace for "+process+"/"+step+
+                ". Preserve actor authority, responsive layout, accessibility, validation, evidence, audit, and next-step contracts.";
+            String html="<main class=\"krds-page generated-workspace\" data-process=\""+htmlEscape(process)+
+                "\" data-step=\""+htmlEscape(step)+"\" data-actor=\""+htmlEscape(String.valueOf(screen.get("actor_code")))+
+                "\"><header class=\"krds-page-header\"><p class=\"krds-breadcrumb\">"+htmlEscape(process)+
+                "</p><h1>"+htmlEscape(title)+"</h1><p>"+htmlEscape(String.valueOf(screen.get("requirement_text")))+
+                "</p></header><section class=\"krds-summary-metrics\" aria-label=\"Task status\" data-from-state=\""+
+                htmlEscape(String.valueOf(screen.get("from_state")))+"\" data-to-state=\""+
+                htmlEscape(String.valueOf(screen.get("to_state")))+"\"></section><section class=\"krds-work-grid\">"+
+                "<div class=\"krds-card\" data-section=\"input-validation\"><h2>Input and validation</h2></div>"+
+                "<div class=\"krds-card\" data-section=\"evidence-history\"><h2>Evidence and audit history</h2></div>"+
+                "</section><footer class=\"krds-task-actions\" data-command=\""+
+                htmlEscape(String.valueOf(screen.get("command_code")))+"\"><button type=\"button\">Save draft</button>"+
+                "<button type=\"button\" class=\"krds-btn-primary\">Complete and continue</button></footer></main>";
+            jdbc.update("""
+                insert into framework_screen_html_mockup(route_key,route_path,page_id,slot_no,mockup_title,prompt_text,
+                  html_content,mockup_status,selected,updated_by)
+                values(?,?,?,1,?,?,?,'DRAFT',false,?) on conflict(route_key,slot_no) do nothing
+                """,routeKey,route,pageId,title+" - KRDS workspace",prompt,html,actor);
+            jdbc.update("""
+                update framework_screen_html_mockup set selected=true,mockup_status='SELECTED',updated_by=?,updated_at=current_timestamp
+                 where route_key=? and slot_no=1
+                   and not exists(select 1 from framework_screen_html_mockup selected where selected.route_key=? and selected.selected=true)
+                """,actor,routeKey,routeKey);
+        }
+        ensureCommonDesignAssets(process,"",actor);
+    }
+
+    private static String htmlEscape(String value){
+        if(value==null)return "";
+        return value.replace("&","&amp;").replace("<","&lt;").replace(">","&gt;")
+            .replace("\"","&quot;").replace("'","&#39;");
     }
     @Transactional public void saveArtifact(Map<String,Object>b){
         jdbc.update("insert into framework_process_artifact(process_code,step_code,artifact_code,artifact_type,artifact_name,target_path,contract_ref,required,delivery_status,owner_actor_code,acceptance_criteria,evidence_ref,notes) values(?,?,?,?,?,?,?,?,?,?,?,nullif(?,''),nullif(?,'')) on conflict(process_code,artifact_code) do update set step_code=excluded.step_code,artifact_type=excluded.artifact_type,artifact_name=excluded.artifact_name,target_path=excluded.target_path,contract_ref=excluded.contract_ref,required=excluded.required,delivery_status=excluded.delivery_status,owner_actor_code=excluded.owner_actor_code,acceptance_criteria=excluded.acceptance_criteria,evidence_ref=excluded.evidence_ref,notes=excluded.notes,updated_at=current_timestamp",req(b,"processCode"),str(b,"stepCode"),req(b,"artifactCode"),req(b,"artifactType"),req(b,"artifactName"),str(b,"targetPath"),str(b,"contractRef"),!"false".equalsIgnoreCase(str(b,"required")),def(b,"status","PLANNED"),req(b,"ownerActorCode"),req(b,"acceptanceCriteria"),str(b,"evidenceRef"),str(b,"notes"));
