@@ -13,6 +13,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.ui.Model;
 import org.springframework.ui.ExtendedModelMap;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -287,6 +288,7 @@ public class MemberJoinController {
 
     @PostMapping(value = "/api/step4/submit", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @ResponseBody
+    @Transactional(rollbackFor = Exception.class)
     public ResponseEntity<Map<String, Object>> step4SubmitApi(
             @RequestParam(value = "membershipType", required = false) String membershipType,
             @RequestParam("mberId") String mberId,
@@ -464,6 +466,7 @@ public class MemberJoinController {
      * Step 5: 가입 완료 처리
      */
     @PostMapping({"/step5", "/ko/step5"})
+    @Transactional(rollbackFor = Exception.class)
     public String step5Process(@RequestParam(value = "membershipType", required = false) String membershipType,
             @RequestParam("mberId") String mberId,
             @RequestParam("password") String password,
