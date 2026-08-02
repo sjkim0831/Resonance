@@ -1707,6 +1707,10 @@ wait_backstage_visual_e2e
 run_backstage_screen_space_e2e_if_required
 sync_postgres_backup_cronjobs_if_required
 sync_post_reboot_recovery_if_required
+# A mixed runtime + control-plane commit must not leave systemd executing the
+# previous automation script after the new application is healthy. Reuse the
+# same idempotent synchronizer on the runtime path before publishing success.
+sync_process_development_worker_if_required
 record_deploy_phase "postdeploy_validation"
 printf '%s\n' "$target_commit" > "${DEPLOY_STATE_FILE}.tmp"
 mv "${DEPLOY_STATE_FILE}.tmp" "$DEPLOY_STATE_FILE"
