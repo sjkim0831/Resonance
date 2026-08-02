@@ -2,7 +2,7 @@
 
 - Job: 19055
 - Job type: TEST
-- Source commit: 8d9804bb27d94d8bc866225e833ca7d836ac5197
+- Source commit: 1da9cc658acee7942409b100bf4b26c94b013d71
 - Requirement: 승인자는 연계 계획, 원본 무결성, 품질 검증, 잔여 위험, 예외 조건, 적용 일정, 롤백 기준과 감사 증적을 직무분리 원칙으로 검토한다.
 - Validation result: {"strategy":"APPROVED_FULL_STACK_PACKAGE","processCode":"DATA_INTEGRATION","stepCode":"DATA_INTEGRATION_04_APPROVE","dimension":"TEST","package":"/opt/Resonance/var/ai-worktrees/job-19055/projects/carbonet-backend-metadata/process-runtime/generated/DATA_INTEGRATION/DATA_INTEGRATION__DATA_INTEGRATION_04_APPROVE.json","evidence":"/opt/Resonance/var/ai-worktrees/job-19055/var/test-evidence/process-package-tests/DATA_INTEGRATION__DATA_INTEGRATION_04_APPROVE.json","status":"PASSED"}
 - Live runtime evidence: /opt/Resonance/var/ai-worktrees/job-19055/var/test-evidence/process-package-tests/DATA_INTEGRATION__DATA_INTEGRATION_04_APPROVE.json
