@@ -2155,6 +2155,15 @@ public class ActorProcessGovernanceService {
     /** Materializes complete design contracts without claiming implementation verification. */
     @Transactional public int ensureGeneratedProcessDesignContracts(String processCode,String actor){
         String process=req(Map.of("processCode",processCode),"processCode");
+        jdbc.update("""
+            update framework_process_step
+            set output_contract=jsonb_set(
+                  coalesce(nullif(output_contract,''),'{}')::jsonb,
+                  '{toState}',to_jsonb(to_state),true)::text,
+                updated_at=current_timestamp
+            where process_code=?
+              and coalesce(output_contract,'{}')::jsonb->>'toState' is distinct from to_state
+            """,process);
         ensureProfessionalContracts(process,actor);
         jdbc.update("""
             update framework_professional_screen_contract c set
@@ -2167,7 +2176,12 @@ public class ActorProcessGovernanceService {
               command_contract=json_build_array(s.command_code,'SAVE_DRAFT','ATTACH_EVIDENCE',coalesce(nullif(s.rollback_command_code,''),'ROLLBACK_'||s.step_code))::text,
               state_contract='["LOADING","EMPTY","ERROR","FORBIDDEN","READY","PROCESSING","COMPLETED"]',
               api_contract=json_build_array(json_build_object('contract',coalesce(nullif(s.api_contract,''),'{}')::jsonb))::text,
-              data_contract=json_build_array('tenantId','projectId','processCode','stepCode','actorCode','statusCode','rowVersion','createdAt','updatedAt',json_build_object('input',coalesce(nullif(s.input_contract,''),'{}')::jsonb),json_build_object('output',coalesce(nullif(s.output_contract,''),'{}')::jsonb))::text,
+              data_contract=json_build_array(
+                json_build_object('entity','framework_process_execution'),
+                json_build_object('entity','framework_process_execution_event'),
+                json_build_object('contextFields',json_build_array('tenantId','projectId','processCode','stepCode','actorCode','statusCode','rowVersion','createdAt','updatedAt')),
+                json_build_object('input',coalesce(nullif(s.input_contract,''),'{}')::jsonb),
+                json_build_object('output',coalesce(nullif(s.output_contract,''),'{}')::jsonb))::text,
               evidence_contract='["REQUEST","RESPONSE","DB_REREAD","AUTHORITY","E2E","ROLLBACK"]',
               responsive_contract='KRDS responsive contract for mobile 360px, tablet 768px, and desktop 1280px.',
               accessibility_contract='KRDS and WCAG 2.1 AA keyboard, focus, label, contrast, and error-message contract.',

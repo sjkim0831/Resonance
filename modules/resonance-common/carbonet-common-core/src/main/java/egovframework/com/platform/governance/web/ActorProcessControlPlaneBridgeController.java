@@ -644,7 +644,8 @@ public class ActorProcessControlPlaneBridgeController {
             stepRequest.put("inputContract", inputContract);
             stepRequest.put("outputContract", writeJson(Map.of(
                     "projectId", "string", "processCode", processCode,
-                    "stepCode", stepCode, "statusCode", toState, "rowVersion", "integer")));
+                    "stepCode", stepCode, "statusCode", toState, "toState", toState,
+                    "rowVersion", "integer")));
             stepRequest.put("requiresUserPage", !actorCode.contains("ADMIN"));
             stepRequest.put("requiresAdminPage", actorCode.contains("ADMIN"));
             stepRequest.put("requiresApi", true);
