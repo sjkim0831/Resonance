@@ -2159,8 +2159,7 @@ public class ActorProcessGovernanceService {
             update framework_process_step
             set output_contract=jsonb_set(
                   coalesce(nullif(output_contract,''),'{}')::jsonb,
-                  '{toState}',to_jsonb(to_state),true)::text,
-                updated_at=current_timestamp
+                  '{toState}',to_jsonb(to_state),true)::text
             where process_code=?
               and coalesce(output_contract,'{}')::jsonb->>'toState' is distinct from to_state
             """,process);
