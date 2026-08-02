@@ -2319,6 +2319,7 @@ public class ActorProcessGovernanceService {
               verified_at=current_timestamp,updated_at=current_timestamp
             """,process);
         ensureGeneratedScreenDevelopmentAssets(process,actor);
+        jdbc.queryForObject("select framework_compile_process_execution_specs(?)",Integer.class,process);
         Integer pages=jdbc.queryForObject("select count(*) from framework_page_design where process_code=?",Integer.class,process);
         return pages==null?0:pages;
     }
