@@ -46,8 +46,8 @@ legacy = [
     {"audience": "ADMIN", "fields": [{"fieldCode": "decision"}]},
 ]
 assert module.group_fields_by_audience(legacy) == {
-    "USER": [{"fieldCode": "title"}],
-    "ADMIN": [{"fieldCode": "decision"}],
+    "USER": [{"fieldCode": "title", "code": "title"}],
+    "ADMIN": [{"fieldCode": "decision", "code": "decision"}],
 }
 
 prototype = {

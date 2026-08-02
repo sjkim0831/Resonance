@@ -36,6 +36,13 @@ class GroupFieldsByAudienceTest(unittest.TestCase):
             [field["fieldCode"] for field in grouped["USER"]],
             ["userOnly"],
         )
+        self.assertEqual([field["code"] for field in grouped["ADMIN"]], ["adminOnly", "adminAgain"])
+
+    def test_normalizes_audience_wrapped_fields_to_runtime_code(self) -> None:
+        grouped = GENERATOR.group_fields_by_audience(
+            [{"audience": "ADMIN", "fields": [{"fieldCode": "projectId"}]}]
+        )
+        self.assertEqual(grouped["ADMIN"][0]["code"], "projectId")
 
     def test_rejects_nested_field_without_audience(self) -> None:
         with self.assertRaisesRegex(SystemExit, "require audience"):

@@ -75,7 +75,14 @@ def group_fields_by_audience(field_contract: list[dict[str, Any]]) -> dict[str, 
         if isinstance(nested_fields, list):
             audience = item.get("audience")
             if isinstance(audience, str) and audience:
-                grouped.setdefault(audience, []).extend(nested_fields)
+                normalized_fields = []
+                for nested_field in nested_fields:
+                    if not isinstance(nested_field, dict) or "fieldCode" not in nested_field:
+                        fail("grouped field_contract entries require fieldCode")
+                    normalized_field = dict(nested_field)
+                    normalized_field.setdefault("code", normalized_field["fieldCode"])
+                    normalized_fields.append(normalized_field)
+                grouped.setdefault(audience, []).extend(normalized_fields)
                 continue
             for nested_field in nested_fields:
                 if not isinstance(nested_field, dict):
@@ -83,7 +90,11 @@ def group_fields_by_audience(field_contract: list[dict[str, Any]]) -> dict[str, 
                 nested_audience = nested_field.get("audience")
                 if not isinstance(nested_audience, str) or not nested_audience:
                     fail("grouped field_contract entries require audience")
-                grouped.setdefault(nested_audience, []).append(nested_field)
+                if "fieldCode" not in nested_field:
+                    fail("grouped field_contract entries require fieldCode")
+                normalized_field = dict(nested_field)
+                normalized_field.setdefault("code", normalized_field["fieldCode"])
+                grouped.setdefault(nested_audience, []).append(normalized_field)
             continue
         if "fieldCode" not in item:
             fail("flat field_contract entries require fieldCode")
