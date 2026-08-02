@@ -2,7 +2,7 @@
 
 - Job: 21211
 - Job type: TEST
-- Source commit: 06ecf05c7a1e58b499021055e9507a9b1aaadd76
+- Source commit: 14a5fa0d7c689c1a610fc3de5e01e265c26480b3
 - Requirement: 산정·품질·물량·외부 검증 결과를 종합해 발급 가능 여부를 결정한다.
 - Validation result: {"strategy":"APPROVED_FULL_STACK_PACKAGE","processCode":"CERTIFICATION_ELIGIBILITY_CHECK","stepCode":"CEC_DECIDE","dimension":"TEST","package":"/opt/Resonance/var/ai-worktrees/job-21211/projects/carbonet-backend-metadata/process-runtime/generated/CERTIFICATION_ELIGIBILITY_CHECK/CERTIFICATION_ELIGIBILITY_CHECK__CEC_DECIDE.json","evidence":"/opt/Resonance/var/ai-worktrees/job-21211/var/test-evidence/process-package-tests/CERTIFICATION_ELIGIBILITY_CHECK__CEC_DECIDE.json","status":"PASSED"}
 - Live runtime evidence: /opt/Resonance/var/ai-worktrees/job-21211/var/test-evidence/process-package-tests/CERTIFICATION_ELIGIBILITY_CHECK__CEC_DECIDE.json
