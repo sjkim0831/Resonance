@@ -7,12 +7,12 @@ command -v jq >/dev/null
 jq empty "$P" "$R"
 jq -e '.taskKinds|length==17 and all(.[]; length>0)' "$P" >/dev/null
 jq -e '.allowedModes==["design","implement","verify","diagnose","document"]' "$P" >/dev/null
-jq -e '.directProductionMutationByModel==false and .fallback=="FAIL_CLOSED"' "$P" >/dev/null
+jq -e '.directProductionMutationByModel==false and .fallback=="FAIL_CLOSED" and .aiProviderPolicy=="E4B_ONLY"' "$P" >/dev/null
 jq -e '.promotionGates==["policy","source","test","build","runtime","health"]' "$P" >/dev/null
-jq -e '.exclusiveModels and .selector.model=="gemma4-e4b-gpu-shadow" and .workers.SIMPLE.model=="minimaxai/minimax-m2.7" and .workers.COMPLEX.model=="minimaxai/minimax-m3"' "$R" >/dev/null
+jq -e '.policyId=="hermes-e4b-only" and .exclusiveModels and .selector.model=="gemma4-e4b-gpu-shadow" and (.workers|length)==0 and (.disabledModels|index("minimaxai/minimax-m3")!=null)' "$R" >/dev/null
 grep -q 'run-hermes-project-work.sh' "$ROOT/ops/scripts/run-process-development-worker.sh"
 grep -q 'HERMES_PROJECT_WORK_POLICY_INVALID' "$ROOT/ops/scripts/run-project-auto-completion-orchestrator.sh"
-grep -q 'HERMES_DISABLE_FALLBACK=1' "$ROOT/ops/scripts/run-hermes-nvidia-task.sh"
+grep -q 'RESONANCE_MODEL_ASK_ROLE=translation' "$ROOT/ops/scripts/run-hermes-project-work.sh"
 grep -q 'HERMES_DISABLE_FALLBACK' "$ROOT/modules/hermes-core/cli.py"
 grep -q 'RATE_LIMIT_DEFERRED' "$ROOT/ops/scripts/run-process-development-worker.sh"
 grep -q 'ADOPT_EXISTING_SOURCE' "$ROOT/ops/scripts/run-process-development-worker.sh"

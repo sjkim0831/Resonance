@@ -1130,10 +1130,10 @@ with candidate as (
   join framework_step_execution_spec s
     on s.process_code=j.process_code and s.step_code=j.step_code
   where j.job_status='FAILED'
-    and j.job_type in ('COMPONENT_COMMON','CLASS_PROPERTY_COMMON')
+    and j.job_type in ('COMPONENT_COMMON','CLASS_PROPERTY_COMMON','UI_QUALITY')
     and s.approval_status='APPROVED' and s.generation_status='GENERATED'
     and not exists(select 1 from framework_development_job_event e
-      where e.job_id=j.job_id and e.event_type='COMMON_CONTRACT_V1_RETRY')
+      where e.job_id=j.job_id and e.event_type='QUALITY_CONTRACT_V1_RETRY')
 ), released as (
   update framework_development_job j
   set job_status='RETRY',approval_status='APPROVED',
@@ -1142,7 +1142,7 @@ with candidate as (
   from candidate c where j.job_id=c.job_id returning j.job_id,c.job_status
 ), logged as (
   insert into framework_development_job_event(job_id,event_type,from_status,to_status,worker_id,detail_json)
-  select job_id,'COMMON_CONTRACT_V1_RETRY',job_status,'RETRY','project-auto-completion',
+  select job_id,'QUALITY_CONTRACT_V1_RETRY',job_status,'RETRY','project-auto-completion',
     jsonb_build_object('reason','approved generated package now deterministically validates common components and class properties')
   from released returning 1
 )

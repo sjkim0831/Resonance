@@ -143,7 +143,7 @@ professional field contract, shared KRDS layout, responsive behavior,
 accessibility, server authorization, and actor/process traceability.
 EOF
     ;;
-  COMPONENT_COMMON|CLASS_PROPERTY_COMMON)
+  COMPONENT_COMMON|CLASS_PROPERTY_COMMON|UI_QUALITY)
     if [[ ! -s "$generated_step_package" ]]; then
       FULL_STACK_PACKAGE_OUT="$WT/projects/carbonet-backend-metadata/process-runtime/generated" \
         bash "$WT/ops/scripts/generate-full-stack-design-packages.sh" "$WT" "$PROCESS" >/dev/null

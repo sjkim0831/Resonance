@@ -2,6 +2,7 @@
   "schemaVersion": "1.0",
   "policyId": "hermes-project-work",
   "routerPolicy": "data/ai-runtime/hermes-nvidia-two-tier-policy.json",
+  "aiProviderPolicy": "E4B_ONLY",
   "allowedModes": ["design", "implement", "verify", "diagnose", "document"],
   "taskKinds": [
     "discovery", "requirements", "actor-process", "scenario-test", "ux-ui",

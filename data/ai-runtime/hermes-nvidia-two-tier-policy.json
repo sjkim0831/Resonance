@@ -1,26 +1,15 @@
 {
   "schemaVersion": "1.0",
-  "policyId": "hermes-nvidia-two-tier",
+  "policyId": "hermes-e4b-only",
   "exclusiveModels": true,
   "selector": {
     "provider": "local-openai-compatible",
     "model": "gemma4-e4b-gpu-shadow",
     "baseUrl": "http://127.0.0.1:24451/v1",
-    "allowedOutput": ["SIMPLE", "COMPLEX"],
+    "allowedOutput": ["REGISTERED_GENERATOR", "REVIEW_REQUIRED"],
     "generationAllowed": false
   },
-  "workers": {
-    "SIMPLE": {
-      "provider": "nvidia",
-      "model": "minimaxai/minimax-m2.7",
-      "work": ["one-file code", "boilerplate", "small test", "simple explanation"]
-    },
-    "COMPLEX": {
-      "provider": "nvidia",
-      "model": "minimaxai/minimax-m3",
-      "work": ["multi-file implementation", "architecture", "workflow", "database", "security", "debugging"]
-    }
-  },
+  "workers": {},
   "fallback": "FAIL_CLOSED",
-  "disabledModels": ["qwen3.6-40b-deck-opus-q4", "qwen3.6-40b-hermes-framework-qlora", "all-unlisted-models"]
+  "disabledModels": ["minimaxai/minimax-m2.7", "minimaxai/minimax-m3", "qwen3.6-40b-deck-opus-q4", "qwen3.6-40b-hermes-framework-qlora", "all-unlisted-models"]
 }
