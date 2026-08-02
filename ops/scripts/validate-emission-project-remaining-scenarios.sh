@@ -8,11 +8,17 @@ SOURCE_COMMIT="$(git -C "$ROOT" rev-parse HEAD)"
 COOKIE_JAR="$(mktemp)"; BODY="$(mktemp)"
 project="TEST-DEADLINE-$(date +%s)"
 submission_id=""
-trap 'rm -f "$COOKIE_JAR" "$BODY"' EXIT
 
 source "$ROOT/ops/scripts/lib/carbonet-postgres-query.sh"
 carbonet_postgres_query_init
 q(){ carbonet_postgres_query "$1"; }
+cleanup(){
+  if [[ -n "$submission_id" ]]; then
+    q "delete from emission_workflow_notification where project_id='$project'; delete from emission_activity_submission_event where submission_id=$submission_id; delete from emission_activity_submission_evidence where submission_id=$submission_id; delete from emission_activity_submission_item where submission_id=$submission_id; delete from emission_activity_submission where submission_id=$submission_id; delete from emission_activity_quality_issue where run_id in(select run_id from emission_activity_quality_run where project_id='$project'); delete from emission_activity_quality_run where project_id='$project'; delete from emission_activity_data where project_id='$project'; delete from emission_project_task where project_id='$project'; delete from emission_project_registry where project_id='$project';" >/dev/null 2>&1 || true
+  fi
+  rm -f "$COOKIE_JAR" "$BODY"
+}
+trap cleanup EXIT
 
 types=(CONTENT DASHBOARD DETAIL REPORT UPLOAD)
 for type in "${types[@]}"; do
