@@ -95,4 +95,11 @@ dependencies {
     testImplementation("org.springframework.data:spring-data-commons")
 }
 
+// Keep isolated contract tests on the application's Logback bridge. Some
+// eGov transitive dependencies also contribute the inverse SLF4J -> Log4j
+// provider, which forms a logging cycle and fails before the test can start.
+configurations.testRuntimeClasspath {
+    exclude(group = "org.apache.logging.log4j", module = "log4j-slf4j2-impl")
+}
+
 tasks.test { useJUnitPlatform() }
