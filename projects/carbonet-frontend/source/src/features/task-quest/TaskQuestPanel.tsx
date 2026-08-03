@@ -16,6 +16,7 @@ type QuestTask = {
   dueDate: string;
   targetUrl: string;
   actorCode?: string;
+  assignee?: string;
   processCode?: string;
   processName?: string;
   domainCode?: string;
@@ -376,6 +377,9 @@ export function TaskQuestPanel() {
       return null;
     }
   });
+  const [focusedStepCode, setFocusedStepCode] = useState(
+    () => localStorage.getItem("task-quest-focused-step") || "",
+  );
 
   async function load() {
     try {
@@ -416,8 +420,12 @@ export function TaskQuestPanel() {
       );
       setSelectedCatalogProcessCode(detail.processCode);
       setSelectedCatalogStep(stepIndex);
+      setFocusedStepCode(detail.stepCode || "");
       localStorage.setItem("task-quest-catalog-process", detail.processCode);
       localStorage.setItem("task-quest-catalog-step", String(stepIndex));
+      if (detail.stepCode)
+        localStorage.setItem("task-quest-focused-step", detail.stepCode);
+      else localStorage.removeItem("task-quest-focused-step");
       if (detail.projectId) {
         const focus = {
           projectId: detail.projectId,
@@ -510,6 +518,14 @@ export function TaskQuestPanel() {
     const contextual = effectiveProjectId
       ? pending.filter((item) => item.projectId === effectiveProjectId)
       : [];
+    const exactStep = focusedStepCode
+      ? pending.find(
+          (item) =>
+            item.projectId === effectiveProjectId &&
+            item.processStepCode === focusedStepCode,
+        )
+      : undefined;
+    if (exactStep) return exactStep;
     return [
       ...(focused.length ? focused : contextual.length ? contextual : pending),
     ].sort((a, b) => {
@@ -517,7 +533,7 @@ export function TaskQuestPanel() {
         bw = taskWeight(b);
       return aw[0] - bw[0] || aw[1] - bw[1];
     })[0];
-  }, [data, effectiveProjectId, focusedWorkflow]);
+  }, [data, effectiveProjectId, focusedStepCode, focusedWorkflow]);
 
   const workflowItems = useMemo(() => {
     const scoped = effectiveProjectId
@@ -833,8 +849,11 @@ export function TaskQuestPanel() {
     const domainCode = String(item.domainCode || "EMISSION").toUpperCase();
     const next = { projectId: item.projectId, processCode: item.processCode };
     setFocusedWorkflow(next);
+    setFocusedStepCode(item.processStepCode || "");
     setSelectedWorkType(domainCode);
     localStorage.setItem("task-quest-focused-workflow", JSON.stringify(next));
+    if (item.processStepCode)
+      localStorage.setItem("task-quest-focused-step", item.processStepCode);
     localStorage.setItem("task-quest-work-type", domainCode);
     setOpen(true);
     setFlowOpen(false);
@@ -919,7 +938,9 @@ export function TaskQuestPanel() {
 
   function clearWorkflowFocus() {
     setFocusedWorkflow(null);
+    setFocusedStepCode("");
     localStorage.removeItem("task-quest-focused-workflow");
+    localStorage.removeItem("task-quest-focused-step");
   }
 
   async function activateTask(selected: QuestTask) {
@@ -1083,10 +1104,35 @@ export function TaskQuestPanel() {
                   <dl className="mt-3 space-y-2 rounded-xl bg-slate-50 p-3 text-sm">
                     <div className="flex gap-2">
                       <dt className="w-16 shrink-0 font-bold text-slate-500">
+                        {en ? "Process" : "프로세스"}
+                      </dt>
+                      <dd className="font-semibold text-slate-800">
+                        {task.processName || task.processCode || "-"}
+                      </dd>
+                    </div>
+                    <div className="flex gap-2">
+                      <dt className="w-16 shrink-0 font-bold text-slate-500">
+                        {en ? "Step" : "현재 단계"}
+                      </dt>
+                      <dd className="font-semibold text-[#16408d]">
+                        {task.stepOrder ? `${task.stepOrder}. ` : ""}
+                        {task.name}
+                      </dd>
+                    </div>
+                    <div className="flex gap-2">
+                      <dt className="w-16 shrink-0 font-bold text-slate-500">
                         {en ? "Actor" : "담당 액터"}
                       </dt>
                       <dd className="font-semibold text-slate-800">
                         {task.actorCode || "-"}
+                      </dd>
+                    </div>
+                    <div className="flex gap-2">
+                      <dt className="w-16 shrink-0 font-bold text-slate-500">
+                        {en ? "Account" : "담당 계정"}
+                      </dt>
+                      <dd className="font-semibold text-slate-800">
+                        {task.assignee || (en ? "Not assigned" : "미배정")}
                       </dd>
                     </div>
                     <div className="flex gap-2">
@@ -1985,7 +2031,7 @@ export function TaskQuestPanel() {
                                       style={{ gridColumnStart: executionWave, gridRowStart: parallelLane }}
                                     >
                                       <button
-                                        className={`group flex min-h-[15rem] w-[15rem] flex-col rounded-xl border-2 p-3 text-left transition hover:-translate-y-0.5 hover:shadow-lg ${state.style}`}
+                                        className={`group flex min-h-[15rem] w-[15rem] flex-col rounded-xl border-2 p-3 text-left transition hover:-translate-y-0.5 hover:shadow-lg ${state.style} ${focusedStepCode === item.processStepCode ? "ring-4 ring-[#246beb]/30 shadow-lg" : ""}`}
                                         onClick={() =>
                                           item.actionable === false
                                             ? focusWorkflow(item)
@@ -2014,6 +2060,22 @@ export function TaskQuestPanel() {
                                             </dt>
                                             <dd className="inline">
                                               {item.actorCode || "-"}
+                                            </dd>
+                                          </div>
+                                          <div>
+                                            <dt className="inline font-black">
+                                              {en ? "Account" : "담당 계정"}:{" "}
+                                            </dt>
+                                            <dd className="inline">
+                                              {item.assignee || (en ? "Not assigned" : "미배정")}
+                                            </dd>
+                                          </div>
+                                          <div>
+                                            <dt className="inline font-black">
+                                              {en ? "Step code" : "단계 코드"}:{" "}
+                                            </dt>
+                                            <dd className="inline break-all">
+                                              {item.processStepCode || "-"}
                                             </dd>
                                           </div>
                                           <div>
