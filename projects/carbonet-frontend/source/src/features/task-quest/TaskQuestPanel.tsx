@@ -206,6 +206,13 @@ type QuestResponse = {
   summary?: { total?: number; completed?: number; overdue?: number };
 };
 
+type TaskGuideFocusDetail = {
+  processCode: string;
+  stepCode?: string;
+  projectId?: string;
+  openOverview?: boolean;
+};
+
 function dueLabel(value: string, en: boolean) {
   if (!value) return en ? "No deadline" : "기한 미설정";
   const due = new Date(`${value}T23:59:59`);
@@ -393,6 +400,42 @@ export function TaskQuestPanel() {
     const timer = window.setInterval(() => void load(), 60_000);
     return () => window.clearInterval(timer);
   }, [api]);
+
+  useEffect(() => {
+    const synchronizeGuide = (event: Event) => {
+      const detail = (event as CustomEvent<TaskGuideFocusDetail>).detail;
+      if (!detail?.processCode) return;
+      const processSteps = (data?.processCatalogSteps || [])
+        .filter((step) => step.processCode === detail.processCode)
+        .sort((a, b) => Number(a.stepOrder) - Number(b.stepOrder));
+      const stepIndex = Math.max(
+        0,
+        detail.stepCode
+          ? processSteps.findIndex((step) => step.stepCode === detail.stepCode)
+          : 0,
+      );
+      setSelectedCatalogProcessCode(detail.processCode);
+      setSelectedCatalogStep(stepIndex);
+      localStorage.setItem("task-quest-catalog-process", detail.processCode);
+      localStorage.setItem("task-quest-catalog-step", String(stepIndex));
+      if (detail.projectId) {
+        const focus = {
+          projectId: detail.projectId,
+          processCode: detail.processCode,
+        };
+        setSelectedOverviewProjectId(detail.projectId);
+        setFocusedWorkflow(focus);
+        localStorage.setItem("task-quest-overview-project", detail.projectId);
+        localStorage.setItem("task-quest-focused-workflow", JSON.stringify(focus));
+      }
+      setOpen(true);
+      localStorage.setItem("task-quest-open", "1");
+      if (detail.openOverview) setFlowOpen(true);
+    };
+    window.addEventListener("resonance:task-guide-focus", synchronizeGuide);
+    return () =>
+      window.removeEventListener("resonance:task-guide-focus", synchronizeGuide);
+  }, [data?.processCatalogSteps]);
 
   useEffect(() => {
     if (!flowOpen) return;
