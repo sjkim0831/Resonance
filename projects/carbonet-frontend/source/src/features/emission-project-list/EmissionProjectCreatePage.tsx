@@ -14,7 +14,16 @@ import {
 import { LOCALIZED_CONTENT } from "../home-entry/homeEntryContent";
 
 type Readiness = { ready: boolean; sandbox?: boolean; companyApproved: boolean; activeSiteCount: number; actorCoverage: Record<string, number>; missing: string[]; siteManagementUrl: string; actorManagementUrl: string };
-type Options = { sites: string[]; owners: string[]; accounts: { id: string; actors: string }[]; currentUser: string; readiness: Readiness };
+type AccountOption = {
+  id: string;
+  displayName: string;
+  department: string;
+  companyId: string;
+  companyName: string;
+  actors: string;
+  dataScopes: string;
+};
+type Options = { sites: string[]; owners: string[]; accounts: AccountOption[]; currentUser: string; readiness: Readiness };
 const EMPTY_READINESS:Readiness={ready:false,companyApproved:false,activeSiteCount:0,actorCoverage:{},missing:[],siteManagementUrl:"/admin/emission/site-management",actorManagementUrl:"/admin/system/actor-process"};
 const year = new Date().getFullYear();
 const createRequestId = () => globalThis.crypto?.randomUUID?.() ?? `project-${Date.now()}-${Math.random().toString(36).slice(2)}`;
@@ -71,7 +80,9 @@ export function EmissionProjectCreatePage() {
           readiness:value.readiness&&typeof value.readiness==="object"?{...EMPTY_READINESS,...value.readiness}:EMPTY_READINESS,
         };
         setOptions(normalized);
-        setForm(current=>({...current,owner:current.owner||normalized.currentUser}));
+        const managers = normalized.accounts.filter((account) => account.actors.split(",").map((actor) => actor.trim()).includes("COMPANY_MANAGER"));
+        const eligibleCurrentUser = managers.some((account) => account.id.toLowerCase() === normalized.currentUser.toLowerCase());
+        setForm(current=>({...current,owner:current.owner||(eligibleCurrentUser?normalized.currentUser:(managers[0]?.id??""))}));
         setOptionsError("");
       })
       .catch(() => {
@@ -98,6 +109,32 @@ export function EmissionProjectCreatePage() {
         : [...current.scopes, value],
     }));
   }
+  const accountsFor = (actorCode: string) =>
+    options.accounts.filter((account) =>
+      account.actors.split(",").map((actor) => actor.trim()).includes(actorCode),
+    );
+  const accountLabel = (account: AccountOption) => {
+    const rawCompany = account.companyName || account.companyId;
+    const company = rawCompany === "DEFAULT" ? (en ? "Shared QA tenant" : "공통 테스트 회사") : rawCompany || (en ? "Company not identified" : "회사 미확인");
+    const department = account.department || (en ? "Department not set" : "부서 미설정");
+    const scopeLabel = account.dataScopes && account.dataScopes !== "*" ? ` · ${account.dataScopes}` : "";
+    return `${account.displayName || account.id} · ${department} · ${company} · ${account.id}${scopeLabel}`;
+  };
+  const actorSelect = (
+    key: "dataOwner" | "calculator" | "verifier" | "approver",
+    actorCode: string,
+    label: string,
+    help: string,
+  ) => (
+    <label className="text-sm font-bold" key={key}>
+      {label}<span className="ml-1 text-red-600">*</span>
+      <select className={input} required value={form[key]} onChange={(event) => setForm({...form,[key]:event.target.value})}>
+        <option value="">{en ? "Select an eligible account" : "역할에 맞는 계정 선택"}</option>
+        {accountsFor(actorCode).map((account) => <option key={`${key}-${account.id}`} value={account.id}>{accountLabel(account)}</option>)}
+      </select>
+      <small className="mt-1 block font-normal text-slate-500">{help}</small>
+    </label>
+  );
   async function submit(event: FormEvent) {
     event.preventDefault();
     setMessage("");
@@ -351,22 +388,20 @@ export function EmissionProjectCreatePage() {
               </h2>
               <div className="mt-5 grid gap-5 sm:grid-cols-2">
                 <label className="text-sm font-bold">
-                  {en ? "Owner" : "담당자"}
+                  {en ? "Project accountable manager" : "프로젝트 총괄 책임자"}
                   <span className="ml-1 text-red-600">*</span>
-                  <input
+                  <select
                     className={input}
                     required
-                    list="project-owners"
                     value={form.owner}
                     onChange={(e) =>
                       setForm({ ...form, owner: e.target.value })
                     }
-                  />
-                  <datalist id="project-owners">
-                    {options.owners.map((v) => (
-                      <option key={v} value={v} />
-                    ))}
-                  </datalist>
+                  >
+                    <option value="">{en ? "Select a company manager" : "같은 회사의 기업관리자 선택"}</option>
+                    {accountsFor("COMPANY_MANAGER").map((account) => <option key={`owner-${account.id}`} value={account.id}>{accountLabel(account)}</option>)}
+                  </select>
+                  <small className="mt-1 block font-normal text-slate-500">{en ? "Owns project scope, assignments, deadlines, and final reporting." : "프로젝트 범위·담당자·마감·최종 보고를 책임합니다."}</small>
                 </label>
                 <label className="text-sm font-bold">
                   {en ? "Due date" : "마감일"}
@@ -387,13 +422,10 @@ export function EmissionProjectCreatePage() {
               <h2 className="text-lg font-black text-[#052b57]">5. {en ? "Actor assignment" : "업무 액터 배정"}</h2>
               <p className="mt-2 text-sm text-slate-600">{en ? "Assign the accountable user for each process step. Permissions and My Tasks are generated from these assignments." : "프로세스 단계별 책임 계정을 지정합니다. 이 배정을 기준으로 권한과 내 업무가 자동 생성됩니다."}</p>
               <div className="mt-5 grid gap-5 sm:grid-cols-2">
-                {([
-                  ["dataOwner", en ? "Site data owner" : "사업장 자료 담당자", en ? "Collects and submits source activity data" : "원천 활동자료 입력·제출"],
-                  ["calculator", en ? "Emission calculator" : "배출량 산정 담당자", en ? "Maps factors and runs calculations" : "배출계수 매핑·배출량 산정"],
-                  ["verifier", en ? "Verifier" : "검증 담당자", en ? "Verifies results and requests corrections" : "결과 검증·보완 요청"],
-                  ["approver", en ? "Approver" : "승인 담당자", en ? "Approves the verified calculation" : "검증 완료 산정 결과 승인"],
-                ] as const).map(([key,label,help])=><label className="text-sm font-bold" key={key}>{label}<span className="ml-1 text-red-600">*</span><input className={input} list="project-actor-accounts" required value={form[key]} onChange={e=>setForm({...form,[key]:e.target.value})}/><small className="mt-1 block font-normal text-slate-500">{help}</small></label>)}
-                <datalist id="project-actor-accounts">{options.accounts.map(account=><option key={account.id} value={account.id}>{account.actors}</option>)}{options.owners.map(value=><option key={value} value={value}/>)}</datalist>
+                {actorSelect("dataOwner", "SITE_DATA_OWNER", en ? "Site data owner" : "사업장 자료 담당자", en ? "Collects and submits source activity data" : "선택 사업장의 원천 활동자료 입력·증빙 제출")}
+                {actorSelect("calculator", "CALCULATOR", en ? "Emission calculator" : "배출량 산정 담당자", en ? "Maps factors and runs calculations" : "배출계수 매핑·단위 환산·배출량 산정")}
+                {actorSelect("verifier", "VERIFIER", en ? "Verifier" : "검증 담당자", en ? "Verifies results and requests corrections" : "산정 결과·증빙 검증 및 보완 요청")}
+                {actorSelect("approver", "APPROVER", en ? "Approver" : "승인 담당자", en ? "Approves the verified calculation" : "검증 완료 산정 결과의 최종 승인")}
               </div>
               {form.calculator&&form.verifier&&form.approver&&(form.calculator===form.verifier||form.calculator===form.approver||form.verifier===form.approver)?<p className="mt-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm font-bold text-red-800" role="alert">{en ? "Calculator, verifier, and approver must be different accounts. The server will reject this assignment." : "산정자·검증자·승인자는 서로 다른 계정이어야 합니다. 이 배정은 저장할 수 없습니다."}</p>:null}
             </section>
