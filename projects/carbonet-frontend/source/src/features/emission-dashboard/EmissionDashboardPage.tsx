@@ -38,6 +38,17 @@ type ProjectRow = {
 
 type ProjectPayload = { items?: ProjectRow[]; total?: number; sites?: string[] };
 type ProjectOptions = { sites?: string[]; currentUser?: string };
+type ProcessGuideStep = {
+  processCode: string;
+  stepOrder: number;
+  stepCode: string;
+  stepName: string;
+  actorCode?: string;
+  completionRule?: string;
+  workPurpose?: string;
+  userPath?: string;
+};
+type ProcessGuidePayload = { processCatalogSteps?: ProcessGuideStep[] };
 
 const STEPS = [
   { code: "EMISSION_PROJECT_SETUP", ko: "프로젝트 설정", en: "Setup", href: "/emission/project/create", icon: "tune" },
@@ -48,6 +59,10 @@ const STEPS = [
   { code: "EMISSION_PROJECT_APPROVE", ko: "검토·승인", en: "Approve", href: "/emission/validate?tab=approval", icon: "approval" },
   { code: "EMISSION_PROJECT_REPORT", ko: "확정·보고", en: "Report", href: "/emission/report_submit", icon: "description" }
 ] as const;
+
+const STEP_PRESENTATION = Object.fromEntries(
+  STEPS.map((step) => [step.code, step]),
+) as Record<string, (typeof STEPS)[number]>;
 
 const nf = new Intl.NumberFormat("ko-KR", { maximumFractionDigits: 1 });
 
@@ -129,6 +144,7 @@ export function EmissionDashboardPage() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [projects, setProjects] = useState<ProjectRow[]>([]);
   const [sites, setSites] = useState<string[]>([]);
+  const [processGuideSteps, setProcessGuideSteps] = useState<ProcessGuideStep[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
   const [projectFilter, setProjectFilter] = useState("ALL");
@@ -143,12 +159,18 @@ export function EmissionDashboardPage() {
     setLoading(true);
     setLoadError("");
     try {
-      const [list, options] = await Promise.all([
+      const [list, options, guide] = await Promise.all([
         fetchJson<ProjectPayload>("/home/api/emission-projects?page=1&size=100"),
-        fetchJson<ProjectOptions>("/home/api/emission-projects/options")
+        fetchJson<ProjectOptions>("/home/api/emission-projects/options"),
+        fetchJson<ProcessGuidePayload>("/home/api/emission-tasks")
       ]);
       setProjects(Array.isArray(list.items) ? list.items : []);
       setSites(Array.from(new Set([...(list.sites || []), ...(options.sites || [])].filter(Boolean))));
+      setProcessGuideSteps(
+        (guide.processCatalogSteps || [])
+          .filter((step) => step.processCode === "EMISSION_PROJECT")
+          .sort((a, b) => Number(a.stepOrder) - Number(b.stepOrder)),
+      );
     } catch (error) {
       setProjects([]);
       setLoadError(error instanceof Error ? error.message : "LOAD_FAILED");
@@ -178,7 +200,48 @@ export function EmissionDashboardPage() {
   }), [projectFilter, projects, siteFilter, yearFilter]);
   const selected = filtered[0] || projects[0] || null;
   const selectedId = selected ? projectId(selected) : "";
-  const currentStepIndex = selected ? Math.max(0, STEPS.findIndex((step) => step.code === projectStep(selected))) : -1;
+  const workflowSteps = useMemo(() => {
+    if (!processGuideSteps.length) return [...STEPS];
+    return processGuideSteps.map((step) => {
+      const presentation = STEP_PRESENTATION[step.stepCode] || STEPS[0];
+      return {
+        code: step.stepCode,
+        ko: step.stepName,
+        en: presentation.en,
+        href: step.userPath || presentation.href,
+        icon: presentation.icon,
+        actorCode: step.actorCode || "",
+        completionRule: step.completionRule || "",
+      };
+    });
+  }, [processGuideSteps]);
+  const currentStepIndex = selected ? Math.max(0, workflowSteps.findIndex((step) => step.code === projectStep(selected))) : -1;
+
+  const synchronizeTaskGuide = (stepCode: string, openOverview = false) => {
+    localStorage.setItem("task-quest-catalog-process", "EMISSION_PROJECT");
+    localStorage.setItem(
+      "task-quest-catalog-step",
+      String(Math.max(0, workflowSteps.findIndex((step) => step.code === stepCode))),
+    );
+    if (selectedId) {
+      localStorage.setItem("task-quest-overview-project", selectedId);
+      localStorage.setItem(
+        "task-quest-focused-workflow",
+        JSON.stringify({ projectId: selectedId, processCode: "EMISSION_PROJECT" }),
+      );
+    }
+    localStorage.setItem("task-quest-open", "1");
+    window.dispatchEvent(
+      new CustomEvent("resonance:task-guide-focus", {
+        detail: {
+          processCode: "EMISSION_PROJECT",
+          stepCode,
+          projectId: selectedId,
+          openOverview,
+        },
+      }),
+    );
+  };
   const totalEmission = filtered.reduce((sum, p) => sum + (number(p.totalEmission) || 0), 0);
   const hasEmission = filtered.some((p) => number(p.totalEmission) !== null);
   const scopeValues = ["scope1", "scope2", "scope3"].map((key) => filtered.reduce((sum, p) => sum + (number(p[key as keyof ProjectRow]) || 0), 0));
@@ -244,15 +307,15 @@ export function EmissionDashboardPage() {
           </section>
 
           {loading ? <section className="dashboard-card mt-6 p-12 text-center text-sm font-bold text-slate-500"><span className="material-symbols-outlined animate-spin align-middle">progress_activity</span> {en ? "Loading data" : "실제 데이터를 불러오는 중입니다."}</section> : loadError ? <section className="dashboard-card mt-6 border-red-200 p-8 text-center"><p className="font-bold text-red-700">{en ? "Failed to load emission data." : "배출량 데이터를 불러오지 못했습니다."}</p><button className="mt-4 rounded-lg bg-[var(--kr-gov-blue)] px-4 py-2 font-bold text-white" onClick={() => void loadProjects()} type="button">{labels.retry}</button></section> : projects.length === 0 ? <section className="emission-empty-state dashboard-card mt-6 p-10 text-center lg:p-14"><span className="material-symbols-outlined text-6xl text-blue-200">inventory</span><h2 className="mt-4 text-xl font-black text-slate-900">{labels.empty}</h2><p className="mx-auto mt-2 max-w-2xl text-sm leading-6 text-slate-600">{labels.emptyDesc}</p><a className="mt-6 inline-flex items-center gap-2 rounded-lg bg-[var(--kr-gov-blue)] px-5 py-3 font-black text-white" href={buildLocalizedPath("/emission/project/create", "/en/emission/project/create")}><span className="material-symbols-outlined text-[18px]">add</span>{labels.create}</a></section> : <>
-            <section className="dashboard-card mt-6 p-5 lg:p-6"><div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div><p className="text-xs font-bold text-[var(--kr-gov-blue)]">{selected ? projectName(selected) : ""}</p><h2 className="mt-1 text-xl font-black text-slate-950">{labels.workflow}</h2></div>{selected && currentStepIndex >= 0 ? <a className="inline-flex items-center justify-center gap-2 rounded-lg bg-[var(--kr-gov-blue)] px-4 py-3 text-sm font-black text-white" href={withProject(STEPS[currentStepIndex].href, selectedId)}>{labels.next}<span className="material-symbols-outlined text-[18px]">arrow_forward</span></a> : null}</div><div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-7">{STEPS.map((step, index) => { const state = index < currentStepIndex ? "done" : index === currentStepIndex ? "current" : "pending"; return <a className={`relative rounded-xl border p-4 transition hover:-translate-y-0.5 ${state === "done" ? "border-emerald-200 bg-emerald-50" : state === "current" ? "border-blue-500 bg-blue-50 ring-2 ring-blue-100" : "border-slate-200 bg-white"}`} href={withProject(step.href, selectedId)} key={step.code}><span className={`material-symbols-outlined ${state === "done" ? "text-emerald-600" : state === "current" ? "text-blue-700" : "text-slate-400"}`}>{state === "done" ? "check_circle" : step.icon}</span><p className="mt-3 text-[11px] font-bold text-slate-400">STEP {index + 1}</p><p className="mt-1 text-sm font-black text-slate-800">{en ? step.en : step.ko}</p></a>; })}</div></section>
+            <section className="dashboard-card mt-6 p-5 lg:p-6"><div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div><p className="text-xs font-bold text-[var(--kr-gov-blue)]">{selected ? projectName(selected) : ""}</p><h2 className="mt-1 text-xl font-black text-slate-950">{labels.workflow}</h2></div>{selected && currentStepIndex >= 0 ? <a className="inline-flex items-center justify-center gap-2 rounded-lg bg-[var(--kr-gov-blue)] px-4 py-3 text-sm font-black text-white" href={withProject(workflowSteps[currentStepIndex].href, selectedId)} onClick={() => synchronizeTaskGuide(workflowSteps[currentStepIndex].code)}>{labels.next}<span className="material-symbols-outlined text-[18px]">arrow_forward</span></a> : null}</div><div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-7">{workflowSteps.map((step, index) => { const state = index < currentStepIndex ? "done" : index === currentStepIndex ? "current" : "pending"; return <a className={`relative rounded-xl border p-4 transition hover:-translate-y-0.5 ${state === "done" ? "border-emerald-200 bg-emerald-50" : state === "current" ? "border-blue-500 bg-blue-50 ring-2 ring-blue-100" : "border-slate-200 bg-white"}`} href={withProject(step.href, selectedId)} key={step.code} onClick={() => synchronizeTaskGuide(step.code)}><span className={`material-symbols-outlined ${state === "done" ? "text-emerald-600" : state === "current" ? "text-blue-700" : "text-slate-400"}`}>{state === "done" ? "check_circle" : step.icon}</span><p className="mt-3 text-[11px] font-bold text-slate-400">STEP {index + 1}</p><p className="mt-1 text-sm font-black text-slate-800">{en ? step.en : step.ko}</p>{step.actorCode ? <p className="mt-2 truncate text-[11px] font-bold text-slate-500">{step.actorCode}</p> : null}</a>; })}</div></section>
 
             <section className="mt-6 grid gap-6 xl:grid-cols-[1.45fr_.75fr_.8fr]">
               <article className="dashboard-card p-5 lg:p-6"><div className="flex items-center justify-between"><h2 className="text-lg font-black">{labels.trend}</h2><span className="text-xs font-bold text-slate-400">tCO₂e</span></div><div className="mt-6 flex h-56 items-end gap-2 border-b border-l border-slate-200 px-3 pb-0">{Array.from({ length: 12 }, (_, i) => <div className="flex h-full flex-1 flex-col items-center justify-end gap-2" key={i}><div className="w-full rounded-t bg-blue-100" style={{ height: hasEmission ? `${20 + ((i * 13) % 65)}%` : "2px" }} /><span className="text-[10px] font-bold text-slate-400">{i + 1}</span></div>)}</div><p className="mt-4 text-center text-xs font-bold text-slate-500">{hasEmission ? (en ? "Monthly values connected to calculated project data" : "산정된 프로젝트의 월별 데이터") : labels.noData}</p></article>
               <article className="dashboard-card p-5 lg:p-6"><h2 className="text-lg font-black">{labels.scopeTitle}</h2><div className="mt-7 flex justify-center"><div className="relative flex h-40 w-40 items-center justify-center rounded-full" style={{ background: hasScope.some(Boolean) ? `conic-gradient(#005fde 0 42%, #15a46d 42% 73%, #f59e0b 73%)` : "#eef2f7" }}><div className="flex h-24 w-24 flex-col items-center justify-center rounded-full bg-white"><strong className="text-lg">{hasEmission ? nf.format(totalEmission) : "—"}</strong><span className="text-[10px] text-slate-500">tCO₂e</span></div></div></div><div className="mt-6 space-y-3">{["Scope 1", "Scope 2", "Scope 3"].map((label, i) => <div className="flex items-center justify-between text-xs" key={label}><span className="font-bold text-slate-600"><i className={`mr-2 inline-block h-2.5 w-2.5 rounded-full ${i === 0 ? "bg-blue-600" : i === 1 ? "bg-emerald-500" : "bg-amber-500"}`} />{label}</span><strong>{hasScope[i] ? `${nf.format(scopeValues[i])} tCO₂e` : "—"}</strong></div>)}</div></article>
-              <article className="dashboard-card p-5 lg:p-6"><h2 className="text-lg font-black">{labels.actions}</h2><div className="mt-5 space-y-3">{selected ? STEPS.slice(currentStepIndex, currentStepIndex + 3).map((step, i) => <a className="flex items-center gap-3 rounded-xl border border-slate-200 p-4 hover:border-blue-300 hover:bg-blue-50" href={withProject(step.href, selectedId)} key={step.code}><span className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-black ${i === 0 ? "bg-blue-700 text-white" : "bg-slate-100 text-slate-600"}`}>{currentStepIndex + i + 1}</span><span className="min-w-0 flex-1"><strong className="block text-sm text-slate-800">{en ? step.en : step.ko}</strong><small className="text-slate-500">{i === 0 ? labels.next : en ? "Upcoming" : "예정 업무"}</small></span><span className="material-symbols-outlined text-[18px] text-slate-400">chevron_right</span></a>) : <p className="rounded-xl bg-slate-50 p-5 text-sm text-slate-500">{labels.empty}</p>}</div></article>
+              <article className="dashboard-card p-5 lg:p-6"><h2 className="text-lg font-black">{labels.actions}</h2><div className="mt-5 space-y-3">{selected ? workflowSteps.slice(currentStepIndex, currentStepIndex + 3).map((step, i) => <a className="flex items-center gap-3 rounded-xl border border-slate-200 p-4 hover:border-blue-300 hover:bg-blue-50" href={withProject(step.href, selectedId)} key={step.code} onClick={() => synchronizeTaskGuide(step.code)}><span className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-black ${i === 0 ? "bg-blue-700 text-white" : "bg-slate-100 text-slate-600"}`}>{currentStepIndex + i + 1}</span><span className="min-w-0 flex-1"><strong className="block text-sm text-slate-800">{en ? step.en : step.ko}</strong><small className="text-slate-500">{i === 0 ? labels.next : en ? "Upcoming" : "예정 업무"}{step.actorCode ? ` · ${step.actorCode}` : ""}</small></span><span className="material-symbols-outlined text-[18px] text-slate-400">chevron_right</span></a>) : <p className="rounded-xl bg-slate-50 p-5 text-sm text-slate-500">{labels.empty}</p>}</div></article>
             </section>
 
-            <section className="dashboard-card mt-6 overflow-hidden"><div className="flex items-center justify-between border-b border-slate-200 p-5 lg:px-6"><h2 className="text-lg font-black">{labels.table}</h2><span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-black text-blue-700">{filtered.length}</span></div><div className="overflow-x-auto"><table className="dashboard-table"><thead><tr><th>{labels.name}</th><th>{labels.status}</th><th>{labels.step}</th><th>{labels.progress}</th><th>{labels.due}</th><th>{labels.owner}</th><th aria-label={labels.open} /></tr></thead><tbody>{filtered.map((p) => { const id = projectId(p); const progress = projectProgress(p); const step = STEPS.find((s) => s.code === projectStep(p)); return <tr key={id || projectName(p)}><td data-label={labels.name}><strong className="block text-slate-900">{projectName(p)}</strong><span className="mt-1 block text-xs text-slate-500">{projectSite(p)} · {id}</span></td><td data-label={labels.status}><span className="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-black text-blue-700">{text(p.status || p.projectStatus, en ? "In progress" : "진행 중")}</span></td><td data-label={labels.step}>{step ? (en ? step.en : step.ko) : projectStep(p)}</td><td data-label={labels.progress}><div className="flex items-center gap-2"><div className="h-2 w-20 overflow-hidden rounded-full bg-slate-100"><div className="h-full bg-blue-600" style={{ width: `${progress}%` }} /></div><strong>{progress}%</strong></div></td><td data-label={labels.due}>{text(p.dueDate || p.endDate)}</td><td data-label={labels.owner}>{text(p.ownerName || p.managerName)}</td><td data-label=""><a className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-blue-700 hover:bg-blue-50" href={withProject("/emission/project/detail", id)} aria-label={`${projectName(p)} ${labels.open}`}><span className="material-symbols-outlined text-[18px]">arrow_forward</span></a></td></tr>; })}</tbody></table></div></section>
+            <section className="dashboard-card mt-6 overflow-hidden"><div className="flex items-center justify-between border-b border-slate-200 p-5 lg:px-6"><h2 className="text-lg font-black">{labels.table}</h2><span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-black text-blue-700">{filtered.length}</span></div><div className="overflow-x-auto"><table className="dashboard-table"><thead><tr><th>{labels.name}</th><th>{labels.status}</th><th>{labels.step}</th><th>{labels.progress}</th><th>{labels.due}</th><th>{labels.owner}</th><th aria-label={labels.open} /></tr></thead><tbody>{filtered.map((p) => { const id = projectId(p); const progress = projectProgress(p); const step = workflowSteps.find((s) => s.code === projectStep(p)); return <tr key={id || projectName(p)}><td data-label={labels.name}><strong className="block text-slate-900">{projectName(p)}</strong><span className="mt-1 block text-xs text-slate-500">{projectSite(p)} · {id}</span></td><td data-label={labels.status}><span className="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-black text-blue-700">{text(p.status || p.projectStatus, en ? "In progress" : "진행 중")}</span></td><td data-label={labels.step}>{step ? (en ? step.en : step.ko) : projectStep(p)}</td><td data-label={labels.progress}><div className="flex items-center gap-2"><div className="h-2 w-20 overflow-hidden rounded-full bg-slate-100"><div className="h-full bg-blue-600" style={{ width: `${progress}%` }} /></div><strong>{progress}%</strong></div></td><td data-label={labels.due}>{text(p.dueDate || p.endDate)}</td><td data-label={labels.owner}>{text(p.ownerName || p.managerName)}</td><td data-label=""><a className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-blue-700 hover:bg-blue-50" href={withProject("/emission/project/detail", id)} aria-label={`${projectName(p)} ${labels.open}`}><span className="material-symbols-outlined text-[18px]">arrow_forward</span></a></td></tr>; })}</tbody></table></div></section>
           </>}
         </>}
       </main>
