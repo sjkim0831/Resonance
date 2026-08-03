@@ -25,7 +25,7 @@ q(){ carbonet_postgres_query "$1"; }
 # Exercise the account in its authoritative company tenant. A legacy DEFAULT
 # project can still be validated by administrator journeys, but must not stand
 # in for a tenant-scoped customer account.
-account_tenant="$(q "select instt_id from comtnemplyrinfo where lower(emplyr_id)='qaowner26' limit 1")"
+account_tenant="$(q "select btrim(instt_id) from comtnemplyrinfo where lower(emplyr_id)='qaowner26' limit 1")"
 project_tenant="$(q "select tenant_id from emission_project_registry where project_id='$PROJECT'")"
 if [[ -n "$account_tenant" && "$project_tenant" != "$account_tenant" ]]; then
   PROJECT="$(q "select p.project_id from emission_project_registry p where p.tenant_id='$account_tenant' and exists(select 1 from emission_project_task t where t.project_id=p.project_id group by t.project_id having count(*)=7) order by (p.project_id='PRJ-ACTOR-TEST') desc,p.project_id limit 1")"
