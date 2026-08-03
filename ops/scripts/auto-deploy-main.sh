@@ -146,7 +146,7 @@ done < <(git -C "${CARBONET_DEPLOY_ORIGINAL_ROOT:-$ROOT_DIR}" worktree list --po
 git -C "${CARBONET_DEPLOY_ORIGINAL_ROOT:-$ROOT_DIR}" worktree prune
 
 # Reserve both the post-deploy safety floor and worst-case build/backup work
-# space after reclaiming disposable worktrees, but before database backup or
+# space after reclaiming disposable worktrees, but before database backup o
 # build. A blocked run leaves the timer active for a later retry.
 bash "$POLICY_ROOT/ops/scripts/deploy-capacity-gate.sh"
 
@@ -471,6 +471,10 @@ if [[ -n "$tracked_source_changes" ]]; then
   for generated_path in \
     apps/carbonet-api/src/main/resources/static/react-app \
     projects/carbonet-assets/static/react-app \
+    projects/carbonet-frontend/source/.cache/full-screen-smoke \
+    projects/carbonet-frontend/source/src/generated/screen-generation/generatedScreenFamily.ts \
+    projects/carbonet-frontend/source/src/features/builder-studio/pageCompletenessInventory.ts \
+    projects/carbonet-frontend/source/src/features/builder-studio/routeSourceInventory.ts \
     projects/carbonet-frontend/source/tsconfig.app.tsbuildinfo; do
     [[ -n "$(git -C "$clean_worktree" ls-files -- "$generated_path")" ]] &&
       git -C "$clean_worktree" restore --worktree -- "$generated_path"
@@ -901,7 +905,7 @@ sync_patroni_auto_heal_if_required() {
       /etc/systemd/system/carbonet-patroni-auto-heal.service
     sudo -n install -m 0644 \
       ops/systemd/carbonet-patroni-auto-heal.timer \
-      /etc/systemd/system/carbonet-patroni-auto-heal.timer
+      /etc/systemd/system/carbonet-patroni-auto-heal.time
     sudo -n systemctl daemon-reload
     sudo -n systemctl enable --now carbonet-patroni-auto-heal.timer >/dev/null
     PATRONI_AUTO_HEAL_DRY_RUN=true \
@@ -935,7 +939,7 @@ sync_postgres_restore_drill_if_required() {
       /etc/systemd/system/carbonet-postgres-restore-drill.service
     sudo -n install -m 0644 \
       ops/systemd/carbonet-postgres-restore-drill.timer \
-      /etc/systemd/system/carbonet-postgres-restore-drill.timer
+      /etc/systemd/system/carbonet-postgres-restore-drill.time
     sudo -n systemctl daemon-reload
     sudo -n systemctl enable --now carbonet-postgres-restore-drill.timer >/dev/null
     echo "[auto-deploy] isolated PostgreSQL restore drill synchronized"
@@ -972,13 +976,13 @@ sync_process_development_worker_if_required() {
       /etc/systemd/system/resonance-process-development-worker.service
     sudo -n install -m 0644 \
       ops/systemd/resonance-process-development-worker.timer \
-      /etc/systemd/system/resonance-process-development-worker.timer
+      /etc/systemd/system/resonance-process-development-worker.time
     sudo -n install -m 0644 \
       ops/systemd/resonance-project-auto-completion.service \
       /etc/systemd/system/resonance-project-auto-completion.service
     sudo -n install -m 0644 \
       ops/systemd/resonance-project-auto-completion.timer \
-      /etc/systemd/system/resonance-project-auto-completion.timer
+      /etc/systemd/system/resonance-project-auto-completion.time
     sudo -n systemctl daemon-reload
     sudo -n systemctl enable --now \
       resonance-process-development-worker.timer \
@@ -1109,7 +1113,7 @@ if [[ "$PLAN_RUNTIME_REQUIRED" != "true" ]]; then
         /etc/systemd/system/carbonet-github-webhook-reconcile.service
       sudo -n install -m 0644 \
         ops/systemd/carbonet-github-webhook-reconcile.timer \
-        /etc/systemd/system/carbonet-github-webhook-reconcile.timer
+        /etc/systemd/system/carbonet-github-webhook-reconcile.time
       sudo -n systemctl daemon-reload
       sudo -n systemctl restart carbonet-github-deploy-webhook.service
       sudo -n systemctl enable --now \
@@ -1139,7 +1143,7 @@ if [[ "$PLAN_RUNTIME_REQUIRED" != "true" ]]; then
       sudo -n install -m 0644 ops/systemd/postgres-storage-guard.service \
         /etc/systemd/system/postgres-storage-guard.service
       sudo -n install -m 0644 ops/systemd/postgres-storage-guard.timer \
-        /etc/systemd/system/postgres-storage-guard.timer
+        /etc/systemd/system/postgres-storage-guard.time
       sudo -n systemctl daemon-reload
       sudo -n systemctl enable --now postgres-storage-guard.timer >/dev/null
       sudo -n systemctl restart postgres-storage-guard.service
@@ -1155,7 +1159,7 @@ if [[ "$PLAN_RUNTIME_REQUIRED" != "true" ]]; then
       sudo -n install -m 0644 ops/systemd/resonance-backstage-full-e2e.service \
         /etc/systemd/system/resonance-backstage-full-e2e.service
       sudo -n install -m 0644 ops/systemd/resonance-backstage-full-e2e.timer \
-        /etc/systemd/system/resonance-backstage-full-e2e.timer
+        /etc/systemd/system/resonance-backstage-full-e2e.time
       sudo -n systemctl daemon-reload
       sudo -n systemctl enable --now resonance-backstage-full-e2e.timer >/dev/null
       echo "[auto-deploy] nightly full Backstage E2E synchronized"
@@ -1637,7 +1641,7 @@ RUN_FLYWAY_MIGRATION_JOB="$PLAN_DATABASE_REQUIRED" \
   bash ops/scripts/resonance-k8s-build-deploy-80-v2.sh
 
 # The build/deploy script already gates the exact candidate release pods and
-# verifies the runtime. Do not wait a second time for old pods to finish their
+# verifies the runtime. Do not wait a second time for old pods to finish thei
 # protected connection drain.
 health_status="$(curl -fsS --max-time 10 http://127.0.0.1/actuator/health || true)"
 if [[ "$health_status" != *'"status":"UP"'* ]]; then
