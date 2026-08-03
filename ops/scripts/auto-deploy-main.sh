@@ -19,12 +19,19 @@ POLICY_ROOT="${CARBONET_DEPLOY_ORIGINAL_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}
 bash "$POLICY_ROOT/ops/scripts/verify-kilo-m3-policy.sh"
 bash "$POLICY_ROOT/ops/scripts/verify-hermes-nvidia-two-tier.sh"
 bash "$POLICY_ROOT/ops/scripts/verify-hermes-project-work-policy.sh"
+if [[ -f "$POLICY_ROOT/ops/scripts/test-backstage-fast-deploy-policy.sh" ]]; then
+  bash "$POLICY_ROOT/ops/scripts/test-backstage-fast-deploy-policy.sh"
+else
+  echo "[auto-deploy] fast-deploy policy is introduced by the pending commit; validating after bootstrap"
+fi
 
 ROOT_DIR="${CARBONET_DEPLOY_ROOT:-${CARBONET_DEPLOY_ORIGINAL_ROOT:-/opt/Resonance}}"
+PLAN_SCRIPT="${CARBONET_DEPLOY_PLAN_SCRIPT:-ops/scripts/plan-incremental-work.sh}"
 BRANCH="${CARBONET_DEPLOY_BRANCH:-main}"
 REMOTE="${CARBONET_DEPLOY_REMOTE:-origin}"
 LOCK_FILE="${CARBONET_DEPLOY_LOCK_FILE:-/tmp/carbonet-auto-deploy.lock}"
 DEPLOY_STATE_FILE="${CARBONET_DEPLOY_STATE_FILE:-/opt/resonance-data/deploy/carbonet-main-success.commit}"
+BACKSTAGE_DEPLOY_STATE_FILE="${BACKSTAGE_DEPLOY_STATE_FILE:-/opt/resonance-data/deploy/backstage-runtime-success.commit}"
 BACKUP_DIR="${CARBONET_DB_BACKUP_DIR:-/opt/resonance-backups/postgresql/pre-deploy}"
 NAMESPACE="${CARBONET_K8S_NAMESPACE:-carbonet-prod}"
 DEPLOYMENT="${CARBONET_K8S_DEPLOYMENT:-carbonet-runtime}"
@@ -42,11 +49,38 @@ if [[ ! -r "$KUBECONFIG" ]]; then
   exit 8
 fi
 
-mkdir -p "$(dirname "$LOCK_FILE")" "$BACKUP_DIR" "$(dirname "$DEPLOY_STATE_FILE")"
+mkdir -p \
+  "$(dirname "$LOCK_FILE")" \
+  "$BACKUP_DIR" \
+  "$(dirname "$DEPLOY_STATE_FILE")" \
+  "$(dirname "$BACKSTAGE_DEPLOY_STATE_FILE")"
 exec 9>"$LOCK_FILE"
 flock -n 9 || { echo "[auto-deploy] another deployment is running"; exit 0; }
 
 cd "$ROOT_DIR"
+
+# Detached deployment worktrees are disposable build inputs. Remove leftovers
+# from completed or interrupted runs before Kubernetes evaluates DiskPressure;
+# otherwise the single node can taint itself before Patroni/etcd health checks.
+deploy_worktree_root="${CARBONET_CLEAN_WORKTREE_BASE:-${CARBONET_DEPLOY_ORIGINAL_ROOT:-$ROOT_DIR}/var/deploy-worktrees}"
+while IFS= read -r stale_worktree; do
+  [[ -n "$stale_worktree" ]] || continue
+  stale_real="$(realpath -m "$stale_worktree")"
+  root_real="$(realpath -m "$ROOT_DIR")"
+  case "$stale_real" in
+    "$deploy_worktree_root"/*)
+      [[ "$stale_real" == "$root_real" ]] || git -C "${CARBONET_DEPLOY_ORIGINAL_ROOT:-$ROOT_DIR}" worktree remove --force "$stale_real"
+      ;;
+    *) echo "[auto-deploy] refusing unsafe stale worktree path: $stale_real" >&2; exit 23 ;;
+  esac
+done < <(git -C "${CARBONET_DEPLOY_ORIGINAL_ROOT:-$ROOT_DIR}" worktree list --porcelain |
+  awk -v prefix="$deploy_worktree_root/" '$1=="worktree" && index($2,prefix)==1 {print $2}')
+git -C "${CARBONET_DEPLOY_ORIGINAL_ROOT:-$ROOT_DIR}" worktree prune
+
+# Reserve both the post-deploy safety floor and worst-case build/backup work
+# space after reclaiming disposable worktrees, but before Git fetch, database
+# backup, or build. A blocked run leaves the timer active for a later retry.
+bash "$POLICY_ROOT/ops/scripts/deploy-capacity-gate.sh"
 
 # Image/Gradle packaging can leave generated frontend trees owned by root.
 # Normalize only when a foreign-owned entry is detected so the next Git
@@ -113,12 +147,15 @@ if [[ -z "$POSTGRES_POD" ]]; then
 fi
 echo "[auto-deploy] PostgreSQL backup leader: $POSTGRES_POD"
 backup_application_name="carbonet-auto-deploy-$$"
+schema_backup_dir=""
+schema_restore_database=""
 # A disconnected kubectl/pg_dump pipeline can survive the systemd process and
 # retain ACCESS SHARE locks indefinitely. Reap only deploy-owned sessions that
-# are far older than any configured backup timeout before Flyway can be blocked.
+# have exceeded five minutes before Flyway can be blocked. Normal full dumps
+# remain protected by their active systemd service and current application name.
 kubectl -n "$NAMESPACE" exec "$POSTGRES_POD" -c "$POSTGRES_CONTAINER" -- \
   psql -h 127.0.0.1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" -X -q -At \
-  -c "select pg_terminate_backend(pid) from pg_stat_activity where application_name like 'carbonet-auto-deploy-%' and backend_start < current_timestamp - interval '2 hours' and pid<>pg_backend_pid()" \
+  -c "select pg_terminate_backend(pid) from pg_stat_activity where application_name like 'carbonet-auto-deploy-%' and application_name<>'$backup_application_name' and coalesce(xact_start,query_start,backend_start) < current_timestamp - interval '5 minutes' and pid<>pg_backend_pid()" \
   >/dev/null 2>&1 || true
 cleanup_remote_backup() {
   # A terminated `kubectl exec` can leave pg_dump alive inside the pod. End
@@ -132,6 +169,15 @@ cleanup_remote_backup() {
 }
 cleanup_deploy() {
   cleanup_remote_backup
+  if [[ -n "$schema_restore_database" ]]; then
+    kubectl -n "$NAMESPACE" exec "$POSTGRES_POD" -c "$POSTGRES_CONTAINER" -- \
+      psql -U "$POSTGRES_USER" -h 127.0.0.1 -d postgres \
+        -c "drop database if exists \"$schema_restore_database\" with (force)" \
+      >/dev/null 2>&1 || true
+  fi
+  if [[ -n "$schema_backup_dir" ]]; then
+    rm -rf -- "$schema_backup_dir"
+  fi
   if [[ -n "${CARBONET_DEPLOY_SNAPSHOT_PATH:-}" ]]; then
     rm -f -- "$CARBONET_DEPLOY_SNAPSHOT_PATH"
   fi
@@ -150,8 +196,9 @@ if [[ "$deployed_commit" == "$target_commit" ]]; then
   exit 0
 fi
 
-eval "$(bash ops/scripts/plan-incremental-work.sh "$deployed_commit" "$target_commit" --format env)"
-echo "[auto-deploy] incremental plan: runtime=$PLAN_RUNTIME_REQUIRED frontend=$PLAN_FRONTEND_REQUIRED backend=$PLAN_BACKEND_REQUIRED database=$PLAN_DATABASE_REQUIRED"
+eval "$(bash "$PLAN_SCRIPT" "$deployed_commit" "$target_commit" --format env)"
+PLAN_BACKSTAGE_REQUIRED="${PLAN_BACKSTAGE_REQUIRED:-false}"
+echo "[auto-deploy] incremental plan: runtime=$PLAN_RUNTIME_REQUIRED frontend=$PLAN_FRONTEND_REQUIRED backend=$PLAN_BACKEND_REQUIRED database=$PLAN_DATABASE_REQUIRED backstage=$PLAN_BACKSTAGE_REQUIRED"
 echo "[auto-deploy] selected checks: $PLAN_TESTS ($PLAN_REASONS)"
 
 # Database availability is a hard prerequisite for Flyway and every runtime
@@ -165,25 +212,16 @@ bash ops/scripts/ensure-protected-runtime-images.sh
 bash ops/scripts/prune-predeploy-backups.sh
 bash ops/scripts/deduplicate-verified-postgres-backups.sh
 
-opt_usage="$(df -P /opt | awk 'NR==2 {gsub(/%/,"",$5); print $5}')"
-opt_available_kb="$(df -Pk /opt | awk 'NR==2 {print $4}')"
-opt_min_free_gb="${CARBONET_OPT_MIN_FREE_GB:-150}"
-opt_min_free_kb="$((opt_min_free_gb * 1024 * 1024))"
-# /opt is a multi-terabyte volume. A percentage-only threshold rejected safe
-# database-only deployments despite hundreds of GiB remaining. Keep a hard
-# percentage ceiling, but below it use actual free capacity as the operative
-# safety guard.
-if [[ "$opt_usage" -ge 92 || "$opt_available_kb" -lt "$opt_min_free_kb" ]]; then
-  echo "[auto-deploy] refusing deployment: /opt usage=${opt_usage}% available_kb=${opt_available_kb} required_kb=${opt_min_free_kb}" >&2
-  exit 18
-fi
-if [[ "$opt_usage" -ge 82 ]]; then
-  echo "[auto-deploy] /opt usage warning: ${opt_usage}% with $((opt_available_kb / 1024 / 1024))GiB available; capacity guard passed"
-fi
+# Recheck after backup pruning because concurrent workloads can consume the
+# reservation while the deployment plan is being prepared.
+bash "$POLICY_ROOT/ops/scripts/deploy-capacity-gate.sh"
 
 root_usage="$(df -P / | awk 'NR==2 {gsub(/%/,"",$5); print $5}')"
 if [[ "$root_usage" -ge 88 ]]; then
-  echo "[auto-deploy] root usage ${root_usage}%: pruning unused Docker images before build"
+  echo "[auto-deploy] root usage ${root_usage}%: pruning unused Docker build cache and images before build"
+  # BuildKit cache is separate from the image store and can grow by tens of
+  # gigabytes even when image pruning reports nothing reclaimable.
+  sudo docker builder prune -a -f >/dev/null
   sudo docker image prune -a -f >/dev/null
   sudo apt-get clean
   root_usage="$(df -P / | awk 'NR==2 {gsub(/%/,"",$5); print $5}')"
@@ -209,14 +247,73 @@ tracked_source_changes="$(git diff --name-only -- \
   ':(exclude)projects/carbonet-frontend/source/tsconfig.app.tsbuildinfo' \
   ':(exclude)projects/carbonet-frontend/target/**')"
 if [[ -n "$tracked_source_changes" ]]; then
-  echo "[auto-deploy] refusing deployment: tracked server files are modified" >&2
-  printf '%s\n' "$tracked_source_changes" >&2
-  exit 2
+  if [[ "${CARBONET_CLEAN_WORKTREE_ACTIVE:-false}" == "true" ]]; then
+    echo "[auto-deploy] refusing deployment: dedicated deployment worktree is modified" >&2
+    printf '%s\n' "$tracked_source_changes" >&2
+    exit 2
+  fi
+
+  # Server-authored or operator-owned changes in /opt/Resonance must never be
+  # overwritten, but they also must not block unrelated commits forever. Build
+  # the exact remote commit in a detached, commit-addressed worktree and keep
+  # the live verified frontend closure as its immutable input.
+  source_root="$ROOT_DIR"
+  clean_worktree_base="${CARBONET_CLEAN_WORKTREE_BASE:-$source_root/var/deploy-worktrees}"
+  clean_worktree="$clean_worktree_base/${target_commit:0:16}"
+  mkdir -p "$clean_worktree_base"
+  if [[ ! -e "$clean_worktree/.git" ]]; then
+    echo "[auto-deploy] tracked operator changes detected; creating isolated deployment worktree"
+    git worktree add --detach "$clean_worktree" "$target_commit"
+  else
+    # Validation jobs intentionally materialize tracked inventories and smoke
+    # caches. They belong to this disposable deployment worktree, never to an
+    # operator, so restore the requested commit before reusing the workspace.
+    # The primary /opt/Resonance worktree remains untouched.
+    if [[ -n "$(git -C "$clean_worktree" diff --name-only -- .)" ]]; then
+      echo "[auto-deploy] restoring generated changes in reusable isolated worktree"
+      git -C "$clean_worktree" reset --hard "$target_commit" >/dev/null
+    fi
+  fi
+  if [[ "$(git -C "$clean_worktree" rev-parse HEAD)" != "$target_commit" ]]; then
+    echo "[auto-deploy] refusing deployment: isolated worktree commit mismatch" >&2
+    exit 21
+  fi
+  source_overlay="$source_root/projects/carbonet-frontend/src/main/resources/static/react-app"
+  clean_overlay="$clean_worktree/projects/carbonet-frontend/src/main/resources/static/react-app"
+  mkdir -p "$clean_worktree/var/run" "$clean_worktree/var/logs"
+  if [[ -f "$source_overlay/index.html" ]]; then
+    # Both worktrees live on /opt. A read-only hard-link snapshot preserves the
+    # verified frontend closure without copying its full hashed asset graph.
+    rm -rf -- "$clean_overlay"
+    mkdir -p "$clean_overlay"
+    cp -al "$source_overlay/." "$clean_overlay/"
+    node "$clean_worktree/ops/scripts/verify-react-asset-closure.mjs" "$clean_overlay"
+  fi
+  ROOT_DIR="$clean_worktree"
+  export ROOT_DIR CARBONET_DEPLOY_ROOT="$clean_worktree" CARBONET_CLEAN_WORKTREE_ACTIVE=true
+  cd "$ROOT_DIR"
+  current_commit="$target_commit"
+  tracked_source_changes="$(git diff --name-only -- \
+    . \
+    ':(exclude)projects/carbonet-frontend/src/main/resources/static/react-app/**')"
+  if [[ -n "$tracked_source_changes" ]]; then
+    echo "[auto-deploy] refusing deployment: isolated worktree is unexpectedly modified" >&2
+    printf '%s\n' "$tracked_source_changes" >&2
+    exit 22
+  fi
+  echo "[auto-deploy] isolated deployment worktree ready: $ROOT_DIR"
 fi
 
 if ! git merge-base --is-ancestor "$current_commit" "$target_commit"; then
   echo "[auto-deploy] refusing non-fast-forward update: $current_commit -> $target_commit" >&2
   exit 3
+fi
+
+# Validate the exact pending commit after selecting its clean worktree. The
+# bootstrap check above may legitimately run against the previously deployed
+# tree when a new policy file is introduced by the pending commit.
+if [[ "$PLAN_BACKSTAGE_REQUIRED" == "true" ]]; then
+  bash "$ROOT_DIR/ops/scripts/test-backstage-fast-deploy-policy.sh"
 fi
 
 # The React hostPath is the live runtime closure, while index.html and the Vite
@@ -228,7 +325,7 @@ live_frontend_overlay="$ROOT_DIR/projects/carbonet-frontend/src/main/resources/s
 merge_overlay_backup="$(mktemp -d "$ROOT_DIR/var/run/pre-merge-overlay.XXXXXX")"
 merge_overlay_backup_valid=false
 if [[ -f "$live_frontend_overlay/index.html" ]]; then
-  rsync -a "$live_frontend_overlay/" "$merge_overlay_backup/"
+  cp -al "$live_frontend_overlay/." "$merge_overlay_backup/"
   if node "$ROOT_DIR/ops/scripts/verify-react-asset-closure.mjs" "$merge_overlay_backup" >/dev/null 2>&1; then
     merge_overlay_backup_valid=true
   elif [[ "$PLAN_FRONTEND_REQUIRED" == "true" ]]; then
@@ -249,6 +346,120 @@ restore_live_frontend_overlay() {
   fi
   rm -rf "$merge_overlay_backup"
   merge_overlay_backup=""
+}
+
+deploy_backstage_if_required() {
+  [[ "${PLAN_BACKSTAGE_REQUIRED:-false}" == "true" ]] || return 0
+  local checkpoint status
+  checkpoint="$(cat "$BACKSTAGE_DEPLOY_STATE_FILE" 2>/dev/null || true)"
+  if [[ "$checkpoint" == "$target_commit" ]]; then
+    status="$(curl -k -sS -o /dev/null -w '%{http_code}' --max-time 10 \
+      https://backstage.172.16.1.232.nip.io/.backstage/health/v1/readiness || true)"
+    if [[ "$status" == "200" ]]; then
+      echo "[auto-deploy] Backstage runtime checkpoint verified; resuming at E2E gates"
+      return 0
+    fi
+    echo "[auto-deploy] stale Backstage checkpoint ignored: readiness returned $status" >&2
+  fi
+  echo "[auto-deploy] Backstage-only image build and rollout started"
+  bash ops/scripts/resonance-backstage-deploy.sh
+  status="$(curl -k -sS -o /dev/null -w '%{http_code}' --max-time 10 \
+    https://backstage.172.16.1.232.nip.io/.backstage/health/v1/readiness || true)"
+  if [[ "$status" != "200" ]]; then
+    echo "[auto-deploy] refusing success marker: Backstage readiness returned $status" >&2
+    exit 24
+  fi
+  printf '%s\n' "$target_commit" > "${BACKSTAGE_DEPLOY_STATE_FILE}.tmp"
+  mv "${BACKSTAGE_DEPLOY_STATE_FILE}.tmp" "$BACKSTAGE_DEPLOY_STATE_FILE"
+  echo "[auto-deploy] Backstage runtime verified"
+}
+
+run_backstage_visual_e2e_if_required() {
+  if [[ "$PLAN_BACKSTAGE_REQUIRED" != "true" \
+     && ",$PLAN_TESTS," != *",backstage:visual-e2e,"* \
+     && ",$PLAN_TESTS," != *",backstage:catalog-sync,"* ]]; then
+    return
+  fi
+  BACKSTAGE_E2E_USERNAME="${BACKSTAGE_E2E_USERNAME:-sjkim}" \
+  BACKSTAGE_E2E_SECRET_NAME="${BACKSTAGE_E2E_SECRET_NAME:-resonance-keycloak-integrated-admin}" \
+  RESONANCE_ROOT="$ROOT_DIR" \
+    bash ops/scripts/resonance-backstage-visual-e2e.sh
+}
+
+run_backstage_identity_e2e_if_required() {
+  if [[ "${PLAN_BACKSTAGE_REQUIRED:-false}" != "true" \
+     && ",${PLAN_TESTS:-}," != *",backstage:build-deploy,"* ]]; then
+    return 0
+  fi
+  RESONANCE_ROOT="$ROOT_DIR" \
+    bash ops/scripts/resonance-identity-admin-e2e.sh
+}
+
+run_actor_process_role_e2e_if_required() {
+  if [[ "${PLAN_BACKSTAGE_REQUIRED:-false}" != "true" \
+     && ",${PLAN_TESTS:-}," != *",backstage:build-deploy,"* \
+     && ",${PLAN_TESTS:-}," != *",backstage:visual-e2e,"* ]]; then
+    if ! git diff --name-only "$deployed_commit" "$target_commit" -- \
+        modules/resonance-common/carbonet-common-core/src/main/java/egovframework/com/platform/governance \
+        ops/scripts/resonance-actor-process-role-e2e.sh \
+        ops/scripts/resonance-keycloak-deploy.sh \
+        ops/scripts/resonance-keycloak-carbonet-identity-sync.sh \
+        | grep -q .; then
+      return 0
+    fi
+  fi
+  RESONANCE_ROOT="$ROOT_DIR" \
+    bash ops/scripts/resonance-actor-process-role-e2e.sh
+}
+
+sync_keycloak_actor_assignments_if_required() {
+  if ! git diff --name-only "$deployed_commit" "$target_commit" -- \
+      ops/scripts/auto-deploy-main.sh \
+      ops/scripts/resonance-keycloak-deploy.sh \
+      ops/scripts/resonance-keycloak-carbonet-identity-sync.sh \
+      ops/scripts/resonance-keycloak-carbonet-identity-sync-install.sh \
+      ops/scripts/validate-keycloak-carbonet-identity-sync.sh \
+      ops/scripts/resonance-keycloak-e2e-scope-sync.sh \
+      ops/scripts/resonance-actor-process-role-e2e.sh \
+      | grep -q .; then
+    return 0
+  fi
+  # Keycloak realm provisioning is intentionally not repeated in the hot
+  # application deployment path. It can take several minutes because it
+  # reconciles every identity. The periodic identity sync below applies the
+  # already-provisioned attributes to Carbonet without another realm rebuild.
+  bash ops/scripts/resonance-keycloak-e2e-scope-sync.sh
+  RESONANCE_ROOT="$ROOT_DIR" \
+    bash ops/scripts/resonance-keycloak-carbonet-identity-sync-install.sh
+  bash ops/scripts/resonance-keycloak-carbonet-identity-sync.sh
+  bash ops/scripts/validate-keycloak-carbonet-identity-sync.sh
+}
+
+run_backstage_screen_space_e2e_if_required() {
+  if [[ "${PLAN_BACKSTAGE_REQUIRED:-false}" != "true" \
+     && ",${PLAN_TESTS:-}," != *",backstage:build-deploy,"* ]]; then
+    return 0
+  fi
+  RESONANCE_ROOT="$ROOT_DIR" \
+    bash ops/scripts/resonance-screen-space-runtime-e2e.sh
+}
+
+sync_backstage_catalog_if_required() {
+  if [[ ",$PLAN_TESTS," != *",backstage:catalog-sync,"* \
+     || "$PLAN_BACKSTAGE_REQUIRED" == "true" ]]; then
+    return
+  fi
+  kubectl -n resonance-ops create configmap resonance-backstage-catalog \
+    --from-file="$ROOT_DIR/platform/control-plane/catalog/organization.yaml" \
+    --from-file="$ROOT_DIR/platform/control-plane/catalog/systems.yaml" \
+    --from-file="$ROOT_DIR/platform/control-plane/catalog/components.yaml" \
+    --from-file="$ROOT_DIR/platform/control-plane/catalog/apis.yaml" \
+    --from-file="$ROOT_DIR/platform/control-plane/catalog/resources.yaml" \
+    --from-file="$ROOT_DIR/platform/control-plane/catalog/environments.yaml" \
+    --dry-run=client -o yaml | kubectl apply -f -
+  kubectl -n resonance-ops rollout restart deployment/resonance-backstage
+  kubectl -n resonance-ops rollout status deployment/resonance-backstage \
+    --timeout=180s
 }
 
 # The standard build updates tracked generated bundles and Gradle state. They are
@@ -296,8 +507,24 @@ if [[ "$PLAN_RUNTIME_REQUIRED" != "true" ]]; then
   while IFS= read -r changed_script; do
     [[ "$changed_script" == *.sh && -f "$changed_script" ]] && bash -n "$changed_script"
   done < <(git diff --name-only --diff-filter=ACMR "$deployed_commit" "$target_commit")
-  bash ops/scripts/sync-unified-asset-catalog.sh
-  bash ops/scripts/validate-e4b-selectable-assets.sh
+  backstage_only_change=false
+  if [[ "$PLAN_BACKSTAGE_REQUIRED" == "true" ]] &&
+    ! git diff --name-only "$deployed_commit" "$target_commit" |
+      grep -Ev '^(platform/control-plane/backstage/|deploy/k8s/control-plane/backstage\.yaml$|ops/scripts/(resonance-backstage-deploy|test-backstage-fast-deploy-policy)\.sh$)' |
+      grep -q .; then
+    backstage_only_change=true
+  fi
+  if [[ "$backstage_only_change" == "true" ]]; then
+    echo "[auto-deploy] Backstage-only change: preserving the verified unified asset catalog"
+  else
+    bash ops/scripts/sync-unified-asset-catalog.sh
+    bash ops/scripts/validate-e4b-selectable-assets.sh
+  fi
+  sync_backstage_catalog_if_required
+  deploy_backstage_if_required
+  run_backstage_visual_e2e_if_required
+  sync_keycloak_actor_assignments_if_required
+  run_actor_process_role_e2e_if_required
   printf '%s\n' "$target_commit" > "${DEPLOY_STATE_FILE}.tmp"
   mv "${DEPLOY_STATE_FILE}.tmp" "$DEPLOY_STATE_FILE"
   echo "[auto-deploy] catalog-only update completed without application rollout: $target_commit"
@@ -313,6 +540,7 @@ menu_backup_only=false
 governance_backup_only=false
 activity_backup_only=false
 identity_backup_only=false
+schema_backup_only=false
 if [[ "$PLAN_DATABASE_REQUIRED" == "true" && "${CARBONET_FORCE_PREDEPLOY_BACKUP:-false}" != "true" ]]; then
   database_change_files="$(git diff --name-only "$deployed_commit" "$target_commit" -- \
     apps/carbonet-api/src/main/resources/db/migration/postgresql)"
@@ -321,10 +549,95 @@ if [[ "$PLAN_DATABASE_REQUIRED" == "true" && "${CARBONET_FORCE_PREDEPLOY_BACKUP:
   [[ "$backup_scope" == "governance" ]] && governance_backup_only=true
   [[ "$backup_scope" == "activity" ]] && activity_backup_only=true
   [[ "$backup_scope" == "identity" ]] && identity_backup_only=true
+  database_change_statuses="$(git diff --name-status "$deployed_commit" "$target_commit" -- \
+    apps/carbonet-api/src/main/resources/db/migration/postgresql)"
+  if [[ -n "$database_change_files" ]] \
+    && ! grep -Ev '^A[[:space:]]' <<<"$database_change_statuses" | grep -q . \
+    && python3 ops/scripts/classify-safe-additive-ddl.py $database_change_files; then
+    schema_backup_only=true
+    menu_backup_only=false
+    governance_backup_only=false
+    activity_backup_only=false
+    identity_backup_only=false
+    backup_scope="safe-additive-schema"
+  fi
   echo "[auto-deploy] database backup scope: $backup_scope"
 fi
 if [[ "$backup_required" == "true" ]]; then
-  if [[ "$menu_backup_only" == "true" ]]; then
+  if [[ "$schema_backup_only" == "true" ]]; then
+    backup_file="$BACKUP_DIR/carbonet-schema-$timestamp-$current_commit.tar"
+    schema_backup_dir="$(mktemp -d)"
+    echo "[auto-deploy] safe additive DDL detected; creating schema and Flyway-history backup"
+    if ! timeout --signal=TERM --kill-after=30s "$BACKUP_TIMEOUT_SECONDS" \
+        kubectl -n "$NAMESPACE" exec "$POSTGRES_POD" -c "$POSTGRES_CONTAINER" -- \
+          env "PGAPPNAME=$backup_application_name" "PGOPTIONS=-c statement_timeout=${BACKUP_TIMEOUT_SECONDS}s -c lock_timeout=30s" \
+          pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" --format=custom \
+            --schema-only --no-owner --no-privileges -h 127.0.0.1 \
+        > "$schema_backup_dir/schema.dump"; then
+      echo "[auto-deploy] refusing deployment: schema backup failed" >&2
+      exit 14
+    fi
+    if ! timeout --signal=TERM --kill-after=30s "$BACKUP_TIMEOUT_SECONDS" \
+      kubectl -n "$NAMESPACE" exec "$POSTGRES_POD" -c "$POSTGRES_CONTAINER" -- \
+        env "PGAPPNAME=$backup_application_name" "PGOPTIONS=-c statement_timeout=${BACKUP_TIMEOUT_SECONDS}s -c lock_timeout=30s" \
+        pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" --format=custom \
+          --data-only --no-owner --no-privileges -h 127.0.0.1 \
+          -t carbonet_flyway_schema_history > "$schema_backup_dir/flyway-history.dump"; then
+      echo "[auto-deploy] refusing deployment: Flyway-history backup failed" >&2
+      exit 14
+    fi
+    git diff --name-status "$deployed_commit" "$target_commit" -- \
+      apps/carbonet-api/src/main/resources/db/migration/postgresql \
+      > "$schema_backup_dir/migrations.manifest"
+    git diff "$deployed_commit" "$target_commit" -- \
+      apps/carbonet-api/src/main/resources/db/migration/postgresql \
+      > "$schema_backup_dir/migrations.patch"
+    for archive in schema.dump flyway-history.dump; do
+      if [[ "$(stat -c %s "$schema_backup_dir/$archive")" -lt 512 ]] \
+        || ! kubectl -n "$NAMESPACE" exec -i "$POSTGRES_POD" -c "$POSTGRES_CONTAINER" -- \
+          pg_restore --list < "$schema_backup_dir/$archive" >/dev/null; then
+        echo "[auto-deploy] refusing deployment: $archive restore catalog is invalid" >&2
+        exit 18
+      fi
+    done
+    schema_restore_database="carbonet_schema_verify_${timestamp//-/_}_$$"
+    kubectl -n "$NAMESPACE" exec "$POSTGRES_POD" -c "$POSTGRES_CONTAINER" -- \
+      psql -U "$POSTGRES_USER" -h 127.0.0.1 -d postgres -v ON_ERROR_STOP=1 \
+        -c "create database \"$schema_restore_database\"" >/dev/null
+    if ! kubectl -n "$NAMESPACE" exec -i "$POSTGRES_POD" -c "$POSTGRES_CONTAINER" -- \
+      pg_restore -U "$POSTGRES_USER" -h 127.0.0.1 -d "$schema_restore_database" \
+        --schema-only --no-owner --no-privileges -t carbonet_flyway_schema_history \
+        < "$schema_backup_dir/schema.dump" \
+      || ! kubectl -n "$NAMESPACE" exec -i "$POSTGRES_POD" -c "$POSTGRES_CONTAINER" -- \
+        pg_restore -U "$POSTGRES_USER" -h 127.0.0.1 -d "$schema_restore_database" \
+          --data-only --no-owner --no-privileges -t carbonet_flyway_schema_history \
+          < "$schema_backup_dir/flyway-history.dump"; then
+      echo "[auto-deploy] refusing deployment: Flyway-history restore verification failed" >&2
+      exit 19
+    fi
+    restored_history_count="$(kubectl -n "$NAMESPACE" exec "$POSTGRES_POD" -c "$POSTGRES_CONTAINER" -- \
+      psql -U "$POSTGRES_USER" -h 127.0.0.1 -d "$schema_restore_database" -Atqc \
+        "select count(*) from carbonet_flyway_schema_history")"
+    [[ "$restored_history_count" =~ ^[1-9][0-9]*$ ]] || {
+      echo "[auto-deploy] refusing deployment: restored Flyway history is empty" >&2
+      exit 19
+    }
+    kubectl -n "$NAMESPACE" exec "$POSTGRES_POD" -c "$POSTGRES_CONTAINER" -- \
+      psql -U "$POSTGRES_USER" -h 127.0.0.1 -d postgres -v ON_ERROR_STOP=1 \
+        -c "drop database \"$schema_restore_database\" with (force)" >/dev/null
+    schema_restore_database=""
+    tar -C "$schema_backup_dir" -cf "$backup_file" \
+      schema.dump flyway-history.dump migrations.manifest migrations.patch
+    backup_bytes="$(stat -c %s "$backup_file")"
+    if [[ "$backup_bytes" -lt 2048 ]] || ! tar -tf "$backup_file" | grep -q '^schema.dump$'; then
+      rm -f "$backup_file"
+      echo "[auto-deploy] refusing deployment: schema backup package is invalid (${backup_bytes} bytes)" >&2
+      exit 11
+    fi
+    rm -rf "$schema_backup_dir"
+    schema_backup_dir=""
+    echo "[auto-deploy] schema backup verified: $backup_file (${backup_bytes} bytes, restoredFlywayRows=${restored_history_count})"
+  elif [[ "$menu_backup_only" == "true" ]]; then
     backup_file="$BACKUP_DIR/carbonet-menu-$timestamp-$current_commit.sql.gz"
     echo "[auto-deploy] menu-only migration detected; creating targeted transactional backup"
     if ! timeout --signal=TERM --kill-after=30s "$BACKUP_TIMEOUT_SECONDS" \
@@ -501,6 +814,8 @@ if [[ "$PLAN_FRONTEND_REQUIRED" == "true" \
    && "$PLAN_BACKEND_REQUIRED" != "true" \
    && "$PLAN_DATABASE_REQUIRED" != "true" ]]; then
   BASE_URL="${CARBONET_PUBLIC_BASE_URL:-http://127.0.0.1}" \
+  OVERLAY_DIR="${CARBONET_LIVE_FRONTEND_OVERLAY_DIR:-/opt/Resonance/projects/carbonet-frontend/src/main/resources/static/react-app}" \
+  STATUS_DIR="${CARBONET_LIVE_STATUS_DIR:-/opt/Resonance/var/run}" \
     bash ops/scripts/resonance-screen-overlay-apply.sh
   health_status="$(curl -fsS --max-time 10 http://127.0.0.1/actuator/health || true)"
   if [[ "$health_status" != *'"status":"UP"'* ]]; then
@@ -531,9 +846,14 @@ if [[ "$PLAN_FRONTEND_REQUIRED" != "true" \
    && "$PLAN_DATABASE_REQUIRED" != "true" \
    && "$PLAN_INFRASTRUCTURE_REQUIRED" == "true" ]]; then
   bash -n ops/scripts/auto-deploy-main.sh
+  bash -n ops/scripts/auto-deploy-main-launcher.sh
   bash -n ops/scripts/plan-incremental-work.sh
+  bash ops/scripts/test-plan-incremental-work.sh
   bash -n ops/scripts/resonance-full-screen-deploy-gate.sh
   bash -n projects/carbonet-frontend/source/scripts/run-full-screen-smoke.sh
+  if [[ ",$PLAN_TESTS," == *",control-plane:validate,"* ]]; then
+    bash ops/scripts/resonance-control-plane.sh validate
+  fi
   health_status="$(curl -fsS --max-time 10 http://127.0.0.1/actuator/health || true)"
   if [[ "$health_status" != *'"status":"UP"'* ]]; then
     echo "[auto-deploy] refusing automation-only success marker: health check is not UP" >&2
@@ -583,19 +903,36 @@ bash ops/scripts/validate-customer-work-journey.sh
 bash ops/scripts/validate-actor-account-customer-journey.sh
 bash ops/scripts/validate-design-direct-development.sh
 bash ops/scripts/validate-common-design-assets.sh
+RESONANCE_ROOT="$ROOT_DIR" \
+  bash ops/scripts/resonance-keycloak-carbonet-identity-sync-install.sh
+bash ops/scripts/resonance-keycloak-carbonet-identity-sync.sh
+bash ops/scripts/validate-keycloak-carbonet-identity-sync.sh
 bash ops/scripts/validate-project-auto-completion.sh
 bash ops/scripts/validate-contract-completion-algorithm.sh
 bash ops/scripts/validate-unified-work-design-runtime.sh
-if [[ "$PLAN_FRONTEND_REQUIRED" == "true" || "$PLAN_DATABASE_REQUIRED" == "true" || "$PLAN_INFRASTRUCTURE_REQUIRED" == "true" ]]; then
+if [[ "$PLAN_FRONTEND_REQUIRED" == "true" ]]; then
+  # A normal deployment must finish inside the operational feedback window.
+  # Domain/API/schema validators above already cover the changed backend and
+  # Flyway contracts. Exercise a bounded cross-domain browser canary here;
+  # the scheduled full-screen sweep remains responsible for all 1,844 routes.
   FULL_SCREEN_SMOKE_CHANGED_ONLY=false \
+  FULL_SCREEN_SMOKE_ROUTE_PATTERN='^/(home|emission/project_list|emission/project/create|emission/my-tasks|home/certificate-verify|admin|admin/system/menu|admin/system/actor-process|admin/emission/survey-admin|admin/emission/survey-admin-data|admin/emission/survey-report|admin/emission/survey-report-print)([?#]|$)' \
     bash ops/scripts/resonance-full-screen-deploy-gate.sh verify
 else
-  # Backend-only commits already pass the domain runtime/API gates above. A
+  # Backend/database-only commits already pass the domain runtime/API/schema
+  # gates above. A
   # second 333-route browser sweep adds minutes without exercising new UI.
   # Keep the rollback snapshot and immutable asset closure checks, then accept
   # the healthy runtime. Mixed/frontend/database changes retain the full gate.
   bash ops/scripts/resonance-full-screen-deploy-gate.sh accept-fast
 fi
+sync_backstage_catalog_if_required
+deploy_backstage_if_required
+run_backstage_visual_e2e_if_required
+run_backstage_identity_e2e_if_required
+sync_keycloak_actor_assignments_if_required
+run_actor_process_role_e2e_if_required
+run_backstage_screen_space_e2e_if_required
 printf '%s\n' "$target_commit" > "${DEPLOY_STATE_FILE}.tmp"
 mv "${DEPLOY_STATE_FILE}.tmp" "$DEPLOY_STATE_FILE"
 sudo docker image prune -a -f >/dev/null || true
