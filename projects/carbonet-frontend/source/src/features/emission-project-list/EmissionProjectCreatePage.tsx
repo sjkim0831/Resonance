@@ -262,7 +262,7 @@ export function EmissionProjectCreatePage() {
                   >
                     <option value="">{en ? "Select a registered site" : "등록 사업장 선택"}</option>
                     {options.sites.map((v) => (
-                      <option key={v} value={v} />
+                      <option key={v} value={v}>{v}</option>
                     ))}
                   </select>
                 </label>
