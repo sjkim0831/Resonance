@@ -677,32 +677,6 @@ export function TaskQuestPanel() {
     () => availableWorkTypes.reduce((sum, item) => sum + item.definedCount, 0),
     [availableWorkTypes],
   );
-  const selectedWorkTypeQuality = useMemo(
-    () =>
-      selectedWorkType === "ALL"
-        ? {
-            verifiedCount: Number(
-              data?.designAssuranceSummary?.verifiedCount || 0,
-            ),
-            blockedCount: Number(
-              data?.designAssuranceSummary?.blockedCount || 0,
-            ),
-            pendingCount: Number(
-              data?.designAssuranceSummary?.pendingCount || 0,
-            ),
-            accuracy: Number(
-              data?.designAssuranceSummary?.averageAccuracyScore || 0,
-            ),
-          }
-        : availableWorkTypes.find((item) => item.code === selectedWorkType) || {
-            verifiedCount: 0,
-            blockedCount: 0,
-            pendingCount: 0,
-            accuracy: 0,
-          },
-    [availableWorkTypes, data?.designAssuranceSummary, selectedWorkType],
-  );
-
   useEffect(() => {
     if (
       selectedWorkType !== "ALL" &&
@@ -1399,79 +1373,16 @@ export function TaskQuestPanel() {
                   </button>
                 </header>
                 <div className="overflow-y-auto bg-slate-50 px-5 py-5 sm:px-7 sm:py-6">
-                  <section className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
-                    <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3">
-                      <span className="text-xs font-bold text-emerald-700">
-                        {en ? "Verified design" : "검증 완료 설계"}
-                      </span>
-                      <strong className="mt-1 block text-xl text-emerald-900">
-                        {selectedWorkTypeQuality.verifiedCount}
-                      </strong>
-                    </div>
-                    <div className="rounded-xl border border-red-200 bg-red-50 p-3">
-                      <span className="text-xs font-bold text-red-700">
-                        {en ? "Design blocked" : "설계 보완 필요"}
-                      </span>
-                      <strong className="mt-1 block text-xl text-red-900">
-                        {selectedWorkTypeQuality.blockedCount}
-                      </strong>
-                    </div>
-                    <div className="rounded-xl border border-amber-200 bg-amber-50 p-3">
-                      <span className="text-xs font-bold text-amber-700">
-                        {en ? "Implementation pending" : "구현 검증 대기"}
-                      </span>
-                      <strong className="mt-1 block text-xl text-amber-900">
-                        {selectedWorkTypeQuality.pendingCount}
-                      </strong>
-                    </div>
-                    <div className="rounded-xl border border-blue-200 bg-blue-50 p-3">
-                      <span className="text-xs font-bold text-blue-700">
-                        {en ? "Design accuracy" : "설계 정확도"}
-                      </span>
-                      <strong className="mt-1 block text-xl text-blue-900">
-                        {selectedWorkTypeQuality.accuracy}%
-                      </strong>
-                    </div>
-                  </section>
-                  {data?.workCatalogAudit ? (
-                    <div
-                      className={`mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border px-4 py-3 ${Number(data.workCatalogAudit.processesWithoutSequence || 0) === 0 ? "border-emerald-200 bg-emerald-50 text-emerald-900" : "border-red-200 bg-red-50 text-red-900"}`}
-                    >
-                      <div>
-                        <strong className="block text-sm">
-                          {en
-                            ? "Business sequence audit"
-                            : "업무 순서 등록 점검"}
-                        </strong>
-                        <span className="text-xs">
-                          {en
-                            ? "Every process must have an executable order."
-                            : "모든 프로세스가 실행 순서 원장에 등록되어야 합니다."}
-                        </span>
-                      </div>
-                      <span className="rounded-full bg-white px-3 py-1 text-sm font-black">
-                        {data.workCatalogAudit.processesWithoutSequence || 0}{" "}
-                        {en ? "missing" : "개 누락"}
-                      </span>
-                    </div>
-                  ) : null}
                   <section className="mb-5 rounded-2xl border border-slate-200 bg-white p-4 sm:p-5">
-                    <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
+                    <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
                       <div>
-                        <p className="text-xs font-black uppercase tracking-wide text-[#246beb]">
-                          {en
-                            ? "Step 1 · Select work type"
-                            : "1단계 · 업무 종류 선택"}
-                        </p>
                         <h3 className="mt-1 text-lg font-black text-[#052b57]">
-                          {en
-                            ? "Available work types"
-                            : "현재 선택 가능한 업무 종류"}
+                          {en ? "Select work type" : "업무 종류 선택"}
                         </h3>
                         <p className="mt-1 text-sm text-slate-600">
                           {en
-                            ? "Counts show registered processes, not project task steps."
-                            : "괄호 안 개수는 프로젝트 단계가 아닌 등록된 업무 프로세스 수입니다."}
+                            ? "Select a work type to view its available processes."
+                            : "업무 종류를 선택하면 관련 업무 프로세스가 바로 표시됩니다."}
                         </p>
                       </div>
                       <label className="text-sm font-bold text-slate-700">
@@ -1495,48 +1406,13 @@ export function TaskQuestPanel() {
                         </select>
                       </label>
                     </div>
-                    <div className="mt-4 flex gap-2 overflow-x-auto pb-1">
-                      <button
-                        className={`shrink-0 rounded-xl border px-4 py-3 text-left ${selectedWorkType === "ALL" ? "border-[#246beb] bg-blue-50 text-blue-900" : "border-slate-200 text-slate-700"}`}
-                        onClick={() => selectWorkType("ALL")}
-                        type="button"
-                      >
-                        <strong className="block text-sm">
-                          {en ? "All work" : "전체 업무"}
-                        </strong>
-                        <span className="text-xs">
-                          {definedProcessTotal}{" "}
-                          {en ? "registered processes" : "등록 프로세스"} ·{" "}
-                          {workflowItems.length}{" "}
-                          {en ? "active steps" : "진행 단계"}
-                        </span>
-                      </button>
-                      {availableWorkTypes.map((item) => (
-                        <button
-                          className={`shrink-0 rounded-xl border px-4 py-3 text-left ${selectedWorkType === item.code ? "border-[#246beb] bg-blue-50 text-blue-900" : "border-slate-200 text-slate-700"}`}
-                          key={item.code}
-                          onClick={() => selectWorkType(item.code)}
-                          title={item.description}
-                          type="button"
-                        >
-                          <strong className="block text-sm">
-                            {item.label}
-                          </strong>
-                          <span className="text-xs">
-                            {item.definedCount}{" "}
-                            {en ? "registered processes" : "등록 프로세스"} ·{" "}
-                            {item.count} {en ? "active steps" : "진행 단계"}
-                          </span>
-                        </button>
-                      ))}
-                    </div>
                   </section>
                   {selectedDefinedProcesses.length ? (
                     <section className="mb-5 rounded-2xl border border-slate-200 bg-white p-4 sm:p-5">
                       <div className="flex flex-wrap items-end justify-between gap-3">
                         <div>
                           <p className="text-xs font-black uppercase tracking-wide text-[#246beb]">
-                            {en ? "Execution order" : "업무 실행 순서"}
+                            {en ? "Select process" : "업무 프로세스 선택"}
                           </p>
                           <h3 className="mt-1 text-lg font-black text-[#052b57]">
                             {en
