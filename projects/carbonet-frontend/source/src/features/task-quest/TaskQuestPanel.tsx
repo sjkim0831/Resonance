@@ -1502,7 +1502,7 @@ export function TaskQuestPanel() {
                       </div>
                     </section>
                   ) : null}
-                  {selectedCatalogProcessCode === "EMISSION_PROJECT_PORTFOLIO" ? (
+                  {false && selectedCatalogProcessCode === "EMISSION_PROJECT_PORTFOLIO" ? (
                     <section className="mb-5 rounded-2xl border border-blue-200 bg-blue-50 p-4 sm:p-5">
                       <div className="flex flex-wrap items-start justify-between gap-3">
                         <div>
@@ -1540,7 +1540,7 @@ export function TaskQuestPanel() {
                       </ol>
                     </section>
                   ) : null}
-                  {data?.processNavigationSummary ? (
+                  {false && data?.processNavigationSummary ? (
                     <section className="mb-5 rounded-2xl border border-blue-200 bg-blue-50 p-4">
                       <div className="flex flex-wrap items-center justify-between gap-3">
                         <div>
@@ -1572,7 +1572,7 @@ export function TaskQuestPanel() {
                       </div>
                     </section>
                   ) : null}
-                  <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                  <div className="hidden">
                     {[
                       [en ? "Total" : "전체", workflowTotal, "assignment"],
                       [en ? "Complete" : "완료", workflowCompleted, "task_alt"],
@@ -1603,7 +1603,7 @@ export function TaskQuestPanel() {
                       </div>
                     ))}
                   </div>
-                  {data?.workCatalogAudit ? (
+                  {false && data?.workCatalogAudit ? (
                     <section className="mb-5 rounded-2xl border border-slate-200 bg-white p-4">
                       <div className="flex flex-wrap items-center justify-between gap-3">
                         <div>
