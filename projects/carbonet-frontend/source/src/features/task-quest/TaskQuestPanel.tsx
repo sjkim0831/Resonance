@@ -451,6 +451,35 @@ export function TaskQuestPanel() {
   }, [data?.processCatalogSteps]);
 
   useEffect(() => {
+    const pathname = window.location.pathname.replace(/\/$/, "") || "/";
+    if (pathname !== "/emission/index" && pathname !== "/en/emission/index")
+      return;
+    const processCode = "EMISSION_PROJECT_PORTFOLIO";
+    const stepCode = "EMISSION_PROJECT_PORTFOLIO_LIST";
+    const processSteps = (data?.processCatalogSteps || [])
+      .filter((step) => step.processCode === processCode)
+      .sort((left, right) => Number(left.stepOrder) - Number(right.stepOrder));
+    const stepIndex = Math.max(
+      0,
+      processSteps.findIndex((step) => step.stepCode === stepCode),
+    );
+    setSelectedCatalogProcessCode(processCode);
+    setSelectedCatalogStep(stepIndex);
+    setFocusedStepCode(stepCode);
+    setSelectedWorkType("EMISSION");
+    setSelectedOverviewProjectId("");
+    setFocusedWorkflow(null);
+    setOpen(true);
+    localStorage.setItem("task-quest-catalog-process", processCode);
+    localStorage.setItem("task-quest-catalog-step", String(stepIndex));
+    localStorage.setItem("task-quest-focused-step", stepCode);
+    localStorage.setItem("task-quest-work-type", "EMISSION");
+    localStorage.setItem("task-quest-open", "1");
+    localStorage.removeItem("task-quest-overview-project");
+    localStorage.removeItem("task-quest-focused-workflow");
+  }, [data?.processCatalogSteps]);
+
+  useEffect(() => {
     if (!flowOpen) return;
     const previous = document.body.style.overflow;
     document.body.style.overflow = "hidden";
