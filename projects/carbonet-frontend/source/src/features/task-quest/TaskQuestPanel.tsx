@@ -1446,8 +1446,8 @@ export function TaskQuestPanel() {
                           </p>
                           <h3 className="mt-1 text-lg font-black text-[#052b57]">
                             {en
-                              ? "Select one process and proceed step by step"
-                              : "프로세스를 선택해 하나씩 구현·검증"}
+                              ? "Review the workflow and select the work to continue"
+                              : "전체 흐름을 확인하고 진행할 업무를 선택하세요"}
                           </h3>
                         </div>
                         <span className="text-xs font-bold text-slate-500">
