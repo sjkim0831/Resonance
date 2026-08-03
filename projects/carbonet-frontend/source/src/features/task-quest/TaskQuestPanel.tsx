@@ -353,6 +353,7 @@ export function TaskQuestPanel() {
   const [message, setMessage] = useState("");
   const [flowOpen, setFlowOpen] = useState(false);
   const [processKeyword, setProcessKeyword] = useState("");
+  const [processMapZoom, setProcessMapZoom] = useState(100);
   const [selectedWorkType, setSelectedWorkType] = useState(
     () => localStorage.getItem("task-quest-work-type") || "ALL",
   );
@@ -860,6 +861,13 @@ export function TaskQuestPanel() {
         .filter((item) => item.processCode === selectedCatalogProcessCode)
         .sort((a, b) => Number(a.stepOrder) - Number(b.stepOrder)),
     [data?.processCatalogSteps, selectedCatalogProcessCode],
+  );
+  const selectedNextProcess = useMemo(
+    () =>
+      selectedDefinedProcesses.find(
+        (item) => item.processCode === selectedCatalogProcess?.nextProcessCode,
+      ),
+    [selectedCatalogProcess?.nextProcessCode, selectedDefinedProcesses],
   );
 
   useEffect(() => {
@@ -1447,114 +1455,189 @@ export function TaskQuestPanel() {
                           {en ? "processes" : "개 프로세스"}
                         </span>
                       </div>
-                      <div className="mt-4 flex flex-col gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3 sm:flex-row sm:items-center sm:justify-between">
-                        <label className="relative block min-w-0 flex-1">
-                          <span className="sr-only">
-                            {en ? "Search processes" : "업무 프로세스 검색"}
-                          </span>
-                          <span
-                            aria-hidden="true"
-                            className="material-symbols-outlined pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[20px] text-slate-400"
-                          >
-                            search
-                          </span>
-                          <input
-                            className="h-11 w-full rounded-lg border border-slate-300 bg-white pl-10 pr-10 text-sm outline-none transition focus:border-[#246beb] focus:ring-2 focus:ring-blue-100"
-                            onChange={(event) => setProcessKeyword(event.target.value)}
-                            placeholder={en ? "Search by process name or code" : "프로세스명 또는 코드 검색"}
-                            type="search"
-                            value={processKeyword}
-                          />
-                        </label>
-                        <span className="shrink-0 text-xs font-bold text-slate-600">
-                          {visibleProcessWaves.reduce(
-                            (count, wave) => count + wave.processes.length,
-                            0,
-                          )}
-                          {en ? " results" : "개 업무"}
-                        </span>
-                      </div>
-                      <div className="mt-3 max-h-[30rem] space-y-3 overflow-y-auto pr-1">
-                        {visibleProcessWaves.map((wave) => (
-                          <section
-                            className="rounded-xl border border-slate-200 bg-slate-50 p-3"
-                            key={`wave-${wave.wave}`}
-                          >
-                            <div className="mb-2 flex flex-wrap items-center gap-2">
-                              <strong className="text-sm text-[#052b57]">
-                                {en ? `Order ${wave.wave}` : `${wave.wave}차 실행`}
-                              </strong>
-                              <span className={`rounded-full px-2 py-1 text-[11px] font-black ${wave.processes.length > 1 ? "bg-violet-100 text-violet-800" : "bg-blue-100 text-blue-800"}`}>
-                                {wave.processes.length > 1
-                                  ? en
-                                    ? `${wave.processes.length} parallel processes`
-                                    : `${wave.processes.length}개 병렬 업무`
-                                  : en
-                                    ? "Sequential"
-                                    : "순차 업무"}
+                      <div className="mt-4 grid overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 lg:grid-cols-[minmax(0,1fr)_22rem]">
+                        <div className="min-w-0 border-b border-slate-200 lg:border-b-0 lg:border-r">
+                          <div className="flex flex-col gap-2 border-b border-slate-200 bg-white p-3 sm:flex-row sm:items-center">
+                            <label className="relative block min-w-0 flex-1">
+                              <span className="sr-only">
+                                {en ? "Search processes" : "업무 프로세스 검색"}
                               </span>
+                              <span aria-hidden="true" className="material-symbols-outlined pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[20px] text-slate-400">
+                                search
+                              </span>
+                              <input
+                                className="h-10 w-full rounded-lg border border-slate-300 bg-white pl-10 pr-3 text-sm outline-none focus:border-[#246beb] focus:ring-2 focus:ring-blue-100"
+                                onChange={(event) => setProcessKeyword(event.target.value)}
+                                placeholder={en ? "Search by process name or code" : "프로세스명 또는 코드 검색"}
+                                type="search"
+                                value={processKeyword}
+                              />
+                            </label>
+                            <div className="flex h-10 shrink-0 items-center rounded-lg border border-slate-300 bg-white">
+                              <button
+                                aria-label={en ? "Zoom out" : "축소"}
+                                className="h-full w-10 text-lg font-bold text-slate-600 disabled:text-slate-300"
+                                disabled={processMapZoom <= 80}
+                                onClick={() => setProcessMapZoom((value) => Math.max(80, value - 20))}
+                                type="button"
+                              >
+                                −
+                              </button>
+                              <span className="min-w-14 border-x border-slate-200 text-center text-xs font-black text-slate-700">
+                                {processMapZoom}%
+                              </span>
+                              <button
+                                aria-label={en ? "Zoom in" : "확대"}
+                                className="h-full w-10 text-lg font-bold text-slate-600 disabled:text-slate-300"
+                                disabled={processMapZoom >= 120}
+                                onClick={() => setProcessMapZoom((value) => Math.min(120, value + 20))}
+                                type="button"
+                              >
+                                +
+                              </button>
                             </div>
-                            <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
-                              {wave.processes.map((process) => {
-                                const selected =
-                                  selectedCatalogProcessCode === process.processCode;
-                                return (
-                                  <button
-                                    aria-pressed={selected}
-                                    className={`group min-h-24 rounded-xl border-2 p-3 text-left transition ${selected ? "border-[#246beb] bg-blue-50 shadow-sm" : "border-white bg-white hover:border-blue-200 hover:shadow-sm"}`}
-                                    key={`sequence-${process.processCode}`}
-                                    onClick={() => selectCatalogProcess(process.processCode)}
-                                    type="button"
-                                  >
-                                    <div className="flex items-start justify-between gap-3">
-                                      <div className="min-w-0">
-                                        <span className="block text-[11px] font-bold text-slate-500">
-                                          {process.processCode}
-                                        </span>
-                                        <strong className="mt-1 block text-sm leading-5 text-[#052b57]">
-                                          {process.processName}
-                                        </strong>
-                                      </div>
-                                      <span className={`material-symbols-outlined shrink-0 text-[22px] ${selected ? "text-[#246beb]" : "text-slate-300 group-hover:text-blue-400"}`}>
-                                        {selected ? "check_circle" : "arrow_circle_right"}
-                                      </span>
-                                    </div>
-                                    <div className="mt-3 flex flex-wrap items-center gap-1.5 text-[11px] font-bold text-slate-600">
-                                      <span className="rounded-full bg-slate-100 px-2 py-1">
-                                        {en ? "Owner" : "담당"}: {process.ownerActorCode || "-"}
-                                      </span>
-                                      <span className="rounded-full bg-slate-100 px-2 py-1">
-                                        {process.laneCode || "PRIMARY"}
-                                      </span>
-                                      {selected ? (
-                                        <span className="rounded-full bg-blue-100 px-2 py-1 text-blue-800">
-                                          {en ? "Guide selected" : "길잡이 선택됨"}
-                                        </span>
-                                      ) : null}
-                                    </div>
-                                  </button>
-                                );
-                              })}
-                            </div>
-                          </section>
-                        ))}
-                        {!visibleProcessWaves.length ? (
-                          <div className="rounded-xl border border-dashed border-slate-300 bg-white px-4 py-8 text-center">
-                            <span className="material-symbols-outlined text-3xl text-slate-400">
-                              search_off
-                            </span>
-                            <p className="mt-2 text-sm font-bold text-slate-700">
-                              {en ? "No matching processes" : "일치하는 업무 프로세스가 없습니다."}
-                            </p>
-                            <button
-                              className="mt-3 rounded-lg border border-slate-300 px-3 py-2 text-sm font-bold text-slate-700"
-                              onClick={() => setProcessKeyword("")}
-                              type="button"
-                            >
-                              {en ? "Clear search" : "검색 초기화"}
-                            </button>
                           </div>
-                        ) : null}
+                          <div className="min-h-[25rem] overflow-auto p-4">
+                            {visibleProcessWaves.length ? (
+                              <ol
+                                className="flex min-w-max items-center py-5 transition-transform"
+                                style={{
+                                  transform: `scale(${processMapZoom / 100})`,
+                                  transformOrigin: "left top",
+                                }}
+                              >
+                                <li className="flex items-center">
+                                  <span className="flex h-12 w-12 items-center justify-center rounded-full border-2 border-slate-300 bg-white text-xs font-black text-slate-600">
+                                    {en ? "Start" : "시작"}
+                                  </span>
+                                  <span className="h-0.5 w-8 bg-[#246beb]" />
+                                </li>
+                                {visibleProcessWaves.map((wave, waveIndex) => (
+                                  <li className="flex items-center" key={`wave-${wave.wave}`}>
+                                    <section className="relative w-52 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
+                                      <div className="mb-2 flex items-center justify-between gap-2">
+                                        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[#052b57] text-xs font-black text-white">
+                                          {wave.wave}
+                                        </span>
+                                        <span className={`rounded-full px-2 py-1 text-[10px] font-black ${wave.processes.length > 1 ? "bg-violet-100 text-violet-800" : "bg-slate-100 text-slate-600"}`}>
+                                          {wave.processes.length > 1
+                                            ? en ? `${wave.processes.length} parallel` : `${wave.processes.length}개 병렬`
+                                            : en ? "Sequential" : "순차"}
+                                        </span>
+                                      </div>
+                                      <div className={`space-y-2 ${wave.processes.length > 1 ? "border-l-2 border-violet-200 pl-2" : ""}`}>
+                                        {wave.processes.map((process) => {
+                                          const selected = selectedCatalogProcessCode === process.processCode;
+                                          return (
+                                            <button
+                                              aria-pressed={selected}
+                                              className={`group w-full rounded-xl border-2 p-3 text-left transition ${selected ? "border-[#246beb] bg-blue-50 shadow" : "border-slate-200 bg-white hover:border-blue-300"}`}
+                                              key={`map-${process.processCode}`}
+                                              onClick={() => selectCatalogProcess(process.processCode)}
+                                              type="button"
+                                            >
+                                              <div className="flex items-start justify-between gap-2">
+                                                <strong className="text-sm leading-5 text-[#052b57]">
+                                                  {process.processName}
+                                                </strong>
+                                                <span className={`material-symbols-outlined shrink-0 text-[19px] ${selected ? "text-[#246beb]" : "text-slate-300"}`}>
+                                                  {selected ? "check_circle" : "radio_button_unchecked"}
+                                                </span>
+                                              </div>
+                                              <span className="mt-2 block text-[11px] font-bold text-slate-500">
+                                                {process.ownerActorCode || (en ? "Unassigned" : "담당 미지정")}
+                                              </span>
+                                            </button>
+                                          );
+                                        })}
+                                      </div>
+                                    </section>
+                                    <span className={`material-symbols-outlined mx-2 text-2xl ${waveIndex < visibleProcessWaves.length - 1 ? "text-[#246beb]" : "text-slate-400"}`}>
+                                      arrow_forward
+                                    </span>
+                                  </li>
+                                ))}
+                                <li>
+                                  <span className="flex h-12 w-12 items-center justify-center rounded-full border-2 border-emerald-400 bg-white text-xs font-black text-emerald-700">
+                                    {en ? "Done" : "완료"}
+                                  </span>
+                                </li>
+                              </ol>
+                            ) : (
+                              <div className="flex min-h-[22rem] flex-col items-center justify-center text-center">
+                                <span className="material-symbols-outlined text-4xl text-slate-400">search_off</span>
+                                <p className="mt-2 text-sm font-bold text-slate-700">
+                                  {en ? "No matching processes" : "일치하는 업무 프로세스가 없습니다."}
+                                </p>
+                                <button className="mt-3 rounded-lg border border-slate-300 px-3 py-2 text-sm font-bold" onClick={() => setProcessKeyword("")} type="button">
+                                  {en ? "Clear search" : "검색 초기화"}
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex flex-wrap gap-4 border-t border-slate-200 bg-white px-4 py-3 text-[11px] font-bold text-slate-600">
+                            <span className="flex items-center gap-1.5"><i className="h-0.5 w-6 bg-[#246beb]" />{en ? "Sequential path" : "순차 업무 흐름"}</span>
+                            <span className="flex items-center gap-1.5"><i className="h-3 w-0.5 bg-violet-300" />{en ? "Parallel branch" : "병렬 업무"}</span>
+                            <span>{visibleProcessWaves.reduce((count, wave) => count + wave.processes.length, 0)}{en ? " processes" : "개 프로세스"}</span>
+                          </div>
+                        </div>
+                        <aside className="flex min-h-[25rem] flex-col bg-white p-5">
+                          {selectedCatalogProcess ? (
+                            <>
+                              <p className="text-xs font-black uppercase tracking-wide text-[#246beb]">
+                                {en ? "Selected work" : "선택한 업무"}
+                              </p>
+                              <div className="mt-3 flex items-start gap-3">
+                                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-blue-100 font-black text-[#246beb]">
+                                  {selectedCatalogProcess.executionWave || selectedCatalogProcess.workflowOrder || 1}
+                                </span>
+                                <div>
+                                  <h4 className="text-lg font-black leading-6 text-[#052b57]">
+                                    {selectedCatalogProcess.processName}
+                                  </h4>
+                                  <p className="mt-2 text-sm leading-6 text-slate-600">
+                                    {selectedCatalogProcess.goal || selectedCatalogSteps[0]?.workPurpose || (en ? "Follow the guided steps to complete this work." : "길잡이의 절차에 따라 업무를 완료합니다.")}
+                                  </p>
+                                </div>
+                              </div>
+                              <dl className="mt-5 divide-y divide-slate-200 border-y border-slate-200 text-sm">
+                                <div className="grid grid-cols-[6rem_1fr] gap-3 py-3">
+                                  <dt className="font-bold text-slate-600">{en ? "Owner" : "담당 주체"}</dt>
+                                  <dd className="font-black text-slate-900">{selectedCatalogProcess.ownerActorCode || "-"}</dd>
+                                </div>
+                                <div className="grid grid-cols-[6rem_1fr] gap-3 py-3">
+                                  <dt className="font-bold text-slate-600">{en ? "Steps" : "진행 절차"}</dt>
+                                  <dd className="font-black text-slate-900">{selectedCatalogSteps.length}{en ? " steps" : "단계"}</dd>
+                                </div>
+                                <div className="grid grid-cols-[6rem_1fr] gap-3 py-3">
+                                  <dt className="font-bold text-slate-600">{en ? "Complete when" : "완료 조건"}</dt>
+                                  <dd className="leading-5 text-slate-700">{selectedCatalogSteps[selectedCatalogSteps.length - 1]?.completionRule || (en ? "All required steps are complete" : "필수 절차가 모두 완료됨")}</dd>
+                                </div>
+                              </dl>
+                              {selectedNextProcess ? (
+                                <div className="mt-4 rounded-xl bg-slate-50 p-3">
+                                  <span className="text-[11px] font-bold text-slate-500">{en ? "Next work" : "다음 업무"}</span>
+                                  <strong className="mt-1 block text-sm text-[#052b57]">{selectedNextProcess.processName}</strong>
+                                </div>
+                              ) : null}
+                              <button
+                                className="mt-auto rounded-xl bg-[#052b57] px-4 py-3.5 text-sm font-black text-white disabled:cursor-not-allowed disabled:bg-slate-300"
+                                disabled={!selectedCatalogSteps.some((step) => Boolean(guideRoute(step, guideRuntimeStep(step))) && guideActorAllowed(step, guideRuntimeStep(step)))}
+                                onClick={startSelectedProcessGuide}
+                                type="button"
+                              >
+                                {en ? "Start work guide" : "업무 길잡이 시작"}
+                              </button>
+                            </>
+                          ) : (
+                            <div className="flex flex-1 flex-col items-center justify-center text-center">
+                              <span className="material-symbols-outlined text-4xl text-slate-300">account_tree</span>
+                              <p className="mt-3 text-sm font-bold text-slate-700">
+                                {en ? "Select a process on the map." : "왼쪽 순서도에서 업무를 선택하세요."}
+                              </p>
+                            </div>
+                          )}
+                        </aside>
                       </div>
                     </section>
                   ) : null}
