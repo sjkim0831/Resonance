@@ -882,6 +882,37 @@ export function TaskQuestPanel() {
     }
   }
 
+  function openFullWorkflow() {
+    const processCode = focusedWorkflow?.processCode || activeTask?.processCode || "";
+    const process = (data?.processCatalog || []).find(
+      (item) => item.processCode === processCode,
+    );
+    const domainCode = String(
+      activeTask?.domainCode || process?.domainCode || selectedWorkType || "ALL",
+    ).toUpperCase();
+    if (domainCode && domainCode !== "ALL") {
+      setSelectedWorkType(domainCode);
+      localStorage.setItem("task-quest-work-type", domainCode);
+    }
+    if (processCode) {
+      const processSteps = (data?.processCatalogSteps || [])
+        .filter((step) => step.processCode === processCode)
+        .sort((left, right) => Number(left.stepOrder) - Number(right.stepOrder));
+      const requestedStepCode = focusedStepCode || activeTask?.processStepCode || "";
+      const stepIndex = Math.max(
+        0,
+        requestedStepCode
+          ? processSteps.findIndex((step) => step.stepCode === requestedStepCode)
+          : 0,
+      );
+      setSelectedCatalogProcessCode(processCode);
+      setSelectedCatalogStep(stepIndex);
+      localStorage.setItem("task-quest-catalog-process", processCode);
+      localStorage.setItem("task-quest-catalog-step", String(stepIndex));
+    }
+    setFlowOpen(true);
+  }
+
   function guideRuntimeStep(step: NonNullable<QuestResponse["processCatalogSteps"]>[number]) {
     return workflowItems.find(
       (item) =>
@@ -1227,7 +1258,7 @@ export function TaskQuestPanel() {
               <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-3 text-sm font-bold">
                 <button
                   className="text-[#246beb] hover:underline"
-                  onClick={() => setFlowOpen(true)}
+                  onClick={openFullWorkflow}
                   type="button"
                 >
                   {en ? "View full workflow" : "전체 업무 보기"}
