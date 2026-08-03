@@ -526,6 +526,73 @@ public class ActorProcessGovernanceService {
         return Map.of("success",true,"item",item,"designGate",designGate,"bindings",bindings,"contracts",contracts,"capabilities",capabilities,"fields",fields,"tests",tests,"assets",assets,"blueprints",blueprints);
     }
 
+    /**
+     * Executes the screen closing gate without an AI call. The result is derived
+     * only from versioned actor/process/screen/data/test contracts and is stored
+     * as immutable evidence. Missing contracts always block the screen.
+     */
+    @Transactional
+    public Map<String,Object> runDeterministicScreenWorkflowTest(Map<String,Object> body,String executedBy){
+        long itemId=Long.parseLong(req(body,"itemId"));
+        String process=req(body,"processCode").trim().toUpperCase(Locale.ROOT);
+        String step=req(body,"stepCode").trim().toUpperCase(Locale.ROOT);
+        Map<String,Object> item=jdbc.queryForMap("select screen_resource_id,route_key,screen_name,implementation_status from framework_page_development_master where item_id=?",itemId);
+        long screenId=((Number)item.get("screen_resource_id")).longValue();
+        String route=String.valueOf(item.get("route_key"));
+        Integer bindingCount=jdbc.queryForObject("select count(*) from framework_process_step_screen_binding where screen_resource_id=? and process_code=? and step_code=? and binding_status='ACTIVE'",Integer.class,screenId,process,step);
+        if(bindingCount==null||bindingCount==0)throw new IllegalArgumentException("SCREEN_PROCESS_BINDING_NOT_FOUND: "+process+" / "+step+" / "+route);
+
+        List<Map<String,Object>> checks=new ArrayList<>();
+        addScreenCheck(checks,"ROUTE_REGISTERED","화면 경로 등록",true,route);
+        String implementation=String.valueOf(item.get("implementation_status"));
+        addScreenCheck(checks,"SCREEN_IMPLEMENTED","화면 구현",Set.of("IMPLEMENTED","VERIFIED").contains(implementation),implementation);
+
+        Map<String,Object> gate=jdbc.queryForMap("select design_gate_status,design_gate_score,design_gate_issues,actor_passed,process_passed,contract_passed,lineage_passed,transition_passed,authority_passed,version_passed,exception_passed,admin_counterpart_passed,test_passed from framework_page_design_assurance where screen_resource_id=?",screenId);
+        addScreenCheck(checks,"ACTOR_CONTRACT","액터 계약",Boolean.TRUE.equals(gate.get("actor_passed")),"");
+        addScreenCheck(checks,"PROCESS_CONTRACT","프로세스 계약",Boolean.TRUE.equals(gate.get("process_passed")),"");
+        addScreenCheck(checks,"SCREEN_CONTRACT","화면 계약",Boolean.TRUE.equals(gate.get("contract_passed")),"");
+        addScreenCheck(checks,"DATA_LINEAGE","필드·DB 계보",Boolean.TRUE.equals(gate.get("lineage_passed")),"");
+        addScreenCheck(checks,"STATE_TRANSITION","상태 전이",Boolean.TRUE.equals(gate.get("transition_passed")),"");
+        addScreenCheck(checks,"AUTHORITY","권한",Boolean.TRUE.equals(gate.get("authority_passed")),"");
+        addScreenCheck(checks,"VERSION_AUDIT","버전·감사",Boolean.TRUE.equals(gate.get("version_passed")),"");
+        addScreenCheck(checks,"EXCEPTION_RECOVERY","예외·복구",Boolean.TRUE.equals(gate.get("exception_passed")),"");
+        addScreenCheck(checks,"ADMIN_COUNTERPART","사용자·관리자 대응",Boolean.TRUE.equals(gate.get("admin_counterpart_passed")),"");
+
+        Map<String,Object> fieldSummary=jdbc.queryForMap("select count(*) as total,count(*) filter(where required) as required,count(*) filter(where required and (coalesce(source_table,'')='' or coalesce(source_column,'')='' or lineage_status not in('DB_RESOLVED','IMPLEMENTATION_VERIFIED'))) as unresolved_required,count(*) filter(where coalesce(api_property,'')='') as api_gaps from framework_screen_data_binding where screen_resource_id=?",screenId);
+        int fieldCount=((Number)fieldSummary.get("total")).intValue();
+        int unresolvedRequired=((Number)fieldSummary.get("unresolved_required")).intValue();
+        int apiGaps=((Number)fieldSummary.get("api_gaps")).intValue();
+        addScreenCheck(checks,"FIELD_CONTRACT","필드 계약",fieldCount>0&&unresolvedRequired==0&&apiGaps==0,toJson(fieldSummary));
+
+        Map<String,Object> capabilitySummary=jdbc.queryForMap("select count(*) as total,count(*) filter(where implementation_status in('IMPLEMENTED','VERIFIED')) as implemented from framework_screen_capability where screen_resource_id=?",screenId);
+        int capabilityCount=((Number)capabilitySummary.get("total")).intValue();
+        int implementedCapabilities=((Number)capabilitySummary.get("implemented")).intValue();
+        addScreenCheck(checks,"CAPABILITIES","화면 기능",capabilityCount>0&&capabilityCount==implementedCapabilities,toJson(capabilitySummary));
+
+        Map<String,Object> testSummary=jdbc.queryForMap("select count(distinct c.case_type) filter(where c.case_type in('HAPPY_PATH','AUTHORITY','ISOLATION','EXCEPTION','RECOVERY')) as bound_types,count(distinct c.case_type) filter(where c.case_type in('HAPPY_PATH','AUTHORITY','ISOLATION','EXCEPTION','RECOVERY') and c.case_status in('APPROVED','VERIFIED')) as approved_types from framework_step_test_binding b join framework_simulation_case c on c.case_code=b.case_code where b.process_code=? and b.step_code=?",process,step);
+        int boundTypes=((Number)testSummary.get("bound_types")).intValue();
+        int approvedTypes=((Number)testSummary.get("approved_types")).intValue();
+        addScreenCheck(checks,"FIVE_SAFETY_TESTS","5종 안전 테스트",boundTypes==5&&approvedTypes==5,toJson(testSummary));
+
+        int passed=(int)checks.stream().filter(row->Boolean.TRUE.equals(row.get("passed"))).count();
+        List<String> blockers=checks.stream().filter(row->!Boolean.TRUE.equals(row.get("passed"))).map(row->String.valueOf(row.get("code"))).toList();
+        String result=blockers.isEmpty()?"PASSED":"BLOCKED";
+        String evidence=toJson(Map.of("itemId",itemId,"screenResourceId",screenId,"processCode",process,"stepCode",step,"routePath",route,"checks",checks));
+        Long runId=jdbc.queryForObject("insert into framework_screen_workflow_test_run(screen_resource_id,process_code,step_code,route_key,result,passed_check_count,total_check_count,blocker_codes,evidence_json,executed_by) values(?,?,?,?,?,?,?,case when ?='' then ARRAY[]::text[] else string_to_array(?,',') end,?::jsonb,?) returning run_id",Long.class,screenId,process,step,route,result,passed,checks.size(),String.join(",",blockers),String.join(",",blockers),evidence,executedBy);
+        Map<String,Object> response=new LinkedHashMap<>();
+        response.put("success",true);response.put("runId",runId);response.put("result",result);
+        response.put("passedCheckCount",passed);response.put("totalCheckCount",checks.size());
+        response.put("blockerCodes",blockers);response.put("checks",checks);response.put("routePath",route);
+        response.put("processCode",process);response.put("stepCode",step);response.put("executedBy",executedBy);
+        return response;
+    }
+
+    private void addScreenCheck(List<Map<String,Object>> checks,String code,String name,boolean passed,String evidence){
+        Map<String,Object> row=new LinkedHashMap<>();
+        row.put("code",code);row.put("name",name);row.put("passed",passed);row.put("evidence",evidence==null?"":evidence);
+        checks.add(row);
+    }
+
     private String sqlArrayText(Object value){
         if(value instanceof java.sql.Array array){try{return String.join(", ",(String[])array.getArray());}catch(Exception ignored){return "";}}
         return value==null?"":String.valueOf(value);
