@@ -883,12 +883,12 @@ export function TaskQuestPanel() {
   }
 
   function openFullWorkflow() {
-    const processCode = focusedWorkflow?.processCode || activeTask?.processCode || "";
+    const processCode = focusedWorkflow?.processCode || task?.processCode || "";
     const process = (data?.processCatalog || []).find(
       (item) => item.processCode === processCode,
     );
     const domainCode = String(
-      activeTask?.domainCode || process?.domainCode || selectedWorkType || "ALL",
+      task?.domainCode || process?.domainCode || selectedWorkType || "ALL",
     ).toUpperCase();
     if (domainCode && domainCode !== "ALL") {
       setSelectedWorkType(domainCode);
@@ -898,7 +898,7 @@ export function TaskQuestPanel() {
       const processSteps = (data?.processCatalogSteps || [])
         .filter((step) => step.processCode === processCode)
         .sort((left, right) => Number(left.stepOrder) - Number(right.stepOrder));
-      const requestedStepCode = focusedStepCode || activeTask?.processStepCode || "";
+      const requestedStepCode = focusedStepCode || task?.processStepCode || "";
       const stepIndex = Math.max(
         0,
         requestedStepCode
