@@ -10,7 +10,7 @@ const require = createRequire(frontendPackage);
 const { chromium, request } = require("@playwright/test");
 
 const baseUrl = String(process.env.CARBONET_RUNTIME_BASE_URL || "http://127.0.0.1").replace(/\/$/, "");
-const projectId = String(process.env.CARBONET_ACTOR_TEST_PROJECT || "PRJ-2026-001");
+const projectId = String(process.env.CARBONET_ACTOR_TEST_PROJECT || "PRJ-ACTOR-TEST");
 const password = String(process.env.CARBONET_ACTOR_TEST_PASSWORD || "");
 const configuredExecutable = String(process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || "");
 const executablePath = configuredExecutable || [
