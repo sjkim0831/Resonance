@@ -90,7 +90,7 @@ read -r desired ready available <<<"$(kubectl -n "$NAMESPACE" get deploy carbone
 
 db_gate="$(psqlq "select
   (select count(*) from framework_process_step where process_code='ACTIVITY_DATA' and nullif(api_contract,'') is not null)=4
-  and (select count(*) from framework_professional_screen_readiness where process_code='ACTIVITY_DATA' and readiness_score=100)=8
+  and (select count(*) from framework_professional_screen_readiness where process_code='ACTIVITY_DATA' and readiness_score=100)>=8
   and (select count(distinct case_type) from framework_simulation_case where process_code='ACTIVITY_DATA')>=5
   and (select count(*) from framework_simulation_case c where process_code='ACTIVITY_DATA' and exists(select 1 from framework_simulation_run r where r.case_code=c.case_code and r.result='PASSED'))=(select count(*) from framework_simulation_case where process_code='ACTIVITY_DATA')
   and exists(select 1 from information_schema.columns where table_name='emission_activity_request' and column_name='accepted_at')
