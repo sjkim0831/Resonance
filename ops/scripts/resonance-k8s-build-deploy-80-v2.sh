@@ -835,7 +835,7 @@ rollout_image() {
   CANDIDATE_RELEASE_ID="$candidate_release_id"
   log_cmd "kubectl patch deployment/$DEPLOYMENT image=$IMAGE_NAME release-id=$candidate_release_id"
   if ! kubectl -n "$NAMESPACE" patch "deployment/$DEPLOYMENT" --type='strategic' \
-    -p="{\"spec\":{\"template\":{\"metadata\":{\"labels\":{\"resonance.ai/release-id\":\"$candidate_release_id\"}},\"spec\":{\"containers\":[{\"name\":\"$CONTAINER\",\"image\":\"$IMAGE_NAME\"}]}}}}" \
+    -p="{\"spec\":{\"template\":{\"metadata\":{\"labels\":{\"resonance.ai/release-id\":\"$candidate_release_id\"}},\"spec\":{\"containers\":[{\"name\":\"$CONTAINER\",\"image\":\"$IMAGE_NAME\",\"env\":[{\"name\":\"CARBONET_TEST_ACCOUNT_SWITCH_ENABLED\",\"value\":\"true\"},{\"name\":\"CARBONET_TEST_ACCOUNT_SWITCH_PASSWORD\",\"valueFrom\":{\"secretKeyRef\":{\"name\":\"carbonet-test-account-switch\",\"key\":\"password\",\"optional\":true}}}]}]}}}}" \
     2>"$KUBECTL_ERROR_LOG" >/dev/null; then
     log_error "kubectl candidate patch failed:"
     tail -20 "$KUBECTL_ERROR_LOG"

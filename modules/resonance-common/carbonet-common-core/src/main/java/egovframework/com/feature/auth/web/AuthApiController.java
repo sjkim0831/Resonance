@@ -38,16 +38,28 @@ import reactor.core.publisher.Mono;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 
 @Controller("authApiController")
 @RequestMapping({"/signin", "/en/signin", "/admin/login", "/en/admin/login"})
 @Slf4j
 public class AuthApiController {
+
+    private static final String TEST_SWITCH_SESSION_ATTRIBUTE = "CARBONET_TEST_SWITCH_AUTHORIZED";
+    private static final Set<String> TEST_SWITCH_ACCOUNTS = Set.of(
+            "qaowner26", "qadata26", "qacalc26", "qaverify26", "qaapprove26");
+
+    @Value("${carbonet.test-account-switch.enabled:false}")
+    private boolean testAccountSwitchEnabled;
+
+    @Value("${carbonet.test-account-switch.password:}")
+    private String testAccountSwitchPassword;
 
     @Value("${egov.login.lock}")
     private String lock;
@@ -200,6 +212,40 @@ public class AuthApiController {
                             : "Login succeeded.");
             return ResponseEntity.ok(message);
         }
+    }
+
+    @PostMapping("/testAccountSwitch")
+    public ResponseEntity<?> testAccountSwitch(@RequestBody Map<String, Object> requestBody,
+            @RequestHeader(value = "X-Carbonet-Test-Mode", required = false) String testMode,
+            HttpServletRequest request, HttpServletResponse response) {
+        String targetUserId = safeString(String.valueOf(requestBody.getOrDefault("userId", ""))).toLowerCase();
+        if (!testAccountSwitchEnabled || safeString(testAccountSwitchPassword).isEmpty()
+                || !"1".equals(safeString(testMode)) || !TEST_SWITCH_ACCOUNTS.contains(targetUserId)) {
+            return ResponseEntity.status(404).body(Map.of("status", "loginFailure", "errors", "TEST_ACCOUNT_SWITCH_UNAVAILABLE"));
+        }
+
+        HttpSession session = request.getSession(false);
+        Authentication current = SecurityContextHolder.getContext().getAuthentication();
+        boolean currentAdmin = current != null && current.isAuthenticated()
+                && current.getAuthorities().stream().anyMatch(authority -> AdminConsoleAccessPolicy.allows(authority.getAuthority()));
+        boolean authorizedSession = session != null && Boolean.TRUE.equals(session.getAttribute(TEST_SWITCH_SESSION_ATTRIBUTE));
+        if (!currentAdmin && !authorizedSession) {
+            return ResponseEntity.status(403).body(Map.of("status", "loginFailure", "errors", "TEST_ACCOUNT_SWITCH_ADMIN_REQUIRED"));
+        }
+
+        String initiatedBy = current == null ? "" : safeString(current.getName());
+        request.getSession(true).setAttribute(TEST_SWITCH_SESSION_ATTRIBUTE, Boolean.TRUE);
+        LoginRequestDTO login = new LoginRequestDTO();
+        login.setUserId(targetUserId);
+        login.setUserPw(testAccountSwitchPassword);
+        login.setUserSe("USR");
+        login.setAutoLogin(false);
+        ResponseEntity<?> result = actionLogin(login, request, response);
+        log.warn("Authorized test account switch. initiatedBy={}, targetUserId={}, clientIp={}",
+                initiatedBy, targetUserId, resolveClientIp(request));
+        recordLoginHistory(targetUserId, "", "USR", "TEST_SWITCH", resolveClientIp(request),
+                "Authorized test account switch initiated by " + initiatedBy);
+        return result;
     }
 
     public Map<String, Object> loginIncorrect(LoginRequestDTO loginVO, HttpServletRequest request) {
@@ -493,6 +539,10 @@ public class AuthApiController {
         }
         jwtProvider.deleteCookie(request, response, "accessToken");
         jwtProvider.deleteCookie(request, response, "refreshToken");
+        HttpSession session = request.getSession(false);
+        if (session != null) {
+            session.removeAttribute(TEST_SWITCH_SESSION_ATTRIBUTE);
+        }
 
         Map<String, Object> message = new HashMap<>();
         message.put("status", "success");
