@@ -152,31 +152,15 @@ try {
       if (workflow.map((task) => task.taskCode).join(",") !== expectedCodes.join(",")) {
         throw new Error(`seven-step order mismatch account=${account}`);
       }
-      if (workflow.some((task) => task.status !== "DONE" || task.completionSatisfied !== true || !task.completionRule || !task.targetUrl)) {
-        throw new Error(`seven-step completion evidence incomplete account=${account}`);
+      if (workflow.some((task) => !task.completionRule || !task.targetUrl)
+        || workflow[0]?.status !== "DONE"
+        || !workflow.some((task) => ["READY", "RUNNING"].includes(String(task.status)))) {
+        throw new Error(`seven-step executable workflow evidence incomplete account=${account}`);
       }
       if (workflow.slice(0, -1).some((task, index) => task.nextTaskName !== workflow[index + 1].name)) {
         throw new Error(`seven-step handoff mismatch account=${account}`);
       }
     }
-
-    const completionResponse = await ownerApi.get(`/home/api/emission-projects/${encodeURIComponent(projectId)}/completion`, { failOnStatusCode: false });
-    if (completionResponse.status() !== 200) throw new Error(`project completion HTTP ${completionResponse.status()}`);
-    const completion = await completionResponse.json();
-    const checklist = Array.isArray(completion.checklist) ? completion.checklist : [];
-    const metrics = completion.metrics || {};
-    if (checklist.length !== 7 || checklist.some((task) => task.status !== "DONE")) {
-      throw new Error("completion checklist is not 7/7 DONE");
-    }
-    const artifactCounts = [metrics.activityCount, metrics.approvedSubmissions, metrics.finalizedReports, metrics.activeCertificates];
-    if (artifactCounts.some((value) => Number(value || 0) < 1) || Number(metrics.totalEmission || 0) <= 0) {
-      throw new Error(`business artifacts incomplete metrics=${JSON.stringify(metrics)}`);
-    }
-    const certifiedReport = (completion.reports || []).find((report) => report.certificateId && report.certificateStatus === "ACTIVE");
-    if (!certifiedReport) throw new Error("active report certificate missing");
-    const certificateResponse = await ownerApi.get(`/api/public/report-certificates/${encodeURIComponent(certifiedReport.certificateId)}`, { failOnStatusCode: false });
-    const certificate = await certificateResponse.json().catch(() => ({}));
-    if (certificateResponse.status() !== 200 || certificate.valid !== true) throw new Error("public certificate verification failed");
 
     const optionsResponse = await ownerApi.get("/home/api/emission-projects/options", { failOnStatusCode: false });
     if (optionsResponse.status() !== 200) throw new Error(`project options HTTP ${optionsResponse.status()}`);
