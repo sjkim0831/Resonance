@@ -996,6 +996,9 @@ export function TaskQuestPanel() {
 
   function guideRoute(step: NonNullable<QuestResponse["processCatalogSteps"]>[number],runtime?: QuestTask) {
     if(runtime?.targetUrl) return runtime.targetUrl;
+    const userPortal = !window.location.pathname.startsWith("/admin/") &&
+      window.location.pathname !== "/admin";
+    if(userPortal) return step.userPath || step.adminPath || "";
     if(data?.allVisible) return step.adminPath || step.userPath || "";
     return step.userPath || "";
   }
