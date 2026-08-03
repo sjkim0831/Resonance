@@ -354,6 +354,7 @@ export function TaskQuestPanel() {
   const [flowOpen, setFlowOpen] = useState(false);
   const [processKeyword, setProcessKeyword] = useState("");
   const [processMapZoom, setProcessMapZoom] = useState(100);
+  const [processMapMode, setProcessMapMode] = useState<"FLOW" | "ACTOR">("FLOW");
   const [selectedWorkType, setSelectedWorkType] = useState(
     () => localStorage.getItem("task-quest-work-type") || "ALL",
   );
@@ -848,6 +849,28 @@ export function TaskQuestPanel() {
       }))
       .filter((wave) => wave.processes.length > 0);
   }, [processKeyword, selectedProcessWaves]);
+  const visibleActorLanes = useMemo(() => {
+    const laneMap = new Map<
+      string,
+      Array<{ wave: number; process: (typeof selectedDefinedProcesses)[number] }>
+    >();
+    visibleProcessWaves.forEach((wave) => {
+      wave.processes.forEach((process) => {
+        const actorCode = process.ownerActorCode || "UNASSIGNED";
+        const lane = laneMap.get(actorCode) || [];
+        lane.push({ wave: wave.wave, process });
+        laneMap.set(actorCode, lane);
+      });
+    });
+    return [...laneMap.entries()].map(([actorCode, processes]) => ({
+      actorCode,
+      processes: processes.sort(
+        (left, right) =>
+          left.wave - right.wave ||
+          Number(left.process.laneOrder || 1) - Number(right.process.laneOrder || 1),
+      ),
+    }));
+  }, [visibleProcessWaves]);
   const selectedUnifiedProcess = useMemo(
     () =>
       selectedDefinedProcesses.find(
@@ -1473,6 +1496,24 @@ export function TaskQuestPanel() {
                                 value={processKeyword}
                               />
                             </label>
+                            <div className="flex h-10 shrink-0 items-center rounded-lg border border-slate-300 bg-slate-100 p-1">
+                              <button
+                                aria-pressed={processMapMode === "FLOW"}
+                                className={`h-8 rounded-md px-3 text-xs font-black transition ${processMapMode === "FLOW" ? "bg-white text-[#052b57] shadow-sm" : "text-slate-500"}`}
+                                onClick={() => setProcessMapMode("FLOW")}
+                                type="button"
+                              >
+                                {en ? "Workflow" : "업무 흐름"}
+                              </button>
+                              <button
+                                aria-pressed={processMapMode === "ACTOR"}
+                                className={`h-8 rounded-md px-3 text-xs font-black transition ${processMapMode === "ACTOR" ? "bg-[#052b57] text-white shadow-sm" : "text-slate-500"}`}
+                                onClick={() => setProcessMapMode("ACTOR")}
+                                type="button"
+                              >
+                                {en ? "By actor" : "액터별 보기"}
+                              </button>
+                            </div>
                             <div className="flex h-10 shrink-0 items-center rounded-lg border border-slate-300 bg-white">
                               <button
                                 aria-label={en ? "Zoom out" : "축소"}
@@ -1498,7 +1539,7 @@ export function TaskQuestPanel() {
                             </div>
                           </div>
                           <div className="min-h-[25rem] overflow-auto p-4">
-                            {visibleProcessWaves.length ? (
+                            {visibleProcessWaves.length ? (processMapMode === "FLOW" ? (
                               <ol
                                 className="flex min-w-max items-center py-5 transition-transform"
                                 style={{
@@ -1564,6 +1605,72 @@ export function TaskQuestPanel() {
                                 </li>
                               </ol>
                             ) : (
+                              <div
+                                className="min-w-max overflow-hidden rounded-xl border border-slate-200 bg-white transition-transform"
+                                style={{
+                                  transform: `scale(${processMapZoom / 100})`,
+                                  transformOrigin: "left top",
+                                }}
+                              >
+                                <div
+                                  className="grid border-b border-slate-200 bg-slate-50"
+                                  style={{ gridTemplateColumns: `9rem repeat(${Math.max(1, visibleProcessWaves.length)}, minmax(11rem, 1fr))` }}
+                                >
+                                  <strong className="flex min-h-14 items-center border-r border-slate-200 px-4 text-xs text-[#052b57]">
+                                    {en ? "Responsible actor" : "담당 액터"}
+                                  </strong>
+                                  {visibleProcessWaves.map((wave) => (
+                                    <div className="flex min-h-14 flex-col items-center justify-center border-r border-dashed border-slate-200 px-3 text-center last:border-r-0" key={`actor-head-${wave.wave}`}>
+                                      <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#246beb] text-[11px] font-black text-white">{wave.wave}</span>
+                                      <span className="mt-1 text-[11px] font-bold text-slate-600">
+                                        {wave.processes.length > 1 ? (en ? "Parallel work" : "병렬 업무") : (en ? "Sequential work" : "순차 업무")}
+                                      </span>
+                                    </div>
+                                  ))}
+                                </div>
+                                {visibleActorLanes.map((lane) => (
+                                  <div
+                                    className="grid border-b border-slate-200 last:border-b-0"
+                                    key={`actor-lane-${lane.actorCode}`}
+                                    style={{ gridTemplateColumns: `9rem repeat(${Math.max(1, visibleProcessWaves.length)}, minmax(11rem, 1fr))` }}
+                                  >
+                                    <div className="flex min-h-28 items-center gap-2 border-r border-slate-200 bg-[#052b57] px-3 text-white">
+                                      <span className="material-symbols-outlined flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white text-[18px] text-[#052b57]">person</span>
+                                      <strong className="break-words text-xs leading-5">{lane.actorCode}</strong>
+                                    </div>
+                                    {visibleProcessWaves.map((wave) => {
+                                      const waveProcesses = lane.processes.filter((item) => item.wave === wave.wave);
+                                      return (
+                                        <div className="relative flex min-h-28 items-center justify-center border-r border-dashed border-slate-200 px-3 py-4 last:border-r-0" key={`${lane.actorCode}-${wave.wave}`}>
+                                          {waveProcesses.length ? (
+                                            <div className="relative z-10 w-full space-y-2">
+                                              {waveProcesses.map(({ process }) => {
+                                                const selected = selectedCatalogProcessCode === process.processCode;
+                                                return (
+                                                  <button
+                                                    aria-pressed={selected}
+                                                    className={`relative w-full rounded-xl border-2 px-3 py-3 text-left text-xs font-black leading-5 transition ${selected ? "border-[#246beb] bg-blue-50 text-[#052b57] shadow" : "border-blue-200 bg-white text-slate-700 hover:border-[#246beb]"}`}
+                                                    key={`actor-process-${process.processCode}`}
+                                                    onClick={() => selectCatalogProcess(process.processCode)}
+                                                    type="button"
+                                                  >
+                                                    <span className="block pr-5">{process.processName}</span>
+                                                    {selected ? <span className="material-symbols-outlined absolute right-2 top-2 text-[17px] text-[#246beb]">check_circle</span> : null}
+                                                  </button>
+                                                );
+                                              })}
+                                            </div>
+                                          ) : <span className="h-px w-full bg-slate-100" aria-hidden="true" />}
+                                          {wave.wave < visibleProcessWaves[visibleProcessWaves.length - 1]?.wave && waveProcesses.length ? (
+                                            <span className="material-symbols-outlined absolute -right-3 z-20 flex h-6 w-6 items-center justify-center rounded-full bg-white text-[18px] text-[#246beb]" aria-hidden="true">arrow_forward</span>
+                                          ) : null}
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                ))}
+                              </div>
+                            )) : (
                               <div className="flex min-h-[22rem] flex-col items-center justify-center text-center">
                                 <span className="material-symbols-outlined text-4xl text-slate-400">search_off</span>
                                 <p className="mt-2 text-sm font-bold text-slate-700">
