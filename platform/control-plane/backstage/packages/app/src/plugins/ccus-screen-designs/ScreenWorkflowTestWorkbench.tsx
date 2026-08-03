@@ -82,7 +82,7 @@ export function ScreenWorkflowTestWorkbench({ processes, projectId }: Props) {
   const checks = rows(result?.checks);
   const routePath = text(selectedScreen, 'routePath');
   const previewPath = routePath
-    ? `http://172.16.1.232${routePath}${routePath.includes('?') ? '&' : '?'}step=${stepCode.toLowerCase()}`
+    ? `https://resonance.172.16.1.232.nip.io${routePath}${routePath.includes('?') ? '&' : '?'}step=${stepCode.toLowerCase()}`
     : '';
 
   useEffect(() => {

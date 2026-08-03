@@ -325,6 +325,58 @@ ensure_ingress_https_port() {
   fi
 }
 
+ensure_runtime_preview_https() {
+  local preview_host preview_tls_dir
+  preview_host="${RESONANCE_PREVIEW_HOST:-resonance.172.16.1.232.nip.io}"
+  preview_tls_dir="${RESONANCE_PREVIEW_TLS_DIR:-/opt/resonance-data/pki/resonance-runtime-preview}"
+  mkdir -p "$preview_tls_dir"
+  chmod 700 "$preview_tls_dir"
+  if [[ ! -s "$preview_tls_dir/tls.crt" ||
+        ! -s "$preview_tls_dir/tls.key" ]] ||
+    ! openssl x509 -in "$preview_tls_dir/tls.crt" -noout -checkend 604800 >/dev/null 2>&1 ||
+    ! openssl x509 -in "$preview_tls_dir/tls.crt" -noout -ext subjectAltName 2>/dev/null | grep -q "DNS:$preview_host"; then
+    openssl req -newkey rsa:3072 -sha256 -nodes \
+      -keyout "$preview_tls_dir/tls.key" \
+      -out "$preview_tls_dir/tls.csr" \
+      -subj "/CN=$preview_host" \
+      -addext "subjectAltName=DNS:$preview_host"
+    openssl x509 -req -sha256 \
+      -in "$preview_tls_dir/tls.csr" \
+      -CA "$BACKSTAGE_TLS_DIR/ca.crt" \
+      -CAkey "$BACKSTAGE_TLS_DIR/ca.key" \
+      -CAcreateserial \
+      -out "$preview_tls_dir/tls.crt" \
+      -days 825 -copy_extensions copy
+    chmod 600 "$preview_tls_dir/tls.key"
+  fi
+  kubectl -n carbonet-prod create secret tls resonance-preview-tls \
+    --cert="$preview_tls_dir/tls.crt" --key="$preview_tls_dir/tls.key" \
+    --dry-run=client -o yaml | kubectl apply -f -
+  cat <<YAML | kubectl apply -f -
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: resonance-preview
+  namespace: carbonet-prod
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts: [$preview_host]
+      secretName: resonance-preview-tls
+  rules:
+    - host: $preview_host
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: carbonet-web
+                port:
+                  number: 80
+YAML
+}
+
 wait_for_runtime() {
   local attempt
   for attempt in $(seq 1 30); do
@@ -426,6 +478,7 @@ case "$mode" in
     ensure_tls
     ensure_auth_secret
     ensure_ingress_https_port
+    ensure_runtime_preview_https
     finish_phase preflight
     # Tag only production runtime inputs. E2E specifications and documentation
     # still run their own gates but cannot invalidate an identical image.
