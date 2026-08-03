@@ -57,6 +57,13 @@ export function ScreenWorkflowTestPanel({ base, processes }: Props) {
     if (!selected || !binding) { setError("선택한 화면에 활성 프로세스·단계 연결이 없습니다."); return; }
     setBusy(true); setError("");
     try {
+      // A live preview can contain polling or an unfinished render loop. Stop it
+      // before the control-plane request so a noisy target screen cannot starve
+      // or reset the deterministic test request in the same browser session.
+      if (previewVisible) {
+        setPreviewVisible(false);
+        await new Promise(resolve => window.setTimeout(resolve, 150));
+      }
       const response = await fetch(`${base}/screen-workflow-test`, {
         method: "POST", credentials: "include", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ itemId: Number(selected.itemId), processCode: value(binding, "processCode"), stepCode: value(binding, "stepCode"), testCaseId: testCaseId || undefined, preInputJson: JSON.stringify(preInputs) })
