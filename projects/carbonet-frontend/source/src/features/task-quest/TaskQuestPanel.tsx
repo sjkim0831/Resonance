@@ -435,6 +435,11 @@ export function TaskQuestPanel() {
         setFocusedWorkflow(focus);
         localStorage.setItem("task-quest-overview-project", detail.projectId);
         localStorage.setItem("task-quest-focused-workflow", JSON.stringify(focus));
+      } else if (detail.processCode === "EMISSION_PROJECT_PORTFOLIO") {
+        setSelectedOverviewProjectId("");
+        setFocusedWorkflow(null);
+        localStorage.removeItem("task-quest-overview-project");
+        localStorage.removeItem("task-quest-focused-workflow");
       }
       setOpen(true);
       localStorage.setItem("task-quest-open", "1");
@@ -505,6 +510,38 @@ export function TaskQuestPanel() {
   }, [contextProjectId, overviewProjects, rawWorkflowItems, selectedOverviewProjectId]);
 
   const task = useMemo(() => {
+    if (selectedCatalogProcessCode === "EMISSION_PROJECT_PORTFOLIO") {
+      const catalogProcess = (data?.processCatalog || []).find(
+        (item) => item.processCode === selectedCatalogProcessCode,
+      );
+      const catalogSteps = (data?.processCatalogSteps || [])
+        .filter((item) => item.processCode === selectedCatalogProcessCode)
+        .sort((left, right) => Number(left.stepOrder) - Number(right.stepOrder));
+      const catalogStep =
+        catalogSteps.find((item) => item.stepCode === focusedStepCode) ||
+        catalogSteps[0];
+      if (catalogProcess && catalogStep) {
+        return {
+          id: -1,
+          projectId: "",
+          projectName: en ? "Emission status" : "배출량 현황",
+          name: catalogStep.stepName,
+          status: "IN_PROGRESS",
+          priority: "NORMAL",
+          dueDate: "",
+          targetUrl: catalogStep.userPath || "/emission/index",
+          actorCode: catalogStep.actorCode || catalogProcess.ownerActorCode,
+          processCode: catalogProcess.processCode,
+          processName: catalogProcess.processName,
+          domainCode: catalogProcess.domainCode,
+          processStepCode: catalogStep.stepCode,
+          stepOrder: catalogStep.stepOrder,
+          completionRule: catalogStep.completionRule,
+          workPurpose: catalogStep.workPurpose || catalogProcess.goal,
+          actionable: true,
+        } satisfies QuestTask;
+      }
+    }
     const pending = [...(data?.items || [])].filter(
       (item) => item.status !== "DONE",
     );
@@ -533,7 +570,14 @@ export function TaskQuestPanel() {
         bw = taskWeight(b);
       return aw[0] - bw[0] || aw[1] - bw[1];
     })[0];
-  }, [data, effectiveProjectId, focusedStepCode, focusedWorkflow]);
+  }, [
+    data,
+    effectiveProjectId,
+    en,
+    focusedStepCode,
+    focusedWorkflow,
+    selectedCatalogProcessCode,
+  ]);
 
   const workflowItems = useMemo(() => {
     const scoped = effectiveProjectId

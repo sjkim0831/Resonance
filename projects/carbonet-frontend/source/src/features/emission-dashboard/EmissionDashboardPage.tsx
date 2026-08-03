@@ -242,6 +242,22 @@ export function EmissionDashboardPage() {
       }),
     );
   };
+
+  useEffect(() => {
+    if (!payload.isLoggedIn || loading) return;
+    const processCode = "EMISSION_PROJECT_PORTFOLIO";
+    const stepCode = "EMISSION_PROJECT_PORTFOLIO_LIST";
+    localStorage.setItem("task-quest-catalog-process", processCode);
+    localStorage.setItem("task-quest-catalog-step", "0");
+    localStorage.setItem("task-quest-focused-step", stepCode);
+    localStorage.setItem("task-quest-work-type", "EMISSION");
+    localStorage.setItem("task-quest-open", "1");
+    window.dispatchEvent(
+      new CustomEvent("resonance:task-guide-focus", {
+        detail: { processCode, stepCode, projectId: "", openOverview: false },
+      }),
+    );
+  }, [loading, payload.isLoggedIn]);
   const totalEmission = filtered.reduce((sum, p) => sum + (number(p.totalEmission) || 0), 0);
   const hasEmission = filtered.some((p) => number(p.totalEmission) !== null);
   const scopeValues = ["scope1", "scope2", "scope3"].map((key) => filtered.reduce((sum, p) => sum + (number(p[key as keyof ProjectRow]) || 0), 0));
