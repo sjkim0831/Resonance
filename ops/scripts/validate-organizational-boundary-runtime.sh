@@ -26,7 +26,7 @@ done < <(kubectl -n "$NAMESPACE" get pods -l app=postgres-patroni -o name | sed 
 [[ -n "$leader" ]] || { echo '[organizational-boundary-runtime] FAIL PostgreSQL leader missing' >&2; exit 1; }
 psqlq(){ kubectl -n "$NAMESPACE" exec "$leader" -c "$CONTAINER" -- psql -h 127.0.0.1 -U "$USER_NAME" -d "$DATABASE" -Atqc "$1"; }
 
-project_id="$(psqlq "select p.project_id from emission_project_registry p where p.project_status<>'DELETED' and exists(select 1 from framework_project_actor_assignment a where a.project_id=p.project_id and a.active_yn='Y') order by p.updated_at desc limit 1")"
+project_id="$(psqlq "select p.project_id from emission_project_registry p where p.project_status<>'DELETED' and exists(select 1 from framework_project_actor_assignment a join framework_test_account_actor ta on ta.actor_code=a.actor_code and ta.username='$LOGIN_USER' and ta.enabled_yn='Y' where a.project_id=p.project_id and a.active_yn='Y') order by (p.project_id='PRJ-ACTOR-TEST') desc,p.updated_at desc limit 1")"
 [[ -n "$project_id" ]] || { echo '[organizational-boundary-runtime] FAIL no testable emission project' >&2; exit 1; }
 
 login_body="$(curl -fsS -c "$COOKIE_JAR" -H 'Content-Type: application/json' -X POST "$BASE_URL/admin/login/actionLogin" --data "{\"userId\":\"$LOGIN_USER\",\"userPw\":\"$LOGIN_PASSWORD\",\"userSe\":\"USR\"}")"
