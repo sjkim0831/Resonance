@@ -7,9 +7,10 @@ type Props = {
   cases: Row[]; components: Row[]; contracts: Row[];
   pageDesigns: Row[]; processes: Row[]; sections: Row[]; steps: Row[];
 };
-type NodeKind = "SCREEN" | "COMMON_SCREEN" | "SECTION" | "COMMON_SCHEMA" | "SCREEN_SCHEMA" | "ACTOR" | "PROCESS" | "COMPONENT" | "FIELD" | "API" | "TEST";
+type NodeKind = "SCREEN" | "COMMON_SCREEN" | "SECTION" | "COMMON_SCHEMA" | "SCREEN_SCHEMA" | "ACTOR" | "PROCESS" | "COMPONENT" | "FIELD" | "API" | "TEST" | "CLASS" | "TABLE";
 type MapNode = { id: string; kind: NodeKind; label: string; sub: string; route: string; processCode: string; x: number; y: number; source: Row };
-type MapEdge = { id: string; from: string; to: string; kind: "FLOW" | "USES_SCREEN" | "USES_SECTION" | "USES_SCHEMA" | "USES_COMPONENT" | "USES_FIELD" | "CALLS_API" | "OWNED_BY" | "IMPLEMENTS_PROCESS" | "VERIFIED_BY" };
+type MapEdge = { id: string; from: string; to: string; kind: "FLOW" | "USES_SCREEN" | "USES_SECTION" | "USES_SCHEMA" | "USES_COMPONENT" | "USES_FIELD" | "CALLS_API" | "OWNED_BY" | "IMPLEMENTS_PROCESS" | "VERIFIED_BY" | "IMPLEMENTS_CLASS" | "PERSISTS_TO" };
+type DesignIssue = { id:string; severity:"BLOCKING"|"WARNING"; screenId:string; route:string; message:string };
 
 const W = 164;
 const H = 58;
@@ -19,7 +20,7 @@ const SIZE = 15000;
 const CENTER = SIZE / 2;
 const value = (row: Row | undefined, key: string) => String(row?.[key] ?? "");
 const normalizeRoute = (path: string) => path.split("?")[0].replace(/\/+$/, "") || "/";
-const kindLabel: Record<NodeKind, string> = { SCREEN: "업무 화면", COMMON_SCREEN: "공통 화면", SECTION: "공통 섹션", COMMON_SCHEMA: "공통 스키마", SCREEN_SCHEMA: "화면 스키마", ACTOR: "액터", PROCESS: "프로세스", COMPONENT: "공통 컴포넌트", FIELD: "필드 계약", API: "API 계약", TEST: "테스트 시나리오" };
+const kindLabel: Record<NodeKind, string> = { SCREEN: "업무 화면", COMMON_SCREEN: "공통 화면", SECTION: "공통 섹션", COMMON_SCHEMA: "공통 스키마", SCREEN_SCHEMA: "화면 스키마", ACTOR: "액터", PROCESS: "프로세스", COMPONENT: "공통 컴포넌트", FIELD: "필드 계약", API: "API 계약", TEST: "테스트 시나리오", CLASS:"서비스 클래스", TABLE:"ERD 테이블" };
 const edgeStyle = (kind: MapEdge["kind"]) => {
   if (kind === "FLOW") return ["#64748b", ""];
   if (kind === "USES_SCREEN") return ["#2563eb", "8 6"];
@@ -28,6 +29,8 @@ const edgeStyle = (kind: MapEdge["kind"]) => {
   if (kind === "CALLS_API") return ["#ea580c", "3 4"];
   if (kind === "OWNED_BY") return ["#db2777", "7 4"];
   if (kind === "VERIFIED_BY") return ["#0891b2", "2 5"];
+  if (kind === "IMPLEMENTS_CLASS") return ["#9333ea", "6 3"];
+  if (kind === "PERSISTS_TO") return ["#0f766e", "3 3"];
   return ["#4f46e5", "6 4"];
 };
 const contractItems = (raw: unknown) => {
@@ -104,6 +107,8 @@ export function CommonCenteredSystemCanvas({ actors, blueprints, cases, componen
     placeHubGrid([...fieldItems.entries()].map(([item,source]) => ({ id:`field:${item}`, label:item, sub:"필드·검증·DB 계약", kind:"FIELD" as const, source })), CENTER + 1050, CENTER - 1450, 5);
     placeHubGrid([...apiItems.entries()].map(([item,source]) => ({ id:`api:${item}`, label:item, sub:"요청·응답 계약", kind:"API" as const, source })), CENTER - 2050, CENTER + 900, 5);
     placeHubGrid(cases.map(row => ({ id:`test:${value(row,"caseCode") || value(row,"testCaseCode")}`, label:value(row,"caseName") || value(row,"testCaseName") || value(row,"caseCode"), sub:value(row,"expectedResult"), kind:"TEST" as const, source:row })), CENTER + 1050, CENTER + 900, 5);
+    placeHubGrid(entities.map(entity => ({ id:`class:${entity}`, label:`${entity}Service`, sub:"화면·API 업무 클래스", kind:"CLASS" as const, source:{} })), CENTER - 2050, CENTER + 1550, 5);
+    placeHubGrid(entities.map(entity => ({ id:`table:${entity}`, label:entity.replace(/([a-z0-9])([A-Z])/g,"$1_$2").toLowerCase(), sub:"PostgreSQL 논리 테이블", kind:"TABLE" as const, source:{} })), CENTER + 1050, CENTER + 1550, 5);
 
     const screenRows = blueprints.map((row, index) => {
       const processCode = value(row, "processCode");
@@ -132,6 +137,8 @@ export function CommonCenteredSystemCanvas({ actors, blueprints, cases, componen
       const entity = value(design,"primaryEntity");
       const schemaId = commonEntities.includes(entity) ? `schema:${entity}` : entity ? `screen-schema:${entity}` : "";
       if (schemaId && hubs.some(node => node.id === schemaId)) edges.push({ id:`schema-edge:${screen.id}`, from:screen.id, to:schemaId, kind:"USES_SCHEMA" });
+      if (entity && hubs.some(node => node.id === `class:${entity}`)) edges.push({ id:`class-edge:${screen.id}`, from:screen.id, to:`class:${entity}`, kind:"IMPLEMENTS_CLASS" });
+      if (entity && hubs.some(node => node.id === `table:${entity}`)) edges.push({ id:`table-edge:${screen.id}`, from:screen.id, to:`table:${entity}`, kind:"PERSISTS_TO" });
       if (screen.processCode && hubs.some(node => node.id === `process:${screen.processCode}`)) edges.push({ id:`process-edge:${screen.id}`, from:screen.id, to:`process:${screen.processCode}`, kind:"IMPLEMENTS_PROCESS" });
       const actorCode = value(screen.source,"actorCode");
       if (actorCode && hubs.some(node => node.id === `actor:${actorCode}`)) edges.push({ id:`actor-edge:${screen.id}`, from:screen.id, to:`actor:${actorCode}`, kind:"OWNED_BY" });
@@ -158,7 +165,19 @@ export function CommonCenteredSystemCanvas({ actors, blueprints, cases, componen
       rows.sort((a,b) => Number(stepMap.get(`${a.processCode}::${value(a.source,"stepCode")}`)?.stepOrder ?? 0) - Number(stepMap.get(`${b.processCode}::${value(b.source,"stepCode")}`)?.stepOrder ?? 0));
       rows.slice(1).forEach((node,index) => edges.push({ id:`flow:${rows[index].id}:${node.id}`, from:rows[index].id, to:node.id, kind:"FLOW" }));
     });
-    return { nodes, edges, nodeMap:new Map(nodes.map(node => [node.id,node])), counts:{ screens:screenRows.length, commonScreens:commonRoutes.length, sections:sections.length, schemas:entities.length, actors:actors.length, processes:processes.length, components:components.length, fields:fieldItems.size, apis:apiItems.size, tests:cases.length } };
+    const issues:DesignIssue[]=[];
+    screenRows.forEach(screen=>{
+      const design=designByRoute.get(screen.normalized);
+      const contract=contracts.find(row=>value(row,"processCode")===screen.processCode&&value(row,"stepCode")===value(screen.source,"stepCode"));
+      const testCount=cases.filter(row=>value(row,"processCode")===screen.processCode).length;
+      if(!screen.route)issues.push({id:`${screen.id}:route`,severity:"BLOCKING",screenId:screen.id,route:"",message:"실제 또는 계획 라우트가 없습니다."});
+      if(!value(screen.source,"actorCode"))issues.push({id:`${screen.id}:actor`,severity:"BLOCKING",screenId:screen.id,route:screen.route,message:"담당 액터가 연결되지 않았습니다."});
+      if(!value(design,"primaryEntity"))issues.push({id:`${screen.id}:entity`,severity:"BLOCKING",screenId:screen.id,route:screen.route,message:"화면의 주 데이터 엔터티·ERD 계약이 없습니다."});
+      if(!contractItems(contract?.apiContract).length)issues.push({id:`${screen.id}:api`,severity:"BLOCKING",screenId:screen.id,route:screen.route,message:"실행 API 계약이 없습니다."});
+      if(!contractItems(contract?.fieldContract).length)issues.push({id:`${screen.id}:field`,severity:"WARNING",screenId:screen.id,route:screen.route,message:"입출력 필드 계약이 없습니다."});
+      if(testCount<5)issues.push({id:`${screen.id}:test`,severity:"WARNING",screenId:screen.id,route:screen.route,message:`안전 시나리오가 ${testCount}/5개입니다.`});
+    });
+    return { nodes, edges, issues, nodeMap:new Map(nodes.map(node => [node.id,node])), counts:{ screens:screenRows.length, commonScreens:commonRoutes.length, sections:sections.length, schemas:entities.length, classes:entities.length, tables:entities.length, actors:actors.length, processes:processes.length, components:components.length, fields:fieldItems.size, apis:apiItems.size, tests:cases.length } };
   }, [actors, blueprints, cases, components, contracts, mappings, pageDesigns, processes, sections, steps]);
 
   const processSummaries = useMemo(() => processes.map((process, index) => {
@@ -179,6 +198,7 @@ export function CommonCenteredSystemCanvas({ actors, blueprints, cases, componen
     ).map(node => node.id));
   }, [kindFilter, model.nodes, processFocus, query]);
   const selected = model.nodeMap.get(selectedId);
+  const selectedIssues=useMemo(()=>selected?model.issues.filter(issue=>issue.screenId===selected.id):[],[model.issues,selected]);
   const related = useMemo(() => selected ? model.edges.filter(edge => edge.from === selected.id || edge.to === selected.id).map(edge => ({ edge, node:model.nodeMap.get(edge.from === selected.id ? edge.to : edge.from) })).filter(item => item.node) : [], [model, selected]);
   const fit = () => { const view=viewportRef.current;if(!view)return;setZoom(Math.max(.055,Math.min(.5,Math.min((view.clientWidth-24)/SIZE,(view.clientHeight-24)/SIZE))));setPan({x:12,y:12}); };
   const wheel = (event: WheelEvent<HTMLDivElement>) => { event.preventDefault();const rect=event.currentTarget.getBoundingClientRect(),px=event.clientX-rect.left,py=event.clientY-rect.top,next=Math.max(.055,Math.min(1.5,zoom*(event.deltaY>0?.88:1.12))),wx=(px-pan.x)/zoom,wy=(py-pan.y)/zoom;setZoom(next);setPan({x:px-wx*next,y:py-wy*next}); };
@@ -187,8 +207,8 @@ export function CommonCenteredSystemCanvas({ actors, blueprints, cases, componen
 
   return <div className="space-y-4">
     <section className="rounded-2xl border bg-white p-5 shadow-sm">
-      <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between"><div><p className="text-xs font-black tracking-[.12em] text-blue-700">COMMON-CENTERED SYSTEM MAP</p><h2 className="mt-1 text-2xl font-black text-[#052b57]">공통 자산을 중심으로 전체 설계 관계를 연결합니다</h2><p className="mt-2 text-sm text-slate-600">화면·액터·프로세스·섹션·컴포넌트·필드·API·테스트의 실제 계약을 한 그래프에서 추적합니다.</p></div><div className="grid grid-cols-2 gap-2 text-center sm:grid-cols-4 xl:grid-cols-6">{Object.entries(model.counts).map(([key,count])=><div className="rounded-xl bg-slate-50 p-3" key={key}><span className="text-xs font-bold text-slate-500">{{screens:"화면",commonScreens:"공통 화면",sections:"섹션",schemas:"스키마",actors:"액터",processes:"프로세스",components:"컴포넌트",fields:"필드",apis:"API",tests:"테스트"}[key as keyof typeof model.counts]}</span><strong className="block text-xl text-[#052b57]">{count}</strong></div>)}</div></div>
-      <div className="mt-4 flex flex-wrap gap-2"><button className={`min-h-11 rounded-lg px-4 font-bold ${viewMode==="OVERVIEW"?"bg-[#052b57] text-white":"border"}`} onClick={()=>setViewMode("OVERVIEW")} type="button">한눈에 보기</button><button className={`min-h-11 rounded-lg px-4 font-bold ${viewMode==="INFINITE"?"bg-[#052b57] text-white":"border"}`} onClick={()=>setViewMode("INFINITE")} type="button">무한 캔버스</button><select aria-label="프로세스 집중 보기" className="h-11 min-w-60 rounded-lg border bg-white px-3" onChange={event=>setProcessFocus(event.target.value)} value={processFocus}><option value="ALL">전체 프로세스</option>{processSummaries.map(item=><option key={item.processCode} value={item.processCode}>{item.processName} · {item.screenCount}화면</option>)}</select></div>
+      <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between"><div><p className="text-xs font-black tracking-[.12em] text-blue-700">COMMON-CENTERED SYSTEM MAP</p><h2 className="mt-1 text-2xl font-black text-[#052b57]">공통 자산을 중심으로 전체 설계 관계를 연결합니다</h2><p className="mt-2 text-sm text-slate-600">화면·액터·프로세스·클래스·ERD·필드·API·테스트의 실제 계약을 한 그래프에서 추적합니다.</p></div><div className="grid grid-cols-2 gap-2 text-center sm:grid-cols-4 xl:grid-cols-6">{Object.entries(model.counts).map(([key,count])=><div className="rounded-xl bg-slate-50 p-3" key={key}><span className="text-xs font-bold text-slate-500">{{screens:"화면",commonScreens:"공통 화면",sections:"섹션",schemas:"스키마",classes:"클래스",tables:"ERD",actors:"액터",processes:"프로세스",components:"컴포넌트",fields:"필드",apis:"API",tests:"테스트"}[key as keyof typeof model.counts]}</span><strong className="block text-xl text-[#052b57]">{count}</strong></div>)}</div></div>
+      <div className="mt-4 flex flex-wrap gap-2"><button className={`min-h-11 rounded-lg px-4 font-bold ${viewMode==="OVERVIEW"?"bg-[#052b57] text-white":"border"}`} onClick={()=>setViewMode("OVERVIEW")} type="button">한눈에 보기</button><button className={`min-h-11 rounded-lg px-4 font-bold ${viewMode==="INFINITE"?"bg-[#052b57] text-white":"border"}`} onClick={()=>setViewMode("INFINITE")} type="button">무한 캔버스</button><select aria-label="프로세스 집중 보기" className="h-11 min-w-60 rounded-lg border bg-white px-3" onChange={event=>setProcessFocus(event.target.value)} value={processFocus}><option value="ALL">전체 프로세스</option>{processSummaries.map(item=><option key={item.processCode} value={item.processCode}>{item.processName} · {item.screenCount}화면</option>)}</select><span className="flex min-h-11 items-center rounded-lg bg-red-50 px-4 text-sm font-black text-red-700">차단 {model.issues.filter(issue=>issue.severity==="BLOCKING").length}</span><span className="flex min-h-11 items-center rounded-lg bg-amber-50 px-4 text-sm font-black text-amber-700">경고 {model.issues.filter(issue=>issue.severity==="WARNING").length}</span></div>
       <div className="mt-3 grid gap-3 lg:grid-cols-[1fr_14rem_auto]"><input aria-label="지도 검색" className="h-11 rounded-lg border px-3" onChange={event=>setQuery(event.target.value)} placeholder="화면·경로·스키마·섹션 검색" value={query}/><select aria-label="자산 유형" className="h-11 rounded-lg border bg-white px-3" onChange={event=>setKindFilter(event.target.value)} value={kindFilter}><option value="ALL">전체 유형</option>{Object.entries(kindLabel).map(([id,label])=><option key={id} value={id}>{label}</option>)}</select><div className="flex flex-wrap gap-2"><button className="min-h-11 rounded-lg border px-3 font-bold" onClick={fit} type="button">전체 맞춤</button><button className="min-h-11 rounded-lg border px-3 font-bold" onClick={()=>{onRefresh();setLastRefresh(new Date());}} type="button">설계 다시 불러오기</button><label className="flex min-h-11 items-center gap-2 rounded-lg border px-3 font-bold"><input checked={autoRefresh} onChange={event=>setAutoRefresh(event.target.checked)} type="checkbox"/>30초 자동 갱신</label></div></div>
       <p className="mt-3 text-right text-xs text-slate-500">마지막 갱신 {lastRefresh.toLocaleTimeString("ko-KR")} · 표시 {visibleIds.size}/{model.nodes.length}</p>
     </section>
@@ -207,7 +227,7 @@ export function CommonCenteredSystemCanvas({ actors, blueprints, cases, componen
         <div className="absolute bottom-4 left-4 flex overflow-hidden rounded-lg border bg-white shadow"><button className="h-11 w-11 font-black" onClick={()=>setZoom(v=>Math.max(.055,v-.05))} type="button">−</button><button className="h-11 min-w-16 border-x text-xs font-black" onClick={fit} type="button">{Math.round(zoom*100)}%</button><button className="h-11 w-11 font-black" onClick={()=>setZoom(v=>Math.min(1.5,v+.05))} type="button">+</button></div>
       </div>
     </section>}
-    {selected&&<section className="rounded-2xl border border-blue-200 bg-white p-5 shadow-sm"><div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between"><div><p className="text-xs font-black text-blue-700">{kindLabel[selected.kind]}</p><h3 className="mt-1 text-xl font-black text-[#052b57]">{selected.label}</h3><p className="mt-1 font-mono text-xs text-slate-500">{selected.route||selected.sub}</p></div><div className="flex gap-2">{selected.route.startsWith("/")&&<a className="rounded-lg bg-[#246beb] px-4 py-3 font-bold text-white" href={selected.route}>실제 화면</a>}<button className="rounded-lg border px-4 py-3 font-bold" onClick={()=>onOpen(selected.kind==="SECTION"||selected.kind==="COMPONENT"?"design":"page-fields")} type="button">설계 수정</button></div></div><h4 className="mt-5 font-black">직접 영향 관계 {related.length}개</h4><p className="mt-1 text-sm text-slate-600">선택 자산을 수정할 때 함께 검토해야 하는 화면·데이터·API·권한·테스트입니다.</p><div className="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-4">{related.slice(0,200).map(({edge,node})=><button className="rounded-lg border p-3 text-left hover:bg-blue-50" key={edge.id} onClick={()=>node&&setSelectedId(node.id)} type="button"><span className="text-[10px] font-black text-blue-700">{edge.kind}</span><b className="block truncate text-sm">{node?.label}</b><small className="mt-1 block truncate text-slate-500">{node && kindLabel[node.kind]}</small></button>)}</div></section>}
+    {selected&&<section className="rounded-2xl border border-blue-200 bg-white p-5 shadow-sm"><div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between"><div><p className="text-xs font-black text-blue-700">{kindLabel[selected.kind]}</p><h3 className="mt-1 text-xl font-black text-[#052b57]">{selected.label}</h3><p className="mt-1 font-mono text-xs text-slate-500">{selected.route||selected.sub}</p></div><div className="flex gap-2">{selected.route.startsWith("/")&&<a className="rounded-lg bg-[#246beb] px-4 py-3 font-bold text-white" href={selected.route}>실제 화면</a>}<button className="rounded-lg border px-4 py-3 font-bold" onClick={()=>onOpen(selected.kind==="SECTION"||selected.kind==="COMPONENT"?"design":"page-fields")} type="button">설계 수정</button></div></div>{selectedIssues.length>0&&<div className="mt-4 rounded-xl border border-red-200 bg-red-50 p-4"><h4 className="font-black text-red-800">자동 계약 검사 {selectedIssues.length}건</h4><ul className="mt-2 space-y-1 text-sm text-red-700">{selectedIssues.map(issue=><li key={issue.id}>[{issue.severity}] {issue.message}</li>)}</ul></div>}<h4 className="mt-5 font-black">직접 영향 관계 {related.length}개</h4><p className="mt-1 text-sm text-slate-600">선택 자산을 수정할 때 함께 검토해야 하는 화면·데이터·API·권한·테스트입니다.</p><div className="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-4">{related.slice(0,200).map(({edge,node})=><button className="rounded-lg border p-3 text-left hover:bg-blue-50" key={edge.id} onClick={()=>node&&setSelectedId(node.id)} type="button"><span className="text-[10px] font-black text-blue-700">{edge.kind}</span><b className="block truncate text-sm">{node?.label}</b><small className="mt-1 block truncate text-slate-500">{node && kindLabel[node.kind]}</small></button>)}</div></section>}
   </div>;
 }
 
