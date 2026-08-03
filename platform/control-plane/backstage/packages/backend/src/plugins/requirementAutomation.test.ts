@@ -29,7 +29,7 @@ describe('requirement automation', () => {
     expect(analysis.requirements[1].endpoint.method).toBe('POST');
     expect(analysis.requirements[2].actorCode).toBe('VERIFIER');
     expect(contract.workspaces).toHaveLength(3);
-    expect(contract.workspaces.flatMap(workspace => workspace.tabs)).toHaveLength(24);
+    expect(contract.workspaces.flatMap(workspace => workspace.tabs)).toHaveLength(25);
     expect(contract.process.steps).toHaveLength(3);
   });
 

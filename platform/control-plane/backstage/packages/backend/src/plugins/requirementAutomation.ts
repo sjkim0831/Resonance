@@ -128,7 +128,7 @@ export const analyzeRequirementText = (
 };
 
 const workspaceTabs = (workspace: string) =>
-  Array.from({ length: 8 }, (_, index) => ({
+  Array.from({ length: workspace === 'operate' ? 9 : 8 }, (_, index) => ({
     id: `${workspace}-${index + 1}`,
     label: `${workspace.toUpperCase()} ${index + 1}`,
   }));

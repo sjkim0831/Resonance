@@ -176,8 +176,8 @@ const validateDesignContract = (
     const candidate = (workspace as { tabs?: unknown }).tabs;
     return Array.isArray(candidate) ? candidate : [];
   });
-  if (tabs.length !== 24) {
-    failures.push('exactly 24 actor-process functions are required');
+  if (tabs.length !== 25) {
+    failures.push('exactly 25 actor-process functions are required');
   }
   const tabIds = tabs
     .map(tab =>
@@ -884,6 +884,107 @@ export default createBackendPlugin({
               .status(runtimeResponse.status)
               .type('application/json')
               .send(await runtimeResponse.text());
+          },
+        );
+        router.get(
+          '/actor-process/page-development-master',
+          async (request, response) => {
+            const runtimeBaseUrl = String(
+              process.env.CARBONET_RUNTIME_BASE_URL ??
+                'http://carbonet-api.carbonet-prod.svc.cluster.local:8080',
+            ).replace(/\/+$/, '');
+            const bridgeToken = String(process.env.RESONANCE_OPS_TOKEN ?? '');
+            if (!bridgeToken) {
+              response.status(503).json({ message: 'control-plane bridge token is missing' });
+              return;
+            }
+            const parameters = new URLSearchParams({
+              query: String(request.query.query ?? ''),
+              processCode: String(request.query.processCode ?? ''),
+              status: String(request.query.status ?? ''),
+            });
+            const runtimeResponse = await fetch(
+              `${runtimeBaseUrl}/api/internal/actor-process/page-development-master?${parameters}`,
+              { headers: { accept: 'application/json', 'x-resonance-token': bridgeToken } },
+            );
+            response.status(runtimeResponse.status).type('application/json').send(await runtimeResponse.text());
+          },
+        );
+        router.get(
+          '/actor-process/page-development-master/:itemId',
+          async (request, response) => {
+            const runtimeBaseUrl = String(process.env.CARBONET_RUNTIME_BASE_URL ?? 'http://carbonet-api.carbonet-prod.svc.cluster.local:8080').replace(/\/+$/, '');
+            const bridgeToken = String(process.env.RESONANCE_OPS_TOKEN ?? '');
+            if (!bridgeToken) {
+              response.status(503).json({ message: 'control-plane bridge token is missing' });
+              return;
+            }
+            const itemId = String(request.params.itemId ?? '');
+            if (!/^\d+$/.test(itemId)) {
+              response.status(400).json({ message: 'invalid screen item id' });
+              return;
+            }
+            const runtimeResponse = await fetch(`${runtimeBaseUrl}/api/internal/actor-process/page-development-master/${itemId}`, {
+              headers: { accept: 'application/json', 'x-resonance-token': bridgeToken },
+            });
+            response.status(runtimeResponse.status).type('application/json').send(await runtimeResponse.text());
+          },
+        );
+        router.get(
+          '/actor-process/screen-workflow-test-cases',
+          async (request, response) => {
+            const runtimeBaseUrl = String(process.env.CARBONET_RUNTIME_BASE_URL ?? 'http://carbonet-api.carbonet-prod.svc.cluster.local:8080').replace(/\/+$/, '');
+            const bridgeToken = String(process.env.RESONANCE_OPS_TOKEN ?? '');
+            if (!bridgeToken) {
+              response.status(503).json({ message: 'control-plane bridge token is missing' });
+              return;
+            }
+            const parameters = new URLSearchParams({
+              screenResourceId: String(request.query.screenResourceId ?? ''),
+              processCode: String(request.query.processCode ?? ''),
+              stepCode: String(request.query.stepCode ?? ''),
+              capabilityCode: String(request.query.capabilityCode ?? 'ALL'),
+            });
+            const runtimeResponse = await fetch(`${runtimeBaseUrl}/api/internal/actor-process/screen-workflow-test-cases?${parameters}`, {
+              headers: { accept: 'application/json', 'x-resonance-token': bridgeToken },
+            });
+            response.status(runtimeResponse.status).type('application/json').send(await runtimeResponse.text());
+          },
+        );
+        router.post(
+          '/actor-process/screen-workflow-test-cases',
+          async (request, response) => {
+            const runtimeBaseUrl = String(process.env.CARBONET_RUNTIME_BASE_URL ?? 'http://carbonet-api.carbonet-prod.svc.cluster.local:8080').replace(/\/+$/, '');
+            const bridgeToken = String(process.env.RESONANCE_OPS_TOKEN ?? '');
+            if (!bridgeToken) {
+              response.status(503).json({ message: 'control-plane bridge token is missing' });
+              return;
+            }
+            const runtimeIdentity = await resolveRuntimeAccount(request);
+            const runtimeResponse = await fetch(`${runtimeBaseUrl}/api/internal/actor-process/screen-workflow-test-cases`, {
+              method: 'POST',
+              headers: { accept: 'application/json', 'content-type': 'application/json', 'x-resonance-token': bridgeToken, 'x-resonance-actor': runtimeIdentity.userEntityRef },
+              body: JSON.stringify(request.body ?? {}),
+            });
+            response.status(runtimeResponse.status).type('application/json').send(await runtimeResponse.text());
+          },
+        );
+        router.post(
+          '/actor-process/screen-workflow-test',
+          async (request, response) => {
+            const runtimeBaseUrl = String(process.env.CARBONET_RUNTIME_BASE_URL ?? 'http://carbonet-api.carbonet-prod.svc.cluster.local:8080').replace(/\/+$/, '');
+            const bridgeToken = String(process.env.RESONANCE_OPS_TOKEN ?? '');
+            if (!bridgeToken) {
+              response.status(503).json({ message: 'control-plane bridge token is missing' });
+              return;
+            }
+            const runtimeIdentity = await resolveRuntimeAccount(request);
+            const runtimeResponse = await fetch(`${runtimeBaseUrl}/api/internal/actor-process/screen-workflow-test`, {
+              method: 'POST',
+              headers: { accept: 'application/json', 'content-type': 'application/json', 'x-resonance-token': bridgeToken, 'x-resonance-actor': runtimeIdentity.userEntityRef },
+              body: JSON.stringify(request.body ?? {}),
+            });
+            response.status(runtimeResponse.status).type('application/json').send(await runtimeResponse.text());
           },
         );
         router.post(

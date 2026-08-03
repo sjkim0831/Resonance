@@ -11,11 +11,11 @@ import {
 } from './actorProcessWorkspaces';
 
 describe('actorProcessWorkspaces', () => {
-  it('binds all 24 functions to real runtime datasets', () => {
+  it('binds all 25 functions to real runtime datasets', () => {
     const tabs = ACTOR_PROCESS_WORKSPACES.flatMap(workspace => workspace.tabs);
 
-    expect(ACTOR_PROCESS_TAB_COUNT).toBe(24);
-    expect(tabs).toHaveLength(24);
+    expect(ACTOR_PROCESS_TAB_COUNT).toBe(25);
+    expect(tabs).toHaveLength(25);
     expect(
       tabs.every(tab => Boolean(ACTOR_PROCESS_DATASET_BY_TAB[tab.id])),
     ).toBe(true);
@@ -23,7 +23,7 @@ describe('actorProcessWorkspaces', () => {
 
   it('tracks source parity without promoting partial UI restoration', () => {
     expect(ACTOR_PROCESS_SOURCE_TAB_COUNT).toBe(32);
-    expect(ACTOR_PROCESS_FULL_UI_COUNT).toBe(9);
+    expect(ACTOR_PROCESS_FULL_UI_COUNT).toBe(10);
     expect(ACTOR_PROCESS_PARTIAL_UI_COUNT).toBe(15);
     expect(
       ACTOR_PROCESS_WORKSPACES.flatMap(workspace => workspace.tabs)
@@ -39,6 +39,7 @@ describe('actorProcessWorkspaces', () => {
       'steps',
       'screen-flow',
       'data-contracts',
+      'screen-workflow-tests',
     ]);
   });
 

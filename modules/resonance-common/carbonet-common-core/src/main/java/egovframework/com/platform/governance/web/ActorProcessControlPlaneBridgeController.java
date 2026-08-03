@@ -12,6 +12,7 @@ import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -409,6 +410,94 @@ public class ActorProcessControlPlaneBridgeController {
                 "success", true,
                 "documentType", documentType,
                 "revision", revision == null ? 0 : revision));
+    }
+
+    @GetMapping("/page-development-master")
+    public ResponseEntity<?> pageDevelopmentMaster(
+            @RequestHeader(value = "X-Resonance-Token", defaultValue = "") String suppliedToken,
+            @RequestParam(defaultValue = "") String query,
+            @RequestParam(defaultValue = "") String processCode,
+            @RequestParam(defaultValue = "") String status) {
+        if (!authorized(suppliedToken)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("success", false, "message", "Invalid control-plane bridge token."));
+        }
+        try {
+            return ResponseEntity.ok(governance.pageDevelopmentMaster(query, processCode, status));
+        } catch (Exception exception) {
+            return ResponseEntity.badRequest().body(Map.of("success", false,
+                    "message", exception.getMessage() == null ? "Screen list failed." : exception.getMessage()));
+        }
+    }
+
+    @GetMapping("/page-development-master/{itemId}")
+    public ResponseEntity<?> pageDevelopmentMasterDetail(
+            @RequestHeader(value = "X-Resonance-Token", defaultValue = "") String suppliedToken,
+            @PathVariable long itemId) {
+        if (!authorized(suppliedToken)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("success", false, "message", "Invalid control-plane bridge token."));
+        }
+        try {
+            return ResponseEntity.ok(governance.pageDevelopmentMasterDetail(itemId));
+        } catch (Exception exception) {
+            return ResponseEntity.badRequest().body(Map.of("success", false,
+                    "message", exception.getMessage() == null ? "Screen detail failed." : exception.getMessage()));
+        }
+    }
+
+    @GetMapping("/screen-workflow-test-cases")
+    public ResponseEntity<?> screenWorkflowTestCases(
+            @RequestHeader(value = "X-Resonance-Token", defaultValue = "") String suppliedToken,
+            @RequestParam long screenResourceId,
+            @RequestParam String processCode,
+            @RequestParam String stepCode,
+            @RequestParam(defaultValue = "ALL") String capabilityCode) {
+        if (!authorized(suppliedToken)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("success", false, "message", "Invalid control-plane bridge token."));
+        }
+        try {
+            return ResponseEntity.ok(governance.screenWorkflowTestCases(
+                    screenResourceId, processCode, stepCode, capabilityCode));
+        } catch (Exception exception) {
+            return ResponseEntity.badRequest().body(Map.of("success", false,
+                    "message", exception.getMessage() == null ? "Test case lookup failed." : exception.getMessage()));
+        }
+    }
+
+    @PostMapping("/screen-workflow-test-cases")
+    public ResponseEntity<?> saveScreenWorkflowTestCase(
+            @RequestHeader(value = "X-Resonance-Token", defaultValue = "") String suppliedToken,
+            @RequestHeader(value = "X-Resonance-Actor", defaultValue = "BACKSTAGE_CONTROL_PLANE") String actor,
+            @RequestBody Map<String, Object> body) {
+        if (!authorized(suppliedToken)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("success", false, "message", "Invalid control-plane bridge token."));
+        }
+        try {
+            return ResponseEntity.ok(governance.saveScreenWorkflowTestCase(body, actor));
+        } catch (Exception exception) {
+            return ResponseEntity.badRequest().body(Map.of("success", false,
+                    "message", exception.getMessage() == null ? "Test case save failed." : exception.getMessage()));
+        }
+    }
+
+    @PostMapping("/screen-workflow-test")
+    public ResponseEntity<?> runScreenWorkflowTest(
+            @RequestHeader(value = "X-Resonance-Token", defaultValue = "") String suppliedToken,
+            @RequestHeader(value = "X-Resonance-Actor", defaultValue = "BACKSTAGE_CONTROL_PLANE") String actor,
+            @RequestBody Map<String, Object> body) {
+        if (!authorized(suppliedToken)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("success", false, "message", "Invalid control-plane bridge token."));
+        }
+        try {
+            return ResponseEntity.ok(governance.runDeterministicScreenWorkflowTest(body, actor));
+        } catch (Exception exception) {
+            return ResponseEntity.badRequest().body(Map.of("success", false,
+                    "message", exception.getMessage() == null ? "Screen workflow test failed." : exception.getMessage()));
+        }
     }
 
     @PostMapping("/control-assets/cutover")

@@ -309,6 +309,7 @@ export const ACTOR_PROCESS_DATASET_BY_TAB: Record<string, string> = {
   backend: 'backendProcessReadiness',
   database: 'pageDesigns',
   'automated-tests': 'qualityGateResults',
+  'screen-workflow-tests': 'processes',
   artifacts: 'artifacts',
   promotion: 'deliveryQueue',
   'work-dashboard': 'processExecutions',
@@ -341,6 +342,7 @@ const tab = (
     'steps',
     'screen-flow',
     'data-contracts',
+    'screen-workflow-tests',
   ].includes(id)
     ? ('FULL' as const)
     : ('PARTIAL' as const),
@@ -448,6 +450,12 @@ export const ACTOR_PROCESS_WORKSPACES: ActorProcessWorkspace[] = [
         'TEST_EXECUTION',
       ),
       tab(
+        'screen-workflow-tests',
+        '화면 업무·기능 테스트',
+        '업무 종류, 프로세스, 화면, 절차와 기능을 선택하고 기능별 데이터셋 선입력, 실제 화면 미리보기와 결정론적 테스트를 수행합니다.',
+        'SCREEN_WORKFLOW_TEST',
+      ),
+      tab(
         'incidents',
         '장애·자가복구',
         '장애 감지, 격리, 자동 복구와 재발 방지 증적을 검증합니다.',
@@ -531,7 +539,7 @@ export const ACTOR_PROCESS_TAB_COUNT = ACTOR_PROCESS_WORKSPACES.reduce(
 );
 
 // Resonance 원본의 4개 작업공간, 32개 기능 탭을 이관 기준선으로 유지한다.
-// Backstage는 일부 기능을 24개 탭으로 통합하므로 탭 수와 UI 복원 수준을
+// Backstage는 일부 기능을 25개 탭으로 통합하므로 탭 수와 UI 복원 수준을
 // 별도로 추적해야 미완성 화면을 네이티브 완료로 오인하지 않는다.
 export const ACTOR_PROCESS_SOURCE_TAB_COUNT = 32;
 export const ACTOR_PROCESS_FULL_UI_COUNT = ACTOR_PROCESS_WORKSPACES.flatMap(

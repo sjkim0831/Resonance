@@ -39,6 +39,7 @@ import {
 } from './actorProcessWorkspaces';
 import { RESONANCE_PROJECT_REGISTRY } from './generatedProjectRegistry';
 import { getSharedProjectId, useSharedProjectSelection } from './useSharedProjectSelection';
+import { ScreenWorkflowTestWorkbench } from './ScreenWorkflowTestWorkbench';
 
 type ProjectOption = (typeof RESONANCE_PROJECT_REGISTRY)[number] & {
   status?: string;
@@ -6203,6 +6204,17 @@ export function ActorProcessControlPage(props: {
   }, [selectedTab.id]);
 
   useEffect(() => {
+    if (selectedTab.id !== 'screen-workflow-tests') return;
+    ['processes']
+      .filter(key => runtimeDashboard[key] === undefined)
+      .forEach(key => {
+        void loadRuntimeDataset(key).catch(() => {
+          setMessage(`화면 업무 테스트 데이터(${key})를 불러오지 못했습니다.`);
+        });
+      });
+  }, [selectedTab.id]);
+
+  useEffect(() => {
     setSelectedRow(null);
     setCommandResult('');
   }, [selectedTab.id]);
@@ -6846,6 +6858,12 @@ export function ActorProcessControlPage(props: {
                 onSave={executeDataContractCommand}
               />
             )}
+            {selectedTab.id === 'screen-workflow-tests' && (
+              <ScreenWorkflowTestWorkbench
+                processes={sourceRows}
+                projectId={projectId}
+              />
+            )}
             {selectedTab.id === 'assignments' && (
               <ActorAssignmentWorkspace
                 rows={sourceRows}
@@ -6879,6 +6897,7 @@ export function ActorProcessControlPage(props: {
               'steps',
               'screen-flow',
               'data-contracts',
+              'screen-workflow-tests',
             ].includes(selectedTab.id) && (
               <Grid container spacing={2} style={{ marginTop: 8 }}>
                 <Grid item xs={12} sm={6} md={3}>
@@ -6924,6 +6943,7 @@ export function ActorProcessControlPage(props: {
                 'steps',
                 'screen-flow',
                 'data-contracts',
+                'screen-workflow-tests',
               ].includes(selectedTab.id) && (
                 <Box
                   mt={3}
@@ -7013,6 +7033,7 @@ export function ActorProcessControlPage(props: {
               'assignments',
               'completion',
               'actors',
+              'screen-workflow-tests',
             ].includes(selectedTab.id) && (
               <>
                 <Box
