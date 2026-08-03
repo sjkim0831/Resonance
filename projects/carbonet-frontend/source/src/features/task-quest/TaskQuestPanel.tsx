@@ -1818,43 +1818,14 @@ export function TaskQuestPanel() {
                   ) : null}
                   {selectedCatalogProcess ? (
                     <section className="mb-5 rounded-2xl border-2 border-[#246beb] bg-white p-4 sm:p-5">
-                      <div className="flex flex-wrap items-start justify-between gap-3">
-                        <div>
-                          <p className="text-xs font-black text-[#246beb]">
-                            {en
-                              ? "Selected process guide"
-                              : "선택한 프로세스 업무 길잡이"}
-                          </p>
-                          <h3 className="mt-1 text-lg font-black text-[#052b57]">
-                            {selectedCatalogProcess.processName}
-                          </h3>
-                          <p className="mt-1 max-w-3xl text-sm text-slate-600">
-                            {selectedCatalogProcess.goal}
-                          </p>
-                        </div>
-                        <div className="flex flex-wrap items-center gap-2">
-                          <button
-                            className="rounded-lg bg-[#246beb] px-4 py-2.5 text-xs font-black text-white disabled:cursor-not-allowed disabled:bg-slate-300"
-                            disabled={!selectedCatalogSteps.some((step) => Boolean(guideRoute(step,guideRuntimeStep(step))) && guideActorAllowed(step,guideRuntimeStep(step)))}
-                            onClick={startSelectedProcessGuide}
-                            type="button"
-                          >
-                            {en ? "Start work guide" : "업무 길잡이 시작"}
-                          </button>
-                        {data.allVisible ? (
-                          <a
-                            className="rounded-lg bg-[#052b57] px-4 py-2.5 text-xs font-black text-white"
-                            href={buildLocalizedPath(
-                              `/admin/system/actor-process?process=${encodeURIComponent(selectedCatalogProcess.processCode)}`,
-                              `/en/admin/system/actor-process?process=${encodeURIComponent(selectedCatalogProcess.processCode)}`,
-                            )}
-                          >
-                            {en ? "Open development board" : "개발 현황 열기"}
-                          </a>
-                        ) : null}
-                        </div>
+                      <div>
+                        <p className="text-xs font-black text-[#246beb]">
+                          {en ? "Step-by-step guide" : "업무 진행 절차"}
+                        </p>
+                        <h3 className="mt-1 text-lg font-black text-[#052b57]">
+                          {en ? "Complete the selected work in this order" : "선택한 업무를 아래 순서대로 진행합니다"}
+                        </h3>
                       </div>
-                      <div className={`mt-4 rounded-xl border px-4 py-3 text-sm ${String(selectedUnifiedProcess?.runtimeState)==="DESIGN_BLOCKED"?"border-red-200 bg-red-50 text-red-800":"border-blue-200 bg-blue-50 text-blue-900"}`}><div className="flex flex-wrap items-center justify-between gap-2"><strong>{runtimeStateLabel(String(selectedUnifiedProcess?.runtimeState||"PROJECT_NOT_SELECTED"),en)}</strong><span className="text-xs font-black">{en?"Design accuracy":"설계 정확도"} {Number(selectedUnifiedProcess?.designAccuracyScore||0)}%</span></div>{selectedUnifiedProcess?.stateReason?<p className="mt-1 text-xs leading-5">{selectedUnifiedProcess.stateReason}</p>:null}</div>
                       <div className="mt-4 overflow-x-auto pb-2">
                         <ol className="flex min-w-max items-stretch gap-2">
                           {selectedCatalogSteps.map((step, index) => {
