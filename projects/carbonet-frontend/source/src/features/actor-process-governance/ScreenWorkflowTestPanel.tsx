@@ -10,6 +10,11 @@ export function ScreenWorkflowTestPanel({ base, processes }: Props) {
   const [selected, setSelected] = useState<Row>();
   const [detail, setDetail] = useState<Row>();
   const [result, setResult] = useState<Row>();
+  const [testCases, setTestCases] = useState<Row[]>([]);
+  const [testCaseId, setTestCaseId] = useState("");
+  const [caseName, setCaseName] = useState("기본 정상 처리");
+  const [preInputs, setPreInputs] = useState<Record<string,string>>({});
+  const [previewVisible, setPreviewVisible] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
@@ -31,12 +36,17 @@ export function ScreenWorkflowTestPanel({ base, processes }: Props) {
   useEffect(() => { void loadScreens(); }, [loadScreens]);
 
   async function selectScreen(row: Row) {
-    setBusy(true); setError(""); setSelected(row); setResult(undefined);
+    setBusy(true); setError(""); setSelected(row); setResult(undefined); setTestCaseId("");
     try {
       const response = await fetch(`${base}/page-development-master/${value(row, "itemId")}`, { credentials: "include" });
       const body = await response.json();
       if (!response.ok) throw new Error(body.message || "화면 계약을 불러오지 못했습니다.");
       setDetail(body);
+      const bodyFields = Array.isArray(body.fields) ? body.fields as Row[] : [];
+      setPreInputs(Object.fromEntries(bodyFields.map(field => [value(field,"fieldCode"),""])));
+      const bodyBindings = Array.isArray(body.bindings) ? body.bindings as Row[] : [];
+      const binding = bodyBindings.find(bindingRow => value(bindingRow,"processCode") === processCode) ?? bodyBindings[0];
+      if (binding) await loadTestCases(Number(row.screenResourceId), value(binding,"processCode"), value(binding,"stepCode"));
     } catch (reason) { setError(reason instanceof Error ? reason.message : String(reason)); }
     finally { setBusy(false); }
   }
@@ -49,7 +59,7 @@ export function ScreenWorkflowTestPanel({ base, processes }: Props) {
     try {
       const response = await fetch(`${base}/screen-workflow-test`, {
         method: "POST", credentials: "include", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ itemId: Number(selected.itemId), processCode: value(binding, "processCode"), stepCode: value(binding, "stepCode") })
+        body: JSON.stringify({ itemId: Number(selected.itemId), processCode: value(binding, "processCode"), stepCode: value(binding, "stepCode"), testCaseId: testCaseId || undefined, preInputJson: JSON.stringify(preInputs) })
       });
       const body = await response.json();
       if (!response.ok) throw new Error(body.message || "결정론적 테스트에 실패했습니다.");
@@ -58,8 +68,37 @@ export function ScreenWorkflowTestPanel({ base, processes }: Props) {
     finally { setBusy(false); }
   }
 
+  async function loadTestCases(screenResourceId: number, process: string, step: string) {
+    const response = await fetch(`${base}/screen-workflow-test-cases?screenResourceId=${screenResourceId}&processCode=${encodeURIComponent(process)}&stepCode=${encodeURIComponent(step)}`, { credentials:"include" });
+    const body = await response.json();
+    if (!response.ok) throw new Error(body.message || "저장 테스트 케이스를 불러오지 못했습니다.");
+    setTestCases(Array.isArray(body.items) ? body.items : []);
+  }
+
+  async function saveTestCase() {
+    const binding = bindings.find(row => value(row,"processCode") === processCode) ?? bindings[0];
+    if (!selected || !binding) { setError("저장할 화면·프로세스 연결이 없습니다."); return; }
+    setBusy(true); setError("");
+    try {
+      const response = await fetch(`${base}/screen-workflow-test-cases`, { method:"POST", credentials:"include", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ screenResourceId:Number(selected.screenResourceId), processCode:value(binding,"processCode"), stepCode:value(binding,"stepCode"), caseName, preInputJson:JSON.stringify(preInputs), expectedResult:"PASSED" }) });
+      const body=await response.json(); if(!response.ok)throw new Error(body.message||"테스트 케이스 저장에 실패했습니다.");
+      setTestCaseId(String(body.testCaseId));
+      await loadTestCases(Number(selected.screenResourceId),value(binding,"processCode"),value(binding,"stepCode"));
+    } catch(reason){setError(reason instanceof Error?reason.message:String(reason));}
+    finally{setBusy(false);}
+  }
+
+  function applyTestCase(id: string) {
+    setTestCaseId(id);
+    const item=testCases.find(row=>value(row,"testCaseId")===id);
+    if(!item)return;
+    setCaseName(value(item,"caseName"));
+    try{setPreInputs(JSON.parse(value(item,"preInputJson")));}catch{setError("저장된 선입력 JSON 형식이 올바르지 않습니다.");}
+  }
+
   const capabilities = Array.isArray(detail?.capabilities) ? detail.capabilities as Row[] : [];
   const fields = Array.isArray(detail?.fields) ? detail.fields as Row[] : [];
+  const uniqueFields = useMemo(() => Array.from(new Map(fields.map(field => [value(field,"fieldCode"),field])).values()), [fields]);
   const tests = Array.isArray(detail?.tests) ? detail.tests as Row[] : [];
   const checks = Array.isArray(result?.checks) ? result.checks as Row[] : [];
 
@@ -86,8 +125,10 @@ export function ScreenWorkflowTestPanel({ base, processes }: Props) {
       <section className="space-y-4">
         {!detail && <div className="rounded-2xl border border-dashed bg-white p-10 text-center text-slate-500">왼쪽에서 화면을 선택하면 설계 계약과 테스트가 표시됩니다.</div>}
         {detail && <>
-          <div className="rounded-2xl border bg-white p-5"><div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between"><div><h3 className="text-xl font-black text-[#052b57]">{value(selected ?? {}, "screenName")}</h3><a className="mt-1 block text-sm font-bold text-blue-700 hover:underline" href={value(selected ?? {}, "routePath")} target="_blank" rel="noreferrer">{value(selected ?? {}, "routePath")}</a></div><button className="min-h-11 rounded-lg bg-[#246beb] px-5 text-sm font-black text-white disabled:opacity-50" disabled={busy} onClick={() => void runTest()} type="button">{busy ? "검사 중" : "AI 없이 전체 테스트"}</button></div></div>
+          <div className="rounded-2xl border bg-white p-5"><div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between"><div><h3 className="text-xl font-black text-[#052b57]">{value(selected ?? {}, "screenName")}</h3><a className="mt-1 block text-sm font-bold text-blue-700 hover:underline" href={value(selected ?? {}, "routePath")} target="_blank" rel="noreferrer">{value(selected ?? {}, "routePath")}</a></div><div className="flex flex-wrap gap-2"><ScreenMoveButton disabled={!selected || screens.findIndex(row=>value(row,"itemId")===value(selected,"itemId"))<=0} label="이전 화면" onClick={()=>{const index=screens.findIndex(row=>value(row,"itemId")===value(selected ?? {},"itemId"));if(index>0)void selectScreen(screens[index-1])}}/><ScreenMoveButton disabled={!selected || screens.findIndex(row=>value(row,"itemId")===value(selected,"itemId"))>=screens.length-1} label="다음 화면" onClick={()=>{const index=screens.findIndex(row=>value(row,"itemId")===value(selected ?? {},"itemId"));if(index>=0&&index<screens.length-1)void selectScreen(screens[index+1])}}/><button className="min-h-11 rounded-lg border border-blue-300 bg-white px-4 text-sm font-bold text-blue-700" onClick={()=>setPreviewVisible(current=>!current)} type="button">{previewVisible?"미리보기 닫기":"미리보기 열기"}</button><button className="min-h-11 rounded-lg bg-[#246beb] px-5 text-sm font-black text-white disabled:opacity-50" disabled={busy} onClick={() => void runTest()} type="button">{busy ? "검사 중" : "AI 없이 전체 테스트"}</button></div></div></div>
+          {previewVisible && <section className="overflow-hidden rounded-2xl border bg-white"><div className="flex items-center justify-between border-b px-5 py-3"><strong className="text-[#052b57]">실제 화면 미리보기</strong><span className="text-xs text-slate-500">동일 로그인 세션 · 반응형</span></div><iframe className="h-[520px] w-full bg-white" key={value(selected ?? {},"routePath")} src={value(selected ?? {},"routePath")} title={`${value(selected ?? {},"screenName")} 미리보기`}/></section>}
           <MetricGrid values={[["프로세스·단계", bindings.length],["기능", capabilities.length],["필드", fields.length],["테스트", tests.length]]}/>
+          <section className="rounded-2xl border bg-white p-5"><div className="flex flex-col gap-3 lg:flex-row lg:items-end"><label className="flex-1 text-sm font-bold text-slate-700">저장 테스트 케이스<select className="mt-2 h-11 w-full rounded-lg border border-slate-300 bg-white px-3 font-normal" value={testCaseId} onChange={event=>applyTestCase(event.target.value)}><option value="">새 테스트 케이스</option>{testCases.map(row=><option key={value(row,"testCaseId")} value={value(row,"testCaseId")}>{value(row,"caseName")}</option>)}</select></label><label className="flex-[2] text-sm font-bold text-slate-700">케이스명<input className="mt-2 h-11 w-full rounded-lg border border-slate-300 px-3 font-normal" value={caseName} onChange={event=>setCaseName(event.target.value)}/></label><button className="min-h-11 rounded-lg bg-slate-800 px-5 text-sm font-black text-white disabled:opacity-50" disabled={busy||!caseName.trim()} onClick={()=>void saveTestCase()} type="button">선입력 케이스 저장</button></div><div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">{uniqueFields.map(field=><label className="text-sm font-bold text-slate-700" key={value(field,"fieldCode")}>{value(field,"fieldName")} {field.required===true&&<span className="text-red-600">*</span>}<input className="mt-2 h-11 w-full rounded-lg border border-slate-300 px-3 font-normal" placeholder={value(field,"apiProperty")} value={preInputs[value(field,"fieldCode")]??""} onChange={event=>setPreInputs(current=>({...current,[value(field,"fieldCode")]:event.target.value}))}/><span className="mt-1 block text-xs font-normal text-slate-400">{value(field,"sourceTable")}.{value(field,"sourceColumn")} · {value(field,"lineageStatus")}</span></label>)}</div></section>
           <ContractTable title="프로세스·단계" heads={["프로세스","단계","액터","대상"]} rows={bindings.map(row => [value(row,"processName"),value(row,"stepName"),value(row,"actorName") || value(row,"actorCode"),value(row,"audience")])}/>
           <ContractTable title="화면 기능" heads={["코드","기능","유형","구현"]} rows={capabilities.map(row => [value(row,"capabilityCode"),value(row,"capabilityName"),value(row,"capabilityType"),value(row,"implementationStatus")])}/>
           <ContractTable title="필드·DB 계약" heads={["필드","필수","API","DB","계보"]} rows={fields.map(row => [value(row,"fieldName"),String(row.required === true ? "필수" : "선택"),value(row,"apiProperty"),`${value(row,"sourceTable")}.${value(row,"sourceColumn")}`,value(row,"lineageStatus")])}/>
@@ -100,4 +141,5 @@ export function ScreenWorkflowTestPanel({ base, processes }: Props) {
 }
 
 function MetricGrid({ values }: { values: [string, number][] }) { return <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">{values.map(([label, count]) => <article className="rounded-xl border bg-white p-4" key={label}><span className="text-xs font-bold text-slate-500">{label}</span><strong className="mt-1 block text-2xl text-[#052b57]">{count}</strong></article>)}</div>; }
+function ScreenMoveButton({disabled,label,onClick}:{disabled:boolean;label:string;onClick:()=>void}){return <button className="min-h-11 rounded-lg border border-slate-300 bg-white px-4 text-sm font-bold text-slate-700 disabled:opacity-40" disabled={disabled} onClick={onClick} type="button">{label}</button>}
 function ContractTable({ title, heads, rows }: { title: string; heads: string[]; rows: string[][] }) { return <div className="overflow-x-auto rounded-2xl border bg-white"><h3 className="border-b px-5 py-4 font-black text-[#052b57]">{title}</h3><table className="min-w-[720px] w-full text-left text-sm"><thead className="bg-slate-50"><tr>{heads.map(head => <th className="px-4 py-3 text-xs text-slate-600" key={head}>{head}</th>)}</tr></thead><tbody>{rows.length ? rows.map((row,index) => <tr className="border-t" key={index}>{row.map((cell,cellIndex) => <td className="px-4 py-3" key={cellIndex}>{cell || "-"}</td>)}</tr>) : <tr><td className="px-4 py-5 text-center text-slate-500" colSpan={heads.length}>등록된 항목이 없습니다.</td></tr>}</tbody></table></div>; }

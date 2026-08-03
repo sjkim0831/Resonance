@@ -541,6 +541,14 @@ public class ActorProcessGovernanceService {
         String route=String.valueOf(item.get("route_key"));
         Integer bindingCount=jdbc.queryForObject("select count(*) from framework_process_step_screen_binding where screen_resource_id=? and process_code=? and step_code=? and binding_status='ACTIVE'",Integer.class,screenId,process,step);
         if(bindingCount==null||bindingCount==0)throw new IllegalArgumentException("SCREEN_PROCESS_BINDING_NOT_FOUND: "+process+" / "+step+" / "+route);
+        String requestedCaseId=str(body,"testCaseId");
+        Long testCaseId=requestedCaseId.isBlank()?null:Long.parseLong(requestedCaseId);
+        String preInputJson=def(body,"preInputJson","{}");
+        if(testCaseId!=null){
+            Map<String,Object> fixture=jdbc.queryForMap("select pre_input_json::text as pre_input_json from framework_screen_workflow_test_case where test_case_id=? and screen_resource_id=? and process_code=? and step_code=? and active=true",testCaseId,screenId,process,step);
+            if(!body.containsKey("preInputJson"))preInputJson=String.valueOf(fixture.get("pre_input_json"));
+        }
+        validateJsonObject(preInputJson,"preInputJson");
 
         List<Map<String,Object>> checks=new ArrayList<>();
         addScreenCheck(checks,"ROUTE_REGISTERED","화면 경로 등록",true,route);
@@ -564,6 +572,11 @@ public class ActorProcessGovernanceService {
         int apiGaps=((Number)fieldSummary.get("api_gaps")).intValue();
         addScreenCheck(checks,"FIELD_CONTRACT","필드 계약",fieldCount>0&&unresolvedRequired==0&&apiGaps==0,toJson(fieldSummary));
 
+        Map<String,Object> preInputSummary=jdbc.queryForMap("select count(*) filter(where required) as required,count(*) filter(where required and (not jsonb_exists(?::jsonb,field_code) or trim(coalesce(jsonb_extract_path_text(?::jsonb,field_code),''))='')) as missing_required from framework_screen_data_binding where screen_resource_id=?",preInputJson,preInputJson,screenId);
+        int requiredInputs=((Number)preInputSummary.get("required")).intValue();
+        int missingInputs=((Number)preInputSummary.get("missing_required")).intValue();
+        addScreenCheck(checks,"PREINPUT_REQUIRED","필수 선입력",requiredInputs==0||missingInputs==0,toJson(preInputSummary));
+
         Map<String,Object> capabilitySummary=jdbc.queryForMap("select count(*) as total,count(*) filter(where implementation_status in('IMPLEMENTED','VERIFIED')) as implemented from framework_screen_capability where screen_resource_id=?",screenId);
         int capabilityCount=((Number)capabilitySummary.get("total")).intValue();
         int implementedCapabilities=((Number)capabilitySummary.get("implemented")).intValue();
@@ -577,14 +590,35 @@ public class ActorProcessGovernanceService {
         int passed=(int)checks.stream().filter(row->Boolean.TRUE.equals(row.get("passed"))).count();
         List<String> blockers=checks.stream().filter(row->!Boolean.TRUE.equals(row.get("passed"))).map(row->String.valueOf(row.get("code"))).toList();
         String result=blockers.isEmpty()?"PASSED":"BLOCKED";
-        String evidence=toJson(Map.of("itemId",itemId,"screenResourceId",screenId,"processCode",process,"stepCode",step,"routePath",route,"checks",checks));
-        Long runId=jdbc.queryForObject("insert into framework_screen_workflow_test_run(screen_resource_id,process_code,step_code,route_key,result,passed_check_count,total_check_count,blocker_codes,evidence_json,executed_by) values(?,?,?,?,?,?,?,case when ?='' then ARRAY[]::text[] else string_to_array(?,',') end,?::jsonb,?) returning run_id",Long.class,screenId,process,step,route,result,passed,checks.size(),String.join(",",blockers),String.join(",",blockers),evidence,executedBy);
+        Map<String,Object> evidenceMap=new LinkedHashMap<>();evidenceMap.put("itemId",itemId);evidenceMap.put("screenResourceId",screenId);evidenceMap.put("processCode",process);evidenceMap.put("stepCode",step);evidenceMap.put("routePath",route);evidenceMap.put("testCaseId",testCaseId);evidenceMap.put("preInputJson",preInputJson);evidenceMap.put("checks",checks);
+        String evidence=toJson(evidenceMap);
+        Long runId=jdbc.queryForObject("insert into framework_screen_workflow_test_run(screen_resource_id,process_code,step_code,route_key,result,passed_check_count,total_check_count,blocker_codes,evidence_json,executed_by,test_case_id) values(?,?,?,?,?,?,?,case when ?='' then ARRAY[]::text[] else string_to_array(?,',') end,?::jsonb,?,?) returning run_id",Long.class,screenId,process,step,route,result,passed,checks.size(),String.join(",",blockers),String.join(",",blockers),evidence,executedBy,testCaseId);
         Map<String,Object> response=new LinkedHashMap<>();
         response.put("success",true);response.put("runId",runId);response.put("result",result);
         response.put("passedCheckCount",passed);response.put("totalCheckCount",checks.size());
         response.put("blockerCodes",blockers);response.put("checks",checks);response.put("routePath",route);
         response.put("processCode",process);response.put("stepCode",step);response.put("executedBy",executedBy);
         return response;
+    }
+
+    public Map<String,Object> screenWorkflowTestCases(long screenResourceId,String processCode,String stepCode){
+        String process=req(Map.of("processCode",processCode),"processCode").trim().toUpperCase(Locale.ROOT);
+        String step=req(Map.of("stepCode",stepCode),"stepCode").trim().toUpperCase(Locale.ROOT);
+        List<Map<String,Object>> rows=jdbc.queryForList("select test_case_id as \"testCaseId\",case_name as \"caseName\",pre_input_json::text as \"preInputJson\",expected_result as \"expectedResult\",coalesce(expected_state,'') as \"expectedState\",updated_by as \"updatedBy\",updated_at as \"updatedAt\" from framework_screen_workflow_test_case where screen_resource_id=? and process_code=? and step_code=? and active=true order by updated_at desc,test_case_id desc",screenResourceId,process,step);
+        return Map.of("success",true,"count",rows.size(),"items",rows);
+    }
+
+    @Transactional
+    public Map<String,Object> saveScreenWorkflowTestCase(Map<String,Object> body,String actor){
+        long screenId=Long.parseLong(req(body,"screenResourceId"));
+        String process=req(body,"processCode").trim().toUpperCase(Locale.ROOT),step=req(body,"stepCode").trim().toUpperCase(Locale.ROOT);
+        String name=req(body,"caseName").trim(),preInput=def(body,"preInputJson","{}"),expected=def(body,"expectedResult","PASSED").trim().toUpperCase(Locale.ROOT),expectedState=str(body,"expectedState");
+        validateJsonObject(preInput,"preInputJson");
+        if(!Set.of("PASSED","BLOCKED").contains(expected))throw new IllegalArgumentException("expectedResult must be PASSED or BLOCKED");
+        Integer bindingCount=jdbc.queryForObject("select count(*) from framework_process_step_screen_binding where screen_resource_id=? and process_code=? and step_code=? and binding_status='ACTIVE'",Integer.class,screenId,process,step);
+        if(bindingCount==null||bindingCount==0)throw new IllegalArgumentException("SCREEN_PROCESS_BINDING_NOT_FOUND");
+        Long id=jdbc.queryForObject("insert into framework_screen_workflow_test_case(screen_resource_id,process_code,step_code,case_name,pre_input_json,expected_result,expected_state,created_by,updated_by) values(?,?,?,?,?::jsonb,?,nullif(?,''),?,?) on conflict(screen_resource_id,process_code,step_code,case_name) do update set pre_input_json=excluded.pre_input_json,expected_result=excluded.expected_result,expected_state=excluded.expected_state,active=true,updated_by=excluded.updated_by,updated_at=current_timestamp returning test_case_id",Long.class,screenId,process,step,name,preInput,expected,expectedState,actor,actor);
+        return Map.of("success",true,"testCaseId",id,"caseName",name,"processCode",process,"stepCode",step,"screenResourceId",screenId);
     }
 
     private void addScreenCheck(List<Map<String,Object>> checks,String code,String name,boolean passed,String evidence){
