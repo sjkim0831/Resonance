@@ -328,7 +328,7 @@ ensure_ingress_https_port() {
 ensure_runtime_preview_https() {
   local preview_host preview_tls_dir
   preview_host="${RESONANCE_PREVIEW_HOST:-resonance.172.16.1.232.nip.io}"
-  preview_tls_dir="${RESONANCE_PREVIEW_TLS_DIR:-/opt/resonance-data/pki/resonance-runtime-preview}"
+  preview_tls_dir="${RESONANCE_PREVIEW_TLS_DIR:-$HOME/.config/resonance/runtime-preview-tls}"
   mkdir -p "$preview_tls_dir"
   chmod 700 "$preview_tls_dir"
   if [[ ! -s "$preview_tls_dir/tls.crt" ||
