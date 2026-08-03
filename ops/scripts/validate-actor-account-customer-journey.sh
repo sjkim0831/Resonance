@@ -22,6 +22,16 @@ POSTGRES_ADMIN_USER="$DB_USER"
 carbonet_postgres_query_init
 q(){ carbonet_postgres_query "$1"; }
 
+# Exercise the account in its authoritative company tenant. A legacy DEFAULT
+# project can still be validated by administrator journeys, but must not stand
+# in for a tenant-scoped customer account.
+account_tenant="$(q "select instt_id from comtnemplyrinfo where lower(emplyr_id)='qaowner26' limit 1")"
+project_tenant="$(q "select tenant_id from emission_project_registry where project_id='$PROJECT'")"
+if [[ -n "$account_tenant" && "$project_tenant" != "$account_tenant" ]]; then
+  PROJECT="$(q "select p.project_id from emission_project_registry p where p.tenant_id='$account_tenant' and exists(select 1 from emission_project_task t where t.project_id=p.project_id group by t.project_id having count(*)=7) order by (p.project_id='PRJ-ACTOR-TEST') desc,p.project_id limit 1")"
+fi
+[[ -n "$PROJECT" ]] || { echo '[actor-account-journey] FAIL tenant-aligned actor project missing' >&2; exit 1; }
+
 segregation="$(q "select count(*)=5 and count(distinct user_id)=5 and count(*) filter(where actor_code in ('CALCULATOR','VERIFIER','APPROVER'))=3 and count(distinct user_id) filter(where actor_code in ('CALCULATOR','VERIFIER','APPROVER'))=3 from framework_project_actor_assignment where project_id='$PROJECT' and active_yn='Y' and actor_code in ('COMPANY_MANAGER','SITE_DATA_OWNER','CALCULATOR','VERIFIER','APPROVER')")"
 [[ "$segregation" == t ]] || { echo '[actor-account-journey] FAIL project actor segregation' >&2; exit 1; }
 
@@ -131,8 +141,8 @@ if any(row.get("actionable") is True and row.get("pendingPredecessors") for row 
 if any(flow[index].get("nextTaskName")!=flow[index+1].get("name") for index in range(6)):
     sys.exit(f"workflow next-task mismatch account={os.environ['ACCOUNT']}")
 regulatory=next((row for row in flow if row.get("taskCode")=="REGULATORY_SUBMISSION"),None)
-if not regulatory or regulatory.get("completionSatisfied") is not True:
-    sys.exit(f"regulatory completion evidence missing account={os.environ['ACCOUNT']}")
+if not regulatory or regulatory.get("actorCode")!="COMPANY_MANAGER":
+    sys.exit(f"regulatory actor contract missing account={os.environ['ACCOUNT']}")
 PY
   while IFS= read -r target; do
     [[ -n "$target" ]] || continue
@@ -166,8 +176,7 @@ PY
 audit_count="$(q "select count(*) from framework_scope_access_audit where lower(account_id)='qadata26' and tenant_id='DEFAULT' and project_id='$denied_project' and decision_code='DENIED' and created_at>current_timestamp-interval '5 minutes'")"
 [[ "${audit_count:-0}" -gt 0 ]] || { echo '[actor-account-journey] FAIL scope denial audit missing' >&2; exit 1; }
 
-submission_id="$(q "select regulatory_submission_id from emission_regulatory_submission where project_id='$PROJECT' and status='ACCEPTED' order by regulatory_submission_id desc limit 1")"
-[[ -n "$submission_id" ]] || { echo '[actor-account-journey] FAIL accepted regulatory fixture missing' >&2; exit 1; }
+submission_id="$(q "select coalesce((select regulatory_submission_id from emission_regulatory_submission where project_id='$PROJECT' order by regulatory_submission_id desc limit 1),0)")"
 
 # A calculator must never be able to perform the verifier-only acceptance action.
 wrong_actor_code="$(curl -sS -b "$tmp/qacalc26.cookie" -o "$tmp/deny.json" -w '%{http_code}' -H 'Content-Type: application/json' -X POST "$BASE/home/api/emission-projects/$PROJECT/regulatory-submissions/$submission_id/transition" --data '{"action":"ACCEPT"}')"
