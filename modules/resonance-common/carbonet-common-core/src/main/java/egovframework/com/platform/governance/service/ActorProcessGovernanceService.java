@@ -308,6 +308,7 @@ public class ActorProcessGovernanceService {
         out.put("artifacts", dashboardDataset("artifacts"));
         out.put("developmentJobs", dashboardDataset("developmentJobs"));
         out.put("processExecutions", dashboardDataset("processExecutions"));
+        out.put("processClosing", processClosingStatus());
         out.put("deliveryBlueprints",jdbc.queryForList("select blueprint_code as \"blueprintCode\",blueprint_name as \"blueprintName\",blueprint_version as \"blueprintVersion\",domain_code as \"domainCode\",blueprint_status as \"blueprintStatus\",specification_hash as \"specificationHash\",specification::text as specification,approved_by as \"approvedBy\",approved_at as \"approvedAt\",updated_at as \"updatedAt\" from framework_project_delivery_blueprint order by updated_at desc"));
         out.put("deliveryReleases",jdbc.queryForList("select release_id as \"releaseId\",release_code as \"releaseCode\",blueprint_code as \"blueprintCode\",blueprint_version as \"blueprintVersion\",tenant_id as \"tenantId\",project_id as \"projectId\",release_status as \"releaseStatus\",validation_result::text as \"validationResult\",generation_result::text as \"generationResult\",requested_by as \"requestedBy\",created_at as \"createdAt\",promoted_at as \"promotedAt\" from framework_project_delivery_release order by created_at desc limit 100"));
         out.put("deliveryProjects",jdbc.queryForList("select project_id as \"projectId\",tenant_id as \"tenantId\",project_name as \"projectName\",project_status as \"projectStatus\" from emission_project_registry where project_status<>'DELETED' order by created_at desc limit 200"));
@@ -315,6 +316,66 @@ public class ActorProcessGovernanceService {
                 "readyCount",jdbc.queryForObject("select count(*) from framework_process_definition where process_status='DEVELOPMENT_READY'",Long.class),
                 "readinessPercent",jdbc.queryForObject("select case when count(*)=0 then 0 else round(100.0*count(*) filter(where process_status='DEVELOPMENT_READY')/count(*),1) end from framework_process_definition",BigDecimal.class)));
         return out;
+    }
+
+    /**
+     * Separates process-design closure from implementation completion.
+     * A process is design-closed only when its actor, state, business rule,
+     * input/output, route, API, evidence, sequence and five safety-test
+     * contracts have no blocker. Implementation evidence is reported as a
+     * separate downstream gate and can never make an incomplete design look
+     * closed.
+     */
+    public Map<String,Object> processClosingStatus() {
+        List<Map<String,Object>> rows=jdbc.queryForList("""
+            select process_code as "processCode",process_name as "processName",
+                   domain_code as "domainCode",step_count as "stepCount",
+                   design_blocker_count as "designBlockerCount",
+                   approved_safety_test_type_count as "approvedSafetyTestTypeCount",
+                   missing_actor_binding_count+unknown_actor_count as "actorGaps",
+                   incomplete_transition_count+unreachable_next_state_count as "stateGaps",
+                   incomplete_business_rule_count as "businessRuleGaps",
+                   incomplete_data_contract_count as "dataContractGaps",
+                   missing_user_route_count+missing_admin_route_count as "routeGaps",
+                   missing_user_screen_contract_count+missing_admin_screen_contract_count as "screenContractGaps",
+                   missing_api_contract_count as "apiContractGaps",
+                   missing_evidence_contract_count as "evidenceGaps",
+                   missing_sequence_count as "sequenceGaps",
+                   required_job_count as "requiredJobs",verified_job_count as "verifiedJobs",
+                   definition_locked as "implementationSourceLocked",
+                   case
+                     when design_blocker_count=0 and approved_safety_test_type_count=5 then 'PROCESS_DESIGN_CLOSED'
+                     when design_blocker_count=0 then 'SAFETY_REVIEW_REQUIRED'
+                     else 'PROCESS_DESIGN_BLOCKED'
+                   end as "closingStatus",
+                   case
+                     when design_blocker_count=0 and approved_safety_test_type_count=5 then 'SCREEN_DESIGN_CLOSING'
+                     else coalesce(nullif(next_action,''),'PROCESS_DESIGN_REPAIR')
+                   end as "nextAction"
+              from framework_process_design_assurance_matrix
+             order by case when design_blocker_count=0 and approved_safety_test_type_count=5 then 1 else 0 end,
+                      design_blocker_count desc,process_code
+            """);
+        Map<String,Object> summary=jdbc.queryForMap("""
+            select count(*) as "totalProcesses",coalesce(sum(step_count),0) as "totalSteps",
+                   count(*) filter(where design_blocker_count=0 and approved_safety_test_type_count=5) as "closedProcesses",
+                   count(*) filter(where design_blocker_count=0 and approved_safety_test_type_count<5) as "reviewRequiredProcesses",
+                   count(*) filter(where design_blocker_count>0) as "blockedProcesses",
+                   coalesce(sum(design_blocker_count),0) as "structuralBlockers",
+                   coalesce(sum(missing_user_route_count+missing_admin_route_count),0) as "missingRoutes",
+                   count(*) filter(where assurance_status='IMPLEMENTATION_VERIFIED') as "implementationClosedProcesses"
+              from framework_process_design_assurance_matrix
+            """);
+        return Map.of("summary",summary,"rows",rows,"evaluatedAt",java.time.Instant.now().toString());
+    }
+
+    @Transactional
+    public Map<String,Object> auditProcessClosing(String actor) {
+        jdbc.queryForMap("select * from framework_audit_all_process_designs(?)",actor);
+        Map<String,Object> result=new LinkedHashMap<>(processClosingStatus());
+        result.put("success",true);
+        result.put("auditedBy",actor);
+        return result;
     }
 
     @Transactional

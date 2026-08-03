@@ -12,10 +12,11 @@ import { CustomerWorkDevelopmentDashboard } from "./CustomerWorkDevelopmentDashb
 import { IntegratedWorkOperationsMap } from "./IntegratedWorkOperationsMap";
 import { ProcessArchetypeCatalog } from "./ProcessArchetypeCatalog";
 import { ProjectDeliveryBlueprintPanel } from "./ProjectDeliveryBlueprintPanel";
+import { ProcessClosingPanel } from "./ProcessClosingPanel";
 
 type Row = Record<string, unknown>;
 type Payload = { deliveryQueue?:Row[]; deliverySummary?:Row; workTypes?:Row[]; actors: Row[]; assignments: Row[]; actorAccountReadiness?:Row[]; processes: Row[]; steps: Row[]; cases: Row[]; runs: Row[]; artifacts:Row[]; developmentRules:Row[]; developmentJobs:Row[]; developmentEvents:Row[]; jobDependencies:Row[]; qualityGates:Row[]; qualityGateResults:Row[]; processDevelopmentProgress:Row[]; screenTypes:Row[]; referenceAssets:Row[]; automationMetrics:Row[]; screenDevelopmentGates:Row[]; processExecutions:Row[]; processExecutionEvents:Row[]; commonFeaturePackages?:Row[]; screenFeatureBindings?:Row[]; featureInstallations?:Row[]; designValidationRuns?:Row[]; screenBlueprints?:Row[]; generationBatches?:Row[]; professionalReadiness?:Row[]; professionalSummary?:Row; professionalScreenContracts?:Row[]; professionalScreenSummary?:Row; pageDesigns?:Row[]; pageDesignSummary?:Row; professionalFactoryRuns?:Row[]; screenAssetAssemblies?:Row[]; projectRegistrationCoverage?:Row[]; projectRegistrationSummary?:Row; customerJourneyGaps?:Row[]; customerJourneySummary?:Row; actorProcessMenus?:Row[]; actorProcessMenuSummary?:Row; processArchetypes?:Row[]; screenArchetypeBindings?:Row[]; backendProcessReadiness?:Row[]; projectCompletionRuns?:Row[]; referenceSummary?:Row; summary?: Row };
-type AssurancePayload={designAssurance?:Row[];designAssuranceSummary?:Row};
+type AssurancePayload={designAssurance?:Row[];designAssuranceSummary?:Row;processClosing?:Row};
 type DeliveryPayload={deliveryBlueprints?:Row[];deliveryReleases?:Row[];deliveryProjects?:Row[];designSelfHealingRuns?:Row[]};
 type DesignInventory={counts:Row;themes:Row[];sections:Row[];components:Row[];mappings:Row[];duplicates:Row[];recentPreflights:Row[]};
 const empty: Payload = { workTypes:[], actors: [], assignments: [], processes: [], steps: [], cases: [], runs: [], artifacts:[], developmentRules:[], developmentJobs:[], developmentEvents:[], jobDependencies:[], qualityGates:[], qualityGateResults:[], processDevelopmentProgress:[], screenTypes:[], referenceAssets:[], automationMetrics:[], screenDevelopmentGates:[], processExecutions:[], processExecutionEvents:[] };
@@ -36,7 +37,7 @@ const WORKSPACES:WorkspaceDefinition[] = [
     {id:"menu-bindings",label:"액터·프로세스 메뉴"},{id:"screen-space",label:"가상 화면 공간"},{id:"references",label:"레퍼런스 자동설계"},{id:"generation",label:"대량 화면 생성"}
   ]},
   { id:"verify", label:"검증", description:"설계 정확성, 고객 여정, 디자인과 정상·예외·권한·격리·복구 시나리오를 검증합니다.", tabs:[
-    {id:"design-assurance",label:"설계 정확성"},{id:"customer-journey",label:"고객 여정 자동검사"},{id:"design",label:"디자인 사전검사"},
+    {id:"process-closing",label:"프로세스 Closing"},{id:"design-assurance",label:"설계 정확성"},{id:"customer-journey",label:"고객 여정 자동검사"},{id:"design",label:"디자인 사전검사"},
     {id:"rules",label:"개발 규칙"},{id:"simulation",label:"시나리오·실행"}
   ]},
   { id:"delivery", label:"개발·배포", description:"설계에서 생성된 개발 작업의 의존성, 산출물, 품질 게이트, 재시도와 완료 상태를 추적합니다.", tabs:[
@@ -177,6 +178,7 @@ export function ActorProcessGovernancePage() {
       {tab === "work-dashboard" && <IntegratedWorkOperationsMap actors={data.actors} artifacts={data.artifacts} base={base} cases={data.cases} executions={data.processExecutions} jobs={data.developmentJobs} onOpen={setTab} onProcessChange={setProcessFilter} processCode={processFilter} processes={data.processes} runs={data.runs} steps={data.steps} />}
       {tab === "work-completion" && <CustomerWorkDevelopmentDashboard actors={data.actors} actorReadiness={data.actorAccountReadiness ?? []} artifacts={data.artifacts} assignments={data.assignments} backendReadiness={data.backendProcessReadiness ?? []} busy={busy} cases={data.cases} completionRuns={data.projectCompletionRuns ?? []} deliveryQueue={data.deliveryQueue ?? []} dependencies={data.jobDependencies} jobs={data.developmentJobs} journeyGaps={data.customerJourneyGaps ?? []} onPost={post} processes={data.processes} progress={data.processDevelopmentProgress} runs={data.runs} screenContracts={data.professionalScreenContracts ?? []} steps={data.steps} />}
       {tab === "delivery" && <DeliveryControlPanel rows={data.deliveryQueue ?? []} summary={data.deliverySummary ?? {}} onSelect={code=>{setProcessFilter(code);setTab("automation")}} />}
+      {tab === "process-closing" && <ProcessClosingPanel busy={busy} payload={data.processClosing} onAudit={()=>void post("process-closing/audit",{})} />}
       {tab === "design-assurance" && <>
         <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">{[[en?"Processes":"전체 프로세스","processCount"],[en?"Verified":"구현 검증","verifiedCount"],[en?"Blocked":"설계 차단","blockedCount"],[en?"Pending":"구현 대기","pendingCount"],[en?"Average score":"평균 정확도","averageAccuracyScore"]].map(([label,key])=><div className="rounded-xl border bg-white p-4" key={key}><span className="text-xs font-bold text-slate-500">{label}</span><strong className="mt-1 block text-2xl text-[#052b57]">{value(data.designAssuranceSummary??{},key)}{key==="averageAccuracyScore"?"%":""}</strong></div>)}</section>
         <section className="rounded-2xl border border-blue-200 bg-blue-50 p-5"><h3 className="font-black text-[#052b57]">{en?"Executable design contract":"실행 가능한 설계 계약"}</h3><p className="mt-2 text-sm leading-6 text-slate-700">{en?"A process is not implementation-ready until actor authority, state transitions, input/output data, screens, APIs, five safety scenarios, and development evidence all agree.":"액터 권한, 상태 전이, 입출력 데이터, 화면, API, 정상·예외·권한·격리·복구 테스트와 개발 증적이 모두 일치해야 구현 완료로 판정합니다."}</p></section>
