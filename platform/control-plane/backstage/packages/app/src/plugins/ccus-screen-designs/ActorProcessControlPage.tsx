@@ -826,9 +826,12 @@ function WorkOperationsMap({
       ['프로세스', selectedProcess?.processName, processCode],
       ['단계', activeStep?.stepName, activeStep?.stepCode],
       ['담당 액터', stepActor?.actorName, activeStep?.actorCode],
+      ['실행 기능', activeStep?.commandCode, '업무 명령'],
       [
         '상태 전이',
-        activeStep?.transitionRule ?? activeStep?.completionRule,
+        `${displayValue(activeStep?.fromState)} → ${displayValue(
+          activeStep?.toState,
+        )}`,
         activeStep?.automationStatus ?? activeExecution?.executionStatus,
       ],
     ],
@@ -836,13 +839,28 @@ function WorkOperationsMap({
       ['입력 계약', activeStep?.inputContract, '필수 입력'],
       ['출력 계약', activeStep?.outputContract, '다음 단계 전달'],
       ['완료 조건', activeStep?.completionRule, '상태 전이 기준'],
-      ['예외 규칙', activeStep?.exceptionRule, '실패·복구'],
+      [
+        '필수 증적',
+        activeStep?.evidenceTypes ?? activeStep?.evidenceRequired,
+        '완료 증거',
+      ],
+      [
+        '판정·분기 규칙',
+        activeStep?.decisionRule ?? activeStep?.exceptionRule,
+        '정상·보완·반려',
+      ],
+      ['복구 명령', activeStep?.rollbackCommandCode, '실패·재처리'],
     ],
-    screen: artifacts.map(row => [
-      row.artifactType,
-      row.artifactName,
-      row.targetPath ?? row.contractRef,
-    ]),
+    screen: [
+      ['사용자 화면', activeStep?.userPath, activeStep?.requiresUserPage],
+      ['관리자 화면', activeStep?.adminPath, activeStep?.requiresAdminPage],
+      ['API 계약', activeStep?.apiContract, activeStep?.requiresApi],
+      ...artifacts.map(row => [
+        row.artifactType,
+        row.artifactName,
+        row.targetPath ?? row.contractRef,
+      ]),
+    ],
     test: cases.map(row => [
       row.caseType,
       row.caseName,
@@ -2062,9 +2080,15 @@ function WorkOperationsMap({
             </Button>
             <Button
               variant="outlined"
+              onClick={() => onOpenTab('screen-workflow-tests')}
+            >
+              기능·항목·화면 테스트
+            </Button>
+            <Button
+              variant="outlined"
               onClick={() => onOpenTab('test-scenarios')}
             >
-              테스트 실행
+              시나리오 검토
             </Button>
             <Button
               variant="contained"
