@@ -20,7 +20,7 @@ source "$ROOT/ops/scripts/lib/carbonet-postgres-query.sh"
 carbonet_postgres_query_init
 psqlq(){ carbonet_postgres_query "$1"; }
 
-project_id="$(psqlq "select project.project_id from emission_project_registry project join framework_project_actor_assignment actor on actor.project_id=project.project_id where project.project_status<>'DELETED' group by project.project_id,project.created_at having count(distinct actor.actor_code)>=5 order by project.created_at desc limit 1")"
+project_id="$(psqlq "select project.project_id from emission_project_registry project join framework_project_actor_assignment actor on actor.project_id=project.project_id where project.project_status<>'DELETED' and exists(select 1 from framework_account_actor_assignment aa where aa.account_id='$LOGIN_USER' and aa.tenant_id=project.tenant_id and aa.assignment_status='ACTIVE' and (aa.project_id='*' or aa.project_id=project.project_id)) group by project.project_id,project.created_at having count(distinct actor.actor_code)>=5 order by project.created_at desc limit 1")"
 [[ -n "$project_id" ]] || { echo "[activity-runtime] FAIL no testable emission project" >&2; exit 1; }
 activity_id="$(psqlq "select activity_id from emission_activity_data where project_id='$project_id' order by activity_id limit 1")"
 
