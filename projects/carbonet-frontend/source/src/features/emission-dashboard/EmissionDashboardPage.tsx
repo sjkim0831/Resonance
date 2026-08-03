@@ -49,6 +49,22 @@ type ProcessGuideStep = {
   userPath?: string;
 };
 type ProcessGuidePayload = { processCatalogSteps?: ProcessGuideStep[] };
+type ReportRow = {
+  id: number;
+  version?: number;
+  title?: string;
+  language?: string;
+  status?: string;
+  createdAt?: string;
+  finalizedAt?: string;
+  certificateId?: string;
+  issuedAt?: string;
+  downloadCount?: number;
+};
+type ReportWorkflowPayload = {
+  approved?: { totalEmission?: number; lockedAt?: string } | null;
+  reports?: ReportRow[];
+};
 
 const STEPS = [
   { code: "EMISSION_PROJECT_SETUP", ko: "프로젝트 설정", en: "Setup", href: "/emission/project/create", icon: "tune" },
@@ -145,6 +161,8 @@ export function EmissionDashboardPage() {
   const [projects, setProjects] = useState<ProjectRow[]>([]);
   const [sites, setSites] = useState<string[]>([]);
   const [processGuideSteps, setProcessGuideSteps] = useState<ProcessGuideStep[]>([]);
+  const [reportWorkflow, setReportWorkflow] = useState<ReportWorkflowPayload>({});
+  const [reportLoading, setReportLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
   const [projectFilter, setProjectFilter] = useState("ALL");
@@ -216,6 +234,33 @@ export function EmissionDashboardPage() {
     });
   }, [processGuideSteps]);
   const currentStepIndex = selected ? Math.max(0, workflowSteps.findIndex((step) => step.code === projectStep(selected))) : -1;
+  const workflowContractAligned =
+    workflowSteps.length === STEPS.length &&
+    STEPS.every((step, index) => workflowSteps[index]?.code === step.code);
+
+  useEffect(() => {
+    if (!payload.isLoggedIn || !selectedId) {
+      setReportWorkflow({});
+      return;
+    }
+    let cancelled = false;
+    setReportLoading(true);
+    void fetchJson<ReportWorkflowPayload>(
+      `/home/api/emission-projects/${encodeURIComponent(selectedId)}/reports`,
+    )
+      .then((value) => {
+        if (!cancelled) setReportWorkflow(value || {});
+      })
+      .catch(() => {
+        if (!cancelled) setReportWorkflow({});
+      })
+      .finally(() => {
+        if (!cancelled) setReportLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [payload.isLoggedIn, selectedId]);
 
   const synchronizeTaskGuide = (stepCode: string, openOverview = false) => {
     localStorage.setItem("task-quest-catalog-process", "EMISSION_PROJECT");
@@ -265,6 +310,9 @@ export function EmissionDashboardPage() {
   const overdue = filtered.filter((p) => p.dueDate && new Date(p.dueDate).getTime() < Date.now() && !["COMPLETED", "CLOSED"].includes(text(p.status || p.projectStatus, ""))).length;
   const averageQuality = filtered.length ? filtered.map((p) => number(p.qualityScore)).filter((v): v is number => v !== null) : [];
   const quality = averageQuality.length ? averageQuality.reduce((a, b) => a + b, 0) / averageQuality.length : null;
+  const reports = reportWorkflow.reports || [];
+  const finalizedReports = reports.filter((report) => report.status === "FINALIZED");
+  const issuedCertificates = reports.filter((report) => Boolean(report.certificateId));
 
   useEffect(() => {
     logGovernanceScope("PAGE", "emission-dashboard", { projectCount: projects.length, filteredCount: filtered.length, currentStep: selected ? projectStep(selected) : null, realData: true });
@@ -314,9 +362,9 @@ export function EmissionDashboardPage() {
           <section className="emission-kpi-grid mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-6">
             {[
               { label: labels.total, value: hasEmission ? nf.format(totalEmission) : "—", unit: "tCO₂e", icon: "cloud", tone: "bg-blue-50 text-blue-800" },
-              { label: "Scope 1", value: hasScope[0] ? nf.format(scopeValues[0]) : "—", unit: "tCO₂e", icon: "factory", tone: "bg-orange-50 text-orange-800" },
-              { label: "Scope 2", value: hasScope[1] ? nf.format(scopeValues[1]) : "—", unit: "tCO₂e", icon: "bolt", tone: "bg-amber-50 text-amber-800" },
-              { label: "Scope 3", value: hasScope[2] ? nf.format(scopeValues[2]) : "—", unit: "tCO₂e", icon: "local_shipping", tone: "bg-cyan-50 text-cyan-800" },
+              { label: en ? "Calculation result" : "산정 결과", value: reportWorkflow.approved?.totalEmission === undefined ? "—" : nf.format(Number(reportWorkflow.approved.totalEmission)), unit: "tCO₂e", icon: "calculate", tone: "bg-orange-50 text-orange-800" },
+              { label: en ? "Reports" : "보고서", value: reportLoading ? "…" : String(reports.length), unit: en ? "items" : "건", icon: "description", tone: "bg-amber-50 text-amber-800" },
+              { label: en ? "Issued certificates" : "발급 인증서", value: reportLoading ? "…" : String(issuedCertificates.length), unit: en ? "items" : "건", icon: "verified", tone: "bg-cyan-50 text-cyan-800" },
               { label: labels.projectCount, value: String(filtered.length), unit: overdue ? `${labels.overdue} ${overdue}` : "", icon: "folder_open", tone: "bg-emerald-50 text-emerald-800" },
               { label: labels.quality, value: quality === null ? "—" : `${nf.format(quality)}%`, unit: quality === null ? labels.noData : "", icon: "verified", tone: "bg-indigo-50 text-indigo-800" }
             ].map((card) => <article className="dashboard-card group relative overflow-hidden p-5 transition duration-200 hover:-translate-y-0.5 hover:border-blue-200 hover:shadow-[0_10px_28px_rgba(15,48,87,.09)]" key={card.label}><div className="absolute right-0 top-0 h-20 w-20 translate-x-8 -translate-y-8 rounded-full bg-slate-50 transition group-hover:bg-blue-50" aria-hidden="true" /><div className={`relative flex h-10 w-10 items-center justify-center rounded-xl ${card.tone}`}><span className="material-symbols-outlined text-[21px]">{card.icon}</span></div><p className="relative mt-4 text-xs font-bold text-slate-500">{card.label}</p><p className="relative mt-1 flex min-h-9 flex-wrap items-baseline gap-x-1.5 text-2xl font-black tracking-[-.025em] text-slate-950"><span>{card.value}</span><span className="text-[11px] font-bold tracking-normal text-slate-500">{card.unit}</span></p></article>)}
@@ -325,7 +373,34 @@ export function EmissionDashboardPage() {
           {loading ? <section className="dashboard-card mt-6 p-12 text-center text-sm font-bold text-slate-500"><span className="material-symbols-outlined animate-spin align-middle">progress_activity</span> {en ? "Loading data" : "실제 데이터를 불러오는 중입니다."}</section> : loadError ? <section className="dashboard-card mt-6 border-red-200 p-8 text-center"><p className="font-bold text-red-700">{en ? "Failed to load emission data." : "배출량 데이터를 불러오지 못했습니다."}</p><button className="mt-4 rounded-lg bg-[var(--kr-gov-blue)] px-4 py-2 font-bold text-white" onClick={() => void loadProjects()} type="button">{labels.retry}</button></section> : projects.length === 0 ? <section className="emission-empty-state dashboard-card mt-6 p-10 text-center lg:p-14"><span className="material-symbols-outlined text-6xl text-blue-200">inventory</span><h2 className="mt-4 text-xl font-black text-slate-900">{labels.empty}</h2><p className="mx-auto mt-2 max-w-2xl text-sm leading-6 text-slate-600">{labels.emptyDesc}</p><a className="mt-6 inline-flex items-center gap-2 rounded-lg bg-[var(--kr-gov-blue)] px-5 py-3 font-black text-white" href={buildLocalizedPath("/emission/project/create", "/en/emission/project/create")}><span className="material-symbols-outlined text-[18px]">add</span>{labels.create}</a></section> : <>
             <section className="dashboard-card mt-6 p-5 lg:p-6"><div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div><p className="text-xs font-bold text-[var(--kr-gov-blue)]">{selected ? projectName(selected) : ""}</p><h2 className="mt-1 text-xl font-black text-slate-950">{labels.workflow}</h2></div>{selected && currentStepIndex >= 0 ? <a className="inline-flex items-center justify-center gap-2 rounded-lg bg-[var(--kr-gov-blue)] px-4 py-3 text-sm font-black text-white" href={withProject(workflowSteps[currentStepIndex].href, selectedId)} onClick={() => synchronizeTaskGuide(workflowSteps[currentStepIndex].code)}>{labels.next}<span className="material-symbols-outlined text-[18px]">arrow_forward</span></a> : null}</div><div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-7">{workflowSteps.map((step, index) => { const state = index < currentStepIndex ? "done" : index === currentStepIndex ? "current" : "pending"; return <a className={`relative rounded-xl border p-4 transition hover:-translate-y-0.5 ${state === "done" ? "border-emerald-200 bg-emerald-50" : state === "current" ? "border-blue-500 bg-blue-50 ring-2 ring-blue-100" : "border-slate-200 bg-white"}`} href={withProject(step.href, selectedId)} key={step.code} onClick={() => synchronizeTaskGuide(step.code)}><span className={`material-symbols-outlined ${state === "done" ? "text-emerald-600" : state === "current" ? "text-blue-700" : "text-slate-400"}`}>{state === "done" ? "check_circle" : step.icon}</span><p className="mt-3 text-[11px] font-bold text-slate-400">STEP {index + 1}</p><p className="mt-1 text-sm font-black text-slate-800">{en ? step.en : step.ko}</p>{step.actorCode ? <p className="mt-2 truncate text-[11px] font-bold text-slate-500">{step.actorCode}</p> : null}</a>; })}</div></section>
 
-            <section className="mt-6 grid gap-6 xl:grid-cols-[1.45fr_.75fr_.8fr]">
+            <section className="mt-6 grid gap-6 xl:grid-cols-[1.35fr_.65fr_.8fr]">
+              <article className="dashboard-card overflow-hidden">
+                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-5 py-4 lg:px-6">
+                  <div>
+                    <p className="text-xs font-bold text-[var(--kr-gov-blue)]">{selected ? projectName(selected) : ""}</p>
+                    <h2 className="mt-1 text-lg font-black">{en ? "Recent reports" : "최근 보고서"}</h2>
+                    <p className={`mt-1 text-xs font-black ${workflowContractAligned ? "text-emerald-700" : "text-red-700"}`}>{workflowContractAligned ? (en ? "Dashboard and full workflow share the same 7-step contract." : "화면 STEP 1~7과 전체 업무 보기의 7단계 계약이 일치합니다.") : (en ? "The workflow contract requires review." : "화면과 전체 업무 보기의 프로세스 계약 점검이 필요합니다.")}</p>
+                  </div>
+                  <a className="inline-flex min-h-10 items-center gap-1 rounded-lg border border-slate-300 px-3 text-sm font-black text-blue-800 hover:bg-blue-50" href={withProject("/emission/report_submit", selectedId)}>
+                    {en ? "Manage reports" : "보고서 관리"}<span className="material-symbols-outlined text-[17px]">arrow_forward</span>
+                  </a>
+                </div>
+                {reportLoading ? <p className="p-6 text-sm font-bold text-slate-500">{en ? "Loading reports…" : "보고서를 불러오는 중입니다."}</p> : reports.length ? <div className="divide-y divide-slate-100">{reports.slice(0, 5).map((report) => <a className="grid gap-2 px-5 py-4 transition hover:bg-blue-50 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center lg:px-6" href={withProject("/emission/report_submit", selectedId)} key={report.id}><div className="min-w-0"><strong className="block truncate text-sm text-slate-900">{report.title || `${en ? "Emission report" : "배출량 보고서"} V${report.version || 1}`}</strong><span className="mt-1 block text-xs text-slate-500">V{report.version || 1} · {report.language || "ko"} · {report.createdAt ? String(report.createdAt).slice(0, 10) : "—"}</span></div><div className="flex flex-wrap items-center gap-2"><span className={`rounded-full px-2.5 py-1 text-xs font-black ${report.status === "FINALIZED" ? "bg-emerald-50 text-emerald-800" : "bg-amber-50 text-amber-800"}`}>{report.status === "FINALIZED" ? (en ? "Finalized" : "확정") : (en ? "Draft" : "작성 중")}</span>{report.certificateId ? <span className="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-black text-blue-800">{en ? "Certificate issued" : "인증서 발급"}</span> : null}</div></a>)}</div> : <div className="p-7 text-center"><span className="material-symbols-outlined text-4xl text-slate-300">description</span><p className="mt-2 text-sm font-bold text-slate-600">{en ? "No report has been created for this project." : "선택한 프로젝트에 생성된 보고서가 없습니다."}</p><a className="mt-4 inline-flex rounded-lg bg-[var(--kr-gov-blue)] px-4 py-2.5 text-sm font-black text-white" href={withProject("/emission/report_submit", selectedId)}>{en ? "Open report workflow" : "보고서 업무 열기"}</a></div>}
+              </article>
+              <article className="dashboard-card p-5 lg:p-6">
+                <h2 className="text-lg font-black">{en ? "Report and certificate status" : "보고·인증 현황"}</h2>
+                <div className="mt-5 space-y-3">{[
+                  [en ? "All reports" : "전체 보고서", reports.length, "description", "bg-slate-100 text-slate-700"],
+                  [en ? "Finalized" : "확정 보고서", finalizedReports.length, "task_alt", "bg-emerald-50 text-emerald-800"],
+                  [en ? "Certificates" : "발급 인증서", issuedCertificates.length, "verified", "bg-blue-50 text-blue-800"],
+                  [en ? "Downloads" : "다운로드", reports.reduce((sum, report) => sum + Number(report.downloadCount || 0), 0), "download", "bg-violet-50 text-violet-800"],
+                ].map(([label, value, icon, tone]) => <div className="flex items-center gap-3 rounded-xl border border-slate-100 p-3" key={String(label)}><span className={`material-symbols-outlined flex h-9 w-9 items-center justify-center rounded-lg text-[19px] ${tone}`}>{icon}</span><span className="min-w-0 flex-1 text-sm font-bold text-slate-600">{label}</span><strong className="text-lg text-slate-950">{value}</strong></div>)}</div>
+                <a className="mt-5 flex min-h-11 items-center justify-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-4 text-sm font-black text-blue-800" href={buildLocalizedPath("/home/certificate-verify", "/en/home/certificate-verify")}>{en ? "Verify certificate" : "인증서 진위 확인"}<span className="material-symbols-outlined text-[18px]">qr_code_scanner</span></a>
+              </article>
+              <article className="dashboard-card p-5 lg:p-6"><h2 className="text-lg font-black">{labels.actions}</h2><div className="mt-5 space-y-3">{selected ? workflowSteps.slice(currentStepIndex, currentStepIndex + 3).map((step, i) => <a className="flex items-center gap-3 rounded-xl border border-slate-200 p-4 hover:border-blue-300 hover:bg-blue-50" href={withProject(step.href, selectedId)} key={step.code} onClick={() => synchronizeTaskGuide(step.code)}><span className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-black ${i === 0 ? "bg-blue-700 text-white" : "bg-slate-100 text-slate-600"}`}>{currentStepIndex + i + 1}</span><span className="min-w-0 flex-1"><strong className="block text-sm text-slate-800">{en ? step.en : step.ko}</strong><small className="text-slate-500">{i === 0 ? labels.next : en ? "Upcoming" : "예정 업무"}{step.actorCode ? ` · ${step.actorCode}` : ""}</small></span><span className="material-symbols-outlined text-[18px] text-slate-400">chevron_right</span></a>) : <p className="rounded-xl bg-slate-50 p-5 text-sm text-slate-500">{labels.empty}</p>}</div></article>
+            </section>
+
+            <section className="hidden">
               <article className="dashboard-card p-5 lg:p-6"><div className="flex items-center justify-between"><h2 className="text-lg font-black">{labels.trend}</h2><span className="text-xs font-bold text-slate-400">tCO₂e</span></div><div className="mt-6 flex h-56 items-end gap-2 border-b border-l border-slate-200 px-3 pb-0">{Array.from({ length: 12 }, (_, i) => <div className="flex h-full flex-1 flex-col items-center justify-end gap-2" key={i}><div className="w-full rounded-t bg-blue-100" style={{ height: hasEmission ? `${20 + ((i * 13) % 65)}%` : "2px" }} /><span className="text-[10px] font-bold text-slate-400">{i + 1}</span></div>)}</div><p className="mt-4 text-center text-xs font-bold text-slate-500">{hasEmission ? (en ? "Monthly values connected to calculated project data" : "산정된 프로젝트의 월별 데이터") : labels.noData}</p></article>
               <article className="dashboard-card p-5 lg:p-6"><h2 className="text-lg font-black">{labels.scopeTitle}</h2><div className="mt-7 flex justify-center"><div className="relative flex h-40 w-40 items-center justify-center rounded-full" style={{ background: hasScope.some(Boolean) ? `conic-gradient(#005fde 0 42%, #15a46d 42% 73%, #f59e0b 73%)` : "#eef2f7" }}><div className="flex h-24 w-24 flex-col items-center justify-center rounded-full bg-white"><strong className="text-lg">{hasEmission ? nf.format(totalEmission) : "—"}</strong><span className="text-[10px] text-slate-500">tCO₂e</span></div></div></div><div className="mt-6 space-y-3">{["Scope 1", "Scope 2", "Scope 3"].map((label, i) => <div className="flex items-center justify-between text-xs" key={label}><span className="font-bold text-slate-600"><i className={`mr-2 inline-block h-2.5 w-2.5 rounded-full ${i === 0 ? "bg-blue-600" : i === 1 ? "bg-emerald-500" : "bg-amber-500"}`} />{label}</span><strong>{hasScope[i] ? `${nf.format(scopeValues[i])} tCO₂e` : "—"}</strong></div>)}</div></article>
               <article className="dashboard-card p-5 lg:p-6"><h2 className="text-lg font-black">{labels.actions}</h2><div className="mt-5 space-y-3">{selected ? workflowSteps.slice(currentStepIndex, currentStepIndex + 3).map((step, i) => <a className="flex items-center gap-3 rounded-xl border border-slate-200 p-4 hover:border-blue-300 hover:bg-blue-50" href={withProject(step.href, selectedId)} key={step.code} onClick={() => synchronizeTaskGuide(step.code)}><span className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-black ${i === 0 ? "bg-blue-700 text-white" : "bg-slate-100 text-slate-600"}`}>{currentStepIndex + i + 1}</span><span className="min-w-0 flex-1"><strong className="block text-sm text-slate-800">{en ? step.en : step.ko}</strong><small className="text-slate-500">{i === 0 ? labels.next : en ? "Upcoming" : "예정 업무"}{step.actorCode ? ` · ${step.actorCode}` : ""}</small></span><span className="material-symbols-outlined text-[18px] text-slate-400">chevron_right</span></a>) : <p className="rounded-xl bg-slate-50 p-5 text-sm text-slate-500">{labels.empty}</p>}</div></article>

@@ -1626,6 +1626,44 @@ export function TaskQuestPanel() {
                       </div>
                     </section>
                   ) : null}
+                  {selectedCatalogProcessCode === "EMISSION_PROJECT_PORTFOLIO" ? (
+                    <section className="mb-5 rounded-2xl border border-blue-200 bg-blue-50 p-4 sm:p-5">
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div>
+                          <p className="text-xs font-black uppercase tracking-wide text-blue-700">
+                            {en ? "Connected project workflow" : "프로젝트 선택 후 연결 업무"}
+                          </p>
+                          <h3 className="mt-1 text-lg font-black text-[#052b57]">
+                            {en ? "Carbon emission project · 7 steps" : "탄소배출 프로젝트 수행 · 7단계"}
+                          </h3>
+                          <p className="mt-1 text-sm text-blue-900">
+                            {en
+                              ? "The dashboard selects a project, then the same seven steps shown on the page continue here."
+                              : "배출량 현황에서 프로젝트를 선택하면 화면의 STEP 1~7과 동일한 순서로 업무가 이어집니다."}
+                          </p>
+                        </div>
+                        <button
+                          className="rounded-lg bg-[#246beb] px-4 py-2.5 text-sm font-black text-white"
+                          onClick={() => selectCatalogProcess("EMISSION_PROJECT")}
+                          type="button"
+                        >
+                          {en ? "Open 7-step workflow" : "7단계 프로세스 열기"}
+                        </button>
+                      </div>
+                      <ol className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-7">
+                        {(data?.processCatalogSteps || [])
+                          .filter((step) => step.processCode === "EMISSION_PROJECT")
+                          .sort((left, right) => Number(left.stepOrder) - Number(right.stepOrder))
+                          .map((step) => (
+                            <li className="rounded-xl border border-blue-100 bg-white p-3" key={step.stepCode}>
+                              <span className="text-[11px] font-black text-blue-700">STEP {step.stepOrder}</span>
+                              <strong className="mt-1 block text-sm text-slate-900">{step.stepName}</strong>
+                              <span className="mt-2 block text-[11px] font-bold text-slate-500">{step.actorCode || "-"}</span>
+                            </li>
+                          ))}
+                      </ol>
+                    </section>
+                  ) : null}
                   {data?.processNavigationSummary ? (
                     <section className="mb-5 rounded-2xl border border-blue-200 bg-blue-50 p-4">
                       <div className="flex flex-wrap items-center justify-between gap-3">
