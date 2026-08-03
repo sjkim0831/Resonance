@@ -25,8 +25,7 @@ ON CONFLICT(route_key) DO UPDATE SET
 UPDATE framework_process_step
 SET user_path='/emission/project-portfolio',
     requirement_text='권한 범위의 프로젝트를 위험·단계·사업장·산출물 관점으로 종합 점검하고 목록 또는 다음 실제 업무로 진입한다.',
-    output_contract='{"items":"actor scoped","portfolioMetrics":"derived from scoped items","pipeline":"current step distribution","attention":"risk and review queue","siteSummary":"actor scoped","nextRoute":"project detail or project list"}',
-    updated_at=current_timestamp
+    output_contract='{"items":"actor scoped","portfolioMetrics":"derived from scoped items","pipeline":"current step distribution","attention":"risk and review queue","siteSummary":"actor scoped","nextRoute":"project detail or project list"}'
 WHERE process_code='EMISSION_PROJECT_PORTFOLIO'
   AND step_code='EMISSION_PROJECT_PORTFOLIO_LIST';
 
