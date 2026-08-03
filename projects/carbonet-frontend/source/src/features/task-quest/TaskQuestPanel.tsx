@@ -352,6 +352,7 @@ export function TaskQuestPanel() {
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
   const [flowOpen, setFlowOpen] = useState(false);
+  const [processKeyword, setProcessKeyword] = useState("");
   const [selectedWorkType, setSelectedWorkType] = useState(
     () => localStorage.getItem("task-quest-work-type") || "ALL",
   );
@@ -825,6 +826,27 @@ export function TaskQuestPanel() {
         ),
       }));
   }, [selectedDefinedProcesses]);
+  const visibleProcessWaves = useMemo(() => {
+    const keyword = processKeyword.trim().toLocaleLowerCase();
+    if (!keyword) return selectedProcessWaves;
+    return selectedProcessWaves
+      .map((wave) => ({
+        ...wave,
+        processes: wave.processes.filter((process) =>
+          [
+            process.processName,
+            process.processCode,
+            process.workflowPhase,
+            process.laneCode,
+          ]
+            .filter(Boolean)
+            .join(" ")
+            .toLocaleLowerCase()
+            .includes(keyword),
+        ),
+      }))
+      .filter((wave) => wave.processes.length > 0);
+  }, [processKeyword, selectedProcessWaves]);
   const selectedUnifiedProcess = useMemo(
     () =>
       selectedDefinedProcesses.find(
@@ -1425,80 +1447,114 @@ export function TaskQuestPanel() {
                           {en ? "processes" : "개 프로세스"}
                         </span>
                       </div>
-                      <div className={`mt-4 rounded-xl border px-4 py-3 text-sm ${String(selectedUnifiedProcess?.runtimeState)==="DESIGN_BLOCKED"?"border-red-200 bg-red-50 text-red-800":"border-blue-200 bg-blue-50 text-blue-900"}`}><div className="flex flex-wrap items-center justify-between gap-2"><strong>{runtimeStateLabel(String(selectedUnifiedProcess?.runtimeState||"PROJECT_NOT_SELECTED"),en)}</strong><span className="text-xs font-black">{en?"Design accuracy":"설계 정확도"} {Number(selectedUnifiedProcess?.designAccuracyScore||0)}%</span></div>{selectedUnifiedProcess?.stateReason?<p className="mt-1 text-xs leading-5">{selectedUnifiedProcess.stateReason}</p>:null}</div>
-                      <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
-                        {[
-                          [en ? "Page designs" : "화면 설계", selectedUnifiedProcess?.pageDesignCount || 0],
-                          [en ? "Field contracts" : "컬럼 계약", selectedUnifiedProcess?.fieldCount || 0],
-                          [en ? "DB resolved" : "DB 연결", selectedUnifiedProcess?.dbResolvedFieldCount || 0],
-                          [en ? "Data handoffs" : "데이터 인계", selectedUnifiedProcess?.handoffCount || 0],
-                        ].map(([label, metric]) => <div className="rounded-lg bg-slate-50 px-3 py-2" key={String(label)}><span className="block text-[11px] font-bold text-slate-500">{label}</span><strong className="text-base text-[#052b57]">{metric}</strong></div>)}
+                      <div className="mt-4 flex flex-col gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3 sm:flex-row sm:items-center sm:justify-between">
+                        <label className="relative block min-w-0 flex-1">
+                          <span className="sr-only">
+                            {en ? "Search processes" : "업무 프로세스 검색"}
+                          </span>
+                          <span
+                            aria-hidden="true"
+                            className="material-symbols-outlined pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[20px] text-slate-400"
+                          >
+                            search
+                          </span>
+                          <input
+                            className="h-11 w-full rounded-lg border border-slate-300 bg-white pl-10 pr-10 text-sm outline-none transition focus:border-[#246beb] focus:ring-2 focus:ring-blue-100"
+                            onChange={(event) => setProcessKeyword(event.target.value)}
+                            placeholder={en ? "Search by process name or code" : "프로세스명 또는 코드 검색"}
+                            type="search"
+                            value={processKeyword}
+                          />
+                        </label>
+                        <span className="shrink-0 text-xs font-bold text-slate-600">
+                          {visibleProcessWaves.reduce(
+                            (count, wave) => count + wave.processes.length,
+                            0,
+                          )}
+                          {en ? " results" : "개 업무"}
+                        </span>
                       </div>
-                      <div className="mt-4 overflow-x-auto pb-2">
-                        <ol className="flex min-w-max items-center gap-0">
-                          {selectedProcessWaves.map((wave, waveIndex) => (
-                            <li className="flex items-center" key={`wave-${wave.wave}`}>
-                              <section className="w-64 rounded-2xl border border-slate-200 bg-slate-50 p-3">
-                                <div className="mb-2 flex items-center justify-between gap-2">
-                                  <strong className="text-xs text-[#052b57]">{en ? `Wave ${wave.wave}` : `${wave.wave}차 실행`}</strong>
-                                  <span className={`rounded-full px-2 py-1 text-[11px] font-black ${wave.processes.length > 1 ? "bg-violet-100 text-violet-800" : "bg-slate-200 text-slate-700"}`}>
-                                    {wave.processes.length > 1 ? (en ? `${wave.processes.length} parallel lanes` : `${wave.processes.length}개 병렬 레인`) : (en ? "Sequential" : "순차")}
-                                  </span>
-                                </div>
-                                <div className="space-y-2">
-                                {wave.processes.map((process) => (
-                              <button
-                                className={`flex min-h-32 w-full flex-col rounded-xl border-2 p-3 text-left ${selectedCatalogProcessCode === process.processCode ? "border-[#246beb] bg-blue-50" : "border-slate-200 bg-white"}`}
-                                key={`sequence-${process.processCode}`}
-                                onClick={() =>
-                                  selectCatalogProcess(process.processCode)
-                                }
-                                type="button"
-                              >
-                                <div className="flex items-center justify-between gap-2">
-                                  <span className="text-[11px] font-black text-[#246beb]">
-                                    {process.laneCode || "PRIMARY"} · {process.executionMode || "SEQUENTIAL"}
-                                  </span>
-                                  <span className="rounded-full bg-slate-100 px-2 py-1 text-[11px] font-black text-slate-600">
-                                    {process.workflowPhase}
-                                  </span>
-                                </div>
-                                <strong className="mt-3 text-sm text-[#052b57]">
-                                  {process.processName}
-                                </strong>
-                                <div className="mt-auto pt-3">
-                                  <div className="h-1.5 overflow-hidden rounded-full bg-slate-100">
-                                    <div
-                                      className="h-full rounded-full bg-[#246beb]"
-                                      style={{
-                                        width: `${Math.max(0, Math.min(100, Number(process.completionScore || 0)))}%`,
-                                      }}
-                                    />
-                                  </div>
-                                  <span className="mt-1 block text-[11px] font-bold text-slate-500">
-                                    {process.completedTasks || 0}/
-                                    {process.requiredTasks || 0} Task ·{" "}
-                                    {Number(process.completionScore || 0)}%
-                                  </span>
-                                </div>
-                              </button>
-                                ))}
-                                </div>
-                                <p className="mt-2 text-[11px] font-bold text-slate-500">
-                                  {wave.wave === 1 ? (en ? "Entry wave" : "시작 파동") : `${wave.processes[0]?.joinStrategy || "ALL"} ${en ? "join" : "합류"}`}
-                                </p>
-                              </section>
-                              {waveIndex < selectedProcessWaves.length - 1 ? (
-                                <span
-                                  aria-hidden="true"
-                                  className="material-symbols-outlined mx-2 text-2xl text-slate-300"
-                                >
-                                  arrow_forward
-                                </span>
-                              ) : null}
-                            </li>
-                          ))}
-                        </ol>
+                      <div className="mt-3 max-h-[30rem] space-y-3 overflow-y-auto pr-1">
+                        {visibleProcessWaves.map((wave) => (
+                          <section
+                            className="rounded-xl border border-slate-200 bg-slate-50 p-3"
+                            key={`wave-${wave.wave}`}
+                          >
+                            <div className="mb-2 flex flex-wrap items-center gap-2">
+                              <strong className="text-sm text-[#052b57]">
+                                {en ? `Order ${wave.wave}` : `${wave.wave}차 실행`}
+                              </strong>
+                              <span className={`rounded-full px-2 py-1 text-[11px] font-black ${wave.processes.length > 1 ? "bg-violet-100 text-violet-800" : "bg-blue-100 text-blue-800"}`}>
+                                {wave.processes.length > 1
+                                  ? en
+                                    ? `${wave.processes.length} parallel processes`
+                                    : `${wave.processes.length}개 병렬 업무`
+                                  : en
+                                    ? "Sequential"
+                                    : "순차 업무"}
+                              </span>
+                            </div>
+                            <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+                              {wave.processes.map((process) => {
+                                const selected =
+                                  selectedCatalogProcessCode === process.processCode;
+                                return (
+                                  <button
+                                    aria-pressed={selected}
+                                    className={`group min-h-24 rounded-xl border-2 p-3 text-left transition ${selected ? "border-[#246beb] bg-blue-50 shadow-sm" : "border-white bg-white hover:border-blue-200 hover:shadow-sm"}`}
+                                    key={`sequence-${process.processCode}`}
+                                    onClick={() => selectCatalogProcess(process.processCode)}
+                                    type="button"
+                                  >
+                                    <div className="flex items-start justify-between gap-3">
+                                      <div className="min-w-0">
+                                        <span className="block text-[11px] font-bold text-slate-500">
+                                          {process.processCode}
+                                        </span>
+                                        <strong className="mt-1 block text-sm leading-5 text-[#052b57]">
+                                          {process.processName}
+                                        </strong>
+                                      </div>
+                                      <span className={`material-symbols-outlined shrink-0 text-[22px] ${selected ? "text-[#246beb]" : "text-slate-300 group-hover:text-blue-400"}`}>
+                                        {selected ? "check_circle" : "arrow_circle_right"}
+                                      </span>
+                                    </div>
+                                    <div className="mt-3 flex flex-wrap items-center gap-1.5 text-[11px] font-bold text-slate-600">
+                                      <span className="rounded-full bg-slate-100 px-2 py-1">
+                                        {en ? "Owner" : "담당"}: {process.ownerActorCode || "-"}
+                                      </span>
+                                      <span className="rounded-full bg-slate-100 px-2 py-1">
+                                        {process.laneCode || "PRIMARY"}
+                                      </span>
+                                      {selected ? (
+                                        <span className="rounded-full bg-blue-100 px-2 py-1 text-blue-800">
+                                          {en ? "Guide selected" : "길잡이 선택됨"}
+                                        </span>
+                                      ) : null}
+                                    </div>
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </section>
+                        ))}
+                        {!visibleProcessWaves.length ? (
+                          <div className="rounded-xl border border-dashed border-slate-300 bg-white px-4 py-8 text-center">
+                            <span className="material-symbols-outlined text-3xl text-slate-400">
+                              search_off
+                            </span>
+                            <p className="mt-2 text-sm font-bold text-slate-700">
+                              {en ? "No matching processes" : "일치하는 업무 프로세스가 없습니다."}
+                            </p>
+                            <button
+                              className="mt-3 rounded-lg border border-slate-300 px-3 py-2 text-sm font-bold text-slate-700"
+                              onClick={() => setProcessKeyword("")}
+                              type="button"
+                            >
+                              {en ? "Clear search" : "검색 초기화"}
+                            </button>
+                          </div>
+                        ) : null}
                       </div>
                     </section>
                   ) : null}
