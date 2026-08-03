@@ -33,7 +33,7 @@ SET target_path='/emission/project-portfolio',
 WHERE process_code='EMISSION_PROJECT_PORTFOLIO';
 
 UPDATE framework_process_step_screen_binding
-SET entry_mode='SECONDARY',updated_at=current_timestamp
+SET entry_mode='SUPPORT',updated_at=current_timestamp
 WHERE process_code='EMISSION_PROJECT_PORTFOLIO'
   AND step_code='EMISSION_PROJECT_PORTFOLIO_LIST'
   AND audience='USER';
