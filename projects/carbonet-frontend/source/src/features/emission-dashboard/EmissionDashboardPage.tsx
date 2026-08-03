@@ -55,7 +55,7 @@ const STEPS = [
   { code: "EMISSION_PROJECT_COLLECT", ko: "자료 수집", en: "Collect", href: "/emission/activity-data", icon: "upload_file" },
   { code: "EMISSION_PROJECT_CALCULATE", ko: "배출량 산정", en: "Calculate", href: "/emission/calculation", icon: "calculate" },
   { code: "EMISSION_PROJECT_VALIDATE", ko: "데이터 검증", en: "Validate", href: "/emission/validate", icon: "fact_check" },
-  { code: "EMISSION_PROJECT_CORRECT", ko: "보완·재산정", en: "Correct", href: "/emission/data_input?mode=correction", icon: "published_with_changes" },
+  { code: "EMISSION_PROJECT_CORRECT", ko: "보완·재산정", en: "Correct", href: "/emission/activity-data?mode=correction", icon: "published_with_changes" },
   { code: "EMISSION_PROJECT_APPROVE", ko: "검토·승인", en: "Approve", href: "/emission/validate?tab=approval", icon: "approval" },
   { code: "EMISSION_PROJECT_REPORT", ko: "확정·보고", en: "Report", href: "/emission/report_submit", icon: "description" }
 ] as const;
