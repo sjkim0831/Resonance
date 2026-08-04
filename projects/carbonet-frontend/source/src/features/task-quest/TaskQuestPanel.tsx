@@ -1083,16 +1083,11 @@ export function TaskQuestPanel() {
       if(!route||!guideActorAllowed(step,runtime)||runtime?.pendingPredecessors) return false;
       return !runtime||runtime.actionable!==false;
     };
-    let index=selectedCatalogSteps.findIndex((step) => {
-      const runtime=guideRuntimeStep(step);
-      return Boolean(runtime&&runtime.status!=="DONE"&&available(step));
-    });
-    if(index<0) index=selectedCatalogSteps.findIndex((step) => !guideRuntimeStep(step)&&available(step));
-    if(index<0) index=selectedCatalogSteps.findIndex((step) => {
-      const runtime=guideRuntimeStep(step);
-      return Boolean(runtime?.status==="DONE"&&guideRoute(step,runtime)&&guideActorAllowed(step,runtime));
-    });
-    if(index<0) return;
+    const index = Math.min(
+      Math.max(0, selectedCatalogStep),
+      Math.max(0, selectedCatalogSteps.length - 1),
+    );
+    if (!selectedCatalogSteps[index] || !available(selectedCatalogSteps[index])) return;
     const step=selectedCatalogSteps[index],runtime=guideRuntimeStep(step),route=guideRoute(step,runtime);
     setSelectedCatalogStep(index);
     localStorage.setItem("task-quest-catalog-step",String(index));
@@ -1706,7 +1701,10 @@ export function TaskQuestPanel() {
                                           {waveProcesses.length ? (
                                             <div className="relative z-10 w-full space-y-2">
                                               {waveProcesses.map(({ process, step }) => {
-                                                const selected = selectedCatalogProcessCode === process.processCode;
+                                                const stepIndex = step
+                                                  ? selectedCatalogSteps.findIndex((item) => item.stepCode === step.stepCode)
+                                                  : 0;
+                                                const selected = selectedCatalogProcessCode === process.processCode && stepIndex === selectedCatalogStep;
                                                 const feedback = /REJECT|REVISION|RECALC|SUPPLEMENT|RETURN/i.test(`${step?.commandCode || ""} ${step?.toState || ""}`);
                                                 const status = Number(process.blockedTasks || 0) > 0
                                                   ? (en ? "Revision" : "보완")
@@ -1720,7 +1718,15 @@ export function TaskQuestPanel() {
                                                     aria-pressed={selected}
                                                     className={`relative w-full rounded-xl border-2 px-3 py-2.5 text-left text-xs font-black leading-5 transition ${feedback ? "border-violet-300 bg-violet-50" : selected ? "border-[#246beb] bg-blue-50 text-[#052b57] shadow" : "border-blue-200 bg-white text-slate-700 hover:border-[#246beb]"}`}
                                                     key={`actor-process-${process.processCode}-${step?.stepCode || "process"}`}
-                                                    onClick={() => selectCatalogProcess(process.processCode)}
+                                                    onClick={() => {
+                                                      selectCatalogProcess(process.processCode);
+                                                      const processSteps = (data?.processCatalogSteps || [])
+                                                        .filter((item) => item.processCode === process.processCode)
+                                                        .sort((left, right) => Number(left.stepOrder) - Number(right.stepOrder));
+                                                      const nextIndex = Math.max(0, step ? processSteps.findIndex((item) => item.stepCode === step.stepCode) : 0);
+                                                      setSelectedCatalogStep(nextIndex);
+                                                      localStorage.setItem("task-quest-catalog-step", String(nextIndex));
+                                                    }}
                                                     type="button"
                                                   >
                                                     <span className="block pr-12">{step?.stepName || process.processName}</span>
@@ -1798,11 +1804,19 @@ export function TaskQuestPanel() {
                               ) : null}
                               <button
                                 className="mt-auto rounded-xl bg-[#052b57] px-4 py-3.5 text-sm font-black text-white disabled:cursor-not-allowed disabled:bg-slate-300"
-                                disabled={!selectedCatalogSteps.some((step) => Boolean(guideRoute(step, guideRuntimeStep(step))) && guideActorAllowed(step, guideRuntimeStep(step)))}
+                                disabled={(() => {
+                                  const step = selectedCatalogSteps[selectedCatalogStep];
+                                  if (!step) return true;
+                                  const runtimeStep = guideRuntimeStep(step);
+                                  return !guideRoute(step, runtimeStep) ||
+                                    !guideActorAllowed(step, runtimeStep) ||
+                                    Boolean(runtimeStep?.pendingPredecessors) ||
+                                    runtimeStep?.actionable === false;
+                                })()}
                                 onClick={startSelectedProcessGuide}
                                 type="button"
                               >
-                                {en ? "Start work guide" : "업무 길잡이 시작"}
+                                {en ? "Open selected step" : "선택 단계 업무 길잡이 시작"}
                               </button>
                             </>
                           ) : (
@@ -1992,7 +2006,7 @@ export function TaskQuestPanel() {
                       </div>
                     </section>
                   ) : null}
-                  {selectedCatalogProcess ? (
+                  {false && selectedCatalogProcess ? (
                     <section className="mb-5 rounded-2xl border-2 border-[#246beb] bg-white p-4 sm:p-5">
                       <div>
                         <p className="text-xs font-black text-[#246beb]">
@@ -2116,7 +2130,7 @@ export function TaskQuestPanel() {
                       </div>
                     </section>
                   ) : null}
-                  {selectedUnifiedProcess ? (
+                  {false && selectedUnifiedProcess ? (
                     <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
                       <div>
                         <p className="text-xs font-black uppercase tracking-wide text-[#246beb]">
@@ -2159,7 +2173,7 @@ export function TaskQuestPanel() {
                       </div>
                     </div>
                   ) : null}
-                  {processGroups.length ? (
+                  {false && processGroups.length ? (
                     <div className="space-y-5">
                       {processGroups.map(([key, items]) => {
                         const first = items[0];
