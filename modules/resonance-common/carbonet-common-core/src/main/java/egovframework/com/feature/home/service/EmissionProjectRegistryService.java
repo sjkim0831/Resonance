@@ -487,7 +487,6 @@ public class EmissionProjectRegistryService {
             normalized.add(Map.of("stepCode",stepCode,"actorCode",actorCode,"accountId",accountId));
         }
         if(normalized.isEmpty()) throw new IllegalArgumentException("ASSIGNMENTS_REQUIRED");
-        jdbc.queryForMap("SELECT * FROM framework_sync_project_processes(?,?)",projectId,user);
         for(Map.Entry<String,Set<String>> entry:actorAccounts.entrySet()) {
             String actorCode=entry.getKey();
             jdbc.update("UPDATE framework_project_actor_assignment SET active_yn='N' WHERE project_id=? AND actor_code=?",projectId,actorCode);
