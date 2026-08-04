@@ -9,6 +9,7 @@ import egovframework.com.feature.auth.service.AuthService;
 import egovframework.com.feature.auth.service.AuthTokenStoreService;
 import egovframework.com.feature.auth.service.AccountRecoveryService;
 import egovframework.com.feature.auth.service.AdminConsoleAccessPolicy;
+import egovframework.com.feature.auth.service.CurrentUserContextService;
 import egovframework.com.feature.auth.util.ClientIpUtil;
 import egovframework.com.feature.auth.util.JwtTokenProvider;
 import io.jsonwebtoken.Claims;
@@ -72,6 +73,7 @@ public class AuthApiController {
     private final JwtTokenProvider jwtProvider;
     private final AuthTokenStoreService authTokenStoreService;
     private final AccountRecoveryService accountRecoveryService;
+    private final CurrentUserContextService currentUserContextService;
     private final ReloadableResourceBundleMessageSource messageSource;
     private final EgovReloadableFilterInvocationSecurityMetadataSource securityMetadataSource;
 
@@ -82,6 +84,7 @@ public class AuthApiController {
             JwtTokenProvider jwtProvider,
             AuthTokenStoreService authTokenStoreService,
             AccountRecoveryService accountRecoveryService,
+            CurrentUserContextService currentUserContextService,
             @Qualifier("messageSource") ReloadableResourceBundleMessageSource messageSource,
             EgovReloadableFilterInvocationSecurityMetadataSource securityMetadataSource) {
         this.service = service;
@@ -89,6 +92,7 @@ public class AuthApiController {
         this.jwtProvider = jwtProvider;
         this.authTokenStoreService = authTokenStoreService;
         this.accountRecoveryService = accountRecoveryService;
+        this.currentUserContextService = currentUserContextService;
         this.messageSource = messageSource;
         this.securityMetadataSource = securityMetadataSource;
     }
@@ -226,8 +230,11 @@ public class AuthApiController {
 
         HttpSession session = request.getSession(false);
         Authentication current = SecurityContextHolder.getContext().getAuthentication();
-        boolean currentAdmin = current != null && current.isAuthenticated()
-                && current.getAuthorities().stream().anyMatch(authority -> AdminConsoleAccessPolicy.allows(authority.getAuthority()));
+        CurrentUserContextService.CurrentUserContext currentContext = currentUserContextService.resolve(request);
+        boolean currentAdmin = currentContext.isWebmaster()
+                || AdminConsoleAccessPolicy.allows(currentContext.getAuthorCode())
+                || (current != null && current.isAuthenticated()
+                && current.getAuthorities().stream().anyMatch(authority -> AdminConsoleAccessPolicy.allows(authority.getAuthority())));
         boolean authorizedSession = session != null && Boolean.TRUE.equals(session.getAttribute(TEST_SWITCH_SESSION_ATTRIBUTE));
         if (!currentAdmin && !authorizedSession) {
             return ResponseEntity.status(403).body(Map.of("status", "loginFailure", "errors", "TEST_ACCOUNT_SWITCH_ADMIN_REQUIRED"));
