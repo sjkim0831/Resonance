@@ -19,6 +19,10 @@ grep -Fq 'framework_project_process_step_assignment' "$service"
 grep -Fq 'AS "explicitlyAssigned"' "$service"
 grep -Fq 'runtimeStep?.explicitlyAssigned' "$task_quest"
 grep -Fq 'en ? "Unassigned" : "미배정"' "$task_quest"
+if grep -A8 -F 'const processSteps = (data?.processCatalogSteps || [])' "$task_quest" | grep -Fq 'actorVisible(step.actorCode'; then
+  echo "process topology must not be filtered by the signed-in actor" >&2
+  exit 1
+fi
 grep -Fq 'framework_business_work_type' "$service"
 grep -Fq 'w.sort_order' "$service"
 grep -Fq 'seq.workflow_order' "$service"

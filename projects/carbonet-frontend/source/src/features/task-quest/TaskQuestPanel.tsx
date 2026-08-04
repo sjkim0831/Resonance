@@ -967,9 +967,6 @@ export function TaskQuestPanel() {
         const processSteps = (data?.processCatalogSteps || [])
           .filter((step) => step.processCode === process.processCode)
           .filter((step) => !wave.stepCode || step.stepCode === wave.stepCode)
-          .filter((step) =>
-            actorVisible(step.actorCode || process.ownerActorCode),
-          )
           .sort((left, right) => Number(left.stepOrder) - Number(right.stepOrder));
         if (processSteps.length) {
           processSteps.forEach((step) => {
@@ -981,7 +978,6 @@ export function TaskQuestPanel() {
           return;
         }
         const actorCode = process.ownerActorCode || "UNASSIGNED";
-        if (!actorVisible(actorCode)) return;
         const lane = laneMap.get(actorCode) || [];
         lane.push({ wave: wave.wave, process });
         laneMap.set(actorCode, lane);
