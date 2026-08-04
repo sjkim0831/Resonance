@@ -11,8 +11,7 @@ ALTER TABLE framework_process_definition ENABLE TRIGGER trg_guard_locked_process
 ALTER TABLE framework_process_step DISABLE TRIGGER trg_guard_locked_process_step;
 
 UPDATE framework_process_step
-SET step_name='프로젝트 검색·현황 확인·다음 업무 선택',
-    updated_at=current_timestamp
+SET step_name='프로젝트 검색·현황 확인·다음 업무 선택'
 WHERE process_code='EMISSION_PROJECT_PORTFOLIO'
   AND step_code='EMISSION_PROJECT_PORTFOLIO_LIST';
 
