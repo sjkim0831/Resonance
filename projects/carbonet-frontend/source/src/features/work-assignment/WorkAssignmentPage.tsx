@@ -19,6 +19,7 @@ const WORK_TYPE_LABELS: Record<string, string> = {
   TRADE: "탄소·자원 거래", EDUCATION: "교육·지원", MEMBER: "회원·기업·권한", CERTIFICATE: "인증서",
   SYSTEM: "시스템 관리", DATA_GOVERNANCE: "데이터 거버넌스", FACILITY_OPERATION: "설비 운영",
   COMPLIANCE: "규제·컴플라이언스", MRV: "MRV", PORTFOLIO: "포트폴리오", COMMON: "공통 업무",
+  WORK_ASSIGNMENT: "업무 배정",
 };
 
 const ACTORS: Record<string, { label: string; icon: string; color: string }> = {

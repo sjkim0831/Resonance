@@ -346,6 +346,7 @@ function workTypeLabel(code: string, en: boolean) {
     EDUCATION: ["교육·지원", "Education & Support"],
     MEMBER: ["회원·기업·권한", "Members & Organizations"],
     SYSTEM: ["시스템 운영", "System Operations"],
+    WORK_ASSIGNMENT: ["업무 배정", "Work Assignment"],
     COMMON: ["공통 업무", "Common Tasks"],
   };
   const matched = Object.entries(labels).find(
@@ -1163,7 +1164,12 @@ export function TaskQuestPanel() {
 
   function selectWorkType(code: string) {
     setSelectedWorkType(code);
+    setSelectedCatalogProcessCode("");
+    setSelectedCatalogStep(0);
     localStorage.setItem("task-quest-work-type", code);
+    localStorage.removeItem("task-quest-catalog-process");
+    localStorage.setItem("task-quest-catalog-step", "0");
+    clearWorkflowFocus();
   }
 
   function selectCatalogProcess(code: string) {
@@ -1670,10 +1676,21 @@ export function TaskQuestPanel() {
                               : "전체 흐름을 확인하고 진행할 업무를 선택하세요"}
                           </h3>
                         </div>
-                        <span className="text-xs font-bold text-slate-500">
-                          {selectedDefinedProcesses.length}{" "}
-                          {en ? "processes" : "개 프로세스"}
-                        </span>
+                        <label className="min-w-[18rem] text-sm font-bold text-slate-700">
+                          {en ? "Process" : "업무 프로세스"}
+                          <select
+                            className="mt-2 min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3 font-semibold text-[#052b57]"
+                            onChange={(event) => selectCatalogProcess(event.target.value)}
+                            value={selectedCatalogProcessCode}
+                          >
+                            <option value="">{en ? "Select a process" : "프로세스를 선택하세요"}</option>
+                            {selectedDefinedProcesses.map((process, index) => (
+                              <option key={`process-select-${process.processCode}`} value={process.processCode}>
+                                {index + 1}. {process.processName}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
                       </div>
                       <div className={`mt-4 grid overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 ${processMapMode === "FLOW" ? "lg:grid-cols-[minmax(0,1fr)_22rem]" : "grid-cols-1"}`}>
                         <div className={`min-w-0 border-b border-slate-200 ${processMapMode === "FLOW" ? "lg:border-b-0 lg:border-r" : ""}`}>
