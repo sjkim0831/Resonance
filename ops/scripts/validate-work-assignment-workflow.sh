@@ -36,6 +36,8 @@ grep -Fq 'selectedCatalogProcessCode === "WORK_ASSIGNMENT" && data?.assignmentMa
 grep -Fq 'target.searchParams.set("processCode", "EMISSION_PROJECT")' "$task_quest"
 grep -Fq 'const onlyProcessCode = processes.length === 1' "$task_quest"
 grep -Fq 'data?.assignmentManager && actorCode === "WORK_ASSIGNMENT_MANAGER"' "$task_quest"
+grep -Fq 'selectedWorkType === "WORK_ASSIGNMENT" && selectedDefinedProcesses.length === 1' "$task_quest"
+grep -Fq '!wave.stepCode || step.stepCode === wave.stepCode' "$task_quest"
 if grep -Fq '{en ? "Process steps" : "업무 진행 단계"}' "$task_quest"; then
   echo '[work-assignment] duplicated vertical process step list must remain removed' >&2
   exit 1

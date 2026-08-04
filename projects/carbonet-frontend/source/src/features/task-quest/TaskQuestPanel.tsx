@@ -898,6 +898,18 @@ export function TaskQuestPanel() {
     [selectedDefinedProcesses, selectedCatalogProcessCode],
   );
   const selectedProcessWaves = useMemo(() => {
+    if (selectedWorkType === "WORK_ASSIGNMENT" && selectedDefinedProcesses.length === 1) {
+      const process = selectedDefinedProcesses[0];
+      const steps = (data?.processCatalogSteps || [])
+        .filter((step) => step.processCode === process.processCode)
+        .sort((left, right) => Number(left.stepOrder) - Number(right.stepOrder));
+      return steps.map((step) => ({
+        wave: Number(step.stepOrder),
+        processes: [process],
+        stepCode: step.stepCode,
+        stepName: step.stepName,
+      }));
+    }
     const waves = new Map<number, typeof selectedDefinedProcesses>();
     selectedDefinedProcesses.forEach((process) => {
       const wave = Number(process.executionWave || process.workflowOrder || 1);
@@ -912,8 +924,10 @@ export function TaskQuestPanel() {
         processes: processes.sort(
           (left, right) => Number(left.laneOrder || 1) - Number(right.laneOrder || 1),
         ),
+        stepCode: "",
+        stepName: "",
       }));
-  }, [selectedDefinedProcesses]);
+  }, [data?.processCatalogSteps, selectedDefinedProcesses, selectedWorkType]);
   const visibleProcessWaves = useMemo(() => {
     const keyword = processKeyword.trim().toLocaleLowerCase();
     if (!keyword) return selectedProcessWaves;
@@ -955,6 +969,7 @@ export function TaskQuestPanel() {
       wave.processes.forEach((process) => {
         const processSteps = (data?.processCatalogSteps || [])
           .filter((step) => step.processCode === process.processCode)
+          .filter((step) => !wave.stepCode || step.stepCode === wave.stepCode)
           .filter((step) =>
             actorVisible(step.actorCode || process.ownerActorCode),
           )
@@ -1896,7 +1911,7 @@ export function TaskQuestPanel() {
                                   {visibleProcessWaves.map((wave) => (
                                     <div className="flex min-h-16 flex-col items-center justify-center border-r border-dashed border-slate-200 px-3 py-2 text-center last:border-r-0" key={`actor-head-${wave.wave}`}>
                                       <strong className="line-clamp-2 text-xs leading-5 text-[#052b57]" title={wave.processes.map((process) => process.processName).join(" · ")}>
-                                        {wave.processes.map((process) => process.processName).join(" · ")}
+                                        {wave.stepName || wave.processes.map((process) => process.processName).join(" · ")}
                                       </strong>
                                       <span className="mt-1 rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-black text-[#164f86]">
                                         {en ? `Step ${wave.wave}` : `${wave.wave}단계`}
