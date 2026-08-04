@@ -13,6 +13,7 @@ import {
 } from "../home-entry/HomeEntrySections";
 import { LOCALIZED_CONTENT } from "../home-entry/homeEntryContent";
 import { FiveLayerFormRenderer } from "../contract-runtime/FiveLayerFormRenderer";
+import { useRuntimeScreenContract } from "../contract-runtime/useRuntimeScreenContract";
 import { EMISSION_PROJECT_CREATE_CONTRACT } from "./emissionProjectCreateContract";
 
 type Readiness = { ready: boolean; sandbox?: boolean; companyApproved: boolean; activeSiteCount: number; actorCoverage: Record<string, number>; missing: string[]; siteManagementUrl: string; actorManagementUrl: string };
@@ -55,6 +56,7 @@ export function EmissionProjectCreatePage() {
   const en = isEnglish(),
     content = LOCALIZED_CONTENT[en ? "en" : "ko"],
     homeState = useAsyncValue(() => fetchHomePayload(), [en]);
+  const runtimeContract = useRuntimeScreenContract("EMISSION_PROJECT_CREATE_V1", EMISSION_PROJECT_CREATE_CONTRACT);
   const [form, setForm] = useState(EMPTY),
     [options, setOptions] = useState<Options>({ sites: [], owners: [], accounts: [], currentUser: "", readiness: EMPTY_READINESS }),
     [saving, setSaving] = useState(false),
@@ -245,9 +247,9 @@ export function EmissionProjectCreatePage() {
             <div className="mt-4 grid gap-3 sm:grid-cols-3"><div className="rounded-lg bg-white p-3"><b>{en?"Company approval":"기업 승인"}</b><p className="mt-1 text-sm">{options.readiness.companyApproved?(en?"Completed":"완료"):(en?"Required":"필요")}</p></div><div className="rounded-lg bg-white p-3"><b>{en?"Active sites":"활성 사업장"}</b><p className="mt-1 text-sm">{options.readiness.activeSiteCount}</p></div><div className="rounded-lg bg-white p-3"><b>{en?"Required actors":"필수 액터"}</b><p className="mt-1 text-sm">{Object.values(options.readiness.actorCoverage).filter(value=>value>0).length}/5</p></div></div>
             {!options.readiness.ready?<div className="mt-4"><ul className="space-y-1 text-sm font-bold text-amber-950">{options.readiness.missing.map(item=><li key={item}>• {item}</li>)}</ul><div className="mt-4 flex flex-wrap gap-2"><a className="rounded-lg bg-white px-4 py-2 text-sm font-black text-blue-800 ring-1 ring-blue-200" href={options.readiness.siteManagementUrl}>{en?"Manage sites":"사업장 관리"}</a><a className="rounded-lg bg-white px-4 py-2 text-sm font-black text-blue-800 ring-1 ring-blue-200" href={options.readiness.actorManagementUrl}>{en?"Manage actors":"액터·권한 관리"}</a></div></div>:null}
           </section>:null}
-          <form className="mt-7 space-y-5" data-contract-version={EMISSION_PROJECT_CREATE_CONTRACT.version} data-process-code={EMISSION_PROJECT_CREATE_CONTRACT.processSchema.processCode} data-step-code={EMISSION_PROJECT_CREATE_CONTRACT.processSchema.stepCode} data-testid="emission-project-create-form" onSubmit={submit} noValidate>
+          <form className="mt-7 space-y-5" data-contract-version={runtimeContract.contract.version} data-contract-source={runtimeContract.source} data-process-code={runtimeContract.contract.processSchema.processCode} data-step-code={runtimeContract.contract.processSchema.stepCode} data-testid="emission-project-create-form" onSubmit={submit} noValidate>
             <FiveLayerFormRenderer
-              contract={EMISSION_PROJECT_CREATE_CONTRACT}
+              contract={runtimeContract.contract}
               fieldMessages={{
                 name: nameState
                   ? {
@@ -268,14 +270,14 @@ export function EmissionProjectCreatePage() {
             />
             <div className="five-layer-methodology">
               <FiveLayerFormRenderer
-                contract={EMISSION_PROJECT_CREATE_CONTRACT}
+                contract={runtimeContract.contract}
                 onChange={updateContractField}
                 sectionCodes={["methodology"]}
                 values={form}
               />
             </div>
             <FiveLayerFormRenderer
-              contract={EMISSION_PROJECT_CREATE_CONTRACT}
+              contract={runtimeContract.contract}
               onChange={updateContractField}
               optionSources={contractOptionSources}
               sectionCodes={["ownership", "actors"]}
