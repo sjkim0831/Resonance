@@ -1641,7 +1641,7 @@ export function TaskQuestPanel() {
                               </ol>
                             ) : (
                               <div
-                                className={`overflow-hidden rounded-xl border border-slate-200 bg-white transition-transform ${processMapMode === "CANVAS" ? "my-4 w-max min-w-full max-w-none shadow-xl" : "w-full max-w-full"}`}
+                                className={`overflow-hidden rounded-xl border border-slate-200 bg-white transition-transform ${processMapMode === "CANVAS" ? "my-4 w-[112rem] min-w-[112rem] max-w-none shadow-xl" : "w-full max-w-full"}`}
                                 style={{
                                   transform: `scale(${processMapZoom / 100})`,
                                   transformOrigin: "left top",
