@@ -354,7 +354,7 @@ export function TaskQuestPanel() {
   const [flowOpen, setFlowOpen] = useState(false);
   const [processKeyword, setProcessKeyword] = useState("");
   const [processMapZoom, setProcessMapZoom] = useState(100);
-  const [processMapMode, setProcessMapMode] = useState<"FLOW" | "ACTOR">("FLOW");
+  const [processMapMode, setProcessMapMode] = useState<"FLOW" | "ACTOR">("ACTOR");
   const [selectedWorkType, setSelectedWorkType] = useState(
     () => localStorage.getItem("task-quest-work-type") || "ALL",
   );
@@ -1478,8 +1478,8 @@ export function TaskQuestPanel() {
                           {en ? "processes" : "개 프로세스"}
                         </span>
                       </div>
-                      <div className="mt-4 grid overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 lg:grid-cols-[minmax(0,1fr)_22rem]">
-                        <div className="min-w-0 border-b border-slate-200 lg:border-b-0 lg:border-r">
+                      <div className={`mt-4 grid overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 ${processMapMode === "FLOW" ? "lg:grid-cols-[minmax(0,1fr)_22rem]" : "grid-cols-1"}`}>
+                        <div className={`min-w-0 border-b border-slate-200 ${processMapMode === "FLOW" ? "lg:border-b-0 lg:border-r" : ""}`}>
                           <div className="flex flex-col gap-2 border-b border-slate-200 bg-white p-3 sm:flex-row sm:items-center">
                             <label className="relative block min-w-0 flex-1">
                               <span className="sr-only">
@@ -1688,7 +1688,7 @@ export function TaskQuestPanel() {
                             <span>{visibleProcessWaves.reduce((count, wave) => count + wave.processes.length, 0)}{en ? " processes" : "개 프로세스"}</span>
                           </div>
                         </div>
-                        <aside className="flex min-h-[25rem] flex-col bg-white p-5">
+                        <aside className={`flex flex-col bg-white p-5 ${processMapMode === "FLOW" ? "min-h-[25rem]" : "min-h-0"}`}>
                           {selectedCatalogProcess ? (
                             <>
                               <p className="text-xs font-black uppercase tracking-wide text-[#246beb]">
@@ -1707,7 +1707,7 @@ export function TaskQuestPanel() {
                                   </p>
                                 </div>
                               </div>
-                              <dl className="mt-5 divide-y divide-slate-200 border-y border-slate-200 text-sm">
+                              <dl className={`mt-5 border-y border-slate-200 text-sm ${processMapMode === "ACTOR" ? "grid divide-y divide-slate-200 lg:grid-cols-3 lg:divide-x lg:divide-y-0" : "divide-y divide-slate-200"}`}>
                                 <div className="grid grid-cols-[6rem_1fr] gap-3 py-3">
                                   <dt className="font-bold text-slate-600">{en ? "Owner" : "담당 주체"}</dt>
                                   <dd className="font-black text-slate-900">{selectedCatalogProcess.ownerActorCode || "-"}</dd>
