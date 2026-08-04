@@ -551,6 +551,19 @@ export function TaskQuestPanel() {
   }, [data?.processCatalogSteps]);
 
   useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("assignment") !== "1") return;
+    setSelectedWorkType("EMISSION");
+    setSelectedCatalogProcessCode("WORK_ASSIGNMENT");
+    setSelectedCatalogStep(0);
+    setOpen(true);
+    setFlowOpen(true);
+    localStorage.setItem("task-quest-work-type", "EMISSION");
+    localStorage.setItem("task-quest-catalog-process", "WORK_ASSIGNMENT");
+    localStorage.setItem("task-quest-catalog-step", "0");
+    localStorage.setItem("task-quest-open", "1");
+  }, []);
+
+  useEffect(() => {
     if (!flowOpen) return;
     const previous = document.body.style.overflow;
     document.body.style.overflow = "hidden";
@@ -1009,11 +1022,14 @@ export function TaskQuestPanel() {
     () => assignmentWorkspace?.steps || [],
     [assignmentWorkspace?.steps],
   );
+  const assignmentTargetProcessCode = selectedCatalogProcessCode === "WORK_ASSIGNMENT"
+    ? "EMISSION_PROJECT"
+    : selectedCatalogProcessCode;
   useEffect(() => {
-    if (!flowOpen || !data?.assignmentManager) return;
+    if (!flowOpen || !data?.assignmentManager || selectedCatalogProcessCode !== "WORK_ASSIGNMENT") return;
     const query = new URLSearchParams();
     if (effectiveProjectId) query.set("projectId", effectiveProjectId);
-    if (selectedCatalogProcessCode) query.set("processCode", selectedCatalogProcessCode);
+    if (assignmentTargetProcessCode) query.set("processCode", assignmentTargetProcessCode);
     let cancelled = false;
     fetch(`${buildLocalizedPath("/home/api/work-assignments", "/en/home/api/work-assignments")}?${query}`, { credentials: "include" })
       .then(async response => {
@@ -1031,7 +1047,15 @@ export function TaskQuestPanel() {
       })
       .catch(error => { if (!cancelled) setAssignmentMessage(error instanceof Error ? error.message : String(error)); });
     return () => { cancelled = true; };
-  }, [data?.assignmentManager, effectiveProjectId, flowOpen, selectedCatalogProcessCode]);
+  }, [assignmentTargetProcessCode, data?.assignmentManager, effectiveProjectId, flowOpen, selectedCatalogProcessCode]);
+
+  useEffect(() => {
+    if (!assignmentWorkspace || new URLSearchParams(window.location.search).get("assignment") !== "1") return;
+    const timer = window.setTimeout(() => {
+      document.querySelector<HTMLElement>("[data-work-assignment-console]")?.scrollIntoView({ block: "start" });
+    }, 80);
+    return () => window.clearTimeout(timer);
+  }, [assignmentWorkspace]);
 
   function assignActorDefault(actorCode: string, accountId: string) {
     setStepAssignees(current => {
@@ -1042,7 +1066,7 @@ export function TaskQuestPanel() {
   }
 
   async function saveAssignments() {
-    if (!effectiveProjectId || !selectedCatalogProcessCode) return;
+    if (!effectiveProjectId || !assignmentTargetProcessCode) return;
     const assignments = assignmentSteps.map(step => ({ stepCode: step.stepCode, accountId: stepAssignees[step.stepCode] || "" }));
     if (!assignments.length || assignments.some(item => !item.accountId)) {
       setAssignmentMessage(en ? "Select an account for every step." : "모든 단계의 담당 계정을 선택해 주세요.");
@@ -1052,7 +1076,7 @@ export function TaskQuestPanel() {
     try {
       const response = await fetch(buildLocalizedPath("/home/api/work-assignments", "/en/home/api/work-assignments"), {
         method: "POST", credentials: "include", headers: { "Content-Type": "application/json", Accept: "application/json" },
-        body: JSON.stringify({ projectId: effectiveProjectId, processCode: selectedCatalogProcessCode, assignments }),
+        body: JSON.stringify({ projectId: effectiveProjectId, processCode: assignmentTargetProcessCode, assignments }),
       });
       const body = await response.json();
       if (!response.ok) throw new Error(body.message || "WORK_ASSIGNMENT_SAVE_FAILED");
@@ -1995,7 +2019,7 @@ export function TaskQuestPanel() {
                       </div>
                     </section>
                   ) : null}
-                  {data?.assignmentManager && selectedCatalogProcess && effectiveProjectId ? (
+                  {data?.assignmentManager && selectedCatalogProcessCode === "WORK_ASSIGNMENT" && selectedCatalogProcess && effectiveProjectId ? (
                     <section className="mb-5 rounded-2xl border border-blue-200 bg-white p-4 shadow-sm sm:p-5" data-work-assignment-console="">
                       <div className="flex flex-wrap items-start justify-between gap-3">
                         <div>
@@ -2003,7 +2027,15 @@ export function TaskQuestPanel() {
                           <h3 className="mt-1 text-lg font-black text-[#052b57]">{en ? "Assign actors and process steps" : "액터·단계별 담당 계정 배정"}</h3>
                           <p className="mt-1 text-sm leading-6 text-slate-600">{en ? "Only active accounts in your company can be assigned. Actor defaults can be overridden per step." : "현재 기업의 활성 계정만 선택할 수 있습니다. 액터 기본 담당자를 적용한 뒤 단계별로 변경할 수 있습니다."}</p>
                         </div>
-                        <span className="rounded-full bg-blue-50 px-3 py-2 text-xs font-black text-blue-800">{effectiveProjectId} · {selectedCatalogProcess.processName}</span>
+                        <label className="flex items-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-black text-blue-900">
+                          {en ? "Project" : "배정 프로젝트"}
+                          <select className="max-w-64 bg-transparent outline-none" onChange={(event) => {
+                            setSelectedOverviewProjectId(event.target.value);
+                            localStorage.setItem("task-quest-overview-project", event.target.value);
+                          }} value={effectiveProjectId}>
+                            {(assignmentWorkspace?.projects || []).map(project => <option key={project.projectId} value={project.projectId}>{project.projectName} · {project.projectId}</option>)}
+                          </select>
+                        </label>
                       </div>
                       <div className="mt-5 grid gap-5 lg:grid-cols-[minmax(18rem,0.8fr)_minmax(0,1.5fr)]">
                         <div>
