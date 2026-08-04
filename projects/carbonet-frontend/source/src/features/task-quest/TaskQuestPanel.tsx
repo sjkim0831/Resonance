@@ -2012,7 +2012,11 @@ export function TaskQuestPanel() {
                           <div className="flex flex-wrap gap-4 border-t border-slate-200 bg-white px-4 py-3 text-[11px] font-bold text-slate-600">
                             <span className="flex items-center gap-1.5"><i className="h-0.5 w-6 bg-[#246beb]" />{en ? "Sequential path" : "순차 업무 흐름"}</span>
                             <span className="flex items-center gap-1.5"><i className="h-3 w-0.5 bg-violet-300" />{en ? "Parallel branch" : "병렬 업무"}</span>
-                            <span>{visibleProcessWaves.reduce((count, wave) => count + wave.processes.length, 0)}{en ? " processes" : "개 프로세스"}</span>
+                            <span>
+                              {selectedWorkType === "WORK_ASSIGNMENT"
+                                ? `${visibleProcessWaves.length}${en ? " steps" : "단계"}`
+                                : `${visibleProcessWaves.reduce((count, wave) => count + wave.processes.length, 0)}${en ? " processes" : "개 프로세스"}`}
+                            </span>
                           </div>
                         </div>
                         <aside className={`flex flex-col bg-white p-5 ${processMapMode === "FLOW" ? "min-h-[25rem]" : "min-h-0"}`}>
