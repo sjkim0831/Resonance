@@ -1,6 +1,6 @@
 INSERT INTO framework_screen_contract_binding(
   screen_key,contract_id,route_path,active_version_id,updated_by)
-SELECT upper(c.process_code||'__'||c.step_code||'__'||c.audience||'__'||substr(md5(lower(split_part(c.route_path,'?',1))),1,12)),
+SELECT upper(c.process_code||'__'||c.step_code||'__'||c.audience||'__'||c.contract_id||'__'||substr(md5(lower(split_part(c.route_path,'?',1))),1,12)),
        c.contract_id,lower(split_part(c.route_path,'?',1)),v.version_id,'SYSTEM'
   FROM framework_professional_screen_contract c
   JOIN framework_screen_contract_version v ON v.contract_id=c.contract_id AND v.version_no=1
