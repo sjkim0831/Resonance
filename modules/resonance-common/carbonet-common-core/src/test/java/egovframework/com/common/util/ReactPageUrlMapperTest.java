@@ -36,4 +36,16 @@ class ReactPageUrlMapperTest {
         assertEquals("/en/emission/project-portfolio",
                 ReactPageUrlMapper.toRuntimeUrl("/emission/project-portfolio", true));
     }
+
+    @Test
+    void resolvesWorkAssignmentWithoutFallingBackToHome() {
+        assertEquals("emission_work_assignment",
+                ReactPageUrlMapper.resolveRouteIdForPath("/emission/work-assignment?projectId=PRJ-1"));
+        assertEquals("emission_work_assignment",
+                ReactPageUrlMapper.resolveRouteIdForPath("/en/emission/work-assignment"));
+        assertEquals("/emission/work-assignment?projectId=PRJ-1",
+                ReactPageUrlMapper.toRuntimeUrl("/emission/work-assignment?projectId=PRJ-1", false));
+        assertEquals("/en/emission/work-assignment?projectId=PRJ-1",
+                ReactPageUrlMapper.toRuntimeUrl("/emission/work-assignment?projectId=PRJ-1", true));
+    }
 }
