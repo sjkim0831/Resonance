@@ -22,9 +22,13 @@ type AssignmentWorkspace = {
 const ACTOR_LABELS: Record<string, string> = {
   COMPANY_MANAGER: "기업 관리자",
   SITE_DATA_MANAGER: "사업장 자료 담당자",
+  SITE_DATA_OWNER: "사업장 자료 담당자",
   EMISSION_CALCULATOR: "배출량 산정 담당자",
+  CALCULATOR: "배출량 산정 담당자",
   EMISSION_VERIFIER: "검증 담당자",
+  VERIFIER: "검증 담당자",
   EMISSION_APPROVER: "승인 담당자",
+  APPROVER: "승인 담당자",
   WORK_ASSIGNMENT_MANAGER: "업무 배정 담당자",
 };
 
