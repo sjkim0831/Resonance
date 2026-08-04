@@ -103,14 +103,6 @@ export function EmissionProjectCreatePage() {
     const body = await r.json();
     setNameState(body.available ? "ok" : "duplicate");
   }
-  function scope(value: string) {
-    setForm((current) => ({
-      ...current,
-      scopes: current.scopes.includes(value)
-        ? current.scopes.filter((item) => item !== value)
-        : [...current.scopes, value],
-    }));
-  }
   const accountsFor = (actorCode: string) =>
     options.accounts.filter((account) =>
       account.actors.split(",").map((actor) => actor.trim()).includes(actorCode),
@@ -122,12 +114,22 @@ export function EmissionProjectCreatePage() {
     const scopeLabel = account.dataScopes && account.dataScopes !== "*" ? ` · ${account.dataScopes}` : "";
     return `${account.displayName || account.id} · ${department} · ${company} · ${account.id}${scopeLabel}`;
   };
-  const contractOptionSources = Object.fromEntries(
-    ["COMPANY_MANAGER", "SITE_DATA_OWNER", "CALCULATOR", "VERIFIER", "APPROVER"].map((actorCode) => [
-      `${actorCode}_ACCOUNTS`,
-      accountsFor(actorCode).map((account) => ({ value: account.id, label: accountLabel(account) })),
-    ]),
-  );
+  const contractOptionSources = {
+    ACTIVE_SITES: options.sites.map((site) => ({ value: site, label: site })),
+    ...Object.fromEntries(
+      ["COMPANY_MANAGER", "SITE_DATA_OWNER", "CALCULATOR", "VERIFIER", "APPROVER"].map((actorCode) => [
+        `${actorCode}_ACCOUNTS`,
+        accountsFor(actorCode).map((account) => ({ value: account.id, label: accountLabel(account) })),
+      ]),
+    ),
+  };
+  const updateContractField = (fieldCode: string, value: unknown) => {
+    setForm((current) => ({
+      ...current,
+      [fieldCode]: fieldCode === "scopes" && Array.isArray(value) ? value.map(String) : String(value ?? ""),
+    } as typeof EMPTY));
+    if (fieldCode === "name") setNameState("");
+  };
   async function submit(event: FormEvent) {
     event.preventDefault();
     setMessage("");
@@ -199,8 +201,6 @@ export function EmissionProjectCreatePage() {
       setSaving(false);
     }
   }
-  const input =
-    "mt-2 h-12 w-full rounded-lg border border-slate-300 bg-white px-3 font-normal outline-none focus:border-[#246beb] focus:ring-2 focus:ring-blue-100";
   return (
     <>
       <HomeInlineStyles en={en} />
@@ -246,144 +246,37 @@ export function EmissionProjectCreatePage() {
             {!options.readiness.ready?<div className="mt-4"><ul className="space-y-1 text-sm font-bold text-amber-950">{options.readiness.missing.map(item=><li key={item}>• {item}</li>)}</ul><div className="mt-4 flex flex-wrap gap-2"><a className="rounded-lg bg-white px-4 py-2 text-sm font-black text-blue-800 ring-1 ring-blue-200" href={options.readiness.siteManagementUrl}>{en?"Manage sites":"사업장 관리"}</a><a className="rounded-lg bg-white px-4 py-2 text-sm font-black text-blue-800 ring-1 ring-blue-200" href={options.readiness.actorManagementUrl}>{en?"Manage actors":"액터·권한 관리"}</a></div></div>:null}
           </section>:null}
           <form className="mt-7 space-y-5" data-contract-version={EMISSION_PROJECT_CREATE_CONTRACT.version} data-process-code={EMISSION_PROJECT_CREATE_CONTRACT.processSchema.processCode} data-step-code={EMISSION_PROJECT_CREATE_CONTRACT.processSchema.stepCode} data-testid="emission-project-create-form" onSubmit={submit} noValidate>
-            <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-              <h2 className="text-lg font-black text-[#052b57]">
-                1. {en ? "Basic information" : "기본정보"}
-              </h2>
-              <div className="mt-5 grid gap-5 sm:grid-cols-2">
-                <label className="text-sm font-bold sm:col-span-2">
-                  {en ? "Project name" : "프로젝트명"}
-                  <span className="ml-1 text-red-600">*</span>
-                  <input
-                    className={input}
-                    aria-describedby="project-name-status"
-                    aria-invalid={nameState === "duplicate"}
-                    required
-                    value={form.name}
-                    onChange={(e) => {
-                      setForm({ ...form, name: e.target.value });
-                      setNameState("");
-                    }}
-                    onBlur={checkName}
-                  />
-                  {nameState && (
-                    <span
-                      id="project-name-status"
-                      className={`mt-1 block text-xs ${nameState === "ok" ? "text-blue-700" : "text-red-700"}`}
-                    >
-                      {nameState === "ok"
-                        ? en
-                          ? "Available name"
-                          : "사용 가능한 이름입니다."
-                        : en
-                          ? "Name already exists"
-                          : "이미 등록된 이름입니다."}
-                    </span>
-                  )}
-                </label>
-                <label className="text-sm font-bold">
-                  {en ? "Site" : "사업장"}
-                  <span className="ml-1 text-red-600">*</span>
-                  <select
-                    className={input}
-                    required
-                    value={form.site}
-                    onChange={(e) => setForm({ ...form, site: e.target.value })}
-                  >
-                    <option value="">{en ? "Select a registered site" : "등록 사업장 선택"}</option>
-                    {options.sites.map((v) => (
-                      <option key={v} value={v}>{v}</option>
-                    ))}
-                  </select>
-                </label>
-                <label className="text-sm font-bold">
-                  {en ? "Reporting year" : "보고연도"}
-                  <input
-                    className={input}
-                    min="2000"
-                    max="2100"
-                    type="number"
-                    value={form.reportingYear}
-                    onChange={(e) =>
-                      setForm({ ...form, reportingYear: e.target.value })
+            <FiveLayerFormRenderer
+              contract={EMISSION_PROJECT_CREATE_CONTRACT}
+              fieldMessages={{
+                name: nameState
+                  ? {
+                      text: nameState === "ok"
+                        ? (en ? "Available name" : "사용 가능한 이름입니다.")
+                        : (en ? "Name already exists" : "이미 등록된 이름입니다."),
+                      tone: nameState === "ok" ? "success" : "error",
                     }
-                  />
-                </label>
-              </div>
-            </section>
-            <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-              <h2 className="text-lg font-black text-[#052b57]">
-                2. {en ? "Calculation scope" : "산정 범위"}
-              </h2>
-              <div className="mt-5 grid gap-5 sm:grid-cols-2">
-                <div className="sm:col-span-2">
-                  <span className="text-sm font-bold">
-                    Scope<span className="ml-1 text-red-600">*</span>
-                  </span>
-                  <div className="mt-2 flex flex-wrap gap-3">
-                    {["Scope 1", "Scope 2", "Scope 3"].map((v) => (
-                      <label
-                        key={v}
-                        className="flex min-h-12 min-w-32 items-center gap-2 rounded-lg border border-slate-300 px-4 font-bold"
-                      >
-                        <input
-                          aria-label={v}
-                          checked={form.scopes.includes(v)}
-                          onChange={() => scope(v)}
-                          type="checkbox"
-                        />
-                        {v}
-                      </label>
-                    ))}
-                  </div>
-                </div>
-                <label className="text-sm font-bold">
-                  {en ? "Start date" : "산정 시작일"}
-                  <input
-                    className={input}
-                    required
-                    type="date"
-                    value={form.periodStart}
-                    onChange={(e) =>
-                      setForm({ ...form, periodStart: e.target.value })
-                    }
-                  />
-                </label>
-                <label className="text-sm font-bold">
-                  {en ? "End date" : "산정 종료일"}
-                  <input
-                    className={input}
-                    required
-                    type="date"
-                    value={form.periodEnd}
-                    onChange={(e) =>
-                      setForm({ ...form, periodEnd: e.target.value })
-                    }
-                  />
-                </label>
-              </div>
-            </section>
+                  : undefined,
+              }}
+              onChange={updateContractField}
+              onFieldBlur={(fieldCode) => {
+                if (fieldCode === "name") void checkName();
+              }}
+              optionSources={contractOptionSources}
+              sectionCodes={["basic", "scope"]}
+              values={form}
+            />
             <div className="five-layer-methodology">
               <FiveLayerFormRenderer
                 contract={EMISSION_PROJECT_CREATE_CONTRACT}
-                onChange={(fieldCode, value) =>
-                  setForm((current) => ({
-                    ...current,
-                    [fieldCode]: String(value ?? ""),
-                  }))
-                }
+                onChange={updateContractField}
                 sectionCodes={["methodology"]}
                 values={form}
               />
             </div>
             <FiveLayerFormRenderer
               contract={EMISSION_PROJECT_CREATE_CONTRACT}
-              onChange={(fieldCode, value) =>
-                setForm((current) => ({
-                  ...current,
-                  [fieldCode]: String(value ?? ""),
-                }))
-              }
+              onChange={updateContractField}
               optionSources={contractOptionSources}
               sectionCodes={["ownership", "actors"]}
               values={form}
