@@ -216,6 +216,15 @@ type QuestResponse = {
     adminPath?: string;
     automationStatus?: string;
   }>;
+  processAssignments?: Array<{
+    projectId: string;
+    processCode: string;
+    stepCode: string;
+    actorCode?: string;
+    accountId: string;
+    assignedBy?: string;
+    updatedAt?: string;
+  }>;
   designAssurance?: DesignAssurance[];
   designAssuranceSummary?: {
     processCount?: number;
@@ -1254,6 +1263,15 @@ export function TaskQuestPanel() {
     );
   }
 
+  function explicitProcessAssignment(processCode: string, stepCode: string) {
+    return (data?.processAssignments || []).find(
+      (assignment) =>
+        assignment.projectId === effectiveProjectId &&
+        assignment.processCode === processCode &&
+        assignment.stepCode === stepCode,
+    );
+  }
+
   function guideRoute(step: NonNullable<QuestResponse["processCatalogSteps"]>[number],runtime?: QuestTask) {
     if(runtime?.targetUrl) return runtime.targetUrl;
     const userPortal = !window.location.pathname.startsWith("/admin/") &&
@@ -1935,11 +1953,17 @@ export function TaskQuestPanel() {
                                                 const runtimeStep = step
                                                   ? guideRuntimeStep(step)
                                                   : workflowItems.find((item) => item.processCode === process.processCode);
-                                                const assignedToAccount = Boolean(
-                                                  runtimeStep?.explicitlyAssigned && runtimeStep?.assignee && data?.actorId &&
-                                                  runtimeStep.assignee.toLocaleLowerCase() === data.actorId.toLocaleLowerCase(),
+                                                const assignment = explicitProcessAssignment(
+                                                  process.processCode,
+                                                  step?.stepCode || "__PROCESS__",
                                                 );
-                                                const explicitlyAssigned = Boolean(runtimeStep?.explicitlyAssigned && runtimeStep?.assignee);
+                                                const assignedAccount = assignment?.accountId ||
+                                                  (runtimeStep?.explicitlyAssigned ? runtimeStep.assignee : undefined);
+                                                const assignedToAccount = Boolean(
+                                                  assignedAccount && data?.actorId &&
+                                                  assignedAccount.toLocaleLowerCase() === data.actorId.toLocaleLowerCase(),
+                                                );
+                                                const explicitlyAssigned = Boolean(assignedAccount);
                                                 const stepIndex = step
                                                   ? selectedCatalogSteps.findIndex((item) => item.stepCode === step.stepCode)
                                                   : 0;
@@ -1987,7 +2011,7 @@ export function TaskQuestPanel() {
                                                       {assignedToAccount
                                                         ? (en ? "Assigned to me" : "내 배정 업무")
                                                         : explicitlyAssigned
-                                                          ? (en ? `Assigned to ${runtimeStep?.assignee}` : `배정됨 · ${runtimeStep?.assignee}`)
+                                                          ? (en ? `Assigned to ${assignedAccount}` : `배정됨 · ${assignedAccount}`)
                                                           : (en ? "Unassigned" : "미배정")}
                                                     </span>
                                                   </button>
