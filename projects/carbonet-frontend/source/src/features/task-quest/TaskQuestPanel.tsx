@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 const ACTOR_LABELS: Record<string, string> = {
   "*": "전체 담당자",
@@ -408,6 +408,8 @@ export function TaskQuestPanel() {
   const [processKeyword, setProcessKeyword] = useState("");
   const [processMapZoom, setProcessMapZoom] = useState(100);
   const [processMapMode] = useState<"FLOW" | "ACTOR" | "CANVAS">("CANVAS");
+  const processCanvasRef = useRef<HTMLDivElement | null>(null);
+  const [processViewport, setProcessViewport] = useState({ left: 0, width: 100 });
   const [selectedWorkType, setSelectedWorkType] = useState(
     () => localStorage.getItem("task-quest-work-type") || "ALL",
   );
@@ -951,6 +953,31 @@ export function TaskQuestPanel() {
       ),
     }));
   }, [data?.accountActors, data?.allVisible, data?.processCatalogSteps, visibleProcessWaves]);
+  function synchronizeProcessViewport() {
+    const canvas = processCanvasRef.current;
+    if (!canvas) return;
+    const total = Math.max(canvas.scrollWidth, 1);
+    const width = Math.min(100, Math.max(6, (canvas.clientWidth / total) * 100));
+    setProcessViewport({
+      left: Math.min(100 - width, (canvas.scrollLeft / total) * 100),
+      width,
+    });
+  }
+  function fitProcessCanvas() {
+    setProcessMapZoom(80);
+    const canvas = processCanvasRef.current;
+    if (canvas) canvas.scrollTo({ left: 0, top: 0, behavior: "smooth" });
+    window.requestAnimationFrame(synchronizeProcessViewport);
+  }
+  useEffect(() => {
+    if (!flowOpen || processMapMode !== "CANVAS") return;
+    const frame = window.requestAnimationFrame(synchronizeProcessViewport);
+    window.addEventListener("resize", synchronizeProcessViewport);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      window.removeEventListener("resize", synchronizeProcessViewport);
+    };
+  }, [flowOpen, processMapMode, processMapZoom, visibleProcessWaves.length]);
   const selectedUnifiedProcess = useMemo(
     () =>
       selectedDefinedProcesses.find(
@@ -1595,16 +1622,31 @@ export function TaskQuestPanel() {
                               </button>
                             </div>
                           </div>
-                          <div className={`relative overflow-auto p-4 ${processMapMode === "CANVAS" ? "min-h-[38rem] bg-slate-100" : processMapMode === "FLOW" ? "min-h-[25rem]" : "min-h-0"}`}>
+                          <div
+                            className={`relative overflow-auto p-4 ${processMapMode === "CANVAS" ? "min-h-[38rem] bg-slate-100" : processMapMode === "FLOW" ? "min-h-[25rem]" : "min-h-0"}`}
+                            onScroll={processMapMode === "CANVAS" ? synchronizeProcessViewport : undefined}
+                            ref={processCanvasRef}
+                          >
                             {processMapMode === "CANVAS" ? (
                               <div className="sticky top-0 z-30 ml-auto w-40 rounded-xl border border-slate-300 bg-white/95 p-2 shadow-lg backdrop-blur">
                                 <div className="flex items-center justify-between text-[10px] font-black text-slate-600">
                                   <span>{en ? "Process minimap" : "전체 프로세스 위치"}</span>
-                                  <button className="text-[#246beb]" onClick={() => setProcessMapZoom(80)} type="button">
+                                  <button className="text-[#246beb]" onClick={fitProcessCanvas} type="button">
                                     {en ? "Fit" : "화면 맞춤"}
                                   </button>
                                 </div>
-                                <div className="relative mt-2 h-12 overflow-hidden rounded border border-slate-200 bg-slate-50">
+                                <button
+                                  aria-label={en ? "Move process canvas" : "전체 프로세스 위치 이동"}
+                                  className="relative mt-2 block h-12 w-full cursor-pointer overflow-hidden rounded border border-slate-200 bg-slate-50"
+                                  onClick={(event) => {
+                                    const canvas = processCanvasRef.current;
+                                    if (!canvas) return;
+                                    const bounds = event.currentTarget.getBoundingClientRect();
+                                    const ratio = Math.min(1, Math.max(0, (event.clientX - bounds.left) / bounds.width));
+                                    canvas.scrollTo({ left: Math.max(0, ratio * canvas.scrollWidth - canvas.clientWidth / 2), behavior: "smooth" });
+                                  }}
+                                  type="button"
+                                >
                                   {visibleActorLanes.slice(0, 5).map((lane, laneIndex) => (
                                     <div className="absolute left-2 right-2 flex items-center gap-1" key={`minimap-${lane.actorCode}`} style={{ top: `${5 + laneIndex * 8}px` }}>
                                       {visibleProcessWaves.map((wave) => (
@@ -1612,8 +1654,11 @@ export function TaskQuestPanel() {
                                       ))}
                                     </div>
                                   ))}
-                                  <span className="absolute inset-y-1 left-3 w-20 rounded border-2 border-[#246beb] bg-blue-100/20" />
-                                </div>
+                                  <span
+                                    className="pointer-events-none absolute inset-y-1 rounded border-2 border-[#246beb] bg-blue-100/20 transition-[left,width]"
+                                    style={{ left: `${processViewport.left}%`, width: `${processViewport.width}%` }}
+                                  />
+                                </button>
                               </div>
                             ) : null}
                             {visibleProcessWaves.length ? (processMapMode === "FLOW" ? (
