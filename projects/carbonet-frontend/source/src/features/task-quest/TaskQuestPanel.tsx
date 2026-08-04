@@ -6,6 +6,7 @@ const ACTOR_LABELS: Record<string, string> = {
   BUSINESS_USER: "기업 업무 담당자",
   COMPANY_MANAGER: "기업 관리자",
   COMPANY_ADMIN: "기업 운영 관리자",
+  WORK_ASSIGNMENT_MANAGER: "업무 배정 담당자",
   PROJECT_OWNER: "프로젝트 책임자",
   SITE_DATA_OWNER: "자료 담당자",
   DATA_OWNER: "자료 담당자",
@@ -255,9 +256,17 @@ type QuestResponse = {
     pageDesignMissingCount?: number;
   };
   allVisible?: boolean;
+  assignmentManager?: boolean;
   actorId?: string;
   accountActors?: string[];
   summary?: { total?: number; completed?: number; overdue?: number };
+};
+
+type AssignmentWorkspace = {
+  canManage?: boolean;
+  projects?: Array<{ projectId: string; projectName: string }>;
+  accounts?: Array<{ accountId: string; accountName: string; department?: string; actorCodes?: string }>;
+  steps?: Array<{ stepCode: string; stepName: string; stepOrder: number; actorCode: string; actorName: string; accountId?: string }>;
 };
 
 type TaskGuideFocusDetail = {
@@ -438,6 +447,10 @@ export function TaskQuestPanel() {
   const [focusedStepCode, setFocusedStepCode] = useState(
     () => localStorage.getItem("task-quest-focused-step") || "",
   );
+  const [assignmentWorkspace, setAssignmentWorkspace] = useState<AssignmentWorkspace | null>(null);
+  const [stepAssignees, setStepAssignees] = useState<Record<string, string>>({});
+  const [assignmentBusy, setAssignmentBusy] = useState(false);
+  const [assignmentMessage, setAssignmentMessage] = useState("");
 
   async function load() {
     try {
@@ -992,6 +1005,64 @@ export function TaskQuestPanel() {
         .sort((a, b) => Number(a.stepOrder) - Number(b.stepOrder)),
     [data?.processCatalogSteps, selectedCatalogProcessCode],
   );
+  const assignmentSteps = useMemo(
+    () => assignmentWorkspace?.steps || [],
+    [assignmentWorkspace?.steps],
+  );
+  useEffect(() => {
+    if (!flowOpen || !data?.assignmentManager) return;
+    const query = new URLSearchParams();
+    if (effectiveProjectId) query.set("projectId", effectiveProjectId);
+    if (selectedCatalogProcessCode) query.set("processCode", selectedCatalogProcessCode);
+    let cancelled = false;
+    fetch(`${buildLocalizedPath("/home/api/work-assignments", "/en/home/api/work-assignments")}?${query}`, { credentials: "include" })
+      .then(async response => {
+        const body = await response.json();
+        if (!response.ok) throw new Error(body.message || "WORK_ASSIGNMENT_LOAD_FAILED");
+        return body as AssignmentWorkspace;
+      })
+      .then(body => {
+        if (cancelled) return;
+        setAssignmentWorkspace(body);
+        const next: Record<string, string> = {};
+        (body.steps || []).forEach(step => { next[step.stepCode] = step.accountId || ""; });
+        setStepAssignees(next);
+        setAssignmentMessage("");
+      })
+      .catch(error => { if (!cancelled) setAssignmentMessage(error instanceof Error ? error.message : String(error)); });
+    return () => { cancelled = true; };
+  }, [data?.assignmentManager, effectiveProjectId, flowOpen, selectedCatalogProcessCode]);
+
+  function assignActorDefault(actorCode: string, accountId: string) {
+    setStepAssignees(current => {
+      const next = { ...current };
+      assignmentSteps.filter(step => step.actorCode === actorCode).forEach(step => { next[step.stepCode] = accountId; });
+      return next;
+    });
+  }
+
+  async function saveAssignments() {
+    if (!effectiveProjectId || !selectedCatalogProcessCode) return;
+    const assignments = assignmentSteps.map(step => ({ stepCode: step.stepCode, accountId: stepAssignees[step.stepCode] || "" }));
+    if (!assignments.length || assignments.some(item => !item.accountId)) {
+      setAssignmentMessage(en ? "Select an account for every step." : "모든 단계의 담당 계정을 선택해 주세요.");
+      return;
+    }
+    setAssignmentBusy(true); setAssignmentMessage("");
+    try {
+      const response = await fetch(buildLocalizedPath("/home/api/work-assignments", "/en/home/api/work-assignments"), {
+        method: "POST", credentials: "include", headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify({ projectId: effectiveProjectId, processCode: selectedCatalogProcessCode, assignments }),
+      });
+      const body = await response.json();
+      if (!response.ok) throw new Error(body.message || "WORK_ASSIGNMENT_SAVE_FAILED");
+      setAssignmentWorkspace(body);
+      setAssignmentMessage(en ? `${body.updatedTaskCount || assignments.length} steps assigned.` : `${body.updatedTaskCount || assignments.length}개 단계 배정을 저장했습니다.`);
+      await load();
+    } catch (error) {
+      setAssignmentMessage(error instanceof Error ? error.message : String(error));
+    } finally { setAssignmentBusy(false); }
+  }
   const selectedNextProcess = useMemo(
     () =>
       selectedDefinedProcesses.find(
@@ -1922,6 +1993,51 @@ export function TaskQuestPanel() {
                           )}
                         </aside>
                       </div>
+                    </section>
+                  ) : null}
+                  {data?.assignmentManager && selectedCatalogProcess && effectiveProjectId ? (
+                    <section className="mb-5 rounded-2xl border border-blue-200 bg-white p-4 shadow-sm sm:p-5" data-work-assignment-console="">
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div>
+                          <p className="text-xs font-black uppercase tracking-wide text-[#246beb]">{en ? "WORK ASSIGNMENT" : "기업 업무 배정"}</p>
+                          <h3 className="mt-1 text-lg font-black text-[#052b57]">{en ? "Assign actors and process steps" : "액터·단계별 담당 계정 배정"}</h3>
+                          <p className="mt-1 text-sm leading-6 text-slate-600">{en ? "Only active accounts in your company can be assigned. Actor defaults can be overridden per step." : "현재 기업의 활성 계정만 선택할 수 있습니다. 액터 기본 담당자를 적용한 뒤 단계별로 변경할 수 있습니다."}</p>
+                        </div>
+                        <span className="rounded-full bg-blue-50 px-3 py-2 text-xs font-black text-blue-800">{effectiveProjectId} · {selectedCatalogProcess.processName}</span>
+                      </div>
+                      <div className="mt-5 grid gap-5 lg:grid-cols-[minmax(18rem,0.8fr)_minmax(0,1.5fr)]">
+                        <div>
+                          <h4 className="text-sm font-black text-slate-900">{en ? "Actor defaults" : "액터 기본 담당자"}</h4>
+                          <div className="mt-3 space-y-3">
+                            {[...new Set(assignmentSteps.map(step => step.actorCode || "UNASSIGNED"))].map(actorCode => {
+                              const actorSteps = assignmentSteps.filter(step => (step.actorCode || "UNASSIGNED") === actorCode);
+                              const assigned = [...new Set(actorSteps.map(step => stepAssignees[step.stepCode]).filter(Boolean))];
+                              return <label className="block rounded-xl border border-slate-200 bg-slate-50 p-3" key={actorCode}>
+                                <span className="text-xs font-black text-[#052b57]">{actorLabel(actorCode)} <small className="ml-1 font-bold text-slate-500">{actorSteps.length}{en ? " steps" : "개 단계"}</small></span>
+                                <select className="mt-2 h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm" onChange={event => assignActorDefault(actorCode, event.target.value)} value={assigned.length === 1 ? assigned[0] : ""}>
+                                  <option value="">{en ? "Select company account" : "기업 계정 선택"}</option>
+                                  {(assignmentWorkspace?.accounts || []).map(account => <option key={`${actorCode}-${account.accountId}`} value={account.accountId}>{account.accountName} · {account.accountId}{account.department ? ` · ${account.department}` : ""}</option>)}
+                                </select>
+                              </label>;
+                            })}
+                          </div>
+                        </div>
+                        <div>
+                          <div className="flex items-center justify-between gap-3"><h4 className="text-sm font-black text-slate-900">{en ? "Step assignments" : "단계별 담당 계정"}</h4><span className="text-xs font-bold text-slate-500">{selectedCatalogSteps.length}{en ? " steps" : "개 단계"}</span></div>
+                          <ol className="mt-3 space-y-2">
+                            {assignmentSteps.map(step => <li className="grid gap-2 rounded-xl border border-slate-200 p-3 sm:grid-cols-[2.5rem_minmax(0,1fr)_minmax(13rem,0.9fr)] sm:items-center" key={`assign-${step.stepCode}`}>
+                              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#052b57] text-xs font-black text-white">{step.stepOrder}</span>
+                              <span><strong className="block text-sm text-[#052b57]">{step.stepName}</strong><small className="font-bold text-slate-500">{actorLabel(step.actorCode)}</small></span>
+                              <select aria-label={`${step.stepName} 담당 계정`} className="h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm" onChange={event => setStepAssignees(current => ({ ...current, [step.stepCode]: event.target.value }))} value={stepAssignees[step.stepCode] || ""}>
+                                <option value="">{en ? "Select account" : "담당 계정 선택"}</option>
+                                {(assignmentWorkspace?.accounts || []).map(account => <option key={`${step.stepCode}-${account.accountId}`} value={account.accountId}>{account.accountName} · {account.accountId}</option>)}
+                              </select>
+                            </li>)}
+                          </ol>
+                        </div>
+                      </div>
+                      {assignmentMessage ? <p className={`mt-4 rounded-lg p-3 text-sm font-bold ${assignmentMessage.includes("저장") || assignmentMessage.includes("assigned") ? "bg-emerald-50 text-emerald-800" : "bg-amber-50 text-amber-900"}`} role="status">{assignmentMessage}</p> : null}
+                      <div className="mt-4 flex justify-end"><button className="min-h-12 rounded-lg bg-[#0755b5] px-6 font-black text-white disabled:bg-slate-300" disabled={assignmentBusy || !selectedCatalogSteps.length} onClick={() => void saveAssignments()} type="button">{assignmentBusy ? (en ? "Saving..." : "저장 중...") : (en ? "Save assignments and notify" : "배정 저장·담당자 알림")}</button></div>
                     </section>
                   ) : null}
                   {false && selectedCatalogProcessCode === "EMISSION_PROJECT_PORTFOLIO" ? (

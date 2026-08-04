@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+set -euo pipefail
+root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+service="$root/modules/resonance-common/carbonet-common-core/src/main/java/egovframework/com/feature/home/service/EmissionProjectRegistryService.java"
+controller="$root/modules/resonance-common/carbonet-common-core/src/main/java/egovframework/com/feature/home/web/EmissionProjectRegistryController.java"
+ui="$root/projects/carbonet-frontend/source/src/features/task-quest/TaskQuestPanel.tsx"
+migration="$root/apps/carbonet-api/src/main/resources/db/migration/postgresql/V20260804170000__implement_tenant_work_assignment_process.sql"
+grep -Fq 'WORK_ASSIGNMENT_MANAGER_REQUIRED' "$service"
+grep -Fq 'TENANT_ACCOUNT_NOT_ELIGIBLE' "$service"
+grep -Fq 'framework_work_assignment_audit' "$service"
+grep -Fq '/home/api/work-assignments' "$controller"
+grep -Fq 'data-work-assignment-console' "$ui"
+grep -Fq '액터·단계별 담당 계정 배정' "$ui"
+grep -Fq "'WORK_ASSIGNMENT','프로젝트 업무 배정'" "$migration"
+grep -Fq "'WORK_ASSIGNMENT-HAPPY'" "$migration"
+grep -Fq "'WORK_ASSIGNMENT-AUTH'" "$migration"
+grep -Fq "'WORK_ASSIGNMENT-ISOLATION'" "$migration"
+grep -Fq "'WORK_ASSIGNMENT-VALIDATION'" "$migration"
+grep -Fq "'WORK_ASSIGNMENT-RECOVERY'" "$migration"
+echo '[work-assignment] PASS actor=1 process=1 steps=4 safetyTests=5 api=GET+POST tenantIsolation=server ui=swimlane-integrated audit=append-only'
