@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 
 const ACTOR_LABELS: Record<string, string> = {
   COMPANY_MANAGER: "기업 관리자",
+  COMPANY_ADMIN: "기업 운영 관리자",
+  PROJECT_OWNER: "프로젝트 책임자",
   SITE_DATA_OWNER: "자료 담당자",
   DATA_OWNER: "자료 담당자",
   CALCULATOR: "산정 담당자",
@@ -9,9 +11,32 @@ const ACTOR_LABELS: Record<string, string> = {
   VERIFIER: "검증 담당자",
   APPROVER: "승인 담당자",
   REGULATOR: "관리기관",
+  AUDITOR: "감사 담당자",
+  REVIEWER: "검토 담당자",
+  FACILITY_OPERATOR: "설비 운영 담당자",
+  REPORT_MANAGER: "보고서 담당자",
+  CERTIFICATE_OFFICER: "인증서 발급 담당자",
+  CERTIFICATE_QA_OPERATOR: "인증서 품질 담당자",
+  REDUCTION_MANAGER: "감축 관리 담당자",
+  STORAGE_SITE_MANAGER: "저장소 관리 담당자",
+  TRADE_OPERATOR: "거래 운영 담당자",
+  SETTLEMENT_OPERATOR: "정산 담당자",
+  CONTENT_MANAGER: "콘텐츠 담당자",
+  EDUCATION_MANAGER: "교육 담당자",
+  PRIVACY_OFFICER: "개인정보 보호 담당자",
+  PLATFORM_ADMIN: "플랫폼 관리자",
+  PLATFORM_OPERATOR: "플랫폼 운영자",
+  GENERAL_ADMIN: "일반 관리자",
+  MEMBER: "회원",
+  CUSTOMER: "고객",
   SYSTEM_ADMIN: "시스템 관리자",
   UNASSIGNED: "담당 미지정",
 };
+
+function actorLabel(actorCode?: string | null) {
+  if (!actorCode) return "담당 미지정";
+  return ACTOR_LABELS[actorCode] || "업무 담당자";
+}
 import { createPortal } from "react-dom";
 import { buildLocalizedPath, isEnglish } from "../../lib/navigation/runtime";
 
@@ -1282,7 +1307,7 @@ export function TaskQuestPanel() {
                         {en ? "Actor" : "담당 액터"}
                       </dt>
                       <dd className="font-semibold text-slate-800">
-                        {task.actorCode || "-"}
+                        {actorLabel(task.actorCode)}
                       </dd>
                     </div>
                     <div className="flex gap-2">
@@ -1621,7 +1646,7 @@ export function TaskQuestPanel() {
                                                 </span>
                                               </div>
                                               <span className="mt-2 block text-[11px] font-bold text-slate-500">
-                                                {process.ownerActorCode || (en ? "Unassigned" : "담당 미지정")}
+                                                {actorLabel(process.ownerActorCode)}
                                               </span>
                                             </button>
                                           );
@@ -1672,8 +1697,7 @@ export function TaskQuestPanel() {
                                     <div className="flex min-h-28 items-center gap-2 border-r border-slate-200 bg-[#052b57] px-3 text-white">
                                       <span className="material-symbols-outlined flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white text-[18px] text-[#052b57]">person</span>
                                       <span className="min-w-0">
-                                        <strong className="block break-words text-xs leading-5">{en ? lane.actorCode : (ACTOR_LABELS[lane.actorCode] || lane.actorCode)}</strong>
-                                        {!en && ACTOR_LABELS[lane.actorCode] ? <small className="mt-0.5 block break-all text-[9px] text-blue-100">{lane.actorCode}</small> : null}
+                                        <strong className="block break-words text-xs leading-5">{actorLabel(lane.actorCode)}</strong>
                                       </span>
                                     </div>
                                     {visibleProcessWaves.map((wave) => {
@@ -1767,7 +1791,7 @@ export function TaskQuestPanel() {
                               <dl className={`mt-5 border-y border-slate-200 text-sm ${processMapMode !== "FLOW" ? "grid divide-y divide-slate-200 lg:grid-cols-3 lg:divide-x lg:divide-y-0" : "divide-y divide-slate-200"}`}>
                                 <div className="grid grid-cols-[6rem_1fr] gap-3 py-3">
                                   <dt className="font-bold text-slate-600">{en ? "Owner" : "담당 주체"}</dt>
-                                  <dd className="font-black text-slate-900">{selectedCatalogProcess.ownerActorCode || "-"}</dd>
+                                  <dd className="font-black text-slate-900">{actorLabel(selectedCatalogProcess.ownerActorCode)}</dd>
                                 </div>
                                 <div className="grid grid-cols-[6rem_1fr] gap-3 py-3">
                                   <dt className="font-bold text-slate-600">{en ? "Steps" : "진행 절차"}</dt>
@@ -1845,7 +1869,7 @@ export function TaskQuestPanel() {
                             <li className="rounded-xl border border-blue-100 bg-white p-3" key={step.stepCode}>
                               <span className="text-[11px] font-black text-blue-700">STEP {step.stepOrder}</span>
                               <strong className="mt-1 block text-sm text-slate-900">{step.stepName}</strong>
-                              <span className="mt-2 block text-[11px] font-bold text-slate-500">{step.actorCode || "-"}</span>
+                              <span className="mt-2 block text-[11px] font-bold text-slate-500">{actorLabel(step.actorCode)}</span>
                             </li>
                           ))}
                       </ol>
@@ -2025,7 +2049,7 @@ export function TaskQuestPanel() {
                                     {index + 1}
                                   </span>
                                   <span className="text-[11px] font-black text-slate-500">
-                                    {step.actorCode}
+                                    {actorLabel(step.actorCode)}
                                   </span>
                                 </div>
                                 <strong className="mt-3 text-sm text-[#052b57]">
@@ -2255,7 +2279,7 @@ export function TaskQuestPanel() {
                                               {en ? "Actor" : "액터"}:{" "}
                                             </dt>
                                             <dd className="inline">
-                                              {item.actorCode || "-"}
+                                              {actorLabel(item.actorCode)}
                                             </dd>
                                           </div>
                                           <div>
