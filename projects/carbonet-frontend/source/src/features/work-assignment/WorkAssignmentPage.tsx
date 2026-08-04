@@ -11,7 +11,7 @@ type Project = { projectId: string; projectName: string };
 type Account = { accountId: string; accountName: string; department?: string; actorCodes?: string };
 type Step = { stepCode: string; stepName: string; stepOrder: number; actorCode?: string; actorName?: string; accountId?: string };
 type WorkType = { workTypeCode: string; workTypeName: string; processCount: number };
-type Process = { processCode: string; processName: string; workTypeCode: string; status: string; ownerActorCode?: string; stepCount: number };
+type Process = { processCode: string; processName: string; workTypeCode: string; status: string; ownerActorCode?: string; stepCount: number; processOrder?: number };
 type Workspace = { canManage?: boolean; projects?: Project[]; accounts?: Account[]; workTypes?: WorkType[]; processes?: Process[]; actors?: Array<{ actorCode: string; actorName: string }>; steps?: Step[]; processAssignment?: { accountId?: string; actorCode?: string }; assignedStepCount?: number; updatedTaskCount?: number };
 
 const WORK_TYPE_LABELS: Record<string, string> = {
@@ -86,7 +86,9 @@ export function WorkAssignmentPage() {
   useEffect(() => { document.body.classList.toggle("mobile-menu-open", mobileMenuOpen); return () => document.body.classList.remove("mobile-menu-open"); }, [mobileMenuOpen]);
 
   const steps = workspace?.steps || [];
-  const visibleProcesses = (workspace?.processes || []).filter(process => process.workTypeCode === workTypeCode);
+  const visibleProcesses = (workspace?.processes || [])
+    .filter(process => process.workTypeCode === workTypeCode)
+    .sort((left, right) => (left.processOrder ?? Number.MAX_SAFE_INTEGER) - (right.processOrder ?? Number.MAX_SAFE_INTEGER) || left.processCode.localeCompare(right.processCode));
   const actorCodes = [...new Set(steps.map(step => step.actorCode || "UNASSIGNED"))];
   const unassigned = steps.filter(step => !assignees[step.stepCode]).length;
 
@@ -126,7 +128,7 @@ export function WorkAssignmentPage() {
         <div className="px-6 py-5 lg:px-8"><p className="text-sm font-bold text-blue-200">{en ? "Enterprise work orchestration" : "기업 업무 오케스트레이션"}</p><h1 className="mt-1 text-3xl font-black">{en ? "Process and task assignment" : "프로세스·세부 업무 배정"}</h1><p className="mt-2 text-sm text-blue-100">{en ? "Choose a work type and process, then assign its owner, actors, and every detailed step." : "업무 종류와 프로세스를 선택한 뒤 프로세스 책임자, 액터, 세부 절차 담당 계정을 배정합니다."}</p>
           <div className="mt-5 grid gap-3 lg:grid-cols-3">
             <label className="text-sm font-black">{en ? "Work type" : "업무 종류"}<select className="mt-2 h-12 w-full rounded-lg border border-white/30 bg-white px-3 text-[#052b57]" value={workTypeCode} onChange={event => { const nextType=event.target.value; const nextProcess=(workspace?.processes || []).find(item => item.workTypeCode===nextType)?.processCode || ""; setWorkTypeCode(nextType); setProcessCode(nextProcess); if(nextProcess) void load(projectId,nextProcess).catch(error => setMessage(error instanceof Error ? error.message : String(error))); }}>{(workspace?.workTypes || []).map(type => <option key={type.workTypeCode} value={type.workTypeCode}>{WORK_TYPE_LABELS[type.workTypeCode] || type.workTypeName} · {type.processCount}개</option>)}</select></label>
-            <label className="text-sm font-black">{en ? "Process" : "업무 프로세스"}<select className="mt-2 h-12 w-full rounded-lg border border-white/30 bg-white px-3 text-[#052b57]" value={processCode} onChange={event => { setProcessCode(event.target.value); void load(projectId,event.target.value).catch(error => setMessage(error instanceof Error ? error.message : String(error))); }}>{visibleProcesses.map(process => <option key={process.processCode} value={process.processCode}>{process.processName} · {process.stepCount}단계</option>)}</select></label>
+            <label className="text-sm font-black">{en ? "Process" : "업무 프로세스"}<select className="mt-2 h-12 w-full rounded-lg border border-white/30 bg-white px-3 text-[#052b57]" value={processCode} onChange={event => { setProcessCode(event.target.value); void load(projectId,event.target.value).catch(error => setMessage(error instanceof Error ? error.message : String(error))); }}>{visibleProcesses.map((process, index) => <option key={process.processCode} value={process.processCode}>{index + 1}. {process.processName} · {process.stepCount}단계</option>)}</select></label>
             <label className="text-sm font-black">{en ? "Project" : "배정 프로젝트"}<select className="mt-2 h-12 w-full rounded-lg border border-white/30 bg-white px-3 text-[#052b57]" value={projectId} onChange={event => { setProjectId(event.target.value); void load(event.target.value,processCode).catch(error => setMessage(error instanceof Error ? error.message : String(error))); }}>{(workspace?.projects || []).map(project => <option key={project.projectId} value={project.projectId}>{project.projectName} · {project.projectId}</option>)}</select></label>
           </div>
         </div>
