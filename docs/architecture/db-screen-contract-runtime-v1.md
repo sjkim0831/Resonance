@@ -34,6 +34,7 @@ The optional `renderer` property contains a renderer-specific projection. React 
 ## Endpoints
 
 - `GET /runtime/screens/{screenKey}` returns the active contract, version, hash, and cache epoch.
+- `GET /runtime/screens/resolve?routePath=...&processCode=...&stepCode=...&audience=...` resolves the active contract for a generated route without embedding an opaque key in the frontend.
 - `POST /admin/api/system/runtime/screens/{screenKey}/publish` validates all layers and atomically publishes a new version.
 - `POST /admin/api/system/runtime/screens/{screenKey}/rollback` swaps active and previous versions.
 
@@ -42,6 +43,8 @@ Publishing accepts `expectedVersionId`. A stale editor is rejected instead of ov
 ## Failure behavior
 
 If the active version is missing or retired, the read path restores the previous published version and records a `RECOVER` event. The React renderer also keeps a compiled fallback contract during migration, so a contract API failure cannot blank the screen.
+
+Generated screens resolve route, process, step, and audience against the versioned registry. A valid DB contract overrides the generated fallback at render time. Lookup or conversion failure keeps the compiled generated screen. Routes registered as `ADOPT_EXISTING` keep their specialized implementation and are not replaced by the common renderer.
 
 ## Migration sequence
 

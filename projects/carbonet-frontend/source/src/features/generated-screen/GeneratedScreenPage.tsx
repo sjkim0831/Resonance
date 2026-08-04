@@ -209,6 +209,101 @@ function toGeneratedScreen(row: Record<string, unknown>): GeneratedScreenDefinit
   } as GeneratedScreenDefinition;
 }
 
+type VersionedContractEnvelope = {
+  contract?: Record<string, unknown>;
+  versionId?: number;
+  versionNo?: number;
+  contractHash?: string;
+  screenKey?: string;
+};
+
+function record(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
+}
+
+function contractArray(value: unknown, nestedKey?: string): Array<Record<string, unknown>> {
+  const candidate = nestedKey ? record(value)[nestedKey] : value;
+  return Array.isArray(candidate) ? candidate.filter(item => item && typeof item === "object") as Array<Record<string, unknown>> : [];
+}
+
+function applyVersionedContract(base: GeneratedScreenDefinition, envelope: VersionedContractEnvelope): GeneratedScreenDefinition {
+  const contract = record(envelope.contract);
+  const screenLayer = record(contract.screen);
+  const dataLayer = record(contract.data);
+  const uiLayer = record(contract.ui);
+  const actionLayer = record(contract.action);
+  const processLayer = record(contract.process);
+  const permissionLayer = record(contract.permission);
+  const operationLayer = record(contract.operations);
+  const rawFields = contractArray(dataLayer.fields, "fields").length
+    ? contractArray(dataLayer.fields, "fields")
+    : contractArray(dataLayer.fields);
+  const rawSections = contractArray(uiLayer.sections, "sections").length
+    ? contractArray(uiLayer.sections, "sections")
+    : contractArray(uiLayer.sections);
+  const rawCommands = contractArray(actionLayer.commands, "commands").length
+    ? contractArray(actionLayer.commands, "commands")
+    : contractArray(actionLayer.commands);
+  const fields = rawFields.map((field, index) => ({
+    code: String(field.fieldCode || field.code || `FIELD_${index + 1}`),
+    label: String(field.fieldName || field.label || field.name || field.fieldCode || field.code || `Field ${index + 1}`),
+    dataType: String(field.dataType || "STRING"),
+    control: String(field.controlType || field.control || "TEXT"),
+    required: field.required === true,
+    validation: record(field.validation),
+    group: String(field.fieldGroup || field.group || "WORK"),
+  }));
+  const sections = rawSections.map((section, index) => ({
+    code: String(section.sectionCode || section.code || `SECTION_${index + 1}`),
+    label: String(section.sectionName || section.label || section.name || section.sectionCode || section.code || `Section ${index + 1}`),
+  }));
+  const commands = rawCommands.map((command, index) => ({
+    code: String(command.commandCode || command.code || `COMMAND_${index + 1}`),
+    label: String(command.commandName || command.label || command.name || command.commandCode || command.code || `Command ${index + 1}`),
+  }));
+  const specification = {
+    ...base.specification,
+    businessPurpose: String(screenLayer.purpose || screenLayer.description || base.specification.businessPurpose || ""),
+    entryCondition: String(processLayer.entryCondition || base.specification.entryCondition || ""),
+    exitCondition: String(processLayer.exitCondition || base.specification.exitCondition || ""),
+    states: Array.isArray(processLayer.states) ? processLayer.states : base.specification.states,
+    fields: fields.length ? fields : base.specification.fields,
+    sections: sections.length ? sections : base.specification.sections,
+    actions: commands.length ? commands : base.specification.actions,
+    commandCode: commands[0]?.code || base.specification.commandCode,
+    runtimeContract: {
+      source: "DB_VERSIONED_CONTRACT",
+      screenKey: envelope.screenKey,
+      versionId: envelope.versionId,
+      versionNo: envelope.versionNo,
+      contractHash: envelope.contractHash,
+      updatedAt: operationLayer.updatedAt,
+    },
+  };
+  return {
+    ...base,
+    pageName: String(screenLayer.name || base.pageName),
+    routePath: String(screenLayer.route || base.routePath),
+    processCode: String(processLayer.processCode || base.processCode),
+    stepCode: String(processLayer.stepCode || base.stepCode),
+    actorCode: String(permissionLayer.actorCode || base.actorCode),
+    audience: String(screenLayer.audience || permissionLayer.audience || base.audience) === "ADMIN" ? "ADMIN" : "USER",
+    specification,
+  } as GeneratedScreenDefinition;
+}
+
+async function loadVersionedContract(base: GeneratedScreenDefinition): Promise<GeneratedScreenDefinition> {
+  const query = new URLSearchParams({
+    routePath: location.pathname,
+    processCode: base.processCode,
+    stepCode: base.stepCode,
+    audience: base.audience,
+  });
+  const response = await fetch(`/runtime/screens/resolve?${query}`, { credentials: "include", headers: { Accept: "application/json" } });
+  if (!response.ok) return base;
+  return applyVersionedContract(base, await response.json() as VersionedContractEnvelope);
+}
+
 export function GeneratedScreenPage() {
   const en = isEnglish();
   const staticScreen: GeneratedScreenDefinition | undefined =
@@ -217,12 +312,17 @@ export function GeneratedScreenPage() {
   useEffect(() => {
     let cancelled = false;
     setLoading(!staticScreen);
-    fetch(`${en ? "/en" : ""}/home/api/process-executions/screen-contract?routePath=${encodeURIComponent(location.pathname)}`, {
-      credentials: "include"
-    }).then(async (response) => {
-      const row = await response.json() as Record<string, unknown>;
-      if (!response.ok || !row.enabled || cancelled) return;
-      setScreen(toGeneratedScreen(row));
+    const basePromise = staticScreen
+      ? Promise.resolve(staticScreen)
+      : fetch(`${en ? "/en" : ""}/home/api/process-executions/screen-contract?routePath=${encodeURIComponent(location.pathname)}`, { credentials: "include" })
+          .then(async response => {
+            const row = await response.json() as Record<string, unknown>;
+            return response.ok && row.enabled ? toGeneratedScreen(row) : undefined;
+          });
+    basePromise.then(async base => {
+      if (!base || cancelled) return;
+      const resolved = await loadVersionedContract(base).catch(() => base);
+      if (!cancelled) setScreen(resolved);
     }).finally(() => {
       if (!cancelled) setLoading(false);
     });

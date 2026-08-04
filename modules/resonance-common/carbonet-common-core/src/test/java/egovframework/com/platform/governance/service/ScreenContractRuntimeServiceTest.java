@@ -28,6 +28,12 @@ class ScreenContractRuntimeServiceTest {
         assertThrows(IllegalArgumentException.class, () -> ScreenContractRuntimeService.validateContract(contract));
     }
 
+    @Test
+    void acceptsCanonicalRouteAndRejectsUnsafeRoute() {
+        assertDoesNotThrow(() -> ScreenContractRuntimeService.canonicalRoute("/Emission/Project/Create?draft=1"));
+        assertThrows(IllegalArgumentException.class, () -> ScreenContractRuntimeService.canonicalRoute("../admin"));
+    }
+
     private Map<String,Object> validContract() {
         Map<String,Object> contract = new LinkedHashMap<>();
         contract.put("screen", Map.of("screenKey","EMISSION_PROJECT_CREATE_V1","name","프로젝트 등록","route","/emission/project/create"));

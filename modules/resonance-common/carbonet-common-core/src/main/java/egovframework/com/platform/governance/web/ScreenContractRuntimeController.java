@@ -26,6 +26,20 @@ public class ScreenContractRuntimeController {
         }
     }
 
+    @GetMapping("/runtime/screens/resolve")
+    public ResponseEntity<?> resolve(@RequestParam String routePath,
+                                     @RequestParam(defaultValue="") String processCode,
+                                     @RequestParam(defaultValue="") String stepCode,
+                                     @RequestParam(defaultValue="") String audience) {
+        try {
+            Map<String,Object> result = service.loadByRoute(routePath,processCode,stepCode,audience);
+            String etag = "\"" + result.get("contractHash") + "\"";
+            return ResponseEntity.ok().cacheControl(CacheControl.noCache()).eTag(etag).body(result);
+        } catch (Exception e) {
+            return bad(e);
+        }
+    }
+
     @PostMapping({"/admin/api/system/runtime/screens/{screenKey}/publish","/en/admin/api/system/runtime/screens/{screenKey}/publish"})
     public ResponseEntity<?> publish(@PathVariable String screenKey,@RequestBody Map<String,Object> body,HttpServletRequest request) {
         Principal principal=request.getUserPrincipal();
@@ -44,4 +58,3 @@ public class ScreenContractRuntimeController {
         return ResponseEntity.badRequest().body(Map.of("success",false,"message",e.getMessage()==null?"Request failed":e.getMessage()));
     }
 }
-

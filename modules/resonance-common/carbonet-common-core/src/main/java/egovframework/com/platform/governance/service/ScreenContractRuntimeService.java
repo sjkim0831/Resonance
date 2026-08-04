@@ -49,6 +49,37 @@ public class ScreenContractRuntimeService {
         return result;
     }
 
+    public Map<String,Object> loadByRoute(String rawRoute, String processCode, String stepCode, String audience) {
+        String route = canonicalRoute(rawRoute);
+        String process = optionalCode(processCode);
+        String step = optionalCode(stepCode);
+        String targetAudience = optionalCode(audience);
+        List<Map<String,Object>> rows = jdbc.queryForList("""
+            select b.screen_key as "screenKey",b.route_path as "routePath",b.cache_epoch as "cacheEpoch",
+                   v.version_id as "versionId",v.version_no as "versionNo",v.contract_hash as "contractHash",
+                   v.contract_json::text as "contractJson",v.published_at as "publishedAt"
+              from framework_screen_contract_binding b
+              join framework_screen_contract_version v on v.version_id=b.active_version_id
+             where lower(split_part(b.route_path,'?',1))=?
+               and v.version_status='PUBLISHED'
+               and (?='' or upper(v.contract_json #>> '{process,processCode}')=?)
+               and (?='' or upper(v.contract_json #>> '{process,stepCode}')=?)
+               and (?='' or upper(v.contract_json #>> '{screen,audience}')=?
+                            or upper(v.contract_json #>> '{permission,audience}')=?)
+             order by b.updated_at desc,b.contract_id desc,b.screen_key
+            """, route, process, process, step, step,
+            targetAudience, targetAudience, targetAudience);
+        if (rows.isEmpty()) throw new IllegalArgumentException("Published screen contract was not found for route: " + route);
+        Map<String,Object> row = rows.get(0);
+        Map<String,Object> result = new LinkedHashMap<>(row);
+        result.remove("contractJson");
+        result.put("contract", json(String.valueOf(row.get("contractJson"))));
+        result.put("source", "DB_VERSIONED_CONTRACT");
+        result.put("matchCount", rows.size());
+        result.put("resolvedBy", "ROUTE_PROCESS_STEP_AUDIENCE");
+        return result;
+    }
+
     @Transactional
     public Map<String,Object> publish(String rawScreenKey, Map<String,Object> body, String actor) {
         String screenKey = screenKey(rawScreenKey);
@@ -145,6 +176,20 @@ public class ScreenContractRuntimeService {
         if (!value.matches("[A-Z0-9][A-Z0-9_-]{2,159}")) throw new IllegalArgumentException("유효하지 않은 screenKey입니다.");
         return value;
     }
+    static String canonicalRoute(String raw) {
+        String value = raw == null ? "" : raw.trim().split("\\?",2)[0].toLowerCase(Locale.ROOT);
+        if (!value.startsWith("/") || value.length() > 400 || value.contains("..")) {
+            throw new IllegalArgumentException("A valid absolute routePath is required.");
+        }
+        return value;
+    }
+    private static String optionalCode(String raw) {
+        String value = raw == null ? "" : raw.trim().toUpperCase(Locale.ROOT);
+        if (!value.isEmpty() && !value.matches("[A-Z0-9][A-Z0-9_-]{1,159}")) {
+            throw new IllegalArgumentException("Invalid route resolution code: " + value);
+        }
+        return value;
+    }
     @SuppressWarnings("unchecked")
     private static Map<String,Object> object(Object value) {
         if (!(value instanceof Map<?,?> raw)) return Map.of();
@@ -168,4 +213,3 @@ public class ScreenContractRuntimeService {
         catch (JsonProcessingException e) { throw new IllegalArgumentException("화면 계약을 JSON으로 변환할 수 없습니다.", e); }
     }
 }
-
