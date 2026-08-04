@@ -69,6 +69,7 @@ registerAdmin(adminPathToRoute, adminRouteToPath, "emission-survey-admin-data", 
         registerAdmin(adminPathToRoute, adminRouteToPath, "actor-process-governance", "/admin/system/actor-process", "/admin/system/actor-process");
         registerAdmin(adminPathToRoute, adminRouteToPath, "ops-capability-bridge", "/admin/system/ops-bridge", "/admin/system/ops-bridge");
         registerHome(homePathToRoute, homeRouteToPath, homeLocalizedPaths, "emission_project_list", "/emission/project_list", "/en/emission/project_list", "/emission/project_list");
+        registerHome(homePathToRoute, homeRouteToPath, homeLocalizedPaths, "emission_project_portfolio", "/emission/project-portfolio", "/en/emission/project-portfolio", "/emission/project-portfolio");
         registerHome(homePathToRoute, homeRouteToPath, homeLocalizedPaths, "home_alerts", "/home/alerts", "/en/home/alerts", "/home/alerts");
         registerHome(homePathToRoute, homeRouteToPath, homeLocalizedPaths, "emission_project_create", "/emission/project/create", "/en/emission/project/create", "/emission/project/create");
         registerHome(homePathToRoute, homeRouteToPath, homeLocalizedPaths, "emission_project_detail", "/emission/project/detail", "/en/emission/project/detail", "/emission/project/detail");

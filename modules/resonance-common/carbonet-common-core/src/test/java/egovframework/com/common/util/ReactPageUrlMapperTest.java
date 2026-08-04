@@ -24,4 +24,16 @@ class ReactPageUrlMapperTest {
         assertEquals("/en/emission/organizational-boundary?projectId=PRJ-1",
                 ReactPageUrlMapper.toRuntimeUrl("/emission/organizational-boundary?projectId=PRJ-1", true));
     }
+
+    @Test
+    void resolvesEmissionProjectPortfolioWithoutFallingBackToHome() {
+        assertEquals("emission_project_portfolio",
+                ReactPageUrlMapper.resolveRouteIdForPath("/emission/project-portfolio"));
+        assertEquals("emission_project_portfolio",
+                ReactPageUrlMapper.resolveRouteIdForPath("/en/emission/project-portfolio"));
+        assertEquals("/emission/project-portfolio",
+                ReactPageUrlMapper.toRuntimeUrl("/emission/project-portfolio", false));
+        assertEquals("/en/emission/project-portfolio",
+                ReactPageUrlMapper.toRuntimeUrl("/emission/project-portfolio", true));
+    }
 }

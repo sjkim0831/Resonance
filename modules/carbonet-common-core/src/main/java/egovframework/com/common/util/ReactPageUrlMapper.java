@@ -184,6 +184,7 @@ public final class ReactPageUrlMapper {
         registerHome(homePathToRoute, homeRouteToPath, homeLocalizedPaths, "join_company_reapply", "/join/companyReapply", "/join/en/companyReapply", "/join/companyReapply");
         registerHome(homePathToRoute, homeRouteToPath, homeLocalizedPaths, "support_faq", "/support/faq", "/en/support/faq", "/support/faq");
         registerHome(homePathToRoute, homeRouteToPath, homeLocalizedPaths, "emission_project_list", "/emission/project_list", "/en/emission/project_list", "/emission/project_list");
+        registerHome(homePathToRoute, homeRouteToPath, homeLocalizedPaths, "emission_project_portfolio", "/emission/project-portfolio", "/en/emission/project-portfolio", "/emission/project-portfolio");
         registerHome(homePathToRoute, homeRouteToPath, homeLocalizedPaths, "emission_dashboard", "/emission/dashboard", "/en/emission/dashboard", "/emission/dashboard");
         registerHome(homePathToRoute, homeRouteToPath, homeLocalizedPaths, "emission_lci", "/emission/lci", "/en/emission/lci", "/emission/lci");
         registerHome(homePathToRoute, homeRouteToPath, homeLocalizedPaths, "emission_simulate", "/emission/simulate", "/en/emission/simulate", "/emission/simulate");
