@@ -1397,7 +1397,7 @@ export function TaskQuestPanel() {
                 onClick={() => setFlowOpen(false)}
                 type="button"
               />
-              <section className="relative flex max-h-[88vh] w-full max-w-[78rem] flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
+              <section className="relative flex max-h-[94vh] w-full max-w-[96rem] flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
                 <header className="flex shrink-0 items-start justify-between gap-4 border-b border-slate-200 px-5 py-4 sm:px-7 sm:py-5">
                   <div>
                     <p className="text-sm font-bold text-[#246beb]">
@@ -1547,7 +1547,7 @@ export function TaskQuestPanel() {
                               </button>
                             </div>
                           </div>
-                          <div className={`relative overflow-auto p-4 ${processMapMode === "CANVAS" ? "min-h-[38rem] bg-slate-100" : "min-h-[25rem]"}`}>
+                          <div className={`relative overflow-auto p-4 ${processMapMode === "CANVAS" ? "min-h-[38rem] bg-slate-100" : processMapMode === "FLOW" ? "min-h-[25rem]" : "min-h-0"}`}>
                             {processMapMode === "CANVAS" ? (
                               <div className="sticky top-0 z-30 ml-auto w-40 rounded-xl border border-slate-300 bg-white/95 p-2 shadow-lg backdrop-blur">
                                 <div className="flex items-center justify-between text-[10px] font-black text-slate-600">
@@ -1635,7 +1635,7 @@ export function TaskQuestPanel() {
                               </ol>
                             ) : (
                               <div
-                                className={`min-w-max overflow-hidden rounded-xl border border-slate-200 bg-white transition-transform ${processMapMode === "CANVAS" ? "m-8 shadow-xl" : ""}`}
+                                className={`overflow-hidden rounded-xl border border-slate-200 bg-white transition-transform ${processMapMode === "CANVAS" ? "m-8 min-w-max shadow-xl" : "w-full"}`}
                                 style={{
                                   transform: `scale(${processMapZoom / 100})`,
                                   transformOrigin: "left top",
@@ -1643,7 +1643,7 @@ export function TaskQuestPanel() {
                               >
                                 <div
                                   className="grid border-b border-slate-200 bg-slate-50"
-                                  style={{ gridTemplateColumns: `9rem repeat(${Math.max(1, visibleProcessWaves.length)}, minmax(${processMapMode === "CANVAS" ? "14rem" : "11rem"}, 1fr))` }}
+                                  style={{ gridTemplateColumns: `9rem repeat(${Math.max(1, visibleProcessWaves.length)}, minmax(${processMapMode === "CANVAS" ? "14rem" : "0"}, 1fr))` }}
                                 >
                                   <strong className="flex min-h-14 items-center border-r border-slate-200 px-4 text-xs text-[#052b57]">
                                     {en ? "Responsible actor" : "담당 액터"}
@@ -1661,7 +1661,7 @@ export function TaskQuestPanel() {
                                   <div
                                     className="grid border-b border-slate-200 last:border-b-0"
                                     key={`actor-lane-${lane.actorCode}`}
-                                    style={{ gridTemplateColumns: `9rem repeat(${Math.max(1, visibleProcessWaves.length)}, minmax(${processMapMode === "CANVAS" ? "14rem" : "11rem"}, 1fr))` }}
+                                    style={{ gridTemplateColumns: `9rem repeat(${Math.max(1, visibleProcessWaves.length)}, minmax(${processMapMode === "CANVAS" ? "14rem" : "0"}, 1fr))` }}
                                   >
                                     <div className="flex min-h-28 items-center gap-2 border-r border-slate-200 bg-[#052b57] px-3 text-white">
                                       <span className="material-symbols-outlined flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white text-[18px] text-[#052b57]">person</span>
