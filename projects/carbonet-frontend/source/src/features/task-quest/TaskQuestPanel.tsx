@@ -1520,24 +1520,6 @@ export function TaskQuestPanel() {
                                 value={processKeyword}
                               />
                             </label>
-                            <div className="flex h-10 shrink-0 items-center rounded-lg border border-slate-300 bg-slate-100 p-1">
-                              <button
-                                aria-pressed={processMapMode === "FLOW"}
-                                className={`h-8 rounded-md px-3 text-xs font-black transition ${processMapMode === "FLOW" ? "bg-white text-[#052b57] shadow-sm" : "text-slate-500"}`}
-                                onClick={() => setProcessMapMode("FLOW")}
-                                type="button"
-                              >
-                                {en ? "Workflow" : "업무 흐름"}
-                              </button>
-                              <button
-                                aria-pressed={processMapMode === "ACTOR"}
-                                className={`h-8 rounded-md px-3 text-xs font-black transition ${processMapMode === "ACTOR" ? "bg-[#052b57] text-white shadow-sm" : "text-slate-500"}`}
-                                onClick={() => setProcessMapMode("ACTOR")}
-                                type="button"
-                              >
-                                {en ? "By actor" : "액터별 보기"}
-                              </button>
-                            </div>
                             <button
                               aria-pressed={processMapMode === "CANVAS"}
                               className={`flex h-10 shrink-0 items-center gap-1.5 rounded-lg border px-3 text-xs font-black transition ${processMapMode === "CANVAS" ? "border-[#052b57] bg-[#052b57] text-white" : "border-slate-300 bg-white text-[#052b57] hover:border-[#246beb]"}`}
@@ -1659,7 +1641,7 @@ export function TaskQuestPanel() {
                               </ol>
                             ) : (
                               <div
-                                className={`overflow-hidden rounded-xl border border-slate-200 bg-white transition-transform ${processMapMode === "CANVAS" ? "m-8 min-w-max shadow-xl" : "w-full"}`}
+                                className={`w-full max-w-full overflow-hidden rounded-xl border border-slate-200 bg-white transition-transform ${processMapMode === "CANVAS" ? "my-4 shadow-xl" : ""}`}
                                 style={{
                                   transform: `scale(${processMapZoom / 100})`,
                                   transformOrigin: "left top",
@@ -1667,7 +1649,7 @@ export function TaskQuestPanel() {
                               >
                                 <div
                                   className="grid border-b border-slate-200 bg-slate-50"
-                                  style={{ gridTemplateColumns: `9rem repeat(${Math.max(1, visibleProcessWaves.length)}, minmax(${processMapMode === "CANVAS" ? "14rem" : "0"}, 1fr))` }}
+                                  style={{ gridTemplateColumns: `9rem repeat(${Math.max(1, visibleProcessWaves.length)}, minmax(0, 1fr))` }}
                                 >
                                   <strong className="flex min-h-14 items-center border-r border-slate-200 px-4 text-xs text-[#052b57]">
                                     {en ? "Responsible actor" : "담당 액터"}
@@ -1685,7 +1667,7 @@ export function TaskQuestPanel() {
                                   <div
                                     className="grid border-b border-slate-200 last:border-b-0"
                                     key={`actor-lane-${lane.actorCode}`}
-                                    style={{ gridTemplateColumns: `9rem repeat(${Math.max(1, visibleProcessWaves.length)}, minmax(${processMapMode === "CANVAS" ? "14rem" : "0"}, 1fr))` }}
+                                    style={{ gridTemplateColumns: `9rem repeat(${Math.max(1, visibleProcessWaves.length)}, minmax(0, 1fr))` }}
                                   >
                                     <div className="flex min-h-28 items-center gap-2 border-r border-slate-200 bg-[#052b57] px-3 text-white">
                                       <span className="material-symbols-outlined flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white text-[18px] text-[#052b57]">person</span>
