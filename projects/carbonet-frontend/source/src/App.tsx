@@ -21,6 +21,7 @@ import {
 } from "./lib/api/platformTypes";
 import { useProjectTheme } from "./app/hooks/useProjectTheme";
 import { GlobalUserGnbShell, shouldUseGlobalUserGnb } from "./features/home-entry/GlobalUserGnbShell";
+import { TestAccountSwitcher } from "./features/home-entry/TestAccountSwitcher";
 import { useLayoutOverflowGuard } from "./app/hooks/useLayoutOverflowGuard";
 import { ScreenDevelopmentNotePanel } from "./features/screen-development-note/ScreenDevelopmentNotePanel";
 
@@ -508,6 +509,8 @@ export default function App() {
           </div>
         </div>
       ) : null}
+
+      <TestAccountSwitcher />
 
       <ErrorBoundary resetKey={boundaryResetKey}>
         <Suspense fallback={<PageLoadingFallback />}>
