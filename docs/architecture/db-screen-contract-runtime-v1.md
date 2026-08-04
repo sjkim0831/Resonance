@@ -20,6 +20,8 @@ Saving a professional screen contract now republishes its canonical eight-layer 
 
 The save path does not synchronously rebuild an entire process. Runtime publication and the affected screen gate commit immediately; full code generation remains an explicit idempotent `/development/direct` operation. This prevents a single screen edit from timing out while still making the DB-backed renderer change visible without a build.
 
+The save path is guarded by `ops/scripts/validate-screen-contract-runtime-save.sh`. The harness performs an authenticated design detail read, saves the same contract twice, verifies runtime publication, confirms `buildRequired=false` and `fullGenerationDeferred=true` from the generation-deferred automation contract, resolves the route contract, and optionally checks that the target route still returns the React shell. The default gate keeps each save under 2,000 ms and route resolution under 1,000 ms.
+
 ## Runtime contract
 
 Every published document contains these layers:
