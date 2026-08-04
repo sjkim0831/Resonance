@@ -614,7 +614,11 @@ export function TaskQuestPanel() {
           status: "IN_PROGRESS",
           priority: "NORMAL",
           dueDate: "",
-          targetUrl: catalogStep.userPath || "/emission/index",
+          targetUrl:
+            catalogStep.userPath ||
+            (catalogProcess.processCode === "EMISSION_PROJECT_PORTFOLIO"
+              ? "/emission/project-portfolio"
+              : "/emission/index"),
           actorCode: catalogStep.actorCode || catalogProcess.ownerActorCode,
           processCode: catalogProcess.processCode,
           processName: catalogProcess.processName,
