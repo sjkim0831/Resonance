@@ -70,6 +70,7 @@ type QuestTask = {
   targetUrl: string;
   actorCode?: string;
   assignee?: string;
+  explicitlyAssigned?: boolean;
   processCode?: string;
   processName?: string;
   domainCode?: string;
@@ -1939,9 +1940,10 @@ export function TaskQuestPanel() {
                                                   ? guideRuntimeStep(step)
                                                   : workflowItems.find((item) => item.processCode === process.processCode);
                                                 const assignedToAccount = Boolean(
-                                                  runtimeStep?.assignee && data?.actorId &&
+                                                  runtimeStep?.explicitlyAssigned && runtimeStep?.assignee && data?.actorId &&
                                                   runtimeStep.assignee.toLocaleLowerCase() === data.actorId.toLocaleLowerCase(),
                                                 );
+                                                const explicitlyAssigned = Boolean(runtimeStep?.explicitlyAssigned && runtimeStep?.assignee);
                                                 const stepIndex = step
                                                   ? selectedCatalogSteps.findIndex((item) => item.stepCode === step.stepCode)
                                                   : 0;
@@ -1985,12 +1987,12 @@ export function TaskQuestPanel() {
                                                       </span>
                                                     ) : null}
                                                     <small className={`absolute right-2 top-2 rounded-full px-1.5 py-0.5 text-[9px] ${status === "완료" || status === "Done" ? "bg-emerald-100 text-emerald-700" : status === "보완" || status === "Revision" ? "bg-orange-100 text-orange-700" : status === "진행중" || status === "Active" ? "bg-blue-100 text-blue-700" : "bg-slate-100 text-slate-500"}`}>{status}</small>
-                                                    <span className={`mt-1.5 inline-flex rounded-full px-2 py-0.5 text-[9px] font-black ${assignedToAccount ? "bg-[#052b57] text-white" : data?.allVisible ? "bg-violet-50 text-violet-700" : "bg-blue-50 text-[#246beb]"}`}>
+                                                    <span className={`mt-1.5 inline-flex rounded-full px-2 py-0.5 text-[9px] font-black ${assignedToAccount ? "bg-[#052b57] text-white" : explicitlyAssigned ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-500"}`}>
                                                       {assignedToAccount
                                                         ? (en ? "Assigned to me" : "내 배정 업무")
-                                                        : data?.allVisible
-                                                          ? (en ? "Manage" : "관리 가능")
-                                                          : (en ? "Available for my role" : "담당 가능")}
+                                                        : explicitlyAssigned
+                                                          ? (en ? `Assigned to ${runtimeStep?.assignee}` : `배정됨 · ${runtimeStep?.assignee}`)
+                                                          : (en ? "Unassigned" : "미배정")}
                                                     </span>
                                                   </button>
                                                 );
