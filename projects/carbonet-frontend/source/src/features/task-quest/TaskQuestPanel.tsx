@@ -898,18 +898,6 @@ export function TaskQuestPanel() {
     [selectedDefinedProcesses, selectedCatalogProcessCode],
   );
   const selectedProcessWaves = useMemo(() => {
-    if (selectedWorkType === "WORK_ASSIGNMENT" && selectedDefinedProcesses.length === 1) {
-      const process = selectedDefinedProcesses[0];
-      const steps = (data?.processCatalogSteps || [])
-        .filter((step) => step.processCode === process.processCode)
-        .sort((left, right) => Number(left.stepOrder) - Number(right.stepOrder));
-      return steps.map((step) => ({
-        wave: Number(step.stepOrder),
-        processes: [process],
-        stepCode: step.stepCode,
-        stepName: step.stepName,
-      }));
-    }
     const waves = new Map<number, typeof selectedDefinedProcesses>();
     selectedDefinedProcesses.forEach((process) => {
       const wave = Number(process.executionWave || process.workflowOrder || 1);
@@ -927,7 +915,7 @@ export function TaskQuestPanel() {
         stepCode: "",
         stepName: "",
       }));
-  }, [data?.processCatalogSteps, selectedDefinedProcesses, selectedWorkType]);
+  }, [selectedDefinedProcesses]);
   const visibleProcessWaves = useMemo(() => {
     const keyword = processKeyword.trim().toLocaleLowerCase();
     if (!keyword) return selectedProcessWaves;
@@ -967,6 +955,14 @@ export function TaskQuestPanel() {
     >();
     visibleProcessWaves.forEach((wave) => {
       wave.processes.forEach((process) => {
+        if (process.processCode === "WORK_ASSIGNMENT") {
+          const actorCode = process.ownerActorCode || "WORK_ASSIGNMENT_MANAGER";
+          if (!actorVisible(actorCode)) return;
+          const lane = laneMap.get(actorCode) || [];
+          lane.push({ wave: wave.wave, process });
+          laneMap.set(actorCode, lane);
+          return;
+        }
         const processSteps = (data?.processCatalogSteps || [])
           .filter((step) => step.processCode === process.processCode)
           .filter((step) => !wave.stepCode || step.stepCode === wave.stepCode)
@@ -1891,8 +1887,8 @@ export function TaskQuestPanel() {
                                 style={{
                                   ...(processMapMode === "CANVAS"
                                     ? {
-                                        width: `${Math.max(112, 9 + visibleProcessWaves.length * 14)}rem`,
-                                        minWidth: `${Math.max(112, 9 + visibleProcessWaves.length * 14)}rem`,
+                                        width: `${selectedWorkType === "WORK_ASSIGNMENT" ? 44 : Math.max(112, 9 + visibleProcessWaves.length * 14)}rem`,
+                                        minWidth: `${selectedWorkType === "WORK_ASSIGNMENT" ? 44 : Math.max(112, 9 + visibleProcessWaves.length * 14)}rem`,
                                         zoom: processMapZoom / 100,
                                       }
                                     : {
@@ -1903,7 +1899,7 @@ export function TaskQuestPanel() {
                               >
                                 <div
                                   className="grid border-b border-slate-200 bg-slate-50"
-                                  style={{ gridTemplateColumns: `9rem repeat(${Math.max(1, visibleProcessWaves.length)}, ${processMapMode === "CANVAS" ? "14rem" : "minmax(0, 1fr)"})` }}
+                                  style={{ gridTemplateColumns: `9rem repeat(${Math.max(1, visibleProcessWaves.length)}, ${processMapMode === "CANVAS" ? (selectedWorkType === "WORK_ASSIGNMENT" ? "32rem" : "14rem") : "minmax(0, 1fr)"})` }}
                                 >
                                   <strong className="flex min-h-14 items-center border-r border-slate-200 px-4 text-xs text-[#052b57]">
                                     {en ? "Assignee" : "담당자"}
@@ -1924,7 +1920,7 @@ export function TaskQuestPanel() {
                                   <div
                                     className="grid border-b border-slate-200 last:border-b-0"
                                     key={`actor-lane-${lane.actorCode}`}
-                                    style={{ gridTemplateColumns: `9rem repeat(${Math.max(1, visibleProcessWaves.length)}, ${processMapMode === "CANVAS" ? "14rem" : "minmax(0, 1fr)"})` }}
+                                    style={{ gridTemplateColumns: `9rem repeat(${Math.max(1, visibleProcessWaves.length)}, ${processMapMode === "CANVAS" ? (selectedWorkType === "WORK_ASSIGNMENT" ? "32rem" : "14rem") : "minmax(0, 1fr)"})` }}
                                   >
                                     <div className="flex min-h-28 items-center gap-2 border-r border-slate-200 bg-[#052b57] px-3 text-white">
                                       <span className="material-symbols-outlined flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white text-[18px] text-[#052b57]">person</span>
@@ -1975,6 +1971,19 @@ export function TaskQuestPanel() {
                                                     type="button"
                                                   >
                                                     <span className="block pr-12">{step?.stepName || process.processName}</span>
+                                                    {process.processCode === "WORK_ASSIGNMENT" && !step ? (
+                                                      <span className="mt-3 grid grid-cols-4 gap-1.5">
+                                                        {(data?.processCatalogSteps || [])
+                                                          .filter((item) => item.processCode === "WORK_ASSIGNMENT")
+                                                          .sort((left, right) => Number(left.stepOrder) - Number(right.stepOrder))
+                                                          .map((item) => (
+                                                            <span className="rounded-lg border border-blue-200 bg-white px-1.5 py-2 text-center" key={`assignment-mini-${item.stepCode}`}>
+                                                              <b className="mx-auto flex h-5 w-5 items-center justify-center rounded-full bg-[#0755b5] text-[10px] text-white">{item.stepOrder}</b>
+                                                              <small className="mt-1 block break-keep text-[9px] leading-3 text-slate-600">{item.stepName}</small>
+                                                            </span>
+                                                          ))}
+                                                      </span>
+                                                    ) : null}
                                                     <small className={`absolute right-2 top-2 rounded-full px-1.5 py-0.5 text-[9px] ${status === "완료" || status === "Done" ? "bg-emerald-100 text-emerald-700" : status === "보완" || status === "Revision" ? "bg-orange-100 text-orange-700" : status === "진행중" || status === "Active" ? "bg-blue-100 text-blue-700" : "bg-slate-100 text-slate-500"}`}>{status}</small>
                                                     <span className={`mt-1.5 inline-flex rounded-full px-2 py-0.5 text-[9px] font-black ${assignedToAccount ? "bg-[#052b57] text-white" : data?.allVisible ? "bg-violet-50 text-violet-700" : "bg-blue-50 text-[#246beb]"}`}>
                                                       {assignedToAccount
@@ -2014,7 +2023,7 @@ export function TaskQuestPanel() {
                             <span className="flex items-center gap-1.5"><i className="h-3 w-0.5 bg-violet-300" />{en ? "Parallel branch" : "병렬 업무"}</span>
                             <span>
                               {selectedWorkType === "WORK_ASSIGNMENT"
-                                ? `${visibleProcessWaves.length}${en ? " steps" : "단계"}`
+                                ? `1${en ? " process" : "개 프로세스"}`
                                 : `${visibleProcessWaves.reduce((count, wave) => count + wave.processes.length, 0)}${en ? " processes" : "개 프로세스"}`}
                             </span>
                           </div>
