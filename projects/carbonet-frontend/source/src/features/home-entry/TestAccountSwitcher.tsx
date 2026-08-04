@@ -8,6 +8,7 @@ const ACCOUNTS = [
   { id: "qacalc26", actor: "산정 담당자", steps: "3단계" },
   { id: "qaverify26", actor: "검증 담당자", steps: "4단계" },
   { id: "qaapprove26", actor: "승인권자", steps: "5단계" },
+  { id: "qaassign26", actor: "업무 배정 관리자", steps: "프로젝트 배정·재배정" },
 ] as const;
 
 type LoginResponse = { status?: string; errors?: string };
@@ -65,7 +66,7 @@ export function TestAccountSwitcher() {
           {ACCOUNTS.map(item => <option key={item.id} value={item.id}>{item.actor} · {item.id} · {item.steps}</option>)}
         </select>
       </label>
-      <p className="mt-3 text-xs leading-5 text-slate-500">{en ? "Only an administrator-authorized test session can switch among the five allowlisted accounts." : "관리자가 승인한 테스트 세션에서만 허용된 5개 계정으로 전환할 수 있습니다."}</p>
+      <p className="mt-3 text-xs leading-5 text-slate-500">{en ? "Only an administrator-authorized test session can switch among the six allowlisted accounts." : "관리자가 승인한 테스트 세션에서만 허용된 6개 계정으로 전환할 수 있습니다."}</p>
       {message ? <p className="mt-2 rounded-lg bg-red-50 p-2 text-xs font-bold text-red-700" role="alert">{message}</p> : null}
       <button className="mt-3 min-h-11 w-full rounded-lg bg-[#246beb] px-4 font-black text-white disabled:opacity-50" disabled={busy} onClick={() => void submit()} type="button">{busy ? (en ? "Switching..." : "전환 중...") : (en ? "Switch and reload" : "계정 전환·새로고침")}</button>
     </div> : null}

@@ -54,7 +54,7 @@ public class AuthApiController {
 
     private static final String TEST_SWITCH_SESSION_ATTRIBUTE = "CARBONET_TEST_SWITCH_AUTHORIZED";
     private static final Set<String> TEST_SWITCH_ACCOUNTS = Set.of(
-            "qaowner26", "qadata26", "qacalc26", "qaverify26", "qaapprove26");
+            "qaowner26", "qadata26", "qacalc26", "qaverify26", "qaapprove26", "qaassign26");
 
     @Value("${carbonet.test-account-switch.enabled:false}")
     private boolean testAccountSwitchEnabled;

@@ -18,8 +18,10 @@ grep -Fq 'currentTestAccount' "$controller"
 grep -Fq 'TEST_SWITCH_SESSION_ATTRIBUTE' "$controller"
 grep -Fq 'recordLoginHistory(targetUserId' "$controller"
 grep -Fq 'carbonet-test-account-switch' "$deploy"
+grep -Fq 'qaassign26' "$component"
+grep -Fq 'qaassign26' "$controller"
 if grep -Eqi 'password|userPw|autoLogin' "$component"; then
   echo '[test-account-switcher] FAIL client-side password handling detected' >&2
   exit 1
 fi
-echo '[test-account-switcher] PASS accounts=5 passwordInput=none endpoint=testAccountSwitch featureGate=testMode mount=app-root webmaster=allowed crossPodContinuation=allowlisted-test-account position=right-center'
+echo '[test-account-switcher] PASS accounts=6 passwordInput=none endpoint=testAccountSwitch featureGate=testMode mount=app-root webmaster=allowed crossPodContinuation=allowlisted-test-account position=right-center'
