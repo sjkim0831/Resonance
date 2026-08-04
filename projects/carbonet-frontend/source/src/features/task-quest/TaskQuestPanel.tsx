@@ -902,6 +902,9 @@ export function TaskQuestPanel() {
       .filter((wave) => wave.processes.length > 0);
   }, [processKeyword, selectedProcessWaves]);
   const visibleActorLanes = useMemo(() => {
+    const accountActors = new Set(data?.accountActors || []);
+    const actorVisible = (actorCode?: string) =>
+      Boolean(data?.allVisible || (actorCode && accountActors.has(actorCode)));
     const laneMap = new Map<
       string,
       Array<{
@@ -914,6 +917,9 @@ export function TaskQuestPanel() {
       wave.processes.forEach((process) => {
         const processSteps = (data?.processCatalogSteps || [])
           .filter((step) => step.processCode === process.processCode)
+          .filter((step) =>
+            actorVisible(step.actorCode || process.ownerActorCode),
+          )
           .sort((left, right) => Number(left.stepOrder) - Number(right.stepOrder));
         if (processSteps.length) {
           processSteps.forEach((step) => {
@@ -925,6 +931,7 @@ export function TaskQuestPanel() {
           return;
         }
         const actorCode = process.ownerActorCode || "UNASSIGNED";
+        if (!actorVisible(actorCode)) return;
         const lane = laneMap.get(actorCode) || [];
         lane.push({ wave: wave.wave, process });
         laneMap.set(actorCode, lane);
@@ -938,7 +945,7 @@ export function TaskQuestPanel() {
           Number(left.process.laneOrder || 1) - Number(right.process.laneOrder || 1),
       ),
     }));
-  }, [data?.processCatalogSteps, visibleProcessWaves]);
+  }, [data?.accountActors, data?.allVisible, data?.processCatalogSteps, visibleProcessWaves]);
   const selectedUnifiedProcess = useMemo(
     () =>
       selectedDefinedProcesses.find(
@@ -1720,6 +1727,12 @@ export function TaskQuestPanel() {
                                           {waveProcesses.length ? (
                                             <div className="relative z-10 w-full space-y-2">
                                               {waveProcesses.map(({ process, step }) => {
+                                                const runtimeStep = step
+                                                  ? guideRuntimeStep(step)
+                                                  : workflowItems.find((item) => item.processCode === process.processCode);
+                                                const assignedToAccount = Boolean(
+                                                  runtimeStep && runtimeStep.actorActionable !== false,
+                                                );
                                                 const stepIndex = step
                                                   ? selectedCatalogSteps.findIndex((item) => item.stepCode === step.stepCode)
                                                   : 0;
@@ -1750,6 +1763,11 @@ export function TaskQuestPanel() {
                                                   >
                                                     <span className="block pr-12">{step?.stepName || process.processName}</span>
                                                     <small className={`absolute right-2 top-2 rounded-full px-1.5 py-0.5 text-[9px] ${status === "완료" || status === "Done" ? "bg-emerald-100 text-emerald-700" : status === "보완" || status === "Revision" ? "bg-orange-100 text-orange-700" : status === "진행중" || status === "Active" ? "bg-blue-100 text-blue-700" : "bg-slate-100 text-slate-500"}`}>{status}</small>
+                                                    <span className={`mt-1.5 inline-flex rounded-full px-2 py-0.5 text-[9px] font-black ${assignedToAccount ? "bg-[#052b57] text-white" : "bg-blue-50 text-[#246beb]"}`}>
+                                                      {assignedToAccount
+                                                        ? (en ? "Assigned to me" : "내 배정 업무")
+                                                        : (en ? "Available for my role" : "담당 가능")}
+                                                    </span>
                                                   </button>
                                                 );
                                               })}
@@ -2363,13 +2381,7 @@ export function TaskQuestPanel() {
                         );
                       })}
                     </div>
-                  ) : (
-                    <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-10 text-center font-bold text-slate-500">
-                      {en
-                        ? "No assigned workflow was found."
-                        : "현재 계정에 배정된 업무 프로세스가 없습니다."}
-                    </div>
-                  )}
+                  ) : null}
                 </div>
                 <footer className="flex shrink-0 items-center justify-between gap-3 border-t border-slate-200 bg-white px-5 py-4 sm:px-7">
                   <p className="hidden text-sm text-slate-500 sm:block">
