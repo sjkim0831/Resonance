@@ -255,6 +255,7 @@ type QuestResponse = {
     pageDesignMissingCount?: number;
   };
   allVisible?: boolean;
+  actorId?: string;
   accountActors?: string[];
   summary?: { total?: number; completed?: number; overdue?: number };
 };
@@ -1325,7 +1326,7 @@ export function TaskQuestPanel() {
                     </div>
                     <div className="flex gap-2">
                       <dt className="w-16 shrink-0 font-bold text-slate-500">
-                        {en ? "Actor" : "담당 액터"}
+                        {en ? "Assignee" : "담당자"}
                       </dt>
                       <dd className="font-semibold text-slate-800">
                         {actorLabel(task.actorCode)}
@@ -1697,7 +1698,7 @@ export function TaskQuestPanel() {
                                   style={{ gridTemplateColumns: `9rem repeat(${Math.max(1, visibleProcessWaves.length)}, ${processMapMode === "CANVAS" ? "14rem" : "minmax(0, 1fr)"})` }}
                                 >
                                   <strong className="flex min-h-14 items-center border-r border-slate-200 px-4 text-xs text-[#052b57]">
-                                    {en ? "Responsible actor" : "담당 액터"}
+                                    {en ? "Assignee" : "담당자"}
                                   </strong>
                                   {visibleProcessWaves.map((wave) => (
                                     <div className="flex min-h-14 flex-col items-center justify-center border-r border-dashed border-slate-200 px-3 text-center last:border-r-0" key={`actor-head-${wave.wave}`}>
@@ -1731,7 +1732,8 @@ export function TaskQuestPanel() {
                                                   ? guideRuntimeStep(step)
                                                   : workflowItems.find((item) => item.processCode === process.processCode);
                                                 const assignedToAccount = Boolean(
-                                                  runtimeStep && runtimeStep.actorActionable !== false,
+                                                  runtimeStep?.assignee && data?.actorId &&
+                                                  runtimeStep.assignee.toLocaleLowerCase() === data.actorId.toLocaleLowerCase(),
                                                 );
                                                 const stepIndex = step
                                                   ? selectedCatalogSteps.findIndex((item) => item.stepCode === step.stepCode)
@@ -1763,10 +1765,12 @@ export function TaskQuestPanel() {
                                                   >
                                                     <span className="block pr-12">{step?.stepName || process.processName}</span>
                                                     <small className={`absolute right-2 top-2 rounded-full px-1.5 py-0.5 text-[9px] ${status === "완료" || status === "Done" ? "bg-emerald-100 text-emerald-700" : status === "보완" || status === "Revision" ? "bg-orange-100 text-orange-700" : status === "진행중" || status === "Active" ? "bg-blue-100 text-blue-700" : "bg-slate-100 text-slate-500"}`}>{status}</small>
-                                                    <span className={`mt-1.5 inline-flex rounded-full px-2 py-0.5 text-[9px] font-black ${assignedToAccount ? "bg-[#052b57] text-white" : "bg-blue-50 text-[#246beb]"}`}>
+                                                    <span className={`mt-1.5 inline-flex rounded-full px-2 py-0.5 text-[9px] font-black ${assignedToAccount ? "bg-[#052b57] text-white" : data?.allVisible ? "bg-violet-50 text-violet-700" : "bg-blue-50 text-[#246beb]"}`}>
                                                       {assignedToAccount
                                                         ? (en ? "Assigned to me" : "내 배정 업무")
-                                                        : (en ? "Available for my role" : "담당 가능")}
+                                                        : data?.allVisible
+                                                          ? (en ? "Manage" : "관리 가능")
+                                                          : (en ? "Available for my role" : "담당 가능")}
                                                     </span>
                                                   </button>
                                                 );
@@ -2129,7 +2133,7 @@ export function TaskQuestPanel() {
                                       {blockedByPredecessor
                                         ? en ? "Predecessor pending" : "선행 업무 대기"
                                         : !actorAllowed
-                                          ? en ? "Assigned actor only" : "담당 액터만 진행 가능"
+                                          ? en ? "Assignee only" : "담당자만 진행 가능"
                                           : en ? "Not ready" : "업무 시작 대기"}
                                     </span>
                                   ) : (
