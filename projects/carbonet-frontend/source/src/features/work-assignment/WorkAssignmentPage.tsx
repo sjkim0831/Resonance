@@ -7,34 +7,28 @@ import { HeaderBrand, HeaderDesktopNav, HeaderMobileMenu, HomeInlineStyles } fro
 import { LOCALIZED_CONTENT } from "../home-entry/homeEntryContent";
 import type { HomePayload } from "../home-entry/homeEntryTypes";
 
-type AssignmentProject = { projectId: string; projectName: string };
-type AssignmentAccount = { accountId: string; accountName: string; department?: string; actorCodes?: string[] };
-type AssignmentStep = { stepCode: string; stepName: string; stepOrder: number; actorCode?: string; accountId?: string; accountName?: string };
-type AssignmentWorkspace = {
-  canManage?: boolean;
-  projects?: AssignmentProject[];
-  accounts?: AssignmentAccount[];
-  steps?: AssignmentStep[];
-  updatedTaskCount?: number;
-  message?: string;
+type Project = { projectId: string; projectName: string };
+type Account = { accountId: string; accountName: string; department?: string; actorCodes?: string };
+type Step = { stepCode: string; stepName: string; stepOrder: number; actorCode?: string; actorName?: string; accountId?: string };
+type Workspace = { canManage?: boolean; projects?: Project[]; accounts?: Account[]; steps?: Step[]; updatedTaskCount?: number };
+
+const ACTORS: Record<string, { label: string; icon: string; color: string }> = {
+  COMPANY_MANAGER: { label: "기업 관리자", icon: "business", color: "bg-blue-600" },
+  SITE_DATA_MANAGER: { label: "사업장 자료 담당자", icon: "assignment", color: "bg-cyan-600" },
+  SITE_DATA_OWNER: { label: "사업장 자료 담당자", icon: "assignment", color: "bg-cyan-600" },
+  EMISSION_CALCULATOR: { label: "배출량 산정 담당자", icon: "monitoring", color: "bg-emerald-600" },
+  CALCULATOR: { label: "배출량 산정 담당자", icon: "monitoring", color: "bg-emerald-600" },
+  EMISSION_VERIFIER: { label: "검증 담당자", icon: "verified_user", color: "bg-violet-600" },
+  VERIFIER: { label: "검증 담당자", icon: "verified_user", color: "bg-violet-600" },
+  EMISSION_APPROVER: { label: "승인 담당자", icon: "approval", color: "bg-indigo-600" },
+  APPROVER: { label: "승인 담당자", icon: "approval", color: "bg-indigo-600" },
+  WORK_ASSIGNMENT_MANAGER: { label: "업무 배정 담당자", icon: "assignment_ind", color: "bg-slate-700" },
 };
 
-const ACTOR_LABELS: Record<string, string> = {
-  COMPANY_MANAGER: "기업 관리자",
-  SITE_DATA_MANAGER: "사업장 자료 담당자",
-  SITE_DATA_OWNER: "사업장 자료 담당자",
-  EMISSION_CALCULATOR: "배출량 산정 담당자",
-  CALCULATOR: "배출량 산정 담당자",
-  EMISSION_VERIFIER: "검증 담당자",
-  VERIFIER: "검증 담당자",
-  EMISSION_APPROVER: "승인 담당자",
-  APPROVER: "승인 담당자",
-  WORK_ASSIGNMENT_MANAGER: "업무 배정 담당자",
-};
+const actorInfo = (code = "") => ACTORS[code] || { label: "담당자 미지정", icon: "person", color: "bg-slate-500" };
 
 async function readJson<T>(response: Response): Promise<T> {
-  const contentType = response.headers.get("content-type") || "";
-  if (!contentType.includes("application/json")) throw new Error(`서버 응답 형식이 올바르지 않습니다. (${response.status})`);
+  if (!(response.headers.get("content-type") || "").includes("application/json")) throw new Error(`서버 응답 형식이 올바르지 않습니다. (${response.status})`);
   const body = await response.json();
   if (!response.ok) throw new Error(body?.message || `HTTP ${response.status}`);
   return body as T;
@@ -47,8 +41,8 @@ export function WorkAssignmentPage() {
   const emptyHome = useMemo<HomePayload>(() => ({ isLoggedIn: false, isEn: en, homeMenu: [] }), [en]);
   const home = useAsyncValue<HomePayload>(() => fetchHomePayload(), [en], { initialValue: emptyHome, onError: () => undefined });
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [workspace, setWorkspace] = useState<AssignmentWorkspace | null>(null);
-  const [projectId, setProjectId] = useState(new URLSearchParams(window.location.search).get("projectId") || "");
+  const [workspace, setWorkspace] = useState<Workspace | null>(null);
+  const [projectId, setProjectId] = useState(new URLSearchParams(location.search).get("projectId") || "");
   const [assignees, setAssignees] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
@@ -58,75 +52,84 @@ export function WorkAssignmentPage() {
     if (nextProjectId) query.set("projectId", nextProjectId);
     const response = await fetch(`${buildLocalizedPath("/home/api/work-assignments", "/en/home/api/work-assignments")}?${query}`, { credentials: "include", headers: { Accept: "application/json" } });
     if (response.status === 401) {
-      const returnUrl = encodeURIComponent(window.location.pathname + window.location.search);
-      window.location.href = buildLocalizedPath(`/signin/loginView?returnUrl=${returnUrl}`, `/en/signin/loginView?returnUrl=${returnUrl}`);
+      const returnUrl = encodeURIComponent(location.pathname + location.search);
+      location.href = buildLocalizedPath(`/signin/loginView?returnUrl=${returnUrl}`, `/en/signin/loginView?returnUrl=${returnUrl}`);
       return;
     }
-    const body = await readJson<AssignmentWorkspace>(response);
-    const resolvedProjectId = nextProjectId || body.projects?.[0]?.projectId || "";
-    if (!nextProjectId && resolvedProjectId) {
-      setProjectId(resolvedProjectId);
-      await load(resolvedProjectId);
-      return;
-    }
+    const body = await readJson<Workspace>(response);
+    const resolved = nextProjectId || body.projects?.[0]?.projectId || "";
+    if (!nextProjectId && resolved) { setProjectId(resolved); await load(resolved); return; }
     setWorkspace(body);
     setAssignees(Object.fromEntries((body.steps || []).map(step => [step.stepCode, step.accountId || ""])));
-    const url = new URL(window.location.href);
-    if (resolvedProjectId) url.searchParams.set("projectId", resolvedProjectId);
-    window.history.replaceState(null, "", `${url.pathname}${url.search}`);
+    const url = new URL(location.href);
+    if (resolved) url.searchParams.set("projectId", resolved);
+    history.replaceState(null, "", `${url.pathname}${url.search}`);
   }
 
   useEffect(() => { void load().catch(error => setMessage(error instanceof Error ? error.message : String(error))); }, []);
-  useEffect(() => {
-    document.body.classList.toggle("mobile-menu-open", mobileMenuOpen);
-    return () => document.body.classList.remove("mobile-menu-open");
-  }, [mobileMenuOpen]);
+  useEffect(() => { document.body.classList.toggle("mobile-menu-open", mobileMenuOpen); return () => document.body.classList.remove("mobile-menu-open"); }, [mobileMenuOpen]);
 
   const steps = workspace?.steps || [];
-  const actors = [...new Set(steps.map(step => step.actorCode || "UNASSIGNED"))];
-  const unassignedCount = steps.filter(step => !assignees[step.stepCode]).length;
+  const actorCodes = [...new Set(steps.map(step => step.actorCode || "UNASSIGNED"))];
+  const unassigned = steps.filter(step => !assignees[step.stepCode]).length;
 
-  function assignActor(actorCode: string, accountId: string) {
+  function setActorDefault(actorCode: string, accountId: string) {
     setAssignees(current => ({ ...current, ...Object.fromEntries(steps.filter(step => (step.actorCode || "UNASSIGNED") === actorCode).map(step => [step.stepCode, accountId])) }));
   }
 
   async function save() {
     const assignments = steps.map(step => ({ stepCode: step.stepCode, accountId: assignees[step.stepCode] || "" }));
-    if (!projectId || !assignments.length || assignments.some(item => !item.accountId)) {
-      setMessage(en ? "Select an account for every step." : "모든 단계의 담당 계정을 선택해 주세요.");
-      return;
-    }
+    if (!projectId || !assignments.length || assignments.some(item => !item.accountId)) { setMessage(en ? "Select an account for every task." : "모든 세부 업무의 담당 계정을 선택해 주세요."); return; }
     setBusy(true); setMessage("");
     try {
       const response = await fetch(buildLocalizedPath("/home/api/work-assignments", "/en/home/api/work-assignments"), {
         method: "POST", credentials: "include", headers: { "Content-Type": "application/json", Accept: "application/json" },
         body: JSON.stringify({ projectId, processCode: "EMISSION_PROJECT", assignments }),
       });
-      const body = await readJson<AssignmentWorkspace>(response);
+      const body = await readJson<Workspace>(response);
       setWorkspace(body);
       setAssignees(Object.fromEntries((body.steps || []).map(step => [step.stepCode, step.accountId || ""])));
-      setMessage(en ? `${body.updatedTaskCount || assignments.length} steps assigned.` : `${body.updatedTaskCount || assignments.length}개 단계 배정과 알림을 저장했습니다.`);
+      setMessage(en ? `${body.updatedTaskCount || assignments.length} tasks assigned.` : `${body.updatedTaskCount || assignments.length}개 세부 업무 배정과 담당자 알림을 저장했습니다.`);
     } catch (error) { setMessage(error instanceof Error ? error.message : String(error)); }
     finally { setBusy(false); }
   }
 
+  const accountOptions = (key: string) => (workspace?.accounts || []).map(account => <option key={`${key}-${account.accountId}`} value={account.accountId}>{account.accountName} · {account.accountId}{account.department ? ` · ${account.department}` : ""}</option>);
+
   return <><HomeInlineStyles en={en} /><div className="min-h-screen bg-[#f4f7fb] text-[var(--kr-gov-text-primary)]">
     <a className="skip-link" href="#assignment-main">{content.skipLink}</a>
-    <header className="fixed inset-x-0 top-0 z-50 border-b-2 border-[#001e40] bg-white"><div className="mx-auto max-w-7xl px-4 lg:px-8"><div className="relative flex h-16 items-center">
+    <header className="fixed inset-x-0 top-0 z-50 border-b-2 border-[#001e40] bg-white"><div className="mx-auto max-w-[96rem] px-4 lg:px-8"><div className="relative flex h-16 items-center">
       <div className="h-11 w-11 shrink-0 xl:hidden" aria-hidden="true" /><HeaderBrand content={content} en={en} /><HeaderDesktopNav en={en} homeMenu={home.value?.homeMenu || []} />
       <div className="ml-auto flex items-center gap-2"><button className="hidden rounded-lg border border-slate-300 px-3 py-2 text-xs font-bold xl:block" onClick={() => navigate(en ? "/emission/work-assignment" : "/en/emission/work-assignment")} type="button">{en ? "KO" : "EN"}</button>{home.value?.isLoggedIn ? <button className="hidden rounded-lg bg-[#246beb] px-4 py-2.5 font-bold text-white xl:block" onClick={() => void session.logout()} type="button">{content.logout}</button> : null}<button aria-label={content.openAllMenu} className="flex h-11 w-11 items-center justify-center rounded border border-slate-300 xl:hidden" onClick={() => setMobileMenuOpen(true)} type="button"><span className="material-symbols-outlined">menu</span></button></div>
     </div></div></header><div className="h-16" aria-hidden="true" />
     <div className={`${mobileMenuOpen ? "" : "hidden"} fixed inset-0 z-[70] xl:hidden`}><button className="absolute inset-0 bg-black/50" onClick={() => setMobileMenuOpen(false)} type="button" /><HeaderMobileMenu content={content} en={en} homeMenu={home.value?.homeMenu || []} isLoggedIn={Boolean(home.value?.isLoggedIn)} onClose={() => setMobileMenuOpen(false)} onLogout={session.logout} /></div>
-    <main className="mx-auto max-w-7xl px-4 py-8 lg:px-8" id="assignment-main">
-      <section className="rounded-3xl bg-[#052b57] px-6 py-8 text-white shadow-xl lg:px-10"><p className="text-sm font-bold text-blue-200">{en ? "Carbon emission operation" : "탄소배출 운영"}</p><h1 className="mt-2 text-3xl font-black">{en ? "Project work assignment" : "프로젝트 업무 배정"}</h1><p className="mt-3 max-w-3xl text-sm leading-6 text-blue-100">{en ? "Assign company accounts to actors and workflow steps, then notify every assignee." : "동일 기업의 활성 계정을 액터와 단계별 담당자로 배정하고 담당자 알림까지 한 번에 저장합니다."}</p></section>
+
+    <main className="mx-auto max-w-[96rem] px-4 py-7 lg:px-8" id="assignment-main">
+      <section className="overflow-hidden rounded-3xl border border-[#0b3b70] bg-[#052b57] text-white shadow-xl">
+        <div className="flex flex-wrap items-center justify-between gap-4 px-6 py-5 lg:px-8"><div><p className="text-sm font-bold text-blue-200">{en ? "Carbon emission operation" : "탄소배출 운영"}</p><h1 className="mt-1 text-3xl font-black">{en ? "Project work assignment" : "프로젝트 업무 배정"}</h1><p className="mt-2 text-sm text-blue-100">{en ? "Assign company accounts to actors and every executable task." : "전체 업무 보기와 동일한 흐름에서 담당자와 세부 업무별 계정을 배정합니다."}</p></div><label className="min-w-[18rem] text-sm font-black">{en ? "Project" : "배정 프로젝트"}<select className="mt-2 h-12 w-full rounded-lg border border-white/30 bg-white px-3 text-[#052b57]" value={projectId} onChange={event => { setProjectId(event.target.value); void load(event.target.value).catch(error => setMessage(error instanceof Error ? error.message : String(error))); }}>{(workspace?.projects || []).map(project => <option key={project.projectId} value={project.projectId}>{project.projectName} · {project.projectId}</option>)}</select></label></div>
+      </section>
+
       {!workspace ? <section className="mt-5 rounded-2xl bg-white p-8 text-center shadow-sm">{message || (en ? "Loading assignment workspace..." : "업무 배정 정보를 불러오는 중입니다.")}</section> : !workspace.canManage ? <section className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 p-6 font-bold text-amber-900">{en ? "Only a work assignment manager can access this page." : "업무 배정 담당자만 접근할 수 있습니다."}</section> : <>
-        <section className="mt-5 grid gap-3 sm:grid-cols-3"><div className="rounded-2xl bg-white p-5 shadow-sm"><span className="text-sm font-bold text-slate-500">{en ? "Workflow steps" : "프로세스 단계"}</span><strong className="mt-2 block text-3xl text-[#052b57]">{steps.length}</strong></div><div className="rounded-2xl bg-white p-5 shadow-sm"><span className="text-sm font-bold text-slate-500">{en ? "Assigned" : "배정 완료"}</span><strong className="mt-2 block text-3xl text-emerald-700">{steps.length - unassignedCount}</strong></div><div className="rounded-2xl bg-white p-5 shadow-sm"><span className="text-sm font-bold text-slate-500">{en ? "Unassigned" : "미배정"}</span><strong className="mt-2 block text-3xl text-amber-700">{unassignedCount}</strong></div></section>
-        <section className="mt-5 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><label className="block text-sm font-black text-[#052b57]">{en ? "Project" : "배정 프로젝트"}<select className="mt-2 h-12 w-full rounded-lg border border-slate-300 bg-white px-3" value={projectId} onChange={event => { setProjectId(event.target.value); void load(event.target.value).catch(error => setMessage(error instanceof Error ? error.message : String(error))); }}>{(workspace.projects || []).map(project => <option key={project.projectId} value={project.projectId}>{project.projectName} · {project.projectId}</option>)}</select></label></section>
-        <section className="mt-5 grid gap-5 lg:grid-cols-[minmax(18rem,0.8fr)_minmax(0,1.5fr)]"><div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><h2 className="text-lg font-black text-[#052b57]">{en ? "Actor defaults" : "담당자별 기본 계정"}</h2><div className="mt-4 space-y-3">{actors.map(actorCode => { const actorSteps = steps.filter(step => (step.actorCode || "UNASSIGNED") === actorCode); const assigned = [...new Set(actorSteps.map(step => assignees[step.stepCode]).filter(Boolean))]; return <label className="block rounded-xl border border-slate-200 bg-slate-50 p-3" key={actorCode}><span className="text-sm font-black text-[#052b57]">{ACTOR_LABELS[actorCode] || actorCode} <small className="text-slate-500">· {actorSteps.length}{en ? " steps" : "단계"}</small></span><select className="mt-2 h-11 w-full rounded-lg border border-slate-300 bg-white px-3" value={assigned.length === 1 ? assigned[0] : ""} onChange={event => assignActor(actorCode, event.target.value)}><option value="">{en ? "Select company account" : "기업 계정 선택"}</option>{(workspace.accounts || []).map(account => <option key={`${actorCode}-${account.accountId}`} value={account.accountId}>{account.accountName} · {account.accountId}{account.department ? ` · ${account.department}` : ""}</option>)}</select></label>; })}</div></div>
-          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><h2 className="text-lg font-black text-[#052b57]">{en ? "Step assignments" : "단계별 담당 계정"}</h2><ol className="mt-4 space-y-3">{steps.map(step => <li className="grid gap-3 rounded-xl border border-slate-200 p-4 sm:grid-cols-[2.5rem_minmax(0,1fr)_minmax(14rem,0.9fr)] sm:items-center" key={step.stepCode}><span className="flex h-9 w-9 items-center justify-center rounded-full bg-[#052b57] text-sm font-black text-white">{step.stepOrder}</span><span><strong className="block text-sm text-[#052b57]">{step.stepName}</strong><small className="font-bold text-slate-500">{ACTOR_LABELS[step.actorCode || ""] || step.actorCode}</small></span><select aria-label={`${step.stepName} 담당 계정`} className="h-11 w-full rounded-lg border border-slate-300 bg-white px-3" value={assignees[step.stepCode] || ""} onChange={event => setAssignees(current => ({ ...current, [step.stepCode]: event.target.value }))}><option value="">{en ? "Select account" : "담당 계정 선택"}</option>{(workspace.accounts || []).map(account => <option key={`${step.stepCode}-${account.accountId}`} value={account.accountId}>{account.accountName} · {account.accountId}</option>)}</select></li>)}</ol></div>
+        <section className="mt-5 grid gap-3 sm:grid-cols-3"><article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><span className="text-sm font-bold text-slate-500">{en ? "Detailed tasks" : "세부 업무"}</span><strong className="mt-2 block text-3xl text-[#052b57]">{steps.length}</strong></article><article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><span className="text-sm font-bold text-slate-500">{en ? "Assigned" : "배정 완료"}</span><strong className="mt-2 block text-3xl text-emerald-700">{steps.length - unassigned}</strong></article><article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><span className="text-sm font-bold text-slate-500">{en ? "Unassigned" : "미배정"}</span><strong className="mt-2 block text-3xl text-amber-700">{unassigned}</strong></article></section>
+
+        <section className="mt-5 overflow-hidden rounded-2xl border border-slate-300 bg-white shadow-sm">
+          <div className="border-b border-slate-200 bg-slate-50 px-5 py-4"><h2 className="text-xl font-black text-[#052b57]">{en ? "Actor swimlane assignment" : "담당자별 업무 프로세스 배정"}</h2><p className="mt-1 text-sm text-slate-600">{en ? "Set an actor default, then override any individual task in its lane." : "행별 기본 계정을 지정한 뒤 각 세부 업무 셀에서 담당자를 개별 변경할 수 있습니다."}</p></div>
+
+          <div className="hidden overflow-x-auto lg:block" data-testid="assignment-swimlane">
+            <div className="min-w-[82rem]">
+              <div className="grid border-b border-slate-300 bg-[#f3f7fc]" style={{ gridTemplateColumns: `13rem repeat(${Math.max(steps.length, 1)}, minmax(11.5rem, 1fr))` }}><div className="flex items-center justify-center border-r border-slate-300 p-4 text-sm font-black text-[#052b57]">{en ? "Assignee" : "담당자"}</div>{steps.map(step => <div className="border-r border-slate-200 p-3 text-center last:border-r-0" key={`head-${step.stepCode}`}><span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-[#0755b5] text-xs font-black text-white">{step.stepOrder}</span><strong className="mt-2 block text-sm text-[#052b57]">{step.stepName}</strong></div>)}</div>
+              {actorCodes.map(actorCode => { const info = actorInfo(actorCode); const actorSteps = steps.filter(step => (step.actorCode || "UNASSIGNED") === actorCode); const selected = [...new Set(actorSteps.map(step => assignees[step.stepCode]).filter(Boolean))]; return <div className="grid min-h-36 border-b border-slate-200 last:border-b-0" key={actorCode} style={{ gridTemplateColumns: `13rem repeat(${Math.max(steps.length, 1)}, minmax(11.5rem, 1fr))` }}>
+                <div className="border-r border-slate-300 bg-[#f8fafc] p-4"><div className={`flex h-11 w-11 items-center justify-center rounded-full text-white ${info.color}`}><span className="material-symbols-outlined">{info.icon}</span></div><strong className="mt-2 block text-sm text-[#052b57]">{info.label}</strong><select aria-label={`${info.label} 기본 계정`} className="mt-3 h-10 w-full rounded-lg border border-slate-300 bg-white px-2 text-xs" value={selected.length === 1 ? selected[0] : ""} onChange={event => setActorDefault(actorCode, event.target.value)}><option value="">{en ? "Actor default" : "기본 계정 선택"}</option>{accountOptions(`actor-${actorCode}`)}</select></div>
+                {steps.map(step => { const belongs = (step.actorCode || "UNASSIGNED") === actorCode; return <div className={`flex border-r border-slate-200 p-3 last:border-r-0 ${belongs ? "items-center bg-white" : "items-center justify-center bg-slate-50/70"}`} key={`${actorCode}-${step.stepCode}`}>{belongs ? <label className="block w-full rounded-xl border-2 border-blue-200 bg-blue-50 p-3"><span className="flex items-center gap-2 text-xs font-black text-[#0755b5]"><span className="material-symbols-outlined text-lg">assignment_ind</span>{en ? "Assigned account" : "세부 업무 담당"}</span><select aria-label={`${step.stepName} 담당 계정`} className="mt-2 h-11 w-full rounded-lg border border-slate-300 bg-white px-2 text-xs" value={assignees[step.stepCode] || ""} onChange={event => setAssignees(current => ({ ...current, [step.stepCode]: event.target.value }))}><option value="">{en ? "Select account" : "담당 계정 선택"}</option>{accountOptions(step.stepCode)}</select></label> : <span className="h-px w-10 bg-slate-200" aria-hidden="true" />}</div>})}
+              </div>; })}
+            </div>
+          </div>
+
+          <ol className="divide-y divide-slate-200 lg:hidden">{steps.map(step => { const info = actorInfo(step.actorCode); return <li className="p-4" key={`mobile-${step.stepCode}`}><div className="flex items-start gap-3"><span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#0755b5] text-sm font-black text-white">{step.stepOrder}</span><div><strong className="block text-sm text-[#052b57]">{step.stepName}</strong><span className="mt-1 inline-flex items-center gap-1 text-xs font-bold text-slate-600"><span className="material-symbols-outlined text-base">{info.icon}</span>{info.label}</span></div></div><select aria-label={`${step.stepName} 모바일 담당 계정`} className="mt-3 h-12 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm" value={assignees[step.stepCode] || ""} onChange={event => setAssignees(current => ({ ...current, [step.stepCode]: event.target.value }))}><option value="">{en ? "Select account" : "담당 계정 선택"}</option>{accountOptions(`mobile-${step.stepCode}`)}</select></li>; })}</ol>
         </section>
+
         {message ? <p className={`mt-5 rounded-xl p-4 text-sm font-bold ${message.includes("저장") || message.includes("assigned") ? "bg-emerald-50 text-emerald-800" : "bg-amber-50 text-amber-900"}`} role="status">{message}</p> : null}
-        <div className="sticky bottom-0 mt-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-xl backdrop-blur"><span className="text-sm font-bold text-slate-600">{unassignedCount ? (en ? `${unassignedCount} steps need an assignee.` : `${unassignedCount}개 단계의 담당자를 지정해야 합니다.`) : (en ? "Every step has an assignee." : "모든 단계에 담당자가 지정되었습니다.")}</span><button className="min-h-12 rounded-lg bg-[#0755b5] px-7 font-black text-white disabled:bg-slate-300" disabled={busy || !steps.length || unassignedCount > 0} onClick={() => void save()} type="button">{busy ? (en ? "Saving..." : "저장 중...") : (en ? "Save and notify" : "배정 저장·담당자 알림")}</button></div>
+        <div className="sticky bottom-0 z-20 mt-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-xl backdrop-blur"><span className="text-sm font-bold text-slate-600">{unassigned ? (en ? `${unassigned} tasks need an assignee.` : `${unassigned}개 세부 업무의 담당자를 지정해야 합니다.`) : (en ? "Every task has an assignee." : "모든 세부 업무에 담당자가 지정되었습니다.")}</span><button className="min-h-12 rounded-lg bg-[#0755b5] px-7 font-black text-white disabled:bg-slate-300" disabled={busy || !steps.length || unassigned > 0} onClick={() => void save()} type="button">{busy ? (en ? "Saving..." : "저장 중...") : (en ? "Save and notify" : "배정 저장·담당자 알림")}</button></div>
       </>}
     </main>
   </div></>;
