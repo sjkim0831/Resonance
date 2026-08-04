@@ -35,7 +35,11 @@ grep -Fq "user_path='/emission/work-assignment?workTypeCode=EMISSION&processCode
 grep -Fq 'selectedCatalogProcessCode === "WORK_ASSIGNMENT" && data?.assignmentManager' "$task_quest"
 grep -Fq 'target.searchParams.set("processCode", "EMISSION_PROJECT")' "$task_quest"
 grep -Fq 'const onlyProcessCode = processes.length === 1' "$task_quest"
-grep -Fq '{en ? "Process steps" : "업무 진행 단계"}' "$task_quest"
+grep -Fq 'data?.assignmentManager && actorCode === "WORK_ASSIGNMENT_MANAGER"' "$task_quest"
+if grep -Fq '{en ? "Process steps" : "업무 진행 단계"}' "$task_quest"; then
+  echo '[work-assignment] duplicated vertical process step list must remain removed' >&2
+  exit 1
+fi
 grep -Fq 'framework_project_process_step_assignment' "$registry_migration"
 grep -Fq 'WORK_ASSIGNMENT-HAPPY' "$process_migration"
 grep -Fq 'WORK_ASSIGNMENT-AUTH' "$process_migration"
