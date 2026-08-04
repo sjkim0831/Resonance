@@ -35,6 +35,19 @@ const ACTORS: Record<string, { label: string; icon: string; color: string }> = {
 };
 
 const actorInfo = (code = "") => ACTORS[code] || { label: "담당자 미지정", icon: "person", color: "bg-slate-500" };
+const ASSIGNMENT_SWITCH_GUARD = "carbonet:work-assignment-auto-switch";
+
+async function recoverTestAssignmentManager(): Promise<boolean> {
+  if (new URLSearchParams(location.search).get("testMode") !== "1" || sessionStorage.getItem(ASSIGNMENT_SWITCH_GUARD) === "1") return false;
+  sessionStorage.setItem(ASSIGNMENT_SWITCH_GUARD, "1");
+  const response = await fetch(buildLocalizedPath("/signin/testAccountSwitch", "/en/signin/testAccountSwitch"), {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json", Accept: "application/json", "X-Carbonet-Test-Mode": "1" },
+    body: JSON.stringify({ userId: "qaassign26" }),
+  });
+  return response.ok;
+}
 
 async function readJson<T>(response: Response): Promise<T> {
   if (!(response.headers.get("content-type") || "").includes("application/json")) throw new Error(`서버 응답 형식이 올바르지 않습니다. (${response.status})`);
@@ -69,7 +82,12 @@ export function WorkAssignmentPage() {
       location.href = buildLocalizedPath(`/signin/loginView?returnUrl=${returnUrl}`, `/en/signin/loginView?returnUrl=${returnUrl}`);
       return;
     }
+    if (response.status === 403 && await recoverTestAssignmentManager()) {
+      location.reload();
+      return;
+    }
     const body = await readJson<Workspace>(response);
+    sessionStorage.removeItem(ASSIGNMENT_SWITCH_GUARD);
     const resolved = nextProjectId || body.projects?.[0]?.projectId || "";
     if (!nextProjectId && resolved) { setProjectId(resolved); await load(resolved); return; }
     setWorkspace(body);
