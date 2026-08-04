@@ -354,7 +354,7 @@ export function TaskQuestPanel() {
   const [flowOpen, setFlowOpen] = useState(false);
   const [processKeyword, setProcessKeyword] = useState("");
   const [processMapZoom, setProcessMapZoom] = useState(100);
-  const [processMapMode, setProcessMapMode] = useState<"FLOW" | "ACTOR">("ACTOR");
+  const [processMapMode, setProcessMapMode] = useState<"FLOW" | "ACTOR" | "CANVAS">("ACTOR");
   const [selectedWorkType, setSelectedWorkType] = useState(
     () => localStorage.getItem("task-quest-work-type") || "ALL",
   );
@@ -1514,6 +1514,15 @@ export function TaskQuestPanel() {
                                 {en ? "By actor" : "액터별 보기"}
                               </button>
                             </div>
+                            <button
+                              aria-pressed={processMapMode === "CANVAS"}
+                              className={`flex h-10 shrink-0 items-center gap-1.5 rounded-lg border px-3 text-xs font-black transition ${processMapMode === "CANVAS" ? "border-[#052b57] bg-[#052b57] text-white" : "border-slate-300 bg-white text-[#052b57] hover:border-[#246beb]"}`}
+                              onClick={() => setProcessMapMode((mode) => mode === "CANVAS" ? "ACTOR" : "CANVAS")}
+                              type="button"
+                            >
+                              <span className="material-symbols-outlined text-[18px]">{processMapMode === "CANVAS" ? "close_fullscreen" : "open_in_full"}</span>
+                              {processMapMode === "CANVAS" ? (en ? "Compact view" : "기본 보기") : (en ? "Expand map" : "확대해서 보기")}
+                            </button>
                             <div className="flex h-10 shrink-0 items-center rounded-lg border border-slate-300 bg-white">
                               <button
                                 aria-label={en ? "Zoom out" : "축소"}
@@ -1538,7 +1547,27 @@ export function TaskQuestPanel() {
                               </button>
                             </div>
                           </div>
-                          <div className="min-h-[25rem] overflow-auto p-4">
+                          <div className={`relative overflow-auto p-4 ${processMapMode === "CANVAS" ? "min-h-[38rem] bg-slate-100" : "min-h-[25rem]"}`}>
+                            {processMapMode === "CANVAS" ? (
+                              <div className="sticky top-0 z-30 ml-auto w-40 rounded-xl border border-slate-300 bg-white/95 p-2 shadow-lg backdrop-blur">
+                                <div className="flex items-center justify-between text-[10px] font-black text-slate-600">
+                                  <span>{en ? "Process minimap" : "전체 프로세스 위치"}</span>
+                                  <button className="text-[#246beb]" onClick={() => setProcessMapZoom(80)} type="button">
+                                    {en ? "Fit" : "화면 맞춤"}
+                                  </button>
+                                </div>
+                                <div className="relative mt-2 h-12 overflow-hidden rounded border border-slate-200 bg-slate-50">
+                                  {visibleActorLanes.slice(0, 5).map((lane, laneIndex) => (
+                                    <div className="absolute left-2 right-2 flex items-center gap-1" key={`minimap-${lane.actorCode}`} style={{ top: `${5 + laneIndex * 8}px` }}>
+                                      {visibleProcessWaves.map((wave) => (
+                                        <i className="h-1 flex-1 rounded-full bg-blue-300" key={`minimap-${lane.actorCode}-${wave.wave}`} />
+                                      ))}
+                                    </div>
+                                  ))}
+                                  <span className="absolute inset-y-1 left-3 w-20 rounded border-2 border-[#246beb] bg-blue-100/20" />
+                                </div>
+                              </div>
+                            ) : null}
                             {visibleProcessWaves.length ? (processMapMode === "FLOW" ? (
                               <ol
                                 className="flex min-w-max items-center py-5 transition-transform"
@@ -1606,7 +1635,7 @@ export function TaskQuestPanel() {
                               </ol>
                             ) : (
                               <div
-                                className="min-w-max overflow-hidden rounded-xl border border-slate-200 bg-white transition-transform"
+                                className={`min-w-max overflow-hidden rounded-xl border border-slate-200 bg-white transition-transform ${processMapMode === "CANVAS" ? "m-8 shadow-xl" : ""}`}
                                 style={{
                                   transform: `scale(${processMapZoom / 100})`,
                                   transformOrigin: "left top",
@@ -1614,7 +1643,7 @@ export function TaskQuestPanel() {
                               >
                                 <div
                                   className="grid border-b border-slate-200 bg-slate-50"
-                                  style={{ gridTemplateColumns: `9rem repeat(${Math.max(1, visibleProcessWaves.length)}, minmax(11rem, 1fr))` }}
+                                  style={{ gridTemplateColumns: `9rem repeat(${Math.max(1, visibleProcessWaves.length)}, minmax(${processMapMode === "CANVAS" ? "14rem" : "11rem"}, 1fr))` }}
                                 >
                                   <strong className="flex min-h-14 items-center border-r border-slate-200 px-4 text-xs text-[#052b57]">
                                     {en ? "Responsible actor" : "담당 액터"}
@@ -1632,7 +1661,7 @@ export function TaskQuestPanel() {
                                   <div
                                     className="grid border-b border-slate-200 last:border-b-0"
                                     key={`actor-lane-${lane.actorCode}`}
-                                    style={{ gridTemplateColumns: `9rem repeat(${Math.max(1, visibleProcessWaves.length)}, minmax(11rem, 1fr))` }}
+                                    style={{ gridTemplateColumns: `9rem repeat(${Math.max(1, visibleProcessWaves.length)}, minmax(${processMapMode === "CANVAS" ? "14rem" : "11rem"}, 1fr))` }}
                                   >
                                     <div className="flex min-h-28 items-center gap-2 border-r border-slate-200 bg-[#052b57] px-3 text-white">
                                       <span className="material-symbols-outlined flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white text-[18px] text-[#052b57]">person</span>
@@ -1707,7 +1736,7 @@ export function TaskQuestPanel() {
                                   </p>
                                 </div>
                               </div>
-                              <dl className={`mt-5 border-y border-slate-200 text-sm ${processMapMode === "ACTOR" ? "grid divide-y divide-slate-200 lg:grid-cols-3 lg:divide-x lg:divide-y-0" : "divide-y divide-slate-200"}`}>
+                              <dl className={`mt-5 border-y border-slate-200 text-sm ${processMapMode !== "FLOW" ? "grid divide-y divide-slate-200 lg:grid-cols-3 lg:divide-x lg:divide-y-0" : "divide-y divide-slate-200"}`}>
                                 <div className="grid grid-cols-[6rem_1fr] gap-3 py-3">
                                   <dt className="font-bold text-slate-600">{en ? "Owner" : "담당 주체"}</dt>
                                   <dd className="font-black text-slate-900">{selectedCatalogProcess.ownerActorCode || "-"}</dd>
