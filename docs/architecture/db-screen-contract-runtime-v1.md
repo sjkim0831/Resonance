@@ -18,6 +18,8 @@ Do not create a second authoring table. A design save validates and publishes a 
 
 Saving a professional screen contract now republishes its canonical eight-layer projection in the same transaction. Semantic no-op saves reuse the active version, an existing historical hash is reactivated instead of duplicated, and a changed contract advances every alias binding together. Any design-gate, generation, publication, or graph failure rolls back the complete save.
 
+The save path does not synchronously rebuild an entire process. Runtime publication and the affected screen gate commit immediately; full code generation remains an explicit idempotent `/development/direct` operation. This prevents a single screen edit from timing out while still making the DB-backed renderer change visible without a build.
+
 ## Runtime contract
 
 Every published document contains these layers:
