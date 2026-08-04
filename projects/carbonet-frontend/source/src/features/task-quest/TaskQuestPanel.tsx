@@ -406,7 +406,7 @@ export function TaskQuestPanel() {
   const [flowOpen, setFlowOpen] = useState(false);
   const [processKeyword, setProcessKeyword] = useState("");
   const [processMapZoom, setProcessMapZoom] = useState(100);
-  const [processMapMode, setProcessMapMode] = useState<"FLOW" | "ACTOR" | "CANVAS">("ACTOR");
+  const [processMapMode] = useState<"FLOW" | "ACTOR" | "CANVAS">("CANVAS");
   const [selectedWorkType, setSelectedWorkType] = useState(
     () => localStorage.getItem("task-quest-work-type") || "ALL",
   );
@@ -1559,15 +1559,6 @@ export function TaskQuestPanel() {
                                 value={processKeyword}
                               />
                             </label>
-                            <button
-                              aria-pressed={processMapMode === "CANVAS"}
-                              className={`flex h-10 shrink-0 items-center gap-1.5 rounded-lg border px-3 text-xs font-black transition ${processMapMode === "CANVAS" ? "border-[#052b57] bg-[#052b57] text-white" : "border-slate-300 bg-white text-[#052b57] hover:border-[#246beb]"}`}
-                              onClick={() => setProcessMapMode((mode) => mode === "CANVAS" ? "ACTOR" : "CANVAS")}
-                              type="button"
-                            >
-                              <span className="material-symbols-outlined text-[18px]">{processMapMode === "CANVAS" ? "close_fullscreen" : "open_in_full"}</span>
-                              {processMapMode === "CANVAS" ? (en ? "Compact view" : "기본 보기") : (en ? "Expand map" : "확대해서 보기")}
-                            </button>
                             <div className="flex h-10 shrink-0 items-center rounded-lg border border-slate-300 bg-white">
                               <button
                                 aria-label={en ? "Zoom out" : "축소"}
@@ -1680,10 +1671,18 @@ export function TaskQuestPanel() {
                               </ol>
                             ) : (
                               <div
-                                className={`overflow-hidden rounded-xl border border-slate-200 bg-white transition-transform ${processMapMode === "CANVAS" ? "my-4 w-[112rem] min-w-[112rem] max-w-none shadow-xl" : "w-full max-w-full"}`}
+                                className={`overflow-hidden rounded-xl border border-slate-200 bg-white ${processMapMode === "CANVAS" ? "my-4 max-w-none shadow-xl" : "w-full max-w-full"}`}
                                 style={{
-                                  transform: `scale(${processMapZoom / 100})`,
-                                  transformOrigin: "left top",
+                                  ...(processMapMode === "CANVAS"
+                                    ? {
+                                        width: `${Math.max(112, 9 + visibleProcessWaves.length * 14)}rem`,
+                                        minWidth: `${Math.max(112, 9 + visibleProcessWaves.length * 14)}rem`,
+                                        zoom: processMapZoom / 100,
+                                      }
+                                    : {
+                                        transform: `scale(${processMapZoom / 100})`,
+                                        transformOrigin: "left top",
+                                      }),
                                 }}
                               >
                                 <div
