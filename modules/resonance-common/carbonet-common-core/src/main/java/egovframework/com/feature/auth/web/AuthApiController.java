@@ -231,12 +231,20 @@ public class AuthApiController {
         HttpSession session = request.getSession(false);
         Authentication current = SecurityContextHolder.getContext().getAuthentication();
         CurrentUserContextService.CurrentUserContext currentContext = currentUserContextService.resolve(request);
+        String effectiveUserId = safeString(currentContext.getUserId()).toLowerCase();
+        String actualUserId = safeString(currentContext.getActualUserId()).toLowerCase();
         boolean currentAdmin = currentContext.isWebmaster()
                 || AdminConsoleAccessPolicy.allows(currentContext.getAuthorCode())
                 || (current != null && current.isAuthenticated()
                 && current.getAuthorities().stream().anyMatch(authority -> AdminConsoleAccessPolicy.allows(authority.getAuthority())));
+        boolean currentTestAccount = TEST_SWITCH_ACCOUNTS.contains(effectiveUserId)
+                || TEST_SWITCH_ACCOUNTS.contains(actualUserId)
+                || (current != null && TEST_SWITCH_ACCOUNTS.contains(safeString(current.getName()).toLowerCase()));
         boolean authorizedSession = session != null && Boolean.TRUE.equals(session.getAttribute(TEST_SWITCH_SESSION_ATTRIBUTE));
-        if (!currentAdmin && !authorizedSession) {
+        if (!currentAdmin && !currentTestAccount && !authorizedSession) {
+            log.warn("Rejected test account switch. principal={}, actualUserId={}, effectiveUserId={}, authorCode={}, sessionAuthorized={}",
+                    current == null ? "" : safeString(current.getName()), actualUserId, effectiveUserId,
+                    safeString(currentContext.getAuthorCode()), authorizedSession);
             return ResponseEntity.status(403).body(Map.of("status", "loginFailure", "errors", "TEST_ACCOUNT_SWITCH_ADMIN_REQUIRED"));
         }
 

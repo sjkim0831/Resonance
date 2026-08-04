@@ -14,6 +14,7 @@ grep -Fq '<TestAccountSwitcher />' "$app"
 grep -Fq 'TEST_SWITCH_ACCOUNTS = Set.of(' "$controller"
 grep -Fq 'AdminConsoleAccessPolicy.allows' "$controller"
 grep -Fq 'currentContext.isWebmaster()' "$controller"
+grep -Fq 'currentTestAccount' "$controller"
 grep -Fq 'TEST_SWITCH_SESSION_ATTRIBUTE' "$controller"
 grep -Fq 'recordLoginHistory(targetUserId' "$controller"
 grep -Fq 'carbonet-test-account-switch' "$deploy"
@@ -21,4 +22,4 @@ if grep -Eqi 'password|userPw|autoLogin' "$component"; then
   echo '[test-account-switcher] FAIL client-side password handling detected' >&2
   exit 1
 fi
-echo '[test-account-switcher] PASS accounts=5 passwordInput=none endpoint=testAccountSwitch featureGate=testMode mount=app-root webmaster=allowed position=right-center'
+echo '[test-account-switcher] PASS accounts=5 passwordInput=none endpoint=testAccountSwitch featureGate=testMode mount=app-root webmaster=allowed crossPodContinuation=allowlisted-test-account position=right-center'
