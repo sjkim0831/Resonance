@@ -1257,6 +1257,21 @@ export function TaskQuestPanel() {
   }
 
   function startSelectedProcessGuide() {
+    if (selectedCatalogProcessCode === "WORK_ASSIGNMENT" && data?.assignmentManager) {
+      const target = new URL(
+        buildLocalizedPath("/emission/work-assignment", "/en/emission/work-assignment"),
+        window.location.origin,
+      );
+      if (effectiveProjectId) target.searchParams.set("projectId", effectiveProjectId);
+      target.searchParams.set("workTypeCode", "EMISSION");
+      target.searchParams.set("processCode", "EMISSION_PROJECT");
+      if (new URLSearchParams(window.location.search).get("testMode") === "1") {
+        target.searchParams.set("testMode", "1");
+      }
+      target.searchParams.set("guide", "1");
+      window.location.href = `${target.pathname}${target.search}`;
+      return;
+    }
     const available=(step:NonNullable<QuestResponse["processCatalogSteps"]>[number]) => {
       const runtime=guideRuntimeStep(step),route=guideRoute(step,runtime);
       if(!route||!guideActorAllowed(step,runtime)||runtime?.pendingPredecessors) return false;
@@ -2010,6 +2025,9 @@ export function TaskQuestPanel() {
                               <button
                                 className="mt-auto rounded-xl bg-[#052b57] px-4 py-3.5 text-sm font-black text-white disabled:cursor-not-allowed disabled:bg-slate-300"
                                 disabled={(() => {
+                                  if (selectedCatalogProcessCode === "WORK_ASSIGNMENT") {
+                                    return !data?.assignmentManager;
+                                  }
                                   const step = selectedCatalogSteps[selectedCatalogStep];
                                   if (!step) return true;
                                   const runtimeStep = guideRuntimeStep(step);
