@@ -1628,7 +1628,7 @@ export function TaskQuestPanel() {
                             ref={processCanvasRef}
                           >
                             {processMapMode === "CANVAS" ? (
-                              <div className="sticky top-0 z-30 ml-auto w-40 rounded-xl border border-slate-300 bg-white/95 p-2 shadow-lg backdrop-blur">
+                              <div className="sticky left-full top-0 z-30 w-40 -translate-x-full rounded-xl border border-slate-300 bg-white/95 p-2 shadow-lg backdrop-blur">
                                 <div className="flex items-center justify-between text-[10px] font-black text-slate-600">
                                   <span>{en ? "Process minimap" : "전체 프로세스 위치"}</span>
                                   <button className="text-[#246beb]" onClick={fitProcessCanvas} type="button">
