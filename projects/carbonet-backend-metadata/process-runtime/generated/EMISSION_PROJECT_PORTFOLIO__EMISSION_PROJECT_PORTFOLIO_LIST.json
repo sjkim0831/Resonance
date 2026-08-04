@@ -1,0 +1,54 @@
+{
+  "projectType": "CARBON_EMISSION",
+  "processCode": "EMISSION_PROJECT_PORTFOLIO",
+  "processName": "배출량 프로젝트 포트폴리오 관리",
+  "stepCode": "EMISSION_PROJECT_PORTFOLIO_LIST",
+  "stepName": "프로젝트 검색·현황 확인·다음 업무 선택",
+  "route": "/emission/project-portfolio",
+  "actors": ["COMPANY_MANAGER"],
+  "inputs": [
+    "projectId",
+    "processCode",
+    "stepCode",
+    "actorCode",
+    "guide"
+  ],
+  "completionContract": {
+    "transactional": true,
+    "conditions": [
+      "PROJECT_SELECTED",
+      "PROJECT_ACCESS_VERIFIED",
+      "PROCESS_STATE_LOADED",
+      "NEXT_ACTIONABLE_TASK_CONFIRMED",
+      "WORK_GUIDE_START_RECORDED"
+    ],
+    "evidence": [
+      "projectId",
+      "accountId",
+      "actorCode",
+      "currentStepCode",
+      "nextTaskId",
+      "permissionCheck",
+      "prerequisiteCheck",
+      "startedAt"
+    ]
+  },
+  "apiContracts": [
+    "GET /home/api/emission-projects",
+    "GET /home/api/emission-tasks",
+    "POST /home/api/emission-tasks/{taskId}/status"
+  ],
+  "tests": [
+    "URL projectId selects the matching accessible project",
+    "an inaccessible project is never replaced with demo data",
+    "only an actionable task enables the work-guide button",
+    "READY transitions to IN_PROGRESS before navigation",
+    "completed projects expose report, certificate, and history actions",
+    "mobile layout preserves project selection and completion criteria"
+  ],
+  "task": {
+    "code": "EMISSION_PROJECT_PORTFOLIO_LIST_IMPLEMENTATION",
+    "status": "VERIFIED",
+    "verification": ["TYPECHECK", "BUNDLE_INTEGRITY", "RUNTIME_HTTP", "HEALTH"]
+  }
+}
