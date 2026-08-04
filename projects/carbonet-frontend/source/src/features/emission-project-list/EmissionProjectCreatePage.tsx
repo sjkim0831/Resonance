@@ -12,6 +12,8 @@ import {
   HomeInlineStyles,
 } from "../home-entry/HomeEntrySections";
 import { LOCALIZED_CONTENT } from "../home-entry/homeEntryContent";
+import { FiveLayerFormRenderer } from "../contract-runtime/FiveLayerFormRenderer";
+import { EMISSION_PROJECT_CREATE_CONTRACT } from "./emissionProjectCreateContract";
 
 type Readiness = { ready: boolean; sandbox?: boolean; companyApproved: boolean; activeSiteCount: number; actorCoverage: Record<string, number>; missing: string[]; siteManagementUrl: string; actorManagementUrl: string };
 type AccountOption = {
@@ -252,7 +254,7 @@ export function EmissionProjectCreatePage() {
             <div className="mt-4 grid gap-3 sm:grid-cols-3"><div className="rounded-lg bg-white p-3"><b>{en?"Company approval":"기업 승인"}</b><p className="mt-1 text-sm">{options.readiness.companyApproved?(en?"Completed":"완료"):(en?"Required":"필요")}</p></div><div className="rounded-lg bg-white p-3"><b>{en?"Active sites":"활성 사업장"}</b><p className="mt-1 text-sm">{options.readiness.activeSiteCount}</p></div><div className="rounded-lg bg-white p-3"><b>{en?"Required actors":"필수 액터"}</b><p className="mt-1 text-sm">{Object.values(options.readiness.actorCoverage).filter(value=>value>0).length}/5</p></div></div>
             {!options.readiness.ready?<div className="mt-4"><ul className="space-y-1 text-sm font-bold text-amber-950">{options.readiness.missing.map(item=><li key={item}>• {item}</li>)}</ul><div className="mt-4 flex flex-wrap gap-2"><a className="rounded-lg bg-white px-4 py-2 text-sm font-black text-blue-800 ring-1 ring-blue-200" href={options.readiness.siteManagementUrl}>{en?"Manage sites":"사업장 관리"}</a><a className="rounded-lg bg-white px-4 py-2 text-sm font-black text-blue-800 ring-1 ring-blue-200" href={options.readiness.actorManagementUrl}>{en?"Manage actors":"액터·권한 관리"}</a></div></div>:null}
           </section>:null}
-          <form className="mt-7 space-y-5" data-testid="emission-project-create-form" onSubmit={submit} noValidate>
+          <form className="mt-7 space-y-5" data-contract-version={EMISSION_PROJECT_CREATE_CONTRACT.version} data-process-code={EMISSION_PROJECT_CREATE_CONTRACT.processSchema.processCode} data-step-code={EMISSION_PROJECT_CREATE_CONTRACT.processSchema.stepCode} data-testid="emission-project-create-form" onSubmit={submit} noValidate>
             <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
               <h2 className="text-lg font-black text-[#052b57]">
                 1. {en ? "Basic information" : "기본정보"}
@@ -370,18 +372,19 @@ export function EmissionProjectCreatePage() {
                 </label>
               </div>
             </section>
-            <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-              <h2 className="text-lg font-black text-[#052b57]">3. {en ? "Boundary and methodology" : "조직 경계·산정 기준"}</h2>
-              <p className="mt-2 text-sm text-slate-600">{en ? "These values are versioned with the project so later standard changes do not alter approved calculations." : "승인된 산정 결과가 기준정보 변경에 영향받지 않도록 프로젝트 생성 시점 값으로 고정합니다."}</p>
-              <div className="mt-5 grid gap-5 sm:grid-cols-2">
-                <label className="text-sm font-bold">{en ? "Organization boundary" : "조직 경계"}<span className="ml-1 text-red-600">*</span><select className={input} value={form.organizationBoundary} onChange={e=>setForm({...form,organizationBoundary:e.target.value})}><option value="OPERATIONAL_CONTROL">{en?"Operational control":"운영 통제"}</option><option value="FINANCIAL_CONTROL">{en?"Financial control":"재무 통제"}</option><option value="EQUITY_SHARE">{en?"Equity share":"지분 할당"}</option></select></label>
-                <label className="text-sm font-bold">{en ? "Emission standard" : "적용 표준"}<span className="ml-1 text-red-600">*</span><select className={input} value={form.emissionStandard} onChange={e=>setForm({...form,emissionStandard:e.target.value})}><option value="ISO_14064_1">ISO 14064-1</option><option value="GHG_PROTOCOL">GHG Protocol</option><option value="K_ETS">{en?"K-ETS":"배출권거래제 명세서 기준"}</option></select></label>
-                <label className="text-sm font-bold">{en ? "Methodology version" : "방법론 버전"}<span className="ml-1 text-red-600">*</span><input className={input} maxLength={40} required value={form.methodologyVersion} onChange={e=>setForm({...form,methodologyVersion:e.target.value})}/></label>
-                <label className="text-sm font-bold">{en ? "Verification level" : "검증 수준"}<span className="ml-1 text-red-600">*</span><select className={input} value={form.verificationLevel} onChange={e=>setForm({...form,verificationLevel:e.target.value})}><option value="LIMITED">{en?"Limited assurance":"제한적 보증"}</option><option value="REASONABLE">{en?"Reasonable assurance":"합리적 보증"}</option></select></label>
-                <label className="text-sm font-bold">{en ? "Collection cycle" : "자료 수집 주기"}<span className="ml-1 text-red-600">*</span><select className={input} value={form.collectionCycle} onChange={e=>setForm({...form,collectionCycle:e.target.value})}><option value="MONTHLY">{en?"Monthly":"월간"}</option><option value="QUARTERLY">{en?"Quarterly":"분기"}</option><option value="ANNUAL">{en?"Annual":"연간"}</option></select></label>
-                <label className="text-sm font-bold">{en ? "Materiality threshold (%)" : "중요성 기준 (%)"}<span className="ml-1 text-red-600">*</span><input className={input} min="0" max="100" step="1" type="number" required value={form.materialityThreshold} onChange={e=>setForm({...form,materialityThreshold:e.target.value})}/><small className="mt-1 block font-normal text-slate-500">{en?"Used to prioritize omissions and verification findings.":"누락 및 검증 발견사항의 중요도 판정 기준입니다."}</small></label>
-              </div>
-            </section>
+            <div className="five-layer-methodology">
+              <FiveLayerFormRenderer
+                contract={EMISSION_PROJECT_CREATE_CONTRACT}
+                onChange={(fieldCode, value) =>
+                  setForm((current) => ({
+                    ...current,
+                    [fieldCode]: String(value ?? ""),
+                  }))
+                }
+                sectionCodes={["methodology"]}
+                values={form}
+              />
+            </div>
             <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
               <h2 className="text-lg font-black text-[#052b57]">
                 4. {en ? "Owner and schedule" : "담당자·일정"}
