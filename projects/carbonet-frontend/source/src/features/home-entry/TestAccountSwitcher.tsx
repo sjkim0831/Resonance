@@ -34,8 +34,12 @@ export function TestAccountSwitcher() {
 
   useEffect(() => {
     const requested = new URLSearchParams(location.search).get("testMode") === "1";
-    if (requested) sessionStorage.setItem(TEST_MODE_KEY, "enabled");
-    setEnabled(requested || sessionStorage.getItem(TEST_MODE_KEY) === "enabled");
+    const developmentHost = location.hostname === "172.16.1.232"
+      || location.hostname === "localhost"
+      || location.hostname === "127.0.0.1"
+      || location.hostname.endsWith(".172.16.1.232.nip.io");
+    if (requested || developmentHost) sessionStorage.setItem(TEST_MODE_KEY, "enabled");
+    setEnabled(requested || developmentHost || sessionStorage.getItem(TEST_MODE_KEY) === "enabled");
   }, []);
 
   if (!enabled) return null;
