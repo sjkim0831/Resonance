@@ -1,4 +1,17 @@
 import { useEffect, useMemo, useState } from "react";
+
+const ACTOR_LABELS: Record<string, string> = {
+  COMPANY_MANAGER: "기업 관리자",
+  SITE_DATA_OWNER: "자료 담당자",
+  DATA_OWNER: "자료 담당자",
+  CALCULATOR: "산정 담당자",
+  EMISSION_CALCULATOR: "산정 담당자",
+  VERIFIER: "검증 담당자",
+  APPROVER: "승인 담당자",
+  REGULATOR: "관리기관",
+  SYSTEM_ADMIN: "시스템 관리자",
+  UNASSIGNED: "담당 미지정",
+};
 import { createPortal } from "react-dom";
 import { buildLocalizedPath, isEnglish } from "../../lib/navigation/runtime";
 
@@ -852,10 +865,26 @@ export function TaskQuestPanel() {
   const visibleActorLanes = useMemo(() => {
     const laneMap = new Map<
       string,
-      Array<{ wave: number; process: (typeof selectedDefinedProcesses)[number] }>
+      Array<{
+        wave: number;
+        process: (typeof selectedDefinedProcesses)[number];
+        step?: NonNullable<QuestResponse["processCatalogSteps"]>[number];
+      }>
     >();
     visibleProcessWaves.forEach((wave) => {
       wave.processes.forEach((process) => {
+        const processSteps = (data?.processCatalogSteps || [])
+          .filter((step) => step.processCode === process.processCode)
+          .sort((left, right) => Number(left.stepOrder) - Number(right.stepOrder));
+        if (processSteps.length) {
+          processSteps.forEach((step) => {
+            const actorCode = step.actorCode || process.ownerActorCode || "UNASSIGNED";
+            const lane = laneMap.get(actorCode) || [];
+            lane.push({ wave: wave.wave, process, step });
+            laneMap.set(actorCode, lane);
+          });
+          return;
+        }
         const actorCode = process.ownerActorCode || "UNASSIGNED";
         const lane = laneMap.get(actorCode) || [];
         lane.push({ wave: wave.wave, process });
@@ -870,7 +899,7 @@ export function TaskQuestPanel() {
           Number(left.process.laneOrder || 1) - Number(right.process.laneOrder || 1),
       ),
     }));
-  }, [visibleProcessWaves]);
+  }, [data?.processCatalogSteps, visibleProcessWaves]);
   const selectedUnifiedProcess = useMemo(
     () =>
       selectedDefinedProcesses.find(
@@ -1665,7 +1694,10 @@ export function TaskQuestPanel() {
                                   >
                                     <div className="flex min-h-28 items-center gap-2 border-r border-slate-200 bg-[#052b57] px-3 text-white">
                                       <span className="material-symbols-outlined flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white text-[18px] text-[#052b57]">person</span>
-                                      <strong className="break-words text-xs leading-5">{lane.actorCode}</strong>
+                                      <span className="min-w-0">
+                                        <strong className="block break-words text-xs leading-5">{en ? lane.actorCode : (ACTOR_LABELS[lane.actorCode] || lane.actorCode)}</strong>
+                                        {!en && ACTOR_LABELS[lane.actorCode] ? <small className="mt-0.5 block break-all text-[9px] text-blue-100">{lane.actorCode}</small> : null}
+                                      </span>
                                     </div>
                                     {visibleProcessWaves.map((wave) => {
                                       const waveProcesses = lane.processes.filter((item) => item.wave === wave.wave);
@@ -1673,18 +1705,26 @@ export function TaskQuestPanel() {
                                         <div className="relative flex min-h-28 items-center justify-center border-r border-dashed border-slate-200 px-3 py-4 last:border-r-0" key={`${lane.actorCode}-${wave.wave}`}>
                                           {waveProcesses.length ? (
                                             <div className="relative z-10 w-full space-y-2">
-                                              {waveProcesses.map(({ process }) => {
+                                              {waveProcesses.map(({ process, step }) => {
                                                 const selected = selectedCatalogProcessCode === process.processCode;
+                                                const feedback = /REJECT|REVISION|RECALC|SUPPLEMENT|RETURN/i.test(`${step?.commandCode || ""} ${step?.toState || ""}`);
+                                                const status = Number(process.blockedTasks || 0) > 0
+                                                  ? (en ? "Revision" : "보완")
+                                                  : process.runtimeState === "COMPLETED" || Number(process.completionScore || 0) >= 100
+                                                    ? (en ? "Done" : "완료")
+                                                    : Number(process.runtimeTaskCount || 0) > 0
+                                                      ? (en ? "Active" : "진행중")
+                                                      : (en ? "Waiting" : "대기");
                                                 return (
                                                   <button
                                                     aria-pressed={selected}
-                                                    className={`relative w-full rounded-xl border-2 px-3 py-3 text-left text-xs font-black leading-5 transition ${selected ? "border-[#246beb] bg-blue-50 text-[#052b57] shadow" : "border-blue-200 bg-white text-slate-700 hover:border-[#246beb]"}`}
-                                                    key={`actor-process-${process.processCode}`}
+                                                    className={`relative w-full rounded-xl border-2 px-3 py-2.5 text-left text-xs font-black leading-5 transition ${feedback ? "border-violet-300 bg-violet-50" : selected ? "border-[#246beb] bg-blue-50 text-[#052b57] shadow" : "border-blue-200 bg-white text-slate-700 hover:border-[#246beb]"}`}
+                                                    key={`actor-process-${process.processCode}-${step?.stepCode || "process"}`}
                                                     onClick={() => selectCatalogProcess(process.processCode)}
                                                     type="button"
                                                   >
-                                                    <span className="block pr-5">{process.processName}</span>
-                                                    {selected ? <span className="material-symbols-outlined absolute right-2 top-2 text-[17px] text-[#246beb]">check_circle</span> : null}
+                                                    <span className="block pr-12">{step?.stepName || process.processName}</span>
+                                                    <small className={`absolute right-2 top-2 rounded-full px-1.5 py-0.5 text-[9px] ${status === "완료" || status === "Done" ? "bg-emerald-100 text-emerald-700" : status === "보완" || status === "Revision" ? "bg-orange-100 text-orange-700" : status === "진행중" || status === "Active" ? "bg-blue-100 text-blue-700" : "bg-slate-100 text-slate-500"}`}>{status}</small>
                                                   </button>
                                                 );
                                               })}
