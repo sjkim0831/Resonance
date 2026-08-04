@@ -334,6 +334,16 @@ PLAN_BACKSTAGE_REQUIRED="${PLAN_BACKSTAGE_REQUIRED:-false}"
 echo "[auto-deploy] incremental plan: runtime=$PLAN_RUNTIME_REQUIRED frontend=$PLAN_FRONTEND_REQUIRED backend=$PLAN_BACKEND_REQUIRED database=$PLAN_DATABASE_REQUIRED backstage=$PLAN_BACKSTAGE_REQUIRED"
 echo "[auto-deploy] selected checks: $PLAN_TESTS ($PLAN_REASONS)"
 
+run_screen_contract_runtime_save_gate_if_required() {
+  [[ ",${PLAN_TESTS:-}," == *",runtime-contract:screen-save,"* ]] || return 0
+  echo "[auto-deploy] screen contract runtime save gate started"
+  CARBONET_DEPLOY_ROOT="$ROOT_DIR" \
+  CARBONET_RUNTIME_BASE_URL="${CARBONET_RUNTIME_BASE_URL:-http://127.0.0.1}" \
+  CARBONET_SCREEN_CONTRACT_RENDER_PROBE="${CARBONET_SCREEN_CONTRACT_RENDER_PROBE:-1}" \
+    bash ops/scripts/validate-screen-contract-runtime-save.sh
+  echo "[auto-deploy] screen contract runtime save gate passed"
+}
+
 # Database availability is a hard prerequisite for Flyway and every runtime
 # health gate. Keep the Patroni image independently recoverable even when
 # Docker/containerd or registry retention removes unused application layers.
@@ -1199,6 +1209,7 @@ if [[ "$PLAN_RUNTIME_REQUIRED" != "true" ]]; then
   record_deploy_phase "catalog_sync"
   deploy_backstage_if_required
   record_deploy_phase "backstage_build_rollout"
+  run_screen_contract_runtime_save_gate_if_required
   if [[ -z "$backstage_visual_e2e_pid" ]]; then
     start_backstage_visual_e2e
   fi
@@ -1536,6 +1547,7 @@ if [[ "$PLAN_FRONTEND_REQUIRED" == "true" \
   FULL_SCREEN_SMOKE_CHANGED_ONLY=false \
   FULL_SCREEN_SMOKE_ROUTE_PATTERN="$frontend_smoke_pattern" \
     bash ops/scripts/resonance-full-screen-deploy-gate.sh verify
+  run_screen_contract_runtime_save_gate_if_required
   bash ops/scripts/sync-unified-asset-catalog.sh "$deployed_commit" "$target_commit"
   record_deploy_phase "frontend_build_and_verify"
   printf '%s\n' "$target_commit" > "${DEPLOY_STATE_FILE}.tmp"
@@ -1681,6 +1693,7 @@ fi
 # logs, and one fail-closed result for both deployment and operator testing.
 UNIFIED_ASSET_SYNC_PRECOMPLETED="$asset_sync_precompleted" \
   bash ops/scripts/run-post-deploy-validation-groups.sh "$ROOT_DIR" "$target_commit" "$deployed_commit"
+run_screen_contract_runtime_save_gate_if_required
 if [[ "$PLAN_FRONTEND_REQUIRED" == "true" ]]; then
   if wait "$runtime_screen_gate_pid"; then
     cat "$runtime_screen_gate_log"

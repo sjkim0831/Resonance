@@ -34,6 +34,13 @@ add_reason() {
 while IFS= read -r path; do
   [[ -z "$path" ]] && continue
   case "$path" in
+    ops/scripts/validate-screen-contract-runtime-save.sh|\
+    ops/scripts/validate-screen-contract-runtime-save.mjs)
+      infrastructure_required=true
+      add_test "automation:shell-syntax"
+      add_test "runtime-contract:screen-save"
+      add_reason "screen-contract-runtime-save-gate"
+      ;;
     ops/scripts/resonance-backstage-deploy.sh|\
     ops/scripts/resonance-backstage-runtime-fingerprint.sh|\
     ops/scripts/test-backstage-runtime-fingerprint.sh|\
