@@ -908,6 +908,19 @@ export function TaskQuestPanel() {
     [selectedDefinedProcesses, selectedCatalogProcessCode],
   );
   const selectedProcessWaves = useMemo(() => {
+    if (selectedCatalogProcess && selectedCatalogProcess.processCode !== "WORK_ASSIGNMENT") {
+      const selectedProcessSteps = (data?.processCatalogSteps || [])
+        .filter((step) => step.processCode === selectedCatalogProcess.processCode)
+        .sort((left, right) => Number(left.stepOrder) - Number(right.stepOrder));
+      if (selectedProcessSteps.length) {
+        return selectedProcessSteps.map((step, index) => ({
+          wave: index + 1,
+          processes: [selectedCatalogProcess],
+          stepCode: step.stepCode,
+          stepName: step.stepName,
+        }));
+      }
+    }
     const waves = new Map<number, typeof selectedDefinedProcesses>();
     selectedDefinedProcesses.forEach((process) => {
       const wave = Number(process.executionWave || process.workflowOrder || 1);
@@ -925,7 +938,7 @@ export function TaskQuestPanel() {
         stepCode: "",
         stepName: "",
       }));
-  }, [selectedDefinedProcesses]);
+  }, [data?.processCatalogSteps, selectedCatalogProcess, selectedDefinedProcesses]);
   const visibleProcessWaves = useMemo(() => {
     const keyword = processKeyword.trim().toLocaleLowerCase();
     if (!keyword) return selectedProcessWaves;

@@ -20,6 +20,8 @@ grep -Fq 'AS "explicitlyAssigned"' "$service"
 grep -Fq 'result.put("processAssignments"' "$service"
 grep -Fq 'runtimeStep?.explicitlyAssigned' "$task_quest"
 grep -Fq 'explicitProcessAssignment(' "$task_quest"
+grep -Fq 'const selectedProcessSteps = (data?.processCatalogSteps || [])' "$task_quest"
+grep -Fq 'stepName: step.stepName' "$task_quest"
 grep -Fq 'en ? "Unassigned" : "미배정"' "$task_quest"
 if grep -A8 -F 'const processSteps = (data?.processCatalogSteps || [])' "$task_quest" | grep -Fq 'actorVisible(step.actorCode'; then
   echo "process topology must not be filtered by the signed-in actor" >&2
