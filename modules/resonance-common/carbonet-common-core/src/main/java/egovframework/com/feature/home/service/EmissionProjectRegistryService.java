@@ -455,9 +455,13 @@ public class EmissionProjectRegistryService {
         result.put("canManage",true);
         result.put("projects",jdbc.queryForList("SELECT project_id AS \"projectId\",project_name AS \"projectName\" FROM emission_project_registry WHERE tenant_id=? ORDER BY due_date NULLS LAST,project_name",tenant));
         result.put("accounts",jdbc.queryForList("SELECT e.emplyr_id AS \"accountId\",e.user_nm AS \"accountName\",trim(e.orgnzt_id) AS department,coalesce(string_agg(DISTINCT a.actor_code,', ' ORDER BY a.actor_code),'') AS \"actorCodes\" FROM comtnemplyrinfo e LEFT JOIN framework_account_actor_assignment a ON lower(a.account_id)=lower(e.emplyr_id) AND a.tenant_id=? AND a.assignment_status='ACTIVE' WHERE trim(e.instt_id)=? AND e.emplyr_sttus_code='P' GROUP BY e.emplyr_id,e.user_nm,e.orgnzt_id ORDER BY e.user_nm,e.emplyr_id",tenant,tenant));
+        result.put("workTypes",jdbc.queryForList("SELECT domain_code AS \"workTypeCode\",domain_code AS \"workTypeName\",count(*) AS \"processCount\" FROM framework_process_definition GROUP BY domain_code ORDER BY min(development_order),domain_code"));
+        result.put("processes",jdbc.queryForList("SELECT process_code AS \"processCode\",process_name AS \"processName\",domain_code AS \"workTypeCode\",process_status AS status,owner_actor_code AS \"ownerActorCode\",coalesce((SELECT count(*) FROM framework_process_step s WHERE s.process_code=p.process_code),0) AS \"stepCount\" FROM framework_process_definition p ORDER BY domain_code,development_order,process_code"));
+        result.put("actors",jdbc.queryForList("SELECT actor_code AS \"actorCode\",actor_name AS \"actorName\",actor_type AS \"actorType\" FROM framework_actor_definition WHERE use_at='Y' ORDER BY actor_name,actor_code"));
         if(projectId==null||projectId.isBlank()||processCode==null||processCode.isBlank()) return result;
         assertProjectTenant(projectId,tenant);
-        result.put("steps",jdbc.queryForList("SELECT s.step_code AS \"stepCode\",s.step_name AS \"stepName\",s.step_order AS \"stepOrder\",s.actor_code AS \"actorCode\",a.actor_name AS \"actorName\",t.assignee_id AS \"accountId\" FROM framework_process_step s JOIN framework_actor_definition a ON a.actor_code=s.actor_code JOIN emission_project_task t ON t.project_id=? AND t.process_code=s.process_code AND t.process_step_code=s.step_code WHERE s.process_code=? ORDER BY s.step_order",projectId,processCode));
+        result.put("steps",jdbc.queryForList("SELECT s.step_code AS \"stepCode\",s.step_name AS \"stepName\",s.step_order AS \"stepOrder\",s.actor_code AS \"actorCode\",a.actor_name AS \"actorName\",coalesce(pa.account_id,t.assignee_id) AS \"accountId\",(t.task_id IS NOT NULL) AS \"taskReady\" FROM framework_process_step s JOIN framework_actor_definition a ON a.actor_code=s.actor_code LEFT JOIN framework_project_process_step_assignment pa ON pa.tenant_id=? AND pa.project_id=? AND pa.process_code=s.process_code AND pa.step_code=s.step_code LEFT JOIN emission_project_task t ON t.project_id=? AND t.process_code=s.process_code AND t.process_step_code=s.step_code WHERE s.process_code=? ORDER BY s.step_order",tenant,projectId,projectId,processCode));
+        result.put("processAssignment",jdbc.queryForList("SELECT account_id AS \"accountId\",actor_code AS \"actorCode\" FROM framework_project_process_step_assignment WHERE tenant_id=? AND project_id=? AND process_code=? AND step_code='__PROCESS__'",tenant,projectId,processCode).stream().findFirst().orElse(null));
         result.put("actorAssignments",jdbc.queryForList("SELECT actor_code AS \"actorCode\",user_id AS \"accountId\" FROM framework_project_actor_assignment WHERE project_id=? AND active_yn='Y' ORDER BY actor_code,user_id",projectId));
         return result;
     }
@@ -469,6 +473,15 @@ public class EmissionProjectRegistryService {
         if(!canManageWorkAssignments(tenant,user,override)) throw new SecurityException("WORK_ASSIGNMENT_MANAGER_REQUIRED");
         String projectId=required(body,"projectId"),processCode=required(body,"processCode");
         assertProjectTenant(projectId,tenant);
+        String processAccountId=String.valueOf(body.get("processAccountId")==null?"":body.get("processAccountId")).trim();
+        if(processAccountId.isEmpty()) throw new IllegalArgumentException("PROCESS_ACCOUNT_REQUIRED");
+        Integer processEligible=jdbc.queryForObject("SELECT count(*) FROM comtnemplyrinfo WHERE lower(emplyr_id)=lower(?) AND trim(instt_id)=? AND emplyr_sttus_code='P'",Integer.class,processAccountId,tenant);
+        if(processEligible==null||processEligible==0) throw new IllegalArgumentException("TENANT_ACCOUNT_NOT_ELIGIBLE:"+processAccountId);
+        List<Map<String,Object>> processRows=jdbc.queryForList("SELECT owner_actor_code FROM framework_process_definition WHERE process_code=?",processCode);
+        if(processRows.isEmpty()) throw new IllegalArgumentException("PROCESS_NOT_FOUND:"+processCode);
+        String processActor=String.valueOf(processRows.get(0).get("owner_actor_code"));
+        if(processActor.isBlank()||"null".equalsIgnoreCase(processActor)) processActor="WORK_ASSIGNMENT_MANAGER";
+        jdbc.update("INSERT INTO framework_project_process_step_assignment(tenant_id,project_id,process_code,step_code,actor_code,account_id,assigned_by) VALUES(?,?,?,'__PROCESS__',?,?,?) ON CONFLICT(tenant_id,project_id,process_code,step_code) DO UPDATE SET actor_code=excluded.actor_code,account_id=excluded.account_id,assigned_by=excluded.assigned_by,updated_at=current_timestamp",tenant,projectId,processCode,processActor,processAccountId,user);
         Object raw=body.get("assignments");
         if(!(raw instanceof List<?> values)||values.isEmpty()) throw new IllegalArgumentException("ASSIGNMENTS_REQUIRED");
         Map<String,Set<String>> actorAccounts=new LinkedHashMap<>();
@@ -498,15 +511,17 @@ public class EmissionProjectRegistryService {
         }
         int updated=0;
         for(Map<String,String> assignment:normalized) {
+            jdbc.update("INSERT INTO framework_project_process_step_assignment(tenant_id,project_id,process_code,step_code,actor_code,account_id,assigned_by) VALUES(?,?,?,?,?,?,?) ON CONFLICT(tenant_id,project_id,process_code,step_code) DO UPDATE SET actor_code=excluded.actor_code,account_id=excluded.account_id,assigned_by=excluded.assigned_by,updated_at=current_timestamp",tenant,projectId,processCode,assignment.get("stepCode"),assignment.get("actorCode"),assignment.get("accountId"),user);
             int count=jdbc.update("UPDATE emission_project_task SET assignee_id=?,actor_code=?,updated_at=current_timestamp WHERE project_id=? AND process_code=? AND process_step_code=?",assignment.get("accountId"),assignment.get("actorCode"),projectId,processCode,assignment.get("stepCode"));
-            if(count==0) throw new IllegalStateException("PROJECT_PROCESS_TASK_NOT_READY:"+assignment.get("stepCode"));
             updated+=count;
-            Long taskId=jdbc.queryForObject("SELECT task_id FROM emission_project_task WHERE project_id=? AND process_code=? AND process_step_code=?",Long.class,projectId,processCode,assignment.get("stepCode"));
-            jdbc.update("INSERT INTO emission_workflow_notification(tenant_id,project_id,task_id,event_type,recipient_id,actor_code,title,message_text,target_url) SELECT ?,?,?, 'ASSIGNED',?,?, '새 업무가 배정되었습니다.',task_name||' 업무를 확인해 주세요.',target_url FROM emission_project_task WHERE task_id=?",tenant,projectId,taskId,assignment.get("accountId"),assignment.get("actorCode"),taskId);
+            if(count>0) {
+                Long taskId=jdbc.queryForObject("SELECT task_id FROM emission_project_task WHERE project_id=? AND process_code=? AND process_step_code=?",Long.class,projectId,processCode,assignment.get("stepCode"));
+                jdbc.update("INSERT INTO emission_workflow_notification(tenant_id,project_id,task_id,event_type,recipient_id,actor_code,title,message_text,target_url) SELECT ?,?,?, 'ASSIGNED',?,?, '새 업무가 배정되었습니다.',task_name||' 업무를 확인해 주세요.',target_url FROM emission_project_task WHERE task_id=?",tenant,projectId,taskId,assignment.get("accountId"),assignment.get("actorCode"),taskId);
+            }
             jdbc.update("INSERT INTO framework_work_assignment_audit(tenant_id,project_id,process_code,step_code,actor_code,account_id,assigned_by) VALUES(?,?,?,?,?,?,?)",tenant,projectId,processCode,assignment.get("stepCode"),assignment.get("actorCode"),assignment.get("accountId"),user);
         }
         Map<String,Object> result=workAssignmentWorkspace(tenant,user,override,projectId,processCode);
-        result.put("success",true);result.put("updatedTaskCount",updated);return result;
+        result.put("success",true);result.put("assignedStepCount",normalized.size());result.put("updatedTaskCount",updated);return result;
     }
 
     @SuppressWarnings("unchecked")
