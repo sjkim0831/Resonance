@@ -90,6 +90,25 @@ class ContractGeneratorTest(unittest.TestCase):
             self.assertEqual({"required": ["status"]}, screen["output_schema"])
             self.assertTrue(screen["permissions"])
             self.assertTrue(screen["tests"])
+            layers = screen["contract_layers"]
+            self.assertEqual("1.0", layers["version"])
+            self.assertEqual(
+                {
+                    "dataSchema",
+                    "uiSchema",
+                    "actionSchema",
+                    "processSchema",
+                    "permissionSchema",
+                },
+                set(layers).difference({"version", "screen"}),
+            )
+            self.assertEqual("COLLECT", layers["processSchema"]["stepCode"])
+            self.assertEqual(
+                "OPERATOR", layers["permissionSchema"]["actorCode"]
+            )
+            self.assertEqual(
+                "status", layers["dataSchema"]["fields"][0]["code"]
+            )
             self.assertEqual(
                 [{"value": "READY", "label": "준비"}],
                 screen["fields"][0]["options"],

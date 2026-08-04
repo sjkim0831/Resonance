@@ -114,6 +114,45 @@ class ContractValidator(LayerBase):
             if field.field_code in field_codes:
                 warnings.append('Duplicate field code: ' + field.field_code)
             field_codes.add(field.field_code)
+
+        # Renderer-neutral five-layer contract validation.  These checks are
+        # intentionally structural so the same design can drive web, mobile,
+        # PDF and desktop renderers without renderer-specific assumptions.
+        layers = contract.to_five_layer_contract()
+        required_layers = {
+            'dataSchema', 'uiSchema', 'actionSchema', 'processSchema',
+            'permissionSchema'
+        }
+        missing_layers = required_layers.difference(layers)
+        if missing_layers:
+            errors.append({
+                'type': 'ERROR',
+                'message': 'Missing contract layers: ' + ', '.join(sorted(missing_layers))
+            })
+
+        section_codes = {
+            section.section_code for section in contract.section_contract
+        }
+        for field in contract.field_contract:
+            if section_codes and field.section_code not in section_codes:
+                errors.append({
+                    'type': 'ERROR',
+                    'message': (
+                        'Field references unknown section: '
+                        + field.field_code + ' -> ' + field.section_code
+                    )
+                })
+
+        process_schema = layers['processSchema']
+        if contract.step_code and not process_schema.get('processCode'):
+            errors.append({
+                'type': 'ERROR',
+                'message': 'stepCode requires processCode'
+            })
+
+        permission_schema = layers['permissionSchema']
+        if not permission_schema.get('actorCode'):
+            errors.append({'type': 'ERROR', 'message': 'Missing permission actorCode'})
         
         return len(errors) == 0, errors, warnings
     

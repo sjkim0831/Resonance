@@ -106,6 +106,7 @@ class ScreenExporter(LayerBase):
                 'step_code': getattr(c, 'step_code', ''),
                 'audience': getattr(c, 'audience', ''),
                 'business_purpose': getattr(c, 'business_purpose', ''),
+                'contract_layers': c.to_five_layer_contract(),
                 'entry_condition': getattr(c, 'entry_condition', ''),
                 'exit_condition': getattr(c, 'exit_condition', ''),
                 'states': getattr(c, 'state_contract', []),

@@ -86,6 +86,93 @@ class ScreenContract:
     def get_api_count(self) -> int:
         return len(self.api_contract)
 
+    def to_five_layer_contract(self) -> Dict[str, Any]:
+        """Project the legacy contract into the renderer-neutral v1 contract.
+
+        The legacy columns remain the source of truth.  This projection keeps
+        React, mobile, PDF and desktop renderers from inventing independent
+        interpretations of fields, actions, process state and authority.
+        """
+        fields = [
+            {
+                "code": item.field_code,
+                "name": item.field_name,
+                "type": item.data_type,
+                "required": item.required,
+                "section": item.section_code,
+                "options": item.options,
+                "optionSource": item.option_source,
+                "validation": item.validation,
+                "defaultValue": item.default_value,
+                "placeholder": item.placeholder,
+                "helpText": item.help_text,
+                "readOnly": item.read_only,
+                "visible": item.visible,
+            }
+            for item in self.field_contract
+        ]
+        sections = [
+            {
+                "code": item.section_code,
+                "name": item.section_name,
+                "order": item.order,
+                "layout": item.layout,
+                "collapsible": item.collapsible,
+            }
+            for item in self.section_contract
+        ]
+        apis = [
+            {
+                "code": item.code,
+                "method": item.method,
+                "path": item.path,
+                "description": item.description,
+            }
+            for item in self.api_contract
+        ]
+        return {
+            "version": "1.0",
+            "screen": {
+                "contractId": self.contract_id,
+                "route": self.route_path,
+                "name": self.screen_name,
+                "audience": self.audience,
+                "purpose": self.business_purpose,
+            },
+            "dataSchema": {
+                "fields": fields,
+                "input": self.input_schema,
+                "output": self.output_schema,
+                "persistence": self.persistence_schema,
+                "handoff": self.handoff_schema,
+                "contextKeys": self.context_keys,
+                "contract": self.data_contract,
+            },
+            "uiSchema": {
+                "sections": sections,
+                "responsive": self.responsive_contract,
+                "accessibility": self.accessibility_contract,
+            },
+            "actionSchema": {
+                "commands": self.command_contract,
+                "apis": apis,
+                "evidence": self.evidence_contract,
+            },
+            "processSchema": {
+                "processCode": self.process_code,
+                "stepCode": self.step_code,
+                "states": self.state_contract,
+                "entryCondition": self.entry_condition,
+                "exitCondition": self.exit_condition,
+                "tests": self.tests,
+            },
+            "permissionSchema": {
+                "actorCode": self.actor_code,
+                "rules": self.permissions,
+                "security": self.security_contract,
+            },
+        }
+
 @dataclass
 class GenerationContext:
     contracts: List[ScreenContract] = field(default_factory=list)
