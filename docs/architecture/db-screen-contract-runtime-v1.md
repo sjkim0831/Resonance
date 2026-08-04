@@ -12,6 +12,8 @@ Render governed screens from versioned JSON contracts so a published design chan
 2. `framework_screen_contract_binding`: stable screen key, active version, previous version, and cache epoch.
 3. `framework_screen_contract_event`: publish, rollback, and self-recovery audit events.
 
+Generated screen keys include the normalized route hash. Process, step, and audience alone are not unique because one governed step can own several screens. A fail-closed migration compares the final binding count with the professional contract count.
+
 Do not create a second authoring table. A design save validates and publishes a new version in one transaction.
 
 ## Runtime contract
