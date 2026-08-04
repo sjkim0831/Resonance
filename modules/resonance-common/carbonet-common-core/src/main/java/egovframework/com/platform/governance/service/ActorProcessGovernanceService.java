@@ -25,6 +25,9 @@ import java.util.stream.Stream;
 @Service
 @RequiredArgsConstructor
 public class ActorProcessGovernanceService {
+    private static final Set<String> PROFESSIONAL_CONTRACT_STATUSES = Set.of(
+        "DRAFT", "REVIEW_REQUIRED", "DESIGN_COMPLETE", "APPROVED", "VERIFIED"
+    );
     private final JdbcTemplate jdbc;
     private final ScreenDevelopmentNoteService screenDevelopmentNoteService;
     private final CodexProvisioningService codexProvisioningService;
@@ -766,7 +769,7 @@ public class ActorProcessGovernanceService {
             validateJsonArray(def(b,field,"[]"),field);
         }
         String status=def(b,"contractStatus","REVIEW_REQUIRED").trim().toUpperCase(Locale.ROOT);
-        if(!Set.of("DRAFT","REVIEW_REQUIRED","APPROVED","VERIFIED").contains(status))throw new IllegalArgumentException("Unsupported contractStatus: "+status);
+        if(!isSupportedProfessionalContractStatus(status))throw new IllegalArgumentException("Unsupported contractStatus: "+status);
         int updated=jdbc.update("update framework_professional_screen_contract set business_purpose=?,entry_condition=?,exit_condition=?,kpi_contract=?,section_contract=?,field_contract=?,command_contract=?,state_contract=?,api_contract=?,data_contract=?,evidence_contract=?,responsive_contract=?,accessibility_contract=?,security_contract=?,api_verified=?,database_verified=?,authority_verified=?,responsive_verified=?,accessibility_verified=?,exception_states_verified=?,audit_evidence_ref=?,contract_status=?,updated_by=?,updated_at=current_timestamp where contract_id=?",
             req(b,"businessPurpose"),req(b,"entryCondition"),req(b,"exitCondition"),def(b,"kpiContract","[]"),def(b,"sectionContract","[]"),def(b,"fieldContract","[]"),def(b,"commandContract","[]"),def(b,"stateContract","[\"LOADING\",\"EMPTY\",\"ERROR\",\"FORBIDDEN\",\"READY\"]"),def(b,"apiContract","[]"),def(b,"dataContract","[]"),def(b,"evidenceContract","[]"),def(b,"responsiveContract","360px, 768px, 1280px 검증"),def(b,"accessibilityContract","KRDS 및 WCAG 2.1 AA"),def(b,"securityContract","테넌트·프로젝트·액터 권한 서버 검증"),bool(b,"apiVerified"),bool(b,"databaseVerified"),bool(b,"authorityVerified"),bool(b,"responsiveVerified"),bool(b,"accessibilityVerified"),bool(b,"exceptionStatesVerified"),str(b,"auditEvidenceRef"),status,actor,id);
         if(updated==0)throw new IllegalArgumentException("화면 완성 계약을 찾을 수 없습니다: "+id);
@@ -779,6 +782,10 @@ public class ActorProcessGovernanceService {
         jdbc.update("update framework_page_development_item i set design_status=case when g.design_gate_status='PASSED' then 'VERIFIED' else 'REVIEW_REQUIRED' end,blocker_reason=case when g.design_gate_status='PASSED' then null else array_to_string(g.design_gate_issues,', ') end,next_action=case when g.design_gate_status='PASSED' then 'Design verified; generation may proceed.' else 'Resolve design gate issues before generation: '||array_to_string(g.design_gate_issues,', ') end,updated_by=?,updated_at=current_timestamp from framework_page_design_assurance g join framework_screen_resource r using(screen_resource_id) join framework_professional_screen_contract c on lower(split_part(c.route_path,'?',1))=r.route_key where c.contract_id=? and i.screen_resource_id=g.screen_resource_id",actor,id);
         Map<String,Object> gate=jdbc.queryForMap("select g.design_gate_status as \"status\",g.design_gate_score as \"score\",array_to_string(g.design_gate_issues,', ') as \"issues\" from framework_page_design_assurance g join framework_screen_resource r using(screen_resource_id) join framework_professional_screen_contract c on lower(split_part(c.route_path,'?',1))=r.route_key where c.contract_id=?",id);
         return Map.of("success",true,"contract",readiness,"designGate",gate,"autoImplementation",automation,"runtimePublication",runtimePublication);
+    }
+
+    static boolean isSupportedProfessionalContractStatus(String status) {
+        return status != null && PROFESSIONAL_CONTRACT_STATUSES.contains(status.trim().toUpperCase(Locale.ROOT));
     }
 
     @Transactional public Map<String,Object> executeProfessionalFactory(Map<String,Object>b,String user) throws Exception {

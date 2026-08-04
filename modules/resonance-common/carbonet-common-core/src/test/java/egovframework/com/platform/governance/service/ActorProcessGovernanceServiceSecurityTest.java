@@ -26,6 +26,12 @@ class ActorProcessGovernanceServiceSecurityTest {
             jdbc, mock(ScreenDevelopmentNoteService.class), mock(CodexProvisioningService.class), mock(ScreenContractRuntimeService.class));
 
     @Test
+    void persistedDesignCompleteStatusCanBeSavedAgain() {
+        assertTrue(ActorProcessGovernanceService.isSupportedProfessionalContractStatus("DESIGN_COMPLETE"));
+        assertFalse(ActorProcessGovernanceService.isSupportedProfessionalContractStatus("IMPLEMENTED"));
+    }
+
+    @Test
     void controlPlaneAdministratorComesFromExistingAuthorityData() {
         when(jdbc.queryForObject(argThat(sql -> sql.contains("ROLE_SYSTEM_MASTER")),
                 org.mockito.ArgumentMatchers.eq(Integer.class), any(Object[].class)))
