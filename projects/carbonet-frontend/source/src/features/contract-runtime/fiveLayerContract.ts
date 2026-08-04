@@ -11,6 +11,7 @@ export type ContractField = {
   helpKo?: string;
   helpEn?: string;
   options?: ContractOption[];
+  optionSource?: { code: string; actorCode?: string; emptyLabelKo: string; emptyLabelEn: string };
   validation?: { min?: number; max?: number; step?: number; maxLength?: number };
 };
 
@@ -34,6 +35,7 @@ export function assertFiveLayerContract(contract: FiveLayerScreenContract) {
   for (const field of contract.dataSchema.fields) {
     if (fieldCodes.has(field.code)) throw new Error(`Duplicate field contract: ${field.code}`);
     if (!sectionCodes.has(field.section)) throw new Error(`Unknown section contract: ${field.code} -> ${field.section}`);
+    if (field.type === "SELECT" && !field.options?.length && !field.optionSource) throw new Error(`Selection field requires options or optionSource: ${field.code}`);
     fieldCodes.add(field.code);
   }
   if (!contract.processSchema.processCode || !contract.processSchema.stepCode) throw new Error("Process and step contracts are required");
