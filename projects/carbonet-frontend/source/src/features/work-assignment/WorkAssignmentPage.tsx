@@ -11,7 +11,7 @@ type Project = { projectId: string; projectName: string };
 type Account = { accountId: string; accountName: string; department?: string; actorCodes?: string };
 type Step = { stepCode: string; stepName: string; stepOrder: number; actorCode?: string; actorName?: string; accountId?: string };
 type WorkType = { workTypeCode: string; workTypeName: string; processCount: number };
-type Process = { processCode: string; processName: string; workTypeCode: string; status: string; ownerActorCode?: string; stepCount: number; processOrder?: number };
+type Process = { processCode: string; processName: string; workTypeCode: string; status: string; ownerActorCode?: string; stepCount: number; processOrder?: number; laneOrder?: number; executionMode?: string };
 type Workspace = { canManage?: boolean; projects?: Project[]; accounts?: Account[]; workTypes?: WorkType[]; processes?: Process[]; actors?: Array<{ actorCode: string; actorName: string }>; steps?: Step[]; processAssignment?: { accountId?: string; actorCode?: string }; assignedStepCount?: number; updatedTaskCount?: number };
 
 const WORK_TYPE_LABELS: Record<string, string> = {
@@ -88,7 +88,7 @@ export function WorkAssignmentPage() {
   const steps = workspace?.steps || [];
   const visibleProcesses = (workspace?.processes || [])
     .filter(process => process.workTypeCode === workTypeCode)
-    .sort((left, right) => (left.processOrder ?? Number.MAX_SAFE_INTEGER) - (right.processOrder ?? Number.MAX_SAFE_INTEGER) || left.processCode.localeCompare(right.processCode));
+    .sort((left, right) => (left.processOrder ?? Number.MAX_SAFE_INTEGER) - (right.processOrder ?? Number.MAX_SAFE_INTEGER) || (left.laneOrder ?? 1) - (right.laneOrder ?? 1) || left.processCode.localeCompare(right.processCode));
   const actorCodes = [...new Set(steps.map(step => step.actorCode || "UNASSIGNED"))];
   const unassigned = steps.filter(step => !assignees[step.stepCode]).length;
 
