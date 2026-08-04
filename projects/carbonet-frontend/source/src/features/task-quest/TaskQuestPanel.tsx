@@ -2019,7 +2019,21 @@ export function TaskQuestPanel() {
                       </div>
                     </section>
                   ) : null}
-                  {data?.assignmentManager && selectedCatalogProcessCode === "WORK_ASSIGNMENT" && selectedCatalogProcess && effectiveProjectId ? (
+                  {data?.assignmentManager && selectedCatalogProcessCode === "WORK_ASSIGNMENT" && selectedCatalogProcess ? (
+                    <section className="mb-5 rounded-2xl border border-blue-200 bg-blue-50 p-4 shadow-sm sm:p-5" data-work-assignment-console="">
+                      <div className="flex flex-wrap items-center justify-between gap-4">
+                        <div>
+                          <p className="text-xs font-black uppercase tracking-wide text-[#246beb]">{en ? "WORK ASSIGNMENT" : "기업 업무 배정"}</p>
+                          <h3 className="mt-1 text-lg font-black text-[#052b57]">{en ? "Review assignment status" : "프로젝트 담당자 배정 현황"}</h3>
+                          <p className="mt-1 text-sm leading-6 text-blue-900">{en ? "Use the dedicated workspace to assign or change company accounts and notify assignees." : "전체 업무 보기에서는 배정 현황을 확인하고, 전용 화면에서 계정 지정·변경·알림을 처리합니다."}</p>
+                        </div>
+                        <a className="inline-flex min-h-12 items-center justify-center gap-2 rounded-lg bg-[#0755b5] px-5 font-black text-white" href={buildLocalizedPath(`/emission/work-assignment${effectiveProjectId ? `?projectId=${encodeURIComponent(effectiveProjectId)}` : ""}`, `/en/emission/work-assignment${effectiveProjectId ? `?projectId=${encodeURIComponent(effectiveProjectId)}` : ""}`)}>
+                          <span className="material-symbols-outlined">assignment_ind</span>{en ? "Open assignment workspace" : "업무 배정 관리 열기"}
+                        </a>
+                      </div>
+                    </section>
+                  ) : null}
+                  {false && data?.assignmentManager && selectedCatalogProcessCode === "WORK_ASSIGNMENT" && selectedCatalogProcess && effectiveProjectId ? (
                     <section className="mb-5 rounded-2xl border border-blue-200 bg-white p-4 shadow-sm sm:p-5" data-work-assignment-console="">
                       <div className="flex flex-wrap items-start justify-between gap-3">
                         <div>
