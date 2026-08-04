@@ -1641,7 +1641,7 @@ export function TaskQuestPanel() {
                               </ol>
                             ) : (
                               <div
-                                className={`w-full max-w-full overflow-hidden rounded-xl border border-slate-200 bg-white transition-transform ${processMapMode === "CANVAS" ? "my-4 shadow-xl" : ""}`}
+                                className={`overflow-hidden rounded-xl border border-slate-200 bg-white transition-transform ${processMapMode === "CANVAS" ? "my-4 w-max min-w-full max-w-none shadow-xl" : "w-full max-w-full"}`}
                                 style={{
                                   transform: `scale(${processMapZoom / 100})`,
                                   transformOrigin: "left top",
@@ -1649,7 +1649,7 @@ export function TaskQuestPanel() {
                               >
                                 <div
                                   className="grid border-b border-slate-200 bg-slate-50"
-                                  style={{ gridTemplateColumns: `9rem repeat(${Math.max(1, visibleProcessWaves.length)}, minmax(0, 1fr))` }}
+                                  style={{ gridTemplateColumns: `9rem repeat(${Math.max(1, visibleProcessWaves.length)}, ${processMapMode === "CANVAS" ? "14rem" : "minmax(0, 1fr)"})` }}
                                 >
                                   <strong className="flex min-h-14 items-center border-r border-slate-200 px-4 text-xs text-[#052b57]">
                                     {en ? "Responsible actor" : "담당 액터"}
@@ -1667,7 +1667,7 @@ export function TaskQuestPanel() {
                                   <div
                                     className="grid border-b border-slate-200 last:border-b-0"
                                     key={`actor-lane-${lane.actorCode}`}
-                                    style={{ gridTemplateColumns: `9rem repeat(${Math.max(1, visibleProcessWaves.length)}, minmax(0, 1fr))` }}
+                                    style={{ gridTemplateColumns: `9rem repeat(${Math.max(1, visibleProcessWaves.length)}, ${processMapMode === "CANVAS" ? "14rem" : "minmax(0, 1fr)"})` }}
                                   >
                                     <div className="flex min-h-28 items-center gap-2 border-r border-slate-200 bg-[#052b57] px-3 text-white">
                                       <span className="material-symbols-outlined flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white text-[18px] text-[#052b57]">person</span>
