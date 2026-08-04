@@ -1750,10 +1750,13 @@ export function TaskQuestPanel() {
                                     {en ? "Assignee" : "담당자"}
                                   </strong>
                                   {visibleProcessWaves.map((wave) => (
-                                    <div className="flex min-h-14 flex-col items-center justify-center border-r border-dashed border-slate-200 px-3 text-center last:border-r-0" key={`actor-head-${wave.wave}`}>
-                                      <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#246beb] text-[11px] font-black text-white">{wave.wave}</span>
-                                      <span className="mt-1 text-[11px] font-bold text-slate-600">
-                                        {wave.processes.length > 1 ? (en ? "Parallel work" : "병렬 업무") : (en ? "Sequential work" : "순차 업무")}
+                                    <div className="flex min-h-16 flex-col items-center justify-center border-r border-dashed border-slate-200 px-3 py-2 text-center last:border-r-0" key={`actor-head-${wave.wave}`}>
+                                      <strong className="line-clamp-2 text-xs leading-5 text-[#052b57]" title={wave.processes.map((process) => process.processName).join(" · ")}>
+                                        {wave.processes.map((process) => process.processName).join(" · ")}
+                                      </strong>
+                                      <span className="mt-1 rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-black text-[#164f86]">
+                                        {en ? `Step ${wave.wave}` : `${wave.wave}단계`}
+                                        {wave.processes.length > 1 ? (en ? " · Parallel" : " · 병렬") : ""}
                                       </span>
                                     </div>
                                   ))}
