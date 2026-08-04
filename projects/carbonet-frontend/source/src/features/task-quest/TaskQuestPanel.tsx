@@ -1164,12 +1164,25 @@ export function TaskQuestPanel() {
 
   function selectWorkType(code: string) {
     setSelectedWorkType(code);
-    setSelectedCatalogProcessCode("");
     setSelectedCatalogStep(0);
     localStorage.setItem("task-quest-work-type", code);
-    localStorage.removeItem("task-quest-catalog-process");
     localStorage.setItem("task-quest-catalog-step", "0");
     clearWorkflowFocus();
+    const processes = (data?.processCatalog || [])
+      .filter((process) => code !== "ALL" && String(process.domainCode).toUpperCase() === code)
+      .sort(
+        (left, right) =>
+          Number(left.workflowOrder || Number.MAX_SAFE_INTEGER) -
+            Number(right.workflowOrder || Number.MAX_SAFE_INTEGER) ||
+          left.processCode.localeCompare(right.processCode),
+      );
+    const onlyProcessCode = processes.length === 1 ? processes[0].processCode : "";
+    setSelectedCatalogProcessCode(onlyProcessCode);
+    if (onlyProcessCode) {
+      localStorage.setItem("task-quest-catalog-process", onlyProcessCode);
+    } else {
+      localStorage.removeItem("task-quest-catalog-process");
+    }
   }
 
   function selectCatalogProcess(code: string) {
@@ -2016,6 +2029,47 @@ export function TaskQuestPanel() {
                                   <dd className="leading-5 text-slate-700">{selectedCatalogSteps[selectedCatalogSteps.length - 1]?.completionRule || (en ? "All required steps are complete" : "필수 절차가 모두 완료됨")}</dd>
                                 </div>
                               </dl>
+                              {selectedCatalogSteps.length ? (
+                                <section className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-3">
+                                  <div className="flex items-center justify-between gap-3">
+                                    <strong className="text-sm text-[#052b57]">
+                                      {en ? "Process steps" : "업무 진행 단계"}
+                                    </strong>
+                                    <span className="text-xs font-bold text-slate-500">
+                                      {selectedCatalogSteps.length}{en ? " steps" : "단계"}
+                                    </span>
+                                  </div>
+                                  <ol className="mt-3 space-y-2">
+                                    {selectedCatalogSteps.map((step, stepIndex) => (
+                                      <li key={`guide-step-${step.stepCode}`}>
+                                        <button
+                                          aria-current={selectedCatalogStep === stepIndex ? "step" : undefined}
+                                          className={`flex w-full items-start gap-3 rounded-lg border p-3 text-left transition ${
+                                            selectedCatalogStep === stepIndex
+                                              ? "border-[#246beb] bg-white shadow-sm"
+                                              : "border-slate-200 bg-white/70 hover:border-blue-300"
+                                          }`}
+                                          onClick={() => {
+                                            setSelectedCatalogStep(stepIndex);
+                                            localStorage.setItem("task-quest-catalog-step", String(stepIndex));
+                                          }}
+                                          type="button"
+                                        >
+                                          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#0755b5] text-xs font-black text-white">
+                                            {step.stepOrder}
+                                          </span>
+                                          <span className="min-w-0">
+                                            <strong className="block text-sm text-[#052b57]">{step.stepName}</strong>
+                                            <span className="mt-1 block text-xs leading-5 text-slate-600">
+                                              {step.workPurpose || step.completionRule}
+                                            </span>
+                                          </span>
+                                        </button>
+                                      </li>
+                                    ))}
+                                  </ol>
+                                </section>
+                              ) : null}
                               {selectedNextProcess ? (
                                 <div className="mt-4 rounded-xl bg-slate-50 p-3">
                                   <span className="text-[11px] font-bold text-slate-500">{en ? "Next work" : "다음 업무"}</span>
