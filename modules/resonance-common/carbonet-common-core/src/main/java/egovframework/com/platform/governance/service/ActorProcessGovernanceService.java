@@ -28,6 +28,7 @@ public class ActorProcessGovernanceService {
     private final JdbcTemplate jdbc;
     private final ScreenDevelopmentNoteService screenDevelopmentNoteService;
     private final CodexProvisioningService codexProvisioningService;
+    private final ScreenContractRuntimeService screenContractRuntimeService;
 
     public List<Map<String, Object>> dashboardDataset(String dataset) {
         if ("processExecutions".equals(dataset)) {
@@ -771,12 +772,13 @@ public class ActorProcessGovernanceService {
         if(updated==0)throw new IllegalArgumentException("화면 완성 계약을 찾을 수 없습니다: "+id);
         Map<String,Object> readiness=jdbc.queryForMap("select contract_id as \"contractId\",readiness_score as \"readinessScore\",readiness_gaps as \"readinessGaps\" from framework_professional_screen_readiness where contract_id=?",id);
         if(((Number)readiness.get("readinessScore")).intValue()==100){jdbc.update("update framework_professional_screen_contract set contract_status='VERIFIED',updated_at=current_timestamp where contract_id=?",id);}
+        Map<String,Object> runtimePublication=screenContractRuntimeService.publishProfessionalContract(id,actor);
         String process=jdbc.queryForObject("select process_code from framework_professional_screen_contract where contract_id=?",String.class,id);
         Map<String,Object> automation=autoImplementCompletedDesign(process,actor);
         generateProfessionalDesignGraph(process,actor);
         jdbc.update("update framework_page_development_item i set design_status=case when g.design_gate_status='PASSED' then 'VERIFIED' else 'REVIEW_REQUIRED' end,blocker_reason=case when g.design_gate_status='PASSED' then null else array_to_string(g.design_gate_issues,', ') end,next_action=case when g.design_gate_status='PASSED' then 'Design verified; generation may proceed.' else 'Resolve design gate issues before generation: '||array_to_string(g.design_gate_issues,', ') end,updated_by=?,updated_at=current_timestamp from framework_page_design_assurance g join framework_screen_resource r using(screen_resource_id) join framework_professional_screen_contract c on lower(split_part(c.route_path,'?',1))=r.route_key where c.contract_id=? and i.screen_resource_id=g.screen_resource_id",actor,id);
         Map<String,Object> gate=jdbc.queryForMap("select g.design_gate_status as \"status\",g.design_gate_score as \"score\",array_to_string(g.design_gate_issues,', ') as \"issues\" from framework_page_design_assurance g join framework_screen_resource r using(screen_resource_id) join framework_professional_screen_contract c on lower(split_part(c.route_path,'?',1))=r.route_key where c.contract_id=?",id);
-        return Map.of("success",true,"contract",readiness,"designGate",gate,"autoImplementation",automation);
+        return Map.of("success",true,"contract",readiness,"designGate",gate,"autoImplementation",automation,"runtimePublication",runtimePublication);
     }
 
     @Transactional public Map<String,Object> executeProfessionalFactory(Map<String,Object>b,String user) throws Exception {

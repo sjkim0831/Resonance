@@ -23,7 +23,7 @@ import static org.mockito.Mockito.when;
 class ActorProcessGovernanceServiceSecurityTest {
     private final JdbcTemplate jdbc = mock(JdbcTemplate.class);
     private final ActorProcessGovernanceService service = new ActorProcessGovernanceService(
-            jdbc, mock(ScreenDevelopmentNoteService.class), mock(CodexProvisioningService.class));
+            jdbc, mock(ScreenDevelopmentNoteService.class), mock(CodexProvisioningService.class), mock(ScreenContractRuntimeService.class));
 
     @Test
     void controlPlaneAdministratorComesFromExistingAuthorityData() {
@@ -150,7 +150,7 @@ class ActorProcessGovernanceServiceSecurityTest {
     void designSaveWithoutProcessBindingReturnsAnExplicitGenerationGate() {
         ScreenDevelopmentNoteService notes = mock(ScreenDevelopmentNoteService.class);
         ActorProcessGovernanceService isolated = new ActorProcessGovernanceService(
-                jdbc, notes, mock(CodexProvisioningService.class));
+                jdbc, notes, mock(CodexProvisioningService.class), mock(ScreenContractRuntimeService.class));
         when(notes.save(any(), anyString())).thenReturn(Map.of("version", 3));
         when(jdbc.queryForList(argThat(sql -> sql.contains("framework_professional_screen_contract")),
                 org.mockito.ArgumentMatchers.eq(String.class), any(Object[].class))).thenReturn(List.of());
