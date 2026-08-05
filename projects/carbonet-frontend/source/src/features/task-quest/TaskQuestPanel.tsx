@@ -286,6 +286,16 @@ type TaskGuideFocusDetail = {
   openOverview?: boolean;
 };
 
+type QaResult = {
+  qaRunId: number;
+  processCode: string;
+  stepCode?: string;
+  result: "PASSED" | "FAILED";
+  failureReason?: string;
+  executedBy?: string;
+  executedAt?: string;
+};
+
 function dueLabel(value: string, en: boolean) {
   if (!value) return en ? "No deadline" : "기한 미설정";
   const due = new Date(`${value}T23:59:59`);
@@ -436,6 +446,10 @@ export function TaskQuestPanel() {
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
   const [flowOpen, setFlowOpen] = useState(false);
+  const [qaOpen, setQaOpen] = useState(false);
+  const [qaBusy, setQaBusy] = useState(false);
+  const [qaMessage, setQaMessage] = useState("");
+  const [qaResults, setQaResults] = useState<QaResult[]>([]);
   const [processKeyword, setProcessKeyword] = useState("");
   const [processMapZoom, setProcessMapZoom] = useState(100);
   const [processMapMode] = useState<"FLOW" | "ACTOR" | "CANVAS">("CANVAS");
@@ -1446,6 +1460,67 @@ export function TaskQuestPanel() {
       ? Math.min(100, Math.round((workflowCompleted / workflowTotal) * 100))
       : 0;
 
+  async function loadQaResults(processCode = selectedCatalogProcessCode) {
+    if (!processCode) { setQaResults([]); return; }
+    try {
+      const response = await fetch(`${buildLocalizedPath("/home/api/process-executions/qa-results", "/en/home/api/process-executions/qa-results")}?processCode=${encodeURIComponent(processCode)}`, { credentials: "include" });
+      const body = await response.json();
+      if (response.ok) setQaResults(body.items || []);
+    } catch { setQaResults([]); }
+  }
+
+  function fillCurrentScreen() {
+    let filled = 0;
+    const controls = Array.from(document.querySelectorAll<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>("main input, main select, main textarea"));
+    controls.forEach((control) => {
+      if (control.disabled || ("readOnly" in control && control.readOnly) || control.type === "hidden" || control.type === "file") return;
+      if (control instanceof HTMLInputElement && ["checkbox", "radio"].includes(control.type)) control.checked = true;
+      else if (control instanceof HTMLSelectElement) {
+        const option = Array.from(control.options).find((item) => item.value && !item.disabled);
+        if (!option) return;
+        control.value = option.value;
+      } else if (!control.value) {
+        if (control instanceof HTMLInputElement && control.type === "number") control.value = "1";
+        else if (control instanceof HTMLInputElement && control.type === "date") control.value = new Date().toISOString().slice(0, 10);
+        else if (control instanceof HTMLInputElement && control.type === "email") control.value = "qa@resonance.test";
+        else control.value = `QA-${Date.now()}`;
+      }
+      control.dispatchEvent(new Event("input", { bubbles: true }));
+      control.dispatchEvent(new Event("change", { bubbles: true }));
+      filled += 1;
+    });
+    setQaMessage(en ? `${filled} controls populated.` : `${filled}개 입력 항목을 테스트 값으로 채웠습니다.`);
+  }
+
+  function openQaStep() {
+    const step = selectedCatalogSteps[selectedCatalogStep];
+    if (!step) return;
+    const administrativeActor = /ADMIN|MANAGER|REVIEW|VERIFY|APPROV|AUDIT|REGULATOR/.test(String(step.actorCode || "").toUpperCase());
+    const route = administrativeActor ? step.adminPath || step.userPath : step.userPath || step.adminPath;
+    if (!route) { setQaMessage(en ? "No screen is bound to this step." : "이 절차에 연결된 화면이 없습니다."); return; }
+    const url = new URL(route, window.location.origin);
+    if (effectiveProjectId && !url.searchParams.has("projectId")) url.searchParams.set("projectId", effectiveProjectId);
+    url.searchParams.set("processCode", step.processCode);
+    url.searchParams.set("stepCode", step.stepCode);
+    url.searchParams.set("qa", "1");
+    window.location.assign(`${url.pathname}${url.search}${url.hash}`);
+  }
+
+  async function runQaSequence() {
+    const step = selectedCatalogSteps[selectedCatalogStep];
+    if (!selectedCatalogProcessCode || !step) return;
+    setQaBusy(true);
+    setQaMessage(en ? "Running isolated sequential verification..." : "격리된 순차 자동 검증을 실행하고 있습니다.");
+    try {
+      const response = await fetch(buildLocalizedPath("/home/api/process-executions/qa-smoke", "/en/home/api/process-executions/qa-smoke"), { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ processCode: selectedCatalogProcessCode, stepCode: step.stepCode }) });
+      const body = await response.json();
+      if (!response.ok) throw new Error(body.message || "QA verification failed");
+      setQaMessage(en ? `Passed ${body.result?.stepCount || 0} sequential steps; business data was rolled back.` : `${body.result?.stepCount || 0}개 절차 순차 실행 통과 · 업무 데이터는 롤백되었습니다.`);
+    } catch (error) {
+      setQaMessage(`${en ? "Failed" : "실패"}: ${error instanceof Error ? error.message : String(error)}`);
+    } finally { setQaBusy(false); await loadQaResults(); }
+  }
+
   return (
     <>
       <aside
@@ -1677,6 +1752,22 @@ export function TaskQuestPanel() {
             </div>
           </div>
         )}
+      </aside>
+      <aside className="fixed right-3 top-1/2 z-[949] -translate-y-1/2 sm:right-5 lg:right-8" data-process-qa-card="">
+        {!qaOpen ? <button className="flex min-h-12 items-center gap-2 rounded-full border border-emerald-700 bg-white px-4 py-2 font-bold text-emerald-800 shadow-lg" onClick={() => { setQaOpen(true); void loadQaResults(); }} type="button"><span className="material-symbols-outlined">fact_check</span>{en ? "QA workflow" : "QA 업무"}</button> :
+          <section className="w-[calc(100vw-1.5rem)] max-w-[24rem] overflow-hidden rounded-2xl border border-emerald-200 bg-white shadow-2xl">
+            <header className="flex items-center justify-between bg-emerald-800 px-4 py-3 text-white"><div className="flex items-center gap-2"><span className="material-symbols-outlined">fact_check</span><strong>{en ? "QA workflow runner" : "QA 업무 실행"}</strong></div><button aria-label={en ? "Close" : "닫기"} onClick={() => setQaOpen(false)} type="button"><span className="material-symbols-outlined">close</span></button></header>
+            <div className="max-h-[70vh] overflow-y-auto p-4">
+              <label className="block text-xs font-black text-slate-600">{en ? "Process" : "프로세스"}</label>
+              <select className="mt-1 h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm" value={selectedCatalogProcessCode} onChange={(event) => { selectCatalogProcess(event.target.value); void loadQaResults(event.target.value); }}><option value="">{en ? "Select process" : "프로세스 선택"}</option>{selectedDefinedProcesses.map((process) => <option key={process.processCode} value={process.processCode}>{process.processName}</option>)}</select>
+              <label className="mt-3 block text-xs font-black text-slate-600">{en ? "Procedure" : "절차"}</label>
+              <select className="mt-1 h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm" value={selectedCatalogStep} onChange={(event) => { const index=Number(event.target.value); setSelectedCatalogStep(index); localStorage.setItem("task-quest-catalog-step", String(index)); }}>{selectedCatalogSteps.map((step,index) => <option key={step.stepCode} value={index}>{index+1}. {step.stepName} · {step.actorCode}</option>)}</select>
+              {selectedCatalogSteps[selectedCatalogStep] ? <dl className="mt-3 space-y-2 rounded-xl bg-slate-50 p-3 text-xs leading-5 text-slate-700"><div><dt className="font-black text-slate-500">{en ? "Purpose" : "업무 목적"}</dt><dd>{selectedCatalogSteps[selectedCatalogStep].workPurpose || "-"}</dd></div><div><dt className="font-black text-slate-500">{en ? "Done when" : "완료 조건"}</dt><dd>{selectedCatalogSteps[selectedCatalogStep].completionRule || "-"}</dd></div><div><dt className="font-black text-slate-500">{en ? "Screen" : "연결 화면"}</dt><dd>{selectedCatalogSteps[selectedCatalogStep].userPath || selectedCatalogSteps[selectedCatalogStep].adminPath || "-"}</dd></div></dl> : null}
+              <div className="mt-3 grid grid-cols-3 gap-2"><button className="rounded-lg border border-[#246beb] py-2.5 text-xs font-black text-[#246beb]" disabled={!selectedCatalogSteps.length} onClick={fillCurrentScreen} type="button">{en ? "Fill" : "입력"}</button><button className="rounded-lg border border-[#052b57] py-2.5 text-xs font-black text-[#052b57]" disabled={!selectedCatalogSteps.length} onClick={openQaStep} type="button">{en ? "Open" : "절차 실행"}</button><button className="rounded-lg bg-emerald-700 py-2.5 text-xs font-black text-white disabled:bg-slate-300" disabled={qaBusy || !selectedCatalogSteps.length} onClick={() => void runQaSequence()} type="button">{qaBusy ? (en ? "Running" : "실행 중") : (en ? "Run all" : "순차 실행")}</button></div>
+              {qaMessage ? <p className={`mt-3 rounded-lg p-3 text-xs font-bold ${qaMessage.startsWith("실패") || qaMessage.startsWith("Failed") ? "bg-red-50 text-red-800" : "bg-emerald-50 text-emerald-900"}`}>{qaMessage}</p> : null}
+              <div className="mt-4 border-t border-slate-200 pt-3"><div className="flex justify-between"><strong className="text-xs text-[#052b57]">{en ? "Recent verification" : "최근 검증 이력"}</strong><button className="text-xs font-bold text-[#246beb]" onClick={() => void loadQaResults()} type="button">{en ? "Refresh" : "새로고침"}</button></div><ul className="mt-2 space-y-2">{qaResults.slice(0,5).map((item) => <li className="rounded-lg border border-slate-200 px-3 py-2 text-xs" key={item.qaRunId}><div className="flex justify-between"><b className={item.result === "PASSED" ? "text-emerald-700" : "text-red-700"}>{item.result}</b><span className="text-slate-500">{item.executedAt ? new Date(item.executedAt).toLocaleString() : "-"}</span></div>{item.failureReason ? <p className="mt-1 text-red-700">{item.failureReason}</p> : null}</li>)}{!qaResults.length ? <li className="rounded-lg bg-slate-50 p-3 text-xs text-slate-500">{en ? "No verification history." : "저장된 검증 이력이 없습니다."}</li> : null}</ul></div>
+            </div>
+          </section>}
       </aside>
       {flowOpen
         ? createPortal(

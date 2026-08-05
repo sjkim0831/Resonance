@@ -1885,6 +1885,17 @@ public class ActorProcessGovernanceService {
         return Map.of("success",clean,"rolledBack",clean,"executionId",executionId,"executionRows",executions==null?-1:executions,"eventRows",events==null?-1:events);
     }
 
+    @Transactional public void recordQaResult(String processCode,String stepCode,String result,Map<String,Object> evidence,String failureReason,String user){
+        String evidenceJson;
+        try{evidenceJson=new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(evidence==null?Map.of():evidence);}catch(Exception ignored){evidenceJson="{}";}
+        jdbc.update("insert into framework_process_qa_run(process_code,step_code,result,failure_reason,evidence_json,executed_by) values(?,?,?,nullif(?,''),?::jsonb,?)",processCode,stepCode==null?"":stepCode,result,failureReason==null?"":failureReason,evidenceJson,user);
+    }
+
+    public List<Map<String,Object>> qaResults(String processCode,String user){
+        String filter=processCode==null?"":processCode.trim();
+        return jdbc.queryForList("select qa_run_id as \"qaRunId\",process_code as \"processCode\",step_code as \"stepCode\",result,failure_reason as \"failureReason\",evidence_json::text as \"evidenceJson\",executed_by as \"executedBy\",executed_at as \"executedAt\" from framework_process_qa_run where (?='' or process_code=?) order by qa_run_id desc limit 50",filter,filter);
+    }
+
     private void requireActorAssignment(String tenant,String project,String actor,String user){
         Integer count=jdbc.queryForObject("select count(*) from framework_account_actor_assignment where tenant_id=? and (project_id=? or project_id='*') and actor_code=? and lower(account_id)=lower(?) and assignment_status='ACTIVE' and (valid_from is null or valid_from<=current_date) and (valid_until is null or valid_until>=current_date)",Integer.class,tenant,project,actor,user);
         if(count==null||count==0)throw new SecurityException("프로젝트에 활성 액터 배정이 없습니다: "+actor);
