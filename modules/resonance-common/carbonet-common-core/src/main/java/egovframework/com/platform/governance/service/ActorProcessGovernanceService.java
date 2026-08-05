@@ -1359,16 +1359,30 @@ public class ActorProcessGovernanceService {
 
     @Transactional public Map<String,Object> startProcessExecution(Map<String,Object>b,String user){
         String tenant=req(b,"tenantId"),project=req(b,"projectId"),process=req(b,"processCode"),actor=req(b,"actorCode");
+        String cycleType=def(b,"cycleType","ONCE").toUpperCase(Locale.ROOT);
+        String periodStart=str(b,"periodStart"),periodEnd=str(b,"periodEnd");
+        String boundaryVersion=def(b,"boundaryVersion","CURRENT"),methodologyVersion=def(b,"methodologyVersion","CURRENT");
+        String siteScopeJson=def(b,"siteScopeJson","[]"),dataCutoffAt=str(b,"dataCutoffAt");
+        int executionVersion=integerOr(b,"executionVersion",1);
+        Set<String> cycles=Set.of("ONCE","MONTHLY","QUARTERLY","HALF_YEARLY","ANNUAL","AD_HOC");
+        if(!cycles.contains(cycleType))throw new IllegalArgumentException("지원하지 않는 실행 주기입니다: "+cycleType);
+        if("ONCE".equals(cycleType)){periodStart="";periodEnd="";}
+        else if(periodStart.isBlank()||periodEnd.isBlank())throw new IllegalArgumentException("반복 실행은 periodStart와 periodEnd가 필요합니다.");
+        if(executionVersion<1)throw new IllegalArgumentException("executionVersion은 1 이상이어야 합니다.");
         List<Map<String,Object>> steps=jdbc.queryForList("select step_code,actor_code,from_state from framework_process_step where process_code=? order by step_order limit 1",process);
         if(steps.isEmpty())throw new IllegalArgumentException("프로세스 단계가 없습니다: "+process);
         Map<String,Object> first=steps.get(0);String requiredActor=String.valueOf(first.get("actor_code"));
         if(!requiredActor.equals(actor))throw new SecurityException("첫 단계 수행 액터는 "+requiredActor+"입니다.");
         requireActorAssignment(tenant,project,actor,user);
-        List<Map<String,Object>> running=jdbc.queryForList("select execution_id as \"executionId\",current_step_code as \"currentStepCode\",current_state as \"currentState\" from framework_process_execution where tenant_id=? and project_id=? and process_code=? and execution_status='RUNNING'",tenant,project,process);
+        List<Map<String,Object>> running=jdbc.queryForList("select execution_id as \"executionId\",current_step_code as \"currentStepCode\",current_state as \"currentState\",cycle_type as \"cycleType\",period_start as \"periodStart\",period_end as \"periodEnd\",execution_version as \"executionVersion\",handoff_status as \"handoffStatus\" from framework_process_execution where tenant_id=? and project_id=? and process_code=? and cycle_type=? and period_start is not distinct from nullif(?,'')::date and period_end is not distinct from nullif(?,'')::date and boundary_version=? and methodology_version=? and execution_version=? and execution_status='RUNNING'",tenant,project,process,cycleType,periodStart,periodEnd,boundaryVersion,methodologyVersion,executionVersion);
         if(!running.isEmpty())return Map.of("success",true,"created",false,"execution",running.get(0));
         UUID id=UUID.randomUUID();String step=String.valueOf(first.get("step_code")),state=String.valueOf(first.get("from_state"));
-        jdbc.update("insert into framework_process_execution(execution_id,tenant_id,project_id,process_code,current_step_code,current_state,initiated_by_actor,initiated_by) values(?,?,?,?,?,?,?,?)",id,tenant,project,process,step,state,actor,user);
-        return Map.of("success",true,"created",true,"executionId",id,"processCode",process,"currentStepCode",step,"currentState",state,"actorCode",actor);
+        jdbc.update("insert into framework_process_execution(execution_id,tenant_id,project_id,process_code,current_step_code,current_state,initiated_by_actor,initiated_by,cycle_type,period_start,period_end,site_scope,boundary_version,methodology_version,data_cutoff_at,execution_version) values(?,?,?,?,?,?,?,?,?,nullif(?,'')::date,nullif(?,'')::date,cast(? as jsonb),?,?,nullif(?,'')::timestamp,?)",id,tenant,project,process,step,state,actor,user,cycleType,periodStart,periodEnd,siteScopeJson,boundaryVersion,methodologyVersion,dataCutoffAt,executionVersion);
+        Map<String,Object> result=new LinkedHashMap<>();
+        result.put("success",true);result.put("created",true);result.put("executionId",id);result.put("processCode",process);
+        result.put("currentStepCode",step);result.put("currentState",state);result.put("actorCode",actor);result.put("cycleType",cycleType);
+        result.put("periodStart",periodStart);result.put("periodEnd",periodEnd);result.put("executionVersion",executionVersion);result.put("handoffStatus","NOT_READY");
+        return result;
     }
 
     @Transactional public Map<String,Object> verifyBackendProcessContracts(String sourceCommit,String user){
@@ -1426,14 +1440,18 @@ public class ActorProcessGovernanceService {
         Long eventId=jdbc.queryForObject("insert into framework_process_execution_event(execution_id,step_code,actor_code,command_code,from_state,to_state,idempotency_key,request_json,result_json,executed_by) values(?,?,?,?,?,?,?,?,?,?) returning event_id",Long.class,executionId,step,actor,command,from,to,key,def(b,"requestJson","{}"),def(b,"resultJson","{}"),user);
         int order=((Number)contract.get("step_order")).intValue();
         List<Map<String,Object>> next=jdbc.queryForList("select step_code,actor_code,user_path,admin_path from framework_process_step where process_code=? and step_code<>? and from_state=? order by case when step_order>? then 0 else 1 end,step_order limit 1",process,step,to,order);
-        if(next.isEmpty())jdbc.update("update framework_process_execution set current_state=?,execution_status='COMPLETED',completed_at=current_timestamp,updated_at=current_timestamp where execution_id=?",to,executionId);
-        else jdbc.update("update framework_process_execution set current_step_code=?,current_state=?,updated_at=current_timestamp where execution_id=?",String.valueOf(next.get(0).get("step_code")),to,executionId);
+        String snapshotRef=def(b,"snapshotRef","");
+        List<Map<String,Object>> policies=jdbc.queryForList("select completion_type,snapshot_required from framework_step_completion_policy where process_code=? and step_code=? and use_at='Y'",process,step);
+        if(!policies.isEmpty()&&Boolean.TRUE.equals(policies.get(0).get("snapshot_required"))&&snapshotRef.isBlank())
+            snapshotRef=executionId+":"+step+":"+eventId;
+        if(next.isEmpty())jdbc.update("update framework_process_execution set current_state=?,execution_status='COMPLETED',handoff_status='HANDED_OFF',snapshot_ref=nullif(?,''),completed_at=current_timestamp,updated_at=current_timestamp where execution_id=?",to,snapshotRef,executionId);
+        else jdbc.update("update framework_process_execution set current_step_code=?,current_state=?,handoff_status='HANDED_OFF',snapshot_ref=nullif(?,''),updated_at=current_timestamp where execution_id=?",String.valueOf(next.get(0).get("step_code")),to,snapshotRef,executionId);
         jdbc.update("update framework_process_work_draft set draft_status='SUBMITTED',submitted_at=current_timestamp,updated_at=current_timestamp where tenant_id=? and project_id=? and process_code=? and step_code=? and lower(account_id)=lower(?) and draft_status='DRAFT'",tenant,project,process,step,user);
         Map<String,Object> result=new LinkedHashMap<>();
         result.put("success",true);result.put("idempotent",false);result.put("eventId",eventId);result.put("fromState",from);result.put("toState",to);
         result.put("executionStatus",next.isEmpty()?"COMPLETED":"RUNNING");result.put("nextStepCode",next.isEmpty()?"":String.valueOf(next.get(0).get("step_code")));
         result.put("nextActorCode",next.isEmpty()?"":String.valueOf(next.get(0).get("actor_code")));result.put("nextUserPath",next.isEmpty()?"":String.valueOf(next.get(0).get("user_path")));
-        result.put("nextAdminPath",next.isEmpty()?"":String.valueOf(next.get(0).get("admin_path")));return result;
+        result.put("nextAdminPath",next.isEmpty()?"":String.valueOf(next.get(0).get("admin_path")));result.put("handoffStatus","HANDED_OFF");result.put("snapshotRef",snapshotRef);return result;
     }
 
     /**
@@ -1869,7 +1887,7 @@ public class ActorProcessGovernanceService {
     public Map<String,Object> findProcessExecution(String tenant,String project,String process,String user){
         Integer assignmentCount=jdbc.queryForObject("select count(*) from framework_account_actor_assignment a where a.tenant_id=? and a.project_id=? and lower(a.account_id)=lower(?) and a.assignment_status='ACTIVE' and (a.valid_from is null or a.valid_from<=current_date) and (a.valid_until is null or a.valid_until>=current_date) and exists(select 1 from framework_process_step s where s.process_code=? and s.actor_code=a.actor_code)",Integer.class,tenant,project,user,process);
         if(assignmentCount==null||assignmentCount==0)throw new SecurityException("No active actor assignment exists for this project process.");
-        List<Map<String,Object>> rows=jdbc.queryForList("select execution_id as \"executionId\",tenant_id as \"tenantId\",project_id as \"projectId\",process_code as \"processCode\",current_step_code as \"currentStepCode\",execution_status as \"executionStatus\",current_state as \"currentState\",initiated_by_actor as \"initiatedByActor\",started_at as \"startedAt\",completed_at as \"completedAt\" from framework_process_execution where tenant_id=? and project_id=? and process_code=? order by started_at desc limit 1",tenant,project,process);
+        List<Map<String,Object>> rows=jdbc.queryForList("select execution_id as \"executionId\",tenant_id as \"tenantId\",project_id as \"projectId\",process_code as \"processCode\",current_step_code as \"currentStepCode\",execution_status as \"executionStatus\",current_state as \"currentState\",initiated_by_actor as \"initiatedByActor\",cycle_type as \"cycleType\",period_start as \"periodStart\",period_end as \"periodEnd\",site_scope as \"siteScope\",boundary_version as \"boundaryVersion\",methodology_version as \"methodologyVersion\",data_cutoff_at as \"dataCutoffAt\",execution_version as \"executionVersion\",handoff_status as \"handoffStatus\",snapshot_ref as \"snapshotRef\",started_at as \"startedAt\",completed_at as \"completedAt\" from framework_process_execution where tenant_id=? and project_id=? and process_code=? order by started_at desc limit 1",tenant,project,process);
         if(rows.isEmpty())return Map.of("found",false);
         Map<String,Object> out=new LinkedHashMap<>(rows.get(0));
         out.put("found",true);
