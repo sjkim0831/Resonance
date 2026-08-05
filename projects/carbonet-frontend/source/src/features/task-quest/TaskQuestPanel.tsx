@@ -1687,7 +1687,8 @@ export function TaskQuestPanel() {
   }
 
   function resolveQaRoute(step: NonNullable<QuestResponse["processCatalogSteps"]>[number]) {
-    const administrativeActor = /ADMIN|MANAGER|REVIEW|VERIFY|APPROV|AUDIT|REGULATOR/.test(String(step.actorCode || "").toUpperCase());
+    const actor = String(step.actorCode || "").toUpperCase();
+    const administrativeActor = /^(PLATFORM_ADMIN|PLATFORM_OPERATOR|SYSTEM_ADMIN|GENERAL_ADMIN|AUTHORITY_ADMIN|MEMBER_ADMIN|CONTENT_MANAGER|EDUCATION_MANAGER|PRIVACY_OFFICER|REGULATOR|AUDITOR|CERTIFICATE_OFFICER|CERTIFICATE_QA_OPERATOR|SUPPORT_AGENT|SYSTEM_INTEGRATOR)$/.test(actor);
     return administrativeActor ? step.adminPath || step.userPath : step.userPath || step.adminPath;
   }
 
