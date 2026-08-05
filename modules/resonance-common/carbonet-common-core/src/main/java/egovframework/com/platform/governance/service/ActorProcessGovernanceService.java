@@ -1468,8 +1468,8 @@ public class ActorProcessGovernanceService {
             nextExecutionId=UUID.randomUUID();
             jdbc.update("insert into framework_process_execution(execution_id,tenant_id,project_id,process_code,current_step_code,current_state,initiated_by_actor,initiated_by,cycle_type,period_start,period_end,site_scope,boundary_version,methodology_version,execution_version,handoff_status) values(?,?,?,?,?,?,?,?,?,nullif(?,'')::date,nullif(?,'')::date,cast(? as jsonb),?,?,?,?)",
                 nextExecutionId,tenant,project,nextProcess,String.valueOf(first.get("step_code")),String.valueOf(first.get("from_state")),String.valueOf(first.get("actor_code")),user,
-                String.valueOf(completedExecution.getOrDefault("cycle_type","ONCE")),String.valueOf(completedExecution.getOrDefault("period_start","")),String.valueOf(completedExecution.getOrDefault("period_end","")),String.valueOf(completedExecution.getOrDefault("site_scope","[]")),
-                String.valueOf(completedExecution.getOrDefault("boundary_version","CURRENT")),String.valueOf(completedExecution.getOrDefault("methodology_version","CURRENT")),
+                valueOr(completedExecution,"cycle_type","ONCE"),valueOr(completedExecution,"period_start",""),valueOr(completedExecution,"period_end",""),valueOr(completedExecution,"site_scope","[]"),
+                valueOr(completedExecution,"boundary_version","CURRENT"),valueOr(completedExecution,"methodology_version","CURRENT"),
                 ((Number)completedExecution.getOrDefault("execution_version",1)).intValue(),"READY");
         }else nextExecutionId=(UUID)active.get(0).get("execution_id");
         return Map.of(
@@ -2771,6 +2771,7 @@ public class ActorProcessGovernanceService {
     private static String str(Map<String,Object>b,String k){return b.get(k)==null?"":String.valueOf(b.get(k)).trim();}
     private static String req(Map<String,Object>b,String k){String v=str(b,k);if(v.isEmpty())throw new IllegalArgumentException(k+" is required");return v;}
     private static String def(Map<String,Object>b,String k,String d){String v=str(b,k);return v.isEmpty()?d:v;}
+    private static String valueOr(Map<String,Object>b,String k,String d){Object raw=b.get(k);if(raw==null)return d;String v=String.valueOf(raw).trim();return v.isEmpty()||"null".equalsIgnoreCase(v)?d:v;}
     private static boolean bool(Map<String,Object>b,String k){return Boolean.parseBoolean(str(b,k));}
     private static int integer(Map<String,Object>b,String k){try{return Integer.parseInt(req(b,k));}catch(Exception e){throw new IllegalArgumentException(k+" must be a number");}}
     private static int integerOr(Map<String,Object>b,String k,int d){String v=str(b,k);if(v.isEmpty())return d;try{return Integer.parseInt(v);}catch(Exception e){throw new IllegalArgumentException(k+" must be a number");}}
