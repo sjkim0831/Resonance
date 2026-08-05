@@ -486,6 +486,8 @@ export function TaskQuestPanel() {
   const [qaTenantId, setQaTenantId] = useState("");
   const [qaPreFields, setQaPreFields] = useState<ContractField[]>([]);
   const [qaPreValues, setQaPreValues] = useState<Record<string, string>>({});
+  const [qaScreenFields, setQaScreenFields] = useState<ContractField[]>([]);
+  const [qaScreenValues, setQaScreenValues] = useState<Record<string, string>>({});
   const [qaDraftVersion, setQaDraftVersion] = useState(0);
   const [qaActivity, setQaActivity] = useState<QaActivity[]>([]);
   const [qaInputLoading, setQaInputLoading] = useState(false);
@@ -1147,6 +1149,13 @@ export function TaskQuestPanel() {
     ? Math.round((qaCompletedSteps / selectedCatalogSteps.length) * 100)
     : 0;
   const qaMissingRequired = qaPreFields.filter((field) => field.required === true && !String(qaPreValues[field.code] || "").trim());
+  const qaRuntimeSteps = useMemo(() => (data?.items || [])
+    .filter((item) => item.processCode === selectedCatalogProcessCode && (!effectiveProjectId || item.projectId === effectiveProjectId))
+    .sort((left, right) => Number(left.stepOrder || 0) - Number(right.stepOrder || 0)), [data?.items, effectiveProjectId, selectedCatalogProcessCode]);
+  const qaCurrentRuntimeStep = qaRuntimeSteps.find((item) => item.status === "IN_PROGRESS")
+    || qaRuntimeSteps.find((item) => item.status === "READY" && item.actionable !== false)
+    || qaRuntimeSteps.find((item) => item.status !== "DONE")
+    || qaRuntimeSteps[qaRuntimeSteps.length - 1];
 
   useEffect(() => {
     if (!qaOpen || !selectedQaStep || !effectiveProjectId) {
@@ -1158,6 +1167,19 @@ export function TaskQuestPanel() {
     // The selected procedure is the source of truth for its input contract.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [qaOpen, effectiveProjectId, selectedQaStep?.processCode, selectedQaStep?.stepCode]);
+
+  useEffect(() => {
+    if (!qaOpen) { setQaScreenFields([]); setQaScreenValues({}); return; }
+    const scan = () => detectCurrentScreenInputs();
+    scan();
+    const main = document.querySelector("main");
+    const observer = main ? new MutationObserver(scan) : null;
+    if (main && observer) observer.observe(main, { childList: true, subtree: true });
+    const timer = window.setInterval(scan, 1500);
+    return () => { observer?.disconnect(); window.clearInterval(timer); };
+    // Current screen controls can change without a full route reload.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [qaOpen]);
   const assignmentSteps = useMemo(
     () => assignmentWorkspace?.steps || [],
     [assignmentWorkspace?.steps],
@@ -1551,6 +1573,53 @@ export function TaskQuestPanel() {
 
   function appendQaActivity(kind: QaActivity["kind"], activityMessage: string) {
     setQaActivity((current) => [{ id: `${Date.now()}-${Math.random()}`, at: new Date().toISOString(), kind, message: activityMessage }, ...current].slice(0, 20));
+  }
+
+  function detectCurrentScreenInputs() {
+    const controls = Array.from(document.querySelectorAll<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>("main input, main select, main textarea"))
+      .filter((control) => !control.disabled && !("readOnly" in control && control.readOnly) && control.type !== "hidden" && control.type !== "file");
+    const used = new Map<string, number>();
+    const fields: ContractField[] = [];
+    const values: Record<string, string> = {};
+    controls.forEach((control, index) => {
+      const baseCode = control.getAttribute("data-field-code") || control.name || control.id || control.getAttribute("aria-label") || `SCREEN_FIELD_${index + 1}`;
+      const duplicate = used.get(baseCode) || 0;
+      used.set(baseCode, duplicate + 1);
+      const code = duplicate ? `${baseCode}__${duplicate + 1}` : baseCode;
+      const explicitLabel = control.labels?.[0]?.textContent?.trim() || control.getAttribute("aria-label") || control.getAttribute("placeholder") || baseCode;
+      const optionValues = control instanceof HTMLSelectElement
+        ? Array.from(control.options).filter((option) => option.value).map((option) => ({ value: option.value, label: option.textContent?.trim() || option.value }))
+        : undefined;
+      const controlType = control instanceof HTMLSelectElement ? "SELECT"
+        : control instanceof HTMLTextAreaElement ? "TEXTAREA"
+          : control.type === "checkbox" ? "CHECKBOX"
+            : control.type === "number" ? "NUMBER"
+              : control.type === "date" ? "DATE"
+                : control.type === "email" ? "EMAIL"
+                  : "TEXT";
+      const maxLength = control instanceof HTMLInputElement || control instanceof HTMLTextAreaElement ? control.maxLength : -1;
+      fields.push({ code, label: explicitLabel.replace(/\s+/g, " ").slice(0, 80), control: controlType, required: control.required, min: control.getAttribute("min") || undefined, max: control.getAttribute("max") || undefined, maxLength: maxLength > 0 ? maxLength : undefined, placeholder: control.getAttribute("placeholder") || undefined, options: optionValues });
+      values[code] = control instanceof HTMLInputElement && control.type === "checkbox" ? String(control.checked) : control.value;
+    });
+    setQaScreenFields((current) => JSON.stringify(current) === JSON.stringify(fields) ? current : fields);
+    setQaScreenValues((current) => JSON.stringify(current) === JSON.stringify(values) ? current : values);
+  }
+
+  function updateCurrentScreenInput(fieldCode: string, value: string) {
+    setQaScreenValues((current) => ({ ...current, [fieldCode]: value }));
+    const baseCode = fieldCode.replace(/__\d+$/, "");
+    const duplicateIndex = Number(fieldCode.match(/__(\d+)$/)?.[1] || 1) - 1;
+    const candidates = Array.from(document.querySelectorAll<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>("main input, main select, main textarea"))
+      .filter((control) => (control.getAttribute("data-field-code") || control.name || control.id || control.getAttribute("aria-label")) === baseCode);
+    const control = candidates[Math.max(0, duplicateIndex)];
+    if (!control) return;
+    if (control instanceof HTMLInputElement && control.type === "checkbox") control.checked = value === "true";
+    else control.value = value;
+    control.dispatchEvent(new Event("input", { bubbles: true }));
+    control.dispatchEvent(new Event("change", { bubbles: true }));
+    const storageKey = `qa-form:${window.location.pathname}:${baseCode}`;
+    localStorage.setItem(storageKey, value);
+    appendQaActivity("SAVE", `현재 화면 입력 수정: ${qaScreenFields.find((field) => field.code === fieldCode)?.label || baseCode}`);
   }
 
   function qaStorageKey(stepCode: string) {
@@ -2047,10 +2116,18 @@ export function TaskQuestPanel() {
               <label className="mt-3 block text-xs font-black text-slate-600">{en ? "Work instance and project" : "업무 인스턴스·프로젝트"}</label>
               <select className="mt-1 h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm" value={effectiveProjectId} onChange={(event) => { setSelectedOverviewProjectId(event.target.value); localStorage.setItem("task-quest-overview-project", event.target.value); }}><option value="">{en ? "Select project" : "프로젝트 선택"}</option>{overviewProjects.map((project) => <option key={project.id} value={project.id}>{project.name}</option>)}</select>
               {selectedCatalogSteps[selectedCatalogStep] ? <dl className="mt-3 space-y-2 rounded-xl bg-slate-50 p-3 text-xs leading-5 text-slate-700"><div><dt className="font-black text-slate-500">{en ? "Purpose" : "업무 목적"}</dt><dd>{selectedCatalogSteps[selectedCatalogStep].workPurpose || "-"}</dd></div><div><dt className="font-black text-slate-500">{en ? "Input guide" : "입력 범위·가이드"}</dt><dd className="whitespace-pre-wrap">{selectedCatalogSteps[selectedCatalogStep].inputContract || "저장값을 우선 불러오고, 필수값·최솟값·선택지·예시값 순서로 입력합니다."}</dd></div><div><dt className="font-black text-slate-500">{en ? "Done when" : "완료 조건"}</dt><dd>{selectedCatalogSteps[selectedCatalogStep].completionRule || "-"}</dd></div><div><dt className="font-black text-slate-500">{en ? "Screen" : "연결 화면"}</dt><dd>{selectedCatalogSteps[selectedCatalogStep].userPath || selectedCatalogSteps[selectedCatalogStep].adminPath || "-"}</dd></div></dl> : null}
+              <section className="mt-3 rounded-xl border border-blue-200 bg-blue-50 p-3" data-qa-current-step="">
+                <div className="flex items-center justify-between gap-3"><strong className="text-sm text-[#052b57]">{en ? "Current process position" : "현재 프로세스 위치"}</strong><span className={`rounded-full px-2.5 py-1 text-xs font-black ${qaCurrentRuntimeStep?.status === "IN_PROGRESS" ? "bg-blue-700 text-white" : qaCurrentRuntimeStep?.status === "DONE" ? "bg-emerald-700 text-white" : "bg-white text-slate-700"}`}>{qaCurrentRuntimeStep?.status || (en ? "Not started" : "미시작")}</span></div>
+                <div className="mt-3 grid gap-2 text-xs sm:grid-cols-2"><div className="rounded-lg bg-white p-3"><span className="block font-bold text-slate-500">{en ? "Running now" : "현재 실행 중"}</span><strong className="mt-1 block text-slate-900">{qaCurrentRuntimeStep ? `${Number(qaCurrentRuntimeStep.stepOrder || 0)}. ${qaCurrentRuntimeStep.name}` : (en ? "No running procedure" : "실행 중인 절차 없음")}</strong><span className="mt-1 block text-slate-500">{actorLabel(qaCurrentRuntimeStep?.actorCode)}</span></div><div className="rounded-lg bg-white p-3"><span className="block font-bold text-slate-500">{en ? "Selected for QA" : "QA 선택 절차"}</span><strong className="mt-1 block text-slate-900">{selectedQaStep ? `${selectedCatalogStep + 1}. ${selectedQaStep.stepName}` : "-"}</strong><span className={`mt-1 block font-bold ${qaCurrentRuntimeStep?.processStepCode === selectedQaStep?.stepCode ? "text-emerald-700" : "text-amber-700"}`}>{qaCurrentRuntimeStep?.processStepCode === selectedQaStep?.stepCode ? (en ? "Matches running step" : "실행 단계와 일치") : (en ? "Different from running step" : "실행 단계와 다름")}</span></div></div>
+              </section>
               <section className="mt-3 rounded-xl border border-emerald-200 bg-emerald-50/40 p-3" data-qa-pre-inputs="">
                 <div className="flex items-center justify-between gap-3"><div><h4 className="text-sm font-black text-[#052b57]">{en ? "Pre-input and edit" : "절차 선입력·수정"}</h4><p className="mt-1 text-xs text-slate-600">{en ? "Review and save values before opening the work screen." : "업무 화면을 열기 전에 입력값을 확인·수정하고 저장합니다."}</p></div><span className="shrink-0 rounded-full bg-white px-2.5 py-1 text-xs font-black text-emerald-800">{qaPreFields.length}{en ? " fields" : "개 항목"}</span></div>
                 {qaInputLoading ? <p className="mt-3 rounded-lg bg-white p-3 text-xs font-bold text-slate-600">{en ? "Loading the input contract..." : "입력 계약과 저장값을 불러오는 중입니다."}</p> : qaPreFields.length ? <div className="mt-3 grid gap-3 sm:grid-cols-2">{qaPreFields.map((field) => <ContractFieldControl field={field} key={field.code} value={qaPreValues[field.code] || ""} onChange={(value) => setQaPreValues((current) => ({ ...current, [field.code]: value }))} />)}</div> : <p className="mt-3 rounded-lg bg-white p-3 text-xs text-slate-600">{en ? "No editable field contract is registered for this procedure." : "이 절차에 등록된 수정 가능 입력 항목이 없습니다. 화면 입력 버튼으로 현재 화면 값을 확인할 수 있습니다."}</p>}
                 <div className="mt-3 flex items-center justify-between gap-3"><span className={`text-xs font-bold ${qaMissingRequired.length ? "text-red-700" : "text-emerald-800"}`}>{qaMissingRequired.length ? `${en ? "Missing required" : "필수 미입력"} ${qaMissingRequired.length}` : (en ? "Required fields ready" : "필수 입력 준비 완료")}</span><button className="min-h-10 rounded-lg bg-emerald-700 px-4 text-xs font-black text-white disabled:bg-slate-300" disabled={qaBusy || qaInputLoading || !qaPreFields.length} onClick={() => void saveQaPreInputs()} type="button">{en ? "Save changes" : "수정값 저장"}</button></div>
+              </section>
+              <section className="mt-3 rounded-xl border border-violet-200 bg-violet-50/40 p-3" data-qa-screen-inputs="">
+                <div className="flex items-center justify-between gap-3"><div><h4 className="text-sm font-black text-[#052b57]">{en ? "Current screen inputs" : "현재 화면 입력 요소"}</h4><p className="mt-1 text-xs text-slate-600">{en ? "Edits are reflected immediately on the open screen." : "QA 카드에서 수정하면 현재 화면 입력 요소에 즉시 반영됩니다."}</p></div><span className="shrink-0 rounded-full bg-white px-2.5 py-1 text-xs font-black text-violet-800">{qaScreenFields.length}{en ? " controls" : "개 요소"}</span></div>
+                {qaScreenFields.length ? <div className="mt-3 grid gap-3 sm:grid-cols-2">{qaScreenFields.map((field) => <ContractFieldControl field={field} key={field.code} value={qaScreenValues[field.code] || ""} onChange={(value) => updateCurrentScreenInput(field.code, value)} />)}</div> : <p className="mt-3 rounded-lg bg-white p-3 text-xs text-slate-600">{en ? "No editable inputs were detected on the current screen." : "현재 화면에서 수정 가능한 입력 요소가 감지되지 않았습니다."}</p>}
               </section>
               <section className="mt-3 rounded-xl border border-slate-200 bg-white p-3" data-qa-progress="">
                 <div className="flex items-center justify-between text-xs"><strong className="text-[#052b57]">{en ? "Procedure progress" : "절차 진행상황"}</strong><span className="font-black text-blue-700">{qaCompletedSteps}/{selectedCatalogSteps.length} · {qaProgress}%</span></div>
