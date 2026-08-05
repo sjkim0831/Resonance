@@ -1,5 +1,6 @@
 package egovframework.com.platform.governance.web;
 
+import egovframework.com.feature.auth.service.CurrentUserContextService;
 import egovframework.com.platform.governance.service.ActorProcessGovernanceService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
@@ -7,7 +8,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
-import java.security.Principal;
 import java.util.Map;
 import java.util.UUID;
 
@@ -16,12 +16,18 @@ import java.util.UUID;
 @RequestMapping({"/home/api/process-executions","/en/home/api/process-executions"})
 public class ProcessExecutionApiController {
     private final ActorProcessGovernanceService service;
+    private final CurrentUserContextService currentUserContextService;
+
+    private String authenticatedUser(HttpServletRequest request) {
+        var context=currentUserContextService.resolve(request);
+        return context.isAuthenticated()?context.getUserId():null;
+    }
 
     @GetMapping
     public ResponseEntity<?> find(@RequestParam String tenantId,@RequestParam String projectId,@RequestParam String processCode,HttpServletRequest request){
-        Principal principal=request.getUserPrincipal();
-        if(principal==null)return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("success",false,"message","Authentication is required."));
-        try{return ResponseEntity.ok(service.findProcessExecution(tenantId,projectId,processCode,principal.getName()));}catch(SecurityException e){return forbidden(e);}catch(Exception e){return bad(e);}
+        String user=authenticatedUser(request);
+        if(user==null)return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("success",false,"message","Authentication is required."));
+        try{return ResponseEntity.ok(service.findProcessExecution(tenantId,projectId,processCode,user));}catch(SecurityException e){return forbidden(e);}catch(Exception e){return bad(e);}
     }
 
     @GetMapping("/screen-contract")
@@ -31,35 +37,35 @@ public class ProcessExecutionApiController {
 
     @PostMapping("/start")
     public ResponseEntity<?> start(@RequestBody Map<String,Object> body,HttpServletRequest request){
-        Principal principal=request.getUserPrincipal();
-        if(principal==null)return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("success",false,"message","Authentication is required."));
-        try{return ResponseEntity.ok(service.startProcessExecution(body,principal.getName()));}catch(SecurityException e){return forbidden(e);}catch(Exception e){return bad(e);}
+        String user=authenticatedUser(request);
+        if(user==null)return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("success",false,"message","Authentication is required."));
+        try{return ResponseEntity.ok(service.startProcessExecution(body,user));}catch(SecurityException e){return forbidden(e);}catch(Exception e){return bad(e);}
     }
 
     @PostMapping("/qa-instance")
     public ResponseEntity<?> qaInstance(@RequestBody Map<String,Object> body,
                                         @RequestHeader(value="X-Carbonet-Test-Mode",required=false) String testMode,
                                         HttpServletRequest request){
-        Principal principal=request.getUserPrincipal();
-        if(principal==null)return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("success",false,"message","Authentication is required."));
+        String user=authenticatedUser(request);
+        if(user==null)return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("success",false,"message","Authentication is required."));
         if(!"1".equals(testMode))return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("success",false,"message","QA test mode is required."));
-        try{return ResponseEntity.ok(service.manageQaProcessExecution(body,principal.getName()));}
+        try{return ResponseEntity.ok(service.manageQaProcessExecution(body,user));}
         catch(SecurityException e){return forbidden(e);}catch(IllegalStateException e){return conflict(e);}catch(Exception e){return bad(e);}
     }
 
     @PostMapping("/{executionId}/commands")
     public ResponseEntity<?> command(@PathVariable UUID executionId,@RequestBody Map<String,Object> body,HttpServletRequest request){
-        Principal principal=request.getUserPrincipal();
-        if(principal==null)return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("success",false,"message","Authentication is required."));
-        try{return ResponseEntity.ok(service.executeProcessCommand(executionId,body,principal.getName()));}catch(SecurityException e){return forbidden(e);}catch(Exception e){return bad(e);}
+        String user=authenticatedUser(request);
+        if(user==null)return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("success",false,"message","Authentication is required."));
+        try{return ResponseEntity.ok(service.executeProcessCommand(executionId,body,user));}catch(SecurityException e){return forbidden(e);}catch(Exception e){return bad(e);}
     }
 
     @GetMapping("/draft")
     public ResponseEntity<?> draft(@RequestParam String tenantId,@RequestParam String projectId,@RequestParam String processCode,
                                    @RequestParam String stepCode,HttpServletRequest request){
-        Principal principal=request.getUserPrincipal();
-        if(principal==null)return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("success",false,"message","Authentication is required."));
-        try{return ResponseEntity.ok(service.loadWorkDraft(tenantId,projectId,processCode,stepCode,principal.getName()));}
+        String user=authenticatedUser(request);
+        if(user==null)return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("success",false,"message","Authentication is required."));
+        try{return ResponseEntity.ok(service.loadWorkDraft(tenantId,projectId,processCode,stepCode,user));}
         catch(SecurityException e){return forbidden(e);}catch(IllegalStateException e){return conflict(e);}catch(Exception e){return bad(e);}
     }
 
@@ -67,17 +73,17 @@ public class ProcessExecutionApiController {
     public ResponseEntity<?> fieldOptions(@RequestParam String tenantId,@RequestParam String projectId,
                                           @RequestParam String processCode,@RequestParam String stepCode,
                                           @RequestParam(defaultValue="") String keyword,HttpServletRequest request){
-        Principal principal=request.getUserPrincipal();
-        if(principal==null)return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("success",false,"message","Authentication is required."));
-        try{return ResponseEntity.ok(service.generatedFieldOptions(tenantId,projectId,processCode,stepCode,keyword,principal.getName()));}
+        String user=authenticatedUser(request);
+        if(user==null)return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("success",false,"message","Authentication is required."));
+        try{return ResponseEntity.ok(service.generatedFieldOptions(tenantId,projectId,processCode,stepCode,keyword,user));}
         catch(SecurityException e){return forbidden(e);}catch(Exception e){return bad(e);}
     }
 
     @PutMapping("/draft")
     public ResponseEntity<?> saveDraft(@RequestBody Map<String,Object> body,HttpServletRequest request){
-        Principal principal=request.getUserPrincipal();
-        if(principal==null)return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("success",false,"message","Authentication is required."));
-        try{return ResponseEntity.ok(service.saveWorkDraft(body,principal.getName()));}
+        String user=authenticatedUser(request);
+        if(user==null)return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("success",false,"message","Authentication is required."));
+        try{return ResponseEntity.ok(service.saveWorkDraft(body,user));}
         catch(SecurityException e){return forbidden(e);}catch(IllegalStateException e){return conflict(e);}catch(Exception e){return bad(e);}
     }
 
