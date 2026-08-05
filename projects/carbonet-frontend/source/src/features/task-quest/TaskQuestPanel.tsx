@@ -337,11 +337,33 @@ function QaMirrorControl({ field, value, onChange }: { field: ContractField; val
   const className = "mt-2 min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 focus:border-[#246beb] focus:outline-none focus:ring-2 focus:ring-blue-100";
   const id = `qa-mirror-${field.code.replace(/[^a-zA-Z0-9_-]/g, "-")}`;
   let control;
-  if (kind.includes("SELECT") && choices.length) control = <select className={className} defaultValue={value} id={id} onChange={(event) => onChange(event.target.value)}>{choices.map((choice) => <option key={choice.value} value={choice.value}>{choice.label}</option>)}</select>;
-  else if (kind.includes("CHECKBOX")) control = <input className="mt-2 size-5 accent-[#246beb]" defaultChecked={value === "true"} id={id} type="checkbox" onChange={(event) => onChange(String(event.target.checked))} />;
-  else if (kind.includes("TEXTAREA")) control = <textarea className={`${className} min-h-24 py-3`} defaultValue={value} id={id} onChange={(event) => onChange(event.target.value)} />;
-  else control = <input className={className} defaultValue={value} id={id} min={field.min as string | number | undefined} max={field.max as string | number | undefined} placeholder={String(field.placeholder || "")} type={kind.includes("NUMBER") ? "number" : kind.includes("DATE") ? "date" : "text"} onChange={(event) => onChange(event.target.value)} />;
-  return <label className="text-xs font-bold text-slate-700" htmlFor={id}>{field.label}{field.required === true ? <span className="ml-1 text-red-600">*</span> : null}{control}</label>;
+  if (kind.includes("SELECT") && choices.length) control = <select className={className} value={value} id={id} onChange={(event) => onChange(event.target.value)}><option value="">선택</option>{choices.map((choice) => <option key={choice.value} value={choice.value}>{choice.label}</option>)}</select>;
+  else if (kind.includes("CHECKBOX")) control = <input className="mt-2 size-5 accent-[#246beb]" checked={value === "true"} id={id} type="checkbox" onChange={(event) => onChange(String(event.target.checked))} />;
+  else if (kind.includes("TEXTAREA")) control = <textarea className={`${className} min-h-24 py-3`} value={value} id={id} onChange={(event) => onChange(event.target.value)} />;
+  else control = <input className={className} value={value} id={id} min={field.min as string | number | undefined} max={field.max as string | number | undefined} maxLength={typeof field.maxLength === "number" ? field.maxLength : undefined} placeholder={String(field.placeholder || "")} type={kind.includes("NUMBER") ? "number" : kind.includes("DATE") ? "date" : kind.includes("EMAIL") ? "email" : "text"} onChange={(event) => onChange(event.target.value)} />;
+  const guide = qaFieldGuide(field);
+  return <div className="rounded-xl border border-violet-100 bg-white p-3"><label className="text-xs font-black text-slate-800" htmlFor={id}>{field.label}{field.required === true ? <span className="ml-1 text-red-600">*</span> : null}{control}</label><dl className="mt-2 space-y-1 text-[11px] leading-4 text-slate-600"><div><dt className="inline font-black text-violet-800">입력 목적 · </dt><dd className="inline">{guide.purpose}</dd></div><div><dt className="inline font-black text-violet-800">형식·범위 · </dt><dd className="inline">{guide.format}</dd></div><div><dt className="inline font-black text-violet-800">예시·출처 · </dt><dd className="inline">{guide.example} · {guide.source}</dd></div></dl></div>;
+}
+
+function qaFieldGuide(field: ContractField) {
+  const kind = String(field.control || field.dataType || "TEXT").toUpperCase();
+  const key = `${field.code} ${field.label}`.toLowerCase();
+  const limits = [field.min !== undefined ? `최소 ${field.min}` : "", field.max !== undefined ? `최대 ${field.max}` : "", field.maxLength !== undefined ? `${field.maxLength}자 이내` : ""].filter(Boolean).join(" · ");
+  let purpose = String(field.helpText || field.description || "현재 절차의 처리·판정 및 다음 업무 인계에 사용하는 값입니다.");
+  let format = limits || (kind.includes("SELECT") ? "등록된 선택지 중 1개 선택" : kind.includes("DATE") ? "YYYY-MM-DD" : kind.includes("NUMBER") ? "숫자" : kind.includes("CHECKBOX") ? "선택 또는 해제" : "문자열");
+  let example = String(field.placeholder || "업무 기준에 맞는 값을 입력");
+  let source = "현재 화면·절차 설계 계약";
+  if (key.includes("검색") || key.includes("keyword")) { purpose = "프로젝트명·식별자를 검색해 대상 업무를 찾습니다."; example = "CCUS"; source = "프로젝트 원장"; }
+  else if (key.includes("project")) { purpose = "업무 데이터와 실행 이력을 같은 프로젝트로 연결합니다."; example = "PRJ-ACTOR-TEST"; source = "프로젝트 원장"; }
+  else if (key.includes("tenant")) { purpose = "다른 기업의 데이터와 완전히 격리합니다."; example = "DEFAULT"; source = "로그인 세션"; }
+  else if (key.includes("status") || key.includes("상태")) { purpose = "조회하거나 처리할 업무 상태를 제한합니다."; example = "진행"; source = "프로세스 상태 계약"; }
+  else if (key.includes("사업장") || key.includes("site")) { purpose = "배출자료와 산정 결과의 조직·사업장 경계를 지정합니다."; example = "등록 사업장 선택"; source = "기업·사업장 기준정보"; }
+  else if (key.includes("page") || key.includes("페이지")) { purpose = "목록 조회 위치를 지정합니다."; format = "1 이상의 정수"; example = "1"; source = "목록 조회 계약"; }
+  else if (key.includes("summary") || key.includes("요약")) { purpose = "수행 결과를 검토자와 다음 담당자가 즉시 이해하도록 기록합니다."; example = "대상 프로젝트를 확인하고 다음 업무를 선택함"; source = "업무 수행자 입력"; }
+  else if (key.includes("근거") || key.includes("reason")) { purpose = "판단과 계산 결과를 재현할 수 있는 근거를 기록합니다."; example = "프로젝트 상태·사업장·담당자 조건을 확인함"; source = "업무 수행 기록"; }
+  else if (key.includes("증빙") || key.includes("document")) { purpose = "결과를 원문·첨부·감사 이력과 연결합니다."; example = "DOC-QA-001"; source = "문서·증빙 원장"; }
+  else if (key.includes("checksum") || key.includes("무결성")) { purpose = "저장 이후 데이터 변조 여부를 확인합니다."; example = "SHA-256 해시"; source = "시스템 자동 계산"; }
+  return { purpose, format, example, source };
 }
 
 function dueLabel(value: string, en: boolean) {
@@ -1638,7 +1660,9 @@ export function TaskQuestPanel() {
                 : control.type === "email" ? "EMAIL"
                   : "TEXT";
       const maxLength = control instanceof HTMLInputElement || control instanceof HTMLTextAreaElement ? control.maxLength : -1;
-      fields.push({ code, label: explicitLabel.replace(/\s+/g, " ").slice(0, 80), control: controlType, required: control.required, min: control.getAttribute("min") || undefined, max: control.getAttribute("max") || undefined, maxLength: maxLength > 0 ? maxLength : undefined, placeholder: control.getAttribute("placeholder") || undefined, options: optionValues });
+      const describedBy = control.getAttribute("aria-describedby");
+      const description = control.getAttribute("title") || (describedBy ? document.getElementById(describedBy)?.textContent?.trim() : "") || undefined;
+      fields.push({ code, label: explicitLabel.replace(/\s+/g, " ").slice(0, 80), control: controlType, required: control.required, min: control.getAttribute("min") || undefined, max: control.getAttribute("max") || undefined, maxLength: maxLength > 0 ? maxLength : undefined, placeholder: control.getAttribute("placeholder") || undefined, description, options: optionValues });
       values[code] = control instanceof HTMLInputElement && control.type === "checkbox" ? String(control.checked) : control.value;
     });
     setQaScreenFields((current) => JSON.stringify(current) === JSON.stringify(fields) ? current : fields);
@@ -1647,9 +1671,67 @@ export function TaskQuestPanel() {
 
   function updateCurrentScreenInput(fieldCode: string, value: string) {
     qaScreenDirtyRef.current = true;
-    // Keep the mirror control stable while the tester types. The values are
-    // committed to React state again after the atomic screen apply finishes.
-    qaScreenValues[fieldCode] = value;
+    setQaScreenValues((current) => ({ ...current, [fieldCode]: value }));
+  }
+
+  function qaRecommendedScreenValue(field: ContractField) {
+    const current = qaScreenValues[field.code] || "";
+    if (current) return current;
+    const kind = String(field.control || field.dataType || "TEXT").toUpperCase();
+    const key = `${field.code} ${field.label}`.toLowerCase();
+    const choices = Array.isArray(field.options) ? field.options : [];
+    if (choices.length) {
+      const first = choices[0];
+      return typeof first === "string" ? first : String((first as Record<string, unknown>).value ?? (first as Record<string, unknown>).code ?? "");
+    }
+    if (key.includes("tenant")) return qaTenantId || "DEFAULT";
+    if (key.includes("project")) return effectiveProjectId || "PRJ-ACTOR-TEST";
+    if (key.includes("process")) return selectedCatalogProcessCode;
+    if (key.includes("step") || key.includes("단계")) return selectedQaStep?.stepCode || "";
+    if (key.includes("검색") || key.includes("keyword")) return "CCUS";
+    if (key.includes("page") || key.includes("페이지")) return "1";
+    if (key.includes("summary") || key.includes("요약")) return "대상 프로젝트를 확인하고 다음 업무를 선택했습니다.";
+    if (key.includes("근거") || key.includes("reason")) return "프로젝트 상태·사업장·담당자 조건과 절차 완료 기준을 확인했습니다.";
+    if (key.includes("증빙") || key.includes("document")) return `DOC-QA-${new Date().toISOString().slice(0, 10).replace(/-/g, "")}`;
+    if (key.includes("url") || key.includes("저장소")) return window.location.href;
+    if (key.includes("checksum") || key.includes("무결성")) return "SYSTEM_CALCULATED";
+    if (kind.includes("DATE")) return new Date().toISOString().slice(0, 10);
+    if (kind.includes("NUMBER")) return String(field.min ?? 1);
+    if (kind.includes("CHECKBOX")) return field.required === true ? "true" : "false";
+    if (kind.includes("EMAIL")) return "qa@resonance.test";
+    return "테스트 입력값";
+  }
+
+  function fillQaScreenRecommendedValues() {
+    const values = Object.fromEntries(qaScreenFields.map((field) => [field.code, qaRecommendedScreenValue(field)]));
+    qaScreenDirtyRef.current = true;
+    setQaScreenValues(values);
+    appendQaActivity("SAVE", `현재 절차의 권장 테스트값 ${qaScreenFields.length}개를 준비했습니다.`);
+    setQaMessage(`권장 테스트값 ${qaScreenFields.length}개를 채웠습니다. 내용을 확인한 뒤 현재 화면에 적용하세요.`);
+  }
+
+  function validateQaScreenInputs() {
+    const failures = qaScreenFields.flatMap((field) => {
+      const value = String(qaScreenValues[field.code] || "").trim();
+      const issues: string[] = [];
+      if (field.required === true && !value) issues.push(`${field.label}: 필수값 누락`);
+      if (value && field.maxLength !== undefined && value.length > Number(field.maxLength)) issues.push(`${field.label}: 최대 길이 초과`);
+      if (value && String(field.control || field.dataType || "").toUpperCase().includes("NUMBER")) {
+        const number = Number(value);
+        if (!Number.isFinite(number)) issues.push(`${field.label}: 숫자 형식 오류`);
+        if (field.min !== undefined && number < Number(field.min)) issues.push(`${field.label}: 최소값 ${field.min} 미만`);
+        if (field.max !== undefined && number > Number(field.max)) issues.push(`${field.label}: 최대값 ${field.max} 초과`);
+      }
+      return issues;
+    });
+    if (failures.length) {
+      appendQaActivity("FAIL", `입력 검증 실패 ${failures.length}건 · ${failures.join(" / ")}`);
+      setQaMessage(`입력 검증 실패 ${failures.length}건: ${failures.join(" / ")}`);
+      return false;
+    }
+    appendQaActivity("PASS", `현재 화면 입력 ${qaScreenFields.length}개가 형식·범위·필수값 검증을 통과했습니다.`);
+    setQaMessage(`입력값 ${qaScreenFields.length}개가 검증을 통과했습니다.`);
+    return true;
   }
 
   function applyCurrentScreenInput(fieldCode: string, value: string) {
@@ -1677,6 +1759,7 @@ export function TaskQuestPanel() {
   }
 
   function applyQaScreenInputs() {
+    if (!validateQaScreenInputs()) return;
     qaScreenFields.forEach((field) => applyCurrentScreenInput(field.code, qaScreenValues[field.code] || ""));
     qaScreenDirtyRef.current = false;
     appendQaActivity("SAVE", `현재 화면 입력 ${qaScreenFields.length}개를 일괄 반영했습니다.`);
@@ -2189,7 +2272,7 @@ export function TaskQuestPanel() {
               </section>
               <section className="mt-3 rounded-xl border border-violet-200 bg-violet-50/40 p-3" data-qa-screen-inputs="">
                 <div className="flex items-center justify-between gap-3"><div><h4 className="text-sm font-black text-[#052b57]">{en ? "Current screen inputs" : "현재 화면 입력 요소"}</h4><p className="mt-1 text-xs text-slate-600">{en ? "Edits are reflected immediately on the open screen." : "QA 카드에서 수정하면 현재 화면 입력 요소에 즉시 반영됩니다."}</p></div><span className="shrink-0 rounded-full bg-white px-2.5 py-1 text-xs font-black text-violet-800">{qaScreenFields.length}{en ? " controls" : "개 요소"}</span></div>
-                {qaScreenFields.length ? <><div className="mt-3 grid gap-3 sm:grid-cols-2">{qaScreenFields.map((field) => <QaMirrorControl field={field} key={field.code} value={qaScreenValues[field.code] || ""} onChange={(value) => updateCurrentScreenInput(field.code, value)} />)}</div><div className="mt-3 flex justify-end"><button className="min-h-10 rounded-lg bg-violet-700 px-4 text-xs font-black text-white" onClick={applyQaScreenInputs} type="button">{en ? "Apply to current screen" : "현재 화면에 적용"}</button></div></> : <p className="mt-3 rounded-lg bg-white p-3 text-xs text-slate-600">{en ? "No editable inputs were detected on the current screen." : "현재 화면에서 수정 가능한 입력 요소가 감지되지 않았습니다."}</p>}
+                {qaScreenFields.length ? <><div className="mt-3 grid gap-3 sm:grid-cols-2">{qaScreenFields.map((field) => <QaMirrorControl field={field} key={field.code} value={qaScreenValues[field.code] || ""} onChange={(value) => updateCurrentScreenInput(field.code, value)} />)}</div><div className="mt-3 grid gap-2 sm:grid-cols-3"><button className="min-h-10 rounded-lg border border-violet-300 bg-white px-3 text-xs font-black text-violet-800" onClick={fillQaScreenRecommendedValues} type="button">{en ? "Fill recommended values" : "권장값 자동 채우기"}</button><button className="min-h-10 rounded-lg border border-emerald-300 bg-white px-3 text-xs font-black text-emerald-800" onClick={validateQaScreenInputs} type="button">{en ? "Validate inputs" : "입력값 검증"}</button><button className="min-h-10 rounded-lg bg-violet-700 px-4 text-xs font-black text-white" onClick={applyQaScreenInputs} type="button">{en ? "Apply to current screen" : "검증 후 화면 적용"}</button></div></> : <p className="mt-3 rounded-lg bg-white p-3 text-xs text-slate-600">{en ? "No editable inputs were detected on the current screen." : "현재 화면에서 수정 가능한 입력 요소가 감지되지 않았습니다."}</p>}
               </section>
               <section className="mt-3 rounded-xl border border-slate-200 bg-white p-3" data-qa-progress="">
                 <div className="flex items-center justify-between text-xs"><strong className="text-[#052b57]">{en ? "Procedure progress" : "절차 진행상황"}</strong><span className="font-black text-blue-700">{qaCompletedSteps}/{selectedCatalogSteps.length} · {qaProgress}%</span></div>
