@@ -48,6 +48,35 @@ const ACTOR_LABELS: Record<string, string> = {
   UNASSIGNED: "담당 미지정",
 };
 
+const EMISSION_END_TO_END_PROCESS_CODE = "EMISSION_PROJECT";
+const EMISSION_END_TO_END_CHILDREN = [
+  "EMISSION_PROJECT_PORTFOLIO",
+  "ORGANIZATIONAL_BOUNDARY",
+  "ACTIVITY_DATA",
+  "EMISSION_CALCULATION",
+  "REPORT_CERTIFICATION",
+  "REGULATORY_SUBMISSION",
+] as const;
+
+function emissionPhaseLabel(processCode: string, en: boolean) {
+  const labels: Record<string, [string, string]> = {
+    EMISSION_PROJECT_PORTFOLIO: ["준비·선택", "Prepare"],
+    ORGANIZATIONAL_BOUNDARY: ["조직경계", "Boundary"],
+    ACTIVITY_DATA: ["활동자료", "Activity data"],
+    EMISSION_CALCULATION: ["산정·검증", "Calculation"],
+    REPORT_CERTIFICATION: ["보고·인증", "Report"],
+    REGULATORY_SUBMISSION: ["규제 제출", "Submission"],
+  };
+  return labels[processCode]?.[en ? 1 : 0] || (en ? "Work" : "업무");
+}
+
+function stepApplicabilityType(processCode: string, stepCode: string) {
+  if (processCode === "REGULATORY_SUBMISSION") return "CONDITIONAL";
+  if (stepCode === "ORGANIZATIONAL_BOUNDARY_S3") return "CONDITIONAL";
+  if (stepCode === "REPORT_CERTIFICATION_03_VERIFY" || stepCode === "REPORT_CERTIFICATION_04_APPROVE") return "CONDITIONAL";
+  return "REQUIRED";
+}
+
 function actorLabel(actorCode?: string | null) {
   if (!actorCode) return "담당 미지정";
   return ACTOR_LABELS[actorCode] || "업무 담당자";
@@ -217,6 +246,16 @@ type QuestResponse = {
     userPath?: string;
     adminPath?: string;
     automationStatus?: string;
+  }>;
+  stepApplicabilityContracts?: Array<{
+    processCode: string;
+    stepCode: string;
+    applicabilityType: "REQUIRED" | "CONDITIONAL" | "OPTIONAL" | "AUTOMATIC";
+    applicabilityRule?: string;
+    viewMode?: string;
+    completionGate?: string;
+    skipAuthorityActor?: string;
+    requiredSections?: unknown[];
   }>;
   processAssignments?: Array<{
     projectId: string;
@@ -1050,17 +1089,34 @@ export function TaskQuestPanel() {
       ),
     [selectedDefinedProcesses, selectedCatalogProcessCode],
   );
+  const emissionEndToEndSteps = useMemo(() => {
+    if (selectedCatalogProcessCode !== EMISSION_END_TO_END_PROCESS_CODE) return [];
+    const childOrder = new Map(
+      EMISSION_END_TO_END_CHILDREN.map((processCode, index) => [processCode, index]),
+    );
+    return (data?.processCatalogSteps || [])
+      .filter((step) => childOrder.has(step.processCode))
+      .sort(
+        (left, right) =>
+          Number(childOrder.get(left.processCode)) - Number(childOrder.get(right.processCode)) ||
+          Number(left.stepOrder) - Number(right.stepOrder),
+      );
+  }, [data?.processCatalogSteps, selectedCatalogProcessCode]);
   const selectedProcessWaves = useMemo(() => {
     if (selectedCatalogProcess && selectedCatalogProcess.processCode !== "WORK_ASSIGNMENT") {
-      const selectedProcessSteps = (data?.processCatalogSteps || [])
-        .filter((step) => step.processCode === selectedCatalogProcess.processCode)
-        .sort((left, right) => Number(left.stepOrder) - Number(right.stepOrder));
+      const selectedProcessSteps = selectedCatalogProcess.processCode === EMISSION_END_TO_END_PROCESS_CODE
+        ? emissionEndToEndSteps
+        : (data?.processCatalogSteps || [])
+            .filter((step) => step.processCode === selectedCatalogProcess.processCode)
+            .sort((left, right) => Number(left.stepOrder) - Number(right.stepOrder));
       if (selectedProcessSteps.length) {
         return selectedProcessSteps.map((step, index) => ({
           wave: index + 1,
           processes: [selectedCatalogProcess],
           stepCode: step.stepCode,
-          stepName: step.stepName,
+          stepName: selectedCatalogProcess.processCode === EMISSION_END_TO_END_PROCESS_CODE
+            ? `${emissionPhaseLabel(step.processCode, en)} · ${step.stepName}`
+            : step.stepName,
         }));
       }
     }
@@ -1081,7 +1137,7 @@ export function TaskQuestPanel() {
         stepCode: "",
         stepName: "",
       }));
-  }, [data?.processCatalogSteps, selectedCatalogProcess, selectedDefinedProcesses]);
+  }, [data?.processCatalogSteps, emissionEndToEndSteps, selectedCatalogProcess, selectedDefinedProcesses]);
   const visibleProcessWaves = useMemo(() => {
     const keyword = processKeyword.trim().toLocaleLowerCase();
     if (!keyword) return selectedProcessWaves;
@@ -1130,7 +1186,7 @@ export function TaskQuestPanel() {
           return;
         }
         const processSteps = (data?.processCatalogSteps || [])
-          .filter((step) => step.processCode === process.processCode)
+          .filter((step) => wave.stepCode ? step.stepCode === wave.stepCode : step.processCode === process.processCode)
           .filter((step) => !wave.stepCode || step.stepCode === wave.stepCode)
           .sort((left, right) => Number(left.stepOrder) - Number(right.stepOrder));
         if (processSteps.length) {
@@ -1191,11 +1247,25 @@ export function TaskQuestPanel() {
   );
   const selectedCatalogSteps = useMemo(
     () =>
-      (data?.processCatalogSteps || [])
-        .filter((item) => item.processCode === selectedCatalogProcessCode)
-        .sort((a, b) => Number(a.stepOrder) - Number(b.stepOrder)),
-    [data?.processCatalogSteps, selectedCatalogProcessCode],
+      selectedCatalogProcessCode === EMISSION_END_TO_END_PROCESS_CODE
+        ? emissionEndToEndSteps
+        : (data?.processCatalogSteps || [])
+            .filter((item) => item.processCode === selectedCatalogProcessCode)
+            .sort((a, b) => Number(a.stepOrder) - Number(b.stepOrder)),
+    [data?.processCatalogSteps, emissionEndToEndSteps, selectedCatalogProcessCode],
   );
+  const stepGuidanceContracts = useMemo(
+    () => new Map(
+      (data?.stepApplicabilityContracts || []).map((contract) => [
+        `${contract.processCode}|${contract.stepCode}`,
+        contract,
+      ]),
+    ),
+    [data?.stepApplicabilityContracts],
+  );
+  function stepGuidanceContract(step: NonNullable<QuestResponse["processCatalogSteps"]>[number]) {
+    return stepGuidanceContracts.get(`${step.processCode}|${step.stepCode}`);
+  }
   useEffect(() => {
     const query = new URLSearchParams(window.location.search);
     const routeProcessCode = query.get("processCode") || query.get("process") || "";
@@ -1415,7 +1485,12 @@ export function TaskQuestPanel() {
             Number(right.workflowOrder || Number.MAX_SAFE_INTEGER) ||
           left.processCode.localeCompare(right.processCode),
       );
-    const onlyProcessCode = processes.length === 1 ? processes[0].processCode : "";
+    const preferredProcessCode = code === "EMISSION" && processes.some(
+      (process) => process.processCode === EMISSION_END_TO_END_PROCESS_CODE,
+    )
+      ? EMISSION_END_TO_END_PROCESS_CODE
+      : "";
+    const onlyProcessCode = preferredProcessCode || (processes.length === 1 ? processes[0].processCode : "");
     setSelectedCatalogProcessCode(onlyProcessCode);
     if (onlyProcessCode) {
       localStorage.setItem("task-quest-catalog-process", onlyProcessCode);
@@ -1513,6 +1588,8 @@ export function TaskQuestPanel() {
     target.searchParams.set("stepCode",step.stepCode);
     if(step.actorCode) target.searchParams.set("actorCode",step.actorCode);
     if(runtime?.id) target.searchParams.set("taskId",String(runtime.id));
+    const guidanceContract = stepGuidanceContract(step);
+    if(guidanceContract?.viewMode) target.searchParams.set("mode",guidanceContract.viewMode);
     target.searchParams.set("guide","1");
     const canonical = `${target.pathname}${target.search}${target.hash}`;
     return canonical;
@@ -2641,16 +2718,25 @@ export function TaskQuestPanel() {
                                                     key={`actor-process-${process.processCode}-${step?.stepCode || "process"}`}
                                                     onClick={() => {
                                                       selectCatalogProcess(process.processCode);
-                                                      const processSteps = (data?.processCatalogSteps || [])
-                                                        .filter((item) => item.processCode === process.processCode)
-                                                        .sort((left, right) => Number(left.stepOrder) - Number(right.stepOrder));
-                                                      const nextIndex = Math.max(0, step ? processSteps.findIndex((item) => item.stepCode === step.stepCode) : 0);
+                                                      const processSteps = process.processCode === EMISSION_END_TO_END_PROCESS_CODE
+                                                        ? selectedCatalogSteps
+                                                        : (data?.processCatalogSteps || [])
+                                                            .filter((item) => item.processCode === process.processCode)
+                                                            .sort((left, right) => Number(left.stepOrder) - Number(right.stepOrder));
+                                                      const nextIndex = Math.max(0, step ? processSteps.findIndex((item) => item.processCode === step.processCode && item.stepCode === step.stepCode) : 0);
                                                       setSelectedCatalogStep(nextIndex);
                                                       localStorage.setItem("task-quest-catalog-step", String(nextIndex));
                                                     }}
                                                     type="button"
                                                   >
                                                     <span className="block pr-12">{step?.stepName || process.processName}</span>
+                                                    {step ? (
+                                                      <span className={`mt-1.5 inline-flex rounded-full px-2 py-0.5 text-[9px] font-black ${(stepGuidanceContract(step)?.applicabilityType || stepApplicabilityType(step.processCode, step.stepCode)) === "REQUIRED" ? "bg-rose-50 text-rose-700" : "bg-amber-50 text-amber-700"}`}>
+                                                        {(stepGuidanceContract(step)?.applicabilityType || stepApplicabilityType(step.processCode, step.stepCode)) === "REQUIRED"
+                                                          ? (en ? "Required" : "필수")
+                                                          : (en ? "Conditional" : "조건부")}
+                                                      </span>
+                                                    ) : null}
                                                     {process.processCode === "WORK_ASSIGNMENT" && !step ? (
                                                       <span className="mt-3 grid grid-cols-4 gap-1.5">
                                                         {(data?.processCatalogSteps || [])

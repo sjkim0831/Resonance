@@ -15,6 +15,9 @@ const checks = [
   ["close overview before assignment navigation", /setFlowOpen\(false\);\s*window\.location\.href/.test(source)],
   ["route process does not depend on current selection", !source.includes("[data?.processCatalog, selectedCatalogProcessCode, selectedWorkType]")],
   ["route step does not depend on current step", !source.includes("[selectedCatalogStep, selectedCatalogSteps]")],
+  ["single emission end-to-end journey", source.includes("EMISSION_END_TO_END_CHILDREN") && source.includes("emissionEndToEndSteps")],
+  ["step-specific page mode", source.includes('target.searchParams.set("mode",guidanceContract.viewMode)')],
+  ["required and conditional guidance", source.includes("stepApplicabilityContracts") && source.includes("필수") && source.includes("조건부")],
 ];
 
 const failed = checks.filter(([, passed]) => !passed);
