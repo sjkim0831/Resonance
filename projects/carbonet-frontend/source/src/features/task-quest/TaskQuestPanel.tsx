@@ -1323,7 +1323,7 @@ export function TaskQuestPanel() {
     const canonical = `${target.pathname}${target.search}${target.hash}`;
     const userPortal = !window.location.pathname.startsWith("/admin/") && window.location.pathname !== "/admin";
     if (!userPortal) return canonical;
-    const shell = new URL(buildLocalizedPath("/home/workspace", "/en/home/workspace"), window.location.origin);
+    const shell = new URL(buildLocalizedPath("/work/execution", "/en/work/execution"), window.location.origin);
     for (const [key, value] of target.searchParams) shell.searchParams.set(key, value);
     shell.searchParams.set("screenPath", canonical);
     shell.searchParams.set("shell", "1");
