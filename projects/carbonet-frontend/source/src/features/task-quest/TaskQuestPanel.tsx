@@ -1630,7 +1630,9 @@ export function TaskQuestPanel() {
 
   function updateCurrentScreenInput(fieldCode: string, value: string) {
     qaScreenDirtyRef.current = true;
-    setQaScreenValues((current) => ({ ...current, [fieldCode]: value }));
+    // Keep the mirror control stable while the tester types. The values are
+    // committed to React state again after the atomic screen apply finishes.
+    qaScreenValues[fieldCode] = value;
   }
 
   function applyCurrentScreenInput(fieldCode: string, value: string) {
