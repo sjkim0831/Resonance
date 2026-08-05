@@ -19,6 +19,9 @@ bash -n "$RUNNER"
 bash -n "$ROOT/ops/scripts/generate-full-stack-design-packages.sh"
 bash -n "$ROOT/ops/scripts/validate-full-stack-design-generation.sh"
 python3 -m py_compile "$ROOT/ops/scripts/generate-full-stack-design-packages.py"
+python3 -m py_compile "$ROOT/ops/scripts/generate-safe-migrations-from-design.py"
+python3 -m unittest "$ROOT/ops/scripts/test-generate-safe-migrations-from-design.py"
+bash "$ROOT/ops/tests/test-design-migration-pipeline.sh"
 bash "$ROOT/ops/scripts/validate-incremental-screen-generation.sh" "$ROOT" >/dev/null
 python3 - "$ROOT" <<'PY'
 import importlib.util
@@ -112,6 +115,7 @@ grep -Fq "j.job_type='FRONTEND_ADMIN' and step.requires_admin_page=false" "$ROOT
 grep -Fq 'IDENTICAL_GOVERNED_DESIGN' "$WORKER"
 grep -Fq 'APPROVED_GENERATED_PACKAGE_REPAIR_PENDING' "$WORKER"
 grep -Fq 'COMMON_PROCESS_COMMAND_RUNTIME' "$ROOT/ops/scripts/generate-full-stack-design-packages.py"
+grep -Fq 'generate-safe-migrations-from-design.py' "$ROOT/ops/scripts/generate-full-stack-design-packages.sh"
 grep -Fq 'incomplete_spec_demoted' "$ROOT/ops/scripts/run-project-auto-completion-orchestrator.sh"
 
 deterministic_line="$(grep -n 'DETERMINISTIC_RUNNER=' "$WORKER" | head -1 | cut -d: -f1)"

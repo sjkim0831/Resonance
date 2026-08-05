@@ -50,6 +50,12 @@ jq -e '.packageCount>0' "$OUT/index.json" >/dev/null || {
   exit 1
 }
 
+# Approved designs may opt into deterministic database generation by declaring
+# database.autoGenerateMigration=true and an explicit schemaChanges contract.
+# The compiler is fail-closed and only emits CREATE TABLE/INDEX migrations
+# accepted by the same classifier used by the one-minute deployment path.
+python3 "$ROOT/ops/scripts/generate-safe-migrations-from-design.py" "$OUT" --root "$ROOT"
+
 # Every structurally complete design is rendered to an isolated preview so a
 # domain owner can review all fields and flows. Only APPROVED contracts above
 # are written to the runtime-consumable generated directory.
