@@ -1463,8 +1463,9 @@ public class ActorProcessGovernanceService {
         if(firstSteps.isEmpty())throw new IllegalStateException("다음 프로세스 단계가 없습니다: "+nextProcess);
         Map<String,Object> first=firstSteps.get(0);
         int relayExecutionVersion=((Number)completedExecution.getOrDefault("execution_version",1)).intValue();
-        List<Map<String,Object>> active=jdbc.queryForList("select execution_id from framework_process_execution where tenant_id=? and project_id=? and process_code=? and execution_version=? and execution_status='RUNNING' order by started_at desc limit 1",tenant,project,nextProcess,relayExecutionVersion);
+        List<Map<String,Object>> active=jdbc.queryForList("select execution_id,current_step_code from framework_process_execution where tenant_id=? and project_id=? and process_code=? and execution_version=? and execution_status='RUNNING' order by started_at desc limit 1",tenant,project,nextProcess,relayExecutionVersion);
         UUID nextExecutionId;
+        Map<String,Object> relayStep=first;
         if(active.isEmpty()){
             nextExecutionId=UUID.randomUUID();
             jdbc.update("insert into framework_process_execution(execution_id,tenant_id,project_id,process_code,current_step_code,current_state,initiated_by_actor,initiated_by,cycle_type,period_start,period_end,site_scope,boundary_version,methodology_version,execution_version,handoff_status) values(?,?,?,?,?,?,?,?,?,nullif(?,'')::date,nullif(?,'')::date,cast(? as jsonb),?,?,?,?)",
@@ -1472,14 +1473,20 @@ public class ActorProcessGovernanceService {
                 valueOr(completedExecution,"cycle_type","ONCE"),valueOr(completedExecution,"period_start",""),valueOr(completedExecution,"period_end",""),valueOr(completedExecution,"site_scope","[]"),
                 valueOr(completedExecution,"boundary_version","CURRENT"),valueOr(completedExecution,"methodology_version","CURRENT"),
                 relayExecutionVersion,"READY");
-        }else nextExecutionId=(UUID)active.get(0).get("execution_id");
+        }else{
+            Map<String,Object> activeExecution=active.get(0);
+            nextExecutionId=(UUID)activeExecution.get("execution_id");
+            String activeStepCode=String.valueOf(activeExecution.get("current_step_code"));
+            relayStep=jdbc.queryForList("select step_code,actor_code,from_state,user_path,admin_path from framework_process_step where process_code=? and step_code=?",nextProcess,activeStepCode)
+                .stream().findFirst().orElseThrow(()->new IllegalStateException("활성 다음 프로세스의 현재 단계 계약이 없습니다: "+nextProcess+"/"+activeStepCode));
+        }
         return Map.of(
             "nextProcessCode",nextProcess,
             "nextProcessExecutionId",nextExecutionId,
-            "nextProcessStepCode",String.valueOf(first.get("step_code")),
-            "nextProcessActorCode",String.valueOf(first.get("actor_code")),
-            "nextProcessUserPath",String.valueOf(first.get("user_path")),
-            "nextProcessAdminPath",String.valueOf(first.get("admin_path")),
+            "nextProcessStepCode",String.valueOf(relayStep.get("step_code")),
+            "nextProcessActorCode",String.valueOf(relayStep.get("actor_code")),
+            "nextProcessUserPath",String.valueOf(relayStep.get("user_path")),
+            "nextProcessAdminPath",String.valueOf(relayStep.get("admin_path")),
             "relayCompleted",false
         );
     }
