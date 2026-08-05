@@ -71,6 +71,10 @@ try {
   const tenantId = String(created.tenantId || options.tenantId || "DEFAULT");
   const processCode = "EMISSION_PROJECT_PORTFOLIO";
   const actorCode = "COMPANY_MANAGER";
+  const workflowHealth = created.workflowHealth || {};
+  if (String(workflowHealth.status || "") !== "READY" || Number(workflowHealth.missingPredecessorCount || 0) !== 0) {
+    throw new Error(`project workflow is not ready: ${JSON.stringify(workflowHealth)}`);
+  }
   const started = await call(api, "post", "/home/api/process-executions/start", {
     tenantId,
     projectId,
