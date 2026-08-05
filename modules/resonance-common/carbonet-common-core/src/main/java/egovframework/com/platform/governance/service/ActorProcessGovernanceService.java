@@ -1400,7 +1400,6 @@ public class ActorProcessGovernanceService {
         if(!tenant.equals(String.valueOf(execution.get("tenant_id")))||!project.equals(String.valueOf(execution.get("project_id")))||!process.equals(String.valueOf(execution.get("process_code"))))throw new SecurityException("테넌트·프로젝트·프로세스 실행 문맥이 일치하지 않습니다.");
         List<Map<String,Object>> existing=jdbc.queryForList("select event_id as \"eventId\",to_state as \"toState\" from framework_process_execution_event where execution_id=? and idempotency_key=?",executionId,key);
         if(!existing.isEmpty())return Map.of("success",true,"idempotent",true,"event",existing.get(0));
-        if(!"RUNNING".equals(String.valueOf(execution.get("execution_status"))))throw new IllegalStateException("실행 중인 프로세스가 아닙니다.");
         requireActorAssignment(tenant,project,actor,user);
         if(!step.equals(String.valueOf(execution.get("current_step_code"))))throw new IllegalStateException("현재 실행 단계는 "+execution.get("current_step_code")+"입니다.");
         List<Map<String,Object>> contracts=jdbc.queryForList("select step_order,actor_code,command_code,from_state,to_state from framework_process_step where process_code=? and step_code=?",process,step);
@@ -1414,6 +1413,7 @@ public class ActorProcessGovernanceService {
         }
         if(!requiredActor.equals(actor))throw new SecurityException("이 단계의 수행 액터는 "+requiredActor+"입니다.");
         if(!requiredCommand.equals(command))throw new IllegalArgumentException("이 단계의 명령은 "+requiredCommand+"입니다.");
+        if(!"RUNNING".equals(String.valueOf(execution.get("execution_status"))))throw new IllegalStateException("실행 중인 프로세스가 아닙니다.");
         if(!from.equals(String.valueOf(execution.get("current_state"))))throw new IllegalStateException("현재 상태가 단계 시작 조건과 다릅니다.");
         if(Boolean.parseBoolean(def(b,"requireDraft","false"))){
             List<Map<String,Object>> drafts=jdbc.queryForList("select draft_status,payload_json from framework_process_work_draft where tenant_id=? and project_id=? and process_code=? and step_code=? and lower(account_id)=lower(?) for update",tenant,project,process,step,user);
