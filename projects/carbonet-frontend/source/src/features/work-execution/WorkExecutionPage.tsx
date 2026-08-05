@@ -48,6 +48,7 @@ export function WorkExecutionPage() {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [handoff, setHandoff] = useState<Row>({});
 
   const contract = work.contract || {};
   const draft = work.draft || {};
@@ -177,6 +178,7 @@ export function WorkExecutionPage() {
           commandCode: value(contract, "commandCode"), idempotencyKey: crypto.randomUUID(), requireDraft: true, requestJson: JSON.stringify({ ...values, ...form, evidence }),
           resultJson: JSON.stringify({ completed: true, draftVersion: savedVersion }), snapshotRef: `manual:${projectId}:${processCode}:${stepCode}:${savedVersion}` }),
       });
+      setHandoff(body);
       setMessage(body.executionStatus === "COMPLETED" ? (en ? "The process is complete." : "전체 프로세스가 완료되었습니다.") : (en ? "Step complete. The next actor can continue." : "단계를 완료했습니다. 다음 액터가 업무를 이어갈 수 있습니다."));
       await load();
     } catch (reason) { setError(reason instanceof Error ? reason.message : String(reason)); setBusy(false); }
@@ -225,7 +227,7 @@ export function WorkExecutionPage() {
       <aside className="space-y-5 xl:sticky xl:top-24 xl:self-start">
         <section className="krds-component rounded-2xl border bg-white p-5"><h2 className="gov-text-heading-sm font-black text-[#052b57]">{en ? "Completion checks" : "완료 점검"}</h2><ul className="mt-4 space-y-3">{checks.map(check => <li className="flex items-start gap-3" key={check.label}><span aria-hidden="true" className={`mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-black ${check.passed ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-500"}`}>{check.passed ? "✓" : "–"}</span><span className="gov-text-body-sm text-slate-700">{check.label}</span></li>)}</ul></section>
         <section className="krds-component rounded-2xl border bg-white p-5"><h2 className="gov-text-heading-sm font-black text-[#052b57]">{en ? "Work actions" : "업무 실행"}</h2><div className="mt-4 grid gap-3"><button className="krds-control rounded-lg border border-[#246beb] bg-white font-black text-[#246beb] disabled:opacity-50" disabled={busy || !actorCode} onClick={() => void saveDraft()}>{en ? "Save draft" : "임시저장"}</button>{!execution.found && <button className="krds-control rounded-lg bg-[#052b57] font-black text-white disabled:opacity-50" disabled={busy || !actorCode} onClick={() => void startExecution()}>{en ? "Start process" : "프로세스 시작"}</button>}<button className="krds-control rounded-lg bg-[#246beb] font-black text-white disabled:opacity-50" disabled={busy || !readyToComplete} onClick={() => void complete()}>{en ? "Validate and complete" : "검증 후 단계 완료"}</button></div><p className="gov-text-body-sm mt-4 text-slate-500">{en ? "Completion is idempotent and server-authoritative." : "완료 명령은 멱등키와 서버 상태 전이 규칙으로 중복 처리를 방지합니다."}</p></section>
-        <section className="rounded-2xl border border-blue-100 bg-blue-50 p-5"><h2 className="gov-text-heading-sm font-black text-[#052b57]">{en ? "Next handoff" : "다음 업무 인계"}</h2><p className="gov-text-body-sm mt-3 text-slate-700">{value(contract, "outputContract") || (en ? "The next actor is determined after completion." : "완료 후 상태 전이 계약에 따라 다음 액터와 업무가 결정됩니다.")}</p></section>
+        <section className="rounded-2xl border border-blue-100 bg-blue-50 p-5"><h2 className="gov-text-heading-sm font-black text-[#052b57]">{en ? "Next handoff" : "다음 업무 인계"}</h2><p className="gov-text-body-sm mt-3 text-slate-700">{value(contract, "outputContract") || (en ? "The next actor is determined after completion." : "완료 후 상태 전이 계약에 따라 다음 액터와 업무가 결정됩니다.")}</p>{value(handoff, "nextProcessCode") && <div className="mt-4 rounded-xl border border-blue-200 bg-white p-4"><p className="gov-text-label font-black text-blue-800">{en ? "Next process ready" : "다음 프로세스 준비 완료"}</p><p className="gov-text-body-sm mt-2 text-slate-700">{value(handoff, "nextProcessCode")} · {value(handoff, "nextProcessStepCode")} · {value(handoff, "nextProcessActorCode")}</p><a className="krds-control mt-3 inline-flex w-full items-center justify-center rounded-lg bg-[#246beb] px-3 font-black text-white" href={`${buildLocalizedPath("/work/execution", "/en/work/execution")}?projectId=${encodeURIComponent(projectId)}&processCode=${encodeURIComponent(value(handoff, "nextProcessCode"))}&stepCode=${encodeURIComponent(value(handoff, "nextProcessStepCode"))}`}>{en ? "Continue next process" : "다음 프로세스 이어서 진행"}</a></div>}</section>
       </aside>
     </section>
   </main>;
