@@ -1324,6 +1324,9 @@ public class EmissionProjectRegistryService {
         jdbc.update("DELETE FROM emission_activity_submission WHERE project_id=? AND tenant_id=?",id,tenant);
         jdbc.update("DELETE FROM emission_activity_quality_run WHERE project_id=? AND tenant_id=?",id,tenant);
         jdbc.update("DELETE FROM emission_calculation_run WHERE project_id=?",id);
+        jdbc.update("DELETE FROM framework_process_work_draft WHERE project_id=? AND tenant_id=?",id,tenant);
+        jdbc.update("DELETE FROM framework_process_execution WHERE project_id=? AND tenant_id=?",id,tenant);
+        jdbc.update("DELETE FROM framework_project_actor_assignment WHERE project_id=?",id);
         jdbc.update("DELETE FROM framework_account_actor_assignment WHERE project_id=? AND tenant_id=?",id,tenant);
         return jdbc.update("DELETE FROM emission_project_registry WHERE project_id=? AND tenant_id=?",id,tenant);
     }
