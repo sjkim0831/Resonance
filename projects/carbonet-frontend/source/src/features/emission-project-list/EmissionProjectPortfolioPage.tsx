@@ -75,6 +75,7 @@ export function EmissionProjectPortfolioPage() {
   const [taskLoading, setTaskLoading] = useState(false);
   const [taskError, setTaskError] = useState("");
   const [startingId, setStartingId] = useState<number | null>(null);
+  const [copying, setCopying] = useState(false);
 
   useEffect(() => {
     document.body.classList.toggle("mobile-menu-open", mobileMenuOpen);
@@ -157,6 +158,25 @@ export function EmissionProjectPortfolioPage() {
     }
   }
 
+  async function copyProject() {
+    if (!selected || copying) return;
+    if (!window.confirm(en ? `Copy ${selected.name}?` : `${selected.name} 프로젝트를 복사하시겠습니까?`)) return;
+    setCopying(true);
+    setTaskError("");
+    try {
+      const response = await fetch(buildLocalizedPath(`/home/api/emission-projects/${encodeURIComponent(selected.id)}/copy`, `/en/home/api/emission-projects/${encodeURIComponent(selected.id)}/copy`), {
+        method: "POST", credentials: "include", headers: { Accept: "application/json" },
+      });
+      const body = await readJson<{ success: boolean; id: string }>(response);
+      await portfolio.reload();
+      setSelectedId(body.id);
+    } catch (error) {
+      setTaskError(error instanceof Error ? error.message : String(error));
+    } finally {
+      setCopying(false);
+    }
+  }
+
   const text = en ? {
     title: "Emission Project Portfolio", desc: "Select a project, verify its current state, and start the next authorized task.",
     list: "Project list", create: "New project", all: "Total", active: "Active", review: "Review", complete: "Complete", average: "Average progress",
@@ -186,11 +206,6 @@ export function EmissionProjectPortfolioPage() {
     </div>
 
     <main className="mx-auto max-w-7xl px-4 py-8 lg:px-8" id="portfolio-main">
-      {guideMode ? <section className="mb-4 rounded-2xl border border-blue-200 bg-blue-50 px-5 py-4">
-        <div className="flex flex-wrap items-center gap-2 text-sm font-bold text-blue-900"><span className="rounded-full bg-[#246beb] px-3 py-1 text-white">1단계</span><strong>프로젝트 검색·현황 확인·다음 업무 선택</strong><span>·</span><span>{actorCode || "로그인 계정 담당자"}</span></div>
-        <p className="mt-2 text-sm text-blue-800">프로젝트 선택, 권한·상태 확인, 다음 업무 확정 및 길잡이 실행 기록까지 저장되어야 완료됩니다.</p>
-      </section> : null}
-
       <section className="overflow-hidden rounded-3xl bg-[#052b57] px-6 py-8 text-white shadow-xl lg:px-10">
         <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between"><div><p className="text-sm font-bold text-blue-200">{en ? "Carbon Emission Management" : "탄소배출 관리"}</p><h1 className="mt-2 text-3xl font-black tracking-tight lg:text-4xl">{text.title}</h1><p className="mt-3 max-w-3xl text-sm leading-6 text-blue-100 lg:text-base">{text.desc}</p></div><div className="flex flex-wrap gap-2"><a className="inline-flex min-h-11 items-center rounded-lg border border-white/40 px-4 font-bold hover:bg-white/10" href={buildLocalizedPath("/emission/project_list", "/en/emission/project_list")}>{text.list}</a><a className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-white px-4 font-black text-[#052b57]" href={buildLocalizedPath("/emission/project/create", "/en/emission/project/create")}><span className="material-symbols-outlined">add</span>{text.create}</a></div></div>
       </section>
@@ -205,6 +220,15 @@ export function EmissionProjectPortfolioPage() {
         <label className="text-sm font-bold">{en ? "Site" : "사업장"}<select className="mt-2 h-11 w-full rounded-lg border border-slate-300 bg-white px-3 font-normal" onChange={(event) => setSite(event.target.value)} value={site}><option value="">{en ? "All sites" : "전체 사업장"}</option>{(data.sites || []).map((item) => <option key={item}>{item}</option>)}</select></label>
         <button className="mt-auto h-11 rounded-lg border border-slate-300 px-4 font-bold" onClick={() => { setKeyword(""); setStatus(""); setSite(""); }} type="button">{en ? "Reset" : "초기화"}</button>
       </div></section>
+
+      <nav aria-label={en ? "Portfolio shortcuts" : "포트폴리오 빠른 메뉴"} className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        {[
+          ["assignment", en ? "My tasks" : "내 업무", "/emission/my-tasks"],
+          ["event_busy", en ? "Deadlines and delays" : "마감·지연 현황", "/emission/deadline-status"],
+          ["group_add", en ? "Work assignment" : "업무 배정", "/emission/work-assignment"],
+          ["inventory_2", en ? "Completed projects" : "완료 프로젝트", "/emission/project-completion"],
+        ].map(([icon, label, path]) => <a className="flex min-h-12 items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 font-bold text-[#052b57] shadow-sm transition hover:border-blue-300 hover:bg-blue-50" href={buildLocalizedPath(path, `/en${path}`)} key={path}><span className="material-symbols-outlined text-[#246beb]">{icon}</span>{label}</a>)}
+      </nav>
 
       {missingRequested ? <p className="mt-5 rounded-xl border border-amber-200 bg-amber-50 p-4 font-bold text-amber-900">{requestedProjectId} 프로젝트가 없거나 현재 계정에 조회 권한이 없습니다.</p> : null}
       {portfolio.error ? <div className="mt-5 flex items-center justify-between rounded-xl border border-red-200 bg-red-50 p-4 text-red-800"><strong>{portfolio.error}</strong><button className="rounded-lg bg-red-700 px-4 py-2 font-bold text-white" onClick={() => void portfolio.reload()} type="button">{en ? "Retry" : "다시 시도"}</button></div> : null}
@@ -230,7 +254,7 @@ export function EmissionProjectPortfolioPage() {
 
       {selected ? <section className="mt-5 overflow-hidden rounded-2xl border border-blue-200 bg-white shadow-sm"><div className="grid xl:grid-cols-[1.25fr_.75fr]">
         <article className="p-6 lg:p-7">
-          <div className="flex flex-wrap items-center gap-2"><span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-black text-blue-800">{selected.id}</span><span className={`rounded-full px-3 py-1 text-xs font-black ${STATUS_STYLE[selected.status] || "bg-slate-100"}`}>{selected.status}</span></div>
+          <div className="flex flex-wrap items-center justify-between gap-3"><div className="flex flex-wrap items-center gap-2"><span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-black text-blue-800">{selected.id}</span><span className={`rounded-full px-3 py-1 text-xs font-black ${STATUS_STYLE[selected.status] || "bg-slate-100"}`}>{selected.status}</span></div><button className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 text-sm font-bold text-[#052b57] hover:bg-slate-50 disabled:opacity-50" disabled={copying} onClick={() => void copyProject()} type="button"><span className="material-symbols-outlined text-[20px]">content_copy</span>{copying ? (en ? "Copying..." : "복사 중...") : (en ? "Copy project" : "프로젝트 복사")}</button></div>
           <h2 className="mt-3 text-2xl font-black text-[#052b57]">{selected.name}</h2>
           <dl className="mt-5 grid gap-4 text-sm sm:grid-cols-2 lg:grid-cols-4"><div><dt className="text-slate-500">{en ? "Site" : "사업장"}</dt><dd className="mt-1 font-black">{selected.site || "-"}</dd></div><div><dt className="text-slate-500">{en ? "Period" : "산정기간"}</dt><dd className="mt-1 font-black">{selected.period || "-"}</dd></div><div><dt className="text-slate-500">{en ? "Owner" : "담당자"}</dt><dd className="mt-1 font-black">{selected.owner || "-"}</dd></div><div><dt className="text-slate-500">{en ? "Due" : "마감"}</dt><dd className="mt-1 font-black">{selected.dueDate || selected.due || "-"}</dd></div></dl>
           <div className="mt-6"><div className="flex justify-between text-sm font-bold"><span>{en ? "Project progress" : "프로젝트 진행률"}</span><strong>{selected.progress}%</strong></div><div className="mt-2 h-2.5 overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full bg-[#246beb]" style={{ width: `${Math.max(0, Math.min(100, selected.progress))}%` }} /></div></div>
