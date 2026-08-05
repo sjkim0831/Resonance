@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { buildLocalizedPath, isEnglish } from "../../lib/navigation/runtime";
+import { buildLocalizedPath, isEnglish, replace } from "../../lib/navigation/runtime";
 import { ContractFieldControl, type ContractField } from "../generated-screen/ContractFieldControl";
 
 type Row = Record<string, unknown>;
@@ -36,6 +36,8 @@ async function requestJson(url: string, init?: RequestInit) {
 export function WorkExecutionPage() {
   const en = isEnglish();
   const query = new URLSearchParams(location.search);
+  const shellMode = location.pathname === "/home/workspace" || location.pathname === "/en/home/workspace";
+  const sourcePath = query.get("screenPath") || "";
   const [tenantId, setTenantId] = useState(query.get("tenantId") || "");
   const [projectId, setProjectId] = useState(query.get("projectId") || "");
   const [processCode, setProcessCode] = useState(query.get("processCode") || query.get("process") || "EMISSION_PROJECT");
@@ -84,7 +86,6 @@ export function WorkExecutionPage() {
   ], [actorCode, contractFields.length, currentStep, en, evidence.documentId, evidence.sourceUrl, execution.found, form.decisionBasis, form.workSummary, missingRequiredFields.length, stepCode]);
   const readyToComplete = checks.every(check => check.passed);
 
-  const contextParams = () => new URLSearchParams({ tenantId: tenantId.trim(), projectId: projectId.trim(), processCode, stepCode });
   const requireContext = () => {
     if (!tenantId.trim() || !projectId.trim() || !processCode.trim() || !stepCode.trim()) {
       setError(en ? "Enter tenant, project, process, and step." : "테넌트·프로젝트·프로세스·단계를 모두 입력하세요.");
@@ -98,22 +99,35 @@ export function WorkExecutionPage() {
     const parseObject = (raw: unknown) => { if (raw && typeof raw === "object") return raw; if (typeof raw === "string") { try { return JSON.parse(raw); } catch { return {}; } } return {}; };
     const payload = parseObject(body.draft?.payloadJson);
     const evidencePayload = parseObject(body.draft?.evidenceJson);
-    if (payload && typeof payload === "object") setForm(current => ({ ...current, ...(payload as typeof form) }));
-    if (payload && typeof payload === "object") setValues(Object.fromEntries(Object.entries(payload).map(([key,item]) => [key,item == null ? "" : String(item)])));
-    if (evidencePayload && typeof evidencePayload === "object") setEvidence(current => ({ ...current, ...(evidencePayload as typeof evidence) }));
+    const payloadRow = payload && typeof payload === "object" ? payload as Row : {};
+    setForm({
+      workSummary: String(payloadRow.workSummary || ""),
+      decisionBasis: String(payloadRow.decisionBasis || ""),
+      resultValue: String(payloadRow.resultValue || ""),
+      resultUnit: String(payloadRow.resultUnit || ""),
+      exceptionReason: String(payloadRow.exceptionReason || ""),
+    });
+    setValues(Object.fromEntries(Object.entries(payloadRow).map(([key,item]) => [key,item == null ? "" : String(item)])));
+    const evidenceRow = evidencePayload && typeof evidencePayload === "object" ? evidencePayload as Row : {};
+    setEvidence({ documentId: String(evidenceRow.documentId || ""), sourceUrl: String(evidenceRow.sourceUrl || ""), checksum: String(evidenceRow.checksum || "") });
   };
 
-  const load = async () => {
-    if (!requireContext()) return;
+  const load = async (requestedProcess = processCode, requestedStep = stepCode) => {
+    if (!tenantId.trim() || !projectId.trim() || !requestedProcess.trim() || !requestedStep.trim()) {
+      setError(en ? "Enter tenant, project, process, and step." : "테넌트·프로젝트·프로세스·단계를 모두 입력하세요.");
+      return;
+    }
     setBusy(true); setError(""); setMessage("");
     try {
       const base = buildLocalizedPath("/home/api/process-executions", "/en/home/api/process-executions");
+      const requestedContext = new URLSearchParams({ tenantId: tenantId.trim(), projectId: projectId.trim(), processCode: requestedProcess, stepCode: requestedStep });
       const [draftBody, executionBody] = await Promise.all([
-        requestJson(`${base}/draft?${contextParams()}`),
-        requestJson(`${base}?${new URLSearchParams({ tenantId: tenantId.trim(), projectId: projectId.trim(), processCode })}`),
+        requestJson(`${base}/draft?${requestedContext}`),
+        requestJson(`${base}?${new URLSearchParams({ tenantId: tenantId.trim(), projectId: projectId.trim(), processCode: requestedProcess })}`),
       ]);
       applyDraft(draftBody as WorkDraft);
       setExecution(executionBody as Execution);
+      setProcessCode(requestedProcess);
       if (executionBody.currentStepCode) setStepCode(String(executionBody.currentStepCode));
       setMessage(en ? "The latest work context was loaded." : "최신 업무 문맥과 임시저장을 불러왔습니다.");
     } catch (reason) { setError(reason instanceof Error ? reason.message : String(reason)); }
@@ -180,6 +194,27 @@ export function WorkExecutionPage() {
       });
       setHandoff(body);
       setMessage(body.executionStatus === "COMPLETED" ? (en ? "The process is complete." : "전체 프로세스가 완료되었습니다.") : (en ? "Step complete. The next actor can continue." : "단계를 완료했습니다. 다음 액터가 업무를 이어갈 수 있습니다."));
+      const nextProcessCode = value(body, "nextProcessCode");
+      const targetProcessCode = nextProcessCode || processCode;
+      const targetStepCode = value(body, nextProcessCode ? "nextProcessStepCode" : "nextStepCode");
+      if (shellMode && targetStepCode) {
+        const nextActorCode = value(body, nextProcessCode ? "nextProcessActorCode" : "nextActorCode");
+        const nextSourcePath = value(body, nextProcessCode ? "nextProcessUserPath" : "nextUserPath");
+        if (nextActorCode && nextActorCode !== actorCode) {
+          setMessage(en ? `Step complete. Sign in as the assigned ${nextActorCode} actor, then continue from the handoff card.` : `단계를 완료했습니다. 다음 담당자(${nextActorCode}) 계정으로 전환한 뒤 인계 카드에서 계속 진행하세요.`);
+          setBusy(false);
+          return;
+        }
+        const nextUrl = new URL(location.href);
+        nextUrl.searchParams.set("processCode", targetProcessCode);
+        nextUrl.searchParams.set("stepCode", targetStepCode);
+        if (nextActorCode) nextUrl.searchParams.set("actorCode", nextActorCode);
+        if (nextSourcePath) nextUrl.searchParams.set("screenPath", nextSourcePath);
+        replace(`${nextUrl.pathname}${nextUrl.search}`);
+        await load(targetProcessCode, targetStepCode);
+        setMessage(en ? "Step complete. The next step is ready in this workspace." : "단계를 완료했습니다. 같은 작업공간에 다음 절차를 불러왔습니다.");
+        return;
+      }
       await load();
     } catch (reason) { setError(reason instanceof Error ? reason.message : String(reason)); setBusy(false); }
   };
@@ -188,7 +223,7 @@ export function WorkExecutionPage() {
     <nav aria-label={en ? "Breadcrumb" : "현재 위치"} className="gov-text-body-sm text-slate-500"><a className="hover:underline" href={buildLocalizedPath("/home", "/en/home")}>{en ? "Home" : "홈"}</a><span className="px-2">/</span><a className="hover:underline" href={buildLocalizedPath("/emission/my-tasks", "/en/emission/my-tasks")}>{en ? "My tasks" : "내 업무"}</a><span className="px-2">/</span><strong>{en ? "Work execution" : "업무 실행"}</strong></nav>
     <header className="mt-4 rounded-2xl bg-gradient-to-r from-[#052b57] to-[#174ea6] p-6 text-white shadow-sm lg:p-8">
       <p className="gov-text-label font-black text-blue-100">ACTOR · PROCESS · TEST · TASK</p>
-      <div className="mt-2 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between"><div><h1 className="gov-text-heading-lg font-black">{en ? "Professional Work Execution" : "전문 업무 실행"}</h1><p className="gov-text-body mt-2 max-w-3xl text-blue-50">{en ? "Record inputs, evidence, validation, and completion in one actor-scoped workspace." : "액터에게 배정된 실제 업무의 입력·증빙·검증·완료와 다음 단계 인계를 하나의 작업공간에서 처리합니다."}</p></div><a className="krds-control inline-flex items-center justify-center rounded-lg border border-white/60 bg-white/10 px-4 font-bold text-white" href={buildLocalizedPath("/emission/my-tasks", "/en/emission/my-tasks")}>{en ? "Back to my tasks" : "내 업무로 돌아가기"}</a></div>
+      <div className="mt-2 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between"><div><h1 className="gov-text-heading-lg font-black">{shellMode ? (en ? "Home Work Workspace" : "홈 업무 작업공간") : (en ? "Professional Work Execution" : "전문 업무 실행")}</h1><p className="gov-text-body mt-2 max-w-3xl text-blue-50">{shellMode ? (en ? "Select a workflow step, complete its contract, and continue to the next assigned actor without leaving the SPA." : "전체 업무 보기에서 선택한 절차를 처리하고 SPA를 벗어나지 않은 채 다음 담당자에게 인계합니다.") : (en ? "Record inputs, evidence, validation, and completion in one actor-scoped workspace." : "액터에게 배정된 실제 업무의 입력·증빙·검증·완료와 다음 단계 인계를 하나의 작업공간에서 처리합니다.")}</p></div><div className="flex flex-wrap gap-2">{shellMode && sourcePath ? <a className="krds-control inline-flex items-center justify-center rounded-lg border border-white/60 bg-white/10 px-4 font-bold text-white" href={sourcePath}>{en ? "Open specialized screen" : "전문 화면 열기"}</a> : null}<a className="krds-control inline-flex items-center justify-center rounded-lg border border-white/60 bg-white/10 px-4 font-bold text-white" href={buildLocalizedPath(shellMode ? "/home" : "/emission/my-tasks", shellMode ? "/en/home" : "/en/emission/my-tasks")}>{shellMode ? (en ? "Back to home" : "홈으로 돌아가기") : (en ? "Back to my tasks" : "내 업무로 돌아가기")}</a></div></div>
     </header>
 
     <section className="mt-6 grid gap-4 rounded-2xl border border-slate-200 bg-white p-5 md:grid-cols-2 xl:grid-cols-5">
@@ -227,7 +262,7 @@ export function WorkExecutionPage() {
       <aside className="space-y-5 xl:sticky xl:top-24 xl:self-start">
         <section className="krds-component rounded-2xl border bg-white p-5"><h2 className="gov-text-heading-sm font-black text-[#052b57]">{en ? "Completion checks" : "완료 점검"}</h2><ul className="mt-4 space-y-3">{checks.map(check => <li className="flex items-start gap-3" key={check.label}><span aria-hidden="true" className={`mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-black ${check.passed ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-500"}`}>{check.passed ? "✓" : "–"}</span><span className="gov-text-body-sm text-slate-700">{check.label}</span></li>)}</ul></section>
         <section className="krds-component rounded-2xl border bg-white p-5"><h2 className="gov-text-heading-sm font-black text-[#052b57]">{en ? "Work actions" : "업무 실행"}</h2><div className="mt-4 grid gap-3"><button className="krds-control rounded-lg border border-[#246beb] bg-white font-black text-[#246beb] disabled:opacity-50" disabled={busy || !actorCode} onClick={() => void saveDraft()}>{en ? "Save draft" : "임시저장"}</button>{!execution.found && <button className="krds-control rounded-lg bg-[#052b57] font-black text-white disabled:opacity-50" disabled={busy || !actorCode} onClick={() => void startExecution()}>{en ? "Start process" : "프로세스 시작"}</button>}<button className="krds-control rounded-lg bg-[#246beb] font-black text-white disabled:opacity-50" disabled={busy || !readyToComplete} onClick={() => void complete()}>{en ? "Validate and complete" : "검증 후 단계 완료"}</button></div><p className="gov-text-body-sm mt-4 text-slate-500">{en ? "Completion is idempotent and server-authoritative." : "완료 명령은 멱등키와 서버 상태 전이 규칙으로 중복 처리를 방지합니다."}</p></section>
-        <section className="rounded-2xl border border-blue-100 bg-blue-50 p-5"><h2 className="gov-text-heading-sm font-black text-[#052b57]">{en ? "Next handoff" : "다음 업무 인계"}</h2><p className="gov-text-body-sm mt-3 text-slate-700">{value(contract, "outputContract") || (en ? "The next actor is determined after completion." : "완료 후 상태 전이 계약에 따라 다음 액터와 업무가 결정됩니다.")}</p>{value(handoff, "nextProcessCode") && <div className="mt-4 rounded-xl border border-blue-200 bg-white p-4"><p className="gov-text-label font-black text-blue-800">{en ? "Next process ready" : "다음 프로세스 준비 완료"}</p><p className="gov-text-body-sm mt-2 text-slate-700">{value(handoff, "nextProcessCode")} · {value(handoff, "nextProcessStepCode")} · {value(handoff, "nextProcessActorCode")}</p><a className="krds-control mt-3 inline-flex w-full items-center justify-center rounded-lg bg-[#246beb] px-3 font-black text-white" href={`${buildLocalizedPath("/work/execution", "/en/work/execution")}?projectId=${encodeURIComponent(projectId)}&processCode=${encodeURIComponent(value(handoff, "nextProcessCode"))}&stepCode=${encodeURIComponent(value(handoff, "nextProcessStepCode"))}`}>{en ? "Continue next process" : "다음 프로세스 이어서 진행"}</a></div>}</section>
+        <section className="rounded-2xl border border-blue-100 bg-blue-50 p-5"><h2 className="gov-text-heading-sm font-black text-[#052b57]">{en ? "Next handoff" : "다음 업무 인계"}</h2><p className="gov-text-body-sm mt-3 text-slate-700">{value(contract, "outputContract") || (en ? "The next actor is determined after completion." : "완료 후 상태 전이 계약에 따라 다음 액터와 업무가 결정됩니다.")}</p>{value(handoff, "nextProcessCode") && <div className="mt-4 rounded-xl border border-blue-200 bg-white p-4"><p className="gov-text-label font-black text-blue-800">{en ? "Next process ready" : "다음 프로세스 준비 완료"}</p><p className="gov-text-body-sm mt-2 text-slate-700">{value(handoff, "nextProcessCode")} · {value(handoff, "nextProcessStepCode")} · {value(handoff, "nextProcessActorCode")}</p><a className="krds-control mt-3 inline-flex w-full items-center justify-center rounded-lg bg-[#246beb] px-3 font-black text-white" href={`${buildLocalizedPath(shellMode ? "/home/workspace" : "/work/execution", shellMode ? "/en/home/workspace" : "/en/work/execution")}?projectId=${encodeURIComponent(projectId)}&processCode=${encodeURIComponent(value(handoff, "nextProcessCode"))}&stepCode=${encodeURIComponent(value(handoff, "nextProcessStepCode"))}&actorCode=${encodeURIComponent(value(handoff, "nextProcessActorCode"))}&guide=1${shellMode ? `&shell=1&screenPath=${encodeURIComponent(value(handoff, "nextProcessUserPath"))}` : ""}`}>{en ? "Continue next process" : "다음 프로세스 이어서 진행"}</a></div>}</section>
       </aside>
     </section>
   </main>;

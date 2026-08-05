@@ -53,7 +53,7 @@ function actorLabel(actorCode?: string | null) {
   return ACTOR_LABELS[actorCode] || "업무 담당자";
 }
 import { createPortal } from "react-dom";
-import { buildLocalizedPath, isEnglish } from "../../lib/navigation/runtime";
+import { buildLocalizedPath, isEnglish, navigate } from "../../lib/navigation/runtime";
 
 type QuestTask = {
   id: number;
@@ -1320,7 +1320,14 @@ export function TaskQuestPanel() {
     if(step.actorCode) target.searchParams.set("actorCode",step.actorCode);
     if(runtime?.id) target.searchParams.set("taskId",String(runtime.id));
     target.searchParams.set("guide","1");
-    return `${target.pathname}${target.search}${target.hash}`;
+    const canonical = `${target.pathname}${target.search}${target.hash}`;
+    const userPortal = !window.location.pathname.startsWith("/admin/") && window.location.pathname !== "/admin";
+    if (!userPortal) return canonical;
+    const shell = new URL(buildLocalizedPath("/home/workspace", "/en/home/workspace"), window.location.origin);
+    for (const [key, value] of target.searchParams) shell.searchParams.set(key, value);
+    shell.searchParams.set("screenPath", canonical);
+    shell.searchParams.set("shell", "1");
+    return `${shell.pathname}${shell.search}`;
   }
 
   function startSelectedProcessGuide() {
@@ -1352,7 +1359,7 @@ export function TaskQuestPanel() {
     const step=selectedCatalogSteps[index],runtime=guideRuntimeStep(step),route=guideRoute(step,runtime);
     setSelectedCatalogStep(index);
     localStorage.setItem("task-quest-catalog-step",String(index));
-    window.location.href=guideTarget(route,step,runtime);
+    navigate(guideTarget(route,step,runtime));
   }
 
   function clearWorkflowFocus() {
