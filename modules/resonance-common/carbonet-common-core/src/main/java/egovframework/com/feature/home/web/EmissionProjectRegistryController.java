@@ -15,10 +15,13 @@ import egovframework.com.feature.auth.service.CurrentUserContextService;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 import java.nio.charset.StandardCharsets;
+import java.util.Set;
 
 @RestController
 @RequiredArgsConstructor
 public class EmissionProjectRegistryController {
+    private static final Set<String> QA_CATALOG_ACCOUNTS=Set.of(
+            "qaowner26","qadata26","qacalc26","qaverify26","qaapprove26","qaassign26");
     private final EmissionProjectRegistryService service;
     private final CurrentUserContextService currentUserContextService;
 
@@ -198,7 +201,7 @@ public class EmissionProjectRegistryController {
     public ResponseEntity<?> calculate(@PathVariable String id,HttpServletRequest request) {var c=currentUserContextService.resolve(request);try{return ResponseEntity.ok(Map.of("success",true,"id",service.calculate(id,tenant(c),c.getUserId(),c.isWebmaster())));}catch(SecurityException e){return ResponseEntity.status(403).body(Map.of("message",e.getMessage()));}catch(IllegalStateException e){return ResponseEntity.status(409).body(Map.of("message",e.getMessage()));}catch(Exception e){return ResponseEntity.badRequest().body(Map.of("message",e.getMessage()));} }
 
     @GetMapping({"/home/api/emission-tasks","/en/home/api/emission-tasks"})
-    public ResponseEntity<?> myTasks(@RequestParam(defaultValue="") String status,@RequestParam(defaultValue="") String period,HttpServletRequest request) { var context=currentUserContextService.resolve(request);if(!context.isAuthenticated())return ResponseEntity.status(401).body(Map.of("message","로그인이 필요합니다."));String authority=context.getAuthorCode()==null?"":context.getAuthorCode().toUpperCase();boolean showAll=context.isWebmaster()||"ROLE_SYSTEM_MASTER".equals(authority)||"ROLE_OPERATION_ADMIN".equals(authority);return ResponseEntity.ok(service.myTasks(tenant(context),context.getUserId(),showAll,status,period)); }
+    public ResponseEntity<?> myTasks(@RequestParam(defaultValue="") String status,@RequestParam(defaultValue="") String period,@RequestParam(defaultValue="false") boolean qaCatalog,@RequestHeader(value="X-Carbonet-Test-Mode",required=false) String testMode,HttpServletRequest request) { var context=currentUserContextService.resolve(request);if(!context.isAuthenticated())return ResponseEntity.status(401).body(Map.of("message","로그인이 필요합니다."));String authority=context.getAuthorCode()==null?"":context.getAuthorCode().toUpperCase();boolean showAll=context.isWebmaster()||"ROLE_SYSTEM_MASTER".equals(authority)||"ROLE_OPERATION_ADMIN".equals(authority);String userId=context.getUserId()==null?"":context.getUserId().toLowerCase();boolean includeFullCatalog=qaCatalog&&"1".equals(testMode)&&(showAll||QA_CATALOG_ACCOUNTS.contains(userId));if(qaCatalog&&!includeFullCatalog)return ResponseEntity.status(403).body(Map.of("message","QA_FULL_CATALOG_FORBIDDEN"));return ResponseEntity.ok(service.myTasks(tenant(context),context.getUserId(),showAll,includeFullCatalog,status,period)); }
 
     @PostMapping({"/home/api/emission-tasks/{taskId}/status","/en/home/api/emission-tasks/{taskId}/status"})
     public ResponseEntity<?> updateTask(@PathVariable long taskId,@RequestBody Map<String,Object> body,HttpServletRequest request) {var context=currentUserContextService.resolve(request);if(!context.isAuthenticated())return ResponseEntity.status(401).body(Map.of("message","로그인이 필요합니다."));try{return ResponseEntity.ok(Map.of("success",service.updateTask(taskId,tenant(context),String.valueOf(body.get("status")),context.getUserId(),context.isWebmaster())>0));}catch(SecurityException e){return ResponseEntity.status(403).body(Map.of("message",e.getMessage()));}catch(IllegalStateException e){return ResponseEntity.status(409).body(Map.of("message",e.getMessage()));}catch(Exception e){return ResponseEntity.badRequest().body(Map.of("message",e.getMessage()));}}

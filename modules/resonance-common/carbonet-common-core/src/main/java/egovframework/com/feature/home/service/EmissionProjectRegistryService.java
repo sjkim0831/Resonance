@@ -407,7 +407,7 @@ public class EmissionProjectRegistryService {
         if(count==null||count==0) throw new IllegalStateException("CALCULATION_REQUIRES_ACCEPTED_ACTIVITY_DATA");
     }
 
-    public Map<String,Object> myTasks(String tenantId,String actorId,boolean showAll,String status,String period) {
+    public Map<String,Object> myTasks(String tenantId,String actorId,boolean showAll,boolean includeFullCatalog,String status,String period) {
         String tenant=requiredValue(tenantId,"tenantId");
         String state=status==null?"":status.trim(),range=period==null?"":period.trim();
         String actor=actorId==null?"":actorId.trim();
@@ -444,7 +444,12 @@ public class EmissionProjectRegistryService {
         result.put("notifications",jdbc.queryForList("SELECT notification_id AS \"id\",project_id AS \"projectId\",task_id AS \"taskId\",event_type AS \"eventType\",title,message_text AS \"message\",target_url AS \"targetUrl\",read_at AS \"readAt\",created_at AS \"createdAt\" FROM emission_workflow_notification WHERE tenant_id=? AND (? OR lower(recipient_id)=lower(?)) ORDER BY (read_at IS NULL) DESC,created_at DESC LIMIT 20",tenant,showAll,actor));
         result.put("unreadNotificationCount",jdbc.queryForObject("SELECT count(*) FROM emission_workflow_notification WHERE tenant_id=? AND read_at IS NULL AND (? OR lower(recipient_id)=lower(?))",Integer.class,tenant,showAll,actor));
         applyProcessNavigation(result);
-        applyProcessActorVisibility(result,tenant,actor,workflowAll);
+        if(includeFullCatalog) {
+            result.put("catalogVisibility","QA_FULL_CATALOG");
+        } else {
+            applyProcessActorVisibility(result,tenant,actor,workflowAll);
+            result.put("catalogVisibility",workflowAll?"ADMIN_FULL_CATALOG":"ACTOR_SCOPED_CATALOG");
+        }
         return result;
     }
 
