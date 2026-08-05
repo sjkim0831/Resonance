@@ -207,6 +207,7 @@ export function EmissionProjectPortfolioPage() {
       }
 
       if (!nextTask) throw new Error(en ? "No remaining task is available for this project." : "이 프로젝트에서 진행할 남은 업무가 없습니다.");
+      if (!nextTask.actionable) throw new Error(en ? "The next task is assigned to another actor or its prerequisite is incomplete." : "다음 업무는 다른 담당자에게 배정되었거나 선행 업무가 완료되지 않았습니다.");
       await startGuide();
     } catch (error) {
       setTaskError(error instanceof Error ? error.message : String(error));
