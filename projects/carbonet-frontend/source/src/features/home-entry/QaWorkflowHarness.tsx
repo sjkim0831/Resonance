@@ -20,7 +20,7 @@ export function QaWorkflowHarness() {
   const [enabled, setEnabled] = useState(false);
   const [expanded, setExpanded] = useState(() => localStorage.getItem(QA_KEY) !== "closed");
   const [payload, setPayload] = useState<HarnessPayload>({});
-  const [accountId, setAccountId] = useState(QA_TEST_ACCOUNTS[0].id);
+  const [accountId, setAccountId] = useState<string>(QA_TEST_ACCOUNTS[0].id);
   const [workType, setWorkType] = useState("EMISSION");
   const [processCode, setProcessCode] = useState("");
   const [stepCode, setStepCode] = useState("");
