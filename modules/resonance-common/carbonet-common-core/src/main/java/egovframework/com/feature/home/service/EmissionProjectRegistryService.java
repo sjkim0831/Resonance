@@ -76,6 +76,7 @@ public class EmissionProjectRegistryService {
         String term = keyword == null ? "" : keyword.trim(), like = "%" + term + "%";
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("sites", jdbc.queryForList("SELECT site_name FROM emission_site_registry WHERE tenant_id=? AND site_status='ACTIVE' AND (effective_until IS NULL OR effective_until>=current_date) AND (?='' OR site_name ILIKE ?) ORDER BY site_name LIMIT 50", String.class,tenant,term,like));
+        result.put("tenantId",tenant);
         result.put("owners", jdbc.queryForList("SELECT DISTINCT account_id FROM framework_account_actor_assignment WHERE tenant_id=? AND actor_code='COMPANY_MANAGER' AND assignment_status='ACTIVE' AND (valid_until IS NULL OR valid_until>=current_date) AND (?='' OR account_id ILIKE ?) ORDER BY account_id LIMIT 50", String.class,tenant,term,like));
         result.put("accounts", jdbc.queryForList("SELECT a.account_id AS \"id\",coalesce(max(e.user_nm),max(m.applcnt_nm),a.account_id) AS \"displayName\",coalesce(max(m.dept_nm),max(e.orgnzt_id),'') AS \"department\",coalesce(max(e.instt_id),max(m.instt_id),a.tenant_id) AS \"companyId\",coalesce(max(i.instt_nm),max(m.cmpny_nm),coalesce(max(e.instt_id),max(m.instt_id),a.tenant_id)) AS \"companyName\",string_agg(DISTINCT a.actor_code,', ' ORDER BY a.actor_code) AS \"actors\",string_agg(DISTINCT coalesce(nullif(a.data_scope,''),'*'),', ' ORDER BY coalesce(nullif(a.data_scope,''),'*')) AS \"dataScopes\" FROM framework_account_actor_assignment a LEFT JOIN comtnemplyrinfo e ON lower(e.emplyr_id)=lower(a.account_id) LEFT JOIN comtnentrprsmber m ON lower(m.entrprs_mber_id)=lower(a.account_id) LEFT JOIN comtninsttinfo i ON trim(i.instt_id)=trim(coalesce(e.instt_id,m.instt_id,a.tenant_id)) WHERE a.tenant_id=? AND a.assignment_status='ACTIVE' AND (a.valid_until IS NULL OR a.valid_until>=current_date) AND (?='' OR a.account_id ILIKE ? OR coalesce(e.user_nm,'') ILIKE ? OR coalesce(m.applcnt_nm,'') ILIKE ? OR coalesce(m.dept_nm,e.orgnzt_id,'') ILIKE ? OR coalesce(i.instt_nm,m.cmpny_nm,'') ILIKE ?) GROUP BY a.account_id,a.tenant_id ORDER BY coalesce(max(e.user_nm),max(m.applcnt_nm),a.account_id),a.account_id LIMIT 100",tenant,term,like,like,like,like,like));
         result.put("readiness", onboardingReadiness(tenant));
@@ -1307,6 +1308,7 @@ public class EmissionProjectRegistryService {
         Map<String,Object> completion=projectCompletion(projectId,tenantId);
         Map<String,Object> result=new LinkedHashMap<>();result.put("success",true);result.put("id",projectId);
         result.put("nextTask",completion.get("nextTask"));result.put("workflowHealth",completion.get("workflowHealth"));
+        result.put("tenantId",requiredValue(tenantId,"tenantId"));
         result.put("completionPercent",completion.get("completionPercent"));return result;
     }
 
