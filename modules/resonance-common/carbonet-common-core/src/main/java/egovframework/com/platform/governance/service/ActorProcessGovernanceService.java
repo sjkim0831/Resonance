@@ -1830,8 +1830,9 @@ public class ActorProcessGovernanceService {
         }
         Integer eventCount=jdbc.queryForObject("select count(*) from framework_process_execution_event where execution_id=?",Integer.class,executionId);
         boolean workflowCompleted="COMPLETED".equals(executionStatus)&&eventCount!=null&&eventCount==transitions.size();
-        boolean nextTaskLinkVerified=!String.valueOf(first.getOrDefault("nextStepCode","")).isBlank()
-            && (!String.valueOf(first.getOrDefault("nextUserPath","")).isBlank()||!String.valueOf(first.getOrDefault("nextAdminPath","")).isBlank());
+        boolean terminalWorkflow="COMPLETED".equals(executionStatus)&&nextStepCode.isBlank();
+        boolean nextTaskLinkVerified=terminalWorkflow||(!String.valueOf(first.getOrDefault("nextStepCode","")).isBlank()
+            && (!String.valueOf(first.getOrDefault("nextUserPath","")).isBlank()||!String.valueOf(first.getOrDefault("nextAdminPath","")).isBlank()));
         boolean passed=Boolean.TRUE.equals(first.get("success"))&&requiredValidationVerified&&draftRoundTripVerified&&staleVersionRejected
             &&draftSubmittedVerified&&recoveryVerified&&isolationRejected&&authorityRejected&&exceptionRejected&&workflowCompleted&&nextTaskLinkVerified;
         passed=passed&&workflowDraftsVerified;
@@ -1853,9 +1854,11 @@ public class ActorProcessGovernanceService {
         result.put("stepCount",transitions.size());result.put("transitions",transitions);result.put("nextStepCode",first.getOrDefault("nextStepCode",""));
         result.put("nextUserPath",first.getOrDefault("nextUserPath",""));result.put("nextAdminPath",first.getOrDefault("nextAdminPath",""));
         if(!passed)throw new IllegalStateException("Process runtime smoke assertions failed; transaction was rolled back. "
-                +"idempotency="+recoveryVerified+", isolation="+isolationRejected+", authority="+authorityRejected
+                +"required="+requiredValidationVerified+", draft="+draftRoundTripVerified+", stale="+staleVersionRejected
+                +", submitted="+draftSubmittedVerified+", idempotency="+recoveryVerified+", isolation="+isolationRejected+", authority="+authorityRejected
                 +", exception="+exceptionRejected+", workflow="+workflowCompleted+", status="+executionStatus
-                +", events="+(eventCount==null?-1:eventCount)+", steps="+transitions.size());
+                +", events="+(eventCount==null?-1:eventCount)+", steps="+transitions.size()+", nextLink="+nextTaskLinkVerified
+                +", workflowDrafts="+workflowDraftsVerified);
         return result;
     }
 
