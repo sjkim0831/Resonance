@@ -80,6 +80,15 @@ def classify(paths: list[Path]) -> tuple[bool, str]:
             if table in created_tables:
                 continue
             return False, f"index-on-existing-table:{path}:{table}"
+        insert_match = re.match(
+            r"(?is)^INSERT\s+INTO\s+([A-Za-z0-9_\".]+)\s*\(",
+            statement,
+        )
+        if insert_match:
+            table = normalized_name(insert_match.group(1))
+            if table in created_tables:
+                continue
+            return False, f"insert-on-existing-table:{path}:{table}"
         return False, f"unsafe-statement:{path}:{statement[:80]}"
 
     if not created_tables:

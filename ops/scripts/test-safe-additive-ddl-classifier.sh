@@ -14,6 +14,9 @@ CREATE TABLE IF NOT EXISTS framework_safe_example (
 );
 CREATE INDEX IF NOT EXISTS idx_framework_safe_example_name
  ON framework_safe_example(name);
+INSERT INTO framework_safe_example(id,name)
+VALUES (1,'seed')
+ON CONFLICT (id) DO NOTHING;
 COMMENT ON TABLE framework_safe_example IS 'safe additive fixture';
 SQL
 python3 "$CLASSIFIER" "$tmp_dir/safe.sql" | grep -q '^safe-additive '
