@@ -121,15 +121,15 @@ export function WorkExecutionPage() {
     setBusy(true); setError(""); setMessage("");
     try {
       const base = buildLocalizedPath("/home/api/process-executions", "/en/home/api/process-executions");
-      const requestedContext = new URLSearchParams({ tenantId: tenantId.trim(), projectId: projectId.trim(), processCode: requestedProcess, stepCode: requestedStep });
-      const [draftBody, executionBody] = await Promise.all([
-        requestJson(`${base}/draft?${requestedContext}`),
-        requestJson(`${base}?${new URLSearchParams({ tenantId: tenantId.trim(), projectId: projectId.trim(), processCode: requestedProcess })}`),
-      ]);
+      const executionBody = await requestJson(`${base}?${new URLSearchParams({ tenantId: tenantId.trim(), projectId: projectId.trim(), processCode: requestedProcess })}`);
+      const currentStepCode = String(executionBody.currentStepCode || "");
+      const effectiveStep = String(executionBody.executionStatus || "") === "RUNNING" && currentStepCode ? currentStepCode : requestedStep;
+      const requestedContext = new URLSearchParams({ tenantId: tenantId.trim(), projectId: projectId.trim(), processCode: requestedProcess, stepCode: effectiveStep });
+      const draftBody = await requestJson(`${base}/draft?${requestedContext}`);
       applyDraft(draftBody as WorkDraft);
       setExecution(executionBody as Execution);
       setProcessCode(requestedProcess);
-      if (executionBody.currentStepCode) setStepCode(String(executionBody.currentStepCode));
+      setStepCode(effectiveStep);
       setMessage(en ? "The latest work context was loaded." : "최신 업무 문맥과 임시저장을 불러왔습니다.");
     } catch (reason) { setError(reason instanceof Error ? reason.message : String(reason)); }
     finally { setBusy(false); }
