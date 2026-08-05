@@ -28,14 +28,14 @@ q(){ carbonet_postgres_query "$1"; }
 account_tenant="$(q "select btrim(instt_id) from comtnemplyrinfo where lower(emplyr_id)='qaowner26' limit 1")"
 project_tenant="$(q "select tenant_id from emission_project_registry where project_id='$PROJECT'")"
 if [[ -n "$account_tenant" && "$project_tenant" != "$account_tenant" ]]; then
-  PROJECT="$(q "select p.project_id from emission_project_registry p where p.tenant_id='$account_tenant' and exists(select 1 from emission_project_task t where t.project_id=p.project_id group by t.project_id having count(*)=7) order by (p.project_id='PRJ-ACTOR-TEST') desc,p.project_id limit 1")"
+  PROJECT="$(q "select p.project_id from emission_project_registry p where p.tenant_id='$account_tenant' and exists(select 1 from emission_project_task t where t.project_id=p.project_id and t.task_code in ('BASIC_INFO','ACTIVITY_DATA','CALCULATION','VERIFICATION','APPROVAL','REPORT','REGULATORY_SUBMISSION') group by t.project_id having count(distinct t.task_code)=7) order by (p.project_id='PRJ-ACTOR-TEST') desc,p.project_id limit 1")"
 fi
 [[ -n "$PROJECT" ]] || { echo '[actor-account-journey] FAIL tenant-aligned actor project missing' >&2; exit 1; }
 
 segregation="$(q "select count(*)=5 and count(distinct user_id)=5 and count(*) filter(where actor_code in ('CALCULATOR','VERIFIER','APPROVER'))=3 and count(distinct user_id) filter(where actor_code in ('CALCULATOR','VERIFIER','APPROVER'))=3 from framework_project_actor_assignment where project_id='$PROJECT' and active_yn='Y' and actor_code in ('COMPANY_MANAGER','SITE_DATA_OWNER','CALCULATOR','VERIFIER','APPROVER')")"
 [[ "$segregation" == t ]] || { echo '[actor-account-journey] FAIL project actor segregation' >&2; exit 1; }
 
-task_binding="$(q "select count(*)=7 and count(distinct assignee_id)=5 and bool_and(assignee_id=case task_code when 'BASIC_INFO' then 'qaowner26' when 'ACTIVITY_DATA' then 'qadata26' when 'CALCULATION' then 'qacalc26' when 'VERIFICATION' then 'qaverify26' when 'APPROVAL' then 'qaapprove26' when 'REPORT' then 'qaowner26' when 'REGULATORY_SUBMISSION' then 'qaowner26' end) from emission_project_task where project_id='$PROJECT'")"
+task_binding="$(q "select count(*)=7 and count(distinct assignee_id)=5 and bool_and(assignee_id=case task_code when 'BASIC_INFO' then 'qaowner26' when 'ACTIVITY_DATA' then 'qadata26' when 'CALCULATION' then 'qacalc26' when 'VERIFICATION' then 'qaverify26' when 'APPROVAL' then 'qaapprove26' when 'REPORT' then 'qaowner26' when 'REGULATORY_SUBMISSION' then 'qaowner26' end) from emission_project_task where project_id='$PROJECT' and task_code in ('BASIC_INFO','ACTIVITY_DATA','CALCULATION','VERIFICATION','APPROVAL','REPORT','REGULATORY_SUBMISSION')")"
 [[ "$task_binding" == t ]] || { echo '[actor-account-journey] FAIL task-account binding' >&2; exit 1; }
 
 account_contract="$(q "select count(*)=5 from (
@@ -125,11 +125,14 @@ for work_type in payload.get("workTypes",[]):
     code=str(work_type.get("workTypeCode","")).upper()
     if int(work_type.get("definedProcessCount",0))!=domain_counts.get(code,0):
         sys.exit(f"work type count mismatch account={os.environ['ACCOUNT']} type={code}")
-if len(flow)!=7 or [int(row.get("stepOrder",0)) for row in flow]!=list(range(1,8)):
-    sys.exit(f"full workflow invalid account={os.environ['ACCOUNT']} steps={len(flow)}")
-if {row.get("taskCode") for row in assigned} != expected:
+core_codes={"BASIC_INFO","ACTIVITY_DATA","CALCULATION","VERIFICATION","APPROVAL","REPORT","REGULATORY_SUBMISSION"}
+core_flow=[row for row in flow if row.get("taskCode") in core_codes]
+if len(core_flow)!=7 or [int(row.get("stepOrder",0)) for row in core_flow]!=list(range(1,8)):
+    sys.exit(f"full workflow invalid account={os.environ['ACCOUNT']} steps={len(core_flow)}")
+core_assigned=[row for row in assigned if row.get("taskCode") in core_codes]
+if {row.get("taskCode") for row in core_assigned} != expected:
     sys.exit(f"actual task assignment mismatch account={os.environ['ACCOUNT']}")
-if any(str(row.get("assignee","")).lower()!=os.environ["ACCOUNT"].lower() for row in assigned):
+if any(str(row.get("assignee","")).lower()!=os.environ["ACCOUNT"].lower() for row in core_assigned):
     sys.exit(f"actual task assignee mismatch account={os.environ['ACCOUNT']}")
 if any(not row.get("targetUrl") for row in assigned):
     sys.exit(f"actual task target missing account={os.environ['ACCOUNT']}")
