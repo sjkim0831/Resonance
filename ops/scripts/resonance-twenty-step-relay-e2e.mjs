@@ -74,6 +74,7 @@ try{
   if(resetResponse.status()!==200)throw new Error(`QA reset failed HTTP ${resetResponse.status()} ${resetBody?.message||JSON.stringify(resetBody)}`);
   let processCode=expectedProcesses[0],stepCode="",executionId="",sequence=0;
   const transitions=[];
+  let correctionRequested=false;
   const started=await call(ownerApi,"post","/home/api/process-executions/start",{tenantId,projectId,processCode,actorCode:"COMPANY_MANAGER",cycleType:"ONCE",siteScopeJson:JSON.stringify([site]),methodologyVersion:"ISO_14064_1_2018",boundaryVersion:"OPERATIONAL_CONTROL_V1",executionVersion:1});
   executionId=String(started.executionId||started.execution?.executionId||"");stepCode=String(started.currentStepCode||started.execution?.currentStepCode||"");
   while(processCode&&stepCode&&sequence<30){
@@ -93,16 +94,24 @@ try{
     Object.assign(payload,{workSummary:`${sequence}단계 업무 처리 완료`,decisionBasis:`프로세스·액터·필드 계약과 증빙을 검증했습니다.`,resultValue:1,resultUnit:"case"});
     const expectedVersion=Number(contractBody.draft?.draftVersion||0);
     const saved=await call(api,"put","/home/api/process-executions/draft",{tenantId,projectId,processCode,stepCode,actorCode,expectedVersion,payloadJson:JSON.stringify(payload),evidenceJson:JSON.stringify({documentId:`QA-20STEP-${String(sequence).padStart(2,"0")}`,sourceUrl:`/work/execution?projectId=${projectId}&processCode=${processCode}&stepCode=${stepCode}`})});
-    const command=await call(api,"post",`/home/api/process-executions/${executionId}/commands`,{tenantId,projectId,processCode,stepCode,actorCode,commandCode:String(contractBody.contract.commandCode),idempotencyKey:randomUUID(),requireDraft:true,requestJson:JSON.stringify(payload),resultJson:JSON.stringify({completed:true,draftVersion:saved.draft?.draftVersion}),snapshotRef:`qa:${projectId}:${processCode}:${stepCode}:${sequence}`});
+    const commandPayload={tenantId,projectId,processCode,stepCode,actorCode,commandCode:String(contractBody.contract.commandCode),idempotencyKey:randomUUID(),requireDraft:true,requestJson:JSON.stringify(payload),resultJson:JSON.stringify({completed:true,draftVersion:saved.draft?.draftVersion}),snapshotRef:`qa:${projectId}:${processCode}:${stepCode}:${sequence}`};
+    if(processCode==="EMISSION_PROJECT"&&stepCode==="EMISSION_PROJECT_VALIDATE"&&!correctionRequested){
+      commandPayload.requestedToState="CORRECTION_REQUIRED";
+      correctionRequested=true;
+    }
+    const command=await call(api,"post",`/home/api/process-executions/${executionId}/commands`,commandPayload);
     transitions.push({sequence,processCode,stepCode,actorCode,account,fieldCount:fields.length,eventId:command.eventId,toState:command.toState,nextProcessCode:command.nextProcessCode||"",nextStepCode:command.nextProcessStepCode||command.nextStepCode||""});
     if(command.nextProcessCode){processCode=String(command.nextProcessCode);executionId=String(command.nextProcessExecutionId);stepCode=String(command.nextProcessStepCode);}
     else if(command.nextStepCode){stepCode=String(command.nextStepCode);}
     else{processCode="";stepCode="";}
   }
   const observed=[...new Set(transitions.map(item=>item.processCode))];
-  if(transitions.length!==20)throw new Error(`expected 20 transitions, observed ${transitions.length}`);
+  const uniqueSteps=new Set(transitions.map(item=>`${item.processCode}/${item.stepCode}`));
+  console.log(JSON.stringify({projectId,observed,uniqueStepCount:uniqueSteps.size,transitionCount:transitions.length,transitions},null,2));
+  if(uniqueSteps.size!==20)throw new Error(`expected 20 unique steps, observed ${uniqueSteps.size}`);
+  if(transitions.length!==21)throw new Error(`expected 21 transitions including correction branch, observed ${transitions.length}`);
   if(JSON.stringify(observed)!==JSON.stringify(expectedProcesses))throw new Error(`process order mismatch ${JSON.stringify(observed)}`);
-  const evidence={schemaVersion:1,status:"PASSED",completedAt:new Date().toISOString(),durationMs:Date.now()-startedAt,projectId,tenantId,processCount:observed.length,stepCount:transitions.length,accountCount:new Set(transitions.map(item=>item.account)).size,processes:observed,transitions};
+  const evidence={schemaVersion:1,status:"PASSED",completedAt:new Date().toISOString(),durationMs:Date.now()-startedAt,projectId,tenantId,processCount:observed.length,stepCount:uniqueSteps.size,transitionCount:transitions.length,correctionReplayCount:transitions.length-uniqueSteps.size,accountCount:new Set(transitions.map(item=>item.account)).size,processes:observed,transitions};
   const outputDir=path.join(root,"var/test-evidence");await mkdir(outputDir,{recursive:true});await writeFile(path.join(outputDir,"twenty-step-relay-e2e-latest.json"),`${JSON.stringify(evidence,null,2)}\n`);
-  console.log(`TWENTY_STEP_RELAY_PASS project=${projectId} processes=${observed.length} steps=${transitions.length} accounts=${evidence.accountCount} durationMs=${evidence.durationMs}`);
+  console.log(`TWENTY_STEP_RELAY_PASS project=${projectId} processes=${observed.length} uniqueSteps=${evidence.stepCount} transitions=${evidence.transitionCount} accounts=${evidence.accountCount} durationMs=${evidence.durationMs}`);
 }finally{for(const api of contexts.values())await api.dispose();}

@@ -5,8 +5,8 @@ import { QA_TEST_ACCOUNTS, switchQaAccount } from "./TestAccountSwitcher";
 type WorkType = { workTypeCode: string; workTypeName: string; workTypeNameEn?: string; sortOrder?: number };
 type Process = { processCode: string; processName: string; domainCode: string; workflowOrder?: number; developmentOrder?: number };
 type Step = { processCode: string; stepCode: string; stepName: string; stepOrder: number; actorCode?: string; userPath?: string };
-type Project = { projectId: string; projectName?: string };
-type HarnessPayload = { workTypes?: WorkType[]; processCatalog?: Process[]; processCatalogSteps?: Step[]; projectProcesses?: Project[]; workflows?: Project[]; items?: Project[]; catalogVisibility?: string };
+type Project = { projectId: string; projectName?: string; tenantId?: string };
+type HarnessPayload = { tenantId?: string; workTypes?: WorkType[]; processCatalog?: Process[]; processCatalogSteps?: Step[]; projectProcesses?: Project[]; workflows?: Project[]; items?: Project[]; catalogVisibility?: string };
 
 const QA_KEY = "carbonet:qa-workflow-harness";
 const control = "min-h-10 rounded-lg border border-slate-300 bg-white px-3 text-sm font-bold text-slate-800";
@@ -65,6 +65,8 @@ export function QaWorkflowHarness() {
   function openStep() {
     if (!processCode || !stepCode) return;
     const url = new URL(buildLocalizedPath("/work/execution", "/en/work/execution"), location.origin);
+    const tenantId = projects.find(item => item.projectId === projectId)?.tenantId || payload.tenantId || "";
+    if (tenantId) url.searchParams.set("tenantId", tenantId);
     if (projectId) url.searchParams.set("projectId", projectId);
     url.searchParams.set("processCode", processCode);
     url.searchParams.set("stepCode", stepCode);
