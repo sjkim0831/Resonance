@@ -36,6 +36,17 @@ public class ProcessExecutionApiController {
         try{return ResponseEntity.ok(service.startProcessExecution(body,principal.getName()));}catch(SecurityException e){return forbidden(e);}catch(Exception e){return bad(e);}
     }
 
+    @PostMapping("/qa-instance")
+    public ResponseEntity<?> qaInstance(@RequestBody Map<String,Object> body,
+                                        @RequestHeader(value="X-Carbonet-Test-Mode",required=false) String testMode,
+                                        HttpServletRequest request){
+        Principal principal=request.getUserPrincipal();
+        if(principal==null)return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("success",false,"message","Authentication is required."));
+        if(!"1".equals(testMode))return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("success",false,"message","QA test mode is required."));
+        try{return ResponseEntity.ok(service.manageQaProcessExecution(body,principal.getName()));}
+        catch(SecurityException e){return forbidden(e);}catch(IllegalStateException e){return conflict(e);}catch(Exception e){return bad(e);}
+    }
+
     @PostMapping("/{executionId}/commands")
     public ResponseEntity<?> command(@PathVariable UUID executionId,@RequestBody Map<String,Object> body,HttpServletRequest request){
         Principal principal=request.getUserPrincipal();

@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { buildLocalizedPath, isEnglish } from "../../lib/navigation/runtime";
 
 const TEST_MODE_KEY = "carbonet:test-account-switcher";
-const ACCOUNTS = [
+export const QA_TEST_ACCOUNTS = [
   { id: "qaowner26", actor: "기업 관리자", steps: "1·6·7단계" },
   { id: "qadata26", actor: "사업장 자료 담당자", steps: "2단계" },
   { id: "qacalc26", actor: "산정 담당자", steps: "3단계" },
@@ -13,7 +13,7 @@ const ACCOUNTS = [
 
 type LoginResponse = { status?: string; errors?: string };
 
-async function switchAccount(userId: string) {
+export async function switchQaAccount(userId: string) {
   const response = await fetch(buildLocalizedPath("/signin/testAccountSwitch", "/en/signin/testAccountSwitch"), {
     method: "POST",
     credentials: "include",
@@ -28,7 +28,7 @@ export function TestAccountSwitcher() {
   const en = isEnglish();
   const [enabled, setEnabled] = useState(false);
   const [open, setOpen] = useState(false);
-  const [accountId, setAccountId] = useState(ACCOUNTS[0].id);
+  const [accountId, setAccountId] = useState(QA_TEST_ACCOUNTS[0].id);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
 
@@ -43,13 +43,13 @@ export function TestAccountSwitcher() {
   }, []);
 
   if (!enabled) return null;
-  const selected = ACCOUNTS.find(item => item.id === accountId) || ACCOUNTS[0];
+  const selected = QA_TEST_ACCOUNTS.find(item => item.id === accountId) || QA_TEST_ACCOUNTS[0];
 
   async function submit() {
     setBusy(true);
     setMessage("");
     try {
-      const result = await switchAccount(accountId);
+      const result = await switchQaAccount(accountId);
       if (!result.ok) throw new Error(result.body.errors || (en ? "Login failed." : "로그인에 실패했습니다."));
       location.reload();
     } catch (error) {
@@ -67,7 +67,7 @@ export function TestAccountSwitcher() {
     {open ? <div className="border-t border-slate-200 p-4">
       <label className="block text-sm font-bold">{en ? "Account and actor" : "계정·액터"}
         <select className="mt-2 h-11 w-full rounded-lg border border-slate-300 bg-white px-3" onChange={event => setAccountId(event.target.value as typeof accountId)} value={accountId}>
-          {ACCOUNTS.map(item => <option key={item.id} value={item.id}>{item.actor} · {item.id} · {item.steps}</option>)}
+          {QA_TEST_ACCOUNTS.map(item => <option key={item.id} value={item.id}>{item.actor} · {item.id} · {item.steps}</option>)}
         </select>
       </label>
       <p className="mt-3 text-xs leading-5 text-slate-500">{en ? "Only an administrator-authorized test session can switch among the six allowlisted accounts." : "관리자가 승인한 테스트 세션에서만 허용된 6개 계정으로 전환할 수 있습니다."}</p>

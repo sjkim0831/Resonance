@@ -7,6 +7,7 @@ import { buildLocalizedPath, isEnglish, navigate } from "../../lib/navigation/ru
 import { HeaderBrand, HeaderDesktopNav, HeaderMobileMenu, HomeInlineStyles } from "./HomeEntrySections";
 import { LOCALIZED_CONTENT } from "./homeEntryContent";
 import { TaskQuestPanel } from "../task-quest/TaskQuestPanel";
+import { QaWorkflowHarness } from "./QaWorkflowHarness";
 
 const USER_GNB_EXCLUDED_PATHS = [
   "/signin/",
@@ -72,6 +73,7 @@ export function GlobalUserGnbShell({ children }: { children: ReactNode }) {
         </div>
       </header>
       <div aria-hidden="true" className="h-24 shrink-0" data-global-user-gnb-spacer="" />
+      <QaWorkflowHarness />
       <div aria-hidden={!mobileMenuOpen} className={`${mobileMenuOpen ? "" : "hidden"} fixed inset-0 z-[1100] xl:hidden`} id="global-mobile-menu">
         <button aria-label={content.closeAllMenu} className="absolute inset-0 bg-black/50" onClick={() => setMobileMenuOpen(false)} type="button" />
         <HeaderMobileMenu content={content} en={en} homeMenu={payload.homeMenu || []} isLoggedIn={Boolean(payload.isLoggedIn)} onClose={() => setMobileMenuOpen(false)} onLogout={session.logout} />

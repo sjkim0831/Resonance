@@ -1883,6 +1883,48 @@ public class ActorProcessGovernanceService {
         if(count==null||count==0)throw new SecurityException("프로젝트에 활성 액터 배정이 없습니다: "+actor);
     }
 
+    @Transactional public Map<String,Object> manageQaProcessExecution(Map<String,Object>b,String user){
+        String normalizedUser=user==null?"":user.trim().toLowerCase(Locale.ROOT);
+        if(!normalizedUser.startsWith("qa")&&!"webmaster".equals(normalizedUser))throw new SecurityException("QA 허용 계정만 인스턴스를 관리할 수 있습니다.");
+        String action=req(b,"action").toUpperCase(Locale.ROOT),project=req(b,"projectId"),process=req(b,"processCode");
+        if(!Set.of("CREATE","UPDATE","RESET","DELETE").contains(action))throw new IllegalArgumentException("지원하지 않는 QA 인스턴스 작업입니다: "+action);
+        List<Map<String,Object>> projects=jdbc.queryForList("select tenant_id,project_name from emission_project_registry where project_id=?",project);
+        if(projects.isEmpty())throw new IllegalArgumentException("프로젝트를 찾을 수 없습니다: "+project);
+        String tenant=String.valueOf(projects.get(0).get("tenant_id"));
+        Integer qaAssignment=jdbc.queryForObject("select count(*) from framework_account_actor_assignment where tenant_id=? and (project_id=? or project_id='*') and lower(account_id)=lower(?) and assignment_status='ACTIVE'",Integer.class,tenant,project,user);
+        if((qaAssignment==null||qaAssignment==0)&&!"qaassign26".equals(normalizedUser)&&!"webmaster".equals(normalizedUser))throw new SecurityException("이 프로젝트의 QA 액터 배정이 없습니다.");
+        List<Map<String,Object>> firstSteps=jdbc.queryForList("select step_code,from_state,actor_code from framework_process_step where process_code=? order by step_order limit 1",process);
+        if(firstSteps.isEmpty())throw new IllegalArgumentException("프로세스 절차가 없습니다: "+process);
+        if("CREATE".equals(action)){
+            Map<String,Object> first=firstSteps.get(0),context=new LinkedHashMap<>();
+            context.put("tenantId",tenant);context.put("projectId",project);context.put("processCode",process);
+            context.put("actorCode",def(b,"actorCode",String.valueOf(first.get("actor_code"))));context.put("cycleType",def(b,"cycleType","ONCE"));
+            context.put("periodStart",str(b,"periodStart"));context.put("periodEnd",str(b,"periodEnd"));
+            Map<String,Object> created=new LinkedHashMap<>(startProcessExecution(context,user));created.put("action",action);return created;
+        }
+        List<Map<String,Object>> rows=jdbc.queryForList("select * from framework_process_execution where tenant_id=? and project_id=? and process_code=? order by started_at desc limit 1 for update",tenant,project,process);
+        if(rows.isEmpty())throw new IllegalStateException("관리할 QA 인스턴스가 없습니다. 먼저 추가하세요.");
+        Map<String,Object> execution=rows.get(0);UUID executionId=(UUID)execution.get("execution_id");
+        if("DELETE".equals(action)){
+            int drafts=jdbc.update("delete from framework_process_work_draft where tenant_id=? and project_id=? and process_code=?",tenant,project,process);
+            int deleted=jdbc.update("delete from framework_process_execution where execution_id=?",executionId);
+            return Map.of("success",true,"action",action,"projectId",project,"processCode",process,"deletedExecutions",deleted,"deletedDrafts",drafts);
+        }
+        if("RESET".equals(action)){
+            int events=jdbc.update("delete from framework_process_execution_event where execution_id=?",executionId);
+            int drafts=jdbc.update("delete from framework_process_work_draft where tenant_id=? and project_id=? and process_code=?",tenant,project,process);
+            Map<String,Object> first=firstSteps.get(0);
+            jdbc.update("update framework_process_execution set current_step_code=?,current_state=?,execution_status='RUNNING',handoff_status='NOT_READY',snapshot_ref=null,completed_at=null,started_at=current_timestamp,updated_at=current_timestamp where execution_id=?",first.get("step_code"),first.get("from_state"),executionId);
+            return Map.of("success",true,"action",action,"executionId",executionId,"projectId",project,"processCode",process,"deletedEvents",events,"deletedDrafts",drafts,"currentStepCode",String.valueOf(first.get("step_code")));
+        }
+        String cycleType=def(b,"cycleType",String.valueOf(execution.getOrDefault("cycle_type","ONCE"))).toUpperCase(Locale.ROOT);
+        if(!Set.of("ONCE","MONTHLY","QUARTERLY","HALF_YEARLY","ANNUAL","AD_HOC").contains(cycleType))throw new IllegalArgumentException("지원하지 않는 실행 주기입니다: "+cycleType);
+        String periodStart="ONCE".equals(cycleType)?"":str(b,"periodStart"),periodEnd="ONCE".equals(cycleType)?"":str(b,"periodEnd");
+        if(!"ONCE".equals(cycleType)&&(periodStart.isBlank()||periodEnd.isBlank()))throw new IllegalArgumentException("반복 실행은 시작일과 종료일이 필요합니다.");
+        jdbc.update("update framework_process_execution set cycle_type=?,period_start=nullif(?,'')::date,period_end=nullif(?,'')::date,updated_at=current_timestamp where execution_id=?",cycleType,periodStart,periodEnd,executionId);
+        Map<String,Object> result=new LinkedHashMap<>();result.put("success",true);result.put("action",action);result.put("executionId",executionId);result.put("projectId",project);result.put("processCode",process);result.put("cycleType",cycleType);result.put("periodStart",periodStart);result.put("periodEnd",periodEnd);return result;
+    }
+
     public Map<String,Object> loadWorkDraft(String tenant,String project,String process,String step,String user){
         List<Map<String,Object>> contracts=jdbc.queryForList("select runtime_step.step_code as \"stepCode\",runtime_step.step_name as \"stepName\",runtime_step.actor_code as \"actorCode\",runtime_step.command_code as \"commandCode\",runtime_step.from_state as \"fromState\",runtime_step.to_state as \"toState\",runtime_step.requirement_text as \"requirementText\",runtime_step.completion_rule as \"completionRule\",runtime_step.input_contract as \"inputContract\",runtime_step.output_contract as \"outputContract\",runtime_step.api_contract as \"apiContract\",coalesce(nullif(execution_spec.field_contract->'fields','[]'::jsonb),(select framework_try_jsonb(screen_contract.field_contract) from framework_professional_screen_contract screen_contract where screen_contract.process_code=runtime_step.process_code and screen_contract.step_code=runtime_step.step_code order by case screen_contract.audience when 'USER' then 0 else 1 end limit 1),'[]'::jsonb)::text as \"fieldContractJson\" from framework_process_step runtime_step left join framework_step_execution_spec execution_spec using(process_code,step_code) where runtime_step.process_code=? and runtime_step.step_code=?",process,step);
         if(contracts.isEmpty())throw new IllegalArgumentException("Work step contract does not exist: "+process+" / "+step);
