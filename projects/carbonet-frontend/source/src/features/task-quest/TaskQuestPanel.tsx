@@ -1091,7 +1091,7 @@ export function TaskQuestPanel() {
   );
   const emissionEndToEndSteps = useMemo(() => {
     if (selectedCatalogProcessCode !== EMISSION_END_TO_END_PROCESS_CODE) return [];
-    const childOrder = new Map(
+    const childOrder = new Map<string, number>(
       EMISSION_END_TO_END_CHILDREN.map((processCode, index) => [processCode, index]),
     );
     return (data?.processCatalogSteps || [])
