@@ -17,6 +17,11 @@ type Task = {
   targetUrl?: string; completionRule?: string; pendingPredecessors?: string; blockedReason?: string; actionable?: boolean;
 };
 type TaskPayload = { items: Task[]; actorId?: string; allVisible?: boolean };
+type ProcessExecution = {
+  found?: boolean; executionId?: string; executionStatus?: string;
+  execution?: { executionId?: string; executionStatus?: string };
+  nextProcessCode?: string; nextProcessStepCode?: string; nextProcessActorCode?: string; nextProcessUserPath?: string;
+};
 
 const EMPTY: PortfolioPayload = { items: [], total: 0, sites: [] };
 const STEPS = ["기본정보", "활동자료", "산정", "검증", "승인", "보고·인증"];
@@ -158,6 +163,57 @@ export function EmissionProjectPortfolioPage() {
     }
   }
 
+  async function continueWorkflow() {
+    if (!selected) return;
+    setStartingId(nextTask?.id ?? -1);
+    setTaskError("");
+    try {
+      const optionsResponse = await fetch(buildLocalizedPath("/home/api/emission-projects/options", "/en/home/api/emission-projects/options"), {
+        credentials: "include", headers: { Accept: "application/json" },
+      });
+      const options = await readJson<{ tenantId?: string }>(optionsResponse);
+      const tenantId = String(options.tenantId || "").trim();
+      if (!tenantId) throw new Error(en ? "Tenant context is missing." : "테넌트 정보를 확인할 수 없습니다.");
+      const executionBase = buildLocalizedPath("/home/api/process-executions", "/en/home/api/process-executions");
+      const query = new URLSearchParams({ tenantId, projectId: selected.id, processCode: "EMISSION_PROJECT_PORTFOLIO" });
+      const executionResponse = await fetch(`${executionBase}?${query}`, { credentials: "include", headers: { Accept: "application/json" } });
+      let execution = await readJson<ProcessExecution>(executionResponse);
+
+      if (execution.executionStatus !== "COMPLETED") {
+        let executionId = String(execution.executionId || "");
+        if (!execution.found || !executionId) {
+          const startResponse = await fetch(`${executionBase}/start`, {
+            method: "POST", credentials: "include", headers: { "Content-Type": "application/json", Accept: "application/json" },
+            body: JSON.stringify({ tenantId, projectId: selected.id, processCode: "EMISSION_PROJECT_PORTFOLIO", actorCode: "COMPANY_MANAGER" }),
+          });
+          const started = await readJson<ProcessExecution>(startResponse);
+          executionId = String(started.executionId || started.execution?.executionId || "");
+          if (!executionId) throw new Error(en ? "The portfolio execution could not be started." : "포트폴리오 실행 건을 시작하지 못했습니다.");
+        }
+        const commandResponse = await fetch(`${executionBase}/${encodeURIComponent(executionId)}/commands`, {
+          method: "POST", credentials: "include", headers: { "Content-Type": "application/json", Accept: "application/json" },
+          body: JSON.stringify({ tenantId, projectId: selected.id, processCode: "EMISSION_PROJECT_PORTFOLIO", stepCode: "EMISSION_PROJECT_PORTFOLIO_LIST", actorCode: "COMPANY_MANAGER", commandCode: "SELECT_PROJECT", idempotencyKey: `PORTFOLIO-${selected.id}-${Date.now()}`, requestJson: JSON.stringify({ selectedProjectId: selected.id }), resultJson: JSON.stringify({ completed: true, nextTaskCode: "EMISSION_PROJECT_SETUP" }) }),
+        });
+        execution = await readJson<ProcessExecution>(commandResponse);
+        const nextPath = execution.nextProcessUserPath || "/emission/organizational-boundary";
+        const target = new URL(buildLocalizedPath(nextPath, `/en${nextPath}`), window.location.origin);
+        target.searchParams.set("projectId", selected.id);
+        target.searchParams.set("processCode", execution.nextProcessCode || "EMISSION_PROJECT");
+        target.searchParams.set("stepCode", execution.nextProcessStepCode || "EMISSION_PROJECT_SETUP");
+        target.searchParams.set("actorCode", execution.nextProcessActorCode || "COMPANY_MANAGER");
+        target.searchParams.set("guide", "1");
+        window.location.href = `${target.pathname}${target.search}`;
+        return;
+      }
+
+      if (!nextTask) throw new Error(en ? "No remaining task is available for this project." : "이 프로젝트에서 진행할 남은 업무가 없습니다.");
+      await startGuide();
+    } catch (error) {
+      setTaskError(error instanceof Error ? error.message : String(error));
+      setStartingId(null);
+    }
+  }
+
   async function copyProject() {
     if (!selected || copying) return;
     if (!window.confirm(en ? `Copy ${selected.name}?` : `${selected.name} 프로젝트를 복사하시겠습니까?`)) return;
@@ -262,7 +318,7 @@ export function EmissionProjectPortfolioPage() {
         </article>
         <aside className="border-t bg-[#f7faff] p-6 lg:p-7 xl:border-l xl:border-t-0">
           <p className="text-xs font-black text-[#246beb]">{en ? "NEXT ACTION" : "다음 실행 업무"}</p>
-          {nextTask ? <><h3 className="mt-2 text-xl font-black text-[#052b57]">{nextTask.name}</h3><p className="mt-2 text-sm leading-6 text-slate-600">{nextTask.completionRule || (en ? "Complete the required data and evidence for this step." : "이 단계에 필요한 필수 데이터와 증적을 완료하십시오.")}</p><dl className="mt-5 space-y-3 text-sm"><div className="flex justify-between gap-4"><dt className="text-slate-500">{en ? "Assignee" : "담당자"}</dt><dd className="font-black">{nextTask.assignee || "-"}</dd></div><div className="flex justify-between gap-4"><dt className="text-slate-500">{en ? "Status" : "상태"}</dt><dd className="font-black">{nextTask.status}</dd></div><div className="flex justify-between gap-4"><dt className="text-slate-500">{en ? "Due" : "마감"}</dt><dd className="font-black">{nextTask.dueDate || "-"}</dd></div></dl>{nextTask.pendingPredecessors || nextTask.blockedReason ? <p className="mt-4 rounded-lg bg-amber-50 p-3 text-sm font-bold text-amber-900">{nextTask.pendingPredecessors || nextTask.blockedReason}</p> : null}<button className="mt-6 min-h-12 w-full rounded-lg bg-[#0755b5] px-5 font-black text-white disabled:cursor-not-allowed disabled:bg-slate-300" disabled={!nextTask.actionable || startingId === nextTask.id} onClick={() => void startGuide()} type="button">{startingId === nextTask.id ? (en ? "Starting..." : "시작 처리 중...") : (en ? "Start work guide" : "업무 길잡이 시작")} <span className="material-symbols-outlined ml-1 align-middle">arrow_forward</span></button></> : selected.status === "완료" ? <><h3 className="mt-2 text-xl font-black text-[#052b57]">{en ? "Project completed" : "프로젝트 업무 완료"}</h3><p className="mt-2 text-sm text-slate-600">{en ? "Review the final report, certificate, and audit history." : "최종 보고서·인증서·변경 이력을 확인할 수 있습니다."}</p><div className="mt-5 grid gap-2"><a className="rounded-lg bg-[#0755b5] px-4 py-3 text-center font-black text-white" href={buildLocalizedPath(`/emission/report-download?projectId=${selected.id}`, `/en/emission/report-download?projectId=${selected.id}`)}>{en ? "Reports & certificates" : "보고서·인증서 확인"}</a><a className="rounded-lg border border-slate-300 px-4 py-3 text-center font-bold" href={buildLocalizedPath(`/emission/project/detail?id=${selected.id}`, `/en/emission/project/detail?id=${selected.id}`)}>{en ? "Project history" : "프로젝트 이력"}</a></div></> : <><h3 className="mt-2 text-xl font-black text-[#052b57]">{en ? "No actionable task" : "실행 가능한 다음 업무 없음"}</h3><p className="mt-2 text-sm leading-6 text-slate-600">{taskError || (en ? "Check prerequisites and task assignment." : "선행 업무 완료 여부와 담당 계정 배정을 확인하십시오.")}</p><a className="mt-5 inline-flex min-h-11 w-full items-center justify-center rounded-lg border border-[#246beb] font-black text-[#246beb]" href={buildLocalizedPath(`/emission/project/detail?id=${selected.id}`, `/en/emission/project/detail?id=${selected.id}`)}>{en ? "Open project workspace" : "프로젝트 작업공간 확인"}</a></>}
+          {nextTask ? <><h3 className="mt-2 text-xl font-black text-[#052b57]">{nextTask.name}</h3><p className="mt-2 text-sm leading-6 text-slate-600">{nextTask.completionRule || (en ? "Complete the required data and evidence for this step." : "이 단계에 필요한 필수 데이터와 증적을 완료하십시오.")}</p><dl className="mt-5 space-y-3 text-sm"><div className="flex justify-between gap-4"><dt className="text-slate-500">{en ? "Assignee" : "담당자"}</dt><dd className="font-black">{nextTask.assignee || "-"}</dd></div><div className="flex justify-between gap-4"><dt className="text-slate-500">{en ? "Status" : "상태"}</dt><dd className="font-black">{nextTask.status}</dd></div><div className="flex justify-between gap-4"><dt className="text-slate-500">{en ? "Due" : "마감"}</dt><dd className="font-black">{nextTask.dueDate || "-"}</dd></div></dl>{nextTask.pendingPredecessors || nextTask.blockedReason ? <p className="mt-4 rounded-lg bg-amber-50 p-3 text-sm font-bold text-amber-900">{nextTask.pendingPredecessors || nextTask.blockedReason}</p> : null}<button className="mt-6 min-h-12 w-full rounded-lg bg-[#0755b5] px-5 font-black text-white disabled:cursor-not-allowed disabled:bg-slate-300" disabled={startingId !== null} onClick={() => void continueWorkflow()} type="button">{startingId !== null ? (en ? "Starting..." : "인계 처리 중...") : (en ? "Continue work" : "업무 계속하기")} <span className="material-symbols-outlined ml-1 align-middle">arrow_forward</span></button></> : selected.status === "완료" ? <><h3 className="mt-2 text-xl font-black text-[#052b57]">{en ? "Project completed" : "프로젝트 업무 완료"}</h3><p className="mt-2 text-sm text-slate-600">{en ? "Review the final report, certificate, and audit history." : "최종 보고서·인증서·변경 이력을 확인할 수 있습니다."}</p><div className="mt-5 grid gap-2"><a className="rounded-lg bg-[#0755b5] px-4 py-3 text-center font-black text-white" href={buildLocalizedPath(`/emission/report-download?projectId=${selected.id}`, `/en/emission/report-download?projectId=${selected.id}`)}>{en ? "Reports & certificates" : "보고서·인증서 확인"}</a><a className="rounded-lg border border-slate-300 px-4 py-3 text-center font-bold" href={buildLocalizedPath(`/emission/project/detail?id=${selected.id}`, `/en/emission/project/detail?id=${selected.id}`)}>{en ? "Project history" : "프로젝트 이력"}</a></div></> : <><h3 className="mt-2 text-xl font-black text-[#052b57]">{en ? "No actionable task" : "실행 가능한 다음 업무 없음"}</h3><p className="mt-2 text-sm leading-6 text-slate-600">{taskError || (en ? "Check prerequisites and task assignment." : "선행 업무 완료 여부와 담당 계정 배정을 확인하십시오.")}</p><a className="mt-5 inline-flex min-h-11 w-full items-center justify-center rounded-lg border border-[#246beb] font-black text-[#246beb]" href={buildLocalizedPath(`/emission/project/detail?id=${selected.id}`, `/en/emission/project/detail?id=${selected.id}`)}>{en ? "Open project workspace" : "프로젝트 작업공간 확인"}</a></>}
         </aside>
       </div></section> : null}
     </main>
