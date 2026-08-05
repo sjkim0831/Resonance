@@ -257,6 +257,17 @@ type QuestResponse = {
     skipAuthorityActor?: string;
     requiredSections?: unknown[];
   }>;
+  stepApplicabilityDecisions?: Array<{
+    projectId: string;
+    processCode: string;
+    stepCode: string;
+    decisionStatus: "PENDING" | "APPLICABLE" | "NOT_APPLICABLE" | "REASSESS_REQUIRED";
+    reasonText?: string;
+    evidenceRefs?: string[];
+    decidedBy?: string;
+    decidedAt?: string;
+    decisionVersion?: number;
+  }>;
   processAssignments?: Array<{
     projectId: string;
     processCode: string;
@@ -554,6 +565,9 @@ export function TaskQuestPanel() {
   );
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
+  const [applicabilityReason, setApplicabilityReason] = useState("");
+  const [applicabilityEvidence, setApplicabilityEvidence] = useState("");
+  const [applicabilitySaving, setApplicabilitySaving] = useState(false);
   const [flowOpen, setFlowOpen] = useState(false);
   const [qaOpen, setQaOpen] = useState(
     () => localStorage.getItem("process-qa-card-open") === "1",
@@ -1266,6 +1280,24 @@ export function TaskQuestPanel() {
   function stepGuidanceContract(step: NonNullable<QuestResponse["processCatalogSteps"]>[number]) {
     return stepGuidanceContracts.get(`${step.processCode}|${step.stepCode}`);
   }
+  const stepApplicabilityDecisions = useMemo(
+    () => new Map(
+      (data?.stepApplicabilityDecisions || []).map((decision) => [
+        `${decision.projectId}|${decision.processCode}|${decision.stepCode}`,
+        decision,
+      ]),
+    ),
+    [data?.stepApplicabilityDecisions],
+  );
+  function stepApplicabilityDecision(step: NonNullable<QuestResponse["processCatalogSteps"]>[number]) {
+    return stepApplicabilityDecisions.get(`${effectiveProjectId}|${step.processCode}|${step.stepCode}`);
+  }
+  useEffect(() => {
+    const step = selectedCatalogSteps[selectedCatalogStep];
+    const decision = step ? stepApplicabilityDecision(step) : undefined;
+    setApplicabilityReason(decision?.reasonText || "");
+    setApplicabilityEvidence(Array.isArray(decision?.evidenceRefs) ? decision.evidenceRefs.join(", ") : "");
+  }, [effectiveProjectId, selectedCatalogStep, selectedCatalogSteps, stepApplicabilityDecisions]);
   useEffect(() => {
     const query = new URLSearchParams(window.location.search);
     const routeProcessCode = query.get("processCode") || query.get("process") || "";
@@ -1595,6 +1627,36 @@ export function TaskQuestPanel() {
     return canonical;
   }
 
+  async function saveStepApplicabilityDecision(decisionStatus: "APPLICABLE" | "NOT_APPLICABLE" | "REASSESS_REQUIRED") {
+    const step = selectedCatalogSteps[selectedCatalogStep];
+    if (!step || !effectiveProjectId) return;
+    setApplicabilitySaving(true);
+    setMessage("");
+    try {
+      const response = await fetch(
+        `/home/api/emission-projects/${encodeURIComponent(effectiveProjectId)}/step-applicability/${encodeURIComponent(step.processCode)}/${encodeURIComponent(step.stepCode)}`,
+        {
+          method: "PUT",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            decisionStatus,
+            reasonText: applicabilityReason.trim(),
+            evidenceRefs: applicabilityEvidence.trim(),
+          }),
+        },
+      );
+      const body = await response.json();
+      if (!response.ok) throw new Error(body?.message || "조건부 절차 판정을 저장하지 못했습니다.");
+      await load();
+      setMessage(decisionStatus === "NOT_APPLICABLE" ? "적용 제외 판정과 이력이 저장되었습니다." : "조건부 절차 판정이 저장되었습니다.");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "조건부 절차 판정 저장 중 오류가 발생했습니다.");
+    } finally {
+      setApplicabilitySaving(false);
+    }
+  }
+
   function startSelectedProcessGuide() {
     if (selectedCatalogProcessCode === "WORK_ASSIGNMENT" && data?.assignmentManager) {
       const target = new URL(
@@ -1621,7 +1683,16 @@ export function TaskQuestPanel() {
       Math.max(0, selectedCatalogStep),
       Math.max(0, selectedCatalogSteps.length - 1),
     );
-    if (!selectedCatalogSteps[index] || !available(selectedCatalogSteps[index])) return;
+    if (!selectedCatalogSteps[index]) return;
+    const applicability = stepApplicabilityDecision(selectedCatalogSteps[index])?.decisionStatus;
+    if (applicability === "NOT_APPLICABLE") {
+      const nextIndex = Math.min(index + 1, Math.max(0, selectedCatalogSteps.length - 1));
+      setSelectedCatalogStep(nextIndex);
+      localStorage.setItem("task-quest-catalog-step", String(nextIndex));
+      return;
+    }
+    if (stepGuidanceContract(selectedCatalogSteps[index])?.applicabilityType === "CONDITIONAL" && applicability !== "APPLICABLE") return;
+    if (!available(selectedCatalogSteps[index])) return;
     const step=selectedCatalogSteps[index],runtime=guideRuntimeStep(step),route=guideRoute(step,runtime);
     setSelectedCatalogStep(index);
     localStorage.setItem("task-quest-catalog-step",String(index));
@@ -2833,6 +2904,31 @@ export function TaskQuestPanel() {
                                   <strong className="mt-1 block text-sm text-[#052b57]">{selectedNextProcess.processName}</strong>
                                 </div>
                               ) : null}
+                              {(() => {
+                                const step = selectedCatalogSteps[selectedCatalogStep];
+                                if (!step || stepGuidanceContract(step)?.applicabilityType !== "CONDITIONAL") return null;
+                                const decision = stepApplicabilityDecision(step);
+                                const status = decision?.decisionStatus || "PENDING";
+                                return (
+                                  <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4">
+                                    <div className="flex flex-wrap items-center justify-between gap-2">
+                                      <strong className="text-sm text-amber-950">조건부 절차 적용 판정</strong>
+                                      <span className="rounded-full bg-white px-2.5 py-1 text-[11px] font-black text-amber-800">
+                                        {{ PENDING: "판정 필요", APPLICABLE: "적용", NOT_APPLICABLE: "적용 제외", REASSESS_REQUIRED: "재판정 필요" }[status]}
+                                      </span>
+                                    </div>
+                                    <p className="mt-2 text-xs leading-5 text-amber-900">{stepGuidanceContract(step)?.applicabilityRule}</p>
+                                    <textarea className="mt-3 min-h-20 w-full rounded-lg border border-amber-200 bg-white p-2.5 text-sm" placeholder="판정 사유 (적용 제외·재판정 시 필수)" value={applicabilityReason} onChange={(event) => setApplicabilityReason(event.target.value)} />
+                                    <input className="mt-2 h-10 w-full rounded-lg border border-amber-200 bg-white px-2.5 text-sm" placeholder="증적 참조 ID 또는 URL (쉼표로 구분)" value={applicabilityEvidence} onChange={(event) => setApplicabilityEvidence(event.target.value)} />
+                                    <div className="mt-3 grid grid-cols-3 gap-2">
+                                      <button className="rounded-lg bg-[#246beb] px-2 py-2 text-xs font-black text-white disabled:opacity-50" disabled={applicabilitySaving} onClick={() => saveStepApplicabilityDecision("APPLICABLE")} type="button">적용</button>
+                                      <button className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-xs font-black text-slate-700 disabled:opacity-50" disabled={applicabilitySaving || !applicabilityReason.trim()} onClick={() => saveStepApplicabilityDecision("NOT_APPLICABLE")} type="button">적용 제외</button>
+                                      <button className="rounded-lg border border-amber-300 bg-white px-2 py-2 text-xs font-black text-amber-800 disabled:opacity-50" disabled={applicabilitySaving || !applicabilityReason.trim()} onClick={() => saveStepApplicabilityDecision("REASSESS_REQUIRED")} type="button">재판정</button>
+                                    </div>
+                                    {decision?.decidedBy ? <p className="mt-2 text-[11px] text-amber-800">판정자 {decision.decidedBy} · 버전 {decision.decisionVersion || 1}</p> : null}
+                                  </div>
+                                );
+                              })()}
                               <button
                                 className="mt-auto rounded-xl bg-[#052b57] px-4 py-3.5 text-sm font-black text-white disabled:cursor-not-allowed disabled:bg-slate-300"
                                 disabled={(() => {
@@ -2841,6 +2937,10 @@ export function TaskQuestPanel() {
                                   }
                                   const step = selectedCatalogSteps[selectedCatalogStep];
                                   if (!step) return true;
+                                  const contract = stepGuidanceContract(step);
+                                  const decision = stepApplicabilityDecision(step)?.decisionStatus;
+                                  if (contract?.applicabilityType === "CONDITIONAL" && !["APPLICABLE", "NOT_APPLICABLE"].includes(decision || "PENDING")) return true;
+                                  if (decision === "NOT_APPLICABLE") return false;
                                   const runtimeStep = guideRuntimeStep(step);
                                   return !guideRoute(step, runtimeStep) ||
                                     !guideActorAllowed(step, runtimeStep) ||
@@ -2851,7 +2951,9 @@ export function TaskQuestPanel() {
                                 onClick={startSelectedProcessGuide}
                                 type="button"
                               >
-                                {en ? "Open selected step" : "선택 단계 업무 길잡이 시작"}
+                                {stepApplicabilityDecision(selectedCatalogSteps[selectedCatalogStep])?.decisionStatus === "NOT_APPLICABLE"
+                                  ? (en ? "Skip and continue" : "적용 제외 확인·다음 절차")
+                                  : (en ? "Open selected step" : "선택 단계 업무 길잡이 시작")}
                               </button>
                             </>
                           ) : (
