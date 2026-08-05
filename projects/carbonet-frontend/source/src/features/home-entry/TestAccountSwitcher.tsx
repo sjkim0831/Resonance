@@ -3,12 +3,12 @@ import { buildLocalizedPath, isEnglish } from "../../lib/navigation/runtime";
 
 const TEST_MODE_KEY = "carbonet:test-account-switcher";
 export const QA_TEST_ACCOUNTS = [
-  { id: "qaowner26", actor: "기업 관리자", steps: "1·6·7단계" },
-  { id: "qadata26", actor: "사업장 자료 담당자", steps: "2단계" },
-  { id: "qacalc26", actor: "산정 담당자", steps: "3단계" },
-  { id: "qaverify26", actor: "검증 담당자", steps: "4단계" },
-  { id: "qaapprove26", actor: "승인권자", steps: "5단계" },
-  { id: "qaassign26", actor: "업무 배정 관리자", steps: "프로젝트 배정·재배정" },
+  { id: "qaowner26", actorCode: "COMPANY_MANAGER", actor: "기업 관리자", steps: "1·6·7단계", companyId: "TEST", companyName: "레조넌스 테스트 기업" },
+  { id: "qadata26", actorCode: "SITE_DATA_OWNER", actor: "사업장 자료 담당자", steps: "2단계", companyId: "TEST", companyName: "레조넌스 테스트 기업" },
+  { id: "qacalc26", actorCode: "CALCULATOR", actor: "산정 담당자", steps: "3단계", companyId: "TEST", companyName: "레조넌스 테스트 기업" },
+  { id: "qaverify26", actorCode: "VERIFIER", actor: "검증 담당자", steps: "4단계", companyId: "TEST", companyName: "레조넌스 테스트 기업" },
+  { id: "qaapprove26", actorCode: "APPROVER", actor: "승인권자", steps: "5단계", companyId: "TEST", companyName: "레조넌스 테스트 기업" },
+  { id: "qaassign26", actorCode: "WORK_ASSIGNMENT_MANAGER", actor: "업무 배정 관리자", steps: "프로젝트 배정·재배정", companyId: "TEST", companyName: "레조넌스 테스트 기업" },
 ] as const;
 
 type LoginResponse = { status?: string; errors?: string };

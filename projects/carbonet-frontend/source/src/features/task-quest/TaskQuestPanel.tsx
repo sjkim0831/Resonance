@@ -454,6 +454,7 @@ export function TaskQuestPanel() {
   const [qaMessage, setQaMessage] = useState("");
   const [qaResults, setQaResults] = useState<QaResult[]>([]);
   const [qaAccountId, setQaAccountId] = useState<string>(QA_TEST_ACCOUNTS[0].id);
+  const [qaCompanyId, setQaCompanyId] = useState<string>(QA_TEST_ACCOUNTS[0].companyId);
   const [qaCycleType, setQaCycleType] = useState("ONCE");
   const [qaPeriodStart, setQaPeriodStart] = useState("");
   const [qaPeriodEnd, setQaPeriodEnd] = useState("");
@@ -518,6 +519,22 @@ export function TaskQuestPanel() {
     const timer = window.setInterval(() => void load(), 60_000);
     return () => window.clearInterval(timer);
   }, [api]);
+
+  const qaCompanies = useMemo(
+    () => [...new Map(QA_TEST_ACCOUNTS.map((account) => [account.companyId, { id: account.companyId, name: account.companyName }])).values()],
+    [],
+  );
+  const qaCompanyAccounts = useMemo(
+    () => QA_TEST_ACCOUNTS.filter((account) => account.companyId === qaCompanyId),
+    [qaCompanyId],
+  );
+  useEffect(() => {
+    const current = QA_TEST_ACCOUNTS.find((account) => account.id.toLowerCase() === String(data?.actorId || "").toLowerCase());
+    if (current) { setQaCompanyId(current.companyId); setQaAccountId(current.id); }
+  }, [data?.actorId]);
+  useEffect(() => {
+    if (!qaCompanyAccounts.some((account) => account.id === qaAccountId) && qaCompanyAccounts[0]) setQaAccountId(qaCompanyAccounts[0].id);
+  }, [qaAccountId, qaCompanyAccounts]);
 
   useEffect(() => {
     const synchronizeGuide = (event: Event) => {
@@ -1481,37 +1498,73 @@ export function TaskQuestPanel() {
     const controls = Array.from(document.querySelectorAll<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>("main input, main select, main textarea"));
     controls.forEach((control) => {
       if (control.disabled || ("readOnly" in control && control.readOnly) || control.type === "hidden" || control.type === "file") return;
-      if (control instanceof HTMLInputElement && ["checkbox", "radio"].includes(control.type)) control.checked = true;
+      const fieldKey = control.name || control.id || control.getAttribute("aria-label") || control.getAttribute("data-field-code") || "";
+      const storageKey = fieldKey ? `qa-form:${window.location.pathname}:${fieldKey}` : "";
+      const savedValue = storageKey ? localStorage.getItem(storageKey) : null;
+      if (control instanceof HTMLInputElement && ["checkbox", "radio"].includes(control.type)) control.checked = savedValue === null ? true : savedValue === "true";
       else if (control instanceof HTMLSelectElement) {
-        const option = Array.from(control.options).find((item) => item.value && !item.disabled);
+        const option = Array.from(control.options).find((item) => savedValue !== null && item.value === savedValue) || Array.from(control.options).find((item) => item.value && !item.disabled);
         if (!option) return;
         control.value = option.value;
       } else if (!control.value) {
-        if (control instanceof HTMLInputElement && control.type === "number") control.value = "1";
+        if (savedValue !== null) control.value = savedValue;
+        else if (control instanceof HTMLInputElement && control.type === "number") control.value = control.min || "1";
         else if (control instanceof HTMLInputElement && control.type === "date") control.value = new Date().toISOString().slice(0, 10);
         else if (control instanceof HTMLInputElement && control.type === "email") control.value = "qa@resonance.test";
+        else if (control.placeholder) control.value = control.placeholder.replace(/예[:)]?\s*/g, "").slice(0, Number(control.getAttribute("maxlength") || 100));
         else control.value = `QA-${Date.now()}`;
       }
       control.dispatchEvent(new Event("input", { bubbles: true }));
       control.dispatchEvent(new Event("change", { bubbles: true }));
+      if (storageKey) localStorage.setItem(storageKey, control instanceof HTMLInputElement && ["checkbox", "radio"].includes(control.type) ? String(control.checked) : control.value);
       filled += 1;
     });
     setQaMessage(en ? `${filled} controls populated.` : `${filled}개 입력 항목을 테스트 값으로 채웠습니다.`);
   }
 
-  function openQaStep() {
+  function resolveQaRoute(step: NonNullable<QuestResponse["processCatalogSteps"]>[number]) {
+    const administrativeActor = /ADMIN|MANAGER|REVIEW|VERIFY|APPROV|AUDIT|REGULATOR/.test(String(step.actorCode || "").toUpperCase());
+    return administrativeActor ? step.adminPath || step.userPath : step.userPath || step.adminPath;
+  }
+
+  async function ensureQaActor(step: NonNullable<QuestResponse["processCatalogSteps"]>[number]) {
+    const target = QA_TEST_ACCOUNTS.find((account) => account.companyId === qaCompanyId && account.actorCode === String(step.actorCode || ""));
+    if (!target || String(data?.actorId || "").toLowerCase() === target.id.toLowerCase()) return true;
+    setQaMessage(`${target.actor} 계정으로 자동 전환하고 있습니다.`);
+    const result = await switchQaAccount(target.id);
+    if (!result.ok) throw new Error(result.body.errors || "TEST_ACCOUNT_SWITCH_FAILED");
+    setQaAccountId(target.id);
+    await load();
+    return true;
+  }
+
+  async function openQaStep() {
     const step = selectedCatalogSteps[selectedCatalogStep];
     if (!step) return;
-    const administrativeActor = /ADMIN|MANAGER|REVIEW|VERIFY|APPROV|AUDIT|REGULATOR/.test(String(step.actorCode || "").toUpperCase());
-    const route = administrativeActor ? step.adminPath || step.userPath : step.userPath || step.adminPath;
+    const route = resolveQaRoute(step);
     if (!route) { setQaMessage(en ? "No screen is bound to this step." : "이 절차에 연결된 화면이 없습니다."); return; }
-    const url = new URL(route, window.location.origin);
-    if (effectiveProjectId && !url.searchParams.has("projectId")) url.searchParams.set("projectId", effectiveProjectId);
-    url.searchParams.set("processCode", step.processCode);
-    url.searchParams.set("stepCode", step.stepCode);
-    url.searchParams.set("qa", "1");
-    url.searchParams.set("testMode", "1");
-    window.location.assign(`${url.pathname}${url.search}${url.hash}`);
+    setQaBusy(true);
+    try {
+      await ensureQaActor(step);
+      const runtime = guideRuntimeStep(step);
+      const target = new URL(guideTarget(route, step, runtime), window.location.origin);
+      target.searchParams.set("qa", "1"); target.searchParams.set("testMode", "1");
+      navigate(`${target.pathname}${target.search}${target.hash}`);
+    } catch (error) {
+      setQaMessage(`${en ? "Failed" : "실패"}: ${error instanceof Error ? error.message : String(error)}`);
+    } finally { setQaBusy(false); }
+  }
+
+  function openQaShortcut() {
+    const step = selectedCatalogSteps[selectedCatalogStep];
+    if (!step) return;
+    const route = resolveQaRoute(step);
+    if (!route) { setQaMessage(en ? "No screen is bound to this step." : "이 절차에 연결된 화면이 없습니다."); return; }
+    const target = new URL(route, window.location.origin);
+    if (effectiveProjectId && !target.searchParams.has("projectId")) target.searchParams.set("projectId", effectiveProjectId);
+    target.searchParams.set("processCode", step.processCode); target.searchParams.set("stepCode", step.stepCode);
+    target.searchParams.set("qa", "1"); target.searchParams.set("testMode", "1");
+    navigate(`${target.pathname}${target.search}${target.hash}`);
   }
 
   async function switchQaLogin() {
@@ -1814,8 +1867,9 @@ export function TaskQuestPanel() {
           <section className="w-[calc(100vw-1.5rem)] max-w-[36rem] overflow-hidden rounded-2xl border border-emerald-200 bg-white shadow-2xl">
             <header className="flex items-center justify-between bg-emerald-800 px-4 py-3 text-white"><div className="flex items-center gap-2"><span className="material-symbols-outlined">fact_check</span><strong>{en ? "QA workflow runner" : "QA 업무 실행"}</strong></div><button aria-label={en ? "Close" : "닫기"} onClick={() => { setQaOpen(false); localStorage.setItem("process-qa-card-open", "0"); }} type="button"><span className="material-symbols-outlined">close</span></button></header>
             <div className="max-h-[70vh] overflow-y-auto p-4">
-              <div className="grid gap-3 sm:grid-cols-2">
-                <label className="block text-xs font-black text-slate-600">{en ? "Account and actor" : "계정·담당자"}<select className="mt-1 h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm" value={qaAccountId} onChange={(event) => setQaAccountId(event.target.value)}>{QA_TEST_ACCOUNTS.map((account) => <option key={account.id} value={account.id}>{account.actor} · {account.id} · {account.steps}</option>)}</select></label>
+              <div className="grid gap-3 sm:grid-cols-3">
+                <label className="block text-xs font-black text-slate-600">{en ? "Company" : "테스트 회사"}<select className="mt-1 h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm" value={qaCompanyId} onChange={(event) => setQaCompanyId(event.target.value)}>{qaCompanies.map((company) => <option key={company.id} value={company.id}>{company.name}</option>)}</select></label>
+                <label className="block text-xs font-black text-slate-600">{en ? "Account and actor" : "계정·담당자"}<select className="mt-1 h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm" value={qaAccountId} onChange={(event) => setQaAccountId(event.target.value)}>{qaCompanyAccounts.map((account) => <option key={account.id} value={account.id}>{account.actor} · {account.id} · {account.steps}</option>)}</select></label>
                 <label className="block text-xs font-black text-slate-600">{en ? "Work type" : "업무 종류"}<select className="mt-1 h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm" value={selectedWorkType} onChange={(event) => selectWorkType(event.target.value)}><option value="ALL">{en ? "All work" : "전체 업무"}</option>{availableWorkTypes.map((work) => <option key={work.code} value={work.code}>{work.label}</option>)}</select></label>
               </div>
               <button className="mt-2 min-h-10 w-full rounded-lg bg-[#052b57] px-3 text-sm font-black text-white disabled:opacity-50" disabled={qaBusy} onClick={() => void switchQaLogin()} type="button">{en ? "Switch login" : "선택 계정으로 전환 로그인"}</button>
@@ -1825,12 +1879,12 @@ export function TaskQuestPanel() {
               <select className="mt-1 h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm" value={selectedCatalogStep} onChange={(event) => { const index=Number(event.target.value); setSelectedCatalogStep(index); localStorage.setItem("task-quest-catalog-step", String(index)); }}>{selectedCatalogSteps.map((step,index) => <option key={step.stepCode} value={index}>{index+1}. {step.stepName} · {step.actorCode}</option>)}</select>
               <label className="mt-3 block text-xs font-black text-slate-600">{en ? "Work instance and project" : "업무 인스턴스·프로젝트"}</label>
               <select className="mt-1 h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm" value={effectiveProjectId} onChange={(event) => { setSelectedOverviewProjectId(event.target.value); localStorage.setItem("task-quest-overview-project", event.target.value); }}><option value="">{en ? "Select project" : "프로젝트 선택"}</option>{overviewProjects.map((project) => <option key={project.id} value={project.id}>{project.name}</option>)}</select>
-              {selectedCatalogSteps[selectedCatalogStep] ? <dl className="mt-3 space-y-2 rounded-xl bg-slate-50 p-3 text-xs leading-5 text-slate-700"><div><dt className="font-black text-slate-500">{en ? "Purpose" : "업무 목적"}</dt><dd>{selectedCatalogSteps[selectedCatalogStep].workPurpose || "-"}</dd></div><div><dt className="font-black text-slate-500">{en ? "Done when" : "완료 조건"}</dt><dd>{selectedCatalogSteps[selectedCatalogStep].completionRule || "-"}</dd></div><div><dt className="font-black text-slate-500">{en ? "Screen" : "연결 화면"}</dt><dd>{selectedCatalogSteps[selectedCatalogStep].userPath || selectedCatalogSteps[selectedCatalogStep].adminPath || "-"}</dd></div></dl> : null}
+              {selectedCatalogSteps[selectedCatalogStep] ? <dl className="mt-3 space-y-2 rounded-xl bg-slate-50 p-3 text-xs leading-5 text-slate-700"><div><dt className="font-black text-slate-500">{en ? "Purpose" : "업무 목적"}</dt><dd>{selectedCatalogSteps[selectedCatalogStep].workPurpose || "-"}</dd></div><div><dt className="font-black text-slate-500">{en ? "Input guide" : "입력 범위·가이드"}</dt><dd className="whitespace-pre-wrap">{selectedCatalogSteps[selectedCatalogStep].inputContract || "저장값을 우선 불러오고, 필수값·최솟값·선택지·예시값 순서로 입력합니다."}</dd></div><div><dt className="font-black text-slate-500">{en ? "Done when" : "완료 조건"}</dt><dd>{selectedCatalogSteps[selectedCatalogStep].completionRule || "-"}</dd></div><div><dt className="font-black text-slate-500">{en ? "Screen" : "연결 화면"}</dt><dd>{selectedCatalogSteps[selectedCatalogStep].userPath || selectedCatalogSteps[selectedCatalogStep].adminPath || "-"}</dd></div></dl> : null}
               <div className="mt-3 rounded-xl border border-blue-100 bg-blue-50 p-3">
                 <div className="flex flex-wrap items-end gap-2"><label className="text-xs font-black text-slate-600">{en ? "Cycle" : "실행 주기"}<select className="ml-2 h-10 rounded-lg border border-slate-300 bg-white px-2" value={qaCycleType} onChange={(event) => setQaCycleType(event.target.value)}>{["ONCE","MONTHLY","QUARTERLY","HALF_YEARLY","ANNUAL","AD_HOC"].map((value) => <option key={value}>{value}</option>)}</select></label>{qaCycleType !== "ONCE" ? <><input aria-label="기간 시작" className="h-10 rounded-lg border border-slate-300 bg-white px-2 text-xs" type="date" value={qaPeriodStart} onChange={(event) => setQaPeriodStart(event.target.value)} /><input aria-label="기간 종료" className="h-10 rounded-lg border border-slate-300 bg-white px-2 text-xs" type="date" value={qaPeriodEnd} onChange={(event) => setQaPeriodEnd(event.target.value)} /></> : null}</div>
                 <div className="mt-2 grid grid-cols-4 gap-2">{(["CREATE","UPDATE","RESET","DELETE"] as const).map((action) => <button className={`rounded-lg border py-2 text-xs font-black ${action === "DELETE" ? "border-red-300 bg-white text-red-700" : "border-blue-300 bg-white text-blue-800"}`} disabled={qaBusy} key={action} onClick={() => void manageQaInstance(action)} type="button">{action === "CREATE" ? "추가" : action === "UPDATE" ? "수정" : action === "RESET" ? "초기화" : "삭제"}</button>)}</div>
               </div>
-              <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-5"><button className="rounded-lg border border-blue-300 py-2.5 text-xs font-black text-blue-800" onClick={openFullWorkflow} type="button">{en ? "Canvas/table" : "캔버스·표"}</button><button className="rounded-lg border border-[#246beb] py-2.5 text-xs font-black text-[#246beb]" disabled={!selectedCatalogSteps.length} onClick={fillCurrentScreen} type="button">{en ? "Fill" : "입력"}</button><button className="rounded-lg border border-[#052b57] py-2.5 text-xs font-black text-[#052b57]" disabled={!selectedCatalogSteps.length} onClick={openQaStep} type="button">{en ? "Open step" : "절차 실행"}</button><button className="col-span-2 rounded-lg bg-emerald-700 py-2.5 text-xs font-black text-white disabled:bg-slate-300" disabled={qaBusy || !selectedCatalogSteps.length} onClick={() => void runQaSequence()} type="button">{qaBusy ? (en ? "Running" : "실행 중") : (en ? "Run all" : "순차 실행·판정")}</button></div>
+              <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-6"><button className="rounded-lg border border-blue-300 py-2.5 text-xs font-black text-blue-800" onClick={openFullWorkflow} type="button">{en ? "Canvas/table" : "캔버스·표"}</button><button className="rounded-lg border border-slate-300 py-2.5 text-xs font-black text-slate-700" disabled={!selectedCatalogSteps.length} onClick={openQaShortcut} type="button">{en ? "Shortcut" : "바로가기"}</button><button className="rounded-lg border border-[#246beb] py-2.5 text-xs font-black text-[#246beb]" disabled={!selectedCatalogSteps.length} onClick={fillCurrentScreen} type="button">{en ? "Fill" : "입력"}</button><button className="rounded-lg border border-[#052b57] py-2.5 text-xs font-black text-[#052b57]" disabled={qaBusy || !selectedCatalogSteps.length} onClick={() => void openQaStep()} type="button">{en ? "Run step" : "절차 실행"}</button><button className="col-span-2 rounded-lg bg-emerald-700 py-2.5 text-xs font-black text-white disabled:bg-slate-300" disabled={qaBusy || !selectedCatalogSteps.length} onClick={() => void runQaSequence()} type="button">{qaBusy ? (en ? "Running" : "실행 중") : (en ? "Run all" : "순차 실행·판정")}</button></div>
               {qaMessage ? <p className={`mt-3 rounded-lg p-3 text-xs font-bold ${qaMessage.startsWith("실패") || qaMessage.startsWith("Failed") ? "bg-red-50 text-red-800" : "bg-emerald-50 text-emerald-900"}`}>{qaMessage}</p> : null}
               <div className="mt-4 border-t border-slate-200 pt-3"><div className="flex justify-between"><strong className="text-xs text-[#052b57]">{en ? "Recent verification" : "최근 검증 이력"}</strong><button className="text-xs font-bold text-[#246beb]" onClick={() => void loadQaResults()} type="button">{en ? "Refresh" : "새로고침"}</button></div><ul className="mt-2 space-y-2">{qaResults.slice(0,5).map((item) => <li className="rounded-lg border border-slate-200 px-3 py-2 text-xs" key={item.qaRunId}><div className="flex justify-between"><b className={item.result === "PASSED" ? "text-emerald-700" : "text-red-700"}>{item.result}</b><span className="text-slate-500">{item.executedAt ? new Date(item.executedAt).toLocaleString() : "-"}</span></div>{item.failureReason ? <p className="mt-1 text-red-700">{item.failureReason}</p> : null}</li>)}{!qaResults.length ? <li className="rounded-lg bg-slate-50 p-3 text-xs text-slate-500">{en ? "No verification history." : "저장된 검증 이력이 없습니다."}</li> : null}</ul></div>
             </div>
