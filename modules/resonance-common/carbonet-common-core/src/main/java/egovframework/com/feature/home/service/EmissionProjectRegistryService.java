@@ -1292,6 +1292,43 @@ public class EmissionProjectRegistryService {
         return create(tenant,body);
     }
 
+    public Map<String,Object> portfolioPreference(String tenantId,String accountId) {
+        String tenant=requiredValue(tenantId,"tenantId"),account=requiredValue(accountId,"accountId");
+        List<Map<String,Object>> rows=jdbc.queryForList("SELECT selected_project_id AS \"selectedProjectId\",keyword,status_filter AS status,site_filter AS site,sort_code AS \"sortCode\",next_task_code AS \"nextTaskCode\",preference_version AS version,updated_at AS \"updatedAt\" FROM emission_project_portfolio_preference WHERE tenant_id=? AND lower(account_id)=lower(?)",tenant,account);
+        if(!rows.isEmpty()) return rows.get(0);
+        Map<String,Object> empty=new LinkedHashMap<>();
+        empty.put("selectedProjectId",null);empty.put("keyword","");empty.put("status","");empty.put("site","");
+        empty.put("sortCode","UPDATED_DESC");empty.put("nextTaskCode",null);empty.put("version",0);empty.put("updatedAt",null);
+        return empty;
+    }
+
+    @Transactional
+    public Map<String,Object> savePortfolioPreference(String tenantId,String accountId,boolean override,Map<String,Object> body) {
+        String tenant=requiredValue(tenantId,"tenantId"),account=requiredValue(accountId,"accountId");
+        String project=text(body.get("selectedProjectId")).trim(),keyword=text(body.get("keyword")).trim(),status=text(body.get("status")).trim();
+        String site=text(body.get("site")).trim(),sort=text(body.get("sortCode")).trim(),nextTask=text(body.get("nextTaskCode")).trim();
+        if(sort.isBlank()) sort="UPDATED_DESC";
+        if(!Set.of("UPDATED_DESC","UPDATED_ASC","DUE_ASC","PROGRESS_DESC","NAME_ASC").contains(sort)) throw new IllegalArgumentException("PORTFOLIO_SORT_CODE_INVALID");
+        if(keyword.length()>200||status.length()>40||site.length()>200||nextTask.length()>120) throw new IllegalArgumentException("PORTFOLIO_PREFERENCE_VALUE_TOO_LONG");
+        if(!project.isBlank()) {
+            assertTenantAccess(project,tenant);
+            if(!override) detailForActor(project,tenant,account,false);
+        }
+        long expectedVersion;
+        try { expectedVersion=Long.parseLong(String.valueOf(body.getOrDefault("version",0))); }
+        catch(NumberFormatException e) { throw new IllegalArgumentException("PORTFOLIO_VERSION_INVALID"); }
+        jdbc.query("SELECT pg_advisory_xact_lock(hashtext(?))",rs->{},tenant+":"+account+":PORTFOLIO_PREFERENCE");
+        List<Long> versions=jdbc.queryForList("SELECT preference_version FROM emission_project_portfolio_preference WHERE tenant_id=? AND lower(account_id)=lower(?)",Long.class,tenant,account);
+        if(versions.isEmpty()) {
+            if(expectedVersion!=0) throw new IllegalStateException("PORTFOLIO_PREFERENCE_VERSION_CONFLICT");
+            jdbc.update("INSERT INTO emission_project_portfolio_preference(tenant_id,account_id,selected_project_id,keyword,status_filter,site_filter,sort_code,next_task_code) VALUES (?,?,?,?,?,?,?,?)",tenant,account,project.isBlank()?null:project,keyword,status,site,sort,nextTask.isBlank()?null:nextTask);
+        } else {
+            if(versions.get(0)!=expectedVersion) throw new IllegalStateException("PORTFOLIO_PREFERENCE_VERSION_CONFLICT");
+            jdbc.update("UPDATE emission_project_portfolio_preference SET selected_project_id=?,keyword=?,status_filter=?,site_filter=?,sort_code=?,next_task_code=?,preference_version=preference_version+1,updated_at=current_timestamp WHERE tenant_id=? AND lower(account_id)=lower(?)",project.isBlank()?null:project,keyword,status,site,sort,nextTask.isBlank()?null:nextTask,tenant,account);
+        }
+        return portfolioPreference(tenant,account);
+    }
+
     @Transactional
     public String create(String tenantId,Map<String, Object> body) {
         String tenant=requiredValue(tenantId,"tenantId");

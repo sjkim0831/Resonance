@@ -45,6 +45,23 @@ public class EmissionProjectRegistryController {
     @GetMapping({"/home/api/emission-projects/options", "/en/home/api/emission-projects/options"})
     public Map<String, Object> options(@RequestParam(defaultValue = "") String keyword,HttpServletRequest request) {var c=currentUserContextService.resolve(request);return service.options(tenant(c),c.getUserId(),keyword); }
 
+    @GetMapping({"/home/api/emission-project-portfolio/preference", "/en/home/api/emission-project-portfolio/preference"})
+    public ResponseEntity<?> portfolioPreference(HttpServletRequest request) {
+        var context=currentUserContextService.resolve(request);
+        if(!context.isAuthenticated()) return ResponseEntity.status(401).body(Map.of("message","로그인이 필요합니다."));
+        return ResponseEntity.ok(service.portfolioPreference(tenant(context),context.getUserId()));
+    }
+
+    @PutMapping({"/home/api/emission-project-portfolio/preference", "/en/home/api/emission-project-portfolio/preference"})
+    public ResponseEntity<?> savePortfolioPreference(@RequestBody Map<String,Object> body,HttpServletRequest request) {
+        var context=currentUserContextService.resolve(request);
+        if(!context.isAuthenticated()) return ResponseEntity.status(401).body(Map.of("message","로그인이 필요합니다."));
+        try { return ResponseEntity.ok(service.savePortfolioPreference(tenant(context),context.getUserId(),context.isWebmaster(),body)); }
+        catch(SecurityException e) { return ResponseEntity.status(403).body(Map.of("message",e.getMessage())); }
+        catch(IllegalStateException e) { return ResponseEntity.status(409).body(Map.of("message",e.getMessage())); }
+        catch(IllegalArgumentException e) { return ResponseEntity.badRequest().body(Map.of("message",e.getMessage())); }
+    }
+
     @GetMapping({"/home/api/emission-projects/name-availability", "/en/home/api/emission-projects/name-availability"})
     public Map<String, Object> nameAvailability(@RequestParam String name,HttpServletRequest request) { return Map.of("available",service.nameAvailable(tenant(currentUserContextService.resolve(request)),name)); }
 

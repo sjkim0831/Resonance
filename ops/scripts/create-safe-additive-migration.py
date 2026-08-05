@@ -32,8 +32,9 @@ def repository_root() -> Path:
 
 def next_version(target_dir: Path) -> str:
     base = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
-    value = int(base)
     existing = {path.name.split("__", 1)[0][1:] for path in target_dir.glob("V*__*.sql")}
+    numeric_existing = [int(item) for item in existing if item.isdigit()]
+    value = max(int(base), (max(numeric_existing) + 1) if numeric_existing else int(base))
     while str(value) in existing:
         value += 1
     return str(value)

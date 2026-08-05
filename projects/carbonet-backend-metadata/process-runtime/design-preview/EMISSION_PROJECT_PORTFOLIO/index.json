@@ -1,0 +1,15 @@
+{
+  "schemaVersion": "2.0.0",
+  "packageCount": 1,
+  "skippedReviewRequired": 0,
+  "packages": [
+    {
+      "processCode": "EMISSION_PROJECT_PORTFOLIO",
+      "stepCode": "EMISSION_PROJECT_PORTFOLIO_LIST",
+      "package": "EMISSION_PROJECT_PORTFOLIO__EMISSION_PROJECT_PORTFOLIO_LIST.json",
+      "packageHash": "e5692d7aa1c5e5e8823f47a5e30ef86ff50c48b62cca2ab4023591c9d9ea1bd4",
+      "pages": 2
+    }
+  ],
+  "manifestHash": "265b9b0857f08898f9c2a51e7d70e6dd4c5850f183b3f40a534955cddb7adda3"
+}

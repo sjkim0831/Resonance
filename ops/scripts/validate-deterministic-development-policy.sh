@@ -20,6 +20,7 @@ bash -n "$ROOT/ops/scripts/generate-full-stack-design-packages.sh"
 bash -n "$ROOT/ops/scripts/validate-full-stack-design-generation.sh"
 python3 -m py_compile "$ROOT/ops/scripts/generate-full-stack-design-packages.py"
 python3 -m py_compile "$ROOT/ops/scripts/generate-safe-migrations-from-design.py"
+python3 -m unittest "$ROOT/ops/scripts/test-create-safe-additive-migration.py"
 python3 -m unittest "$ROOT/ops/scripts/test-generate-safe-migrations-from-design.py"
 bash "$ROOT/ops/tests/test-design-migration-pipeline.sh"
 bash "$ROOT/ops/scripts/validate-incremental-screen-generation.sh" "$ROOT" >/dev/null
