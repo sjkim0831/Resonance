@@ -1462,7 +1462,8 @@ public class ActorProcessGovernanceService {
         List<Map<String,Object>> firstSteps=jdbc.queryForList("select step_code,actor_code,from_state,user_path,admin_path from framework_process_step where process_code=? order by step_order limit 1",nextProcess);
         if(firstSteps.isEmpty())throw new IllegalStateException("다음 프로세스 단계가 없습니다: "+nextProcess);
         Map<String,Object> first=firstSteps.get(0);
-        List<Map<String,Object>> active=jdbc.queryForList("select execution_id from framework_process_execution where tenant_id=? and project_id=? and process_code=? and execution_status='RUNNING' order by started_at desc limit 1",tenant,project,nextProcess);
+        int relayExecutionVersion=((Number)completedExecution.getOrDefault("execution_version",1)).intValue();
+        List<Map<String,Object>> active=jdbc.queryForList("select execution_id from framework_process_execution where tenant_id=? and project_id=? and process_code=? and execution_version=? and execution_status='RUNNING' order by started_at desc limit 1",tenant,project,nextProcess,relayExecutionVersion);
         UUID nextExecutionId;
         if(active.isEmpty()){
             nextExecutionId=UUID.randomUUID();
@@ -1470,7 +1471,7 @@ public class ActorProcessGovernanceService {
                 nextExecutionId,tenant,project,nextProcess,String.valueOf(first.get("step_code")),String.valueOf(first.get("from_state")),String.valueOf(first.get("actor_code")),user,
                 valueOr(completedExecution,"cycle_type","ONCE"),valueOr(completedExecution,"period_start",""),valueOr(completedExecution,"period_end",""),valueOr(completedExecution,"site_scope","[]"),
                 valueOr(completedExecution,"boundary_version","CURRENT"),valueOr(completedExecution,"methodology_version","CURRENT"),
-                ((Number)completedExecution.getOrDefault("execution_version",1)).intValue(),"READY");
+                relayExecutionVersion,"READY");
         }else nextExecutionId=(UUID)active.get(0).get("execution_id");
         return Map.of(
             "nextProcessCode",nextProcess,

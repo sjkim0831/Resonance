@@ -86,7 +86,7 @@ try {
     siteScopeJson: JSON.stringify([String(options.sites[0])]),
     methodologyVersion: "ISO_14064_1_2018",
     boundaryVersion: "OPERATIONAL_CONTROL_V1",
-    executionVersion: 1,
+    executionVersion: 2,
   });
   const execution = started.execution || started;
   const executionId = String(started.executionId || execution.executionId || "");
