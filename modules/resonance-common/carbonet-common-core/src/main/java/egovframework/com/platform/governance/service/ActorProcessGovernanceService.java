@@ -1397,11 +1397,11 @@ public class ActorProcessGovernanceService {
         List<Map<String,Object>> executions=jdbc.queryForList("select * from framework_process_execution where execution_id=? for update",executionId);
         if(executions.isEmpty())throw new IllegalArgumentException("프로세스 실행 건이 없습니다.");
         Map<String,Object> execution=executions.get(0);
-        if(!"RUNNING".equals(String.valueOf(execution.get("execution_status"))))throw new IllegalStateException("실행 중인 프로세스가 아닙니다.");
         if(!tenant.equals(String.valueOf(execution.get("tenant_id")))||!project.equals(String.valueOf(execution.get("project_id")))||!process.equals(String.valueOf(execution.get("process_code"))))throw new SecurityException("테넌트·프로젝트·프로세스 실행 문맥이 일치하지 않습니다.");
-        requireActorAssignment(tenant,project,actor,user);
         List<Map<String,Object>> existing=jdbc.queryForList("select event_id as \"eventId\",to_state as \"toState\" from framework_process_execution_event where execution_id=? and idempotency_key=?",executionId,key);
         if(!existing.isEmpty())return Map.of("success",true,"idempotent",true,"event",existing.get(0));
+        if(!"RUNNING".equals(String.valueOf(execution.get("execution_status"))))throw new IllegalStateException("실행 중인 프로세스가 아닙니다.");
+        requireActorAssignment(tenant,project,actor,user);
         if(!step.equals(String.valueOf(execution.get("current_step_code"))))throw new IllegalStateException("현재 실행 단계는 "+execution.get("current_step_code")+"입니다.");
         List<Map<String,Object>> contracts=jdbc.queryForList("select step_order,actor_code,command_code,from_state,to_state from framework_process_step where process_code=? and step_code=?",process,step);
         if(contracts.isEmpty())throw new IllegalArgumentException("단계 계약이 없습니다.");
