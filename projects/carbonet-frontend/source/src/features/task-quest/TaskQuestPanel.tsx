@@ -327,6 +327,23 @@ function parseQaFields(raw: unknown): ContractField[] {
   }).filter((field) => field.code && field.editable !== false);
 }
 
+function QaMirrorControl({ field, value, onChange }: { field: ContractField; value: string; onChange: (value: string) => void }) {
+  const kind = String(field.control || field.dataType || "TEXT").toUpperCase();
+  const choices = Array.isArray(field.options) ? field.options.map((option, index) => {
+    if (typeof option === "string") return { value: option, label: option };
+    const row = option as Record<string, unknown>;
+    return { value: String(row.value ?? row.code ?? index), label: String(row.label ?? row.name ?? row.value ?? row.code ?? index) };
+  }) : [];
+  const className = "mt-2 min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 focus:border-[#246beb] focus:outline-none focus:ring-2 focus:ring-blue-100";
+  const id = `qa-mirror-${field.code.replace(/[^a-zA-Z0-9_-]/g, "-")}`;
+  let control;
+  if (kind.includes("SELECT") && choices.length) control = <select className={className} defaultValue={value} id={id} onChange={(event) => onChange(event.target.value)}>{choices.map((choice) => <option key={choice.value} value={choice.value}>{choice.label}</option>)}</select>;
+  else if (kind.includes("CHECKBOX")) control = <input className="mt-2 size-5 accent-[#246beb]" defaultChecked={value === "true"} id={id} type="checkbox" onChange={(event) => onChange(String(event.target.checked))} />;
+  else if (kind.includes("TEXTAREA")) control = <textarea className={`${className} min-h-24 py-3`} defaultValue={value} id={id} onChange={(event) => onChange(event.target.value)} />;
+  else control = <input className={className} defaultValue={value} id={id} min={field.min as string | number | undefined} max={field.max as string | number | undefined} placeholder={String(field.placeholder || "")} type={kind.includes("NUMBER") ? "number" : kind.includes("DATE") ? "date" : "text"} onChange={(event) => onChange(event.target.value)} />;
+  return <label className="text-xs font-bold text-slate-700" htmlFor={id}>{field.label}{field.required === true ? <span className="ml-1 text-red-600">*</span> : null}{control}</label>;
+}
+
 function dueLabel(value: string, en: boolean) {
   if (!value) return en ? "No deadline" : "기한 미설정";
   const due = new Date(`${value}T23:59:59`);
@@ -2169,7 +2186,7 @@ export function TaskQuestPanel() {
               </section>
               <section className="mt-3 rounded-xl border border-violet-200 bg-violet-50/40 p-3" data-qa-screen-inputs="">
                 <div className="flex items-center justify-between gap-3"><div><h4 className="text-sm font-black text-[#052b57]">{en ? "Current screen inputs" : "현재 화면 입력 요소"}</h4><p className="mt-1 text-xs text-slate-600">{en ? "Edits are reflected immediately on the open screen." : "QA 카드에서 수정하면 현재 화면 입력 요소에 즉시 반영됩니다."}</p></div><span className="shrink-0 rounded-full bg-white px-2.5 py-1 text-xs font-black text-violet-800">{qaScreenFields.length}{en ? " controls" : "개 요소"}</span></div>
-                {qaScreenFields.length ? <><div className="mt-3 grid gap-3 sm:grid-cols-2">{qaScreenFields.map((field) => <ContractFieldControl field={field} key={field.code} value={qaScreenValues[field.code] || ""} onChange={(value) => updateCurrentScreenInput(field.code, value)} />)}</div><div className="mt-3 flex justify-end"><button className="min-h-10 rounded-lg bg-violet-700 px-4 text-xs font-black text-white" onClick={applyQaScreenInputs} type="button">{en ? "Apply to current screen" : "현재 화면에 적용"}</button></div></> : <p className="mt-3 rounded-lg bg-white p-3 text-xs text-slate-600">{en ? "No editable inputs were detected on the current screen." : "현재 화면에서 수정 가능한 입력 요소가 감지되지 않았습니다."}</p>}
+                {qaScreenFields.length ? <><div className="mt-3 grid gap-3 sm:grid-cols-2">{qaScreenFields.map((field) => <QaMirrorControl field={field} key={field.code} value={qaScreenValues[field.code] || ""} onChange={(value) => updateCurrentScreenInput(field.code, value)} />)}</div><div className="mt-3 flex justify-end"><button className="min-h-10 rounded-lg bg-violet-700 px-4 text-xs font-black text-white" onClick={applyQaScreenInputs} type="button">{en ? "Apply to current screen" : "현재 화면에 적용"}</button></div></> : <p className="mt-3 rounded-lg bg-white p-3 text-xs text-slate-600">{en ? "No editable inputs were detected on the current screen." : "현재 화면에서 수정 가능한 입력 요소가 감지되지 않았습니다."}</p>}
               </section>
               <section className="mt-3 rounded-xl border border-slate-200 bg-white p-3" data-qa-progress="">
                 <div className="flex items-center justify-between text-xs"><strong className="text-[#052b57]">{en ? "Procedure progress" : "절차 진행상황"}</strong><span className="font-black text-blue-700">{qaCompletedSteps}/{selectedCatalogSteps.length} · {qaProgress}%</span></div>
