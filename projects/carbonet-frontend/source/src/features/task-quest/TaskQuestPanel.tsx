@@ -1629,6 +1629,9 @@ export function TaskQuestPanel() {
 
   function updateCurrentScreenInput(fieldCode: string, value: string) {
     setQaScreenValues((current) => ({ ...current, [fieldCode]: value }));
+  }
+
+  function applyCurrentScreenInput(fieldCode: string, value: string) {
     const baseCode = fieldCode.replace(/__\d+$/, "");
     const duplicateIndex = Number(fieldCode.match(/__(\d+)$/)?.[1] || 1) - 1;
     const candidates = Array.from(document.querySelectorAll<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>("main input, main select, main textarea"))
@@ -1647,7 +1650,13 @@ export function TaskQuestPanel() {
     control.dispatchEvent(new Event("change", { bubbles: true }));
     const storageKey = `qa-form:${window.location.pathname}:${baseCode}`;
     localStorage.setItem(storageKey, value);
-    appendQaActivity("SAVE", `현재 화면 입력 수정: ${qaScreenFields.find((field) => field.code === fieldCode)?.label || baseCode}`);
+  }
+
+  function applyQaScreenInputs() {
+    qaScreenFields.forEach((field) => applyCurrentScreenInput(field.code, qaScreenValues[field.code] || ""));
+    appendQaActivity("SAVE", `현재 화면 입력 ${qaScreenFields.length}개를 일괄 반영했습니다.`);
+    setQaMessage(`현재 화면 입력 요소 ${qaScreenFields.length}개를 반영했습니다.`);
+    window.setTimeout(detectCurrentScreenInputs, 100);
   }
 
   function qaStorageKey(stepCode: string) {
@@ -2155,7 +2164,7 @@ export function TaskQuestPanel() {
               </section>
               <section className="mt-3 rounded-xl border border-violet-200 bg-violet-50/40 p-3" data-qa-screen-inputs="">
                 <div className="flex items-center justify-between gap-3"><div><h4 className="text-sm font-black text-[#052b57]">{en ? "Current screen inputs" : "현재 화면 입력 요소"}</h4><p className="mt-1 text-xs text-slate-600">{en ? "Edits are reflected immediately on the open screen." : "QA 카드에서 수정하면 현재 화면 입력 요소에 즉시 반영됩니다."}</p></div><span className="shrink-0 rounded-full bg-white px-2.5 py-1 text-xs font-black text-violet-800">{qaScreenFields.length}{en ? " controls" : "개 요소"}</span></div>
-                {qaScreenFields.length ? <div className="mt-3 grid gap-3 sm:grid-cols-2">{qaScreenFields.map((field) => <ContractFieldControl field={field} key={field.code} value={qaScreenValues[field.code] || ""} onChange={(value) => updateCurrentScreenInput(field.code, value)} />)}</div> : <p className="mt-3 rounded-lg bg-white p-3 text-xs text-slate-600">{en ? "No editable inputs were detected on the current screen." : "현재 화면에서 수정 가능한 입력 요소가 감지되지 않았습니다."}</p>}
+                {qaScreenFields.length ? <><div className="mt-3 grid gap-3 sm:grid-cols-2">{qaScreenFields.map((field) => <ContractFieldControl field={field} key={field.code} value={qaScreenValues[field.code] || ""} onChange={(value) => updateCurrentScreenInput(field.code, value)} />)}</div><div className="mt-3 flex justify-end"><button className="min-h-10 rounded-lg bg-violet-700 px-4 text-xs font-black text-white" onClick={applyQaScreenInputs} type="button">{en ? "Apply to current screen" : "현재 화면에 적용"}</button></div></> : <p className="mt-3 rounded-lg bg-white p-3 text-xs text-slate-600">{en ? "No editable inputs were detected on the current screen." : "현재 화면에서 수정 가능한 입력 요소가 감지되지 않았습니다."}</p>}
               </section>
               <section className="mt-3 rounded-xl border border-slate-200 bg-white p-3" data-qa-progress="">
                 <div className="flex items-center justify-between text-xs"><strong className="text-[#052b57]">{en ? "Procedure progress" : "절차 진행상황"}</strong><span className="font-black text-blue-700">{qaCompletedSteps}/{selectedCatalogSteps.length} · {qaProgress}%</span></div>
