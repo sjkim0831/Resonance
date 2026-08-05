@@ -1140,6 +1140,28 @@ export function TaskQuestPanel() {
         .sort((a, b) => Number(a.stepOrder) - Number(b.stepOrder)),
     [data?.processCatalogSteps, selectedCatalogProcessCode],
   );
+  useEffect(() => {
+    const query = new URLSearchParams(window.location.search);
+    const routeProcessCode = query.get("processCode") || query.get("process") || "";
+    if (!routeProcessCode || !(data?.processCatalog || []).some((process) => process.processCode === routeProcessCode)) return;
+    const routeProcess = (data?.processCatalog || []).find((process) => process.processCode === routeProcessCode);
+    if (routeProcess?.domainCode && routeProcess.domainCode !== selectedWorkType) {
+      setSelectedWorkType(routeProcess.domainCode);
+      localStorage.setItem("task-quest-work-type", routeProcess.domainCode);
+    }
+    if (routeProcessCode !== selectedCatalogProcessCode) {
+      setSelectedCatalogProcessCode(routeProcessCode);
+      localStorage.setItem("task-quest-catalog-process", routeProcessCode);
+    }
+  }, [data?.processCatalog, selectedCatalogProcessCode, selectedWorkType]);
+  useEffect(() => {
+    const query = new URLSearchParams(window.location.search);
+    const routeStepCode = query.get("stepCode") || query.get("step") || "";
+    const routeStepIndex = selectedCatalogSteps.findIndex((step) => step.stepCode === routeStepCode);
+    if (routeStepIndex < 0 || routeStepIndex === selectedCatalogStep) return;
+    setSelectedCatalogStep(routeStepIndex);
+    localStorage.setItem("task-quest-catalog-step", String(routeStepIndex));
+  }, [selectedCatalogStep, selectedCatalogSteps]);
   const selectedQaStep = selectedCatalogSteps[selectedCatalogStep];
   const qaCompletedSteps = selectedCatalogSteps.filter((step) => {
     const runtime = (data?.items || []).find((item) => item.processCode === step.processCode && item.processStepCode === step.stepCode && (!effectiveProjectId || item.projectId === effectiveProjectId));
