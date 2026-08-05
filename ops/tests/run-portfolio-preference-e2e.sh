@@ -12,6 +12,6 @@ EVIDENCE="$(jq -c \
   --arg sourceCommit "$(git -C "$ROOT" rev-parse HEAD)" \
   '. + {executedAt:$executedAt,sourceCommit:$sourceCommit}' <<<"$RAW_EVIDENCE")"
 printf '%s\n' "$EVIDENCE"
-printf '%s' "$EVIDENCE" | "$ROOT/ops/scripts/promote-screen-contract-after-e2e.sh" \
+printf '%s' "$EVIDENCE" | bash "$ROOT/ops/scripts/promote-screen-contract-after-e2e.sh" \
   EMISSION_PROJECT_PORTFOLIO EMISSION_PROJECT_PORTFOLIO_LIST \
   read,write,reread,staleConflict,restore
