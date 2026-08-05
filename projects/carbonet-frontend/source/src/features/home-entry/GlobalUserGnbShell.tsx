@@ -47,7 +47,7 @@ export function GlobalUserGnbShell({ children }: { children: ReactNode }) {
         [data-global-user-page] > div > header,
         [data-global-user-page] > div > div > header:first-child { display: none !important; }
       `}</style>
-      <header className="sticky top-0 z-[1000] border-b-2 border-[#001e40] bg-white" data-common-component="COMMON_USER_GNB" data-global-user-gnb="">
+      <header className="fixed inset-x-0 top-0 z-[1000] block border-b-2 border-[#001e40] bg-white" data-common-component="COMMON_USER_GNB" data-global-user-gnb="">
         <div className="mx-auto max-w-7xl px-4 lg:px-8">
           <div className="gov-home-header relative flex items-center">
             <div aria-hidden="true" className="h-11 w-11 shrink-0 xl:hidden" />
@@ -71,6 +71,7 @@ export function GlobalUserGnbShell({ children }: { children: ReactNode }) {
           </div>
         </div>
       </header>
+      <div aria-hidden="true" className="h-24 shrink-0" data-global-user-gnb-spacer="" />
       <div aria-hidden={!mobileMenuOpen} className={`${mobileMenuOpen ? "" : "hidden"} fixed inset-0 z-[1100] xl:hidden`} id="global-mobile-menu">
         <button aria-label={content.closeAllMenu} className="absolute inset-0 bg-black/50" onClick={() => setMobileMenuOpen(false)} type="button" />
         <HeaderMobileMenu content={content} en={en} homeMenu={payload.homeMenu || []} isLoggedIn={Boolean(payload.isLoggedIn)} onClose={() => setMobileMenuOpen(false)} onLogout={session.logout} />
