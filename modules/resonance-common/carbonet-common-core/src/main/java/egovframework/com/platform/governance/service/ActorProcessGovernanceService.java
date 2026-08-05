@@ -1852,7 +1852,10 @@ public class ActorProcessGovernanceService {
         result.put("workflowDraftFieldCount",workflowDraftFieldCount);
         result.put("stepCount",transitions.size());result.put("transitions",transitions);result.put("nextStepCode",first.getOrDefault("nextStepCode",""));
         result.put("nextUserPath",first.getOrDefault("nextUserPath",""));result.put("nextAdminPath",first.getOrDefault("nextAdminPath",""));
-        if(!passed)throw new IllegalStateException("Process runtime smoke assertions failed; transaction was rolled back.");
+        if(!passed)throw new IllegalStateException("Process runtime smoke assertions failed; transaction was rolled back. "
+                +"idempotency="+recoveryVerified+", isolation="+isolationRejected+", authority="+authorityRejected
+                +", exception="+exceptionRejected+", workflow="+workflowCompleted+", status="+executionStatus
+                +", events="+(eventCount==null?-1:eventCount)+", steps="+transitions.size());
         return result;
     }
 
