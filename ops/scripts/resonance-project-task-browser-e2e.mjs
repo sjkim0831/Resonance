@@ -20,6 +20,7 @@ const executablePath = configuredExecutable || [
   "/usr/bin/google-chrome",
 ].find((candidate) => existsSync(candidate)) || "";
 const accounts = ["qaowner26", "qadata26", "qacalc26", "qaverify26", "qaapprove26"];
+const coreTaskCodes = new Set(["BASIC_INFO", "ACTIVITY_DATA", "CALCULATION", "VERIFICATION", "APPROVAL", "REPORT", "REGULATORY_SUBMISSION"]);
 const fatalText = /React app did not mount|Bootstrap loaded\. Waiting for React app mount|페이지 처리 중 오류가 발생했습니다|An unexpected error occurred/;
 const loginPath = /\/signin\/loginView\/?$/;
 
@@ -63,11 +64,13 @@ try {
         .sort((left, right) => Number(left.stepOrder || 0) - Number(right.stepOrder || 0));
       if (!tasks.length) throw new Error(`assigned task route missing account=${account} project=${projectId}`);
       taskCount += tasks.length;
-      const workflow = (tasksPayload.workflows || [])
-        .filter((task) => String(task.projectId) === projectId)
+      const projectWorkflow = (tasksPayload.workflows || [])
+        .filter((task) => String(task.projectId) === projectId);
+      const workflow = projectWorkflow
+        .filter((task) => coreTaskCodes.has(String(task.taskCode)))
         .sort((left, right) => Number(left.stepOrder || 0) - Number(right.stepOrder || 0));
       if (workflow.length !== 7) throw new Error(`workflow length account=${account} expected=7 actual=${workflow.length}`);
-      workflowResults.push({ account, workflow });
+      workflowResults.push({ account, workflow, extensionCount: projectWorkflow.length - workflow.length });
 
       const context = await browser.newContext({
         storageState: await api.storageState(),
