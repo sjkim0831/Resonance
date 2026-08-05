@@ -488,6 +488,7 @@ export function TaskQuestPanel() {
   const [qaPreValues, setQaPreValues] = useState<Record<string, string>>({});
   const [qaScreenFields, setQaScreenFields] = useState<ContractField[]>([]);
   const [qaScreenValues, setQaScreenValues] = useState<Record<string, string>>({});
+  const qaScreenDirtyRef = useRef(false);
   const [qaDraftVersion, setQaDraftVersion] = useState(0);
   const [qaActivity, setQaActivity] = useState<QaActivity[]>([]);
   const [qaInputLoading, setQaInputLoading] = useState(false);
@@ -1624,10 +1625,11 @@ export function TaskQuestPanel() {
       values[code] = control instanceof HTMLInputElement && control.type === "checkbox" ? String(control.checked) : control.value;
     });
     setQaScreenFields((current) => JSON.stringify(current) === JSON.stringify(fields) ? current : fields);
-    setQaScreenValues((current) => JSON.stringify(current) === JSON.stringify(values) ? current : values);
+    if (!qaScreenDirtyRef.current) setQaScreenValues((current) => JSON.stringify(current) === JSON.stringify(values) ? current : values);
   }
 
   function updateCurrentScreenInput(fieldCode: string, value: string) {
+    qaScreenDirtyRef.current = true;
     setQaScreenValues((current) => ({ ...current, [fieldCode]: value }));
   }
 
@@ -1654,6 +1656,7 @@ export function TaskQuestPanel() {
 
   function applyQaScreenInputs() {
     qaScreenFields.forEach((field) => applyCurrentScreenInput(field.code, qaScreenValues[field.code] || ""));
+    qaScreenDirtyRef.current = false;
     appendQaActivity("SAVE", `현재 화면 입력 ${qaScreenFields.length}개를 일괄 반영했습니다.`);
     setQaMessage(`현재 화면 입력 요소 ${qaScreenFields.length}개를 반영했습니다.`);
     window.setTimeout(detectCurrentScreenInputs, 100);
