@@ -1447,12 +1447,43 @@ public class ActorProcessGovernanceService {
         if(next.isEmpty())jdbc.update("update framework_process_execution set current_state=?,execution_status='COMPLETED',handoff_status='HANDED_OFF',snapshot_ref=nullif(?,''),completed_at=current_timestamp,updated_at=current_timestamp where execution_id=?",to,snapshotRef,executionId);
         else jdbc.update("update framework_process_execution set current_step_code=?,current_state=?,handoff_status='HANDED_OFF',snapshot_ref=nullif(?,''),updated_at=current_timestamp where execution_id=?",String.valueOf(next.get(0).get("step_code")),to,snapshotRef,executionId);
         jdbc.update("update framework_process_work_draft set draft_status='SUBMITTED',submitted_at=current_timestamp,updated_at=current_timestamp where tenant_id=? and project_id=? and process_code=? and step_code=? and lower(account_id)=lower(?) and draft_status='DRAFT'",tenant,project,process,step,user);
+        Map<String,Object> nextProcess=next.isEmpty()?startChainedProcess(tenant,project,process,execution,user):Map.of();
         Map<String,Object> result=new LinkedHashMap<>();
         result.put("success",true);result.put("idempotent",false);result.put("eventId",eventId);result.put("fromState",from);result.put("toState",to);
         result.put("executionStatus",next.isEmpty()?"COMPLETED":"RUNNING");result.put("nextStepCode",next.isEmpty()?"":String.valueOf(next.get(0).get("step_code")));
         result.put("nextActorCode",next.isEmpty()?"":String.valueOf(next.get(0).get("actor_code")));result.put("nextUserPath",next.isEmpty()?"":String.valueOf(next.get(0).get("user_path")));
-        result.put("nextAdminPath",next.isEmpty()?"":String.valueOf(next.get(0).get("admin_path")));result.put("handoffStatus","HANDED_OFF");result.put("snapshotRef",snapshotRef);return result;
+        result.put("nextAdminPath",next.isEmpty()?"":String.valueOf(next.get(0).get("admin_path")));result.put("handoffStatus","HANDED_OFF");result.put("snapshotRef",snapshotRef);
+        result.putAll(nextProcess);return result;
     }
+    private Map<String,Object> startChainedProcess(String tenant,String project,String completedProcess,Map<String,Object> completedExecution,String user){
+        List<Map<String,Object>> chain=jdbc.queryForList("select next_process_code from framework_process_chain where process_code=? and use_at='Y' and auto_start_yn='Y' and nullif(next_process_code,'') is not null order by process_order limit 1",completedProcess);
+        if(chain.isEmpty())return Map.of("relayCompleted",true);
+        String nextProcess=String.valueOf(chain.get(0).get("next_process_code"));
+        List<Map<String,Object>> firstSteps=jdbc.queryForList("select step_code,actor_code,from_state,user_path,admin_path from framework_process_step where process_code=? order by step_order limit 1",nextProcess);
+        if(firstSteps.isEmpty())throw new IllegalStateException("다음 프로세스 단계가 없습니다: "+nextProcess);
+        Map<String,Object> first=firstSteps.get(0);
+        List<Map<String,Object>> active=jdbc.queryForList("select execution_id from framework_process_execution where tenant_id=? and project_id=? and process_code=? and execution_status='RUNNING' order by started_at desc limit 1",tenant,project,nextProcess);
+        UUID nextExecutionId;
+        if(active.isEmpty()){
+            nextExecutionId=UUID.randomUUID();
+            jdbc.update("insert into framework_process_execution(execution_id,tenant_id,project_id,process_code,current_step_code,current_state,initiated_by_actor,initiated_by,cycle_type,site_scope,boundary_version,methodology_version,execution_version,handoff_status) values(?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                nextExecutionId,tenant,project,nextProcess,String.valueOf(first.get("step_code")),String.valueOf(first.get("from_state")),String.valueOf(first.get("actor_code")),user,
+                String.valueOf(completedExecution.getOrDefault("cycle_type","ONCE")),String.valueOf(completedExecution.getOrDefault("site_scope","[]")),
+                String.valueOf(completedExecution.getOrDefault("boundary_version","CURRENT")),String.valueOf(completedExecution.getOrDefault("methodology_version","CURRENT")),
+                ((Number)completedExecution.getOrDefault("execution_version",1)).intValue(),"READY");
+        }else nextExecutionId=(UUID)active.get(0).get("execution_id");
+        return Map.of(
+            "nextProcessCode",nextProcess,
+            "nextProcessExecutionId",nextExecutionId,
+            "nextProcessStepCode",String.valueOf(first.get("step_code")),
+            "nextProcessActorCode",String.valueOf(first.get("actor_code")),
+            "nextProcessUserPath",String.valueOf(first.get("user_path")),
+            "nextProcessAdminPath",String.valueOf(first.get("admin_path")),
+            "relayCompleted",false
+        );
+    }
+
+
 
     /**
      * Runs the same command path used by customer screens, but resolves the account
