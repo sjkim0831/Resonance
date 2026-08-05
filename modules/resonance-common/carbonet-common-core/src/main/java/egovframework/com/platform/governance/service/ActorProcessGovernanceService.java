@@ -1466,9 +1466,9 @@ public class ActorProcessGovernanceService {
         UUID nextExecutionId;
         if(active.isEmpty()){
             nextExecutionId=UUID.randomUUID();
-            jdbc.update("insert into framework_process_execution(execution_id,tenant_id,project_id,process_code,current_step_code,current_state,initiated_by_actor,initiated_by,cycle_type,site_scope,boundary_version,methodology_version,execution_version,handoff_status) values(?,?,?,?,?,?,?,?,?,cast(? as jsonb),?,?,?,?)",
+            jdbc.update("insert into framework_process_execution(execution_id,tenant_id,project_id,process_code,current_step_code,current_state,initiated_by_actor,initiated_by,cycle_type,period_start,period_end,site_scope,boundary_version,methodology_version,execution_version,handoff_status) values(?,?,?,?,?,?,?,?,?,nullif(?,'')::date,nullif(?,'')::date,cast(? as jsonb),?,?,?,?)",
                 nextExecutionId,tenant,project,nextProcess,String.valueOf(first.get("step_code")),String.valueOf(first.get("from_state")),String.valueOf(first.get("actor_code")),user,
-                String.valueOf(completedExecution.getOrDefault("cycle_type","ONCE")),String.valueOf(completedExecution.getOrDefault("site_scope","[]")),
+                String.valueOf(completedExecution.getOrDefault("cycle_type","ONCE")),String.valueOf(completedExecution.getOrDefault("period_start","")),String.valueOf(completedExecution.getOrDefault("period_end","")),String.valueOf(completedExecution.getOrDefault("site_scope","[]")),
                 String.valueOf(completedExecution.getOrDefault("boundary_version","CURRENT")),String.valueOf(completedExecution.getOrDefault("methodology_version","CURRENT")),
                 ((Number)completedExecution.getOrDefault("execution_version",1)).intValue(),"READY");
         }else nextExecutionId=(UUID)active.get(0).get("execution_id");
