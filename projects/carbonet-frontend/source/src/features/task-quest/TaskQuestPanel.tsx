@@ -1331,7 +1331,7 @@ export function TaskQuestPanel() {
     const available=(step:NonNullable<QuestResponse["processCatalogSteps"]>[number]) => {
       const runtime=guideRuntimeStep(step),route=guideRoute(step,runtime);
       if(!route||!guideActorAllowed(step,runtime)||runtime?.pendingPredecessors) return false;
-      return !runtime||runtime.actionable!==false;
+      return !runtime || runtime.status === "DONE" || runtime.actionable !== false;
     };
     const index = Math.min(
       Math.max(0, selectedCatalogStep),
@@ -2114,7 +2114,8 @@ export function TaskQuestPanel() {
                                   return !guideRoute(step, runtimeStep) ||
                                     !guideActorAllowed(step, runtimeStep) ||
                                     Boolean(runtimeStep?.pendingPredecessors) ||
-                                    runtimeStep?.actionable === false;
+                                    (runtimeStep?.status !== "DONE" &&
+                                      runtimeStep?.actionable === false);
                                 })()}
                                 onClick={startSelectedProcessGuide}
                                 type="button"
