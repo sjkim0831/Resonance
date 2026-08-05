@@ -510,7 +510,7 @@ export default function App() {
         </div>
       ) : null}
 
-      <TestAccountSwitcher />
+      {!useGlobalUserGnb ? <TestAccountSwitcher /> : null}
 
       <ErrorBoundary resetKey={boundaryResetKey}>
         <Suspense fallback={<PageLoadingFallback />}>
