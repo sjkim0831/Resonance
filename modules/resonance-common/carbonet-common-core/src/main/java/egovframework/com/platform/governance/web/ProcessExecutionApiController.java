@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.*;
 import java.security.Principal;
 import java.util.Map;
 import java.util.UUID;
+import java.util.List;
 
 @RestController
 @RequiredArgsConstructor
@@ -58,6 +59,31 @@ public class ProcessExecutionApiController {
         if(principal==null)return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("success",false,"message","Authentication is required."));
         try{return ResponseEntity.ok(service.saveWorkDraft(body,principal.getName()));}
         catch(SecurityException e){return forbidden(e);}catch(IllegalStateException e){return conflict(e);}catch(Exception e){return bad(e);}
+    }
+
+    @GetMapping("/qa-results")
+    public ResponseEntity<?> qaResults(@RequestParam(defaultValue="") String processCode,HttpServletRequest request){
+        Principal principal=request.getUserPrincipal();
+        if(principal==null)return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("success",false,"message","Authentication is required."));
+        try{return ResponseEntity.ok(Map.of("success",true,"items",service.qaResults(processCode,principal.getName())));}
+        catch(Exception e){return bad(e);}
+    }
+
+    @PostMapping("/qa-smoke")
+    public ResponseEntity<?> qaSmoke(@RequestBody Map<String,Object> body,HttpServletRequest request){
+        Principal principal=request.getUserPrincipal();
+        if(principal==null)return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("success",false,"message","Authentication is required."));
+        String processCode=String.valueOf(body.getOrDefault("processCode","")).trim();
+        if(processCode.isBlank())return bad(new IllegalArgumentException("processCode is required."));
+        Map<String,Object> result;
+        try{
+            result=service.runProcessRuntimeSmoke(processCode,principal.getName());
+            service.recordQaResult(processCode,String.valueOf(body.getOrDefault("stepCode","")),"PASSED",result,"",principal.getName());
+            return ResponseEntity.ok(Map.of("success",true,"result",result));
+        }catch(Exception e){
+            service.recordQaResult(processCode,String.valueOf(body.getOrDefault("stepCode","")),"FAILED",Map.of(),e.getMessage()==null?"Runtime verification failed":e.getMessage(),principal.getName());
+            return bad(e);
+        }
     }
 
     private ResponseEntity<?> forbidden(Exception e){return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("success",false,"message",e.getMessage()==null?"Access denied":e.getMessage()));}
