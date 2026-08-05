@@ -316,6 +316,17 @@ function taskHref(task: QuestTask, en: boolean) {
   const target = `${url.pathname}${url.search}${url.hash}`;
   return en ? `/en${target}` : target;
 }
+function executionHref(task: QuestTask, en: boolean) {
+  if (!task.processCode || !task.processStepCode) return "";
+  const query = new URLSearchParams({
+    projectId: task.projectId,
+    processCode: task.processCode,
+    stepCode: task.processStepCode,
+  });
+  const base = en ? "/en/work/execution" : "/work/execution";
+  return `${base}?${query}`;
+}
+
 
 function statusPresentation(task: QuestTask, en: boolean) {
   if (task.status === "DONE")
@@ -1608,6 +1619,9 @@ export function TaskQuestPanel() {
                       arrow_forward
                     </span>
                   </button>
+                  {executionHref(task, en) ? <a className="mt-2 flex min-h-11 w-full items-center justify-center gap-2 rounded-lg border border-[#246beb] bg-white px-4 font-bold text-[#246beb]" href={executionHref(task, en)}>
+                    {en ? "Enter data and complete" : "\uC5C5\uBB34 \uC785\uB825\u00B7\uC644\uB8CC"}<span className="material-symbols-outlined text-[19px]">task_alt</span>
+                  </a> : null}
                   {focusedWorkflow ? (
                     <button
                       className="mt-2 w-full text-xs font-bold text-slate-500 hover:text-[#246beb]"

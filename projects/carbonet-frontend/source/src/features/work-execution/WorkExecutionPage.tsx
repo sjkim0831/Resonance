@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { buildLocalizedPath, isEnglish } from "../../lib/navigation/runtime";
+import { ContractFieldControl, type ContractField } from "../generated-screen/ContractFieldControl";
 
 type Row = Record<string, unknown>;
 type WorkDraft = Row & { found?: boolean; contract?: Row; draft?: Row };
@@ -8,6 +9,21 @@ type Execution = Row & { found?: boolean; events?: Row[] };
 const inputClass = "krds-control min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-slate-900 focus:border-[#246beb] focus:outline-none focus:ring-2 focus:ring-blue-100";
 const value = (row: Row | undefined, key: string) => String(row?.[key] ?? "");
 
+function parseContractFields(raw: unknown): ContractField[] {
+  try {
+    const parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
+    if (!Array.isArray(parsed)) return [];
+    return parsed.map((item) => {
+      const field = item as Row;
+      return {
+        ...field,
+        code: String(field.fieldCode || field.code || ""),
+        label: String(field.fieldName || field.label || field.fieldCode || ""),
+        control: field.controlType || field.control,
+      } as ContractField;
+    }).filter((field) => field.code && field.editable !== false);
+  } catch { return []; }
+}
 async function requestJson(url: string, init?: RequestInit) {
   const response = await fetch(url, { credentials: "include", ...init });
   const contentType = response.headers.get("content-type") || "";
@@ -22,8 +38,9 @@ export function WorkExecutionPage() {
   const query = new URLSearchParams(location.search);
   const [tenantId, setTenantId] = useState(query.get("tenantId") || "");
   const [projectId, setProjectId] = useState(query.get("projectId") || "");
-  const [processCode, setProcessCode] = useState(query.get("process") || "EMISSION_PROJECT");
-  const [stepCode, setStepCode] = useState(query.get("step") || "EMISSION_PROJECT_COLLECT");
+  const [processCode, setProcessCode] = useState(query.get("processCode") || query.get("process") || "EMISSION_PROJECT");
+  const [stepCode, setStepCode] = useState(query.get("stepCode") || query.get("step") || "EMISSION_PROJECT_COLLECT");
+  const [values, setValues] = useState<Record<string,string>>({});
   const [work, setWork] = useState<WorkDraft>({});
   const [execution, setExecution] = useState<Execution>({});
   const [form, setForm] = useState({ workSummary: "", decisionBasis: "", resultValue: "", resultUnit: "", exceptionReason: "" });
@@ -36,12 +53,34 @@ export function WorkExecutionPage() {
   const draft = work.draft || {};
   const actorCode = value(contract, "actorCode");
   const currentStep = value(execution, "currentStepCode");
+  const contractFields = useMemo(() => parseContractFields(contract.fieldContractJson), [contract.fieldContractJson]);
+  useEffect(() => {
+    if (!contractFields.length) return;
+    setValues((current) => {
+      const next = { ...current };
+      const year = String(new Date().getFullYear());
+      for (const field of contractFields) {
+        if (next[field.code]) continue;
+        const code = field.code.toLowerCase();
+        const control = String(field.control || "").toUpperCase();
+        if (control === "PROJECT_SELECT" || code === "projectid") next[field.code] = projectId;
+        else if (control === "ACTOR_SELECT" || code.includes("actor")) next[field.code] = actorCode;
+        else if (code === "tenantid") next[field.code] = tenantId;
+        else if (code.includes("year")) next[field.code] = year;
+        else if (code.includes("status")) next[field.code] = "CONFIRMED";
+        else if (code.includes("scope")) next[field.code] = "SCOPE_1";
+      }
+      return next;
+    });
+  }, [actorCode, contractFields, projectId, tenantId]);
+  const missingRequiredFields = contractFields.filter((field) => field.required === true && !String(values[field.code] || "").trim());
   const checks = useMemo(() => [
+    { label: en ? "Required contract fields completed" : "\uB2E8\uACC4\uBCC4 \uD544\uC218 \uD56D\uBAA9 \uC785\uB825", passed: missingRequiredFields.length === 0 && contractFields.length > 0 },
     { label: en ? "Work result recorded" : "업무 처리 결과 입력", passed: Boolean(form.workSummary.trim()) },
     { label: en ? "Decision basis recorded" : "판단·계산 근거 입력", passed: Boolean(form.decisionBasis.trim()) },
     { label: en ? "Evidence reference recorded" : "증빙 참조 입력", passed: Boolean(evidence.documentId.trim() || evidence.sourceUrl.trim()) },
     { label: en ? "Current actor and step matched" : "현재 액터·단계 일치", passed: Boolean(execution.found && currentStep === stepCode && actorCode) },
-  ], [actorCode, currentStep, en, evidence.documentId, evidence.sourceUrl, execution.found, form.decisionBasis, form.workSummary, stepCode]);
+  ], [actorCode, contractFields.length, currentStep, en, evidence.documentId, evidence.sourceUrl, execution.found, form.decisionBasis, form.workSummary, missingRequiredFields.length, stepCode]);
   const readyToComplete = checks.every(check => check.passed);
 
   const contextParams = () => new URLSearchParams({ tenantId: tenantId.trim(), projectId: projectId.trim(), processCode, stepCode });
@@ -59,6 +98,7 @@ export function WorkExecutionPage() {
     const payload = parseObject(body.draft?.payloadJson);
     const evidencePayload = parseObject(body.draft?.evidenceJson);
     if (payload && typeof payload === "object") setForm(current => ({ ...current, ...(payload as typeof form) }));
+    if (payload && typeof payload === "object") setValues(Object.fromEntries(Object.entries(payload).map(([key,item]) => [key,item == null ? "" : String(item)])));
     if (evidencePayload && typeof evidencePayload === "object") setEvidence(current => ({ ...current, ...(evidencePayload as typeof evidence) }));
   };
 
@@ -80,16 +120,22 @@ export function WorkExecutionPage() {
   };
 
   useEffect(() => {
+    if (tenantId) return;
+    requestJson(buildLocalizedPath("/home/api/emission-projects/options", "/en/home/api/emission-projects/options"))
+      .then((body) => setTenantId(String(body.tenantId || "")))
+      .catch((reason) => setError(reason instanceof Error ? reason.message : String(reason)));
+  }, [tenantId]);
+
+  useEffect(() => {
     if (tenantId && projectId) void load();
-    // Initial deep-link context is loaded once. Subsequent edits use the explicit load button.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [tenantId, projectId, processCode]);
 
   const persistDraft = async () => {
       const body = await requestJson(buildLocalizedPath("/home/api/process-executions/draft", "/en/home/api/process-executions/draft"), {
         method: "PUT", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ tenantId: tenantId.trim(), projectId: projectId.trim(), processCode, stepCode, actorCode,
-          expectedVersion: Number(draft.draftVersion || 0), payloadJson: JSON.stringify(form), evidenceJson: JSON.stringify(evidence) }),
+          expectedVersion: Number(draft.draftVersion || 0), payloadJson: JSON.stringify({ ...values, ...form }), evidenceJson: JSON.stringify(evidence) }),
       });
       applyDraft(body as WorkDraft);
       return body as WorkDraft;
@@ -128,8 +174,8 @@ export function WorkExecutionPage() {
       const body = await requestJson(`${buildLocalizedPath("/home/api/process-executions", "/en/home/api/process-executions")}/${executionId}/commands`, {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ tenantId: tenantId.trim(), projectId: projectId.trim(), processCode, stepCode, actorCode,
-          commandCode: value(contract, "commandCode"), idempotencyKey: crypto.randomUUID(), requestJson: JSON.stringify({ ...form, evidence }),
-          resultJson: JSON.stringify({ completed: true, draftVersion: savedVersion }) }),
+          commandCode: value(contract, "commandCode"), idempotencyKey: crypto.randomUUID(), requireDraft: true, requestJson: JSON.stringify({ ...values, ...form, evidence }),
+          resultJson: JSON.stringify({ completed: true, draftVersion: savedVersion }), snapshotRef: `manual:${projectId}:${processCode}:${stepCode}:${savedVersion}` }),
       });
       setMessage(body.executionStatus === "COMPLETED" ? (en ? "The process is complete." : "전체 프로세스가 완료되었습니다.") : (en ? "Step complete. The next actor can continue." : "단계를 완료했습니다. 다음 액터가 업무를 이어갈 수 있습니다."));
       await load();
@@ -157,6 +203,10 @@ export function WorkExecutionPage() {
       <div className="space-y-6">
         <section className="krds-component rounded-2xl border bg-white"><div className="flex flex-wrap items-start justify-between gap-3 border-b p-5"><div><p className="gov-text-label font-black text-[#246beb]">{processCode} · {stepCode}</p><h2 className="gov-text-heading-md mt-2 font-black text-[#052b57]">{value(contract, "stepName") || (en ? "Load the assigned work" : "배정된 업무를 불러오세요")}</h2><p className="gov-text-body-sm mt-2 text-slate-600">{value(contract, "requirementText")}</p></div><div className="text-right"><Status>{value(execution, "executionStatus") || "NOT_STARTED"}</Status><p className="gov-text-label mt-2 text-slate-500">{en ? "Draft version" : "임시저장 버전"} {value(draft, "draftVersion") || "0"}</p></div></div>
           <div className="grid gap-4 p-5 md:grid-cols-2"><Contract label={en ? "Entry contract" : "진입 데이터 계약"} text={value(contract, "inputContract")} /><Contract label={en ? "Completion rule" : "완료 판정 기준"} text={value(contract, "completionRule")} /><Contract label={en ? "Output contract" : "결과·인계 계약"} text={value(contract, "outputContract")} /><Contract label={en ? "Responsible actor" : "담당 액터"} text={actorCode} /></div>
+        </section>
+
+        <section className="krds-component rounded-2xl border bg-white p-5"><div className="flex flex-wrap items-start justify-between gap-3"><div><h2 className="gov-text-heading-md font-black text-[#052b57]">{en ? "Step-specific required data" : "\uB2E8\uACC4\uBCC4 \uC804\uBB38 \uC5C5\uBB34 \uD56D\uBAA9"}</h2><p className="gov-text-body-sm mt-2 text-slate-600">{en ? "These fields come from the approved screen and data contract." : "\uC2B9\uC778\uB41C \uD654\uBA74\u00B7\uB370\uC774\uD130 \uACC4\uC57D\uC5D0\uC11C \uD604\uC7AC \uB2E8\uACC4\uC758 \uD56D\uBAA9\uC744 \uBD88\uB7EC\uC635\uB2C8\uB2E4."}</p></div><strong className={`rounded-full px-3 py-2 text-sm ${missingRequiredFields.length ? "bg-amber-100 text-amber-900" : "bg-emerald-100 text-emerald-800"}`}>{missingRequiredFields.length ? `${missingRequiredFields.length} required` : (en ? "Required fields complete" : "\uD544\uC218 \uD56D\uBAA9 \uC644\uB8CC")}</strong></div>
+          {contractFields.length ? <div className="mt-5 grid gap-4 md:grid-cols-2">{contractFields.map((field) => <ContractFieldControl field={field} key={field.code} value={values[field.code] || ""} onChange={(next) => setValues((current) => ({ ...current, [field.code]: next }))} />)}</div> : <p className="mt-4 rounded-xl bg-amber-50 p-4 font-bold text-amber-900">{en ? "No approved field contract is connected." : "\uC2B9\uC778\uB41C \uD544\uB4DC \uACC4\uC57D\uC774 \uC5F0\uACB0\uB418\uC9C0 \uC54A\uC558\uC2B5\uB2C8\uB2E4."}</p>}
         </section>
 
         <section className="krds-component rounded-2xl border bg-white p-5"><h2 className="gov-text-heading-md font-black text-[#052b57]">{en ? "Work result" : "업무 처리 결과"}</h2><p className="gov-text-body-sm mt-2 text-slate-600">{en ? "All decisions must remain reproducible from the recorded basis and evidence." : "모든 판단은 입력한 근거와 증빙으로 재현할 수 있어야 합니다."}</p><div className="mt-5 grid gap-4 md:grid-cols-2">
