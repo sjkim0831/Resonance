@@ -17,6 +17,9 @@ fi
 fail=0
 source_count=0
 artifact_count=0
+safe_migration_count=0
+safe_migration_tmp="$(mktemp -d)"
+trap 'rm -rf "$safe_migration_tmp"' EXIT
 
 say_block() {
   printf 'codex-commit-guard: %s\n' "$*" >&2
@@ -30,6 +33,18 @@ for path in "${STAGED_PATHS[@]}"; do
   fi
   if [[ "$path" == *src/main/resources/static/react-app/* ]]; then
     artifact_count=$((artifact_count + 1))
+  fi
+
+  if [[ "$path" == apps/carbonet-api/src/main/resources/db/migration/postgresql/V*__*.sql ]] \
+      && git show ":$path" 2>/dev/null | grep -q '^-- resonance-deploy-profile: safe-additive-schema$'; then
+    staged_sql="$safe_migration_tmp/$(basename "$path")"
+    git show ":$path" >"$staged_sql"
+    if ! python3 "$ROOT_DIR/ops/scripts/classify-safe-additive-ddl.py" "$staged_sql" >/dev/null; then
+      say_block "safe-additive migration profile failed closed validation: $path"
+      fail=1
+    else
+      safe_migration_count=$((safe_migration_count + 1))
+    fi
   fi
 
   if [[ "$lower_path" =~ $DANGEROUS_PATH_REGEX ]]; then
@@ -50,6 +65,10 @@ for path in "${STAGED_PATHS[@]}"; do
     fi
   fi
 done
+
+if (( safe_migration_count > 0 )); then
+  printf 'codex-commit-guard: validated safe-additive migrations: %s\n' "$safe_migration_count"
+fi
 
 if (( source_count > 0 && artifact_count > 0 )) && [[ "${CODEX_ALLOW_MIXED_BUILD_COMMIT:-false}" != "true" ]]; then
   say_block "blocked mixed source + frontend build artifact commit"
