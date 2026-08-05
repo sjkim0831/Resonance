@@ -447,7 +447,9 @@ export function TaskQuestPanel() {
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
   const [flowOpen, setFlowOpen] = useState(false);
-  const [qaOpen, setQaOpen] = useState(false);
+  const [qaOpen, setQaOpen] = useState(
+    () => localStorage.getItem("process-qa-card-open") === "1",
+  );
   const [qaBusy, setQaBusy] = useState(false);
   const [qaMessage, setQaMessage] = useState("");
   const [qaResults, setQaResults] = useState<QaResult[]>([]);
@@ -1808,9 +1810,9 @@ export function TaskQuestPanel() {
         )}
       </aside>
       <aside className="fixed right-3 top-1/2 z-[949] -translate-y-1/2 sm:right-5 lg:right-8" data-process-qa-card="">
-        {!qaOpen ? <button className="flex min-h-12 items-center gap-2 rounded-full border border-emerald-700 bg-white px-4 py-2 font-bold text-emerald-800 shadow-lg" onClick={() => { setQaOpen(true); void loadQaResults(); }} type="button"><span className="material-symbols-outlined">fact_check</span>{en ? "QA workflow" : "QA 업무"}</button> :
+        {!qaOpen ? <button className="flex min-h-12 items-center gap-2 rounded-full border border-emerald-700 bg-white px-4 py-2 font-bold text-emerald-800 shadow-lg" onClick={() => { setQaOpen(true); localStorage.setItem("process-qa-card-open", "1"); void loadQaResults(); }} type="button"><span className="material-symbols-outlined">fact_check</span>{en ? "QA workflow" : "QA 업무"}</button> :
           <section className="w-[calc(100vw-1.5rem)] max-w-[36rem] overflow-hidden rounded-2xl border border-emerald-200 bg-white shadow-2xl">
-            <header className="flex items-center justify-between bg-emerald-800 px-4 py-3 text-white"><div className="flex items-center gap-2"><span className="material-symbols-outlined">fact_check</span><strong>{en ? "QA workflow runner" : "QA 업무 실행"}</strong></div><button aria-label={en ? "Close" : "닫기"} onClick={() => setQaOpen(false)} type="button"><span className="material-symbols-outlined">close</span></button></header>
+            <header className="flex items-center justify-between bg-emerald-800 px-4 py-3 text-white"><div className="flex items-center gap-2"><span className="material-symbols-outlined">fact_check</span><strong>{en ? "QA workflow runner" : "QA 업무 실행"}</strong></div><button aria-label={en ? "Close" : "닫기"} onClick={() => { setQaOpen(false); localStorage.setItem("process-qa-card-open", "0"); }} type="button"><span className="material-symbols-outlined">close</span></button></header>
             <div className="max-h-[70vh] overflow-y-auto p-4">
               <div className="grid gap-3 sm:grid-cols-2">
                 <label className="block text-xs font-black text-slate-600">{en ? "Account and actor" : "계정·담당자"}<select className="mt-1 h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm" value={qaAccountId} onChange={(event) => setQaAccountId(event.target.value)}>{QA_TEST_ACCOUNTS.map((account) => <option key={account.id} value={account.id}>{account.actor} · {account.id} · {account.steps}</option>)}</select></label>
