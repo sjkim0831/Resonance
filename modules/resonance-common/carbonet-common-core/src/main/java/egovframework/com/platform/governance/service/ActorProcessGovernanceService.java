@@ -1878,8 +1878,11 @@ public class ActorProcessGovernanceService {
         }else{
             Map<String,Object> current=existing.get(0);int currentVersion=((Number)current.get("draft_version")).intValue();
             if(currentVersion!=expectedVersion)throw new IllegalStateException("The draft version changed. Reload the latest work.");
-            if("SUBMITTED".equals(String.valueOf(current.get("draft_status"))))throw new IllegalStateException("A submitted work item cannot be edited.");
-            jdbc.update("update framework_process_work_draft set actor_code=?,payload_json=cast(? as jsonb),evidence_json=cast(? as jsonb),draft_version=draft_version+1,saved_at=current_timestamp,updated_at=current_timestamp where draft_id=?",actor,payload,evidence,current.get("draft_id"));
+            if("SUBMITTED".equals(String.valueOf(current.get("draft_status")))){
+                Integer reentry=jdbc.queryForObject("select count(*) from framework_process_execution where tenant_id=? and project_id=? and process_code=? and current_step_code=? and execution_status='RUNNING'",Integer.class,tenant,project,process,step);
+                if(reentry==null||reentry==0)throw new IllegalStateException("A submitted work item can only be reopened after an active process re-enters this step.");
+            }
+            jdbc.update("update framework_process_work_draft set actor_code=?,payload_json=cast(? as jsonb),evidence_json=cast(? as jsonb),draft_version=draft_version+1,draft_status='DRAFT',submitted_at=null,saved_at=current_timestamp,updated_at=current_timestamp where draft_id=?",actor,payload,evidence,current.get("draft_id"));
         }
         return loadWorkDraft(tenant,project,process,step,user);
     }
