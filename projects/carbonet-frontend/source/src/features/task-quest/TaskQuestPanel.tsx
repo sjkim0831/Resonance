@@ -1635,8 +1635,14 @@ export function TaskQuestPanel() {
       .filter((control) => (control.getAttribute("data-field-code") || control.name || control.id || control.getAttribute("aria-label")) === baseCode);
     const control = candidates[Math.max(0, duplicateIndex)];
     if (!control) return;
-    if (control instanceof HTMLInputElement && control.type === "checkbox") control.checked = value === "true";
-    else control.value = value;
+    if (control instanceof HTMLInputElement && control.type === "checkbox") {
+      const checkedSetter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "checked")?.set;
+      if (checkedSetter) checkedSetter.call(control, value === "true"); else control.checked = value === "true";
+    } else {
+      const prototype = control instanceof HTMLSelectElement ? HTMLSelectElement.prototype : control instanceof HTMLTextAreaElement ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype;
+      const valueSetter = Object.getOwnPropertyDescriptor(prototype, "value")?.set;
+      if (valueSetter) valueSetter.call(control, value); else control.value = value;
+    }
     control.dispatchEvent(new Event("input", { bubbles: true }));
     control.dispatchEvent(new Event("change", { bubbles: true }));
     const storageKey = `qa-form:${window.location.pathname}:${baseCode}`;
