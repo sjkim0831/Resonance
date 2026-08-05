@@ -1,6 +1,7 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { findGeneratedScreen, type GeneratedScreenDefinition } from "../../generated/screen-generation/generatedScreenCatalog";
 import { isEnglish } from "../../lib/navigation/runtime";
+import { runtimeUuid } from "../../lib/runtime-id";
 import { AdminPageShell } from "../admin-entry/AdminPageShell";
 import { ContractFieldControl } from "./ContractFieldControl";
 import { materializeScreen, resolveScreenCoordinate } from "./screenSpaceRuntime";
@@ -80,7 +81,7 @@ function GeneratedContent({ screen }: { screen: GeneratedScreenDefinition }) {
     const missing=fieldEntries.filter(field=>field.required===true&&!String(values[field.code]||"").trim());
     if(missing.length){setError(`${en?"Complete required fields":"필수 항목을 입력하세요"}: ${missing.map(field=>field.label).join(", ")}`);return;}
     if(draftStatus!=="DRAFT"){setError(en?"Save the work draft before completing this step.":"단계를 완료하기 전에 업무 데이터를 임시저장하세요.");return;}
-    const result=await request(`${apiBase}/${executionId}/commands`, { tenantId, projectId, processCode: screen.processCode, stepCode: screen.stepCode, actorCode: screen.actorCode, commandCode: command, idempotencyKey: crypto.randomUUID(), requestJson: JSON.stringify(values), requireDraft:true });
+    const result=await request(`${apiBase}/${executionId}/commands`, { tenantId, projectId, processCode: screen.processCode, stepCode: screen.stepCode, actorCode: screen.actorCode, commandCode: command, idempotencyKey: runtimeUuid(), requestJson: JSON.stringify(values), requireDraft:true });
     if(!result)return;
     setDraftStatus("SUBMITTED"); setCurrentState(String(result.toState||currentState));
     const nextStepCode=String(result.nextStepCode||"");

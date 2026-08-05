@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { buildLocalizedPath, isEnglish, replace } from "../../lib/navigation/runtime";
+import { runtimeUuid } from "../../lib/runtime-id";
 import { ContractFieldControl, type ContractField } from "../generated-screen/ContractFieldControl";
 
 type Row = Record<string, unknown>;
@@ -189,7 +190,7 @@ export function WorkExecutionPage() {
       const body = await requestJson(`${buildLocalizedPath("/home/api/process-executions", "/en/home/api/process-executions")}/${executionId}/commands`, {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ tenantId: tenantId.trim(), projectId: projectId.trim(), processCode, stepCode, actorCode,
-          commandCode: value(contract, "commandCode"), idempotencyKey: crypto.randomUUID(), requireDraft: true, requestJson: JSON.stringify({ ...values, ...form, evidence }),
+          commandCode: value(contract, "commandCode"), idempotencyKey: runtimeUuid(), requireDraft: true, requestJson: JSON.stringify({ ...values, ...form, evidence }),
           resultJson: JSON.stringify({ completed: true, draftVersion: savedVersion }), snapshotRef: `manual:${projectId}:${processCode}:${stepCode}:${savedVersion}` }),
       });
       setHandoff(body);

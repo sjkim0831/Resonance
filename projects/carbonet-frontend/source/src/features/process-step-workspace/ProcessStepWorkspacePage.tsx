@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, type ChangeEvent, type ReactNode } from "react";
 import { buildLocalizedPath, isEnglish } from "../../lib/navigation/runtime";
+import { runtimeUuid } from "../../lib/runtime-id";
 import { AdminPageShell } from "../admin-entry/AdminPageShell";
 
 type Row = Record<string, unknown>;
@@ -137,7 +138,7 @@ export function ProcessStepWorkspacePage() {
         body: JSON.stringify({
           tenantId: tenantId.trim(), projectId: projectId.trim(), processCode,
           stepCode: value(selectedStep, "stepCode"), actorCode,
-          commandCode: value(selectedStep, "commandCode"), idempotencyKey: crypto.randomUUID(),
+          commandCode: value(selectedStep, "commandCode"), idempotencyKey: runtimeUuid(),
           requestJson: JSON.stringify({ workNote: workNote.trim(), evidenceRef: evidenceRef.trim(), fields: fieldValues }),
           resultJson: JSON.stringify({ completed: true, evidenceRef: evidenceRef.trim() }),
         }),
