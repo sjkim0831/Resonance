@@ -540,6 +540,7 @@ export function TaskQuestPanel() {
   const [processMapZoom, setProcessMapZoom] = useState(100);
   const [processMapMode] = useState<"FLOW" | "ACTOR" | "CANVAS">("CANVAS");
   const processCanvasRef = useRef<HTMLDivElement | null>(null);
+  const emissionIndexGuideInitializedRef = useRef(false);
   const [processViewport, setProcessViewport] = useState({ left: 0, width: 100 });
   const [selectedWorkType, setSelectedWorkType] = useState(
     () => localStorage.getItem("task-quest-work-type") || "ALL",
@@ -663,6 +664,21 @@ export function TaskQuestPanel() {
     const pathname = window.location.pathname.replace(/\/$/, "") || "/";
     if (pathname !== "/emission/index" && pathname !== "/en/emission/index")
       return;
+    if (emissionIndexGuideInitializedRef.current || !data?.processCatalogSteps?.length)
+      return;
+    emissionIndexGuideInitializedRef.current = true;
+    const query = new URLSearchParams(window.location.search);
+    const requestedProcessCode = query.get("processCode") || query.get("process") || "";
+    const persistedProcessCode = localStorage.getItem("task-quest-catalog-process") || "";
+    const availableProcessCodes = new Set(
+      (data.processCatalog || []).map((process) => process.processCode),
+    );
+    if (
+      (requestedProcessCode && availableProcessCodes.has(requestedProcessCode)) ||
+      (persistedProcessCode && availableProcessCodes.has(persistedProcessCode))
+    ) {
+      return;
+    }
     const processCode = "EMISSION_PROJECT_PORTFOLIO";
     const stepCode = "EMISSION_PROJECT_PORTFOLIO_LIST";
     const processSteps = (data?.processCatalogSteps || [])
@@ -686,7 +702,7 @@ export function TaskQuestPanel() {
     localStorage.setItem("task-quest-open", "1");
     localStorage.removeItem("task-quest-overview-project");
     localStorage.removeItem("task-quest-focused-workflow");
-  }, [data?.processCatalogSteps]);
+  }, [data?.processCatalog, data?.processCatalogSteps]);
 
   useEffect(() => {
     if (new URLSearchParams(window.location.search).get("assignment") !== "1") return;
@@ -1193,7 +1209,7 @@ export function TaskQuestPanel() {
       setSelectedCatalogProcessCode(routeProcessCode);
       localStorage.setItem("task-quest-catalog-process", routeProcessCode);
     }
-  }, [data?.processCatalog, selectedCatalogProcessCode, selectedWorkType]);
+  }, [data?.processCatalog]);
   useEffect(() => {
     const query = new URLSearchParams(window.location.search);
     const routeStepCode = query.get("stepCode") || query.get("step") || "";
@@ -1201,7 +1217,7 @@ export function TaskQuestPanel() {
     if (routeStepIndex < 0 || routeStepIndex === selectedCatalogStep) return;
     setSelectedCatalogStep(routeStepIndex);
     localStorage.setItem("task-quest-catalog-step", String(routeStepIndex));
-  }, [selectedCatalogStep, selectedCatalogSteps]);
+  }, [selectedCatalogSteps]);
   const selectedQaStep = selectedCatalogSteps[selectedCatalogStep];
   const qaCompletedSteps = selectedCatalogSteps.filter((step) => {
     const runtime = (data?.items || []).find((item) => item.processCode === step.processCode && item.processStepCode === step.stepCode && (!effectiveProjectId || item.projectId === effectiveProjectId));
@@ -1515,6 +1531,7 @@ export function TaskQuestPanel() {
         target.searchParams.set("testMode", "1");
       }
       target.searchParams.set("guide", "1");
+      setFlowOpen(false);
       window.location.href = `${target.pathname}${target.search}`;
       return;
     }
@@ -1531,6 +1548,7 @@ export function TaskQuestPanel() {
     const step=selectedCatalogSteps[index],runtime=guideRuntimeStep(step),route=guideRoute(step,runtime);
     setSelectedCatalogStep(index);
     localStorage.setItem("task-quest-catalog-step",String(index));
+    setFlowOpen(false);
     navigate(guideTarget(route,step,runtime));
   }
 
