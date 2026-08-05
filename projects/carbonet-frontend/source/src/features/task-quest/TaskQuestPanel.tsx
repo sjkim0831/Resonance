@@ -1632,7 +1632,7 @@ export function TaskQuestPanel() {
         : undefined;
       const controlType = control instanceof HTMLSelectElement ? "SELECT"
         : control instanceof HTMLTextAreaElement ? "TEXTAREA"
-          : control.type === "checkbox" ? "CHECKBOX"
+          : control.type === "checkbox" || control.type === "radio" ? "CHECKBOX"
             : control.type === "number" ? "NUMBER"
               : control.type === "date" ? "DATE"
                 : control.type === "email" ? "EMAIL"
@@ -1655,9 +1655,12 @@ export function TaskQuestPanel() {
   function applyCurrentScreenInput(fieldCode: string, value: string) {
     const baseCode = fieldCode.replace(/__\d+$/, "");
     const duplicateIndex = Number(fieldCode.match(/__(\d+)$/)?.[1] || 1) - 1;
-    const candidates = Array.from(document.querySelectorAll<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>("main input, main select, main textarea"))
+    const allControls = Array.from(document.querySelectorAll<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>("main input, main select, main textarea"))
+      .filter((control) => !control.disabled && !("readOnly" in control && control.readOnly) && control.type !== "hidden" && control.type !== "file");
+    const syntheticIndex = Number(baseCode.match(/^SCREEN_FIELD_(\d+)$/)?.[1] || 0) - 1;
+    const candidates = allControls
       .filter((control) => (control.getAttribute("data-field-code") || control.name || control.id || control.getAttribute("aria-label")) === baseCode);
-    const control = candidates[Math.max(0, duplicateIndex)];
+    const control = syntheticIndex >= 0 ? allControls[syntheticIndex] : candidates[Math.max(0, duplicateIndex)];
     if (!control) return;
     if (control instanceof HTMLInputElement && control.type === "checkbox") {
       const checkedSetter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "checked")?.set;
