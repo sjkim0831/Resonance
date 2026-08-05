@@ -192,14 +192,14 @@ export function EmissionProjectPortfolioPage() {
         }
         const commandResponse = await fetch(`${executionBase}/${encodeURIComponent(executionId)}/commands`, {
           method: "POST", credentials: "include", headers: { "Content-Type": "application/json", Accept: "application/json" },
-          body: JSON.stringify({ tenantId, projectId: selected.id, processCode: "EMISSION_PROJECT_PORTFOLIO", stepCode: "EMISSION_PROJECT_PORTFOLIO_LIST", actorCode: "COMPANY_MANAGER", commandCode: "SELECT_PROJECT", idempotencyKey: `PORTFOLIO-${selected.id}-${Date.now()}`, requestJson: JSON.stringify({ selectedProjectId: selected.id }), resultJson: JSON.stringify({ completed: true, nextTaskCode: "EMISSION_PROJECT_SETUP" }) }),
+          body: JSON.stringify({ tenantId, projectId: selected.id, processCode: "EMISSION_PROJECT_PORTFOLIO", stepCode: "EMISSION_PROJECT_PORTFOLIO_LIST", actorCode: "COMPANY_MANAGER", commandCode: "SELECT_PROJECT", idempotencyKey: `PORTFOLIO-${selected.id}-${Date.now()}`, requestJson: JSON.stringify({ selectedProjectId: selected.id }), resultJson: JSON.stringify({ completed: true, nextTaskCode: "ORGANIZATIONAL_BOUNDARY_S1" }) }),
         });
         execution = await readJson<ProcessExecution>(commandResponse);
         const nextPath = execution.nextProcessUserPath || "/emission/organizational-boundary";
         const target = new URL(buildLocalizedPath(nextPath, `/en${nextPath}`), window.location.origin);
         target.searchParams.set("projectId", selected.id);
-        target.searchParams.set("processCode", execution.nextProcessCode || "EMISSION_PROJECT");
-        target.searchParams.set("stepCode", execution.nextProcessStepCode || "EMISSION_PROJECT_SETUP");
+        target.searchParams.set("processCode", execution.nextProcessCode || "ORGANIZATIONAL_BOUNDARY");
+        target.searchParams.set("stepCode", execution.nextProcessStepCode || "ORGANIZATIONAL_BOUNDARY_S1");
         target.searchParams.set("actorCode", execution.nextProcessActorCode || "COMPANY_MANAGER");
         target.searchParams.set("guide", "1");
         window.location.href = `${target.pathname}${target.search}`;
