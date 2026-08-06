@@ -14,6 +14,18 @@ SPEC.loader.exec_module(GENERATOR)
 
 
 class GroupFieldsByAudienceTest(unittest.TestCase):
+    def test_normalizes_singleton_runtime_contracts(self) -> None:
+        normalized = GENERATOR.normalize_step_contract({
+            "command_contract": {"commandCode": "SAVE"},
+            "api_contract": {},
+            "handoff_contract": None,
+            "test_contract": [],
+            "blocker_codes": [],
+        })
+        self.assertEqual(normalized["command_contract"], [{"commandCode": "SAVE"}])
+        self.assertEqual(normalized["api_contract"], [])
+        self.assertEqual(normalized["handoff_contract"], [])
+
     def test_splits_catalog_group_using_nested_audiences(self) -> None:
         contract = [
             {

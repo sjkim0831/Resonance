@@ -59,6 +59,23 @@ def validate_step(process: dict[str, Any], step: dict[str, Any]) -> None:
         fail(f"{identity}: design is blocked: {step.get('blocker_codes')}")
 
 
+def normalize_step_contract(step: dict[str, Any]) -> dict[str, Any]:
+    """Normalize singleton JSON contracts before deterministic validation.
+
+    PostgreSQL stores command/API/test contracts as JSONB and older approved
+    rows may contain one object instead of a one-item array. This is a shape
+    normalization only; it never invents fields, actions, or business rules.
+    """
+    normalized = copy.deepcopy(step)
+    for key in ("command_contract", "api_contract", "handoff_contract", "test_contract", "blocker_codes"):
+        value = normalized.get(key)
+        if isinstance(value, dict):
+            normalized[key] = [value] if value else []
+        elif value is None:
+            normalized[key] = []
+    return normalized
+
+
 def group_fields_by_audience(field_contract: dict[str, Any] | list[dict[str, Any]]) -> dict[str, list[dict[str, Any]]]:
     """Accept both legacy audience groups and the current flat field contract.
 
@@ -298,13 +315,15 @@ def main() -> None:
     parser.add_argument("--check", action="store_true")
     args = parser.parse_args()
     data = load(args.snapshot)
+    for process in data["processes"]:
+        process["steps"] = [normalize_step_contract(step) for step in process.get("steps", [])]
     packages: list[tuple[str, dict[str, Any]]] = []
     skipped_review = 0
     for process in data["processes"]:
         shared_screens = [
             screen
             for process_step in process.get("steps", [])
-            for screen in process_step.get("screen_contract", [])
+            for screen in (process_step.get("screen_contract", []) if isinstance(process_step.get("screen_contract"), list) else [])
         ]
         for step in process.get("steps", []):
             if step.get("approval_status") != "APPROVED" and not args.allow_review_required:
