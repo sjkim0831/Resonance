@@ -1779,15 +1779,17 @@ export function TaskQuestPanel() {
   }
 
   const blocked = Boolean(task && task.actionable === false);
-  const focusedTasks = focusedWorkflow
-    ? (data?.items || []).filter(
-        (item) =>
-          item.projectId === focusedWorkflow.projectId &&
-          item.processCode === focusedWorkflow.processCode,
-      )
-    : [];
   const focusedProcessCode =
     focusedWorkflow?.processCode || task?.processCode || "";
+  const focusedProjectId =
+    focusedWorkflow?.projectId || task?.projectId || effectiveProjectId;
+  const focusedTasks = focusedProcessCode
+    ? (data?.items || []).filter(
+        (item) =>
+          (!focusedProjectId || item.projectId === focusedProjectId) &&
+          item.processCode === focusedProcessCode,
+      )
+    : [];
   const focusedContractSteps = focusedProcessCode
     ? (data?.processCatalogSteps || [])
         .filter((step) => step.processCode === focusedProcessCode)
@@ -1807,9 +1809,11 @@ export function TaskQuestPanel() {
     focusedContractSteps.length ||
     focusedTasks.length ||
     Number(data?.summary?.total || 0);
-  const completed = focusedTasks.length
+  const completed = focusedContractSteps.length
     ? contractBackedTasks.filter((item) => item.status === "DONE").length
-    : Number(data?.summary?.completed || 0);
+    : focusedTasks.length
+      ? focusedTasks.filter((item) => item.status === "DONE").length
+      : Number(data?.summary?.completed || 0);
   const focusedContractStep = focusedContractSteps.find(
     (step) => step.stepCode === task?.processStepCode,
   );
