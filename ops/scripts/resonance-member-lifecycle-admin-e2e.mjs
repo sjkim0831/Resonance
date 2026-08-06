@@ -87,7 +87,11 @@ try {
         const bodyText = document.body?.innerText || "";
         const unnamed = [...document.querySelectorAll("button,a,input,select,textarea")].filter((element) => {
           if (element.matches("input[type=hidden]")) return false;
-          const label = element.getAttribute("aria-label") || element.getAttribute("title") || element.textContent || element.getAttribute("placeholder") || "";
+          const labelledBy = (element.getAttribute("aria-labelledby") || "").split(/\s+/).filter(Boolean)
+            .map((id) => document.getElementById(id)?.textContent || "").join(" ");
+          const id = element.getAttribute("id") || "";
+          const associatedLabel = id ? document.querySelector(`label[for="${CSS.escape(id)}"]`)?.textContent || "" : "";
+          const label = element.getAttribute("aria-label") || labelledBy || associatedLabel || element.getAttribute("title") || element.textContent || element.getAttribute("placeholder") || "";
           return !label.trim();
         }).length;
         return {
