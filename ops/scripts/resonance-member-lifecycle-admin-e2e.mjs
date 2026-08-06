@@ -19,9 +19,11 @@ const routes = [
     path: "/admin/member/register",
     api: "/admin/member/register/page-data",
     title: "신규 회원 등록",
+    language: "ko",
     selectors: ["member-register-basic", "member-register-affiliation", "member-register-actions"],
     validate(payload) {
-      return payload?.canViewMemberRegister === true
+      return payload?.isEn === false
+        && payload?.canViewMemberRegister === true
         && Array.isArray(payload.memberTypeOptions)
         && Array.isArray(payload.permissionOptions)
         && Array.isArray(payload.memberRegisterFeatureCodes);
@@ -31,9 +33,11 @@ const routes = [
     path: "/admin/member/stats",
     api: "/admin/member/stats/page-data",
     title: "회원 통계 현황",
+    language: "ko",
     selectors: ["member-stats-summary", "member-stats-trend", "member-stats-region"],
     validate(payload) {
-      return Number.isFinite(Number(payload?.totalMembers))
+      return payload?.isEn === false
+        && Number.isFinite(Number(payload?.totalMembers))
         && Number(payload.totalMembers) >= 1
         && Array.isArray(payload.memberTypeStats)
         && Array.isArray(payload.monthlySignupStats)
