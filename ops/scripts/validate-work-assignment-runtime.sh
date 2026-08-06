@@ -63,7 +63,7 @@ jq -e --arg project "$PROJECT_ID" --arg process "$PROCESS_CODE" '
 ' "$WORK_DIR/before.json" >/dev/null || fail 'workspace contract mismatch'
 
 # Preserve the exact current assignment so this validator is repeatable and non-destructive.
-jq -e '{projectId:"'"$PROJECT_ID"'",processCode:"'"$PROCESS_CODE"'",processAccountId:(.processAssignment.accountId // "qaowner26"),assignments:[.steps[] | {stepCode,accountId}]} | all(.assignments[]; (.accountId // "") != "")' \
+jq -e '{projectId:"'"$PROJECT_ID"'",processCode:"'"$PROCESS_CODE"'",processAccountId:(.processAssignment.accountId // "qaowner26"),assignments:[.steps[] | {stepCode,accountId}]} as $payload | select(all($payload.assignments[]; (.accountId // "") != "")) | $payload' \
   "$WORK_DIR/before.json" > "$WORK_DIR/restore.json" || fail 'baseline assignment is incomplete'
 
 jq -n --arg project "$PROJECT_ID" --arg process "$PROCESS_CODE" '{
