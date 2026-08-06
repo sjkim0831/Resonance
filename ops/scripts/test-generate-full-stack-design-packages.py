@@ -53,7 +53,7 @@ class GroupFieldsByAudienceTest(unittest.TestCase):
     def test_normalizes_grouped_persistence_for_common_runtime(self) -> None:
         step = {
             "screen_contract": [{"audience": "USER"}],
-            "field_contract": [{"fieldCode": "projectId"}],
+            "field_contract": {"schemaVersion": 1, "contractType": "STEP_FIELDS", "fields": [{"fieldCode": "projectId"}]},
             "command_contract": [{"commandCode": "SAVE"}],
             "api_contract": [{"declaredContract": "COMMON"}],
             "persistence_contract": {

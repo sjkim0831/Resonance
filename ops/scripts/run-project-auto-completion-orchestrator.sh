@@ -255,15 +255,11 @@ with candidate as (
     and e.input_contract<>'{}'::jsonb
     and e.output_contract<>'{}'::jsonb
     and jsonb_array_length(e.screen_contract)>0
-    and jsonb_array_length(e.field_contract)>0
+    and jsonb_array_length(coalesce(e.field_contract->'fields','[]'::jsonb))>0
     and not exists (
       select 1
-      from jsonb_array_elements(e.field_contract) field_group
-      cross join lateral jsonb_array_elements(
-        case when jsonb_typeof(field_group->'fields')='array'
-          then field_group->'fields' else '[]'::jsonb end
-      ) nested_field
-      where coalesce(field_group->>'audience',nested_field->>'audience','')=''
+      from jsonb_array_elements(coalesce(e.field_contract->'fields','[]'::jsonb)) nested_field
+      where coalesce(nested_field->>'audience','')=''
     )
     and jsonb_array_length(e.command_contract)>0
     and jsonb_array_length(e.api_contract)>0
@@ -660,9 +656,9 @@ with candidate as (
     and exists (
       select 1
       from framework_step_execution_spec s
-      cross join lateral jsonb_array_elements(s.field_contract) field
+      cross join lateral jsonb_array_elements(coalesce(s.field_contract->'fields','[]'::jsonb)) field
       where s.process_code=j.process_code and s.step_code=j.step_code
-        and field ? 'fieldCode' and not (field ? 'fields')
+        and field ? 'fieldCode'
     )
     and not exists (
       select 1 from framework_development_job_event e
@@ -691,12 +687,7 @@ with candidate as (
         and s.design_status='DESIGN_COMPLETE' and s.approval_status='APPROVED'
         and jsonb_array_length(s.screen_contract)>0
         and (
-          jsonb_array_length(s.field_contract)>=8
-          or exists (
-            select 1 from jsonb_array_elements(s.field_contract) field_group
-            where jsonb_typeof(field_group->'fields')='array'
-              and jsonb_array_length(field_group->'fields')>=8
-          )
+          jsonb_array_length(coalesce(s.field_contract->'fields','[]'::jsonb))>=8
         )
     )
     and not exists (
@@ -882,26 +873,14 @@ incomplete_spec_demoted="$(psqlq -c "
 with candidate as (
   select e.process_code,e.step_code,
     jsonb_array_length(e.screen_contract)=0 as screen_missing,
-    (case
-      when jsonb_array_length(e.field_contract)=0 then 0
-      when jsonb_typeof(e.field_contract->0->'fields')='array' then
-        coalesce((select sum(jsonb_array_length(grouped->'fields'))
-                  from jsonb_array_elements(e.field_contract) grouped),0)
-      else jsonb_array_length(e.field_contract)
-    end)<8 as fields_incomplete
+    jsonb_array_length(coalesce(e.field_contract->'fields','[]'::jsonb))<8 as fields_incomplete
   from framework_step_execution_spec e
   join framework_process_step s using(process_code,step_code)
   where e.approval_status='APPROVED'
     and (s.requires_user_page or s.requires_admin_page)
     and (
       jsonb_array_length(e.screen_contract)=0
-      or (case
-        when jsonb_array_length(e.field_contract)=0 then 0
-        when jsonb_typeof(e.field_contract->0->'fields')='array' then
-          coalesce((select sum(jsonb_array_length(grouped->'fields'))
-                    from jsonb_array_elements(e.field_contract) grouped),0)
-        else jsonb_array_length(e.field_contract)
-      end)<8
+      or jsonb_array_length(coalesce(e.field_contract->'fields','[]'::jsonb))<8
     )
 ), demoted as (
   update framework_step_execution_spec e
@@ -957,7 +936,7 @@ with candidate as (
   where j.job_type in ('FULL_STACK','FULL_STACK_GENERATION')
     and j.job_status in ('FAILED','PLANNED')
     and s.design_status='DESIGN_COMPLETE' and s.approval_status='APPROVED'
-    and ((jsonb_array_length(s.screen_contract)>0 and jsonb_array_length(s.field_contract)>0)
+    and ((jsonb_array_length(s.screen_contract)>0 and jsonb_array_length(coalesce(s.field_contract->'fields','[]'::jsonb))>0)
       or (not step.requires_user_page and not step.requires_admin_page
         and (step.requires_api or step.requires_database)))
     and not exists (
@@ -989,7 +968,7 @@ with candidate as (
     and j.last_error='deterministic generation unavailable and the single automatic AI escalation was already consumed'
     and s.design_status='DESIGN_COMPLETE' and s.approval_status='APPROVED'
     and jsonb_array_length(s.screen_contract)>0
-    and jsonb_array_length(s.field_contract)>0
+    and jsonb_array_length(coalesce(s.field_contract->'fields','[]'::jsonb))>0
     and not exists (
       select 1 from framework_development_job_event e
       where e.job_id=j.job_id and e.event_type='FRONTEND_PACKAGE_V1_RETRY'
@@ -1020,12 +999,8 @@ with candidate as (
     and s.design_status='DESIGN_COMPLETE' and s.approval_status='APPROVED'
     and not exists (
       select 1
-      from jsonb_array_elements(s.field_contract) field_group
-      cross join lateral jsonb_array_elements(
-        case when jsonb_typeof(field_group->'fields')='array'
-          then field_group->'fields' else '[]'::jsonb end
-      ) nested_field
-      where coalesce(field_group->>'audience',nested_field->>'audience','')=''
+      from jsonb_array_elements(coalesce(s.field_contract->'fields','[]'::jsonb)) nested_field
+      where coalesce(nested_field->>'audience','')=''
     )
     and not exists (
       select 1 from framework_development_job_event e

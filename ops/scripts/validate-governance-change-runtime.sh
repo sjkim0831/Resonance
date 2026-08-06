@@ -61,12 +61,9 @@ read -r desired ready available <<<"$(kubectl -n "$NAMESPACE" get deploy carbone
 IFS='|' read -r step_gate spec_gate screen_gate approved_case_gate passed_case_gate <<<"$(psqlq "select
  (select count(*) from framework_process_step where process_code='GOVERNANCE_CHANGE' and nullif(requirement_text,'') is not null and nullif(completion_rule,'') is not null and requires_admin_page and requires_api),
  (select count(*) from framework_step_execution_spec where process_code='GOVERNANCE_CHANGE' and design_status='DESIGN_COMPLETE' and approval_status='APPROVED'
-    and case
-      when jsonb_typeof(field_contract)='array' and jsonb_array_length(field_contract)>0 and (field_contract->0 ? 'fields')
-        then (select count(*) from jsonb_array_elements(field_contract) schema_set
-              cross join lateral jsonb_array_elements(coalesce(schema_set->'fields','[]'::jsonb)))
-      when jsonb_typeof(field_contract)='array' then jsonb_array_length(field_contract)
-      else 0 end >=8),
+    and jsonb_typeof(field_contract)='object'
+    and field_contract->>'contractType'='STEP_FIELDS'
+    and jsonb_array_length(coalesce(field_contract->'fields','[]'::jsonb))>=8),
  (select count(distinct step_code) from framework_professional_screen_contract where process_code='GOVERNANCE_CHANGE' and lower(split_part(route_path,'?',1))='/admin/system/process-workspace' and contract_status='VERIFIED' and api_verified and database_verified and authority_verified and responsive_verified and accessibility_verified and exception_states_verified),
  (select count(distinct case when case_type in('EXCEPTION','VALIDATION') then 'EXCEPTION' else case_type end) from framework_simulation_case where process_code='GOVERNANCE_CHANGE' and case_status in('APPROVED','VERIFIED') and case_type in('HAPPY_PATH','AUTHORITY','ISOLATION','RECOVERY','EXCEPTION','VALIDATION')),
  (select count(distinct case when c.case_type in('EXCEPTION','VALIDATION') then 'EXCEPTION' else c.case_type end) from framework_simulation_case c where c.process_code='GOVERNANCE_CHANGE' and c.case_type in('HAPPY_PATH','AUTHORITY','ISOLATION','RECOVERY','EXCEPTION','VALIDATION') and exists(select 1 from framework_simulation_run r where r.case_code=c.case_code and r.result='PASSED'))")"

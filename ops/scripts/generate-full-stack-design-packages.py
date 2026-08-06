@@ -41,7 +41,7 @@ def validate_step(process: dict[str, Any], step: dict[str, Any]) -> None:
         "output_contract", "guide_contract", "nonfunctional_contract",
     )
     required_arrays = (
-        "screen_contract", "field_contract", "command_contract", "api_contract",
+        "screen_contract", "command_contract", "api_contract",
         "handoff_contract", "test_contract", "blocker_codes",
     )
     for key in required_objects:
@@ -50,11 +50,14 @@ def validate_step(process: dict[str, Any], step: dict[str, Any]) -> None:
     for key in required_arrays:
         if not isinstance(step.get(key), list):
             fail(f"{identity}: {key} must be an array")
+    field_contract = step.get("field_contract")
+    if not isinstance(field_contract, dict) or field_contract.get("contractType") != "STEP_FIELDS" or not isinstance(field_contract.get("fields"), list):
+        fail(f"{identity}: field_contract must be a STEP_FIELDS object")
     if step.get("design_status") != "DESIGN_COMPLETE" or step["blocker_codes"]:
         fail(f"{identity}: design is blocked: {step.get('blocker_codes')}")
 
 
-def group_fields_by_audience(field_contract: list[dict[str, Any]]) -> dict[str, list[dict[str, Any]]]:
+def group_fields_by_audience(field_contract: dict[str, Any] | list[dict[str, Any]]) -> dict[str, list[dict[str, Any]]]:
     """Accept both legacy audience groups and the current flat field contract.
 
     Structured professional contracts store one field per array item and apply
@@ -68,7 +71,8 @@ def group_fields_by_audience(field_contract: list[dict[str, Any]]) -> dict[str, 
     """
     grouped: dict[str, list[dict[str, Any]]] = {}
     shared: list[dict[str, Any]] = []
-    for item in field_contract:
+    items = field_contract.get("fields", []) if isinstance(field_contract, dict) else field_contract
+    for item in items:
         if not isinstance(item, dict):
             fail("field_contract entries must be objects")
         nested_fields = item.get("fields")
