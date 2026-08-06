@@ -16,7 +16,7 @@ import { FiveLayerFormRenderer } from "../contract-runtime/FiveLayerFormRenderer
 import { useRuntimeScreenContract } from "../contract-runtime/useRuntimeScreenContract";
 import { EMISSION_PROJECT_CREATE_CONTRACT } from "./emissionProjectCreateContract";
 
-type Readiness = { ready: boolean; sandbox?: boolean; companyApproved: boolean; activeSiteCount: number; actorCoverage: Record<string, number>; missing: string[]; siteManagementUrl: string; actorManagementUrl: string };
+type Readiness = { ready: boolean; sandbox?: boolean; companyApproved: boolean; activeSiteCount: number; actorCoverage: Record<string, number>; segregationOfDuties?: boolean; segregatedDutyAccountCount?: number; conflictingDutyAccountCount?: number; missing: string[]; siteManagementUrl: string; actorManagementUrl: string };
 type AccountOption = {
   id: string;
   displayName: string;
@@ -28,6 +28,13 @@ type AccountOption = {
 };
 type Options = { sites: string[]; owners: string[]; accounts: AccountOption[]; currentUser: string; readiness: Readiness };
 const EMPTY_READINESS:Readiness={ready:false,companyApproved:false,activeSiteCount:0,actorCoverage:{},missing:[],siteManagementUrl:"/admin/emission/site-management",actorManagementUrl:"/admin/system/actor-process"};
+const readinessMessage=(code:string,en:boolean)=>{
+  if(code==="COMPANY_NOT_APPROVED")return en?"Company approval is required.":"승인된 기업 정보가 필요합니다.";
+  if(code==="ACTIVE_SITE_REQUIRED")return en?"At least one active site is required.":"활성 사업장이 1개 이상 필요합니다.";
+  if(code.startsWith("REQUIRED_ACTOR_MISSING:"))return en?`Required actor is missing: ${code.split(":")[1]}`:`필수 담당자가 없습니다: ${code.split(":")[1]}`;
+  if(code.startsWith("SEGREGATION_OF_DUTIES_REQUIRED:"))return en?"Calculator, verifier, and approver must be three separate accounts.":"산정·검증·승인은 서로 다른 3개 계정에 배정해야 합니다.";
+  return code;
+};
 const year = new Date().getFullYear();
 const createRequestId = () => globalThis.crypto?.randomUUID?.() ?? `project-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 const EMPTY = {
@@ -244,8 +251,8 @@ export function EmissionProjectCreatePage() {
           {optionsError&&<p className="mt-5 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm font-bold text-amber-900" role="alert">{optionsError}</p>}
           {!optionsLoading&&!optionsError?<section className={`mt-5 rounded-xl border p-5 ${options.readiness.ready?"border-emerald-200 bg-emerald-50":"border-amber-300 bg-amber-50"}`} aria-label={en?"Project readiness":"프로젝트 착수 준비 진단"}>
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"><div><p className="text-sm font-black text-[#052b57]">{en?"Project readiness":"프로젝트 착수 준비 진단"}</p><p className="mt-1 text-sm text-slate-700">{options.readiness.ready?(en?"Company, site, and required actor checks passed.":"기업·사업장·필수 액터 검사를 모두 통과했습니다."):(en?"Resolve the blocking items before starting a governed project.":"아래 차단 항목을 해결해야 감사 가능한 프로젝트를 시작할 수 있습니다.")}</p></div><span className={`w-fit rounded-full px-3 py-1 text-xs font-black ${options.readiness.ready?"bg-emerald-700 text-white":"bg-amber-700 text-white"}`}>{options.readiness.ready?(en?"READY":"착수 가능"):(en?"ACTION REQUIRED":"조치 필요")}</span></div>
-            <div className="mt-4 grid gap-3 sm:grid-cols-3"><div className="rounded-lg bg-white p-3"><b>{en?"Company approval":"기업 승인"}</b><p className="mt-1 text-sm">{options.readiness.companyApproved?(en?"Completed":"완료"):(en?"Required":"필요")}</p></div><div className="rounded-lg bg-white p-3"><b>{en?"Active sites":"활성 사업장"}</b><p className="mt-1 text-sm">{options.readiness.activeSiteCount}</p></div><div className="rounded-lg bg-white p-3"><b>{en?"Required actors":"필수 액터"}</b><p className="mt-1 text-sm">{Object.values(options.readiness.actorCoverage).filter(value=>value>0).length}/5</p></div></div>
-            {!options.readiness.ready?<div className="mt-4"><ul className="space-y-1 text-sm font-bold text-amber-950">{options.readiness.missing.map(item=><li key={item}>• {item}</li>)}</ul><div className="mt-4 flex flex-wrap gap-2"><a className="rounded-lg bg-white px-4 py-2 text-sm font-black text-blue-800 ring-1 ring-blue-200" href={options.readiness.siteManagementUrl}>{en?"Manage sites":"사업장 관리"}</a><a className="rounded-lg bg-white px-4 py-2 text-sm font-black text-blue-800 ring-1 ring-blue-200" href={options.readiness.actorManagementUrl}>{en?"Manage actors":"액터·권한 관리"}</a></div></div>:null}
+            <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4"><div className="rounded-lg bg-white p-3"><b>{en?"Company approval":"기업 승인"}</b><p className="mt-1 text-sm">{options.readiness.companyApproved?(en?"Completed":"완료"):(en?"Required":"필요")}</p></div><div className="rounded-lg bg-white p-3"><b>{en?"Active sites":"활성 사업장"}</b><p className="mt-1 text-sm">{options.readiness.activeSiteCount}</p></div><div className="rounded-lg bg-white p-3"><b>{en?"Required actors":"필수 액터"}</b><p className="mt-1 text-sm">{Object.values(options.readiness.actorCoverage).filter(value=>value>0).length}/5</p></div><div className="rounded-lg bg-white p-3"><b>{en?"Segregation of duties":"업무분리"}</b><p className="mt-1 text-sm">{options.readiness.segregationOfDuties?(en?"Passed":"충족"):(en?"Separate accounts required":"계정 분리 필요")}</p></div></div>
+            {!options.readiness.ready?<div className="mt-4"><ul className="space-y-1 text-sm font-bold text-amber-950">{options.readiness.missing.map(item=><li key={item}>• {readinessMessage(item,en)}</li>)}</ul><div className="mt-4 flex flex-wrap gap-2"><a className="rounded-lg bg-white px-4 py-2 text-sm font-black text-blue-800 ring-1 ring-blue-200" href={options.readiness.siteManagementUrl}>{en?"Manage sites":"사업장 관리"}</a><a className="rounded-lg bg-white px-4 py-2 text-sm font-black text-blue-800 ring-1 ring-blue-200" href={options.readiness.actorManagementUrl}>{en?"Manage actors":"액터·권한 관리"}</a></div></div>:null}
           </section>:null}
           <form className="mt-7 space-y-5" data-contract-version={runtimeContract.contract.version} data-contract-source={runtimeContract.source} data-process-code={runtimeContract.contract.processSchema.processCode} data-step-code={runtimeContract.contract.processSchema.stepCode} data-testid="emission-project-create-form" onSubmit={submit} noValidate>
             <FiveLayerFormRenderer

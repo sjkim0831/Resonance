@@ -94,13 +94,18 @@ public class EmissionProjectRegistryService {
         Map<String,Integer> coverage=new LinkedHashMap<>();
         for(String code:requiredActors)coverage.put(code,0);
         for(Map<String,Object> row:actorRows)coverage.put(String.valueOf(row.get("actor")),((Number)row.get("count")).intValue());
+        Integer segregatedDutyAccountCount=jdbc.queryForObject("SELECT count(DISTINCT lower(account_id)) FROM framework_account_actor_assignment WHERE tenant_id=? AND assignment_status='ACTIVE' AND (valid_until IS NULL OR valid_until>=current_date) AND actor_code IN ('CALCULATOR','VERIFIER','APPROVER')",Integer.class,tenant);
+        Integer conflictingDutyAccountCount=jdbc.queryForObject("SELECT count(*) FROM (SELECT lower(account_id) FROM framework_account_actor_assignment WHERE tenant_id=? AND assignment_status='ACTIVE' AND (valid_until IS NULL OR valid_until>=current_date) AND actor_code IN ('CALCULATOR','VERIFIER','APPROVER') GROUP BY lower(account_id) HAVING count(DISTINCT actor_code)>1) conflicts",Integer.class,tenant);
+        boolean segregationOfDuties=segregatedDutyAccountCount!=null&&segregatedDutyAccountCount>=3&&conflictingDutyAccountCount!=null&&conflictingDutyAccountCount==0;
         List<String> missing=new ArrayList<>();
         if(companyCount==null||companyCount==0)missing.add("COMPANY_NOT_APPROVED");
         if(siteCount==null||siteCount==0)missing.add("ACTIVE_SITE_REQUIRED");
         for(String code:requiredActors)if(coverage.getOrDefault(code,0)==0)missing.add("REQUIRED_ACTOR_MISSING:"+code);
+        if(!segregationOfDuties)missing.add("SEGREGATION_OF_DUTIES_REQUIRED:CALCULATOR,VERIFIER,APPROVER");
         Map<String,Object> result=new LinkedHashMap<>();
         result.put("ready",missing.isEmpty());result.put("sandbox",sandbox);result.put("companyApproved",companyCount!=null&&companyCount>0);
         result.put("activeSiteCount",siteCount==null?0:siteCount);result.put("actorCoverage",coverage);result.put("missing",missing);
+        result.put("segregationOfDuties",segregationOfDuties);result.put("segregatedDutyAccountCount",segregatedDutyAccountCount==null?0:segregatedDutyAccountCount);result.put("conflictingDutyAccountCount",conflictingDutyAccountCount==null?0:conflictingDutyAccountCount);
         result.put("siteManagementUrl","/admin/emission/site-management");result.put("actorManagementUrl","/admin/system/actor-process");
         return result;
     }
