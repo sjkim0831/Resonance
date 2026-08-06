@@ -14,11 +14,20 @@ cleanup_smoke_secrets() {
 }
 trap cleanup_smoke_secrets EXIT
 
-# Prefer the host-managed Chromium binary when available. This decouples the
-# deployment gate from Playwright's package-specific browser cache revision,
-# which can legitimately change after a lockfile update.
-if [[ -z "${PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH:-}" && -x /snap/bin/chromium ]]; then
-  export PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/snap/bin/chromium
+# Prefer the Chromium revision installed by the pinned Playwright package.
+# A newer system/Snap Chromium can speak a different DevTools protocol and
+# intermittently close the whole browser transport during a deploy gate. Fall
+# back to the host browser only when the matching managed binary is absent.
+if [[ -z "${PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH:-}" ]]; then
+  managed_chromium="$({
+    cd "$root_dir"
+    node -e "process.stdout.write(require('@playwright/test').chromium.executablePath())"
+  } 2>/dev/null || true)"
+  if [[ -n "$managed_chromium" && -x "$managed_chromium" ]]; then
+    export PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH="$managed_chromium"
+  elif [[ -x /snap/bin/chromium ]]; then
+    export PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/snap/bin/chromium
+  fi
 fi
 
 # Interrupted operator runs can leave Playwright's default output owned by a

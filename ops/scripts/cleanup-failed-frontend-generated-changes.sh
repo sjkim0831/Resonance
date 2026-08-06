@@ -17,6 +17,8 @@ allowed_path() {
     projects/carbonet-frontend/source/src/features/builder-studio/pageCompletenessInventory.ts | \
     projects/carbonet-frontend/source/src/features/builder-studio/routeSourceInventory.ts | \
     projects/carbonet-frontend/source/.cache/full-screen-smoke/* | \
+    apps/carbonet-api/src/main/resources/static/react-app/* | \
+    projects/carbonet-assets/static/react-app/* | \
     projects/carbonet-frontend/src/main/resources/static/react-app/*)
       return 0
       ;;

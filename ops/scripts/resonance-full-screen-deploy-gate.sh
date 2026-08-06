@@ -179,6 +179,29 @@ verify() {
   ) 2>&1 | tee "$run_report/run.log"
   smoke_status=${PIPESTATUS[0]}
   set -e
+  if [[ "$smoke_status" -ne 0 \
+     && "${FULL_SCREEN_GATE_BROWSER_TRANSPORT_RETRY:-true}" == "true" ]] \
+     && node "$ROOT_DIR/ops/scripts/classify-browser-transport-failure.mjs" \
+          "$run_report/run.log" "$run_report/summary.json"; then
+    mv "$run_report/run.log" "$run_report/run-attempt-1.log"
+    [[ ! -f "$run_report/summary.json" ]] || \
+      cp "$run_report/summary.json" "$run_report/summary-attempt-1.json"
+    log "transient browser transport failure; retrying once with a fresh single-worker browser"
+    set +e
+    (
+      cd "$FRONTEND_DIR"
+      FULL_SCREEN_SMOKE_CHANGED_ONLY="${FULL_SCREEN_SMOKE_CHANGED_ONLY:-false}" \
+      FULL_SCREEN_SMOKE_ROUTE_PATTERN="${FULL_SCREEN_SMOKE_ROUTE_PATTERN:-}" \
+      FULL_SCREEN_SMOKE_SHARDS="${FULL_SCREEN_SMOKE_SHARDS:-1}" \
+      FULL_SCREEN_SMOKE_SKIP_QUALITY_REFRESH="${FULL_SCREEN_SMOKE_SKIP_QUALITY_REFRESH:-true}" \
+      FULL_SCREEN_SMOKE_SUMMARY="$run_report/summary.json" \
+      FULL_SCREEN_SMOKE_WORKERS=1 \
+      FULL_SCREEN_SMOKE_RETRIES=0 \
+        bash scripts/run-full-screen-smoke.sh
+    ) 2>&1 | tee "$run_report/run.log"
+    smoke_status=${PIPESTATUS[0]}
+    set -e
+  fi
   [[ -f "$FRONTEND_DIR/.cache/full-screen-smoke/manifest.json" ]] && cp "$FRONTEND_DIR/.cache/full-screen-smoke/manifest.json" "$run_report/manifest.json"
   [[ -f "$run_report/summary.json" ]] || summary_status=1
   [[ "${FULL_SCREEN_GATE_TEST_FORCE_FAILURE:-false}" == "true" ]] && smoke_status=97
