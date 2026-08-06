@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { EMISSION_END_TO_END_PROCESS_CODE, EMISSION_INTERNAL_PROCESS_CODES, emissionPhaseLabel, isCustomerVisibleEmissionProcess, parentEmissionStepCode } from "../../lib/workflow/emissionProcessHierarchy";
 
 const ACTOR_LABELS: Record<string, string> = {
   "*": "전체 담당자",
@@ -47,28 +48,6 @@ const ACTOR_LABELS: Record<string, string> = {
   SYSTEM_ADMIN: "시스템 관리자",
   UNASSIGNED: "담당 미지정",
 };
-
-const EMISSION_END_TO_END_PROCESS_CODE = "EMISSION_PROJECT";
-const EMISSION_END_TO_END_CHILDREN = [
-  "EMISSION_PROJECT_PORTFOLIO",
-  "ORGANIZATIONAL_BOUNDARY",
-  "ACTIVITY_DATA",
-  "EMISSION_CALCULATION",
-  "REPORT_CERTIFICATION",
-  "REGULATORY_SUBMISSION",
-] as const;
-
-function emissionPhaseLabel(processCode: string, en: boolean) {
-  const labels: Record<string, [string, string]> = {
-    EMISSION_PROJECT_PORTFOLIO: ["준비·선택", "Prepare"],
-    ORGANIZATIONAL_BOUNDARY: ["조직경계", "Boundary"],
-    ACTIVITY_DATA: ["활동자료", "Activity data"],
-    EMISSION_CALCULATION: ["산정·검증", "Calculation"],
-    REPORT_CERTIFICATION: ["보고·인증", "Report"],
-    REGULATORY_SUBMISSION: ["규제 제출", "Submission"],
-  };
-  return labels[processCode]?.[en ? 1 : 0] || (en ? "Work" : "업무");
-}
 
 function stepApplicabilityType(processCode: string, stepCode: string) {
   if (processCode === "REGULATORY_SUBMISSION") return "CONDITIONAL";
@@ -680,33 +659,39 @@ export function TaskQuestPanel() {
     const synchronizeGuide = (event: Event) => {
       const detail = (event as CustomEvent<TaskGuideFocusDetail>).detail;
       if (!detail?.processCode) return;
+      const normalizedProcessCode = EMISSION_INTERNAL_PROCESS_CODES.has(detail.processCode)
+        ? EMISSION_END_TO_END_PROCESS_CODE
+        : detail.processCode;
+      const normalizedStepCode = normalizedProcessCode === EMISSION_END_TO_END_PROCESS_CODE
+        ? (parentEmissionStepCode(detail.processCode) || detail.stepCode || "")
+        : (detail.stepCode || "");
       const processSteps = (data?.processCatalogSteps || [])
-        .filter((step) => step.processCode === detail.processCode)
+        .filter((step) => step.processCode === normalizedProcessCode)
         .sort((a, b) => Number(a.stepOrder) - Number(b.stepOrder));
       const stepIndex = Math.max(
         0,
-        detail.stepCode
-          ? processSteps.findIndex((step) => step.stepCode === detail.stepCode)
+        normalizedStepCode
+          ? processSteps.findIndex((step) => step.stepCode === normalizedStepCode)
           : 0,
       );
-      setSelectedCatalogProcessCode(detail.processCode);
+      setSelectedCatalogProcessCode(normalizedProcessCode);
       setSelectedCatalogStep(stepIndex);
-      setFocusedStepCode(detail.stepCode || "");
-      localStorage.setItem("task-quest-catalog-process", detail.processCode);
+      setFocusedStepCode(normalizedStepCode);
+      localStorage.setItem("task-quest-catalog-process", normalizedProcessCode);
       localStorage.setItem("task-quest-catalog-step", String(stepIndex));
-      if (detail.stepCode)
-        localStorage.setItem("task-quest-focused-step", detail.stepCode);
+      if (normalizedStepCode)
+        localStorage.setItem("task-quest-focused-step", normalizedStepCode);
       else localStorage.removeItem("task-quest-focused-step");
       if (detail.projectId) {
         const focus = {
           projectId: detail.projectId,
-          processCode: detail.processCode,
+          processCode: normalizedProcessCode,
         };
         setSelectedOverviewProjectId(detail.projectId);
         setFocusedWorkflow(focus);
         localStorage.setItem("task-quest-overview-project", detail.projectId);
         localStorage.setItem("task-quest-focused-workflow", JSON.stringify(focus));
-      } else if (detail.processCode === "EMISSION_PROJECT_PORTFOLIO") {
+      } else if (normalizedProcessCode === "EMISSION_PROJECT_PORTFOLIO") {
         setSelectedOverviewProjectId("");
         setFocusedWorkflow(null);
         localStorage.removeItem("task-quest-overview-project");
@@ -1012,8 +997,9 @@ export function TaskQuestPanel() {
       (data?.processCatalog || [])
         .filter(
           (item) =>
-            selectedWorkType === "ALL" ||
-            String(item.domainCode).toUpperCase() === selectedWorkType,
+            (selectedWorkType === "ALL" ||
+              String(item.domainCode).toUpperCase() === selectedWorkType) &&
+            isCustomerVisibleEmissionProcess(item.processCode),
         )
         .map((item) => {
           const runtimeTasks = workflowItems.filter(
@@ -1118,16 +1104,9 @@ export function TaskQuestPanel() {
   );
   const emissionEndToEndSteps = useMemo(() => {
     if (selectedCatalogProcessCode !== EMISSION_END_TO_END_PROCESS_CODE) return [];
-    const childOrder = new Map<string, number>(
-      EMISSION_END_TO_END_CHILDREN.map((processCode, index) => [processCode, index]),
-    );
     return (data?.processCatalogSteps || [])
-      .filter((step) => childOrder.has(step.processCode))
-      .sort(
-        (left, right) =>
-          Number(childOrder.get(left.processCode)) - Number(childOrder.get(right.processCode)) ||
-          Number(left.stepOrder) - Number(right.stepOrder),
-      );
+      .filter((step) => step.processCode === EMISSION_END_TO_END_PROCESS_CODE)
+      .sort((left, right) => Number(left.stepOrder) - Number(right.stepOrder));
   }, [data?.processCatalogSteps, selectedCatalogProcessCode]);
   const selectedProcessWaves = useMemo(() => {
     if (selectedCatalogProcess && selectedCatalogProcess.processCode !== "WORK_ASSIGNMENT") {
@@ -1142,7 +1121,7 @@ export function TaskQuestPanel() {
           processes: [selectedCatalogProcess],
           stepCode: step.stepCode,
           stepName: selectedCatalogProcess.processCode === EMISSION_END_TO_END_PROCESS_CODE
-            ? `${emissionPhaseLabel(step.processCode, en)} · ${step.stepName}`
+            ? `${emissionPhaseLabel(step.stepCode, en)} · ${step.stepName}`
             : step.stepName,
         }));
       }
@@ -1164,7 +1143,7 @@ export function TaskQuestPanel() {
         stepCode: "",
         stepName: "",
       }));
-  }, [data?.processCatalogSteps, emissionEndToEndSteps, selectedCatalogProcess, selectedDefinedProcesses]);
+  }, [data?.processCatalogSteps, emissionEndToEndSteps, en, selectedCatalogProcess, selectedDefinedProcesses]);
   const visibleProcessWaves = useMemo(() => {
     const keyword = processKeyword.trim().toLocaleLowerCase();
     if (!keyword) return selectedProcessWaves;
@@ -1281,6 +1260,9 @@ export function TaskQuestPanel() {
             .sort((a, b) => Number(a.stepOrder) - Number(b.stepOrder)),
     [data?.processCatalogSteps, emissionEndToEndSteps, selectedCatalogProcessCode],
   );
+  const selectedEmissionPhase = selectedCatalogProcessCode === EMISSION_END_TO_END_PROCESS_CODE
+    ? emissionPhaseLabel(selectedCatalogSteps[selectedCatalogStep]?.stepCode || "", en)
+    : "";
   const stepGuidanceContracts = useMemo(
     () => new Map(
       (data?.stepApplicabilityContracts || []).map((contract) => [
@@ -1316,18 +1298,22 @@ export function TaskQuestPanel() {
     const routeProcessCode = query.get("processCode") || query.get("process") || "";
     if (!routeProcessCode || !(data?.processCatalog || []).some((process) => process.processCode === routeProcessCode)) return;
     const routeProcess = (data?.processCatalog || []).find((process) => process.processCode === routeProcessCode);
+    const normalizedRouteProcessCode = EMISSION_INTERNAL_PROCESS_CODES.has(routeProcessCode)
+      ? EMISSION_END_TO_END_PROCESS_CODE
+      : routeProcessCode;
     if (routeProcess?.domainCode && routeProcess.domainCode !== selectedWorkType) {
       setSelectedWorkType(routeProcess.domainCode);
       localStorage.setItem("task-quest-work-type", routeProcess.domainCode);
     }
-    if (routeProcessCode !== selectedCatalogProcessCode) {
-      setSelectedCatalogProcessCode(routeProcessCode);
-      localStorage.setItem("task-quest-catalog-process", routeProcessCode);
+    if (normalizedRouteProcessCode !== selectedCatalogProcessCode) {
+      setSelectedCatalogProcessCode(normalizedRouteProcessCode);
+      localStorage.setItem("task-quest-catalog-process", normalizedRouteProcessCode);
     }
   }, [data?.processCatalog]);
   useEffect(() => {
     const query = new URLSearchParams(window.location.search);
-    const routeStepCode = query.get("stepCode") || query.get("step") || "";
+    const routeProcessCode = query.get("processCode") || query.get("process") || "";
+    const routeStepCode = parentEmissionStepCode(routeProcessCode) || query.get("stepCode") || query.get("step") || "";
     const routeStepIndex = selectedCatalogSteps.findIndex((step) => step.stepCode === routeStepCode);
     if (routeStepIndex < 0 || routeStepIndex === selectedCatalogStep) return;
     setSelectedCatalogStep(routeStepIndex);
@@ -2443,7 +2429,7 @@ export function TaskQuestPanel() {
               <label className="block text-xs font-black text-slate-600">{en ? "Process" : "프로세스"}</label>
               <select className="mt-1 h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm" value={selectedCatalogProcessCode} onChange={(event) => { selectCatalogProcess(event.target.value); void loadQaResults(event.target.value); }}><option value="">{en ? "Select process" : "프로세스 선택"}</option>{selectedDefinedProcesses.map((process) => <option key={process.processCode} value={process.processCode}>{process.processName}</option>)}</select>
               <label className="mt-3 block text-xs font-black text-slate-600">{en ? "Procedure" : "절차"}</label>
-              <select className="mt-1 h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm" value={selectedCatalogStep} onChange={(event) => { const index=Number(event.target.value); setSelectedCatalogStep(index); localStorage.setItem("task-quest-catalog-step", String(index)); }}>{selectedCatalogSteps.map((step,index) => <option key={step.stepCode} value={index}>{index+1}. {step.stepName} · {step.actorCode}</option>)}</select>
+              <select className="mt-1 h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm" value={selectedCatalogStep} onChange={(event) => { const index=Number(event.target.value); setSelectedCatalogStep(index); localStorage.setItem("task-quest-catalog-step", String(index)); }}>{selectedCatalogSteps.map((step,index) => <option key={step.stepCode} value={index}>{selectedCatalogProcessCode === EMISSION_END_TO_END_PROCESS_CODE ? `${emissionPhaseLabel(step.stepCode, en)} · ` : ""}{index+1}. {step.stepName} · {actorLabel(step.actorCode)}</option>)}</select>
               <label className="mt-3 block text-xs font-black text-slate-600">{en ? "Work instance and project" : "업무 인스턴스·프로젝트"}</label>
               <select className="mt-1 h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm" value={effectiveProjectId} onChange={(event) => { setSelectedOverviewProjectId(event.target.value); localStorage.setItem("task-quest-overview-project", event.target.value); }}><option value="">{en ? "Select project" : "프로젝트 선택"}</option>{overviewProjects.map((project) => <option key={project.id} value={project.id}>{project.name}</option>)}</select>
               {selectedCatalogSteps[selectedCatalogStep] ? <dl className="mt-3 space-y-2 rounded-xl bg-slate-50 p-3 text-xs leading-5 text-slate-700"><div><dt className="font-black text-slate-500">{en ? "Purpose" : "업무 목적"}</dt><dd>{selectedCatalogSteps[selectedCatalogStep].workPurpose || "-"}</dd></div><div><dt className="font-black text-slate-500">{en ? "Input guide" : "입력 범위·가이드"}</dt><dd className="whitespace-pre-wrap">{selectedCatalogSteps[selectedCatalogStep].inputContract || "저장값을 우선 불러오고, 필수값·최솟값·선택지·예시값 순서로 입력합니다."}</dd></div><div><dt className="font-black text-slate-500">{en ? "Done when" : "완료 조건"}</dt><dd>{selectedCatalogSteps[selectedCatalogStep].completionRule || "-"}</dd></div><div><dt className="font-black text-slate-500">{en ? "Screen" : "연결 화면"}</dt><dd>{selectedCatalogSteps[selectedCatalogStep].userPath || selectedCatalogSteps[selectedCatalogStep].adminPath || "-"}</dd></div></dl> : null}
@@ -2463,7 +2449,7 @@ export function TaskQuestPanel() {
               <section className="mt-3 rounded-xl border border-slate-200 bg-white p-3" data-qa-progress="">
                 <div className="flex items-center justify-between text-xs"><strong className="text-[#052b57]">{en ? "Procedure progress" : "절차 진행상황"}</strong><span className="font-black text-blue-700">{qaCompletedSteps}/{selectedCatalogSteps.length} · {qaProgress}%</span></div>
                 <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-200"><div className="h-full rounded-full bg-[#246beb] transition-[width]" style={{ width: `${qaProgress}%` }} /></div>
-                <ol className="mt-3 grid gap-1.5">{selectedCatalogSteps.map((step, index) => { const runtime=(data?.items || []).find((item) => item.processCode===step.processCode && item.processStepCode===step.stepCode && (!effectiveProjectId || item.projectId===effectiveProjectId)); const active=index===selectedCatalogStep; return <li className={`flex items-center justify-between rounded-lg px-2.5 py-2 text-xs ${active ? "bg-blue-50 text-blue-900" : "bg-slate-50 text-slate-600"}`} key={step.stepCode}><span className="font-bold">{index+1}. {step.stepName}</span><span className="font-black">{runtime?.status === "DONE" ? (en ? "Done" : "완료") : active ? (en ? "Selected" : "선택") : (en ? "Waiting" : "대기")}</span></li>; })}</ol>
+                <ol className="mt-3 grid gap-1.5">{selectedCatalogSteps.map((step, index) => { const runtime=(data?.items || []).find((item) => item.processCode===step.processCode && item.processStepCode===step.stepCode && (!effectiveProjectId || item.projectId===effectiveProjectId)); const active=index===selectedCatalogStep; const phase=selectedCatalogProcessCode === EMISSION_END_TO_END_PROCESS_CODE ? emissionPhaseLabel(step.stepCode,en) : ""; const previousPhase=index>0&&selectedCatalogProcessCode === EMISSION_END_TO_END_PROCESS_CODE ? emissionPhaseLabel(selectedCatalogSteps[index-1].stepCode,en) : ""; return <li key={step.stepCode}>{phase&&phase!==previousPhase?<p className="mb-1 mt-2 text-[11px] font-black text-[#246beb] first:mt-0">{phase}</p>:null}<button className={`flex w-full items-center justify-between rounded-lg px-2.5 py-2 text-left text-xs ${active ? "bg-blue-50 text-blue-900 ring-1 ring-blue-200" : "bg-slate-50 text-slate-600"}`} onClick={()=>setSelectedCatalogStep(index)} type="button"><span className="font-bold">{index+1}. {step.stepName}</span><span className="font-black">{runtime?.status === "DONE" ? (en ? "Done" : "완료") : active ? (en ? "Selected" : "선택") : (en ? "Waiting" : "대기")}</span></button></li>; })}</ol>
               </section>
               <div className="mt-3 rounded-xl border border-blue-100 bg-blue-50 p-3">
                 <div className="flex flex-wrap items-end gap-2"><label className="text-xs font-black text-slate-600">{en ? "Cycle" : "실행 주기"}<select className="ml-2 h-10 rounded-lg border border-slate-300 bg-white px-2" value={qaCycleType} onChange={(event) => setQaCycleType(event.target.value)}>{["ONCE","MONTHLY","QUARTERLY","HALF_YEARLY","ANNUAL","AD_HOC"].map((value) => <option key={value}>{value}</option>)}</select></label>{qaCycleType !== "ONCE" ? <><input aria-label="기간 시작" className="h-10 rounded-lg border border-slate-300 bg-white px-2 text-xs" type="date" value={qaPeriodStart} onChange={(event) => setQaPeriodStart(event.target.value)} /><input aria-label="기간 종료" className="h-10 rounded-lg border border-slate-300 bg-white px-2 text-xs" type="date" value={qaPeriodEnd} onChange={(event) => setQaPeriodEnd(event.target.value)} /></> : null}</div>
@@ -2905,6 +2891,7 @@ export function TaskQuestPanel() {
                                   <h4 className="text-lg font-black leading-6 text-[#052b57]">
                                     {selectedCatalogProcess.processName}
                                   </h4>
+                                  {selectedEmissionPhase ? <div className="mt-2 flex flex-wrap items-center gap-2"><span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-black text-blue-800">{en ? "Current phase" : "현재 업무 구간"} · {selectedEmissionPhase}</span><span className="text-xs font-bold text-slate-500">{en ? "5 phases · 7 procedures" : "5개 업무 구간 · 7개 절차"}</span></div> : null}
                                   <p className="mt-2 text-sm leading-6 text-slate-600">
                                     {selectedCatalogProcess.goal || selectedCatalogSteps[0]?.workPurpose || (en ? "Follow the guided steps to complete this work." : "길잡이의 절차에 따라 업무를 완료합니다.")}
                                   </p>
