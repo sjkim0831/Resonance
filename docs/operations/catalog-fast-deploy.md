@@ -26,3 +26,8 @@ A deployment worktree that advanced to the target revision is clean by
 construction, so generated-artifact restoration is skipped for that run.
 Retries against an existing worktree retain the complete restore and dirty-file
 verification path.
+
+An authenticated webhook target already present in the local Git object store
+is promoted without a second remote fetch. Missing objects always fall back to
+the target-branch fetch, and the ten-minute timer remains the recovery path for
+missed webhook deliveries.
