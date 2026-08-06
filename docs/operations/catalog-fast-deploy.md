@@ -41,3 +41,8 @@ Database credential discovery runs concurrently with Git delta analysis and
 SQL assembly. The credential remains process-local, uses a mode-0600 temporary
 file, is removed before database execution, and falls back to the shared
 PostgreSQL adapter when prefetching is unavailable.
+
+The catalog transaction performs its writable-primary assertion inside the
+same database session as the mutation. Only connection failures and the
+explicit replica guard may retry through the elected Patroni leader; catalog
+or integrity failures remain fail-closed and are never replayed.
