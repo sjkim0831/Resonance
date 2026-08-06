@@ -84,6 +84,8 @@ public class StaticPageIsolationExceptionAdvice {
         }
         return uri.startsWith("/api/")
                 || uri.startsWith("/admin/api/")
+                || uri.startsWith("/home/api/")
+                || uri.startsWith("/en/home/api/")
                 || uri.endsWith(".json")
                 || uri.endsWith("/actionLogin")
                 || uri.endsWith("/validateRefreshToken")

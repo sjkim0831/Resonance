@@ -50,6 +50,30 @@ async function authenticatedApi(account) {
   return api;
 }
 
+function boundedBody(value, maximum = 400) {
+  const normalized = String(value || "").replace(/\s+/g, " ").trim();
+  return normalized.length <= maximum ? normalized : `${normalized.slice(0, maximum)}...`;
+}
+
+async function requireJson(response, label, expectedStatus = 200) {
+  const status = response.status();
+  const contentType = String(response.headers()["content-type"] || "").toLowerCase();
+  const body = await response.text();
+  let payload;
+  try {
+    payload = JSON.parse(body);
+  } catch {
+    throw new Error(`${label} returned non-JSON HTTP=${status} contentType=${contentType || "missing"} body=${JSON.stringify(boundedBody(body))}`);
+  }
+  if (status !== expectedStatus) {
+    throw new Error(`${label} HTTP=${status} expected=${expectedStatus} message=${JSON.stringify(boundedBody(payload?.message || body))}`);
+  }
+  if (!contentType.includes("application/json")) {
+    throw new Error(`${label} content type is not JSON HTTP=${status} contentType=${contentType || "missing"}`);
+  }
+  return payload;
+}
+
 try {
   // Each account owns an isolated API session and browser context. Running
   // these read-only route checks concurrently avoids paying cold page/runtime
@@ -59,8 +83,7 @@ try {
     const api = await authenticatedApi(account);
     try {
       const tasksResponse = await api.get("/home/api/emission-tasks", { failOnStatusCode: false });
-      if (tasksResponse.status() !== 200) throw new Error(`task API failed account=${account} status=${tasksResponse.status()}`);
-      const tasksPayload = await tasksResponse.json();
+      const tasksPayload = await requireJson(tasksResponse, `task API account=${account}`);
       const tasks = (tasksPayload.items || [])
         .filter((task) => String(task.projectId) === projectId && task.targetUrl)
         .sort((left, right) => Number(left.stepOrder || 0) - Number(right.stepOrder || 0));
@@ -229,7 +252,8 @@ try {
     let actionApi = null;
     for (const account of accounts) {
       const api = account === "qaowner26" ? ownerApi : await authenticatedApi(account);
-      const payload = await (await api.get("/home/api/emission-tasks")).json();
+      const response = await api.get("/home/api/emission-tasks", { failOnStatusCode: false });
+      const payload = await requireJson(response, `disposable task lookup account=${account}`);
       const candidate = (payload.items || []).find((task) =>
         String(task.projectId) === disposableProjectId && task.actionable === true && task.status === "READY");
       if (candidate) {
@@ -260,7 +284,8 @@ try {
     } finally {
       await context.close();
     }
-    const afterPayload = await (await actionApi.get("/home/api/emission-tasks")).json();
+    const afterResponse = await actionApi.get("/home/api/emission-tasks", { failOnStatusCode: false });
+    const afterPayload = await requireJson(afterResponse, `post-transition task lookup account=${actionAccount}`);
     const after = (afterPayload.items || []).find((task) => Number(task.id) === Number(actionable.id));
     if (after?.status !== "IN_PROGRESS") throw new Error(`browser transition not persisted status=${after?.status}`);
 
@@ -280,7 +305,8 @@ try {
     if (disposableProjectId) {
       const deleted = await ownerApi.delete(`/home/api/emission-projects/${encodeURIComponent(disposableProjectId)}`, { failOnStatusCode: false });
       if (deleted.status() !== 200) throw new Error(`disposable project cleanup HTTP ${deleted.status()}`);
-      const remaining = await (await ownerApi.get("/home/api/emission-tasks")).json();
+      const remainingResponse = await ownerApi.get("/home/api/emission-tasks", { failOnStatusCode: false });
+      const remaining = await requireJson(remainingResponse, "post-cleanup task lookup account=qaowner26");
       if ((remaining.items || []).some((task) => String(task.projectId) === disposableProjectId)) {
         throw new Error("disposable project tasks remain after cleanup");
       }

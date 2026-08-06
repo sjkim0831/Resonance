@@ -5,6 +5,9 @@ root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 script="$root/ops/scripts/auto-deploy-main.sh"
 validation_groups="$root/ops/scripts/run-post-deploy-validation-groups.sh"
 browser_e2e="$root/ops/scripts/resonance-project-task-browser-e2e.mjs"
+emission_service="$root/modules/resonance-common/carbonet-common-core/src/main/java/egovframework/com/feature/home/service/EmissionProjectRegistryService.java"
+page_advice="$root/modules/resonance-common/carbonet-common-core/src/main/java/egovframework/com/common/web/PageIsolationExceptionAdvice.java"
+static_page_advice="$root/modules/resonance-common/carbonet-common-core/src/main/java/egovframework/com/common/web/StaticPageIsolationExceptionAdvice.java"
 
 bash -n "$script"
 bash -n "$validation_groups"
@@ -163,4 +166,28 @@ assert "await page.waitForURL" in anonymous
 assert "artifacts=5" not in source
 assert "certificate=valid" not in source
 print("PROJECT_TASK_BROWSER_ANONYMOUS_FAIL_CLOSED_PASS api=401 cookies=empty route=redirected evidence=truthful")
+PY
+
+python3 - "$browser_e2e" "$emission_service" "$page_advice" "$static_page_advice" <<'PY'
+from pathlib import Path
+import sys
+
+browser = Path(sys.argv[1]).read_text(encoding="utf-8")
+service = Path(sys.argv[2]).read_text(encoding="utf-8")
+api_advices = [Path(path).read_text(encoding="utf-8") for path in sys.argv[3:]]
+
+enrich_start = service.index("void enrichCompletionReadiness")
+enrich_end = service.index("private int count", enrich_start)
+enrich = service[enrich_start:enrich_end]
+assert 'String code=text(task.get("taskCode"));' in enrich
+assert "SELECT task_code FROM emission_project_task WHERE task_id" not in enrich
+assert "async function requireJson" in browser
+assert browser.count("await requireJson(") >= 4
+assert "returned non-JSON HTTP=" in browser
+for advice in api_advices:
+    assert 'uri.startsWith("/home/api/")' in advice
+    assert 'uri.startsWith("/en/home/api/")' in advice
+    assert "HttpStatus.INTERNAL_SERVER_ERROR" in advice
+
+print("PROJECT_TASK_SNAPSHOT_RACE_PASS taskCode=projection nPlusOne=removed apiAdvices=2 e2eDiagnostic=bounded")
 PY

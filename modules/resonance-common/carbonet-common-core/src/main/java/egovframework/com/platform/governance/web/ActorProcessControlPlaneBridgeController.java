@@ -774,7 +774,14 @@ public class ActorProcessControlPlaneBridgeController {
     @Scheduled(
             fixedDelayString = "${resonance.actor-process.generation-recovery-delay-ms:60000}",
             initialDelayString = "${resonance.actor-process.generation-recovery-initial-delay-ms:2000}")
+    @Transactional
     public void recoverQueuedDesignGeneration() {
+        Boolean elected = jdbc.queryForObject(
+                "select pg_try_advisory_xact_lock(hashtext('resonance:requirement-design-self-healer'))",
+                Boolean.class);
+        if (!Boolean.TRUE.equals(elected)) {
+            return;
+        }
         jdbc.update("update framework_business_work_type set use_at='N',updated_at=current_timestamp where work_type_code='REQUIREMENT_AUTOMATION'");
         List<String> requirementProcesses = jdbc.queryForList("""
                 select process_code from framework_process_definition
