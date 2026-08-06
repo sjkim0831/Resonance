@@ -20,7 +20,8 @@ phase_file="${CARBONET_DEPLOY_PHASE_FILE:-}"
 
 case "$mode" in
   catalog|automation) target_ms="${CARBONET_FAST_DEPLOY_TARGET_MS:-15000}" ;;
-  frontend|runtime|backstage) target_ms="${CARBONET_RUNTIME_DEPLOY_TARGET_MS:-60000}" ;;
+  frontend) target_ms="${CARBONET_FRONTEND_DEPLOY_TARGET_MS:-30000}" ;;
+  runtime|backstage) target_ms="${CARBONET_RUNTIME_DEPLOY_TARGET_MS:-60000}" ;;
   *) echo "[deploy-performance] unsupported mode: $mode" >&2; exit 2 ;;
 esac
 hard_limit_ms="${CARBONET_DEPLOY_HARD_LIMIT_MS:-120000}"
@@ -36,13 +37,14 @@ if [[ -s "$release_manifest" ]]; then
 fi
 
 # Runtime-style deployments have two distinct operator promises:
-#   1. the changed service is built and ready within 60 seconds;
+#   1. frontend is verified within 30 seconds; runtime services are ready
+#      within 60 seconds;
 #   2. the complete fail-closed contract suite finishes within 90 seconds.
 # The release manifest is written only after rollout readiness and therefore
 # measures the first promise without counting Git preparation or post-deploy
 # governance checks. Fast metadata deployments continue to use wall time.
 slo_elapsed_ms="$elapsed_ms"
-if [[ "$mode" =~ ^(frontend|runtime|backstage)$ ]] \
+if [[ "$mode" =~ ^(runtime|backstage)$ ]] \
    && [[ "$build_duration_seconds" =~ ^[0-9]+$ ]] \
    && (( build_duration_seconds > 0 )); then
   slo_elapsed_ms=$((build_duration_seconds * 1000))
@@ -129,7 +131,7 @@ baseline_ms="$(
 regression_limit_ms="$target_ms"
 if (( baseline_ms > 0 )); then
   baseline_limit_ms=$(( baseline_ms * 125 / 100 ))
-  (( baseline_limit_ms > regression_limit_ms )) &&
+  (( baseline_limit_ms < regression_limit_ms )) &&
     regression_limit_ms="$baseline_limit_ms"
 fi
 
@@ -145,6 +147,24 @@ elif (( slo_elapsed_ms > regression_limit_ms )); then
   status="SLO_BREACH"
   reason="READY_TARGET_OR_25_PERCENT_REGRESSION"
 fi
+
+previous_consecutive_breaches=0
+if [[ "$status" == "SLO_BREACH" && -s "$history_file" ]]; then
+  previous_consecutive_breaches="$(
+    jq -rs --arg mode "$mode" '
+      [ .[] | select(.mode == $mode) ] | reverse |
+      reduce .[] as $item ({count:0,stopped:false};
+        if .stopped then .
+        elif $item.status == "SLO_BREACH" then .count += 1
+        else .stopped = true
+        end
+      ) | .count
+    ' "$history_file"
+  )"
+fi
+consecutive_breach_count=0
+[[ "$status" == "SLO_BREACH" ]] && \
+  consecutive_breach_count=$((previous_consecutive_breaches + 1))
 
 record="$(
   jq -cn \
@@ -165,6 +185,7 @@ record="$(
     --argjson slowestPhaseMs "$slowest_phase_ms" \
     --argjson phaseSummary "$phase_summary" \
     --argjson regressedPhases "$regressed_phases" \
+    --argjson consecutiveBreachCount "$consecutive_breach_count" \
     '{
       timestamp:$timestamp,mode:$mode,revision:$revision,status:$status,
       reason:$reason,elapsedMs:$elapsedMs,sloElapsedMs:$sloElapsedMs,
@@ -173,7 +194,8 @@ record="$(
       regressionLimitMs:$regressionLimitMs,
       buildDurationSeconds:$buildDurationSeconds,
       slowestPhase:$slowestPhase,slowestPhaseMs:$slowestPhaseMs,
-      phaseSummary:$phaseSummary,regressedPhases:$regressedPhases
+      phaseSummary:$phaseSummary,regressedPhases:$regressedPhases,
+      consecutiveBreachCount:$consecutiveBreachCount
     }'
 )"
 printf '%s\n' "$record" >>"$history_file"
@@ -226,9 +248,10 @@ DEPLOY_PERFORMANCE_MODE=$mode
 DEPLOY_PERFORMANCE_REVISION=$revision
 DEPLOY_PERFORMANCE_ELAPSED_MS=$elapsed_ms
 DEPLOY_PERFORMANCE_REASON=$reason
+DEPLOY_PERFORMANCE_CONSECUTIVE_BREACH_COUNT=$consecutive_breach_count
 EOF
   mv "${diagnostic_file}.tmp" "$diagnostic_file"
-  echo "[deploy-performance] WARN mode=$mode ready=${slo_elapsed_ms}ms verified=${elapsed_ms}ms target=${target_ms}ms verificationTarget=${verification_target_ms}ms baseline=${baseline_ms}ms reason=$reason" >&2
+  echo "[deploy-performance] WARN mode=$mode ready=${slo_elapsed_ms}ms verified=${elapsed_ms}ms target=${target_ms}ms verificationTarget=${verification_target_ms}ms baseline=${baseline_ms}ms consecutiveBreaches=${consecutive_breach_count} reason=$reason" >&2
 else
   rm -f "$diagnostic_file"
   echo "[deploy-performance] PASS mode=$mode ready=${slo_elapsed_ms}ms verified=${elapsed_ms}ms target=${target_ms}ms verificationTarget=${verification_target_ms}ms baseline=${baseline_ms}ms slowest=${slowest_phase:-none}:${slowest_phase_ms}ms"
