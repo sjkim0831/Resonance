@@ -5,6 +5,7 @@ ROOT_DIR="${ROOT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
 OVERLAY_DIR="${OVERLAY_DIR:-$ROOT_DIR/projects/carbonet-frontend/src/main/resources/static/react-app}"
 SOURCE_DIR="${SOURCE_DIR:-$ROOT_DIR/projects/carbonet-frontend/source}"
 BACKUP_DIR="${BACKUP_DIR:-$ROOT_DIR/var/backups/frontend-overlay}"
+BACKUP_RETAIN_COUNT="${BACKUP_RETAIN_COUNT:-48}"
 BASE_URL="${BASE_URL:-http://127.0.0.1}"
 MIN_ASSET_COUNT="${MIN_ASSET_COUNT:-50}"
 MARKER_FILE="${MARKER_FILE:-$OVERLAY_DIR/.resonance-build.json}"
@@ -13,6 +14,7 @@ usage() {
   cat <<'USAGE'
 Usage:
   bash ops/scripts/resonance-frontend-overlay-guard.sh backup
+  bash ops/scripts/resonance-frontend-overlay-guard.sh prune-backups
   bash ops/scripts/resonance-frontend-overlay-guard.sh verify-local
   bash ops/scripts/resonance-frontend-overlay-guard.sh verify-http
   bash ops/scripts/resonance-frontend-overlay-guard.sh write-marker
@@ -155,6 +157,28 @@ backup_overlay() {
   out="$BACKUP_DIR/react-app-overlay-$ts.tar.gz"
   tar -C "$OVERLAY_DIR" -czf "$out" .
   echo "[guard] backup=$out"
+  prune_backups
+}
+
+prune_backups() {
+  [[ "$BACKUP_RETAIN_COUNT" =~ ^[1-9][0-9]*$ ]] || {
+    echo "[guard] BACKUP_RETAIN_COUNT must be a positive integer" >&2
+    exit 18
+  }
+  mkdir -p "$BACKUP_DIR"
+  local removed=0 archive
+  mapfile -t archives < <(
+    find "$BACKUP_DIR" -maxdepth 1 -type f -name 'react-app-overlay-*.tar.gz' \
+      -printf '%T@ %p\n' | sort -nr | cut -d' ' -f2-
+  )
+  if (( ${#archives[@]} > BACKUP_RETAIN_COUNT )); then
+    for archive in "${archives[@]:BACKUP_RETAIN_COUNT}"; do
+      [[ "$archive" == "$BACKUP_DIR"/react-app-overlay-*.tar.gz ]] || continue
+      rm -f -- "$archive"
+      removed=$((removed + 1))
+    done
+  fi
+  echo "[guard] backup retention kept=$BACKUP_RETAIN_COUNT removed=$removed"
 }
 
 restore_latest_backup() {
@@ -240,6 +264,7 @@ verify_http() {
 cmd="${1:-}"
 case "$cmd" in
   backup) backup_overlay ;;
+  prune-backups) prune_backups ;;
   restore-latest) restore_latest_backup ;;
   verify-local) verify_local ;;
   verify-http) verify_http ;;
