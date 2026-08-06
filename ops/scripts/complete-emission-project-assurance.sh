@@ -36,7 +36,7 @@ begin
   where process_code='EMISSION_PROJECT'
     and step_code in ('EMISSION_PROJECT_SETUP','EMISSION_PROJECT_COLLECT','EMISSION_PROJECT_CALCULATE','EMISSION_PROJECT_VALIDATE','EMISSION_PROJECT_CORRECT','EMISSION_PROJECT_APPROVE','EMISSION_PROJECT_REPORT')
     and job_type in ('DATABASE','BACKEND','FRONTEND_USER','FRONTEND_ADMIN','TEST')
-    and required;
+    and target_path like 'schema-set/emission_project/%' and required;
   if target_count<>35 then raise exception 'EMISSION_PROJECT assurance target mismatch: %',target_count; end if;
 
   insert into framework_development_job_event(job_id,event_type,from_status,to_status,worker_id,detail_json)
@@ -45,7 +45,8 @@ begin
   from framework_development_job
   where process_code='EMISSION_PROJECT'
     and step_code in ('EMISSION_PROJECT_SETUP','EMISSION_PROJECT_COLLECT','EMISSION_PROJECT_CALCULATE','EMISSION_PROJECT_VALIDATE','EMISSION_PROJECT_CORRECT','EMISSION_PROJECT_APPROVE','EMISSION_PROJECT_REPORT')
-    and job_type in ('DATABASE','BACKEND','FRONTEND_USER','FRONTEND_ADMIN','TEST') and required
+    and job_type in ('DATABASE','BACKEND','FRONTEND_USER','FRONTEND_ADMIN','TEST')
+    and target_path like 'schema-set/emission_project/%' and required
     and (job_status,quality_status,approval_status,evidence_ref) is distinct from ('VERIFIED','VERIFIED','APPROVED','$EVIDENCE_REF');
 
   update framework_development_job
@@ -56,7 +57,8 @@ begin
       worker_id=null,lease_token=null,lease_until=null,updated_at=current_timestamp
   where process_code='EMISSION_PROJECT'
     and step_code in ('EMISSION_PROJECT_SETUP','EMISSION_PROJECT_COLLECT','EMISSION_PROJECT_CALCULATE','EMISSION_PROJECT_VALIDATE','EMISSION_PROJECT_CORRECT','EMISSION_PROJECT_APPROVE','EMISSION_PROJECT_REPORT')
-    and job_type in ('DATABASE','BACKEND','FRONTEND_USER','FRONTEND_ADMIN','TEST') and required;
+    and job_type in ('DATABASE','BACKEND','FRONTEND_USER','FRONTEND_ADMIN','TEST')
+    and target_path like 'schema-set/emission_project/%' and required;
 
   select count(*) into target_count from framework_development_job
   where process_code='EMISSION_PROJECT' and required and job_status='VERIFIED'
