@@ -15,6 +15,8 @@ generated_paths=(
   projects/carbonet-frontend/src/main/resources/static/react-app
   projects/carbonet-frontend/source/src/generated/screen-generation/definitions
   projects/carbonet-frontend/source/src/generated/screen-generation/generatedScreenTypes.ts
+  projects/carbonet-backend-metadata/process-runtime/design-preview
+  projects/carbonet-backend-metadata/process-runtime/generated
 )
 
 for generated_path in "${generated_paths[@]}"; do

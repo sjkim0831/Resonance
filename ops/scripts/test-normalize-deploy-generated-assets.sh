@@ -13,6 +13,8 @@ mkdir -p \
   "$tmp/apps/carbonet-api/src/main/resources/static/react-app/assets" \
   "$tmp/projects/carbonet-frontend/src/main/resources/static/react-app/assets" \
   "$tmp/projects/carbonet-frontend/source/src/generated/screen-generation/definitions" \
+  "$tmp/projects/carbonet-backend-metadata/process-runtime/design-preview/ORGANIZATIONAL_BOUNDARY" \
+  "$tmp/projects/carbonet-backend-metadata/process-runtime/generated/ORGANIZATIONAL_BOUNDARY" \
   "$tmp/.gradle/caches"
 printf 'tracked\n' >"$tmp/apps/carbonet-api/src/main/resources/static/react-app/index.html"
 printf 'tracked\n' >"$tmp/projects/carbonet-frontend/src/main/resources/static/react-app/index.html"
@@ -24,6 +26,8 @@ printf 'modified\n' >"$tmp/apps/carbonet-api/src/main/resources/static/react-app
 printf 'generated\n' >"$tmp/apps/carbonet-api/src/main/resources/static/react-app/assets/new.js"
 printf 'generated\n' >"$tmp/projects/carbonet-frontend/src/main/resources/static/react-app/assets/new.js"
 printf 'generated\n' >"$tmp/projects/carbonet-frontend/source/src/generated/screen-generation/definitions/new.json"
+printf 'generated\n' >"$tmp/projects/carbonet-backend-metadata/process-runtime/design-preview/ORGANIZATIONAL_BOUNDARY/preview.json"
+printf 'generated\n' >"$tmp/projects/carbonet-backend-metadata/process-runtime/generated/ORGANIZATIONAL_BOUNDARY/spec.json"
 printf 'cache\n' >"$tmp/.gradle/caches/keep.bin"
 
 bash "$normalizer" "$tmp" | grep -q GENERATED_WORKTREE_CLEAN

@@ -1977,6 +1977,11 @@ sync_post_reboot_recovery_if_required
 # same idempotent synchronizer on the runtime path before publishing success.
 sync_process_development_worker_if_required
 sync_react_asset_prune_worker_if_required
+# Runtime validation generates deterministic previews and compiled frontend
+# artifacts inside the isolated deployment worktree. Normalize only the
+# explicit generated allowlist before advancing the marker so the next
+# incremental deployment never inherits stale or duplicate build output.
+bash ops/scripts/normalize-deploy-generated-assets.sh "$ROOT_DIR"
 record_deploy_phase "postdeploy_validation"
 printf '%s\n' "$target_commit" > "${DEPLOY_STATE_FILE}.tmp"
 mv "${DEPLOY_STATE_FILE}.tmp" "$DEPLOY_STATE_FILE"
