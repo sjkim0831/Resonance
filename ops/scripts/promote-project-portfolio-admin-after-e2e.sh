@@ -19,6 +19,20 @@ kubectl -n "$NAMESPACE" exec -i "$PATRONI_POD" -c patroni -- \
   psql -v ON_ERROR_STOP=1 -h 127.0.0.1 -U postgres -d carbonet -X -q \
     -v evidence_b64="$EVIDENCE_B64" -v evidence_hash="$EVIDENCE_SHA256" -v source_commit="$SOURCE_COMMIT" <<'SQL'
 BEGIN;
+INSERT INTO framework_simulation_case(
+  case_code,process_code,case_name,case_type,preconditions,steps_json,assertions_json,
+  case_status,severity,required_evidence,automated,expected_duration_minutes,updated_at
+)
+VALUES (
+  'PROJECT_PORTFOLIO_ADMIN_UI','EMISSION_PROJECT_PORTFOLIO','관리자 프로젝트 포트폴리오 계약 검증',
+  'HAPPY_PATH','관리자 인증 및 프로젝트 데이터가 존재한다.',
+  '["관리자 화면 진입","상태 필터","검색","데스크톱·모바일 검증"]',
+  '["완료 건수 일치","검색 결과 일치","권한 차단","접근성·반응형 충족"]',
+  'ACTIVE','CRITICAL','authenticated-admin-e2e-json',true,1,current_timestamp
+)
+ON CONFLICT (case_code) DO UPDATE
+SET case_status='ACTIVE',automated=true,required_evidence=excluded.required_evidence,updated_at=current_timestamp;
+
 INSERT INTO framework_simulation_run(
   case_code,process_version,result,failure_reason,evidence_json,executed_by,executed_at,
   source_commit,execution_environment,evidence_hash
