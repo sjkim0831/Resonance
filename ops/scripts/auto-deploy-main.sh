@@ -69,7 +69,13 @@ while IFS= read -r stale_worktree; do
   root_real="$(realpath -m "$ROOT_DIR")"
   case "$stale_real" in
     "$deploy_worktree_root"/*)
-      [[ "$stale_real" == "$root_real" ]] || git -C "${CARBONET_DEPLOY_ORIGINAL_ROOT:-$ROOT_DIR}" worktree remove --force "$stale_real"
+      if [[ "$stale_real" != "$root_real" ]]; then
+        if [[ -d "$stale_real" ]] && find "$stale_real" ! -user "$(id -u)" -print -quit 2>/dev/null | grep -q .; then
+          echo "[auto-deploy] repairing stale deployment worktree ownership: $stale_real"
+          sudo -n chown -R "$(id -u):$(id -g)" "$stale_real"
+        fi
+        git -C "${CARBONET_DEPLOY_ORIGINAL_ROOT:-$ROOT_DIR}" worktree remove --force "$stale_real"
+      fi
       ;;
     *) echo "[auto-deploy] refusing unsafe stale worktree path: $stale_real" >&2; exit 23 ;;
   esac
