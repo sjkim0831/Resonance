@@ -15,6 +15,7 @@ deleted_tsv="$(mktemp)"
 manifest_tsv="$(mktemp)"
 sql="$(mktemp)"
 password_file="$(mktemp)"
+direct_error="$(mktemp)"
 password_prefetch_pid=""
 chmod 0600 "$password_file"
 cleanup_sync() {
@@ -22,7 +23,7 @@ cleanup_sync() {
     kill "$password_prefetch_pid" 2>/dev/null || true
     wait "$password_prefetch_pid" 2>/dev/null || true
   fi
-  rm -f "$tsv" "$deleted_tsv" "$manifest_tsv" "$sql" "$password_file"
+  rm -f "$tsv" "$deleted_tsv" "$manifest_tsv" "$sql" "$password_file" "$direct_error"
 }
 trap cleanup_sync EXIT INT TERM
 
@@ -142,6 +143,12 @@ fi
 
 cat > "$sql" <<'SQL'
 BEGIN;
+DO $$
+BEGIN
+  IF pg_is_in_recovery() THEN
+    RAISE EXCEPTION 'CARBONET_WRITABLE_LEADER_REQUIRED';
+  END IF;
+END $$;
 CREATE TEMP TABLE source_asset_stage(asset_path text,asset_type varchar(40),content_hash varchar(64)) ON COMMIT DROP;
 CREATE TEMP TABLE deleted_asset_stage(asset_path text) ON COMMIT DROP;
 CREATE TEMP TABLE source_manifest_stage(asset_path text,asset_type varchar(40),content_hash varchar(64)) ON COMMIT DROP;
@@ -398,6 +405,7 @@ fi
 source "$POSTGRES_ADAPTER"
 CARBONET_PG_NAMESPACE="$NAMESPACE"
 CARBONET_PG_CONTAINER="$POSTGRES_CONTAINER"
+CARBONET_PG_DEFER_WRITABLE_CHECK=true
 if wait "$password_prefetch_pid"; then
   password_prefetch_pid=""
   CARBONET_PG_PASSWORD="$(<"$password_file")"
@@ -407,23 +415,10 @@ else
 fi
 rm -f "$password_file"
 carbonet_postgres_query_init
-if [[ "$CARBONET_PG_MODE" == "direct" ]]; then
-  sed -i \
-    -e "s#/tmp/unified-source-assets.tsv#$tsv#g" \
-    -e "s#/tmp/unified-source-assets-deleted.tsv#$deleted_tsv#g" \
-    -e "s#/tmp/unified-source-assets-manifest.tsv#$manifest_tsv#g" \
-    "$sql"
-  PGPASSWORD="$CARBONET_PG_PASSWORD" \
-    psql -w -X -q \
-      -h "$CARBONET_PG_HOST" -p "$CARBONET_PG_PORT" \
-      -U "$CARBONET_PG_USER" -d "$CARBONET_PG_DATABASE" \
-      -v ON_ERROR_STOP=1 -v sync_scope="GIT_SOURCE_${sync_mode^^}" \
-      -v is_full="$([[ "$sync_mode" == "full" ]] && echo true || echo false)" \
-      -v validate_e4b="$validate_e4b" \
-      -f "$sql"
-else
-  leader="$CARBONET_PG_LEADER"
-  [[ -n "$leader" ]] || { echo "[asset-catalog] writable PostgreSQL leader not found" >&2; exit 1; }
+
+run_catalog_sync_via_kubectl() {
+  local leader="$CARBONET_PG_LEADER"
+  [[ -n "$leader" ]] || { echo "[asset-catalog] writable PostgreSQL leader not found" >&2; return 1; }
   kubectl -n "$NAMESPACE" cp "$tsv" "$leader:/tmp/unified-source-assets.tsv" -c "$POSTGRES_CONTAINER"
   kubectl -n "$NAMESPACE" cp "$deleted_tsv" "$leader:/tmp/unified-source-assets-deleted.tsv" -c "$POSTGRES_CONTAINER"
   kubectl -n "$NAMESPACE" cp "$manifest_tsv" "$leader:/tmp/unified-source-assets-manifest.tsv" -c "$POSTGRES_CONTAINER"
@@ -434,5 +429,34 @@ else
     -v is_full="$([[ "$sync_mode" == "full" ]] && echo true || echo false)" \
     -v validate_e4b="$validate_e4b" -q \
     -f /tmp/sync-unified-source-assets.sql
+}
+
+if [[ "$CARBONET_PG_MODE" == "direct" ]]; then
+  sed -i \
+    -e "s#/tmp/unified-source-assets.tsv#$tsv#g" \
+    -e "s#/tmp/unified-source-assets-deleted.tsv#$deleted_tsv#g" \
+    -e "s#/tmp/unified-source-assets-manifest.tsv#$manifest_tsv#g" \
+    "$sql"
+  if ! PGPASSWORD="$CARBONET_PG_PASSWORD" \
+    psql -w -X -q \
+      -h "$CARBONET_PG_HOST" -p "$CARBONET_PG_PORT" \
+      -U "$CARBONET_PG_USER" -d "$CARBONET_PG_DATABASE" \
+      -v ON_ERROR_STOP=1 -v sync_scope="GIT_SOURCE_${sync_mode^^}" \
+      -v is_full="$([[ "$sync_mode" == "full" ]] && echo true || echo false)" \
+      -v validate_e4b="$validate_e4b" \
+      -f "$sql" 2>"$direct_error"; then
+    if grep -Eqi \
+      'CARBONET_WRITABLE_LEADER_REQUIRED|could not connect|connection refused|connection timed out|server closed the connection|no route to host' \
+      "$direct_error"; then
+      echo "[asset-catalog] direct PostgreSQL path unavailable; retrying elected Patroni leader" >&2
+      carbonet_postgres_find_leader
+      run_catalog_sync_via_kubectl
+    else
+      cat "$direct_error" >&2
+      exit 1
+    fi
+  fi
+else
+  run_catalog_sync_via_kubectl
 fi
 echo "[asset-catalog] mode=$sync_mode tracked=$(wc -l < "$manifest_tsv") changed=$(wc -l < "$tsv") deleted=$(wc -l < "$deleted_tsv") closure=verified e4b=$([[ "$validate_e4b" == "true" ]] && echo verified || echo unchanged) dbMode=$CARBONET_PG_MODE base=${BASE_REVISION:-none} target=$TARGET_REVISION"

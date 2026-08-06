@@ -40,6 +40,11 @@ assert 'password_prefetch_pid="$!"' in sync
 assert 'CARBONET_PG_PASSWORD="$(<"$password_file")"' in sync
 assert 'rm -f "$password_file"' in sync
 assert 'CARBONET_PG_PASSWORD="${CARBONET_PG_PASSWORD:-}"' in adapter
+assert "carbonet_postgres_find_leader()" in adapter
+assert 'CARBONET_PG_DEFER_WRITABLE_CHECK:-false' in adapter
+assert "CARBONET_WRITABLE_LEADER_REQUIRED" in sync
+assert "run_catalog_sync_via_kubectl()" in sync
+assert "direct PostgreSQL path unavailable; retrying elected Patroni leader" in sync
 assert "CREATE TEMP TABLE asset_sync_delta" in sync
 assert "asset_sync_delta(active_before integer,additions integer,deletions integer) ON COMMIT DROP" in sync
 assert sync.count("CREATE TEMP TABLE asset_sync_delta") == 1
