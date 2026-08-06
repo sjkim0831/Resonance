@@ -12,6 +12,7 @@ all_tests=(
   ops/scripts/test-atomic-asset-e4b-validation.sh
   ops/scripts/test-no-change-preflight-fast-path.sh
   ops/scripts/test-candidate-release-rollout-gate.sh
+  ops/scripts/test-runtime-candidate-checkpoint.sh
   ops/scripts/test-frontend-deploy-performance-budget.sh
   ops/scripts/test-deploy-phase-telemetry.sh
   ops/scripts/test-database-plan-flyway-gate.sh
@@ -50,6 +51,8 @@ select_for_path() {
       add_test ops/scripts/test-no-change-preflight-fast-path.sh ;;
     ops/scripts/test-candidate-release-rollout-gate.sh)
       add_test ops/scripts/test-candidate-release-rollout-gate.sh ;;
+    ops/scripts/runtime-candidate-checkpoint.sh|ops/scripts/test-runtime-candidate-checkpoint.sh)
+      add_test ops/scripts/test-runtime-candidate-checkpoint.sh ;;
     ops/scripts/record-deploy-performance.sh|ops/scripts/test-frontend-deploy-performance-budget.sh)
       add_test ops/scripts/test-frontend-deploy-performance-budget.sh
       add_test ops/scripts/test-deploy-phase-telemetry.sh ;;
@@ -59,8 +62,11 @@ select_for_path() {
       add_test ops/scripts/test-database-plan-flyway-gate.sh ;;
     ops/scripts/run-process-development-worker.sh|ops/scripts/run-process-development-dispatcher.sh|ops/scripts/test-process-worker-deploy-marker.sh)
       add_test ops/scripts/test-process-worker-deploy-marker.sh ;;
-    ops/scripts/test-frontend-parallel-build-pipeline.sh|ops/scripts/resonance-k8s-build-deploy-80-v2.sh)
+    ops/scripts/test-frontend-parallel-build-pipeline.sh)
       add_test ops/scripts/test-frontend-parallel-build-pipeline.sh ;;
+    ops/scripts/resonance-k8s-build-deploy-80-v2.sh)
+      add_test ops/scripts/test-frontend-parallel-build-pipeline.sh
+      add_test ops/scripts/test-runtime-candidate-checkpoint.sh ;;
     ops/scripts/test-push-deploy-dispatch.sh|.github/workflows/carbonet-push-deploy.yml)
       add_test ops/scripts/test-push-deploy-dispatch.sh ;;
     ops/scripts/resonance-github-deploy-webhook.py|ops/scripts/sync-github-deploy-webhook-url.py|ops/scripts/test-github-deploy-webhook.sh)

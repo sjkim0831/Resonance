@@ -111,6 +111,7 @@ LOCK_FILE="${CARBONET_DEPLOY_LOCK_FILE:-/tmp/carbonet-auto-deploy.lock}"
 DEPLOY_STATE_FILE="${CARBONET_DEPLOY_STATE_FILE:-/opt/resonance-data/deploy/carbonet-main-success.commit}"
 DESIRED_REVISION_FILE="${CARBONET_DESIRED_REVISION_FILE:-/opt/resonance-data/deploy/github-webhook/desired-revision}"
 BACKSTAGE_DEPLOY_STATE_FILE="${BACKSTAGE_DEPLOY_STATE_FILE:-/opt/resonance-data/deploy/backstage-runtime-success.commit}"
+RUNTIME_CANDIDATE_CHECKPOINT_FILE="${CARBONET_RUNTIME_CANDIDATE_CHECKPOINT_FILE:-/opt/resonance-data/deploy/carbonet-runtime-candidate.json}"
 BACKUP_DIR="${CARBONET_DB_BACKUP_DIR:-/opt/resonance-backups/postgresql/pre-deploy}"
 NAMESPACE="${CARBONET_K8S_NAMESPACE:-carbonet-prod}"
 DEPLOYMENT="${CARBONET_K8S_DEPLOYMENT:-carbonet-runtime}"
@@ -135,7 +136,8 @@ record_deploy_performance() {
 mkdir -p \
   "$(dirname "$LOCK_FILE")" \
   "$(dirname "$DEPLOY_STATE_FILE")" \
-  "$(dirname "$BACKSTAGE_DEPLOY_STATE_FILE")"
+  "$(dirname "$BACKSTAGE_DEPLOY_STATE_FILE")" \
+  "$(dirname "$RUNTIME_CANDIDATE_CHECKPOINT_FILE")"
 exec 9>"$LOCK_FILE"
 flock -n 9 || { echo "[auto-deploy] another deployment is running"; exit 0; }
 
@@ -231,6 +233,13 @@ record_deploy_phase "remote_change_detection"
 if [[ "$deployed_commit" == "$target_commit" ]]; then
   no_change_elapsed_ms=$(( $(monotonic_milliseconds) - DEPLOY_STARTED_EPOCH_MILLISECONDS ))
   echo "[auto-deploy] already deployed: $deployed_commit (${no_change_elapsed_ms}ms)"
+  if [[ -s "$RUNTIME_CANDIDATE_CHECKPOINT_FILE" \
+     && -f "$ROOT_DIR/ops/scripts/runtime-candidate-checkpoint.sh" ]]; then
+    CARBONET_RUNTIME_CANDIDATE_CHECKPOINT_FILE="$RUNTIME_CANDIDATE_CHECKPOINT_FILE" \
+    CARBONET_CHECKPOINT_TARGET_COMMIT="$target_commit" \
+      bash "$ROOT_DIR/ops/scripts/runtime-candidate-checkpoint.sh" clear-success ||
+      echo "[auto-deploy] WARN stale runtime checkpoint was retained for operator review" >&2
+  fi
   rm -f -- "$DEPLOY_PHASE_FILE" "${CARBONET_DEPLOY_SNAPSHOT_PATH:-}"
   exit 0
 fi
@@ -492,6 +501,33 @@ cleanup_deploy() {
   rm -f -- "${DEPLOY_PHASE_FILE:-}"
 }
 trap cleanup_deploy EXIT INT TERM
+
+run_runtime_candidate_checkpoint() {
+  local action="$1"
+  CARBONET_RUNTIME_CANDIDATE_CHECKPOINT_FILE="$RUNTIME_CANDIDATE_CHECKPOINT_FILE" \
+  CARBONET_DEPLOY_ROOT="$ROOT_DIR" \
+  CARBONET_CHECKPOINT_BASE_COMMIT="$deployed_commit" \
+  CARBONET_CHECKPOINT_TARGET_COMMIT="$target_commit" \
+  CARBONET_CHECKPOINT_PLAN_RUNTIME="${PLAN_RUNTIME_REQUIRED:-false}" \
+  CARBONET_CHECKPOINT_PLAN_FRONTEND="${PLAN_FRONTEND_REQUIRED:-false}" \
+  CARBONET_CHECKPOINT_PLAN_BACKEND="${PLAN_BACKEND_REQUIRED:-false}" \
+  CARBONET_CHECKPOINT_PLAN_DATABASE="${PLAN_DATABASE_REQUIRED:-false}" \
+  CARBONET_CHECKPOINT_PLAN_BACKSTAGE="${PLAN_BACKSTAGE_REQUIRED:-false}" \
+  CARBONET_CHECKPOINT_PLAN_INFRASTRUCTURE="${PLAN_INFRASTRUCTURE_REQUIRED:-false}" \
+  CARBONET_CHECKPOINT_PLAN_TESTS="${PLAN_TESTS:-}" \
+  CARBONET_K8S_NAMESPACE="$NAMESPACE" \
+  CARBONET_K8S_DEPLOYMENT="$DEPLOYMENT" \
+  CARBONET_K8S_CONTAINER="${CARBONET_K8S_CONTAINER:-carbonet-runtime}" \
+  CARBONET_RUNTIME_BASE_URL="${CARBONET_RUNTIME_BASE_URL:-http://127.0.0.1}" \
+  CARBONET_RUNTIME_ASSET_DIR="${CARBONET_RUNTIME_ASSET_DIR:-/opt/Resonance/projects/carbonet-frontend/src/main/resources/static/react-app}" \
+  CARBONET_ROLLBACK_ACTIVE_FILE="$ROOT_DIR/var/run/full-screen-deploy-gate/active.env" \
+  POSTGRES_POD="${POSTGRES_POD:-}" \
+  POSTGRES_CONTAINER="$POSTGRES_CONTAINER" \
+  POSTGRES_DB="$POSTGRES_DB" \
+  POSTGRES_USER="$POSTGRES_USER" \
+  KUBECONFIG="$KUBECONFIG" \
+    bash "$ROOT_DIR/ops/scripts/runtime-candidate-checkpoint.sh" "$action"
+}
 
 run_screen_contract_runtime_save_gate_if_required() {
   [[ ",${PLAN_TESTS:-}," == *",runtime-contract:screen-save,"* ]] || return 0
@@ -1396,6 +1432,8 @@ if [[ "$PLAN_RUNTIME_REQUIRED" != "true" ]]; then
       ops/scripts/test-catalog-overlay-fast-path.sh \
       ops/scripts/test-no-change-preflight-fast-path.sh \
       ops/scripts/resonance-k8s-build-deploy-80-v2.sh \
+      ops/scripts/runtime-candidate-checkpoint.sh \
+      ops/scripts/test-runtime-candidate-checkpoint.sh \
       ops/scripts/test-candidate-release-rollout-gate.sh \
       ops/scripts/test-database-plan-flyway-gate.sh \
       ops/scripts/run-process-development-worker.sh \
@@ -1638,6 +1676,40 @@ if [[ "$PLAN_RUNTIME_REQUIRED" != "true" ]]; then
   exit 0
 fi
 
+# A failed post-deploy gate must not rebuild or roll out the exact candidate a
+# second time. Resume only when the durable checkpoint and every live identity,
+# readiness, asset, rollback and migration proof still match. Any mismatch is
+# fail-closed: replace the checkpoint with PREPARED and execute the normal path.
+runtime_candidate_checkpoint_eligible=true
+if [[ "$PLAN_FRONTEND_REQUIRED" == "true" \
+   && "$PLAN_BACKEND_REQUIRED" != "true" \
+   && "$PLAN_DATABASE_REQUIRED" != "true" ]]; then
+  runtime_candidate_checkpoint_eligible=false
+elif [[ "$PLAN_RUNTIME_REQUIRED" == "true" \
+     && "$PLAN_FRONTEND_REQUIRED" != "true" \
+     && "$PLAN_BACKEND_REQUIRED" != "true" \
+     && "$PLAN_DATABASE_REQUIRED" != "true" \
+     && ",$PLAN_TESTS," == *",runtime:startup-profile,"* ]]; then
+  runtime_candidate_checkpoint_eligible=false
+elif [[ "$PLAN_FRONTEND_REQUIRED" != "true" \
+     && "$PLAN_BACKEND_REQUIRED" != "true" \
+     && "$PLAN_DATABASE_REQUIRED" != "true" \
+     && "$PLAN_INFRASTRUCTURE_REQUIRED" == "true" ]]; then
+  runtime_candidate_checkpoint_eligible=false
+fi
+
+runtime_candidate_resume=false
+if [[ "$runtime_candidate_checkpoint_eligible" == "true" ]]; then
+  if run_runtime_candidate_checkpoint verify; then
+    runtime_candidate_resume=true
+    echo "[auto-deploy] exact runtime candidate verified; resuming at post-deploy gates"
+  else
+    echo "[auto-deploy] no reusable runtime candidate; executing guarded build and rollout"
+    run_runtime_candidate_checkpoint prepare
+  fi
+fi
+
+if [[ "$runtime_candidate_resume" != "true" ]]; then
 timestamp="$(date '+%Y%m%d-%H%M%S')"
 backup_file="$BACKUP_DIR/carbonet-$timestamp-$current_commit.sql.gz"
 roles_backup_file="$BACKUP_DIR/postgres-roles-$timestamp-$current_commit.sql.gz"
@@ -2000,7 +2072,9 @@ if [[ "$PLAN_FRONTEND_REQUIRED" != "true" \
   bash -n ops/scripts/auto-deploy-main.sh
   bash -n ops/scripts/auto-deploy-main-launcher.sh
   bash -n ops/scripts/plan-incremental-work.sh
+  bash -n ops/scripts/runtime-candidate-checkpoint.sh
   bash ops/scripts/test-plan-incremental-work.sh
+  bash ops/scripts/test-runtime-candidate-checkpoint.sh
   bash -n ops/scripts/resonance-full-screen-deploy-gate.sh
   bash -n projects/carbonet-frontend/source/scripts/run-full-screen-smoke.sh
   bash ops/scripts/test-fast-browser-deploy-gate.sh
@@ -2064,6 +2138,7 @@ IMMUTABLE_FRONTEND_IMAGE=true \
 SKIP_FRONTEND="$skip_frontend" \
 SKIP_NOTIFY="${SKIP_NOTIFY:-true}" \
 RUN_FLYWAY_MIGRATION_JOB="$PLAN_DATABASE_REQUIRED" \
+CARBONET_TARGET_COMMIT="$target_commit" \
   bash ops/scripts/resonance-k8s-build-deploy-80-v2.sh
 
 # The build/deploy script already gates the exact candidate release pods and
@@ -2074,7 +2149,17 @@ if [[ "$health_status" != *'"status":"UP"'* ]]; then
   echo "[auto-deploy] refusing success marker: health check is not UP" >&2
   exit 17
 fi
+if [[ "$runtime_candidate_checkpoint_eligible" == "true" ]]; then
+  run_runtime_candidate_checkpoint mark-ready
+fi
 record_deploy_phase "build_rollout_health"
+else
+  # The merge-overlay snapshot is temporary even when build/rollout are
+  # skipped. Restore/validate it to keep the persistent worktree clean, while
+  # retaining the full-screen rollback snapshot referenced by the checkpoint.
+  restore_live_frontend_overlay
+  record_deploy_phase "runtime_candidate_resume"
+fi
 asset_sync_precompleted=false
 if [[ -n "$runtime_asset_sync_pid" ]]; then
   if wait "$runtime_asset_sync_pid"; then
@@ -2152,6 +2237,9 @@ bash ops/scripts/normalize-deploy-generated-assets.sh "$ROOT_DIR"
 record_deploy_phase "postdeploy_validation"
 printf '%s\n' "$target_commit" > "${DEPLOY_STATE_FILE}.tmp"
 mv "${DEPLOY_STATE_FILE}.tmp" "$DEPLOY_STATE_FILE"
+if [[ "$runtime_candidate_checkpoint_eligible" == "true" ]]; then
+  run_runtime_candidate_checkpoint clear-success
+fi
 record_deploy_performance runtime
 sudo docker image prune -a -f >/dev/null || true
 echo "[auto-deploy] deployed $target_commit after one-shot Flyway verification; runtime migration disabled"

@@ -849,9 +849,24 @@ rollout_image() {
     -p="[{\"op\":\"replace\",\"path\":\"/spec/template/spec/containers/0/imagePullPolicy\",\"value\":\"IfNotPresent\"}]" \
     >/dev/null 2>&1 || true
 
+  local target_commit_annotation="${CARBONET_TARGET_COMMIT:-}"
+  if [[ -n "$target_commit_annotation" && ! "$target_commit_annotation" =~ ^[0-9a-f]{40}$ ]]; then
+    rollback_and_fail "TARGET_COMMIT_INVALID" \
+      "Candidate target commit annotation is invalid" \
+      "Provide CARBONET_TARGET_COMMIT as an exact 40-character Git commit"
+  fi
+  local -a release_annotations=(
+    "resonance.ai/image=$IMAGE_NAME"
+    "resonance.ai/released-at=$(date -Iseconds)"
+  )
+  if [[ -n "$target_commit_annotation" ]]; then
+    release_annotations+=("resonance.ai/target-commit=$target_commit_annotation")
+  fi
   kubectl -n "$NAMESPACE" annotate "deployment/$DEPLOYMENT" \
-    "resonance.ai/image=$IMAGE_NAME" "resonance.ai/released-at=$(date -Iseconds)" \
-    --overwrite >/dev/null 2>&1
+    "${release_annotations[@]}" --overwrite >/dev/null 2>&1 ||
+    rollback_and_fail "RELEASE_ANNOTATION_FAILED" \
+      "Failed to persist candidate release identity" \
+      "kubectl -n $NAMESPACE get deployment/$DEPLOYMENT -o yaml"
 
   log_detail "Ensuring runtime port and E4B generator selector endpoint..."
   kubectl -n "$NAMESPACE" set env "deployment/$DEPLOYMENT" \
