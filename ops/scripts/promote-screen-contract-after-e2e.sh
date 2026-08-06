@@ -91,6 +91,9 @@ WHERE contract.process_code=:'process_code'
       AND spec.test_contract NOT IN ('[]'::jsonb,'{}'::jsonb,'null'::jsonb)
       AND spec.screen_contract NOT IN ('[]'::jsonb,'{}'::jsonb,'null'::jsonb)
       AND spec.api_contract NOT IN ('[]'::jsonb,'{}'::jsonb,'null'::jsonb)
+      AND spec.actor_contract->>'contractType'='STEP_ACTOR_AUTHORITY'
+      AND length(coalesce(spec.actor_contract->>'actorCode',''))>0
+      AND spec.actor_contract->>'scope' IN ('GLOBAL','TENANT','PROJECT','TENANT_PROJECT')
       AND spec.transition_contract->>'contractType'='STEP_TRANSITION'
       AND length(coalesce(spec.transition_contract->>'fromState',''))>0
       AND length(coalesce(spec.transition_contract->>'toState',''))>0

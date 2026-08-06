@@ -65,6 +65,23 @@ class GroupFieldsByAudienceTest(unittest.TestCase):
         self.assertEqual(transition["sideEffects"], [])
         self.assertEqual(transition["extensions"], {"domainHint": "preserve-me"})
 
+    def test_normalizes_actor_authority_without_changing_scope(self) -> None:
+        normalized = GENERATOR.normalize_step_contract({
+            "actor_contract": {
+                "actorCode": "VERIFIER", "tenantScoped": True, "projectIsolation": True,
+                "segregationRequired": True, "authorityHint": "preserve-me",
+            },
+        })
+        actor = normalized["actor_contract"]
+        self.assertEqual(actor["contractType"], "STEP_ACTOR_AUTHORITY")
+        self.assertEqual(actor["actorCode"], "VERIFIER")
+        self.assertEqual(actor["scope"], "TENANT_PROJECT")
+        self.assertEqual(actor["policy"]["tenantIsolation"], True)
+        self.assertEqual(actor["policy"]["segregationOfDuties"], True)
+        self.assertEqual(actor["permissions"], [])
+        self.assertEqual(actor["delegation"], {})
+        self.assertEqual(actor["extensions"], {"authorityHint": "preserve-me"})
+
     def test_splits_catalog_group_using_nested_audiences(self) -> None:
         contract = [
             {

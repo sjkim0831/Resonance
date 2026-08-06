@@ -249,7 +249,9 @@ with candidate as (
     and schema_set.completeness_status='COMPLETE'
     and schema_set.generation_status='SYNCED'
     and schema_set.blocker_codes='[]'::jsonb
-    and e.actor_contract<>'{}'::jsonb
+    and e.actor_contract->>'contractType'='STEP_ACTOR_AUTHORITY'
+    and length(coalesce(e.actor_contract->>'actorCode',''))>0
+    and e.actor_contract->>'scope' in ('GLOBAL','TENANT','PROJECT','TENANT_PROJECT')
     and e.business_contract<>'{}'::jsonb
     and e.transition_contract->>'contractType'='STEP_TRANSITION'
     and length(coalesce(e.transition_contract->>'fromState',''))>0

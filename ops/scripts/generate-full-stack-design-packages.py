@@ -47,6 +47,16 @@ def validate_step(process: dict[str, Any], step: dict[str, Any]) -> None:
     for key in required_objects:
         if not isinstance(step.get(key), dict):
             fail(f"{identity}: {key} must be an object")
+    actor_contract = step["actor_contract"]
+    if (actor_contract.get("contractType") != "STEP_ACTOR_AUTHORITY"
+            or not isinstance(actor_contract.get("actorCode"), str)
+            or not actor_contract["actorCode"]
+            or actor_contract.get("scope") not in {"GLOBAL", "TENANT", "PROJECT", "TENANT_PROJECT"}
+            or not isinstance(actor_contract.get("policy"), dict)
+            or not isinstance(actor_contract.get("permissions"), list)
+            or not isinstance(actor_contract.get("delegation"), dict)
+            or not isinstance(actor_contract.get("extensions"), dict)):
+        fail(f"{identity}: actor_contract must be a STEP_ACTOR_AUTHORITY object")
     transition_contract = step["transition_contract"]
     if (transition_contract.get("contractType") != "STEP_TRANSITION"
             or not isinstance(transition_contract.get("fromState"), str)
@@ -88,6 +98,42 @@ def normalize_step_contract(step: dict[str, Any]) -> dict[str, Any]:
     normalization only; it never invents fields, actions, or business rules.
     """
     normalized = copy.deepcopy(step)
+    actor = normalized.get("actor_contract")
+    if not isinstance(actor, dict):
+        actor = {}
+    actor_policy_keys = {
+        "assignmentRequired", "serverAuthorization", "tenantIsolation", "tenantScoped",
+        "projectIsolation", "delegationChecked", "segregationOfDuties", "segregationRequired",
+    }
+    actor_core_keys = {
+        "schemaVersion", "contractType", "actorCode", "ownerActorCode", "scope", "policy",
+        "permissions", "delegation", "extensions",
+    }
+    tenant_isolated = actor.get("tenantIsolation", actor.get("tenantScoped", False)) is True
+    project_isolated = actor.get("projectIsolation", False) is True
+    derived_scope = "TENANT_PROJECT" if tenant_isolated and project_isolated else "TENANT" if tenant_isolated else "PROJECT" if project_isolated else "GLOBAL"
+    if actor.get("contractType") == "STEP_ACTOR_AUTHORITY" and isinstance(actor.get("policy"), dict):
+        actor_policy = actor["policy"]
+    else:
+        actor_policy = {key: actor[key] for key in actor_policy_keys if key in actor}
+        if "tenantScoped" in actor_policy:
+            actor_policy.setdefault("tenantIsolation", actor_policy["tenantScoped"])
+            actor_policy.pop("tenantScoped")
+        if "segregationRequired" in actor_policy:
+            actor_policy.setdefault("segregationOfDuties", actor_policy["segregationRequired"])
+            actor_policy.pop("segregationRequired")
+    normalized["actor_contract"] = {
+        "schemaVersion": 1,
+        "contractType": "STEP_ACTOR_AUTHORITY",
+        "actorCode": actor.get("actorCode"),
+        "ownerActorCode": actor.get("ownerActorCode"),
+        "scope": actor.get("scope") or derived_scope,
+        "policy": actor_policy,
+        "permissions": actor.get("permissions") if isinstance(actor.get("permissions"), list) else [],
+        "delegation": actor.get("delegation") if isinstance(actor.get("delegation"), dict) else {},
+        "extensions": (actor.get("extensions") if actor.get("contractType") == "STEP_ACTOR_AUTHORITY" and isinstance(actor.get("extensions"), dict)
+                       else {key: value for key, value in actor.items() if key not in actor_core_keys | actor_policy_keys}),
+    }
     transition = normalized.get("transition_contract")
     if not isinstance(transition, dict):
         transition = {}
