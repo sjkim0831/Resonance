@@ -1271,6 +1271,23 @@ sync_postgres_restore_drill_if_required() {
   fi
 }
 
+process_development_control_plane_in_sync() {
+  cmp -s ops/scripts/run-process-development-dispatcher.sh \
+      /opt/resonance-data/control-plane/bin/run-process-development-dispatcher.sh &&
+    cmp -s ops/scripts/run-process-development-worker.sh \
+      /opt/resonance-data/control-plane/bin/run-process-development-worker.sh &&
+    cmp -s ops/scripts/run-project-auto-completion-orchestrator.sh \
+      /opt/resonance-data/control-plane/bin/run-project-auto-completion-orchestrator.sh &&
+    cmp -s ops/systemd/resonance-process-development-worker.service \
+      /etc/systemd/system/resonance-process-development-worker.service &&
+    cmp -s ops/systemd/resonance-process-development-worker.timer \
+      /etc/systemd/system/resonance-process-development-worker.timer &&
+    cmp -s ops/systemd/resonance-project-auto-completion.service \
+      /etc/systemd/system/resonance-project-auto-completion.service &&
+    cmp -s ops/systemd/resonance-project-auto-completion.timer \
+      /etc/systemd/system/resonance-project-auto-completion.timer
+}
+
 sync_process_development_worker_if_required() {
   if ! deploy_path_changed \
       ops/scripts/run-process-development-dispatcher.sh \
@@ -1281,7 +1298,8 @@ sync_process_development_worker_if_required() {
       ops/systemd/resonance-process-development-worker.timer \
       ops/systemd/resonance-project-auto-completion.service \
       ops/systemd/resonance-project-auto-completion.timer &&
-    [[ "$control_plane_drift_check_due" != "true" ]]; then
+    [[ "$control_plane_drift_check_due" != "true" ]] &&
+    process_development_control_plane_in_sync; then
     return 0
   fi
   if deploy_path_changed \
@@ -1293,6 +1311,7 @@ sync_process_development_worker_if_required() {
       ops/systemd/resonance-process-development-worker.timer \
       ops/systemd/resonance-project-auto-completion.service \
       ops/systemd/resonance-project-auto-completion.timer || \
+    ! process_development_control_plane_in_sync || \
     ! systemctl cat resonance-process-development-worker.service 2>/dev/null | \
       grep -Fq '/opt/resonance-data/control-plane/bin/run-process-development-dispatcher.sh'; then
     bash ops/scripts/test-process-worker-deploy-marker.sh

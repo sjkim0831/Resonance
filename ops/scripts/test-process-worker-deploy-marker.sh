@@ -30,6 +30,10 @@ grep -Fq 'ExecStart=/usr/bin/bash /opt/resonance-data/control-plane/bin/run-proc
   || fail "systemd worker does not use the persistent control-plane copy"
 grep -Fq 'sync_process_development_worker_if_required()' "$AUTO_DEPLOY" \
   || fail "auto-deploy does not synchronize the worker control plane"
+grep -Fq 'process_development_control_plane_in_sync()' "$AUTO_DEPLOY" \
+  || fail "auto-deploy does not detect persistent control-plane drift"
+grep -Fq 'cmp -s ops/scripts/run-project-auto-completion-orchestrator.sh' "$AUTO_DEPLOY" \
+  || fail "auto-deploy does not compare the orchestrator source and installed copy"
 [[ "$(grep -Fc 'sync_process_development_worker_if_required' "$AUTO_DEPLOY")" -ge 3 ]] \
   || fail "runtime and metadata deployment paths do not both synchronize the worker control plane"
 grep -Fq '/opt/resonance-data/control-plane/bin/run-process-development-worker.sh' "$AUTO_DEPLOY" \
