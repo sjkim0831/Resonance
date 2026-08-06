@@ -41,8 +41,7 @@ UPDATE framework_process_step
 SET api_contract=CASE step_code
       WHEN 'COMPANY_ONBOARDING_APPROVE' THEN 'POST /admin/api/admin/member/company-approve/action'
       WHEN 'COMPANY_ONBOARDING_ACTORS' THEN 'POST /admin/api/system/actor-process/assignments'
-      ELSE api_contract END,
-    updated_at=current_timestamp
+      ELSE api_contract END
 WHERE process_code='COMPANY_ONBOARDING'
   AND step_code IN ('COMPANY_ONBOARDING_APPROVE','COMPANY_ONBOARDING_ACTORS');
 
