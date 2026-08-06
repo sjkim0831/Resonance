@@ -28,6 +28,7 @@ for token in (
     assert token in sync[validation:commit]
 assert "e4b=verified" in sync
 assert "CREATE TEMP TABLE asset_sync_delta" in sync
+assert "asset_sync_delta(active_before integer,additions integer,deletions integer) ON COMMIT DROP" in sync
 assert sync.count("CREATE TEMP TABLE asset_sync_delta") == 1
 assert sync.count("INSERT INTO asset_sync_delta") == 1
 assert "active_before + additions - deletions" in sync
