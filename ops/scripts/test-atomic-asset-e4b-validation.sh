@@ -36,6 +36,7 @@ delta_snapshot = sync.index("INSERT INTO asset_sync_delta")
 source_upsert = sync.index("INSERT INTO framework_unified_asset(asset_id", delta_snapshot)
 audit_insert = sync.index("INSERT INTO framework_asset_catalog_sync_run", source_upsert)
 assert delta_snapshot < source_upsert < audit_insert
+assert sync.index("FROM asset_sync_delta", audit_insert) > audit_insert
 
 adjacent = (
     'bash ops/scripts/sync-unified-asset-catalog.sh "$deployed_commit" "$target_commit"\n'
