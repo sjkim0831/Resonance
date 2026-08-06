@@ -1344,12 +1344,36 @@ sync_process_contract_audit_if_required() {
   # live report API after rollout, without route crawling or business commands,
   # so a broken report can never receive a successful deployment marker again.
   local preflight_report preflight_rc preflight_status
+  local audit_lock_file audit_lock_wait_seconds audit_lock_fd
+  local preflight_started_at refreshed_report_mtime lock_wait_rc
   preflight_report="$(mktemp)"
+  audit_lock_file="${RESONANCE_AUDIT_LOCK_FILE:-/opt/resonance-data/control-plane/run/all-process-contract-audit.lock}"
+  audit_lock_wait_seconds="${RESONANCE_AUDIT_LOCK_WAIT_SECONDS:-930}"
+  preflight_started_at="$(date +%s)"
+  mkdir -p "$(dirname "$audit_lock_file")"
+  exec {audit_lock_fd}>"$audit_lock_file"
   set +e
-  SYSTEM_TEST_REPORT_SKIP_HTTP_SMOKE=1 \
-    bash /opt/resonance-data/control-plane/bin/resonance-all-process-contract-audit.sh \
-    >"$preflight_report"
-  preflight_rc=$?
+  if flock -n "$audit_lock_fd"; then
+    SYSTEM_TEST_REPORT_SKIP_HTTP_SMOKE=1 \
+      bash /opt/resonance-data/control-plane/bin/resonance-all-process-contract-audit.sh \
+      >"$preflight_report"
+    preflight_rc=$?
+  else
+    echo '[auto-deploy] all-process audit already running; waiting for its atomic report instead of starting a duplicate'
+    flock -w "$audit_lock_wait_seconds" "$audit_lock_fd"
+    lock_wait_rc=$?
+    refreshed_report_mtime="$(stat -c %Y /opt/resonance-data/control-plane/reports/process-contract-audit/latest.json 2>/dev/null || printf '0')"
+    if [[ "$lock_wait_rc" -eq 0 && -s /opt/resonance-data/control-plane/reports/process-contract-audit/latest.json &&
+          "$refreshed_report_mtime" =~ ^[0-9]+$ && "$refreshed_report_mtime" -ge "$preflight_started_at" ]]; then
+      cp /opt/resonance-data/control-plane/reports/process-contract-audit/latest.json "$preflight_report"
+      preflight_rc=0
+    else
+      echo '[auto-deploy] concurrent all-process audit did not publish a fresh atomic report' >&2
+      preflight_rc=2
+    fi
+  fi
+  flock -u "$audit_lock_fd" 2>/dev/null || true
+  exec {audit_lock_fd}>&-
   set -e
   if [[ "$preflight_rc" -ne 0 && "$preflight_rc" -ne 3 ]]; then
     rm -f "$preflight_report"

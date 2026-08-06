@@ -35,6 +35,7 @@ if command -v systemd-analyze >/dev/null 2>&1; then
 fi
 
 grep -Fq 'flock -n 9' "$RUNNER" || fail 'runner must prevent duplicate execution with flock'
+grep -Fq 'RESONANCE_AUDIT_LOCK_FILE:-/opt/resonance-data/control-plane/run/all-process-contract-audit.lock' "$RUNNER" || fail 'scheduled runner must own the canonical audit lock'
 grep -Fq 'RESONANCE_HEAVY_DB_LOCK_FILE' "$RUNNER" || fail 'runner must participate in the shared heavy DB automation lock'
 grep -Fq 'flock -n 7' "$RUNNER" || fail 'runner must defer while another heavy DB automation holds the shared lock'
 grep -Fq 'RESONANCE_AUDIT_TIMEOUT_SECONDS:-900' "$RUNNER" || fail 'runner must retain the bounded 900-second all-page audit cap'
@@ -64,6 +65,10 @@ grep -Fq 'cmp -s' "$INSTALLER" || fail 'installation check must compare source a
 grep -Fq 'install -d -m 0750 -o root -g sjkim "$REPORT_PARENT"' "$INSTALLER" || fail 'audit service must be able to traverse the protected report parent'
 grep -Fq 'SYSTEM_TEST_REPORT_SKIP_HTTP_SMOKE=1' <<<"$audit_sync_body" || fail 'deploy must parse the authenticated live report API before success'
 grep -Fq '"$preflight_rc" -ne 0 && "$preflight_rc" -ne 3' <<<"$audit_sync_body" || fail 'truthful BLOCKED audit status must remain deploy-safe'
+grep -Fq 'RESONANCE_AUDIT_LOCK_FILE:-/opt/resonance-data/control-plane/run/all-process-contract-audit.lock' <<<"$audit_sync_body" || fail 'deploy preflight must share the scheduled audit lock'
+grep -Fq 'flock -n "$audit_lock_fd"' <<<"$audit_sync_body" || fail 'deploy preflight must acquire the audit lock before starting an audit'
+grep -Fq 'flock -w "$audit_lock_wait_seconds" "$audit_lock_fd"' <<<"$audit_sync_body" || fail 'deploy preflight must wait for an incumbent audit instead of starting a duplicate'
+grep -Fq 'concurrent all-process audit did not publish a fresh atomic report' <<<"$audit_sync_body" || fail 'deploy must reject stale reports after audit lock contention'
 
 repair_call_line="$(grep -n '^repair_persistent_build_worktree_ownership$' "$DEPLOY" | head -n1 | cut -d: -f1)"
 no_change_line="$(grep -n 'if \[\[ "$deployed_commit" == "$target_commit" \]\]' "$DEPLOY" | head -n1 | cut -d: -f1)"
