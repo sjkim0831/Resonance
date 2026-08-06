@@ -1,6 +1,6 @@
-process=BACKGROUND_DB_VERSION_IMPACT
-step=BACKGROUND_DB_VERSION_IMPACT_S1
-type=FRONTEND_ADMIN
-target=schema-set/background_db_version_impact/background_db_version_impact_s1/frontend_admin
+process=COMPANY_MANAGER_DELEGATION
+step=CMD_HANDOVER
+type=DATABASE
+target=schema-set/company_manager_delegation/cmd_handover/database
 
 Search index preparation failed. Use the approved specification and exact target only; do not broaden scope.
