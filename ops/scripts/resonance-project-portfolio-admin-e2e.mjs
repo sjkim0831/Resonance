@@ -78,7 +78,10 @@ try {
 
       await page.getByLabel("상태").selectOption({ label: "완료" });
       await page.getByRole("button", { name: "조회", exact: true }).click();
-      await page.waitForTimeout(250);
+      await page.waitForFunction((expected) => {
+        const rows = [...document.querySelectorAll("tbody tr")];
+        return rows.length === expected && rows.every((row) => (row.textContent || "").includes("완료"));
+      }, completedExpected, { timeout: 5_000 });
       const statusRows = await page.locator("tbody tr").allTextContents();
       assert(statusRows.length === completedExpected, `${viewport.name} completed count ${statusRows.length}/${completedExpected}`);
       assert(statusRows.every((text) => text.includes("완료")), `${viewport.name} status filter leaked a non-completed row`);
