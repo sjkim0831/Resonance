@@ -332,6 +332,19 @@ with candidate as (
 )
 select count(*) from approved;")"
 
+# Legacy and compact contracts are normalized by the same renderer used at
+# runtime. Promote a REVIEW_REQUIRED design only after every generated package
+# in the complete process graph passes the deterministic static contract gate.
+# The gate uses source hashes and a single DB transaction, so concurrent design
+# edits make the whole promotion roll back rather than approving stale input.
+static_contract_gate_failed=0
+static_contract_gate_result='{"candidateCount":0,"promoted":0,"status":"NOOP"}'
+if ! static_contract_gate_result="$(bash "$ROOT_DIR/ops/scripts/promote-review-contracts-after-static-test.sh" "$ROOT_DIR" 2>&1)"; then
+  static_contract_gate_failed=1
+  echo "[project-auto-completion] review static contract gate failed: $static_contract_gate_result" >&2
+  static_contract_gate_result='{"candidateCount":0,"promoted":0,"status":"FAILED"}'
+fi
+
 contract_jobs_approved="$(psqlq -c "
 with candidate as (
   select j.job_id,full_stack.job_id source_job_id
@@ -1290,6 +1303,6 @@ fi
 completed="$(psqlq -c "with done as (update framework_process_definition p set process_status='DEVELOPMENT_READY',updated_at=current_timestamp from framework_process_delivery_priority_queue q where q.process_code=p.process_code and q.next_action='COMPLETE' and p.process_status<>'DEVELOPMENT_READY' returning 1) select count(*) from done;")"
 blocked="$(psqlq -c "select count(*) from framework_process_delivery_priority_queue where delivery_priority='BLOCKER';")"
 remaining="$(psqlq -c "select count(*) from framework_process_delivery_priority_queue where next_action<>'COMPLETE';")"
-status="PROGRESSING"; [[ "$remaining" == "0" ]] && status="COMPLETED"; [[ "$blocked" -gt 0 || ( "$remaining" -gt 0 && "$executable" == "0" ) || "$dispatcher_failed" -gt 0 ]] && status="ATTENTION_REQUIRED"
+status="PROGRESSING"; [[ "$remaining" == "0" ]] && status="COMPLETED"; [[ "$blocked" -gt 0 || ( "$remaining" -gt 0 && "$executable" == "0" ) || "$dispatcher_failed" -gt 0 || "$static_contract_gate_failed" -gt 0 ]] && status="ATTENTION_REQUIRED"
 psqlq -c "update framework_project_completion_run set run_status='$status',selected_process_count=$selected,executable_job_count=$executable,retried_job_count=$retried,completed_process_count=$completed,blocked_process_count=$blocked,result_json='{\"remainingProcesses\":$remaining,\"dispatcherFailed\":$dispatcher_failed}',completed_at=current_timestamp where run_id='$run_id';" >/dev/null
-echo "[project-auto-completion] $status selected=$selected executable=$executable retried=$retried deterministicSafetyCasesApproved=$deterministic_safety_cases_approved embeddedTestsSynced=$embedded_tests_synced deterministicSpecsApproved=$deterministic_specs_approved incompleteSpecDemoted=$incomplete_spec_demoted specApprovalWaiting=$spec_approval_waiting approvedGeneratorRetried=$approved_generator_retried frontendPackageRetried=$frontend_package_retried groupedFieldGeneratorRetried=$grouped_field_generator_retried packageContractGeneratorRetried=$package_contract_generator_retried generatedDimensionRetried=$generated_dimension_retried commonContractRetried=$common_contract_retried databaseConstraintRetried=$database_constraint_retried deliveryInfrastructureRetried=$delivery_infrastructure_retried deterministicDiffScopeRetried=$deterministic_diff_scope_retried designEvidenceAdopted=$design_evidence_adopted notApplicableCompleted=$not_applicable_completed contractJobsApproved=$contract_jobs_approved exhaustedPlannedRetried=$exhausted_planned_retried adopted=$server_adopted completed=$completed blocked=$blocked remaining=$remaining dispatcherFailed=$dispatcher_failed contractCompletion=$contract_completion_result screenGeneration=$(jq -c '{status:(.status//"GENERATED"),requested:(.requested//0),generated:(.generated//0),unchanged:(.unchanged//0),elapsedMillis:(.elapsedMillis//0)}' <<<"$screen_generation_result")"
+echo "[project-auto-completion] $status selected=$selected executable=$executable retried=$retried deterministicSafetyCasesApproved=$deterministic_safety_cases_approved embeddedTestsSynced=$embedded_tests_synced deterministicSpecsApproved=$deterministic_specs_approved staticContractGate=$(jq -c . <<<"$static_contract_gate_result") incompleteSpecDemoted=$incomplete_spec_demoted specApprovalWaiting=$spec_approval_waiting approvedGeneratorRetried=$approved_generator_retried frontendPackageRetried=$frontend_package_retried groupedFieldGeneratorRetried=$grouped_field_generator_retried packageContractGeneratorRetried=$package_contract_generator_retried generatedDimensionRetried=$generated_dimension_retried commonContractRetried=$common_contract_retried databaseConstraintRetried=$database_constraint_retried deliveryInfrastructureRetried=$delivery_infrastructure_retried deterministicDiffScopeRetried=$deterministic_diff_scope_retried designEvidenceAdopted=$design_evidence_adopted notApplicableCompleted=$not_applicable_completed contractJobsApproved=$contract_jobs_approved exhaustedPlannedRetried=$exhausted_planned_retried adopted=$server_adopted completed=$completed blocked=$blocked remaining=$remaining dispatcherFailed=$dispatcher_failed contractCompletion=$contract_completion_result screenGeneration=$(jq -c '{status:(.status//"GENERATED"),requested:(.requested//0),generated:(.generated//0),unchanged:(.unchanged//0),elapsedMillis:(.elapsedMillis//0)}' <<<"$screen_generation_result")"
