@@ -85,6 +85,7 @@ function asset_type(path, lower) {
 }
 
 sync_mode="full"
+validate_e4b=true
 if [[ -n "$BASE_REVISION" ]] &&
    git cat-file -e "$BASE_REVISION^{commit}" 2>/dev/null &&
    git cat-file -e "$TARGET_REVISION^{commit}" 2>/dev/null &&
@@ -92,11 +93,24 @@ if [[ -n "$BASE_REVISION" ]] &&
   changed_count="$(git diff --no-renames --name-only "$BASE_REVISION" "$TARGET_REVISION" | wc -l)"
   if (( changed_count <= INCREMENTAL_LIMIT )); then
     sync_mode="incremental"
+    validate_e4b=false
     while IFS= read -r path; do
-      [[ -n "$path" ]] && append_asset "$path"
+      if [[ -n "$path" ]]; then
+        append_asset "$path"
+        case "$path" in
+          *.md|*.txt) ;;
+          *) validate_e4b=true ;;
+        esac
+      fi
     done < <(git diff --no-renames --name-only --diff-filter=ACMR "$BASE_REVISION" "$TARGET_REVISION")
     while IFS= read -r path; do
-      [[ -n "$path" ]] && printf '%s\n' "$path" >> "$deleted_tsv"
+      if [[ -n "$path" ]]; then
+        printf '%s\n' "$path" >> "$deleted_tsv"
+        case "$path" in
+          *.md|*.txt) ;;
+          *) validate_e4b=true ;;
+        esac
+      fi
     done < <(git diff --no-renames --name-only --diff-filter=D "$BASE_REVISION" "$TARGET_REVISION")
   fi
 fi
@@ -111,9 +125,9 @@ BEGIN;
 CREATE TEMP TABLE source_asset_stage(asset_path text,asset_type varchar(40),content_hash varchar(64)) ON COMMIT DROP;
 CREATE TEMP TABLE deleted_asset_stage(asset_path text) ON COMMIT DROP;
 CREATE TEMP TABLE source_manifest_stage(asset_path text,asset_type varchar(40),content_hash varchar(64)) ON COMMIT DROP;
-CREATE TEMP TABLE asset_sync_control(is_full boolean) ON COMMIT DROP;
+CREATE TEMP TABLE asset_sync_control(is_full boolean,validate_e4b boolean) ON COMMIT DROP;
 CREATE TEMP TABLE asset_sync_delta(active_before integer,additions integer,deletions integer) ON COMMIT DROP;
-INSERT INTO asset_sync_control VALUES (:'is_full'::boolean);
+INSERT INTO asset_sync_control VALUES (:'is_full'::boolean,:'validate_e4b'::boolean);
 \copy source_asset_stage FROM '/tmp/unified-source-assets.tsv' WITH (FORMAT text,DELIMITER E'\t');
 \copy deleted_asset_stage FROM '/tmp/unified-source-assets-deleted.tsv' WITH (FORMAT text);
 \copy source_manifest_stage FROM '/tmp/unified-source-assets-manifest.tsv' WITH (FORMAT text,DELIMITER E'\t');
@@ -290,6 +304,9 @@ DECLARE
   page_count integer;
   classified_page_count integer;
 BEGIN
+  IF NOT (SELECT validate_e4b FROM asset_sync_control) THEN
+    RETURN;
+  END IF;
   SELECT count(*) INTO active_duplicate_count
   FROM framework_asset_canonical_map map
   JOIN framework_unified_asset asset
@@ -362,6 +379,7 @@ if [[ "$CARBONET_PG_MODE" == "direct" ]]; then
       -U "$CARBONET_PG_USER" -d "$CARBONET_PG_DATABASE" \
       -v ON_ERROR_STOP=1 -v sync_scope="GIT_SOURCE_${sync_mode^^}" \
       -v is_full="$([[ "$sync_mode" == "full" ]] && echo true || echo false)" \
+      -v validate_e4b="$validate_e4b" \
       -f "$sql"
 else
   leader="$CARBONET_PG_LEADER"
@@ -373,7 +391,8 @@ else
   kubectl -n "$NAMESPACE" exec "$leader" -c "$POSTGRES_CONTAINER" -- \
     psql -h 127.0.0.1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" \
     -v ON_ERROR_STOP=1 -v sync_scope="GIT_SOURCE_${sync_mode^^}" \
-    -v is_full="$([[ "$sync_mode" == "full" ]] && echo true || echo false)" -q \
+    -v is_full="$([[ "$sync_mode" == "full" ]] && echo true || echo false)" \
+    -v validate_e4b="$validate_e4b" -q \
     -f /tmp/sync-unified-source-assets.sql
 fi
-echo "[asset-catalog] mode=$sync_mode tracked=$(wc -l < "$manifest_tsv") changed=$(wc -l < "$tsv") deleted=$(wc -l < "$deleted_tsv") closure=verified e4b=verified dbMode=$CARBONET_PG_MODE base=${BASE_REVISION:-none} target=$TARGET_REVISION"
+echo "[asset-catalog] mode=$sync_mode tracked=$(wc -l < "$manifest_tsv") changed=$(wc -l < "$tsv") deleted=$(wc -l < "$deleted_tsv") closure=verified e4b=$([[ "$validate_e4b" == "true" ]] && echo verified || echo unchanged) dbMode=$CARBONET_PG_MODE base=${BASE_REVISION:-none} target=$TARGET_REVISION"

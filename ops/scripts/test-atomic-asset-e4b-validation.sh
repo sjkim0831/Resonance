@@ -26,7 +26,11 @@ for token in (
     "RAISE EXCEPTION",
 ):
     assert token in sync[validation:commit]
-assert "e4b=verified" in sync
+assert 'validate_e4b=false' in sync
+assert '*.md|*.txt)' in sync
+assert "IF NOT (SELECT validate_e4b FROM asset_sync_control)" in sync
+assert '-v validate_e4b="$validate_e4b"' in sync
+assert 'echo verified || echo unchanged' in sync
 assert "CREATE TEMP TABLE asset_sync_delta" in sync
 assert "asset_sync_delta(active_before integer,additions integer,deletions integer) ON COMMIT DROP" in sync
 assert sync.count("CREATE TEMP TABLE asset_sync_delta") == 1
