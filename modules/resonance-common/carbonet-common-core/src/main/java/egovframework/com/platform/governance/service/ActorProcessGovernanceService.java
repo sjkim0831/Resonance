@@ -1995,7 +1995,8 @@ public class ActorProcessGovernanceService {
                    draft.actor_code as "fromActorCode",draft.payload_json::text as "payloadJson",
                    draft.evidence_json::text as "evidenceJson",draft.submitted_at as "submittedAt",
                    coalesce(handoff.payload_contract,'{}'::jsonb)::text as "mappingContractJson",
-                   coalesce(handoff.integrity_contract,'{}'::jsonb)::text as "integrityContractJson"
+                   coalesce(handoff.integrity_contract,'{}'::jsonb)::text as "integrityContractJson",
+                   coalesce(mapped.payload,'{}'::jsonb)::text as "mappedPayloadJson"
               from source_steps source
               join framework_process_work_draft draft
                 on draft.tenant_id=? and draft.project_id=? and draft.process_code=source.process_code
@@ -2003,6 +2004,20 @@ public class ActorProcessGovernanceService {
               left join framework_process_data_handoff handoff
                 on handoff.process_code=source.process_code and handoff.from_step_code=source.step_code
                and handoff.to_process_code=? and handoff.to_step_code=?
+              left join lateral (
+                select jsonb_object_agg(
+                         mapping->>'toField',
+                         case upper(coalesce(mapping->>'transform','IDENTITY'))
+                           when 'ARRAY_WRAP' then
+                             case when jsonb_typeof(draft.payload_json->(mapping->>'fromField'))='array'
+                                  then draft.payload_json->(mapping->>'fromField')
+                                  else jsonb_build_array(draft.payload_json->(mapping->>'fromField')) end
+                           else draft.payload_json->(mapping->>'fromField')
+                         end
+                       ) as payload
+                  from jsonb_array_elements(coalesce(handoff.payload_contract->'fieldMappings','[]'::jsonb)) mapping
+                 where draft.payload_json ? (mapping->>'fromField')
+              ) mapped on true
              order by source.source_priority,draft.submitted_at desc
              limit 1
             """,process,step,process,process,tenant,project,process,step);

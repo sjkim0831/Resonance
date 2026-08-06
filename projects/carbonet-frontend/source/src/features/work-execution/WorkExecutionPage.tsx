@@ -105,7 +105,7 @@ export function WorkExecutionPage() {
   const applyDraft = (body: WorkDraft) => {
     setWork(body);
     const payload = parseObject(body.draft?.payloadJson);
-    const inheritedPayload = parseObject(body.handoff?.payloadJson);
+    const inheritedPayload = parseObject(body.handoff?.mappedPayloadJson);
     const evidencePayload = parseObject(body.draft?.evidenceJson);
     const payloadRow = payload && typeof payload === "object" ? payload as Row : {};
     setForm({

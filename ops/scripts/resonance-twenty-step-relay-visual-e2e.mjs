@@ -196,6 +196,19 @@ async function runProcess(definition, context) {
           !String(upstream.payloadJson || "").trim()) {
         throw new Error(`data handoff mismatch expected=${previousRelayStep.processCode}/${previousRelayStep.stepCode} actual=${upstream.fromProcessCode || ""}/${upstream.fromStepCode || ""}`);
       }
+      const sourcePayload = JSON.parse(String(upstream.payloadJson || "{}"));
+      const mappedPayload = JSON.parse(String(upstream.mappedPayloadJson || "{}"));
+      const mappingContract = JSON.parse(String(upstream.mappingContractJson || "{}"));
+      const fieldMappings = Array.isArray(mappingContract.fieldMappings) ? mappingContract.fieldMappings : [];
+      const unmappedTargetFields = Array.isArray(mappingContract.unmappedTargetFields) ? mappingContract.unmappedTargetFields : [];
+      if (!Array.isArray(mappingContract.contextMappings) ||
+          fieldMappings.length + unmappedTargetFields.length !== Number(mappingContract.targetFieldCount || 0)) {
+        throw new Error("semantic mapping classification incomplete " + previousRelayStep.processCode + "/" + previousRelayStep.stepCode);
+      }
+      const expectedMapped = fieldMappings.filter((mapping) => Object.hasOwn(sourcePayload, String(mapping.fromField || "")));
+      if (expectedMapped.some((mapping) => !Object.hasOwn(mappedPayload, String(mapping.toField || "")))) {
+        throw new Error("mapped payload missing contracted target " + previousRelayStep.processCode + "/" + previousRelayStep.stepCode);
+      }
     }
     if (String(contract.actorCode) !== actor) throw new Error(`actor contract mismatch step=${stepCode}`);
     const fields = JSON.parse(String(contract.fieldContractJson || "[]"));
@@ -241,6 +254,7 @@ async function runProcess(definition, context) {
       handoffStatus: completed.handoffStatus,
       upstreamProcessCode: String(upstream.fromProcessCode || ""),
       upstreamStepCode: String(upstream.fromStepCode || ""),
+      mappedFieldCount: Object.keys(JSON.parse(String(upstream.mappedPayloadJson || "{}"))).length,
     });
     previousRelayStep = { processCode: definition.code, stepCode };
     stepCode = String(completed.nextStepCode || "");
