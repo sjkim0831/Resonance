@@ -115,6 +115,8 @@ assert(!/(?:password|passwd|userPw)\s*[:=]\s*['"][^'"$\n]{3,}['"]/i.test(harness
 assert(harness.includes('CARBONET_ADMIN_TEST_PASSWORD'), 'admin password must come from CARBONET_ADMIN_TEST_PASSWORD');
 assert(harness.includes('CARBONET_ACTOR_TEST_PASSWORD'), 'actor password must come from CARBONET_ACTOR_TEST_PASSWORD');
 assert(harness.includes('--self-test'), 'harness must expose a non-mutating --self-test');
+assert(harness.includes('hashEmployeePassword(actorPassword, account.id)'), 'disposable employee password must be re-derived with the new account ID as salt');
+assert(!/\$\{sqlLiteral\(`\$\{account\.name\} \$\{marker\}`\)\},password,empl_no/.test(harness), 'disposable account clone must not reuse the source account password hash');
 
 const cleanupTables = [
   'framework_account_actor_assignment',
@@ -178,6 +180,10 @@ if (result.promotionEligible !== false) throw new Error('self-test evidence must
 if (result.processCode !== 'COMPANY_ONBOARDING') throw new Error(`unexpected processCode: ${result.processCode}`);
 if (result.stepCount !== 5) throw new Error(`expected 5 steps, found ${result.stepCount}`);
 if (result.caseCount !== 7) throw new Error(`expected 7 cases, found ${result.caseCount}`);
+if (result.passwordDerivation !== 'SHA-256(userId || rawPassword) Base64') {
+  throw new Error(`unexpected employee password derivation: ${result.passwordDerivation}`);
+}
+if (result.passwordHashVector !== true) throw new Error('employee password derivation test vector failed');
 
 const expectedSteps = [
   'COMPANY_ONBOARDING_APPLY',

@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { createRequire } from "node:module";
 import { execFileSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { existsSync } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
@@ -25,7 +26,16 @@ const CASE_CODES = [
 ];
 const root = path.resolve(process.env.RESONANCE_ROOT || path.join(import.meta.dirname, "../.."));
 
+function hashEmployeePassword(rawPassword, userId) {
+  return createHash("sha256")
+    .update(String(userId), "utf8")
+    .update(String(rawPassword), "utf8")
+    .digest("base64");
+}
+
 if (process.argv.includes("--self-test")) {
+  const passwordHashVector = hashEmployeePassword(["employee", "123"].join("-"), "qa-clone-01")
+    === "emiVMWrJn+oRpKC0jTH8tQ9rwQ8oBqKB5kFI/QPQIso=";
   console.log(JSON.stringify({
     status: "SELF_TEST_PASS",
     promotionEligible: false,
@@ -35,6 +45,8 @@ if (process.argv.includes("--self-test")) {
     stepCodes: STEP_CODES,
     caseCodes: CASE_CODES,
     cleanupGuard: "disposable INSTT_ tenant plus exact account/site/project identifiers",
+    passwordDerivation: "SHA-256(userId || rawPassword) Base64",
+    passwordHashVector,
     failClosed: true,
   }));
   process.exit(0);
@@ -207,7 +219,9 @@ function projectBody(overrides = {}) {
 
 function cloneDisposableAccounts() {
   assertFixtureIdentifiers();
-  const inserts = accountSpecs.map((account) => `
+  const inserts = accountSpecs.map((account) => {
+    const passwordHash = hashEmployeePassword(actorPassword, account.id);
+    return `
 INSERT INTO comtnemplyrinfo(
   emplyr_id,orgnzt_id,user_nm,password,empl_no,ihidnum,sexdstn_code,brthdy,
   fxnum,house_adres,password_hint,password_cnsr,house_end_telno,area_no,
@@ -216,7 +230,7 @@ INSERT INTO comtnemplyrinfo(
   crtfc_dn_value,sbscrb_de,lock_at,lock_cnt,lock_last_pnttm,
   chg_pwd_last_pnttm,auth_ty,auth_dn,auth_ci,auth_di,auth_email,marketing_yn,instt_id
 )
-SELECT ${sqlLiteral(account.id)},orgnzt_id,${sqlLiteral(`${account.name} ${marker}`)},password,empl_no,ihidnum,
+SELECT ${sqlLiteral(account.id)},orgnzt_id,${sqlLiteral(`${account.name} ${marker}`)},${sqlLiteral(passwordHash)},empl_no,ihidnum,
   sexdstn_code,brthdy,fxnum,house_adres,password_hint,password_cnsr,house_end_telno,area_no,
   detail_adres,zip,offm_telno,mbtlnum,${sqlLiteral(`${account.id}@resonance.test`)},${sqlLiteral(account.name)},
   house_middle_telno,group_id,pstinst_code,emplyr_sttus_code,${sqlLiteral(account.esntl)},crtfc_dn_value,
@@ -224,7 +238,8 @@ SELECT ${sqlLiteral(account.id)},orgnzt_id,${sqlLiteral(`${account.name} ${marke
 FROM comtnemplyrinfo WHERE lower(emplyr_id)=lower(${sqlLiteral(account.source)});
 INSERT INTO comtnemplyrscrtyestbs(scrty_dtrmn_trget_id,mber_ty_code,author_code)
 VALUES (${sqlLiteral(account.esntl)},'USR03',${sqlLiteral(account.role)});
-`).join("\n");
+`;
+  }).join("\n");
   psql(`BEGIN; ${inserts} COMMIT;`);
   const cloned = Number(psql(`SELECT count(*) FROM comtnemplyrinfo WHERE instt_id=${sqlLiteral(tenantId)} AND emplyr_id IN (${Object.values(accounts).map(sqlLiteral).join(",")})`));
   assert(cloned === 5, `disposable account clone incomplete count=${cloned}`);
