@@ -127,13 +127,19 @@ try {
     }
   }));
 
-  const protectedTarget = routeResults[0]?.target;
-  if (!protectedTarget) throw new Error("no protected task route was verified");
-  const anonymous = await browser.newContext({ ignoreHTTPSErrors: true });
+  const protectedTarget = "/emission/organizational-boundary";
+  if (!routeResults.some((result) => result.target === protectedTarget)) {
+    throw new Error(`deterministic protected task route was not verified path=${protectedTarget}`);
+  }
+  const anonymous = await browser.newContext({
+    ignoreHTTPSErrors: true,
+    serviceWorkers: "block",
+    storageState: { cookies: [], origins: [] },
+  });
   try {
     const page = await anonymous.newPage();
     await page.goto(new URL(protectedTarget, baseUrl).href, { waitUntil: "domcontentloaded", timeout: 15_000 });
-    await page.waitForTimeout(400);
+    await page.waitForURL((url) => loginPath.test(url.pathname), { timeout: 8_000 });
     const anonymousState = await page.evaluate(() => ({
       pathname: location.pathname,
       text: (document.body?.innerText || "").trim(),

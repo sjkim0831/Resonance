@@ -24,6 +24,7 @@ import { GlobalUserGnbShell, shouldUseGlobalUserGnb } from "./features/home-entr
 import { TaskQuestPanel } from "./features/task-quest/TaskQuestPanel";
 import { useLayoutOverflowGuard } from "./app/hooks/useLayoutOverflowGuard";
 import { ScreenDevelopmentNotePanel } from "./features/screen-development-note/ScreenDevelopmentNotePanel";
+import { RouteAuthenticationBoundary } from "./app/routes/RouteAuthenticationBoundary";
 
 const HelpOverlay = lazy(() => import("./components/help/HelpOverlay").then((module) => ({ default: module.HelpOverlay })));
 const GeneratedScreenRuntime = lazy(() => import("./features/generated-screen/GeneratedScreenPage").then((module) => ({ default: module.GeneratedScreenPage })));
@@ -514,13 +515,15 @@ export default function App() {
 
       <ErrorBoundary resetKey={boundaryResetKey}>
         <Suspense fallback={<PageLoadingFallback />}>
-          {useGlobalUserGnb ? (
-            <GlobalUserGnbShell>
+          <RouteAuthenticationBoundary page={page} routePath={routePath}>
+            {useGlobalUserGnb ? (
+              <GlobalUserGnbShell>
+                <CurrentPage key={boundaryResetKey} />
+              </GlobalUserGnbShell>
+            ) : (
               <CurrentPage key={boundaryResetKey} />
-            </GlobalUserGnbShell>
-          ) : (
-            <CurrentPage key={boundaryResetKey} />
-          )}
+            )}
+          </RouteAuthenticationBoundary>
         </Suspense>
       </ErrorBoundary>
     </>
