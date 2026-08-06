@@ -53,6 +53,7 @@ BRANCH="${CARBONET_DEPLOY_BRANCH:-main}"
 REMOTE="${CARBONET_DEPLOY_REMOTE:-origin}"
 LOCK_FILE="${CARBONET_DEPLOY_LOCK_FILE:-/tmp/carbonet-auto-deploy.lock}"
 DEPLOY_STATE_FILE="${CARBONET_DEPLOY_STATE_FILE:-/opt/resonance-data/deploy/carbonet-main-success.commit}"
+DESIRED_REVISION_FILE="${CARBONET_DESIRED_REVISION_FILE:-/opt/resonance-data/deploy/github-webhook/desired-revision}"
 BACKSTAGE_DEPLOY_STATE_FILE="${BACKSTAGE_DEPLOY_STATE_FILE:-/opt/resonance-data/deploy/backstage-runtime-success.commit}"
 BACKUP_DIR="${CARBONET_DB_BACKUP_DIR:-/opt/resonance-backups/postgresql/pre-deploy}"
 NAMESPACE="${CARBONET_K8S_NAMESPACE:-carbonet-prod}"
@@ -84,17 +85,23 @@ flock -n 9 || { echo "[auto-deploy] another deployment is running"; exit 0; }
 
 cd "$ROOT_DIR"
 
-# Poll Git before touching Kubernetes, PostgreSQL, worktrees, or backup
-# storage. The one-minute timer normally observes no change; that path should
-# finish as a cheap remote comparison instead of exercising every platform
-# safety gate. Changed revisions still pass every existing gate below.
-git fetch --quiet --no-tags "$REMOTE" \
-  "+refs/heads/$BRANCH:refs/remotes/$REMOTE/$BRANCH"
-target_commit="$(git rev-parse "$REMOTE/$BRANCH")"
 current_commit="$(git rev-parse HEAD)"
 deployed_commit="$(cat "$DEPLOY_STATE_FILE" 2>/dev/null || true)"
 if ! git cat-file -e "${deployed_commit}^{commit}" 2>/dev/null; then
   deployed_commit="$current_commit"
+fi
+desired_commit="$(tr -d '[:space:]' <"$DESIRED_REVISION_FILE" 2>/dev/null || true)"
+if [[ "$desired_commit" =~ ^[0-9a-f]{40}$ \
+   && "$desired_commit" != "$deployed_commit" ]] &&
+  git cat-file -e "${desired_commit}^{commit}" 2>/dev/null; then
+  target_commit="$desired_commit"
+  echo "[auto-deploy] target revision reused from authenticated webhook cache"
+else
+  # The ten-minute timer is the recovery net for a missed webhook. It always
+  # reaches the remote when no new authenticated local target is available.
+  git fetch --quiet --no-tags "$REMOTE" \
+    "+refs/heads/$BRANCH:refs/remotes/$REMOTE/$BRANCH"
+  target_commit="$(git rev-parse "$REMOTE/$BRANCH")"
 fi
 record_deploy_phase "remote_change_detection"
 if [[ "$deployed_commit" == "$target_commit" ]]; then

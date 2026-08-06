@@ -12,12 +12,16 @@ import sys
 
 source = Path(sys.argv[1]).read_text(encoding="utf-8")
 fetch = source.index('git fetch --quiet --no-tags "$REMOTE"')
+webhook_cache = source.index('target revision reused from authenticated webhook cache')
 no_change = source.index('if [[ "$deployed_commit" == "$target_commit" ]]', fetch)
 kubeconfig = source.index('if [[ ! -r "$KUBECONFIG" ]]', fetch)
 capacity = source.index('deploy-capacity-gate.sh', fetch)
 patroni = source.index('mapfile -t patroni_rows', fetch)
 
-assert fetch < no_change < kubeconfig < capacity < patroni
+assert webhook_cache < fetch < no_change < kubeconfig < capacity < patroni
+assert 'desired_commit" =~ ^[0-9a-f]{40}$' in source
+assert '"$desired_commit" != "$deployed_commit"' in source
+assert 'git cat-file -e "${desired_commit}^{commit}"' in source
 assert 'refs/heads/$BRANCH:refs/remotes/$REMOTE/$BRANCH' in source[fetch:no_change]
 assert '--prune' not in source[fetch:no_change]
 
