@@ -3,13 +3,15 @@ set -Eeuo pipefail
 
 ROOT="${RESONANCE_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
 MIGRATION="$ROOT/apps/carbonet-api/src/main/resources/db/migration/postgresql/V20260807061000__align_company_onboarding_runtime_contract.sql"
+INSTITUTION_SCOPE_MIGRATION="$ROOT/apps/carbonet-api/src/main/resources/db/migration/postgresql/V20260807062000__add_company_onboarding_institution_project_scope.sql"
+MEMBER_MAPPER="$ROOT/modules/resonance-common/carbonet-common-core/src/main/resources/egovframework/mapper/com/feature/member/EntrprsManageMapper.xml"
 HARNESS="$ROOT/ops/scripts/resonance-company-onboarding-e2e.mjs"
 WRAPPER="$ROOT/ops/tests/run-company-onboarding-business-e2e.sh"
 CAPTURE="$ROOT/ops/scripts/capture-business-e2e-contract.sh"
 DEPLOY="$ROOT/ops/scripts/resonance-k8s-build-deploy-80-v2.sh"
 SELF="$ROOT/ops/tests/test-company-onboarding-runtime-contract.sh"
 
-for file in "$MIGRATION" "$HARNESS" "$WRAPPER" "$CAPTURE" "$DEPLOY"; do
+for file in "$MIGRATION" "$INSTITUTION_SCOPE_MIGRATION" "$MEMBER_MAPPER" "$HARNESS" "$WRAPPER" "$CAPTURE" "$DEPLOY"; do
   [[ -f "$file" ]] || { echo "[company-onboarding-contract-test] missing: $file" >&2; exit 1; }
 done
 
@@ -18,11 +20,13 @@ done
 bash -n "$SELF" "$WRAPPER" "$CAPTURE" "$DEPLOY"
 node --check "$HARNESS"
 
-node - "$MIGRATION" "$HARNESS" "$WRAPPER" "$CAPTURE" "$DEPLOY" <<'NODE'
+node - "$MIGRATION" "$INSTITUTION_SCOPE_MIGRATION" "$MEMBER_MAPPER" "$HARNESS" "$WRAPPER" "$CAPTURE" "$DEPLOY" <<'NODE'
 const fs = require('fs');
 
-const [migrationPath, harnessPath, wrapperPath, capturePath, deployPath] = process.argv.slice(2);
+const [migrationPath, institutionScopeMigrationPath, memberMapperPath, harnessPath, wrapperPath, capturePath, deployPath] = process.argv.slice(2);
 const migration = fs.readFileSync(migrationPath, 'utf8');
+const institutionScopeMigration = fs.readFileSync(institutionScopeMigrationPath, 'utf8');
+const memberMapper = fs.readFileSync(memberMapperPath, 'utf8');
 const harness = fs.readFileSync(harnessPath, 'utf8');
 const wrapper = fs.readFileSync(wrapperPath, 'utf8');
 const capture = fs.readFileSync(capturePath, 'utf8');
@@ -66,6 +70,38 @@ assert(migration.includes(projectOperationsSource), 'actual project-operations s
 assert(/step_count\s*<>\s*5/i.test(migration), 'migration must assert exactly 5 process steps');
 assert(/case_count\s*<>\s*7/i.test(migration), 'migration must assert exactly 7 automated cases');
 assert(/job_status\s*=\s*'PLANNED'/i.test(migration) && /planned_job_count\s*<>\s*60/i.test(migration), 'migration must preserve and assert all 60 jobs as PLANNED');
+
+assert(
+  /ALTER\s+TABLE\s+comtninsttinfo[\s\S]*?ADD\s+COLUMN\s+IF\s+NOT\s+EXISTS\s+project_id\s+VARCHAR\(100\)/i.test(institutionScopeMigration),
+  'institution schema must add the PROJECT_ID column required by the onboarding mapper',
+);
+assert(
+  /UPDATE\s+comtninsttinfo[\s\S]*?SET\s+project_id\s*=\s*'P003'[\s\S]*?project_id\s+IS\s+NULL[\s\S]*?BTRIM\(project_id\)\s*=\s*''/i.test(institutionScopeMigration),
+  'institution schema must backfill every legacy row with a non-empty project scope',
+);
+assert(
+  /ALTER\s+COLUMN\s+project_id\s+SET\s+DEFAULT\s+'P003'[\s\S]*?ALTER\s+COLUMN\s+project_id\s+SET\s+NOT\s+NULL/i.test(institutionScopeMigration),
+  'institution schema must enforce a backward-compatible project default and NOT NULL contract',
+);
+assert(
+  /CREATE\s+INDEX\s+IF\s+NOT\s+EXISTS\s+idx_comtninsttinfo_project_status_updated[\s\S]*?\(project_id,\s*instt_sttus,\s*last_updt_pnttm\s+DESC\)/i.test(institutionScopeMigration),
+  'project-scoped institution status queries must have a supporting index',
+);
+assert(
+  /COMPANY_ONBOARDING_SCHEMA_MISMATCH/.test(institutionScopeMigration),
+  'migration must fail closed when the live institution schema is still incompatible',
+);
+
+const institutionInsert = memberMapper.match(/<insert\s+id="insertInsttInfo"[\s\S]*?<\/insert>/i)?.[0] || '';
+assert(institutionInsert.length > 0, 'insertInsttInfo mapper statement is missing');
+assert(
+  /INSERT\s+INTO\s+COMTNINSTTINFO[\s\S]*?\bPROJECT_ID\b[\s\S]*?#\{projectId\}/i.test(institutionInsert),
+  'insertInsttInfo must persist the same PROJECT_ID contract created by Flyway',
+);
+assert(
+  /FROM\s+COMTNINSTTINFO[\s\S]*?PROJECT_ID\s*=\s*#\{projectId\}/i.test(memberMapper),
+  'institution reads must retain project isolation after schema alignment',
+);
 
 assert(!/INSERT\s+INTO\s+framework_process_qa_run/i.test(migration), 'migration must not forge BUSINESS_E2E evidence');
 assert(!/UPDATE\s+framework_process_qa_run/i.test(migration), 'migration must not mutate BUSINESS_E2E evidence');
