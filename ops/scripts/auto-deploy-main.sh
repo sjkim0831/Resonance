@@ -1119,7 +1119,13 @@ if [[ "$PLAN_RUNTIME_REQUIRED" != "true" ]]; then
       ops/kubernetes/postgres-haproxy-config.yaml \
       .github/workflows/carbonet-push-deploy.yml |
       grep -q .; then
-    bash ops/scripts/test-select-catalog-contract-tests.sh
+    if git diff --name-only "$deployed_commit" "$target_commit" -- \
+        ops/scripts/select-catalog-contract-tests.sh \
+        ops/scripts/test-select-catalog-contract-tests.sh | grep -q .; then
+      bash ops/scripts/test-select-catalog-contract-tests.sh
+    else
+      echo "[auto-deploy] catalog contract selector self-test skipped: selector unchanged"
+    fi
     mapfile -t catalog_contract_tests < <(
       bash ops/scripts/select-catalog-contract-tests.sh "$deployed_commit" "$target_commit"
     )
