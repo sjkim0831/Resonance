@@ -47,5 +47,9 @@ export CARBONET_RELAY_EXPECTED_PROCESSES CARBONET_RELAY_EXPECTED_STEP_COUNT \
   CARBONET_RELAY_EXPECTED_TRANSITION_COUNT CARBONET_RELAY_EXPECTED_ACCOUNT_COUNT
 
 RESONANCE_ROOT="$ROOT" node "$ROOT/ops/scripts/resonance-twenty-step-relay-e2e.mjs"
+# Contract promotion is fail-closed: API/state-transition evidence alone is not
+# sufficient. Every canonical step must also mount its authenticated user route
+# and complete the same actor relay in the browser.
+RESONANCE_ROOT="$ROOT" node "$ROOT/ops/scripts/resonance-twenty-step-relay-visual-e2e.mjs"
 bash "$ROOT/ops/scripts/promote-relay-contracts-after-e2e.sh" \
   "$ROOT/var/test-evidence/twenty-step-relay-e2e-latest.json"
