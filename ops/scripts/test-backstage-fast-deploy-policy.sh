@@ -56,7 +56,7 @@ grep -Fq 'corepack yarn build:backend >"$bundle_log" 2>&1 &' "$DEPLOY"
 grep -Fq 'concurrent application build failed' "$DEPLOY"
 grep -Fq 'policy_contract_files=(' "$AUTO_DEPLOY"
 grep -Fq 'deterministic policy gates reused: unchanged fingerprint' "$AUTO_DEPLOY"
-grep -Fq 'sha256sum "$POLICY_ROOT/$policy_path"' "$AUTO_DEPLOY"
+grep -Fq 'sha256sum "${policy_existing_files[@]}"' "$AUTO_DEPLOY"
 grep -Fq 'cached_policy_digest" == "$policy_digest"' "$AUTO_DEPLOY"
 grep -Fq "printf 'MISSING  %s\\n'" "$AUTO_DEPLOY"
 if grep -Fq "awk '/^Driver:/ {print \$2; exit}'" "$DEPLOY"; then
