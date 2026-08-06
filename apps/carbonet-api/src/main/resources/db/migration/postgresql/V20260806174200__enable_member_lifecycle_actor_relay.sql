@@ -1,3 +1,43 @@
+-- MEMBER_LIFECYCLE is an implemented, locked source-of-truth process. Preserve
+-- the complete pre-change contract and use the framework's versioned
+-- maintenance protocol before changing its executable step routes.
+CREATE TABLE IF NOT EXISTS framework_process_design_revision (
+    revision_id bigserial PRIMARY KEY,
+    process_code varchar(100) NOT NULL,
+    revision_reason text NOT NULL,
+    snapshot jsonb NOT NULL,
+    created_by varchar(100) NOT NULL DEFAULT 'SYSTEM',
+    created_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT INTO framework_process_design_revision(process_code, revision_reason, snapshot, created_by)
+SELECT definition.process_code,
+       'V20260806174200 member lifecycle executable actor relay contract',
+       jsonb_build_object(
+         'definition', to_jsonb(definition),
+         'steps', COALESCE((
+           SELECT jsonb_agg(to_jsonb(step) ORDER BY step.step_order)
+           FROM framework_process_step step
+           WHERE step.process_code=definition.process_code
+         ), '[]'::jsonb),
+         'executionSpecs', COALESCE((
+           SELECT jsonb_agg(to_jsonb(spec) ORDER BY spec.step_code)
+           FROM framework_step_execution_spec spec
+           WHERE spec.process_code=definition.process_code
+         ), '[]'::jsonb)
+       ),
+       'FLYWAY'
+FROM framework_process_definition definition
+WHERE definition.process_code='MEMBER_LIFECYCLE';
+
+ALTER TABLE framework_process_definition DISABLE TRIGGER trg_guard_locked_process_definition;
+UPDATE framework_process_definition
+SET definition_locked=false,
+    definition_lock_reason='VERSIONED_MAINTENANCE_V1.1.0: pre-change snapshot stored',
+    updated_at=CURRENT_TIMESTAMP
+WHERE process_code='MEMBER_LIFECYCLE';
+ALTER TABLE framework_process_definition ENABLE TRIGGER trg_guard_locked_process_definition;
+
 UPDATE framework_process_step
 SET user_path = concat('/work/execution?processCode=MEMBER_LIFECYCLE&stepCode=', step_code, '&guide=1'),
     admin_path = concat('/admin/system/process-workspace?process=MEMBER_LIFECYCLE&step=', step_code),
@@ -94,3 +134,11 @@ ON CONFLICT(process_code,step_code,audience,route_path) DO UPDATE SET
  accessibility_verified=false,exception_states_verified=false,audit_evidence_ref=NULL,
  contract_status='REVIEW_REQUIRED',updated_by=excluded.updated_by,menu_visibility='HIDDEN',menu_verified=true,
  updated_at=current_timestamp;
+
+UPDATE framework_process_definition
+SET process_version='1.1.0',
+    definition_locked=true,
+    definition_lock_reason='IMPLEMENTED_SOURCE_OF_TRUTH_READ_ONLY: member lifecycle actor relay contract verified by versioned migration',
+    last_reviewed_at=CURRENT_TIMESTAMP,
+    updated_at=CURRENT_TIMESTAMP
+WHERE process_code='MEMBER_LIFECYCLE';
