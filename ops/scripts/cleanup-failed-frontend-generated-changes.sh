@@ -15,7 +15,9 @@ allowed_path() {
   case "$1" in
     projects/carbonet-frontend/source/src/generated/* | \
     projects/carbonet-frontend/source/src/features/builder-studio/pageCompletenessInventory.ts | \
-    projects/carbonet-frontend/source/src/features/builder-studio/routeSourceInventory.ts)
+    projects/carbonet-frontend/source/src/features/builder-studio/routeSourceInventory.ts | \
+    projects/carbonet-frontend/source/.cache/full-screen-smoke/* | \
+    projects/carbonet-frontend/src/main/resources/static/react-app/full-screen-deploy-gate-status.json)
       return 0
       ;;
     *) return 1 ;;
