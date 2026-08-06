@@ -36,14 +36,61 @@ record_deploy_phase() {
   DEPLOY_PHASE_LAST_MILLISECONDS="$now_ms"
 }
 
-# Agent policy is deterministic and must pass before any model-generated change can deploy.
-bash "$POLICY_ROOT/ops/scripts/verify-kilo-m3-policy.sh"
-bash "$POLICY_ROOT/ops/scripts/verify-hermes-nvidia-two-tier.sh"
-bash "$POLICY_ROOT/ops/scripts/verify-hermes-project-work-policy.sh"
-if [[ -f "$POLICY_ROOT/ops/scripts/test-backstage-fast-deploy-policy.sh" ]]; then
-  bash "$POLICY_ROOT/ops/scripts/test-backstage-fast-deploy-policy.sh"
+# Agent and fast-deploy policies are deterministic file contracts. Reuse a
+# successful result only while every input byte remains identical; a changed
+# design, worker, deployment, E2E, or policy file invalidates the fingerprint
+# immediately and runs the complete gate before any mutation.
+policy_cache="${CARBONET_DEPLOY_POLICY_CACHE:-/opt/resonance-data/deploy/deploy-policy.cache}"
+policy_contract_files=(
+  data/ai-runtime/kilo-m3-process-policy.json
+  data/ai-runtime/hermes-nvidia-two-tier-policy.json
+  data/ai-runtime/hermes-project-work-policy.json
+  ops/prompts/kilo-m3-process-worker.md
+  ops/scripts/verify-kilo-m3-policy.sh
+  ops/scripts/verify-hermes-nvidia-two-tier.sh
+  ops/scripts/verify-hermes-project-work-policy.sh
+  ops/scripts/run-process-development-worker.sh
+  ops/scripts/run-project-auto-completion-orchestrator.sh
+  ops/scripts/run-hermes-project-work.sh
+  modules/hermes-core/cli.py
+  ops/scripts/test-backstage-fast-deploy-policy.sh
+  ops/scripts/test-backstage-runtime-fingerprint.sh
+  ops/scripts/resonance-backstage-deploy.sh
+  ops/scripts/auto-deploy-main.sh
+  ops/scripts/resonance-backstage-visual-e2e.sh
+  ops/scripts/resonance-backstage-full-e2e.sh
+  ops/scripts/resonance-actor-process-role-e2e.sh
+  ops/systemd/resonance-backstage-full-e2e.service
+  ops/systemd/resonance-backstage-full-e2e.timer
+  platform/control-plane/backstage/packages/app/e2e-tests/resonance-control-plane.test.ts
+  platform/control-plane/backstage/playwright.config.ts
+  deploy/k8s/control-plane/backstage.yaml
+)
+policy_digest="$({
+  for policy_path in "${policy_contract_files[@]}"; do
+    [[ -f "$POLICY_ROOT/$policy_path" ]] || {
+      echo "[auto-deploy] required policy input is missing: $policy_path" >&2
+      exit 1
+    }
+    sha256sum "$POLICY_ROOT/$policy_path"
+  done
+} | sha256sum | awk '{print $1}')"
+cached_policy_digest="$(tr -d '[:space:]' <"$policy_cache" 2>/dev/null || true)"
+if [[ "$cached_policy_digest" == "$policy_digest" ]]; then
+  echo "[auto-deploy] deterministic policy gates reused: unchanged fingerprint"
 else
-  echo "[auto-deploy] fast-deploy policy is introduced by the pending commit; validating after bootstrap"
+  bash "$POLICY_ROOT/ops/scripts/verify-kilo-m3-policy.sh"
+  bash "$POLICY_ROOT/ops/scripts/verify-hermes-nvidia-two-tier.sh"
+  bash "$POLICY_ROOT/ops/scripts/verify-hermes-project-work-policy.sh"
+  if [[ -f "$POLICY_ROOT/ops/scripts/test-backstage-fast-deploy-policy.sh" ]]; then
+    bash "$POLICY_ROOT/ops/scripts/test-backstage-fast-deploy-policy.sh"
+  else
+    echo "[auto-deploy] fast-deploy policy is introduced by the pending commit; validating after bootstrap"
+  fi
+  mkdir -p "$(dirname "$policy_cache")"
+  printf '%s\n' "$policy_digest" >"${policy_cache}.tmp"
+  chmod 0644 "${policy_cache}.tmp"
+  mv "${policy_cache}.tmp" "$policy_cache"
 fi
 record_deploy_phase "policy"
 
