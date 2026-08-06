@@ -40,6 +40,14 @@ grep -Fq 'final local memory contract mismatch' "$SCRIPT" || fail 'final local v
 grep -Fq 'final SQL memory contract mismatch' "$SCRIPT" || fail 'final SQL validation is missing'
 grep -Fq 'PASS no-op members=3' "$SCRIPT" || fail 'idempotent no-op path is missing'
 grep -Fq 'configure-patroni-memory-safety.sh' "$DEPLOY" || fail 'auto-deploy integration is missing'
+[[ "$(grep -Fc 'ops/scripts/configure-patroni-memory-safety.sh' "$DEPLOY")" -ge 3 ]] || \
+  fail 'memory safety changes must enter the control-plane fast path'
+grep -Fq 'ops/tests/test-patroni-memory-safety.sh' "$DEPLOY" || fail 'memory safety test is not mapped into deployment'
+grep -Fq 'patroni_memory_check_completed' "$DEPLOY" || fail 'preflight result must be reused after application rollout'
+grep -Fq 'Patroni memory drift check deferred in an N-1 or transient state' "$DEPLOY" || \
+  fail 'routine N-1 drift checks must defer without invalidating an application rollout'
+grep -Fq 'periodic control-plane drift marker withheld' "$DEPLOY" || \
+  fail 'a deferred drift check must remain eligible for retry'
 
 mismatch_line="$(grep -n 'if \[\[ "$contract_mismatch" -eq 0 \]\]' "$SCRIPT" | head -1 | cut -d: -f1)"
 lock_line="$(grep -n 'exec 7>"$HEAVY_DB_LOCK_FILE"' "$SCRIPT" | head -1 | cut -d: -f1)"

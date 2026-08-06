@@ -1037,6 +1037,8 @@ fi
 
 declare -a deploy_changed_paths=()
 control_plane_drift_check_due=true
+patroni_memory_check_completed=false
+patroni_memory_check_deferred=false
 
 deploy_path_changed() {
   local changed_path candidate
@@ -1049,8 +1051,8 @@ deploy_path_changed() {
 }
 
 sync_postgres_backup_cronjobs_if_required() {
-  local live_paths=""
-  if ! deploy_path_changed ops/scripts/apply-backup-cronjobs.sh ops/scripts/configure-patroni-memory-safety.sh &&
+  local live_paths="" memory_contract_changed=false memory_check_rc=0
+  if ! deploy_path_changed ops/scripts/apply-backup-cronjobs.sh ops/scripts/configure-patroni-memory-safety.sh ops/tests/test-patroni-memory-safety.sh &&
     [[ "$control_plane_drift_check_due" != "true" ]]; then
     return 0
   fi
@@ -1065,9 +1067,24 @@ sync_postgres_backup_cronjobs_if_required() {
     bash ops/scripts/apply-backup-cronjobs.sh
     echo "[auto-deploy] PostgreSQL backup CronJobs synchronized"
   fi
-  if deploy_path_changed ops/scripts/configure-patroni-memory-safety.sh ||
-    [[ "$control_plane_drift_check_due" == "true" ]]; then
-    bash ops/scripts/configure-patroni-memory-safety.sh
+  if [[ "$patroni_memory_check_completed" != "true" ]] && {
+    deploy_path_changed ops/scripts/configure-patroni-memory-safety.sh ops/tests/test-patroni-memory-safety.sh ||
+      [[ "$control_plane_drift_check_due" == "true" ]];
+  }; then
+    deploy_path_changed ops/scripts/configure-patroni-memory-safety.sh ops/tests/test-patroni-memory-safety.sh &&
+      memory_contract_changed=true
+    if [[ "$memory_contract_changed" == "true" ]]; then
+      bash ops/tests/test-patroni-memory-safety.sh
+    fi
+    bash ops/scripts/configure-patroni-memory-safety.sh || memory_check_rc=$?
+    if (( memory_check_rc != 0 )); then
+      if [[ "$memory_contract_changed" == "true" ]]; then
+        return "$memory_check_rc"
+      fi
+      echo "[auto-deploy] warning: Patroni memory drift check deferred in an N-1 or transient state (rc=$memory_check_rc)" >&2
+      patroni_memory_check_deferred=true
+    fi
+    patroni_memory_check_completed=true
   fi
 }
 
@@ -1366,6 +1383,8 @@ if [[ "$PLAN_RUNTIME_REQUIRED" != "true" ]]; then
       ops/scripts/run-process-development-dispatcher.sh \
       ops/scripts/test-process-worker-deploy-marker.sh \
       ops/scripts/run-project-auto-completion-orchestrator.sh \
+      ops/scripts/configure-patroni-memory-safety.sh \
+      ops/tests/test-patroni-memory-safety.sh \
       ops/scripts/resonance-all-process-contract-audit.sh \
       ops/scripts/resonance-all-process-contract-audit.mjs \
       ops/scripts/run-all-process-contract-audit-hourly.sh \
@@ -1492,10 +1511,12 @@ if [[ "$PLAN_RUNTIME_REQUIRED" != "true" ]]; then
     sync_patroni_auto_heal_if_required
     sync_postgres_restore_drill_if_required
     sync_process_development_worker_if_required
-    if [[ "$control_plane_drift_check_due" == "true" ]]; then
+    if [[ "$control_plane_drift_check_due" == "true" && "$patroni_memory_check_deferred" != "true" ]]; then
       mkdir -p "$(dirname "$control_plane_drift_marker")"
       printf '%s\n' "$control_plane_drift_now" >"$control_plane_drift_marker"
       echo "[auto-deploy] periodic control-plane drift check completed"
+    elif [[ "$patroni_memory_check_deferred" == "true" ]]; then
+      echo "[auto-deploy] periodic control-plane drift marker withheld; Patroni check will retry" >&2
     else
       echo "[auto-deploy] control-plane drift check skipped: verified within 5 minutes"
     fi
