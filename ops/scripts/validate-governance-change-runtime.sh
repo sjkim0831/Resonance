@@ -40,10 +40,8 @@ api_code="$(curl -sS -b "$COOKIE_JAR" -o "$DASHBOARD" -w '%{http_code}' "$BASE_U
 [[ "$api_code" == 200 ]] || { echo "[governance-change-runtime] FAIL process design status=$api_code" >&2; exit 1; }
 jq -e '
   def field_count:
-    if type!="array" then 0
-    elif length==0 then 0
-    elif .[0].fields? then ([.[] | .fields[]?] | length)
-    else length
+    if type=="object" and .contractType=="STEP_FIELDS" and (.fields|type)=="array" then (.fields|length)
+    else 0
     end;
   (.process.processCode=="GOVERNANCE_CHANGE") and
   ([.steps[]|select(.processCode=="GOVERNANCE_CHANGE" and (.requirementText|length)>20)]|length)==6 and

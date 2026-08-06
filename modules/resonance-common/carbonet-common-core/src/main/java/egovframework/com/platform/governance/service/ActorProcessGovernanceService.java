@@ -188,7 +188,7 @@ public class ActorProcessGovernanceService {
 
     public boolean isControlPlaneAdministrator(String accountId) {
         Integer count=jdbc.queryForObject("""
-            select count(*)
+            select count(distinct field->>'fieldCode')
               from comtnemplyrscrtyestbs security
               left join comtnemplyrinfo employee
                 on employee.esntl_id=security.scrty_dtrmn_trget_id
