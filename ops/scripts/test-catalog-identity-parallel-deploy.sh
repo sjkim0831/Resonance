@@ -22,10 +22,10 @@ assert 'wait "${pids[$index]}"' in contract
 assert "parallel catalog contract tests failed" in contract
 assert "return 1" in contract
 catalog_call = source.index("mapfile -t catalog_contract_tests")
-catalog_call_end = source.index("if git diff --name-only", catalog_call)
+catalog_call_end = source.index('record_deploy_phase "catalog_validation"', catalog_call)
 catalog_selection = source[catalog_call:catalog_call_end]
 assert "select-catalog-contract-tests.sh" in catalog_selection
-assert "catalog contract selector self-test skipped: selector unchanged" in catalog_selection
+assert "catalog contract selector self-test skipped: selector unchanged" in source
 assert 'run_parallel_contract_tests "${catalog_contract_tests[@]}"' in catalog_selection
 assert "no mapped contract impact" in catalog_selection
 assert 'record_deploy_phase "catalog_validation"' in source
