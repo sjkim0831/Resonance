@@ -22,11 +22,13 @@ const accounts = {
 };
 const processPlan = [
   { code: "EMISSION_PROJECT_PORTFOLIO", expected: 1, firstActor: "COMPANY_MANAGER" },
-  { code: "EMISSION_PROJECT", expected: 7, firstActor: "COMPANY_MANAGER" },
   { code: "ORGANIZATIONAL_BOUNDARY", expected: 4, firstActor: "COMPANY_MANAGER" },
   { code: "ACTIVITY_DATA", expected: 4, firstActor: "COMPANY_MANAGER" },
   { code: "EMISSION_CALCULATION", expected: 4, firstActor: "COMPANY_MANAGER" },
+  { code: "REPORT_CERTIFICATION", expected: 4, firstActor: "COMPANY_MANAGER" },
+  { code: "REGULATORY_SUBMISSION", expected: 4, firstActor: "COMPANY_MANAGER" },
 ];
+const expectedStepTotal = processPlan.reduce((total, definition) => total + definition.expected, 0);
 const routes = {
   EMISSION_PROJECT_PORTFOLIO_LIST: "/emission/project-portfolio",
   EMISSION_PROJECT_SETUP: "/emission/organizational-boundary",
@@ -48,6 +50,14 @@ const routes = {
   EMISSION_CALCULATION_02_WORK: "/emission/calculation",
   EMISSION_CALCULATION_03_VERIFY: "/emission/validate",
   EMISSION_CALCULATION_04_APPROVE: "/emission/calculation-results",
+  REPORT_CERTIFICATION_01_PLAN: "/emission/report_submit",
+  REPORT_CERTIFICATION_02_WORK: "/emission/report_submit",
+  REPORT_CERTIFICATION_03_VERIFY: "/home/certificate-verify",
+  REPORT_CERTIFICATION_04_APPROVE: "/emission/report-download",
+  REGULATORY_SUBMISSION_S1: "/emission/report-submission",
+  REGULATORY_SUBMISSION_S2: "/emission/report-submission",
+  REGULATORY_SUBMISSION_S3: "/emission/report-submission",
+  REGULATORY_SUBMISSION_S4: "/emission/report-submission",
 };
 const executablePath = [
   process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH,
@@ -228,10 +238,11 @@ async function runProcess(definition, context) {
     throw new Error(`unique step mismatch process=${definition.code} expected=${definition.expected} actual=${uniqueSteps.size}`);
   }
   const expectedNext = {
-    EMISSION_PROJECT_PORTFOLIO: "EMISSION_PROJECT",
-    EMISSION_PROJECT: "ORGANIZATIONAL_BOUNDARY",
+    EMISSION_PROJECT_PORTFOLIO: "ORGANIZATIONAL_BOUNDARY",
     ORGANIZATIONAL_BOUNDARY: "ACTIVITY_DATA",
     ACTIVITY_DATA: "EMISSION_CALCULATION",
+    EMISSION_CALCULATION: "REPORT_CERTIFICATION",
+    REPORT_CERTIFICATION: "REGULATORY_SUBMISSION",
   }[definition.code];
   if (expectedNext) {
     const chained = await call(clients.COMPANY_MANAGER, "get", `/home/api/process-executions?${new URLSearchParams({
@@ -325,8 +336,8 @@ try {
   } else {
     for (const definition of processPlan) await runProcess(definition, context);
     const uniqueSteps = new Set(evidence.steps.map((step) => `${step.processCode}:${step.stepCode}`));
-    if (uniqueSteps.size !== 20) throw new Error(`twenty-step coverage mismatch actual=${uniqueSteps.size}`);
-    if (evidence.routes.length < 20) throw new Error(`route coverage mismatch actual=${evidence.routes.length}`);
+    if (uniqueSteps.size !== expectedStepTotal) throw new Error(`canonical relay coverage mismatch expected=${expectedStepTotal} actual=${uniqueSteps.size}`);
+    if (evidence.routes.length < expectedStepTotal) throw new Error(`route coverage mismatch expected=${expectedStepTotal} actual=${evidence.routes.length}`);
     evidence.finishedAt = new Date().toISOString();
     evidence.durationMs = Date.now() - Date.parse(evidence.startedAt);
     evidence.summary = {
@@ -358,6 +369,5 @@ if (!prepareOnly && (!evidence.cleanup || evidence.residualTaskCount !== 0)) {
 if (prepareOnly) {
   console.log(`TWENTY_STEP_RELAY_READY project=${projectId} process=${evidence.prepared.processCode} step=${evidence.prepared.stepCode} actor=${evidence.prepared.actorCode} durationMs=${evidence.durationMs}`);
 } else {
-  console.log(`TWENTY_STEP_RELAY_PASS project=deleted processes=5 uniqueSteps=20 transitions=${evidence.steps.length} accounts=5 routes=${evidence.routes.length} cleanup=verified durationMs=${evidence.durationMs}`);
+  console.log(`CANONICAL_RELAY_PASS project=deleted processes=${processPlan.length} uniqueSteps=${expectedStepTotal} transitions=${evidence.steps.length} accounts=${Object.keys(accounts).length} routes=${evidence.routes.length} cleanup=verified durationMs=${evidence.durationMs}`);
 }
-
