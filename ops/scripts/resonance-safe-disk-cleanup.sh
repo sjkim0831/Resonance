@@ -10,6 +10,10 @@ LOW_WATER_PERCENT="${LOW_WATER_PERCENT:-78}"
 STALE_DAYS="${STALE_DAYS:-7}"
 REPO="${RESONANCE_REPO:-/opt/Resonance}"
 RESONANCE_USER="${RESONANCE_USER:-$(stat -c %U "$REPO" 2>/dev/null || echo sjkim)}"
+NATIVE_TEMP_ROOT="${NATIVE_TEMP_ROOT:-/tmp}"
+NATIVE_TEMP_MINUTES="${NATIVE_TEMP_MINUTES:-120}"
+OVERLAY_BACKUP_DIR="${OVERLAY_BACKUP_DIR:-$REPO/var/backups/frontend-overlay}"
+OVERLAY_BACKUP_RETAIN_COUNT="${OVERLAY_BACKUP_RETAIN_COUNT:-48}"
 
 usage() {
   echo "Usage: $0 [--apply] [--check-path PATH] [--high-water-percent N] [--low-water-percent N] [--stale-days N]"
@@ -31,6 +35,8 @@ CHECK_PATH="$(readlink -f "$CHECK_PATH")"
 [[ "$HIGH_WATER_PERCENT" =~ ^[0-9]+$ ]] || { echo "invalid high-water threshold" >&2; exit 2; }
 [[ "$LOW_WATER_PERCENT" =~ ^[0-9]+$ ]] || { echo "invalid low-water threshold" >&2; exit 2; }
 [[ "$STALE_DAYS" =~ ^[0-9]+$ ]] || { echo "invalid stale age" >&2; exit 2; }
+[[ "$NATIVE_TEMP_MINUTES" =~ ^[0-9]+$ ]] || { echo "invalid native temp age" >&2; exit 2; }
+[[ "$OVERLAY_BACKUP_RETAIN_COUNT" =~ ^[1-9][0-9]*$ ]] || { echo "invalid overlay backup retention" >&2; exit 2; }
 ((LOW_WATER_PERCENT < HIGH_WATER_PERCENT)) || {
   echo "low-water threshold must be lower than high-water threshold" >&2
   exit 2
@@ -48,6 +54,33 @@ run_as_user() {
 
 before="$(disk_percent)"
 echo "disk usage before: ${before}% path=$CHECK_PATH high=${HIGH_WATER_PERCENT}% low=${LOW_WATER_PERCENT}%"
+
+# This exact OpenTUI native library is extracted repeatedly by automation.
+# Clean only aged copies that are not mapped by a running process. Run this
+# bounded housekeeping even below the disk high-water threshold.
+if [[ "$(readlink -f "$NATIVE_TEMP_ROOT")" == /tmp ]]; then
+  mapped_native="$(grep -h '/tmp/.5bfffda' /proc/[0-9]*/maps 2>/dev/null | awk '{print $6}' | sort -u || true)"
+  while IFS= read -r -d '' native_file; do
+    [[ "$native_file" == /tmp/.5bfffda*.so ]] || continue
+    grep -Fqx "$native_file" <<<"$mapped_native" || run rm -f -- "$native_file"
+  done < <(find /tmp -maxdepth 1 -type f -name '.5bfffda*.so' -mmin "+$NATIVE_TEMP_MINUTES" -print0)
+fi
+
+# Overlay snapshots are frequent rollback points, not long-term backups.
+# Preserve the newest bounded set and never touch unrelated archives.
+if [[ -d "$OVERLAY_BACKUP_DIR" && "$(readlink -f "$OVERLAY_BACKUP_DIR")" == /opt/Resonance/var/backups/frontend-overlay ]]; then
+  mapfile -t overlay_archives < <(
+    find "$OVERLAY_BACKUP_DIR" -maxdepth 1 -type f -name 'react-app-overlay-*.tar.gz' \
+      -printf '%T@ %p\n' | sort -nr | cut -d' ' -f2-
+  )
+  if (( ${#overlay_archives[@]} > OVERLAY_BACKUP_RETAIN_COUNT )); then
+    for overlay_archive in "${overlay_archives[@]:OVERLAY_BACKUP_RETAIN_COUNT}"; do
+      [[ "$overlay_archive" == "$OVERLAY_BACKUP_DIR"/react-app-overlay-*.tar.gz ]] || continue
+      run rm -f -- "$overlay_archive"
+    done
+  fi
+fi
+
 if ((before < HIGH_WATER_PERCENT)); then
   echo "cleanup skipped: below high-water threshold"
   exit 0

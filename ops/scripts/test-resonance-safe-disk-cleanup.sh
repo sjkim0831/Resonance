@@ -16,11 +16,15 @@ chmod +x "$tmp_dir/df"
 output="$(
   PATH="$tmp_dir:$PATH" \
   CHECK_PATH=/ \
+  NATIVE_TEMP_ROOT="$tmp_dir" \
+  OVERLAY_BACKUP_DIR="$tmp_dir" \
   HIGH_WATER_PERCENT=78 \
   LOW_WATER_PERCENT=74 \
   bash "$cleanup"
 )"
 grep -q "cleanup skipped: below high-water threshold" <<<"$output"
+grep -q "OVERLAY_BACKUP_RETAIN_COUNT" "$cleanup"
+grep -q "mapped_native" "$cleanup"
 grep -q 'ai_root="/opt/util/ai"' "$cleanup"
 grep -q "'\*.incomplete'" "$cleanup"
 
