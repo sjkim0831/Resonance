@@ -18,7 +18,15 @@ grep -q 'User=root' \
   "$root/ops/systemd/carbonet-github-deploy-webhook.service"
 grep -Fq '["systemctl", "start", "--no-block"' \
   "$root/ops/scripts/resonance-github-deploy-webhook.py"
+grep -q 'def prefetch_revision' \
+  "$root/ops/scripts/resonance-github-deploy-webhook.py"
+grep -q '"runuser", "-u", "sjkim"' \
+  "$root/ops/scripts/resonance-github-deploy-webhook.py"
+grep -q 'prefetch deferred to deploy service' \
+  "$root/ops/scripts/resonance-github-deploy-webhook.py"
 grep -q 'ReadWritePaths=/opt/resonance-data/deploy/github-webhook' \
+  "$root/ops/systemd/carbonet-github-deploy-webhook.service"
+grep -q '/opt/Resonance/.git' \
   "$root/ops/systemd/carbonet-github-deploy-webhook.service"
 grep -q 'chmod 0640 /etc/resonance/github-deploy-webhook.secret' \
   "$root/ops/scripts/install-resonance-github-deploy-webhook.sh"

@@ -21,6 +21,34 @@ def valid_signature(secret: bytes, body: bytes, supplied: str) -> bool:
     return hmac.compare_digest(expected, supplied)
 
 
+def prefetch_revision(repository_root: Path, remote: str,
+                      revision: str) -> bool:
+    if not SHA_PATTERN.fullmatch(revision):
+        return False
+    result = subprocess.run(
+        [
+            "runuser", "-u", "sjkim", "--", "git", "-C",
+            str(repository_root), "fetch", "--quiet", "--no-tags", remote,
+            f"+refs/heads/main:refs/remotes/{remote}/main",
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+        timeout=15,
+    )
+    if result.returncode != 0:
+        return False
+    verified = subprocess.run(
+        ["git", "-C", str(repository_root), "rev-parse",
+         f"refs/remotes/{remote}/main"],
+        check=False,
+        capture_output=True,
+        text=True,
+        timeout=5,
+    )
+    return verified.returncode == 0 and verified.stdout.strip() == revision
+
+
 class DeployWebhookHandler(BaseHTTPRequestHandler):
     server_version = "ResonanceDeployWebhook/1"
 
@@ -94,6 +122,13 @@ class DeployWebhookHandler(BaseHTTPRequestHandler):
         temporary = desired_file.with_name(f".{delivery}.tmp")
         temporary.write_text(revision + "\n", encoding="ascii")
         os.replace(temporary, desired_file)
+        prefetched = prefetch_revision(
+            self.server.repository_root,  # type: ignore[attr-defined]
+            self.server.remote,  # type: ignore[attr-defined]
+            revision,
+        )
+        if not prefetched:
+            print("[deploy-webhook] prefetch deferred to deploy service", flush=True)
         result = subprocess.run(
             ["systemctl", "start", "--no-block", "carbonet-auto-deploy.service"],
             check=False,
@@ -109,6 +144,7 @@ class DeployWebhookHandler(BaseHTTPRequestHandler):
             "status": "accepted",
             "delivery": delivery,
             "revision": revision,
+            "prefetched": prefetched,
         })
 
 
@@ -124,6 +160,7 @@ def self_test() -> None:
         target = Path(directory) / "desired"
         target.write_text("a" * 40 + "\n", encoding="ascii")
         assert target.read_text(encoding="ascii").strip() == "a" * 40
+    assert not prefetch_revision(Path("/nonexistent"), "origin", "invalid")
     print("GITHUB_DEPLOY_WEBHOOK_SELF_TEST_PASS")
 
 
@@ -135,6 +172,8 @@ def main() -> None:
     parser.add_argument("--secret-file",
                         default="/etc/resonance/github-deploy-webhook.secret")
     parser.add_argument("--repository", default="sjkim0831/Resonance")
+    parser.add_argument("--repository-root", default="/opt/Resonance")
+    parser.add_argument("--remote", default="origin")
     parser.add_argument("--state-dir",
                         default="/opt/resonance-data/deploy/github-webhook")
     args = parser.parse_args()
@@ -153,6 +192,8 @@ def main() -> None:
     server = ThreadingHTTPServer((args.host, args.port), DeployWebhookHandler)
     server.secret = secret  # type: ignore[attr-defined]
     server.repository = args.repository  # type: ignore[attr-defined]
+    server.repository_root = Path(args.repository_root)  # type: ignore[attr-defined]
+    server.remote = args.remote  # type: ignore[attr-defined]
     server.delivery_dir = delivery_dir  # type: ignore[attr-defined]
     server.desired_revision_file = desired_revision_file  # type: ignore[attr-defined]
     server.max_body_bytes = 2 * 1024 * 1024  # type: ignore[attr-defined]

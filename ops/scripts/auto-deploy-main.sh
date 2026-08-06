@@ -93,7 +93,8 @@ fi
 desired_commit="$(tr -d '[:space:]' <"$DESIRED_REVISION_FILE" 2>/dev/null || true)"
 if [[ "$desired_commit" =~ ^[0-9a-f]{40}$ \
    && "$desired_commit" != "$deployed_commit" ]] &&
-  git cat-file -e "${desired_commit}^{commit}" 2>/dev/null; then
+  git cat-file -e "${desired_commit}^{commit}" 2>/dev/null &&
+  [[ "$(git rev-parse "$REMOTE/$BRANCH" 2>/dev/null || true)" == "$desired_commit" ]]; then
   target_commit="$desired_commit"
   echo "[auto-deploy] target revision reused from authenticated webhook cache"
 else

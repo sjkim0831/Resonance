@@ -22,6 +22,7 @@ assert webhook_cache < fetch < no_change < kubeconfig < capacity < patroni
 assert 'desired_commit" =~ ^[0-9a-f]{40}$' in source
 assert '"$desired_commit" != "$deployed_commit"' in source
 assert 'git cat-file -e "${desired_commit}^{commit}"' in source
+assert 'git rev-parse "$REMOTE/$BRANCH"' in source
 assert 'refs/heads/$BRANCH:refs/remotes/$REMOTE/$BRANCH' in source[fetch:no_change]
 assert '--prune' not in source[fetch:no_change]
 
