@@ -52,7 +52,7 @@ const routes = {
   EMISSION_CALCULATION_04_APPROVE: "/emission/calculation-results",
   REPORT_CERTIFICATION_01_PLAN: "/emission/report_submit",
   REPORT_CERTIFICATION_02_WORK: "/emission/report_submit",
-  REPORT_CERTIFICATION_03_VERIFY: "/home/certificate-verify",
+  REPORT_CERTIFICATION_03_VERIFY: "/emission/report_submit?mode=verify",
   REPORT_CERTIFICATION_04_APPROVE: "/emission/report-download",
   REGULATORY_SUBMISSION_S1: "/emission/report-submission",
   REGULATORY_SUBMISSION_S2: "/emission/report-submission",
@@ -178,6 +178,13 @@ async function verifyRoute(api, stepCode, actor, processCode) {
       headings: [...document.querySelectorAll("h1,h2,[role=heading]")].map((node) => (node.textContent || "").trim()),
       language: document.documentElement.lang,
       focusableCount: document.querySelectorAll('a[href],button,input,select,textarea,[tabindex]:not([tabindex="-1"])').length,
+      formControlCount: document.querySelectorAll("input,select,textarea").length,
+      actionCount: document.querySelectorAll("button,a[href]").length,
+      emptyActionCount: [...document.querySelectorAll("button,a[href]")].filter((node) =>
+        !(node.getAttribute("aria-label") || node.getAttribute("title") || node.textContent || "").trim()).length,
+      duplicateIdCount: [...document.querySelectorAll("[id]")].filter((node,index,all) =>
+        all.findIndex((candidate) => candidate.id === node.id) !== index).length,
+      replacementCharacterCount: ((document.body?.innerText || "").match(/�/g) || []).length,
       overflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 2,
     }));
     if ((response?.status() || 0) >= 400) throw new Error(`route HTTP ${response?.status()}`);
@@ -185,7 +192,8 @@ async function verifyRoute(api, stepCode, actor, processCode) {
     if (fatalText.test(state.text)) throw new Error("fatal UI text");
     if (state.headings.some((heading) => /운영\s*관리\s*대시보드/.test(heading))) throw new Error("fallback dashboard");
     if (errors.length) throw new Error(`page errors: ${errors.join(" | ")}`);
-    if (!state.language || !state.headings.length || !state.focusableCount || state.overflow) {
+    if (!state.language || !state.headings.length || !state.focusableCount || state.overflow ||
+        state.emptyActionCount || state.duplicateIdCount || state.replacementCharacterCount) {
       throw new Error(`desktop accessibility/responsive baseline failed route=${target.pathname} state=${JSON.stringify(state)}`);
     }
     await page.setViewportSize({ width: 390, height: 844 });
@@ -196,7 +204,15 @@ async function verifyRoute(api, stepCode, actor, processCode) {
       visibleText: (document.body?.innerText || "").trim().length,
     }));
     if (mobile.overflow || mobile.visibleText < 20) throw new Error(`mobile responsive baseline failed route=${target.pathname} state=${JSON.stringify(mobile)}`);
-    evidence.routes.push({ processCode, stepCode, actor, path: target.pathname, ok: true, durationMs: Date.now() - routeStartedAt });
+    evidence.routes.push({
+      processCode, stepCode, actor, path: target.pathname, ok: true,
+      headingCount: state.headings.length, focusableCount: state.focusableCount,
+      formControlCount: state.formControlCount, actionCount: state.actionCount,
+      emptyActionCount: state.emptyActionCount, duplicateIdCount: state.duplicateIdCount,
+      replacementCharacterCount: state.replacementCharacterCount,
+      desktopOverflow: state.overflow, mobileOverflow: mobile.overflow,
+      durationMs: Date.now() - routeStartedAt,
+    });
   } finally {
     await context.close();
   }
