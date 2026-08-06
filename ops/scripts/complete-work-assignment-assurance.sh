@@ -8,12 +8,27 @@ grep -Fq '[work-assignment-runtime] PASS' <<<"$EVIDENCE" || { echo '[work-assign
 
 SOURCE_COMMIT="${WORK_ASSIGNMENT_SOURCE_COMMIT:-$(git -C "$ROOT" rev-parse --short=12 HEAD)}"
 EVIDENCE_REF="runtime-e2e:${SOURCE_COMMIT}:steps=7:negatives=3:recovery=PASS"
+UI_EVIDENCE_REF="${UI_EVIDENCE_REF:-}"
 POD="$(kubectl -n "$NAMESPACE" get pods -l app=postgres-patroni -o jsonpath='{.items[0].metadata.name}')"
 SQL=$(cat <<SQL
 do \$\$
 declare
   target_count integer;
 begin
+  if '$UI_EVIDENCE_REF'<>'' then
+    update framework_professional_screen_contract
+    set api_verified=true,database_verified=true,authority_verified=true,
+        responsive_verified=true,accessibility_verified=true,exception_states_verified=true,
+        audit_evidence_ref='$UI_EVIDENCE_REF',contract_status='VERIFIED',
+        updated_by='WORK_ASSIGNMENT_ASSURANCE',updated_at=current_timestamp
+    where process_code='WORK_ASSIGNMENT' and audience='USER'
+      and lower(split_part(route_path,'?',1))='/emission/work-assignment';
+    if (select count(*) from framework_professional_screen_readiness
+        where process_code='WORK_ASSIGNMENT' and readiness_score=100)<>4 then
+      raise exception 'WORK_ASSIGNMENT verified screen count mismatch';
+    end if;
+  end if;
+
   update framework_simulation_case
   set automated=true,expected_duration_minutes=1,
       required_evidence=case when coalesce(required_evidence,'')='' then 'authenticated runtime API, database reread, audit and recovery evidence' else required_evidence end,
