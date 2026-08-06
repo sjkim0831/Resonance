@@ -39,7 +39,12 @@ async function switchAccount(userId) {
 }
 
 async function json(method, url, data, expected = [200]) {
-  const response = await api.fetch(url, { method, data, failOnStatusCode: false });
+  const response = await api.fetch(url, {
+    method,
+    data,
+    headers: { "X-Carbonet-Test-Mode": "1" },
+    failOnStatusCode: false,
+  });
   const body = await response.json().catch(() => ({}));
   if (!expected.includes(response.status())) throw new Error(`${method} ${url} HTTP ${response.status()} ${body.message || ""}`);
   return { response, body };
