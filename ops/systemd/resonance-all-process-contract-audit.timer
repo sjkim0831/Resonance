@@ -1,0 +1,12 @@
+[Unit]
+Description=Run Resonance all-process contract audit hourly
+
+[Timer]
+OnCalendar=hourly
+RandomizedDelaySec=5min
+AccuracySec=1min
+Persistent=true
+Unit=resonance-all-process-contract-audit.service
+
+[Install]
+WantedBy=timers.target

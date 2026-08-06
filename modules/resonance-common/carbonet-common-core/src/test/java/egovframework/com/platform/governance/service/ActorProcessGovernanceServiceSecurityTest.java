@@ -32,6 +32,33 @@ class ActorProcessGovernanceServiceSecurityTest {
     }
 
     @Test
+    void screenContractFieldSelectionPreservesEverySupportedAudience() {
+        assertEquals("USER", ActorProcessGovernanceService.preferredScreenContractAudience("USER"));
+        assertEquals("ADMIN", ActorProcessGovernanceService.preferredScreenContractAudience("admin"));
+        assertEquals("PUBLIC", ActorProcessGovernanceService.preferredScreenContractAudience(" public "));
+        assertEquals("USER", ActorProcessGovernanceService.preferredScreenContractAudience("UNBOUND"));
+    }
+
+    @Test
+    void systemReportKeepsFixtureSuiteSeparateFromContractAuditAndBusinessE2e() {
+        when(jdbc.queryForList(argThat(sql -> sql.contains("fixture_suite_cases")
+                        && sql.contains("fixtureSuiteCoverageState")
+                        && sql.contains("fixtureSuiteExecutionState")
+                        && sql.contains("businessTestResult")),
+                any(Object[].class))).thenReturn(List.of());
+
+        Map<String, Object> report = service.systemProcessTestReport("", "", "");
+        @SuppressWarnings("unchecked") Map<String, Object> summary = (Map<String, Object>) report.get("summary");
+
+        assertEquals("CONTRACT_ONLY", report.get("auditMode"));
+        assertEquals(false, report.get("businessFunctionsExecuted"));
+        assertEquals(5, summary.get("fixtureSuiteRequiredTypeCount"));
+        assertEquals(0, summary.get("fixtureSuiteBindingCount"));
+        assertEquals("INVENTORY_AND_SIMULATION_EVIDENCE_ONLY", summary.get("fixtureSuiteMode"));
+        assertEquals("EVIDENCE_LEDGER_UNAVAILABLE", summary.get("businessEvidenceStatus"));
+    }
+
+    @Test
     void controlPlaneAdministratorComesFromExistingAuthorityData() {
         when(jdbc.queryForObject(argThat(sql -> sql.contains("ROLE_SYSTEM_MASTER")),
                 org.mockito.ArgumentMatchers.eq(Integer.class), any(Object[].class)))

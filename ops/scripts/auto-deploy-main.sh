@@ -141,6 +141,33 @@ flock -n 9 || { echo "[auto-deploy] another deployment is running"; exit 0; }
 
 cd "$ROOT_DIR"
 
+# The persistent incremental-build worktree is reused even when the platform
+# preflight cache is warm. Repair its ownership before the no-change exit and
+# before any cache branch so one root-owned artifact cannot poison all later
+# incremental builds.
+deploy_worktree_root="$(realpath -m "${CARBONET_CLEAN_WORKTREE_BASE:-${CARBONET_DEPLOY_ORIGINAL_ROOT:-$ROOT_DIR}/var/deploy-worktrees}")"
+persistent_build_worktree="$deploy_worktree_root/runtime-build"
+repair_persistent_build_worktree_ownership() {
+  local persistent_real
+  persistent_real="$(realpath -m "$persistent_build_worktree")"
+  case "$persistent_real" in
+    "$deploy_worktree_root"/*) ;;
+    *)
+      echo "[auto-deploy] refusing unsafe persistent worktree path: $persistent_real" >&2
+      exit 23
+      ;;
+  esac
+  [[ -d "$persistent_real" ]] || return 0
+  if find "$persistent_real" ! -user "$(id -u)" -print -quit 2>/dev/null | grep -q .; then
+    echo "[auto-deploy] repairing persistent deployment worktree ownership: $persistent_real"
+    sudo -n chown -R "$(id -u):$(id -g)" "$persistent_real" || {
+      echo "[auto-deploy] persistent worktree ownership repair failed ($persistent_real)" >&2
+      exit 24
+    }
+  fi
+}
+repair_persistent_build_worktree_ownership
+
 current_commit="$(git rev-parse HEAD)"
 deployed_commit="$(cat "$DEPLOY_STATE_FILE" 2>/dev/null || true)"
 if ! git cat-file -e "${deployed_commit}^{commit}" 2>/dev/null; then
@@ -216,8 +243,6 @@ mkdir -p "$BACKUP_DIR"
 # Detached deployment worktrees are disposable build inputs. Remove leftovers
 # from completed or interrupted runs before Kubernetes evaluates DiskPressure;
 # otherwise the single node can taint itself before Patroni/etcd health checks.
-deploy_worktree_root="$(realpath -m "${CARBONET_CLEAN_WORKTREE_BASE:-${CARBONET_DEPLOY_ORIGINAL_ROOT:-$ROOT_DIR}/var/deploy-worktrees}")"
-persistent_build_worktree="$deploy_worktree_root/runtime-build"
 while IFS= read -r stale_worktree; do
   [[ -n "$stale_worktree" ]] || continue
   stale_real="$(realpath -m "$stale_worktree")"
@@ -226,7 +251,7 @@ while IFS= read -r stale_worktree; do
     "$deploy_worktree_root"/*)
       # Keep one operator-owned worktree so Gradle task outputs survive between
       # commits. Per-commit worktrees made every Java deployment a cold build.
-      if [[ "$stale_real" != "$root_real" && "$stale_real" != "$(realpath -m "$persistent_build_worktree")" ]]; then
+      if [[ "$stale_real" != "$root_real" ]]; then
         if [[ -d "$stale_real" ]] && find "$stale_real" ! -user "$(id -u)" -print -quit 2>/dev/null | grep -q .; then
           echo "[auto-deploy] repairing stale deployment worktree ownership: $stale_real"
           sudo -n chown -R "$(id -u):$(id -g)" "$stale_real" || {
@@ -234,7 +259,9 @@ while IFS= read -r stale_worktree; do
             exit 24
           }
         fi
-        git -C "${CARBONET_DEPLOY_ORIGINAL_ROOT:-$ROOT_DIR}" worktree remove --force "$stale_real"
+        if [[ "$stale_real" != "$(realpath -m "$persistent_build_worktree")" ]]; then
+          git -C "${CARBONET_DEPLOY_ORIGINAL_ROOT:-$ROOT_DIR}" worktree remove --force "$stale_real"
+        fi
       fi
       ;;
     *) echo "[auto-deploy] refusing unsafe stale worktree path: $stale_real" >&2; exit 23 ;;
@@ -1160,6 +1187,21 @@ sync_process_development_worker_if_required() {
   fi
 }
 
+sync_process_contract_audit_if_required() {
+  # This check deliberately does not depend on deploy_changed_paths. Runtime
+  # and mixed deployments build from a persistent worktree and may not
+  # populate that no-runtime list; byte-for-byte source/install comparison
+  # still repairs a stale or manually altered control-plane installation.
+  if bash ops/scripts/install-all-process-contract-audit.sh --check &&
+    systemctl is-enabled --quiet resonance-all-process-contract-audit.timer; then
+    return 0
+  fi
+  bash ops/tests/test-all-process-contract-audit.sh
+  bash ops/tests/test-all-process-contract-audit-scheduler.sh
+  bash ops/scripts/install-all-process-contract-audit.sh
+  echo '[auto-deploy] isolated hourly all-process contract audit checksum drift repaired'
+}
+
 sync_react_asset_prune_worker_if_required() {
   if ! deploy_path_changed \
       ops/scripts/resonance-react-asset-prune.sh \
@@ -1237,6 +1279,7 @@ if [[ "$PLAN_RUNTIME_REQUIRED" != "true" ]]; then
   fi
   restore_live_frontend_overlay
   sync_react_asset_prune_worker_if_required
+  sync_process_contract_audit_if_required
   while IFS= read -r changed_script; do
     [[ "$changed_script" == *.sh && -f "$changed_script" ]] && bash -n "$changed_script"
   done < <(printf '%s\n' "${deploy_changed_paths[@]}")
@@ -1256,6 +1299,12 @@ if [[ "$PLAN_RUNTIME_REQUIRED" != "true" ]]; then
       ops/scripts/run-process-development-dispatcher.sh \
       ops/scripts/test-process-worker-deploy-marker.sh \
       ops/scripts/run-project-auto-completion-orchestrator.sh \
+      ops/scripts/resonance-all-process-contract-audit.sh \
+      ops/scripts/resonance-all-process-contract-audit.mjs \
+      ops/scripts/run-all-process-contract-audit-hourly.sh \
+      ops/scripts/install-all-process-contract-audit.sh \
+      ops/tests/test-all-process-contract-audit.sh \
+      ops/tests/test-all-process-contract-audit-scheduler.sh \
       ops/scripts/test-frontend-parallel-build-pipeline.sh \
       ops/scripts/install-resonance-github-runner.sh \
       ops/scripts/install-resonance-github-deploy-webhook.sh \
@@ -1293,6 +1342,8 @@ if [[ "$PLAN_RUNTIME_REQUIRED" != "true" ]]; then
       ops/systemd/resonance-process-development-worker.timer \
       ops/systemd/resonance-project-auto-completion.service \
       ops/systemd/resonance-project-auto-completion.timer \
+      ops/systemd/resonance-all-process-contract-audit.service \
+      ops/systemd/resonance-all-process-contract-audit.timer \
       ops/scripts/resonance-backstage-full-e2e.sh \
       ops/systemd/resonance-backstage-full-e2e.service \
       ops/systemd/resonance-backstage-full-e2e.timer \
@@ -1984,6 +2035,7 @@ sync_post_reboot_recovery_if_required
 # previous automation script after the new application is healthy. Reuse the
 # same idempotent synchronizer on the runtime path before publishing success.
 sync_process_development_worker_if_required
+sync_process_contract_audit_if_required
 sync_react_asset_prune_worker_if_required
 # Runtime validation generates deterministic previews and compiled frontend
 # artifacts inside the isolated deployment worktree. Normalize only the

@@ -41,6 +41,10 @@ NODE
 cat > "$TMP/blocked.json" <<'JSON'
 {
   "success": true,
+  "businessFunctionsExecuted": false,
+  "targetCount": 2,
+  "auditedBindingCount": 2,
+  "auditedCapabilityTargetCount": 2,
   "summary": {
     "processCount": 2,
     "stepCount": 2,
@@ -49,7 +53,9 @@ cat > "$TMP/blocked.json" <<'JSON'
     "blockedStepCount": 0,
     "notRunStepCount": 1,
     "verifiedContractCount": 1,
-    "totalContractCount": 2
+    "totalContractCount": 2,
+    "auditTargetCount": 2,
+    "businessEvidenceStatus": "EVIDENCE_LEDGER_UNAVAILABLE"
   },
   "items": [
     {
@@ -78,13 +84,18 @@ cat > "$TMP/blocked.json" <<'JSON'
       "executedBy": "qa-member",
       "executedAt": "2026-08-07T09:00:00+09:00",
       "scenarioCount": 1,
-      "businessTestResult": "PASSED",
-      "latestBusinessRunId": "BUSINESS-RUN-001",
-      "businessCaseCode": "MEMBER_REGISTER_HAPPY",
-      "businessCaseType": "HAPPY_PATH",
-      "businessEvidenceJson": {"memberId": "MEMBER-001", "verified": true},
-      "businessExecutedBy": "qa-member",
-      "businessExecutedAt": "2026-08-07T09:00:01+09:00"
+      "latestSimulationRunId": "SIM-RUN-001",
+      "simulationTestResult": "PASSED",
+      "simulationCaseCode": "MEMBER_REGISTER_CONTRACT",
+      "simulationCaseType": "CONTRACT_SIMULATION",
+      "simulationTraceScope": "STEP",
+      "simulationProcessVersion": 1,
+      "simulationCurrentVersion": true,
+      "simulationEvidenceJson": {"contractFingerprint": "fingerprint-001", "verified": true},
+      "simulationExecutedBy": "qa-member",
+      "simulationExecutedAt": "2026-08-07T09:00:01+09:00",
+      "businessTestResult": "NOT_RUN",
+      "businessEvidenceStatus": "EVIDENCE_LEDGER_UNAVAILABLE"
     },
     {
       "developmentOrder": 2,
@@ -106,7 +117,18 @@ cat > "$TMP/blocked.json" <<'JSON'
       "apiContract": ["POST /admin/api/members/review"],
       "requiresAdminPage": true,
       "latestResult": "NOT_RUN",
-      "businessTestResult": "NOT_RUN"
+      "latestSimulationRunId": 0,
+      "simulationTestResult": "NOT_RUN",
+      "simulationCaseCode": "",
+      "simulationCaseType": "",
+      "simulationTraceScope": "",
+      "simulationProcessVersion": 0,
+      "simulationCurrentVersion": false,
+      "simulationEvidenceJson": {},
+      "simulationExecutedBy": "",
+      "simulationExecutedAt": "",
+      "businessTestResult": "NOT_RUN",
+      "businessEvidenceStatus": "EVIDENCE_LEDGER_UNAVAILABLE"
     }
   ]
 }
@@ -124,9 +146,12 @@ if (value.summary.processCount !== 2 || value.summary.stepCount !== 2) throw new
 if (value.summary.passCount !== 1 || value.summary.notRunCount !== 1) throw new Error("result contract mismatch");
 if (value.summary.contractBlockedCount !== 0) throw new Error("valid contracts were blocked");
 if (value.summary.contractTestPassedCount !== 1) throw new Error("contract test count mismatch");
-if (value.auditMode !== "READ_ONLY_INVENTORY" || value.businessExecutionPerformed !== false || value.contractTestResultsAreNotBusinessTests !== true) {
+if (value.auditMode !== "READ_ONLY_INVENTORY" || value.businessExecutionPerformed !== false || value.businessFunctionsExecuted !== false || value.contractTestResultsAreNotBusinessTests !== true) {
   throw new Error("read-only audit semantics are ambiguous");
 }
+if (value.auditCoverage.targetCount !== 2 || value.auditCoverage.auditedBindingCount !== 2 || value.auditCoverage.auditedCapabilityTargetCount !== 2) throw new Error("audit target coverage mismatch");
+if (value.summary.recordedBusinessNotRunCount !== 2 || value.summary.recordedBusinessPassCount !== 0) throw new Error("real business E2E must remain NOT_RUN");
+if (value.summary.simulationPassedCount !== 1 || value.summary.simulationNotRunCount !== 1) throw new Error("simulation evidence summary mismatch");
 if (value.evidencePolicy !== "READ_ONLY_AUDIT_BUSINESS_PASS_REQUIRES_RECORDED_BUSINESS_RUN_NO_PROMOTION") throw new Error("unsafe evidence policy");
 NODE
 
@@ -144,13 +169,16 @@ value.items[1].latestOutput = {decision: "APPROVED"};
 value.items[1].executedBy = "qa-admin";
 value.items[1].executedAt = "2026-08-07T09:01:00+09:00";
 value.items[1].scenarioCount = 1;
-value.items[1].businessTestResult = "PASSED";
-value.items[1].latestBusinessRunId = "BUSINESS-RUN-002";
-value.items[1].businessCaseCode = "MEMBER_REVIEW_HAPPY";
-value.items[1].businessCaseType = "HAPPY_PATH";
-value.items[1].businessEvidenceJson = {decision: "APPROVED", verified: true};
-value.items[1].businessExecutedBy = "qa-admin";
-value.items[1].businessExecutedAt = "2026-08-07T09:01:01+09:00";
+value.items[1].latestSimulationRunId = "SIM-RUN-002";
+value.items[1].simulationTestResult = "PASSED";
+value.items[1].simulationCaseCode = "MEMBER_REVIEW_CONTRACT";
+value.items[1].simulationCaseType = "CONTRACT_SIMULATION";
+value.items[1].simulationTraceScope = "STEP";
+value.items[1].simulationProcessVersion = 1;
+value.items[1].simulationCurrentVersion = true;
+value.items[1].simulationEvidenceJson = {contractFingerprint: "fingerprint-002", verified: true};
+value.items[1].simulationExecutedBy = "qa-admin";
+value.items[1].simulationExecutedAt = "2026-08-07T09:01:01+09:00";
 fs.writeFileSync(process.argv[2], JSON.stringify(value));
 ' "$TMP/blocked.json" "$TMP/pass.json"
 pass_output="$(SYSTEM_TEST_REPORT_FIXTURE="$TMP/pass.json" bash "$WRAPPER")"
@@ -160,31 +188,42 @@ if (value.status !== "PASS") throw new Error("expected PASS status");
 if (value.summary.passCount !== 2 || value.summary.blockedCount !== 0 || value.summary.notRunCount !== 0) {
   throw new Error("PASS/BLOCKED/NOT_RUN output contract mismatch");
 }
+if (value.summary.recordedBusinessNotRunCount !== 2 || value.summary.recordedBusinessPassCount !== 0) throw new Error("contract simulations were promoted to real business E2E");
+if (value.summary.simulationPassedCount !== 2 || value.summary.simulationNotRunCount !== 0) throw new Error("simulation evidence was not counted separately");
 NODE
 
 node -e '
 const fs = require("fs");
 const value = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
-value.items[1].businessTestResult = "NOT_RUN";
-delete value.items[1].latestBusinessRunId;
-delete value.items[1].businessCaseCode;
-delete value.items[1].businessCaseType;
-delete value.items[1].businessEvidenceJson;
-delete value.items[1].businessExecutedBy;
-delete value.items[1].businessExecutedAt;
+value.items[1].businessTestResult = "PASSED";
 fs.writeFileSync(process.argv[2], JSON.stringify(value));
-' "$TMP/pass.json" "$TMP/contract-only.json"
+' "$TMP/pass.json" "$TMP/unsafe-business-promotion.json"
 set +e
-contract_only_output="$(node "$SCRIPT" --fixture "$TMP/contract-only.json" --skip-http-smoke)"
-contract_only_status=$?
+unsafe_business_output="$(node "$SCRIPT" --fixture "$TMP/unsafe-business-promotion.json" --skip-http-smoke)"
+unsafe_business_status=$?
 set -e
-[[ "$contract_only_status" -eq 3 ]] || { echo "expected contract-only evidence exit 3, got $contract_only_status" >&2; exit 1; }
-AUDIT_OUTPUT="$contract_only_output" node - <<'NODE'
+[[ "$unsafe_business_status" -eq 3 ]] || { echo "expected unsafe business promotion exit 3, got $unsafe_business_status" >&2; exit 1; }
+AUDIT_OUTPUT="$unsafe_business_output" node - <<'NODE'
 const value = JSON.parse(process.env.AUDIT_OUTPUT);
-if (value.status !== "BLOCKED") throw new Error("contract-only evidence must not pass business E2E");
-if (value.summary.contractTestPassedCount !== 2 || value.summary.passCount !== 1 || value.summary.notRunCount !== 1) {
-  throw new Error("contract and business evidence were conflated");
-}
+if (value.status !== "BLOCKED") throw new Error("unsafe business promotion must be blocked");
+if (value.summary.contractTestPassedCount !== 2 || value.summary.recordedBusinessPassCount !== 1) throw new Error("contract and business evidence separation mismatch");
+if (!value.validation.issueCounts.BUSINESS_RESULT_MUST_REMAIN_NOT_RUN) throw new Error("unsafe business result was not identified");
+NODE
+
+node -e '
+const fs = require("fs");
+const value = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
+value.items[0].simulationCurrentVersion = false;
+fs.writeFileSync(process.argv[2], JSON.stringify(value));
+' "$TMP/pass.json" "$TMP/stale-simulation.json"
+set +e
+stale_simulation_output="$(node "$SCRIPT" --fixture "$TMP/stale-simulation.json" --skip-http-smoke)"
+stale_simulation_status=$?
+set -e
+[[ "$stale_simulation_status" -eq 3 ]] || { echo "expected stale simulation exit 3, got $stale_simulation_status" >&2; exit 1; }
+AUDIT_OUTPUT="$stale_simulation_output" node - <<'NODE'
+const value = JSON.parse(process.env.AUDIT_OUTPUT);
+if (value.status !== "BLOCKED" || !value.validation.issueCounts.SIMULATION_STALE_CONTRACT_VERSION) throw new Error("stale simulation PASS was not invalidated");
 NODE
 
 mkdir -p "$TMP/bin"
@@ -267,4 +306,4 @@ cp "$PLAN" "$TMP/plan/ops/scripts/plan-incremental-work.sh"
   grep -q 'reasons=automation-only' <<<"$plan_output"
 )
 
-echo '[all-process-contract-audit-test] PASS fixtures=5 outputContract=PASS/BLOCKED/ERROR contractVsBusiness=PASS readOnly=PASS order=PASS routes=PASS ioContracts=PASS secretPolicy=kubernetes+exit2 noBuild=PASS'
+echo '[all-process-contract-audit-test] PASS fixtures=6 outputContract=PASS/BLOCKED/ERROR contractVsBusiness=PASS staleSimulation=PASS readOnly=PASS order=PASS routes=PASS ioContracts=PASS secretPolicy=kubernetes+exit2 noBuild=PASS'

@@ -120,6 +120,9 @@ function validate(payload) {
     throw new Error("system-test-report must be a JSON object");
   }
   if (payload.success === false) throw new Error("system-test-report returned success=false");
+  if (payload.businessFunctionsExecuted !== false) {
+    throw new Error("system-test-report must explicitly declare businessFunctionsExecuted=false");
+  }
   const items = normalizeItems(payload);
   if (!items.length) throw new Error("system-test-report contains no process-step items");
 
@@ -179,6 +182,7 @@ function validate(payload) {
     }
 
     const contractResult = normalizeResult(item.latestResult ?? item.testState);
+    const simulationResult = normalizeResult(item.simulationTestResult);
     const businessResult = normalizeResult(item.businessTestResult);
     if (contractResult === "PASSED") {
       if (!text(item.latestRunId)) addIssue(issues, "CONTRACT_PASS_RUN_ID_MISSING");
@@ -190,19 +194,28 @@ function validate(payload) {
       if (!text(item.executedAt)) addIssue(issues, "CONTRACT_PASS_EXECUTED_AT_MISSING");
       if ((numeric(item.scenarioCount) ?? 0) < 1) addIssue(issues, "CONTRACT_PASS_SCENARIO_MISSING");
     }
-    if (businessResult === "PASSED") {
-      if (!text(item.latestBusinessRunId)) addIssue(issues, "BUSINESS_PASS_RUN_ID_MISSING");
-      if (!text(item.businessCaseCode) || !text(item.businessCaseType)) addIssue(issues, "BUSINESS_PASS_CASE_MISSING");
-      if (!meaningfulContract(item.businessEvidenceJson)) addIssue(issues, "BUSINESS_PASS_EVIDENCE_MISSING");
-      if (!text(item.businessExecutedBy)) addIssue(issues, "BUSINESS_PASS_EXECUTOR_MISSING");
-      if (!text(item.businessExecutedAt)) addIssue(issues, "BUSINESS_PASS_EXECUTED_AT_MISSING");
+    if (simulationResult !== "NOT_RUN") {
+      if (!text(item.latestSimulationRunId)) addIssue(issues, "SIMULATION_RUN_ID_MISSING");
+      if (!text(item.simulationCaseCode) || !text(item.simulationCaseType)) addIssue(issues, "SIMULATION_CASE_MISSING");
+      if (!text(item.simulationTraceScope)) addIssue(issues, "SIMULATION_TRACE_SCOPE_MISSING");
+      if (!text(item.simulationProcessVersion)) addIssue(issues, "SIMULATION_PROCESS_VERSION_MISSING");
+      if (!meaningfulContract(item.simulationEvidenceJson)) addIssue(issues, "SIMULATION_EVIDENCE_MISSING");
+      if (!text(item.simulationExecutedBy)) addIssue(issues, "SIMULATION_EXECUTOR_MISSING");
+      if (!text(item.simulationExecutedAt)) addIssue(issues, "SIMULATION_EXECUTED_AT_MISSING");
+      if (simulationResult === "PASSED" && !bool(item.simulationCurrentVersion)) addIssue(issues, "SIMULATION_STALE_CONTRACT_VERSION");
+    }
+    if (businessResult !== "NOT_RUN") {
+      addIssue(issues, "BUSINESS_RESULT_MUST_REMAIN_NOT_RUN");
+    }
+    if (text(item.businessEvidenceStatus) !== "EVIDENCE_LEDGER_UNAVAILABLE") {
+      addIssue(issues, "BUSINESS_EVIDENCE_STATUS_INVALID");
     }
     if (processCode && processOrders.has(processCode) && processOrders.get(processCode) !== developmentOrder) {
       addIssue(issues, "PROCESS_ORDER_INCONSISTENT");
     } else if (processCode) {
       processOrders.set(processCode, developmentOrder);
     }
-    const normalized = { sourceIndex, processCode, stepCode, developmentOrder, stepOrder, contractResult, businessResult, issues };
+    const normalized = { sourceIndex, processCode, stepCode, developmentOrder, stepOrder, contractResult, simulationResult, businessResult, issues };
     itemResults.push(normalized);
     if (!processGroups.has(processCode)) processGroups.set(processCode, []);
     processGroups.get(processCode).push(normalized);
@@ -243,6 +256,9 @@ function validate(payload) {
   };
   const summary = payload.summary && typeof payload.summary === "object" ? payload.summary : {};
   const summaryMismatches = [];
+  if (text(summary.businessEvidenceStatus) !== "EVIDENCE_LEDGER_UNAVAILABLE") {
+    summaryMismatches.push({ field: "businessEvidenceStatus", reported: summary.businessEvidenceStatus, expected: "EVIDENCE_LEDGER_UNAVAILABLE" });
+  }
   for (const [field, aliases] of Object.entries(SUMMARY_FIELDS)) {
     const reported = summaryNumber(summary, aliases);
     if (reported == null) {
@@ -268,11 +284,19 @@ function validate(payload) {
     contractPassedCount: group.filter((item) => item.contractResult === "PASSED").length,
     contractTestBlockedCount: group.filter((item) => item.contractResult === "BLOCKED").length,
     contractNotRunCount: group.filter((item) => item.contractResult === "NOT_RUN").length,
+    simulationPassedCount: group.filter((item) => item.simulationResult === "PASSED").length,
+    simulationBlockedCount: group.filter((item) => item.simulationResult === "BLOCKED").length,
+    simulationNotRunCount: group.filter((item) => item.simulationResult === "NOT_RUN").length,
     businessPassedCount: group.filter((item) => item.businessResult === "PASSED").length,
     businessBlockedCount: group.filter((item) => item.businessResult === "BLOCKED").length,
     businessNotRunCount: group.filter((item) => item.businessResult === "NOT_RUN").length,
   }));
 
+  const auditCoverage = {
+    targetCount: numeric(payload.targetCount ?? summary.auditTargetCount),
+    auditedBindingCount: numeric(payload.auditedBindingCount),
+    auditedCapabilityTargetCount: numeric(payload.auditedCapabilityTargetCount),
+  };
   return {
     items,
     routes: [...routeSet].slice(0, maxRouteSmokes),
@@ -291,6 +315,7 @@ function validate(payload) {
       duplicateSteps: duplicateSteps.slice(0, 50),
     },
     processSummary,
+    auditCoverage,
     reportedSummary: Object.fromEntries(Object.entries(SUMMARY_FIELDS).map(([field, aliases]) => [field, summaryNumber(summary, aliases)])),
   };
 }
@@ -410,8 +435,14 @@ async function main() {
     blockedCount: summary.blockedCount + process.businessBlockedCount,
     notRunCount: summary.notRunCount + process.businessNotRunCount,
   }), { passedCount: 0, blockedCount: 0, notRunCount: 0 });
-  const businessTestBlocked = business.blockedCount > 0 || business.notRunCount > 0;
-  const blocked = businessTestBlocked || audited.validation.contractBlockedCount > 0 ||
+  const simulation = audited.processSummary.reduce((summary, process) => ({
+    passedCount: summary.passedCount + process.simulationPassedCount,
+    blockedCount: summary.blockedCount + process.simulationBlockedCount,
+    notRunCount: summary.notRunCount + process.simulationNotRunCount,
+  }), { passedCount: 0, blockedCount: 0, notRunCount: 0 });
+  const contractTestBlocked = audited.derived.blockedStepCount > 0 || audited.derived.notRunStepCount > 0;
+  const businessEvidenceInvalid = business.passedCount > 0 || business.blockedCount > 0;
+  const blocked = contractTestBlocked || businessEvidenceInvalid || audited.validation.contractBlockedCount > 0 ||
     audited.validation.summaryMismatchCount > 0 || routes.unreachableCount > 0 ||
     audited.routeCandidateCount > maxRouteSmokes;
   const output = {
@@ -422,12 +453,15 @@ async function main() {
       processCount: audited.derived.processCount,
       stepCount: audited.derived.stepCount,
       routedStepCount: audited.derived.routedStepCount,
-      passCount: business.passedCount,
-      blockedCount: business.blockedCount,
-      notRunCount: business.notRunCount,
+      passCount: audited.derived.passedStepCount,
+      blockedCount: audited.derived.blockedStepCount,
+      notRunCount: audited.derived.notRunStepCount,
       recordedBusinessPassCount: business.passedCount,
       recordedBusinessBlockedCount: business.blockedCount,
       recordedBusinessNotRunCount: business.notRunCount,
+      simulationPassedCount: simulation.passedCount,
+      simulationBlockedCount: simulation.blockedCount,
+      simulationNotRunCount: simulation.notRunCount,
       contractTestPassedCount: audited.derived.passedStepCount,
       contractTestBlockedCount: audited.derived.blockedStepCount,
       contractTestNotRunCount: audited.derived.notRunStepCount,
@@ -439,8 +473,10 @@ async function main() {
     validation: audited.validation,
     routeSmoke: routes,
     processes: audited.processSummary,
+    auditCoverage: audited.auditCoverage,
     auditMode: "READ_ONLY_INVENTORY",
     businessExecutionPerformed: false,
+    businessFunctionsExecuted: false,
     contractTestResultsAreNotBusinessTests: true,
     evidencePolicy: "READ_ONLY_AUDIT_BUSINESS_PASS_REQUIRES_RECORDED_BUSINESS_RUN_NO_PROMOTION",
     durationMs: Date.now() - startedAt,

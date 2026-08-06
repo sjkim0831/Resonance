@@ -1,0 +1,26 @@
+[Unit]
+Description=Resonance read-only all-process contract audit
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=sjkim
+Group=sjkim
+WorkingDirectory=/opt/Resonance
+Environment=HOME=/home/sjkim
+Environment=PATH=/usr/local/bin:/usr/bin:/bin
+Environment=KUBECONFIG=/home/sjkim/.kube/config
+ExecStart=/usr/bin/bash /opt/resonance-data/control-plane/bin/run-all-process-contract-audit-hourly.sh
+SuccessExitStatus=3
+TimeoutStartSec=105s
+KillMode=control-group
+KillSignal=SIGTERM
+SendSIGKILL=yes
+Nice=15
+IOSchedulingClass=idle
+CPUQuota=100%
+MemoryMax=1G
+
+[Install]
+WantedBy=multi-user.target

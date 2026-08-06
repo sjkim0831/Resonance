@@ -569,39 +569,186 @@ public class ActorProcessGovernanceService {
         String result=normalizeSystemTestResult(requestedResult);
 
         List<Map<String,Object>> items=jdbc.queryForList("""
-            with latest_business_run as (
-              select distinct on (test_binding.process_code,test_binding.step_code)
-                     test_binding.process_code,test_binding.step_code,run.run_id,run.result,sim.case_code,sim.case_type,
-                     coalesce(run.evidence_json,'{}') as evidence_json,run.executed_by,run.executed_at
-                from framework_step_test_binding test_binding
-                join framework_simulation_case sim on sim.case_code=test_binding.case_code
-                join framework_simulation_run run on run.case_code=sim.case_code
-               order by test_binding.process_code,test_binding.step_code,run.executed_at desc,run.run_id desc
+            with scoped_steps as (
+              select p.domain_code,p.process_code,p.process_name,p.process_status,p.process_version,p.development_order,
+                     s.*,coalesce(a.actor_name,s.actor_code) actor_name,coalesce(w.work_type_name,p.domain_code) domain_name,
+                     coalesce(w.sort_order,9999) domain_order,to_jsonb(s)::text step_contract_json
+                from framework_process_definition p
+                join framework_process_step s using(process_code)
+                left join framework_actor_definition a on a.actor_code=s.actor_code
+                left join framework_business_work_type w on w.work_type_code=upper(p.domain_code)
+               where (?='' or upper(p.domain_code)=?) and (?='' or p.process_code=?)
+            ), screen_data_hash as (
+              select d.screen_resource_id,md5(coalesce(string_agg(to_jsonb(d)::text,'|' order by d.data_element_code,d.field_code),'')) data_hash
+                from framework_screen_data_binding d group by d.screen_resource_id
+            ), screen_capability_hash as (
+              select c.screen_resource_id,md5(coalesce(string_agg(to_jsonb(c)::text,'|' order by c.capability_code),'')) capability_hash
+                from framework_screen_capability c group by c.screen_resource_id
+            ), step_test_hash as (
+              select b.process_code,b.step_code,
+                     md5(coalesce(string_agg(to_jsonb(b)::text||'~'||to_jsonb(c)::text,'|' order by b.case_code),'')) test_hash,
+                     count(*) scenario_count,
+                     count(*) filter(where c.case_status in('APPROVED','VERIFIED')) approved_scenario_count
+                from framework_step_test_binding b join framework_simulation_case c using(case_code)
+               group by b.process_code,b.step_code
+            ), step_spec_hash as (
+              select e.process_code,e.step_code,md5(to_jsonb(e)::text) spec_hash
+                from framework_step_execution_spec e
+            ), professional_contract_hash as (
+              select lower(split_part(c.route_path,'?',1)) route_key,
+                     md5(coalesce(string_agg(to_jsonb(c)::text,'|' order by c.process_code,c.step_code,c.audience,c.contract_id),'')) contract_hash
+                from framework_professional_screen_contract c group by lower(split_part(c.route_path,'?',1))
+            ), fixture_hash as (
+              select t.screen_resource_id,t.process_code,t.step_code,t.capability_code,
+                     md5(coalesce(string_agg(to_jsonb(t)::text,'|' order by t.test_case_id),'')) fixture_hash
+                from framework_screen_workflow_test_case t where t.active=true
+               group by t.screen_resource_id,t.process_code,t.step_code,t.capability_code
+            ), binding_targets as (
+              select ss.*,b.binding_id,b.audience,b.entry_mode,to_jsonb(b)::text binding_contract_json,
+                     r.screen_resource_id,r.route_key,r.screen_name,r.screen_type,r.implementation_status,to_jsonb(r)::text screen_contract_json,
+                     c.capability_id,coalesce(c.capability_code,'ALL') capability_code,c.capability_name,
+                     coalesce(dh.data_hash,'') data_hash,coalesce(ch.capability_hash,'') capability_hash,
+                     coalesce(th.test_hash,'') test_hash,coalesce(th.scenario_count,0) scenario_count,
+                     coalesce(th.approved_scenario_count,0) approved_scenario_count,coalesce(sh.spec_hash,'') spec_hash,
+                     coalesce(ph.contract_hash,'') professional_hash,
+                     coalesce(fh.fixture_hash,all_fixture.fixture_hash,'') fixture_hash
+                from scoped_steps ss
+                left join framework_process_step_screen_binding b
+                  on b.process_code=ss.process_code and b.step_code=ss.step_code and b.binding_status='ACTIVE'
+                left join framework_screen_resource r using(screen_resource_id)
+                left join framework_screen_capability c using(screen_resource_id)
+                left join screen_data_hash dh using(screen_resource_id)
+                left join screen_capability_hash ch using(screen_resource_id)
+                left join step_test_hash th on th.process_code=ss.process_code and th.step_code=ss.step_code
+                left join step_spec_hash sh on sh.process_code=ss.process_code and sh.step_code=ss.step_code
+                left join professional_contract_hash ph on ph.route_key=r.route_key
+                left join fixture_hash fh on fh.screen_resource_id=r.screen_resource_id and fh.process_code=ss.process_code
+                 and fh.step_code=ss.step_code and fh.capability_code=coalesce(c.capability_code,'ALL')
+                left join fixture_hash all_fixture on all_fixture.screen_resource_id=r.screen_resource_id and all_fixture.process_code=ss.process_code
+                 and all_fixture.step_code=ss.step_code and all_fixture.capability_code='ALL'
+            ), target_fingerprints as (
+              select bt.*,md5(concat_ws('|',bt.process_version,bt.step_contract_json,coalesce(bt.binding_contract_json,''),
+                       coalesce(bt.screen_contract_json,''),bt.audience,bt.capability_code,bt.data_hash,bt.capability_hash,
+                       bt.test_hash,bt.spec_hash,bt.professional_hash,bt.fixture_hash)) contract_fingerprint
+                from binding_targets bt
+            ), target_runs as (
+              select target.*,run.run_id,run.result,run.passed_check_count,run.total_check_count,
+                     array_to_string(run.blocker_codes,', ') blocker_codes,
+                     coalesce(run.evidence_json->>'preInputJson','{}') pre_input_json,
+                     run.evidence_json::text evidence_json,run.executed_by,run.executed_at,
+                     row_number() over(partition by target.process_code,target.step_code,target.binding_id,target.capability_code,target.audience
+                       order by run.executed_at desc nulls last,run.run_id desc nulls last) run_rank
+                from target_fingerprints target
+                left join framework_screen_workflow_test_run run
+                  on run.screen_resource_id=target.screen_resource_id and run.process_code=target.process_code
+                 and run.step_code=target.step_code and run.capability_code=target.capability_code
+                 and coalesce(run.evidence_json->>'audience','')=coalesce(target.audience,'')
+                 and run.evidence_json->>'contractFingerprint'=target.contract_fingerprint
+            ), target_latest as (
+              select * from target_runs where run_rank=1
+            ), step_rollup as (
+              select process_code,step_code,
+                     count(distinct screen_resource_id) filter(where binding_id is not null) screen_count,
+                     count(*) filter(where binding_id is not null) target_count,
+                     count(*) filter(where binding_id is not null and run_id is not null) tested_target_count,
+                     count(distinct capability_id) capability_count,
+                     string_agg(distinct route_key,', ' order by route_key) filter(where route_key is not null) screen_routes,
+                     string_agg(distinct implementation_status,', ' order by implementation_status) filter(where implementation_status is not null) implementation_statuses,
+                     string_agg(distinct capability_name,', ' order by capability_name) filter(where capability_name is not null) capability_names,
+                     max(scenario_count) scenario_count,max(approved_scenario_count) approved_scenario_count,
+                     count(*) filter(where binding_id is not null and implementation_status not in('IMPLEMENTED','VERIFIED')) unready_screen_target_count,
+                     case when count(*) filter(where binding_id is not null)=0 then 'NOT_RUN'
+                          when count(*) filter(where binding_id is not null and result='BLOCKED')>0 then 'BLOCKED'
+                          when count(*) filter(where binding_id is not null and run_id is null)>0 then 'NOT_RUN'
+                          when count(*) filter(where binding_id is not null and result='PASSED')=count(*) filter(where binding_id is not null) then 'PASSED'
+                          else 'NOT_RUN' end test_state
+                from target_latest group by process_code,step_code
+            ), primary_screen as (
+              select distinct on (process_code,step_code) process_code,step_code,audience,entry_mode,screen_resource_id,route_key,screen_name,screen_type,implementation_status
+                from target_fingerprints where binding_id is not null
+               order by process_code,step_code,case entry_mode when 'PRIMARY' then 0 else 1 end,
+                        case audience when 'USER' then 0 when 'ADMIN' then 1 when 'PUBLIC' then 2 else 3 end,route_key
+            ), latest_step_run as (
+              select distinct on (process_code,step_code) process_code,step_code,run_id,coalesce(result,'NOT_RUN') result,passed_check_count,total_check_count,
+                     blocker_codes,pre_input_json,evidence_json,executed_by,executed_at,screen_resource_id,route_key,audience,capability_code
+                from target_latest
+               order by process_code,step_code,
+                        case coalesce(result,'NOT_RUN') when 'ERROR' then 0 when 'BLOCKED' then 1 when 'NOT_RUN' then 2 else 3 end,
+                        executed_at desc nulls last,run_id desc nulls last,route_key,capability_code
+            ), latest_simulation as (
+              select distinct on (b.process_code,b.step_code) b.process_code,b.step_code,b.trace_scope,run.run_id,run.result,
+                     run.process_version,sim.case_code,sim.case_type,coalesce(run.evidence_json,'{}') evidence_json,
+                     run.executed_by,run.executed_at
+                from framework_step_test_binding b
+                join scoped_steps scoped on scoped.process_code=b.process_code and scoped.step_code=b.step_code
+                join framework_simulation_case sim using(case_code)
+                join framework_simulation_run run using(case_code)
+               order by b.process_code,b.step_code,run.executed_at desc,run.run_id desc
+            ), fixture_suite_cases as (
+              select b.process_code,b.step_code,sim.case_code,sim.case_name,sim.case_type,sim.case_status,b.trace_scope,
+                     scoped.process_version as current_process_version,run.run_id,run.result,run.process_version as run_process_version,
+                     run.executed_by,run.executed_at
+                from framework_step_test_binding b
+                join scoped_steps scoped on scoped.process_code=b.process_code and scoped.step_code=b.step_code
+                join framework_simulation_case sim using(case_code)
+                left join lateral (
+                  select r.run_id,r.result,r.process_version,r.executed_by,r.executed_at
+                    from framework_simulation_run r where r.case_code=sim.case_code
+                   order by r.executed_at desc,r.run_id desc limit 1
+                ) run on true
+               where sim.case_type in('HAPPY_PATH','AUTHORITY','ISOLATION','EXCEPTION','RECOVERY')
+                 and sim.case_status not in('RETIRED','INACTIVE','DISABLED')
+            ), fixture_suite_rollup as (
+              select process_code,step_code,count(*) fixture_suite_case_count,count(distinct case_type) fixture_suite_covered_type_count,
+                     count(*) filter(where case_status in('APPROVED','VERIFIED')) fixture_suite_approved_case_count,
+                     count(*) filter(where run_id is not null and run_process_version=current_process_version) fixture_suite_current_run_count,
+                     count(*) filter(where run_id is not null and run_process_version<>current_process_version) fixture_suite_stale_run_count,
+                     count(*) filter(where run_id is null) fixture_suite_not_run_count,
+                     count(*) filter(where run_id is not null and run_process_version=current_process_version and result in('PASSED','PASS','SUCCESS','VERIFIED','COMPLETED')) fixture_suite_passed_run_count,
+                     count(*) filter(where run_id is not null and run_process_version=current_process_version and result not in('PASSED','PASS','SUCCESS','VERIFIED','COMPLETED')) fixture_suite_blocked_run_count,
+                     string_agg(distinct case_type,', ' order by case_type) fixture_suite_covered_types,
+                     concat_ws(', ',
+                       case when count(*) filter(where case_type='HAPPY_PATH')=0 then 'HAPPY_PATH' end,
+                       case when count(*) filter(where case_type='AUTHORITY')=0 then 'AUTHORITY' end,
+                       case when count(*) filter(where case_type='ISOLATION')=0 then 'ISOLATION' end,
+                       case when count(*) filter(where case_type='EXCEPTION')=0 then 'EXCEPTION' end,
+                       case when count(*) filter(where case_type='RECOVERY')=0 then 'RECOVERY' end) fixture_suite_missing_types,
+                     jsonb_agg(jsonb_build_object('caseCode',case_code,'caseName',case_name,'caseType',case_type,'caseStatus',case_status,
+                       'traceScope',trace_scope,'latestRunId',run_id,'latestResult',coalesce(result,'NOT_RUN'),
+                       'currentVersion',run_id is not null and run_process_version=current_process_version,
+                       'executedBy',coalesce(executed_by,''),'executedAt',executed_at) order by case_type,case_code)::text fixture_suite_cases_json
+                from fixture_suite_cases group by process_code,step_code
+            ), filtered_steps as (
+              select scoped.*,rollup.screen_count,rollup.target_count,rollup.tested_target_count,rollup.capability_count,
+                     rollup.screen_routes,rollup.implementation_statuses,rollup.capability_names,rollup.scenario_count,
+                     rollup.approved_scenario_count,rollup.unready_screen_target_count,rollup.test_state
+                from scoped_steps scoped join step_rollup rollup using(process_code,step_code)
+               where (?='' or rollup.test_state=?)
+            ), scope_metrics as (
+              select count(distinct target.screen_resource_id) filter(where target.binding_id is not null) scope_screen_count,
+                     count(distinct target.route_key) filter(where target.binding_id is not null) scope_route_count,
+                     count(distinct target.capability_id) scope_capability_count,
+                     count(distinct (target.process_code,target.step_code,target.binding_id,target.capability_code)) filter(where target.binding_id is not null) scope_target_count
+                from target_fingerprints target join filtered_steps filtered using(process_code,step_code)
             )
-            select p.domain_code as "domainCode",coalesce(w.work_type_name,p.domain_code) as "domainName",
-                   p.process_code as "processCode",p.process_name as "processName",p.process_status as "processStatus",
-                   p.development_order as "processOrder",p.development_order as "developmentOrder",s.step_order as "stepOrder",s.step_code as "stepCode",
-                   s.step_name as "stepName",coalesce(s.parent_step_code,'') as "parentStepCode",s.step_type as "stepType",
-                   s.actor_code as "actorCode",coalesce(a.actor_name,s.actor_code) as "actorName",
-                   s.from_state as "fromState",s.command_code as "commandCode",s.to_state as "toState",
-                   s.requirement_text as "requirementText",s.completion_rule as "completionRule",
-                   coalesce(s.input_contract,'{}') as "inputContract",coalesce(s.output_contract,'{}') as "outputContract",
-                   s.requires_user_page as "requiresUserPage",s.requires_admin_page as "requiresAdminPage",
-                   s.requires_api as "requiresApi",s.requires_database as "requiresDatabase",
-                   s.requires_notification as "requiresNotification",coalesce(s.user_path,'') as "userPath",
-                   coalesce(s.admin_path,'') as "adminPath",coalesce(s.api_contract,'') as "apiContract",
-                   coalesce(screen.audience,case when coalesce(s.user_path,'')<>'' then 'USER' when coalesce(s.admin_path,'')<>'' then 'ADMIN' else 'UNBOUND' end) as audience,
-                   coalesce(screen.entry_mode,'UNBOUND') as "entryMode",screen.screen_resource_id as "screenResourceId",
-                   coalesce(screen.route_key,nullif(s.user_path,''),nullif(s.admin_path,''),'') as "routePath",
-                   coalesce(screen.screen_name,s.step_name) as "screenName",coalesce(screen.screen_type,'UNREGISTERED') as "screenType",
+            select p.domain_code as "domainCode",coalesce(w.work_type_name,p.domain_code) as "domainName",p.domain_order as "domainOrder",
+                   p.process_code as "processCode",p.process_name as "processName",p.process_status as "processStatus",p.process_version as "processVersion",
+                   p.development_order as "processOrder",p.development_order as "developmentOrder",p.step_order as "stepOrder",p.step_code as "stepCode",
+                   p.step_name as "stepName",coalesce(p.parent_step_code,'') as "parentStepCode",p.step_type as "stepType",
+                   p.actor_code as "actorCode",p.actor_name as "actorName",p.from_state as "fromState",p.command_code as "commandCode",p.to_state as "toState",
+                   p.requirement_text as "requirementText",p.completion_rule as "completionRule",
+                   coalesce(p.input_contract,'{}') as "inputContract",coalesce(p.output_contract,'{}') as "outputContract",
+                   p.requires_user_page as "requiresUserPage",p.requires_admin_page as "requiresAdminPage",p.requires_api as "requiresApi",
+                   p.requires_database as "requiresDatabase",p.requires_notification as "requiresNotification",coalesce(p.user_path,'') as "userPath",
+                   coalesce(p.admin_path,'') as "adminPath",coalesce(p.api_contract,'') as "apiContract",
+                   coalesce(screen.audience,'UNBOUND') as audience,coalesce(screen.entry_mode,'UNBOUND') as "entryMode",
+                   screen.screen_resource_id as "screenResourceId",coalesce(screen.route_key,'') as "routePath",
+                   coalesce(screen.screen_name,p.step_name) as "screenName",coalesce(screen.screen_type,'UNREGISTERED') as "screenType",
                    coalesce(screen.implementation_status,'DESIGN_ONLY') as "implementationStatus",
-                   coalesce((select count(distinct bound.screen_resource_id) from framework_process_step_screen_binding bound where bound.process_code=s.process_code and bound.step_code=s.step_code and bound.binding_status='ACTIVE'),0) as "screenCount",
-                   coalesce((select string_agg(distinct resource.route_key,', ' order by resource.route_key) from framework_process_step_screen_binding bound join framework_screen_resource resource using(screen_resource_id) where bound.process_code=s.process_code and bound.step_code=s.step_code and bound.binding_status='ACTIVE'),'') as "screenRoutes",
-                   coalesce((select string_agg(distinct resource.implementation_status,', ' order by resource.implementation_status) from framework_process_step_screen_binding bound join framework_screen_resource resource using(screen_resource_id) where bound.process_code=s.process_code and bound.step_code=s.step_code and bound.binding_status='ACTIVE'),'') as "implementationStatuses",
-                   coalesce((select count(distinct cap.capability_id) from framework_process_step_screen_binding bound join framework_screen_capability cap using(screen_resource_id) where bound.process_code=s.process_code and bound.step_code=s.step_code and bound.binding_status='ACTIVE'),0) as "capabilityCount",
-                   coalesce((select string_agg(distinct cap.capability_name,', ' order by cap.capability_name) from framework_process_step_screen_binding bound join framework_screen_capability cap using(screen_resource_id) where bound.process_code=s.process_code and bound.step_code=s.step_code and bound.binding_status='ACTIVE'),'') as "capabilityNames",
-                   coalesce((select count(*) from framework_step_test_binding stb where stb.process_code=s.process_code and stb.step_code=s.step_code),0) as "scenarioCount",
-                   coalesce((select count(*) from framework_step_test_binding stb join framework_simulation_case sc on sc.case_code=stb.case_code where stb.process_code=s.process_code and stb.step_code=s.step_code and sc.case_status in('APPROVED','VERIFIED')),0) as "approvedScenarioCount",
+                   p.screen_count as "screenCount",coalesce(p.screen_routes,'') as "screenRoutes",
+                   coalesce(p.implementation_statuses,'') as "implementationStatuses",p.capability_count as "capabilityCount",
+                   coalesce(p.capability_names,'') as "capabilityNames",p.target_count as "auditTargetCount",
+                   p.tested_target_count as "auditedTargetCount",p.scenario_count as "scenarioCount",p.approved_scenario_count as "approvedScenarioCount",
                    latest.run_id as "latestRunId",latest.result as "latestResult",
                    latest.passed_check_count as "latestPassedCheckCount",latest.total_check_count as "latestTotalCheckCount",
                    coalesce(latest.blocker_codes,'') as "latestBlockerCodes",coalesce(latest.pre_input_json,'{}') as "latestPreInputJson",
@@ -609,141 +756,87 @@ public class ActorProcessGovernanceService {
                    latest.executed_at as "latestExecutedAt",coalesce(latest.pre_input_json,'{}') as "latestInput",
                    coalesce(latest.evidence_json,'{}') as "latestOutput",coalesce(latest.evidence_json,'{}') as "evidenceJson",
                    coalesce(latest.executed_by,'') as "executedBy",latest.executed_at as "executedAt",
-                   business.run_id as "latestBusinessRunId",coalesce(business.result,'NOT_RUN') as "businessTestResult",
-                   coalesce(business.case_code,'') as "businessCaseCode",coalesce(business.case_type,'') as "businessCaseType",
-                   coalesce(business.evidence_json,'{}') as "businessEvidenceJson",coalesce(business.executed_by,'') as "businessExecutedBy",
-                   business.executed_at as "businessExecutedAt",
-                   coalesce(latest.result,'NOT_RUN') as "testState"
-              from framework_process_definition p
-              join framework_process_step s on s.process_code=p.process_code
+                   coalesce(sim.run_id,0) as "latestSimulationRunId",coalesce(sim.result,'NOT_RUN') as "simulationTestResult",
+                   coalesce(sim.case_code,'') as "simulationCaseCode",coalesce(sim.case_type,'') as "simulationCaseType",
+                   coalesce(sim.trace_scope,'') as "simulationTraceScope",coalesce(sim.process_version,'') as "simulationProcessVersion",
+                   (sim.run_id is not null and sim.process_version=p.process_version) as "simulationCurrentVersion",
+                   coalesce(sim.evidence_json,'{}') as "simulationEvidenceJson",coalesce(sim.executed_by,'') as "simulationExecutedBy",
+                   sim.executed_at as "simulationExecutedAt",
+                   5 as "fixtureSuiteRequiredTypeCount",coalesce(suite.fixture_suite_covered_type_count,0) as "fixtureSuiteCoveredTypeCount",
+                   coalesce(suite.fixture_suite_case_count,0) as "fixtureSuiteCaseCount",coalesce(suite.fixture_suite_case_count,0) as "fixtureSuiteActiveCaseCount",coalesce(suite.fixture_suite_approved_case_count,0) as "fixtureSuiteApprovedCaseCount",
+                   coalesce(suite.fixture_suite_current_run_count,0) as "fixtureSuiteCurrentRunCount",coalesce(suite.fixture_suite_stale_run_count,0) as "fixtureSuiteStaleRunCount",
+                   coalesce(suite.fixture_suite_not_run_count,0) as "fixtureSuiteNotRunCount",coalesce(suite.fixture_suite_passed_run_count,0) as "fixtureSuitePassedRunCount",
+                   coalesce(suite.fixture_suite_blocked_run_count,0) as "fixtureSuiteBlockedRunCount",
+                   coalesce(suite.fixture_suite_covered_types,'') as "fixtureSuiteCoveredTypes",coalesce(suite.fixture_suite_missing_types,'HAPPY_PATH, AUTHORITY, ISOLATION, EXCEPTION, RECOVERY') as "fixtureSuiteMissingTypes",
+                   coalesce(suite.fixture_suite_cases_json,'[]') as "fixtureSuiteCasesJson",
+                   case when coalesce(suite.fixture_suite_covered_type_count,0)=5 then 'COMPLETE' when coalesce(suite.fixture_suite_covered_type_count,0)>0 then 'PARTIAL' else 'MISSING' end as "fixtureSuiteCoverageState",
+                   case when coalesce(suite.fixture_suite_case_count,0)=0 then 'NOT_RUN'
+                        when coalesce(suite.fixture_suite_blocked_run_count,0)>0 then 'BLOCKED'
+                        when coalesce(suite.fixture_suite_current_run_count,0)=coalesce(suite.fixture_suite_case_count,0)
+                         and coalesce(suite.fixture_suite_passed_run_count,0)=coalesce(suite.fixture_suite_case_count,0) then 'PASSED'
+                        else 'NOT_RUN' end as "fixtureSuiteExecutionState",
+                   'NOT_RUN' as "businessTestResult",'EVIDENCE_LEDGER_UNAVAILABLE' as "businessEvidenceStatus",
+                   '' as "businessCaseCode",'{}' as "businessEvidenceJson",'' as "businessExecutedBy",null::timestamp as "businessExecutedAt",
+                   p.test_state as "testState",latest.screen_resource_id as "latestAuditScreenResourceId",
+                   coalesce(latest.route_key,'') as "latestAuditRoutePath",coalesce(latest.audience,'') as "latestAuditAudience",
+                   coalesce(latest.capability_code,'') as "latestAuditCapabilityCode",
+                   metrics.scope_screen_count as "scopeScreenCount",metrics.scope_route_count as "scopeRouteCount",
+                   metrics.scope_capability_count as "scopeCapabilityCount",metrics.scope_target_count as "scopeTargetCount"
+              from filtered_steps p
               left join framework_business_work_type w on w.work_type_code=upper(p.domain_code)
-              left join framework_actor_definition a on a.actor_code=s.actor_code
-              left join lateral (
-                   select b.audience,b.entry_mode,sr.screen_resource_id,sr.route_key,sr.screen_name,sr.screen_type,sr.implementation_status
-                     from framework_process_step_screen_binding b join framework_screen_resource sr using(screen_resource_id)
-                    where b.process_code=s.process_code and b.step_code=s.step_code and b.binding_status='ACTIVE'
-                    order by case b.entry_mode when 'PRIMARY' then 0 else 1 end,
-                             case b.audience when 'USER' then 0 when 'ADMIN' then 1 when 'PUBLIC' then 2 else 3 end,sr.route_key limit 1
-              ) screen on true
-              left join lateral (
-                   select r.run_id,r.result,r.passed_check_count,r.total_check_count,
-                          array_to_string(r.blocker_codes,', ') as blocker_codes,
-                          coalesce(r.evidence_json->>'preInputJson','{}') as pre_input_json,
-                          r.evidence_json::text as evidence_json,r.executed_by,r.executed_at
-                     from framework_screen_workflow_test_run r
-                    where r.process_code=s.process_code and r.step_code=s.step_code
-                      and exists(select 1 from framework_process_step_screen_binding bound where bound.process_code=s.process_code and bound.step_code=s.step_code and bound.screen_resource_id=r.screen_resource_id and bound.binding_status='ACTIVE')
-                    order by r.executed_at desc,r.run_id desc limit 1
-              ) latest on true
-              left join latest_business_run business on business.process_code=s.process_code and business.step_code=s.step_code
-             where (?='' or upper(p.domain_code)=?) and (?='' or p.process_code=?)
-               and (?='' or coalesce(latest.result,'NOT_RUN')=?)
-             order by coalesce(w.sort_order,9999),p.development_order,p.process_code,s.step_order
+              left join primary_screen screen using(process_code,step_code)
+              left join latest_step_run latest using(process_code,step_code)
+              left join latest_simulation sim using(process_code,step_code)
+              left join fixture_suite_rollup suite using(process_code,step_code)
+              cross join scope_metrics metrics
+             order by p.domain_order,p.development_order,p.process_code,p.step_order
             """,domain,domain,process,process,result,result);
 
-        String stateCte="""
-            with scoped_steps as (
-              select p.domain_code,p.process_code,p.process_name,p.process_status,p.development_order,s.step_code,s.step_order
-                from framework_process_definition p join framework_process_step s on s.process_code=p.process_code
-               where (?='' or upper(p.domain_code)=?) and (?='' or p.process_code=?)
-            ), binding_runs as (
-              select ss.*,b.binding_id,latest.result
-                from scoped_steps ss
-                left join framework_process_step_screen_binding b on b.process_code=ss.process_code and b.step_code=ss.step_code and b.binding_status='ACTIVE'
-                left join lateral (
-                  select r.result from framework_screen_workflow_test_run r
-                   where r.screen_resource_id=b.screen_resource_id and r.process_code=ss.process_code and r.step_code=ss.step_code
-                   order by r.executed_at desc,r.run_id desc limit 1
-                ) latest on true
-            ), step_state as (
-              select domain_code,process_code,process_name,process_status,development_order,step_code,step_order,
-                     case when count(*) filter(where result='BLOCKED')>0 then 'BLOCKED'
-                          when count(binding_id)=0 or count(*) filter(where result is null)>0 then 'NOT_RUN'
-                          when count(*) filter(where result='PASSED')=count(*) then 'PASSED' else 'NOT_RUN' end as test_state
-                from binding_runs group by domain_code,process_code,process_name,process_status,development_order,step_code,step_order
-            )
-            """;
-        List<Map<String,Object>> processes=jdbc.queryForList(stateCte+"""
-            select ss.domain_code as "domainCode",ss.process_code as "processCode",ss.process_name as "processName",
-                   ss.process_status as "processStatus",ss.development_order as "developmentOrder",count(*) as "stepCount",
-                   (select count(*) from framework_simulation_case sc where sc.process_code=ss.process_code) as "scenarioCount",
-                   count(*) filter(where ss.test_state<>'NOT_RUN') as "testedStepCount",
-                   count(*) filter(where ss.test_state='PASSED') as "passedStepCount",
-                   count(*) filter(where ss.test_state='BLOCKED') as "blockedStepCount",
-                   count(*) filter(where ss.test_state='NOT_RUN') as "untestedStepCount"
-              from step_state ss group by ss.domain_code,ss.process_code,ss.process_name,ss.process_status,ss.development_order
-             order by ss.development_order,ss.process_code
-            """,domain,domain,process,process);
-        List<Map<String,Object>> workTypes=jdbc.queryForList(stateCte+"""
-            select ss.domain_code as "workTypeCode",coalesce(w.work_type_name,ss.domain_code) as "workTypeName",
-                   coalesce(w.sort_order,9999) as "sortOrder",count(distinct ss.process_code) as "processCount",count(*) as "stepCount",
-                   count(*) filter(where ss.test_state<>'NOT_RUN') as "testedStepCount",
-                   count(*) filter(where ss.test_state='PASSED') as "passedStepCount",
-                   count(*) filter(where ss.test_state='BLOCKED') as "blockedStepCount",
-                   count(*) filter(where ss.test_state='NOT_RUN') as "untestedStepCount"
-              from step_state ss left join framework_business_work_type w on w.work_type_code=upper(ss.domain_code)
-             group by ss.domain_code,w.work_type_name,w.sort_order order by coalesce(w.sort_order,9999),ss.domain_code
-            """,domain,domain,process,process);
-        Map<String,Object> summary=jdbc.queryForMap(stateCte+"""
-            select count(distinct ss.domain_code) as "workTypeCount",count(distinct ss.process_code) as "processCount",
-                   count(*) as "stepCount",
-                   (select count(distinct b.screen_resource_id) from scoped_steps x join framework_process_step_screen_binding b on b.process_code=x.process_code and b.step_code=x.step_code and b.binding_status='ACTIVE') as "screenCount",
-                   (select count(distinct sr.route_key) from scoped_steps x join framework_process_step_screen_binding b on b.process_code=x.process_code and b.step_code=x.step_code and b.binding_status='ACTIVE' join framework_screen_resource sr using(screen_resource_id)) as "routeCount",
-                   (select count(distinct cap.capability_id) from scoped_steps x join framework_process_step_screen_binding b on b.process_code=x.process_code and b.step_code=x.step_code and b.binding_status='ACTIVE' join framework_screen_capability cap using(screen_resource_id)) as "capabilityCount",
-                   (select count(distinct sc.case_code) from scoped_steps x join framework_simulation_case sc on sc.process_code=x.process_code) as "scenarioCount",
-                   count(*) filter(where ss.test_state<>'NOT_RUN') as "testedStepCount",
-                   count(*) filter(where ss.test_state='PASSED') as "passedStepCount",
-                   count(*) filter(where ss.test_state='BLOCKED') as "blockedStepCount",
-                   count(*) filter(where ss.test_state='NOT_RUN') as "untestedStepCount"
-              from step_state ss
-            """,domain,domain,process,process);
-        int routed=0,passedItems=0,blockedItems=0,notRunItems=0,verifiedContracts=0;
+        Map<String,Map<String,Object>> processIndex=new LinkedHashMap<>(),workTypeIndex=new LinkedHashMap<>();
         Set<String> reportedProcesses=new HashSet<>();
+        int routed=0,passedItems=0,blockedItems=0,notRunItems=0,verifiedContracts=0;
+        int fixtureSuiteBindingCount=0,fixtureSuiteCompleteStepCount=0,fixtureSuiteIncompleteStepCount=0,fixtureSuiteCurrentRunCount=0;
         for(Map<String,Object> item:items){
-            reportedProcesses.add(String.valueOf(item.get("processCode")));
-            if(!String.valueOf(item.getOrDefault("routePath","")).isBlank()||!String.valueOf(item.getOrDefault("userPath","")).isBlank()||!String.valueOf(item.getOrDefault("adminPath","")).isBlank())routed++;
+            String processKey=String.valueOf(item.get("processCode")),workTypeKey=String.valueOf(item.get("domainCode"));
+            reportedProcesses.add(processKey);
+            int screenCount=((Number)item.getOrDefault("screenCount",0)).intValue();
+            if(screenCount>0)routed++;
             String state=String.valueOf(item.getOrDefault("testState","NOT_RUN"));
             if("PASSED".equals(state))passedItems++;else if("BLOCKED".equals(state))blockedItems++;else notRunItems++;
-            if(Set.of("IMPLEMENTED","VERIFIED").contains(String.valueOf(item.get("implementationStatus")))
-                &&meaningfulSystemContract(item.get("inputContract"))&&meaningfulSystemContract(item.get("outputContract"))
+            boolean allScreensReady=screenCount>0&&!String.valueOf(item.getOrDefault("implementationStatuses","")).matches(".*(DESIGN_ONLY|DESIGNED|PLANNED|BLOCKED).*" );
+            if(allScreensReady&&meaningfulSystemContract(item.get("inputContract"))&&meaningfulSystemContract(item.get("outputContract"))
                 &&(!Boolean.TRUE.equals(item.get("requiresApi"))||meaningfulSystemContract(item.get("apiContract"))))verifiedContracts++;
+            fixtureSuiteBindingCount+=((Number)item.getOrDefault("fixtureSuiteCaseCount",0)).intValue();
+            fixtureSuiteCurrentRunCount+=((Number)item.getOrDefault("fixtureSuiteCurrentRunCount",0)).intValue();
+            if("COMPLETE".equals(item.get("fixtureSuiteCoverageState")))fixtureSuiteCompleteStepCount++;else fixtureSuiteIncompleteStepCount++;
+            Map<String,Object> processRow=processIndex.computeIfAbsent(processKey,key->newSystemAggregate(item,"PROCESS"));
+            processRow.put("scenarioCount",Math.max(((Number)processRow.get("scenarioCount")).intValue(),((Number)item.getOrDefault("scenarioCount",0)).intValue()));
+            incrementSystemAggregate(processRow,state);
+            Map<String,Object> workTypeRow=workTypeIndex.computeIfAbsent(workTypeKey,key->newSystemAggregate(item,"WORK_TYPE"));
+            incrementSystemAggregate(workTypeRow,state);
+            @SuppressWarnings("unchecked") Set<String> processCodes=(Set<String>)workTypeRow.computeIfAbsent("_processCodes",key->new HashSet<String>());
+            processCodes.add(processKey);workTypeRow.put("processCount",processCodes.size());
         }
-        summary.put("processCount",reportedProcesses.size());summary.put("stepCount",items.size());summary.put("routedStepCount",routed);
-        summary.put("passedCount",passedItems);summary.put("blockedCount",blockedItems);summary.put("notRunCount",notRunItems);
+        List<Map<String,Object>> processes=new ArrayList<>(processIndex.values());
+        List<Map<String,Object>> workTypes=new ArrayList<>(workTypeIndex.values());
+        workTypes.forEach(row->row.remove("_processCodes"));
+        Map<String,Object> summary=new LinkedHashMap<>();
+        summary.put("workTypeCount",workTypes.size());summary.put("processCount",reportedProcesses.size());summary.put("stepCount",items.size());
+        summary.put("screenCount",items.isEmpty()?0:items.get(0).get("scopeScreenCount"));
+        summary.put("routeCount",items.isEmpty()?0:items.get(0).get("scopeRouteCount"));
+        summary.put("capabilityCount",items.isEmpty()?0:items.get(0).get("scopeCapabilityCount"));
+        summary.put("auditTargetCount",items.isEmpty()?0:items.get(0).get("scopeTargetCount"));
+        summary.put("routedStepCount",routed);summary.put("passedCount",passedItems);summary.put("blockedCount",blockedItems);summary.put("notRunCount",notRunItems);
         summary.put("verifiedContractCount",verifiedContracts);summary.put("totalContractCount",items.size());summary.put("matchedItemCount",items.size());
-        Map<String,Object> e2eSummary=jdbc.queryForMap("""
-            with scoped_steps as (
-              select p.process_code,s.step_code
-                from framework_process_definition p join framework_process_step s on s.process_code=p.process_code
-               where (?='' or upper(p.domain_code)=?) and (?='' or p.process_code=?)
-            ), latest_business_run as (
-              select distinct on (test_binding.process_code,test_binding.step_code)
-                     test_binding.process_code,test_binding.step_code,run.result
-                from scoped_steps scoped
-                join framework_step_test_binding test_binding on test_binding.process_code=scoped.process_code and test_binding.step_code=scoped.step_code
-                join framework_simulation_case sim on sim.case_code=test_binding.case_code
-                join framework_simulation_run run on run.case_code=sim.case_code
-               order by test_binding.process_code,test_binding.step_code,run.executed_at desc,run.run_id desc
-            ), step_evidence as (
-              select scoped.process_code,scoped.step_code,business.result as latest_result
-                from scoped_steps scoped left join latest_business_run business
-                  on business.process_code=scoped.process_code and business.step_code=scoped.step_code
-            ), process_evidence as (
-              select process_code,count(*) as step_count,count(*) filter(where latest_result is not null) as covered_step_count,
-                     count(*) filter(where latest_result='PASSED') as passed_step_count,
-                     count(*) filter(where latest_result is not null and latest_result<>'PASSED') as failed_step_count
-                from step_evidence group by process_code
-            )
-            select count(*) filter(where covered_step_count>0) as "e2eCoveredProcessCount",
-                   count(*) filter(where covered_step_count=0) as "e2eUncoveredProcessCount",
-                   count(*) filter(where covered_step_count=step_count and passed_step_count=step_count) as "e2ePassedProcessCount",
-                   count(*) filter(where covered_step_count>0 and (covered_step_count<step_count or passed_step_count<step_count or failed_step_count>0)) as "e2eBlockedProcessCount"
-              from process_evidence
-            """,domain,domain,process,process);
-        summary.putAll(e2eSummary);
+        summary.put("e2eCoveredProcessCount",0);summary.put("e2eUncoveredProcessCount",reportedProcesses.size());
+        summary.put("e2ePassedProcessCount",0);summary.put("e2eBlockedProcessCount",0);
+        summary.put("businessEvidenceStatus","EVIDENCE_LEDGER_UNAVAILABLE");
+        summary.put("fixtureSuiteRequiredTypeCount",5);summary.put("fixtureSuiteBindingCount",fixtureSuiteBindingCount);
+        summary.put("fixtureSuiteCompleteStepCount",fixtureSuiteCompleteStepCount);summary.put("fixtureSuiteIncompleteStepCount",fixtureSuiteIncompleteStepCount);
+        summary.put("fixtureSuiteCurrentRunCount",fixtureSuiteCurrentRunCount);summary.put("fixtureSuiteMode","INVENTORY_AND_SIMULATION_EVIDENCE_ONLY");
         Map<String,Object> filters=new LinkedHashMap<>();filters.put("domainCode",domain);filters.put("processCode",process);filters.put("result",result);
         Map<String,Object> report=new LinkedHashMap<>();report.put("success",true);report.put("generatedAt",java.time.Instant.now().toString());
-        report.put("auditMode","CONTRACT_ONLY");report.put("filters",filters);report.put("summary",summary);
+        report.put("auditMode","CONTRACT_ONLY");report.put("businessFunctionsExecuted",false);report.put("filters",filters);report.put("summary",summary);
         report.put("workTypes",workTypes);report.put("processes",processes);report.put("items",items);
         return report;
     }
@@ -759,33 +852,46 @@ public class ActorProcessGovernanceService {
         String process=str(body,"processCode").toUpperCase(Locale.ROOT);
         int maxSteps=Math.max(1,Math.min(integerOr(body,"maxSteps",1000),2000));
         List<Map<String,Object>> targets=jdbc.queryForList("""
-            select m.item_id as "itemId",screen.screen_resource_id as "screenResourceId",s.process_code as "processCode",s.step_code as "stepCode"
-              from framework_process_step s join framework_process_definition p on p.process_code=s.process_code
-              left join lateral (
-                select b.screen_resource_id from framework_process_step_screen_binding b
-                 where b.process_code=s.process_code and b.step_code=s.step_code and b.binding_status='ACTIVE'
-                 order by case b.entry_mode when 'PRIMARY' then 0 else 1 end,
-                          case b.audience when 'USER' then 0 when 'ADMIN' then 1 when 'PUBLIC' then 2 else 3 end,b.screen_resource_id limit 1
-              ) screen on true
+            with scoped_steps as (
+              select p.development_order,s.process_code,s.step_code,s.step_order
+                from framework_process_step s join framework_process_definition p on p.process_code=s.process_code
+               where (?='' or upper(p.domain_code)=?) and (?='' or s.process_code=?)
+               order by p.development_order,s.process_code,s.step_order limit ?
+            )
+            select m.item_id as "itemId",b.binding_id as "bindingId",b.audience,
+                   screen.screen_resource_id as "screenResourceId",screen.route_key as "routePath",
+                   scoped.process_code as "processCode",scoped.step_code as "stepCode",
+                   coalesce(capability.capability_code,'ALL') as "capabilityCode"
+              from scoped_steps scoped
+              left join framework_process_step_screen_binding b
+                on b.process_code=scoped.process_code and b.step_code=scoped.step_code and b.binding_status='ACTIVE'
+              left join framework_screen_resource screen using(screen_resource_id)
+              left join framework_screen_capability capability using(screen_resource_id)
               left join lateral (
                 select master.item_id from framework_page_development_master master
                  where master.screen_resource_id=screen.screen_resource_id
                  order by case master.design_status when 'VERIFIED' then 0 else 1 end,master.sequence_no,master.item_id limit 1
               ) m on true
-             where (?='' or upper(p.domain_code)=?) and (?='' or s.process_code=?)
-             order by p.development_order,s.process_code,s.step_order limit ?
+             order by scoped.development_order,scoped.process_code,scoped.step_order,
+                      case b.entry_mode when 'PRIMARY' then 0 else 1 end,
+                      case b.audience when 'USER' then 0 when 'ADMIN' then 1 when 'PUBLIC' then 2 else 3 end,
+                      screen.route_key,capability.capability_code
             """,domain,domain,process,process,maxSteps);
         List<Map<String,Object>> runs=new ArrayList<>();
         int passed=0,blocked=0,errors=0;
+        Set<String> auditedSteps=new HashSet<>(),auditedBindings=new HashSet<>();
         for(Map<String,Object> target:targets){
+            auditedSteps.add(target.get("processCode")+"|"+target.get("stepCode"));
             if(target.get("screenResourceId")==null||target.get("itemId")==null){
                 errors++;Map<String,Object> failure=new LinkedHashMap<>(target);failure.put("result","ERROR");
                 failure.put("message",target.get("screenResourceId")==null?"ACTIVE_SCREEN_BINDING_NOT_FOUND":"SCREEN_DEVELOPMENT_ITEM_NOT_FOUND");runs.add(failure);continue;
             }
+            auditedBindings.add(String.valueOf(target.get("bindingId")));
             Map<String,Object> request=new LinkedHashMap<>();
             request.put("itemId",target.get("itemId"));request.put("processCode",target.get("processCode"));
-            request.put("stepCode",target.get("stepCode"));request.put("capabilityCode","ALL");
-            List<Map<String,Object>> fixtures=jdbc.queryForList("select test_case_id as \"testCaseId\" from framework_screen_workflow_test_case where screen_resource_id=? and process_code=? and step_code=? and capability_code='ALL' and active=true order by updated_at desc,test_case_id desc limit 1",target.get("screenResourceId"),target.get("processCode"),target.get("stepCode"));
+            request.put("stepCode",target.get("stepCode"));request.put("capabilityCode",target.get("capabilityCode"));
+            request.put("audience",target.get("audience"));
+            List<Map<String,Object>> fixtures=jdbc.queryForList("select test_case_id as \"testCaseId\" from framework_screen_workflow_test_case where screen_resource_id=? and process_code=? and step_code=? and capability_code in (?, 'ALL') and expected_result='PASSED' and active=true order by case when capability_code=? then 0 else 1 end,updated_at desc,test_case_id desc limit 1",target.get("screenResourceId"),target.get("processCode"),target.get("stepCode"),target.get("capabilityCode"),target.get("capabilityCode"));
             if(fixtures.isEmpty())request.put("preInputJson","{}");else request.put("testCaseId",fixtures.get(0).get("testCaseId"));
             try{
                 Map<String,Object> run=runDeterministicScreenWorkflowTest(request,executedBy);
@@ -796,8 +902,11 @@ public class ActorProcessGovernanceService {
             }
         }
         Map<String,Object> filters=new LinkedHashMap<>();filters.put("domainCode",domain);filters.put("processCode",process);filters.put("maxSteps",maxSteps);
-        Map<String,Object> response=new LinkedHashMap<>();response.put("success",errors==0);response.put("auditMode","CONTRACT_ONLY");
-        response.put("businessFunctionsExecuted",false);response.put("filters",filters);response.put("targetCount",targets.size());response.put("auditedStepCount",targets.size());
+        String outcome=errors>0?"ERROR":blocked>0?"BLOCKED":targets.isEmpty()?"BLOCKED":"PASSED";
+        Map<String,Object> response=new LinkedHashMap<>();response.put("success",true);response.put("outcome",outcome);response.put("result",outcome);response.put("auditMode","CONTRACT_ONLY");
+        response.put("businessFunctionsExecuted",false);response.put("filters",filters);response.put("targetCount",targets.size());
+        response.put("auditedStepCount",auditedSteps.size());response.put("auditedBindingCount",auditedBindings.size());
+        response.put("auditedCapabilityTargetCount",targets.stream().filter(row->row.get("screenResourceId")!=null).count());
         response.put("passedCount",passed);response.put("blockedCount",blocked);response.put("errorCount",errors);response.put("runs",runs);
         return response;
     }
@@ -815,6 +924,30 @@ public class ActorProcessGovernanceService {
         return !contract.isEmpty()&&!Set.of("{}","[]","null","undefined","-","n/a","todo","tbd").contains(contract.toLowerCase(Locale.ROOT));
     }
 
+    private static Map<String,Object> newSystemAggregate(Map<String,Object> item,String type){
+        Map<String,Object> row=new LinkedHashMap<>();
+        if("WORK_TYPE".equals(type)){
+            row.put("workTypeCode",item.get("domainCode"));row.put("domainCode",item.get("domainCode"));
+            row.put("workTypeName",item.get("domainName"));row.put("domainName",item.get("domainName"));
+            row.put("sortOrder",item.getOrDefault("domainOrder",9999));row.put("processCount",0);
+        }else{
+            row.put("domainCode",item.get("domainCode"));row.put("processCode",item.get("processCode"));
+            row.put("processName",item.get("processName"));row.put("processStatus",item.get("processStatus"));
+            row.put("developmentOrder",item.get("developmentOrder"));row.put("scenarioCount",0);
+        }
+        row.put("stepCount",0);row.put("testedStepCount",0);row.put("passedStepCount",0);
+        row.put("blockedStepCount",0);row.put("untestedStepCount",0);
+        return row;
+    }
+
+    private static void incrementSystemAggregate(Map<String,Object> row,String state){
+        row.put("stepCount",((Number)row.get("stepCount")).intValue()+1);
+        if(!"NOT_RUN".equals(state))row.put("testedStepCount",((Number)row.get("testedStepCount")).intValue()+1);
+        if("PASSED".equals(state))row.put("passedStepCount",((Number)row.get("passedStepCount")).intValue()+1);
+        else if("BLOCKED".equals(state))row.put("blockedStepCount",((Number)row.get("blockedStepCount")).intValue()+1);
+        else row.put("untestedStepCount",((Number)row.get("untestedStepCount")).intValue()+1);
+    }
+
     /**
      * Executes the screen closing gate without an AI call. The result is derived
      * only from versioned actor/process/screen/data/test contracts and is stored
@@ -829,18 +962,28 @@ public class ActorProcessGovernanceService {
         Map<String,Object> item=jdbc.queryForMap("select screen_resource_id,route_key,screen_name,implementation_status from framework_page_development_master where item_id=?",itemId);
         long screenId=((Number)item.get("screen_resource_id")).longValue();
         String route=String.valueOf(item.get("route_key"));
-        Integer bindingCount=jdbc.queryForObject("select count(*) from framework_process_step_screen_binding where screen_resource_id=? and process_code=? and step_code=? and binding_status='ACTIVE'",Integer.class,screenId,process,step);
+        String audience=def(body,"audience","").trim().toUpperCase(Locale.ROOT);
+        if(audience.isBlank()){
+            List<String> audiences=jdbc.queryForList("select audience from framework_process_step_screen_binding where screen_resource_id=? and process_code=? and step_code=? and binding_status='ACTIVE' order by case entry_mode when 'PRIMARY' then 0 else 1 end,case audience when 'USER' then 0 when 'ADMIN' then 1 when 'PUBLIC' then 2 else 3 end limit 1",String.class,screenId,process,step);
+            if(!audiences.isEmpty())audience=audiences.get(0);
+        }
+        Integer bindingCount=jdbc.queryForObject("select count(*) from framework_process_step_screen_binding where screen_resource_id=? and process_code=? and step_code=? and audience=? and binding_status='ACTIVE'",Integer.class,screenId,process,step,audience);
         if(bindingCount==null||bindingCount==0)throw new IllegalArgumentException("SCREEN_PROCESS_BINDING_NOT_FOUND: "+process+" / "+step+" / "+route);
         Integer selectedCapabilityCount="ALL".equals(capability)?1:jdbc.queryForObject("select count(*) from framework_screen_capability where screen_resource_id=? and capability_code=?",Integer.class,screenId,capability);
         if(selectedCapabilityCount==null||selectedCapabilityCount==0)throw new IllegalArgumentException("SCREEN_CAPABILITY_NOT_FOUND: "+capability);
         String requestedCaseId=str(body,"testCaseId");
         Long testCaseId=requestedCaseId.isBlank()?null:Long.parseLong(requestedCaseId);
         String preInputJson=def(body,"preInputJson","{}");
+        String expectedResult="",expectedState="";
         if(testCaseId!=null){
-            Map<String,Object> fixture=jdbc.queryForMap("select pre_input_json::text as pre_input_json from framework_screen_workflow_test_case where test_case_id=? and screen_resource_id=? and process_code=? and step_code=? and capability_code in (?, 'ALL') and active=true",testCaseId,screenId,process,step,capability);
+            Map<String,Object> fixture=jdbc.queryForMap("select pre_input_json::text as pre_input_json,expected_result,coalesce(expected_state,'') expected_state from framework_screen_workflow_test_case where test_case_id=? and screen_resource_id=? and process_code=? and step_code=? and capability_code in (?, 'ALL') and active=true",testCaseId,screenId,process,step,capability);
             if(!body.containsKey("preInputJson"))preInputJson=String.valueOf(fixture.get("pre_input_json"));
+            expectedResult=String.valueOf(fixture.get("expected_result"));expectedState=String.valueOf(fixture.get("expected_state"));
         }
         validateJsonObject(preInputJson,"preInputJson");
+        Map<String,Object> transition=jdbc.queryForMap("select from_state,to_state from framework_process_step where process_code=? and step_code=?",process,step);
+        String contractFingerprint=screenContractFingerprint(screenId,process,step,audience,capability);
+        String preferredAudience=preferredScreenContractAudience(audience);
 
         List<Map<String,Object>> checks=new ArrayList<>();
         addScreenCheck(checks,"ROUTE_REGISTERED","화면 경로 등록",true,route);
@@ -865,10 +1008,32 @@ public class ActorProcessGovernanceService {
         int apiGaps=((Number)fieldSummary.get("api_gaps")).intValue();
         addScreenCheck(checks,"FIELD_CONTRACT","필드 계약",fieldCount>0&&unresolvedRequired==0&&apiGaps==0,toJson(fieldSummary));
 
-        Map<String,Object> preInputSummary=jdbc.queryForMap("select count(*) filter(where required) as required,count(*) filter(where required and (not jsonb_exists(?::jsonb,field_code) or trim(coalesce(jsonb_extract_path_text(?::jsonb,field_code),''))='')) as missing_required from (select distinct field->>'fieldCode' as field_code,coalesce((field->>'required')::boolean,false) as required from framework_step_execution_spec spec cross join lateral jsonb_array_elements(coalesce(spec.field_contract->'fields','[]'::jsonb)) field where spec.process_code=? and spec.step_code=? and lower(split_part(field->>'route','?',1))=?) scoped",preInputJson,preInputJson,process,step,route);
+        Map<String,Object> preInputSummary=jdbc.queryForMap("""
+            with required_fields as (
+              select distinct field->>'fieldCode' field_code
+                from framework_step_execution_spec spec
+                cross join lateral jsonb_array_elements(framework_step_contract_fields(spec.field_contract,?)) field
+               where spec.process_code=? and spec.step_code=?
+                 and nullif(field->>'fieldCode','') is not null
+                 and coalesce((field->>'required')::boolean,false)
+                 and coalesce((field->>'editable')::boolean,false)
+            )
+            select (select count(*) from framework_step_execution_spec where process_code=? and step_code=?) spec_count,
+                   count(*) required,
+                   count(*) filter(where not jsonb_exists(?::jsonb,required.field_code)
+                     or trim(coalesce(jsonb_extract_path_text(?::jsonb,required.field_code),''))='') missing_required,
+                   count(*) filter(where binding.field_code is null) unmapped_required
+              from required_fields required
+              left join framework_screen_data_binding binding
+                on binding.screen_resource_id=? and binding.field_code=required.field_code
+            """,preferredAudience,process,step,process,step,preInputJson,preInputJson,screenId);
+        int specCount=((Number)preInputSummary.get("spec_count")).intValue();
         int requiredInputs=((Number)preInputSummary.get("required")).intValue();
         int missingInputs=((Number)preInputSummary.get("missing_required")).intValue();
-        addScreenCheck(checks,"PREINPUT_REQUIRED","필수 선입력",requiredInputs==0||missingInputs==0,toJson(preInputSummary));
+        int unmappedInputs=((Number)preInputSummary.get("unmapped_required")).intValue();
+        addScreenCheck(checks,"STEP_EXECUTION_SPEC","단계 실행 명세",specCount==1,toJson(preInputSummary));
+        addScreenCheck(checks,"PREINPUT_FIELD_SCOPE","필수 입력 필드 연결",unmappedInputs==0,toJson(preInputSummary));
+        addScreenCheck(checks,"PREINPUT_REQUIRED","필수 선입력",missingInputs==0,toJson(preInputSummary));
 
         Map<String,Object> capabilitySummary=jdbc.queryForMap("select count(*) as total,count(*) filter(where implementation_status in('IMPLEMENTED','VERIFIED')) as implemented from framework_screen_capability where screen_resource_id=?",screenId);
         int capabilityCount=((Number)capabilitySummary.get("total")).intValue();
@@ -880,18 +1045,78 @@ public class ActorProcessGovernanceService {
         int approvedTypes=((Number)testSummary.get("approved_types")).intValue();
         addScreenCheck(checks,"FIVE_SAFETY_TESTS","5종 안전 테스트",boundTypes==5&&approvedTypes==5,toJson(testSummary));
 
+        List<String> observedBlockers=checks.stream().filter(row->!Boolean.TRUE.equals(row.get("passed"))).map(row->String.valueOf(row.get("code"))).toList();
+        String observedResult=observedBlockers.isEmpty()?"PASSED":"BLOCKED";
+        String observedState="PASSED".equals(observedResult)?String.valueOf(transition.get("to_state")):String.valueOf(transition.get("from_state"));
+        boolean hasFixture=testCaseId!=null;
+        boolean expectedResultMatches=!hasFixture||expectedResult.equals(observedResult);
+        boolean expectedStateMatches=!hasFixture||expectedState.isBlank()||expectedState.equals(observedState);
+        String fixtureAssertionResult=!hasFixture?"NOT_RUN":expectedResultMatches&&expectedStateMatches?"PASSED":"BLOCKED";
+        if(hasFixture){
+            addScreenCheck(checks,"EXPECTED_RESULT","기대 결과",expectedResultMatches,expectedResult+" / "+observedResult);
+            addScreenCheck(checks,"EXPECTED_STATE","기대 상태",expectedStateMatches,expectedState+" / "+observedState);
+        }
+        List<String> blockers=new ArrayList<>(observedBlockers);
+        if(hasFixture){
+            if(!expectedResultMatches)blockers.add("EXPECTED_RESULT");
+            if(!expectedStateMatches)blockers.add("EXPECTED_STATE");
+        }
+        String result="PASSED".equals(observedResult)&&(!hasFixture||"PASSED".equals(fixtureAssertionResult))?"PASSED":"BLOCKED";
         int passed=(int)checks.stream().filter(row->Boolean.TRUE.equals(row.get("passed"))).count();
-        List<String> blockers=checks.stream().filter(row->!Boolean.TRUE.equals(row.get("passed"))).map(row->String.valueOf(row.get("code"))).toList();
-        String result=blockers.isEmpty()?"PASSED":"BLOCKED";
-        Map<String,Object> evidenceMap=new LinkedHashMap<>();evidenceMap.put("itemId",itemId);evidenceMap.put("screenResourceId",screenId);evidenceMap.put("processCode",process);evidenceMap.put("stepCode",step);evidenceMap.put("capabilityCode",capability);evidenceMap.put("routePath",route);evidenceMap.put("testCaseId",testCaseId);evidenceMap.put("preInputJson",preInputJson);evidenceMap.put("checks",checks);
+        Map<String,Object> evidenceMap=new LinkedHashMap<>();evidenceMap.put("evidenceType","CONTRACT_SIMULATION");evidenceMap.put("businessFunctionsExecuted",false);evidenceMap.put("itemId",itemId);evidenceMap.put("screenResourceId",screenId);evidenceMap.put("processCode",process);evidenceMap.put("stepCode",step);evidenceMap.put("audience",audience);evidenceMap.put("capabilityCode",capability);evidenceMap.put("routePath",route);evidenceMap.put("contractFingerprint",contractFingerprint);evidenceMap.put("testCaseId",testCaseId);evidenceMap.put("preInputJson",preInputJson);evidenceMap.put("expectedResult",expectedResult);evidenceMap.put("expectedState",expectedState);evidenceMap.put("observedContractResult",observedResult);evidenceMap.put("observedState",observedState);evidenceMap.put("observedBlockerCodes",observedBlockers);evidenceMap.put("fixtureAssertionResult",fixtureAssertionResult);evidenceMap.put("checks",checks);
         String evidence=toJson(evidenceMap);
         Long runId=jdbc.queryForObject("insert into framework_screen_workflow_test_run(screen_resource_id,process_code,step_code,capability_code,route_key,result,passed_check_count,total_check_count,blocker_codes,evidence_json,executed_by,test_case_id) values(?,?,?,?,?,?,?,?,case when ?='' then ARRAY[]::text[] else string_to_array(?,',') end,?::jsonb,?,?) returning run_id",Long.class,screenId,process,step,capability,route,result,passed,checks.size(),String.join(",",blockers),String.join(",",blockers),evidence,executedBy,testCaseId);
         Map<String,Object> response=new LinkedHashMap<>();
         response.put("success",true);response.put("runId",runId);response.put("result",result);
         response.put("passedCheckCount",passed);response.put("totalCheckCount",checks.size());
         response.put("blockerCodes",blockers);response.put("checks",checks);response.put("routePath",route);
-        response.put("processCode",process);response.put("stepCode",step);response.put("capabilityCode",capability);response.put("executedBy",executedBy);
+        response.put("processCode",process);response.put("stepCode",step);response.put("audience",audience);response.put("capabilityCode",capability);
+        response.put("contractFingerprint",contractFingerprint);response.put("expectedResult",expectedResult);response.put("expectedState",expectedState);
+        response.put("observedContractResult",observedResult);response.put("observedState",observedState);response.put("fixtureAssertionResult",fixtureAssertionResult);response.put("executedBy",executedBy);
         return response;
+    }
+
+    private String screenContractFingerprint(long screenId,String process,String step,String audience,String capability){
+        List<String> fingerprints=jdbc.queryForList("""
+            select md5(concat_ws('|',p.process_version,to_jsonb(s)::text,to_jsonb(binding)::text,to_jsonb(screen)::text,
+                     binding.audience,?,
+                     coalesce((select md5(string_agg(to_jsonb(data_binding)::text,'|' order by data_binding.data_element_code,data_binding.field_code))
+                                 from framework_screen_data_binding data_binding where data_binding.screen_resource_id=?),''),
+                     coalesce((select md5(string_agg(to_jsonb(screen_capability)::text,'|' order by screen_capability.capability_code))
+                                 from framework_screen_capability screen_capability where screen_capability.screen_resource_id=?),''),
+                     coalesce((select md5(string_agg(to_jsonb(test_binding)::text||'~'||to_jsonb(simulation_case)::text,'|' order by test_binding.case_code))
+                                 from framework_step_test_binding test_binding join framework_simulation_case simulation_case using(case_code)
+                                where test_binding.process_code=? and test_binding.step_code=?),''),
+                     coalesce((select md5(to_jsonb(execution_spec)::text) from framework_step_execution_spec execution_spec
+                                where execution_spec.process_code=? and execution_spec.step_code=?),''),
+                     coalesce((select md5(string_agg(to_jsonb(professional_contract)::text,'|' order by professional_contract.process_code,
+                                         professional_contract.step_code,professional_contract.audience,professional_contract.contract_id))
+                                 from framework_professional_screen_contract professional_contract
+                                where lower(split_part(professional_contract.route_path,'?',1))=screen.route_key),''),
+                     coalesce((select md5(string_agg(to_jsonb(fixture)::text,'|' order by fixture.test_case_id))
+                                 from framework_screen_workflow_test_case fixture
+                                where fixture.screen_resource_id=? and fixture.process_code=? and fixture.step_code=?
+                                  and fixture.capability_code=? and fixture.active=true),
+                              (select md5(string_agg(to_jsonb(fixture)::text,'|' order by fixture.test_case_id))
+                                 from framework_screen_workflow_test_case fixture
+                                where fixture.screen_resource_id=? and fixture.process_code=? and fixture.step_code=?
+                                  and fixture.capability_code='ALL' and fixture.active=true),'')
+                   ))
+              from framework_process_definition p
+              join framework_process_step s on s.process_code=p.process_code
+              join framework_process_step_screen_binding binding on binding.process_code=s.process_code and binding.step_code=s.step_code
+              join framework_screen_resource screen using(screen_resource_id)
+             where p.process_code=? and s.step_code=? and binding.screen_resource_id=? and binding.audience=?
+               and binding.binding_status='ACTIVE'
+            """,String.class,capability,screenId,screenId,process,step,process,step,
+            screenId,process,step,capability,screenId,process,step,process,step,screenId,audience);
+        if(fingerprints.size()!=1)throw new IllegalStateException(fingerprints.isEmpty()?"SCREEN_CONTRACT_FINGERPRINT_NOT_FOUND":"SCREEN_CONTRACT_FINGERPRINT_AMBIGUOUS");
+        return fingerprints.get(0);
+    }
+
+    static String preferredScreenContractAudience(String audience){
+        String normalized=audience==null?"":audience.trim().toUpperCase(Locale.ROOT);
+        return Set.of("USER","ADMIN","PUBLIC").contains(normalized)?normalized:"USER";
     }
 
     public Map<String,Object> screenWorkflowTestCases(long screenResourceId,String processCode,String stepCode,String capabilityCode){

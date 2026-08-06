@@ -14,6 +14,7 @@ stale_scope = text.index('case "$stale_real" in')
 stale_boundary = text.index('"$deploy_worktree_root"/*)', stale_scope)
 stale_chown = text.index('sudo -n chown -R "$(id -u):$(id -g)" "$stale_real"', stale_scope)
 stale_remove = text.index('worktree remove --force "$stale_real"', stale_chown)
+persistent_keep = text.index('if [[ "$stale_real" != "$(realpath -m "$persistent_build_worktree")" ]]', stale_chown)
 snapshot = text.index('merge_overlay_backup="$(mktemp -d')
 generated_restore = text.index('generated_paths=(')
 catalog_branch = text.index('if [[ "$PLAN_RUNTIME_REQUIRED" != "true" ]]')
@@ -25,6 +26,7 @@ runtime_restore = text.index('restore_live_frontend_overlay', runtime_merge)
 
 assert 'deploy_worktree_root="$(realpath -m ' in text, "stale worktree boundary must be canonicalized"
 assert stale_scope < stale_boundary < stale_chown < stale_remove, "ownership repair must remain inside the canonical disposable-worktree boundary"
+assert stale_chown < persistent_keep < stale_remove, "persistent build worktree must repair ownership but remain reusable"
 assert 'sudo -n chown -R' in text, "ownership repair must never prompt an unattended deployment"
 assert 'ownership repair failed' in text and 'exit 24' in text, "failed ownership repair must stop before destructive worktree removal"
 assert snapshot < generated_restore, "live overlay must be captured before generated files are restored"

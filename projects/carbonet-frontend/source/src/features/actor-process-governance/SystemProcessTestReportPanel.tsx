@@ -134,7 +134,8 @@ export function SystemProcessTestReportPanel({ base }: Props) {
         body: JSON.stringify(request)
       });
       const body = await readJsonResponse<Row>(response, "프로세스 계약 점검에 실패했습니다.");
-      setMessage(`계약 점검을 기록했습니다. 점검 범위 ${text(body, "auditedStepCount", "stepCount", "matchedItemCount") || "선택 조건"}개 절차 · 실제 업무 명령은 실행하지 않았습니다.`);
+      const auditOutcome = text(body, "outcome", "result") || "UNKNOWN";
+      setMessage(`계약 점검 실행 완료 · 결과 ${auditOutcome} · 대상 ${text(body, "targetCount") || "0"}개 · 절차 ${text(body, "auditedStepCount") || "0"}개 · 바인딩 ${text(body, "auditedBindingCount") || "0"}개 · 기능 대상 ${text(body, "auditedCapabilityTargetCount") || "0"}개 · 결과를 다시 조회했습니다. 실제 업무 명령은 실행하지 않았습니다.`);
       await load();
     } catch (reason) {
       setError(requestErrorMessage(reason, "프로세스 계약 점검에 실패했습니다."));
@@ -200,7 +201,11 @@ export function SystemProcessTestReportPanel({ base }: Props) {
       blocked: items.filter(row => normalizeResult(row) === "BLOCKED").length,
       notRun: items.filter(row => normalizeResult(row) === "NOT_RUN").length,
       e2eCovered: e2eCovered.size,
-      e2eUncovered: Math.max(0, processCodes.size - e2eCovered.size)
+      e2eUncovered: Math.max(0, processCodes.size - e2eCovered.size),
+      fixtureSuiteBindings: items.reduce((sum, row) => sum + number(row, "fixtureSuiteCaseCount"), 0),
+      fixtureSuiteCompleteSteps: items.filter(row => text(row, "fixtureSuiteCoverageState") === "COMPLETE").length,
+      fixtureSuiteIncompleteSteps: items.filter(row => text(row, "fixtureSuiteCoverageState") !== "COMPLETE").length,
+      fixtureSuiteCurrentRuns: items.reduce((sum, row) => sum + number(row, "fixtureSuiteCurrentRunCount"), 0)
     };
   }, [items]);
 
@@ -277,6 +282,19 @@ export function SystemProcessTestReportPanel({ base }: Props) {
       {summaryValues.map(([label, metric, color]) => <article className="rounded-xl border border-slate-200 bg-white p-4" key={label}><span className="text-xs font-bold text-slate-500">{label}</span><strong className={`mt-1 block text-2xl font-black ${color}`}>{metric.toLocaleString("ko-KR")}</strong></article>)}
     </section>
 
+    <section className="report-print-break rounded-2xl border border-violet-200 bg-violet-50/40 p-5" aria-label="워크플로 픽스처 스위트 범위">
+      <div className="flex flex-col gap-2 lg:flex-row lg:items-end lg:justify-between">
+        <div><p className="text-xs font-black tracking-[0.1em] text-violet-700">WORKFLOW FIXTURE SUITE COVERAGE</p><h3 className="mt-1 font-black text-[#052b57]">5대 안전 시나리오 전체 등록·실행 증적</h3><p className="mt-1 text-sm leading-6 text-slate-600">HAPPY_PATH · AUTHORITY · ISOLATION · EXCEPTION · RECOVERY 바인딩 전체를 집계합니다. 계약 건전성 감사가 선택하는 정상 픽스처 1건 및 실제 업무 E2E와 서로 다른 증적입니다.</p></div>
+        <span className="rounded-full border border-violet-200 bg-white px-3 py-1 text-xs font-black text-violet-800">읽기 전용 · 업무 명령 미실행</span>
+      </div>
+      <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <FixtureMetric label="단계·픽스처 바인딩" value={numberOr(summary, computedSummary.fixtureSuiteBindings, "fixtureSuiteBindingCount")}/>
+        <FixtureMetric label="5종 완비 단계" value={numberOr(summary, computedSummary.fixtureSuiteCompleteSteps, "fixtureSuiteCompleteStepCount")}/>
+        <FixtureMetric label="유형 보완 필요 단계" value={numberOr(summary, computedSummary.fixtureSuiteIncompleteSteps, "fixtureSuiteIncompleteStepCount")} warning/>
+        <FixtureMetric label="현행 버전 실행 증적" value={numberOr(summary, computedSummary.fixtureSuiteCurrentRuns, "fixtureSuiteCurrentRunCount")}/>
+      </div>
+    </section>
+
     <section className="report-no-print rounded-2xl border border-slate-200 bg-white p-5" aria-label="테스트 결과 필터">
       <div className="grid gap-4 md:grid-cols-3">
         <label className="text-sm font-bold text-slate-700">업무 종류
@@ -309,7 +327,7 @@ export function SystemProcessTestReportPanel({ base }: Props) {
     <section className="report-table-shell overflow-hidden rounded-2xl border border-slate-200 bg-white">
       <p className="report-no-print border-b border-slate-100 bg-slate-50 px-4 py-2 text-xs text-slate-500 lg:hidden" id={scrollHelpId}>표를 좌우로 이동하면 모든 계약과 E2E 결과를 확인할 수 있습니다.</p>
       <div aria-describedby={scrollHelpId} aria-label="전체 프로세스 계약 점검 결과 표" className={`report-table-scroll overflow-x-auto overscroll-x-contain ${focusClass}`} role="region" tabIndex={0}>
-        <table className="w-full min-w-[1320px] border-collapse text-left text-sm">
+        <table className="w-full min-w-[1680px] border-collapse text-left text-sm">
           <caption className="sr-only">업무 종류, 프로세스, 절차 순서, 담당자, 화면 경로와 실행 결과 목록</caption>
           <thead className="bg-slate-50 text-xs font-black text-slate-600">
             <tr>
@@ -319,6 +337,8 @@ export function SystemProcessTestReportPanel({ base }: Props) {
               <th className="min-w-72 px-4 py-3" scope="col">절차</th>
               <th className="min-w-40 px-4 py-3" scope="col">담당자</th>
               <th className="min-w-32 px-4 py-3" scope="col">계약 점검</th>
+              <th className="min-w-44 px-4 py-3" scope="col">픽스처 스위트</th>
+              <th className="min-w-36 px-4 py-3" scope="col">시뮬레이션 증적</th>
               <th className="min-w-32 px-4 py-3" scope="col">업무 E2E</th>
               <th className="min-w-40 px-4 py-3" scope="col">최근 실행</th>
               <th className="report-no-print w-40 px-4 py-3 text-right" scope="col">기능</th>
@@ -339,19 +359,21 @@ export function SystemProcessTestReportPanel({ base }: Props) {
                   <td className="px-4 py-4"><strong className="block text-slate-800">{stepLabel(row, index)}</strong><span className="mt-1 block font-mono text-[11px] text-slate-400">{text(row, "stepCode") || "-"}</span></td>
                   <td className="px-4 py-4"><span className="block font-bold text-slate-700">{text(row, "actorName", "assigneeName") || "담당자 미지정"}</span><span className="mt-1 block font-mono text-[11px] text-slate-400">{text(row, "actorCode", "assigneeActorCode") || "-"}</span></td>
                   <td className="px-4 py-4"><ResultBadge result={result}/>{text(row, "latestBlockerCodes", "resultMessage", "message", "failureReason") && <span className="mt-2 line-clamp-2 block max-w-56 text-xs leading-5 text-slate-500">{formatStructuredValue(firstValue(row, "latestBlockerCodes", "resultMessage", "message", "failureReason"))}</span>}</td>
-                  <td className="px-4 py-4"><BusinessResultBadge row={row}/><span className="mt-2 block max-w-48 text-xs leading-5 text-slate-500">{text(row, "businessCaseCode") || "실제 업무 E2E 증적 없음"}</span></td>
+                  <td className="px-4 py-4"><FixtureSuiteBadge row={row}/><span className="mt-2 block max-w-56 text-xs leading-5 text-slate-500">{text(row, "fixtureSuiteMissingTypes") ? `누락: ${text(row, "fixtureSuiteMissingTypes")}` : `${text(row, "fixtureSuiteCoveredTypeCount") || "0"}/5 유형 · ${text(row, "fixtureSuiteCaseCount") || "0"}건`}</span></td>
+                  <td className="px-4 py-4"><SimulationResultBadge row={row}/><span className="mt-2 block max-w-48 text-xs leading-5 text-slate-500">{text(row, "simulationCaseCode") || "시뮬레이션 증적 없음"}</span></td>
+                  <td className="px-4 py-4"><BusinessResultBadge row={row}/><span className="mt-2 block max-w-48 text-xs leading-5 text-slate-500">{text(row, "businessEvidenceStatus") || "EVIDENCE_LEDGER_UNAVAILABLE"}</span></td>
                   <td className="px-4 py-4 text-xs leading-5 text-slate-600">{formatDateTime(text(row, "executedAt", "latestExecutedAt", "lastExecutedAt", "testedAt"))}<span className="block text-slate-400">계약 점검</span></td>
                   <td className="report-no-print px-4 py-4"><div className="flex flex-wrap justify-end gap-2">{routePath ? <a className={`inline-flex min-h-10 items-center rounded-lg border border-blue-300 bg-white px-3 font-bold text-blue-700 hover:bg-blue-50 ${focusClass}`} href={routePath} rel="noreferrer" target="_blank">화면 열기<span className="sr-only">: {text(row, "screenName", "stepName") || routePath} (새 창)</span></a> : <span className="inline-flex min-h-10 items-center rounded-lg border border-slate-200 bg-slate-50 px-3 font-bold text-slate-400">경로 없음</span>}<button aria-controls={detailId} aria-expanded={expanded} className={`min-h-10 rounded-lg bg-slate-800 px-3 font-bold text-white hover:bg-slate-700 ${focusClass}`} onClick={() => toggleRow(row, index)} type="button">{expanded ? "상세 접기" : "상세 보기"}<span className="sr-only">: {text(row, "processName", "processCode")} {text(row, "stepName", "stepCode")}</span></button></div></td>
                 </tr>
                 <tr className={`report-print-detail border-t border-slate-100 bg-slate-50/70 ${expanded ? "table-row" : "hidden"}`} id={detailId}>
-                  <td className="px-4 py-5" colSpan={9}>
+                  <td className="px-4 py-5" colSpan={11}>
                     <StepDetail row={row}/>
                   </td>
                 </tr>
               </Fragment>;
             })}
-            {!busy && filteredItems.length === 0 && <tr><td className="px-6 py-14 text-center text-slate-500" colSpan={9}>선택한 조건에 해당하는 점검 절차가 없습니다.</td></tr>}
-            {busy && filteredItems.length === 0 && <tr><td className="px-6 py-14 text-center font-bold text-blue-700" colSpan={9}>전체 프로세스 계약 점검 결과를 불러오는 중입니다.</td></tr>}
+            {!busy && filteredItems.length === 0 && <tr><td className="px-6 py-14 text-center text-slate-500" colSpan={11}>선택한 조건에 해당하는 점검 절차가 없습니다.</td></tr>}
+            {busy && filteredItems.length === 0 && <tr><td className="px-6 py-14 text-center font-bold text-blue-700" colSpan={11}>전체 프로세스 계약 점검 결과를 불러오는 중입니다.</td></tr>}
           </tbody>
         </table>
       </div>
@@ -398,11 +420,22 @@ function StepDetail({ row }: { row: Row }) {
       <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center"><ResultBadge result={normalizeResult(row)}/><p className="text-sm leading-6 text-slate-700">{formatStructuredValue(firstValue(row, "latestBlockerCodes", "resultMessage", "message", "failureReason")) || "상세 실행 메시지가 없습니다."}</p></div>
       <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2 xl:grid-cols-4"><DetailLine label="계약 점검 ID" value={text(row, "latestRunId", "testRunId", "runId", "executionId") || "-"}/><DetailLine label="승인 시나리오" value={`${text(row, "approvedScenarioCount") || "0"}/${text(row, "scenarioCount") || "0"}`}/><DetailLine label="점검 계정" value={text(row, "executedBy", "latestExecutedBy", "accountName", "username") || "-"}/><DetailLine label="점검 시각" value={formatDateTime(text(row, "executedAt", "latestExecutedAt", "lastExecutedAt", "testedAt"))}/><DetailLine label="계약 검사" value={`${text(row, "latestPassedCheckCount") || "0"}/${text(row, "latestTotalCheckCount") || "0"}`}/><DetailLine label="차단 코드" value={formatStructuredValue(firstValue(row, "latestBlockerCodes")) || "-"}/><DetailLine label="완료 조건" value={text(row, "completionRule") || "-"}/><DetailLine label="소요 시간" value={durationLabel(row) || "-"}/></dl>
     </article>
+    <article className={`rounded-xl border p-4 lg:col-span-2 xl:col-span-3 ${simulationResultClass(row)}`}>
+      <p className="text-xs font-black tracking-[0.08em] text-violet-700">LATEST SIMULATION EVIDENCE</p>
+      <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center"><SimulationResultBadge row={row}/><p className="text-sm leading-6 text-slate-700">메타데이터·계약 시뮬레이션 증적이며 실제 업무 함수 실행 또는 업무 E2E 통과를 의미하지 않습니다.</p></div>
+      <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2 xl:grid-cols-5"><DetailLine label="시뮬레이션 실행 ID" value={number(row, "latestSimulationRunId") > 0 ? text(row, "latestSimulationRunId") : "-"}/><DetailLine label="케이스 코드" value={text(row, "simulationCaseCode") || "-"}/><DetailLine label="케이스 유형" value={text(row, "simulationCaseType") || "-"}/><DetailLine label="추적 범위" value={text(row, "simulationTraceScope") || "-"}/><DetailLine label="프로세스 버전" value={text(row, "simulationProcessVersion") || "-"}/><DetailLine label="현재 계약 버전" value={booleanLabel(row.simulationCurrentVersion)}/><DetailLine label="실행 계정" value={text(row, "simulationExecutedBy") || "-"}/><DetailLine label="실행 시각" value={formatDateTime(text(row, "simulationExecutedAt"))}/></dl>
+      <div className="mt-4"><p className="text-xs font-bold text-slate-500">시뮬레이션 증적</p><FormattedValue value={firstValue(row, "simulationEvidenceJson")}/></div>
+    </article>
+    <article className="rounded-xl border border-violet-200 bg-violet-50/50 p-4 lg:col-span-2 xl:col-span-3">
+      <p className="text-xs font-black tracking-[0.08em] text-violet-700">WORKFLOW FIXTURE SUITE</p>
+      <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center"><FixtureSuiteBadge row={row}/><p className="text-sm leading-6 text-slate-700">5대 안전 유형의 전체 바인딩과 최신 시뮬레이션 증적입니다. 대표 계약 감사 및 실제 업무 E2E 판정으로 승격하지 않습니다.</p></div>
+      <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2 xl:grid-cols-5"><DetailLine label="필수 유형" value={`${text(row, "fixtureSuiteCoveredTypeCount") || "0"}/${text(row, "fixtureSuiteRequiredTypeCount") || "5"}`}/><DetailLine label="활성 픽스처" value={text(row, "fixtureSuiteActiveCaseCount", "fixtureSuiteCaseCount") || "0"}/><DetailLine label="승인 픽스처" value={text(row, "fixtureSuiteApprovedCaseCount") || "0"}/><DetailLine label="현행 버전 실행" value={text(row, "fixtureSuiteCurrentRunCount") || "0"}/><DetailLine label="미실행" value={text(row, "fixtureSuiteNotRunCount") || "0"}/><DetailLine label="과거 버전 증적" value={text(row, "fixtureSuiteStaleRunCount") || "0"}/><DetailLine label="실행 통과" value={text(row, "fixtureSuitePassedRunCount") || "0"}/><DetailLine label="실행 차단" value={text(row, "fixtureSuiteBlockedRunCount") || "0"}/><DetailLine label="등록 유형" value={text(row, "fixtureSuiteCoveredTypes") || "-"}/><DetailLine label="누락 유형" value={text(row, "fixtureSuiteMissingTypes") || "없음"}/></dl>
+      <div className="mt-4"><p className="text-xs font-bold text-slate-500">전체 픽스처 목록</p><FormattedValue value={firstValue(row, "fixtureSuiteCasesJson")}/></div>
+    </article>
     <article className={`rounded-xl border p-4 lg:col-span-2 xl:col-span-3 ${businessResultClass(row)}`}>
       <p className="text-xs font-black tracking-[0.08em] text-blue-700">LATEST BUSINESS E2E EVIDENCE</p>
-      <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center"><BusinessResultBadge row={row}/><p className="text-sm leading-6 text-slate-700">실제 업무 계정과 데이터로 실행한 별도 종단간 테스트 증적입니다. 계약 점검 결과와 독립적으로 판정합니다.</p></div>
-      <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2 xl:grid-cols-4"><DetailLine label="업무 E2E 실행 ID" value={text(row, "latestBusinessRunId") || "-"}/><DetailLine label="케이스 코드" value={text(row, "businessCaseCode") || "-"}/><DetailLine label="케이스 유형" value={text(row, "businessCaseType") || "-"}/><DetailLine label="실행 계정" value={text(row, "businessExecutedBy") || "-"}/><DetailLine label="실행 시각" value={formatDateTime(text(row, "businessExecutedAt"))}/></dl>
-      <div className="mt-4"><p className="text-xs font-bold text-slate-500">업무 E2E 증적</p><FormattedValue value={firstValue(row, "businessEvidenceJson")}/></div>
+      <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center"><BusinessResultBadge row={row}/><p className="text-sm leading-6 text-slate-700">실제 업무 계정·데이터·함수 실행 증적 원장이 연결될 때만 판정합니다. 시뮬레이션 결과로 승격하지 않습니다.</p></div>
+      <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2"><DetailLine label="업무 E2E 증적 상태" value={text(row, "businessEvidenceStatus") || "EVIDENCE_LEDGER_UNAVAILABLE"}/><DetailLine label="업무 E2E 결과" value={normalizeBusinessResult(row)}/></dl>
     </article>
   </div>;
 }
@@ -411,15 +444,37 @@ function ResultBadge({ result }: { result: TestResult }) {
   return <span className={`inline-flex rounded-full border px-3 py-1 text-xs font-black ${RESULT_CLASSES[result]}`}>{RESULT_LABELS[result]} · {result}</span>;
 }
 
+function FixtureMetric({ label, value, warning = false }: { label: string; value: number; warning?: boolean }) {
+  return <article className="rounded-xl border border-violet-100 bg-white p-4"><span className="text-xs font-bold text-slate-500">{label}</span><strong className={`mt-1 block text-2xl font-black ${warning && value > 0 ? "text-amber-700" : "text-violet-800"}`}>{value.toLocaleString("ko-KR")}</strong></article>;
+}
+
+function FixtureSuiteBadge({ row }: { row: Row }) {
+  const state = text(row, "fixtureSuiteCoverageState") || "MISSING";
+  const className = state === "COMPLETE" ? "border-violet-200 bg-violet-100 text-violet-800" : state === "PARTIAL" ? "border-amber-200 bg-amber-50 text-amber-800" : "border-slate-200 bg-slate-100 text-slate-700";
+  const label = state === "COMPLETE" ? "5종 완비" : state === "PARTIAL" ? "유형 보완 필요" : "픽스처 미등록";
+  return <span className={`inline-flex rounded-full border px-3 py-1 text-xs font-black ${className}`}>{label} · {state}</span>;
+}
+
 function BusinessResultBadge({ row }: { row: Row }) {
   const result = normalizeBusinessResult(row);
   const labels: Record<TestResult, string> = { PASSED: "E2E 통과", BLOCKED: "E2E 실패·차단", NOT_RUN: "E2E 미검증" };
   return <span className={`inline-flex rounded-full border px-3 py-1 text-xs font-black ${RESULT_CLASSES[result]}`}>{labels[result]} · {result}</span>;
 }
 
+function SimulationResultBadge({ row }: { row: Row }) {
+  const result = normalizeSimulationResult(row);
+  const labels: Record<TestResult, string> = { PASSED: "시뮬레이션 통과", BLOCKED: "시뮬레이션 차단", NOT_RUN: "시뮬레이션 미실행" };
+  return <span className={`inline-flex rounded-full border px-3 py-1 text-xs font-black ${RESULT_CLASSES[result]}`}>{labels[result]} · {result}</span>;
+}
+
 function businessResultClass(row: Row) {
   const result = normalizeBusinessResult(row);
   return result === "PASSED" ? "border-emerald-200 bg-emerald-50/50" : result === "BLOCKED" ? "border-red-200 bg-red-50/50" : "border-slate-200 bg-slate-50";
+}
+
+function simulationResultClass(row: Row) {
+  const result = normalizeSimulationResult(row);
+  return result === "PASSED" ? "border-violet-200 bg-violet-50/50" : result === "BLOCKED" ? "border-red-200 bg-red-50/50" : "border-slate-200 bg-slate-50";
 }
 
 function ResultRule({ result, text: description }: { result: TestResult; text: string }) {
@@ -443,11 +498,23 @@ function normalizeResult(row: Row): TestResult {
 }
 
 function normalizeBusinessResult(row: Row): TestResult {
-  if (!text(row, "latestBusinessRunId", "businessTestResult")) return "NOT_RUN";
   const raw = text(row, "businessTestResult").toUpperCase();
   if (["PASSED", "PASS", "SUCCESS", "VERIFIED", "COMPLETED"].includes(raw)) return "PASSED";
   if (["BLOCKED", "FAILED", "FAIL", "ERROR", "RETRY"].includes(raw)) return "BLOCKED";
   return "NOT_RUN";
+}
+
+function normalizeSimulationResult(row: Row): TestResult {
+  const raw = text(row, "simulationTestResult").toUpperCase();
+  if (["PASSED", "PASS", "SUCCESS", "VERIFIED", "COMPLETED"].includes(raw)) return booleanLabel(row.simulationCurrentVersion) === "현재 버전" ? "PASSED" : "BLOCKED";
+  if (["BLOCKED", "FAILED", "FAIL", "ERROR", "RETRY"].includes(raw)) return "BLOCKED";
+  return "NOT_RUN";
+}
+
+function booleanLabel(value: unknown) {
+  if (value === true || value === 1 || String(value).toLowerCase() === "true") return "현재 버전";
+  if (value === false || value === 0 || String(value).toLowerCase() === "false") return "이전 버전";
+  return "-";
 }
 
 function compareRows(left: Row, right: Row) {
