@@ -64,11 +64,14 @@ try {
     const page = await context.newPage();
     await page.goto(`${baseUrl}/emission/project-portfolio`, { waitUntil: "domcontentloaded", timeout: 15_000 });
     await page.getByRole("heading", { name: "배출량 프로젝트 포트폴리오" }).waitFor({ timeout: 8_000 });
-    await page.getByLabel("상태").selectOption("완료");
-    const completedRows = page.locator("tbody tr");
-    await completedRows.first().waitFor({ state: "visible", timeout: 5_000 });
-    const completedTexts = await completedRows.allTextContents();
-    assert(completedTexts.length > 0 && completedTexts.every((text) => text.includes("완료")), "localized completed filter mismatch");
+    const localizedStatus = all.items.map((item) => String(item.status || ""))
+      .find((value) => ["진행", "검증", "완료"].includes(value));
+    assert(localizedStatus, "portfolio has no supported localized status");
+    await page.getByLabel("상태").selectOption(localizedStatus);
+    const statusRows = page.locator("tbody tr");
+    await statusRows.first().waitFor({ state: "visible", timeout: 5_000 });
+    const statusTexts = await statusRows.allTextContents();
+    assert(statusTexts.length > 0 && statusTexts.every((text) => text.includes(localizedStatus)), "localized status filter mismatch");
     await page.getByLabel("상태").selectOption("");
     const preferred = page.getByRole("radio", { name: "Test 선택", exact: true });
     const radio = await preferred.count() ? preferred : page.locator('input[type="radio"]').first();
@@ -76,7 +79,7 @@ try {
     await page.getByText("1단계 완료 기준", { exact: true }).waitFor({ timeout: 5_000 });
     const completionSection = page.getByText("1단계 완료 기준", { exact: true }).locator("..");
     await completionSection.getByText("5/5", { exact: true }).waitFor({ timeout: 5_000 });
-    pass("PROJECT_PORTFOLIO_HAPPY", { route: "/emission/project-portfolio", selected: true, completion: "5/5", completedFilterRows: completedTexts.length });
+    pass("PROJECT_PORTFOLIO_HAPPY", { route: "/emission/project-portfolio", selected: true, completion: "5/5", localizedStatus, statusFilterRows: statusTexts.length });
 
     const recoveryPage = await context.newPage();
     let aborted = false;

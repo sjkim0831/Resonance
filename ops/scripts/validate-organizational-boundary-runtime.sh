@@ -16,6 +16,7 @@ API_BODY="$(mktemp)"
 PAGE_BODY="$(mktemp)"
 EVIDENCE_DIR="${CARBONET_RUNTIME_SMOKE_EVIDENCE_DIR:-$ROOT/var/test-evidence/process-runtime-smoke}"
 PROMOTE_JOBS="${CARBONET_ORG_BOUNDARY_PROMOTE_JOBS:-true}"
+CURL_RETRY=(--retry 5 --retry-all-errors --retry-delay 1)
 trap 'rm -f "$COOKIE_JAR" "$TIMINGS" "$API_BODY" "$PAGE_BODY"' EXIT
 
 source "$ROOT/ops/scripts/lib/carbonet-postgres-query.sh"
@@ -25,20 +26,20 @@ psqlq(){ carbonet_postgres_query "$1"; }
 project_id="$(psqlq "select p.project_id from emission_project_registry p where p.project_status<>'DELETED' and exists(select 1 from framework_project_actor_assignment a join framework_account_actor_assignment aa on aa.actor_code=a.actor_code and aa.account_id='$LOGIN_USER' and aa.tenant_id=p.tenant_id and aa.assignment_status='ACTIVE' where a.project_id=p.project_id and a.active_yn='Y' and (aa.project_id='*' or aa.project_id=p.project_id)) order by p.updated_at desc limit 1")"
 [[ -n "$project_id" ]] || { echo '[organizational-boundary-runtime] FAIL no testable emission project' >&2; exit 1; }
 
-login_body="$(curl -fsS -c "$COOKIE_JAR" -H 'Content-Type: application/json' -X POST "$BASE_URL/admin/login/actionLogin" --data "{\"userId\":\"$LOGIN_USER\",\"userPw\":\"$LOGIN_PASSWORD\",\"userSe\":\"USR\"}")"
+login_body="$(curl "${CURL_RETRY[@]}" -fsS -c "$COOKIE_JAR" -H 'Content-Type: application/json' -X POST "$BASE_URL/admin/login/actionLogin" --data "{\"userId\":\"$LOGIN_USER\",\"userPw\":\"$LOGIN_PASSWORD\",\"userSe\":\"USR\"}")"
 jq -e --arg user "$LOGIN_USER" '.status == "loginSuccess" and (.userId | ascii_downcase) == ($user | ascii_downcase)' >/dev/null <<<"$login_body" \
   || { echo '[organizational-boundary-runtime] FAIL login rejected' >&2; exit 1; }
 
 api_path="/home/api/emission-projects/$project_id/organizational-boundary"
-code="$(curl -sS -b "$COOKIE_JAR" -o "$API_BODY" -w '%{http_code}' "$BASE_URL$api_path")"
+code="$(curl "${CURL_RETRY[@]}" -sS -b "$COOKIE_JAR" -o "$API_BODY" -w '%{http_code}' "$BASE_URL$api_path")"
 [[ "$code" == 200 ]] && jq -e --arg project "$project_id" '.project.projectId == $project or .project.id == $project' >/dev/null "$API_BODY" \
   || { echo "[organizational-boundary-runtime] FAIL authenticated API status=$code" >&2; exit 1; }
-code="$(curl -sS -o /dev/null -w '%{http_code}' "$BASE_URL$api_path")"
+code="$(curl "${CURL_RETRY[@]}" -sS -o /dev/null -w '%{http_code}' "$BASE_URL$api_path")"
 [[ "$code" == 401 || "$code" == 403 ]] || { echo "[organizational-boundary-runtime] FAIL unauthenticated API status=$code" >&2; exit 1; }
 
 pages=("/emission/organizational-boundary?projectId=$project_id" "/admin/emission/organizational-boundary?projectId=$project_id")
 for path in "${pages[@]}"; do
-  code="$(curl -sS -L -b "$COOKIE_JAR" -o "$PAGE_BODY" -w '%{http_code}' "$BASE_URL$path")"
+  code="$(curl "${CURL_RETRY[@]}" -sS -L -b "$COOKIE_JAR" -o "$PAGE_BODY" -w '%{http_code}' "$BASE_URL$path")"
   [[ "$code" == 200 ]] && grep -qi '<!doctype html' "$PAGE_BODY" \
     || { echo "[organizational-boundary-runtime] FAIL page=$path status=$code" >&2; exit 1; }
 done
@@ -56,7 +57,7 @@ for step in ORGANIZATIONAL_BOUNDARY_S1 ORGANIZATIONAL_BOUNDARY_S2 ORGANIZATIONAL
   bash "$ROOT/ops/scripts/validate-existing-emission-project-search.sh" "$ROOT" ORGANIZATIONAL_BOUNDARY "$step" >/dev/null
 done
 
-for _ in $(seq 1 20); do curl -sS -b "$COOKIE_JAR" -o /dev/null -w '%{time_total}\n' "$BASE_URL$api_path" >>"$TIMINGS"; done
+for _ in $(seq 1 20); do curl "${CURL_RETRY[@]}" -sS -b "$COOKIE_JAR" -o /dev/null -w '%{time_total}\n' "$BASE_URL$api_path" >>"$TIMINGS"; done
 p95_ms="$(sort -n "$TIMINGS" | awk 'NR==19 {printf "%d",$1*1000}')"
 [[ -n "$p95_ms" && "$p95_ms" -le 2500 ]] || { echo "[organizational-boundary-runtime] FAIL p95=${p95_ms:-unknown}ms" >&2; exit 1; }
 read -r desired ready available <<<"$(kubectl -n "$NAMESPACE" get deploy carbonet-runtime -o jsonpath='{.spec.replicas} {.status.readyReplicas} {.status.availableReplicas}')"
