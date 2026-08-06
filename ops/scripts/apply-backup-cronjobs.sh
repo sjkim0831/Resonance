@@ -1,6 +1,92 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+NAMESPACE="carbonet-prod"
+HOURLY_CRONJOB="postgres-carbonet-hourly-backup"
+DAILY_CRONJOB="postgres-carbonet-daily-backup"
+REPLICA_DUMP_HOST="postgres-haproxy.carbonet-prod.svc.cluster.local"
+
+read_cronjob_suspend_state() {
+  local name="$1" output rc
+  set +e
+  output="$(kubectl -n "$NAMESPACE" get cronjob "$name" -o jsonpath='{.spec.suspend}' 2>&1)"
+  rc=$?
+  set -e
+  if (( rc != 0 )); then
+    if grep -Eqi '\(NotFound\)|not found' <<<"$output"; then
+      printf '%s\n' MISSING
+      return 0
+    fi
+    echo "Unable to read CronJob suspend state for $name: $output" >&2
+    return "$rc"
+  fi
+  output="${output//[[:space:]]/}"
+  case "$output" in
+    true|false) printf '%s\n' "$output" ;;
+    '') printf '%s\n' false ;;
+    *) echo "Invalid CronJob suspend state for $name: $output" >&2; return 2 ;;
+  esac
+}
+
+restore_cronjob_suspend_state() {
+  local name="$1" state="$2"
+  [[ "$state" != MISSING ]] || return 0
+  kubectl -n "$NAMESPACE" patch cronjob "$name" --type=merge \
+    -p "{\"spec\":{\"suspend\":$state}}" >/dev/null
+}
+
+restore_captured_suspend_states() {
+  local rc=0
+  [[ "${suspend_restore_pending:-false}" == "true" ]] || return 0
+  restore_cronjob_suspend_state "$HOURLY_CRONJOB" "$hourly_suspend_state" || rc=$?
+  restore_cronjob_suspend_state "$DAILY_CRONJOB" "$daily_suspend_state" || rc=$?
+  (( rc != 0 )) || suspend_restore_pending=false
+  return "$rc"
+}
+
+validate_backup_cronjob_contract() {
+  local name live_command live_paths failed=0
+  live_paths="$(
+    kubectl -n "$NAMESPACE" get cronjob "$HOURLY_CRONJOB" \
+      -o jsonpath='{.spec.jobTemplate.spec.template.spec.volumes[*].hostPath.path}' \
+      2>/dev/null || true
+  )"
+  if [[ "$live_paths" != *"/opt/resonance-data/backups/postgres/primary"* ||
+        "$live_paths" != *"/opt/resonance-data/backups/postgres/mirror"* ]]; then
+    echo "Backup CronJob storage contract drift: $HOURLY_CRONJOB" >&2
+    failed=1
+  fi
+  for name in "$HOURLY_CRONJOB" "$DAILY_CRONJOB"; do
+    live_command="$(
+      kubectl -n "$NAMESPACE" get cronjob "$name" \
+        -o jsonpath='{.spec.jobTemplate.spec.template.spec.containers[?(@.name=="pgdump")].args[0]}' \
+        2>/dev/null || true
+    )"
+    if [[ "$live_command" != *"pg_dump -h $REPLICA_DUMP_HOST -p 5433"* ]]; then
+      echo "Backup CronJob replica-port contract drift: $name" >&2
+      failed=1
+    fi
+  done
+  (( failed == 0 ))
+}
+
+if [[ "${1:-}" == "--check" ]]; then
+  [[ $# -eq 1 ]] || { echo 'Usage: apply-backup-cronjobs.sh [--check]' >&2; exit 2; }
+  validate_backup_cronjob_contract
+  echo '[backup-cronjobs] PASS storage paths and logical backups use replica port 5433'
+  exit 0
+fi
+[[ $# -eq 0 ]] || { echo 'Usage: apply-backup-cronjobs.sh [--check]' >&2; exit 2; }
+
+# A manual suspension is an operational safety decision. Client-side apply
+# normally leaves fields that are absent from the manifest untouched, but the
+# explicit snapshot and restore below makes that guarantee independent of
+# kubectl field-manager history.
+hourly_suspend_state="$(read_cronjob_suspend_state "$HOURLY_CRONJOB")"
+daily_suspend_state="$(read_cronjob_suspend_state "$DAILY_CRONJOB")"
+suspend_restore_pending=true
+trap 'restore_captured_suspend_states' EXIT
+
 # HostPath DirectoryOrCreate paths are created as root:root 0755. Backup Pods
 # deliberately run as UID/GID 1000, so prepare every writable root before the
 # CronJobs are applied. This makes redeployments self-healing after a directory
@@ -349,11 +435,16 @@ spec:
             hostPath: {path: /opt/resonance-data/backups/postgres/mirror, type: Directory}
 YAML
 
+restore_captured_suspend_states
+trap - EXIT
+
 retention_path="$(
-  kubectl -n carbonet-prod get cronjob postgres-carbonet-wal-retention \
+  kubectl -n "$NAMESPACE" get cronjob postgres-carbonet-wal-retention \
     -o jsonpath='{.spec.jobTemplate.spec.template.spec.volumes[?(@.name=="wal-archive")].hostPath.path}'
 )"
 [[ "$retention_path" == /opt/resonance-data/postgresql/wal-archive ]] || {
   echo "WAL retention is not connected to the active Patroni archive: $retention_path" >&2
   exit 3
 }
+
+validate_backup_cronjob_contract

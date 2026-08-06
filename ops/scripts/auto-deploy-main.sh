@@ -1051,20 +1051,39 @@ deploy_path_changed() {
 }
 
 sync_postgres_backup_cronjobs_if_required() {
-  local live_paths="" memory_contract_changed=false memory_check_rc=0
-  if ! deploy_path_changed ops/scripts/apply-backup-cronjobs.sh ops/scripts/configure-patroni-memory-safety.sh ops/tests/test-patroni-memory-safety.sh &&
-    [[ "$control_plane_drift_check_due" != "true" ]]; then
+  local backup_contract_changed=false backup_contract_drift=false
+  local memory_contract_changed=false memory_check_rc=0
+  local -a backup_contract_files=(
+    ops/scripts/apply-backup-cronjobs.sh
+    ops/tests/test-backup-cronjobs-replica.sh
+    ops/tests/test-backup-cronjobs-suspend-preservation.sh
+  )
+  if deploy_path_changed "${backup_contract_files[@]}" ||
+    ! git diff --quiet "$deployed_commit" "$target_commit" -- "${backup_contract_files[@]}"; then
+    backup_contract_changed=true
+  fi
+  if [[ "$backup_contract_changed" != "true" &&
+        "${PLAN_RUNTIME_REQUIRED:-false}" != "true" &&
+        "$control_plane_drift_check_due" != "true" ]] &&
+    ! deploy_path_changed ops/scripts/configure-patroni-memory-safety.sh ops/tests/test-patroni-memory-safety.sh; then
     return 0
   fi
-  live_paths="$(
-    kubectl -n "$NAMESPACE" get cronjob postgres-carbonet-hourly-backup \
-      -o jsonpath='{.spec.jobTemplate.spec.template.spec.volumes[*].hostPath.path}' \
-      2>/dev/null || true
-  )"
-  if deploy_path_changed ops/scripts/apply-backup-cronjobs.sh ||
-    [[ "$live_paths" != *"/opt/resonance-data/backups/postgres/primary"* ||
-      "$live_paths" != *"/opt/resonance-data/backups/postgres/mirror"* ]]; then
+
+  # Runtime deployments do not populate deploy_changed_paths. Always compare
+  # the live CronJob command contract on that path, so a manual/legacy pg_dump
+  # command using HAProxy 5432 is repaired even when the hostPath is correct.
+  if [[ "$backup_contract_changed" == "true" ||
+        "${PLAN_RUNTIME_REQUIRED:-false}" == "true" ||
+        "$control_plane_drift_check_due" == "true" ]]; then
+    if ! bash ops/scripts/apply-backup-cronjobs.sh --check; then
+      backup_contract_drift=true
+    fi
+  fi
+  if [[ "$backup_contract_changed" == "true" || "$backup_contract_drift" == "true" ]]; then
+    bash ops/tests/test-backup-cronjobs-replica.sh
+    bash ops/tests/test-backup-cronjobs-suspend-preservation.sh
     bash ops/scripts/apply-backup-cronjobs.sh
+    bash ops/scripts/apply-backup-cronjobs.sh --check
     echo "[auto-deploy] PostgreSQL backup CronJobs synchronized"
   fi
   if [[ "$patroni_memory_check_completed" != "true" ]] && {
