@@ -1232,14 +1232,37 @@ sync_process_contract_audit_if_required() {
   # and mixed deployments build from a persistent worktree and may not
   # populate that no-runtime list; byte-for-byte source/install comparison
   # still repairs a stale or manually altered control-plane installation.
-  if bash ops/scripts/install-all-process-contract-audit.sh --check &&
-    systemctl is-enabled --quiet resonance-all-process-contract-audit.timer; then
-    return 0
+  if ! bash ops/scripts/install-all-process-contract-audit.sh --check ||
+    ! systemctl is-enabled --quiet resonance-all-process-contract-audit.timer; then
+    bash ops/tests/test-all-process-contract-audit.sh
+    bash ops/tests/test-all-process-contract-audit-scheduler.sh
+    bash ops/scripts/install-all-process-contract-audit.sh
+    echo '[auto-deploy] isolated hourly all-process contract audit checksum drift repaired'
   fi
-  bash ops/tests/test-all-process-contract-audit.sh
-  bash ops/tests/test-all-process-contract-audit-scheduler.sh
-  bash ops/scripts/install-all-process-contract-audit.sh
-  echo '[auto-deploy] isolated hourly all-process contract audit checksum drift repaired'
+
+  # A Java/Mockito test cannot parse PostgreSQL SQL.  Exercise the authenticated
+  # live report API after rollout, without route crawling or business commands,
+  # so a broken report can never receive a successful deployment marker again.
+  local preflight_report preflight_rc preflight_status
+  preflight_report="$(mktemp)"
+  set +e
+  SYSTEM_TEST_REPORT_SKIP_HTTP_SMOKE=1 \
+    bash /opt/resonance-data/control-plane/bin/resonance-all-process-contract-audit.sh \
+    >"$preflight_report"
+  preflight_rc=$?
+  set -e
+  if [[ "$preflight_rc" -ne 0 && "$preflight_rc" -ne 3 ]]; then
+    rm -f "$preflight_report"
+    echo "[auto-deploy] all-process report API preflight failed exit=$preflight_rc" >&2
+    return 1
+  fi
+  preflight_status="$(node -e '
+    const value=JSON.parse(require("node:fs").readFileSync(process.argv[1],"utf8"));
+    if(!["PASS","BLOCKED"].includes(value.status)) process.exit(2);
+    process.stdout.write(value.status);
+  ' "$preflight_report")"
+  rm -f "$preflight_report"
+  echo "[auto-deploy] all-process report API preflight PASS status=$preflight_status"
 }
 
 sync_react_asset_prune_worker_if_required() {

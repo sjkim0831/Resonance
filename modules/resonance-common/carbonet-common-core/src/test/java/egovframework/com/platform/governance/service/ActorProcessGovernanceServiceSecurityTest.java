@@ -3,6 +3,7 @@ package egovframework.com.platform.governance.service;
 import egovframework.com.platform.codex.service.CodexProvisioningService;
 import org.junit.jupiter.api.Test;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.mockito.ArgumentCaptor;
 
 import java.util.List;
 import java.util.Map;
@@ -49,6 +50,11 @@ class ActorProcessGovernanceServiceSecurityTest {
 
         Map<String, Object> report = service.systemProcessTestReport("", "", "");
         @SuppressWarnings("unchecked") Map<String, Object> summary = (Map<String, Object>) report.get("summary");
+
+        ArgumentCaptor<String> sqlCaptor=ArgumentCaptor.forClass(String.class);
+        verify(jdbc).queryForList(sqlCaptor.capture(),any(Object[].class));
+        assertFalse(sqlCaptor.getValue().contains("p.domain_code,p.process_code,p.process_name"),
+                "scoped_steps must expose process_code exactly once; s.* already contains it");
 
         assertEquals("CONTRACT_ONLY", report.get("auditMode"));
         assertEquals(false, report.get("businessFunctionsExecuted"));

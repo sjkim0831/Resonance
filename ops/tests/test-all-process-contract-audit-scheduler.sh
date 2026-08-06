@@ -59,6 +59,9 @@ audit_sync_body="$(awk '/^sync_process_contract_audit_if_required\(\)/{capture=1
 grep -Fq 'install-all-process-contract-audit.sh --check' <<<"$audit_sync_body" || fail 'audit sync must use installation checksum verification'
 ! grep -Fq 'deploy_path_changed' <<<"$audit_sync_body" || fail 'runtime audit sync must not depend on no-runtime deploy_changed_paths'
 grep -Fq 'cmp -s' "$INSTALLER" || fail 'installation check must compare source and installed bytes'
+grep -Fq 'install -d -m 0750 -o root -g sjkim "$REPORT_PARENT"' "$INSTALLER" || fail 'audit service must be able to traverse the protected report parent'
+grep -Fq 'SYSTEM_TEST_REPORT_SKIP_HTTP_SMOKE=1' <<<"$audit_sync_body" || fail 'deploy must parse the authenticated live report API before success'
+grep -Fq '"$preflight_rc" -ne 0 && "$preflight_rc" -ne 3' <<<"$audit_sync_body" || fail 'truthful BLOCKED audit status must remain deploy-safe'
 
 repair_call_line="$(grep -n '^repair_persistent_build_worktree_ownership$' "$DEPLOY" | head -n1 | cut -d: -f1)"
 no_change_line="$(grep -n 'if \[\[ "$deployed_commit" == "$target_commit" \]\]' "$DEPLOY" | head -n1 | cut -d: -f1)"

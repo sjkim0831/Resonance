@@ -570,7 +570,7 @@ public class ActorProcessGovernanceService {
 
         List<Map<String,Object>> items=jdbc.queryForList("""
             with scoped_steps as (
-              select p.domain_code,p.process_code,p.process_name,p.process_status,p.process_version,p.development_order,
+              select p.domain_code,p.process_name,p.process_status,p.process_version,p.development_order,
                      s.*,coalesce(a.actor_name,s.actor_code) actor_name,coalesce(w.work_type_name,p.domain_code) domain_name,
                      coalesce(w.sort_order,9999) domain_order,to_jsonb(s)::text step_contract_json
                 from framework_process_definition p

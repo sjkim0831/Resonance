@@ -4,7 +4,10 @@ set -Eeuo pipefail
 ROOT="${RESONANCE_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
 AUDIT_ENGINE="${RESONANCE_AUDIT_ENGINE:-$ROOT/ops/scripts/resonance-all-process-contract-audit.mjs}"
 NAMESPACE="${K8S_NAMESPACE:-carbonet-prod}"
-SECRET_NAME="${CARBONET_ADMIN_AUDIT_SECRET:-carbonet-runtime-smoke-admin}"
+# The audit needs both username and password.  carbonet-runtime-smoke-admin is
+# intentionally password-only for legacy webmaster checks, while the shared
+# browser-smoke secret owns the complete read-only admin login contract.
+SECRET_NAME="${CARBONET_ADMIN_AUDIT_SECRET:-carbonet-screen-smoke}"
 
 cleanup() {
   CARBONET_ADMIN_AUDIT_USER=

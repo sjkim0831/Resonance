@@ -26,6 +26,7 @@ if (forbidden.some((pattern) => pattern.test(source))) {
 }
 NODE
 grep -q 'kubectl -n "$NAMESPACE" get secret "$SECRET_NAME"' "$WRAPPER"
+grep -q 'CARBONET_ADMIN_AUDIT_SECRET:-carbonet-screen-smoke' "$WRAPPER"
 grep -q 'READ_ONLY_AUDIT_BUSINESS_PASS_REQUIRES_RECORDED_BUSINESS_RUN_NO_PROMOTION' "$SCRIPT"
 node - "$SCRIPT" <<'NODE'
 const fs = require("fs");

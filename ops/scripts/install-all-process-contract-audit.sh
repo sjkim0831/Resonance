@@ -8,6 +8,7 @@ CONTROL_PLANE_BIN="${RESONANCE_CONTROL_PLANE_BIN:-/opt/resonance-data/control-pl
 REPORT_DIR="${RESONANCE_AUDIT_REPORT_DIR:-/opt/resonance-data/control-plane/reports/process-contract-audit}"
 RUN_DIR="${RESONANCE_AUDIT_RUN_DIR:-/opt/resonance-data/control-plane/run}"
 SYSTEMD_DIR="${RESONANCE_SYSTEMD_DIR:-/etc/systemd/system}"
+REPORT_PARENT="$(dirname "$REPORT_DIR")"
 
 for file in \
   ops/scripts/resonance-all-process-contract-audit.sh \
@@ -45,6 +46,9 @@ bash -n "$ROOT/ops/scripts/run-all-process-contract-audit-hourly.sh"
 node --check "$ROOT/ops/scripts/resonance-all-process-contract-audit.mjs"
 
 sudo -n install -d -m 0755 -o root -g root "$CONTROL_PLANE_BIN"
+# Keep report filenames private while granting the sjkim oneshot service the
+# execute permission required to traverse the shared reports parent.
+sudo -n install -d -m 0750 -o root -g sjkim "$REPORT_PARENT"
 sudo -n install -d -m 0750 -o sjkim -g sjkim "$REPORT_DIR" "$RUN_DIR"
 sudo -n install -m 0750 -o sjkim -g sjkim \
   "$ROOT/ops/scripts/resonance-all-process-contract-audit.sh" \
