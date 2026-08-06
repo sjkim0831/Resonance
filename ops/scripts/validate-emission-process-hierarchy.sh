@@ -15,6 +15,8 @@ require "$HIERARCHY" 'EMISSION_PROJECT_APPROVE: ["승인"'
 require "$HIERARCHY" 'EMISSION_PROJECT_REPORT: ["보고·인증"'
 require "$QUEST" 'step.processCode === EMISSION_END_TO_END_PROCESS_CODE'
 require "$QUEST" '5개 업무 구간 · 7개 절차'
+require "$QUEST" 'const focusedContractSteps = focusedProcessCode'
+require "$QUEST" 'const displayedStepOrder = focusedContractStep?.stepOrder'
 require "$ASSIGNMENT" 'isCustomerVisibleEmissionProcess(process.processCode)'
 require "$ASSIGNMENT" 'emissionPhaseLabel(step.stepCode,en)'
 

@@ -1786,10 +1786,34 @@ export function TaskQuestPanel() {
           item.processCode === focusedWorkflow.processCode,
       )
     : [];
-  const total = focusedTasks.length || Number(data?.summary?.total || 0);
+  const focusedProcessCode =
+    focusedWorkflow?.processCode || task?.processCode || "";
+  const focusedContractSteps = focusedProcessCode
+    ? (data?.processCatalogSteps || [])
+        .filter((step) => step.processCode === focusedProcessCode)
+        .sort((left, right) => Number(left.stepOrder) - Number(right.stepOrder))
+    : [];
+  // Runtime tasks may have been created from an older process revision. Use
+  // the current design contract for progress and import only matching evidence.
+  const focusedContractCodes = new Set(
+    focusedContractSteps.map((step) => step.stepCode),
+  );
+  const contractBackedTasks = focusedContractSteps.length
+    ? focusedTasks.filter((item) =>
+        focusedContractCodes.has(String(item.processStepCode || "")),
+      )
+    : focusedTasks;
+  const total =
+    focusedContractSteps.length ||
+    focusedTasks.length ||
+    Number(data?.summary?.total || 0);
   const completed = focusedTasks.length
-    ? focusedTasks.filter((item) => item.status === "DONE").length
+    ? contractBackedTasks.filter((item) => item.status === "DONE").length
     : Number(data?.summary?.completed || 0);
+  const focusedContractStep = focusedContractSteps.find(
+    (step) => step.stepCode === task?.processStepCode,
+  );
+  const displayedStepOrder = focusedContractStep?.stepOrder || task?.stepOrder;
   const progress =
     total > 0 ? Math.min(100, Math.round((completed / total) * 100)) : 0;
   const workflowTotal = selectedWorkflowItems.length;
@@ -2284,7 +2308,7 @@ export function TaskQuestPanel() {
                         {en ? "Step" : "현재 단계"}
                       </dt>
                       <dd className="font-semibold text-[#16408d]">
-                        {task.stepOrder ? `${task.stepOrder}. ` : ""}
+                        {displayedStepOrder ? `${displayedStepOrder}. ` : ""}
                         {task.name}
                       </dd>
                     </div>
