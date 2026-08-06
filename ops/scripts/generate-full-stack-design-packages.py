@@ -41,7 +41,7 @@ def validate_step(process: dict[str, Any], step: dict[str, Any]) -> None:
         "output_contract", "guide_contract", "nonfunctional_contract",
     )
     required_arrays = (
-        "screen_contract", "command_contract", "api_contract",
+        "command_contract", "api_contract",
         "handoff_contract", "test_contract", "blocker_codes",
     )
     for key in required_objects:
@@ -50,6 +50,8 @@ def validate_step(process: dict[str, Any], step: dict[str, Any]) -> None:
     for key in required_arrays:
         if not isinstance(step.get(key), list):
             fail(f"{identity}: {key} must be an array")
+    if not isinstance(step.get("screen_contract"), (list, dict)):
+        fail(f"{identity}: screen_contract must be an array or path contract object")
     field_contract = step.get("field_contract")
     if not isinstance(field_contract, dict) or field_contract.get("contractType") != "STEP_FIELDS" or not isinstance(field_contract.get("fields"), list):
         fail(f"{identity}: field_contract must be a STEP_FIELDS object")
@@ -118,7 +120,7 @@ def group_fields_by_audience(field_contract: dict[str, Any] | list[dict[str, Any
 
 def screens_for_step(step: dict[str, Any], shared_screens: list[dict[str, Any]]) -> list[dict[str, Any]]:
     screens = step["screen_contract"]
-    if screens:
+    if isinstance(screens, list) and screens:
         return screens
     # An approved API/database-only step has no page or field contract. Do not
     # invent a UI by borrowing a sibling screen merely because a guide route is
