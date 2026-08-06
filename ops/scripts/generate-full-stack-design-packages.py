@@ -489,6 +489,24 @@ def group_fields_by_audience(field_contract: dict[str, Any] | list[dict[str, Any
 
 
 def screens_for_step(step: dict[str, Any], shared_screens: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    # Keep this projector safe when called directly by policy/preflight tests.
+    # The full generator normalizes contracts before this function, while the
+    # lightweight deployment validator intentionally passes a minimal fixture.
+    nonfunctional = step.get("nonfunctional_contract")
+    if not isinstance(nonfunctional, dict):
+        nonfunctional = {}
+    responsive_default = nonfunctional.get("responsive")
+    if not isinstance(responsive_default, dict):
+        responsive_default = {
+            "mobile": "single-column", "tablet": "adaptive-two-column",
+            "desktop": "task-optimized", "noTextOverflow": True,
+        }
+    accessibility_default = nonfunctional.get("accessibility")
+    if not isinstance(accessibility_default, dict):
+        accessibility_default = {
+            "standard": "WCAG 2.1 AA", "keyboard": True,
+            "focus": True, "errorSummary": True,
+        }
     screens = step["screen_contract"]
     if isinstance(screens, list) and screens:
         expanded: list[dict[str, Any]] = []
@@ -509,8 +527,8 @@ def screens_for_step(step: dict[str, Any], shared_screens: list[dict[str, Any]])
                 normalized_screen.setdefault("title", step["business_contract"]["stepName"])
                 normalized_screen.setdefault("purpose", step["business_contract"]["requirement"])
                 normalized_screen.setdefault("exceptions", [])
-                normalized_screen.setdefault("responsive", step["nonfunctional_contract"]["responsive"])
-                normalized_screen.setdefault("accessibility", step["nonfunctional_contract"]["accessibility"])
+                normalized_screen.setdefault("responsive", responsive_default)
+                normalized_screen.setdefault("accessibility", accessibility_default)
                 expanded.append(normalized_screen)
                 continue
             # The compact SDUI contract stores the two governed entry points in
@@ -521,8 +539,8 @@ def screens_for_step(step: dict[str, Any], shared_screens: list[dict[str, Any]])
                     route = screen.get(route_key)
                     if not isinstance(route, str) or not route.startswith("/"):
                         continue
-                    responsive = step["nonfunctional_contract"]["responsive"]
-                    accessibility = step["nonfunctional_contract"]["accessibility"]
+                    responsive = responsive_default
+                    accessibility = accessibility_default
                     expanded.append({
                         "pageCode": f"{step['step_code']}_{audience}_WORKSPACE",
                         "plannedRoute": route,
@@ -563,8 +581,8 @@ def screens_for_step(step: dict[str, Any], shared_screens: list[dict[str, Any]])
             "audience": audience,
             "screenType": "WORKSPACE",
             "exceptions": [],
-            "responsive": step["nonfunctional_contract"]["responsive"],
-            "accessibility": step["nonfunctional_contract"]["accessibility"],
+            "responsive": responsive_default,
+            "accessibility": accessibility_default,
         })
     if projected:
         return projected
@@ -588,8 +606,8 @@ def screens_for_step(step: dict[str, Any], shared_screens: list[dict[str, Any]])
             "audience": audience,
             "screenType": screen.get("screenType", "PROCESS_ORCHESTRATION"),
             "exceptions": screen.get("exceptions", []),
-            "responsive": screen.get("responsive", step["nonfunctional_contract"]["responsive"]),
-            "accessibility": screen.get("accessibility", step["nonfunctional_contract"]["accessibility"]),
+            "responsive": screen.get("responsive", responsive_default),
+            "accessibility": screen.get("accessibility", accessibility_default),
         })
     return projected
 
