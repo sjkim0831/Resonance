@@ -411,11 +411,11 @@ if [[ -n "$tracked_source_changes" ]]; then
   clean_worktree_base="${CARBONET_CLEAN_WORKTREE_BASE:-$source_root/var/deploy-worktrees}"
   clean_worktree="$clean_worktree_base/runtime-build"
   worktree_advanced=false
-  restore_tracked_build_artifacts() {
+  restore_dirty_tracked_build_artifacts() {
     local repository="$1" manifest
     shift
     manifest="$(mktemp /tmp/carbonet-tracked-build-artifacts.XXXXXX)"
-    git -C "$repository" ls-files -z -- "$@" >"$manifest"
+    git -C "$repository" diff --name-only -z -- "$@" >"$manifest"
     if [[ -s "$manifest" ]]; then
       xargs -0 -r git -C "$repository" restore --worktree -- <"$manifest"
     fi
@@ -445,7 +445,7 @@ if [[ -n "$tracked_source_changes" ]]; then
       projects/carbonet-frontend/source/tsconfig.app.tsbuildinfo
       projects/carbonet-frontend/target
     )
-    restore_tracked_build_artifacts "$clean_worktree" "${persistent_build_artifacts[@]}"
+    restore_dirty_tracked_build_artifacts "$clean_worktree" "${persistent_build_artifacts[@]}"
     unexpected_build_changes="$(git -C "$clean_worktree" diff --name-only)"
     if [[ -n "$unexpected_build_changes" ]]; then
       echo "[auto-deploy] refusing deployment: persistent build worktree contains source changes" >&2
@@ -483,7 +483,7 @@ if [[ -n "$tracked_source_changes" ]]; then
   # the retry target. A worktree created or fast-forwarded in this invocation
   # is already clean, so avoid repeating the same restore after advancement.
   if [[ "$worktree_advanced" != "true" ]]; then
-    restore_tracked_build_artifacts "$clean_worktree" \
+    restore_dirty_tracked_build_artifacts "$clean_worktree" \
       apps/carbonet-api/src/main/resources/static/react-app \
       projects/carbonet-assets/static/react-app \
       projects/carbonet-frontend/source/.cache/full-screen-smoke \

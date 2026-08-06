@@ -17,7 +17,8 @@ copy_end = source.index('ROOT_DIR="$clean_worktree"', copy_start)
 copy_block = source[copy_start:copy_end]
 assert '"$PLAN_RUNTIME_REQUIRED" == "true"' in copy_block
 assert "isolated frontend overlay copy skipped for catalog-only work" in copy_block
-assert "restore_tracked_build_artifacts" in source
+assert "restore_dirty_tracked_build_artifacts" in source
+assert 'diff --name-only -z -- "$@"' in source
 assert "xargs -0 -r git" in source
 assert 'if [[ "$worktree_advanced" != "true" ]]' in source
 assert 'for generated_path in "${persistent_build_artifacts[@]}"' not in source
