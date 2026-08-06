@@ -31,3 +31,7 @@ An authenticated webhook target already present in the local Git object store
 is promoted without a second remote fetch. Missing objects always fall back to
 the target-branch fetch, and the ten-minute timer remains the recovery path for
 missed webhook deliveries.
+
+The webhook performs this prefetch as the unprivileged repository owner before
+dispatching the deployment service. A failed prefetch does not suppress the
+deployment; it falls back to the service-owned target-branch fetch.
