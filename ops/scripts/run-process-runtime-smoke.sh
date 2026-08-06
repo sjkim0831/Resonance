@@ -8,7 +8,12 @@ EVIDENCE_DIR="${CARBONET_RUNTIME_SMOKE_EVIDENCE_DIR:-/opt/Resonance/var/test-evi
 PROCESS_CODE="${CARBONET_RUNTIME_SMOKE_PROCESS:-}"
 PROMOTE="${CARBONET_RUNTIME_SMOKE_PROMOTE:-false}"
 if [[ -z "$PASSWORD" ]] && command -v kubectl >/dev/null 2>&1; then
-  PASSWORD="$(kubectl -n "${K8S_NAMESPACE:-carbonet-prod}" get secret carbonet-test-account-switch -o jsonpath='{.data.password}' 2>/dev/null | base64 -d || true)"
+  namespace="${K8S_NAMESPACE:-carbonet-prod}"
+  if [[ "$USER_ID" == "webmaster" ]]; then
+    PASSWORD="$(kubectl -n "$namespace" get secret carbonet-runtime-smoke-admin -o jsonpath='{.data.password}' 2>/dev/null | base64 -d || true)"
+  else
+    PASSWORD="$(kubectl -n "$namespace" get secret carbonet-test-account-switch -o jsonpath='{.data.password}' 2>/dev/null | base64 -d || true)"
+  fi
 fi
 [[ -n "$PASSWORD" ]] || { echo '[process-runtime-smoke] FAIL password not configured' >&2; exit 1; }
 
