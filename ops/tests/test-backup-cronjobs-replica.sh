@@ -3,10 +3,13 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 SCRIPT="$ROOT/ops/scripts/apply-backup-cronjobs.sh"
+FEEDBACK_SCRIPT="$ROOT/ops/scripts/configure-patroni-hot-standby-feedback.sh"
 AUTO_DEPLOY="$ROOT/ops/scripts/auto-deploy-main.sh"
 
 [[ -f "$SCRIPT" ]]
+[[ -f "$FEEDBACK_SCRIPT" ]]
 bash -n "$SCRIPT"
+bash -n "$FEEDBACK_SCRIPT"
 bash -n "$AUTO_DEPLOY"
 
 dump_count="$(grep -c '^[[:space:]]*pg_dump -h postgres-haproxy\.carbonet-prod\.svc\.cluster\.local -p 5433' "$SCRIPT")"
@@ -23,7 +26,14 @@ grep -Fq 'read_cronjob_suspend_state "$HOURLY_CRONJOB"' "$SCRIPT"
 grep -Fq "trap 'restore_captured_suspend_states' EXIT" "$SCRIPT"
 grep -Fq 'restore_captured_suspend_states' "$SCRIPT"
 grep -Fq 'validate_backup_cronjob_contract' "$SCRIPT"
+grep -Fq 'bash "$PATRONI_HOT_STANDBY_FEEDBACK_SCRIPT"' "$SCRIPT"
+grep -Fq 'bash "$PATRONI_HOT_STANDBY_FEEDBACK_SCRIPT" --check' "$SCRIPT"
+grep -Fq 'hot_standby_feedback=$DESIRED_VALUE' "$FEEDBACK_SCRIPT"
+grep -Fq 'MAX_FEEDBACK_XMIN_AGE' "$FEEDBACK_SCRIPT"
+! grep -Eq 'delete pod|rollout restart|switchover' "$FEEDBACK_SCRIPT"
 grep -Fq 'bash ops/scripts/apply-backup-cronjobs.sh --check' "$AUTO_DEPLOY"
 grep -Fq '"${PLAN_RUNTIME_REQUIRED:-false}" == "true"' "$AUTO_DEPLOY"
+
+bash "$ROOT/ops/tests/test-patroni-hot-standby-feedback.sh"
 
 echo '[backup-cronjobs-replica-test] PASS: replica port, suspend preservation and runtime drift gates are wired'

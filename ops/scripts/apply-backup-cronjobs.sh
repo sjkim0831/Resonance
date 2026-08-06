@@ -1,10 +1,17 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+ROOT="${RESONANCE_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
 NAMESPACE="carbonet-prod"
 HOURLY_CRONJOB="postgres-carbonet-hourly-backup"
 DAILY_CRONJOB="postgres-carbonet-daily-backup"
 REPLICA_DUMP_HOST="postgres-haproxy.carbonet-prod.svc.cluster.local"
+PATRONI_HOT_STANDBY_FEEDBACK_SCRIPT="${PATRONI_HOT_STANDBY_FEEDBACK_SCRIPT:-$ROOT/ops/scripts/configure-patroni-hot-standby-feedback.sh}"
+
+[[ -f "$PATRONI_HOT_STANDBY_FEEDBACK_SCRIPT" ]] || {
+  echo "Patroni hot-standby feedback safety script is missing: $PATRONI_HOT_STANDBY_FEEDBACK_SCRIPT" >&2
+  exit 2
+}
 
 read_cronjob_suspend_state() {
   local name="$1" output rc
@@ -72,8 +79,9 @@ validate_backup_cronjob_contract() {
 
 if [[ "${1:-}" == "--check" ]]; then
   [[ $# -eq 1 ]] || { echo 'Usage: apply-backup-cronjobs.sh [--check]' >&2; exit 2; }
+  bash "$PATRONI_HOT_STANDBY_FEEDBACK_SCRIPT" --check
   validate_backup_cronjob_contract
-  echo '[backup-cronjobs] PASS storage paths and logical backups use replica port 5433'
+  echo '[backup-cronjobs] PASS Patroni feedback safety, storage paths and logical backups use replica port 5433'
   exit 0
 fi
 [[ $# -eq 0 ]] || { echo 'Usage: apply-backup-cronjobs.sh [--check]' >&2; exit 2; }
@@ -86,6 +94,11 @@ hourly_suspend_state="$(read_cronjob_suspend_state "$HOURLY_CRONJOB")"
 daily_suspend_state="$(read_cronjob_suspend_state "$DAILY_CRONJOB")"
 suspend_restore_pending=true
 trap 'restore_captured_suspend_states' EXIT
+
+# Fail before applying either CronJob unless all three Patroni members have
+# dynamically reloaded hot_standby_feedback and replication remains healthy.
+# Captured manual suspend states are restored by the EXIT trap on any failure.
+bash "$PATRONI_HOT_STANDBY_FEEDBACK_SCRIPT"
 
 # HostPath DirectoryOrCreate paths are created as root:root 0755. Backup Pods
 # deliberately run as UID/GID 1000, so prepare every writable root before the
