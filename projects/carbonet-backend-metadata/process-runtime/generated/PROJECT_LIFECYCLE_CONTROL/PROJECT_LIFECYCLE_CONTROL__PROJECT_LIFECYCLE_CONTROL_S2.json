@@ -11,35 +11,57 @@
     "code": "PROJECT_LIFECYCLE_CONTROL_S2",
     "version": 2,
     "actor": {
+      "schemaVersion": 1,
+      "contractType": "STEP_ACTOR_AUTHORITY",
       "actorCode": "COMPANY_MANAGER",
       "ownerActorCode": "COMPANY_MANAGER",
-      "tenantIsolation": true,
-      "projectIsolation": true,
-      "delegationChecked": true,
-      "segregationOfDuties": true
+      "scope": "TENANT_PROJECT",
+      "policy": {
+        "tenantIsolation": true,
+        "projectIsolation": true,
+        "delegationChecked": true,
+        "segregationOfDuties": true
+      },
+      "permissions": [],
+      "delegation": {},
+      "extensions": {}
     },
     "business": {
-      "goal": "프로젝트 생명주기 전환을 권한·보존·미결업무 기준으로 통제한다.",
-      "slaHours": 24,
-      "stepName": "보존·잠금·영향평가",
-      "riskLevel": "HIGH",
+      "schemaVersion": 1,
+      "contractType": "STEP_BUSINESS",
       "domainCode": "PORTFOLIO",
       "processName": "프로젝트 종료·보관·재개·취소",
+      "stepName": "보존·잠금·영향평가",
+      "goal": "프로젝트 생명주기 전환을 권한·보존·미결업무 기준으로 통제한다.",
       "requirement": "보존·잠금·영향평가 화면·API·DB 계약은 테넌트와 프로젝트 경계를 포함하고 실패 시 이전 상태로 복구 가능해야 한다.",
       "completionRule": "보존·잠금·영향평가의 필수 입력, 권한, 증적, 상태 전이가 모두 검증되어야 한다.",
-      "regulationRefs": "전자기록 보존 정책, 개인정보보호법"
+      "riskLevel": "HIGH",
+      "slaHours": 24,
+      "regulationRefs": "전자기록 보존 정책, 개인정보보호법",
+      "preconditions": [],
+      "deliverables": [],
+      "exceptions": [],
+      "policy": {},
+      "extensions": {}
     },
     "transition": {
-      "toState": "STEP_2_COMPLETED",
-      "stepType": "TASK",
-      "fromState": "STEP_1_COMPLETED",
-      "stepOrder": 2,
+      "schemaVersion": 1,
+      "contractType": "STEP_TRANSITION",
       "commandCode": "PROJECT_LIFECYCLE_CONTROL_EXECUTE_2",
-      "auditRequired": true,
-      "completionRule": "보존·잠금·영향평가의 필수 입력, 권한, 증적, 상태 전이가 모두 검증되어야 한다.",
-      "optimisticLock": true,
+      "fromState": "STEP_1_COMPLETED",
+      "toState": "STEP_2_COMPLETED",
+      "stepOrder": 2,
+      "stepType": "TASK",
       "parentStepCode": null,
-      "idempotencyRequired": true
+      "completionRule": "보존·잠금·영향평가의 필수 입력, 권한, 증적, 상태 전이가 모두 검증되어야 한다.",
+      "policy": {
+        "auditRequired": true,
+        "optimisticLock": true,
+        "idempotencyRequired": true
+      },
+      "guards": [],
+      "sideEffects": [],
+      "extensions": {}
     },
     "input": {
       "tenantId": "required",
@@ -56,18 +78,26 @@
       "nextTaskCreated": true
     },
     "guide": {
+      "schemaVersion": 1,
+      "contractType": "STEP_GUIDE",
+      "processCode": "PROJECT_LIFECYCLE_CONTROL",
+      "stepCode": "PROJECT_LIFECYCLE_CONTROL_S2",
+      "stepOrder": 2,
+      "workTypeCode": "PORTFOLIO",
+      "actorCode": "COMPANY_MANAGER",
       "title": "보존·잠금·영향평가",
       "purpose": "보존·잠금·영향평가 화면·API·DB 계약은 테넌트와 프로젝트 경계를 포함하고 실패 시 이전 상태로 복구 가능해야 한다.",
-      "stepCode": "PROJECT_LIFECYCLE_CONTROL_S2",
-      "userPath": null,
-      "actorCode": "COMPANY_MANAGER",
-      "adminPath": null,
-      "stepOrder": 2,
-      "processCode": "PROJECT_LIFECYCLE_CONTROL",
-      "nextStepCode": "PROJECT_LIFECYCLE_CONTROL_S3",
-      "workTypeCode": "PORTFOLIO",
       "entryCondition": "STEP_1_COMPLETED",
-      "completionCondition": "보존·잠금·영향평가의 필수 입력, 권한, 증적, 상태 전이가 모두 검증되어야 한다."
+      "completionCondition": "보존·잠금·영향평가의 필수 입력, 권한, 증적, 상태 전이가 모두 검증되어야 한다.",
+      "userPath": "/generated/project-lifecycle-control/project-lifecycle-control-s2",
+      "adminPath": "/admin/generated/project-lifecycle-control/project-lifecycle-control-s2",
+      "relatedBusinessRoute": null,
+      "nextStepCode": "PROJECT_LIFECYCLE_CONTROL_S3",
+      "nextAction": "STEP_2_COMPLETED",
+      "actions": [],
+      "help": {},
+      "policy": {},
+      "extensions": {}
     }
   },
   "frontend": {
@@ -113,7 +143,8 @@
             "sourceColumn": "tenant_id",
             "mappingStatus": "DB_RESOLVED",
             "permissionCode": "COMPANY_MANAGER:ADMIN",
-            "evidenceRequired": false
+            "evidenceRequired": false,
+            "code": "tenantId"
           },
           {
             "route": "/admin/planned/emission/project-lifecycle-control/project-lifecycle-control-s2",
@@ -136,7 +167,8 @@
             "sourceColumn": "project_id",
             "mappingStatus": "DB_RESOLVED",
             "permissionCode": "COMPANY_MANAGER:ADMIN",
-            "evidenceRequired": false
+            "evidenceRequired": false,
+            "code": "projectId"
           },
           {
             "route": "/admin/planned/emission/project-lifecycle-control/project-lifecycle-control-s2",
@@ -161,7 +193,8 @@
             "sourceColumn": "process_code",
             "mappingStatus": "CONTEXT",
             "permissionCode": "COMPANY_MANAGER:ADMIN",
-            "evidenceRequired": false
+            "evidenceRequired": false,
+            "code": "processCode"
           },
           {
             "route": "/admin/planned/emission/project-lifecycle-control/project-lifecycle-control-s2",
@@ -186,7 +219,8 @@
             "sourceColumn": "step_code",
             "mappingStatus": "CONTEXT",
             "permissionCode": "COMPANY_MANAGER:ADMIN",
-            "evidenceRequired": false
+            "evidenceRequired": false,
+            "code": "stepCode"
           },
           {
             "route": "/admin/planned/emission/project-lifecycle-control/project-lifecycle-control-s2",
@@ -211,7 +245,8 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "permissionCode": "COMPANY_MANAGER:ADMIN",
-            "evidenceRequired": false
+            "evidenceRequired": false,
+            "code": "recordId"
           },
           {
             "route": "/admin/planned/emission/project-lifecycle-control/project-lifecycle-control-s2",
@@ -234,7 +269,8 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "permissionCode": "COMPANY_MANAGER:ADMIN",
-            "evidenceRequired": false
+            "evidenceRequired": false,
+            "code": "statusCode"
           },
           {
             "route": "/admin/planned/emission/project-lifecycle-control/project-lifecycle-control-s2",
@@ -262,7 +298,8 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "permissionCode": "COMPANY_MANAGER:ADMIN",
-            "evidenceRequired": false
+            "evidenceRequired": false,
+            "code": "ownerActorCode"
           },
           {
             "route": "/admin/planned/emission/project-lifecycle-control/project-lifecycle-control-s2",
@@ -285,7 +322,8 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "permissionCode": "COMPANY_MANAGER:ADMIN",
-            "evidenceRequired": false
+            "evidenceRequired": false,
+            "code": "rowVersion"
           },
           {
             "route": "/admin/planned/emission/project-lifecycle-control/project-lifecycle-control-s2",
@@ -310,7 +348,8 @@
             "sourceColumn": "created_at",
             "mappingStatus": "DB_RESOLVED",
             "permissionCode": "COMPANY_MANAGER:ADMIN",
-            "evidenceRequired": false
+            "evidenceRequired": false,
+            "code": "createdAt"
           },
           {
             "route": "/admin/planned/emission/project-lifecycle-control/project-lifecycle-control-s2",
@@ -335,7 +374,8 @@
             "sourceColumn": "updated_at",
             "mappingStatus": "DB_RESOLVED",
             "permissionCode": "COMPANY_MANAGER:ADMIN",
-            "evidenceRequired": false
+            "evidenceRequired": false,
+            "code": "updatedAt"
           },
           {
             "route": "/admin/planned/emission/project-lifecycle-control/project-lifecycle-control-s2",
@@ -358,7 +398,8 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "permissionCode": "COMPANY_MANAGER:ADMIN",
-            "evidenceRequired": false
+            "evidenceRequired": false,
+            "code": "evidenceCount"
           },
           {
             "route": "/admin/planned/emission/project-lifecycle-control/project-lifecycle-control-s2",
@@ -386,7 +427,8 @@
             "sourceColumn": "reporting_year",
             "mappingStatus": "DB_RESOLVED",
             "permissionCode": "COMPANY_MANAGER:ADMIN",
-            "evidenceRequired": false
+            "evidenceRequired": false,
+            "code": "reportingYear"
           },
           {
             "route": "/admin/planned/emission/project-lifecycle-control/project-lifecycle-control-s2",
@@ -414,7 +456,8 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "permissionCode": "COMPANY_MANAGER:ADMIN",
-            "evidenceRequired": false
+            "evidenceRequired": false,
+            "code": "organizationId"
           },
           {
             "route": "/admin/planned/emission/project-lifecycle-control/project-lifecycle-control-s2",
@@ -442,7 +485,8 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "permissionCode": "COMPANY_MANAGER:ADMIN",
-            "evidenceRequired": false
+            "evidenceRequired": false,
+            "code": "siteId"
           },
           {
             "route": "/admin/planned/emission/project-lifecycle-control/project-lifecycle-control-s2",
@@ -470,7 +514,8 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "permissionCode": "COMPANY_MANAGER:ADMIN",
-            "evidenceRequired": false
+            "evidenceRequired": false,
+            "code": "facilityId"
           },
           {
             "route": "/admin/planned/emission/project-lifecycle-control/project-lifecycle-control-s2",
@@ -498,7 +543,8 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "permissionCode": "COMPANY_MANAGER:ADMIN",
-            "evidenceRequired": false
+            "evidenceRequired": false,
+            "code": "scopeCode"
           },
           {
             "route": "/admin/planned/emission/project-lifecycle-control/project-lifecycle-control-s2",
@@ -524,7 +570,8 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "permissionCode": "COMPANY_MANAGER:ADMIN",
-            "evidenceRequired": false
+            "evidenceRequired": false,
+            "code": "activityValue"
           },
           {
             "route": "/admin/planned/emission/project-lifecycle-control/project-lifecycle-control-s2",
@@ -552,7 +599,8 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "permissionCode": "COMPANY_MANAGER:ADMIN",
-            "evidenceRequired": false
+            "evidenceRequired": false,
+            "code": "unitCode"
           },
           {
             "route": "/admin/planned/emission/project-lifecycle-control/project-lifecycle-control-s2",
@@ -580,7 +628,8 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "permissionCode": "COMPANY_MANAGER:ADMIN",
-            "evidenceRequired": false
+            "evidenceRequired": false,
+            "code": "factorId"
           },
           {
             "route": "/admin/planned/emission/project-lifecycle-control/project-lifecycle-control-s2",
@@ -606,7 +655,8 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "permissionCode": "COMPANY_MANAGER:ADMIN",
-            "evidenceRequired": false
+            "evidenceRequired": false,
+            "code": "emissionValue"
           },
           {
             "route": "/admin/planned/emission/project-lifecycle-control/project-lifecycle-control-s2",
@@ -634,7 +684,8 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "permissionCode": "COMPANY_MANAGER:ADMIN",
-            "evidenceRequired": false
+            "evidenceRequired": false,
+            "code": "qualityStatus"
           },
           {
             "route": "/admin/planned/emission/project-lifecycle-control/project-lifecycle-control-s2",
@@ -662,7 +713,8 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "permissionCode": "COMPANY_MANAGER:ADMIN",
-            "evidenceRequired": false
+            "evidenceRequired": false,
+            "code": "taskComment"
           },
           {
             "route": "/admin/planned/emission/project-lifecycle-control/project-lifecycle-control-s2",
@@ -687,7 +739,8 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "permissionCode": "COMPANY_MANAGER:ADMIN",
-            "evidenceRequired": false
+            "evidenceRequired": false,
+            "code": "dueAt"
           },
           {
             "route": "/admin/planned/emission/project-lifecycle-control/project-lifecycle-control-s2",
@@ -715,7 +768,8 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "permissionCode": "COMPANY_MANAGER:ADMIN",
-            "evidenceRequired": false
+            "evidenceRequired": false,
+            "code": "nextActorCode"
           }
         ],
         "commands": [
@@ -726,7 +780,8 @@
             "resultState": "STEP_2_COMPLETED",
             "auditRequired": true,
             "validationRequired": true,
-            "serverAuthorization": true
+            "serverAuthorization": true,
+            "idempotencyRequired": true
           }
         ],
         "states": {
@@ -795,7 +850,8 @@
             "sourceColumn": "tenant_id",
             "mappingStatus": "DB_RESOLVED",
             "permissionCode": "COMPANY_MANAGER:USER",
-            "evidenceRequired": false
+            "evidenceRequired": false,
+            "code": "tenantId"
           },
           {
             "route": "/planned/emission/project-lifecycle-control/project-lifecycle-control-s2",
@@ -818,7 +874,8 @@
             "sourceColumn": "project_id",
             "mappingStatus": "DB_RESOLVED",
             "permissionCode": "COMPANY_MANAGER:USER",
-            "evidenceRequired": false
+            "evidenceRequired": false,
+            "code": "projectId"
           },
           {
             "route": "/planned/emission/project-lifecycle-control/project-lifecycle-control-s2",
@@ -843,7 +900,8 @@
             "sourceColumn": "process_code",
             "mappingStatus": "CONTEXT",
             "permissionCode": "COMPANY_MANAGER:USER",
-            "evidenceRequired": false
+            "evidenceRequired": false,
+            "code": "processCode"
           },
           {
             "route": "/planned/emission/project-lifecycle-control/project-lifecycle-control-s2",
@@ -868,7 +926,8 @@
             "sourceColumn": "step_code",
             "mappingStatus": "CONTEXT",
             "permissionCode": "COMPANY_MANAGER:USER",
-            "evidenceRequired": false
+            "evidenceRequired": false,
+            "code": "stepCode"
           },
           {
             "route": "/planned/emission/project-lifecycle-control/project-lifecycle-control-s2",
@@ -893,7 +952,8 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "permissionCode": "COMPANY_MANAGER:USER",
-            "evidenceRequired": false
+            "evidenceRequired": false,
+            "code": "recordId"
           },
           {
             "route": "/planned/emission/project-lifecycle-control/project-lifecycle-control-s2",
@@ -916,7 +976,8 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "permissionCode": "COMPANY_MANAGER:USER",
-            "evidenceRequired": false
+            "evidenceRequired": false,
+            "code": "statusCode"
           },
           {
             "route": "/planned/emission/project-lifecycle-control/project-lifecycle-control-s2",
@@ -944,7 +1005,8 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "permissionCode": "COMPANY_MANAGER:USER",
-            "evidenceRequired": false
+            "evidenceRequired": false,
+            "code": "ownerActorCode"
           },
           {
             "route": "/planned/emission/project-lifecycle-control/project-lifecycle-control-s2",
@@ -967,7 +1029,8 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "permissionCode": "COMPANY_MANAGER:USER",
-            "evidenceRequired": false
+            "evidenceRequired": false,
+            "code": "rowVersion"
           },
           {
             "route": "/planned/emission/project-lifecycle-control/project-lifecycle-control-s2",
@@ -992,7 +1055,8 @@
             "sourceColumn": "created_at",
             "mappingStatus": "DB_RESOLVED",
             "permissionCode": "COMPANY_MANAGER:USER",
-            "evidenceRequired": false
+            "evidenceRequired": false,
+            "code": "createdAt"
           },
           {
             "route": "/planned/emission/project-lifecycle-control/project-lifecycle-control-s2",
@@ -1017,7 +1081,8 @@
             "sourceColumn": "updated_at",
             "mappingStatus": "DB_RESOLVED",
             "permissionCode": "COMPANY_MANAGER:USER",
-            "evidenceRequired": false
+            "evidenceRequired": false,
+            "code": "updatedAt"
           },
           {
             "route": "/planned/emission/project-lifecycle-control/project-lifecycle-control-s2",
@@ -1040,7 +1105,8 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "permissionCode": "COMPANY_MANAGER:USER",
-            "evidenceRequired": false
+            "evidenceRequired": false,
+            "code": "evidenceCount"
           },
           {
             "route": "/planned/emission/project-lifecycle-control/project-lifecycle-control-s2",
@@ -1068,7 +1134,8 @@
             "sourceColumn": "reporting_year",
             "mappingStatus": "DB_RESOLVED",
             "permissionCode": "COMPANY_MANAGER:USER",
-            "evidenceRequired": false
+            "evidenceRequired": false,
+            "code": "reportingYear"
           },
           {
             "route": "/planned/emission/project-lifecycle-control/project-lifecycle-control-s2",
@@ -1096,7 +1163,8 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "permissionCode": "COMPANY_MANAGER:USER",
-            "evidenceRequired": false
+            "evidenceRequired": false,
+            "code": "organizationId"
           },
           {
             "route": "/planned/emission/project-lifecycle-control/project-lifecycle-control-s2",
@@ -1124,7 +1192,8 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "permissionCode": "COMPANY_MANAGER:USER",
-            "evidenceRequired": false
+            "evidenceRequired": false,
+            "code": "siteId"
           },
           {
             "route": "/planned/emission/project-lifecycle-control/project-lifecycle-control-s2",
@@ -1152,7 +1221,8 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "permissionCode": "COMPANY_MANAGER:USER",
-            "evidenceRequired": false
+            "evidenceRequired": false,
+            "code": "facilityId"
           },
           {
             "route": "/planned/emission/project-lifecycle-control/project-lifecycle-control-s2",
@@ -1180,7 +1250,8 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "permissionCode": "COMPANY_MANAGER:USER",
-            "evidenceRequired": false
+            "evidenceRequired": false,
+            "code": "scopeCode"
           },
           {
             "route": "/planned/emission/project-lifecycle-control/project-lifecycle-control-s2",
@@ -1206,7 +1277,8 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "permissionCode": "COMPANY_MANAGER:USER",
-            "evidenceRequired": false
+            "evidenceRequired": false,
+            "code": "activityValue"
           },
           {
             "route": "/planned/emission/project-lifecycle-control/project-lifecycle-control-s2",
@@ -1234,7 +1306,8 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "permissionCode": "COMPANY_MANAGER:USER",
-            "evidenceRequired": false
+            "evidenceRequired": false,
+            "code": "unitCode"
           },
           {
             "route": "/planned/emission/project-lifecycle-control/project-lifecycle-control-s2",
@@ -1262,7 +1335,8 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "permissionCode": "COMPANY_MANAGER:USER",
-            "evidenceRequired": false
+            "evidenceRequired": false,
+            "code": "factorId"
           },
           {
             "route": "/planned/emission/project-lifecycle-control/project-lifecycle-control-s2",
@@ -1288,7 +1362,8 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "permissionCode": "COMPANY_MANAGER:USER",
-            "evidenceRequired": false
+            "evidenceRequired": false,
+            "code": "emissionValue"
           },
           {
             "route": "/planned/emission/project-lifecycle-control/project-lifecycle-control-s2",
@@ -1316,7 +1391,8 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "permissionCode": "COMPANY_MANAGER:USER",
-            "evidenceRequired": false
+            "evidenceRequired": false,
+            "code": "qualityStatus"
           },
           {
             "route": "/planned/emission/project-lifecycle-control/project-lifecycle-control-s2",
@@ -1344,7 +1420,8 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "permissionCode": "COMPANY_MANAGER:USER",
-            "evidenceRequired": false
+            "evidenceRequired": false,
+            "code": "taskComment"
           },
           {
             "route": "/planned/emission/project-lifecycle-control/project-lifecycle-control-s2",
@@ -1369,7 +1446,8 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "permissionCode": "COMPANY_MANAGER:USER",
-            "evidenceRequired": false
+            "evidenceRequired": false,
+            "code": "dueAt"
           },
           {
             "route": "/planned/emission/project-lifecycle-control/project-lifecycle-control-s2",
@@ -1397,7 +1475,8 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "permissionCode": "COMPANY_MANAGER:USER",
-            "evidenceRequired": false
+            "evidenceRequired": false,
+            "code": "nextActorCode"
           }
         ],
         "commands": [
@@ -1408,7 +1487,8 @@
             "resultState": "STEP_2_COMPLETED",
             "auditRequired": true,
             "validationRequired": true,
-            "serverAuthorization": true
+            "serverAuthorization": true,
+            "idempotencyRequired": true
           }
         ],
         "states": {
@@ -1469,17 +1549,27 @@
         "resultState": "STEP_2_COMPLETED",
         "auditRequired": true,
         "validationRequired": true,
-        "serverAuthorization": true
+        "serverAuthorization": true,
+        "idempotencyRequired": true
       }
     ],
     "authorization": {
+      "schemaVersion": 1,
+      "contractType": "STEP_ACTOR_AUTHORITY",
       "actorCode": "COMPANY_MANAGER",
       "ownerActorCode": "COMPANY_MANAGER",
-      "tenantIsolation": true,
-      "projectIsolation": true,
-      "delegationChecked": true,
-      "segregationOfDuties": true
+      "scope": "TENANT_PROJECT",
+      "policy": {
+        "tenantIsolation": true,
+        "projectIsolation": true,
+        "delegationChecked": true,
+        "segregationOfDuties": true
+      },
+      "permissions": [],
+      "delegation": {},
+      "extensions": {}
     },
+    "handoffPolicy": {},
     "handoffs": [
       {
         "failure": {
@@ -1537,6 +1627,8 @@
     ]
   },
   "database": {
+    "transactional": true,
+    "migrationRequired": true,
     "mappings": [
       {
         "fields": [
@@ -1576,32 +1668,24 @@
             "required": false,
             "fieldCode": "recordId",
             "apiProperty": "recordId",
-            "sourceTable": null,
-            "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT"
           },
           {
             "required": true,
             "fieldCode": "statusCode",
             "apiProperty": "statusCode",
-            "sourceTable": null,
-            "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT"
           },
           {
             "required": true,
             "fieldCode": "ownerActorCode",
             "apiProperty": "ownerActorCode",
-            "sourceTable": null,
-            "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT"
           },
           {
             "required": true,
             "fieldCode": "rowVersion",
             "apiProperty": "rowVersion",
-            "sourceTable": null,
-            "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT"
           },
           {
@@ -1624,8 +1708,6 @@
             "required": false,
             "fieldCode": "evidenceCount",
             "apiProperty": "evidenceCount",
-            "sourceTable": null,
-            "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT"
           },
           {
@@ -1640,96 +1722,72 @@
             "required": true,
             "fieldCode": "organizationId",
             "apiProperty": "organizationId",
-            "sourceTable": null,
-            "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT"
           },
           {
             "required": true,
             "fieldCode": "siteId",
             "apiProperty": "siteId",
-            "sourceTable": null,
-            "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT"
           },
           {
             "required": false,
             "fieldCode": "facilityId",
             "apiProperty": "facilityId",
-            "sourceTable": null,
-            "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT"
           },
           {
             "required": true,
             "fieldCode": "scopeCode",
             "apiProperty": "scopeCode",
-            "sourceTable": null,
-            "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT"
           },
           {
             "required": false,
             "fieldCode": "activityValue",
             "apiProperty": "activityValue",
-            "sourceTable": null,
-            "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT"
           },
           {
             "required": false,
             "fieldCode": "unitCode",
             "apiProperty": "unitCode",
-            "sourceTable": null,
-            "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT"
           },
           {
             "required": false,
             "fieldCode": "factorId",
             "apiProperty": "factorId",
-            "sourceTable": null,
-            "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT"
           },
           {
             "required": false,
             "fieldCode": "emissionValue",
             "apiProperty": "emissionValue",
-            "sourceTable": null,
-            "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT"
           },
           {
             "required": true,
             "fieldCode": "qualityStatus",
             "apiProperty": "qualityStatus",
-            "sourceTable": null,
-            "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT"
           },
           {
             "required": false,
             "fieldCode": "taskComment",
             "apiProperty": "taskComment",
-            "sourceTable": null,
-            "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT"
           },
           {
             "required": false,
             "fieldCode": "dueAt",
             "apiProperty": "dueAt",
-            "sourceTable": null,
-            "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT"
           },
           {
             "required": false,
             "fieldCode": "nextActorCode",
             "apiProperty": "nextActorCode",
-            "sourceTable": null,
-            "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT"
           }
         ],
@@ -1775,32 +1833,24 @@
             "required": false,
             "fieldCode": "recordId",
             "apiProperty": "recordId",
-            "sourceTable": null,
-            "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT"
           },
           {
             "required": true,
             "fieldCode": "statusCode",
             "apiProperty": "statusCode",
-            "sourceTable": null,
-            "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT"
           },
           {
             "required": true,
             "fieldCode": "ownerActorCode",
             "apiProperty": "ownerActorCode",
-            "sourceTable": null,
-            "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT"
           },
           {
             "required": true,
             "fieldCode": "rowVersion",
             "apiProperty": "rowVersion",
-            "sourceTable": null,
-            "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT"
           },
           {
@@ -1823,8 +1873,6 @@
             "required": false,
             "fieldCode": "evidenceCount",
             "apiProperty": "evidenceCount",
-            "sourceTable": null,
-            "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT"
           },
           {
@@ -1839,96 +1887,72 @@
             "required": true,
             "fieldCode": "organizationId",
             "apiProperty": "organizationId",
-            "sourceTable": null,
-            "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT"
           },
           {
             "required": true,
             "fieldCode": "siteId",
             "apiProperty": "siteId",
-            "sourceTable": null,
-            "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT"
           },
           {
             "required": false,
             "fieldCode": "facilityId",
             "apiProperty": "facilityId",
-            "sourceTable": null,
-            "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT"
           },
           {
             "required": true,
             "fieldCode": "scopeCode",
             "apiProperty": "scopeCode",
-            "sourceTable": null,
-            "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT"
           },
           {
             "required": false,
             "fieldCode": "activityValue",
             "apiProperty": "activityValue",
-            "sourceTable": null,
-            "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT"
           },
           {
             "required": false,
             "fieldCode": "unitCode",
             "apiProperty": "unitCode",
-            "sourceTable": null,
-            "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT"
           },
           {
             "required": false,
             "fieldCode": "factorId",
             "apiProperty": "factorId",
-            "sourceTable": null,
-            "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT"
           },
           {
             "required": false,
             "fieldCode": "emissionValue",
             "apiProperty": "emissionValue",
-            "sourceTable": null,
-            "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT"
           },
           {
             "required": true,
             "fieldCode": "qualityStatus",
             "apiProperty": "qualityStatus",
-            "sourceTable": null,
-            "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT"
           },
           {
             "required": false,
             "fieldCode": "taskComment",
             "apiProperty": "taskComment",
-            "sourceTable": null,
-            "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT"
           },
           {
             "required": false,
             "fieldCode": "dueAt",
             "apiProperty": "dueAt",
-            "sourceTable": null,
-            "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT"
           },
           {
             "required": false,
             "fieldCode": "nextActorCode",
             "apiProperty": "nextActorCode",
-            "sourceTable": null,
-            "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT"
           }
         ],
@@ -1937,9 +1961,7 @@
         "primaryEntity": "emission_project_registry"
       }
     ],
-    "transactional": true,
     "schemaSetVersion": 2,
-    "migrationRequired": true,
     "primaryEntities": [
       "emission_project_registry"
     ],
@@ -2165,21 +2187,16 @@
     "evidenceRequired": true
   },
   "nonfunctional": {
-    "recovery": {
-      "retry": "idempotent-only",
-      "resumeFromLastVerifiedState": true
-    },
+    "schemaVersion": 1,
+    "contractType": "STEP_NONFUNCTIONAL",
     "security": {
-      "audit": true,
       "tenantIsolation": true,
       "projectIsolation": true,
-      "serverAuthorization": true
-    },
-    "responsive": {
-      "mobile": "single-column",
-      "tablet": "adaptive-two-column",
-      "desktop": "task-optimized",
-      "noTextOverflow": true
+      "serverAuthorization": true,
+      "segregationOfDuties": true,
+      "rateLimitRequired": false,
+      "secretLoggingForbidden": true,
+      "sensitiveValueMasking": true
     },
     "performance": {
       "targetP95Ms": 500,
@@ -2187,14 +2204,40 @@
       "searchIndexRequired": true
     },
     "accessibility": {
-      "focus": true,
-      "keyboard": true,
       "standard": "WCAG 2.1 AA",
+      "keyboard": true,
+      "focus": true,
       "errorSummary": true
-    }
+    },
+    "responsive": {
+      "mobile": "single-column",
+      "tablet": "adaptive-two-column",
+      "desktop": "task-optimized",
+      "noTextOverflow": true
+    },
+    "recovery": {
+      "retry": "idempotent-only",
+      "resumeFromLastVerifiedState": true,
+      "idempotencyRequired": true
+    },
+    "audit": {
+      "required": true,
+      "actorRecorded": true,
+      "beforeAfterRecorded": true,
+      "correlationIdRequired": true
+    },
+    "sla": {
+      "configured": true,
+      "targetHours": 24,
+      "timerStartsAt": "STEP_ASSIGNED",
+      "timerStopsAt": "STEP_COMPLETED",
+      "breachAlertRequired": true
+    },
+    "policy": {},
+    "extensions": {}
   },
-  "sourceHash": "c56e44226363ea9bdc89ffc645003f70cce4410fcd5e1bbbb3bc1ba233ad8a2e",
+  "sourceHash": "1445ff20b1a267195bae46a6ee5868cd",
   "approvalStatus": "APPROVED",
   "generationStatus": "GENERATED",
-  "packageHash": "e20eea1e44d8509b32a7faae6b35cfddc8771e640571e271b54413f13f5f2e69"
+  "packageHash": "37b20106af982411fb01c135353efeaa79e9def9192282a53050391444f7bbd0"
 }

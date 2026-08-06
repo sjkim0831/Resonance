@@ -11,35 +11,57 @@
     "code": "PROJECT_LIFECYCLE_CONTROL_S3",
     "version": 2,
     "actor": {
+      "schemaVersion": 1,
+      "contractType": "STEP_ACTOR_AUTHORITY",
       "actorCode": "AUDITOR",
       "ownerActorCode": "COMPANY_MANAGER",
-      "tenantIsolation": true,
-      "projectIsolation": true,
-      "delegationChecked": true,
-      "segregationOfDuties": true
+      "scope": "TENANT_PROJECT",
+      "policy": {
+        "tenantIsolation": true,
+        "projectIsolation": true,
+        "delegationChecked": true,
+        "segregationOfDuties": true
+      },
+      "permissions": [],
+      "delegation": {},
+      "extensions": {}
     },
     "business": {
-      "goal": "프로젝트 생명주기 전환을 권한·보존·미결업무 기준으로 통제한다.",
-      "slaHours": 24,
-      "stepName": "권한분리 승인",
-      "riskLevel": "HIGH",
+      "schemaVersion": 1,
+      "contractType": "STEP_BUSINESS",
       "domainCode": "PORTFOLIO",
       "processName": "프로젝트 종료·보관·재개·취소",
+      "stepName": "권한분리 승인",
+      "goal": "프로젝트 생명주기 전환을 권한·보존·미결업무 기준으로 통제한다.",
       "requirement": "권한분리 승인 화면·API·DB 계약은 테넌트와 프로젝트 경계를 포함하고 실패 시 이전 상태로 복구 가능해야 한다.",
       "completionRule": "권한분리 승인의 필수 입력, 권한, 증적, 상태 전이가 모두 검증되어야 한다.",
-      "regulationRefs": "전자기록 보존 정책, 개인정보보호법"
+      "riskLevel": "HIGH",
+      "slaHours": 24,
+      "regulationRefs": "전자기록 보존 정책, 개인정보보호법",
+      "preconditions": [],
+      "deliverables": [],
+      "exceptions": [],
+      "policy": {},
+      "extensions": {}
     },
     "transition": {
-      "toState": "STEP_3_COMPLETED",
-      "stepType": "DECISION",
-      "fromState": "STEP_2_COMPLETED",
-      "stepOrder": 3,
+      "schemaVersion": 1,
+      "contractType": "STEP_TRANSITION",
       "commandCode": "PROJECT_LIFECYCLE_CONTROL_EXECUTE_3",
-      "auditRequired": true,
-      "completionRule": "권한분리 승인의 필수 입력, 권한, 증적, 상태 전이가 모두 검증되어야 한다.",
-      "optimisticLock": true,
+      "fromState": "STEP_2_COMPLETED",
+      "toState": "STEP_3_COMPLETED",
+      "stepOrder": 3,
+      "stepType": "DECISION",
       "parentStepCode": null,
-      "idempotencyRequired": true
+      "completionRule": "권한분리 승인의 필수 입력, 권한, 증적, 상태 전이가 모두 검증되어야 한다.",
+      "policy": {
+        "auditRequired": true,
+        "optimisticLock": true,
+        "idempotencyRequired": true
+      },
+      "guards": [],
+      "sideEffects": [],
+      "extensions": {}
     },
     "input": {
       "tenantId": "required",
@@ -56,18 +78,26 @@
       "nextTaskCreated": true
     },
     "guide": {
+      "schemaVersion": 1,
+      "contractType": "STEP_GUIDE",
+      "processCode": "PROJECT_LIFECYCLE_CONTROL",
+      "stepCode": "PROJECT_LIFECYCLE_CONTROL_S3",
+      "stepOrder": 3,
+      "workTypeCode": "PORTFOLIO",
+      "actorCode": "AUDITOR",
       "title": "권한분리 승인",
       "purpose": "권한분리 승인 화면·API·DB 계약은 테넌트와 프로젝트 경계를 포함하고 실패 시 이전 상태로 복구 가능해야 한다.",
-      "stepCode": "PROJECT_LIFECYCLE_CONTROL_S3",
-      "userPath": null,
-      "actorCode": "AUDITOR",
-      "adminPath": null,
-      "stepOrder": 3,
-      "processCode": "PROJECT_LIFECYCLE_CONTROL",
-      "nextStepCode": "PROJECT_LIFECYCLE_CONTROL_S4",
-      "workTypeCode": "PORTFOLIO",
       "entryCondition": "STEP_2_COMPLETED",
-      "completionCondition": "권한분리 승인의 필수 입력, 권한, 증적, 상태 전이가 모두 검증되어야 한다."
+      "completionCondition": "권한분리 승인의 필수 입력, 권한, 증적, 상태 전이가 모두 검증되어야 한다.",
+      "userPath": "/generated/project-lifecycle-control/project-lifecycle-control-s3",
+      "adminPath": "/admin/generated/project-lifecycle-control/project-lifecycle-control-s3",
+      "relatedBusinessRoute": null,
+      "nextStepCode": "PROJECT_LIFECYCLE_CONTROL_S4",
+      "nextAction": "STEP_3_COMPLETED",
+      "actions": [],
+      "help": {},
+      "policy": {},
+      "extensions": {}
     }
   },
   "frontend": {
@@ -113,7 +143,8 @@
             "sourceColumn": "tenant_id",
             "mappingStatus": "DB_RESOLVED",
             "permissionCode": "AUDITOR:ADMIN",
-            "evidenceRequired": false
+            "evidenceRequired": false,
+            "code": "tenantId"
           },
           {
             "route": "/admin/planned/emission/project-lifecycle-control/project-lifecycle-control-s3",
@@ -136,7 +167,8 @@
             "sourceColumn": "project_id",
             "mappingStatus": "DB_RESOLVED",
             "permissionCode": "AUDITOR:ADMIN",
-            "evidenceRequired": false
+            "evidenceRequired": false,
+            "code": "projectId"
           },
           {
             "route": "/admin/planned/emission/project-lifecycle-control/project-lifecycle-control-s3",
@@ -161,7 +193,8 @@
             "sourceColumn": "process_code",
             "mappingStatus": "CONTEXT",
             "permissionCode": "AUDITOR:ADMIN",
-            "evidenceRequired": false
+            "evidenceRequired": false,
+            "code": "processCode"
           },
           {
             "route": "/admin/planned/emission/project-lifecycle-control/project-lifecycle-control-s3",
@@ -186,7 +219,8 @@
             "sourceColumn": "step_code",
             "mappingStatus": "CONTEXT",
             "permissionCode": "AUDITOR:ADMIN",
-            "evidenceRequired": false
+            "evidenceRequired": false,
+            "code": "stepCode"
           },
           {
             "route": "/admin/planned/emission/project-lifecycle-control/project-lifecycle-control-s3",
@@ -211,7 +245,8 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "permissionCode": "AUDITOR:ADMIN",
-            "evidenceRequired": false
+            "evidenceRequired": false,
+            "code": "recordId"
           },
           {
             "route": "/admin/planned/emission/project-lifecycle-control/project-lifecycle-control-s3",
@@ -234,7 +269,8 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "permissionCode": "AUDITOR:ADMIN",
-            "evidenceRequired": false
+            "evidenceRequired": false,
+            "code": "statusCode"
           },
           {
             "route": "/admin/planned/emission/project-lifecycle-control/project-lifecycle-control-s3",
@@ -262,7 +298,8 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "permissionCode": "AUDITOR:ADMIN",
-            "evidenceRequired": false
+            "evidenceRequired": false,
+            "code": "ownerActorCode"
           },
           {
             "route": "/admin/planned/emission/project-lifecycle-control/project-lifecycle-control-s3",
@@ -285,7 +322,8 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "permissionCode": "AUDITOR:ADMIN",
-            "evidenceRequired": false
+            "evidenceRequired": false,
+            "code": "rowVersion"
           },
           {
             "route": "/admin/planned/emission/project-lifecycle-control/project-lifecycle-control-s3",
@@ -310,7 +348,8 @@
             "sourceColumn": "created_at",
             "mappingStatus": "DB_RESOLVED",
             "permissionCode": "AUDITOR:ADMIN",
-            "evidenceRequired": false
+            "evidenceRequired": false,
+            "code": "createdAt"
           },
           {
             "route": "/admin/planned/emission/project-lifecycle-control/project-lifecycle-control-s3",
@@ -335,7 +374,8 @@
             "sourceColumn": "updated_at",
             "mappingStatus": "DB_RESOLVED",
             "permissionCode": "AUDITOR:ADMIN",
-            "evidenceRequired": false
+            "evidenceRequired": false,
+            "code": "updatedAt"
           },
           {
             "route": "/admin/planned/emission/project-lifecycle-control/project-lifecycle-control-s3",
@@ -358,7 +398,8 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "permissionCode": "AUDITOR:ADMIN",
-            "evidenceRequired": false
+            "evidenceRequired": false,
+            "code": "evidenceCount"
           },
           {
             "route": "/admin/planned/emission/project-lifecycle-control/project-lifecycle-control-s3",
@@ -386,7 +427,8 @@
             "sourceColumn": "reporting_year",
             "mappingStatus": "DB_RESOLVED",
             "permissionCode": "AUDITOR:ADMIN",
-            "evidenceRequired": false
+            "evidenceRequired": false,
+            "code": "reportingYear"
           },
           {
             "route": "/admin/planned/emission/project-lifecycle-control/project-lifecycle-control-s3",
@@ -414,7 +456,8 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "permissionCode": "AUDITOR:ADMIN",
-            "evidenceRequired": false
+            "evidenceRequired": false,
+            "code": "organizationId"
           },
           {
             "route": "/admin/planned/emission/project-lifecycle-control/project-lifecycle-control-s3",
@@ -442,7 +485,8 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "permissionCode": "AUDITOR:ADMIN",
-            "evidenceRequired": false
+            "evidenceRequired": false,
+            "code": "siteId"
           },
           {
             "route": "/admin/planned/emission/project-lifecycle-control/project-lifecycle-control-s3",
@@ -470,7 +514,8 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "permissionCode": "AUDITOR:ADMIN",
-            "evidenceRequired": false
+            "evidenceRequired": false,
+            "code": "facilityId"
           },
           {
             "route": "/admin/planned/emission/project-lifecycle-control/project-lifecycle-control-s3",
@@ -498,7 +543,8 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "permissionCode": "AUDITOR:ADMIN",
-            "evidenceRequired": false
+            "evidenceRequired": false,
+            "code": "scopeCode"
           },
           {
             "route": "/admin/planned/emission/project-lifecycle-control/project-lifecycle-control-s3",
@@ -524,7 +570,8 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "permissionCode": "AUDITOR:ADMIN",
-            "evidenceRequired": false
+            "evidenceRequired": false,
+            "code": "activityValue"
           },
           {
             "route": "/admin/planned/emission/project-lifecycle-control/project-lifecycle-control-s3",
@@ -552,7 +599,8 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "permissionCode": "AUDITOR:ADMIN",
-            "evidenceRequired": false
+            "evidenceRequired": false,
+            "code": "unitCode"
           },
           {
             "route": "/admin/planned/emission/project-lifecycle-control/project-lifecycle-control-s3",
@@ -580,7 +628,8 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "permissionCode": "AUDITOR:ADMIN",
-            "evidenceRequired": false
+            "evidenceRequired": false,
+            "code": "factorId"
           },
           {
             "route": "/admin/planned/emission/project-lifecycle-control/project-lifecycle-control-s3",
@@ -606,7 +655,8 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "permissionCode": "AUDITOR:ADMIN",
-            "evidenceRequired": false
+            "evidenceRequired": false,
+            "code": "emissionValue"
           },
           {
             "route": "/admin/planned/emission/project-lifecycle-control/project-lifecycle-control-s3",
@@ -634,7 +684,8 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "permissionCode": "AUDITOR:ADMIN",
-            "evidenceRequired": false
+            "evidenceRequired": false,
+            "code": "qualityStatus"
           },
           {
             "route": "/admin/planned/emission/project-lifecycle-control/project-lifecycle-control-s3",
@@ -662,7 +713,8 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "permissionCode": "AUDITOR:ADMIN",
-            "evidenceRequired": false
+            "evidenceRequired": false,
+            "code": "decisionCode"
           },
           {
             "route": "/admin/planned/emission/project-lifecycle-control/project-lifecycle-control-s3",
@@ -690,7 +742,8 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "permissionCode": "AUDITOR:ADMIN",
-            "evidenceRequired": false
+            "evidenceRequired": false,
+            "code": "reviewComment"
           },
           {
             "route": "/admin/planned/emission/project-lifecycle-control/project-lifecycle-control-s3",
@@ -718,7 +771,8 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "permissionCode": "AUDITOR:ADMIN",
-            "evidenceRequired": false
+            "evidenceRequired": false,
+            "code": "rejectionReasonCode"
           },
           {
             "route": "/admin/planned/emission/project-lifecycle-control/project-lifecycle-control-s3",
@@ -743,7 +797,8 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "permissionCode": "AUDITOR:ADMIN",
-            "evidenceRequired": false
+            "evidenceRequired": false,
+            "code": "decidedAt"
           }
         ],
         "commands": [
@@ -754,7 +809,8 @@
             "resultState": "STEP_3_COMPLETED",
             "auditRequired": true,
             "validationRequired": true,
-            "serverAuthorization": true
+            "serverAuthorization": true,
+            "idempotencyRequired": true
           }
         ],
         "states": {
@@ -823,7 +879,8 @@
             "sourceColumn": "tenant_id",
             "mappingStatus": "DB_RESOLVED",
             "permissionCode": "AUDITOR:USER",
-            "evidenceRequired": false
+            "evidenceRequired": false,
+            "code": "tenantId"
           },
           {
             "route": "/planned/emission/project-lifecycle-control/project-lifecycle-control-s3",
@@ -846,7 +903,8 @@
             "sourceColumn": "project_id",
             "mappingStatus": "DB_RESOLVED",
             "permissionCode": "AUDITOR:USER",
-            "evidenceRequired": false
+            "evidenceRequired": false,
+            "code": "projectId"
           },
           {
             "route": "/planned/emission/project-lifecycle-control/project-lifecycle-control-s3",
@@ -871,7 +929,8 @@
             "sourceColumn": "process_code",
             "mappingStatus": "CONTEXT",
             "permissionCode": "AUDITOR:USER",
-            "evidenceRequired": false
+            "evidenceRequired": false,
+            "code": "processCode"
           },
           {
             "route": "/planned/emission/project-lifecycle-control/project-lifecycle-control-s3",
@@ -896,7 +955,8 @@
             "sourceColumn": "step_code",
             "mappingStatus": "CONTEXT",
             "permissionCode": "AUDITOR:USER",
-            "evidenceRequired": false
+            "evidenceRequired": false,
+            "code": "stepCode"
           },
           {
             "route": "/planned/emission/project-lifecycle-control/project-lifecycle-control-s3",
@@ -921,7 +981,8 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "permissionCode": "AUDITOR:USER",
-            "evidenceRequired": false
+            "evidenceRequired": false,
+            "code": "recordId"
           },
           {
             "route": "/planned/emission/project-lifecycle-control/project-lifecycle-control-s3",
@@ -944,7 +1005,8 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "permissionCode": "AUDITOR:USER",
-            "evidenceRequired": false
+            "evidenceRequired": false,
+            "code": "statusCode"
           },
           {
             "route": "/planned/emission/project-lifecycle-control/project-lifecycle-control-s3",
@@ -972,7 +1034,8 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "permissionCode": "AUDITOR:USER",
-            "evidenceRequired": false
+            "evidenceRequired": false,
+            "code": "ownerActorCode"
           },
           {
             "route": "/planned/emission/project-lifecycle-control/project-lifecycle-control-s3",
@@ -995,7 +1058,8 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "permissionCode": "AUDITOR:USER",
-            "evidenceRequired": false
+            "evidenceRequired": false,
+            "code": "rowVersion"
           },
           {
             "route": "/planned/emission/project-lifecycle-control/project-lifecycle-control-s3",
@@ -1020,7 +1084,8 @@
             "sourceColumn": "created_at",
             "mappingStatus": "DB_RESOLVED",
             "permissionCode": "AUDITOR:USER",
-            "evidenceRequired": false
+            "evidenceRequired": false,
+            "code": "createdAt"
           },
           {
             "route": "/planned/emission/project-lifecycle-control/project-lifecycle-control-s3",
@@ -1045,7 +1110,8 @@
             "sourceColumn": "updated_at",
             "mappingStatus": "DB_RESOLVED",
             "permissionCode": "AUDITOR:USER",
-            "evidenceRequired": false
+            "evidenceRequired": false,
+            "code": "updatedAt"
           },
           {
             "route": "/planned/emission/project-lifecycle-control/project-lifecycle-control-s3",
@@ -1068,7 +1134,8 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "permissionCode": "AUDITOR:USER",
-            "evidenceRequired": false
+            "evidenceRequired": false,
+            "code": "evidenceCount"
           },
           {
             "route": "/planned/emission/project-lifecycle-control/project-lifecycle-control-s3",
@@ -1096,7 +1163,8 @@
             "sourceColumn": "reporting_year",
             "mappingStatus": "DB_RESOLVED",
             "permissionCode": "AUDITOR:USER",
-            "evidenceRequired": false
+            "evidenceRequired": false,
+            "code": "reportingYear"
           },
           {
             "route": "/planned/emission/project-lifecycle-control/project-lifecycle-control-s3",
@@ -1124,7 +1192,8 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "permissionCode": "AUDITOR:USER",
-            "evidenceRequired": false
+            "evidenceRequired": false,
+            "code": "organizationId"
           },
           {
             "route": "/planned/emission/project-lifecycle-control/project-lifecycle-control-s3",
@@ -1152,7 +1221,8 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "permissionCode": "AUDITOR:USER",
-            "evidenceRequired": false
+            "evidenceRequired": false,
+            "code": "siteId"
           },
           {
             "route": "/planned/emission/project-lifecycle-control/project-lifecycle-control-s3",
@@ -1180,7 +1250,8 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "permissionCode": "AUDITOR:USER",
-            "evidenceRequired": false
+            "evidenceRequired": false,
+            "code": "facilityId"
           },
           {
             "route": "/planned/emission/project-lifecycle-control/project-lifecycle-control-s3",
@@ -1208,7 +1279,8 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "permissionCode": "AUDITOR:USER",
-            "evidenceRequired": false
+            "evidenceRequired": false,
+            "code": "scopeCode"
           },
           {
             "route": "/planned/emission/project-lifecycle-control/project-lifecycle-control-s3",
@@ -1234,7 +1306,8 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "permissionCode": "AUDITOR:USER",
-            "evidenceRequired": false
+            "evidenceRequired": false,
+            "code": "activityValue"
           },
           {
             "route": "/planned/emission/project-lifecycle-control/project-lifecycle-control-s3",
@@ -1262,7 +1335,8 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "permissionCode": "AUDITOR:USER",
-            "evidenceRequired": false
+            "evidenceRequired": false,
+            "code": "unitCode"
           },
           {
             "route": "/planned/emission/project-lifecycle-control/project-lifecycle-control-s3",
@@ -1290,7 +1364,8 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "permissionCode": "AUDITOR:USER",
-            "evidenceRequired": false
+            "evidenceRequired": false,
+            "code": "factorId"
           },
           {
             "route": "/planned/emission/project-lifecycle-control/project-lifecycle-control-s3",
@@ -1316,7 +1391,8 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "permissionCode": "AUDITOR:USER",
-            "evidenceRequired": false
+            "evidenceRequired": false,
+            "code": "emissionValue"
           },
           {
             "route": "/planned/emission/project-lifecycle-control/project-lifecycle-control-s3",
@@ -1344,7 +1420,8 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "permissionCode": "AUDITOR:USER",
-            "evidenceRequired": false
+            "evidenceRequired": false,
+            "code": "qualityStatus"
           },
           {
             "route": "/planned/emission/project-lifecycle-control/project-lifecycle-control-s3",
@@ -1372,7 +1449,8 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "permissionCode": "AUDITOR:USER",
-            "evidenceRequired": false
+            "evidenceRequired": false,
+            "code": "decisionCode"
           },
           {
             "route": "/planned/emission/project-lifecycle-control/project-lifecycle-control-s3",
@@ -1400,7 +1478,8 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "permissionCode": "AUDITOR:USER",
-            "evidenceRequired": false
+            "evidenceRequired": false,
+            "code": "reviewComment"
           },
           {
             "route": "/planned/emission/project-lifecycle-control/project-lifecycle-control-s3",
@@ -1428,7 +1507,8 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "permissionCode": "AUDITOR:USER",
-            "evidenceRequired": false
+            "evidenceRequired": false,
+            "code": "rejectionReasonCode"
           },
           {
             "route": "/planned/emission/project-lifecycle-control/project-lifecycle-control-s3",
@@ -1453,7 +1533,8 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "permissionCode": "AUDITOR:USER",
-            "evidenceRequired": false
+            "evidenceRequired": false,
+            "code": "decidedAt"
           }
         ],
         "commands": [
@@ -1464,7 +1545,8 @@
             "resultState": "STEP_3_COMPLETED",
             "auditRequired": true,
             "validationRequired": true,
-            "serverAuthorization": true
+            "serverAuthorization": true,
+            "idempotencyRequired": true
           }
         ],
         "states": {
@@ -1525,17 +1607,27 @@
         "resultState": "STEP_3_COMPLETED",
         "auditRequired": true,
         "validationRequired": true,
-        "serverAuthorization": true
+        "serverAuthorization": true,
+        "idempotencyRequired": true
       }
     ],
     "authorization": {
+      "schemaVersion": 1,
+      "contractType": "STEP_ACTOR_AUTHORITY",
       "actorCode": "AUDITOR",
       "ownerActorCode": "COMPANY_MANAGER",
-      "tenantIsolation": true,
-      "projectIsolation": true,
-      "delegationChecked": true,
-      "segregationOfDuties": true
+      "scope": "TENANT_PROJECT",
+      "policy": {
+        "tenantIsolation": true,
+        "projectIsolation": true,
+        "delegationChecked": true,
+        "segregationOfDuties": true
+      },
+      "permissions": [],
+      "delegation": {},
+      "extensions": {}
     },
+    "handoffPolicy": {},
     "handoffs": [
       {
         "failure": {
@@ -1593,6 +1685,8 @@
     ]
   },
   "database": {
+    "transactional": true,
+    "migrationRequired": true,
     "mappings": [
       {
         "fields": [
@@ -1632,32 +1726,24 @@
             "required": false,
             "fieldCode": "recordId",
             "apiProperty": "recordId",
-            "sourceTable": null,
-            "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT"
           },
           {
             "required": true,
             "fieldCode": "statusCode",
             "apiProperty": "statusCode",
-            "sourceTable": null,
-            "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT"
           },
           {
             "required": true,
             "fieldCode": "ownerActorCode",
             "apiProperty": "ownerActorCode",
-            "sourceTable": null,
-            "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT"
           },
           {
             "required": true,
             "fieldCode": "rowVersion",
             "apiProperty": "rowVersion",
-            "sourceTable": null,
-            "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT"
           },
           {
@@ -1680,8 +1766,6 @@
             "required": false,
             "fieldCode": "evidenceCount",
             "apiProperty": "evidenceCount",
-            "sourceTable": null,
-            "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT"
           },
           {
@@ -1696,104 +1780,78 @@
             "required": true,
             "fieldCode": "organizationId",
             "apiProperty": "organizationId",
-            "sourceTable": null,
-            "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT"
           },
           {
             "required": true,
             "fieldCode": "siteId",
             "apiProperty": "siteId",
-            "sourceTable": null,
-            "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT"
           },
           {
             "required": false,
             "fieldCode": "facilityId",
             "apiProperty": "facilityId",
-            "sourceTable": null,
-            "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT"
           },
           {
             "required": true,
             "fieldCode": "scopeCode",
             "apiProperty": "scopeCode",
-            "sourceTable": null,
-            "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT"
           },
           {
             "required": false,
             "fieldCode": "activityValue",
             "apiProperty": "activityValue",
-            "sourceTable": null,
-            "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT"
           },
           {
             "required": false,
             "fieldCode": "unitCode",
             "apiProperty": "unitCode",
-            "sourceTable": null,
-            "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT"
           },
           {
             "required": false,
             "fieldCode": "factorId",
             "apiProperty": "factorId",
-            "sourceTable": null,
-            "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT"
           },
           {
             "required": false,
             "fieldCode": "emissionValue",
             "apiProperty": "emissionValue",
-            "sourceTable": null,
-            "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT"
           },
           {
             "required": true,
             "fieldCode": "qualityStatus",
             "apiProperty": "qualityStatus",
-            "sourceTable": null,
-            "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT"
           },
           {
             "required": true,
             "fieldCode": "decisionCode",
             "apiProperty": "decisionCode",
-            "sourceTable": null,
-            "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT"
           },
           {
             "required": true,
             "fieldCode": "reviewComment",
             "apiProperty": "reviewComment",
-            "sourceTable": null,
-            "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT"
           },
           {
             "required": false,
             "fieldCode": "rejectionReasonCode",
             "apiProperty": "rejectionReasonCode",
-            "sourceTable": null,
-            "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT"
           },
           {
             "required": false,
             "fieldCode": "decidedAt",
             "apiProperty": "decidedAt",
-            "sourceTable": null,
-            "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT"
           }
         ],
@@ -1839,32 +1897,24 @@
             "required": false,
             "fieldCode": "recordId",
             "apiProperty": "recordId",
-            "sourceTable": null,
-            "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT"
           },
           {
             "required": true,
             "fieldCode": "statusCode",
             "apiProperty": "statusCode",
-            "sourceTable": null,
-            "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT"
           },
           {
             "required": true,
             "fieldCode": "ownerActorCode",
             "apiProperty": "ownerActorCode",
-            "sourceTable": null,
-            "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT"
           },
           {
             "required": true,
             "fieldCode": "rowVersion",
             "apiProperty": "rowVersion",
-            "sourceTable": null,
-            "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT"
           },
           {
@@ -1887,8 +1937,6 @@
             "required": false,
             "fieldCode": "evidenceCount",
             "apiProperty": "evidenceCount",
-            "sourceTable": null,
-            "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT"
           },
           {
@@ -1903,104 +1951,78 @@
             "required": true,
             "fieldCode": "organizationId",
             "apiProperty": "organizationId",
-            "sourceTable": null,
-            "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT"
           },
           {
             "required": true,
             "fieldCode": "siteId",
             "apiProperty": "siteId",
-            "sourceTable": null,
-            "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT"
           },
           {
             "required": false,
             "fieldCode": "facilityId",
             "apiProperty": "facilityId",
-            "sourceTable": null,
-            "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT"
           },
           {
             "required": true,
             "fieldCode": "scopeCode",
             "apiProperty": "scopeCode",
-            "sourceTable": null,
-            "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT"
           },
           {
             "required": false,
             "fieldCode": "activityValue",
             "apiProperty": "activityValue",
-            "sourceTable": null,
-            "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT"
           },
           {
             "required": false,
             "fieldCode": "unitCode",
             "apiProperty": "unitCode",
-            "sourceTable": null,
-            "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT"
           },
           {
             "required": false,
             "fieldCode": "factorId",
             "apiProperty": "factorId",
-            "sourceTable": null,
-            "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT"
           },
           {
             "required": false,
             "fieldCode": "emissionValue",
             "apiProperty": "emissionValue",
-            "sourceTable": null,
-            "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT"
           },
           {
             "required": true,
             "fieldCode": "qualityStatus",
             "apiProperty": "qualityStatus",
-            "sourceTable": null,
-            "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT"
           },
           {
             "required": true,
             "fieldCode": "decisionCode",
             "apiProperty": "decisionCode",
-            "sourceTable": null,
-            "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT"
           },
           {
             "required": true,
             "fieldCode": "reviewComment",
             "apiProperty": "reviewComment",
-            "sourceTable": null,
-            "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT"
           },
           {
             "required": false,
             "fieldCode": "rejectionReasonCode",
             "apiProperty": "rejectionReasonCode",
-            "sourceTable": null,
-            "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT"
           },
           {
             "required": false,
             "fieldCode": "decidedAt",
             "apiProperty": "decidedAt",
-            "sourceTable": null,
-            "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT"
           }
         ],
@@ -2009,9 +2031,7 @@
         "primaryEntity": "emission_project_registry"
       }
     ],
-    "transactional": true,
     "schemaSetVersion": 2,
-    "migrationRequired": true,
     "primaryEntities": [
       "emission_project_registry"
     ],
@@ -2237,21 +2257,16 @@
     "evidenceRequired": true
   },
   "nonfunctional": {
-    "recovery": {
-      "retry": "idempotent-only",
-      "resumeFromLastVerifiedState": true
-    },
+    "schemaVersion": 1,
+    "contractType": "STEP_NONFUNCTIONAL",
     "security": {
-      "audit": true,
       "tenantIsolation": true,
       "projectIsolation": true,
-      "serverAuthorization": true
-    },
-    "responsive": {
-      "mobile": "single-column",
-      "tablet": "adaptive-two-column",
-      "desktop": "task-optimized",
-      "noTextOverflow": true
+      "serverAuthorization": true,
+      "segregationOfDuties": true,
+      "rateLimitRequired": false,
+      "secretLoggingForbidden": true,
+      "sensitiveValueMasking": true
     },
     "performance": {
       "targetP95Ms": 500,
@@ -2259,14 +2274,40 @@
       "searchIndexRequired": true
     },
     "accessibility": {
-      "focus": true,
-      "keyboard": true,
       "standard": "WCAG 2.1 AA",
+      "keyboard": true,
+      "focus": true,
       "errorSummary": true
-    }
+    },
+    "responsive": {
+      "mobile": "single-column",
+      "tablet": "adaptive-two-column",
+      "desktop": "task-optimized",
+      "noTextOverflow": true
+    },
+    "recovery": {
+      "retry": "idempotent-only",
+      "resumeFromLastVerifiedState": true,
+      "idempotencyRequired": true
+    },
+    "audit": {
+      "required": true,
+      "actorRecorded": true,
+      "beforeAfterRecorded": true,
+      "correlationIdRequired": true
+    },
+    "sla": {
+      "configured": true,
+      "targetHours": 24,
+      "timerStartsAt": "STEP_ASSIGNED",
+      "timerStopsAt": "STEP_COMPLETED",
+      "breachAlertRequired": true
+    },
+    "policy": {},
+    "extensions": {}
   },
-  "sourceHash": "91a8d8e16b8ebe5d1a9c82667c2b885d4e482956ecc93a618c2f6df6aa6dbc8b",
+  "sourceHash": "a3a21c5603bf9826db05f1767671f6b1",
   "approvalStatus": "APPROVED",
   "generationStatus": "GENERATED",
-  "packageHash": "1de5312c5c7ac144b26f15ee54993412d54be05ca523238da1b68443cd8dab20"
+  "packageHash": "6669c070ef0f7c4bd295650dc439cc4ea721d19c9db01d644693bbee286b6cfd"
 }
