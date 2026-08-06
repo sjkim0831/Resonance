@@ -105,6 +105,7 @@ export function WorkExecutionPage() {
   const applyDraft = (body: WorkDraft) => {
     setWork(body);
     const payload = parseObject(body.draft?.payloadJson);
+    const defaultPayload = parseObject(body.defaultPayloadJson);
     const inheritedPayload = parseObject(body.handoff?.mappedPayloadJson);
     const evidencePayload = parseObject(body.draft?.evidenceJson);
     const payloadRow = payload && typeof payload === "object" ? payload as Row : {};
@@ -115,7 +116,7 @@ export function WorkExecutionPage() {
       resultUnit: String(payloadRow.resultUnit || ""),
       exceptionReason: String(payloadRow.exceptionReason || ""),
     });
-    setValues(Object.fromEntries(Object.entries({ ...inheritedPayload, ...payloadRow }).map(([key,item]) => [key,item == null ? "" : String(item)])));
+    setValues(Object.fromEntries(Object.entries({ ...defaultPayload, ...inheritedPayload, ...payloadRow }).map(([key,item]) => [key,item == null ? "" : String(item)])));
     const evidenceRow = evidencePayload && typeof evidencePayload === "object" ? evidencePayload as Row : {};
     setEvidence({ documentId: String(evidenceRow.documentId || ""), sourceUrl: String(evidenceRow.sourceUrl || ""), checksum: String(evidenceRow.checksum || "") });
   };

@@ -2023,6 +2023,27 @@ public class ActorProcessGovernanceService {
         result.put("success",true);result.put("found",!drafts.isEmpty());result.put("contract",contract);
         result.put("draft",drafts.isEmpty()?Map.of("draftVersion",0,"draftStatus","NOT_SAVED"):drafts.get(0));
         result.put("handoff",handoffs.isEmpty()?Map.of():handoffs.get(0));
+        List<Map<String,Object>> executionContext=jdbc.queryForList("""
+            select jsonb_strip_nulls(jsonb_build_object(
+                     'tenantId',execution.tenant_id,'projectId',execution.project_id,'processCode',execution.process_code,
+                     'stepCode',?::text,'actorCode',?::text,
+                     'reportingYear',coalesce(project.reporting_year,extract(year from execution.period_start)::integer,extract(year from current_date)::integer),
+                     'periodStart',to_char(coalesce(execution.period_start,project.period_start),'YYYY-MM-DD'),
+                     'periodEnd',to_char(coalesce(execution.period_end,project.period_end),'YYYY-MM-DD')
+                   ))::text as "defaultPayloadJson"
+              from framework_process_execution execution
+              left join emission_project_registry project
+                on project.tenant_id=execution.tenant_id and project.project_id=execution.project_id
+             where execution.tenant_id=? and execution.project_id=? and execution.process_code=?
+             order by execution.started_at desc limit 1
+            """,step,String.valueOf(contract.get("actorCode")),tenant,project,process);
+        if(executionContext.isEmpty()){
+            Map<String,Object> defaults=new LinkedHashMap<>();
+            defaults.put("tenantId",tenant);defaults.put("projectId",project);
+            defaults.put("processCode",process);defaults.put("stepCode",step);
+            defaults.put("actorCode",String.valueOf(contract.get("actorCode")));
+            result.put("defaultPayloadJson",defaults);
+        }else result.put("defaultPayloadJson",String.valueOf(executionContext.get(0).get("defaultPayloadJson")));
         return result;
     }
 

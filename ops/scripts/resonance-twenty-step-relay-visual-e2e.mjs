@@ -218,6 +218,13 @@ async function runProcess(definition, context) {
     const draft = await call(api, "get", `/home/api/process-executions/draft?${query}`);
     const contract = draft.contract || {};
     const upstream = draft.handoff || {};
+    const defaultPayload = typeof draft.defaultPayloadJson === "string"
+      ? JSON.parse(draft.defaultPayloadJson || "{}") : (draft.defaultPayloadJson || {});
+    for (const requiredContext of ["tenantId", "projectId", "processCode", "stepCode", "actorCode"]) {
+      if (!String(defaultPayload[requiredContext] || "").trim()) {
+        throw new Error(`execution default missing ${requiredContext} at ${definition.code}/${stepCode}`);
+      }
+    }
     if (previousRelayStep) {
       if (String(upstream.fromProcessCode || "") !== previousRelayStep.processCode ||
           String(upstream.fromStepCode || "") !== previousRelayStep.stepCode ||
@@ -229,9 +236,16 @@ async function runProcess(definition, context) {
       const mappingContract = JSON.parse(String(upstream.mappingContractJson || "{}"));
       const fieldMappings = Array.isArray(mappingContract.fieldMappings) ? mappingContract.fieldMappings : [];
       const unmappedTargetFields = Array.isArray(mappingContract.unmappedTargetFields) ? mappingContract.unmappedTargetFields : [];
+      const unmappedFieldPolicies = Array.isArray(mappingContract.unmappedFieldPolicies) ? mappingContract.unmappedFieldPolicies : [];
       if (!Array.isArray(mappingContract.contextMappings) ||
-          fieldMappings.length + unmappedTargetFields.length !== Number(mappingContract.targetFieldCount || 0)) {
+          fieldMappings.length + unmappedTargetFields.length !== Number(mappingContract.targetFieldCount || 0) ||
+          unmappedFieldPolicies.length !== unmappedTargetFields.length || mappingContract.inputPolicyMode !== "FAIL_CLOSED") {
         throw new Error("semantic mapping classification incomplete " + previousRelayStep.processCode + "/" + previousRelayStep.stepCode);
+      }
+      const policyCodes = new Set(unmappedFieldPolicies.map((policy) => String(policy.fieldCode || "")));
+      if (unmappedTargetFields.some((fieldCode) => !policyCodes.has(String(fieldCode))) ||
+          unmappedFieldPolicies.some((policy) => !["AUTO_CONTEXT", "SYSTEM_DERIVED", "DOMAIN_ACTION", "USER_REQUIRED", "USER_OPTIONAL"].includes(String(policy.inputClass || "")))) {
+        throw new Error("unmapped input policy is not closed " + previousRelayStep.processCode + "/" + previousRelayStep.stepCode);
       }
       const expectedMapped = fieldMappings.filter((mapping) => Object.hasOwn(sourcePayload, String(mapping.fromField || "")));
       if (expectedMapped.some((mapping) => !Object.hasOwn(mappedPayload, String(mapping.toField || "")))) {
