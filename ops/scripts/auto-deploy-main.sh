@@ -168,6 +168,46 @@ repair_persistent_build_worktree_ownership() {
 }
 repair_persistent_build_worktree_ownership
 
+# A killed `git worktree remove` can delete the repository-side metadata while
+# leaving the 3-4 GB build directory and its `.git` pointer behind. Merely
+# checking for that pointer then sends every later deployment into
+# `fatal: not a git repository`. Try Git's non-destructive repair first; if the
+# directory is still not a registered worktree, remove only the exact,
+# disposable runtime-build path so the normal creation branch can reconstruct
+# it. Generated caches are sacrificed only for this corrupt state.
+recover_invalid_persistent_build_worktree() {
+  local repository_root persistent_real registered_root
+  repository_root="${CARBONET_DEPLOY_ORIGINAL_ROOT:-$ROOT_DIR}"
+  persistent_real="$(realpath -m "$persistent_build_worktree")"
+  case "$persistent_real" in
+    "$deploy_worktree_root"/runtime-build) ;;
+    *)
+      echo "[auto-deploy] refusing unsafe persistent worktree recovery path: $persistent_real" >&2
+      exit 23
+      ;;
+  esac
+  [[ -e "$persistent_real" ]] || return 0
+
+  registered_root="$(git -C "$persistent_real" rev-parse --show-toplevel 2>/dev/null || true)"
+  if [[ -n "$registered_root" && "$(realpath -m "$registered_root")" == "$persistent_real" ]]; then
+    return 0
+  fi
+
+  echo "[auto-deploy] stale persistent worktree metadata detected; attempting repair: $persistent_real"
+  git -C "$repository_root" worktree repair "$persistent_real" >/dev/null 2>&1 || true
+  registered_root="$(git -C "$persistent_real" rev-parse --show-toplevel 2>/dev/null || true)"
+  if [[ -n "$registered_root" && "$(realpath -m "$registered_root")" == "$persistent_real" ]]; then
+    echo "[auto-deploy] persistent worktree metadata repaired without cache removal"
+    return 0
+  fi
+
+  echo "[auto-deploy] rebuilding invalid persistent worktree; generated build cache will be cold once"
+  git -C "$repository_root" worktree remove --force "$persistent_real" >/dev/null 2>&1 || true
+  rm -rf -- "$persistent_real"
+  git -C "$repository_root" worktree prune
+}
+recover_invalid_persistent_build_worktree
+
 current_commit="$(git rev-parse HEAD)"
 deployed_commit="$(cat "$DEPLOY_STATE_FILE" 2>/dev/null || true)"
 if ! git cat-file -e "${deployed_commit}^{commit}" 2>/dev/null; then
