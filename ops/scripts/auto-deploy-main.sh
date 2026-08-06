@@ -725,7 +725,6 @@ run_actor_process_role_e2e_if_required() {
      && ",${PLAN_TESTS:-}," != *",backstage:visual-e2e,"* ]]; then
     if ! git diff --name-only "$deployed_commit" "$target_commit" -- \
         modules/resonance-common/carbonet-common-core/src/main/java/egovframework/com/platform/governance \
-        ops/scripts/auto-deploy-main.sh \
         ops/scripts/test-catalog-identity-parallel-deploy.sh \
         ops/scripts/resonance-actor-process-role-e2e.sh \
         ops/scripts/resonance-project-task-browser-e2e.mjs \
@@ -1094,6 +1093,8 @@ if [[ "$PLAN_RUNTIME_REQUIRED" != "true" ]]; then
     bash ops/scripts/test-atomic-asset-e4b-validation.sh
     bash ops/scripts/test-no-change-preflight-fast-path.sh
     bash ops/scripts/test-candidate-release-rollout-gate.sh
+    bash ops/scripts/test-frontend-deploy-performance-budget.sh
+    bash ops/scripts/test-deploy-phase-telemetry.sh
     bash ops/scripts/test-database-plan-flyway-gate.sh
     bash ops/scripts/test-process-worker-deploy-marker.sh
     bash ops/scripts/test-frontend-parallel-build-pipeline.sh
