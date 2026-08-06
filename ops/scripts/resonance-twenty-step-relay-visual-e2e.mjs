@@ -72,6 +72,7 @@ let browser;
 let projectId = "";
 let previousRelayStep = null;
 const evidence = { startedAt: new Date().toISOString(), projectId: "", processes: [], steps: [], routes: [], transforms: {}, cleanup: false };
+let prerequisiteRequirementCount = 0;
 
 function assertMappedTransform(mapping, sourcePayload, mappedPayload) {
   const fromField = String(mapping.fromField || "");
@@ -218,6 +219,11 @@ async function runProcess(definition, context) {
     const draft = await call(api, "get", `/home/api/process-executions/draft?${query}`);
     const contract = draft.contract || {};
     const upstream = draft.handoff || {};
+    const prerequisites = draft.prerequisiteReadiness || {};
+    if (!Array.isArray(prerequisites.items) || Number(prerequisites.blockingMissingCount || 0) !== 0) {
+      throw new Error(`prerequisite readiness failed ${definition.code}/${stepCode} ${JSON.stringify(prerequisites)}`);
+    }
+    prerequisiteRequirementCount += Number(prerequisites.requirementCount || 0);
     const defaultPayload = typeof draft.defaultPayloadJson === "string"
       ? JSON.parse(draft.defaultPayloadJson || "{}") : (draft.defaultPayloadJson || {});
     for (const requiredContext of ["tenantId", "projectId", "processCode", "stepCode", "actorCode"]) {
@@ -407,6 +413,7 @@ try {
     const uniqueSteps = new Set(evidence.steps.map((step) => `${step.processCode}:${step.stepCode}`));
     if (uniqueSteps.size !== expectedStepTotal) throw new Error(`canonical relay coverage mismatch expected=${expectedStepTotal} actual=${uniqueSteps.size}`);
     if (evidence.routes.length < expectedStepTotal) throw new Error(`route coverage mismatch expected=${expectedStepTotal} actual=${evidence.routes.length}`);
+    if (prerequisiteRequirementCount !== 21) throw new Error(`prerequisite coverage mismatch expected=21 actual=${prerequisiteRequirementCount}`);
     evidence.finishedAt = new Date().toISOString();
     evidence.durationMs = Date.now() - Date.parse(evidence.startedAt);
     evidence.summary = {
@@ -416,6 +423,7 @@ try {
       accounts: Object.keys(accounts).length,
       routes: evidence.routes.length,
       dataHandoffs: evidence.steps.filter((step) => step.upstreamStepCode).length,
+      prerequisiteRequirements: prerequisiteRequirementCount,
     };
   }
 } finally {

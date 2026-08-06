@@ -12,6 +12,7 @@ import org.springframework.transaction.interceptor.TransactionAspectSupport;
 import java.util.LinkedHashMap;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -1398,6 +1399,7 @@ public class ActorProcessGovernanceService {
         List<Map<String,Object>> running=jdbc.queryForList("select execution_id as \"executionId\",current_step_code as \"currentStepCode\",current_state as \"currentState\",cycle_type as \"cycleType\",period_start as \"periodStart\",period_end as \"periodEnd\",execution_version as \"executionVersion\",handoff_status as \"handoffStatus\" from framework_process_execution where tenant_id=? and project_id=? and process_code=? and cycle_type=? and period_start is not distinct from nullif(?,'')::date and period_end is not distinct from nullif(?,'')::date and boundary_version=? and methodology_version=? and execution_version=? and execution_status='RUNNING'",tenant,project,process,cycleType,periodStart,periodEnd,boundaryVersion,methodologyVersion,executionVersion);
         if(!running.isEmpty())return Map.of("success",true,"created",false,"execution",running.get(0));
         UUID id=UUID.randomUUID();String step=String.valueOf(first.get("step_code")),state=String.valueOf(first.get("from_state"));
+        assertRelayPrerequisitesReady(tenant,project,process,step);
         jdbc.update("insert into framework_process_execution(execution_id,tenant_id,project_id,process_code,current_step_code,current_state,initiated_by_actor,initiated_by,cycle_type,period_start,period_end,site_scope,boundary_version,methodology_version,data_cutoff_at,execution_version) values(?,?,?,?,?,?,?,?,?,nullif(?,'')::date,nullif(?,'')::date,cast(? as jsonb),?,?,nullif(?,'')::timestamp,?)",id,tenant,project,process,step,state,actor,user,cycleType,periodStart,periodEnd,siteScopeJson,boundaryVersion,methodologyVersion,dataCutoffAt,executionVersion);
         Map<String,Object> result=new LinkedHashMap<>();
         result.put("success",true);result.put("created",true);result.put("executionId",id);result.put("processCode",process);
@@ -1457,6 +1459,7 @@ public class ActorProcessGovernanceService {
                  order by coalesce((field->>'fieldOrder')::integer,9999),field->>'fieldCode'
                 """,String.class,process,step,process,step,String.valueOf(payload));
             if(!missingFields.isEmpty())throw new IllegalStateException("Required work fields are missing: "+String.join(", ",missingFields));
+            assertRelayPrerequisitesReady(tenant,project,process,step);
         }
         Long eventId=jdbc.queryForObject("insert into framework_process_execution_event(execution_id,step_code,actor_code,command_code,from_state,to_state,idempotency_key,request_json,result_json,executed_by) values(?,?,?,?,?,?,?,?,?,?) returning event_id",Long.class,executionId,step,actor,command,from,to,key,def(b,"requestJson","{}"),def(b,"resultJson","{}"),user);
         int order=((Number)contract.get("step_order")).intValue();
@@ -1501,6 +1504,7 @@ public class ActorProcessGovernanceService {
             relayStep=jdbc.queryForList("select step_code,actor_code,from_state,user_path,admin_path from framework_process_step where process_code=? and step_code=?",nextProcess,activeStepCode)
                 .stream().findFirst().orElseThrow(()->new IllegalStateException("활성 다음 프로세스의 현재 단계 계약이 없습니다: "+nextProcess+"/"+activeStepCode));
         }
+        assertRelayPrerequisitesReady(tenant,project,nextProcess,String.valueOf(relayStep.get("step_code")));
         return Map.of(
             "nextProcessCode",nextProcess,
             "nextProcessExecutionId",nextExecutionId,
@@ -2023,6 +2027,7 @@ public class ActorProcessGovernanceService {
         result.put("success",true);result.put("found",!drafts.isEmpty());result.put("contract",contract);
         result.put("draft",drafts.isEmpty()?Map.of("draftVersion",0,"draftStatus","NOT_SAVED"):drafts.get(0));
         result.put("handoff",handoffs.isEmpty()?Map.of():handoffs.get(0));
+        result.put("prerequisiteReadiness",relayPrerequisiteReadiness(tenant,project,process,step));
         List<Map<String,Object>> executionContext=jdbc.queryForList("""
             select jsonb_strip_nulls(jsonb_build_object(
                      'tenantId',execution.tenant_id,'projectId',execution.project_id,'processCode',execution.process_code,
@@ -2055,6 +2060,7 @@ public class ActorProcessGovernanceService {
         String requiredActor=String.valueOf(contracts.get(0).get("actor_code"));
         if(!requiredActor.equals(actor))throw new SecurityException("The required actor for this step is "+requiredActor+".");
         requireActorAssignment(tenant,project,actor,user);
+        assertRelayPrerequisitesReady(tenant,project,process,step);
         List<Map<String,Object>> existing=jdbc.queryForList("select draft_id,draft_version,draft_status from framework_process_work_draft where tenant_id=? and project_id=? and process_code=? and step_code=? and lower(account_id)=lower(?) for update",tenant,project,process,step,user);
         if(existing.isEmpty()){
             if(expectedVersion!=0)throw new IllegalStateException("The draft version changed. Reload the latest work.");
@@ -2115,6 +2121,85 @@ public class ActorProcessGovernanceService {
             if(!options.isEmpty())optionSets.put(fieldCode,options);
         }
         return Map.of("success",true,"tenantId",tenant,"projectId",project,"processCode",process,"stepCode",step,"optionSets",optionSets);
+    }
+
+    public Map<String,Object> relayPrerequisiteReadiness(String tenant,String project,String process,String step){
+        String normalizedTenant=tenant==null?"":tenant.trim(),normalizedProject=project==null?"":project.trim();
+        String normalizedProcess=process==null?"":process.trim(),normalizedStep=step==null?"":step.trim();
+        if(normalizedTenant.isBlank()&&!normalizedProject.isBlank()){
+            List<String> tenants=jdbc.queryForList("select tenant_id from emission_project_registry where project_id=? order by created_at desc limit 1",String.class,normalizedProject);
+            if(!tenants.isEmpty())normalizedTenant=tenants.get(0);
+        }
+        final String resolvedTenant=normalizedTenant;
+        List<Map<String,Object>> policies=jdbc.queryForList("""
+            select handoff.to_process_code as "processCode",handoff.to_step_code as "stepCode",
+                   policy->>'fieldCode' as "fieldCode",policy->>'fieldName' as "fieldName",
+                   policy->>'prerequisiteType' as "prerequisiteType",
+                   coalesce((policy->>'blocking')::boolean,false) as blocking
+              from framework_process_data_handoff handoff
+              cross join lateral jsonb_array_elements(coalesce(handoff.payload_contract->'unmappedFieldPolicies','[]'::jsonb)) policy
+             where policy->>'prerequisiteType'<>'NONE'
+               and (?='' or handoff.to_process_code=?)
+               and (?='' or handoff.to_step_code=?)
+             order by handoff.to_process_code,handoff.to_step_code,policy->>'fieldCode'
+            """,normalizedProcess,normalizedProcess,normalizedStep,normalizedStep);
+        Map<String,Integer> counts=new HashMap<>();List<Map<String,Object>> items=new ArrayList<>();int blockingMissing=0;
+        for(Map<String,Object> policy:policies){
+            String type=String.valueOf(policy.get("prerequisiteType"));
+            int available=counts.computeIfAbsent(type,key->prerequisiteAvailability(key,resolvedTenant,normalizedProject));
+            boolean blocking=Boolean.TRUE.equals(policy.get("blocking")),ready=available>0;
+            if(blocking&&!ready)blockingMissing++;
+            Map<String,Object> item=new LinkedHashMap<>(policy);item.put("availableCount",available);item.put("ready",ready);
+            item.put("managementUrl",prerequisiteManagementUrl(type));item.put("resolution",prerequisiteResolution(type));items.add(item);
+        }
+        Map<String,Object> result=new LinkedHashMap<>();result.put("ready",blockingMissing==0);result.put("requirementCount",items.size());
+        result.put("blockingCount",items.stream().filter(item->Boolean.TRUE.equals(item.get("blocking"))).count());
+        result.put("blockingMissingCount",blockingMissing);result.put("items",items);return result;
+    }
+
+    private int prerequisiteAvailability(String type,String tenant,String project){
+        Integer count=switch(type){
+            case "ORGANIZATION_REGISTRY" -> jdbc.queryForObject("select count(*) from emission_project_registry where tenant_id=? and project_id=?",Integer.class,tenant,project);
+            case "SITE_REGISTRY" -> jdbc.queryForObject("select count(*) from emission_site_registry where tenant_id=? and site_status='ACTIVE' and (effective_until is null or effective_until>=current_date)",Integer.class,tenant);
+            case "ACTOR_ASSIGNMENT" -> jdbc.queryForObject("select count(*) from framework_account_actor_assignment where tenant_id=? and project_id=? and assignment_status='ACTIVE' and (valid_from is null or valid_from<=current_date) and (valid_until is null or valid_until>=current_date)",Integer.class,tenant,project);
+            case "EMISSION_FACTOR_REFERENCE" -> jdbc.queryForObject("select count(*) from emission_factor_reference",Integer.class);
+            case "UNIT_REFERENCE" -> jdbc.queryForObject("select count(distinct unit) from emission_factor_reference where nullif(trim(unit),'') is not null",Integer.class);
+            case "REPORT_REGISTRY" -> jdbc.queryForObject("select count(*) from emission_project_report where project_id=? or exists(select 1 from framework_process_work_draft where tenant_id=? and project_id=? and process_code='EMISSION_CALCULATION' and draft_status='SUBMITTED')",Integer.class,project,tenant,project);
+            case "FACILITY_REGISTRY" -> jdbc.queryForObject("select count(*) from framework_process_work_draft where tenant_id=? and project_id=? and nullif(trim(payload_json->>'facilityId'),'') is not null",Integer.class,tenant,project);
+            case "DATA_SOURCE_REGISTRY" -> 1;
+            default -> 0;
+        };
+        return count==null?0:count;
+    }
+
+    private static String prerequisiteManagementUrl(String type){
+        return switch(type){
+            case "ORGANIZATION_REGISTRY","SITE_REGISTRY","FACILITY_REGISTRY" -> "/admin/emission/site-management";
+            case "ACTOR_ASSIGNMENT" -> "/emission/work-assignment";
+            case "EMISSION_FACTOR_REFERENCE","UNIT_REFERENCE" -> "/admin/emission/factor-management";
+            case "REPORT_REGISTRY" -> "/admin/emission/report-template";
+            default -> "/admin/emission/project-prerequisites";
+        };
+    }
+
+    private static String prerequisiteResolution(String type){
+        return switch(type){
+            case "ORGANIZATION_REGISTRY" -> "Register the project organization and boundary.";
+            case "SITE_REGISTRY" -> "Register and activate at least one tenant-owned site.";
+            case "ACTOR_ASSIGNMENT" -> "Assign an active account to the required project actor.";
+            case "FACILITY_REGISTRY" -> "Register or select the project facility.";
+            case "EMISSION_FACTOR_REFERENCE" -> "Approve at least one emission factor reference.";
+            case "UNIT_REFERENCE" -> "Register a unit through the factor reference catalog.";
+            case "REPORT_REGISTRY" -> "Create a report record or complete the calculation handoff.";
+            case "DATA_SOURCE_REGISTRY" -> "Enter the governed source type and original reference in this step.";
+            default -> "Complete the administrator prerequisite.";
+        };
+    }
+
+    private void assertRelayPrerequisitesReady(String tenant,String project,String process,String step){
+        Map<String,Object> readiness=relayPrerequisiteReadiness(tenant,project,process,step);
+        if(((Number)readiness.get("blockingMissingCount")).intValue()>0)
+            throw new IllegalStateException("PREREQUISITE_NOT_READY: complete the linked administrator prerequisites before saving or completing this step.");
     }
 
     private static Map<String,Object> option(String value,String label){return Map.of("value",value,"label",label);}

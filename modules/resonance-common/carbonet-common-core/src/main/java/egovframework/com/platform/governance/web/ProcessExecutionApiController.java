@@ -80,6 +80,16 @@ public class ProcessExecutionApiController {
         catch(SecurityException e){return forbidden(e);}catch(Exception e){return bad(e);}
     }
 
+    @GetMapping("/prerequisites")
+    public ResponseEntity<?> prerequisites(@RequestParam String tenantId,@RequestParam String projectId,
+                                           @RequestParam(defaultValue="") String processCode,
+                                           @RequestParam(defaultValue="") String stepCode,HttpServletRequest request){
+        String user=authenticatedUser(request);
+        if(user==null)return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("success",false,"message","Authentication is required."));
+        try{return ResponseEntity.ok(service.relayPrerequisiteReadiness(tenantId,projectId,processCode,stepCode));}
+        catch(Exception e){return bad(e);}
+    }
+
     @PutMapping("/draft")
     public ResponseEntity<?> saveDraft(@RequestBody Map<String,Object> body,HttpServletRequest request){
         String user=authenticatedUser(request);
