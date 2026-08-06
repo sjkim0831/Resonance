@@ -166,7 +166,7 @@ try {
   await call(clients.owner, "post", `/home/api/emission-projects/${projectId}/regulatory-submissions/${regulatoryId}/transition`, { action: "SUBMIT", note: "Submitted by lifecycle harness" });
   mark("REGULATORY_SUBMISSION", "REGULATORY_SUBMISSION_S2", "COMPANY_MANAGER",
     "POST /regulatory-submissions/{id}/transition:SUBMIT", { status: "DONE", regulatoryId });
-  await call(clients.owner, "post", `/home/api/emission-projects/${projectId}/regulatory-submissions/${regulatoryId}/transition`, { action: "RECORD_RECEIPT", receiptNo: `AUTO-${marker}`, note: "Receipt recorded" });
+  await call(clients.verifier, "post", `/home/api/emission-projects/${projectId}/regulatory-submissions/${regulatoryId}/transition`, { action: "RECORD_RECEIPT", receiptNo: `AUTO-${marker}`, note: "Receipt recorded" });
   mark("REGULATORY_SUBMISSION", "REGULATORY_SUBMISSION_S3", "VERIFIER",
     "POST /regulatory-submissions/{id}/transition:RECORD_RECEIPT", { status: "DONE", regulatoryId });
   await call(clients.approver, "post", `/home/api/emission-projects/${projectId}/regulatory-submissions/${regulatoryId}/transition`, { action: "ACCEPT", note: "Accepted by lifecycle harness" });

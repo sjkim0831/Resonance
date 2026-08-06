@@ -939,7 +939,7 @@ public class EmissionProjectRegistryService {
     @Transactional
     public Map<String,Object> decideActivityRequest(String projectId,long requestId,String tenantId,String actor,boolean override,Map<String,Object> body) {
         String tenant=requiredValue(tenantId,"tenantId"),user=requiredValue(actor,"actor"),decision=required(body,"decision").toUpperCase();
-        requireProjectActor(projectId,tenant,user,"COMPANY_MANAGER",override);
+        requireProjectActorAny(projectId,tenant,user,override,"APPROVER","COMPANY_MANAGER");
         List<Map<String,Object>> rows=jdbc.queryForList("SELECT request_status AS status,request_title AS title,assignee_id AS assignee,last_submission_id AS submission FROM emission_activity_request WHERE request_id=? AND project_id=? AND tenant_id=? FOR UPDATE",requestId,projectId,tenant);
         if(rows.isEmpty()) throw new IllegalArgumentException("ACTIVITY_REQUEST_NOT_FOUND");
         Map<String,Object> row=rows.get(0); if(!"SUBMITTED".equals(text(row.get("status")))) throw new IllegalStateException("ACTIVITY_REQUEST_DECISION_REQUIRES_SUBMITTED");
@@ -1013,7 +1013,9 @@ public class EmissionProjectRegistryService {
 
     @Transactional public Map<String,Object> transitionRegulatorySubmission(String projectId,long submissionId,String tenantId,String actor,boolean override,Map<String,Object> body) {
         String tenant=effectiveProjectTenant(projectId,tenantId,override),user=requiredValue(actor,"actor"),action=required(body,"action").toUpperCase(),note=text(body.get("note"));
-        String requiredActor=List.of("REQUEST_CORRECTION","ACCEPT").contains(action)?"VERIFIER":"COMPANY_MANAGER"; requireProjectActor(projectId,tenant,user,requiredActor,override);
+        if("ACCEPT".equals(action)) requireProjectActorAny(projectId,tenant,user,override,"APPROVER","VERIFIER");
+        else if(List.of("RECORD_RECEIPT","REQUEST_CORRECTION").contains(action)) requireProjectActorAny(projectId,tenant,user,override,"VERIFIER","COMPANY_MANAGER");
+        else requireProjectActor(projectId,tenant,user,"COMPANY_MANAGER",override);
         List<Map<String,Object>> rows=jdbc.queryForList("SELECT status,package_hash,external_receipt_no FROM emission_regulatory_submission WHERE regulatory_submission_id=? AND tenant_id=? AND project_id=? FOR UPDATE",submissionId,tenant,projectId);
         if(rows.isEmpty())throw new SecurityException("REGULATORY_SUBMISSION_SCOPE_DENIED"); String previous=text(rows.get(0).get("status")),next;
         switch(action){
@@ -1040,7 +1042,7 @@ public class EmissionProjectRegistryService {
     }
 
     @Transactional public Map<String,Object> createReport(String projectId,String tenantId,String actor,boolean override,Map<String,Object> body) {
-        String tenant=requiredValue(tenantId,"tenantId"),user=requiredValue(actor,"actor"); requireProjectActor(projectId,tenant,user,"COMPANY_MANAGER",override);
+        String tenant=requiredValue(tenantId,"tenantId"),user=requiredValue(actor,"actor"); requireProjectActorAny(projectId,tenant,user,override,"CALCULATOR","COMPANY_MANAGER");
         List<Map<String,Object>> source=jdbc.queryForList("SELECT s.submission_id AS submission_id,c.calculation_id AS calculation_id FROM emission_activity_submission s JOIN emission_submission_review r ON r.submission_id=s.submission_id AND r.review_stage='APPROVAL' AND r.decision='APPROVED' JOIN emission_calculation_run c ON c.calculation_id=r.calculation_id WHERE s.tenant_id=? AND s.project_id=? AND s.submission_state='APPROVED' AND c.locked_at IS NOT NULL ORDER BY r.created_at DESC LIMIT 1",tenant,projectId);
         if(source.isEmpty()) throw new IllegalStateException("REPORT_REQUIRES_APPROVED_LOCKED_CALCULATION");
         Map<String,Object> project=detail(projectId),row=source.get(0); String language=text(body.get("language")); if(!List.of("ko","en").contains(language))language="ko";
@@ -1052,7 +1054,7 @@ public class EmissionProjectRegistryService {
     }
 
     @Transactional public Map<String,Object> finalizeReport(String projectId,long reportId,String tenantId,String actor,boolean override) {
-        String tenant=requiredValue(tenantId,"tenantId"),user=requiredValue(actor,"actor"); requireProjectActor(projectId,tenant,user,"COMPANY_MANAGER",override);
+        String tenant=requiredValue(tenantId,"tenantId"),user=requiredValue(actor,"actor"); requireProjectActorAny(projectId,tenant,user,override,"VERIFIER","COMPANY_MANAGER");
         int changed=jdbc.update("UPDATE emission_project_report SET report_status='FINALIZED',finalized_by=?,finalized_at=current_timestamp,updated_at=current_timestamp WHERE report_id=? AND project_id=? AND tenant_id=? AND report_status='DRAFT'",user,reportId,projectId,tenant);
         if(changed==0) { Integer exists=jdbc.queryForObject("SELECT count(*) FROM emission_project_report WHERE report_id=? AND project_id=? AND tenant_id=? AND report_status='FINALIZED'",Integer.class,reportId,projectId,tenant); if(exists==null||exists==0)throw new IllegalStateException("REPORT_FINALIZE_STATE_INVALID"); }
         completeWorkflowTask(projectId,"REPORT",user);
@@ -1062,7 +1064,7 @@ public class EmissionProjectRegistryService {
     }
 
     @Transactional public Map<String,Object> issueReportCertificate(String projectId,long reportId,String tenantId,String actor,boolean override) {
-        String tenant=requiredValue(tenantId,"tenantId"),user=requiredValue(actor,"actor"); requireProjectActor(projectId,tenant,user,"COMPANY_MANAGER",override);
+        String tenant=requiredValue(tenantId,"tenantId"),user=requiredValue(actor,"actor"); requireProjectActorAny(projectId,tenant,user,override,"APPROVER","COMPANY_MANAGER");
         List<Map<String,Object>> rows=jdbc.queryForList("SELECT report_id,version_no,report_title,report_status,certificate_id,integrity_hash FROM emission_project_report WHERE report_id=? AND project_id=? AND tenant_id=? FOR UPDATE",reportId,projectId,tenant);
         if(rows.isEmpty())throw new SecurityException("REPORT_SCOPE_DENIED"); Map<String,Object> row=rows.get(0);
         if(!"FINALIZED".equals(text(row.get("report_status"))))throw new IllegalStateException("CERTIFICATE_REQUIRES_FINALIZED_REPORT");
