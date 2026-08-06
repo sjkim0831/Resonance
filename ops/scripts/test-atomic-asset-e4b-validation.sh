@@ -27,6 +27,9 @@ for token in (
 ):
     assert token in sync[validation:commit]
 assert "e4b=verified" in sync
+assert "CREATE TEMP TABLE asset_sync_delta" in sync
+assert "active_before + additions - deletions" in sync
+assert "sync_scope LIKE 'GIT_SOURCE_%'" in sync
 
 adjacent = (
     'bash ops/scripts/sync-unified-asset-catalog.sh "$deployed_commit" "$target_commit"\n'

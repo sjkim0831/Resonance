@@ -112,10 +112,44 @@ CREATE TEMP TABLE source_asset_stage(asset_path text,asset_type varchar(40),cont
 CREATE TEMP TABLE deleted_asset_stage(asset_path text) ON COMMIT DROP;
 CREATE TEMP TABLE source_manifest_stage(asset_path text,asset_type varchar(40),content_hash varchar(64)) ON COMMIT DROP;
 CREATE TEMP TABLE asset_sync_control(is_full boolean) ON COMMIT DROP;
+CREATE TEMP TABLE asset_sync_delta(active_before integer,additions integer,deletions integer) ON COMMIT DROP;
 INSERT INTO asset_sync_control VALUES (:'is_full'::boolean);
 \copy source_asset_stage FROM '/tmp/unified-source-assets.tsv' WITH (FORMAT text,DELIMITER E'\t');
 \copy deleted_asset_stage FROM '/tmp/unified-source-assets-deleted.tsv' WITH (FORMAT text);
 \copy source_manifest_stage FROM '/tmp/unified-source-assets-manifest.tsv' WITH (FORMAT text,DELIMITER E'\t');
+INSERT INTO asset_sync_delta(active_before,additions,deletions)
+SELECT
+  coalesce(
+    (
+      SELECT discovered_count
+      FROM framework_asset_catalog_sync_run
+      WHERE sync_scope LIKE 'GIT_SOURCE_%' AND result='COMPLETED'
+      ORDER BY sync_run_id DESC
+      LIMIT 1
+    ),
+    (
+      SELECT count(*)
+      FROM framework_unified_asset
+      WHERE source_system='GIT' AND active_yn='Y'
+    )
+  ),
+  (
+    SELECT count(*)
+    FROM source_asset_stage changed
+    LEFT JOIN framework_unified_asset asset
+      ON asset.source_system='GIT'
+     AND asset.asset_path=changed.asset_path
+     AND asset.active_yn='Y'
+    WHERE asset.asset_id IS NULL
+  ),
+  (
+    SELECT count(*)
+    FROM deleted_asset_stage deleted
+    JOIN framework_unified_asset asset
+      ON asset.source_system='GIT'
+     AND asset.asset_path=deleted.asset_path
+     AND asset.active_yn='Y'
+  );
 INSERT INTO source_asset_stage(asset_path,asset_type,content_hash)
 SELECT manifest.asset_path,manifest.asset_type,manifest.content_hash
 FROM source_manifest_stage manifest
@@ -291,7 +325,10 @@ INSERT INTO framework_asset_catalog_sync_run(sync_scope,discovered_count,relatio
 SELECT :'sync_scope',
        CASE WHEN (SELECT is_full FROM asset_sync_control)
          THEN (SELECT count(*) FROM source_manifest_stage)
-         ELSE (SELECT count(*) FROM framework_unified_asset WHERE source_system='GIT' AND active_yn='Y')
+         ELSE (
+           SELECT active_before + additions - deletions
+           FROM asset_sync_delta
+         )
        END,
        (SELECT count(*) FROM framework_unified_asset_relation WHERE active_yn='Y'),
        (SELECT count(*) FROM source_asset_stage)+(SELECT count(*) FROM deleted_asset_stage),0,'COMPLETED','AUTO_DEPLOY';
