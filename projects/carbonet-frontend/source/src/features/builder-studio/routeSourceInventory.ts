@@ -1369,6 +1369,30 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "routeFamilyFile": "app/routes/families/emissionMonitoringFamily.ts"
   },
   {
+    "routeId": "emission-project-portfolio",
+    "label": "배출량 프로젝트 포트폴리오",
+    "group": "home",
+    "koPath": "/emission/project-portfolio",
+    "enPath": "/en/emission/project-portfolio",
+    "exportName": "EmissionProjectPortfolioPage",
+    "sourcePath": "features/emission-project-list/EmissionProjectPortfolioPage.tsx",
+    "effectiveExportName": "EmissionProjectPortfolioPage",
+    "effectiveSourcePath": "features/emission-project-list/EmissionProjectPortfolioPage.tsx",
+    "routeFamilyFile": "app/routes/families/emissionMonitoringFamily.ts"
+  },
+  {
+    "routeId": "emission-project-prerequisites-admin",
+    "label": "프로젝트 사전 설정",
+    "group": "admin",
+    "koPath": "/admin/emission/project-prerequisites",
+    "enPath": "/en/admin/emission/project-prerequisites",
+    "exportName": "AdminEmissionProjectPrerequisitesPage",
+    "sourcePath": "features/emission-project-list/AdminEmissionProjectPrerequisitesPage.tsx",
+    "effectiveExportName": "AdminEmissionProjectPrerequisitesPage",
+    "effectiveSourcePath": "features/emission-project-list/AdminEmissionProjectPrerequisitesPage.tsx",
+    "routeFamilyFile": "app/routes/families/emissionMonitoringFamily.ts"
+  },
+  {
     "routeId": "emission-project-progress",
     "label": "프로세스 진행",
     "group": "home",
@@ -1678,6 +1702,18 @@ export const ROUTE_SOURCE_INVENTORY: RouteSourceInventoryRow[] = [
     "sourcePath": "features/emission-validate/EmissionValidateMigrationPage.tsx",
     "effectiveExportName": "EmissionValidateMigrationPage",
     "effectiveSourcePath": "features/emission-validate/EmissionValidateMigrationPage.tsx",
+    "routeFamilyFile": "app/routes/families/emissionMonitoringFamily.ts"
+  },
+  {
+    "routeId": "emission-work-assignment",
+    "label": "프로젝트 업무 배정",
+    "group": "home",
+    "koPath": "/emission/work-assignment",
+    "enPath": "/en/emission/work-assignment",
+    "exportName": "WorkAssignmentPage",
+    "sourcePath": "features/work-assignment/WorkAssignmentPage.tsx",
+    "effectiveExportName": "WorkAssignmentPage",
+    "effectiveSourcePath": "features/work-assignment/WorkAssignmentPage.tsx",
     "routeFamilyFile": "app/routes/families/emissionMonitoringFamily.ts"
   },
   {
