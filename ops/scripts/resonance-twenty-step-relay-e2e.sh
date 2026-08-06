@@ -13,9 +13,12 @@ fi
 }
 
 K8S_NAMESPACE="${K8S_NAMESPACE:-carbonet-prod}"
-PATRONI_POD="${PATRONI_POD:-postgres-patroni-2}"
+PATRONI_POD="${PATRONI_POD:-$(K8S_NAMESPACE="$K8S_NAMESPACE" bash "$ROOT/ops/scripts/resolve-patroni-primary-pod.sh")}"
+DEPLOY_STATE_FILE="${CARBONET_DEPLOY_STATE_FILE:-/opt/resonance-data/deploy/carbonet-main-success.commit}"
+DEPLOYED_COMMIT="${E2E_DEPLOYED_COMMIT:-$(tr -d '[:space:]' < "$DEPLOY_STATE_FILE" 2>/dev/null || true)}"
+[[ "$DEPLOYED_COMMIT" =~ ^[0-9a-fA-F]{7,80}$ ]] || { echo '[twenty-step-relay-e2e] FAIL deployed commit unavailable' >&2; exit 2; }
 RELAY_CONTRACT="$(kubectl -n "$K8S_NAMESPACE" exec -i "$PATRONI_POD" -c patroni -- \
-  psql -h 127.0.0.1 -U postgres -d carbonet -X -At -F '|' <<'SQL'
+  psql -h 127.0.0.1 -U postgres -d carbonet -X -At -F '|' -v source_commit="$DEPLOYED_COMMIT" <<'SQL'
 WITH RECURSIVE chain(process_code,next_process_code,depth,path) AS (
   SELECT process_code,next_process_code,1,ARRAY[process_code::text]
   FROM framework_process_chain
@@ -31,11 +34,21 @@ WITH RECURSIVE chain(process_code,next_process_code,depth,path) AS (
 )
 SELECT (SELECT string_agg(process_code,',' ORDER BY depth)
           FROM (SELECT DISTINCT depth,process_code FROM contract) ordered),
-       count(DISTINCT process_code||'/'||step_code),count(DISTINCT actor_code)
+       count(DISTINCT process_code||'/'||step_code),count(DISTINCT actor_code),
+       replace(encode(convert_to((SELECT jsonb_agg(jsonb_build_object(
+         'processCode',contract.process_code,'stepCode',contract.step_code,
+         'processVersion',definition.process_version,
+         'contractFingerprint',framework_current_process_step_contract_fingerprint(contract.process_code,contract.step_code),
+         'sourceCommit',:'source_commit','capturedAt',to_char(current_timestamp at time zone 'UTC','YYYY-MM-DD"T"HH24:MI:SS"Z"')
+       ) ORDER BY contract.depth,step.step_order)::text
+       FROM contract JOIN framework_process_definition definition USING(process_code)
+       JOIN framework_process_step step USING(process_code,step_code)),'UTF8'),'base64'),E'\n','')
 FROM contract;
 SQL
 )"
-IFS='|' read -r CARBONET_RELAY_EXPECTED_PROCESSES CARBONET_RELAY_EXPECTED_STEP_COUNT CARBONET_RELAY_EXPECTED_ACCOUNT_COUNT <<<"$RELAY_CONTRACT"
+IFS='|' read -r CARBONET_RELAY_EXPECTED_PROCESSES CARBONET_RELAY_EXPECTED_STEP_COUNT CARBONET_RELAY_EXPECTED_ACCOUNT_COUNT CONTRACTS_B64 <<<"$RELAY_CONTRACT"
+PRE_RUN_CONTRACTS="$(printf '%s' "$CONTRACTS_B64" | base64 -d)"
+[[ "$(jq 'length' <<<"$PRE_RUN_CONTRACTS")" == "$CARBONET_RELAY_EXPECTED_STEP_COUNT" ]] || { echo '[twenty-step-relay-e2e] FAIL contract envelope count mismatch' >&2; exit 3; }
 [[ -n "$CARBONET_RELAY_EXPECTED_PROCESSES" && "$CARBONET_RELAY_EXPECTED_STEP_COUNT" -gt 0 ]] || {
   echo '[twenty-step-relay-e2e] FAIL executable relay contract is empty' >&2
   exit 3
@@ -52,5 +65,5 @@ RESONANCE_ROOT="$ROOT" node "$ROOT/ops/scripts/resonance-twenty-step-relay-e2e.m
 # sufficient. Every canonical step must also mount its authenticated user route
 # and complete the same actor relay in the browser.
 RESONANCE_ROOT="$ROOT" node "$ROOT/ops/scripts/resonance-twenty-step-relay-visual-e2e.mjs"
-bash "$ROOT/ops/scripts/promote-relay-contracts-after-e2e.sh" \
+PRE_RUN_CONTRACTS="$PRE_RUN_CONTRACTS" bash "$ROOT/ops/scripts/promote-relay-contracts-after-e2e.sh" \
   "$ROOT/var/test-evidence/twenty-step-relay-e2e-latest.json"

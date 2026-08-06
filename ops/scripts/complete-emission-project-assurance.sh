@@ -6,7 +6,13 @@ NAMESPACE="${K8S_NAMESPACE:-carbonet-prod}"
 PROCESS="EMISSION_PROJECT"
 STEPS=(EMISSION_PROJECT_SETUP EMISSION_PROJECT_COLLECT EMISSION_PROJECT_CALCULATE EMISSION_PROJECT_VALIDATE EMISSION_PROJECT_CORRECT EMISSION_PROJECT_APPROVE EMISSION_PROJECT_REPORT)
 DIMENSIONS=(DATABASE BACKEND FRONTEND_USER FRONTEND_ADMIN TEST)
-SOURCE_COMMIT="${EMISSION_PROJECT_SOURCE_COMMIT:-$(git -C "$ROOT" rev-parse --short=12 HEAD)}"
+CONTRACTS='[]'
+for step in "${STEPS[@]}"; do
+  contract="$(bash "$ROOT/ops/scripts/capture-business-e2e-contract.sh" "$PROCESS" "$step")"
+  CONTRACTS="$(jq -cn --argjson contracts "$CONTRACTS" --argjson contract "$contract" '$contracts + [$contract]')"
+done
+SOURCE_COMMIT="$(jq -r 'map(.sourceCommit)|unique|if length==1 then .[0] else error("mixed deployed commits") end' <<<"$CONTRACTS")"
+[[ "$SOURCE_COMMIT" =~ ^[0-9a-fA-F]{7,80}$ ]] || { echo '[emission-project-assurance] FAIL invalid deployed source commit' >&2; exit 2; }
 EVIDENCE_REF="runtime-e2e:${SOURCE_COMMIT}:steps=7:actors=6:tasks=7:protected=9:recovery=PASS"
 
 activity="$(bash "$ROOT/ops/scripts/validate-activity-data-runtime.sh")"
@@ -15,9 +21,20 @@ report="$(bash "$ROOT/ops/scripts/validate-report-certification-runtime.sh")"
 workflow="$(bash "$ROOT/ops/scripts/validate-emission-project-workflow.sh")"
 customer="$(bash "$ROOT/ops/scripts/validate-customer-work-journey.sh")"
 runtime_smoke="$(CARBONET_RUNTIME_SMOKE_PROCESS=EMISSION_PROJECT bash "$ROOT/ops/scripts/run-process-runtime-smoke.sh")"
-for evidence in "$activity" "$calculation" "$report" "$workflow" "$customer" "$runtime_smoke"; do
-  grep -Fq 'PASS' <<<"$evidence" || { echo '[emission-project-assurance] FAIL runtime evidence missing' >&2; exit 1; }
-done
+grep -Eq '^\[activity-runtime\] PASS ' <<<"$activity" || exit 1
+grep -Eq '^\[calculation-runtime\] PASS ' <<<"$calculation" || exit 1
+grep -Eq '^\[report-runtime\] PASS ' <<<"$report" || exit 1
+grep -Eq '^\[emission-workflow\] PASS ' <<<"$workflow" || exit 1
+grep -Eq '^\[customer-work-journey\] PASS ' <<<"$customer" || exit 1
+grep -Eq '^\[process-runtime-smoke\] PASS process=EMISSION_PROJECT ' <<<"$runtime_smoke" || exit 1
+DEPLOY_STATE_FILE="${CARBONET_DEPLOY_STATE_FILE:-/opt/resonance-data/deploy/carbonet-main-success.commit}"
+[[ "$SOURCE_COMMIT" == "${E2E_DEPLOYED_COMMIT:-$(tr -d '[:space:]' < "$DEPLOY_STATE_FILE" 2>/dev/null || true)}" ]] || { echo '[emission-project-assurance] FAIL deployment changed during E2E' >&2; exit 3; }
+ASSURANCE_EVIDENCE="$(jq -cn --argjson contracts "$CONTRACTS" --arg activity "$activity" --arg calculation "$calculation" \
+  --arg report "$report" --arg workflow "$workflow" --arg customer "$customer" --arg runtimeSmoke "$runtime_smoke" \
+  '{suite:"EMISSION_PROJECT_ASSURANCE",contracts:$contracts,validators:{activity:$activity,calculation:$calculation,report:$report,workflow:$workflow,customerJourney:$customer,runtimeSmoke:$runtimeSmoke},stepAssertions:{EMISSION_PROJECT_SETUP:["workflow","customerJourney"],EMISSION_PROJECT_COLLECT:["activity","customerJourney"],EMISSION_PROJECT_CALCULATE:["calculation","customerJourney"],EMISSION_PROJECT_VALIDATE:["calculation","runtimeSmoke"],EMISSION_PROJECT_CORRECT:["customerJourney","runtimeSmoke"],EMISSION_PROJECT_APPROVE:["customerJourney","workflow"],EMISSION_PROJECT_REPORT:["report","customerJourney"]}}')"
+ASSURANCE_EVIDENCE_SHA256="$(printf '%s' "$ASSURANCE_EVIDENCE" | sha256sum | awk '{print $1}')"
+ASSURANCE_EVIDENCE_B64="$(printf '%s' "$ASSURANCE_EVIDENCE" | base64 -w0)"
+ASSURANCE_EVIDENCE_URI="inline://business-e2e/sha256/$ASSURANCE_EVIDENCE_SHA256"
 
 dimension_count=0
 for step in "${STEPS[@]}"; do
@@ -28,11 +45,43 @@ for step in "${STEPS[@]}"; do
 done
 [[ "$dimension_count" == 35 ]] || { echo "[emission-project-assurance] FAIL dimensions=$dimension_count" >&2; exit 1; }
 
-POD="$(kubectl -n "$NAMESPACE" get pods -l app=postgres-patroni -o jsonpath='{.items[0].metadata.name}')"
+POD="$(K8S_NAMESPACE="$NAMESPACE" bash "$ROOT/ops/scripts/resolve-patroni-primary-pod.sh")"
 SQL=$(cat <<SQL
 do \$\$
 declare target_count integer;
 begin
+  insert into framework_process_qa_run(
+    process_code,step_code,result,failure_reason,evidence_json,executed_by,executed_at,
+    evidence_type,process_version,source_commit,contract_fingerprint,
+    execution_environment,evidence_uri,evidence_hash
+  )
+  select p.process_code,s.step_code,'PASSED',null,
+         evidence.body || jsonb_build_object('stepCode',s.step_code,'sha256','$ASSURANCE_EVIDENCE_SHA256'),
+         'EMISSION_PROJECT_ASSURANCE',current_timestamp,'BUSINESS_E2E',p.process_version,
+         '$SOURCE_COMMIT',framework_current_process_step_contract_fingerprint(p.process_code,s.step_code),
+         '$NAMESPACE','$ASSURANCE_EVIDENCE_URI','$ASSURANCE_EVIDENCE_SHA256'
+  from framework_process_definition p
+  join framework_process_step s using(process_code)
+  cross join lateral (select convert_from(decode('$ASSURANCE_EVIDENCE_B64','base64'),'UTF8')::jsonb body) evidence
+  join lateral (select contract from jsonb_array_elements(evidence.body->'contracts') contract
+                where contract->>'processCode'=p.process_code and contract->>'stepCode'=s.step_code) captured on true
+  where p.process_code='EMISSION_PROJECT'
+    and s.step_code in ('EMISSION_PROJECT_SETUP','EMISSION_PROJECT_COLLECT','EMISSION_PROJECT_CALCULATE','EMISSION_PROJECT_VALIDATE','EMISSION_PROJECT_CORRECT','EMISSION_PROJECT_APPROVE','EMISSION_PROJECT_REPORT')
+    and p.process_version=captured.contract->>'processVersion'
+    and framework_current_process_step_contract_fingerprint(p.process_code,s.step_code)=captured.contract->>'contractFingerprint'
+    and captured.contract->>'sourceCommit'='$SOURCE_COMMIT'
+    and framework_current_process_step_contract_fingerprint(p.process_code,s.step_code) is not null
+  on conflict do nothing;
+
+  select count(*) into target_count
+  from framework_current_business_e2e_evidence
+  where process_code='EMISSION_PROJECT'
+    and step_code in ('EMISSION_PROJECT_SETUP','EMISSION_PROJECT_COLLECT','EMISSION_PROJECT_CALCULATE','EMISSION_PROJECT_VALIDATE','EMISSION_PROJECT_CORRECT','EMISSION_PROJECT_APPROVE','EMISSION_PROJECT_REPORT')
+    and business_test_result='PASSED'
+    and source_commit='$SOURCE_COMMIT'
+    and evidence_hash='$ASSURANCE_EVIDENCE_SHA256';
+  if target_count<>7 then raise exception 'EMISSION_PROJECT current-version E2E evidence mismatch: %',target_count; end if;
+
   update framework_professional_screen_contract
   set menu_visibility='HIDDEN',menu_verified=true,api_verified=true,database_verified=true,
       authority_verified=true,responsive_verified=true,accessibility_verified=true,

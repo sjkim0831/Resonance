@@ -7,7 +7,9 @@ if [[ -z "${CARBONET_ADMIN_TEST_PASSWORD:-}" ]]; then
 fi
 export CARBONET_ADMIN_TEST_PASSWORD
 export CARBONET_RUNTIME_BASE_URL="${CARBONET_RUNTIME_BASE_URL:-http://172.16.1.232}"
-EVIDENCE="$(RESONANCE_ROOT="$ROOT" node "$ROOT/ops/scripts/resonance-project-portfolio-admin-e2e.mjs")"
+CONTRACT="$(bash "$ROOT/ops/scripts/capture-business-e2e-contract.sh" EMISSION_PROJECT_PORTFOLIO EMISSION_PROJECT_PORTFOLIO_LIST)"
+RAW_EVIDENCE="$(RESONANCE_ROOT="$ROOT" node "$ROOT/ops/scripts/resonance-project-portfolio-admin-e2e.mjs")"
+EVIDENCE="$(jq -cn --argjson result "$RAW_EVIDENCE" --argjson contract "$CONTRACT" '$result + {contract:$contract}')"
 printf '%s\n' "$EVIDENCE"
 printf '%s' "$EVIDENCE" | RESONANCE_ROOT="$ROOT" bash "$ROOT/ops/scripts/promote-screen-contract-after-e2e.sh" \
   EMISSION_PROJECT_PORTFOLIO EMISSION_PROJECT_PORTFOLIO_LIST \

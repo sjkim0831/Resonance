@@ -43,6 +43,20 @@ if [[ "$MODE" == "--validate-only" ]]; then
 fi
 
 EVIDENCE_B64="$(printf '%s' "$EVIDENCE" | base64 -w0)"
+CONTRACT="$(jq -cer --arg process "$PROCESS_CODE" --arg step "$STEP_CODE" '
+  if (.contract.processCode==$process and .contract.stepCode==$step) then .contract
+  else ([.contracts[]? | select(.processCode==$process and .stepCode==$step)] | if length==1 then .[0] else error("matching pre-run contract envelope is required") end)
+  end
+' <<<"$EVIDENCE")" || { echo 'matching pre-run contract envelope is required' >&2; exit 3; }
+SOURCE_COMMIT="$(jq -r '.sourceCommit' <<<"$CONTRACT")"
+PROCESS_VERSION="$(jq -r '.processVersion' <<<"$CONTRACT")"
+CONTRACT_FINGERPRINT="$(jq -r '.contractFingerprint' <<<"$CONTRACT")"
+[[ "$SOURCE_COMMIT" =~ ^[0-9a-fA-F]{7,80}$ && "$CONTRACT_FINGERPRINT" =~ ^[0-9a-f]{32,128}$ && -n "$PROCESS_VERSION" ]] || { echo 'invalid pre-run contract envelope' >&2; exit 3; }
+DEPLOY_STATE_FILE="${CARBONET_DEPLOY_STATE_FILE:-/opt/resonance-data/deploy/carbonet-main-success.commit}"
+CURRENT_DEPLOYED_COMMIT="${E2E_DEPLOYED_COMMIT:-$(tr -d '[:space:]' < "$DEPLOY_STATE_FILE" 2>/dev/null || true)}"
+[[ "$SOURCE_COMMIT" == "$CURRENT_DEPLOYED_COMMIT" ]] || { echo 'deployed commit changed during E2E; refusing stale evidence' >&2; exit 3; }
+EXECUTION_ENVIRONMENT="${E2E_EXECUTION_ENVIRONMENT:-carbonet-prod}"
+EVIDENCE_URI="${E2E_EVIDENCE_URI:-inline://business-e2e/sha256/$EVIDENCE_SHA256}"
 K8S_NAMESPACE="${K8S_NAMESPACE:-carbonet-prod}"
 PATRONI_POD="${PATRONI_POD:-$(K8S_NAMESPACE="$K8S_NAMESPACE" bash "$ROOT/ops/scripts/resolve-patroni-primary-pod.sh")}"
 
@@ -50,23 +64,51 @@ kubectl -n "$K8S_NAMESPACE" exec -i "$PATRONI_POD" -c patroni -- \
   psql -v ON_ERROR_STOP=1 -h 127.0.0.1 -U postgres -d carbonet -X -q \
     -o /dev/null \
     -v process_code="$PROCESS_CODE" -v step_code="$STEP_CODE" \
-    -v audience="$AUDIENCE" -v evidence_b64="$EVIDENCE_B64" -v evidence_sha256="$EVIDENCE_SHA256" <<'SQL'
+    -v audience="$AUDIENCE" -v evidence_b64="$EVIDENCE_B64" -v evidence_sha256="$EVIDENCE_SHA256" \
+    -v source_commit="$SOURCE_COMMIT" -v process_version="$PROCESS_VERSION" -v contract_fingerprint="$CONTRACT_FINGERPRINT" \
+    -v execution_environment="$EXECUTION_ENVIRONMENT" -v evidence_uri="$EVIDENCE_URI" <<'SQL'
 BEGIN;
 
 SELECT set_config('resonance.process_code',:'process_code',true);
 SELECT set_config('resonance.step_code',:'step_code',true);
 SELECT set_config('resonance.audience',:'audience',true);
 SELECT set_config('resonance.evidence_sha256',:'evidence_sha256',true);
+SELECT set_config('resonance.source_commit',:'source_commit',true);
 
 INSERT INTO framework_process_qa_run(
-  process_code,step_code,result,failure_reason,evidence_json,executed_by,executed_at
+  process_code,step_code,result,failure_reason,evidence_json,executed_by,executed_at,
+  evidence_type,process_version,source_commit,contract_fingerprint,
+  execution_environment,evidence_uri,evidence_hash
 )
-VALUES (
-  :'process_code', :'step_code', 'PASSED', NULL,
+SELECT :'process_code', :'step_code', 'PASSED', NULL,
   convert_from(decode(:'evidence_b64','base64'),'UTF8')::jsonb ||
     jsonb_build_object('sha256',:'evidence_sha256','promotionMode','FAIL_CLOSED'),
-  'CONTRACT_E2E_PROMOTER', current_timestamp
-);
+  'CONTRACT_E2E_PROMOTER', current_timestamp,'BUSINESS_E2E',definition.process_version,
+  :'source_commit',fingerprint.contract_fingerprint,:'execution_environment',:'evidence_uri',:'evidence_sha256'
+FROM framework_process_definition definition
+CROSS JOIN LATERAL (
+  SELECT framework_current_process_step_contract_fingerprint(:'process_code',:'step_code') contract_fingerprint
+) fingerprint
+WHERE definition.process_code=:'process_code'
+  AND definition.process_version=:'process_version'
+  AND fingerprint.contract_fingerprint=:'contract_fingerprint'
+  AND fingerprint.contract_fingerprint IS NOT NULL
+ON CONFLICT DO NOTHING;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM framework_current_business_e2e_evidence
+    WHERE process_code=current_setting('resonance.process_code')
+      AND step_code=current_setting('resonance.step_code')
+      AND business_test_result='PASSED'
+      AND source_commit=current_setting('resonance.source_commit')
+      AND evidence_hash=current_setting('resonance.evidence_sha256')
+  ) THEN
+    RAISE EXCEPTION 'current-version business E2E evidence was not recorded process=% step=%',
+      current_setting('resonance.process_code'),current_setting('resonance.step_code');
+  END IF;
+END $$;
 
 UPDATE framework_professional_screen_contract contract
 SET api_verified=contract.api_verified OR coalesce((convert_from(decode(:'evidence_b64','base64'),'UTF8')::jsonb->>'api')::integer,0)=1,

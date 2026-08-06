@@ -66,14 +66,43 @@ class ActorProcessGovernanceServiceSecurityTest {
                         && sqlCaptor.getValue().contains("left join framework_screen_capability c using(screen_resource_id)")
                         && sqlCaptor.getValue().contains("coalesce(c.capability_code,'ALL') capability_code"),
                 "contract evidence must retain every active screen binding and actual capability target");
+        assertTrue(sqlCaptor.getValue().contains("framework_current_business_e2e_evidence")
+                        && sqlCaptor.getValue().contains("current_business_e2e as materialized")
+                        && sqlCaptor.getValue().contains("current_runtime_source_commit"),
+                "business evidence must be read only through the current runtime-version ledger view");
 
         assertEquals("CONTRACT_ONLY", report.get("auditMode"));
         assertEquals(false, report.get("businessFunctionsExecuted"));
         assertEquals(5, summary.get("fixtureSuiteRequiredTypeCount"));
         assertEquals(0, summary.get("fixtureSuiteBindingCount"));
         assertEquals("INVENTORY_AND_SIMULATION_EVIDENCE_ONLY", summary.get("fixtureSuiteMode"));
-        assertEquals("EVIDENCE_LEDGER_UNAVAILABLE", summary.get("businessEvidenceStatus"));
+        assertEquals("NO_CURRENT_VERSION_EVIDENCE", summary.get("businessEvidenceStatus"));
         assertEquals("ACTIVE_BINDING_CAPABILITY", summary.get("auditTargetMode"));
+    }
+
+    @Test
+    void qaEvidenceFailsClosedWhenTheCurrentContractFingerprintIsUnavailable() {
+        when(jdbc.queryForList(argThat(sql -> sql.contains("framework_current_process_step_contract_fingerprint")),
+                any(Object[].class))).thenReturn(List.of());
+
+        assertThrows(IllegalStateException.class, () -> service.recordQaResult(
+                "EMISSION_PROJECT", "EMISSION_PROJECT_COLLECT", "PASSED",
+                Map.of("verified", true), "", "qa-runner"));
+
+        verify(jdbc, never()).update(argThat(sql -> sql.contains("framework_process_qa_run")), any(Object[].class));
+    }
+
+    @Test
+    void qaEvidenceFailsClosedWhenTheDatabaseReturnsANullFingerprint() {
+        Map<String,Object> contract=new java.util.LinkedHashMap<>();
+        contract.put("processVersion","1.0.0");
+        contract.put("contractFingerprint",null);
+        when(jdbc.queryForList(argThat(sql -> sql.contains("framework_current_process_step_contract_fingerprint")),
+                any(Object[].class))).thenReturn(List.of(contract));
+
+        assertThrows(IllegalStateException.class, () -> service.recordQaResult(
+                "EMISSION_PROJECT", "EMISSION_PROJECT_COLLECT", "PASSED", Map.of(), "", "qa-runner"));
+        verify(jdbc, never()).update(argThat(sql -> sql.contains("framework_process_qa_run")), any(Object[].class));
     }
 
     @Test

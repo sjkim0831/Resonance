@@ -124,6 +124,30 @@ BACKUP_TIMEOUT_SECONDS="${CARBONET_BACKUP_TIMEOUT_SECONDS:-1200}"
 KUBECONFIG="${CARBONET_KUBECONFIG:-${KUBECONFIG:-/home/sjkim/.kube/config}}"
 export KUBECONFIG
 
+# Publish the serving release identity before the filesystem success marker.
+# The helper invalidates the old DB singleton first, verifies Kubernetes
+# rollout/readiness and in-pod health, stamps the exact commit annotation, and
+# rereads the committed ledger.  A failure leaves evidence fail-closed and the
+# success marker untouched.
+record_runtime_release_state() {
+  local commit="$1"
+  CARBONET_DEPLOY_ROOT="$ROOT_DIR" \
+  CARBONET_K8S_NAMESPACE="$NAMESPACE" \
+  CARBONET_K8S_DEPLOYMENT="$DEPLOYMENT" \
+  CARBONET_K8S_CONTAINER="${CARBONET_K8S_CONTAINER:-carbonet-runtime}" \
+  POSTGRES_DB="$POSTGRES_DB" \
+  POSTGRES_ADMIN_USER="$POSTGRES_USER" \
+    bash "$ROOT_DIR/ops/scripts/record-runtime-release-state.sh" "$commit"
+}
+
+invalidate_runtime_release_state() {
+  CARBONET_DEPLOY_ROOT="$ROOT_DIR" \
+  CARBONET_K8S_NAMESPACE="$NAMESPACE" \
+  POSTGRES_DB="$POSTGRES_DB" \
+  POSTGRES_ADMIN_USER="$POSTGRES_USER" \
+    bash "$ROOT_DIR/ops/scripts/record-runtime-release-state.sh" --invalidate
+}
+
 record_deploy_performance() {
   local mode="$1"
   local elapsed_ms=$(( $(monotonic_milliseconds) - DEPLOY_STARTED_EPOCH_MILLISECONDS ))
@@ -2035,6 +2059,7 @@ if [[ "$PLAN_FRONTEND_REQUIRED" == "true" \
   run_screen_contract_runtime_save_gate_if_required
   bash ops/scripts/sync-unified-asset-catalog.sh "$deployed_commit" "$target_commit"
   record_deploy_phase "frontend_build_and_verify"
+  record_runtime_release_state "$target_commit"
   printf '%s\n' "$target_commit" > "${DEPLOY_STATE_FILE}.tmp"
   mv "${DEPLOY_STATE_FILE}.tmp" "$DEPLOY_STATE_FILE"
   record_deploy_performance frontend
@@ -2055,6 +2080,7 @@ if [[ "$PLAN_RUNTIME_REQUIRED" == "true" \
   bash ops/scripts/sync-unified-asset-catalog.sh "$deployed_commit" "$target_commit"
   record_deploy_phase "runtime_profile_and_verify"
   rm -f "$ROOT_DIR/var/run/full-screen-deploy-gate/active.env"
+  record_runtime_release_state "$target_commit"
   printf '%s\n' "$target_commit" > "${DEPLOY_STATE_FILE}.tmp"
   mv "${DEPLOY_STATE_FILE}.tmp" "$DEPLOY_STATE_FILE"
   record_deploy_performance runtime
@@ -2160,6 +2186,12 @@ else
   restore_live_frontend_overlay
   record_deploy_phase "runtime_candidate_resume"
 fi
+# The target runtime is already serving after either a fresh healthy rollout
+# or a checkpoint-verified resume, but the full-screen gate can still roll it
+# back. Hide all previous PASS evidence during this validation window. The
+# exact target identity is published only after every rollback-capable gate has
+# passed; any failure deliberately leaves the view fail-closed as unavailable.
+invalidate_runtime_release_state
 asset_sync_precompleted=false
 if [[ -n "$runtime_asset_sync_pid" ]]; then
   if wait "$runtime_asset_sync_pid"; then
@@ -2235,6 +2267,7 @@ sync_react_asset_prune_worker_if_required
 # incremental deployment never inherits stale or duplicate build output.
 bash ops/scripts/normalize-deploy-generated-assets.sh "$ROOT_DIR"
 record_deploy_phase "postdeploy_validation"
+record_runtime_release_state "$target_commit"
 printf '%s\n' "$target_commit" > "${DEPLOY_STATE_FILE}.tmp"
 mv "${DEPLOY_STATE_FILE}.tmp" "$DEPLOY_STATE_FILE"
 if [[ "$runtime_candidate_checkpoint_eligible" == "true" ]]; then

@@ -213,9 +213,29 @@ function validate(payload) {
       if (simulationResult === "PASSED" && !bool(item.simulationCurrentVersion)) addIssue(issues, "SIMULATION_STALE_CONTRACT_VERSION");
     }
     if (businessResult !== "NOT_RUN") {
-      addIssue(issues, "BUSINESS_RESULT_MUST_REMAIN_NOT_RUN");
-    }
-    if (text(item.businessEvidenceStatus) !== "EVIDENCE_LEDGER_UNAVAILABLE") {
+      const expectedStatus = businessResult === "PASSED" ? "CURRENT_VERSION_PASS" : "CURRENT_VERSION_FAILED";
+      if (text(item.businessEvidenceStatus) !== expectedStatus) addIssue(issues, "BUSINESS_EVIDENCE_STATUS_INVALID");
+      if (!bool(item.businessCurrentVersion)) addIssue(issues, "BUSINESS_EVIDENCE_STALE_CONTRACT_VERSION");
+      if (!text(item.businessProcessVersion) || text(item.businessProcessVersion) !== text(item.processVersion)) {
+        addIssue(issues, "BUSINESS_EVIDENCE_PROCESS_VERSION_MISMATCH");
+      }
+      if (!text(item.businessContractFingerprint) || text(item.businessContractFingerprint) !== text(item.currentBusinessContractFingerprint)) {
+        addIssue(issues, "BUSINESS_EVIDENCE_FINGERPRINT_MISMATCH");
+      }
+      if (!/^[0-9a-f]{7,80}$/i.test(text(item.businessSourceCommit))) addIssue(issues, "BUSINESS_EVIDENCE_SOURCE_COMMIT_MISSING");
+      if (!/^[0-9a-f]{40}$/.test(text(item.currentRuntimeSourceCommit))) addIssue(issues, "BUSINESS_RUNTIME_COMMIT_UNAVAILABLE");
+      if (text(item.businessSourceCommit) !== text(item.currentRuntimeSourceCommit)) addIssue(issues, "BUSINESS_EVIDENCE_RUNTIME_COMMIT_MISMATCH");
+      if (!/^[0-9a-f]{64}$/.test(text(item.businessEvidenceHash))) addIssue(issues, "BUSINESS_EVIDENCE_HASH_INVALID");
+      if (!text(item.businessExecutionEnvironment)) addIssue(issues, "BUSINESS_EVIDENCE_ENVIRONMENT_MISSING");
+      if (!text(item.businessEvidenceUri)) addIssue(issues, "BUSINESS_EVIDENCE_URI_MISSING");
+      if (!meaningfulContract(item.businessEvidenceJson)) addIssue(issues, "BUSINESS_EVIDENCE_PAYLOAD_MISSING");
+      if (!text(item.businessExecutedBy)) addIssue(issues, "BUSINESS_EVIDENCE_EXECUTOR_MISSING");
+      if (!text(item.businessExecutedAt)) addIssue(issues, "BUSINESS_EVIDENCE_EXECUTED_AT_MISSING");
+    } else if (text(item.businessEvidenceStatus) === "RUNTIME_COMMIT_UNAVAILABLE") {
+      addIssue(issues, "BUSINESS_RUNTIME_COMMIT_UNAVAILABLE");
+    } else if (text(item.businessEvidenceStatus) === "CONTRACT_FINGERPRINT_UNAVAILABLE") {
+      addIssue(issues, "BUSINESS_CONTRACT_FINGERPRINT_UNAVAILABLE");
+    } else if (text(item.businessEvidenceStatus) !== "NO_CURRENT_VERSION_EVIDENCE") {
       addIssue(issues, "BUSINESS_EVIDENCE_STATUS_INVALID");
     }
     if (processCode && processOrders.has(processCode) && processOrders.get(processCode) !== developmentOrder) {
@@ -264,8 +284,21 @@ function validate(payload) {
   };
   const summary = payload.summary && typeof payload.summary === "object" ? payload.summary : {};
   const summaryMismatches = [];
-  if (text(summary.businessEvidenceStatus) !== "EVIDENCE_LEDGER_UNAVAILABLE") {
-    summaryMismatches.push({ field: "businessEvidenceStatus", reported: summary.businessEvidenceStatus, expected: "EVIDENCE_LEDGER_UNAVAILABLE" });
+  const businessPassedCount = itemResults.filter((entry) => entry.businessResult === "PASSED").length;
+  const businessBlockedCount = itemResults.filter((entry) => entry.businessResult === "BLOCKED").length;
+  const businessRuntimeCommitUnavailable = items.some((item) => text(item.businessEvidenceStatus) === "RUNTIME_COMMIT_UNAVAILABLE");
+  const businessFingerprintUnavailable = items.some((item) => text(item.businessEvidenceStatus) === "CONTRACT_FINGERPRINT_UNAVAILABLE");
+  const expectedBusinessEvidenceStatus = businessRuntimeCommitUnavailable
+    ? "RUNTIME_COMMIT_UNAVAILABLE"
+    : businessFingerprintUnavailable
+    ? "CONTRACT_FINGERPRINT_UNAVAILABLE"
+    : businessBlockedCount > 0
+    ? "CURRENT_VERSION_FAILED"
+    : businessPassedCount === items.length && items.length > 0
+      ? "CURRENT_VERSION_PASS"
+      : businessPassedCount > 0 ? "PARTIAL_CURRENT_VERSION_EVIDENCE" : "NO_CURRENT_VERSION_EVIDENCE";
+  if (text(summary.businessEvidenceStatus) !== expectedBusinessEvidenceStatus) {
+    summaryMismatches.push({ field: "businessEvidenceStatus", reported: summary.businessEvidenceStatus, expected: expectedBusinessEvidenceStatus });
   }
   for (const [field, aliases] of Object.entries(SUMMARY_FIELDS)) {
     const reported = summaryNumber(summary, aliases);
@@ -537,8 +570,7 @@ async function main() {
     notRunCount: summary.notRunCount + process.simulationNotRunCount,
   }), { passedCount: 0, blockedCount: 0, notRunCount: 0 });
   const contractTestBlocked = audited.derived.blockedStepCount > 0 || audited.derived.notRunStepCount > 0;
-  const businessEvidenceInvalid = business.passedCount > 0 || business.blockedCount > 0;
-  const blocked = contractTestBlocked || businessEvidenceInvalid || audited.validation.contractBlockedCount > 0 ||
+  const blocked = contractTestBlocked || business.blockedCount > 0 || audited.validation.contractBlockedCount > 0 ||
     audited.validation.summaryMismatchCount > 0 || routes.unreachableCount > 0 ||
     audited.routeCandidateCount > maxRouteSmokes;
   const output = {
@@ -575,7 +607,7 @@ async function main() {
     businessExecutionPerformed: false,
     businessFunctionsExecuted: false,
     contractTestResultsAreNotBusinessTests: true,
-    evidencePolicy: "READ_ONLY_AUDIT_BUSINESS_PASS_REQUIRES_RECORDED_BUSINESS_RUN_NO_PROMOTION",
+    evidencePolicy: "READ_ONLY_AUDIT_BUSINESS_PASS_REQUIRES_CURRENT_VERSION_LEDGER_NO_PROMOTION",
     durationMs: Date.now() - startedAt,
   };
   process.stdout.write(`${JSON.stringify(output)}\n`);

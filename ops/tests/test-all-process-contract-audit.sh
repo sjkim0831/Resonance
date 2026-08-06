@@ -29,7 +29,7 @@ NODE
 grep -q 'kubectl -n "$NAMESPACE" get secret "$SECRET_NAME"' "$WRAPPER"
 grep -q 'CARBONET_ADMIN_AUDIT_SECRET:-carbonet-screen-smoke' "$WRAPPER"
 grep -q 'AUDIT_ENGINE="${RESONANCE_AUDIT_ENGINE:-$SCRIPT_DIR/resonance-all-process-contract-audit.mjs}"' "$WRAPPER"
-grep -q 'READ_ONLY_AUDIT_BUSINESS_PASS_REQUIRES_RECORDED_BUSINESS_RUN_NO_PROMOTION' "$SCRIPT"
+grep -q 'READ_ONLY_AUDIT_BUSINESS_PASS_REQUIRES_CURRENT_VERSION_LEDGER_NO_PROMOTION' "$SCRIPT"
 node - "$SCRIPT" <<'NODE'
 const fs = require("fs");
 const source = fs.readFileSync(process.argv[2], "utf8");
@@ -87,7 +87,7 @@ cat > "$TMP/blocked.json" <<'JSON'
     "verifiedContractCount": 1,
     "totalContractCount": 2,
     "auditTargetCount": 2,
-    "businessEvidenceStatus": "EVIDENCE_LEDGER_UNAVAILABLE"
+    "businessEvidenceStatus": "NO_CURRENT_VERSION_EVIDENCE"
   },
   "items": [
     {
@@ -127,7 +127,7 @@ cat > "$TMP/blocked.json" <<'JSON'
       "simulationExecutedBy": "qa-member",
       "simulationExecutedAt": "2026-08-07T09:00:01+09:00",
       "businessTestResult": "NOT_RUN",
-      "businessEvidenceStatus": "EVIDENCE_LEDGER_UNAVAILABLE"
+      "businessEvidenceStatus": "NO_CURRENT_VERSION_EVIDENCE"
     },
     {
       "developmentOrder": 2,
@@ -160,7 +160,7 @@ cat > "$TMP/blocked.json" <<'JSON'
       "simulationExecutedBy": "",
       "simulationExecutedAt": "",
       "businessTestResult": "NOT_RUN",
-      "businessEvidenceStatus": "EVIDENCE_LEDGER_UNAVAILABLE"
+      "businessEvidenceStatus": "NO_CURRENT_VERSION_EVIDENCE"
     }
   ]
 }
@@ -193,7 +193,7 @@ if (value.auditMode !== "READ_ONLY_INVENTORY" || value.businessExecutionPerforme
 if (value.auditCoverage.targetCount !== 2 || value.auditCoverage.auditedBindingCount !== 2 || value.auditCoverage.auditedCapabilityTargetCount !== 2) throw new Error("audit target coverage mismatch");
 if (value.summary.recordedBusinessNotRunCount !== 2 || value.summary.recordedBusinessPassCount !== 0) throw new Error("real business E2E must remain NOT_RUN");
 if (value.summary.simulationPassedCount !== 1 || value.summary.simulationNotRunCount !== 1) throw new Error("simulation evidence summary mismatch");
-if (value.evidencePolicy !== "READ_ONLY_AUDIT_BUSINESS_PASS_REQUIRES_RECORDED_BUSINESS_RUN_NO_PROMOTION") throw new Error("unsafe evidence policy");
+if (value.evidencePolicy !== "READ_ONLY_AUDIT_BUSINESS_PASS_REQUIRES_CURRENT_VERSION_LEDGER_NO_PROMOTION") throw new Error("unsafe evidence policy");
 NODE
 
 node -e '
@@ -236,6 +236,54 @@ NODE
 node -e '
 const fs = require("fs");
 const value = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
+for (const [index,item] of value.items.entries()) {
+  const fingerprint = `0123456789abcdef0123456789abcde${index}`;
+  item.processVersion = "1.0.0";
+  item.businessTestResult = "PASSED";
+  item.businessEvidenceStatus = "CURRENT_VERSION_PASS";
+  item.businessCurrentVersion = true;
+  item.businessProcessVersion = "1.0.0";
+  item.businessContractFingerprint = fingerprint;
+  item.currentBusinessContractFingerprint = fingerprint;
+  item.businessSourceCommit = "0123456789abcdef0123456789abcdef01234567";
+  item.currentRuntimeSourceCommit = "0123456789abcdef0123456789abcdef01234567";
+  item.businessEvidenceHash = "a".repeat(64);
+  item.businessExecutionEnvironment = "contract-test";
+  item.businessEvidenceUri = `inline://business-e2e/${index}`;
+  item.businessEvidenceJson = { verified: true, index };
+  item.businessExecutedBy = "business-e2e-runner";
+  item.businessExecutedAt = "2026-08-07T09:02:00+09:00";
+}
+value.summary.businessEvidenceStatus = "CURRENT_VERSION_PASS";
+fs.writeFileSync(process.argv[2], JSON.stringify(value));
+' "$TMP/pass.json" "$TMP/current-business-e2e.json"
+current_business_output="$(node "$SCRIPT" --fixture "$TMP/current-business-e2e.json" --skip-http-smoke)"
+AUDIT_OUTPUT="$current_business_output" node - <<'NODE'
+const value = JSON.parse(process.env.AUDIT_OUTPUT);
+if (value.status !== "PASS" || value.summary.recordedBusinessPassCount !== 2) throw new Error("current-version business E2E was not accepted");
+NODE
+
+node -e '
+const fs = require("fs");
+const value = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
+value.items[0].businessTestResult = "BLOCKED";
+value.items[0].businessEvidenceStatus = "CURRENT_VERSION_FAILED";
+value.summary.businessEvidenceStatus = "CURRENT_VERSION_FAILED";
+fs.writeFileSync(process.argv[2], JSON.stringify(value));
+' "$TMP/current-business-e2e.json" "$TMP/current-business-e2e-failed.json"
+set +e
+current_business_failed_output="$(node "$SCRIPT" --fixture "$TMP/current-business-e2e-failed.json" --skip-http-smoke)"
+current_business_failed_status=$?
+set -e
+[[ "$current_business_failed_status" -eq 3 ]] || { echo "expected current business failure exit 3, got $current_business_failed_status" >&2; exit 1; }
+AUDIT_OUTPUT="$current_business_failed_output" node - <<'NODE'
+const value = JSON.parse(process.env.AUDIT_OUTPUT);
+if (value.status !== "BLOCKED" || value.summary.recordedBusinessBlockedCount !== 1) throw new Error("current-version failed business E2E was not blocking");
+NODE
+
+node -e '
+const fs = require("fs");
+const value = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
 value.items[1].businessTestResult = "PASSED";
 fs.writeFileSync(process.argv[2], JSON.stringify(value));
 ' "$TMP/pass.json" "$TMP/unsafe-business-promotion.json"
@@ -248,7 +296,58 @@ AUDIT_OUTPUT="$unsafe_business_output" node - <<'NODE'
 const value = JSON.parse(process.env.AUDIT_OUTPUT);
 if (value.status !== "BLOCKED") throw new Error("unsafe business promotion must be blocked");
 if (value.summary.contractTestPassedCount !== 2 || value.summary.recordedBusinessPassCount !== 1) throw new Error("contract and business evidence separation mismatch");
-if (!value.validation.issueCounts.BUSINESS_RESULT_MUST_REMAIN_NOT_RUN) throw new Error("unsafe business result was not identified");
+if (!value.validation.issueCounts.BUSINESS_EVIDENCE_STALE_CONTRACT_VERSION || !value.validation.issueCounts.BUSINESS_EVIDENCE_FINGERPRINT_MISMATCH) throw new Error("unbound business result was not rejected");
+NODE
+
+node -e '
+const fs = require("fs");
+const value = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
+value.items[0].businessEvidenceStatus = "CONTRACT_FINGERPRINT_UNAVAILABLE";
+value.summary.businessEvidenceStatus = "CONTRACT_FINGERPRINT_UNAVAILABLE";
+fs.writeFileSync(process.argv[2], JSON.stringify(value));
+' "$TMP/pass.json" "$TMP/fingerprint-unavailable.json"
+set +e
+fingerprint_unavailable_output="$(node "$SCRIPT" --fixture "$TMP/fingerprint-unavailable.json" --skip-http-smoke)"
+fingerprint_unavailable_status=$?
+set -e
+[[ "$fingerprint_unavailable_status" -eq 3 ]] || { echo "expected unavailable fingerprint exit 3, got $fingerprint_unavailable_status" >&2; exit 1; }
+AUDIT_OUTPUT="$fingerprint_unavailable_output" node - <<'NODE'
+const value = JSON.parse(process.env.AUDIT_OUTPUT);
+if (value.status !== "BLOCKED" || !value.validation.issueCounts.BUSINESS_CONTRACT_FINGERPRINT_UNAVAILABLE) throw new Error("missing contract fingerprint did not fail closed");
+NODE
+
+node -e '
+const fs = require("fs");
+const value = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
+value.items[0].businessEvidenceStatus = "RUNTIME_COMMIT_UNAVAILABLE";
+value.items[0].currentRuntimeSourceCommit = "";
+value.summary.businessEvidenceStatus = "RUNTIME_COMMIT_UNAVAILABLE";
+fs.writeFileSync(process.argv[2], JSON.stringify(value));
+' "$TMP/pass.json" "$TMP/runtime-commit-unavailable.json"
+set +e
+runtime_commit_unavailable_output="$(node "$SCRIPT" --fixture "$TMP/runtime-commit-unavailable.json" --skip-http-smoke)"
+runtime_commit_unavailable_status=$?
+set -e
+[[ "$runtime_commit_unavailable_status" -eq 3 ]] || { echo "expected unavailable runtime commit exit 3, got $runtime_commit_unavailable_status" >&2; exit 1; }
+AUDIT_OUTPUT="$runtime_commit_unavailable_output" node - <<'NODE'
+const value = JSON.parse(process.env.AUDIT_OUTPUT);
+if (value.status !== "BLOCKED" || !value.validation.issueCounts.BUSINESS_RUNTIME_COMMIT_UNAVAILABLE) throw new Error("missing runtime commit did not fail closed");
+NODE
+
+node -e '
+const fs = require("fs");
+const value = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
+value.items[0].currentRuntimeSourceCommit = "fedcba9876543210fedcba9876543210fedcba98";
+fs.writeFileSync(process.argv[2], JSON.stringify(value));
+' "$TMP/current-business-e2e.json" "$TMP/runtime-commit-mismatch.json"
+set +e
+runtime_commit_mismatch_output="$(node "$SCRIPT" --fixture "$TMP/runtime-commit-mismatch.json" --skip-http-smoke)"
+runtime_commit_mismatch_status=$?
+set -e
+[[ "$runtime_commit_mismatch_status" -eq 3 ]] || { echo "expected runtime commit mismatch exit 3, got $runtime_commit_mismatch_status" >&2; exit 1; }
+AUDIT_OUTPUT="$runtime_commit_mismatch_output" node - <<'NODE'
+const value = JSON.parse(process.env.AUDIT_OUTPUT);
+if (value.status !== "BLOCKED" || !value.validation.issueCounts.BUSINESS_EVIDENCE_RUNTIME_COMMIT_MISMATCH) throw new Error("stale runtime commit evidence was accepted");
 NODE
 
 node -e '

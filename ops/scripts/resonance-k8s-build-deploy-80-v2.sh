@@ -37,6 +37,8 @@ SKIP_OVERLAY_SYNC="${SKIP_OVERLAY_SYNC:-false}"
 IMMUTABLE_FRONTEND_IMAGE="${IMMUTABLE_FRONTEND_IMAGE:-false}"
 INCREMENTAL="${INCREMENTAL:-true}"
 PRE_ROLLOUT_IMAGE="${PRE_ROLLOUT_IMAGE:-}"
+PRE_ROLLOUT_TARGET_COMMIT="${PRE_ROLLOUT_TARGET_COMMIT:-}"
+PRE_ROLLOUT_IDENTITY_CAPTURED="${PRE_ROLLOUT_IDENTITY_CAPTURED:-false}"
 
 RELEASE_DIR="$ROOT_DIR/var/releases/$PROJECT_ID/image-context"
 RUN_DIR="$ROOT_DIR/var/run"
@@ -182,6 +184,36 @@ rollback_and_fail() {
     kubectl -n "$NAMESPACE" rollout status "deployment/$DEPLOYMENT" --timeout=180s >/dev/null 2>&1 || true
   else
     log_warning "No previous deployment image captured; leaving deployment unchanged"
+  fi
+  if [[ "${PRE_ROLLOUT_IDENTITY_CAPTURED:-false}" == "true" ]]; then
+    if [[ "$PRE_ROLLOUT_TARGET_COMMIT" =~ ^[0-9a-f]{40}$ ]]; then
+      if kubectl -n "$NAMESPACE" annotate "deployment/$DEPLOYMENT" \
+        "resonance.ai/target-commit=$PRE_ROLLOUT_TARGET_COMMIT" --overwrite >/dev/null 2>&1; then
+        if [[ -f "$ROOT_DIR/ops/scripts/record-runtime-release-state.sh" ]]; then
+          CARBONET_DEPLOY_ROOT="$ROOT_DIR" \
+          CARBONET_K8S_NAMESPACE="$NAMESPACE" \
+          CARBONET_K8S_DEPLOYMENT="$DEPLOYMENT" \
+          CARBONET_K8S_CONTAINER="$CONTAINER" \
+            bash "$ROOT_DIR/ops/scripts/record-runtime-release-state.sh" "$PRE_ROLLOUT_TARGET_COMMIT" >/dev/null 2>&1 ||
+            {
+              log_error "Rollback restored the annotation but runtime release ledger synchronization failed; invalidating it"
+              CARBONET_DEPLOY_ROOT="$ROOT_DIR" CARBONET_K8S_NAMESPACE="$NAMESPACE" \
+                bash "$ROOT_DIR/ops/scripts/record-runtime-release-state.sh" --invalidate >/dev/null 2>&1 || true
+            }
+        fi
+      else
+        log_error "Rollback could not restore the previous target-commit annotation"
+        [[ ! -f "$ROOT_DIR/ops/scripts/record-runtime-release-state.sh" ]] || \
+          bash "$ROOT_DIR/ops/scripts/record-runtime-release-state.sh" --invalidate >/dev/null 2>&1 || true
+      fi
+    else
+      kubectl -n "$NAMESPACE" annotate "deployment/$DEPLOYMENT" \
+        'resonance.ai/target-commit-' >/dev/null 2>&1 ||
+        log_error "Rollback could not remove the candidate target-commit annotation"
+      [[ ! -f "$ROOT_DIR/ops/scripts/record-runtime-release-state.sh" ]] || \
+        CARBONET_DEPLOY_ROOT="$ROOT_DIR" CARBONET_K8S_NAMESPACE="$NAMESPACE" \
+        bash "$ROOT_DIR/ops/scripts/record-runtime-release-state.sh" --invalidate >/dev/null 2>&1 || true
+    fi
   fi
   release_lock
   exit 1
@@ -764,8 +796,13 @@ rollout_image() {
   log_step "Rollout"
 
   PRE_ROLLOUT_IMAGE="$(kubectl -n "$NAMESPACE" get "deployment/$DEPLOYMENT" -o jsonpath='{.spec.template.spec.containers[0].image}' 2>/dev/null || true)"
+  PRE_ROLLOUT_TARGET_COMMIT="$(kubectl -n "$NAMESPACE" get "deployment/$DEPLOYMENT" -o jsonpath='{.metadata.annotations.resonance\.ai/target-commit}' 2>/dev/null || true)"
+  PRE_ROLLOUT_IDENTITY_CAPTURED=true
   if [[ -n "$PRE_ROLLOUT_IMAGE" ]]; then
     log_detail "Previous deployment image: $PRE_ROLLOUT_IMAGE"
+  fi
+  if [[ -n "$PRE_ROLLOUT_TARGET_COMMIT" ]]; then
+    log_detail "Previous runtime source commit: $PRE_ROLLOUT_TARGET_COMMIT"
   fi
 
   log_cmd "ctr -n k8s.io images list -q | grep -Fqx $IMAGE_NAME"

@@ -702,8 +702,12 @@ public class ActorProcessGovernanceService {
                 from framework_step_test_binding b
                 join scoped_steps scoped on scoped.process_code=b.process_code and scoped.step_code=b.step_code
                 join framework_simulation_case sim using(case_code)
-                join framework_simulation_run run using(case_code)
-               order by b.process_code,b.step_code,run.executed_at desc,run.run_id desc
+                 join framework_simulation_run run using(case_code)
+                order by b.process_code,b.step_code,run.executed_at desc,run.run_id desc
+            ), current_business_e2e as materialized (
+              select evidence.*
+                from framework_current_business_e2e_evidence evidence
+                join scoped_steps scoped using(process_code,step_code)
             ), fixture_suite_cases as (
               select b.process_code,b.step_code,sim.case_code,sim.case_name,sim.case_type,sim.case_status,b.trace_scope,
                      scoped.process_version as current_process_version,run.run_id,run.result,run.process_version as run_process_version,
@@ -795,8 +799,20 @@ public class ActorProcessGovernanceService {
                         when coalesce(suite.fixture_suite_current_run_count,0)=coalesce(suite.fixture_suite_case_count,0)
                          and coalesce(suite.fixture_suite_passed_run_count,0)=coalesce(suite.fixture_suite_case_count,0) then 'PASSED'
                         else 'NOT_RUN' end as "fixtureSuiteExecutionState",
-                   'NOT_RUN' as "businessTestResult",'EVIDENCE_LEDGER_UNAVAILABLE' as "businessEvidenceStatus",
-                   '' as "businessCaseCode",'{}' as "businessEvidenceJson",'' as "businessExecutedBy",null::timestamp as "businessExecutedAt",
+                    coalesce(business.business_test_result,'NOT_RUN') as "businessTestResult",
+                    coalesce(business.business_evidence_status,'RUNTIME_COMMIT_UNAVAILABLE') as "businessEvidenceStatus",
+                    coalesce(business.qa_run_id::text,'') as "businessCaseCode",
+                    coalesce(business.evidence_json,'{}')::text as "businessEvidenceJson",
+                    coalesce(business.executed_by,'') as "businessExecutedBy",business.executed_at as "businessExecutedAt",
+                    coalesce(business.evidence_process_version,'') as "businessProcessVersion",
+                    coalesce(business.source_commit,'') as "businessSourceCommit",
+                    coalesce(business.contract_fingerprint,'') as "businessContractFingerprint",
+                    coalesce(business.current_contract_fingerprint,'') as "currentBusinessContractFingerprint",
+                    coalesce(business.current_runtime_source_commit,'') as "currentRuntimeSourceCommit",
+                    coalesce(business.execution_environment,'') as "businessExecutionEnvironment",
+                    coalesce(business.evidence_uri,'') as "businessEvidenceUri",
+                    coalesce(business.evidence_hash,'') as "businessEvidenceHash",
+                    coalesce(business.current_version,false) as "businessCurrentVersion",
                    p.test_state as "testState",latest.screen_resource_id as "latestAuditScreenResourceId",
                    coalesce(latest.route_key,'') as "latestAuditRoutePath",coalesce(latest.audience,'') as "latestAuditAudience",
                    coalesce(latest.capability_code,'') as "latestAuditCapabilityCode",
@@ -806,8 +822,9 @@ public class ActorProcessGovernanceService {
               left join framework_business_work_type w on w.work_type_code=upper(p.domain_code)
               left join primary_screen screen using(process_code,step_code)
               left join latest_step_run latest using(process_code,step_code)
-              left join latest_simulation sim using(process_code,step_code)
-              left join fixture_suite_rollup suite using(process_code,step_code)
+               left join latest_simulation sim using(process_code,step_code)
+               left join current_business_e2e business using(process_code,step_code)
+               left join fixture_suite_rollup suite using(process_code,step_code)
               cross join scope_metrics metrics
              order by p.domain_order,p.development_order,p.process_code,p.step_order
             """,domain,domain,process,process,result,result);
@@ -817,6 +834,8 @@ public class ActorProcessGovernanceService {
         int routed=0,passedItems=0,blockedItems=0,notRunItems=0,verifiedContracts=0;
         long auditedContractTargets=0;
         int fixtureSuiteBindingCount=0,fixtureSuiteCompleteStepCount=0,fixtureSuiteIncompleteStepCount=0,fixtureSuiteCurrentRunCount=0;
+        int businessPassedSteps=0,businessBlockedSteps=0,businessNotRunSteps=0,businessFingerprintUnavailableSteps=0,businessRuntimeCommitUnavailableSteps=0;
+        Map<String,List<String>> businessStatesByProcess=new LinkedHashMap<>();
         for(Map<String,Object> item:items){
             String processKey=String.valueOf(item.get("processCode")),workTypeKey=String.valueOf(item.get("domainCode"));
             reportedProcesses.add(processKey);
@@ -831,6 +850,13 @@ public class ActorProcessGovernanceService {
             fixtureSuiteCurrentRunCount+=((Number)item.getOrDefault("fixtureSuiteCurrentRunCount",0)).intValue();
             auditedContractTargets+=((Number)item.getOrDefault("auditedTargetCount",0)).longValue();
             if("COMPLETE".equals(item.get("fixtureSuiteCoverageState")))fixtureSuiteCompleteStepCount++;else fixtureSuiteIncompleteStepCount++;
+            String businessState=String.valueOf(item.getOrDefault("businessTestResult","NOT_RUN"));
+            if("PASSED".equals(businessState))businessPassedSteps++;
+            else if("BLOCKED".equals(businessState))businessBlockedSteps++;
+            else{businessState="NOT_RUN";businessNotRunSteps++;}
+            if("CONTRACT_FINGERPRINT_UNAVAILABLE".equals(item.get("businessEvidenceStatus")))businessFingerprintUnavailableSteps++;
+            if("RUNTIME_COMMIT_UNAVAILABLE".equals(item.get("businessEvidenceStatus")))businessRuntimeCommitUnavailableSteps++;
+            businessStatesByProcess.computeIfAbsent(processKey,key->new ArrayList<>()).add(businessState);
             Map<String,Object> processRow=processIndex.computeIfAbsent(processKey,key->newSystemAggregate(item,"PROCESS"));
             processRow.put("scenarioCount",Math.max(((Number)processRow.get("scenarioCount")).intValue(),((Number)item.getOrDefault("scenarioCount",0)).intValue()));
             incrementSystemAggregate(processRow,state);
@@ -842,6 +868,15 @@ public class ActorProcessGovernanceService {
         List<Map<String,Object>> processes=new ArrayList<>(processIndex.values());
         List<Map<String,Object>> workTypes=new ArrayList<>(workTypeIndex.values());
         workTypes.forEach(row->row.remove("_processCodes"));
+        int e2eCoveredProcesses=0,e2ePassedProcesses=0,e2eBlockedProcesses=0;
+        for(List<String> states:businessStatesByProcess.values()){
+            boolean allCurrent=!states.isEmpty()&&states.stream().noneMatch("NOT_RUN"::equals);
+            boolean allPassed=!states.isEmpty()&&states.stream().allMatch("PASSED"::equals);
+            boolean anyBlocked=states.stream().anyMatch("BLOCKED"::equals);
+            if(allCurrent)e2eCoveredProcesses++;
+            if(allPassed)e2ePassedProcesses++;
+            if(anyBlocked)e2eBlockedProcesses++;
+        }
         Map<String,Object> summary=new LinkedHashMap<>();
         summary.put("workTypeCount",workTypes.size());summary.put("processCount",reportedProcesses.size());summary.put("stepCount",items.size());
         summary.put("screenCount",items.isEmpty()?0:items.get(0).get("scopeScreenCount"));
@@ -854,9 +889,13 @@ public class ActorProcessGovernanceService {
         summary.put("auditCoverageState",requiredContractTargets==0||auditedContractTargets>=requiredContractTargets?"COMPLETE":auditedContractTargets==0?"NOT_RUN":"PARTIAL");
         summary.put("routedStepCount",routed);summary.put("passedCount",passedItems);summary.put("blockedCount",blockedItems);summary.put("notRunCount",notRunItems);
         summary.put("verifiedContractCount",verifiedContracts);summary.put("totalContractCount",items.size());summary.put("matchedItemCount",items.size());
-        summary.put("e2eCoveredProcessCount",0);summary.put("e2eUncoveredProcessCount",reportedProcesses.size());
-        summary.put("e2ePassedProcessCount",0);summary.put("e2eBlockedProcessCount",0);
-        summary.put("businessEvidenceStatus","EVIDENCE_LEDGER_UNAVAILABLE");
+        summary.put("e2eCoveredProcessCount",e2eCoveredProcesses);summary.put("e2eUncoveredProcessCount",reportedProcesses.size()-e2eCoveredProcesses);
+        summary.put("e2ePassedProcessCount",e2ePassedProcesses);summary.put("e2eBlockedProcessCount",e2eBlockedProcesses);
+        summary.put("e2eCurrentEvidenceStepCount",businessPassedSteps+businessBlockedSteps);
+        summary.put("e2ePassedStepCount",businessPassedSteps);summary.put("e2eBlockedStepCount",businessBlockedSteps);summary.put("e2eNotRunStepCount",businessNotRunSteps);
+        summary.put("e2eContractFingerprintUnavailableStepCount",businessFingerprintUnavailableSteps);
+        summary.put("e2eRuntimeCommitUnavailableStepCount",businessRuntimeCommitUnavailableSteps);
+        summary.put("businessEvidenceStatus",businessRuntimeCommitUnavailableSteps>0?"RUNTIME_COMMIT_UNAVAILABLE":businessFingerprintUnavailableSteps>0?"CONTRACT_FINGERPRINT_UNAVAILABLE":businessBlockedSteps>0?"CURRENT_VERSION_FAILED":businessPassedSteps==items.size()&&!items.isEmpty()?"CURRENT_VERSION_PASS":businessPassedSteps>0?"PARTIAL_CURRENT_VERSION_EVIDENCE":"NO_CURRENT_VERSION_EVIDENCE");
         summary.put("fixtureSuiteRequiredTypeCount",5);summary.put("fixtureSuiteBindingCount",fixtureSuiteBindingCount);
         summary.put("fixtureSuiteCompleteStepCount",fixtureSuiteCompleteStepCount);summary.put("fixtureSuiteIncompleteStepCount",fixtureSuiteIncompleteStepCount);
         summary.put("fixtureSuiteCurrentRunCount",fixtureSuiteCurrentRunCount);summary.put("fixtureSuiteMode","INVENTORY_AND_SIMULATION_EVIDENCE_ONLY");
@@ -2522,12 +2561,37 @@ public class ActorProcessGovernanceService {
     @Transactional public void recordQaResult(String processCode,String stepCode,String result,Map<String,Object> evidence,String failureReason,String user){
         String evidenceJson;
         try{evidenceJson=new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(evidence==null?Map.of():evidence);}catch(Exception ignored){evidenceJson="{}";}
-        jdbc.update("insert into framework_process_qa_run(process_code,step_code,result,failure_reason,evidence_json,executed_by) values(?,?,?,nullif(?,''),?::jsonb,?)",processCode,stepCode==null?"":stepCode,result,failureReason==null?"":failureReason,evidenceJson,user);
+        String normalizedStep=stepCode==null?"":stepCode.trim();
+        List<Map<String,Object>> contracts=jdbc.queryForList("""
+            select p.process_version as "processVersion",
+                   case when ?='' then framework_current_process_contract_fingerprint(p.process_code)
+                        else framework_current_process_step_contract_fingerprint(p.process_code,?) end as "contractFingerprint"
+              from framework_process_definition p where p.process_code=?
+            """,normalizedStep,normalizedStep,processCode);
+        Object rawFingerprint=contracts.size()==1?contracts.get(0).get("contractFingerprint"):null;
+        if(rawFingerprint==null||rawFingerprint.toString().isBlank())
+            throw new IllegalStateException("Current process contract fingerprint is unavailable; QA evidence was not recorded: "+processCode+" / "+normalizedStep);
+        String processVersion=String.valueOf(contracts.get(0).get("processVersion"));
+        String contractFingerprint=rawFingerprint.toString();
+        Object rawSourceCommit=(evidence==null?Map.of():evidence).get("sourceCommit");
+        Object rawEnvironment=(evidence==null?Map.of():evidence).get("executionEnvironment");
+        String sourceCommit=rawSourceCommit==null||rawSourceCommit.toString().isBlank()?"UNAVAILABLE":rawSourceCommit.toString();
+        String environment=rawEnvironment==null||rawEnvironment.toString().isBlank()?"APPLICATION_RUNTIME_SMOKE":rawEnvironment.toString();
+        String evidenceHash=sha256Hex(evidenceJson);
+        String evidenceUri="inline://qa-runtime/sha256/"+evidenceHash;
+        jdbc.update("insert into framework_process_qa_run(process_code,step_code,result,failure_reason,evidence_json,executed_by,evidence_type,process_version,source_commit,contract_fingerprint,execution_environment,evidence_uri,evidence_hash) values(?,?,?,nullif(?,''),?::jsonb,?,'QA_RUNTIME',?,?,?,?,?,?)",processCode,normalizedStep,result,failureReason==null?"":failureReason,evidenceJson,user,processVersion,sourceCommit,contractFingerprint,environment,evidenceUri,evidenceHash);
     }
 
     public List<Map<String,Object>> qaResults(String processCode,String user){
         String filter=processCode==null?"":processCode.trim();
-        return jdbc.queryForList("select qa_run_id as \"qaRunId\",process_code as \"processCode\",step_code as \"stepCode\",result,failure_reason as \"failureReason\",evidence_json::text as \"evidenceJson\",executed_by as \"executedBy\",executed_at as \"executedAt\" from framework_process_qa_run where (?='' or process_code=?) order by qa_run_id desc limit 50",filter,filter);
+        return jdbc.queryForList("select qa_run_id as \"qaRunId\",process_code as \"processCode\",step_code as \"stepCode\",result,failure_reason as \"failureReason\",evidence_json::text as \"evidenceJson\",executed_by as \"executedBy\",executed_at as \"executedAt\",evidence_type as \"evidenceType\",process_version as \"processVersion\",source_commit as \"sourceCommit\",contract_fingerprint as \"contractFingerprint\",execution_environment as \"executionEnvironment\",evidence_uri as \"evidenceUri\",evidence_hash as \"evidenceHash\" from framework_process_qa_run where (?='' or process_code=?) order by qa_run_id desc limit 50",filter,filter);
+    }
+
+    private static String sha256Hex(String value){
+        try{
+            byte[] digest=java.security.MessageDigest.getInstance("SHA-256").digest(value.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            return java.util.HexFormat.of().formatHex(digest);
+        }catch(java.security.NoSuchAlgorithmException impossible){throw new IllegalStateException("SHA-256 is unavailable",impossible);}
     }
 
     private void requireActorAssignment(String tenant,String project,String actor,String user){

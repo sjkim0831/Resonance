@@ -4,14 +4,16 @@ set -euo pipefail
 [[ $# -eq 1 ]] || { echo "usage: $0 EVIDENCE_JSON" >&2; exit 2; }
 EVIDENCE_FILE="$1"
 [[ -s "$EVIDENCE_FILE" ]] || { echo "relay evidence is missing" >&2; exit 2; }
+[[ -n "${PRE_RUN_CONTRACTS:-}" ]] || { echo "pre-run relay contract envelopes are missing" >&2; exit 3; }
 
 ROOT="${RESONANCE_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
 PROMOTER="$ROOT/ops/scripts/promote-screen-contract-after-e2e.sh"
-SOURCE_COMMIT="$(git -C "$ROOT" rev-parse HEAD)"
+SOURCE_COMMIT="$(jq -r 'map(.sourceCommit)|unique|if length==1 then .[0] else error("mixed source commits") end' <<<"$PRE_RUN_CONTRACTS")"
 EVIDENCE="$(jq -c \
   --arg executedAt "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
   --arg sourceCommit "$SOURCE_COMMIT" \
   '. + {executedAt:$executedAt,sourceCommit:$sourceCommit}' "$EVIDENCE_FILE")"
+EVIDENCE="$(jq -cn --argjson result "$EVIDENCE" --argjson contracts "$PRE_RUN_CONTRACTS" '$result+{contracts:$contracts}')"
 VISUAL_EVIDENCE_FILE="$ROOT/var/test-evidence/twenty-step-relay-latest.json"
 [[ -s "$VISUAL_EVIDENCE_FILE" ]] || { echo "visual relay evidence is missing" >&2; exit 2; }
 EVIDENCE="$(jq -c --slurpfile visual "$VISUAL_EVIDENCE_FILE" '
