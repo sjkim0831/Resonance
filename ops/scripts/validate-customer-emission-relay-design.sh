@@ -22,7 +22,7 @@ summary="$(q "with target(process_code,ordinal) as (values
  count(*) filter(where user_path like '/home/%'),
  count(*) filter(where step_name in ('계획·범위 확정','자료 입력·업무 수행','검증·보완','승인·확정')),
  count(*) filter(where e.design_status='DESIGN_COMPLETE' and e.generation_status in('READY','GENERATED')),
- count(*) filter(where jsonb_array_length(e.handoff_contract)>0)
+ count(*) filter(where e.handoff_contract not in ('[]'::jsonb,'{}'::jsonb,'null'::jsonb))
  from steps s left join pages p using(process_code,step_code)
  left join framework_step_execution_spec e using(process_code,step_code)")"
 IFS='|' read -r steps actors detailed_rules professional_pages public_routes generic_names ready_specs handoffs <<<"$summary"
