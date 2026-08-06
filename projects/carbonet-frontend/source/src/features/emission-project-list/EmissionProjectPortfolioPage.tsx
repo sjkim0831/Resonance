@@ -88,7 +88,11 @@ export function EmissionProjectPortfolioPage() {
   }, [mobileMenuOpen]);
 
   const portfolio = useAsyncValue<PortfolioPayload>(async () => {
-    const query = new URLSearchParams({ keyword, status, site, page: "1", size: "100" });
+    // Status is a localized presentation value (for example "완료"), while the
+    // persistence layer stores workflow status codes. Fetch the actor-scoped
+    // portfolio once and apply the presentation filter locally so a locale
+    // change cannot turn a valid portfolio into an empty result.
+    const query = new URLSearchParams({ keyword, site, page: "1", size: "100" });
     const response = await fetch(`${buildLocalizedPath("/home/api/emission-projects", "/en/home/api/emission-projects")}?${query}`, {
       credentials: "include", headers: { Accept: "application/json" },
     });
@@ -98,10 +102,13 @@ export function EmissionProjectPortfolioPage() {
       return EMPTY;
     }
     return readJson<PortfolioPayload>(response);
-  }, [en, keyword, status, site], { initialValue: EMPTY });
+  }, [en, keyword, site], { initialValue: EMPTY });
 
   const data = portfolio.value || EMPTY;
-  const projects = data.items || [];
+  const actorScopedProjects = data.items || [];
+  const projects = status
+    ? actorScopedProjects.filter((project) => project.status === status)
+    : actorScopedProjects;
   const selected = projects.find((project) => project.id === selectedId) || null;
 
   useEffect(() => {
@@ -116,7 +123,7 @@ export function EmissionProjectPortfolioPage() {
   }, [selected, processCode, stepCode, actorCode, guideMode]);
 
   useEffect(() => {
-    if (!selectedId) { setTaskPayload(null); setTaskError(""); return; }
+    if (!selected) { setTaskPayload(null); setTaskError(""); return; }
     let mounted = true;
     setTaskLoading(true);
     setTaskError("");
@@ -124,11 +131,11 @@ export function EmissionProjectPortfolioPage() {
       credentials: "include", headers: { Accept: "application/json" },
     })
       .then((response) => readJson<TaskPayload>(response))
-      .then((body) => { if (mounted) setTaskPayload({ ...body, items: (body.items || []).filter((task) => task.projectId === selectedId) }); })
+      .then((body) => { if (mounted) setTaskPayload({ ...body, items: (body.items || []).filter((task) => task.projectId === selected.id) }); })
       .catch((error) => { if (mounted) { setTaskPayload(null); setTaskError(error instanceof Error ? error.message : String(error)); } })
       .finally(() => { if (mounted) setTaskLoading(false); });
     return () => { mounted = false; };
-  }, [selectedId, en]);
+  }, [selected?.id, en]);
 
   const tasks = taskPayload?.items || [];
   const nextTask = tasks.find((task) => task.actionable && task.status !== "DONE") || tasks.find((task) => task.status !== "DONE") || null;
@@ -140,7 +147,7 @@ export function EmissionProjectPortfolioPage() {
     { label: en ? "Guide start recorded" : "업무 길잡이 실행 기록", ok: nextTask?.status === "IN_PROGRESS" },
   ];
   const checkCount = checks.filter((item) => item.ok).length;
-  const active = projects.filter((project) => project.status !== "완료");
+  const active = actorScopedProjects.filter((project) => project.status !== "완료");
   const average = active.length ? Math.round(active.reduce((sum, project) => sum + project.progress, 0) / active.length) : 0;
   const missingRequested = Boolean(requestedProjectId && !portfolio.loading && !projects.some((project) => project.id === requestedProjectId));
 
@@ -268,7 +275,7 @@ export function EmissionProjectPortfolioPage() {
       </section>
 
       <section className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">{[
-        [text.all, data.total || projects.length, "folder_open", ""], [text.active, active.length, "play_circle", "진행"], [text.review, projects.filter((project) => project.status === "검증").length, "fact_check", "검증"], [text.complete, projects.filter((project) => project.status === "완료").length, "workspace_premium", "완료"], [text.average, `${average}%`, "monitoring", "metric"],
+        [text.all, data.total || actorScopedProjects.length, "folder_open", ""], [text.active, active.length, "play_circle", "진행"], [text.review, actorScopedProjects.filter((project) => project.status === "검증").length, "fact_check", "검증"], [text.complete, actorScopedProjects.filter((project) => project.status === "완료").length, "workspace_premium", "완료"], [text.average, `${average}%`, "monitoring", "metric"],
       ].map(([label, value, icon, filter]) => <button className="rounded-2xl border border-slate-200 bg-white p-5 text-left shadow-sm transition hover:border-blue-300 disabled:cursor-default" disabled={filter === "metric"} key={String(label)} onClick={() => setStatus(String(filter))} type="button"><span className="material-symbols-outlined text-[#246beb]">{icon}</span><span className="ml-2 text-sm font-bold text-slate-500">{label}</span><strong className="mt-3 block text-3xl font-black text-[#052b57]">{value}</strong></button>)}</section>
 
       <section className="mt-5 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><div className="grid gap-3 lg:grid-cols-[1fr_190px_220px_auto]">
