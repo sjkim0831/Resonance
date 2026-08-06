@@ -169,7 +169,7 @@ export function HeaderMobileMenu({
     <aside className="absolute top-0 right-0 h-full w-[90%] max-w-[380px] bg-white shadow-2xl border-l border-[var(--kr-gov-border-light)] overflow-y-auto">
       <div className="sticky top-0 z-10 flex items-center justify-between px-4 py-4 border-b border-[var(--kr-gov-border-light)] bg-white">
         <strong className="gov-text-heading-sm font-bold text-[var(--kr-gov-text-primary)]">{content.allMenu}</strong>
-        <HomeButton id="mobile-menu-close" className="w-10 h-10 !p-0 text-[var(--kr-gov-text-secondary)]" type="button" aria-label={content.closeAllMenu} onClick={onClose}>
+        <HomeButton className="w-10 h-10 !p-0 text-[var(--kr-gov-text-secondary)]" type="button" aria-label={content.closeAllMenu} onClick={onClose}>
           <span className="material-symbols-outlined">close</span>
         </HomeButton>
       </div>

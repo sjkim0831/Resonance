@@ -258,7 +258,7 @@ export function EmissionProjectPortfolioPage() {
     </header>
     <div className="h-16" aria-hidden="true" />
     <div className={`${mobileMenuOpen ? "" : "hidden"} fixed inset-0 z-[70] xl:hidden`}>
-      <button className="absolute inset-0 bg-black/50" onClick={() => setMobileMenuOpen(false)} type="button" />
+      <button aria-label={content.closeAllMenu} className="absolute inset-0 bg-black/50" onClick={() => setMobileMenuOpen(false)} type="button" />
       <HeaderMobileMenu content={content} en={en} homeMenu={home.value?.homeMenu || []} isLoggedIn={Boolean(home.value?.isLoggedIn)} onClose={() => setMobileMenuOpen(false)} onLogout={session.logout} />
     </div>
 
