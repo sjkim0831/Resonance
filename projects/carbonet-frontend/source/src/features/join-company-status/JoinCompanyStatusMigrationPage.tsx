@@ -326,7 +326,7 @@ export function JoinCompanyStatusMigrationPage() {
 
   function renderDetailPage() {
     return (
-      <main className="flex-grow max-w-5xl mx-auto w-full py-12 px-4" id="main-content">
+      <main className="mx-auto w-full min-w-0 max-w-5xl flex-grow overflow-x-hidden px-4 py-8 sm:py-12" id="main-content">
         <div className="mb-10 text-center">
           <h2 className="text-3xl font-bold text-[var(--kr-gov-text-primary)] mb-3">{copy.detailTitle}</h2>
           <p className="text-lg text-[var(--kr-gov-text-secondary)]">{copy.detailDesc}</p>
@@ -354,50 +354,50 @@ export function JoinCompanyStatusMigrationPage() {
 
         {detail?.result ? (
           <>
-            <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden mb-8" data-help-id="join-company-status-detail-summary">
-              <div className="bg-gray-50 px-8 py-4 border-b border-gray-200 flex justify-between items-center">
-                <span className="text-sm font-bold text-[var(--kr-gov-blue)] bg-blue-50 px-3 py-1 rounded-full border border-blue-100">
+            <div className="mb-8 min-w-0 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm" data-help-id="join-company-status-detail-summary">
+              <div className="flex min-w-0 flex-col gap-2 border-b border-gray-200 bg-gray-50 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-8">
+                <span className="max-w-full break-all rounded-full border border-blue-100 bg-blue-50 px-3 py-1 text-sm font-bold text-[var(--kr-gov-blue)]">
                   {copy.appNoBadge}: <span>{toStringValue(result.insttId, copy.noData)}</span>
                 </span>
-                <span className="text-xs text-[var(--kr-gov-text-secondary)] font-medium">{copy.lastUpdated}: <span>{lastUpdated}</span></span>
+                <span className="max-w-full break-words text-xs font-medium text-[var(--kr-gov-text-secondary)]">{copy.lastUpdated}: <span>{lastUpdated}</span></span>
               </div>
-              <div className="p-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+              <div className="grid min-w-0 grid-cols-1 gap-6 p-4 sm:p-8 md:grid-cols-2 lg:grid-cols-4 lg:gap-8">
                 <div className="space-y-1">
                   <p className="text-sm font-bold text-[var(--kr-gov-text-secondary)]">{copy.companyName}</p>
-                  <p className="text-base font-medium text-[var(--kr-gov-text-primary)]">{toStringValue(result.insttNm, copy.noData)}</p>
+                  <p className="break-words text-base font-medium text-[var(--kr-gov-text-primary)]">{toStringValue(result.insttNm, copy.noData)}</p>
                 </div>
                 <div className="space-y-1">
                   <p className="text-sm font-bold text-[var(--kr-gov-text-secondary)]">{copy.businessNo}</p>
-                  <p className="text-base font-medium text-[var(--kr-gov-text-primary)]">{toStringValue(result.bizrno, copy.noData)}</p>
+                  <p className="break-all text-base font-medium text-[var(--kr-gov-text-primary)]">{toStringValue(result.bizrno, copy.noData)}</p>
                 </div>
                 <div className="space-y-1">
                   <p className="text-sm font-bold text-[var(--kr-gov-text-secondary)]">{copy.representative}</p>
-                  <p className="text-base font-medium text-[var(--kr-gov-text-primary)]">{toStringValue(result.reprsntNm, copy.noData)}</p>
+                  <p className="break-words text-base font-medium text-[var(--kr-gov-text-primary)]">{toStringValue(result.reprsntNm, copy.noData)}</p>
                 </div>
                 <div className="space-y-1">
                   <p className="text-sm font-bold text-[var(--kr-gov-text-secondary)]">{copy.submittedOn}</p>
-                  <p className="text-base font-medium text-[var(--kr-gov-text-primary)]">{toStringValue(result.frstRegistPnttm, copy.noData)}</p>
+                  <p className="break-words text-base font-medium text-[var(--kr-gov-text-primary)]">{toStringValue(result.frstRegistPnttm, copy.noData)}</p>
                 </div>
               </div>
             </div>
 
-            <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-10 mb-8" data-help-id="join-company-status-detail-timeline">
-              <div className="relative flex justify-between items-center max-w-3xl mx-auto mb-12">
-                <div className="relative z-10 flex flex-col items-center gap-3">
+            <div className="mb-8 min-w-0 rounded-xl border border-gray-200 bg-white p-4 shadow-sm sm:p-10" data-help-id="join-company-status-detail-timeline">
+              <div className="relative mx-auto mb-8 grid min-w-0 max-w-3xl grid-cols-1 gap-3 sm:mb-12 sm:flex sm:items-center sm:justify-between sm:gap-0">
+                <div className="relative z-10 flex min-w-0 items-center gap-3 sm:flex-col">
                   <div className="w-12 h-12 rounded-full border-2 flex items-center justify-center font-bold text-lg bg-emerald-500 text-white border-emerald-500">01</div>
                   <span className="text-sm font-bold text-[var(--kr-gov-text-primary)]">{copy.submitted}</span>
                 </div>
 
-                <div className={`flex-grow h-0.5 mx-4 ${status === "A" ? "bg-gray-200" : "bg-emerald-500"}`}></div>
+                <div className={`mx-4 hidden h-0.5 flex-grow sm:block ${status === "A" ? "bg-gray-200" : "bg-emerald-500"}`}></div>
 
-                <div className="relative z-10 flex flex-col items-center gap-3">
+                <div className="relative z-10 flex min-w-0 items-center gap-3 sm:flex-col">
                   <div className={`w-12 h-12 rounded-full border-2 flex items-center justify-center font-bold text-lg ${status === "A" ? "bg-[var(--kr-gov-blue)] text-white border-[var(--kr-gov-blue)]" : "bg-emerald-500 text-white border-emerald-500"}`}>02</div>
                   <span className={`text-sm font-bold ${status === "A" ? "text-[var(--kr-gov-blue)]" : "text-[var(--kr-gov-text-primary)]"}`}>{copy.review}</span>
                 </div>
 
-                <div className={`flex-grow h-0.5 mx-4 ${status === "A" ? "bg-gray-200" : status === "R" || status === "X" ? "bg-red-500" : "bg-emerald-500"}`}></div>
+                <div className={`mx-4 hidden h-0.5 flex-grow sm:block ${status === "A" ? "bg-gray-200" : status === "R" || status === "X" ? "bg-red-500" : "bg-emerald-500"}`}></div>
 
-                <div className="relative z-10 flex flex-col items-center gap-3">
+                <div className="relative z-10 flex min-w-0 items-center gap-3 sm:flex-col">
                   <div className={`w-12 h-12 rounded-full border-2 flex items-center justify-center font-bold text-lg ${status === "A" ? "bg-white text-gray-400 border-gray-200" : status === "R" || status === "X" ? "bg-red-600 text-white border-red-600" : "bg-[var(--kr-gov-blue)] text-white border-[var(--kr-gov-blue)]"}`}>03</div>
                   <span className={`text-sm font-bold ${status === "A" ? "text-gray-400" : status === "P" ? "text-emerald-600" : "text-red-600"}`}>{renderStatusLabel()}</span>
                 </div>
@@ -424,7 +424,7 @@ export function JoinCompanyStatusMigrationPage() {
               ) : null}
             </div>
 
-            <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-8 mb-12" data-help-id="join-company-status-detail-files">
+            <div className="mb-12 min-w-0 rounded-xl border border-gray-200 bg-white p-4 shadow-sm sm:p-8" data-help-id="join-company-status-detail-files">
               <h3 className="text-lg font-bold text-[var(--kr-gov-text-primary)] mb-6 flex items-center gap-2">
                 <span className="material-symbols-outlined text-[var(--kr-gov-text-secondary)]">description</span>
                 {copy.attachedFiles}
@@ -434,10 +434,10 @@ export function JoinCompanyStatusMigrationPage() {
                   const fileId = toFileId(file);
                   const fileName = toFileName(file) || copy.noData;
                   return (
-                    <li className="flex items-center justify-between p-4 hover:bg-gray-50 transition-colors" key={fileId || fileName}>
-                      <div className="flex items-center gap-3">
+                    <li className="flex min-w-0 flex-col items-start gap-3 p-4 transition-colors hover:bg-gray-50 sm:flex-row sm:items-center sm:justify-between" key={fileId || fileName}>
+                      <div className="flex min-w-0 items-center gap-3">
                         <span className="material-symbols-outlined text-gray-400">attach_file</span>
-                        <span className="text-sm font-medium text-[var(--kr-gov-text-primary)]">{fileName}</span>
+                        <span className="min-w-0 break-all text-sm font-medium text-[var(--kr-gov-text-primary)]">{fileName}</span>
                       </div>
                       {fileId ? (
                         <HomeButton
@@ -460,9 +460,9 @@ export function JoinCompanyStatusMigrationPage() {
           </>
         ) : null}
 
-        <div className="flex items-center justify-center gap-4" data-help-id="join-company-status-detail-actions">
+        <div className="flex min-w-0 flex-col items-stretch justify-center gap-3 sm:flex-row sm:items-center sm:gap-4" data-help-id="join-company-status-detail-actions">
           <HomeButton
-            className="px-8 h-14 border border-[var(--kr-gov-border-light)] text-[var(--kr-gov-text-primary)] font-bold rounded-lg hover:bg-gray-50 transition-colors flex items-center gap-2"
+            className="flex h-14 w-full items-center justify-center gap-2 rounded-lg border border-[var(--kr-gov-border-light)] px-8 font-bold text-[var(--kr-gov-text-primary)] transition-colors hover:bg-gray-50 sm:w-auto"
             onClick={() => window.history.back()}
             type="button"
             variant="secondary"
@@ -472,7 +472,7 @@ export function JoinCompanyStatusMigrationPage() {
           </HomeButton>
           {status === "R" ? (
             <HomeButton
-              className="px-10 h-14 bg-[var(--kr-gov-blue)] text-white font-bold rounded-lg hover:bg-[var(--kr-gov-blue-hover)] transition-colors flex items-center gap-2 shadow-lg shadow-blue-100"
+              className="flex h-14 w-full items-center justify-center gap-2 rounded-lg bg-[var(--kr-gov-blue)] px-10 font-bold text-white shadow-lg shadow-blue-100 transition-colors hover:bg-[var(--kr-gov-blue-hover)] sm:w-auto"
               onClick={() => navigate(`${buildLocalizedPath("/join/companyReapply", "/join/en/companyReapply")}?bizNo=${encodeURIComponent(toStringValue(result.bizrno, ""))}&repName=${encodeURIComponent(toStringValue(result.reprsntNm, ""))}`)}
               type="button"
               variant="primary"
@@ -482,7 +482,7 @@ export function JoinCompanyStatusMigrationPage() {
             </HomeButton>
           ) : (
             <HomeButton
-              className="px-8 h-14 bg-[var(--kr-gov-blue)] text-white font-bold rounded-lg hover:bg-[var(--kr-gov-blue-hover)] transition-colors flex items-center gap-2"
+              className="flex h-14 w-full items-center justify-center gap-2 rounded-lg bg-[var(--kr-gov-blue)] px-8 font-bold text-white transition-colors hover:bg-[var(--kr-gov-blue-hover)] sm:w-auto"
               onClick={goHome}
               type="button"
               variant="primary"
