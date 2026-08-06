@@ -334,18 +334,23 @@ public class AdminMemberPagePayloadService {
         Map<String, Object> response = new LinkedHashMap<>(adminMemberRegisterSupportService.buildMemberRegisterPageData(isEn));
         String currentUserId = adminRequestContextSupport.extractCurrentUserId(request);
         boolean webmaster = "webmaster".equalsIgnoreCase(authorityPagePayloadSupport.safeValue(currentUserId));
+        String currentUserAuthorCode = authorityPagePayloadSupport.resolveCurrentUserAuthorCode(currentUserId);
+        boolean memberManagementMaster = authorityPagePayloadSupport.hasMemberManagementMasterAccess(
+                currentUserId,
+                currentUserAuthorCode);
         java.util.Set<String> grantableFeatureCodes;
         try {
-            grantableFeatureCodes = authorityPagePayloadSupport.resolveGrantableFeatureCodeSet(currentUserId, webmaster);
+            grantableFeatureCodes = authorityPagePayloadSupport.resolveGrantableFeatureCodeSet(
+                    currentUserId,
+                    webmaster || memberManagementMaster);
         } catch (Exception e) {
             log.error("Failed to resolve member-register feature grants. userId={}", authorityPagePayloadSupport.safeValue(currentUserId), e);
             grantableFeatureCodes = Collections.emptySet();
         }
-        response.put("canViewMemberRegister", webmaster || hasFeature(grantableFeatureCodes, MEMBER_REGISTER_VIEW_FEATURE_CODE));
-        response.put("canUseMemberRegisterIdCheck", webmaster || hasFeature(grantableFeatureCodes, MEMBER_REGISTER_ID_CHECK_FEATURE_CODE));
-        response.put("canUseMemberRegisterOrgSearch", webmaster || hasFeature(grantableFeatureCodes, MEMBER_REGISTER_ORG_SEARCH_FEATURE_CODE));
-        response.put("canUseMemberRegisterSave", webmaster || hasFeature(grantableFeatureCodes, MEMBER_REGISTER_SAVE_FEATURE_CODE));
-        String currentUserAuthorCode = authorityPagePayloadSupport.resolveCurrentUserAuthorCode(currentUserId);
+        response.put("canViewMemberRegister", memberManagementMaster || hasFeature(grantableFeatureCodes, MEMBER_REGISTER_VIEW_FEATURE_CODE));
+        response.put("canUseMemberRegisterIdCheck", memberManagementMaster || hasFeature(grantableFeatureCodes, MEMBER_REGISTER_ID_CHECK_FEATURE_CODE));
+        response.put("canUseMemberRegisterOrgSearch", memberManagementMaster || hasFeature(grantableFeatureCodes, MEMBER_REGISTER_ORG_SEARCH_FEATURE_CODE));
+        response.put("canUseMemberRegisterSave", memberManagementMaster || hasFeature(grantableFeatureCodes, MEMBER_REGISTER_SAVE_FEATURE_CODE));
         String currentUserInsttId = authorityPagePayloadSupport.resolveCurrentUserInsttId(currentUserId);
         boolean canManageAllCompanies = authorityPagePayloadSupport.hasMemberManagementMasterAccess(currentUserId, currentUserAuthorCode);
         boolean canManageOwnCompany = authorityPagePayloadSupport.requiresMemberManagementCompanyScope(currentUserId, currentUserAuthorCode);
