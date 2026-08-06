@@ -21,6 +21,8 @@ require "$QUEST" 'const displayedStepName = focusedContractStep?.stepName'
 require "$QUEST" 'const displayedNextStep ='
 require "$QUEST" 'const focusedProjectId ='
 require "$QUEST" 'const completed = focusedContractSteps.length'
+require "$QUEST" 'setFocusedStepCode(step.stepCode)'
+require "$QUEST" '(data?.items || []).find('
 require "$ASSIGNMENT" 'isCustomerVisibleEmissionProcess(process.processCode)'
 require "$ASSIGNMENT" 'emissionPhaseLabel(step.stepCode,en)'
 

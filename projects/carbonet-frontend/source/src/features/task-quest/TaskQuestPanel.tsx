@@ -873,9 +873,11 @@ export function TaskQuestPanel() {
       ? pending.filter((item) => item.projectId === effectiveProjectId)
       : [];
     const exactStep = focusedStepCode
-      ? pending.find(
+      ? (data?.items || []).find(
           (item) =>
             item.projectId === effectiveProjectId &&
+            (!focusedWorkflow?.processCode ||
+              item.processCode === focusedWorkflow.processCode) &&
             item.processStepCode === focusedStepCode,
         )
       : undefined;
@@ -1712,6 +1714,21 @@ export function TaskQuestPanel() {
     if (!available(selectedCatalogSteps[index])) return;
     const step=selectedCatalogSteps[index],runtime=guideRuntimeStep(step),route=guideRoute(step,runtime);
     setSelectedCatalogStep(index);
+    setFocusedStepCode(step.stepCode);
+    localStorage.setItem("task-quest-focused-step", step.stepCode);
+    if (effectiveProjectId) {
+      const nextFocus = {
+        projectId: effectiveProjectId,
+        processCode: step.processCode,
+      };
+      setFocusedWorkflow(nextFocus);
+      localStorage.setItem(
+        "task-quest-focused-workflow",
+        JSON.stringify(nextFocus),
+      );
+    }
+    setOpen(true);
+    localStorage.setItem("task-quest-open", "1");
     localStorage.setItem("task-quest-catalog-step",String(index));
     setFlowOpen(false);
     navigate(guideTarget(route,step,runtime));
