@@ -10,7 +10,9 @@ const tone = (ok: boolean) => ok ? "bg-emerald-50 text-emerald-700 ring-emerald-
 
 export function ProcessOrchestrationPage() {
   const en = isEnglish();
-  const processCode = new URLSearchParams(location.search).get("process") || "GOVERNANCE_CHANGE";
+  const query = new URLSearchParams(location.search);
+  const processCode = query.get("process") || "GOVERNANCE_CHANGE";
+  const requestedStepCode = query.get("step") || "";
   const [data, setData] = useState<Payload>({});
   const [error, setError] = useState("");
   useEffect(() => {
@@ -23,6 +25,10 @@ export function ProcessOrchestrationPage() {
   }, []);
   const process = useMemo(() => (data.processes || []).find(row => text(row, "processCode") === processCode), [data.processes, processCode]);
   const steps = useMemo(() => (data.steps || []).filter(row => text(row, "processCode") === processCode).sort((a, b) => metric(a, "stepOrder") - metric(b, "stepOrder")), [data.steps, processCode]);
+  const selectedStep = useMemo(
+    () => steps.find(row => text(row, "stepCode") === requestedStepCode) || steps[0],
+    [requestedStepCode, steps],
+  );
   const cases = useMemo(() => (data.cases || []).filter(row => text(row, "processCode") === processCode), [data.cases, processCode]);
   const jobs = useMemo(() => (data.developmentJobs || []).filter(row => text(row, "processCode") === processCode), [data.developmentJobs, processCode]);
   const progress = (data.processDevelopmentProgress || []).find(row => text(row, "processCode") === processCode);
@@ -47,18 +53,49 @@ export function ProcessOrchestrationPage() {
         <Info title="완료 조건" body={text(process, "completionCondition") || "필수 단계, 증빙, 검증과 승인 조건을 모두 충족해야 합니다."} />
         <article className="rounded-2xl border bg-white p-5"><h3 className="font-black text-[#052b57]">통제 기준</h3><dl className="mt-3 grid grid-cols-2 gap-3 text-sm"><dt className="text-slate-500">위험도</dt><dd className="font-bold">{text(process, "riskLevel") || "미지정"}</dd><dt className="text-slate-500">검토 주기</dt><dd className="font-bold">{text(process, "reviewCycleDays") ? `${text(process, "reviewCycleDays")}일` : "미지정"}</dd><dt className="text-slate-500">설계 상태</dt><dd className="font-bold">{text(assurance, "assuranceStatus") || "-"}</dd><dt className="text-slate-500">진척도</dt><dd className="font-bold">{text(progress, "completionPercent") || 0}%</dd></dl></article>
       </section>
-      <section className="rounded-2xl border bg-white p-5">
+      <section className="rounded-2xl border bg-white p-5" data-help-id="process-workspace-sequence">
         <div className="flex flex-wrap items-end justify-between gap-3"><div><h3 className="text-xl font-black text-[#052b57]">업무 실행 순서</h3><p className="mt-1 text-sm text-slate-600">단계 완료 조건과 담당 액터를 확인하고 실제 연결 화면에서 업무를 수행합니다.</p></div><span className={`rounded-full px-3 py-1 text-xs font-black ring-1 ${tone(metric(assurance, "designBlockerCount") === 0)}`}>{metric(assurance, "designBlockerCount") === 0 ? "설계 검증 통과" : `설계 차단 ${metric(assurance, "designBlockerCount")}건`}</span></div>
-        <ol className="mt-5 grid gap-4">{steps.map((step, index) => <StepCard index={index} key={text(step, "stepCode")} row={step} />)}</ol>
+        <ol className="mt-5 grid gap-4">{steps.map((step, index) => <StepCard index={index} key={text(step, "stepCode")} processCode={processCode} row={step} selected={text(step, "stepCode") === text(selectedStep, "stepCode")} />)}</ol>
       </section>
+      {selectedStep && <StepContract row={selectedStep} />}
       <section className="grid gap-4 xl:grid-cols-2">
-        <article className="rounded-2xl border bg-white p-5"><h3 className="font-black text-[#052b57]">검증 시나리오</h3><ul className="mt-4 space-y-3">{cases.map(row => <StatusRow key={text(row, "caseCode")} title={text(row, "caseName")} detail={text(row, "caseType")} status={text(row, "status")} ok={text(row, "status") === "APPROVED"} />)}</ul></article>
-        <article className="rounded-2xl border bg-white p-5"><h3 className="font-black text-[#052b57]">구현·검증 작업</h3><ul className="mt-4 space-y-3">{jobs.slice(0, 12).map(row => <StatusRow key={`${text(row, "jobId")}-${text(row, "jobName")}`} title={text(row, "jobName")} detail={`${text(row, "jobType")} · ${text(row, "targetPath")}`} status={text(row, "jobStatus")} ok={["VERIFIED", "COMPLETED"].includes(text(row, "jobStatus"))} />)}</ul></article>
+        <article className="rounded-2xl border bg-white p-5" data-help-id="process-workspace-tests"><h3 className="font-black text-[#052b57]">검증 시나리오</h3><ul className="mt-4 space-y-3">{cases.map(row => <StatusRow key={text(row, "caseCode")} title={text(row, "caseName")} detail={text(row, "caseType")} status={text(row, "status")} ok={text(row, "status") === "APPROVED"} />)}</ul></article>
+        <article className="rounded-2xl border bg-white p-5" data-help-id="process-workspace-jobs"><h3 className="font-black text-[#052b57]">구현·검증 작업</h3><ul className="mt-4 space-y-3">{jobs.slice(0, 12).map(row => <StatusRow key={`${text(row, "jobId")}-${text(row, "jobName")}`} title={text(row, "jobName")} detail={`${text(row, "jobType")} · ${text(row, "targetPath")}`} status={text(row, "jobStatus")} ok={["VERIFIED", "COMPLETED"].includes(text(row, "jobStatus"))} />)}</ul></article>
       </section>
     </div>
   </AdminPageShell>;
 }
 
 function Info({ title, body }: { title: string; body: string }) { return <article className="rounded-2xl border bg-white p-5"><h3 className="font-black text-[#052b57]">{title}</h3><p className="mt-3 text-sm leading-6 text-slate-700">{body}</p></article>; }
-function StepCard({ index, row }: { index: number; row: Row }) { const target = text(row, "adminPath") || text(row, "userPath"); return <li className="grid gap-4 rounded-xl border border-slate-200 p-4 lg:grid-cols-[3rem_1fr_auto] lg:items-center"><span className="flex h-11 w-11 items-center justify-center rounded-full bg-blue-50 font-black text-[#174ea6]">{index + 1}</span><div><div className="flex flex-wrap items-center gap-2"><h4 className="font-black text-[#052b57]">{text(row, "stepName")}</h4><span className="rounded bg-slate-100 px-2 py-1 text-xs font-bold text-slate-600">{text(row, "actorCode")}</span><span className="rounded bg-blue-50 px-2 py-1 text-xs font-bold text-blue-700">{text(row, "fromState")} → {text(row, "toState")}</span></div><p className="mt-2 text-sm leading-6 text-slate-600">{text(row, "requirementText") || text(row, "completionRule")}</p><p className="mt-2 text-xs text-slate-500">완료 기준: {text(row, "completionRule") || "필수 데이터·증빙·권한 검증 통과"}</p></div>{target ? <a className="inline-flex min-h-11 items-center justify-center rounded-lg bg-[#246beb] px-4 font-bold text-white" href={target}>업무 화면 열기</a> : <span className="rounded-lg bg-amber-50 px-4 py-3 text-center text-sm font-bold text-amber-800">하위 업무에서 실행</span>}</li>; }
+function StepCard({ index, processCode, row, selected }: { index: number; processCode: string; row: Row; selected: boolean }) {
+  const target = text(row, "adminPath") || text(row, "userPath");
+  const stepCode = text(row, "stepCode");
+  const selectHref = buildLocalizedPath(
+    `/admin/system/process-workspace?process=${encodeURIComponent(processCode)}&step=${encodeURIComponent(stepCode)}#selected-step-contract`,
+    `/en/admin/system/process-workspace?process=${encodeURIComponent(processCode)}&step=${encodeURIComponent(stepCode)}#selected-step-contract`,
+  );
+  return <li aria-current={selected ? "step" : undefined} className={`grid gap-4 rounded-xl border p-4 lg:grid-cols-[3rem_1fr_auto] lg:items-center ${selected ? "border-[#246beb] bg-blue-50/60 ring-2 ring-blue-100" : "border-slate-200"}`} data-step-code={stepCode}>
+    <span className={`flex h-11 w-11 items-center justify-center rounded-full font-black ${selected ? "bg-[#246beb] text-white" : "bg-blue-50 text-[#174ea6]"}`}>{index + 1}</span>
+    <div><div className="flex flex-wrap items-center gap-2"><h4 className="font-black text-[#052b57]">{text(row, "stepName")}</h4>{selected && <span className="rounded bg-[#052b57] px-2 py-1 text-xs font-bold text-white">선택 단계</span>}<span className="rounded bg-slate-100 px-2 py-1 text-xs font-bold text-slate-600">{text(row, "actorCode")}</span><span className="rounded bg-blue-50 px-2 py-1 text-xs font-bold text-blue-700">{text(row, "fromState")} → {text(row, "toState")}</span></div><p className="mt-2 text-sm leading-6 text-slate-600">{text(row, "requirementText") || text(row, "completionRule")}</p><p className="mt-2 text-xs text-slate-500">완료 기준: {text(row, "completionRule") || "필수 데이터·증빙·권한 검증 통과"}</p></div>
+    <div className="flex flex-col gap-2"><a className="inline-flex min-h-11 items-center justify-center rounded-lg border border-[#246beb] bg-white px-4 font-bold text-[#174ea6]" href={selectHref}>단계 계약 보기</a>{target ? <a className="inline-flex min-h-11 items-center justify-center rounded-lg bg-[#246beb] px-4 font-bold text-white" href={target}>업무 화면 열기</a> : <span className="rounded-lg bg-amber-50 px-4 py-3 text-center text-sm font-bold text-amber-800">하위 업무에서 실행</span>}</div>
+  </li>;
+}
+
+function StepContract({ row }: { row: Row }) {
+  const entries = [
+    ["담당 액터", text(row, "actorCode")],
+    ["상태 전이", `${text(row, "fromState")} → ${text(row, "toState")}`],
+    ["실행 명령", text(row, "commandCode")],
+    ["입력 계약", text(row, "inputContract")],
+    ["출력 계약", text(row, "outputContract")],
+    ["API 계약", text(row, "apiContract")],
+    ["완료 기준", text(row, "completionRule")],
+    ["사용자 화면", text(row, "userPath")],
+    ["관리자 화면", text(row, "adminPath")],
+  ];
+  return <section id="selected-step-contract" className="scroll-mt-6 rounded-2xl border border-blue-200 bg-white p-5 shadow-sm" data-help-id="process-workspace-selected-step">
+    <div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-xs font-black uppercase tracking-wider text-[#246beb]">선택 단계 상세 계약</p><h3 className="mt-1 text-xl font-black text-[#052b57]">{text(row, "stepName")}</h3><p className="mt-2 text-sm text-slate-600">{text(row, "requirementText") || "단계 요구사항을 등록해야 합니다."}</p></div><span className="rounded-full bg-blue-50 px-3 py-2 text-xs font-black text-blue-700">{text(row, "stepCode")}</span></div>
+    <dl className="mt-5 grid gap-3 md:grid-cols-2">{entries.map(([label, value]) => <div className="min-w-0 rounded-xl bg-slate-50 p-4" key={label}><dt className="text-xs font-bold text-slate-500">{label}</dt><dd className="mt-2 whitespace-pre-wrap break-words text-sm font-semibold leading-6 text-slate-800">{value || "미등록"}</dd></div>)}</dl>
+  </section>;
+}
 function StatusRow({ title, detail, status, ok }: { title: string; detail: string; status: string; ok: boolean }) { return <li className="flex items-start justify-between gap-3 rounded-lg bg-slate-50 p-3"><div><strong className="text-sm text-slate-800">{title}</strong><p className="mt-1 break-all text-xs text-slate-500">{detail}</p></div><span className={`shrink-0 rounded-full px-2 py-1 text-xs font-bold ring-1 ${tone(ok)}`}>{status || "PENDING"}</span></li>; }
