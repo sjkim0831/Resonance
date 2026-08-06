@@ -50,3 +50,5 @@ or integrity failures remain fail-closed and are never replayed.
 Deterministic agent and fast-deploy policy gates reuse a SHA-256 result only
 while every policy input has the same content. A changed or newly installed
 input changes the fingerprint and restores the complete fail-closed gate.
+All policy inputs are hashed in one process batch so fingerprint verification
+does not create one operating-system process per file.
