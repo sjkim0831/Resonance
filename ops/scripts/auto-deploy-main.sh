@@ -1259,7 +1259,7 @@ if [[ "$PLAN_DATABASE_REQUIRED" == "true" && "${CARBONET_FORCE_PREDEPLOY_BACKUP:
     apps/carbonet-api/src/main/resources/db/migration/postgresql)"
   if [[ -n "$database_change_files" ]] \
     && ! grep -Ev '^A[[:space:]]' <<<"$database_change_statuses" | grep -q . \
-    && python3 ops/scripts/classify-safe-additive-ddl.py $database_change_files; then
+    && python3 ops/scripts/classify-safe-additive-ddl.py --schema-reversible $database_change_files; then
     schema_backup_only=true
     menu_backup_only=false
     governance_backup_only=false

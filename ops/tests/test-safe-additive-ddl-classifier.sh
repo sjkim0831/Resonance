@@ -35,6 +35,28 @@ FOR EACH ROW EXECUTE FUNCTION record_framework_safe_example_history();
 SQL
 python3 "$CLASSIFIER" "$tmp_dir/safe.sql" | grep -q '^safe-additive '
 
+cat >"$tmp_dir/reversible_function.sql" <<'SQL'
+CREATE OR REPLACE FUNCTION framework_safe_selector(payload jsonb)
+RETURNS jsonb LANGUAGE sql IMMUTABLE AS $$ SELECT payload $$;
+DO $$
+BEGIN
+  IF (SELECT count(*) FROM framework_development_job) < 0 THEN
+    RAISE EXCEPTION 'unreachable';
+  END IF;
+END $$;
+SQL
+python3 "$CLASSIFIER" --schema-reversible "$tmp_dir/reversible_function.sql" | grep -q '^safe-additive '
+if python3 "$CLASSIFIER" "$tmp_dir/reversible_function.sql" >/dev/null 2>&1; then
+  echo "reversible function was accepted without explicit mode" >&2
+  exit 1
+fi
+
+printf '%s\n' 'CREATE OR REPLACE FUNCTION unsafe_replace_write() RETURNS void LANGUAGE sql AS $$ UPDATE framework_development_job SET job_status='"'"'DONE'"'"' $$;' >"$tmp_dir/reversible_write.sql"
+if python3 "$CLASSIFIER" --schema-reversible "$tmp_dir/reversible_write.sql" >/dev/null 2>&1; then
+  echo "writing replacement function was accepted" >&2
+  exit 1
+fi
+
 for fixture in drop update alter existing_index insert do_block replace_function function_existing_write existing_trigger; do
   case "$fixture" in
     drop) sql='DROP TABLE framework_safe_example;' ;;
@@ -55,10 +77,11 @@ for fixture in drop update alter existing_index insert do_block replace_function
 done
 
 grep -q 'backup_scope="safe-additive-schema"' "$DEPLOY_SCRIPT"
+grep -q -- '--schema-reversible' "$DEPLOY_SCRIPT"
 grep -q 'pg_dump -U' "$DEPLOY_SCRIPT"
 grep -q -- '--format=custom' "$DEPLOY_SCRIPT"
 grep -q 'pg_restore --list' "$DEPLOY_SCRIPT"
 grep -q 'restoredFlywayRows' "$DEPLOY_SCRIPT"
 grep -q "interval '5 minutes'" "$DEPLOY_SCRIPT"
 
-echo "[safe-additive-ddl] PASS safe=1 unsafe=9 functions=bounded triggers=new-schema-only archive=custom restoreCatalog=verified orphanReap=5m fail-closed=true"
+echo "[safe-additive-ddl] PASS safe=1 reversible=1 unsafe=10 functions=bounded triggers=new-schema-only archive=custom restoreCatalog=verified orphanReap=5m fail-closed=true"

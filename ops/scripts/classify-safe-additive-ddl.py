@@ -65,7 +65,7 @@ def normalized_name(value: str) -> str:
     return value.replace('"', "").lower()
 
 
-def classify(paths: list[Path]) -> tuple[bool, str]:
+def classify(paths: list[Path], schema_reversible: bool = False) -> tuple[bool, str]:
     created_tables: set[str] = set()
     created_functions: set[str] = set()
     statements: list[tuple[Path, str]] = []
@@ -111,7 +111,7 @@ def classify(paths: list[Path]) -> tuple[bool, str]:
             statement,
         )
         if function_match:
-            if function_match.group(1):
+            if function_match.group(1) and not schema_reversible:
                 return False, f"replace-function:{path}:{normalized_name(function_match.group(2))}"
             function_name = normalized_name(function_match.group(2))
             if re.search(r"(?is)\bEXECUTE\s+(FORMAT\s*\(|[^F])", statement):
@@ -129,6 +129,14 @@ def classify(paths: list[Path]) -> tuple[bool, str]:
             if foreign_targets:
                 return False, f"function-writes-existing-table:{path}:{function_name}:{','.join(foreign_targets)}"
             created_functions.add(function_name)
+            continue
+        if schema_reversible and re.match(r"(?is)^DO\s+\$[A-Za-z0-9_]*\$", statement):
+            if re.search(r"(?is)\bEXECUTE\s+(FORMAT\s*\(|[^F])", statement):
+                return False, f"dynamic-sql-in-do-block:{path}"
+            if re.search(r"(?is)\b(DROP|ALTER|CREATE|TRUNCATE)\s+(TABLE|SCHEMA|DATABASE|FUNCTION|TRIGGER)\b", statement):
+                return False, f"ddl-in-do-block:{path}"
+            if re.search(r"(?is)\b(?:INSERT\s+INTO|UPDATE|DELETE\s+FROM|TRUNCATE(?:\s+TABLE)?)\s+", statement):
+                return False, f"write-in-do-block:{path}"
             continue
         drop_trigger_match = re.match(
             r"(?is)^DROP\s+TRIGGER\s+IF\s+EXISTS\s+[A-Za-z0-9_\".]+\s+ON\s+([A-Za-z0-9_\".]+)$",
@@ -151,14 +159,16 @@ def classify(paths: list[Path]) -> tuple[bool, str]:
             return False, f"trigger-outside-new-schema:{path}:{table}:{function}"
         return False, f"unsafe-statement:{path}:{statement[:80]}"
 
-    if not created_tables:
-        return False, "no-new-table"
+    if not created_tables and not (schema_reversible and created_functions):
+        return False, "no-new-table-or-reversible-function"
     return True, f"new-tables={len(created_tables)},new-functions={len(created_functions)},statements={len(statements)}"
 
 
 def main() -> int:
-    paths = [Path(value) for value in sys.argv[1:]]
-    safe, reason = classify(paths)
+    args = sys.argv[1:]
+    schema_reversible = "--schema-reversible" in args
+    paths = [Path(value) for value in args if value != "--schema-reversible"]
+    safe, reason = classify(paths, schema_reversible=schema_reversible)
     print(("safe-additive " if safe else "full-backup ") + reason)
     return 0 if safe else 1
 
