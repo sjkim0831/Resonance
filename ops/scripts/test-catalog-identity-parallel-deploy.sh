@@ -40,6 +40,9 @@ assert 'control-plane-drift-last' in cached_block
 assert 'control_plane_drift_now - control_plane_drift_last < 300' in cached_block
 assert cached_block.count('[[ "$control_plane_drift_check_due" != "true" ]]') == 6
 assert "control-plane drift check skipped: verified within 5 minutes" in cached_block
+assert 'git diff --quiet "$deployed_commit" "$target_commit"' in source
+assert "target Kyverno resource guard check reused from bootstrap" in source
+assert source.count('bash "$ROOT_DIR/ops/scripts/ensure-kyverno-resource-guard.sh"') == 1
 start = source.index('catalog_identity_sync_log="$ROOT_DIR/var/logs/catalog-identity-sync-')
 end = source.index('record_deploy_phase "backstage_visual_e2e"', start)
 block = source[start:end]

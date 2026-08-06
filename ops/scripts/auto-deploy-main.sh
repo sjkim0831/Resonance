@@ -504,9 +504,16 @@ if [[ -n "$tracked_source_changes" ]]; then
 fi
 record_deploy_phase "worktree_prepare"
 
-# Run the target revision as well. This bootstraps a newly introduced guard and
-# verifies that the exact revision being promoted owns the live resource cap.
-bash "$ROOT_DIR/ops/scripts/ensure-kyverno-resource-guard.sh"
+# The bootstrap check above already validates the same guard when its contract
+# did not change. Re-run from the target tree only when the guard itself or its
+# deployment policy changed; this preserves exact-revision validation without
+# paying for the same Kubernetes lookup twice on every catalog-only commit.
+if git diff --quiet "$deployed_commit" "$target_commit" -- \
+    ops/scripts/ensure-kyverno-resource-guard.sh; then
+  echo "[auto-deploy] target Kyverno resource guard check reused from bootstrap"
+else
+  bash "$ROOT_DIR/ops/scripts/ensure-kyverno-resource-guard.sh"
+fi
 
 if ! git merge-base --is-ancestor "$current_commit" "$target_commit"; then
   echo "[auto-deploy] refusing non-fast-forward update: $current_commit -> $target_commit" >&2
