@@ -35,3 +35,4 @@ missed webhook deliveries.
 The webhook performs this prefetch as the unprivileged repository owner before
 dispatching the deployment service. A failed prefetch does not suppress the
 deployment; it falls back to the service-owned target-branch fetch.
+The fetched remote-tracking ref must exactly equal the signed webhook SHA.
