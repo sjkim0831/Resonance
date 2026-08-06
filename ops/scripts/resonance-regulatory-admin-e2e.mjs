@@ -2,6 +2,7 @@
 import { createRequire } from "node:module";
 import { existsSync } from "node:fs";
 import path from "node:path";
+import { execFileSync } from "node:child_process";
 
 const root = path.resolve(process.env.RESONANCE_ROOT || path.join(import.meta.dirname, "../.."));
 const require = createRequire(path.join(root, "projects/carbonet-frontend/source/package.json"));
@@ -10,6 +11,7 @@ const baseUrl = String(process.env.CARBONET_RUNTIME_BASE_URL || "http://172.16.1
 const password = String(process.env.CARBONET_ADMIN_TEST_PASSWORD || "");
 const projectId = String(process.env.CARBONET_REGULATORY_TEST_PROJECT || "PRJ-2026-5B8992");
 const executablePath = ["/snap/bin/chromium", "/usr/bin/chromium", "/usr/bin/chromium-browser", "/usr/bin/google-chrome"].find(existsSync);
+const sourceCommit = execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim();
 if (!password) throw new Error("CARBONET_ADMIN_TEST_PASSWORD is required");
 
 const api = await request.newContext({ baseURL: baseUrl, ignoreHTTPSErrors: true });
@@ -84,6 +86,7 @@ try {
 console.log(JSON.stringify({
   status: "PASS",
   processCode: "REGULATORY_SUBMISSION",
+  sourceCommit,
   projectId,
   authenticatedAdmin: 1,
   projectScope: 1,
