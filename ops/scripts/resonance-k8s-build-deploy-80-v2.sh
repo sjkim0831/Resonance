@@ -857,6 +857,21 @@ rollout_image() {
     -p="{\"spec\":{\"template\":{\"spec\":{\"volumes\":[{\"name\":\"reference-root\",\"hostPath\":{\"path\":\"/opt/reference\",\"type\":\"DirectoryOrCreate\"}}],\"containers\":[{\"name\":\"$CONTAINER\",\"volumeMounts\":[{\"name\":\"reference-root\",\"mountPath\":\"/opt/reference\",\"readOnly\":true}]}]}}}}" \
     >/dev/null || rollback_and_fail "REFERENCE_MOUNT_FAILED" "Failed to mount /opt/reference read-only" "kubectl -n $NAMESPACE describe deployment/$DEPLOYMENT"
 
+  # Membership evidence must survive pod replacement and be readable from
+  # either replica.  The application runs as uid/gid 1000, so prepare the
+  # host directory explicitly instead of relying on a root-owned hostPath
+  # directory created by kubelet.
+  local member_file_host_dir="${CARBONET_MEMBER_FILE_HOST_DIR:-/opt/resonance-data/carbonet/files/instt}"
+  root_cmd install -d -m 0750 -o 1000 -g 1000 "$member_file_host_dir" ||
+    rollback_and_fail "MEMBER_FILE_DIRECTORY_FAILED" \
+      "Failed to prepare persistent membership evidence storage" \
+      "install -d -m 0750 -o 1000 -g 1000 $member_file_host_dir"
+  kubectl -n "$NAMESPACE" patch "deployment/$DEPLOYMENT" --type='strategic' \
+    -p="{\"spec\":{\"template\":{\"spec\":{\"volumes\":[{\"name\":\"member-evidence-files\",\"hostPath\":{\"path\":\"$member_file_host_dir\",\"type\":\"DirectoryOrCreate\"}}],\"containers\":[{\"name\":\"$CONTAINER\",\"env\":[{\"name\":\"CARBONET_FILE_INSTT_DIR\",\"value\":\"/var/file/instt\"}],\"volumeMounts\":[{\"name\":\"member-evidence-files\",\"mountPath\":\"/var/file/instt\"}]}]}}}}" \
+    >/dev/null || rollback_and_fail "MEMBER_FILE_MOUNT_FAILED" \
+      "Failed to mount persistent membership evidence storage" \
+      "kubectl -n $NAMESPACE describe deployment/$DEPLOYMENT"
+
   # Preserve zero downtime while removing fixed rollout delays. The startup
   # probe remains the safety gate; two-second polling detects readiness without
   # adding ten-second quantisation, and old pods still drain before SIGTERM.
