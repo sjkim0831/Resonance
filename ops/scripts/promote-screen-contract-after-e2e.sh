@@ -94,6 +94,10 @@ WHERE contract.process_code=:'process_code'
       AND spec.actor_contract->>'contractType'='STEP_ACTOR_AUTHORITY'
       AND length(coalesce(spec.actor_contract->>'actorCode',''))>0
       AND spec.actor_contract->>'scope' IN ('GLOBAL','TENANT','PROJECT','TENANT_PROJECT')
+      AND spec.business_contract->>'contractType'='STEP_BUSINESS'
+      AND length(coalesce(spec.business_contract->>'stepName',''))>0
+      AND length(coalesce(spec.business_contract->>'requirement',''))>0
+      AND length(coalesce(spec.business_contract->>'completionRule',''))>0
       AND spec.transition_contract->>'contractType'='STEP_TRANSITION'
       AND length(coalesce(spec.transition_contract->>'fromState',''))>0
       AND length(coalesce(spec.transition_contract->>'toState',''))>0

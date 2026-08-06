@@ -252,7 +252,10 @@ with candidate as (
     and e.actor_contract->>'contractType'='STEP_ACTOR_AUTHORITY'
     and length(coalesce(e.actor_contract->>'actorCode',''))>0
     and e.actor_contract->>'scope' in ('GLOBAL','TENANT','PROJECT','TENANT_PROJECT')
-    and e.business_contract<>'{}'::jsonb
+    and e.business_contract->>'contractType'='STEP_BUSINESS'
+    and length(coalesce(e.business_contract->>'stepName',''))>0
+    and length(coalesce(e.business_contract->>'requirement',''))>0
+    and length(coalesce(e.business_contract->>'completionRule',''))>0
     and e.transition_contract->>'contractType'='STEP_TRANSITION'
     and length(coalesce(e.transition_contract->>'fromState',''))>0
     and length(coalesce(e.transition_contract->>'toState',''))>0

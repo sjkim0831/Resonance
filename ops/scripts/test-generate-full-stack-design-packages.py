@@ -82,6 +82,25 @@ class GroupFieldsByAudienceTest(unittest.TestCase):
         self.assertEqual(actor["delegation"], {})
         self.assertEqual(actor["extensions"], {"authorityHint": "preserve-me"})
 
+    def test_normalizes_business_contract_without_losing_policy(self) -> None:
+        normalized = GENERATOR.normalize_step_contract({
+            "business_contract": {
+                "stepName": "자료 검증", "purpose": "원천자료를 검증한다.",
+                "completionRule": "오류가 0건이다.", "deliveryAdapterRequired": True,
+                "domainHint": "preserve-me",
+            },
+        })
+        business = normalized["business_contract"]
+        self.assertEqual(business["contractType"], "STEP_BUSINESS")
+        self.assertEqual(business["stepName"], "자료 검증")
+        self.assertEqual(business["requirement"], "원천자료를 검증한다.")
+        self.assertEqual(business["completionRule"], "오류가 0건이다.")
+        self.assertEqual(business["policy"], {"deliveryAdapterRequired": True})
+        self.assertEqual(business["preconditions"], [])
+        self.assertEqual(business["deliverables"], [])
+        self.assertEqual(business["exceptions"], [])
+        self.assertEqual(business["extensions"], {"domainHint": "preserve-me"})
+
     def test_splits_catalog_group_using_nested_audiences(self) -> None:
         contract = [
             {

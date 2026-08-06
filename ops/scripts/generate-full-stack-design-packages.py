@@ -57,6 +57,20 @@ def validate_step(process: dict[str, Any], step: dict[str, Any]) -> None:
             or not isinstance(actor_contract.get("delegation"), dict)
             or not isinstance(actor_contract.get("extensions"), dict)):
         fail(f"{identity}: actor_contract must be a STEP_ACTOR_AUTHORITY object")
+    business_contract = step["business_contract"]
+    if (business_contract.get("contractType") != "STEP_BUSINESS"
+            or not isinstance(business_contract.get("stepName"), str)
+            or not business_contract["stepName"]
+            or not isinstance(business_contract.get("requirement"), str)
+            or not business_contract["requirement"]
+            or not isinstance(business_contract.get("completionRule"), str)
+            or not business_contract["completionRule"]
+            or not isinstance(business_contract.get("preconditions"), list)
+            or not isinstance(business_contract.get("deliverables"), list)
+            or not isinstance(business_contract.get("exceptions"), list)
+            or not isinstance(business_contract.get("policy"), dict)
+            or not isinstance(business_contract.get("extensions"), dict)):
+        fail(f"{identity}: business_contract must be a STEP_BUSINESS object")
     transition_contract = step["transition_contract"]
     if (transition_contract.get("contractType") != "STEP_TRANSITION"
             or not isinstance(transition_contract.get("fromState"), str)
@@ -98,6 +112,35 @@ def normalize_step_contract(step: dict[str, Any]) -> dict[str, Any]:
     normalization only; it never invents fields, actions, or business rules.
     """
     normalized = copy.deepcopy(step)
+    business = normalized.get("business_contract")
+    if not isinstance(business, dict):
+        business = {}
+    business_policy_keys = {"deliveryAdapterRequired", "browserOnlyVerificationForbidden"}
+    business_core_keys = {
+        "schemaVersion", "contractType", "domainCode", "processName", "stepName", "goal", "requirement",
+        "purpose", "completionRule", "riskLevel", "slaHours", "regulationRefs", "preconditions",
+        "deliverables", "exceptions", "policy", "extensions",
+    }
+    normalized["business_contract"] = {
+        "schemaVersion": 1,
+        "contractType": "STEP_BUSINESS",
+        "domainCode": business.get("domainCode"),
+        "processName": business.get("processName"),
+        "stepName": business.get("stepName"),
+        "goal": business.get("goal"),
+        "requirement": business.get("requirement") or business.get("purpose"),
+        "completionRule": business.get("completionRule"),
+        "riskLevel": business.get("riskLevel"),
+        "slaHours": business.get("slaHours"),
+        "regulationRefs": business.get("regulationRefs"),
+        "preconditions": business.get("preconditions") if isinstance(business.get("preconditions"), list) else [],
+        "deliverables": business.get("deliverables") if isinstance(business.get("deliverables"), list) else [],
+        "exceptions": business.get("exceptions") if isinstance(business.get("exceptions"), list) else [],
+        "policy": (business.get("policy") if business.get("contractType") == "STEP_BUSINESS" and isinstance(business.get("policy"), dict)
+                   else {key: business[key] for key in business_policy_keys if key in business}),
+        "extensions": (business.get("extensions") if business.get("contractType") == "STEP_BUSINESS" and isinstance(business.get("extensions"), dict)
+                       else {key: value for key, value in business.items() if key not in business_core_keys | business_policy_keys}),
+    }
     actor = normalized.get("actor_contract")
     if not isinstance(actor, dict):
         actor = {}
