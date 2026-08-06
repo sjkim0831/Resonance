@@ -29,8 +29,20 @@ if [[ "$count" == "0" ]]; then
 fi
 
 python3 "$ROOT/ops/scripts/generate-full-stack-design-packages.py" "$WORK/candidate.json" --out "$WORK/packages" >/dev/null
+set +e
 python3 "$ROOT/ops/scripts/fast-process-package-test.py" "$WORK/packages/index.json" \
   --evidence "$WORK/evidence.json" --cache-dir "$WORK/cache" >"$WORK/result.json"
+test_rc=$?
+set -e
+if (( test_rc != 0 )); then
+  if [[ -s "$WORK/evidence.json" ]]; then
+    jq -c '{status,packageCount,failed:[.results[]|select(.status=="FAILED")|{identity,failures}]}' \
+      "$WORK/evidence.json" >&2
+  else
+    echo "[review-static-gate] package test failed without evidence rc=$test_rc" >&2
+  fi
+  exit "$test_rc"
+fi
 jq -e --argjson expected "$count" '.status=="PASSED" and .packageCount>=($expected)' "$WORK/result.json" >/dev/null
 promoted="$(kubectl -n "$NAMESPACE" exec -i "$leader" -c patroni -- \
   psql -h 127.0.0.1 -U "$DB_USER" -d "$DATABASE" -X -At <"$WORK/promote.sql" | tail -1)"
