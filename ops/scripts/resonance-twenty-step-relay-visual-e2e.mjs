@@ -158,6 +158,10 @@ async function verifyRoute(api, stepCode, actor, processCode) {
     ignoreHTTPSErrors: true,
     viewport: { width: 1440, height: 1000 },
   });
+  await context.addInitScript(() => {
+    localStorage.setItem("task-quest-open", "1");
+    localStorage.setItem("process-qa-card-open", "1");
+  });
   const page = await context.newPage();
   const errors = [];
   page.on("pageerror", (error) => errors.push(error.message));
@@ -185,6 +189,7 @@ async function verifyRoute(api, stepCode, actor, processCode) {
       duplicateIdCount: [...document.querySelectorAll("[id]")].filter((node,index,all) =>
         all.findIndex((candidate) => candidate.id === node.id) !== index).length,
       replacementCharacterCount: ((document.body?.innerText || "").match(/�/g) || []).length,
+      openUtilityPanelCount: document.querySelectorAll('[data-utility-panel-state="open"]').length,
       overflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 2,
     }));
     if ((response?.status() || 0) >= 400) throw new Error(`route HTTP ${response?.status()}`);
@@ -193,7 +198,7 @@ async function verifyRoute(api, stepCode, actor, processCode) {
     if (state.headings.some((heading) => /운영\s*관리\s*대시보드/.test(heading))) throw new Error("fallback dashboard");
     if (errors.length) throw new Error(`page errors: ${errors.join(" | ")}`);
     if (!state.language || !state.headings.length || !state.focusableCount || state.overflow ||
-        state.emptyActionCount || state.duplicateIdCount || state.replacementCharacterCount) {
+        state.emptyActionCount || state.duplicateIdCount || state.replacementCharacterCount || state.openUtilityPanelCount > 1) {
       throw new Error(`desktop accessibility/responsive baseline failed route=${target.pathname} state=${JSON.stringify(state)}`);
     }
     await page.setViewportSize({ width: 390, height: 844 });
@@ -210,6 +215,7 @@ async function verifyRoute(api, stepCode, actor, processCode) {
       formControlCount: state.formControlCount, actionCount: state.actionCount,
       emptyActionCount: state.emptyActionCount, duplicateIdCount: state.duplicateIdCount,
       replacementCharacterCount: state.replacementCharacterCount,
+      openUtilityPanelCount: state.openUtilityPanelCount,
       desktopOverflow: state.overflow, mobileOverflow: mobile.overflow,
       durationMs: Date.now() - routeStartedAt,
     });
