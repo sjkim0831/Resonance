@@ -53,7 +53,10 @@ if (login.status() !== 200 || loginPayload.status !== "loginSuccess") throw new 
 for (const route of routes) {
   const response = await api.get(route.api, { failOnStatusCode: false });
   const payload = await response.json().catch(() => ({}));
-  if (response.status() !== 200 || !route.validate(payload)) throw new Error(`member API contract failed ${route.api} HTTP ${response.status()}`);
+  const pagePayload = payload?.data ?? payload?.result ?? payload;
+  if (response.status() !== 200 || !route.validate(pagePayload)) {
+    throw new Error(`member API contract failed ${route.api} HTTP ${response.status()} keys=${Object.keys(pagePayload || {}).sort().join(",")}`);
+  }
 }
 
 const anonymous = await request.newContext({ baseURL: baseUrl, ignoreHTTPSErrors: true });
