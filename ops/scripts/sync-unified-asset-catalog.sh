@@ -255,14 +255,26 @@ BEGIN
    AND asset.asset_path=manifest.asset_path
    AND asset.active_yn='Y'
   WHERE asset.content_hash IS DISTINCT FROM manifest.content_hash;
-  SELECT count(*) INTO duplicate_count
-  FROM (
-    SELECT asset_path
-    FROM framework_unified_asset
-    WHERE source_system='GIT' AND active_yn='Y'
-    GROUP BY asset_path
-    HAVING count(*) > 1
-  ) duplicate;
+  IF (SELECT is_full FROM asset_sync_control) THEN
+    SELECT count(*) INTO duplicate_count
+    FROM (
+      SELECT asset_path
+      FROM framework_unified_asset
+      WHERE source_system='GIT' AND active_yn='Y'
+      GROUP BY asset_path
+      HAVING count(*) > 1
+    ) duplicate;
+  ELSE
+    SELECT count(*) INTO duplicate_count
+    FROM (
+      SELECT asset.asset_path
+      FROM framework_unified_asset asset
+      JOIN source_asset_stage changed ON changed.asset_path=asset.asset_path
+      WHERE asset.source_system='GIT' AND asset.active_yn='Y'
+      GROUP BY asset.asset_path
+      HAVING count(*) > 1
+    ) duplicate;
+  END IF;
   SELECT count(*) INTO changed_missing_count
   FROM source_asset_stage changed
   LEFT JOIN framework_unified_asset asset

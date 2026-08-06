@@ -29,6 +29,8 @@ for token in (
 assert 'validate_e4b=false' in sync
 assert '*.md|*.txt)' in sync
 assert "IF NOT (SELECT validate_e4b FROM asset_sync_control)" in sync
+assert "IF (SELECT is_full FROM asset_sync_control) THEN" in sync
+assert "JOIN source_asset_stage changed ON changed.asset_path=asset.asset_path" in sync
 assert '-v validate_e4b="$validate_e4b"' in sync
 assert 'echo verified || echo unchanged' in sync
 assert "CREATE TEMP TABLE asset_sync_delta" in sync
