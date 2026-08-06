@@ -70,6 +70,9 @@ class ActorProcessGovernanceServiceSecurityTest {
                         && sqlCaptor.getValue().contains("current_business_e2e as materialized")
                         && sqlCaptor.getValue().contains("current_runtime_source_commit"),
                 "business evidence must be read only through the current runtime-version ledger view");
+        assertTrue(sqlCaptor.getValue().contains("report_options as (select ?::boolean compact,?::int compact_limit_bytes)")
+                        && sqlCaptor.getValue().contains("options.compact_limit_bytes"),
+                "the report query must compact oversized evidence before JDBC materializes the response");
 
         assertEquals("CONTRACT_ONLY", report.get("auditMode"));
         assertEquals(false, report.get("businessFunctionsExecuted"));
@@ -78,6 +81,36 @@ class ActorProcessGovernanceServiceSecurityTest {
         assertEquals("INVENTORY_AND_SIMULATION_EVIDENCE_ONLY", summary.get("fixtureSuiteMode"));
         assertEquals("NO_CURRENT_VERSION_EVIDENCE", summary.get("businessEvidenceStatus"));
         assertEquals("ACTIVE_BINDING_CAPABILITY", summary.get("auditTargetMode"));
+    }
+
+    @Test
+    void compactSystemReportPreservesAuditFieldsAndBoundsOversizedEvidence() throws Exception {
+        String oversized="{\"payload\":\""+"x".repeat(200_000)+"\"}";
+        Map<String,Object> source=new java.util.LinkedHashMap<>();
+        source.put("processCode","EMISSION_PROJECT");
+        source.put("stepCode","EMISSION_PROJECT_COLLECT");
+        source.put("inputContract","{\"required\":[\"projectId\"]}");
+        source.put("outputContract","{\"activityDataId\":\"string\"}");
+        source.put("apiContract","[\"POST /home/api/emission/activity-data\"]");
+        source.put("latestInput",oversized);
+        source.put("latestOutput",oversized);
+        source.put("evidenceJson",oversized);
+        source.put("simulationEvidenceJson",oversized);
+        source.put("fixtureSuiteCasesJson",oversized);
+        source.put("businessEvidenceJson",oversized);
+
+        Map<String,Object> compacted=ActorProcessGovernanceService.compactSystemTestItem(source);
+        byte[] serialized=new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsBytes(compacted);
+
+        assertEquals("EMISSION_PROJECT",compacted.get("processCode"));
+        assertEquals(source.get("inputContract"),compacted.get("inputContract"));
+        for(String field:List.of("latestInput","latestOutput","evidenceJson","simulationEvidenceJson","fixtureSuiteCasesJson","businessEvidenceJson")){
+            String value=String.valueOf(compacted.get(field));
+            assertTrue(value.contains("\"compact\":true"),field+" must remain present as compact evidence metadata");
+            assertTrue(value.contains("\"sha256\":"),field+" must retain an integrity digest");
+            assertTrue(value.length()<512,field+" must not retain the oversized payload");
+        }
+        assertTrue(serialized.length<8_000,"compact evidence must have a bounded response size");
     }
 
     @Test

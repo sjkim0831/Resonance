@@ -6,6 +6,7 @@ import { availableParallelism } from "node:os";
 const startedAt = Date.now();
 const baseUrl = String(process.env.CARBONET_RUNTIME_BASE_URL || "http://127.0.0.1").replace(/\/$/, "");
 const reportPath = "/admin/api/system/actor-process/system-test-report";
+const compactReportPath = `${reportPath}?compact=true`;
 const auditPath = `${reportPath}/audit`;
 const fixturePath = argumentValue("--fixture") || process.env.SYSTEM_TEST_REPORT_FIXTURE || "";
 const skipHttpSmoke = process.argv.includes("--skip-http-smoke") || process.env.SYSTEM_TEST_REPORT_SKIP_HTTP_SMOKE === "1";
@@ -450,7 +451,7 @@ async function loadLiveReport() {
     throw new Error(`admin login failed with HTTP ${response.status}`);
   }
   const contractAudit = await runContractAuditPages(cookie);
-  const reportResponse = await fetch(`${baseUrl}${reportPath}`, {
+  const reportResponse = await fetch(`${baseUrl}${compactReportPath}`, {
     headers: { accept: "application/json", cookie },
     signal: AbortSignal.timeout(Math.max(smokeTimeoutMs, 30_000)),
   });

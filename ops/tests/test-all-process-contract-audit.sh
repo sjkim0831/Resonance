@@ -35,7 +35,9 @@ const fs = require("fs");
 const source = fs.readFileSync(process.argv[2], "utf8");
 if ((source.match(/method:\s*"POST"/g) || []).length !== 2
     || !source.includes("/admin/login/actionLogin")
-    || !source.includes('const auditPath = `${reportPath}/audit`')) {
+    || !source.includes('const auditPath = `${reportPath}/audit`')
+    || !source.includes('const compactReportPath = `${reportPath}?compact=true`')
+    || !source.includes('fetch(`${baseUrl}${compactReportPath}`')) {
   throw new Error("the contract audit must POST only login and paged immutable-evidence refresh");
 }
 if (/method:\s*"(?:PUT|PATCH|DELETE)"/.test(source) || /process-executions\/start|\/commands/.test(source)) {

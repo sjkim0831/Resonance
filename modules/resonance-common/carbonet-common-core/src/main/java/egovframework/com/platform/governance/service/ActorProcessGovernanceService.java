@@ -26,6 +26,11 @@ import java.util.stream.Stream;
 @Service
 @RequiredArgsConstructor
 public class ActorProcessGovernanceService {
+    static final int SYSTEM_TEST_REPORT_COMPACT_JSON_LIMIT_BYTES = 2048;
+    private static final Set<String> SYSTEM_TEST_REPORT_LARGE_JSON_FIELDS = Set.of(
+        "latestPreInputJson", "latestEvidenceJson", "latestInput", "latestOutput", "evidenceJson",
+        "simulationEvidenceJson", "fixtureSuiteCasesJson", "businessEvidenceJson"
+    );
     private static final Set<String> PROFESSIONAL_CONTRACT_STATUSES = Set.of(
         "DRAFT", "REVIEW_REQUIRED", "DESIGN_COMPLETE", "APPROVED", "VERIFIED"
     );
@@ -564,12 +569,16 @@ public class ActorProcessGovernanceService {
      * when no evidence exists the truthful state is NOT_RUN.
      */
     public Map<String,Object> systemProcessTestReport(String domainCode,String processCode,String requestedResult){
+        return systemProcessTestReport(domainCode,processCode,requestedResult,false);
+    }
+
+    public Map<String,Object> systemProcessTestReport(String domainCode,String processCode,String requestedResult,boolean compact){
         String domain=domainCode==null?"":domainCode.trim().toUpperCase(Locale.ROOT);
         String process=processCode==null?"":processCode.trim().toUpperCase(Locale.ROOT);
         String result=normalizeSystemTestResult(requestedResult);
 
         List<Map<String,Object>> items=jdbc.queryForList("""
-            with scoped_steps as materialized (
+            with report_options as (select ?::boolean compact,?::int compact_limit_bytes), scoped_steps as materialized (
               select p.domain_code,p.process_name,p.process_status,p.process_version,p.development_order,
                      s.*,coalesce(a.actor_name,s.actor_code) actor_name,coalesce(w.work_type_name,p.domain_code) domain_name,
                      coalesce(w.sort_order,9999) domain_order,to_jsonb(s)::text step_contract_json
@@ -775,16 +784,31 @@ public class ActorProcessGovernanceService {
                    p.tested_target_count as "auditedTargetCount",p.scenario_count as "scenarioCount",p.approved_scenario_count as "approvedScenarioCount",
                    latest.run_id as "latestRunId",latest.result as "latestResult",
                    latest.passed_check_count as "latestPassedCheckCount",latest.total_check_count as "latestTotalCheckCount",
-                   coalesce(latest.blocker_codes,'') as "latestBlockerCodes",coalesce(latest.pre_input_json,'{}') as "latestPreInputJson",
-                   coalesce(latest.evidence_json,'{}') as "latestEvidenceJson",coalesce(latest.executed_by,'') as "latestExecutedBy",
-                   latest.executed_at as "latestExecutedAt",coalesce(latest.pre_input_json,'{}') as "latestInput",
-                   coalesce(latest.evidence_json,'{}') as "latestOutput",coalesce(latest.evidence_json,'{}') as "evidenceJson",
+                   coalesce(latest.blocker_codes,'') as "latestBlockerCodes",
+                   case when options.compact and octet_length(coalesce(latest.pre_input_json,'{}'))>options.compact_limit_bytes
+                        then jsonb_build_object('compact',true,'omitted',true,'byteLength',octet_length(coalesce(latest.pre_input_json,'{}')))::text
+                        else coalesce(latest.pre_input_json,'{}') end as "latestPreInputJson",
+                   case when options.compact and octet_length(coalesce(latest.evidence_json,'{}'))>options.compact_limit_bytes
+                        then jsonb_build_object('compact',true,'omitted',true,'byteLength',octet_length(coalesce(latest.evidence_json,'{}')))::text
+                        else coalesce(latest.evidence_json,'{}') end as "latestEvidenceJson",coalesce(latest.executed_by,'') as "latestExecutedBy",
+                   latest.executed_at as "latestExecutedAt",
+                   case when options.compact and octet_length(coalesce(latest.pre_input_json,'{}'))>options.compact_limit_bytes
+                        then jsonb_build_object('compact',true,'omitted',true,'byteLength',octet_length(coalesce(latest.pre_input_json,'{}')))::text
+                        else coalesce(latest.pre_input_json,'{}') end as "latestInput",
+                   case when options.compact and octet_length(coalesce(latest.evidence_json,'{}'))>options.compact_limit_bytes
+                        then jsonb_build_object('compact',true,'omitted',true,'byteLength',octet_length(coalesce(latest.evidence_json,'{}')))::text
+                        else coalesce(latest.evidence_json,'{}') end as "latestOutput",
+                   case when options.compact and octet_length(coalesce(latest.evidence_json,'{}'))>options.compact_limit_bytes
+                        then jsonb_build_object('compact',true,'omitted',true,'byteLength',octet_length(coalesce(latest.evidence_json,'{}')))::text
+                        else coalesce(latest.evidence_json,'{}') end as "evidenceJson",
                    coalesce(latest.executed_by,'') as "executedBy",latest.executed_at as "executedAt",
                    coalesce(sim.run_id,0) as "latestSimulationRunId",coalesce(sim.result,'NOT_RUN') as "simulationTestResult",
                    coalesce(sim.case_code,'') as "simulationCaseCode",coalesce(sim.case_type,'') as "simulationCaseType",
                    coalesce(sim.trace_scope,'') as "simulationTraceScope",coalesce(sim.process_version,'') as "simulationProcessVersion",
                    (sim.run_id is not null and sim.process_version=p.process_version) as "simulationCurrentVersion",
-                   coalesce(sim.evidence_json,'{}') as "simulationEvidenceJson",coalesce(sim.executed_by,'') as "simulationExecutedBy",
+                   case when options.compact and octet_length(coalesce(sim.evidence_json,'{}')::text)>options.compact_limit_bytes
+                        then jsonb_build_object('compact',true,'omitted',true,'byteLength',octet_length(coalesce(sim.evidence_json,'{}')::text))::text
+                        else coalesce(sim.evidence_json,'{}')::text end as "simulationEvidenceJson",coalesce(sim.executed_by,'') as "simulationExecutedBy",
                    sim.executed_at as "simulationExecutedAt",
                    5 as "fixtureSuiteRequiredTypeCount",coalesce(suite.fixture_suite_covered_type_count,0) as "fixtureSuiteCoveredTypeCount",
                    coalesce(suite.fixture_suite_case_count,0) as "fixtureSuiteCaseCount",coalesce(suite.fixture_suite_case_count,0) as "fixtureSuiteActiveCaseCount",coalesce(suite.fixture_suite_approved_case_count,0) as "fixtureSuiteApprovedCaseCount",
@@ -792,7 +816,9 @@ public class ActorProcessGovernanceService {
                    coalesce(suite.fixture_suite_not_run_count,0) as "fixtureSuiteNotRunCount",coalesce(suite.fixture_suite_passed_run_count,0) as "fixtureSuitePassedRunCount",
                    coalesce(suite.fixture_suite_blocked_run_count,0) as "fixtureSuiteBlockedRunCount",
                    coalesce(suite.fixture_suite_covered_types,'') as "fixtureSuiteCoveredTypes",coalesce(suite.fixture_suite_missing_types,'HAPPY_PATH, AUTHORITY, ISOLATION, EXCEPTION, RECOVERY') as "fixtureSuiteMissingTypes",
-                   coalesce(suite.fixture_suite_cases_json,'[]') as "fixtureSuiteCasesJson",
+                   case when options.compact and octet_length(coalesce(suite.fixture_suite_cases_json,'[]'))>options.compact_limit_bytes
+                        then jsonb_build_object('compact',true,'omitted',true,'byteLength',octet_length(coalesce(suite.fixture_suite_cases_json,'[]')))::text
+                        else coalesce(suite.fixture_suite_cases_json,'[]') end as "fixtureSuiteCasesJson",
                    case when coalesce(suite.fixture_suite_covered_type_count,0)=5 then 'COMPLETE' when coalesce(suite.fixture_suite_covered_type_count,0)>0 then 'PARTIAL' else 'MISSING' end as "fixtureSuiteCoverageState",
                    case when coalesce(suite.fixture_suite_case_count,0)=0 then 'NOT_RUN'
                         when coalesce(suite.fixture_suite_blocked_run_count,0)>0 then 'BLOCKED'
@@ -802,7 +828,9 @@ public class ActorProcessGovernanceService {
                     coalesce(business.business_test_result,'NOT_RUN') as "businessTestResult",
                     coalesce(business.business_evidence_status,'RUNTIME_COMMIT_UNAVAILABLE') as "businessEvidenceStatus",
                     coalesce(business.qa_run_id::text,'') as "businessCaseCode",
-                    coalesce(business.evidence_json,'{}')::text as "businessEvidenceJson",
+                    case when options.compact and octet_length(coalesce(business.evidence_json,'{}')::text)>options.compact_limit_bytes
+                         then jsonb_build_object('compact',true,'omitted',true,'byteLength',octet_length(coalesce(business.evidence_json,'{}')::text))::text
+                         else coalesce(business.evidence_json,'{}')::text end as "businessEvidenceJson",
                     coalesce(business.executed_by,'') as "businessExecutedBy",business.executed_at as "businessExecutedAt",
                     coalesce(business.evidence_process_version,'') as "businessProcessVersion",
                     coalesce(business.source_commit,'') as "businessSourceCommit",
@@ -826,8 +854,9 @@ public class ActorProcessGovernanceService {
                left join current_business_e2e business using(process_code,step_code)
                left join fixture_suite_rollup suite using(process_code,step_code)
               cross join scope_metrics metrics
+              cross join report_options options
              order by p.domain_order,p.development_order,p.process_code,p.step_order
-            """,domain,domain,process,process,result,result);
+            """,compact,SYSTEM_TEST_REPORT_COMPACT_JSON_LIMIT_BYTES,domain,domain,process,process,result,result);
 
         Map<String,Map<String,Object>> processIndex=new LinkedHashMap<>(),workTypeIndex=new LinkedHashMap<>();
         Set<String> reportedProcesses=new HashSet<>();
@@ -901,10 +930,27 @@ public class ActorProcessGovernanceService {
         summary.put("fixtureSuiteCurrentRunCount",fixtureSuiteCurrentRunCount);summary.put("fixtureSuiteMode","INVENTORY_AND_SIMULATION_EVIDENCE_ONLY");
         summary.put("auditTargetMode","ACTIVE_BINDING_CAPABILITY");
         Map<String,Object> filters=new LinkedHashMap<>();filters.put("domainCode",domain);filters.put("processCode",process);filters.put("result",result);
+        List<Map<String,Object>> responseItems=compact?items.stream().map(ActorProcessGovernanceService::compactSystemTestItem).toList():items;
         Map<String,Object> report=new LinkedHashMap<>();report.put("success",true);report.put("generatedAt",java.time.Instant.now().toString());
+        report.put("compact",compact);
         report.put("auditMode","CONTRACT_ONLY");report.put("businessFunctionsExecuted",false);report.put("filters",filters);report.put("summary",summary);
-        report.put("workTypes",workTypes);report.put("processes",processes);report.put("items",items);
+        report.put("workTypes",workTypes);report.put("processes",processes);report.put("items",responseItems);
         return report;
+    }
+
+    static Map<String,Object> compactSystemTestItem(Map<String,Object> source){
+        Map<String,Object> compacted=new LinkedHashMap<>(source);
+        for(String field:SYSTEM_TEST_REPORT_LARGE_JSON_FIELDS){
+            Object value=compacted.get(field);
+            if(value==null)continue;
+            String raw=value instanceof String text?text:toJson(value);
+            int byteLength=raw.getBytes(java.nio.charset.StandardCharsets.UTF_8).length;
+            if(byteLength<=SYSTEM_TEST_REPORT_COMPACT_JSON_LIMIT_BYTES)continue;
+            compacted.put(field,toJson(Map.of(
+                "compact",true,"omitted",true,"byteLength",byteLength,"sha256",sha256Hex(raw)
+            )));
+        }
+        return compacted;
     }
 
     /**
