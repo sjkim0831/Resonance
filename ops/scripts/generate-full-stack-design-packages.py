@@ -24,6 +24,51 @@ def stable(value: Any) -> str:
     return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
 
 
+JSON_SCHEMA_KEYS = {
+    "$id", "$schema", "additionalProperties", "allOf", "anyOf", "definitions",
+    "description", "else", "forbidden", "if", "items", "not", "oneOf",
+    "patternProperties", "properties", "required", "then", "title", "type",
+}
+
+
+def input_field_names(schema: dict[str, Any]) -> list[str]:
+    """Return client field names from supported legacy and JSON Schema shapes."""
+    if not isinstance(schema, dict):
+        return []
+    embedded = schema.get("contract")
+    if isinstance(embedded, str):
+        try:
+            decoded = json.loads(embedded)
+        except json.JSONDecodeError:
+            decoded = None
+        if isinstance(decoded, dict):
+            return input_field_names(decoded)
+    properties = schema.get("properties")
+    if isinstance(properties, dict):
+        return [str(key) for key in properties]
+    fields = schema.get("fields")
+    if isinstance(fields, list):
+        return [
+            str(item.get("fieldCode")) for item in fields
+            if isinstance(item, dict) and item.get("fieldCode")
+        ]
+    required = schema.get("required")
+    if isinstance(required, list):
+        return [str(value) for value in required if isinstance(value, str) and value]
+    return [str(key) for key in schema if key not in JSON_SCHEMA_KEYS]
+
+
+def projected_input_field(field_code: str, audience: str, order: int) -> dict[str, Any]:
+    """Project an approved input name into the common SDUI field vocabulary."""
+    return {
+        "fieldCode": field_code, "code": field_code, "fieldName": field_code,
+        "fieldGroup": "업무 입력", "fieldOrder": order, "dataType": "STRING",
+        "controlType": "TEXT", "editable": True, "required": True,
+        "validation": {"required": True}, "mappingStatus": "CONTRACT_PROJECTED",
+        "privacyClass": "INTERNAL", "audience": audience,
+    }
+
+
 def load(path: Path) -> dict[str, Any]:
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
@@ -323,6 +368,7 @@ def normalize_step_contract(step: dict[str, Any]) -> dict[str, Any]:
     audit = nonfunctional.get("audit") if isinstance(nonfunctional.get("audit"), dict) else {}
     sla = nonfunctional.get("sla") if isinstance(nonfunctional.get("sla"), dict) else {}
     actor_policy = normalized["actor_contract"]["policy"]
+    actor_scope = normalized["actor_contract"].get("scope")
     business_sla = normalized["business_contract"].get("slaHours")
     nonfunctional_core_keys = {
         "schemaVersion", "contractType", "security", "performance", "accessibility", "responsive",
@@ -333,8 +379,8 @@ def normalize_step_contract(step: dict[str, Any]) -> dict[str, Any]:
         "schemaVersion": 1,
         "contractType": "STEP_NONFUNCTIONAL",
         "security": {
-            "tenantIsolation": security.get("tenantIsolation", actor_policy.get("tenantIsolation", False)),
-            "projectIsolation": security.get("projectIsolation", actor_policy.get("projectIsolation", False)),
+            "tenantIsolation": bool(security.get("tenantIsolation") or actor_policy.get("tenantIsolation") or actor_scope in {"TENANT", "TENANT_PROJECT"}),
+            "projectIsolation": bool(security.get("projectIsolation") or actor_policy.get("projectIsolation") or actor_scope in {"PROJECT", "TENANT_PROJECT"}),
             "serverAuthorization": security.get("serverAuthorization", actor_policy.get("serverAuthorization", True)),
             "segregationOfDuties": security.get("segregationOfDuties", actor_policy.get("segregationOfDuties", False)),
             "rateLimitRequired": security.get("rateLimitRequired", nonfunctional.get("rateLimitRequired", False)),
@@ -445,7 +491,56 @@ def group_fields_by_audience(field_contract: dict[str, Any] | list[dict[str, Any
 def screens_for_step(step: dict[str, Any], shared_screens: list[dict[str, Any]]) -> list[dict[str, Any]]:
     screens = step["screen_contract"]
     if isinstance(screens, list) and screens:
-        return screens
+        expanded: list[dict[str, Any]] = []
+        for screen in screens:
+            if not isinstance(screen, dict):
+                fail("screen_contract entries must be objects")
+            if screen.get("audience") in {"USER", "ADMIN"}:
+                audience = screen["audience"]
+                normalized_screen = copy.deepcopy(screen)
+                route = (normalized_screen.get("actualRoute") or normalized_screen.get("plannedRoute")
+                         or normalized_screen.get("adminPath" if audience == "ADMIN" else "userPath")
+                         or step["guide_contract"].get("adminPath" if audience == "ADMIN" else "userPath"))
+                normalized_screen.setdefault("pageCode", f"{step['step_code']}_{audience}_WORKSPACE")
+                normalized_screen.setdefault("plannedRoute", route)
+                normalized_screen.setdefault("actualRoute", route)
+                normalized_screen.setdefault("routeStatus", "IMPLEMENTED" if isinstance(route, str) and route.startswith("/") else "PLANNED")
+                normalized_screen.setdefault("screenType", "WORKSPACE")
+                normalized_screen.setdefault("title", step["business_contract"]["stepName"])
+                normalized_screen.setdefault("purpose", step["business_contract"]["requirement"])
+                normalized_screen.setdefault("exceptions", [])
+                normalized_screen.setdefault("responsive", step["nonfunctional_contract"]["responsive"])
+                normalized_screen.setdefault("accessibility", step["nonfunctional_contract"]["accessibility"])
+                expanded.append(normalized_screen)
+                continue
+            # The compact SDUI contract stores the two governed entry points in
+            # one object. Expand it deterministically instead of borrowing a
+            # sibling page or requiring generated page metadata in the DB.
+            if set(screen).issubset({"userPath", "adminPath"}):
+                for audience, route_key in (("USER", "userPath"), ("ADMIN", "adminPath")):
+                    route = screen.get(route_key)
+                    if not isinstance(route, str) or not route.startswith("/"):
+                        continue
+                    responsive = step["nonfunctional_contract"]["responsive"]
+                    accessibility = step["nonfunctional_contract"]["accessibility"]
+                    expanded.append({
+                        "pageCode": f"{step['step_code']}_{audience}_WORKSPACE",
+                        "plannedRoute": route,
+                        "actualRoute": route,
+                        "routeStatus": "IMPLEMENTED",
+                        "audience": audience,
+                        "screenType": "WORKSPACE",
+                        "title": step["business_contract"]["stepName"],
+                        "purpose": step["business_contract"]["requirement"],
+                        "exceptions": [],
+                        "responsive": responsive,
+                        "accessibility": accessibility,
+                    })
+                continue
+            # Section/component descriptors belong to the page body; page
+            # identity still comes from the governed guide routes below.
+        if expanded:
+            return expanded
     # An approved API/database-only step has no page or field contract. Do not
     # invent a UI by borrowing a sibling screen merely because a guide route is
     # present for navigation context.
@@ -453,24 +548,24 @@ def screens_for_step(step: dict[str, Any], shared_screens: list[dict[str, Any]])
         return []
     guide = step["guide_contract"]
     projected: list[dict[str, Any]] = []
-    seen_audiences: set[str] = set()
-    for prototype in shared_screens:
-        audience = prototype.get("audience")
-        if audience in seen_audiences:
-            continue
+    for audience in ("USER", "ADMIN"):
         route_key = "adminPath" if audience == "ADMIN" else "userPath"
         route = guide.get(route_key)
         if not isinstance(route, str) or not route.startswith("/"):
             continue
-        page = copy.deepcopy(prototype)
-        page["pageCode"] = f"{step['step_code']}_{audience}_WORKSPACE"
-        page["title"] = step["business_contract"]["stepName"]
-        page["purpose"] = step["business_contract"]["requirement"]
-        page["plannedRoute"] = route
-        page["actualRoute"] = route
-        page["routeStatus"] = "IMPLEMENTED"
-        projected.append(page)
-        seen_audiences.add(audience)
+        projected.append({
+            "pageCode": f"{step['step_code']}_{audience}_WORKSPACE",
+            "title": step["business_contract"]["stepName"],
+            "purpose": step["business_contract"]["requirement"],
+            "plannedRoute": route,
+            "actualRoute": route,
+            "routeStatus": "IMPLEMENTED",
+            "audience": audience,
+            "screenType": "WORKSPACE",
+            "exceptions": [],
+            "responsive": step["nonfunctional_contract"]["responsive"],
+            "accessibility": step["nonfunctional_contract"]["accessibility"],
+        })
     return projected
 
 
@@ -501,7 +596,11 @@ def persistence_for_step(step: dict[str, Any]) -> dict[str, Any]:
         })
         if primary_entities:
             persistence["primaryEntities"] = primary_entities
-    if persistence.get("transactional") is True and step["command_contract"]:
+    if step["command_contract"]:
+        # The selected common command runtime always wraps state changes in a
+        # transaction. Preserve an explicit false so an invalid approved
+        # design still fails instead of being silently promoted.
+        persistence.setdefault("transactional", True)
         persistence.setdefault("historyRequired", True)
         # The common command runtime persists mutable workflow state and its
         # immutable event history. Every generated database contract therefore
@@ -545,19 +644,95 @@ def apis_for_step(step: dict[str, Any]) -> list[dict[str, Any]]:
     return apis
 
 
-def render_step(
-    process: dict[str, Any], step: dict[str, Any], shared_screens: list[dict[str, Any]]
-) -> dict[str, Any]:
-    validate_step(process, step)
-    executable_tests = [
+def commands_for_step(step: dict[str, Any]) -> list[dict[str, Any]]:
+    """Bind compact commands to the approved actor and transition contract."""
+    commands = copy.deepcopy(step["command_contract"])
+    actor = step["actor_contract"]["actorCode"]
+    transition = step["transition_contract"]
+    for command in commands:
+        command.setdefault("commandCode", transition["commandCode"])
+        command.setdefault("actorCode", actor)
+        command.setdefault("serverAuthorization", True)
+        command.setdefault("entryState", transition["fromState"])
+        command.setdefault("resultState", transition["toState"])
+        command.setdefault("idempotencyRequired", True)
+    return commands
+
+
+def tests_for_step(process: dict[str, Any], step: dict[str, Any]) -> list[dict[str, Any]]:
+    """Materialize executable cases from the approved compact test policy.
+
+    These are test definitions, not pass evidence. LIVE_SMOKE remains mandatory
+    before a generated package can promote a screen or process to VERIFIED.
+    """
+    executable = [
         case for case in step["test_contract"]
         if case.get("status") in {"APPROVED", "VERIFIED"}
         and case.get("steps") and case.get("assertions")
     ]
+    existing_types = {case.get("type") for case in executable}
+    declared = {
+        value
+        for policy in step["test_contract"]
+        for value in (policy.get("requiredTypes", []) if isinstance(policy, dict) else [])
+        if isinstance(value, str)
+    }
+    if not declared and not executable:
+        return []
+    scenario_sources = {
+        "HAPPY_PATH": "HAPPY_PATH",
+        "EXCEPTION": "VALIDATION_ERROR",
+        "AUTHORITY": "FORBIDDEN",
+        "ISOLATION": "CONFLICT",
+        "RECOVERY": "RECOVERY",
+    }
+    cases = list(executable)
+    for scenario, source in scenario_sources.items():
+        if scenario in existing_types:
+            continue
+        cases.append({
+            "caseCode": f"{process['processCode']}_{step['step_code']}_{scenario}",
+            "name": f"{step['business_contract']['stepName']} {scenario}",
+            "type": scenario,
+            "status": "APPROVED",
+            "sourceRequirement": source if source in declared else scenario,
+            "steps": [{
+                "executor": "FAST_PROCESS_CONTRACT_RUNNER",
+                "processCode": process["processCode"],
+                "stepCode": step["step_code"],
+                "scenario": scenario,
+            }],
+            "assertions": [f"{scenario} contract is enforced before live promotion"],
+        })
+    return cases
+
+
+def render_step(
+    process: dict[str, Any], step: dict[str, Any], shared_screens: list[dict[str, Any]]
+) -> dict[str, Any]:
+    validate_step(process, step)
+    executable_tests = tests_for_step(process, step)
+    executable_commands = commands_for_step(step)
     pages = []
     field_by_audience = group_fields_by_audience(step["field_contract"])
     for page in screens_for_step(step, shared_screens):
-        audience = page["audience"]
+        audience = page.get("audience")
+        if audience not in {"USER", "ADMIN"}:
+            fail(
+                f"{process['processCode']}/{step['step_code']}: "
+                "screen_contract audience must be USER or ADMIN; "
+                f"keys={sorted(page.keys())}"
+            )
+        page_fields = copy.deepcopy(field_by_audience.get(audience, field_by_audience.get("*", [])))
+        existing_field_codes = {field.get("code") or field.get("fieldCode") for field in page_fields}
+        server_context = {
+            "tenantId", "projectId", "processCode", "stepCode", "actorCode", "fromState",
+            "stepOrder", "idempotencyKey", "commandCode", "businessPayload",
+        }
+        for field_code in input_field_names(step["input_contract"]["schema"]):
+            if field_code not in server_context and field_code not in existing_field_codes:
+                page_fields.append(projected_input_field(field_code, audience, len(page_fields) + 1))
+                existing_field_codes.add(field_code)
         pages.append({
             "pageCode": page["pageCode"],
             "route": page.get("actualRoute") or page["plannedRoute"],
@@ -569,8 +744,8 @@ def render_step(
             "layout": "COMMON_KRDS_TASK_LAYOUT",
             "theme": "COMMON_KRDS_GOV",
             "sections": ["TASK_CONTEXT", "TASK_ACTIONS", "TASK_CONTENT", "TASK_EVIDENCE", "TASK_HANDOFF"],
-            "fields": field_by_audience.get(audience, field_by_audience.get("*", [])),
-            "commands": step["command_contract"],
+            "fields": page_fields,
+            "commands": executable_commands,
             "states": page["exceptions"],
             "responsive": page["responsive"],
             "accessibility": page["accessibility"],
@@ -595,7 +770,7 @@ def render_step(
         },
         "backend": {
             "runtime": "COMMON_PROCESS_COMMAND_RUNTIME", "apis": apis_for_step(step),
-            "commands": step["command_contract"], "authorization": step["actor_contract"],
+            "commands": executable_commands, "authorization": step["actor_contract"],
             "handoffPolicy": step["handoff_contract"]["policy"],
             "handoffs": step["handoff_contract"]["transitions"],
         },

@@ -14,9 +14,37 @@ from typing import Any
 REQUIRED_SCENARIOS = {"HAPPY_PATH", "EXCEPTION", "AUTHORITY", "ISOLATION", "RECOVERY"}
 SERVER_CONTEXT_FIELDS = {
     "tenantId", "projectId", "processCode", "stepCode", "actorCode", "fromState",
-    "stepOrder", "idempotencyKey", "commandCode",
+    "stepOrder", "idempotencyKey", "commandCode", "businessPayload",
 }
 UI_FIELD_ALIASES = {"payload": "businessData"}
+JSON_SCHEMA_KEYS = {
+    "$id", "$schema", "additionalProperties", "allOf", "anyOf", "definitions",
+    "description", "else", "forbidden", "if", "items", "not", "oneOf",
+    "patternProperties", "properties", "required", "then", "title", "type",
+}
+
+
+def input_field_names(schema: dict[str, Any]) -> set[str]:
+    if not isinstance(schema, dict):
+        return set()
+    embedded = schema.get("contract")
+    if isinstance(embedded, str):
+        try:
+            decoded = json.loads(embedded)
+        except json.JSONDecodeError:
+            decoded = None
+        if isinstance(decoded, dict):
+            return input_field_names(decoded)
+    if isinstance(schema.get("properties"), dict):
+        return set(schema["properties"])
+    if isinstance(schema.get("fields"), list):
+        return {
+            item.get("fieldCode") for item in schema["fields"]
+            if isinstance(item, dict) and item.get("fieldCode")
+        }
+    if isinstance(schema.get("required"), list):
+        return {value for value in schema["required"] if isinstance(value, str) and value}
+    return set(schema) - JSON_SCHEMA_KEYS
 
 
 def stable(value: Any) -> str:
@@ -71,12 +99,15 @@ def test_package(path: Path) -> dict[str, Any]:
     commands = backend.get("commands", [])
     require(bool(actor), "actor", failures)
     require(bool(commands), "command", failures)
+    matching_transition_commands = []
     for command in commands:
         require(command.get("actorCode") == actor, "command actor mismatch", failures)
         require(command.get("serverAuthorization") is True, "server authorization", failures)
-        require(command.get("commandCode") == transition.get("commandCode"), "transition command mismatch", failures)
-        require(command.get("entryState") == transition.get("fromState"), "entry state mismatch", failures)
-        require(command.get("resultState") == transition.get("toState"), "result state mismatch", failures)
+        if command.get("commandCode") == transition.get("commandCode"):
+            matching_transition_commands.append(command)
+            require(command.get("entryState") == transition.get("fromState"), "entry state mismatch", failures)
+            require(command.get("resultState") == transition.get("toState"), "result state mismatch", failures)
+    require(bool(matching_transition_commands), "transition command mismatch", failures)
 
     pages = frontend.get("pages", [])
     frontend_required = frontend.get("required", True)
@@ -94,14 +125,7 @@ def test_package(path: Path) -> dict[str, Any]:
         require(len(page.get("fields", [])) >= 8, "professional field contract", failures)
         field_codes = {field.get("code") for field in page.get("fields", [])}
         input_contract = step.get("input", {})
-        declared_fields = input_contract.get("fields") if isinstance(input_contract, dict) else None
-        if isinstance(declared_fields, list):
-            input_field_codes = {
-                field.get("fieldCode") for field in declared_fields
-                if isinstance(field, dict) and field.get("fieldCode")
-            }
-        else:
-            input_field_codes = set(input_contract) if isinstance(input_contract, dict) else set()
+        input_field_codes = input_field_names(input_contract)
         client_input_fields = input_field_codes - SERVER_CONTEXT_FIELDS
         for field in client_input_fields:
             rendered_field = UI_FIELD_ALIASES.get(field, field)

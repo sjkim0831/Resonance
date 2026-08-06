@@ -42,6 +42,9 @@ fi
 kubectl -n "$NAMESPACE" exec "$leader" -c patroni -- \
   psql -h 127.0.0.1 -U "$DB_USER" -d "$DATABASE" -X -q -v ON_ERROR_STOP=1 -At \
   -c "select framework_process_generation_snapshot($selector);" >"$TMP"
+if [[ -n "${FULL_STACK_SNAPSHOT_KEEP:-}" ]]; then
+  install -m 600 "$TMP" "$FULL_STACK_SNAPSHOT_KEEP"
+fi
 
 python3 "$ROOT/ops/scripts/generate-full-stack-design-packages.py" "$TMP" --out "$OUT"
 python3 "$ROOT/ops/scripts/generate-full-stack-design-packages.py" "$TMP" --out "$OUT" --check
