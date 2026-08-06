@@ -9,6 +9,7 @@ const require = createRequire(path.join(root, "projects/carbonet-frontend/source
 const { chromium, request } = require("@playwright/test");
 const baseUrl = String(process.env.CARBONET_RUNTIME_BASE_URL || "http://172.16.1.232").replace(/\/$/, "");
 const password = String(process.env.CARBONET_ADMIN_TEST_PASSWORD || "");
+const adminUser = String(process.env.CARBONET_ADMIN_TEST_USER || "webmaster");
 const executablePath = ["/snap/bin/chromium", "/usr/bin/chromium", "/usr/bin/chromium-browser", "/usr/bin/google-chrome"].find(existsSync);
 const sourceCommit = execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim();
 if (!password) throw new Error("CARBONET_ADMIN_TEST_PASSWORD is required");
@@ -43,7 +44,7 @@ const routes = [
 
 const api = await request.newContext({ baseURL: baseUrl, ignoreHTTPSErrors: true });
 const login = await api.post("/admin/login/actionLogin", {
-  data: { userId: "webmaster", userPw: password, userSe: "USR" },
+  data: { userId: adminUser, userPw: password, userSe: "USR" },
   failOnStatusCode: false,
 });
 const loginPayload = await login.json().catch(() => ({}));
