@@ -39,7 +39,8 @@ def prefetch_revision(repository_root: Path, remote: str,
     if result.returncode != 0:
         return False
     verified = subprocess.run(
-        ["git", "-C", str(repository_root), "rev-parse",
+        ["runuser", "-u", "sjkim", "--", "git", "-C",
+         str(repository_root), "rev-parse",
          f"refs/remotes/{remote}/main"],
         check=False,
         capture_output=True,

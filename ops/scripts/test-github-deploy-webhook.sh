@@ -22,6 +22,8 @@ grep -q 'def prefetch_revision' \
   "$root/ops/scripts/resonance-github-deploy-webhook.py"
 grep -q '"runuser", "-u", "sjkim"' \
   "$root/ops/scripts/resonance-github-deploy-webhook.py"
+test "$(grep -c '"runuser", "-u", "sjkim"' \
+  "$root/ops/scripts/resonance-github-deploy-webhook.py")" -eq 2
 grep -q 'prefetch deferred to deploy service' \
   "$root/ops/scripts/resonance-github-deploy-webhook.py"
 grep -q 'ReadWritePaths=/opt/resonance-data/deploy/github-webhook' \
