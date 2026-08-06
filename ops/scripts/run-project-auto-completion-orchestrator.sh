@@ -282,6 +282,16 @@ select count(*) from changed;")"
 # both deterministic readiness views. This is design approval, not
 # implementation verification: generated code and runtime tests must still
 # pass their own jobs before any process can become VERIFIED.
+review_ready_candidate_exists="$(psqlq -c "
+select case when exists (
+  select 1
+  from framework_step_execution_spec
+  where design_status='DESIGN_COMPLETE'
+    and approval_status='REVIEW_REQUIRED'
+    and blocker_codes='[]'::jsonb
+) then 1 else 0 end;")"
+deterministic_specs_approved=0
+if [[ "$review_ready_candidate_exists" == "1" ]]; then
 deterministic_specs_approved="$(psqlq -c "
 with candidate as (
   select e.process_code,e.step_code
@@ -380,6 +390,9 @@ with candidate as (
   returning 1
 )
 select count(*) from approved;")"
+else
+  echo "[project-auto-completion] deterministic design approval skipped: no REVIEW_REQUIRED candidates"
+fi
 
 # Legacy and compact contracts are normalized by the same renderer used at
 # runtime. Promote a REVIEW_REQUIRED design only after every generated package
@@ -393,10 +406,14 @@ deployed_gate_root="${STATIC_CONTRACT_GATE_DEPLOY_ROOT:-/opt/Resonance/var/deplo
 if [[ -x "$deployed_gate_root/ops/scripts/promote-review-contracts-after-static-test.sh" ]]; then
   static_contract_gate_root="$deployed_gate_root"
 fi
-if ! static_contract_gate_result="$(bash "$static_contract_gate_root/ops/scripts/promote-review-contracts-after-static-test.sh" "$static_contract_gate_root" 2>&1)"; then
-  static_contract_gate_failed=1
-  echo "[project-auto-completion] review static contract gate failed: $static_contract_gate_result" >&2
-  static_contract_gate_result='{"candidateCount":0,"promoted":0,"status":"FAILED"}'
+if [[ "$review_ready_candidate_exists" == "1" ]]; then
+  if ! static_contract_gate_result="$(bash "$static_contract_gate_root/ops/scripts/promote-review-contracts-after-static-test.sh" "$static_contract_gate_root" 2>&1)"; then
+    static_contract_gate_failed=1
+    echo "[project-auto-completion] review static contract gate failed: $static_contract_gate_result" >&2
+    static_contract_gate_result='{"candidateCount":0,"promoted":0,"status":"FAILED"}'
+  fi
+else
+  echo "[project-auto-completion] review static contract gate skipped: no REVIEW_REQUIRED candidates"
 fi
 
 contract_jobs_approved="$(psqlq -c "
