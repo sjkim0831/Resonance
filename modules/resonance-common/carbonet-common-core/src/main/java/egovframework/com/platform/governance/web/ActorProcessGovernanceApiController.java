@@ -1,5 +1,6 @@
 package egovframework.com.platform.governance.web;
 
+import egovframework.com.feature.auth.service.CurrentUserContextService;
 import egovframework.com.platform.governance.service.ActorProcessGovernanceService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
@@ -14,6 +15,7 @@ import java.util.UUID;
 @RequestMapping({"/admin/api/system/actor-process","/en/admin/api/system/actor-process"})
 public class ActorProcessGovernanceApiController {
     private final ActorProcessGovernanceService service;
+    private final CurrentUserContextService currentUserContextService;
     @GetMapping public Map<String,Object> dashboard(){return service.dashboard();}
     @GetMapping("/dashboard/core") public Map<String,Object> dashboardCore(){return service.dashboardCore();}
     @GetMapping("/process-closing") public Map<String,Object> processClosing(){return service.processClosingStatus();}
@@ -29,7 +31,19 @@ public class ActorProcessGovernanceApiController {
     @PostMapping("/design-assets/preflight") public ResponseEntity<?> designPreflight(@RequestBody Map<String,Object>b,HttpServletRequest request){Principal p=request.getUserPrincipal();try{return ResponseEntity.ok(service.runDesignPreflight(b,p==null?"SYSTEM":p.getName()));}catch(Exception e){return ResponseEntity.badRequest().body(Map.of("success",false,"message",e.getMessage()==null?"Request failed":e.getMessage()));}}
     @PostMapping("/actors") public ResponseEntity<?> actor(@RequestBody Map<String,Object>b){return run(()->service.createActor(b));}
     @PostMapping("/work-types") public ResponseEntity<?> workType(@RequestBody Map<String,Object>b){return run(()->service.saveWorkType(b));}
-    @PostMapping("/assignments") public ResponseEntity<?> assignment(@RequestBody Map<String,Object>b){return run(()->service.assignActor(b));}
+    @PostMapping("/assignments")
+    public ResponseEntity<?> assignment(@RequestBody Map<String,Object>b,HttpServletRequest request){
+        var context=currentUserContextService.resolve(request);
+        if(!context.isAuthenticated())return ResponseEntity.status(401).body(Map.of("success",false,"message","AUTHENTICATION_REQUIRED"));
+        try{
+            service.assignActorAuthorized(b,context.getUserId(),context.getInsttId(),context.getAuthorCode(),isPlatformAdministrator(context));
+            return ResponseEntity.ok(Map.of("success",true));
+        }catch(SecurityException e){
+            return ResponseEntity.status(403).body(Map.of("success",false,"message",e.getMessage()));
+        }catch(Exception e){
+            return bad(e);
+        }
+    }
     @PostMapping("/delivery/blueprints") public ResponseEntity<?> saveDeliveryBlueprint(@RequestBody Map<String,Object>b,HttpServletRequest request){Principal p=request.getUserPrincipal();try{return ResponseEntity.ok(service.saveProjectDeliveryBlueprint(b,p==null?"SYSTEM":p.getName()));}catch(Exception e){return bad(e);}}
     @PostMapping("/delivery/validate") public ResponseEntity<?> validateDeliveryBlueprint(@RequestBody Map<String,Object>b){try{return ResponseEntity.ok(service.validateProjectDeliveryBlueprint(String.valueOf(b.getOrDefault("blueprintCode",""))));}catch(Exception e){return bad(e);}}
     @PostMapping("/delivery/apply") public ResponseEntity<?> applyDeliveryBlueprint(@RequestBody Map<String,Object>b,HttpServletRequest request){Principal p=request.getUserPrincipal();try{return ResponseEntity.ok(service.applyProjectDeliveryBlueprint(b,p==null?"SYSTEM":p.getName()));}catch(Exception e){return bad(e);}}
@@ -79,4 +93,9 @@ public class ActorProcessGovernanceApiController {
     private ResponseEntity<?> bad(Exception e){return ResponseEntity.badRequest().body(Map.of("success",false,"message",e.getMessage()==null?"Request failed":e.getMessage()));}
     private ResponseEntity<?> run(Runnable command){try{command.run();return ResponseEntity.ok(Map.of("success",true));}catch(Exception e){return ResponseEntity.badRequest().body(Map.of("success",false,"message",e.getMessage()==null?"Request failed":e.getMessage()));}}
     private Map<String,Object> config(Object value){Map<String,Object> result=new java.util.LinkedHashMap<>();if(value instanceof Map<?,?> raw)raw.forEach((key,item)->result.put(String.valueOf(key),item));return result;}
+    private boolean isPlatformAdministrator(CurrentUserContextService.CurrentUserContext context){
+        if(context.isWebmaster())return true;
+        String authority=context.getAuthorCode()==null?"":context.getAuthorCode().trim().toUpperCase(java.util.Locale.ROOT);
+        return java.util.Set.of("ROLE_SYSTEM_MASTER","ROLE_SYSTEM_ADMIN","ROLE_OPERATION_ADMIN").contains(authority);
+    }
 }

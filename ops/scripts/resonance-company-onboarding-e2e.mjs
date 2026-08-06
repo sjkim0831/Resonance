@@ -442,7 +442,10 @@ try {
   const forbiddenAssign = await apiCall(dataApi, "post", "/admin/api/system/actor-process/assignments", {
     accountId: accounts.data, tenantId, projectId: "*", actorCode: "SITE_DATA_OWNER", dataScope: "*",
   }, [401, 403], "non-manager actor assignment boundary");
-  evidence.authorityTransitions.push({ stepCode: "COMPANY_ONBOARDING_ACTORS", declaredActor: "COMPANY_MANAGER", attemptedActor: "SITE_DATA_OWNER", result: "FORBIDDEN", httpStatus: forbiddenAssign.status });
+  assert(forbiddenAssign.body?.message === "ACTOR_ASSIGNMENT_COMPANY_MANAGER_REQUIRED", "non-manager assignment did not reach the actor-policy boundary");
+  const forbiddenWriteCount = Number(psql(`SELECT count(*) FROM framework_account_actor_assignment WHERE tenant_id=${sqlLiteral(tenantId)} AND project_id='*' AND lower(account_id)=lower(${sqlLiteral(accounts.data)}) AND actor_code='SITE_DATA_OWNER' AND assignment_status='ACTIVE'`));
+  assert(forbiddenWriteCount === 0, "non-manager assignment wrote actor authority before rejection");
+  evidence.authorityTransitions.push({ stepCode: "COMPANY_ONBOARDING_ACTORS", declaredActor: "COMPANY_MANAGER", attemptedActor: "SITE_DATA_OWNER", result: "FORBIDDEN", httpStatus: forbiddenAssign.status, policy: forbiddenAssign.body.message, forbiddenWriteCount });
   const assignmentResponses = [];
   for (const account of accountSpecs) {
     assignmentResponses.push(await apiCall(ownerAdminApi, "post", "/admin/api/system/actor-process/assignments", {

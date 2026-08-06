@@ -1799,6 +1799,34 @@ public class ActorProcessGovernanceService {
         }
     }
 
+    @Transactional public void assignActorAuthorized(Map<String,Object>b,String requesterAccountId,String requesterTenantId,String requesterAuthorCode,boolean platformAdministrator){
+        String accountId=req(b,"accountId").trim();
+        String tenantId=def(b,"tenantId","DEFAULT").trim();
+        String projectId=def(b,"projectId","*").trim();
+        String requester=requesterAccountId==null?"":requesterAccountId.trim();
+        String requesterTenant=requesterTenantId==null?"":requesterTenantId.trim();
+        String authority=requesterAuthorCode==null?"":requesterAuthorCode.trim().toUpperCase(Locale.ROOT);
+        if(requester.isBlank())throw new SecurityException("AUTHENTICATION_REQUIRED");
+        if(!platformAdministrator&&(requesterTenant.isBlank()||!tenantId.equals(requesterTenant)))throw new SecurityException("ACTOR_ASSIGNMENT_TENANT_FORBIDDEN");
+        if(!"*".equals(projectId)){
+            Integer projectCount=jdbc.queryForObject("select count(*) from emission_project_registry where project_id=? and tenant_id=?",Integer.class,projectId,tenantId);
+            if(projectCount==null||projectCount==0)throw new SecurityException("ACTOR_ASSIGNMENT_PROJECT_TENANT_FORBIDDEN");
+        }
+        if(!platformAdministrator){
+            // ROLE_ADMIN is the company's bootstrap administrator in the member model.
+            // After onboarding, an active COMPANY_MANAGER actor binding grants the same
+            // bounded capability without promoting that account to a platform role.
+            boolean companyAdministrator="ROLE_ADMIN".equals(authority);
+            if(!companyAdministrator){
+                Integer managerCount=jdbc.queryForObject("select count(*) from framework_account_actor_assignment where tenant_id=? and lower(account_id)=lower(?) and actor_code='COMPANY_MANAGER' and assignment_status='ACTIVE' and (valid_from is null or valid_from<=current_date) and (valid_until is null or valid_until>=current_date) and (project_id='*' or project_id=?) and (data_scope='*' or ?=any(string_to_array(replace(data_scope,' ',''),',')))",Integer.class,tenantId,requester,projectId,projectId);
+                if(managerCount==null||managerCount==0)throw new SecurityException("ACTOR_ASSIGNMENT_COMPANY_MANAGER_REQUIRED");
+            }
+            Integer targetCount=jdbc.queryForObject("select count(*) from (select emplyr_id as account_id from comtnemplyrinfo where lower(emplyr_id)=lower(?) and trim(instt_id)=trim(?) and emplyr_sttus_code in ('P','A') union all select entrprs_mber_id from comtnentrprsmber where lower(entrprs_mber_id)=lower(?) and trim(instt_id)=trim(?) and entrprs_mber_sttus in ('P','A')) tenant_account",Integer.class,accountId,tenantId,accountId,tenantId);
+            if(targetCount==null||targetCount==0)throw new SecurityException("ACTOR_ASSIGNMENT_TARGET_TENANT_FORBIDDEN");
+        }
+        assignActor(b);
+    }
+
     @Transactional public Map<String,Object> saveProjectDeliveryBlueprint(Map<String,Object>b,String actor){
         String code=req(b,"blueprintCode").trim().toUpperCase(Locale.ROOT);
         if(!code.matches("^[A-Z][A-Z0-9_]{2,99}$"))throw new IllegalArgumentException("blueprintCode must use uppercase letters, numbers, and underscores");

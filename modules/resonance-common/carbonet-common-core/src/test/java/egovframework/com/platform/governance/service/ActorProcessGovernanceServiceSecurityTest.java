@@ -466,4 +466,105 @@ class ActorProcessGovernanceServiceSecurityTest {
         verify(jdbc,never()).queryForObject(argThat(sql -> sql.contains("framework_apply_project_delivery_blueprint")),
                 org.mockito.ArgumentMatchers.eq(String.class),any(Object[].class));
     }
+
+    @Test
+    void actorAssignmentRejectsANonManagerBeforeAnyMutation() {
+        when(jdbc.queryForObject(argThat(sql -> sql.contains("actor_code='COMPANY_MANAGER'")&&sql.contains("data_scope='*'")),
+                org.mockito.ArgumentMatchers.eq(Integer.class),any(Object[].class))).thenReturn(0);
+
+        SecurityException failure=assertThrows(SecurityException.class,()->service.assignActorAuthorized(Map.of(
+                "accountId","data-owner","tenantId","TENANT_A","projectId","*","actorCode","SITE_DATA_OWNER"),
+                "data-owner","TENANT_A","ROLE_USER",false));
+
+        assertEquals("ACTOR_ASSIGNMENT_COMPANY_MANAGER_REQUIRED",failure.getMessage());
+        verify(jdbc,never()).update(argThat(sql -> sql.contains("framework_account_actor_assignment")),any(Object[].class));
+    }
+
+    @Test
+    void actorAssignmentRejectsACrossTenantManagerBeforeAnyMutation() {
+        SecurityException failure=assertThrows(SecurityException.class,()->service.assignActorAuthorized(Map.of(
+                "accountId","target-user","tenantId","TENANT_B","projectId","*","actorCode","SITE_DATA_OWNER"),
+                "company-manager","TENANT_A","ROLE_ADMIN",false));
+
+        assertEquals("ACTOR_ASSIGNMENT_TENANT_FORBIDDEN",failure.getMessage());
+        verify(jdbc,never()).queryForObject(anyString(),org.mockito.ArgumentMatchers.eq(Integer.class),any(Object[].class));
+        verify(jdbc,never()).update(anyString(),any(Object[].class));
+    }
+
+    @Test
+    void actorAssignmentRejectsAProjectOutsideTheRequestedTenantBeforeAnyMutation() {
+        when(jdbc.queryForObject(argThat(sql -> sql.contains("from emission_project_registry")&&sql.contains("project_id=?")&&sql.contains("tenant_id=?")),
+                org.mockito.ArgumentMatchers.eq(Integer.class),any(Object[].class))).thenReturn(0);
+
+        SecurityException failure=assertThrows(SecurityException.class,()->service.assignActorAuthorized(Map.of(
+                "accountId","target-user","tenantId","TENANT_A","projectId","FOREIGN_PROJECT","actorCode","SITE_DATA_OWNER"),
+                "platform-admin","DEFAULT","ROLE_SYSTEM_MASTER",true));
+
+        assertEquals("ACTOR_ASSIGNMENT_PROJECT_TENANT_FORBIDDEN",failure.getMessage());
+        verify(jdbc,never()).update(anyString(),any(Object[].class));
+    }
+
+    @Test
+    void actorAssignmentRejectsATargetAccountOutsideTheManagersTenant() {
+        when(jdbc.queryForObject(argThat(sql -> sql.contains("from comtnemplyrinfo")&&sql.contains("comtnentrprsmber")),
+                org.mockito.ArgumentMatchers.eq(Integer.class),any(Object[].class))).thenReturn(0);
+
+        SecurityException failure=assertThrows(SecurityException.class,()->service.assignActorAuthorized(Map.of(
+                "accountId","foreign-user","tenantId","TENANT_A","projectId","*","actorCode","SITE_DATA_OWNER"),
+                "company-manager","TENANT_A","ROLE_ADMIN",false));
+
+        assertEquals("ACTOR_ASSIGNMENT_TARGET_TENANT_FORBIDDEN",failure.getMessage());
+        verify(jdbc,never()).update(argThat(sql -> sql.contains("framework_account_actor_assignment")),any(Object[].class));
+    }
+
+    @Test
+    void sameTenantCompanyManagerCanAssignAnExistingTenantAccount() {
+        when(jdbc.queryForObject(argThat(sql -> sql.contains("from comtnemplyrinfo")&&sql.contains("comtnentrprsmber")),
+                org.mockito.ArgumentMatchers.eq(Integer.class),any(Object[].class))).thenReturn(1);
+
+        service.assignActorAuthorized(Map.of(
+                "accountId","data-owner","tenantId","TENANT_A","projectId","*","actorCode","SITE_DATA_OWNER"),
+                "company-manager","TENANT_A","ROLE_ADMIN",false);
+
+        verify(jdbc).update(argThat(sql -> sql.contains("insert into framework_account_actor_assignment")),any(Object[].class));
+    }
+
+    @Test
+    void activeCompanyManagerActorCanAssignWithoutAPlatformOrBootstrapAdminRole() {
+        when(jdbc.queryForObject(argThat(sql -> sql.contains("actor_code='COMPANY_MANAGER'")&&sql.contains("data_scope='*'")),
+                org.mockito.ArgumentMatchers.eq(Integer.class),any(Object[].class))).thenReturn(1);
+        when(jdbc.queryForObject(argThat(sql -> sql.contains("from comtnemplyrinfo")&&sql.contains("comtnentrprsmber")),
+                org.mockito.ArgumentMatchers.eq(Integer.class),any(Object[].class))).thenReturn(1);
+
+        service.assignActorAuthorized(Map.of(
+                "accountId","data-owner","tenantId","TENANT_A","projectId","*","actorCode","SITE_DATA_OWNER"),
+                "company-manager","TENANT_A","ROLE_USER",false);
+
+        verify(jdbc).update(argThat(sql -> sql.contains("insert into framework_account_actor_assignment")),any(Object[].class));
+    }
+
+    @Test
+    void sameTenantCompanyManagerRetainsAValidProjectSpecificAssignmentPath() {
+        when(jdbc.queryForObject(argThat(sql -> sql.contains("from emission_project_registry")&&sql.contains("project_id=?")&&sql.contains("tenant_id=?")),
+                org.mockito.ArgumentMatchers.eq(Integer.class),any(Object[].class))).thenReturn(1);
+        when(jdbc.queryForObject(argThat(sql -> sql.contains("from comtnemplyrinfo")&&sql.contains("comtnentrprsmber")),
+                org.mockito.ArgumentMatchers.eq(Integer.class),any(Object[].class))).thenReturn(1);
+
+        service.assignActorAuthorized(Map.of(
+                "accountId","data-owner","tenantId","TENANT_A","projectId","PROJECT_A","actorCode","SITE_DATA_OWNER"),
+                "company-manager","TENANT_A","ROLE_ADMIN",false);
+
+        verify(jdbc).update(argThat(sql -> sql.contains("insert into framework_project_actor_assignment")),any(Object[].class));
+        verify(jdbc).update(argThat(sql -> sql.contains("update emission_project_task set assignee_id")),any(Object[].class));
+    }
+
+    @Test
+    void platformAdministratorRetainsTheControlPlaneAssignmentPath() {
+        service.assignActorAuthorized(Map.of(
+                "accountId","bootstrap-user","tenantId","TENANT_A","projectId","*","actorCode","SITE_DATA_OWNER"),
+                "platform-admin","DEFAULT","ROLE_SYSTEM_MASTER",true);
+
+        verify(jdbc).update(argThat(sql -> sql.contains("insert into framework_account_actor_assignment")),any(Object[].class));
+        verify(jdbc,never()).queryForObject(anyString(),org.mockito.ArgumentMatchers.eq(Integer.class),any(Object[].class));
+    }
 }
