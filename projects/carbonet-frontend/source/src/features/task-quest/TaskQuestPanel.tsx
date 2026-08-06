@@ -895,9 +895,14 @@ export function TaskQuestPanel() {
         )
       : undefined;
     if (exactStep) return exactStep;
-    return [
-      ...(focused.length ? focused : contextual.length ? contextual : pending),
-    ].sort((a, b) => {
+    // A route-bound project is a hard scope. Never fall back to another
+    // project's pending task when the current account has no task in scope.
+    const candidates = focused.length
+      ? focused
+      : effectiveProjectId
+        ? contextual
+        : pending;
+    return [...candidates].sort((a, b) => {
       const aw = taskWeight(a),
         bw = taskWeight(b);
       return aw[0] - bw[0] || aw[1] - bw[1];

@@ -189,6 +189,8 @@ async function verifyRoute(api, stepCode, actor, processCode) {
       duplicateIdCount: [...document.querySelectorAll("[id]")].filter((node,index,all) =>
         all.findIndex((candidate) => candidate.id === node.id) !== index).length,
       replacementCharacterCount: ((document.body?.innerText || "").match(/�/g) || []).length,
+      workflowExecutionLinks: [...document.querySelectorAll('a[href*="/work/execution?projectId="]')]
+        .map((node) => node.getAttribute("href") || ""),
       openUtilityPanelCount: document.querySelectorAll('[data-utility-panel-state="open"]').length,
       overflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 2,
     }));
@@ -197,6 +199,9 @@ async function verifyRoute(api, stepCode, actor, processCode) {
     if (fatalText.test(state.text)) throw new Error("fatal UI text");
     if (state.headings.some((heading) => /운영\s*관리\s*대시보드/.test(heading))) throw new Error("fallback dashboard");
     if (errors.length) throw new Error(`page errors: ${errors.join(" | ")}`);
+    if (state.workflowExecutionLinks.some((href) => !href.includes(`projectId=${encodeURIComponent(projectId)}`))) {
+      throw new Error(`task guide escaped route project scope route=${target.pathname} links=${state.workflowExecutionLinks.join(",")}`);
+    }
     if (!state.language || !state.headings.length || !state.focusableCount || state.overflow ||
         state.emptyActionCount || state.duplicateIdCount || state.replacementCharacterCount || state.openUtilityPanelCount > 1) {
       throw new Error(`desktop accessibility/responsive baseline failed route=${target.pathname} state=${JSON.stringify(state)}`);
