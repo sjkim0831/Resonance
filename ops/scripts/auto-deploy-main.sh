@@ -88,7 +88,8 @@ cd "$ROOT_DIR"
 # storage. The one-minute timer normally observes no change; that path should
 # finish as a cheap remote comparison instead of exercising every platform
 # safety gate. Changed revisions still pass every existing gate below.
-git fetch --quiet --prune "$REMOTE" "$BRANCH"
+git fetch --quiet --no-tags "$REMOTE" \
+  "+refs/heads/$BRANCH:refs/remotes/$REMOTE/$BRANCH"
 target_commit="$(git rev-parse "$REMOTE/$BRANCH")"
 current_commit="$(git rev-parse HEAD)"
 deployed_commit="$(cat "$DEPLOY_STATE_FILE" 2>/dev/null || true)"

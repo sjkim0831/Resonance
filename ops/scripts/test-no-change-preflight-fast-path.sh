@@ -11,13 +11,15 @@ from pathlib import Path
 import sys
 
 source = Path(sys.argv[1]).read_text(encoding="utf-8")
-fetch = source.index('git fetch --quiet --prune "$REMOTE" "$BRANCH"')
+fetch = source.index('git fetch --quiet --no-tags "$REMOTE"')
 no_change = source.index('if [[ "$deployed_commit" == "$target_commit" ]]', fetch)
 kubeconfig = source.index('if [[ ! -r "$KUBECONFIG" ]]', fetch)
 capacity = source.index('deploy-capacity-gate.sh', fetch)
 patroni = source.index('mapfile -t patroni_rows', fetch)
 
 assert fetch < no_change < kubeconfig < capacity < patroni
+assert 'refs/heads/$BRANCH:refs/remotes/$REMOTE/$BRANCH' in source[fetch:no_change]
+assert '--prune' not in source[fetch:no_change]
 
 block_end = source.index("fi", no_change) + 2
 block = source[no_change:block_end]
