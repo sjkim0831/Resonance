@@ -304,6 +304,22 @@ async function checkRoute(browserInstance, storageState, route, viewport, audien
         (element instanceof HTMLInputElement && ["hidden", "submit", "button"].includes(element.type)));
     });
     const visibleText = document.body.innerText || "";
+    const viewportWidth = document.documentElement.clientWidth;
+    const overflowElements = [...document.body.querySelectorAll("*")]
+      .map((element) => {
+        const rect = element.getBoundingClientRect();
+        return {
+          tag: element.tagName.toLowerCase(),
+          className: String(element.getAttribute("class") || "").slice(0, 180),
+          text: String(element.textContent || "").trim().replace(/\s+/g, " ").slice(0, 80),
+          left: Math.round(rect.left),
+          right: Math.round(rect.right),
+          width: Math.round(rect.width),
+        };
+      })
+      .filter((item) => item.right > viewportWidth + 2 || item.left < -2)
+      .sort((left, right) => (right.right - viewportWidth) - (left.right - viewportWidth))
+      .slice(0, 10);
     return {
       title: document.title,
       mainText: (document.querySelector("main") || document.body).innerText?.trim().slice(0, 160) || "",
@@ -314,6 +330,9 @@ async function checkRoute(browserInstance, storageState, route, viewport, audien
         .filter((message) => visibleText.includes(message)),
       passwordInputs: document.querySelectorAll('input[type="password"]').length,
       horizontalOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 2,
+      documentScrollWidth: document.documentElement.scrollWidth,
+      viewportWidth,
+      overflowElements,
       unnamedControls: unnamed.length,
     };
   });
@@ -322,6 +341,9 @@ async function checkRoute(browserInstance, storageState, route, viewport, audien
     reactMounted: metrics.reactMounted,
     rootChildCount: metrics.rootChildCount,
     scriptSources: metrics.scriptSources,
+    documentScrollWidth: metrics.documentScrollWidth,
+    viewportWidth: metrics.viewportWidth,
+    overflowElements: metrics.overflowElements,
     pageErrors,
     httpErrors,
   });
@@ -330,7 +352,7 @@ async function checkRoute(browserInstance, storageState, route, viewport, audien
   assert(metrics.passwordInputs === 0, `${route} rendered a login form instead of the requested screen`);
   assert(pageErrors.length === 0, `${route} page error ${pageErrors.join(" | ")}`);
   assert(serverErrors.length === 0, `${route} server error ${serverErrors.join(" | ")}`);
-  assert(!metrics.horizontalOverflow, `${route} page-level horizontal overflow`);
+  assert(!metrics.horizontalOverflow, `${route} page-level horizontal overflow ${diagnostic}`);
   assert(metrics.unnamedControls === 0, `${route} has ${metrics.unnamedControls} unnamed controls`);
   evidence.routes.push({ stepCode, audience, route, finalUrl, viewport, status: response.status(), loadMs, ...metrics });
 }
