@@ -40,9 +40,10 @@ IFS='|' read -r CARBONET_RELAY_EXPECTED_PROCESSES CARBONET_RELAY_EXPECTED_STEP_C
   echo '[twenty-step-relay-e2e] FAIL executable relay contract is empty' >&2
   exit 3
 }
-correction_replay=0
-[[ ",$CARBONET_RELAY_EXPECTED_PROCESSES," == *,EMISSION_PROJECT,* ]] && correction_replay=1
-CARBONET_RELAY_EXPECTED_TRANSITION_COUNT=$((CARBONET_RELAY_EXPECTED_STEP_COUNT+correction_replay))
+# Every canonical step executes exactly once. Recovery is proven separately by
+# replaying the first command with the same idempotency key and asserting that
+# the original event is returned without adding a transition.
+CARBONET_RELAY_EXPECTED_TRANSITION_COUNT="$CARBONET_RELAY_EXPECTED_STEP_COUNT"
 export CARBONET_RELAY_EXPECTED_PROCESSES CARBONET_RELAY_EXPECTED_STEP_COUNT \
   CARBONET_RELAY_EXPECTED_TRANSITION_COUNT CARBONET_RELAY_EXPECTED_ACCOUNT_COUNT
 
