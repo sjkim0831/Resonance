@@ -29,6 +29,7 @@ const viewports = [
   { name: "mobile", width: 390, height: 844 },
 ];
 const results = [];
+let apiResponseMs = 0;
 
 try {
   const login = await api.post("/admin/login/actionLogin", {
@@ -40,7 +41,9 @@ try {
 
   const denied = await anonymous.get("/home/api/emission-projects?page=1&size=10", { failOnStatusCode: false });
   assert([401, 403].includes(denied.status()), `anonymous API expected 401/403 received ${denied.status()}`);
+  const apiStartedAt = Date.now();
   const source = await api.get("/home/api/emission-projects?page=1&size=100", { failOnStatusCode: false });
+  apiResponseMs = Date.now() - apiStartedAt;
   assert(source.status() === 200, `portfolio API failed HTTP ${source.status()}`);
   const payload = await source.json();
   assert(Array.isArray(payload.items) && payload.items.length > 0, "portfolio API returned no rows");
@@ -83,8 +86,14 @@ try {
 
       await page.getByLabel("상태").selectOption("");
       await page.getByLabel("검색어").fill("부산");
+      const filterStartedAt = Date.now();
+      const filteredResponsePromise = page.waitForResponse(
+        (candidate) => candidate.url().includes("/home/api/emission-projects?") && candidate.status() === 200,
+        { timeout: 5_000 },
+      );
       await page.getByRole("button", { name: "조회", exact: true }).click();
-      await page.waitForTimeout(250);
+      await filteredResponsePromise;
+      const filterResponseMs = Date.now() - filterStartedAt;
       const keywordRows = await page.locator("tbody tr").allTextContents();
       assert(keywordRows.length > 0 && keywordRows.every((text) => text.includes("부산")), `${viewport.name} keyword filter mismatch`);
 
@@ -105,14 +114,16 @@ try {
       assert(state.hasMain && state.hasHeading, `${viewport.name} landmark or heading missing`);
       assert(!state.pageOverflow, `${viewport.name} page-level horizontal overflow`);
       assert(state.unnamed === 0, `${viewport.name} unnamed interactive controls=${state.unnamed}`);
-      results.push({ viewport: viewport.name, loadMs, completedRows: statusRows.length, keywordRows: keywordRows.length });
+      results.push({ viewport: viewport.name, loadMs, filterResponseMs, completedRows: statusRows.length, keywordRows: keywordRows.length });
     } finally {
       await context.close();
     }
   }
 
   const durationMs = Date.now() - startedAt;
-  const performanceP95Ms = Math.max(...results.map((result) => result.loadMs));
+  // The 500 ms contract covers data/query interaction. Cold document and bundle load is reported separately.
+  const performanceP95Ms = Math.max(apiResponseMs, ...results.map((result) => result.filterResponseMs));
+  const pageLoadP95Ms = Math.max(...results.map((result) => result.loadMs));
   console.log(JSON.stringify({
     status: "PASS",
     processCode: "EMISSION_PROJECT_PORTFOLIO",
@@ -130,6 +141,8 @@ try {
     desktop: 1,
     mobile: 1,
     performanceP95Ms,
+    pageLoadP95Ms,
+    apiResponseMs,
     completedExpected,
     results,
     durationMs,

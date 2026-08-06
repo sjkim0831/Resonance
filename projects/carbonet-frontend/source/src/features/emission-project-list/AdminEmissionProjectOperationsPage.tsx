@@ -30,8 +30,10 @@ export function AdminEmissionProjectOperationsPage() {
   const en = isEnglish();
   const [data, setData] = useState<Payload>(empty);
   const [keyword, setKeyword] = useState("");
+  const [appliedKeyword, setAppliedKeyword] = useState("");
   const [status, setStatus] = useState("");
   const [site, setSite] = useState("");
+  const [appliedSite, setAppliedSite] = useState("");
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -42,8 +44,8 @@ export function AdminEmissionProjectOperationsPage() {
       // API status values are canonical codes, while this screen displays localized labels.
       // Keep the localized status filter at the presentation boundary to avoid false-empty results.
       const query = new URLSearchParams({ page: String(page), size: "10" });
-      if (keyword) query.set("keyword", keyword);
-      if (site) query.set("site", site);
+      if (appliedKeyword) query.set("keyword", appliedKeyword);
+      if (appliedSite) query.set("site", appliedSite);
       const response = await fetch(
         `${buildLocalizedPath("/home/api/emission-projects", "/en/home/api/emission-projects")}?${query}`,
         { credentials: "include" },
@@ -64,7 +66,7 @@ export function AdminEmissionProjectOperationsPage() {
     } finally {
       setLoading(false);
     }
-  }, [en, keyword, site, page]);
+  }, [en, appliedKeyword, appliedSite, page]);
 
   useEffect(() => {
     void load();
@@ -72,8 +74,10 @@ export function AdminEmissionProjectOperationsPage() {
 
   function search(event: FormEvent) {
     event.preventDefault();
+    setAppliedKeyword(keyword.trim());
+    setAppliedSite(site);
     if (page !== 1) setPage(1);
-    else void load();
+    else if (appliedKeyword === keyword.trim() && appliedSite === site) void load();
   }
 
   const visibleItems = useMemo(
