@@ -188,7 +188,7 @@ public class ActorProcessGovernanceService {
 
     public boolean isControlPlaneAdministrator(String accountId) {
         Integer count=jdbc.queryForObject("""
-            select count(distinct field->>'fieldCode')
+            select count(*)
               from comtnemplyrscrtyestbs security
               left join comtnemplyrinfo employee
                 on employee.esntl_id=security.scrty_dtrmn_trget_id
@@ -1738,7 +1738,7 @@ public class ActorProcessGovernanceService {
             """,String.class,project,actor,process,step,process,step);
         Integer editableFieldCount=jdbc.queryForObject("select count(*)::integer from jsonb_object_keys(?::jsonb)",Integer.class,smokePayload);
         Integer requiredFieldCount=jdbc.queryForObject("""
-            select count(*)
+            select count(distinct field->>'fieldCode')
               from jsonb_array_elements(coalesce(
                 (select nullif(execution_spec.field_contract->'fields','[]'::jsonb) from framework_step_execution_spec execution_spec where execution_spec.process_code=? and execution_spec.step_code=?),
                 (select framework_try_jsonb(screen_contract.field_contract) from framework_professional_screen_contract screen_contract where screen_contract.process_code=? and screen_contract.step_code=? order by case screen_contract.audience when 'USER' then 0 else 1 end limit 1),
