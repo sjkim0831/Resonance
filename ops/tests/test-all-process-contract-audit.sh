@@ -43,7 +43,7 @@ if ((source.match(/method:\s*"POST"/g) || []).length !== 2
 if (/method:\s*"(?:PUT|PATCH|DELETE)"/.test(source) || /process-executions\/start|\/commands/.test(source)) {
   throw new Error("business-mutating endpoint detected in contract audit");
 }
-for (const required of ["runContractAuditPages", "while (true)", "targetOffset", "maxTargets: auditPageSize", "nextTargetOffset", "contractAuditPagination", "reasonCounts", "samples=${JSON.stringify(samples)}"]) {
+for (const required of ["runContractAuditPages", "while (true)", "targetOffset", "maxTargets: auditPageSize", "compact: true", "nextTargetOffset", "contractAuditPagination", "errorSamples", "reasonCounts", "samples=${JSON.stringify(samples)}"]) {
   if (!source.includes(required)) throw new Error(`paged contract audit guard missing: ${required}`);
 }
 for (const required of ["--deployment-preflight", "SYSTEM_TEST_REPORT_DEPLOYMENT_PREFLIGHT", "AUTHENTICATED_COMPACT_REPORT_DEPLOYMENT_PREFLIGHT", "DEPLOYMENT_PREFLIGHT_COMPACT_REPORT_VALIDATION"]) {
@@ -252,6 +252,7 @@ const fixture = fs.readFileSync(fixturePath);
 let loginRequests = 0;
 let compactGetRequests = 0;
 let evidenceRefreshRequests = 0;
+let compactEvidenceRefreshRequests = 0;
 
 const server = http.createServer((request, response) => {
   if (request.method === "POST" && request.url === "/admin/login/actionLogin") {
@@ -266,18 +267,30 @@ const server = http.createServer((request, response) => {
   }
   if (request.method === "POST" && request.url === "/admin/api/system/actor-process/system-test-report/audit") {
     evidenceRefreshRequests += 1;
-    request.resume();
-    response.writeHead(200, { "content-type": "application/json" });
-    response.end(JSON.stringify({
-      success: true,
-      businessFunctionsExecuted: false,
-      outcome: "PASS",
-      targetCount: 2,
-      passedCount: 2,
-      blockedCount: 0,
-      errorCount: 0,
-      hasMore: false,
-    }));
+    let requestBody = "";
+    request.setEncoding("utf8");
+    request.on("data", chunk => { requestBody += chunk; });
+    request.on("end", () => {
+      const parsed = JSON.parse(requestBody || "{}");
+      if (parsed.compact === true) compactEvidenceRefreshRequests += 1;
+      response.writeHead(200, { "content-type": "application/json" });
+      response.end(JSON.stringify({
+        success: true,
+        businessFunctionsExecuted: false,
+        compact: true,
+        outcome: "PASS",
+        targetCount: 2,
+        passedCount: 2,
+        blockedCount: 0,
+        errorCount: 0,
+        runCount: 2,
+        runsOmittedCount: 2,
+        reasonCounts: {},
+        errorSamples: [],
+        runs: [],
+        hasMore: false,
+      }));
+    });
     return;
   }
   if (request.method === "GET" && request.url === "/admin/api/system/actor-process/system-test-report?compact=true") {
@@ -342,8 +355,8 @@ server.listen(0, "127.0.0.1", async () => {
     if (hourly.contractAuditPagination?.skipped !== false || hourly.contractAuditPagination?.complete !== true) {
       throw new Error("hourly mode did not complete evidence refresh");
     }
-    if (loginRequests !== 2 || compactGetRequests !== 2 || evidenceRefreshRequests !== 1) {
-      throw new Error(`hourly request mismatch login=${loginRequests} compact=${compactGetRequests} refresh=${evidenceRefreshRequests}`);
+    if (loginRequests !== 2 || compactGetRequests !== 2 || evidenceRefreshRequests !== 1 || compactEvidenceRefreshRequests !== 1) {
+      throw new Error(`hourly request mismatch login=${loginRequests} compact=${compactGetRequests} refresh=${evidenceRefreshRequests} compactRefresh=${compactEvidenceRefreshRequests}`);
     }
   } catch (error) {
     console.error(error.message);

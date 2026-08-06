@@ -158,6 +158,49 @@ class ActorProcessGovernanceServiceSecurityTest {
     }
 
     @Test
+    void compactBulkContractAuditResponseBoundsEvidenceAndPreservesFailureDiagnostics() throws Exception {
+        String oversized="x".repeat(250_000);
+        List<Map<String,Object>> runs=new java.util.ArrayList<>();
+        for(int index=0;index<20;index++){
+            Map<String,Object> run=new java.util.LinkedHashMap<>();
+            run.put("runId",index+1L);run.put("processCode","PROCESS_"+index);run.put("stepCode","STEP_"+index);
+            run.put("routePath","/generated/"+index);run.put("capabilityCode","SAVE");
+            run.put("result",index<8?"ERROR":index<14?"BLOCKED":"PASSED");
+            run.put("message",index<8?"ERROR_REASON_"+(index%2)+oversized:"");
+            run.put("blockerCodes",List.of("FIELD_CONTRACT","PREINPUT_REQUIRED"));
+            run.put("checks",List.of(Map.of("evidence",oversized)));
+            runs.add(run);
+        }
+
+        Map<String,Object> compact=ActorProcessGovernanceService.compactContractAuditDiagnostics(runs);
+        byte[] serialized=new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsBytes(compact);
+
+        assertEquals(20,compact.get("runCount"));
+        assertEquals(10,compact.get("runsOmittedCount"));
+        assertEquals(5,((List<?>)compact.get("errorSamples")).size());
+        assertEquals(5,((List<?>)compact.get("blockedSamples")).size());
+        assertTrue(((Map<?,?>)compact.get("reasonCounts")).containsKey("FIELD_CONTRACT"));
+        assertTrue(serialized.length<20_000,"compact audit diagnostics must remain bounded even when stored evidence is oversized");
+        assertFalse(new String(serialized,java.nio.charset.StandardCharsets.UTF_8).contains(oversized));
+    }
+
+    @Test
+    void compactBulkContractAuditRequestKeepsPaginationAndTruthfulOutcome() {
+        when(jdbc.queryForList(argThat(sql -> sql.contains("limit ? offset ?")),any(Object[].class))).thenReturn(List.of());
+
+        Map<String,Object> result=service.auditSystemProcessContracts(Map.of("compact",true,"targetOffset",250,"maxTargets",100),"system-auditor");
+
+        assertEquals(true,result.get("compact"));
+        assertEquals("BLOCKED",result.get("outcome"));
+        assertEquals(250,result.get("targetOffset"));
+        assertEquals(100,result.get("maxTargets"));
+        assertEquals(false,result.get("hasMore"));
+        assertEquals(0,result.get("runCount"));
+        assertEquals(List.of(),result.get("runs"));
+        assertEquals(false,result.get("businessFunctionsExecuted"));
+    }
+
+    @Test
     void bulkContractAuditReturnsAStableNextOffsetWithoutProcessingTheLookaheadRow() {
         when(jdbc.queryForList(argThat(sql -> sql.contains("limit ? offset ?")
                         && sql.contains("left join framework_screen_capability capability using(screen_resource_id)")),

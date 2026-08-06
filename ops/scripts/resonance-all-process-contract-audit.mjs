@@ -390,7 +390,7 @@ async function runContractAuditPages(cookie) {
     const response = await fetch(`${baseUrl}${auditPath}`, {
       method: "POST",
       headers: { accept: "application/json", "content-type": "application/json", cookie },
-      body: JSON.stringify({ targetOffset, maxTargets: auditPageSize }),
+      body: JSON.stringify({ targetOffset, maxTargets: auditPageSize, compact: true }),
       signal: AbortSignal.timeout(Math.max(smokeTimeoutMs, 60_000)),
     });
     const contentType = response.headers.get("content-type") || "";
@@ -403,13 +403,21 @@ async function runContractAuditPages(cookie) {
     }
     const errorCount = numeric(page.errorCount) ?? 0;
     if (text(page.outcome ?? page.result).toUpperCase() === "ERROR" || errorCount > 0) {
-      const failures = Array.isArray(page.runs)
-        ? page.runs.filter((run) => text(run?.result).toUpperCase() === "ERROR")
-        : [];
-      const reasonCounts = new Map();
-      for (const failure of failures) {
-        const reason = text(failure?.message) || "CONTRACT_AUDIT_FAILED";
-        reasonCounts.set(reason, (reasonCounts.get(reason) || 0) + 1);
+      const failures = Array.isArray(page.errorSamples)
+        ? page.errorSamples
+        : Array.isArray(page.runs)
+          ? page.runs.filter((run) => text(run?.result).toUpperCase() === "ERROR")
+          : [];
+      const reasonCounts = new Map(
+        page.reasonCounts && typeof page.reasonCounts === "object" && !Array.isArray(page.reasonCounts)
+          ? Object.entries(page.reasonCounts).map(([reason, count]) => [reason, numeric(count) ?? 0])
+          : [],
+      );
+      if (!reasonCounts.size) {
+        for (const failure of failures) {
+          const reason = text(failure?.reason ?? failure?.message) || "CONTRACT_AUDIT_FAILED";
+          reasonCounts.set(reason, (reasonCounts.get(reason) || 0) + 1);
+        }
       }
       const reasons = [...reasonCounts.entries()]
         .sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0]))
@@ -421,7 +429,7 @@ async function runContractAuditPages(cookie) {
         stepCode: text(failure?.stepCode),
         routePath: text(failure?.routePath),
         capabilityCode: text(failure?.capabilityCode),
-        message: text(failure?.message) || "CONTRACT_AUDIT_FAILED",
+        message: text(failure?.reason ?? failure?.message) || "CONTRACT_AUDIT_FAILED",
       }));
       process.stderr.write(`[all-process-contract-audit] page=${pageCount} errors=${errorCount} reasons=${reasons || "unavailable"} samples=${JSON.stringify(samples)}\n`);
       throw new Error(`contract audit page ${pageCount} returned ${errorCount} errors`);

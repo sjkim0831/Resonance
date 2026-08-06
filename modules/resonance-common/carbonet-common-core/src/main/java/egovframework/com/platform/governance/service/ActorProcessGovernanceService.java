@@ -11,11 +11,13 @@ import org.springframework.transaction.interceptor.TransactionAspectSupport;
 
 import java.util.LinkedHashMap;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.UUID;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -962,6 +964,7 @@ public class ActorProcessGovernanceService {
     public Map<String,Object> auditSystemProcessContracts(Map<String,Object> body,String executedBy){
         String domain=str(body,"domainCode").toUpperCase(Locale.ROOT);
         String process=str(body,"processCode").toUpperCase(Locale.ROOT);
+        boolean compactResponse=bool(body,"compact")||"SUMMARY".equalsIgnoreCase(str(body,"responseMode"));
         int maxSteps=Math.max(1,Math.min(integerOr(body,"maxSteps",1000),2000));
         int targetOffset=Math.max(0,integerOr(body,"targetOffset",0));
         int maxTargets=Math.max(1,Math.min(integerOr(body,"maxTargets",250),500));
@@ -1036,14 +1039,88 @@ public class ActorProcessGovernanceService {
         filters.put("targetOffset",targetOffset);filters.put("maxTargets",maxTargets);
         String outcome=errors>0?"ERROR":blocked>0?"BLOCKED":targets.isEmpty()?"BLOCKED":"PASSED";
         Map<String,Object> response=new LinkedHashMap<>();response.put("success",true);response.put("outcome",outcome);response.put("result",outcome);response.put("auditMode","CONTRACT_ONLY");
-        response.put("businessFunctionsExecuted",false);response.put("filters",filters);response.put("targetCount",targets.size());
+        response.put("businessFunctionsExecuted",false);response.put("compact",compactResponse);response.put("filters",filters);response.put("targetCount",targets.size());
         response.put("auditTargetMode","ACTIVE_BINDING_CAPABILITY");
         response.put("targetOffset",targetOffset);response.put("maxTargets",maxTargets);response.put("hasMore",hasMore);
         response.put("nextTargetOffset",hasMore?targetOffset+targets.size():null);
         response.put("auditedStepCount",auditedSteps.size());response.put("auditedBindingCount",auditedBindings.size());
         response.put("auditedCapabilityTargetCount",targets.stream().filter(row->row.get("screenResourceId")!=null).count());
-        response.put("passedCount",passed);response.put("blockedCount",blocked);response.put("errorCount",errors);response.put("runs",runs);
+        response.put("passedCount",passed);response.put("blockedCount",blocked);response.put("errorCount",errors);
+        if(compactResponse){
+            Map<String,Object> diagnostics=compactContractAuditDiagnostics(runs);
+            response.putAll(diagnostics);
+            response.put("runs",diagnostics.get("failureSamples"));
+        }else{
+            response.put("runs",runs);
+        }
         return response;
+    }
+
+    /**
+     * Produces a bounded diagnostics envelope for the paged audit endpoint.
+     * Full immutable evidence remains persisted in framework_screen_workflow_test_run;
+     * this response intentionally carries only aggregate reasons and small failure
+     * samples so an hourly auditor never transfers every per-check evidence payload.
+     */
+    static Map<String,Object> compactContractAuditDiagnostics(List<Map<String,Object>> runs){
+        Map<String,Integer> resultCounts=new TreeMap<>();
+        Map<String,Integer> reasons=new HashMap<>();
+        List<Map<String,Object>> errorSamples=new ArrayList<>(),blockedSamples=new ArrayList<>();
+        for(Map<String,Object> run:runs){
+            String result=String.valueOf(run.getOrDefault("result","UNKNOWN")).trim().toUpperCase(Locale.ROOT);
+            if(result.isBlank())result="UNKNOWN";
+            resultCounts.merge(result,1,Integer::sum);
+            if("ERROR".equals(result)){
+                String reason=boundedAuditText(run.get("message"),256,"CONTRACT_AUDIT_FAILED");
+                reasons.merge(reason,1,Integer::sum);
+                if(errorSamples.size()<5)errorSamples.add(compactContractAuditFailure(run,reason));
+            }else if("BLOCKED".equals(result)){
+                List<String> blockerCodes=compactAuditBlockerCodes(run.get("blockerCodes"));
+                if(blockerCodes.isEmpty())reasons.merge("CONTRACT_BLOCKED",1,Integer::sum);
+                else blockerCodes.forEach(reason->reasons.merge(reason,1,Integer::sum));
+                if(blockedSamples.size()<5)blockedSamples.add(compactContractAuditFailure(run,blockerCodes.isEmpty()?"CONTRACT_BLOCKED":String.join(",",blockerCodes)));
+            }
+        }
+        Map<String,Integer> reasonCounts=new LinkedHashMap<>();
+        reasons.entrySet().stream()
+            .sorted((left,right)->{
+                int byCount=Integer.compare(right.getValue(),left.getValue());
+                return byCount!=0?byCount:left.getKey().compareTo(right.getKey());
+            })
+            .limit(20)
+            .forEach(entry->reasonCounts.put(entry.getKey(),entry.getValue()));
+        List<Map<String,Object>> failureSamples=new ArrayList<>(errorSamples);
+        failureSamples.addAll(blockedSamples);
+        Map<String,Object> diagnostics=new LinkedHashMap<>();
+        diagnostics.put("runCount",runs.size());diagnostics.put("runResultCounts",resultCounts);
+        diagnostics.put("reasonCounts",reasonCounts);diagnostics.put("errorSamples",errorSamples);
+        diagnostics.put("blockedSamples",blockedSamples);diagnostics.put("failureSamples",failureSamples);
+        diagnostics.put("runsOmittedCount",Math.max(0,runs.size()-failureSamples.size()));
+        return diagnostics;
+    }
+
+    private static Map<String,Object> compactContractAuditFailure(Map<String,Object> run,String reason){
+        Map<String,Object> sample=new LinkedHashMap<>();
+        for(String field:List.of("runId","screenResourceId","processCode","stepCode","routePath","audience","capabilityCode","result")){
+            Object value=run.get(field);
+            if(value!=null)sample.put(field,value instanceof String?boundedAuditText(value,512,""):value);
+        }
+        sample.put("reason",boundedAuditText(reason,512,"CONTRACT_AUDIT_FAILED"));
+        sample.put("message",boundedAuditText(run.get("message"),512,""));
+        sample.put("blockerCodes",compactAuditBlockerCodes(run.get("blockerCodes")));
+        return sample;
+    }
+
+    private static List<String> compactAuditBlockerCodes(Object value){
+        if(value==null)return List.of();
+        Collection<?> values=value instanceof Collection<?> collection?collection:List.of(String.valueOf(value).split(","));
+        return values.stream().map(item->boundedAuditText(item,96,"")).filter(item->!item.isBlank()).distinct().limit(20).toList();
+    }
+
+    private static String boundedAuditText(Object value,int maxLength,String fallback){
+        String text=value==null?"":String.valueOf(value).trim();
+        if(text.isBlank())return fallback;
+        return text.length()<=maxLength?text:text.substring(0,maxLength)+"...";
     }
 
     private static String normalizeSystemTestResult(String value){
