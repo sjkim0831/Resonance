@@ -52,8 +52,17 @@ if (process.argv.includes("--self-test")) {
   process.exit(0);
 }
 
-const require = createRequire(path.join(root, "projects/carbonet-frontend/source/package.json"));
-const { chromium, request } = require("@playwright/test");
+const playwrightRelativePath = "projects/carbonet-frontend/source";
+const playwrightRootCandidates = [
+  process.env.PLAYWRIGHT_PACKAGE_ROOT,
+  root,
+  ...Array.from({ length: 5 }, (_, index) => path.resolve(root, ...Array(index + 1).fill(".."))),
+].filter(Boolean);
+const playwrightRoot = [...new Set(playwrightRootCandidates)].find((candidate) =>
+  existsSync(path.join(candidate, playwrightRelativePath, "node_modules/@playwright/test/package.json")));
+assert(playwrightRoot, "@playwright/test is unavailable in the integration or shared Resonance worktree");
+const playwrightRequire = createRequire(path.join(playwrightRoot, playwrightRelativePath, "package.json"));
+const { chromium, request } = playwrightRequire("@playwright/test");
 const baseURL = String(process.env.CARBONET_RUNTIME_BASE_URL || "http://127.0.0.1").replace(/\/$/, "");
 const namespace = String(process.env.K8S_NAMESPACE || "carbonet-prod");
 const patroniPod = String(process.env.PATRONI_POD || "");
@@ -105,6 +114,8 @@ const evidence = {
   promotionEligible: false,
   processCode: PROCESS_CODE,
   sourceCommit: "",
+  runtimeBaseUrl: baseURL,
+  browserExecutablePath: executablePath,
   startedAt: new Date(startedAt).toISOString(),
   stepCount: STEP_CODES.length,
   caseCount: CASE_CODES.length,
@@ -252,15 +263,24 @@ async function checkRoute(browserInstance, storageState, route, viewport, audien
   const page = await context.newPage();
   const pageErrors = [];
   const serverErrors = [];
+  const httpErrors = [];
   page.on("pageerror", (error) => pageErrors.push(error.message));
-  page.on("response", (response) => { if (response.status() >= 500) serverErrors.push(`${response.status()} ${response.url()}`); });
+  page.on("response", (response) => {
+    if (response.status() >= 400) httpErrors.push(`${response.status()} ${response.url()}`);
+    if (response.status() >= 500) serverErrors.push(`${response.status()} ${response.url()}`);
+  });
   const before = Date.now();
   const response = await page.goto(`${baseURL}${route}`, { waitUntil: "domcontentloaded", timeout: 20_000 });
   const loadMs = Date.now() - before;
   assert(response && response.status() < 400, `${route} navigation HTTP ${response?.status() || 0}`);
   await page.waitForFunction(() => {
     const root = document.querySelector("#root");
-    const text = document.body.textContent || "";
+    // textContent includes the inline bootstrap source itself. The shell
+    // contains the literal "React app did not mount" in that source, so using
+    // textContent makes this wait finish before the bootstrap request can add
+    // the real module script. innerText observes only user-visible runtime
+    // state and therefore distinguishes the loading shell from its fallback.
+    const text = document.body.innerText || "";
     return !root || root.childElementCount > 0 ||
       text.includes("React app did not mount") ||
       text.includes("AUTHENTICATION_REQUIRED");
@@ -283,19 +303,30 @@ async function checkRoute(browserInstance, storageState, route, viewport, audien
         element.getAttribute("title") || element.getAttribute("placeholder") || label || element.textContent?.trim() ||
         (element instanceof HTMLInputElement && ["hidden", "submit", "button"].includes(element.type)));
     });
+    const visibleText = document.body.innerText || "";
     return {
       title: document.title,
-      mainText: (document.querySelector("main") || document.body).textContent?.trim().slice(0, 160) || "",
+      mainText: (document.querySelector("main") || document.body).innerText?.trim().slice(0, 160) || "",
+      reactMounted: window.__CARBONET_REACT_APP_MOUNTED__ === true,
+      rootChildCount: document.querySelector("#root")?.childElementCount ?? -1,
+      scriptSources: [...document.scripts].map((script) => script.src).filter(Boolean),
       failureText: ["AUTHENTICATION_REQUIRED", "React app did not mount", "Unexpected token", "페이지 처리 중 오류가 발생했습니다."]
-        .filter((message) => document.body.textContent?.includes(message)),
+        .filter((message) => visibleText.includes(message)),
       passwordInputs: document.querySelectorAll('input[type="password"]').length,
       horizontalOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 2,
       unnamedControls: unnamed.length,
     };
   });
   await context.close();
+  const diagnostic = JSON.stringify({
+    reactMounted: metrics.reactMounted,
+    rootChildCount: metrics.rootChildCount,
+    scriptSources: metrics.scriptSources,
+    pageErrors,
+    httpErrors,
+  });
   assert(metrics.mainText.length > 0, `${route} rendered no meaningful content`);
-  assert(metrics.failureText.length === 0, `${route} rendered failure fallback ${metrics.failureText.join(" | ")}`);
+  assert(metrics.failureText.length === 0, `${route} rendered failure fallback ${metrics.failureText.join(" | ")} ${diagnostic}`);
   assert(metrics.passwordInputs === 0, `${route} rendered a login form instead of the requested screen`);
   assert(pageErrors.length === 0, `${route} page error ${pageErrors.join(" | ")}`);
   assert(serverErrors.length === 0, `${route} server error ${serverErrors.join(" | ")}`);

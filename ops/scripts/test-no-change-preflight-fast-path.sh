@@ -26,7 +26,7 @@ assert 'git rev-parse "$REMOTE/$BRANCH"' in source
 assert 'refs/heads/$BRANCH:refs/remotes/$REMOTE/$BRANCH' in source[fetch:no_change]
 assert '--prune' not in source[fetch:no_change]
 
-block_end = source.index("fi", no_change) + 2
+block_end = source.index("# Publish the in-flight state", no_change)
 block = source[no_change:block_end]
 assert "no_change_elapsed_ms" in block
 assert 'rm -f -- "$DEPLOY_PHASE_FILE"' in block
