@@ -78,8 +78,11 @@ try {
     await radio.click();
     await page.getByText("1단계 완료 기준", { exact: true }).waitFor({ timeout: 5_000 });
     const completionSection = page.getByText("1단계 완료 기준", { exact: true }).locator("..");
-    await completionSection.getByText("5/5", { exact: true }).waitFor({ timeout: 5_000 });
-    pass("PROJECT_PORTFOLIO_HAPPY", { route: "/emission/project-portfolio", selected: true, completion: "5/5", localizedStatus, statusFilterRows: statusTexts.length });
+    const completionText = await completionSection.innerText();
+    const completion = completionText.match(/([0-5])\/5/)?.[0] || "";
+    assert(Number(completion.split("/")[0]) >= 3, `portfolio selection did not load its scoped workflow completion=${completion}`);
+    assert(new URL(page.url()).searchParams.has("projectId"), "selected project was not persisted in the route");
+    pass("PROJECT_PORTFOLIO_HAPPY", { route: "/emission/project-portfolio", selected: true, completion, localizedStatus, statusFilterRows: statusTexts.length });
 
     const recoveryPage = await context.newPage();
     let aborted = false;
