@@ -11,35 +11,57 @@
     "code": "APPEAL_DISPUTE_AUDIT_S3",
     "version": 2,
     "actor": {
+      "schemaVersion": 1,
+      "contractType": "STEP_ACTOR_AUTHORITY",
       "actorCode": "VERIFIER",
       "ownerActorCode": "AUDITOR",
-      "tenantIsolation": true,
-      "projectIsolation": true,
-      "delegationChecked": true,
-      "segregationOfDuties": true
+      "scope": "TENANT_PROJECT",
+      "policy": {
+        "tenantIsolation": true,
+        "projectIsolation": true,
+        "delegationChecked": true,
+        "segregationOfDuties": true
+      },
+      "permissions": [],
+      "delegation": {},
+      "extensions": {}
     },
     "business": {
-      "goal": "검증·승인·규제 결과에 대한 이의와 감사 요구를 독립적으로 접수·판단·종결한다.",
-      "slaHours": 120,
-      "stepName": "쟁점 검토·소명·재현",
-      "riskLevel": "HIGH",
+      "schemaVersion": 1,
+      "contractType": "STEP_BUSINESS",
       "domainCode": "SYSTEM",
       "processName": "이의신청·분쟁·감사 대응",
+      "stepName": "쟁점 검토·소명·재현",
+      "goal": "검증·승인·규제 결과에 대한 이의와 감사 요구를 독립적으로 접수·판단·종결한다.",
       "requirement": "쟁점 검토·소명·재현 화면·API·DB 계약은 테넌트와 프로젝트 경계를 포함하고 실패 시 이전 상태로 복구 가능해야 한다.",
       "completionRule": "쟁점 검토·소명·재현의 필수 입력, 권한, 증적, 상태 전이가 모두 검증되어야 한다.",
-      "regulationRefs": "행정절차법, 내부감사 기준"
+      "riskLevel": "HIGH",
+      "slaHours": 120,
+      "regulationRefs": "행정절차법, 내부감사 기준",
+      "preconditions": [],
+      "deliverables": [],
+      "exceptions": [],
+      "policy": {},
+      "extensions": {}
     },
     "transition": {
-      "toState": "STEP_3_COMPLETED",
-      "stepType": "DECISION",
-      "fromState": "STEP_2_COMPLETED",
-      "stepOrder": 3,
+      "schemaVersion": 1,
+      "contractType": "STEP_TRANSITION",
       "commandCode": "APPEAL_DISPUTE_AUDIT_EXECUTE_3",
-      "auditRequired": true,
-      "completionRule": "쟁점 검토·소명·재현의 필수 입력, 권한, 증적, 상태 전이가 모두 검증되어야 한다.",
-      "optimisticLock": true,
+      "fromState": "STEP_2_COMPLETED",
+      "toState": "STEP_3_COMPLETED",
+      "stepOrder": 3,
+      "stepType": "DECISION",
       "parentStepCode": null,
-      "idempotencyRequired": true
+      "completionRule": "쟁점 검토·소명·재현의 필수 입력, 권한, 증적, 상태 전이가 모두 검증되어야 한다.",
+      "policy": {
+        "auditRequired": true,
+        "optimisticLock": true,
+        "idempotencyRequired": true
+      },
+      "guards": [],
+      "sideEffects": [],
+      "extensions": {}
     },
     "input": {
       "tenantId": "required",
@@ -56,18 +78,26 @@
       "nextTaskCreated": true
     },
     "guide": {
+      "schemaVersion": 1,
+      "contractType": "STEP_GUIDE",
+      "processCode": "APPEAL_DISPUTE_AUDIT",
+      "stepCode": "APPEAL_DISPUTE_AUDIT_S3",
+      "stepOrder": 3,
+      "workTypeCode": "SYSTEM",
+      "actorCode": "VERIFIER",
       "title": "쟁점 검토·소명·재현",
       "purpose": "쟁점 검토·소명·재현 화면·API·DB 계약은 테넌트와 프로젝트 경계를 포함하고 실패 시 이전 상태로 복구 가능해야 한다.",
-      "stepCode": "APPEAL_DISPUTE_AUDIT_S3",
-      "userPath": null,
-      "actorCode": "VERIFIER",
-      "adminPath": null,
-      "stepOrder": 3,
-      "processCode": "APPEAL_DISPUTE_AUDIT",
-      "nextStepCode": "APPEAL_DISPUTE_AUDIT_S4",
-      "workTypeCode": "SYSTEM",
       "entryCondition": "STEP_2_COMPLETED",
-      "completionCondition": "쟁점 검토·소명·재현의 필수 입력, 권한, 증적, 상태 전이가 모두 검증되어야 한다."
+      "completionCondition": "쟁점 검토·소명·재현의 필수 입력, 권한, 증적, 상태 전이가 모두 검증되어야 한다.",
+      "userPath": "/generated/appeal-dispute-audit/appeal-dispute-audit-s3",
+      "adminPath": "/admin/generated/appeal-dispute-audit/appeal-dispute-audit-s3",
+      "relatedBusinessRoute": null,
+      "nextStepCode": "APPEAL_DISPUTE_AUDIT_S4",
+      "nextAction": "STEP_3_COMPLETED",
+      "actions": [],
+      "help": {},
+      "policy": {},
+      "extensions": {}
     }
   },
   "frontend": {
@@ -113,7 +143,8 @@
             "sourceColumn": null,
             "mappingStatus": "CONTEXT",
             "permissionCode": "VERIFIER:ADMIN",
-            "evidenceRequired": false
+            "evidenceRequired": false,
+            "code": "tenantId"
           },
           {
             "route": "/admin/planned/system/appeal-dispute-audit/appeal-dispute-audit-s3",
@@ -136,7 +167,8 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "permissionCode": "VERIFIER:ADMIN",
-            "evidenceRequired": false
+            "evidenceRequired": false,
+            "code": "projectId"
           },
           {
             "route": "/admin/planned/system/appeal-dispute-audit/appeal-dispute-audit-s3",
@@ -161,7 +193,8 @@
             "sourceColumn": "process_code",
             "mappingStatus": "DB_RESOLVED",
             "permissionCode": "VERIFIER:ADMIN",
-            "evidenceRequired": false
+            "evidenceRequired": false,
+            "code": "processCode"
           },
           {
             "route": "/admin/planned/system/appeal-dispute-audit/appeal-dispute-audit-s3",
@@ -186,7 +219,8 @@
             "sourceColumn": "step_code",
             "mappingStatus": "CONTEXT",
             "permissionCode": "VERIFIER:ADMIN",
-            "evidenceRequired": false
+            "evidenceRequired": false,
+            "code": "stepCode"
           },
           {
             "route": "/admin/planned/system/appeal-dispute-audit/appeal-dispute-audit-s3",
@@ -211,7 +245,8 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "permissionCode": "VERIFIER:ADMIN",
-            "evidenceRequired": false
+            "evidenceRequired": false,
+            "code": "recordId"
           },
           {
             "route": "/admin/planned/system/appeal-dispute-audit/appeal-dispute-audit-s3",
@@ -234,7 +269,8 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "permissionCode": "VERIFIER:ADMIN",
-            "evidenceRequired": false
+            "evidenceRequired": false,
+            "code": "statusCode"
           },
           {
             "route": "/admin/planned/system/appeal-dispute-audit/appeal-dispute-audit-s3",
@@ -262,7 +298,8 @@
             "sourceColumn": "owner_actor_code",
             "mappingStatus": "DB_RESOLVED",
             "permissionCode": "VERIFIER:ADMIN",
-            "evidenceRequired": false
+            "evidenceRequired": false,
+            "code": "ownerActorCode"
           },
           {
             "route": "/admin/planned/system/appeal-dispute-audit/appeal-dispute-audit-s3",
@@ -285,7 +322,8 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "permissionCode": "VERIFIER:ADMIN",
-            "evidenceRequired": false
+            "evidenceRequired": false,
+            "code": "rowVersion"
           },
           {
             "route": "/admin/planned/system/appeal-dispute-audit/appeal-dispute-audit-s3",
@@ -310,7 +348,8 @@
             "sourceColumn": "created_at",
             "mappingStatus": "DB_RESOLVED",
             "permissionCode": "VERIFIER:ADMIN",
-            "evidenceRequired": false
+            "evidenceRequired": false,
+            "code": "createdAt"
           },
           {
             "route": "/admin/planned/system/appeal-dispute-audit/appeal-dispute-audit-s3",
@@ -335,7 +374,8 @@
             "sourceColumn": "updated_at",
             "mappingStatus": "DB_RESOLVED",
             "permissionCode": "VERIFIER:ADMIN",
-            "evidenceRequired": false
+            "evidenceRequired": false,
+            "code": "updatedAt"
           },
           {
             "route": "/admin/planned/system/appeal-dispute-audit/appeal-dispute-audit-s3",
@@ -358,7 +398,8 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "permissionCode": "VERIFIER:ADMIN",
-            "evidenceRequired": false
+            "evidenceRequired": false,
+            "code": "evidenceCount"
           },
           {
             "route": "/admin/planned/system/appeal-dispute-audit/appeal-dispute-audit-s3",
@@ -386,7 +427,8 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "permissionCode": "VERIFIER:ADMIN",
-            "evidenceRequired": false
+            "evidenceRequired": false,
+            "code": "resourceCode"
           },
           {
             "route": "/admin/planned/system/appeal-dispute-audit/appeal-dispute-audit-s3",
@@ -414,7 +456,8 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "permissionCode": "VERIFIER:ADMIN",
-            "evidenceRequired": false
+            "evidenceRequired": false,
+            "code": "resourceName"
           },
           {
             "route": "/admin/planned/system/appeal-dispute-audit/appeal-dispute-audit-s3",
@@ -442,7 +485,8 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "permissionCode": "VERIFIER:ADMIN",
-            "evidenceRequired": false
+            "evidenceRequired": false,
+            "code": "resourceType"
           },
           {
             "route": "/admin/planned/system/appeal-dispute-audit/appeal-dispute-audit-s3",
@@ -470,7 +514,8 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "permissionCode": "VERIFIER:ADMIN",
-            "evidenceRequired": false
+            "evidenceRequired": false,
+            "code": "resourceVersion"
           },
           {
             "route": "/admin/planned/system/appeal-dispute-audit/appeal-dispute-audit-s3",
@@ -498,7 +543,8 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "permissionCode": "VERIFIER:ADMIN",
-            "evidenceRequired": false
+            "evidenceRequired": false,
+            "code": "changeReason"
           },
           {
             "route": "/admin/planned/system/appeal-dispute-audit/appeal-dispute-audit-s3",
@@ -526,7 +572,8 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "permissionCode": "VERIFIER:ADMIN",
-            "evidenceRequired": false
+            "evidenceRequired": false,
+            "code": "deploymentStatus"
           },
           {
             "route": "/admin/planned/system/appeal-dispute-audit/appeal-dispute-audit-s3",
@@ -554,7 +601,8 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "permissionCode": "VERIFIER:ADMIN",
-            "evidenceRequired": false
+            "evidenceRequired": false,
+            "code": "decisionCode"
           },
           {
             "route": "/admin/planned/system/appeal-dispute-audit/appeal-dispute-audit-s3",
@@ -582,7 +630,8 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "permissionCode": "VERIFIER:ADMIN",
-            "evidenceRequired": false
+            "evidenceRequired": false,
+            "code": "reviewComment"
           },
           {
             "route": "/admin/planned/system/appeal-dispute-audit/appeal-dispute-audit-s3",
@@ -610,7 +659,8 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "permissionCode": "VERIFIER:ADMIN",
-            "evidenceRequired": false
+            "evidenceRequired": false,
+            "code": "rejectionReasonCode"
           },
           {
             "route": "/admin/planned/system/appeal-dispute-audit/appeal-dispute-audit-s3",
@@ -635,7 +685,8 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "permissionCode": "VERIFIER:ADMIN",
-            "evidenceRequired": false
+            "evidenceRequired": false,
+            "code": "decidedAt"
           }
         ],
         "commands": [
@@ -646,7 +697,8 @@
             "resultState": "STEP_3_COMPLETED",
             "auditRequired": true,
             "validationRequired": true,
-            "serverAuthorization": true
+            "serverAuthorization": true,
+            "idempotencyRequired": true
           }
         ],
         "states": {
@@ -715,7 +767,8 @@
             "sourceColumn": null,
             "mappingStatus": "CONTEXT",
             "permissionCode": "VERIFIER:USER",
-            "evidenceRequired": false
+            "evidenceRequired": false,
+            "code": "tenantId"
           },
           {
             "route": "/planned/system/appeal-dispute-audit/appeal-dispute-audit-s3",
@@ -738,7 +791,8 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "permissionCode": "VERIFIER:USER",
-            "evidenceRequired": false
+            "evidenceRequired": false,
+            "code": "projectId"
           },
           {
             "route": "/planned/system/appeal-dispute-audit/appeal-dispute-audit-s3",
@@ -763,7 +817,8 @@
             "sourceColumn": "process_code",
             "mappingStatus": "DB_RESOLVED",
             "permissionCode": "VERIFIER:USER",
-            "evidenceRequired": false
+            "evidenceRequired": false,
+            "code": "processCode"
           },
           {
             "route": "/planned/system/appeal-dispute-audit/appeal-dispute-audit-s3",
@@ -788,7 +843,8 @@
             "sourceColumn": "step_code",
             "mappingStatus": "CONTEXT",
             "permissionCode": "VERIFIER:USER",
-            "evidenceRequired": false
+            "evidenceRequired": false,
+            "code": "stepCode"
           },
           {
             "route": "/planned/system/appeal-dispute-audit/appeal-dispute-audit-s3",
@@ -813,7 +869,8 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "permissionCode": "VERIFIER:USER",
-            "evidenceRequired": false
+            "evidenceRequired": false,
+            "code": "recordId"
           },
           {
             "route": "/planned/system/appeal-dispute-audit/appeal-dispute-audit-s3",
@@ -836,7 +893,8 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "permissionCode": "VERIFIER:USER",
-            "evidenceRequired": false
+            "evidenceRequired": false,
+            "code": "statusCode"
           },
           {
             "route": "/planned/system/appeal-dispute-audit/appeal-dispute-audit-s3",
@@ -864,7 +922,8 @@
             "sourceColumn": "owner_actor_code",
             "mappingStatus": "DB_RESOLVED",
             "permissionCode": "VERIFIER:USER",
-            "evidenceRequired": false
+            "evidenceRequired": false,
+            "code": "ownerActorCode"
           },
           {
             "route": "/planned/system/appeal-dispute-audit/appeal-dispute-audit-s3",
@@ -887,7 +946,8 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "permissionCode": "VERIFIER:USER",
-            "evidenceRequired": false
+            "evidenceRequired": false,
+            "code": "rowVersion"
           },
           {
             "route": "/planned/system/appeal-dispute-audit/appeal-dispute-audit-s3",
@@ -912,7 +972,8 @@
             "sourceColumn": "created_at",
             "mappingStatus": "DB_RESOLVED",
             "permissionCode": "VERIFIER:USER",
-            "evidenceRequired": false
+            "evidenceRequired": false,
+            "code": "createdAt"
           },
           {
             "route": "/planned/system/appeal-dispute-audit/appeal-dispute-audit-s3",
@@ -937,7 +998,8 @@
             "sourceColumn": "updated_at",
             "mappingStatus": "DB_RESOLVED",
             "permissionCode": "VERIFIER:USER",
-            "evidenceRequired": false
+            "evidenceRequired": false,
+            "code": "updatedAt"
           },
           {
             "route": "/planned/system/appeal-dispute-audit/appeal-dispute-audit-s3",
@@ -960,7 +1022,8 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "permissionCode": "VERIFIER:USER",
-            "evidenceRequired": false
+            "evidenceRequired": false,
+            "code": "evidenceCount"
           },
           {
             "route": "/planned/system/appeal-dispute-audit/appeal-dispute-audit-s3",
@@ -988,7 +1051,8 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "permissionCode": "VERIFIER:USER",
-            "evidenceRequired": false
+            "evidenceRequired": false,
+            "code": "resourceCode"
           },
           {
             "route": "/planned/system/appeal-dispute-audit/appeal-dispute-audit-s3",
@@ -1016,7 +1080,8 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "permissionCode": "VERIFIER:USER",
-            "evidenceRequired": false
+            "evidenceRequired": false,
+            "code": "resourceName"
           },
           {
             "route": "/planned/system/appeal-dispute-audit/appeal-dispute-audit-s3",
@@ -1044,7 +1109,8 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "permissionCode": "VERIFIER:USER",
-            "evidenceRequired": false
+            "evidenceRequired": false,
+            "code": "resourceType"
           },
           {
             "route": "/planned/system/appeal-dispute-audit/appeal-dispute-audit-s3",
@@ -1072,7 +1138,8 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "permissionCode": "VERIFIER:USER",
-            "evidenceRequired": false
+            "evidenceRequired": false,
+            "code": "resourceVersion"
           },
           {
             "route": "/planned/system/appeal-dispute-audit/appeal-dispute-audit-s3",
@@ -1100,7 +1167,8 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "permissionCode": "VERIFIER:USER",
-            "evidenceRequired": false
+            "evidenceRequired": false,
+            "code": "changeReason"
           },
           {
             "route": "/planned/system/appeal-dispute-audit/appeal-dispute-audit-s3",
@@ -1128,7 +1196,8 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "permissionCode": "VERIFIER:USER",
-            "evidenceRequired": false
+            "evidenceRequired": false,
+            "code": "deploymentStatus"
           },
           {
             "route": "/planned/system/appeal-dispute-audit/appeal-dispute-audit-s3",
@@ -1156,7 +1225,8 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "permissionCode": "VERIFIER:USER",
-            "evidenceRequired": false
+            "evidenceRequired": false,
+            "code": "decisionCode"
           },
           {
             "route": "/planned/system/appeal-dispute-audit/appeal-dispute-audit-s3",
@@ -1184,7 +1254,8 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "permissionCode": "VERIFIER:USER",
-            "evidenceRequired": false
+            "evidenceRequired": false,
+            "code": "reviewComment"
           },
           {
             "route": "/planned/system/appeal-dispute-audit/appeal-dispute-audit-s3",
@@ -1212,7 +1283,8 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "permissionCode": "VERIFIER:USER",
-            "evidenceRequired": false
+            "evidenceRequired": false,
+            "code": "rejectionReasonCode"
           },
           {
             "route": "/planned/system/appeal-dispute-audit/appeal-dispute-audit-s3",
@@ -1237,7 +1309,8 @@
             "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT",
             "permissionCode": "VERIFIER:USER",
-            "evidenceRequired": false
+            "evidenceRequired": false,
+            "code": "decidedAt"
           }
         ],
         "commands": [
@@ -1248,7 +1321,8 @@
             "resultState": "STEP_3_COMPLETED",
             "auditRequired": true,
             "validationRequired": true,
-            "serverAuthorization": true
+            "serverAuthorization": true,
+            "idempotencyRequired": true
           }
         ],
         "states": {
@@ -1309,17 +1383,27 @@
         "resultState": "STEP_3_COMPLETED",
         "auditRequired": true,
         "validationRequired": true,
-        "serverAuthorization": true
+        "serverAuthorization": true,
+        "idempotencyRequired": true
       }
     ],
     "authorization": {
+      "schemaVersion": 1,
+      "contractType": "STEP_ACTOR_AUTHORITY",
       "actorCode": "VERIFIER",
       "ownerActorCode": "AUDITOR",
-      "tenantIsolation": true,
-      "projectIsolation": true,
-      "delegationChecked": true,
-      "segregationOfDuties": true
+      "scope": "TENANT_PROJECT",
+      "policy": {
+        "tenantIsolation": true,
+        "projectIsolation": true,
+        "delegationChecked": true,
+        "segregationOfDuties": true
+      },
+      "permissions": [],
+      "delegation": {},
+      "extensions": {}
     },
+    "handoffPolicy": {},
     "handoffs": [
       {
         "failure": {
@@ -1377,6 +1461,8 @@
     ]
   },
   "database": {
+    "transactional": true,
+    "migrationRequired": true,
     "mappings": [
       {
         "fields": [
@@ -1384,16 +1470,12 @@
             "required": true,
             "fieldCode": "tenantId",
             "apiProperty": "tenantId",
-            "sourceTable": null,
-            "sourceColumn": null,
             "mappingStatus": "CONTEXT"
           },
           {
             "required": true,
             "fieldCode": "projectId",
             "apiProperty": "projectId",
-            "sourceTable": null,
-            "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT"
           },
           {
@@ -1416,16 +1498,12 @@
             "required": false,
             "fieldCode": "recordId",
             "apiProperty": "recordId",
-            "sourceTable": null,
-            "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT"
           },
           {
             "required": true,
             "fieldCode": "statusCode",
             "apiProperty": "statusCode",
-            "sourceTable": null,
-            "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT"
           },
           {
@@ -1440,8 +1518,6 @@
             "required": true,
             "fieldCode": "rowVersion",
             "apiProperty": "rowVersion",
-            "sourceTable": null,
-            "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT"
           },
           {
@@ -1464,88 +1540,66 @@
             "required": false,
             "fieldCode": "evidenceCount",
             "apiProperty": "evidenceCount",
-            "sourceTable": null,
-            "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT"
           },
           {
             "required": true,
             "fieldCode": "resourceCode",
             "apiProperty": "resourceCode",
-            "sourceTable": null,
-            "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT"
           },
           {
             "required": true,
             "fieldCode": "resourceName",
             "apiProperty": "resourceName",
-            "sourceTable": null,
-            "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT"
           },
           {
             "required": true,
             "fieldCode": "resourceType",
             "apiProperty": "resourceType",
-            "sourceTable": null,
-            "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT"
           },
           {
             "required": true,
             "fieldCode": "resourceVersion",
             "apiProperty": "resourceVersion",
-            "sourceTable": null,
-            "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT"
           },
           {
             "required": true,
             "fieldCode": "changeReason",
             "apiProperty": "changeReason",
-            "sourceTable": null,
-            "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT"
           },
           {
             "required": false,
             "fieldCode": "deploymentStatus",
             "apiProperty": "deploymentStatus",
-            "sourceTable": null,
-            "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT"
           },
           {
             "required": true,
             "fieldCode": "decisionCode",
             "apiProperty": "decisionCode",
-            "sourceTable": null,
-            "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT"
           },
           {
             "required": true,
             "fieldCode": "reviewComment",
             "apiProperty": "reviewComment",
-            "sourceTable": null,
-            "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT"
           },
           {
             "required": false,
             "fieldCode": "rejectionReasonCode",
             "apiProperty": "rejectionReasonCode",
-            "sourceTable": null,
-            "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT"
           },
           {
             "required": false,
             "fieldCode": "decidedAt",
             "apiProperty": "decidedAt",
-            "sourceTable": null,
-            "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT"
           }
         ],
@@ -1559,16 +1613,12 @@
             "required": true,
             "fieldCode": "tenantId",
             "apiProperty": "tenantId",
-            "sourceTable": null,
-            "sourceColumn": null,
             "mappingStatus": "CONTEXT"
           },
           {
             "required": true,
             "fieldCode": "projectId",
             "apiProperty": "projectId",
-            "sourceTable": null,
-            "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT"
           },
           {
@@ -1591,16 +1641,12 @@
             "required": false,
             "fieldCode": "recordId",
             "apiProperty": "recordId",
-            "sourceTable": null,
-            "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT"
           },
           {
             "required": true,
             "fieldCode": "statusCode",
             "apiProperty": "statusCode",
-            "sourceTable": null,
-            "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT"
           },
           {
@@ -1615,8 +1661,6 @@
             "required": true,
             "fieldCode": "rowVersion",
             "apiProperty": "rowVersion",
-            "sourceTable": null,
-            "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT"
           },
           {
@@ -1639,88 +1683,66 @@
             "required": false,
             "fieldCode": "evidenceCount",
             "apiProperty": "evidenceCount",
-            "sourceTable": null,
-            "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT"
           },
           {
             "required": true,
             "fieldCode": "resourceCode",
             "apiProperty": "resourceCode",
-            "sourceTable": null,
-            "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT"
           },
           {
             "required": true,
             "fieldCode": "resourceName",
             "apiProperty": "resourceName",
-            "sourceTable": null,
-            "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT"
           },
           {
             "required": true,
             "fieldCode": "resourceType",
             "apiProperty": "resourceType",
-            "sourceTable": null,
-            "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT"
           },
           {
             "required": true,
             "fieldCode": "resourceVersion",
             "apiProperty": "resourceVersion",
-            "sourceTable": null,
-            "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT"
           },
           {
             "required": true,
             "fieldCode": "changeReason",
             "apiProperty": "changeReason",
-            "sourceTable": null,
-            "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT"
           },
           {
             "required": false,
             "fieldCode": "deploymentStatus",
             "apiProperty": "deploymentStatus",
-            "sourceTable": null,
-            "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT"
           },
           {
             "required": true,
             "fieldCode": "decisionCode",
             "apiProperty": "decisionCode",
-            "sourceTable": null,
-            "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT"
           },
           {
             "required": true,
             "fieldCode": "reviewComment",
             "apiProperty": "reviewComment",
-            "sourceTable": null,
-            "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT"
           },
           {
             "required": false,
             "fieldCode": "rejectionReasonCode",
             "apiProperty": "rejectionReasonCode",
-            "sourceTable": null,
-            "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT"
           },
           {
             "required": false,
             "fieldCode": "decidedAt",
             "apiProperty": "decidedAt",
-            "sourceTable": null,
-            "sourceColumn": null,
             "mappingStatus": "LOGICAL_CONTRACT"
           }
         ],
@@ -1729,9 +1751,7 @@
         "primaryEntity": "framework_process_definition"
       }
     ],
-    "transactional": true,
     "schemaSetVersion": 2,
-    "migrationRequired": true,
     "primaryEntities": [
       "framework_process_definition"
     ],
@@ -1957,21 +1977,16 @@
     "evidenceRequired": true
   },
   "nonfunctional": {
-    "recovery": {
-      "retry": "idempotent-only",
-      "resumeFromLastVerifiedState": true
-    },
+    "schemaVersion": 1,
+    "contractType": "STEP_NONFUNCTIONAL",
     "security": {
-      "audit": true,
       "tenantIsolation": true,
       "projectIsolation": true,
-      "serverAuthorization": true
-    },
-    "responsive": {
-      "mobile": "single-column",
-      "tablet": "adaptive-two-column",
-      "desktop": "task-optimized",
-      "noTextOverflow": true
+      "serverAuthorization": true,
+      "segregationOfDuties": true,
+      "rateLimitRequired": false,
+      "secretLoggingForbidden": true,
+      "sensitiveValueMasking": true
     },
     "performance": {
       "targetP95Ms": 500,
@@ -1979,14 +1994,40 @@
       "searchIndexRequired": true
     },
     "accessibility": {
-      "focus": true,
-      "keyboard": true,
       "standard": "WCAG 2.1 AA",
+      "keyboard": true,
+      "focus": true,
       "errorSummary": true
-    }
+    },
+    "responsive": {
+      "mobile": "single-column",
+      "tablet": "adaptive-two-column",
+      "desktop": "task-optimized",
+      "noTextOverflow": true
+    },
+    "recovery": {
+      "retry": "idempotent-only",
+      "resumeFromLastVerifiedState": true,
+      "idempotencyRequired": true
+    },
+    "audit": {
+      "required": true,
+      "actorRecorded": true,
+      "beforeAfterRecorded": true,
+      "correlationIdRequired": true
+    },
+    "sla": {
+      "configured": true,
+      "targetHours": 120,
+      "timerStartsAt": "STEP_ASSIGNED",
+      "timerStopsAt": "STEP_COMPLETED",
+      "breachAlertRequired": true
+    },
+    "policy": {},
+    "extensions": {}
   },
-  "sourceHash": "c3dd867c848fd55433da98e22a3075b944e4e59c1ff8f9562981fd71f80a717e",
+  "sourceHash": "f140a0333ef975e1fc5e677c783ee94f",
   "approvalStatus": "APPROVED",
   "generationStatus": "GENERATED",
-  "packageHash": "01be11bfd3b8d741742c4ff64517564547a21528e69dd46f63ce4f64906f8f60"
+  "packageHash": "aa916abd7c110a3ea10578b89a4a8b551a7570566fb6b2afb6c8ae5c1977bf53"
 }
