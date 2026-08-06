@@ -496,6 +496,7 @@ try {
   browser = await chromium.launch({ headless: true, ...(executablePath ? { executablePath } : {}) });
   const userState = await ownerApi.storageState();
   const adminState = await adminApi.storageState();
+  const anonymousState = { cookies: [], origins: [] };
   const routePairs = [
     ["COMPANY_ONBOARDING_APPLY", "/join/companyRegister", "/admin/member/company-approve"],
     ["COMPANY_ONBOARDING_APPROVE", `/join/companyJoinStatusDetail?bizNo=${businessNumber}&repName=${encodeURIComponent("온보딩 검증 대표")}`, "/admin/member/company-approve"],
@@ -504,9 +505,12 @@ try {
     ["COMPANY_ONBOARDING_READY", "/emission/project/create", "/admin/emission/project-operations"],
   ];
   for (const [stepCode, userRoute, adminRoute] of routePairs) {
-    await checkRoute(browser, userState, userRoute, { width: 1440, height: 1000 }, "USER", stepCode);
+    const userRouteState = ["COMPANY_ONBOARDING_APPLY", "COMPANY_ONBOARDING_APPROVE"].includes(stepCode)
+      ? anonymousState
+      : userState;
+    await checkRoute(browser, userRouteState, userRoute, { width: 1440, height: 1000 }, "USER", stepCode);
     await checkRoute(browser, adminState, adminRoute, { width: 1440, height: 1000 }, "ADMIN", stepCode);
-    await checkRoute(browser, userState, userRoute, { width: 390, height: 844 }, "USER", stepCode);
+    await checkRoute(browser, userRouteState, userRoute, { width: 390, height: 844 }, "USER", stepCode);
     await checkRoute(browser, adminState, adminRoute, { width: 390, height: 844 }, "ADMIN", stepCode);
   }
 } catch (error) {

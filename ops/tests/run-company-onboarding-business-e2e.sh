@@ -3,7 +3,10 @@ set -Eeuo pipefail
 
 ROOT="${RESONANCE_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
 NAMESPACE="${K8S_NAMESPACE:-carbonet-prod}"
-BASE_URL="${CARBONET_RUNTIME_BASE_URL:-http://172.16.1.232}"
+# The harness runs on the application host. Loopback reaches the canonical
+# nginx vhost without the host's public-IP hairpin path, which can select the
+# admin fallback shell and falsely report that the user React app did not mount.
+BASE_URL="${CARBONET_RUNTIME_BASE_URL:-http://127.0.0.1}"
 LOCK_FILE="${COMPANY_ONBOARDING_E2E_LOCK_FILE:-/tmp/resonance-company-onboarding-e2e.lock}"
 STEPS=(
   COMPANY_ONBOARDING_APPLY
