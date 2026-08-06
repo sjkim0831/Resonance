@@ -102,6 +102,16 @@ WHERE contract.process_code=:'process_code'
       AND length(coalesce(spec.guide_contract->>'title',''))>0
       AND length(coalesce(spec.guide_contract->>'purpose',''))>0
       AND length(coalesce(spec.guide_contract->>'completionCondition',''))>0
+      AND spec.nonfunctional_contract->>'contractType'='STEP_NONFUNCTIONAL'
+      AND jsonb_typeof(spec.nonfunctional_contract->'security')='object'
+      AND jsonb_typeof(spec.nonfunctional_contract->'performance')='object'
+      AND (spec.nonfunctional_contract->'performance'->>'targetP95Ms')::integer>0
+      AND jsonb_typeof(spec.nonfunctional_contract->'accessibility')='object'
+      AND length(coalesce(spec.nonfunctional_contract->'accessibility'->>'standard',''))>0
+      AND jsonb_typeof(spec.nonfunctional_contract->'responsive')='object'
+      AND jsonb_typeof(spec.nonfunctional_contract->'recovery')='object'
+      AND jsonb_typeof(spec.nonfunctional_contract->'audit')='object'
+      AND jsonb_typeof(spec.nonfunctional_contract->'sla')='object'
       AND spec.transition_contract->>'contractType'='STEP_TRANSITION'
       AND length(coalesce(spec.transition_contract->>'fromState',''))>0
       AND length(coalesce(spec.transition_contract->>'toState',''))>0

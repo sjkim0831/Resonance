@@ -123,6 +123,15 @@ def validate_step(process: dict[str, Any], step: dict[str, Any]) -> None:
         fail(f"{identity}: handoff_contract must be a STEP_HANDOFF object")
     if step.get("design_status") != "DESIGN_COMPLETE" or step["blocker_codes"]:
         fail(f"{identity}: design is blocked: {step.get('blocker_codes')}")
+    nonfunctional = step["nonfunctional_contract"]
+    if (nonfunctional.get("contractType") != "STEP_NONFUNCTIONAL"
+            or not all(isinstance(nonfunctional.get(key), dict) for key in (
+                "security", "performance", "accessibility", "responsive", "recovery", "audit", "sla", "policy", "extensions"))
+            or not isinstance(nonfunctional["performance"].get("targetP95Ms"), int)
+            or nonfunctional["performance"]["targetP95Ms"] <= 0
+            or not isinstance(nonfunctional["accessibility"].get("standard"), str)
+            or not nonfunctional["accessibility"]["standard"]):
+        fail(f"{identity}: nonfunctional_contract must be a STEP_NONFUNCTIONAL object")
 
 
 def normalize_step_contract(step: dict[str, Any]) -> dict[str, Any]:
@@ -303,6 +312,74 @@ def normalize_step_contract(step: dict[str, Any]) -> dict[str, Any]:
         normalized["handoff_contract"] = {"schemaVersion": 1, "contractType": "STEP_HANDOFF", "policy": handoff, "transitions": []}
     else:
         normalized["handoff_contract"] = {"schemaVersion": 1, "contractType": "STEP_HANDOFF", "policy": {}, "transitions": []}
+    nonfunctional = normalized.get("nonfunctional_contract")
+    if not isinstance(nonfunctional, dict):
+        nonfunctional = {}
+    security = nonfunctional.get("security") if isinstance(nonfunctional.get("security"), dict) else {}
+    performance = nonfunctional.get("performance") if isinstance(nonfunctional.get("performance"), dict) else {}
+    accessibility = nonfunctional.get("accessibility") if isinstance(nonfunctional.get("accessibility"), dict) else {}
+    responsive = nonfunctional.get("responsive") if isinstance(nonfunctional.get("responsive"), dict) else {}
+    recovery = nonfunctional.get("recovery") if isinstance(nonfunctional.get("recovery"), dict) else {}
+    audit = nonfunctional.get("audit") if isinstance(nonfunctional.get("audit"), dict) else {}
+    sla = nonfunctional.get("sla") if isinstance(nonfunctional.get("sla"), dict) else {}
+    actor_policy = normalized["actor_contract"]["policy"]
+    business_sla = normalized["business_contract"].get("slaHours")
+    nonfunctional_core_keys = {
+        "schemaVersion", "contractType", "security", "performance", "accessibility", "responsive",
+        "recovery", "audit", "sla", "policy", "extensions", "auditRequired", "wcag",
+        "genericResponseTiming", "rateLimitRequired", "secretLoggingForbidden", "sensitiveValueMasking",
+    }
+    normalized["nonfunctional_contract"] = {
+        "schemaVersion": 1,
+        "contractType": "STEP_NONFUNCTIONAL",
+        "security": {
+            "tenantIsolation": security.get("tenantIsolation", actor_policy.get("tenantIsolation", False)),
+            "projectIsolation": security.get("projectIsolation", actor_policy.get("projectIsolation", False)),
+            "serverAuthorization": security.get("serverAuthorization", actor_policy.get("serverAuthorization", True)),
+            "segregationOfDuties": security.get("segregationOfDuties", actor_policy.get("segregationOfDuties", False)),
+            "rateLimitRequired": security.get("rateLimitRequired", nonfunctional.get("rateLimitRequired", False)),
+            "secretLoggingForbidden": security.get("secretLoggingForbidden", nonfunctional.get("secretLoggingForbidden", True)),
+            "sensitiveValueMasking": security.get("sensitiveValueMasking", nonfunctional.get("sensitiveValueMasking", True)),
+        },
+        "performance": {
+            "targetP95Ms": performance.get("targetP95Ms", 500),
+            "paginationRequired": performance.get("paginationRequired", True),
+            "searchIndexRequired": performance.get("searchIndexRequired", True),
+        },
+        "accessibility": {
+            "standard": accessibility.get("standard") or nonfunctional.get("accessibility") or nonfunctional.get("wcag") or "WCAG 2.1 AA",
+            "keyboard": accessibility.get("keyboard", True),
+            "focus": accessibility.get("focus", True),
+            "errorSummary": accessibility.get("errorSummary", True),
+        },
+        "responsive": {
+            "mobile": responsive.get("mobile", "single-column"),
+            "tablet": responsive.get("tablet", "adaptive-two-column"),
+            "desktop": responsive.get("desktop", "task-optimized"),
+            "noTextOverflow": responsive.get("noTextOverflow", True),
+        },
+        "recovery": {
+            "retry": recovery.get("retry", "idempotent-only"),
+            "resumeFromLastVerifiedState": recovery.get("resumeFromLastVerifiedState", True),
+            "idempotencyRequired": recovery.get("idempotencyRequired", True),
+        },
+        "audit": {
+            "required": audit.get("required", security.get("auditRequired", security.get("audit", nonfunctional.get("auditRequired", True)))),
+            "actorRecorded": audit.get("actorRecorded", True),
+            "beforeAfterRecorded": audit.get("beforeAfterRecorded", True),
+            "correlationIdRequired": audit.get("correlationIdRequired", True),
+        },
+        "sla": {
+            "configured": business_sla is not None,
+            "targetHours": business_sla,
+            "timerStartsAt": sla.get("timerStartsAt", "STEP_ASSIGNED"),
+            "timerStopsAt": sla.get("timerStopsAt", "STEP_COMPLETED"),
+            "breachAlertRequired": sla.get("breachAlertRequired", True),
+        },
+        "policy": nonfunctional.get("policy") if isinstance(nonfunctional.get("policy"), dict) else {},
+        "extensions": (nonfunctional.get("extensions") if nonfunctional.get("contractType") == "STEP_NONFUNCTIONAL" and isinstance(nonfunctional.get("extensions"), dict)
+                       else {key: value for key, value in nonfunctional.items() if key not in nonfunctional_core_keys}),
+    }
     return normalized
 
 

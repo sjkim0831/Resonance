@@ -296,7 +296,16 @@ with candidate as (
         )
     )=5
     and e.guide_contract<>'{}'::jsonb
-    and e.nonfunctional_contract<>'{}'::jsonb
+    and e.nonfunctional_contract->>'contractType'='STEP_NONFUNCTIONAL'
+    and jsonb_typeof(e.nonfunctional_contract->'security')='object'
+    and jsonb_typeof(e.nonfunctional_contract->'performance')='object'
+    and (e.nonfunctional_contract->'performance'->>'targetP95Ms')::integer>0
+    and jsonb_typeof(e.nonfunctional_contract->'accessibility')='object'
+    and length(coalesce(e.nonfunctional_contract->'accessibility'->>'standard',''))>0
+    and jsonb_typeof(e.nonfunctional_contract->'responsive')='object'
+    and jsonb_typeof(e.nonfunctional_contract->'recovery')='object'
+    and jsonb_typeof(e.nonfunctional_contract->'audit')='object'
+    and jsonb_typeof(e.nonfunctional_contract->'sla')='object'
 ), approved as (
   update framework_step_execution_spec e
   set approval_status='APPROVED',generation_status='READY',

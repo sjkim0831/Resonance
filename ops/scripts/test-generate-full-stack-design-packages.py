@@ -119,6 +119,23 @@ class GroupFieldsByAudienceTest(unittest.TestCase):
         self.assertEqual(guide["help"], {})
         self.assertEqual(guide["extensions"], {"guideHint": "preserve-me"})
 
+    def test_normalizes_nonfunctional_contract_without_losing_targets(self) -> None:
+        normalized = GENERATOR.normalize_step_contract({
+            "actor_contract": {"actorCode": "VERIFIER", "tenantIsolation": True},
+            "business_contract": {"slaHours": 8},
+            "nonfunctional_contract": {
+                "accessibility": "WCAG_2_1_AA", "auditRequired": True,
+                "performance": {"targetP95Ms": 320}, "qualityHint": "preserve-me",
+            },
+        })
+        contract = normalized["nonfunctional_contract"]
+        self.assertEqual(contract["contractType"], "STEP_NONFUNCTIONAL")
+        self.assertEqual(contract["performance"]["targetP95Ms"], 320)
+        self.assertTrue(contract["security"]["tenantIsolation"])
+        self.assertTrue(contract["audit"]["required"])
+        self.assertEqual(contract["sla"]["targetHours"], 8)
+        self.assertEqual(contract["extensions"], {"qualityHint": "preserve-me"})
+
     def test_splits_catalog_group_using_nested_audiences(self) -> None:
         contract = [
             {
