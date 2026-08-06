@@ -58,6 +58,11 @@ WHERE contract.process_code=changed.process_code
 
 UPDATE framework_professional_screen_contract
 SET actor_code='CALCULATOR',
+    field_contract=coalesce((
+      SELECT jsonb_agg(field.value || jsonb_build_object('permissionCode','CALCULATOR:USER')
+                       ORDER BY coalesce((field.value->>'fieldOrder')::integer,9999),field.value->>'fieldCode')::text
+      FROM jsonb_array_elements(framework_try_jsonb(field_contract)) field(value)
+    ),'[]'::jsonb::text),
     updated_by='PROFESSIONAL_REVIEW',
     updated_at=current_timestamp
 WHERE process_code='REPORT_CERTIFICATION'
@@ -69,7 +74,22 @@ WITH changed(process_code,step_code,user_path) AS (
     ('EMISSION_CALCULATION','EMISSION_CALCULATION_01_PLAN','/emission/calculation?mode=plan')
 )
 UPDATE framework_step_execution_spec spec
-SET screen_contract=jsonb_set(coalesce(spec.screen_contract,'{}'::jsonb),'{userPath}',to_jsonb(changed.user_path),true),
+SET screen_contract=coalesce((
+      SELECT jsonb_agg(
+        CASE WHEN screen.value->>'audience'='USER'
+          THEN screen.value || jsonb_build_object(
+            'plannedRoute',changed.user_path,
+            'actualRoute',changed.user_path
+          )
+          ELSE screen.value
+        END
+        ORDER BY screen.ordinality
+      )
+      FROM jsonb_array_elements(
+        CASE WHEN jsonb_typeof(spec.screen_contract)='array'
+          THEN spec.screen_contract ELSE '[]'::jsonb END
+      ) WITH ORDINALITY screen(value,ordinality)
+    ),'[]'::jsonb),
     guide_contract=jsonb_set(coalesce(spec.guide_contract,'{}'::jsonb),'{userPath}',to_jsonb(changed.user_path),true),
     field_contract=jsonb_set(
       coalesce(spec.field_contract,'{}'::jsonb),
@@ -92,6 +112,21 @@ WHERE spec.process_code=changed.process_code AND spec.step_code=changed.step_cod
 
 UPDATE framework_step_execution_spec
 SET actor_contract=jsonb_set(coalesce(actor_contract,'{}'::jsonb),'{actorCode}',to_jsonb('CALCULATOR'::text),true),
+    command_contract=coalesce((
+      SELECT jsonb_agg(command.value || jsonb_build_object('actorCode','CALCULATOR') ORDER BY command.ordinality)
+      FROM jsonb_array_elements(
+        CASE WHEN jsonb_typeof(command_contract)='array' THEN command_contract ELSE '[]'::jsonb END
+      ) WITH ORDINALITY command(value,ordinality)
+    ),'[]'::jsonb),
+    guide_contract=jsonb_set(coalesce(guide_contract,'{}'::jsonb),'{actorCode}',to_jsonb('CALCULATOR'::text),true),
+    field_contract=jsonb_set(
+      coalesce(field_contract,'{}'::jsonb),'{fields}',
+      coalesce((
+        SELECT jsonb_agg(field.value || jsonb_build_object('permissionCode','CALCULATOR:USER')
+                         ORDER BY coalesce((field.value->>'fieldOrder')::integer,9999),field.value->>'fieldCode')
+        FROM jsonb_array_elements(coalesce(field_contract->'fields','[]'::jsonb)) field(value)
+      ),'[]'::jsonb),true
+    ),
     spec_version=spec_version+1,
     design_status='DESIGN_COMPLETE',
     approval_status='APPROVED',
@@ -99,6 +134,15 @@ SET actor_contract=jsonb_set(coalesce(actor_contract,'{}'::jsonb),'{actorCode}',
     blocker_codes='[]'::jsonb,
     updated_at=current_timestamp
 WHERE process_code='REPORT_CERTIFICATION' AND step_code='REPORT_CERTIFICATION_02_WORK';
+
+UPDATE framework_page_field_definition field
+SET permission_code='CALCULATOR:USER',
+    updated_at=current_timestamp
+FROM framework_page_design page
+WHERE field.page_design_id=page.page_design_id
+  AND page.process_code='REPORT_CERTIFICATION'
+  AND page.step_code='REPORT_CERTIFICATION_02_WORK'
+  AND page.audience='USER';
 
 UPDATE framework_step_execution_spec
 SET transition_contract=jsonb_set(coalesce(transition_contract,'{}'::jsonb),'{toState}',to_jsonb('COMPLETED'::text),true),
@@ -111,10 +155,10 @@ SET transition_contract=jsonb_set(coalesce(transition_contract,'{}'::jsonb),'{to
 WHERE process_code='REGULATORY_SUBMISSION' AND step_code='REGULATORY_SUBMISSION_S4';
 
 UPDATE framework_step_execution_spec
-SET source_hash=encode(digest(convert_to(concat_ws('|',actor_contract::text,business_contract::text,
+SET source_hash=encode(sha256(convert_to(concat_ws('|',actor_contract::text,business_contract::text,
     transition_contract::text,input_contract::text,output_contract::text,screen_contract::text,
     field_contract::text,command_contract::text,api_contract::text,persistence_contract::text,
-    handoff_contract::text,test_contract::text,guide_contract::text,nonfunctional_contract::text),'UTF8'),'sha256'),'hex')
+    handoff_contract::text,test_contract::text,guide_contract::text,nonfunctional_contract::text),'UTF8')),'hex')
 WHERE (process_code,step_code) IN (
   ('ACTIVITY_DATA','ACTIVITY_DATA_01_PLAN'),
   ('EMISSION_CALCULATION','EMISSION_CALCULATION_01_PLAN'),
