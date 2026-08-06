@@ -1062,6 +1062,8 @@ if [[ "$PLAN_RUNTIME_REQUIRED" != "true" ]]; then
   done < <(git diff --name-only --diff-filter=ACMR "$deployed_commit" "$target_commit")
   if git diff --name-only "$deployed_commit" "$target_commit" -- \
       ops/scripts/auto-deploy-main.sh \
+      ops/scripts/select-catalog-contract-tests.sh \
+      ops/scripts/test-select-catalog-contract-tests.sh \
       ops/scripts/sync-unified-asset-catalog.sh \
       ops/scripts/test-atomic-asset-e4b-validation.sh \
       ops/scripts/test-catalog-identity-parallel-deploy.sh \
@@ -1117,20 +1119,15 @@ if [[ "$PLAN_RUNTIME_REQUIRED" != "true" ]]; then
       ops/kubernetes/postgres-haproxy-config.yaml \
       .github/workflows/carbonet-push-deploy.yml |
       grep -q .; then
-    run_parallel_contract_tests \
-      ops/scripts/test-catalog-identity-parallel-deploy.sh \
-      ops/scripts/test-catalog-overlay-fast-path.sh \
-      ops/scripts/test-atomic-asset-e4b-validation.sh \
-      ops/scripts/test-no-change-preflight-fast-path.sh \
-      ops/scripts/test-candidate-release-rollout-gate.sh \
-      ops/scripts/test-frontend-deploy-performance-budget.sh \
-      ops/scripts/test-deploy-phase-telemetry.sh \
-      ops/scripts/test-database-plan-flyway-gate.sh \
-      ops/scripts/test-process-worker-deploy-marker.sh \
-      ops/scripts/test-frontend-parallel-build-pipeline.sh \
-      ops/scripts/test-push-deploy-dispatch.sh \
-      ops/scripts/test-github-deploy-webhook.sh \
-      ops/scripts/test-post-reboot-runtime-recovery.sh
+    bash ops/scripts/test-select-catalog-contract-tests.sh
+    mapfile -t catalog_contract_tests < <(
+      bash ops/scripts/select-catalog-contract-tests.sh "$deployed_commit" "$target_commit"
+    )
+    if (( ${#catalog_contract_tests[@]} > 0 )); then
+      run_parallel_contract_tests "${catalog_contract_tests[@]}"
+    else
+      echo "[auto-deploy] catalog contract tests skipped: no mapped contract impact"
+    fi
     if git diff --name-only "$deployed_commit" "$target_commit" -- \
         ops/scripts/carbonet-auto-deploy-failure-handler.sh \
         ops/scripts/carbonet-deploy-notify.sh \
