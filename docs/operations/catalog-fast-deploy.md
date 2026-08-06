@@ -17,3 +17,7 @@ The fast path remains fail-closed:
 The deployment telemetry records `incremental_plan`, `platform_preflight`,
 `catalog_validation`, and `catalog_sync` separately so a cached check cannot be
 mistaken for an unverified deployment.
+
+Documentation-only deltas still update and validate their source-asset rows,
+but reuse the unchanged E4B graph invariant. Source, screen, configuration,
+design, automation, and database deltas continue to run the global E4B audit.
