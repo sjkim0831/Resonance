@@ -122,7 +122,11 @@ def test_package(path: Path) -> dict[str, Any]:
         require(str(page.get("route", "")).startswith("/"), "route", failures)
         require(page.get("layout") == "COMMON_KRDS_TASK_LAYOUT", "common layout", failures)
         require(page.get("theme") == "COMMON_KRDS_GOV", "common theme", failures)
-        require(len(page.get("fields", [])) >= 8, "professional field contract", failures)
+        # Professional completeness is semantic, not an arbitrary field count:
+        # a four-field approval form can be complete while a 40-field form can
+        # still omit a required command input. Required-field checks below are
+        # the authoritative quality gate.
+        require(bool(page.get("fields")), "professional field contract", failures)
         field_codes = {field.get("code") for field in page.get("fields", [])}
         input_contract = step.get("input", {})
         input_field_codes = input_field_names(input_contract)

@@ -723,6 +723,11 @@ def render_step(
                 "screen_contract audience must be USER or ADMIN; "
                 f"keys={sorted(page.keys())}"
             )
+        # Audience-specific contracts must not create an empty sibling page.
+        # For example, an ADMIN-only governance form may still carry a user
+        # navigation hint in a legacy compact screen object.
+        if field_by_audience and "*" not in field_by_audience and audience not in field_by_audience:
+            continue
         page_fields = copy.deepcopy(field_by_audience.get(audience, field_by_audience.get("*", [])))
         existing_field_codes = {field.get("code") or field.get("fieldCode") for field in page_fields}
         server_context = {
