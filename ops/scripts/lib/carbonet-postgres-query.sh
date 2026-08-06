@@ -16,15 +16,17 @@ carbonet_postgres_query_init() {
   CARBONET_PG_SECRET_KEY="${CARBONET_PG_SECRET_KEY:-postgres-password}"
   CARBONET_PG_CONTAINER="${CARBONET_POSTGRES_CONTAINER:-patroni}"
   CARBONET_PG_MODE="kubectl"
-  CARBONET_PG_PASSWORD=""
+  CARBONET_PG_PASSWORD="${CARBONET_PG_PASSWORD:-}"
   CARBONET_PG_LEADER=""
 
   if command -v psql >/dev/null 2>&1; then
-    CARBONET_PG_PASSWORD="$(
-      kubectl -n "$CARBONET_PG_NAMESPACE" get secret "$CARBONET_PG_SECRET" \
-        -o "jsonpath={.data.${CARBONET_PG_SECRET_KEY}}" 2>/dev/null |
-        base64 -d 2>/dev/null || true
-    )"
+    if [[ -z "$CARBONET_PG_PASSWORD" ]]; then
+      CARBONET_PG_PASSWORD="$(
+        kubectl -n "$CARBONET_PG_NAMESPACE" get secret "$CARBONET_PG_SECRET" \
+          -o "jsonpath={.data.${CARBONET_PG_SECRET_KEY}}" 2>/dev/null |
+          base64 -d 2>/dev/null || true
+      )"
+    fi
     if [[ -n "$CARBONET_PG_PASSWORD" ]] && \
        PGPASSWORD="$CARBONET_PG_PASSWORD" \
          psql -w -X -qAt \
@@ -70,4 +72,3 @@ carbonet_postgres_query() {
     psql -h 127.0.0.1 -U "$CARBONET_PG_USER" \
       -d "$CARBONET_PG_DATABASE" -Atqc "$sql"
 }
-

@@ -4,16 +4,18 @@ set -euo pipefail
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 sync_script="$root/ops/scripts/sync-unified-asset-catalog.sh"
 deploy_script="$root/ops/scripts/auto-deploy-main.sh"
+postgres_adapter="$root/ops/scripts/lib/carbonet-postgres-query.sh"
 
 bash -n "$sync_script"
 bash -n "$deploy_script"
 
-python3 - "$sync_script" "$deploy_script" <<'PY'
+python3 - "$sync_script" "$deploy_script" "$postgres_adapter" <<'PY'
 from pathlib import Path
 import sys
 
 sync = Path(sys.argv[1]).read_text(encoding="utf-8")
 deploy = Path(sys.argv[2]).read_text(encoding="utf-8")
+adapter = Path(sys.argv[3]).read_text(encoding="utf-8")
 
 validation = sync.index("-- E4B selection integrity belongs")
 commit = sync.index("COMMIT;", validation)
@@ -33,6 +35,11 @@ assert "IF (SELECT is_full FROM asset_sync_control) THEN" in sync
 assert "JOIN source_asset_stage changed ON changed.asset_path=asset.asset_path" in sync
 assert '-v validate_e4b="$validate_e4b"' in sync
 assert 'echo verified || echo unchanged' in sync
+assert 'chmod 0600 "$password_file"' in sync
+assert 'password_prefetch_pid="$!"' in sync
+assert 'CARBONET_PG_PASSWORD="$(<"$password_file")"' in sync
+assert 'rm -f "$password_file"' in sync
+assert 'CARBONET_PG_PASSWORD="${CARBONET_PG_PASSWORD:-}"' in adapter
 assert "CREATE TEMP TABLE asset_sync_delta" in sync
 assert "asset_sync_delta(active_before integer,additions integer,deletions integer) ON COMMIT DROP" in sync
 assert sync.count("CREATE TEMP TABLE asset_sync_delta") == 1

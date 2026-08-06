@@ -14,9 +14,29 @@ tsv="$(mktemp)"
 deleted_tsv="$(mktemp)"
 manifest_tsv="$(mktemp)"
 sql="$(mktemp)"
-trap 'rm -f "$tsv" "$deleted_tsv" "$manifest_tsv" "$sql"' EXIT
+password_file="$(mktemp)"
+password_prefetch_pid=""
+chmod 0600 "$password_file"
+cleanup_sync() {
+  if [[ -n "$password_prefetch_pid" ]] && kill -0 "$password_prefetch_pid" 2>/dev/null; then
+    kill "$password_prefetch_pid" 2>/dev/null || true
+    wait "$password_prefetch_pid" 2>/dev/null || true
+  fi
+  rm -f "$tsv" "$deleted_tsv" "$manifest_tsv" "$sql" "$password_file"
+}
+trap cleanup_sync EXIT INT TERM
 
 cd "$ROOT_DIR"
+
+# Credential discovery is independent of Git delta analysis and SQL assembly.
+# Overlap it with those CPU-only steps, keep it process-local, and let the
+# shared adapter retry normally when the prefetch is unavailable.
+(
+  kubectl -n "$NAMESPACE" get secret postgres-ha-secrets \
+    -o jsonpath='{.data.postgres-password}' 2>/dev/null |
+    base64 -d 2>/dev/null || true
+) >"$password_file" &
+password_prefetch_pid="$!"
 
 asset_type() {
   local path="$1"
@@ -378,6 +398,14 @@ fi
 source "$POSTGRES_ADAPTER"
 CARBONET_PG_NAMESPACE="$NAMESPACE"
 CARBONET_PG_CONTAINER="$POSTGRES_CONTAINER"
+if wait "$password_prefetch_pid"; then
+  password_prefetch_pid=""
+  CARBONET_PG_PASSWORD="$(<"$password_file")"
+  export CARBONET_PG_PASSWORD
+else
+  password_prefetch_pid=""
+fi
+rm -f "$password_file"
 carbonet_postgres_query_init
 if [[ "$CARBONET_PG_MODE" == "direct" ]]; then
   sed -i \
