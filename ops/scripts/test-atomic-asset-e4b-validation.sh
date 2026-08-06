@@ -45,6 +45,11 @@ assert 'CARBONET_PG_DEFER_WRITABLE_CHECK:-false' in adapter
 assert "CARBONET_WRITABLE_LEADER_REQUIRED" in sync
 assert "run_catalog_sync_via_kubectl()" in sync
 assert "direct PostgreSQL path unavailable; retrying elected Patroni leader" in sync
+assert 'direct_sql="$(mktemp)"' in sync
+assert 'cp "$sql" "$direct_sql"' in sync
+assert '"$direct_sql"' in sync
+assert '-f "$direct_sql" 2>"$direct_error"' in sync
+assert 'rm -f "$tsv" "$deleted_tsv" "$manifest_tsv" "$sql" "$direct_sql"' in sync
 assert "CREATE TEMP TABLE asset_sync_delta" in sync
 assert "asset_sync_delta(active_before integer,additions integer,deletions integer) ON COMMIT DROP" in sync
 assert sync.count("CREATE TEMP TABLE asset_sync_delta") == 1

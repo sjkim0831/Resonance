@@ -14,6 +14,7 @@ tsv="$(mktemp)"
 deleted_tsv="$(mktemp)"
 manifest_tsv="$(mktemp)"
 sql="$(mktemp)"
+direct_sql="$(mktemp)"
 password_file="$(mktemp)"
 direct_error="$(mktemp)"
 password_prefetch_pid=""
@@ -23,7 +24,7 @@ cleanup_sync() {
     kill "$password_prefetch_pid" 2>/dev/null || true
     wait "$password_prefetch_pid" 2>/dev/null || true
   fi
-  rm -f "$tsv" "$deleted_tsv" "$manifest_tsv" "$sql" "$password_file" "$direct_error"
+  rm -f "$tsv" "$deleted_tsv" "$manifest_tsv" "$sql" "$direct_sql" "$password_file" "$direct_error"
 }
 trap cleanup_sync EXIT INT TERM
 
@@ -432,11 +433,15 @@ run_catalog_sync_via_kubectl() {
 }
 
 if [[ "$CARBONET_PG_MODE" == "direct" ]]; then
+  # Keep the canonical SQL bound to Pod-local /tmp paths. If the direct
+  # connection races a Patroni switchover, the fallback copies this untouched
+  # file into the elected leader. Only a disposable copy may contain host paths.
+  cp "$sql" "$direct_sql"
   sed -i \
     -e "s#/tmp/unified-source-assets.tsv#$tsv#g" \
     -e "s#/tmp/unified-source-assets-deleted.tsv#$deleted_tsv#g" \
     -e "s#/tmp/unified-source-assets-manifest.tsv#$manifest_tsv#g" \
-    "$sql"
+    "$direct_sql"
   if ! PGPASSWORD="$CARBONET_PG_PASSWORD" \
     psql -w -X -q \
       -h "$CARBONET_PG_HOST" -p "$CARBONET_PG_PORT" \
@@ -444,7 +449,7 @@ if [[ "$CARBONET_PG_MODE" == "direct" ]]; then
       -v ON_ERROR_STOP=1 -v sync_scope="GIT_SOURCE_${sync_mode^^}" \
       -v is_full="$([[ "$sync_mode" == "full" ]] && echo true || echo false)" \
       -v validate_e4b="$validate_e4b" \
-      -f "$sql" 2>"$direct_error"; then
+      -f "$direct_sql" 2>"$direct_error"; then
     if grep -Eqi \
       'CARBONET_WRITABLE_LEADER_REQUIRED|could not connect|connection refused|connection timed out|server closed the connection|no route to host' \
       "$direct_error"; then
