@@ -101,6 +101,24 @@ class GroupFieldsByAudienceTest(unittest.TestCase):
         self.assertEqual(business["exceptions"], [])
         self.assertEqual(business["extensions"], {"domainHint": "preserve-me"})
 
+    def test_normalizes_guide_contract_without_losing_routes(self) -> None:
+        normalized = GENERATOR.normalize_step_contract({
+            "guide_contract": {
+                "processCode": "P1", "stepCode": "S1", "actorCode": "VERIFIER",
+                "title": "검증", "purpose": "자료를 검증한다.", "entryCondition": "SUBMITTED",
+                "completion": "오류가 없다.", "userPath": "/work/verify", "nextStep": "runtime-resolved",
+                "guideHint": "preserve-me",
+            },
+        })
+        guide = normalized["guide_contract"]
+        self.assertEqual(guide["contractType"], "STEP_GUIDE")
+        self.assertEqual(guide["completionCondition"], "오류가 없다.")
+        self.assertEqual(guide["userPath"], "/work/verify")
+        self.assertIsNone(guide["nextStepCode"])
+        self.assertEqual(guide["actions"], [])
+        self.assertEqual(guide["help"], {})
+        self.assertEqual(guide["extensions"], {"guideHint": "preserve-me"})
+
     def test_splits_catalog_group_using_nested_audiences(self) -> None:
         contract = [
             {

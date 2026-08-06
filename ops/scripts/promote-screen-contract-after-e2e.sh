@@ -98,6 +98,10 @@ WHERE contract.process_code=:'process_code'
       AND length(coalesce(spec.business_contract->>'stepName',''))>0
       AND length(coalesce(spec.business_contract->>'requirement',''))>0
       AND length(coalesce(spec.business_contract->>'completionRule',''))>0
+      AND spec.guide_contract->>'contractType'='STEP_GUIDE'
+      AND length(coalesce(spec.guide_contract->>'title',''))>0
+      AND length(coalesce(spec.guide_contract->>'purpose',''))>0
+      AND length(coalesce(spec.guide_contract->>'completionCondition',''))>0
       AND spec.transition_contract->>'contractType'='STEP_TRANSITION'
       AND length(coalesce(spec.transition_contract->>'fromState',''))>0
       AND length(coalesce(spec.transition_contract->>'toState',''))>0

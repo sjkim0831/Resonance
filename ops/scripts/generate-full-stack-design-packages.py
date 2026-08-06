@@ -71,6 +71,27 @@ def validate_step(process: dict[str, Any], step: dict[str, Any]) -> None:
             or not isinstance(business_contract.get("policy"), dict)
             or not isinstance(business_contract.get("extensions"), dict)):
         fail(f"{identity}: business_contract must be a STEP_BUSINESS object")
+    guide_contract = step["guide_contract"]
+    if (guide_contract.get("contractType") != "STEP_GUIDE"
+            or not isinstance(guide_contract.get("processCode"), str)
+            or not guide_contract["processCode"]
+            or not isinstance(guide_contract.get("stepCode"), str)
+            or not guide_contract["stepCode"]
+            or not isinstance(guide_contract.get("actorCode"), str)
+            or not guide_contract["actorCode"]
+            or not isinstance(guide_contract.get("title"), str)
+            or not guide_contract["title"]
+            or not isinstance(guide_contract.get("purpose"), str)
+            or not guide_contract["purpose"]
+            or not isinstance(guide_contract.get("entryCondition"), str)
+            or not guide_contract["entryCondition"]
+            or not isinstance(guide_contract.get("completionCondition"), str)
+            or not guide_contract["completionCondition"]
+            or not isinstance(guide_contract.get("actions"), list)
+            or not isinstance(guide_contract.get("help"), dict)
+            or not isinstance(guide_contract.get("policy"), dict)
+            or not isinstance(guide_contract.get("extensions"), dict)):
+        fail(f"{identity}: guide_contract must be a STEP_GUIDE object")
     transition_contract = step["transition_contract"]
     if (transition_contract.get("contractType") != "STEP_TRANSITION"
             or not isinstance(transition_contract.get("fromState"), str)
@@ -112,6 +133,38 @@ def normalize_step_contract(step: dict[str, Any]) -> dict[str, Any]:
     normalization only; it never invents fields, actions, or business rules.
     """
     normalized = copy.deepcopy(step)
+    guide = normalized.get("guide_contract")
+    if not isinstance(guide, dict):
+        guide = {}
+    guide_core_keys = {
+        "schemaVersion", "contractType", "processCode", "stepCode", "stepOrder", "workTypeCode",
+        "actorCode", "title", "purpose", "entryCondition", "completionCondition", "completion",
+        "userPath", "adminPath", "relatedBusinessRoute", "nextStepCode", "nextStep", "nextAction",
+        "actions", "help", "policy", "extensions",
+    }
+    normalized["guide_contract"] = {
+        "schemaVersion": 1,
+        "contractType": "STEP_GUIDE",
+        "processCode": guide.get("processCode"),
+        "stepCode": guide.get("stepCode"),
+        "stepOrder": guide.get("stepOrder"),
+        "workTypeCode": guide.get("workTypeCode"),
+        "actorCode": guide.get("actorCode"),
+        "title": guide.get("title"),
+        "purpose": guide.get("purpose"),
+        "entryCondition": guide.get("entryCondition"),
+        "completionCondition": guide.get("completionCondition") or guide.get("completion"),
+        "userPath": guide.get("userPath"),
+        "adminPath": guide.get("adminPath"),
+        "relatedBusinessRoute": guide.get("relatedBusinessRoute"),
+        "nextStepCode": guide.get("nextStepCode") or (guide.get("nextStep") if guide.get("nextStep") != "runtime-resolved" else None),
+        "nextAction": guide.get("nextAction"),
+        "actions": guide.get("actions") if isinstance(guide.get("actions"), list) else [],
+        "help": guide.get("help") if isinstance(guide.get("help"), dict) else {},
+        "policy": guide.get("policy") if isinstance(guide.get("policy"), dict) else {},
+        "extensions": (guide.get("extensions") if guide.get("contractType") == "STEP_GUIDE" and isinstance(guide.get("extensions"), dict)
+                       else {key: value for key, value in guide.items() if key not in guide_core_keys}),
+    }
     business = normalized.get("business_contract")
     if not isinstance(business, dict):
         business = {}

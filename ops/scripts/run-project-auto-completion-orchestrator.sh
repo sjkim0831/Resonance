@@ -263,6 +263,10 @@ with candidate as (
     and e.input_contract->'schema'<>'{}'::jsonb
     and e.output_contract->>'contractType'='STEP_OUTPUT'
     and e.output_contract->'schema'<>'{}'::jsonb
+    and e.guide_contract->>'contractType'='STEP_GUIDE'
+    and length(coalesce(e.guide_contract->>'title',''))>0
+    and length(coalesce(e.guide_contract->>'purpose',''))>0
+    and length(coalesce(e.guide_contract->>'completionCondition',''))>0
     and jsonb_array_length(e.screen_contract)>0
     and jsonb_array_length(coalesce(e.field_contract->'fields','[]'::jsonb))>0
     and not exists (
