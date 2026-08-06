@@ -1023,6 +1023,33 @@ sync_react_asset_prune_worker_if_required() {
   fi
 }
 
+run_parallel_contract_tests() {
+  local log_dir test_path test_name index status failed
+  local -a pids=() tests=("$@")
+  log_dir="$ROOT_DIR/var/logs/catalog-contract-tests-${target_commit:0:10}"
+  rm -rf "$log_dir"
+  mkdir -p "$log_dir"
+  index=0
+  for test_path in "${tests[@]}"; do
+    test_name="$(basename "$test_path" .sh)"
+    (bash "$test_path") >"$log_dir/$index-$test_name.log" 2>&1 &
+    pids+=("$!")
+    index=$((index + 1))
+  done
+  failed=0
+  for index in "${!pids[@]}"; do
+    status=0
+    wait "${pids[$index]}" || status=$?
+    cat "$log_dir/$index-$(basename "${tests[$index]}" .sh).log"
+    (( status == 0 )) || failed=$((failed + 1))
+  done
+  if (( failed > 0 )); then
+    echo "[auto-deploy] parallel catalog contract tests failed=$failed total=${#tests[@]} logs=$log_dir" >&2
+    return 1
+  fi
+  echo "[auto-deploy] parallel catalog contract tests PASS jobs=${#tests[@]} logs=$log_dir"
+}
+
 # Documentation, design metadata, catalog and automation-only changes do not
 # alter the running application. Fast-forward and refresh the searchable source
 # catalog without an unnecessary DB dump, JVM build, image build or rollout.
@@ -1090,19 +1117,20 @@ if [[ "$PLAN_RUNTIME_REQUIRED" != "true" ]]; then
       ops/kubernetes/postgres-haproxy-config.yaml \
       .github/workflows/carbonet-push-deploy.yml |
       grep -q .; then
-    bash ops/scripts/test-catalog-identity-parallel-deploy.sh
-    bash ops/scripts/test-catalog-overlay-fast-path.sh
-    bash ops/scripts/test-atomic-asset-e4b-validation.sh
-    bash ops/scripts/test-no-change-preflight-fast-path.sh
-    bash ops/scripts/test-candidate-release-rollout-gate.sh
-    bash ops/scripts/test-frontend-deploy-performance-budget.sh
-    bash ops/scripts/test-deploy-phase-telemetry.sh
-    bash ops/scripts/test-database-plan-flyway-gate.sh
-    bash ops/scripts/test-process-worker-deploy-marker.sh
-    bash ops/scripts/test-frontend-parallel-build-pipeline.sh
-    bash ops/scripts/test-push-deploy-dispatch.sh
-    bash ops/scripts/test-github-deploy-webhook.sh
-    bash ops/scripts/test-post-reboot-runtime-recovery.sh
+    run_parallel_contract_tests \
+      ops/scripts/test-catalog-identity-parallel-deploy.sh \
+      ops/scripts/test-catalog-overlay-fast-path.sh \
+      ops/scripts/test-atomic-asset-e4b-validation.sh \
+      ops/scripts/test-no-change-preflight-fast-path.sh \
+      ops/scripts/test-candidate-release-rollout-gate.sh \
+      ops/scripts/test-frontend-deploy-performance-budget.sh \
+      ops/scripts/test-deploy-phase-telemetry.sh \
+      ops/scripts/test-database-plan-flyway-gate.sh \
+      ops/scripts/test-process-worker-deploy-marker.sh \
+      ops/scripts/test-frontend-parallel-build-pipeline.sh \
+      ops/scripts/test-push-deploy-dispatch.sh \
+      ops/scripts/test-github-deploy-webhook.sh \
+      ops/scripts/test-post-reboot-runtime-recovery.sh
     if git diff --name-only "$deployed_commit" "$target_commit" -- \
         ops/scripts/carbonet-auto-deploy-failure-handler.sh \
         ops/scripts/carbonet-deploy-notify.sh \
@@ -1210,6 +1238,7 @@ if [[ "$PLAN_RUNTIME_REQUIRED" != "true" ]]; then
   if [[ "$backstage_only_change" == "true" ]]; then
     echo "[auto-deploy] Backstage-only change: synchronizing source assets without an application rollout"
   fi
+  record_deploy_phase "catalog_validation"
   # Identity reconciliation and source-catalog indexing read independent
   # systems. Run them concurrently, then join fail-closed before role E2E and
   # the success marker. This removes the longest sequential tail without

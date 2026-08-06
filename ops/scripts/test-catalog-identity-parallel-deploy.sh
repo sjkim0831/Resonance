@@ -14,6 +14,17 @@ from pathlib import Path
 import sys
 
 source = Path(sys.argv[1]).read_text(encoding="utf-8")
+contract_start = source.index("run_parallel_contract_tests() {")
+contract_end = source.index("# Documentation, design metadata", contract_start)
+contract = source[contract_start:contract_end]
+assert 'pids+=("$!")' in contract
+assert 'wait "${pids[$index]}"' in contract
+assert "parallel catalog contract tests failed" in contract
+assert "return 1" in contract
+catalog_call = source.index("run_parallel_contract_tests \\")
+catalog_call_end = source.index("if git diff --name-only", catalog_call)
+assert source[catalog_call:catalog_call_end].count("ops/scripts/test-") == 13
+assert 'record_deploy_phase "catalog_validation"' in source
 start = source.index('catalog_identity_sync_log="$ROOT_DIR/var/logs/catalog-identity-sync-')
 end = source.index('record_deploy_phase "backstage_visual_e2e"', start)
 block = source[start:end]
