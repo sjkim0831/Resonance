@@ -874,22 +874,26 @@ generated_paths=(
   projects/carbonet-frontend/source/tsconfig.app.tsbuildinfo
   projects/carbonet-frontend/target
 )
-for generated_path in "${generated_paths[@]}"; do
-  # A missing/ignored path must not cancel restoration of every later path.
-  # Capture the complete result instead of piping into `grep -q`: with
-  # pipefail enabled, grep's early exit can SIGPIPE git and falsely report that
-  # a large tracked directory has no files.
-  tracked_generated_files="$(git ls-files -- "$generated_path")"
-  if [[ -n "$tracked_generated_files" ]]; then
-    git restore --worktree -- "$generated_path"
-  fi
-done
+if [[ "${worktree_advanced:-false}" != "true" ]]; then
+  for generated_path in "${generated_paths[@]}"; do
+    # A missing/ignored path must not cancel restoration of every later path.
+    # Capture the complete result instead of piping into `grep -q`: with
+    # pipefail enabled, grep's early exit can SIGPIPE git and falsely report that
+    # a large tracked directory has no files.
+    tracked_generated_files="$(git ls-files -- "$generated_path")"
+    if [[ -n "$tracked_generated_files" ]]; then
+      git restore --worktree -- "$generated_path"
+    fi
+  done
 
-remaining_generated_changes="$(git diff --name-only -- "${generated_paths[@]}")"
-if [[ -n "$remaining_generated_changes" ]]; then
-  echo "[auto-deploy] refusing deployment: generated files could not be restored" >&2
-  printf '%s\n' "$remaining_generated_changes" >&2
-  exit 13
+  remaining_generated_changes="$(git diff --name-only -- "${generated_paths[@]}")"
+  if [[ -n "$remaining_generated_changes" ]]; then
+    echo "[auto-deploy] refusing deployment: generated files could not be restored" >&2
+    printf '%s\n' "$remaining_generated_changes" >&2
+    exit 13
+  fi
+else
+  echo "[auto-deploy] generated artifact restore skipped: worktree advanced cleanly"
 fi
 
 declare -a deploy_changed_paths=()

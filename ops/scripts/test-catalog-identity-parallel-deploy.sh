@@ -52,6 +52,11 @@ assert 'platform_preflight_now - platform_preflight_cached_at < 300' in source
 assert 'postgres-patroni-[0-9]+' in source
 assert 'mv "${platform_preflight_cache}.tmp" "$platform_preflight_cache"' in source
 assert "platform preflight reused: verified within 5 minutes" in source
+generated_restore = source.index('if [[ "${worktree_advanced:-false}" != "true" ]]')
+generated_restore_end = source.index("declare -a deploy_changed_paths=()", generated_restore)
+generated_restore_block = source[generated_restore:generated_restore_end]
+assert "generated artifact restore skipped: worktree advanced cleanly" in generated_restore_block
+assert 'git restore --worktree -- "$generated_path"' in generated_restore_block
 start = source.index('catalog_identity_sync_log="$ROOT_DIR/var/logs/catalog-identity-sync-')
 end = source.index('record_deploy_phase "backstage_visual_e2e"', start)
 block = source[start:end]
