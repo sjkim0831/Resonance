@@ -125,6 +125,14 @@ public class AdminMainAuthInterceptor implements HandlerInterceptor {
 
     private void redirectToLogin(HttpServletRequest request, HttpServletResponse response) throws Exception {
         String requestUri = request.getRequestURI();
+        if (isAjaxRequest(request) || isAdminDataRequest(requestUri)) {
+            String message = isEnglishRequest(request) ? "Authentication is required." : "로그인이 필요합니다.";
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            response.setCharacterEncoding(StandardCharsets.UTF_8.name());
+            response.setContentType("application/json;charset=UTF-8");
+            response.getWriter().write("{\"status\":401,\"message\":\"" + escapeJson(message) + "\"}");
+            return;
+        }
         String language = request.getParameter("language");
         boolean english = (!ObjectUtils.isEmpty(requestUri) && requestUri.startsWith("/en/admin"))
                 || "en".equalsIgnoreCase(language);
@@ -133,6 +141,12 @@ public class AdminMainAuthInterceptor implements HandlerInterceptor {
         } else {
             response.sendRedirect("/admin/login/loginView");
         }
+    }
+
+    private boolean isAdminDataRequest(String requestUri) {
+        String normalized = safeString(requestUri).toLowerCase(Locale.ROOT);
+        return normalized.endsWith("/page-data")
+                || normalized.contains("/api/");
     }
 
     private boolean shouldSkipAuthorization(HttpServletRequest request, String requestUri) {
