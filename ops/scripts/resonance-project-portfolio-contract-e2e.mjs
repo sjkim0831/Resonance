@@ -77,9 +77,9 @@ try {
     const radio = await preferred.count() ? preferred : page.locator('input[type="radio"]').first();
     await radio.click();
     await page.getByText("1단계 완료 기준", { exact: true }).waitFor({ timeout: 5_000 });
-    const completionSection = page.getByText("1단계 완료 기준", { exact: true }).locator("..");
-    const completionText = await completionSection.innerText();
-    const completion = completionText.match(/([0-5])\/5/)?.[0] || "";
+    const bodyText = await page.locator("body").innerText();
+    const completionOffset = bodyText.indexOf("1단계 완료 기준");
+    const completion = bodyText.slice(completionOffset, completionOffset + 160).match(/([0-5])\/5/)?.[0] || "";
     assert(Number(completion.split("/")[0]) >= 3, `portfolio selection did not load its scoped workflow completion=${completion}`);
     assert(new URL(page.url()).searchParams.has("projectId"), "selected project was not persisted in the route");
     pass("PROJECT_PORTFOLIO_HAPPY", { route: "/emission/project-portfolio", selected: true, completion, localizedStatus, statusFilterRows: statusTexts.length });
