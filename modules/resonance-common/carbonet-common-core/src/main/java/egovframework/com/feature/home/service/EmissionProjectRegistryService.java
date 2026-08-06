@@ -582,8 +582,14 @@ public class EmissionProjectRegistryService {
             }
             jdbc.update("INSERT INTO framework_work_assignment_audit(tenant_id,project_id,process_code,step_code,actor_code,account_id,assigned_by) VALUES(?,?,?,?,?,?,?)",tenant,projectId,processCode,assignment.get("stepCode"),assignment.get("actorCode"),assignment.get("accountId"),user);
         }
-        Map<String,Object> result=workAssignmentWorkspace(tenant,user,override,projectId,processCode);
-        result.put("success",true);result.put("assignedStepCount",normalized.size());result.put("updatedTaskCount",updated);return result;
+        Map<String,Object> result=new LinkedHashMap<>();
+        result.put("success",true);
+        result.put("projectId",projectId);
+        result.put("processCode",processCode);
+        result.put("assignedStepCount",normalized.size());
+        result.put("updatedTaskCount",updated);
+        result.put("rereadRequired",true);
+        return result;
     }
 
     @SuppressWarnings("unchecked")

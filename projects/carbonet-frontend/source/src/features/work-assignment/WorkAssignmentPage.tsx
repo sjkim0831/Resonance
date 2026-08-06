@@ -120,13 +120,16 @@ export function WorkAssignmentPage() {
     if (!projectId || !processCode || !processAccountId || !assignments.length || assignments.some(item => !item.accountId)) { setMessage(en ? "Select the process manager and an account for every task." : "프로세스 담당자와 모든 세부 업무의 담당 계정을 선택해 주세요."); return; }
     setBusy(true); setMessage("");
     try {
+      const csrfHeaders: Record<string, string> = {};
+      if (session.value?.csrfHeaderName && session.value.csrfToken) {
+        csrfHeaders[session.value.csrfHeaderName] = session.value.csrfToken;
+      }
       const response = await fetch(buildLocalizedPath("/home/api/work-assignments", "/en/home/api/work-assignments"), {
-        method: "POST", credentials: "include", headers: { "Content-Type": "application/json", Accept: "application/json" },
+        method: "POST", credentials: "include", headers: { "Content-Type": "application/json", Accept: "application/json", ...csrfHeaders },
         body: JSON.stringify({ projectId, processCode, processAccountId, assignments }),
       });
       const body = await readJson<Workspace>(response);
-      setWorkspace(body);
-      setAssignees(Object.fromEntries((body.steps || []).map(step => [step.stepCode, step.accountId || ""])));
+      await load(projectId, processCode);
       setMessage(en ? `${body.assignedStepCount || assignments.length} steps assigned.` : `${body.assignedStepCount || assignments.length}개 절차를 배정했고 실행 태스크 ${body.updatedTaskCount || 0}개를 동기화했습니다.`);
     } catch (error) { setMessage(error instanceof Error ? error.message : String(error)); }
     finally { setBusy(false); }
