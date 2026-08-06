@@ -917,9 +917,15 @@ export function TaskQuestPanel() {
 
   const availableWorkTypes = useMemo(() => {
     const counts = new Map<string, number>();
+    const visibleCatalogCounts = new Map<string, number>();
     workflowItems.forEach((item) => {
       const code = String(item.domainCode || "EMISSION").toUpperCase();
       counts.set(code, (counts.get(code) || 0) + 1);
+    });
+    (data?.processCatalog || []).forEach((process) => {
+      if (!isCustomerVisibleEmissionProcess(process.processCode)) return;
+      const code = String(process.domainCode || "EMISSION").toUpperCase();
+      visibleCatalogCounts.set(code, (visibleCatalogCounts.get(code) || 0) + 1);
     });
     const definitions = new Map(
       (data?.workTypes || []).map((item) => [
@@ -954,7 +960,7 @@ export function TaskQuestPanel() {
         return {
           code,
           count: counts.get(code) || 0,
-          definedCount: Number(item.definedProcessCount || 0),
+          definedCount: visibleCatalogCounts.get(code) ?? Number(item.definedProcessCount || 0),
           verifiedCount: Number(quality?.verifiedProcessCount || 0),
           blockedCount: Number(quality?.blockedProcessCount || 0),
           pendingCount: Number(quality?.pendingProcessCount || 0),
@@ -965,7 +971,7 @@ export function TaskQuestPanel() {
           description: item.description || "",
         };
       });
-  }, [data?.workTypeAssurance, data?.workTypes, en, workflowItems]);
+  }, [data?.processCatalog, data?.workTypeAssurance, data?.workTypes, en, workflowItems]);
   const definedProcessTotal = useMemo(
     () => availableWorkTypes.reduce((sum, item) => sum + item.definedCount, 0),
     [availableWorkTypes],
@@ -2871,7 +2877,9 @@ export function TaskQuestPanel() {
                             <span className="flex items-center gap-1.5"><i className="h-0.5 w-6 bg-[#246beb]" />{en ? "Sequential path" : "순차 업무 흐름"}</span>
                             <span className="flex items-center gap-1.5"><i className="h-3 w-0.5 bg-violet-300" />{en ? "Parallel branch" : "병렬 업무"}</span>
                             <span>
-                              {selectedWorkType === "WORK_ASSIGNMENT"
+                              {selectedCatalogProcessCode === EMISSION_END_TO_END_PROCESS_CODE
+                                ? `${selectedCatalogSteps.length}${en ? " procedures" : "개 절차"}`
+                                : selectedWorkType === "WORK_ASSIGNMENT"
                                 ? `1${en ? " process" : "개 프로세스"}`
                                 : `${visibleProcessWaves.reduce((count, wave) => count + wave.processes.length, 0)}${en ? " processes" : "개 프로세스"}`}
                             </span>
