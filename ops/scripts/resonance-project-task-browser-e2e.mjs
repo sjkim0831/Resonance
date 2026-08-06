@@ -34,6 +34,8 @@ const routeResults = [];
 const workflowResults = [];
 let taskCount = 0;
 let transitionVerified = false;
+let readinessVerified = false;
+let anonymousApiVerified = false;
 const startedAt = Date.now();
 
 async function authenticatedApi(account) {
@@ -137,6 +139,16 @@ try {
     storageState: { cookies: [], origins: [] },
   });
   try {
+    const protectedApi = await anonymous.request.get(new URL("/home/api/emission-tasks", baseUrl).href, {
+      failOnStatusCode: false,
+    });
+    if (protectedApi.status() !== 401) {
+      throw new Error(`protected task API accepted anonymous session status=${protectedApi.status()}`);
+    }
+    const authCookies = (await anonymous.cookies())
+      .filter((cookie) => ["accessToken", "refreshToken"].includes(cookie.name));
+    if (authCookies.length) throw new Error("anonymous context received authentication cookies");
+    anonymousApiVerified = true;
     const page = await anonymous.newPage();
     await page.goto(new URL(protectedTarget, baseUrl).href, { waitUntil: "domcontentloaded", timeout: 15_000 });
     await page.waitForURL((url) => loginPath.test(url.pathname), { timeout: 8_000 });
@@ -177,6 +189,7 @@ try {
     if (!options?.readiness?.ready || !Array.isArray(options.sites) || !options.sites.length) {
       throw new Error("disposable project readiness is incomplete");
     }
+    readinessVerified = true;
     const now = new Date();
     const year = String(now.getUTCFullYear());
     const marker = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -279,4 +292,4 @@ try {
 }
 
 const uniqueRoutes = new Set(routeResults.map((result) => result.target));
-console.log(`[project-task-browser-e2e] PASS project=${projectId} accounts=${accounts.length} tasks=${taskCount} workflow=7/7 artifacts=5 certificate=valid uniqueRoutes=${uniqueRoutes.size} anonymous=blocked transition=${transitionVerified ? "committed-and-rolled-back" : "missing"} durationMs=${Date.now() - startedAt}`);
+console.log(`[project-task-browser-e2e] PASS project=${projectId} accounts=${accounts.length} tasks=${taskCount} workflow=7/7 readiness=${readinessVerified ? "verified" : "missing"} uniqueRoutes=${uniqueRoutes.size} anonymous=${anonymousApiVerified ? "api-and-route-blocked" : "missing"} transition=${transitionVerified ? "committed-and-rolled-back" : "missing"} durationMs=${Date.now() - startedAt}`);

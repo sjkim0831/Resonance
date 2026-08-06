@@ -144,9 +144,23 @@ import sys
 
 source = Path(sys.argv[1]).read_text(encoding="utf-8")
 parallel = source.index("await Promise.all(accounts.map(async (account) => {")
-barrier = source.index("const protectedTarget = routeResults[0]?.target", parallel)
+barrier = source.index('const protectedTarget = "/emission/organizational-boundary"', parallel)
 transition = source.index("const ownerApi = await authenticatedApi", barrier)
 assert parallel < barrier < transition
 assert source.count("await Promise.all(accounts.map(async (account) => {") == 1
 print("PROJECT_TASK_BROWSER_ACCOUNT_PARALLEL_PASS accounts=5 transition=single-after-barrier")
+
+anonymous_start = source.index("const anonymous = await browser.newContext", barrier)
+anonymous_end = source.index("// Use a disposable project", anonymous_start)
+anonymous = source[anonymous_start:anonymous_end]
+assert 'storageState: { cookies: [], origins: [] }' in anonymous
+assert 'serviceWorkers: "block"' in anonymous
+assert "await page.waitForTimeout(400)" not in anonymous
+assert 'anonymous.request.get(new URL("/home/api/emission-tasks", baseUrl).href' in anonymous
+assert "protectedApi.status() !== 401" in anonymous
+assert '["accessToken", "refreshToken"]' in anonymous
+assert "await page.waitForURL" in anonymous
+assert "artifacts=5" not in source
+assert "certificate=valid" not in source
+print("PROJECT_TASK_BROWSER_ANONYMOUS_FAIL_CLOSED_PASS api=401 cookies=empty route=redirected evidence=truthful")
 PY
