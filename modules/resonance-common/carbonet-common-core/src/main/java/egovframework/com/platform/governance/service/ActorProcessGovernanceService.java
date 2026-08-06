@@ -1448,7 +1448,7 @@ public class ActorProcessGovernanceService {
             List<String> missingFields=jdbc.queryForList("""
                 select field->>'fieldName'
                   from jsonb_array_elements(coalesce(
-                    (select nullif(execution_spec.field_contract->'fields','[]'::jsonb) from framework_step_execution_spec execution_spec where execution_spec.process_code=? and execution_spec.step_code=?),
+                    (select nullif(framework_step_contract_fields(execution_spec.field_contract,'USER'),'[]'::jsonb) from framework_step_execution_spec execution_spec where execution_spec.process_code=? and execution_spec.step_code=?),
                     (select framework_try_jsonb(screen_contract.field_contract) from framework_professional_screen_contract screen_contract where screen_contract.process_code=? and screen_contract.step_code=? order by case screen_contract.audience when 'USER' then 0 else 1 end limit 1),
                     '[]'::jsonb
                   )) field
@@ -1729,7 +1729,7 @@ public class ActorProcessGovernanceService {
                      end
                    ),'{"runtimeSmoke":true}'::jsonb)::text
               from jsonb_array_elements(coalesce(
-                (select nullif(execution_spec.field_contract->'fields','[]'::jsonb) from framework_step_execution_spec execution_spec where execution_spec.process_code=? and execution_spec.step_code=?),
+                (select nullif(framework_step_contract_fields(execution_spec.field_contract,'USER'),'[]'::jsonb) from framework_step_execution_spec execution_spec where execution_spec.process_code=? and execution_spec.step_code=?),
                 (select framework_try_jsonb(screen_contract.field_contract) from framework_professional_screen_contract screen_contract where screen_contract.process_code=? and screen_contract.step_code=? order by case screen_contract.audience when 'USER' then 0 else 1 end limit 1),
                 '[]'::jsonb
              )) field
@@ -1740,7 +1740,7 @@ public class ActorProcessGovernanceService {
         Integer requiredFieldCount=jdbc.queryForObject("""
             select count(distinct field->>'fieldCode')
               from jsonb_array_elements(coalesce(
-                (select nullif(execution_spec.field_contract->'fields','[]'::jsonb) from framework_step_execution_spec execution_spec where execution_spec.process_code=? and execution_spec.step_code=?),
+                (select nullif(framework_step_contract_fields(execution_spec.field_contract,'USER'),'[]'::jsonb) from framework_step_execution_spec execution_spec where execution_spec.process_code=? and execution_spec.step_code=?),
                 (select framework_try_jsonb(screen_contract.field_contract) from framework_professional_screen_contract screen_contract where screen_contract.process_code=? and screen_contract.step_code=? order by case screen_contract.audience when 'USER' then 0 else 1 end limit 1),
                 '[]'::jsonb
               )) field
@@ -1900,7 +1900,7 @@ public class ActorProcessGovernanceService {
                      end
                    ),'{}'::jsonb)::text
               from jsonb_array_elements(coalesce(
-                (select nullif(execution_spec.field_contract->'fields','[]'::jsonb) from framework_step_execution_spec execution_spec where execution_spec.process_code=? and execution_spec.step_code=?),
+                (select nullif(framework_step_contract_fields(execution_spec.field_contract,'USER'),'[]'::jsonb) from framework_step_execution_spec execution_spec where execution_spec.process_code=? and execution_spec.step_code=?),
                 (select framework_try_jsonb(screen_contract.field_contract) from framework_professional_screen_contract screen_contract where screen_contract.process_code=? and screen_contract.step_code=? order by case screen_contract.audience when 'USER' then 0 else 1 end limit 1),
                 '[]'::jsonb
               )) field
@@ -1975,7 +1975,7 @@ public class ActorProcessGovernanceService {
     }
 
     public Map<String,Object> loadWorkDraft(String tenant,String project,String process,String step,String user){
-        List<Map<String,Object>> contracts=jdbc.queryForList("select runtime_step.step_code as \"stepCode\",runtime_step.step_name as \"stepName\",runtime_step.actor_code as \"actorCode\",runtime_step.command_code as \"commandCode\",runtime_step.from_state as \"fromState\",runtime_step.to_state as \"toState\",runtime_step.requirement_text as \"requirementText\",runtime_step.completion_rule as \"completionRule\",runtime_step.input_contract as \"inputContract\",runtime_step.output_contract as \"outputContract\",runtime_step.api_contract as \"apiContract\",coalesce(nullif(execution_spec.field_contract->'fields','[]'::jsonb),(select framework_try_jsonb(screen_contract.field_contract) from framework_professional_screen_contract screen_contract where screen_contract.process_code=runtime_step.process_code and screen_contract.step_code=runtime_step.step_code order by case screen_contract.audience when 'USER' then 0 else 1 end limit 1),'[]'::jsonb)::text as \"fieldContractJson\" from framework_process_step runtime_step left join framework_step_execution_spec execution_spec using(process_code,step_code) where runtime_step.process_code=? and runtime_step.step_code=?",process,step);
+        List<Map<String,Object>> contracts=jdbc.queryForList("select runtime_step.step_code as \"stepCode\",runtime_step.step_name as \"stepName\",runtime_step.actor_code as \"actorCode\",runtime_step.command_code as \"commandCode\",runtime_step.from_state as \"fromState\",runtime_step.to_state as \"toState\",runtime_step.requirement_text as \"requirementText\",runtime_step.completion_rule as \"completionRule\",runtime_step.input_contract as \"inputContract\",runtime_step.output_contract as \"outputContract\",runtime_step.api_contract as \"apiContract\",coalesce(nullif(framework_step_contract_fields(execution_spec.field_contract,'USER'),'[]'::jsonb),(select framework_try_jsonb(screen_contract.field_contract) from framework_professional_screen_contract screen_contract where screen_contract.process_code=runtime_step.process_code and screen_contract.step_code=runtime_step.step_code order by case screen_contract.audience when 'USER' then 0 else 1 end limit 1),'[]'::jsonb)::text as \"fieldContractJson\" from framework_process_step runtime_step left join framework_step_execution_spec execution_spec using(process_code,step_code) where runtime_step.process_code=? and runtime_step.step_code=?",process,step);
         if(contracts.isEmpty())throw new IllegalArgumentException("Work step contract does not exist: "+process+" / "+step);
         Map<String,Object> contract=contracts.get(0);
         requireActorAssignment(tenant,project,String.valueOf(contract.get("actorCode")),user);
@@ -2096,7 +2096,7 @@ public class ActorProcessGovernanceService {
         List<Map<String,Object>> fields=jdbc.queryForList("""
             select field->>'fieldCode' as "fieldCode",upper(coalesce(field->>'controlType','TEXT')) as "controlType"
               from jsonb_array_elements(coalesce(
-                (select nullif(execution_spec.field_contract->'fields','[]'::jsonb) from framework_step_execution_spec execution_spec where execution_spec.process_code=? and execution_spec.step_code=?),
+                (select nullif(framework_step_contract_fields(execution_spec.field_contract,'USER'),'[]'::jsonb) from framework_step_execution_spec execution_spec where execution_spec.process_code=? and execution_spec.step_code=?),
                 (select framework_try_jsonb(screen_contract.field_contract) from framework_professional_screen_contract screen_contract where screen_contract.process_code=? and screen_contract.step_code=? order by case screen_contract.audience when 'USER' then 0 else 1 end limit 1),
                 '[]'::jsonb
               )) field
@@ -2432,7 +2432,7 @@ public class ActorProcessGovernanceService {
                          'group',coalesce(field->>'fieldGroup','WORK')
                        ) order by coalesce((field->>'fieldOrder')::integer,9999),field->>'fieldCode')
                          from jsonb_array_elements(coalesce(
-                           (select nullif(execution_spec.field_contract->'fields','[]'::jsonb) from framework_step_execution_spec execution_spec where execution_spec.process_code=framework_screen_space_spec.process_code and execution_spec.step_code=framework_screen_space_spec.step_code),
+                           (select nullif(framework_step_contract_fields(execution_spec.field_contract,'USER'),'[]'::jsonb) from framework_step_execution_spec execution_spec where execution_spec.process_code=framework_screen_space_spec.process_code and execution_spec.step_code=framework_screen_space_spec.step_code),
                            (select framework_try_jsonb(screen_contract.field_contract) from framework_professional_screen_contract screen_contract where screen_contract.process_code=framework_screen_space_spec.process_code and screen_contract.step_code=framework_screen_space_spec.step_code order by case screen_contract.audience when 'USER' then 0 else 1 end limit 1),
                            '[]'::jsonb
                          )) field
