@@ -36,6 +36,10 @@ cached_end = source.index('record_deploy_phase "catalog_validation"', cached_sta
 cached_block = source[cached_start:cached_end]
 assert "deploy_path_changed()" in cached_block
 assert cached_block.count('git diff --name-only "$deployed_commit" "$target_commit"') == 1
+assert 'control-plane-drift-last' in cached_block
+assert 'control_plane_drift_now - control_plane_drift_last < 300' in cached_block
+assert cached_block.count('[[ "$control_plane_drift_check_due" != "true" ]]') == 6
+assert "control-plane drift check skipped: verified within 5 minutes" in cached_block
 start = source.index('catalog_identity_sync_log="$ROOT_DIR/var/logs/catalog-identity-sync-')
 end = source.index('record_deploy_phase "backstage_visual_e2e"', start)
 block = source[start:end]

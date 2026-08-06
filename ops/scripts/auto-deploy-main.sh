@@ -858,6 +858,7 @@ if [[ -n "$remaining_generated_changes" ]]; then
 fi
 
 declare -a deploy_changed_paths=()
+control_plane_drift_check_due=true
 
 deploy_path_changed() {
   local changed_path candidate
@@ -871,6 +872,10 @@ deploy_path_changed() {
 
 sync_postgres_backup_cronjobs_if_required() {
   local live_paths=""
+  if ! deploy_path_changed ops/scripts/apply-backup-cronjobs.sh &&
+    [[ "$control_plane_drift_check_due" != "true" ]]; then
+    return 0
+  fi
   live_paths="$(
     kubectl -n "$NAMESPACE" get cronjob postgres-carbonet-hourly-backup \
       -o jsonpath='{.spec.jobTemplate.spec.template.spec.volumes[*].hostPath.path}' \
@@ -885,6 +890,13 @@ sync_postgres_backup_cronjobs_if_required() {
 }
 
 sync_post_reboot_recovery_if_required() {
+  if ! deploy_path_changed \
+      ops/kubernetes/postgres-haproxy-config.yaml \
+      ops/scripts/reconcile-post-reboot-runtime.sh \
+      ops/systemd/carbonet-post-reboot-recovery.service &&
+    [[ "$control_plane_drift_check_due" != "true" ]]; then
+    return 0
+  fi
   if deploy_path_changed \
       ops/kubernetes/postgres-haproxy-config.yaml \
       ops/scripts/reconcile-post-reboot-runtime.sh \
@@ -908,6 +920,14 @@ sync_post_reboot_recovery_if_required() {
 }
 
 sync_patroni_auto_heal_if_required() {
+  if ! deploy_path_changed \
+      ops/scripts/patroni-auto-heal.sh \
+      ops/scripts/test-patroni-auto-heal-safety.sh \
+      ops/systemd/carbonet-patroni-auto-heal.service \
+      ops/systemd/carbonet-patroni-auto-heal.timer &&
+    [[ "$control_plane_drift_check_due" != "true" ]]; then
+    return 0
+  fi
   if deploy_path_changed \
       ops/scripts/patroni-auto-heal.sh \
       ops/scripts/test-patroni-auto-heal-safety.sh \
@@ -934,6 +954,15 @@ sync_patroni_auto_heal_if_required() {
 }
 
 sync_postgres_restore_drill_if_required() {
+  if ! deploy_path_changed \
+      ops/scripts/postgres-isolated-restore-drill.sh \
+      ops/scripts/report-latest-postgres-restore-drill.sh \
+      ops/scripts/test-postgres-isolated-restore-drill.sh \
+      ops/systemd/carbonet-postgres-restore-drill.service \
+      ops/systemd/carbonet-postgres-restore-drill.timer &&
+    [[ "$control_plane_drift_check_due" != "true" ]]; then
+    return 0
+  fi
   if deploy_path_changed \
       ops/scripts/postgres-isolated-restore-drill.sh \
       ops/scripts/report-latest-postgres-restore-drill.sh \
@@ -965,6 +994,18 @@ sync_postgres_restore_drill_if_required() {
 }
 
 sync_process_development_worker_if_required() {
+  if ! deploy_path_changed \
+      ops/scripts/run-process-development-dispatcher.sh \
+      ops/scripts/run-process-development-worker.sh \
+      ops/scripts/test-process-worker-deploy-marker.sh \
+      ops/scripts/run-project-auto-completion-orchestrator.sh \
+      ops/systemd/resonance-process-development-worker.service \
+      ops/systemd/resonance-process-development-worker.timer \
+      ops/systemd/resonance-project-auto-completion.service \
+      ops/systemd/resonance-project-auto-completion.timer &&
+    [[ "$control_plane_drift_check_due" != "true" ]]; then
+    return 0
+  fi
   if deploy_path_changed \
       ops/scripts/run-process-development-dispatcher.sh \
       ops/scripts/run-process-development-worker.sh \
@@ -1009,6 +1050,15 @@ sync_process_development_worker_if_required() {
 }
 
 sync_react_asset_prune_worker_if_required() {
+  if ! deploy_path_changed \
+      ops/scripts/resonance-react-asset-prune.sh \
+      ops/scripts/prune-react-assets-if-needed.sh \
+      ops/scripts/test-resonance-react-asset-prune.sh \
+      ops/systemd/resonance-react-asset-prune.service \
+      ops/systemd/resonance-react-asset-prune.timer &&
+    [[ "$control_plane_drift_check_due" != "true" ]]; then
+    return 0
+  fi
   if deploy_path_changed \
       ops/scripts/resonance-react-asset-prune.sh \
       ops/scripts/prune-react-assets-if-needed.sh \
@@ -1064,6 +1114,16 @@ if [[ "$PLAN_RUNTIME_REQUIRED" != "true" ]]; then
   mapfile -t deploy_changed_paths < <(
     git diff --name-only --diff-filter=ACMRD "$deployed_commit" "$target_commit"
   )
+  control_plane_drift_marker="$ROOT_DIR/var/run/control-plane-drift-last"
+  printf -v control_plane_drift_now '%(%s)T' -1
+  control_plane_drift_last=0
+  if [[ -f "$control_plane_drift_marker" ]]; then
+    read -r control_plane_drift_last <"$control_plane_drift_marker" || true
+  fi
+  if [[ "$control_plane_drift_last" =~ ^[0-9]+$ ]] &&
+    (( control_plane_drift_now - control_plane_drift_last < 300 )); then
+    control_plane_drift_check_due=false
+  fi
   restore_live_frontend_overlay
   sync_react_asset_prune_worker_if_required
   while IFS= read -r changed_script; do
@@ -1203,6 +1263,13 @@ if [[ "$PLAN_RUNTIME_REQUIRED" != "true" ]]; then
     sync_patroni_auto_heal_if_required
     sync_postgres_restore_drill_if_required
     sync_process_development_worker_if_required
+    if [[ "$control_plane_drift_check_due" == "true" ]]; then
+      mkdir -p "$(dirname "$control_plane_drift_marker")"
+      printf '%s\n' "$control_plane_drift_now" >"$control_plane_drift_marker"
+      echo "[auto-deploy] periodic control-plane drift check completed"
+    else
+      echo "[auto-deploy] control-plane drift check skipped: verified within 5 minutes"
+    fi
     if deploy_path_changed \
         ops/scripts/postgres-storage-guard.sh \
         ops/scripts/test-postgres-storage-guard-install.sh \
