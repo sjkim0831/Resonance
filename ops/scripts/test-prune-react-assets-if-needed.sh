@@ -13,12 +13,12 @@ printf '{"entry":{"file":"assets/current.js"}}\n' > "$overlay/.vite/manifest.jso
 printf '{"entry":{"file":"assets/previous.js"}}\n' > "$TMP_ROOT/previous.json"
 
 REACT_ASSET_PRUNE_THRESHOLD=3 \
-  bash "$SCRIPT_DIR/prune-react-assets-if-needed.sh" "$overlay" "$TMP_ROOT/previous.json"
+  bash "$SCRIPT_DIR/prune-react-assets-if-needed.sh" "$overlay"
 test -f "$overlay/assets/stale.js"
+test ! -e "$overlay/.asset-prune-request"
 
 REACT_ASSET_PRUNE_THRESHOLD=2 \
-  bash "$SCRIPT_DIR/prune-react-assets-if-needed.sh" "$overlay" "$TMP_ROOT/previous.json"
-test -f "$overlay/assets/current.js"
-test -f "$overlay/assets/previous.js"
-test ! -e "$overlay/assets/stale.js"
-echo '[asset-prune-test] PASS threshold deferral and bounded pruning'
+  bash "$SCRIPT_DIR/prune-react-assets-if-needed.sh" "$overlay"
+test -f "$overlay/.asset-prune-request"
+test -f "$overlay/assets/stale.js"
+echo '[asset-prune-test] PASS deployment path only queues bounded pruning'

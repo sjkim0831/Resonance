@@ -1001,12 +1001,34 @@ sync_process_development_worker_if_required() {
   fi
 }
 
+sync_react_asset_prune_worker_if_required() {
+  if git diff --name-only "$deployed_commit" "$target_commit" -- \
+      ops/scripts/resonance-react-asset-prune.sh \
+      ops/scripts/prune-react-assets-if-needed.sh \
+      ops/scripts/test-resonance-react-asset-prune.sh \
+      ops/systemd/resonance-react-asset-prune.service \
+      ops/systemd/resonance-react-asset-prune.timer | grep -q . || \
+    ! systemctl is-enabled --quiet resonance-react-asset-prune.timer; then
+    bash ops/scripts/test-resonance-react-asset-prune.sh
+    sudo -n install -m 0644 \
+      ops/systemd/resonance-react-asset-prune.service \
+      /etc/systemd/system/resonance-react-asset-prune.service
+    sudo -n install -m 0644 \
+      ops/systemd/resonance-react-asset-prune.timer \
+      /etc/systemd/system/resonance-react-asset-prune.timer
+    sudo -n systemctl daemon-reload
+    sudo -n systemctl enable --now resonance-react-asset-prune.timer >/dev/null
+    echo "[auto-deploy] deferred React asset prune worker synchronized"
+  fi
+}
+
 # Documentation, design metadata, catalog and automation-only changes do not
 # alter the running application. Fast-forward and refresh the searchable source
 # catalog without an unnecessary DB dump, JVM build, image build or rollout.
 if [[ "$PLAN_RUNTIME_REQUIRED" != "true" ]]; then
   git merge --ff-only "$target_commit"
   restore_live_frontend_overlay
+  sync_react_asset_prune_worker_if_required
   while IFS= read -r changed_script; do
     [[ "$changed_script" == *.sh && -f "$changed_script" ]] && bash -n "$changed_script"
   done < <(git diff --name-only --diff-filter=ACMR "$deployed_commit" "$target_commit")
@@ -1731,6 +1753,7 @@ sync_post_reboot_recovery_if_required
 # previous automation script after the new application is healthy. Reuse the
 # same idempotent synchronizer on the runtime path before publishing success.
 sync_process_development_worker_if_required
+sync_react_asset_prune_worker_if_required
 record_deploy_phase "postdeploy_validation"
 printf '%s\n' "$target_commit" > "${DEPLOY_STATE_FILE}.tmp"
 mv "${DEPLOY_STATE_FILE}.tmp" "$DEPLOY_STATE_FILE"

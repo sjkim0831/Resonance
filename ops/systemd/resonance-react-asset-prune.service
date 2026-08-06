@@ -1,0 +1,14 @@
+[Unit]
+Description=Resonance deferred immutable React asset pruning
+After=local-fs.target
+
+[Service]
+Type=oneshot
+User=sjkim
+WorkingDirectory=/opt/Resonance/var/deploy-worktrees/runtime-build
+ExecStart=/usr/bin/bash /opt/Resonance/var/deploy-worktrees/runtime-build/ops/scripts/resonance-react-asset-prune.sh
+Nice=19
+IOSchedulingClass=idle
+CPUWeight=10
+IOWeight=10
+TimeoutStartSec=300

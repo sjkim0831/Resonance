@@ -227,13 +227,16 @@ if [[ "$SKIP_FRONTEND_BUILD" != "true" ]]; then
   rsync -a --exclude='/index.html' --exclude='/assets/' "$staging_dir/" "$OVERLAY_DIR/"
   cp "$staging_dir/index.html" "$OVERLAY_DIR/.index.html.next"
   mv -f "$OVERLAY_DIR/.index.html.next" "$OVERLAY_DIR/index.html"
+  cp "$previous_manifest" "$OVERLAY_DIR/.vite/.previous-manifest.next"
+  mv -f "$OVERLAY_DIR/.vite/.previous-manifest.next" \
+    "$OVERLAY_DIR/.vite/previous-manifest.json"
   node "$ROOT_DIR/ops/scripts/verify-react-asset-closure.mjs" "$OVERLAY_DIR"
   # Pruning every deploy made metadata deletion on the shared filesystem
   # slower than the actual frontend build. Defer it until the bounded asset
   # threshold is exceeded; the current and previous manifest closures remain
   # protected whenever pruning runs.
   bash "$ROOT_DIR/ops/scripts/prune-react-assets-if-needed.sh" \
-    "$OVERLAY_DIR" "$previous_manifest"
+    "$OVERLAY_DIR"
   rm -f "$previous_manifest"
   rm -rf "$staging_dir"
 else

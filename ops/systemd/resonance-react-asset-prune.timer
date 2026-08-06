@@ -1,0 +1,11 @@
+[Unit]
+Description=Run deferred React asset pruning outside deployment
+
+[Timer]
+OnCalendar=*:0/15
+RandomizedDelaySec=90
+Persistent=true
+Unit=resonance-react-asset-prune.service
+
+[Install]
+WantedBy=timers.target

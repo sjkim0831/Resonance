@@ -3,8 +3,8 @@ set -euo pipefail
 
 ROOT_DIR="${ROOT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
 OVERLAY_DIR="${1:?overlay directory is required}"
-PREVIOUS_MANIFEST="${2:-}"
 THRESHOLD="${REACT_ASSET_PRUNE_THRESHOLD:-1200}"
+REQUEST_FILE="${REACT_ASSET_PRUNE_REQUEST_FILE:-$OVERLAY_DIR/.asset-prune-request}"
 
 [[ "$THRESHOLD" =~ ^[0-9]+$ ]] || {
   echo "[asset-prune] invalid threshold=$THRESHOLD" >&2
@@ -21,6 +21,7 @@ if (( asset_count <= THRESHOLD )); then
   exit 0
 fi
 
-echo "[asset-prune] threshold exceeded assets=$asset_count threshold=$THRESHOLD"
-node "$ROOT_DIR/ops/scripts/prune-react-asset-generations.mjs" \
-  "$OVERLAY_DIR" "$PREVIOUS_MANIFEST"
+printf 'requestedAt=%s\nassetCount=%s\nthreshold=%s\n' \
+  "$(date -Is)" "$asset_count" "$THRESHOLD" >"${REQUEST_FILE}.tmp"
+mv -f "${REQUEST_FILE}.tmp" "$REQUEST_FILE"
+echo "[asset-prune] queued assets=$asset_count threshold=$THRESHOLD request=$REQUEST_FILE"
