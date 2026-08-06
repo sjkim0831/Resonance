@@ -41,7 +41,7 @@ if ((source.match(/method:\s*"POST"/g) || []).length !== 2
 if (/method:\s*"(?:PUT|PATCH|DELETE)"/.test(source) || /process-executions\/start|\/commands/.test(source)) {
   throw new Error("business-mutating endpoint detected in contract audit");
 }
-for (const required of ["runContractAuditPages", "while (true)", "targetOffset", "maxTargets: auditPageSize", "nextTargetOffset", "contractAuditPagination"]) {
+for (const required of ["runContractAuditPages", "while (true)", "targetOffset", "maxTargets: auditPageSize", "nextTargetOffset", "contractAuditPagination", "reasonCounts", "samples=${JSON.stringify(samples)}"]) {
   if (!source.includes(required)) throw new Error(`paged contract audit guard missing: ${required}`);
 }
 NODE

@@ -358,6 +358,27 @@ async function runContractAuditPages(cookie) {
     }
     const errorCount = numeric(page.errorCount) ?? 0;
     if (text(page.outcome ?? page.result).toUpperCase() === "ERROR" || errorCount > 0) {
+      const failures = Array.isArray(page.runs)
+        ? page.runs.filter((run) => text(run?.result).toUpperCase() === "ERROR")
+        : [];
+      const reasonCounts = new Map();
+      for (const failure of failures) {
+        const reason = text(failure?.message) || "CONTRACT_AUDIT_FAILED";
+        reasonCounts.set(reason, (reasonCounts.get(reason) || 0) + 1);
+      }
+      const reasons = [...reasonCounts.entries()]
+        .sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0]))
+        .slice(0, 10)
+        .map(([reason, count]) => `${reason}:${count}`)
+        .join(",");
+      const samples = failures.slice(0, 5).map((failure) => ({
+        processCode: text(failure?.processCode),
+        stepCode: text(failure?.stepCode),
+        routePath: text(failure?.routePath),
+        capabilityCode: text(failure?.capabilityCode),
+        message: text(failure?.message) || "CONTRACT_AUDIT_FAILED",
+      }));
+      process.stderr.write(`[all-process-contract-audit] page=${pageCount} errors=${errorCount} reasons=${reasons || "unavailable"} samples=${JSON.stringify(samples)}\n`);
       throw new Error(`contract audit page ${pageCount} returned ${errorCount} errors`);
     }
     totals.targetCount += numeric(page.targetCount) ?? 0;
