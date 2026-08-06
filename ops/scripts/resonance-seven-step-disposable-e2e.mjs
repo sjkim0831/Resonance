@@ -15,7 +15,10 @@ if (!password) throw new Error("CARBONET_ACTOR_TEST_PASSWORD is required");
 const clients = {};
 let projectId = "";
 const evidence = { startedAt: new Date().toISOString(), steps: [], projectId: "", cleanup: false };
-const mark = (step, detail = {}) => evidence.steps.push({ step, at: new Date().toISOString(), ...detail });
+const mark = (processCode, stepCode, actor, endpoints, detail = {}) => evidence.steps.push({
+  ordinal: evidence.steps.length + 1, processCode, stepCode, actor,
+  endpoints: Array.isArray(endpoints) ? endpoints : [endpoints], at: new Date().toISOString(), ...detail,
+});
 
 async function login(user) {
   const api = await request.newContext({ baseURL, ignoreHTTPSErrors: true });
@@ -50,7 +53,31 @@ try {
   });
   projectId = String(created.id || ""); evidence.projectId = projectId;
   if (!projectId) throw new Error("project id missing");
-  mark("BASIC_INFO", { status: "DONE" });
+  mark("EMISSION_PROJECT_PORTFOLIO", "EMISSION_PROJECT_PORTFOLIO_LIST", "COMPANY_MANAGER",
+    ["GET /home/api/emission-projects/options", "POST /home/api/emission-projects"], { status: "DONE" });
+
+  const boundaryPath = `/home/api/emission-projects/${projectId}/organizational-boundary`;
+  await call(clients.owner, "put", boundaryPath, {
+    boundaryMethod: "OPERATIONAL_CONTROL", reportingBasis: "ISO 14064-1",
+    rationale: "운영 통제 기준으로 보고 법인과 사업장을 포함합니다.",
+    effectiveFrom: `${year}-01-01`, effectiveUntil: `${year}-12-31`,
+    members: [{
+      entityCode: `QA-${marker.slice(-6)}`, entityName: String(options.sites[0]), entityType: "SITE",
+      countryCode: "KR", ownershipPercent: "100", controlType: "OPERATIONAL",
+      includedYn: "Y", exclusionReason: "", evidenceRef: `QA-BOUNDARY-${marker}`,
+    }],
+  });
+  mark("ORGANIZATIONAL_BOUNDARY", "ORGANIZATIONAL_BOUNDARY_S1", "COMPANY_MANAGER",
+    ["GET /organizational-boundary", "PUT /organizational-boundary"], { status: "DONE" });
+  await call(clients.owner, "post", `${boundaryPath}/review-ready`);
+  mark("ORGANIZATIONAL_BOUNDARY", "ORGANIZATIONAL_BOUNDARY_S2", "COMPANY_MANAGER",
+    "POST /organizational-boundary/review-ready", { status: "DONE" });
+  await call(clients.calculator, "post", `${boundaryPath}/consolidate`, { grossEmission: "0", eliminations: [] });
+  mark("ORGANIZATIONAL_BOUNDARY", "ORGANIZATIONAL_BOUNDARY_S3", "CALCULATOR",
+    "POST /organizational-boundary/consolidate", { status: "DONE" });
+  await call(clients.approver, "post", `${boundaryPath}/decision`, { decision: "APPROVE" });
+  mark("ORGANIZATIONAL_BOUNDARY", "ORGANIZATIONAL_BOUNDARY_S4", "APPROVER",
+    "POST /organizational-boundary/decision", { status: "DONE" });
 
   const dueDate = `${year}-12-31`;
   const initialRequests = await call(clients.owner, "get", `/home/api/emission-projects/${projectId}/activity-requests`);
@@ -60,6 +87,8 @@ try {
     requestedItems: "Electricity usage and source reference", assignee: users.data, dueDate,
   });
   const requestId = Number(requestCreated.id);
+  mark("ACTIVITY_DATA", "ACTIVITY_DATA_01_PLAN", "COMPANY_MANAGER",
+    ["GET /activity-requests", "POST /activity-requests"], { status: "DONE", requestId });
   await call(clients.data, "post", `/home/api/emission-projects/${projectId}/activity-requests/${requestId}/start`);
 
   const activityView = await call(clients.data, "get", `/home/api/emission-projects/${projectId}/activities`);
@@ -76,29 +105,55 @@ try {
   const submission = await call(clients.data, "post", `/home/api/emission-projects/${projectId}/submissions`, { idempotencyKey: `submission-${marker}` });
   const submissionId = Number(submission.id);
   await call(clients.data, "post", `/home/api/emission-projects/${projectId}/submissions/${submissionId}/submit`, { activityIds: [activityId], requestId });
-  await call(clients.owner, "post", `/home/api/emission-projects/${projectId}/activity-requests/${requestId}/decision`, { decision: "ACCEPT" });
-  mark("ACTIVITY_DATA", { status: "DONE", activityId, submissionId, requestId, qualityScore: quality.score });
+  mark("ACTIVITY_DATA", "ACTIVITY_DATA_02_WORK", "SITE_DATA_OWNER",
+    ["POST /activities", "POST /quality", "POST /submissions", "POST /submissions/{id}/submit"],
+    { status: "DONE", activityId, submissionId, requestId, qualityScore: quality.score });
 
+  const verifiedQuality = await call(clients.verifier, "post", `/home/api/emission-projects/${projectId}/quality`);
+  if (verifiedQuality.submitReady !== true) throw new Error(`verifier quality gate blocked ${JSON.stringify(verifiedQuality.issues || [])}`);
+  mark("ACTIVITY_DATA", "ACTIVITY_DATA_03_VERIFY", "VERIFIER",
+    "POST /quality", { status: "DONE", qualityScore: verifiedQuality.score });
+  await call(clients.approver, "post", `/home/api/emission-projects/${projectId}/activity-requests/${requestId}/decision`, { decision: "ACCEPT" });
+  mark("ACTIVITY_DATA", "ACTIVITY_DATA_04_APPROVE", "APPROVER",
+    "POST /activity-requests/{id}/decision", { status: "DONE" });
+
+  await call(clients.owner, "get", `/home/api/emission-projects/${projectId}/calculation`);
+  mark("EMISSION_CALCULATION", "EMISSION_CALCULATION_01_PLAN", "COMPANY_MANAGER",
+    "GET /calculation", { status: "DONE" });
   await call(clients.calculator, "post", `/home/api/emission-projects/${projectId}/activities/auto-map`);
   const calculationSource = await call(clients.calculator, "get", `/home/api/emission-projects/${projectId}/calculation`);
   const source = (calculationSource.sourceItems || []).find((item) => Number(item.id) === activityId);
   if (!source?.factorId || source.unitMatch !== true) throw new Error(`factor mapping contract failed ${JSON.stringify(source || {})}`);
   const calculation = await call(clients.calculator, "post", `/home/api/emission-projects/${projectId}/calculation`);
-  mark("CALCULATION", { status: "DONE", calculationId: calculation.id, factorId: source.factorId });
-
+  mark("EMISSION_CALCULATION", "EMISSION_CALCULATION_02_WORK", "CALCULATOR",
+    ["POST /activities/auto-map", "POST /calculation"], { status: "DONE", calculationId: calculation.id, factorId: source.factorId });
   await call(clients.verifier, "post", `/home/api/emission-projects/${projectId}/submissions/${submissionId}/verification/start`);
-  await call(clients.verifier, "post", `/home/api/emission-projects/${projectId}/submissions/${submissionId}/verification/decision`, { decision: "PASSED", comment: "Automated verification passed", issueCount: 0 });
-  mark("VERIFICATION", { status: "DONE" });
-  await call(clients.approver, "post", `/home/api/emission-projects/${projectId}/submissions/${submissionId}/approval/decision`, { decision: "APPROVED", comment: "Automated approval passed" });
-  mark("APPROVAL", { status: "DONE" });
+  await call(clients.verifier, "post", `/home/api/emission-projects/${projectId}/submissions/${submissionId}/verification/decision`, { decision: "PASSED", comment: "자동 산정 검증 통과", issueCount: 0 });
+  await call(clients.verifier, "get", `/home/api/emission-projects/${projectId}/review-workflow`);
+  mark("EMISSION_CALCULATION", "EMISSION_CALCULATION_03_VERIFY", "VERIFIER",
+    ["POST /verification/start", "POST /verification/decision", "GET /review-workflow"], { status: "DONE" });
+  await call(clients.approver, "post", `/home/api/emission-projects/${projectId}/submissions/${submissionId}/approval/decision`, { decision: "APPROVED", comment: "자동 산정 승인 통과" });
+  const calculated = await call(clients.approver, "get", `/home/api/emission-projects/${projectId}/calculation`);
+  if (!calculated?.latestRun?.id && !calculated?.latest?.id && !calculated?.calculation?.id) throw new Error("approved calculation version is missing");
+  mark("EMISSION_CALCULATION", "EMISSION_CALCULATION_04_APPROVE", "APPROVER",
+    ["POST /approval/decision", "GET /calculation"], { status: "DONE", calculationId: calculation.id });
 
-  const report = await call(clients.owner, "post", `/home/api/emission-projects/${projectId}/reports`, { language: "ko", title: `Automated emission report ${marker}`, summary: "Disposable lifecycle evidence" });
+  await call(clients.owner, "get", `/home/api/emission-projects/${projectId}/completion`);
+  mark("REPORT_CERTIFICATION", "REPORT_CERTIFICATION_01_PLAN", "COMPANY_MANAGER",
+    "GET /completion", { status: "DONE" });
+  const report = await call(clients.calculator, "post", `/home/api/emission-projects/${projectId}/reports`, { language: "ko", title: `자동 배출량 보고서 ${marker}`, summary: "폐기형 심층 업무 검증 증적" });
   const reportId = Number(report.id);
-  await call(clients.owner, "post", `/home/api/emission-projects/${projectId}/reports/${reportId}/finalize`);
-  const certificate = await call(clients.owner, "post", `/home/api/emission-projects/${projectId}/reports/${reportId}/issue`);
+  mark("REPORT_CERTIFICATION", "REPORT_CERTIFICATION_02_WORK", "CALCULATOR",
+    "POST /reports", { status: "DONE", reportId });
+  await call(clients.verifier, "post", `/home/api/emission-projects/${projectId}/reports/${reportId}/finalize`);
+  mark("REPORT_CERTIFICATION", "REPORT_CERTIFICATION_03_VERIFY", "VERIFIER",
+    "POST /reports/{id}/finalize", { status: "DONE", reportId });
+  const certificate = await call(clients.approver, "post", `/home/api/emission-projects/${projectId}/reports/${reportId}/issue`);
   const publicCertificate = await call(clients.owner, "get", `/api/public/report-certificates/${encodeURIComponent(certificate.certificateId)}`);
   if (publicCertificate.valid !== true) throw new Error("public certificate is not valid");
-  mark("REPORT", { status: "DONE", reportId, certificateId: certificate.certificateId, certificateValid: true });
+  mark("REPORT_CERTIFICATION", "REPORT_CERTIFICATION_04_APPROVE", "APPROVER",
+    ["POST /reports/{id}/issue", "GET /api/public/report-certificates/{id}"],
+    { status: "DONE", reportId, certificateId: certificate.certificateId, certificateValid: true });
 
   const regulatory = await call(clients.owner, "post", `/home/api/emission-projects/${projectId}/regulatory-submissions`, {
     reportId: String(reportId), clientRequestId: `regulatory-${marker}`, authorityCode: "MOE", authorityName: "환경부",
@@ -106,10 +161,17 @@ try {
     channel: "SYSTEM", deadline: dueDate, note: "Disposable regulatory package",
   });
   const regulatoryId = Number(regulatory.id);
+  mark("REGULATORY_SUBMISSION", "REGULATORY_SUBMISSION_S1", "COMPANY_MANAGER",
+    "POST /regulatory-submissions", { status: "DONE", regulatoryId });
   await call(clients.owner, "post", `/home/api/emission-projects/${projectId}/regulatory-submissions/${regulatoryId}/transition`, { action: "SUBMIT", note: "Submitted by lifecycle harness" });
+  mark("REGULATORY_SUBMISSION", "REGULATORY_SUBMISSION_S2", "COMPANY_MANAGER",
+    "POST /regulatory-submissions/{id}/transition:SUBMIT", { status: "DONE", regulatoryId });
   await call(clients.owner, "post", `/home/api/emission-projects/${projectId}/regulatory-submissions/${regulatoryId}/transition`, { action: "RECORD_RECEIPT", receiptNo: `AUTO-${marker}`, note: "Receipt recorded" });
-  await call(clients.verifier, "post", `/home/api/emission-projects/${projectId}/regulatory-submissions/${regulatoryId}/transition`, { action: "ACCEPT", note: "Accepted by lifecycle harness" });
-  mark("REGULATORY_SUBMISSION", { status: "DONE", regulatoryId });
+  mark("REGULATORY_SUBMISSION", "REGULATORY_SUBMISSION_S3", "VERIFIER",
+    "POST /regulatory-submissions/{id}/transition:RECORD_RECEIPT", { status: "DONE", regulatoryId });
+  await call(clients.approver, "post", `/home/api/emission-projects/${projectId}/regulatory-submissions/${regulatoryId}/transition`, { action: "ACCEPT", note: "Accepted by lifecycle harness" });
+  mark("REGULATORY_SUBMISSION", "REGULATORY_SUBMISSION_S4", "APPROVER",
+    "POST /regulatory-submissions/{id}/transition:ACCEPT", { status: "DONE", regulatoryId });
 
   const completion = await call(clients.owner, "get", `/home/api/emission-projects/${projectId}/completion`);
   const allTasks = Array.isArray(completion.checklist) ? completion.checklist : [];
@@ -122,6 +184,10 @@ try {
     extensionTaskCount: Array.isArray(completion.extensionTasks) ? completion.extensionTasks.length : 0,
     metrics: completion.metrics,
   };
+  const canonicalSteps = new Set(evidence.steps.map((item) => `${item.processCode}/${item.stepCode}`));
+  if (evidence.steps.length !== 21 || canonicalSteps.size !== 21 || evidence.steps.some((item) => item.status !== "DONE" || !item.endpoints.length)) {
+    throw new Error(`professional domain relay is incomplete steps=${evidence.steps.length} unique=${canonicalSteps.size}`);
+  }
 } finally {
   if (projectId && clients.owner) {
     const removed = await call(clients.owner, "delete", `/home/api/emission-projects/${projectId}`, undefined, [200]).catch((error) => ({ success: false, error: error.message }));
@@ -136,4 +202,4 @@ try {
 }
 
 if (!evidence.cleanup || evidence.residualTaskCount !== 0) throw new Error(`cleanup failed project=${projectId} residualTasks=${evidence.residualTaskCount}`);
-console.log(`SEVEN_STEP_DISPOSABLE_PASS project=deleted workflow=7/7 cleanup=verified durationMs=${evidence.durationMs}`);
+console.log(`PROFESSIONAL_DOMAIN_RELAY_PASS project=deleted processes=6 steps=21 workflow=7/7 cleanup=verified durationMs=${evidence.durationMs}`);

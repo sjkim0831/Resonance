@@ -800,7 +800,9 @@ public class EmissionProjectRegistryService {
     public Map<String,Object> runQuality(String projectId,String tenantId,String actor,boolean override) {
         Map<String,Object> project=detail(projectId);
         String tenant=requiredValue(tenantId,"tenantId"),user=requiredValue(actor,"actor");
-        requireProjectActor(projectId,tenant,user,"SITE_DATA_OWNER",override);
+        // The data owner runs the pre-submit gate and the verifier independently
+        // reruns the same deterministic rules during the verification stage.
+        requireProjectActorAny(projectId,tenant,user,override,"SITE_DATA_OWNER","VERIFIER");
         List<Map<String,Object>> activities=jdbc.queryForList("SELECT a.activity_id AS id,a.activity_name AS name,a.category,a.activity_period AS period,a.quantity,a.unit,a.evidence_note AS note,a.factor_id AS factorId,f.unit AS factorUnit,(SELECT count(*) FROM emission_activity_evidence e WHERE e.tenant_id=? AND e.project_id=a.project_id AND e.activity_id=a.activity_id) AS evidenceFileCount FROM emission_activity_data a LEFT JOIN emission_factor_reference f ON f.factor_id=a.factor_id WHERE a.project_id=? ORDER BY a.activity_id",tenant,projectId);
         List<QualityIssue> issues=new ArrayList<>();
         Set<String> allowedUnits=Set.of("L","Nm3","kWh","ton","kg","km","m3","GJ","MJ");
@@ -1174,6 +1176,12 @@ public class EmissionProjectRegistryService {
         assertTenantAccess(projectId,tenant); if(override)return;
         Integer count=jdbc.queryForObject("SELECT count(*) FROM framework_account_actor_assignment a WHERE a.tenant_id=? AND lower(a.account_id)=lower(?) AND a.actor_code=? AND a.assignment_status='ACTIVE' AND (a.valid_from IS NULL OR a.valid_from<=current_date) AND (a.valid_until IS NULL OR a.valid_until>=current_date) AND a.project_id IN ('*',?) AND (a.data_scope='*' OR ?=ANY(string_to_array(replace(a.data_scope,' ',''),',')))",Integer.class,tenant,user,actorCode,projectId,projectId);
         if(count==null||count==0) throw new SecurityException("ACTOR_NOT_AUTHORIZED:"+actorCode);
+    }
+
+    private void requireProjectActorAny(String projectId,String tenant,String user,boolean override,String... actorCodes) {
+        assertTenantAccess(projectId,tenant); if(override)return;
+        Integer count=jdbc.queryForObject("SELECT count(*) FROM framework_account_actor_assignment a WHERE a.tenant_id=? AND lower(a.account_id)=lower(?) AND a.actor_code=ANY(string_to_array(?,',')) AND a.assignment_status='ACTIVE' AND (a.valid_from IS NULL OR a.valid_from<=current_date) AND (a.valid_until IS NULL OR a.valid_until>=current_date) AND a.project_id IN ('*',?) AND (a.data_scope='*' OR ?=ANY(string_to_array(replace(a.data_scope,' ',''),',')))",Integer.class,tenant,user,String.join(",",actorCodes),projectId,projectId);
+        if(count==null||count==0) throw new SecurityException("ACTOR_NOT_AUTHORIZED:"+String.join("|",actorCodes));
     }
 
     public Map<String,Object> organizationalBoundary(String projectId,String tenantId,String actor,boolean override) {
