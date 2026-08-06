@@ -444,13 +444,13 @@ public class ActorProcessGovernanceService {
     public Map<String,Object> processDesign(String requestedProcess) {
         String process=req(Map.of("processCode",requestedProcess),"processCode");
         List<Map<String,Object>> definitions=jdbc.queryForList(
-            "select process_code as \"processCode\",process_name as \"processName\",process_status as \"processStatus\",risk_level as \"riskLevel\" " +
+            "select process_code as \"processCode\",process_name as \"processName\",domain_code as \"domainCode\",goal,start_condition as \"startCondition\",completion_condition as \"completionCondition\",owner_actor_code as \"ownerActorCode\",process_status as \"processStatus\",risk_level as \"riskLevel\",sla_hours as \"slaHours\",review_cycle_days as \"reviewCycleDays\" " +
             "from framework_process_definition where process_code=?",
             process
         );
         if(definitions.isEmpty())throw new IllegalArgumentException("프로세스가 존재하지 않습니다: "+process);
         List<Map<String,Object>> steps=jdbc.queryForList(
-            "select process_code as \"processCode\",step_code as \"stepCode\",step_name as \"stepName\",step_order as \"stepOrder\",actor_code as \"actorCode\",requirement_text as \"requirementText\",completion_rule as \"completionRule\",user_path as \"userPath\",admin_path as \"adminPath\" " +
+            "select process_code as \"processCode\",step_code as \"stepCode\",step_name as \"stepName\",step_order as \"stepOrder\",actor_code as \"actorCode\",from_state as \"fromState\",command_code as \"commandCode\",to_state as \"toState\",requirement_text as \"requirementText\",completion_rule as \"completionRule\",input_contract as \"inputContract\",output_contract as \"outputContract\",user_path as \"userPath\",admin_path as \"adminPath\",api_contract as \"apiContract\" " +
             "from framework_process_step where process_code=? order by step_order",
             process
         );
@@ -464,14 +464,35 @@ public class ActorProcessGovernanceService {
             "from framework_professional_screen_design_readiness where process_code=? order by step_code,audience,route_path",
             process
         );
-        return Map.of(
-            "success",true,
-            "process",definitions.get(0),
-            "stepCount",steps.size(),
-            "steps",steps,
-            "stepExecutionSpecs",specs,
-            "professionalScreens",screens
+        List<Map<String,Object>> cases=jdbc.queryForList(
+            "select case_code as \"caseCode\",process_code as \"processCode\",case_name as \"caseName\",case_type as \"caseType\",case_status as \"status\" from framework_simulation_case where process_code=? order by case_code",
+            process
         );
+        List<Map<String,Object>> jobs=jdbc.queryForList(
+            "select job_id as \"jobId\",process_code as \"processCode\",step_code as \"stepCode\",job_type as \"jobType\",job_name as \"jobName\",target_path as \"targetPath\",job_status as \"jobStatus\" from framework_development_job where process_code=? order by step_code,job_id limit 100",
+            process
+        );
+        List<Map<String,Object>> progress=jdbc.queryForList(
+            "select process_code as \"processCode\",required_jobs as \"requiredJobs\",verified_jobs as \"verifiedJobs\",failed_jobs as \"failedJobs\",completion_percent as \"completionPercent\" from framework_process_development_progress where process_code=?",
+            process
+        );
+        List<Map<String,Object>> assurance=jdbc.queryForList(
+            "select process_code as \"processCode\",assurance_status as \"assuranceStatus\",design_accuracy_score as \"designAccuracyScore\",design_blocker_count as \"designBlockerCount\" from framework_process_design_assurance_matrix where process_code=?",
+            process
+        );
+        Map<String,Object> result=new LinkedHashMap<>();
+        result.put("success",true);
+        result.put("process",definitions.get(0));
+        result.put("processes",definitions);
+        result.put("stepCount",steps.size());
+        result.put("steps",steps);
+        result.put("stepExecutionSpecs",specs);
+        result.put("professionalScreens",screens);
+        result.put("cases",cases);
+        result.put("developmentJobs",jobs);
+        result.put("processDevelopmentProgress",progress);
+        result.put("designAssurance",assurance);
+        return result;
     }
 
     @Transactional

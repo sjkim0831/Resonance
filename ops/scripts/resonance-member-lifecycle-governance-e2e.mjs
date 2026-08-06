@@ -28,7 +28,8 @@ const login = await api.post("/admin/login/actionLogin", {
 const loginPayload = await login.json().catch(() => ({}));
 if (login.status() !== 200 || loginPayload.status !== "loginSuccess") throw new Error(`admin login failed HTTP ${login.status()}`);
 
-const dataResponse = await api.get("/admin/api/system/actor-process", { failOnStatusCode: false });
+const designApi = "/admin/api/system/actor-process/process-design?processCode=MEMBER_LIFECYCLE";
+const dataResponse = await api.get(designApi, { failOnStatusCode: false, timeout: 10_000 });
 const data = await dataResponse.json().catch(() => ({}));
 const processDefinition = (data.processes || []).find((row) => row.processCode === "MEMBER_LIFECYCLE");
 for (const stepCode of steps) {
@@ -40,7 +41,7 @@ for (const stepCode of steps) {
 if (dataResponse.status() !== 200) throw new Error(`actor-process API HTTP ${dataResponse.status()}`);
 
 const anonymous = await request.newContext({ baseURL: baseUrl, ignoreHTTPSErrors: true });
-const anonymousResponse = await anonymous.get("/admin/api/system/actor-process", { failOnStatusCode: false });
+const anonymousResponse = await anonymous.get(designApi, { failOnStatusCode: false, timeout: 10_000 });
 if (![401, 403].includes(anonymousResponse.status())) throw new Error(`anonymous API did not fail closed HTTP ${anonymousResponse.status()}`);
 await anonymous.dispose();
 

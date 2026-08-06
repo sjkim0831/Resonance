@@ -16,13 +16,16 @@ export function ProcessOrchestrationPage() {
   const [data, setData] = useState<Payload>({});
   const [error, setError] = useState("");
   useEffect(() => {
-    const url = buildLocalizedPath("/admin/api/system/actor-process", "/en/admin/api/system/actor-process");
+    const url = buildLocalizedPath(
+      `/admin/api/system/actor-process/process-design?processCode=${encodeURIComponent(processCode)}`,
+      `/en/admin/api/system/actor-process/process-design?processCode=${encodeURIComponent(processCode)}`,
+    );
     void fetch(url, { credentials: "include" }).then(async response => {
       const body = await response.json();
       if (!response.ok) throw new Error(body.message || "업무 데이터를 불러오지 못했습니다.");
       setData(body);
     }).catch(reason => setError(reason instanceof Error ? reason.message : String(reason)));
-  }, []);
+  }, [processCode]);
   const process = useMemo(() => (data.processes || []).find(row => text(row, "processCode") === processCode), [data.processes, processCode]);
   const steps = useMemo(() => (data.steps || []).filter(row => text(row, "processCode") === processCode).sort((a, b) => metric(a, "stepOrder") - metric(b, "stepOrder")), [data.steps, processCode]);
   const selectedStep = useMemo(
