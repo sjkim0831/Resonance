@@ -2016,7 +2016,7 @@ public class ActorProcessGovernanceService {
                          end
                        ) as payload
                   from jsonb_array_elements(coalesce(handoff.payload_contract->'fieldMappings','[]'::jsonb)) mapping
-                 where draft.payload_json ? (mapping->>'fromField')
+                 where jsonb_exists(draft.payload_json,mapping->>'fromField')
               ) mapped on true
              order by source.source_priority,draft.submitted_at desc
              limit 1
