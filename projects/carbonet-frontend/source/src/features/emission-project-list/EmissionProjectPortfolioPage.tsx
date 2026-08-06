@@ -71,6 +71,7 @@ export function EmissionProjectPortfolioPage() {
   const actorCode = queryContext.get("actorCode") || "";
   const emptyHome = useMemo<HomePayload>(() => ({ isLoggedIn: false, isEn: en, homeMenu: [] }), [en]);
   const home = useAsyncValue<HomePayload>(() => fetchHomePayload(), [en], { initialValue: emptyHome, onError: () => undefined });
+  const [portfolioAuthorized, setPortfolioAuthorized] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [keyword, setKeyword] = useState("");
   const [status, setStatus] = useState("");
@@ -88,23 +89,33 @@ export function EmissionProjectPortfolioPage() {
   }, [mobileMenuOpen]);
 
   const portfolio = useAsyncValue<PortfolioPayload>(async () => {
+    setPortfolioAuthorized(false);
     // Status is a localized presentation value (for example "완료"), while the
     // persistence layer stores workflow status codes. Fetch the actor-scoped
     // portfolio once and apply the presentation filter locally so a locale
     // change cannot turn a valid portfolio into an empty result.
     const query = new URLSearchParams({ keyword, site, page: "1", size: "100" });
     const response = await fetch(`${buildLocalizedPath("/home/api/emission-projects", "/en/home/api/emission-projects")}?${query}`, {
-      credentials: "include", headers: { Accept: "application/json" },
+      credentials: "include", cache: "no-store", headers: { Accept: "application/json" },
     });
     if (response.status === 401) {
+      home.setValue((current) => current ? { ...current, isLoggedIn: false } : emptyHome);
       const returnUrl = encodeURIComponent(window.location.pathname + window.location.search);
       window.location.href = buildLocalizedPath(`/signin/loginView?returnUrl=${returnUrl}`, `/en/signin/loginView?returnUrl=${returnUrl}`);
       return EMPTY;
     }
-    return readJson<PortfolioPayload>(response);
-  }, [en, keyword, site], { initialValue: EMPTY });
+    const payload = await readJson<PortfolioPayload>(response);
+    setPortfolioAuthorized(true);
+    // A successful actor-scoped portfolio response is the authoritative proof
+    // of authentication. It also repairs a header request that raced with an
+    // SPA login cookie update.
+    home.setValue((current) => ({ ...(current || emptyHome), isLoggedIn: true }));
+    return payload;
+  }, [en, keyword, site], { initialValue: EMPTY, onError: () => setPortfolioAuthorized(false) });
 
-  const data = portfolio.value || EMPTY;
+  // Never retain previously authorized project data after a failed, forbidden,
+  // or in-flight authorization check.
+  const data = portfolioAuthorized ? (portfolio.value || EMPTY) : EMPTY;
   const actorScopedProjects = data.items || [];
   const projects = status
     ? actorScopedProjects.filter((project) => project.status === status)
@@ -128,14 +139,25 @@ export function EmissionProjectPortfolioPage() {
     setTaskLoading(true);
     setTaskError("");
     fetch(buildLocalizedPath("/home/api/emission-tasks", "/en/home/api/emission-tasks"), {
-      credentials: "include", headers: { Accept: "application/json" },
+      credentials: "include", cache: "no-store", headers: { Accept: "application/json" },
     })
+      .then((response) => {
+        if (response.status === 401 || response.status === 403) {
+          setPortfolioAuthorized(false);
+          if (response.status === 401) {
+            home.setValue((current) => current ? { ...current, isLoggedIn: false } : emptyHome);
+            const returnUrl = encodeURIComponent(window.location.pathname + window.location.search);
+            window.location.href = buildLocalizedPath(`/signin/loginView?returnUrl=${returnUrl}`, `/en/signin/loginView?returnUrl=${returnUrl}`);
+          }
+        }
+        return response;
+      })
       .then((response) => readJson<TaskPayload>(response))
       .then((body) => { if (mounted) setTaskPayload({ ...body, items: (body.items || []).filter((task) => task.projectId === selected.id) }); })
       .catch((error) => { if (mounted) { setTaskPayload(null); setTaskError(error instanceof Error ? error.message : String(error)); } })
       .finally(() => { if (mounted) setTaskLoading(false); });
     return () => { mounted = false; };
-  }, [selected?.id, en]);
+  }, [selected?.id, en, emptyHome]);
 
   const tasks = taskPayload?.items || [];
   const nextTask = tasks.find((task) => task.actionable && task.status !== "DONE") || tasks.find((task) => task.status !== "DONE") || null;

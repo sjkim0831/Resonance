@@ -65,7 +65,9 @@ export async function fetchAdminMenuPlaceholderPage(requestPath: string): Promis
 }
 
 export async function fetchHomePayload(): Promise<BootstrappedHomePayload> {
-  const payload = normalizeHomeEmissionMenu(await fetchLocalizedPageJson<BootstrappedHomePayload>("/api/home", "/en/api/home"));
+  const payload = normalizeHomeEmissionMenu(await fetchLocalizedPageJson<BootstrappedHomePayload>("/api/home", "/en/api/home", {
+    init: { cache: "no-store" }
+  }));
   writeSessionStorageCache(
     `${SESSION_STORAGE_CACHE_PREFIX}home-payload:${payload.isEn ? "en" : "ko"}`,
     payload,

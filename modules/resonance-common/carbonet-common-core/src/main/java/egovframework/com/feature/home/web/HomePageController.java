@@ -3,10 +3,10 @@ package egovframework.com.feature.home.web;
 import egovframework.com.platform.bootstrap.service.AdminShellBootstrapPageService;
 import egovframework.com.feature.home.service.HomeMenuService;
 import egovframework.com.feature.home.service.HomeMypageService;
+import egovframework.com.feature.auth.service.CurrentUserContextService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
-import org.springframework.web.bind.annotation.CookieValue;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -30,6 +30,7 @@ public class HomePageController {
     private final HomeMenuService homeMenuService;
     private final HomeMypageService homeMypageService;
     private final ReactAppViewSupport reactAppViewSupport;
+    private final CurrentUserContextService currentUserContextService;
 
     @RequestMapping(value = { "/" }, method = { RequestMethod.GET, RequestMethod.POST })
     public String root() {
@@ -64,11 +65,11 @@ public class HomePageController {
     @GetMapping({ "/api/home", "/api/en/home" })
     @ResponseBody
     public ResponseEntity<Map<String, Object>> homeApi(
-            @CookieValue(value = "accessToken", required = false) String accessToken,
             HttpServletRequest request) {
         boolean english = isEnglishRequest(request);
+        boolean authenticated = currentUserContextService.resolve(request).isAuthenticated();
         return ResponseEntity.ok(Map.of(
-                "isLoggedIn", accessToken != null,
+                "isLoggedIn", authenticated,
                 "isEn", english,
                 "homeMenu", homeMenuService.getHomeMenu(english)));
     }
