@@ -36,3 +36,8 @@ The webhook performs this prefetch as the unprivileged repository owner before
 dispatching the deployment service. A failed prefetch does not suppress the
 deployment; it falls back to the service-owned target-branch fetch.
 The fetched remote-tracking ref must exactly equal the signed webhook SHA.
+
+Database credential discovery runs concurrently with Git delta analysis and
+SQL assembly. The credential remains process-local, uses a mode-0600 temporary
+file, is removed before database execution, and falls back to the shared
+PostgreSQL adapter when prefetching is unavailable.
