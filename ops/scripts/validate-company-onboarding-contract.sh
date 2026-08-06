@@ -18,7 +18,9 @@ require "$SERVICE" 'result.put("ready",missing.isEmpty())'
 require "$SERVICE" "actor_code IN ('CALCULATOR','VERIFIER','APPROVER')"
 require "$SERVICE" 'HAVING count(DISTINCT actor_code)>1'
 require "$SERVICE" 'SEGREGATION_OF_DUTIES_REQUIRED:CALCULATOR,VERIFIER,APPROVER'
-require "$SERVICE" 'result.put("segregationOfDuties",segregationOfDuties)'
+require "$SERVICE" 'SELECT EXISTS(SELECT 1 FROM framework_account_actor_assignment calculator'
+require "$SERVICE" 'lower(approver.account_id)<>lower(verifier.account_id)'
+require "$SERVICE" 'result.put("segregationOfDuties",Boolean.TRUE.equals(segregationOfDuties))'
 
 # COMPANY_ONBOARDING_TENANT: every readiness lookup is tenant scoped.
 tenant_predicates="$(grep -o 'tenant_id=?' "$SERVICE" | wc -l | tr -d ' ')"
