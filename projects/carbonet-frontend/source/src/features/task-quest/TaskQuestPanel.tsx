@@ -1817,7 +1817,21 @@ export function TaskQuestPanel() {
   const focusedContractStep = focusedContractSteps.find(
     (step) => step.stepCode === task?.processStepCode,
   );
+  const focusedContractStepIndex = focusedContractStep
+    ? focusedContractSteps.findIndex(
+        (step) => step.stepCode === focusedContractStep.stepCode,
+      )
+    : -1;
+  const displayedNextStep =
+    focusedContractStepIndex >= 0
+      ? focusedContractSteps[focusedContractStepIndex + 1]
+      : undefined;
   const displayedStepOrder = focusedContractStep?.stepOrder || task?.stepOrder;
+  const displayedStepName = focusedContractStep?.stepName || task?.name || "";
+  const displayedWorkPurpose =
+    focusedContractStep?.workPurpose || task?.workPurpose || displayedStepName;
+  const displayedCompletionRule =
+    focusedContractStep?.completionRule || task?.completionRule;
   const progress =
     total > 0 ? Math.min(100, Math.round((completed / total) * 100)) : 0;
   const workflowTotal = selectedWorkflowItems.length;
@@ -2272,7 +2286,7 @@ export function TaskQuestPanel() {
                         {task.projectName || task.projectId}
                       </p>
                       <h2 className="mt-1 text-lg font-black leading-6 text-slate-900">
-                        {task.name}
+                        {displayedStepName}
                       </h2>
                       {focusedWorkflow ? (
                         <p className="mt-1 text-xs font-semibold text-slate-500">
@@ -2313,7 +2327,7 @@ export function TaskQuestPanel() {
                       </dt>
                       <dd className="font-semibold text-[#16408d]">
                         {displayedStepOrder ? `${displayedStepOrder}. ` : ""}
-                        {task.name}
+                        {displayedStepName}
                       </dd>
                     </div>
                     <div className="flex gap-2">
@@ -2337,7 +2351,7 @@ export function TaskQuestPanel() {
                         {en ? "Purpose" : "업무 목적"}
                       </dt>
                       <dd className="line-clamp-2 text-slate-700">
-                        {task.workPurpose || task.name}
+                        {displayedWorkPurpose}
                       </dd>
                     </div>
                     <div className="flex gap-2">
@@ -2345,20 +2359,23 @@ export function TaskQuestPanel() {
                         {en ? "Done when" : "완료 조건"}
                       </dt>
                       <dd className="line-clamp-2 text-slate-700">
-                        {task.completionRule ||
+                        {displayedCompletionRule ||
                           (en
                             ? "Complete the required action on the task page."
                             : "업무 화면의 필수 처리를 완료하세요.")}
                       </dd>
                     </div>
-                    {task.nextTaskName ? (
+                    {displayedNextStep ||
+                    (!focusedContractSteps.length && task.nextTaskName) ? (
                       <div className="flex gap-2">
                         <dt className="w-16 shrink-0 font-bold text-slate-500">
                           {en ? "Next" : "다음 업무"}
                         </dt>
                         <dd className="text-slate-700">
-                          <b>{task.nextTaskName}</b>
-                          {task.nextActorCode ? ` · ${task.nextActorCode}` : ""}
+                          <b>{displayedNextStep?.stepName || task.nextTaskName}</b>
+                          {displayedNextStep?.actorCode || task.nextActorCode
+                            ? ` · ${actorLabel(displayedNextStep?.actorCode || task.nextActorCode)}`
+                            : ""}
                         </dd>
                       </div>
                     ) : null}
