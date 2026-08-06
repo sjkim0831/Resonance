@@ -22,7 +22,7 @@ bash -n "$INSTALLER"
 grep -Fq 'Type=oneshot' "$SERVICE" || fail 'service must be oneshot'
 grep -Fq 'SuccessExitStatus=3' "$SERVICE" || fail 'BLOCKED exit 3 must be successful to systemd'
 service_timeout="$(sed -n 's/^TimeoutStartSec=\([0-9][0-9]*\)s$/\1/p' "$SERVICE")"
-[[ "$service_timeout" =~ ^[0-9]+$ && "$service_timeout" -ge 105 ]] || fail 'service must leave at least 20 seconds after the 85-second inner timeout'
+[[ "$service_timeout" =~ ^[0-9]+$ && "$service_timeout" -ge 930 ]] || fail 'service must leave at least 30 seconds after the 900-second paged audit timeout'
 grep -Fq 'KillMode=control-group' "$SERVICE" || fail 'systemd fallback must terminate the complete audit cgroup'
 grep -Fq 'SendSIGKILL=yes' "$SERVICE" || fail 'systemd fallback must escalate descendants that ignore TERM'
 grep -Fq '/opt/resonance-data/control-plane/bin/run-all-process-contract-audit-hourly.sh' "$SERVICE" || fail 'service must use installed control-plane runner'
@@ -37,7 +37,7 @@ fi
 grep -Fq 'flock -n 9' "$RUNNER" || fail 'runner must prevent duplicate execution with flock'
 grep -Fq 'RESONANCE_HEAVY_DB_LOCK_FILE' "$RUNNER" || fail 'runner must participate in the shared heavy DB automation lock'
 grep -Fq 'flock -n 7' "$RUNNER" || fail 'runner must defer while another heavy DB automation holds the shared lock'
-grep -Fq 'RESONANCE_AUDIT_TIMEOUT_SECONDS:-85' "$RUNNER" || fail 'runner must retain the bounded 85-second audit cap'
+grep -Fq 'RESONANCE_AUDIT_TIMEOUT_SECONDS:-900' "$RUNNER" || fail 'runner must retain the bounded 900-second all-page audit cap'
 grep -Fq 'timeout --signal=TERM --kill-after=5s' "$RUNNER" || fail 'timeout must terminate the audit process group and escalate orphaned children'
 ! grep -Fq 'timeout --foreground' "$RUNNER" || fail 'foreground mode would leave descendant processes outside timeout group cleanup'
 grep -Fq 'mktemp "$REPORT_DIR/.latest.XXXXXX.json"' "$RUNNER" || fail 'temporary report must share the destination filesystem'
@@ -195,4 +195,4 @@ if [[ -n "$real_timeout" ]] && "$real_timeout" --version 2>/dev/null | grep -Fq 
   fi
 fi
 
-echo '[test-all-process-contract-audit-scheduler] PASS: process-group timeout, 20s write margin, boot catch-up calendar, unconditional worktree repair, checksum drift, lock, atomic report and BLOCKED semantics verified'
+echo '[test-all-process-contract-audit-scheduler] PASS: process-group timeout, 30s write margin, boot catch-up calendar, unconditional worktree repair, checksum drift, lock, atomic report and BLOCKED semantics verified'

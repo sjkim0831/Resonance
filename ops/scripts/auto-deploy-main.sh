@@ -1050,7 +1050,7 @@ deploy_path_changed() {
 
 sync_postgres_backup_cronjobs_if_required() {
   local live_paths=""
-  if ! deploy_path_changed ops/scripts/apply-backup-cronjobs.sh &&
+  if ! deploy_path_changed ops/scripts/apply-backup-cronjobs.sh ops/scripts/configure-patroni-memory-safety.sh &&
     [[ "$control_plane_drift_check_due" != "true" ]]; then
     return 0
   fi
@@ -1064,6 +1064,10 @@ sync_postgres_backup_cronjobs_if_required() {
       "$live_paths" != *"/opt/resonance-data/backups/postgres/mirror"* ]]; then
     bash ops/scripts/apply-backup-cronjobs.sh
     echo "[auto-deploy] PostgreSQL backup CronJobs synchronized"
+  fi
+  if deploy_path_changed ops/scripts/configure-patroni-memory-safety.sh ||
+    [[ "$control_plane_drift_check_due" == "true" ]]; then
+    bash ops/scripts/configure-patroni-memory-safety.sh
   fi
 }
 

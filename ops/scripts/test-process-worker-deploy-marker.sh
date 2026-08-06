@@ -46,6 +46,16 @@ grep -Fq 'PROJECT_AUTO_COMPLETION_PGOPTIONS:--c work_mem=16MB -c maintenance_wor
   || fail "orchestrator does not bound PostgreSQL session memory, runtime and lock waits"
 grep -Fq 'env PGOPTIONS="$AUTOMATION_PGOPTIONS"' "$ORCHESTRATOR" \
   || fail "orchestrator does not apply the bounded PostgreSQL session contract"
+grep -Fq "ORCHESTRATOR_TERMINATED_STALE_RECOVERY" "$ORCHESTRATOR" \
+  || fail "orchestrator does not reconcile stale project completion runs"
+grep -Fq "PROJECT_COMPLETION_STALE_MINUTES:-10" "$ORCHESTRATOR" \
+  || fail "orchestrator stale-run recovery is not bounded by age"
+grep -Fq "where run_id='\$run_id' and run_status='RUNNING'" "$ORCHESTRATOR" \
+  || fail "signal recovery must be scoped to the active run"
+for signal in INT TERM HUP; do
+  grep -Fq "trap 'mark_interrupted $signal" "$ORCHESTRATOR" \
+    || fail "orchestrator does not finalize the active run on $signal"
+done
 grep -Fq 'OnUnitInactiveSec=2min' "$ORCHESTRATOR_TIMER" \
   || fail "orchestrator timer must leave a two-minute database cooldown after completion"
 ! grep -Fq 'OnUnitActiveSec=' "$ORCHESTRATOR_TIMER" \

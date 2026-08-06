@@ -5,11 +5,14 @@ import { readFile } from "node:fs/promises";
 const startedAt = Date.now();
 const baseUrl = String(process.env.CARBONET_RUNTIME_BASE_URL || "http://127.0.0.1").replace(/\/$/, "");
 const reportPath = "/admin/api/system/actor-process/system-test-report";
+const auditPath = `${reportPath}/audit`;
 const fixturePath = argumentValue("--fixture") || process.env.SYSTEM_TEST_REPORT_FIXTURE || "";
 const skipHttpSmoke = process.argv.includes("--skip-http-smoke") || process.env.SYSTEM_TEST_REPORT_SKIP_HTTP_SMOKE === "1";
 const smokeConcurrency = boundedInteger(process.env.SYSTEM_TEST_REPORT_SMOKE_CONCURRENCY, 8, 1, 32);
 const smokeTimeoutMs = boundedInteger(process.env.SYSTEM_TEST_REPORT_SMOKE_TIMEOUT_MS, 8_000, 500, 60_000);
 const maxRouteSmokes = boundedInteger(process.env.SYSTEM_TEST_REPORT_MAX_ROUTE_SMOKES, 5_000, 1, 100_000);
+const auditPageSize = boundedInteger(process.env.SYSTEM_TEST_REPORT_AUDIT_PAGE_SIZE, 250, 1, 500);
+const maxAuditPages = boundedInteger(process.env.SYSTEM_TEST_REPORT_MAX_AUDIT_PAGES, 10_000, 1, 100_000);
 
 const PASS_RESULTS = new Set(["PASSED"]);
 const NOT_RUN_RESULTS = new Set(["", "NOT_RUN", "NOT-RUN"]);
@@ -332,6 +335,45 @@ function cookieHeader(headers) {
   return values.map((value) => value.split(";", 1)[0]).filter(Boolean).join("; ");
 }
 
+async function runContractAuditPages(cookie) {
+  let targetOffset = 0;
+  let pageCount = 0;
+  const totals = { targetCount: 0, passedCount: 0, blockedCount: 0, errorCount: 0 };
+  while (true) {
+    pageCount += 1;
+    if (pageCount > maxAuditPages) throw new Error(`contract audit exceeded ${maxAuditPages} pages`);
+    const response = await fetch(`${baseUrl}${auditPath}`, {
+      method: "POST",
+      headers: { accept: "application/json", "content-type": "application/json", cookie },
+      body: JSON.stringify({ targetOffset, maxTargets: auditPageSize }),
+      signal: AbortSignal.timeout(Math.max(smokeTimeoutMs, 60_000)),
+    });
+    const contentType = response.headers.get("content-type") || "";
+    if (!response.ok || !contentType.toLowerCase().includes("application/json")) {
+      throw new Error(`contract audit page ${pageCount} failed with HTTP ${response.status}`);
+    }
+    const page = await response.json();
+    if (page?.success === false || page?.businessFunctionsExecuted !== false) {
+      throw new Error(`contract audit page ${pageCount} violated the contract-only execution policy`);
+    }
+    const errorCount = numeric(page.errorCount) ?? 0;
+    if (text(page.outcome ?? page.result).toUpperCase() === "ERROR" || errorCount > 0) {
+      throw new Error(`contract audit page ${pageCount} returned ${errorCount} errors`);
+    }
+    totals.targetCount += numeric(page.targetCount) ?? 0;
+    totals.passedCount += numeric(page.passedCount) ?? 0;
+    totals.blockedCount += numeric(page.blockedCount) ?? 0;
+    totals.errorCount += errorCount;
+    const hasMore = bool(page.hasMore);
+    if (!hasMore) return { ...totals, pageCount, complete: true, lastTargetOffset: targetOffset };
+    const nextTargetOffset = numeric(page.nextTargetOffset);
+    if (nextTargetOffset == null || nextTargetOffset <= targetOffset) {
+      throw new Error(`contract audit page ${pageCount} returned an invalid nextTargetOffset`);
+    }
+    targetOffset = nextTargetOffset;
+  }
+}
+
 async function loadLiveReport() {
   const username = text(process.env.CARBONET_ADMIN_AUDIT_USER);
   const password = String(process.env.CARBONET_ADMIN_AUDIT_PASSWORD || "");
@@ -348,6 +390,7 @@ async function loadLiveReport() {
   if (!response.ok || body.status !== "loginSuccess" || !cookie) {
     throw new Error(`admin login failed with HTTP ${response.status}`);
   }
+  const contractAudit = await runContractAuditPages(cookie);
   const reportResponse = await fetch(`${baseUrl}${reportPath}`, {
     headers: { accept: "application/json", cookie },
     signal: AbortSignal.timeout(Math.max(smokeTimeoutMs, 30_000)),
@@ -357,7 +400,7 @@ async function loadLiveReport() {
   if (!contentType.toLowerCase().includes("application/json")) {
     throw new Error(`system-test-report returned non-JSON content type: ${contentType || "missing"}`);
   }
-  return { payload: await reportResponse.json(), cookie };
+  return { payload: await reportResponse.json(), cookie, contractAudit };
 }
 
 async function smokeOne(route, cookie) {
@@ -420,12 +463,14 @@ async function main() {
   let payload;
   let cookie = "";
   let authenticated = false;
+  let contractAudit = { pageCount: 0, targetCount: 0, passedCount: 0, blockedCount: 0, errorCount: 0, complete: false, skipped: true };
   if (fixturePath) {
     payload = JSON.parse(await readFile(fixturePath, "utf8"));
   } else {
     const live = await loadLiveReport();
     payload = live.payload;
     cookie = live.cookie;
+    contractAudit = { ...live.contractAudit, skipped: false };
     authenticated = true;
   }
   const audited = validate(payload);
@@ -474,7 +519,8 @@ async function main() {
     routeSmoke: routes,
     processes: audited.processSummary,
     auditCoverage: audited.auditCoverage,
-    auditMode: "READ_ONLY_INVENTORY",
+    contractAuditPagination: contractAudit,
+    auditMode: authenticated ? "CONTRACT_EVIDENCE_REFRESH_AND_READ_ONLY_INVENTORY" : "READ_ONLY_INVENTORY",
     businessExecutionPerformed: false,
     businessFunctionsExecuted: false,
     contractTestResultsAreNotBusinessTests: true,

@@ -1,5 +1,5 @@
 [Unit]
-Description=Resonance read-only all-process contract audit
+Description=Resonance paged all-process contract evidence audit
 After=network-online.target
 Wants=network-online.target
 
@@ -13,7 +13,7 @@ Environment=PATH=/usr/local/bin:/usr/bin:/bin
 Environment=KUBECONFIG=/home/sjkim/.kube/config
 ExecStart=/usr/bin/bash /opt/resonance-data/control-plane/bin/run-all-process-contract-audit-hourly.sh
 SuccessExitStatus=3
-TimeoutStartSec=105s
+TimeoutStartSec=930s
 KillMode=control-group
 KillSignal=SIGTERM
 SendSIGKILL=yes

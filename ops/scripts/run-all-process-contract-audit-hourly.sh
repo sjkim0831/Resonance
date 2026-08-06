@@ -11,7 +11,7 @@ REPORT_DIR="${RESONANCE_AUDIT_REPORT_DIR:-/opt/resonance-data/control-plane/repo
 LATEST_REPORT="${RESONANCE_AUDIT_LATEST_REPORT:-$REPORT_DIR/latest.json}"
 LOCK_FILE="${RESONANCE_AUDIT_LOCK_FILE:-/opt/resonance-data/control-plane/run/all-process-contract-audit.lock}"
 HEAVY_DB_LOCK_FILE="${RESONANCE_HEAVY_DB_LOCK_FILE:-/opt/resonance-data/control-plane/run/heavy-db-automation.lock}"
-AUDIT_TIMEOUT_SECONDS="${RESONANCE_AUDIT_TIMEOUT_SECONDS:-85}"
+AUDIT_TIMEOUT_SECONDS="${RESONANCE_AUDIT_TIMEOUT_SECONDS:-900}"
 
 log() {
   printf '[all-process-contract-audit-hourly] %s\n' "$*" >&2
@@ -27,7 +27,7 @@ write_error_report() {
       const fs = require("node:fs");
       const report = {
         generatedAt: new Date().toISOString(),
-        auditMode: "READ_ONLY_INVENTORY",
+        auditMode: "CONTRACT_EVIDENCE_REFRESH_AND_READ_ONLY_INVENTORY",
         businessExecutionPerformed: false,
         status: "ERROR",
         error: {

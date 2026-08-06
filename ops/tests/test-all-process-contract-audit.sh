@@ -5,10 +5,11 @@ ROOT="${RESONANCE_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
 SCRIPT="$ROOT/ops/scripts/resonance-all-process-contract-audit.mjs"
 WRAPPER="$ROOT/ops/scripts/resonance-all-process-contract-audit.sh"
 PLAN="$ROOT/ops/scripts/plan-incremental-work.sh"
+PANEL="$ROOT/projects/carbonet-frontend/source/src/features/actor-process-governance/SystemProcessTestReportPanel.tsx"
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 
-for file in "$SCRIPT" "$WRAPPER" "$PLAN"; do
+for file in "$SCRIPT" "$WRAPPER" "$PLAN" "$PANEL"; do
   [[ -f "$file" ]] || { echo "missing file: $file" >&2; exit 1; }
 done
 
@@ -32,11 +33,37 @@ grep -q 'READ_ONLY_AUDIT_BUSINESS_PASS_REQUIRES_RECORDED_BUSINESS_RUN_NO_PROMOTI
 node - "$SCRIPT" <<'NODE'
 const fs = require("fs");
 const source = fs.readFileSync(process.argv[2], "utf8");
-if ((source.match(/method:\s*"POST"/g) || []).length !== 1 || !source.includes("/admin/login/actionLogin")) {
-  throw new Error("the only POST allowed by the read-only audit is admin login");
+if ((source.match(/method:\s*"POST"/g) || []).length !== 2
+    || !source.includes("/admin/login/actionLogin")
+    || !source.includes('const auditPath = `${reportPath}/audit`')) {
+  throw new Error("the contract audit must POST only login and paged immutable-evidence refresh");
 }
-if (/method:\s*"(?:PUT|PATCH|DELETE)"/.test(source) || /system-test-report\/audit|process-executions\/start|\/commands/.test(source)) {
-  throw new Error("mutating endpoint detected in read-only audit");
+if (/method:\s*"(?:PUT|PATCH|DELETE)"/.test(source) || /process-executions\/start|\/commands/.test(source)) {
+  throw new Error("business-mutating endpoint detected in contract audit");
+}
+for (const required of ["runContractAuditPages", "while (true)", "targetOffset", "maxTargets: auditPageSize", "nextTargetOffset", "contractAuditPagination"]) {
+  if (!source.includes(required)) throw new Error(`paged contract audit guard missing: ${required}`);
+}
+NODE
+
+node - "$PANEL" <<'NODE'
+const fs = require("fs");
+const source = fs.readFileSync(process.argv[2], "utf8");
+for (const required of [
+  "while (true)",
+  "targetOffset, maxTargets: 250",
+  "nextOffset <= targetOffset",
+  "계약 감사 진행 중",
+  "계약 감사 전체 페이지 완료",
+  'if (outcome === "BLOCKED") finalOutcome = "BLOCKED"',
+]) {
+  if (!source.includes(required)) throw new Error(`frontend paged audit guard missing: ${required}`);
+}
+const loop = source.indexOf("while (true)");
+const complete = source.indexOf("계약 감사 전체 페이지 완료", loop);
+const reload = source.indexOf("await load()", complete);
+if (loop < 0 || complete < loop || reload < complete) {
+  throw new Error("frontend must announce completion and reload only after the full page loop");
 }
 NODE
 
@@ -317,4 +344,4 @@ cp "$PLAN" "$TMP/plan/ops/scripts/plan-incremental-work.sh"
   grep -q 'reasons=automation-only' <<<"$plan_output"
 )
 
-echo '[all-process-contract-audit-test] PASS fixtures=6 outputContract=PASS/BLOCKED/ERROR contractVsBusiness=PASS staleSimulation=PASS readOnly=PASS order=PASS routes=PASS ioContracts=PASS secretPolicy=kubernetes+exit2 noBuild=PASS'
+echo '[all-process-contract-audit-test] PASS fixtures=6 outputContract=PASS/BLOCKED/ERROR contractVsBusiness=PASS staleSimulation=PASS pagedContractEvidence=PASS order=PASS routes=PASS ioContracts=PASS secretPolicy=kubernetes+exit2 noBuild=PASS'

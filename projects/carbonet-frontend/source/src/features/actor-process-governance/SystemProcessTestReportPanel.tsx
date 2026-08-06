@@ -123,19 +123,41 @@ export function SystemProcessTestReportPanel({ base }: Props) {
     setError("");
     setMessage("");
     try {
-      const request = {
+      const scope = {
         ...(workTypeCode ? { domainCode: workTypeCode } : {}),
         ...(processCode ? { processCode } : {})
       };
-      const response = await fetch(`${base}/system-test-report/audit`, {
-        method: "POST",
-        credentials: "include",
-        headers: { Accept: "application/json", "Content-Type": "application/json" },
-        body: JSON.stringify(request)
-      });
-      const body = await readJsonResponse<Row>(response, "프로세스 계약 점검에 실패했습니다.");
-      const auditOutcome = text(body, "outcome", "result") || "UNKNOWN";
-      setMessage(`계약 점검 실행 완료 · 결과 ${auditOutcome} · 대상 ${text(body, "targetCount") || "0"}개 · 절차 ${text(body, "auditedStepCount") || "0"}개 · 바인딩 ${text(body, "auditedBindingCount") || "0"}개 · 기능 대상 ${text(body, "auditedCapabilityTargetCount") || "0"}개 · 결과를 다시 조회했습니다. 실제 업무 명령은 실행하지 않았습니다.`);
+      let targetOffset = 0;
+      let pageCount = 0;
+      let targetCount = 0;
+      let passedCount = 0;
+      let blockedCount = 0;
+      let finalOutcome = "PASSED";
+      while (true) {
+        pageCount += 1;
+        if (pageCount > 10_000) throw new Error("계약 감사 페이지 수가 안전 한도를 초과했습니다.");
+        const response = await fetch(`${base}/system-test-report/audit`, {
+          method: "POST",
+          credentials: "include",
+          headers: { Accept: "application/json", "Content-Type": "application/json" },
+          body: JSON.stringify({ ...scope, targetOffset, maxTargets: 250 })
+        });
+        const body = await readJsonResponse<Row>(response, "프로세스 계약 감사에 실패했습니다.");
+        if (body.businessFunctionsExecuted !== false) throw new Error("계약 감사 중 실제 업무 기능 실행이 감지되었습니다.");
+        const outcome = text(body, "outcome", "result") || "UNKNOWN";
+        if (outcome === "ERROR" || number(body, "errorCount") > 0) throw new Error(`계약 감사 ${pageCount}페이지에서 오류가 발생했습니다.`);
+        if (outcome === "BLOCKED") finalOutcome = "BLOCKED";
+        targetCount += number(body, "targetCount");
+        passedCount += number(body, "passedCount");
+        blockedCount += number(body, "blockedCount");
+        const hasMore = body.hasMore === true || String(body.hasMore).toLowerCase() === "true";
+        setMessage(`계약 감사 진행 중 · ${pageCount}페이지 · ${targetCount.toLocaleString("ko-KR")}개 대상 처리`);
+        if (!hasMore) break;
+        const nextOffset = number(body, "nextTargetOffset");
+        if (nextOffset <= targetOffset) throw new Error("계약 감사 다음 페이지 위치가 올바르지 않습니다.");
+        targetOffset = nextOffset;
+      }
+      setMessage(`계약 감사 전체 페이지 완료 · 결과 ${finalOutcome} · ${pageCount}페이지 · 대상 ${targetCount.toLocaleString("ko-KR")}개 · 통과 ${passedCount.toLocaleString("ko-KR")}개 · 차단 ${blockedCount.toLocaleString("ko-KR")}개 · 실제 업무 기능은 실행하지 않았습니다.`);
       await load();
     } catch (reason) {
       setError(requestErrorMessage(reason, "프로세스 계약 점검에 실패했습니다."));

@@ -45,6 +45,26 @@ psqlq(){
     env PGOPTIONS="$AUTOMATION_PGOPTIONS" \
     psql -h 127.0.0.1 -U "$DB_USER" -d "$DB" -X -q -v ON_ERROR_STOP=1 -At "$@"
 }
+# A host reboot, operator stop, or OOM can terminate the shell without firing
+# ERR. Reconcile only genuinely stale orchestration records; contract runs and
+# development-job leases have their own lifecycles and are intentionally not
+# touched here.
+stale_completion_run_count="$(psqlq -c "
+with recovered as (
+  update framework_project_completion_run
+     set run_status='FAILED',
+         completed_at=(current_timestamp at time zone 'UTC'),
+         result_json=(coalesce(framework_try_jsonb(result_json),'{}'::jsonb)||
+           jsonb_build_object('reason','ORCHESTRATOR_TERMINATED_STALE_RECOVERY',
+             'recoveredAt',(current_timestamp at time zone 'UTC'),'previousStatus','RUNNING'))::text
+   where run_status='RUNNING'
+     and started_at < (current_timestamp at time zone 'UTC')-interval '${PROJECT_COMPLETION_STALE_MINUTES:-10} minutes'
+   returning run_id
+)
+select count(*) from recovered;")"
+if [[ "$stale_completion_run_count" != "0" ]]; then
+  echo "[project-auto-completion] recovered stale completion runs: $stale_completion_run_count" >&2
+fi
 contract_completion_result="$(psqlq -c "select framework_run_contract_completion('project-auto-completion',${CONTRACT_COMPLETION_BATCH_SIZE:-25},false);")"
 host_worker_prefix="$(hostname)-hermes-"
 while IFS='|' read -r orphan_job_id orphan_worker_id; do
@@ -73,6 +93,19 @@ done < <(psqlq -c "
     and updated_at < current_timestamp - interval '${ORPHAN_WORKER_GRACE_MINUTES:-5} minutes';")
 run_id="$(cat /proc/sys/kernel/random/uuid)"
 psqlq -c "insert into framework_project_completion_run(run_id) values('$run_id');" >/dev/null
+mark_interrupted(){
+  local signal="$1" exit_code="$2"
+  trap - INT TERM HUP
+  psqlq -c "update framework_project_completion_run
+    set run_status='FAILED',
+        result_json=jsonb_build_object('reason','ORCHESTRATOR_SIGNALLED','signal','$signal','exitCode',$exit_code),
+        completed_at=current_timestamp
+    where run_id='$run_id' and run_status='RUNNING';" >/dev/null 2>&1 || true
+  exit "$exit_code"
+}
+trap 'mark_interrupted INT 130' INT
+trap 'mark_interrupted TERM 143' TERM
+trap 'mark_interrupted HUP 129' HUP
 trap 'failed_line=$LINENO; echo "[project-auto-completion] ERROR line=$failed_line" >&2; psqlq -c "update framework_project_completion_run set run_status='"'"'FAILED'"'"',result_json=jsonb_build_object('"'"'failedLine'"'"',$failed_line),completed_at=current_timestamp where run_id='"'"'$run_id'"'"';" >/dev/null 2>&1 || true' ERR
 selected="$(psqlq -c "select count(*) from framework_process_delivery_priority_queue where next_action<>'COMPLETE';")"
 design_evidence_adopted="$(psqlq -c "

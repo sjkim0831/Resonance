@@ -57,6 +57,15 @@ class ActorProcessGovernanceServiceSecurityTest {
                 "scoped_steps must expose process_code exactly once; s.* already contains it");
         assertTrue(sqlCaptor.getValue().contains("scope_metrics as materialized"),
                 "scope metrics must execute once instead of being rescanned for every report row");
+        assertTrue(sqlCaptor.getValue().contains("scoped_screen_ids as materialized"),
+                "screen-level hashes must be restricted to the requested process scope");
+        assertTrue(sqlCaptor.getValue().contains("left join lateral")
+                        && !sqlCaptor.getValue().contains("row_number() over(partition by target.process_code"),
+                "latest immutable evidence must use a bounded lookup instead of joining and sorting every historical run");
+        assertTrue(sqlCaptor.getValue().contains("binding_targets as (")
+                        && sqlCaptor.getValue().contains("left join framework_screen_capability c using(screen_resource_id)")
+                        && sqlCaptor.getValue().contains("coalesce(c.capability_code,'ALL') capability_code"),
+                "contract evidence must retain every active screen binding and actual capability target");
 
         assertEquals("CONTRACT_ONLY", report.get("auditMode"));
         assertEquals(false, report.get("businessFunctionsExecuted"));
@@ -64,6 +73,45 @@ class ActorProcessGovernanceServiceSecurityTest {
         assertEquals(0, summary.get("fixtureSuiteBindingCount"));
         assertEquals("INVENTORY_AND_SIMULATION_EVIDENCE_ONLY", summary.get("fixtureSuiteMode"));
         assertEquals("EVIDENCE_LEDGER_UNAVAILABLE", summary.get("businessEvidenceStatus"));
+        assertEquals("ACTIVE_BINDING_CAPABILITY", summary.get("auditTargetMode"));
+    }
+
+    @Test
+    void bulkContractAuditIsCapabilityPagedAndLoadsFixturesInTheTargetQuery() {
+        when(jdbc.queryForList(argThat(sql -> sql.contains("limit ? offset ?")
+                        && sql.contains("fixture.test_case_id")
+                        && sql.contains("left join framework_screen_capability capability using(screen_resource_id)")
+                        && sql.contains("test.capability_code in(coalesce(capability.capability_code,'ALL'),'ALL')")),
+                any(Object[].class))).thenReturn(List.of());
+
+        Map<String,Object> result=service.auditSystemProcessContracts(Map.of(),"system-auditor");
+
+        assertEquals(250,result.get("maxTargets"));
+        assertEquals(0,result.get("targetOffset"));
+        assertEquals(false,result.get("hasMore"));
+        assertEquals("CONTRACT_ONLY",result.get("auditMode"));
+        assertEquals("ACTIVE_BINDING_CAPABILITY",result.get("auditTargetMode"));
+        assertEquals(false,result.get("businessFunctionsExecuted"));
+        verify(jdbc,never()).queryForList(argThat(sql -> sql.startsWith("select test_case_id")),any(Object[].class));
+    }
+
+    @Test
+    void bulkContractAuditReturnsAStableNextOffsetWithoutProcessingTheLookaheadRow() {
+        when(jdbc.queryForList(argThat(sql -> sql.contains("limit ? offset ?")
+                        && sql.contains("left join framework_screen_capability capability using(screen_resource_id)")),
+                any(Object[].class))).thenReturn(List.of(
+                        Map.of("processCode","PROCESS_A","stepCode","STEP_1"),
+                        Map.of("processCode","PROCESS_A","stepCode","STEP_2")));
+
+        Map<String,Object> result=service.auditSystemProcessContracts(
+                Map.of("targetOffset",7,"maxTargets",1),"system-auditor");
+
+        assertEquals(1,result.get("targetCount"));
+        assertEquals(true,result.get("hasMore"));
+        assertEquals(8,result.get("nextTargetOffset"));
+        assertEquals(1,result.get("errorCount"));
+        @SuppressWarnings("unchecked") List<Map<String,Object>> runs=(List<Map<String,Object>>)result.get("runs");
+        assertEquals(1,runs.size(),"the maxTargets+1 lookahead row must not be audited");
     }
 
     @Test

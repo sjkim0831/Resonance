@@ -65,7 +65,12 @@ spec:
               name=carbonet_${ts}.dump
               mkdir -p /backups/hourly /mirror/hourly
               trap 'status=$?; if [ "$status" -ne 0 ]; then rm -f "/backups/hourly/$name" "/backups/hourly/$name.manifest" "/backups/hourly/$name.sha256"; fi; exit "$status"' EXIT
-              pg_dump -h postgres-haproxy.carbonet-prod.svc.cluster.local -U carbonet_app -d carbonet -Fc -f "/backups/hourly/$name"
+              # Logical backups are read-only and must not compete with the
+              # transactional leader. HAProxy 5433 selects a healthy Patroni
+              # replica; timeouts bound the impact if a replica is unhealthy.
+              PGCONNECT_TIMEOUT=10 PGOPTIONS='-c statement_timeout=840000 -c lock_timeout=10000 -c work_mem=16MB' \
+                pg_dump -h postgres-haproxy.carbonet-prod.svc.cluster.local -p 5433 \
+                  -U carbonet_app -d carbonet -Fc -f "/backups/hourly/$name"
               pg_restore -l "/backups/hourly/$name" > "/backups/hourly/$name.manifest"
               (cd /backups/hourly && sha256sum "$name" > "$name.sha256")
               cp "/backups/hourly/$name" "/mirror/hourly/$name"
@@ -121,7 +126,9 @@ spec:
               name=carbonet_${ts}.dump
               mkdir -p /backups/daily /mirror/daily
               trap 'status=$?; if [ "$status" -ne 0 ]; then rm -f "/backups/daily/$name" "/backups/daily/$name.manifest" "/backups/daily/$name.sha256"; fi; exit "$status"' EXIT
-              pg_dump -h postgres-haproxy.carbonet-prod.svc.cluster.local -U postgres -d carbonet -Fc -f "/backups/daily/$name"
+              PGCONNECT_TIMEOUT=10 PGOPTIONS='-c statement_timeout=1140000 -c lock_timeout=10000 -c work_mem=16MB' \
+                pg_dump -h postgres-haproxy.carbonet-prod.svc.cluster.local -p 5433 \
+                  -U postgres -d carbonet -Fc -f "/backups/daily/$name"
               pg_restore -l "/backups/daily/$name" > "/backups/daily/$name.manifest"
               (cd /backups/daily && sha256sum "$name" > "$name.sha256")
               cp "/backups/daily/$name" "/mirror/daily/$name"
