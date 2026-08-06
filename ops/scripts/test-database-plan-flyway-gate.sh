@@ -11,5 +11,8 @@ grep -Fq '${RUN_FLYWAY_MIGRATION_JOB:-true}' "$BUILD_DEPLOY"
 grep -Fq 'apps/carbonet-api/src/main/resources/db/migration/*|db/*)' \
   "$ROOT_DIR/ops/scripts/plan-incremental-work.sh"
 grep -Fq '[[ "$PLAN_DATABASE_REQUIRED" == true ]]' "$PLANNER_TEST"
+grep -Fq 'backup_cleanup_required=false' "$AUTO_DEPLOY"
+grep -Fq '[[ "$backup_cleanup_required" == "true" ]] || return 0' "$AUTO_DEPLOY"
+grep -Fq 'backup_cleanup_required=true' "$AUTO_DEPLOY"
 
-echo "[database-plan-flyway-gate] PASS automatic deploys run Flyway only for fail-closed database plans"
+echo "[database-plan-flyway-gate] PASS Flyway and stale backup cleanup run only for fail-closed database plans"

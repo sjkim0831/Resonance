@@ -259,6 +259,7 @@ fi
 echo "[auto-deploy] PostgreSQL backup leader: $POSTGRES_POD"
 record_deploy_phase "platform_preflight"
 backup_application_name="carbonet-auto-deploy-$$"
+backup_cleanup_required=false
 schema_backup_dir=""
 schema_restore_database=""
 runtime_asset_sync_pid=""
@@ -270,15 +271,8 @@ catalog_identity_sync_log=""
 backstage_visual_e2e_pid=""
 backstage_visual_e2e_log=""
 backstage_e2e_effective_routes=""
-# A disconnected kubectl/pg_dump pipeline can survive the systemd process and
-# retain ACCESS SHARE locks indefinitely. Reap only deploy-owned sessions that
-# have exceeded five minutes before Flyway can be blocked. Normal full dumps
-# remain protected by their active systemd service and current application name.
-kubectl -n "$NAMESPACE" exec "$POSTGRES_POD" -c "$POSTGRES_CONTAINER" -- \
-  psql -h 127.0.0.1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" -X -q -At \
-  -c "select pg_terminate_backend(pid) from pg_stat_activity where application_name like 'carbonet-auto-deploy-%' and application_name<>'$backup_application_name' and coalesce(xact_start,query_start,backend_start) < current_timestamp - interval '5 minutes' and pid<>pg_backend_pid()" \
-  >/dev/null 2>&1 || true
 cleanup_remote_backup() {
+  [[ "$backup_cleanup_required" == "true" ]] || return 0
   # A terminated `kubectl exec` can leave pg_dump alive inside the pod. End
   # only sessions owned by this deploy invocation, preventing duplicate dumps
   # after a stop or retry without touching other backup jobs.
@@ -1292,6 +1286,15 @@ if [[ "$PLAN_DATABASE_REQUIRED" == "true" && "${CARBONET_FORCE_PREDEPLOY_BACKUP:
   echo "[auto-deploy] database backup scope: $backup_scope"
 fi
 if [[ "$backup_required" == "true" ]]; then
+  backup_cleanup_required=true
+  # A disconnected kubectl/pg_dump pipeline can survive the systemd process
+  # and retain ACCESS SHARE locks indefinitely. Reap only deploy-owned
+  # sessions immediately before a backup-capable deployment; catalog and
+  # frontend-only work must not pay two unnecessary PostgreSQL round trips.
+  kubectl -n "$NAMESPACE" exec "$POSTGRES_POD" -c "$POSTGRES_CONTAINER" -- \
+    psql -h 127.0.0.1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" -X -q -At \
+    -c "select pg_terminate_backend(pid) from pg_stat_activity where application_name like 'carbonet-auto-deploy-%' and application_name<>'$backup_application_name' and coalesce(xact_start,query_start,backend_start) < current_timestamp - interval '5 minutes' and pid<>pg_backend_pid()" \
+    >/dev/null 2>&1 || true
   if [[ "$schema_backup_only" == "true" ]]; then
     backup_file="$BACKUP_DIR/carbonet-schema-$timestamp-$current_commit.tar"
     schema_backup_dir="$(mktemp -d)"
