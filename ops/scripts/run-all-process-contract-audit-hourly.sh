@@ -10,6 +10,7 @@ AUDIT_ENGINE="${RESONANCE_AUDIT_ENGINE:-$CONTROL_PLANE_BIN/resonance-all-process
 REPORT_DIR="${RESONANCE_AUDIT_REPORT_DIR:-/opt/resonance-data/control-plane/reports/process-contract-audit}"
 LATEST_REPORT="${RESONANCE_AUDIT_LATEST_REPORT:-$REPORT_DIR/latest.json}"
 LOCK_FILE="${RESONANCE_AUDIT_LOCK_FILE:-/opt/resonance-data/control-plane/run/all-process-contract-audit.lock}"
+HEAVY_DB_LOCK_FILE="${RESONANCE_HEAVY_DB_LOCK_FILE:-/opt/resonance-data/control-plane/run/heavy-db-automation.lock}"
 AUDIT_TIMEOUT_SECONDS="${RESONANCE_AUDIT_TIMEOUT_SECONDS:-85}"
 
 log() {
@@ -53,10 +54,15 @@ done
 [[ -f "$AUDIT_WRAPPER" ]] || { log 'audit wrapper is missing'; exit 2; }
 [[ -f "$AUDIT_ENGINE" ]] || { log 'audit engine is missing'; exit 2; }
 
-mkdir -p "$REPORT_DIR" "$(dirname "$LOCK_FILE")"
+mkdir -p "$REPORT_DIR" "$(dirname "$LOCK_FILE")" "$(dirname "$HEAVY_DB_LOCK_FILE")"
 exec 9>"$LOCK_FILE"
 if ! flock -n 9; then
   log 'another audit is already running; duplicate execution skipped'
+  exit 0
+fi
+exec 7>"$HEAVY_DB_LOCK_FILE"
+if ! flock -n 7; then
+  log 'heavy DB automation is already running; audit deferred to the next timer run'
   exit 0
 fi
 

@@ -7,6 +7,7 @@ AUTO_DEPLOY="$ROOT_DIR/ops/scripts/auto-deploy-main.sh"
 UNIT="$ROOT_DIR/ops/systemd/resonance-process-development-worker.service"
 ORCHESTRATOR="$ROOT_DIR/ops/scripts/run-project-auto-completion-orchestrator.sh"
 ORCHESTRATOR_UNIT="$ROOT_DIR/ops/systemd/resonance-project-auto-completion.service"
+ORCHESTRATOR_TIMER="$ROOT_DIR/ops/systemd/resonance-project-auto-completion.timer"
 DETERMINISTIC_RUNNER="$ROOT_DIR/ops/scripts/run-deterministic-development-job.sh"
 
 fail() {
@@ -37,6 +38,18 @@ grep -Fq 'bash "$PROCESS_DEVELOPMENT_DISPATCHER"' "$ORCHESTRATOR" \
   || fail "orchestrator does not use the colocated control-plane dispatcher"
 grep -Fq 'ExecStart=/usr/bin/bash /opt/resonance-data/control-plane/bin/run-project-auto-completion-orchestrator.sh' "$ORCHESTRATOR_UNIT" \
   || fail "systemd orchestrator does not use the persistent control-plane copy"
+grep -Fq 'RESONANCE_HEAVY_DB_LOCK_FILE' "$ORCHESTRATOR" \
+  || fail "orchestrator does not participate in the shared heavy DB automation lock"
+grep -Fq 'flock -n 7' "$ORCHESTRATOR" \
+  || fail "orchestrator does not fail-safe when the shared DB automation lock is busy"
+grep -Fq 'PROJECT_AUTO_COMPLETION_PGOPTIONS:--c work_mem=16MB -c maintenance_work_mem=128MB -c statement_timeout=180000 -c lock_timeout=10000' "$ORCHESTRATOR" \
+  || fail "orchestrator does not bound PostgreSQL session memory, runtime and lock waits"
+grep -Fq 'env PGOPTIONS="$AUTOMATION_PGOPTIONS"' "$ORCHESTRATOR" \
+  || fail "orchestrator does not apply the bounded PostgreSQL session contract"
+grep -Fq 'OnUnitInactiveSec=2min' "$ORCHESTRATOR_TIMER" \
+  || fail "orchestrator timer must leave a two-minute database cooldown after completion"
+! grep -Fq 'OnUnitActiveSec=' "$ORCHESTRATOR_TIMER" \
+  || fail "orchestrator timer must not immediately rerun after a long execution"
 grep -Fq '/opt/resonance-data/control-plane/bin/run-project-auto-completion-orchestrator.sh' "$AUTO_DEPLOY" \
   || fail "auto-deploy does not install the orchestrator script"
 frontend_branch="$(sed -n '/FRONTEND_USER|FRONTEND_ADMIN)/,/API|API_QUALITY|BACKEND|BACKEND_QUALITY)/p' "$DETERMINISTIC_RUNNER")"

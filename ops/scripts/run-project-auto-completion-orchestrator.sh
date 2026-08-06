@@ -4,6 +4,8 @@ ROOT_DIR="${ROOT_DIR:-/opt/Resonance}"; NAMESPACE="${K8S_NAMESPACE:-carbonet-pro
 PROJECT_WORK_RUNNER="${PROJECT_WORK_RUNNER:-$ROOT_DIR/ops/scripts/run-hermes-project-work.sh}"
 PROCESS_DEVELOPMENT_DISPATCHER="${PROCESS_DEVELOPMENT_DISPATCHER:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/run-process-development-dispatcher.sh}"
 LOCK_FILE="${PROJECT_AUTO_COMPLETION_LOCK:-/tmp/resonance-project-auto-completion.lock}"
+HEAVY_DB_LOCK_FILE="${RESONANCE_HEAVY_DB_LOCK_FILE:-/opt/resonance-data/control-plane/run/heavy-db-automation.lock}"
+AUTOMATION_PGOPTIONS="${PROJECT_AUTO_COMPLETION_PGOPTIONS:--c work_mem=16MB -c maintenance_work_mem=128MB -c statement_timeout=180000 -c lock_timeout=10000}"
 exec 9>"$LOCK_FILE"
 if [[ "${PROJECT_AUTO_COMPLETION_WAIT_FOR_LOCK:-false}" == "true" ]]; then
   flock -w "${PROJECT_AUTO_COMPLETION_LOCK_WAIT_SECONDS:-14400}" 9 || {
@@ -15,6 +17,16 @@ else
 fi
 exec 8>"${DESIGN_METADATA_LOCK:-/tmp/resonance-design-metadata.lock}"
 flock -n 8 || exit 0
+# PostgreSQL has a bounded memory cgroup. Keep the completion orchestrator and
+# the full process-contract audit from materializing large result sets at the
+# same time. A skipped timer run is safe because the timer retries after the
+# post-run cooldown.
+mkdir -p "$(dirname "$HEAVY_DB_LOCK_FILE")"
+exec 7>"$HEAVY_DB_LOCK_FILE"
+if ! flock -n 7; then
+  echo "[project-auto-completion] heavy DB automation is already running; execution skipped" >&2
+  exit 0
+fi
 # framework_development_job_event.event_type is varchar(30). Fail before any
 # mutation if a newly added static recovery event exceeds that DB contract.
 while IFS= read -r event_code; do
@@ -28,7 +40,11 @@ while IFS= read -r pod; do
   [[ "$(kubectl -n "$NAMESPACE" exec "$pod" -c patroni -- psql -h 127.0.0.1 -U "$DB_USER" -d "$DB" -Atqc 'select pg_is_in_recovery()' 2>/dev/null || true)" == "f" ]] && { leader="$pod"; break; }
 done < <(kubectl -n "$NAMESPACE" get pods -l app=postgres-patroni -o name | sed 's#^pod/##')
 [[ -n "$leader" ]] || { echo "[project-auto-completion] writable PostgreSQL leader not found" >&2; exit 1; }
-psqlq(){ kubectl -n "$NAMESPACE" exec "$leader" -c patroni -- psql -h 127.0.0.1 -U "$DB_USER" -d "$DB" -X -q -v ON_ERROR_STOP=1 -At "$@"; }
+psqlq(){
+  kubectl -n "$NAMESPACE" exec "$leader" -c patroni -- \
+    env PGOPTIONS="$AUTOMATION_PGOPTIONS" \
+    psql -h 127.0.0.1 -U "$DB_USER" -d "$DB" -X -q -v ON_ERROR_STOP=1 -At "$@"
+}
 contract_completion_result="$(psqlq -c "select framework_run_contract_completion('project-auto-completion',${CONTRACT_COMPLETION_BATCH_SIZE:-25},false);")"
 host_worker_prefix="$(hostname)-hermes-"
 while IFS='|' read -r orphan_job_id orphan_worker_id; do

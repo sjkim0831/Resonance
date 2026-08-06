@@ -35,6 +35,8 @@ if command -v systemd-analyze >/dev/null 2>&1; then
 fi
 
 grep -Fq 'flock -n 9' "$RUNNER" || fail 'runner must prevent duplicate execution with flock'
+grep -Fq 'RESONANCE_HEAVY_DB_LOCK_FILE' "$RUNNER" || fail 'runner must participate in the shared heavy DB automation lock'
+grep -Fq 'flock -n 7' "$RUNNER" || fail 'runner must defer while another heavy DB automation holds the shared lock'
 grep -Fq 'RESONANCE_AUDIT_TIMEOUT_SECONDS:-85' "$RUNNER" || fail 'runner must retain the bounded 85-second audit cap'
 grep -Fq 'timeout --signal=TERM --kill-after=5s' "$RUNNER" || fail 'timeout must terminate the audit process group and escalate orphaned children'
 ! grep -Fq 'timeout --foreground' "$RUNNER" || fail 'foreground mode would leave descendant processes outside timeout group cleanup'
@@ -146,6 +148,7 @@ run_fixture() {
   RESONANCE_AUDIT_REPORT_DIR="$tmp/reports" \
   RESONANCE_AUDIT_LATEST_REPORT="$tmp/reports/latest.json" \
   RESONANCE_AUDIT_LOCK_FILE="$tmp/run/audit.lock" \
+  RESONANCE_HEAVY_DB_LOCK_FILE="$tmp/run/heavy-db.lock" \
   bash "$RUNNER"
 }
 
