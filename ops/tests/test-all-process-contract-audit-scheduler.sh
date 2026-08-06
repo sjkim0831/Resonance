@@ -64,11 +64,18 @@ grep -Fq 'install-all-process-contract-audit.sh --check' <<<"$audit_sync_body" |
 grep -Fq 'cmp -s' "$INSTALLER" || fail 'installation check must compare source and installed bytes'
 grep -Fq 'install -d -m 0750 -o root -g sjkim "$REPORT_PARENT"' "$INSTALLER" || fail 'audit service must be able to traverse the protected report parent'
 grep -Fq 'SYSTEM_TEST_REPORT_SKIP_HTTP_SMOKE=1' <<<"$audit_sync_body" || fail 'deploy must parse the authenticated live report API before success'
+grep -Fq 'SYSTEM_TEST_REPORT_DEPLOYMENT_PREFLIGHT=1' <<<"$audit_sync_body" || fail 'deploy must skip duplicate contract-evidence refresh through explicit preflight mode'
+grep -Fq 'AUTHENTICATED_COMPACT_REPORT_DEPLOYMENT_PREFLIGHT' <<<"$audit_sync_body" || fail 'deploy must reject output that is not authenticated compact preflight evidence'
+grep -Fq 'DEPLOYMENT_PREFLIGHT_COMPACT_REPORT_VALIDATION' <<<"$audit_sync_body" || fail 'deploy must verify the contract-evidence refresh was deliberately skipped'
+grep -Fq 'completedIncumbentAudit' <<<"$audit_sync_body" || fail 'deploy must continue accepting a fresh complete report from an incumbent hourly audit'
+grep -Fq 'CONTRACT_EVIDENCE_REFRESH_AND_READ_ONLY_INVENTORY' <<<"$audit_sync_body" || fail 'incumbent audit reuse must require full evidence-refresh mode'
 grep -Fq '"$preflight_rc" -ne 0 && "$preflight_rc" -ne 3' <<<"$audit_sync_body" || fail 'truthful BLOCKED audit status must remain deploy-safe'
 grep -Fq 'RESONANCE_AUDIT_LOCK_FILE:-/opt/resonance-data/control-plane/run/all-process-contract-audit.lock' <<<"$audit_sync_body" || fail 'deploy preflight must share the scheduled audit lock'
 grep -Fq 'flock -n "$audit_lock_fd"' <<<"$audit_sync_body" || fail 'deploy preflight must acquire the audit lock before starting an audit'
 grep -Fq 'flock -w "$audit_lock_wait_seconds" "$audit_lock_fd"' <<<"$audit_sync_body" || fail 'deploy preflight must wait for an incumbent audit instead of starting a duplicate'
 grep -Fq 'concurrent all-process audit did not publish a fresh atomic report' <<<"$audit_sync_body" || fail 'deploy must reject stale reports after audit lock contention'
+! grep -Fq 'SYSTEM_TEST_REPORT_DEPLOYMENT_PREFLIGHT' "$RUNNER" || fail 'hourly runner must never inherit deployment-only evidence-refresh skipping'
+! grep -Fq 'SYSTEM_TEST_REPORT_DEPLOYMENT_PREFLIGHT' "$SERVICE" || fail 'hourly service must never enable deployment-only evidence-refresh skipping'
 
 repair_call_line="$(grep -n '^repair_persistent_build_worktree_ownership$' "$DEPLOY" | head -n1 | cut -d: -f1)"
 no_change_line="$(grep -n 'if \[\[ "$deployed_commit" == "$target_commit" \]\]' "$DEPLOY" | head -n1 | cut -d: -f1)"

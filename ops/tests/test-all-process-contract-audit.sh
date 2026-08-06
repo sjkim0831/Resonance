@@ -46,6 +46,9 @@ if (/method:\s*"(?:PUT|PATCH|DELETE)"/.test(source) || /process-executions\/star
 for (const required of ["runContractAuditPages", "while (true)", "targetOffset", "maxTargets: auditPageSize", "nextTargetOffset", "contractAuditPagination", "reasonCounts", "samples=${JSON.stringify(samples)}"]) {
   if (!source.includes(required)) throw new Error(`paged contract audit guard missing: ${required}`);
 }
+for (const required of ["--deployment-preflight", "SYSTEM_TEST_REPORT_DEPLOYMENT_PREFLIGHT", "AUTHENTICATED_COMPACT_REPORT_DEPLOYMENT_PREFLIGHT", "DEPLOYMENT_PREFLIGHT_COMPACT_REPORT_VALIDATION"]) {
+  if (!source.includes(required)) throw new Error(`deployment preflight guard missing: ${required}`);
+}
 for (const required of ["availableParallelism", "adaptiveSmokeConcurrency", "Math.min(24", "route-smoke progress=", "requestsPerSecond"]) {
   if (!source.includes(required)) throw new Error(`adaptive route-smoke guard missing: ${required}`);
 }
@@ -233,6 +236,122 @@ if (value.summary.passCount !== 2 || value.summary.blockedCount !== 0 || value.s
 }
 if (value.summary.recordedBusinessNotRunCount !== 2 || value.summary.recordedBusinessPassCount !== 0) throw new Error("contract simulations were promoted to real business E2E");
 if (value.summary.simulationPassedCount !== 2 || value.summary.simulationNotRunCount !== 0) throw new Error("simulation evidence was not counted separately");
+NODE
+
+# Prove the deployed preflight performs authenticated compact GET validation
+# without the expensive evidence-refresh POST, while the normal/hourly mode
+# still executes that POST.  This is behavioral coverage rather than a grep-only
+# assertion so a future refactor cannot silently reintroduce the deployment wait.
+node - "$SCRIPT" "$TMP/pass.json" <<'NODE'
+const fs = require("node:fs");
+const http = require("node:http");
+const { spawn } = require("node:child_process");
+
+const [script, fixturePath] = process.argv.slice(2);
+const fixture = fs.readFileSync(fixturePath);
+let loginRequests = 0;
+let compactGetRequests = 0;
+let evidenceRefreshRequests = 0;
+
+const server = http.createServer((request, response) => {
+  if (request.method === "POST" && request.url === "/admin/login/actionLogin") {
+    loginRequests += 1;
+    request.resume();
+    response.writeHead(200, {
+      "content-type": "application/json",
+      "set-cookie": "JSESSIONID=contract-audit-fixture; Path=/; HttpOnly",
+    });
+    response.end(JSON.stringify({ status: "loginSuccess" }));
+    return;
+  }
+  if (request.method === "POST" && request.url === "/admin/api/system/actor-process/system-test-report/audit") {
+    evidenceRefreshRequests += 1;
+    request.resume();
+    response.writeHead(200, { "content-type": "application/json" });
+    response.end(JSON.stringify({
+      success: true,
+      businessFunctionsExecuted: false,
+      outcome: "PASS",
+      targetCount: 2,
+      passedCount: 2,
+      blockedCount: 0,
+      errorCount: 0,
+      hasMore: false,
+    }));
+    return;
+  }
+  if (request.method === "GET" && request.url === "/admin/api/system/actor-process/system-test-report?compact=true") {
+    compactGetRequests += 1;
+    response.writeHead(200, { "content-type": "application/json" });
+    response.end(fixture);
+    return;
+  }
+  response.writeHead(404, { "content-type": "application/json" });
+  response.end(JSON.stringify({ error: "not found" }));
+});
+
+function runAudit(baseUrl, deploymentPreflight) {
+  return new Promise((resolve, reject) => {
+    const child = spawn(process.execPath, [script], {
+      env: {
+        ...process.env,
+        CARBONET_RUNTIME_BASE_URL: baseUrl,
+        CARBONET_ADMIN_AUDIT_USER: "fixture-user",
+        CARBONET_ADMIN_AUDIT_PASSWORD: "fixture-password",
+        SYSTEM_TEST_REPORT_SKIP_HTTP_SMOKE: "1",
+        SYSTEM_TEST_REPORT_DEPLOYMENT_PREFLIGHT: deploymentPreflight ? "1" : "0",
+      },
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    let stdout = "";
+    let stderr = "";
+    child.stdout.on("data", (chunk) => { stdout += chunk; });
+    child.stderr.on("data", (chunk) => { stderr += chunk; });
+    child.on("error", reject);
+    child.on("close", (code) => {
+      if (code !== 0) {
+        reject(new Error(`audit exited ${code}: ${stderr}`));
+        return;
+      }
+      try {
+        resolve(JSON.parse(stdout.trim()));
+      } catch (error) {
+        reject(new Error(`invalid audit output: ${error.message}`));
+      }
+    });
+  });
+}
+
+server.listen(0, "127.0.0.1", async () => {
+  try {
+    const { port } = server.address();
+    const baseUrl = `http://127.0.0.1:${port}`;
+    const preflight = await runAudit(baseUrl, true);
+    if (preflight.authenticated !== true || preflight.deploymentPreflight !== true) throw new Error("deployment preflight was not authenticated");
+    if (preflight.auditMode !== "AUTHENTICATED_COMPACT_REPORT_DEPLOYMENT_PREFLIGHT") throw new Error("deployment preflight audit mode mismatch");
+    if (preflight.contractAuditPagination?.skipped !== true || preflight.contractAuditPagination?.reason !== "DEPLOYMENT_PREFLIGHT_COMPACT_REPORT_VALIDATION") {
+      throw new Error("deployment preflight did not report the deliberate refresh skip");
+    }
+    if (loginRequests !== 1 || compactGetRequests !== 1 || evidenceRefreshRequests !== 0) {
+      throw new Error(`deployment preflight request mismatch login=${loginRequests} compact=${compactGetRequests} refresh=${evidenceRefreshRequests}`);
+    }
+
+    const hourly = await runAudit(baseUrl, false);
+    if (hourly.authenticated !== true || hourly.deploymentPreflight !== false) throw new Error("normal hourly mode identity mismatch");
+    if (hourly.auditMode !== "CONTRACT_EVIDENCE_REFRESH_AND_READ_ONLY_INVENTORY") throw new Error("hourly mode no longer performs the full audit");
+    if (hourly.contractAuditPagination?.skipped !== false || hourly.contractAuditPagination?.complete !== true) {
+      throw new Error("hourly mode did not complete evidence refresh");
+    }
+    if (loginRequests !== 2 || compactGetRequests !== 2 || evidenceRefreshRequests !== 1) {
+      throw new Error(`hourly request mismatch login=${loginRequests} compact=${compactGetRequests} refresh=${evidenceRefreshRequests}`);
+    }
+  } catch (error) {
+    console.error(error.message);
+    process.exitCode = 1;
+  } finally {
+    server.close();
+  }
+});
 NODE
 
 node -e '

@@ -10,6 +10,12 @@ const compactReportPath = `${reportPath}?compact=true`;
 const auditPath = `${reportPath}/audit`;
 const fixturePath = argumentValue("--fixture") || process.env.SYSTEM_TEST_REPORT_FIXTURE || "";
 const skipHttpSmoke = process.argv.includes("--skip-http-smoke") || process.env.SYSTEM_TEST_REPORT_SKIP_HTTP_SMOKE === "1";
+// Deployment already runs the full hourly audit independently.  Its rollout
+// preflight must still authenticate and validate the live compact report, but
+// must not refresh every immutable contract-evidence target a second time.
+// Keep this as an explicit deployment-only mode instead of a generic skip so
+// scheduled audits remain full by default.
+const deploymentPreflight = process.argv.includes("--deployment-preflight") || process.env.SYSTEM_TEST_REPORT_DEPLOYMENT_PREFLIGHT === "1";
 const detectedParallelism = Math.max(1, availableParallelism());
 const adaptiveSmokeConcurrency = Math.min(24, Math.max(8, Math.floor(detectedParallelism * 0.75)));
 const smokeConcurrency = boundedInteger(process.env.SYSTEM_TEST_REPORT_SMOKE_CONCURRENCY, adaptiveSmokeConcurrency, 1, 32);
@@ -450,7 +456,18 @@ async function loadLiveReport() {
   if (!response.ok || body.status !== "loginSuccess" || !cookie) {
     throw new Error(`admin login failed with HTTP ${response.status}`);
   }
-  const contractAudit = await runContractAuditPages(cookie);
+  const contractAudit = deploymentPreflight
+    ? {
+        pageCount: 0,
+        targetCount: 0,
+        passedCount: 0,
+        blockedCount: 0,
+        errorCount: 0,
+        complete: false,
+        skipped: true,
+        reason: "DEPLOYMENT_PREFLIGHT_COMPACT_REPORT_VALIDATION",
+      }
+    : await runContractAuditPages(cookie);
   const reportResponse = await fetch(`${baseUrl}${compactReportPath}`, {
     headers: { accept: "application/json", cookie },
     signal: AbortSignal.timeout(Math.max(smokeTimeoutMs, 30_000)),
@@ -555,7 +572,9 @@ async function main() {
     const live = await loadLiveReport();
     payload = live.payload;
     cookie = live.cookie;
-    contractAudit = { ...live.contractAudit, skipped: false };
+    contractAudit = deploymentPreflight
+      ? live.contractAudit
+      : { ...live.contractAudit, skipped: false };
     authenticated = true;
   }
   const audited = validate(payload);
@@ -604,7 +623,12 @@ async function main() {
     processes: audited.processSummary,
     auditCoverage: audited.auditCoverage,
     contractAuditPagination: contractAudit,
-    auditMode: authenticated ? "CONTRACT_EVIDENCE_REFRESH_AND_READ_ONLY_INVENTORY" : "READ_ONLY_INVENTORY",
+    auditMode: authenticated
+      ? deploymentPreflight
+        ? "AUTHENTICATED_COMPACT_REPORT_DEPLOYMENT_PREFLIGHT"
+        : "CONTRACT_EVIDENCE_REFRESH_AND_READ_ONLY_INVENTORY"
+      : "READ_ONLY_INVENTORY",
+    deploymentPreflight,
     businessExecutionPerformed: false,
     businessFunctionsExecuted: false,
     contractTestResultsAreNotBusinessTests: true,

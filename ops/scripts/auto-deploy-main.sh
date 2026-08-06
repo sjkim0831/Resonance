@@ -1355,6 +1355,7 @@ sync_process_contract_audit_if_required() {
   set +e
   if flock -n "$audit_lock_fd"; then
     SYSTEM_TEST_REPORT_SKIP_HTTP_SMOKE=1 \
+      SYSTEM_TEST_REPORT_DEPLOYMENT_PREFLIGHT=1 \
       bash /opt/resonance-data/control-plane/bin/resonance-all-process-contract-audit.sh \
       >"$preflight_report"
     preflight_rc=$?
@@ -1383,6 +1384,16 @@ sync_process_contract_audit_if_required() {
   preflight_status="$(node -e '
     const value=JSON.parse(require("node:fs").readFileSync(process.argv[1],"utf8"));
     if(!["PASS","BLOCKED"].includes(value.status)) process.exit(2);
+    if(value.authenticated!==true) process.exit(3);
+    const compactPreflight=value.deploymentPreflight===true &&
+      value.auditMode==="AUTHENTICATED_COMPACT_REPORT_DEPLOYMENT_PREFLIGHT" &&
+      value.contractAuditPagination?.skipped===true &&
+      value.contractAuditPagination?.reason==="DEPLOYMENT_PREFLIGHT_COMPACT_REPORT_VALIDATION";
+    const completedIncumbentAudit=value.deploymentPreflight===false &&
+      value.auditMode==="CONTRACT_EVIDENCE_REFRESH_AND_READ_ONLY_INVENTORY" &&
+      value.contractAuditPagination?.skipped===false &&
+      value.contractAuditPagination?.complete===true;
+    if(!compactPreflight && !completedIncumbentAudit) process.exit(4);
     process.stdout.write(value.status);
   ' "$preflight_report")"
   rm -f "$preflight_report"
