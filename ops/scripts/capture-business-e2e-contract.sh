@@ -9,7 +9,10 @@ NAMESPACE="${K8S_NAMESPACE:-carbonet-prod}"
 if [[ -z "${PATRONI_POD:-}" ]]; then
   PATRONI_POD="$(K8S_NAMESPACE="$NAMESPACE" bash "$ROOT/ops/scripts/resolve-patroni-primary-pod.sh")"
 fi
-ROW="$(kubectl -n "$NAMESPACE" exec "$PATRONI_POD" -c patroni -- psql -h 127.0.0.1 -U postgres -d carbonet -X -At -F '|' -v ON_ERROR_STOP=1 -v process_code="$PROCESS_CODE" -v step_code="$STEP_CODE" -c "select runtime.source_commit,p.process_version,framework_current_process_step_contract_fingerprint(p.process_code,:'step_code') from framework_process_definition p join framework_runtime_release_state runtime on runtime.release_key='CARBONET_RUNTIME' where p.process_code=:'process_code'")"
+# psql does not expand :variables inside a command supplied with -c.  Both
+# identifiers are restricted to [A-Z0-9_]+ above, so quoting the validated
+# values directly keeps this single-row read deterministic and injection-safe.
+ROW="$(kubectl -n "$NAMESPACE" exec "$PATRONI_POD" -c patroni -- psql -h 127.0.0.1 -U postgres -d carbonet -X -At -F '|' -v ON_ERROR_STOP=1 -c "select runtime.source_commit,p.process_version,framework_current_process_step_contract_fingerprint(p.process_code,'$STEP_CODE') from framework_process_definition p join framework_runtime_release_state runtime on runtime.release_key='CARBONET_RUNTIME' where p.process_code='$PROCESS_CODE'")"
 IFS='|' read -r SOURCE_COMMIT PROCESS_VERSION CONTRACT_FINGERPRINT <<<"$ROW"
 [[ "$SOURCE_COMMIT" =~ ^[0-9a-f]{40}$ ]] || { echo 'current runtime release ledger is unavailable' >&2; exit 2; }
 if [[ -n "${E2E_DEPLOYED_COMMIT:-}" && "$E2E_DEPLOYED_COMMIT" != "$SOURCE_COMMIT" ]]; then

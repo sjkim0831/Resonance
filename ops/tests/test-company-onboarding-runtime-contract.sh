@@ -5,24 +5,26 @@ ROOT="${RESONANCE_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
 MIGRATION="$ROOT/apps/carbonet-api/src/main/resources/db/migration/postgresql/V20260807061000__align_company_onboarding_runtime_contract.sql"
 HARNESS="$ROOT/ops/scripts/resonance-company-onboarding-e2e.mjs"
 WRAPPER="$ROOT/ops/tests/run-company-onboarding-business-e2e.sh"
+CAPTURE="$ROOT/ops/scripts/capture-business-e2e-contract.sh"
 SELF="$ROOT/ops/tests/test-company-onboarding-runtime-contract.sh"
 
-for file in "$MIGRATION" "$HARNESS" "$WRAPPER"; do
+for file in "$MIGRATION" "$HARNESS" "$WRAPPER" "$CAPTURE"; do
   [[ -f "$file" ]] || { echo "[company-onboarding-contract-test] missing: $file" >&2; exit 1; }
 done
 
 # Syntax is checked before any semantic assertion so a malformed harness can
 # never be mistaken for a missing business assertion.
-bash -n "$SELF" "$WRAPPER"
+bash -n "$SELF" "$WRAPPER" "$CAPTURE"
 node --check "$HARNESS"
 
-node - "$MIGRATION" "$HARNESS" "$WRAPPER" <<'NODE'
+node - "$MIGRATION" "$HARNESS" "$WRAPPER" "$CAPTURE" <<'NODE'
 const fs = require('fs');
 
-const [migrationPath, harnessPath, wrapperPath] = process.argv.slice(2);
+const [migrationPath, harnessPath, wrapperPath, capturePath] = process.argv.slice(2);
 const migration = fs.readFileSync(migrationPath, 'utf8');
 const harness = fs.readFileSync(harnessPath, 'utf8');
 const wrapper = fs.readFileSync(wrapperPath, 'utf8');
+const capture = fs.readFileSync(capturePath, 'utf8');
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);
@@ -97,6 +99,9 @@ assert(
 );
 
 assert(wrapper.includes('capture-business-e2e-contract.sh'), 'wrapper must capture immutable current-version contracts');
+assert(capture.includes('[[ "$PROCESS_CODE" =~ ^[A-Z0-9_]+$ && "$STEP_CODE" =~ ^[A-Z0-9_]+$ ]]'), 'contract capture must validate identifiers before SQL interpolation');
+assert(!capture.includes(":'step_code'") && !capture.includes(":'process_code'"), 'contract capture must not rely on unsupported psql variable expansion inside -c');
+assert(capture.includes("framework_current_process_step_contract_fingerprint(p.process_code,'$STEP_CODE')"), 'contract capture must query the validated step code');
 assert(wrapper.includes('promote-screen-contract-after-e2e.sh'), 'wrapper must use the common BUSINESS_E2E promoter');
 assert(wrapper.includes('--validate-only'), 'wrapper must validate all evidence before promotion');
 for (const code of stepCodes) {
