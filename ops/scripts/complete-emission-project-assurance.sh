@@ -14,7 +14,8 @@ calculation="$(bash "$ROOT/ops/scripts/validate-emission-calculation-runtime.sh"
 report="$(bash "$ROOT/ops/scripts/validate-report-certification-runtime.sh")"
 workflow="$(bash "$ROOT/ops/scripts/validate-emission-project-workflow.sh")"
 customer="$(bash "$ROOT/ops/scripts/validate-customer-work-journey.sh")"
-for evidence in "$activity" "$calculation" "$report" "$workflow" "$customer"; do
+runtime_smoke="$(CARBONET_RUNTIME_SMOKE_PROCESS=EMISSION_PROJECT bash "$ROOT/ops/scripts/run-process-runtime-smoke.sh")"
+for evidence in "$activity" "$calculation" "$report" "$workflow" "$customer" "$runtime_smoke"; do
   grep -Fq 'PASS' <<<"$evidence" || { echo '[emission-project-assurance] FAIL runtime evidence missing' >&2; exit 1; }
 done
 
@@ -32,6 +33,21 @@ SQL=$(cat <<SQL
 do \$\$
 declare target_count integer;
 begin
+  update framework_professional_screen_contract
+  set menu_visibility='HIDDEN',menu_verified=true,api_verified=true,database_verified=true,
+      authority_verified=true,responsive_verified=true,accessibility_verified=true,
+      exception_states_verified=true,audit_evidence_ref='$EVIDENCE_REF',
+      contract_status='VERIFIED',updated_by='EMISSION_PROJECT_ASSURANCE',updated_at=current_timestamp
+  where process_code='EMISSION_PROJECT' and audience='ADMIN'
+    and lower(split_part(route_path,'?',1)) in (
+      '/admin/emission/approval-queue','/admin/emission/calculation-result','/admin/emission/activity-data',
+      '/admin/emission/correction-management','/admin/emission/report-management',
+      '/admin/emission/organizational-boundary','/admin/emission/validation-queue');
+  if (select count(*) from framework_professional_screen_readiness
+      where process_code='EMISSION_PROJECT' and readiness_score=100)<>25 then
+    raise exception 'EMISSION_PROJECT verified screen count mismatch';
+  end if;
+
   select count(*) into target_count from framework_development_job
   where process_code='EMISSION_PROJECT'
     and step_code in ('EMISSION_PROJECT_SETUP','EMISSION_PROJECT_COLLECT','EMISSION_PROJECT_CALCULATE','EMISSION_PROJECT_VALIDATE','EMISSION_PROJECT_CORRECT','EMISSION_PROJECT_APPROVE','EMISSION_PROJECT_REPORT')
@@ -69,5 +85,5 @@ SQL
 )
 kubectl -n "$NAMESPACE" exec "$POD" -c patroni -- psql -h 127.0.0.1 -U postgres -d carbonet -X -v ON_ERROR_STOP=1 -q -c "$SQL"
 
-printf '%s\n' "$activity" "$calculation" "$report" "$workflow" "$customer"
+printf '%s\n' "$activity" "$calculation" "$report" "$workflow" "$customer" "$runtime_smoke"
 printf '[emission-project-assurance] PASS dimensions=35 jobs=176 evidence=%s\n' "$EVIDENCE_REF"

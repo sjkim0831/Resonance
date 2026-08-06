@@ -7,6 +7,9 @@ PASSWORD="${CARBONET_RUNTIME_SMOKE_PASSWORD:-${CARBONET_ACTOR_TEST_PASSWORD:-}}"
 EVIDENCE_DIR="${CARBONET_RUNTIME_SMOKE_EVIDENCE_DIR:-/opt/Resonance/var/test-evidence/process-runtime-smoke}"
 PROCESS_CODE="${CARBONET_RUNTIME_SMOKE_PROCESS:-}"
 PROMOTE="${CARBONET_RUNTIME_SMOKE_PROMOTE:-false}"
+if [[ -z "$PASSWORD" ]] && command -v kubectl >/dev/null 2>&1; then
+  PASSWORD="$(kubectl -n "${K8S_NAMESPACE:-carbonet-prod}" get secret carbonet-test-account-switch -o jsonpath='{.data.password}' 2>/dev/null | base64 -d || true)"
+fi
 [[ -n "$PASSWORD" ]] || { echo '[process-runtime-smoke] FAIL password not configured' >&2; exit 1; }
 
 tmp="$(mktemp -d)"; trap 'rm -rf "$tmp"' EXIT
@@ -56,17 +59,21 @@ if p.get('success') is not True or p.get('executionRows') != 0 or p.get('eventRo
     raise SystemExit(f'rollback persistence check failed: {p}')
 PY
 
-for route in /home /admin /emission/project_list /admin/system/actor-process /admin/emission/organizational-boundary; do
+routes=(/home /admin /emission/project_list /admin/system/actor-process /admin/emission/organizational-boundary)
+if [[ "$PROCESS_CODE" == "EMISSION_PROJECT" ]]; then
+  routes+=(/admin/emission/approval-queue /admin/emission/calculation-result /admin/emission/activity-data /admin/emission/correction-management /admin/emission/report-management /admin/emission/organizational-boundary /admin/emission/validation-queue)
+fi
+for route in "${routes[@]}"; do
   page_code="$(curl -sS -b "$cookie" -o /dev/null -w '%{http_code}' "$BASE$route")"
   [[ "$page_code" == 200 ]] || { echo "[process-runtime-smoke] FAIL route=$route status=$page_code" >&2; exit 1; }
 done
 
-python3 - "$runtime" "$rollback" "$EVIDENCE_DIR/$stamp.json" <<'PY'
-import json,sys,datetime
+ROUTES_JSON="$(printf '%s\n' "${routes[@]}" | jq -R . | jq -s -c .)" python3 - "$runtime" "$rollback" "$EVIDENCE_DIR/$stamp.json" <<'PY'
+import json,sys,datetime,os
 p=json.load(open(sys.argv[1],encoding='utf-8'))
 p['rollbackPersistenceCheck']=json.load(open(sys.argv[2],encoding='utf-8'))
 p['verifiedAt']=datetime.datetime.now(datetime.timezone.utc).isoformat()
-p['routes']=['/home','/admin','/emission/project_list','/admin/system/actor-process','/admin/emission/organizational-boundary']
+p['routes']=json.loads(os.environ['ROUTES_JSON'])
 p['protectedUserRoutes']=['/emission/organizational-boundary']
 json.dump(p,open(sys.argv[3],'w',encoding='utf-8'),ensure_ascii=False,indent=2)
 PY
