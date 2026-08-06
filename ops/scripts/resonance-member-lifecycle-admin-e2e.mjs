@@ -55,7 +55,8 @@ for (const route of routes) {
   const payload = await response.json().catch(() => ({}));
   const pagePayload = payload?.data ?? payload?.result ?? payload;
   if (response.status() !== 200 || !route.validate(pagePayload)) {
-    throw new Error(`member API contract failed ${route.api} HTTP ${response.status()} keys=${Object.keys(pagePayload || {}).sort().join(",")}`);
+    const shape = Object.fromEntries(Object.entries(pagePayload || {}).map(([key, value]) => [key, Array.isArray(value) ? `array:${value.length}` : typeof value]));
+    throw new Error(`member API contract failed ${route.api} HTTP ${response.status()} shape=${JSON.stringify(shape)}`);
   }
 }
 
