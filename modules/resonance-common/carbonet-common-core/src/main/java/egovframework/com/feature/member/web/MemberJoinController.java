@@ -10,6 +10,7 @@ import jakarta.servlet.http.HttpSession;
 import org.springframework.stereotype.Controller;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.ui.Model;
 import org.springframework.ui.ExtendedModelMap;
@@ -19,6 +20,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.multipart.MultipartFile;
 import java.io.File;
 import java.util.UUID;
@@ -36,6 +38,7 @@ import egovframework.com.feature.member.model.vo.CompanyListItemVO;
 import egovframework.com.feature.member.dto.response.CompanySearchResponseDTO;
 import egovframework.com.feature.member.dto.response.DuplicateCheckResponseDTO;
 import egovframework.com.feature.home.web.ReactAppViewSupport;
+import egovframework.com.common.util.ReactPageUrlMapper;
 import lombok.extern.slf4j.Slf4j;
 
 @Controller
@@ -965,6 +968,25 @@ public class MemberJoinController {
             HttpServletRequest request,
             org.springframework.ui.Model model) throws Exception {
         return renderJoinPage(model, "join-company-status", isEnglishJoinRequest(request));
+    }
+
+    /**
+     * Canonicalizes case-only route variants emitted by external design ledgers.
+     * Exact controller mappings continue to win; unknown one-segment paths remain 404.
+     */
+    @GetMapping("/{routeToken}")
+    public String canonicalJoinRouteFallback(HttpServletRequest request) {
+        String requestUrl = request.getRequestURI();
+        if (request.getQueryString() != null && !request.getQueryString().isBlank()) {
+            requestUrl += "?" + request.getQueryString();
+        }
+        String canonical = ReactPageUrlMapper.toCanonicalMenuUrl(requestUrl);
+        String requestPath = request.getRequestURI();
+        String canonicalPath = canonical.contains("?") ? canonical.substring(0, canonical.indexOf('?')) : canonical;
+        if (canonical.isEmpty() || canonicalPath.equals(requestPath)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND);
+        }
+        return "redirect:" + canonical;
     }
 
     @GetMapping({"/companyReapply", "/ko/companyReapply", "/en/companyReapply"})

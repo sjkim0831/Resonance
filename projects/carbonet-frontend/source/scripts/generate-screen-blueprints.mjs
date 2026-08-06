@@ -2,6 +2,11 @@ import { createHash } from "node:crypto";
 import { readFile, writeFile, mkdir, readdir, rename, rm } from "node:fs/promises";
 import { availableParallelism, freemem, loadavg, totalmem } from "node:os";
 import { dirname, resolve } from "node:path";
+import {
+  comparableRouteKey,
+  findCanonicalRoute,
+  registerCanonicalRoute,
+} from "./route-path-canonicalization.mjs";
 
 const startedAt = performance.now();
 const args = Object.fromEntries(process.argv.slice(2).map((value,index,all)=>value.startsWith("--")?[value.slice(2),all[index+1]?.startsWith("--")?"true":all[index+1]]:null).filter(Boolean));
@@ -10,14 +15,16 @@ const input = JSON.parse(await readFile(resolve(args.input), "utf8"));
 if (!["1.0.0","2.0.0"].includes(input.schemaVersion) || !Array.isArray(input.blueprints)) throw new Error("Unsupported or invalid blueprint export.");
 const limit = Math.min(1000, Math.max(1, Number(args.limit || 1000)));
 const strict = args.strict === "true";
-async function collectReservedRoutes(directory, routes = new Set()) {
+async function collectReservedRoutes(directory, routes = new Map()) {
   try {
     for (const entry of await readdir(directory, { withFileTypes: true })) {
       const path = resolve(directory, entry.name);
       if (entry.isDirectory() && entry.name !== "generated") await collectReservedRoutes(path, routes);
       else if (/Family\.ts$/.test(entry.name)) {
         const source = await readFile(path, "utf8");
-        for (const match of source.matchAll(/\b(?:koPath|enPath)\s*:\s*["'`]([^"'`]+)["'`]/g)) routes.add(match[1]);
+        for (const match of source.matchAll(/\b(?:koPath|enPath)\s*:\s*["'`]([^"'`]+)["'`]/g)) {
+          registerCanonicalRoute(routes, match[1], path);
+        }
       }
     }
   } catch (error) {
@@ -28,13 +35,22 @@ async function collectReservedRoutes(directory, routes = new Set()) {
 const reservedRoutes = await collectReservedRoutes(resolve("src"));
 try {
   const runtimeRoutes = await readFile(resolve("src/app/routes/runtime.ts"), "utf8");
-  for (const match of runtimeRoutes.matchAll(/\[\s*["'`]([^"'`]+)["'`]\s*,/g)) reservedRoutes.add(match[1]);
+  for (const match of runtimeRoutes.matchAll(/\[\s*["'`]([^"'`]+)["'`]\s*,/g)) {
+    registerCanonicalRoute(reservedRoutes, match[1], "src/app/routes/runtime.ts");
+  }
 } catch (error) {
   if (error?.code !== "ENOENT") throw error;
 }
 const validBlueprints = input.blueprints.filter((item) => item.validationStatus === "VALID");
-const skippedReservedRoutes = validBlueprints.filter((item) => reservedRoutes.has(String(item.routePath || ""))).map((item) => String(item.routePath));
-const blueprints = validBlueprints.filter((item) => !reservedRoutes.has(String(item.routePath || ""))).slice(0, limit);
+const skippedReservedRoutes = validBlueprints
+  .filter((item) => reservedRoutes.has(comparableRouteKey(item.routePath)))
+  .map((item) => ({
+    supplied: String(item.routePath || ""),
+    canonical: findCanonicalRoute(reservedRoutes, item.routePath),
+  }));
+const blueprints = validBlueprints
+  .filter((item) => !reservedRoutes.has(comparableRouteKey(item.routePath)))
+  .slice(0, limit);
 const seenIds = new Set(), seenRoutes = new Set();
 const json = (value) => JSON.stringify(value,null,2);
 const parse = (value, code) => { try { return typeof value === "string" ? JSON.parse(value || "{}") : value || {}; } catch { throw new Error(`Invalid JSON contract: ${code}`); } };

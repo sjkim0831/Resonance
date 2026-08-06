@@ -777,7 +777,12 @@ public class ActorProcessGovernanceService {
                    p.requires_database as "requiresDatabase",p.requires_notification as "requiresNotification",coalesce(p.user_path,'') as "userPath",
                    coalesce(p.admin_path,'') as "adminPath",coalesce(p.api_contract,'') as "apiContract",
                    coalesce(screen.audience,'UNBOUND') as audience,coalesce(screen.entry_mode,'UNBOUND') as "entryMode",
-                   screen.screen_resource_id as "screenResourceId",coalesce(screen.route_key,'') as "routePath",
+                   screen.screen_resource_id as "screenResourceId",coalesce(
+                     case
+                       when lower(split_part(coalesce(p.user_path,''),'?',1))=screen.route_key then split_part(p.user_path,'?',1)
+                       when lower(split_part(coalesce(p.admin_path,''),'?',1))=screen.route_key then split_part(p.admin_path,'?',1)
+                       else null
+                     end,screen.route_key,'') as "routePath",
                    coalesce(screen.screen_name,p.step_name) as "screenName",coalesce(screen.screen_type,'UNREGISTERED') as "screenType",
                    coalesce(screen.implementation_status,'DESIGN_ONLY') as "implementationStatus",
                    p.screen_count as "screenCount",coalesce(p.screen_routes,'') as "screenRoutes",
@@ -935,6 +940,11 @@ public class ActorProcessGovernanceService {
         List<Map<String,Object>> responseItems=compact?items.stream().map(ActorProcessGovernanceService::compactSystemTestItem).toList():items;
         Map<String,Object> report=new LinkedHashMap<>();report.put("success",true);report.put("generatedAt",java.time.Instant.now().toString());
         report.put("compact",compact);
+        report.put("orderContract",Map.of(
+            "scope","WORK_TYPE_PROCESS_STEP",
+            "fields",List.of("domainOrder","developmentOrder","processCode","stepOrder"),
+            "direction","ASC"
+        ));
         report.put("auditMode","CONTRACT_ONLY");report.put("businessFunctionsExecuted",false);report.put("filters",filters);report.put("summary",summary);
         report.put("workTypes",workTypes);report.put("processes",processes);report.put("items",responseItems);
         return report;

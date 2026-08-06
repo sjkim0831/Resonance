@@ -38,6 +38,7 @@ const SUMMARY_FIELDS = {
   verifiedContractCount: ["verifiedContractCount"],
   totalContractCount: ["totalContractCount"],
 };
+const CANONICAL_ORDER_FIELDS = ["domainOrder", "developmentOrder", "processCode", "stepOrder"];
 
 function argumentValue(name) {
   const index = process.argv.indexOf(name);
@@ -138,6 +139,12 @@ function validate(payload) {
   if (payload.businessFunctionsExecuted !== false) {
     throw new Error("system-test-report must explicitly declare businessFunctionsExecuted=false");
   }
+  const orderContract = payload.orderContract;
+  if (!orderContract || orderContract.scope !== "WORK_TYPE_PROCESS_STEP"
+      || orderContract.direction !== "ASC"
+      || JSON.stringify(orderContract.fields) !== JSON.stringify(CANONICAL_ORDER_FIELDS)) {
+    throw new Error(`system-test-report canonical order contract must be ${CANONICAL_ORDER_FIELDS.join(" > ")}`);
+  }
   const items = normalizeItems(payload);
   if (!items.length) throw new Error("system-test-report contains no process-step items");
 
@@ -157,10 +164,12 @@ function validate(payload) {
   for (const [sourceIndex, item] of items.entries()) {
     const processCode = text(item.processCode);
     const stepCode = text(item.stepCode);
+    const domainOrder = numeric(item.domainOrder);
     const developmentOrder = numeric(item.developmentOrder);
     const stepOrder = numeric(item.stepOrder);
     const issues = [];
     if (!text(item.domainCode)) addIssue(issues, "DOMAIN_CODE_MISSING");
+    if (domainOrder == null || domainOrder < 1) addIssue(issues, "DOMAIN_ORDER_INVALID");
     if (developmentOrder == null || developmentOrder < 1) addIssue(issues, "PROCESS_ORDER_INVALID");
     if (!processCode) addIssue(issues, "PROCESS_CODE_MISSING");
     if (!text(item.processName)) addIssue(issues, "PROCESS_NAME_MISSING");
@@ -245,29 +254,47 @@ function validate(payload) {
     } else if (text(item.businessEvidenceStatus) !== "NO_CURRENT_VERSION_EVIDENCE") {
       addIssue(issues, "BUSINESS_EVIDENCE_STATUS_INVALID");
     }
-    if (processCode && processOrders.has(processCode) && processOrders.get(processCode) !== developmentOrder) {
+    if (processCode && processOrders.has(processCode) && processOrders.get(processCode).developmentOrder !== developmentOrder) {
       addIssue(issues, "PROCESS_ORDER_INCONSISTENT");
+    } else if (processCode && processOrders.has(processCode) && processOrders.get(processCode).domainOrder !== domainOrder) {
+      addIssue(issues, "DOMAIN_ORDER_INCONSISTENT");
     } else if (processCode) {
-      processOrders.set(processCode, developmentOrder);
+      processOrders.set(processCode, { domainOrder, developmentOrder });
     }
-    const normalized = { sourceIndex, processCode, stepCode, developmentOrder, stepOrder, contractResult, simulationResult, businessResult, issues };
+    const normalized = { sourceIndex, processCode, stepCode, domainOrder, developmentOrder, stepOrder, contractResult, simulationResult, businessResult, issues };
     itemResults.push(normalized);
     if (!processGroups.has(processCode)) processGroups.set(processCode, []);
     processGroups.get(processCode).push(normalized);
   }
 
   const orderViolations = [];
-  let previousProcessOrder = -Infinity;
-  for (const [processCode, developmentOrder] of processOrders) {
-    if (developmentOrder != null && developmentOrder < previousProcessOrder) {
-      orderViolations.push({ processCode, previousOrder: previousProcessOrder, developmentOrder, type: "PROCESS" });
+  let previousProcess = null;
+  for (const [processCode, order] of processOrders) {
+    const { domainOrder, developmentOrder } = order;
+    const comparable = domainOrder != null && developmentOrder != null;
+    const outOfOrder = comparable && previousProcess != null && (
+      domainOrder < previousProcess.domainOrder
+      || (domainOrder === previousProcess.domainOrder && developmentOrder < previousProcess.developmentOrder)
+      || (domainOrder === previousProcess.domainOrder && developmentOrder === previousProcess.developmentOrder
+          && processCode.localeCompare(previousProcess.processCode) < 0)
+    );
+    if (outOfOrder) {
+      orderViolations.push({
+        processCode,
+        domainOrder,
+        developmentOrder,
+        previousProcessCode: previousProcess.processCode,
+        previousDomainOrder: previousProcess.domainOrder,
+        previousDevelopmentOrder: previousProcess.developmentOrder,
+        type: "PROCESS",
+      });
       const first = processGroups.get(processCode)?.[0];
       if (first) {
         first.issues.push("PROCESS_ORDER_NOT_ASCENDING");
         issueCounts.set("PROCESS_ORDER_NOT_ASCENDING", (issueCounts.get("PROCESS_ORDER_NOT_ASCENDING") || 0) + 1);
       }
     }
-    if (developmentOrder != null) previousProcessOrder = developmentOrder;
+    if (comparable) previousProcess = { processCode, domainOrder, developmentOrder };
   }
   for (const [processCode, group] of processGroups) {
     let previous = -Infinity;

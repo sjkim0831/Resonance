@@ -6,12 +6,27 @@ SCRIPT="$ROOT/ops/scripts/resonance-all-process-contract-audit.mjs"
 WRAPPER="$ROOT/ops/scripts/resonance-all-process-contract-audit.sh"
 PLAN="$ROOT/ops/scripts/plan-incremental-work.sh"
 PANEL="$ROOT/projects/carbonet-frontend/source/src/features/actor-process-governance/SystemProcessTestReportPanel.tsx"
+SERVICE="$ROOT/modules/resonance-common/carbonet-common-core/src/main/java/egovframework/com/platform/governance/service/ActorProcessGovernanceService.java"
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 
-for file in "$SCRIPT" "$WRAPPER" "$PLAN" "$PANEL"; do
+for file in "$SCRIPT" "$WRAPPER" "$PLAN" "$PANEL" "$SERVICE"; do
   [[ -f "$file" ]] || { echo "missing file: $file" >&2; exit 1; }
 done
+
+python3 - "$SERVICE" <<'PY'
+from pathlib import Path
+import sys
+
+source = Path(sys.argv[1]).read_text(encoding="utf-8")
+for required in (
+    'order by p.domain_order,p.development_order,p.process_code,p.step_order',
+    '"scope","WORK_TYPE_PROCESS_STEP"',
+    'List.of("domainOrder","developmentOrder","processCode","stepOrder")',
+):
+    if required not in source:
+        raise SystemExit(f"system-test-report canonical order contract missing: {required}")
+PY
 
 node - "$SCRIPT" "$WRAPPER" <<'NODE'
 const fs = require("fs");
@@ -79,6 +94,11 @@ cat > "$TMP/blocked.json" <<'JSON'
 {
   "success": true,
   "businessFunctionsExecuted": false,
+  "orderContract": {
+    "scope": "WORK_TYPE_PROCESS_STEP",
+    "fields": ["domainOrder", "developmentOrder", "processCode", "stepOrder"],
+    "direction": "ASC"
+  },
   "targetCount": 2,
   "auditedBindingCount": 2,
   "auditedCapabilityTargetCount": 2,
@@ -96,6 +116,7 @@ cat > "$TMP/blocked.json" <<'JSON'
   },
   "items": [
     {
+      "domainOrder": 10,
       "developmentOrder": 1,
       "domainCode": "MEMBER",
       "processCode": "MEMBER_ONBOARDING",
@@ -135,6 +156,7 @@ cat > "$TMP/blocked.json" <<'JSON'
       "businessEvidenceStatus": "NO_CURRENT_VERSION_EVIDENCE"
     },
     {
+      "domainOrder": 10,
       "developmentOrder": 2,
       "domainCode": "MEMBER",
       "processCode": "MEMBER_APPROVAL",
@@ -236,6 +258,56 @@ if (value.summary.passCount !== 2 || value.summary.blockedCount !== 0 || value.s
 }
 if (value.summary.recordedBusinessNotRunCount !== 2 || value.summary.recordedBusinessPassCount !== 0) throw new Error("contract simulations were promoted to real business E2E");
 if (value.summary.simulationPassedCount !== 2 || value.summary.simulationNotRunCount !== 0) throw new Error("simulation evidence was not counted separately");
+NODE
+
+# development_order is canonical only inside a work type.  The API first
+# groups by business-work-type sort order, so a lower development order after
+# a work-type boundary is valid and must not be reported as an ordering defect.
+node -e '
+const fs = require("fs");
+const value = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
+value.items[0].domainOrder = 10;
+value.items[0].developmentOrder = 999;
+value.items[1].domainCode = "LCA";
+value.items[1].domainOrder = 20;
+value.items[1].developmentOrder = 1;
+fs.writeFileSync(process.argv[2], JSON.stringify(value));
+' "$TMP/pass.json" "$TMP/work-type-boundary-pass.json"
+boundary_output="$(node "$SCRIPT" --fixture "$TMP/work-type-boundary-pass.json" --skip-http-smoke)"
+AUDIT_OUTPUT="$boundary_output" node - <<'NODE'
+const value = JSON.parse(process.env.AUDIT_OUTPUT);
+if (value.status !== "PASS") throw new Error(`work-type boundary reset was rejected: ${JSON.stringify(value.validation)}`);
+if (value.validation.orderViolationCount !== 0 || value.validation.issueCounts.PROCESS_ORDER_NOT_ASCENDING) {
+  throw new Error("development order was incorrectly treated as globally monotonic");
+}
+NODE
+
+# A real inversion inside the same work type remains blocked, proving that
+# the boundary fix does not weaken the canonical ordering check.
+node -e '
+const fs = require("fs");
+const value = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
+value.items[0].domainOrder = 10;
+value.items[0].developmentOrder = 2;
+value.items[1].domainOrder = 10;
+value.items[1].developmentOrder = 1;
+fs.writeFileSync(process.argv[2], JSON.stringify(value));
+' "$TMP/pass.json" "$TMP/within-work-type-order-blocked.json"
+set +e
+within_domain_output="$(node "$SCRIPT" --fixture "$TMP/within-work-type-order-blocked.json" --skip-http-smoke)"
+within_domain_status=$?
+set -e
+[[ "$within_domain_status" -eq 3 ]] || { echo "expected same-work-type order BLOCKED exit 3, got $within_domain_status" >&2; exit 1; }
+AUDIT_OUTPUT="$within_domain_output" node - <<'NODE'
+const value = JSON.parse(process.env.AUDIT_OUTPUT);
+const violation = value.validation.orderViolations.find((entry) => entry.type === "PROCESS");
+if (value.status !== "BLOCKED" || value.validation.issueCounts.PROCESS_ORDER_NOT_ASCENDING !== 1) {
+  throw new Error("same-work-type process order inversion was not blocked");
+}
+if (!violation || violation.previousDevelopmentOrder !== 2 || violation.developmentOrder !== 1
+    || violation.previousDomainOrder !== 10 || violation.domainOrder !== 10) {
+  throw new Error(`canonical order evidence is incomplete: ${JSON.stringify(violation)}`);
+}
 NODE
 
 # Prove the deployed preflight performs authenticated compact GET validation
@@ -689,4 +761,4 @@ cp "$PLAN" "$TMP/plan/ops/scripts/plan-incremental-work.sh"
   grep -q 'reasons=automation-only' <<<"$plan_output"
 )
 
-echo '[all-process-contract-audit-test] PASS fixtures=7 outputContract=PASS/BLOCKED/ERROR contractVsBusiness=PASS staleSimulation=PASS pagedContractEvidence=PASS order=PASS routes=full+adaptive+progress ioContracts=PASS secretPolicy=kubernetes+exit2 noBuild=PASS'
+echo '[all-process-contract-audit-test] PASS fixtures=9 outputContract=PASS/BLOCKED/ERROR contractVsBusiness=PASS staleSimulation=PASS pagedContractEvidence=PASS canonicalOrder=workType+process+step routes=full+adaptive+progress ioContracts=PASS secretPolicy=kubernetes+exit2 noBuild=PASS'

@@ -48,4 +48,34 @@ class ReactPageUrlMapperTest {
         assertEquals("/en/emission/work-assignment?projectId=PRJ-1",
                 ReactPageUrlMapper.toRuntimeUrl("/emission/work-assignment?projectId=PRJ-1", true));
     }
+
+    @Test
+    void canonicalizesCaseOnlyJoinRouteVariantsFromDesignLedger() {
+        assertEquals("join_company_register",
+                ReactPageUrlMapper.resolveRouteIdForPath("/join/companyregister"));
+        assertEquals("join_company_register_complete",
+                ReactPageUrlMapper.resolveRouteIdForPath("/join/companyregistercomplete"));
+        assertEquals("join_company_status",
+                ReactPageUrlMapper.resolveRouteIdForPath("/join/companyjoinstatussearch"));
+        assertEquals("join_company_status_detail",
+                ReactPageUrlMapper.resolveRouteIdForPath("/join/companyjoinstatusdetail"));
+
+        assertEquals("/join/companyRegister",
+                ReactPageUrlMapper.toCanonicalMenuUrl("/join/companyregister"));
+        assertEquals("/join/companyRegisterComplete",
+                ReactPageUrlMapper.toCanonicalMenuUrl("/join/companyregistercomplete"));
+        assertEquals("/join/companyJoinStatusSearch?bizNo=1",
+                ReactPageUrlMapper.toCanonicalMenuUrl("/join/companyjoinstatussearch?bizNo=1"));
+        assertEquals("/join/companyJoinStatusDetail?bizNo=1",
+                ReactPageUrlMapper.toCanonicalMenuUrl("/join/companyjoinstatusdetail?bizNo=1"));
+    }
+
+    @Test
+    void caseInsensitiveAdminLookupDoesNotShadowHomeRoutes() {
+        assertEquals("/emission/work-assignment?projectId=PRJ-1",
+                ReactPageUrlMapper.toRuntimeUrl(
+                        "/emission/work-assignment?projectId=PRJ-1", false));
+        assertEquals("/join/companyRegister",
+                ReactPageUrlMapper.toRuntimeUrl("/join/companyregister", false));
+    }
 }

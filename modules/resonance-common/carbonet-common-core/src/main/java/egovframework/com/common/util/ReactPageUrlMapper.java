@@ -2,6 +2,7 @@ package egovframework.com.common.util;
 
 import java.util.Collections;
 import java.util.LinkedHashMap;
+import java.util.Locale;
 import java.util.Map;
 
 public final class ReactPageUrlMapper {
@@ -137,6 +138,10 @@ registerAdmin(adminPathToRoute, adminRouteToPath, "emission-survey-admin-data", 
         registerHome(homePathToRoute, homeRouteToPath, homeLocalizedPaths, "download_list", "/support/download_list", "/en/support/download_list", "/support/download_list");
         registerHome(homePathToRoute, homeRouteToPath, homeLocalizedPaths, "notice_list", "/support/notice_list", "/en/support/notice_list", "/support/notice_list");
         registerHome(homePathToRoute, homeRouteToPath, homeLocalizedPaths, "qna_list", "/support/qna_list", "/en/support/qna_list", "/support/qna_list");
+        registerHome(homePathToRoute, homeRouteToPath, homeLocalizedPaths, "join-company-register", "/join/companyRegister", "/join/en/companyRegister", "/join/companyRegister");
+        registerHome(homePathToRoute, homeRouteToPath, homeLocalizedPaths, "join-company-register-complete", "/join/companyRegisterComplete", "/join/en/companyRegisterComplete", "/join/companyRegisterComplete");
+        registerHome(homePathToRoute, homeRouteToPath, homeLocalizedPaths, "join-company-status", "/join/companyJoinStatusSearch", "/join/en/companyJoinStatusSearch", "/join/companyJoinStatusSearch");
+        registerHome(homePathToRoute, homeRouteToPath, homeLocalizedPaths, "join-company-status-detail", "/join/companyJoinStatusDetail", "/join/en/companyJoinStatusDetail", "/join/companyJoinStatusDetail");
 
         ADMIN_PATH_TO_ROUTE = Collections.unmodifiableMap(adminPathToRoute);
         ADMIN_ROUTE_TO_PATH = Collections.unmodifiableMap(adminRouteToPath);
@@ -165,8 +170,8 @@ registerAdmin(adminPathToRoute, adminRouteToPath, "emission-survey-admin-data", 
         }
         String path = stripEnglishPrefix(normalized);
 
-        String route = ADMIN_PATH_TO_ROUTE.get(path);
-        if (route != null) {
+        String route = resolveMappedRoute(ADMIN_PATH_TO_ROUTE, path);
+        if (!route.isEmpty()) {
             String localizedPath = english ? localizeAdminPath(ADMIN_ROUTE_TO_PATH.get(route)) : ADMIN_ROUTE_TO_PATH.get(route);
             if (localizedPath.isEmpty()) {
                 return "";
@@ -211,7 +216,7 @@ registerAdmin(adminPathToRoute, adminRouteToPath, "emission-survey-admin-data", 
         String querySuffix = extractQuerySuffix(path);
         String basePath = stripQuery(path);
 
-        String adminRoute = ADMIN_PATH_TO_ROUTE.get(basePath);
+        String adminRoute = resolveMappedRoute(ADMIN_PATH_TO_ROUTE, basePath);
         if (adminRoute != null && !adminRoute.isEmpty()) {
             String canonical = ADMIN_ROUTE_TO_PATH.get(adminRoute);
             if (canonical != null && !canonical.isEmpty()) {
@@ -219,7 +224,7 @@ registerAdmin(adminPathToRoute, adminRouteToPath, "emission-survey-admin-data", 
             }
         }
 
-        String homeRoute = HOME_PATH_TO_ROUTE.get(basePath);
+        String homeRoute = resolveMappedRoute(HOME_PATH_TO_ROUTE, basePath);
         if (homeRoute != null && !homeRoute.isEmpty()) {
             String canonical = HOME_ROUTE_TO_PATH.get(homeRoute);
             if (canonical != null && !canonical.isEmpty()) {
@@ -236,7 +241,7 @@ registerAdmin(adminPathToRoute, adminRouteToPath, "emission-survey-admin-data", 
             return "";
         }
         String path = stripEnglishPrefix(stripQuery(normalized));
-        String adminRoute = ADMIN_PATH_TO_ROUTE.get(path);
+        String adminRoute = resolveMappedRoute(ADMIN_PATH_TO_ROUTE, path);
         if (adminRoute != null && !adminRoute.isEmpty()) {
             return adminRoute;
         }
@@ -267,8 +272,7 @@ registerAdmin(adminPathToRoute, adminRouteToPath, "emission-survey-admin-data", 
         if (path == null || path.isEmpty()) {
             return "";
         }
-        String route = HOME_PATH_TO_ROUTE.get(path);
-        return route == null ? "" : route;
+        return resolveMappedRoute(HOME_PATH_TO_ROUTE, path);
     }
 
     private static String localizeHomePath(String path) {
@@ -357,7 +361,7 @@ registerAdmin(adminPathToRoute, adminRouteToPath, "emission-survey-admin-data", 
         String normalizedRoute = normalizeRouteToken(route);
         routeToPath.put(normalizedRoute, canonicalPath);
         for (String aliasPath : aliasPaths) {
-            pathToRoute.put(aliasPath, normalizedRoute);
+            registerPath(pathToRoute, aliasPath, normalizedRoute);
         }
     }
 
@@ -372,7 +376,27 @@ registerAdmin(adminPathToRoute, adminRouteToPath, "emission-survey-admin-data", 
         routeToPath.put(normalizedRoute, canonicalPath);
         localizedPaths.put(canonicalPath, localizedPath);
         for (String aliasPath : aliasPaths) {
-            pathToRoute.put(aliasPath, normalizedRoute);
+            registerPath(pathToRoute, aliasPath, normalizedRoute);
         }
+    }
+
+    private static void registerPath(Map<String, String> pathToRoute, String path, String route) {
+        pathToRoute.put(path, route);
+        String foldedPath = path.toLowerCase(Locale.ROOT);
+        String existing = pathToRoute.putIfAbsent(foldedPath, route);
+        if (existing != null && !existing.equals(route)) {
+            throw new IllegalStateException("Case-insensitive route collision: " + path);
+        }
+    }
+
+    private static String resolveMappedRoute(Map<String, String> pathToRoute, String path) {
+        if (path == null || path.isEmpty()) {
+            return "";
+        }
+        String route = pathToRoute.get(path);
+        if (route == null) {
+            route = pathToRoute.get(path.toLowerCase(Locale.ROOT));
+        }
+        return route == null ? "" : route;
     }
 }

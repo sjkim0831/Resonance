@@ -1,5 +1,9 @@
 import { readFile, readdir, rename, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
+import {
+  comparableRouteKey,
+  registerCanonicalRoute,
+} from "./route-path-canonicalization.mjs";
 
 const generatedFile = resolve("src/generated/screen-generation/generatedScreenFamily.ts");
 
@@ -16,14 +20,18 @@ async function collectFamilies(directory, files = []) {
   return files;
 }
 
-const reserved = new Set();
+const reserved = new Map();
 for (const file of await collectFamilies(resolve("src"))) {
   const source = await readFile(file, "utf8");
-  for (const match of source.matchAll(/\b(?:koPath|enPath)\s*:\s*["'`]([^"'`]+)["'`]/g)) reserved.add(match[1]);
+  for (const match of source.matchAll(/\b(?:koPath|enPath)\s*:\s*["'`]([^"'`]+)["'`]/g)) {
+    registerCanonicalRoute(reserved, match[1], file);
+  }
 }
 try {
   const runtimeRoutes = await readFile(resolve("src/app/routes/runtime.ts"), "utf8");
-  for (const match of runtimeRoutes.matchAll(/\[\s*["'`]([^"'`]+)["'`]\s*,/g)) reserved.add(match[1]);
+  for (const match of runtimeRoutes.matchAll(/\[\s*["'`]([^"'`]+)["'`]\s*,/g)) {
+    registerCanonicalRoute(reserved, match[1], "src/app/routes/runtime.ts");
+  }
 } catch (error) {
   if (error?.code !== "ENOENT") throw error;
 }
@@ -33,8 +41,8 @@ const routePattern = /const GENERATED_SCREEN_ROUTES = ([\s\S]*?) as const satisf
 const routeMatch = source.match(routePattern);
 if (!routeMatch) throw new Error("Generated route array was not found.");
 const routes = JSON.parse(routeMatch[1]);
-const keptRoutes = routes.filter(route => !reserved.has(route.koPath));
-const removedIds = new Set(routes.filter(route => reserved.has(route.koPath)).map(route => route.id));
+const keptRoutes = routes.filter(route => !reserved.has(comparableRouteKey(route.koPath)));
+const removedIds = new Set(routes.filter(route => reserved.has(comparableRouteKey(route.koPath))).map(route => route.id));
 const keptIds = new Set(keptRoutes.map(route => route.id));
 
 const unitPattern = /const GENERATED_SCREEN_PAGE_UNITS = \[\n([\s\S]*?)\n\] as const satisfies PageUnitsOf<typeof GENERATED_SCREEN_ROUTES>;/;
