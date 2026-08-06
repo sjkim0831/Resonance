@@ -135,6 +135,12 @@ restore() {
   kubectl -n "$NAMESPACE" rollout status "deployment/$WEB_DEPLOYMENT" --timeout=180s
   curl -fsS --max-time 15 "$BASE_URL/actuator/health" | grep -q '"status":"UP"'
   [[ "$restore_is_temp" == "true" ]] && rm -rf "$restore_dir"
+  # Frontend prebuild generators update tracked inventories before smoke tests.
+  # A rejected deployment must restore those build-only changes as well as the
+  # live overlay, otherwise the next guarded deployment refuses a dirty
+  # persistent worktree. The helper is allowlist-only and preserves all other
+  # source modifications.
+  bash "$ROOT_DIR/ops/scripts/cleanup-failed-frontend-generated-changes.sh" "$ROOT_DIR"
   log "restored snapshot=$SNAPSHOT_ID"
 }
 
