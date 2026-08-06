@@ -17,7 +17,8 @@ declare
 begin
   if '$UI_EVIDENCE_REF'<>'' then
     update framework_professional_screen_contract
-    set api_verified=true,database_verified=true,authority_verified=true,
+    set menu_visibility='HIDDEN',menu_verified=true,
+        api_verified=true,database_verified=true,authority_verified=true,
         responsive_verified=true,accessibility_verified=true,exception_states_verified=true,
         audit_evidence_ref='$UI_EVIDENCE_REF',contract_status='VERIFIED',
         updated_by='WORK_ASSIGNMENT_ASSURANCE',updated_at=current_timestamp
