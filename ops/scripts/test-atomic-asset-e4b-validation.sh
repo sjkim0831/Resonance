@@ -28,6 +28,8 @@ for token in (
     assert token in sync[validation:commit]
 assert "e4b=verified" in sync
 assert "CREATE TEMP TABLE asset_sync_delta" in sync
+assert sync.count("CREATE TEMP TABLE asset_sync_delta") == 1
+assert sync.count("INSERT INTO asset_sync_delta") == 1
 assert "active_before + additions - deletions" in sync
 assert "sync_scope LIKE 'GIT_SOURCE_%'" in sync
 delta_snapshot = sync.index("INSERT INTO asset_sync_delta")
