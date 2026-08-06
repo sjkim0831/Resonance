@@ -47,6 +47,17 @@ def validate_step(process: dict[str, Any], step: dict[str, Any]) -> None:
     for key in required_objects:
         if not isinstance(step.get(key), dict):
             fail(f"{identity}: {key} must be an object")
+    transition_contract = step["transition_contract"]
+    if (transition_contract.get("contractType") != "STEP_TRANSITION"
+            or not isinstance(transition_contract.get("fromState"), str)
+            or not transition_contract["fromState"]
+            or not isinstance(transition_contract.get("toState"), str)
+            or not transition_contract["toState"]
+            or not isinstance(transition_contract.get("policy"), dict)
+            or not isinstance(transition_contract.get("guards"), list)
+            or not isinstance(transition_contract.get("sideEffects"), list)
+            or not isinstance(transition_contract.get("extensions"), dict)):
+        fail(f"{identity}: transition_contract must be a STEP_TRANSITION object")
     if step["input_contract"].get("contractType") != "STEP_INPUT" or not isinstance(step["input_contract"].get("schema"), dict):
         fail(f"{identity}: input_contract must be a STEP_INPUT object")
     if step["output_contract"].get("contractType") != "STEP_OUTPUT" or not isinstance(step["output_contract"].get("schema"), dict):
@@ -77,6 +88,32 @@ def normalize_step_contract(step: dict[str, Any]) -> dict[str, Any]:
     normalization only; it never invents fields, actions, or business rules.
     """
     normalized = copy.deepcopy(step)
+    transition = normalized.get("transition_contract")
+    if not isinstance(transition, dict):
+        transition = {}
+    transition_policy_keys = {"optimisticLock", "idempotencyRequired", "auditRequired", "invalidStatesRejected"}
+    transition_core_keys = {
+        "schemaVersion", "contractType", "commandCode", "fromState", "from", "toState", "to",
+        "stepOrder", "stepType", "parentStepCode", "completionRule", "policy", "guards",
+        "sideEffects", "extensions",
+    }
+    normalized["transition_contract"] = {
+        "schemaVersion": 1,
+        "contractType": "STEP_TRANSITION",
+        "commandCode": transition.get("commandCode"),
+        "fromState": transition.get("fromState", transition.get("from")),
+        "toState": transition.get("toState", transition.get("to")),
+        "stepOrder": transition.get("stepOrder"),
+        "stepType": transition.get("stepType"),
+        "parentStepCode": transition.get("parentStepCode"),
+        "completionRule": transition.get("completionRule"),
+        "policy": (transition.get("policy") if transition.get("contractType") == "STEP_TRANSITION" and isinstance(transition.get("policy"), dict)
+                   else {key: transition[key] for key in transition_policy_keys if key in transition}),
+        "guards": transition.get("guards") if isinstance(transition.get("guards"), list) else [],
+        "sideEffects": transition.get("sideEffects") if isinstance(transition.get("sideEffects"), list) else [],
+        "extensions": (transition.get("extensions") if transition.get("contractType") == "STEP_TRANSITION" and isinstance(transition.get("extensions"), dict)
+                       else {key: value for key, value in transition.items() if key not in transition_core_keys | transition_policy_keys}),
+    }
     for key, contract_type in (("input_contract", "STEP_INPUT"), ("output_contract", "STEP_OUTPUT")):
         value = normalized.get(key)
         if not isinstance(value, dict):

@@ -251,7 +251,9 @@ with candidate as (
     and schema_set.blocker_codes='[]'::jsonb
     and e.actor_contract<>'{}'::jsonb
     and e.business_contract<>'{}'::jsonb
-    and e.transition_contract<>'{}'::jsonb
+    and e.transition_contract->>'contractType'='STEP_TRANSITION'
+    and length(coalesce(e.transition_contract->>'fromState',''))>0
+    and length(coalesce(e.transition_contract->>'toState',''))>0
     and e.input_contract->>'contractType'='STEP_INPUT'
     and e.input_contract->'schema'<>'{}'::jsonb
     and e.output_contract->>'contractType'='STEP_OUTPUT'

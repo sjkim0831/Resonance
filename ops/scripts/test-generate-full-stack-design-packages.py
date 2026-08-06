@@ -49,6 +49,22 @@ class GroupFieldsByAudienceTest(unittest.TestCase):
         self.assertEqual(normalized["persistence_contract"]["policy"], {"transactional": True})
         self.assertEqual(normalized["persistence_contract"]["mappings"], [{"primaryEntity": "work"}])
 
+    def test_normalizes_transition_without_changing_states(self) -> None:
+        normalized = GENERATOR.normalize_step_contract({
+            "transition_contract": {
+                "from": "READY", "to": "COMPLETED", "invalidStatesRejected": True,
+                "domainHint": "preserve-me",
+            },
+        })
+        transition = normalized["transition_contract"]
+        self.assertEqual(transition["contractType"], "STEP_TRANSITION")
+        self.assertEqual(transition["fromState"], "READY")
+        self.assertEqual(transition["toState"], "COMPLETED")
+        self.assertEqual(transition["policy"], {"invalidStatesRejected": True})
+        self.assertEqual(transition["guards"], [])
+        self.assertEqual(transition["sideEffects"], [])
+        self.assertEqual(transition["extensions"], {"domainHint": "preserve-me"})
+
     def test_splits_catalog_group_using_nested_audiences(self) -> None:
         contract = [
             {
