@@ -134,7 +134,7 @@ try {
     ["POST /verification/start", "POST /verification/decision", "GET /review-workflow"], { status: "DONE" });
   await call(clients.approver, "post", `/home/api/emission-projects/${projectId}/submissions/${submissionId}/approval/decision`, { decision: "APPROVED", comment: "자동 산정 승인 통과" });
   const calculated = await call(clients.approver, "get", `/home/api/emission-projects/${projectId}/calculation`);
-  if (!calculated?.latestRun?.id && !calculated?.latest?.id && !calculated?.calculation?.id) throw new Error("approved calculation version is missing");
+  if (!Array.isArray(calculated?.runs) || Number(calculated.runs[0]?.id || 0) !== Number(calculation.id)) throw new Error("approved calculation version is missing");
   mark("EMISSION_CALCULATION", "EMISSION_CALCULATION_04_APPROVE", "APPROVER",
     ["POST /approval/decision", "GET /calculation"], { status: "DONE", calculationId: calculation.id });
 
