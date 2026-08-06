@@ -94,6 +94,10 @@ try {
       await page.getByRole("button", { name: "조회", exact: true }).click();
       await filteredResponsePromise;
       const filterResponseMs = Date.now() - filterStartedAt;
+      await page.waitForFunction(() => {
+        const rows = [...document.querySelectorAll("tbody tr")];
+        return rows.length > 0 && rows.every((row) => (row.textContent || "").includes("부산"));
+      }, undefined, { timeout: 5_000 });
       const keywordRows = await page.locator("tbody tr").allTextContents();
       assert(keywordRows.length > 0 && keywordRows.every((text) => text.includes("부산")), `${viewport.name} keyword filter mismatch`);
 
