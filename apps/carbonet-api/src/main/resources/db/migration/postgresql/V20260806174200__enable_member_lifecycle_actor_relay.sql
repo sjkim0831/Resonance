@@ -119,7 +119,7 @@ SELECT step.process_code,step.step_code,'USER','/work/execution',step.step_name|
  '{"mobile":"single-column work form and actions","desktop":"work canvas plus sticky completion rail","overflow":"local only"}',
  '{"standard":"WCAG 2.1 AA","labels":true,"keyboard":true,"statusAnnouncements":true,"focusVisible":true}',
  '{"authentication":"MEMBER","tenantIsolation":true,"projectIsolation":true,"actorAssignment":true,"optimisticVersion":true,"serverStateTransition":true,"idempotency":true,"audit":true}',
- false,false,false,false,false,false,NULL,'REVIEW_REQUIRED','MEMBER_LIFECYCLE_RELAY_DESIGN','HIDDEN',true
+ false,false,false,false,false,false,'PENDING:E2E_MEMBER_LIFECYCLE_RELAY','REVIEW_REQUIRED','MEMBER_LIFECYCLE_RELAY_DESIGN','HIDDEN',true
 FROM framework_process_step step
 JOIN framework_step_execution_spec spec USING(process_code,step_code)
 WHERE step.process_code='MEMBER_LIFECYCLE'
@@ -131,7 +131,7 @@ ON CONFLICT(process_code,step_code,audience,route_path) DO UPDATE SET
  evidence_contract=excluded.evidence_contract,responsive_contract=excluded.responsive_contract,
  accessibility_contract=excluded.accessibility_contract,security_contract=excluded.security_contract,
  api_verified=false,database_verified=false,authority_verified=false,responsive_verified=false,
- accessibility_verified=false,exception_states_verified=false,audit_evidence_ref=NULL,
+ accessibility_verified=false,exception_states_verified=false,audit_evidence_ref='PENDING:E2E_MEMBER_LIFECYCLE_RELAY',
  contract_status='REVIEW_REQUIRED',updated_by=excluded.updated_by,menu_visibility='HIDDEN',menu_verified=true,
  updated_at=current_timestamp;
 
