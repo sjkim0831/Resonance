@@ -569,6 +569,15 @@ public class ActorProcessGovernanceService {
         String result=normalizeSystemTestResult(requestedResult);
 
         List<Map<String,Object>> items=jdbc.queryForList("""
+            with latest_business_run as (
+              select distinct on (test_binding.process_code,test_binding.step_code)
+                     test_binding.process_code,test_binding.step_code,run.run_id,run.result,sim.case_code,sim.case_type,
+                     coalesce(run.evidence_json,'{}') as evidence_json,run.executed_by,run.executed_at
+                from framework_step_test_binding test_binding
+                join framework_simulation_case sim on sim.case_code=test_binding.case_code
+                join framework_simulation_run run on run.case_code=sim.case_code
+               order by test_binding.process_code,test_binding.step_code,run.executed_at desc,run.run_id desc
+            )
             select p.domain_code as "domainCode",coalesce(w.work_type_name,p.domain_code) as "domainName",
                    p.process_code as "processCode",p.process_name as "processName",p.process_status as "processStatus",
                    p.development_order as "processOrder",p.development_order as "developmentOrder",s.step_order as "stepOrder",s.step_code as "stepCode",
@@ -626,15 +635,7 @@ public class ActorProcessGovernanceService {
                       and exists(select 1 from framework_process_step_screen_binding bound where bound.process_code=s.process_code and bound.step_code=s.step_code and bound.screen_resource_id=r.screen_resource_id and bound.binding_status='ACTIVE')
                     order by r.executed_at desc,r.run_id desc limit 1
               ) latest on true
-              left join lateral (
-                   select run.run_id,run.result,sim.case_code,sim.case_type,coalesce(run.evidence_json,'{}') as evidence_json,
-                          run.executed_by,run.executed_at
-                     from framework_step_test_binding test_binding
-                     join framework_simulation_case sim on sim.case_code=test_binding.case_code
-                     join framework_simulation_run run on run.case_code=sim.case_code
-                    where test_binding.process_code=s.process_code and test_binding.step_code=s.step_code
-                    order by run.executed_at desc,run.run_id desc limit 1
-              ) business on true
+              left join latest_business_run business on business.process_code=s.process_code and business.step_code=s.step_code
              where (?='' or upper(p.domain_code)=?) and (?='' or p.process_code=?)
                and (?='' or coalesce(latest.result,'NOT_RUN')=?)
              order by coalesce(w.sort_order,9999),p.development_order,p.process_code,s.step_order
@@ -704,8 +705,8 @@ public class ActorProcessGovernanceService {
             String state=String.valueOf(item.getOrDefault("testState","NOT_RUN"));
             if("PASSED".equals(state))passedItems++;else if("BLOCKED".equals(state))blockedItems++;else notRunItems++;
             if(Set.of("IMPLEMENTED","VERIFIED").contains(String.valueOf(item.get("implementationStatus")))
-                &&!String.valueOf(item.getOrDefault("inputContract","")).isBlank()
-                &&!String.valueOf(item.getOrDefault("outputContract","")).isBlank())verifiedContracts++;
+                &&meaningfulSystemContract(item.get("inputContract"))&&meaningfulSystemContract(item.get("outputContract"))
+                &&(!Boolean.TRUE.equals(item.get("requiresApi"))||meaningfulSystemContract(item.get("apiContract"))))verifiedContracts++;
         }
         summary.put("processCount",reportedProcesses.size());summary.put("stepCount",items.size());summary.put("routedStepCount",routed);
         summary.put("passedCount",passedItems);summary.put("blockedCount",blockedItems);summary.put("notRunCount",notRunItems);
@@ -715,15 +716,18 @@ public class ActorProcessGovernanceService {
               select p.process_code,s.step_code
                 from framework_process_definition p join framework_process_step s on s.process_code=p.process_code
                where (?='' or upper(p.domain_code)=?) and (?='' or p.process_code=?)
-            ), step_evidence as (
-              select scoped.process_code,scoped.step_code,
-                     (select run.result
-                        from framework_step_test_binding test_binding
-                        join framework_simulation_case sim on sim.case_code=test_binding.case_code
-                        join framework_simulation_run run on run.case_code=sim.case_code
-                       where test_binding.process_code=scoped.process_code and test_binding.step_code=scoped.step_code
-                       order by run.executed_at desc,run.run_id desc limit 1) as latest_result
+            ), latest_business_run as (
+              select distinct on (test_binding.process_code,test_binding.step_code)
+                     test_binding.process_code,test_binding.step_code,run.result
                 from scoped_steps scoped
+                join framework_step_test_binding test_binding on test_binding.process_code=scoped.process_code and test_binding.step_code=scoped.step_code
+                join framework_simulation_case sim on sim.case_code=test_binding.case_code
+                join framework_simulation_run run on run.case_code=sim.case_code
+               order by test_binding.process_code,test_binding.step_code,run.executed_at desc,run.run_id desc
+            ), step_evidence as (
+              select scoped.process_code,scoped.step_code,business.result as latest_result
+                from scoped_steps scoped left join latest_business_run business
+                  on business.process_code=scoped.process_code and business.step_code=scoped.step_code
             ), process_evidence as (
               select process_code,count(*) as step_count,count(*) filter(where latest_result is not null) as covered_step_count,
                      count(*) filter(where latest_result='PASSED') as passed_step_count,
@@ -763,7 +767,11 @@ public class ActorProcessGovernanceService {
                  order by case b.entry_mode when 'PRIMARY' then 0 else 1 end,
                           case b.audience when 'USER' then 0 when 'ADMIN' then 1 when 'PUBLIC' then 2 else 3 end,b.screen_resource_id limit 1
               ) screen on true
-              left join framework_page_development_master m on m.screen_resource_id=screen.screen_resource_id
+              left join lateral (
+                select master.item_id from framework_page_development_master master
+                 where master.screen_resource_id=screen.screen_resource_id
+                 order by case master.design_status when 'VERIFIED' then 0 else 1 end,master.sequence_no,master.item_id limit 1
+              ) m on true
              where (?='' or upper(p.domain_code)=?) and (?='' or s.process_code=?)
              order by p.development_order,s.process_code,s.step_order limit ?
             """,domain,domain,process,process,maxSteps);
@@ -799,6 +807,12 @@ public class ActorProcessGovernanceService {
         if(result.isEmpty()||"ALL".equals(result))return "";
         if(!Set.of("PASSED","BLOCKED","NOT_RUN").contains(result))throw new IllegalArgumentException("result must be PASSED, BLOCKED, NOT_RUN, or empty");
         return result;
+    }
+
+    private static boolean meaningfulSystemContract(Object value){
+        if(value==null)return false;
+        String contract=String.valueOf(value).trim();
+        return !contract.isEmpty()&&!Set.of("{}","[]","null","undefined","-","n/a","todo","tbd").contains(contract.toLowerCase(Locale.ROOT));
     }
 
     /**

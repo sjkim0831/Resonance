@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
+import { Fragment, useCallback, useEffect, useId, useMemo, useState } from "react";
 
 type Row = Record<string, unknown>;
 
@@ -9,6 +9,7 @@ type ReportPayload = {
   processes?: Row[];
   items?: Row[];
   generatedAt?: string;
+  evaluatedAt?: string;
 };
 
 type Props = {
@@ -31,7 +32,43 @@ const number = (row: Row | undefined, ...keys: string[]) => {
   return Number.isFinite(parsed) ? parsed : 0;
 };
 
+const numberOr = (row: Row | undefined, fallback: number, ...keys: string[]) => {
+  if (!row) return fallback;
+  for (const key of keys) {
+    const raw = row[key];
+    if (raw === undefined || raw === null || raw === "") continue;
+    const parsed = Number(raw);
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  return fallback;
+};
+
+async function readJsonResponse<T extends object>(response: Response, fallbackMessage: string): Promise<T> {
+  if (response.status === 401) throw new Error("로그인 세션이 만료되었습니다. 다시 로그인한 뒤 실행하세요.");
+  if (response.status === 403) throw new Error("이 결과를 조회하거나 계약 점검을 실행할 권한이 없습니다.");
+  const contentType = response.headers.get("content-type")?.toLowerCase() ?? "";
+  if (contentType.includes("text/html")) throw new Error(`${fallbackMessage} 로그인 세션 또는 API 라우팅을 확인하세요. (${response.status})`);
+  if (!contentType.includes("json")) throw new Error(`${fallbackMessage} 서버 응답 형식이 올바르지 않습니다. (${response.status})`);
+  let parsed: unknown;
+  try { parsed = JSON.parse(await response.text()); }
+  catch { throw new Error(`${fallbackMessage} 서버 JSON을 해석하지 못했습니다. (${response.status})`); }
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw new Error(`${fallbackMessage} 서버 데이터 구조가 올바르지 않습니다. (${response.status})`);
+  const row = parsed as Row;
+  if (!response.ok || row.success === false) throw new Error(text(row, "message", "error") || `${fallbackMessage} (${response.status})`);
+  return parsed as T;
+}
+
+function isAbortError(reason: unknown) {
+  return typeof reason === "object" && reason !== null && "name" in reason && reason.name === "AbortError";
+}
+
+function requestErrorMessage(reason: unknown, fallback: string) {
+  if (reason instanceof TypeError) return `${fallback} 서버 연결 상태를 확인한 뒤 다시 시도하세요.`;
+  return reason instanceof Error && reason.message ? reason.message : fallback;
+}
+
 const fieldClass = "mt-2 h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-800 outline-none focus:border-[#246beb] focus:ring-2 focus:ring-blue-100";
+const focusClass = "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#246beb]";
 
 const RESULT_LABELS: Record<TestResult, string> = {
   PASSED: "계약 통과",
@@ -46,6 +83,7 @@ const RESULT_CLASSES: Record<TestResult, string> = {
 };
 
 export function SystemProcessTestReportPanel({ base }: Props) {
+  const scrollHelpId = useId();
   const [payload, setPayload] = useState<ReportPayload>({ items: [], processes: [], workTypes: [], summary: {} });
   const [workTypeCode, setWorkTypeCode] = useState("");
   const [processCode, setProcessCode] = useState("");
@@ -55,20 +93,16 @@ export function SystemProcessTestReportPanel({ base }: Props) {
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (signal?: AbortSignal) => {
     setBusy(true);
     setError("");
     try {
       const response = await fetch(`${base}/system-test-report`, {
         credentials: "include",
-        headers: { Accept: "application/json" }
+        headers: { Accept: "application/json" },
+        signal
       });
-      const contentType = response.headers.get("content-type") ?? "";
-      if (!contentType.includes("application/json")) {
-        throw new Error(`전체 프로세스 테스트 API가 JSON을 반환하지 않았습니다. (${response.status})`);
-      }
-      const body = await response.json() as ReportPayload & { message?: string };
-      if (!response.ok) throw new Error(body.message || "전체 프로세스 테스트 결과를 불러오지 못했습니다.");
+      const body = await readJsonResponse<ReportPayload & { message?: string }>(response, "전체 프로세스 테스트 결과를 불러오지 못했습니다.");
       setPayload({
         ...body,
         items: Array.isArray(body.items) ? body.items : [],
@@ -77,9 +111,10 @@ export function SystemProcessTestReportPanel({ base }: Props) {
         summary: body.summary && typeof body.summary === "object" ? body.summary : {}
       });
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "전체 프로세스 테스트 결과를 불러오지 못했습니다.");
+      if (isAbortError(reason)) return;
+      setError(requestErrorMessage(reason, "전체 프로세스 테스트 결과를 불러오지 못했습니다."));
     } finally {
-      setBusy(false);
+      if (!signal?.aborted) setBusy(false);
     }
   }, [base]);
 
@@ -98,20 +133,21 @@ export function SystemProcessTestReportPanel({ base }: Props) {
         headers: { Accept: "application/json", "Content-Type": "application/json" },
         body: JSON.stringify(request)
       });
-      const contentType = response.headers.get("content-type") ?? "";
-      if (!contentType.includes("application/json")) throw new Error(`프로세스 계약 점검 API가 JSON을 반환하지 않았습니다. (${response.status})`);
-      const body = await response.json() as Row;
-      if (!response.ok) throw new Error(text(body, "message") || "프로세스 계약 점검에 실패했습니다.");
+      const body = await readJsonResponse<Row>(response, "프로세스 계약 점검에 실패했습니다.");
       setMessage(`계약 점검을 기록했습니다. 점검 범위 ${text(body, "auditedStepCount", "stepCount", "matchedItemCount") || "선택 조건"}개 절차 · 실제 업무 명령은 실행하지 않았습니다.`);
       await load();
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "프로세스 계약 점검에 실패했습니다.");
+      setError(requestErrorMessage(reason, "프로세스 계약 점검에 실패했습니다."));
     } finally {
       setBusy(false);
     }
   }, [base, load, processCode, workTypeCode]);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    const controller = new AbortController();
+    void load(controller.signal);
+    return () => controller.abort();
+  }, [load]);
 
   const items = payload.items ?? [];
   const workTypes = useMemo(() => {
@@ -170,16 +206,19 @@ export function SystemProcessTestReportPanel({ base }: Props) {
 
   const summary = payload.summary ?? {};
   const summaryValues: Array<[string, number, string]> = [
-    ["전체 프로세스", number(summary, "totalProcesses", "processCount") || computedSummary.totalProcesses, "text-[#052b57]"],
-    ["전체 절차", number(summary, "totalSteps", "stepCount", "total") || computedSummary.totalSteps, "text-[#052b57]"],
-    ["계약 통과", number(summary, "passed", "passedCount", "passedStepCount") || computedSummary.passed, "text-emerald-700"],
-    ["계약 차단", number(summary, "blocked", "blockedCount", "blockedStepCount", "failedCount") || computedSummary.blocked, "text-red-700"],
-    ["계약 미점검", number(summary, "notRun", "notRunCount", "untestedStepCount", "pendingCount") || computedSummary.notRun, "text-slate-700"],
-    ["업무 E2E 검증", number(summary, "e2eCoveredProcessCount") || computedSummary.e2eCovered, "text-blue-700"],
-    ["업무 E2E 미검증", number(summary, "e2eUncoveredProcessCount") || computedSummary.e2eUncovered, "text-amber-700"]
+    ["전체 프로세스", numberOr(summary, computedSummary.totalProcesses, "totalProcesses", "processCount"), "text-[#052b57]"],
+    ["전체 절차", numberOr(summary, computedSummary.totalSteps, "totalSteps", "stepCount", "total"), "text-[#052b57]"],
+    ["계약 통과", numberOr(summary, computedSummary.passed, "passed", "passedCount", "passedStepCount"), "text-emerald-700"],
+    ["계약 차단", numberOr(summary, computedSummary.blocked, "blocked", "blockedCount", "blockedStepCount", "failedCount"), "text-red-700"],
+    ["계약 미점검", numberOr(summary, computedSummary.notRun, "notRun", "notRunCount", "untestedStepCount", "pendingCount"), "text-slate-700"],
+    ["업무 E2E 검증", numberOr(summary, computedSummary.e2eCovered, "e2eCoveredProcessCount"), "text-blue-700"],
+    ["업무 E2E 미검증", numberOr(summary, computedSummary.e2eUncovered, "e2eUncoveredProcessCount"), "text-amber-700"]
   ];
 
-  const generatedAt = text(payload as Row, "generatedAt", "evaluatedAt") || text(summary, "generatedAt", "evaluatedAt", "lastExecutedAt") || "-";
+  const generatedAt = payload.generatedAt || payload.evaluatedAt || text(summary, "generatedAt", "evaluatedAt", "lastExecutedAt") || "-";
+  const selectedWorkTypeName = workTypes.find(option => option.code === workTypeCode)?.name || "전체 업무 종류";
+  const selectedProcessName = processes.find(option => option.code === processCode)?.name || "전체 프로세스";
+  const selectedResultName = resultFilter ? RESULT_LABELS[resultFilter as TestResult] : "전체 계약 결과";
 
   function toggleRow(row: Row, index: number) {
     const key = rowKey(row, index);
@@ -195,11 +234,19 @@ export function SystemProcessTestReportPanel({ base }: Props) {
       @media print {
         @page { size: A4 landscape; margin: 12mm; }
         body { background: #fff !important; }
-        .system-process-test-report { color: #111827 !important; }
+        body * { visibility: hidden !important; }
+        .system-process-test-report, .system-process-test-report * { visibility: visible !important; }
+        .system-process-test-report { position: absolute !important; inset: 0 auto auto 0 !important; width: 100% !important; color: #111827 !important; }
+        .system-process-test-report, .system-process-test-report * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         .system-process-test-report .report-no-print { display: none !important; }
         .system-process-test-report .report-print-detail { display: table-row !important; }
         .system-process-test-report .report-print-break { break-inside: avoid; }
-        .system-process-test-report table { font-size: 9pt !important; }
+        .system-process-test-report .report-table-shell, .system-process-test-report .report-table-scroll { overflow: visible !important; }
+        .system-process-test-report table { min-width: 0 !important; width: 100% !important; table-layout: fixed; font-size: 8pt !important; }
+        .system-process-test-report thead { display: table-header-group; }
+        .system-process-test-report tr, .system-process-test-report td, .system-process-test-report article { break-inside: avoid; }
+        .system-process-test-report th, .system-process-test-report td { overflow-wrap: anywhere; padding: 5pt !important; }
+        .system-process-test-report pre { max-height: none !important; overflow: visible !important; white-space: pre-wrap !important; }
         .system-process-test-report a { color: #111827 !important; text-decoration: none !important; }
       }
     `}</style>
@@ -211,19 +258,22 @@ export function SystemProcessTestReportPanel({ base }: Props) {
           <h2 className="mt-1 text-2xl font-black text-[#052b57]">전체 업무 프로세스 계약 점검·E2E 증적</h2>
           <p className="mt-2 max-w-4xl text-sm leading-6 text-slate-700">모든 절차의 액터·라우트·명령·입출력·화면·테스트 계약을 결정론적으로 점검합니다. 계약 점검은 저장·승인·삭제 같은 실제 업무 명령을 실행하지 않습니다. 실제 계정과 데이터로 수행한 업무 E2E 결과는 별도 증적 영역에 분리하여 표시합니다.</p>
           <p className="mt-2 text-xs font-medium text-slate-500">결과 생성 시각: {formatDateTime(generatedAt)}</p>
+          <p className="mt-1 text-xs font-medium text-slate-500">조회 범위: {selectedWorkTypeName} · {selectedProcessName} · {selectedResultName} · {filteredItems.length.toLocaleString("ko-KR")}개 절차</p>
         </div>
         <div className="report-no-print flex shrink-0 flex-wrap gap-2">
-          <button className="min-h-11 rounded-lg border border-blue-300 bg-white px-4 text-sm font-bold text-blue-700 hover:bg-blue-50 disabled:opacity-50" disabled={busy} onClick={() => void load()} type="button">{busy ? "처리 중" : "결과 새로고침"}</button>
-          <button className="min-h-11 rounded-lg border border-[#174ea6] bg-[#174ea6] px-4 text-sm font-bold text-white hover:bg-[#0d3f8f] disabled:opacity-50" disabled={busy} onClick={() => void runAudit()} type="button">선택 범위 계약 점검</button>
-          <button className="min-h-11 rounded-lg bg-[#246beb] px-5 text-sm font-black text-white hover:bg-[#1d56bd]" onClick={() => window.print()} type="button">전체 결과 인쇄</button>
+          <button className={`min-h-11 rounded-lg border border-blue-300 bg-white px-4 text-sm font-bold text-blue-700 hover:bg-blue-50 disabled:opacity-50 ${focusClass}`} disabled={busy} onClick={() => void load()} type="button">{busy ? "처리 중" : "결과 새로고침"}</button>
+          <button className={`min-h-11 rounded-lg border border-[#174ea6] bg-[#174ea6] px-4 text-sm font-bold text-white hover:bg-[#0d3f8f] disabled:opacity-50 ${focusClass}`} disabled={busy} onClick={() => void runAudit()} type="button">선택 범위 계약 점검</button>
+          <button className={`min-h-11 rounded-lg bg-[#246beb] px-5 text-sm font-black text-white hover:bg-[#1d56bd] ${focusClass}`} onClick={() => window.print()} type="button">현재 결과 인쇄</button>
         </div>
       </div>
     </section>
 
     {message && <div className="report-no-print rounded-xl border border-emerald-200 bg-emerald-50 p-4" role="status"><strong className="block text-emerald-800">계약 점검 완료</strong><span className="mt-1 block text-sm text-emerald-700">{message}</span></div>}
     {error && <div className="report-no-print rounded-xl border border-red-200 bg-red-50 p-4" role="alert"><strong className="block text-red-800">처리 실패</strong><span className="mt-1 block text-sm text-red-700">{error}</span></div>}
+    <p aria-live="polite" className="sr-only" role="status">{busy ? "전체 프로세스 계약 점검 결과를 처리하고 있습니다." : `계약 점검 결과 ${filteredItems.length}개를 표시합니다.`}</p>
 
     <section className="report-print-break grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7" aria-label="계약 점검 및 업무 E2E 결과 요약">
+      <div className="sm:col-span-2 lg:col-span-4 xl:col-span-7"><h3 className="font-black text-[#052b57]">시스템 전체 누적 요약</h3><p className="mt-1 text-xs text-slate-500">아래 수치는 현재 필터와 관계없이 전체 프로세스를 기준으로 합니다.</p></div>
       {summaryValues.map(([label, metric, color]) => <article className="rounded-xl border border-slate-200 bg-white p-4" key={label}><span className="text-xs font-bold text-slate-500">{label}</span><strong className={`mt-1 block text-2xl font-black ${color}`}>{metric.toLocaleString("ko-KR")}</strong></article>)}
     </section>
 
@@ -252,12 +302,13 @@ export function SystemProcessTestReportPanel({ base }: Props) {
       </div>
       <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-4">
         <p className="text-sm text-slate-600">조건에 맞는 절차 <strong className="text-[#052b57]">{filteredItems.length.toLocaleString("ko-KR")}개</strong></p>
-        <button className="min-h-10 rounded-lg border border-slate-300 bg-white px-4 text-sm font-bold text-slate-700 hover:bg-slate-50" onClick={() => { setWorkTypeCode(""); setProcessCode(""); setResultFilter(""); }} type="button">필터 초기화</button>
+        <button className={`min-h-10 rounded-lg border border-slate-300 bg-white px-4 text-sm font-bold text-slate-700 hover:bg-slate-50 ${focusClass}`} onClick={() => { setWorkTypeCode(""); setProcessCode(""); setResultFilter(""); }} type="button">필터 초기화</button>
       </div>
     </section>
 
-    <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
-      <div className="overflow-x-auto">
+    <section className="report-table-shell overflow-hidden rounded-2xl border border-slate-200 bg-white">
+      <p className="report-no-print border-b border-slate-100 bg-slate-50 px-4 py-2 text-xs text-slate-500 lg:hidden" id={scrollHelpId}>표를 좌우로 이동하면 모든 계약과 E2E 결과를 확인할 수 있습니다.</p>
+      <div aria-describedby={scrollHelpId} aria-label="전체 프로세스 계약 점검 결과 표" className={`report-table-scroll overflow-x-auto overscroll-x-contain ${focusClass}`} role="region" tabIndex={0}>
         <table className="w-full min-w-[1320px] border-collapse text-left text-sm">
           <caption className="sr-only">업무 종류, 프로세스, 절차 순서, 담당자, 화면 경로와 실행 결과 목록</caption>
           <thead className="bg-slate-50 text-xs font-black text-slate-600">
@@ -279,7 +330,7 @@ export function SystemProcessTestReportPanel({ base }: Props) {
               const expanded = expandedRows.has(key);
               const result = normalizeResult(row);
               const detailId = `system-process-test-detail-${safeId(key)}`;
-              const routePath = text(row, "routePath", "screenPath", "entryPath");
+              const routePath = safeRoutePath(text(row, "routePath", "screenPath", "entryPath"));
               return <Fragment key={key}>
                 <tr className="report-print-break border-t border-slate-200 align-top hover:bg-blue-50/40">
                   <td className="px-4 py-4 font-black text-[#052b57]">{sequenceLabel(row, index)}</td>
@@ -290,7 +341,7 @@ export function SystemProcessTestReportPanel({ base }: Props) {
                   <td className="px-4 py-4"><ResultBadge result={result}/>{text(row, "latestBlockerCodes", "resultMessage", "message", "failureReason") && <span className="mt-2 line-clamp-2 block max-w-56 text-xs leading-5 text-slate-500">{formatStructuredValue(firstValue(row, "latestBlockerCodes", "resultMessage", "message", "failureReason"))}</span>}</td>
                   <td className="px-4 py-4"><BusinessResultBadge row={row}/><span className="mt-2 block max-w-48 text-xs leading-5 text-slate-500">{text(row, "businessCaseCode") || "실제 업무 E2E 증적 없음"}</span></td>
                   <td className="px-4 py-4 text-xs leading-5 text-slate-600">{formatDateTime(text(row, "executedAt", "latestExecutedAt", "lastExecutedAt", "testedAt"))}<span className="block text-slate-400">계약 점검</span></td>
-                  <td className="report-no-print px-4 py-4"><div className="flex justify-end gap-2">{routePath ? <a className="inline-flex min-h-10 items-center rounded-lg border border-blue-300 bg-white px-3 font-bold text-blue-700 hover:bg-blue-50" href={routePath} rel="noreferrer" target="_blank">화면 열기</a> : <span className="inline-flex min-h-10 items-center rounded-lg border border-slate-200 bg-slate-50 px-3 font-bold text-slate-400">경로 없음</span>}<button aria-controls={detailId} aria-expanded={expanded} className="min-h-10 rounded-lg bg-slate-800 px-3 font-bold text-white hover:bg-slate-700" onClick={() => toggleRow(row, index)} type="button">{expanded ? "접기" : "상세"}</button></div></td>
+                  <td className="report-no-print px-4 py-4"><div className="flex flex-wrap justify-end gap-2">{routePath ? <a className={`inline-flex min-h-10 items-center rounded-lg border border-blue-300 bg-white px-3 font-bold text-blue-700 hover:bg-blue-50 ${focusClass}`} href={routePath} rel="noreferrer" target="_blank">화면 열기<span className="sr-only">: {text(row, "screenName", "stepName") || routePath} (새 창)</span></a> : <span className="inline-flex min-h-10 items-center rounded-lg border border-slate-200 bg-slate-50 px-3 font-bold text-slate-400">경로 없음</span>}<button aria-controls={detailId} aria-expanded={expanded} className={`min-h-10 rounded-lg bg-slate-800 px-3 font-bold text-white hover:bg-slate-700 ${focusClass}`} onClick={() => toggleRow(row, index)} type="button">{expanded ? "상세 접기" : "상세 보기"}<span className="sr-only">: {text(row, "processName", "processCode")} {text(row, "stepName", "stepCode")}</span></button></div></td>
                 </tr>
                 <tr className={`report-print-detail border-t border-slate-100 bg-slate-50/70 ${expanded ? "table-row" : "hidden"}`} id={detailId}>
                   <td className="px-4 py-5" colSpan={9}>
@@ -381,7 +432,7 @@ function DetailLine({ label, value }: { label: string; value: string }) {
 
 function FormattedValue({ value }: { value: unknown }) {
   const formatted = formatStructuredValue(value);
-  return <pre className="mt-3 max-h-64 overflow-auto whitespace-pre-wrap break-words rounded-lg bg-slate-950 p-3 text-xs leading-5 text-slate-100">{formatted || "등록된 값이 없습니다."}</pre>;
+  return <pre aria-label="구조화된 계약 또는 증적 데이터" className={`mt-3 max-h-64 overflow-auto whitespace-pre-wrap break-words rounded-lg bg-slate-950 p-3 text-xs leading-5 text-slate-100 ${focusClass}`} tabIndex={0}>{formatted || "등록된 값이 없습니다."}</pre>;
 }
 
 function normalizeResult(row: Row): TestResult {
@@ -413,11 +464,20 @@ function uniqueOptions(options: Array<{ code: string; name: string }>) {
 }
 
 function rowKey(row: Row, index: number) {
-  return text(row, "itemId", "latestRunId", "testRunId", "runId") || `${text(row, "processCode")}:${text(row, "stepCode")}:${index}`;
+  const processCode = text(row, "processCode");
+  const stepCode = text(row, "stepCode");
+  if (processCode && stepCode) return `${text(row, "workTypeCode", "domainCode")}:${processCode}:${stepCode}`;
+  return text(row, "itemId", "latestRunId", "testRunId", "runId") || `report-row-${index}`;
 }
 
 function safeId(value: string) {
   return value.replace(/[^a-zA-Z0-9_-]/g, "-");
+}
+
+function safeRoutePath(raw: string) {
+  const route = raw.trim();
+  if (/^\/(?!\/)/.test(route) || /^https?:\/\//i.test(route)) return route;
+  return "";
 }
 
 function sequenceLabel(row: Row, index: number) {

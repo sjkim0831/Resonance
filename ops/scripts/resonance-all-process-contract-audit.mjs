@@ -11,9 +11,8 @@ const smokeConcurrency = boundedInteger(process.env.SYSTEM_TEST_REPORT_SMOKE_CON
 const smokeTimeoutMs = boundedInteger(process.env.SYSTEM_TEST_REPORT_SMOKE_TIMEOUT_MS, 8_000, 500, 60_000);
 const maxRouteSmokes = boundedInteger(process.env.SYSTEM_TEST_REPORT_MAX_ROUTE_SMOKES, 5_000, 1, 100_000);
 
-const PASS_RESULTS = new Set(["PASS", "PASSED", "SUCCESS", "SUCCEEDED", "VERIFIED", "COMPLETED"]);
-const BLOCKED_RESULTS = new Set(["BLOCKED", "FAIL", "FAILED", "ERROR", "RETRY", "REJECTED"]);
-const NOT_RUN_RESULTS = new Set(["", "NOT_RUN", "NOT-RUN", "PENDING", "PLANNED", "DRAFT", "READY"]);
+const PASS_RESULTS = new Set(["PASSED"]);
+const NOT_RUN_RESULTS = new Set(["", "NOT_RUN", "NOT-RUN"]);
 const SUMMARY_FIELDS = {
   processCount: ["processCount"],
   stepCount: ["stepCount"],
@@ -111,10 +110,9 @@ function normalizeResult(value) {
     ? value.status ?? value.result ?? value.outcome
     : value;
   const normalized = text(candidate).toUpperCase();
-  if (PASS_RESULTS.has(normalized)) return "PASS";
-  if (BLOCKED_RESULTS.has(normalized)) return "BLOCKED";
+  if (PASS_RESULTS.has(normalized)) return "PASSED";
   if (NOT_RUN_RESULTS.has(normalized)) return "NOT_RUN";
-  return "NOT_RUN";
+  return "BLOCKED";
 }
 
 function validate(payload) {
@@ -180,23 +178,31 @@ function validate(payload) {
       seenSteps.add(identity);
     }
 
-    const result = normalizeResult(item.latestResult);
-    if (result === "PASS") {
-      if (!text(item.latestRunId)) addIssue(issues, "PASS_RUN_ID_MISSING");
-      if (!meaningfulContract(item.latestInput)) addIssue(issues, "PASS_INPUT_EVIDENCE_MISSING");
+    const contractResult = normalizeResult(item.latestResult ?? item.testState);
+    const businessResult = normalizeResult(item.businessTestResult);
+    if (contractResult === "PASSED") {
+      if (!text(item.latestRunId)) addIssue(issues, "CONTRACT_PASS_RUN_ID_MISSING");
+      if (!meaningfulContract(item.latestInput)) addIssue(issues, "CONTRACT_PASS_INPUT_EVIDENCE_MISSING");
       if (!meaningfulContract(item.latestOutput) && !meaningfulContract(item.evidenceJson)) {
-        addIssue(issues, "PASS_OUTPUT_EVIDENCE_MISSING");
+        addIssue(issues, "CONTRACT_PASS_OUTPUT_EVIDENCE_MISSING");
       }
-      if (!text(item.executedBy)) addIssue(issues, "PASS_EXECUTOR_MISSING");
-      if (!text(item.executedAt)) addIssue(issues, "PASS_EXECUTED_AT_MISSING");
-      if ((numeric(item.scenarioCount) ?? 0) < 1) addIssue(issues, "PASS_SCENARIO_MISSING");
+      if (!text(item.executedBy)) addIssue(issues, "CONTRACT_PASS_EXECUTOR_MISSING");
+      if (!text(item.executedAt)) addIssue(issues, "CONTRACT_PASS_EXECUTED_AT_MISSING");
+      if ((numeric(item.scenarioCount) ?? 0) < 1) addIssue(issues, "CONTRACT_PASS_SCENARIO_MISSING");
+    }
+    if (businessResult === "PASSED") {
+      if (!text(item.latestBusinessRunId)) addIssue(issues, "BUSINESS_PASS_RUN_ID_MISSING");
+      if (!text(item.businessCaseCode) || !text(item.businessCaseType)) addIssue(issues, "BUSINESS_PASS_CASE_MISSING");
+      if (!meaningfulContract(item.businessEvidenceJson)) addIssue(issues, "BUSINESS_PASS_EVIDENCE_MISSING");
+      if (!text(item.businessExecutedBy)) addIssue(issues, "BUSINESS_PASS_EXECUTOR_MISSING");
+      if (!text(item.businessExecutedAt)) addIssue(issues, "BUSINESS_PASS_EXECUTED_AT_MISSING");
     }
     if (processCode && processOrders.has(processCode) && processOrders.get(processCode) !== developmentOrder) {
       addIssue(issues, "PROCESS_ORDER_INCONSISTENT");
     } else if (processCode) {
       processOrders.set(processCode, developmentOrder);
     }
-    const normalized = { sourceIndex, processCode, stepCode, developmentOrder, stepOrder, result, issues };
+    const normalized = { sourceIndex, processCode, stepCode, developmentOrder, stepOrder, contractResult, businessResult, issues };
     itemResults.push(normalized);
     if (!processGroups.has(processCode)) processGroups.set(processCode, []);
     processGroups.get(processCode).push(normalized);
@@ -231,9 +237,9 @@ function validate(payload) {
     processCount: [...processGroups.keys()].filter(Boolean).length,
     stepCount: items.length,
     routedStepCount: itemResults.filter((entry) => routeCandidates(items[entry.sourceIndex]).some((route) => safeRoute(route))).length,
-    passedStepCount: itemResults.filter((entry) => entry.result === "PASS").length,
-    blockedStepCount: itemResults.filter((entry) => entry.result === "BLOCKED").length,
-    notRunStepCount: itemResults.filter((entry) => entry.result === "NOT_RUN").length,
+    passedStepCount: itemResults.filter((entry) => entry.contractResult === "PASSED").length,
+    blockedStepCount: itemResults.filter((entry) => entry.contractResult === "BLOCKED").length,
+    notRunStepCount: itemResults.filter((entry) => entry.contractResult === "NOT_RUN").length,
   };
   const summary = payload.summary && typeof payload.summary === "object" ? payload.summary : {};
   const summaryMismatches = [];
@@ -257,11 +263,14 @@ function validate(payload) {
   const processSummary = [...processGroups.entries()].map(([processCode, group]) => ({
     processCode,
     stepCount: group.length,
-    contractReadyCount: group.filter((item) => item.issues.length === 0).length,
-    contractBlockedCount: group.filter((item) => item.issues.length > 0).length,
-    passedCount: group.filter((item) => item.result === "PASS").length,
-    blockedCount: group.filter((item) => item.result === "BLOCKED").length,
-    notRunCount: group.filter((item) => item.result === "NOT_RUN").length,
+    contractDefinitionReadyCount: group.filter((item) => item.issues.length === 0).length,
+    contractDefinitionBlockedCount: group.filter((item) => item.issues.length > 0).length,
+    contractPassedCount: group.filter((item) => item.contractResult === "PASSED").length,
+    contractTestBlockedCount: group.filter((item) => item.contractResult === "BLOCKED").length,
+    contractNotRunCount: group.filter((item) => item.contractResult === "NOT_RUN").length,
+    businessPassedCount: group.filter((item) => item.businessResult === "PASSED").length,
+    businessBlockedCount: group.filter((item) => item.businessResult === "BLOCKED").length,
+    businessNotRunCount: group.filter((item) => item.businessResult === "NOT_RUN").length,
   }));
 
   return {
@@ -342,7 +351,7 @@ async function smokeOne(route, cookie) {
     return {
       route: new URL(route, baseUrl).pathname,
       statusCode: response.status,
-      result: passed ? "PASS" : "BLOCKED",
+      result: passed ? "REACHABLE" : "UNREACHABLE",
       reason: redirectedToLogin ? "AUTH_REDIRECT" : passed ? "GET_REACHABLE" : "HTTP_ERROR",
       durationMs: Date.now() - started,
     };
@@ -350,7 +359,7 @@ async function smokeOne(route, cookie) {
     return {
       route: new URL(route, baseUrl).pathname,
       statusCode: 0,
-      result: "BLOCKED",
+      result: "UNREACHABLE",
       reason: error?.name === "TimeoutError" ? "TIMEOUT" : "NETWORK_ERROR",
       durationMs: Date.now() - started,
     };
@@ -359,7 +368,7 @@ async function smokeOne(route, cookie) {
 
 async function smokeRoutes(routes, cookie) {
   if (skipHttpSmoke || !cookie) {
-    return { candidateCount: routes.length, smokedCount: 0, passedCount: 0, blockedCount: 0, skippedCount: routes.length, blocked: [] };
+    return { candidateCount: routes.length, smokedCount: 0, reachableCount: 0, unreachableCount: 0, skippedCount: routes.length, unreachable: [] };
   }
   const results = new Array(routes.length);
   let cursor = 0;
@@ -370,14 +379,14 @@ async function smokeRoutes(routes, cookie) {
     }
   });
   await Promise.all(workers);
-  const blocked = results.filter((item) => item.result === "BLOCKED");
+  const blocked = results.filter((item) => item.result === "UNREACHABLE");
   return {
     candidateCount: routes.length,
     smokedCount: results.length,
-    passedCount: results.length - blocked.length,
-    blockedCount: blocked.length,
+    reachableCount: results.length - blocked.length,
+    unreachableCount: blocked.length,
     skippedCount: 0,
-    blocked: blocked.slice(0, 100),
+    unreachable: blocked.slice(0, 100),
     p95Ms: results.length ? results.map((item) => item.durationMs).sort((a, b) => a - b)[Math.ceil(results.length * 0.95) - 1] : 0,
   };
 }
@@ -396,9 +405,14 @@ async function main() {
   }
   const audited = validate(payload);
   const routes = await smokeRoutes(audited.routes, cookie);
-  const businessTestBlocked = audited.derived.blockedStepCount > 0 || audited.derived.notRunStepCount > 0;
+  const business = audited.processSummary.reduce((summary, process) => ({
+    passedCount: summary.passedCount + process.businessPassedCount,
+    blockedCount: summary.blockedCount + process.businessBlockedCount,
+    notRunCount: summary.notRunCount + process.businessNotRunCount,
+  }), { passedCount: 0, blockedCount: 0, notRunCount: 0 });
+  const businessTestBlocked = business.blockedCount > 0 || business.notRunCount > 0;
   const blocked = businessTestBlocked || audited.validation.contractBlockedCount > 0 ||
-    audited.validation.summaryMismatchCount > 0 || routes.blockedCount > 0 ||
+    audited.validation.summaryMismatchCount > 0 || routes.unreachableCount > 0 ||
     audited.routeCandidateCount > maxRouteSmokes;
   const output = {
     status: blocked ? "BLOCKED" : "PASS",
@@ -408,9 +422,15 @@ async function main() {
       processCount: audited.derived.processCount,
       stepCount: audited.derived.stepCount,
       routedStepCount: audited.derived.routedStepCount,
-      passCount: audited.derived.passedStepCount,
-      blockedCount: audited.derived.blockedStepCount,
-      notRunCount: audited.derived.notRunStepCount,
+      passCount: business.passedCount,
+      blockedCount: business.blockedCount,
+      notRunCount: business.notRunCount,
+      recordedBusinessPassCount: business.passedCount,
+      recordedBusinessBlockedCount: business.blockedCount,
+      recordedBusinessNotRunCount: business.notRunCount,
+      contractTestPassedCount: audited.derived.passedStepCount,
+      contractTestBlockedCount: audited.derived.blockedStepCount,
+      contractTestNotRunCount: audited.derived.notRunStepCount,
       contractReadyCount: audited.validation.contractReadyCount,
       contractBlockedCount: audited.validation.contractBlockedCount,
       routeCandidateCount: audited.routeCandidateCount,
@@ -419,7 +439,10 @@ async function main() {
     validation: audited.validation,
     routeSmoke: routes,
     processes: audited.processSummary,
-    evidencePolicy: "READ_ONLY_AUDIT_NO_BUSINESS_PASS_PROMOTION",
+    auditMode: "READ_ONLY_INVENTORY",
+    businessExecutionPerformed: false,
+    contractTestResultsAreNotBusinessTests: true,
+    evidencePolicy: "READ_ONLY_AUDIT_BUSINESS_PASS_REQUIRES_RECORDED_BUSINESS_RUN_NO_PROMOTION",
     durationMs: Date.now() - startedAt,
   };
   process.stdout.write(`${JSON.stringify(output)}\n`);
