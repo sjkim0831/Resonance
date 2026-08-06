@@ -13,7 +13,11 @@ const password=String(process.env.CARBONET_ACTOR_TEST_PASSWORD||"");
 if(!password)throw new Error("CARBONET_ACTOR_TEST_PASSWORD is required");
 
 const accountByActor={COMPANY_MANAGER:"qaowner26",SITE_DATA_OWNER:"qadata26",CALCULATOR:"qacalc26",VERIFIER:"qaverify26",APPROVER:"qaapprove26"};
-const expectedProcesses=["EMISSION_PROJECT_PORTFOLIO","EMISSION_PROJECT","ORGANIZATIONAL_BOUNDARY","ACTIVITY_DATA","EMISSION_CALCULATION"];
+const expectedProcesses=String(process.env.CARBONET_RELAY_EXPECTED_PROCESSES||"EMISSION_PROJECT_PORTFOLIO,EMISSION_PROJECT,ORGANIZATIONAL_BOUNDARY,ACTIVITY_DATA,EMISSION_CALCULATION")
+  .split(",").map(value=>value.trim()).filter(Boolean);
+const expectedStepCount=Number(process.env.CARBONET_RELAY_EXPECTED_STEP_COUNT||20);
+const expectedTransitionCount=Number(process.env.CARBONET_RELAY_EXPECTED_TRANSITION_COUNT||21);
+const expectedAccountCount=Number(process.env.CARBONET_RELAY_EXPECTED_ACCOUNT_COUNT||5);
 
 async function call(api,method,url,data,expected=[200]){
   const response=await api[method](url,{...(data===undefined?{}:{data}),failOnStatusCode:false});
@@ -108,10 +112,11 @@ try{
   const observed=[...new Set(transitions.map(item=>item.processCode))];
   const uniqueSteps=new Set(transitions.map(item=>`${item.processCode}/${item.stepCode}`));
   console.log(JSON.stringify({projectId,observed,uniqueStepCount:uniqueSteps.size,transitionCount:transitions.length,transitions},null,2));
-  if(uniqueSteps.size!==20)throw new Error(`expected 20 unique steps, observed ${uniqueSteps.size}`);
-  if(transitions.length!==21)throw new Error(`expected 21 transitions including correction branch, observed ${transitions.length}`);
+  if(uniqueSteps.size!==expectedStepCount)throw new Error(`expected ${expectedStepCount} unique steps, observed ${uniqueSteps.size}`);
+  if(transitions.length!==expectedTransitionCount)throw new Error(`expected ${expectedTransitionCount} transitions, observed ${transitions.length}`);
   if(JSON.stringify(observed)!==JSON.stringify(expectedProcesses))throw new Error(`process order mismatch ${JSON.stringify(observed)}`);
   const evidence={schemaVersion:1,status:"PASSED",completedAt:new Date().toISOString(),durationMs:Date.now()-startedAt,projectId,tenantId,processCount:observed.length,stepCount:uniqueSteps.size,transitionCount:transitions.length,correctionReplayCount:transitions.length-uniqueSteps.size,accountCount:new Set(transitions.map(item=>item.account)).size,processes:observed,transitions};
+  if(evidence.accountCount!==expectedAccountCount)throw new Error(`expected ${expectedAccountCount} accounts, observed ${evidence.accountCount}`);
   const outputDir=path.join(root,"var/test-evidence");await mkdir(outputDir,{recursive:true});await writeFile(path.join(outputDir,"twenty-step-relay-e2e-latest.json"),`${JSON.stringify(evidence,null,2)}\n`);
   console.log(`TWENTY_STEP_RELAY_PASS project=${projectId} processes=${observed.length} uniqueSteps=${evidence.stepCount} transitions=${evidence.transitionCount} accounts=${evidence.accountCount} durationMs=${evidence.durationMs}`);
 }finally{for(const api of contexts.values())await api.dispose();}

@@ -25,4 +25,16 @@ if printf '%s' "$PASS" | bash "$PROMOTER" 'BAD;SQL' EMISSION_PROJECT_PORTFOLIO_L
   exit 1
 fi
 
+if printf '%s' "$PASS" | bash "$PROMOTER" EMISSION_PROJECT_PORTFOLIO \
+  EMISSION_PROJECT_PORTFOLIO_LIST read DESKTOP --validate-only >/dev/null 2>&1; then
+  echo "unsafe audience was accepted" >&2
+  exit 1
+fi
+
 echo "[contract-e2e-promoter] PASS valid=1 missing=blocked failed=blocked unsafe=blocked"
+
+RELAY='{"status":"PASSED","processCount":5,"stepCount":20,"transitionCount":21,"accountCount":5,"correctionReplayCount":1}'
+printf '%s' "$RELAY" | bash "$PROMOTER" EMISSION_PROJECT_PORTFOLIO EMISSION_PROJECT_PORTFOLIO_LIST \
+  processCount=5,stepCount=20,transitionCount=21,accountCount=5,correctionReplayCount=1 \
+  --validate-only >/dev/null
+echo "[contract-e2e-promoter] PASS relay-assertions=5"

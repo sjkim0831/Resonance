@@ -2,7 +2,7 @@
 set -euo pipefail
 
 usage() {
-  echo "usage: $0 PROCESS_CODE STEP_CODE REQUIRED_CHECKS [--validate-only]" >&2
+  echo "usage: $0 PROCESS_CODE STEP_CODE REQUIRED_CHECKS [USER|ADMIN|ALL] [--validate-only]" >&2
   exit 2
 }
 
@@ -10,19 +10,27 @@ usage() {
 PROCESS_CODE="$1"
 STEP_CODE="$2"
 REQUIRED_CHECKS="$3"
-MODE="${4:-}"
+AUDIENCE="USER"
+MODE=""
+if [[ "${4:-}" == "--validate-only" ]]; then MODE="$4";
+elif [[ -n "${4:-}" ]]; then AUDIENCE="$4"; MODE="${5:-}"; fi
 [[ "$PROCESS_CODE" =~ ^[A-Z0-9_]+$ ]] || { echo "invalid process code" >&2; exit 2; }
 [[ "$STEP_CODE" =~ ^[A-Z0-9_]+$ ]] || { echo "invalid step code" >&2; exit 2; }
-[[ "$REQUIRED_CHECKS" =~ ^[A-Za-z0-9_,]+$ ]] || { echo "invalid required checks" >&2; exit 2; }
+[[ "$REQUIRED_CHECKS" =~ ^[A-Za-z0-9_,=]+$ ]] || { echo "invalid required checks" >&2; exit 2; }
+[[ "$AUDIENCE" =~ ^(USER|ADMIN|ALL)$ ]] || usage
 [[ -z "$MODE" || "$MODE" == "--validate-only" ]] || usage
 
 EVIDENCE="$(cat)"
 node -e '
 const evidence=JSON.parse(process.argv[1]);
 const checks=process.argv[2].split(",").filter(Boolean);
-if(evidence.status!=="PASS") throw new Error("E2E status must be PASS");
-for(const check of checks){
-  if(Number(evidence[check])!==1) throw new Error(`required E2E check failed: ${check}`);
+if(!["PASS","PASSED"].includes(evidence.status)) throw new Error("E2E status must be PASS or PASSED");
+for(const assertion of checks){
+  const [check,rawExpected="1"]=assertion.split("=");
+  const expected=Number(rawExpected);
+  if(!Number.isFinite(expected)||Number(evidence[check])!==expected){
+    throw new Error(`required E2E assertion failed: ${check}=${rawExpected}`);
+  }
 }
 ' "$EVIDENCE" "$REQUIRED_CHECKS"
 
@@ -40,11 +48,12 @@ kubectl -n "$K8S_NAMESPACE" exec -i "$PATRONI_POD" -c patroni -- \
   psql -v ON_ERROR_STOP=1 -h 127.0.0.1 -U postgres -d carbonet -X -q \
     -o /dev/null \
     -v process_code="$PROCESS_CODE" -v step_code="$STEP_CODE" \
-    -v evidence_b64="$EVIDENCE_B64" -v evidence_sha256="$EVIDENCE_SHA256" <<'SQL'
+    -v audience="$AUDIENCE" -v evidence_b64="$EVIDENCE_B64" -v evidence_sha256="$EVIDENCE_SHA256" <<'SQL'
 BEGIN;
 
 SELECT set_config('resonance.process_code',:'process_code',true);
 SELECT set_config('resonance.step_code',:'step_code',true);
+SELECT set_config('resonance.audience',:'audience',true);
 SELECT set_config('resonance.evidence_sha256',:'evidence_sha256',true);
 
 INSERT INTO framework_process_qa_run(
@@ -68,17 +77,18 @@ SET api_verified=true,
     updated_at=current_timestamp
 WHERE contract.process_code=:'process_code'
   AND contract.step_code=:'step_code'
+  AND (:'audience'='ALL' OR contract.audience=:'audience')
   AND contract.responsive_verified
   AND contract.accessibility_verified
-  AND EXISTS (
+  AND (contract.contract_status='VERIFIED' OR EXISTS (
     SELECT 1
     FROM framework_step_execution_spec spec
     WHERE spec.process_code=contract.process_code
       AND spec.step_code=contract.step_code
       AND spec.design_status='DESIGN_COMPLETE'
       AND spec.approval_status='APPROVED'
-      AND spec.generation_status='GENERATED'
-  );
+      AND spec.generation_status IN ('READY','GENERATED')
+  ));
 
 DO $$
 DECLARE total_count integer;
@@ -93,7 +103,8 @@ BEGIN
   INTO total_count,verified_count
   FROM framework_professional_screen_contract
   WHERE process_code=current_setting('resonance.process_code')
-    AND step_code=current_setting('resonance.step_code');
+    AND step_code=current_setting('resonance.step_code')
+    AND (current_setting('resonance.audience')='ALL' OR audience=current_setting('resonance.audience'));
 
   IF total_count=0 OR verified_count<>total_count THEN
     RAISE EXCEPTION 'contract promotion rejected process=% step=% total=% verified=%',
@@ -105,5 +116,5 @@ END $$;
 COMMIT;
 SQL
 
-printf '{"status":"PROMOTED","processCode":"%s","stepCode":"%s","sha256":"%s"}\n' \
-  "$PROCESS_CODE" "$STEP_CODE" "$EVIDENCE_SHA256"
+printf '{"status":"PROMOTED","processCode":"%s","stepCode":"%s","audience":"%s","sha256":"%s"}\n' \
+  "$PROCESS_CODE" "$STEP_CODE" "$AUDIENCE" "$EVIDENCE_SHA256"

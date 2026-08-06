@@ -24,6 +24,8 @@ python3 -m unittest "$ROOT/ops/scripts/test-create-safe-additive-migration.py"
 python3 -m unittest "$ROOT/ops/scripts/test-generate-safe-migrations-from-design.py"
 bash "$ROOT/ops/tests/test-design-migration-pipeline.sh"
 bash "$ROOT/ops/scripts/test-promote-screen-contract-after-e2e.sh"
+bash -n "$ROOT/ops/scripts/promote-relay-contracts-after-e2e.sh"
+bash -n "$ROOT/ops/scripts/resonance-twenty-step-relay-e2e.sh"
 bash "$ROOT/ops/scripts/validate-incremental-screen-generation.sh" "$ROOT" >/dev/null
 python3 - "$ROOT" <<'PY'
 import importlib.util
