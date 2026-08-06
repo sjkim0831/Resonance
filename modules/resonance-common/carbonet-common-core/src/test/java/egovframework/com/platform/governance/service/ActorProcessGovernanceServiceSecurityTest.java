@@ -469,7 +469,7 @@ class ActorProcessGovernanceServiceSecurityTest {
 
     @Test
     void actorAssignmentRejectsANonManagerBeforeAnyMutation() {
-        when(jdbc.queryForObject(argThat(sql -> sql.contains("actor_code='COMPANY_MANAGER'")&&sql.contains("data_scope='*'")),
+        when(jdbc.queryForObject(argThat(sql -> sql!=null&&sql.contains("actor_code='COMPANY_MANAGER'")&&sql.contains("data_scope='*'")),
                 org.mockito.ArgumentMatchers.eq(Integer.class),any(Object[].class))).thenReturn(0);
 
         SecurityException failure=assertThrows(SecurityException.class,()->service.assignActorAuthorized(Map.of(
@@ -493,7 +493,7 @@ class ActorProcessGovernanceServiceSecurityTest {
 
     @Test
     void actorAssignmentRejectsAProjectOutsideTheRequestedTenantBeforeAnyMutation() {
-        when(jdbc.queryForObject(argThat(sql -> sql.contains("from emission_project_registry")&&sql.contains("project_id=?")&&sql.contains("tenant_id=?")),
+        when(jdbc.queryForObject(argThat(sql -> sql!=null&&sql.contains("from emission_project_registry")&&sql.contains("project_id=?")&&sql.contains("tenant_id=?")),
                 org.mockito.ArgumentMatchers.eq(Integer.class),any(Object[].class))).thenReturn(0);
 
         SecurityException failure=assertThrows(SecurityException.class,()->service.assignActorAuthorized(Map.of(

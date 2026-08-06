@@ -93,6 +93,10 @@ dependencies {
     // AuthService exposes Spring Data pagination types. Keep them available to
     // isolated Mockito contract tests without promoting JPA into the runtime API.
     testImplementation("org.springframework.data:spring-data-commons")
+    // CurrentUserContextService has repository fields. Inline Mockito inspects
+    // that hierarchy, so the repository API must also exist on the isolated
+    // test runtime classpath even though production wiring remains compileOnly.
+    testImplementation("org.springframework.data:spring-data-jpa")
 }
 
 // Keep isolated contract tests on the application's Logback bridge. Some
