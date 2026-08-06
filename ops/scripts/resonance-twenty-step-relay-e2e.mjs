@@ -134,6 +134,10 @@ try{
   if(uniqueSteps.size!==expectedStepCount)throw new Error(`expected ${expectedStepCount} unique steps, observed ${uniqueSteps.size}`);
   if(transitions.length!==expectedTransitionCount)throw new Error(`expected ${expectedTransitionCount} transitions, observed ${transitions.length}`);
   if(JSON.stringify(observed)!==JSON.stringify(expectedProcesses))throw new Error(`process order mismatch ${JSON.stringify(observed)}`);
+  const finalTransition=transitions.at(-1);
+  if(finalTransition?.processCode!=="REGULATORY_SUBMISSION"||finalTransition?.stepCode!=="REGULATORY_SUBMISSION_S4"||finalTransition?.toState!=="COMPLETED"){
+    throw new Error(`relay terminal state mismatch ${JSON.stringify(finalTransition||{})}`);
+  }
   const orderedDurations=[...requestDurations].sort((a,b)=>a-b);
   const performanceP95Ms=orderedDurations[Math.max(0,Math.ceil(orderedDurations.length*0.95)-1)];
   const evidence={schemaVersion:1,status:"PASSED",completedAt:new Date().toISOString(),durationMs:Date.now()-startedAt,performanceP95Ms,authorityDenialCount,recoveryVerified,projectId,tenantId,processCount:observed.length,stepCount:uniqueSteps.size,transitionCount:transitions.length,correctionReplayCount:transitions.length-uniqueSteps.size,accountCount:new Set(transitions.map(item=>item.account)).size,processes:observed,transitions};
