@@ -42,7 +42,7 @@ fi
 
 EVIDENCE_B64="$(printf '%s' "$EVIDENCE" | base64 -w0)"
 K8S_NAMESPACE="${K8S_NAMESPACE:-carbonet-prod}"
-PATRONI_POD="${PATRONI_POD:-postgres-patroni-2}"
+PATRONI_POD="${PATRONI_POD:-$(K8S_NAMESPACE="$K8S_NAMESPACE" bash "$ROOT/ops/scripts/resolve-patroni-primary-pod.sh")}"
 
 kubectl -n "$K8S_NAMESPACE" exec -i "$PATRONI_POD" -c patroni -- \
   psql -v ON_ERROR_STOP=1 -h 127.0.0.1 -U postgres -d carbonet -X -q \
