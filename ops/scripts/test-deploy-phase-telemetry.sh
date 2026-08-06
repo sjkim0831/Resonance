@@ -37,7 +37,7 @@ CARBONET_DEPLOY_PERFORMANCE_DIR="$temp_dir/performance" \
 CARBONET_DEPLOY_STATUS_FILE="$temp_dir/deploy-status.json" \
 CARBONET_DEPLOY_PHASE_FILE="$phase_file" \
   bash "$root/ops/scripts/record-deploy-performance.sh" automation test-regression 70 \
-    >/dev/null
+    >/dev/null 2>&1
 
 jq -e '
   (.regressedPhases | index("policy")) != null and

@@ -11,7 +11,8 @@ record() {
   CARBONET_DEPLOY_ROOT="$TMP_ROOT" \
   CARBONET_DEPLOY_PERFORMANCE_DIR="$state" \
   CARBONET_DEPLOY_STATUS_FILE="$status_file" \
-    bash "$ROOT_DIR/ops/scripts/record-deploy-performance.sh" frontend "$1" "$2"
+    bash "$ROOT_DIR/ops/scripts/record-deploy-performance.sh" frontend "$1" "$2" \
+      >/dev/null 2>&1
 }
 
 record pass-25s 25000
