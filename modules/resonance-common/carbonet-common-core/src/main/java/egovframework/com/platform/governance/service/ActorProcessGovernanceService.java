@@ -724,7 +724,7 @@ public class ActorProcessGovernanceService {
                      rollup.approved_scenario_count,rollup.unready_screen_target_count,rollup.test_state
                 from scoped_steps scoped join step_rollup rollup using(process_code,step_code)
                where (?='' or rollup.test_state=?)
-            ), scope_metrics as (
+            ), scope_metrics as materialized (
               select count(distinct target.screen_resource_id) filter(where target.binding_id is not null) scope_screen_count,
                      count(distinct target.route_key) filter(where target.binding_id is not null) scope_route_count,
                      count(distinct target.capability_id) scope_capability_count,

@@ -55,6 +55,8 @@ class ActorProcessGovernanceServiceSecurityTest {
         verify(jdbc).queryForList(sqlCaptor.capture(),any(Object[].class));
         assertFalse(sqlCaptor.getValue().contains("p.domain_code,p.process_code,p.process_name"),
                 "scoped_steps must expose process_code exactly once; s.* already contains it");
+        assertTrue(sqlCaptor.getValue().contains("scope_metrics as materialized"),
+                "scope metrics must execute once instead of being rescanned for every report row");
 
         assertEquals("CONTRACT_ONLY", report.get("auditMode"));
         assertEquals(false, report.get("businessFunctionsExecuted"));

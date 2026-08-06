@@ -27,6 +27,7 @@ if (forbidden.some((pattern) => pattern.test(source))) {
 NODE
 grep -q 'kubectl -n "$NAMESPACE" get secret "$SECRET_NAME"' "$WRAPPER"
 grep -q 'CARBONET_ADMIN_AUDIT_SECRET:-carbonet-screen-smoke' "$WRAPPER"
+grep -q 'AUDIT_ENGINE="${RESONANCE_AUDIT_ENGINE:-$SCRIPT_DIR/resonance-all-process-contract-audit.mjs}"' "$WRAPPER"
 grep -q 'READ_ONLY_AUDIT_BUSINESS_PASS_REQUIRES_RECORDED_BUSINESS_RUN_NO_PROMOTION' "$SCRIPT"
 node - "$SCRIPT" <<'NODE'
 const fs = require("fs");
@@ -140,6 +141,15 @@ blocked_output="$(node "$SCRIPT" --fixture "$TMP/blocked.json" --skip-http-smoke
 blocked_status=$?
 set -e
 [[ "$blocked_status" -eq 3 ]] || { echo "expected BLOCKED exit 3, got $blocked_status" >&2; exit 1; }
+mkdir -p "$TMP/portable-control-plane"
+cp "$WRAPPER" "$TMP/portable-control-plane/resonance-all-process-contract-audit.sh"
+cp "$SCRIPT" "$TMP/portable-control-plane/resonance-all-process-contract-audit.mjs"
+set +e
+SYSTEM_TEST_REPORT_FIXTURE="$TMP/blocked.json" \
+  bash "$TMP/portable-control-plane/resonance-all-process-contract-audit.sh" >/dev/null
+portable_status=$?
+set -e
+[[ "$portable_status" -eq 3 ]] || { echo "installed sibling engine lookup returned $portable_status instead of 3" >&2; exit 1; }
 AUDIT_OUTPUT="$blocked_output" node - <<'NODE'
 const value = JSON.parse(process.env.AUDIT_OUTPUT);
 if (value.status !== "BLOCKED") throw new Error("expected BLOCKED status");

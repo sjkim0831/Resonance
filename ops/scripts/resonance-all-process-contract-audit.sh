@@ -1,8 +1,12 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-ROOT="${RESONANCE_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
-AUDIT_ENGINE="${RESONANCE_AUDIT_ENGINE:-$ROOT/ops/scripts/resonance-all-process-contract-audit.mjs}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT="${RESONANCE_ROOT:-$(cd "$SCRIPT_DIR/../.." && pwd)}"
+# Repository and installed control-plane copies keep the wrapper and engine as
+# siblings.  Resolving from SCRIPT_DIR makes the same artifact portable in
+# both locations without a deployment-only environment override.
+AUDIT_ENGINE="${RESONANCE_AUDIT_ENGINE:-$SCRIPT_DIR/resonance-all-process-contract-audit.mjs}"
 NAMESPACE="${K8S_NAMESPACE:-carbonet-prod}"
 # The audit needs both username and password.  carbonet-runtime-smoke-admin is
 # intentionally password-only for legacy webmaster checks, while the shared
