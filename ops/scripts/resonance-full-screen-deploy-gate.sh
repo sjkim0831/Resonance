@@ -40,7 +40,10 @@ prune_snapshots() {
     find "$STATE_DIR/snapshots" -mindepth 1 -maxdepth 1 -type d -printf '%T@ %p\n' 2>/dev/null |
       sort -rn | tail -n "+$((keep + 1))" | cut -d' ' -f2-
   )
-  for snapshot in "${stale_snapshots[@]:-}"; do
+  # An empty indexed array must produce zero loop iterations.  The `:-`
+  # fallback form expands to one empty element and makes the path guard reject
+  # an otherwise successful deployment as `unsafe path:`.
+  for snapshot in "${stale_snapshots[@]}"; do
     require_safe_path "$snapshot" "$STATE_DIR"
     if ! rm -rf -- "$snapshot" 2>/dev/null; then
       # Historical deploy services occasionally created snapshots as root.
