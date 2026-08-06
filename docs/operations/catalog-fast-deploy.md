@@ -46,3 +46,7 @@ The catalog transaction performs its writable-primary assertion inside the
 same database session as the mutation. Only connection failures and the
 explicit replica guard may retry through the elected Patroni leader; catalog
 or integrity failures remain fail-closed and are never replayed.
+
+Deterministic agent and fast-deploy policy gates reuse a SHA-256 result only
+while every policy input has the same content. A changed or newly installed
+input changes the fingerprint and restores the complete fail-closed gate.
