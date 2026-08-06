@@ -857,6 +857,18 @@ if [[ -n "$remaining_generated_changes" ]]; then
   exit 13
 fi
 
+declare -a deploy_changed_paths=()
+
+deploy_path_changed() {
+  local changed_path candidate
+  for changed_path in "${deploy_changed_paths[@]:-}"; do
+    for candidate in "$@"; do
+      [[ "$changed_path" == "$candidate" ]] && return 0
+    done
+  done
+  return 1
+}
+
 sync_postgres_backup_cronjobs_if_required() {
   local live_paths=""
   live_paths="$(
@@ -864,9 +876,7 @@ sync_postgres_backup_cronjobs_if_required() {
       -o jsonpath='{.spec.jobTemplate.spec.template.spec.volumes[*].hostPath.path}' \
       2>/dev/null || true
   )"
-  if git diff --name-only "$deployed_commit" "$target_commit" -- \
-      ops/scripts/apply-backup-cronjobs.sh |
-      grep -q . ||
+  if deploy_path_changed ops/scripts/apply-backup-cronjobs.sh ||
     [[ "$live_paths" != *"/opt/resonance-data/backups/postgres/primary"* ||
       "$live_paths" != *"/opt/resonance-data/backups/postgres/mirror"* ]]; then
     bash ops/scripts/apply-backup-cronjobs.sh
@@ -875,11 +885,10 @@ sync_postgres_backup_cronjobs_if_required() {
 }
 
 sync_post_reboot_recovery_if_required() {
-  if git diff --name-only "$deployed_commit" "$target_commit" -- \
+  if deploy_path_changed \
       ops/kubernetes/postgres-haproxy-config.yaml \
       ops/scripts/reconcile-post-reboot-runtime.sh \
-      ops/systemd/carbonet-post-reboot-recovery.service |
-      grep -q . ||
+      ops/systemd/carbonet-post-reboot-recovery.service ||
     ! systemctl is-enabled --quiet carbonet-post-reboot-recovery.service; then
     sudo -n install -d -m 0755 /opt/resonance-data/control-plane/manifests
     sudo -n install -m 0750 -o sjkim -g sjkim \
@@ -899,12 +908,11 @@ sync_post_reboot_recovery_if_required() {
 }
 
 sync_patroni_auto_heal_if_required() {
-  if git diff --name-only "$deployed_commit" "$target_commit" -- \
+  if deploy_path_changed \
       ops/scripts/patroni-auto-heal.sh \
       ops/scripts/test-patroni-auto-heal-safety.sh \
       ops/systemd/carbonet-patroni-auto-heal.service \
-      ops/systemd/carbonet-patroni-auto-heal.timer |
-      grep -q . ||
+      ops/systemd/carbonet-patroni-auto-heal.timer ||
     ! systemctl is-enabled --quiet carbonet-patroni-auto-heal.timer; then
     bash ops/scripts/test-patroni-auto-heal-safety.sh
     sudo -n install -d -m 0755 /opt/resonance-data/control-plane/bin
@@ -926,13 +934,12 @@ sync_patroni_auto_heal_if_required() {
 }
 
 sync_postgres_restore_drill_if_required() {
-  if git diff --name-only "$deployed_commit" "$target_commit" -- \
+  if deploy_path_changed \
       ops/scripts/postgres-isolated-restore-drill.sh \
       ops/scripts/report-latest-postgres-restore-drill.sh \
       ops/scripts/test-postgres-isolated-restore-drill.sh \
       ops/systemd/carbonet-postgres-restore-drill.service \
-      ops/systemd/carbonet-postgres-restore-drill.timer |
-      grep -q . ||
+      ops/systemd/carbonet-postgres-restore-drill.timer ||
     ! systemctl is-enabled --quiet carbonet-postgres-restore-drill.timer; then
     bash ops/scripts/test-postgres-isolated-restore-drill.sh
     sudo -n install -d -m 2770 -o sjkim -g sjkim \
@@ -958,7 +965,7 @@ sync_postgres_restore_drill_if_required() {
 }
 
 sync_process_development_worker_if_required() {
-  if git diff --name-only "$deployed_commit" "$target_commit" -- \
+  if deploy_path_changed \
       ops/scripts/run-process-development-dispatcher.sh \
       ops/scripts/run-process-development-worker.sh \
       ops/scripts/test-process-worker-deploy-marker.sh \
@@ -966,8 +973,7 @@ sync_process_development_worker_if_required() {
       ops/systemd/resonance-process-development-worker.service \
       ops/systemd/resonance-process-development-worker.timer \
       ops/systemd/resonance-project-auto-completion.service \
-      ops/systemd/resonance-project-auto-completion.timer | \
-      grep -q . || \
+      ops/systemd/resonance-project-auto-completion.timer || \
     ! systemctl cat resonance-process-development-worker.service 2>/dev/null | \
       grep -Fq '/opt/resonance-data/control-plane/bin/run-process-development-dispatcher.sh'; then
     bash ops/scripts/test-process-worker-deploy-marker.sh
@@ -1003,12 +1009,12 @@ sync_process_development_worker_if_required() {
 }
 
 sync_react_asset_prune_worker_if_required() {
-  if git diff --name-only "$deployed_commit" "$target_commit" -- \
+  if deploy_path_changed \
       ops/scripts/resonance-react-asset-prune.sh \
       ops/scripts/prune-react-assets-if-needed.sh \
       ops/scripts/test-resonance-react-asset-prune.sh \
       ops/systemd/resonance-react-asset-prune.service \
-      ops/systemd/resonance-react-asset-prune.timer | grep -q . || \
+      ops/systemd/resonance-react-asset-prune.timer || \
     ! systemctl is-enabled --quiet resonance-react-asset-prune.timer; then
     bash ops/scripts/test-resonance-react-asset-prune.sh
     sudo -n install -m 0644 \
@@ -1055,12 +1061,15 @@ run_parallel_contract_tests() {
 # catalog without an unnecessary DB dump, JVM build, image build or rollout.
 if [[ "$PLAN_RUNTIME_REQUIRED" != "true" ]]; then
   git merge --ff-only "$target_commit"
+  mapfile -t deploy_changed_paths < <(
+    git diff --name-only --diff-filter=ACMRD "$deployed_commit" "$target_commit"
+  )
   restore_live_frontend_overlay
   sync_react_asset_prune_worker_if_required
   while IFS= read -r changed_script; do
     [[ "$changed_script" == *.sh && -f "$changed_script" ]] && bash -n "$changed_script"
-  done < <(git diff --name-only --diff-filter=ACMR "$deployed_commit" "$target_commit")
-  if git diff --name-only "$deployed_commit" "$target_commit" -- \
+  done < <(printf '%s\n' "${deploy_changed_paths[@]}")
+  if deploy_path_changed \
       ops/scripts/auto-deploy-main.sh \
       ops/scripts/select-catalog-contract-tests.sh \
       ops/scripts/test-select-catalog-contract-tests.sh \
@@ -1117,30 +1126,30 @@ if [[ "$PLAN_RUNTIME_REQUIRED" != "true" ]]; then
       ops/systemd/resonance-backstage-full-e2e.service \
       ops/systemd/resonance-backstage-full-e2e.timer \
       ops/kubernetes/postgres-haproxy-config.yaml \
-      .github/workflows/carbonet-push-deploy.yml |
-      grep -q .; then
-    if git diff --name-only "$deployed_commit" "$target_commit" -- \
+      .github/workflows/carbonet-push-deploy.yml; then
+    if deploy_path_changed \
         ops/scripts/select-catalog-contract-tests.sh \
-        ops/scripts/test-select-catalog-contract-tests.sh | grep -q .; then
+        ops/scripts/test-select-catalog-contract-tests.sh; then
       bash ops/scripts/test-select-catalog-contract-tests.sh
     else
       echo "[auto-deploy] catalog contract selector self-test skipped: selector unchanged"
     fi
     mapfile -t catalog_contract_tests < <(
-      bash ops/scripts/select-catalog-contract-tests.sh "$deployed_commit" "$target_commit"
+      printf '%s\n' "${deploy_changed_paths[@]}" |
+        bash ops/scripts/select-catalog-contract-tests.sh --paths-stdin
     )
     if (( ${#catalog_contract_tests[@]} > 0 )); then
       run_parallel_contract_tests "${catalog_contract_tests[@]}"
     else
       echo "[auto-deploy] catalog contract tests skipped: no mapped contract impact"
     fi
-    if git diff --name-only "$deployed_commit" "$target_commit" -- \
+    if deploy_path_changed \
         ops/scripts/carbonet-auto-deploy-failure-handler.sh \
         ops/scripts/carbonet-deploy-notify.sh \
         ops/scripts/test-auto-deploy-failure-handler.sh \
         ops/scripts/record-deploy-performance.sh \
         ops/systemd/carbonet-auto-deploy.service \
-        ops/systemd/carbonet-auto-deploy-failure-handler.service | grep -q .; then
+        ops/systemd/carbonet-auto-deploy-failure-handler.service; then
       bash ops/scripts/test-auto-deploy-failure-handler.sh
       sudo -n install -d -m 0755 -o root -g root \
         /opt/resonance-data/control-plane/bin
@@ -1158,13 +1167,12 @@ if [[ "$PLAN_RUNTIME_REQUIRED" != "true" ]]; then
       sudo -n systemctl daemon-reload
       echo "[auto-deploy] failure classification and one-shot recovery synchronized"
     fi
-    if git diff --name-only "$deployed_commit" "$target_commit" -- \
+    if deploy_path_changed \
         ops/scripts/resonance-github-deploy-webhook.py \
         ops/scripts/sync-github-deploy-webhook-url.py \
         ops/systemd/carbonet-github-deploy-webhook.service \
         ops/systemd/carbonet-github-webhook-reconcile.service \
-        ops/systemd/carbonet-github-webhook-reconcile.timer |
-        grep -q .; then
+        ops/systemd/carbonet-github-webhook-reconcile.timer; then
       sudo -n install -m 0750 -o root -g root \
         ops/scripts/resonance-github-deploy-webhook.py \
         /opt/resonance-data/control-plane/bin/resonance-github-deploy-webhook.py
@@ -1195,11 +1203,11 @@ if [[ "$PLAN_RUNTIME_REQUIRED" != "true" ]]; then
     sync_patroni_auto_heal_if_required
     sync_postgres_restore_drill_if_required
     sync_process_development_worker_if_required
-    if git diff --name-only "$deployed_commit" "$target_commit" -- \
+    if deploy_path_changed \
         ops/scripts/postgres-storage-guard.sh \
         ops/scripts/test-postgres-storage-guard-install.sh \
         ops/systemd/postgres-storage-guard.service \
-        ops/systemd/postgres-storage-guard.timer | grep -q .; then
+        ops/systemd/postgres-storage-guard.timer; then
       bash ops/scripts/test-postgres-storage-guard-install.sh
       sudo -n install -d -m 0755 -o root -g root \
         /opt/resonance-data/control-plane/bin
@@ -1215,10 +1223,10 @@ if [[ "$PLAN_RUNTIME_REQUIRED" != "true" ]]; then
       sudo -n systemctl restart postgres-storage-guard.service
       echo "[auto-deploy] PostgreSQL storage guard runtime synchronized"
     fi
-    if git diff --name-only "$deployed_commit" "$target_commit" -- \
+    if deploy_path_changed \
         ops/scripts/resonance-backstage-full-e2e.sh \
         ops/systemd/resonance-backstage-full-e2e.service \
-        ops/systemd/resonance-backstage-full-e2e.timer | grep -q .; then
+        ops/systemd/resonance-backstage-full-e2e.timer; then
       sudo -n install -m 0750 -o sjkim -g sjkim \
         ops/scripts/resonance-backstage-full-e2e.sh \
         /opt/resonance-data/control-plane/bin/resonance-backstage-full-e2e.sh

@@ -26,9 +26,16 @@ catalog_call_end = source.index('record_deploy_phase "catalog_validation"', cata
 catalog_selection = source[catalog_call:catalog_call_end]
 assert "select-catalog-contract-tests.sh" in catalog_selection
 assert "catalog contract selector self-test skipped: selector unchanged" in source
+assert 'mapfile -t deploy_changed_paths' in source
+assert 'select-catalog-contract-tests.sh --paths-stdin' in catalog_selection
 assert 'run_parallel_contract_tests "${catalog_contract_tests[@]}"' in catalog_selection
 assert "no mapped contract impact" in catalog_selection
 assert 'record_deploy_phase "catalog_validation"' in source
+cached_start = source.index("declare -a deploy_changed_paths=()")
+cached_end = source.index('record_deploy_phase "catalog_validation"', cached_start)
+cached_block = source[cached_start:cached_end]
+assert "deploy_path_changed()" in cached_block
+assert cached_block.count('git diff --name-only "$deployed_commit" "$target_commit"') == 1
 start = source.index('catalog_identity_sync_log="$ROOT_DIR/var/logs/catalog-identity-sync-')
 end = source.index('record_deploy_phase "backstage_visual_e2e"', start)
 block = source[start:end]
