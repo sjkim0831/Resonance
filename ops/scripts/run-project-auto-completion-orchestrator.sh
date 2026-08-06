@@ -339,7 +339,12 @@ select count(*) from approved;")"
 # edits make the whole promotion roll back rather than approving stale input.
 static_contract_gate_failed=0
 static_contract_gate_result='{"candidateCount":0,"promoted":0,"status":"NOOP"}'
-if ! static_contract_gate_result="$(bash "$ROOT_DIR/ops/scripts/promote-review-contracts-after-static-test.sh" "$ROOT_DIR" 2>&1)"; then
+static_contract_gate_root="$ROOT_DIR"
+deployed_gate_root="${STATIC_CONTRACT_GATE_DEPLOY_ROOT:-/opt/Resonance/var/deploy-worktrees/runtime-build}"
+if [[ -x "$deployed_gate_root/ops/scripts/promote-review-contracts-after-static-test.sh" ]]; then
+  static_contract_gate_root="$deployed_gate_root"
+fi
+if ! static_contract_gate_result="$(bash "$static_contract_gate_root/ops/scripts/promote-review-contracts-after-static-test.sh" "$static_contract_gate_root" 2>&1)"; then
   static_contract_gate_failed=1
   echo "[project-auto-completion] review static contract gate failed: $static_contract_gate_result" >&2
   static_contract_gate_result='{"candidateCount":0,"promoted":0,"status":"FAILED"}'
