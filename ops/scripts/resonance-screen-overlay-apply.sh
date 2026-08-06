@@ -218,15 +218,22 @@ if [[ "$SKIP_FRONTEND_BUILD" != "true" ]]; then
     fi
   fi
   node "$ROOT_DIR/ops/scripts/verify-react-asset-closure.mjs" "$staging_dir"
-  # Copy immutable assets before atomically replacing the entry document. Do
-  # not delete old hashes here: already-open browsers may still request them.
-  rsync -a --exclude='/index.html' "$staging_dir/" "$OVERLAY_DIR/"
+  # Hashed assets are immutable. Copy only hashes not already present instead
+  # of rewriting hundreds of unchanged files on the shared overlay filesystem.
+  # Non-asset metadata remains replaceable and index.html is still promoted
+  # atomically after its complete dependency closure is present.
+  mkdir -p "$OVERLAY_DIR/assets"
+  rsync -a --ignore-existing "$staging_dir/assets/" "$OVERLAY_DIR/assets/"
+  rsync -a --exclude='/index.html' --exclude='/assets/' "$staging_dir/" "$OVERLAY_DIR/"
   cp "$staging_dir/index.html" "$OVERLAY_DIR/.index.html.next"
   mv -f "$OVERLAY_DIR/.index.html.next" "$OVERLAY_DIR/index.html"
   node "$ROOT_DIR/ops/scripts/verify-react-asset-closure.mjs" "$OVERLAY_DIR"
-  node "$ROOT_DIR/ops/scripts/prune-react-asset-generations.mjs" \
+  # Pruning every deploy made metadata deletion on the shared filesystem
+  # slower than the actual frontend build. Defer it until the bounded asset
+  # threshold is exceeded; the current and previous manifest closures remain
+  # protected whenever pruning runs.
+  bash "$ROOT_DIR/ops/scripts/prune-react-assets-if-needed.sh" \
     "$OVERLAY_DIR" "$previous_manifest"
-  node "$ROOT_DIR/ops/scripts/verify-react-asset-closure.mjs" "$OVERLAY_DIR"
   rm -f "$previous_manifest"
   rm -rf "$staging_dir"
 else
