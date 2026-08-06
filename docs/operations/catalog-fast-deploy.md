@@ -21,3 +21,8 @@ mistaken for an unverified deployment.
 Documentation-only deltas still update and validate their source-asset rows,
 but reuse the unchanged E4B graph invariant. Source, screen, configuration,
 design, automation, and database deltas continue to run the global E4B audit.
+
+A deployment worktree that advanced to the target revision is clean by
+construction, so generated-artifact restoration is skipped for that run.
+Retries against an existing worktree retain the complete restore and dirty-file
+verification path.
