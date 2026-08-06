@@ -6,6 +6,7 @@ import { DeliveryControlPanel } from "./DeliveryControlPanel";
 import { ProcessDesignMap } from "./ProcessDesignMap";
 import { ProfessionalDesignCanvas } from "./ProfessionalDesignCanvas";
 import { CustomerWorkDevelopmentDashboard } from "./CustomerWorkDevelopmentDashboard";
+import { SystemProcessTestReportPanel } from "./SystemProcessTestReportPanel";
 
 type Row = Record<string, unknown>;
 type Payload = { deliveryQueue?:Row[]; deliverySummary?:Row; workTypes?:Row[]; actors: Row[]; assignments: Row[]; actorAccountReadiness?:Row[]; processes: Row[]; steps: Row[]; cases: Row[]; runs: Row[]; artifacts:Row[]; developmentRules:Row[]; developmentJobs:Row[]; developmentEvents:Row[]; jobDependencies:Row[]; qualityGates:Row[]; qualityGateResults:Row[]; processDevelopmentProgress:Row[]; screenTypes:Row[]; referenceAssets:Row[]; automationMetrics:Row[]; screenDevelopmentGates:Row[]; processExecutions:Row[]; processExecutionEvents:Row[]; commonFeaturePackages?:Row[]; screenFeatureBindings?:Row[]; featureInstallations?:Row[]; designValidationRuns?:Row[]; screenBlueprints?:Row[]; generationBatches?:Row[]; professionalReadiness?:Row[]; professionalSummary?:Row; professionalScreenContracts?:Row[]; professionalScreenSummary?:Row; pageDesigns?:Row[]; pageDesignSummary?:Row; professionalFactoryRuns?:Row[]; screenAssetAssemblies?:Row[]; projectRegistrationCoverage?:Row[]; projectRegistrationSummary?:Row; customerJourneyGaps?:Row[]; customerJourneySummary?:Row; actorProcessMenus?:Row[]; actorProcessMenuSummary?:Row; backendProcessReadiness?:Row[]; projectCompletionRuns?:Row[]; referenceSummary?:Row; summary?: Row };
@@ -19,7 +20,7 @@ export function ActorProcessGovernancePage() {
   const en = isEnglish();
   const base = buildLocalizedPath("/admin/api/system/actor-process", "/en/admin/api/system/actor-process");
   const [data, setData] = useState<Payload & AssurancePayload>(empty);
-  const [tab, setTab] = useState("work-dashboard");
+  const [tab, setTab] = useState(() => new URLSearchParams(location.search).get("tab") || "work-dashboard");
   const [processFilter, setProcessFilter] = useState(() => new URLSearchParams(location.search).get("process") || "");
   const [preflightProcess,setPreflightProcess]=useState("");
   const [preflightStep,setPreflightStep]=useState("");
@@ -82,7 +83,7 @@ export function ActorProcessGovernancePage() {
   const readiness = Number(data.summary?.readinessPercent ?? 0);
   const processCompletion=(row:Row)=>{const artifacts=Number(row.artifactCount||0),verified=Number(row.verifiedArtifactCount||0),cases=Number(row.caseCount||0),approved=Number(row.approvedCaseCount||0),steps=Number(row.stepCount||0);return artifacts>0&&cases>=5&&steps>0?Math.round(((verified/artifacts)*70+(approved/cases)*30)):0};
   const filteredArtifacts=useMemo(()=>data.artifacts.filter(row=>!processFilter||value(row,"processCode")===processFilter),[data.artifacts,processFilter]);
-  const tabs = [["design-canvas", "전체 화면 캔버스"], ["process-map", "전체 프로세스 설계도"], ["overview", "전체 현황"], ["references", "레퍼런스 자동설계"], ["generation", "대량 화면 생성"], ["actors", "액터"], ["assignments", "계정 배정"], ["account-readiness", "액터 계정 검증"], ["work-types", "업무 종류"], ["processes", "프로세스"], ["steps", "단계"], ["execution", "종단간 업무 실행"], ["automation", "프로세스 자동개발"], ["artifacts", "개발 산출물"], ["design", "디자인 사전검사"], ["rules", "개발 규칙"], ["simulation", "시나리오·실행"]];
+  const tabs = [["system-test-report", "전 시스템 테스트 결과"], ["design-canvas", "전체 화면 캔버스"], ["process-map", "전체 프로세스 설계도"], ["overview", "전체 현황"], ["references", "레퍼런스 자동설계"], ["generation", "대량 화면 생성"], ["actors", "액터"], ["assignments", "계정 배정"], ["account-readiness", "액터 계정 검증"], ["work-types", "업무 종류"], ["processes", "프로세스"], ["steps", "단계"], ["execution", "종단간 업무 실행"], ["automation", "프로세스 자동개발"], ["artifacts", "개발 산출물"], ["design", "디자인 사전검사"], ["rules", "개발 규칙"], ["simulation", "시나리오·실행"]];
 
   return <AdminPageShell breadcrumbs={[{ label: en ? "Home" : "홈", href: buildLocalizedPath("/admin/", "/en/admin/") }, { label: en ? "System" : "시스템 관리" }, { label: en ? "Actor & Process" : "액터·프로세스 관리" }]} title={en ? "Actor & Process Governance" : "액터·프로세스 관리"}>
     <GovernanceCompressionNav activeId="actor-process" en={en} />
@@ -103,6 +104,7 @@ export function ActorProcessGovernancePage() {
 
       {tab === "work-dashboard" && <CustomerWorkDevelopmentDashboard actors={data.actors} actorReadiness={data.actorAccountReadiness ?? []} artifacts={data.artifacts} assignments={data.assignments} backendReadiness={data.backendProcessReadiness ?? []} busy={busy} cases={data.cases} completionRuns={data.projectCompletionRuns ?? []} deliveryQueue={data.deliveryQueue ?? []} dependencies={data.jobDependencies} jobs={data.developmentJobs} journeyGaps={data.customerJourneyGaps ?? []} onPost={post} processes={data.processes} progress={data.processDevelopmentProgress} runs={data.runs} screenContracts={data.professionalScreenContracts ?? []} steps={data.steps} />}
       {tab === "delivery" && <DeliveryControlPanel rows={data.deliveryQueue ?? []} summary={data.deliverySummary ?? {}} onSelect={code=>{setProcessFilter(code);setTab("automation")}} />}
+      {tab === "system-test-report" && <SystemProcessTestReportPanel base={base}/>}
       {tab === "design-assurance" && <>
         <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">{[[en?"Processes":"전체 프로세스","processCount"],[en?"Verified":"구현 검증","verifiedCount"],[en?"Blocked":"설계 차단","blockedCount"],[en?"Pending":"구현 대기","pendingCount"],[en?"Average score":"평균 정확도","averageAccuracyScore"]].map(([label,key])=><div className="rounded-xl border bg-white p-4" key={key}><span className="text-xs font-bold text-slate-500">{label}</span><strong className="mt-1 block text-2xl text-[#052b57]">{value(data.designAssuranceSummary??{},key)}{key==="averageAccuracyScore"?"%":""}</strong></div>)}</section>
         <section className="rounded-2xl border border-blue-200 bg-blue-50 p-5"><h3 className="font-black text-[#052b57]">{en?"Executable design contract":"실행 가능한 설계 계약"}</h3><p className="mt-2 text-sm leading-6 text-slate-700">{en?"A process is not implementation-ready until actor authority, state transitions, input/output data, screens, APIs, five safety scenarios, and development evidence all agree.":"액터 권한, 상태 전이, 입출력 데이터, 화면, API, 정상·예외·권한·격리·복구 테스트와 개발 증적이 모두 일치해야 구현 완료로 판정합니다."}</p></section>
