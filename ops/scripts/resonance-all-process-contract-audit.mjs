@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { readFile } from "node:fs/promises";
+import { availableParallelism } from "node:os";
 
 const startedAt = Date.now();
 const baseUrl = String(process.env.CARBONET_RUNTIME_BASE_URL || "http://127.0.0.1").replace(/\/$/, "");
@@ -8,8 +9,12 @@ const reportPath = "/admin/api/system/actor-process/system-test-report";
 const auditPath = `${reportPath}/audit`;
 const fixturePath = argumentValue("--fixture") || process.env.SYSTEM_TEST_REPORT_FIXTURE || "";
 const skipHttpSmoke = process.argv.includes("--skip-http-smoke") || process.env.SYSTEM_TEST_REPORT_SKIP_HTTP_SMOKE === "1";
-const smokeConcurrency = boundedInteger(process.env.SYSTEM_TEST_REPORT_SMOKE_CONCURRENCY, 8, 1, 32);
+const detectedParallelism = Math.max(1, availableParallelism());
+const adaptiveSmokeConcurrency = Math.min(24, Math.max(8, Math.floor(detectedParallelism * 0.75)));
+const smokeConcurrency = boundedInteger(process.env.SYSTEM_TEST_REPORT_SMOKE_CONCURRENCY, adaptiveSmokeConcurrency, 1, 32);
 const smokeTimeoutMs = boundedInteger(process.env.SYSTEM_TEST_REPORT_SMOKE_TIMEOUT_MS, 8_000, 500, 60_000);
+const smokeProgressEvery = boundedInteger(process.env.SYSTEM_TEST_REPORT_SMOKE_PROGRESS_EVERY, 100, 1, 10_000);
+const smokeProgressIntervalMs = boundedInteger(process.env.SYSTEM_TEST_REPORT_SMOKE_PROGRESS_INTERVAL_MS, 5_000, 250, 60_000);
 const maxRouteSmokes = boundedInteger(process.env.SYSTEM_TEST_REPORT_MAX_ROUTE_SMOKES, 5_000, 1, 100_000);
 const auditPageSize = boundedInteger(process.env.SYSTEM_TEST_REPORT_AUDIT_PAGE_SIZE, 250, 1, 500);
 const maxAuditPages = boundedInteger(process.env.SYSTEM_TEST_REPORT_MAX_AUDIT_PAGES, 10_000, 1, 100_000);
@@ -457,17 +462,38 @@ async function smokeOne(route, cookie) {
 
 async function smokeRoutes(routes, cookie) {
   if (skipHttpSmoke || !cookie) {
-    return { candidateCount: routes.length, smokedCount: 0, reachableCount: 0, unreachableCount: 0, skippedCount: routes.length, unreachable: [] };
+    return { candidateCount: routes.length, smokedCount: 0, reachableCount: 0, unreachableCount: 0, skippedCount: routes.length, unreachable: [], concurrency: 0, durationMs: 0, requestsPerSecond: 0 };
   }
+  const smokeStartedAt = Date.now();
+  const effectiveConcurrency = Math.min(smokeConcurrency, routes.length);
   const results = new Array(routes.length);
   let cursor = 0;
-  const workers = Array.from({ length: Math.min(smokeConcurrency, routes.length) }, async () => {
+  let completed = 0;
+  let nextProgress = Math.min(smokeProgressEvery, routes.length);
+  let lastProgressAt = smokeStartedAt;
+  const logProgress = (force = false) => {
+    const now = Date.now();
+    if (!force && completed < nextProgress && now - lastProgressAt < smokeProgressIntervalMs) return;
+    const elapsedMs = Math.max(1, now - smokeStartedAt);
+    const requestsPerSecond = completed * 1_000 / elapsedMs;
+    const remaining = routes.length - completed;
+    const etaSeconds = requestsPerSecond > 0 ? Math.ceil(remaining / requestsPerSecond) : null;
+    const percentage = routes.length ? (completed * 100 / routes.length).toFixed(1) : "100.0";
+    process.stderr.write(`[all-process-contract-audit] route-smoke progress=${completed}/${routes.length} percent=${percentage} concurrency=${effectiveConcurrency} rate=${requestsPerSecond.toFixed(1)}/s etaSeconds=${etaSeconds ?? "unknown"}\n`);
+    while (nextProgress <= completed) nextProgress += smokeProgressEvery;
+    lastProgressAt = now;
+  };
+  process.stderr.write(`[all-process-contract-audit] route-smoke start routes=${routes.length} concurrency=${effectiveConcurrency} detectedParallelism=${detectedParallelism} timeoutMs=${smokeTimeoutMs}\n`);
+  const workers = Array.from({ length: effectiveConcurrency }, async () => {
     while (cursor < routes.length) {
       const index = cursor++;
       results[index] = await smokeOne(routes[index], cookie);
+      completed += 1;
+      logProgress(completed === routes.length);
     }
   });
   await Promise.all(workers);
+  const durationMs = Date.now() - smokeStartedAt;
   const blocked = results.filter((item) => item.result === "UNREACHABLE");
   return {
     candidateCount: routes.length,
@@ -477,6 +503,9 @@ async function smokeRoutes(routes, cookie) {
     skippedCount: 0,
     unreachable: blocked.slice(0, 100),
     p95Ms: results.length ? results.map((item) => item.durationMs).sort((a, b) => a - b)[Math.ceil(results.length * 0.95) - 1] : 0,
+    concurrency: effectiveConcurrency,
+    durationMs,
+    requestsPerSecond: durationMs > 0 ? Number((results.length * 1_000 / durationMs).toFixed(2)) : results.length,
   };
 }
 
@@ -487,6 +516,7 @@ async function main() {
   let contractAudit = { pageCount: 0, targetCount: 0, passedCount: 0, blockedCount: 0, errorCount: 0, complete: false, skipped: true };
   if (fixturePath) {
     payload = JSON.parse(await readFile(fixturePath, "utf8"));
+    cookie = text(process.env.SYSTEM_TEST_REPORT_FIXTURE_COOKIE);
   } else {
     const live = await loadLiveReport();
     payload = live.payload;

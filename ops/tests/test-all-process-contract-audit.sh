@@ -44,6 +44,9 @@ if (/method:\s*"(?:PUT|PATCH|DELETE)"/.test(source) || /process-executions\/star
 for (const required of ["runContractAuditPages", "while (true)", "targetOffset", "maxTargets: auditPageSize", "nextTargetOffset", "contractAuditPagination", "reasonCounts", "samples=${JSON.stringify(samples)}"]) {
   if (!source.includes(required)) throw new Error(`paged contract audit guard missing: ${required}`);
 }
+for (const required of ["availableParallelism", "adaptiveSmokeConcurrency", "Math.min(24", "route-smoke progress=", "requestsPerSecond"]) {
+  if (!source.includes(required)) throw new Error(`adaptive route-smoke guard missing: ${required}`);
+}
 NODE
 
 node - "$PANEL" <<'NODE'
@@ -264,6 +267,115 @@ const value = JSON.parse(process.env.AUDIT_OUTPUT);
 if (value.status !== "BLOCKED" || !value.validation.issueCounts.SIMULATION_STALE_CONTRACT_VERSION) throw new Error("stale simulation PASS was not invalidated");
 NODE
 
+# Exercise the production default worker selection against a local delayed HTTP
+# server. Every exact-unique route must be requested once, concurrency must be
+# CPU-adaptive but capped, and progress must be visible without changing the
+# read-only contract semantics.
+node - "$SCRIPT" "$TMP/pass.json" "$TMP/smoke-fixture.json" <<'NODE'
+const fs = require("fs");
+const http = require("http");
+const os = require("os");
+const { spawn } = require("child_process");
+
+const [script, sourceFixture, smokeFixture] = process.argv.slice(2);
+const payload = JSON.parse(fs.readFileSync(sourceFixture, "utf8"));
+const base = payload.items[0];
+const routeCount = 48;
+payload.items = Array.from({ length: routeCount }, (_, index) => ({
+  ...base,
+  developmentOrder: index + 1,
+  processCode: `SMOKE_PROCESS_${index + 1}`,
+  processName: `Smoke process ${index + 1}`,
+  stepCode: `SMOKE_STEP_${index + 1}`,
+  stepName: `Smoke step ${index + 1}`,
+  stepOrder: 1,
+  userPath: `/audit-smoke/${index + 1}`,
+  routePath: `/audit-smoke/${index + 1}`,
+  latestRunId: `RUN-SMOKE-${index + 1}`,
+  latestSimulationRunId: `SIM-SMOKE-${index + 1}`,
+  simulationCaseCode: `SMOKE_CASE_${index + 1}`,
+}));
+Object.assign(payload, {
+  targetCount: routeCount,
+  auditedBindingCount: routeCount,
+  auditedCapabilityTargetCount: routeCount,
+});
+Object.assign(payload.summary, {
+  processCount: routeCount,
+  stepCount: routeCount,
+  routedStepCount: routeCount,
+  passedStepCount: routeCount,
+  blockedStepCount: 0,
+  notRunStepCount: 0,
+  verifiedContractCount: routeCount,
+  totalContractCount: routeCount,
+  auditTargetCount: routeCount,
+});
+fs.writeFileSync(smokeFixture, JSON.stringify(payload));
+
+let active = 0;
+let peak = 0;
+let requestCount = 0;
+const requestedPaths = new Set();
+const server = http.createServer((request, response) => {
+  active += 1;
+  peak = Math.max(peak, active);
+  requestCount += 1;
+  requestedPaths.add(request.url);
+  setTimeout(() => {
+    response.writeHead(200, { "content-type": "text/html" });
+    response.end("<!doctype html><title>audit smoke</title>");
+    active -= 1;
+  }, 30);
+});
+
+server.listen(0, "127.0.0.1", () => {
+  const address = server.address();
+  const child = spawn(process.execPath, [script, "--fixture", smokeFixture], {
+    env: {
+      ...process.env,
+      CARBONET_RUNTIME_BASE_URL: `http://127.0.0.1:${address.port}`,
+      SYSTEM_TEST_REPORT_FIXTURE_COOKIE: "audit-fixture=1",
+      SYSTEM_TEST_REPORT_SMOKE_PROGRESS_EVERY: "10",
+      SYSTEM_TEST_REPORT_SMOKE_PROGRESS_INTERVAL_MS: "60000",
+    },
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+  let stdout = "";
+  let stderr = "";
+  child.stdout.on("data", (chunk) => { stdout += chunk; });
+  child.stderr.on("data", (chunk) => { stderr += chunk; });
+  child.on("close", (code) => {
+    server.close(() => {
+      try {
+        if (code !== 0) throw new Error(`route smoke exited ${code}: ${stderr}`);
+        const output = JSON.parse(stdout.trim());
+        const expectedConcurrency = Math.min(routeCount, 24, Math.max(8, Math.floor(os.availableParallelism() * 0.75)));
+        if (output.status !== "PASS") throw new Error(`route smoke status ${output.status}`);
+        if (output.routeSmoke.candidateCount !== routeCount || output.routeSmoke.smokedCount !== routeCount || output.routeSmoke.reachableCount !== routeCount) {
+          throw new Error(`route coverage changed: ${JSON.stringify(output.routeSmoke)}`);
+        }
+        if (requestCount !== routeCount || requestedPaths.size !== routeCount) {
+          throw new Error(`exact route dedupe/coverage mismatch requests=${requestCount} unique=${requestedPaths.size}`);
+        }
+        if (output.routeSmoke.concurrency !== expectedConcurrency || peak < Math.min(8, expectedConcurrency)) {
+          throw new Error(`adaptive concurrency mismatch reported=${output.routeSmoke.concurrency} expected=${expectedConcurrency} peak=${peak}`);
+        }
+        if (!stderr.includes(`route-smoke start routes=${routeCount}`) || !stderr.includes(`route-smoke progress=${routeCount}/${routeCount}`)) {
+          throw new Error(`progress evidence missing: ${stderr}`);
+        }
+        if (!(output.routeSmoke.requestsPerSecond > 0) || !(output.routeSmoke.durationMs > 0)) {
+          throw new Error("route smoke throughput evidence missing");
+        }
+      } catch (error) {
+        console.error(error.message);
+        process.exitCode = 1;
+      }
+    });
+  });
+});
+NODE
+
 mkdir -p "$TMP/bin"
 cat > "$TMP/bin/kubectl" <<'SH'
 #!/usr/bin/env bash
@@ -344,4 +456,4 @@ cp "$PLAN" "$TMP/plan/ops/scripts/plan-incremental-work.sh"
   grep -q 'reasons=automation-only' <<<"$plan_output"
 )
 
-echo '[all-process-contract-audit-test] PASS fixtures=6 outputContract=PASS/BLOCKED/ERROR contractVsBusiness=PASS staleSimulation=PASS pagedContractEvidence=PASS order=PASS routes=PASS ioContracts=PASS secretPolicy=kubernetes+exit2 noBuild=PASS'
+echo '[all-process-contract-audit-test] PASS fixtures=7 outputContract=PASS/BLOCKED/ERROR contractVsBusiness=PASS staleSimulation=PASS pagedContractEvidence=PASS order=PASS routes=full+adaptive+progress ioContracts=PASS secretPolicy=kubernetes+exit2 noBuild=PASS'
