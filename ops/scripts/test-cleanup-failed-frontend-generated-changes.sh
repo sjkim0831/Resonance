@@ -18,16 +18,19 @@ printf 'baseline\n' > "$repo/projects/carbonet-frontend/source/src/generated/ver
 printf 'baseline\n' > "$repo/projects/carbonet-frontend/source/src/features/example/source.ts"
 printf 'baseline\n' > "$repo/projects/carbonet-frontend/source/.cache/full-screen-smoke/results/shard-0.json"
 printf 'baseline\n' > "$repo/projects/carbonet-frontend/src/main/resources/static/react-app/full-screen-deploy-gate-status.json"
+printf 'baseline\n' > "$repo/projects/carbonet-frontend/src/main/resources/static/react-app/index.html"
 git -C "$repo" add .
 git -C "$repo" commit -qm baseline
 
 printf 'generated-change\n' > "$repo/projects/carbonet-frontend/source/src/generated/verificationCenterInventory.json"
 printf 'smoke-change\n' > "$repo/projects/carbonet-frontend/source/.cache/full-screen-smoke/results/shard-0.json"
 printf 'gate-change\n' > "$repo/projects/carbonet-frontend/src/main/resources/static/react-app/full-screen-deploy-gate-status.json"
+printf 'overlay-change\n' > "$repo/projects/carbonet-frontend/src/main/resources/static/react-app/index.html"
 bash "$SCRIPT_DIR/cleanup-failed-frontend-generated-changes.sh" "$repo"
 grep -qx baseline "$repo/projects/carbonet-frontend/source/src/generated/verificationCenterInventory.json"
 grep -qx baseline "$repo/projects/carbonet-frontend/source/.cache/full-screen-smoke/results/shard-0.json"
 grep -qx baseline "$repo/projects/carbonet-frontend/src/main/resources/static/react-app/full-screen-deploy-gate-status.json"
+grep -qx baseline "$repo/projects/carbonet-frontend/src/main/resources/static/react-app/index.html"
 [[ -z "$(git -C "$repo" status --porcelain --untracked-files=no)" ]]
 
 printf 'generated-change\n' > "$repo/projects/carbonet-frontend/source/src/generated/verificationCenterInventory.json"
