@@ -11,35 +11,57 @@
     "code": "MEMBER_LIFECYCLE_04_APPROVE",
     "version": 1,
     "actor": {
+      "schemaVersion": 1,
+      "contractType": "STEP_ACTOR_AUTHORITY",
       "actorCode": "APPROVER",
       "ownerActorCode": "COMPANY_MANAGER",
-      "tenantIsolation": true,
-      "projectIsolation": true,
-      "delegationChecked": true,
-      "segregationOfDuties": true
+      "scope": "TENANT_PROJECT",
+      "policy": {
+        "tenantIsolation": true,
+        "projectIsolation": true,
+        "delegationChecked": true,
+        "segregationOfDuties": true
+      },
+      "permissions": [],
+      "delegation": {},
+      "extensions": {}
     },
     "business": {
-      "goal": "회원 가입부터 승인·권한·휴면·탈퇴까지 관리",
-      "slaHours": 720,
-      "stepName": "승인·확정",
-      "riskLevel": "MEDIUM",
+      "schemaVersion": 1,
+      "contractType": "STEP_BUSINESS",
       "domainCode": "MEMBER",
       "processName": "회원·기업 생애주기",
-      "requirement": "",
+      "stepName": "승인·확정",
+      "goal": "회원 가입부터 승인·권한·휴면·탈퇴까지 관리",
+      "requirement": "회원 가입부터 승인·권한·휴면·탈퇴까지 관리 목표를 위해 승인·확정 단계에서 APPROVE 명령의 선행 상태, 담당 액터, 필수 입력, 권한, 증적을 확인한다.",
       "completionRule": "승인 이력과 최종 결과가 확정됨",
-      "regulationRefs": "조직 적용 방법론·내부통제 기준·관련 법규"
+      "riskLevel": "MEDIUM",
+      "slaHours": 720,
+      "regulationRefs": "조직 적용 방법론·내부통제 기준·관련 법규",
+      "preconditions": [],
+      "deliverables": [],
+      "exceptions": [],
+      "policy": {},
+      "extensions": {}
     },
     "transition": {
-      "toState": "COMPLETED",
-      "stepType": "TASK",
-      "fromState": "VERIFIED",
-      "stepOrder": 4,
+      "schemaVersion": 1,
+      "contractType": "STEP_TRANSITION",
       "commandCode": "APPROVE",
-      "auditRequired": true,
-      "completionRule": "승인 이력과 최종 결과가 확정됨",
-      "optimisticLock": true,
+      "fromState": "VERIFIED",
+      "toState": "COMPLETED",
+      "stepOrder": 4,
+      "stepType": "TASK",
       "parentStepCode": null,
-      "idempotencyRequired": true
+      "completionRule": "승인 이력과 최종 결과가 확정됨",
+      "policy": {
+        "auditRequired": true,
+        "optimisticLock": true,
+        "idempotencyRequired": true
+      },
+      "guards": [],
+      "sideEffects": [],
+      "extensions": {}
     },
     "input": {
       "stepCode": "MEMBER_LIFECYCLE_04_APPROVE",
@@ -53,23 +75,154 @@
       "evidenceRequired": true
     },
     "guide": {
-      "title": "승인·확정",
-      "purpose": "",
-      "stepCode": "MEMBER_LIFECYCLE_04_APPROVE",
-      "userPath": null,
-      "actorCode": "APPROVER",
-      "adminPath": null,
-      "stepOrder": 4,
+      "schemaVersion": 1,
+      "contractType": "STEP_GUIDE",
       "processCode": "MEMBER_LIFECYCLE",
-      "nextStepCode": null,
+      "stepCode": "MEMBER_LIFECYCLE_04_APPROVE",
+      "stepOrder": 4,
       "workTypeCode": "MEMBER",
+      "actorCode": "APPROVER",
+      "title": "승인·확정",
+      "purpose": "회원 가입부터 승인·권한·휴면·탈퇴까지 관리 목표를 위해 승인·확정 단계에서 APPROVE 명령의 선행 상태, 담당 액터, 필수 입력, 권한, 증적을 확인한다.",
       "entryCondition": "VERIFIED",
-      "completionCondition": "승인 이력과 최종 결과가 확정됨"
+      "completionCondition": "승인 이력과 최종 결과가 확정됨",
+      "userPath": "/work/execution?processCode=MEMBER_LIFECYCLE&stepCode=MEMBER_LIFECYCLE_04_APPROVE&guide=1",
+      "adminPath": "/admin/system/process-workspace?process=MEMBER_LIFECYCLE&step=MEMBER_LIFECYCLE_04_APPROVE",
+      "relatedBusinessRoute": null,
+      "nextStepCode": null,
+      "nextAction": "COMPLETED",
+      "actions": [],
+      "help": {},
+      "policy": {},
+      "extensions": {}
     }
   },
   "frontend": {
     "renderer": "COMMON_SDUI_RUNTIME",
-    "pages": []
+    "required": true,
+    "pages": [
+      {
+        "pageCode": "MEMBER_LIFECYCLE_APPROVE_WORKSPACE_ADMIN",
+        "route": "/admin/system/process-workspace?process=MEMBER_LIFECYCLE&step=MEMBER_LIFECYCLE_04_APPROVE",
+        "routeStatus": "IMPLEMENTED",
+        "audience": "ADMIN",
+        "screenType": "PROCESS_WORKSPACE",
+        "title": "회원 생명주기 승인·확정 작업공간",
+        "purpose": "회원 가입부터 승인·권한·휴면·탈퇴까지 관리 목표를 위해 승인·확정 단계에서 APPROVE 명령의 선행 상태, 담당 액터, 필수 입력, 권한, 증적을 확인한다.",
+        "layout": "COMMON_KRDS_TASK_LAYOUT",
+        "theme": "COMMON_KRDS_GOV",
+        "sections": [
+          "TASK_CONTEXT",
+          "TASK_ACTIONS",
+          "TASK_CONTENT",
+          "TASK_EVIDENCE",
+          "TASK_HANDOFF"
+        ],
+        "fields": [
+          {
+            "dataType": "CODE",
+            "editable": true,
+            "required": true,
+            "fieldCode": "approvalDecision",
+            "fieldName": "승인 결정",
+            "fieldGroup": "APPROVE",
+            "fieldOrder": 1,
+            "validation": {
+              "enum": [
+                "APPROVE",
+                "REJECT"
+              ]
+            },
+            "apiProperty": "draft.payloadJson.approvalDecision",
+            "controlType": "TEXT",
+            "sourceTable": "framework_process_work_draft",
+            "sourceColumn": "payload_json",
+            "mappingStatus": "DB_RESOLVED",
+            "code": "approvalDecision"
+          },
+          {
+            "dataType": "STRING",
+            "editable": true,
+            "required": true,
+            "fieldCode": "approvalBasis",
+            "fieldName": "승인 근거",
+            "fieldGroup": "APPROVE",
+            "fieldOrder": 2,
+            "validation": {
+              "maxLength": 2000,
+              "minLength": 5
+            },
+            "apiProperty": "draft.payloadJson.approvalBasis",
+            "controlType": "TEXTAREA",
+            "sourceTable": "framework_process_work_draft",
+            "sourceColumn": "payload_json",
+            "mappingStatus": "DB_RESOLVED",
+            "code": "approvalBasis"
+          },
+          {
+            "dataType": "DATE",
+            "editable": true,
+            "required": true,
+            "fieldCode": "effectiveAt",
+            "fieldName": "효력 발생일",
+            "fieldGroup": "APPROVE",
+            "fieldOrder": 3,
+            "validation": {
+              "required": true
+            },
+            "apiProperty": "draft.payloadJson.effectiveAt",
+            "controlType": "DATE",
+            "sourceTable": "framework_process_work_draft",
+            "sourceColumn": "payload_json",
+            "mappingStatus": "DB_RESOLVED",
+            "code": "effectiveAt"
+          },
+          {
+            "dataType": "STRING",
+            "editable": true,
+            "required": true,
+            "fieldCode": "auditReference",
+            "fieldName": "감사 추적 참조",
+            "fieldGroup": "APPROVE",
+            "fieldOrder": 4,
+            "validation": {
+              "maxLength": 200,
+              "minLength": 1
+            },
+            "apiProperty": "draft.payloadJson.auditReference",
+            "controlType": "TEXT",
+            "sourceTable": "framework_process_work_draft",
+            "sourceColumn": "payload_json",
+            "mappingStatus": "DB_RESOLVED",
+            "code": "auditReference"
+          }
+        ],
+        "commands": [
+          {
+            "actorCode": "APPROVER",
+            "entryState": "VERIFIED",
+            "commandCode": "APPROVE",
+            "resultState": "COMPLETED",
+            "auditRequired": true,
+            "validationRequired": true,
+            "serverAuthorization": true,
+            "idempotencyRequired": true
+          }
+        ],
+        "states": [],
+        "responsive": {
+          "mobile": "single-column contract cards",
+          "desktop": "process sequence and contract workspace",
+          "overflow": "local-only"
+        },
+        "accessibility": {
+          "labels": true,
+          "keyboard": true,
+          "standard": "WCAG 2.1 AA",
+          "ariaCurrentStep": true
+        }
+      }
+    ]
   },
   "backend": {
     "runtime": "COMMON_PROCESS_COMMAND_RUNTIME",
@@ -88,7 +241,8 @@
         ],
         "transactional": true,
         "idempotencyKey": true,
-        "declaredContract": null
+        "declaredContract": "COMMON_PROCESS_EXECUTION_RUNTIME_V1",
+        "method": "CONTRACT"
       }
     ],
     "commands": [
@@ -99,20 +253,29 @@
         "resultState": "COMPLETED",
         "auditRequired": true,
         "validationRequired": true,
-        "serverAuthorization": true
+        "serverAuthorization": true,
+        "idempotencyRequired": true
       }
     ],
     "authorization": {
+      "schemaVersion": 1,
+      "contractType": "STEP_ACTOR_AUTHORITY",
       "actorCode": "APPROVER",
       "ownerActorCode": "COMPANY_MANAGER",
-      "tenantIsolation": true,
-      "projectIsolation": true,
-      "delegationChecked": true,
-      "segregationOfDuties": true
+      "scope": "TENANT_PROJECT",
+      "policy": {
+        "tenantIsolation": true,
+        "projectIsolation": true,
+        "delegationChecked": true,
+        "segregationOfDuties": true
+      },
+      "permissions": [],
+      "delegation": {},
+      "extensions": {}
     },
+    "handoffPolicy": {},
     "handoffs": [
       {
-        "type": "PROCESS",
         "failure": {
           "onInvalid": "DESIGN_REVIEW_REQUIRED",
           "onInapplicable": "SKIP_WITH_AUDIT",
@@ -146,6 +309,7 @@
           "completedProcessCode",
           "outputVersion"
         ],
+        "handoffType": "PROCESS",
         "authorization": {
           "toActor": "PUBLIC_APPLICANT",
           "fromActor": "APPROVER",
@@ -157,27 +321,458 @@
     ]
   },
   "database": {
-    "fieldMappings": [],
     "transactional": true,
+    "migrationRequired": true,
+    "mappings": [
+      {
+        "fields": [
+          {
+            "required": true,
+            "fieldCode": "processCode",
+            "apiProperty": "processes[].processCode",
+            "sourceTable": "framework_process_definition",
+            "sourceColumn": "process_code",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "processName",
+            "apiProperty": "processes[].processName",
+            "sourceTable": "framework_process_definition",
+            "sourceColumn": "process_name",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "domainCode",
+            "apiProperty": "processes[].domainCode",
+            "sourceTable": "framework_process_definition",
+            "sourceColumn": "domain_code",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "processVersion",
+            "apiProperty": "processes[].version",
+            "sourceTable": "framework_process_definition",
+            "sourceColumn": "process_version",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "processGoal",
+            "apiProperty": "processes[].goal",
+            "sourceTable": "framework_process_definition",
+            "sourceColumn": "goal",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "startCondition",
+            "apiProperty": "processes[].startCondition",
+            "sourceTable": "framework_process_definition",
+            "sourceColumn": "start_condition",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "completionCondition",
+            "apiProperty": "processes[].completionCondition",
+            "sourceTable": "framework_process_definition",
+            "sourceColumn": "completion_condition",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "ownerActorCode",
+            "apiProperty": "processes[].ownerActorCode",
+            "sourceTable": "framework_process_definition",
+            "sourceColumn": "owner_actor_code",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "riskLevel",
+            "apiProperty": "processes[].riskLevel",
+            "sourceTable": "framework_process_definition",
+            "sourceColumn": "risk_level",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": false,
+            "fieldCode": "slaHours",
+            "apiProperty": "processes[].slaHours",
+            "sourceTable": "framework_process_definition",
+            "sourceColumn": "sla_hours",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": false,
+            "fieldCode": "reviewCycleDays",
+            "apiProperty": "processes[].reviewCycleDays",
+            "sourceTable": "framework_process_definition",
+            "sourceColumn": "review_cycle_days",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "processStatus",
+            "apiProperty": "processes[].status",
+            "sourceTable": "framework_process_definition",
+            "sourceColumn": "process_status",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "lifecycleStatus",
+            "apiProperty": "processes[].lifecycleStatus",
+            "sourceTable": "framework_process_definition",
+            "sourceColumn": "lifecycle_status",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "stepOrder",
+            "apiProperty": "steps[].stepOrder",
+            "sourceTable": "framework_process_step",
+            "sourceColumn": "step_order",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "stepCode",
+            "apiProperty": "steps[].stepCode",
+            "sourceTable": "framework_process_step",
+            "sourceColumn": "step_code",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "stepName",
+            "apiProperty": "steps[].stepName",
+            "sourceTable": "framework_process_step",
+            "sourceColumn": "step_name",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "stepActorCode",
+            "apiProperty": "steps[].actorCode",
+            "sourceTable": "framework_process_step",
+            "sourceColumn": "actor_code",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "fromState",
+            "apiProperty": "steps[].fromState",
+            "sourceTable": "framework_process_step",
+            "sourceColumn": "from_state",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "commandCode",
+            "apiProperty": "steps[].commandCode",
+            "sourceTable": "framework_process_step",
+            "sourceColumn": "command_code",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "toState",
+            "apiProperty": "steps[].toState",
+            "sourceTable": "framework_process_step",
+            "sourceColumn": "to_state",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "completionRule",
+            "apiProperty": "steps[].completionRule",
+            "sourceTable": "framework_process_step",
+            "sourceColumn": "completion_rule",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "requirementText",
+            "apiProperty": "steps[].requirementText",
+            "sourceTable": "framework_process_step",
+            "sourceColumn": "requirement_text",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "inputContract",
+            "apiProperty": "steps[].inputContract",
+            "sourceTable": "framework_process_step",
+            "sourceColumn": "input_contract",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "outputContract",
+            "apiProperty": "steps[].outputContract",
+            "sourceTable": "framework_process_step",
+            "sourceColumn": "output_contract",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": false,
+            "fieldCode": "userPath",
+            "apiProperty": "steps[].userPath",
+            "sourceTable": "framework_process_step",
+            "sourceColumn": "user_path",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": false,
+            "fieldCode": "adminPath",
+            "apiProperty": "steps[].adminPath",
+            "sourceTable": "framework_process_step",
+            "sourceColumn": "admin_path",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": false,
+            "fieldCode": "apiContract",
+            "apiProperty": "steps[].apiContract",
+            "sourceTable": "framework_process_step",
+            "sourceColumn": "api_contract",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "automationStatus",
+            "apiProperty": "steps[].automationStatus",
+            "sourceTable": "framework_process_step",
+            "sourceColumn": "automation_status",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "caseCode",
+            "apiProperty": "cases[].caseCode",
+            "sourceTable": "framework_simulation_case",
+            "sourceColumn": "case_code",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "caseName",
+            "apiProperty": "cases[].caseName",
+            "sourceTable": "framework_simulation_case",
+            "sourceColumn": "case_name",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "caseType",
+            "apiProperty": "cases[].caseType",
+            "sourceTable": "framework_simulation_case",
+            "sourceColumn": "case_type",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "caseStatus",
+            "apiProperty": "cases[].status",
+            "sourceTable": "framework_simulation_case",
+            "sourceColumn": "case_status",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "caseAssertions",
+            "apiProperty": "cases[].assertionsJson",
+            "sourceTable": "framework_simulation_case",
+            "sourceColumn": "assertions_json",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "jobId",
+            "apiProperty": "developmentJobs[].jobId",
+            "sourceTable": "framework_development_job",
+            "sourceColumn": "job_id",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "jobType",
+            "apiProperty": "developmentJobs[].jobType",
+            "sourceTable": "framework_development_job",
+            "sourceColumn": "job_type",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "jobName",
+            "apiProperty": "developmentJobs[].jobName",
+            "sourceTable": "framework_development_job",
+            "sourceColumn": "job_name",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": false,
+            "fieldCode": "targetPath",
+            "apiProperty": "developmentJobs[].targetPath",
+            "sourceTable": "framework_development_job",
+            "sourceColumn": "target_path",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "jobStatus",
+            "apiProperty": "developmentJobs[].jobStatus",
+            "sourceTable": "framework_development_job",
+            "sourceColumn": "job_status",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "qualityStatus",
+            "apiProperty": "developmentJobs[].qualityStatus",
+            "sourceTable": "framework_development_job",
+            "sourceColumn": "quality_status",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": false,
+            "fieldCode": "jobEvidenceRef",
+            "apiProperty": "developmentJobs[].evidenceRef",
+            "sourceTable": "framework_development_job",
+            "sourceColumn": "evidence_ref",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "requiredJobs",
+            "apiProperty": "processDevelopmentProgress[].requiredJobs",
+            "sourceTable": "framework_process_development_progress",
+            "sourceColumn": "required_jobs",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "verifiedJobs",
+            "apiProperty": "processDevelopmentProgress[].verifiedJobs",
+            "sourceTable": "framework_process_development_progress",
+            "sourceColumn": "verified_jobs",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "failedJobs",
+            "apiProperty": "processDevelopmentProgress[].failedJobs",
+            "sourceTable": "framework_process_development_progress",
+            "sourceColumn": "failed_jobs",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "completionPercent",
+            "apiProperty": "processDevelopmentProgress[].completionPercent",
+            "sourceTable": "framework_process_development_progress",
+            "sourceColumn": "completion_percent",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "assuranceStatus",
+            "apiProperty": "designAssurance[].assuranceStatus",
+            "sourceTable": "framework_process_design_assurance_matrix",
+            "sourceColumn": "assurance_status",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "designAccuracyScore",
+            "apiProperty": "designAssurance[].designAccuracyScore",
+            "sourceTable": "framework_process_design_assurance_matrix",
+            "sourceColumn": "design_accuracy_score",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "designBlockerCount",
+            "apiProperty": "designAssurance[].designBlockerCount",
+            "sourceTable": "framework_process_design_assurance_matrix",
+            "sourceColumn": "design_blocker_count",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "actorContractGaps",
+            "apiProperty": "designAssurance[].actorContractGaps",
+            "sourceTable": "framework_process_design_assurance_matrix",
+            "sourceColumn": "missing_actor_binding_count",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "stateFlowGaps",
+            "apiProperty": "designAssurance[].stateFlowGaps",
+            "sourceTable": "framework_process_design_assurance_matrix",
+            "sourceColumn": "incomplete_transition_count",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "dataContractGaps",
+            "apiProperty": "designAssurance[].dataContractGaps",
+            "sourceTable": "framework_process_design_assurance_matrix",
+            "sourceColumn": "incomplete_data_contract_count",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "routeGaps",
+            "apiProperty": "designAssurance[].routeGaps",
+            "sourceTable": "framework_process_design_assurance_matrix",
+            "sourceColumn": "missing_user_route_count",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "apiContractGaps",
+            "apiProperty": "designAssurance[].apiContractGaps",
+            "sourceTable": "framework_process_design_assurance_matrix",
+            "sourceColumn": "missing_api_contract_count",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": true,
+            "fieldCode": "approvedSafetyTestTypeCount",
+            "apiProperty": "designAssurance[].approvedSafetyTestTypeCount",
+            "sourceTable": "framework_process_design_assurance_matrix",
+            "sourceColumn": "approved_safety_test_type_count",
+            "mappingStatus": "DB_RESOLVED"
+          },
+          {
+            "required": false,
+            "fieldCode": "nextAction",
+            "apiProperty": "designAssurance[].nextAction",
+            "sourceTable": "framework_process_design_assurance_matrix",
+            "sourceColumn": "next_action",
+            "mappingStatus": "DB_RESOLVED"
+          }
+        ],
+        "audience": "ADMIN",
+        "pageCode": "MEMBER_LIFECYCLE_04_APPROVE_WORKSPACE_ADMIN",
+        "primaryEntity": "framework_process_step"
+      }
+    ],
+    "schemaSetVersion": 2,
+    "primaryEntities": [
+      "framework_process_step"
+    ],
     "historyRequired": true,
     "indexesRequired": true,
-    "primaryEntities": [],
-    "migrationRequired": true,
-    "softDeleteDefault": true,
     "foreignKeysRequired": true
   },
   "tests": [
-    {
-      "name": "권한 없는 액션 차단",
-      "type": "AUTHORITY",
-      "steps": [],
-      "status": "APPROVED",
-      "caseCode": "MEMBER_LIFECYCLE_AUTH",
-      "assertions": [
-        "권한·상태·데이터격리·감사로그 검증"
-      ],
-      "preconditions": "테스트용 테넌트·프로젝트·액터 계정이 준비되어야 함"
-    },
     {
       "name": "회원·기업 생애주기 · 미배정 액터 권한 차단",
       "type": "AUTHORITY",
@@ -211,17 +806,6 @@
         "필수 계약·증적·오류 제약이 존재함"
       ],
       "preconditions": "테스트용 테넌트·프로젝트·액터 배정과 트랜잭션 격리 환경이 준비되어야 한다."
-    },
-    {
-      "name": "정상 완료",
-      "type": "HAPPY_PATH",
-      "steps": [],
-      "status": "APPROVED",
-      "caseCode": "MEMBER_LIFECYCLE_HAPPY",
-      "assertions": [
-        "권한·상태·데이터격리·감사로그 검증"
-      ],
-      "preconditions": "테스트용 테넌트·프로젝트·액터 계정이 준비되어야 함"
     },
     {
       "name": "회원·기업 생애주기 · 정상 상태 전이",
@@ -273,90 +857,41 @@
         "멱등키와 롤백 명령 계약이 존재함"
       ],
       "preconditions": "테스트용 테넌트·프로젝트·액터 배정과 트랜잭션 격리 환경이 준비되어야 한다."
-    },
-    {
-      "name": "AUTH 화면 레퍼런스 기대값",
-      "type": "REFERENCE",
-      "steps": [],
-      "status": "DRAFT",
-      "caseCode": "MEMBER_LIFECYCLE_REFERENCE_AUTH",
-      "assertions": [
-        "실패 횟수,잠금,세션,2차 인증,개인정보 노출 방지"
-      ],
-      "preconditions": "분류된 레퍼런스가 존재하고 대응 화면 또는 개발 작업이 연결됨"
-    },
-    {
-      "name": "CONTENT 화면 레퍼런스 기대값",
-      "type": "REFERENCE",
-      "steps": [],
-      "status": "DRAFT",
-      "caseCode": "MEMBER_LIFECYCLE_REFERENCE_CONTENT",
-      "assertions": [
-        "게시 상태,예약 공개,모바일 가독성,첨부파일,검색 노출"
-      ],
-      "preconditions": "분류된 레퍼런스가 존재하고 대응 화면 또는 개발 작업이 연결됨"
-    },
-    {
-      "name": "DETAIL 화면 레퍼런스 기대값",
-      "type": "REFERENCE",
-      "steps": [],
-      "status": "DRAFT",
-      "caseCode": "MEMBER_LIFECYCLE_REFERENCE_DETAIL",
-      "assertions": [
-        "존재하지 않는 데이터,권한 차단,변경 이력,연관 업무 이동"
-      ],
-      "preconditions": "분류된 레퍼런스가 존재하고 대응 화면 또는 개발 작업이 연결됨"
-    },
-    {
-      "name": "FORM 화면 레퍼런스 기대값",
-      "type": "REFERENCE",
-      "steps": [],
-      "status": "DRAFT",
-      "caseCode": "MEMBER_LIFECYCLE_REFERENCE_FORM",
-      "assertions": [
-        "필수값,임시저장,중복 제출,오류 복구,모바일 입력"
-      ],
-      "preconditions": "분류된 레퍼런스가 존재하고 대응 화면 또는 개발 작업이 연결됨"
-    },
-    {
-      "name": "HOME 화면 레퍼런스 기대값",
-      "type": "REFERENCE",
-      "steps": [],
-      "status": "DRAFT",
-      "caseCode": "MEMBER_LIFECYCLE_REFERENCE_HOME",
-      "assertions": [
-        "반응형 GNB,핵심 업무 진입,인증 전 공개 범위,검색 접근성"
-      ],
-      "preconditions": "분류된 레퍼런스가 존재하고 대응 화면 또는 개발 작업이 연결됨"
-    },
-    {
-      "name": "WORKFLOW 화면 레퍼런스 기대값",
-      "type": "REFERENCE",
-      "steps": [],
-      "status": "DRAFT",
-      "caseCode": "MEMBER_LIFECYCLE_REFERENCE_WORKFLOW",
-      "assertions": [
-        "상태 전이,반려·재제출,중복 승인,승인 권한,감사 이력"
-      ],
-      "preconditions": "분류된 레퍼런스가 존재하고 대응 화면 또는 개발 작업이 연결됨"
     }
   ],
+  "testExecution": {
+    "runner": "FAST_PROCESS_CONTRACT_RUNNER",
+    "requiredLanes": [
+      "CONTRACT",
+      "AUTHORITY",
+      "ISOLATION",
+      "RECOVERY",
+      "LIVE_SMOKE"
+    ],
+    "requiredScenarioTypes": [
+      "HAPPY_PATH",
+      "EXCEPTION",
+      "AUTHORITY",
+      "ISOLATION",
+      "RECOVERY"
+    ],
+    "cacheKeySource": "packageHash",
+    "parallelSafe": true,
+    "targetSeconds": 5,
+    "liveSmokeRequiredForVerified": true,
+    "evidenceRequired": true
+  },
   "nonfunctional": {
-    "recovery": {
-      "retry": "idempotent-only",
-      "resumeFromLastVerifiedState": true
-    },
+    "schemaVersion": 1,
+    "contractType": "STEP_NONFUNCTIONAL",
     "security": {
-      "audit": true,
       "tenantIsolation": true,
       "projectIsolation": true,
-      "serverAuthorization": true
-    },
-    "responsive": {
-      "mobile": "single-column",
-      "tablet": "adaptive-two-column",
-      "desktop": "task-optimized",
-      "noTextOverflow": true
+      "serverAuthorization": true,
+      "segregationOfDuties": true,
+      "rateLimitRequired": false,
+      "secretLoggingForbidden": true,
+      "sensitiveValueMasking": true
     },
     "performance": {
       "targetP95Ms": 500,
@@ -364,14 +899,40 @@
       "searchIndexRequired": true
     },
     "accessibility": {
-      "focus": true,
-      "keyboard": true,
       "standard": "WCAG 2.1 AA",
+      "keyboard": true,
+      "focus": true,
       "errorSummary": true
-    }
+    },
+    "responsive": {
+      "mobile": "single-column",
+      "tablet": "adaptive-two-column",
+      "desktop": "task-optimized",
+      "noTextOverflow": true
+    },
+    "recovery": {
+      "retry": "idempotent-only",
+      "resumeFromLastVerifiedState": true,
+      "idempotencyRequired": true
+    },
+    "audit": {
+      "required": true,
+      "actorRecorded": true,
+      "beforeAfterRecorded": true,
+      "correlationIdRequired": true
+    },
+    "sla": {
+      "configured": true,
+      "targetHours": 720,
+      "timerStartsAt": "STEP_ASSIGNED",
+      "timerStopsAt": "STEP_COMPLETED",
+      "breachAlertRequired": true
+    },
+    "policy": {},
+    "extensions": {}
   },
-  "sourceHash": "7dd2e4d67017c0a657a3223987539626",
+  "sourceHash": "8cc99cccdd3ea9ee0636841973b41534",
   "approvalStatus": "APPROVED",
-  "generationStatus": "READY",
-  "packageHash": "82380020de399764ee2c91691455f0fca6e371c0f2caf44dc6e4ad967e41ce2e"
+  "generationStatus": "GENERATED",
+  "packageHash": "3b34a673b10937b06fec9aa99b98905cc4ff69f1a1e72dcaa1c3f4c3dfdef35c"
 }
