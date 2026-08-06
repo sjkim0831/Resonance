@@ -6,11 +6,20 @@ const baseUrl = String(
 const projectId = process.env.EMISSION_WORKFLOW_E2E_PROJECT_ID || "PRJ-2025-018";
 
 async function openEmissionProcedure(page: Page, procedureName: RegExp) {
+  const taskContractResponse = page.waitForResponse(
+    (response) =>
+      new URL(response.url()).pathname.endsWith("/home/api/emission-tasks") &&
+      response.request().method() === "GET",
+    { timeout: 20_000 },
+  );
   await page.goto(
     `${baseUrl}/emission/index?projectId=${encodeURIComponent(projectId)}`,
     { waitUntil: "domcontentloaded" },
   );
-  await expect(page.getByRole("button", { name: "전체 업무 보기" })).toBeVisible();
+  expect((await taskContractResponse).ok()).toBeTruthy();
+  await expect(
+    page.getByRole("button", { name: "전체 업무 보기" }),
+  ).toBeVisible({ timeout: 15_000 });
   await page.getByRole("button", { name: "전체 업무 보기" }).click();
   await page
     .getByRole("combobox", { name: "업무 종류" })
@@ -25,6 +34,8 @@ async function openEmissionProcedure(page: Page, procedureName: RegExp) {
 }
 
 test.describe("emission workflow guide and route alignment", () => {
+  test.describe.configure({ mode: "serial" });
+  test.setTimeout(60_000);
   test("step 1 keeps guide and organizational-boundary route aligned", async ({
     page,
   }) => {
