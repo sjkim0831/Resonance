@@ -1,8 +1,36 @@
 {
   "schemaVersion": "2.0.0",
-  "packageCount": 517,
-  "skippedReviewRequired": 48,
+  "packageCount": 565,
+  "skippedReviewRequired": 0,
   "packages": [
+    {
+      "processCode": "ACCOUNT_LOCK_RECOVERY",
+      "stepCode": "ACCOUNT_LOCK_RECOVERY_S1",
+      "package": "ACCOUNT_LOCK_RECOVERY__ACCOUNT_LOCK_RECOVERY_S1.json",
+      "packageHash": "47176114ce9f7e85078ca191e54baebcfca0f125a2e4839713a68676ebf986ec",
+      "pages": 2
+    },
+    {
+      "processCode": "ACCOUNT_LOCK_RECOVERY",
+      "stepCode": "ACCOUNT_LOCK_RECOVERY_S2",
+      "package": "ACCOUNT_LOCK_RECOVERY__ACCOUNT_LOCK_RECOVERY_S2.json",
+      "packageHash": "11d2d9c877c074dd3f0b91b7e794b9f38cf1222637723fb21be04aa07b072c57",
+      "pages": 2
+    },
+    {
+      "processCode": "ACCOUNT_LOCK_RECOVERY",
+      "stepCode": "ACCOUNT_LOCK_RECOVERY_S3",
+      "package": "ACCOUNT_LOCK_RECOVERY__ACCOUNT_LOCK_RECOVERY_S3.json",
+      "packageHash": "17d77d611dff78aa14ac40942c5813f43de45c81b06caa7d3ffce84f253d116a",
+      "pages": 2
+    },
+    {
+      "processCode": "ACCOUNT_LOCK_RECOVERY",
+      "stepCode": "ACCOUNT_LOCK_RECOVERY_S4",
+      "package": "ACCOUNT_LOCK_RECOVERY__ACCOUNT_LOCK_RECOVERY_S4.json",
+      "packageHash": "525d01f44f1a9ca8550e2a7d16dbcb8ccd85fe7ed5b37cf302dc2c68bc977c45",
+      "pages": 2
+    },
     {
       "processCode": "ACCOUNT_WITHDRAWAL",
       "stepCode": "ACCOUNT_WITHDRAWAL_S1",
@@ -22,6 +50,13 @@
       "stepCode": "ACCOUNT_WITHDRAWAL_S3",
       "package": "ACCOUNT_WITHDRAWAL__ACCOUNT_WITHDRAWAL_S3.json",
       "packageHash": "d0dcae7f2ff8c0e9ae69809c9e182d6abd821c1f76b07a55ca07c705ae921582",
+      "pages": 2
+    },
+    {
+      "processCode": "ACCOUNT_WITHDRAWAL",
+      "stepCode": "ACCOUNT_WITHDRAWAL_S4",
+      "package": "ACCOUNT_WITHDRAWAL__ACCOUNT_WITHDRAWAL_S4.json",
+      "packageHash": "6aa5127dc46158e7ed26377485c296eb3e0bff8ff5f9fac01c8befd3cf8f267d",
       "pages": 2
     },
     {
@@ -211,6 +246,13 @@
       "stepCode": "APPEAL_DISPUTE_AUDIT_S3",
       "package": "APPEAL_DISPUTE_AUDIT__APPEAL_DISPUTE_AUDIT_S3.json",
       "packageHash": "aa916abd7c110a3ea10578b89a4a8b551a7570566fb6b2afb6c8ae5c1977bf53",
+      "pages": 2
+    },
+    {
+      "processCode": "APPEAL_DISPUTE_AUDIT",
+      "stepCode": "APPEAL_DISPUTE_AUDIT_S4",
+      "package": "APPEAL_DISPUTE_AUDIT__APPEAL_DISPUTE_AUDIT_S4.json",
+      "packageHash": "8ddbe4b6b7f63535c46ef58884c14644c7c70842c563794dcb3ddc47e646b0ef",
       "pages": 2
     },
     {
@@ -579,6 +621,13 @@
     },
     {
       "processCode": "CERTIFICATE_FEE_TAX_REFUND",
+      "stepCode": "CFTR_REFUND",
+      "package": "CERTIFICATE_FEE_TAX_REFUND__CFTR_REFUND.json",
+      "packageHash": "30d813481dae1343d3a6b85074b89b27384fc48f2cf6bdf1b037fb450581ca4e",
+      "pages": 2
+    },
+    {
+      "processCode": "CERTIFICATE_FEE_TAX_REFUND",
       "stepCode": "CFTR_SETTLE",
       "package": "CERTIFICATE_FEE_TAX_REFUND__CFTR_SETTLE.json",
       "packageHash": "62ca26e170642c62184b22f404bf3c20f37d1189167bd17659a1f73f32dce448",
@@ -603,6 +652,13 @@
       "stepCode": "CERTIFICATE_ISSUANCE_03_VERIFY",
       "package": "CERTIFICATE_ISSUANCE__CERTIFICATE_ISSUANCE_03_VERIFY.json",
       "packageHash": "9d0f20ede988e1a0e97af3dbc1bee8301e54cd20f38666e4587062d1deccd6fe",
+      "pages": 2
+    },
+    {
+      "processCode": "CERTIFICATE_ISSUANCE",
+      "stepCode": "CERTIFICATE_ISSUANCE_04_APPROVE",
+      "package": "CERTIFICATE_ISSUANCE__CERTIFICATE_ISSUANCE_04_APPROVE.json",
+      "packageHash": "f067805eceddd8a168a27db06a8e36f21cafae2bf24255aaec18b2b3a2000964",
       "pages": 2
     },
     {
@@ -781,6 +837,13 @@
       "pages": 2
     },
     {
+      "processCode": "CO2_INJECTION_STORAGE_OPERATION",
+      "stepCode": "CISO_REVIEW",
+      "package": "CO2_INJECTION_STORAGE_OPERATION__CISO_REVIEW.json",
+      "packageHash": "a25c3b3230074ea7e464fd9850fb0ce34c8e4fa42833937e9cedccb09a107341",
+      "pages": 2
+    },
+    {
       "processCode": "CO2_LOT_TAG_MANAGEMENT",
       "stepCode": "CLT_APPROVE",
       "package": "CO2_LOT_TAG_MANAGEMENT__CLT_APPROVE.json",
@@ -859,9 +922,51 @@
     },
     {
       "processCode": "COMPANY_MANAGER_DELEGATION",
+      "stepCode": "CMD_HANDOVER",
+      "package": "COMPANY_MANAGER_DELEGATION__CMD_HANDOVER.json",
+      "packageHash": "4835b267a00773290dc294a37e72d3afe61a9aee47490bd6b55e2360fefaf5cc",
+      "pages": 2
+    },
+    {
+      "processCode": "COMPANY_MANAGER_DELEGATION",
       "stepCode": "CMD_REQUEST",
       "package": "COMPANY_MANAGER_DELEGATION__CMD_REQUEST.json",
       "packageHash": "ad0e8b820869a5e341df2a9600af60faf98660737a2b416c0f188bb957f2f9c9",
+      "pages": 2
+    },
+    {
+      "processCode": "COMPANY_ONBOARDING",
+      "stepCode": "COMPANY_ONBOARDING_ACTORS",
+      "package": "COMPANY_ONBOARDING__COMPANY_ONBOARDING_ACTORS.json",
+      "packageHash": "f67a76c7f4dbd5414ab42f9d0dc9343d1cc177cd360cbbd21065bf712041c42c",
+      "pages": 2
+    },
+    {
+      "processCode": "COMPANY_ONBOARDING",
+      "stepCode": "COMPANY_ONBOARDING_APPLY",
+      "package": "COMPANY_ONBOARDING__COMPANY_ONBOARDING_APPLY.json",
+      "packageHash": "577af0f972bfbd1e329b74ca772abf2ac82ea26bb48e8828328cfbbc61651aa7",
+      "pages": 2
+    },
+    {
+      "processCode": "COMPANY_ONBOARDING",
+      "stepCode": "COMPANY_ONBOARDING_APPROVE",
+      "package": "COMPANY_ONBOARDING__COMPANY_ONBOARDING_APPROVE.json",
+      "packageHash": "8b19e4be5ad23b5bd2382f16efb0d2552363c574ac0ddd4059b5f29d9f001f9b",
+      "pages": 2
+    },
+    {
+      "processCode": "COMPANY_ONBOARDING",
+      "stepCode": "COMPANY_ONBOARDING_READY",
+      "package": "COMPANY_ONBOARDING__COMPANY_ONBOARDING_READY.json",
+      "packageHash": "14d15ca1d6c6c909f46876b604cd9ceb1062cec7467a5d3adc35501ba8497b76",
+      "pages": 2
+    },
+    {
+      "processCode": "COMPANY_ONBOARDING",
+      "stepCode": "COMPANY_ONBOARDING_SITE",
+      "package": "COMPANY_ONBOARDING__COMPANY_ONBOARDING_SITE.json",
+      "packageHash": "c2cd551792c1b09786725334f9df5a99e0e554c58068933c625403829cb0a479",
       "pages": 2
     },
     {
@@ -914,10 +1019,38 @@
       "pages": 2
     },
     {
+      "processCode": "COMPARATIVE_ASSERTION_REVIEW",
+      "stepCode": "COMPARATIVE_ASSERTION_REVIEW_S4",
+      "package": "COMPARATIVE_ASSERTION_REVIEW__COMPARATIVE_ASSERTION_REVIEW_S4.json",
+      "packageHash": "72ac19d8825f98437526ec6bb50e65b0121a6c93b74063e85702c6a5bda5de61",
+      "pages": 2
+    },
+    {
       "processCode": "CONTENT_OPERATION",
       "stepCode": "CONTENT_OPERATION_01_PLAN",
       "package": "CONTENT_OPERATION__CONTENT_OPERATION_01_PLAN.json",
       "packageHash": "903803799965f51f33640e0f9a28f96ada0a73f5da5c9d324a3358e160523dff",
+      "pages": 1
+    },
+    {
+      "processCode": "CONTENT_OPERATION",
+      "stepCode": "CONTENT_OPERATION_02_WORK",
+      "package": "CONTENT_OPERATION__CONTENT_OPERATION_02_WORK.json",
+      "packageHash": "c8cf3f48a04053c3e055b4d2ee03bd7957f91c6723daf7f9e095d1c245ac9471",
+      "pages": 1
+    },
+    {
+      "processCode": "CONTENT_OPERATION",
+      "stepCode": "CONTENT_OPERATION_03_VERIFY",
+      "package": "CONTENT_OPERATION__CONTENT_OPERATION_03_VERIFY.json",
+      "packageHash": "935c4989942aa2997cc93bab11bc6d44f3790abe20e5ae3f1838b341be339dee",
+      "pages": 1
+    },
+    {
+      "processCode": "CONTENT_OPERATION",
+      "stepCode": "CONTENT_OPERATION_04_APPROVE",
+      "package": "CONTENT_OPERATION__CONTENT_OPERATION_04_APPROVE.json",
+      "packageHash": "aa54a4858a148531e177f74d1fa5518dd300069279adb22433747aa52dced2e4",
       "pages": 1
     },
     {
@@ -970,6 +1103,13 @@
       "pages": 2
     },
     {
+      "processCode": "CUSTOMER_INQUIRY",
+      "stepCode": "CUSTOMER_INQUIRY_S4",
+      "package": "CUSTOMER_INQUIRY__CUSTOMER_INQUIRY_S4.json",
+      "packageHash": "1cb9cf4289b58bd4a4a04450b90d52228e5610776be9f1cb697ba5e7d22c5f87",
+      "pages": 2
+    },
+    {
       "processCode": "CUSTOMER_WORK_COORDINATION",
       "stepCode": "CUSTOMER_WORK_APPROVE",
       "package": "CUSTOMER_WORK_COORDINATION__CUSTOMER_WORK_APPROVE.json",
@@ -1002,6 +1142,13 @@
       "stepCode": "CUSTOMER_WORK_PRIORITIZE",
       "package": "CUSTOMER_WORK_COORDINATION__CUSTOMER_WORK_PRIORITIZE.json",
       "packageHash": "4d6e71f7d7f1742c7da419f66e60428d88003bb2d1130c70ef88196dcfdfb01a",
+      "pages": 2
+    },
+    {
+      "processCode": "CUSTOMER_WORK_COORDINATION",
+      "stepCode": "CUSTOMER_WORK_PUBLIC_VERIFY",
+      "package": "CUSTOMER_WORK_COORDINATION__CUSTOMER_WORK_PUBLIC_VERIFY.json",
+      "packageHash": "e7347186349feb04dce115cc33c33d99ef5c69549b680dba34849f192b8c2335",
       "pages": 2
     },
     {
@@ -1489,6 +1636,13 @@
     },
     {
       "processCode": "FACILITY_ASSET_REGISTRY",
+      "stepCode": "FAR_APPROVE",
+      "package": "FACILITY_ASSET_REGISTRY__FAR_APPROVE.json",
+      "packageHash": "4f1fb24cb59fd1c30a8aa9a94832b049ab03c1fa8aa5ba0c640b884051429d5a",
+      "pages": 2
+    },
+    {
+      "processCode": "FACILITY_ASSET_REGISTRY",
       "stepCode": "FAR_ASSIGN",
       "package": "FACILITY_ASSET_REGISTRY__FAR_ASSIGN.json",
       "packageHash": "08b20f67db3fc05fd537242a9e620fa81f9353106cccde412b1f2fa5cb4bebbb",
@@ -1513,6 +1667,20 @@
       "stepCode": "FER_DECLARE",
       "package": "FACILITY_EMERGENCY_RESPONSE__FER_DECLARE.json",
       "packageHash": "a56f3f8870a27b5972fd0bc351053c0ef1122eea6de498fb0796b71ee947a0f7",
+      "pages": 2
+    },
+    {
+      "processCode": "FACILITY_EMERGENCY_RESPONSE",
+      "stepCode": "FER_RECOVER",
+      "package": "FACILITY_EMERGENCY_RESPONSE__FER_RECOVER.json",
+      "packageHash": "618caf56eb9d39489ddf3a65f8007926547c5faeb4e27e7d2fdc8f521f3527ec",
+      "pages": 2
+    },
+    {
+      "processCode": "FACILITY_OPERATION_MONITORING",
+      "stepCode": "FOM_HANDOVER",
+      "package": "FACILITY_OPERATION_MONITORING__FOM_HANDOVER.json",
+      "packageHash": "0a106810bd5a0c5115d042d79ed6e7b1a4d6ede23d18bf9d71ac97925c8647f6",
       "pages": 2
     },
     {
@@ -1922,6 +2090,13 @@
       "pages": 2
     },
     {
+      "processCode": "LEGAL_NOTIFICATION_DELIVERY",
+      "stepCode": "LND_RECEIPT",
+      "package": "LEGAL_NOTIFICATION_DELIVERY__LND_RECEIPT.json",
+      "packageHash": "8d006684c1aea6eed5e095308b243346917984c3ce75bef4e71d0cbbd7fb9efb",
+      "pages": 2
+    },
+    {
       "processCode": "LOGIN_AUTHENTICATION",
       "stepCode": "LOGIN_AUTHENTICATION_S1",
       "package": "LOGIN_AUTHENTICATION__LOGIN_AUTHENTICATION_S1.json",
@@ -2175,6 +2350,13 @@
     },
     {
       "processCode": "METER_CALIBRATION_MANAGEMENT",
+      "stepCode": "MCM_APPROVE",
+      "package": "METER_CALIBRATION_MANAGEMENT__MCM_APPROVE.json",
+      "packageHash": "72fc32d85b96d59b406f2aa6b1905969fd5ed7c3f69a421a8f6fffad07f4bbfe",
+      "pages": 2
+    },
+    {
+      "processCode": "METER_CALIBRATION_MANAGEMENT",
       "stepCode": "MCM_CALIBRATE",
       "package": "METER_CALIBRATION_MANAGEMENT__MCM_CALIBRATE.json",
       "packageHash": "bc39b82cb3bbbe9ef3d21e93a7fdd16462b5eee8cd7d3f85a1ddbe8f7b744352",
@@ -2217,9 +2399,30 @@
     },
     {
       "processCode": "MONITORING_ANALYSIS",
+      "stepCode": "MONITORING_EXPORT",
+      "package": "MONITORING_ANALYSIS__MONITORING_EXPORT.json",
+      "packageHash": "f87208ff9711fe83a4c9379e908e925c3be2a3368b85a3666be4730e4cc612c7",
+      "pages": 1
+    },
+    {
+      "processCode": "MONITORING_ANALYSIS",
+      "stepCode": "MONITORING_REVIEW",
+      "package": "MONITORING_ANALYSIS__MONITORING_REVIEW.json",
+      "packageHash": "30934cfb672ca324f5f6b383fab39717639c5d220ab637ac56d45726c8f16114",
+      "pages": 1
+    },
+    {
+      "processCode": "MONITORING_ANALYSIS",
       "stepCode": "MONITORING_SCOPE",
       "package": "MONITORING_ANALYSIS__MONITORING_SCOPE.json",
       "packageHash": "4446186a82ee6e5282f36487324e9402f6b0816c77c5232dea76be56a491f053",
+      "pages": 1
+    },
+    {
+      "processCode": "MONITORING_ANALYSIS",
+      "stepCode": "MONITORING_SHARE",
+      "package": "MONITORING_ANALYSIS__MONITORING_SHARE.json",
+      "packageHash": "5016235ab2b59ad623bbddb54822689c20d7cc801697212f41053f69e2800d5d",
       "pages": 1
     },
     {
@@ -2454,6 +2657,27 @@
       "pages": 1
     },
     {
+      "processCode": "PAYMENT_SETTLEMENT",
+      "stepCode": "PAYMENT_SETTLEMENT_02_WORK",
+      "package": "PAYMENT_SETTLEMENT__PAYMENT_SETTLEMENT_02_WORK.json",
+      "packageHash": "df87b6aac7596cb995d5246a843477806d41cb433eb946994458be7bf2d58a32",
+      "pages": 1
+    },
+    {
+      "processCode": "PAYMENT_SETTLEMENT",
+      "stepCode": "PAYMENT_SETTLEMENT_03_VERIFY",
+      "package": "PAYMENT_SETTLEMENT__PAYMENT_SETTLEMENT_03_VERIFY.json",
+      "packageHash": "bd68aa9dda8ad0a1e09e6abbbb3a961117336d9e98dea5a3136f816e1629154b",
+      "pages": 1
+    },
+    {
+      "processCode": "PAYMENT_SETTLEMENT",
+      "stepCode": "PAYMENT_SETTLEMENT_04_APPROVE",
+      "package": "PAYMENT_SETTLEMENT__PAYMENT_SETTLEMENT_04_APPROVE.json",
+      "packageHash": "002a7fd85fdfaa9dbd3081fe0499b3b1f3f19e750cffb6cacaad1687726b1b53",
+      "pages": 1
+    },
+    {
       "processCode": "PCR_EPD_VERIFICATION",
       "stepCode": "PCR_EPD_VERIFICATION_S1",
       "package": "PCR_EPD_VERIFICATION__PCR_EPD_VERIFICATION_S1.json",
@@ -2483,9 +2707,30 @@
     },
     {
       "processCode": "PLATFORM_OPERATION",
+      "stepCode": "PLATFORM_AUDIT",
+      "package": "PLATFORM_OPERATION__PLATFORM_AUDIT.json",
+      "packageHash": "0adc792715d56b61c73fad96cb78926d21df53841271c74423e184025cadc2f1",
+      "pages": 1
+    },
+    {
+      "processCode": "PLATFORM_OPERATION",
+      "stepCode": "PLATFORM_DEPLOY",
+      "package": "PLATFORM_OPERATION__PLATFORM_DEPLOY.json",
+      "packageHash": "7b993f068a6eb9ec34e8a8cc87d4fb9d5823f7fdbb5914933f9f22b802d692b3",
+      "pages": 1
+    },
+    {
+      "processCode": "PLATFORM_OPERATION",
       "stepCode": "PLATFORM_DESIGN",
       "package": "PLATFORM_OPERATION__PLATFORM_DESIGN.json",
       "packageHash": "13860fbc62ba345ac4757f5d672441bb1dc4868af8642f4476bd634787d06e91",
+      "pages": 1
+    },
+    {
+      "processCode": "PLATFORM_OPERATION",
+      "stepCode": "PLATFORM_VALIDATE",
+      "package": "PLATFORM_OPERATION__PLATFORM_VALIDATE.json",
+      "packageHash": "3aa8d4dfbab91a9826e3270deba722b194612ab4b5a8376174032f37d228299f",
       "pages": 1
     },
     {
@@ -2503,6 +2748,13 @@
       "pages": 2
     },
     {
+      "processCode": "PREVENTIVE_MAINTENANCE",
+      "stepCode": "PM_RETURN_SERVICE",
+      "package": "PREVENTIVE_MAINTENANCE__PM_RETURN_SERVICE.json",
+      "packageHash": "117483e27ef7d509d76d2bc2ad77760abba85385f739c9991b93b8226961320a",
+      "pages": 2
+    },
+    {
       "processCode": "PRIVACY_RETENTION_DESTRUCTION",
       "stepCode": "PRD_ACCESS",
       "package": "PRIVACY_RETENTION_DESTRUCTION__PRD_ACCESS.json",
@@ -2514,6 +2766,13 @@
       "stepCode": "PRD_CLASSIFY",
       "package": "PRIVACY_RETENTION_DESTRUCTION__PRD_CLASSIFY.json",
       "packageHash": "ca3e54ab66ccf68a213a2cba17d8d861171699439350a3a078d52fc5ccd9dd34",
+      "pages": 2
+    },
+    {
+      "processCode": "PRIVACY_RETENTION_DESTRUCTION",
+      "stepCode": "PRD_DESTROY",
+      "package": "PRIVACY_RETENTION_DESTRUCTION__PRD_DESTROY.json",
+      "packageHash": "9e14d31a6f5f976485b16bc0aefaea6c0fdf5b8b3ca85bd18c69e19c9f604281",
       "pages": 2
     },
     {
@@ -2594,6 +2853,13 @@
       "pages": 2
     },
     {
+      "processCode": "PROJECT_LIFECYCLE_CONTROL",
+      "stepCode": "PROJECT_LIFECYCLE_CONTROL_S4",
+      "package": "PROJECT_LIFECYCLE_CONTROL__PROJECT_LIFECYCLE_CONTROL_S4.json",
+      "packageHash": "7b580fffeb9f2d2fbea0d389aab7397de3e3be61f4b53a41f2e0b4c0666baddd",
+      "pages": 2
+    },
+    {
       "processCode": "QUALITY_SCORING_POLICY",
       "stepCode": "QUALITY_SCORING_POLICY_S1",
       "package": "QUALITY_SCORING_POLICY__QUALITY_SCORING_POLICY_S1.json",
@@ -2626,6 +2892,27 @@
       "stepCode": "REDUCTION_EXECUTION_01_PLAN",
       "package": "REDUCTION_EXECUTION__REDUCTION_EXECUTION_01_PLAN.json",
       "packageHash": "49b501ace8eeb637f06937aaefadd2c27ff9e9a49a3397b533a273c2e5f151fc",
+      "pages": 1
+    },
+    {
+      "processCode": "REDUCTION_EXECUTION",
+      "stepCode": "REDUCTION_EXECUTION_02_WORK",
+      "package": "REDUCTION_EXECUTION__REDUCTION_EXECUTION_02_WORK.json",
+      "packageHash": "63ee1d4c8febd4cfb8e211d8f4ebb5c945db0abd063534f078dd87390a8fe69b",
+      "pages": 1
+    },
+    {
+      "processCode": "REDUCTION_EXECUTION",
+      "stepCode": "REDUCTION_EXECUTION_03_VERIFY",
+      "package": "REDUCTION_EXECUTION__REDUCTION_EXECUTION_03_VERIFY.json",
+      "packageHash": "84f4e48f00f3064c47bad8e65899bbb1ec52891220e999c061804c23ad7d404f",
+      "pages": 1
+    },
+    {
+      "processCode": "REDUCTION_EXECUTION",
+      "stepCode": "REDUCTION_EXECUTION_04_APPROVE",
+      "package": "REDUCTION_EXECUTION__REDUCTION_EXECUTION_04_APPROVE.json",
+      "packageHash": "85498f003d1e1ff231b4eadfe561ba972c757c608246825d5f4c80da10ae8a0e",
       "pages": 1
     },
     {
@@ -2734,6 +3021,13 @@
       "pages": 2
     },
     {
+      "processCode": "REDUCTION_REPORTING",
+      "stepCode": "REDUCTION_REPORTING_S4",
+      "package": "REDUCTION_REPORTING__REDUCTION_REPORTING_S4.json",
+      "packageHash": "462eb66ea4836ef636b303a6810909dd3a0b49f0eb4da23bac50fc43a28b8e39",
+      "pages": 2
+    },
+    {
       "processCode": "REDUCTION_ROADMAP",
       "stepCode": "REDUCTION_ROADMAP_S1",
       "package": "REDUCTION_ROADMAP__REDUCTION_ROADMAP_S1.json",
@@ -2836,6 +3130,13 @@
       "stepCode": "REFUND_MANAGEMENT_S3",
       "package": "REFUND_MANAGEMENT__REFUND_MANAGEMENT_S3.json",
       "packageHash": "f49006ed6fbda4f931e3f0d296de69115858cc865c770040f48624b25a4d2772",
+      "pages": 2
+    },
+    {
+      "processCode": "REFUND_MANAGEMENT",
+      "stepCode": "REFUND_MANAGEMENT_S4",
+      "package": "REFUND_MANAGEMENT__REFUND_MANAGEMENT_S4.json",
+      "packageHash": "e09d107cc7c1598c6d3f7cdd590fa3544ecab97db507b3c596d093a65d2f53a6",
       "pages": 2
     },
     {
@@ -3175,6 +3476,13 @@
       "pages": 2
     },
     {
+      "processCode": "SCHEDULED_STATISTICS_REPORTING",
+      "stepCode": "SSR_PUBLISH",
+      "package": "SCHEDULED_STATISTICS_REPORTING__SSR_PUBLISH.json",
+      "packageHash": "d7687f7ced4feba0d74db7025c408a6861c144a1414508496a8ab307fef288fe",
+      "pages": 2
+    },
+    {
       "processCode": "SECURITY_POLICY_OPERATION",
       "stepCode": "SECURITY_POLICY_OPERATION_S1",
       "package": "SECURITY_POLICY_OPERATION__SECURITY_POLICY_OPERATION_S1.json",
@@ -3221,6 +3529,13 @@
       "stepCode": "STAKEHOLDER_SHARING_S3",
       "package": "STAKEHOLDER_SHARING__STAKEHOLDER_SHARING_S3.json",
       "packageHash": "94e8975f3adcf585b8f6a22297d32e8d58f65c3999648daaca0529a06b329bf5",
+      "pages": 2
+    },
+    {
+      "processCode": "STAKEHOLDER_SHARING",
+      "stepCode": "STAKEHOLDER_SHARING_S4",
+      "package": "STAKEHOLDER_SHARING__STAKEHOLDER_SHARING_S4.json",
+      "packageHash": "d3e569a378b4226556766fc9905261cc96dd0f096b295496bcd92ffe52597040",
       "pages": 2
     },
     {
@@ -3396,6 +3711,27 @@
       "stepCode": "TRADE_EXECUTION_01_PLAN",
       "package": "TRADE_EXECUTION__TRADE_EXECUTION_01_PLAN.json",
       "packageHash": "5fc2226921db4fb41774f2680e86482d8da5fa4b8f37f6acaf1b3ad93d91cf47",
+      "pages": 1
+    },
+    {
+      "processCode": "TRADE_EXECUTION",
+      "stepCode": "TRADE_EXECUTION_02_WORK",
+      "package": "TRADE_EXECUTION__TRADE_EXECUTION_02_WORK.json",
+      "packageHash": "f85763659a4eb08549fe1a7da9207b6b40b5bb5958647cd63c1748b1305a9f91",
+      "pages": 1
+    },
+    {
+      "processCode": "TRADE_EXECUTION",
+      "stepCode": "TRADE_EXECUTION_03_VERIFY",
+      "package": "TRADE_EXECUTION__TRADE_EXECUTION_03_VERIFY.json",
+      "packageHash": "ca0e2cc6e7d6a418ec1a55a313688e04ccd4e787f356c645644d045c67df4400",
+      "pages": 1
+    },
+    {
+      "processCode": "TRADE_EXECUTION",
+      "stepCode": "TRADE_EXECUTION_04_APPROVE",
+      "package": "TRADE_EXECUTION__TRADE_EXECUTION_04_APPROVE.json",
+      "packageHash": "50bbc4de6b78f5cabda26583cf0d00206f2614b88ab889045eb41a60ff8b46f5",
       "pages": 1
     },
     {
@@ -3623,5 +3959,5 @@
       "pages": 2
     }
   ],
-  "manifestHash": "8fa8761794fbb587204d6f6ada3ec2517613c9d77cc5e31066c30632f995bfad"
+  "manifestHash": "850679d9788cc09d5ae07c8ff8dcb1d60e5974f67d03fb66921096677fcd4a06"
 }
