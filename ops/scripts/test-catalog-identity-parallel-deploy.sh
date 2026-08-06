@@ -43,6 +43,15 @@ assert "control-plane drift check skipped: verified within 5 minutes" in cached_
 assert 'git diff --quiet "$deployed_commit" "$target_commit"' in source
 assert "target Kyverno resource guard check reused from bootstrap" in source
 assert source.count('bash "$ROOT_DIR/ops/scripts/ensure-kyverno-resource-guard.sh"') == 1
+plan = source.index('eval "$(bash "$PLAN_SCRIPT"')
+platform_cache = source.index('platform_preflight_cache=', plan)
+platform_full_check = source.index('if [[ ! -r "$KUBECONFIG" ]]', platform_cache)
+assert plan < platform_cache < platform_full_check
+assert '[[ "$PLAN_RUNTIME_REQUIRED" != "true"' in source[platform_cache:platform_full_check]
+assert 'platform_preflight_now - platform_preflight_cached_at < 300' in source
+assert 'postgres-patroni-[0-9]+' in source
+assert 'mv "${platform_preflight_cache}.tmp" "$platform_preflight_cache"' in source
+assert "platform preflight reused: verified within 5 minutes" in source
 start = source.index('catalog_identity_sync_log="$ROOT_DIR/var/logs/catalog-identity-sync-')
 end = source.index('record_deploy_phase "backstage_visual_e2e"', start)
 block = source[start:end]

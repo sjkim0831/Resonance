@@ -118,6 +118,31 @@ jq -n \
 chmod 0644 "${deploy_status_file}.tmp"
 mv "${deploy_status_file}.tmp" "$deploy_status_file"
 
+eval "$(bash "$PLAN_SCRIPT" "$deployed_commit" "$target_commit" --format env)"
+PLAN_BACKSTAGE_REQUIRED="${PLAN_BACKSTAGE_REQUIRED:-false}"
+record_deploy_phase "incremental_plan"
+echo "[auto-deploy] incremental plan: runtime=$PLAN_RUNTIME_REQUIRED frontend=$PLAN_FRONTEND_REQUIRED backend=$PLAN_BACKEND_REQUIRED database=$PLAN_DATABASE_REQUIRED backstage=$PLAN_BACKSTAGE_REQUIRED"
+echo "[auto-deploy] selected checks: $PLAN_TESTS ($PLAN_REASONS)"
+
+platform_preflight_cache="${CARBONET_PLATFORM_PREFLIGHT_CACHE:-/opt/resonance-data/deploy/platform-preflight.cache}"
+platform_preflight_cache_reused=false
+printf -v platform_preflight_now '%(%s)T' -1
+platform_preflight_cached_at=0
+platform_preflight_cached_pod=""
+if [[ "$PLAN_RUNTIME_REQUIRED" != "true" && -r "$platform_preflight_cache" ]]; then
+  IFS='|' read -r platform_preflight_cached_at platform_preflight_cached_pod \
+    <"$platform_preflight_cache" || true
+  if [[ "$platform_preflight_cached_at" =~ ^[0-9]+$ ]] &&
+    [[ "$platform_preflight_cached_pod" =~ ^postgres-patroni-[0-9]+$ ]] &&
+    (( platform_preflight_now - platform_preflight_cached_at < 300 )); then
+    platform_preflight_cache_reused=true
+    POSTGRES_POD="$platform_preflight_cached_pod"
+  fi
+fi
+
+if [[ "$platform_preflight_cache_reused" == "true" ]]; then
+  echo "[auto-deploy] platform preflight reused: verified within 5 minutes leader=$POSTGRES_POD"
+else
 if [[ ! -r "$KUBECONFIG" ]]; then
   echo "[auto-deploy] refusing deployment: kubeconfig is not readable ($KUBECONFIG)" >&2
   exit 8
@@ -258,6 +283,11 @@ if [[ -z "$POSTGRES_POD" ]]; then
   exit 12
 fi
 echo "[auto-deploy] PostgreSQL backup leader: $POSTGRES_POD"
+mkdir -p "$(dirname "$platform_preflight_cache")"
+printf '%s|%s\n' "$platform_preflight_now" "$POSTGRES_POD" >"${platform_preflight_cache}.tmp"
+chmod 0644 "${platform_preflight_cache}.tmp"
+mv "${platform_preflight_cache}.tmp" "$platform_preflight_cache"
+fi
 record_deploy_phase "platform_preflight"
 backup_application_name="carbonet-auto-deploy-$$"
 backup_cleanup_required=false
@@ -323,11 +353,6 @@ cleanup_deploy() {
   rm -f -- "${DEPLOY_PHASE_FILE:-}"
 }
 trap cleanup_deploy EXIT INT TERM
-eval "$(bash "$PLAN_SCRIPT" "$deployed_commit" "$target_commit" --format env)"
-record_deploy_phase "incremental_plan"
-PLAN_BACKSTAGE_REQUIRED="${PLAN_BACKSTAGE_REQUIRED:-false}"
-echo "[auto-deploy] incremental plan: runtime=$PLAN_RUNTIME_REQUIRED frontend=$PLAN_FRONTEND_REQUIRED backend=$PLAN_BACKEND_REQUIRED database=$PLAN_DATABASE_REQUIRED backstage=$PLAN_BACKSTAGE_REQUIRED"
-echo "[auto-deploy] selected checks: $PLAN_TESTS ($PLAN_REASONS)"
 
 run_screen_contract_runtime_save_gate_if_required() {
   [[ ",${PLAN_TESTS:-}," == *",runtime-contract:screen-save,"* ]] || return 0
@@ -509,7 +534,9 @@ record_deploy_phase "worktree_prepare"
 # did not change. Re-run from the target tree only when the guard itself or its
 # deployment policy changed; this preserves exact-revision validation without
 # paying for the same Kubernetes lookup twice on every catalog-only commit.
-if git diff --quiet "$deployed_commit" "$target_commit" -- \
+if [[ "$platform_preflight_cache_reused" == "true" ]]; then
+  echo "[auto-deploy] target Kyverno resource guard check reused from recent platform preflight"
+elif git diff --quiet "$deployed_commit" "$target_commit" -- \
     ops/scripts/ensure-kyverno-resource-guard.sh; then
   echo "[auto-deploy] target Kyverno resource guard check reused from bootstrap"
 else
