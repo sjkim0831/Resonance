@@ -112,6 +112,11 @@ WHERE contract.process_code=:'process_code'
       AND jsonb_typeof(spec.nonfunctional_contract->'recovery')='object'
       AND jsonb_typeof(spec.nonfunctional_contract->'audit')='object'
       AND jsonb_typeof(spec.nonfunctional_contract->'sla')='object'
+      AND coalesce((convert_from(decode(:'evidence_b64','base64'),'UTF8')::jsonb->>'performanceP95Ms')::numeric,0)>0
+      AND coalesce((convert_from(decode(:'evidence_b64','base64'),'UTF8')::jsonb->>'performanceP95Ms')::numeric,999999)
+          <=(spec.nonfunctional_contract->'performance'->>'targetP95Ms')::numeric
+      AND coalesce((convert_from(decode(:'evidence_b64','base64'),'UTF8')::jsonb->>'audit')::integer,0)=1
+      AND coalesce((convert_from(decode(:'evidence_b64','base64'),'UTF8')::jsonb->>'recovery')::integer,0)=1
       AND spec.transition_contract->>'contractType'='STEP_TRANSITION'
       AND length(coalesce(spec.transition_contract->>'fromState',''))>0
       AND length(coalesce(spec.transition_contract->>'toState',''))>0

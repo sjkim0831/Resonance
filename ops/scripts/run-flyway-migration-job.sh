@@ -7,6 +7,7 @@ deployment="${CARBONET_K8S_DEPLOYMENT:-carbonet-runtime}"
 container="${CARBONET_K8S_CONTAINER:-carbonet-runtime}"
 timeout="${CARBONET_FLYWAY_JOB_TIMEOUT:-120s}"
 job="carbonet-flyway-$(date +%Y%m%d%H%M%S)-$(printf '%s' "$image" | sha256sum | cut -c1-6)"
+started_epoch="$(date +%s)"
 manifest="$(mktemp)"
 log_dir="${CARBONET_FLYWAY_LOG_DIR:-/opt/Resonance/var/logs/flyway-jobs}"
 mkdir -p "$log_dir"
@@ -39,12 +40,14 @@ for current in pod["containers"]:
     migrated = {
         "name": "flyway",
         "image": image,
-        "imagePullPolicy": "IfNotPresent",
+        "imagePullPolicy": "Never",
         "env": env,
         "envFrom": current.get("envFrom", []),
         "command": ["java"],
         "args": [
             "-XX:+UseContainerSupport",
+            "-XX:+UseSerialGC",
+            "-XX:TieredStopAtLevel=1",
             "-XX:MaxRAMPercentage=70",
             "-Dfile.encoding=UTF-8",
             "-cp", "/app/runtime/BOOT-INF/classes:/app/runtime/BOOT-INF/lib/*",
@@ -106,4 +109,5 @@ if ! grep -q 'FLYWAY_MIGRATION_PASS' "$log_dir/$job.log"; then
   echo "[flyway-job] completion evidence was not found (log=$log_dir/$job.log)" >&2
   exit 1
 fi
-echo "[flyway-job] PASS job=$job log=$log_dir/$job.log"
+elapsed="$(( $(date +%s)-started_epoch ))"
+echo "[flyway-job] PASS job=$job elapsed=${elapsed}s imagePullPolicy=Never log=$log_dir/$job.log"

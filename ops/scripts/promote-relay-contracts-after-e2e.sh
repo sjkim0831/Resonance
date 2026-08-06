@@ -12,6 +12,17 @@ EVIDENCE="$(jq -c \
   --arg executedAt "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
   --arg sourceCommit "$SOURCE_COMMIT" \
   '. + {executedAt:$executedAt,sourceCommit:$sourceCommit}' "$EVIDENCE_FILE")"
+VISUAL_EVIDENCE_FILE="$ROOT/var/test-evidence/twenty-step-relay-latest.json"
+[[ -s "$VISUAL_EVIDENCE_FILE" ]] || { echo "visual relay evidence is missing" >&2; exit 2; }
+EVIDENCE="$(jq -c --slurpfile visual "$VISUAL_EVIDENCE_FILE" '
+  . + {
+    performanceP95Ms: (.performanceP95Ms // 0),
+    responsive: ($visual[0].summary.responsive // 0),
+    accessibility: ($visual[0].summary.accessibility // 0),
+    authority: (if .authorityDenialCount > 0 then 1 else 0 end),
+    audit: (if ([.transitions[].eventId | select(. != null)] | length) == .transitionCount then 1 else 0 end),
+    recovery: (if .correctionReplayCount > 0 then 1 else 0 end)
+  }' <<<"$EVIDENCE")"
 
 jq -e '
   .status=="PASSED" and .processCount==(.processes|unique|length) and
@@ -19,12 +30,14 @@ jq -e '
   .transitionCount==(.transitions|length) and
   .accountCount==([.transitions[].account]|unique|length) and
   .correctionReplayCount==(.transitionCount-.stepCount)
+  and .performanceP95Ms>0 and .responsive==1 and .accessibility==1
+  and .authority==1 and .audit==1 and .recovery==1
 ' <<<"$EVIDENCE" >/dev/null
 
 mapfile -t TARGETS < <(jq -r '.transitions|unique_by(.processCode,.stepCode)|.[]|[.processCode,.stepCode]|@tsv' <<<"$EVIDENCE")
 expected_steps="$(jq -r '.stepCount' <<<"$EVIDENCE")"
 [[ ${#TARGETS[@]} -eq $expected_steps ]] || { echo "relay target count does not match evidence" >&2; exit 3; }
-ASSERTIONS="$(jq -r '"processCount=\(.processCount),stepCount=\(.stepCount),transitionCount=\(.transitionCount),accountCount=\(.accountCount),correctionReplayCount=\(.correctionReplayCount)"' <<<"$EVIDENCE")"
+ASSERTIONS="$(jq -r '"processCount=\(.processCount),stepCount=\(.stepCount),transitionCount=\(.transitionCount),accountCount=\(.accountCount),correctionReplayCount=\(.correctionReplayCount),responsive=1,accessibility=1,authority=1,audit=1,recovery=1"' <<<"$EVIDENCE")"
 
 promoted=0
 for target in "${TARGETS[@]}"; do

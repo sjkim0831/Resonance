@@ -18,9 +18,13 @@ const expectedProcesses=String(process.env.CARBONET_RELAY_EXPECTED_PROCESSES||"E
 const expectedStepCount=Number(process.env.CARBONET_RELAY_EXPECTED_STEP_COUNT||20);
 const expectedTransitionCount=Number(process.env.CARBONET_RELAY_EXPECTED_TRANSITION_COUNT||21);
 const expectedAccountCount=Number(process.env.CARBONET_RELAY_EXPECTED_ACCOUNT_COUNT||5);
+const requestDurations=[];
+let authorityDenialCount=0;
 
 async function call(api,method,url,data,expected=[200]){
+  const requestStartedAt=Date.now();
   const response=await api[method](url,{...(data===undefined?{}:{data}),failOnStatusCode:false});
+  requestDurations.push(Date.now()-requestStartedAt);
   const body=await response.json().catch(()=>({}));
   if(!expected.includes(response.status()))throw new Error(`${method.toUpperCase()} ${url} HTTP ${response.status()} ${body?.message||JSON.stringify(body)}`);
   return body;
@@ -89,7 +93,12 @@ try{
     for(const [candidateActor,candidateAccount] of Object.entries(accountByActor)){
       const candidateApi=contexts.get(candidateAccount);
       const query=new URLSearchParams({tenantId,projectId,processCode,stepCode});
-      const candidate=await call(candidateApi,"get",`/home/api/process-executions/draft?${query}`,undefined,[200,403]);
+      const candidateStartedAt=Date.now();
+      const candidateResponse=await candidateApi.get(`/home/api/process-executions/draft?${query}`,{failOnStatusCode:false});
+      requestDurations.push(Date.now()-candidateStartedAt);
+      const candidate=await candidateResponse.json().catch(()=>({}));
+      if(candidateResponse.status()===403){authorityDenialCount+=1;continue;}
+      if(candidateResponse.status()!==200)throw new Error(`GET draft HTTP ${candidateResponse.status()}`);
       if(candidate?.contract?.actorCode===candidateActor){contractBody=candidate;actorCode=candidateActor;api=candidateApi;account=candidateAccount;break;}
     }
     if(!contractBody||!actorCode)throw new Error(`assigned actor contract unavailable ${processCode}/${stepCode}`);
@@ -115,7 +124,9 @@ try{
   if(uniqueSteps.size!==expectedStepCount)throw new Error(`expected ${expectedStepCount} unique steps, observed ${uniqueSteps.size}`);
   if(transitions.length!==expectedTransitionCount)throw new Error(`expected ${expectedTransitionCount} transitions, observed ${transitions.length}`);
   if(JSON.stringify(observed)!==JSON.stringify(expectedProcesses))throw new Error(`process order mismatch ${JSON.stringify(observed)}`);
-  const evidence={schemaVersion:1,status:"PASSED",completedAt:new Date().toISOString(),durationMs:Date.now()-startedAt,projectId,tenantId,processCount:observed.length,stepCount:uniqueSteps.size,transitionCount:transitions.length,correctionReplayCount:transitions.length-uniqueSteps.size,accountCount:new Set(transitions.map(item=>item.account)).size,processes:observed,transitions};
+  const orderedDurations=[...requestDurations].sort((a,b)=>a-b);
+  const performanceP95Ms=orderedDurations[Math.max(0,Math.ceil(orderedDurations.length*0.95)-1)];
+  const evidence={schemaVersion:1,status:"PASSED",completedAt:new Date().toISOString(),durationMs:Date.now()-startedAt,performanceP95Ms,authorityDenialCount,projectId,tenantId,processCount:observed.length,stepCount:uniqueSteps.size,transitionCount:transitions.length,correctionReplayCount:transitions.length-uniqueSteps.size,accountCount:new Set(transitions.map(item=>item.account)).size,processes:observed,transitions};
   if(evidence.accountCount!==expectedAccountCount)throw new Error(`expected ${expectedAccountCount} accounts, observed ${evidence.accountCount}`);
   const outputDir=path.join(root,"var/test-evidence");await mkdir(outputDir,{recursive:true});await writeFile(path.join(outputDir,"twenty-step-relay-e2e-latest.json"),`${JSON.stringify(evidence,null,2)}\n`);
   console.log(`TWENTY_STEP_RELAY_PASS project=${projectId} processes=${observed.length} uniqueSteps=${evidence.stepCount} transitions=${evidence.transitionCount} accounts=${evidence.accountCount} durationMs=${evidence.durationMs}`);

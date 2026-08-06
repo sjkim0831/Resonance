@@ -162,6 +162,7 @@ async function verifyRoute(api, stepCode, actor, processCode) {
   const errors = [];
   page.on("pageerror", (error) => errors.push(error.message));
   try {
+    const routeStartedAt = Date.now();
     const response = await page.goto(target.href, { waitUntil: "domcontentloaded", timeout: 15_000 });
     await page.waitForFunction(() => {
       const root = document.querySelector("#root");
@@ -173,13 +174,25 @@ async function verifyRoute(api, stepCode, actor, processCode) {
       text: (document.body?.innerText || "").trim(),
       pathname: location.pathname,
       headings: [...document.querySelectorAll("h1,h2,[role=heading]")].map((node) => (node.textContent || "").trim()),
+      language: document.documentElement.lang,
+      focusableCount: document.querySelectorAll('a[href],button,input,select,textarea,[tabindex]:not([tabindex="-1"])').length,
+      overflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 2,
     }));
     if ((response?.status() || 0) >= 400) throw new Error(`route HTTP ${response?.status()}`);
     if (/\/signin\/loginView\/?$/.test(state.pathname)) throw new Error("route redirected to login");
     if (fatalText.test(state.text)) throw new Error("fatal UI text");
     if (state.headings.some((heading) => /운영\s*관리\s*대시보드/.test(heading))) throw new Error("fallback dashboard");
     if (errors.length) throw new Error(`page errors: ${errors.join(" | ")}`);
-    evidence.routes.push({ processCode, stepCode, actor, path: target.pathname, ok: true });
+    if (!state.language || !state.headings.length || !state.focusableCount || state.overflow) throw new Error("desktop accessibility/responsive baseline failed");
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.reload({ waitUntil: "domcontentloaded", timeout: 15_000 });
+    await page.waitForFunction(() => (document.querySelector("#root")?.children.length || 0) > 0, undefined, { timeout: 8_000 });
+    const mobile = await page.evaluate(() => ({
+      overflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 2,
+      visibleText: (document.body?.innerText || "").trim().length,
+    }));
+    if (mobile.overflow || mobile.visibleText < 20) throw new Error("mobile responsive baseline failed");
+    evidence.routes.push({ processCode, stepCode, actor, path: target.pathname, ok: true, durationMs: Date.now() - routeStartedAt });
   } finally {
     await context.close();
   }
@@ -424,6 +437,8 @@ try {
       routes: evidence.routes.length,
       dataHandoffs: evidence.steps.filter((step) => step.upstreamStepCode).length,
       prerequisiteRequirements: prerequisiteRequirementCount,
+      responsive: 1,
+      accessibility: 1,
     };
   }
 } finally {

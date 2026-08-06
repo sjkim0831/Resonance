@@ -16,6 +16,7 @@ public final class FlywayMigrationApplication {
     }
 
     public static void main(String[] args) {
+        long startedAt = System.nanoTime();
         String host = env("POSTGRES_HOST", "postgres-haproxy");
         String database = env("POSTGRES_DB", "carbonet");
         String url = env(
@@ -40,12 +41,13 @@ public final class FlywayMigrationApplication {
 
         MigrateResult result = flyway.migrate();
         System.out.printf(
-                "FLYWAY_MIGRATION_PASS database=%s initial=%s target=%s executed=%d success=%s%n",
+                "FLYWAY_MIGRATION_PASS database=%s initial=%s target=%s executed=%d success=%s durationMs=%d%n",
                 database,
                 result.initialSchemaVersion,
                 result.targetSchemaVersion,
                 result.migrationsExecuted,
-                result.success
+                result.success,
+                (System.nanoTime() - startedAt) / 1_000_000L
         );
         if (!result.success) {
             throw new IllegalStateException("Flyway migration did not complete successfully");
