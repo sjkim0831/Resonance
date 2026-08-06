@@ -566,6 +566,31 @@ def screens_for_step(step: dict[str, Any], shared_screens: list[dict[str, Any]])
             "responsive": step["nonfunctional_contract"]["responsive"],
             "accessibility": step["nonfunctional_contract"]["accessibility"],
         })
+    if projected:
+        return projected
+    # Some process archetypes intentionally use one orchestration workspace
+    # for every step. Reuse that explicitly registered route for sibling steps
+    # instead of inventing a new URL or emitting a page-less package.
+    for screen in shared_screens:
+        if not isinstance(screen, dict) or screen.get("audience") not in {"USER", "ADMIN"}:
+            continue
+        route = screen.get("actualRoute") or screen.get("plannedRoute")
+        if not isinstance(route, str) or not route.startswith("/"):
+            continue
+        audience = screen["audience"]
+        projected.append({
+            "pageCode": f"{step['step_code']}_{audience}_WORKSPACE",
+            "title": step["business_contract"]["stepName"],
+            "purpose": step["business_contract"]["requirement"],
+            "plannedRoute": route,
+            "actualRoute": route,
+            "routeStatus": screen.get("routeStatus", "IMPLEMENTED"),
+            "audience": audience,
+            "screenType": screen.get("screenType", "PROCESS_ORCHESTRATION"),
+            "exceptions": screen.get("exceptions", []),
+            "responsive": screen.get("responsive", step["nonfunctional_contract"]["responsive"]),
+            "accessibility": screen.get("accessibility", step["nonfunctional_contract"]["accessibility"]),
+        })
     return projected
 
 
@@ -671,12 +696,13 @@ def tests_for_step(process: dict[str, Any], step: dict[str, Any]) -> list[dict[s
         and case.get("steps") and case.get("assertions")
     ]
     existing_types = {case.get("type") for case in executable}
-    declared = {
-        value
-        for policy in step["test_contract"]
-        for value in (policy.get("requiredTypes", []) if isinstance(policy, dict) else [])
-        if isinstance(value, str)
-    }
+    declared = set()
+    for policy in step["test_contract"]:
+        if not isinstance(policy, dict):
+            continue
+        declared.update(value for value in policy.get("requiredTypes", []) if isinstance(value, str))
+        if isinstance(policy.get("type"), str):
+            declared.add(policy["type"])
     if not declared and not executable:
         return []
     scenario_sources = {

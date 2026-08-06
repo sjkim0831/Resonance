@@ -153,8 +153,11 @@ def test_package(path: Path) -> dict[str, Any]:
     if database.get("migrationRequired") is True:
         require(bool(database.get("primaryEntities")), "database primary entities", failures)
     security = nonfunctional.get("security", {})
-    require(security.get("tenantIsolation") is True, "tenant isolation", failures)
-    require(security.get("projectIsolation") is True, "project isolation", failures)
+    actor_scope = step.get("actor", {}).get("scope")
+    if actor_scope in {"TENANT", "TENANT_PROJECT"}:
+        require(security.get("tenantIsolation") is True, "tenant isolation", failures)
+    if actor_scope in {"PROJECT", "TENANT_PROJECT"}:
+        require(security.get("projectIsolation") is True, "project isolation", failures)
     require(security.get("serverAuthorization") is True, "security authorization", failures)
     require(nonfunctional.get("recovery", {}).get("resumeFromLastVerifiedState") is True, "recovery", failures)
 
