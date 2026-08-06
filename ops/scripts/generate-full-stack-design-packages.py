@@ -38,11 +38,11 @@ def validate_step(process: dict[str, Any], step: dict[str, Any]) -> None:
     identity = f"{process.get('processCode')}/{step.get('step_code')}"
     required_objects = (
         "actor_contract", "business_contract", "transition_contract", "input_contract",
-        "output_contract", "guide_contract", "nonfunctional_contract",
+        "output_contract", "handoff_contract", "guide_contract", "nonfunctional_contract",
     )
     required_arrays = (
         "command_contract", "api_contract",
-        "handoff_contract", "test_contract", "blocker_codes",
+        "test_contract", "blocker_codes",
     )
     for key in required_objects:
         if not isinstance(step.get(key), dict):
@@ -55,6 +55,9 @@ def validate_step(process: dict[str, Any], step: dict[str, Any]) -> None:
     field_contract = step.get("field_contract")
     if not isinstance(field_contract, dict) or field_contract.get("contractType") != "STEP_FIELDS" or not isinstance(field_contract.get("fields"), list):
         fail(f"{identity}: field_contract must be a STEP_FIELDS object")
+    handoff_contract = step.get("handoff_contract")
+    if handoff_contract.get("contractType") != "STEP_HANDOFF" or not isinstance(handoff_contract.get("policy"), dict) or not isinstance(handoff_contract.get("transitions"), list):
+        fail(f"{identity}: handoff_contract must be a STEP_HANDOFF object")
     if step.get("design_status") != "DESIGN_COMPLETE" or step["blocker_codes"]:
         fail(f"{identity}: design is blocked: {step.get('blocker_codes')}")
 
@@ -67,12 +70,25 @@ def normalize_step_contract(step: dict[str, Any]) -> dict[str, Any]:
     normalization only; it never invents fields, actions, or business rules.
     """
     normalized = copy.deepcopy(step)
-    for key in ("command_contract", "api_contract", "handoff_contract", "test_contract", "blocker_codes"):
+    for key in ("command_contract", "api_contract", "test_contract", "blocker_codes"):
         value = normalized.get(key)
         if isinstance(value, dict):
             normalized[key] = [value] if value else []
         elif value is None:
             normalized[key] = []
+    handoff = normalized.get("handoff_contract")
+    if isinstance(handoff, list):
+        normalized["handoff_contract"] = {"schemaVersion": 1, "contractType": "STEP_HANDOFF", "policy": {}, "transitions": handoff}
+    elif isinstance(handoff, dict) and handoff.get("contractType") == "STEP_HANDOFF":
+        normalized["handoff_contract"] = {
+            "schemaVersion": 1, "contractType": "STEP_HANDOFF",
+            "policy": handoff.get("policy") if isinstance(handoff.get("policy"), dict) else {},
+            "transitions": handoff.get("transitions") if isinstance(handoff.get("transitions"), list) else [],
+        }
+    elif isinstance(handoff, dict):
+        normalized["handoff_contract"] = {"schemaVersion": 1, "contractType": "STEP_HANDOFF", "policy": handoff, "transitions": []}
+    else:
+        normalized["handoff_contract"] = {"schemaVersion": 1, "contractType": "STEP_HANDOFF", "policy": {}, "transitions": []}
     return normalized
 
 
@@ -284,7 +300,8 @@ def render_step(
         "backend": {
             "runtime": "COMMON_PROCESS_COMMAND_RUNTIME", "apis": apis_for_step(step),
             "commands": step["command_contract"], "authorization": step["actor_contract"],
-            "handoffs": step["handoff_contract"],
+            "handoffPolicy": step["handoff_contract"]["policy"],
+            "handoffs": step["handoff_contract"]["transitions"],
         },
         "database": persistence_for_step(step),
         "tests": executable_tests,

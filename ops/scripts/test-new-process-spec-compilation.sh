@@ -10,5 +10,5 @@ grep -Fq "ON CONFLICT(process_code,step_code) DO NOTHING" "$MIGRATION"
 grep -Fq "select framework_generate_professional_design_graph(?,?)::text" "$SERVICE"
 grep -Fq "select framework_compile_process_execution_specs(?)" "$SERVICE"
 grep -Fq "'handoffType','TERMINAL'" "$SERVICE"
-grep -Fq "and e.handoff_contract='[]'::jsonb" "$SERVICE"
+grep -Fq "and coalesce(e.handoff_contract->'transitions','[]'::jsonb)='[]'::jsonb" "$SERVICE"
 echo '[new-process-spec-compilation] PASS'

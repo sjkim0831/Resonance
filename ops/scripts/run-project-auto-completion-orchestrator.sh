@@ -264,7 +264,8 @@ with candidate as (
     and jsonb_array_length(e.command_contract)>0
     and jsonb_array_length(e.api_contract)>0
     and e.persistence_contract<>'{}'::jsonb
-    and jsonb_array_length(e.handoff_contract)>0
+    and (e.handoff_contract->'policy'<>'{}'::jsonb
+      or jsonb_array_length(coalesce(e.handoff_contract->'transitions','[]'::jsonb))>0)
     and jsonb_array_length(e.test_contract)>0
     and (
       select count(distinct test_case->>'type')

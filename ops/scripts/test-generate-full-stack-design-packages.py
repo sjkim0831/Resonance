@@ -24,7 +24,19 @@ class GroupFieldsByAudienceTest(unittest.TestCase):
         })
         self.assertEqual(normalized["command_contract"], [{"commandCode": "SAVE"}])
         self.assertEqual(normalized["api_contract"], [])
-        self.assertEqual(normalized["handoff_contract"], [])
+        self.assertEqual(normalized["handoff_contract"], {
+            "schemaVersion": 1, "contractType": "STEP_HANDOFF", "policy": {}, "transitions": []
+        })
+
+    def test_separates_legacy_handoff_policy_from_transitions(self) -> None:
+        policy = {"completionType": "EXPLICIT", "snapshotRequired": True}
+        normalized_policy = GENERATOR.normalize_step_contract({"handoff_contract": policy})
+        self.assertEqual(normalized_policy["handoff_contract"]["policy"], policy)
+        self.assertEqual(normalized_policy["handoff_contract"]["transitions"], [])
+        transition = {"handoffType": "STEP", "toStepCode": "S2"}
+        normalized_transition = GENERATOR.normalize_step_contract({"handoff_contract": [transition]})
+        self.assertEqual(normalized_transition["handoff_contract"]["policy"], {})
+        self.assertEqual(normalized_transition["handoff_contract"]["transitions"], [transition])
 
     def test_splits_catalog_group_using_nested_audiences(self) -> None:
         contract = [
