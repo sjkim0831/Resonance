@@ -410,10 +410,22 @@ if [[ -n "$tracked_source_changes" ]]; then
   source_root="$ROOT_DIR"
   clean_worktree_base="${CARBONET_CLEAN_WORKTREE_BASE:-$source_root/var/deploy-worktrees}"
   clean_worktree="$clean_worktree_base/runtime-build"
+  worktree_advanced=false
+  restore_tracked_build_artifacts() {
+    local repository="$1" manifest
+    shift
+    manifest="$(mktemp /tmp/carbonet-tracked-build-artifacts.XXXXXX)"
+    git -C "$repository" ls-files -z -- "$@" >"$manifest"
+    if [[ -s "$manifest" ]]; then
+      xargs -0 -r git -C "$repository" restore --worktree -- <"$manifest"
+    fi
+    rm -f "$manifest"
+  }
   mkdir -p "$clean_worktree_base"
   if [[ ! -e "$clean_worktree/.git" ]]; then
     echo "[auto-deploy] tracked operator changes detected; creating persistent isolated build worktree"
     git worktree add --detach "$clean_worktree" "$target_commit"
+    worktree_advanced=true
   elif [[ "$(git -C "$clean_worktree" rev-parse HEAD)" != "$target_commit" ]]; then
     # Only generated assets may be dirty in this operator-owned worktree.
     # Restore those tracked files, retain untracked build/ directories, then
@@ -433,10 +445,7 @@ if [[ -n "$tracked_source_changes" ]]; then
       projects/carbonet-frontend/source/tsconfig.app.tsbuildinfo
       projects/carbonet-frontend/target
     )
-    for generated_path in "${persistent_build_artifacts[@]}"; do
-      [[ -n "$(git -C "$clean_worktree" ls-files -- "$generated_path")" ]] &&
-        git -C "$clean_worktree" restore --worktree -- "$generated_path"
-    done
+    restore_tracked_build_artifacts "$clean_worktree" "${persistent_build_artifacts[@]}"
     unexpected_build_changes="$(git -C "$clean_worktree" diff --name-only)"
     if [[ -n "$unexpected_build_changes" ]]; then
       echo "[auto-deploy] refusing deployment: persistent build worktree contains source changes" >&2
@@ -444,6 +453,7 @@ if [[ -n "$tracked_source_changes" ]]; then
       exit 24
     fi
     git -C "$clean_worktree" merge --ff-only "$target_commit"
+    worktree_advanced=true
   fi
   if [[ "$(git -C "$clean_worktree" rev-parse HEAD)" != "$target_commit" ]]; then
     echo "[auto-deploy] refusing deployment: isolated worktree commit mismatch" >&2
@@ -469,20 +479,19 @@ if [[ -n "$tracked_source_changes" ]]; then
   export ROOT_DIR CARBONET_DEPLOY_ROOT="$clean_worktree" CARBONET_CLEAN_WORKTREE_ACTIVE=true
   cd "$ROOT_DIR"
   current_commit="$target_commit"
-  # A failed build may leave copied frontend assets in the persistent worktree
-  # even when HEAD already equals the next target. Restore generated tracked
-  # outputs on every invocation, not only while advancing the worktree.
-  for generated_path in \
-    apps/carbonet-api/src/main/resources/static/react-app \
-    projects/carbonet-assets/static/react-app \
-    projects/carbonet-frontend/source/.cache/full-screen-smoke \
-    projects/carbonet-frontend/source/src/generated/screen-generation/generatedScreenFamily.ts \
-    projects/carbonet-frontend/source/src/features/builder-studio/pageCompletenessInventory.ts \
-    projects/carbonet-frontend/source/src/features/builder-studio/routeSourceInventory.ts \
-    projects/carbonet-frontend/source/tsconfig.app.tsbuildinfo; do
-    [[ -n "$(git -C "$clean_worktree" ls-files -- "$generated_path")" ]] &&
-      git -C "$clean_worktree" restore --worktree -- "$generated_path"
-  done
+  # A failed build may leave generated tracked outputs when HEAD already equals
+  # the retry target. A worktree created or fast-forwarded in this invocation
+  # is already clean, so avoid repeating the same restore after advancement.
+  if [[ "$worktree_advanced" != "true" ]]; then
+    restore_tracked_build_artifacts "$clean_worktree" \
+      apps/carbonet-api/src/main/resources/static/react-app \
+      projects/carbonet-assets/static/react-app \
+      projects/carbonet-frontend/source/.cache/full-screen-smoke \
+      projects/carbonet-frontend/source/src/generated/screen-generation/generatedScreenFamily.ts \
+      projects/carbonet-frontend/source/src/features/builder-studio/pageCompletenessInventory.ts \
+      projects/carbonet-frontend/source/src/features/builder-studio/routeSourceInventory.ts \
+      projects/carbonet-frontend/source/tsconfig.app.tsbuildinfo
+  fi
   tracked_source_changes="$(git diff --name-only -- \
     . \
     ':(exclude)projects/carbonet-frontend/src/main/resources/static/react-app/**')"
