@@ -61,9 +61,11 @@ const actorPassword = String(process.env.CARBONET_ACTOR_TEST_PASSWORD || "");
 const adminPassword = String(process.env.CARBONET_ADMIN_TEST_PASSWORD || "");
 const adminUser = String(process.env.CARBONET_ADMIN_TEST_USER || "webmaster");
 const contractsFile = String(process.env.E2E_CONTRACTS_FILE || "");
-const executablePath = String(process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || "") || [
-  "/snap/bin/chromium", "/usr/bin/chromium", "/usr/bin/chromium-browser", "/usr/bin/google-chrome",
-].find((candidate) => existsSync(candidate)) || "";
+const managedExecutablePath = chromium.executablePath();
+const executablePath = String(process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || "") ||
+  (existsSync(managedExecutablePath) ? managedExecutablePath : [
+    "/snap/bin/chromium", "/usr/bin/chromium", "/usr/bin/chromium-browser", "/usr/bin/google-chrome",
+  ].find((candidate) => existsSync(candidate)) || "");
 
 const requireEnv = (value, name) => {
   if (!value) throw new Error(`${name} is required`);
@@ -256,7 +258,13 @@ async function checkRoute(browserInstance, storageState, route, viewport, audien
   const response = await page.goto(`${baseURL}${route}`, { waitUntil: "domcontentloaded", timeout: 20_000 });
   const loadMs = Date.now() - before;
   assert(response && response.status() < 400, `${route} navigation HTTP ${response?.status() || 0}`);
-  await page.waitForTimeout(300);
+  await page.waitForFunction(() => {
+    const root = document.querySelector("#root");
+    const text = document.body.textContent || "";
+    return !root || root.childElementCount > 0 ||
+      text.includes("React app did not mount") ||
+      text.includes("AUTHENTICATION_REQUIRED");
+  }, undefined, { timeout: 10_000 }).catch(() => undefined);
   const finalUrl = page.url();
   const requestedPath = new URL(`${baseURL}${route}`).pathname.replace(/\/$/, "") || "/";
   const finalPath = new URL(finalUrl).pathname.replace(/\/$/, "") || "/";
