@@ -1547,6 +1547,9 @@ if [[ "$PLAN_FRONTEND_REQUIRED" == "true" \
   FULL_SCREEN_SMOKE_CHANGED_ONLY=false \
   FULL_SCREEN_SMOKE_ROUTE_PATTERN="$frontend_smoke_pattern" \
     bash ops/scripts/resonance-full-screen-deploy-gate.sh verify
+  # Successful prebuilds may also refresh tracked generated inventories. Keep
+  # the persistent deployment worktree clean for the next incremental run.
+  bash ops/scripts/cleanup-failed-frontend-generated-changes.sh "$ROOT_DIR"
   run_screen_contract_runtime_save_gate_if_required
   bash ops/scripts/sync-unified-asset-catalog.sh "$deployed_commit" "$target_commit"
   record_deploy_phase "frontend_build_and_verify"

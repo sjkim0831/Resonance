@@ -2,6 +2,7 @@
 set -euo pipefail
 
 root_dir="${FRONTEND_ROOT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
+smoke_started_at="$(date +%s%3N)"
 cache_dir="${FULL_SCREEN_SMOKE_CACHE_DIR:-$root_dir/.cache/full-screen-smoke}"
 result_dir="${FULL_SCREEN_SMOKE_RESULT_DIR:-$cache_dir/results}"
 export FULL_SCREEN_SMOKE_MANIFEST="${FULL_SCREEN_SMOKE_MANIFEST:-$cache_dir/manifest.json}"
@@ -167,3 +168,6 @@ fi
 if [[ "$test_status" -ne 0 || "$finalize_status" -ne 0 || "$quality_status" -ne 0 ]]; then
   exit 1
 fi
+
+smoke_finished_at="$(date +%s%3N)"
+printf '[full-screen-smoke] PASS elapsedMs=%s\n' "$((smoke_finished_at - smoke_started_at))"
