@@ -98,7 +98,7 @@ try {
           unnamed,
           hasReplacementCharacter: bodyText.includes("�"),
         };
-      }, route);
+      }, { title: route.title, selectors: route.selectors });
       if ((response?.status() || 0) >= 400 || errors.length) throw new Error(`${viewport.name} ${route.path} runtime error ${errors.join(" | ")}`);
       if (!state.hasTitle || !state.hasAllSections) throw new Error(`${viewport.name} ${route.path} required UI missing`);
       if (state.hasReplacementCharacter) throw new Error(`${viewport.name} ${route.path} contains replacement characters`);
