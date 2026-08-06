@@ -1976,9 +1976,40 @@ public class ActorProcessGovernanceService {
         Map<String,Object> contract=contracts.get(0);
         requireActorAssignment(tenant,project,String.valueOf(contract.get("actorCode")),user);
         List<Map<String,Object>> drafts=jdbc.queryForList("select draft_id as \"draftId\",tenant_id as \"tenantId\",project_id as \"projectId\",process_code as \"processCode\",step_code as \"stepCode\",actor_code as \"actorCode\",payload_json::text as \"payloadJson\",evidence_json::text as \"evidenceJson\",draft_version as \"draftVersion\",draft_status as \"draftStatus\",saved_at as \"savedAt\",submitted_at as \"submittedAt\" from framework_process_work_draft where tenant_id=? and project_id=? and process_code=? and step_code=? and lower(account_id)=lower(?)",tenant,project,process,step,user);
+        List<Map<String,Object>> handoffs=jdbc.queryForList("""
+            with target as (
+              select step_order from framework_process_step where process_code=? and step_code=?
+            ), source_steps as (
+              select 0 as source_priority,previous.process_code,previous.step_code
+                from framework_process_step previous,target
+               where previous.process_code=? and previous.step_order=target.step_order-1
+              union all
+              select 1,chain.process_code,previous.step_code
+                from framework_process_chain chain
+                join framework_process_step previous on previous.process_code=chain.process_code
+               where chain.next_process_code=? and chain.use_at='Y'
+                 and previous.step_order=(select max(last_step.step_order) from framework_process_step last_step where last_step.process_code=chain.process_code)
+                 and (select step_order from target)=1
+            )
+            select source.process_code as "fromProcessCode",source.step_code as "fromStepCode",
+                   draft.actor_code as "fromActorCode",draft.payload_json::text as "payloadJson",
+                   draft.evidence_json::text as "evidenceJson",draft.submitted_at as "submittedAt",
+                   coalesce(handoff.payload_contract,'{}'::jsonb)::text as "mappingContractJson",
+                   coalesce(handoff.integrity_contract,'{}'::jsonb)::text as "integrityContractJson"
+              from source_steps source
+              join framework_process_work_draft draft
+                on draft.tenant_id=? and draft.project_id=? and draft.process_code=source.process_code
+               and draft.step_code=source.step_code and draft.draft_status='SUBMITTED'
+              left join framework_process_data_handoff handoff
+                on handoff.process_code=source.process_code and handoff.from_step_code=source.step_code
+               and handoff.to_process_code=? and handoff.to_step_code=?
+             order by source.source_priority,draft.submitted_at desc
+             limit 1
+            """,process,step,process,process,tenant,project,process,step);
         Map<String,Object> result=new LinkedHashMap<>();
         result.put("success",true);result.put("found",!drafts.isEmpty());result.put("contract",contract);
         result.put("draft",drafts.isEmpty()?Map.of("draftVersion",0,"draftStatus","NOT_SAVED"):drafts.get(0));
+        result.put("handoff",handoffs.isEmpty()?Map.of():handoffs.get(0));
         return result;
     }
 

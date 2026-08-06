@@ -70,6 +70,7 @@ const fatalText = /React app did not mount|Bootstrap loaded\. Waiting for React 
 const clients = {};
 let browser;
 let projectId = "";
+let previousRelayStep = null;
 const evidence = { startedAt: new Date().toISOString(), projectId: "", processes: [], steps: [], routes: [], cleanup: false };
 
 async function login(user) {
@@ -188,6 +189,14 @@ async function runProcess(definition, context) {
     });
     const draft = await call(api, "get", `/home/api/process-executions/draft?${query}`);
     const contract = draft.contract || {};
+    const upstream = draft.handoff || {};
+    if (previousRelayStep) {
+      if (String(upstream.fromProcessCode || "") !== previousRelayStep.processCode ||
+          String(upstream.fromStepCode || "") !== previousRelayStep.stepCode ||
+          !String(upstream.payloadJson || "").trim()) {
+        throw new Error(`data handoff mismatch expected=${previousRelayStep.processCode}/${previousRelayStep.stepCode} actual=${upstream.fromProcessCode || ""}/${upstream.fromStepCode || ""}`);
+      }
+    }
     if (String(contract.actorCode) !== actor) throw new Error(`actor contract mismatch step=${stepCode}`);
     const fields = JSON.parse(String(contract.fieldContractJson || "[]"));
     if (!Array.isArray(fields) || fields.length < 1) throw new Error(`field contract empty step=${stepCode}`);
@@ -230,7 +239,10 @@ async function runProcess(definition, context) {
       toState: completed.toState,
       nextActor: completed.nextActorCode || "",
       handoffStatus: completed.handoffStatus,
+      upstreamProcessCode: String(upstream.fromProcessCode || ""),
+      upstreamStepCode: String(upstream.fromStepCode || ""),
     });
+    previousRelayStep = { processCode: definition.code, stepCode };
     stepCode = String(completed.nextStepCode || "");
     actor = String(completed.nextActorCode || "");
   }
@@ -346,6 +358,7 @@ try {
       transitions: evidence.steps.length,
       accounts: Object.keys(accounts).length,
       routes: evidence.routes.length,
+      dataHandoffs: evidence.steps.filter((step) => step.upstreamStepCode).length,
     };
   }
 } finally {

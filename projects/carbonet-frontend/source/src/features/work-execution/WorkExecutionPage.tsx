@@ -4,11 +4,16 @@ import { runtimeUuid } from "../../lib/runtime-id";
 import { ContractFieldControl, type ContractField } from "../generated-screen/ContractFieldControl";
 
 type Row = Record<string, unknown>;
-type WorkDraft = Row & { found?: boolean; contract?: Row; draft?: Row };
+type WorkDraft = Row & { found?: boolean; contract?: Row; draft?: Row; handoff?: Row };
 type Execution = Row & { found?: boolean; events?: Row[] };
 
 const inputClass = "krds-control min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-slate-900 focus:border-[#246beb] focus:outline-none focus:ring-2 focus:ring-blue-100";
 const value = (row: Row | undefined, key: string) => String(row?.[key] ?? "");
+const parseObject = (raw: unknown): Row => {
+  if (raw && typeof raw === "object") return raw as Row;
+  if (typeof raw === "string") { try { return JSON.parse(raw) as Row; } catch { return {}; } }
+  return {};
+};
 
 function parseContractFields(raw: unknown): ContractField[] {
   try {
@@ -55,6 +60,8 @@ export function WorkExecutionPage() {
 
   const contract = work.contract || {};
   const draft = work.draft || {};
+  const upstreamHandoff = work.handoff || {};
+  const upstreamPayload = useMemo(() => parseObject(upstreamHandoff.payloadJson), [upstreamHandoff.payloadJson]);
   const actorCode = value(contract, "actorCode");
   const currentStep = value(execution, "currentStepCode");
   const contractFields = useMemo(() => parseContractFields(contract.fieldContractJson), [contract.fieldContractJson]);
@@ -97,8 +104,8 @@ export function WorkExecutionPage() {
 
   const applyDraft = (body: WorkDraft) => {
     setWork(body);
-    const parseObject = (raw: unknown) => { if (raw && typeof raw === "object") return raw; if (typeof raw === "string") { try { return JSON.parse(raw); } catch { return {}; } } return {}; };
     const payload = parseObject(body.draft?.payloadJson);
+    const inheritedPayload = parseObject(body.handoff?.payloadJson);
     const evidencePayload = parseObject(body.draft?.evidenceJson);
     const payloadRow = payload && typeof payload === "object" ? payload as Row : {};
     setForm({
@@ -108,7 +115,7 @@ export function WorkExecutionPage() {
       resultUnit: String(payloadRow.resultUnit || ""),
       exceptionReason: String(payloadRow.exceptionReason || ""),
     });
-    setValues(Object.fromEntries(Object.entries(payloadRow).map(([key,item]) => [key,item == null ? "" : String(item)])));
+    setValues(Object.fromEntries(Object.entries({ ...inheritedPayload, ...payloadRow }).map(([key,item]) => [key,item == null ? "" : String(item)])));
     const evidenceRow = evidencePayload && typeof evidencePayload === "object" ? evidencePayload as Row : {};
     setEvidence({ documentId: String(evidenceRow.documentId || ""), sourceUrl: String(evidenceRow.sourceUrl || ""), checksum: String(evidenceRow.checksum || "") });
   };
@@ -262,6 +269,7 @@ export function WorkExecutionPage() {
 
       <aside className="space-y-5 xl:sticky xl:top-24 xl:self-start">
         <section className="krds-component rounded-2xl border bg-white p-5"><h2 className="gov-text-heading-sm font-black text-[#052b57]">{en ? "Completion checks" : "완료 점검"}</h2><ul className="mt-4 space-y-3">{checks.map(check => <li className="flex items-start gap-3" key={check.label}><span aria-hidden="true" className={`mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-black ${check.passed ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-500"}`}>{check.passed ? "✓" : "–"}</span><span className="gov-text-body-sm text-slate-700">{check.label}</span></li>)}</ul></section>
+        {value(upstreamHandoff, "fromStepCode") && <section className="krds-component rounded-2xl border border-emerald-200 bg-emerald-50 p-5"><h2 className="gov-text-heading-sm font-black text-emerald-950">{en ? "Upstream data handoff" : "이전 단계 데이터 인계"}</h2><p className="gov-text-body-sm mt-2 text-emerald-900">{value(upstreamHandoff, "fromProcessCode")} · {value(upstreamHandoff, "fromStepCode")} · {value(upstreamHandoff, "fromActorCode")}</p><p className="gov-text-label mt-2 text-emerald-800">{en ? `${Object.keys(upstreamPayload).length} source fields are available. Matching field codes were prefilled without overwriting this draft.` : `원본 ${Object.keys(upstreamPayload).length}개 필드를 인계받았습니다. 동일한 필드 코드는 현재 초안을 덮어쓰지 않고 선입력했습니다.`}</p><details className="mt-3 rounded-lg border border-emerald-200 bg-white p-3"><summary className="cursor-pointer font-bold text-emerald-900">{en ? "Inspect handed-off values" : "인계 데이터 확인"}</summary><dl className="mt-3 grid gap-2 md:grid-cols-2">{Object.entries(upstreamPayload).map(([key, item]) => <div className="rounded-md bg-slate-50 p-2" key={key}><dt className="gov-text-label font-bold text-slate-600">{key}</dt><dd className="gov-text-body-sm break-all text-slate-900">{String(item ?? "")}</dd></div>)}</dl></details></section>}
         <section className="krds-component rounded-2xl border bg-white p-5"><h2 className="gov-text-heading-sm font-black text-[#052b57]">{en ? "Work actions" : "업무 실행"}</h2><div className="mt-4 grid gap-3"><button className="krds-control rounded-lg border border-[#246beb] bg-white font-black text-[#246beb] disabled:opacity-50" disabled={busy || !actorCode} onClick={() => void saveDraft()}>{en ? "Save draft" : "임시저장"}</button>{!execution.found && <button className="krds-control rounded-lg bg-[#052b57] font-black text-white disabled:opacity-50" disabled={busy || !actorCode} onClick={() => void startExecution()}>{en ? "Start process" : "프로세스 시작"}</button>}<button className="krds-control rounded-lg bg-[#246beb] font-black text-white disabled:opacity-50" disabled={busy || !readyToComplete} onClick={() => void complete()}>{en ? "Validate and complete" : "검증 후 단계 완료"}</button></div><p className="gov-text-body-sm mt-4 text-slate-500">{en ? "Completion is idempotent and server-authoritative." : "완료 명령은 멱등키와 서버 상태 전이 규칙으로 중복 처리를 방지합니다."}</p></section>
         <section className="rounded-2xl border border-blue-100 bg-blue-50 p-5"><h2 className="gov-text-heading-sm font-black text-[#052b57]">{en ? "Next handoff" : "다음 업무 인계"}</h2><p className="gov-text-body-sm mt-3 text-slate-700">{value(contract, "outputContract") || (en ? "The next actor is determined after completion." : "완료 후 상태 전이 계약에 따라 다음 액터와 업무가 결정됩니다.")}</p>{value(handoff, "nextProcessCode") && <div className="mt-4 rounded-xl border border-blue-200 bg-white p-4"><p className="gov-text-label font-black text-blue-800">{en ? "Next process ready" : "다음 프로세스 준비 완료"}</p><p className="gov-text-body-sm mt-2 text-slate-700">{value(handoff, "nextProcessCode")} · {value(handoff, "nextProcessStepCode")} · {value(handoff, "nextProcessActorCode")}</p><a className="krds-control mt-3 inline-flex w-full items-center justify-center rounded-lg bg-[#246beb] px-3 font-black text-white" href={`${buildLocalizedPath("/work/execution", "/en/work/execution")}?projectId=${encodeURIComponent(projectId)}&processCode=${encodeURIComponent(value(handoff, "nextProcessCode"))}&stepCode=${encodeURIComponent(value(handoff, "nextProcessStepCode"))}&actorCode=${encodeURIComponent(value(handoff, "nextProcessActorCode"))}&guide=1${shellMode ? `&shell=1&screenPath=${encodeURIComponent(value(handoff, "nextProcessUserPath"))}` : ""}`}>{en ? "Continue next process" : "다음 프로세스 이어서 진행"}</a></div>}</section>
       </aside>
