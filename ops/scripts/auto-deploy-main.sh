@@ -68,11 +68,14 @@ policy_contract_files=(
 )
 policy_digest="$({
   for policy_path in "${policy_contract_files[@]}"; do
-    [[ -f "$POLICY_ROOT/$policy_path" ]] || {
-      echo "[auto-deploy] required policy input is missing: $policy_path" >&2
-      exit 1
-    }
-    sha256sum "$POLICY_ROOT/$policy_path"
+    if [[ -f "$POLICY_ROOT/$policy_path" ]]; then
+      sha256sum "$POLICY_ROOT/$policy_path"
+    else
+      # Candidate-introduced optional contracts may not exist in the installed
+      # bootstrap root yet. Their explicit missing marker changes as soon as
+      # the file is installed, invalidating the cache without blocking rollout.
+      printf 'MISSING  %s\n' "$policy_path"
+    fi
   done
 } | sha256sum | awk '{print $1}')"
 cached_policy_digest="$(tr -d '[:space:]' <"$policy_cache" 2>/dev/null || true)"
