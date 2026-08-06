@@ -30,10 +30,10 @@ if (login.status() !== 200 || loginPayload.status !== "loginSuccess") throw new 
 
 const dataResponse = await api.get("/admin/api/system/actor-process", { failOnStatusCode: false });
 const data = await dataResponse.json().catch(() => ({}));
-const process = (data.processes || []).find((row) => row.processCode === "MEMBER_LIFECYCLE");
+const processDefinition = (data.processes || []).find((row) => row.processCode === "MEMBER_LIFECYCLE");
 for (const stepCode of steps) {
   const step = (data.steps || []).find((row) => row.processCode === "MEMBER_LIFECYCLE" && row.stepCode === stepCode);
-  if (!process || !step || !step.actorCode || !step.completionRule || !step.inputContract || !step.outputContract) {
+  if (!processDefinition || !step || !step.actorCode || !step.completionRule || !step.inputContract || !step.outputContract) {
     throw new Error(`actor-process API contract incomplete for ${stepCode}`);
   }
 }
