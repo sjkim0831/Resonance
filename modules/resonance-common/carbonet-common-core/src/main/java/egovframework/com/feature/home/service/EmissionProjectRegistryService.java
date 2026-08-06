@@ -87,7 +87,10 @@ public class EmissionProjectRegistryService {
     public Map<String,Object> onboardingReadiness(String tenantId) {
         String tenant=requiredValue(tenantId,"tenantId");
         boolean sandbox="DEFAULT".equals(tenant);
-        Integer companyCount=sandbox?1:jdbc.queryForObject("SELECT count(*) FROM comtninsttinfo WHERE trim(instt_id)=? AND upper(trim(instt_sttus)) IN ('P','A','APPROVED','ACTIVE','Y')",Integer.class,tenant);
+        List<String> companyStatuses=sandbox
+            ? List.of("P")
+            : jdbc.queryForList("SELECT instt_sttus FROM comtninsttinfo WHERE trim(instt_id)=?",String.class,tenant);
+        boolean companyApproved=companyStatuses.stream().anyMatch(EmissionProjectRegistryService::isApprovedInstitutionStatus);
         Integer siteCount=jdbc.queryForObject("SELECT count(*) FROM emission_site_registry WHERE tenant_id=? AND site_status='ACTIVE' AND (effective_until IS NULL OR effective_until>=current_date)",Integer.class,tenant);
         List<String> requiredActors=List.of("COMPANY_MANAGER","SITE_DATA_OWNER","CALCULATOR","VERIFIER","APPROVER");
         List<Map<String,Object>> actorRows=jdbc.queryForList("SELECT actor_code AS actor,count(DISTINCT account_id) AS count FROM framework_account_actor_assignment WHERE tenant_id=? AND assignment_status='ACTIVE' AND (valid_until IS NULL OR valid_until>=current_date) AND actor_code IN ('COMPANY_MANAGER','SITE_DATA_OWNER','CALCULATOR','VERIFIER','APPROVER') GROUP BY actor_code",tenant);
@@ -98,16 +101,21 @@ public class EmissionProjectRegistryService {
         Integer conflictingDutyAccountCount=jdbc.queryForObject("SELECT count(*) FROM (SELECT lower(account_id) FROM framework_account_actor_assignment WHERE tenant_id=? AND assignment_status='ACTIVE' AND (valid_until IS NULL OR valid_until>=current_date) AND actor_code IN ('CALCULATOR','VERIFIER','APPROVER') GROUP BY lower(account_id) HAVING count(DISTINCT actor_code)>1) conflicts",Integer.class,tenant);
         Boolean segregationOfDuties=jdbc.queryForObject("SELECT EXISTS(SELECT 1 FROM framework_account_actor_assignment calculator JOIN framework_account_actor_assignment verifier ON verifier.tenant_id=calculator.tenant_id AND lower(verifier.account_id)<>lower(calculator.account_id) JOIN framework_account_actor_assignment approver ON approver.tenant_id=calculator.tenant_id AND lower(approver.account_id)<>lower(calculator.account_id) AND lower(approver.account_id)<>lower(verifier.account_id) WHERE calculator.tenant_id=? AND calculator.actor_code='CALCULATOR' AND verifier.actor_code='VERIFIER' AND approver.actor_code='APPROVER' AND calculator.assignment_status='ACTIVE' AND verifier.assignment_status='ACTIVE' AND approver.assignment_status='ACTIVE' AND (calculator.valid_until IS NULL OR calculator.valid_until>=current_date) AND (verifier.valid_until IS NULL OR verifier.valid_until>=current_date) AND (approver.valid_until IS NULL OR approver.valid_until>=current_date))",Boolean.class,tenant);
         List<String> missing=new ArrayList<>();
-        if(companyCount==null||companyCount==0)missing.add("COMPANY_NOT_APPROVED");
+        if(!companyApproved)missing.add("COMPANY_NOT_APPROVED");
         if(siteCount==null||siteCount==0)missing.add("ACTIVE_SITE_REQUIRED");
         for(String code:requiredActors)if(coverage.getOrDefault(code,0)==0)missing.add("REQUIRED_ACTOR_MISSING:"+code);
         if(!Boolean.TRUE.equals(segregationOfDuties))missing.add("SEGREGATION_OF_DUTIES_REQUIRED:CALCULATOR,VERIFIER,APPROVER");
         Map<String,Object> result=new LinkedHashMap<>();
-        result.put("ready",missing.isEmpty());result.put("sandbox",sandbox);result.put("companyApproved",companyCount!=null&&companyCount>0);
+        result.put("ready",missing.isEmpty());result.put("sandbox",sandbox);result.put("companyApproved",companyApproved);
         result.put("activeSiteCount",siteCount==null?0:siteCount);result.put("actorCoverage",coverage);result.put("missing",missing);
         result.put("segregationOfDuties",Boolean.TRUE.equals(segregationOfDuties));result.put("segregatedDutyAccountCount",segregatedDutyAccountCount==null?0:segregatedDutyAccountCount);result.put("conflictingDutyAccountCount",conflictingDutyAccountCount==null?0:conflictingDutyAccountCount);
         result.put("siteManagementUrl","/admin/emission/site-management");result.put("actorManagementUrl","/admin/system/actor-process");
         return result;
+    }
+
+    static boolean isApprovedInstitutionStatus(String status) {
+        if (status == null) return false;
+        return Set.of("P", "APPROVED", "ACTIVE", "Y").contains(status.trim().toUpperCase(java.util.Locale.ROOT));
     }
 
     public Map<String, Object> detail(String id) {

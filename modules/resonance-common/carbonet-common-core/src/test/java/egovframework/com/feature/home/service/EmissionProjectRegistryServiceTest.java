@@ -37,4 +37,15 @@ class EmissionProjectRegistryServiceTest {
         assertTrue((Boolean) projectedTask.get("actionable"));
         verifyNoInteractions(dataSource);
     }
+
+    @Test
+    void onboardingReadinessDoesNotTreatPendingCompanyAsApproved() {
+        assertFalse(EmissionProjectRegistryService.isApprovedInstitutionStatus("A"));
+        assertFalse(EmissionProjectRegistryService.isApprovedInstitutionStatus("pending"));
+        assertFalse(EmissionProjectRegistryService.isApprovedInstitutionStatus(null));
+        assertTrue(EmissionProjectRegistryService.isApprovedInstitutionStatus("P"));
+        assertTrue(EmissionProjectRegistryService.isApprovedInstitutionStatus("approved"));
+        assertTrue(EmissionProjectRegistryService.isApprovedInstitutionStatus(" ACTIVE "));
+        assertTrue(EmissionProjectRegistryService.isApprovedInstitutionStatus("Y"));
+    }
 }
