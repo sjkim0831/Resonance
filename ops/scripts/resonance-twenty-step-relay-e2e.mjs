@@ -20,6 +20,7 @@ const expectedTransitionCount=Number(process.env.CARBONET_RELAY_EXPECTED_TRANSIT
 const expectedAccountCount=Number(process.env.CARBONET_RELAY_EXPECTED_ACCOUNT_COUNT||5);
 const requestDurations=[];
 let authorityDenialCount=0;
+let recoveryVerified=false;
 
 async function call(api,method,url,data,expected=[200]){
   const requestStartedAt=Date.now();
@@ -59,9 +60,11 @@ function sample(field,context){
 const contexts=new Map();
 const startedAt=Date.now();
 let projectId="";
+let ownerApi;
+let cleanupCompleted=false;
 try{
   for(const account of Object.values(accountByActor))contexts.set(account,await login(account));
-  const ownerApi=contexts.get(accountByActor.COMPANY_MANAGER);
+  ownerApi=contexts.get(accountByActor.COMPANY_MANAGER);
   const options=await call(ownerApi,"get","/home/api/emission-projects/options");
   if(!options?.readiness?.ready||!options?.sites?.length)throw new Error("project creation readiness is incomplete");
   const year=String(new Date().getUTCFullYear()),marker=`${Date.now()}-${Math.random().toString(36).slice(2,8)}`;
@@ -113,6 +116,13 @@ try{
       correctionRequested=true;
     }
     const command=await call(api,"post",`/home/api/process-executions/${executionId}/commands`,commandPayload);
+    if(!recoveryVerified){
+      const replay=await call(api,"post",`/home/api/process-executions/${executionId}/commands`,commandPayload);
+      if(Number(replay.eventId)!==Number(command.eventId)||String(replay.toState)!==String(command.toState)){
+        throw new Error(`idempotent recovery replay mismatch ${processCode}/${stepCode} originalEvent=${command.eventId} replayEvent=${replay.eventId} originalState=${command.toState} replayState=${replay.toState}`);
+      }
+      recoveryVerified=true;
+    }
     transitions.push({sequence,processCode,stepCode,actorCode,account,fieldCount:fields.length,eventId:command.eventId,toState:command.toState,nextProcessCode:command.nextProcessCode||"",nextStepCode:command.nextProcessStepCode||command.nextStepCode||""});
     if(command.nextProcessCode){processCode=String(command.nextProcessCode);executionId=String(command.nextProcessExecutionId);stepCode=String(command.nextProcessStepCode);}
     else if(command.nextStepCode){stepCode=String(command.nextStepCode);}
@@ -126,8 +136,19 @@ try{
   if(JSON.stringify(observed)!==JSON.stringify(expectedProcesses))throw new Error(`process order mismatch ${JSON.stringify(observed)}`);
   const orderedDurations=[...requestDurations].sort((a,b)=>a-b);
   const performanceP95Ms=orderedDurations[Math.max(0,Math.ceil(orderedDurations.length*0.95)-1)];
-  const evidence={schemaVersion:1,status:"PASSED",completedAt:new Date().toISOString(),durationMs:Date.now()-startedAt,performanceP95Ms,authorityDenialCount,projectId,tenantId,processCount:observed.length,stepCount:uniqueSteps.size,transitionCount:transitions.length,correctionReplayCount:transitions.length-uniqueSteps.size,accountCount:new Set(transitions.map(item=>item.account)).size,processes:observed,transitions};
+  const evidence={schemaVersion:1,status:"PASSED",completedAt:new Date().toISOString(),durationMs:Date.now()-startedAt,performanceP95Ms,authorityDenialCount,recoveryVerified,projectId,tenantId,processCount:observed.length,stepCount:uniqueSteps.size,transitionCount:transitions.length,correctionReplayCount:transitions.length-uniqueSteps.size,accountCount:new Set(transitions.map(item=>item.account)).size,processes:observed,transitions};
   if(evidence.accountCount!==expectedAccountCount)throw new Error(`expected ${expectedAccountCount} accounts, observed ${evidence.accountCount}`);
+  const removed=await call(ownerApi,"delete",`/home/api/emission-projects/${projectId}`,undefined,[200]);
+  const tasks=await call(ownerApi,"get","/home/api/emission-tasks");
+  evidence.cleanup=removed.success===true&&(tasks.items||[]).every(item=>String(item.projectId)!==projectId);
+  if(!evidence.cleanup)throw new Error(`API relay cleanup failed project=${projectId}`);
+  cleanupCompleted=true;
   const outputDir=path.join(root,"var/test-evidence");await mkdir(outputDir,{recursive:true});await writeFile(path.join(outputDir,"twenty-step-relay-e2e-latest.json"),`${JSON.stringify(evidence,null,2)}\n`);
   console.log(`TWENTY_STEP_RELAY_PASS project=${projectId} processes=${observed.length} uniqueSteps=${evidence.stepCount} transitions=${evidence.transitionCount} accounts=${evidence.accountCount} durationMs=${evidence.durationMs}`);
-}finally{for(const api of contexts.values())await api.dispose();}
+}finally{
+  if(projectId&&!cleanupCompleted&&ownerApi){
+    try{await call(ownerApi,"delete",`/home/api/emission-projects/${projectId}`,undefined,[200,404]);}
+    catch(error){console.error(`QA_CLEANUP_WARNING project=${projectId} message=${error.message}`);}
+  }
+  for(const api of contexts.values())await api.dispose();
+}

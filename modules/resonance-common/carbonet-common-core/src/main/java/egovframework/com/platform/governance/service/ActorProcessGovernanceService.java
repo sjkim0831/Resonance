@@ -1422,7 +1422,14 @@ public class ActorProcessGovernanceService {
         Map<String,Object> execution=executions.get(0);
         if(!tenant.equals(String.valueOf(execution.get("tenant_id")))||!project.equals(String.valueOf(execution.get("project_id")))||!process.equals(String.valueOf(execution.get("process_code"))))throw new SecurityException("테넌트·프로젝트·프로세스 실행 문맥이 일치하지 않습니다.");
         List<Map<String,Object>> existing=jdbc.queryForList("select event_id as \"eventId\",to_state as \"toState\" from framework_process_execution_event where execution_id=? and idempotency_key=?",executionId,key);
-        if(!existing.isEmpty())return Map.of("success",true,"idempotent",true,"event",existing.get(0));
+        if(!existing.isEmpty()){
+            Map<String,Object> event=existing.get(0);
+            Map<String,Object> replay=new LinkedHashMap<>();
+            replay.put("success",true);replay.put("idempotent",true);
+            replay.put("eventId",event.get("eventId"));replay.put("toState",event.get("toState"));
+            replay.put("event",event);
+            return replay;
+        }
         requireActorAssignment(tenant,project,actor,user);
         if(!step.equals(String.valueOf(execution.get("current_step_code"))))throw new IllegalStateException("현재 실행 단계는 "+execution.get("current_step_code")+"입니다.");
         List<Map<String,Object>> contracts=jdbc.queryForList("select step_order,actor_code,command_code,from_state,to_state from framework_process_step where process_code=? and step_code=?",process,step);

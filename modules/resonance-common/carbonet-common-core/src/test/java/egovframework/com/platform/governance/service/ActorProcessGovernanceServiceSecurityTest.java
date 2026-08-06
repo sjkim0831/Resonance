@@ -138,7 +138,7 @@ class ActorProcessGovernanceServiceSecurityTest {
     @Test
     void idempotencyEvidenceIsNotReadBeforeExecutionContextValidation() {
         UUID executionId = UUID.randomUUID();
-        when(jdbc.queryForList(argThat(sql -> sql.contains("from framework_process_execution where execution_id=? for update")),
+        when(jdbc.queryForList(argThat(sql -> sql != null && sql.contains("from framework_process_execution where execution_id=? for update")),
                 any(Object[].class))).thenReturn(List.of(Map.of(
                 "execution_status", "RUNNING", "tenant_id", "TENANT_B", "project_id", "PROJECT_B",
                 "process_code", "PROCESS_A", "current_step_code", "STEP_1")));
@@ -150,6 +150,33 @@ class ActorProcessGovernanceServiceSecurityTest {
 
         verify(jdbc, never()).queryForList(argThat(sql -> sql.contains("framework_process_execution_event")
                 && sql.contains("idempotency_key")), any(Object[].class));
+    }
+
+    @Test
+    void idempotentReplayKeepsTheOriginalCommandResponseContract() {
+        UUID executionId = UUID.randomUUID();
+        when(jdbc.queryForList(anyString(), any(Object[].class))).thenAnswer(invocation -> {
+            String sql = invocation.getArgument(0);
+            if (sql.contains("from framework_process_execution where execution_id=? for update")) {
+                return List.of(Map.of(
+                        "execution_status", "RUNNING", "tenant_id", "TENANT_A", "project_id", "PROJECT_A",
+                        "process_code", "PROCESS_A", "current_step_code", "STEP_2"));
+            }
+            if (sql.contains("framework_process_execution_event") && sql.contains("idempotency_key")) {
+                return List.of(Map.of("eventId", 73L, "toState", "SUBMITTED"));
+            }
+            return List.of();
+        });
+
+        Map<String, Object> replay = service.executeProcessCommand(executionId, Map.of(
+                "tenantId", "TENANT_A", "projectId", "PROJECT_A", "processCode", "PROCESS_A",
+                "stepCode", "STEP_1", "actorCode", "COMPANY_MANAGER", "commandCode", "RUN",
+                "idempotencyKey", "same-key"), "user-a");
+
+        assertTrue((Boolean) replay.get("idempotent"));
+        assertEquals(73L, replay.get("eventId"));
+        assertEquals("SUBMITTED", replay.get("toState"));
+        assertEquals(73L, ((Map<?, ?>) replay.get("event")).get("eventId"));
     }
 
     @Test

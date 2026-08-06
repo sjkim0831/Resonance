@@ -21,7 +21,7 @@ EVIDENCE="$(jq -c --slurpfile visual "$VISUAL_EVIDENCE_FILE" '
     accessibility: ($visual[0].summary.accessibility // 0),
     authority: (if .authorityDenialCount > 0 then 1 else 0 end),
     audit: (if ([.transitions[].eventId | select(. != null)] | length) == .transitionCount then 1 else 0 end),
-    recovery: (if .correctionReplayCount > 0 then 1 else 0 end)
+    recovery: (if .recoveryVerified == true then 1 else 0 end)
   }' <<<"$EVIDENCE")"
 
 jq -e '
@@ -31,7 +31,7 @@ jq -e '
   .accountCount==([.transitions[].account]|unique|length) and
   .correctionReplayCount==(.transitionCount-.stepCount)
   and .performanceP95Ms>0 and .responsive==1 and .accessibility==1
-  and .authority==1 and .audit==1 and .recovery==1
+  and .authority==1 and .audit==1 and .recovery==1 and .cleanup==true
 ' <<<"$EVIDENCE" >/dev/null
 
 mapfile -t TARGETS < <(jq -r '.transitions|unique_by(.processCode,.stepCode)|.[]|[.processCode,.stepCode]|@tsv' <<<"$EVIDENCE")

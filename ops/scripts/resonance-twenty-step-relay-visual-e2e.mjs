@@ -167,7 +167,9 @@ async function verifyRoute(api, stepCode, actor, processCode) {
     await page.waitForFunction(() => {
       const root = document.querySelector("#root");
       const text = (document.body?.innerText || "").trim();
-      return (root?.children.length || 0) > 0 && text.length >= 20 &&
+      const headings = document.querySelectorAll("h1,h2,[role=heading]");
+      return (root?.children.length || 0) > 0 && headings.length > 0 && text.length >= 20 &&
+        !/불러오는 중|loading/i.test(text) &&
         !/Bootstrap loaded\. Waiting for React app mount|React app did not mount/.test(text);
     }, undefined, { timeout: 8_000 });
     const state = await page.evaluate(() => ({
@@ -183,7 +185,9 @@ async function verifyRoute(api, stepCode, actor, processCode) {
     if (fatalText.test(state.text)) throw new Error("fatal UI text");
     if (state.headings.some((heading) => /운영\s*관리\s*대시보드/.test(heading))) throw new Error("fallback dashboard");
     if (errors.length) throw new Error(`page errors: ${errors.join(" | ")}`);
-    if (!state.language || !state.headings.length || !state.focusableCount || state.overflow) throw new Error("desktop accessibility/responsive baseline failed");
+    if (!state.language || !state.headings.length || !state.focusableCount || state.overflow) {
+      throw new Error(`desktop accessibility/responsive baseline failed route=${target.pathname} state=${JSON.stringify(state)}`);
+    }
     await page.setViewportSize({ width: 390, height: 844 });
     await page.reload({ waitUntil: "domcontentloaded", timeout: 15_000 });
     await page.waitForFunction(() => (document.querySelector("#root")?.children.length || 0) > 0, undefined, { timeout: 8_000 });
@@ -191,7 +195,7 @@ async function verifyRoute(api, stepCode, actor, processCode) {
       overflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 2,
       visibleText: (document.body?.innerText || "").trim().length,
     }));
-    if (mobile.overflow || mobile.visibleText < 20) throw new Error("mobile responsive baseline failed");
+    if (mobile.overflow || mobile.visibleText < 20) throw new Error(`mobile responsive baseline failed route=${target.pathname} state=${JSON.stringify(mobile)}`);
     evidence.routes.push({ processCode, stepCode, actor, path: target.pathname, ok: true, durationMs: Date.now() - routeStartedAt });
   } finally {
     await context.close();
