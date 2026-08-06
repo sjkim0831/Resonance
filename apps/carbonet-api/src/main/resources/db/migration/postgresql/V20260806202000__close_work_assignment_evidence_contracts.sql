@@ -15,6 +15,9 @@ END
 WHERE process_code='WORK_ASSIGNMENT'
   AND step_code IN (
     'WORK_ASSIGNMENT_ACTOR','WORK_ASSIGNMENT_STEP','WORK_ASSIGNMENT_CONFIRM'
+  )
+  AND (
+    evidence_types IS NULL OR btrim(evidence_types) IN ('','[]')
   );
 
 UPDATE framework_process_definition
