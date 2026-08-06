@@ -14,6 +14,7 @@ assert_scope menu apps/carbonet-api/src/main/resources/db/migration/postgresql/V
 assert_scope governance apps/carbonet-api/src/main/resources/db/migration/postgresql/V2__register_common_user_gnb.sql
 assert_scope governance apps/carbonet-api/src/main/resources/db/migration/postgresql/V3__component_design_asset.sql
 assert_scope governance apps/carbonet-api/src/main/resources/db/migration/postgresql/V4__validate_structured_professional_contracts.sql
+assert_scope governance apps/carbonet-api/src/main/resources/db/migration/postgresql/V4_1__classify_relay_input_policies.sql
 assert_scope activity apps/carbonet-api/src/main/resources/db/migration/postgresql/V5__activity_evidence.sql
 assert_scope identity apps/carbonet-api/src/main/resources/db/migration/postgresql/V6__account_recovery_runtime.sql
 assert_scope full apps/carbonet-api/src/main/resources/db/migration/postgresql/V7__unknown_schema.sql
