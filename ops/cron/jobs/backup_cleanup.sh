@@ -11,7 +11,8 @@ echo "[$(date '+%Y-%m-%d %H:%M:%S')] Backup cleanup started" >> "$LOG_FILE"
 DISK_USAGE=$(df /opt | awk 'NR==2 {print $5}' | sed 's/%//')
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] Current disk usage: ${DISK_USAGE}%" >> "$LOG_FILE"
 
-# If disk usage is above 75%, aggressively clean up
+# If disk usage is above 75%, aggressively clean up. Keep dump sidecars in the
+# same retention window so manifests and checksums cannot accumulate forever.
 if [ "$DISK_USAGE" -gt 75 ]; then
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] Disk usage above 75%, aggressive cleanup" >> "$LOG_FILE"
     
@@ -21,13 +22,13 @@ if [ "$DISK_USAGE" -gt 75 ]; then
     find $BACKUP_ROOT/hourly -name "*.sha256" -mmin +360 -delete 2>/dev/null
     
     # Keep only last 7 days of daily backups
-    find $BACKUP_ROOT/daily -name "*.dump" -mtime +7 -delete 2>/dev/null
+    find $BACKUP_ROOT/daily -type f -mtime +7 -delete 2>/dev/null
     
     # Same for HA backup
     find $HA_BACKUP_ROOT/hourly -name "*.dump" -mmin +360 -delete 2>/dev/null
     find $HA_BACKUP_ROOT/hourly -name "*.manifest" -mmin +360 -delete 2>/dev/null
     find $HA_BACKUP_ROOT/hourly -name "*.sha256" -mmin +360 -delete 2>/dev/null
-    find $HA_BACKUP_ROOT/daily -name "*.dump" -mtime +7 -delete 2>/dev/null
+    find $HA_BACKUP_ROOT/daily -type f -mtime +7 -delete 2>/dev/null
     
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] Aggressive cleanup completed" >> "$LOG_FILE"
 else
@@ -35,12 +36,12 @@ else
     find $BACKUP_ROOT/hourly -name "*.dump" -mmin +1440 -delete 2>/dev/null
     find $BACKUP_ROOT/hourly -name "*.manifest" -mmin +1440 -delete 2>/dev/null
     find $BACKUP_ROOT/hourly -name "*.sha256" -mmin +1440 -delete 2>/dev/null
-    find $BACKUP_ROOT/daily -name "*.dump" -mtime +30 -delete 2>/dev/null
+    find $BACKUP_ROOT/daily -type f -mtime +30 -delete 2>/dev/null
     
     find $HA_BACKUP_ROOT/hourly -name "*.dump" -mmin +1440 -delete 2>/dev/null
     find $HA_BACKUP_ROOT/hourly -name "*.manifest" -mmin +1440 -delete 2>/dev/null
     find $HA_BACKUP_ROOT/hourly -name "*.sha256" -mmin +1440 -delete 2>/dev/null
-    find $HA_BACKUP_ROOT/daily -name "*.dump" -mtime +30 -delete 2>/dev/null
+    find $HA_BACKUP_ROOT/daily -type f -mtime +30 -delete 2>/dev/null
     
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] Normal cleanup completed" >> "$LOG_FILE"
 fi

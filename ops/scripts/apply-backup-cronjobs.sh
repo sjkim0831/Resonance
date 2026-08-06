@@ -296,6 +296,50 @@ spec:
           volumes:
           - name: wal-archive
             hostPath: {path: /opt/resonance-data/postgresql/wal-archive, type: Directory}
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: postgres-carbonet-backup-retention
+  namespace: carbonet-prod
+spec:
+  schedule: "37 * * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 5
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      template:
+        spec:
+          restartPolicy: OnFailure
+          securityContext: {runAsNonRoot: true, runAsUser: 1000, runAsGroup: 1000, fsGroup: 1000}
+          containers:
+          - name: backup-retention
+            image: busybox:1.36
+            command: ["sh", "-lc"]
+            args:
+            - |
+              set -eu
+              used=$(df -P /primary | awk 'NR==2 {gsub(/%/,"",$5); print $5}')
+              hourly_minutes=1440
+              [ "$used" -gt 75 ] && hourly_minutes=360
+              before=$(du -sk /primary /mirror | awk '{sum+=$1} END {print sum}')
+              for root in /primary /mirror; do
+                [ -d "$root/hourly" ] && find "$root/hourly" -maxdepth 1 -type f -mmin "+$hourly_minutes" -delete
+                [ -d "$root/daily" ] && find "$root/daily" -maxdepth 1 -type f -mtime +7 -delete
+              done
+              after=$(du -sk /primary /mirror | awk '{sum+=$1} END {print sum}')
+              echo "backup retention complete: disk=${used}% hourly_minutes=$hourly_minutes before_kib=$before after_kib=$after"
+            securityContext: {runAsNonRoot: true, runAsUser: 1000, runAsGroup: 1000, allowPrivilegeEscalation: false, capabilities: {drop: ["ALL"]}}
+            volumeMounts:
+            - {name: primary, mountPath: /primary}
+            - {name: mirror, mountPath: /mirror}
+          volumes:
+          - name: primary
+            hostPath: {path: /opt/resonance-data/backups/postgres/primary, type: Directory}
+          - name: mirror
+            hostPath: {path: /opt/resonance-data/backups/postgres/mirror, type: Directory}
 YAML
 
 retention_path="$(
