@@ -71,7 +71,35 @@ const clients = {};
 let browser;
 let projectId = "";
 let previousRelayStep = null;
-const evidence = { startedAt: new Date().toISOString(), projectId: "", processes: [], steps: [], routes: [], cleanup: false };
+const evidence = { startedAt: new Date().toISOString(), projectId: "", processes: [], steps: [], routes: [], transforms: {}, cleanup: false };
+
+function assertMappedTransform(mapping, sourcePayload, mappedPayload) {
+  const fromField = String(mapping.fromField || "");
+  const toField = String(mapping.toField || "");
+  const transform = String(mapping.transform || "IDENTITY").toUpperCase();
+  const source = sourcePayload[fromField];
+  const mapped = mappedPayload[toField];
+  const same = JSON.stringify(source) === JSON.stringify(mapped);
+  if (transform === "IDENTITY" && !same) throw new Error(`IDENTITY transform mismatch ${fromField}->${toField}`);
+  if (transform === "ARRAY_WRAP" && (!Array.isArray(mapped) || (Array.isArray(source) ? !same : JSON.stringify(mapped) !== JSON.stringify([source])))) {
+    throw new Error(`ARRAY_WRAP transform mismatch ${fromField}->${toField}`);
+  }
+  if (transform === "AGGREGATE_SUM") {
+    const values = Array.isArray(source) ? source : [source];
+    const expected = values.map((value) => Number(String(value).replaceAll(",", ""))).filter(Number.isFinite)
+      .reduce((total, value) => total + value, 0);
+    if (!Number.isFinite(Number(mapped)) || Math.abs(Number(mapped) - expected) > 1e-9) {
+      throw new Error(`AGGREGATE_SUM transform mismatch ${fromField}->${toField}`);
+    }
+  }
+  if (transform === "LOOKUP_SITE_LABEL" && (typeof mapped !== "string" || !mapped.trim())) {
+    throw new Error(`LOOKUP_SITE_LABEL transform mismatch ${fromField}->${toField}`);
+  }
+  if (!["IDENTITY", "ARRAY_WRAP", "AGGREGATE_SUM", "LOOKUP_SITE_LABEL"].includes(transform)) {
+    throw new Error(`unsupported transform reached browser contract: ${transform}`);
+  }
+  evidence.transforms[transform] = Number(evidence.transforms[transform] || 0) + 1;
+}
 
 async function login(user) {
   const api = await request.newContext({ baseURL, ignoreHTTPSErrors: true });
@@ -209,6 +237,7 @@ async function runProcess(definition, context) {
       if (expectedMapped.some((mapping) => !Object.hasOwn(mappedPayload, String(mapping.toField || "")))) {
         throw new Error("mapped payload missing contracted target " + previousRelayStep.processCode + "/" + previousRelayStep.stepCode);
       }
+      expectedMapped.forEach((mapping) => assertMappedTransform(mapping, sourcePayload, mappedPayload));
     }
     if (String(contract.actorCode) !== actor) throw new Error(`actor contract mismatch step=${stepCode}`);
     const fields = JSON.parse(String(contract.fieldContractJson || "[]"));

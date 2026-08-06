@@ -2007,13 +2007,11 @@ public class ActorProcessGovernanceService {
               left join lateral (
                 select jsonb_object_agg(
                          mapping->>'toField',
-                         case upper(coalesce(mapping->>'transform','IDENTITY'))
-                           when 'ARRAY_WRAP' then
-                             case when jsonb_typeof(draft.payload_json->(mapping->>'fromField'))='array'
-                                  then draft.payload_json->(mapping->>'fromField')
-                                  else jsonb_build_array(draft.payload_json->(mapping->>'fromField')) end
-                           else draft.payload_json->(mapping->>'fromField')
-                         end
+                         framework_apply_handoff_transform(
+                           mapping->>'transform',
+                           draft.payload_json->(mapping->>'fromField'),
+                           draft.tenant_id
+                         )
                        ) as payload
                   from jsonb_array_elements(coalesce(handoff.payload_contract->'fieldMappings','[]'::jsonb)) mapping
                  where jsonb_exists(draft.payload_json,mapping->>'fromField')
