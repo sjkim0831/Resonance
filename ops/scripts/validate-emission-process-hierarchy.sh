@@ -5,6 +5,8 @@ ROOT="${RESONANCE_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
 HIERARCHY="$ROOT/projects/carbonet-frontend/source/src/lib/workflow/emissionProcessHierarchy.ts"
 QUEST="$ROOT/projects/carbonet-frontend/source/src/features/task-quest/TaskQuestPanel.tsx"
 ASSIGNMENT="$ROOT/projects/carbonet-frontend/source/src/features/work-assignment/WorkAssignmentPage.tsx"
+ALIGNMENT_E2E="$ROOT/projects/carbonet-frontend/source/e2e/emission-workflow-alignment.spec.ts"
+SMOKE_RUNNER="$ROOT/projects/carbonet-frontend/source/scripts/run-full-screen-smoke.sh"
 
 require() { grep -Fq "$2" "$1" || { echo "missing hierarchy contract: $2" >&2; exit 1; }; }
 require "$HIERARCHY" 'EMISSION_END_TO_END_PROCESS_CODE = "EMISSION_PROJECT"'
@@ -25,6 +27,9 @@ require "$QUEST" 'setFocusedStepCode(step.stepCode)'
 require "$QUEST" '(data?.items || []).find('
 require "$ASSIGNMENT" 'isCustomerVisibleEmissionProcess(process.processCode)'
 require "$ASSIGNMENT" 'emissionPhaseLabel(step.stepCode,en)'
+require "$ALIGNMENT_E2E" 'EMISSION_PROJECT_SETUP'
+require "$ALIGNMENT_E2E" 'EMISSION_PROJECT_REPORT'
+require "$SMOKE_RUNNER" 'e2e/emission-workflow-alignment.spec.ts'
 
 if [[ "${SKIP_DATABASE_VALIDATION:-0}" != "1" && -f "$ROOT/ops/scripts/lib/carbonet-postgres-query.sh" ]]; then
   source "$ROOT/ops/scripts/lib/carbonet-postgres-query.sh"

@@ -95,7 +95,9 @@ printf '[full-screen-smoke] workers=%s cpu=%s load=%s memAvailableKb=%s\n' \
   "$(awk '/MemAvailable:/ {print $2}' /proc/meminfo 2>/dev/null || printf '?')"
 set +e
 PLAYWRIGHT_HOST_PLATFORM_OVERRIDE="${PLAYWRIGHT_HOST_PLATFORM_OVERRIDE:-ubuntu24.04-x64}" \
-  "${playwright_command[@]}" test e2e/full-screen-smoke.spec.ts \
+  "${playwright_command[@]}" test \
+  e2e/full-screen-smoke.spec.ts \
+  e2e/emission-workflow-alignment.spec.ts \
   --workers="$smoke_workers" \
   --retries="${FULL_SCREEN_SMOKE_RETRIES:-1}" \
   --reporter="${FULL_SCREEN_SMOKE_REPORTER:-list}"
