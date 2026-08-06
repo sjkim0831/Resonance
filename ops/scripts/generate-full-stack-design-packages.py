@@ -47,6 +47,13 @@ def validate_step(process: dict[str, Any], step: dict[str, Any]) -> None:
     for key in required_objects:
         if not isinstance(step.get(key), dict):
             fail(f"{identity}: {key} must be an object")
+    if step["input_contract"].get("contractType") != "STEP_INPUT" or not isinstance(step["input_contract"].get("schema"), dict):
+        fail(f"{identity}: input_contract must be a STEP_INPUT object")
+    if step["output_contract"].get("contractType") != "STEP_OUTPUT" or not isinstance(step["output_contract"].get("schema"), dict):
+        fail(f"{identity}: output_contract must be a STEP_OUTPUT object")
+    persistence_contract = step["persistence_contract"]
+    if persistence_contract.get("contractType") != "STEP_PERSISTENCE" or not isinstance(persistence_contract.get("policy"), dict) or not isinstance(persistence_contract.get("mappings"), list) or not isinstance(persistence_contract.get("extensions"), dict):
+        fail(f"{identity}: persistence_contract must be a STEP_PERSISTENCE object")
     for key in required_arrays:
         if not isinstance(step.get(key), list):
             fail(f"{identity}: {key} must be an array")
@@ -70,6 +77,34 @@ def normalize_step_contract(step: dict[str, Any]) -> dict[str, Any]:
     normalization only; it never invents fields, actions, or business rules.
     """
     normalized = copy.deepcopy(step)
+    for key, contract_type in (("input_contract", "STEP_INPUT"), ("output_contract", "STEP_OUTPUT")):
+        value = normalized.get(key)
+        if not isinstance(value, dict):
+            value = {}
+        if value.get("contractType") == contract_type and isinstance(value.get("schema"), dict):
+            normalized[key] = {"schemaVersion": 1, "contractType": contract_type, "schema": value["schema"]}
+        else:
+            normalized[key] = {"schemaVersion": 1, "contractType": contract_type, "schema": value}
+    persistence = normalized.get("persistence_contract")
+    if not isinstance(persistence, dict):
+        persistence = {}
+    if persistence.get("contractType") == "STEP_PERSISTENCE":
+        normalized["persistence_contract"] = {
+            "schemaVersion": 1, "contractType": "STEP_PERSISTENCE",
+            "schemaSetVersion": persistence.get("schemaSetVersion"),
+            "policy": persistence.get("policy") if isinstance(persistence.get("policy"), dict) else {},
+            "mappings": persistence.get("mappings") if isinstance(persistence.get("mappings"), list) else [],
+            "extensions": persistence.get("extensions") if isinstance(persistence.get("extensions"), dict) else {},
+        }
+    else:
+        policy_keys = {"transactional", "migrationRequired", "optimisticLock", "tenantIsolated", "projectIsolated"}
+        normalized["persistence_contract"] = {
+            "schemaVersion": 1, "contractType": "STEP_PERSISTENCE",
+            "schemaSetVersion": persistence.get("schemaSetVersion"),
+            "policy": {key: persistence[key] for key in policy_keys if key in persistence},
+            "mappings": persistence.get("mappings") if isinstance(persistence.get("mappings"), list) else [],
+            "extensions": {key: value for key, value in persistence.items() if key not in policy_keys | {"schemaSetVersion", "mappings"}},
+        }
     for key in ("command_contract", "api_contract", "test_contract", "blocker_codes"):
         value = normalized.get(key)
         if isinstance(value, dict):
@@ -193,7 +228,12 @@ def persistence_for_step(step: dict[str, Any]) -> dict[str, Any]:
     This default adds no domain meaning; it only declares the already selected
     COMMON_PROCESS_COMMAND_RUNTIME storage boundary.
     """
-    persistence = copy.deepcopy(step["persistence_contract"])
+    contract = step["persistence_contract"]
+    persistence = copy.deepcopy(contract.get("extensions", {}))
+    persistence.update(copy.deepcopy(contract.get("policy", {})))
+    persistence["mappings"] = copy.deepcopy(contract.get("mappings", []))
+    if contract.get("schemaSetVersion") is not None:
+        persistence["schemaSetVersion"] = contract["schemaSetVersion"]
     mappings = persistence.get("mappings")
     if isinstance(mappings, list) and not persistence.get("primaryEntities"):
         primary_entities = sorted({
@@ -289,8 +329,8 @@ def render_step(
         "step": {
             "code": step["step_code"], "version": step["spec_version"],
             "actor": step["actor_contract"], "business": step["business_contract"],
-            "transition": step["transition_contract"], "input": step["input_contract"],
-            "output": step["output_contract"], "guide": step["guide_contract"],
+            "transition": step["transition_contract"], "input": step["input_contract"]["schema"],
+            "output": step["output_contract"]["schema"], "guide": step["guide_contract"],
         },
         "frontend": {
             "renderer": "COMMON_SDUI_RUNTIME",

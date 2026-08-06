@@ -38,6 +38,17 @@ class GroupFieldsByAudienceTest(unittest.TestCase):
         self.assertEqual(normalized_transition["handoff_contract"]["policy"], {})
         self.assertEqual(normalized_transition["handoff_contract"]["transitions"], [transition])
 
+    def test_wraps_io_and_separates_persistence_policy(self) -> None:
+        normalized = GENERATOR.normalize_step_contract({
+            "input_contract": {"tenantId": "required"},
+            "output_contract": {"state": "COMPLETED"},
+            "persistence_contract": {"transactional": True, "mappings": [{"primaryEntity": "work"}]},
+        })
+        self.assertEqual(normalized["input_contract"]["schema"], {"tenantId": "required"})
+        self.assertEqual(normalized["output_contract"]["schema"], {"state": "COMPLETED"})
+        self.assertEqual(normalized["persistence_contract"]["policy"], {"transactional": True})
+        self.assertEqual(normalized["persistence_contract"]["mappings"], [{"primaryEntity": "work"}])
+
     def test_splits_catalog_group_using_nested_audiences(self) -> None:
         contract = [
             {
@@ -80,15 +91,14 @@ class GroupFieldsByAudienceTest(unittest.TestCase):
             "field_contract": {"schemaVersion": 1, "contractType": "STEP_FIELDS", "fields": [{"fieldCode": "projectId"}]},
             "command_contract": [{"commandCode": "SAVE"}],
             "api_contract": [{"declaredContract": "COMMON"}],
-            "persistence_contract": {
-                "transactional": True,
-                "migrationRequired": True,
-                "mappings": [
-                    {"audience": "USER", "primaryEntity": "emission_record"},
-                    {"audience": "ADMIN", "primaryEntity": "emission_record"},
-                    {"audience": "ADMIN", "primaryEntity": "emission_event"},
-                ],
-            },
+            "persistence_contract": {"schemaVersion": 1, "contractType": "STEP_PERSISTENCE", "policy": {
+                "transactional": True, "migrationRequired": True
+            }, "mappings": [
+                {"audience": "USER", "primaryEntity": "emission_record"},
+                {"audience": "ADMIN", "primaryEntity": "emission_record"},
+                {"audience": "ADMIN", "primaryEntity": "emission_event"},
+            ], "extensions": {
+            }},
         }
 
         persistence = GENERATOR.persistence_for_step(step)

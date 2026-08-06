@@ -91,7 +91,10 @@ WHERE contract.process_code=:'process_code'
       AND spec.test_contract NOT IN ('[]'::jsonb,'{}'::jsonb,'null'::jsonb)
       AND spec.screen_contract NOT IN ('[]'::jsonb,'{}'::jsonb,'null'::jsonb)
       AND spec.api_contract NOT IN ('[]'::jsonb,'{}'::jsonb,'null'::jsonb)
-      AND spec.persistence_contract NOT IN ('[]'::jsonb,'{}'::jsonb,'null'::jsonb)
+      AND spec.persistence_contract->>'contractType'='STEP_PERSISTENCE'
+      AND (spec.persistence_contract->'policy'<>'{}'::jsonb
+        OR jsonb_array_length(coalesce(spec.persistence_contract->'mappings','[]'::jsonb))>0
+        OR spec.persistence_contract->'extensions'<>'{}'::jsonb)
   )
   AND length(trim(contract.route_path))>0
   AND length(trim(contract.business_purpose))>0

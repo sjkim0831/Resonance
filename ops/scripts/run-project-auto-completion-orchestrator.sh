@@ -252,8 +252,10 @@ with candidate as (
     and e.actor_contract<>'{}'::jsonb
     and e.business_contract<>'{}'::jsonb
     and e.transition_contract<>'{}'::jsonb
-    and e.input_contract<>'{}'::jsonb
-    and e.output_contract<>'{}'::jsonb
+    and e.input_contract->>'contractType'='STEP_INPUT'
+    and e.input_contract->'schema'<>'{}'::jsonb
+    and e.output_contract->>'contractType'='STEP_OUTPUT'
+    and e.output_contract->'schema'<>'{}'::jsonb
     and jsonb_array_length(e.screen_contract)>0
     and jsonb_array_length(coalesce(e.field_contract->'fields','[]'::jsonb))>0
     and not exists (
@@ -263,7 +265,10 @@ with candidate as (
     )
     and jsonb_array_length(e.command_contract)>0
     and jsonb_array_length(e.api_contract)>0
-    and e.persistence_contract<>'{}'::jsonb
+    and e.persistence_contract->>'contractType'='STEP_PERSISTENCE'
+    and (e.persistence_contract->'policy'<>'{}'::jsonb
+      or jsonb_array_length(coalesce(e.persistence_contract->'mappings','[]'::jsonb))>0
+      or e.persistence_contract->'extensions'<>'{}'::jsonb)
     and (e.handoff_contract->'policy'<>'{}'::jsonb
       or jsonb_array_length(coalesce(e.handoff_contract->'transitions','[]'::jsonb))>0)
     and jsonb_array_length(e.test_contract)>0

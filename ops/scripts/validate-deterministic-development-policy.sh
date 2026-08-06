@@ -77,8 +77,10 @@ backend_only = {
     "command_contract": [{"commandCode": "WORK"}],
     "api_contract": [{"declaredContract": None}],
     "persistence_contract": {
-        "primaryEntities": [], "fieldMappings": [], "migrationRequired": True,
-        "transactional": True, "historyRequired": True,
+        "schemaVersion": 1, "contractType": "STEP_PERSISTENCE",
+        "policy": {"migrationRequired": True, "transactional": True},
+        "mappings": [],
+        "extensions": {"primaryEntities": [], "fieldMappings": [], "historyRequired": True},
     },
 }
 persistence = module.persistence_for_step(backend_only)
