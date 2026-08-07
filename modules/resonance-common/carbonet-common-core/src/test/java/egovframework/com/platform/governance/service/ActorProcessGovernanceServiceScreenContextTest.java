@@ -16,6 +16,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -95,6 +96,10 @@ class ActorProcessGovernanceServiceScreenContextTest {
         when(jdbc.queryForList(argThat(sql->sql!=null
                 &&sql.contains("distinct on (process_code,step_code,audience)")
                 &&sql.contains("coalesce(nullif(binding.actor_code,''),binding_step.actor_code)")
+                &&sql.contains("framework_menu_route_semantic_audit")
+                &&sql.contains("menu.verified_at is not null")
+                &&sql.contains("semantic.semantic_status in ('EXACT_STEP','SCREEN_CONTRACT')")
+                &&sql.contains("semantic.resolved_actor_code=menu.actor_code")
                 &&sql.contains("framework_step_capability_binding")),any(Object[].class)))
             .thenReturn(List.of(userCandidate,adminCandidate));
 
@@ -162,6 +167,58 @@ class ActorProcessGovernanceServiceScreenContextTest {
         assertEquals(1,((List<?>)context.get("candidates")).size());
     }
 
+    @Test
+    void keepsExecutableClassificationButMarksAnActorScopedRouteAsAccessRestricted(){
+        stubIdentity();
+        when(jdbc.queryForList(argThat(sql->sql!=null&&sql.contains("with candidate_source as")),any(Object[].class)))
+            .thenReturn(List.of(candidate("PROCESS_A","STEP_A",1)));
+
+        Map<String,Object> context=service.screenContext(
+            "/emission/workspace","","PROJECT-1","","","","USER","",Set.of("USER","PUBLIC"),
+            "ACCOUNT-WITHOUT-ACTOR","TENANT-1",false);
+
+        assertEquals("EXECUTABLE",context.get("classification"));
+        assertEquals("ACCESS_RESTRICTED",context.get("reasonCode"));
+        assertTrue((Boolean)context.get("accessRestricted"));
+        assertFalse((Boolean)context.get("linked"));
+        assertFalse((Boolean)context.get("selectionRequired"));
+        assertEquals(0,context.get("candidateCount"));
+    }
+
+    @Test
+    void turnsAnExecutablePolicyWithoutABindingIntoAReviewConflict(){
+        stubIdentity();
+        stubPolicy("EXECUTABLE","VERIFIED_ROUTE","AUTO_APPROVED");
+        when(jdbc.queryForList(argThat(sql->sql!=null&&sql.contains("with candidate_source as")),any(Object[].class)))
+            .thenReturn(List.of());
+
+        Map<String,Object> context=service.screenContext(
+            "/emission/workspace","","","","","","USER","",Set.of("USER","PUBLIC"),
+            "ACCOUNT-1","TENANT-1",true);
+
+        assertEquals("REVIEW_REQUIRED",context.get("classification"));
+        assertEquals("EXECUTABLE_BINDING_MISSING",context.get("reasonCode"));
+        assertEquals("CONFLICT",context.get("reviewStatus"));
+        assertFalse((Boolean)context.get("linked"));
+    }
+
+    @Test
+    void rejectsAnExecutableBindingWhenTheRoutePolicyIsInformational(){
+        stubIdentity();
+        stubPolicy("INFORMATIONAL","INFORMATION_ONLY","APPROVED");
+        when(jdbc.queryForList(argThat(sql->sql!=null&&sql.contains("with candidate_source as")),any(Object[].class)))
+            .thenReturn(List.of(candidate("PROCESS_A","STEP_A",1)));
+
+        Map<String,Object> context=service.screenContext(
+            "/emission/workspace","","","","","","USER","",Set.of("USER","PUBLIC"),
+            "ACCOUNT-1","TENANT-1",true);
+
+        assertEquals("REVIEW_REQUIRED",context.get("classification"));
+        assertEquals("POLICY_BINDING_CONFLICT",context.get("reasonCode"));
+        assertEquals("CONFLICT",context.get("reviewStatus"));
+        assertFalse((Boolean)context.get("linked"));
+    }
+
     private void stubAllowedActors(String... actorCodes){
         when(jdbc.queryForList(argThat(sql->sql!=null
                 &&sql.contains("from framework_account_actor_assignment")
@@ -171,6 +228,17 @@ class ActorProcessGovernanceServiceScreenContextTest {
             .thenReturn(java.util.Arrays.stream(actorCodes)
                 .map(actorCode->Map.<String,Object>of("actorCode",actorCode))
                 .toList());
+    }
+
+    private void stubPolicy(String classification,String reasonCode,String reviewStatus){
+        when(jdbc.queryForObject(argThat(sql->sql!=null&&sql.contains("to_regclass('public.framework_screen_workflow_policy')")),eq(Boolean.class)))
+            .thenReturn(true);
+        when(jdbc.queryForList(argThat(sql->sql!=null&&sql.contains("from framework_screen_workflow_policy")),any(Object[].class)))
+            .thenReturn(List.of(Map.of(
+                "classification",classification,
+                "reasonCode",reasonCode,
+                "reasonText","정책 설명",
+                "reviewStatus",reviewStatus)));
     }
 
     private void stubIdentity(){
@@ -195,6 +263,7 @@ class ActorProcessGovernanceServiceScreenContextTest {
         row.put("inputContract","{}");row.put("outputContract","{}");
         row.put("userPath","/emission/workspace");row.put("adminPath","/admin/hidden");
         row.put("automationStatus","VERIFIED");row.put("audience","USER");row.put("entryMode","PRIMARY");
+        row.put("resolutionSource","SCREEN_BINDING");
         return row;
     }
 }

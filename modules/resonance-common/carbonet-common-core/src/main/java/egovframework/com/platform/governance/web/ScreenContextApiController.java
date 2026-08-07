@@ -35,11 +35,16 @@ public class ScreenContextApiController {
                                   HttpServletRequest request){
         try{
             var context=currentUserContextService.resolve(request);
+            String requestedAudience=audience==null?"":audience.trim().toUpperCase(Locale.ROOT);
             if(!context.isAuthenticated()){
+                if(isAnonymousPublicJoinRequest(routePath,requestedAudience)){
+                    return ResponseEntity.ok(service.screenContext(
+                        routePath,pageId,"",processCode,stepCode,actorCode,"PUBLIC",capabilityCode,
+                        Set.of("PUBLIC"),"","",true));
+                }
                 return ResponseEntity.status(401).body(Map.of("success",false,"message","AUTHENTICATION_REQUIRED"));
             }
             boolean adminAudienceAllowed=canReadAdminAudience(context);
-            String requestedAudience=audience==null?"":audience.trim().toUpperCase(Locale.ROOT);
             if("ADMIN".equals(requestedAudience)&&!adminAudienceAllowed){
                 return ResponseEntity.status(403).body(Map.of(
                     "success",false,"message","SCREEN_CONTEXT_AUDIENCE_FORBIDDEN"));
@@ -62,5 +67,14 @@ public class ScreenContextApiController {
         String author=context.getAuthorCode()==null?"":context.getAuthorCode().trim().toUpperCase(Locale.ROOT);
         if(author.startsWith("ROLE_"))author=author.substring("ROLE_".length());
         return ADMIN_AUTHOR_CODES.contains(author);
+    }
+
+    static boolean isAnonymousPublicJoinRequest(String routePath,String audience){
+        if(!"PUBLIC".equalsIgnoreCase(audience))return false;
+        String route=routePath==null?"":routePath.trim().split("\\?",2)[0].toLowerCase(Locale.ROOT);
+        String canonicalRoute=route.startsWith("/en/")?route.substring(3):route;
+        if(!canonicalRoute.startsWith("/join/"))return false;
+        return Set.of("/login","/signin","/find","/password","/print").stream()
+            .noneMatch(canonicalRoute::contains);
     }
 }

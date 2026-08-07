@@ -3315,7 +3315,7 @@ public class ActorProcessGovernanceService {
             with candidate_source as (
               select binding.process_code,binding.step_code,binding.audience,binding.entry_mode,
                      coalesce(nullif(binding.actor_code,''),binding_step.actor_code) as actor_code,
-                     0 as source_rank
+                     0 as source_rank,'SCREEN_BINDING'::varchar as resolution_source
                 from framework_process_step_screen_binding binding
                 join framework_process_step binding_step
                   on binding_step.process_code=binding.process_code and binding_step.step_code=binding.step_code
@@ -3325,21 +3325,28 @@ public class ActorProcessGovernanceService {
                      case when lower(split_part(coalesce(step.admin_path,''),'?',1))=?
                                 and lower(split_part(coalesce(step.user_path,''),'?',1))<>?
                           then 'ADMIN' else 'USER' end as audience,
-                     'PRIMARY' as entry_mode,step.actor_code,1 as source_rank
+                     'PRIMARY' as entry_mode,step.actor_code,1 as source_rank,
+                     'STEP_PATH'::varchar as resolution_source
                 from framework_process_step step
                where lower(split_part(coalesce(step.user_path,''),'?',1))=?
                   or lower(split_part(coalesce(step.admin_path,''),'?',1))=?
               union all
               select step.process_code,step.step_code,menu.audience,'PRIMARY' as entry_mode,
-                     step.actor_code,2 as source_rank
+                     step.actor_code,2 as source_rank,'MENU_SEMANTIC'::varchar as resolution_source
                 from framework_process_menu_binding menu
+                join framework_menu_route_semantic_audit semantic on semantic.menu_code=menu.menu_code
                 join framework_process_step step on step.process_code=menu.process_code
-                 and (menu.step_code=step.step_code or nullif(menu.step_code,'') is null)
+                 and menu.step_code=step.step_code
                where menu.binding_status='ACTIVE'
+                 and menu.verified_at is not null
+                 and semantic.semantic_status in ('EXACT_STEP','SCREEN_CONTRACT')
+                 and semantic.resolved_process_code=menu.process_code
+                 and semantic.resolved_step_code=menu.step_code
+                 and semantic.resolved_actor_code=menu.actor_code
                  and lower(split_part(coalesce(menu.menu_url,''),'?',1))=?
             ), candidates as (
               select distinct on (process_code,step_code,audience)
-                     process_code,step_code,audience,entry_mode,actor_code
+                     process_code,step_code,audience,entry_mode,actor_code,resolution_source
                 from candidate_source
                order by process_code,step_code,audience,source_rank,
                         case entry_mode when 'PRIMARY' then 0 else 1 end,
@@ -3355,16 +3362,31 @@ public class ActorProcessGovernanceService {
                    step.input_contract as "inputContract",step.output_contract as "outputContract",
                    coalesce(nullif(step.user_path,''),(
                      select menu.menu_url from framework_process_menu_binding menu
+                     join framework_menu_route_semantic_audit semantic on semantic.menu_code=menu.menu_code
                       where menu.process_code=step.process_code and menu.audience='USER'
                         and menu.binding_status='ACTIVE'
+                        and menu.verified_at is not null
+                        and menu.step_code=step.step_code
+                        and semantic.semantic_status in ('EXACT_STEP','SCREEN_CONTRACT')
+                        and semantic.resolved_process_code=menu.process_code
+                        and semantic.resolved_step_code=menu.step_code
+                        and semantic.resolved_actor_code=menu.actor_code
                       order by (menu.step_code=step.step_code) desc,menu.menu_code limit 1),'') as "userPath",
                    coalesce(nullif(step.admin_path,''),(
                      select menu.menu_url from framework_process_menu_binding menu
+                     join framework_menu_route_semantic_audit semantic on semantic.menu_code=menu.menu_code
                       where menu.process_code=step.process_code and menu.audience='ADMIN'
                         and menu.binding_status='ACTIVE'
+                        and menu.verified_at is not null
+                        and menu.step_code=step.step_code
+                        and semantic.semantic_status in ('EXACT_STEP','SCREEN_CONTRACT')
+                        and semantic.resolved_process_code=menu.process_code
+                        and semantic.resolved_step_code=menu.step_code
+                        and semantic.resolved_actor_code=menu.actor_code
                       order by (menu.step_code=step.step_code) desc,menu.menu_code limit 1),'') as "adminPath",
                    step.automation_status as "automationStatus",
-                   candidates.audience,candidates.entry_mode as "entryMode"
+                   candidates.audience,candidates.entry_mode as "entryMode",
+                   candidates.resolution_source as "resolutionSource"
               from candidates
               join framework_process_step step using(process_code,step_code)
               join framework_process_definition process using(process_code)
@@ -3385,7 +3407,8 @@ public class ActorProcessGovernanceService {
             """,screenId,resolvedRoute,resolvedRoute,resolvedRoute,resolvedRoute,resolvedRoute,
                 requestedCapability,screenId,requestedCapability);
 
-        candidates=candidates.stream()
+        List<Map<String,Object>> resolvedCandidates=candidates;
+        List<Map<String,Object>> audienceCandidates=resolvedCandidates.stream()
             .map(candidate->{
                 Map<String,Object> scoped=new LinkedHashMap<>(candidate);
                 String candidateAudience=String.valueOf(scoped.get("audience")).toUpperCase(Locale.ROOT);
@@ -3395,9 +3418,42 @@ public class ActorProcessGovernanceService {
             })
             .filter(candidate->audienceScope.contains(
                 String.valueOf(candidate.get("audience")).toUpperCase(Locale.ROOT)))
+            .toList();
+        candidates=audienceCandidates.stream()
             .filter(candidate->unrestrictedActors||actorScope.contains(
                 String.valueOf(candidate.get("actorCode")).toUpperCase(Locale.ROOT)))
             .toList();
+
+        boolean accessRestricted=!unrestrictedActors&&!audienceCandidates.isEmpty()&&candidates.isEmpty();
+        Map<String,Object> policy=loadScreenWorkflowPolicy(resolvedRoute);
+        boolean policyDefined=!policy.isEmpty();
+        boolean hasBinding=!resolvedCandidates.isEmpty();
+        String classification=policyDefined
+            ?String.valueOf(policy.getOrDefault("classification","REVIEW_REQUIRED")).trim().toUpperCase(Locale.ROOT)
+            :(hasBinding?"EXECUTABLE":"REVIEW_REQUIRED");
+        String reasonCode=policyDefined
+            ?String.valueOf(policy.getOrDefault("reasonCode","")).trim()
+            :(hasBinding?"BINDING_RESOLVED":"WORKFLOW_POLICY_UNDEFINED");
+        String reasonText=policyDefined
+            ?String.valueOf(policy.getOrDefault("reasonText","")).trim()
+            :(hasBinding?"검증된 화면 업무 연결 후보가 존재합니다.":"화면 업무 정책과 실행 가능한 연결 후보가 없습니다.");
+        String reviewStatus=policyDefined
+            ?String.valueOf(policy.getOrDefault("reviewStatus","PENDING")).trim().toUpperCase(Locale.ROOT)
+            :(hasBinding?"AUTO_APPROVED":"PENDING");
+        if("EXECUTABLE".equals(classification)&&!hasBinding){
+            classification="REVIEW_REQUIRED";
+            reasonCode="EXECUTABLE_BINDING_MISSING";
+            reasonText="실행 가능 화면 정책에 대응하는 검증된 프로세스·단계 연결이 없습니다.";
+            reviewStatus="CONFLICT";
+        }else if(Set.of("INFORMATIONAL","EXCLUDED").contains(classification)&&hasBinding){
+            classification="REVIEW_REQUIRED";
+            reasonCode="POLICY_BINDING_CONFLICT";
+            reasonText="비실행 화면 정책과 실행 가능한 프로세스·단계 연결이 동시에 존재합니다.";
+            reviewStatus="CONFLICT";
+        }else if(accessRestricted&&"EXECUTABLE".equals(classification)){
+            reasonCode="ACCESS_RESTRICTED";
+            reasonText="화면 업무는 실행 가능하지만 현재 계정에 배정된 액터 범위에는 포함되지 않습니다.";
+        }
 
         List<Map<String,Object>> matching=candidates.stream()
             .filter(candidate->requestedProcess.isBlank()||requestedProcess.equals(String.valueOf(candidate.get("processCode")).toUpperCase(Locale.ROOT)))
@@ -3405,7 +3461,8 @@ public class ActorProcessGovernanceService {
             .filter(candidate->requestedActor.isBlank()||requestedActor.equals(String.valueOf(candidate.get("actorCode")).toUpperCase(Locale.ROOT)))
             .filter(candidate->requestedAudience.isBlank()||requestedAudience.equals(String.valueOf(candidate.get("audience")).toUpperCase(Locale.ROOT)))
             .toList();
-        Map<String,Object> workflow=matching.size()==1?new LinkedHashMap<>(matching.get(0)):null;
+        Map<String,Object> workflow="EXECUTABLE".equals(classification)&&matching.size()==1
+            ?new LinkedHashMap<>(matching.get(0)):null;
         identity.put("audience",workflow!=null?workflow.getOrDefault("audience",""):requestedAudience);
 
         Map<String,Object> result=new LinkedHashMap<>();
@@ -3414,8 +3471,29 @@ public class ActorProcessGovernanceService {
         result.put("workflow",workflow);
         result.put("candidates",candidates);
         result.put("candidateCount",candidates.size());
-        result.put("selectionRequired",workflow==null&&!candidates.isEmpty());
+        result.put("selectionRequired","EXECUTABLE".equals(classification)&&!accessRestricted
+            &&workflow==null&&!candidates.isEmpty());
+        result.put("classification",classification);
+        result.put("reasonCode",reasonCode);
+        result.put("reasonText",reasonText);
+        result.put("reviewStatus",reviewStatus);
+        result.put("accessRestricted",accessRestricted);
         return result;
+    }
+
+    private Map<String,Object> loadScreenWorkflowPolicy(String route){
+        if(route==null||route.isBlank())return Map.of();
+        Boolean available=jdbc.queryForObject(
+            "select to_regclass('public.framework_screen_workflow_policy') is not null",Boolean.class);
+        if(!Boolean.TRUE.equals(available))return Map.of();
+        List<Map<String,Object>> policies=jdbc.queryForList("""
+            select classification,reason_code as "reasonCode",reason_text as "reasonText",
+                   source,review_status as "reviewStatus",reviewed_by as "reviewedBy",
+                   reviewed_at as "reviewedAt",updated_at as "updatedAt"
+              from framework_screen_workflow_policy
+             where route_key=?
+            """,route);
+        return policies.isEmpty()?Map.of():new LinkedHashMap<>(policies.get(0));
     }
 
     static String canonicalScreenContextRoute(String value){
