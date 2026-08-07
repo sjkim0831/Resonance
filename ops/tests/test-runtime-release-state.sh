@@ -67,6 +67,15 @@ if [[ "$args" == *" exec -i $POSTGRES_POD "* ]]; then
     exit 90
   fi
 elif [[ "$args" == *" get deployment/carbonet-runtime -o json "* ]]; then
+  if [[ -n "${BECOME_READY_AFTER:-}" ]]; then
+    counter_file="$FIXTURE_DIR/deployment-get-count"
+    count="$(( $(cat "$counter_file" 2>/dev/null || printf '0') + 1 ))"
+    printf '%s\n' "$count" >"$counter_file"
+    if (( count >= BECOME_READY_AFTER )); then
+      jq '.status.readyReplicas=2 | .status.availableReplicas=2 | .status.unavailableReplicas=0' "$FIXTURE_DIR/deployment.json" >"$FIXTURE_DIR/deployment.tmp"
+      mv "$FIXTURE_DIR/deployment.tmp" "$FIXTURE_DIR/deployment.json"
+    fi
+  fi
   cat "$FIXTURE_DIR/deployment.json"
 elif [[ "$args" == *" annotate deployment/carbonet-runtime "* ]]; then
   [[ "${FAIL_ANNOTATE:-false}" != "true" ]] || exit 41
@@ -96,6 +105,8 @@ export CARBONET_RUNTIME_LEDGER_KUBECTL_BIN="$TMP/bin/kubectl"
 export CARBONET_K8S_NAMESPACE=carbonet-test
 export CARBONET_K8S_DEPLOYMENT=carbonet-runtime
 export CARBONET_K8S_CONTAINER=carbonet-runtime
+export CARBONET_RUNTIME_LEDGER_READY_ATTEMPTS=1
+export CARBONET_RUNTIME_LEDGER_READY_DELAY_SECONDS=0
 
 bash "$HELPER" "$target_commit" >/dev/null
 [[ "$(jq -r '.metadata.annotations["resonance.ai/target-commit"]' "$TMP/fixtures/deployment.json")" == "$target_commit" ]]
@@ -103,6 +114,17 @@ bash "$HELPER" "$target_commit" >/dev/null
 [[ "$(jq -r '.desiredReplicas' "$TMP/fixtures/ledger.json")" == "2" ]]
 [[ "$(jq -r '.imageId' "$TMP/fixtures/ledger.json")" == "$image_id" ]]
 
+
+write_deployment 1 "$old_commit"
+write_old_ledger
+rm -f "$TMP/fixtures/deployment-get-count"
+export BECOME_READY_AFTER=2
+export CARBONET_RUNTIME_LEDGER_READY_ATTEMPTS=3
+bash "$HELPER" "$target_commit" >/dev/null
+unset BECOME_READY_AFTER
+export CARBONET_RUNTIME_LEDGER_READY_ATTEMPTS=1
+[[ "$(cat "$TMP/fixtures/deployment-get-count")" == "3" ]]
+[[ "$(jq -r '.sourceCommit' "$TMP/fixtures/ledger.json")" == "$target_commit" ]]
 write_deployment 2 "$old_commit"
 write_old_ledger
 set +e
@@ -137,4 +159,4 @@ write_pods
 bash "$HELPER" --invalidate >/dev/null
 [[ ! -s "$TMP/fixtures/ledger.json" ]] || { echo 'explicit invalidation retained the ledger' >&2; exit 1; }
 
-echo '[runtime-release-state-test] PASS ready=recorded replicas=exact imageID=single-digest annotation-failure=invalidated unready=preserved explicit-invalidate=cleared'
+echo '[runtime-release-state-test] PASS ready=recorded transient-unready=retried replicas=exact imageID=single-digest annotation-failure=invalidated unready=preserved explicit-invalidate=cleared'

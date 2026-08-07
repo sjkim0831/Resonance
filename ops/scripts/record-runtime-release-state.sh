@@ -11,9 +11,16 @@ DB_CONTAINER="${CARBONET_POSTGRES_CONTAINER:-patroni}"
 KUBECTL_BIN="${CARBONET_RUNTIME_LEDGER_KUBECTL_BIN:-kubectl}"
 RECORDED_BY="${CARBONET_RUNTIME_LEDGER_RECORDED_BY:-auto-deploy-main}"
 ACTION="${1:-}"
+ROLLOUT_READY_ATTEMPTS="${CARBONET_RUNTIME_LEDGER_READY_ATTEMPTS:-11}"
+ROLLOUT_READY_DELAY_SECONDS="${CARBONET_RUNTIME_LEDGER_READY_DELAY_SECONDS:-2}"
 
 log() { printf '[runtime-release-state] %s\n' "$*"; }
 fail() { log "FAIL $*" >&2; exit 1; }
+[[ "$ROLLOUT_READY_ATTEMPTS" =~ ^[1-9][0-9]*$ ]] ||
+  fail "ready attempts must be a positive integer"
+[[ "$ROLLOUT_READY_DELAY_SECONDS" =~ ^[0-9]+$ ]] ||
+  fail "ready delay seconds must be a non-negative integer"
+
 
 if [[ -z "${POSTGRES_POD:-}" ]]; then
   POSTGRES_POD="$(K8S_NAMESPACE="$NAMESPACE" bash "$ROOT/ops/scripts/resolve-patroni-primary-pod.sh")"
@@ -41,10 +48,8 @@ fi
 TARGET_COMMIT="$ACTION"
 [[ "$TARGET_COMMIT" =~ ^[0-9a-f]{40}$ ]] || fail "target commit must be exactly 40 lowercase hexadecimal characters"
 
-deployment_json="$($KUBECTL_BIN -n "$NAMESPACE" get "deployment/$DEPLOYMENT" -o json)" ||
-  fail "deployment cannot be read"
 
-validate_rollout() {
+rollout_ready() {
   local value="$1"
   jq -e --arg container "$CONTAINER" '
     (.metadata.uid | type=="string" and length>0) and
@@ -55,10 +60,25 @@ validate_rollout() {
     ((.status.availableReplicas // 0) == (.spec.replicas // 0)) and
     ((.status.unavailableReplicas // 0) == 0) and
     (any(.spec.template.spec.containers[]?; .name==$container and (.image | type=="string" and length>0)))
-  ' <<<"$value" >/dev/null || fail "deployment rollout is not fully observed and ready"
+  ' <<<"$value" >/dev/null
 }
 
-validate_rollout "$deployment_json"
+validate_rollout() {
+  rollout_ready "$1" || fail "deployment rollout is not fully observed and ready"
+}
+
+deployment_json=""
+for ((rollout_attempt=1; rollout_attempt<=ROLLOUT_READY_ATTEMPTS; rollout_attempt++)); do
+  if deployment_json="$($KUBECTL_BIN -n "$NAMESPACE" get "deployment/$DEPLOYMENT" -o json)" &&
+     rollout_ready "$deployment_json"; then
+    break
+  fi
+  if (( rollout_attempt == ROLLOUT_READY_ATTEMPTS )); then
+    fail "deployment rollout is not fully observed and ready after ${ROLLOUT_READY_ATTEMPTS} attempts"
+  fi
+  log "WAIT rollout not ready attempt=${rollout_attempt}/${ROLLOUT_READY_ATTEMPTS} retry_in=${ROLLOUT_READY_DELAY_SECONDS}s"
+  sleep "$ROLLOUT_READY_DELAY_SECONDS"
+done
 
 # Clear the prior identity before touching Kubernetes.  Every later failure is
 # therefore visible to readers as RUNTIME_COMMIT_UNAVAILABLE instead of
