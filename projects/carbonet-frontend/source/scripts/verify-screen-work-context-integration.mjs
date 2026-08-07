@@ -24,6 +24,16 @@ expect(
   "App must mount exactly one TaskQuestPanel.",
 );
 expect(
+  !task.includes("if (!open || !qaOpen)") &&
+    task.includes("function toggle()") &&
+    task.includes("if (next) {") &&
+    task.includes("function openQaPanel()") &&
+    task.includes("setOpen(false);") &&
+    task.includes("setQaOpen(true);") &&
+    task.includes('localStorage.setItem("process-qa-card-open", "1")'),
+  "Task guide and QA card must rely on their atomic open handlers without a cross-closing effect race.",
+);
+expect(
   !shell.includes("TaskQuestPanel"),
   "GlobalUserGnbShell must not mount a duplicate TaskQuestPanel.",
 );

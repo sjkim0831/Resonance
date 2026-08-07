@@ -627,12 +627,6 @@ export function TaskQuestPanel({
   const [assignmentBusy, setAssignmentBusy] = useState(false);
   const [assignmentMessage, setAssignmentMessage] = useState("");
 
-  useEffect(() => {
-    if (!open || !qaOpen) return;
-    setQaOpen(false);
-    localStorage.setItem("process-qa-card-open", "0");
-  }, [open, qaOpen]);
-
   async function load() {
     try {
       const response = await fetch(api, { credentials: "include" });
