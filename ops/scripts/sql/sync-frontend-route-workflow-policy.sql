@@ -137,7 +137,9 @@ WITH runtime_candidates AS (
            '/emission/deadline-status','/emission/project-completion',
            '/emission/project/progress','/emission/lci','/emission/lca',
            '/monitoring/index','/monitoring/dashboard','/monitoring/realtime',
-           '/monitoring/alerts','/monitoring/reduction_trend','/monitoring/track'
+           '/monitoring/alerts','/monitoring/reduction_trend','/monitoring/track',
+           '/sitemap','/support/index','/support/faq','/certificate/index',
+           '/co2/index'
          ]) AS intentional_informational,
          (SELECT count(DISTINCT (candidate.process_code,candidate.step_code,
                                  candidate.audience,candidate.actor_code))
@@ -458,7 +460,7 @@ BEGIN
   -- informational/auth exclusions. REVIEW_REQUIRED may grow when unsafe
   -- fallback evidence is removed, so its current count is reported, not hidden.
   IF canonical_count=1054 AND (
-       deterministic_count<>34 OR informational_count<>29
+       deterministic_count<>34 OR informational_count<>34
        OR excluded_count<>10) THEN
     RAISE EXCEPTION
       'accepted route classification drift deterministic=% informational=% excluded=% review=%',

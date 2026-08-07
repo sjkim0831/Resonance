@@ -17,8 +17,8 @@ mapfile -t informational_routes < <(
     | tr -d "'"
 )
 
-[[ "${#informational_routes[@]}" -eq 29 ]] \
-  || fail "expected 29 informational routes, got ${#informational_routes[@]}"
+[[ "${#informational_routes[@]}" -eq 34 ]] \
+  || fail "expected 34 informational routes, got ${#informational_routes[@]}"
 
 duplicates="$(printf '%s\n' "${informational_routes[@]}" | sort | uniq -d)"
 [[ -z "$duplicates" ]] || fail "duplicate informational routes: $duplicates"
@@ -39,6 +39,11 @@ expected_source_audited_routes=(
   /monitoring/alerts
   /monitoring/reduction_trend
   /monitoring/track
+  /sitemap
+  /support/index
+  /support/faq
+  /certificate/index
+  /co2/index
 )
 
 for route in "${expected_source_audited_routes[@]}"; do
@@ -46,11 +51,11 @@ for route in "${expected_source_audited_routes[@]}"; do
   [[ "$count" -eq 1 ]] || fail "$route is not represented exactly once"
 done
 
-grep -Fq 'informational_count<>29' "$SQL" \
+grep -Fq 'informational_count<>34' "$SQL" \
   || fail "classification drift guard is not synchronized"
 grep -Fq 'fallbackReviewPromoted' "$SQL" \
   || fail "fail-closed audit evidence is missing"
 grep -Fq "WHEN classification='REVIEW_REQUIRED' THEN 'PENDING'" "$SQL" \
   || fail "review-required routes are no longer fail-closed"
 
-echo "[frontend-route-policy-test] PASS informational=29 source-audited=15 duplicates=0"
+echo "[frontend-route-policy-test] PASS informational=34 source-audited=20 duplicates=0"
