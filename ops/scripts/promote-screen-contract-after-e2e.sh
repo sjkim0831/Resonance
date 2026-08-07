@@ -274,7 +274,7 @@ INSERT INTO framework_screen_workflow_policy(
 )
 SELECT DISTINCT resource.route_key,'EXECUTABLE','RUNTIME_WORKFLOW_RESOLVED',
   '현재 배포 계약의 BUSINESS_E2E를 통과한 정확한 공개 화면 바인딩이 확인되었습니다.',
-  'CONTRACT_E2E_PROMOTER','AUTO_APPROVED',NULL,NULL,current_timestamp,current_timestamp
+  'CONTRACT_E2E_PROMOTER','AUTO_APPROVED',NULL,NULL::timestamp without time zone,current_timestamp,current_timestamp
 FROM framework_process_step_screen_binding binding
 JOIN framework_screen_resource resource USING(screen_resource_id)
 JOIN framework_professional_screen_contract contract

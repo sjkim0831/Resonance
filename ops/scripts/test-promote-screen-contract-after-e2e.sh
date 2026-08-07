@@ -104,6 +104,8 @@ assert(source.includes('INSERT INTO framework_screen_workflow_policy('),
   'PUBLIC promotion does not close the route policy atomically');
 assert(source.includes("'EXECUTABLE','RUNTIME_WORKFLOW_RESOLVED'"),
   'promoted route policy is not executable runtime evidence');
+assert(source.includes("'AUTO_APPROVED',NULL,NULL::timestamp without time zone,current_timestamp,current_timestamp"),
+  'DISTINCT route-policy projection must preserve the reviewed_at timestamp type');
 assert(source.includes("framework_screen_workflow_policy.reason_code='MISSING_WORKFLOW_EVIDENCE'"),
   'stale pre-promotion policy guard missing');
 assert(source.includes("framework_screen_workflow_policy.review_status='PENDING'"),
@@ -144,6 +146,7 @@ const policyContractValid = (candidate) => [
   "framework_screen_workflow_policy.review_status='AUTO_APPROVED'",
   'framework_screen_workflow_policy.reviewed_by IS NULL',
   'framework_screen_workflow_policy.reviewed_at IS NULL',
+  "'AUTO_APPROVED',NULL,NULL::timestamp without time zone,current_timestamp,current_timestamp",
   'executable_policy_count<>public_contract_count',
 ].every((token) => candidate.includes(token));
 for (const [name, mutated] of [
@@ -153,7 +156,8 @@ for (const [name, mutated] of [
   ['human-status-preservation', source.replace("framework_screen_workflow_policy.review_status='AUTO_APPROVED'", "framework_screen_workflow_policy.review_status IN ('AUTO_APPROVED','APPROVED','REJECTED')")],
   ['human-reviewer-preservation', source.replace('framework_screen_workflow_policy.reviewed_by IS NULL', 'framework_screen_workflow_policy.reviewed_by IS NOT NULL')],
   ['human-reviewed-at-preservation', source.replace('framework_screen_workflow_policy.reviewed_at IS NULL', 'framework_screen_workflow_policy.reviewed_at IS NOT NULL')],
+  ['reviewed-at-type', source.replace('NULL::timestamp without time zone,current_timestamp,current_timestamp', 'NULL,current_timestamp,current_timestamp')],
   ['count-closure', source.replace('executable_policy_count<>public_contract_count', 'executable_policy_count<0')],
 ]) assert(!policyContractValid(mutated), `route-policy mutation escaped: ${name}`);
 NODE
-echo "[contract-e2e-promoter] PASS publicBinding=draft-to-active exactRoute=guarded policy=atomic humanReview=preserved mutations=7"
+echo "[contract-e2e-promoter] PASS publicBinding=draft-to-active exactRoute=guarded policy=atomic humanReview=preserved reviewedAt=typed mutations=8"
