@@ -2627,7 +2627,7 @@ export function TaskQuestPanel({
           </div>
         )}
       </aside>
-      <aside className={`fixed z-[951] ${qaOpen || !open ? "right-3 top-1/2 -translate-y-1/2 sm:right-5 lg:right-8" : "bottom-3 left-3 right-auto top-auto translate-y-0 sm:bottom-5 sm:left-5 lg:bottom-auto lg:left-auto lg:right-[25.5rem] lg:top-[6.75rem]"}`} data-process-qa-card="" data-utility-panel-state={qaOpen ? "open" : "closed"}>
+      <aside className={`fixed z-[1260] ${qaOpen ? "right-3 top-1/2 -translate-y-1/2 sm:right-5 lg:right-8" : "bottom-20 left-3 right-auto top-auto translate-y-0 sm:left-5"}`} data-process-qa-card="" data-utility-panel-state={qaOpen ? "open" : "closed"}>
         {!qaOpen ? <button className="flex min-h-12 items-center gap-2 rounded-full border border-emerald-700 bg-white px-4 py-2 font-bold text-emerald-800 shadow-lg" onClick={openQaPanel} type="button"><span className="material-symbols-outlined">fact_check</span>{en ? "QA workflow" : "QA 업무"}</button> :
           <section className="w-[calc(100vw-1.5rem)] max-w-[36rem] overflow-hidden rounded-2xl border border-emerald-200 bg-white shadow-2xl">
             <header className="flex items-center justify-between bg-emerald-800 px-4 py-3 text-white"><div className="flex items-center gap-2"><span className="material-symbols-outlined">fact_check</span><strong>{en ? "QA workflow runner" : "QA 업무 실행"}</strong></div><button aria-label={en ? "Close" : "닫기"} onClick={() => { setQaOpen(false); localStorage.setItem("process-qa-card-open", "0"); }} type="button"><span className="material-symbols-outlined">close</span></button></header>

@@ -34,11 +34,10 @@ expect(
   "Task guide and QA card must rely on their atomic open handlers without a cross-closing effect race.",
 );
 expect(
-  task.includes('fixed z-[951] ${qaOpen || !open ?') &&
-    task.includes('bottom-3 left-3 right-auto top-auto translate-y-0') &&
-    task.includes('lg:right-[25.5rem] lg:top-[6.75rem]') &&
+  task.includes('fixed z-[1260] ${qaOpen ?') &&
+    task.includes('bottom-20 left-3 right-auto top-auto translate-y-0 sm:left-5') &&
     task.includes('right-3 top-1/2 -translate-y-1/2 sm:right-5 lg:right-8'),
-  "The closed QA launcher must stay clickable beside the open task guide on desktop and at bottom-left on mobile.",
+  "The closed QA launcher must stay clickable above Help at bottom-left, and the open QA panel must stay above the design panel.",
 );
 expect(
   !shell.includes("TaskQuestPanel"),
