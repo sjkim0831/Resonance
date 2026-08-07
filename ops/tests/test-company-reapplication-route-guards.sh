@@ -7,19 +7,21 @@ MAPPER_TEST="$ROOT/modules/resonance-common/carbonet-common-core/src/test/java/e
 BROWSER="$ROOT/ops/scripts/validate-company-reapplication-browser.mjs"
 TASK_PANEL="$ROOT/projects/carbonet-frontend/source/src/features/task-quest/TaskQuestPanel.tsx"
 NOTE_PANEL="$ROOT/projects/carbonet-frontend/source/src/features/screen-development-note/ScreenDevelopmentNotePanel.tsx"
+REAPPLY_PAGE="$ROOT/projects/carbonet-frontend/source/src/features/join-company-reapply/JoinCompanyReapplyMigrationPage.tsx"
 
-for file in "$MAPPER" "$MAPPER_TEST" "$BROWSER" "$TASK_PANEL" "$NOTE_PANEL"; do
+for file in "$MAPPER" "$MAPPER_TEST" "$BROWSER" "$TASK_PANEL" "$NOTE_PANEL" "$REAPPLY_PAGE"; do
   [[ -f "$file" ]] || { echo "[company-reapplication-route-guards] missing $file" >&2; exit 1; }
 done
 
-node - "$MAPPER" "$MAPPER_TEST" "$BROWSER" "$TASK_PANEL" "$NOTE_PANEL" <<'NODE'
+node - "$MAPPER" "$MAPPER_TEST" "$BROWSER" "$TASK_PANEL" "$NOTE_PANEL" "$REAPPLY_PAGE" <<'NODE'
 const fs=require("node:fs");
-const [mapperPath,mapperTestPath,browserPath,taskPath,notePath]=process.argv.slice(2);
+const [mapperPath,mapperTestPath,browserPath,taskPath,notePath,reapplyPagePath]=process.argv.slice(2);
 const mapper=fs.readFileSync(mapperPath,"utf8");
 const mapperTest=fs.readFileSync(mapperTestPath,"utf8");
 const browser=fs.readFileSync(browserPath,"utf8");
 const task=fs.readFileSync(taskPath,"utf8");
 const note=fs.readFileSync(notePath,"utf8");
+const reapplyPage=fs.readFileSync(reapplyPagePath,"utf8");
 const assert=(value,message)=>{if(!value)throw new Error(message);};
 
 assert(mapper.includes('"join-company-reapply", "/join/companyReapply", "/join/en/companyReapply"'),
@@ -36,5 +38,7 @@ assert(task.includes("const canLoadPrivateTasks=frontendSession.authenticated===
   "anonymous public pages can still call the private task API");
 assert(note.includes("const canUseAdminDesignNotes=frontendSession.authenticated===true&&frontendSession.canEnterAdminConsole===true")&&note.includes("if(!canUseAdminDesignNotes)"),
   "non-admin pages can still call the admin design-note API");
-console.log("[company-reapplication-route-guards] PASS route=1 mount=1 keyboardSubmit=1 diagnostics=1 anonymousApiGuards=2");
+assert(reapplyPage.includes("setLookupHandle(String(result.lookupHandle || lookupHandle))"),
+  "successful reapplication does not rotate the lookup handle before status navigation");
+console.log("[company-reapplication-route-guards] PASS route=1 mount=1 keyboardSubmit=1 diagnostics=1 rotatedHandle=1 anonymousApiGuards=2");
 NODE

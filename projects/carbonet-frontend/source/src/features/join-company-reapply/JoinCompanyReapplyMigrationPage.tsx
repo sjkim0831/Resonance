@@ -459,6 +459,7 @@ export function JoinCompanyReapplyMigrationPage() {
         fileUploads: files
       });
       const companyName = result.insttNm || form.agencyName;
+      setLookupHandle(String(result.lookupHandle || lookupHandle));
       setMessage(en ? `${companyName} reapplication has been submitted.` : `${companyName} 재신청이 접수되었습니다.`);
       setReceipt(result);
       setSubmitted(true);
