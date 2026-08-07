@@ -23,6 +23,7 @@
     "audit:generated-output": "npm run audit:framework-contract-metadata && node scripts/check-generated-output-governance.mjs",
     "audit:ui-governance": "node scripts/check-ui-governance.mjs",
     "audit:floating-controls": "node scripts/verify-floating-control-safe-zones.mjs",
+    "audit:join-mobile-header": "node scripts/verify-join-company-mobile-header-contract.mjs",
     "audit:login-redirect": "node scripts/verify-login-authority-redirect.mjs",
     "audit:customer-journey": "node scripts/check-customer-journey-governance.mjs",
     "audit:route-registry": "node scripts/check-route-registry-uniqueness.mjs",

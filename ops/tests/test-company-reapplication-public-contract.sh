@@ -6,6 +6,8 @@ MIGRATION="$ROOT/apps/carbonet-api/src/main/resources/db/migration/postgresql/V2
 PROMOTER="$ROOT/ops/scripts/promote-screen-contract-after-e2e.sh"
 PROMOTER_TEST="$ROOT/ops/scripts/test-promote-screen-contract-after-e2e.sh"
 RUNTIME_E2E="$ROOT/ops/scripts/validate-company-reapplication-runtime.sh"
+BUSINESS_E2E_WRAPPER="$ROOT/ops/tests/run-company-reapplication-business-e2e.sh"
+BROWSER_E2E="$ROOT/ops/scripts/validate-company-reapplication-browser.mjs"
 APPROVAL_CONTROLLER="$ROOT/modules/resonance-common/carbonet-common-core/src/main/java/egovframework/com/feature/admin/web/AdminApprovalController.java"
 APPROVAL_COMMAND="$ROOT/modules/resonance-common/carbonet-common-core/src/main/java/egovframework/com/feature/admin/web/AdminApprovalCommandService.java"
 APPROVAL_ACTION="$ROOT/modules/resonance-common/carbonet-common-core/src/main/java/egovframework/com/feature/admin/web/AdminApprovalActionService.java"
@@ -20,6 +22,7 @@ ADMIN_API_CORE="$ROOT/projects/carbonet-frontend/source/src/lib/api/core.ts"
 
 fail() { echo "[company-reapplication-contract-test] FAIL: $*" >&2; exit 1; }
 for file in "$MIGRATION" "$PROMOTER" "$PROMOTER_TEST" "$RUNTIME_E2E" \
+  "$BUSINESS_E2E_WRAPPER" "$BROWSER_E2E" \
   "$APPROVAL_CONTROLLER" "$APPROVAL_COMMAND" "$APPROVAL_ACTION" "$APPROVAL_STATUS" \
   "$MEMBER_SERVICE" "$MEMBER_MAPPER_XML" \
   "$EVIDENCE_RECONCILER" "$EVIDENCE_SCHEDULER" "$EVIDENCE_RECONCILER_TEST" \
@@ -268,5 +271,25 @@ NODE
 printf '%s' '{"status":"PASS","api":1,"database":1,"authority":1,"responsive":1,"accessibility":1,"exceptionStates":1,"audit":1,"recovery":1,"performanceP95Ms":250}' | \
   bash "$PROMOTER" COMPANY_REAPPLICATION_PUBLIC COMPANY_REAPPLICATION_PUBLIC_RESUBMIT \
     api PUBLIC --validate-only >/dev/null
+
+node - "$RUNTIME_E2E" "$BROWSER_E2E" "$BUSINESS_E2E_WRAPPER" <<'NODE'
+const fs=require('fs');
+const [runtimePath,browserPath,wrapperPath]=process.argv.slice(2);
+const runtime=fs.readFileSync(runtimePath,'utf8');
+const browser=fs.readFileSync(browserPath,'utf8');
+const wrapper=fs.readFileSync(wrapperPath,'utf8');
+const assert=(value,message)=>{if(!value)throw new Error(message)};
+for(const token of ['binding_status','REVIEW_REQUIRED','MISSING_WORKFLOW_EVIDENCE'])
+  assert(runtime.includes(token),`pre-promotion screen-context evidence missing: ${token}`);
+for(const token of ['desktop:1','mobile:1','accessibility:1','performanceSampleCount'])
+  assert(browser.includes(token),`browser evidence missing: ${token}`);
+assert(wrapper.includes('promotionEligible:true'),'complete evidence is not promotion eligible');
+const preflight=wrapper.indexOf('validate-company-reapplication-runtime.sh');
+const browserRun=wrapper.indexOf('validate-company-reapplication-browser.mjs');
+const promoter=wrapper.indexOf('promote-screen-contract-after-e2e.sh');
+const postContext=wrapper.lastIndexOf('/home/api/screen-context');
+assert(preflight>=0&&preflight<browserRun&&browserRun<promoter&&promoter<postContext,
+  'required preflight -> browser -> promoter -> post-context order drifted');
+NODE
 
 echo '[company-reapplication-contract-test] PASS process=1 userSteps=2 supportSteps=1 targetBinding=DRAFT:1/ACTIVE:0 publicAudience=1 cases=7 jobs=8 preE2E=REVIEW_REQUIRED postE2E=EXECUTABLE evidence=fail-closed'

@@ -500,18 +500,18 @@ export function JoinCompanyReapplyMigrationPage() {
 
       <header className="bg-white border-b border-[var(--kr-gov-border-light)] sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 lg:px-8">
-          <div className="flex justify-between items-center h-20">
-            <div className="flex items-center gap-3 shrink-0">
-              <HomeLinkButton className="min-h-0 border-0 bg-transparent px-0 py-0 hover:bg-transparent" href="#" onClick={(event) => {
+          <div className="flex h-20 min-w-0 items-center justify-between">
+            <div className="flex min-w-0 max-w-full flex-1 items-center gap-3" data-join-brand-wrapper>
+              <HomeLinkButton className="min-h-0 min-w-0 max-w-full overflow-hidden border-0 bg-transparent px-0 py-0 hover:bg-transparent" data-join-brand-action href="#" onClick={(event) => {
                 event.preventDefault();
                 void handleHome();
               }} variant="ghost">
-                <span className="material-symbols-outlined text-[32px] text-[var(--kr-gov-blue)]" style={{ fontVariationSettings: "'wght' 600" }}>eco</span>
-                <div className="flex flex-col">
-                  <h1 className="text-lg font-bold tracking-tight text-[var(--kr-gov-text-primary)] leading-none">
+                <span className="material-symbols-outlined flex-none text-[32px] text-[var(--kr-gov-blue)]" style={{ fontVariationSettings: "'wght' 600" }}>eco</span>
+                <div className="flex min-w-0 max-w-full flex-col">
+                  <h1 className="truncate text-lg font-bold leading-none tracking-tight text-[var(--kr-gov-text-primary)]">
                     {en ? "CCUS Portal" : "CCUS 통합관리 포털"}
                   </h1>
-                  <p className="text-[9px] text-[var(--kr-gov-text-secondary)] font-bold uppercase tracking-wider mt-1">Carbon Capture, Utilization and Storage</p>
+                  <p className="mt-1 hidden max-w-full truncate text-[9px] font-bold uppercase tracking-wider text-[var(--kr-gov-text-secondary)] sm:block" data-join-brand-subtitle>Carbon Capture, Utilization and Storage</p>
                 </div>
               </HomeLinkButton>
             </div>

@@ -10,6 +10,11 @@ RUN_TOKEN="$(date +%s%N | sha256sum | cut -c1-10)"
 NUMERIC_TOKEN="$(date +%s%N)"
 INSTT_ID="QA_REAP_${RUN_TOKEN}"
 INSTT_ID="${INSTT_ID:0:20}"
+if [[ "${INSTT_ID: -1}" == "X" ]]; then
+  TAMPERED_INSTT_ID="${INSTT_ID::-1}Y"
+else
+  TAMPERED_INSTT_ID="${INSTT_ID::-1}X"
+fi
 BIZ_NO="${NUMERIC_TOKEN: -10}"
 REP_NAME="QA_REAP_REP_${RUN_TOKEN:0:4}"
 COOKIE="$(mktemp)"
@@ -19,6 +24,7 @@ STATUS_HEADERS="$(mktemp)"
 STATUS_FILE="$(mktemp)"
 STATUS_COOKIE="$(mktemp)"
 DB_FILE_PATH=""
+RESOLVED_CLEANUP_PATH=""
 
 source "$ROOT/ops/scripts/lib/carbonet-postgres-query.sh"
 carbonet_postgres_query_init
@@ -26,15 +32,28 @@ q() { carbonet_postgres_query "$1"; }
 
 cleanup() {
   set +e
+  RESOLVED_CLEANUP_PATH=""
   if [[ -n "$DB_FILE_PATH" ]]; then
     case "$DB_FILE_PATH" in
-      "$UPLOAD_ROOT"/*) rm -f -- "$DB_FILE_PATH" ;;
+      "$UPLOAD_ROOT"/*) RESOLVED_CLEANUP_PATH="$(realpath -m -- "$DB_FILE_PATH")" ;;
+      /var/file/instt/*)
+        RESOLVED_CLEANUP_PATH="$(realpath -m -- "$UPLOAD_ROOT/${DB_FILE_PATH#/var/file/instt/}")"
+        ;;
       *) echo "[company-reapplication-e2e] WARN cleanup refused out-of-root path" >&2 ;;
     esac
+    if [[ -n "$RESOLVED_CLEANUP_PATH" ]]; then
+      case "$RESOLVED_CLEANUP_PATH" in
+        "$(realpath -m -- "$UPLOAD_ROOT")"/*) rm -f -- "$RESOLVED_CLEANUP_PATH" ;;
+        *) echo "[company-reapplication-e2e] WARN cleanup refused resolved out-of-root path" >&2; RESOLVED_CLEANUP_PATH="" ;;
+      esac
+    fi
   fi
-  q "delete from framework_company_reapplication_audit where project_id='${PROJECT_ID}' and instt_id='${INSTT_ID}';
+  q "begin;
+     set local session_replication_role=replica;
+     delete from framework_company_reapplication_audit where project_id='${PROJECT_ID}' and instt_id='${INSTT_ID}';
      delete from comtninsttfile where project_id='${PROJECT_ID}' and trim(instt_id)='${INSTT_ID}';
-     delete from comtninsttinfo where project_id='${PROJECT_ID}' and trim(instt_id)='${INSTT_ID}';" >/dev/null 2>&1 || true
+     delete from comtninsttinfo where project_id='${PROJECT_ID}' and trim(instt_id)='${INSTT_ID}';
+     commit;" >/dev/null 2>&1 || true
   rm -f "$COOKIE" "$BODY" "$PDF_FIXTURE" "$STATUS_HEADERS" "$STATUS_FILE" "$STATUS_COOKIE"
   set -e
 }
@@ -98,7 +117,7 @@ missing_file_code="$(curl -sS -c "$COOKIE" -b "$COOKIE" -o "$BODY" -w '%{http_co
 }
 
 tampered_identity_code="$(curl -sS -c "$COOKIE" -b "$COOKIE" -o "$BODY" -w '%{http_code}' \
-  -F "reapplyToken=$REAPPLY_TOKEN" -F "insttId=${INSTT_ID}_OTHER" \
+  -F "reapplyToken=$REAPPLY_TOKEN" -F "insttId=$TAMPERED_INSTT_ID" \
   -F 'agencyName=QA REAPPLICATION COMPANY' -F "representativeName=$REP_NAME" \
   -F "bizRegistrationNumber=$BIZ_NO" -F 'zipCode=04524' -F 'companyAddress=QA SEOUL JUNG-GU' \
   -F 'chargerName=QA MANAGER' -F 'chargerEmail=qa-reapply@example.test' -F 'chargerTel=010-0000-0000' \
@@ -155,7 +174,7 @@ audit_result="$(q "select actor_code||'|'||command_code||'|'||from_state||'|'||t
   echo "[company-reapplication-e2e] FAIL audit-contract=$audit_result" >&2
   exit 1
 }
-db_hashes="$(q "select change_hash||'|'||file_sha256s[1]
+db_hashes="$(q "select change_hash||'|'||evidence_sha256[1]
   from framework_company_reapplication_audit
   where project_id='${PROJECT_ID}' and instt_id='${INSTT_ID}'
   order by application_version desc limit 1")"
@@ -269,7 +288,35 @@ context_code="$(curl -sS -G -o "$BODY" -w '%{http_code}' \
   --data-urlencode 'audience=PUBLIC' --data-urlencode 'processCode=COMPANY_REAPPLICATION_PUBLIC' \
   --data-urlencode 'stepCode=COMPANY_REAPPLICATION_PUBLIC_RESUBMIT' \
   --data-urlencode 'actorCode=PUBLIC_APPLICANT' "$BASE_URL/home/api/screen-context")"
-[[ "$context_code" == 200 ]] && jq -e '.linked==true and .selectionRequired==false' "$BODY" >/dev/null || {
+binding_status="$(q "select binding.binding_status from framework_process_step_screen_binding binding
+  join framework_screen_resource resource using(screen_resource_id)
+ where resource.route_key='/join/companyreapply'
+   and binding.process_code='COMPANY_REAPPLICATION_PUBLIC'
+   and binding.step_code='COMPANY_REAPPLICATION_PUBLIC_RESUBMIT'
+   and binding.audience='PUBLIC' and binding.actor_code='PUBLIC_APPLICANT'")"
+screen_context_linked=0
+if [[ "$binding_status" == DRAFT ]]; then
+  [[ "$context_code" == 200 ]] && jq -e '
+    .linked==false and .selectionRequired==false and
+    .classification=="REVIEW_REQUIRED" and .reasonCode=="MISSING_WORKFLOW_EVIDENCE"
+  ' "$BODY" >/dev/null || {
+    echo "[company-reapplication-e2e] FAIL pre-promotion screen-context status=$context_code" >&2
+    exit 1
+  }
+elif [[ "$binding_status" == ACTIVE ]]; then
+  [[ "$context_code" == 200 ]] && jq -e '
+    .linked==true and .selectionRequired==false and
+    .classification=="EXECUTABLE" and .reasonCode=="RUNTIME_WORKFLOW_RESOLVED"
+  ' "$BODY" >/dev/null || {
+    echo "[company-reapplication-e2e] FAIL post-promotion screen-context status=$context_code" >&2
+    exit 1
+  }
+  screen_context_linked=1
+else
+  echo "[company-reapplication-e2e] FAIL exact binding status=$binding_status" >&2
+  exit 1
+fi
+[[ "$context_code" == 200 ]] || {
   echo "[company-reapplication-e2e] FAIL screen-context status=$context_code" >&2
   exit 1
 }
@@ -284,17 +331,20 @@ remaining="$(q "select
   echo "[company-reapplication-e2e] FAIL cleanup remaining=$remaining" >&2
   exit 1
 }
-if [[ -n "$DB_FILE_PATH" && "$DB_FILE_PATH" == "$UPLOAD_ROOT"/* && -e "$DB_FILE_PATH" ]]; then
+if [[ -n "$RESOLVED_CLEANUP_PATH" ]] &&
+   { [[ -e "$RESOLVED_CLEANUP_PATH" ]] || [[ -L "$RESOLVED_CLEANUP_PATH" ]]; }; then
   echo '[company-reapplication-e2e] FAIL physical evidence cleanup' >&2
   exit 1
 fi
 
 FINISHED_AT_MS="$(( $(date +%s%N) / 1000000 ))"
 PERFORMANCE_MS="$((FINISHED_AT_MS - STARTED_AT_MS))"
-jq -cn --argjson performanceP95Ms "$PERFORMANCE_MS" '{
+jq -cn --argjson suiteDurationMs "$PERFORMANCE_MS" --arg bindingStatus "$binding_status" \
+  --argjson screenContextLinked "$screen_context_linked" '{
   status:"PASS",promotionEligible:false,processCode:"COMPANY_REAPPLICATION_PUBLIC",
   stepCode:"COMPANY_REAPPLICATION_PUBLIC_RESUBMIT",api:1,database:1,authority:1,
   validation:1,exceptionStates:1,audit:1,cleanup:1,token:1,replayBlocked:1,
   statusLookup:1,statusAllowlist:1,statusOpaqueHandle:1,statusDownload:1,statusRateLimit:1,cachePolicy:1,legacy410:1,
-  screenContext:1,responsive:0,accessibility:0,performanceP95Ms:$performanceP95Ms
+  screenContextPreflight:1,screenContextLinked:$screenContextLinked,
+  bindingStatus:$bindingStatus,responsive:0,accessibility:0,suiteDurationMs:$suiteDurationMs
 }'

@@ -37,6 +37,9 @@ if(mode!=="--validate-only") {
   if(!Number.isFinite(Number(evidence.performanceP95Ms))||Number(evidence.performanceP95Ms)<=0) {
     throw new Error("mandatory same-envelope E2E assertion failed: performanceP95Ms>0");
   }
+  if(!Number.isInteger(Number(evidence.performanceSampleCount))||Number(evidence.performanceSampleCount)<20) {
+    throw new Error("mandatory same-envelope E2E assertion failed: performanceSampleCount>=20");
+  }
 }
 if(!["PASS","PASSED"].includes(evidence.status)) throw new Error("E2E status must be PASS or PASSED");
 for(const assertion of checks){
@@ -65,7 +68,12 @@ PROCESS_VERSION="$(jq -r '.processVersion' <<<"$CONTRACT")"
 CONTRACT_FINGERPRINT="$(jq -r '.contractFingerprint' <<<"$CONTRACT")"
 [[ "$SOURCE_COMMIT" =~ ^[0-9a-fA-F]{7,80}$ && "$CONTRACT_FINGERPRINT" =~ ^[0-9a-f]{32,128}$ && -n "$PROCESS_VERSION" ]] || { echo 'invalid pre-run contract envelope' >&2; exit 3; }
 DEPLOY_STATE_FILE="${CARBONET_DEPLOY_STATE_FILE:-/opt/resonance-data/deploy/carbonet-main-success.commit}"
-CURRENT_DEPLOYED_COMMIT="${E2E_DEPLOYED_COMMIT:-$(tr -d '[:space:]' < "$DEPLOY_STATE_FILE" 2>/dev/null || true)}"
+FILE_DEPLOYED_COMMIT="$(tr -d '[:space:]' < "$DEPLOY_STATE_FILE" 2>/dev/null || true)"
+if [[ -n "${E2E_DEPLOYED_COMMIT:-}" && "$E2E_DEPLOYED_COMMIT" != "$FILE_DEPLOYED_COMMIT" ]]; then
+  echo 'E2E commit override differs from deployed success marker' >&2
+  exit 3
+fi
+CURRENT_DEPLOYED_COMMIT="$FILE_DEPLOYED_COMMIT"
 [[ "$SOURCE_COMMIT" == "$CURRENT_DEPLOYED_COMMIT" ]] || { echo 'deployed commit changed during E2E; refusing stale evidence' >&2; exit 3; }
 EXECUTION_ENVIRONMENT="${E2E_EXECUTION_ENVIRONMENT:-carbonet-prod}"
 EVIDENCE_URI="${E2E_EVIDENCE_URI:-inline://business-e2e/sha256/$EVIDENCE_SHA256}"
@@ -167,6 +175,7 @@ WHERE contract.process_code=:'process_code'
       AND jsonb_typeof(spec.nonfunctional_contract->'audit')='object'
       AND jsonb_typeof(spec.nonfunctional_contract->'sla')='object'
       AND coalesce((convert_from(decode(:'evidence_b64','base64'),'UTF8')::jsonb->>'performanceP95Ms')::numeric,0)>0
+      AND coalesce((convert_from(decode(:'evidence_b64','base64'),'UTF8')::jsonb->>'performanceSampleCount')::integer,0)>=20
       AND coalesce((convert_from(decode(:'evidence_b64','base64'),'UTF8')::jsonb->>'performanceP95Ms')::numeric,999999)
           <=(spec.nonfunctional_contract->'performance'->>'targetP95Ms')::numeric
       AND coalesce((convert_from(decode(:'evidence_b64','base64'),'UTF8')::jsonb->>'audit')::integer,0)=1
@@ -232,10 +241,49 @@ WHERE binding.screen_resource_id=resource.screen_resource_id
   AND :'audience' IN ('PUBLIC','ALL')
   AND binding.binding_status='DRAFT';
 
+-- The route-policy snapshot can predate a newly designed PUBLIC process.  A
+-- stale REVIEW_REQUIRED row would continue to override the exact ACTIVE
+-- binding in screenContext(), so close both records in this same evidence
+-- transaction.  Human-reviewed decisions are never overwritten.
+INSERT INTO framework_screen_workflow_policy(
+  route_key,classification,reason_code,reason_text,source,review_status,
+  reviewed_by,reviewed_at,created_at,updated_at
+)
+SELECT DISTINCT resource.route_key,'EXECUTABLE','RUNTIME_WORKFLOW_RESOLVED',
+  '현재 배포 계약의 BUSINESS_E2E를 통과한 정확한 공개 화면 바인딩이 확인되었습니다.',
+  'CONTRACT_E2E_PROMOTER','AUTO_APPROVED',NULL,NULL,current_timestamp,current_timestamp
+FROM framework_process_step_screen_binding binding
+JOIN framework_screen_resource resource USING(screen_resource_id)
+JOIN framework_professional_screen_contract contract
+  ON contract.process_code=binding.process_code
+ AND contract.step_code=binding.step_code
+ AND contract.audience=binding.audience
+ AND lower(split_part(contract.route_path,'?',1))=resource.route_key
+WHERE binding.process_code=:'process_code'
+  AND binding.step_code=:'step_code'
+  AND binding.audience='PUBLIC'
+  AND :'audience' IN ('PUBLIC','ALL')
+  AND binding.binding_status='ACTIVE'
+  AND contract.contract_status='VERIFIED'
+  AND contract.audit_evidence_ref=concat('qa-run:sha256:',:'evidence_sha256')
+ON CONFLICT(route_key) DO UPDATE SET
+  classification=excluded.classification,reason_code=excluded.reason_code,
+  reason_text=excluded.reason_text,source=excluded.source,
+  review_status=excluded.review_status,reviewed_by=NULL,reviewed_at=NULL,
+  updated_at=current_timestamp
+WHERE (framework_screen_workflow_policy.classification='REVIEW_REQUIRED'
+       AND framework_screen_workflow_policy.reason_code='MISSING_WORKFLOW_EVIDENCE'
+       AND framework_screen_workflow_policy.review_status='PENDING')
+   OR (framework_screen_workflow_policy.source='CONTRACT_E2E_PROMOTER'
+       AND framework_screen_workflow_policy.review_status='AUTO_APPROVED'
+       AND framework_screen_workflow_policy.reviewed_by IS NULL
+       AND framework_screen_workflow_policy.reviewed_at IS NULL);
+
 DO $$
 DECLARE public_contract_count integer;
 DECLARE active_exact_count integer;
 DECLARE wrong_active_count integer;
+DECLARE executable_policy_count integer;
 BEGIN
   IF current_setting('resonance.audience') NOT IN ('PUBLIC','ALL') THEN
     RETURN;
@@ -281,11 +329,32 @@ BEGIN
     AND (binding.process_code,binding.step_code)<>
         (current_setting('resonance.process_code'),current_setting('resonance.step_code'));
 
+  SELECT count(DISTINCT policy.route_key) INTO executable_policy_count
+  FROM framework_professional_screen_contract contract
+  JOIN framework_screen_resource resource
+    ON resource.route_key=lower(split_part(contract.route_path,'?',1))
+  JOIN framework_process_step_screen_binding binding
+    ON binding.process_code=contract.process_code
+   AND binding.step_code=contract.step_code
+   AND binding.audience=contract.audience
+   AND binding.screen_resource_id=resource.screen_resource_id
+  JOIN framework_screen_workflow_policy policy ON policy.route_key=resource.route_key
+  WHERE contract.process_code=current_setting('resonance.process_code')
+    AND contract.step_code=current_setting('resonance.step_code')
+    AND contract.audience='PUBLIC'
+    AND contract.contract_status='VERIFIED'
+    AND contract.audit_evidence_ref=concat('qa-run:sha256:',current_setting('resonance.evidence_sha256'))
+    AND binding.binding_status='ACTIVE'
+    AND policy.classification='EXECUTABLE'
+    AND policy.reason_code='RUNTIME_WORKFLOW_RESOLVED'
+    AND policy.review_status='AUTO_APPROVED';
+
   IF public_contract_count>0 AND
-     (active_exact_count<>public_contract_count OR wrong_active_count<>0) THEN
-    RAISE EXCEPTION 'PUBLIC exact binding promotion rejected process=% step=% contracts=% active=% wrong=%',
+     (active_exact_count<>public_contract_count OR wrong_active_count<>0
+      OR executable_policy_count<>public_contract_count) THEN
+    RAISE EXCEPTION 'PUBLIC exact binding promotion rejected process=% step=% contracts=% active=% wrong=% policies=%',
       current_setting('resonance.process_code'),current_setting('resonance.step_code'),
-      public_contract_count,active_exact_count,wrong_active_count;
+      public_contract_count,active_exact_count,wrong_active_count,executable_policy_count;
   END IF;
 END $$;
 

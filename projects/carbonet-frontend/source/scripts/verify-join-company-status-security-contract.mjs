@@ -58,6 +58,8 @@ requireSource(nginxDriftSources.every((source) => !source.includes("proxy_add_x_
 requireSource(/forward-headers-strategy:\s*native/.test(applicationConfig), "Tomcat native forwarding must convert the sanitized one-hop X-Forwarded-For into getRemoteAddr");
 requireSource(nginxDeployGate.includes("proxy_add_x_forwarded_for") && nginxDeployGate.includes('forwarded_count') && nginxDeployGate.includes('rate_client_count'), "carbonet-web config apply must fail closed on unsafe or incomplete forwarding headers");
 requireSource(runtimeE2e.includes('X-Forwarded-For: 203.0.113.$index') && runtimeE2e.includes('X-Forwarded-For: 198.51.100.250'), "runtime E2E must prove spoofed X-Forwarded-For values cannot escape the shared rate bucket");
+requireSource(runtimeE2e.includes('TAMPERED_INSTT_ID="${INSTT_ID::-1}Y"') && runtimeE2e.includes('TAMPERED_INSTT_ID="${INSTT_ID::-1}X"') && runtimeE2e.includes('insttId=$TAMPERED_INSTT_ID') && !runtimeE2e.includes('${INSTT_ID}_OTHER'), "token-binding E2E tamper must keep a valid same-length institution ID and must not fail on field length first");
+requireSource(migration.includes("evidence_sha256 text[]") && runtimeE2e.includes("evidence_sha256[1]") && !runtimeE2e.includes("file_sha256s[1]"), "runtime E2E audit hash query must use the canonical evidence_sha256 array defined by the ledger migration");
 requireSource(/kind:\s*Service[\s\S]*?name:\s*carbonet-web[\s\S]*?type:\s*NodePort[\s\S]*?externalTrafficPolicy:\s*Local/.test(splitRuntimeManifest), "canonical carbonet-web manifest must preserve the original client address with externalTrafficPolicy Local");
 requireSource(clientIpPolicyValidator.includes("target_count != 1") && clientIpPolicyValidator.includes("policy_count != 1") && clientIpPolicyValidator.includes("NodePort|Local"), "client-IP policy validator must fail closed on duplicate, missing, non-local, or live drift");
 requireSource(clientIpPolicyTest.includes("missing-policy") && clientIpPolicyTest.includes("cluster-policy") && clientIpPolicyTest.includes("duplicate-policy") && clientIpPolicyTest.includes("duplicate-service"), "client-IP policy validator must have mutation regression coverage");
@@ -81,4 +83,4 @@ if (failures.length) {
   failures.forEach((failure) => console.error(`FAIL: ${failure}`));
   process.exit(1);
 }
-console.log("PASS join-company-status-security checks=40 transport=POST handle=session-bound rateLimit=cross-pod+session clientIp=nodeport-local token=opaque cache=no-store legacy=410");
+console.log("PASS join-company-status-security checks=42 transport=POST handle=session-bound rateLimit=cross-pod+session clientIp=nodeport-local token=opaque cache=no-store legacy=410");

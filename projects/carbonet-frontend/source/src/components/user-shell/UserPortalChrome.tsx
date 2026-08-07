@@ -59,10 +59,10 @@ export function UserPortalHeader(props: {
 }) {
   const brand = (
     <>
-      <span className="material-symbols-outlined text-[32px] text-[var(--kr-gov-blue)]" style={{ fontVariationSettings: "'wght' 600" }}>eco</span>
-      <div className="flex flex-col">
-        <h1 className="text-lg font-bold tracking-tight text-[var(--kr-gov-text-primary)] leading-none">{props.brandTitle}</h1>
-        <p className="text-[9px] text-[var(--kr-gov-text-secondary)] font-bold uppercase tracking-wider mt-1">{props.brandSubtitle}</p>
+      <span className="material-symbols-outlined flex-none text-[32px] text-[var(--kr-gov-blue)]" style={{ fontVariationSettings: "'wght' 600" }}>eco</span>
+      <div className="flex min-w-0 max-w-full flex-col">
+        <h1 className="truncate text-lg font-bold leading-none tracking-tight text-[var(--kr-gov-text-primary)]">{props.brandTitle}</h1>
+        <p className="mt-1 hidden max-w-full truncate text-[9px] font-bold uppercase tracking-wider text-[var(--kr-gov-text-secondary)] sm:block" data-join-brand-subtitle>{props.brandSubtitle}</p>
       </div>
     </>
   );
@@ -70,19 +70,19 @@ export function UserPortalHeader(props: {
   return (
     <header className="bg-white border-b border-[var(--kr-gov-border-light)] sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 lg:px-8">
-        <div className="flex justify-between items-center h-20">
-          <div className="flex items-center gap-3 shrink-0">
+        <div className="flex h-20 min-w-0 items-center justify-between gap-2">
+          <div className="flex min-w-0 max-w-full flex-1 items-center gap-3" data-join-brand-wrapper>
             {props.onHomeClick ? (
-              <button className="flex items-center gap-2 focus-visible bg-transparent border-0 p-0" onClick={props.onHomeClick} type="button">
+              <button className="flex min-w-0 max-w-full items-center gap-2 overflow-hidden border-0 bg-transparent p-0 focus-visible" data-join-brand-action onClick={props.onHomeClick} type="button">
                 {brand}
               </button>
             ) : (
-              <a className="flex items-center gap-2 focus-visible" href={props.homeHref}>
+              <a className="flex min-w-0 max-w-full items-center gap-2 overflow-hidden focus-visible" data-join-brand-action href={props.homeHref}>
                 {brand}
               </a>
             )}
           </div>
-          {props.rightContent ? <div className="flex flex-1 items-center justify-end gap-4">{props.rightContent}</div> : null}
+          {props.rightContent ? <div className="flex flex-none items-center justify-end gap-4">{props.rightContent}</div> : null}
         </div>
       </div>
     </header>

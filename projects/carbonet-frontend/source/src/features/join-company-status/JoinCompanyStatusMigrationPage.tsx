@@ -764,17 +764,17 @@ export function JoinCompanyStatusMigrationPage() {
 
       <header className="bg-white border-b border-[var(--kr-gov-border-light)] sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 lg:px-8">
-          <div className="flex justify-between items-center h-20">
-            <div className="flex items-center gap-3 shrink-0">
-              <HomeButton className="!min-h-0 !border-0 !bg-transparent !p-0 !text-inherit hover:!bg-transparent flex items-center gap-2 focus-visible" onClick={goHome} type="button" variant="ghost">
-                <span className="material-symbols-outlined text-[32px] text-[var(--kr-gov-blue)]" style={{ fontVariationSettings: "'wght' 600" }}>eco</span>
-                <div className="flex flex-col">
-                  <h1 className="text-lg font-bold tracking-tight text-[var(--kr-gov-text-primary)] leading-none">{copy.logoTitle}</h1>
-                  <p className="text-[9px] text-[var(--kr-gov-text-secondary)] font-bold uppercase tracking-wider mt-1">{copy.logoSub}</p>
+          <div className="flex h-20 min-w-0 items-center justify-between gap-2">
+            <div className="flex min-w-0 max-w-full flex-1 items-center gap-3" data-join-brand-wrapper>
+              <HomeButton className="!min-h-0 min-w-0 max-w-full overflow-hidden !border-0 !bg-transparent !p-0 !text-inherit hover:!bg-transparent flex items-center gap-2 focus-visible" data-join-brand-action onClick={goHome} type="button" variant="ghost">
+                <span className="material-symbols-outlined flex-none text-[32px] text-[var(--kr-gov-blue)]" style={{ fontVariationSettings: "'wght' 600" }}>eco</span>
+                <div className="flex min-w-0 max-w-full flex-col">
+                  <h1 className="truncate text-lg font-bold leading-none tracking-tight text-[var(--kr-gov-text-primary)]">{copy.logoTitle}</h1>
+                  <p className="mt-1 hidden max-w-full truncate text-[9px] font-bold uppercase tracking-wider text-[var(--kr-gov-text-secondary)] sm:block" data-join-brand-subtitle>{copy.logoSub}</p>
                 </div>
               </HomeButton>
             </div>
-            <div className="flex items-center gap-4">
+            <div className="flex flex-none items-center gap-4">
               <div className="flex border border-[var(--kr-gov-border-light)] rounded-[var(--kr-gov-radius)] overflow-hidden">
                 <HomeButton className={`px-3 py-1 text-xs font-bold ${en ? "!bg-white !text-[var(--kr-gov-text-secondary)] hover:!bg-gray-100" : "!bg-[var(--kr-gov-blue)] !text-white"}`} onClick={() => changeLanguage(false)} size="xs" type="button" variant="ghost">KO</HomeButton>
                 <HomeButton className={`px-3 py-1 text-xs font-bold border-l border-[var(--kr-gov-border-light)] ${en ? "!bg-[var(--kr-gov-blue)] !text-white" : "!bg-white !text-[var(--kr-gov-text-secondary)] hover:!bg-gray-100"}`} onClick={() => changeLanguage(true)} size="xs" type="button" variant="ghost">EN</HomeButton>
