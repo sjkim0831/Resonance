@@ -221,11 +221,11 @@ public class EntrprsManageMapper extends BaseMapperSupport {
     }
 
     public List<InsttFileVO> selectInsttFiles(String insttId) {
-        return selectList("entrprsManageMapper.selectInsttFiles", scopedSingleValue("insttId", insttId));
+        return selectList("entrprsManageMapper.selectInsttFiles", scopedRequiredSingleValue("insttId", insttId));
     }
 
     public InsttFileVO selectInsttFileByFileId(String fileId) {
-        return (InsttFileVO) selectOne("entrprsManageMapper.selectInsttFileByFileId", scopedSingleValue("fileId", fileId));
+        return (InsttFileVO) selectOne("entrprsManageMapper.selectInsttFileByFileId", scopedRequiredSingleValue("fileId", fileId));
     }
 
     /**
@@ -267,6 +267,18 @@ public class EntrprsManageMapper extends BaseMapperSupport {
         update("entrprsManageMapper.updateInsttInfo", insttInfoVO);
     }
 
+    public int updateRejectedInsttInfo(InsttInfoVO insttInfoVO) {
+        return update("entrprsManageMapper.updateRejectedInsttInfo", insttInfoVO);
+    }
+
+    public void insertCompanyReapplicationAudit(Map<String, Object> audit) {
+        insert("entrprsManageMapper.insertCompanyReapplicationAudit", audit);
+    }
+
+    public Map<String, Object> selectLatestCompanyReapplicationAudit(Map<String, Object> scope) {
+        return selectOne("entrprsManageMapper.selectLatestCompanyReapplicationAudit", scope);
+    }
+
     private Map<String, Object> scopedSingleValue(String key, String value) {
         Map<String, Object> params = new LinkedHashMap<>();
         params.put(key, value);
@@ -274,6 +286,17 @@ public class EntrprsManageMapper extends BaseMapperSupport {
         if (!projectId.isEmpty()) {
             params.put("projectId", projectId);
         }
+        return params;
+    }
+
+    private Map<String, Object> scopedRequiredSingleValue(String key, String value) {
+        Map<String, Object> params = new LinkedHashMap<>();
+        params.put(key, value);
+        String projectId = currentProjectId();
+        if (projectId.isEmpty()) {
+            throw new IllegalStateException("Project context is required for institution evidence access.");
+        }
+        params.put("projectId", projectId);
         return params;
     }
 

@@ -10,9 +10,11 @@ for step in "${steps[@]}"; do
 done
 raw_evidence="$(RESONANCE_ROOT="$ROOT" bash "$ROOT/ops/scripts/resonance-member-lifecycle-admin-e2e.sh")"
 evidence="$(jq -cn --argjson result "$raw_evidence" --argjson contracts "$contracts" '$result+{contracts:$contracts}')"
+# This suite does not prove audit, recovery, or performance. Keep its evidence
+# useful without promoting a professional screen contract from partial proof.
 for step in "${steps[@]}"; do
   printf '%s' "$evidence" | bash "$ROOT/ops/scripts/promote-screen-contract-after-e2e.sh" \
-    MEMBER_LIFECYCLE "$step" "$checks" ADMIN
+    MEMBER_LIFECYCLE "$step" "$checks" ADMIN --validate-only >/dev/null
 done
 
 printf '%s\n' "$evidence"

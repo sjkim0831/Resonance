@@ -1,14 +1,20 @@
 package egovframework.com.feature.member.service.impl;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 import jakarta.annotation.Resource;
 
 import org.egovframe.rte.fdl.cmmn.EgovAbstractServiceImpl;
 import org.egovframe.rte.fdl.idgnr.EgovIdGnrService;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import egovframework.com.common.context.ProjectRuntimeContext;
 import egovframework.com.common.util.FileSecurityUtil;
@@ -333,17 +339,20 @@ public class EnterpriseMemberServiceImpl extends EgovAbstractServiceImpl impleme
 			if (fileVO == null) {
 				continue;
 			}
+			applyRequiredFileScope(fileVO);
 			entrprsManageMapper.insertInsttFile(fileVO);
 		}
 	}
 
 	@Override
 	public List<InsttFileVO> selectInsttFiles(String insttId) throws Exception {
+		requireCurrentProjectId();
 		return entrprsManageMapper.selectInsttFiles(insttId);
 	}
 
 	@Override
 	public InsttFileVO selectInsttFileByFileId(String fileId) throws Exception {
+		requireCurrentProjectId();
 		return entrprsManageMapper.selectInsttFileByFileId(fileId);
 	}
 
@@ -355,6 +364,9 @@ public class EnterpriseMemberServiceImpl extends EgovAbstractServiceImpl impleme
 	@Override
 	public InstitutionStatusVO selectInsttInfoForStatus(InsttInfoVO insttInfoVO) throws Exception {
 		applyDefaultProjectId(insttInfoVO);
+		if (insttInfoVO == null || !hasText(insttInfoVO.getProjectId())) {
+			throw new IllegalStateException("Project context is required for institution status lookup.");
+		}
 		return entrprsManageMapper.selectInsttInfoForStatus(insttInfoVO);
 	}
 
@@ -375,6 +387,71 @@ public class EnterpriseMemberServiceImpl extends EgovAbstractServiceImpl impleme
 	public void updateInsttInfo(InsttInfoVO insttInfoVO) throws Exception {
 		applyDefaultProjectId(insttInfoVO);
 		entrprsManageMapper.updateInsttInfo(insttInfoVO);
+	}
+
+	@Override
+	@Transactional(rollbackFor = Exception.class)
+	public Map<String, Object> reapplyInstitution(InsttInfoVO insttInfoVO, List<InsttFileVO> fileList,
+			String rejectionReason) throws Exception {
+		Objects.requireNonNull(insttInfoVO, "insttInfoVO");
+		applyDefaultProjectId(insttInfoVO);
+		if (!hasText(insttInfoVO.getProjectId())) {
+			throw new IllegalStateException("Project context is required for company reapplication.");
+		}
+
+		int updated = entrprsManageMapper.updateRejectedInsttInfo(insttInfoVO);
+		if (updated != 1) {
+			return null;
+		}
+		if (fileList != null) {
+			for (InsttFileVO fileVO : fileList) {
+				if (fileVO != null) {
+					applyRequiredFileScope(fileVO);
+					entrprsManageMapper.insertInsttFile(fileVO);
+				}
+			}
+		}
+
+		Map<String, Object> audit = new HashMap<>();
+		audit.put("projectId", insttInfoVO.getProjectId());
+		audit.put("insttId", insttInfoVO.getInsttId());
+		audit.put("evidenceFileCount", fileList == null ? 0 : fileList.size());
+		audit.put("rejectionReason", rejectionReason);
+		audit.put("changeHash", calculateReapplicationChangeHash(insttInfoVO, fileList));
+		audit.put("evidenceFileIds", evidenceValues(fileList, "id"));
+		audit.put("evidenceObjectKeys", evidenceValues(fileList, "objectKey"));
+		audit.put("evidenceSha256", evidenceValues(fileList, "sha256"));
+		entrprsManageMapper.insertCompanyReapplicationAudit(audit);
+		Map<String, Object> receiptScope = new HashMap<>();
+		receiptScope.put("projectId", insttInfoVO.getProjectId());
+		receiptScope.put("insttId", insttInfoVO.getInsttId());
+		Map<String, Object> stored = entrprsManageMapper.selectLatestCompanyReapplicationAudit(receiptScope);
+		if (stored == null || stored.isEmpty()) {
+			throw new IllegalStateException("Company reapplication audit receipt was not persisted.");
+		}
+		Map<String, Object> receipt = new LinkedHashMap<>();
+		receipt.put("applicationVersion", stored.get("applicationVersion"));
+		receipt.put("evidenceFileCount", stored.get("evidenceFileCount"));
+		receipt.put("changeHash", stored.get("changeHash"));
+		receipt.put("fileIds", splitCsv(stored.get("fileIdsCsv")));
+		receipt.put("fileSha256s", splitCsv(stored.get("fileSha256sCsv")));
+		return receipt;
+	}
+
+	private List<String> evidenceValues(List<InsttFileVO> files, String kind) {
+		List<String> values = new ArrayList<>();
+		if (files == null) {
+			return values;
+		}
+		for (InsttFileVO file : files) {
+			if (file == null) {
+				continue;
+			}
+			if ("id".equals(kind)) values.add(file.getFileId());
+			else if ("objectKey".equals(kind)) values.add(file.getStreFileNm());
+			else values.add(file.getFileSha256());
+		}
+		return values;
 	}
 
 	private void applyDefaultProjectId(UserDefaultVO vo) {
@@ -412,11 +489,74 @@ public class EnterpriseMemberServiceImpl extends EgovAbstractServiceImpl impleme
 		return projectRuntimeContext == null ? "" : stringValue(projectRuntimeContext.getProjectId()).trim();
 	}
 
+	private String requireCurrentProjectId() {
+		String projectId = currentProjectId();
+		if (!hasText(projectId)) {
+			throw new IllegalStateException("Project context is required.");
+		}
+		return projectId;
+	}
+
+	private void applyRequiredFileScope(InsttFileVO file) {
+		String projectId = requireCurrentProjectId();
+		if (hasText(file.getProjectId()) && !projectId.equals(file.getProjectId().trim())) {
+			throw new IllegalArgumentException("Evidence project scope does not match the runtime project.");
+		}
+		if (!hasText(file.getFileSha256()) || file.getFileSha256().length() != 64) {
+			throw new IllegalArgumentException("Evidence SHA-256 is required.");
+		}
+		file.setProjectId(projectId);
+		file.setScopeStatus("SCOPED");
+	}
+
+	private List<String> splitCsv(Object value) {
+		String text = stringValue(value).trim();
+		return text.isEmpty() ? List.of() : List.of(text.split(","));
+	}
+
 	private boolean hasText(String value) {
 		return value != null && !value.trim().isEmpty();
 	}
 
 	private String stringValue(Object value) {
 		return value == null ? "" : String.valueOf(value);
+	}
+
+	private String calculateReapplicationChangeHash(InsttInfoVO vo, List<InsttFileVO> fileList) throws Exception {
+		StringBuilder canonical = new StringBuilder();
+		appendCanonical(canonical, vo.getProjectId());
+		appendCanonical(canonical, vo.getInsttId());
+		appendCanonical(canonical, vo.getInsttNm());
+		appendCanonical(canonical, vo.getReprsntNm());
+		appendCanonical(canonical, vo.getBizrno());
+		appendCanonical(canonical, vo.getZip());
+		appendCanonical(canonical, vo.getAdres());
+		appendCanonical(canonical, vo.getDetailAdres());
+		appendCanonical(canonical, vo.getChargerNm());
+		appendCanonical(canonical, vo.getChargerEmail());
+		appendCanonical(canonical, vo.getChargerTel());
+		if (fileList != null) {
+			for (InsttFileVO file : fileList) {
+				if (file != null) {
+					appendCanonical(canonical, file.getFileId());
+					appendCanonical(canonical, file.getStreFileNm());
+					appendCanonical(canonical, file.getFileSha256());
+					appendCanonical(canonical, file.getOrignlFileNm());
+					appendCanonical(canonical, file.getFileMg());
+					appendCanonical(canonical, file.getFileExtsn());
+				}
+			}
+		}
+		byte[] digest = MessageDigest.getInstance("SHA-256")
+				.digest(canonical.toString().getBytes(StandardCharsets.UTF_8));
+		StringBuilder hex = new StringBuilder(digest.length * 2);
+		for (byte value : digest) {
+			hex.append(String.format("%02x", value & 0xff));
+		}
+		return hex.toString();
+	}
+
+	private void appendCanonical(StringBuilder target, Object value) {
+		target.append(value == null ? "" : String.valueOf(value).trim()).append('\u001f');
 	}
 }

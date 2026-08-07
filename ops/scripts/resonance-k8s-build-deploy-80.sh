@@ -126,6 +126,7 @@ preflight_check() {
     echo -e "${YELLOW}CREATING${NC}"
     mkdir -p "$OVERLAY_HOST_PATH"
   fi
+  bash "$ROOT_DIR/ops/scripts/validate-carbonet-web-nodeport-client-ip-contract.sh"
 }
 
 rollback_and_fail() {
@@ -283,6 +284,7 @@ main() {
   rollout_image
   kubectl apply -f "$ROOT_DIR/manifests/carbonet-split-runtime.yaml"
   kubectl -n "$NAMESPACE" rollout status deployment/carbonet-web --timeout=300s
+  bash "$ROOT_DIR/ops/scripts/validate-carbonet-web-nodeport-client-ip-contract.sh" --live --namespace "$NAMESPACE"
   ensure_pdb
   verify_runtime
   bash "$ROOT_DIR/ops/scripts/resonance-zero-downtime-gate.sh" post

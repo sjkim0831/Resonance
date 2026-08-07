@@ -1,5 +1,5 @@
 import { buildFormUrlEncoded, fetchJsonWithResponse, postFormDataWithResponse, postFormUrlEncoded, postJson } from "./core";
-import type { JoinSessionPayload } from "./joinTypes";
+import type { JoinCompanyReapplyReceipt, JoinSessionPayload } from "./joinTypes";
 
 let joinSessionCache: JoinSessionPayload | null = null;
 let joinSessionPromise: Promise<JoinSessionPayload> | null = null;
@@ -25,6 +25,7 @@ type JoinStep4SubmitPayload = {
 };
 
 type JoinCompanyReapplySubmitPayload = {
+  reapplyToken: string;
   insttId: string;
   agencyName: string;
   representativeName: string;
@@ -76,6 +77,7 @@ function buildJoinStep4Form(payload: JoinStep4SubmitPayload): FormData {
 function buildJoinCompanyReapplyForm(payload: JoinCompanyReapplySubmitPayload): FormData {
   const form = new FormData();
   appendFormFields(form, {
+    reapplyToken: payload.reapplyToken,
     insttId: payload.insttId,
     agencyName: payload.agencyName,
     representativeName: payload.representativeName,
@@ -91,13 +93,13 @@ function buildJoinCompanyReapplyForm(payload: JoinCompanyReapplySubmitPayload): 
   return form;
 }
 
-async function submitJoinForm(
+async function submitJoinForm<T extends JoinActionResponse = JoinActionResponse>(
   path: string,
   form: FormData,
   fallbackMessage: string
-) {
+): Promise<T> {
   invalidateJoinSessionCache();
-  const { response, body } = await postFormDataWithResponse<JoinActionResponse>(
+  const { response, body } = await postFormDataWithResponse<T>(
     path,
     form
   );
@@ -198,7 +200,7 @@ export async function submitJoinStep4(payload: JoinStep4SubmitPayload) {
 }
 
 export async function submitJoinCompanyReapply(payload: JoinCompanyReapplySubmitPayload) {
-  return submitJoinForm(
+  return submitJoinForm<JoinCompanyReapplyReceipt>(
     "/join/api/company-reapply",
     buildJoinCompanyReapplyForm(payload),
     "Failed to submit company reapply"

@@ -7,7 +7,18 @@ CONFIG_FILE="$ROOT_DIR/ops/k8s/carbonet-web/nginx.conf"
 BASE_URL="${BASE_URL:-http://127.0.0.1}"
 
 test -s "$CONFIG_FILE"
+bash "$ROOT_DIR/ops/scripts/validate-carbonet-web-nodeport-client-ip-contract.sh" --live --namespace "$NAMESPACE"
 grep -Eq 'application/javascript[[:space:]]+mjs' "$CONFIG_FILE"
+if grep -Fq '$proxy_add_x_forwarded_for' "$CONFIG_FILE"; then
+  echo 'ERROR: inbound X-Forwarded-For must be overwritten, not appended' >&2
+  exit 1
+fi
+forwarded_count="$(grep -Fc 'proxy_set_header X-Forwarded-For $remote_addr;' "$CONFIG_FILE")"
+rate_client_count="$(grep -Fc 'proxy_set_header X-RateLimit-Client-IP $remote_addr;' "$CONFIG_FILE")"
+if [[ "$forwarded_count" != 4 || "$rate_client_count" != 4 ]]; then
+  echo "ERROR: sanitized client-IP headers incomplete forwarded=$forwarded_count rateLimit=$rate_client_count expected=4" >&2
+  exit 1
+fi
 
 kubectl -n "$NAMESPACE" create configmap carbonet-web-nginx \
   --from-file="nginx.conf=$CONFIG_FILE" \

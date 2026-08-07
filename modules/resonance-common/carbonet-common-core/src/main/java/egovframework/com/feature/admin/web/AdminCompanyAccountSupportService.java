@@ -6,6 +6,8 @@ import egovframework.com.feature.member.model.vo.InsttFileVO;
 import egovframework.com.feature.member.model.vo.InsttInfoVO;
 import egovframework.com.feature.member.model.vo.InstitutionStatusVO;
 import egovframework.com.feature.member.service.EnterpriseMemberService;
+import egovframework.com.feature.member.service.support.InstitutionEvidenceFileSupport;
+import egovframework.com.common.context.ProjectRuntimeContext;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -17,6 +19,8 @@ import jakarta.servlet.http.HttpServletRequest;
 import java.io.File;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -32,6 +36,7 @@ public class AdminCompanyAccountSupportService {
     private final AdminAuthorityPagePayloadSupport adminAuthorityPagePayloadSupport;
     private final AdminRequestContextSupport adminRequestContextSupport;
     private final AdminMemberPageModelAssembler adminMemberPageModelAssembler;
+    private final ProjectRuntimeContext projectRuntimeContext;
 
     public String extractCurrentUserId(HttpServletRequest request) {
         return adminRequestContextSupport.extractCurrentUserId(request);
@@ -138,48 +143,71 @@ public class AdminCompanyAccountSupportService {
         if (fileUploads == null || fileUploads.isEmpty()) {
             return Collections.emptyList();
         }
+        String normalizedInsttId = InstitutionEvidenceFileSupport.requireInstitutionId(insttId);
+        String projectId = projectRuntimeContext == null ? "" : safeString(projectRuntimeContext.getProjectId());
+        if (projectId.isEmpty()) {
+            throw new IllegalStateException("Project context is required for institution evidence storage.");
+        }
+        String safeProjectId = projectId.replaceAll("[^a-zA-Z0-9_-]", "");
+        if (safeProjectId.isEmpty()) {
+            throw new IllegalStateException("Project context cannot be converted to a safe storage key.");
+        }
         File dir = resolveInsttUploadDir();
         if (!dir.exists() && !dir.mkdirs()) {
             throw new Exception("Cannot create upload directory: " + dir.getAbsolutePath());
         }
 
-        String safeInsttId = safeString(insttId).replaceAll("[^a-zA-Z0-9_-]", "");
-        if (safeInsttId.isEmpty()) {
-            safeInsttId = "INSTT";
-        }
-
         List<InsttFileVO> savedFiles = new ArrayList<>();
-        for (int i = 0; i < fileUploads.size(); i++) {
-            MultipartFile file = fileUploads.get(i);
-            if (file == null || file.isEmpty()) {
-                continue;
+        try {
+            for (MultipartFile file : fileUploads) {
+                if (file == null || file.isEmpty()) {
+                    continue;
+                }
+                String originalFileName = safeString(file.getOriginalFilename());
+                String ext = "";
+                int lastDotIndex = originalFileName.lastIndexOf('.');
+                if (lastDotIndex > -1) {
+                    ext = InstitutionEvidenceFileSupport.normalizeExtension(originalFileName.substring(lastDotIndex));
+                }
+                String objectToken = InstitutionEvidenceFileSupport.newObjectToken();
+                String newFileName = InstitutionEvidenceFileSupport.storageFileName(projectId, objectToken, ext);
+                Path targetPath = dir.toPath().resolve(newFileName);
+                Path stagingPath = Files.createTempFile(
+                        dir.toPath(), safeProjectId + "_" + objectToken + "_", ".part");
+                try {
+                    file.transferTo(stagingPath.toFile());
+                    String sha256 = InstitutionEvidenceFileSupport.sha256(stagingPath);
+                    InstitutionEvidenceFileSupport.moveStagedFile(stagingPath, targetPath);
+
+                    InsttFileVO fileVO = new InsttFileVO();
+                    fileVO.setFileId(InstitutionEvidenceFileSupport.fileId(objectToken));
+                    fileVO.setInsttId(normalizedInsttId);
+                    fileVO.setProjectId(projectId);
+                    fileVO.setScopeStatus("SCOPED");
+                    fileVO.setFileSha256(sha256);
+                    fileVO.setFileSn(startFileSn + savedFiles.size());
+                    fileVO.setStreFileNm(newFileName);
+                    fileVO.setOrignlFileNm(originalFileName.isEmpty() ? newFileName : originalFileName);
+                    fileVO.setFileStrePath(targetPath.toAbsolutePath().toString());
+                    fileVO.setFileMg(Files.size(targetPath));
+                    fileVO.setFileExtsn(ext);
+                    fileVO.setFileCn(file.getContentType());
+                    savedFiles.add(fileVO);
+                } catch (Exception fileError) {
+                    Files.deleteIfExists(stagingPath);
+                    Files.deleteIfExists(targetPath);
+                    throw fileError;
+                }
             }
-
-            String originalFileName = safeString(file.getOriginalFilename());
-            String ext = "";
-            int lastDotIndex = originalFileName.lastIndexOf('.');
-            if (lastDotIndex > -1) {
-                ext = originalFileName.substring(lastDotIndex).toLowerCase(Locale.ROOT);
-            }
-
-            long timestamp = System.currentTimeMillis();
-            String newFileName = safeInsttId + "_" + timestamp + "_" + i + ext;
-            File targetFile = new File(dir, newFileName);
-            file.transferTo(targetFile);
-
-            InsttFileVO fileVO = new InsttFileVO();
-            fileVO.setFileId(safeInsttId + "_FILE_" + timestamp + "_" + i);
-            fileVO.setInsttId(insttId);
-            fileVO.setFileSn(startFileSn + savedFiles.size());
-            fileVO.setStreFileNm(newFileName);
-            fileVO.setOrignlFileNm(originalFileName.isEmpty() ? newFileName : originalFileName);
-            fileVO.setFileStrePath(targetFile.getAbsolutePath());
-            fileVO.setFileMg(file.getSize());
-            fileVO.setFileExtsn(ext);
-            fileVO.setFileCn(file.getContentType());
-            savedFiles.add(fileVO);
+            return savedFiles;
+        } catch (Exception saveError) {
+            cleanupInsttEvidenceFiles(savedFiles);
+            throw saveError;
         }
-        return savedFiles;
+    }
+
+    public void cleanupInsttEvidenceFiles(List<InsttFileVO> files) {
+        InstitutionEvidenceFileSupport.cleanup(files);
     }
 
     public String joinInsttEvidencePaths(List<InsttFileVO> fileList) {

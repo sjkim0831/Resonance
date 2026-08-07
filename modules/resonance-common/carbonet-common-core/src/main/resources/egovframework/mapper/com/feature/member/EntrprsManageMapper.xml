@@ -391,6 +391,7 @@
         (
             FILE_ID,
             INSTT_ID,
+            PROJECT_ID,
             FILE_SN,
             STRE_FILE_NM,
             ORIGNL_FILE_NM,
@@ -398,12 +399,15 @@
             FILE_MG,
             FILE_EXTSN,
             FILE_CN,
+            SCOPE_STATUS,
+            FILE_SHA256,
             REGIST_PNTTM
         )
         VALUES
         (
             #{fileId},
             #{insttId},
+            #{projectId},
             #{fileSn},
             #{streFileNm},
             #{orignlFileNm},
@@ -411,6 +415,8 @@
             #{fileMg},
             #{fileExtsn},
             #{fileCn},
+            #{scopeStatus},
+            #{fileSha256},
             CURRENT_TIMESTAMP
         )
     </insert>
@@ -475,6 +481,9 @@
         SELECT
             F.FILE_ID        AS fileId,
             TRIM(F.INSTT_ID) AS insttId,
+            F.PROJECT_ID     AS projectId,
+            F.SCOPE_STATUS   AS scopeStatus,
+            F.FILE_SHA256    AS fileSha256,
             F.FILE_SN        AS fileSn,
             F.STRE_FILE_NM   AS streFileNm,
             F.ORIGNL_FILE_NM AS orignlFileNm,
@@ -486,10 +495,9 @@
         FROM COMTNINSTTFILE F
         INNER JOIN COMTNINSTTINFO I
             ON TRIM(I.INSTT_ID) = TRIM(F.INSTT_ID)
+           AND I.PROJECT_ID = F.PROJECT_ID
         WHERE TRIM(F.INSTT_ID) = TRIM(#{insttId})
-        <if test="projectId != null and projectId != ''">
-            AND I.PROJECT_ID = #{projectId}
-        </if>
+          AND F.PROJECT_ID = #{projectId}
         ORDER BY F.FILE_SN ASC, F.REGIST_PNTTM ASC
     </select>
 
@@ -497,6 +505,9 @@
         SELECT
             F.FILE_ID        AS fileId,
             F.INSTT_ID       AS insttId,
+            F.PROJECT_ID     AS projectId,
+            F.SCOPE_STATUS   AS scopeStatus,
+            F.FILE_SHA256    AS fileSha256,
             F.FILE_SN        AS fileSn,
             F.STRE_FILE_NM   AS streFileNm,
             F.ORIGNL_FILE_NM AS orignlFileNm,
@@ -508,10 +519,9 @@
         FROM COMTNINSTTFILE F
         INNER JOIN COMTNINSTTINFO I
             ON TRIM(I.INSTT_ID) = TRIM(F.INSTT_ID)
+           AND I.PROJECT_ID = F.PROJECT_ID
         WHERE F.FILE_ID = #{fileId}
-        <if test="projectId != null and projectId != ''">
-            AND I.PROJECT_ID = #{projectId}
-        </if>
+          AND F.PROJECT_ID = #{projectId}
         LIMIT 1
     </select>
 
@@ -759,6 +769,9 @@
         <choose>
             <when test="insttId != null and insttId != ''">
                 WHERE TRIM(INSTT_ID) = TRIM(#{insttId})
+                <if test="reprsntNm != null and reprsntNm != ''">
+                    AND REPRSNT_NM = #{reprsntNm}
+                </if>
                 <if test="projectId != null and projectId != ''">
                     AND PROJECT_ID = #{projectId}
                 </if>
@@ -856,5 +869,103 @@
             AND PROJECT_ID = #{projectId}
         </if>
     </update>
+
+    <!-- 재신청은 반려 상태를 선점한 한 요청만 반영한다. 과거 반려 사유는 감사 테이블에 보존하고 현재 상태에서는 정리한다. -->
+    <update id="updateRejectedInsttInfo">
+        UPDATE COMTNINSTTINFO
+        <set>
+            INSTT_NM = #{insttNm},
+            REPRSNT_NM = #{reprsntNm},
+            ZIP = #{zip},
+            ADRES = #{adres},
+            DETAIL_ADRES = #{detailAdres},
+            BIZRNO = #{bizrno},
+            INSTT_STTUS = 'A',
+            LAST_UPDT_PNTTM = CURRENT_TIMESTAMP,
+            CHARGER_NM = #{chargerNm},
+            CHARGER_EMAIL = #{chargerEmail},
+            CHARGER_TEL = #{chargerTel},
+            RJCT_RSN = NULL,
+            RJCT_PNTTM = NULL
+            <if test="entrprsSeCode != null and entrprsSeCode != ''">
+                , ENTRPRS_SE_CODE = #{entrprsSeCode}
+            </if>
+            <if test="bizRegFilePath != null and bizRegFilePath != ''">
+                , BIZ_REG_FILE_PATH = #{bizRegFilePath}
+            </if>
+        </set>
+        WHERE TRIM(INSTT_ID) = TRIM(#{insttId})
+          AND INSTT_STTUS = 'R'
+          AND PROJECT_ID = #{projectId}
+    </update>
+
+    <insert id="insertCompanyReapplicationAudit" parameterType="map">
+        INSERT INTO framework_company_reapplication_audit
+        (
+            project_id,
+            instt_id,
+            application_version,
+            actor_code,
+            command_code,
+            from_state,
+            to_state,
+            evidence_file_count,
+            evidence_file_ids,
+            evidence_object_keys,
+            evidence_sha256,
+            rejection_reason,
+            change_hash,
+            created_at
+        )
+        SELECT
+            #{projectId},
+            #{insttId},
+            COALESCE((
+                SELECT MAX(application_version)
+                FROM framework_company_reapplication_audit
+                WHERE project_id = #{projectId}
+                  AND instt_id = #{insttId}
+            ), 0) + 1,
+            'PUBLIC_APPLICANT',
+            'RESUBMIT_COMPANY_APPLICATION',
+            'REJECTED',
+            'APPLIED',
+            #{evidenceFileCount},
+            <choose>
+                <when test="evidenceFileIds != null and evidenceFileIds.size() > 0">
+                    ARRAY[<foreach collection="evidenceFileIds" item="value" separator=",">#{value}</foreach>]::TEXT[]
+                </when>
+                <otherwise>ARRAY[]::TEXT[]</otherwise>
+            </choose>,
+            <choose>
+                <when test="evidenceObjectKeys != null and evidenceObjectKeys.size() > 0">
+                    ARRAY[<foreach collection="evidenceObjectKeys" item="value" separator=",">#{value}</foreach>]::TEXT[]
+                </when>
+                <otherwise>ARRAY[]::TEXT[]</otherwise>
+            </choose>,
+            <choose>
+                <when test="evidenceSha256 != null and evidenceSha256.size() > 0">
+                    ARRAY[<foreach collection="evidenceSha256" item="value" separator=",">#{value}</foreach>]::TEXT[]
+                </when>
+                <otherwise>ARRAY[]::TEXT[]</otherwise>
+            </choose>,
+            #{rejectionReason},
+            #{changeHash},
+            CURRENT_TIMESTAMP
+    </insert>
+
+    <select id="selectLatestCompanyReapplicationAudit" parameterType="map" resultType="java.util.LinkedHashMap">
+        SELECT
+            application_version AS "applicationVersion",
+            evidence_file_count AS "evidenceFileCount",
+            change_hash AS "changeHash",
+            COALESCE(array_to_string(evidence_file_ids, ','), '') AS "fileIdsCsv",
+            COALESCE(array_to_string(evidence_sha256, ','), '') AS "fileSha256sCsv"
+        FROM framework_company_reapplication_audit
+        WHERE project_id = #{projectId}
+          AND instt_id = #{insttId}
+        ORDER BY application_version DESC
+        LIMIT 1
+    </select>
 
 </mapper>

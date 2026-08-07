@@ -706,9 +706,12 @@ export const PAGE_MANIFESTS: Record<string, PageManifest> = {
     layoutVersion: "v1",
     designTokenVersion: "krds-current",
     components: [
-      { componentId: "JoinCompanyReapplyLookup", instanceKey: "join-company-reapply-lookup", layoutZone: "actions", propsSummary: ["bizNo", "repName"] },
-      { componentId: "JoinCompanyReapplyForm", instanceKey: "join-company-reapply-form", layoutZone: "content", propsSummary: ["agencyName", "representativeName", "chargerName", "chargerEmail", "chargerTel"] },
-      { componentId: "JoinCompanyReapplyFiles", instanceKey: "join-company-reapply-files", layoutZone: "content", propsSummary: ["uploadRows", "fileCount"] }
+      { componentId: "JoinCompanyReapplyLookup", instanceKey: "join-company-reapply-lookup", layoutZone: "actions", propsSummary: ["bizNo", "repName", "reapplyTokenPresent"] },
+      { componentId: "JoinCompanyReapplyRejection", instanceKey: "join-company-reapply-rejection", layoutZone: "content", propsSummary: ["rejectionReason", "rejectedAt"] },
+      { componentId: "JoinCompanyReapplyInformation", instanceKey: "join-company-reapply-information", layoutZone: "content", propsSummary: ["agencyName", "representativeName", "chargerName", "chargerEmail", "chargerTel", "companyAddress"] },
+      { componentId: "JoinCompanyReapplyFiles", instanceKey: "join-company-reapply-files", layoutZone: "content", propsSummary: ["uploadRows", "fileCount", "maxFileSizeMb"] },
+      { componentId: "JoinCompanyReapplySubmit", instanceKey: "join-company-reapply-submit", layoutZone: "actions", propsSummary: ["submitting", "submitted"] },
+      { componentId: "JoinCompanyReapplyStatus", instanceKey: "join-company-reapply-status", layoutZone: "content", propsSummary: ["companyName", "status", "submittedAt", "statusLookupPath", "newLookupAction"] }
     ]
   },
   "my-inquiry": {

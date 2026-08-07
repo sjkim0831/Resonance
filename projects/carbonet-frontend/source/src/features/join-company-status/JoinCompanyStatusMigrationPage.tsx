@@ -8,9 +8,7 @@ import { HomeButton, HomeCheckbox, HomeInput, HomeLinkButton } from "../home-ui/
 function getInitialQuery() {
   const params = new URLSearchParams(window.location.search);
   return {
-    bizNo: params.get("bizNo") || "",
-    appNo: params.get("appNo") || "",
-    repName: params.get("repName") || ""
+    lookupHandle: params.get("lookupHandle") || ""
   };
 }
 
@@ -32,12 +30,13 @@ const COPY = {
     bizNo: "사업자등록번호",
     appNo: "신청번호",
     repName: "대표자명",
+    registeredContact: "등록된 이메일 또는 연락처",
     bizPlaceholder: "000-00-00000 (숫자만 입력)",
     appPlaceholder: "APP-YYYYMMDD-XXX",
     repPlaceholder: "대표자 성함을 입력하세요",
-    verifyTitle: "본인확인 단계",
-    verifyDesc: "안전한 정보 조회를 위해 본인인증이 필요합니다.",
-    verifyButton: "본인인증 (휴대폰 등)",
+    contactPlaceholder: "가입 시 등록한 이메일 또는 휴대전화번호",
+    verifyTitle: "조회 확인 항목",
+    verifyDesc: "사업자등록번호 또는 신청번호, 대표자명, 가입 시 등록한 연락처가 모두 일치해야 조회됩니다.",
     agree: "조회를 위한 개인정보 수집 및 이용에 동의합니다. (필수)",
     search: "조회하기",
     appNoBadge: "신청 번호",
@@ -57,7 +56,7 @@ const COPY = {
     needRepName: "대표자명을 입력해주세요.",
     needBizNo: "사업자등록번호를 입력해주세요.",
     needAppNo: "신청번호를 입력해주세요.",
-    verifyAlert: "본인인증을 진행합니다.",
+    needRegisteredContact: "가입 시 등록한 이메일 또는 연락처를 입력해주세요.",
     submitted: "신청 완료",
     review: "운영자 검토 중",
     pending: "승인 대기",
@@ -90,12 +89,13 @@ const COPY = {
     bizNo: "Business Registration Number",
     appNo: "Application Number",
     repName: "Representative Name",
+    registeredContact: "Registered email or phone",
     bizPlaceholder: "000-00-00000 (numbers only)",
     appPlaceholder: "APP-YYYYMMDD-XXX",
     repPlaceholder: "Enter the representative name",
-    verifyTitle: "Identity verification",
-    verifyDesc: "Identity verification is required to securely check application information.",
-    verifyButton: "Verify identity",
+    contactPlaceholder: "Email or phone registered during application",
+    verifyTitle: "Required verification details",
+    verifyDesc: "The business or application number, representative name, and registered contact must all match.",
     agree: "I agree to the collection and use of personal information for status inquiry. (Required)",
     search: "Search",
     appNoBadge: "Application No.",
@@ -115,7 +115,7 @@ const COPY = {
     needRepName: "Please enter the representative name.",
     needBizNo: "Please enter the business registration number.",
     needAppNo: "Please enter the application number.",
-    verifyAlert: "Identity verification will be provided later.",
+    needRegisteredContact: "Please enter the registered email or phone.",
     submitted: "Submitted",
     review: "Under Review",
     pending: "Pending Approval",
@@ -146,8 +146,8 @@ function toFileName(file: DetailFile) {
   return toStringValue(file.orignlFileNm || file.streFileNm, "");
 }
 
-function toFileId(file: DetailFile) {
-  return toStringValue(file.fileId, "");
+function toDownloadToken(file: DetailFile) {
+  return toStringValue(file.downloadToken, "");
 }
 
 export function JoinCompanyStatusMigrationPage() {
@@ -156,20 +156,17 @@ export function JoinCompanyStatusMigrationPage() {
   const initialQuery = useMemo(() => getInitialQuery(), []);
   const isDetailPage = window.location.pathname.includes("companyJoinStatusDetail");
   const isGuidePage = window.location.pathname.includes("companyJoinStatusGuide");
-  const [mode, setMode] = useState<"biz" | "app">(initialQuery.appNo ? "app" : "biz");
-  const [bizNo, setBizNo] = useState(initialQuery.bizNo);
-  const [appNo, setAppNo] = useState(initialQuery.appNo);
-  const [repName, setRepName] = useState(initialQuery.repName);
+  const [mode, setMode] = useState<"biz" | "app">("biz");
+  const [bizNo, setBizNo] = useState("");
+  const [appNo, setAppNo] = useState("");
+  const [repName, setRepName] = useState("");
+  const [registeredContact, setRegisteredContact] = useState("");
   const [agreed, setAgreed] = useState(false);
   const detailState = useAsyncValue(
-    () => fetchJoinCompanyStatusDetail({
-      bizNo: initialQuery.bizNo || undefined,
-      appNo: initialQuery.appNo || undefined,
-      repName: initialQuery.repName
-    }),
-    [initialQuery.bizNo, initialQuery.appNo, initialQuery.repName, isDetailPage],
+    () => fetchJoinCompanyStatusDetail({ lookupHandle: initialQuery.lookupHandle }),
+    [initialQuery.lookupHandle, isDetailPage],
     {
-      enabled: isDetailPage && Boolean(initialQuery.repName && (initialQuery.bizNo || initialQuery.appNo)),
+      enabled: isDetailPage && Boolean(initialQuery.lookupHandle),
       onError: () => undefined
     }
   );
@@ -192,9 +189,10 @@ export function JoinCompanyStatusMigrationPage() {
       mode,
       isDetailPage,
       isGuidePage,
-      bizNo: bizNo.trim(),
-      appNo: appNo.trim(),
-      repName: repName.trim(),
+      bizNoPresent: Boolean(bizNo.trim()),
+      appNoPresent: Boolean(appNo.trim()),
+      repNamePresent: Boolean(repName.trim()),
+      registeredContactPresent: Boolean(registeredContact.trim()),
       status,
       submitted
     });
@@ -236,38 +234,32 @@ export function JoinCompanyStatusMigrationPage() {
     window.location.href = `${targetBasePath}${search}`;
   }
 
-  function handleSearch() {
+  async function handleSearch() {
     logGovernanceScope("ACTION", "join-company-status-search", {
       mode,
-      bizNo: bizNo.trim(),
-      appNo: appNo.trim(),
-      repName: repName.trim(),
+      bizNoPresent: Boolean(bizNo.trim()),
+      appNoPresent: Boolean(appNo.trim()),
+      repNamePresent: Boolean(repName.trim()),
+      registeredContactPresent: Boolean(registeredContact.trim()),
       agreed
     });
-    if (!agreed) {
-      window.alert(copy.needAgree);
-      return;
+    if (!agreed) { window.alert(copy.needAgree); return; }
+    if (!repName.trim()) { window.alert(copy.needRepName); return; }
+    if (!registeredContact.trim()) { window.alert(copy.needRegisteredContact); return; }
+    if (mode === "biz" && !bizNo.trim()) { window.alert(copy.needBizNo); return; }
+    if (mode === "app" && !appNo.trim()) { window.alert(copy.needAppNo); return; }
+    try {
+      const lookup = await fetchJoinCompanyStatusDetail({
+        bizNo: mode === "biz" ? bizNo.trim() : undefined,
+        appNo: mode === "app" ? appNo.trim() : undefined,
+        repName: repName.trim(),
+        registeredContact: registeredContact.trim()
+      });
+      if (!lookup.lookupHandle) throw new Error(copy.searchError);
+      navigate(`${buildLocalizedPath("/join/companyJoinStatusDetail", "/join/en/companyJoinStatusDetail")}?lookupHandle=${encodeURIComponent(lookup.lookupHandle)}`);
+    } catch (lookupError) {
+      window.alert(lookupError instanceof Error ? lookupError.message : copy.searchError);
     }
-    if (!repName.trim()) {
-      window.alert(copy.needRepName);
-      return;
-    }
-    const search = new URLSearchParams();
-    search.set("repName", repName.trim());
-    if (mode === "biz") {
-      if (!bizNo.trim()) {
-        window.alert(copy.needBizNo);
-        return;
-      }
-      search.set("bizNo", bizNo.trim());
-    } else {
-      if (!appNo.trim()) {
-        window.alert(copy.needAppNo);
-        return;
-      }
-      search.set("appNo", appNo.trim());
-    }
-    navigate(`${buildLocalizedPath("/join/companyJoinStatusDetail", "/join/en/companyJoinStatusDetail")}?${search.toString()}`);
   }
 
   function renderStatusSummary() {
@@ -431,18 +423,18 @@ export function JoinCompanyStatusMigrationPage() {
               </h3>
               <ul className="divide-y divide-gray-100 border border-gray-100 rounded-lg overflow-hidden">
                 {files.length > 0 ? files.map((file) => {
-                  const fileId = toFileId(file);
+                  const downloadToken = toDownloadToken(file);
                   const fileName = toFileName(file) || copy.noData;
                   return (
-                    <li className="flex min-w-0 flex-col items-start gap-3 p-4 transition-colors hover:bg-gray-50 sm:flex-row sm:items-center sm:justify-between" key={fileId || fileName}>
+                    <li className="flex min-w-0 flex-col items-start gap-3 p-4 transition-colors hover:bg-gray-50 sm:flex-row sm:items-center sm:justify-between" key={downloadToken || fileName}>
                       <div className="flex min-w-0 items-center gap-3">
                         <span className="material-symbols-outlined text-gray-400">attach_file</span>
                         <span className="min-w-0 break-all text-sm font-medium text-[var(--kr-gov-text-primary)]">{fileName}</span>
                       </div>
-                      {fileId ? (
+                      {downloadToken ? (
                         <HomeButton
                           className="!min-h-0 !border-0 !bg-transparent !p-0 text-[var(--kr-gov-blue)] font-bold text-xs hover:underline hover:!bg-transparent"
-                          onClick={() => navigate(`/join/downloadInsttFile?fileId=${encodeURIComponent(fileId)}`)}
+                          onClick={() => navigate(`/join/downloadInsttFile?downloadToken=${encodeURIComponent(downloadToken)}`)}
                           type="button"
                           variant="ghost"
                         >
@@ -473,7 +465,7 @@ export function JoinCompanyStatusMigrationPage() {
           {status === "R" ? (
             <HomeButton
               className="flex h-14 w-full items-center justify-center gap-2 rounded-lg bg-[var(--kr-gov-blue)] px-10 font-bold text-white shadow-lg shadow-blue-100 transition-colors hover:bg-[var(--kr-gov-blue-hover)] sm:w-auto"
-              onClick={() => navigate(`${buildLocalizedPath("/join/companyReapply", "/join/en/companyReapply")}?bizNo=${encodeURIComponent(toStringValue(result.bizrno, ""))}&repName=${encodeURIComponent(toStringValue(result.reprsntNm, ""))}`)}
+              onClick={() => navigate(`${buildLocalizedPath("/join/companyReapply", "/join/en/companyReapply")}?lookupHandle=${encodeURIComponent(detail?.lookupHandle || initialQuery.lookupHandle)}`)}
               type="button"
               variant="primary"
             >
@@ -704,6 +696,21 @@ export function JoinCompanyStatusMigrationPage() {
                       value={repName}
                     />
                   </div>
+                  <div>
+                    <label className="block text-sm font-bold text-[var(--kr-gov-text-primary)] mb-2" htmlFor="registered-contact">
+                      {copy.registeredContact} <span className="text-red-500">*</span>
+                    </label>
+                    <HomeInput
+                      autoComplete="email"
+                      className="w-full h-14 px-4 border border-[var(--kr-gov-border-light)] rounded-[var(--kr-gov-radius)] focus:ring-2 focus:ring-[var(--kr-gov-focus)] focus:border-transparent"
+                      id="registered-contact"
+                      maxLength={254}
+                      onChange={(event) => setRegisteredContact(event.target.value)}
+                      placeholder={copy.contactPlaceholder}
+                      type="text"
+                      value={registeredContact}
+                    />
+                  </div>
                 </div>
                 <div className="bg-gray-50 p-6 rounded-[var(--kr-gov-radius)] border border-[var(--kr-gov-border-light)]">
                   <div className="flex items-start gap-4">
@@ -712,16 +719,7 @@ export function JoinCompanyStatusMigrationPage() {
                     </div>
                     <div className="flex-1">
                       <h4 className="font-bold text-sm mb-1">{copy.verifyTitle}</h4>
-                      <p className="text-xs text-[var(--kr-gov-text-secondary)] mb-4">{copy.verifyDesc}</p>
-                      <HomeButton
-                        className="flex items-center gap-2 px-4 py-3 bg-white border border-[var(--kr-gov-border-light)] rounded-[var(--kr-gov-radius)] hover:bg-gray-50 transition-colors w-full justify-center font-bold text-sm"
-                        onClick={() => window.alert(copy.verifyAlert)}
-                        type="button"
-                        variant="secondary"
-                      >
-                        <span className="material-symbols-outlined text-[18px]">smartphone</span>
-                        {copy.verifyButton}
-                      </HomeButton>
+                      <p className="text-xs leading-5 text-[var(--kr-gov-text-secondary)]">{copy.verifyDesc}</p>
                     </div>
                   </div>
                 </div>

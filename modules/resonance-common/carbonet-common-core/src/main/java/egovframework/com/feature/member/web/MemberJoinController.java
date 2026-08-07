@@ -1,5 +1,11 @@
 package egovframework.com.feature.member.web;
 
+import java.nio.file.AtomicMoveNotSupportedException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.util.Map;
 import java.util.List;
 import java.util.ArrayList;
@@ -26,8 +32,10 @@ import java.io.File;
 import java.util.UUID;
 import org.springframework.web.multipart.MultipartHttpServletRequest;
 
+import egovframework.com.common.context.ProjectRuntimeContext;
 import egovframework.com.feature.member.service.EnterpriseMemberService;
 import egovframework.com.feature.member.service.MemberConsentHistoryService;
+import egovframework.com.feature.member.service.support.InstitutionEvidenceFileSupport;
 import egovframework.com.feature.member.model.vo.EntrprsMberFileVO;
 import egovframework.com.feature.member.model.vo.EntrprsManageVO;
 import egovframework.com.feature.member.model.vo.InstitutionStatusVO;
@@ -48,6 +56,27 @@ public class MemberJoinController {
     private static final String SESSION_JOIN_VO = "joinVO";
     private static final String SESSION_JOIN_STEP = "joinStep";
 
+    private static final String SESSION_REAPPLY_TOKEN = "companyReapplyToken";
+    private static final String SESSION_REAPPLY_TOKEN_EXPIRES_AT = "companyReapplyTokenExpiresAt";
+    private static final String SESSION_REAPPLY_TOKEN_INSTT_ID = "companyReapplyTokenInsttId";
+    private static final String SESSION_REAPPLY_TOKEN_BIZ_NO = "companyReapplyTokenBizNo";
+    private static final String SESSION_REAPPLY_TOKEN_REP_NAME = "companyReapplyTokenRepName";
+    private static final String SESSION_REAPPLY_TOKEN_PROJECT_ID = "companyReapplyTokenProjectId";
+    private static final long REAPPLY_TOKEN_TTL_MILLIS = 15L * 60L * 1000L;
+
+    private static final String SESSION_REAPPLY_LOOKUP_WINDOW_STARTED_AT = "companyReapplyLookupWindowStartedAt";
+    private static final String SESSION_REAPPLY_LOOKUP_COUNT = "companyReapplyLookupCount";
+    private static final long REAPPLY_LOOKUP_WINDOW_MILLIS = 5L * 60L * 1000L;
+    private static final int REAPPLY_LOOKUP_MAX_REQUESTS = 10;
+    private static final String SESSION_STATUS_LOOKUP_WINDOW_STARTED_AT = "companyStatusLookupWindowStartedAt";
+    private static final String SESSION_STATUS_LOOKUP_COUNT = "companyStatusLookupCount";
+    private static final String SESSION_COMPANY_LOOKUP_GRANTS = "companyLookupGrants";
+    private static final long COMPANY_LOOKUP_HANDLE_TTL_MILLIS = 5L * 60L * 1000L;
+    private static final int COMPANY_LOOKUP_HANDLE_MAX_GRANTS = 20;
+    private static final String SESSION_STATUS_DOWNLOAD_GRANTS = "companyStatusDownloadGrants";
+    private static final long STATUS_DOWNLOAD_TOKEN_TTL_MILLIS = 15L * 60L * 1000L;
+    private static final int STATUS_DOWNLOAD_TOKEN_MAX_GRANTS = 20;
+
     @Resource(name = "entrprsManageService")
     private EnterpriseMemberService entrprsManageService;
 
@@ -56,6 +85,12 @@ public class MemberJoinController {
 
     @Resource
     private MemberConsentHistoryService memberConsentHistoryService;
+
+    @Resource
+    private ProjectRuntimeContext projectRuntimeContext;
+
+    @Resource
+    private egovframework.com.common.security.PublicLookupRateLimitService publicLookupRateLimitService;
 
     @Value("${security.join.allow-unverified-identity:false}")
     private boolean allowUnverifiedIdentity;
@@ -930,41 +965,83 @@ public class MemberJoinController {
         return renderJoinPage(model, "join-company-status-guide", isEnglishJoinRequest(request));
     }
 
-    @GetMapping("/api/company-status/detail")
+    @PostMapping(value = "/api/company-status/detail", consumes = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
     public ResponseEntity<Map<String, Object>> companyJoinStatusDetailApi(
-            @RequestParam(value = "bizNo", required = false) String bizNo,
-            @RequestParam(value = "appNo", required = false) String appNo,
-            @RequestParam("repName") String repName) {
-        Map<String, Object> response = new java.util.LinkedHashMap<>();
+            @org.springframework.web.bind.annotation.RequestBody Map<String, String> lookup,
+            HttpSession session,
+            HttpServletRequest request) {
+        String projectId = currentProjectId();
+        if (!hasText(projectId)) {
+            return reapplyProjectContextUnavailable();
+        }
+        ResponseEntity<Map<String, Object>> globalLimit = enforcePublicLookupRateLimit(
+                projectId, "company-status-detail", request, true);
+        if (globalLimit != null) {
+            return globalLimit;
+        }
+        ResponseEntity<Map<String, Object>> sessionLimit = registerCompanyStatusLookup(session);
+        if (sessionLimit != null) {
+            return sessionLimit;
+        }
+        String lookupHandle = normalized(lookup == null ? null : lookup.get("lookupHandle"));
+        Map<String, Object> handleGrant = hasText(lookupHandle)
+                ? resolveCompanyLookupGrant(session, lookupHandle, projectId)
+                : null;
+        String bizNo = normalized(lookup == null ? null : lookup.get("bizNo"));
+        String appNo = normalized(lookup == null ? null : lookup.get("appNo"));
+        String repName = normalized(lookup == null ? null : lookup.get("repName"));
+        String registeredContact = normalized(lookup == null ? null : lookup.get("registeredContact"));
+        if (hasText(lookupHandle) && handleGrant == null) {
+            return statusLookupUnavailable();
+        }
+        if (handleGrant == null && ((!hasText(bizNo) && !hasText(appNo)) || !hasText(repName)
+                || !hasText(registeredContact) || bizNo.length() > 32 || appNo.length() > 20
+                || repName.length() > 100 || registeredContact.length() > 254
+                || !isValidRegisteredContact(registeredContact))) {
+            return statusLookupUnavailable();
+        }
         try {
             InsttInfoVO searchVO = new InsttInfoVO();
-            searchVO.setReprsntNm(repName);
-            searchVO.setBizrno(bizNo);
-            searchVO.setInsttId(appNo);
-            InstitutionStatusVO result = entrprsManageService.selectInsttInfoForStatus(searchVO);
-            if (result == null || result.isEmpty()) {
-                response.put("success", false);
-                response.put("message", "입력하신 정보와 일치하는 신청 내역이 없습니다.");
-                return ResponseEntity.badRequest().body(response);
+            searchVO.setProjectId(projectId);
+            if (handleGrant != null) {
+                searchVO.setInsttId(normalized(handleGrant.get("insttId")));
+                searchVO.setReprsntNm(normalized(handleGrant.get("repName")));
+            } else {
+                searchVO.setReprsntNm(repName);
+                searchVO.setBizrno(hasText(bizNo) ? normalizeBusinessNumber(bizNo) : null);
+                searchVO.setInsttId(hasText(appNo) ? appNo : null);
             }
+            InstitutionStatusVO result = entrprsManageService.selectInsttInfoForStatus(searchVO);
+            boolean identityMatches = handleGrant != null
+                    ? result != null
+                        && constantTimeEquals(normalized(result.getInsttId()), normalized(handleGrant.get("insttId")))
+                        && constantTimeEquals(normalized(result.getReprsntNm()), normalized(handleGrant.get("repName")))
+                    : result != null
+                        && constantTimeEquals(normalized(result.getReprsntNm()), repName)
+                        && matchesRegisteredContact(result, registeredContact);
+            if (result == null || result.isEmpty() || !identityMatches) {
+                return statusLookupUnavailable();
+            }
+            String publicHandle = handleGrant == null
+                    ? issueCompanyLookupHandle(session, projectId, result)
+                    : lookupHandle;
+            Map<String, Object> response = new java.util.LinkedHashMap<>();
             response.put("success", true);
-            response.put("result", result);
-            response.put("insttFiles", loadInsttFiles(result.getInsttId()));
-            return ResponseEntity.ok(response);
+            response.put("lookupHandle", publicHandle);
+            response.put("result", toPublicStatusResult(result));
+            response.put("insttFiles", toPublicStatusFiles(loadInsttFiles(result.getInsttId()), session,
+                    projectId, result.getInsttId()));
+            return noStore(ResponseEntity.ok(response));
         } catch (Exception e) {
             log.error("Company join status detail api failed", e);
-            response.put("success", false);
-            response.put("message", "조회 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.");
-            return ResponseEntity.internalServerError().body(response);
+            return statusLookupUnavailable();
         }
     }
 
     @GetMapping({"/companyJoinStatusDetail", "/ko/companyJoinStatusDetail", "/en/companyJoinStatusDetail"})
     public String companyJoinStatusDetail(
-            @RequestParam(value = "bizNo", required = false) String bizNo,
-            @RequestParam(value = "appNo", required = false) String appNo,
-            @RequestParam("repName") String repName,
+            @RequestParam(value = "lookupHandle", required = false) String lookupHandle,
             HttpServletRequest request,
             org.springframework.ui.Model model) throws Exception {
         return renderJoinPage(model, "join-company-status", isEnglishJoinRequest(request));
@@ -990,45 +1067,78 @@ public class MemberJoinController {
     }
 
     @GetMapping({"/companyReapply", "/ko/companyReapply", "/en/companyReapply"})
-    public String companyReapply(
-            @RequestParam("bizNo") String bizNo,
-            @RequestParam("repName") String repName,
-            HttpServletRequest request,
-            org.springframework.ui.Model model) throws Exception {
+    public String companyReapply(HttpServletRequest request, org.springframework.ui.Model model) throws Exception {
         return renderJoinPage(model, "join-company-reapply", isEnglishJoinRequest(request));
     }
 
-    @GetMapping("/api/company-reapply/page")
+    @PostMapping(value = "/api/company-reapply/page", consumes = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
     public ResponseEntity<Map<String, Object>> companyReapplyPageApi(
-            @RequestParam("bizNo") String bizNo,
-            @RequestParam("repName") String repName) {
-        Map<String, Object> response = new java.util.LinkedHashMap<>();
+            @org.springframework.web.bind.annotation.RequestBody Map<String, String> lookup,
+            HttpSession session,
+            HttpServletRequest request) {
+        String projectId = currentProjectId();
+        if (!hasText(projectId)) {
+            return reapplyProjectContextUnavailable();
+        }
+        ResponseEntity<Map<String, Object>> globalLimit = enforcePublicLookupRateLimit(
+                projectId, "company-reapply-page", request, false);
+        if (globalLimit != null) {
+            return globalLimit;
+        }
+        ResponseEntity<Map<String, Object>> sessionLimit = registerCompanyReapplyLookup(session);
+        if (sessionLimit != null) {
+            return sessionLimit;
+        }
+        String lookupHandle = normalized(lookup == null ? null : lookup.get("lookupHandle"));
+        Map<String, Object> handleGrant = hasText(lookupHandle)
+                ? resolveCompanyLookupGrant(session, lookupHandle, projectId)
+                : null;
+        String bizNo = normalized(lookup == null ? null : lookup.get("bizNo"));
+        String repName = normalized(lookup == null ? null : lookup.get("repName"));
+        String registeredContact = normalized(lookup == null ? null : lookup.get("registeredContact"));
+        if (hasText(lookupHandle) && handleGrant == null) {
+            return reapplyLookupUnavailable();
+        }
+        if (handleGrant == null && (!hasText(bizNo) || !hasText(repName) || !hasText(registeredContact)
+                || bizNo.length() > 32 || repName.length() > 100 || registeredContact.length() > 254
+                || !isValidBusinessNumber(bizNo) || !isValidRegisteredContact(registeredContact))) {
+            return reapplyLookupUnavailable();
+        }
         try {
             InsttInfoVO searchVO = new InsttInfoVO();
-            searchVO.setReprsntNm(repName);
-            searchVO.setBizrno(bizNo);
+            searchVO.setProjectId(projectId);
+            if (handleGrant != null) {
+                searchVO.setInsttId(normalized(handleGrant.get("insttId")));
+                searchVO.setReprsntNm(normalized(handleGrant.get("repName")));
+            } else {
+                searchVO.setReprsntNm(repName);
+                searchVO.setBizrno(normalizeBusinessNumber(bizNo));
+            }
             InstitutionStatusVO result = entrprsManageService.selectInsttInfoForStatus(searchVO);
-            if (result == null || result.isEmpty()) {
-                response.put("success", false);
-                response.put("message", "입력하신 정보와 일치하는 신청 내역이 없습니다.");
-                return ResponseEntity.badRequest().body(response);
+            boolean identityMatches = handleGrant != null
+                    ? result != null
+                        && constantTimeEquals(normalized(result.getInsttId()), normalized(handleGrant.get("insttId")))
+                        && constantTimeEquals(normalized(result.getReprsntNm()), normalized(handleGrant.get("repName")))
+                    : result != null && matchesRegisteredContact(result, registeredContact);
+            if (result == null || result.isEmpty() || !identityMatches || !"R".equals(result.getInsttSttus())) {
+                return reapplyLookupUnavailable();
             }
-            if (!"R".equals(result.getInsttSttus())) {
-                response.put("success", false);
-                response.put("message", "반려된 건만 재신청이 가능합니다.");
-                response.put("result", result);
-                return ResponseEntity.badRequest().body(response);
-            }
+            String publicHandle = handleGrant == null
+                    ? issueCompanyLookupHandle(session, projectId, result)
+                    : lookupHandle;
+            String reapplyToken = issueCompanyReapplyToken(session, result, projectId);
+            Map<String, Object> response = new java.util.LinkedHashMap<>();
             response.put("success", true);
-            response.put("result", result);
-            response.put("insttFiles", loadInsttFiles(result.getInsttId()));
-            return ResponseEntity.ok(response);
+            response.put("lookupHandle", publicHandle);
+            response.put("result", toPublicReapplyResult(result));
+            response.put("insttFiles", toPublicReapplyFiles(loadInsttFiles(result.getInsttId())));
+            response.put("reapplyToken", reapplyToken);
+            response.put("reapplyTokenExpiresInSeconds", REAPPLY_TOKEN_TTL_MILLIS / 1000L);
+            return noStore(ResponseEntity.ok(response));
         } catch (Exception e) {
             log.error("Company reapply page api failed", e);
-            response.put("success", false);
-            response.put("message", "조회 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.");
-            return ResponseEntity.internalServerError().body(response);
+            return reapplyLookupUnavailable();
         }
     }
 
@@ -1045,155 +1155,51 @@ public class MemberJoinController {
             @RequestParam(value = "chargerName", required = false) String chargerNm,
             @RequestParam(value = "chargerEmail", required = false) String chargerEmail,
             @RequestParam(value = "chargerTel", required = false) String chargerTel,
-            @RequestParam(value = "fileUploads", required = false) java.util.List<org.springframework.web.multipart.MultipartFile> fileUploads) {
-        Map<String, Object> response = new java.util.LinkedHashMap<>();
-        try {
-            String normalizedInsttId = insttId == null ? "" : insttId.trim();
-
-            InsttInfoVO searchVO = new InsttInfoVO();
-            searchVO.setInsttId(normalizedInsttId);
-            searchVO.setReprsntNm(repName);
-            searchVO.setBizrno(bizNo);
-            InstitutionStatusVO current = entrprsManageService.selectInsttInfoForStatus(searchVO);
-            if (current == null || current.isEmpty()) {
-                response.put("success", false);
-                response.put("message", "재신청 대상 정보를 찾을 수 없습니다.");
-                return ResponseEntity.badRequest().body(response);
-            }
-            String insttSttus = String.valueOf(current.getInsttSttus());
-            if (!"R".equals(insttSttus)) {
-                response.put("success", false);
-                response.put("message", "반려된 건만 재신청이 가능합니다.");
-                return ResponseEntity.badRequest().body(response);
-            }
-
-            InsttInfoVO vo = new InsttInfoVO();
-            vo.setInsttId(normalizedInsttId);
-            vo.setInsttNm(agencyName);
-            vo.setReprsntNm(repName);
-            vo.setBizrno(bizNo);
-            vo.setZip(zipCode);
-            vo.setAdres(addr);
-            vo.setDetailAdres(detailAddr);
-            vo.setChargerNm(chargerNm);
-            vo.setChargerEmail(chargerEmail);
-            vo.setChargerTel(chargerTel);
-            vo.setInsttSttus("A");
-            vo.setEntrprsSeCode(hasText(current.getEntrprsSeCode()) ? current.getEntrprsSeCode() : resolveScopedInstitutionType(null));
-
-            List<InsttFileVO> existingFiles = entrprsManageService.selectInsttFiles(normalizedInsttId);
-            int nextFileSn = existingFiles == null ? 1 : existingFiles.size() + 1;
-            List<InsttFileVO> insttFiles = saveInsttEvidenceFiles(normalizedInsttId, fileUploads, nextFileSn);
-
-            if (!insttFiles.isEmpty()) {
-                vo.setBizRegFilePath(joinInsttEvidencePaths(insttFiles));
-            } else {
-                vo.setBizRegFilePath(current.getBizRegFilePath());
-            }
-
-            entrprsManageService.updateInsttInfo(vo);
-            entrprsManageService.insertInsttFiles(insttFiles);
-            response.put("success", true);
-            response.put("insttId", normalizedInsttId);
-            response.put("insttNm", agencyName);
-            response.put("bizrno", bizNo);
-            response.put("regDate", java.time.LocalDateTime.now()
-                    .format(java.time.format.DateTimeFormatter.ofPattern("yyyy.MM.dd HH:mm:ss")));
-            return ResponseEntity.ok(response);
-        } catch (Exception e) {
-            log.error("Company reapply submit api failed", e);
-            response.put("success", false);
-            response.put("message", "처리 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.");
-            return ResponseEntity.internalServerError().body(response);
+            @RequestParam(value = "reapplyToken", required = false) String reapplyToken,
+            @RequestParam(value = "fileUploads", required = false) java.util.List<org.springframework.web.multipart.MultipartFile> fileUploads,
+            HttpSession session,
+            HttpServletRequest request) {
+        String projectId = currentProjectId();
+        ResponseEntity<Map<String, Object>> globalLimit = enforcePublicLookupRateLimit(
+                projectId, "company-reapply-submit", request, false);
+        if (globalLimit != null) {
+            return globalLimit;
         }
+        return noStore(processCompanyReapply(insttId, agencyName, repName, bizNo, zipCode, addr, detailAddr,
+                chargerNm, chargerEmail, chargerTel, reapplyToken, fileUploads, session));
     }
 
     @PostMapping({"/companyReapplySubmit", "/ko/companyReapplySubmit", "/en/companyReapplySubmit"})
-    public String companyReapplySubmit(
-            @RequestParam("insttId") String insttId,
-            @RequestParam("agencyName") String agencyName,
-            @RequestParam("representativeName") String repName,
-            @RequestParam("bizRegistrationNumber") String bizNo,
-            @RequestParam("zipCode") String zipCode,
-            @RequestParam("companyAddress") String addr,
-            @RequestParam(value = "companyAddressDetail", required = false) String detailAddr,
-            @RequestParam(value = "chargerName", required = false) String chargerNm,
-            @RequestParam(value = "chargerEmail", required = false) String chargerEmail,
-            @RequestParam(value = "chargerTel", required = false) String chargerTel,
-            @RequestParam(value = "fileUploads", required = false) java.util.List<org.springframework.web.multipart.MultipartFile> fileUploads,
-            HttpServletRequest request,
-            org.springframework.ui.Model model) {
-
-        try {
-            boolean english = request.getRequestURI() != null && request.getRequestURI().startsWith("/join/en/");
-            String normalizedInsttId = insttId == null ? "" : insttId.trim();
-
-            InsttInfoVO searchVO = new InsttInfoVO();
-            searchVO.setInsttId(normalizedInsttId);
-            searchVO.setReprsntNm(repName);
-            searchVO.setBizrno(bizNo);
-            InstitutionStatusVO current = entrprsManageService.selectInsttInfoForStatus(searchVO);
-            if (current == null || current.isEmpty()) {
-                model.addAttribute("errorMessage", "재신청 대상 정보를 찾을 수 없습니다.");
-                return "redirect:/join/companyJoinStatusSearch";
-            }
-
-            String insttSttus = String.valueOf(current.getInsttSttus());
-            if (!"R".equals(insttSttus)) {
-                model.addAttribute("errorMessage", "반려된 건만 재신청이 가능합니다.");
-                return "redirect:/join/companyJoinStatusDetail?bizNo=" + urlEncode(bizNo) + "&repName=" + urlEncode(repName);
-            }
-
-            InsttInfoVO vo = new InsttInfoVO();
-            vo.setInsttId(normalizedInsttId);
-            vo.setInsttNm(agencyName);
-            vo.setReprsntNm(repName);
-            vo.setBizrno(bizNo);
-            vo.setZip(zipCode);
-            vo.setAdres(addr);
-            vo.setDetailAdres(detailAddr);
-            vo.setChargerNm(chargerNm);
-            vo.setChargerEmail(chargerEmail);
-            vo.setChargerTel(chargerTel);
-            vo.setInsttSttus("A");
-            vo.setEntrprsSeCode(hasText(current.getEntrprsSeCode()) ? current.getEntrprsSeCode() : resolveScopedInstitutionType(null));
-
-            List<InsttFileVO> existingFiles = entrprsManageService.selectInsttFiles(normalizedInsttId);
-            int nextFileSn = existingFiles == null ? 1 : existingFiles.size() + 1;
-            List<InsttFileVO> insttFiles = saveInsttEvidenceFiles(normalizedInsttId, fileUploads, nextFileSn);
-
-            if (!insttFiles.isEmpty()) {
-                vo.setBizRegFilePath(joinInsttEvidencePaths(insttFiles));
-            } else {
-                vo.setBizRegFilePath(current.getBizRegFilePath());
-            }
-
-            entrprsManageService.updateInsttInfo(vo);
-            entrprsManageService.insertInsttFiles(insttFiles);
-
-            String regDate = java.time.LocalDateTime.now()
-                    .format(java.time.format.DateTimeFormatter.ofPattern("yyyy.MM.dd HH:mm:ss"));
-            String redirectPath = (english ? "/join/en/companyJoinStatusDetail" : "/join/companyJoinStatusDetail") + "?bizNo=" + urlEncode(bizNo)
-                    + "&repName=" + urlEncode(repName)
-                    + "&submitted=1"
-                    + "&insttNm=" + urlEncode(agencyName)
-                    + "&regDate=" + urlEncode(regDate);
-            return "redirect:" + redirectPath;
-
-        } catch (Exception e) {
-            log.error("Company reapply submit failed", e);
-            boolean english = request.getRequestURI() != null && request.getRequestURI().startsWith("/join/en/");
-            return "redirect:" + (english ? "/join/en/companyReapply" : "/join/companyReapply") + "?bizNo=" + urlEncode(bizNo)
-                    + "&repName=" + urlEncode(repName)
-                    + "&errorMessage=" + urlEncode("처리 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.");
-        }
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> legacyCompanyReapplySubmit() {
+        return noStore(ResponseEntity.status(HttpStatus.GONE).body(Map.of(
+                "success", false,
+                "errorCode", "LEGACY_REAPPLICATION_ENDPOINT_RETIRED",
+                "message", "지원이 종료된 제출 경로입니다. 최신 재신청 화면을 이용해 주세요.")));
     }
 
     @GetMapping("/downloadInsttFile")
-    public void downloadInsttFile(@RequestParam("fileId") String fileId,
+    public void downloadInsttFile(@RequestParam("downloadToken") String downloadToken,
+            HttpSession session,
             jakarta.servlet.http.HttpServletResponse response) throws Exception {
+        response.setHeader("Cache-Control", "no-store");
+        response.setHeader("Pragma", "no-cache");
+        String projectId = currentProjectId();
+        if (!hasText(projectId)) {
+            response.sendError(503, "Project context is unavailable.");
+            return;
+        }
+        Map<String, Object> grant = resolveStatusDownloadGrant(session, downloadToken);
+        if (grant == null || !constantTimeEquals(projectId, normalized(grant.get("projectId")))) {
+            response.sendError(403, "Download authorization is invalid or expired.");
+            return;
+        }
+        String fileId = normalized(grant.get("fileId"));
         InsttFileVO fileVO = entrprsManageService.selectInsttFileByFileId(fileId);
-        if (fileVO == null || !hasText(fileVO.getFileStrePath())) {
+        if (fileVO == null
+                || !constantTimeEquals(normalized(grant.get("insttId")), normalized(fileVO.getInsttId()))
+                || !constantTimeEquals(normalized(grant.get("fileSha256")), normalized(fileVO.getFileSha256()))
+                || !hasText(fileVO.getFileStrePath())) {
             response.sendError(404, "File not found or access denied.");
             return;
         }
@@ -1205,8 +1211,8 @@ public class MemberJoinController {
             canonicalDir += File.separator;
         }
         String canonicalFile = file.getCanonicalPath();
-        // Security check: only allow files within the configured instt directory
-        if (!file.exists() || !canonicalFile.startsWith(canonicalDir)) {
+        if (!file.exists() || !canonicalFile.startsWith(canonicalDir)
+                || !constantTimeEquals(fileVO.getFileSha256(), InstitutionEvidenceFileSupport.sha256(file.toPath()))) {
             response.sendError(404, "File not found or access denied.");
             return;
         }
@@ -1216,7 +1222,6 @@ public class MemberJoinController {
         response.setContentType("application/octet-stream");
         response.setHeader("Content-Disposition",
                 "attachment; filename=\"" + java.net.URLEncoder.encode(fileName, "UTF-8") + "\"");
-
         try (java.io.FileInputStream fis = new java.io.FileInputStream(file);
                 java.io.OutputStream os = response.getOutputStream()) {
             byte[] buffer = new byte[4096];
@@ -1240,6 +1245,698 @@ public class MemberJoinController {
             log.warn("Failed to load institution files. insttId={}", normalizedInsttId, e);
             return java.util.Collections.emptyList();
         }
+    }
+
+    private ResponseEntity<Map<String, Object>> processCompanyReapply(
+            String insttId,
+            String agencyName,
+            String repName,
+            String bizNo,
+            String zipCode,
+            String addr,
+            String detailAddr,
+            String chargerNm,
+            String chargerEmail,
+            String chargerTel,
+            String reapplyToken,
+            List<MultipartFile> fileUploads,
+            HttpSession session) {
+        String projectId = currentProjectId();
+        if (!hasText(projectId)) {
+            return reapplyProjectContextUnavailable();
+        }
+        ResponseEntity<Map<String, Object>> validation = validateCompanyReapplyRequest(
+                insttId, agencyName, repName, bizNo, zipCode, addr, detailAddr, chargerNm, chargerEmail, chargerTel, fileUploads);
+        if (validation != null) {
+            return validation;
+        }
+        if (!hasText(reapplyToken)) {
+            return reapplyError(HttpStatus.FORBIDDEN, "REAPPLY_TOKEN_REQUIRED",
+                    "재신청 조회 후 발급된 보안 토큰이 필요합니다.");
+        }
+        String normalizedInsttId = insttId.trim();
+        String normalizedBizNo = normalizeBusinessNumber(bizNo);
+        if (!consumeCompanyReapplyToken(session, reapplyToken, normalizedInsttId, bizNo, repName, projectId)) {
+            return reapplyError(HttpStatus.FORBIDDEN, "REAPPLY_TOKEN_INVALID_OR_EXPIRED",
+                    "재신청 보안 토큰이 만료되었거나 유효하지 않습니다. 신청 내역을 다시 조회해 주세요.");
+        }
+
+        InstitutionStatusVO current;
+        InsttInfoVO vo;
+        int nextFileSn;
+        try {
+            InsttInfoVO searchVO = new InsttInfoVO();
+            searchVO.setInsttId(normalizedInsttId);
+            searchVO.setReprsntNm(repName);
+            searchVO.setBizrno(normalizedBizNo);
+            searchVO.setProjectId(projectId);
+            current = entrprsManageService.selectInsttInfoForStatus(searchVO);
+            if (current == null || current.isEmpty() || !"R".equals(current.getInsttSttus())) {
+                return reapplyError(HttpStatus.CONFLICT, "REAPPLY_STATE_CONFLICT",
+                        "재신청 대상이 이미 처리되었거나 상태가 변경되었습니다.");
+            }
+
+            vo = new InsttInfoVO();
+            vo.setInsttId(normalizedInsttId);
+            vo.setProjectId(projectId);
+            vo.setInsttNm(agencyName.trim());
+            vo.setReprsntNm(repName.trim());
+            vo.setBizrno(normalizedBizNo);
+            vo.setZip(zipCode.trim());
+            vo.setAdres(addr.trim());
+            vo.setDetailAdres(detailAddr == null ? null : detailAddr.trim());
+            vo.setChargerNm(chargerNm.trim());
+            vo.setChargerEmail(chargerEmail.trim());
+            vo.setChargerTel(chargerTel.trim());
+            vo.setInsttSttus("A");
+            vo.setEntrprsSeCode(hasText(current.getEntrprsSeCode())
+                    ? current.getEntrprsSeCode() : resolveScopedInstitutionType(null));
+
+            List<InsttFileVO> existingFiles = entrprsManageService.selectInsttFiles(normalizedInsttId);
+            nextFileSn = existingFiles == null ? 1 : existingFiles.size() + 1;
+        } catch (Exception preparationError) {
+            log.error("Company reapply preparation failed. insttId={}", normalizedInsttId, preparationError);
+            return reapplyError(HttpStatus.INTERNAL_SERVER_ERROR, "REAPPLY_PERSISTENCE_FAILED",
+                    "처리 중 오류가 발생했습니다. 신청 내역을 다시 조회한 뒤 재시도해 주세요.");
+        }
+
+        // Only this phase owns newly written physical files. If transactional persistence
+        // fails or reports a conditional-update conflict, the DB rolls back and these files
+        // must be removed. Once reapplyInstitution returns a receipt, its transaction has
+        // committed and no later response/session failure may delete the committed evidence.
+        List<InsttFileVO> savedFiles = java.util.Collections.emptyList();
+        Map<String, Object> receipt;
+        try {
+            // 기존 증빙은 감사 추적을 위해 보존한다. 이번 재신청에서 추가한 증빙만
+            // 원자 서비스와 audit evidence_file_count에 전달한다.
+            savedFiles = saveInsttEvidenceFiles(normalizedInsttId, fileUploads, nextFileSn);
+            vo.setBizRegFilePath(joinInsttEvidencePaths(savedFiles));
+            receipt = entrprsManageService.reapplyInstitution(vo, savedFiles, current.getRjctRsn());
+            if (receipt == null || receipt.isEmpty()) {
+                cleanupInsttEvidenceFiles(savedFiles);
+                return reapplyError(HttpStatus.CONFLICT, "REAPPLY_STATE_CONFLICT",
+                        "다른 요청에서 재신청이 먼저 처리되었습니다. 신청 상태를 다시 조회해 주세요.");
+            }
+        } catch (Exception persistenceError) {
+            cleanupInsttEvidenceFiles(savedFiles);
+            log.error("Company reapply persistence failed. insttId={}", normalizedInsttId, persistenceError);
+            return reapplyError(HttpStatus.INTERNAL_SERVER_ERROR, "REAPPLY_PERSISTENCE_FAILED",
+                    "처리 중 오류가 발생했습니다. 신청 내역을 다시 조회한 뒤 재시도해 주세요.");
+        }
+
+        Map<String, Object> response = new java.util.LinkedHashMap<>();
+        response.put("success", true);
+        response.put("insttId", normalizedInsttId);
+        response.put("insttNm", agencyName.trim());
+        response.put("bizrno", normalizedBizNo);
+        response.put("status", "APPLIED");
+        response.put("regDate", java.time.LocalDateTime.now()
+                .format(java.time.format.DateTimeFormatter.ofPattern("yyyy.MM.dd HH:mm:ss")));
+        String lookupHandle = "";
+        try {
+            lookupHandle = issueCompanyLookupHandle(session, projectId, current);
+        } catch (Exception handleError) {
+            // Persistence is already committed. Preserve evidence and return the successful
+            // receipt; the customer can open the status search page for a new handle.
+            log.warn("Company reapply committed but status lookup handle could not be issued. insttId={}",
+                    normalizedInsttId, handleError);
+        }
+        response.put("lookupHandle", lookupHandle);
+        response.put("receipt", receipt);
+        return ResponseEntity.ok(response);
+    }
+
+    private ResponseEntity<Map<String, Object>> validateCompanyReapplyRequest(
+            String insttId, String agencyName, String repName, String bizNo, String zipCode, String addr, String detailAddr,
+            String chargerNm, String chargerEmail, String chargerTel, List<MultipartFile> fileUploads) {
+        List<String> missingFields = new ArrayList<>();
+        addMissingField(missingFields, "insttId", insttId);
+        addMissingField(missingFields, "agencyName", agencyName);
+        addMissingField(missingFields, "representativeName", repName);
+        addMissingField(missingFields, "bizRegistrationNumber", bizNo);
+        addMissingField(missingFields, "zipCode", zipCode);
+        addMissingField(missingFields, "companyAddress", addr);
+        addMissingField(missingFields, "chargerName", chargerNm);
+        addMissingField(missingFields, "chargerEmail", chargerEmail);
+        addMissingField(missingFields, "chargerTel", chargerTel);
+        if (!missingFields.isEmpty()) {
+            Map<String, Object> response = new java.util.LinkedHashMap<>();
+            response.put("success", false);
+            response.put("errorCode", "REQUIRED_FIELDS_MISSING");
+            response.put("message", "필수 입력 항목을 확인해 주세요.");
+            response.put("missingFields", missingFields);
+            return ResponseEntity.badRequest().body(response);
+        }
+        Map<String, Integer> lengthLimits = new java.util.LinkedHashMap<>();
+        lengthLimits.put("insttId", InstitutionEvidenceFileSupport.MAX_INSTITUTION_ID_LENGTH);
+        lengthLimits.put("agencyName", 200);
+        lengthLimits.put("representativeName", 100);
+        lengthLimits.put("bizRegistrationNumber", 20);
+        lengthLimits.put("zipCode", 10);
+        lengthLimits.put("companyAddress", 500);
+        lengthLimits.put("companyAddressDetail", 500);
+        lengthLimits.put("chargerName", 100);
+        lengthLimits.put("chargerEmail", 254);
+        lengthLimits.put("chargerTel", 30);
+        Map<String, String> values = new java.util.LinkedHashMap<>();
+        values.put("insttId", insttId);
+        values.put("agencyName", agencyName);
+        values.put("representativeName", repName);
+        values.put("bizRegistrationNumber", bizNo);
+        values.put("zipCode", zipCode);
+        values.put("companyAddress", addr);
+        values.put("companyAddressDetail", detailAddr);
+        values.put("chargerName", chargerNm);
+        values.put("chargerEmail", chargerEmail);
+        values.put("chargerTel", chargerTel);
+        List<String> oversizedFields = new ArrayList<>();
+        for (Map.Entry<String, Integer> limit : lengthLimits.entrySet()) {
+            String value = values.get(limit.getKey());
+            if (value != null && value.length() > limit.getValue()) {
+                oversizedFields.add(limit.getKey());
+            }
+        }
+        if (!oversizedFields.isEmpty()) {
+            Map<String, Object> response = new java.util.LinkedHashMap<>();
+            response.put("success", false);
+            response.put("errorCode", "FIELD_LENGTH_EXCEEDED");
+            response.put("message", "입력 가능한 최대 길이를 초과한 항목이 있습니다.");
+            response.put("invalidFields", oversizedFields);
+            return ResponseEntity.badRequest().body(response);
+        }
+        if (!isValidBusinessNumber(bizNo)) {
+            return reapplyError(HttpStatus.BAD_REQUEST, "INVALID_BUSINESS_NUMBER", "사업자등록번호는 숫자 10자리로 입력해 주세요.");
+        }
+        if (!isFiveDigitZipCode(zipCode)) {
+            return reapplyError(HttpStatus.BAD_REQUEST, "INVALID_ZIP_CODE", "우편번호는 숫자 5자리로 입력해 주세요.");
+        }
+        if (!chargerEmail.matches("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$")) {
+            return reapplyError(HttpStatus.BAD_REQUEST, "INVALID_CHARGER_EMAIL", "담당자 이메일 형식을 확인해 주세요.");
+        }
+        if (!isValidTelephone(chargerTel)) {
+            return reapplyError(HttpStatus.BAD_REQUEST, "INVALID_CHARGER_TEL", "담당자 연락처 형식을 확인해 주세요.");
+        }
+        if (!hasValidReapplyEvidenceFiles(fileUploads)) {
+            return reapplyError(HttpStatus.BAD_REQUEST, "INVALID_EVIDENCE_FILE",
+                    "PDF, JPG, JPEG, PNG 증빙을 최대 10개까지, 파일당 10MB 이하로 첨부해 주세요.");
+        }
+        return null;
+    }
+
+    private void addMissingField(List<String> missingFields, String fieldName, String value) {
+        if (!hasText(value)) {
+            missingFields.add(fieldName);
+        }
+    }
+
+    private boolean isValidTelephone(String value) {
+        int digitCount = 0;
+        for (int i = 0; i < value.length(); i++) {
+            char ch = value.charAt(i);
+            if (Character.isDigit(ch)) {
+                digitCount++;
+            } else if (ch != '+' && ch != '-' && ch != '(' && ch != ')' && !Character.isWhitespace(ch)) {
+                return false;
+            }
+        }
+        return digitCount >= 8 && digitCount <= 15;
+    }
+
+    private boolean isValidBusinessNumber(String value) {
+        if (!hasText(value)) {
+            return false;
+        }
+        int digitCount = 0;
+        String trimmed = value.trim();
+        for (int i = 0; i < trimmed.length(); i++) {
+            char ch = trimmed.charAt(i);
+            if (Character.isDigit(ch)) {
+                digitCount++;
+            } else if (ch != '-') {
+                return false;
+            }
+        }
+        return digitCount == 10;
+    }
+
+    private String normalizeBusinessNumber(String value) {
+        if (value == null) {
+            return "";
+        }
+        StringBuilder digits = new StringBuilder(10);
+        for (int i = 0; i < value.length(); i++) {
+            if (Character.isDigit(value.charAt(i))) {
+                digits.append(value.charAt(i));
+            }
+        }
+        return digits.toString();
+    }
+
+    private boolean isFiveDigitZipCode(String value) {
+        if (value == null || value.trim().length() != 5) {
+            return false;
+        }
+        String trimmed = value.trim();
+        for (int i = 0; i < trimmed.length(); i++) {
+            if (!Character.isDigit(trimmed.charAt(i))) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private boolean hasValidReapplyEvidenceFiles(List<MultipartFile> fileUploads) {
+        if (fileUploads == null || fileUploads.isEmpty() || fileUploads.size() > 10) {
+            return false;
+        }
+        boolean hasRealFile = false;
+        for (MultipartFile file : fileUploads) {
+            if (file == null || file.isEmpty()) {
+                continue;
+            }
+            hasRealFile = true;
+            if (file.getSize() <= 0L || file.getSize() > 10L * 1024L * 1024L) {
+                return false;
+            }
+            String name = file.getOriginalFilename() == null ? "" : file.getOriginalFilename().toLowerCase();
+            String contentType = file.getContentType() == null ? "" : file.getContentType().toLowerCase();
+            boolean pdf = name.endsWith(".pdf") && "application/pdf".equals(contentType);
+            boolean jpeg = (name.endsWith(".jpg") || name.endsWith(".jpeg"))
+                    && ("image/jpeg".equals(contentType) || "image/jpg".equals(contentType));
+            boolean png = name.endsWith(".png") && "image/png".equals(contentType);
+            if (!pdf && !jpeg && !png) {
+                return false;
+            }
+            byte[] header = new byte[8];
+            int read = 0;
+            try (java.io.InputStream input = file.getInputStream()) {
+                while (read < header.length) {
+                    int count = input.read(header, read, header.length - read);
+                    if (count < 0) break;
+                    read += count;
+                }
+            } catch (Exception readError) {
+                return false;
+            }
+            boolean magicMatches = pdf && read >= 4
+                    && header[0] == '%' && header[1] == 'P' && header[2] == 'D' && header[3] == 'F';
+            magicMatches = magicMatches || (jpeg && read >= 3
+                    && (header[0] & 0xff) == 0xff && (header[1] & 0xff) == 0xd8 && (header[2] & 0xff) == 0xff);
+            magicMatches = magicMatches || (png && read >= 8
+                    && (header[0] & 0xff) == 0x89 && header[1] == 'P' && header[2] == 'N' && header[3] == 'G'
+                    && (header[4] & 0xff) == 0x0d && (header[5] & 0xff) == 0x0a
+                    && (header[6] & 0xff) == 0x1a && (header[7] & 0xff) == 0x0a);
+            if (!magicMatches) return false;
+        }
+        return hasRealFile;
+    }
+
+    private Map<String, Object> toPublicReapplyResult(InstitutionStatusVO result) {
+        Map<String, Object> publicResult = new java.util.LinkedHashMap<>();
+        publicResult.put("insttId", result.getInsttId());
+        publicResult.put("insttNm", result.getInsttNm());
+        publicResult.put("reprsntNm", result.getReprsntNm());
+        publicResult.put("bizrno", result.getBizrno());
+        publicResult.put("zip", result.getZip());
+        publicResult.put("adres", result.getAdres());
+        publicResult.put("insttSttus", result.getInsttSttus());
+        publicResult.put("rjctRsn", result.getRjctRsn());
+        publicResult.put("rjctPnttm", result.getRjctPnttm());
+        publicResult.put("entrprsSeCode", result.getEntrprsSeCode());
+        return publicResult;
+    }
+
+    private List<Map<String, Object>> toPublicReapplyFiles(List<InsttFileVO> files) {
+        List<Map<String, Object>> publicFiles = new ArrayList<>();
+        for (InsttFileVO file : files) {
+            if (file == null) {
+                continue;
+            }
+            Map<String, Object> publicFile = new java.util.LinkedHashMap<>();
+            publicFile.put("fileSn", file.getFileSn());
+            publicFile.put("orignlFileNm", file.getOrignlFileNm());
+            publicFile.put("fileMg", file.getFileMg());
+            publicFile.put("fileExtsn", file.getFileExtsn());
+            publicFile.put("regDate", file.getRegDate());
+            publicFiles.add(publicFile);
+        }
+        return publicFiles;
+    }
+
+    private String issueCompanyReapplyToken(HttpSession session, InstitutionStatusVO result, String projectId) {
+        String token = UUID.randomUUID().toString();
+        synchronized (session) {
+            session.setAttribute(SESSION_REAPPLY_TOKEN, token);
+            session.setAttribute(SESSION_REAPPLY_TOKEN_EXPIRES_AT,
+                    System.currentTimeMillis() + REAPPLY_TOKEN_TTL_MILLIS);
+            session.setAttribute(SESSION_REAPPLY_TOKEN_INSTT_ID, normalized(result.getInsttId()));
+            session.setAttribute(SESSION_REAPPLY_TOKEN_BIZ_NO, normalizeBusinessNumber(result.getBizrno()));
+            session.setAttribute(SESSION_REAPPLY_TOKEN_REP_NAME, normalized(result.getReprsntNm()));
+            session.setAttribute(SESSION_REAPPLY_TOKEN_PROJECT_ID, normalized(projectId));
+        }
+        return token;
+    }
+
+    private boolean consumeCompanyReapplyToken(HttpSession session, String token, String insttId, String bizNo,
+            String repName, String projectId) {
+        if (session == null) {
+            return false;
+        }
+        synchronized (session) {
+            Object storedToken = session.getAttribute(SESSION_REAPPLY_TOKEN);
+            Object expiresAt = session.getAttribute(SESSION_REAPPLY_TOKEN_EXPIRES_AT);
+            boolean valid = storedToken instanceof String
+                    && expiresAt instanceof Number
+                    && ((Number) expiresAt).longValue() >= System.currentTimeMillis()
+                    && constantTimeEquals((String) storedToken, token)
+                    && constantTimeEquals(normalized(session.getAttribute(SESSION_REAPPLY_TOKEN_INSTT_ID)), normalized(insttId))
+                    && constantTimeEquals(normalized(session.getAttribute(SESSION_REAPPLY_TOKEN_BIZ_NO)), normalizeBusinessNumber(bizNo))
+                    && constantTimeEquals(normalized(session.getAttribute(SESSION_REAPPLY_TOKEN_REP_NAME)), normalized(repName))
+                    && constantTimeEquals(normalized(session.getAttribute(SESSION_REAPPLY_TOKEN_PROJECT_ID)), normalized(projectId));
+            clearCompanyReapplyToken(session);
+            return valid;
+        }
+    }
+
+    private void clearCompanyReapplyToken(HttpSession session) {
+        session.removeAttribute(SESSION_REAPPLY_TOKEN);
+        session.removeAttribute(SESSION_REAPPLY_TOKEN_EXPIRES_AT);
+        session.removeAttribute(SESSION_REAPPLY_TOKEN_INSTT_ID);
+        session.removeAttribute(SESSION_REAPPLY_TOKEN_BIZ_NO);
+        session.removeAttribute(SESSION_REAPPLY_TOKEN_REP_NAME);
+        session.removeAttribute(SESSION_REAPPLY_TOKEN_PROJECT_ID);
+    }
+
+    private boolean constantTimeEquals(String expected, String actual) {
+        if (expected == null || actual == null) {
+            return false;
+        }
+        return MessageDigest.isEqual(expected.getBytes(StandardCharsets.UTF_8), actual.getBytes(StandardCharsets.UTF_8));
+    }
+
+    private String normalized(Object value) {
+        return value == null ? "" : String.valueOf(value).trim();
+    }
+
+    private String currentProjectId() {
+        return projectRuntimeContext == null || projectRuntimeContext.getProjectId() == null
+                ? "" : projectRuntimeContext.getProjectId().trim();
+    }
+
+    private boolean isValidRegisteredContact(String value) {
+        if (!hasText(value)) {
+            return false;
+        }
+        String trimmed = value.trim();
+        return trimmed.matches("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$") || isValidTelephone(trimmed);
+    }
+
+    private boolean matchesRegisteredContact(InstitutionStatusVO result, String suppliedContact) {
+        String supplied = normalizeContact(suppliedContact);
+        boolean emailMatch = constantTimeEquals(normalizeContact(result.getChargerEmail()), supplied);
+        boolean telephoneMatch = constantTimeEquals(normalizeContact(result.getChargerTel()), supplied);
+        return emailMatch | telephoneMatch;
+    }
+
+    private String normalizeContact(String value) {
+        if (!hasText(value)) {
+            return "";
+        }
+        String trimmed = value.trim();
+        if (trimmed.indexOf('@') >= 0) {
+            return trimmed.toLowerCase(java.util.Locale.ROOT);
+        }
+        StringBuilder digits = new StringBuilder();
+        for (int i = 0; i < trimmed.length(); i++) {
+            if (Character.isDigit(trimmed.charAt(i))) {
+                digits.append(trimmed.charAt(i));
+            }
+        }
+        return digits.toString();
+    }
+
+    private Map<String, Object> toPublicStatusResult(InstitutionStatusVO result) {
+        Map<String, Object> value = new java.util.LinkedHashMap<>();
+        value.put("insttId", result.getInsttId());
+        value.put("insttNm", result.getInsttNm());
+        value.put("reprsntNm", result.getReprsntNm());
+        value.put("bizrno", result.getBizrno());
+        value.put("entrprsSeCode", result.getEntrprsSeCode());
+        value.put("insttSttus", result.getInsttSttus());
+        value.put("rjctRsn", result.getRjctRsn());
+        value.put("rjctPnttm", result.getRjctPnttm());
+        value.put("frstRegistPnttm", result.getFrstRegistPnttm());
+        value.put("lastUpdtPnttm", result.getLastUpdtPnttm());
+        return value;
+    }
+
+    private List<Map<String, Object>> toPublicStatusFiles(List<InsttFileVO> files, HttpSession session,
+            String projectId, String insttId) {
+        List<Map<String, Object>> publicFiles = new ArrayList<>();
+        if (files == null) {
+            return publicFiles;
+        }
+        for (InsttFileVO file : files) {
+            if (file == null || !hasText(file.getFileId()) || !hasText(file.getFileSha256())) {
+                continue;
+            }
+            Map<String, Object> publicFile = new java.util.LinkedHashMap<>();
+            publicFile.put("fileSn", file.getFileSn());
+            publicFile.put("orignlFileNm", file.getOrignlFileNm());
+            publicFile.put("fileMg", file.getFileMg());
+            publicFile.put("fileExtsn", file.getFileExtsn());
+            publicFile.put("regDate", file.getRegDate());
+            publicFile.put("downloadToken", issueStatusDownloadToken(session, projectId, insttId,
+                    file.getFileId(), file.getFileSha256()));
+            publicFiles.add(publicFile);
+        }
+        return publicFiles;
+    }
+
+    @SuppressWarnings("unchecked")
+    private String issueCompanyLookupHandle(HttpSession session, String projectId, InstitutionStatusVO result) {
+        if (session == null || result == null || !hasText(result.getInsttId()) || !hasText(result.getReprsntNm())) {
+            throw new IllegalStateException("Session and institution identity are required for a lookup handle.");
+        }
+        synchronized (session) {
+            long now = System.currentTimeMillis();
+            Object raw = session.getAttribute(SESSION_COMPANY_LOOKUP_GRANTS);
+            Map<String, Map<String, Object>> existing = raw instanceof Map
+                    ? (Map<String, Map<String, Object>>) raw
+                    : java.util.Collections.emptyMap();
+            java.util.LinkedHashMap<String, Map<String, Object>> grants = new java.util.LinkedHashMap<>();
+            for (Map.Entry<String, Map<String, Object>> entry : existing.entrySet()) {
+                Object expiresAt = entry.getValue() == null ? null : entry.getValue().get("expiresAt");
+                if (expiresAt instanceof Number && ((Number) expiresAt).longValue() >= now) {
+                    grants.put(entry.getKey(), new java.util.LinkedHashMap<>(entry.getValue()));
+                }
+            }
+            while (grants.size() >= COMPANY_LOOKUP_HANDLE_MAX_GRANTS) {
+                grants.remove(grants.keySet().iterator().next());
+            }
+            String handle = UUID.randomUUID().toString();
+            Map<String, Object> grant = new java.util.LinkedHashMap<>();
+            grant.put("projectId", projectId);
+            grant.put("insttId", result.getInsttId());
+            grant.put("repName", result.getReprsntNm());
+            grant.put("expiresAt", now + COMPANY_LOOKUP_HANDLE_TTL_MILLIS);
+            grants.put(handle, grant);
+            session.setAttribute(SESSION_COMPANY_LOOKUP_GRANTS, grants);
+            return handle;
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> resolveCompanyLookupGrant(HttpSession session, String handle, String projectId) {
+        if (session == null || !hasText(handle) || handle.length() > 64 || !hasText(projectId)) {
+            return null;
+        }
+        synchronized (session) {
+            Object raw = session.getAttribute(SESSION_COMPANY_LOOKUP_GRANTS);
+            if (!(raw instanceof Map)) {
+                return null;
+            }
+            Map<String, Map<String, Object>> grants = (Map<String, Map<String, Object>>) raw;
+            Map<String, Object> grant = grants.get(handle);
+            Object expiresAt = grant == null ? null : grant.get("expiresAt");
+            if (!(expiresAt instanceof Number) || ((Number) expiresAt).longValue() < System.currentTimeMillis()
+                    || !constantTimeEquals(projectId, normalized(grant.get("projectId")))) {
+                grants.remove(handle);
+                session.setAttribute(SESSION_COMPANY_LOOKUP_GRANTS, grants);
+                return null;
+            }
+            return new java.util.LinkedHashMap<>(grant);
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private String issueStatusDownloadToken(HttpSession session, String projectId, String insttId,
+            String fileId, String fileSha256) {
+        if (session == null) {
+            throw new IllegalStateException("Session is required for status file authorization.");
+        }
+        synchronized (session) {
+            long now = System.currentTimeMillis();
+            Map<String, Map<String, Object>> existing = session.getAttribute(SESSION_STATUS_DOWNLOAD_GRANTS) instanceof Map
+                    ? (Map<String, Map<String, Object>>) session.getAttribute(SESSION_STATUS_DOWNLOAD_GRANTS)
+                    : java.util.Collections.emptyMap();
+            java.util.LinkedHashMap<String, Map<String, Object>> grants = new java.util.LinkedHashMap<>();
+            for (Map.Entry<String, Map<String, Object>> entry : existing.entrySet()) {
+                Object expiresAt = entry.getValue() == null ? null : entry.getValue().get("expiresAt");
+                if (expiresAt instanceof Number && ((Number) expiresAt).longValue() >= now) {
+                    grants.put(entry.getKey(), new java.util.LinkedHashMap<>(entry.getValue()));
+                }
+            }
+            while (grants.size() >= STATUS_DOWNLOAD_TOKEN_MAX_GRANTS) {
+                grants.remove(grants.keySet().iterator().next());
+            }
+            String token = UUID.randomUUID().toString();
+            Map<String, Object> grant = new java.util.LinkedHashMap<>();
+            grant.put("projectId", projectId);
+            grant.put("insttId", insttId);
+            grant.put("fileId", fileId);
+            grant.put("fileSha256", fileSha256);
+            grant.put("expiresAt", now + STATUS_DOWNLOAD_TOKEN_TTL_MILLIS);
+            grants.put(token, grant);
+            session.setAttribute(SESSION_STATUS_DOWNLOAD_GRANTS, grants);
+            return token;
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> resolveStatusDownloadGrant(HttpSession session, String token) {
+        if (session == null || !hasText(token)) {
+            return null;
+        }
+        synchronized (session) {
+            Object raw = session.getAttribute(SESSION_STATUS_DOWNLOAD_GRANTS);
+            if (!(raw instanceof Map)) {
+                return null;
+            }
+            Map<String, Map<String, Object>> grants = (Map<String, Map<String, Object>>) raw;
+            Map<String, Object> grant = grants.get(token);
+            Object expiresAt = grant == null ? null : grant.get("expiresAt");
+            if (!(expiresAt instanceof Number) || ((Number) expiresAt).longValue() < System.currentTimeMillis()) {
+                grants.remove(token);
+                session.setAttribute(SESSION_STATUS_DOWNLOAD_GRANTS, grants);
+                return null;
+            }
+            return new java.util.LinkedHashMap<>(grant);
+        }
+    }
+
+    private ResponseEntity<Map<String, Object>> statusLookupUnavailable() {
+        return statusLookupUnavailable(HttpStatus.BAD_REQUEST);
+    }
+
+    private ResponseEntity<Map<String, Object>> statusLookupUnavailable(HttpStatus status) {
+        return reapplyError(status, "STATUS_LOOKUP_NOT_AVAILABLE",
+                "입력하신 정보로 조회 가능한 신청 내역을 확인할 수 없습니다.");
+    }
+
+    private ResponseEntity<Map<String, Object>> enforcePublicLookupRateLimit(
+            String projectId, String endpointCode, HttpServletRequest request, boolean statusLookup) {
+        String remoteAddress = request == null ? "" : normalized(request.getRemoteAddr());
+        egovframework.com.common.security.PublicLookupRateLimitService.Decision decision =
+                publicLookupRateLimitService == null
+                        ? egovframework.com.common.security.PublicLookupRateLimitService.Decision.unavailable(
+                                REAPPLY_LOOKUP_WINDOW_MILLIS / 1000L)
+                        : publicLookupRateLimitService.check(projectId, endpointCode, remoteAddress,
+                                REAPPLY_LOOKUP_MAX_REQUESTS, REAPPLY_LOOKUP_WINDOW_MILLIS / 1000L);
+        if (decision.isAllowed()) {
+            return null;
+        }
+        ResponseEntity<Map<String, Object>> denied = statusLookup
+                ? statusLookupUnavailable(HttpStatus.TOO_MANY_REQUESTS)
+                : reapplyError(HttpStatus.TOO_MANY_REQUESTS, "REAPPLY_LOOKUP_NOT_AVAILABLE",
+                        "입력하신 정보로 조회 가능한 신청 내역을 확인할 수 없습니다.");
+        org.springframework.http.HttpHeaders headers = new org.springframework.http.HttpHeaders();
+        headers.putAll(denied.getHeaders());
+        headers.set("Retry-After", String.valueOf(Math.max(1L, decision.getRetryAfterSeconds())));
+        return new ResponseEntity<>(denied.getBody(), headers, denied.getStatusCode());
+    }
+
+    private ResponseEntity<Map<String, Object>> registerCompanyStatusLookup(HttpSession session) {
+        if (session == null) {
+            return statusLookupUnavailable(HttpStatus.TOO_MANY_REQUESTS);
+        }
+        synchronized (session) {
+            long now = System.currentTimeMillis();
+            Object startedValue = session.getAttribute(SESSION_STATUS_LOOKUP_WINDOW_STARTED_AT);
+            Object countValue = session.getAttribute(SESSION_STATUS_LOOKUP_COUNT);
+            long startedAt = startedValue instanceof Number ? ((Number) startedValue).longValue() : now;
+            int count = countValue instanceof Number ? ((Number) countValue).intValue() : 0;
+            if (now - startedAt >= REAPPLY_LOOKUP_WINDOW_MILLIS) {
+                startedAt = now;
+                count = 0;
+            }
+            if (count >= REAPPLY_LOOKUP_MAX_REQUESTS) {
+                return statusLookupUnavailable(HttpStatus.TOO_MANY_REQUESTS);
+            }
+            session.setAttribute(SESSION_STATUS_LOOKUP_WINDOW_STARTED_AT, startedAt);
+            session.setAttribute(SESSION_STATUS_LOOKUP_COUNT, count + 1);
+            return null;
+        }
+    }
+
+    private ResponseEntity<Map<String, Object>> reapplyProjectContextUnavailable() {
+        return reapplyError(HttpStatus.SERVICE_UNAVAILABLE, "REAPPLY_PROJECT_CONTEXT_UNAVAILABLE",
+                "프로젝트 실행 컨텍스를 확인할 수 없습니다. 잠시 후 다시 시도해 주세요.");
+    }
+
+    private ResponseEntity<Map<String, Object>> reapplyLookupUnavailable() {
+        return reapplyError(HttpStatus.BAD_REQUEST, "REAPPLY_LOOKUP_NOT_AVAILABLE",
+                "입력하신 정보로 재신청 가능한 내역을 확인할 수 없습니다.");
+    }
+
+    private ResponseEntity<Map<String, Object>> registerCompanyReapplyLookup(HttpSession session) {
+        if (session == null) {
+            return reapplyError(HttpStatus.TOO_MANY_REQUESTS, "REAPPLY_LOOKUP_RATE_LIMIT_UNAVAILABLE",
+                    "조회 보호 기능을 사용할 수 없습니다. 새 브라우저 세션에서 다시 시도해 주세요.");
+        }
+        synchronized (session) {
+            long now = System.currentTimeMillis();
+            Object startedValue = session.getAttribute(SESSION_REAPPLY_LOOKUP_WINDOW_STARTED_AT);
+            Object countValue = session.getAttribute(SESSION_REAPPLY_LOOKUP_COUNT);
+            long startedAt = startedValue instanceof Number ? ((Number) startedValue).longValue() : now;
+            int count = countValue instanceof Number ? ((Number) countValue).intValue() : 0;
+            if (now - startedAt >= REAPPLY_LOOKUP_WINDOW_MILLIS) {
+                startedAt = now;
+                count = 0;
+            }
+            if (count >= REAPPLY_LOOKUP_MAX_REQUESTS) {
+                long remainingMillis = Math.max(1000L, REAPPLY_LOOKUP_WINDOW_MILLIS - (now - startedAt));
+                Map<String, Object> response = new java.util.LinkedHashMap<>();
+                response.put("success", false);
+                response.put("errorCode", "REAPPLY_LOOKUP_RATE_LIMIT_EXCEEDED");
+                response.put("message", "재신청 조회 횟수를 초과했습니다. 잠시 후 다시 시도해 주세요.");
+                response.put("retryAfterSeconds", (remainingMillis + 999L) / 1000L);
+                return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(response);
+            }
+            session.setAttribute(SESSION_REAPPLY_LOOKUP_WINDOW_STARTED_AT, startedAt);
+            session.setAttribute(SESSION_REAPPLY_LOOKUP_COUNT, count + 1);
+            return null;
+        }
+    }
+
+    private ResponseEntity<Map<String, Object>> reapplyError(HttpStatus status, String errorCode, String message) {
+        Map<String, Object> response = new java.util.LinkedHashMap<>();
+        response.put("success", false);
+        response.put("errorCode", errorCode);
+        response.put("message", message);
+        return noStore(ResponseEntity.status(status).body(response));
+    }
+
+    private ResponseEntity<Map<String, Object>> noStore(ResponseEntity<Map<String, Object>> response) {
+        org.springframework.http.HttpHeaders headers = new org.springframework.http.HttpHeaders();
+        headers.putAll(response.getHeaders());
+        headers.set("Cache-Control", "no-store");
+        headers.set("Pragma", "no-cache");
+        return new ResponseEntity<>(response.getBody(), headers, response.getStatusCode());
+    }
+
+    private void cleanupInsttEvidenceFiles(List<InsttFileVO> files) {
+        InstitutionEvidenceFileSupport.cleanup(files);
     }
 
     private void setJoinStep(HttpSession session, int step) {
@@ -1387,12 +2084,21 @@ public class MemberJoinController {
             throw new Exception("Cannot create upload directory: " + dir.getAbsolutePath());
         }
 
-        String safeInsttId = hasText(insttId) ? insttId.replaceAll("[^a-zA-Z0-9_-]", "") : "INSTT";
-        if (!hasText(safeInsttId)) {
-            safeInsttId = "INSTT";
+        String normalizedInsttId = InstitutionEvidenceFileSupport.requireInstitutionId(insttId);
+        String projectId = currentProjectId();
+        if (!hasText(projectId)) {
+            throw new IllegalStateException("Project context is required for institution evidence storage.");
+        }
+        String safeProjectId = projectId.replaceAll("[^a-zA-Z0-9_-]", "");
+        if (!hasText(safeProjectId)) {
+            throw new IllegalStateException("Project context cannot be converted to a safe storage key.");
         }
 
         List<InsttFileVO> savedFiles = new ArrayList<>();
+        if (fileUploads == null) {
+            return savedFiles;
+        }
+        try {
         for (int i = 0; i < fileUploads.size(); i++) {
             MultipartFile file = fileUploads.get(i);
             if (file == null || file.isEmpty()) {
@@ -1408,21 +2114,39 @@ public class MemberJoinController {
                 }
             }
 
-            String newFileName = safeInsttId + "_" + System.currentTimeMillis() + "_" + i + ext;
-            File targetFile = new File(dir, newFileName);
-            file.transferTo(targetFile);
+            String objectToken = InstitutionEvidenceFileSupport.newObjectToken();
+            String newFileName = InstitutionEvidenceFileSupport.storageFileName(projectId, objectToken, ext);
+            Path targetPath = dir.toPath().resolve(newFileName);
+            Path stagingPath = Files.createTempFile(
+                    dir.toPath(), safeProjectId + "_" + objectToken + "_", ".part");
+            try {
+                file.transferTo(stagingPath.toFile());
+                String fileSha256 = InstitutionEvidenceFileSupport.sha256(stagingPath);
+                InstitutionEvidenceFileSupport.moveStagedFile(stagingPath, targetPath);
 
-            InsttFileVO fileVO = new InsttFileVO();
-            fileVO.setFileId(safeInsttId + "_FILE_" + System.currentTimeMillis() + "_" + i);
-            fileVO.setInsttId(insttId);
-            fileVO.setFileSn(startFileSn + savedFiles.size());
-            fileVO.setStreFileNm(newFileName);
-            fileVO.setOrignlFileNm(originalFileName == null ? newFileName : originalFileName);
-            fileVO.setFileStrePath(targetFile.getAbsolutePath());
-            fileVO.setFileMg(file.getSize());
-            fileVO.setFileExtsn(ext);
-            fileVO.setFileCn(file.getContentType());
-            savedFiles.add(fileVO);
+                InsttFileVO fileVO = new InsttFileVO();
+                fileVO.setFileId(InstitutionEvidenceFileSupport.fileId(objectToken));
+                fileVO.setInsttId(normalizedInsttId);
+                fileVO.setProjectId(projectId);
+                fileVO.setScopeStatus("SCOPED");
+                fileVO.setFileSha256(fileSha256);
+                fileVO.setFileSn(startFileSn + savedFiles.size());
+                fileVO.setStreFileNm(newFileName);
+                fileVO.setOrignlFileNm(originalFileName == null ? newFileName : originalFileName);
+                fileVO.setFileStrePath(targetPath.toAbsolutePath().toString());
+                fileVO.setFileMg(Files.size(targetPath));
+                fileVO.setFileExtsn(ext);
+                fileVO.setFileCn(file.getContentType());
+                savedFiles.add(fileVO);
+            } catch (Exception fileError) {
+                Files.deleteIfExists(stagingPath);
+                Files.deleteIfExists(targetPath);
+                throw fileError;
+            }
+        }
+        } catch (Exception saveError) {
+            cleanupInsttEvidenceFiles(savedFiles);
+            throw saveError;
         }
         return savedFiles;
     }

@@ -1,6 +1,7 @@
 package egovframework.com.feature.member.service;
 
 import java.util.List;
+import java.util.Map;
 
 import egovframework.com.feature.member.model.vo.EntrprsManageVO;
 import egovframework.com.feature.member.model.vo.EntrprsMberFileVO;
@@ -227,4 +228,15 @@ public interface EnterpriseMemberService {
 	 */
 	public void updateInsttInfo(InsttInfoVO insttInfoVO) throws Exception;
 
+	/**
+	 * 반려된 기관 신청을 증빙과 감사 이력까지 하나의 트랜잭션으로 재신청한다.
+	 *
+	 * @param insttInfoVO 수정할 기관 정보
+	 * @param fileList 새 증빙 파일 메타데이터
+	 * @param rejectionReason 기존 반려 사유(감사 보존용)
+	 * @return DB에 저장된 감사 영수증. 이미 처리되었으면 null
+	 * @throws Exception 저장 실패
+	 */
+	public Map<String, Object> reapplyInstitution(InsttInfoVO insttInfoVO, List<InsttFileVO> fileList,
+			String rejectionReason) throws Exception;
 }

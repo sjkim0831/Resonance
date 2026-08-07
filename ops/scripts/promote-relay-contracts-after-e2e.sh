@@ -41,13 +41,16 @@ expected_steps="$(jq -r '.stepCount' <<<"$EVIDENCE")"
 [[ ${#TARGETS[@]} -eq $expected_steps ]] || { echo "relay target count does not match evidence" >&2; exit 3; }
 ASSERTIONS="$(jq -r '"processCount=\(.processCount),stepCount=\(.stepCount),transitionCount=\(.transitionCount),accountCount=\(.accountCount),correctionReplayCount=\(.correctionReplayCount),responsive=1,accessibility=1,authority=1,audit=1,recovery=1"' <<<"$EVIDENCE")"
 
-promoted=0
+# The relay suite proves workflow/browser dimensions but not the complete
+# API/database/exception-state envelope required for contract promotion.
+# Validate its own assertions without claiming or writing a full promotion.
+validated=0
 for target in "${TARGETS[@]}"; do
   IFS=$'\t' read -r process_code step_code <<<"$target"
   printf '%s' "$EVIDENCE" | bash "$PROMOTER" "$process_code" "$step_code" \
-    "$ASSERTIONS" >/dev/null
-  promoted=$((promoted+1))
+    "$ASSERTIONS" --validate-only >/dev/null
+  validated=$((validated+1))
 done
 
-printf '{"status":"PROMOTED","processCount":%s,"stepCount":%d,"sourceCommit":"%s"}\n' \
-  "$(jq -r '.processCount' <<<"$EVIDENCE")" "$promoted" "$SOURCE_COMMIT"
+printf '{"status":"EVIDENCE_VALIDATED","promotionEligible":false,"blocker":"API_DATABASE_EXCEPTION_EVIDENCE_REQUIRED","processCount":%s,"stepCount":%d,"sourceCommit":"%s"}\n' \
+  "$(jq -r '.processCount' <<<"$EVIDENCE")" "$validated" "$SOURCE_COMMIT"

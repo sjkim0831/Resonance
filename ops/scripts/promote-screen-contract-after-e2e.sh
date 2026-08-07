@@ -4,7 +4,7 @@ set -euo pipefail
 ROOT="${RESONANCE_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
 
 usage() {
-  echo "usage: $0 PROCESS_CODE STEP_CODE REQUIRED_CHECKS [USER|ADMIN|ALL] [--validate-only]" >&2
+  echo "usage: $0 PROCESS_CODE STEP_CODE REQUIRED_CHECKS [USER|ADMIN|PUBLIC|ALL] [--validate-only]" >&2
   exit 2
 }
 
@@ -19,13 +19,25 @@ elif [[ -n "${4:-}" ]]; then AUDIENCE="$4"; MODE="${5:-}"; fi
 [[ "$PROCESS_CODE" =~ ^[A-Z0-9_]+$ ]] || { echo "invalid process code" >&2; exit 2; }
 [[ "$STEP_CODE" =~ ^[A-Z0-9_]+$ ]] || { echo "invalid step code" >&2; exit 2; }
 [[ "$REQUIRED_CHECKS" =~ ^[A-Za-z0-9_,=]+$ ]] || { echo "invalid required checks" >&2; exit 2; }
-[[ "$AUDIENCE" =~ ^(USER|ADMIN|ALL)$ ]] || usage
+[[ "$AUDIENCE" =~ ^(USER|ADMIN|PUBLIC|ALL)$ ]] || usage
 [[ -z "$MODE" || "$MODE" == "--validate-only" ]] || usage
 
 EVIDENCE="$(cat)"
 node -e '
 const evidence=JSON.parse(process.argv[1]);
 const checks=process.argv[2].split(",").filter(Boolean);
+const mode=process.argv[3]||"";
+if(mode!=="--validate-only") {
+  const mandatoryChecks=["api","database","authority","responsive","accessibility","exceptionStates","audit","recovery"];
+  for(const check of mandatoryChecks) {
+    if(Number(evidence[check])!==1) {
+      throw new Error(`mandatory same-envelope E2E assertion failed: ${check}=1`);
+    }
+  }
+  if(!Number.isFinite(Number(evidence.performanceP95Ms))||Number(evidence.performanceP95Ms)<=0) {
+    throw new Error("mandatory same-envelope E2E assertion failed: performanceP95Ms>0");
+  }
+}
 if(!["PASS","PASSED"].includes(evidence.status)) throw new Error("E2E status must be PASS or PASSED");
 for(const assertion of checks){
   const [check,rawExpected="1"]=assertion.split("=");
@@ -34,7 +46,7 @@ for(const assertion of checks){
     throw new Error(`required E2E assertion failed: ${check}=${rawExpected}`);
   }
 }
-' "$EVIDENCE" "$REQUIRED_CHECKS"
+' "$EVIDENCE" "$REQUIRED_CHECKS" "$MODE"
 
 EVIDENCE_SHA256="$(printf '%s' "$EVIDENCE" | sha256sum | awk '{print $1}')"
 if [[ "$MODE" == "--validate-only" ]]; then
@@ -111,12 +123,12 @@ BEGIN
 END $$;
 
 UPDATE framework_professional_screen_contract contract
-SET api_verified=contract.api_verified OR coalesce((convert_from(decode(:'evidence_b64','base64'),'UTF8')::jsonb->>'api')::integer,0)=1,
-    database_verified=contract.database_verified OR coalesce((convert_from(decode(:'evidence_b64','base64'),'UTF8')::jsonb->>'database')::integer,0)=1,
-    authority_verified=contract.authority_verified OR coalesce((convert_from(decode(:'evidence_b64','base64'),'UTF8')::jsonb->>'authority')::integer,0)=1,
-    responsive_verified=contract.responsive_verified OR coalesce((convert_from(decode(:'evidence_b64','base64'),'UTF8')::jsonb->>'responsive')::integer,0)=1,
-    accessibility_verified=contract.accessibility_verified OR coalesce((convert_from(decode(:'evidence_b64','base64'),'UTF8')::jsonb->>'accessibility')::integer,0)=1,
-    exception_states_verified=contract.exception_states_verified OR coalesce((convert_from(decode(:'evidence_b64','base64'),'UTF8')::jsonb->>'exceptionStates')::integer,0)=1,
+SET api_verified=coalesce((convert_from(decode(:'evidence_b64','base64'),'UTF8')::jsonb->>'api')::integer,0)=1,
+    database_verified=coalesce((convert_from(decode(:'evidence_b64','base64'),'UTF8')::jsonb->>'database')::integer,0)=1,
+    authority_verified=coalesce((convert_from(decode(:'evidence_b64','base64'),'UTF8')::jsonb->>'authority')::integer,0)=1,
+    responsive_verified=coalesce((convert_from(decode(:'evidence_b64','base64'),'UTF8')::jsonb->>'responsive')::integer,0)=1,
+    accessibility_verified=coalesce((convert_from(decode(:'evidence_b64','base64'),'UTF8')::jsonb->>'accessibility')::integer,0)=1,
+    exception_states_verified=coalesce((convert_from(decode(:'evidence_b64','base64'),'UTF8')::jsonb->>'exceptionStates')::integer,0)=1,
     audit_evidence_ref=concat('qa-run:sha256:',:'evidence_sha256'),
     contract_status='VERIFIED',
     updated_by='CONTRACT_E2E_PROMOTER',
@@ -194,6 +206,86 @@ BEGIN
     RAISE EXCEPTION 'contract promotion rejected process=% step=% total=% verified=%',
       current_setting('resonance.process_code'),current_setting('resonance.step_code'),
       total_count,verified_count;
+  END IF;
+END $$;
+
+-- PUBLIC routes remain fail-closed at migration time.  Activate only the
+-- exact route binding whose professional contract was verified by this same
+-- current-commit BUSINESS_E2E transaction.
+UPDATE framework_process_step_screen_binding binding
+SET binding_status='ACTIVE',updated_at=current_timestamp
+FROM framework_screen_resource resource,
+     framework_professional_screen_contract contract
+WHERE binding.screen_resource_id=resource.screen_resource_id
+  AND contract.process_code=binding.process_code
+  AND contract.step_code=binding.step_code
+  AND contract.audience=binding.audience
+  AND lower(split_part(contract.route_path,'?',1))=resource.route_key
+  AND contract.contract_status='VERIFIED'
+  AND contract.api_verified AND contract.database_verified AND contract.authority_verified
+  AND contract.responsive_verified AND contract.accessibility_verified
+  AND contract.exception_states_verified
+  AND contract.audit_evidence_ref=concat('qa-run:sha256:',:'evidence_sha256')
+  AND binding.process_code=:'process_code'
+  AND binding.step_code=:'step_code'
+  AND binding.audience='PUBLIC'
+  AND :'audience' IN ('PUBLIC','ALL')
+  AND binding.binding_status='DRAFT';
+
+DO $$
+DECLARE public_contract_count integer;
+DECLARE active_exact_count integer;
+DECLARE wrong_active_count integer;
+BEGIN
+  IF current_setting('resonance.audience') NOT IN ('PUBLIC','ALL') THEN
+    RETURN;
+  END IF;
+
+  SELECT count(*) INTO public_contract_count
+  FROM framework_professional_screen_contract contract
+  WHERE contract.process_code=current_setting('resonance.process_code')
+    AND contract.step_code=current_setting('resonance.step_code')
+    AND contract.audience='PUBLIC'
+    AND contract.contract_status='VERIFIED'
+    AND contract.audit_evidence_ref=concat('qa-run:sha256:',current_setting('resonance.evidence_sha256'));
+
+  SELECT count(*) INTO active_exact_count
+  FROM framework_process_step_screen_binding binding
+  JOIN framework_screen_resource resource USING(screen_resource_id)
+  JOIN framework_professional_screen_contract contract
+    ON contract.process_code=binding.process_code
+   AND contract.step_code=binding.step_code
+   AND contract.audience=binding.audience
+   AND lower(split_part(contract.route_path,'?',1))=resource.route_key
+  WHERE binding.process_code=current_setting('resonance.process_code')
+    AND binding.step_code=current_setting('resonance.step_code')
+    AND binding.audience='PUBLIC' AND binding.binding_status='ACTIVE'
+    AND contract.contract_status='VERIFIED';
+
+  SELECT count(*) INTO wrong_active_count
+  FROM framework_process_step_screen_binding binding
+  JOIN framework_screen_resource resource USING(screen_resource_id)
+  WHERE binding.audience='PUBLIC' AND binding.binding_status='ACTIVE'
+    AND resource.screen_resource_id IN (
+      SELECT target_resource.screen_resource_id
+      FROM framework_professional_screen_contract target_contract
+      JOIN framework_screen_resource target_resource
+        ON target_resource.route_key=lower(split_part(target_contract.route_path,'?',1))
+      WHERE target_contract.process_code=current_setting('resonance.process_code')
+        AND target_contract.step_code=current_setting('resonance.step_code')
+        AND target_contract.audience='PUBLIC'
+        AND target_contract.contract_status='VERIFIED'
+        AND target_contract.audit_evidence_ref=
+            concat('qa-run:sha256:',current_setting('resonance.evidence_sha256'))
+    )
+    AND (binding.process_code,binding.step_code)<>
+        (current_setting('resonance.process_code'),current_setting('resonance.step_code'));
+
+  IF public_contract_count>0 AND
+     (active_exact_count<>public_contract_count OR wrong_active_count<>0) THEN
+    RAISE EXCEPTION 'PUBLIC exact binding promotion rejected process=% step=% contracts=% active=% wrong=%',
+      current_setting('resonance.process_code'),current_setting('resonance.step_code'),
+      public_contract_count,active_exact_count,wrong_active_count;
   END IF;
 END $$;
 

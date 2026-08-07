@@ -13,6 +13,8 @@ EVIDENCE="$(jq -c \
   --argjson contract "$CONTRACT" \
   '. + {executedAt:$executedAt,contract:$contract}' <<<"$RAW_EVIDENCE")"
 printf '%s\n' "$EVIDENCE"
+# Preference CRUD is partial evidence only; it must never promote the complete
+# professional screen contract without authority/UI/audit/recovery proof.
 printf '%s' "$EVIDENCE" | bash "$ROOT/ops/scripts/promote-screen-contract-after-e2e.sh" \
   EMISSION_PROJECT_PORTFOLIO EMISSION_PROJECT_PORTFOLIO_LIST \
-  read,write,reread,staleConflict,restore
+  read,write,reread,staleConflict,restore --validate-only >/dev/null

@@ -1,4 +1,4 @@
-import { buildQueryString, fetchPageJson, fetchTextWithResponse, fetchValidatedJson, postFormDataWithResponse } from "./core";
+import { buildQueryString, fetchPageJson, fetchTextWithResponse, postFormDataWithResponse, postJsonWithResponse } from "./core";
 import { invalidateJoinSessionCache } from "./joinSession";
 import type {
   JoinCompanyReapplyPagePayload,
@@ -124,16 +124,16 @@ async function fetchJoinJson<T>(
   });
 }
 
-async function fetchValidatedJoinJson<T extends JoinValidatedResponse>(
+async function postValidatedJoinJson<T extends JoinValidatedResponse>(
   path: string,
-  params: JoinQueryParams,
+  payload: Record<string, string | undefined>,
   fallbackMessage: string
 ) {
-  return fetchValidatedJson<T>(buildJoinUrl(path, params), {
-    fallbackMessage,
-    resolveError: (body, status) => body.message || `${fallbackMessage}: ${status}`,
-    validate: (body) => body.success !== false
-  });
+  const { response, body } = await postJsonWithResponse<T>(path, payload);
+  if (!response.ok || body.success === false) {
+    throw new Error(body.message || `${fallbackMessage}: ${response.status}`);
+  }
+  return body;
 }
 
 export async function searchJoinCompanies(params: {
@@ -185,16 +185,20 @@ export async function checkCompanyNameDuplicate(agencyName: string) {
   );
 }
 
-export async function fetchJoinCompanyStatusDetail(params: { bizNo?: string; appNo?: string; repName: string; }) {
-  return fetchValidatedJoinJson<JoinCompanyStatusDetailPayload>(
+export async function fetchJoinCompanyStatusDetail(params:
+  | { lookupHandle: string }
+  | { bizNo?: string; appNo?: string; repName: string; registeredContact: string }) {
+  return postValidatedJoinJson<JoinCompanyStatusDetailPayload>(
     "/join/api/company-status/detail",
     params,
     "Failed to load company status detail"
   );
 }
 
-export async function fetchJoinCompanyReapplyPage(params: { bizNo: string; repName: string; }) {
-  return fetchValidatedJoinJson<JoinCompanyReapplyPagePayload>(
+export async function fetchJoinCompanyReapplyPage(params:
+  | { lookupHandle: string }
+  | { bizNo: string; repName: string; registeredContact: string }) {
+  return postValidatedJoinJson<JoinCompanyReapplyPagePayload>(
     "/join/api/company-reapply/page",
     params,
     "Failed to load company reapply page"

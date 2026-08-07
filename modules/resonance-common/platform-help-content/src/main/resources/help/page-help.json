@@ -804,32 +804,56 @@
     ]
   },
   "join-company-reapply": {
-    "title": "반려 재신청 도움말",
-    "summary": "반려 재신청 화면의 주요 영역과 사용 흐름을 안내합니다.",
+    "title": "반려 재신청 안내 / Reapplication Guide",
+    "summary": "반려 내역 조회부터 정보 보완, 증빙 제출, 재신청 접수와 승인 대기 확인까지 안전한 흐름으로 안내합니다.",
     "items": [
       {
-        "id": "join-company-reapply-step-1",
-        "title": "JoinCompanyReapplyLookup",
-        "body": "조작 영역입니다. 주요 항목: bizNo, repName",
+        "id": "lookup-rejected-application",
+        "title": "1. 반려 신청 조회 / Find rejected application",
+        "body": "사업자등록번호, 대표자명과 가입 신청에 등록한 담당자 이메일 또는 연락처를 모두 입력해 반려 상태인 신청만 안전하게 조회합니다. 조회 결과가 없으면 입력값과 현재 심사 상태를 확인하세요.",
         "anchorSelector": "[data-help-id=\"join-company-reapply-lookup\"]",
         "placement": "bottom",
         "highlightStyle": "focus"
       },
       {
-        "id": "join-company-reapply-step-2",
-        "title": "JoinCompanyReapplyForm",
-        "body": "본문 영역입니다. 주요 항목: agencyName, representativeName, chargerName, chargerEmail, chargerTel",
-        "anchorSelector": "[data-help-id=\"join-company-reapply-form\"]",
+        "id": "review-rejection-reason",
+        "title": "2. 반려 사유 확인 / Review rejection reason",
+        "body": "운영자가 기록한 반려 사유와 처리 시각을 먼저 확인하고, 보완해야 할 정보와 증빙 범위를 정합니다.",
+        "anchorSelector": "[data-help-id=\"join-company-reapply-rejection\"]",
+        "placement": "right",
+        "highlightStyle": "warning"
+      },
+      {
+        "id": "correct-application-information",
+        "title": "3. 정보 보완 / Correct application information",
+        "body": "업체명, 대표자, 주소와 담당자 정보를 반려 사유에 맞게 수정합니다. 개인정보 보호를 위해 담당자 연락처와 상세주소는 다시 입력해야 합니다.",
+        "anchorSelector": "[data-help-id=\"join-company-reapply-information\"]",
+        "placement": "right",
+        "highlightStyle": "focus"
+      },
+      {
+        "id": "replace-supporting-documents",
+        "title": "4. 증빙 보완 / Replace supporting documents",
+        "body": "기존 제출 서류의 파일명과 크기를 참고해 최신 증빙을 올립니다. PDF, JPG, PNG만 가능하며 최대 10개, 파일당 10MB 이하여야 합니다.",
+        "anchorSelector": "[data-help-id=\"join-company-reapply-files\"]",
         "placement": "right",
         "highlightStyle": "neutral"
       },
       {
-        "id": "join-company-reapply-step-3",
-        "title": "JoinCompanyReapplyFiles",
-        "body": "본문 영역입니다. 주요 항목: uploadRows, fileCount",
-        "anchorSelector": "[data-help-id=\"join-company-reapply-files\"]",
-        "placement": "right",
-        "highlightStyle": "neutral"
+        "id": "submit-reapplication",
+        "title": "5. 재신청 접수 / Submit reapplication",
+        "body": "필수 정보와 새 증빙을 최종 점검한 뒤 한 번만 제출합니다. 접수 중에는 버튼이 잠기며, 접수 완료 후 중복 제출할 수 없습니다.",
+        "anchorSelector": "[data-help-id=\"join-company-reapply-submit\"]",
+        "placement": "top",
+        "highlightStyle": "focus"
+      },
+      {
+        "id": "wait-for-approval",
+        "title": "6. 승인 대기 확인 / Track approval",
+        "body": "접수 완료 요약에서 기관, 처리 상태와 접수 시각을 확인합니다. 승인 상태 조회로 운영자 검토 결과를 추적하거나 새 재신청 조회를 시작할 수 있습니다.",
+        "anchorSelector": "[data-help-id=\"join-company-reapply-status\"]",
+        "placement": "bottom",
+        "highlightStyle": "success"
       }
     ]
   },

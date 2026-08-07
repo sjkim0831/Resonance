@@ -337,9 +337,11 @@ spec:
       app: carbonet-runtime
 YAML
   kubectl apply -f "$K8S_DIR/carbonet-runtime-kubeadm.yaml"
+  bash "$ROOT_DIR/ops/scripts/validate-carbonet-web-nodeport-client-ip-contract.sh"
   kubectl apply -f "$ROOT_DIR/manifests/carbonet-split-runtime.yaml"
   kubectl -n "$NAMESPACE" rollout status deployment/carbonet-runtime --timeout="${ROLLOUT_TIMEOUT:-600s}"
   kubectl -n "$NAMESPACE" rollout status deployment/carbonet-web --timeout="${ROLLOUT_TIMEOUT:-600s}"
+  bash "$ROOT_DIR/ops/scripts/validate-carbonet-web-nodeport-client-ip-contract.sh" --live --namespace "$NAMESPACE"
 }
 
 verify_runtime() {
