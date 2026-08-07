@@ -2556,6 +2556,27 @@ export function TaskQuestPanel({
                   : screenContext?.selectionRequired
                     ? (en ? "Select one of this screen's linked procedures below." : "이 화면에 연결된 업무 절차를 아래에서 선택하세요.")
                     : (en ? "No executable workflow is linked to this screen yet." : "이 화면에는 아직 실행 업무 절차가 연결되지 않았습니다.")}
+                {screenContext?.selectionRequired && screenContext.candidates?.length ? (
+                  <label className="mt-2 block">
+                    <span className="sr-only">{en ? "Linked procedure" : "현재 화면 연결 절차"}</span>
+                    <select
+                      aria-label={en ? "Linked procedure" : "현재 화면 연결 절차"}
+                      className="h-10 w-full rounded-lg border border-amber-300 bg-white px-3 text-xs font-bold text-slate-900"
+                      defaultValue=""
+                      onChange={(event) => {
+                        const candidate = screenContext.candidates?.[Number(event.target.value)];
+                        if (candidate) onScreenContextSelection?.(candidate);
+                      }}
+                    >
+                      <option value="">{en ? "Select a linked procedure" : "연결 절차 선택"}</option>
+                      {screenContext.candidates.map((candidate, index) => (
+                        <option key={`${candidate.processCode}|${candidate.stepCode}|${candidate.actorCode || ""}|${candidate.audience || ""}`} value={index}>
+                          {candidate.processName || candidate.processCode} · {candidate.stepName || candidate.stepCode} · {candidate.actorName || actorLabel(candidate.actorCode)}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                ) : null}
               </div>
               <div className="grid gap-3 sm:grid-cols-3">
                 <label className="block text-xs font-black text-slate-600">{en ? "Company" : "테스트 회사"}<select className="mt-1 h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm" value={qaCompanyId} onChange={(event) => setQaCompanyId(event.target.value)}>{qaCompanies.map((company) => <option key={company.id} value={company.id}>{company.name}</option>)}</select></label>
