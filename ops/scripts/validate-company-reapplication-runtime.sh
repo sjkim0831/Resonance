@@ -26,49 +26,59 @@ STATUS_COOKIE="$(mktemp)"
 DB_FILE_PATH=""
 RESOLVED_CLEANUP_PATH=""
 RATE_LIMIT_WINDOW_SECONDS=300
-RATE_LIMIT_WINDOW_BUCKET=0
-RATE_LIMIT_REMOTE_HASH=""
-RATE_LIMIT_REQUESTS=0
-RATE_LIMIT_FIXTURE_CLEANED=0
+RATE_LIMIT_ENDPOINTS=()
+declare -A RATE_LIMIT_WINDOW_BUCKETS=()
+declare -A RATE_LIMIT_REMOTE_HASHES=()
+declare -A RATE_LIMIT_REQUEST_COUNTS=()
+declare -A RATE_LIMIT_FIXTURE_CLEANED=()
 declare -A RATE_LIMIT_BASELINE_COUNTS=()
 
 source "$ROOT/ops/scripts/lib/carbonet-postgres-query.sh"
 carbonet_postgres_query_init
 q() { carbonet_postgres_query "$1"; }
 
-prepare_status_rate_limit_fixture() {
-  local now seconds_left remote_hash request_count
+prepare_public_rate_limit_fixture() {
+  local endpoint="${1:?endpoint is required}" now seconds_left remote_hash request_count bucket key
+  [[ "$endpoint" =~ ^[a-z0-9-]+$ ]] || return 1
   now="$(date +%s)"
   seconds_left=$((RATE_LIMIT_WINDOW_SECONDS-(now%RATE_LIMIT_WINDOW_SECONDS)))
   if (( seconds_left <= 20 )); then
     sleep $((seconds_left+1))
     now="$(date +%s)"
   fi
-  RATE_LIMIT_WINDOW_BUCKET=$((now/RATE_LIMIT_WINDOW_SECONDS))
+  bucket=$((now/RATE_LIMIT_WINDOW_SECONDS))
+  RATE_LIMIT_WINDOW_BUCKETS["$endpoint"]="$bucket"
+  RATE_LIMIT_REQUEST_COUNTS["$endpoint"]=0
+  RATE_LIMIT_FIXTURE_CLEANED["$endpoint"]=0
+  RATE_LIMIT_ENDPOINTS+=("$endpoint")
   while IFS='|' read -r remote_hash request_count; do
     [[ -n "$remote_hash" ]] || continue
     [[ "$remote_hash" =~ ^[0-9a-f]{64}$ && "$request_count" =~ ^[0-9]+$ ]] || {
       echo '[company-reapplication-e2e] FAIL invalid limiter baseline row' >&2
       return 1
     }
-    RATE_LIMIT_BASELINE_COUNTS["$remote_hash"]="$request_count"
+    key="$endpoint|$remote_hash"
+    RATE_LIMIT_BASELINE_COUNTS["$key"]="$request_count"
   done < <(q "select remote_addr_hash||'|'||request_count
     from framework_public_lookup_rate_limit
-    where project_id='${PROJECT_ID}' and endpoint_code='company-status-detail'
-      and window_bucket=${RATE_LIMIT_WINDOW_BUCKET}")
+    where project_id='${PROJECT_ID}' and endpoint_code='${endpoint}'
+      and window_bucket=${bucket}")
 }
 
-capture_status_rate_limit_identity() {
-  local current_bucket remote_hash request_count baseline delta changed_rows=0 candidate_rows=0 candidate_hash=""
+capture_public_rate_limit_identity() {
+  local endpoint="${1:?endpoint is required}" current_bucket bucket remote_hash request_count baseline delta key
+  local changed_rows=0 candidate_rows=0 candidate_hash=""
+  bucket="${RATE_LIMIT_WINDOW_BUCKETS[$endpoint]:-0}"
   current_bucket=$(($(date +%s)/RATE_LIMIT_WINDOW_SECONDS))
-  [[ "$current_bucket" == "$RATE_LIMIT_WINDOW_BUCKET" ]] || {
+  [[ "$current_bucket" == "$bucket" ]] || {
     echo '[company-reapplication-e2e] FAIL limiter window changed during identity capture' >&2
     return 1
   }
   while IFS='|' read -r remote_hash request_count; do
     [[ -n "$remote_hash" ]] || continue
     [[ "$remote_hash" =~ ^[0-9a-f]{64}$ && "$request_count" =~ ^[0-9]+$ ]] || return 1
-    baseline="${RATE_LIMIT_BASELINE_COUNTS[$remote_hash]:-0}"
+    key="$endpoint|$remote_hash"
+    baseline="${RATE_LIMIT_BASELINE_COUNTS[$key]:-0}"
     delta=$((request_count-baseline))
     if (( delta != 0 )); then
       changed_rows=$((changed_rows+1))
@@ -79,69 +89,88 @@ capture_status_rate_limit_identity() {
     fi
   done < <(q "select remote_addr_hash||'|'||request_count
     from framework_public_lookup_rate_limit
-    where project_id='${PROJECT_ID}' and endpoint_code='company-status-detail'
-      and window_bucket=${RATE_LIMIT_WINDOW_BUCKET}")
+    where project_id='${PROJECT_ID}' and endpoint_code='${endpoint}'
+      and window_bucket=${bucket}")
   [[ "$changed_rows" == 1 && "$candidate_rows" == 1 && "$candidate_hash" =~ ^[0-9a-f]{64}$ ]] || {
-    echo '[company-reapplication-e2e] FAIL limiter identity is not uniquely attributable' >&2
+    echo "[company-reapplication-e2e] FAIL limiter identity is not uniquely attributable endpoint=$endpoint" >&2
     return 1
   }
-  RATE_LIMIT_REMOTE_HASH="$candidate_hash"
-  RATE_LIMIT_REQUESTS=1
+  RATE_LIMIT_REMOTE_HASHES["$endpoint"]="$candidate_hash"
+  RATE_LIMIT_REQUEST_COUNTS["$endpoint"]=1
 }
 
-track_status_rate_limit_request() {
-  local current_bucket
+track_public_rate_limit_request() {
+  local endpoint="${1:?endpoint is required}" current_bucket bucket remote_hash
+  bucket="${RATE_LIMIT_WINDOW_BUCKETS[$endpoint]:-0}"
+  remote_hash="${RATE_LIMIT_REMOTE_HASHES[$endpoint]:-}"
   current_bucket=$(($(date +%s)/RATE_LIMIT_WINDOW_SECONDS))
-  [[ "$current_bucket" == "$RATE_LIMIT_WINDOW_BUCKET" ]] || {
-    echo '[company-reapplication-e2e] FAIL limiter window changed during status contract' >&2
+  [[ "$current_bucket" == "$bucket" && "$remote_hash" =~ ^[0-9a-f]{64}$ ]] || {
+    echo "[company-reapplication-e2e] FAIL limiter window or identity changed endpoint=$endpoint" >&2
     return 1
   }
-  RATE_LIMIT_REQUESTS=$((RATE_LIMIT_REQUESTS+1))
+  RATE_LIMIT_REQUEST_COUNTS["$endpoint"]=$(( ${RATE_LIMIT_REQUEST_COUNTS[$endpoint]:-0}+1 ))
 }
 
-cleanup_status_rate_limit_fixture() {
-  local strict="${1:-0}" adjusted action remaining_count
-  [[ "$RATE_LIMIT_FIXTURE_CLEANED" == 0 && "$RATE_LIMIT_REQUESTS" -gt 0 && "$RATE_LIMIT_WINDOW_BUCKET" -gt 0 && "$RATE_LIMIT_REMOTE_HASH" =~ ^[0-9a-f]{64}$ ]] || return 0
+cleanup_public_rate_limit_fixture() {
+  local endpoint="${1:?endpoint is required}" strict="${2:-0}" adjusted action remaining_count
+  local bucket="${RATE_LIMIT_WINDOW_BUCKETS[$endpoint]:-0}"
+  local remote_hash="${RATE_LIMIT_REMOTE_HASHES[$endpoint]:-}"
+  local owned="${RATE_LIMIT_REQUEST_COUNTS[$endpoint]:-0}"
+  local cleaned="${RATE_LIMIT_FIXTURE_CLEANED[$endpoint]:-0}"
+  if [[ "$cleaned" != 0 || "$owned" -le 0 || "$bucket" -le 0 || ! "$remote_hash" =~ ^[0-9a-f]{64}$ ]]; then
+    [[ "$strict" == 0 ]] && return 0
+    echo "[company-reapplication-e2e] FAIL incomplete limiter cleanup state endpoint=$endpoint" >&2
+    return 1
+  fi
   set +e
   adjusted="$(q "with locked as (
       select request_count
         from framework_public_lookup_rate_limit
-       where project_id='${PROJECT_ID}' and remote_addr_hash='${RATE_LIMIT_REMOTE_HASH}'
-         and endpoint_code='company-status-detail' and window_bucket=${RATE_LIMIT_WINDOW_BUCKET}
+       where project_id='${PROJECT_ID}' and remote_addr_hash='${remote_hash}'
+         and endpoint_code='${endpoint}' and window_bucket=${bucket}
        for update
     ), deleted as (
       delete from framework_public_lookup_rate_limit rate using locked
-       where rate.project_id='${PROJECT_ID}' and rate.remote_addr_hash='${RATE_LIMIT_REMOTE_HASH}'
-         and rate.endpoint_code='company-status-detail' and rate.window_bucket=${RATE_LIMIT_WINDOW_BUCKET}
-         and locked.request_count=${RATE_LIMIT_REQUESTS}
+       where rate.project_id='${PROJECT_ID}' and rate.remote_addr_hash='${remote_hash}'
+         and rate.endpoint_code='${endpoint}' and rate.window_bucket=${bucket}
+         and locked.request_count=${owned}
       returning 'DELETE'::text as action,0::integer as remaining_count
     ), updated as (
-      update framework_public_lookup_rate_limit rate set request_count=rate.request_count-${RATE_LIMIT_REQUESTS}
+      update framework_public_lookup_rate_limit rate set request_count=rate.request_count-${owned}
         from locked
-       where rate.project_id='${PROJECT_ID}' and rate.remote_addr_hash='${RATE_LIMIT_REMOTE_HASH}'
-         and rate.endpoint_code='company-status-detail' and rate.window_bucket=${RATE_LIMIT_WINDOW_BUCKET}
-         and locked.request_count>${RATE_LIMIT_REQUESTS}
+       where rate.project_id='${PROJECT_ID}' and rate.remote_addr_hash='${remote_hash}'
+         and rate.endpoint_code='${endpoint}' and rate.window_bucket=${bucket}
+         and locked.request_count>${owned}
       returning 'UPDATE'::text as action,rate.request_count as remaining_count
     )
     select action||'|'||remaining_count from deleted
     union all select action||'|'||remaining_count from updated")"
   IFS='|' read -r action remaining_count <<<"$adjusted"
   if [[ "$action" =~ ^(DELETE|UPDATE)$ && "$remaining_count" =~ ^[0-9]+$ ]]; then
-    RATE_LIMIT_FIXTURE_CLEANED=1
-    RATE_LIMIT_REQUESTS=0
+    RATE_LIMIT_FIXTURE_CLEANED["$endpoint"]=1
+    RATE_LIMIT_REQUEST_COUNTS["$endpoint"]=0
   fi
   set -e
-  if [[ "$strict" == 1 && "$RATE_LIMIT_FIXTURE_CLEANED" != 1 ]]; then
-    echo '[company-reapplication-e2e] FAIL status rate-limit fixture cleanup' >&2
+  if [[ "$strict" == 1 && "${RATE_LIMIT_FIXTURE_CLEANED[$endpoint]:-0}" != 1 ]]; then
+    echo "[company-reapplication-e2e] FAIL rate-limit fixture cleanup endpoint=$endpoint" >&2
     return 1
   fi
+}
+
+cleanup_all_public_rate_limit_fixtures() {
+  local strict="${1:-0}" endpoint result=0
+  ((${#RATE_LIMIT_ENDPOINTS[@]} > 0)) || return 0
+  for endpoint in "${RATE_LIMIT_ENDPOINTS[@]}"; do
+    cleanup_public_rate_limit_fixture "$endpoint" "$strict" || result=1
+  done
+  return "$result"
 }
 
 cleanup() {
   local exit_code=$?
   trap - EXIT
   set +e
-  cleanup_status_rate_limit_fixture 0
+  cleanup_all_public_rate_limit_fixtures 0
   RESOLVED_CLEANUP_PATH=""
   if [[ -n "$DB_FILE_PATH" ]]; then
     case "$DB_FILE_PATH" in
@@ -190,9 +219,11 @@ page_code="$(curl -sS -c "$COOKIE" -b "$COOKIE" -o "$BODY" -w '%{http_code}' "$B
 IDENTITY_PAYLOAD="$(jq -cn --arg bizNo "$BIZ_NO" --arg repName "$REP_NAME" \
   --arg registeredContact 'qa-reapply@example.test' \
   '{bizNo:$bizNo,repName:$repName,registeredContact:$registeredContact}')"
+prepare_public_rate_limit_fixture company-reapply-page
 lookup_code="$(curl -sS -c "$COOKIE" -b "$COOKIE" -o "$BODY" -w '%{http_code}' \
   -H 'Content-Type: application/json' --data "$IDENTITY_PAYLOAD" \
   "$BASE_URL/join/api/company-reapply/page")"
+capture_public_rate_limit_identity company-reapply-page
 [[ "$lookup_code" == 200 ]] || {
   echo "[company-reapplication-e2e] FAIL lookup status=$lookup_code" >&2
   exit 1
@@ -206,11 +237,13 @@ REAPPLY_TOKEN="$(jq -r '.reapplyToken' "$BODY")"
 REAPPLY_LOOKUP_HANDLE="$(jq -r '.lookupHandle' "$BODY")"
 [[ "$REAPPLY_LOOKUP_HANDLE" =~ ^[0-9a-f-]{36}$ ]] || { echo '[company-reapplication-e2e] FAIL missing opaque reapply lookup handle' >&2; exit 1; }
 
+prepare_public_rate_limit_fixture company-reapply-submit
 missing_token_code="$(curl -sS -c "$COOKIE" -b "$COOKIE" -o "$BODY" -w '%{http_code}' \
   -F "insttId=$INSTT_ID" -F 'agencyName=QA REAPPLICATION COMPANY' -F "representativeName=$REP_NAME" \
   -F "bizRegistrationNumber=$BIZ_NO" -F 'zipCode=04524' -F 'companyAddress=QA SEOUL JUNG-GU' \
   -F 'chargerName=QA MANAGER' -F 'chargerEmail=qa-reapply@example.test' -F 'chargerTel=010-0000-0000' \
   -F "fileUploads=@$PDF_FIXTURE;type=application/pdf" "$BASE_URL/join/api/company-reapply")"
+capture_public_rate_limit_identity company-reapply-submit
 [[ "$missing_token_code" == 403 ]] || {
   echo "[company-reapplication-e2e] FAIL missing-token status=$missing_token_code" >&2
   exit 1
@@ -222,6 +255,7 @@ missing_file_code="$(curl -sS -c "$COOKIE" -b "$COOKIE" -o "$BODY" -w '%{http_co
   -F 'companyAddress=QA SEOUL JUNG-GU' -F 'chargerName=QA MANAGER' \
   -F 'chargerEmail=qa-reapply@example.test' -F 'chargerTel=010-0000-0000' \
   "$BASE_URL/join/api/company-reapply")"
+track_public_rate_limit_request company-reapply-submit
 [[ "$missing_file_code" == 400 ]] || {
   echo "[company-reapplication-e2e] FAIL missing-file status=$missing_file_code" >&2
   exit 1
@@ -233,6 +267,7 @@ tampered_identity_code="$(curl -sS -c "$COOKIE" -b "$COOKIE" -o "$BODY" -w '%{ht
   -F "bizRegistrationNumber=$BIZ_NO" -F 'zipCode=04524' -F 'companyAddress=QA SEOUL JUNG-GU' \
   -F 'chargerName=QA MANAGER' -F 'chargerEmail=qa-reapply@example.test' -F 'chargerTel=010-0000-0000' \
   -F "fileUploads=@$PDF_FIXTURE;type=application/pdf" "$BASE_URL/join/api/company-reapply")"
+track_public_rate_limit_request company-reapply-submit
 [[ "$tampered_identity_code" == 403 ]] || {
   echo "[company-reapplication-e2e] FAIL token-identity-binding status=$tampered_identity_code" >&2
   exit 1
@@ -243,10 +278,12 @@ lookup_code="$(curl -sS -c "$COOKIE" -b "$COOKIE" -o "$BODY" -w '%{http_code}' \
   -H 'Content-Type: application/json' \
   --data "$(jq -cn --arg lookupHandle "$REAPPLY_LOOKUP_HANDLE" '{lookupHandle:$lookupHandle}')" \
   "$BASE_URL/join/api/company-reapply/page")"
+track_public_rate_limit_request company-reapply-page
 [[ "$lookup_code" == 200 ]] || {
   echo "[company-reapplication-e2e] FAIL token-refresh status=$lookup_code" >&2
   exit 1
 }
+cleanup_public_rate_limit_fixture company-reapply-page 1
 REAPPLY_TOKEN="$(jq -r '.reapplyToken' "$BODY")"
 
 submit_code="$(curl -sS -c "$COOKIE" -b "$COOKIE" -o "$BODY" -w '%{http_code}' \
@@ -255,6 +292,7 @@ submit_code="$(curl -sS -c "$COOKIE" -b "$COOKIE" -o "$BODY" -w '%{http_code}' \
   -F 'companyAddress=QA SEOUL JUNG-GU' -F 'companyAddressDetail=QA UPDATED ADDRESS' \
   -F 'chargerName=QA MANAGER' -F 'chargerEmail=qa-reapply@example.test' -F 'chargerTel=010-0000-0000' \
   -F "fileUploads=@$PDF_FIXTURE;type=application/pdf" "$BASE_URL/join/api/company-reapply")"
+track_public_rate_limit_request company-reapply-submit
 [[ "$submit_code" == 200 ]] && jq -e '.success==true and .insttId!=null' "$BODY" >/dev/null || {
   echo "[company-reapplication-e2e] FAIL submit status=$submit_code" >&2
   exit 1
@@ -294,12 +332,12 @@ db_hashes="$(q "select change_hash||'|'||evidence_sha256[1]
   exit 1
 }
 DB_FILE_PATH="$(q "select file_stre_path from comtninsttfile where project_id='${PROJECT_ID}' and trim(instt_id)='${INSTT_ID}' order by file_sn desc limit 1")"
-prepare_status_rate_limit_fixture
+prepare_public_rate_limit_fixture company-status-detail
 
 status_code="$(curl -sS -c "$COOKIE" -b "$COOKIE" -D "$STATUS_HEADERS" -o "$BODY" -w '%{http_code}' \
   -H 'Content-Type: application/json' --data "$IDENTITY_PAYLOAD" \
   "$BASE_URL/join/api/company-status/detail")"
-capture_status_rate_limit_identity
+capture_public_rate_limit_identity company-status-detail
 [[ "$status_code" == 200 ]] || {
   echo "[company-reapplication-e2e] FAIL status-lookup status=$status_code" >&2
   exit 1
@@ -326,7 +364,7 @@ status_handle_code="$(curl -sS -c "$COOKIE" -b "$COOKIE" -o "$BODY" -w '%{http_c
   -H 'Content-Type: application/json' \
   --data "$(jq -cn --arg lookupHandle "$STATUS_LOOKUP_HANDLE" '{lookupHandle:$lookupHandle}')" \
   "$BASE_URL/join/api/company-status/detail")"
-track_status_rate_limit_request
+track_public_rate_limit_request company-status-detail
 [[ "$status_handle_code" == 200 ]] && [[ "$(jq -r '.lookupHandle' "$BODY")" == "$STATUS_LOOKUP_HANDLE" ]] || {
   echo "[company-reapplication-e2e] FAIL opaque-handle continuation status=$status_handle_code" >&2
   exit 1
@@ -357,7 +395,7 @@ bad_identity_code="$(curl -sS -c "$COOKIE" -b "$COOKIE" -o "$BODY" -w '%{http_co
     --arg registeredContact 'qa-reapply@example.test' \
     '{appNo:$appNo,repName:$repName,registeredContact:$registeredContact}')" \
   "$BASE_URL/join/api/company-status/detail")"
-track_status_rate_limit_request
+track_public_rate_limit_request company-status-detail
 [[ "$bad_identity_code" == 400 ]] && jq -e '.errorCode=="STATUS_LOOKUP_NOT_AVAILABLE"' "$BODY" >/dev/null || {
   echo "[company-reapplication-e2e] FAIL status fail-closed identity status=$bad_identity_code" >&2
   exit 1
@@ -367,7 +405,7 @@ for index in $(seq 1 7); do
   limited_code="$(curl -sS -c "$STATUS_COOKIE" -b "$STATUS_COOKIE" -o "$BODY" -w '%{http_code}' \
     -H 'Content-Type: application/json' -H "X-Forwarded-For: 203.0.113.$index" \
     --data "$IDENTITY_PAYLOAD" "$BASE_URL/join/api/company-status/detail")"
-  track_status_rate_limit_request
+  track_public_rate_limit_request company-status-detail
   [[ "$limited_code" == 200 ]] || {
     echo "[company-reapplication-e2e] FAIL status-rate prelimit index=$index status=$limited_code" >&2
     exit 1
@@ -376,12 +414,12 @@ done
 limited_code="$(curl -sS -c "$STATUS_COOKIE" -b "$STATUS_COOKIE" -o "$BODY" -w '%{http_code}' \
   -H 'Content-Type: application/json' -H 'X-Forwarded-For: 198.51.100.250' \
   --data "$IDENTITY_PAYLOAD" "$BASE_URL/join/api/company-status/detail")"
-track_status_rate_limit_request
+track_public_rate_limit_request company-status-detail
 [[ "$limited_code" == 429 ]] && jq -e '.errorCode=="STATUS_LOOKUP_NOT_AVAILABLE"' "$BODY" >/dev/null || {
   echo "[company-reapplication-e2e] FAIL status-rate-limit status=$limited_code" >&2
   exit 1
 }
-cleanup_status_rate_limit_fixture 1
+cleanup_public_rate_limit_fixture company-status-detail 1
 
 legacy_code="$(curl -sS -X POST -c "$COOKIE" -b "$COOKIE" -o "$BODY" -w '%{http_code}' \
   "$BASE_URL/join/companyReapplySubmit")"
@@ -396,10 +434,12 @@ repeat_code="$(curl -sS -c "$COOKIE" -b "$COOKIE" -o "$BODY" -w '%{http_code}' \
   -F 'companyAddress=QA SEOUL JUNG-GU' -F 'chargerName=QA MANAGER' \
   -F 'chargerEmail=qa-reapply@example.test' -F 'chargerTel=010-0000-0000' \
   -F "fileUploads=@$PDF_FIXTURE;type=application/pdf" "$BASE_URL/join/api/company-reapply")"
+track_public_rate_limit_request company-reapply-submit
 [[ "$repeat_code" == 403 || "$repeat_code" == 409 ]] || {
   echo "[company-reapplication-e2e] FAIL replay status=$repeat_code" >&2
   exit 1
 }
+cleanup_public_rate_limit_fixture company-reapply-submit 1
 
 context_code="$(curl -sS -G -o "$BODY" -w '%{http_code}' \
   --data-urlencode 'routePath=/join/companyReapply' --data-urlencode 'pageId=join-company-reapply' \

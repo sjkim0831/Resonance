@@ -39,16 +39,18 @@ for(const token of ["RESOLVED_CLEANUP_PATH","realpath -m","[[ -L \"$RESOLVED_CLE
   assert(runtime.includes(token),`runtime resolved physical cleanup contract missing: ${token}`);
 }
 for(const token of [
-  "prepare_status_rate_limit_fixture",
-  "capture_status_rate_limit_identity",
-  "track_status_rate_limit_request",
+  "prepare_public_rate_limit_fixture",
+  "capture_public_rate_limit_identity",
+  "track_public_rate_limit_request",
   "RATE_LIMIT_BASELINE_COUNTS",
-  "cleanup_status_rate_limit_fixture 1",
-  "remote_addr_hash='${RATE_LIMIT_REMOTE_HASH}'",
-  "window_bucket=${RATE_LIMIT_WINDOW_BUCKET}",
+  "cleanup_public_rate_limit_fixture company-reapply-page 1",
+  "cleanup_public_rate_limit_fixture company-reapply-submit 1",
+  "cleanup_public_rate_limit_fixture company-status-detail 1",
+  "remote_addr_hash='${remote_hash}'",
+  "window_bucket=${bucket}",
   "for update",
-  "request_count=rate.request_count-${RATE_LIMIT_REQUESTS}",
-  "locked.request_count=${RATE_LIMIT_REQUESTS}",
+  "request_count=rate.request_count-${owned}",
+  "locked.request_count=${owned}",
   "rateLimitFixtureCleanup:1",
 ]) assert(runtime.includes(token),`runtime rate-limit isolation contract missing: ${token}`);
 for(const token of [
@@ -87,7 +89,7 @@ const wrapperWithoutLock=wrapper.replace('flock -w "$DEPLOY_LOCK_WAIT_SECONDS" 8
 assert(!wrapperWithoutLock.includes('flock -w "$DEPLOY_LOCK_WAIT_SECONDS" 8'),"deploy-lock mutation escaped");
 const wrapperWithoutPersistence=wrapper.replace("browserPersistence:1","browserPersistence:0");
 assert(!wrapperWithoutPersistence.includes("browserPersistence:1"),"browser-persistence mutation escaped");
-const runtimeWithoutRateCleanup=runtime.replace("cleanup_status_rate_limit_fixture 1","true");
-assert(!runtimeWithoutRateCleanup.includes("cleanup_status_rate_limit_fixture 1"),"rate-limit cleanup mutation escaped");
+const runtimeWithoutRateCleanup=runtime.replace("cleanup_public_rate_limit_fixture company-status-detail 1","true");
+assert(!runtimeWithoutRateCleanup.includes("cleanup_public_rate_limit_fixture company-status-detail 1"),"rate-limit cleanup mutation escaped");
 NODE
 echo '[company-reapplication-business-e2e-wrapper-test] PASS routeSamples=20 journeys=2 freshness=3 identities=runtime+validation cleanup=resolved+rate-ledger mutations=5'
