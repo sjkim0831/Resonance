@@ -17,6 +17,7 @@ const design = read("src/features/screen-development-note/ScreenDevelopmentNoteP
 const help = read("src/components/help/HelpOverlay.tsx");
 const workspace = read("src/features/process-step-workspace/ProcessStepWorkspacePage.tsx");
 const context = read("src/features/runtime-assist/screenWorkContext.ts");
+const professionalCanvas = read("src/features/actor-process-governance/ProfessionalDesignCanvas.tsx");
 
 expect(
   occurrences(app, "<TaskQuestPanel") === 1,
@@ -121,6 +122,15 @@ expect(
     design.includes('workClassification==="INFORMATIONAL"') &&
     help.includes('workClassification === "INFORMATIONAL"'),
   "Help and screen design must explain classification states and route review-required screens to actor-process design.",
+);
+expect(
+  professionalCanvas.includes('new URLSearchParams(window.location.search).get("routePath")') &&
+    professionalCanvas.includes("normalizeScreenRoute(raw)") &&
+    professionalCanvas.includes('normalizeScreenRoute(value(node.row, "routePath")) === requestedRoutePath') &&
+    professionalCanvas.includes("setQuery(requestedRoutePath)") &&
+    professionalCanvas.includes("initialRouteFocusHandled.current = true") &&
+    professionalCanvas.includes("centerNode(target)"),
+  "Professional design canvas must canonicalize, locate, select and center the routePath review target while preserving the query on misses.",
 );
 expect(
   workspace.includes('query.get("processCode") || query.get("process")') &&
