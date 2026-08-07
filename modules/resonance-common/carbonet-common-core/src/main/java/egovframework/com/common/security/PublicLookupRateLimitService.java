@@ -1,6 +1,7 @@
 package egovframework.com.common.security;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
@@ -40,6 +41,7 @@ public class PublicLookupRateLimitService {
     private final JdbcTemplate jdbc;
     private final AtomicLong requestCounter = new AtomicLong();
 
+    @Autowired
     public PublicLookupRateLimitService(DataSource dataSource) {
         this(new JdbcTemplate(dataSource));
     }

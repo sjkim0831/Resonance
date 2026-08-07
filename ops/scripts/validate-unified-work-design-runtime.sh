@@ -42,7 +42,7 @@ IFS='|' read -r process_count assurance_count active_work_type_count work_type_c
         (select coalesce(sum((requires_user_page::integer)+(requires_admin_page::integer)),0) from framework_process_step),
         (select count(*) from framework_page_design),
         (select count(*) from framework_process_step s
-          where (s.requires_user_page and not exists(select 1 from framework_page_design d where d.process_code=s.process_code and d.step_code=s.step_code and d.audience='USER'))
+          where (s.requires_user_page and not exists(select 1 from framework_page_design d where d.process_code=s.process_code and d.step_code=s.step_code and d.audience IN ('USER','PUBLIC')))
              or (s.requires_admin_page and not exists(select 1 from framework_page_design d where d.process_code=s.process_code and d.step_code=s.step_code and d.audience='ADMIN'))),
         (select incomplete_page_count from framework_page_design_summary),
         (select field_count from framework_page_design_summary),

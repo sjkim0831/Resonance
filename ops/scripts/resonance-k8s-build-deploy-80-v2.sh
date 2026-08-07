@@ -795,6 +795,33 @@ build_image() {
 rollout_image() {
   log_step "Rollout"
 
+  log_detail "Applying canonical carbonet-web Service contract..."
+  local carbonet_web_service_json
+  if ! carbonet_web_service_json="$(
+    kubectl apply --dry-run=client -f "$ROOT_DIR/manifests/carbonet-split-runtime.yaml" -o json \
+      | jq -ce '
+          [.items[]? | select(.kind == "Service" and .metadata.name == "carbonet-web")]
+          | if length == 1 then .[0]
+            else error("expected exactly one carbonet-web Service, found \(length)")
+            end
+        '
+  )"; then
+    rollback_and_fail "CARBONET_WEB_SERVICE_EXTRACT_FAILED" \
+      "Canonical manifest must contain exactly one valid carbonet-web Service" \
+      "kubectl apply --dry-run=client -f $ROOT_DIR/manifests/carbonet-split-runtime.yaml -o json"
+  fi
+  if ! printf '%s\n' "$carbonet_web_service_json" | kubectl apply -f - >/dev/null; then
+    rollback_and_fail "CARBONET_WEB_MANIFEST_APPLY_FAILED" \
+      "Failed to apply the extracted carbonet-web Service" \
+      "Inspect the canonical manifest and kubectl apply output"
+  fi
+  if ! bash "$ROOT_DIR/ops/scripts/validate-carbonet-web-nodeport-client-ip-contract.sh" \
+      --live --namespace "$NAMESPACE"; then
+    rollback_and_fail "CARBONET_WEB_CLIENT_IP_CONTRACT_FAILED" \
+      "Live carbonet-web Service does not preserve the original client address" \
+      "kubectl -n $NAMESPACE get service carbonet-web -o yaml"
+  fi
+
   PRE_ROLLOUT_IMAGE="$(kubectl -n "$NAMESPACE" get "deployment/$DEPLOYMENT" -o jsonpath='{.spec.template.spec.containers[0].image}' 2>/dev/null || true)"
   PRE_ROLLOUT_TARGET_COMMIT="$(kubectl -n "$NAMESPACE" get "deployment/$DEPLOYMENT" -o jsonpath='{.metadata.annotations.resonance\.ai/target-commit}' 2>/dev/null || true)"
   PRE_ROLLOUT_IDENTITY_CAPTURED=true
@@ -1117,6 +1144,12 @@ main() {
   echo ""
 
   acquire_lock
+
+  if ! bash "$ROOT_DIR/ops/scripts/validate-carbonet-web-nodeport-client-ip-contract.sh"; then
+    rollback_and_fail "CARBONET_WEB_CLIENT_IP_MANIFEST_INVALID" \
+      "Canonical carbonet-web Service manifest violates the client-IP preservation contract" \
+      "bash $ROOT_DIR/ops/scripts/validate-carbonet-web-nodeport-client-ip-contract.sh"
+  fi
 
   if [[ "$DRY_RUN" == "true" ]]; then
     log "DRY-RUN - Would execute: preflight, build_frontend, sync_overlay, build_backend, build_image, rollout_image, verify"

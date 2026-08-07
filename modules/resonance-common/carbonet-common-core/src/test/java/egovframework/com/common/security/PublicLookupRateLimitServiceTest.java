@@ -1,11 +1,16 @@
 package egovframework.com.common.security;
 
 import org.junit.jupiter.api.Test;
+import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.jdbc.core.JdbcTemplate;
+
+import javax.sql.DataSource;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -14,6 +19,21 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 class PublicLookupRateLimitServiceTest {
+
+    @Test
+    void springContextSelectsTheExplicitDataSourceConstructor() {
+        DataSource dataSource = mock(DataSource.class);
+        try (AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext()) {
+            context.registerBean(DataSource.class, () -> dataSource);
+            context.register(PublicLookupRateLimitService.class);
+            context.refresh();
+
+            PublicLookupRateLimitService service = context.getBean(PublicLookupRateLimitService.class);
+
+            assertNotNull(service);
+            assertSame(dataSource, context.getBean(DataSource.class));
+        }
+    }
 
     @Test
     void distributedLedgerUsesOnlyRemoteAddressHashAndFailsClosedAfterLimit() {

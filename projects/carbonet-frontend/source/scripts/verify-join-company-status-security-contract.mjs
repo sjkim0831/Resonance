@@ -22,6 +22,7 @@ const clientIpPolicyValidator = read("ops/scripts/validate-carbonet-web-nodeport
 const clientIpPolicyTest = read("ops/tests/test-carbonet-web-nodeport-client-ip-contract.sh");
 const kubeadmDeploy = read("ops/scripts/deploy-carbonet-kubeadm-k8s.sh");
 const buildDeploy = read("ops/scripts/resonance-k8s-build-deploy-80.sh");
+const buildDeployV2 = read("ops/scripts/resonance-k8s-build-deploy-80-v2.sh");
 const nginxDriftSources = [
   "manifests/carbonet-split-runtime.yaml",
   "ops/config/nginx/carbonet-duckdns.org.conf.example",
@@ -57,11 +58,12 @@ requireSource(nginxDriftSources.every((source) => !source.includes("proxy_add_x_
 requireSource(/forward-headers-strategy:\s*native/.test(applicationConfig), "Tomcat native forwarding must convert the sanitized one-hop X-Forwarded-For into getRemoteAddr");
 requireSource(nginxDeployGate.includes("proxy_add_x_forwarded_for") && nginxDeployGate.includes('forwarded_count') && nginxDeployGate.includes('rate_client_count'), "carbonet-web config apply must fail closed on unsafe or incomplete forwarding headers");
 requireSource(runtimeE2e.includes('X-Forwarded-For: 203.0.113.$index') && runtimeE2e.includes('X-Forwarded-For: 198.51.100.250'), "runtime E2E must prove spoofed X-Forwarded-For values cannot escape the shared rate bucket");
-requireSource(/name:\s*carbonet-web[\s\S]*?type:\s*NodePort[\s\S]*?externalTrafficPolicy:\s*Local/.test(splitRuntimeManifest), "carbonet-web NodePort manifest must preserve the original client address with externalTrafficPolicy Local");
+requireSource(/kind:\s*Service[\s\S]*?name:\s*carbonet-web[\s\S]*?type:\s*NodePort[\s\S]*?externalTrafficPolicy:\s*Local/.test(splitRuntimeManifest), "canonical carbonet-web manifest must preserve the original client address with externalTrafficPolicy Local");
 requireSource(clientIpPolicyValidator.includes("target_count != 1") && clientIpPolicyValidator.includes("policy_count != 1") && clientIpPolicyValidator.includes("NodePort|Local"), "client-IP policy validator must fail closed on duplicate, missing, non-local, or live drift");
 requireSource(clientIpPolicyTest.includes("missing-policy") && clientIpPolicyTest.includes("cluster-policy") && clientIpPolicyTest.includes("duplicate-policy") && clientIpPolicyTest.includes("duplicate-service"), "client-IP policy validator must have mutation regression coverage");
 requireSource(nginxDeployGate.includes("validate-carbonet-web-nodeport-client-ip-contract.sh") && nginxDeployGate.includes("--live"), "carbonet-web config deployment must reject an unsafe live Service policy");
-requireSource(kubeadmDeploy.includes("validate-carbonet-web-nodeport-client-ip-contract.sh") && buildDeploy.includes("validate-carbonet-web-nodeport-client-ip-contract.sh"), "all canonical carbonet-web manifest deploy paths must enforce the client-IP preservation contract");
+requireSource(kubeadmDeploy.includes("validate-carbonet-web-nodeport-client-ip-contract.sh") && buildDeploy.includes("validate-carbonet-web-nodeport-client-ip-contract.sh") && buildDeployV2.includes("validate-carbonet-web-nodeport-client-ip-contract.sh"), "all canonical carbonet-web manifest deploy paths must enforce the client-IP preservation contract");
+requireSource(buildDeployV2.includes('if ! bash "$ROOT_DIR/ops/scripts/validate-carbonet-web-nodeport-client-ip-contract.sh"; then') && buildDeployV2.includes('kubectl apply --dry-run=client -f "$ROOT_DIR/manifests/carbonet-split-runtime.yaml" -o json') && buildDeployV2.includes('select(.kind == "Service" and .metadata.name == "carbonet-web")') && buildDeployV2.includes('if length == 1 then .[0]') && buildDeployV2.includes('kubectl apply -f -') && !buildDeployV2.includes('kubectl apply -f "$ROOT_DIR/manifests/carbonet-split-runtime.yaml"') && buildDeployV2.includes('--live --namespace "$NAMESPACE"'), "the active v2 auto-deploy path must extract exactly one carbonet-web Service, reject direct whole-manifest apply and fail closed on live drift");
 requireSource(controller.includes('headers.set("Retry-After"') && controller.includes("Decision.unavailable"), "limiter must return Retry-After and fail closed");
 requireSource(controller.includes("HttpStatus.GONE") && controller.includes("LEGACY_REAPPLICATION_ENDPOINT_RETIRED"), "legacy form POST must be retired with HTTP 410");
 requireSource(controller.includes("Company reapply committed but status lookup handle could not be issued") && controller.includes('String lookupHandle = ""'), "post-commit handle failure must preserve the committed receipt and evidence");
@@ -79,4 +81,4 @@ if (failures.length) {
   failures.forEach((failure) => console.error(`FAIL: ${failure}`));
   process.exit(1);
 }
-console.log("PASS join-company-status-security checks=39 transport=POST handle=session-bound rateLimit=cross-pod+session clientIp=nodeport-local token=opaque cache=no-store legacy=410");
+console.log("PASS join-company-status-security checks=40 transport=POST handle=session-bound rateLimit=cross-pod+session clientIp=nodeport-local token=opaque cache=no-store legacy=410");

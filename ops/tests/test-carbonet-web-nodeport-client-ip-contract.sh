@@ -3,6 +3,7 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 VALIDATOR="$ROOT_DIR/ops/scripts/validate-carbonet-web-nodeport-client-ip-contract.sh"
+V2_DEPLOY="$ROOT_DIR/ops/scripts/resonance-k8s-build-deploy-80-v2.sh"
 TMP_DIR="$(mktemp -d)"
 trap 'rm -rf "$TMP_DIR"' EXIT
 
@@ -26,6 +27,17 @@ expect_fail() {
     pass_count=$((pass_count + 1))
     printf 'PASS %s\n' "$name"
   fi
+}
+
+validate_v2_deploy_source() {
+  local source="$1"
+  grep -Fq 'if ! bash "$ROOT_DIR/ops/scripts/validate-carbonet-web-nodeport-client-ip-contract.sh"; then' "$source" \
+    && grep -Fq 'kubectl apply --dry-run=client -f "$ROOT_DIR/manifests/carbonet-split-runtime.yaml" -o json' "$source" \
+    && grep -Fq 'select(.kind == "Service" and .metadata.name == "carbonet-web")' "$source" \
+    && grep -Fq 'if length == 1 then .[0]' "$source" \
+    && grep -Fq 'kubectl apply -f -' "$source" \
+    && ! grep -Fq 'kubectl apply -f "$ROOT_DIR/manifests/carbonet-split-runtime.yaml"' "$source" \
+    && grep -Fq -- '--live --namespace "$NAMESPACE"' "$source"
 }
 
 mkdir -p "$TMP_DIR/bin"
@@ -90,5 +102,41 @@ YAML
 expect_fail wrong-service "$TMP_DIR/wrong-service.yaml"
 
 expect_pass repository-contract "$ROOT_DIR/manifests/carbonet-split-runtime.yaml"
+
+if validate_v2_deploy_source "$V2_DEPLOY"; then
+  pass_count=$((pass_count + 1))
+  printf 'PASS v2-deploy-contract\n'
+else
+  printf 'FAIL v2-deploy-contract expected success\n' >&2
+  exit 1
+fi
+
+sed 's/--live --namespace "$NAMESPACE"/--namespace "$NAMESPACE"/' "$V2_DEPLOY" > "$TMP_DIR/v2-no-live.sh"
+if validate_v2_deploy_source "$TMP_DIR/v2-no-live.sh"; then
+  printf 'FAIL v2-missing-live expected rejection\n' >&2
+  exit 1
+else
+  pass_count=$((pass_count + 1))
+  printf 'PASS v2-missing-live\n'
+fi
+
+cp "$V2_DEPLOY" "$TMP_DIR/v2-no-apply.sh"
+printf '\nkubectl apply -f "$ROOT_DIR/manifests/carbonet-split-runtime.yaml"\n' >> "$TMP_DIR/v2-no-apply.sh"
+if validate_v2_deploy_source "$TMP_DIR/v2-no-apply.sh"; then
+  printf 'FAIL v2-whole-manifest expected rejection\n' >&2
+  exit 1
+else
+  pass_count=$((pass_count + 1))
+  printf 'PASS v2-whole-manifest\n'
+fi
+
+grep -Fv 'if ! bash "$ROOT_DIR/ops/scripts/validate-carbonet-web-nodeport-client-ip-contract.sh"; then' "$V2_DEPLOY" > "$TMP_DIR/v2-no-preflight.sh"
+if validate_v2_deploy_source "$TMP_DIR/v2-no-preflight.sh"; then
+  printf 'FAIL v2-missing-preflight expected rejection\n' >&2
+  exit 1
+else
+  pass_count=$((pass_count + 1))
+  printf 'PASS v2-missing-preflight\n'
+fi
 
 printf '[carbonet-web-client-ip-contract-test] PASS checks=%d\n' "$pass_count"
