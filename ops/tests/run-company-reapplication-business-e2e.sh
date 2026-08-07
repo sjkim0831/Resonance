@@ -15,7 +15,7 @@ PROJECT_ID="${CARBONET_REAPPLICATION_TEST_PROJECT_ID:-P003}"
 UPLOAD_ROOT="${CARBONET_FILE_INSTT_DIR:-/opt/resonance-data/carbonet/files/instt}"
 PROCESS=COMPANY_REAPPLICATION_PUBLIC
 STEP=COMPANY_REAPPLICATION_PUBLIC_RESUBMIT
-REQUIRED="api,database,authority,responsive,accessibility,exceptionStates,audit,recovery,cleanup,token,replayBlocked,screenContextPreflight,desktop,mobile,browserJourney,browserPersistence,businessJourneyDesktop,businessJourneyMobile"
+REQUIRED="api,database,authority,responsive,accessibility,exceptionStates,audit,recovery,cleanup,token,replayBlocked,rateLimitFixtureCleanup,screenContextPreflight,desktop,mobile,browserJourney,browserPersistence,businessJourneyDesktop,businessJourneyMobile"
 
 exec 9>"$LOCK_FILE"
 flock -n 9 || { echo COMPANY_REAPPLICATION_E2E_ALREADY_RUNNING >&2; exit 75; }

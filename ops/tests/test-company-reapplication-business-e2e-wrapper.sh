@@ -39,6 +39,17 @@ for(const token of ["RESOLVED_CLEANUP_PATH","realpath -m","[[ -L \"$RESOLVED_CLE
   assert(runtime.includes(token),`runtime resolved physical cleanup contract missing: ${token}`);
 }
 for(const token of [
+  "prepare_status_rate_limit_fixture",
+  "track_status_rate_limit_request",
+  "cleanup_status_rate_limit_fixture 1",
+  "remote_addr_hash='${RATE_LIMIT_REMOTE_HASH}'",
+  "window_bucket=${RATE_LIMIT_WINDOW_BUCKET}",
+  "for update",
+  "request_count=rate.request_count-${RATE_LIMIT_REQUESTS}",
+  "locked.request_count=${RATE_LIMIT_REQUESTS}",
+  "rateLimitFixtureCleanup:1",
+]) assert(runtime.includes(token),`runtime rate-limit isolation contract missing: ${token}`);
+for(const token of [
   'DEPLOY_LOCK_FILE="${CARBONET_DEPLOY_LOCK_FILE:-/tmp/carbonet-auto-deploy.lock}"',
   'flock -w "$DEPLOY_LOCK_WAIT_SECONDS" 8',
   'VALIDATION_COMMIT="$(git -C "$ROOT" rev-parse HEAD)"',
@@ -52,6 +63,7 @@ for(const token of [
   "insert into comtninsttinfo(",
   "browserPersistence:1",
   '[[ -s "$DESKTOP_PDF" && -s "$MOBILE_PDF" ]]',
+  "rateLimitFixtureCleanup",
   "delete_browser_fixtures 1",
   ".performanceSampleCount<20",
 ]) assert(wrapper.includes(token),`wrapper fail-closed contract missing: ${token}`);
@@ -73,5 +85,7 @@ const wrapperWithoutLock=wrapper.replace('flock -w "$DEPLOY_LOCK_WAIT_SECONDS" 8
 assert(!wrapperWithoutLock.includes('flock -w "$DEPLOY_LOCK_WAIT_SECONDS" 8'),"deploy-lock mutation escaped");
 const wrapperWithoutPersistence=wrapper.replace("browserPersistence:1","browserPersistence:0");
 assert(!wrapperWithoutPersistence.includes("browserPersistence:1"),"browser-persistence mutation escaped");
+const runtimeWithoutRateCleanup=runtime.replace("cleanup_status_rate_limit_fixture 1","true");
+assert(!runtimeWithoutRateCleanup.includes("cleanup_status_rate_limit_fixture 1"),"rate-limit cleanup mutation escaped");
 NODE
-echo '[company-reapplication-business-e2e-wrapper-test] PASS routeSamples=20 journeys=2 freshness=3 identities=runtime+validation cleanup=resolved mutations=4'
+echo '[company-reapplication-business-e2e-wrapper-test] PASS routeSamples=20 journeys=2 freshness=3 identities=runtime+validation cleanup=resolved+rate-ledger mutations=5'
