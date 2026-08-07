@@ -22,11 +22,22 @@ export type ScreenWorkContextCandidate = ScreenWorkflowContext & {
   entryMode?: string;
 };
 
+export type ScreenWorkflowClassification =
+  | "EXECUTABLE"
+  | "INFORMATIONAL"
+  | "EXCLUDED"
+  | "REVIEW_REQUIRED";
+
 export type ScreenWorkContext = {
   linked: boolean;
   routePath: string;
   pageId: string;
   source: "server" | "catalog" | "url" | "unlinked";
+  classification: ScreenWorkflowClassification;
+  reasonCode?: string;
+  reasonText?: string;
+  accessRestricted?: boolean;
+  reviewStatus?: string;
   selectionRequired?: boolean;
   candidateCount?: number;
   identity?: {
@@ -40,6 +51,27 @@ export type ScreenWorkContext = {
   workflow?: ScreenWorkflowContext | null;
   candidates?: ScreenWorkContextCandidate[];
 };
+
+export function localScreenWorkflowClassification(pathname: string): ScreenWorkflowClassification {
+  const normalized = normalizeScreenRoute(pathname);
+  return [
+    "/login/",
+    "/admin/login/",
+    "/signin/",
+    "/find/",
+    "/password/",
+    "/error/",
+    "/admin/emission/survey-report-print",
+    "/admin/emission/survey-report-lca-summary"
+  ].some((prefix) => normalized === prefix.replace(/\/$/, "") || normalized.startsWith(prefix))
+    ? "EXCLUDED"
+    : "REVIEW_REQUIRED";
+}
+
+export function isPublicWorkflowRoute(pathname: string) {
+  const normalized = normalizeScreenRoute(pathname);
+  return normalized === "/join" || normalized.startsWith("/join/");
+}
 
 export function normalizeScreenRoute(value: string) {
   if (!value) return "/";
@@ -57,15 +89,5 @@ export function normalizeScreenRoute(value: string) {
 }
 
 export function isWorkflowAssistRoute(pathname: string) {
-  const normalized = normalizeScreenRoute(pathname);
-  return ![
-    "/login/",
-    "/admin/login/",
-    "/signin/",
-    "/join/",
-    "/find/",
-    "/error/",
-    "/admin/emission/survey-report-print",
-    "/admin/emission/survey-report-lca-summary"
-  ].some((prefix) => normalized === prefix.replace(/\/$/, "") || normalized.startsWith(prefix));
+  return localScreenWorkflowClassification(pathname) !== "EXCLUDED";
 }

@@ -548,6 +548,9 @@ export function TaskQuestPanel({
   onScreenContextSelection
 }: TaskQuestPanelProps = {}) {
   const en = isEnglish();
+  const screenClassification = screenContext?.classification
+    || (screenContext?.workflow || screenContext?.candidates?.length ? "EXECUTABLE" : "REVIEW_REQUIRED");
+  const screenContextExecutable = screenClassification === "EXECUTABLE";
   const api = buildLocalizedPath(
     "/home/api/emission-tasks",
     "/en/home/api/emission-tasks",
@@ -1369,6 +1372,15 @@ export function TaskQuestPanel({
     localStorage.setItem("task-quest-catalog-step", String(routeStepIndex));
   }, [routePath, screenContext?.workflow?.processCode, screenContext?.workflow?.stepCode, selectedCatalogStep, selectedCatalogSteps]);
   const selectedQaStep = selectedCatalogSteps[selectedCatalogStep];
+  const selectedQaStepMatchesScreen = Boolean(selectedQaStep && (
+    (screenContext?.workflow?.processCode === selectedQaStep.processCode
+      && screenContext.workflow.stepCode === selectedQaStep.stepCode)
+    || (screenContext?.candidates || []).some((candidate) =>
+      candidate.processCode === selectedQaStep.processCode && candidate.stepCode === selectedQaStep.stepCode)
+  ));
+  const qaScreenExecutionAllowed = screenContextExecutable
+    && !screenContext?.accessRestricted
+    && selectedQaStepMatchesScreen;
   useEffect(() => {
     if (!screenContext?.selectionRequired || !selectedQaStep || !onScreenContextSelection) return;
     const candidate = (screenContext.candidates || []).find((item) =>
@@ -1393,7 +1405,7 @@ export function TaskQuestPanel({
     || qaRuntimeSteps[qaRuntimeSteps.length - 1];
 
   useEffect(() => {
-    if (!qaOpen || !selectedQaStep || !effectiveProjectId) {
+    if (!qaOpen || !qaScreenExecutionAllowed || !selectedQaStep || !effectiveProjectId) {
       setQaPreFields([]);
       setQaPreValues({});
       return;
@@ -1401,10 +1413,10 @@ export function TaskQuestPanel({
     void loadQaPreInputs(selectedQaStep);
     // The selected procedure is the source of truth for its input contract.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [qaOpen, effectiveProjectId, selectedQaStep?.processCode, selectedQaStep?.stepCode]);
+  }, [qaOpen, effectiveProjectId, qaScreenExecutionAllowed, selectedQaStep?.processCode, selectedQaStep?.stepCode]);
 
   useEffect(() => {
-    if (!qaOpen) { setQaScreenFields([]); setQaScreenValues({}); return; }
+    if (!qaOpen || !qaScreenExecutionAllowed) { setQaScreenFields([]); setQaScreenValues({}); return; }
     const scan = () => detectCurrentScreenInputs();
     scan();
     const main = document.querySelector("main");
@@ -1414,7 +1426,7 @@ export function TaskQuestPanel({
     return () => { observer?.disconnect(); window.clearInterval(timer); };
     // Current screen controls can change without a full route reload.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [qaOpen, routePath]);
+  }, [qaOpen, qaScreenExecutionAllowed, routePath]);
   const assignmentSteps = useMemo(
     () => assignmentWorkspace?.steps || [],
     [assignmentWorkspace?.steps],
@@ -1817,7 +1829,7 @@ export function TaskQuestPanel({
   }
 
   async function startTask() {
-    if (!task || task.actionable === false) return;
+    if (!task || taskExecutionBlocked) return;
     setMessage("");
     focusWorkflow(task);
     try {
@@ -1892,6 +1904,21 @@ export function TaskQuestPanel({
       ? focusedContractSteps[focusedContractStepIndex + 1]
       : undefined;
   const linkedScreenWorkflow = screenContext?.workflow;
+  const screenWorkflowMatchesTask = !linkedScreenWorkflow || Boolean(
+    task
+      && task.processCode === linkedScreenWorkflow.processCode
+      && task.processStepCode === linkedScreenWorkflow.stepCode,
+  );
+  const screenTaskMismatch = Boolean(linkedScreenWorkflow && task && !screenWorkflowMatchesTask);
+  const taskExecutionBlocked = blocked || screenTaskMismatch || Boolean(screenContext?.accessRestricted) || Boolean(
+    linkedScreenWorkflow && !screenContextExecutable,
+  );
+  const publicWorkflowOnly = Boolean(
+    !task
+      && linkedScreenWorkflow
+      && screenContext?.identity?.audience === "PUBLIC"
+      && screenContextExecutable,
+  );
   const displayedProcessName =
     linkedScreenWorkflow?.processName || task?.processName || task?.processCode || "-";
   const displayedStepOrder =
@@ -2001,6 +2028,10 @@ export function TaskQuestPanel({
   }
 
   function fillQaScreenRecommendedValues() {
+    if (!qaScreenExecutionAllowed) {
+      setQaMessage(en ? "This screen is not linked to the selected executable procedure." : "현재 화면과 선택 절차의 실행 계약이 일치하지 않아 입력할 수 없습니다.");
+      return;
+    }
     const values = Object.fromEntries(qaScreenFields.map((field) => [field.code, qaRecommendedScreenValue(field)]));
     qaScreenDirtyRef.current = true;
     setQaScreenValues(values);
@@ -2009,6 +2040,10 @@ export function TaskQuestPanel({
   }
 
   function validateQaScreenInputs() {
+    if (!qaScreenExecutionAllowed) {
+      setQaMessage(en ? "QA input is available only for an executable workflow linked to this screen." : "현재 화면에 연결된 실행 가능 절차에서만 QA 입력을 검증할 수 있습니다.");
+      return false;
+    }
     const failures = qaScreenFields.flatMap((field) => {
       const value = String(qaScreenValues[field.code] || "").trim();
       const issues: string[] = [];
@@ -2057,6 +2092,10 @@ export function TaskQuestPanel({
   }
 
   function applyQaScreenInputs() {
+    if (!qaScreenExecutionAllowed) {
+      setQaMessage(en ? "The selected procedure cannot write to this screen." : "선택한 절차는 현재 화면에 입력할 수 없습니다.");
+      return;
+    }
     if (!validateQaScreenInputs()) return;
     qaScreenFields.forEach((field) => applyCurrentScreenInput(field.code, qaScreenValues[field.code] || ""));
     qaScreenDirtyRef.current = false;
@@ -2142,7 +2181,7 @@ export function TaskQuestPanel({
 
   async function saveQaPreInputs() {
     const step = selectedQaStep;
-    if (!step || !effectiveProjectId || !qaTenantId) return;
+    if (!qaScreenExecutionAllowed || !step || !effectiveProjectId || !qaTenantId) return;
     if (qaMissingRequired.length) {
       setQaMessage(`필수 입력 ${qaMissingRequired.length}개를 먼저 입력하세요: ${qaMissingRequired.map((field) => field.label).join(", ")}`);
       return;
@@ -2168,6 +2207,10 @@ export function TaskQuestPanel({
   }
 
   function fillCurrentScreen() {
+    if (!qaScreenExecutionAllowed) {
+      setQaMessage(en ? "Open the selected procedure's linked screen before filling inputs." : "선택 절차에 연결된 화면을 연 뒤 입력을 실행하세요.");
+      return;
+    }
     let filled = 0;
     const controls = Array.from(document.querySelectorAll<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>("main input, main select, main textarea"));
     controls.forEach((control) => {
@@ -2217,7 +2260,10 @@ export function TaskQuestPanel({
 
   async function openQaStep() {
     const step = selectedCatalogSteps[selectedCatalogStep];
-    if (!step) return;
+    if (!qaScreenExecutionAllowed || !step) {
+      setQaMessage(en ? "Use Shortcut to open the selected procedure's linked screen first." : "바로가기로 선택 절차의 연결 화면을 먼저 여세요.");
+      return;
+    }
     const route = resolveQaRoute(step);
     if (!route) { setQaMessage(en ? "No screen is bound to this step." : "이 절차에 연결된 화면이 없습니다."); return; }
     setQaBusy(true);
@@ -2260,6 +2306,10 @@ export function TaskQuestPanel({
   }
 
   async function manageQaInstance(action: "CREATE" | "UPDATE" | "RESET" | "DELETE") {
+    if (!qaScreenExecutionAllowed) {
+      setQaMessage(en ? "QA instances can be changed only on the selected executable procedure's screen." : "선택한 실행 절차의 연결 화면에서만 QA 인스턴스를 변경할 수 있습니다.");
+      return;
+    }
     if (!effectiveProjectId || !selectedCatalogProcessCode) {
       setQaMessage(en ? "Select a project and process." : "프로젝트와 프로세스를 선택하세요.");
       return;
@@ -2296,7 +2346,10 @@ export function TaskQuestPanel({
 
   async function runQaSequence() {
     const step = selectedCatalogSteps[selectedCatalogStep];
-    if (!selectedCatalogProcessCode || !step) return;
+    if (!qaScreenExecutionAllowed || !selectedCatalogProcessCode || !step) {
+      setQaMessage(en ? "Select an executable procedure linked to this screen." : "현재 화면에 연결된 실행 가능 절차를 선택하세요.");
+      return;
+    }
     setQaBusy(true);
     setQaMessage(en ? "Running isolated sequential verification..." : "격리된 순차 자동 검증을 실행하고 있습니다.");
     try {
@@ -2351,6 +2404,14 @@ export function TaskQuestPanel({
               </button>
             </div>
             <div className="p-4">
+              {screenContext?.accessRestricted ? (
+                <p className="mb-3 rounded-lg border border-violet-200 bg-violet-50 p-3 text-sm font-bold text-violet-950" data-screen-access-restricted="">
+                  <span className="material-symbols-outlined mr-1 align-middle text-[18px]">admin_panel_settings</span>
+                  {screenContext.reasonText || (en
+                    ? "This screen runs a workflow, but it is outside the current account's actor or permission scope."
+                    : "이 화면은 실행 업무 화면이지만 현재 계정의 담당 액터·권한 범위 밖입니다.")}
+                </p>
+              ) : null}
               {loading ? (
                 <p className="py-5 text-center text-sm text-slate-500">
                   {en
@@ -2471,6 +2532,14 @@ export function TaskQuestPanel({
                           : "선행 업무를 먼저 완료해야 합니다.")}
                     </p>
                   ) : null}
+                  {screenTaskMismatch ? (
+                    <p className="mt-3 rounded-lg border border-red-200 bg-red-50 p-3 text-sm font-bold text-red-900" data-screen-task-mismatch="">
+                      <span className="material-symbols-outlined mr-1 align-middle text-[18px]">warning</span>
+                      {en
+                        ? "The task recommended for this account does not match this screen's linked procedure. Open the matching screen from the full workflow."
+                        : "현재 계정의 추천 업무와 이 화면에 연결된 절차가 일치하지 않습니다. 전체 업무 보기에서 해당 절차 화면을 열어주세요."}
+                    </p>
+                  ) : null}
                   {message ? (
                     <p className="mt-3 text-sm font-bold text-red-700">
                       {message}
@@ -2478,7 +2547,7 @@ export function TaskQuestPanel({
                   ) : null}
                   <button
                     className="mt-4 flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-[#246beb] px-4 font-bold text-white disabled:cursor-not-allowed disabled:bg-slate-300"
-                    disabled={blocked}
+                    disabled={taskExecutionBlocked}
                     onClick={() => void startTask()}
                     type="button"
                   >
@@ -2493,7 +2562,7 @@ export function TaskQuestPanel({
                       arrow_forward
                     </span>
                   </button>
-                  {executionHref(task, en) ? <a className="mt-2 flex min-h-11 w-full items-center justify-center gap-2 rounded-lg border border-[#246beb] bg-white px-4 font-bold text-[#246beb]" href={executionHref(task, en)}>
+                  {!taskExecutionBlocked && executionHref(task, en) ? <a className="mt-2 flex min-h-11 w-full items-center justify-center gap-2 rounded-lg border border-[#246beb] bg-white px-4 font-bold text-[#246beb]" href={executionHref(task, en)}>
                     {en ? "Enter data and complete" : "\uC5C5\uBB34 \uC785\uB825\u00B7\uC644\uB8CC"}<span className="material-symbols-outlined text-[19px]">task_alt</span>
                   </a> : null}
                   {focusedWorkflow ? (
@@ -2508,6 +2577,25 @@ export function TaskQuestPanel({
                     </button>
                   ) : null}
                 </>
+              ) : publicWorkflowOnly && linkedScreenWorkflow ? (
+                <div className="py-2" data-public-workflow-guidance="">
+                  <p className="text-xs font-bold text-[#246beb]">
+                    {en ? "Public workflow guidance" : "공개 업무 절차 안내"}
+                  </p>
+                  <h2 className="mt-1 text-lg font-black leading-6 text-slate-900">
+                    {linkedScreenWorkflow.stepName || linkedScreenWorkflow.stepCode}
+                  </h2>
+                  <dl className="mt-3 space-y-2 rounded-xl bg-slate-50 p-3 text-sm">
+                    <div className="flex gap-2"><dt className="w-16 shrink-0 font-bold text-slate-500">{en ? "Process" : "프로세스"}</dt><dd className="font-semibold text-slate-800">{linkedScreenWorkflow.processName || linkedScreenWorkflow.processCode}</dd></div>
+                    <div className="flex gap-2"><dt className="w-16 shrink-0 font-bold text-slate-500">{en ? "Purpose" : "업무 목적"}</dt><dd className="text-slate-700">{linkedScreenWorkflow.workPurpose || "-"}</dd></div>
+                    <div className="flex gap-2"><dt className="w-16 shrink-0 font-bold text-slate-500">{en ? "Done when" : "완료 조건"}</dt><dd className="text-slate-700">{linkedScreenWorkflow.completionRule || "-"}</dd></div>
+                  </dl>
+                  <p className="mt-3 rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm font-bold text-blue-900">
+                    {en
+                      ? "This is public registration guidance. Account switching and internal task execution become available after sign-in."
+                      : "공개 회원가입 절차 안내입니다. 계정 전환과 내부 업무 실행은 로그인 후 사용할 수 있습니다."}
+                  </p>
+                </div>
               ) : (
                 <div className="py-4 text-center">
                   <span className="material-symbols-outlined text-4xl text-emerald-600">
@@ -2550,13 +2638,21 @@ export function TaskQuestPanel({
           <section className="w-[calc(100vw-1.5rem)] max-w-[36rem] overflow-hidden rounded-2xl border border-emerald-200 bg-white shadow-2xl">
             <header className="flex items-center justify-between bg-emerald-800 px-4 py-3 text-white"><div className="flex items-center gap-2"><span className="material-symbols-outlined">fact_check</span><strong>{en ? "QA workflow runner" : "QA 업무 실행"}</strong></div><button aria-label={en ? "Close" : "닫기"} onClick={() => { setQaOpen(false); localStorage.setItem("process-qa-card-open", "0"); }} type="button"><span className="material-symbols-outlined">close</span></button></header>
             <div className="max-h-[70vh] overflow-y-auto p-4">
-              <div className={`mb-3 rounded-xl border p-3 text-xs font-bold ${screenContext?.workflow ? "border-emerald-200 bg-emerald-50 text-emerald-900" : screenContext?.selectionRequired ? "border-amber-200 bg-amber-50 text-amber-900" : "border-slate-200 bg-slate-50 text-slate-700"}`} data-qa-screen-context="">
-                {screenContext?.workflow
-                  ? `${screenContext.workflow.processName || screenContext.workflow.processCode} · ${screenContext.workflow.stepName || screenContext.workflow.stepCode}`
-                  : screenContext?.selectionRequired
-                    ? (en ? "Select one of this screen's linked procedures below." : "이 화면에 연결된 업무 절차를 아래에서 선택하세요.")
-                    : (en ? "No executable workflow is linked to this screen yet." : "이 화면에는 아직 실행 업무 절차가 연결되지 않았습니다.")}
-                {screenContext?.selectionRequired && screenContext.candidates?.length ? (
+              <div className={`mb-3 rounded-xl border p-3 text-xs font-bold ${screenContext?.accessRestricted ? "border-violet-200 bg-violet-50 text-violet-950" : screenClassification === "EXECUTABLE" && screenContext?.workflow ? "border-emerald-200 bg-emerald-50 text-emerald-900" : screenClassification === "EXECUTABLE" && screenContext?.selectionRequired ? "border-amber-200 bg-amber-50 text-amber-900" : screenClassification === "INFORMATIONAL" ? "border-blue-200 bg-blue-50 text-blue-900" : screenClassification === "REVIEW_REQUIRED" ? "border-amber-200 bg-amber-50 text-amber-900" : "border-slate-200 bg-slate-50 text-slate-700"}`} data-qa-screen-context="" data-screen-classification={screenClassification} data-screen-access-restricted={screenContext?.accessRestricted ? "true" : "false"}>
+                {screenContext?.accessRestricted
+                  ? (screenContext.reasonText || (en ? "Executable workflow screen, but outside this account's actor or permission scope." : "실행 업무 화면이지만 현재 계정의 담당 액터·권한 범위 밖입니다."))
+                  : screenClassification === "INFORMATIONAL"
+                  ? (screenContext?.reasonText || (en ? "This is an informational screen and does not run a workflow step." : "정보 조회 화면으로 실행 절차가 필요하지 않습니다."))
+                  : screenClassification === "EXCLUDED"
+                    ? (screenContext?.reasonText || (en ? "This security, recovery, or print screen is excluded from workflow execution." : "보안·계정 복구·인쇄 화면은 업무 실행 연동 대상에서 제외됩니다."))
+                    : screenClassification === "REVIEW_REQUIRED"
+                      ? (screenContext?.reasonText || (en ? "The workflow contract for this screen requires design review." : "이 화면의 업무 연결 계약은 설계 검토가 필요합니다."))
+                      : screenContext?.workflow
+                        ? `${screenContext.workflow.processName || screenContext.workflow.processCode} · ${screenContext.workflow.stepName || screenContext.workflow.stepCode}`
+                        : screenContext?.selectionRequired
+                          ? (en ? "Select one of this screen's linked procedures below." : "이 화면에 연결된 업무 절차를 아래에서 선택하세요.")
+                          : (en ? "No executable workflow is linked to this screen yet." : "이 화면에는 아직 실행 업무 절차가 연결되지 않았습니다.")}
+                {!screenContext?.accessRestricted && screenClassification === "EXECUTABLE" && screenContext?.selectionRequired && screenContext.candidates?.length ? (
                   <label className="mt-2 block">
                     <span className="sr-only">{en ? "Linked procedure" : "현재 화면 연결 절차"}</span>
                     <select
@@ -2598,11 +2694,11 @@ export function TaskQuestPanel({
               <section className="mt-3 rounded-xl border border-emerald-200 bg-emerald-50/40 p-3" data-qa-pre-inputs="">
                 <div className="flex items-center justify-between gap-3"><div><h4 className="text-sm font-black text-[#052b57]">{en ? "Pre-input and edit" : "절차 선입력·수정"}</h4><p className="mt-1 text-xs text-slate-600">{en ? "Review and save values before opening the work screen." : "업무 화면을 열기 전에 입력값을 확인·수정하고 저장합니다."}</p></div><span className="shrink-0 rounded-full bg-white px-2.5 py-1 text-xs font-black text-emerald-800">{qaPreFields.length}{en ? " fields" : "개 항목"}</span></div>
                 {qaInputLoading ? <p className="mt-3 rounded-lg bg-white p-3 text-xs font-bold text-slate-600">{en ? "Loading the input contract..." : "입력 계약과 저장값을 불러오는 중입니다."}</p> : qaPreFields.length ? <div className="mt-3 grid gap-3 sm:grid-cols-2">{qaPreFields.map((field) => <ContractFieldControl field={field} key={field.code} value={qaPreValues[field.code] || ""} onChange={(value) => setQaPreValues((current) => ({ ...current, [field.code]: value }))} />)}</div> : <p className="mt-3 rounded-lg bg-white p-3 text-xs text-slate-600">{en ? "No editable field contract is registered for this procedure." : "이 절차에 등록된 수정 가능 입력 항목이 없습니다. 화면 입력 버튼으로 현재 화면 값을 확인할 수 있습니다."}</p>}
-                <div className="mt-3 flex items-center justify-between gap-3"><span className={`text-xs font-bold ${qaMissingRequired.length ? "text-red-700" : "text-emerald-800"}`}>{qaMissingRequired.length ? `${en ? "Missing required" : "필수 미입력"} ${qaMissingRequired.length}` : (en ? "Required fields ready" : "필수 입력 준비 완료")}</span><button className="min-h-10 rounded-lg bg-emerald-700 px-4 text-xs font-black text-white disabled:bg-slate-300" disabled={qaBusy || qaInputLoading || !qaPreFields.length} onClick={() => void saveQaPreInputs()} type="button">{en ? "Save changes" : "수정값 저장"}</button></div>
+                <div className="mt-3 flex items-center justify-between gap-3"><span className={`text-xs font-bold ${qaMissingRequired.length ? "text-red-700" : "text-emerald-800"}`}>{qaMissingRequired.length ? `${en ? "Missing required" : "필수 미입력"} ${qaMissingRequired.length}` : (en ? "Required fields ready" : "필수 입력 준비 완료")}</span><button className="min-h-10 rounded-lg bg-emerald-700 px-4 text-xs font-black text-white disabled:bg-slate-300" disabled={qaBusy || !qaScreenExecutionAllowed || qaInputLoading || !qaPreFields.length} onClick={() => void saveQaPreInputs()} type="button">{en ? "Save changes" : "수정값 저장"}</button></div>
               </section>
               <section className="mt-3 rounded-xl border border-violet-200 bg-violet-50/40 p-3" data-qa-screen-inputs="">
                 <div className="flex items-center justify-between gap-3"><div><h4 className="text-sm font-black text-[#052b57]">{en ? "Current screen inputs" : "현재 화면 입력 요소"}</h4><p className="mt-1 text-xs text-slate-600">{en ? "Edits are reflected immediately on the open screen." : "QA 카드에서 수정하면 현재 화면 입력 요소에 즉시 반영됩니다."}</p></div><span className="shrink-0 rounded-full bg-white px-2.5 py-1 text-xs font-black text-violet-800">{qaScreenFields.length}{en ? " controls" : "개 요소"}</span></div>
-                {qaScreenFields.length ? <><div className="mt-3 grid gap-3 sm:grid-cols-2">{qaScreenFields.map((field) => <QaMirrorControl field={field} key={field.code} value={qaScreenValues[field.code] || ""} onChange={(value) => updateCurrentScreenInput(field.code, value)} />)}</div><div className="mt-3 grid gap-2 sm:grid-cols-3"><button className="min-h-10 rounded-lg border border-violet-300 bg-white px-3 text-xs font-black text-violet-800" onClick={fillQaScreenRecommendedValues} type="button">{en ? "Fill recommended values" : "권장값 자동 채우기"}</button><button className="min-h-10 rounded-lg border border-emerald-300 bg-white px-3 text-xs font-black text-emerald-800" onClick={validateQaScreenInputs} type="button">{en ? "Validate inputs" : "입력값 검증"}</button><button className="min-h-10 rounded-lg bg-violet-700 px-4 text-xs font-black text-white" onClick={applyQaScreenInputs} type="button">{en ? "Apply to current screen" : "검증 후 화면 적용"}</button></div></> : <p className="mt-3 rounded-lg bg-white p-3 text-xs text-slate-600">{en ? "No editable inputs were detected on the current screen." : "현재 화면에서 수정 가능한 입력 요소가 감지되지 않았습니다."}</p>}
+                {qaScreenFields.length ? <><div className="mt-3 grid gap-3 sm:grid-cols-2">{qaScreenFields.map((field) => <QaMirrorControl field={field} key={field.code} value={qaScreenValues[field.code] || ""} onChange={(value) => updateCurrentScreenInput(field.code, value)} />)}</div><div className="mt-3 grid gap-2 sm:grid-cols-3"><button className="min-h-10 rounded-lg border border-violet-300 bg-white px-3 text-xs font-black text-violet-800 disabled:cursor-not-allowed disabled:opacity-50" disabled={!qaScreenExecutionAllowed} onClick={fillQaScreenRecommendedValues} type="button">{en ? "Fill recommended values" : "권장값 자동 채우기"}</button><button className="min-h-10 rounded-lg border border-emerald-300 bg-white px-3 text-xs font-black text-emerald-800 disabled:cursor-not-allowed disabled:opacity-50" disabled={!qaScreenExecutionAllowed} onClick={validateQaScreenInputs} type="button">{en ? "Validate inputs" : "입력값 검증"}</button><button className="min-h-10 rounded-lg bg-violet-700 px-4 text-xs font-black text-white disabled:cursor-not-allowed disabled:bg-slate-300" disabled={!qaScreenExecutionAllowed} onClick={applyQaScreenInputs} type="button">{en ? "Apply to current screen" : "검증 후 화면 적용"}</button></div></> : <p className="mt-3 rounded-lg bg-white p-3 text-xs text-slate-600">{en ? "No editable inputs were detected on the current screen." : "현재 화면에서 수정 가능한 입력 요소가 감지되지 않았습니다."}</p>}
               </section>
               <section className="mt-3 rounded-xl border border-slate-200 bg-white p-3" data-qa-progress="">
                 <div className="flex items-center justify-between text-xs"><strong className="text-[#052b57]">{en ? "Procedure progress" : "절차 진행상황"}</strong><span className="font-black text-blue-700">{qaCompletedSteps}/{selectedCatalogSteps.length} · {qaProgress}%</span></div>
@@ -2611,9 +2707,9 @@ export function TaskQuestPanel({
               </section>
               <div className="mt-3 rounded-xl border border-blue-100 bg-blue-50 p-3">
                 <div className="flex flex-wrap items-end gap-2"><label className="text-xs font-black text-slate-600">{en ? "Cycle" : "실행 주기"}<select className="ml-2 h-10 rounded-lg border border-slate-300 bg-white px-2" value={qaCycleType} onChange={(event) => setQaCycleType(event.target.value)}>{["ONCE","MONTHLY","QUARTERLY","HALF_YEARLY","ANNUAL","AD_HOC"].map((value) => <option key={value}>{value}</option>)}</select></label>{qaCycleType !== "ONCE" ? <><input aria-label="기간 시작" className="h-10 rounded-lg border border-slate-300 bg-white px-2 text-xs" type="date" value={qaPeriodStart} onChange={(event) => setQaPeriodStart(event.target.value)} /><input aria-label="기간 종료" className="h-10 rounded-lg border border-slate-300 bg-white px-2 text-xs" type="date" value={qaPeriodEnd} onChange={(event) => setQaPeriodEnd(event.target.value)} /></> : null}</div>
-                <div className="mt-2 grid grid-cols-4 gap-2">{(["CREATE","UPDATE","RESET","DELETE"] as const).map((action) => <button className={`rounded-lg border py-2 text-xs font-black ${action === "DELETE" ? "border-red-300 bg-white text-red-700" : "border-blue-300 bg-white text-blue-800"}`} disabled={qaBusy} key={action} onClick={() => void manageQaInstance(action)} type="button">{action === "CREATE" ? "추가" : action === "UPDATE" ? "수정" : action === "RESET" ? "초기화" : "삭제"}</button>)}</div>
+                <div className="mt-2 grid grid-cols-4 gap-2">{(["CREATE","UPDATE","RESET","DELETE"] as const).map((action) => <button className={`rounded-lg border py-2 text-xs font-black disabled:cursor-not-allowed disabled:opacity-50 ${action === "DELETE" ? "border-red-300 bg-white text-red-700" : "border-blue-300 bg-white text-blue-800"}`} disabled={qaBusy || !qaScreenExecutionAllowed} key={action} onClick={() => void manageQaInstance(action)} type="button">{action === "CREATE" ? "추가" : action === "UPDATE" ? "수정" : action === "RESET" ? "초기화" : "삭제"}</button>)}</div>
               </div>
-              <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-6"><button className="rounded-lg border border-blue-300 py-2.5 text-xs font-black text-blue-800" onClick={openFullWorkflow} type="button">{en ? "Canvas/table" : "캔버스·표"}</button><button className="rounded-lg border border-slate-300 py-2.5 text-xs font-black text-slate-700" disabled={!selectedCatalogSteps.length} onClick={openQaShortcut} type="button">{en ? "Shortcut" : "바로가기"}</button><button className="rounded-lg border border-[#246beb] py-2.5 text-xs font-black text-[#246beb]" disabled={!selectedCatalogSteps.length} onClick={fillCurrentScreen} type="button">{en ? "Fill" : "입력"}</button><button className="rounded-lg border border-[#052b57] py-2.5 text-xs font-black text-[#052b57]" disabled={qaBusy || !selectedCatalogSteps.length} onClick={() => void openQaStep()} type="button">{en ? "Run step" : "절차 실행"}</button><button className="col-span-2 rounded-lg bg-emerald-700 py-2.5 text-xs font-black text-white disabled:bg-slate-300" disabled={qaBusy || !selectedCatalogSteps.length} onClick={() => void runQaSequence()} type="button">{qaBusy ? (en ? "Running" : "실행 중") : (en ? "Run all" : "순차 실행·판정")}</button></div>
+              <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-6"><button className="rounded-lg border border-blue-300 py-2.5 text-xs font-black text-blue-800" onClick={openFullWorkflow} type="button">{en ? "Canvas/table" : "캔버스·표"}</button><button className="rounded-lg border border-slate-300 py-2.5 text-xs font-black text-slate-700" disabled={!selectedCatalogSteps.length} onClick={openQaShortcut} type="button">{en ? "Shortcut" : "바로가기"}</button><button className="rounded-lg border border-[#246beb] py-2.5 text-xs font-black text-[#246beb] disabled:cursor-not-allowed disabled:opacity-50" disabled={!qaScreenExecutionAllowed || !selectedCatalogSteps.length} onClick={fillCurrentScreen} type="button">{en ? "Fill" : "입력"}</button><button className="rounded-lg border border-[#052b57] py-2.5 text-xs font-black text-[#052b57] disabled:cursor-not-allowed disabled:opacity-50" disabled={qaBusy || !qaScreenExecutionAllowed || !selectedCatalogSteps.length} onClick={() => void openQaStep()} type="button">{en ? "Run step" : "절차 실행"}</button><button className="col-span-2 rounded-lg bg-emerald-700 py-2.5 text-xs font-black text-white disabled:bg-slate-300" disabled={qaBusy || !qaScreenExecutionAllowed || !selectedCatalogSteps.length} onClick={() => void runQaSequence()} type="button">{qaBusy ? (en ? "Running" : "실행 중") : (en ? "Run all" : "순차 실행·판정")}</button></div>
               {qaMessage ? <p className={`mt-3 rounded-lg p-3 text-xs font-bold ${qaMessage.startsWith("실패") || qaMessage.startsWith("Failed") ? "bg-red-50 text-red-800" : "bg-emerald-50 text-emerald-900"}`}>{qaMessage}</p> : null}
               <div className="mt-3 border-t border-slate-200 pt-3"><div className="flex items-center justify-between"><strong className="text-xs text-[#052b57]">{en ? "Inputs and execution log" : "입력값·진행 기록"}</strong><button className="text-xs font-bold text-slate-500" onClick={() => setQaActivity([])} type="button">{en ? "Clear" : "기록 지우기"}</button></div><ul className="mt-2 space-y-2">{qaActivity.map((item) => <li className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs" key={item.id}><div className="flex items-start justify-between gap-3"><span className={`font-black ${item.kind === "FAIL" ? "text-red-700" : item.kind === "PASS" || item.kind === "SAVE" ? "text-emerald-700" : "text-blue-700"}`}>{item.kind}</span><time className="shrink-0 text-slate-400">{new Date(item.at).toLocaleTimeString()}</time></div><p className="mt-1 text-slate-700">{item.message}</p></li>)}{!qaActivity.length ? <li className="rounded-lg bg-slate-50 p-3 text-xs text-slate-500">{en ? "Input changes and procedure execution will appear here." : "입력 저장·수정과 절차 실행 결과가 시간순으로 표시됩니다."}</li> : null}</ul></div>
               <div className="mt-4 border-t border-slate-200 pt-3"><div className="flex justify-between"><strong className="text-xs text-[#052b57]">{en ? "Recent verification" : "최근 검증 이력"}</strong><button className="text-xs font-bold text-[#246beb]" onClick={() => void loadQaResults()} type="button">{en ? "Refresh" : "새로고침"}</button></div><ul className="mt-2 space-y-2">{qaResults.slice(0,5).map((item) => <li className="rounded-lg border border-slate-200 px-3 py-2 text-xs" key={item.qaRunId}><div className="flex justify-between"><b className={item.result === "PASSED" ? "text-emerald-700" : "text-red-700"}>{item.result}</b><span className="text-slate-500">{item.executedAt ? new Date(item.executedAt).toLocaleString() : "-"}</span></div>{item.failureReason ? <p className="mt-1 text-red-700">{item.failureReason}</p> : null}</li>)}{!qaResults.length ? <li className="rounded-lg bg-slate-50 p-3 text-xs text-slate-500">{en ? "No verification history." : "저장된 검증 이력이 없습니다."}</li> : null}</ul></div>

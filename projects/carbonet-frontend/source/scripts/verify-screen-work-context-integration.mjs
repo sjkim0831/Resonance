@@ -42,7 +42,7 @@ expect(
 );
 expect(
   task.includes("normalizeScreenRoute(String(path))") &&
-    task.includes("[qaOpen, routePath]") &&
+    task.includes("[qaOpen, qaScreenExecutionAllowed, routePath]") &&
     !task.includes("onWorkContextResolved") &&
     task.includes("synchronizedScreenRouteRef") &&
     task.includes("onScreenContextSelection(candidate)") &&
@@ -71,10 +71,56 @@ expect(
   app.includes("linked: Boolean(body.workflow)") &&
     app.includes("candidateCount: candidates.length") &&
     app.includes('source: "unlinked"') &&
-    app.includes('query.set("audience"') &&
-    app.includes('"ADMIN" : "USER"') &&
+    /query\.set\(\s*"audience"/.test(app) &&
+    app.includes("isPublicWorkflowRoute(location.pathname)") &&
+    app.includes('? "PUBLIC"') &&
+    app.includes(': "USER"') &&
+    app.includes("classification,") &&
+    app.includes("reasonCode:") &&
+    app.includes("reasonText:") &&
     !app.includes('["tenantId", "projectId", "processCode", "stepCode", "actorCode", "capabilityCode"'),
   "App must quarantine stale context, derive route audience and normalize the server result before sharing it with four cards.",
+);
+expect(
+  context.includes("ScreenWorkflowClassification") &&
+    context.includes('"EXECUTABLE"') &&
+    context.includes('"INFORMATIONAL"') &&
+    context.includes('"EXCLUDED"') &&
+    context.includes('"REVIEW_REQUIRED"') &&
+    context.includes("isPublicWorkflowRoute") &&
+    !context.includes('"/join/",'),
+  "Shared screen context must expose the four classifications and keep public join routes eligible for guidance.",
+);
+expect(
+  task.includes("screenWorkflowMatchesTask") &&
+    task.includes("taskExecutionBlocked") &&
+    task.includes("qaScreenExecutionAllowed") &&
+    task.includes('data-screen-task-mismatch=""') &&
+    task.includes('data-public-workflow-guidance=""') &&
+    task.includes("공개 회원가입 절차 안내입니다") &&
+    task.includes("!qaScreenExecutionAllowed || !selectedCatalogSteps.length"),
+  "Guide and QA must block mismatched execution while preserving non-mutating public registration guidance.",
+);
+expect(
+  context.includes("accessRestricted?: boolean") &&
+    context.includes("reviewStatus?: string") &&
+    app.includes("accessRestricted: Boolean(body.accessRestricted)") &&
+    app.includes("reviewStatus: body.reviewStatus") &&
+    occurrences(task, "data-screen-access-restricted") >= 2 &&
+    task.includes("!screenContext?.accessRestricted") &&
+    task.includes("Boolean(screenContext?.accessRestricted)") &&
+    help.includes('data-screen-access-restricted="true"') &&
+    design.includes('data-screen-access-restricted="true"'),
+  "All four cards must distinguish access-restricted executable screens from design gaps and block QA/task mutations.",
+);
+expect(
+  design.includes('data-screen-classification={workClassification}') &&
+    design.includes('routePath=${encodeURIComponent(designRoutePath)}') &&
+    help.includes('data-screen-classification={workClassification}') &&
+    help.includes('routePath=${encodeURIComponent(workContext.routePath)}') &&
+    design.includes('workClassification==="INFORMATIONAL"') &&
+    help.includes('workClassification === "INFORMATIONAL"'),
+  "Help and screen design must explain classification states and route review-required screens to actor-process design.",
 );
 expect(
   workspace.includes('query.get("processCode") || query.get("process")') &&
@@ -87,7 +133,7 @@ expect(
   context.includes('/^\\/en$/i.test') && context.includes('localizedPath === "/"'),
   "Frontend route canonicalization must normalize /en and trailing slashes like the backend.",
 );
-for (const prefix of ["/login/", "/admin/login/", "/signin/", "/join/", "/find/", "/error/"]) {
+for (const prefix of ["/login/", "/admin/login/", "/signin/", "/find/", "/password/", "/error/"]) {
   expect(context.includes(`"${prefix}"`), `Assist exclusion is missing: ${prefix}`);
 }
 
@@ -98,4 +144,4 @@ if (failures.length) {
 }
 
 console.log("[screen-work-context] PASS");
-console.log("mounts=1 context=shared aliases=2 admin=true qaSpa=true canonicalDesign=true helpTrace=true stale=quarantined audience=derived publicAuth=excluded");
+console.log("mounts=1 context=shared classifications=4 aliases=2 admin=true qaSpa=true qaMismatch=blocked canonicalDesign=true helpTrace=true stale=quarantined publicJoin=guided");

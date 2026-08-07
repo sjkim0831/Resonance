@@ -24,7 +24,14 @@ import { GlobalUserGnbShell, shouldUseGlobalUserGnb } from "./features/home-entr
 import { TaskQuestPanel } from "./features/task-quest/TaskQuestPanel";
 import { useLayoutOverflowGuard } from "./app/hooks/useLayoutOverflowGuard";
 import { ScreenDevelopmentNotePanel } from "./features/screen-development-note/ScreenDevelopmentNotePanel";
-import { isWorkflowAssistRoute, type ScreenWorkContext, type ScreenWorkContextCandidate } from "./features/runtime-assist/screenWorkContext";
+import {
+  isPublicWorkflowRoute,
+  isWorkflowAssistRoute,
+  localScreenWorkflowClassification,
+  type ScreenWorkContext,
+  type ScreenWorkContextCandidate,
+  type ScreenWorkflowClassification
+} from "./features/runtime-assist/screenWorkContext";
 import { RouteAuthenticationBoundary } from "./app/routes/RouteAuthenticationBoundary";
 
 const HelpOverlay = lazy(() => import("./components/help/HelpOverlay").then((module) => ({ default: module.HelpOverlay })));
@@ -212,11 +219,17 @@ export default function App() {
 
   useEffect(() => {
     let cancelled = false;
+    const localClassification = localScreenWorkflowClassification(location.pathname);
     const unlinkedContext: ScreenWorkContext = {
       linked: false,
       routePath,
       pageId: page,
       source: "unlinked",
+      classification: localClassification,
+      reasonCode: localClassification === "EXCLUDED" ? "ROUTE_WORKFLOW_EXCLUDED" : "SCREEN_CONTEXT_PENDING",
+      reasonText: localClassification === "EXCLUDED"
+        ? "로그인·계정 복구·오류·인쇄 화면은 실행 업무 연결 대상에서 제외됩니다."
+        : "화면 업무 분류를 확인하고 있습니다.",
       selectionRequired: false,
       candidateCount: 0,
       candidates: [],
@@ -233,7 +246,14 @@ export default function App() {
       if (alias) query.set(key, alias);
     });
     if (!query.has("audience")) {
-      query.set("audience", /^\/(?:en\/)?admin(?:\/|$)/i.test(location.pathname) ? "ADMIN" : "USER");
+      query.set(
+        "audience",
+        /^\/(?:en\/)?admin(?:\/|$)/i.test(location.pathname)
+          ? "ADMIN"
+          : isPublicWorkflowRoute(location.pathname)
+            ? "PUBLIC"
+            : "USER"
+      );
     }
     fetch(`${locale === "en" ? "/en" : ""}/home/api/screen-context?${query.toString()}`, {
       credentials: "include",
@@ -250,9 +270,17 @@ export default function App() {
       .then((body) => {
         if (!cancelled && body) {
           const candidates = Array.isArray(body.candidates) ? body.candidates : [];
+          const classification = (
+            body.classification || (body.workflow || candidates.length ? "EXECUTABLE" : "REVIEW_REQUIRED")
+          ) as ScreenWorkflowClassification;
           setScreenWorkContext({
             ...body,
             linked: Boolean(body.workflow),
+            classification,
+            reasonCode: body.reasonCode || (classification === "REVIEW_REQUIRED" ? "WORKFLOW_POLICY_REVIEW_REQUIRED" : ""),
+            reasonText: body.reasonText || "",
+            accessRestricted: Boolean(body.accessRestricted),
+            reviewStatus: body.reviewStatus || "",
             candidateCount: candidates.length,
             candidates,
             routePath,

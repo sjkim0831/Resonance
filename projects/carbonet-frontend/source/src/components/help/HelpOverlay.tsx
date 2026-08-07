@@ -22,6 +22,8 @@ export function HelpOverlay({ open, pageId, helpContent, workContext, onClose }:
   );
   const placementClass = activeItem?.placement ? `help-overlay-panel-wrap placement-${activeItem.placement}` : "help-overlay-panel-wrap placement-top";
   const highlightToneClass = activeItem?.highlightStyle ? `help-target-${activeItem.highlightStyle}` : "help-target-focus";
+  const workClassification = workContext?.classification
+    || (workContext?.workflow || workContext?.candidates?.length ? "EXECUTABLE" : "REVIEW_REQUIRED");
 
   useEffect(() => {
     if (!open) {
@@ -149,7 +151,26 @@ export function HelpOverlay({ open, pageId, helpContent, workContext, onClose }:
             </button>
           </div>
 
-          {workContext?.workflow ? <div className="mx-5 mt-4 rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm" data-help-work-context=""><p className="text-xs font-black uppercase tracking-wide text-blue-700">현재 업무 절차</p><h3 className="mt-1 font-black text-slate-900">{workContext.workflow.processName||workContext.workflow.processCode} · {Number(workContext.workflow.stepOrder||0)}. {workContext.workflow.stepName||workContext.workflow.stepCode}</h3><dl className="mt-2 grid gap-1 text-xs leading-5 text-slate-700"><div><dt className="inline font-black">담당자 </dt><dd className="inline">{workContext.workflow.actorName||workContext.workflow.actorCode||"-"}</dd></div><div><dt className="inline font-black">해야 할 일 </dt><dd className="inline">{workContext.workflow.workPurpose||"-"}</dd></div><div><dt className="inline font-black">입력 안내 </dt><dd className="inline whitespace-pre-wrap">{workContext.workflow.inputContract||"화면의 필수 입력값과 선택지를 확인합니다."}</dd></div><div><dt className="inline font-black">완료 기준 </dt><dd className="inline">{workContext.workflow.completionRule||"-"}</dd></div></dl></div> : workContext?.selectionRequired ? <div className="mx-5 mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm font-bold text-amber-900">이 화면은 여러 업무 절차에서 공통 사용됩니다. 업무 길잡이에서 현재 절차를 선택하면 해당 절차 도움말이 표시됩니다.</div> : workContext ? <div className="mx-5 mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm font-bold text-slate-700" data-help-work-context="">이 화면에는 아직 실행 업무 절차가 연결되지 않았습니다. 화면 도움말은 사용할 수 있으며 업무 연결은 화면 설계에서 등록합니다.</div> : null}
+          {workContext?.accessRestricted ? (
+            <div className="mx-5 mt-4 rounded-xl border border-violet-200 bg-violet-50 p-4 text-sm font-bold text-violet-950" data-help-work-context="" data-screen-classification={workClassification} data-screen-access-restricted="true">{workContext.reasonText || "이 화면은 실행 업무 화면이지만 현재 계정의 담당 액터·권한 범위 밖입니다. 권한이 있는 계정으로 전환하거나 업무 배정을 확인하세요."}</div>
+          ) : workClassification === "EXECUTABLE" && workContext?.workflow ? (
+            <div className="mx-5 mt-4 rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm" data-help-work-context="" data-screen-classification={workClassification}>
+              <p className="text-xs font-black uppercase tracking-wide text-blue-700">현재 업무 절차</p>
+              <h3 className="mt-1 font-black text-slate-900">{workContext.workflow.processName||workContext.workflow.processCode} · {Number(workContext.workflow.stepOrder||0)}. {workContext.workflow.stepName||workContext.workflow.stepCode}</h3>
+              <dl className="mt-2 grid gap-1 text-xs leading-5 text-slate-700"><div><dt className="inline font-black">담당자 </dt><dd className="inline">{workContext.workflow.actorName||workContext.workflow.actorCode||"-"}</dd></div><div><dt className="inline font-black">해야 할 일 </dt><dd className="inline">{workContext.workflow.workPurpose||"-"}</dd></div><div><dt className="inline font-black">입력 안내 </dt><dd className="inline whitespace-pre-wrap">{workContext.workflow.inputContract||"화면의 필수 입력값과 선택지를 확인합니다."}</dd></div><div><dt className="inline font-black">완료 기준 </dt><dd className="inline">{workContext.workflow.completionRule||"-"}</dd></div></dl>
+            </div>
+          ) : workClassification === "EXECUTABLE" && workContext?.selectionRequired ? (
+            <div className="mx-5 mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm font-bold text-amber-900" data-help-work-context="" data-screen-classification={workClassification}>이 화면은 여러 업무 절차에서 공통 사용됩니다. 업무 길잡이에서 현재 절차를 선택하면 해당 절차 도움말이 표시됩니다.</div>
+          ) : workClassification === "INFORMATIONAL" ? (
+            <div className="mx-5 mt-4 rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm font-bold text-blue-900" data-help-work-context="" data-screen-classification={workClassification}>{workContext?.reasonText || "정보 조회 화면이며 실행 절차가 필요하지 않습니다. 조회 기준과 데이터 출처는 화면 도움말에서 확인할 수 있습니다."}</div>
+          ) : workClassification === "EXCLUDED" ? (
+            <div className="mx-5 mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm font-bold text-slate-700" data-help-work-context="" data-screen-classification={workClassification}>{workContext?.reasonText || "보안·계정 복구·오류·인쇄 화면은 업무 실행 연동 대상에서 제외됩니다."}</div>
+          ) : workContext ? (
+            <div className="mx-5 mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950" data-help-work-context="" data-screen-classification={workClassification}>
+              <p className="font-bold">{workContext.reasonText || "이 화면의 업무 연결 계약은 설계 검토가 필요합니다."}</p>
+              <a className="mt-2 inline-flex min-h-10 items-center rounded-lg border border-amber-400 bg-white px-3 font-black text-amber-900 hover:bg-amber-100" href={`/admin/system/actor-process?tab=design-canvas&routePath=${encodeURIComponent(workContext.routePath)}`}>액터·프로세스 설계에서 검토</a>
+            </div>
+          ) : null}
 
           {activeItem ? (
             <div className="help-overlay-body">
