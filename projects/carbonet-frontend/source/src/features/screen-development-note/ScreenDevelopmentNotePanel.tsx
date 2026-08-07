@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { ScreenHtmlMockupManager, type ScreenHtmlMockup } from "./ScreenHtmlMockupManager";
+import { normalizeScreenRoute, type ScreenWorkContext } from "../runtime-assist/screenWorkContext";
 
 type Note = {
   routeKey: string; routePath: string; pageId: string; pageTitle: string;
@@ -24,7 +25,11 @@ async function readJson(response: Response) {
   return response.json();
 }
 
-export function ScreenDevelopmentNotePanel({ pageId, routePath }: { pageId: string; routePath: string }) {
+export function ScreenDevelopmentNotePanel({ pageId, routePath, workContext }: {
+  pageId: string;
+  routePath: string;
+  workContext?: ScreenWorkContext | null;
+}) {
   const [available,setAvailable]=useState(false);
   const [open,setOpen]=useState(false);
   const [note,setNote]=useState<Note>(EMPTY);
@@ -32,11 +37,12 @@ export function ScreenDevelopmentNotePanel({ pageId, routePath }: { pageId: stri
   const [message,setMessage]=useState("");
   const endpoint="/admin/api/system/screen-development-note";
   const generateEndpoint="/admin/api/system/actor-process/design/save-and-generate";
+  const designRoutePath=workContext?.identity?.canonicalRoutePath||normalizeScreenRoute(routePath);
 
   useEffect(()=>{
     let cancelled=false;
     setOpen(false);setMessage("");
-    fetch(`${endpoint}?routePath=${encodeURIComponent(routePath)}`,{credentials:"include",headers:{Accept:"application/json"}})
+    fetch(`${endpoint}?routePath=${encodeURIComponent(designRoutePath)}`,{credentials:"include",headers:{Accept:"application/json"}})
       .then(async response=>{
         if(response.status===401||response.status===403){if(!cancelled)setAvailable(false);return null;}
         const body=await readJson(response);if(!response.ok)throw new Error(body.message||"화면 설계를 불러오지 못했습니다.");return body;
@@ -47,12 +53,14 @@ export function ScreenDevelopmentNotePanel({ pageId, routePath }: { pageId: stri
         setAvailable(true);setMessage(error instanceof Error?error.message:String(error));
       }});
     return()=>{cancelled=true;};
-  },[pageId,routePath]);
+  },[designRoutePath,pageId]);
 
   async function save(){
     setBusy(true);setMessage("");
     try{
-      const response=await fetch(generateEndpoint,{method:"POST",credentials:"include",headers:{"Content-Type":"application/json",Accept:"application/json"},body:JSON.stringify({...note,pageId,routePath,pageTitle:note.pageTitle||document.title})});
+      const response=await fetch(generateEndpoint,{method:"POST",credentials:"include",headers:{"Content-Type":"application/json",Accept:"application/json"},body:JSON.stringify({
+        ...note,pageId,routePath:designRoutePath,pageTitle:note.pageTitle||document.title
+      })});
       const body=await readJson(response);if(!response.ok)throw new Error(body.message||"화면 설계를 저장하지 못했습니다.");
       setNote({...EMPTY,...body.note});
       const generated=Array.isArray(body.codeOutputs)?body.codeOutputs.length:0;
@@ -72,12 +80,13 @@ export function ScreenDevelopmentNotePanel({ pageId, routePath }: { pageId: stri
       <header className="flex shrink-0 items-start justify-between gap-3 bg-[#052b57] px-5 py-4 text-white"><div><p className="text-xs font-black text-blue-200">SCREEN DEVELOPMENT BASIS</p><h2 className="mt-1 text-lg font-black">화면 설계·기능 메모</h2></div><button aria-label="화면 설계 닫기" className="flex h-9 w-9 items-center justify-center rounded-lg hover:bg-white/15" onClick={()=>setOpen(false)} type="button"><span className="material-symbols-outlined">close</span></button></header>
       <div className="overflow-y-auto p-5">
         <div className="rounded-xl border border-blue-100 bg-blue-50 p-3 text-sm"><p className="font-black text-[#052b57]">현재 URL</p><p className="mt-1 break-all text-slate-700">{window.location.origin}{routePath}</p><p className="mt-1 text-xs font-bold text-slate-500">페이지 ID: {pageId || "미등록"} · 저장 버전: {note.version}</p></div>
+        {workContext?.workflow?<div className="mt-3 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm" data-screen-work-context=""><p className="font-black text-emerald-900">연결 업무 계약</p><p className="mt-1 font-bold text-slate-900">{workContext.workflow.processName||workContext.workflow.processCode} · {Number(workContext.workflow.stepOrder||0)}. {workContext.workflow.stepName||workContext.workflow.stepCode}</p><dl className="mt-2 grid gap-1 text-xs text-slate-700"><div><dt className="inline font-black">담당자 </dt><dd className="inline">{workContext.workflow.actorName||workContext.workflow.actorCode||"-"}</dd></div><div><dt className="inline font-black">업무 목적 </dt><dd className="inline">{workContext.workflow.workPurpose||"-"}</dd></div><div><dt className="inline font-black">완료 조건 </dt><dd className="inline">{workContext.workflow.completionRule||"-"}</dd></div></dl><p className="mt-2 border-t border-emerald-200 pt-2 text-[11px] font-bold text-emerald-800">업무 계약은 액터·프로세스 원장에서 읽기 전용으로 연동되며, 아래 설계 메모는 이 공통 화면과 연결된 모든 업무에 반영됩니다.</p></div>:workContext?.selectionRequired?<div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm font-bold text-amber-900">이 화면에 {workContext.candidateCount||workContext.candidates?.length||0}개 업무 절차가 연결되어 있습니다. 업무 길잡이에서 절차를 선택하면 설계 계약도 함께 전환됩니다.</div>:workContext?<div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm font-bold text-slate-700" data-screen-work-context="">실행 업무 절차가 아직 연결되지 않은 화면입니다. 설계 메모는 저장할 수 있으며 프로세스·단계 바인딩을 등록하면 4개 업무 도구에 즉시 반영됩니다.</div>:null}
         <label className="mt-4 block"><span className="text-sm font-black text-slate-700">화면 제목</span><input className="gov-input mt-1" value={note.pageTitle} onChange={event=>setNote(current=>({...current,pageTitle:event.target.value}))}/></label>
         <label className="mt-4 block"><span className="text-sm font-black text-slate-700">UI·레이아웃 설계</span><textarea className="gov-input mt-1 min-h-24 py-3" placeholder="섹션 순서, 컴포넌트, 반응형, KRDS 적용 기준을 기록합니다." value={note.designNote} onChange={event=>setNote(current=>({...current,designNote:event.target.value}))}/></label>
         <label className="mt-4 block"><span className="text-sm font-black text-slate-700">필요 기능·업무 규칙</span><textarea className="gov-input mt-1 min-h-28 py-3" placeholder="액터의 행동, 입력·조회·저장·승인, API·DB 연계와 예외 처리를 기록합니다." value={note.functionNote} onChange={event=>setNote(current=>({...current,functionNote:event.target.value}))}/></label>
         <label className="mt-4 block"><span className="text-sm font-black text-slate-700">완료·테스트 기준</span><textarea className="gov-input mt-1 min-h-24 py-3" placeholder="정상·예외·권한·격리·복구 테스트의 기대값을 기록합니다." value={note.acceptanceNote} onChange={event=>setNote(current=>({...current,acceptanceNote:event.target.value}))}/></label>
         <label className="mt-4 block"><span className="text-sm font-black text-slate-700">설계 상태</span><select className="gov-select mt-1" value={note.status} onChange={event=>setNote(current=>({...current,status:event.target.value}))}><option value="DRAFT">초안</option><option value="READY">개발 준비</option><option value="IN_DEVELOPMENT">개발 중</option><option value="VERIFIED">검증 완료</option></select></label>
-        <div className="mt-5"><ScreenHtmlMockupManager routePath={routePath} pageId={pageId} mockups={note.mockups||[]} onChanged={body=>setNote(current=>({...current,...body as Partial<Note>}))} compact/></div>
+        <div className="mt-5"><ScreenHtmlMockupManager routePath={designRoutePath} pageId={pageId} mockups={note.mockups||[]} onChanged={body=>setNote(current=>({...current,...body as Partial<Note>}))} compact/></div>
         {note.updatedAt?<p className="mt-3 text-xs text-slate-500">최근 저장: {note.updatedAt} · {note.updatedBy||"-"}</p>:null}
         {message?<p className={`mt-3 rounded-lg p-3 text-sm font-bold ${message.includes("저장했습니다")?"bg-emerald-50 text-emerald-800":"bg-rose-50 text-rose-800"}`} role="status">{message}</p>:null}
       </div>

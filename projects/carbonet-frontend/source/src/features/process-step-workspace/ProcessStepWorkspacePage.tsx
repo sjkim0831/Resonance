@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type ChangeEvent, type ReactNode } from "react";
-import { buildLocalizedPath, isEnglish } from "../../lib/navigation/runtime";
+import { buildLocalizedPath, isEnglish, replace as replaceNavigation } from "../../lib/navigation/runtime";
 import { runtimeUuid } from "../../lib/runtime-id";
 import { AdminPageShell } from "../admin-entry/AdminPageShell";
 
@@ -38,8 +38,8 @@ export function ProcessStepWorkspacePage() {
   const en = isEnglish();
   const query = new URLSearchParams(location.search);
   const [dashboard, setDashboard] = useState<Dashboard>({});
-  const [processCode, setProcessCode] = useState(query.get("process") || "EMISSION_PROJECT");
-  const [stepCode, setStepCode] = useState(query.get("step") || "");
+  const [processCode, setProcessCode] = useState(query.get("processCode") || query.get("process") || "EMISSION_PROJECT");
+  const [stepCode, setStepCode] = useState(query.get("stepCode") || query.get("step") || "");
   const [tenantId, setTenantId] = useState(query.get("tenantId") || "");
   const [projectId, setProjectId] = useState(query.get("projectId") || "");
   const [execution, setExecution] = useState<Execution>({});
@@ -79,11 +79,13 @@ export function ProcessStepWorkspacePage() {
 
   useEffect(() => {
     const next = new URLSearchParams(location.search);
+    next.set("processCode", processCode);
     next.set("process", processCode);
-    if (stepCode) next.set("step", stepCode); else next.delete("step");
+    if (stepCode) { next.set("stepCode", stepCode); next.set("step", stepCode); }
+    else { next.delete("stepCode"); next.delete("step"); }
     if (tenantId) next.set("tenantId", tenantId); else next.delete("tenantId");
     if (projectId) next.set("projectId", projectId); else next.delete("projectId");
-    history.replaceState(null, "", `${location.pathname}?${next.toString()}`);
+    replaceNavigation(`${location.pathname}?${next.toString()}`);
   }, [processCode, stepCode, tenantId, projectId]);
 
   const clearFeedback = () => { setError(""); setMessage(""); };

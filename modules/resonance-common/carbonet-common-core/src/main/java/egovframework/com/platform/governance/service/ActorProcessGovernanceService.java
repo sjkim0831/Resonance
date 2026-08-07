@@ -3191,6 +3191,241 @@ public class ActorProcessGovernanceService {
         result.put("queued",queued.get("queued"));result.put("elapsedMillis",elapsed);result.put("screensPerSecond",Math.round(count*1000.0/elapsed));result.put("runtime","COMMON_GENERATED_SCREEN");result.put("sourceFilesPerScreen",0);return result;
     }
 
+    /**
+     * Resolves one browser location into the canonical screen and executable
+     * actor/process contract. A screen is N:M with process steps, therefore an
+     * ambiguous route is never silently bound to the first row.
+     */
+    public Map<String,Object> screenContext(String routePath,String pageId,String projectId,String processCode,String stepCode,
+                                            String actorCode,String audience,String capabilityCode,Set<String> allowedAudiences,
+                                            String accountId,String tenantId,boolean unrestrictedActors){
+        String requestedRoute=routePath==null?"":routePath.trim();
+        String route=requestedRoute.isBlank()?"":canonicalScreenContextRoute(requestedRoute);
+        String requestedPage=pageId==null?"":pageId.trim();
+        String project=projectId==null?"":projectId.trim();
+        String requestedProcess=processCode==null?"":processCode.trim().toUpperCase(Locale.ROOT);
+        String requestedStep=stepCode==null?"":stepCode.trim().toUpperCase(Locale.ROOT);
+        String requestedActor=actorCode==null?"":actorCode.trim().toUpperCase(Locale.ROOT);
+        String requestedAudience=audience==null?"":audience.trim().toUpperCase(Locale.ROOT);
+        // Capability selection is bounded by the screen + process + step mapping. It is metadata
+        // resolution only; authorization remains the responsibility of the authenticated command.
+        String requestedCapability=capabilityCode==null?"":capabilityCode.trim().toUpperCase(Locale.ROOT);
+        Set<String> audienceScope=allowedAudiences==null?Set.of():allowedAudiences.stream()
+            .filter(value->value!=null)
+            .map(value->value.trim().toUpperCase(Locale.ROOT))
+            .collect(java.util.stream.Collectors.toUnmodifiableSet());
+
+        String account=accountId==null?"":accountId.trim();
+        String tenant=tenantId==null?"":tenantId.trim();
+        String assignmentProject="*".equals(project)?"":project;
+        Set<String> actorScope=unrestrictedActors?Set.of():jdbc.queryForList("""
+            select distinct upper(actor_code) as "actorCode"
+              from framework_account_actor_assignment
+             where tenant_id=?
+               and lower(account_id)=lower(?)
+               and assignment_status='ACTIVE'
+               and (valid_from is null or valid_from<=current_date)
+               and (valid_until is null or valid_until>=current_date)
+               and (project_id='*' or (?<>'' and project_id=?))
+               and (coalesce(nullif(data_scope,''),'*')='*'
+                    or (?<>'' and ?=any(string_to_array(replace(data_scope,' ',''),','))))
+             order by upper(actor_code)
+            """,tenant,account,assignmentProject,assignmentProject,assignmentProject,assignmentProject).stream()
+            .map(row->String.valueOf(row.get("actorCode")).trim().toUpperCase(Locale.ROOT))
+            .filter(value->!value.isBlank())
+            .collect(java.util.stream.Collectors.toUnmodifiableSet());
+        if(!unrestrictedActors&&!requestedActor.isBlank()&&!actorScope.contains(requestedActor)){
+            throw new SecurityException("SCREEN_CONTEXT_ACTOR_FORBIDDEN");
+        }
+
+        List<Map<String,Object>> identities=jdbc.queryForList("""
+            with requested(route_key,page_id) as (values (?::text,?::text))
+            select coalesce(screen.route_key,
+                            lower(split_part(manifest.route_path,'?',1)),
+                            lower(split_part(blueprint.route_path,'?',1)),
+                            requested.route_key,'') as "routeKey",
+                   coalesce(screen.route_key,
+                            lower(split_part(manifest.route_path,'?',1)),
+                            lower(split_part(blueprint.route_path,'?',1)),
+                            requested.route_key,'') as "canonicalRoutePath",
+                   coalesce(manifest.page_id,blueprint.page_id,nullif(requested.page_id,''),'') as "pageId",
+                   screen.screen_resource_id as "screenResourceId",
+                   coalesce(screen.screen_name,manifest.page_name,blueprint.page_name,'') as "screenName",
+                   coalesce(screen.screen_type,'') as "screenType",
+                   coalesce(screen.implementation_status,'UNREGISTERED') as "implementationStatus"
+              from requested
+              left join lateral (
+                   select resource.screen_resource_id,resource.route_key,resource.screen_name,
+                          resource.screen_type,resource.implementation_status
+                     from framework_screen_resource resource
+                    where (requested.route_key<>'' and resource.route_key=requested.route_key)
+                       or (requested.page_id<>'' and exists(
+                              select 1 from ui_page_manifest page
+                               where page.active_yn='Y'
+                                 and lower(page.page_id)=lower(requested.page_id)
+                                 and lower(split_part(page.route_path,'?',1))=resource.route_key))
+                       or (requested.page_id<>'' and exists(
+                              select 1 from framework_screen_blueprint candidate_blueprint
+                               where lower(candidate_blueprint.page_id)=lower(requested.page_id)
+                                 and lower(split_part(candidate_blueprint.route_path,'?',1))=resource.route_key))
+                    order by case when requested.route_key<>'' and resource.route_key=requested.route_key then 0 else 1 end,
+                             resource.updated_at desc,resource.screen_resource_id
+                    limit 1
+              ) screen on true
+              left join lateral (
+                   select page.page_id,page.page_name,page.route_path
+                     from ui_page_manifest page
+                    where page.active_yn='Y' and (
+                          (requested.page_id<>'' and lower(page.page_id)=lower(requested.page_id))
+                       or (screen.route_key is not null and lower(split_part(page.route_path,'?',1))=screen.route_key)
+                       or (requested.route_key<>'' and lower(split_part(page.route_path,'?',1))=requested.route_key))
+                    order by case when requested.page_id<>'' and lower(page.page_id)=lower(requested.page_id) then 0 else 1 end,
+                             page.updated_at desc,page.page_id
+                    limit 1
+              ) manifest on true
+              left join lateral (
+                   select candidate_blueprint.page_id,candidate_blueprint.page_name,candidate_blueprint.route_path
+                     from framework_screen_blueprint candidate_blueprint
+                    where (requested.page_id<>'' and lower(candidate_blueprint.page_id)=lower(requested.page_id))
+                       or (screen.route_key is not null and lower(split_part(candidate_blueprint.route_path,'?',1))=screen.route_key)
+                       or (requested.route_key<>'' and lower(split_part(candidate_blueprint.route_path,'?',1))=requested.route_key)
+                    order by case when requested.page_id<>'' and lower(candidate_blueprint.page_id)=lower(requested.page_id) then 0 else 1 end,
+                             candidate_blueprint.updated_at desc,candidate_blueprint.blueprint_id
+                    limit 1
+              ) blueprint on true
+            """,route,requestedPage);
+
+        Map<String,Object> identity=new LinkedHashMap<>();
+        if(!identities.isEmpty())identity.putAll(identities.get(0));
+        identity.putIfAbsent("routeKey",route);
+        identity.putIfAbsent("canonicalRoutePath",route);
+        identity.putIfAbsent("pageId",requestedPage);
+        identity.putIfAbsent("screenResourceId",null);
+        identity.putIfAbsent("screenName","");
+        identity.putIfAbsent("screenType","");
+        identity.putIfAbsent("implementationStatus","UNREGISTERED");
+        identity.put("requestedRoutePath",requestedRoute);
+        identity.put("projectId",project);
+        identity.put("requestedCapabilityCode",requestedCapability);
+
+        String resolvedRoute=String.valueOf(identity.getOrDefault("routeKey","")).trim().toLowerCase(Locale.ROOT);
+        Object rawScreenId=identity.get("screenResourceId");
+        long screenId=rawScreenId instanceof Number number?number.longValue():-1L;
+        List<Map<String,Object>> candidates=resolvedRoute.isBlank()?List.of():jdbc.queryForList("""
+            with candidate_source as (
+              select binding.process_code,binding.step_code,binding.audience,binding.entry_mode,
+                     coalesce(nullif(binding.actor_code,''),binding_step.actor_code) as actor_code,
+                     0 as source_rank
+                from framework_process_step_screen_binding binding
+                join framework_process_step binding_step
+                  on binding_step.process_code=binding.process_code and binding_step.step_code=binding.step_code
+               where binding.screen_resource_id=? and binding.binding_status='ACTIVE'
+              union all
+              select step.process_code,step.step_code,
+                     case when lower(split_part(coalesce(step.admin_path,''),'?',1))=?
+                                and lower(split_part(coalesce(step.user_path,''),'?',1))<>?
+                          then 'ADMIN' else 'USER' end as audience,
+                     'PRIMARY' as entry_mode,step.actor_code,1 as source_rank
+                from framework_process_step step
+               where lower(split_part(coalesce(step.user_path,''),'?',1))=?
+                  or lower(split_part(coalesce(step.admin_path,''),'?',1))=?
+              union all
+              select step.process_code,step.step_code,menu.audience,'PRIMARY' as entry_mode,
+                     step.actor_code,2 as source_rank
+                from framework_process_menu_binding menu
+                join framework_process_step step on step.process_code=menu.process_code
+                 and (menu.step_code=step.step_code or nullif(menu.step_code,'') is null)
+               where menu.binding_status='ACTIVE'
+                 and lower(split_part(coalesce(menu.menu_url,''),'?',1))=?
+            ), candidates as (
+              select distinct on (process_code,step_code,audience)
+                     process_code,step_code,audience,entry_mode,actor_code
+                from candidate_source
+               order by process_code,step_code,audience,source_rank,
+                        case entry_mode when 'PRIMARY' then 0 else 1 end,
+                        case audience when 'USER' then 0 when 'ADMIN' then 1 else 2 end
+            )
+            select upper(process.domain_code) as "workTypeCode",
+                   coalesce(work_type.work_type_name,process.domain_code) as "workTypeName",
+                   step.process_code as "processCode",process.process_name as "processName",
+                   step.step_code as "stepCode",step.step_name as "stepName",step.step_order as "stepOrder",
+                   candidates.actor_code as "actorCode",
+                   coalesce(actor.actor_name,candidates.actor_code) as "actorName",
+                   step.requirement_text as "workPurpose",step.completion_rule as "completionRule",
+                   step.input_contract as "inputContract",step.output_contract as "outputContract",
+                   coalesce(nullif(step.user_path,''),(
+                     select menu.menu_url from framework_process_menu_binding menu
+                      where menu.process_code=step.process_code and menu.audience='USER'
+                        and menu.binding_status='ACTIVE'
+                      order by (menu.step_code=step.step_code) desc,menu.menu_code limit 1),'') as "userPath",
+                   coalesce(nullif(step.admin_path,''),(
+                     select menu.menu_url from framework_process_menu_binding menu
+                      where menu.process_code=step.process_code and menu.audience='ADMIN'
+                        and menu.binding_status='ACTIVE'
+                      order by (menu.step_code=step.step_code) desc,menu.menu_code limit 1),'') as "adminPath",
+                   step.automation_status as "automationStatus",
+                   candidates.audience,candidates.entry_mode as "entryMode"
+              from candidates
+              join framework_process_step step using(process_code,step_code)
+              join framework_process_definition process using(process_code)
+              left join framework_business_work_type work_type on work_type.work_type_code=upper(process.domain_code)
+              left join framework_actor_definition actor on actor.actor_code=candidates.actor_code
+             where (?='' or exists(
+                    select 1
+                      from framework_step_capability_binding step_capability
+                      join framework_screen_capability capability
+                        on capability.capability_id=step_capability.capability_id
+                       and capability.screen_resource_id=?
+                     where step_capability.process_code=candidates.process_code
+                       and step_capability.step_code=candidates.step_code
+                       and upper(capability.capability_code)=?
+                   ))
+             order by coalesce(work_type.sort_order,9999),process.development_order,step.process_code,
+                      step.step_order,candidates.audience,candidates.actor_code
+            """,screenId,resolvedRoute,resolvedRoute,resolvedRoute,resolvedRoute,resolvedRoute,
+                requestedCapability,screenId,requestedCapability);
+
+        candidates=candidates.stream()
+            .map(candidate->{
+                Map<String,Object> scoped=new LinkedHashMap<>(candidate);
+                String candidateAudience=String.valueOf(scoped.get("audience")).toUpperCase(Locale.ROOT);
+                if("ADMIN".equals(candidateAudience))scoped.put("userPath","");
+                else scoped.put("adminPath","");
+                return scoped;
+            })
+            .filter(candidate->audienceScope.contains(
+                String.valueOf(candidate.get("audience")).toUpperCase(Locale.ROOT)))
+            .filter(candidate->unrestrictedActors||actorScope.contains(
+                String.valueOf(candidate.get("actorCode")).toUpperCase(Locale.ROOT)))
+            .toList();
+
+        List<Map<String,Object>> matching=candidates.stream()
+            .filter(candidate->requestedProcess.isBlank()||requestedProcess.equals(String.valueOf(candidate.get("processCode")).toUpperCase(Locale.ROOT)))
+            .filter(candidate->requestedStep.isBlank()||requestedStep.equals(String.valueOf(candidate.get("stepCode")).toUpperCase(Locale.ROOT)))
+            .filter(candidate->requestedActor.isBlank()||requestedActor.equals(String.valueOf(candidate.get("actorCode")).toUpperCase(Locale.ROOT)))
+            .filter(candidate->requestedAudience.isBlank()||requestedAudience.equals(String.valueOf(candidate.get("audience")).toUpperCase(Locale.ROOT)))
+            .toList();
+        Map<String,Object> workflow=matching.size()==1?new LinkedHashMap<>(matching.get(0)):null;
+        identity.put("audience",workflow!=null?workflow.getOrDefault("audience",""):requestedAudience);
+
+        Map<String,Object> result=new LinkedHashMap<>();
+        result.put("linked",workflow!=null);
+        result.put("identity",identity);
+        result.put("workflow",workflow);
+        result.put("candidates",candidates);
+        result.put("candidateCount",candidates.size());
+        result.put("selectionRequired",workflow==null&&!candidates.isEmpty());
+        return result;
+    }
+
+    static String canonicalScreenContextRoute(String value){
+        String route=ScreenDevelopmentNoteService.cleanRoute(value);
+        if("/en".equalsIgnoreCase(route))return "/";
+        if(route.regionMatches(true,0,"/en/",0,4))route=route.substring(3);
+        while(route.length()>1&&route.endsWith("/"))route=route.substring(0,route.length()-1);
+        return route.toLowerCase(Locale.ROOT);
+    }
+
     public Map<String,Object> resolveGeneratedScreen(String routePath){
         String route=ScreenDevelopmentNoteService.cleanRoute(routePath);
         Integer protectedExisting=jdbc.queryForObject("""

@@ -2,15 +2,17 @@ import { PointerEvent as ReactPointerEvent, useEffect, useMemo, useRef, useState
 import { createPortal } from "react-dom";
 import { publishTelemetryEvent } from "../../platform/telemetry/events";
 import { PageHelpContent } from "../../platform/screen-registry/helpContent";
+import type { ScreenWorkContext } from "../../features/runtime-assist/screenWorkContext";
 
 type HelpOverlayProps = {
   open: boolean;
   pageId: string;
   helpContent: PageHelpContent;
+  workContext?: ScreenWorkContext | null;
   onClose: () => void;
 };
 
-export function HelpOverlay({ open, pageId, helpContent, onClose }: HelpOverlayProps) {
+export function HelpOverlay({ open, pageId, helpContent, workContext, onClose }: HelpOverlayProps) {
   const [stepIndex, setStepIndex] = useState(0);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const dragStateRef = useRef<{ pointerId: number; startX: number; startY: number; baseX: number; baseY: number } | null>(null);
@@ -33,10 +35,15 @@ export function HelpOverlay({ open, pageId, helpContent, onClose }: HelpOverlayP
       actionId: "help_open",
       payloadSummary: {
         helpPageId: helpContent.pageId,
-        itemCount: helpContent.items.length
+        itemCount: helpContent.items.length,
+        routePath: workContext?.routePath || "",
+        projectId: workContext?.identity?.projectId || "",
+        processCode: workContext?.workflow?.processCode || "",
+        stepCode: workContext?.workflow?.stepCode || "",
+        actorCode: workContext?.workflow?.actorCode || ""
       }
     });
-  }, [helpContent.items.length, helpContent.pageId, open, pageId]);
+  }, [helpContent.items.length, helpContent.pageId, open, pageId, workContext?.identity?.projectId, workContext?.routePath, workContext?.workflow?.actorCode, workContext?.workflow?.processCode, workContext?.workflow?.stepCode]);
 
   useEffect(() => {
     if (!open || !activeItem?.anchorSelector) {
@@ -57,14 +64,18 @@ export function HelpOverlay({ open, pageId, helpContent, onClose }: HelpOverlayP
         helpItemId: activeItem.id,
         anchorSelector: activeItem.anchorSelector,
         placement: activeItem.placement || "top",
-        highlightStyle: activeItem.highlightStyle || "focus"
+        highlightStyle: activeItem.highlightStyle || "focus",
+        routePath: workContext?.routePath || "",
+        processCode: workContext?.workflow?.processCode || "",
+        stepCode: workContext?.workflow?.stepCode || "",
+        actorCode: workContext?.workflow?.actorCode || ""
       }
     });
     return () => {
       element.classList.remove("help-target-active");
       element.classList.remove("help-target-focus", "help-target-warning", "help-target-success", "help-target-neutral");
     };
-  }, [activeItem, highlightToneClass, open, pageId]);
+  }, [activeItem, highlightToneClass, open, pageId, workContext?.routePath, workContext?.workflow?.actorCode, workContext?.workflow?.processCode, workContext?.workflow?.stepCode]);
 
   if (!open) {
     return null;
@@ -137,6 +148,8 @@ export function HelpOverlay({ open, pageId, helpContent, onClose }: HelpOverlayP
               닫기
             </button>
           </div>
+
+          {workContext?.workflow ? <div className="mx-5 mt-4 rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm" data-help-work-context=""><p className="text-xs font-black uppercase tracking-wide text-blue-700">현재 업무 절차</p><h3 className="mt-1 font-black text-slate-900">{workContext.workflow.processName||workContext.workflow.processCode} · {Number(workContext.workflow.stepOrder||0)}. {workContext.workflow.stepName||workContext.workflow.stepCode}</h3><dl className="mt-2 grid gap-1 text-xs leading-5 text-slate-700"><div><dt className="inline font-black">담당자 </dt><dd className="inline">{workContext.workflow.actorName||workContext.workflow.actorCode||"-"}</dd></div><div><dt className="inline font-black">해야 할 일 </dt><dd className="inline">{workContext.workflow.workPurpose||"-"}</dd></div><div><dt className="inline font-black">입력 안내 </dt><dd className="inline whitespace-pre-wrap">{workContext.workflow.inputContract||"화면의 필수 입력값과 선택지를 확인합니다."}</dd></div><div><dt className="inline font-black">완료 기준 </dt><dd className="inline">{workContext.workflow.completionRule||"-"}</dd></div></dl></div> : workContext?.selectionRequired ? <div className="mx-5 mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm font-bold text-amber-900">이 화면은 여러 업무 절차에서 공통 사용됩니다. 업무 길잡이에서 현재 절차를 선택하면 해당 절차 도움말이 표시됩니다.</div> : workContext ? <div className="mx-5 mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm font-bold text-slate-700" data-help-work-context="">이 화면에는 아직 실행 업무 절차가 연결되지 않았습니다. 화면 도움말은 사용할 수 있으며 업무 연결은 화면 설계에서 등록합니다.</div> : null}
 
           {activeItem ? (
             <div className="help-overlay-body">

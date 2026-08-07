@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { EMISSION_END_TO_END_PROCESS_CODE, EMISSION_INTERNAL_PROCESS_CODES, emissionPhaseLabel, isCustomerVisibleEmissionProcess, parentEmissionStepCode } from "../../lib/workflow/emissionProcessHierarchy";
+import { normalizeScreenRoute, type ScreenWorkContext, type ScreenWorkContextCandidate } from "../runtime-assist/screenWorkContext";
 
 const ACTOR_LABELS: Record<string, string> = {
   "*": "전체 담당자",
@@ -532,7 +533,19 @@ function runtimeStateLabel(state: string, en: boolean) {
   return (labels[state] || [state, state])[en ? 1 : 0];
 }
 
-export function TaskQuestPanel() {
+type TaskQuestPanelProps = {
+  pageId?: string;
+  routePath?: string;
+  screenContext?: ScreenWorkContext | null;
+  onScreenContextSelection?: (candidate: ScreenWorkContextCandidate) => void;
+};
+
+export function TaskQuestPanel({
+  pageId = "",
+  routePath = `${window.location.pathname}${window.location.search}`,
+  screenContext = null,
+  onScreenContextSelection
+}: TaskQuestPanelProps = {}) {
   const en = isEnglish();
   const api = buildLocalizedPath(
     "/home/api/emission-tasks",
@@ -575,6 +588,7 @@ export function TaskQuestPanel() {
   const [processMapMode] = useState<"FLOW" | "ACTOR" | "CANVAS">("CANVAS");
   const processCanvasRef = useRef<HTMLDivElement | null>(null);
   const emissionIndexGuideInitializedRef = useRef(false);
+  const synchronizedScreenRouteRef = useRef("");
   const [processViewport, setProcessViewport] = useState({ left: 0, width: 100 });
   const [selectedWorkType, setSelectedWorkType] = useState(
     () => localStorage.getItem("task-quest-work-type") || "ALL",
@@ -1302,32 +1316,65 @@ export function TaskQuestPanel() {
     setApplicabilityEvidence(Array.isArray(decision?.evidenceRefs) ? decision.evidenceRefs.join(", ") : "");
   }, [effectiveProjectId, selectedCatalogStep, selectedCatalogSteps, stepApplicabilityDecisions]);
   useEffect(() => {
-    const query = new URLSearchParams(window.location.search);
-    const routeProcessCode = query.get("processCode") || query.get("process") || "";
-    if (!routeProcessCode || !(data?.processCatalog || []).some((process) => process.processCode === routeProcessCode)) return;
+    const routeUrl = new URL(routePath, window.location.origin);
+    const query = routeUrl.searchParams;
+    const routeMatches = (data?.processCatalogSteps || []).filter((step) => {
+      const paths = [step.userPath, step.adminPath].filter(Boolean).map((path) => normalizeScreenRoute(String(path)));
+      return paths.includes(normalizeScreenRoute(routeUrl.pathname));
+    });
+    const routeProcessCode = query.get("processCode") || query.get("process")
+      || screenContext?.workflow?.processCode
+      || (routeMatches.length === 1 ? routeMatches[0].processCode : "");
+    if (!routeProcessCode || !(data?.processCatalog || []).some((process) => process.processCode === routeProcessCode)) {
+      if (screenContext && synchronizedScreenRouteRef.current !== routePath) {
+        synchronizedScreenRouteRef.current = routePath;
+        setSelectedCatalogProcessCode("");
+        setSelectedCatalogStep(0);
+        localStorage.removeItem("task-quest-catalog-process");
+        localStorage.setItem("task-quest-catalog-step", "0");
+      }
+      return;
+    }
+    synchronizedScreenRouteRef.current = routePath;
     const routeProcess = (data?.processCatalog || []).find((process) => process.processCode === routeProcessCode);
     const normalizedRouteProcessCode = EMISSION_INTERNAL_PROCESS_CODES.has(routeProcessCode)
       ? EMISSION_END_TO_END_PROCESS_CODE
       : routeProcessCode;
-    if (routeProcess?.domainCode && routeProcess.domainCode !== selectedWorkType) {
-      setSelectedWorkType(routeProcess.domainCode);
-      localStorage.setItem("task-quest-work-type", routeProcess.domainCode);
+    const normalizedRouteProcess = (data?.processCatalog || []).find((process) => process.processCode === normalizedRouteProcessCode) || routeProcess;
+    if (normalizedRouteProcess?.domainCode && normalizedRouteProcess.domainCode !== selectedWorkType) {
+      setSelectedWorkType(normalizedRouteProcess.domainCode);
+      localStorage.setItem("task-quest-work-type", normalizedRouteProcess.domainCode);
     }
     if (normalizedRouteProcessCode !== selectedCatalogProcessCode) {
       setSelectedCatalogProcessCode(normalizedRouteProcessCode);
       localStorage.setItem("task-quest-catalog-process", normalizedRouteProcessCode);
     }
-  }, [data?.processCatalog]);
+  }, [data?.processCatalog, data?.processCatalogSteps, routePath, screenContext?.linked, screenContext?.selectionRequired, screenContext?.workflow?.processCode, selectedCatalogProcessCode, selectedWorkType]);
   useEffect(() => {
-    const query = new URLSearchParams(window.location.search);
-    const routeProcessCode = query.get("processCode") || query.get("process") || "";
-    const routeStepCode = parentEmissionStepCode(routeProcessCode) || query.get("stepCode") || query.get("step") || "";
+    const routeUrl = new URL(routePath, window.location.origin);
+    const query = routeUrl.searchParams;
+    const routeProcessCode = query.get("processCode") || query.get("process") || screenContext?.workflow?.processCode || "";
+    const routeMatches = selectedCatalogSteps.filter((step) => {
+      const paths = [step.userPath, step.adminPath].filter(Boolean).map((path) => normalizeScreenRoute(String(path)));
+      return paths.includes(normalizeScreenRoute(routeUrl.pathname));
+    });
+    const routeStepCode = parentEmissionStepCode(routeProcessCode)
+      || query.get("stepCode") || query.get("step")
+      || screenContext?.workflow?.stepCode
+      || (routeMatches.length === 1 ? routeMatches[0].stepCode : "");
     const routeStepIndex = selectedCatalogSteps.findIndex((step) => step.stepCode === routeStepCode);
     if (routeStepIndex < 0 || routeStepIndex === selectedCatalogStep) return;
     setSelectedCatalogStep(routeStepIndex);
     localStorage.setItem("task-quest-catalog-step", String(routeStepIndex));
-  }, [selectedCatalogSteps]);
+  }, [routePath, screenContext?.workflow?.processCode, screenContext?.workflow?.stepCode, selectedCatalogStep, selectedCatalogSteps]);
   const selectedQaStep = selectedCatalogSteps[selectedCatalogStep];
+  useEffect(() => {
+    if (!screenContext?.selectionRequired || !selectedQaStep || !onScreenContextSelection) return;
+    const candidate = (screenContext.candidates || []).find((item) =>
+      item.processCode === selectedQaStep.processCode && item.stepCode === selectedQaStep.stepCode
+    );
+    if (candidate) onScreenContextSelection(candidate);
+  }, [onScreenContextSelection, screenContext?.candidates, screenContext?.selectionRequired, selectedQaStep]);
   const qaCompletedSteps = selectedCatalogSteps.filter((step) => {
     const runtime = (data?.items || []).find((item) => item.processCode === step.processCode && item.processStepCode === step.stepCode && (!effectiveProjectId || item.projectId === effectiveProjectId));
     return runtime?.status === "DONE";
@@ -1366,7 +1413,7 @@ export function TaskQuestPanel() {
     return () => { observer?.disconnect(); window.clearInterval(timer); };
     // Current screen controls can change without a full route reload.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [qaOpen]);
+  }, [qaOpen, routePath]);
   const assignmentSteps = useMemo(
     () => assignmentWorkspace?.steps || [],
     [assignmentWorkspace?.steps],
@@ -2488,6 +2535,13 @@ export function TaskQuestPanel() {
           <section className="w-[calc(100vw-1.5rem)] max-w-[36rem] overflow-hidden rounded-2xl border border-emerald-200 bg-white shadow-2xl">
             <header className="flex items-center justify-between bg-emerald-800 px-4 py-3 text-white"><div className="flex items-center gap-2"><span className="material-symbols-outlined">fact_check</span><strong>{en ? "QA workflow runner" : "QA 업무 실행"}</strong></div><button aria-label={en ? "Close" : "닫기"} onClick={() => { setQaOpen(false); localStorage.setItem("process-qa-card-open", "0"); }} type="button"><span className="material-symbols-outlined">close</span></button></header>
             <div className="max-h-[70vh] overflow-y-auto p-4">
+              <div className={`mb-3 rounded-xl border p-3 text-xs font-bold ${screenContext?.workflow ? "border-emerald-200 bg-emerald-50 text-emerald-900" : screenContext?.selectionRequired ? "border-amber-200 bg-amber-50 text-amber-900" : "border-slate-200 bg-slate-50 text-slate-700"}`} data-qa-screen-context="">
+                {screenContext?.workflow
+                  ? `${screenContext.workflow.processName || screenContext.workflow.processCode} · ${screenContext.workflow.stepName || screenContext.workflow.stepCode}`
+                  : screenContext?.selectionRequired
+                    ? (en ? "Select one of this screen's linked procedures below." : "이 화면에 연결된 업무 절차를 아래에서 선택하세요.")
+                    : (en ? "No executable workflow is linked to this screen yet." : "이 화면에는 아직 실행 업무 절차가 연결되지 않았습니다.")}
+              </div>
               <div className="grid gap-3 sm:grid-cols-3">
                 <label className="block text-xs font-black text-slate-600">{en ? "Company" : "테스트 회사"}<select className="mt-1 h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm" value={qaCompanyId} onChange={(event) => setQaCompanyId(event.target.value)}>{qaCompanies.map((company) => <option key={company.id} value={company.id}>{company.name}</option>)}</select></label>
                 <label className="block text-xs font-black text-slate-600">{en ? "Account and actor" : "계정·담당자"}<select className="mt-1 h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm" value={qaAccountId} onChange={(event) => setQaAccountId(event.target.value)}>{qaCompanyAccounts.map((account) => <option key={account.id} value={account.id}>{account.actor} · {account.id} · {account.steps}</option>)}</select></label>

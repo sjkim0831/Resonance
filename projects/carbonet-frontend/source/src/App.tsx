@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useState } from "react";
 import { getMissingInsttWarningEventName } from "./platform/telemetry/fetch";
 import { usePageTelemetry } from "./platform/telemetry/usePageTelemetry";
 import { useTelemetryTransport } from "./platform/telemetry/useTelemetryTransport";
@@ -24,6 +24,7 @@ import { GlobalUserGnbShell, shouldUseGlobalUserGnb } from "./features/home-entr
 import { TaskQuestPanel } from "./features/task-quest/TaskQuestPanel";
 import { useLayoutOverflowGuard } from "./app/hooks/useLayoutOverflowGuard";
 import { ScreenDevelopmentNotePanel } from "./features/screen-development-note/ScreenDevelopmentNotePanel";
+import { isWorkflowAssistRoute, type ScreenWorkContext, type ScreenWorkContextCandidate } from "./features/runtime-assist/screenWorkContext";
 import { RouteAuthenticationBoundary } from "./app/routes/RouteAuthenticationBoundary";
 
 const HelpOverlay = lazy(() => import("./components/help/HelpOverlay").then((module) => ({ default: module.HelpOverlay })));
@@ -166,6 +167,7 @@ export default function App() {
   const [helpOpen, setHelpOpen] = useState(false);
   const [helpContent, setHelpContent] = useState<PageHelpContent>(() => fallbackHelpContent(page));
   const [insttWarning, setInsttWarning] = useState("");
+  const [screenWorkContext, setScreenWorkContext] = useState<ScreenWorkContext | null>(null);
   const {
     availableChangeTargets,
     closeContextMenu,
@@ -189,6 +191,83 @@ export default function App() {
   const CurrentPage = generatedRuntime ? GeneratedScreenRuntime : RegisteredPage;
   const boundaryResetKey = `${page}|${location.pathname}|${location.search}`;
   const useGlobalUserGnb = page === "work-execution" || shouldUseGlobalUserGnb(location.pathname);
+  const showWorkflowAssist = isWorkflowAssistRoute(location.pathname);
+
+  const selectAmbiguousScreenWorkflow = useCallback((selection: ScreenWorkContextCandidate) => {
+    setScreenWorkContext((current) => {
+      if (!current?.selectionRequired) return current;
+      const candidate = (current.candidates || []).find((item) =>
+        item.processCode === selection.processCode &&
+        item.stepCode === selection.stepCode &&
+        (item.actorCode || "") === (selection.actorCode || "") &&
+        (item.audience || "") === (selection.audience || "")
+      );
+      if (!candidate) return current;
+      if (current.workflow?.processCode === candidate.processCode &&
+          current.workflow?.stepCode === candidate.stepCode &&
+          (current.workflow?.actorCode || "") === (candidate.actorCode || "")) return current;
+      return { ...current, linked: true, workflow: candidate, source: "catalog" };
+    });
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    const unlinkedContext: ScreenWorkContext = {
+      linked: false,
+      routePath,
+      pageId: page,
+      source: "unlinked",
+      selectionRequired: false,
+      candidateCount: 0,
+      candidates: [],
+      identity: { canonicalRoutePath: location.pathname, routeKey: location.pathname }
+    };
+    setScreenWorkContext(unlinkedContext);
+    if (!showWorkflowAssist) return () => { cancelled = true; };
+    const source = new URLSearchParams(location.search);
+    const query = new URLSearchParams({ routePath: location.pathname, pageId: page });
+    ["tenantId", "projectId", "processCode", "stepCode", "actorCode", "audience"].forEach((key) => {
+      const alias = key === "processCode" ? source.get("processCode") || source.get("process")
+        : key === "stepCode" ? source.get("stepCode") || source.get("step")
+          : source.get(key);
+      if (alias) query.set(key, alias);
+    });
+    if (!query.has("audience")) {
+      query.set("audience", /^\/(?:en\/)?admin(?:\/|$)/i.test(location.pathname) ? "ADMIN" : "USER");
+    }
+    fetch(`${locale === "en" ? "/en" : ""}/home/api/screen-context?${query.toString()}`, {
+      credentials: "include",
+      headers: { Accept: "application/json" }
+    })
+      .then(async (response) => {
+        if (response.status === 401 || response.status === 403 || response.status === 404) return null;
+        const contentType = response.headers.get("content-type") || "";
+        if (!contentType.includes("application/json")) return null;
+        const body = await response.json();
+        if (!response.ok) return null;
+        return body as ScreenWorkContext;
+      })
+      .then((body) => {
+        if (!cancelled && body) {
+          const candidates = Array.isArray(body.candidates) ? body.candidates : [];
+          setScreenWorkContext({
+            ...body,
+            linked: Boolean(body.workflow),
+            candidateCount: candidates.length,
+            candidates,
+            routePath,
+            pageId: page,
+            source: "server"
+          });
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setScreenWorkContext(unlinkedContext);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [locale, location.pathname, location.search, page, routePath, showWorkflowAssist]);
 
   usePageTelemetry(page, locale);
 
@@ -458,7 +537,7 @@ export default function App() {
         도움말
       </button>
 
-      <ScreenDevelopmentNotePanel pageId={page} routePath={routePath} />
+      <ScreenDevelopmentNotePanel pageId={page} routePath={routePath} workContext={screenWorkContext} />
 
       {helpOpen ? (
         <Suspense fallback={null}>
@@ -466,6 +545,7 @@ export default function App() {
             open={helpOpen}
             pageId={page}
             helpContent={helpContent}
+            workContext={screenWorkContext}
             onClose={() => setHelpOpen(false)}
           />
         </Suspense>
@@ -511,7 +591,14 @@ export default function App() {
         </div>
       ) : null}
 
-      {!useGlobalUserGnb ? <TaskQuestPanel /> : null}
+      {showWorkflowAssist ? (
+        <TaskQuestPanel
+          pageId={page}
+          routePath={routePath}
+          screenContext={screenWorkContext}
+          onScreenContextSelection={selectAmbiguousScreenWorkflow}
+        />
+      ) : null}
 
       <ErrorBoundary resetKey={boundaryResetKey}>
         <Suspense fallback={<PageLoadingFallback />}>

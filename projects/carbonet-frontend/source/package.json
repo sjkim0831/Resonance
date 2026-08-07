@@ -27,6 +27,7 @@
     "audit:customer-journey": "node scripts/check-customer-journey-governance.mjs",
     "audit:route-registry": "node scripts/check-route-registry-uniqueness.mjs",
     "audit:generated-route-family": "node scripts/check-generated-route-family-integrity.mjs",
+    "audit:screen-work-context": "node scripts/verify-screen-work-context-integration.mjs",
     "lane:05:loop": "bash scripts/run-resonance-lane-05-loop.sh",
     "lane:06:loop": "bash scripts/run-resonance-lane-06-loop.sh",
     "lane:09:loop": "bash scripts/run-resonance-lane-09-loop.sh",
