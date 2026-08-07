@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { createRequire } from "node:module";
+import { createHash } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 
@@ -122,6 +123,8 @@ async function runBusinessJourney(testCase){
     await page.locator("#charger-name").fill(testCase.chargerName);
     await page.locator("#charger-email").fill(testCase.chargerEmail);
     await page.locator("#charger-tel").fill(testCase.chargerTel);
+    const submittedRepName=String(testCase.updatedRepName||testCase.repName);
+    await page.locator("#rep-name").fill(submittedRepName);
     await page.locator("#company-address-detail").fill(testCase.detailAddress);
     const uploadBuffer=readFileSync(testCase.pdfPath);
     if(uploadBuffer.length<=0)throw new Error(`${viewport.name} browser fixture is empty`);
@@ -184,14 +187,40 @@ async function runBusinessJourney(testCase){
     await page.locator('[data-help-id="join-company-reapply-status"][role="status"]').waitFor({state:"visible",timeout:10000});
     const statusButton=page.getByRole("button",{name:"승인 상태 조회",exact:true});
     await statusButton.waitFor({state:"visible",timeout:10000});
-    await Promise.all([
+    const [statusDetailResponse]=await Promise.all([
+      page.waitForResponse(candidate=>candidate.url().endsWith("/join/api/company-status/detail")&&candidate.request().method()==="POST",{timeout:15000}),
       page.waitForURL(url=>url.pathname==="/join/companyJoinStatusDetail",{timeout:15000}),
       statusButton.click(),
     ]);
+    if(statusDetailResponse.status()!==200)throw new Error(`${viewport.name} status detail failed status=${statusDetailResponse.status()}`);
     await page.getByRole("heading",{name:"회원사 가입 현황 상세",exact:true}).waitFor({state:"visible",timeout:10000});
     await page.getByText("운영자 검토 중",{exact:true}).waitFor({state:"visible",timeout:10000});
-    await page.getByText(testCase.fileName,{exact:true}).waitFor({state:"visible",timeout:10000});
-    await page.getByRole("button",{name:"다운로드",exact:true}).waitFor({state:"visible",timeout:10000});
+    await page.locator('[data-help-id="join-company-status-detail-summary"]').getByText(submittedRepName,{exact:true}).waitFor({state:"visible",timeout:10000});
+    const fileName=page.getByText(testCase.fileName,{exact:true});
+    await fileName.waitFor({state:"visible",timeout:10000});
+    const fileRow=page.getByRole("listitem").filter({has:fileName});
+    if(await fileRow.count()!==1)throw new Error(`${viewport.name} uploaded evidence row is not unique`);
+    const downloadLink=fileRow.getByRole("link",{name:"다운로드",exact:true});
+    await downloadLink.waitFor({state:"visible",timeout:10000});
+    const downloadHref=await downloadLink.getAttribute("href");
+    const downloadUrl=new URL(String(downloadHref||""),page.url());
+    if(downloadUrl.pathname!=="/join/downloadInsttFile"||!downloadUrl.searchParams.get("downloadToken")){
+      throw new Error(`${viewport.name} evidence download link contract failed`);
+    }
+    const [download]=await Promise.all([
+      page.waitForEvent("download",{timeout:15000}),
+      downloadLink.click(),
+    ]);
+    const downloadStream=await download.createReadStream();
+    if(!downloadStream)throw new Error(`${viewport.name} evidence download stream is unavailable`);
+    const downloadedChunks=[];
+    for await(const chunk of downloadStream)downloadedChunks.push(Buffer.from(chunk));
+    const downloadedBuffer=Buffer.concat(downloadedChunks);
+    const fixtureSha=createHash("sha256").update(uploadBuffer).digest("hex");
+    const downloadedSha=createHash("sha256").update(downloadedBuffer).digest("hex");
+    if(!downloadedBuffer.equals(uploadBuffer)||downloadedSha!==fixtureSha){
+      throw new Error(`${viewport.name} evidence download bytes do not match the uploaded fixture`);
+    }
     if(errors.length)throw new Error(`${viewport.name} page errors ${JSON.stringify(errors)}`);
     journeys.push({
       caseId:testCase.caseId,
@@ -201,6 +230,8 @@ async function runBusinessJourney(testCase){
       completionVisible:true,
       statusDetailVisible:true,
       evidenceVisible:true,
+      downloadVerified:true,
+      representativeUpdated:Boolean(testCase.updatedRepName),
       keyboardSubmit:viewport.name==="desktop",
     });
   }finally{
@@ -216,7 +247,8 @@ try{
 }
 
 if(routeSamples.length<20)throw new Error(`at least 20 browser latency samples are required, got ${routeSamples.length}`);
-if(journeys.length!==2||!journeys.some(item=>item.viewport==="desktop")||!journeys.some(item=>item.viewport==="mobile")){
+if(journeys.length!==2||!journeys.some(item=>item.viewport==="desktop")||!journeys.some(item=>item.viewport==="mobile")
+    ||!journeys.every(item=>item.downloadVerified)||!journeys.some(item=>item.representativeUpdated)){
   throw new Error(`desktop and mobile business journeys are required, got ${journeys.length}`);
 }
 const durations=routeSamples.map(result=>result.durationMs).sort((a,b)=>a-b);
@@ -227,6 +259,8 @@ console.log(JSON.stringify({
   desktop:1,
   mobile:1,
   browserJourney:1,
+  downloadVerified:journeys.every(item=>item.downloadVerified)?1:0,
+  representativeUpdateVerified:journeys.some(item=>item.representativeUpdated)?1:0,
   businessJourneyCount:journeys.length,
   businessJourneyDesktop:journeys.some(item=>item.viewport==="desktop")?1:0,
   businessJourneyMobile:journeys.some(item=>item.viewport==="mobile")?1:0,

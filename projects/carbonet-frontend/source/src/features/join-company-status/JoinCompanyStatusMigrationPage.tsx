@@ -432,15 +432,15 @@ export function JoinCompanyStatusMigrationPage() {
                         <span className="min-w-0 break-all text-sm font-medium text-[var(--kr-gov-text-primary)]">{fileName}</span>
                       </div>
                       {downloadToken ? (
-                        <HomeButton
+                        <HomeLinkButton
+                          aria-label={copy.download}
                           className="!min-h-0 !border-0 !bg-transparent !p-0 text-[var(--kr-gov-blue)] font-bold text-xs hover:underline hover:!bg-transparent"
-                          onClick={() => navigate(`/join/downloadInsttFile?downloadToken=${encodeURIComponent(downloadToken)}`)}
-                          type="button"
+                          href={`/join/downloadInsttFile?downloadToken=${encodeURIComponent(downloadToken)}`}
                           variant="ghost"
                         >
-                          <span className="material-symbols-outlined text-[18px]">download</span>
+                          <span aria-hidden="true" className="material-symbols-outlined text-[18px]">download</span>
                           {copy.download}
-                        </HomeButton>
+                        </HomeLinkButton>
                       ) : null}
                     </li>
                   );

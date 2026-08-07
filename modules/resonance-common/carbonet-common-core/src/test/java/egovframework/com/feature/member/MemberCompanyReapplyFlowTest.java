@@ -41,6 +41,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -165,6 +166,54 @@ class MemberCompanyReapplyFlowTest {
         ResponseEntity<Map<String, Object>> replayed = validSubmit(token, validEvidence(), session);
         assertEquals(403, replayed.getStatusCode().value());
         assertEquals("REAPPLY_TOKEN_INVALID_OR_EXPIRED", replayed.getBody().get("errorCode"));
+    }
+
+    @Test
+    void representativeCanChangeAcrossLookupSubmitAndStatusDetailUsingStableInstitutionIdentity() throws Exception {
+        HttpSession session = session(new HashMap<>());
+        InstitutionStatusVO rejectedWithOldRepresentative = rejectedInstitution();
+        InstitutionStatusVO reappliedWithNewRepresentative = rejectedInstitution();
+        reappliedWithNewRepresentative.setReprsntNm("변경 대표");
+        reappliedWithNewRepresentative.setInsttSttus("A");
+        when(memberService.selectInsttInfoForStatus(any()))
+                .thenReturn(rejectedWithOldRepresentative, rejectedWithOldRepresentative,
+                        reappliedWithNewRepresentative);
+        when(memberService.selectInsttFiles("INSTT-REJECTED")).thenReturn(List.of());
+        when(memberService.reapplyInstitution(any(), anyList(), eq("서류 보완 필요")))
+                .thenReturn(storedReceipt());
+
+        ResponseEntity<Map<String, Object>> lookup = reapplyPage(
+                "1234567890", "테스트 대표", "owner@example.com", session);
+        assertEquals(200, lookup.getStatusCode().value());
+        String token = String.valueOf(lookup.getBody().get("reapplyToken"));
+
+        ResponseEntity<Map<String, Object>> submitted = submitApi(
+                "INSTT-REJECTED", "테스트 기업", "변경 대표", "123-45-67890", "12345", "서울시",
+                "상세주소", "담당자", "owner@example.com", "010-1234-5678", token,
+                List.of(validEvidence()), session);
+        assertEquals(200, submitted.getStatusCode().value());
+        String lookupHandle = String.valueOf(submitted.getBody().get("lookupHandle"));
+        assertFalse(lookupHandle.isBlank());
+
+        Map<String, String> statusLookup = Map.of("lookupHandle", lookupHandle);
+        ResponseEntity<Map<String, Object>> detail = controller.companyJoinStatusDetailApi(
+                statusLookup, session, request("127.0.0.1"));
+        assertEquals(200, detail.getStatusCode().value());
+        @SuppressWarnings("unchecked")
+        Map<String, Object> detailResult = (Map<String, Object>) detail.getBody().get("result");
+        assertEquals("변경 대표", detailResult.get("reprsntNm"));
+
+        ArgumentCaptor<InsttInfoVO> lookupCaptor = ArgumentCaptor.forClass(InsttInfoVO.class);
+        verify(memberService, times(3)).selectInsttInfoForStatus(lookupCaptor.capture());
+        InsttInfoVO submitPrelookup = lookupCaptor.getAllValues().get(1);
+        assertEquals("P003", submitPrelookup.getProjectId());
+        assertEquals("INSTT-REJECTED", submitPrelookup.getInsttId());
+        assertNull(submitPrelookup.getReprsntNm());
+        assertNull(submitPrelookup.getBizrno());
+
+        InsttInfoVO statusHandleLookup = lookupCaptor.getAllValues().get(2);
+        assertEquals("INSTT-REJECTED", statusHandleLookup.getInsttId());
+        assertEquals("변경 대표", statusHandleLookup.getReprsntNm());
     }
 
     @Test

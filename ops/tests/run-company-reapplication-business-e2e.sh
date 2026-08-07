@@ -15,7 +15,14 @@ PROJECT_ID="${CARBONET_REAPPLICATION_TEST_PROJECT_ID:-P003}"
 UPLOAD_ROOT="${CARBONET_FILE_INSTT_DIR:-/opt/resonance-data/carbonet/files/instt}"
 PROCESS=COMPANY_REAPPLICATION_PUBLIC
 STEP=COMPANY_REAPPLICATION_PUBLIC_RESUBMIT
-REQUIRED="api,database,authority,responsive,accessibility,exceptionStates,audit,recovery,cleanup,token,replayBlocked,rateLimitFixtureCleanup,screenContextPreflight,desktop,mobile,browserJourney,browserPersistence,businessJourneyDesktop,businessJourneyMobile"
+REQUIRED="api,database,authority,responsive,accessibility,exceptionStates,audit,recovery,cleanup,token,replayBlocked,rateLimitFixtureCleanup,browserRateLimitFixtureCleanup,screenContextPreflight,desktop,mobile,browserJourney,browserPersistence,businessJourneyDesktop,businessJourneyMobile,downloadVerified,representativeUpdateVerified"
+BROWSER_RATE_LIMIT_WINDOW_SECONDS=300
+BROWSER_RATE_LIMIT_MAX_REQUESTS=10
+BROWSER_RATE_LIMIT_REQUIRED_CAPACITY=2
+BROWSER_RATE_LIMIT_OWNED_DELTA=2
+BROWSER_RATE_LIMIT_WINDOW_GUARD_SECONDS="${COMPANY_REAPPLICATION_RATE_LIMIT_WINDOW_GUARD_SECONDS:-60}"
+BROWSER_RATE_LIMIT_MAX_WAIT_SECONDS="${COMPANY_REAPPLICATION_RATE_LIMIT_MAX_WAIT_SECONDS:-310}"
+BROWSER_RATE_LIMIT_CANDIDATE_FILTER="$ROOT/ops/scripts/lib/company-reapplication-browser-rate-limit-candidate.jq"
 
 exec 9>"$LOCK_FILE"
 flock -n 9 || { echo COMPANY_REAPPLICATION_E2E_ALREADY_RUNNING >&2; exit 75; }
@@ -24,9 +31,184 @@ flock -w "$DEPLOY_LOCK_WAIT_SECONDS" 8 || { echo COMPANY_REAPPLICATION_DEPLOY_LO
 
 TMP="$(mktemp -d)"
 BROWSER_FIXTURES_CLEANED=0
+BROWSER_RATE_LIMIT_BASELINE_CAPTURED=0
+BROWSER_RATE_LIMIT_FIXTURE_CLEANED=0
+BROWSER_RATE_LIMIT_BUCKET=""
+BROWSER_RATE_LIMIT_BASELINE_FILE="$TMP/browser-rate-limit-baseline.json"
+BROWSER_RATE_LIMIT_CURRENT_FILE="$TMP/browser-rate-limit-current.json"
+BROWSER_RATE_LIMIT_CANDIDATE_FILE="$TMP/browser-rate-limit-candidate.json"
 source "$ROOT/ops/scripts/lib/carbonet-postgres-query.sh"
 carbonet_postgres_query_init
 q() { carbonet_postgres_query "$1"; }
+
+wait_for_browser_rate_limit_capacity() {
+  local now bucket seconds_left max_count wait_seconds
+  [[ "$BROWSER_RATE_LIMIT_WINDOW_GUARD_SECONDS" =~ ^[0-9]+$
+     && "$BROWSER_RATE_LIMIT_MAX_WAIT_SECONDS" =~ ^[0-9]+$ ]] || {
+    echo COMPANY_REAPPLICATION_RATE_LIMIT_PREFLIGHT_CONFIG_INVALID >&2
+    return 2
+  }
+  while true; do
+    now="$(date +%s)"
+    bucket=$((now/BROWSER_RATE_LIMIT_WINDOW_SECONDS))
+    seconds_left=$((BROWSER_RATE_LIMIT_WINDOW_SECONDS-(now%BROWSER_RATE_LIMIT_WINDOW_SECONDS)))
+    max_count="$(q "select coalesce(max(request_count),0)
+      from framework_public_lookup_rate_limit
+      where project_id='${PROJECT_ID}'
+        and endpoint_code in ('company-reapply-page','company-reapply-submit','company-status-detail')
+        and window_bucket=${bucket}")"
+    [[ "$max_count" =~ ^[0-9]+$ ]] || {
+      echo COMPANY_REAPPLICATION_RATE_LIMIT_PREFLIGHT_INVALID >&2
+      return 2
+    }
+    if (( max_count+BROWSER_RATE_LIMIT_REQUIRED_CAPACITY <= BROWSER_RATE_LIMIT_MAX_REQUESTS
+          && seconds_left > BROWSER_RATE_LIMIT_WINDOW_GUARD_SECONDS )); then
+      return 0
+    fi
+    wait_seconds=$((seconds_left+1))
+    if (( wait_seconds > BROWSER_RATE_LIMIT_MAX_WAIT_SECONDS )); then
+      echo "COMPANY_REAPPLICATION_RATE_LIMIT_PREFLIGHT_WAIT_EXCEEDED retryAfterSeconds=${wait_seconds}" >&2
+      return 75
+    fi
+    echo "[company-reapplication-e2e] waiting for clean public limiter capacity seconds=${wait_seconds}" >&2
+    sleep "$wait_seconds"
+  done
+}
+
+capture_browser_rate_limit_rows() {
+  local bucket="$1" output_file="$2"
+  q "select coalesce(jsonb_agg(jsonb_build_object(
+       'remoteHash',remote_addr_hash,
+       'endpointCode',endpoint_code,
+       'windowBucket',window_bucket,
+       'requestCount',request_count)
+       order by endpoint_code,remote_addr_hash),'[]'::jsonb)::text
+     from framework_public_lookup_rate_limit
+     where project_id='${PROJECT_ID}'
+       and endpoint_code in ('company-reapply-page','company-reapply-submit','company-status-detail')
+       and window_bucket=${bucket}" >"$output_file"
+  jq -e 'type=="array" and all(.[];
+      (.remoteHash|type)=="string" and (.remoteHash|test("^[0-9a-f]{64}$"))
+      and (.endpointCode=="company-reapply-page" or .endpointCode=="company-reapply-submit" or .endpointCode=="company-status-detail")
+      and (.windowBucket|type)=="number" and (.requestCount|type)=="number" and .requestCount>=0)' \
+    "$output_file" >/dev/null
+}
+
+snapshot_browser_rate_limit_baseline() {
+  local now seconds_left
+  [[ -f "$BROWSER_RATE_LIMIT_CANDIDATE_FILTER" ]] || {
+    echo COMPANY_REAPPLICATION_RATE_LIMIT_CANDIDATE_FILTER_MISSING >&2
+    return 2
+  }
+  now="$(date +%s)"
+  BROWSER_RATE_LIMIT_BUCKET=$((now/BROWSER_RATE_LIMIT_WINDOW_SECONDS))
+  seconds_left=$((BROWSER_RATE_LIMIT_WINDOW_SECONDS-(now%BROWSER_RATE_LIMIT_WINDOW_SECONDS)))
+  (( seconds_left > BROWSER_RATE_LIMIT_WINDOW_GUARD_SECONDS )) || {
+    echo COMPANY_REAPPLICATION_RATE_LIMIT_BASELINE_WINDOW_TOO_SHORT >&2
+    return 75
+  }
+  capture_browser_rate_limit_rows "$BROWSER_RATE_LIMIT_BUCKET" "$BROWSER_RATE_LIMIT_BASELINE_FILE" || {
+    echo COMPANY_REAPPLICATION_RATE_LIMIT_BASELINE_INVALID >&2
+    return 2
+  }
+  BROWSER_RATE_LIMIT_BASELINE_CAPTURED=1
+}
+
+resolve_browser_rate_limit_candidate() {
+  capture_browser_rate_limit_rows "$BROWSER_RATE_LIMIT_BUCKET" "$BROWSER_RATE_LIMIT_CURRENT_FILE" || return 1
+  jq -n \
+    --argjson endpoints '["company-reapply-page","company-reapply-submit","company-status-detail"]' \
+    --argjson ownedDelta "$BROWSER_RATE_LIMIT_OWNED_DELTA" \
+    --argjson bucket "$BROWSER_RATE_LIMIT_BUCKET" \
+    --slurpfile baseline "$BROWSER_RATE_LIMIT_BASELINE_FILE" \
+    --slurpfile current "$BROWSER_RATE_LIMIT_CURRENT_FILE" \
+    -f "$BROWSER_RATE_LIMIT_CANDIDATE_FILTER" >"$BROWSER_RATE_LIMIT_CANDIDATE_FILE"
+}
+
+cleanup_browser_rate_limit_fixture() {
+  local strict="${1:-0}" remote_hash bucket owned_delta page_baseline submit_baseline detail_baseline
+  [[ "$BROWSER_RATE_LIMIT_BASELINE_CAPTURED" == 1 && "$BROWSER_RATE_LIMIT_FIXTURE_CLEANED" != 1 ]] || return 0
+  if ! resolve_browser_rate_limit_candidate 2>"$TMP/browser-rate-limit-candidate.err"; then
+    if [[ "$strict" == 1 ]]; then
+      echo COMPANY_REAPPLICATION_BROWSER_RATE_LIMIT_CANDIDATE_MISMATCH >&2
+      return 1
+    fi
+    return 0
+  fi
+  remote_hash="$(jq -r '.remoteHash' "$BROWSER_RATE_LIMIT_CANDIDATE_FILE")"
+  bucket="$(jq -r '.windowBucket' "$BROWSER_RATE_LIMIT_CANDIDATE_FILE")"
+  owned_delta="$(jq -r '.ownedDelta' "$BROWSER_RATE_LIMIT_CANDIDATE_FILE")"
+  page_baseline="$(jq -r '.rows[]|select(.endpointCode=="company-reapply-page")|.baselineCount' "$BROWSER_RATE_LIMIT_CANDIDATE_FILE")"
+  submit_baseline="$(jq -r '.rows[]|select(.endpointCode=="company-reapply-submit")|.baselineCount' "$BROWSER_RATE_LIMIT_CANDIDATE_FILE")"
+  detail_baseline="$(jq -r '.rows[]|select(.endpointCode=="company-status-detail")|.baselineCount' "$BROWSER_RATE_LIMIT_CANDIDATE_FILE")"
+  [[ "$remote_hash" =~ ^[0-9a-f]{64}$
+     && "$bucket" =~ ^[0-9]+$
+     && "$owned_delta" == "$BROWSER_RATE_LIMIT_OWNED_DELTA"
+     && "$page_baseline" =~ ^[0-9]+$
+     && "$submit_baseline" =~ ^[0-9]+$
+     && "$detail_baseline" =~ ^[0-9]+$ ]] || {
+    [[ "$strict" == 1 ]] && echo COMPANY_REAPPLICATION_BROWSER_RATE_LIMIT_CANDIDATE_INVALID >&2
+    return "$strict"
+  }
+
+  if ! q "begin;
+    do \$browser_rate_cleanup\$
+    declare
+      locked_rows integer;
+      updated_rows integer;
+    begin
+      select count(*) into locked_rows
+      from (
+        select 1
+        from framework_public_lookup_rate_limit
+        where project_id='${PROJECT_ID}'
+          and remote_addr_hash='${remote_hash}'
+          and endpoint_code in ('company-reapply-page','company-reapply-submit','company-status-detail')
+          and window_bucket=${bucket}
+        for update
+      ) locked;
+      if locked_rows <> 3 then
+        raise exception 'browser limiter exact-row lock mismatch';
+      end if;
+      if exists (
+        select 1
+        from framework_public_lookup_rate_limit
+        where project_id='${PROJECT_ID}'
+          and remote_addr_hash='${remote_hash}'
+          and endpoint_code in ('company-reapply-page','company-reapply-submit','company-status-detail')
+          and window_bucket=${bucket}
+          and request_count < case endpoint_code
+            when 'company-reapply-page' then ${page_baseline}+${owned_delta}
+            when 'company-reapply-submit' then ${submit_baseline}+${owned_delta}
+            when 'company-status-detail' then ${detail_baseline}+${owned_delta}
+          end
+      ) then
+        raise exception 'browser limiter owned delta is no longer present';
+      end if;
+      update framework_public_lookup_rate_limit
+      set request_count=request_count-${owned_delta},updated_at=current_timestamp
+      where project_id='${PROJECT_ID}'
+        and remote_addr_hash='${remote_hash}'
+        and endpoint_code in ('company-reapply-page','company-reapply-submit','company-status-detail')
+        and window_bucket=${bucket};
+      get diagnostics updated_rows = row_count;
+      if updated_rows <> 3 then
+        raise exception 'browser limiter exact-row update mismatch';
+      end if;
+      delete from framework_public_lookup_rate_limit
+      where project_id='${PROJECT_ID}'
+        and remote_addr_hash='${remote_hash}'
+        and endpoint_code in ('company-reapply-page','company-reapply-submit','company-status-detail')
+        and window_bucket=${bucket}
+        and request_count=0;
+    end
+    \$browser_rate_cleanup\$;
+    commit;" >/dev/null; then
+    [[ "$strict" == 1 ]] && echo COMPANY_REAPPLICATION_BROWSER_RATE_LIMIT_CLEANUP_FAILED >&2
+    return "$strict"
+  fi
+  BROWSER_RATE_LIMIT_FIXTURE_CLEANED=1
+}
 
 RUN_TOKEN="$(date +%s%N | sha256sum | cut -c1-8)"
 NUMERIC_TOKEN="$(date +%s%N)"
@@ -35,6 +217,7 @@ MOBILE_INSTT_ID="QA_UI_M_${RUN_TOKEN}"
 DESKTOP_BIZ_NO="${NUMERIC_TOKEN: -9}1"
 MOBILE_BIZ_NO="${NUMERIC_TOKEN: -9}2"
 DESKTOP_REP="QA_UI_D_${RUN_TOKEN:0:4}"
+DESKTOP_UPDATED_REP="QA_UI_D_NEW_${RUN_TOKEN:0:4}"
 MOBILE_REP="QA_UI_M_${RUN_TOKEN:0:4}"
 REGISTERED_CONTACT="qa-browser@example.test"
 DESKTOP_PDF="$TMP/reapplication-desktop.pdf"
@@ -89,6 +272,7 @@ delete_browser_fixtures() {
 cleanup() {
   local exit_code=$?
   set +e
+  [[ "$BROWSER_RATE_LIMIT_FIXTURE_CLEANED" == 1 ]] || cleanup_browser_rate_limit_fixture 0
   [[ "$BROWSER_FIXTURES_CLEANED" == 1 ]] || delete_browser_fixtures 0
   rm -rf -- "$TMP"
   return "$exit_code"
@@ -126,10 +310,12 @@ export RESONANCE_ROOT="$ROOT" K8S_NAMESPACE="$NAMESPACE" CARBONET_RUNTIME_BASE_U
 export CARBONET_BROWSER_BASE_URL="$BROWSER_BASE_URL" CARBONET_REAPPLICATION_BROWSER_CASES_FILE="$CASES_FILE"
 VALIDATION_COMMIT="$(git -C "$ROOT" rev-parse HEAD)"
 [[ "$VALIDATION_COMMIT" =~ ^[0-9a-f]{40}$ ]] || { echo COMPANY_REAPPLICATION_VALIDATION_COMMIT_INVALID >&2; exit 3; }
-git -C "$ROOT" diff --quiet -- ops/scripts/validate-company-reapplication-browser.mjs ops/scripts/promote-screen-contract-after-e2e.sh ops/tests/run-company-reapplication-business-e2e.sh || {
+git -C "$ROOT" diff --quiet -- ops/scripts/validate-company-reapplication-browser.mjs ops/scripts/promote-screen-contract-after-e2e.sh \
+  ops/scripts/lib/company-reapplication-browser-rate-limit-candidate.jq ops/tests/run-company-reapplication-business-e2e.sh || {
   echo COMPANY_REAPPLICATION_VALIDATION_HARNESS_DIRTY >&2; exit 3;
 }
-git -C "$ROOT" diff --cached --quiet -- ops/scripts/validate-company-reapplication-browser.mjs ops/scripts/promote-screen-contract-after-e2e.sh ops/tests/run-company-reapplication-business-e2e.sh || {
+git -C "$ROOT" diff --cached --quiet -- ops/scripts/validate-company-reapplication-browser.mjs ops/scripts/promote-screen-contract-after-e2e.sh \
+  ops/scripts/lib/company-reapplication-browser-rate-limit-candidate.jq ops/tests/run-company-reapplication-business-e2e.sh || {
   echo COMPANY_REAPPLICATION_VALIDATION_HARNESS_STAGED_DIRTY >&2; exit 3;
 }
 
@@ -157,16 +343,19 @@ q "insert into comtninsttinfo(
       '04524','QA SEOUL JUNG-GU','QA MOBILE','', 'R','QA BROWSER REJECTION',current_timestamp,current_timestamp,current_timestamp,
       'QA MOBILE MANAGER','${REGISTERED_CONTACT}','010-1000-0002');" >/dev/null
 
-jq -n   --arg desktopBiz "$DESKTOP_BIZ_NO" --arg desktopRep "$DESKTOP_REP" --arg desktopPdf "$DESKTOP_PDF"   --arg mobileBiz "$MOBILE_BIZ_NO" --arg mobileRep "$MOBILE_REP" --arg mobilePdf "$MOBILE_PDF"   --arg contact "$REGISTERED_CONTACT" '[
+jq -n   --arg desktopBiz "$DESKTOP_BIZ_NO" --arg desktopRep "$DESKTOP_REP" --arg desktopUpdatedRep "$DESKTOP_UPDATED_REP" --arg desktopPdf "$DESKTOP_PDF"   --arg mobileBiz "$MOBILE_BIZ_NO" --arg mobileRep "$MOBILE_REP" --arg mobilePdf "$MOBILE_PDF"   --arg contact "$REGISTERED_CONTACT" '[
     {caseId:"desktop",viewport:"desktop",bizNo:$desktopBiz,repName:$desktopRep,registeredContact:$contact,
-     chargerName:"QA DESKTOP MANAGER",chargerEmail:$contact,chargerTel:"010-1000-0001",
-     detailAddress:"QA DESKTOP UPDATED",pdfPath:$desktopPdf,fileName:"reapplication-desktop.pdf"},
+      chargerName:"QA DESKTOP MANAGER",chargerEmail:$contact,chargerTel:"010-1000-0001",
+      detailAddress:"QA DESKTOP UPDATED",updatedRepName:$desktopUpdatedRep,pdfPath:$desktopPdf,fileName:"reapplication-desktop.pdf"},
     {caseId:"mobile",viewport:"mobile",bizNo:$mobileBiz,repName:$mobileRep,registeredContact:$contact,
      chargerName:"QA MOBILE MANAGER",chargerEmail:$contact,chargerTel:"010-1000-0002",
      detailAddress:"QA MOBILE UPDATED",pdfPath:$mobilePdf,fileName:"reapplication-mobile.pdf"}
   ]' >"$CASES_FILE"
 
+wait_for_browser_rate_limit_capacity
+snapshot_browser_rate_limit_baseline
 node "$ROOT/ops/scripts/validate-company-reapplication-browser.mjs" >"$TMP/browser.json"
+cleanup_browser_rate_limit_fixture 1
 
 for instt_id in "$DESKTOP_INSTT_ID" "$MOBILE_INSTT_ID"; do
   persistence="$(q "select i.instt_sttus||'|'||
@@ -183,6 +372,10 @@ for instt_id in "$DESKTOP_INSTT_ID" "$MOBILE_INSTT_ID"; do
     exit 1
   }
 done
+[[ "$(q "select reprsnt_nm from comtninsttinfo where project_id='${PROJECT_ID}' and trim(instt_id)='${DESKTOP_INSTT_ID}'")" == "$DESKTOP_UPDATED_REP" ]] || {
+  echo COMPANY_REAPPLICATION_BROWSER_UPDATED_REPRESENTATIVE_FAILED >&2
+  exit 1
+}
 
 delete_browser_fixtures 1
 
@@ -192,6 +385,7 @@ jq -n --arg validationCommit "$VALIDATION_COMMIT" --slurpfile runtime "$TMP/runt
     validationCommit:$validationCommit,
     recovery:($runtime[0].cleanup * $runtime[0].replayBlocked),
     browserPersistence:1,
+    browserRateLimitFixtureCleanup:1,
     browserFixtureCleanup:1,
     performanceP95Ms:$browser[0].performanceP95Ms,
     performanceSampleCount:$browser[0].performanceSampleCount,
@@ -199,6 +393,8 @@ jq -n --arg validationCommit "$VALIDATION_COMMIT" --slurpfile runtime "$TMP/runt
     contract:$contract[0]
   }
   | if .performanceSampleCount<20 or .businessJourneyCount!=2 or .browserJourney!=1 or .browserPersistence!=1
+      or .downloadVerified!=1 or .representativeUpdateVerified!=1
+      or .browserRateLimitFixtureCleanup!=1
       or (.performanceP95Ms|type)!="number" or .performanceP95Ms<=0
     then error("browser business journey or 20-sample p95 evidence is incomplete") else . end
   ' >"$TMP/evidence.json"

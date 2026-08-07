@@ -60,7 +60,6 @@ public class MemberJoinController {
     private static final String SESSION_REAPPLY_TOKEN_EXPIRES_AT = "companyReapplyTokenExpiresAt";
     private static final String SESSION_REAPPLY_TOKEN_INSTT_ID = "companyReapplyTokenInsttId";
     private static final String SESSION_REAPPLY_TOKEN_BIZ_NO = "companyReapplyTokenBizNo";
-    private static final String SESSION_REAPPLY_TOKEN_REP_NAME = "companyReapplyTokenRepName";
     private static final String SESSION_REAPPLY_TOKEN_PROJECT_ID = "companyReapplyTokenProjectId";
     private static final long REAPPLY_TOKEN_TTL_MILLIS = 15L * 60L * 1000L;
 
@@ -1276,7 +1275,7 @@ public class MemberJoinController {
         }
         String normalizedInsttId = insttId.trim();
         String normalizedBizNo = normalizeBusinessNumber(bizNo);
-        if (!consumeCompanyReapplyToken(session, reapplyToken, normalizedInsttId, bizNo, repName, projectId)) {
+        if (!consumeCompanyReapplyToken(session, reapplyToken, normalizedInsttId, bizNo, projectId)) {
             return reapplyError(HttpStatus.FORBIDDEN, "REAPPLY_TOKEN_INVALID_OR_EXPIRED",
                     "재신청 보안 토큰이 만료되었거나 유효하지 않습니다. 신청 내역을 다시 조회해 주세요.");
         }
@@ -1287,11 +1286,12 @@ public class MemberJoinController {
         try {
             InsttInfoVO searchVO = new InsttInfoVO();
             searchVO.setInsttId(normalizedInsttId);
-            searchVO.setReprsntNm(repName);
-            searchVO.setBizrno(normalizedBizNo);
             searchVO.setProjectId(projectId);
             current = entrprsManageService.selectInsttInfoForStatus(searchVO);
-            if (current == null || current.isEmpty() || !"R".equals(current.getInsttSttus())) {
+            boolean stableIdentityMatches = current != null && !current.isEmpty()
+                    && constantTimeEquals(normalized(current.getInsttId()), normalizedInsttId)
+                    && constantTimeEquals(normalizeBusinessNumber(current.getBizrno()), normalizedBizNo);
+            if (!stableIdentityMatches || !"R".equals(current.getInsttSttus())) {
                 return reapplyError(HttpStatus.CONFLICT, "REAPPLY_STATE_CONFLICT",
                         "재신청 대상이 이미 처리되었거나 상태가 변경되었습니다.");
             }
@@ -1354,7 +1354,10 @@ public class MemberJoinController {
                 .format(java.time.format.DateTimeFormatter.ofPattern("yyyy.MM.dd HH:mm:ss")));
         String lookupHandle = "";
         try {
-            lookupHandle = issueCompanyLookupHandle(session, projectId, current);
+            InstitutionStatusVO committedIdentity = new InstitutionStatusVO();
+            committedIdentity.setInsttId(normalizedInsttId);
+            committedIdentity.setReprsntNm(repName.trim());
+            lookupHandle = issueCompanyLookupHandle(session, projectId, committedIdentity);
         } catch (Exception handleError) {
             // Persistence is already committed. Preserve evidence and return the successful
             // receipt; the customer can open the status search page for a new handle.
@@ -1591,14 +1594,13 @@ public class MemberJoinController {
                     System.currentTimeMillis() + REAPPLY_TOKEN_TTL_MILLIS);
             session.setAttribute(SESSION_REAPPLY_TOKEN_INSTT_ID, normalized(result.getInsttId()));
             session.setAttribute(SESSION_REAPPLY_TOKEN_BIZ_NO, normalizeBusinessNumber(result.getBizrno()));
-            session.setAttribute(SESSION_REAPPLY_TOKEN_REP_NAME, normalized(result.getReprsntNm()));
             session.setAttribute(SESSION_REAPPLY_TOKEN_PROJECT_ID, normalized(projectId));
         }
         return token;
     }
 
     private boolean consumeCompanyReapplyToken(HttpSession session, String token, String insttId, String bizNo,
-            String repName, String projectId) {
+            String projectId) {
         if (session == null) {
             return false;
         }
@@ -1611,7 +1613,6 @@ public class MemberJoinController {
                     && constantTimeEquals((String) storedToken, token)
                     && constantTimeEquals(normalized(session.getAttribute(SESSION_REAPPLY_TOKEN_INSTT_ID)), normalized(insttId))
                     && constantTimeEquals(normalized(session.getAttribute(SESSION_REAPPLY_TOKEN_BIZ_NO)), normalizeBusinessNumber(bizNo))
-                    && constantTimeEquals(normalized(session.getAttribute(SESSION_REAPPLY_TOKEN_REP_NAME)), normalized(repName))
                     && constantTimeEquals(normalized(session.getAttribute(SESSION_REAPPLY_TOKEN_PROJECT_ID)), normalized(projectId));
             clearCompanyReapplyToken(session);
             return valid;
@@ -1623,7 +1624,6 @@ public class MemberJoinController {
         session.removeAttribute(SESSION_REAPPLY_TOKEN_EXPIRES_AT);
         session.removeAttribute(SESSION_REAPPLY_TOKEN_INSTT_ID);
         session.removeAttribute(SESSION_REAPPLY_TOKEN_BIZ_NO);
-        session.removeAttribute(SESSION_REAPPLY_TOKEN_REP_NAME);
         session.removeAttribute(SESSION_REAPPLY_TOKEN_PROJECT_ID);
     }
 
