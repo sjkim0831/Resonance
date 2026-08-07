@@ -40,7 +40,9 @@ for(const token of ["RESOLVED_CLEANUP_PATH","realpath -m","[[ -L \"$RESOLVED_CLE
 }
 for(const token of [
   "prepare_status_rate_limit_fixture",
+  "capture_status_rate_limit_identity",
   "track_status_rate_limit_request",
+  "RATE_LIMIT_BASELINE_COUNTS",
   "cleanup_status_rate_limit_fixture 1",
   "remote_addr_hash='${RATE_LIMIT_REMOTE_HASH}'",
   "window_bucket=${RATE_LIMIT_WINDOW_BUCKET}",

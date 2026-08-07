@@ -27,24 +27,17 @@ DB_FILE_PATH=""
 RESOLVED_CLEANUP_PATH=""
 RATE_LIMIT_WINDOW_SECONDS=300
 RATE_LIMIT_WINDOW_BUCKET=0
-RATE_LIMIT_REMOTE_ADDR="${CARBONET_REAPPLICATION_RATE_LIMIT_REMOTE_ADDR:-}"
 RATE_LIMIT_REMOTE_HASH=""
 RATE_LIMIT_REQUESTS=0
 RATE_LIMIT_FIXTURE_CLEANED=0
+declare -A RATE_LIMIT_BASELINE_COUNTS=()
 
 source "$ROOT/ops/scripts/lib/carbonet-postgres-query.sh"
 carbonet_postgres_query_init
 q() { carbonet_postgres_query "$1"; }
 
 prepare_status_rate_limit_fixture() {
-  local now seconds_left
-  if [[ -z "$RATE_LIMIT_REMOTE_ADDR" ]]; then
-    [[ "$BASE_URL" =~ ^http://127\.0\.0\.1(:[0-9]+)?/?$ ]] || {
-      echo '[company-reapplication-e2e] FAIL explicit limiter remote address required for non-loopback runtime' >&2
-      return 1
-    }
-    RATE_LIMIT_REMOTE_ADDR=127.0.0.1
-  fi
+  local now seconds_left remote_hash request_count
   now="$(date +%s)"
   seconds_left=$((RATE_LIMIT_WINDOW_SECONDS-(now%RATE_LIMIT_WINDOW_SECONDS)))
   if (( seconds_left <= 20 )); then
@@ -52,11 +45,48 @@ prepare_status_rate_limit_fixture() {
     now="$(date +%s)"
   fi
   RATE_LIMIT_WINDOW_BUCKET=$((now/RATE_LIMIT_WINDOW_SECONDS))
-  RATE_LIMIT_REMOTE_HASH="$(printf '%s' "$RATE_LIMIT_REMOTE_ADDR" | sha256sum | awk '{print $1}')"
-  [[ "$RATE_LIMIT_REMOTE_HASH" =~ ^[0-9a-f]{64}$ ]] || {
-    echo '[company-reapplication-e2e] FAIL limiter remote identity hash' >&2
+  while IFS='|' read -r remote_hash request_count; do
+    [[ -n "$remote_hash" ]] || continue
+    [[ "$remote_hash" =~ ^[0-9a-f]{64}$ && "$request_count" =~ ^[0-9]+$ ]] || {
+      echo '[company-reapplication-e2e] FAIL invalid limiter baseline row' >&2
+      return 1
+    }
+    RATE_LIMIT_BASELINE_COUNTS["$remote_hash"]="$request_count"
+  done < <(q "select remote_addr_hash||'|'||request_count
+    from framework_public_lookup_rate_limit
+    where project_id='${PROJECT_ID}' and endpoint_code='company-status-detail'
+      and window_bucket=${RATE_LIMIT_WINDOW_BUCKET}")
+}
+
+capture_status_rate_limit_identity() {
+  local current_bucket remote_hash request_count baseline delta changed_rows=0 candidate_rows=0 candidate_hash=""
+  current_bucket=$(($(date +%s)/RATE_LIMIT_WINDOW_SECONDS))
+  [[ "$current_bucket" == "$RATE_LIMIT_WINDOW_BUCKET" ]] || {
+    echo '[company-reapplication-e2e] FAIL limiter window changed during identity capture' >&2
     return 1
   }
+  while IFS='|' read -r remote_hash request_count; do
+    [[ -n "$remote_hash" ]] || continue
+    [[ "$remote_hash" =~ ^[0-9a-f]{64}$ && "$request_count" =~ ^[0-9]+$ ]] || return 1
+    baseline="${RATE_LIMIT_BASELINE_COUNTS[$remote_hash]:-0}"
+    delta=$((request_count-baseline))
+    if (( delta != 0 )); then
+      changed_rows=$((changed_rows+1))
+      if (( delta == 1 )); then
+        candidate_rows=$((candidate_rows+1))
+        candidate_hash="$remote_hash"
+      fi
+    fi
+  done < <(q "select remote_addr_hash||'|'||request_count
+    from framework_public_lookup_rate_limit
+    where project_id='${PROJECT_ID}' and endpoint_code='company-status-detail'
+      and window_bucket=${RATE_LIMIT_WINDOW_BUCKET}")
+  [[ "$changed_rows" == 1 && "$candidate_rows" == 1 && "$candidate_hash" =~ ^[0-9a-f]{64}$ ]] || {
+    echo '[company-reapplication-e2e] FAIL limiter identity is not uniquely attributable' >&2
+    return 1
+  }
+  RATE_LIMIT_REMOTE_HASH="$candidate_hash"
+  RATE_LIMIT_REQUESTS=1
 }
 
 track_status_rate_limit_request() {
@@ -269,7 +299,7 @@ prepare_status_rate_limit_fixture
 status_code="$(curl -sS -c "$COOKIE" -b "$COOKIE" -D "$STATUS_HEADERS" -o "$BODY" -w '%{http_code}' \
   -H 'Content-Type: application/json' --data "$IDENTITY_PAYLOAD" \
   "$BASE_URL/join/api/company-status/detail")"
-track_status_rate_limit_request
+capture_status_rate_limit_identity
 [[ "$status_code" == 200 ]] || {
   echo "[company-reapplication-e2e] FAIL status-lookup status=$status_code" >&2
   exit 1
