@@ -39,9 +39,13 @@ for(const token of ["RESOLVED_CLEANUP_PATH","realpath -m","[[ -L \"$RESOLVED_CLE
 for(const token of [
   'DEPLOY_LOCK_FILE="${CARBONET_DEPLOY_LOCK_FILE:-/tmp/carbonet-auto-deploy.lock}"',
   'flock -w "$DEPLOY_LOCK_WAIT_SECONDS" 8',
-  'verify_deployed_commit "$SOURCE_COMMIT" after-capture',
-  'verify_deployed_commit "$SOURCE_COMMIT" before-promotion',
-  'verify_deployed_commit "$SOURCE_COMMIT" after-post-context',
+  'VALIDATION_COMMIT="$(git -C "$ROOT" rev-parse HEAD)"',
+  'validationCommit:$validationCommit',
+  'verify_release_identity "$SOURCE_COMMIT" "$VALIDATION_COMMIT" after-capture',
+  'verify_release_identity "$SOURCE_COMMIT" "$VALIDATION_COMMIT" before-promotion',
+  'verify_release_identity "$SOURCE_COMMIT" "$VALIDATION_COMMIT" after-post-context',
+  'plan-incremental-work.sh',
+  'PLAN_DATABASE_REQUIRED',
   'CARBONET_REAPPLICATION_BROWSER_CASES_FILE="$CASES_FILE"',
   "insert into comtninsttinfo(",
   "browserPersistence:1",
@@ -50,8 +54,12 @@ for(const token of [
 ]) assert(wrapper.includes(token),`wrapper fail-closed contract missing: ${token}`);
 assert(wrapper.indexOf('flock -w "$DEPLOY_LOCK_WAIT_SECONDS" 8')<wrapper.indexOf("capture-business-e2e-contract.sh"),
   "deploy lock must be held before contract capture");
-assert((wrapper.match(/verify_deployed_commit "\$SOURCE_COMMIT"/g)||[]).length===3,
+assert((wrapper.match(/verify_release_identity "\$SOURCE_COMMIT" "\$VALIDATION_COMMIT"/g)||[]).length===3,
   "exactly three release freshness checkpoints are required");
+assert(wrapper.includes('source=validation-marker')&&wrapper.includes('source=runtime-contract'),
+  "validation and runtime identities are not independently fail-closed");
+assert(wrapper.includes('source=commit-lineage')&&wrapper.includes('source=unreleased-$key'),
+  "unreleased runtime-affecting gaps are not fail-closed");
 assert(!/172\.16\.1\.232/.test(browser+wrapper),"deployment IP was hardcoded");
 
 const browserWithoutJourney=browser.replace("setInputFiles(testCase.pdfPath)","fill(testCase.pdfPath)");
@@ -63,4 +71,4 @@ assert(!wrapperWithoutLock.includes('flock -w "$DEPLOY_LOCK_WAIT_SECONDS" 8'),"d
 const wrapperWithoutPersistence=wrapper.replace("browserPersistence:1","browserPersistence:0");
 assert(!wrapperWithoutPersistence.includes("browserPersistence:1"),"browser-persistence mutation escaped");
 NODE
-echo '[company-reapplication-business-e2e-wrapper-test] PASS routeSamples=20 journeys=2 freshness=3 cleanup=resolved mutations=4'
+echo '[company-reapplication-business-e2e-wrapper-test] PASS routeSamples=20 journeys=2 freshness=3 identities=runtime+validation cleanup=resolved mutations=4'

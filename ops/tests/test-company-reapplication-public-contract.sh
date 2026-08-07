@@ -286,9 +286,9 @@ for(const token of ['binding_status','REVIEW_REQUIRED','MISSING_WORKFLOW_EVIDENC
 for(const token of ['desktop:1','mobile:1','accessibility:1','performanceSampleCount'])
   assert(browser.includes(token),`browser evidence missing: ${token}`);
 assert(wrapper.includes('promotionEligible:true'),'complete evidence is not promotion eligible');
-const preflight=wrapper.indexOf('validate-company-reapplication-runtime.sh');
-const browserRun=wrapper.indexOf('validate-company-reapplication-browser.mjs');
-const promoter=wrapper.indexOf('promote-screen-contract-after-e2e.sh');
+const preflight=wrapper.lastIndexOf('bash "$ROOT/ops/scripts/validate-company-reapplication-runtime.sh"');
+const browserRun=wrapper.lastIndexOf('node "$ROOT/ops/scripts/validate-company-reapplication-browser.mjs"');
+const promoter=wrapper.lastIndexOf('bash "$ROOT/ops/scripts/promote-screen-contract-after-e2e.sh"');
 const postContext=wrapper.lastIndexOf('/home/api/screen-context');
 assert(preflight>=0&&preflight<browserRun&&browserRun<promoter&&promoter<postContext,
   'required preflight -> browser -> promoter -> post-context order drifted');

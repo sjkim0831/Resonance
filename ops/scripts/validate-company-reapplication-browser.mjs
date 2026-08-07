@@ -124,22 +124,33 @@ async function runBusinessJourney(testCase){
     await page.locator("#charger-tel").fill(testCase.chargerTel);
     await page.locator("#company-address-detail").fill(testCase.detailAddress);
     await page.locator("input.file-input").first().setInputFiles(testCase.pdfPath);
+    await page.waitForFunction(()=>{
+      const hasValue=(selector)=>Boolean(String(document.querySelector(selector)?.value||"").trim());
+      const fileInput=document.querySelector("input.file-input");
+      const submit=[...document.querySelectorAll("button")].find(node=>node.textContent?.trim()==="재신청 완료");
+      return ["#charger-name","#charger-email","#charger-tel","#company-name","#rep-name","#zip-code","#company-address"]
+        .every(hasValue)&&fileInput?.files?.length===1&&submit instanceof HTMLButtonElement&&!submit.disabled;
+    },undefined,{timeout:5000});
+    await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
 
     const submitButton=page.getByRole("button",{name:"재신청 완료",exact:true});
     let submitResponse;
     try{
-      const submitPromise=page.waitForResponse(candidate=>candidate.url().endsWith("/join/api/company-reapply")&&candidate.request().method()==="POST",{timeout:20000});
-      if(viewport.name==="desktop")await submitButton.press("Enter");
-      else await submitButton.click();
-      submitResponse=await submitPromise;
+      [submitResponse]=await Promise.all([
+        page.waitForResponse(candidate=>candidate.url().endsWith("/join/api/company-reapply")&&candidate.request().method()==="POST",{timeout:20000}),
+        viewport.name==="desktop"?submitButton.press("Enter"):submitButton.click(),
+      ]);
     }catch(error){
       const diagnostic=await page.evaluate(()=>{
         const hasValue=(selector)=>Boolean(String(document.querySelector(selector)?.value||"").trim());
         const submit=[...document.querySelectorAll("button")].find(node=>node.textContent?.trim()==="재신청 완료");
         const visible=(node)=>node instanceof HTMLElement&&node.offsetParent!==null;
+        const file=document.querySelector("input.file-input")?.files?.[0];
         return {
           submitDisabled:Boolean(submit?.disabled),
+          submitVisible:visible(submit),
           submitFocused:document.activeElement===submit,
+          activeElementId:String(document.activeElement?.id||""),
           requiredValues:{
             chargerName:hasValue("#charger-name"),
             chargerEmail:hasValue("#charger-email"),
@@ -149,12 +160,11 @@ async function runBusinessJourney(testCase){
             zipCode:hasValue("#zip-code"),
             companyAddress:hasValue("#company-address"),
           },
-          fileCount:document.querySelector("input.file-input")?.files?.length||0,
-          alerts:[...document.querySelectorAll('[role="alert"]')]
-            .filter(visible)
-            .map(node=>String(node.textContent||"").replace(/\s+/g," ").trim())
-            .filter(Boolean)
-            .slice(0,5),
+          fileCount:file?1:0,
+          fileTypeAllowed:Boolean(file&&/\.(pdf|jpe?g|png)$/i.test(file.name)),
+          fileSizeBucket:!file?"none":file.size<=0?"empty":file.size<=10*1024*1024?"accepted":"oversize",
+          visibleAlertCount:[...document.querySelectorAll('[role="alert"]')].filter(visible).length,
+          invalidFieldIds:[...document.querySelectorAll('[aria-invalid="true"]')].map(node=>node.id).filter(Boolean).slice(0,10),
         };
       });
       const reason=error instanceof Error?error.message:String(error);

@@ -67,14 +67,37 @@ SOURCE_COMMIT="$(jq -r '.sourceCommit' <<<"$CONTRACT")"
 PROCESS_VERSION="$(jq -r '.processVersion' <<<"$CONTRACT")"
 CONTRACT_FINGERPRINT="$(jq -r '.contractFingerprint' <<<"$CONTRACT")"
 [[ "$SOURCE_COMMIT" =~ ^[0-9a-fA-F]{7,80}$ && "$CONTRACT_FINGERPRINT" =~ ^[0-9a-f]{32,128}$ && -n "$PROCESS_VERSION" ]] || { echo 'invalid pre-run contract envelope' >&2; exit 3; }
+VALIDATION_COMMIT="$(jq -r '.validationCommit // .harnessCommit // .contract.sourceCommit' <<<"$EVIDENCE")"
+[[ "$VALIDATION_COMMIT" =~ ^[0-9a-fA-F]{7,80}$ ]] || { echo 'invalid validation harness commit' >&2; exit 3; }
 DEPLOY_STATE_FILE="${CARBONET_DEPLOY_STATE_FILE:-/opt/resonance-data/deploy/carbonet-main-success.commit}"
 FILE_DEPLOYED_COMMIT="$(tr -d '[:space:]' < "$DEPLOY_STATE_FILE" 2>/dev/null || true)"
-if [[ -n "${E2E_DEPLOYED_COMMIT:-}" && "$E2E_DEPLOYED_COMMIT" != "$FILE_DEPLOYED_COMMIT" ]]; then
-  echo 'E2E commit override differs from deployed success marker' >&2
+if [[ -n "${E2E_VALIDATION_COMMIT:-}" && "$E2E_VALIDATION_COMMIT" != "$FILE_DEPLOYED_COMMIT" ]]; then
+  echo 'E2E validation commit override differs from processed success marker' >&2
   exit 3
 fi
-CURRENT_DEPLOYED_COMMIT="$FILE_DEPLOYED_COMMIT"
-[[ "$SOURCE_COMMIT" == "$CURRENT_DEPLOYED_COMMIT" ]] || { echo 'deployed commit changed during E2E; refusing stale evidence' >&2; exit 3; }
+[[ "$VALIDATION_COMMIT" == "$FILE_DEPLOYED_COMMIT" ]] || { echo 'validation harness commit was not processed; refusing stale evidence' >&2; exit 3; }
+if [[ "$SOURCE_COMMIT" != "$VALIDATION_COMMIT" ]]; then
+  git -C "$ROOT" merge-base --is-ancestor "$SOURCE_COMMIT" "$VALIDATION_COMMIT" || {
+    echo 'runtime commit is not an ancestor of validation harness commit' >&2; exit 3;
+  }
+  PLAN="$(bash "$ROOT/ops/scripts/plan-incremental-work.sh" "$SOURCE_COMMIT" "$VALIDATION_COMMIT" --format env)"
+  for key in PLAN_RUNTIME_REQUIRED PLAN_FRONTEND_REQUIRED PLAN_BACKEND_REQUIRED PLAN_DATABASE_REQUIRED; do
+    [[ "$(awk -F= -v key="$key" '$1==key{print $2}' <<<"$PLAN")" == false ]] || {
+      echo "unreleased runtime-affecting change exists before validation: $key" >&2; exit 3;
+    }
+  done
+fi
+if [[ -n "${E2E_DEPLOYED_COMMIT:-}" && "$E2E_DEPLOYED_COMMIT" != "$SOURCE_COMMIT" ]]; then
+  echo 'E2E runtime commit override differs from captured runtime contract' >&2
+  exit 3
+fi
+CURRENT_CONTRACT="$(K8S_NAMESPACE="${K8S_NAMESPACE:-carbonet-prod}" bash "$ROOT/ops/scripts/capture-business-e2e-contract.sh" "$PROCESS_CODE" "$STEP_CODE")"
+[[ "$(jq -r '.sourceCommit' <<<"$CURRENT_CONTRACT")" == "$SOURCE_COMMIT"
+   && "$(jq -r '.processVersion' <<<"$CURRENT_CONTRACT")" == "$PROCESS_VERSION"
+   && "$(jq -r '.contractFingerprint' <<<"$CURRENT_CONTRACT")" == "$CONTRACT_FINGERPRINT" ]] || {
+  echo 'runtime contract changed during E2E; refusing stale evidence' >&2
+  exit 3
+}
 EXECUTION_ENVIRONMENT="${E2E_EXECUTION_ENVIRONMENT:-carbonet-prod}"
 EVIDENCE_URI="${E2E_EVIDENCE_URI:-inline://business-e2e/sha256/$EVIDENCE_SHA256}"
 K8S_NAMESPACE="${K8S_NAMESPACE:-carbonet-prod}"

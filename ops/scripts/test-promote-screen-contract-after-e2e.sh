@@ -124,6 +124,16 @@ assert(source.includes('Number(evidence.performanceSampleCount)<20'),
   'minimum 20 route-sample assertion gate missing');
 assert(source.includes("performanceSampleCount')::integer,0)>=20"),
   'SQL promotion gate does not enforce 20 route samples');
+assert(source.includes(".validationCommit // .harnessCommit // .contract.sourceCommit"),
+  'validation harness commit is not separated from runtime source commit');
+assert(source.includes("VALIDATION_COMMIT")&&source.includes("capture-business-e2e-contract.sh"),
+  'processed validation and current runtime contracts are not checked independently');
+assert(source.includes("runtime contract changed during E2E"),
+  'runtime contract freshness guard missing');
+assert(source.includes("plan-incremental-work.sh")&&source.includes("PLAN_DATABASE_REQUIRED"),
+  'runtime and validation commits can diverge without an incremental no-runtime-gap proof');
+assert(source.includes("runtime commit is not an ancestor"),
+  'runtime-validation commit lineage guard missing');
 assert(!source.includes('api_verified=contract.api_verified OR'), 'verification flags must not accumulate across evidence envelopes');
 
 const policyContractValid = (candidate) => [

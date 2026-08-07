@@ -95,26 +95,49 @@ cleanup() {
 }
 trap cleanup EXIT
 
-verify_deployed_commit() {
-  local expected="$1" stage="$2" marker current
+verify_release_identity() {
+  local expected_runtime="$1" expected_validation="$2" stage="$3" marker current
   marker="$(tr -d '[:space:]' < "$DEPLOY_STATE_FILE" 2>/dev/null || true)"
-  [[ "$marker" == "$expected" ]] || {
-    echo "COMPANY_REAPPLICATION_RELEASE_FRESHNESS_FAILED stage=$stage source=success-marker" >&2
+  [[ "$marker" == "$expected_validation" ]] || {
+    echo "COMPANY_REAPPLICATION_RELEASE_FRESHNESS_FAILED stage=$stage source=validation-marker" >&2
     exit 3
   }
+  if [[ "$expected_runtime" != "$expected_validation" ]]; then
+    git -C "$ROOT" merge-base --is-ancestor "$expected_runtime" "$expected_validation" || {
+      echo "COMPANY_REAPPLICATION_RELEASE_FRESHNESS_FAILED stage=$stage source=commit-lineage" >&2; exit 3;
+    }
+    plan="$(bash "$ROOT/ops/scripts/plan-incremental-work.sh" "$expected_runtime" "$expected_validation" --format env)"
+    for key in PLAN_RUNTIME_REQUIRED PLAN_FRONTEND_REQUIRED PLAN_BACKEND_REQUIRED PLAN_DATABASE_REQUIRED; do
+      [[ "$(awk -F= -v key="$key" '$1==key{print $2}' <<<"$plan")" == false ]] || {
+        echo "COMPANY_REAPPLICATION_RELEASE_FRESHNESS_FAILED stage=$stage source=unreleased-$key" >&2; exit 3;
+      }
+    done
+  fi
   current="$(bash "$ROOT/ops/scripts/capture-business-e2e-contract.sh" "$PROCESS" "$STEP")"
-  [[ "$(jq -r '.sourceCommit' <<<"$current")" == "$expected" ]] || {
-    echo "COMPANY_REAPPLICATION_RELEASE_FRESHNESS_FAILED stage=$stage source=runtime-ledger" >&2
+  [[ "$(jq -r '.sourceCommit' <<<"$current")" == "$expected_runtime"
+     && "$(jq -r '.processVersion' <<<"$current")" == "$PROCESS_VERSION"
+     && "$(jq -r '.contractFingerprint' <<<"$current")" == "$CONTRACT_FINGERPRINT" ]] || {
+    echo "COMPANY_REAPPLICATION_RELEASE_FRESHNESS_FAILED stage=$stage source=runtime-contract" >&2
     exit 3
   }
 }
 
 export RESONANCE_ROOT="$ROOT" K8S_NAMESPACE="$NAMESPACE" CARBONET_RUNTIME_BASE_URL="$BASE_URL"
 export CARBONET_BROWSER_BASE_URL="$BROWSER_BASE_URL" CARBONET_REAPPLICATION_BROWSER_CASES_FILE="$CASES_FILE"
+VALIDATION_COMMIT="$(git -C "$ROOT" rev-parse HEAD)"
+[[ "$VALIDATION_COMMIT" =~ ^[0-9a-f]{40}$ ]] || { echo COMPANY_REAPPLICATION_VALIDATION_COMMIT_INVALID >&2; exit 3; }
+git -C "$ROOT" diff --quiet -- ops/scripts/validate-company-reapplication-browser.mjs ops/scripts/promote-screen-contract-after-e2e.sh ops/tests/run-company-reapplication-business-e2e.sh || {
+  echo COMPANY_REAPPLICATION_VALIDATION_HARNESS_DIRTY >&2; exit 3;
+}
+git -C "$ROOT" diff --cached --quiet -- ops/scripts/validate-company-reapplication-browser.mjs ops/scripts/promote-screen-contract-after-e2e.sh ops/tests/run-company-reapplication-business-e2e.sh || {
+  echo COMPANY_REAPPLICATION_VALIDATION_HARNESS_STAGED_DIRTY >&2; exit 3;
+}
 
 bash "$ROOT/ops/scripts/capture-business-e2e-contract.sh" "$PROCESS" "$STEP" >"$TMP/contract.json"
 SOURCE_COMMIT="$(jq -r '.sourceCommit' "$TMP/contract.json")"
-verify_deployed_commit "$SOURCE_COMMIT" after-capture
+PROCESS_VERSION="$(jq -r '.processVersion' "$TMP/contract.json")"
+CONTRACT_FINGERPRINT="$(jq -r '.contractFingerprint' "$TMP/contract.json")"
+verify_release_identity "$SOURCE_COMMIT" "$VALIDATION_COMMIT" after-capture
 bash "$ROOT/ops/scripts/validate-company-reapplication-runtime.sh" >"$TMP/runtime.json"
 
 printf '%%PDF-1.4\n%% Resonance desktop reapplication browser fixture\n' >"$DESKTOP_PDF"
@@ -160,9 +183,10 @@ done
 
 delete_browser_fixtures 1
 
-jq -n --slurpfile runtime "$TMP/runtime.json" --slurpfile browser "$TMP/browser.json"   --slurpfile contract "$TMP/contract.json" '
+jq -n --arg validationCommit "$VALIDATION_COMMIT" --slurpfile runtime "$TMP/runtime.json" --slurpfile browser "$TMP/browser.json"   --slurpfile contract "$TMP/contract.json" '
   $runtime[0] * $browser[0] * {
     promotionEligible:true,
+    validationCommit:$validationCommit,
     recovery:($runtime[0].cleanup * $runtime[0].replayBlocked),
     browserPersistence:1,
     browserFixtureCleanup:1,
@@ -177,7 +201,8 @@ jq -n --slurpfile runtime "$TMP/runtime.json" --slurpfile browser "$TMP/browser.
   ' >"$TMP/evidence.json"
 
 bash "$ROOT/ops/scripts/promote-screen-contract-after-e2e.sh"   "$PROCESS" "$STEP" "$REQUIRED" PUBLIC --validate-only <"$TMP/evidence.json" >/dev/null
-verify_deployed_commit "$SOURCE_COMMIT" before-promotion
+verify_release_identity "$SOURCE_COMMIT" "$VALIDATION_COMMIT" before-promotion
+export E2E_VALIDATION_COMMIT="$VALIDATION_COMMIT" E2E_DEPLOYED_COMMIT="$SOURCE_COMMIT"
 bash "$ROOT/ops/scripts/promote-screen-contract-after-e2e.sh"   "$PROCESS" "$STEP" "$REQUIRED" PUBLIC <"$TMP/evidence.json" >"$TMP/promotion.json"
 
 code="$(curl -sS -G -o "$TMP/context.json" -w '%{http_code}'   --data-urlencode 'routePath=/join/companyReapply' --data-urlencode 'pageId=join-company-reapply'   --data-urlencode 'audience=PUBLIC' --data-urlencode "processCode=$PROCESS"   --data-urlencode "stepCode=$STEP" --data-urlencode 'actorCode=PUBLIC_APPLICANT'   "$BASE_URL/home/api/screen-context")"
@@ -185,6 +210,6 @@ code="$(curl -sS -G -o "$TMP/context.json" -w '%{http_code}'   --data-urlencode 
   echo "COMPANY_REAPPLICATION_POST_PROMOTION_CONTEXT_FAILED status=$code" >&2
   exit 1
 }
-verify_deployed_commit "$SOURCE_COMMIT" after-post-context
+verify_release_identity "$SOURCE_COMMIT" "$VALIDATION_COMMIT" after-post-context
 
 jq -n --slurpfile evidence "$TMP/evidence.json" --slurpfile promotion "$TMP/promotion.json"   '{status:"PASS",evidence:$evidence[0],promotion:$promotion[0],postPromotionScreenContext:1,releaseFreshnessChecks:3}'
