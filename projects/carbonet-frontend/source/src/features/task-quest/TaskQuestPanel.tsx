@@ -216,6 +216,7 @@ type QuestResponse = {
     stepCode: string;
     stepName: string;
     actorCode?: string;
+    actorName?: string;
     fromState?: string;
     commandCode?: string;
     toState?: string;
@@ -1890,12 +1891,26 @@ export function TaskQuestPanel({
     focusedContractStepIndex >= 0
       ? focusedContractSteps[focusedContractStepIndex + 1]
       : undefined;
-  const displayedStepOrder = focusedContractStep?.stepOrder || task?.stepOrder;
-  const displayedStepName = focusedContractStep?.stepName || task?.name || "";
+  const linkedScreenWorkflow = screenContext?.workflow;
+  const displayedProcessName =
+    linkedScreenWorkflow?.processName || task?.processName || task?.processCode || "-";
+  const displayedStepOrder =
+    linkedScreenWorkflow?.stepOrder || focusedContractStep?.stepOrder || task?.stepOrder;
+  const displayedStepName =
+    linkedScreenWorkflow?.stepName || focusedContractStep?.stepName || task?.name || "";
+  const displayedActorName =
+    linkedScreenWorkflow?.actorName ||
+    focusedContractStep?.actorName ||
+    actorLabel(linkedScreenWorkflow?.actorCode || focusedContractStep?.actorCode || task?.actorCode);
   const displayedWorkPurpose =
-    focusedContractStep?.workPurpose || task?.workPurpose || displayedStepName;
+    linkedScreenWorkflow?.workPurpose ||
+    focusedContractStep?.workPurpose ||
+    task?.workPurpose ||
+    displayedStepName;
   const displayedCompletionRule =
-    focusedContractStep?.completionRule || task?.completionRule;
+    linkedScreenWorkflow?.completionRule ||
+    focusedContractStep?.completionRule ||
+    task?.completionRule;
   const progress =
     total > 0 ? Math.min(100, Math.round((completed / total) * 100)) : 0;
   const workflowTotal = selectedWorkflowItems.length;
@@ -2354,7 +2369,7 @@ export function TaskQuestPanel({
                       </h2>
                       {focusedWorkflow ? (
                         <p className="mt-1 text-xs font-semibold text-slate-500">
-                          {task.processName || task.processCode} ·{" "}
+                          {displayedProcessName} ·{" "}
                           {en ? "Focused workflow" : "선택 프로세스 진행 중"}
                         </p>
                       ) : null}
@@ -2382,7 +2397,7 @@ export function TaskQuestPanel({
                         {en ? "Process" : "프로세스"}
                       </dt>
                       <dd className="font-semibold text-slate-800">
-                        {task.processName || task.processCode || "-"}
+                        {displayedProcessName}
                       </dd>
                     </div>
                     <div className="flex gap-2">
@@ -2399,7 +2414,7 @@ export function TaskQuestPanel({
                         {en ? "Assignee" : "담당자"}
                       </dt>
                       <dd className="font-semibold text-slate-800">
-                        {actorLabel(task.actorCode)}
+                        {displayedActorName}
                       </dd>
                     </div>
                     <div className="flex gap-2">
@@ -2551,7 +2566,7 @@ export function TaskQuestPanel({
               <label className="block text-xs font-black text-slate-600">{en ? "Process" : "프로세스"}</label>
               <select className="mt-1 h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm" value={selectedCatalogProcessCode} onChange={(event) => { selectCatalogProcess(event.target.value); void loadQaResults(event.target.value); }}><option value="">{en ? "Select process" : "프로세스 선택"}</option>{selectedDefinedProcesses.map((process) => <option key={process.processCode} value={process.processCode}>{process.processName}</option>)}</select>
               <label className="mt-3 block text-xs font-black text-slate-600">{en ? "Procedure" : "절차"}</label>
-              <select className="mt-1 h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm" value={selectedCatalogStep} onChange={(event) => { const index=Number(event.target.value); setSelectedCatalogStep(index); localStorage.setItem("task-quest-catalog-step", String(index)); }}>{selectedCatalogSteps.map((step,index) => <option key={step.stepCode} value={index}>{selectedCatalogProcessCode === EMISSION_END_TO_END_PROCESS_CODE ? `${emissionPhaseLabel(step.stepCode, en)} · ` : ""}{index+1}. {step.stepName} · {actorLabel(step.actorCode)}</option>)}</select>
+              <select className="mt-1 h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm" value={selectedCatalogStep} onChange={(event) => { const index=Number(event.target.value); setSelectedCatalogStep(index); localStorage.setItem("task-quest-catalog-step", String(index)); }}>{selectedCatalogSteps.map((step,index) => <option key={step.stepCode} value={index}>{selectedCatalogProcessCode === EMISSION_END_TO_END_PROCESS_CODE ? `${emissionPhaseLabel(step.stepCode, en)} · ` : ""}{index+1}. {step.stepName} · {step.actorName || actorLabel(step.actorCode)}</option>)}</select>
               <label className="mt-3 block text-xs font-black text-slate-600">{en ? "Work instance and project" : "업무 인스턴스·프로젝트"}</label>
               <select className="mt-1 h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm" value={effectiveProjectId} onChange={(event) => { setSelectedOverviewProjectId(event.target.value); localStorage.setItem("task-quest-overview-project", event.target.value); }}><option value="">{en ? "Select project" : "프로젝트 선택"}</option>{overviewProjects.map((project) => <option key={project.id} value={project.id}>{project.name}</option>)}</select>
               {selectedCatalogSteps[selectedCatalogStep] ? <dl className="mt-3 space-y-2 rounded-xl bg-slate-50 p-3 text-xs leading-5 text-slate-700"><div><dt className="font-black text-slate-500">{en ? "Purpose" : "업무 목적"}</dt><dd>{selectedCatalogSteps[selectedCatalogStep].workPurpose || "-"}</dd></div><div><dt className="font-black text-slate-500">{en ? "Input guide" : "입력 범위·가이드"}</dt><dd className="whitespace-pre-wrap">{selectedCatalogSteps[selectedCatalogStep].inputContract || "저장값을 우선 불러오고, 필수값·최솟값·선택지·예시값 순서로 입력합니다."}</dd></div><div><dt className="font-black text-slate-500">{en ? "Done when" : "완료 조건"}</dt><dd>{selectedCatalogSteps[selectedCatalogStep].completionRule || "-"}</dd></div><div><dt className="font-black text-slate-500">{en ? "Screen" : "연결 화면"}</dt><dd>{selectedCatalogSteps[selectedCatalogStep].userPath || selectedCatalogSteps[selectedCatalogStep].adminPath || "-"}</dd></div></dl> : null}
