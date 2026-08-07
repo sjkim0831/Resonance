@@ -28,9 +28,13 @@ assert(mapperTest.includes("resolvesCompanyReapplicationWithoutFallingBackToHome
   "route mapper regression test is missing");
 assert(browser.includes("window.__CARBONET_REACT_APP_MOUNTED__===true")&&browser.includes('document.querySelector("#lookup-bizNo")'),
   "browser harness does not wait for the actual reapplication screen");
+assert(browser.includes('submitButton.press("Enter")')&&browser.includes("submit did not issue POST")&&browser.includes("requiredValues"),
+  "browser harness does not exercise keyboard submit with fail-closed diagnostics");
+assert(!browser.includes('page.keyboard.press("Enter")'),
+  "browser harness still relies on page-global keyboard focus");
 assert(task.includes("const canLoadPrivateTasks=frontendSession.authenticated===true")&&task.includes("if(!canLoadPrivateTasks)"),
   "anonymous public pages can still call the private task API");
 assert(note.includes("const canUseAdminDesignNotes=frontendSession.authenticated===true&&frontendSession.canEnterAdminConsole===true")&&note.includes("if(!canUseAdminDesignNotes)"),
   "non-admin pages can still call the admin design-note API");
-console.log("[company-reapplication-route-guards] PASS route=1 mount=1 anonymousApiGuards=2");
+console.log("[company-reapplication-route-guards] PASS route=1 mount=1 keyboardSubmit=1 diagnostics=1 anonymousApiGuards=2");
 NODE

@@ -126,11 +126,40 @@ async function runBusinessJourney(testCase){
     await page.locator("input.file-input").first().setInputFiles(testCase.pdfPath);
 
     const submitButton=page.getByRole("button",{name:"재신청 완료",exact:true});
-    await submitButton.focus();
-    const submitPromise=page.waitForResponse(candidate=>candidate.url().endsWith("/join/api/company-reapply")&&candidate.request().method()==="POST",{timeout:20000});
-    if(viewport.name==="desktop")await page.keyboard.press("Enter");
-    else await submitButton.click();
-    const submitResponse=await submitPromise;
+    let submitResponse;
+    try{
+      const submitPromise=page.waitForResponse(candidate=>candidate.url().endsWith("/join/api/company-reapply")&&candidate.request().method()==="POST",{timeout:20000});
+      if(viewport.name==="desktop")await submitButton.press("Enter");
+      else await submitButton.click();
+      submitResponse=await submitPromise;
+    }catch(error){
+      const diagnostic=await page.evaluate(()=>{
+        const hasValue=(selector)=>Boolean(String(document.querySelector(selector)?.value||"").trim());
+        const submit=[...document.querySelectorAll("button")].find(node=>node.textContent?.trim()==="재신청 완료");
+        const visible=(node)=>node instanceof HTMLElement&&node.offsetParent!==null;
+        return {
+          submitDisabled:Boolean(submit?.disabled),
+          submitFocused:document.activeElement===submit,
+          requiredValues:{
+            chargerName:hasValue("#charger-name"),
+            chargerEmail:hasValue("#charger-email"),
+            chargerTel:hasValue("#charger-tel"),
+            agencyName:hasValue("#company-name"),
+            representativeName:hasValue("#rep-name"),
+            zipCode:hasValue("#zip-code"),
+            companyAddress:hasValue("#company-address"),
+          },
+          fileCount:document.querySelector("input.file-input")?.files?.length||0,
+          alerts:[...document.querySelectorAll('[role="alert"]')]
+            .filter(visible)
+            .map(node=>String(node.textContent||"").replace(/\s+/g," ").trim())
+            .filter(Boolean)
+            .slice(0,5),
+        };
+      });
+      const reason=error instanceof Error?error.message:String(error);
+      throw new Error(`${viewport.name} submit did not issue POST ${JSON.stringify(diagnostic)} cause=${reason}`);
+    }
     if(submitResponse.status()!==200)throw new Error(`${viewport.name} submit failed status=${submitResponse.status()}`);
 
     await page.getByRole("heading",{name:"재신청 접수 완료",exact:true}).waitFor({state:"visible",timeout:10000});
