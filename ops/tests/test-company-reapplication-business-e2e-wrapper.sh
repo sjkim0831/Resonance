@@ -31,7 +31,8 @@ for(const token of [
   'page.locator("#lookup-bizNo").fill',
   'page.locator("#lookup-repName").fill',
   'page.locator("#lookup-registeredContact").fill',
-  "const uploadBuffer=readFileSync(testCase.pdfPath)",
+  "const fixtureBuffer=Buffer.from(readFileSync(testCase.pdfPath))",
+  'const fixtureSha=createHash("sha256").update(fixtureBuffer).digest("hex")',
   "buffer:uploadBuffer",
   "fileInput.files[0].size>0",
   'name:"재신청 완료"',
@@ -40,7 +41,14 @@ for(const token of [
   'page.getByRole("listitem").filter',
   'getByRole("link",{name:"다운로드",exact:true})',
   'page.waitForEvent("download"',
-  'downloadedBuffer.equals(uploadBuffer)',
+  'context.request.get(downloadUrl.toString())',
+  'directDownloadedBuffer.equals(fixtureBuffer)',
+  'submitResponse.json()',
+  'receiptSha!==fixtureSha',
+  'downloadResponse.allHeaders()',
+  'download.failure()',
+  'download.path()',
+  'downloadedBuffer.equals(fixtureBuffer)',
   'downloadVerified:true',
   'downloadVerified:journeys.every(item=>item.downloadVerified)?1:0',
   'representativeUpdateVerified:journeys.some(item=>item.representativeUpdated)?1:0',
@@ -48,6 +56,10 @@ for(const token of [
   'statusDetailResponse.status()!==200',
   "businessJourneyCount:journeys.length",
 ]) assert(browser.includes(token),`browser business E2E contract missing: ${token}`);
+assert(browser.includes('String(process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH||"").trim()'),
+  "explicit Playwright browser override contract missing");
+assert(!browser.includes('"/snap/bin/chromium"')&&!browser.includes('"/usr/bin/chromium"'),
+  "system Chromium auto-selection must not override the Playwright bundled browser");
 assert(browser.includes("process.env.CARBONET_BROWSER_BASE_URL||process.env.CARBONET_RUNTIME_BASE_URL"),
   "browser-specific canonical host precedence missing");
 for(const token of [
@@ -148,8 +160,8 @@ const wrapperWithoutBrowserLimiterPreflight=wrapper.replace("wait_for_browser_ra
 assert(!wrapperWithoutBrowserLimiterPreflight.includes("wait_for_browser_rate_limit_capacity\n"),"browser limiter preflight mutation escaped");
 assert((wrapper.match(/company-reapplication-browser-rate-limit-candidate\.jq/g)||[]).length>=3,"candidate resolver must be covered by both dirty guards");
 assert(wrapper.includes("request_count=request_count-${owned_delta}"),"browser cleanup must subtract only the owned delta");
-const browserWithoutDownloadBytes=browser.replace("downloadedBuffer.equals(uploadBuffer)","downloadedBuffer.length===uploadBuffer.length");
-assert(!browserWithoutDownloadBytes.includes("downloadedBuffer.equals(uploadBuffer)"),"download byte-equality mutation escaped");
+const browserWithoutDownloadBytes=browser.replace("downloadedBuffer.equals(fixtureBuffer)","downloadedBuffer.length===fixtureBuffer.length");
+assert(!browserWithoutDownloadBytes.includes("downloadedBuffer.equals(fixtureBuffer)"),"download byte-equality mutation escaped");
 const statusPageWithoutDirectHref=statusPage.replace('href={`/join/downloadInsttFile?downloadToken=${encodeURIComponent(downloadToken)}`}','href="#"');
 assert(!statusPageWithoutDirectHref.includes('href={`/join/downloadInsttFile?downloadToken=${encodeURIComponent(downloadToken)}`}'),"direct-download href mutation escaped");
 const controllerWithoutCommittedIdentity=controller.replace("committedIdentity.setReprsntNm(repName.trim())","committedIdentity.setReprsntNm(current.getReprsntNm())");

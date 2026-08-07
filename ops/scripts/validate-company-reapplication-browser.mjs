@@ -18,7 +18,8 @@ const viewportDefinitions=[
   {name:"desktop",width:1440,height:1000},
   {name:"mobile",width:390,height:844},
 ];
-const executablePath=[process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH,"/snap/bin/chromium","/usr/bin/chromium","/usr/bin/chromium-browser","/usr/bin/google-chrome"].find(value=>value&&existsSync(value));
+const executablePath=String(process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH||"").trim();
+if(executablePath&&!existsSync(executablePath))throw new Error("PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH does not exist");
 const browser=await chromium.launch({headless:true,...(executablePath?{executablePath}:{}),args:["--no-sandbox"]});
 const routeSamples=[];
 const journeys=[];
@@ -126,8 +127,11 @@ async function runBusinessJourney(testCase){
     const submittedRepName=String(testCase.updatedRepName||testCase.repName);
     await page.locator("#rep-name").fill(submittedRepName);
     await page.locator("#company-address-detail").fill(testCase.detailAddress);
-    const uploadBuffer=readFileSync(testCase.pdfPath);
-    if(uploadBuffer.length<=0)throw new Error(`${viewport.name} browser fixture is empty`);
+    const fixtureBuffer=Buffer.from(readFileSync(testCase.pdfPath));
+    const fixtureLength=fixtureBuffer.length;
+    const fixtureSha=createHash("sha256").update(fixtureBuffer).digest("hex");
+    if(fixtureLength<=0)throw new Error(`${viewport.name} browser fixture is empty`);
+    const uploadBuffer=Buffer.from(fixtureBuffer);
     await page.locator("input.file-input").first().setInputFiles({
       name:testCase.fileName,
       mimeType:"application/pdf",
@@ -181,6 +185,17 @@ async function runBusinessJourney(testCase){
       throw new Error(`${viewport.name} submit did not issue POST ${JSON.stringify(diagnostic)} cause=${reason}`);
     }
     if(submitResponse.status()!==200)throw new Error(`${viewport.name} submit failed status=${submitResponse.status()}`);
+    const submitBody=await submitResponse.json();
+    const receiptHashes=Array.isArray(submitBody?.receipt?.fileSha256s)?submitBody.receipt.fileSha256s.map(String):[];
+    const receiptSha=receiptHashes.length===1?receiptHashes[0]:"";
+    if(receiptSha!==fixtureSha){
+      throw new Error(`${viewport.name} stored evidence hash does not match the uploaded fixture ${JSON.stringify({
+        fixtureLength,
+        fixtureSha,
+        receiptEvidenceCount:receiptHashes.length,
+        receiptSha,
+      })}`);
+    }
 
     await page.getByRole("heading",{name:"재신청 접수 완료",exact:true}).waitFor({state:"visible",timeout:10000});
     await page.getByText("승인 검토 대기",{exact:true}).waitFor({state:"visible",timeout:10000});
@@ -207,19 +222,57 @@ async function runBusinessJourney(testCase){
     if(downloadUrl.pathname!=="/join/downloadInsttFile"||!downloadUrl.searchParams.get("downloadToken")){
       throw new Error(`${viewport.name} evidence download link contract failed`);
     }
-    const [download]=await Promise.all([
+    const directDownloadResponse=await context.request.get(downloadUrl.toString());
+    const directDownloadHeaders=directDownloadResponse.headers();
+    const directDownloadedBuffer=Buffer.from(await directDownloadResponse.body());
+    const directDownloadedSha=createHash("sha256").update(directDownloadedBuffer).digest("hex");
+    const directContentType=String(directDownloadHeaders["content-type"]||"").toLowerCase();
+    const directContentLength=Number.parseInt(String(directDownloadHeaders["content-length"]||""),10);
+    if(directDownloadResponse.status()!==200||!directContentType.startsWith("application/octet-stream")
+        ||!directDownloadedBuffer.equals(fixtureBuffer)||directDownloadedSha!==fixtureSha
+        ||(Number.isFinite(directContentLength)&&directContentLength!==fixtureLength)){
+      throw new Error(`${viewport.name} same-session direct evidence download failed ${JSON.stringify({
+        responseStatus:directDownloadResponse.status(),
+        responseContentType:directContentType,
+        responseContentLength:Number.isFinite(directContentLength)?directContentLength:null,
+        fixtureLength,
+        downloadedLength:directDownloadedBuffer.length,
+        fixtureSha,
+        receiptSha,
+        downloadedSha:directDownloadedSha,
+      })}`);
+    }
+    const [downloadResponse,download]=await Promise.all([
+      page.waitForResponse(candidate=>new URL(candidate.url()).pathname==="/join/downloadInsttFile"&&candidate.request().method()==="GET",{timeout:15000}),
       page.waitForEvent("download",{timeout:15000}),
       downloadLink.click(),
     ]);
-    const downloadStream=await download.createReadStream();
-    if(!downloadStream)throw new Error(`${viewport.name} evidence download stream is unavailable`);
-    const downloadedChunks=[];
-    for await(const chunk of downloadStream)downloadedChunks.push(Buffer.from(chunk));
-    const downloadedBuffer=Buffer.concat(downloadedChunks);
-    const fixtureSha=createHash("sha256").update(uploadBuffer).digest("hex");
+    const downloadHeaders=await downloadResponse.allHeaders();
+    const responseContentType=String(downloadHeaders["content-type"]||"").toLowerCase();
+    const responseContentLength=Number.parseInt(String(downloadHeaders["content-length"]||""),10);
+    const downloadFailure=await download.failure();
+    if(downloadResponse.status()!==200||!responseContentType.startsWith("application/octet-stream")||downloadFailure){
+      throw new Error(`${viewport.name} evidence download response contract failed ${JSON.stringify({
+        responseStatus:downloadResponse.status(),
+        responseContentType,
+        responseContentLength:Number.isFinite(responseContentLength)?responseContentLength:null,
+        downloadFailure:Boolean(downloadFailure),
+      })}`);
+    }
+    const downloadedPath=await download.path();
+    if(!downloadedPath)throw new Error(`${viewport.name} finalized evidence download is unavailable`);
+    const downloadedBuffer=readFileSync(downloadedPath);
     const downloadedSha=createHash("sha256").update(downloadedBuffer).digest("hex");
-    if(!downloadedBuffer.equals(uploadBuffer)||downloadedSha!==fixtureSha){
-      throw new Error(`${viewport.name} evidence download bytes do not match the uploaded fixture`);
+    if(!downloadedBuffer.equals(fixtureBuffer)||downloadedSha!==fixtureSha
+        ||(Number.isFinite(responseContentLength)&&responseContentLength!==fixtureLength)){
+      throw new Error(`${viewport.name} evidence download bytes do not match the uploaded fixture ${JSON.stringify({
+        fixtureLength,
+        downloadedLength:downloadedBuffer.length,
+        responseContentLength:Number.isFinite(responseContentLength)?responseContentLength:null,
+        fixtureSha,
+        receiptSha,
+        downloadedSha,
+      })}`);
     }
     if(errors.length)throw new Error(`${viewport.name} page errors ${JSON.stringify(errors)}`);
     journeys.push({
@@ -230,6 +283,7 @@ async function runBusinessJourney(testCase){
       completionVisible:true,
       statusDetailVisible:true,
       evidenceVisible:true,
+      directDownloadVerified:true,
       downloadVerified:true,
       representativeUpdated:Boolean(testCase.updatedRepName),
       keyboardSubmit:viewport.name==="desktop",
