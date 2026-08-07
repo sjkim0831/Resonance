@@ -142,6 +142,9 @@ bash "$ROOT/ops/scripts/validate-company-reapplication-runtime.sh" >"$TMP/runtim
 
 printf '%%PDF-1.4\n%% Resonance desktop reapplication browser fixture\n' >"$DESKTOP_PDF"
 printf '%%PDF-1.4\n%% Resonance mobile reapplication browser fixture\n' >"$MOBILE_PDF"
+[[ -s "$DESKTOP_PDF" && -s "$MOBILE_PDF" ]] || {
+  echo COMPANY_REAPPLICATION_BROWSER_FIXTURE_EMPTY >&2; exit 1;
+}
 q "insert into comtninsttinfo(
      instt_id,project_id,instt_nm,entrprs_se_code,reprsnt_nm,bizrno,zip,adres,detail_adres,
      biz_reg_file_path,instt_sttus,rjct_rsn,rjct_pnttm,frst_regist_pnttm,last_updt_pnttm,

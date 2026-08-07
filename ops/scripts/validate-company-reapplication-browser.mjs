@@ -123,13 +123,20 @@ async function runBusinessJourney(testCase){
     await page.locator("#charger-email").fill(testCase.chargerEmail);
     await page.locator("#charger-tel").fill(testCase.chargerTel);
     await page.locator("#company-address-detail").fill(testCase.detailAddress);
-    await page.locator("input.file-input").first().setInputFiles(testCase.pdfPath);
+    const uploadBuffer=readFileSync(testCase.pdfPath);
+    if(uploadBuffer.length<=0)throw new Error(`${viewport.name} browser fixture is empty`);
+    await page.locator("input.file-input").first().setInputFiles({
+      name:testCase.fileName,
+      mimeType:"application/pdf",
+      buffer:uploadBuffer,
+    });
     await page.waitForFunction(()=>{
       const hasValue=(selector)=>Boolean(String(document.querySelector(selector)?.value||"").trim());
       const fileInput=document.querySelector("input.file-input");
       const submit=[...document.querySelectorAll("button")].find(node=>node.textContent?.trim()==="재신청 완료");
       return ["#charger-name","#charger-email","#charger-tel","#company-name","#rep-name","#zip-code","#company-address"]
-        .every(hasValue)&&fileInput?.files?.length===1&&submit instanceof HTMLButtonElement&&!submit.disabled;
+        .every(hasValue)&&fileInput?.files?.length===1&&fileInput.files[0].size>0
+        &&submit instanceof HTMLButtonElement&&!submit.disabled;
     },undefined,{timeout:5000});
     await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
 

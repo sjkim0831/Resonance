@@ -25,7 +25,9 @@ for(const token of [
   'page.locator("#lookup-bizNo").fill',
   'page.locator("#lookup-repName").fill',
   'page.locator("#lookup-registeredContact").fill',
-  "setInputFiles(testCase.pdfPath)",
+  "const uploadBuffer=readFileSync(testCase.pdfPath)",
+  "buffer:uploadBuffer",
+  "fileInput.files[0].size>0",
   'name:"재신청 완료"',
   'name:"재신청 접수 완료"',
   'url.pathname==="/join/companyJoinStatusDetail"',
@@ -49,6 +51,7 @@ for(const token of [
   'CARBONET_REAPPLICATION_BROWSER_CASES_FILE="$CASES_FILE"',
   "insert into comtninsttinfo(",
   "browserPersistence:1",
+  '[[ -s "$DESKTOP_PDF" && -s "$MOBILE_PDF" ]]',
   "delete_browser_fixtures 1",
   ".performanceSampleCount<20",
 ]) assert(wrapper.includes(token),`wrapper fail-closed contract missing: ${token}`);
@@ -62,8 +65,8 @@ assert(wrapper.includes('source=commit-lineage')&&wrapper.includes('source=unrel
   "unreleased runtime-affecting gaps are not fail-closed");
 assert(!/172\.16\.1\.232/.test(browser+wrapper),"deployment IP was hardcoded");
 
-const browserWithoutJourney=browser.replace("setInputFiles(testCase.pdfPath)","fill(testCase.pdfPath)");
-assert(!browserWithoutJourney.includes("setInputFiles(testCase.pdfPath)"),"upload mutation escaped");
+const browserWithoutJourney=browser.replace("buffer:uploadBuffer","files:uploadBuffer");
+assert(!browserWithoutJourney.includes("buffer:uploadBuffer"),"non-empty upload payload mutation escaped");
 const browserWithNineteen=browser.replace("routeSamples.length<20","routeSamples.length<19");
 assert(!browserWithNineteen.includes("routeSamples.length<20"),"sample-count mutation escaped");
 const wrapperWithoutLock=wrapper.replace('flock -w "$DEPLOY_LOCK_WAIT_SECONDS" 8','true');
