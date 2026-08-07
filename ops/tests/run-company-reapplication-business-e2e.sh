@@ -155,6 +155,7 @@ cleanup_browser_rate_limit_fixture() {
     do \$browser_rate_cleanup\$
     declare
       locked_rows integer;
+      deleted_rows integer;
       updated_rows integer;
     begin
       select count(*) into locked_rows
@@ -185,22 +186,24 @@ cleanup_browser_rate_limit_fixture() {
       ) then
         raise exception 'browser limiter owned delta is no longer present';
       end if;
-      update framework_public_lookup_rate_limit
-      set request_count=request_count-${owned_delta},updated_at=current_timestamp
-      where project_id='${PROJECT_ID}'
-        and remote_addr_hash='${remote_hash}'
-        and endpoint_code in ('company-reapply-page','company-reapply-submit','company-status-detail')
-        and window_bucket=${bucket};
-      get diagnostics updated_rows = row_count;
-      if updated_rows <> 3 then
-        raise exception 'browser limiter exact-row update mismatch';
-      end if;
       delete from framework_public_lookup_rate_limit
       where project_id='${PROJECT_ID}'
         and remote_addr_hash='${remote_hash}'
         and endpoint_code in ('company-reapply-page','company-reapply-submit','company-status-detail')
         and window_bucket=${bucket}
-        and request_count=0;
+        and request_count=${owned_delta};
+      get diagnostics deleted_rows = row_count;
+      update framework_public_lookup_rate_limit
+      set request_count=request_count-${owned_delta},updated_at=current_timestamp
+      where project_id='${PROJECT_ID}'
+        and remote_addr_hash='${remote_hash}'
+        and endpoint_code in ('company-reapply-page','company-reapply-submit','company-status-detail')
+        and window_bucket=${bucket}
+        and request_count>${owned_delta};
+      get diagnostics updated_rows = row_count;
+      if deleted_rows+updated_rows <> 3 then
+        raise exception 'browser limiter exact-row cleanup mismatch';
+      end if;
     end
     \$browser_rate_cleanup\$;
     commit;" >/dev/null; then

@@ -127,10 +127,12 @@ for(const token of [
   "cleanup_browser_rate_limit_fixture 0",
   "browserRateLimitFixtureCleanup:1",
   "for update",
+  "deleted_rows integer",
   "request_count=request_count-${owned_delta}",
-  "and request_count=0",
+  "and request_count=${owned_delta}",
+  "and request_count>${owned_delta}",
   "locked_rows <> 3",
-  "updated_rows <> 3",
+  "deleted_rows+updated_rows <> 3",
   "COMPANY_REAPPLICATION_BROWSER_RATE_LIMIT_CANDIDATE_MISMATCH",
   "BROWSER_RATE_LIMIT_BASELINE_CAPTURED=1",
   "BROWSER_RATE_LIMIT_FIXTURE_CLEANED=1",
@@ -160,6 +162,10 @@ const wrapperWithoutBrowserLimiterPreflight=wrapper.replace("wait_for_browser_ra
 assert(!wrapperWithoutBrowserLimiterPreflight.includes("wait_for_browser_rate_limit_capacity\n"),"browser limiter preflight mutation escaped");
 assert((wrapper.match(/company-reapplication-browser-rate-limit-candidate\.jq/g)||[]).length>=3,"candidate resolver must be covered by both dirty guards");
 assert(wrapper.includes("request_count=request_count-${owned_delta}"),"browser cleanup must subtract only the owned delta");
+const wrapperWithoutZeroDelete=wrapper.replace("and request_count=${owned_delta};","and request_count=0;");
+assert(!wrapperWithoutZeroDelete.includes("and request_count=${owned_delta};"),"zero-target delete guard mutation escaped");
+const wrapperWithoutCleanupCardinality=wrapper.replace("deleted_rows+updated_rows <> 3","updated_rows <> 3");
+assert(!wrapperWithoutCleanupCardinality.includes("deleted_rows+updated_rows <> 3"),"delete/update cardinality mutation escaped");
 const browserWithoutDownloadBytes=browser.replace("downloadedBuffer.equals(fixtureBuffer)","downloadedBuffer.length===fixtureBuffer.length");
 assert(!browserWithoutDownloadBytes.includes("downloadedBuffer.equals(fixtureBuffer)"),"download byte-equality mutation escaped");
 const statusPageWithoutDirectHref=statusPage.replace('href={`/join/downloadInsttFile?downloadToken=${encodeURIComponent(downloadToken)}`}','href="#"');
@@ -172,4 +178,4 @@ const wrapperWithoutBrowserCleanupEvidence=wrapper.replace("browserRateLimitFixt
 assert(!wrapperWithoutBrowserCleanupEvidence.includes("browserRateLimitFixtureCleanup:1"),"browser limiter cleanup evidence mutation escaped");
 NODE
 bash "$RATE_BEHAVIOR_TEST"
-echo '[company-reapplication-business-e2e-wrapper-test] PASS routeSamples=20 journeys=2 downloads=2 representative-update=1 freshness=3 identities=runtime+validation cleanup=resolved+runtime-rate+browser-rate mutations=10'
+echo '[company-reapplication-business-e2e-wrapper-test] PASS routeSamples=20 journeys=2 downloads=2 representative-update=1 freshness=3 identities=runtime+validation cleanup=resolved+runtime-rate+browser-rate mutations=12'

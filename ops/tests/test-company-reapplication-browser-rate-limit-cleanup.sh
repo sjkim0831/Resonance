@@ -56,10 +56,12 @@ jq -n --argjson locked '[6,8,10]' --argjson baseline '[3,4,5]' '
     and (($after[1]-$baseline[1])==2)
     and (($after[2]-$baseline[2])==3)' | grep -qx true
 
-# Rows whose exact owned subtraction reaches zero are the only deletion set.
+# Rows whose exact owned subtraction reaches zero are deleted before UPDATE,
+# while positive targets are decremented and the two sets cover all locks.
 jq -n --argjson locked '[2,5,2]' '
-  ($locked|map(.-2)) as $after
-  | ($after==[0,3,0]) and (($after|map(select(.==0))|length)==2)' | grep -qx true
+  ($locked|map(select(.==2))|length) as $deleted
+  | ($locked|map(select(.>2)|.-2)) as $updated
+  | ($deleted==2) and ($updated==[3]) and (($deleted+($updated|length))==3)' | grep -qx true
 
 jq '.[] |= if (.remoteHash|startswith("aaaa")) and .endpointCode=="company-status-detail"
   then .requestCount=8 else . end' "$TMP/current.json" >"$TMP/mismatch.json"
