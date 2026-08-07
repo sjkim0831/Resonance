@@ -39,10 +39,16 @@ export function ScreenDevelopmentNotePanel({ pageId, routePath, workContext }: {
   const generateEndpoint="/admin/api/system/actor-process/design/save-and-generate";
   const designRoutePath=workContext?.identity?.canonicalRoutePath||normalizeScreenRoute(routePath);
   const workClassification=workContext?.classification||(workContext?.workflow||workContext?.candidates?.length?"EXECUTABLE":"REVIEW_REQUIRED");
+  const frontendSession=(window.__CARBONET_REACT_BOOTSTRAP__?.frontendSession||{}) as {
+    authenticated?: boolean;
+    canEnterAdminConsole?: boolean;
+  };
+  const canUseAdminDesignNotes=frontendSession.authenticated===true&&frontendSession.canEnterAdminConsole===true;
 
   useEffect(()=>{
     let cancelled=false;
     setOpen(false);setMessage("");
+    if(!canUseAdminDesignNotes){setAvailable(false);return()=>{cancelled=true;};}
     fetch(`${endpoint}?routePath=${encodeURIComponent(designRoutePath)}`,{credentials:"include",headers:{Accept:"application/json"}})
       .then(async response=>{
         if(response.status===401||response.status===403){if(!cancelled)setAvailable(false);return null;}
@@ -54,7 +60,7 @@ export function ScreenDevelopmentNotePanel({ pageId, routePath, workContext }: {
         setAvailable(true);setMessage(error instanceof Error?error.message:String(error));
       }});
     return()=>{cancelled=true;};
-  },[designRoutePath,pageId]);
+  },[canUseAdminDesignNotes,designRoutePath,pageId]);
 
   async function save(){
     setBusy(true);setMessage("");

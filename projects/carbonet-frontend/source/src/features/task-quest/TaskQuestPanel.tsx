@@ -551,6 +551,10 @@ export function TaskQuestPanel({
   const screenClassification = screenContext?.classification
     || (screenContext?.workflow || screenContext?.candidates?.length ? "EXECUTABLE" : "REVIEW_REQUIRED");
   const screenContextExecutable = screenClassification === "EXECUTABLE";
+  const frontendSession=(window.__CARBONET_REACT_BOOTSTRAP__?.frontendSession||{}) as {
+    authenticated?: boolean;
+  };
+  const canLoadPrivateTasks=frontendSession.authenticated===true;
   const api = buildLocalizedPath(
     "/home/api/emission-tasks",
     "/en/home/api/emission-tasks",
@@ -628,6 +632,7 @@ export function TaskQuestPanel({
   const [assignmentMessage, setAssignmentMessage] = useState("");
 
   async function load() {
+    if(!canLoadPrivateTasks){setLoading(false);return;}
     try {
       const response = await fetch(api, { credentials: "include" });
       if (response.status === 401 || response.status === 403) return;
@@ -646,10 +651,11 @@ export function TaskQuestPanel({
   }
 
   useEffect(() => {
+    if(!canLoadPrivateTasks){setLoading(false);return;}
     void load();
     const timer = window.setInterval(() => void load(), 60_000);
     return () => window.clearInterval(timer);
-  }, [api]);
+  }, [api,canLoadPrivateTasks]);
 
   const qaCompanies = useMemo(
     () => [...new Map(QA_TEST_ACCOUNTS.map((account) => [account.companyId, { id: account.companyId, name: account.companyName }])).values()],

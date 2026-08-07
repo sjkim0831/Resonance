@@ -50,6 +50,20 @@ class ReactPageUrlMapperTest {
     }
 
     @Test
+    void resolvesCompanyReapplicationWithoutFallingBackToHome() {
+        assertEquals("join_company_reapply",
+                ReactPageUrlMapper.resolveRouteIdForPath("/join/companyReapply"));
+        assertEquals("join_company_reapply",
+                ReactPageUrlMapper.resolveRouteIdForPath("/join/en/companyReapply"));
+        assertEquals("/join/companyReapply",
+                ReactPageUrlMapper.toRuntimeUrl("/join/companyReapply", false));
+        assertEquals("/join/en/companyReapply",
+                ReactPageUrlMapper.toRuntimeUrl("/join/companyReapply", true));
+        assertEquals("/join/companyReapply",
+                ReactPageUrlMapper.toCanonicalMenuUrl("/join/companyreapply"));
+    }
+
+    @Test
     void canonicalizesCaseOnlyJoinRouteVariantsFromDesignLedger() {
         assertEquals("join_company_register",
                 ReactPageUrlMapper.resolveRouteIdForPath("/join/companyregister"));

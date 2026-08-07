@@ -142,6 +142,7 @@ registerAdmin(adminPathToRoute, adminRouteToPath, "emission-survey-admin-data", 
         registerHome(homePathToRoute, homeRouteToPath, homeLocalizedPaths, "join-company-register-complete", "/join/companyRegisterComplete", "/join/en/companyRegisterComplete", "/join/companyRegisterComplete");
         registerHome(homePathToRoute, homeRouteToPath, homeLocalizedPaths, "join-company-status", "/join/companyJoinStatusSearch", "/join/en/companyJoinStatusSearch", "/join/companyJoinStatusSearch");
         registerHome(homePathToRoute, homeRouteToPath, homeLocalizedPaths, "join-company-status-detail", "/join/companyJoinStatusDetail", "/join/en/companyJoinStatusDetail", "/join/companyJoinStatusDetail");
+        registerHome(homePathToRoute, homeRouteToPath, homeLocalizedPaths, "join-company-reapply", "/join/companyReapply", "/join/en/companyReapply", "/join/companyReapply");
 
         ADMIN_PATH_TO_ROUTE = Collections.unmodifiableMap(adminPathToRoute);
         ADMIN_ROUTE_TO_PATH = Collections.unmodifiableMap(adminRouteToPath);

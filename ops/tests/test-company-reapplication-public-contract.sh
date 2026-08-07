@@ -8,6 +8,7 @@ PROMOTER_TEST="$ROOT/ops/scripts/test-promote-screen-contract-after-e2e.sh"
 RUNTIME_E2E="$ROOT/ops/scripts/validate-company-reapplication-runtime.sh"
 BUSINESS_E2E_WRAPPER="$ROOT/ops/tests/run-company-reapplication-business-e2e.sh"
 BROWSER_E2E="$ROOT/ops/scripts/validate-company-reapplication-browser.mjs"
+ROUTE_GUARD_TEST="$ROOT/ops/tests/test-company-reapplication-route-guards.sh"
 APPROVAL_CONTROLLER="$ROOT/modules/resonance-common/carbonet-common-core/src/main/java/egovframework/com/feature/admin/web/AdminApprovalController.java"
 APPROVAL_COMMAND="$ROOT/modules/resonance-common/carbonet-common-core/src/main/java/egovframework/com/feature/admin/web/AdminApprovalCommandService.java"
 APPROVAL_ACTION="$ROOT/modules/resonance-common/carbonet-common-core/src/main/java/egovframework/com/feature/admin/web/AdminApprovalActionService.java"
@@ -22,14 +23,15 @@ ADMIN_API_CORE="$ROOT/projects/carbonet-frontend/source/src/lib/api/core.ts"
 
 fail() { echo "[company-reapplication-contract-test] FAIL: $*" >&2; exit 1; }
 for file in "$MIGRATION" "$PROMOTER" "$PROMOTER_TEST" "$RUNTIME_E2E" \
-  "$BUSINESS_E2E_WRAPPER" "$BROWSER_E2E" \
+  "$BUSINESS_E2E_WRAPPER" "$BROWSER_E2E" "$ROUTE_GUARD_TEST" \
   "$APPROVAL_CONTROLLER" "$APPROVAL_COMMAND" "$APPROVAL_ACTION" "$APPROVAL_STATUS" \
   "$MEMBER_SERVICE" "$MEMBER_MAPPER_XML" \
   "$EVIDENCE_RECONCILER" "$EVIDENCE_SCHEDULER" "$EVIDENCE_RECONCILER_TEST" \
   "$ADMIN_ACTIONS" "$ADMIN_API_CORE"; do
   [[ -f "$file" ]] || fail "missing $file"
 done
-bash -n "$PROMOTER" "$PROMOTER_TEST" "$RUNTIME_E2E" "$0"
+bash -n "$PROMOTER" "$PROMOTER_TEST" "$RUNTIME_E2E" "$ROUTE_GUARD_TEST" "$0"
+bash "$ROUTE_GUARD_TEST"
 
 node - "$MIGRATION" "$PROMOTER" "$RUNTIME_E2E" "$APPROVAL_CONTROLLER" \
   "$APPROVAL_COMMAND" "$APPROVAL_ACTION" "$APPROVAL_STATUS" \

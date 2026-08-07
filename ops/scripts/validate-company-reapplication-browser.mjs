@@ -25,9 +25,11 @@ const suiteStartedAt=Date.now();
 
 async function waitForMountedPage(page){
   await page.waitForFunction(()=>{
-    const rootNode=document.querySelector("#root");
-    return (rootNode?.children.length||0)>0&&(document.body?.innerText||"").trim().length>30;
-  },undefined,{timeout:10000});
+    const loading=document.querySelector("#shell-loading");
+    return window.__CARBONET_REACT_APP_MOUNTED__===true
+      && Boolean(document.querySelector("#lookup-bizNo"))
+      && (loading===null||loading.hasAttribute("hidden"));
+  },undefined,{timeout:15000});
 }
 
 async function inspectPage(page){
