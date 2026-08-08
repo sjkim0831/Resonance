@@ -44,6 +44,32 @@ const routes = [
         && Array.isArray(payload.regionalDistribution);
     },
   },
+  {
+    path: "/admin/member/approve",
+    api: "/admin/api/admin/member/approve/page",
+    title: "회원 승인",
+    language: "ko",
+    selectors: ["member-approve-search", "member-approve-batch-actions", "member-approve-table"],
+    validate(payload) {
+      return payload?.canViewMemberApprove === true
+        && Array.isArray(payload.approvalRows)
+        && Number.isFinite(Number(payload.memberApprovalTotalCount));
+    },
+  },
+  {
+    path: "/admin/member/list",
+    api: "/admin/api/admin/member/list/page",
+    title: "회원 목록 조회",
+    language: "ko",
+    selectors: ["member-list-search", "member-list-table"],
+    validate(payload) {
+      return payload?.canViewMemberList === true
+        && Array.isArray(payload.member_list)
+        && Number.isFinite(Number(payload.totalCount))
+        && Array.isArray(payload.memberTypeOptions)
+        && Array.isArray(payload.memberStatusOptions);
+    },
+  },
 ];
 
 const api = await request.newContext({ baseURL: baseUrl, ignoreHTTPSErrors: true });
