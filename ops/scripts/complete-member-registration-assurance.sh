@@ -42,20 +42,18 @@ gate="$(q "select
  and to_regclass('member_consent_history') is not null")"
 [[ "$gate" == t ]] || { echo '[member-assurance] FAIL persistence/design gate' >&2; exit 1; }
 
+s5_evidence="$(q "select count(*) from framework_simulation_case c
+ where c.process_code='MEMBER_REGISTRATION' and c.case_code like 'MEMBER_REGISTRATION_S5_%'
+ and exists(select 1 from framework_simulation_run r where r.case_code=c.case_code
+   and r.result='PASSED' and r.executed_by='member-registration-step5-relay-e2e'
+   and r.execution_environment='production-runtime+browser+admin-handoff')")"
+[[ "$s5_evidence" == 5 ]] || {
+  echo "[member-assurance] BLOCKED real step5 browser/admin handoff evidence=$s5_evidence/5" >&2
+  exit 75
+}
+
 evidence="verified:member-registration:public-runtime+isolated-provider-success+transaction+admin-handoff:$SOURCE_COMMIT"
 q "begin;
-update framework_simulation_case set automated=true,case_status='APPROVED',updated_at=current_timestamp
- where process_code='MEMBER_REGISTRATION';
-insert into framework_simulation_run(case_code,process_version,result,failure_reason,evidence_json,executed_by,source_commit,execution_environment,evidence_hash)
-select c.case_code,p.process_version,'PASSED',null,
- jsonb_build_object('publicRuntime',true,'providerSuccessContract',true,'identityFailClosed',true,
-   'transactionBoundary',true,'persistenceCalls',3,'adminPages',3,'readyScreens',11)::text,
- 'member-registration-assurance','$SOURCE_COMMIT','production-runtime+isolated-provider-contract',
- md5(c.case_code||':'||current_timestamp::text)||md5(current_timestamp::text||':'||c.case_code)
-from framework_simulation_case c join framework_process_definition p using(process_code)
-where c.process_code='MEMBER_REGISTRATION'
- and not exists(select 1 from framework_simulation_run r where r.case_code=c.case_code and r.result='PASSED');
-
 with candidate as (
  select job_id,job_status from framework_development_job where process_code='MEMBER_REGISTRATION' and required
 ), changed as (
