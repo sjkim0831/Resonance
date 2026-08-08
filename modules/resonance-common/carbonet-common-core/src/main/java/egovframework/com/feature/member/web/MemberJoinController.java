@@ -954,12 +954,18 @@ public class MemberJoinController {
         return entrprsManageService.searchCompanyListPaged(buildCompanySearchParams(keyword, "", 0, 100, resolveScopedInstitutionType(session)));
     }
 
-    @GetMapping({
-            "/companyJoinStatusSearch", "/ko/companyJoinStatusSearch", "/en/companyJoinStatusSearch",
-            "/companyJoinStatus", "/ko/companyJoinStatus", "/en/companyJoinStatus"
-    })
+    @GetMapping({"/companyJoinStatusSearch", "/ko/companyJoinStatusSearch", "/en/companyJoinStatusSearch"})
     public String companyJoinStatusSearch(HttpServletRequest request, Model model) {
         return renderJoinPage(model, "join-company-status", isEnglishJoinRequest(request));
+    }
+
+    @GetMapping({"/ko/companyJoinStatus", "/en/companyJoinStatus"})
+    public String legacyCompanyJoinStatus(HttpServletRequest request) {
+        String target = isEnglishJoinRequest(request)
+                ? "/join/en/companyJoinStatusSearch"
+                : "/join/companyJoinStatusSearch";
+        String query = request.getQueryString();
+        return "redirect:" + target + (hasText(query) ? "?" + query : "");
     }
 
     @GetMapping({"/companyJoinStatusGuide", "/ko/companyJoinStatusGuide", "/en/companyJoinStatusGuide"})

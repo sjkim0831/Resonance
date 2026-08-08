@@ -101,14 +101,24 @@ class MemberCompanyStatusSecurityTest {
     @Test
     void legacyStatusRoutesRemainMappedForKoreanAndEnglishApplicants() throws Exception {
         org.springframework.web.bind.annotation.GetMapping mapping = MemberJoinController.class
-                .getMethod("companyJoinStatusSearch", HttpServletRequest.class, org.springframework.ui.Model.class)
+                .getMethod("legacyCompanyJoinStatus", HttpServletRequest.class)
                 .getAnnotation(org.springframework.web.bind.annotation.GetMapping.class);
 
         assertNotNull(mapping);
         List<String> paths = List.of(mapping.value());
-        assertTrue(paths.contains("/companyJoinStatus"));
         assertTrue(paths.contains("/ko/companyJoinStatus"));
         assertTrue(paths.contains("/en/companyJoinStatus"));
+
+        HttpServletRequest korean = mock(HttpServletRequest.class);
+        when(korean.getRequestURI()).thenReturn("/join/ko/companyJoinStatus");
+        when(korean.getQueryString()).thenReturn("appNo=APP-1");
+        assertEquals("redirect:/join/companyJoinStatusSearch?appNo=APP-1",
+                controller.legacyCompanyJoinStatus(korean));
+
+        HttpServletRequest english = mock(HttpServletRequest.class);
+        when(english.getRequestURI()).thenReturn("/join/en/companyJoinStatus");
+        assertEquals("redirect:/join/en/companyJoinStatusSearch",
+                controller.legacyCompanyJoinStatus(english));
     }
 
     @Test
