@@ -128,6 +128,11 @@ class MemberRegistrationIdentityFlowTest {
                 "010", "1234", "5678", "member-test@example.com", List.of(evidence), httpSession);
         assertTrue(submitted.getStatusCode().is2xxSuccessful());
         assertEquals(Boolean.TRUE, submitted.getBody().get("success"));
+        assertEquals("member-test", submitted.getBody().get("receiptNumber"));
+        assertEquals("PENDING_APPROVAL", submitted.getBody().get("applicationStatus"));
+        assertEquals("E", submitted.getBody().get("membershipType"));
+        assertTrue(String.valueOf(submitted.getBody().get("submittedAt")).endsWith("Z"));
+        assertEquals("ADMIN_APPROVAL", submitted.getBody().get("nextAction"));
         verify(memberService).insertEntrprsmber(joinVO);
         verify(memberService).insertEntrprsMberFiles(any());
         verify(memberService).ensureEnterpriseSecurityMapping(joinVO.getUniqId());

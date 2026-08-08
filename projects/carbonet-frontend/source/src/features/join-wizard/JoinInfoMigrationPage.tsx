@@ -472,7 +472,12 @@ export function JoinInfoMigrationPage() {
       window.sessionStorage.setItem("carbonet.join.step5", JSON.stringify({
         mberId: String(result.mberId || form.mberId),
         mberNm: String(result.mberNm || form.mberNm),
-        insttNm: String(result.insttNm || form.insttNm)
+        insttNm: String(result.insttNm || form.insttNm),
+        receiptNumber: String(result.receiptNumber || ""),
+        applicationStatus: String(result.applicationStatus || ""),
+        membershipType: String(result.membershipType || ""),
+        submittedAt: String(result.submittedAt || ""),
+        nextAction: String(result.nextAction || "")
       }));
       navigate(buildLocalizedPath("/join/step5", "/join/en/step5"));
     } catch (nextError) {

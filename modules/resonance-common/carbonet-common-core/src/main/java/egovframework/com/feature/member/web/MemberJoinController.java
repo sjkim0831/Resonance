@@ -429,6 +429,11 @@ public class MemberJoinController {
         response.put("mberId", joinVO.getEntrprsmberId());
         response.put("mberNm", joinVO.getApplcntNm());
         response.put("insttNm", joinVO.getCmpnyNm());
+        response.put("receiptNumber", joinVO.getEntrprsmberId());
+        response.put("applicationStatus", "PENDING_APPROVAL");
+        response.put("membershipType", resolvedMembershipType);
+        response.put("submittedAt", java.time.OffsetDateTime.now(java.time.ZoneOffset.UTC).toString());
+        response.put("nextAction", "ADMIN_APPROVAL");
         session.removeAttribute(SESSION_JOIN_STEP);
         session.removeAttribute(SESSION_JOIN_VO);
         return ResponseEntity.ok(response);

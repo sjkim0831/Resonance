@@ -8,6 +8,11 @@ type JoinCompletePayload = {
   mberId?: string;
   mberNm?: string;
   insttNm?: string;
+  receiptNumber?: string;
+  applicationStatus?: string;
+  membershipType?: string;
+  submittedAt?: string;
+  nextAction?: string;
 };
 
 const STORAGE_KEY = "carbonet.join.step5";
@@ -23,8 +28,24 @@ function readPayload(): JoinCompletePayload {
   return {
     mberId: getSearchParam("mberId"),
     mberNm: getSearchParam("mberNm"),
-    insttNm: getSearchParam("insttNm")
+    insttNm: getSearchParam("insttNm"),
+    receiptNumber: getSearchParam("receiptNumber"),
+    applicationStatus: getSearchParam("applicationStatus"),
+    membershipType: getSearchParam("membershipType"),
+    submittedAt: getSearchParam("submittedAt"),
+    nextAction: getSearchParam("nextAction")
   };
+}
+
+function displayStatus(value: string | undefined, english: boolean) {
+  if (value === "PENDING_APPROVAL") return english ? "Pending administrator approval" : "관리자 승인 대기";
+  return value || (english ? "Not available" : "확인 불가");
+}
+
+function displayMembershipType(value: string | undefined, english: boolean) {
+  if (value === "E") return english ? "Enterprise member" : "기업 회원";
+  if (value === "I") return english ? "Individual member" : "개인 회원";
+  return value || (english ? "Not available" : "확인 불가");
 }
 
 export function JoinCompleteMigrationPage() {
@@ -176,17 +197,37 @@ export function JoinCompleteMigrationPage() {
                   : "승인 결과는 등록하신 이메일과 SMS로 안내해 드립니다."}
               </p>
               <div className="border-t border-gray-200 pt-4 space-y-2">
+                <div className="flex justify-between items-center gap-4">
+                  <span className="text-sm font-bold text-gray-500">{en ? "Receipt number" : "접수번호"}</span>
+                  <span className="text-sm font-medium text-[var(--kr-gov-text-primary)] text-right break-all">{payload.receiptNumber || (en ? "Not available" : "확인 불가")}</span>
+                </div>
+                <div className="flex justify-between items-center gap-4">
+                  <span className="text-sm font-bold text-gray-500">{en ? "Application status" : "신청 상태"}</span>
+                  <span className="text-sm font-bold text-[var(--kr-gov-blue)] text-right">{displayStatus(payload.applicationStatus, en)}</span>
+                </div>
                 <div className="flex justify-between items-center">
                   <span className="text-sm font-bold text-gray-500">{en ? "Name" : "이름"}</span>
-                  <span className="text-sm font-medium text-[var(--kr-gov-text-primary)]">{payload.mberNm || (en ? "John Doe" : "홍길동")}</span>
+                  <span className="text-sm font-medium text-[var(--kr-gov-text-primary)]">{payload.mberNm || (en ? "Not available" : "확인 불가")}</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-sm font-bold text-gray-500">{en ? "User ID" : "아이디"}</span>
-                  <span className="text-sm font-medium text-[var(--kr-gov-text-primary)]">{payload.mberId || "ccus_user_01"}</span>
+                  <span className="text-sm font-medium text-[var(--kr-gov-text-primary)]">{payload.mberId || (en ? "Not available" : "확인 불가")}</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-sm font-bold text-gray-500">{en ? "Organization" : "소속 기관"}</span>
-                  <span className="text-sm font-medium text-[var(--kr-gov-text-primary)]">{payload.insttNm || (en ? "Korea Energy Agency" : "한국에너지공단")}</span>
+                  <span className="text-sm font-medium text-[var(--kr-gov-text-primary)]">{payload.insttNm || (en ? "Not available" : "확인 불가")}</span>
+                </div>
+                <div className="flex justify-between items-center gap-4">
+                  <span className="text-sm font-bold text-gray-500">{en ? "Membership type" : "회원 유형"}</span>
+                  <span className="text-sm font-medium text-[var(--kr-gov-text-primary)] text-right">{displayMembershipType(payload.membershipType, en)}</span>
+                </div>
+                <div className="flex justify-between items-center gap-4">
+                  <span className="text-sm font-bold text-gray-500">{en ? "Submitted at" : "접수 일시"}</span>
+                  <span className="text-sm font-medium text-[var(--kr-gov-text-primary)] text-right">{payload.submittedAt || (en ? "Not available" : "확인 불가")}</span>
+                </div>
+                <div className="flex justify-between items-center gap-4">
+                  <span className="text-sm font-bold text-gray-500">{en ? "Next action" : "다음 조치"}</span>
+                  <span className="text-sm font-medium text-[var(--kr-gov-text-primary)] text-right">{payload.nextAction === "ADMIN_APPROVAL" ? (en ? "Administrator review and approval" : "관리자 검토·승인") : (payload.nextAction || (en ? "Not available" : "확인 불가"))}</span>
                 </div>
               </div>
             </div>
