@@ -65,7 +65,7 @@ try{
     }else{
       await row.getByRole("button",{name:"상세 검토",exact:true}).click();
       const dialog=page.getByRole("dialog",{name:"회원사 가입 신청 상세 검토"});
-      const rejectReasonInput=dialog.locator("textarea");
+      const rejectReasonInput=page.locator("textarea");
       if(await rejectReasonInput.count()!==1)throw new Error("mobile rejection reason input contract mismatch");
       await rejectReasonInput.fill("QA 재신청 증빙 보완 필요");
       await Promise.all([
