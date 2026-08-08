@@ -15,7 +15,11 @@ PROJECT_ID="${CARBONET_REAPPLICATION_TEST_PROJECT_ID:-P003}"
 UPLOAD_ROOT="${CARBONET_FILE_INSTT_DIR:-/opt/resonance-data/carbonet/files/instt}"
 PROCESS=COMPANY_REAPPLICATION_PUBLIC
 STEP=COMPANY_REAPPLICATION_PUBLIC_RESUBMIT
-REQUIRED="api,database,authority,responsive,accessibility,exceptionStates,audit,recovery,cleanup,token,replayBlocked,rateLimitFixtureCleanup,browserRateLimitFixtureCleanup,screenContextPreflight,desktop,mobile,browserJourney,browserPersistence,businessJourneyDesktop,businessJourneyMobile,downloadVerified,representativeUpdateVerified,applicantResponseVerified"
+REQUIRED="api,database,authority,responsive,accessibility,exceptionStates,audit,recovery,cleanup,token,replayBlocked,rateLimitFixtureCleanup,browserRateLimitFixtureCleanup,screenContextPreflight,desktop,mobile,browserJourney,browserPersistence,businessJourneyDesktop,businessJourneyMobile,downloadVerified,representativeUpdateVerified,applicantResponseVerified,adminRelay"
+if [[ -z "${CARBONET_ADMIN_TEST_PASSWORD:-}" ]]; then
+  CARBONET_ADMIN_TEST_PASSWORD="$(kubectl -n "$NAMESPACE" get secret carbonet-runtime-smoke-admin -o jsonpath='{.data.password}' | base64 -d)"
+fi
+export CARBONET_ADMIN_TEST_PASSWORD
 BROWSER_RATE_LIMIT_WINDOW_SECONDS=300
 BROWSER_RATE_LIMIT_MAX_REQUESTS=10
 BROWSER_RATE_LIMIT_REQUIRED_CAPACITY=2
@@ -314,11 +318,13 @@ export CARBONET_BROWSER_BASE_URL="$BROWSER_BASE_URL" CARBONET_REAPPLICATION_BROW
 VALIDATION_COMMIT="$(git -C "$ROOT" rev-parse HEAD)"
 [[ "$VALIDATION_COMMIT" =~ ^[0-9a-f]{40}$ ]] || { echo COMPANY_REAPPLICATION_VALIDATION_COMMIT_INVALID >&2; exit 3; }
 git -C "$ROOT" diff --quiet -- ops/scripts/validate-company-reapplication-browser.mjs ops/scripts/promote-screen-contract-after-e2e.sh \
-  ops/scripts/lib/company-reapplication-browser-rate-limit-candidate.jq ops/tests/run-company-reapplication-business-e2e.sh || {
+  ops/scripts/validate-company-reapplication-admin-relay.mjs ops/scripts/lib/company-reapplication-browser-rate-limit-candidate.jq \
+  ops/tests/run-company-reapplication-business-e2e.sh || {
   echo COMPANY_REAPPLICATION_VALIDATION_HARNESS_DIRTY >&2; exit 3;
 }
 git -C "$ROOT" diff --cached --quiet -- ops/scripts/validate-company-reapplication-browser.mjs ops/scripts/promote-screen-contract-after-e2e.sh \
-  ops/scripts/lib/company-reapplication-browser-rate-limit-candidate.jq ops/tests/run-company-reapplication-business-e2e.sh || {
+  ops/scripts/validate-company-reapplication-admin-relay.mjs ops/scripts/lib/company-reapplication-browser-rate-limit-candidate.jq \
+  ops/tests/run-company-reapplication-business-e2e.sh || {
   echo COMPANY_REAPPLICATION_VALIDATION_HARNESS_STAGED_DIRTY >&2; exit 3;
 }
 
@@ -346,11 +352,11 @@ q "insert into comtninsttinfo(
       '04524','QA SEOUL JUNG-GU','QA MOBILE','', 'R','QA BROWSER REJECTION',current_timestamp,current_timestamp,current_timestamp,
       'QA MOBILE MANAGER','${REGISTERED_CONTACT}','010-1000-0002');" >/dev/null
 
-jq -n   --arg desktopBiz "$DESKTOP_BIZ_NO" --arg desktopRep "$DESKTOP_REP" --arg desktopUpdatedRep "$DESKTOP_UPDATED_REP" --arg desktopPdf "$DESKTOP_PDF"   --arg mobileBiz "$MOBILE_BIZ_NO" --arg mobileRep "$MOBILE_REP" --arg mobilePdf "$MOBILE_PDF"   --arg contact "$REGISTERED_CONTACT" '[
-    {caseId:"desktop",viewport:"desktop",bizNo:$desktopBiz,repName:$desktopRep,registeredContact:$contact,
+jq -n   --arg desktopId "$DESKTOP_INSTT_ID" --arg desktopBiz "$DESKTOP_BIZ_NO" --arg desktopRep "$DESKTOP_REP" --arg desktopUpdatedRep "$DESKTOP_UPDATED_REP" --arg desktopPdf "$DESKTOP_PDF"   --arg mobileId "$MOBILE_INSTT_ID" --arg mobileBiz "$MOBILE_BIZ_NO" --arg mobileRep "$MOBILE_REP" --arg mobilePdf "$MOBILE_PDF"   --arg contact "$REGISTERED_CONTACT" '[
+    {caseId:"desktop",viewport:"desktop",insttId:$desktopId,companyName:"QA BROWSER DESKTOP COMPANY",bizNo:$desktopBiz,repName:$desktopRep,registeredContact:$contact,
       chargerName:"QA DESKTOP MANAGER",chargerEmail:$contact,chargerTel:"010-1000-0001",
       detailAddress:"QA DESKTOP UPDATED",updatedRepName:$desktopUpdatedRep,pdfPath:$desktopPdf,fileName:"reapplication-desktop.pdf"},
-    {caseId:"mobile",viewport:"mobile",bizNo:$mobileBiz,repName:$mobileRep,registeredContact:$contact,
+    {caseId:"mobile",viewport:"mobile",insttId:$mobileId,companyName:"QA BROWSER MOBILE COMPANY",bizNo:$mobileBiz,repName:$mobileRep,registeredContact:$contact,
      chargerName:"QA MOBILE MANAGER",chargerEmail:$contact,chargerTel:"010-1000-0002",
      detailAddress:"QA MOBILE UPDATED",pdfPath:$mobilePdf,fileName:"reapplication-mobile.pdf"}
   ]' >"$CASES_FILE"
@@ -381,10 +387,15 @@ done
   exit 1
 }
 
+node "$ROOT/ops/scripts/validate-company-reapplication-admin-relay.mjs" >"$TMP/admin-relay.json"
+admin_state="$(q "select (select instt_sttus from comtninsttinfo where project_id='${PROJECT_ID}' and trim(instt_id)='${DESKTOP_INSTT_ID}')||'|'||(select instt_sttus from comtninsttinfo where project_id='${PROJECT_ID}' and trim(instt_id)='${MOBILE_INSTT_ID}')||'|'||(select case when length(coalesce(rjct_rsn,''))>=10 then 1 else 0 end from comtninsttinfo where project_id='${PROJECT_ID}' and trim(instt_id)='${MOBILE_INSTT_ID}')")"
+[[ "$admin_state" == "P|R|1" ]] || { echo "COMPANY_REAPPLICATION_ADMIN_RELAY_FAILED state=$admin_state" >&2; exit 1; }
+jq -e '.status=="PASS" and .adminRelay==1 and .decisions==2 and .desktop==1 and .mobile==1' "$TMP/admin-relay.json" >/dev/null
+
 delete_browser_fixtures 1
 
-jq -n --arg validationCommit "$VALIDATION_COMMIT" --slurpfile runtime "$TMP/runtime.json" --slurpfile browser "$TMP/browser.json"   --slurpfile contract "$TMP/contract.json" '
-  $runtime[0] * $browser[0] * {
+jq -n --arg validationCommit "$VALIDATION_COMMIT" --slurpfile runtime "$TMP/runtime.json" --slurpfile browser "$TMP/browser.json" --slurpfile admin "$TMP/admin-relay.json" --slurpfile contract "$TMP/contract.json" '
+  $runtime[0] * $browser[0] * $admin[0] * {
     promotionEligible:true,
     validationCommit:$validationCommit,
     recovery:($runtime[0].cleanup * $runtime[0].replayBlocked),
@@ -399,6 +410,7 @@ jq -n --arg validationCommit "$VALIDATION_COMMIT" --slurpfile runtime "$TMP/runt
   }
   | if .performanceSampleCount<20 or .businessJourneyCount!=2 or .browserJourney!=1 or .browserPersistence!=1
       or .downloadVerified!=1 or .representativeUpdateVerified!=1 or .applicantResponseVerified!=1
+      or .adminRelay!=1 or .decisions!=2
       or .browserRateLimitFixtureCleanup!=1
       or (.performanceP95Ms|type)!="number" or .performanceP95Ms<=0
     then error("browser business journey or 20-sample p95 evidence is incomplete") else . end
