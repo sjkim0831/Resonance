@@ -31,11 +31,19 @@ const results=[];
 try{
   for(const item of cases){
     const viewport=item.viewport==="mobile"?{width:390,height:844}:{width:1440,height:1000};
+    const query=new URLSearchParams({searchKeyword:item.bizNo,sbscrbSttus:"A",pageIndex:"1"});
+    const probe=await api.get(`/admin/api/admin/member/company-approve/page?${query}`,{failOnStatusCode:false});
+    const probeBody=await probe.json().catch(()=>({}));
+    const probeRows=Array.isArray(probeBody.approvalRows)?probeBody.approvalRows:[];
+    if(probe.status()!==200||!probeRows.some(row=>String(row.insttId||"").trim()===String(item.insttId).trim())){
+      throw new Error(`${item.viewport} approval API fixture missing ${JSON.stringify({
+        status:probe.status(),canView:probeBody.canViewCompanyApprove===true,totalCount:Number(probeBody.memberApprovalTotalCount||0),rows:probeRows.length,
+      })}`);
+    }
     const context=await browser.newContext({viewport,ignoreHTTPSErrors:true,storageState:await api.storageState(),acceptDownloads:true});
     const page=await context.newPage();
     const errors=[];
     page.on("pageerror",error=>errors.push(error.message));
-    const query=new URLSearchParams({searchKeyword:item.bizNo,sbscrbSttus:"A",pageIndex:"1"});
     const response=await page.goto(`${base}/admin/member/company-approve?${query}`,{waitUntil:"domcontentloaded",timeout:20000});
     await page.getByRole("heading",{name:"회원사 가입승인",exact:true}).waitFor({state:"visible",timeout:15000});
     const businessNumberPattern=new RegExp(item.bizNo.split("").join("\\D*"));
