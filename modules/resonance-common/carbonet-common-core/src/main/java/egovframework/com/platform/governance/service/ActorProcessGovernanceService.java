@@ -1426,8 +1426,46 @@ public class ActorProcessGovernanceService {
         String process=req(Map.of("processCode",processCode),"processCode").trim().toUpperCase(Locale.ROOT);
         String step=req(Map.of("stepCode",stepCode),"stepCode").trim().toUpperCase(Locale.ROOT);
         String capability=capabilityCode==null||capabilityCode.isBlank()?"ALL":capabilityCode.trim().toUpperCase(Locale.ROOT);
-        List<Map<String,Object>> rows=jdbc.queryForList("select test_case_id as \"testCaseId\",capability_code as \"capabilityCode\",case_name as \"caseName\",pre_input_json::text as \"preInputJson\",expected_result as \"expectedResult\",coalesce(expected_state,'') as \"expectedState\",updated_by as \"updatedBy\",updated_at as \"updatedAt\" from framework_screen_workflow_test_case where screen_resource_id=? and process_code=? and step_code=? and capability_code in (?, 'ALL') and active=true order by case when capability_code=? then 0 else 1 end,updated_at desc,test_case_id desc",screenResourceId,process,step,capability,capability);
+        List<Map<String,Object>> rows=jdbc.queryForList("select test_case_id as \"testCaseId\",capability_code as \"capabilityCode\",case_type as \"caseType\",case_order as \"caseOrder\",case_name as \"caseName\",case_description as \"caseDescription\",pre_input_json::text as \"preInputJson\",expected_output_json::text as \"expectedOutputJson\",action_sequence_json::text as \"actionSequenceJson\",expected_result as \"expectedResult\",coalesce(expected_state,'') as \"expectedState\",updated_by as \"updatedBy\",updated_at as \"updatedAt\" from framework_screen_workflow_test_case where screen_resource_id=? and process_code=? and step_code=? and capability_code in (?, 'ALL') and active=true order by case when capability_code=? then 0 else 1 end,case_order,test_case_id",screenResourceId,process,step,capability,capability);
         return Map.of("success",true,"count",rows.size(),"items",rows);
+    }
+
+    public Map<String,Object> qaProcessCaseCatalog(String processCode,String stepCode){
+        String process=req(Map.of("processCode",processCode),"processCode").trim().toUpperCase(Locale.ROOT);
+        String step=stepCode==null?"":stepCode.trim().toUpperCase(Locale.ROOT);
+        List<Map<String,Object>> rows=jdbc.queryForList("""
+            select process_code as \"processCode\",step_code as \"stepCode\",step_order as \"stepOrder\",step_name as \"stepName\",
+                   case_code as \"caseCode\",case_name as \"caseName\",case_type as \"caseType\",preconditions,
+                   steps_json::text as \"actionSequenceJson\",assertions_json::text as \"assertionsJson\",case_status as \"caseStatus\",automated,
+                   screen_resource_id as \"screenResourceId\",coalesce(route_key,'') as \"routePath\",coalesce(screen_name,'') as \"screenName\",
+                   item_id as \"itemId\",test_case_id as \"testCaseId\",coalesce(capability_code,'ALL') as \"capabilityCode\",
+                   coalesce(pre_input_json,'{}'::jsonb)::text as \"preInputJson\",coalesce(expected_result,case when case_type='HAPPY_PATH' then 'PASSED' else 'BLOCKED' end) as \"expectedResult\",
+                   coalesce(expected_state,'') as \"expectedState\",coalesce(expected_output_json,'{}'::jsonb)::text as \"expectedOutputJson\",
+                   coalesce(case_description,'') as \"caseDescription\"
+              from framework_qa_process_case_catalog
+             where process_code=? and (?='' or step_code=?)
+             order by step_order,case case_type when 'HAPPY_PATH' then 1 when 'AUTHORITY' then 2 when 'ISOLATION' then 3 when 'EXCEPTION' then 4 else 5 end,case_code
+            """,process,step,step);
+        long configured=rows.stream().filter(row->row.get("testCaseId")!=null).count();
+        return Map.of("success",true,"processCode",process,"count",rows.size(),"configuredCount",configured,"items",rows);
+    }
+
+    public Map<String,Object> qaProcessTestSession(String processCode,String projectId){
+        String process=req(Map.of("processCode",processCode),"processCode").trim().toUpperCase(Locale.ROOT),project=projectId==null?"":projectId.trim();
+        List<Map<String,Object>> rows=jdbc.queryForList("select session_id as \"sessionId\",project_id as \"projectId\",process_code as \"processCode\",session_status as \"sessionStatus\",coalesce(current_step_code,'') as \"currentStepCode\",coalesce(current_case_code,'') as \"currentCaseCode\",current_case_index as \"currentCaseIndex\",total_case_count as \"totalCaseCount\",completed_case_count as \"completedCaseCount\",working_input_json::text as \"workingInputJson\",result_history_json::text as \"resultHistoryJson\",updated_at as \"updatedAt\" from framework_qa_process_test_session where process_code=? and project_id=? order by updated_at desc limit 1",process,project);
+        return rows.isEmpty()?Map.of("success",true,"exists",false):Map.of("success",true,"exists",true,"session",rows.get(0));
+    }
+
+    @Transactional
+    public Map<String,Object> saveQaProcessTestSession(Map<String,Object> body,String actor){
+        String process=req(body,"processCode").trim().toUpperCase(Locale.ROOT),project=str(body,"projectId").trim();
+        String status=def(body,"sessionStatus","PAUSED").trim().toUpperCase(Locale.ROOT);
+        if(!Set.of("READY","RUNNING","PAUSED","COMPLETED","FAILED","RESET").contains(status))throw new IllegalArgumentException("INVALID_QA_SESSION_STATUS");
+        String input=def(body,"workingInputJson","{}"),history=def(body,"resultHistoryJson","[]");validateJsonObject(input,"workingInputJson");validateJsonArray(history,"resultHistoryJson");
+        UUID sessionId=str(body,"sessionId").isBlank()?UUID.randomUUID():UUID.fromString(str(body,"sessionId"));
+        String fingerprint=jdbc.queryForObject("select md5(coalesce(string_agg(concat_ws('|',step_code,case_code,case_status,automated::text),'|' order by step_order,case_code),'')) from framework_qa_process_case_catalog where process_code=?",String.class,process);
+        jdbc.update("insert into framework_qa_process_test_session(session_id,project_id,process_code,session_status,current_step_code,current_case_code,current_case_index,total_case_count,completed_case_count,working_input_json,result_history_json,source_fingerprint,created_by,updated_by) values(?,?,?,?,nullif(?,''),nullif(?,''),?,?,?,?::jsonb,?::jsonb,?,?,?) on conflict(session_id) do update set session_status=excluded.session_status,current_step_code=excluded.current_step_code,current_case_code=excluded.current_case_code,current_case_index=excluded.current_case_index,total_case_count=excluded.total_case_count,completed_case_count=excluded.completed_case_count,working_input_json=excluded.working_input_json,result_history_json=excluded.result_history_json,source_fingerprint=excluded.source_fingerprint,updated_by=excluded.updated_by,updated_at=current_timestamp",sessionId,project,process,status,str(body,"currentStepCode"),str(body,"currentCaseCode"),integerOr(body,"currentCaseIndex",0),integerOr(body,"totalCaseCount",0),integerOr(body,"completedCaseCount",0),input,history,fingerprint,actor,actor);
+        return Map.of("success",true,"sessionId",sessionId,"sessionStatus",status,"processCode",process,"projectId",project);
     }
 
     @Transactional
@@ -1436,13 +1474,17 @@ public class ActorProcessGovernanceService {
         String process=req(body,"processCode").trim().toUpperCase(Locale.ROOT),step=req(body,"stepCode").trim().toUpperCase(Locale.ROOT);
         String capability=def(body,"capabilityCode","ALL").trim().toUpperCase(Locale.ROOT);
         String name=req(body,"caseName").trim(),preInput=def(body,"preInputJson","{}"),expected=def(body,"expectedResult","PASSED").trim().toUpperCase(Locale.ROOT),expectedState=str(body,"expectedState");
+        String caseType=def(body,"caseType","HAPPY_PATH").trim().toUpperCase(Locale.ROOT),description=str(body,"caseDescription");
+        String expectedOutput=def(body,"expectedOutputJson","{}"),actionSequence=def(body,"actionSequenceJson","[]");
         validateJsonObject(preInput,"preInputJson");
+        validateJsonObject(expectedOutput,"expectedOutputJson");validateJsonArray(actionSequence,"actionSequenceJson");
         if(!Set.of("PASSED","BLOCKED").contains(expected))throw new IllegalArgumentException("expectedResult must be PASSED or BLOCKED");
+        if(!Set.of("HAPPY_PATH","AUTHORITY","ISOLATION","EXCEPTION","RECOVERY").contains(caseType))throw new IllegalArgumentException("INVALID_QA_CASE_TYPE");
         Integer bindingCount=jdbc.queryForObject("select count(*) from framework_process_step_screen_binding where screen_resource_id=? and process_code=? and step_code=? and binding_status='ACTIVE'",Integer.class,screenId,process,step);
         if(bindingCount==null||bindingCount==0)throw new IllegalArgumentException("SCREEN_PROCESS_BINDING_NOT_FOUND");
         Integer capabilityCount="ALL".equals(capability)?1:jdbc.queryForObject("select count(*) from framework_screen_capability where screen_resource_id=? and capability_code=?",Integer.class,screenId,capability);
         if(capabilityCount==null||capabilityCount==0)throw new IllegalArgumentException("SCREEN_CAPABILITY_NOT_FOUND");
-        Long id=jdbc.queryForObject("insert into framework_screen_workflow_test_case(screen_resource_id,process_code,step_code,capability_code,case_name,pre_input_json,expected_result,expected_state,created_by,updated_by) values(?,?,?,?,?,?::jsonb,?,nullif(?,''),?,?) on conflict(screen_resource_id,process_code,step_code,capability_code,case_name) do update set pre_input_json=excluded.pre_input_json,expected_result=excluded.expected_result,expected_state=excluded.expected_state,active=true,updated_by=excluded.updated_by,updated_at=current_timestamp returning test_case_id",Long.class,screenId,process,step,capability,name,preInput,expected,expectedState,actor,actor);
+        Long id=jdbc.queryForObject("insert into framework_screen_workflow_test_case(screen_resource_id,process_code,step_code,capability_code,case_type,case_order,case_name,case_description,pre_input_json,expected_output_json,action_sequence_json,expected_result,expected_state,created_by,updated_by) values(?,?,?,?,?,?,?,?,?::jsonb,?::jsonb,?::jsonb,?,nullif(?,''),?,?) on conflict(screen_resource_id,process_code,step_code,capability_code,case_name) do update set case_type=excluded.case_type,case_order=excluded.case_order,case_description=excluded.case_description,pre_input_json=excluded.pre_input_json,expected_output_json=excluded.expected_output_json,action_sequence_json=excluded.action_sequence_json,expected_result=excluded.expected_result,expected_state=excluded.expected_state,active=true,updated_by=excluded.updated_by,updated_at=current_timestamp returning test_case_id",Long.class,screenId,process,step,capability,caseType,integerOr(body,"caseOrder",1),name,description,preInput,expectedOutput,actionSequence,expected,expectedState,actor,actor);
         return Map.of("success",true,"testCaseId",id,"caseName",name,"processCode",process,"stepCode",step,"capabilityCode",capability,"screenResourceId",screenId);
     }
 

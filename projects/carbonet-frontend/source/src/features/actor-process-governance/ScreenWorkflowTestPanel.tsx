@@ -21,6 +21,11 @@ export function ScreenWorkflowTestPanel({ base, processes }: Props) {
   const [preInputs, setPreInputs] = useState<Record<string, string>>({});
   const [previewVisible, setPreviewVisible] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [caseType, setCaseType] = useState("HAPPY_PATH");
+  const [expectedResult, setExpectedResult] = useState("PASSED");
+  const [expectedState, setExpectedState] = useState("");
+  const [caseDescription, setCaseDescription] = useState("");
+  const [expectedOutputJson, setExpectedOutputJson] = useState("{}");
   const [error, setError] = useState("");
 
   const filteredProcesses = useMemo(() => processes.filter(row => !workTypeCode || value(row, "domainCode") === workTypeCode), [processes, workTypeCode]);
@@ -95,7 +100,7 @@ export function ScreenWorkflowTestPanel({ base, processes }: Props) {
     if (!selected || !selectedBinding || !capabilityCode) { setError("화면·절차·기능을 모두 선택하세요."); return; }
     setBusy(true); setError("");
     try {
-      const response = await fetch(`${base}/screen-workflow-test-cases`, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ screenResourceId: Number(selected.screenResourceId), processCode, stepCode, capabilityCode, caseName, preInputJson: JSON.stringify(preInputs), expectedResult: "PASSED" }) });
+      const response = await fetch(`${base}/screen-workflow-test-cases`, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ screenResourceId: Number(selected.screenResourceId), processCode, stepCode, capabilityCode, caseType, caseName, caseDescription, preInputJson: JSON.stringify(preInputs), expectedOutputJson, actionSequenceJson: "[]", expectedResult, expectedState }) });
       const body = await response.json();
       if (!response.ok) throw new Error(body.message || "테스트 케이스 저장에 실패했습니다.");
       setTestCaseId(String(body.testCaseId)); await loadTestCases();
@@ -108,6 +113,11 @@ export function ScreenWorkflowTestPanel({ base, processes }: Props) {
     const item = testCases.find(row => value(row, "testCaseId") === id);
     if (!item) return;
     setCaseName(value(item, "caseName"));
+    setCaseType(value(item, "caseType") || "HAPPY_PATH");
+    setExpectedResult(value(item, "expectedResult") || "PASSED");
+    setExpectedState(value(item, "expectedState"));
+    setCaseDescription(value(item, "caseDescription"));
+    setExpectedOutputJson(value(item, "expectedOutputJson") || "{}");
     try { setPreInputs(JSON.parse(value(item, "preInputJson"))); }
     catch { setError("저장된 선입력 JSON 형식이 올바르지 않습니다."); }
   }
@@ -158,7 +168,9 @@ export function ScreenWorkflowTestPanel({ base, processes }: Props) {
 
       <MetricGrid values={[["절차", steps.length], ["선택 기능", capabilities.length], ["기능 데이터 필드", stepFields.length], ["안전 테스트", tests.length]]}/>
       <section className="rounded-2xl border bg-white p-5">
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-end"><label className="flex-1 text-sm font-bold text-slate-700">저장 테스트 케이스<select className={fieldClass} value={testCaseId} onChange={event => applyTestCase(event.target.value)}><option value="">새 테스트 케이스</option>{testCases.map(row => <option key={value(row, "testCaseId")} value={value(row, "testCaseId")}>{value(row, "caseName")} · {value(row, "capabilityCode")}</option>)}</select></label><label className="flex-[2] text-sm font-bold text-slate-700">케이스명<input className={fieldClass} value={caseName} onChange={event => setCaseName(event.target.value)}/></label><button className="min-h-11 rounded-lg bg-slate-800 px-5 text-sm font-black text-white disabled:opacity-50" disabled={busy || !caseName.trim() || !capabilityCode} onClick={() => void saveTestCase()} type="button">기능 데이터셋 저장</button></div>
+        <div className="grid gap-3 lg:grid-cols-[1.3fr_1fr_1.5fr_auto] lg:items-end"><label className="text-sm font-bold text-slate-700">저장 테스트 데이터셋<select className={fieldClass} value={testCaseId} onChange={event => applyTestCase(event.target.value)}><option value="">새 테스트 데이터셋</option>{testCases.map(row => <option key={value(row, "testCaseId")} value={value(row, "testCaseId")}>{value(row, "caseType")} · {value(row, "caseName")}</option>)}</select></label><label className="text-sm font-bold text-slate-700">경우의 수<select className={fieldClass} value={caseType} onChange={event => { setCaseType(event.target.value); setExpectedResult(event.target.value === "HAPPY_PATH" ? "PASSED" : "BLOCKED"); }}>{["HAPPY_PATH","AUTHORITY","ISOLATION","EXCEPTION","RECOVERY"].map(type => <option key={type}>{type}</option>)}</select></label><label className="text-sm font-bold text-slate-700">케이스명<input className={fieldClass} value={caseName} onChange={event => setCaseName(event.target.value)}/></label><button className="min-h-11 rounded-lg bg-slate-800 px-5 text-sm font-black text-white disabled:opacity-50" disabled={busy || !caseName.trim() || !capabilityCode} onClick={() => void saveTestCase()} type="button">데이터셋 저장·수정</button></div>
+        <div className="mt-4 grid gap-3 lg:grid-cols-3"><label className="text-sm font-bold text-slate-700">기대 판정<select className={fieldClass} value={expectedResult} onChange={event => setExpectedResult(event.target.value)}><option>PASSED</option><option>BLOCKED</option></select></label><label className="text-sm font-bold text-slate-700">기대 상태<input className={fieldClass} value={expectedState} onChange={event => setExpectedState(event.target.value)} placeholder="완료 후 상태"/></label><label className="text-sm font-bold text-slate-700">기대 출력 JSON<input className={`${fieldClass} font-mono`} value={expectedOutputJson} onChange={event => setExpectedOutputJson(event.target.value)} /></label></div>
+        <label className="mt-4 block text-sm font-bold text-slate-700">테스트 목적·중단 조건<textarea className="mt-2 min-h-20 w-full rounded-lg border border-slate-300 p-3 text-sm" value={caseDescription} onChange={event => setCaseDescription(event.target.value)} placeholder="이 경우의 수가 검증할 기능, 중단 조건, 복구 방법을 기록합니다."/></label>
         <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">{stepFields.map(field => <label className="text-sm font-bold text-slate-700" key={value(field, "fieldCode")}>{value(field, "fieldName")} {field.required === true && <span className="text-red-600">*</span>}<input className={fieldClass} placeholder={value(field, "apiProperty")} value={preInputs[value(field, "fieldCode")] ?? ""} onChange={event => setPreInputs(current => ({ ...current, [value(field, "fieldCode")]: event.target.value }))}/><span className="mt-1 block text-xs font-normal text-slate-400">{value(field, "fieldGroup") || "공통"} · {value(field, "dataType") || value(field, "controlType")} · {value(field, "lineageStatus")}</span></label>)}</div>
       </section>
 
