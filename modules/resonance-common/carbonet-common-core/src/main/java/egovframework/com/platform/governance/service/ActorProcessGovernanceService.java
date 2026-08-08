@@ -985,7 +985,7 @@ public class ActorProcessGovernanceService {
                where (?='' or upper(p.domain_code)=?) and (?='' or s.process_code=?)
                order by p.development_order,s.process_code,s.step_order limit ?
             )
-            select m.item_id as "itemId",b.binding_id as "bindingId",b.audience,
+            select m.item_id as "itemId",b.binding_id as "bindingId",b.audience,b.binding_status as "bindingStatus",
                    screen.screen_resource_id as "screenResourceId",screen.route_key as "routePath",
                    screen.screen_name as "screenName",screen.implementation_status as "implementationStatus",
                    scoped.process_code as "processCode",scoped.step_code as "stepCode",
@@ -993,8 +993,24 @@ public class ActorProcessGovernanceService {
                    fixture.test_case_id as "testCaseId",fixture.pre_input_json as "fixturePreInputJson",
                    fixture.expected_result as "fixtureExpectedResult",fixture.expected_state as "fixtureExpectedState"
               from scoped_steps scoped
-              left join framework_process_step_screen_binding b
-                on b.process_code=scoped.process_code and b.step_code=scoped.step_code and b.binding_status='ACTIVE'
+              left join lateral (
+                select candidate.*
+                  from framework_process_step_screen_binding candidate
+                 where candidate.process_code=scoped.process_code and candidate.step_code=scoped.step_code
+                   and (candidate.binding_status='ACTIVE' or (
+                     candidate.binding_status='DRAFT' and exists (
+                       select 1 from framework_professional_screen_contract contract
+                        where contract.process_code=candidate.process_code
+                          and contract.step_code=candidate.step_code
+                          and contract.audience=candidate.audience
+                          and contract.contract_status='REVIEW_REQUIRED'
+                     )
+                   ))
+                 order by case candidate.binding_status when 'ACTIVE' then 0 else 1 end,
+                          case candidate.entry_mode when 'PRIMARY' then 0 else 1 end,
+                          candidate.binding_id
+                 limit 1
+              ) b on true
               left join framework_screen_resource screen using(screen_resource_id)
               left join framework_screen_capability capability using(screen_resource_id)
                left join lateral (
@@ -1032,6 +1048,10 @@ public class ActorProcessGovernanceService {
                 failure.put("message",target.get("screenResourceId")==null?"ACTIVE_SCREEN_BINDING_NOT_FOUND":"SCREEN_DEVELOPMENT_ITEM_NOT_FOUND");runs.add(failure);continue;
             }
             auditedBindings.add(String.valueOf(target.get("bindingId")));
+            if("DRAFT".equals(target.get("bindingStatus"))){
+                blocked++;Map<String,Object> pending=new LinkedHashMap<>(target);pending.put("result","BLOCKED");
+                pending.put("message","WORKFLOW_EVIDENCE_PENDING");runs.add(pending);continue;
+            }
             Map<String,Object> request=new LinkedHashMap<>();
             request.put("itemId",target.get("itemId"));request.put("processCode",target.get("processCode"));
             request.put("stepCode",target.get("stepCode"));request.put("capabilityCode",target.get("capabilityCode"));

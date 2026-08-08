@@ -158,6 +158,25 @@ class ActorProcessGovernanceServiceSecurityTest {
     }
 
     @Test
+    void bulkContractAuditTreatsReviewPendingDraftAsBlockedInsteadOfMissingActiveError() {
+        Map<String,Object> target=new java.util.LinkedHashMap<>();
+        target.put("itemId",11L);target.put("bindingId",22L);target.put("audience","PUBLIC");
+        target.put("bindingStatus","DRAFT");target.put("screenResourceId",33L);
+        target.put("processCode","COMPANY_REAPPLICATION_PUBLIC");
+        target.put("stepCode","COMPANY_REAPPLICATION_PUBLIC_RESUBMIT");target.put("capabilityCode","ALL");
+        when(jdbc.queryForList(argThat(sql -> sql.contains("with scoped_steps as materialized")),any(Object[].class)))
+                .thenReturn(List.of(target));
+
+        Map<String,Object> result=service.auditSystemProcessContracts(Map.of(),"system-auditor");
+
+        assertEquals("BLOCKED",result.get("outcome"));
+        assertEquals(0,result.get("errorCount"));
+        assertEquals(1,result.get("blockedCount"));
+        @SuppressWarnings("unchecked") List<Map<String,Object>> runs=(List<Map<String,Object>>)result.get("runs");
+        assertEquals("WORKFLOW_EVIDENCE_PENDING",runs.get(0).get("message"));
+    }
+
+    @Test
     void compactBulkContractAuditResponseBoundsEvidenceAndPreservesFailureDiagnostics() throws Exception {
         String oversized="x".repeat(250_000);
         List<Map<String,Object>> runs=new java.util.ArrayList<>();
