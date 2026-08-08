@@ -160,7 +160,12 @@ export function ReviewModalFrame({
   }
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4">
-      <div className={`flex max-h-[90vh] w-full ${maxWidthClassName} flex-col overflow-hidden rounded-lg bg-white shadow-2xl`}>
+      <div
+        aria-label={typeof title === "string" ? title : "상세 검토"}
+        aria-modal="true"
+        className={`flex max-h-[90vh] w-full ${maxWidthClassName} flex-col overflow-hidden rounded-lg bg-white shadow-2xl`}
+        role="dialog"
+      >
         <div className="flex items-center justify-between border-b border-[var(--kr-gov-border-light)] bg-white px-6 py-4">
           <h3 className="flex items-center gap-2 text-xl font-bold">
             <span className="material-symbols-outlined text-[var(--kr-gov-blue)]">assignment_ind</span>

@@ -62,7 +62,7 @@ try {
       }
       outcomes.push({ viewport: viewport.name, action: "APPROVE", responsive: 1, accessible: 1 });
     } else {
-      await row.getByRole("button", { name: "반려", exact: true }).click();
+      await row.getByRole("button", { name: "상세 검토", exact: true }).click();
       const dialog = page.getByRole("dialog");
       await dialog.waitFor({ state: "visible", timeout: 10000 });
       const reason = dialog.locator("textarea");
