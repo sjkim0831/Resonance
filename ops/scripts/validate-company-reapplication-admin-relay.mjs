@@ -68,10 +68,11 @@ try{
       const rejectReasonInput=page.locator("textarea");
       if(await rejectReasonInput.count()!==1)throw new Error("mobile rejection reason input contract mismatch");
       await rejectReasonInput.fill("QA 재신청 증빙 보완 필요");
-      await Promise.all([
-        page.waitForResponse(candidate=>new URL(candidate.url()).pathname==="/admin/api/admin/member/company-approve/action"&&candidate.request().method()==="POST"&&candidate.status()===200,{timeout:15000}),
+      const [decisionResponse]=await Promise.all([
+        page.waitForResponse(candidate=>new URL(candidate.url()).pathname==="/admin/api/admin/member/company-approve/action"&&candidate.request().method()==="POST",{timeout:15000}),
         dialog.getByRole("button",{name:"반려",exact:true}).click(),
       ]);
+      if(decisionResponse.status()!==200)throw new Error(`mobile rejection failed status=${decisionResponse.status()}`);
     }
     results.push({viewport:item.viewport,reviewRow:1,evidenceVisible:1,decision:item.viewport==="desktop"?"APPROVE":"REJECT",responsive:1});
     await context.close();
