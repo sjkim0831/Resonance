@@ -71,6 +71,8 @@ class ReactPageUrlMapperTest {
                 ReactPageUrlMapper.resolveRouteIdForPath("/join/companyregistercomplete"));
         assertEquals("join_company_status",
                 ReactPageUrlMapper.resolveRouteIdForPath("/join/companyjoinstatussearch"));
+        assertEquals("join_company_status",
+                ReactPageUrlMapper.resolveRouteIdForPath("/join/companyJoinStatus"));
         assertEquals("join_company_status_detail",
                 ReactPageUrlMapper.resolveRouteIdForPath("/join/companyjoinstatusdetail"));
 
@@ -80,6 +82,10 @@ class ReactPageUrlMapperTest {
                 ReactPageUrlMapper.toCanonicalMenuUrl("/join/companyregistercomplete"));
         assertEquals("/join/companyJoinStatusSearch?bizNo=1",
                 ReactPageUrlMapper.toCanonicalMenuUrl("/join/companyjoinstatussearch?bizNo=1"));
+        assertEquals("/join/companyJoinStatusSearch?bizNo=1",
+                ReactPageUrlMapper.toCanonicalMenuUrl("/join/companyJoinStatus?bizNo=1"));
+        assertEquals("/join/en/companyJoinStatusSearch?bizNo=1",
+                ReactPageUrlMapper.toRuntimeUrl("/join/companyJoinStatus?bizNo=1", true));
         assertEquals("/join/companyJoinStatusDetail?bizNo=1",
                 ReactPageUrlMapper.toCanonicalMenuUrl("/join/companyjoinstatusdetail?bizNo=1"));
     }

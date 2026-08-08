@@ -140,7 +140,7 @@ registerAdmin(adminPathToRoute, adminRouteToPath, "emission-survey-admin-data", 
         registerHome(homePathToRoute, homeRouteToPath, homeLocalizedPaths, "qna_list", "/support/qna_list", "/en/support/qna_list", "/support/qna_list");
         registerHome(homePathToRoute, homeRouteToPath, homeLocalizedPaths, "join-company-register", "/join/companyRegister", "/join/en/companyRegister", "/join/companyRegister");
         registerHome(homePathToRoute, homeRouteToPath, homeLocalizedPaths, "join-company-register-complete", "/join/companyRegisterComplete", "/join/en/companyRegisterComplete", "/join/companyRegisterComplete");
-        registerHome(homePathToRoute, homeRouteToPath, homeLocalizedPaths, "join-company-status", "/join/companyJoinStatusSearch", "/join/en/companyJoinStatusSearch", "/join/companyJoinStatusSearch");
+        registerHome(homePathToRoute, homeRouteToPath, homeLocalizedPaths, "join-company-status", "/join/companyJoinStatusSearch", "/join/en/companyJoinStatusSearch", "/join/companyJoinStatusSearch", "/join/companyJoinStatus");
         registerHome(homePathToRoute, homeRouteToPath, homeLocalizedPaths, "join-company-status-detail", "/join/companyJoinStatusDetail", "/join/en/companyJoinStatusDetail", "/join/companyJoinStatusDetail");
         registerHome(homePathToRoute, homeRouteToPath, homeLocalizedPaths, "join-company-reapply", "/join/companyReapply", "/join/en/companyReapply", "/join/companyReapply");
 
