@@ -35,10 +35,10 @@ try{
     const page=await context.newPage();
     const errors=[];
     page.on("pageerror",error=>errors.push(error.message));
-    const query=new URLSearchParams({searchKeyword:item.companyName,sbscrbSttus:"A",pageIndex:"1"});
+    const query=new URLSearchParams({searchKeyword:item.bizNo,sbscrbSttus:"A",pageIndex:"1"});
     const response=await page.goto(`${base}/admin/member/company-approve?${query}`,{waitUntil:"domcontentloaded",timeout:20000});
     await page.getByRole("heading",{name:"회원사 가입승인",exact:true}).waitFor({state:"visible",timeout:15000});
-    const row=page.getByRole("row").filter({has:page.getByText(item.companyName,{exact:true})});
+    const row=page.getByRole("row").filter({has:page.getByText(item.fileName,{exact:true})});
     if(await row.count()!==1)throw new Error(`${item.viewport} approval row count mismatch`);
     await row.getByText(item.fileName,{exact:true}).waitFor({state:"visible",timeout:10000});
     const overflow=await page.evaluate(()=>document.documentElement.scrollWidth>document.documentElement.clientWidth+2);
