@@ -38,7 +38,9 @@ try{
     const probeRows=Array.isArray(probeBody.approvalRows)?probeBody.approvalRows:[];
     if(probe.status()!==200||!probeRows.some(row=>String(row.insttId||"").trim()===String(item.insttId).trim())){
       throw new Error(`${item.viewport} approval API fixture missing ${JSON.stringify({
-        status:probe.status(),canView:probeBody.canViewCompanyApprove===true,totalCount:Number(probeBody.memberApprovalTotalCount||0),rows:probeRows.length,
+        status:probe.status(),canView:probeBody.canViewCompanyApprove===true,
+        projectScopeMatched:String(probeBody.projectId||"")===projectId,
+        totalCount:Number(probeBody.memberApprovalTotalCount||0),rows:probeRows.length,
       })}`);
     }
     const context=await browser.newContext({viewport,ignoreHTTPSErrors:true,storageState:await api.storageState(),acceptDownloads:true});
