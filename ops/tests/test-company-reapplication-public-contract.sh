@@ -4,6 +4,7 @@ set -Eeuo pipefail
 ROOT="${RESONANCE_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
 MIGRATION="$ROOT/apps/carbonet-api/src/main/resources/db/migration/postgresql/V20260807134000__close_company_reapplication_public_contract.sql"
 RESPONSE_MIGRATION="$ROOT/apps/carbonet-api/src/main/resources/db/migration/postgresql/V20260808010000__add_company_reapplication_applicant_response.sql"
+RESPONSE_POLICY_MIGRATION="$ROOT/apps/carbonet-api/src/main/resources/db/migration/postgresql/V20260808020000__reset_company_reapplication_policy_for_response_revision.sql"
 PROMOTER="$ROOT/ops/scripts/promote-screen-contract-after-e2e.sh"
 PROMOTER_TEST="$ROOT/ops/scripts/test-promote-screen-contract-after-e2e.sh"
 RUNTIME_E2E="$ROOT/ops/scripts/validate-company-reapplication-runtime.sh"
@@ -26,7 +27,7 @@ ADMIN_ACTIONS="$ROOT/projects/carbonet-frontend/source/src/lib/api/adminActions.
 ADMIN_API_CORE="$ROOT/projects/carbonet-frontend/source/src/lib/api/core.ts"
 
 fail() { echo "[company-reapplication-contract-test] FAIL: $*" >&2; exit 1; }
-for file in "$MIGRATION" "$RESPONSE_MIGRATION" "$PROMOTER" "$PROMOTER_TEST" "$RUNTIME_E2E" \
+for file in "$MIGRATION" "$RESPONSE_MIGRATION" "$RESPONSE_POLICY_MIGRATION" "$PROMOTER" "$PROMOTER_TEST" "$RUNTIME_E2E" \
   "$BUSINESS_E2E_WRAPPER" "$BROWSER_E2E" "$ROUTE_GUARD_TEST" \
   "$APPROVAL_CONTROLLER" "$APPROVAL_COMMAND" "$APPROVAL_ACTION" "$APPROVAL_STATUS" \
   "$MEMBER_SERVICE" "$MEMBER_MAPPER_XML" \
@@ -312,6 +313,24 @@ for(const token of ['@RequestParam(value = "applicantResponse"','INVALID_APPLICA
 assert(mapper.includes('#{applicantResponse}')&&mapper.includes('applicant_response'), 'applicant response persistence mapping missing');
 assert(approval.includes('신청자 보완 답변')&&approval.includes('reapplicationVersion'), 'admin re-review response comparison missing');
 assert(browser.includes('#applicant-response')&&browser.includes('applicantResponseVerified'), 'browser E2E does not prove applicant response persistence');
+NODE
+
+node - "$RESPONSE_POLICY_MIGRATION" <<'NODE'
+const fs=require('fs');
+const migration=fs.readFileSync(process.argv[2],'utf8');
+const assert=(value,message)=>{if(!value)throw new Error(message)};
+for(const token of [
+  "classification = 'REVIEW_REQUIRED'",
+  "reason_code = 'MISSING_WORKFLOW_EVIDENCE'",
+  "review_status = 'PENDING'",
+  "policy.source = 'CONTRACT_E2E_PROMOTER'",
+  "policy.review_status = 'AUTO_APPROVED'",
+  "binding.binding_status = 'DRAFT'",
+  "contract.contract_status = 'REVIEW_REQUIRED'",
+  "v_policy<>1 OR v_binding<>1 OR v_contract<>1"
+]) assert(migration.includes(token),`response policy reset contract missing: ${token}`);
+assert(!/UPDATE[\s\S]+WHERE\s+policy\.route_key\s*=\s*'\/join\/companyreapply'\s*;/i.test(migration),
+  'policy reset must preserve human review guards');
 NODE
 
 echo '[company-reapplication-contract-test] PASS process=1 userSteps=2 supportSteps=1 targetBinding=DRAFT:1/ACTIVE:0 publicAudience=1 cases=7 jobs=8 preE2E=REVIEW_REQUIRED postE2E=EXECUTABLE evidence=fail-closed'
