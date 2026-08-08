@@ -255,10 +255,11 @@ export function CompanyApproveMigrationPage() {
             <>
               <CompanyApproveReviewContent reviewRow={reviewRow} />
               <section className="mt-6">
-                <label className="block">
+                <label className="block" htmlFor="company-approve-reject-reason">
                   <span className="mb-2 block text-sm font-bold text-[var(--kr-gov-text-primary)]">반려 사유</span>
                   <textarea
                     className="gov-input min-h-[120px] py-3"
+                    id="company-approve-reject-reason"
                     onChange={(event) => setRejectReason(event.target.value)}
                     placeholder="회원사 반려 사유를 입력하세요."
                     value={rejectReason}
