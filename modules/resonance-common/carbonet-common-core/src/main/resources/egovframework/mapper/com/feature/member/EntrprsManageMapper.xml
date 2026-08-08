@@ -819,7 +819,6 @@
     <insert id="insertEnterpriseSecurityMappingComtn" parameterType="string">
         INSERT INTO COMTNEMPLYRSCRTYESTBS (SCRTY_DTRMN_TRGET_ID, MBER_TY_CODE, AUTHOR_CODE)
         SELECT #{value}, 'USR02', 'ROLE_USER'
-        FROM db_root
         WHERE NOT EXISTS (
             SELECT 1
             FROM COMTNEMPLYRSCRTYESTBS
@@ -830,7 +829,6 @@
     <insert id="insertEnterpriseSecurityMappingMsatn" parameterType="string">
         INSERT INTO MSATNEMPLYRSCRTYESTBS (SCRTY_DTRMN_TRGET_ID, MBER_TY_CODE, AUTHOR_CODE)
         SELECT #{value}, 'USR02', 'ROLE_USER'
-        FROM db_root
         WHERE NOT EXISTS (
             SELECT 1
             FROM MSATNEMPLYRSCRTYESTBS
