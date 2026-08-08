@@ -37,6 +37,8 @@ const failures = [];
 const requireSource = (condition, message) => { if (!condition) failures.push(message); };
 
 requireSource(page.includes('lookupHandle: params.get("lookupHandle") || ""'), "status navigation must accept only an opaque lookup handle");
+requireSource(page.includes("if (!isDetailPage || initialQuery.lookupHandle) return;") && page.includes('"/join/companyJoinStatusSearch"'), "direct detail access without an opaque handle must recover to status search");
+requireSource(page.includes("copy.retrySearch") && page.includes("가입 현황 다시 조회"), "expired detail lookup must expose a visible recovery action");
 requireSource(!page.includes("joinCompanyStatusRegisteredContact") && !page.includes('search.set("bizNo"') && !page.includes('search.set("appNo"') && !page.includes('search.set("repName"'), "status URLs/session storage must not contain raw lookup identity");
 requireSource(page.includes("fetchJoinCompanyStatusDetail({ lookupHandle:"), "detail refresh must resolve the opaque session handle");
 requireSource(page.includes("bizNoPresent") && page.includes("appNoPresent") && page.includes("repNamePresent") && page.includes("registeredContactPresent"), "telemetry must use presence booleans");
@@ -83,4 +85,4 @@ if (failures.length) {
   failures.forEach((failure) => console.error(`FAIL: ${failure}`));
   process.exit(1);
 }
-console.log("PASS join-company-status-security checks=42 transport=POST handle=session-bound rateLimit=cross-pod+session clientIp=nodeport-local token=opaque cache=no-store legacy=410");
+console.log("PASS join-company-status-security checks=44 transport=POST handle=session-bound recovery=search rateLimit=cross-pod+session clientIp=nodeport-local token=opaque cache=no-store legacy=410");

@@ -50,6 +50,7 @@ const COPY = {
     download: "다운로드",
     back: "뒤로가기",
     reapply: "재신청하기",
+    retrySearch: "가입 현황 다시 조회",
     home: "홈으로 이동",
     searchError: "입력하신 정보와 일치하는 신청 내역이 없습니다.",
     needAgree: "개인정보 수집 및 이용에 동의하셔야 합니다.",
@@ -109,6 +110,7 @@ const COPY = {
     download: "Download",
     back: "Back",
     reapply: "Reapply",
+    retrySearch: "Search application status again",
     home: "Go to Home",
     searchError: "No application matched the entered information.",
     needAgree: "You must agree to the collection and use of personal information.",
@@ -170,6 +172,15 @@ export function JoinCompanyStatusMigrationPage() {
       onError: () => undefined
     }
   );
+
+  useEffect(() => {
+    if (!isDetailPage || initialQuery.lookupHandle) return;
+    navigate(buildLocalizedPath(
+      "/join/companyJoinStatusSearch",
+      "/join/en/companyJoinStatusSearch"
+    ));
+  }, [initialQuery.lookupHandle, isDetailPage]);
+
   const detail = detailState.value;
   const error = detailState.error;
 
@@ -325,8 +336,16 @@ export function JoinCompanyStatusMigrationPage() {
         </div>
 
         {error ? (
-          <div className="mt-6 mb-8 p-4 bg-red-50 border border-red-200 rounded-[8px] text-red-600 font-bold text-center">
+          <div className="mt-6 mb-8 flex flex-col items-center gap-4 rounded-[8px] border border-red-200 bg-red-50 p-4 text-center text-red-600">
             <p>{error}</p>
+            <HomeButton
+              className="h-12 rounded-lg bg-[var(--kr-gov-blue)] px-6 font-bold text-white hover:bg-[var(--kr-gov-blue-hover)]"
+              onClick={() => navigate(buildLocalizedPath("/join/companyJoinStatusSearch", "/join/en/companyJoinStatusSearch"))}
+              type="button"
+              variant="primary"
+            >
+              {copy.retrySearch}
+            </HomeButton>
           </div>
         ) : null}
 
