@@ -764,7 +764,16 @@
             TO_CHAR(LAST_UPDT_PNTTM, 'YYYY.MM.DD HH24:MI:SS') as lastUpdtPnttm,
             CHARGER_NM AS chargerNm,
             CHARGER_EMAIL AS chargerEmail,
-            CHARGER_TEL AS chargerTel
+            CHARGER_TEL AS chargerTel,
+            (SELECT a.applicant_response FROM framework_company_reapplication_audit a
+              WHERE a.project_id = COMTNINSTTINFO.PROJECT_ID AND a.instt_id = TRIM(COMTNINSTTINFO.INSTT_ID)
+              ORDER BY a.application_version DESC LIMIT 1) AS applicantResponse,
+            (SELECT a.application_version FROM framework_company_reapplication_audit a
+              WHERE a.project_id = COMTNINSTTINFO.PROJECT_ID AND a.instt_id = TRIM(COMTNINSTTINFO.INSTT_ID)
+              ORDER BY a.application_version DESC LIMIT 1) AS reapplicationVersion,
+            (SELECT TO_CHAR(a.created_at, 'YYYY.MM.DD HH24:MI:SS') FROM framework_company_reapplication_audit a
+              WHERE a.project_id = COMTNINSTTINFO.PROJECT_ID AND a.instt_id = TRIM(COMTNINSTTINFO.INSTT_ID)
+              ORDER BY a.application_version DESC LIMIT 1) AS reapplicationSubmittedAt
         FROM COMTNINSTTINFO
         <choose>
             <when test="insttId != null and insttId != ''">
@@ -914,6 +923,7 @@
             evidence_object_keys,
             evidence_sha256,
             rejection_reason,
+            applicant_response,
             change_hash,
             created_at
         )
@@ -950,6 +960,7 @@
                 <otherwise>ARRAY[]::TEXT[]</otherwise>
             </choose>,
             #{rejectionReason},
+            #{applicantResponse},
             #{changeHash},
             CURRENT_TIMESTAMP
     </insert>
@@ -959,6 +970,7 @@
             application_version AS "applicationVersion",
             evidence_file_count AS "evidenceFileCount",
             change_hash AS "changeHash",
+            (applicant_response IS NOT NULL AND LENGTH(TRIM(applicant_response)) >= 10) AS "applicantResponseRecorded",
             COALESCE(array_to_string(evidence_file_ids, ','), '') AS "fileIdsCsv",
             COALESCE(array_to_string(evidence_sha256, ','), '') AS "fileSha256sCsv"
         FROM framework_company_reapplication_audit

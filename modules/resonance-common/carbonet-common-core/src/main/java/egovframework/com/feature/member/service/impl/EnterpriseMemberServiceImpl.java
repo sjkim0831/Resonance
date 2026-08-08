@@ -392,7 +392,7 @@ public class EnterpriseMemberServiceImpl extends EgovAbstractServiceImpl impleme
 	@Override
 	@Transactional(rollbackFor = Exception.class)
 	public Map<String, Object> reapplyInstitution(InsttInfoVO insttInfoVO, List<InsttFileVO> fileList,
-			String rejectionReason) throws Exception {
+			String rejectionReason, String applicantResponse) throws Exception {
 		Objects.requireNonNull(insttInfoVO, "insttInfoVO");
 		applyDefaultProjectId(insttInfoVO);
 		if (!hasText(insttInfoVO.getProjectId())) {
@@ -417,7 +417,8 @@ public class EnterpriseMemberServiceImpl extends EgovAbstractServiceImpl impleme
 		audit.put("insttId", insttInfoVO.getInsttId());
 		audit.put("evidenceFileCount", fileList == null ? 0 : fileList.size());
 		audit.put("rejectionReason", rejectionReason);
-		audit.put("changeHash", calculateReapplicationChangeHash(insttInfoVO, fileList));
+		audit.put("applicantResponse", applicantResponse);
+		audit.put("changeHash", calculateReapplicationChangeHash(insttInfoVO, fileList, applicantResponse));
 		audit.put("evidenceFileIds", evidenceValues(fileList, "id"));
 		audit.put("evidenceObjectKeys", evidenceValues(fileList, "objectKey"));
 		audit.put("evidenceSha256", evidenceValues(fileList, "sha256"));
@@ -433,6 +434,7 @@ public class EnterpriseMemberServiceImpl extends EgovAbstractServiceImpl impleme
 		receipt.put("applicationVersion", stored.get("applicationVersion"));
 		receipt.put("evidenceFileCount", stored.get("evidenceFileCount"));
 		receipt.put("changeHash", stored.get("changeHash"));
+		receipt.put("applicantResponseRecorded", stored.get("applicantResponseRecorded"));
 		receipt.put("fileIds", splitCsv(stored.get("fileIdsCsv")));
 		receipt.put("fileSha256s", splitCsv(stored.get("fileSha256sCsv")));
 		return receipt;
@@ -522,11 +524,12 @@ public class EnterpriseMemberServiceImpl extends EgovAbstractServiceImpl impleme
 		return value == null ? "" : String.valueOf(value);
 	}
 
-	private String calculateReapplicationChangeHash(InsttInfoVO vo, List<InsttFileVO> fileList) throws Exception {
+	private String calculateReapplicationChangeHash(InsttInfoVO vo, List<InsttFileVO> fileList, String applicantResponse) throws Exception {
 		StringBuilder canonical = new StringBuilder();
 		appendCanonical(canonical, vo.getProjectId());
 		appendCanonical(canonical, vo.getInsttId());
 		appendCanonical(canonical, vo.getInsttNm());
+		appendCanonical(canonical, applicantResponse);
 		appendCanonical(canonical, vo.getReprsntNm());
 		appendCanonical(canonical, vo.getBizrno());
 		appendCanonical(canonical, vo.getZip());

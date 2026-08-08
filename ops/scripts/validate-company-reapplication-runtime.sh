@@ -242,6 +242,7 @@ missing_token_code="$(curl -sS -c "$COOKIE" -b "$COOKIE" -o "$BODY" -w '%{http_c
   -F "insttId=$INSTT_ID" -F 'agencyName=QA REAPPLICATION COMPANY' -F "representativeName=$REP_NAME" \
   -F "bizRegistrationNumber=$BIZ_NO" -F 'zipCode=04524' -F 'companyAddress=QA SEOUL JUNG-GU' \
   -F 'chargerName=QA MANAGER' -F 'chargerEmail=qa-reapply@example.test' -F 'chargerTel=010-0000-0000' \
+  -F 'applicantResponse=QA corrective actions and evidence have been completed.' \
   -F "fileUploads=@$PDF_FIXTURE;type=application/pdf" "$BASE_URL/join/api/company-reapply")"
 capture_public_rate_limit_identity company-reapply-submit
 [[ "$missing_token_code" == 403 ]] || {
@@ -254,6 +255,7 @@ missing_file_code="$(curl -sS -c "$COOKIE" -b "$COOKIE" -o "$BODY" -w '%{http_co
   -F "representativeName=$REP_NAME" -F "bizRegistrationNumber=$BIZ_NO" -F 'zipCode=04524' \
   -F 'companyAddress=QA SEOUL JUNG-GU' -F 'chargerName=QA MANAGER' \
   -F 'chargerEmail=qa-reapply@example.test' -F 'chargerTel=010-0000-0000' \
+  -F 'applicantResponse=QA corrective actions and evidence have been completed.' \
   "$BASE_URL/join/api/company-reapply")"
 track_public_rate_limit_request company-reapply-submit
 [[ "$missing_file_code" == 400 ]] || {
@@ -266,6 +268,7 @@ tampered_identity_code="$(curl -sS -c "$COOKIE" -b "$COOKIE" -o "$BODY" -w '%{ht
   -F 'agencyName=QA REAPPLICATION COMPANY' -F "representativeName=$REP_NAME" \
   -F "bizRegistrationNumber=$BIZ_NO" -F 'zipCode=04524' -F 'companyAddress=QA SEOUL JUNG-GU' \
   -F 'chargerName=QA MANAGER' -F 'chargerEmail=qa-reapply@example.test' -F 'chargerTel=010-0000-0000' \
+  -F 'applicantResponse=QA corrective actions and evidence have been completed.' \
   -F "fileUploads=@$PDF_FIXTURE;type=application/pdf" "$BASE_URL/join/api/company-reapply")"
 track_public_rate_limit_request company-reapply-submit
 [[ "$tampered_identity_code" == 403 ]] || {
@@ -291,6 +294,7 @@ submit_code="$(curl -sS -c "$COOKIE" -b "$COOKIE" -o "$BODY" -w '%{http_code}' \
   -F "representativeName=$REP_NAME" -F "bizRegistrationNumber=$BIZ_NO" -F 'zipCode=04524' \
   -F 'companyAddress=QA SEOUL JUNG-GU' -F 'companyAddressDetail=QA UPDATED ADDRESS' \
   -F 'chargerName=QA MANAGER' -F 'chargerEmail=qa-reapply@example.test' -F 'chargerTel=010-0000-0000' \
+  -F 'applicantResponse=QA corrective actions and evidence have been completed.' \
   -F "fileUploads=@$PDF_FIXTURE;type=application/pdf" "$BASE_URL/join/api/company-reapply")"
 track_public_rate_limit_request company-reapply-submit
 [[ "$submit_code" == 200 ]] && jq -e '.success==true and .insttId!=null' "$BODY" >/dev/null || {
@@ -315,11 +319,12 @@ db_result="$(q "select i.instt_sttus||'|'||
   exit 1
 }
 audit_result="$(q "select actor_code||'|'||command_code||'|'||from_state||'|'||to_state||'|'||
-    evidence_file_count||'|'||length(change_hash)||'|'||coalesce(rejection_reason,'')
+    evidence_file_count||'|'||length(change_hash)||'|'||coalesce(rejection_reason,'')||'|'||
+    (length(trim(applicant_response)) >= 10)
   from framework_company_reapplication_audit
   where project_id='${PROJECT_ID}' and instt_id='${INSTT_ID}'
   order by application_version desc limit 1")"
-[[ "$audit_result" == 'PUBLIC_APPLICANT|RESUBMIT_COMPANY_APPLICATION|REJECTED|APPLIED|1|64|QA REJECTION EVIDENCE REQUIRED' ]] || {
+[[ "$audit_result" == 'PUBLIC_APPLICANT|RESUBMIT_COMPANY_APPLICATION|REJECTED|APPLIED|1|64|QA REJECTION EVIDENCE REQUIRED|t' ]] || {
   echo "[company-reapplication-e2e] FAIL audit-contract=$audit_result" >&2
   exit 1
 }
@@ -433,6 +438,7 @@ repeat_code="$(curl -sS -c "$COOKIE" -b "$COOKIE" -o "$BODY" -w '%{http_code}' \
   -F "representativeName=$REP_NAME" -F "bizRegistrationNumber=$BIZ_NO" -F 'zipCode=04524' \
   -F 'companyAddress=QA SEOUL JUNG-GU' -F 'chargerName=QA MANAGER' \
   -F 'chargerEmail=qa-reapply@example.test' -F 'chargerTel=010-0000-0000' \
+  -F 'applicantResponse=QA corrective actions and evidence have been completed.' \
   -F "fileUploads=@$PDF_FIXTURE;type=application/pdf" "$BASE_URL/join/api/company-reapply")"
 track_public_rate_limit_request company-reapply-submit
 [[ "$repeat_code" == 403 || "$repeat_code" == 409 ]] || {

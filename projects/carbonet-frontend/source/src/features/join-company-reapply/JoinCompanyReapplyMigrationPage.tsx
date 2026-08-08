@@ -45,6 +45,7 @@ type ReapplyFieldErrorKey =
   | "agencyName"
   | "representativeName"
   | "companyAddress"
+  | "applicantResponse"
   | "fileUploads";
 
 const EMPTY_FORM: ReapplyForm = {
@@ -75,7 +76,8 @@ const FIELD_ELEMENT_IDS: Record<Exclude<ReapplyFieldErrorKey, "fileUploads">, st
   chargerTel: "charger-tel",
   agencyName: "company-name",
   representativeName: "rep-name",
-  companyAddress: "zip-code"
+  companyAddress: "zip-code",
+  applicantResponse: "applicant-response"
 };
 const FIELD_ERROR_ORDER: ReapplyFieldErrorKey[] = [
   "lookupBizNo",
@@ -87,6 +89,7 @@ const FIELD_ERROR_ORDER: ReapplyFieldErrorKey[] = [
   "agencyName",
   "representativeName",
   "companyAddress",
+  "applicantResponse",
   "fileUploads"
 ];
 
@@ -119,6 +122,7 @@ export function JoinCompanyReapplyMigrationPage() {
   const [registeredContact, setRegisteredContact] = useState("");
   const [lookupHandle, setLookupHandle] = useState(initialLookup.lookupHandle);
   const [form, setForm] = useState<ReapplyForm>(EMPTY_FORM);
+  const [applicantResponse, setApplicantResponse] = useState("");
   const [uploadRows, setUploadRows] = useState<UploadRow[]>([createUploadRow()]);
   const [actionError, setActionError] = useState(() => getSearchParam("errorMessage"));
   const [pageError, setPageError] = useState("");
@@ -286,9 +290,11 @@ export function JoinCompanyReapplyMigrationPage() {
       setLookupHandle(String(nextPage.lookupHandle || activeHandle));
       hydrateForm(result, reapplyToken);
       setUploadRows([createUploadRow()]);
+      setApplicantResponse("");
     } catch (nextError) {
       setPage(null);
       setForm(EMPTY_FORM);
+      setApplicantResponse("");
       setUploadRows([createUploadRow()]);
       setPageError(nextError instanceof Error ? nextError.message : (en ? "Failed to load reapply page." : "재신청 조회에 실패했습니다."));
     } finally {
@@ -401,6 +407,7 @@ export function JoinCompanyReapplyMigrationPage() {
     setLookupHandle("");
     setPage(null);
     setForm(EMPTY_FORM);
+    setApplicantResponse("");
     setUploadRows([createUploadRow()]);
     setActionError("");
     setFieldErrors({});
@@ -419,6 +426,7 @@ export function JoinCompanyReapplyMigrationPage() {
     logGovernanceScope("ACTION", "join-company-reapply-submit", {
       institutionSelected: Boolean(form.insttId),
       companyNamePresent: Boolean(form.agencyName.trim()),
+      applicantResponseLength: applicantResponse.trim().length,
       uploadedFileCount: uploadRows.map((row) => row.file).filter((file): file is File => file !== null).length
     });
     setActionError("");
@@ -442,6 +450,8 @@ export function JoinCompanyReapplyMigrationPage() {
     if (!form.companyAddress.trim() || !form.zipCode.trim()) nextFieldErrors.companyAddress = en ? "Select the business address." : "사업장 주소를 선택해 주세요.";
     if (files.length === 0) nextFieldErrors.fileUploads = en ? "Upload at least one supporting document." : "증빙 서류를 1개 이상 업로드해 주세요.";
     if (files.length > MAX_FILE_COUNT) nextFieldErrors.fileUploads = en ? "You can upload up to 10 supporting documents." : "증빙 서류는 최대 10개까지 업로드할 수 있습니다.";
+    if (applicantResponse.trim().length < 10) nextFieldErrors.applicantResponse = en ? "Describe the corrective action in at least 10 characters." : "보완·재신청 내용을 10자 이상 입력해 주세요.";
+    if (applicantResponse.trim().length > 2000) nextFieldErrors.applicantResponse = en ? "Keep the corrective action within 2,000 characters." : "보완·재신청 내용은 2,000자 이내로 입력해 주세요.";
     const invalidFileMessage = files.map(validateUploadFile).find(Boolean);
     if (invalidFileMessage) nextFieldErrors.fileUploads = invalidFileMessage;
     if (Object.keys(nextFieldErrors).length > 0) {
@@ -456,6 +466,7 @@ export function JoinCompanyReapplyMigrationPage() {
     try {
       const result = await submitJoinCompanyReapply({
         ...form,
+        applicantResponse: applicantResponse.trim(),
         fileUploads: files
       });
       const companyName = result.insttNm || form.agencyName;
@@ -675,6 +686,30 @@ export function JoinCompanyReapplyMigrationPage() {
                 ) : null}
               </div>
             </div>
+
+            <section className="mb-10 rounded-[var(--kr-gov-radius)] border border-blue-200 bg-white p-6" data-help-id="join-company-reapply-response">
+              <div className="mb-3 flex items-start justify-between gap-4">
+                <div>
+                  <h3 className="font-bold text-[var(--kr-gov-text-primary)]">{en ? "Corrective action and response" : "보완·재신청 내용"}</h3>
+                  <p className="mt-1 text-sm leading-6 text-[var(--kr-gov-text-secondary)]">
+                    {en ? "Explain what was corrected for each rejection reason and identify the supporting evidence." : "반려 사유별로 수정·보완한 내용과 이를 확인할 수 있는 증빙을 구체적으로 작성해 주세요."}
+                  </p>
+                </div>
+                <span className="shrink-0 text-xs text-[var(--kr-gov-text-secondary)]">{applicantResponse.length}/2000</span>
+              </div>
+              <label className="sr-only" htmlFor="applicant-response">{en ? "Corrective action and response" : "보완·재신청 내용"}</label>
+              <textarea
+                className="min-h-40 w-full resize-y rounded-[var(--kr-gov-radius)] border border-[var(--kr-gov-border)] bg-white p-4 text-sm leading-6 outline-none focus:border-[var(--kr-gov-blue)] focus:ring-2 focus:ring-blue-100"
+                id="applicant-response"
+                maxLength={2000}
+                onChange={(event) => { setApplicantResponse(event.target.value); clearFieldError("applicantResponse"); }}
+                placeholder={en ? "Example: Corrected the representative information and attached the updated registration certificate." : "예: 대표자 정보를 최신 정보로 수정하고 변경된 사업자등록증을 첨부했습니다."}
+                required
+                value={applicantResponse}
+                {...fieldErrorProps("applicantResponse")}
+              />
+              {fieldErrorMessage("applicantResponse")}
+            </section>
 
             <div className="space-y-12">
               <section data-help-id="join-company-reapply-information">

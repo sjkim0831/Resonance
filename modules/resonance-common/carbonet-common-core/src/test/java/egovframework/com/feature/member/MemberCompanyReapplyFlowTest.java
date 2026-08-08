@@ -138,7 +138,7 @@ class MemberCompanyReapplyFlowTest {
         InsttFileVO oldFile2 = new InsttFileVO();
         oldFile2.setFileSn(2);
         when(memberService.selectInsttFiles("INSTT-REJECTED")).thenReturn(List.of(oldFile1, oldFile2));
-        when(memberService.reapplyInstitution(any(), anyList(), eq("서류 보완 필요"))).thenReturn(storedReceipt());
+        when(memberService.reapplyInstitution(any(), anyList(), eq("서류 보완 필요"), any())).thenReturn(storedReceipt());
         String token = issueToken(session);
 
         ResponseEntity<Map<String, Object>> submitted = validSubmit(token, validEvidence(), session);
@@ -155,7 +155,7 @@ class MemberCompanyReapplyFlowTest {
                 new ArrayList<>(receipt.keySet()));
         @SuppressWarnings("unchecked")
         ArgumentCaptor<List<InsttFileVO>> newFilesCaptor = ArgumentCaptor.forClass(List.class);
-        verify(memberService).reapplyInstitution(any(InsttInfoVO.class), newFilesCaptor.capture(), eq("서류 보완 필요"));
+        verify(memberService).reapplyInstitution(any(InsttInfoVO.class), newFilesCaptor.capture(), eq("서류 보완 필요"), any());
         assertEquals(1, newFilesCaptor.getValue().size());
         assertEquals(3, newFilesCaptor.getValue().get(0).getFileSn());
         assertEquals("P003", newFilesCaptor.getValue().get(0).getProjectId());
@@ -179,7 +179,7 @@ class MemberCompanyReapplyFlowTest {
                 .thenReturn(rejectedWithOldRepresentative, rejectedWithOldRepresentative,
                         reappliedWithNewRepresentative);
         when(memberService.selectInsttFiles("INSTT-REJECTED")).thenReturn(List.of());
-        when(memberService.reapplyInstitution(any(), anyList(), eq("서류 보완 필요")))
+        when(memberService.reapplyInstitution(any(), anyList(), eq("서류 보완 필요"), any()))
                 .thenReturn(storedReceipt());
 
         ResponseEntity<Map<String, Object>> lookup = reapplyPage(
@@ -222,7 +222,7 @@ class MemberCompanyReapplyFlowTest {
         HttpSession session = session(attributes);
         when(memberService.selectInsttInfoForStatus(any())).thenReturn(rejectedInstitution());
         when(memberService.selectInsttFiles("INSTT-REJECTED")).thenReturn(List.of());
-        when(memberService.reapplyInstitution(any(), anyList(), eq("서류 보완 필요"))).thenReturn(storedReceipt());
+        when(memberService.reapplyInstitution(any(), anyList(), eq("서류 보완 필요"), any())).thenReturn(storedReceipt());
         String token = issueToken(session);
         org.mockito.Mockito.doThrow(new IllegalStateException("session store unavailable"))
                 .when(session).setAttribute(eq("companyLookupGrants"), any());
@@ -232,7 +232,7 @@ class MemberCompanyReapplyFlowTest {
         assertEquals(200, submitted.getStatusCode().value());
         assertEquals(Boolean.TRUE, submitted.getBody().get("success"));
         assertEquals("", submitted.getBody().get("lookupHandle"));
-        verify(memberService).reapplyInstitution(any(), anyList(), eq("서류 보완 필요"));
+        verify(memberService).reapplyInstitution(any(), anyList(), eq("서류 보완 필요"), any());
         try (java.util.stream.Stream<Path> files = Files.list(uploadDirectory)) {
             List<Path> committedFiles = files.toList();
             assertEquals(1, committedFiles.size());
@@ -250,7 +250,7 @@ class MemberCompanyReapplyFlowTest {
         assertEquals(400, response.getStatusCode().value());
         assertEquals("REQUIRED_FIELDS_MISSING", response.getBody().get("errorCode"));
         assertEquals(List.of("agencyName"), response.getBody().get("missingFields"));
-        verify(memberService, never()).reapplyInstitution(any(), anyList(), any());
+        verify(memberService, never()).reapplyInstitution(any(), anyList(), any(), any());
     }
 
     @Test
@@ -264,7 +264,7 @@ class MemberCompanyReapplyFlowTest {
 
         assertEquals(400, response.getStatusCode().value());
         assertEquals("INVALID_EVIDENCE_FILE", response.getBody().get("errorCode"));
-        verify(memberService, never()).reapplyInstitution(any(), anyList(), any());
+        verify(memberService, never()).reapplyInstitution(any(), anyList(), any(), any());
     }
 
     @Test
@@ -280,7 +280,7 @@ class MemberCompanyReapplyFlowTest {
 
         assertEquals(400, response.getStatusCode().value());
         assertEquals("INVALID_EVIDENCE_FILE", response.getBody().get("errorCode"));
-        verify(memberService, never()).reapplyInstitution(any(), anyList(), any());
+        verify(memberService, never()).reapplyInstitution(any(), anyList(), any(), any());
     }
 
     @Test
@@ -328,7 +328,7 @@ class MemberCompanyReapplyFlowTest {
         assertTrue(String.valueOf(response.getBody().get("message")).contains("최대 10개"));
         assertEquals(token, attributes.get("companyReapplyToken"));
         verify(memberService, never()).selectInsttInfoForStatus(any());
-        verify(memberService, never()).reapplyInstitution(any(), anyList(), any());
+        verify(memberService, never()).reapplyInstitution(any(), anyList(), any(), any());
         try (java.util.stream.Stream<Path> files = Files.list(uploadDirectory)) {
             assertEquals(0L, files.count());
         }
@@ -393,7 +393,7 @@ class MemberCompanyReapplyFlowTest {
         HttpSession session = session(new HashMap<>());
         when(memberService.selectInsttInfoForStatus(any())).thenReturn(rejectedInstitution());
         when(memberService.selectInsttFiles("INSTT-REJECTED")).thenReturn(List.of());
-        when(memberService.reapplyInstitution(any(), anyList(), any())).thenReturn(null);
+        when(memberService.reapplyInstitution(any(), anyList(), any(), any())).thenReturn(null);
         String token = issueToken(session);
 
         ResponseEntity<Map<String, Object>> response = validSubmit(token, validEvidence(), session);
@@ -449,7 +449,7 @@ class MemberCompanyReapplyFlowTest {
         stored.put("fileSha256sCsv", "a".repeat(64));
         when(mapper.selectLatestCompanyReapplicationAudit(any())).thenReturn(stored);
 
-        Map<String, Object> receipt = service.reapplyInstitution(institution, List.of(file), "서류 보완 필요");
+        Map<String, Object> receipt = service.reapplyInstitution(institution, List.of(file), "서류 보완 필요", "반려 사유에 맞게 정보를 수정하고 증빙을 보완했습니다.");
         assertEquals(1, receipt.get("applicationVersion"));
         assertEquals("P003", institution.getProjectId());
         verify(mapper).insertInsttFile(file);
@@ -481,7 +481,7 @@ class MemberCompanyReapplyFlowTest {
         InsttFileVO evidence = new InsttFileVO();
         evidence.setFileSha256("a".repeat(64));
 
-        assertNull(service.reapplyInstitution(institution, List.of(evidence), "반려"));
+        assertNull(service.reapplyInstitution(institution, List.of(evidence), "반려", "반려 사유에 맞게 정보를 수정하고 증빙을 보완했습니다."));
         verify(mapper, never()).insertInsttFile(any());
         verify(mapper, never()).insertCompanyReapplicationAudit(any());
     }
@@ -502,7 +502,8 @@ class MemberCompanyReapplyFlowTest {
             HttpSession session) {
         return controller.companyReapplySubmitApi(insttId, agencyName, representativeName,
                 bizRegistrationNumber, zipCode, companyAddress, companyAddressDetail, chargerName,
-                chargerEmail, chargerTel, token, files, session, request("127.0.0.1"));
+                chargerEmail, chargerTel, "반려 사유에 맞게 정보를 수정하고 증빙을 보완했습니다.",
+                token, files, session, request("127.0.0.1"));
     }
 
     private HttpServletRequest request(String remoteAddress) {

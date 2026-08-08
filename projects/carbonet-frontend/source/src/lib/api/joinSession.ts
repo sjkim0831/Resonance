@@ -36,6 +36,7 @@ type JoinCompanyReapplySubmitPayload = {
   chargerName: string;
   chargerEmail: string;
   chargerTel: string;
+  applicantResponse: string;
   fileUploads: File[];
 };
 
@@ -87,7 +88,8 @@ function buildJoinCompanyReapplyForm(payload: JoinCompanyReapplySubmitPayload): 
     companyAddressDetail: payload.companyAddressDetail,
     chargerName: payload.chargerName,
     chargerEmail: payload.chargerEmail,
-    chargerTel: payload.chargerTel
+    chargerTel: payload.chargerTel,
+    applicantResponse: payload.applicantResponse
   });
   payload.fileUploads.forEach((file) => form.append("fileUploads", file));
   return form;

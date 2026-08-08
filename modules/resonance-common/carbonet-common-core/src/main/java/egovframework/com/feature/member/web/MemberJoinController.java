@@ -1154,6 +1154,7 @@ public class MemberJoinController {
             @RequestParam(value = "chargerName", required = false) String chargerNm,
             @RequestParam(value = "chargerEmail", required = false) String chargerEmail,
             @RequestParam(value = "chargerTel", required = false) String chargerTel,
+            @RequestParam(value = "applicantResponse", required = false) String applicantResponse,
             @RequestParam(value = "reapplyToken", required = false) String reapplyToken,
             @RequestParam(value = "fileUploads", required = false) java.util.List<org.springframework.web.multipart.MultipartFile> fileUploads,
             HttpSession session,
@@ -1165,7 +1166,7 @@ public class MemberJoinController {
             return globalLimit;
         }
         return noStore(processCompanyReapply(insttId, agencyName, repName, bizNo, zipCode, addr, detailAddr,
-                chargerNm, chargerEmail, chargerTel, reapplyToken, fileUploads, session));
+                chargerNm, chargerEmail, chargerTel, applicantResponse, reapplyToken, fileUploads, session));
     }
 
     @PostMapping({"/companyReapplySubmit", "/ko/companyReapplySubmit", "/en/companyReapplySubmit"})
@@ -1257,6 +1258,7 @@ public class MemberJoinController {
             String chargerNm,
             String chargerEmail,
             String chargerTel,
+            String applicantResponse,
             String reapplyToken,
             List<MultipartFile> fileUploads,
             HttpSession session) {
@@ -1265,7 +1267,7 @@ public class MemberJoinController {
             return reapplyProjectContextUnavailable();
         }
         ResponseEntity<Map<String, Object>> validation = validateCompanyReapplyRequest(
-                insttId, agencyName, repName, bizNo, zipCode, addr, detailAddr, chargerNm, chargerEmail, chargerTel, fileUploads);
+                insttId, agencyName, repName, bizNo, zipCode, addr, detailAddr, chargerNm, chargerEmail, chargerTel, applicantResponse, fileUploads);
         if (validation != null) {
             return validation;
         }
@@ -1331,7 +1333,7 @@ public class MemberJoinController {
             // 원자 서비스와 audit evidence_file_count에 전달한다.
             savedFiles = saveInsttEvidenceFiles(normalizedInsttId, fileUploads, nextFileSn);
             vo.setBizRegFilePath(joinInsttEvidencePaths(savedFiles));
-            receipt = entrprsManageService.reapplyInstitution(vo, savedFiles, current.getRjctRsn());
+            receipt = entrprsManageService.reapplyInstitution(vo, savedFiles, current.getRjctRsn(), applicantResponse.trim());
             if (receipt == null || receipt.isEmpty()) {
                 cleanupInsttEvidenceFiles(savedFiles);
                 return reapplyError(HttpStatus.CONFLICT, "REAPPLY_STATE_CONFLICT",
@@ -1371,7 +1373,7 @@ public class MemberJoinController {
 
     private ResponseEntity<Map<String, Object>> validateCompanyReapplyRequest(
             String insttId, String agencyName, String repName, String bizNo, String zipCode, String addr, String detailAddr,
-            String chargerNm, String chargerEmail, String chargerTel, List<MultipartFile> fileUploads) {
+            String chargerNm, String chargerEmail, String chargerTel, String applicantResponse, List<MultipartFile> fileUploads) {
         List<String> missingFields = new ArrayList<>();
         addMissingField(missingFields, "insttId", insttId);
         addMissingField(missingFields, "agencyName", agencyName);
@@ -1382,6 +1384,7 @@ public class MemberJoinController {
         addMissingField(missingFields, "chargerName", chargerNm);
         addMissingField(missingFields, "chargerEmail", chargerEmail);
         addMissingField(missingFields, "chargerTel", chargerTel);
+        addMissingField(missingFields, "applicantResponse", applicantResponse);
         if (!missingFields.isEmpty()) {
             Map<String, Object> response = new java.util.LinkedHashMap<>();
             response.put("success", false);
@@ -1401,6 +1404,7 @@ public class MemberJoinController {
         lengthLimits.put("chargerName", 100);
         lengthLimits.put("chargerEmail", 254);
         lengthLimits.put("chargerTel", 30);
+        lengthLimits.put("applicantResponse", 2000);
         Map<String, String> values = new java.util.LinkedHashMap<>();
         values.put("insttId", insttId);
         values.put("agencyName", agencyName);
@@ -1412,6 +1416,7 @@ public class MemberJoinController {
         values.put("chargerName", chargerNm);
         values.put("chargerEmail", chargerEmail);
         values.put("chargerTel", chargerTel);
+        values.put("applicantResponse", applicantResponse);
         List<String> oversizedFields = new ArrayList<>();
         for (Map.Entry<String, Integer> limit : lengthLimits.entrySet()) {
             String value = values.get(limit.getKey());
@@ -1429,6 +1434,10 @@ public class MemberJoinController {
         }
         if (!isValidBusinessNumber(bizNo)) {
             return reapplyError(HttpStatus.BAD_REQUEST, "INVALID_BUSINESS_NUMBER", "사업자등록번호는 숫자 10자리로 입력해 주세요.");
+        }
+        if (applicantResponse.trim().length() < 10) {
+            return reapplyError(HttpStatus.BAD_REQUEST, "INVALID_APPLICANT_RESPONSE",
+                    "보완·재신청 내용은 10자 이상 입력해 주세요.");
         }
         if (!isFiveDigitZipCode(zipCode)) {
             return reapplyError(HttpStatus.BAD_REQUEST, "INVALID_ZIP_CODE", "우편번호는 숫자 5자리로 입력해 주세요.");

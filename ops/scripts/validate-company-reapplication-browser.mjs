@@ -124,6 +124,7 @@ async function runBusinessJourney(testCase){
     await page.locator("#charger-name").fill(testCase.chargerName);
     await page.locator("#charger-email").fill(testCase.chargerEmail);
     await page.locator("#charger-tel").fill(testCase.chargerTel);
+    await page.locator("#applicant-response").fill("반려 사유에 따라 기업 정보와 증빙 서류를 정확하게 보완했습니다.");
     const submittedRepName=String(testCase.updatedRepName||testCase.repName);
     await page.locator("#rep-name").fill(submittedRepName);
     await page.locator("#company-address-detail").fill(testCase.detailAddress);
@@ -141,7 +142,7 @@ async function runBusinessJourney(testCase){
       const hasValue=(selector)=>Boolean(String(document.querySelector(selector)?.value||"").trim());
       const fileInput=document.querySelector("input.file-input");
       const submit=[...document.querySelectorAll("button")].find(node=>node.textContent?.trim()==="재신청 완료");
-      return ["#charger-name","#charger-email","#charger-tel","#company-name","#rep-name","#zip-code","#company-address"]
+      return ["#charger-name","#charger-email","#charger-tel","#company-name","#rep-name","#zip-code","#company-address","#applicant-response"]
         .every(hasValue)&&fileInput?.files?.length===1&&fileInput.files[0].size>0
         &&submit instanceof HTMLButtonElement&&!submit.disabled;
     },undefined,{timeout:5000});
@@ -173,6 +174,7 @@ async function runBusinessJourney(testCase){
             representativeName:hasValue("#rep-name"),
             zipCode:hasValue("#zip-code"),
             companyAddress:hasValue("#company-address"),
+            applicantResponse:hasValue("#applicant-response"),
           },
           fileCount:file?1:0,
           fileTypeAllowed:Boolean(file&&/\.(pdf|jpe?g|png)$/i.test(file.name)),
@@ -195,6 +197,9 @@ async function runBusinessJourney(testCase){
         receiptEvidenceCount:receiptHashes.length,
         receiptSha,
       })}`);
+    }
+    if(submitBody?.receipt?.applicantResponseRecorded!==true){
+      throw new Error(`${viewport.name} applicant response persistence receipt is missing`);
     }
 
     await page.getByRole("heading",{name:"재신청 접수 완료",exact:true}).waitFor({state:"visible",timeout:10000});
@@ -286,6 +291,7 @@ async function runBusinessJourney(testCase){
       directDownloadVerified:true,
       downloadVerified:true,
       representativeUpdated:Boolean(testCase.updatedRepName),
+      applicantResponseRecorded:true,
       keyboardSubmit:viewport.name==="desktop",
     });
   }finally{
@@ -302,7 +308,7 @@ try{
 
 if(routeSamples.length<20)throw new Error(`at least 20 browser latency samples are required, got ${routeSamples.length}`);
 if(journeys.length!==2||!journeys.some(item=>item.viewport==="desktop")||!journeys.some(item=>item.viewport==="mobile")
-    ||!journeys.every(item=>item.downloadVerified)||!journeys.some(item=>item.representativeUpdated)){
+    ||!journeys.every(item=>item.downloadVerified&&item.applicantResponseRecorded)||!journeys.some(item=>item.representativeUpdated)){
   throw new Error(`desktop and mobile business journeys are required, got ${journeys.length}`);
 }
 const durations=routeSamples.map(result=>result.durationMs).sort((a,b)=>a-b);
@@ -315,6 +321,7 @@ console.log(JSON.stringify({
   browserJourney:1,
   downloadVerified:journeys.every(item=>item.downloadVerified)?1:0,
   representativeUpdateVerified:journeys.some(item=>item.representativeUpdated)?1:0,
+  applicantResponseVerified:journeys.every(item=>item.applicantResponseRecorded)?1:0,
   businessJourneyCount:journeys.length,
   businessJourneyDesktop:journeys.some(item=>item.viewport==="desktop")?1:0,
   businessJourneyMobile:journeys.some(item=>item.viewport==="mobile")?1:0,

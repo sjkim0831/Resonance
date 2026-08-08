@@ -275,11 +275,17 @@ public class AdminApprovalPageModelAssembler {
             row.put("detailUrl", adminApprovalNavigationSupport.adminPrefix(request, locale) + "/member/company_detail?insttId=" + urlEncode(insttId));
             row.put("editUrl", adminApprovalNavigationSupport.adminPrefix(request, locale) + "/member/company_account?insttId=" + urlEncode(insttId));
             row.put("rejectReason", "");
+            row.put("applicantResponse", "");
+            row.put("reapplicationVersion", 0);
+            row.put("reapplicationSubmittedAt", "");
 
             if (!insttId.isEmpty()) {
                 try {
                     InstitutionStatusVO institutionInfo = loadInstitutionInfoByInsttId(insttId);
                     row.put("rejectReason", institutionInfo == null ? "" : safeString(institutionInfo.getRjctRsn()));
+                    row.put("applicantResponse", institutionInfo == null ? "" : safeString(institutionInfo.getApplicantResponse()));
+                    row.put("reapplicationVersion", institutionInfo == null || institutionInfo.getReapplicationVersion() == null ? 0 : institutionInfo.getReapplicationVersion());
+                    row.put("reapplicationSubmittedAt", institutionInfo == null ? "" : safeString(institutionInfo.getReapplicationSubmittedAt()));
                 } catch (Exception e) {
                     log.warn("Failed to load company rejection reason. insttId={}", insttId, e);
                 }

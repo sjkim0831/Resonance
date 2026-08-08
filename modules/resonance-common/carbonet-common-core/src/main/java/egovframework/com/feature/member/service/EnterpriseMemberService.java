@@ -238,5 +238,5 @@ public interface EnterpriseMemberService {
 	 * @throws Exception 저장 실패
 	 */
 	public Map<String, Object> reapplyInstitution(InsttInfoVO insttInfoVO, List<InsttFileVO> fileList,
-			String rejectionReason) throws Exception;
+			String rejectionReason, String applicantResponse) throws Exception;
 }

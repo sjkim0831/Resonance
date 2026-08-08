@@ -15,7 +15,7 @@ PROJECT_ID="${CARBONET_REAPPLICATION_TEST_PROJECT_ID:-P003}"
 UPLOAD_ROOT="${CARBONET_FILE_INSTT_DIR:-/opt/resonance-data/carbonet/files/instt}"
 PROCESS=COMPANY_REAPPLICATION_PUBLIC
 STEP=COMPANY_REAPPLICATION_PUBLIC_RESUBMIT
-REQUIRED="api,database,authority,responsive,accessibility,exceptionStates,audit,recovery,cleanup,token,replayBlocked,rateLimitFixtureCleanup,browserRateLimitFixtureCleanup,screenContextPreflight,desktop,mobile,browserJourney,browserPersistence,businessJourneyDesktop,businessJourneyMobile,downloadVerified,representativeUpdateVerified"
+REQUIRED="api,database,authority,responsive,accessibility,exceptionStates,audit,recovery,cleanup,token,replayBlocked,rateLimitFixtureCleanup,browserRateLimitFixtureCleanup,screenContextPreflight,desktop,mobile,browserJourney,browserPersistence,businessJourneyDesktop,businessJourneyMobile,downloadVerified,representativeUpdateVerified,applicantResponseVerified"
 BROWSER_RATE_LIMIT_WINDOW_SECONDS=300
 BROWSER_RATE_LIMIT_MAX_REQUESTS=10
 BROWSER_RATE_LIMIT_REQUIRED_CAPACITY=2
@@ -367,6 +367,7 @@ for instt_id in "$DESKTOP_INSTT_ID" "$MOBILE_INSTT_ID"; do
     (select count(*) from framework_company_reapplication_audit a where a.project_id=i.project_id and a.instt_id=trim(i.instt_id)
       and a.actor_code='PUBLIC_APPLICANT' and a.command_code='RESUBMIT_COMPANY_APPLICATION'
       and a.from_state='REJECTED' and a.to_state='APPLIED' and a.evidence_file_count=1
+      and length(trim(a.applicant_response)) >= 10
       and length(a.change_hash)=64 and length(a.evidence_sha256[1])=64
       and a.evidence_sha256[1]=(select f.file_sha256 from comtninsttfile f where f.project_id=i.project_id and trim(f.instt_id)=trim(i.instt_id) order by f.file_sn desc limit 1))
     from comtninsttinfo i where i.project_id='${PROJECT_ID}' and trim(i.instt_id)='${instt_id}'")"
@@ -390,13 +391,14 @@ jq -n --arg validationCommit "$VALIDATION_COMMIT" --slurpfile runtime "$TMP/runt
     browserPersistence:1,
     browserRateLimitFixtureCleanup:1,
     browserFixtureCleanup:1,
+    applicantResponseVerified:$browser[0].applicantResponseVerified,
     performanceP95Ms:$browser[0].performanceP95Ms,
     performanceSampleCount:$browser[0].performanceSampleCount,
     suiteDurationMs:($runtime[0].suiteDurationMs + $browser[0].suiteDurationMs),
     contract:$contract[0]
   }
   | if .performanceSampleCount<20 or .businessJourneyCount!=2 or .browserJourney!=1 or .browserPersistence!=1
-      or .downloadVerified!=1 or .representativeUpdateVerified!=1
+      or .downloadVerified!=1 or .representativeUpdateVerified!=1 or .applicantResponseVerified!=1
       or .browserRateLimitFixtureCleanup!=1
       or (.performanceP95Ms|type)!="number" or .performanceP95Ms<=0
     then error("browser business journey or 20-sample p95 evidence is incomplete") else . end
