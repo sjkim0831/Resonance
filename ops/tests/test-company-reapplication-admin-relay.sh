@@ -24,7 +24,7 @@ grep -Fq '.adminRelay!=1 or .decisions!=2' "$WRAPPER"
 grep -Fq '@RequestParam(value = "projectId", required = false) String projectId' "$CONTROLLER"
 grep -Fq 'searchParams.put("projectId", normalizedProjectId)' "$ASSEMBLER"
 grep -Fq 'projectId: getSearchParam("projectId")' "$FRONTEND"
-grep -Fq 'new URLSearchParams({searchKeyword:item.bizNo,sbscrbSttus:"A",pageIndex:"1",projectId})' "$HARNESS"
+grep -Fq 'new URLSearchParams({searchKeyword:item.companyName,sbscrbSttus:"A",pageIndex:"1",projectId})' "$HARNESS"
 grep -Fq 'crossProjectRowsExcluded' "$MIGRATION"
 
 if grep -Eq 'userPw:[[:space:]]*"[^$]' "$HARNESS"; then

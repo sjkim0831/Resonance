@@ -32,7 +32,7 @@ const results=[];
 try{
   for(const item of cases){
     const viewport=item.viewport==="mobile"?{width:390,height:844}:{width:1440,height:1000};
-    const query=new URLSearchParams({searchKeyword:item.bizNo,sbscrbSttus:"A",pageIndex:"1",projectId});
+    const query=new URLSearchParams({searchKeyword:item.companyName,sbscrbSttus:"A",pageIndex:"1",projectId});
     const probe=await api.get(`/admin/api/admin/member/company-approve/page?${query}`,{failOnStatusCode:false});
     const probeBody=await probe.json().catch(()=>({}));
     const probeRows=Array.isArray(probeBody.approvalRows)?probeBody.approvalRows:[];
