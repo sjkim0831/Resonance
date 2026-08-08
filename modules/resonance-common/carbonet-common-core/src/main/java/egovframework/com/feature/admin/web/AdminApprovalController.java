@@ -86,6 +86,7 @@ public class AdminApprovalController {
             @RequestParam(value = "searchKeyword", required = false) String searchKeyword,
             @RequestParam(value = "sbscrbSttus", required = false) String sbscrbSttus,
             @RequestParam(value = "result", required = false) String result,
+            @RequestParam(value = "projectId", required = false) String projectId,
             HttpServletRequest request,
             Locale locale) {
         Map<String, Object> response = adminApprovalPagePayloadService.buildCompanyApprovePagePayload(
@@ -93,6 +94,7 @@ public class AdminApprovalController {
                 searchKeyword,
                 sbscrbSttus,
                 result,
+                projectId,
                 request,
                 locale);
         boolean canManage = Boolean.TRUE.equals(response.get("canViewCompanyApprove"));

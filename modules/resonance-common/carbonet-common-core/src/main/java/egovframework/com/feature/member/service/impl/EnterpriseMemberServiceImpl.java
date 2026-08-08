@@ -351,6 +351,11 @@ public class EnterpriseMemberServiceImpl extends EgovAbstractServiceImpl impleme
 	}
 
 	@Override
+	public List<InsttFileVO> selectInsttFiles(String insttId, String projectId) throws Exception {
+		return entrprsManageMapper.selectInsttFiles(insttId, projectId);
+	}
+
+	@Override
 	public InsttFileVO selectInsttFileByFileId(String fileId) throws Exception {
 		requireCurrentProjectId();
 		return entrprsManageMapper.selectInsttFileByFileId(fileId);

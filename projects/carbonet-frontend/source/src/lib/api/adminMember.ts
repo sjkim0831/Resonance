@@ -256,7 +256,7 @@ export async function fetchMemberApprovePage(params?: { pageIndex?: number; sear
   );
 }
 
-export async function fetchCompanyApprovePage(params?: { pageIndex?: number; searchKeyword?: string; sbscrbSttus?: string; result?: string; }) {
+export async function fetchCompanyApprovePage(params?: { pageIndex?: number; searchKeyword?: string; sbscrbSttus?: string; result?: string; projectId?: string; }) {
   const fallbackMessage = "Failed to load company approval page";
   return fetchCachedAdminMemberPage<CompanyApprovePagePayload>(
     "company-approve/page",

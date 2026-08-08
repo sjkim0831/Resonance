@@ -4,6 +4,10 @@ set -euo pipefail
 ROOT="${RESONANCE_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
 HARNESS="$ROOT/ops/scripts/validate-company-reapplication-admin-relay.mjs"
 WRAPPER="$ROOT/ops/tests/run-company-reapplication-business-e2e.sh"
+CONTROLLER="$ROOT/modules/resonance-common/carbonet-common-core/src/main/java/egovframework/com/feature/admin/web/AdminApprovalController.java"
+ASSEMBLER="$ROOT/modules/resonance-common/carbonet-common-core/src/main/java/egovframework/com/feature/admin/web/AdminApprovalPageModelAssembler.java"
+FRONTEND="$ROOT/projects/carbonet-frontend/source/src/features/company-approve/CompanyApproveMigrationPage.tsx"
+MIGRATION="$ROOT/apps/carbonet-api/src/main/resources/db/migration/postgresql/V20260808130000__scope_company_reapplication_admin_review_by_project.sql"
 
 grep -Fq '/admin/login/actionLogin' "$HARNESS"
 grep -Fq '/admin/member/company-approve' "$HARNESS"
@@ -17,6 +21,11 @@ grep -Fq 'CARBONET_ADMIN_TEST_PASSWORD' "$WRAPPER"
 grep -Fq 'validate-company-reapplication-admin-relay.mjs' "$WRAPPER"
 grep -Fq 'admin_state' "$WRAPPER"
 grep -Fq '.adminRelay!=1 or .decisions!=2' "$WRAPPER"
+grep -Fq '@RequestParam(value = "projectId", required = false) String projectId' "$CONTROLLER"
+grep -Fq 'searchParams.put("projectId", normalizedProjectId)' "$ASSEMBLER"
+grep -Fq 'projectId: getSearchParam("projectId")' "$FRONTEND"
+grep -Fq 'new URLSearchParams({searchKeyword:item.bizNo,sbscrbSttus:"A",pageIndex:"1",projectId})' "$HARNESS"
+grep -Fq 'crossProjectRowsExcluded' "$MIGRATION"
 
 if grep -Eq 'userPw:[[:space:]]*"[^$]' "$HARNESS"; then
   echo '[company-reapplication-admin-relay-contract] embedded password is forbidden' >&2

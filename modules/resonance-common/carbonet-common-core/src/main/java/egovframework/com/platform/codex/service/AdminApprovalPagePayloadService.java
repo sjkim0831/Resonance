@@ -58,6 +58,18 @@ public class AdminApprovalPagePayloadService {
             String result,
             HttpServletRequest request,
             Locale locale) {
+        return buildCompanyApprovePagePayload(
+                pageIndexParam, searchKeyword, sbscrbSttus, result, null, request, locale);
+    }
+
+    public Map<String, Object> buildCompanyApprovePagePayload(
+            String pageIndexParam,
+            String searchKeyword,
+            String sbscrbSttus,
+            String result,
+            String projectId,
+            HttpServletRequest request,
+            Locale locale) {
         boolean isEn = adminRequestContextSupport.isEnglishRequest(request, locale);
         adminRequestContextSupport.primeCsrfToken(request);
         ExtendedModelMap model = new ExtendedModelMap();
@@ -65,6 +77,7 @@ public class AdminApprovalPagePayloadService {
                 pageIndexParam,
                 searchKeyword,
                 sbscrbSttus,
+                projectId,
                 result,
                 model,
                 isEn,

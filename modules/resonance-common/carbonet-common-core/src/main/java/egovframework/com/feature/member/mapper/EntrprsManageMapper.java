@@ -224,6 +224,12 @@ public class EntrprsManageMapper extends BaseMapperSupport {
         return selectList("entrprsManageMapper.selectInsttFiles", scopedRequiredSingleValue("insttId", insttId));
     }
 
+    public List<InsttFileVO> selectInsttFiles(String insttId, String projectId) {
+        java.util.Map<String, Object> params = scopedRequiredSingleValue("insttId", insttId);
+        params.put("projectId", projectId);
+        return selectList("entrprsManageMapper.selectInsttFiles", params);
+    }
+
     public InsttFileVO selectInsttFileByFileId(String fileId) {
         return (InsttFileVO) selectOne("entrprsManageMapper.selectInsttFileByFileId", scopedRequiredSingleValue("fileId", fileId));
     }

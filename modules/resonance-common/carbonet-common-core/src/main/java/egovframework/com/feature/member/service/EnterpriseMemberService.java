@@ -178,6 +178,7 @@ public interface EnterpriseMemberService {
 	public void insertInsttFiles(List<InsttFileVO> fileList) throws Exception;
 
 	public List<InsttFileVO> selectInsttFiles(String insttId) throws Exception;
+	public List<InsttFileVO> selectInsttFiles(String insttId, String projectId) throws Exception;
 
 	public InsttFileVO selectInsttFileByFileId(String fileId) throws Exception;
 

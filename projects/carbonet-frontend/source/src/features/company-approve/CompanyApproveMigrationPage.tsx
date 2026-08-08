@@ -62,6 +62,7 @@ export function CompanyApproveMigrationPage() {
       pageIndex: pageData.pageIndex,
       searchKeyword: pageData.searchKeyword,
       sbscrbSttus: pageData.status,
+      projectId: getSearchParam("projectId"),
       result: getSearchParam("result") || ""
     })
       .then(data => {

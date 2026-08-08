@@ -7,6 +7,7 @@ const root=path.resolve(process.env.RESONANCE_ROOT||path.join(import.meta.dirnam
 const require=createRequire(path.join(root,"projects/carbonet-frontend/source/package.json"));
 const {chromium,request}=require("@playwright/test");
 const base=String(process.env.CARBONET_BROWSER_BASE_URL||process.env.CARBONET_RUNTIME_BASE_URL||"http://127.0.0.1").replace(/\/$/,"");
+const projectId=String(process.env.CARBONET_REAPPLICATION_TEST_PROJECT_ID||"P003");
 const password=String(process.env.CARBONET_ADMIN_TEST_PASSWORD||"");
 const adminUser=String(process.env.CARBONET_ADMIN_TEST_USER||"webmaster");
 const casesFile=String(process.env.CARBONET_REAPPLICATION_BROWSER_CASES_FILE||"");
@@ -31,7 +32,7 @@ const results=[];
 try{
   for(const item of cases){
     const viewport=item.viewport==="mobile"?{width:390,height:844}:{width:1440,height:1000};
-    const query=new URLSearchParams({searchKeyword:item.bizNo,sbscrbSttus:"A",pageIndex:"1"});
+    const query=new URLSearchParams({searchKeyword:item.bizNo,sbscrbSttus:"A",pageIndex:"1",projectId});
     const probe=await api.get(`/admin/api/admin/member/company-approve/page?${query}`,{failOnStatusCode:false});
     const probeBody=await probe.json().catch(()=>({}));
     const probeRows=Array.isArray(probeBody.approvalRows)?probeBody.approvalRows:[];
