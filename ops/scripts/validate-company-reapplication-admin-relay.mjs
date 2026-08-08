@@ -39,7 +39,8 @@ try{
     const response=await page.goto(`${base}/admin/member/company-approve?${query}`,{waitUntil:"domcontentloaded",timeout:20000});
     await page.getByRole("heading",{name:"회원사 가입승인",exact:true}).waitFor({state:"visible",timeout:15000});
     const row=page.getByRole("row").filter({has:page.getByText(item.fileName,{exact:true})});
-    if(await row.count()!==1)throw new Error(`${item.viewport} approval row count mismatch`);
+    await row.waitFor({state:"visible",timeout:15000});
+    if(await row.count()!==1)throw new Error(`${item.viewport} approval row count mismatch after load`);
     await row.getByText(item.fileName,{exact:true}).waitFor({state:"visible",timeout:10000});
     const overflow=await page.evaluate(()=>document.documentElement.scrollWidth>document.documentElement.clientWidth+2);
     if((response?.status()||0)>=400||errors.length||overflow)throw new Error(`${item.viewport} approval screen contract failed`);
