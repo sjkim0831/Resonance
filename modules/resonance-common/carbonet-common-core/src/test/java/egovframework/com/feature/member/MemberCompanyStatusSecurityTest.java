@@ -99,6 +99,19 @@ class MemberCompanyStatusSecurityTest {
     }
 
     @Test
+    void legacyStatusRoutesRemainMappedForKoreanAndEnglishApplicants() throws Exception {
+        org.springframework.web.bind.annotation.GetMapping mapping = MemberJoinController.class
+                .getMethod("companyJoinStatusSearch", HttpServletRequest.class, org.springframework.ui.Model.class)
+                .getAnnotation(org.springframework.web.bind.annotation.GetMapping.class);
+
+        assertNotNull(mapping);
+        List<String> paths = List.of(mapping.value());
+        assertTrue(paths.contains("/companyJoinStatus"));
+        assertTrue(paths.contains("/ko/companyJoinStatus"));
+        assertTrue(paths.contains("/en/companyJoinStatus"));
+    }
+
+    @Test
     void statusLookupReturnsOnlyAllowlistedFieldsAndOpaqueDownloadToken() throws Exception {
         when(memberService.selectInsttInfoForStatus(any(InsttInfoVO.class))).thenReturn(status);
         when(memberService.selectInsttFiles(status.getInsttId())).thenReturn(List.of(evidence));
