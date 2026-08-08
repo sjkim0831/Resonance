@@ -15,8 +15,8 @@ installAiContextRuntime({ application: "CCUS 탄소중립 플랫폼" });
 async function resolveEntryComponent() {
   const pathname = window.location.pathname.toLowerCase();
   if (pathname === "/join/companyreapply" || pathname === "/join/en/companyreapply") {
-    const module = await import("./features/join-company-reapply/JoinCompanyReapplyMigrationPage");
-    return module.JoinCompanyReapplyMigrationPage;
+    const module = await import("./features/join-company-reapply/JoinCompanyReapplyEntry");
+    return module.JoinCompanyReapplyEntry;
   }
   return (await import("./App")).default;
 }

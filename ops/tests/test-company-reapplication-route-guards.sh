@@ -9,14 +9,15 @@ TASK_PANEL="$ROOT/projects/carbonet-frontend/source/src/features/task-quest/Task
 NOTE_PANEL="$ROOT/projects/carbonet-frontend/source/src/features/screen-development-note/ScreenDevelopmentNotePanel.tsx"
 REAPPLY_PAGE="$ROOT/projects/carbonet-frontend/source/src/features/join-company-reapply/JoinCompanyReapplyMigrationPage.tsx"
 APP_ENTRY="$ROOT/projects/carbonet-frontend/source/src/main.tsx"
+LIGHTWEIGHT_ENTRY="$ROOT/projects/carbonet-frontend/source/src/features/join-company-reapply/JoinCompanyReapplyEntry.tsx"
 
-for file in "$MAPPER" "$MAPPER_TEST" "$BROWSER" "$TASK_PANEL" "$NOTE_PANEL" "$REAPPLY_PAGE" "$APP_ENTRY"; do
+for file in "$MAPPER" "$MAPPER_TEST" "$BROWSER" "$TASK_PANEL" "$NOTE_PANEL" "$REAPPLY_PAGE" "$APP_ENTRY" "$LIGHTWEIGHT_ENTRY"; do
   [[ -f "$file" ]] || { echo "[company-reapplication-route-guards] missing $file" >&2; exit 1; }
 done
 
-node - "$MAPPER" "$MAPPER_TEST" "$BROWSER" "$TASK_PANEL" "$NOTE_PANEL" "$REAPPLY_PAGE" "$APP_ENTRY" <<'NODE'
+node - "$MAPPER" "$MAPPER_TEST" "$BROWSER" "$TASK_PANEL" "$NOTE_PANEL" "$REAPPLY_PAGE" "$APP_ENTRY" "$LIGHTWEIGHT_ENTRY" <<'NODE'
 const fs=require("node:fs");
-const [mapperPath,mapperTestPath,browserPath,taskPath,notePath,reapplyPagePath,appEntryPath]=process.argv.slice(2);
+const [mapperPath,mapperTestPath,browserPath,taskPath,notePath,reapplyPagePath,appEntryPath,lightweightEntryPath]=process.argv.slice(2);
 const mapper=fs.readFileSync(mapperPath,"utf8");
 const mapperTest=fs.readFileSync(mapperTestPath,"utf8");
 const browser=fs.readFileSync(browserPath,"utf8");
@@ -24,6 +25,7 @@ const task=fs.readFileSync(taskPath,"utf8");
 const note=fs.readFileSync(notePath,"utf8");
 const reapplyPage=fs.readFileSync(reapplyPagePath,"utf8");
 const appEntry=fs.readFileSync(appEntryPath,"utf8");
+const lightweightEntry=fs.readFileSync(lightweightEntryPath,"utf8");
 const assert=(value,message)=>{if(!value)throw new Error(message);};
 
 assert(mapper.includes('"join-company-reapply", "/join/companyReapply", "/join/en/companyReapply"'),
@@ -45,9 +47,13 @@ assert(reapplyPage.includes("setLookupHandle(String(result.lookupHandle || looku
 assert(!/^import App from "\.\/App";/m.test(appEntry)&&appEntry.includes('await import("./App")'),
   "application shell is still eagerly included in the public reapplication entry bundle");
 assert(appEntry.includes('pathname === "/join/companyreapply"')&&
-  appEntry.includes('import("./features/join-company-reapply/JoinCompanyReapplyMigrationPage")'),
+  appEntry.includes('import("./features/join-company-reapply/JoinCompanyReapplyEntry")'),
   "public reapplication route does not use its lightweight entry chunk");
 assert(appEntry.indexOf("window.__CARBONET_REACT_APP_MOUNTED__ = true")>appEntry.indexOf(".then((EntryComponent)"),
   "mounted marker is set before the selected entry chunk is available");
+assert(lightweightEntry.includes("useRuntimeNavigation()")&&lightweightEntry.includes('page === "join-company-reapply"'),
+  "lightweight entry does not observe SPA route changes");
+assert(lightweightEntry.includes('lazy(() => import("../../App"))'),
+  "lightweight entry does not defer the full application until a route transition");
 console.log("[company-reapplication-route-guards] PASS route=1 mount=1 lightweightEntry=1 keyboardSubmit=1 diagnostics=1 rotatedHandle=1 anonymousApiGuards=2");
 NODE
