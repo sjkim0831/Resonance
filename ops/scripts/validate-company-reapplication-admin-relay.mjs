@@ -63,7 +63,7 @@ try{
         row.getByRole("button",{name:"승인",exact:true}).click(),
       ]);
     }else{
-      await row.getByRole("button",{name:"검토",exact:true}).click();
+      await row.getByRole("button",{name:"상세 검토",exact:true}).click();
       const dialog=page.getByRole("dialog",{name:"회원사 가입 신청 상세 검토"});
       await dialog.getByRole("textbox",{name:"반려 사유"}).fill("QA 재신청 증빙 보완 필요");
       await Promise.all([

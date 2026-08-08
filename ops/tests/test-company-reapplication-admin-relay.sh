@@ -13,6 +13,7 @@ MAPPER="$ROOT/modules/resonance-common/carbonet-common-core/src/main/resources/e
 grep -Fq '/admin/login/actionLogin' "$HARNESS"
 grep -Fq '/admin/member/company-approve' "$HARNESS"
 grep -Fq '/admin/api/admin/member/company-approve/action' "$HARNESS"
+grep -Fq 'name:"상세 검토",exact:true' "$HARNESS"
 grep -Fq 'getByText(item.fileName' "$HARNESS"
 grep -Fq 'name:"승인"' "$HARNESS"
 grep -Fq 'name:"반려 사유"' "$HARNESS"
