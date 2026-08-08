@@ -1441,7 +1441,7 @@ public class ActorProcessGovernanceService {
                    item_id as \"itemId\",test_case_id as \"testCaseId\",coalesce(capability_code,'ALL') as \"capabilityCode\",
                    coalesce(pre_input_json,'{}'::jsonb)::text as \"preInputJson\",coalesce(expected_result,case when case_type='HAPPY_PATH' then 'PASSED' else 'BLOCKED' end) as \"expectedResult\",
                    coalesce(expected_state,'') as \"expectedState\",coalesce(expected_output_json,'{}'::jsonb)::text as \"expectedOutputJson\",
-                   coalesce(case_description,'') as \"caseDescription\"
+                   coalesce(action_sequence_json,'[]'::jsonb)::text as \"actionSequenceJson\",coalesce(case_description,'') as \"caseDescription\",case_origin as \"caseOrigin\",reuse_count as \"reuseCount\"
               from framework_qa_process_case_catalog
              where process_code=? and (?='' or step_code=?)
              order by step_order,case case_type when 'HAPPY_PATH' then 1 when 'AUTHORITY' then 2 when 'ISOLATION' then 3 when 'EXCEPTION' then 4 else 5 end,case_code
