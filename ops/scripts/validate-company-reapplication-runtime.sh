@@ -324,7 +324,7 @@ audit_result="$(q "select actor_code||'|'||command_code||'|'||from_state||'|'||t
   from framework_company_reapplication_audit
   where project_id='${PROJECT_ID}' and instt_id='${INSTT_ID}'
   order by application_version desc limit 1")"
-[[ "$audit_result" == 'PUBLIC_APPLICANT|RESUBMIT_COMPANY_APPLICATION|REJECTED|APPLIED|1|64|QA REJECTION EVIDENCE REQUIRED|t' ]] || {
+[[ "$audit_result" == 'PUBLIC_APPLICANT|RESUBMIT_COMPANY_APPLICATION|REJECTED|APPLIED|1|64|QA REJECTION EVIDENCE REQUIRED|true' ]] || {
   echo "[company-reapplication-e2e] FAIL audit-contract=$audit_result" >&2
   exit 1
 }
