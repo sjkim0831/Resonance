@@ -27,7 +27,7 @@ cd "$ROOT"
 OUTPUT="$(RESONANCE_ROOT="$ROOT" CARBONET_RUNTIME_BASE_URL="${CARBONET_RUNTIME_BASE_URL:-http://127.0.0.1}" node ops/scripts/member-approval-e2e.mjs)"
 STATE="$(psqlq "select string_agg(entrprs_mber_id||':'||entrprs_mber_sttus||':'||coalesce(rjct_rsn,''),',' order by entrprs_mber_id) from comtnentrprsmber where entrprs_mber_id in ('${ID1}','${ID2}');")"
 [[ "$STATE" == *"${ID1}:P:"* && "$STATE" == *"${ID2}:R:QA 자동 검증 보완 요청"* ]] || { echo "member approval DB state mismatch" >&2; exit 1; }
-AUDIT="$(psqlq "select count(*) from audit_event where entity_type='MEMBER' and (entity_id like '%${ID1}%' or entity_id like '%${ID2}%') and action_code in ('MEMBER_APPROVAL_APPROVE','MEMBER_APPROVAL_REJECT') and result_code='SUCCESS';")"
+AUDIT="$(psqlq "select count(*) from audit_event where entity_type='MEMBER' and (entity_id like '%${ID1}%' or entity_id like '%${ID2}%') and action_code in ('MEMBER_APPROVAL_APPROVE','MEMBER_APPROVAL_REJECT') and result_status='SUCCESS';")"
 [[ "$AUDIT" == "2" ]] || { echo "member approval audit mismatch count=$AUDIT" >&2; exit 1; }
 cleanup
 trap - EXIT
