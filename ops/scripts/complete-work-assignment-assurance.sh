@@ -9,7 +9,16 @@ grep -Fq '[work-assignment-runtime] PASS' <<<"$EVIDENCE" || { echo '[work-assign
 SOURCE_COMMIT="${WORK_ASSIGNMENT_SOURCE_COMMIT:-$(git -C "$ROOT" rev-parse --short=12 HEAD)}"
 EVIDENCE_REF="runtime-e2e:${SOURCE_COMMIT}:steps=7:negatives=3:recovery=PASS"
 UI_EVIDENCE_REF="${UI_EVIDENCE_REF:-}"
-POD="$(kubectl -n "$NAMESPACE" get pods -l app=postgres-patroni -o jsonpath='{.items[0].metadata.name}')"
+POD=""
+for candidate in $(kubectl -n "$NAMESPACE" get pods -l app=postgres-patroni -o name | sed 's#pod/##'); do
+  recovery="$(kubectl -n "$NAMESPACE" exec "$candidate" -c patroni -- \
+    psql -h 127.0.0.1 -U postgres -d carbonet -X -Atqc 'select pg_is_in_recovery()' 2>/dev/null || true)"
+  if [[ "$recovery" == "f" ]]; then
+    POD="$candidate"
+    break
+  fi
+done
+[[ -n "$POD" ]] || { echo '[work-assignment-assurance] FAIL postgres leader unavailable' >&2; exit 2; }
 SQL=$(cat <<SQL
 do \$\$
 declare

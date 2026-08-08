@@ -4,6 +4,7 @@ set -euo pipefail
 ROOT="${RESONANCE_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
 TARGET="$ROOT/ops/scripts/validate-process-closing-gate.sh"
 BINDING_MIGRATION="$ROOT/apps/carbonet-api/src/main/resources/db/migration/postgresql/V20260808125000__bind_work_assignment_step_tests.sql"
+WORK_ASSIGNMENT_ASSURANCE="$ROOT/ops/scripts/complete-work-assignment-assurance.sh"
 
 grep -Fq 'framework_step_test_binding' "$TARGET"
 grep -Fq 'framework_step_guidance_contract' "$TARGET"
@@ -20,6 +21,11 @@ for case_code in WORK_ASSIGNMENT-HAPPY WORK_ASSIGNMENT-AUTH WORK_ASSIGNMENT-ISOL
   grep -Fq "'$case_code'" "$BINDING_MIGRATION"
 done
 grep -Fq 'WORK_ASSIGNMENT_UNBOUND_STEPS' "$BINDING_MIGRATION"
+grep -Fq 'select pg_is_in_recovery()' "$WORK_ASSIGNMENT_ASSURANCE"
+if grep -Fq "jsonpath='{.items[0].metadata.name}'" "$WORK_ASSIGNMENT_ASSURANCE"; then
+  echo '[process-closing-gate-contract] assurance writer must elect the Patroni leader' >&2
+  exit 1
+fi
 
 mutated="$(mktemp)"
 trap 'rm -f "$mutated"' EXIT
@@ -29,4 +35,4 @@ if grep -Fq "run.result='PASSED'" "$mutated"; then
   exit 1
 fi
 
-echo '[process-closing-gate-contract] PASS ordering=all-steps routes=required-only tests=bound+automated+passed workAssignmentBindings=4/4 guidance=reported ai=false'
+echo '[process-closing-gate-contract] PASS ordering=all-steps routes=required-only tests=bound+automated+passed workAssignmentBindings=4/4 patroniLeader=elected guidance=reported ai=false'
