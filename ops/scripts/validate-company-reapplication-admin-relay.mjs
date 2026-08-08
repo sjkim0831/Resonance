@@ -70,7 +70,7 @@ try{
       await rejectReasonInput.fill("QA 재신청 증빙 보완 필요");
       const [decisionResponse]=await Promise.all([
         page.waitForResponse(candidate=>new URL(candidate.url()).pathname==="/admin/api/admin/member/company-approve/action"&&candidate.request().method()==="POST",{timeout:15000}),
-        dialog.getByRole("button",{name:"반려",exact:true}).click(),
+        page.getByRole("button",{name:"반려",exact:true}).last().click(),
       ]);
       if(decisionResponse.status()!==200)throw new Error(`mobile rejection failed status=${decisionResponse.status()}`);
     }
