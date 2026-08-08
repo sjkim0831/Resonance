@@ -1943,6 +1943,13 @@ if [[ "$backup_required" == "true" ]]; then
           -t ui_component_registry -t ui_section_registry \
           -t framework_design_asset_registry \
           -t ui_page_manifest -t ui_page_component_map \
+          -t framework_screen_resource \
+          -t framework_screen_workflow_policy \
+          -t framework_process_step_screen_binding \
+          -t framework_professional_screen_contract \
+          -t framework_page_design -t framework_page_field_definition \
+          -t framework_company_reapplication_audit \
+          -t comtninsttinfo -t comtninsttfile \
           -t comtncomponentinfo \
       | gzip -1 > "$backup_file"; then
       rm -f "$backup_file"

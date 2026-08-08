@@ -4,6 +4,7 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 CLASSIFIER="$ROOT_DIR/ops/scripts/classify-safe-additive-ddl.py"
 DEPLOY_SCRIPT="$ROOT_DIR/ops/scripts/auto-deploy-main.sh"
+BACKUP_SCOPE_CLASSIFIER="$ROOT_DIR/ops/scripts/classify-db-backup-scope.sh"
 tmp_dir="$(mktemp -d)"
 trap 'rm -rf "$tmp_dir"' EXIT
 
@@ -84,4 +85,15 @@ grep -q 'pg_restore --list' "$DEPLOY_SCRIPT"
 grep -q 'restoredFlywayRows' "$DEPLOY_SCRIPT"
 grep -q "interval '5 minutes'" "$DEPLOY_SCRIPT"
 
-echo "[safe-additive-ddl] PASS safe=1 reversible=1 unsafe=10 functions=bounded triggers=new-schema-only archive=custom restoreCatalog=verified orphanReap=5m fail-closed=true"
+[[ "$(printf '%s\n' 'apps/carbonet-api/src/main/resources/db/migration/postgresql/V1__reset_company_reapplication_policy_for_response_revision.sql' | bash "$BACKUP_SCOPE_CLASSIFIER")" == governance ]]
+for table in framework_screen_resource framework_screen_workflow_policy \
+  framework_process_step_screen_binding framework_professional_screen_contract \
+  framework_page_design framework_page_field_definition \
+  framework_company_reapplication_audit comtninsttinfo comtninsttfile; do
+  grep -Eq -- "-t[[:space:]]+$table([[:space:]\\]|$)" "$DEPLOY_SCRIPT" || {
+    echo "governance backup omits reapplication table: $table" >&2
+    exit 1
+  }
+done
+
+echo "[safe-additive-ddl] PASS safe=1 reversible=1 unsafe=10 functions=bounded triggers=new-schema-only archive=custom restoreCatalog=verified governanceReapplication=9 orphanReap=5m fail-closed=true"
