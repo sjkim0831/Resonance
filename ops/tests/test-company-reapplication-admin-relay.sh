@@ -8,6 +8,7 @@ CONTROLLER="$ROOT/modules/resonance-common/carbonet-common-core/src/main/java/eg
 ASSEMBLER="$ROOT/modules/resonance-common/carbonet-common-core/src/main/java/egovframework/com/feature/admin/web/AdminApprovalPageModelAssembler.java"
 FRONTEND="$ROOT/projects/carbonet-frontend/source/src/features/company-approve/CompanyApproveMigrationPage.tsx"
 MIGRATION="$ROOT/apps/carbonet-api/src/main/resources/db/migration/postgresql/V20260808130000__scope_company_reapplication_admin_review_by_project.sql"
+MAPPER="$ROOT/modules/resonance-common/carbonet-common-core/src/main/resources/egovframework/mapper/com/feature/member/EntrprsManageMapper.xml"
 
 grep -Fq '/admin/login/actionLogin' "$HARNESS"
 grep -Fq '/admin/member/company-approve' "$HARNESS"
@@ -26,6 +27,12 @@ grep -Fq 'searchParams.put("projectId", normalizedProjectId)' "$ASSEMBLER"
 grep -Fq 'projectId: getSearchParam("projectId")' "$FRONTEND"
 grep -Fq 'new URLSearchParams({searchKeyword:item.companyName,sbscrbSttus:"A",pageIndex:"1",projectId})' "$HARNESS"
 grep -Fq 'crossProjectRowsExcluded' "$MIGRATION"
+company_paged_sql="$(sed -n '/<select id="searchCompanyListPaged"/,/<\/select>/p' "$MAPPER")"
+grep -Fq 'LIMIT #{pageSize} OFFSET #{offset}' <<<"$company_paged_sql"
+if grep -Fq 'ROWNUM' <<<"$company_paged_sql"; then
+  echo '[company-reapplication-admin-relay-contract] Oracle ROWNUM is forbidden in PostgreSQL company paging' >&2
+  exit 1
+fi
 
 if grep -Eq 'userPw:[[:space:]]*"[^$]' "$HARNESS"; then
   echo '[company-reapplication-admin-relay-contract] embedded password is forbidden' >&2

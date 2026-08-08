@@ -423,17 +423,15 @@
 
     <!-- 기관/기업 검색 (페이징) -->
     <select id="searchCompanyListPaged" resultType="egovMap" parameterType="map">
-        SELECT * FROM (
-            SELECT ROWNUM AS RN, T.* FROM (
-                SELECT
-                    TRIM(INSTT_ID) AS INSTT_ID,
-                    INSTT_NM   AS CMPNY_NM,
-                    ENTRPRS_SE_CODE AS ENTRPRS_SE_CODE,
-                    BIZRNO     AS BIZRNO,
-                    REPRSNT_NM AS CXFC,
-                    INSTT_STTUS AS JOIN_STAT
-                FROM COMTNINSTTINFO I
-                WHERE (#{keyword} = '' OR INSTT_NM LIKE '%' || #{keyword} || '%' OR BIZRNO LIKE '%' || #{keyword} || '%')
+        SELECT
+            TRIM(INSTT_ID) AS INSTT_ID,
+            INSTT_NM   AS CMPNY_NM,
+            ENTRPRS_SE_CODE AS ENTRPRS_SE_CODE,
+            BIZRNO     AS BIZRNO,
+            REPRSNT_NM AS CXFC,
+            INSTT_STTUS AS JOIN_STAT
+        FROM COMTNINSTTINFO I
+        WHERE (#{keyword} = '' OR INSTT_NM LIKE '%' || #{keyword} || '%' OR BIZRNO LIKE '%' || #{keyword} || '%')
         <if test="projectId != null and projectId != ''">
                       AND PROJECT_ID = #{projectId}
         </if>
@@ -471,10 +469,8 @@
         <if test="status != null and status != ''">
                       AND INSTT_STTUS = #{status}
         </if>
-                ORDER BY INSTT_NM ASC
-            ) T
-        ) Z
-        WHERE Z.RN BETWEEN #{offset} + 1 AND #{offset} + #{pageSize}
+        ORDER BY INSTT_NM ASC
+        LIMIT #{pageSize} OFFSET #{offset}
     </select>
 
     <select id="selectInsttFiles" parameterType="map" resultType="egovframework.com.feature.member.model.vo.InsttFileVO">
