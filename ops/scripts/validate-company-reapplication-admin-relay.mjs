@@ -65,7 +65,7 @@ try{
     }else{
       await row.getByRole("button",{name:"상세 검토",exact:true}).click();
       const dialog=page.getByRole("dialog",{name:"회원사 가입 신청 상세 검토"});
-      await dialog.getByRole("textbox",{name:"반려 사유"}).fill("QA 재신청 증빙 보완 필요");
+      await dialog.locator("#company-approve-reject-reason").fill("QA 재신청 증빙 보완 필요");
       await Promise.all([
         page.waitForResponse(candidate=>new URL(candidate.url()).pathname==="/admin/api/admin/member/company-approve/action"&&candidate.request().method()==="POST"&&candidate.status()===200,{timeout:15000}),
         dialog.getByRole("button",{name:"반려",exact:true}).click(),
