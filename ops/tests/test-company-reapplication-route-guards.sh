@@ -8,20 +8,22 @@ BROWSER="$ROOT/ops/scripts/validate-company-reapplication-browser.mjs"
 TASK_PANEL="$ROOT/projects/carbonet-frontend/source/src/features/task-quest/TaskQuestPanel.tsx"
 NOTE_PANEL="$ROOT/projects/carbonet-frontend/source/src/features/screen-development-note/ScreenDevelopmentNotePanel.tsx"
 REAPPLY_PAGE="$ROOT/projects/carbonet-frontend/source/src/features/join-company-reapply/JoinCompanyReapplyMigrationPage.tsx"
+APP_ENTRY="$ROOT/projects/carbonet-frontend/source/src/main.tsx"
 
-for file in "$MAPPER" "$MAPPER_TEST" "$BROWSER" "$TASK_PANEL" "$NOTE_PANEL" "$REAPPLY_PAGE"; do
+for file in "$MAPPER" "$MAPPER_TEST" "$BROWSER" "$TASK_PANEL" "$NOTE_PANEL" "$REAPPLY_PAGE" "$APP_ENTRY"; do
   [[ -f "$file" ]] || { echo "[company-reapplication-route-guards] missing $file" >&2; exit 1; }
 done
 
-node - "$MAPPER" "$MAPPER_TEST" "$BROWSER" "$TASK_PANEL" "$NOTE_PANEL" "$REAPPLY_PAGE" <<'NODE'
+node - "$MAPPER" "$MAPPER_TEST" "$BROWSER" "$TASK_PANEL" "$NOTE_PANEL" "$REAPPLY_PAGE" "$APP_ENTRY" <<'NODE'
 const fs=require("node:fs");
-const [mapperPath,mapperTestPath,browserPath,taskPath,notePath,reapplyPagePath]=process.argv.slice(2);
+const [mapperPath,mapperTestPath,browserPath,taskPath,notePath,reapplyPagePath,appEntryPath]=process.argv.slice(2);
 const mapper=fs.readFileSync(mapperPath,"utf8");
 const mapperTest=fs.readFileSync(mapperTestPath,"utf8");
 const browser=fs.readFileSync(browserPath,"utf8");
 const task=fs.readFileSync(taskPath,"utf8");
 const note=fs.readFileSync(notePath,"utf8");
 const reapplyPage=fs.readFileSync(reapplyPagePath,"utf8");
+const appEntry=fs.readFileSync(appEntryPath,"utf8");
 const assert=(value,message)=>{if(!value)throw new Error(message);};
 
 assert(mapper.includes('"join-company-reapply", "/join/companyReapply", "/join/en/companyReapply"'),
@@ -40,5 +42,12 @@ assert(note.includes("const canUseAdminDesignNotes=frontendSession.authenticated
   "non-admin pages can still call the admin design-note API");
 assert(reapplyPage.includes("setLookupHandle(String(result.lookupHandle || lookupHandle))"),
   "successful reapplication does not rotate the lookup handle before status navigation");
-console.log("[company-reapplication-route-guards] PASS route=1 mount=1 keyboardSubmit=1 diagnostics=1 rotatedHandle=1 anonymousApiGuards=2");
+assert(!/^import App from "\.\/App";/m.test(appEntry)&&appEntry.includes('await import("./App")'),
+  "application shell is still eagerly included in the public reapplication entry bundle");
+assert(appEntry.includes('pathname === "/join/companyreapply"')&&
+  appEntry.includes('import("./features/join-company-reapply/JoinCompanyReapplyMigrationPage")'),
+  "public reapplication route does not use its lightweight entry chunk");
+assert(appEntry.indexOf("window.__CARBONET_REACT_APP_MOUNTED__ = true")>appEntry.indexOf(".then((EntryComponent)"),
+  "mounted marker is set before the selected entry chunk is available");
+console.log("[company-reapplication-route-guards] PASS route=1 mount=1 lightweightEntry=1 keyboardSubmit=1 diagnostics=1 rotatedHandle=1 anonymousApiGuards=2");
 NODE
