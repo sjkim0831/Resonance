@@ -34,6 +34,7 @@ const HOME_EXPERIENCE_ROUTE_DEFINITIONS = [
   { id: "mypage-company", label: "기업 정보", group: "home", koPath: "/mypage/company", enPath: "/en/mypage/company" },
   { id: "mypage-password", label: "비밀번호 변경", group: "home", koPath: "/mypage/password", enPath: "/en/mypage/password" },
   { id: "mypage-staff", label: "담당자 관리", group: "home", koPath: "/mypage/staff", enPath: "/en/mypage/staff" }
+  ,{ id: "company-manager-delegation", label: "회원사 관리자 위임", group: "home", koPath: "/work/company-manager-delegation", enPath: "/en/work/company-manager-delegation" }
 ] as const satisfies RouteDefinitionsOf;
 
 const HOME_EXPERIENCE_PAGE_UNITS = [
@@ -69,6 +70,7 @@ const HOME_EXPERIENCE_PAGE_UNITS = [
   { id: "mypage-company", exportName: "MypageCompanyMigrationPage", loader: () => import("../../../features/mypage-company/MypageCompanyMigrationPage") },
   { id: "mypage-password", exportName: "MypagePasswordMigrationPage", loader: () => import("../../../features/mypage-password/MypagePasswordMigrationPage") },
   { id: "mypage-staff", exportName: "MypageStaffMigrationPage", loader: () => import("../../../features/mypage-staff/MypageStaffMigrationPage") }
+  ,{ id: "company-manager-delegation", exportName: "CompanyManagerDelegationPage", loader: () => import("../../../features/company-manager-delegation/CompanyManagerDelegationPage") }
 ] as const satisfies PageUnitsOf<typeof HOME_EXPERIENCE_ROUTE_DEFINITIONS>;
 
 export const HOME_EXPERIENCE_FAMILY = createRouteFamily(HOME_EXPERIENCE_ROUTE_DEFINITIONS, HOME_EXPERIENCE_PAGE_UNITS, {

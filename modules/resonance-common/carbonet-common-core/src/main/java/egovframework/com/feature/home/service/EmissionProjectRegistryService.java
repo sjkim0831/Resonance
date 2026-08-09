@@ -541,6 +541,88 @@ public class EmissionProjectRegistryService {
         return result;
     }
 
+    public Map<String,Object> companyManagerDelegationWorkspace(String tenantId,String account,boolean authorityOverride,String projectId) {
+        String tenant=requiredValue(tenantId,"tenantId"),user=requiredValue(account,"account");
+        boolean companyAdmin=hasActiveActor(tenant,user,"COMPANY_ADMIN",projectId)||hasActiveActor(tenant,user,"COMPANY_MANAGER",projectId);
+        if(!companyAdmin&&!authorityOverride) throw new SecurityException("COMPANY_MANAGER_DELEGATION_ACCESS_DENIED");
+        Map<String,Object> result=new LinkedHashMap<>();
+        result.put("canRequest",companyAdmin);
+        result.put("canApprove",authorityOverride);
+        result.put("projects",jdbc.queryForList("SELECT project_id AS \"projectId\",project_name AS \"projectName\" FROM emission_project_registry WHERE tenant_id=? ORDER BY project_name,project_id",tenant));
+        result.put("accounts",jdbc.queryForList("SELECT e.emplyr_id AS \"accountId\",e.user_nm AS \"accountName\",trim(e.orgnzt_id) AS department FROM comtnemplyrinfo e WHERE trim(e.instt_id)=? AND e.emplyr_sttus_code='P' ORDER BY e.user_nm,e.emplyr_id",tenant));
+        String scope=projectId==null||projectId.isBlank()?"":" AND project_id=?";
+        Object[] args=scope.isEmpty()?new Object[]{tenant}:new Object[]{tenant,projectId};
+        result.put("items",jdbc.queryForList("SELECT delegation_id AS \"delegationId\",project_id AS \"projectId\",actor_code AS \"actorCode\",predecessor_account_id AS \"predecessorAccountId\",successor_account_id AS \"successorAccountId\",reason_text AS reason,delegation_status AS status,requested_by AS \"requestedBy\",requested_at AS \"requestedAt\",approved_by AS \"approvedBy\",approved_at AS \"approvedAt\",completed_by AS \"completedBy\",completed_at AS \"completedAt\",version FROM framework_company_manager_delegation WHERE tenant_id=?"+scope+" ORDER BY requested_at DESC",args));
+        return result;
+    }
+
+    @Transactional
+    public Map<String,Object> requestCompanyManagerDelegation(String tenantId,String account,Map<String,Object> body) {
+        String tenant=requiredValue(tenantId,"tenantId"),user=requiredValue(account,"account");
+        String projectId=required(body,"projectId"),successor=required(body,"successorAccountId"),reason=required(body,"reason"),key=required(body,"idempotencyKey");
+        assertProjectTenant(projectId,tenant);
+        if(!hasActiveActor(tenant,user,"COMPANY_ADMIN",projectId)&&!hasActiveActor(tenant,user,"COMPANY_MANAGER",projectId)) throw new SecurityException("COMPANY_ADMIN_REQUIRED");
+        assertTenantAccountActive(tenant,successor);
+        if(user.equalsIgnoreCase(successor)) throw new IllegalArgumentException("DELEGATION_SUCCESSOR_MUST_DIFFER");
+        String id=UUID.randomUUID().toString();
+        jdbc.update("INSERT INTO framework_company_manager_delegation(delegation_id,tenant_id,project_id,actor_code,predecessor_account_id,successor_account_id,reason_text,requested_by,idempotency_key) VALUES(?,?,?,'COMPANY_MANAGER',?,?,?,?,?) ON CONFLICT(tenant_id,idempotency_key) DO NOTHING",id,tenant,projectId,user,successor,reason,key);
+        return delegationByKey(tenant,key);
+    }
+
+    @Transactional
+    public Map<String,Object> decideCompanyManagerDelegation(String tenantId,String account,boolean authorityOverride,String delegationId,Map<String,Object> body) {
+        String tenant=requiredValue(tenantId,"tenantId"),user=requiredValue(account,"account"),decision=required(body,"decision").toUpperCase();
+        if(!authorityOverride) throw new SecurityException("AUTHORITY_ADMIN_REQUIRED");
+        if(!Set.of("APPROVE","REJECT").contains(decision)) throw new IllegalArgumentException("DELEGATION_DECISION_INVALID");
+        String rejection=String.valueOf(body.getOrDefault("reason","")).trim();
+        if("REJECT".equals(decision)&&rejection.isBlank()) throw new IllegalArgumentException("REJECTION_REASON_REQUIRED");
+        int updated="APPROVE".equals(decision)
+            ? jdbc.update("UPDATE framework_company_manager_delegation SET delegation_status='APPROVED',approved_by=?,approved_at=current_timestamp,version=version+1,updated_at=current_timestamp WHERE delegation_id=? AND tenant_id=? AND delegation_status='REQUESTED'",user,delegationId,tenant)
+            : jdbc.update("UPDATE framework_company_manager_delegation SET delegation_status='REJECTED',rejected_by=?,rejected_at=current_timestamp,rejection_reason=?,version=version+1,updated_at=current_timestamp WHERE delegation_id=? AND tenant_id=? AND delegation_status='REQUESTED'",user,rejection,delegationId,tenant);
+        if(updated!=1) throw new IllegalStateException("DELEGATION_DECISION_STATE_CONFLICT");
+        return delegationById(tenant,delegationId);
+    }
+
+    @Transactional
+    public Map<String,Object> completeCompanyManagerDelegation(String tenantId,String account,String delegationId) {
+        String tenant=requiredValue(tenantId,"tenantId"),user=requiredValue(account,"account");
+        Map<String,Object> row=delegationById(tenant,delegationId);
+        String projectId=text(row.get("projectId")),predecessor=text(row.get("predecessorAccountId")),successor=text(row.get("successorAccountId"));
+        if(!"APPROVED".equals(text(row.get("status")))) throw new IllegalStateException("DELEGATION_NOT_APPROVED");
+        if(!user.equalsIgnoreCase(predecessor)&&!hasActiveActor(tenant,user,"COMPANY_ADMIN",projectId)&&!hasActiveActor(tenant,user,"COMPANY_MANAGER",projectId)) throw new SecurityException("COMPANY_ADMIN_REQUIRED");
+        assertTenantAccountActive(tenant,successor);
+        jdbc.update("INSERT INTO framework_project_actor_assignment(project_id,actor_code,user_id,active_yn) VALUES(?,'COMPANY_MANAGER',?,'Y') ON CONFLICT(project_id,actor_code,user_id) DO UPDATE SET active_yn='Y',assigned_at=current_timestamp",projectId,successor);
+        jdbc.update("INSERT INTO framework_account_actor_assignment(account_id,tenant_id,project_id,actor_code,data_scope,assignment_status) VALUES(?,?,?,'COMPANY_MANAGER',?,'ACTIVE') ON CONFLICT(account_id,tenant_id,project_id,actor_code) DO UPDATE SET data_scope=excluded.data_scope,assignment_status='ACTIVE',valid_until=null",successor,tenant,projectId,projectId);
+        jdbc.update("UPDATE framework_project_process_step_assignment SET account_id=?,assigned_by=?,updated_at=current_timestamp WHERE tenant_id=? AND project_id=? AND lower(account_id)=lower(?)",successor,user,tenant,projectId,predecessor);
+        jdbc.update("UPDATE emission_project_task SET assignee_id=?,updated_at=current_timestamp WHERE project_id=? AND lower(coalesce(assignee_id,''))=lower(?) AND task_status<>'DONE'",successor,projectId,predecessor);
+        jdbc.update("UPDATE framework_project_actor_assignment SET active_yn='N' WHERE project_id=? AND actor_code='COMPANY_MANAGER' AND lower(user_id)=lower(?)",projectId,predecessor);
+        jdbc.update("UPDATE framework_account_actor_assignment SET assignment_status='INACTIVE',valid_until=current_date WHERE tenant_id=? AND project_id=? AND actor_code='COMPANY_MANAGER' AND lower(account_id)=lower(?)",tenant,projectId,predecessor);
+        int completed=jdbc.update("UPDATE framework_company_manager_delegation SET delegation_status='COMPLETED',completed_by=?,completed_at=current_timestamp,version=version+1,updated_at=current_timestamp WHERE delegation_id=? AND tenant_id=? AND delegation_status='APPROVED'",user,delegationId,tenant);
+        if(completed!=1) throw new IllegalStateException("DELEGATION_COMPLETION_STATE_CONFLICT");
+        return delegationById(tenant,delegationId);
+    }
+
+    private boolean hasActiveActor(String tenant,String account,String actorCode,String projectId) {
+        String project=projectId==null||projectId.isBlank()?"*":projectId;
+        Integer count=jdbc.queryForObject("SELECT count(*) FROM framework_account_actor_assignment WHERE tenant_id=? AND lower(account_id)=lower(?) AND actor_code=? AND assignment_status='ACTIVE' AND project_id IN ('*',?) AND (valid_from IS NULL OR valid_from<=current_date) AND (valid_until IS NULL OR valid_until>=current_date)",Integer.class,tenant,account,actorCode,project);
+        return count!=null&&count>0;
+    }
+
+    private void assertTenantAccountActive(String tenant,String account) {
+        Integer count=jdbc.queryForObject("SELECT count(*) FROM comtnemplyrinfo WHERE trim(instt_id)=? AND lower(emplyr_id)=lower(?) AND emplyr_sttus_code='P'",Integer.class,tenant,account);
+        if(count==null||count==0) throw new IllegalArgumentException("TENANT_ACCOUNT_NOT_ELIGIBLE:"+account);
+    }
+
+    private Map<String,Object> delegationByKey(String tenant,String key) {
+        return jdbc.queryForMap("SELECT delegation_id AS \"delegationId\",project_id AS \"projectId\",predecessor_account_id AS \"predecessorAccountId\",successor_account_id AS \"successorAccountId\",reason_text AS reason,delegation_status AS status,version FROM framework_company_manager_delegation WHERE tenant_id=? AND idempotency_key=?",tenant,key);
+    }
+
+    private Map<String,Object> delegationById(String tenant,String id) {
+        List<Map<String,Object>> rows=jdbc.queryForList("SELECT delegation_id AS \"delegationId\",project_id AS \"projectId\",predecessor_account_id AS \"predecessorAccountId\",successor_account_id AS \"successorAccountId\",reason_text AS reason,delegation_status AS status,version FROM framework_company_manager_delegation WHERE tenant_id=? AND delegation_id=? FOR UPDATE",tenant,id);
+        if(rows.size()!=1) throw new IllegalArgumentException("DELEGATION_NOT_FOUND");
+        return rows.get(0);
+    }
+
     @Transactional
     @SuppressWarnings("unchecked")
     public Map<String,Object> saveWorkAssignments(String tenantId,String account,boolean override,Map<String,Object> body) {
