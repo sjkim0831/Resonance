@@ -272,9 +272,14 @@ async function checkRoute(browserInstance, storageState, route, viewport, audien
     if (response.status() >= 400) httpErrors.push(`${response.status()} ${response.url()}`);
     if (response.status() >= 500) serverErrors.push(`${response.status()} ${response.url()}`);
   });
-  const before = Date.now();
   const response = await page.goto(`${baseURL}${route}`, { waitUntil: "domcontentloaded", timeout: 20_000 });
-  const loadMs = Date.now() - before;
+  const loadMs = Math.round(await page.evaluate(() => {
+    const navigation = performance.getEntriesByType("navigation")[0];
+    return navigation instanceof PerformanceNavigationTiming
+      ? navigation.domContentLoadedEventEnd - navigation.startTime
+      : 0;
+  }));
+  assert(loadMs > 0, `${route} has no browser navigation timing`);
   timings.push(loadMs);
   assert(response && response.status() < 400, `${route} navigation HTTP ${response?.status() || 0}`);
   await page.waitForFunction(() => {
