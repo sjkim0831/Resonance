@@ -143,6 +143,7 @@ const timings = [];
 const clients = [];
 let tenantId = "";
 let projectId = "";
+let publicLookupHandle = "";
 let evidencePaths = [];
 let browser;
 
@@ -449,6 +450,14 @@ try {
   tenantId = String(registration.insttId || "");
   evidence.fixture.tenantId = tenantId;
   assertFixtureIdentifiers();
+  const publicStatusLookup = await apiCall(publicApi, "post", "/join/api/company-status/detail", {
+    bizNo: businessNumber,
+    repName: "온보딩 검증 대표",
+    registeredContact: `${short}@resonance.test`,
+  }, [200], "public company status lookup handle");
+  publicLookupHandle = String(publicStatusLookup.body.lookupHandle || "");
+  assert(publicStatusLookup.body.success === true && publicLookupHandle.length >= 20,
+    "company status lookup handle missing");
   const applyDb = dbJson(`SELECT jsonb_build_object(
     'status',max(i.instt_sttus),'companyCount',count(DISTINCT i.instt_id),'fileCount',count(f.file_id),
     'paths',coalesce(jsonb_agg(f.file_stre_path) FILTER (WHERE f.file_stre_path IS NOT NULL),'[]'::jsonb))::text
@@ -549,18 +558,18 @@ try {
   browser = await chromium.launch({ headless: true, ...(executablePath ? { executablePath } : {}) });
   const userState = await ownerApi.storageState();
   const adminState = await adminApi.storageState();
+  const publicState = await publicApi.storageState();
   const anonymousState = { cookies: [], origins: [] };
   const routePairs = [
     ["COMPANY_ONBOARDING_APPLY", "/join/companyRegister", "/admin/member/company-approve"],
-    ["COMPANY_ONBOARDING_APPROVE", `/join/companyJoinStatusDetail?bizNo=${businessNumber}&repName=${encodeURIComponent("온보딩 검증 대표")}`, "/admin/member/company-approve"],
+    ["COMPANY_ONBOARDING_APPROVE", `/join/companyJoinStatusDetail?lookupHandle=${encodeURIComponent(publicLookupHandle)}`, "/admin/member/company-approve"],
     ["COMPANY_ONBOARDING_SITE", "/mypage/company", "/admin/emission/site-management"],
     ["COMPANY_ONBOARDING_ACTORS", "/mypage/staff", "/admin/system/actor-process"],
     ["COMPANY_ONBOARDING_READY", "/emission/project/create", "/admin/emission/project-operations"],
   ];
   for (const [stepCode, userRoute, adminRoute] of routePairs) {
-    const userRouteState = ["COMPANY_ONBOARDING_APPLY", "COMPANY_ONBOARDING_APPROVE"].includes(stepCode)
-      ? anonymousState
-      : userState;
+    const userRouteState = stepCode === "COMPANY_ONBOARDING_APPLY" ? anonymousState
+      : stepCode === "COMPANY_ONBOARDING_APPROVE" ? publicState : userState;
     await checkRoute(browser, userRouteState, userRoute, { width: 1440, height: 1000 }, "USER", stepCode);
     await checkRoute(browser, adminState, adminRoute, { width: 1440, height: 1000 }, "ADMIN", stepCode);
     await checkRoute(browser, userRouteState, userRoute, { width: 390, height: 844 }, "USER", stepCode);

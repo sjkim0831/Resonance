@@ -40,8 +40,12 @@ for step in "${STEPS[@]}"; do
   RESONANCE_ROOT="$ROOT" bash "$ROOT/ops/scripts/capture-business-e2e-contract.sh" COMPANY_ONBOARDING "$step"
 done | jq -s '.' >"$TMP_DIR/contracts.json"
 
-E2E_CONTRACTS_FILE="$TMP_DIR/contracts.json" RESONANCE_ROOT="$ROOT" \
-  node "$ROOT/ops/scripts/resonance-company-onboarding-e2e.mjs" >"$TMP_DIR/evidence.json"
+if ! E2E_CONTRACTS_FILE="$TMP_DIR/contracts.json" RESONANCE_ROOT="$ROOT" \
+  node "$ROOT/ops/scripts/resonance-company-onboarding-e2e.mjs" >"$TMP_DIR/evidence.json"; then
+  jq -c '{status,failure,cleanup,stepCount,caseCount,routes:(.routes|length)}' \
+    "$ROOT/var/test-evidence/company-onboarding-latest.json" >&2 2>/dev/null || true
+  exit 1
+fi
 
 jq -e --argjson steps 5 --argjson cases 7 '
   .status=="PASS" and .promotionEligible==true and
