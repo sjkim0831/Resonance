@@ -21,9 +21,7 @@ import {
 } from "./lib/api/platformTypes";
 import { useProjectTheme } from "./app/hooks/useProjectTheme";
 import { GlobalUserGnbShell, shouldUseGlobalUserGnb } from "./features/home-entry/GlobalUserGnbShell";
-import { TaskQuestPanel } from "./features/task-quest/TaskQuestPanel";
 import { useLayoutOverflowGuard } from "./app/hooks/useLayoutOverflowGuard";
-import { ScreenDevelopmentNotePanel } from "./features/screen-development-note/ScreenDevelopmentNotePanel";
 import {
   isPublicWorkflowRoute,
   isWorkflowAssistRoute,
@@ -36,6 +34,8 @@ import { RouteAuthenticationBoundary } from "./app/routes/RouteAuthenticationBou
 
 const HelpOverlay = lazy(() => import("./components/help/HelpOverlay").then((module) => ({ default: module.HelpOverlay })));
 const GeneratedScreenRuntime = lazy(() => import("./features/generated-screen/GeneratedScreenPage").then((module) => ({ default: module.GeneratedScreenPage })));
+const TaskQuestPanel = lazy(() => import("./features/task-quest/TaskQuestPanel").then((module) => ({ default: module.TaskQuestPanel })));
+const ScreenDevelopmentNotePanel = lazy(() => import("./features/screen-development-note/ScreenDevelopmentNotePanel").then((module) => ({ default: module.ScreenDevelopmentNotePanel })));
 
 function buildContextSummary(match: MatchedContext | null, comment: string) {
   const base = [match?.page?.label, match?.surface?.label, match?.event?.label].filter(Boolean).join(" / ");
@@ -565,7 +565,9 @@ export default function App() {
         도움말
       </button>
 
-      <ScreenDevelopmentNotePanel pageId={page} routePath={routePath} workContext={screenWorkContext} />
+      <Suspense fallback={null}>
+        <ScreenDevelopmentNotePanel pageId={page} routePath={routePath} workContext={screenWorkContext} />
+      </Suspense>
 
       {helpOpen ? (
         <Suspense fallback={null}>
@@ -620,12 +622,14 @@ export default function App() {
       ) : null}
 
       {showWorkflowAssist ? (
-        <TaskQuestPanel
-          pageId={page}
-          routePath={routePath}
-          screenContext={screenWorkContext}
-          onScreenContextSelection={selectAmbiguousScreenWorkflow}
-        />
+        <Suspense fallback={null}>
+          <TaskQuestPanel
+            pageId={page}
+            routePath={routePath}
+            screenContext={screenWorkContext}
+            onScreenContextSelection={selectAmbiguousScreenWorkflow}
+          />
+        </Suspense>
       ) : null}
 
       <ErrorBoundary resetKey={boundaryResetKey}>

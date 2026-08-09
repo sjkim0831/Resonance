@@ -4,6 +4,7 @@ const browser=readFileSync("ops/scripts/resonance-company-onboarding-e2e.mjs","u
 const wrapper=readFileSync("ops/tests/run-company-onboarding-business-e2e.sh","utf8");
 const registerPage=readFileSync("projects/carbonet-frontend/source/src/features/join-company-register/JoinCompanyRegisterMigrationPage.tsx","utf8");
 const actorProcessPage=readFileSync("projects/carbonet-frontend/source/src/features/actor-process-governance/ActorProcessGovernancePage.tsx","utf8");
+const appSource=readFileSync("projects/carbonet-frontend/source/src/App.tsx","utf8");
 for(const needle of ["publicLookupHandle","/join/api/company-status/detail","registeredContact","company status lookup handle missing","publicState","companyJoinStatusDetail?lookupHandle="]){if(!browser.includes(needle))throw new Error(`onboarding browser missing ${needle}`)}
 if(browser.includes("companyJoinStatusDetail?bizNo="))throw new Error("legacy raw identity detail route remains");
 if(!wrapper.includes("company-onboarding-latest.json")||!wrapper.includes("jq -c '{status,failure,cleanup"))throw new Error("wrapper does not report fail-closed evidence");
@@ -15,4 +16,5 @@ if(!browser.includes('validationCommit: ""')||!browser.includes("process.env.E2E
 if(!wrapper.includes("carbonet-main-success.commit")||!wrapper.includes("export E2E_VALIDATION_COMMIT"))throw new Error("wrapper does not bind evidence to the processed harness commit");
 if(!registerPage.includes("aria-label={card.title}"))throw new Error("membership radios do not expose their visible card title as the accessible name");
 if(!actorProcessPage.includes("const IntegratedWorkOperationsMap = lazy(")||!actorProcessPage.includes("<Suspense fallback="))throw new Error("actor-process initial bundle is not split by active workspace");
+if(!appSource.includes("const TaskQuestPanel = lazy(")||!appSource.includes("const ScreenDevelopmentNotePanel = lazy("))throw new Error("optional workflow-assist panels remain in the common startup bundle");
 console.log("COMPANY_ONBOARDING_LOOKUP_HANDLE_CONTRACT_PASS");
