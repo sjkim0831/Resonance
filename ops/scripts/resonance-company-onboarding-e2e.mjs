@@ -131,6 +131,7 @@ const evidence = {
   desktop: 0,
   mobile: 0,
   performanceP95Ms: 0,
+  performanceSampleCount: 0,
   contracts: [],
   steps: Object.fromEntries(STEP_CODES.map((code) => [code, { result: "NOT_RUN" }])),
   cases: Object.fromEntries(CASE_CODES.map((code) => [code, { result: "NOT_RUN" }])),
@@ -273,6 +274,7 @@ async function checkRoute(browserInstance, storageState, route, viewport, audien
   const before = Date.now();
   const response = await page.goto(`${baseURL}${route}`, { waitUntil: "domcontentloaded", timeout: 20_000 });
   const loadMs = Date.now() - before;
+  timings.push(loadMs);
   assert(response && response.status() < 400, `${route} navigation HTTP ${response?.status() || 0}`);
   await page.waitForFunction(() => {
     const root = document.querySelector("#root");
@@ -592,6 +594,7 @@ try {
 
 const p95 = timings.length ? [...timings].sort((a, b) => a - b)[Math.max(0, Math.ceil(timings.length * 0.95) - 1)] : 0;
 evidence.performanceP95Ms = p95;
+evidence.performanceSampleCount = timings.length;
 evidence.durationMs = Date.now() - startedAt;
 evidence.finishedAt = new Date().toISOString();
 const allCasesPassed = CASE_CODES.every((code) => evidence.cases[code]?.result === "PASSED");
