@@ -114,6 +114,7 @@ const evidence = {
   promotionEligible: false,
   processCode: PROCESS_CODE,
   sourceCommit: "",
+  validationCommit: "",
   runtimeBaseUrl: baseURL,
   browserExecutablePath: executablePath,
   startedAt: new Date(startedAt).toISOString(),
@@ -424,6 +425,7 @@ try {
   assert(new Set(evidence.contracts.map((item) => item.stepCode)).size === 5, "contract step envelopes are not unique");
   assert(STEP_CODES.every((code) => evidence.contracts.some((item) => item.processCode === PROCESS_CODE && item.stepCode === code)), "contract envelope is incomplete");
   evidence.sourceCommit = String(evidence.contracts[0].sourceCommit || "");
+  evidence.validationCommit = evidence.sourceCommit;
   assert(evidence.contracts.every((item) => item.sourceCommit === evidence.sourceCommit), "source commit changed during contract capture");
 
   const publicApi = await request.newContext({ baseURL, ignoreHTTPSErrors: true });
