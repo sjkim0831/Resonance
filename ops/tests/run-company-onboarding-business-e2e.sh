@@ -35,6 +35,9 @@ if [[ -z "${CARBONET_ADMIN_TEST_PASSWORD:-}" ]]; then
 fi
 export PATRONI_POD CARBONET_ACTOR_TEST_PASSWORD CARBONET_ADMIN_TEST_PASSWORD
 export K8S_NAMESPACE="$NAMESPACE" CARBONET_RUNTIME_BASE_URL="$BASE_URL"
+E2E_VALIDATION_COMMIT="$(tr -d '[:space:]' < "${CARBONET_DEPLOY_STATE_FILE:-/opt/resonance-data/deploy/carbonet-main-success.commit}")"
+[[ "$E2E_VALIDATION_COMMIT" =~ ^[0-9a-fA-F]{40}$ ]] || { echo "INVALID_ONBOARDING_VALIDATION_COMMIT" >&2; exit 3; }
+export E2E_VALIDATION_COMMIT
 
 for step in "${STEPS[@]}"; do
   RESONANCE_ROOT="$ROOT" bash "$ROOT/ops/scripts/capture-business-e2e-contract.sh" COMPANY_ONBOARDING "$step"
