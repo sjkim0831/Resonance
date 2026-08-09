@@ -143,6 +143,7 @@ const evidence = {
 
 const timings = [];
 const clients = [];
+const routeContextCache = new Map();
 let tenantId = "";
 let projectId = "";
 let publicLookupHandle = "";
@@ -261,8 +262,13 @@ VALUES (${sqlLiteral(account.esntl)},'USR03',${sqlLiteral(account.role)});
   assert(cloned === 5, `disposable account clone incomplete count=${cloned}`);
 }
 
-async function checkRoute(browserInstance, storageState, route, viewport, audience, stepCode) {
-  const context = await browserInstance.newContext({ storageState, ignoreHTTPSErrors: true, viewport });
+async function checkRoute(browserInstance, storageState, sessionKey, route, viewport, audience, stepCode) {
+  const contextKey = `${sessionKey}:${viewport.width}x${viewport.height}`;
+  let context = routeContextCache.get(contextKey);
+  if (!context) {
+    context = await browserInstance.newContext({ storageState, ignoreHTTPSErrors: true, viewport });
+    routeContextCache.set(contextKey, context);
+  }
   const page = await context.newPage();
   const pageErrors = [];
   const serverErrors = [];
@@ -345,7 +351,7 @@ async function checkRoute(browserInstance, storageState, route, viewport, audien
       unnamedControls: unnamed.length,
     };
   });
-  await context.close();
+  await page.close();
   const diagnostic = JSON.stringify({
     reactMounted: metrics.reactMounted,
     rootChildCount: metrics.rootChildCount,
@@ -579,10 +585,12 @@ try {
   for (const [stepCode, userRoute, adminRoute] of routePairs) {
     const userRouteState = stepCode === "COMPANY_ONBOARDING_APPLY" ? anonymousState
       : stepCode === "COMPANY_ONBOARDING_APPROVE" ? publicState : userState;
-    await checkRoute(browser, userRouteState, userRoute, { width: 1440, height: 1000 }, "USER", stepCode);
-    await checkRoute(browser, adminState, adminRoute, { width: 1440, height: 1000 }, "ADMIN", stepCode);
-    await checkRoute(browser, userRouteState, userRoute, { width: 390, height: 844 }, "USER", stepCode);
-    await checkRoute(browser, adminState, adminRoute, { width: 390, height: 844 }, "ADMIN", stepCode);
+    const userSessionKey = stepCode === "COMPANY_ONBOARDING_APPLY" ? "anonymous"
+      : stepCode === "COMPANY_ONBOARDING_APPROVE" ? "public" : "company-owner";
+    await checkRoute(browser, userRouteState, userSessionKey, userRoute, { width: 1440, height: 1000 }, "USER", stepCode);
+    await checkRoute(browser, adminState, "admin", adminRoute, { width: 1440, height: 1000 }, "ADMIN", stepCode);
+    await checkRoute(browser, userRouteState, userSessionKey, userRoute, { width: 390, height: 844 }, "USER", stepCode);
+    await checkRoute(browser, adminState, "admin", adminRoute, { width: 390, height: 844 }, "ADMIN", stepCode);
   }
 } catch (error) {
   mainError = error;
