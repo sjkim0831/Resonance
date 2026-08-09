@@ -1,20 +1,20 @@
-import { FormEvent, ReactNode, useCallback, useEffect, useMemo, useState } from "react";
+import { FormEvent, lazy, ReactNode, Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { buildLocalizedPath, isEnglish } from "../../lib/navigation/runtime";
 import { AdminPageShell } from "../admin-entry/AdminPageShell";
 import { GovernanceCompressionNav } from "../admin-system/GovernanceCompressionNav";
-import { DeliveryControlPanel } from "./DeliveryControlPanel";
-import { ProcessDesignMap } from "./ProcessDesignMap";
-import { ProfessionalDesignCanvas } from "./ProfessionalDesignCanvas";
-import { VerticalScreenProcessMap } from "./VerticalScreenProcessMap";
-import { ScreenFlowCanvas } from "./ScreenFlowCanvas";
-import { CommonCenteredSystemCanvas } from "./CommonCenteredSystemCanvas";
-import { CustomerWorkDevelopmentDashboard } from "./CustomerWorkDevelopmentDashboard";
-import { IntegratedWorkOperationsMap } from "./IntegratedWorkOperationsMap";
-import { ProcessArchetypeCatalog } from "./ProcessArchetypeCatalog";
-import { ProjectDeliveryBlueprintPanel } from "./ProjectDeliveryBlueprintPanel";
-import { ProcessClosingPanel } from "./ProcessClosingPanel";
-import { ScreenWorkflowTestPanel } from "./ScreenWorkflowTestPanel";
-import { SystemProcessTestReportPanel } from "./SystemProcessTestReportPanel";
+const DeliveryControlPanel = lazy(() => import("./DeliveryControlPanel").then(module => ({ default: module.DeliveryControlPanel })));
+const ProcessDesignMap = lazy(() => import("./ProcessDesignMap").then(module => ({ default: module.ProcessDesignMap })));
+const ProfessionalDesignCanvas = lazy(() => import("./ProfessionalDesignCanvas").then(module => ({ default: module.ProfessionalDesignCanvas })));
+const VerticalScreenProcessMap = lazy(() => import("./VerticalScreenProcessMap").then(module => ({ default: module.VerticalScreenProcessMap })));
+const ScreenFlowCanvas = lazy(() => import("./ScreenFlowCanvas").then(module => ({ default: module.ScreenFlowCanvas })));
+const CommonCenteredSystemCanvas = lazy(() => import("./CommonCenteredSystemCanvas").then(module => ({ default: module.CommonCenteredSystemCanvas })));
+const CustomerWorkDevelopmentDashboard = lazy(() => import("./CustomerWorkDevelopmentDashboard").then(module => ({ default: module.CustomerWorkDevelopmentDashboard })));
+const IntegratedWorkOperationsMap = lazy(() => import("./IntegratedWorkOperationsMap").then(module => ({ default: module.IntegratedWorkOperationsMap })));
+const ProcessArchetypeCatalog = lazy(() => import("./ProcessArchetypeCatalog").then(module => ({ default: module.ProcessArchetypeCatalog })));
+const ProjectDeliveryBlueprintPanel = lazy(() => import("./ProjectDeliveryBlueprintPanel").then(module => ({ default: module.ProjectDeliveryBlueprintPanel })));
+const ProcessClosingPanel = lazy(() => import("./ProcessClosingPanel").then(module => ({ default: module.ProcessClosingPanel })));
+const ScreenWorkflowTestPanel = lazy(() => import("./ScreenWorkflowTestPanel").then(module => ({ default: module.ScreenWorkflowTestPanel })));
+const SystemProcessTestReportPanel = lazy(() => import("./SystemProcessTestReportPanel").then(module => ({ default: module.SystemProcessTestReportPanel })));
 
 type Row = Record<string, unknown>;
 type Payload = { deliveryQueue?:Row[]; deliverySummary?:Row; workTypes?:Row[]; actors: Row[]; assignments: Row[]; actorAccountReadiness?:Row[]; processes: Row[]; steps: Row[]; cases: Row[]; runs: Row[]; artifacts:Row[]; developmentRules:Row[]; developmentJobs:Row[]; developmentEvents:Row[]; jobDependencies:Row[]; qualityGates:Row[]; qualityGateResults:Row[]; processDevelopmentProgress:Row[]; screenTypes:Row[]; referenceAssets:Row[]; automationMetrics:Row[]; screenDevelopmentGates:Row[]; processExecutions:Row[]; processExecutionEvents:Row[]; commonFeaturePackages?:Row[]; screenFeatureBindings?:Row[]; featureInstallations?:Row[]; designValidationRuns?:Row[]; screenBlueprints?:Row[]; generationBatches?:Row[]; professionalReadiness?:Row[]; professionalSummary?:Row; professionalScreenContracts?:Row[]; professionalScreenSummary?:Row; pageDesigns?:Row[]; pageDesignSummary?:Row; professionalFactoryRuns?:Row[]; screenAssetAssemblies?:Row[]; projectRegistrationCoverage?:Row[]; projectRegistrationSummary?:Row; customerJourneyGaps?:Row[]; customerJourneySummary?:Row; actorProcessMenus?:Row[]; actorProcessMenuSummary?:Row; processArchetypes?:Row[]; screenArchetypeBindings?:Row[]; backendProcessReadiness?:Row[]; projectCompletionRuns?:Row[]; referenceSummary?:Row; summary?: Row };
@@ -133,6 +133,7 @@ export function ActorProcessGovernancePage() {
 
   return <AdminPageShell breadcrumbs={[{ label: en ? "Home" : "홈", href: buildLocalizedPath("/admin/", "/en/admin/") }, { label: en ? "System" : "시스템 관리" }, { label: en ? "Actor & Process" : "액터·프로세스 관리" }]} title={en ? "Actor & Process Governance" : "액터·프로세스 관리"}>
     <GovernanceCompressionNav activeId="actor-process" en={en} />
+    <Suspense fallback={<div className="rounded-2xl border border-blue-100 bg-blue-50 p-6 font-bold text-blue-900">업무 작업공간을 불러오는 중입니다.</div>}>
     <div className="space-y-5">
       <section className="rounded-2xl bg-gradient-to-r from-[#052b57] to-[#174ea6] p-6 text-white shadow-sm">
         <div>
@@ -302,6 +303,7 @@ export function ActorProcessGovernancePage() {
 
       {tab === "simulation" && <><ProcessFilter processes={data.processes} value={processFilter} onChange={setProcessFilter} /><div className="grid gap-4 xl:grid-cols-2"><Form onSubmit={event => void submit(event, "cases")} cols="sm:grid-cols-2"><Field label="시나리오 코드"><input className={fieldClass} name="caseCode" required /></Field><Field label="프로세스"><select className={fieldClass} name="processCode">{data.processes.map(row => <option key={value(row, "processCode")}>{value(row, "processCode")}</option>)}</select></Field><Field label="시나리오명"><input className={fieldClass} name="caseName" required /></Field><Field label="유형"><select className={fieldClass} name="caseType"><option>HAPPY_PATH</option><option>EXCEPTION</option><option>AUTHORITY</option><option>ISOLATION</option><option>RECOVERY</option></select></Field><Field label="사전 조건"><textarea className={`${fieldClass} h-24 py-2`} name="preconditions" required /></Field><Field label="실행 단계 JSON"><textarea className={`${fieldClass} h-24 py-2`} name="stepsJson" defaultValue="[]" required /></Field><div className="sm:col-span-2"><Field label="검증 조건 JSON"><textarea className={`${fieldClass} h-20 py-2`} name="assertionsJson" defaultValue="[]" required /></Field></div><SaveButton busy={busy} label="시나리오 저장" /></Form><Form onSubmit={event => void submit(event, "runs")} cols="sm:grid-cols-2"><Field label="시나리오"><select className={fieldClass} name="caseCode">{data.cases.map(row => <option key={value(row, "caseCode")}>{value(row, "caseCode")}</option>)}</select></Field><Field label="결과"><select className={fieldClass} name="result"><option>PASSED</option><option>FAILED</option><option>BLOCKED</option></select></Field><Field label="실패 사유"><textarea className={`${fieldClass} h-24 py-2`} name="failureReason" /></Field><Field label="증적 JSON"><textarea className={`${fieldClass} h-24 py-2`} name="evidenceJson" defaultValue="{}" /></Field><SaveButton busy={busy} label="실행 결과 기록" /></Form></div><Table heads={["시나리오", "프로세스", "이름", "유형", "상태"]} rows={selectedCases.map(row => [value(row, "caseCode"), value(row, "processCode"), value(row, "caseName"), value(row, "caseType"), value(row, "status")])} /></>}
     </div>
+    </Suspense>
   </AdminPageShell>;
 }
 
