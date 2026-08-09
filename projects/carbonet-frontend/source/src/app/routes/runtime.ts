@@ -79,8 +79,6 @@ const APP_ROUTE_ALIASES = [
   ["/en/work/company-manager-delegation", "company-manager-delegation"],
   ["/admin/work/company-manager-delegation", "company-manager-delegation"],
   ["/en/admin/work/company-manager-delegation", "company-manager-delegation"],
-  ["/admin/work/company-manager-delegation", "actor-process-governance"],
-  ["/en/admin/work/company-manager-delegation", "actor-process-governance"],
   ["/admin/trade/list", "trade-list"],
   ["/en/admin/trade/list", "trade-list"],
   ["/trade/matching", "co2-search"],
