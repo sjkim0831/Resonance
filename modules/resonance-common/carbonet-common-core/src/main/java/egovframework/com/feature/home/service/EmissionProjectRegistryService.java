@@ -568,7 +568,7 @@ public class EmissionProjectRegistryService {
         assertTenantAccountActive(tenant,successor);
         if(user.equalsIgnoreCase(successor)) throw new IllegalArgumentException("DELEGATION_SUCCESSOR_MUST_DIFFER");
         String id=UUID.randomUUID().toString();
-        jdbc.update("INSERT INTO framework_company_manager_delegation(delegation_id,tenant_id,project_id,actor_code,predecessor_account_id,successor_account_id,reason_text,requested_by,idempotency_key) VALUES(?,?,?,'COMPANY_MANAGER',?,?,?,?,?) ON CONFLICT(tenant_id,idempotency_key) DO NOTHING",id,tenant,projectId,user,successor,reason,key);
+        jdbc.update("INSERT INTO framework_company_manager_delegation(delegation_id,tenant_id,project_id,actor_code,predecessor_account_id,successor_account_id,reason_text,requested_by,idempotency_key) VALUES(?,?,?,'COMPANY_MANAGER',?,?,?,?,?) ON CONFLICT(tenant_id,idempotency_key) DO NOTHING",id,tenant,projectId,user,successor,reason,user,key);
         return delegationByKey(tenant,key);
     }
 
