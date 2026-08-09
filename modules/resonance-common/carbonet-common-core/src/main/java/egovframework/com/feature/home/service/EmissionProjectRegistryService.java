@@ -548,11 +548,14 @@ public class EmissionProjectRegistryService {
         Map<String,Object> result=new LinkedHashMap<>();
         result.put("canRequest",companyAdmin);
         result.put("canApprove",authorityOverride);
-        result.put("projects",jdbc.queryForList("SELECT project_id AS \"projectId\",project_name AS \"projectName\" FROM emission_project_registry WHERE tenant_id=? ORDER BY project_name,project_id",tenant));
-        result.put("accounts",jdbc.queryForList("SELECT e.emplyr_id AS \"accountId\",e.user_nm AS \"accountName\",trim(e.orgnzt_id) AS department FROM comtnemplyrinfo e WHERE trim(e.instt_id)=? AND e.emplyr_sttus_code='P' ORDER BY e.user_nm,e.emplyr_id",tenant));
+        result.put("projects",authorityOverride
+            ? jdbc.queryForList("SELECT project_id AS \"projectId\",project_name||' · '||tenant_id AS \"projectName\" FROM emission_project_registry ORDER BY tenant_id,project_name,project_id")
+            : jdbc.queryForList("SELECT project_id AS \"projectId\",project_name AS \"projectName\" FROM emission_project_registry WHERE tenant_id=? ORDER BY project_name,project_id",tenant));
+        result.put("accounts",authorityOverride?List.of():jdbc.queryForList("SELECT e.emplyr_id AS \"accountId\",e.user_nm AS \"accountName\",trim(e.orgnzt_id) AS department FROM comtnemplyrinfo e WHERE trim(e.instt_id)=? AND e.emplyr_sttus_code='P' ORDER BY e.user_nm,e.emplyr_id",tenant));
         String scope=projectId==null||projectId.isBlank()?"":" AND project_id=?";
-        Object[] args=scope.isEmpty()?new Object[]{tenant}:new Object[]{tenant,projectId};
-        result.put("items",jdbc.queryForList("SELECT delegation_id AS \"delegationId\",project_id AS \"projectId\",actor_code AS \"actorCode\",predecessor_account_id AS \"predecessorAccountId\",successor_account_id AS \"successorAccountId\",reason_text AS reason,delegation_status AS status,requested_by AS \"requestedBy\",requested_at AS \"requestedAt\",approved_by AS \"approvedBy\",approved_at AS \"approvedAt\",completed_by AS \"completedBy\",completed_at AS \"completedAt\",version FROM framework_company_manager_delegation WHERE tenant_id=?"+scope+" ORDER BY requested_at DESC",args));
+        String tenantScope=authorityOverride?" WHERE 1=1":" WHERE tenant_id=?";
+        Object[] args=authorityOverride?(scope.isEmpty()?new Object[]{}:new Object[]{projectId}):(scope.isEmpty()?new Object[]{tenant}:new Object[]{tenant,projectId});
+        result.put("items",jdbc.queryForList("SELECT delegation_id AS \"delegationId\",tenant_id AS \"tenantId\",project_id AS \"projectId\",actor_code AS \"actorCode\",predecessor_account_id AS \"predecessorAccountId\",successor_account_id AS \"successorAccountId\",reason_text AS reason,delegation_status AS status,requested_by AS \"requestedBy\",requested_at AS \"requestedAt\",approved_by AS \"approvedBy\",approved_at AS \"approvedAt\",completed_by AS \"completedBy\",completed_at AS \"completedAt\",version FROM framework_company_manager_delegation"+tenantScope+scope+" ORDER BY requested_at DESC",args));
         return result;
     }
 
@@ -573,6 +576,9 @@ public class EmissionProjectRegistryService {
     public Map<String,Object> decideCompanyManagerDelegation(String tenantId,String account,boolean authorityOverride,String delegationId,Map<String,Object> body) {
         String tenant=requiredValue(tenantId,"tenantId"),user=requiredValue(account,"account"),decision=required(body,"decision").toUpperCase();
         if(!authorityOverride) throw new SecurityException("AUTHORITY_ADMIN_REQUIRED");
+        List<String> delegationTenants=jdbc.queryForList("SELECT tenant_id FROM framework_company_manager_delegation WHERE delegation_id=?",String.class,delegationId);
+        if(delegationTenants.size()!=1) throw new IllegalArgumentException("DELEGATION_NOT_FOUND");
+        tenant=delegationTenants.get(0);
         if(!Set.of("APPROVE","REJECT").contains(decision)) throw new IllegalArgumentException("DELEGATION_DECISION_INVALID");
         String rejection=String.valueOf(body.getOrDefault("reason","")).trim();
         if("REJECT".equals(decision)&&rejection.isBlank()) throw new IllegalArgumentException("REJECTION_REASON_REQUIRED");
