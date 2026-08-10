@@ -55,7 +55,7 @@ test.describe("emission workflow guide and route alignment", () => {
         .getByText("1. 프로젝트·조직경계 설정", { exact: true }),
     ).toBeVisible();
     await expect(
-      page.getByRole("heading", { name: "조직경계 및 연결 산정" }),
+      page.getByRole("heading", { name: "조직경계 및 연결 산정" }).first(),
     ).toBeVisible();
   });
 
