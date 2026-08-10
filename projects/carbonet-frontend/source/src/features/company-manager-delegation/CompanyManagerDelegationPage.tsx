@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useFrontendSession } from "../../app/hooks/useFrontendSession";
-import { buildLocalizedPath, isEnglish } from "../../lib/navigation/runtime";
+import { isEnglishLocale, localizedPath } from "../../lib/navigation/localePath";
 
 type Project = { projectId: string; projectName: string };
 type Account = { accountId: string; accountName: string; department?: string };
@@ -10,7 +10,7 @@ type Workspace = { canRequest: boolean; canApprove: boolean; projects: Project[]
 const STATUS: Record<string,string> = { REQUESTED:"승인 대기", APPROVED:"인계 대기", COMPLETED:"인계 완료", REJECTED:"반려", CANCELLED:"취소" };
 
 export function CompanyManagerDelegationPage() {
-  const en=isEnglish();
+  const en=isEnglishLocale();
   const session=useFrontendSession();
   const initialProject=new URLSearchParams(location.search).get("projectId")||"";
   const [workspace,setWorkspace]=useState<Workspace|null>(null);
@@ -24,7 +24,7 @@ export function CompanyManagerDelegationPage() {
   async function json(response:Response) { const body=await response.json(); if(!response.ok) throw new Error(body?.message||`HTTP ${response.status}`); return body; }
   async function load(next=projectId) {
     const query=next?`?projectId=${encodeURIComponent(next)}`:"";
-    const body=await json(await fetch(`${buildLocalizedPath("/home/api/company-manager-delegations","/en/home/api/company-manager-delegations")}${query}`,{credentials:"include",headers:{Accept:"application/json"}})) as Workspace;
+    const body=await json(await fetch(`${localizedPath("/home/api/company-manager-delegations","/en/home/api/company-manager-delegations")}${query}`,{credentials:"include",headers:{Accept:"application/json"}})) as Workspace;
     const selected=next||body.projects?.[0]?.projectId||"";
     setWorkspace(body); setProjectId(selected);
     if(!next&&selected) await load(selected);
@@ -37,7 +37,7 @@ export function CompanyManagerDelegationPage() {
     catch(error) { setMessage(error instanceof Error?error.message:String(error)); }
     finally { setBusy(false); }
   }
-  const base=buildLocalizedPath("/home/api/company-manager-delegations","/en/home/api/company-manager-delegations");
+  const base=localizedPath("/home/api/company-manager-delegations","/en/home/api/company-manager-delegations");
   const request=()=>command(base,{projectId,successorAccountId:successor,reason,idempotencyKey:crypto.randomUUID()});
 
   return <main className="min-h-screen bg-[#f4f7fb] px-4 py-8 text-slate-900 lg:px-8">
