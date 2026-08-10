@@ -15,7 +15,7 @@ if(login.status()!==200||loginBody.status!=="loginSuccess")throw new Error(`ADMI
 const adminState=await seed.storageState();
 async function contextFor(userId) { const api=await request.newContext({baseURL:base,storageState:adminState}); if(userId){const response=await api.post("/signin/testAccountSwitch",{data:{userId},headers:{"X-Carbonet-Test-Mode":"1"},failOnStatusCode:false});if(response.status()!==200)throw new Error(`SWITCH_${userId}_${response.status()}`);}return api; }
 async function call(api,method,url,data,expected=[200]) { const response=await api.fetch(url,{method,data,headers:{"X-Carbonet-Test-Mode":"1"},failOnStatusCode:false});const body=await response.json().catch(()=>({}));if(!expected.includes(response.status()))throw new Error(`${method}_${url}_${response.status()}_${body.message||""}`);return body; }
-function waitForRouteData(page,audience) { const paths=["/home/api/company-manager-delegations"];if(audience==="ADMIN")paths.push("/api/app/bootstrap");return Promise.all(paths.map(pathname=>page.waitForResponse(response=>new URL(response.url()).pathname===pathname&&response.status()===200,{timeout:12000}))); }
+function waitForRouteData(page,audience) { const paths=["/home/api/company-manager-delegations"];if(audience==="ADMIN")paths.push("/api/app/bootstrap");return Promise.all(paths.map(pathname=>page.waitForResponse(response=>new URL(response.url()).pathname.endsWith(pathname)&&response.status()===200,{timeout:12000}))); }
 const admin=await contextFor(); const owner=await contextFor("qaowner26"); const successor=await contextFor("qaassign26");
 let projectId="",delegationId="",deleted=false;
 try {
