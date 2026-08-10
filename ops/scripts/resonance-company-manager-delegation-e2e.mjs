@@ -46,11 +46,12 @@ try {
       sessions.push({actor,viewport,context,page,errors});
     }
     for(const session of sessions)for(const step of steps){
+      await session.page.bringToFront();
       const response=await session.page.goto(`${base}${session.actor.prefix}/company-manager-delegation?step=${step}&projectId=${encodeURIComponent(projectId)}`,{waitUntil:"domcontentloaded",timeout:20000});await session.page.getByRole("heading",{name:"회원사 관리자 위임·승계·업무 인계"}).first().waitFor({timeout:12000});
       const measured=await session.page.evaluate(()=>{const nav=performance.getEntriesByType("navigation")[0];return {duration:Math.round(nav?.duration||0),overflow:document.documentElement.scrollWidth>document.documentElement.clientWidth+1,unnamed:[...document.querySelectorAll("input,select,textarea,button")].filter(el=>!(el.getAttribute("aria-label")||el.getAttribute("aria-labelledby")||el.closest("label")||el.textContent?.trim())).length};});
       if(response?.status()!==200||session.errors.length||measured.overflow||measured.unnamed)throw new Error(`UI_CONTRACT_${session.actor.audience}_${step}_${session.viewport.name}`);samples.push(measured.duration);routes.push({audience:session.actor.audience,step,viewport:session.viewport.name,status:200});
     }
-    for(let index=routes.length;index<20;index++){const session=sessions[index%sessions.length];await session.page.goto(`${base}${session.actor.prefix}/company-manager-delegation?projectId=${encodeURIComponent(projectId)}&sample=${index}`,{waitUntil:"domcontentloaded",timeout:20000});await session.page.getByRole("heading",{name:"회원사 관리자 위임·승계·업무 인계"}).first().waitFor({timeout:12000});samples.push(await session.page.evaluate(()=>Math.round(performance.getEntriesByType("navigation")[0]?.duration||0)));}
+    for(let index=routes.length;index<20;index++){const session=sessions[index%sessions.length];await session.page.bringToFront();await session.page.goto(`${base}${session.actor.prefix}/company-manager-delegation?projectId=${encodeURIComponent(projectId)}&sample=${index}`,{waitUntil:"domcontentloaded",timeout:20000});await session.page.getByRole("heading",{name:"회원사 관리자 위임·승계·업무 인계"}).first().waitFor({timeout:12000});samples.push(await session.page.evaluate(()=>Math.round(performance.getEntriesByType("navigation")[0]?.duration||0)));}
     await Promise.all(sessions.map(session=>session.context.close()));
   } finally { await browser.close(); }
   const sorted=[...samples].sort((a,b)=>a-b),p95=sorted[Math.ceil(sorted.length*.95)-1];
