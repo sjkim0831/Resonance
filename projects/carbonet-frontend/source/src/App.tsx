@@ -197,6 +197,9 @@ export default function App() {
   useEffect(()=>{let cancelled=false;setGeneratedRuntime(false);fetch(`${locale==="en"?"/en":""}/home/api/process-executions/screen-contract?routePath=${encodeURIComponent(location.pathname)}`,{credentials:"include"}).then(response=>response.ok?response.json():null).then(result=>{if(!cancelled)setGeneratedRuntime(Boolean(result?.enabled))}).catch(()=>undefined);return()=>{cancelled=true}},[locale,location.pathname]);
   const CurrentPage = generatedRuntime ? GeneratedScreenRuntime : RegisteredPage;
   const boundaryResetKey = `${page}|${location.pathname}|${location.search}`;
+  const pageInstanceKey = page === "company-manager-delegation"
+    ? `${page}|${location.pathname}`
+    : boundaryResetKey;
   const useGlobalUserGnb = page === "work-execution" || shouldUseGlobalUserGnb(location.pathname);
   const showWorkflowAssist = isWorkflowAssistRoute(location.pathname);
 
@@ -637,10 +640,10 @@ export default function App() {
           <RouteAuthenticationBoundary page={page} routePath={routePath}>
             {useGlobalUserGnb ? (
               <GlobalUserGnbShell>
-                <CurrentPage key={boundaryResetKey} />
+                <CurrentPage key={pageInstanceKey} />
               </GlobalUserGnbShell>
             ) : (
-              <CurrentPage key={boundaryResetKey} />
+              <CurrentPage key={pageInstanceKey} />
             )}
           </RouteAuthenticationBoundary>
         </Suspense>
