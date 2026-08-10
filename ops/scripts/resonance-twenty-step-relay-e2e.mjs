@@ -21,6 +21,9 @@ const expectedAccountCount=Number(process.env.CARBONET_RELAY_EXPECTED_ACCOUNT_CO
 const requestDurations=[];
 let authorityDenialCount=0;
 let recoveryVerified=false;
+let apiCommandCount=0;
+let databaseRereadCount=0;
+let exceptionStateCount=0;
 
 async function call(api,method,url,data,expected=[200]){
   const requestStartedAt=Date.now();
@@ -111,11 +114,25 @@ try{
     const expectedVersion=Number(contractBody.draft?.draftVersion||0);
     const saved=await call(api,"put","/home/api/process-executions/draft",{tenantId,projectId,processCode,stepCode,actorCode,expectedVersion,payloadJson:JSON.stringify(payload),evidenceJson:JSON.stringify({documentId:`QA-20STEP-${String(sequence).padStart(2,"0")}`,sourceUrl:`/work/execution?projectId=${projectId}&processCode=${processCode}&stepCode=${stepCode}`})});
     const commandPayload={tenantId,projectId,processCode,stepCode,actorCode,commandCode:String(contractBody.contract.commandCode),idempotencyKey:randomUUID(),requireDraft:true,requestJson:JSON.stringify(payload),resultJson:JSON.stringify({completed:true,draftVersion:saved.draft?.draftVersion}),snapshotRef:`qa:${projectId}:${processCode}:${stepCode}:${sequence}`};
+    if(sequence===1){
+      const staleStartedAt=Date.now();
+      const stale=await api.put("/home/api/process-executions/draft",{data:{tenantId,projectId,processCode,stepCode,actorCode,expectedVersion,payloadJson:JSON.stringify(payload),evidenceJson:"{}"},failOnStatusCode:false});
+      requestDurations.push(Date.now()-staleStartedAt);
+      if(stale.status()!==409)throw new Error(`stale draft did not fail with conflict status=${stale.status()}`);
+      exceptionStateCount+=1;
+
+      const invalidStartedAt=Date.now();
+      const invalid=await api.post(`/home/api/process-executions/${executionId}/commands`,{data:{...commandPayload,commandCode:"UNSUPPORTED_COMMAND",idempotencyKey:randomUUID()},failOnStatusCode:false});
+      requestDurations.push(Date.now()-invalidStartedAt);
+      if(![400,409,422].includes(invalid.status()))throw new Error(`unsupported command did not fail closed status=${invalid.status()}`);
+      exceptionStateCount+=1;
+    }
     if(processCode==="EMISSION_PROJECT"&&stepCode==="EMISSION_PROJECT_VALIDATE"&&!correctionRequested){
       commandPayload.requestedToState="CORRECTION_REQUIRED";
       correctionRequested=true;
     }
     const command=await call(api,"post",`/home/api/process-executions/${executionId}/commands`,commandPayload);
+    apiCommandCount+=1;
     if(!recoveryVerified){
       const replay=await call(api,"post",`/home/api/process-executions/${executionId}/commands`,commandPayload);
       if(Number(replay.eventId)!==Number(command.eventId)||String(replay.toState)!==String(command.toState)){
@@ -123,6 +140,13 @@ try{
       }
       recoveryVerified=true;
     }
+    const rereadQuery=new URLSearchParams({tenantId,projectId,processCode});
+    const reread=await call(api,"get",`/home/api/process-executions?${rereadQuery}`);
+    const persistedEvent=(reread.events||[]).find(event=>Number(event.eventId)===Number(command.eventId));
+    if(reread.found!==true||!persistedEvent||String(persistedEvent.toState)!==String(command.toState)){
+      throw new Error(`database reread mismatch ${processCode}/${stepCode} event=${command.eventId}`);
+    }
+    databaseRereadCount+=1;
     transitions.push({sequence,processCode,stepCode,actorCode,account,fieldCount:fields.length,eventId:command.eventId,toState:command.toState,nextProcessCode:command.nextProcessCode||"",nextStepCode:command.nextProcessStepCode||command.nextStepCode||""});
     if(command.nextProcessCode){processCode=String(command.nextProcessCode);executionId=String(command.nextProcessExecutionId);stepCode=String(command.nextProcessStepCode);}
     else if(command.nextStepCode){stepCode=String(command.nextStepCode);}
@@ -140,7 +164,10 @@ try{
   }
   const orderedDurations=[...requestDurations].sort((a,b)=>a-b);
   const performanceP95Ms=orderedDurations[Math.max(0,Math.ceil(orderedDurations.length*0.95)-1)];
-  const evidence={schemaVersion:1,status:"PASSED",completedAt:new Date().toISOString(),durationMs:Date.now()-startedAt,performanceP95Ms,authorityDenialCount,recoveryVerified,projectId,tenantId,processCount:observed.length,stepCount:uniqueSteps.size,transitionCount:transitions.length,correctionReplayCount:transitions.length-uniqueSteps.size,accountCount:new Set(transitions.map(item=>item.account)).size,processes:observed,transitions};
+  const evidence={schemaVersion:2,status:"PASSED",completedAt:new Date().toISOString(),durationMs:Date.now()-startedAt,performanceP95Ms,performanceSampleCount:requestDurations.length,authorityDenialCount,recoveryVerified,apiCommandCount,databaseRereadCount,exceptionStateCount,projectId,tenantId,processCount:observed.length,stepCount:uniqueSteps.size,transitionCount:transitions.length,correctionReplayCount:transitions.length-uniqueSteps.size,accountCount:new Set(transitions.map(item=>item.account)).size,processes:observed,transitions};
+  if(apiCommandCount!==transitions.length||databaseRereadCount!==transitions.length||exceptionStateCount<2){
+    throw new Error(`evidence closure mismatch api=${apiCommandCount} database=${databaseRereadCount} exceptions=${exceptionStateCount}`);
+  }
   if(evidence.accountCount!==expectedAccountCount)throw new Error(`expected ${expectedAccountCount} accounts, observed ${evidence.accountCount}`);
   const removed=await call(ownerApi,"delete",`/home/api/emission-projects/${projectId}`,undefined,[200]);
   const tasks=await call(ownerApi,"get","/home/api/emission-tasks");
