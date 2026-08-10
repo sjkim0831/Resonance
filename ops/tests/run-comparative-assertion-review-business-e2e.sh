@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+ROOT="${RESONANCE_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
+export RELAY_PROCESS="COMPARATIVE_ASSERTION_REVIEW"
+export RELAY_STEPS="COMPARATIVE_ASSERTION_REVIEW_S1,COMPARATIVE_ASSERTION_REVIEW_S2,COMPARATIVE_ASSERTION_REVIEW_S3,COMPARATIVE_ASSERTION_REVIEW_S4"
+export RELAY_STEP_ACTORS="LCA_PRACTITIONER,LCA_PRACTITIONER,VERIFIER,APPROVER"
+export RELAY_ACCOUNTS_JSON='{"LCA_PRACTITIONER":"qacalc26","VERIFIER":"qaverify26","APPROVER":"qaapprove26"}'
+export RELAY_ROUTE="/generated/comparative-assertion-review/{step}"
+export RELAY_PREFIX="CAR"
+exec bash "$ROOT/ops/tests/run-declared-process-relay-e2e.sh"
