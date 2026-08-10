@@ -99,25 +99,6 @@ export default defineConfig({
           if (id.includes("/src/features/platform-studio/")) {
             return "platformStudio";
           }
-          if (id.includes("/src/features/environment-management/")) {
-            if (id.includes("EnvironmentManagementHubPage")) {
-              return "environmentManagementHub";
-            }
-            if (id.includes("VerificationCenterMigrationPage")) {
-              return "environmentManagementVerificationCenter";
-            }
-            if (id.includes("VerificationAssetManagementMigrationPage")) {
-              return "environmentManagementVerificationAsset";
-            }
-            if (
-              id.includes("environmentManagementFamily")
-              || id.includes("environmentManagementShared")
-              || id.includes("useEnvironmentGovernance")
-            ) {
-              return "environmentManagementShared";
-            }
-            return "environmentManagement";
-          }
         }
       }
     }
