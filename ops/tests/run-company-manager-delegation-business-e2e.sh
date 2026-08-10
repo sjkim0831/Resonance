@@ -8,6 +8,13 @@ if [[ -z "${CARBONET_ADMIN_TEST_PASSWORD:-}" ]]; then CARBONET_ADMIN_TEST_PASSWO
 export CARBONET_ADMIN_TEST_PASSWORD
 for step in CMD_REQUEST CMD_APPROVE CMD_HANDOVER; do RESONANCE_ROOT="$ROOT" bash "$ROOT/ops/scripts/capture-business-e2e-contract.sh" COMPANY_MANAGER_DELEGATION "$step"; done | jq -s '.' >"$TMP/contracts.json"
 node "$ROOT/ops/scripts/resonance-company-manager-delegation-e2e.mjs" >"$TMP/raw.json"
+jq -e '.performanceMeasurementMode == "SPA_WORKFLOW_STEP_NAVIGATION"
+  and .performanceSampleCount >= 20
+  and .hardRouteSampleCount >= 12
+  and (.routes | length) == 12' "$TMP/raw.json" >/dev/null || {
+  echo DELEGATION_E2E_PERFORMANCE_EVIDENCE_INVALID >&2
+  exit 1
+}
 POD="${PATRONI_POD:-$(K8S_NAMESPACE="$NS" bash "$ROOT/ops/scripts/resolve-patroni-primary-pod.sh")}"; export PATRONI_POD="$POD"
 kubectl -n "$NS" exec -i "$POD" -c patroni -- psql -v ON_ERROR_STOP=1 -h 127.0.0.1 -U postgres -d carbonet -X -q -At <<'SQL' >"$TMP/cleanup.out"
 DELETE FROM framework_company_manager_delegation WHERE idempotency_key LIKE 'qa-delegation-delegation-e2e-%';
