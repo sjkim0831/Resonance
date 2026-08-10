@@ -9,13 +9,17 @@ const require = createRequire(path.join(root, "projects/carbonet-frontend/source
 const { chromium, request } = require("@playwright/test");
 const baseURL = String(process.env.CARBONET_RUNTIME_BASE_URL || "http://127.0.0.1").replace(/\/$/, "");
 const password = String(process.env.CARBONET_ACTOR_TEST_PASSWORD || "");
-const projectId = String(process.env.CARBONET_FOM_QA_PROJECT_ID || "");
+const projectId = String(process.env.CARBONET_RELAY_QA_PROJECT_ID || process.env.CARBONET_FOM_QA_PROJECT_ID || "");
 const tenantId = "TEST_COMPANY_001";
-if (!password || !projectId) throw new Error("actor password and FOM QA project are required");
+if (!password || !projectId) throw new Error("actor password and relay QA project are required");
 
-const PROCESS = "FACILITY_OPERATION_MONITORING";
-const accounts = { FACILITY_OPERATOR: "qacalc26", HSE_MANAGER: "qaverify26" };
-const expectedSteps = ["FOM_PLAN", "FOM_OPERATE", "FOM_HANDOVER"];
+const PROCESS = String(process.env.CARBONET_RELAY_PROCESS_CODE || "FACILITY_OPERATION_MONITORING");
+const accounts = JSON.parse(process.env.CARBONET_RELAY_ACCOUNTS_JSON || '{"FACILITY_OPERATOR":"qacalc26","HSE_MANAGER":"qaverify26"}');
+const expectedSteps = String(process.env.CARBONET_RELAY_STEPS || "FOM_PLAN,FOM_OPERATE,FOM_HANDOVER").split(",").filter(Boolean);
+const stepActors = String(process.env.CARBONET_RELAY_STEP_ACTORS || "FACILITY_OPERATOR,FACILITY_OPERATOR,HSE_MANAGER").split(",").filter(Boolean);
+const routeBase = String(process.env.CARBONET_RELAY_ROUTE || "/ccus/facility/facility-operation-monitoring");
+const evidenceFile = String(process.env.CARBONET_RELAY_EVIDENCE_FILE || process.env.CARBONET_FOM_EVIDENCE_FILE || "");
+if (expectedSteps.length !== stepActors.length || !evidenceFile) throw new Error("relay step, actor, and evidence contracts are required");
 const clients = new Map();
 const samples = [];
 const transitions = [];
@@ -51,10 +55,10 @@ function value(field, sequence) {
   if (code.includes("status")) return sequence === 3 ? "COMPLETED" : "IN_PROGRESS";
   if (code.includes("risk")) return sequence === 2 ? "WARNING" : "NORMAL";
   if (code.includes("unit")) return "bar";
-  if (code.includes("evidence")) return `QA-FOM-EVIDENCE-${sequence}`;
+  if (code.includes("evidence")) return `QA-RELAY-EVIDENCE-${sequence}`;
   if (code.includes("effective") || code.includes("date") || code.includes("time")) return new Date().toISOString();
   if (type === "INTEGER" || type === "DECIMAL" || type === "NUMBER" || code.includes("value") || code.includes("version")) return sequence;
-  return `QA facility operation ${sequence}`;
+  return `QA process relay ${sequence}`;
 }
 
 for (const [actor, user] of Object.entries(accounts)) clients.set(actor, await login(user));
@@ -66,9 +70,11 @@ try {
   let stepCode = String(started.body.currentStepCode || started.body.execution?.currentStepCode || "");
   for (let index = 0; index < expectedSteps.length; index += 1) {
     if (stepCode !== expectedSteps[index]) throw new Error(`step order mismatch expected=${expectedSteps[index]} actual=${stepCode}`);
-    const actor = index < 2 ? "FACILITY_OPERATOR" : "HSE_MANAGER";
+    const actor = stepActors[index];
     const api = clients.get(actor);
-    const other = clients.get(actor === "FACILITY_OPERATOR" ? "HSE_MANAGER" : "FACILITY_OPERATOR");
+    const otherActor = Object.keys(accounts).find(candidate => candidate !== actor);
+    const other = clients.get(otherActor);
+    if (!other) throw new Error(`authority counter actor missing step=${stepCode}`);
     const query = new URLSearchParams({ tenantId, projectId, processCode: PROCESS, stepCode });
     const denied = await other.get(`/home/api/process-executions/draft?${query}`, { failOnStatusCode: false });
     if (denied.status() !== 403) throw new Error(`authority isolation failed step=${stepCode} status=${denied.status()}`);
@@ -104,7 +110,7 @@ try {
       const api = clients.get(transition.actorCode);
       const context = await browser.newContext({ storageState: await api.storageState(), viewport: { width: 1440, height: 1000 } });
       const page = await context.newPage();
-      const route = `/ccus/facility/facility-operation-monitoring?step=${transition.stepCode.toLowerCase()}&projectId=${encodeURIComponent(projectId)}`;
+      const route = `${routeBase}?step=${transition.stepCode.toLowerCase()}&projectId=${encodeURIComponent(projectId)}`;
       const startedAt = Date.now();
       const response = await page.goto(`${baseURL}${route}`, { waitUntil: "domcontentloaded", timeout: 20_000 });
       await page.waitForFunction(() => (document.querySelector("#root")?.children.length || 0) > 0 && document.querySelectorAll("h1,h2").length > 0, undefined, { timeout: 10_000 });
@@ -125,9 +131,9 @@ try {
   }
 
   const sorted = [...samples].sort((a, b) => a - b);
-  const evidence = { schemaVersion: 1, status: "PASSED", processCode: PROCESS, projectId, stepCount: transitions.length, transitionCount: transitions.length, api: 1, database: database === 3 ? 1 : 0, authority: authority === 3 ? 1 : 0, responsive: routeEvidence.length === 3 ? 1 : 0, accessibility: routeEvidence.every(row => row.controls >= 4) ? 1 : 0, exceptionStates: exceptions >= 1 ? 1 : 0, audit: audit === 3 ? 1 : 0, recovery, cleanup: false, performanceP95Ms: sorted[Math.max(0, Math.ceil(sorted.length * .95) - 1)], performanceSampleCount: sorted.length, transitions, routes: routeEvidence };
-  writeFileSync(process.env.CARBONET_FOM_EVIDENCE_FILE, `${JSON.stringify(evidence, null, 2)}\n`);
-  console.log(`FACILITY_OPERATION_MONITORING_E2E_PASS steps=${transitions.length} routes=${routeEvidence.length} authority=${authority} database=${database}`);
+  const evidence = { schemaVersion: 1, status: "PASSED", processCode: PROCESS, projectId, stepCount: transitions.length, transitionCount: transitions.length, api: 1, database: database === expectedSteps.length ? 1 : 0, authority: authority === expectedSteps.length ? 1 : 0, responsive: routeEvidence.length === expectedSteps.length ? 1 : 0, accessibility: routeEvidence.every(row => row.controls >= 4) ? 1 : 0, exceptionStates: exceptions >= 1 ? 1 : 0, audit: audit === expectedSteps.length ? 1 : 0, recovery, cleanup: false, performanceP95Ms: sorted[Math.max(0, Math.ceil(sorted.length * .95) - 1)], performanceSampleCount: sorted.length, transitions, routes: routeEvidence };
+  writeFileSync(evidenceFile, `${JSON.stringify(evidence, null, 2)}\n`);
+  console.log(`PROCESS_RELAY_E2E_PASS process=${PROCESS} steps=${transitions.length} routes=${routeEvidence.length} authority=${authority} database=${database}`);
 } finally {
   for (const api of clients.values()) await api.dispose();
 }
