@@ -170,6 +170,10 @@ export default function App() {
   const { locationState, location, page, routeLoading } = useRuntimeNavigation();
   const locale = getRuntimeLocale();
   const routePath = `${location.pathname}${location.search}`;
+  const contractStep = new URLSearchParams(location.search).get("step")?.trim() || "";
+  const generatedContractRoutePath = contractStep
+    ? `${location.pathname}?step=${encodeURIComponent(contractStep)}`
+    : location.pathname;
   const [manifest, setManifest] = useState<PageManifest | null>(null);
   const [helpOpen, setHelpOpen] = useState(false);
   const [helpContent, setHelpContent] = useState<PageHelpContent>(() => fallbackHelpContent(page));
@@ -194,7 +198,7 @@ export default function App() {
   } = useScreenContextMenu(page, routePath);
   const RegisteredPage = getPageComponent(page);
   const [generatedRuntime,setGeneratedRuntime]=useState(false);
-  useEffect(()=>{let cancelled=false;setGeneratedRuntime(false);fetch(`${locale==="en"?"/en":""}/home/api/process-executions/screen-contract?routePath=${encodeURIComponent(location.pathname)}`,{credentials:"include"}).then(response=>response.ok?response.json():null).then(result=>{if(!cancelled)setGeneratedRuntime(Boolean(result?.enabled))}).catch(()=>undefined);return()=>{cancelled=true}},[locale,location.pathname]);
+  useEffect(()=>{let cancelled=false;setGeneratedRuntime(false);fetch(`${locale==="en"?"/en":""}/home/api/process-executions/screen-contract?routePath=${encodeURIComponent(generatedContractRoutePath)}`,{credentials:"include"}).then(response=>response.ok?response.json():null).then(result=>{if(!cancelled)setGeneratedRuntime(Boolean(result?.enabled))}).catch(()=>undefined);return()=>{cancelled=true}},[generatedContractRoutePath,locale]);
   const CurrentPage = generatedRuntime ? GeneratedScreenRuntime : RegisteredPage;
   const boundaryResetKey = `${page}|${location.pathname}|${location.search}`;
   const pageInstanceKey = page === "company-manager-delegation"

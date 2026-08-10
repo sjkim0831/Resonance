@@ -12,6 +12,10 @@ const list = (value: unknown) => Array.isArray(value) ? value.map(item=>typeof i
 const items = (value: unknown, prefix: string): ContractItem[] => Array.isArray(value) ? value.map((item,index)=>typeof item === "string" ? {code:item||`${prefix}_${index+1}`,label:item} : {...(item as Record<string,unknown>),code:String((item as Record<string,unknown>)?.code||`${prefix}_${index+1}`),label:String((item as Record<string,unknown>)?.label||(item as Record<string,unknown>)?.name||(item as Record<string,unknown>)?.code||`${prefix} ${index+1}`)}).filter(item=>item.label) : [];
 const text = (value: unknown) => typeof value === "string" ? value : "";
 const inputClass = "krds-control h-11 w-full rounded-lg border border-slate-300 bg-white px-3 focus:border-[#246beb] focus:outline-none focus:ring-2 focus:ring-blue-100";
+const contractLookupPath = () => {
+  const step = new URLSearchParams(location.search).get("step")?.trim() || "";
+  return step ? `${location.pathname}?step=${encodeURIComponent(step)}` : location.pathname;
+};
 
 function GeneratedContent({ screen }: { screen: GeneratedScreenDefinition }) {
   const en = isEnglish();
@@ -295,7 +299,7 @@ function applyVersionedContract(base: GeneratedScreenDefinition, envelope: Versi
 
 async function loadVersionedContract(base: GeneratedScreenDefinition): Promise<GeneratedScreenDefinition> {
   const query = new URLSearchParams({
-    routePath: location.pathname,
+    routePath: contractLookupPath(),
     processCode: base.processCode,
     stepCode: base.stepCode,
     audience: base.audience,
@@ -308,14 +312,14 @@ async function loadVersionedContract(base: GeneratedScreenDefinition): Promise<G
 export function GeneratedScreenPage() {
   const en = isEnglish();
   const staticScreen: GeneratedScreenDefinition | undefined =
-    findGeneratedScreen(location.pathname) as GeneratedScreenDefinition | undefined;
+    findGeneratedScreen(contractLookupPath()) as GeneratedScreenDefinition | undefined;
   const [screen,setScreen]=useState<GeneratedScreenDefinition|undefined>(staticScreen),[loading,setLoading]=useState(!staticScreen);
   useEffect(() => {
     let cancelled = false;
     setLoading(!staticScreen);
     const basePromise = staticScreen
       ? Promise.resolve(staticScreen)
-      : fetch(`${en ? "/en" : ""}/home/api/process-executions/screen-contract?routePath=${encodeURIComponent(location.pathname)}`, { credentials: "include" })
+      : fetch(`${en ? "/en" : ""}/home/api/process-executions/screen-contract?routePath=${encodeURIComponent(contractLookupPath())}`, { credentials: "include" })
           .then(async response => {
             const row = await response.json() as Record<string, unknown>;
             return response.ok && row.enabled ? toGeneratedScreen(row) : undefined;
