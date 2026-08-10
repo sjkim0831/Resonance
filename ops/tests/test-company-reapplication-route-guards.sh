@@ -51,6 +51,10 @@ assert(appEntry.includes('pathname === "/join/companyreapply"')&&
   "public reapplication route does not use its lightweight entry chunk");
 assert(appEntry.indexOf("window.__CARBONET_REACT_APP_MOUNTED__ = true")>appEntry.indexOf(".then((EntryComponent)"),
   "mounted marker is set before the selected entry chunk is available");
+assert(appEntry.includes("!window.__CARBONET_REACT_APP_MOUNTING__")&&
+  appEntry.indexOf("window.__CARBONET_REACT_APP_MOUNTING__ = true")<appEntry.indexOf("void resolveEntryComponent()")&&
+  appEntry.includes("window.__CARBONET_REACT_APP_MOUNTING__ = false"),
+  "concurrent entry scripts can still race and mount duplicate React roots");
 assert(lightweightEntry.includes("useRuntimeNavigation()")&&lightweightEntry.includes('page === "join-company-reapply"'),
   "lightweight entry does not observe SPA route changes");
 assert(lightweightEntry.includes('lazy(() => import("../../App"))'),
