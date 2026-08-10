@@ -60,6 +60,10 @@ function value(field, sequence) {
   if (type === "INTEGER" || type === "DECIMAL" || type === "NUMBER" || code.includes("value") || code.includes("version")) return sequence;
   return `QA process relay ${sequence}`;
 }
+function routeFor(stepCode) {
+  const normalizedStep = stepCode.toLowerCase().replaceAll("_", "-");
+  return routeBase.includes("{step}") ? routeBase.replace("{step}", normalizedStep) : `${routeBase}?step=${stepCode.toLowerCase()}`;
+}
 
 for (const [actor, user] of Object.entries(accounts)) clients.set(actor, await login(user));
 const operator = clients.get(stepActors[0]);
@@ -111,7 +115,7 @@ try {
       const api = clients.get(transition.actorCode);
       const context = await browser.newContext({ storageState: await api.storageState(), viewport: { width: 1440, height: 1000 } });
       const page = await context.newPage();
-      const route = `${routeBase}?step=${transition.stepCode.toLowerCase()}&projectId=${encodeURIComponent(projectId)}`;
+      const route = `${routeFor(transition.stepCode)}${routeFor(transition.stepCode).includes("?") ? "&" : "?"}projectId=${encodeURIComponent(projectId)}`;
       const startedAt = Date.now();
       const response = await page.goto(`${baseURL}${route}`, { waitUntil: "domcontentloaded", timeout: 20_000 });
       await page.waitForFunction(() => (document.querySelector("#root")?.children.length || 0) > 0 && document.querySelectorAll("h1,h2").length > 0, undefined, { timeout: 10_000 });
