@@ -70,35 +70,6 @@ export default defineConfig({
           if (id.includes("node_modules/react") || id.includes("react/jsx-runtime")) {
             return "vendor-react";
           }
-          if (id.includes("/src/features/screen-builder/catalog/buttonCatalogCore")) {
-            return "screenBuilderCatalogSource";
-          }
-          if (id.includes("/src/features/screen-builder/catalog/screenBuilderCatalogPreview")) {
-            return "screenBuilderCatalogPreview";
-          }
-          if (id.includes("/src/features/screen-builder/panels/ScreenBuilderEditorPanels")
-            || id.includes("/src/features/screen-builder/hooks/useScreenBuilderEditor")
-            || id.includes("/src/features/screen-builder/shared/screenBuilderPreview")) {
-            return "screenBuilderEditor";
-          }
-          if (id.includes("/src/features/screen-builder/panels/ScreenBuilderGovernancePanels")
-            || id.includes("/src/features/screen-builder/hooks/useScreenBuilderGovernanceState")
-            || id.includes("/src/features/screen-builder/catalog/buttonCatalogCore")) {
-            return "screenBuilderGovernance";
-          }
-          if (id.includes("/src/features/screen-builder/panels/ScreenBuilderOverviewPanels")
-            || id.includes("/src/features/screen-builder/hooks/useScreenBuilderWorkspaceState")
-            || id.includes("/src/features/screen-builder/hooks/useScreenBuilderMutations")
-            || id.includes("/src/features/screen-builder/shared/screenBuilderShared")
-            || id.includes("/src/features/screen-builder/shared/screenBuilderUtils")) {
-            return "screenBuilderWorkspace";
-          }
-          if (id.includes("/src/lib/api/screenBuilder") || id.includes("/src/lib/api/screenGovernance")) {
-            return "screenBuilderApi";
-          }
-          if (id.includes("/src/features/platform-studio/")) {
-            return "platformStudio";
-          }
         }
       }
     }
