@@ -61,7 +61,7 @@ for (const [actor, user] of Object.entries(accounts)) clients.set(actor, await l
 const operator = clients.get("FACILITY_OPERATOR");
 let executionId = "";
 try {
-  const started = await call(operator, "post", "/home/api/process-executions/start", { tenantId, projectId, processCode: PROCESS, actorCode: "FACILITY_OPERATOR", cycleType: "SHIFT", executionVersion: 1 });
+  const started = await call(operator, "post", "/home/api/process-executions/start", { tenantId, projectId, processCode: PROCESS, actorCode: "FACILITY_OPERATOR", cycleType: "AD_HOC", periodStart: new Date().toISOString().slice(0, 10), periodEnd: new Date().toISOString().slice(0, 10), executionVersion: 1 });
   executionId = String(started.body.executionId || started.body.execution?.executionId || "");
   let stepCode = String(started.body.currentStepCode || started.body.execution?.currentStepCode || "");
   for (let index = 0; index < expectedSteps.length; index += 1) {
