@@ -62,10 +62,11 @@ function value(field, sequence) {
 }
 
 for (const [actor, user] of Object.entries(accounts)) clients.set(actor, await login(user));
-const operator = clients.get("FACILITY_OPERATOR");
+const operator = clients.get(stepActors[0]);
+if (!operator) throw new Error(`process starter missing actor=${stepActors[0]}`);
 let executionId = "";
 try {
-  const started = await call(operator, "post", "/home/api/process-executions/start", { tenantId, projectId, processCode: PROCESS, actorCode: "FACILITY_OPERATOR", cycleType: "AD_HOC", periodStart: new Date().toISOString().slice(0, 10), periodEnd: new Date().toISOString().slice(0, 10), executionVersion: 1 });
+  const started = await call(operator, "post", "/home/api/process-executions/start", { tenantId, projectId, processCode: PROCESS, actorCode: stepActors[0], cycleType: "AD_HOC", periodStart: new Date().toISOString().slice(0, 10), periodEnd: new Date().toISOString().slice(0, 10), executionVersion: 1 });
   executionId = String(started.body.executionId || started.body.execution?.executionId || "");
   let stepCode = String(started.body.currentStepCode || started.body.execution?.currentStepCode || "");
   for (let index = 0; index < expectedSteps.length; index += 1) {
