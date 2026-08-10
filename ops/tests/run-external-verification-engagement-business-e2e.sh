@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+ROOT="${RESONANCE_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
+export RELAY_PROCESS="EXTERNAL_VERIFICATION_ENGAGEMENT"
+export RELAY_STEPS="EXTERNAL_VERIFICATION_ENGAGEMENT_S1,EXTERNAL_VERIFICATION_ENGAGEMENT_S2,EXTERNAL_VERIFICATION_ENGAGEMENT_S3,EXTERNAL_VERIFICATION_ENGAGEMENT_S4"
+export RELAY_STEP_ACTORS="COMPANY_MANAGER,COMPANY_MANAGER,AUDITOR,APPROVER"
+export RELAY_ACCOUNTS_JSON='{"COMPANY_MANAGER":"qaowner26","AUDITOR":"qaverify26","APPROVER":"qaapprove26"}'
+export RELAY_ROUTE="/generated/external-verification-engagement/{step}"
+export RELAY_PREFIX="EVE"
+exec bash "$ROOT/ops/tests/run-declared-process-relay-e2e.sh"
