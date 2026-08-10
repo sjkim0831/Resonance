@@ -7,7 +7,7 @@ source "$ROOT/ops/scripts/lib/carbonet-postgres-query.sh"
 carbonet_postgres_query_init
 PROJECT_ID="QA-FOM-$(date +%s)-$RANDOM"
 EVIDENCE="$ROOT/var/test-evidence/facility-operation-monitoring-latest.json"
-SOURCE_COMMIT="$(tr -d '[:space:]' </opt/resonance-data/deploy/carbonet-main-success.commit)"
+VALIDATION_COMMIT="$(tr -d '[:space:]' </opt/resonance-data/deploy/carbonet-main-success.commit)"
 cleanup(){
   carbonet_postgres_query "begin;
     delete from framework_process_execution_event where execution_id in (select execution_id from framework_process_execution where project_id='$PROJECT_ID');
@@ -29,6 +29,8 @@ for step in FOM_PLAN FOM_OPERATE FOM_HANDOVER; do
   contract="$(bash "$ROOT/ops/scripts/capture-business-e2e-contract.sh" FACILITY_OPERATION_MONITORING "$step")"
   contracts="$(jq -cn --argjson current "$contracts" --argjson next "$contract" '$current+[$next]')"
 done
+RUNTIME_COMMIT="$(jq -r '[.[] | .sourceCommit] | unique | if length == 1 then .[0] else empty end' <<<"$contracts")"
+[[ "$RUNTIME_COMMIT" =~ ^[0-9a-f]{40}$ ]] || { echo "FOM_E2E_RUNTIME_IDENTITY_INVALID" >&2; exit 3; }
 
 CARBONET_FOM_QA_PROJECT_ID="$PROJECT_ID" CARBONET_FOM_EVIDENCE_FILE="$EVIDENCE" RESONANCE_ROOT="$ROOT" \
   node "$ROOT/ops/scripts/resonance-facility-operation-monitoring-e2e.mjs"
@@ -36,14 +38,14 @@ cleanup
 trap - EXIT
 residue="$(carbonet_postgres_query "select (select count(*) from framework_process_execution where project_id='$PROJECT_ID')+(select count(*) from framework_process_work_draft where project_id='$PROJECT_ID')+(select count(*) from framework_account_actor_assignment where project_id='$PROJECT_ID');")"
 [[ "$residue" == 0 ]] || { echo "FOM_E2E_CLEANUP_FAILED residue=$residue" >&2; exit 3; }
-jq --argjson contracts "$contracts" --arg sourceCommit "$SOURCE_COMMIT" '.cleanup=true|.contracts=$contracts|.sourceCommit=$sourceCommit|.validationCommit=$sourceCommit' "$EVIDENCE" >"$EVIDENCE.tmp"
+jq --argjson contracts "$contracts" --arg sourceCommit "$RUNTIME_COMMIT" --arg validationCommit "$VALIDATION_COMMIT" '.cleanup=true|.contracts=$contracts|.sourceCommit=$sourceCommit|.validationCommit=$validationCommit' "$EVIDENCE" >"$EVIDENCE.tmp"
 mv "$EVIDENCE.tmp" "$EVIDENCE"
 
 required="api,database,authority,responsive,accessibility,exceptionStates,audit,recovery,cleanup"
 for step in FOM_PLAN FOM_OPERATE FOM_HANDOVER; do
   contract="$(jq -c --arg step "$step" '.contracts[]|select(.stepCode==$step)' "$EVIDENCE")"
   jq -c --argjson contract "$contract" '.contract=$contract' "$EVIDENCE" | \
-    E2E_DEPLOYED_COMMIT="$SOURCE_COMMIT" E2E_VALIDATION_COMMIT="$SOURCE_COMMIT" \
+    E2E_DEPLOYED_COMMIT="$RUNTIME_COMMIT" E2E_VALIDATION_COMMIT="$VALIDATION_COMMIT" \
     bash "$ROOT/ops/scripts/promote-screen-contract-after-e2e.sh" FACILITY_OPERATION_MONITORING "$step" "$required" USER >/dev/null
 done
-printf '{"status":"PROMOTED","processCode":"FACILITY_OPERATION_MONITORING","steps":3,"cleanup":true,"sourceCommit":"%s"}\n' "$SOURCE_COMMIT"
+printf '{"status":"PROMOTED","processCode":"FACILITY_OPERATION_MONITORING","steps":3,"cleanup":true,"sourceCommit":"%s","validationCommit":"%s"}\n' "$RUNTIME_COMMIT" "$VALIDATION_COMMIT"

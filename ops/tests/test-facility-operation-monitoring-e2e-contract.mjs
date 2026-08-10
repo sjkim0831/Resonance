@@ -16,6 +16,8 @@ for (const [source, token] of [
   [e2e, "database reread failed"],
   [e2e, "mobileOverflow"],
   [wrapper, "framework_process_execution_event"],
+  [wrapper, 'E2E_DEPLOYED_COMMIT="$RUNTIME_COMMIT"'],
+  [wrapper, 'E2E_VALIDATION_COMMIT="$VALIDATION_COMMIT"'],
   [wrapper, 'required="api,database,authority,responsive,accessibility,exceptionStates,audit,recovery,cleanup"'],
 ]) if (!source.includes(token)) throw new Error(`missing FOM closure contract: ${token}`);
 
