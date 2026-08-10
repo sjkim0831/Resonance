@@ -6,7 +6,6 @@ import {
 } from "../../lib/api/adminShell";
 import type { FrontendSession } from "../../lib/api/adminShellTypes";
 import { buildLocalizedPath, getCsrfMeta, getNavigationEventName, isEnglish, navigate } from "../../lib/navigation/runtime";
-import { getCurrentRuntimeLocationState } from "../routes/runtime";
 import { useAsyncValue } from "./useAsyncValue";
 
 type UseFrontendSessionOptions = {
@@ -49,6 +48,7 @@ export function useFrontendSession(options: UseFrontendSessionOptions = {}) {
       } finally {
         invalidateFrontendSessionCache();
         const nextPath = buildLocalizedPath("/home", "/en/home");
+        const { getCurrentRuntimeLocationState } = await import("../routes/runtime");
         if (getCurrentRuntimeLocationState() === nextPath) {
           window.dispatchEvent(new Event(getNavigationEventName()));
           return;
