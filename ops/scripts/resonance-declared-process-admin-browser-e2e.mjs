@@ -32,7 +32,7 @@ try {
     const warmup = await context.newPage();
     const separator = routeBase.includes("?") ? "&" : "?";
     await warmup.goto(`${baseURL}${routeBase}${separator}step=${encodeURIComponent(steps[0].toLowerCase())}`, { waitUntil: "domcontentloaded", timeout: 20_000 });
-    await warmup.waitForFunction(() => (document.body?.innerText || "").includes("SCREEN COORDINATE"), undefined, { timeout: 10_000 });
+    await warmup.waitForFunction(() => (document.body?.innerText || "").includes("SCREEN COORDINATE"), undefined, { timeout: 20_000 });
     await warmup.close();
   }
   for (const stepCode of steps) {
