@@ -17,6 +17,8 @@ source_hash="$(kubectl -n "$NAMESPACE" exec "$leader" -c patroni -- psql -h 127.
     (select max(verified_at) from framework_api_endpoint_registry),
     (select md5(string_agg(concat_ws('.',table_name,column_name,data_type,is_nullable),'|' order by table_name,ordinal_position))
        from information_schema.columns where table_schema='public')))")"
+compiler_hash="$(sha256sum "$ROOT/ops/scripts/compile-cross-screen-contracts.py" | awk '{print $1}')"
+source_hash="$(printf '%s|%s' "$source_hash" "$compiler_hash" | sha256sum | awk '{print $1}')"
 if [[ -f "$MARKER" && "$(cat "$MARKER")" == "$source_hash" ]]; then
   jq -cn --arg sourceHash "$source_hash" \
     '{success:true,status:"UNCHANGED",sourceHash:$sourceHash,compilerSkipped:true}'
