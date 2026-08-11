@@ -153,6 +153,7 @@ security:
       enabled: ${SECURITY_EXTERNAL_AUTH_KISA_ENABLED:true}
       adapter-version: ${SECURITY_EXTERNAL_AUTH_KISA_ADAPTER_VERSION:v1}
       sdk-jar-path: ${SECURITY_EXTERNAL_AUTH_KISA_SDK_JAR_PATH:/app/lib/kr.or.kisa.dapc.core-1.0.0.jar}
+      sdk-sha256: ${SECURITY_EXTERNAL_AUTH_KISA_SDK_SHA256:}
       decrypt-tool-path: ${SECURITY_EXTERNAL_AUTH_KISA_DECRYPT_TOOL_PATH:/mnt/c/Users/jwchoo/Downloads/decrypttool.zip}
       client-id: ${SECURITY_EXTERNAL_AUTH_KISA_CLIENT_ID:}
       service-code: ${SECURITY_EXTERNAL_AUTH_KISA_SERVICE_CODE:}

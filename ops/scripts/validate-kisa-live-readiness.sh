@@ -24,6 +24,7 @@ jar_mounted=false
 [[ "$runtime_sha" =~ ^[0-9a-f]{64}$ ]] && jar_mounted=true
 
 keys=(
+  SECURITY_EXTERNAL_AUTH_KISA_SDK_SHA256
   SECURITY_EXTERNAL_AUTH_KISA_CLIENT_ID
   SECURITY_EXTERNAL_AUTH_KISA_SERVICE_CODE
   SECURITY_EXTERNAL_AUTH_KISA_CA_CODE
@@ -44,22 +45,28 @@ for key in "${keys[@]}"; do
     missing_json="$(jq -cn --argjson values "$missing_json" --arg key "$key" '$values+[$key]')"
   fi
 done
+supply_chain_trusted=false
+if kubectl -n "$NAMESPACE" exec "$pod" -c "$container" -- sh -lc \
+  'expected="$(printenv SECURITY_EXTERNAL_AUTH_KISA_SDK_SHA256)"; actual="$(sha256sum /app/lib/kr.or.kisa.dapc.core-1.0.0.jar 2>/dev/null | awk "{print \$1}")"; [ -n "$expected" ] && [ "$expected" = "$actual" ]' \
+  >/dev/null 2>&1; then
+  supply_chain_trusted=true
+fi
 live_ready=false
 orchestration_implemented=false
 if jq -e 'all(.methods[]; .available==true and .status=="ready")' <<<"$methods" >/dev/null; then
   orchestration_implemented=true
 fi
-if [[ "$sdk_ready" == true && "$jar_mounted" == true && "$(jq length <<<"$missing_json")" == 0 \
+if [[ "$sdk_ready" == true && "$jar_mounted" == true && "$supply_chain_trusted" == true && "$(jq length <<<"$missing_json")" == 0 \
    && "$orchestration_implemented" == true ]]; then
   live_ready=true
 fi
 report="$(jq -cn --argjson methods "$method_count" --argjson sdk "$sdk_ready" --argjson jar "$jar_mounted" \
-  --argjson configured "$configured_json" --argjson missing "$missing_json" --argjson orchestration "$orchestration_implemented" --argjson live "$live_ready" \
+  --argjson configured "$configured_json" --argjson missing "$missing_json" --argjson trusted "$supply_chain_trusted" --argjson orchestration "$orchestration_implemented" --argjson live "$live_ready" \
   '{provider:"KISA_DAPC",methodCount:$methods,sdkReady:$sdk,jarMounted:$jar,configuredKeys:$configured,
-    missingKeys:$missing,configuredCount:($configured|length),requiredCount:6,orchestrationImplemented:$orchestration,
-    acceptancePassed:false,overallChecks:8,liveReady:$live}')"
+    missingKeys:$missing,configuredCount:($configured|length),requiredCount:7,supplyChainTrusted:$trusted,
+    orchestrationImplemented:$orchestration,acceptancePassed:false,overallChecks:11,liveReady:$live}')"
 printf '%s\n' "$report"
 if [[ "$REPORT_ONLY" != true && "$live_ready" != true ]]; then
-  echo "[kisa-readiness] BLOCKED configured=$(jq length <<<"$configured_json")/6" >&2
+  echo "[kisa-readiness] BLOCKED configured=$(jq length <<<"$configured_json")/7" >&2
   exit 75
 fi

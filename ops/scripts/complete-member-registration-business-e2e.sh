@@ -30,7 +30,7 @@ timeout 90 bash "$ROOT/gradlew" :modules:resonance-common:carbonet-common-core:t
 grep -q 'BUILD SUCCESSFUL' "$identity_test_log"
 identity_contract='MemberRegistrationIdentityFlowTest PASS cases=2 methodBinding=1 clientBinding=1 replayBlocked=1 step4Handoff=1'
 kisa_readiness="$(bash "$ROOT/ops/scripts/validate-kisa-live-readiness.sh" --report)"
-jq -e '.sdkReady==true and .jarMounted==true and .requiredCount==6' <<<"$kisa_readiness" >/dev/null
+jq -e '.jarMounted==true and .requiredCount==7 and .overallChecks==11' <<<"$kisa_readiness" >/dev/null
 
 current_contracts='[]'
 for step in "${PROMOTED_STEPS[@]}"; do
