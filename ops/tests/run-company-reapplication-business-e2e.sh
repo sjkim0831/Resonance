@@ -79,6 +79,31 @@ wait_for_browser_rate_limit_capacity() {
   done
 }
 
+wait_for_clean_runtime_rate_limit_window() {
+  local now bucket seconds_left active_count wait_seconds
+  while true; do
+    now="$(date +%s)"
+    bucket=$((now/BROWSER_RATE_LIMIT_WINDOW_SECONDS))
+    seconds_left=$((BROWSER_RATE_LIMIT_WINDOW_SECONDS-(now%BROWSER_RATE_LIMIT_WINDOW_SECONDS)))
+    active_count="$(q "select coalesce(sum(request_count),0)
+      from framework_public_lookup_rate_limit
+      where project_id='${PROJECT_ID}'
+        and endpoint_code in ('company-reapply-page','company-reapply-submit','company-status-detail')
+        and window_bucket=${bucket}")"
+    [[ "$active_count" =~ ^[0-9]+$ ]] || { echo COMPANY_REAPPLICATION_RUNTIME_RATE_PREFLIGHT_INVALID >&2; return 2; }
+    if (( active_count == 0 && seconds_left > BROWSER_RATE_LIMIT_WINDOW_GUARD_SECONDS )); then
+      return 0
+    fi
+    wait_seconds=$((seconds_left+1))
+    if (( wait_seconds > BROWSER_RATE_LIMIT_MAX_WAIT_SECONDS )); then
+      echo "COMPANY_REAPPLICATION_RUNTIME_RATE_PREFLIGHT_WAIT_EXCEEDED retryAfterSeconds=${wait_seconds}" >&2
+      return 75
+    fi
+    echo "[company-reapplication-e2e] waiting for clean runtime limiter window seconds=${wait_seconds}" >&2
+    sleep "$wait_seconds"
+  done
+}
+
 capture_browser_rate_limit_rows() {
   local bucket="$1" output_file="$2"
   q "select coalesce(jsonb_agg(jsonb_build_object(
@@ -335,6 +360,7 @@ SOURCE_COMMIT="$(jq -r '.sourceCommit' "$TMP/contract.json")"
 PROCESS_VERSION="$(jq -r '.processVersion' "$TMP/contract.json")"
 CONTRACT_FINGERPRINT="$(jq -r '.contractFingerprint' "$TMP/contract.json")"
 verify_release_identity "$SOURCE_COMMIT" "$VALIDATION_COMMIT" after-capture
+wait_for_clean_runtime_rate_limit_window
 bash "$ROOT/ops/scripts/validate-company-reapplication-runtime.sh" >"$TMP/runtime.json"
 
 printf '%%PDF-1.4\n%% Resonance desktop reapplication browser fixture\n' >"$DESKTOP_PDF"

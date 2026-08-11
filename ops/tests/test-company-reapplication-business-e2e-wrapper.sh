@@ -161,6 +161,8 @@ assert(!runtimeWithoutRateCleanup.includes("cleanup_public_rate_limit_fixture co
 const wrapperWithoutBrowserLimiterPreflight=wrapper.replace("wait_for_browser_rate_limit_capacity\n","true\n");
 assert(!wrapperWithoutBrowserLimiterPreflight.includes("wait_for_browser_rate_limit_capacity\n"),"browser limiter preflight mutation escaped");
 assert((wrapper.match(/company-reapplication-browser-rate-limit-candidate\.jq/g)||[]).length>=3,"candidate resolver must be covered by both dirty guards");
+assert(wrapper.includes("wait_for_clean_runtime_rate_limit_window\n"),"runtime limiter preflight invocation missing");
+assert(wrapper.includes("active_count == 0"),"runtime limiter preflight must preserve existing requests");
 assert(wrapper.includes("request_count=request_count-${owned_delta}"),"browser cleanup must subtract only the owned delta");
 const wrapperWithoutZeroDelete=wrapper.replace("and request_count=${owned_delta};","and request_count=0;");
 assert(!wrapperWithoutZeroDelete.includes("and request_count=${owned_delta};"),"zero-target delete guard mutation escaped");
