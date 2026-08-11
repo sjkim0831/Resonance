@@ -3,6 +3,8 @@ set -Eeuo pipefail
 ROOT="${RESONANCE_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
 ENV_FILE="${CARBONET_ACTOR_TEST_ENV_FILE:-/opt/carbonet-data/config/actor-test.env}"
 [[ -r "$ENV_FILE" ]] && { set -a; source "$ENV_FILE"; set +a; }
+ADMIN_ENV_FILE="${CARBONET_ADMIN_TEST_ENV_FILE:-/opt/carbonet-data/config/admin-test.env}"
+[[ -r "$ADMIN_ENV_FILE" ]] && { set -a; source "$ADMIN_ENV_FILE"; set +a; }
 bash "$ROOT/ops/tests/run-co2-quality-analysis-business-e2e.sh"
 export CARBONET_RELAY_STEPS="CQA_PLAN,CQA_TEST,CQA_DECIDE"
 export CARBONET_RELAY_ADMIN_ROUTE="/admin/work/co2-quality-analysis"
