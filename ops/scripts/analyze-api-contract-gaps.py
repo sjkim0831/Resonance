@@ -32,6 +32,7 @@ for contract in data["contracts"]:
 
 result=[]
 for (method,path),resources in sorted(gaps.items()):
+    method_mismatches=sorted(m for m,p in registered if p==path and m!=method)
     scored=[]
     path_tokens=set(x for x in path.lower().split("/") if x and x!="{}")
     for candidate in by_method.get(method,[]):
@@ -46,9 +47,10 @@ for (method,path),resources in sorted(gaps.items()):
     same_shape=(path.count("{}") == top_path.count("{}") and path.rsplit("/",1)[-1] == top_path.rsplit("/",1)[-1])
     high=bool(candidates and same_shape and candidates[0]["score"]>=.92 and (len(candidates)==1 or candidates[0]["score"]-candidates[1]["score"]>=.08))
     result.append({"method":method,"path":path,"usageCount":len(resources),"resources":resources,
-                   "highConfidenceCorrection":high,"candidates":candidates})
+                   "highConfidenceCorrection":high,"methodMismatchCandidates":method_mismatches,"candidates":candidates})
 
 print(json.dumps({"schemaVersion":"1.0.0","uniqueGapCount":len(result),
   "usageGapCount":sum(x["usageCount"] for x in result),
   "highConfidenceCorrectionCount":sum(x["highConfidenceCorrection"] for x in result),
+  "methodMismatchCount":sum(bool(x["methodMismatchCandidates"]) for x in result),
   "methodCounts":dict(Counter(x["method"] for x in result)),"gaps":result},ensure_ascii=False,separators=(",",":")))
