@@ -8,8 +8,8 @@ GENERATED="$ROOT/$GENERATED_REL"
 STATE="$ROOT/projects/carbonet-backend-metadata/screen-runtime/db-source-export.sha256"
 LOCK="${DB_SCREEN_SOURCE_LOCK:-/tmp/resonance-db-screen-source.lock}"
 exec 9>"$LOCK"; flock -n 9 || { echo '{"success":true,"status":"ALREADY_RUNNING"}'; exit 0; }
-snapshot="$(mktemp)"; import_json="$(mktemp)"; materialize="$(mktemp)"; result="$(mktemp)"
-trap 'rm -f "$snapshot" "$import_json" "$materialize" "$result"' EXIT
+snapshot="$(mktemp)"; import_json="$(mktemp)"; materialize="$(mktemp)"; result="$(mktemp)"; codegen_result="$(mktemp)"
+trap 'rm -f "$snapshot" "$import_json" "$materialize" "$result" "$codegen_result"' EXIT
 leader=""
 while IFS= read -r pod; do
   [[ "$(kubectl -n "$NAMESPACE" exec "$pod" -c patroni -- psql -h 127.0.0.1 -U postgres -d carbonet -X -Atqc 'select pg_is_in_recovery()' 2>/dev/null || true)" == f ]] && { leader="$pod"; break; }
@@ -26,10 +26,14 @@ kubectl -n "$NAMESPACE" exec "$leader" -c patroni -- psql -h 127.0.0.1 -U postgr
   -d carbonet -X -qAt -v ON_ERROR_STOP=1 -c 'select framework_screen_blueprint_export(5000)' >"$snapshot"
 next_hash="$(jq -c 'del(.batch.exportedAt)' "$snapshot"|sha256sum|awk '{print $1}')"
 previous_hash="$(cat "$STATE" 2>/dev/null || true)"
-generated=false
-if [[ "$next_hash" != "$previous_hash" ]]; then
-  (cd "$FRONTEND" && node scripts/generate-screen-blueprints.mjs --input "$snapshot" \
-    --outDir src/generated/screen-generation --limit 5000 --concurrency auto) >/tmp/resonance-db-screen-codegen.json
+ # Always execute the atomic incremental generator.  The DB design hash can be
+ # unchanged while a shared definition file is missing or stale; skipping here
+ # leaves the catalog uncompilable and prevents self-recovery.
+(cd "$FRONTEND" && node scripts/generate-screen-blueprints.mjs --input "$snapshot" \
+  --outDir src/generated/screen-generation --limit 5000 --concurrency auto) >"$codegen_result"
+jq -e '.success==true and .screenCount>0 and .contractFilesChanged>=0' "$codegen_result" >/dev/null
+generated="$(jq -r '(.contractFilesChanged//0)>0 or (.staleFilesRemoved//0)>0' "$codegen_result")"
+if [[ "$next_hash" != "$previous_hash" || "$generated" == true ]]; then
   python3 - "$ROOT" "$GENERATED" "$GENERATED_REL" "$next_hash" >"$import_json" <<'PY'
 import json,sys
 from pathlib import Path
@@ -49,7 +53,7 @@ PY
 select framework_import_source_artifacts(
   convert_from(decode('$encoded','base64'),'UTF8')::jsonb,'DB_SCREEN_GENERATOR');
 SQL
-  mkdir -p "$(dirname "$STATE")"; printf '%s\n' "$next_hash" >"$STATE"; generated=true
+  mkdir -p "$(dirname "$STATE")"; printf '%s\n' "$next_hash" >"$STATE"
 fi
 
 kubectl -n "$NAMESPACE" exec "$leader" -c patroni -- psql -h 127.0.0.1 -U postgres \

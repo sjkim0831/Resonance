@@ -99,26 +99,26 @@ export function JoinCompleteMigrationPage() {
 
       <header className="bg-white border-b border-[var(--kr-gov-border-light)] sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 lg:px-8">
-          <div className="flex justify-between items-center h-20">
-            <div className="flex items-center gap-3 shrink-0">
-              <a className="flex items-center gap-2 focus-visible" href="#" onClick={(event) => {
+          <div className="flex min-w-0 justify-between items-center h-20 gap-2">
+            <div className="flex min-w-0 max-w-full items-center gap-3">
+              <a className="flex min-w-0 max-w-full items-center gap-2 focus-visible" href="#" onClick={(event) => {
                 event.preventDefault();
                 void handleHome();
               }}>
                 <span className="material-symbols-outlined text-[32px] text-[var(--kr-gov-blue)]" style={{ fontVariationSettings: "'wght' 600" }}>
                   eco
                 </span>
-                <div className="flex flex-col">
-                  <h1 className="text-lg font-bold tracking-tight text-[var(--kr-gov-text-primary)] leading-none">
+                <div className="flex min-w-0 flex-col">
+                  <h1 className="truncate text-lg font-bold tracking-tight text-[var(--kr-gov-text-primary)] leading-none">
                     {en ? "CCUS Carbon Footprint Platform" : "CCUS 탄소발자국 플랫폼"}
                   </h1>
-                  <p className="text-[9px] text-[var(--kr-gov-text-secondary)] font-bold uppercase tracking-wider mt-1">
+                  <p className="mt-1 hidden max-w-full truncate text-[9px] font-bold uppercase tracking-wider text-[var(--kr-gov-text-secondary)] sm:block">
                     Carbon Footprint Platform
                   </p>
                 </div>
               </a>
             </div>
-            <div className="flex items-center gap-4">
+            <div className="flex flex-none items-center gap-4">
               <div className="flex border border-[var(--kr-gov-border-light)] rounded-[var(--kr-gov-radius)] overflow-hidden">
                 <button
                   className={en ? "px-3 py-1 text-xs font-bold bg-white text-[var(--kr-gov-text-secondary)] hover:bg-gray-100" : "px-3 py-1 text-xs font-bold bg-[var(--kr-gov-blue)] text-white"}
