@@ -115,6 +115,7 @@ assert(!/(?:password|passwd|userPw)\s*[:=]\s*['"][^'"$\n]{3,}['"]/i.test(harness
 assert(harness.includes('CARBONET_ADMIN_TEST_PASSWORD'), 'admin password must come from CARBONET_ADMIN_TEST_PASSWORD');
 assert(harness.includes('CARBONET_ACTOR_TEST_PASSWORD'), 'actor password must come from CARBONET_ACTOR_TEST_PASSWORD');
 assert(harness.includes('--self-test'), 'harness must expose a non-mutating --self-test');
+assert(harness.includes('warmedRouteKeys'), 'route performance evidence must exclude one explicit warmup per route and viewport');
 assert(harness.includes('hashEmployeePassword(actorPassword, account.id)'), 'disposable employee password must be re-derived with the new account ID as salt');
 assert(!/\$\{sqlLiteral\(`\$\{account\.name\} \$\{marker\}`\)\},password,empl_no/.test(harness), 'disposable account clone must not reuse the source account password hash');
 

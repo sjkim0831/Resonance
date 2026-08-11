@@ -144,6 +144,7 @@ const evidence = {
 const timings = [];
 const clients = [];
 const routeContextCache = new Map();
+const warmedRouteKeys = new Set();
 let tenantId = "";
 let projectId = "";
 let publicLookupHandle = "";
@@ -268,6 +269,17 @@ async function checkRoute(browserInstance, storageState, sessionKey, route, view
   if (!context) {
     context = await browserInstance.newContext({ storageState, ignoreHTTPSErrors: true, viewport });
     routeContextCache.set(contextKey, context);
+  }
+  const warmKey = `${contextKey}:${route}`;
+  if (!warmedRouteKeys.has(warmKey)) {
+    const warmPage = await context.newPage();
+    const warmResponse = await warmPage.goto(`${baseURL}${route}`, {
+      waitUntil: "domcontentloaded",
+      timeout: 20_000,
+    });
+    assert(warmResponse && warmResponse.status() < 400, `${route} warmup HTTP ${warmResponse?.status() || 0}`);
+    await warmPage.close();
+    warmedRouteKeys.add(warmKey);
   }
   const page = await context.newPage();
   const pageErrors = [];

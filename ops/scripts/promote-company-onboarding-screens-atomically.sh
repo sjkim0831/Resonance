@@ -64,6 +64,7 @@ NODE
 
 PATRONI_POD="${PATRONI_POD:-$(K8S_NAMESPACE="$NAMESPACE" bash "$ROOT/ops/scripts/resolve-patroni-primary-pod.sh")}" 
 kubectl -n "$NAMESPACE" exec -i "$PATRONI_POD" -c patroni -- \
+  env PGOPTIONS='-c lock_timeout=10000 -c statement_timeout=60000' \
   psql -v ON_ERROR_STOP=1 -h 127.0.0.1 -U postgres -d carbonet -X -q -o /dev/null \
   <"$TMP/transaction.sql"
 
