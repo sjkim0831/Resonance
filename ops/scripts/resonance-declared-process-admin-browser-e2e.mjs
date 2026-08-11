@@ -12,6 +12,7 @@ const account = String(process.env.CARBONET_ADMIN_TEST_USER || "webmaster");
 const evidenceFile = String(process.env.CARBONET_RELAY_EVIDENCE_FILE || "");
 const routeBase = String(process.env.CARBONET_RELAY_ADMIN_ROUTE || "");
 const steps = String(process.env.CARBONET_RELAY_STEPS || "").split(",").filter(Boolean);
+const sampleRounds = Math.max(4, Number(process.env.CARBONET_ADMIN_SAMPLE_ROUNDS || 4));
 if (!password || !evidenceFile || !routeBase || !steps.length) throw new Error("admin relay browser inputs are required");
 
 const api = await request.newContext({ baseURL, ignoreHTTPSErrors: true });
@@ -25,6 +26,7 @@ const samples = [];
 try {
   for (const stepCode of steps) {
     for (const viewport of [{ name: "desktop", width: 1440, height: 1000 }, { name: "mobile", width: 390, height: 844 }]) {
+      for (let round = 1; round <= sampleRounds; round += 1) {
       const context = await browser.newContext({ storageState: await api.storageState(), viewport });
       const page = await context.newPage();
       const failures = [];
@@ -47,8 +49,9 @@ try {
         throw new Error(`admin browser failed step=${stepCode} viewport=${viewport.name} status=${response?.status() || 0} headings=${state.headings} controls=${state.controls} overflow=${state.overflow} fatal=${state.fatal} failures=${failures.join(",")}`);
       }
       samples.push(durationMs);
-      routes.push({ stepCode, viewport: viewport.name, durationMs, headings: state.headings, controls: state.controls });
+      routes.push({ stepCode, viewport: viewport.name, round, durationMs, headings: state.headings, controls: state.controls });
       await context.close();
+      }
     }
   }
 } finally {
@@ -57,6 +60,7 @@ try {
 }
 const evidence = JSON.parse(readFileSync(evidenceFile, "utf8"));
 const sortedAdmin = [...samples].sort((a, b) => a - b);
+if (sortedAdmin.length < 20) throw new Error(`admin performance sample count too small: ${sortedAdmin.length}`);
 const adminP95 = sortedAdmin[Math.max(0, Math.ceil(sortedAdmin.length * .95) - 1)];
 const p95 = Math.max(Number(evidence.performanceP95Ms || 0), adminP95);
 writeFileSync(evidenceFile, `${JSON.stringify({ ...evidence, adminBrowser: 1, adminResponsive: 1, adminAccessibility: 1, adminRoutes: routes, adminPerformanceP95Ms: adminP95, performanceP95Ms: p95, performanceSampleCount: Number(evidence.performanceSampleCount || 0) + samples.length }, null, 2)}\n`);
