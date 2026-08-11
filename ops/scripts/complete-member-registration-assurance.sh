@@ -6,6 +6,9 @@ BASE_URL="${CARBONET_RUNTIME_BASE_URL:-http://127.0.0.1}"
 LOGIN_USER="${CARBONET_RUNTIME_TEST_USER:-webmaster}"
 LOGIN_PASSWORD="${CARBONET_RUNTIME_TEST_PASSWORD:-rhdxhd12}"
 SOURCE_COMMIT="$(git -C "$ROOT" rev-parse HEAD)"
+KUBE_NAMESPACE="${CARBONET_KUBE_NAMESPACE:-carbonet-prod}"
+RUNTIME_DEPLOYMENT="${CARBONET_RUNTIME_DEPLOYMENT:-carbonet-runtime}"
+REACT_OVERLAY_PATH="${CARBONET_REACT_OVERLAY_PATH:-/app/react-app-overlay}"
 COOKIE="$(mktemp)"; BODY="$(mktemp)"
 trap 'rm -f "$COOKIE" "$BODY"' EXIT
 
@@ -18,8 +21,9 @@ controller="$ROOT/modules/resonance-common/carbonet-common-core/src/main/java/eg
 service="$ROOT/modules/resonance-common/carbonet-common-core/src/main/java/egovframework/com/feature/auth/external/service/impl/ExternalAuthServiceImpl.java"
 grep -Fq '@Transactional(rollbackFor = Exception.class)' "$controller" || { echo '[member-assurance] FAIL transaction boundary' >&2; exit 1; }
 grep -Fq 'completePendingJoinIdentity' "$service" || { echo '[member-assurance] FAIL identity handoff' >&2; exit 1; }
-grep -Rql 'joinVerificationSuccess' "$ROOT/apps/carbonet-api/src/main/resources/static/react-app/assets" \
-  || { echo '[member-assurance] FAIL deployed join identity asset' >&2; exit 1; }
+kubectl -n "$KUBE_NAMESPACE" exec "deployment/$RUNTIME_DEPLOYMENT" -- \
+  grep -Rql 'joinVerificationSuccess' "$REACT_OVERLAY_PATH" \
+  || { echo '[member-assurance] FAIL deployed join identity overlay asset' >&2; exit 1; }
 
 login="$(curl -fsS -c "$COOKIE" -H 'Content-Type: application/json' -X POST "$BASE_URL/admin/login/actionLogin" \
   --data "{\"userId\":\"$LOGIN_USER\",\"userPw\":\"$LOGIN_PASSWORD\",\"userSe\":\"USR\"}")"
