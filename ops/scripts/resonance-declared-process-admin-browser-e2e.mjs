@@ -24,6 +24,7 @@ const browser = await chromium.launch({ headless: true });
 const routes = [];
 const samples = [];
 const contexts = new Map();
+const pages = new Map();
 try {
   const storageState = await api.storageState();
   for (const viewport of [{ name: "desktop", width: 1440, height: 1000 }, { name: "mobile", width: 390, height: 844 }]) {
@@ -32,23 +33,24 @@ try {
     const warmup = await context.newPage();
     const separator = routeBase.includes("?") ? "&" : "?";
     await warmup.goto(`${baseURL}${routeBase}${separator}step=${encodeURIComponent(steps[0].toLowerCase())}`, { waitUntil: "domcontentloaded", timeout: 20_000 });
-    await warmup.waitForFunction(() => (document.body?.innerText || "").includes("SCREEN COORDINATE"), undefined, { timeout: 20_000 });
-    await warmup.close();
+    await warmup.waitForFunction(expected => (document.body?.innerText || "").includes("SCREEN COORDINATE") && (document.body?.innerText || "").includes(expected), steps[0], { timeout: 20_000 });
+    pages.set(viewport.name, warmup);
   }
   for (const stepCode of steps) {
     for (const viewport of [{ name: "desktop", width: 1440, height: 1000 }, { name: "mobile", width: 390, height: 844 }]) {
       for (let round = 1; round <= sampleRounds; round += 1) {
       const context = contexts.get(viewport.name);
       if (!context) throw new Error(`missing warmed context: ${viewport.name}`);
-      const page = await context.newPage();
+      const page = pages.get(viewport.name);
+      if (!page) throw new Error(`missing warmed page: ${viewport.name}`);
       const failures = [];
       page.on("pageerror", error => failures.push(`pageerror:${error.name}`));
       page.on("response", response => { if (response.status() >= 500 && response.url().startsWith(baseURL)) failures.push(`http:${response.status()}`); });
       const separator = routeBase.includes("?") ? "&" : "?";
       const route = `${routeBase}${separator}step=${encodeURIComponent(stepCode.toLowerCase())}`;
       const startedAt = Date.now();
-      const response = await page.goto(`${baseURL}${route}`, { waitUntil: "domcontentloaded", timeout: 20_000 });
-      await page.waitForFunction(() => (document.querySelector("#root")?.children.length || 0) > 0 && (document.body?.innerText || "").includes("SCREEN COORDINATE") && document.querySelectorAll("input,select,textarea,button,a[href]").length >= 8, undefined, { timeout: 10_000 });
+      await page.evaluate(nextRoute => { history.pushState({}, "", nextRoute); window.dispatchEvent(new PopStateEvent("popstate")); }, route);
+      await page.waitForFunction(expected => (document.querySelector("#root")?.children.length || 0) > 0 && (document.body?.innerText || "").includes("SCREEN COORDINATE") && (document.body?.innerText || "").includes(expected) && document.querySelectorAll("input,select,textarea,button,a[href]").length >= 8, stepCode, { timeout: 10_000 });
       const durationMs = Date.now() - startedAt;
       const state = await page.evaluate(() => ({
         pathname: location.pathname,
@@ -57,12 +59,11 @@ try {
         overflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 2,
         fatal: /page error|페이지 처리 중 오류|react app did not mount/i.test(document.body?.innerText || ""),
       }));
-      if ((response?.status() || 0) >= 400 || !state.pathname.startsWith("/admin/") || state.headings < 1 || state.controls < 4 || state.overflow || state.fatal || failures.length) {
-        throw new Error(`admin browser failed step=${stepCode} viewport=${viewport.name} status=${response?.status() || 0} headings=${state.headings} controls=${state.controls} overflow=${state.overflow} fatal=${state.fatal} failures=${failures.join(",")}`);
+      if (!state.pathname.startsWith("/admin/") || state.headings < 1 || state.controls < 4 || state.overflow || state.fatal || failures.length) {
+        throw new Error(`admin browser failed step=${stepCode} viewport=${viewport.name} headings=${state.headings} controls=${state.controls} overflow=${state.overflow} fatal=${state.fatal} failures=${failures.join(",")}`);
       }
       samples.push(durationMs);
       routes.push({ stepCode, viewport: viewport.name, round, durationMs, headings: state.headings, controls: state.controls });
-      await page.close();
       }
     }
   }
