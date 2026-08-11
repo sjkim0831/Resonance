@@ -63,6 +63,17 @@
       "timeoutSeconds": 180,
       "deployLockMode": "SHARED_PARENT",
       "externalBlockers": []
+    },
+    {
+      "priority": 60,
+      "processCode": "EMISSION_PROJECT",
+      "runner": "ops/scripts/complete-emission-project-assurance.sh",
+      "automation": "AUTOMATIC",
+      "expectedCurrentPassedSteps": 7,
+      "totalSteps": 7,
+      "timeoutSeconds": 300,
+      "deployLockMode": "SHARED_PARENT",
+      "externalBlockers": []
     }
   ]
 }

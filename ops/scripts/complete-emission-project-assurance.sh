@@ -13,6 +13,7 @@ for step in "${STEPS[@]}"; do
 done
 SOURCE_COMMIT="$(jq -r 'map(.sourceCommit)|unique|if length==1 then .[0] else error("mixed deployed commits") end' <<<"$CONTRACTS")"
 [[ "$SOURCE_COMMIT" =~ ^[0-9a-fA-F]{7,80}$ ]] || { echo '[emission-project-assurance] FAIL invalid deployed source commit' >&2; exit 2; }
+VALIDATION_COMMIT="$(git -C "$ROOT" rev-parse HEAD)"
 EVIDENCE_REF="runtime-e2e:${SOURCE_COMMIT}:steps=7:actors=6:tasks=7:protected=9:recovery=PASS"
 
 activity="$(bash "$ROOT/ops/scripts/validate-activity-data-runtime.sh")"
@@ -25,13 +26,25 @@ grep -Eq '^\[activity-runtime\] PASS ' <<<"$activity" || exit 1
 grep -Eq '^\[calculation-runtime\] PASS ' <<<"$calculation" || exit 1
 grep -Eq '^\[report-runtime\] PASS ' <<<"$report" || exit 1
 grep -Eq '^\[emission-workflow\] PASS ' <<<"$workflow" || exit 1
-grep -Eq '^\[customer-work-journey\] PASS ' <<<"$customer" || exit 1
+grep -Eq '^\[customer-journey\] PASS ' <<<"$customer" || exit 1
 grep -Eq '^\[process-runtime-smoke\] PASS process=EMISSION_PROJECT ' <<<"$runtime_smoke" || exit 1
 DEPLOY_STATE_FILE="${CARBONET_DEPLOY_STATE_FILE:-/opt/resonance-data/deploy/carbonet-main-success.commit}"
-[[ "$SOURCE_COMMIT" == "${E2E_DEPLOYED_COMMIT:-$(tr -d '[:space:]' < "$DEPLOY_STATE_FILE" 2>/dev/null || true)}" ]] || { echo '[emission-project-assurance] FAIL deployment changed during E2E' >&2; exit 3; }
+CURRENT_DEPLOYED_COMMIT="${E2E_DEPLOYED_COMMIT:-$(tr -d '[:space:]' < "$DEPLOY_STATE_FILE" 2>/dev/null || true)}"
+[[ "$VALIDATION_COMMIT" == "$CURRENT_DEPLOYED_COMMIT" ]] || { echo '[emission-project-assurance] FAIL validation commit is not deployed' >&2; exit 3; }
+if [[ "$SOURCE_COMMIT" != "$VALIDATION_COMMIT" ]]; then
+  git -C "$ROOT" merge-base --is-ancestor "$SOURCE_COMMIT" "$VALIDATION_COMMIT" || {
+    echo '[emission-project-assurance] FAIL runtime commit is not validation ancestor' >&2; exit 3;
+  }
+  PLAN="$(bash "$ROOT/ops/scripts/plan-incremental-work.sh" "$SOURCE_COMMIT" "$VALIDATION_COMMIT" --format env)"
+  for KEY in PLAN_RUNTIME_REQUIRED PLAN_FRONTEND_REQUIRED PLAN_BACKEND_REQUIRED PLAN_DATABASE_REQUIRED; do
+    [[ "$(awk -F= -v key="$KEY" '$1==key{print $2}' <<<"$PLAN")" == false ]] || {
+      echo "[emission-project-assurance] FAIL unreleased runtime change key=$KEY" >&2; exit 3;
+    }
+  done
+fi
 ASSURANCE_EVIDENCE="$(jq -cn --argjson contracts "$CONTRACTS" --arg activity "$activity" --arg calculation "$calculation" \
-  --arg report "$report" --arg workflow "$workflow" --arg customer "$customer" --arg runtimeSmoke "$runtime_smoke" \
-  '{suite:"EMISSION_PROJECT_ASSURANCE",contracts:$contracts,validators:{activity:$activity,calculation:$calculation,report:$report,workflow:$workflow,customerJourney:$customer,runtimeSmoke:$runtimeSmoke},stepAssertions:{EMISSION_PROJECT_SETUP:["workflow","customerJourney"],EMISSION_PROJECT_COLLECT:["activity","customerJourney"],EMISSION_PROJECT_CALCULATE:["calculation","customerJourney"],EMISSION_PROJECT_VALIDATE:["calculation","runtimeSmoke"],EMISSION_PROJECT_CORRECT:["customerJourney","runtimeSmoke"],EMISSION_PROJECT_APPROVE:["customerJourney","workflow"],EMISSION_PROJECT_REPORT:["report","customerJourney"]}}')"
+  --arg report "$report" --arg workflow "$workflow" --arg customer "$customer" --arg runtimeSmoke "$runtime_smoke" --arg validationCommit "$VALIDATION_COMMIT" \
+  '{suite:"EMISSION_PROJECT_ASSURANCE",validationCommit:$validationCommit,contracts:$contracts,validators:{activity:$activity,calculation:$calculation,report:$report,workflow:$workflow,customerJourney:$customer,runtimeSmoke:$runtimeSmoke},stepAssertions:{EMISSION_PROJECT_SETUP:["workflow","customerJourney"],EMISSION_PROJECT_COLLECT:["activity","customerJourney"],EMISSION_PROJECT_CALCULATE:["calculation","customerJourney"],EMISSION_PROJECT_VALIDATE:["calculation","runtimeSmoke"],EMISSION_PROJECT_CORRECT:["customerJourney","runtimeSmoke"],EMISSION_PROJECT_APPROVE:["customerJourney","workflow"],EMISSION_PROJECT_REPORT:["report","customerJourney"]}}')"
 ASSURANCE_EVIDENCE_SHA256="$(printf '%s' "$ASSURANCE_EVIDENCE" | sha256sum | awk '{print $1}')"
 ASSURANCE_EVIDENCE_B64="$(printf '%s' "$ASSURANCE_EVIDENCE" | base64 -w0)"
 ASSURANCE_EVIDENCE_URI="inline://business-e2e/sha256/$ASSURANCE_EVIDENCE_SHA256"
