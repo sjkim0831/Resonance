@@ -43,6 +43,68 @@ bash "$ROOT/ops/tests/test-process-runtime-evidence-isolation.sh" "$ROOT"
 bash "$ROOT/ops/scripts/test-plan-incremental-work.sh"
 bash "$ROOT/ops/scripts/test-shared-smoke-auth-state.sh"
 
+# Exercise the real stager without touching Kubernetes or PostgreSQL. Bash
+# parses `${input:-{}}` as a parameter expansion followed by a literal `}`,
+# so every non-empty producer payload used to arrive at jq with one extra
+# closing brace. Validate all four failed producer shapes, then prove that a
+# helper mutated back to the ambiguous expansion is rejected.
+run_stager_payload() {
+  local stager="$1" payload="$2"
+  (
+    kubectl() {
+      local arg payload_b64=""
+      cat >/dev/null
+      for arg in "$@"; do
+        case "$arg" in
+          payload_b64=*) payload_b64="${arg#payload_b64=}" ;;
+        esac
+      done
+      [[ -n "$payload_b64" ]] || return 91
+      printf '%s' "$payload_b64" | base64 -d | jq -e '
+        .status == "PASS"
+        and .unitCode == "STAGER_INPUT_REGRESSION"
+        and .processCode == "TEST_PROCESS"
+        and .evidenceKind == "RUNTIME"
+        and .sourceCommit == "0000000000000000000000000000000000000000"
+        and ((has("projectId") | not) or (.projectId | type) == "string")
+      ' >/dev/null || return 92
+      printf '%064d\n' 0
+    }
+    export -f kubectl
+    printf '%s' "$payload" | env \
+      CARBONET_POSTDEPLOY_EVIDENCE_MODE=candidate \
+      CARBONET_POSTDEPLOY_CANDIDATE_ID=stager-input-regression \
+      RESONANCE_POSTGRES_LEADER_POD=fake-primary \
+      bash "$stager" STAGER_INPUT_REGRESSION TEST_PROCESS RUNTIME \
+        0000000000000000000000000000000000000000
+  )
+}
+
+producer_payloads=(
+  '{"projectId":"PRJ-ACTIVITY","authenticatedApiCount":6,"protectedApiCount":3,"pageCount":8,"p95Millis":25,"readyReplicas":3,"actorAssignments":5,"simulationTypes":5}'
+  '{"projectId":"PRJ-CALCULATION","authenticatedApiCount":5,"protectedApiCount":2,"pageCount":8,"p95Millis":25,"readyReplicas":3,"formula":"reconciled"}'
+  '{"projectId":"PRJ-REPORT","reportId":"101","certificate":"CERT-101","integrityHash":"0000000000000000000000000000000000000000000000000000000000000000","authenticatedApiCount":3,"protectedApiCount":2,"pageCount":7,"p95Millis":25,"readyReplicas":3,"publicValid":true,"publicInvalid":true}'
+  '{"projectId":"PRJ-ACTOR","actorAccounts":5,"actorRoles":5,"tasks":7,"fullWorkflow":"7/7","securityAuditEvidence":[{"schemaVersion":2,"auditId":1,"rowHash":"0000000000000000000000000000000000000000000000000000000000000000"},{"schemaVersion":2,"auditId":2,"rowHash":"1111111111111111111111111111111111111111111111111111111111111111"}],"authTokenCleanupVerified":true}'
+)
+for payload in "${producer_payloads[@]}"; do
+  jq -e . <<<"$payload" >/dev/null
+  run_stager_payload "$STAGER" "$payload" | grep -Fq '[postdeploy-candidate] STAGED'
+done
+run_stager_payload "$STAGER" "" | grep -Fq '[postdeploy-candidate] STAGED'
+
+stager_mutation_tmp="$(mktemp)"
+trap 'rm -f "$stager_mutation_tmp"' EXIT
+sed \
+  -e '/^\[\[ -n "\$input" \]\] || input='"'"'{}'"'"'$/d' \
+  -e 's|<<<"\$input"|<<<"${input:-{}}"|' \
+  "$STAGER" >"$stager_mutation_tmp"
+if run_stager_payload "$stager_mutation_tmp" "${producer_payloads[0]}" >/dev/null 2>&1; then
+  echo '[postdeploy-candidate-contract] FAIL ambiguous empty-object fallback mutation escaped' >&2
+  exit 1
+fi
+rm -f "$stager_mutation_tmp"
+trap - EXIT
+
 python3 - "$ROOT" "$MIGRATION" "$STAGER" "$PROMOTER" "$DEPLOY" <<'PY'
 from pathlib import Path
 import os, sys

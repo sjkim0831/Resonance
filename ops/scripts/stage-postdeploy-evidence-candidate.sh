@@ -24,11 +24,12 @@ command -v jq >/dev/null || fail 'jq is required'
 command -v base64 >/dev/null || fail 'base64 is required'
 
 input="$(cat)"
+[[ -n "$input" ]] || input='{}'
 payload="$(jq -cS \
   --arg unit "$UNIT_CODE" --arg process "$PROCESS_CODE" --arg kind "$EVIDENCE_KIND" \
   --arg source "$SOURCE_COMMIT" \
   '. + {status:"PASS",unitCode:$unit,processCode:$process,evidenceKind:$kind,sourceCommit:$source}' \
-  <<<"${input:-{}}")" || fail 'evidence payload is not valid JSON'
+  <<<"$input")" || fail 'evidence payload is not valid JSON'
 payload_b64="$(printf '%s' "$payload" | base64 -w0)"
 
 leader="${RESONANCE_POSTGRES_LEADER_POD:-}"
