@@ -10,10 +10,10 @@ import {
 
 const startedAt = performance.now();
 const args = Object.fromEntries(process.argv.slice(2).map((value,index,all)=>value.startsWith("--")?[value.slice(2),all[index+1]?.startsWith("--")?"true":all[index+1]]:null).filter(Boolean));
-if (!args.input) throw new Error("Usage: node scripts/generate-screen-blueprints.mjs --input <batch-export.json> [--limit 1000] [--strict true]");
+if (!args.input) throw new Error("Usage: node scripts/generate-screen-blueprints.mjs --input <batch-export.json> [--limit 5000] [--strict true]");
 const input = JSON.parse(await readFile(resolve(args.input), "utf8"));
 if (!["1.0.0","2.0.0"].includes(input.schemaVersion) || !Array.isArray(input.blueprints)) throw new Error("Unsupported or invalid blueprint export.");
-const limit = Math.min(1000, Math.max(1, Number(args.limit || 1000)));
+const limit = Math.min(5000, Math.max(1, Number(args.limit || 5000)));
 const strict = args.strict === "true";
 async function collectReservedRoutes(directory, routes = new Map()) {
   try {
@@ -154,13 +154,16 @@ await mapConcurrent(normalized,async(screen) => {
 });
 definitionImports.sort((left,right)=>left.file.localeCompare(right.file));
 const imports=definitionImports.map(x=>`import { ${x.symbol} } from ${JSON.stringify(x.file)};`).join("\n");
-const symbols=definitionImports.map(x=>x.symbol).join(",\n  ");
+// Widen each imported const before constructing the catalog.  Without this,
+// TypeScript attempts to form a 1,000+ member literal union and fails before
+// normal application type checking can begin.
+const symbols=definitionImports.map(x=>`${x.symbol} as GeneratedScreenDefinition`).join(",\n  ");
 if(await atomicWriteIfChanged(resolve(outDir,"generatedScreenTypes.ts"),`export type DesignCompleteness={score:number;complete:boolean;checks:Record<string,boolean>};\nexport type ScreenCoordinate={domain:string;process:string;step:string;state:string;actor:string;policy:string;view:string;device:string;locale:string;variant:string};\nexport type GeneratedScreenDefinition = { id:string; blueprintCode:string; processCode:string; stepCode:string; actorCode:string; audience:"USER"|"ADMIN"; pageId:string; pageName:string; routePath:string; screenType:string; templateCode:string; screenCoordinate:ScreenCoordinate; screenCoordinateKey:string; specification:Record<string,any>; traceability:Record<string,any>; designCompleteness:DesignCompleteness; };\n`))contractFilesChanged++;
-if(await atomicWriteIfChanged(resolve(outDir,"generatedScreenCatalog.ts"),`import type { GeneratedScreenDefinition } from "./generatedScreenTypes";\n${imports}\nexport type { GeneratedScreenDefinition } from "./generatedScreenTypes";\nexport const GENERATED_SCREEN_CATALOG = [\n  ${symbols}\n] as const satisfies readonly GeneratedScreenDefinition[];\nexport type GeneratedScreenLookup={processCode?:string;stepCode?:string;audience?:string};
-export function findGeneratedScreen(pathname:string,lookup:GeneratedScreenLookup={}){const parsed=new URL(pathname,"http://screen.local");const normalized=parsed.pathname.replace(/^\/en(?=\/)/,"")||"/";const processCode=(lookup.processCode||parsed.searchParams.get("processCode")||"").toUpperCase();const stepCode=(lookup.stepCode||parsed.searchParams.get("step")||parsed.searchParams.get("stepCode")||"").toUpperCase();const audience=(lookup.audience||(normalized.startsWith("/admin/")?"ADMIN":"USER")).toUpperCase();const candidates=GENERATED_SCREEN_CATALOG.filter(screen=>screen.routePath===normalized&&screen.audience===audience);return candidates.find(screen=>(!processCode||screen.processCode===processCode)&&(!stepCode||screen.stepCode===stepCode))||candidates.find(screen=>!processCode||screen.processCode===processCode)||candidates[0];}\n`))contractFilesChanged++;
-const routes=Array.from(new Map(normalized.map(x=>[x.routePath,
-  {id:x.id,label:x.pageName,group:x.audience==="ADMIN"?"admin":"home",koPath:x.routePath,enPath:`/en${x.routePath}`}])).values());
-const units=normalized.map(x=>`  { id: ${JSON.stringify(x.id)}, exportName: "GeneratedScreenPage", loader: () => import("../../features/generated-screen/GeneratedScreenPage") }`).join(",\n");
+if(await atomicWriteIfChanged(resolve(outDir,"generatedScreenCatalog.ts"),`import type { GeneratedScreenDefinition } from "./generatedScreenTypes";\n${imports}\nexport type { GeneratedScreenDefinition } from "./generatedScreenTypes";\nexport const GENERATED_SCREEN_CATALOG: readonly GeneratedScreenDefinition[] = [\n  ${symbols}\n];\nexport type GeneratedScreenLookup={processCode?:string;stepCode?:string;audience?:string};
+export function findGeneratedScreen(pathname:string,lookup:GeneratedScreenLookup={}){const parsed=new URL(pathname,"http://screen.local");const normalized=parsed.pathname.replace(/^\\/en(?=\\/)/,"")||"/";const processCode=(lookup.processCode||parsed.searchParams.get("processCode")||"").toUpperCase();const stepCode=(lookup.stepCode||parsed.searchParams.get("step")||parsed.searchParams.get("stepCode")||"").toUpperCase();const audience=(lookup.audience||(normalized.startsWith("/admin/")?"ADMIN":"USER")).toUpperCase();const candidates=GENERATED_SCREEN_CATALOG.filter(screen=>screen.routePath===normalized&&screen.audience===audience);return candidates.find(screen=>(!processCode||screen.processCode===processCode)&&(!stepCode||screen.stepCode===stepCode))||candidates.find(screen=>!processCode||screen.processCode===processCode)||candidates[0];}\n`))contractFilesChanged++;
+const routeScreens=Array.from(new Map(normalized.map(x=>[x.routePath,x])).values());
+const routes=routeScreens.map(x=>({id:x.id,label:x.pageName,group:x.audience==="ADMIN"?"admin":"home",koPath:x.routePath,enPath:`/en${x.routePath}`}));
+const units=routeScreens.map(x=>`  { id: ${JSON.stringify(x.id)}, exportName: "GeneratedScreenPage", loader: () => import("../../features/generated-screen/GeneratedScreenPage") }`).join(",\n");
 const familyTemplate=await readFile(new URL("../src/generated/screen-generation/generatedScreenFamily.ts",import.meta.url),"utf8");
 const family=familyTemplate.replace(/const GENERATED_SCREEN_ROUTES = [\s\S]*? as const satisfies RouteDefinitionsOf;/,`const GENERATED_SCREEN_ROUTES = ${json(routes)} as const satisfies RouteDefinitionsOf;`).replace(/const GENERATED_SCREEN_PAGE_UNITS = [\s\S]*? as const satisfies PageUnitsOf<typeof GENERATED_SCREEN_ROUTES>;/,`const GENERATED_SCREEN_PAGE_UNITS = [\n${units}\n] as const satisfies PageUnitsOf<typeof GENERATED_SCREEN_ROUTES>;`);
 if(await atomicWriteIfChanged(resolve(outDir,"generatedScreenFamily.ts"),family))contractFilesChanged++;

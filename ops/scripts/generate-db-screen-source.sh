@@ -23,13 +23,13 @@ if [[ "$allowed" != t ]]; then
 fi
 
 kubectl -n "$NAMESPACE" exec "$leader" -c patroni -- psql -h 127.0.0.1 -U postgres \
-  -d carbonet -X -qAt -v ON_ERROR_STOP=1 -c 'select framework_screen_blueprint_export(1000)' >"$snapshot"
+  -d carbonet -X -qAt -v ON_ERROR_STOP=1 -c 'select framework_screen_blueprint_export(5000)' >"$snapshot"
 next_hash="$(jq -c 'del(.batch.exportedAt)' "$snapshot"|sha256sum|awk '{print $1}')"
 previous_hash="$(cat "$STATE" 2>/dev/null || true)"
 generated=false
 if [[ "$next_hash" != "$previous_hash" ]]; then
   (cd "$FRONTEND" && node scripts/generate-screen-blueprints.mjs --input "$snapshot" \
-    --outDir src/generated/screen-generation --limit 1000 --concurrency auto) >/tmp/resonance-db-screen-codegen.json
+    --outDir src/generated/screen-generation --limit 5000 --concurrency auto) >/tmp/resonance-db-screen-codegen.json
   python3 - "$ROOT" "$GENERATED" "$GENERATED_REL" "$next_hash" >"$import_json" <<'PY'
 import json,sys
 from pathlib import Path
