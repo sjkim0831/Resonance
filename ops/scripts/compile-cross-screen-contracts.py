@@ -84,7 +84,9 @@ for c in data["contracts"]:
     for raw in c.get("apis",[]) if isinstance(c.get("apis"),list) else []:
         api=parse_api(raw)
         if api and api not in endpoints:
-            issue("API_ENDPOINT_NOT_REGISTERED","BLOCKING",resource,"",
+            lifecycle=str(c.get("contractStatus") or "REVIEW_REQUIRED").upper()
+            severity="BLOCKING" if lifecycle in {"DESIGN_COMPLETE","VERIFIED"} else "WARNING"
+            issue("API_ENDPOINT_NOT_REGISTERED",severity,resource,"",
               f"등록되지 않은 API 계약입니다: {api[0]} {api[1]}",{"method":api[0],"path":api[1]})
 
 lineage=[]
@@ -115,7 +117,7 @@ for (process,audience),contracts in screens.items():
               "다음 단계의 핵심 필드가 이전 단계에서 전달되지 않습니다.")
 
 payload_for_hash={"fields":list(canon.values()),"bindings":bindings,"lineage":lineage,
-  "issues":[{"issueCode":x["issueCode"],"resourceKey":x["resourceKey"],
+  "issues":[{"issueCode":x["issueCode"],"severity":x["severity"],"resourceKey":x["resourceKey"],
     "fieldKey":x["fieldKey"],"evidence":x["evidence"]} for x in issues]}
 contract_hash=hashlib.sha256(json.dumps(payload_for_hash,ensure_ascii=False,sort_keys=True).encode()).hexdigest()
 blocking=sum(x["severity"]=="BLOCKING" for x in issues); warnings=len(issues)-blocking

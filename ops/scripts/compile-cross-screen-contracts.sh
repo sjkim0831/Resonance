@@ -2,7 +2,7 @@
 set -Eeuo pipefail
 ROOT="${1:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
 NAMESPACE="${K8S_NAMESPACE:-carbonet-prod}"
-snapshot="$(mktemp)"; result="$(mktemp)"; trap 'rm -f "$snapshot" "$result"' EXIT
+snapshot="$(mktemp)"; enriched="$(mktemp)"; result="$(mktemp)"; trap 'rm -f "$snapshot" "$enriched" "$result"' EXIT
 MARKER="$ROOT/projects/carbonet-backend-metadata/screen-runtime/contract-compiler-source.hash"
 leader=""
 while IFS= read -r pod; do
@@ -26,7 +26,12 @@ if [[ -f "$MARKER" && "$(cat "$MARKER")" == "$source_hash" ]]; then
 fi
 kubectl -n "$NAMESPACE" exec "$leader" -c patroni -- psql -h 127.0.0.1 -U postgres \
   -d carbonet -X -qAt -v ON_ERROR_STOP=1 -c 'select framework_contract_compiler_snapshot()' >"$snapshot"
-python3 "$ROOT/ops/scripts/compile-cross-screen-contracts.py" "$snapshot" >"$result"
+contract_statuses="$(kubectl -n "$NAMESPACE" exec "$leader" -c patroni -- psql -h 127.0.0.1 \
+  -U postgres -d carbonet -X -Atqc "select coalesce(jsonb_object_agg(contract_id::text,contract_status),'{}'::jsonb) from framework_professional_screen_contract")"
+jq --argjson statuses "$contract_statuses" \
+  '(.contracts[] | .contractStatus) = ($statuses[(.contractId|tostring)] // "REVIEW_REQUIRED")' \
+  "$snapshot" >"$enriched"
+python3 "$ROOT/ops/scripts/compile-cross-screen-contracts.py" "$enriched" >"$result"
 next_hash="$(jq -r '.contractHash' "$result")"
 latest_hash="$(kubectl -n "$NAMESPACE" exec "$leader" -c patroni -- psql -h 127.0.0.1 \
   -U postgres -d carbonet -X -Atqc 'select contract_hash from framework_contract_compilation_run order by compilation_id desc limit 1')"
