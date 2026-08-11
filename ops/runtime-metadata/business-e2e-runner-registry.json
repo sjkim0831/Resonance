@@ -129,6 +129,17 @@
       "timeoutSeconds": 300,
       "deployLockMode": "SHARED_PARENT",
       "externalBlockers": []
+    },
+    {
+      "priority": 120,
+      "processCode": "REGULATORY_SUBMISSION",
+      "runner": "ops/scripts/complete-regulatory-submission-assurance.sh",
+      "automation": "AUTOMATIC",
+      "expectedCurrentPassedSteps": 4,
+      "totalSteps": 4,
+      "timeoutSeconds": 600,
+      "deployLockMode": "SHARED_PARENT",
+      "externalBlockers": []
     }
   ]
 }

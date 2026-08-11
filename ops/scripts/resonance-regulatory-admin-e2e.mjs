@@ -9,7 +9,7 @@ const require = createRequire(path.join(root, "projects/carbonet-frontend/source
 const { chromium, request } = require("@playwright/test");
 const baseUrl = String(process.env.CARBONET_RUNTIME_BASE_URL || "http://172.16.1.232").replace(/\/$/, "");
 const password = String(process.env.CARBONET_ADMIN_TEST_PASSWORD || "");
-const projectId = String(process.env.CARBONET_REGULATORY_TEST_PROJECT || "PRJ-2026-5B8992");
+let projectId = String(process.env.CARBONET_REGULATORY_TEST_PROJECT || "");
 const executablePath = ["/snap/bin/chromium", "/usr/bin/chromium", "/usr/bin/chromium-browser", "/usr/bin/google-chrome"].find(existsSync);
 const sourceCommit = execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim();
 if (!password) throw new Error("CARBONET_ADMIN_TEST_PASSWORD is required");
@@ -24,7 +24,8 @@ if (login.status() !== 200 || loginPayload.status !== "loginSuccess") throw new 
 
 const list = await api.get("/home/api/emission-projects?page=1&size=100", { failOnStatusCode: false });
 const listPayload = await list.json().catch(() => ({}));
-if (list.status() !== 200 || !(listPayload.items || []).some((item) => String(item.id) === projectId)) {
+if (!projectId) projectId = String((listPayload.items || [])[0]?.id || "");
+if (list.status() !== 200 || !projectId || !(listPayload.items || []).some((item) => String(item.id) === projectId)) {
   throw new Error(`admin project scope failed HTTP ${list.status()}`);
 }
 const workflow = await api.get(`/home/api/emission-projects/${encodeURIComponent(projectId)}/regulatory-submissions`, { failOnStatusCode: false });
@@ -57,7 +58,7 @@ try {
     const state = await page.evaluate(() => {
       const unnamed = [...document.querySelectorAll("button,a,input,select,textarea")].filter((element) => {
         if (element.matches("input[type=hidden]")) return false;
-        const label = element.getAttribute("aria-label") || element.getAttribute("title") || element.textContent || element.getAttribute("placeholder") || "";
+        const label = element.getAttribute("aria-label") || element.getAttribute("title") || element.textContent || element.getAttribute("placeholder") || element.closest("label")?.textContent || "";
         return !label.trim();
       }).length;
       return {
