@@ -7,6 +7,7 @@ import {
   findCanonicalRoute,
   registerCanonicalRoute,
 } from "./route-path-canonicalization.mjs";
+import { GENERATED_SCREEN_TYPES_SOURCE } from "./generated-screen-type-contract.mjs";
 
 const startedAt = performance.now();
 const args = Object.fromEntries(process.argv.slice(2).map((value,index,all)=>value.startsWith("--")?[value.slice(2),all[index+1]?.startsWith("--")?"true":all[index+1]]:null).filter(Boolean));
@@ -158,7 +159,7 @@ const imports=definitionImports.map(x=>`import { ${x.symbol} } from ${JSON.strin
 // TypeScript attempts to form a 1,000+ member literal union and fails before
 // normal application type checking can begin.
 const symbols=definitionImports.map(x=>`${x.symbol} as GeneratedScreenDefinition`).join(",\n  ");
-if(await atomicWriteIfChanged(resolve(outDir,"generatedScreenTypes.ts"),`export type DesignCompleteness={score:number;complete:boolean;checks:Record<string,boolean>};\nexport type ScreenCoordinate={domain:string;process:string;step:string;state:string;actor:string;policy:string;view:string;device:string;locale:string;variant:string};\nexport type GeneratedScreenDefinition = { id:string; blueprintCode:string; processCode:string; stepCode:string; actorCode:string; audience:"USER"|"ADMIN"; pageId:string; pageName:string; routePath:string; screenType:string; templateCode:string; screenCoordinate:ScreenCoordinate; screenCoordinateKey:string; specification:Record<string,any>; traceability:Record<string,any>; designCompleteness:DesignCompleteness; };\n`))contractFilesChanged++;
+if(await atomicWriteIfChanged(resolve(outDir,"generatedScreenTypes.ts"),GENERATED_SCREEN_TYPES_SOURCE))contractFilesChanged++;
 if(await atomicWriteIfChanged(resolve(outDir,"generatedScreenCatalog.ts"),`import type { GeneratedScreenDefinition } from "./generatedScreenTypes";\n${imports}\nexport type { GeneratedScreenDefinition } from "./generatedScreenTypes";\nexport const GENERATED_SCREEN_CATALOG: readonly GeneratedScreenDefinition[] = [\n  ${symbols}\n];\nexport type GeneratedScreenLookup={processCode?:string;stepCode?:string;audience?:string};
 export function findGeneratedScreen(pathname:string,lookup:GeneratedScreenLookup={}){const parsed=new URL(pathname,"http://screen.local");const normalized=parsed.pathname.replace(/^\\/en(?=\\/)/,"")||"/";const processCode=(lookup.processCode||parsed.searchParams.get("processCode")||"").toUpperCase();const stepCode=(lookup.stepCode||parsed.searchParams.get("step")||parsed.searchParams.get("stepCode")||"").toUpperCase();const audience=(lookup.audience||(normalized.startsWith("/admin/")?"ADMIN":"USER")).toUpperCase();const candidates=GENERATED_SCREEN_CATALOG.filter(screen=>screen.routePath===normalized&&screen.audience===audience);return candidates.find(screen=>(!processCode||screen.processCode===processCode)&&(!stepCode||screen.stepCode===stepCode))||candidates.find(screen=>!processCode||screen.processCode===processCode)||candidates[0];}\n`))contractFilesChanged++;
 const routeScreens=Array.from(new Map(normalized.map(x=>[x.routePath,x])).values());
