@@ -3,8 +3,10 @@ package egovframework.com.feature.auth.external.service.impl;
 import egovframework.com.platform.codex.service.AuthGroupManageService;
 import egovframework.com.feature.auth.dto.response.LoginResponseDTO;
 import egovframework.com.feature.auth.external.service.AuthTokenLoginService;
+import egovframework.com.feature.auth.service.AuthenticationExposureRollbackGuard;
 import egovframework.com.feature.auth.service.AuthTokenStoreService;
 import egovframework.com.feature.auth.service.AdminConsoleAccessPolicy;
+import egovframework.com.feature.auth.service.CredentialMutationLockService;
 import egovframework.com.feature.auth.util.JwtTokenProvider;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -36,6 +38,8 @@ public class AuthTokenLoginServiceImpl implements AuthTokenLoginService {
     private final JwtTokenProvider jwtProvider;
     private final AuthGroupManageService authGroupManageService;
     private final AuthTokenStoreService authTokenStoreService;
+    private final CredentialMutationLockService credentialMutationLockService;
+    private final AuthenticationExposureRollbackGuard authenticationExposureRollbackGuard;
 
     @Override
     public Map<String, Object> issueLogin(LoginResponseDTO loginResult, boolean autoLogin, HttpServletRequest request,
@@ -46,6 +50,20 @@ public class AuthTokenLoginServiceImpl implements AuthTokenLoginService {
             message.put("errors", "No login result.");
             return message;
         }
+        String credentialUserId = safeString(loginResult.getUserId());
+        if (credentialUserId.isEmpty()) {
+            message.put("status", "loginFailure");
+            message.put("errors", "No canonical login identity.");
+            return message;
+        }
+        return credentialMutationLockService.executeLocked(credentialUserId,
+                () -> issueLoginWithinCredentialLock(loginResult, autoLogin, request, response));
+    }
+
+    private Map<String, Object> issueLoginWithinCredentialLock(LoginResponseDTO loginResult, boolean autoLogin,
+            HttpServletRequest request, HttpServletResponse response) {
+        Map<String, Object> message = new HashMap<>();
+        authenticationExposureRollbackGuard.register(request, response);
 
         try {
             request.changeSessionId();
@@ -84,13 +102,12 @@ public class AuthTokenLoginServiceImpl implements AuthTokenLoginService {
 
         ResponseCookie accessTokenCookie = jwtProvider.createCookie(request, "accessToken", accessToken,
                 accessCookieMaxAge);
-        response.addHeader(HttpHeaders.SET_COOKIE, accessTokenCookie.toString());
-
         ResponseCookie refreshTokenCookie = jwtProvider.createCookie(request, "refreshToken", refreshToken,
                 refreshCookieMaxAge);
-        response.addHeader(HttpHeaders.SET_COOKIE, refreshTokenCookie.toString());
         authTokenStoreService.saveLoginToken(loginResult.getUserId(), loginResult.getUserSe(), accessToken,
                 refreshToken, Duration.ofSeconds(refreshCookieMaxAge).toMillis(), request);
+        response.addHeader(HttpHeaders.SET_COOKIE, accessTokenCookie.toString());
+        response.addHeader(HttpHeaders.SET_COOKIE, refreshTokenCookie.toString());
 
         boolean certified = !ObjectUtils.isEmpty(loginResult.getAuthTy()) || !ObjectUtils.isEmpty(loginResult.getAuthDn());
         if ("ENT".equalsIgnoreCase(loginResult.getUserSe())) {

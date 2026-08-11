@@ -33,6 +33,8 @@ public class CurrentUserContextService {
     private static final String ROLE_OPERATION_ADMIN = "ROLE_OPERATION_ADMIN";
     private static final long CONTEXT_CACHE_TTL_MILLIS = 5_000L;
     private static final String ADMIN_SIMULATION_SESSION_KEY = "CARBONET_ADMIN_DEV_SIMULATION";
+    private static final String ACCESS_TOKEN_VALIDATION_STATUS_ATTRIBUTE =
+            CurrentUserContextService.class.getName() + ".ACCESS_TOKEN_VALIDATION_STATUS";
 
     private final JwtTokenProvider jwtProvider;
     private final AuthGroupManageService authGroupManageService;
@@ -224,6 +226,10 @@ public class CurrentUserContextService {
         try {
             String accessToken = jwtProvider.getCookie(request, "accessToken");
             if (ObjectUtils.isEmpty(accessToken)) {
+                cacheAccessTokenValidationStatus(request, 401);
+                return "";
+            }
+            if (resolveAccessTokenValidationStatus(request, accessToken) != 200) {
                 return "";
             }
             Claims claims = jwtProvider.accessExtractClaims(accessToken);
@@ -232,6 +238,25 @@ public class CurrentUserContextService {
         } catch (Exception e) {
             return "";
         }
+    }
+
+    private int resolveAccessTokenValidationStatus(HttpServletRequest request, String accessToken) {
+        Object cached = request.getAttribute(ACCESS_TOKEN_VALIDATION_STATUS_ATTRIBUTE);
+        if (cached instanceof Integer) {
+            return (Integer) cached;
+        }
+        int status;
+        try {
+            status = jwtProvider.accessValidateToken(accessToken);
+        } catch (RuntimeException e) {
+            status = 503;
+        }
+        cacheAccessTokenValidationStatus(request, status);
+        return status;
+    }
+
+    private void cacheAccessTokenValidationStatus(HttpServletRequest request, int status) {
+        request.setAttribute(ACCESS_TOKEN_VALIDATION_STATUS_ATTRIBUTE, status);
     }
 
     private String resolveAuthorCode(String userId) {

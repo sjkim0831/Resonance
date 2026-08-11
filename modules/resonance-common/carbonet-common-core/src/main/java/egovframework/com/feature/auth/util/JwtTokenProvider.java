@@ -1,12 +1,14 @@
 package egovframework.com.feature.auth.util;
 
 import egovframework.com.feature.auth.dto.response.LoginResponseDTO;
+import egovframework.com.feature.auth.mapper.AuthLoginMapper;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.egovframe.boot.crypto.service.impl.EgovEnvCryptoServiceImpl;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
@@ -21,6 +23,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
+import java.util.Map;
 
 @Configuration
 @Getter
@@ -40,9 +43,20 @@ public class JwtTokenProvider {
     private String refreshExpiration;
 
     private final EgovEnvCryptoServiceImpl egovEnvCryptoService;
+    private AuthLoginMapper authLoginMapper;
 
     public JwtTokenProvider(@Qualifier("egovEnvCryptoService") EgovEnvCryptoServiceImpl egovEnvCryptoService) {
         this.egovEnvCryptoService = egovEnvCryptoService;
+    }
+
+    /**
+     * Setter injection keeps offline token-building utilities source compatible, while the
+     * Spring runtime requires the shared token-store mapper. Validation still fails closed
+     * when a manually constructed provider has no mapper.
+     */
+    @Autowired
+    public void setAuthLoginMapper(AuthLoginMapper authLoginMapper) {
+        this.authLoginMapper = authLoginMapper;
     }
 
     public SecretKey getSigningKey(String secret) {
@@ -99,13 +113,33 @@ public class JwtTokenProvider {
 
     public int accessValidateToken(String token) {
         try {
-            accessExtractClaims(token);
-            return 200;
+            Claims claims = accessExtractClaims(token);
+            return isPersistedAccessToken(token, claims) ? 200 : 401;
         } catch (ExpiredJwtException e) {
             return 401;
         } catch (JwtException | IllegalArgumentException e) {
             return 400;
+        } catch (RuntimeException e) {
+            log.error("Access-token store validation failed closed.", e);
+            return 503;
         }
+    }
+
+    private boolean isPersistedAccessToken(String token, Claims claims) {
+        if (authLoginMapper == null || claims == null) {
+            return false;
+        }
+        Object encodedUserId = claims.get("userId");
+        if (ObjectUtils.isEmpty(encodedUserId)) {
+            return false;
+        }
+        String userId = decrypt(String.valueOf(encodedUserId));
+        if (ObjectUtils.isEmpty(userId)) {
+            return false;
+        }
+        Map<String, Object> storedToken = authLoginMapper.selectActiveAuthToken(userId);
+        String expectedHash = mapString(storedToken, "accessTokenHash");
+        return tokenHashMatches(expectedHash, token);
     }
 
     public int refreshValidateToken(String token) {
@@ -189,6 +223,31 @@ public class JwtTokenProvider {
         } catch (NoSuchAlgorithmException e) {
             throw new IllegalStateException("SHA-256 algorithm is not available", e);
         }
+    }
+
+    /** Compare persisted and computed token hashes without data-dependent early exit. */
+    public boolean tokenHashMatches(String expectedHash, String token) {
+        if (ObjectUtils.isEmpty(expectedHash) || ObjectUtils.isEmpty(token)) {
+            return false;
+        }
+        byte[] expected = expectedHash.trim().getBytes(StandardCharsets.US_ASCII);
+        byte[] actual = generateTokenHash(token).getBytes(StandardCharsets.US_ASCII);
+        return MessageDigest.isEqual(expected, actual);
+    }
+
+    private String mapString(Map<String, Object> row, String key) {
+        if (row == null || key == null) {
+            return "";
+        }
+        Object value = row.get(key);
+        if (value == null) {
+            value = row.get(key.toUpperCase());
+        }
+        if (value == null) {
+            String snakeKey = key.replaceAll("([a-z])([A-Z])", "$1_$2").toUpperCase();
+            value = row.get(snakeKey);
+        }
+        return value == null ? "" : String.valueOf(value).trim();
     }
 
     public ResponseCookie createCookie(HttpServletRequest request, String tokenName, String tokenValue, long tokenMaxAge) {

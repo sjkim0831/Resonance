@@ -8,10 +8,12 @@ import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
 import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
@@ -56,7 +58,7 @@ public class AdminMemberPasswordResetCommandService {
                         : "본인 회사 소속 회원만 비밀번호를 초기화할 수 있습니다.");
             }
             boolean updated = authService.resetPassword(
-                    normalizedMemberId,
+                    normalizedMemberId, "ENT",
                     temporaryPassword,
                     currentAdminUserId,
                     clientIp,
@@ -72,10 +74,24 @@ public class AdminMemberPasswordResetCommandService {
         }
 
         adminMemberPasswordResetSupportService.recordMemberPasswordResetAudit(request, currentAdminUserId, normalizedMemberId);
+        if (normalizedMemberId.equalsIgnoreCase(currentAdminUserId)) {
+            invalidateCurrentAuthentication(request);
+        }
         Map<String, Object> payload = new LinkedHashMap<>();
         payload.put("temporaryPassword", temporaryPassword);
         payload.put("message", isEn ? "The password has been reset." : "비밀번호가 초기화되었습니다.");
         return success(payload);
+    }
+
+    private void invalidateCurrentAuthentication(HttpServletRequest request) {
+        try {
+            HttpSession session = request == null ? null : request.getSession(false);
+            if (session != null) {
+                session.invalidate();
+            }
+        } finally {
+            SecurityContextHolder.clearContext();
+        }
     }
 
     private ResponseEntity<Map<String, Object>> failure(int status, String errors) {

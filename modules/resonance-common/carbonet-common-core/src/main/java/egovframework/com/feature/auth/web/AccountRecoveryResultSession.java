@@ -2,6 +2,7 @@ package egovframework.com.feature.auth.web;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.time.Duration;
 
@@ -19,6 +20,15 @@ final class AccountRecoveryResultSession {
 
     static void grant(HttpServletRequest request) {
         request.getSession(true).setAttribute(COMPLETED_AT_ATTRIBUTE, System.currentTimeMillis());
+    }
+
+    static void rotateAndGrant(HttpServletRequest request) {
+        SecurityContextHolder.clearContext();
+        HttpSession previous = request.getSession(false);
+        if (previous != null) {
+            previous.invalidate();
+        }
+        grant(request);
     }
 
     static boolean consume(HttpServletRequest request) {

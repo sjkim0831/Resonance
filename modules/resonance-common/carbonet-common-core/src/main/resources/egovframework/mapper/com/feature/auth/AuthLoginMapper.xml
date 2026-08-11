@@ -168,8 +168,29 @@
             REFRESH_TOKEN_HASH AS refreshTokenHash,
             EXPIRATION_AT AS expirationAt
         FROM COMTNAUTHTOKENSTORE
-        WHERE USER_ID = #{value}
+        WHERE LOWER(USER_ID) = LOWER(#{value})
           AND EXPIRATION_AT > CURRENT_TIMESTAMP
+    </select>
+
+    <select id="acquireCredentialMutationLock" parameterType="string" resultType="int">
+        SELECT 1
+        FROM pg_advisory_xact_lock(
+            hashtextextended('carbonet:credential:' || LOWER(TRIM(#{value})), 0)
+        )
+    </select>
+
+    <select id="selectActiveAuthTokenForUpdate" parameterType="string" resultType="java.util.HashMap">
+        SELECT
+            USER_ID AS userId,
+            USER_SE AS userSe,
+            TOKEN_KEY AS tokenKey,
+            ACCESS_TOKEN_HASH AS accessTokenHash,
+            REFRESH_TOKEN_HASH AS refreshTokenHash,
+            EXPIRATION_AT AS expirationAt
+        FROM COMTNAUTHTOKENSTORE
+        WHERE LOWER(USER_ID) = LOWER(#{value})
+          AND EXPIRATION_AT > CURRENT_TIMESTAMP
+        FOR UPDATE
     </select>
 
     <insert id="insertAuthToken" parameterType="map">
@@ -200,7 +221,7 @@
 
     <delete id="deleteAuthTokenByUserId" parameterType="string">
         DELETE FROM COMTNAUTHTOKENSTORE
-        WHERE USER_ID = #{value}
+        WHERE LOWER(USER_ID) = LOWER(#{value})
     </delete>
 
     <delete id="deleteAuthTokenByTokenKey" parameterType="string">
@@ -213,5 +234,20 @@
         SET LAST_USED_AT = CURRENT_TIMESTAMP,
             UPDATED_AT = CURRENT_TIMESTAMP
         WHERE TOKEN_KEY = #{value}
+    </update>
+
+    <update id="rotateAuthToken" parameterType="map">
+        UPDATE COMTNAUTHTOKENSTORE
+        SET USER_SE = #{userSe},
+            TOKEN_KEY = #{tokenKey},
+            ACCESS_TOKEN_HASH = #{accessTokenHash},
+            REFRESH_TOKEN_HASH = #{refreshTokenHash},
+            EXPIRATION_AT = TO_TIMESTAMP(#{expiresAt}, 'YYYY-MM-DD HH24:MI:SS'),
+            CLIENT_IP = #{clientIp},
+            USER_AGENT = #{userAgent},
+            LAST_USED_AT = CURRENT_TIMESTAMP,
+            UPDATED_AT = CURRENT_TIMESTAMP
+        WHERE LOWER(USER_ID) = LOWER(#{userId})
+          AND TOKEN_KEY = #{currentTokenKey}
     </update>
 </mapper>

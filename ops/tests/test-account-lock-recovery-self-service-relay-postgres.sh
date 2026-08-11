@@ -34,10 +34,22 @@ snapshot_sql="SELECT jsonb_build_object(
 )::text;"
 
 before="$(carbonet_postgres_query "$snapshot_sql")"
-migration_sql="$(<"$MIGRATION")"
+
+# V20260811192500 is an applied, deliberately non-idempotent canonicalization:
+# its first execution retires exactly nine legacy jobs. Replaying it against
+# the post-state would test an impossible pre-state and fail with updated=0.
+# Validate the persisted post-state directly, then exercise evidence mutations
+# only inside transactions that are always rolled back.
+for token in \
+  "retired_jobs<>9" "canonical_jobs<>43" "canonical artifact mismatch" \
+  "ACCOUNT_LOCK_RECOVERY stale job gate evidence remains"; do
+  grep -Fq "$token" "$MIGRATION" || {
+    echo "[account-lock-recovery-relay] FAIL migration contract missing=$token" >&2
+    exit 1
+  }
+done
 
 result="$(carbonet_postgres_query "BEGIN;
-$migration_sql
 SELECT jsonb_build_object(
   'definitionCount',(SELECT count(*) FROM framework_process_definition
     WHERE process_code='ACCOUNT_LOCK_RECOVERY' AND owner_actor_code='MEMBER_USER'
@@ -99,7 +111,6 @@ after="$(carbonet_postgres_query "$snapshot_sql")"
 }
 
 binding_result="$(carbonet_postgres_query "BEGIN;
-$migration_sql
 DO \$\$
 DECLARE
   job_value bigint;
@@ -242,4 +253,10 @@ SELECT 'EVIDENCE_LOCKS_OK';
 ROLLBACK;")"
 grep -qx 'EVIDENCE_LOCKS_OK' <<<"$lock_result"
 
-echo '[account-lock-recovery-relay] POSTGRES_ROLLBACK_PASS steps=4 routes=4 requiredJobs=43 retiredJobs=9 artifacts=4 gateEvidence=0 evidenceBinding=currentBusinessE2E evidenceLocks=serializable owner=MEMBER_USER persistentWrites=0'
+final_state="$(carbonet_postgres_query "$snapshot_sql")"
+[[ "$before" == "$final_state" ]] || {
+  echo '[account-lock-recovery-relay] FAIL evidence rollback changed persistent data' >&2
+  exit 1
+}
+
+echo '[account-lock-recovery-relay] POSTGRES_POST_STATE_PASS appliedMigrationReplay=0 steps=4 routes=4 requiredJobs=43 retiredJobs=9 artifacts=4 gateEvidence=0 evidenceBinding=currentBusinessE2E evidenceLocks=serializable owner=MEMBER_USER persistentWrites=0'

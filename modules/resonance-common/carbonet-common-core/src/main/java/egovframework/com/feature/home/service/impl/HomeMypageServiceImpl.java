@@ -13,10 +13,12 @@ import egovframework.com.feature.member.service.EnterpriseMemberService;
 import io.jsonwebtoken.Claims;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.ui.Model;
 import org.springframework.util.ObjectUtils;
 
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpSession;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -97,7 +99,7 @@ public class HomeMypageServiceImpl implements HomeMypageService {
             return payload;
         }
 
-        if ("A".equalsIgnoreCase(entrprsMberSttus) || "R".equalsIgnoreCase(entrprsMberSttus)) {
+        if ("R".equalsIgnoreCase(entrprsMberSttus)) {
             payload.put("pageType", "pending");
             payload.put("submittedAt", formatSubmittedAt(enterprise));
             payload.put("companyName", ObjectUtils.isEmpty(enterprise.getCmpnyNm()) ? "-" : enterprise.getCmpnyNm());
@@ -267,7 +269,7 @@ public class HomeMypageServiceImpl implements HomeMypageService {
                     : "비밀번호 정책(9자리 이상, 3종류 조합)을 충족해 주세요.");
             return payload;
         }
-        boolean updated = authService.resetPassword(member.getEntrprsMberId(), newPassword, member.getEntrprsMberId(),
+        boolean updated = authService.resetPassword(member.getEntrprsMberId(), "ENT", newPassword, member.getEntrprsMberId(),
                 resolveClientIp(request), "MYPAGE_SELF_SERVICE");
         if (!updated) {
             markSaveFailure(payload, en ? "Password update failed." : "비밀번호 변경에 실패했습니다.");
@@ -281,7 +283,19 @@ public class HomeMypageServiceImpl implements HomeMypageService {
         });
         payload.put("saved", true);
         payload.put("message", en ? "Password updated." : "비밀번호를 변경했습니다.");
+        invalidateCurrentAuthentication(request);
         return payload;
+    }
+
+    private void invalidateCurrentAuthentication(HttpServletRequest request) {
+        try {
+            HttpSession session = request == null ? null : request.getSession(false);
+            if (session != null) {
+                session.invalidate();
+            }
+        } finally {
+            SecurityContextHolder.clearContext();
+        }
     }
 
     private Map<String, Object> createAnonymousMypageContext(boolean en) {
@@ -367,6 +381,9 @@ public class HomeMypageServiceImpl implements HomeMypageService {
 
     private String extractUserId(String accessToken) {
         try {
+            if (jwtProvider.accessValidateToken(accessToken) != 200) {
+                return "";
+            }
             Claims claims = jwtProvider.accessExtractClaims(accessToken);
             Object encryptedUserId = claims.get("userId");
             if (encryptedUserId == null) {

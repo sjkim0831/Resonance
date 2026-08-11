@@ -9,10 +9,11 @@ import egovframework.com.feature.auth.service.AuthService;
 import egovframework.com.feature.auth.service.AuthTokenStoreService;
 import egovframework.com.feature.auth.service.AccountRecoveryService;
 import egovframework.com.feature.auth.service.AdminConsoleAccessPolicy;
+import egovframework.com.feature.auth.service.AuthenticationExposureRollbackGuard;
 import egovframework.com.feature.auth.service.CurrentUserContextService;
+import egovframework.com.feature.auth.service.CredentialMutationLockService;
 import egovframework.com.feature.auth.util.ClientIpUtil;
 import egovframework.com.feature.auth.util.JwtTokenProvider;
-import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -23,7 +24,9 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.support.ReloadableResourceBundleMessageSource;
+import org.springframework.dao.DataAccessException;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -31,6 +34,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
+import org.springframework.security.web.authentication.logout.SecurityContextLogoutHandler;
 import org.springframework.stereotype.Controller;
 import org.springframework.util.ObjectUtils;
 import org.springframework.web.bind.annotation.*;
@@ -75,6 +79,8 @@ public class AuthApiController {
     private final AccountRecoveryService accountRecoveryService;
     private final CurrentUserContextService currentUserContextService;
     private final ReloadableResourceBundleMessageSource messageSource;
+    private final CredentialMutationLockService credentialMutationLockService;
+    private final AuthenticationExposureRollbackGuard authenticationExposureRollbackGuard;
     private final EgovReloadableFilterInvocationSecurityMetadataSource securityMetadataSource;
 
     @Autowired
@@ -86,6 +92,8 @@ public class AuthApiController {
             AccountRecoveryService accountRecoveryService,
             CurrentUserContextService currentUserContextService,
             @Qualifier("messageSource") ReloadableResourceBundleMessageSource messageSource,
+            CredentialMutationLockService credentialMutationLockService,
+            AuthenticationExposureRollbackGuard authenticationExposureRollbackGuard,
             EgovReloadableFilterInvocationSecurityMetadataSource securityMetadataSource) {
         this.service = service;
         this.adminLoginHistoryService = adminLoginHistoryService;
@@ -94,6 +102,8 @@ public class AuthApiController {
         this.accountRecoveryService = accountRecoveryService;
         this.currentUserContextService = currentUserContextService;
         this.messageSource = messageSource;
+        this.credentialMutationLockService = credentialMutationLockService;
+        this.authenticationExposureRollbackGuard = authenticationExposureRollbackGuard;
         this.securityMetadataSource = securityMetadataSource;
     }
 
@@ -103,6 +113,16 @@ public class AuthApiController {
         if (ObjectUtils.isEmpty(loginVO)) {
             return ResponseEntity.ok(messageSource.getMessage("fail.common.login", null, request.getLocale()));
         }
+        String credentialUserId = safeString(loginVO.getUserId());
+        if (credentialUserId.isEmpty()) {
+            return actionLoginWithinCredentialLock(loginVO, request, response);
+        }
+        return credentialMutationLockService.executeLocked(credentialUserId,
+                () -> actionLoginWithinCredentialLock(loginVO, request, response));
+    }
+
+    private ResponseEntity<?> actionLoginWithinCredentialLock(LoginRequestDTO loginVO,
+            HttpServletRequest request, HttpServletResponse response) {
 
         Map<String, Object> message = new HashMap<>();
         String normalizedUserId = safeString(loginVO.getUserId());
@@ -125,6 +145,7 @@ public class AuthApiController {
                     String.valueOf(message.get("errors")));
             return ResponseEntity.ok(message);
         } else {
+            authenticationExposureRollbackGuard.register(request, response);
             try {
                 request.changeSessionId();
             } catch (IllegalStateException ignored) {
@@ -145,12 +166,6 @@ public class AuthApiController {
 
             String accessiblePatterns = resolveAccessiblePatternsSafely(loginResult);
             log.debug("AuthApiController actionLogin accessiblePatterns >>> {}", accessiblePatterns);
-            // Persist the same authenticated identity for Spring Security page routes.
-            // JWT cookies remain the API credential; the session prevents protected
-            // home routes from bouncing a successfully logged-in user back to login.
-            new HttpSessionSecurityContextRepository().saveContext(
-                    SecurityContextHolder.getContext(), request, response);
-
             LoginResponseDTO dtoToVo = new LoginResponseDTO();
             dtoToVo.setUserId(loginResult.getUserId());
             dtoToVo.setName(loginResult.getName());
@@ -184,13 +199,16 @@ public class AuthApiController {
             }
 
             ResponseCookie accessTokenCookie = jwtProvider.createCookie(request, "accessToken", accessToken, accessCookieMaxAge);
-            response.addHeader(HttpHeaders.SET_COOKIE, accessTokenCookie.toString());
-
             ResponseCookie refreshTokenCookie = jwtProvider.createCookie(request, "refreshToken", refreshToken,
                     refreshCookieMaxAge);
-            response.addHeader(HttpHeaders.SET_COOKIE, refreshTokenCookie.toString());
             authTokenStoreService.saveLoginToken(loginResult.getUserId(), loginResult.getUserSe(), accessToken,
                     refreshToken, Duration.ofSeconds(refreshCookieMaxAge).toMillis(), request);
+            // Persist the session and expose cookies only after the shared token-store row
+            // exists. A failed store write must never create a JWT-only authenticated session.
+            new HttpSessionSecurityContextRepository().saveContext(
+                    SecurityContextHolder.getContext(), request, response);
+            response.addHeader(HttpHeaders.SET_COOKIE, accessTokenCookie.toString());
+            response.addHeader(HttpHeaders.SET_COOKIE, refreshTokenCookie.toString());
 
             message.put("status", "loginSuccess");
             message.put("userInfo", loginResult.getName() + "(" + loginResult.getUserId() + ")");
@@ -384,9 +402,11 @@ public class AuthApiController {
     @ResponseBody
     public ResponseEntity<?> recreateAccessToken(@RequestHeader String refreshToken, HttpServletRequest request) {
         try {
+            if (jwtProvider.refreshValidateToken(refreshToken) != 200) {
+                return ResponseEntity.badRequest().body("Refresh token not found or invalid");
+            }
             String username = jwtProvider.decrypt(jwtProvider.extractUserId(refreshToken));
-            if (ObjectUtils.isEmpty(username)
-                    || !authTokenStoreService.isRefreshTokenAccepted(username, refreshToken)) {
+            if (ObjectUtils.isEmpty(username)) {
                 return ResponseEntity.badRequest().body("Refresh token not found or invalid");
             }
 
@@ -396,8 +416,10 @@ public class AuthApiController {
             tokenPayload.setUniqId(jwtProvider.decrypt(jwtProvider.extractUniqId(refreshToken)));
             tokenPayload.setAuthorList(jwtProvider.decrypt(jwtProvider.extractAuthorList(refreshToken)));
             String accessToken = jwtProvider.createAccessToken(tokenPayload);
-            authTokenStoreService.saveLoginToken(username, "", accessToken, refreshToken,
-                    Long.parseLong(jwtProvider.getRefreshExpiration()), request);
+            if (!authTokenStoreService.rotateLoginToken(username, "", refreshToken, accessToken, refreshToken,
+                    Long.parseLong(jwtProvider.getRefreshExpiration()), request)) {
+                return ResponseEntity.badRequest().body("Refresh token not found or invalid");
+            }
 
             Map<String, Object> message = new HashMap<>();
             message.put("status", "success");
@@ -406,6 +428,9 @@ public class AuthApiController {
         } catch (JwtException | IllegalArgumentException e) {
             log.warn("Access token recreation failed.", e);
             return ResponseEntity.badRequest().body("Invalid or expired refresh token");
+        } catch (DataAccessException e) {
+            log.error("Access token recreation failed because the token store is unavailable.", e);
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body("Token store unavailable");
         }
     }
 
@@ -423,7 +448,7 @@ public class AuthApiController {
 
         int refreshStatus = jwtProvider.refreshValidateToken(refreshToken);
         String username = refreshStatus == 200 ? jwtProvider.decrypt(jwtProvider.extractUserId(refreshToken)) : "";
-        if (refreshStatus != 200 || !authTokenStoreService.isRefreshTokenAccepted(username, refreshToken)) {
+        if (refreshStatus != 200 || ObjectUtils.isEmpty(username)) {
             jwtProvider.deleteCookie(request, response, "accessToken");
             jwtProvider.deleteCookie(request, response, "refreshToken");
             Map<String, Object> denied = new HashMap<>();
@@ -444,12 +469,31 @@ public class AuthApiController {
         long accessCookieMaxAge = Duration.ofMillis(Long.parseLong(jwtProvider.getAccessExpiration())).getSeconds();
         long refreshCookieMaxAge = Duration.ofMillis(Long.parseLong(jwtProvider.getRefreshExpiration())).getSeconds();
 
+        final boolean rotated;
+        try {
+            rotated = authTokenStoreService.rotateLoginToken(loginVO.getUserId(), "", refreshToken,
+                    newAccessToken, newRefreshToken, Duration.ofSeconds(refreshCookieMaxAge).toMillis(), request);
+        } catch (DataAccessException e) {
+            log.error("Session refresh failed because the token store is unavailable.", e);
+            jwtProvider.deleteCookie(request, response, "accessToken");
+            jwtProvider.deleteCookie(request, response, "refreshToken");
+            Map<String, Object> unavailable = new HashMap<>();
+            unavailable.put("status", "fail");
+            unavailable.put("errors", "Token store unavailable.");
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(unavailable);
+        }
+        if (!rotated) {
+            jwtProvider.deleteCookie(request, response, "accessToken");
+            jwtProvider.deleteCookie(request, response, "refreshToken");
+            Map<String, Object> denied = new HashMap<>();
+            denied.put("status", "fail");
+            denied.put("errors", "Refresh token is invalid.");
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(denied);
+        }
         response.addHeader(HttpHeaders.SET_COOKIE,
                 jwtProvider.createCookie(request, "accessToken", newAccessToken, accessCookieMaxAge).toString());
         response.addHeader(HttpHeaders.SET_COOKIE,
                 jwtProvider.createCookie(request, "refreshToken", newRefreshToken, refreshCookieMaxAge).toString());
-        authTokenStoreService.saveLoginToken(loginVO.getUserId(), "", newAccessToken, newRefreshToken,
-                Duration.ofSeconds(refreshCookieMaxAge).toMillis(), request);
 
         Map<String, Object> message = new HashMap<>();
         message.put("status", "success");
@@ -460,11 +504,8 @@ public class AuthApiController {
 
     @PostMapping("/reload")
     public ResponseEntity<String> reloadSecurityMetadata(HttpServletRequest request) {
-        if (!isAuthenticatedRequest(request)) {
-            return ResponseEntity.status(403).body("Forbidden");
-        }
-        EgovUserDetailsHelper.reloadSecurityMetadata(securityMetadataSource);
-        return ResponseEntity.ok("Success");
+        return ResponseEntity.status(HttpStatus.GONE)
+                .body("Public security metadata reload is disabled.");
     }
 
     @PostMapping("/account-recovery/requests")
@@ -504,14 +545,13 @@ public class AuthApiController {
     @PostMapping("/resetPassword")
     @ResponseBody
     public ResponseEntity<?> resetPassword(@RequestBody Map<String, String> params, HttpServletRequest request) {
-        String userId = params.getOrDefault("userId", "").trim();
         String newPassword = params.getOrDefault("newPassword", "").trim();
         String language = params.getOrDefault("language", "").trim();
         boolean isEn = "en".equalsIgnoreCase(language);
 
         Map<String, Object> message = new HashMap<>();
 
-        if (ObjectUtils.isEmpty(userId) || ObjectUtils.isEmpty(newPassword)) {
+        if (ObjectUtils.isEmpty(newPassword)) {
             message.put("status", "fail");
             message.put("errors", isEn ? "Required values are missing." : "필수 값이 누락되었습니다.");
             return ResponseEntity.ok(message);
@@ -535,7 +575,7 @@ public class AuthApiController {
             return ResponseEntity.ok(message);
         }
 
-        AccountRecoveryResultSession.grant(request);
+        AccountRecoveryResultSession.rotateAndGrant(request);
         message.put("status", "success");
         return ResponseEntity.ok(message);
     }
@@ -543,27 +583,38 @@ public class AuthApiController {
     @PostMapping("/actionLogout")
     public ResponseEntity<?> actionLogout(HttpServletRequest request, HttpServletResponse response) {
         log.debug("##### AuthApiController logout started #####");
-
+        String accessToken = jwtProvider.getCookie(request, "accessToken");
         String refreshToken = jwtProvider.getCookie(request, "refreshToken");
-        if (!ObjectUtils.isEmpty(refreshToken)) {
-            try {
-                String username = jwtProvider.decrypt(jwtProvider.extractUserId(refreshToken));
-                authTokenStoreService.revokeByRefreshToken(username, refreshToken);
-            } catch (JwtException | IllegalArgumentException e) {
-                log.warn("Failed to resolve refresh token during logout.", e);
-            }
-        }
-        jwtProvider.deleteCookie(request, response, "accessToken");
-        jwtProvider.deleteCookie(request, response, "refreshToken");
-        HttpSession session = request.getSession(false);
-        if (session != null) {
-            session.removeAttribute(TEST_SWITCH_SESSION_ATTRIBUTE);
-        }
-
         Map<String, Object> message = new HashMap<>();
-        message.put("status", "success");
-        message.put("error", "");
-        return ResponseEntity.ok(message);
+        HttpStatus status;
+        try {
+            AuthTokenStoreService.LogoutRevocationResult result =
+                    authTokenStoreService.revokeLogoutTokens(accessToken, refreshToken);
+            if (result == AuthTokenStoreService.LogoutRevocationResult.REVOKED) {
+                status = HttpStatus.OK;
+                message.put("status", "success");
+                message.put("error", "");
+            } else {
+                status = HttpStatus.UNAUTHORIZED;
+                message.put("status", "logoutFailure");
+                message.put("error", "INVALID_OR_STALE_LOGOUT_TOKEN");
+            }
+        } catch (IllegalStateException e) {
+            log.error("Logout token revocation failed closed.", e);
+            status = HttpStatus.SERVICE_UNAVAILABLE;
+            message.put("status", "logoutFailure");
+            message.put("error", "TOKEN_REVOCATION_UNAVAILABLE");
+        } finally {
+            jwtProvider.deleteCookie(request, response, "accessToken");
+            jwtProvider.deleteCookie(request, response, "refreshToken");
+            HttpSession session = request.getSession(false);
+            if (session != null) {
+                session.removeAttribute(TEST_SWITCH_SESSION_ATTRIBUTE);
+            }
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            new SecurityContextLogoutHandler().logout(request, response, authentication);
+        }
+        return ResponseEntity.status(status).body(message);
     }
 
     @RequestMapping("/loginFailure")
@@ -593,24 +644,10 @@ public class AuthApiController {
 
     @PostMapping("/updateAuthInfo")
     public ResponseEntity<?> updateAuthInfo(@RequestBody Map<String, String> params, HttpServletRequest request) {
-        if (!isAuthenticatedRequest(request)) {
-            Map<String, Object> denied = new HashMap<>();
-            denied.put("status", "fail");
-            denied.put("errors", "Forbidden");
-            return ResponseEntity.status(403).body(denied);
-        }
-        String userId = params.get("userId");
-        String userSe = params.get("userSe");
-        String authTy = params.get("authTy");
-        String authDn = params.get("authDn");
-        String authCi = params.get("authCi");
-        String authDi = params.get("authDi");
-
-        service.updateAuthInfo(userId, userSe, authTy, authDn, authCi, authDi);
-
         Map<String, Object> message = new HashMap<>();
-        message.put("status", "success");
-        return ResponseEntity.ok(message);
+        message.put("status", "fail");
+        message.put("errors", "Verified identity updates are accepted only from the server-side authentication flow.");
+        return ResponseEntity.status(HttpStatus.GONE).body(message);
     }
 
     private boolean validatePasswordPolicy(String password) {
@@ -646,19 +683,6 @@ public class AuthApiController {
             loginPath = "/signin/loginView";
         }
         return "redirect:" + loginPath + "?" + query;
-    }
-
-    private boolean isAuthenticatedRequest(HttpServletRequest request) {
-        try {
-            String accessToken = jwtProvider.getCookie(request, "accessToken");
-            if (ObjectUtils.isEmpty(accessToken)) {
-                return false;
-            }
-            Claims claims = jwtProvider.accessExtractClaims(accessToken);
-            return claims != null && !ObjectUtils.isEmpty(claims.get("userId"));
-        } catch (Exception ex) {
-            return false;
-        }
     }
 
 }

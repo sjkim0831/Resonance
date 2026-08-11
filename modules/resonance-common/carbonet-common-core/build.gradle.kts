@@ -90,6 +90,9 @@ dependencies {
     compileOnly("commons-beanutils:commons-beanutils:1.11.0")
     testImplementation("org.junit.jupiter:junit-jupiter")
     testImplementation("org.mockito:mockito-core")
+    testImplementation("io.jsonwebtoken:jjwt-api:0.12.6")
+    testRuntimeOnly("io.jsonwebtoken:jjwt-impl:0.12.6")
+    testRuntimeOnly("io.jsonwebtoken:jjwt-jackson:0.12.6")
     // AuthService exposes Spring Data pagination types. Keep them available to
     // isolated Mockito contract tests without promoting JPA into the runtime API.
     testImplementation("org.springframework.data:spring-data-commons")

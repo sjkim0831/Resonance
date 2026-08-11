@@ -18,34 +18,31 @@ Canonical app jar:
 
 Environment overrides:
   PORT
-  CONFIG_DIR
-  ENV_FILE
   RUNTIME_LOG
+  K8S_NAMESPACE
+  CARBONET_QA_AUTH_SECRET
+  CARBONET_QA_AUTH_USER
+  CARBONET_QA_AUTH_PASSWORD
 EOF
   exit 0
 fi
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-SCRIPTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=ops/scripts/build.sh
-source "$ROOT_DIR/ops/scripts/build.sh" 2>/dev/null || true
-init_build_tool
 source "$ROOT_DIR/ops/scripts/runtime-url-common.sh"
+# shellcheck source=ops/scripts/runtime-qa-auth-common.sh
+source "$ROOT_DIR/ops/scripts/runtime-qa-auth-common.sh"
 ROUTE_PATH="${1:-}"
 ROUTE_ID="${2:-}"
 PAYLOAD_KEY="${3:-}"
 PORT="${PORT:-18000}"
-CONFIG_DIR="${CONFIG_DIR:-$ROOT_DIR/ops/config}"
-ENV_FILE="${ENV_FILE:-$CONFIG_DIR/carbonet-${PORT}.env}"
 RUNTIME_LOG="${RUNTIME_LOG:-/tmp/carbonet-runtime-18000.log}"
-TARGET_JAR_PATH="${TARGET_JAR_PATH:-$ROOT_DIR/apps/carbonet-api/target/carbonet-api.jar}"
 TMP_DIR="$(mktemp -d /tmp/admin-route-bootstrap.XXXXXX)"
-CLASSPATH_FILE="$TMP_DIR/runtime.classpath"
-JAVA_SOURCE="$TMP_DIR/ForgeAdminRouteToken.java"
-JAVA_CLASS_DIR="$TMP_DIR/classes"
-APP_CLASSES_DIR="$TMP_DIR/app-classes"
+COOKIE_JAR="$TMP_DIR/cookies.txt"
 
 cleanup() {
+  if [[ -n "${BASE_URL:-}" ]]; then
+    carbonet_qa_logout "$COOKIE_JAR" "$BASE_URL"
+  fi
   rm -rf "$TMP_DIR"
 }
 trap cleanup EXIT
@@ -57,16 +54,6 @@ fail() {
 
 info() {
   echo "[verify-admin-route-bootstrap] $*"
-}
-
-load_optional_env() {
-  local env_file="$1"
-  if [[ -f "$env_file" ]]; then
-    set -a
-    # shellcheck disable=SC1090
-    source "$env_file"
-    set +a
-  fi
 }
 
 retry_curl() {
@@ -98,82 +85,14 @@ if [[ -z "$ROUTE_ID" ]]; then
 fi
 
 require_cmd curl
-require_cmd mvn
-require_cmd javac
-require_cmd java
-require_cmd jar
 require_cmd rg
+require_cmd jq
 
-require_file "$ROOT_DIR/pom.xml"
 require_file "$RUNTIME_LOG"
-require_file "$TARGET_JAR_PATH"
 
-load_optional_env "$ENV_FILE"
-TOKEN_ACCESS_SECRET="${TOKEN_ACCESS_SECRET:-change-me-access-secret}"
-TOKEN_REFRESH_SECRET="${TOKEN_REFRESH_SECRET:-change-me-refresh-secret}"
 BASE_URL="${4:-$(carbonet_runtime_base_url)}"
 carbonet_set_curl_args
-
-mkdir -p "$JAVA_CLASS_DIR"
-mkdir -p "$APP_CLASSES_DIR"
-
-info "building runtime classpath"
-mvn -q -f "$ROOT_DIR/apps/carbonet-api/pom.xml" -DincludeScope=runtime dependency:build-classpath "-Dmdep.outputFile=$CLASSPATH_FILE" >/dev/null
-require_file "$CLASSPATH_FILE"
-(cd "$APP_CLASSES_DIR" && jar xf "$TARGET_JAR_PATH" BOOT-INF/classes)
-APP_COMPILE_CLASSPATH="$APP_CLASSES_DIR/BOOT-INF/classes"
-[[ -d "$APP_COMPILE_CLASSPATH" ]] || fail "failed to extract app classes from $TARGET_JAR_PATH"
-
-cat > "$JAVA_SOURCE" <<'EOF'
-import egovframework.com.feature.auth.dto.response.LoginResponseDTO;
-import egovframework.com.feature.auth.util.JwtTokenProvider;
-import org.egovframe.boot.crypto.EgovCryptoConfiguration;
-import org.egovframe.boot.crypto.EgovCryptoProperties;
-import org.egovframe.boot.crypto.service.impl.EgovEnvCryptoServiceImpl;
-
-public class ForgeAdminRouteToken {
-    public static void main(String[] args) {
-        String accessSecret = args.length > 0 ? args[0] : "change-me-access-secret";
-        String refreshSecret = args.length > 1 ? args[1] : "change-me-refresh-secret";
-        EgovCryptoProperties props = new EgovCryptoProperties();
-        props.setAlgorithm("SHA-256");
-        props.setAlgorithmKey("egovframe");
-        props.setAlgorithmKeyHash("gdyYs/IZqY86VcWhT8emCYfqY1ahw2vtLG+/FzNqtrQ=");
-
-        EgovEnvCryptoServiceImpl crypto = new EgovCryptoConfiguration(props).egovEnvCryptoService();
-        JwtTokenProvider provider = new JwtTokenProvider(crypto);
-
-        LoginResponseDTO dto = new LoginResponseDTO();
-        dto.setUserId("webmaster");
-        dto.setName("");
-        dto.setUniqId("");
-        dto.setAuthorList("");
-
-        try {
-            for (String[] item : new String[][] {
-                {"accessSecret", accessSecret},
-                {"refreshSecret", refreshSecret},
-                {"accessExpiration", "3600000"},
-                {"refreshExpiration", "3600000"}
-            }) {
-                java.lang.reflect.Field field = JwtTokenProvider.class.getDeclaredField(item[0]);
-                field.setAccessible(true);
-                field.set(provider, item[1]);
-            }
-        } catch (Exception ex) {
-            throw new RuntimeException(ex);
-        }
-
-        System.out.println(provider.createAccessToken(dto));
-    }
-}
-EOF
-
-javac -cp "$APP_COMPILE_CLASSPATH:$(cat "$CLASSPATH_FILE")" -d "$JAVA_CLASS_DIR" "$JAVA_SOURCE"
-ACCESS_TOKEN="$(java -cp "$JAVA_CLASS_DIR:$APP_COMPILE_CLASSPATH:$(cat "$CLASSPATH_FILE")" ForgeAdminRouteToken "$TOKEN_ACCESS_SECRET" "$TOKEN_REFRESH_SECRET" | tr -d '\r\n')"
-[[ -n "$ACCESS_TOKEN" ]] || fail "failed to forge access token"
-
-COOKIE_HEADER="Cookie: accessToken=$ACCESS_TOKEN"
+carbonet_qa_login "$COOKIE_JAR" "$BASE_URL" || fail "isolated QA login failed"
 SESSION_JSON="$TMP_DIR/session.json"
 HTML_FILE="$TMP_DIR/route.html"
 BOOTSTRAP_JSON="$TMP_DIR/bootstrap.json"
@@ -181,17 +100,15 @@ NEW_LOG_LINES="$TMP_DIR/new-log-lines.txt"
 LOG_MARKER="$(date '+%Y-%m-%d %H:%M:%S')"
 
 info "verifying authenticated frontend session"
-retry_curl "$SESSION_JSON" -H "$COOKIE_HEADER" "$BASE_URL/api/frontend/session" || fail "frontend session request failed"
-rg -q '"authenticated"[[:space:]]*:[[:space:]]*true' "$SESSION_JSON" || fail "frontend session is not authenticated"
-rg -q '"actualUserId"[[:space:]]*:[[:space:]]*"webmaster"' "$SESSION_JSON" || fail "frontend session actualUserId is not webmaster"
-rg -q '"authorCode"[[:space:]]*:[[:space:]]*"ROLE_SYSTEM_MASTER"' "$SESSION_JSON" || fail "frontend session authorCode is not ROLE_SYSTEM_MASTER"
+retry_curl "$SESSION_JSON" -b "$COOKIE_JAR" -c "$COOKIE_JAR" "$BASE_URL/api/frontend/session" || fail "frontend session request failed"
+jq -e --arg user "$CARBONET_QA_AUTH_EFFECTIVE_USER" '.authenticated == true and ((.actualUserId // .userId // "") | ascii_downcase) == ($user | ascii_downcase) and ((.authorCode // "") | length > 0)' "$SESSION_JSON" >/dev/null || fail "frontend QA session contract mismatch"
 
 info "loading admin shell route"
-retry_curl "$HTML_FILE" -H "$COOKIE_HEADER" "$BASE_URL$ROUTE_PATH" || fail "admin shell route request failed"
+retry_curl "$HTML_FILE" -b "$COOKIE_JAR" -c "$COOKIE_JAR" "$BASE_URL$ROUTE_PATH" || fail "admin shell route request failed"
 rg -q 'window\.__CARBONET_REACT_BOOTSTRAP__ = config\.reactBootstrapPayload \|\| \{\};' "$HTML_FILE" || fail "admin shell bootstrap assignment is missing"
 
 info "loading route bootstrap payload"
-retry_curl "$BOOTSTRAP_JSON" -H "$COOKIE_HEADER" "$BASE_URL/api/admin/app/bootstrap?route=$ROUTE_ID" || fail "bootstrap payload request failed"
+retry_curl "$BOOTSTRAP_JSON" -b "$COOKIE_JAR" -c "$COOKIE_JAR" "$BASE_URL/api/admin/app/bootstrap?route=$ROUTE_ID" || fail "bootstrap payload request failed"
 rg -q "\"reactRoute\"[[:space:]]*:[[:space:]]*\"$ROUTE_ID\"" "$BOOTSTRAP_JSON" || fail "bootstrap route is not $ROUTE_ID"
 if [[ -n "$PAYLOAD_KEY" ]]; then
   rg -q "\"$PAYLOAD_KEY\"" "$BOOTSTRAP_JSON" || fail "$PAYLOAD_KEY is missing from bootstrap payload"

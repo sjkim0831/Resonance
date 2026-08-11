@@ -12,29 +12,28 @@ Purpose:
 
 Environment overrides:
   PORT
-  CONFIG_DIR
-  ENV_FILE
   RUNTIME_LOG
+  K8S_NAMESPACE
+  CARBONET_QA_AUTH_SECRET
+  CARBONET_QA_AUTH_USER
+  CARBONET_QA_AUTH_PASSWORD
 EOF
   exit 0
 fi
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-SCRIPTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=ops/scripts/build.sh
-source "$ROOT_DIR/ops/scripts/build.sh" 2>/dev/null || true
-init_build_tool
 source "$ROOT_DIR/ops/scripts/runtime-url-common.sh"
+# shellcheck source=ops/scripts/runtime-qa-auth-common.sh
+source "$ROOT_DIR/ops/scripts/runtime-qa-auth-common.sh"
 RUNTIME_LOG="${RUNTIME_LOG:-/tmp/carbonet-runtime-18000.log}"
-CONFIG_DIR="${CONFIG_DIR:-$ROOT_DIR/ops/config}"
 PORT="${PORT:-18000}"
-ENV_FILE="${ENV_FILE:-$CONFIG_DIR/carbonet-${PORT}.env}"
 TMP_DIR="$(mktemp -d /tmp/external-monitoring-bootstrap.XXXXXX)"
-CLASSPATH_FILE="$TMP_DIR/runtime.classpath"
-JAVA_SOURCE="$TMP_DIR/ForgeExternalMonitoringToken.java"
-JAVA_CLASS_DIR="$TMP_DIR/classes"
+COOKIE_JAR="$TMP_DIR/cookies.txt"
 
 cleanup() {
+  if [[ -n "${BASE_URL:-}" ]]; then
+    carbonet_qa_logout "$COOKIE_JAR" "$BASE_URL"
+  fi
   rm -rf "$TMP_DIR"
 }
 trap cleanup EXIT
@@ -46,16 +45,6 @@ fail() {
 
 info() {
   echo "[verify-external-monitoring-bootstrap] $*"
-}
-
-load_optional_env() {
-  local env_file="$1"
-  if [[ -f "$env_file" ]]; then
-    set -a
-    # shellcheck disable=SC1090
-    source "$env_file"
-    set +a
-  fi
 }
 
 retry_curl() {
@@ -82,77 +71,14 @@ require_cmd() {
 }
 
 require_cmd curl
-require_cmd mvn
-require_cmd javac
-require_cmd java
 require_cmd rg
+require_cmd jq
 
-require_file "$ROOT_DIR/pom.xml"
-require_file "$ROOT_DIR/target/classes/egovframework/com/feature/auth/util/JwtTokenProvider.class"
 require_file "$RUNTIME_LOG"
 
-load_optional_env "$ENV_FILE"
-TOKEN_ACCESS_SECRET="${TOKEN_ACCESS_SECRET:-change-me-access-secret}"
-TOKEN_REFRESH_SECRET="${TOKEN_REFRESH_SECRET:-change-me-refresh-secret}"
 BASE_URL="${1:-$(carbonet_runtime_base_url)}"
 carbonet_set_curl_args
-
-mkdir -p "$JAVA_CLASS_DIR"
-
-info "building runtime classpath"
-mvn -q -f "$ROOT_DIR/pom.xml" -DincludeScope=runtime dependency:build-classpath "-Dmdep.outputFile=$CLASSPATH_FILE" >/dev/null
-require_file "$CLASSPATH_FILE"
-
-cat > "$JAVA_SOURCE" <<'EOF'
-import egovframework.com.feature.auth.dto.response.LoginResponseDTO;
-import egovframework.com.feature.auth.util.JwtTokenProvider;
-import org.egovframe.boot.crypto.EgovCryptoConfiguration;
-import org.egovframe.boot.crypto.EgovCryptoProperties;
-import org.egovframe.boot.crypto.service.impl.EgovEnvCryptoServiceImpl;
-
-public class ForgeExternalMonitoringToken {
-    public static void main(String[] args) {
-        String accessSecret = args.length > 0 ? args[0] : "change-me-access-secret";
-        String refreshSecret = args.length > 1 ? args[1] : "change-me-refresh-secret";
-        EgovCryptoProperties props = new EgovCryptoProperties();
-        props.setAlgorithm("SHA-256");
-        props.setAlgorithmKey("egovframe");
-        props.setAlgorithmKeyHash("gdyYs/IZqY86VcWhT8emCYfqY1ahw2vtLG+/FzNqtrQ=");
-
-        EgovEnvCryptoServiceImpl crypto = new EgovCryptoConfiguration(props).egovEnvCryptoService();
-        JwtTokenProvider provider = new JwtTokenProvider(crypto);
-
-        LoginResponseDTO dto = new LoginResponseDTO();
-        dto.setUserId("webmaster");
-        dto.setName("");
-        dto.setUniqId("");
-        dto.setAuthorList("");
-
-        try {
-            for (String[] item : new String[][] {
-                {"accessSecret", accessSecret},
-                {"refreshSecret", refreshSecret},
-                {"accessExpiration", "3600000"},
-                {"refreshExpiration", "3600000"}
-            }) {
-                java.lang.reflect.Field field = JwtTokenProvider.class.getDeclaredField(item[0]);
-                field.setAccessible(true);
-                field.set(provider, item[1]);
-            }
-        } catch (Exception ex) {
-            throw new RuntimeException(ex);
-        }
-
-        System.out.println(provider.createAccessToken(dto));
-    }
-}
-EOF
-
-javac -cp "$ROOT_DIR/target/classes:$(cat "$CLASSPATH_FILE")" -d "$JAVA_CLASS_DIR" "$JAVA_SOURCE"
-ACCESS_TOKEN="$(java -cp "$JAVA_CLASS_DIR:$ROOT_DIR/target/classes:$(cat "$CLASSPATH_FILE")" ForgeExternalMonitoringToken "$TOKEN_ACCESS_SECRET" "$TOKEN_REFRESH_SECRET" | tr -d '\r\n')"
-[[ -n "$ACCESS_TOKEN" ]] || fail "failed to forge access token"
-
-COOKIE_HEADER="Cookie: accessToken=$ACCESS_TOKEN"
+carbonet_qa_login "$COOKIE_JAR" "$BASE_URL" || fail "isolated QA login failed"
 LOG_MARKER="$(date '+%Y-%m-%d %H:%M:%S')"
 info "using log marker $LOG_MARKER"
 
@@ -162,17 +88,15 @@ BOOTSTRAP_JSON="$TMP_DIR/bootstrap.json"
 NEW_LOG_LINES="$TMP_DIR/new-log-lines.txt"
 
 info "verifying authenticated frontend session"
-retry_curl "$SESSION_JSON" -H "$COOKIE_HEADER" "$BASE_URL/api/frontend/session" || fail "frontend session request failed"
-rg -q '"authenticated"[[:space:]]*:[[:space:]]*true' "$SESSION_JSON" || fail "frontend session is not authenticated"
-rg -q '"actualUserId"[[:space:]]*:[[:space:]]*"webmaster"' "$SESSION_JSON" || fail "frontend session actualUserId is not webmaster"
-rg -q '"authorCode"[[:space:]]*:[[:space:]]*"ROLE_SYSTEM_MASTER"' "$SESSION_JSON" || fail "frontend session authorCode is not ROLE_SYSTEM_MASTER"
+retry_curl "$SESSION_JSON" -b "$COOKIE_JAR" -c "$COOKIE_JAR" "$BASE_URL/api/frontend/session" || fail "frontend session request failed"
+jq -e --arg user "$CARBONET_QA_AUTH_EFFECTIVE_USER" '.authenticated == true and ((.actualUserId // .userId // "") | ascii_downcase) == ($user | ascii_downcase) and ((.authorCode // "") | length > 0)' "$SESSION_JSON" >/dev/null || fail "frontend QA session contract mismatch"
 
 info "loading admin shell route"
-retry_curl "$HTML_FILE" -H "$COOKIE_HEADER" "$BASE_URL/admin/external/monitoring" || fail "admin shell route request failed"
+retry_curl "$HTML_FILE" -b "$COOKIE_JAR" -c "$COOKIE_JAR" "$BASE_URL/admin/external/monitoring" || fail "admin shell route request failed"
 rg -q 'window\.__CARBONET_REACT_BOOTSTRAP__ = config\.reactBootstrapPayload \|\| \{\};' "$HTML_FILE" || fail "admin shell bootstrap assignment is missing"
 
 info "loading route bootstrap payload"
-retry_curl "$BOOTSTRAP_JSON" -H "$COOKIE_HEADER" "$BASE_URL/api/admin/app/bootstrap?route=external-monitoring" || fail "bootstrap payload request failed"
+retry_curl "$BOOTSTRAP_JSON" -b "$COOKIE_JAR" -c "$COOKIE_JAR" "$BASE_URL/api/admin/app/bootstrap?route=external-monitoring" || fail "bootstrap payload request failed"
 rg -q '"reactRoute"[[:space:]]*:[[:space:]]*"external-monitoring"' "$BOOTSTRAP_JSON" || fail "bootstrap route is not external-monitoring"
 rg -q '"externalMonitoringPageData"' "$BOOTSTRAP_JSON" || fail "externalMonitoringPageData is missing from bootstrap payload"
 rg -q '"overallStatus"[[:space:]]*:[[:space:]]*"' "$BOOTSTRAP_JSON" || fail "overallStatus is missing from bootstrap payload"

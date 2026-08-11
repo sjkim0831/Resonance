@@ -6,11 +6,15 @@ AUDIT="$ROOT/ops/scripts/audit-account-lock-recovery-assurance.sh"
 PROMOTER="$ROOT/ops/scripts/complete-account-lock-recovery-assurance.sh"
 STATUS_MIGRATION="$ROOT/apps/carbonet-api/src/main/resources/db/migration/postgresql/V20260811194000__fail_close_account_recovery_until_assured.sql"
 STATUS_POSTGRES_TEST="$ROOT/ops/tests/test-account-lock-recovery-process-status-gate-postgres.sh"
+CASE_MIGRATION="$ROOT/apps/carbonet-api/src/main/resources/db/migration/postgresql/V20260811201000__canonicalize_account_recovery_self_service_cases.sql"
+CASE_POSTGRES_TEST="$ROOT/ops/tests/test-account-lock-recovery-self-service-cases-postgres.sh"
 
 bash -n "$AUDIT"
 bash -n "$PROMOTER"
 bash -n "$STATUS_POSTGRES_TEST"
+bash -n "$CASE_POSTGRES_TEST"
 [[ -f "$STATUS_MIGRATION" ]]
+[[ -f "$CASE_MIGRATION" ]]
 
 ACCOUNT_RECOVERY_ASSURANCE_VALIDATE_URL_ONLY=true \
 ACCOUNT_RECOVERY_DELIVERY_URL='https://delivery.internal.example/v1/recovery' \
@@ -106,6 +110,32 @@ done
 for token in unexpected-version draft-status unlocked-definition \
   'definition/version/pre-state mismatch'; do
   grep -Fq "$token" "$STATUS_POSTGRES_TEST" || { echo "[account-lock-recovery-assurance-contract] FAIL status rollback test missing=$token" >&2; exit 1; }
+done
+
+for token in \
+  GENERIC_HTTP_202 APPLICATION_LEVEL_FAIL FIVE_ATTEMPT_LOCK \
+  SINGLE_USE_PROOF SESSION_REVOCATION ONE_SHOT_RESULT \
+  OLD_ACCESS_JWT_REJECTED SAFE_RETRY_RESEND \
+  AMBIGUOUS_SUBJECT_SUPPRESSION EXACTLY_ONCE_IDEMPOTENCY \
+  ASYNC_TIMING_SAFE_DELIVERY PRESERVE_VALID_PROOF_ON_DUPLICATE_VERIFY \
+  ATOMIC_RATE_LIMITS TRUSTED_PROXY_IDENTITY RESEND_INVALIDATES_PREVIOUS \
+  ACCOUNT_LOCK_RECOVERY_HAPPY ACCOUNT_LOCK_RECOVERY_EXCEPTION \
+  ACCOUNT_LOCK_RECOVERY_AUTHORITY ACCOUNT_LOCK_RECOVERY_ISOLATION \
+  ACCOUNT_LOCK_RECOVERY_RECOVERY ACCOUNT_LOCK_RECOVERY_ENUMERATION \
+  ACCOUNT_LOCK_RECOVERY_REPLAY ACCOUNT_LOCK_RECOVERY_BRUTE_FORCE \
+  "process_status='IN_DEVELOPMENT'" "definition_locked" \
+  "DELETE FROM framework_simulation_run" "automated=false" \
+  "jsonb_typeof(steps_json::jsonb)<>'array'" \
+  'jsonb_array_length(steps_json::jsonb)=0' \
+  "jsonb_typeof(assertions_json::jsonb)<>'array'" \
+  'jsonb_array_length(assertions_json::jsonb)=0'; do
+  grep -Fq "$token" "$CASE_MIGRATION" || { echo "[account-lock-recovery-assurance-contract] FAIL case migration missing=$token" >&2; exit 1; }
+done
+
+for token in unexpected-version draft-status unlocked-definition missing-case \
+  'exact approved case set mismatch' 'cases=8 types=6' \
+  'malformed JSON was accepted' 'malformedJson=blocked'; do
+  grep -Fq "$token" "$CASE_POSTGRES_TEST" || { echo "[account-lock-recovery-assurance-contract] FAIL case rollback test missing=$token" >&2; exit 1; }
 done
 
 if grep -Fq 'INSERT INTO framework_simulation_run' "$PROMOTER"; then

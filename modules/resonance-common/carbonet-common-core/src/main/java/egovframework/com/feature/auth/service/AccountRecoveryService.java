@@ -3,7 +3,10 @@ package egovframework.com.feature.auth.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.env.Environment;
+import org.springframework.core.env.Profiles;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -41,7 +44,7 @@ public class AccountRecoveryService {
     private final JdbcTemplate jdbcTemplate;
     private final ObjectMapper objectMapper;
     private final AuthService authService;
-    private final AuthTokenStoreService authTokenStoreService;
+    private final Environment environment;
 
     @Value("${account.recovery.pepper:${token.refreshSecret}}")
     private String recoveryPepper;
@@ -58,6 +61,19 @@ public class AccountRecoveryService {
     public record RequestResult(String requestId, String status, String message, String developmentCode) { }
     public record VerifyResult(String status, String recoveryProof, String message) { }
     public record CompleteResult(String status, String message) { }
+
+    /**
+     * Development codes are test-fixture material, never a production fallback.
+     * Refuse application startup when the switch is accidentally enabled without
+     * the explicit Spring {@code test} profile.
+     */
+    @PostConstruct
+    void validateDevelopmentCodeConfiguration() {
+        if (developmentCodeEnabled && !environment.acceptsProfiles(Profiles.of("test"))) {
+            throw new IllegalStateException(
+                    "Account recovery development codes require the explicit test profile");
+        }
+    }
 
     @Transactional
     public RequestResult requestCode(String userId, String email, String clientIp, String userAgent, boolean english) {
@@ -131,9 +147,23 @@ public class AccountRecoveryService {
         int attempts = number(row, "attempt_count");
         int maxAttempts = number(row, "max_attempts");
         LocalDateTime expiresAt = timestamp(row, "expires_at");
-        if (!"CODE_SENT".equals(status) || attempts >= maxAttempts || expiresAt == null
-                || !expiresAt.isAfter(LocalDateTime.now())) {
-            expireOrLock(requestId, attempts >= maxAttempts ? "LOCKED" : "EXPIRED");
+        if (!"CODE_SENT".equals(status)) {
+            audit(requestId, "CODE_REPLAY_REJECTED", "ANONYMOUS", limited(clientIp, 64),
+                    "STATUS_" + limited(status, 70));
+            return new VerifyResult("fail", null, failure);
+        }
+        if (attempts >= maxAttempts) {
+            expireOrLock(requestId, "LOCKED");
+            audit(requestId, "CODE_REJECTED", "ANONYMOUS", limited(clientIp, 64), "ATTEMPT_LIMIT");
+            return new VerifyResult("fail", null, failure);
+        }
+        if (expiresAt == null) {
+            audit(requestId, "CODE_STATE_REJECTED", "SYSTEM", limited(clientIp, 64), "MISSING_EXPIRY");
+            return new VerifyResult("fail", null, failure);
+        }
+        if (!expiresAt.isAfter(LocalDateTime.now())) {
+            expireOrLock(requestId, "EXPIRED");
+            audit(requestId, "CODE_EXPIRED", "SYSTEM", limited(clientIp, 64), "CHALLENGE_EXPIRED");
             return new VerifyResult("fail", null, failure);
         }
 
@@ -191,13 +221,13 @@ public class AccountRecoveryService {
         }
 
         String userId = value(row, "target_user_id");
-        boolean updated = authService.resetPassword(userId, newPassword, userId, limited(clientIp, 64),
+        String userSe = value(row, "target_user_se");
+        boolean updated = authService.resetPassword(userId, userSe, newPassword, userId, limited(clientIp, 64),
                 "ACCOUNT_RECOVERY");
         if (!updated) {
-            throw new IllegalStateException("Account recovery target disappeared before completion");
+            throw new IllegalStateException(
+                    "Account recovery target type, eligibility, or existence changed before completion");
         }
-        authTokenStoreService.revokeAll(userId);
-        jdbcTemplate.update("DELETE FROM SPRING_SESSION WHERE PRINCIPAL_NAME=?", userId);
         jdbcTemplate.update("""
                 UPDATE account_recovery_request
                    SET status='COMPLETED',proof_hash=NULL,completed_at=CURRENT_TIMESTAMP,updated_at=CURRENT_TIMESTAMP
@@ -211,17 +241,18 @@ public class AccountRecoveryService {
     private AccountSubject findSubject(String userId, String email) {
         List<Map<String, Object>> rows = jdbcTemplate.queryForList("""
                 SELECT user_id,user_se,email FROM (
-                  SELECT MBER_ID AS user_id,'GNR' AS user_se,MBER_EMAIL_ADRES AS email FROM COMTNGNRLMBER
+                  SELECT MBER_ID AS user_id,'GNR' AS user_se,MBER_EMAIL_ADRES AS email
+                    FROM COMTNGNRLMBER WHERE MBER_STTUS='P'
                   UNION ALL
-                  SELECT ENTRPRS_MBER_ID,'ENT',APPLCNT_EMAIL_ADRES FROM COMTNENTRPRSMBER
+                  SELECT ENTRPRS_MBER_ID,'ENT',APPLCNT_EMAIL_ADRES
+                    FROM COMTNENTRPRSMBER WHERE ENTRPRS_MBER_STTUS='A'
                   UNION ALL
-                  SELECT EMPLYR_ID,'USR',EMAIL_ADRES FROM COMTNEMPLYRINFO
+                  SELECT EMPLYR_ID,'USR',EMAIL_ADRES
+                    FROM COMTNEMPLYRINFO WHERE EMPLYR_STTUS_CODE='P'
                 ) account
                 WHERE lower(user_id)=lower(?) AND lower(coalesce(email,''))=lower(?)
-                ORDER BY CASE user_se WHEN 'ENT' THEN 1 WHEN 'USR' THEN 2 ELSE 3 END
-                LIMIT 1
                 """, userId, email);
-        if (rows.isEmpty()) return null;
+        if (rows.size() != 1) return null;
         Map<String, Object> row = rows.get(0);
         return new AccountSubject(value(row, "user_id"), value(row, "user_se"), value(row, "email"));
     }

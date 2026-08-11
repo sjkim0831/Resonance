@@ -46,28 +46,22 @@ BASE_URL="${1:-$(carbonet_runtime_base_url)}"
 emission_require_allowed_value "EMISSION_ROLLOUT_OUTPUT" "$EMISSION_ROLLOUT_OUTPUT" text json
 
 TMP_DIR="$(mktemp -d /tmp/emission-rollout-board.XXXXXX)"
-CLASSPATH_FILE="$EMISSION_VERIFY_CACHE_DIR/runtime.classpath"
-JAVA_SOURCE="$EMISSION_VERIFY_CACHE_DIR/ForgeEmissionManagementToken.java"
-JAVA_CLASS_DIR="$EMISSION_VERIFY_CACHE_DIR/classes"
 COOKIE_JAR="$TMP_DIR/cookies.txt"
 SESSION_JSON="$TMP_DIR/session.json"
 PAGE_DATA_JSON="$TMP_DIR/page-data.json"
 
 cleanup() {
+  if [[ -n "${BASE_URL:-}" ]]; then
+    emission_destroy_cookie_jar "$COOKIE_JAR"
+  fi
   rm -rf "$TMP_DIR"
 }
 trap cleanup EXIT
 emission_load_optional_env "$ENV_FILE"
-TOKEN_ACCESS_SECRET="${TOKEN_ACCESS_SECRET:-change-me-access-secret}"
-TOKEN_REFRESH_SECRET="${TOKEN_REFRESH_SECRET:-change-me-refresh-secret}"
 
 emission_require_cmd curl
-emission_require_cmd mvn
-emission_require_cmd javac
-emission_require_cmd java
+emission_require_cmd jq
 emission_require_cmd python3
-emission_require_file "$ROOT_DIR/pom.xml"
-emission_require_file "$ROOT_DIR/target/classes/egovframework/com/feature/auth/util/JwtTokenProvider.class"
 
 emission_prepare_cached_runtime_artifacts
 emission_create_cookie_jar "$COOKIE_JAR"
@@ -75,13 +69,13 @@ emission_create_cookie_jar "$COOKIE_JAR"
 emission_info "verifying authenticated frontend session"
 emission_curl_to_file_with_retry "$SESSION_JSON" -b "$COOKIE_JAR" -c "$COOKIE_JAR" "$BASE_URL/api/frontend/session" || emission_fail "frontend session request failed"
 
-python3 - <<'PY' "$SESSION_JSON"
+python3 - <<'PY' "$SESSION_JSON" "$CARBONET_QA_AUTH_EFFECTIVE_USER"
 import json, sys
 session = json.load(open(sys.argv[1], encoding="utf-8"))
 if not session.get("authenticated"):
     raise SystemExit("frontend session is not authenticated")
-if session.get("actualUserId") != "webmaster":
-    raise SystemExit("frontend session actualUserId is not webmaster")
+if (session.get("actualUserId") or session.get("userId") or "").lower() != sys.argv[2].lower():
+    raise SystemExit("frontend session is not bound to the isolated QA account")
 PY
 
 emission_info "loading rollout board page-data"

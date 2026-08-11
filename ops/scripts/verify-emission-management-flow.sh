@@ -9,7 +9,7 @@ Usage:
 Purpose:
   Verify that the admin emission management route and API flow work against the
   running local service, including:
-  - authenticated webmaster session bootstrap
+  - authenticated isolated QA session bootstrap
   - page route and page-data
   - category/tier/variable/factor fetch
   - input session save
@@ -95,9 +95,6 @@ EMISSION_HTTP_RETRIES="${EMISSION_HTTP_RETRIES:-3}"
 EMISSION_HTTP_RETRY_SECONDS="${EMISSION_HTTP_RETRY_SECONDS:-1}"
 
 TMP_DIR="$(mktemp -d /tmp/emission-management-flow.XXXXXX)"
-CLASSPATH_FILE="$EMISSION_VERIFY_CACHE_DIR/runtime.classpath"
-JAVA_SOURCE="$EMISSION_VERIFY_CACHE_DIR/ForgeEmissionManagementToken.java"
-JAVA_CLASS_DIR="$EMISSION_VERIFY_CACHE_DIR/classes"
 COOKIE_JAR="$TMP_DIR/cookies.txt"
 SESSION_JSON="$TMP_DIR/session.json"
 HTML_FILE="$TMP_DIR/page.html"
@@ -117,21 +114,18 @@ DEFINITION_PUBLISH_RESPONSE_JSON="$TMP_DIR/definition-publish-response.json"
 DEFINITION_MATERIALIZE_RESPONSE_JSON="$TMP_DIR/definition-materialize-response.json"
 
 cleanup() {
+  if [[ -n "${BASE_URL:-}" ]]; then
+    emission_destroy_cookie_jar "$COOKIE_JAR"
+  fi
   rm -rf "$TMP_DIR"
 }
 trap cleanup EXIT
 emission_load_optional_env "$ENV_FILE"
-TOKEN_ACCESS_SECRET="${TOKEN_ACCESS_SECRET:-change-me-access-secret}"
-TOKEN_REFRESH_SECRET="${TOKEN_REFRESH_SECRET:-change-me-refresh-secret}"
 BASE_URL="${1:-$(carbonet_runtime_base_url)}"
 
 emission_require_cmd curl
-emission_require_cmd mvn
-emission_require_cmd javac
-emission_require_cmd java
+emission_require_cmd jq
 emission_require_cmd python3
-emission_require_file "$ROOT_DIR/pom.xml"
-emission_require_file "$ROOT_DIR/target/classes/egovframework/com/feature/auth/util/JwtTokenProvider.class"
 emission_require_allowed_value "VERIFY_DEFINITION_PUBLISH" "$VERIFY_DEFINITION_PUBLISH" "true" "false"
 emission_require_allowed_value "DEFINITION_RUNTIME_MODE" "$DEFINITION_RUNTIME_MODE" "AUTO" "SHADOW" "PRIMARY"
 emission_require_allowed_value "DEFINITION_MATERIALIZE" "$DEFINITION_MATERIALIZE" "true" "false"
@@ -142,15 +136,15 @@ emission_create_cookie_jar "$COOKIE_JAR"
 emission_info "verifying authenticated frontend session"
 emission_curl_to_file_with_retry "$SESSION_JSON" -b "$COOKIE_JAR" -c "$COOKIE_JAR" "$BASE_URL/api/frontend/session" || emission_fail "frontend session request failed"
 
-python3 - <<'PY' "$SESSION_JSON"
+python3 - <<'PY' "$SESSION_JSON" "$CARBONET_QA_AUTH_EFFECTIVE_USER"
 import json, sys
 session = json.load(open(sys.argv[1], encoding="utf-8"))
 if not session.get("authenticated"):
     raise SystemExit("frontend session is not authenticated")
-if session.get("actualUserId") != "webmaster":
-    raise SystemExit("frontend session actualUserId is not webmaster")
-if session.get("authorCode") != "ROLE_SYSTEM_MASTER":
-    raise SystemExit("frontend session authorCode is not ROLE_SYSTEM_MASTER")
+if (session.get("actualUserId") or session.get("userId") or "").lower() != sys.argv[2].lower():
+    raise SystemExit("frontend session is not bound to the isolated QA account")
+if not session.get("authorCode"):
+    raise SystemExit("frontend session authorCode is missing")
 if "A0020107_VIEW" not in (session.get("featureCodes") or []):
     raise SystemExit("A0020107_VIEW is missing from featureCodes")
 if "A0020107_SESSION_SAVE" not in (session.get("featureCodes") or []):

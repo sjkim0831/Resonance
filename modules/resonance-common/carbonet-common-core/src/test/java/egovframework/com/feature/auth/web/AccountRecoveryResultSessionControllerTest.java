@@ -4,6 +4,9 @@ import egovframework.com.feature.home.web.ReactAppViewSupport;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 import org.junit.jupiter.api.Test;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 import org.springframework.ui.Model;
 
 import java.time.Duration;
@@ -12,6 +15,8 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
@@ -91,6 +96,31 @@ class AccountRecoveryResultSessionControllerTest {
 
         assertFalse(AccountRecoveryResultSession.consume(request));
         assertFalse(AccountRecoveryResultSession.consume(request));
+    }
+
+    @Test
+    void recoveryCompletionInvalidatesAuthenticatedSessionAndGrantsOnlyFreshAnonymousResultSession() {
+        HttpServletRequest request = mock(HttpServletRequest.class);
+        HttpSession previous = statefulSession();
+        HttpSession fresh = statefulSession();
+        when(request.getSession(false)).thenReturn(previous);
+        when(request.getSession(true)).thenReturn(fresh);
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken("member01", "credential"));
+        previous.setAttribute(
+                HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY,
+                SecurityContextHolder.getContext());
+
+        try {
+            AccountRecoveryResultSession.rotateAndGrant(request);
+
+            assertNull(SecurityContextHolder.getContext().getAuthentication());
+            verify(previous).invalidate();
+            assertNull(fresh.getAttribute(HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY));
+            assertNotNull(fresh.getAttribute(AccountRecoveryResultSession.COMPLETED_AT_ATTRIBUTE));
+        } finally {
+            SecurityContextHolder.clearContext();
+        }
     }
 
     private HttpSession statefulSession() {
