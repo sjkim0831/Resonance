@@ -74,6 +74,17 @@
       "timeoutSeconds": 300,
       "deployLockMode": "SHARED_PARENT",
       "externalBlockers": []
+    },
+    {
+      "priority": 70,
+      "processCode": "ORGANIZATIONAL_BOUNDARY",
+      "runner": "ops/scripts/complete-organizational-boundary-assurance.sh",
+      "automation": "AUTOMATIC",
+      "expectedCurrentPassedSteps": 4,
+      "totalSteps": 4,
+      "timeoutSeconds": 300,
+      "deployLockMode": "SHARED_PARENT",
+      "externalBlockers": []
     }
   ]
 }
