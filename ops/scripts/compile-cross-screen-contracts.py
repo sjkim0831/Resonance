@@ -28,6 +28,8 @@ def key_for(f):
     prop=f.get("apiProperty") or f.get("fieldCode")
     return f"api:{str(prop).strip().lower()}"
 def parse_api(value):
+    if isinstance(value,dict) and isinstance(value.get("contract"),(dict,str)):
+        return parse_api(value["contract"])
     if isinstance(value,str):
         parts=value.strip().split(maxsplit=1)
         return (parts[0].upper(),parts[1].split("?")[0]) if len(parts)==2 else None
