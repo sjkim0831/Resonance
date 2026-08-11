@@ -34,7 +34,7 @@ try {
       const route = `${routeBase}${separator}step=${encodeURIComponent(stepCode.toLowerCase())}`;
       const startedAt = Date.now();
       const response = await page.goto(`${baseURL}${route}`, { waitUntil: "domcontentloaded", timeout: 20_000 });
-      await page.waitForFunction(() => (document.querySelector("#root")?.children.length || 0) > 0 && document.querySelectorAll("h1,h2").length > 0 && document.querySelectorAll("input,select,textarea,button,a[href]").length >= 4, undefined, { timeout: 10_000 });
+      await page.waitForFunction(() => (document.querySelector("#root")?.children.length || 0) > 0 && (document.body?.innerText || "").includes("SCREEN COORDINATE") && document.querySelectorAll("input,select,textarea,button,a[href]").length >= 8, undefined, { timeout: 10_000 });
       const durationMs = Date.now() - startedAt;
       const state = await page.evaluate(() => ({
         pathname: location.pathname,
