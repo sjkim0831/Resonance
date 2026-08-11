@@ -1549,6 +1549,8 @@ if [[ "$PLAN_RUNTIME_REQUIRED" != "true" ]]; then
       ops/scripts/run-process-development-dispatcher.sh \
       ops/scripts/test-process-worker-deploy-marker.sh \
       ops/scripts/run-project-auto-completion-orchestrator.sh \
+      ops/scripts/run-next-current-business-e2e.sh \
+      ops/runtime-metadata/business-e2e-runner-registry.json \
       ops/scripts/configure-patroni-memory-safety.sh \
       ops/tests/test-patroni-memory-safety.sh \
       ops/scripts/resonance-all-process-contract-audit.sh \
