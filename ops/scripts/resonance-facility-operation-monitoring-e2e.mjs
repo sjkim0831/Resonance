@@ -110,10 +110,23 @@ try {
   }
 
   const browser = await chromium.launch({ headless: true });
+  const browserContexts = new Map();
   try {
     for (const transition of transitions) {
+      if (browserContexts.has(transition.actorCode)) continue;
+      const actorApi = clients.get(transition.actorCode);
+      const context = await browser.newContext({ storageState: await actorApi.storageState(), viewport: { width: 1440, height: 1000 } });
+      browserContexts.set(transition.actorCode, context);
+      const warmup = await context.newPage();
+      const warmRoute = `${routeFor(transition.stepCode)}${routeFor(transition.stepCode).includes("?") ? "&" : "?"}projectId=${encodeURIComponent(projectId)}`;
+      await warmup.goto(`${baseURL}${warmRoute}`, { waitUntil: "domcontentloaded", timeout: 20_000 });
+      await warmup.waitForFunction(() => (document.querySelector("#root")?.children.length || 0) > 0 && document.querySelectorAll("h1,h2").length > 0, undefined, { timeout: 20_000 });
+      await warmup.close();
+    }
+    for (const transition of transitions) {
       const api = clients.get(transition.actorCode);
-      const context = await browser.newContext({ storageState: await api.storageState(), viewport: { width: 1440, height: 1000 } });
+      const context = browserContexts.get(transition.actorCode);
+      if (!context) throw new Error(`missing warmed actor context=${transition.actorCode}`);
       const page = await context.newPage();
       const route = `${routeFor(transition.stepCode)}${routeFor(transition.stepCode).includes("?") ? "&" : "?"}projectId=${encodeURIComponent(projectId)}`;
       const startedAt = Date.now();
@@ -130,7 +143,7 @@ try {
       if ((response?.status() || 0) >= 400 || desktop.overflow || mobileOverflow || desktop.controls < 4 || desktop.headings < 1) throw new Error(`responsive screen failed ${transition.stepCode}`);
       routeEvidence.push({ stepCode: transition.stepCode, actorCode: transition.actorCode, desktop: 1, mobile: 1, controls: desktop.controls, desktopDurationMs, mobileDurationMs, durationMs: Math.max(desktopDurationMs, mobileDurationMs) });
       samples.push(desktopDurationMs, mobileDurationMs);
-      await context.close();
+      await page.close();
     }
   } finally { await browser.close(); }
 
