@@ -1507,11 +1507,75 @@ run_parallel_contract_tests() {
   echo "[auto-deploy] parallel catalog contract tests PASS jobs=${#tests[@]} logs=$log_dir"
 }
 
+run_operational_usage_ledger_static_contract_if_required() {
+  [[ ",${PLAN_TESTS:-}," == *",runtime:operational-usage-ledger-e2e,"* ]] || return 0
+  bash ops/scripts/test-operational-usage-ledger-e2e-contract.sh "$ROOT_DIR"
+  echo "[auto-deploy] operational usage ledger static contract PASS"
+}
+
+run_operational_usage_ledger_live_e2e_if_required() {
+  local expected_commit="${1:-$target_commit}"
+  local timeout_seconds="${CARBONET_USAGE_LEDGER_E2E_TIMEOUT_SECONDS:-60}"
+  [[ ",${PLAN_TESTS:-}," == *",runtime:operational-usage-ledger-e2e,"* ]] || return 0
+  [[ "$timeout_seconds" =~ ^[1-9][0-9]*$ ]] || {
+    echo "[auto-deploy] invalid operational usage ledger E2E timeout" >&2
+    invalidate_runtime_release_state
+    return 1
+  }
+  if ! timeout --signal=TERM --kill-after=10s "$timeout_seconds" \
+      bash ops/scripts/validate-operational-usage-ledger-e2e.sh \
+        "$ROOT_DIR" "$expected_commit" "${CARBONET_PUBLIC_BASE_URL:-http://127.0.0.1}"; then
+    echo "[auto-deploy] operational usage ledger authenticated E2E failed or exceeded ${timeout_seconds}s" >&2
+    invalidate_runtime_release_state
+    return 1
+  fi
+  echo "[auto-deploy] operational usage ledger authenticated E2E PASS budget=${timeout_seconds}s"
+}
+
+verify_operational_usage_ledger_current_runtime_identity() {
+  local expected_commit="$1"
+  local marker_commit annotation_commit ledger_commit deployment_json
+  local marker_matches=false annotation_matches=false ledger_matches=false
+
+  [[ "$expected_commit" =~ ^[0-9a-f]{40}$ ]] || {
+    echo "[auto-deploy] STATIC_ONLY_BLOCKED_RUNTIME_IDENTITY_MISMATCH expected commit is invalid" >&2
+    return 1
+  }
+  marker_commit="$(tr -d '[:space:]' <"$DEPLOY_STATE_FILE" 2>/dev/null || true)"
+  deployment_json="$(kubectl -n "$NAMESPACE" get "deployment/$DEPLOYMENT" -o json 2>/dev/null || true)"
+  annotation_commit="$(jq -r '.metadata.annotations["resonance.ai/target-commit"] // empty' <<<"$deployment_json" 2>/dev/null || true)"
+  ledger_commit="$(
+    printf '%s\n' "select source_commit from framework_runtime_release_state where release_key='CARBONET_RUNTIME' and health_status='UP';" |
+      kubectl -n "$NAMESPACE" exec -i "$POSTGRES_POD" -c "$POSTGRES_CONTAINER" -- \
+        psql -h 127.0.0.1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" -X -q -At -v ON_ERROR_STOP=1 \
+        2>/dev/null || true
+  )"
+  marker_commit="$(printf '%s' "$marker_commit" | tr -d '[:space:]')"
+  annotation_commit="$(printf '%s' "$annotation_commit" | tr -d '[:space:]')"
+  ledger_commit="$(printf '%s' "$ledger_commit" | tr -d '[:space:]')"
+  [[ "$marker_commit" == "$expected_commit" ]] && marker_matches=true
+  [[ "$annotation_commit" == "$expected_commit" ]] && annotation_matches=true
+  [[ "$ledger_commit" == "$expected_commit" ]] && ledger_matches=true
+  if [[ "$marker_matches" != "true" || "$annotation_matches" != "true" || "$ledger_matches" != "true" ]]; then
+    echo "[auto-deploy] STATIC_ONLY_BLOCKED_RUNTIME_IDENTITY_MISMATCH markerMatch=$marker_matches annotationMatch=$annotation_matches ledgerMatch=$ledger_matches" >&2
+    return 1
+  fi
+  echo "[auto-deploy] current runtime identity PASS marker=annotation=ledger"
+}
+
+run_operational_usage_ledger_current_runtime_e2e_if_required() {
+  local expected_commit="$1"
+  [[ ",${PLAN_TESTS:-}," == *",runtime:operational-usage-ledger-e2e,"* ]] || return 0
+  verify_operational_usage_ledger_current_runtime_identity "$expected_commit"
+  run_operational_usage_ledger_live_e2e_if_required "$expected_commit"
+}
+
 # Documentation, design metadata, catalog and automation-only changes do not
 # alter the running application. Fast-forward and refresh the searchable source
 # catalog without an unnecessary DB dump, JVM build, image build or rollout.
 if [[ "$PLAN_RUNTIME_REQUIRED" != "true" ]]; then
   git merge --ff-only "$target_commit"
+  run_operational_usage_ledger_static_contract_if_required
   mapfile -t deploy_changed_paths < <(
     git diff --name-only --diff-filter=ACMRD "$deployed_commit" "$target_commit"
   )
@@ -1776,6 +1840,7 @@ if [[ "$PLAN_RUNTIME_REQUIRED" != "true" ]]; then
   record_deploy_phase "actor_role_e2e"
   wait_backstage_visual_e2e
   record_deploy_phase "backstage_visual_e2e"
+  run_operational_usage_ledger_current_runtime_e2e_if_required "$deployed_commit"
   printf '%s\n' "$target_commit" > "${DEPLOY_STATE_FILE}.tmp"
   mv "${DEPLOY_STATE_FILE}.tmp" "$DEPLOY_STATE_FILE"
   if [[ "$PLAN_BACKSTAGE_REQUIRED" == "true" ]]; then
@@ -2100,6 +2165,7 @@ echo "[auto-deploy] frontend build required: $([[ "$skip_frontend" == "true" ]] 
 # frontend build will replace it only after closure validation.
 git merge --ff-only "$target_commit"
 restore_live_frontend_overlay
+run_operational_usage_ledger_static_contract_if_required
 if [[ "$PLAN_BACKEND_REQUIRED" == "true" ]]; then
   # Run guards introduced by the pending commit only after that exact revision
   # is present in the selected deployment worktree.
@@ -2154,6 +2220,7 @@ if [[ "$PLAN_FRONTEND_REQUIRED" == "true" \
   bash ops/scripts/sync-unified-asset-catalog.sh "$deployed_commit" "$target_commit"
   record_deploy_phase "frontend_build_and_verify"
   record_runtime_release_state "$target_commit"
+  run_operational_usage_ledger_live_e2e_if_required
   printf '%s\n' "$target_commit" > "${DEPLOY_STATE_FILE}.tmp"
   mv "${DEPLOY_STATE_FILE}.tmp" "$DEPLOY_STATE_FILE"
   record_deploy_performance frontend
@@ -2175,6 +2242,7 @@ if [[ "$PLAN_RUNTIME_REQUIRED" == "true" \
   record_deploy_phase "runtime_profile_and_verify"
   rm -f "$ROOT_DIR/var/run/full-screen-deploy-gate/active.env"
   record_runtime_release_state "$target_commit"
+  run_operational_usage_ledger_live_e2e_if_required
   printf '%s\n' "$target_commit" > "${DEPLOY_STATE_FILE}.tmp"
   mv "${DEPLOY_STATE_FILE}.tmp" "$DEPLOY_STATE_FILE"
   record_deploy_performance runtime
@@ -2217,6 +2285,7 @@ if [[ "$PLAN_FRONTEND_REQUIRED" != "true" \
   fi
   node "$ROOT_DIR/ops/scripts/verify-react-asset-closure.mjs" "$live_frontend_overlay"
   bash ops/scripts/sync-unified-asset-catalog.sh "$deployed_commit" "$target_commit"
+  run_operational_usage_ledger_current_runtime_e2e_if_required "$deployed_commit"
   record_deploy_phase "automation_validation"
   rm -f "$ROOT_DIR/var/run/full-screen-deploy-gate/active.env"
   printf '%s\n' "$target_commit" > "${DEPLOY_STATE_FILE}.tmp"
@@ -2362,6 +2431,7 @@ sync_react_asset_prune_worker_if_required
 bash ops/scripts/normalize-deploy-generated-assets.sh "$ROOT_DIR"
 record_deploy_phase "postdeploy_validation"
 record_runtime_release_state "$target_commit"
+run_operational_usage_ledger_live_e2e_if_required
 printf '%s\n' "$target_commit" > "${DEPLOY_STATE_FILE}.tmp"
 mv "${DEPLOY_STATE_FILE}.tmp" "$DEPLOY_STATE_FILE"
 if [[ "$runtime_candidate_checkpoint_eligible" == "true" ]]; then

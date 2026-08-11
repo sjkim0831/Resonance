@@ -9,6 +9,9 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -53,6 +56,115 @@ class ActorProcessGovernanceApiControllerAssignmentTest {
 
         assertEquals(200,response.getStatusCode().value());
         verify(service).assignActorAuthorized(body,"company-manager","TENANT_A","ROLE_ADMIN",false);
+    }
+
+    @Test
+    void anonymousSystemReportReadIsRejectedBeforeTheService(){
+        when(users.resolve(request)).thenReturn(context("","","",false,false));
+
+        var response=controller.systemTestReport("","","",true,0,50,request);
+
+        assertEquals(401,response.getStatusCode().value());
+        verify(service,never()).systemProcessTestReport(anyString(),anyString(),anyString(),anyBoolean(),anyInt(),anyInt());
+    }
+
+    @Test
+    void systemReportPageBootstrapDatasetsUseTheSameFailClosedRoleGuard(){
+        when(users.resolve(request)).thenReturn(context("company-user","TENANT_A","ROLE_ADMIN",true,false));
+        assertEquals(403,controller.dashboard(request).getStatusCode().value());
+        assertEquals(403,controller.dashboardCore(request).getStatusCode().value());
+        assertEquals(403,controller.designAssets(request).getStatusCode().value());
+        verify(service,never()).dashboard();
+        verify(service,never()).dashboardCore();
+        verify(service,never()).designAssetInventory();
+
+        when(users.resolve(request)).thenReturn(context("system-admin","DEFAULT","ROLE_SYSTEM_ADMIN",true,false));
+        assertEquals(200,controller.dashboard(request).getStatusCode().value());
+        assertEquals(200,controller.dashboardCore(request).getStatusCode().value());
+        assertEquals(200,controller.designAssets(request).getStatusCode().value());
+    }
+
+    @Test
+    void ordinaryAndOperationAdministratorsCannotReadTheSystemReport(){
+        when(users.resolve(request)).thenReturn(context("company-user","TENANT_A","ROLE_ADMIN",true,false));
+        assertEquals(403,controller.systemTestReport("","","",true,0,50,request).getStatusCode().value());
+        when(users.resolve(request)).thenReturn(context("operations-user","DEFAULT","ROLE_OPERATION_ADMIN",true,false));
+        assertEquals(403,controller.systemTestReport("","","",true,0,50,request).getStatusCode().value());
+        verify(service,never()).systemProcessTestReport(anyString(),anyString(),anyString(),anyBoolean(),anyInt(),anyInt());
+    }
+
+    @Test
+    void systemAdministratorCanReadTheBoundedCompactReport(){
+        when(users.resolve(request)).thenReturn(context("system-admin","DEFAULT","ROLE_SYSTEM_ADMIN",true,false));
+
+        var response=controller.systemTestReport("EMISSION","EMISSION_PROJECT","",true,2,50,request);
+
+        assertEquals(200,response.getStatusCode().value());
+        verify(service).systemProcessTestReport("EMISSION","EMISSION_PROJECT","",true,2,50);
+    }
+
+    @Test
+    void stepDetailRequiresPlatformAdministrationAndReturnsOnlyTheFullSelectedStep(){
+        when(users.resolve(request)).thenReturn(context("company-user","TENANT_A","ROLE_ADMIN",true,false));
+        assertEquals(403,controller.systemTestReportStepDetail("EMISSION_PROJECT","STEP_1",request).getStatusCode().value());
+        verify(service,never()).systemProcessTestReportStepDetail(anyString(),anyString());
+
+        when(users.resolve(request)).thenReturn(context("system-admin","DEFAULT","ROLE_SYSTEM_ADMIN",true,false));
+        when(service.systemProcessTestReportStepDetail("EMISSION_PROJECT","STEP_1")).thenReturn(Map.of(
+                "success",true,"detailMode","SELECTED_STEP_FULL","reviewCriticalFieldsComplete",true,"item",Map.of()));
+        var response=controller.systemTestReportStepDetail("EMISSION_PROJECT","STEP_1",request);
+        assertEquals(200,response.getStatusCode().value());
+        assertEquals(true,((Map<?,?>)response.getBody()).get("reviewCriticalFieldsComplete"));
+        verify(service).systemProcessTestReportStepDetail("EMISSION_PROJECT","STEP_1");
+    }
+
+    @Test
+    void missingStepDetailIsA404InsteadOfAnEmptyReviewableRow(){
+        when(users.resolve(request)).thenReturn(context("system-admin","DEFAULT","ROLE_SYSTEM_ADMIN",true,false));
+        when(service.systemProcessTestReportStepDetail("EMISSION_PROJECT","MISSING"))
+                .thenThrow(new java.util.NoSuchElementException("SYSTEM_TEST_REPORT_STEP_NOT_FOUND"));
+
+        var response=controller.systemTestReportStepDetail("EMISSION_PROJECT","MISSING",request);
+
+        assertEquals(404,response.getStatusCode().value());
+        assertEquals("SYSTEM_TEST_REPORT_STEP_NOT_FOUND",((Map<?,?>)response.getBody()).get("message"));
+    }
+
+    @Test
+    void ordinaryUserCannotAuditOrReviewTheSystemReport(){
+        when(users.resolve(request)).thenReturn(context("company-user","TENANT_A","ROLE_ADMIN",true,false));
+
+        assertEquals(403,controller.auditSystemTestReport(Map.of("processCode","EMISSION_PROJECT"),request).getStatusCode().value());
+        assertEquals(403,controller.saveSystemTestReportReview(Map.of("processCode","EMISSION_PROJECT"),request).getStatusCode().value());
+        verify(service,never()).auditSystemProcessContracts(any(),anyString());
+        verify(service,never()).saveSystemUsageReview(any(),anyString());
+    }
+
+    @Test
+    void systemMasterIdentityIsTheOnlyAuditAndReviewExecutor(){
+        when(users.resolve(request)).thenReturn(context("platform-reviewer","DEFAULT","ROLE_SYSTEM_MASTER",true,false));
+        Map<String,Object> audit=Map.of("processCode","EMISSION_PROJECT");
+        Map<String,Object> review=Map.of("processCode","EMISSION_PROJECT","stepCode","STEP_1","reviewStatus","APPROVED");
+
+        assertEquals(200,controller.auditSystemTestReport(audit,request).getStatusCode().value());
+        assertEquals(200,controller.saveSystemTestReportReview(review,request).getStatusCode().value());
+        verify(service).auditSystemProcessContracts(audit,"platform-reviewer");
+        verify(service).saveSystemUsageReview(review,"platform-reviewer");
+    }
+
+    @Test
+    void reviewIdempotencyReuseMismatchIs409WhileOrdinaryValidationRemains400(){
+        when(users.resolve(request)).thenReturn(context("system-admin","DEFAULT","ROLE_SYSTEM_ADMIN",true,false));
+        Map<String,Object> mismatch=Map.of("processCode","P","stepCode","S","idempotencyKey","same-key");
+        when(service.saveSystemUsageReview(mismatch,"system-admin"))
+                .thenThrow(new IllegalArgumentException("IDEMPOTENCY_KEY_REUSE_MISMATCH"));
+        assertEquals(409,controller.saveSystemTestReportReview(mismatch,request).getStatusCode().value());
+        assertEquals("IDEMPOTENCY_KEY_REUSE_MISMATCH",((Map<?,?>)controller.saveSystemTestReportReview(mismatch,request).getBody()).get("message"));
+
+        Map<String,Object> invalid=Map.of("processCode","P","stepCode","S","reviewStatus","CHANGE_REQUESTED");
+        when(service.saveSystemUsageReview(invalid,"system-admin"))
+                .thenThrow(new IllegalArgumentException("reviewNote is required for CHANGE_REQUESTED"));
+        assertEquals(400,controller.saveSystemTestReportReview(invalid,request).getStatusCode().value());
     }
 
     private CurrentUserContextService.CurrentUserContext context(String user,String tenant,String authority,boolean authenticated,boolean webmaster){

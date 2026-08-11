@@ -16,14 +16,14 @@ import java.util.UUID;
 public class ActorProcessGovernanceApiController {
     private final ActorProcessGovernanceService service;
     private final CurrentUserContextService currentUserContextService;
-    @GetMapping public Map<String,Object> dashboard(){return service.dashboard();}
-    @GetMapping("/dashboard/core") public Map<String,Object> dashboardCore(){return service.dashboardCore();}
+    @GetMapping public ResponseEntity<?> dashboard(HttpServletRequest request){var context=currentUserContextService.resolve(request);ResponseEntity<?> denied=systemReportAccessFailure(context);return denied==null?ResponseEntity.ok(service.dashboard()):denied;}
+    @GetMapping("/dashboard/core") public ResponseEntity<?> dashboardCore(HttpServletRequest request){var context=currentUserContextService.resolve(request);ResponseEntity<?> denied=systemReportAccessFailure(context);return denied==null?ResponseEntity.ok(service.dashboardCore()):denied;}
     @GetMapping("/process-closing") public Map<String,Object> processClosing(){return service.processClosingStatus();}
     @PostMapping("/process-closing/audit") public ResponseEntity<?> auditProcessClosing(HttpServletRequest request){Principal p=request.getUserPrincipal();try{return ResponseEntity.ok(service.auditProcessClosing(p==null?"SYSTEM":p.getName()));}catch(Exception e){return bad(e);}}
     @GetMapping("/executable-screens") public Map<String,Object> executableScreens(@RequestParam(defaultValue="") String status,@RequestParam(defaultValue="0") int page,@RequestParam(defaultValue="100") int size){return service.executableScreens(status,page,size);}
     @GetMapping("/process-design") public ResponseEntity<?> processDesign(@RequestParam String processCode){try{return ResponseEntity.ok(service.processDesign(processCode));}catch(Exception e){return bad(e);}}
     @GetMapping("/cases") public ResponseEntity<?> cases(@RequestParam String processCode){try{return ResponseEntity.ok(service.simulationCases(processCode));}catch(Exception e){return bad(e);}}
-    @GetMapping("/design-assets") public Map<String,Object> designAssets(){return service.designAssetInventory();}
+    @GetMapping("/design-assets") public ResponseEntity<?> designAssets(HttpServletRequest request){var context=currentUserContextService.resolve(request);ResponseEntity<?> denied=systemReportAccessFailure(context);return denied==null?ResponseEntity.ok(service.designAssetInventory()):denied;}
     @GetMapping("/assets/search") public Map<String,Object> searchAssets(@RequestParam(defaultValue="") String query,@RequestParam(defaultValue="") String assetType,@RequestParam(defaultValue="30") int limit){return service.searchAssetCatalog(query,assetType,limit);}
     @GetMapping("/assets/impact") public ResponseEntity<?> assetImpact(@RequestParam String assetId,@RequestParam(defaultValue="2") int depth){try{return ResponseEntity.ok(service.assetImpact(assetId,depth));}catch(Exception e){return bad(e);}}
     @PostMapping("/assets/refresh") public ResponseEntity<?> refreshAssets(HttpServletRequest request){Principal p=request.getUserPrincipal();try{return ResponseEntity.ok(service.refreshAssetCatalog(p==null?"SYSTEM":p.getName()));}catch(Exception e){return bad(e);}}
@@ -60,8 +60,41 @@ public class ActorProcessGovernanceApiController {
     @GetMapping("/design/professional-graph") public ResponseEntity<?> professionalGraph(@RequestParam(defaultValue="") String workTypeCode,@RequestParam(defaultValue="") String processCode){try{return ResponseEntity.ok(service.professionalDesignGraph(workTypeCode,processCode));}catch(Exception e){return bad(e);}}
     @GetMapping("/page-development-master") public ResponseEntity<?> pageDevelopmentMaster(@RequestParam(defaultValue="") String query,@RequestParam(defaultValue="") String processCode,@RequestParam(defaultValue="") String status){try{return ResponseEntity.ok(service.pageDevelopmentMaster(query,processCode,status));}catch(Exception e){return bad(e);}}
     @GetMapping("/page-development-master/{itemId}") public ResponseEntity<?> pageDevelopmentMasterDetail(@PathVariable long itemId){try{return ResponseEntity.ok(service.pageDevelopmentMasterDetail(itemId));}catch(Exception e){return bad(e);}}
-    @GetMapping("/system-test-report") public ResponseEntity<?> systemTestReport(@RequestParam(defaultValue="") String domainCode,@RequestParam(defaultValue="") String processCode,@RequestParam(defaultValue="") String result,@RequestParam(defaultValue="false") boolean compact){try{return ResponseEntity.ok(service.systemProcessTestReport(domainCode,processCode,result,compact));}catch(Exception e){return bad(e);}}
-    @PostMapping("/system-test-report/audit") public ResponseEntity<?> auditSystemTestReport(@RequestBody(required=false) Map<String,Object>b,HttpServletRequest request){Principal p=request.getUserPrincipal();try{return ResponseEntity.ok(service.auditSystemProcessContracts(b==null?Map.of():b,p==null?"SYSTEM":p.getName()));}catch(Exception e){return bad(e);}}
+    @GetMapping("/system-test-report")
+    public ResponseEntity<?> systemTestReport(@RequestParam(defaultValue="") String domainCode,
+                                               @RequestParam(defaultValue="") String processCode,
+                                               @RequestParam(defaultValue="") String result,
+                                               @RequestParam(defaultValue="true") boolean compact,
+                                               @RequestParam(defaultValue="0") int page,
+                                               @RequestParam(defaultValue="50") int size,
+                                               HttpServletRequest request){
+        var context=currentUserContextService.resolve(request);ResponseEntity<?> denied=systemReportAccessFailure(context);if(denied!=null)return denied;
+        try{return ResponseEntity.ok(service.systemProcessTestReport(domainCode,processCode,result,compact,page,size));}catch(Exception e){return bad(e);}
+    }
+    @GetMapping("/system-test-report/step-detail")
+    public ResponseEntity<?> systemTestReportStepDetail(@RequestParam String processCode,
+                                                         @RequestParam String stepCode,
+                                                         HttpServletRequest request){
+        var context=currentUserContextService.resolve(request);ResponseEntity<?> denied=systemReportAccessFailure(context);if(denied!=null)return denied;
+        try{return ResponseEntity.ok(service.systemProcessTestReportStepDetail(processCode,stepCode));}
+        catch(java.util.NoSuchElementException e){return ResponseEntity.status(404).body(Map.of("success",false,"message","SYSTEM_TEST_REPORT_STEP_NOT_FOUND"));}
+        catch(Exception e){return bad(e);}
+    }
+    @PostMapping("/system-test-report/audit")
+    public ResponseEntity<?> auditSystemTestReport(@RequestBody(required=false) Map<String,Object>b,HttpServletRequest request){
+        var context=currentUserContextService.resolve(request);ResponseEntity<?> denied=systemReportAccessFailure(context);if(denied!=null)return denied;
+        try{return ResponseEntity.ok(service.auditSystemProcessContracts(b==null?Map.of():b,context.getUserId()));}catch(Exception e){return bad(e);}
+    }
+    @PostMapping("/system-test-report/reviews")
+    public ResponseEntity<?> saveSystemTestReportReview(@RequestBody Map<String,Object>b,HttpServletRequest request){
+        var context=currentUserContextService.resolve(request);ResponseEntity<?> denied=systemReportAccessFailure(context);if(denied!=null)return denied;
+        try{return ResponseEntity.ok(service.saveSystemUsageReview(b,context.getUserId()));}
+        catch(IllegalArgumentException e){
+            if("IDEMPOTENCY_KEY_REUSE_MISMATCH".equals(e.getMessage()))
+                return ResponseEntity.status(409).body(Map.of("success",false,"message","IDEMPOTENCY_KEY_REUSE_MISMATCH"));
+            return bad(e);
+        }catch(Exception e){return bad(e);}
+    }
     @PostMapping("/screen-workflow-test") public ResponseEntity<?> runScreenWorkflowTest(@RequestBody Map<String,Object>b,HttpServletRequest request){Principal p=request.getUserPrincipal();try{return ResponseEntity.ok(service.runDeterministicScreenWorkflowTest(b,p==null?"SYSTEM":p.getName()));}catch(Exception e){return bad(e);}}
     @GetMapping("/screen-workflow-test-cases") public ResponseEntity<?> screenWorkflowTestCases(@RequestParam long screenResourceId,@RequestParam String processCode,@RequestParam String stepCode,@RequestParam(defaultValue="ALL") String capabilityCode){try{return ResponseEntity.ok(service.screenWorkflowTestCases(screenResourceId,processCode,stepCode,capabilityCode));}catch(Exception e){return bad(e);}}
     @PostMapping("/screen-workflow-test-cases") public ResponseEntity<?> saveScreenWorkflowTestCase(@RequestBody Map<String,Object>b,HttpServletRequest request){Principal p=request.getUserPrincipal();try{return ResponseEntity.ok(service.saveScreenWorkflowTestCase(b,p==null?"SYSTEM":p.getName()));}catch(Exception e){return bad(e);}}
@@ -100,5 +133,13 @@ public class ActorProcessGovernanceApiController {
         if(context.isWebmaster())return true;
         String authority=context.getAuthorCode()==null?"":context.getAuthorCode().trim().toUpperCase(java.util.Locale.ROOT);
         return java.util.Set.of("ROLE_SYSTEM_MASTER","ROLE_SYSTEM_ADMIN","ROLE_OPERATION_ADMIN").contains(authority);
+    }
+    private ResponseEntity<?> systemReportAccessFailure(CurrentUserContextService.CurrentUserContext context){
+        if(!context.isAuthenticated()||context.getUserId()==null||context.getUserId().isBlank())
+            return ResponseEntity.status(401).body(Map.of("success",false,"message","AUTHENTICATION_REQUIRED"));
+        if(context.isWebmaster())return null;
+        String authority=context.getAuthorCode()==null?"":context.getAuthorCode().trim().toUpperCase(java.util.Locale.ROOT);
+        if(java.util.Set.of("ROLE_SYSTEM_MASTER","ROLE_SYSTEM_ADMIN").contains(authority))return null;
+        return ResponseEntity.status(403).body(Map.of("success",false,"message","SYSTEM_REPORT_ADMIN_REQUIRED"));
     }
 }

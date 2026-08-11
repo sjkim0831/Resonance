@@ -17,14 +17,16 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class ActorProcessGovernanceServiceSecurityTest {
     private final JdbcTemplate jdbc = mock(JdbcTemplate.class);
-    private final ActorProcessGovernanceService service = new ActorProcessGovernanceService(
-            jdbc, mock(ScreenDevelopmentNoteService.class), mock(CodexProvisioningService.class), mock(ScreenContractRuntimeService.class));
+    private final ActorProcessGovernanceService service = spy(new ActorProcessGovernanceService(
+            jdbc, mock(ScreenDevelopmentNoteService.class), mock(CodexProvisioningService.class), mock(ScreenContractRuntimeService.class)));
 
     @Test
     void persistedDesignCompleteStatusCanBeSavedAgain() {
@@ -50,6 +52,7 @@ class ActorProcessGovernanceServiceSecurityTest {
 
         Map<String, Object> report = service.systemProcessTestReport("", "", "");
         @SuppressWarnings("unchecked") Map<String, Object> summary = (Map<String, Object>) report.get("summary");
+        @SuppressWarnings("unchecked") Map<String,Object> orderContract=(Map<String,Object>)report.get("orderContract");
 
         ArgumentCaptor<String> sqlCaptor=ArgumentCaptor.forClass(String.class);
         verify(jdbc).queryForList(sqlCaptor.capture(),any(Object[].class));
@@ -73,6 +76,21 @@ class ActorProcessGovernanceServiceSecurityTest {
         assertTrue(sqlCaptor.getValue().contains("report_options as (select ?::boolean compact,?::int compact_limit_bytes)")
                         && sqlCaptor.getValue().contains("options.compact_limit_bytes"),
                 "the report query must compact oversized evidence before JDBC materializes the response");
+        assertTrue(sqlCaptor.getValue().contains("evidence.evidence_json ?? 'contractFingerprint'"),
+                "PGJDBC JSON existence operators must be escaped as ?? so the ten report bind parameters stay aligned");
+        assertTrue(sqlCaptor.getValue().contains("framework_business_process_sequence")
+                        && sqlCaptor.getValue().contains("p.workflow_order,p.process_code,p.step_order"),
+                "actual-use rows must follow the business workflow sequence instead of development priority");
+        assertTrue(sqlCaptor.getValue().contains("p.domain_code,p.domain_name,p.domain_order,p.process_code,p.process_name")
+                        &&sqlCaptor.getValue().contains("p.workflow_order,p.workflow_phase,p.process_role,p.process_version"),
+                "whole-step human review fingerprints must become stale when canonical work/process ordering metadata changes");
+        assertTrue(sqlCaptor.getValue().contains("capability_scope_fingerprints")
+                        &&sqlCaptor.getValue().contains("string_agg(contract_fingerprint,'|' order by audience)"),
+                "capability review freshness must aggregate every active audience instead of accepting any one audience");
+        assertTrue(sqlCaptor.getValue().contains("'BUSINESS_E2E'")
+                        && sqlCaptor.getValue().contains("'CONTRACT_SIMULATION'")
+                        && sqlCaptor.getValue().contains("'HUMAN_REVIEW_ONLY'"),
+                "evidence and human review tiers must be explicit and non-interchangeable");
 
         assertEquals("CONTRACT_ONLY", report.get("auditMode"));
         assertEquals(false, report.get("businessFunctionsExecuted"));
@@ -81,6 +99,36 @@ class ActorProcessGovernanceServiceSecurityTest {
         assertEquals("INVENTORY_AND_SIMULATION_EVIDENCE_ONLY", summary.get("fixtureSuiteMode"));
         assertEquals("NO_CURRENT_VERSION_EVIDENCE", summary.get("businessEvidenceStatus"));
         assertEquals("ACTIVE_BINDING_CAPABILITY", summary.get("auditTargetMode"));
+        assertEquals(List.of("domainOrder","workflowOrder","processCode","stepOrder","stepCode"),orderContract.get("fields"));
+    }
+
+    @Test
+    void nextDestinationInventoryKeepsEdgeAndTargetActorsAndDualRoutesDistinct() {
+        when(jdbc.queryForList(argThat(sql -> sql.contains("as \"nextDestinationsJson\"")
+                        &&sql.contains("'routeResolution'")),any(Object[].class))).thenReturn(List.of());
+
+        service.systemProcessTestReport("","","",true,0,50);
+
+        ArgumentCaptor<String> sqlCaptor=ArgumentCaptor.forClass(String.class);
+        verify(jdbc).queryForList(sqlCaptor.capture(),any(Object[].class));
+        String sql=sqlCaptor.getValue();
+        assertTrue(sql.contains("'edgeActorCode',edge.actor_code")&&sql.contains("'targetActorCode',target.actor_code"));
+        assertTrue(sql.contains("'userRoutePath',coalesce(target.user_path,'')")
+                &&sql.contains("'adminRoutePath',coalesce(target.admin_path,'')"));
+        assertTrue(sql.contains("'MULTIPLE_CANDIDATES'")&&sql.contains("'MISSING'")&&sql.contains("'SINGLE'"));
+        assertTrue(sql.contains("'screenRouteInventory'")&&sql.contains("binding.binding_status='ACTIVE'"));
+        assertFalse(sql.contains("'actorCode',edge.actor_code"),"an edge actor must never be presented as the target actor");
+    }
+
+    @Test
+    void secondaryAudienceContractMutationInvalidatesTheAggregateCapabilityReviewFingerprint() {
+        String original=ActorProcessGovernanceService.aggregateReviewFingerprints(
+                List.of("USER-CONTRACT-V1","ADMIN-CONTRACT-V1"));
+        String secondaryChanged=ActorProcessGovernanceService.aggregateReviewFingerprints(
+                List.of("USER-CONTRACT-V1","ADMIN-CONTRACT-V2"));
+
+        assertFalse(original.equals(secondaryChanged),
+                "a secondary audience mutation must stale the prior capability review and its idempotency contract");
     }
 
     @Test
@@ -104,6 +152,8 @@ class ActorProcessGovernanceServiceSecurityTest {
 
         assertEquals("EMISSION_PROJECT",compacted.get("processCode"));
         assertEquals(source.get("inputContract"),compacted.get("inputContract"));
+        assertEquals(false,compacted.get("reviewCriticalFieldsComplete"));
+        assertEquals(false,compacted.get("reviewAllowed"));
         for(String field:List.of("latestInput","latestOutput","evidenceJson","simulationEvidenceJson","fixtureSuiteCasesJson","businessEvidenceJson")){
             String value=String.valueOf(compacted.get(field));
             assertTrue(value.contains("\"compact\":true"),field+" must remain present as compact evidence metadata");
@@ -111,6 +161,39 @@ class ActorProcessGovernanceServiceSecurityTest {
             assertTrue(value.length()<512,field+" must not retain the oversized payload");
         }
         assertTrue(serialized.length<8_000,"compact evidence must have a bounded response size");
+    }
+
+    @Test
+    void systemReportRecursivelyRedactsSecretsWithoutRemovingStructuralKeys() {
+        String evidence="""
+            {"processCode":"MEMBER_REGISTRATION","password":"plain-secret",
+             "nested":{"accessToken":"access-secret","refresh_token":"refresh-secret","otp":"123456",
+                       "verificationCode":"code-secret","apiKey":"api-key-secret",
+                       "private_key":"private-key-secret","safeCode":"MEMBER_S1"},
+             "items":[{"authorization":"Bearer secret","cookie":"session-secret","amount":42,
+                       "deep":{"credential":"credential-secret","sessionId":"session-id-secret",
+                                  "csrf_token":"csrf-secret","jwt":"jwt-secret"}}]}
+            """;
+        Map<String,Object> source=new java.util.LinkedHashMap<>();
+        source.put("actualInput",evidence);source.put("actualOutput",evidence);
+        source.put("businessEvidenceJson",evidence);source.put("screenFunctionInventoryJson",evidence);
+        source.put("reviewScopesJson",evidence);source.put("processCode","MEMBER_REGISTRATION");
+
+        Map<String,Object> redacted=ActorProcessGovernanceService.redactSystemTestItem(source);
+        String serialized=String.valueOf(redacted);
+
+        assertEquals("MEMBER_REGISTRATION",redacted.get("processCode"));
+        assertTrue(serialized.contains("processCode")&&serialized.contains("safeCode")&&serialized.contains("MEMBER_S1"));
+        assertTrue(serialized.contains("password")&&serialized.contains("accessToken")&&serialized.contains("refresh_token"));
+        assertTrue(serialized.contains("apiKey")&&serialized.contains("private_key")
+                &&serialized.contains("credential")&&serialized.contains("sessionId")
+                &&serialized.contains("csrf_token")&&serialized.contains("jwt"));
+        assertFalse(serialized.contains("plain-secret")||serialized.contains("access-secret")
+                ||serialized.contains("refresh-secret")||serialized.contains("123456")
+                ||serialized.contains("code-secret")||serialized.contains("Bearer secret")||serialized.contains("session-secret")
+                ||serialized.contains("api-key-secret")||serialized.contains("private-key-secret")
+                ||serialized.contains("credential-secret")||serialized.contains("session-id-secret")
+                ||serialized.contains("csrf-secret")||serialized.contains("jwt-secret"));
     }
 
     @Test
@@ -143,7 +226,7 @@ class ActorProcessGovernanceServiceSecurityTest {
         when(jdbc.queryForList(argThat(sql -> sql.contains("limit ? offset ?")
                         && sql.contains("fixture.test_case_id")
                         && sql.contains("left join framework_screen_capability capability using(screen_resource_id)")
-                        && sql.contains("test.capability_code in(coalesce(capability.capability_code,'ALL'),'ALL')")),
+                        && sql.contains("test.capability_code in(target.capability_code,'ALL')")),
                 any(Object[].class))).thenReturn(List.of());
 
         Map<String,Object> result=service.auditSystemProcessContracts(Map.of(),"system-auditor");
@@ -154,26 +237,170 @@ class ActorProcessGovernanceServiceSecurityTest {
         assertEquals("CONTRACT_ONLY",result.get("auditMode"));
         assertEquals("ACTIVE_BINDING_CAPABILITY",result.get("auditTargetMode"));
         assertEquals(false,result.get("businessFunctionsExecuted"));
+        assertEquals(0L,result.get("totalEligibleTargetCount"));
+        assertEquals("COMPLETE",result.get("targetCoverageState"));
+        ArgumentCaptor<String> sqlCaptor=ArgumentCaptor.forClass(String.class);
+        verify(jdbc).queryForList(sqlCaptor.capture(),any(Object[].class));
+        assertTrue(sqlCaptor.getValue().contains("left join framework_process_step_screen_binding b")
+                &&sqlCaptor.getValue().contains("b.binding_status='ACTIVE'")
+                &&sqlCaptor.getValue().contains("count(*) over() total_eligible_target_count")
+                &&sqlCaptor.getValue().contains("order by development_order,process_code,step_order,step_code"));
+        assertTrue(sqlCaptor.getValue().contains("from framework_page_development_item master"),
+                "audit paging must not expand the expensive all-screen development master view for every target");
+        assertFalse(sqlCaptor.getValue().contains("b.binding_status='DRAFT'"),"draft bindings are not executable audit targets");
+        assertFalse(sqlCaptor.getValue().contains("select candidate.*"),"audit inventory must not collapse bindings through limit 1");
         verify(jdbc,never()).queryForList(argThat(sql -> sql.startsWith("select test_case_id")),any(Object[].class));
     }
 
     @Test
-    void bulkContractAuditTreatsReviewPendingDraftAsBlockedInsteadOfMissingActiveError() {
+    void rowContractAuditScopesTheRequestedStep() {
+        when(jdbc.queryForList(argThat(sql -> sql.contains("(?='' or s.step_code=?)")
+                        && sql.contains("limit ? offset ?")),any(Object[].class))).thenReturn(List.of());
+
+        Map<String,Object> result=service.auditSystemProcessContracts(Map.of(
+                "processCode","EMISSION_PROJECT","stepCode","EMISSION_PROJECT_COLLECT"),"reviewer");
+
+        @SuppressWarnings("unchecked") Map<String,Object> filters=(Map<String,Object>)result.get("filters");
+        assertEquals("EMISSION_PROJECT_COLLECT",filters.get("stepCode"));
+        assertEquals(false,result.get("businessFunctionsExecuted"));
+    }
+
+    @Test
+    void changeRequestRequiresANoteBeforeAnyDatabaseMutation() {
+        IllegalArgumentException failure=assertThrows(IllegalArgumentException.class,()->service.saveSystemUsageReview(Map.of(
+                "processCode","EMISSION_PROJECT","stepCode","EMISSION_PROJECT_COLLECT",
+                "reviewStatus","CHANGE_REQUESTED","reviewNote","  "),"reviewer"));
+
+        assertTrue(failure.getMessage().contains("reviewNote"));
+        verify(jdbc,never()).queryForObject(argThat(sql -> sql.contains("framework_system_usage_review")),
+                org.mockito.ArgumentMatchers.eq(Long.class),any(Object[].class));
+    }
+
+    @Test
+    void humanApprovalIsPersistedWithoutChangingRuntimeEvidence() {
+        stubStepReviewContract("0123456789abcdef0123456789abcdef01234567","fingerprint-1");
+        when(jdbc.queryForList(argThat(sql -> sql!=null&&sql.contains("where idempotency_key=?")),any(Object[].class))).thenReturn(List.of());
+        when(jdbc.queryForObject(argThat(sql -> sql.contains("insert into framework_system_usage_review")),
+                org.mockito.ArgumentMatchers.eq(Long.class),any(Object[].class))).thenReturn(91L);
+
+        Map<String,Object> result=service.saveSystemUsageReview(Map.of(
+                "processCode","EMISSION_PROJECT","stepCode","EMISSION_PROJECT_COLLECT",
+                "reviewStatus","APPROVED","reviewNote","화면과 기능 확인"),"reviewer");
+
+        @SuppressWarnings("unchecked") Map<String,Object> review=(Map<String,Object>)result.get("review");
+        assertEquals(91L,review.get("reviewId"));
+        assertEquals("HUMAN_REVIEW_ONLY",review.get("reviewEvidenceScope"));
+        assertEquals("0123456789abcdef0123456789abcdef01234567",review.get("reviewSourceCommit"));
+        verify(jdbc,never()).update(argThat(sql -> sql.contains("framework_process_qa_run")
+                ||sql.contains("framework_screen_workflow_test_run")),any(Object[].class));
+    }
+
+    @Test
+    void repeatedHumanReviewReturnsTheExistingDecisionWithoutCreatingAJob() {
+        String commit="0123456789abcdef0123456789abcdef01234567";
+        stubStepReviewContract(commit,"fingerprint-1");
+        when(jdbc.queryForList(argThat(sql -> sql!=null&&sql.contains("where idempotency_key=?")),any(Object[].class)))
+                .thenReturn(List.of(Map.ofEntries(Map.entry("reviewId",91L),Map.entry("processCode","EMISSION_PROJECT"),
+                        Map.entry("stepCode","EMISSION_PROJECT_COLLECT"),Map.entry("reviewStatus","CHANGE_REQUESTED"),
+                        Map.entry("reviewNote","수정"),Map.entry("processVersion","2.1.0"),Map.entry("capabilityCode","ALL"),
+                        Map.entry("contractFingerprint","fingerprint-1"),Map.entry("reviewSourceCommit",commit),
+                        Map.entry("linkedJobId",71L),Map.entry("reviewedBy","reviewer"))));
+
+        Map<String,Object> result=service.saveSystemUsageReview(Map.of(
+                "processCode","EMISSION_PROJECT","stepCode","EMISSION_PROJECT_COLLECT",
+                "reviewStatus","CHANGE_REQUESTED","reviewNote","수정","idempotencyKey","retry-key"),"reviewer");
+
+        @SuppressWarnings("unchecked") Map<String,Object> review=(Map<String,Object>)result.get("review");
+        assertEquals(true,review.get("idempotent"));
+        assertEquals(71L,review.get("linkedJobId"));
+        assertEquals("reviewer",review.get("reviewedBy"));
+        assertThrows(IllegalArgumentException.class,()->service.saveSystemUsageReview(Map.of(
+                "processCode","EMISSION_PROJECT","stepCode","EMISSION_PROJECT_COLLECT",
+                "reviewStatus","CHANGE_REQUESTED","reviewNote","수정","idempotencyKey","retry-key"),"second-reviewer"));
+        verify(jdbc,never()).queryForObject(argThat(sql -> sql.contains("insert into framework_system_usage_review")),
+                org.mockito.ArgumentMatchers.eq(Long.class),any(Object[].class));
+        verify(jdbc,never()).queryForObject(argThat(sql -> sql.contains("insert into framework_development_job")),
+                org.mockito.ArgumentMatchers.eq(Long.class),any(Object[].class));
+    }
+
+    @Test
+    void changeRequestCreatesOnlyAManuallyApprovedPlannedDesignReviewJob() {
+        String commit="0123456789abcdef0123456789abcdef01234567";
+        stubStepReviewContract(commit,"fingerprint-1");
+        when(jdbc.queryForList(argThat(sql -> sql!=null&&sql.contains("where idempotency_key=?")),any(Object[].class))).thenReturn(List.of());
+        when(jdbc.queryForObject(argThat(sql -> sql!=null&&sql.contains("insert into framework_system_usage_review")),
+                org.mockito.ArgumentMatchers.eq(Long.class),any(Object[].class))).thenReturn(92L);
+        when(jdbc.queryForObject(argThat(sql -> sql!=null&&sql.contains("insert into framework_development_job")),
+                org.mockito.ArgumentMatchers.eq(Long.class),any(Object[].class))).thenReturn(72L);
+
+        Map<String,Object> result=service.saveSystemUsageReview(Map.of(
+                "processCode","EMISSION_PROJECT","stepCode","EMISSION_PROJECT_COLLECT",
+                "reviewStatus","CHANGE_REQUESTED","reviewNote","Clarify the submit action",
+                "idempotencyKey","change-request-92"),"reviewer");
+
+        @SuppressWarnings("unchecked") Map<String,Object> review=(Map<String,Object>)result.get("review");
+        assertEquals(72L,review.get("linkedJobId"));
+        assertEquals("DEVELOPMENT_REVIEW_PENDING",review.get("nextAction"));
+        verify(jdbc).queryForObject(argThat(sql -> sql.contains("'DESIGN_REVIEW'")
+                        &&sql.contains("'PLANNED','PENDING'")&&sql.contains("returning job_id")),
+                org.mockito.ArgumentMatchers.eq(Long.class),any(Object[].class));
+        verify(jdbc,never()).update(argThat(sql -> sql.contains("approval_status='APPROVED'")
+                ||sql.contains("framework_process_qa_run")||sql.contains("framework_screen_workflow_test_run")),any(Object[].class));
+    }
+
+    @Test
+    void capabilityReviewRequiresAnActivelyBoundScreen() {
+        IllegalArgumentException failure=assertThrows(IllegalArgumentException.class,()->service.saveSystemUsageReview(Map.of(
+                "processCode","EMISSION_PROJECT","stepCode","EMISSION_PROJECT_COLLECT",
+                "capabilityCode","SAVE","reviewStatus","APPROVED"),"reviewer"));
+
+        assertTrue(failure.getMessage().contains("screenResourceId"));
+        verify(jdbc,never()).queryForList(argThat(sql -> sql!=null&&sql.contains("framework_current_process_step_contract_fingerprint")),
+                any(Object[].class));
+    }
+
+    @Test
+    void bulkContractAuditPreservesOneErrorTargetWhenNoActiveBindingExists() {
         Map<String,Object> target=new java.util.LinkedHashMap<>();
-        target.put("itemId",11L);target.put("bindingId",22L);target.put("audience","PUBLIC");
-        target.put("bindingStatus","DRAFT");target.put("screenResourceId",33L);
         target.put("processCode","COMPANY_REAPPLICATION_PUBLIC");
         target.put("stepCode","COMPANY_REAPPLICATION_PUBLIC_RESUBMIT");target.put("capabilityCode","ALL");
+        target.put("totalEligibleTargetCount",1L);
         when(jdbc.queryForList(argThat(sql -> sql.contains("with scoped_steps as materialized")),any(Object[].class)))
                 .thenReturn(List.of(target));
 
         Map<String,Object> result=service.auditSystemProcessContracts(Map.of(),"system-auditor");
 
-        assertEquals("BLOCKED",result.get("outcome"));
-        assertEquals(0,result.get("errorCount"));
-        assertEquals(1,result.get("blockedCount"));
+        assertEquals("ERROR",result.get("outcome"));
+        assertEquals(1,result.get("errorCount"));
+        assertEquals(0,result.get("blockedCount"));
+        assertEquals("COMPLETE",result.get("targetCoverageState"));
         @SuppressWarnings("unchecked") List<Map<String,Object>> runs=(List<Map<String,Object>>)result.get("runs");
-        assertEquals("WORKFLOW_EVIDENCE_PENDING",runs.get(0).get("message"));
+        assertEquals("ACTIVE_SCREEN_BINDING_NOT_FOUND",runs.get(0).get("message"));
+    }
+
+    @Test
+    void bulkContractAuditPreservesEveryEligibleBindingAndReportsCompleteCoverage() {
+        Map<String,Object> first=new java.util.LinkedHashMap<>();
+        first.put("bindingId",101L);first.put("audience","USER");
+        first.put("bindingStatus","ACTIVE");first.put("screenResourceId",201L);
+        first.put("processCode","MULTI_BINDING_PROCESS");first.put("stepCode","STEP_1");
+        first.put("capabilityCode","SAVE");first.put("totalEligibleTargetCount",2L);
+        Map<String,Object> second=new java.util.LinkedHashMap<>(first);
+        second.put("bindingId",102L);second.put("audience","ADMIN");
+        second.put("screenResourceId",202L);second.put("capabilityCode","APPROVE");
+        when(jdbc.queryForList(argThat(sql -> sql.contains("count(*) over() total_eligible_target_count")),any(Object[].class)))
+                .thenReturn(List.of(first,second));
+
+        Map<String,Object> result=service.auditSystemProcessContracts(
+                Map.of("processCode","MULTI_BINDING_PROCESS","stepCode","STEP_1"),"system-auditor");
+
+        assertEquals(2,result.get("targetCount"));
+        assertEquals(2,result.get("auditedBindingCount"));
+        assertEquals(2L,result.get("auditedCapabilityTargetCount"));
+        assertEquals(2L,result.get("totalEligibleTargetCount"));
+        assertEquals(2L,result.get("coveredTargetCount"));
+        assertEquals("COMPLETE",result.get("targetCoverageState"));
+        assertEquals(false,result.get("hasMore"));
     }
 
     @Test
@@ -585,5 +812,13 @@ class ActorProcessGovernanceServiceSecurityTest {
 
         verify(jdbc).update(argThat(sql -> sql.contains("insert into framework_account_actor_assignment")),any(Object[].class));
         verify(jdbc,never()).queryForObject(anyString(),org.mockito.ArgumentMatchers.eq(Integer.class),any(Object[].class));
+    }
+
+    private void stubStepReviewContract(String sourceCommit,String contractFingerprint){
+        when(jdbc.queryForList(argThat(sql -> sql!=null&&sql.contains("select p.process_version as \"processVersion\"")
+                        &&sql.contains("framework_runtime_release_state")),any(Object[].class)))
+                .thenReturn(List.of(Map.of("processVersion","2.1.0","sourceCommit",sourceCommit)));
+        doReturn(Map.of("success",true,"item",Map.of("contractFingerprint",contractFingerprint)))
+                .when(service).systemProcessTestReportStepDetail("EMISSION_PROJECT","EMISSION_PROJECT_COLLECT");
     }
 }

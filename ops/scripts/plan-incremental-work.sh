@@ -34,6 +34,24 @@ add_reason() {
 while IFS= read -r path; do
   [[ -z "$path" ]] && continue
   case "$path" in
+    ops/scripts/validate-operational-usage-ledger-e2e.sh|\
+    ops/scripts/test-operational-usage-ledger-e2e-contract.sh|\
+    ops/scripts/auto-deploy-main.sh|\
+    ops/scripts/plan-incremental-work.sh|\
+    modules/resonance-common/carbonet-common-core/src/main/java/egovframework/com/platform/governance/service/ActorProcessGovernanceService.java|\
+    modules/resonance-common/carbonet-common-core/src/main/java/egovframework/com/platform/governance/web/ActorProcessGovernanceApiController.java|\
+    modules/resonance-common/carbonet-common-core/src/test/java/egovframework/com/platform/governance/service/ActorProcessGovernanceServiceSecurityTest.java|\
+    modules/resonance-common/carbonet-common-core/src/test/java/egovframework/com/platform/governance/web/ActorProcessGovernanceApiControllerAssignmentTest.java|\
+    apps/carbonet-api/src/main/resources/db/migration/postgresql/V20260811223000__create_system_usage_review_ledger.sql|\
+    projects/carbonet-frontend/source/src/features/actor-process-governance/SystemProcessTestReportPanel.tsx|\
+    projects/carbonet-frontend/source/scripts/verify-operational-usage-ledger.mjs|\
+    projects/carbonet-frontend/source/scripts/run-frontend-pipeline.mjs|\
+    projects/carbonet-frontend/source/package.json)
+      add_test "runtime:operational-usage-ledger-e2e"
+      add_reason "operational-usage-ledger-contract"
+      ;;
+  esac
+  case "$path" in
     ops/scripts/validate-screen-contract-runtime-save.sh|\
     ops/scripts/validate-screen-contract-runtime-save.mjs)
       infrastructure_required=true

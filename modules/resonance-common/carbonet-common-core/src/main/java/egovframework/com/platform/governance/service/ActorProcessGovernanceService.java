@@ -31,7 +31,9 @@ public class ActorProcessGovernanceService {
     static final int SYSTEM_TEST_REPORT_COMPACT_JSON_LIMIT_BYTES = 2048;
     private static final Set<String> SYSTEM_TEST_REPORT_LARGE_JSON_FIELDS = Set.of(
         "latestPreInputJson", "latestEvidenceJson", "latestInput", "latestOutput", "evidenceJson",
-        "simulationEvidenceJson", "fixtureSuiteCasesJson", "businessEvidenceJson"
+        "actualInput", "actualOutput", "actualEvidenceJson",
+        "simulationEvidenceJson", "fixtureSuiteCasesJson", "businessEvidenceJson", "screenFunctionInventoryJson",
+        "scopedReviewInventoryJson", "reviewScopesJson", "nextDestinationsJson"
     );
     private static final Set<String> PROFESSIONAL_CONTRACT_STATUSES = Set.of(
         "DRAFT", "REVIEW_REQUIRED", "DESIGN_COMPLETE", "APPROVED", "VERIFIED"
@@ -571,24 +573,97 @@ public class ActorProcessGovernanceService {
      * when no evidence exists the truthful state is NOT_RUN.
      */
     public Map<String,Object> systemProcessTestReport(String domainCode,String processCode,String requestedResult){
-        return systemProcessTestReport(domainCode,processCode,requestedResult,false);
+        return systemProcessTestReport(domainCode,processCode,requestedResult,false,0,2000);
     }
 
     public Map<String,Object> systemProcessTestReport(String domainCode,String processCode,String requestedResult,boolean compact){
+        return systemProcessTestReport(domainCode,processCode,requestedResult,compact,0,2000);
+    }
+
+    /**
+     * Loads exactly one complete step row for human screen/function review.
+     *
+     * Compact catalogue rows intentionally omit large inventories and therefore
+     * are never review-authoritative.  This endpoint reuses the same redacted
+     * report projection with a one-row structural page so the caller receives
+     * the complete screen/function and scoped-review inventories without
+     * materialising every process step.
+     */
+    public Map<String,Object> systemProcessTestReportStepDetail(String processCode,String stepCode){
+        String process=processCode==null?"":processCode.trim().toUpperCase(Locale.ROOT);
+        String step=stepCode==null?"":stepCode.trim().toUpperCase(Locale.ROOT);
+        if(process.isBlank()||step.isBlank())
+            throw new IllegalArgumentException("processCode and stepCode are required");
+
+        List<Map<String,Object>> positions=jdbc.queryForList("""
+            select ordinal
+              from (
+                select s.step_code,row_number() over(order by s.step_order,s.step_code)::integer ordinal
+                  from framework_process_step s
+                 where s.process_code=?
+              ) ranked
+             where step_code=?
+            """,process,step);
+        if(positions.size()!=1)throw new java.util.NoSuchElementException("SYSTEM_TEST_REPORT_STEP_NOT_FOUND");
+        int ordinal=((Number)positions.get(0).get("ordinal")).intValue();
+        if(ordinal<1)throw new java.util.NoSuchElementException("SYSTEM_TEST_REPORT_STEP_NOT_FOUND");
+
+        Map<String,Object> report=systemProcessTestReport("",process,"",false,ordinal-1,1);
+        Object rawItems=report.get("items");
+        if(!(rawItems instanceof List<?> rows)||rows.size()!=1||!(rows.get(0) instanceof Map<?,?> rawRow))
+            throw new java.util.NoSuchElementException("SYSTEM_TEST_REPORT_STEP_NOT_FOUND");
+        Map<String,Object> item=new LinkedHashMap<>();
+        rawRow.forEach((key,value)->item.put(String.valueOf(key),value));
+        if(!step.equalsIgnoreCase(String.valueOf(item.getOrDefault("stepCode",""))))
+            throw new java.util.NoSuchElementException("SYSTEM_TEST_REPORT_STEP_NOT_FOUND");
+        boolean complete=SYSTEM_TEST_REPORT_LARGE_JSON_FIELDS.stream()
+                .map(item::get).filter(java.util.Objects::nonNull).map(String::valueOf)
+                .noneMatch(value->value.contains("\"omitted\":true"));
+        if(!complete)throw new IllegalStateException("SYSTEM_TEST_REPORT_STEP_DETAIL_INCOMPLETE");
+        item.put("reviewCriticalFieldsComplete",true);
+        item.put("reviewAllowed",true);
+
+        Map<String,Object> detail=new LinkedHashMap<>();
+        detail.put("success",true);
+        detail.put("detailMode","SELECTED_STEP_FULL");
+        detail.put("reviewCriticalFieldsComplete",true);
+        detail.put("item",item);
+        return detail;
+    }
+
+    public Map<String,Object> systemProcessTestReport(String domainCode,String processCode,String requestedResult,boolean compact,int requestedPage,int requestedSize){
         String domain=domainCode==null?"":domainCode.trim().toUpperCase(Locale.ROOT);
         String process=processCode==null?"":processCode.trim().toUpperCase(Locale.ROOT);
         String result=normalizeSystemTestResult(requestedResult);
+        int page=Math.max(0,requestedPage),size=Math.max(1,Math.min(requestedSize,200)),offset=page*size;
+        Integer structuralTotal=jdbc.queryForObject("""
+            select count(*) from framework_process_definition p join framework_process_step s using(process_code)
+             where (?='' or upper(p.domain_code)=?) and (?='' or p.process_code=?)
+            """,Integer.class,domain,domain,process,process);
+        int totalStepCount=structuralTotal==null?0:structuralTotal;
 
         List<Map<String,Object>> items=jdbc.queryForList("""
-            with report_options as (select ?::boolean compact,?::int compact_limit_bytes), scoped_steps as materialized (
+            with report_options as (select ?::boolean compact,?::int compact_limit_bytes), runtime_release as materialized (
+              select source_commit from framework_runtime_release_state
+               where release_key='CARBONET_RUNTIME' and health_status='UP'
+            ), scoped_step_inventory as materialized (
               select p.domain_code,p.process_name,p.process_status,p.process_version,p.development_order,
+                     coalesce(sequence.workflow_order,p.development_order) workflow_order,
+                     coalesce(sequence.workflow_phase,'UNSEQUENCED') workflow_phase,
+                     coalesce(sequence.process_role,'CORE') process_role,sequence.next_process_code,
                      s.*,coalesce(a.actor_name,s.actor_code) actor_name,coalesce(w.work_type_name,p.domain_code) domain_name,
+                     coalesce(a.capability_codes,'') actor_capability_codes,
                      coalesce(w.sort_order,9999) domain_order,to_jsonb(s)::text step_contract_json
                 from framework_process_definition p
                 join framework_process_step s using(process_code)
                 left join framework_actor_definition a on a.actor_code=s.actor_code
                 left join framework_business_work_type w on w.work_type_code=upper(p.domain_code)
+                left join framework_business_process_sequence sequence on sequence.process_code=p.process_code
                where (?='' or upper(p.domain_code)=?) and (?='' or p.process_code=?)
+            ), scoped_steps as materialized (
+              select * from scoped_step_inventory
+               order by domain_order,workflow_order,process_code,step_order,step_code
+               limit ? offset ?
             ), scoped_screen_ids as materialized (
               select distinct b.screen_resource_id
                 from scoped_steps scoped
@@ -600,12 +675,14 @@ public class ActorProcessGovernanceService {
               select distinct screen.route_key
                 from scoped_screen_ids scoped join framework_screen_resource screen using(screen_resource_id)
             ), screen_data_hash as (
-              select d.screen_resource_id,md5(coalesce(string_agg(to_jsonb(d)::text,'|' order by d.data_element_code,d.field_code),'')) data_hash
+              select d.screen_resource_id,md5(coalesce(string_agg(to_jsonb(d)::text,'|' order by d.data_element_code,d.field_code),'')) data_hash,
+                     count(*)::integer data_field_count
                 from scoped_screen_ids scoped join framework_screen_data_binding d using(screen_resource_id)
                group by d.screen_resource_id
             ), screen_capability_hash as (
               select c.screen_resource_id,md5(coalesce(string_agg(to_jsonb(c)::text,'|' order by c.capability_code),'')) capability_hash,
-                     count(*) capability_count,string_agg(distinct c.capability_name,', ' order by c.capability_name) capability_names
+                     count(*) capability_count,string_agg(distinct c.capability_name,', ' order by c.capability_name) capability_names,
+                     string_agg(distinct c.capability_code,', ' order by c.capability_code) capability_codes
                 from scoped_screen_ids scoped join framework_screen_capability c using(screen_resource_id)
                group by c.screen_resource_id
             ), step_test_hash as (
@@ -635,8 +712,9 @@ public class ActorProcessGovernanceService {
             ), binding_targets as (
               select ss.*,b.binding_id,b.audience,b.entry_mode,to_jsonb(b)::text binding_contract_json,
                       r.screen_resource_id,r.route_key,r.screen_name,r.screen_type,r.implementation_status,to_jsonb(r)::text screen_contract_json,
-                      c.capability_id,coalesce(c.capability_code,'ALL') capability_code,c.capability_name,
-                      coalesce(dh.data_hash,'') data_hash,coalesce(ch.capability_hash,'') capability_hash,
+                      c.capability_id,coalesce(c.capability_code,'ALL') capability_code,c.capability_name,c.capability_type,
+                      coalesce(c.command_contract,'{}'::jsonb) capability_command_contract,
+                      coalesce(dh.data_hash,'') data_hash,coalesce(dh.data_field_count,0) data_field_count,coalesce(ch.capability_hash,'') capability_hash,
                      coalesce(th.test_hash,'') test_hash,coalesce(th.scenario_count,0) scenario_count,
                      coalesce(th.approved_scenario_count,0) approved_scenario_count,coalesce(sh.spec_hash,'') spec_hash,
                      coalesce(ph.contract_hash,'') professional_hash,
@@ -660,6 +738,18 @@ public class ActorProcessGovernanceService {
                        coalesce(bt.screen_contract_json,''),bt.audience,bt.capability_code,bt.data_hash,bt.capability_hash,
                        bt.test_hash,bt.spec_hash,bt.professional_hash,bt.fixture_hash)) contract_fingerprint
                 from binding_targets bt
+            ), screen_scope_fingerprints as (
+              select process_code,step_code,screen_resource_id,
+                     md5(coalesce(string_agg(contract_fingerprint,'|' order by audience,capability_code),'')) screen_contract_fingerprint
+                from target_fingerprints
+               where binding_id is not null
+               group by process_code,step_code,screen_resource_id
+            ), capability_scope_fingerprints as (
+              select process_code,step_code,screen_resource_id,capability_code,
+                     md5(coalesce(string_agg(contract_fingerprint,'|' order by audience),'')) capability_contract_fingerprint
+                from target_fingerprints
+               where binding_id is not null
+               group by process_code,step_code,screen_resource_id,capability_code
             ), target_latest as (
               select target.*,run.run_id,run.result,run.passed_check_count,run.total_check_count,
                      array_to_string(run.blocker_codes,', ') blocker_codes,
@@ -674,11 +764,13 @@ public class ActorProcessGovernanceService {
                      and evidence.process_code=target.process_code and evidence.step_code=target.step_code
                      and evidence.capability_code=target.capability_code
                      and coalesce(evidence.evidence_json->>'audience','')=coalesce(target.audience,'')
+                     and evidence.evidence_json ?? 'contractFingerprint'
                      and evidence.evidence_json->>'contractFingerprint'=target.contract_fingerprint
                    order by evidence.executed_at desc,evidence.run_id desc limit 1
                 ) run on true
             ), step_rollup as (
               select process_code,step_code,
+                     md5(coalesce(string_agg(contract_fingerprint,'|' order by screen_resource_id,audience,capability_code),'')) operational_target_fingerprint,
                      count(distinct screen_resource_id) filter(where binding_id is not null) screen_count,
                      count(*) filter(where binding_id is not null) target_count,
                      count(*) filter(where binding_id is not null and run_id is not null) tested_target_count,
@@ -686,6 +778,15 @@ public class ActorProcessGovernanceService {
                      string_agg(distinct route_key,', ' order by route_key) filter(where route_key is not null) screen_routes,
                      string_agg(distinct implementation_status,', ' order by implementation_status) filter(where implementation_status is not null) implementation_statuses,
                      string_agg(distinct capability_name,', ' order by capability_name) filter(where capability_name is not null) capability_names,
+                     string_agg(distinct capability_code,', ' order by capability_code) filter(where capability_code is not null) capability_codes,
+                     coalesce(jsonb_agg(jsonb_build_object(
+                       'screenResourceId',screen_resource_id,'screenName',screen_name,'routePath',route_key,
+                       'audience',audience,'entryMode',entry_mode,'capabilityCode',capability_code,
+                       'capabilityName',coalesce(capability_name,capability_code),'capabilityType',coalesce(capability_type,'UNREGISTERED'),
+                       'commandContract',capability_command_contract,'dataFieldCount',data_field_count)
+                       order by case entry_mode when 'PRIMARY' then 0 else 1 end,
+                                case audience when 'USER' then 0 when 'ADMIN' then 1 when 'PUBLIC' then 2 else 3 end,
+                                route_key,capability_code) filter(where binding_id is not null),'[]'::jsonb)::text screen_function_inventory_json,
                      max(scenario_count) scenario_count,max(approved_scenario_count) approved_scenario_count,
                      count(*) filter(where binding_id is not null and implementation_status not in('IMPLEMENTED','VERIFIED')) unready_screen_target_count,
                      case when count(*) filter(where binding_id is not null)=0 then 'NOT_RUN'
@@ -755,7 +856,8 @@ public class ActorProcessGovernanceService {
                 from fixture_suite_cases group by process_code,step_code
             ), filtered_steps as (
               select scoped.*,rollup.screen_count,rollup.target_count,rollup.tested_target_count,rollup.capability_count,
-                     rollup.screen_routes,rollup.implementation_statuses,rollup.capability_names,rollup.scenario_count,
+                     rollup.screen_routes,rollup.implementation_statuses,rollup.capability_names,rollup.capability_codes,rollup.scenario_count,
+                     rollup.operational_target_fingerprint,rollup.screen_function_inventory_json,
                      rollup.approved_scenario_count,rollup.unready_screen_target_count,rollup.test_state
                 from scoped_steps scoped join step_rollup rollup using(process_code,step_code)
                where (?='' or rollup.test_state=?)
@@ -768,9 +870,13 @@ public class ActorProcessGovernanceService {
             )
             select p.domain_code as "domainCode",coalesce(w.work_type_name,p.domain_code) as "domainName",p.domain_order as "domainOrder",
                    p.process_code as "processCode",p.process_name as "processName",p.process_status as "processStatus",p.process_version as "processVersion",
-                   p.development_order as "processOrder",p.development_order as "developmentOrder",p.step_order as "stepOrder",p.step_code as "stepCode",
+                   p.workflow_order as "processOrder",p.workflow_order as "workflowOrder",p.development_order as "developmentOrder",
+                   p.workflow_phase as "workflowPhase",p.process_role as "processRole",p.step_order as "stepOrder",p.step_code as "stepCode",
                    p.step_name as "stepName",coalesce(p.parent_step_code,'') as "parentStepCode",p.step_type as "stepType",
-                   p.actor_code as "actorCode",p.actor_name as "actorName",p.from_state as "fromState",p.command_code as "commandCode",p.to_state as "toState",
+                   p.actor_code as "actorCode",p.actor_name as "actorName",p.actor_capability_codes as "actorCapabilityCodes",
+                   coalesce(accounts.assigned_account_count,0) as "assignedAccountCount",coalesce(accounts.assigned_account_ids,'') as "assignedAccountIds",
+                   'GLOBAL_ACTIVE_ACTOR_CANDIDATES' as "assignmentScope",
+                   p.from_state as "fromState",p.command_code as "commandCode",p.step_name as "commandName",p.to_state as "toState",
                    p.requirement_text as "requirementText",p.completion_rule as "completionRule",
                    coalesce(p.input_contract,'{}') as "inputContract",coalesce(p.output_contract,'{}') as "outputContract",
                    p.requires_user_page as "requiresUserPage",p.requires_admin_page as "requiresAdminPage",p.requires_api as "requiresApi",
@@ -787,7 +893,10 @@ public class ActorProcessGovernanceService {
                    coalesce(screen.implementation_status,'DESIGN_ONLY') as "implementationStatus",
                    p.screen_count as "screenCount",coalesce(p.screen_routes,'') as "screenRoutes",
                    coalesce(p.implementation_statuses,'') as "implementationStatuses",p.capability_count as "capabilityCount",
-                   coalesce(p.capability_names,'') as "capabilityNames",p.target_count as "auditTargetCount",
+                   coalesce(p.capability_names,'') as "capabilityNames",coalesce(p.capability_codes,'') as "functionCodes",p.target_count as "auditTargetCount",
+                   case when options.compact and octet_length(coalesce(p.screen_function_inventory_json,'[]'))>options.compact_limit_bytes
+                        then jsonb_build_object('compact',true,'omitted',true,'byteLength',octet_length(coalesce(p.screen_function_inventory_json,'[]')))::text
+                        else coalesce(p.screen_function_inventory_json,'[]') end as "screenFunctionInventoryJson",
                    p.tested_target_count as "auditedTargetCount",p.scenario_count as "scenarioCount",p.approved_scenario_count as "approvedScenarioCount",
                    latest.run_id as "latestRunId",latest.result as "latestResult",
                    latest.passed_check_count as "latestPassedCheckCount",latest.total_check_count as "latestTotalCheckCount",
@@ -848,6 +957,50 @@ public class ActorProcessGovernanceService {
                     coalesce(business.evidence_uri,'') as "businessEvidenceUri",
                     coalesce(business.evidence_hash,'') as "businessEvidenceHash",
                     coalesce(business.current_version,false) as "businessCurrentVersion",
+                   case
+                     when coalesce(business.business_test_result,'NOT_RUN') in('PASSED','BLOCKED') then 'BUSINESS_E2E'
+                     when latest.run_id is not null or (sim.run_id is not null and sim.process_version=p.process_version) then 'CONTRACT_SIMULATION'
+                     else 'DESIGN' end as "evidenceTier",
+                   case
+                     when coalesce(business.business_test_result,'NOT_RUN') in('PASSED','BLOCKED') then business.business_test_result
+                     when coalesce(latest.result,'NOT_RUN') in('PASSED','BLOCKED') then latest.result
+                     when sim.process_version=p.process_version and coalesce(sim.result,'NOT_RUN') in('PASSED','BLOCKED') then sim.result
+                     else 'NOT_RUN' end as "actualResult",
+                   case when coalesce(business.business_test_result,'NOT_RUN') in('PASSED','BLOCKED')
+                        then coalesce(business.evidence_json->'input','{}'::jsonb)::text else coalesce(latest.pre_input_json,'{}') end as "actualInput",
+                   case when coalesce(business.business_test_result,'NOT_RUN') in('PASSED','BLOCKED')
+                        then coalesce(business.evidence_json->'output',business.evidence_json,'{}'::jsonb)::text
+                        when latest.run_id is not null then coalesce(latest.evidence_json,'{}')
+                        when sim.process_version=p.process_version then coalesce(sim.evidence_json,'{}')::text
+                        else '{}' end as "actualOutput",
+                   case when coalesce(business.business_test_result,'NOT_RUN') in('PASSED','BLOCKED') then coalesce(business.evidence_json,'{}')::text
+                        when latest.run_id is not null then coalesce(latest.evidence_json,'{}')
+                        when sim.process_version=p.process_version then coalesce(sim.evidence_json,'{}')::text
+                        else '{}' end as "actualEvidenceJson",
+                   next_work.next_process_code as "nextProcessCode",coalesce(next_work.next_process_name,'') as "nextProcessName",
+                   next_work.next_step_code as "nextStepCode",coalesce(next_work.next_step_name,'') as "nextStepName",
+                   coalesce(next_screen.route_path,'') as "nextRoutePath",coalesce(next_work.transition_source,'WORKFLOW_COMPLETE') as "nextTransitionSource",
+                   coalesce(next_work.transition_authoritative,false) as "nextTransitionAuthoritative",
+                   case when coalesce(next_work.transition_authoritative,false) then 'AUTHORITATIVE_EDGE' else 'GUIDE_ONLY' end as "nextTransitionMode",
+                   coalesce(destinations.destination_count,0) as "nextDestinationCount",
+                   coalesce(destinations.destination_count,0)>1 as "nextHasBranching",
+                   coalesce(destinations.destinations_json,'[]') as "nextDestinationsJson",
+                   operational.contract_fingerprint as "contractFingerprint",
+                   review.review_id as "reviewId",coalesce(review.review_status,'PENDING') as "reviewStatus",
+                   coalesce(review.review_note,'') as "reviewNote",coalesce(review.reviewed_by,'') as "reviewedBy",
+                   review.reviewed_at as "reviewedAt",coalesce(review.source_commit,'') as "reviewSourceCommit",
+                   review.linked_job_id as "reviewLinkedJobId",review.screen_resource_id as "reviewScreenResourceId",
+                   coalesce(review.capability_code,'ALL') as "reviewCapabilityCode",
+                   (review.review_id is not null
+                    and review.contract_fingerprint=operational.contract_fingerprint
+                    and review.source_commit=coalesce(runtime.source_commit,'')) as "reviewCurrentVersion",
+                   'HUMAN_REVIEW_ONLY' as "reviewEvidenceScope",
+                   case when options.compact and octet_length(coalesce(scoped_reviews.inventory_json,'[]'))>options.compact_limit_bytes
+                        then jsonb_build_object('compact',true,'omitted',true,'byteLength',octet_length(coalesce(scoped_reviews.inventory_json,'[]')))::text
+                        else coalesce(scoped_reviews.inventory_json,'[]') end as "scopedReviewInventoryJson",
+                   case when options.compact and octet_length(coalesce(scoped_reviews.inventory_json,'[]'))>options.compact_limit_bytes
+                        then jsonb_build_object('compact',true,'omitted',true,'byteLength',octet_length(coalesce(scoped_reviews.inventory_json,'[]')))::text
+                        else coalesce(scoped_reviews.inventory_json,'[]') end as "reviewScopesJson",
                    p.test_state as "testState",latest.screen_resource_id as "latestAuditScreenResourceId",
                    coalesce(latest.route_key,'') as "latestAuditRoutePath",coalesce(latest.audience,'') as "latestAuditAudience",
                    coalesce(latest.capability_code,'') as "latestAuditCapabilityCode",
@@ -858,12 +1011,153 @@ public class ActorProcessGovernanceService {
               left join primary_screen screen using(process_code,step_code)
               left join latest_step_run latest using(process_code,step_code)
                left join latest_simulation sim using(process_code,step_code)
-               left join current_business_e2e business using(process_code,step_code)
-               left join fixture_suite_rollup suite using(process_code,step_code)
+              left join current_business_e2e business using(process_code,step_code)
+              left join fixture_suite_rollup suite using(process_code,step_code)
+              left join lateral (
+                select count(distinct assignment.account_id)::integer assigned_account_count,
+                       string_agg(distinct assignment.account_id,', ' order by assignment.account_id) assigned_account_ids,
+                       md5(coalesce(string_agg(to_jsonb(assignment)::text,'|' order by assignment.account_id,assignment.tenant_id,assignment.project_id,assignment.assignment_id),'')) assignment_fingerprint
+                  from framework_account_actor_assignment assignment
+                 where assignment.actor_code=p.actor_code and assignment.assignment_status='ACTIVE'
+                   and (assignment.valid_from is null or assignment.valid_from<=current_date)
+                   and (assignment.valid_until is null or assignment.valid_until>=current_date)
+              ) accounts on true
+              left join lateral (
+                select candidate.next_process_code,candidate.next_process_name,candidate.next_step_code,candidate.next_step_name,
+                       candidate.transition_source,candidate.transition_authoritative
+                  from (
+                    (select p.process_code next_process_code,p.process_name next_process_name,target.step_code next_step_code,
+                           target.step_name next_step_name,'PROCESS_FLOW_EDGE' transition_source,true transition_authoritative,0 priority,target.step_order
+                      from framework_process_flow_edge edge
+                      join framework_process_step target on target.process_code=edge.process_code and target.step_code=edge.to_step_code
+                     where edge.process_code=p.process_code and edge.from_step_code=p.step_code and edge.use_at='Y'
+                       and edge.review_status='VERIFIED'
+                     order by case edge.edge_type when 'NEXT' then 0 when 'PARALLEL' then 1 else 2 end,target.step_order,edge.edge_id
+                     limit 1)
+                    union all
+                    (select p.process_code,p.process_name,target.step_code,target.step_name,'STEP_ORDER',false,1,target.step_order
+                      from framework_process_step target
+                     where target.process_code=p.process_code and target.step_order>p.step_order
+                     order by target.step_order limit 1)
+                    union all
+                    (select next_process.process_code,next_process.process_name,target.step_code,target.step_name,'PROCESS_SEQUENCE',false,2,target.step_order
+                      from framework_process_definition next_process
+                      join framework_process_step target on target.process_code=next_process.process_code
+                     where next_process.process_code=p.next_process_code
+                     order by target.step_order limit 1)
+                  ) candidate
+                 order by candidate.priority,candidate.step_order limit 1
+              ) next_work on true
+              left join lateral (
+                select coalesce(case when binding.audience='ADMIN' then target.admin_path else target.user_path end,
+                                target.user_path,target.admin_path,screen.route_key,'') route_path
+                  from framework_process_step target
+                  left join framework_process_step_screen_binding binding on binding.process_code=target.process_code
+                    and binding.step_code=target.step_code and binding.binding_status='ACTIVE'
+                  left join framework_screen_resource screen using(screen_resource_id)
+                 where target.process_code=next_work.next_process_code and target.step_code=next_work.next_step_code
+                 order by case binding.entry_mode when 'PRIMARY' then 0 else 1 end,
+                          case binding.audience when 'USER' then 0 when 'ADMIN' then 1 when 'PUBLIC' then 2 else 3 end
+                 limit 1
+              ) next_screen on true
+              left join lateral (
+                select count(*)::integer destination_count,
+                       jsonb_agg(jsonb_build_object(
+                         'edgeId',edge.edge_id,'edgeType',edge.edge_type,'conditionCode',edge.condition_code,
+                         'conditionContract',edge.condition_contract,'edgeActorCode',edge.actor_code,
+                         'targetActorCode',target.actor_code,'sourceKind',edge.source_kind,
+                         'nextProcessCode',edge.process_code,'nextStepCode',target.step_code,'nextStepName',target.step_name,
+                         'userRoutePath',coalesce(target.user_path,''),'adminRoutePath',coalesce(target.admin_path,''),
+                         'routePath',case
+                           when nullif(btrim(coalesce(target.user_path,'')),'') is null
+                            and nullif(btrim(coalesce(target.admin_path,'')),'') is null then null
+                           when nullif(btrim(coalesce(target.user_path,'')),'') is null then target.admin_path
+                           when nullif(btrim(coalesce(target.admin_path,'')),'') is null then target.user_path
+                           when btrim(target.user_path)=btrim(target.admin_path) then target.user_path
+                           else null end,
+                         'routeResolution',case
+                           when nullif(btrim(coalesce(target.user_path,'')),'') is null
+                            and nullif(btrim(coalesce(target.admin_path,'')),'') is null then 'MISSING'
+                           when nullif(btrim(coalesce(target.user_path,'')),'') is not null
+                            and nullif(btrim(coalesce(target.admin_path,'')),'') is not null
+                            and btrim(target.user_path)<>btrim(target.admin_path) then 'MULTIPLE_CANDIDATES'
+                           else 'SINGLE' end,
+                         'screenRouteInventory',coalesce(screen_routes.route_inventory,'[]'::jsonb),'authoritative',true)
+                         order by case edge.edge_type when 'NEXT' then 0 when 'PARALLEL' then 1 else 2 end,
+                                  target.step_order,edge.edge_id)::text destinations_json
+                  from framework_process_flow_edge edge
+                  join framework_process_step target on target.process_code=edge.process_code and target.step_code=edge.to_step_code
+                  left join lateral (
+                    select coalesce(jsonb_agg(jsonb_build_object(
+                             'audience',inventory.audience,'entryMode',inventory.entry_mode,
+                             'screenResourceId',inventory.screen_resource_id,'routePath',inventory.route_key)
+                             order by case inventory.entry_mode when 'PRIMARY' then 0 else 1 end,
+                                      case inventory.audience when 'USER' then 0 when 'ADMIN' then 1 when 'PUBLIC' then 2 else 3 end,
+                                      inventory.route_key),'[]'::jsonb) route_inventory
+                      from (
+                        select distinct binding.audience,binding.entry_mode,screen.screen_resource_id,screen.route_key
+                          from framework_process_step_screen_binding binding
+                          join framework_screen_resource screen using(screen_resource_id)
+                         where binding.process_code=target.process_code and binding.step_code=target.step_code
+                           and binding.binding_status='ACTIVE'
+                      ) inventory
+                  ) screen_routes on true
+                 where edge.process_code=p.process_code and edge.from_step_code=p.step_code
+                   and edge.use_at='Y' and edge.review_status='VERIFIED'
+              ) destinations on true
+              cross join lateral (
+                select md5(concat_ws('|',p.domain_code,p.domain_name,p.domain_order,p.process_code,p.process_name,
+                       p.workflow_order,p.workflow_phase,p.process_role,p.process_version,p.step_contract_json,p.operational_target_fingerprint,
+                       p.actor_code,p.actor_capability_codes,coalesce(accounts.assignment_fingerprint,''),
+                       coalesce(next_work.next_process_code,''),coalesce(next_work.next_step_code,''),
+                       coalesce(next_work.transition_source,'WORKFLOW_COMPLETE'),coalesce(next_work.transition_authoritative,false)::text,
+                       coalesce(next_screen.route_path,''),coalesce(destinations.destinations_json,'[]'))) contract_fingerprint
+              ) operational
+              left join lateral (
+                select usage.review_id,usage.review_status,usage.review_note,usage.contract_fingerprint,usage.source_commit,
+                       usage.linked_job_id,usage.screen_resource_id,usage.capability_code,usage.reviewed_by,usage.reviewed_at
+                  from framework_system_usage_review usage
+                 where usage.process_code=p.process_code and usage.step_code=p.step_code
+                   and usage.screen_resource_id is null and usage.capability_code='ALL'
+                 order by usage.reviewed_at desc,usage.review_id desc limit 1
+              ) review on true
+              left join lateral (
+                select coalesce(jsonb_agg(jsonb_build_object(
+                         'reviewId',scoped.review_id,'screenResourceId',scoped.screen_resource_id,
+                         'capabilityCode',scoped.capability_code,'reviewStatus',scoped.review_status,
+                         'reviewNote',scoped.review_note,'reviewedBy',scoped.reviewed_by,'reviewedAt',scoped.reviewed_at,
+                         'reviewSourceCommit',scoped.source_commit,'linkedJobId',scoped.linked_job_id,
+                         'scopeType',case when scoped.screen_resource_id is null then 'STEP'
+                                          when scoped.capability_code='ALL' then 'SCREEN' else 'FUNCTION' end,
+                         'currentVersion',scoped.current_version)
+                         order by scoped.screen_resource_id nulls first,scoped.capability_code),'[]'::jsonb)::text inventory_json
+                  from (
+                    select distinct on (usage.screen_resource_id,usage.capability_code) usage.*,
+                           (usage.source_commit=coalesce((select source_commit from runtime_release),'') and
+                            case when usage.screen_resource_id is null
+                                 then usage.contract_fingerprint=operational.contract_fingerprint
+                                 when usage.capability_code<>'ALL' then exists(
+                                   select 1 from capability_scope_fingerprints capability_scope
+                                    where capability_scope.process_code=usage.process_code and capability_scope.step_code=usage.step_code
+                                      and capability_scope.screen_resource_id=usage.screen_resource_id
+                                      and capability_scope.capability_code=usage.capability_code
+                                      and capability_scope.capability_contract_fingerprint=usage.contract_fingerprint)
+                                 else exists(
+                                   select 1 from screen_scope_fingerprints screen_scope
+                                    where screen_scope.process_code=usage.process_code and screen_scope.step_code=usage.step_code
+                                      and screen_scope.screen_resource_id=usage.screen_resource_id
+                                      and screen_scope.screen_contract_fingerprint=usage.contract_fingerprint)
+                                 end) current_version
+                      from framework_system_usage_review usage
+                     where usage.process_code=p.process_code and usage.step_code=p.step_code
+                     order by usage.screen_resource_id nulls first,usage.capability_code,usage.reviewed_at desc,usage.review_id desc
+                  ) scoped
+              ) scoped_reviews on true
+              left join runtime_release runtime on true
               cross join scope_metrics metrics
               cross join report_options options
-             order by p.domain_order,p.development_order,p.process_code,p.step_order
-            """,compact,SYSTEM_TEST_REPORT_COMPACT_JSON_LIMIT_BYTES,domain,domain,process,process,result,result);
+             order by p.domain_order,p.workflow_order,p.process_code,p.step_order,p.step_code
+            """,compact,SYSTEM_TEST_REPORT_COMPACT_JSON_LIMIT_BYTES,domain,domain,process,process,size,offset,result,result);
 
         Map<String,Map<String,Object>> processIndex=new LinkedHashMap<>(),workTypeIndex=new LinkedHashMap<>();
         Set<String> reportedProcesses=new HashSet<>();
@@ -915,6 +1209,7 @@ public class ActorProcessGovernanceService {
         }
         Map<String,Object> summary=new LinkedHashMap<>();
         summary.put("workTypeCount",workTypes.size());summary.put("processCount",reportedProcesses.size());summary.put("stepCount",items.size());
+        summary.put("totalStepCount",totalStepCount);summary.put("pageReturnedStepCount",items.size());
         summary.put("screenCount",items.isEmpty()?0:items.get(0).get("scopeScreenCount"));
         summary.put("routeCount",items.isEmpty()?0:items.get(0).get("scopeRouteCount"));
         summary.put("capabilityCount",items.isEmpty()?0:items.get(0).get("scopeCapabilityCount"));
@@ -936,13 +1231,19 @@ public class ActorProcessGovernanceService {
         summary.put("fixtureSuiteCompleteStepCount",fixtureSuiteCompleteStepCount);summary.put("fixtureSuiteIncompleteStepCount",fixtureSuiteIncompleteStepCount);
         summary.put("fixtureSuiteCurrentRunCount",fixtureSuiteCurrentRunCount);summary.put("fixtureSuiteMode","INVENTORY_AND_SIMULATION_EVIDENCE_ONLY");
         summary.put("auditTargetMode","ACTIVE_BINDING_CAPABILITY");
+        summary.put("summaryScope","PAGE");summary.put("resultFilterMode","WITHIN_STRUCTURAL_PAGE");
         Map<String,Object> filters=new LinkedHashMap<>();filters.put("domainCode",domain);filters.put("processCode",process);filters.put("result",result);
-        List<Map<String,Object>> responseItems=compact?items.stream().map(ActorProcessGovernanceService::compactSystemTestItem).toList():items;
+        List<Map<String,Object>> sanitizedItems=items.stream().map(ActorProcessGovernanceService::redactSystemTestItem).toList();
+        List<Map<String,Object>> responseItems=compact?sanitizedItems.stream().map(ActorProcessGovernanceService::compactSystemTestItem).toList():sanitizedItems;
         Map<String,Object> report=new LinkedHashMap<>();report.put("success",true);report.put("generatedAt",java.time.Instant.now().toString());
         report.put("compact",compact);
+        report.put("pagination",Map.of(
+            "page",page,"size",size,"returnedItemCount",items.size(),"totalStepCount",totalStepCount,
+            "hasNext",offset+size<totalStepCount,"mode","STRUCTURAL_SCOPE"
+        ));
         report.put("orderContract",Map.of(
             "scope","WORK_TYPE_PROCESS_STEP",
-            "fields",List.of("domainOrder","developmentOrder","processCode","stepOrder"),
+            "fields",List.of("domainOrder","workflowOrder","processCode","stepOrder","stepCode"),
             "direction","ASC"
         ));
         report.put("auditMode","CONTRACT_ONLY");report.put("businessFunctionsExecuted",false);report.put("filters",filters);report.put("summary",summary);
@@ -962,7 +1263,58 @@ public class ActorProcessGovernanceService {
                 "compact",true,"omitted",true,"byteLength",byteLength,"sha256",sha256Hex(raw)
             )));
         }
+        // A compact catalogue row is navigation/summary data, not enough
+        // evidence to approve or reject a concrete screen/function scope.
+        compacted.put("reviewCriticalFieldsComplete",false);
+        compacted.put("reviewAllowed",false);
         return compacted;
+    }
+
+    private static final Set<String> SYSTEM_REPORT_SECRET_KEY_FRAGMENTS=Set.of(
+        "password","passwd","pwd","accesstoken","refreshtoken","token","authorization","cookie",
+        "secret","otp","proof","developmentcode","verificationcode","apikey","privatekey","credential",
+        "sessionid","csrf","jwt"
+    );
+    private static final Set<String> SYSTEM_REPORT_EVIDENCE_FIELDS=Set.of(
+        "actualInput","actualOutput","actualEvidenceJson","latestPreInputJson","latestEvidenceJson",
+        "latestInput","latestOutput","evidenceJson","simulationEvidenceJson","businessEvidenceJson",
+        "fixtureSuiteCasesJson","screenFunctionInventoryJson","scopedReviewInventoryJson","reviewScopesJson","nextDestinationsJson"
+    );
+
+    static Map<String,Object> redactSystemTestItem(Map<String,Object> source){
+        Map<String,Object> redacted=new LinkedHashMap<>(source);
+        for(String field:SYSTEM_REPORT_EVIDENCE_FIELDS){
+            Object value=redacted.get(field);
+            if(value==null)continue;
+            redacted.put(field,redactSystemReportEvidence(value));
+        }
+        return redacted;
+    }
+
+    private static String redactSystemReportEvidence(Object value){
+        String raw=value instanceof String text?text:toJson(value);
+        try{
+            com.fasterxml.jackson.databind.ObjectMapper mapper=new com.fasterxml.jackson.databind.ObjectMapper();
+            com.fasterxml.jackson.databind.JsonNode parsed=mapper.readTree(raw);
+            if(parsed==null)return "{}";
+            redactSystemReportNode(parsed);
+            return mapper.writeValueAsString(parsed);
+        }catch(Exception ignored){
+            return "{\"redacted\":true,\"reason\":\"UNPARSEABLE_EVIDENCE\"}";
+        }
+    }
+
+    private static void redactSystemReportNode(com.fasterxml.jackson.databind.JsonNode node){
+        if(node instanceof com.fasterxml.jackson.databind.node.ObjectNode object){
+            List<String> fields=new ArrayList<>();object.fieldNames().forEachRemaining(fields::add);
+            for(String field:fields){
+                String normalized=field.replaceAll("[^A-Za-z0-9]","").toLowerCase(Locale.ROOT);
+                boolean secret=SYSTEM_REPORT_SECRET_KEY_FRAGMENTS.stream().anyMatch(normalized::contains);
+                if(secret)object.put(field,"[REDACTED]");else redactSystemReportNode(object.get(field));
+            }
+        }else if(node instanceof com.fasterxml.jackson.databind.node.ArrayNode array){
+            array.forEach(ActorProcessGovernanceService::redactSystemReportNode);
+        }
     }
 
     /**
@@ -974,6 +1326,7 @@ public class ActorProcessGovernanceService {
     public Map<String,Object> auditSystemProcessContracts(Map<String,Object> body,String executedBy){
         String domain=str(body,"domainCode").toUpperCase(Locale.ROOT);
         String process=str(body,"processCode").toUpperCase(Locale.ROOT);
+        String step=str(body,"stepCode").toUpperCase(Locale.ROOT);
         boolean compactResponse=bool(body,"compact")||"SUMMARY".equalsIgnoreCase(str(body,"responseMode"));
         int maxSteps=Math.max(1,Math.min(integerOr(body,"maxSteps",1000),2000));
         int targetOffset=Math.max(0,integerOr(body,"targetOffset",0));
@@ -982,60 +1335,62 @@ public class ActorProcessGovernanceService {
             with scoped_steps as materialized (
               select p.development_order,s.process_code,s.step_code,s.step_order
                 from framework_process_step s join framework_process_definition p on p.process_code=s.process_code
-               where (?='' or upper(p.domain_code)=?) and (?='' or s.process_code=?)
-               order by p.development_order,s.process_code,s.step_order limit ?
+               where (?='' or upper(p.domain_code)=?) and (?='' or s.process_code=?) and (?='' or s.step_code=?)
+               order by p.development_order,s.process_code,s.step_order,s.step_code limit ?
             )
-            select m.item_id as "itemId",b.binding_id as "bindingId",b.audience,b.binding_status as "bindingStatus",
-                   screen.screen_resource_id as "screenResourceId",screen.route_key as "routePath",
-                   screen.screen_name as "screenName",screen.implementation_status as "implementationStatus",
-                   scoped.process_code as "processCode",scoped.step_code as "stepCode",
-                   coalesce(capability.capability_code,'ALL') as "capabilityCode",
+            , eligible_targets as materialized (
+              select scoped.development_order,scoped.step_order,scoped.process_code,scoped.step_code,
+                     b.binding_id,b.audience,b.binding_status,b.entry_mode,
+                     screen.screen_resource_id,screen.route_key,screen.screen_name,screen.implementation_status,
+                     coalesce(capability.capability_code,'ALL') capability_code,
+                     count(*) over() total_eligible_target_count
+                from scoped_steps scoped
+                left join framework_process_step_screen_binding b
+                  on b.process_code=scoped.process_code and b.step_code=scoped.step_code
+                 and b.binding_status='ACTIVE'
+                left join framework_screen_resource screen using(screen_resource_id)
+                left join framework_screen_capability capability using(screen_resource_id)
+            ), paged_targets as materialized (
+              select * from eligible_targets
+               order by development_order,process_code,step_order,step_code,
+                        case entry_mode when 'PRIMARY' then 0 else 1 end,
+                        case audience when 'USER' then 0 when 'ADMIN' then 1 when 'PUBLIC' then 2 else 3 end,
+                        route_key,binding_id,capability_code
+               limit ? offset ?
+            )
+            select m.item_id as "itemId",target.binding_id as "bindingId",target.audience,
+                   target.binding_status as "bindingStatus",target.screen_resource_id as "screenResourceId",
+                   target.route_key as "routePath",target.screen_name as "screenName",
+                   target.implementation_status as "implementationStatus",target.process_code as "processCode",
+                   target.step_code as "stepCode",target.capability_code as "capabilityCode",
                    fixture.test_case_id as "testCaseId",fixture.pre_input_json as "fixturePreInputJson",
-                   fixture.expected_result as "fixtureExpectedResult",fixture.expected_state as "fixtureExpectedState"
-              from scoped_steps scoped
+                   fixture.expected_result as "fixtureExpectedResult",fixture.expected_state as "fixtureExpectedState",
+                   target.total_eligible_target_count as "totalEligibleTargetCount"
+              from paged_targets target
               left join lateral (
-                select candidate.*
-                  from framework_process_step_screen_binding candidate
-                 where candidate.process_code=scoped.process_code and candidate.step_code=scoped.step_code
-                   and (candidate.binding_status='ACTIVE' or (
-                     candidate.binding_status='DRAFT' and exists (
-                       select 1 from framework_professional_screen_contract contract
-                        where contract.process_code=candidate.process_code
-                          and contract.step_code=candidate.step_code
-                          and contract.audience=candidate.audience
-                          and contract.contract_status='REVIEW_REQUIRED'
-                     )
-                   ))
-                 order by case candidate.binding_status when 'ACTIVE' then 0 else 1 end,
-                          case candidate.entry_mode when 'PRIMARY' then 0 else 1 end,
-                          candidate.binding_id
-                 limit 1
-              ) b on true
-              left join framework_screen_resource screen using(screen_resource_id)
-              left join framework_screen_capability capability using(screen_resource_id)
-               left join lateral (
-                 select master.item_id from framework_page_development_master master
-                 where master.screen_resource_id=screen.screen_resource_id
+                 select master.item_id from framework_page_development_item master
+                 where master.screen_resource_id=target.screen_resource_id
                  order by case master.design_status when 'VERIFIED' then 0 else 1 end,master.sequence_no,master.item_id limit 1
                ) m on true
-               left join lateral (
+              left join lateral (
                  select test.test_case_id,test.pre_input_json::text pre_input_json,
                         test.expected_result,coalesce(test.expected_state,'') expected_state
                    from framework_screen_workflow_test_case test
-                  where test.screen_resource_id=screen.screen_resource_id
-                    and test.process_code=scoped.process_code and test.step_code=scoped.step_code
-                    and test.capability_code in(coalesce(capability.capability_code,'ALL'),'ALL')
+                  where test.screen_resource_id=target.screen_resource_id
+                    and test.process_code=target.process_code and test.step_code=target.step_code
+                    and test.capability_code in(target.capability_code,'ALL')
                     and test.expected_result='PASSED' and test.active=true
-                  order by case when test.capability_code=coalesce(capability.capability_code,'ALL') then 0 else 1 end,
+                  order by case when test.capability_code=target.capability_code then 0 else 1 end,
                            test.updated_at desc,test.test_case_id desc limit 1
                ) fixture on true
-             order by scoped.development_order,scoped.process_code,scoped.step_order,
-                      case b.entry_mode when 'PRIMARY' then 0 else 1 end,
-                      case b.audience when 'USER' then 0 when 'ADMIN' then 1 when 'PUBLIC' then 2 else 3 end,
-                       screen.route_key,capability.capability_code
-             limit ? offset ?
-            """,domain,domain,process,process,maxSteps,maxTargets+1,targetOffset);
+             order by target.development_order,target.process_code,target.step_order,target.step_code,
+                      case target.entry_mode when 'PRIMARY' then 0 else 1 end,
+                      case target.audience when 'USER' then 0 when 'ADMIN' then 1 when 'PUBLIC' then 2 else 3 end,
+                      target.route_key,target.binding_id,target.capability_code
+            """,domain,domain,process,process,step,step,maxSteps,maxTargets+1,targetOffset);
         boolean hasMore=targets.size()>maxTargets;
+        long totalEligibleTargetCount=targets.isEmpty()?0L:
+                targets.get(0).get("totalEligibleTargetCount") instanceof Number total?total.longValue():targetOffset+targets.size();
         if(hasMore)targets=new ArrayList<>(targets.subList(0,maxTargets));
         List<Map<String,Object>> runs=new ArrayList<>();
         ContractAuditQueryCache auditCache=new ContractAuditQueryCache();
@@ -1043,11 +1398,11 @@ public class ActorProcessGovernanceService {
         Set<String> auditedSteps=new HashSet<>(),auditedBindings=new HashSet<>();
         for(Map<String,Object> target:targets){
             auditedSteps.add(target.get("processCode")+"|"+target.get("stepCode"));
+            if(target.get("bindingId")!=null)auditedBindings.add(String.valueOf(target.get("bindingId")));
             if(target.get("screenResourceId")==null||target.get("itemId")==null){
                 errors++;Map<String,Object> failure=new LinkedHashMap<>(target);failure.put("result","ERROR");
                 failure.put("message",target.get("screenResourceId")==null?"ACTIVE_SCREEN_BINDING_NOT_FOUND":"SCREEN_DEVELOPMENT_ITEM_NOT_FOUND");runs.add(failure);continue;
             }
-            auditedBindings.add(String.valueOf(target.get("bindingId")));
             if("DRAFT".equals(target.get("bindingStatus"))){
                 blocked++;Map<String,Object> pending=new LinkedHashMap<>(target);pending.put("result","BLOCKED");
                 pending.put("message","WORKFLOW_EVIDENCE_PENDING");runs.add(pending);continue;
@@ -1065,13 +1420,16 @@ public class ActorProcessGovernanceService {
                 failure.put("message",e.getMessage()==null?"CONTRACT_AUDIT_FAILED":e.getMessage());runs.add(failure);
             }
         }
-        Map<String,Object> filters=new LinkedHashMap<>();filters.put("domainCode",domain);filters.put("processCode",process);filters.put("maxSteps",maxSteps);
+        Map<String,Object> filters=new LinkedHashMap<>();filters.put("domainCode",domain);filters.put("processCode",process);filters.put("stepCode",step);filters.put("maxSteps",maxSteps);
         filters.put("targetOffset",targetOffset);filters.put("maxTargets",maxTargets);
         String outcome=errors>0?"ERROR":blocked>0?"BLOCKED":targets.isEmpty()?"BLOCKED":"PASSED";
         Map<String,Object> response=new LinkedHashMap<>();response.put("success",true);response.put("outcome",outcome);response.put("result",outcome);response.put("auditMode","CONTRACT_ONLY");
         response.put("businessFunctionsExecuted",false);response.put("compact",compactResponse);response.put("filters",filters);response.put("targetCount",targets.size());
         response.put("auditTargetMode","ACTIVE_BINDING_CAPABILITY");
         response.put("targetOffset",targetOffset);response.put("maxTargets",maxTargets);response.put("hasMore",hasMore);
+        response.put("totalEligibleTargetCount",totalEligibleTargetCount);
+        response.put("coveredTargetCount",Math.min(totalEligibleTargetCount,(long)targetOffset+targets.size()));
+        response.put("targetCoverageState",hasMore?"PARTIAL":"COMPLETE");
         response.put("nextTargetOffset",hasMore?targetOffset+targets.size():null);
         response.put("auditedStepCount",auditedSteps.size());response.put("auditedBindingCount",auditedBindings.size());
         response.put("auditedCapabilityTargetCount",targets.stream().filter(row->row.get("screenResourceId")!=null).count());
@@ -1084,6 +1442,144 @@ public class ActorProcessGovernanceService {
             response.put("runs",runs);
         }
         return response;
+    }
+
+    /**
+     * Persists an append-only human design/usability decision for one report row.
+     * This record is deliberately separate from immutable runtime evidence and
+     * therefore cannot promote DESIGN or CONTRACT_SIMULATION to BUSINESS_E2E.
+     */
+    @Transactional
+    public Map<String,Object> saveSystemUsageReview(Map<String,Object> body,String reviewedBy){
+        String reviewer=reviewedBy==null?"":reviewedBy.trim();
+        if(reviewer.isBlank())throw new SecurityException("AUTHENTICATED_REVIEWER_REQUIRED");
+        String process=req(body,"processCode").trim().toUpperCase(Locale.ROOT);
+        String step=req(body,"stepCode").trim().toUpperCase(Locale.ROOT);
+        String status=req(body,"reviewStatus").trim().toUpperCase(Locale.ROOT);
+        String note=str(body,"reviewNote").trim();
+        Object rawScreen=body.get("screenResourceId");
+        Long screenId=rawScreen==null||String.valueOf(rawScreen).isBlank()?null:Long.parseLong(String.valueOf(rawScreen));
+        if(screenId!=null&&screenId<=0)throw new IllegalArgumentException("screenResourceId must be a positive number");
+        String capability=def(body,"capabilityCode","ALL").trim().toUpperCase(Locale.ROOT);
+        if(capability.isBlank())capability="ALL";
+        if(!Set.of("APPROVED","CHANGE_REQUESTED").contains(status))
+            throw new IllegalArgumentException("reviewStatus must be APPROVED or CHANGE_REQUESTED");
+        if("CHANGE_REQUESTED".equals(status)&&note.isBlank())
+            throw new IllegalArgumentException("reviewNote is required for CHANGE_REQUESTED");
+        if(screenId==null&&!"ALL".equals(capability))
+            throw new IllegalArgumentException("screenResourceId is required for a capability review");
+        String scopeFingerprint="";
+        if(screenId!=null){
+            Integer bindingCount=jdbc.queryForObject("""
+                select count(*) from framework_process_step_screen_binding
+                 where process_code=? and step_code=? and screen_resource_id=? and binding_status='ACTIVE'
+                """,Integer.class,process,step,screenId);
+            if(bindingCount==null||bindingCount==0)
+                throw new IllegalArgumentException("ACTIVE_SCREEN_BINDING_NOT_FOUND: "+process+" / "+step+" / "+screenId);
+            if(!"ALL".equals(capability)){
+                Integer capabilityCount=jdbc.queryForObject("select count(*) from framework_screen_capability where screen_resource_id=? and capability_code=?",
+                        Integer.class,screenId,capability);
+                if(capabilityCount==null||capabilityCount==0)
+                    throw new IllegalArgumentException("SCREEN_CAPABILITY_NOT_FOUND: "+screenId+" / "+capability);
+            }
+            scopeFingerprint="ALL".equals(capability)
+                    ?screenReviewFingerprint(screenId,process,step)
+                    :capabilityReviewFingerprint(screenId,process,step,capability);
+        }
+        List<Map<String,Object>> contract=jdbc.queryForList("""
+            select p.process_version as "processVersion",
+                   (select runtime.source_commit from framework_runtime_release_state runtime
+                     where runtime.release_key='CARBONET_RUNTIME' and runtime.health_status='UP') as "sourceCommit"
+              from framework_process_definition p join framework_process_step s using(process_code)
+             where p.process_code=? and s.step_code=?
+            """,process,step);
+        if(contract.size()!=1)throw new IllegalArgumentException("PROCESS_STEP_NOT_FOUND: "+process+" / "+step);
+        String version=String.valueOf(contract.get(0).get("processVersion"));
+        Object rawFingerprint;
+        if(screenId==null){
+            Map<String,Object> detail=systemProcessTestReportStepDetail(process,step);
+            @SuppressWarnings("unchecked") Map<String,Object> detailItem=(Map<String,Object>)detail.get("item");
+            rawFingerprint=detailItem==null?null:detailItem.get("contractFingerprint");
+        }else rawFingerprint=scopeFingerprint;
+        if(rawFingerprint==null||String.valueOf(rawFingerprint).isBlank())
+            throw new IllegalStateException("Current operational contract fingerprint is unavailable; review was not recorded: "+process+" / "+step);
+        Object rawSourceCommit=contract.get(0).get("sourceCommit");
+        if(rawSourceCommit==null||!String.valueOf(rawSourceCommit).matches("[0-9a-f]{40}"))
+            throw new IllegalStateException("Current healthy runtime commit is unavailable; review was not recorded");
+        String idempotency=str(body,"idempotencyKey").trim();
+        if(idempotency.isBlank())idempotency=sha256Hex(String.join("|",process,step,String.valueOf(screenId),capability,status,note,version,
+                String.valueOf(rawFingerprint),String.valueOf(rawSourceCommit),reviewer));
+        if(idempotency.length()>128)throw new IllegalArgumentException("idempotencyKey must be 128 characters or less");
+        jdbc.queryForObject("select count(*) from (select pg_advisory_xact_lock(hashtextextended(?,0))) lock",
+                Integer.class,idempotency);
+        List<Map<String,Object>> existing=jdbc.queryForList("""
+            select review_id as "reviewId",process_code as "processCode",step_code as "stepCode",
+                   screen_resource_id as "screenResourceId",capability_code as "capabilityCode",
+                   review_status as "reviewStatus",review_note as "reviewNote",process_version as "processVersion",
+                   contract_fingerprint as "contractFingerprint",source_commit as "reviewSourceCommit",
+                   linked_job_id as "linkedJobId",reviewed_by as "reviewedBy",reviewed_at as "reviewedAt"
+              from framework_system_usage_review where idempotency_key=?
+            """,idempotency);
+        if(!existing.isEmpty()){
+            Map<String,Object> prior=new LinkedHashMap<>(existing.get(0));
+            long priorScreen=prior.get("screenResourceId") instanceof Number number?number.longValue():0L;
+            long requestedScreen=screenId==null?0L:screenId;
+            if(!process.equals(prior.get("processCode"))||!step.equals(prior.get("stepCode"))
+                    ||requestedScreen!=priorScreen||!capability.equals(prior.get("capabilityCode"))
+                    ||!status.equals(prior.get("reviewStatus"))||!note.equals(prior.get("reviewNote"))
+                    ||!version.equals(prior.get("processVersion"))
+                    ||!String.valueOf(rawFingerprint).equals(prior.get("contractFingerprint"))
+                    ||!String.valueOf(rawSourceCommit).equals(prior.get("reviewSourceCommit"))
+                    ||!reviewer.equals(prior.get("reviewedBy")))
+                throw new IllegalArgumentException("IDEMPOTENCY_KEY_REUSE_MISMATCH");
+            prior.put("reviewCurrentVersion",String.valueOf(rawFingerprint).equals(prior.get("contractFingerprint"))
+                    &&String.valueOf(rawSourceCommit).equals(prior.get("reviewSourceCommit")));
+            prior.put("reviewScreenResourceId",prior.remove("screenResourceId"));
+            prior.put("reviewCapabilityCode",prior.remove("capabilityCode"));
+            prior.put("reviewEvidenceScope","HUMAN_REVIEW_ONLY");prior.put("idempotent",true);
+            prior.put("nextAction","CHANGE_REQUESTED".equals(prior.get("reviewStatus"))?"DEVELOPMENT_REVIEW_PENDING":"NONE");
+            return Map.of("success",true,"review",prior);
+        }
+        Long reviewId=jdbc.queryForObject("""
+            insert into framework_system_usage_review(process_code,step_code,screen_resource_id,capability_code,idempotency_key,review_status,review_note,
+                   process_version,contract_fingerprint,source_commit,reviewed_by)
+            values(?,?,?,?,?,?,?,?,?,?,?) returning review_id
+            """,Long.class,process,step,screenId,capability,idempotency,status,note,version,String.valueOf(rawFingerprint),String.valueOf(rawSourceCommit),reviewer);
+        Long linkedJobId=null;
+        if("CHANGE_REQUESTED".equals(status)){
+            String targetPath="design-review/"+process.toLowerCase(Locale.ROOT)+"/"+step.toLowerCase(Locale.ROOT)+"/"+idempotency;
+            String specification=toJson(Map.of(
+                    "reviewId",reviewId,"reviewNote",note,"processVersion",version,
+                    "contractFingerprint",String.valueOf(rawFingerprint),"sourceCommit",String.valueOf(rawSourceCommit),
+                    "screenResourceId",screenId==null?0L:screenId,"capabilityCode",capability,
+                    "approvalPolicy","MANUAL_APPROVAL_REQUIRED","autoDeploy",false));
+            linkedJobId=jdbc.queryForObject("""
+                insert into framework_development_job(process_code,step_code,job_type,job_name,target_path,
+                       specification_json,job_status,approval_status,created_by)
+                values(?,?,'DESIGN_REVIEW','실사용 검수 변경 요청',?,?,'PLANNED','PENDING',?)
+                on conflict(process_code,step_code,job_type,target_path) do update set
+                  job_name=excluded.job_name,specification_json=excluded.specification_json,
+                  job_status=case when framework_development_job.job_status in('VERIFIED','COMPLETED')
+                                  then framework_development_job.job_status else 'PLANNED' end,
+                  approval_status=case when framework_development_job.job_status in('VERIFIED','COMPLETED')
+                                       then framework_development_job.approval_status else 'PENDING' end,
+                  updated_at=current_timestamp
+                returning job_id
+                """,Long.class,process,step,targetPath,specification,reviewer);
+            jdbc.update("update framework_system_usage_review set linked_job_id=? where review_id=?",linkedJobId,reviewId);
+            event(linkedJobId,"REVIEW_CHANGE_REQUESTED",null,"PLANNED",reviewer,toJson(Map.of(
+                    "reviewId",reviewId,"contractFingerprint",String.valueOf(rawFingerprint),
+                    "sourceCommit",String.valueOf(rawSourceCommit),"approvalStatus","PENDING")));
+        }
+        Map<String,Object> review=new LinkedHashMap<>();
+        review.put("reviewId",reviewId);review.put("processCode",process);review.put("stepCode",step);
+        review.put("reviewStatus",status);review.put("reviewNote",note);review.put("processVersion",version);
+        review.put("reviewScreenResourceId",screenId);review.put("reviewCapabilityCode",capability);
+        review.put("reviewedBy",reviewer);review.put("reviewSourceCommit",String.valueOf(rawSourceCommit));review.put("reviewCurrentVersion",true);
+        review.put("linkedJobId",linkedJobId);review.put("idempotent",false);
+        review.put("nextAction","CHANGE_REQUESTED".equals(status)?"DEVELOPMENT_REVIEW_PENDING":"NONE");
+        review.put("reviewEvidenceScope","HUMAN_REVIEW_ONLY");
+        return Map.of("success",true,"review",review);
     }
 
     /**
@@ -1415,6 +1911,43 @@ public class ActorProcessGovernanceService {
             screenId,process,step,capability,screenId,process,step,process,step,screenId,audience);
         if(fingerprints.size()!=1)throw new IllegalStateException(fingerprints.isEmpty()?"SCREEN_CONTRACT_FINGERPRINT_NOT_FOUND":"SCREEN_CONTRACT_FINGERPRINT_AMBIGUOUS");
         return fingerprints.get(0);
+    }
+
+    private String screenReviewFingerprint(long screenId,String process,String step){
+        List<String> audiences=jdbc.queryForList("""
+            select distinct audience from framework_process_step_screen_binding
+             where process_code=? and step_code=? and screen_resource_id=? and binding_status='ACTIVE'
+             order by audience
+            """,String.class,process,step,screenId);
+        if(audiences.isEmpty())throw new IllegalStateException("SCREEN_CONTRACT_FINGERPRINT_NOT_FOUND");
+        List<String> capabilities=jdbc.queryForList("""
+            select capability_code from framework_screen_capability
+             where screen_resource_id=? order by capability_code
+            """,String.class,screenId);
+        if(capabilities.isEmpty())capabilities=List.of("ALL");
+        List<String> fingerprints=new ArrayList<>();
+        for(String audience:audiences)for(String capability:capabilities)
+            fingerprints.add(screenContractFingerprint(screenId,process,step,audience,capability));
+        return aggregateReviewFingerprints(fingerprints);
+    }
+
+    private String capabilityReviewFingerprint(long screenId,String process,String step,String capability){
+        List<String> audiences=jdbc.queryForList("""
+            select distinct audience from framework_process_step_screen_binding
+             where process_code=? and step_code=? and screen_resource_id=? and binding_status='ACTIVE'
+             order by audience
+            """,String.class,process,step,screenId);
+        if(audiences.isEmpty())throw new IllegalStateException("SCREEN_CONTRACT_FINGERPRINT_NOT_FOUND");
+        List<String> fingerprints=new ArrayList<>();
+        for(String audience:audiences)
+            fingerprints.add(screenContractFingerprint(screenId,process,step,audience,capability));
+        return aggregateReviewFingerprints(fingerprints);
+    }
+
+    static String aggregateReviewFingerprints(List<String> orderedFingerprints){
+        if(orderedFingerprints==null||orderedFingerprints.isEmpty())
+            throw new IllegalArgumentException("At least one review fingerprint is required");
+        return md5Hex(String.join("|",orderedFingerprints));
     }
 
     static String preferredScreenContractAudience(String audience){
@@ -2815,6 +3348,13 @@ public class ActorProcessGovernanceService {
             byte[] digest=java.security.MessageDigest.getInstance("SHA-256").digest(value.getBytes(java.nio.charset.StandardCharsets.UTF_8));
             return java.util.HexFormat.of().formatHex(digest);
         }catch(java.security.NoSuchAlgorithmException impossible){throw new IllegalStateException("SHA-256 is unavailable",impossible);}
+    }
+
+    private static String md5Hex(String value){
+        try{
+            byte[] digest=java.security.MessageDigest.getInstance("MD5").digest(value.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            return java.util.HexFormat.of().formatHex(digest);
+        }catch(java.security.NoSuchAlgorithmException e){throw new IllegalStateException(e);}
     }
 
     private void requireActorAssignment(String tenant,String project,String actor,String user){
