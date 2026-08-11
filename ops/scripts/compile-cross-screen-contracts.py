@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
-import hashlib,json,sys,time
+import hashlib,json,re,sys,time
 from collections import defaultdict
 from pathlib import Path
 
 start=time.perf_counter()
 data=json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
 db={(x["table"].lower(),x["column"].lower()):x for x in data["databaseColumns"]}
-endpoints={(x["method"].upper(),x["path"].split("?")[0]) for x in data["registeredEndpoints"]}
+def normalize_path(value):
+    return re.sub(r"\{[^\/{}]+\}", "{}", str(value or "").split("?")[0])
+endpoints={(x["method"].upper(),normalize_path(x["path"])) for x in data["registeredEndpoints"]}
 canon={}; bindings=[]; issues=[]; issue_keys=set(); screens=defaultdict(list)
 
 def issue(code,severity,resource,field,message,evidence=None):
@@ -32,9 +34,9 @@ def parse_api(value):
         return parse_api(value["contract"])
     if isinstance(value,str):
         parts=value.strip().split(maxsplit=1)
-        return (parts[0].upper(),parts[1].split("?")[0]) if len(parts)==2 else None
+        return (parts[0].upper(),normalize_path(parts[1])) if len(parts)==2 else None
     if isinstance(value,dict):
-        return (str(value.get("method","GET")).upper(),str(value.get("path") or value.get("routePath","")).split("?")[0])
+        return (str(value.get("method","GET")).upper(),normalize_path(value.get("path") or value.get("routePath","")))
 
 for c in data["contracts"]:
     resource=f'{c["processCode"]}:{c["stepCode"]}:{c["audience"]}:{c["routePath"]}'
