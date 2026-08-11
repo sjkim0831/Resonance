@@ -1375,6 +1375,7 @@ sync_process_contract_audit_if_required() {
   if flock -n "$audit_lock_fd"; then
     SYSTEM_TEST_REPORT_SKIP_HTTP_SMOKE=1 \
       SYSTEM_TEST_REPORT_DEPLOYMENT_PREFLIGHT=1 \
+      RESONANCE_ROOT="$ROOT_DIR" \
       bash /opt/resonance-data/control-plane/bin/resonance-all-process-contract-audit.sh \
       >"$preflight_report"
     preflight_rc=$?

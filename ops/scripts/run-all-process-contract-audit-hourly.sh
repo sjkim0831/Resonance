@@ -3,7 +3,7 @@ set -Eeuo pipefail
 umask 027
 { set +x; } 2>/dev/null
 
-ROOT_DIR="${RESONANCE_ROOT:-/opt/Resonance}"
+ROOT_DIR="${RESONANCE_ROOT:-/opt/Resonance/var/deploy-worktrees/runtime-build}"
 CONTROL_PLANE_BIN="${RESONANCE_CONTROL_PLANE_BIN:-/opt/resonance-data/control-plane/bin}"
 AUDIT_WRAPPER="${RESONANCE_AUDIT_WRAPPER:-$CONTROL_PLANE_BIN/resonance-all-process-contract-audit.sh}"
 AUDIT_ENGINE="${RESONANCE_AUDIT_ENGINE:-$CONTROL_PLANE_BIN/resonance-all-process-contract-audit.mjs}"

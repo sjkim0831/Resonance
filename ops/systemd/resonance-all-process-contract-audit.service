@@ -7,8 +7,9 @@ Wants=network-online.target
 Type=oneshot
 User=sjkim
 Group=sjkim
-WorkingDirectory=/opt/Resonance
+WorkingDirectory=/opt/Resonance/var/deploy-worktrees/runtime-build
 Environment=HOME=/home/sjkim
+Environment=RESONANCE_ROOT=/opt/Resonance/var/deploy-worktrees/runtime-build
 Environment=PATH=/usr/local/bin:/usr/bin:/bin
 Environment=KUBECONFIG=/home/sjkim/.kube/config
 ExecStart=/usr/bin/bash /opt/resonance-data/control-plane/bin/run-all-process-contract-audit-hourly.sh
