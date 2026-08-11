@@ -107,6 +107,17 @@
       "timeoutSeconds": 300,
       "deployLockMode": "SHARED_PARENT",
       "externalBlockers": []
+    },
+    {
+      "priority": 100,
+      "processCode": "REPORT_CERTIFICATION",
+      "runner": "ops/scripts/complete-report-certification-assurance.sh",
+      "automation": "AUTOMATIC",
+      "expectedCurrentPassedSteps": 4,
+      "totalSteps": 4,
+      "timeoutSeconds": 300,
+      "deployLockMode": "SHARED_PARENT",
+      "externalBlockers": []
     }
   ]
 }
