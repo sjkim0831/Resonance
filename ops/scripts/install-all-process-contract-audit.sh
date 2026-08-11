@@ -14,6 +14,7 @@ for file in \
   ops/scripts/resonance-all-process-contract-audit.sh \
   ops/scripts/resonance-all-process-contract-audit.mjs \
   ops/scripts/run-all-process-contract-audit-hourly.sh \
+  ops/scripts/runtime-qa-auth-common.sh \
   ops/scripts/install-all-process-contract-audit.sh \
   ops/systemd/resonance-all-process-contract-audit.service \
   ops/systemd/resonance-all-process-contract-audit.timer; do

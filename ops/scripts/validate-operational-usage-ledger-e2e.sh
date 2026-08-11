@@ -100,6 +100,8 @@ if [[ "${1:-}" == "--self-test" ]]; then assert_local_mutations; exit 0; fi
 
 ROOT="${1:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
 EXPECTED_COMMIT="${2:-$(git -C "$ROOT" rev-parse HEAD)}"
+SOURCE_COMMIT="${CARBONET_POSTDEPLOY_SOURCE_COMMIT:-$EXPECTED_COMMIT}"
+EVIDENCE_MODE="${CARBONET_POSTDEPLOY_EVIDENCE_MODE:-legacy}"
 cd "$ROOT"
 
 # shellcheck source=ops/scripts/runtime-url-common.sh
@@ -129,6 +131,9 @@ require_cmd() {
 
 for command_name in curl jq node kubectl git awk sort uniq; do require_cmd "$command_name"; done
 [[ "$EXPECTED_COMMIT" =~ ^[0-9a-f]{40}$ ]] || fail "expected commit must be a 40-character lowercase Git SHA"
+[[ "$SOURCE_COMMIT" =~ ^[0-9a-f]{40}$ ]] || fail "candidate source commit must be a 40-character lowercase Git SHA"
+[[ "$EVIDENCE_MODE" != candidate || "$SOURCE_COMMIT" == "$EXPECTED_COMMIT" ]] \
+  || fail "candidate source commit does not match expected runtime commit"
 [[ "$REVIEW_KEY" =~ ^[A-Za-z0-9._:-]+$ ]] || fail "generated review ownership key is unsafe"
 
 resolve_postgres_leader() {
@@ -367,7 +372,7 @@ for help_selector in "${HELP_SELECTORS[@]}"; do
   [[ "$help_selector" =~ ^\[data-help-id=\"[A-Za-z0-9-]+\"\]$ ]] || fail "DB help selector is outside the safe data-help-id contract"
 done
 
-export CARBONET_QA_AUTH_SECRET="${CARBONET_USAGE_LEDGER_ALLOWED_AUTH_SECRET:-carbonet-screen-smoke}"
+export CARBONET_QA_AUTH_SECRET="${CARBONET_USAGE_LEDGER_ALLOWED_AUTH_SECRET:-carbonet-usage-ledger-system-admin}"
 unset CARBONET_QA_AUTH_USER CARBONET_QA_AUTH_PASSWORD CARBONET_ACTOR_TEST_PASSWORD
 carbonet_qa_login "$COOKIE_JAR" "$BASE_URL" || fail "isolated system administrator login failed"
 session_file="$TMP_DIR/master-session.json"
@@ -529,4 +534,11 @@ done
 carbonet_qa_logout "$ORDINARY_COOKIE_JAR" "$BASE_URL" || fail "ordinary QA logout failed"
 
 elapsed=$(( $(date +%s) - started_at ))
+if [[ "$EVIDENCE_MODE" == candidate ]]; then
+  jq -cn --arg selectedProcess "$SELECTED_PROCESS" --arg selectedStep "$SELECTED_STEP" \
+    --argjson totalSteps "$TOTAL_STEPS" --argjson pages "$page_count" --argjson durationSeconds "$elapsed" \
+    '{selectedProcess:$selectedProcess,selectedStep:$selectedStep,totalSteps:$totalSteps,pages:$pages,durationSeconds:$durationSeconds,allowedRole:"SYSTEM_ADMIN_FAMILY",anonymousDenied:2,ordinaryDenied:7,browserViewports:2,persistentFixtures:0,reviewCreateReloadIdempotencyCleanup:true}' |
+    bash "$ROOT/ops/scripts/stage-postdeploy-evidence-candidate.sh" \
+      OPERATIONAL_USAGE_LEDGER_GATE __RELEASE__ RELEASE_GATE "$SOURCE_COMMIT"
+fi
 info "PASS allowedRole=SYSTEM_ADMIN_FAMILY anonymous401=2 deniedRole=NON_SYSTEM_ADMIN deniedEndpoints=7 totalSteps=${TOTAL_STEPS} pages=${page_count} browserViewports=2 persistentFixtures=0 duration=${elapsed}s"

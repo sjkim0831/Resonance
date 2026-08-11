@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
+umask 077
 
 ROOT="${RESONANCE_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
 NAMESPACE="${CARBONET_K8S_NAMESPACE:-carbonet-prod}"
@@ -11,11 +12,37 @@ PAGE="$ROOT/projects/carbonet-frontend/source/src/features/emission-ecoinvent-ad
 CONTROLLER="$ROOT/modules/resonance-common/carbonet-common-core/src/main/java/egovframework/com/feature/emission/web/EcoinventManagementApiController.java"
 COOKIE_JAR="$(mktemp)"
 BODY="$(mktemp)"
-trap 'rm -f "$COOKIE_JAR" "$BODY"' EXIT
+LOGIN_PAYLOAD="$(mktemp)"
+LOGIN_RESPONSE="$(mktemp)"
+LOGOUT_RESPONSE="$(mktemp)"
+LOGIN_USER=""
+LOGIN_PASSWORD=""
+SESSION_ACTIVE=0
 
+source "$ROOT/ops/scripts/runtime-qa-auth-common.sh"
 source "$ROOT/ops/scripts/lib/carbonet-postgres-query.sh"
 carbonet_postgres_query_init
 q(){ carbonet_postgres_query "$1"; }
+
+cleanup() {
+  local status=$? logout_status=""
+  trap - EXIT
+  set +e
+  if [[ "$SESSION_ACTIVE" == 1 ]]; then
+    logout_status="$(curl -sS -b "$COOKIE_JAR" -o "$LOGOUT_RESPONSE" -w '%{http_code}' -X POST "$BASE_URL/signin/actionLogout")"
+    if { [[ "$logout_status" != 200 ]] || ! jq -e '(.status // "") == "success"' "$LOGOUT_RESPONSE" >/dev/null 2>&1; } && [[ "$status" == 0 ]]; then
+      echo "[emission-screen-readiness] FAIL logout status=$logout_status" >&2
+      status=1
+    fi
+  fi
+  rm -f "$COOKIE_JAR" "$BODY" "$LOGIN_PAYLOAD" "$LOGIN_RESPONSE" "$LOGOUT_RESPONSE"
+  exit "$status"
+}
+trap cleanup EXIT
+
+carbonet_qa_load_credentials LOGIN_USER LOGIN_PASSWORD \
+  "${CARBONET_RUNTIME_TEST_USER:-}" "${CARBONET_RUNTIME_TEST_PASSWORD:-}" \
+  "${CARBONET_RUNTIME_AUTH_SECRET:-carbonet-screen-smoke}" "$NAMESPACE"
 
 for route in /emission/data_input /admin/emission/ecoinvent /admin/emission/factor-management; do
   grep -Fq "$route" "$ROUTES" || { echo "[emission-screen-readiness] missing route source: $route" >&2; exit 1; }
@@ -24,9 +51,19 @@ grep -Fq 'EmissionEcoinventAdminMigrationPage' "$PAGE"
 grep -Fq '/admin/emission/ecoinvent/api/datasets' "$CONTROLLER"
 grep -Fq '/admin/emission/ecoinvent/api/filter-options' "$CONTROLLER"
 
-curl -fsS -c "$COOKIE_JAR" -H 'Content-Type: application/json' -X POST \
-  "$BASE_URL/admin/login/actionLogin" \
-  --data '{"userId":"webmaster","userPw":"rhdxhd12","userSe":"USR"}' >/dev/null
+bash "$ROOT/ops/scripts/validate-activity-data-runtime.sh" >/dev/null
+bash "$ROOT/ops/scripts/validate-emission-calculation-runtime.sh" >/dev/null
+bash "$ROOT/ops/scripts/validate-report-certification-runtime.sh" >/dev/null
+bash "$ROOT/ops/scripts/validate-customer-work-journey.sh" >/dev/null
+
+printf '%s' "$LOGIN_PASSWORD" | jq -Rsc --arg id "$LOGIN_USER" '{userId:$id,userPw:.,userSe:"USR"}' >"$LOGIN_PAYLOAD"
+LOGIN_PASSWORD=""
+unset LOGIN_PASSWORD CARBONET_RUNTIME_TEST_PASSWORD
+login_code="$(curl -sS -c "$COOKIE_JAR" -o "$LOGIN_RESPONSE" -w '%{http_code}' -H 'Content-Type: application/json' -X POST "$BASE_URL/signin/actionLogin" --data-binary "@$LOGIN_PAYLOAD")"
+rm -f "$LOGIN_PAYLOAD"
+[[ "$login_code" == 200 ]] && jq -e --arg user "$LOGIN_USER" '.status == "loginSuccess" and (.userId | ascii_downcase) == ($user | ascii_downcase)' "$LOGIN_RESPONSE" >/dev/null \
+  || { echo "[emission-screen-readiness] FAIL login status=$login_code" >&2; exit 1; }
+SESSION_ACTIVE=1
 
 pages=(
   '/emission/data_input?mode=correction'
@@ -50,11 +87,6 @@ for path in "${apis[@]}"; do
     echo "[emission-screen-readiness] invalid API: $path status=$code" >&2; exit 1;
   }
 done
-
-bash "$ROOT/ops/scripts/validate-activity-data-runtime.sh" >/dev/null
-bash "$ROOT/ops/scripts/validate-emission-calculation-runtime.sh" >/dev/null
-bash "$ROOT/ops/scripts/validate-report-certification-runtime.sh" >/dev/null
-bash "$ROOT/ops/scripts/validate-customer-work-journey.sh" >/dev/null
 
 sql="
 do \$\$

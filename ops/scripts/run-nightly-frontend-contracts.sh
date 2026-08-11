@@ -11,6 +11,13 @@ generated="$frontend/src/generated/screen-generation"
 shared_generated="${SHARED_GENERATED_SCREEN_DIR:-/opt/Resonance/projects/carbonet-frontend/source/src/generated/screen-generation}"
 created_links=()
 quality_artifact_dir="${FULL_SCREEN_QUALITY_ARTIFACT_DIR:-/opt/resonance-data/quality/full-screen/latest}"
+[[ -f "$root/ops/scripts/runtime-qa-auth-common.sh" ]] || {
+  echo "[nightly-frontend-contracts] canonical authentication helper is unavailable" >&2
+  exit 2
+}
+# shellcheck source=ops/scripts/runtime-qa-auth-common.sh
+source "$root/ops/scripts/runtime-qa-auth-common.sh"
+export CARBONET_QA_AUTH_LOCK_TIMEOUT_SECONDS="${CARBONET_QA_AUTH_LOCK_TIMEOUT_SECONDS:-300}"
 
 # The shared smoke credential file predates the full-screen suite and exposes
 # ADMIN_SMOKE_* names. Keep that file compatible without duplicating secrets.
@@ -63,6 +70,7 @@ bash scripts/run-contract-typecheck.sh
 echo "[nightly-frontend-contracts] generated route identity validation started"
 npm run audit:generated-route-family
 echo "[nightly-frontend-contracts] 1000-screen browser regression started"
-FULL_SCREEN_SMOKE_CHANGED_ONLY=false \
+carbonet_qa_auth_run_serialized nightly-full-screen \
+  env FULL_SCREEN_SMOKE_CHANGED_ONLY=false FULL_SCREEN_SMOKE_REQUIRE_PREAUTH=true \
   bash scripts/run-full-screen-smoke.sh
 echo "[nightly-frontend-contracts] PASS typecheck=governed routeIdentity=closed browser=full"

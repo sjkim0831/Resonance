@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
+umask 077
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 NAMESPACE="${CARBONET_K8S_NAMESPACE:-carbonet-prod}"
@@ -7,17 +8,42 @@ DATABASE="${POSTGRES_DB:-carbonet}"
 USER_NAME="${POSTGRES_ADMIN_USER:-postgres}"
 CONTAINER="${CARBONET_POSTGRES_CONTAINER:-patroni}"
 BASE_URL="${CARBONET_RUNTIME_BASE_URL:-http://127.0.0.1}"
-LOGIN_USER="${CARBONET_RUNTIME_TEST_USER:-webmaster}"
-LOGIN_PASSWORD="${CARBONET_RUNTIME_TEST_PASSWORD:-rhdxhd12}"
-SOURCE_COMMIT="$(git -C "$ROOT" rev-parse HEAD)"
+LOGIN_USER=""
+LOGIN_PASSWORD=""
+SOURCE_COMMIT="${CARBONET_POSTDEPLOY_SOURCE_COMMIT:-$(git -C "$ROOT" rev-parse HEAD)}"
+EVIDENCE_MODE="${CARBONET_POSTDEPLOY_EVIDENCE_MODE:-legacy}"
 EVIDENCE_DIR="${CARBONET_RUNTIME_SMOKE_EVIDENCE_DIR:-$ROOT/var/test-evidence/process-runtime-smoke}"
 PROMOTE_JOBS="${CARBONET_GOVERNANCE_PROMOTE_JOBS:-true}"
+[[ "$EVIDENCE_MODE" != "candidate" ]] || PROMOTE_JOBS=false
 COOKIE_JAR="$(mktemp)"; DASHBOARD="$(mktemp)"; PAGE="$(mktemp)"
-trap 'rm -f "$COOKIE_JAR" "$DASHBOARD" "$PAGE"' EXIT
+LOGIN_PAYLOAD="$(mktemp)"; LOGIN_RESPONSE="$(mktemp)"; LOGOUT_RESPONSE="$(mktemp)"
+RUNTIME_SMOKE_OUTPUT="$(mktemp)"
+SESSION_ACTIVE=0
 
+source "$ROOT/ops/scripts/runtime-qa-auth-common.sh"
 source "$ROOT/ops/scripts/lib/carbonet-postgres-query.sh"
 carbonet_postgres_query_init
 psqlq(){ carbonet_postgres_query "$1"; }
+
+finalize() {
+  local status=$? logout_status=""
+  trap - EXIT
+  set +e
+  if [[ "$SESSION_ACTIVE" == 1 ]]; then
+    logout_status="$(curl -sS -b "$COOKIE_JAR" -o "$LOGOUT_RESPONSE" -w '%{http_code}' -X POST "$BASE_URL/signin/actionLogout")"
+    if { [[ "$logout_status" != 200 ]] || ! jq -e '(.status // "") == "success"' "$LOGOUT_RESPONSE" >/dev/null 2>&1; } && [[ "$status" == 0 ]]; then
+      echo "[governance-change-runtime] FAIL logout status=$logout_status" >&2
+      status=1
+    fi
+  fi
+  rm -f "$COOKIE_JAR" "$DASHBOARD" "$PAGE" "$LOGIN_PAYLOAD" "$LOGIN_RESPONSE" "$LOGOUT_RESPONSE" "$RUNTIME_SMOKE_OUTPUT"
+  exit "$status"
+}
+trap finalize EXIT
+
+carbonet_qa_load_credentials LOGIN_USER LOGIN_PASSWORD \
+  "${CARBONET_RUNTIME_TEST_USER:-}" "${CARBONET_RUNTIME_TEST_PASSWORD:-}" \
+  "${CARBONET_RUNTIME_AUTH_SECRET:-carbonet-screen-smoke}" "$NAMESPACE"
 
 grep -Fq 'stepExecutionSpecs' "$ROOT/modules/resonance-common/carbonet-common-core/src/main/java/egovframework/com/platform/governance/service/ActorProcessGovernanceService.java"
 grep -Fq '단계별 전문 입력 항목' "$ROOT/projects/carbonet-frontend/source/src/features/process-step-workspace/ProcessStepWorkspacePage.tsx"
@@ -28,14 +54,24 @@ if grep -Fq '�' "$ROOT/projects/carbonet-frontend/source/src/features/process-
 fi
 
 CARBONET_RUNTIME_SMOKE_USER="$LOGIN_USER" CARBONET_RUNTIME_SMOKE_PASSWORD="$LOGIN_PASSWORD" \
-CARBONET_RUNTIME_SMOKE_PROCESS=GOVERNANCE_CHANGE CARBONET_RUNTIME_SMOKE_PROMOTE=true \
+CARBONET_RUNTIME_SMOKE_PROCESS=GOVERNANCE_CHANGE CARBONET_RUNTIME_SMOKE_PROMOTE="$PROMOTE_JOBS" \
 CARBONET_RUNTIME_SMOKE_EVIDENCE_DIR="$EVIDENCE_DIR" CARBONET_RUNTIME_BASE_URL="$BASE_URL" \
-  bash "$ROOT/ops/scripts/run-process-runtime-smoke.sh" >/dev/null
-runtime_evidence="$(readlink -f "$EVIDENCE_DIR/latest.json")"
-[[ -s "$runtime_evidence" ]] || { echo '[governance-change-runtime] FAIL runtime evidence missing' >&2; exit 1; }
+  bash "$ROOT/ops/scripts/run-process-runtime-smoke.sh" >"$RUNTIME_SMOKE_OUTPUT"
+cat "$RUNTIME_SMOKE_OUTPUT"
+runtime_evidence="$(sed -n 's/^\[process-runtime-smoke\] EVIDENCE evidencePath=\([^ ]*\) .*/\1/p' "$RUNTIME_SMOKE_OUTPUT" | tail -n 1)"
+runtime_evidence="$(realpath -e "$runtime_evidence" 2>/dev/null || true)"
+evidence_root="$(realpath -e "$EVIDENCE_DIR")"
+[[ -f "$runtime_evidence" && ! -L "$runtime_evidence" && "$runtime_evidence" == "$evidence_root"/* ]] \
+  || { echo '[governance-change-runtime] FAIL exact runtime evidence missing or escaped root' >&2; exit 1; }
 
-login_code="$(curl -sS -c "$COOKIE_JAR" -o /dev/null -w '%{http_code}' -H 'Content-Type: application/json' -X POST "$BASE_URL/signin/actionLogin" --data "{\"userId\":\"$LOGIN_USER\",\"userPw\":\"$LOGIN_PASSWORD\",\"userSe\":\"USR\"}")"
-[[ "$login_code" == 200 ]] || { echo "[governance-change-runtime] FAIL login status=$login_code" >&2; exit 1; }
+printf '%s' "$LOGIN_PASSWORD" | jq -Rsc --arg id "$LOGIN_USER" '{userId:$id,userPw:.,userSe:"USR"}' >"$LOGIN_PAYLOAD"
+LOGIN_PASSWORD=""
+unset LOGIN_PASSWORD CARBONET_RUNTIME_TEST_PASSWORD
+login_code="$(curl -sS -c "$COOKIE_JAR" -o "$LOGIN_RESPONSE" -w '%{http_code}' -H 'Content-Type: application/json' -X POST "$BASE_URL/signin/actionLogin" --data-binary "@$LOGIN_PAYLOAD")"
+rm -f "$LOGIN_PAYLOAD"
+[[ "$login_code" == 200 ]] && jq -e --arg user "$LOGIN_USER" '.status == "loginSuccess" and (.userId | ascii_downcase) == ($user | ascii_downcase)' "$LOGIN_RESPONSE" >/dev/null \
+  || { echo "[governance-change-runtime] FAIL login status=$login_code" >&2; exit 1; }
+SESSION_ACTIVE=1
 api_code="$(curl -sS -b "$COOKIE_JAR" -o "$DASHBOARD" -w '%{http_code}' "$BASE_URL/admin/api/system/actor-process/process-design?processCode=GOVERNANCE_CHANGE")"
 [[ "$api_code" == 200 ]] || { echo "[governance-change-runtime] FAIL process design status=$api_code" >&2; exit 1; }
 jq -e '
@@ -65,12 +101,20 @@ IFS='|' read -r step_gate spec_gate screen_gate approved_case_gate passed_case_g
  (select count(distinct step_code) from framework_professional_screen_contract where process_code='GOVERNANCE_CHANGE' and lower(split_part(route_path,'?',1))='/admin/system/process-workspace' and contract_status='VERIFIED' and api_verified and database_verified and authority_verified and responsive_verified and accessibility_verified and exception_states_verified),
  (select count(distinct case when case_type in('EXCEPTION','VALIDATION') then 'EXCEPTION' else case_type end) from framework_simulation_case where process_code='GOVERNANCE_CHANGE' and case_status in('APPROVED','VERIFIED') and case_type in('HAPPY_PATH','AUTHORITY','ISOLATION','RECOVERY','EXCEPTION','VALIDATION')),
  (select count(distinct case when c.case_type in('EXCEPTION','VALIDATION') then 'EXCEPTION' else c.case_type end) from framework_simulation_case c where c.process_code='GOVERNANCE_CHANGE' and c.case_type in('HAPPY_PATH','AUTHORITY','ISOLATION','RECOVERY','EXCEPTION','VALIDATION') and exists(select 1 from framework_simulation_run r where r.case_code=c.case_code and r.result='PASSED'))")"
-[[ "$step_gate" == 6 && "$spec_gate" == 6 && "$screen_gate" == 6 && "$approved_case_gate" == 5 && "$passed_case_gate" == 5 ]] || {
+[[ "$step_gate" == 6 && "$spec_gate" == 6 && "$screen_gate" == 6 && "$approved_case_gate" == 5 \
+   && ( "$EVIDENCE_MODE" == "candidate" || "$passed_case_gate" == 5 ) ]] || {
   echo "[governance-change-runtime] FAIL design/screen/test gate steps=$step_gate specs=$spec_gate screens=$screen_gate approvedCases=$approved_case_gate passedCases=$passed_case_gate" >&2
   exit 1
 }
 
-if [[ "$PROMOTE_JOBS" == true ]]; then
+if [[ "$EVIDENCE_MODE" == "candidate" ]]; then
+  runtime_evidence_hash="$(sha256sum "$runtime_evidence"|awk '{print $1}')"
+  jq -cn --arg runtimeEvidence "$runtime_evidence" --arg runtimeEvidenceHash "$runtime_evidence_hash" \
+    --argjson stepCount "$step_gate" --argjson fieldSpecCount "$spec_gate" --argjson screenCount "$screen_gate" \
+    --argjson approvedCaseTypeCount "$approved_case_gate" --argjson readyReplicas "$ready" \
+    '{runtimeEvidence:$runtimeEvidence,runtimeEvidenceHash:$runtimeEvidenceHash,stepCount:$stepCount,fieldSpecCount:$fieldSpecCount,screenCount:$screenCount,approvedCaseTypeCount:$approvedCaseTypeCount,readyReplicas:$readyReplicas,rollbackVerified:true,authorityVerified:true,isolationVerified:true,recoveryVerified:true,exceptionVerified:true,freshRuntimeAssertions:true,runtimeCaseTypes:["HAPPY_PATH","AUTHORITY","ISOLATION","RECOVERY","EXCEPTION"]}' |
+    bash "$ROOT/ops/scripts/stage-postdeploy-evidence-candidate.sh" GOVERNANCE_CHANGE_RUNTIME GOVERNANCE_CHANGE RUNTIME "$SOURCE_COMMIT"
+elif [[ "$PROMOTE_JOBS" == true ]]; then
   evidence="runtime:governance-change+professional-fields+actor+isolation+rollback+deployment:$SOURCE_COMMIT"
   psqlq "begin;
   with candidate as (select job_id,job_status from framework_development_job where process_code='GOVERNANCE_CHANGE' and required), updated as (

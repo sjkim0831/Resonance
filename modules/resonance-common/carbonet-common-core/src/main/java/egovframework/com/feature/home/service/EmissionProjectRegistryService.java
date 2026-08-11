@@ -1,6 +1,7 @@
 package egovframework.com.feature.home.service;
 
 import egovframework.com.platform.governance.service.ActorProcessGovernanceService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,9 +28,26 @@ import java.util.HexFormat;
 
 @Service
 public class EmissionProjectRegistryService {
+    private static final ScopeAccessAuditService.ActionCode PROJECT_OPERATION =
+            ScopeAccessAuditService.ActionCode.EMISSION_PROJECT_OPERATION;
+    private static final ScopeAccessAuditService.ResourceType PROJECT_RESOURCE =
+            ScopeAccessAuditService.ResourceType.EMISSION_PROJECT;
     private final JdbcTemplate jdbc;
     private final ActorProcessGovernanceService processGovernanceService;
-    public EmissionProjectRegistryService(DataSource dataSource,ActorProcessGovernanceService processGovernanceService) { this.jdbc = new JdbcTemplate(dataSource);this.processGovernanceService=processGovernanceService; }
+    private final ScopeAccessAuditService scopeAccessAuditService;
+    @Autowired
+    public EmissionProjectRegistryService(DataSource dataSource,
+                                          ActorProcessGovernanceService processGovernanceService,
+                                          ScopeAccessAuditService scopeAccessAuditService) {
+        this(new JdbcTemplate(dataSource),processGovernanceService,scopeAccessAuditService);
+    }
+    EmissionProjectRegistryService(JdbcTemplate jdbc,
+                                   ActorProcessGovernanceService processGovernanceService,
+                                   ScopeAccessAuditService scopeAccessAuditService) {
+        this.jdbc=jdbc;
+        this.processGovernanceService=processGovernanceService;
+        this.scopeAccessAuditService=scopeAccessAuditService;
+    }
 
     public Map<String, Object> list(String tenantId, String keyword, String status, String site, int page) {
         String tenant = requiredValue(tenantId, "tenantId");
@@ -199,7 +217,7 @@ public class EmissionProjectRegistryService {
     @Transactional
     public Map<String,Object> updateWorkspace(String projectId,String tenantId,String actor,Map<String,Object> body) {
         String tenant=requiredValue(tenantId,"tenantId"),user=requiredValue(actor,"actor");
-        assertTenantAccess(projectId,tenant);
+        assertTenantAccessAudited(projectId,tenant,user,PROJECT_OPERATION,PROJECT_RESOURCE);
         Map<String,Object> current=detail(projectId);
         String owner=text(body.get("owner")); if(owner.isBlank())owner=text(current.get("owner"));
         String due=text(body.get("dueDate")); if(due.isBlank())due=text(current.get("dueDate"));
@@ -214,7 +232,7 @@ public class EmissionProjectRegistryService {
     @Transactional
     public Map<String,Object> addWorkspaceMessage(String projectId,String tenantId,String actor,Map<String,Object> body) {
         String tenant=requiredValue(tenantId,"tenantId"),user=requiredValue(actor,"actor");
-        assertTenantAccess(projectId,tenant);
+        assertTenantAccessAudited(projectId,tenant,user,PROJECT_OPERATION,PROJECT_RESOURCE);
         String type=text(body.get("type")).toUpperCase();
         if(!List.of("COMMENT","WORK_REQUEST","ALERT").contains(type)) throw new IllegalArgumentException("MESSAGE_TYPE_INVALID");
         String description=required(body,"description");
@@ -231,20 +249,18 @@ public class EmissionProjectRegistryService {
         String tenant=requiredValue(tenantId,"tenantId"),user=requiredValue(actor,"actor");
         if(override) {
             Integer exists=jdbc.queryForObject("SELECT count(*) FROM emission_project_registry WHERE project_id=?",Integer.class,projectId);
-            if(exists==null||exists==0) throw new SecurityException("PROJECT_NOT_FOUND");
+            if(exists==null||exists==0) throw denied(user,tenant,projectId,
+                    ScopeAccessAuditService.ActionCode.PROJECT_PARTICIPANT_READ,
+                    ScopeAccessAuditService.ResourceType.EMISSION_PROJECT,"PROJECT_NOT_FOUND");
             return;
         }
-        try {
-            assertTenantAccess(projectId,tenant);
-        } catch(SecurityException denied) {
-            recordScopeDecision(user,tenant,projectId,"DENIED",denied.getMessage());
-            throw denied;
-        }
+        assertTenantAccessAudited(projectId,tenant,user,
+                ScopeAccessAuditService.ActionCode.PROJECT_PARTICIPANT_READ,
+                ScopeAccessAuditService.ResourceType.EMISSION_PROJECT);
         Integer count=jdbc.queryForObject("SELECT count(*) FROM framework_account_actor_assignment WHERE tenant_id=? AND lower(account_id)=lower(?) AND assignment_status='ACTIVE' AND (valid_from IS NULL OR valid_from<=current_date) AND (valid_until IS NULL OR valid_until>=current_date) AND project_id IN ('*',?) AND (data_scope='*' OR ?=ANY(string_to_array(replace(data_scope,' ',''),',')))",Integer.class,tenant,user,projectId,projectId);
-        if(count==null||count==0) {
-            recordScopeDecision(user,tenant,projectId,"DENIED","PROJECT_ACTOR_SCOPE_DENIED");
-            throw new SecurityException("PROJECT_ACTOR_SCOPE_DENIED");
-        }
+        if(count==null||count==0) throw denied(user,tenant,projectId,
+                ScopeAccessAuditService.ActionCode.PROJECT_PARTICIPANT_READ,
+                ScopeAccessAuditService.ResourceType.EMISSION_PROJECT,"PROJECT_ACTOR_SCOPE_DENIED");
     }
 
     private String effectiveProjectTenant(String projectId,String requestedTenant,boolean override) {
@@ -258,12 +274,34 @@ public class EmissionProjectRegistryService {
         return tenants.get(0);
     }
 
-    private void recordScopeDecision(String account,String tenant,String project,String decision,String reason) {
-        try {
-            jdbc.update("INSERT INTO framework_scope_access_audit(account_id,tenant_id,project_id,decision_code,reason_code) VALUES (?,?,?,?,?)",account,tenant,project,decision,reason);
-        } catch(RuntimeException ignored) {
-            // Authorization remains fail-closed even when audit persistence is unavailable.
+    private String effectiveProjectTenant(String projectId,String requestedTenant,boolean override,String user,
+                                          ScopeAccessAuditService.ActionCode actionCode,
+                                          ScopeAccessAuditService.ResourceType resourceType) {
+        String tenant=requiredValue(requestedTenant,"tenantId");
+        if(!override) {
+            assertTenantAccessAudited(projectId,tenant,user,actionCode,resourceType);
+            return tenant;
         }
+        List<String> tenants=jdbc.queryForList("SELECT tenant_id FROM emission_project_registry WHERE project_id=?",String.class,projectId);
+        if(tenants.isEmpty()) throw denied(user,tenant,projectId,actionCode,resourceType,"PROJECT_NOT_FOUND");
+        return tenants.get(0);
+    }
+
+    private void assertTenantAccessAudited(String projectId,String tenant,String user,
+                                           ScopeAccessAuditService.ActionCode actionCode,
+                                           ScopeAccessAuditService.ResourceType resourceType) {
+        try {
+            assertTenantAccess(projectId,tenant);
+        } catch(SecurityException tenantDenied) {
+            throw denied(user,tenant,projectId,actionCode,resourceType,tenantDenied.getMessage());
+        }
+    }
+
+    private SecurityException denied(String user,String tenant,String projectId,
+                                     ScopeAccessAuditService.ActionCode actionCode,
+                                     ScopeAccessAuditService.ResourceType resourceType,String reason) {
+        scopeAccessAuditService.recordDenied(user,tenant,projectId,actionCode,resourceType,reason);
+        return new SecurityException(reason);
     }
 
     public Map<String,Object> activities(String projectId,String keyword) {
@@ -279,7 +317,7 @@ public class EmissionProjectRegistryService {
 
     @Transactional
     public long saveActivity(String projectId,String tenantId,String actor,boolean override,Map<String,Object> body) {
-        requireProjectActor(projectId,requiredValue(tenantId,"tenantId"),requiredValue(actor,"actor"),"SITE_DATA_OWNER",override);
+        requireProjectActor(projectId,requiredValue(tenantId,"tenantId"),requiredValue(actor,"actor"),PROJECT_OPERATION,PROJECT_RESOURCE,"SITE_DATA_OWNER",override);
         String name=required(body,"name"),category=required(body,"category"),period=required(body,"period"),unit=required(body,"unit");
         double quantity=Double.parseDouble(required(body,"quantity")); if(quantity<0) throw new IllegalArgumentException("활동량은 0보다 작을 수 없습니다.");
         String note=required(body,"note"); if(note.length()>500) throw new IllegalArgumentException("ACTIVITY_EVIDENCE_TOO_LONG");
@@ -299,7 +337,7 @@ public class EmissionProjectRegistryService {
     @Transactional
     public int updateActivity(String projectId,long activityId,String tenantId,String actor,boolean override,Map<String,Object> body) {
         String tenant=requiredValue(tenantId,"tenantId"),user=requiredValue(actor,"actor");
-        requireProjectActor(projectId,tenant,user,"SITE_DATA_OWNER",override); requireActivity(projectId,activityId);
+        requireProjectActor(projectId,tenant,user,PROJECT_OPERATION,PROJECT_RESOURCE,"SITE_DATA_OWNER",override); requireActivity(projectId,activityId);
         String name=required(body,"name"),category=required(body,"category"),period=required(body,"period"),unit=required(body,"unit");
         double quantity=Double.parseDouble(required(body,"quantity")); if(quantity<0) throw new IllegalArgumentException("활동량은 0보다 작을 수 없습니다.");
         String note=required(body,"note"); if(note.length()>500) throw new IllegalArgumentException("ACTIVITY_EVIDENCE_TOO_LONG");
@@ -312,7 +350,7 @@ public class EmissionProjectRegistryService {
     @Transactional
     public int deleteActivity(String projectId,long activityId,String tenantId,String actor,boolean override) {
         String tenant=requiredValue(tenantId,"tenantId"),user=requiredValue(actor,"actor");
-        requireProjectActor(projectId,tenant,user,"SITE_DATA_OWNER",override); requireActivity(projectId,activityId);
+        requireProjectActor(projectId,tenant,user,PROJECT_OPERATION,PROJECT_RESOURCE,"SITE_DATA_OWNER",override); requireActivity(projectId,activityId);
         Integer dependencies=jdbc.queryForObject("SELECT (SELECT count(*) FROM emission_activity_evidence WHERE project_id=? AND activity_id=?)+(SELECT count(*) FROM emission_activity_submission_item WHERE activity_id=?)+(SELECT count(*) FROM emission_activity_submission_evidence WHERE activity_id=?)+(SELECT count(*) FROM emission_calculation_item WHERE activity_id=?)",Integer.class,projectId,activityId,activityId,activityId,activityId);
         if(dependencies!=null&&dependencies>0) throw new IllegalStateException("ACTIVITY_DELETE_BLOCKED_BY_DEPENDENCY");
         int changed=jdbc.update("DELETE FROM emission_activity_data WHERE project_id=? AND activity_id=?",projectId,activityId);
@@ -330,7 +368,7 @@ public class EmissionProjectRegistryService {
     @Transactional
     public Map<String,Object> uploadActivityEvidence(String projectId,long activityId,String tenantId,String actor,boolean override,MultipartFile file) throws Exception {
         String tenant=requiredValue(tenantId,"tenantId"),user=requiredValue(actor,"actor");
-        requireProjectActor(projectId,tenant,user,"SITE_DATA_OWNER",override); requireActivity(projectId,activityId);
+        requireProjectActor(projectId,tenant,user,PROJECT_OPERATION,PROJECT_RESOURCE,"SITE_DATA_OWNER",override); requireActivity(projectId,activityId);
         if(file==null||file.isEmpty()) throw new IllegalArgumentException("EVIDENCE_FILE_REQUIRED");
         if(file.getSize()>10L*1024*1024) throw new IllegalArgumentException("EVIDENCE_FILE_TOO_LARGE");
         String name=file.getOriginalFilename()==null?"evidence":file.getOriginalFilename().replaceAll("[\\r\\n]","_").trim();
@@ -355,7 +393,7 @@ public class EmissionProjectRegistryService {
     @Transactional
     public int deleteActivityEvidence(String projectId,long activityId,long evidenceId,String tenantId,String actor,boolean override) {
         String tenant=requiredValue(tenantId,"tenantId"),user=requiredValue(actor,"actor");
-        requireProjectActor(projectId,tenant,user,"SITE_DATA_OWNER",override); requireActivity(projectId,activityId);
+        requireProjectActor(projectId,tenant,user,PROJECT_OPERATION,PROJECT_RESOURCE,"SITE_DATA_OWNER",override); requireActivity(projectId,activityId);
         int changed=jdbc.update("DELETE FROM emission_activity_evidence WHERE evidence_id=? AND tenant_id=? AND project_id=? AND activity_id=?",evidenceId,tenant,projectId,activityId);
         if(changed==0) throw new IllegalArgumentException("EVIDENCE_NOT_FOUND");
         jdbc.update("INSERT INTO emission_project_history(project_id,event_type,event_description,actor_name) VALUES (?,'ACTIVITY_EVIDENCE_DELETED',?,?)",projectId,String.valueOf(evidenceId),user);
@@ -377,7 +415,7 @@ public class EmissionProjectRegistryService {
     @Transactional
     public int mapFactor(String projectId,long activityId,String tenantId,String actor,boolean override,Map<String,Object> body) {
         String tenant=requiredValue(tenantId,"tenantId"),user=requiredValue(actor,"actor"),factorId=required(body,"factorId"),reason=text(body.get("reason"));
-        requireProjectActor(projectId,tenant,user,"CALCULATOR",override); requireAcceptedActivityData(projectId);
+        requireProjectActor(projectId,tenant,user,PROJECT_OPERATION,PROJECT_RESOURCE,"CALCULATOR",override); requireAcceptedActivityData(projectId);
         Integer eligible=jdbc.queryForObject("SELECT count(*) FROM emission_activity_request r JOIN emission_activity_submission_item i ON i.submission_id=r.last_submission_id WHERE r.project_id=? AND r.tenant_id=? AND r.request_status='ACCEPTED' AND i.activity_id=?",Integer.class,projectId,tenant,activityId);
         if(eligible==null||eligible==0) throw new IllegalStateException("FACTOR_MAPPING_REQUIRES_ACCEPTED_ACTIVITY");
         List<Map<String,Object>> factors=jdbc.queryForList("SELECT unit FROM emission_factor_reference WHERE factor_id=?",factorId); if(factors.isEmpty())throw new IllegalArgumentException("FACTOR_NOT_FOUND");
@@ -391,7 +429,7 @@ public class EmissionProjectRegistryService {
 
     @Transactional
     public int autoMap(String projectId,String tenantId,String actor,boolean override) {
-        String tenant=requiredValue(tenantId,"tenantId"),user=requiredValue(actor,"actor"); requireProjectActor(projectId,tenant,user,"CALCULATOR",override); requireAcceptedActivityData(projectId);
+        String tenant=requiredValue(tenantId,"tenantId"),user=requiredValue(actor,"actor"); requireProjectActor(projectId,tenant,user,PROJECT_OPERATION,PROJECT_RESOURCE,"CALCULATOR",override); requireAcceptedActivityData(projectId);
         int changed=jdbc.update("UPDATE emission_activity_data a SET factor_id=(SELECT r.factor_id FROM emission_factor_reference r WHERE lower(r.factor_name) LIKE '%'||lower(a.activity_name)||'%' OR lower(a.activity_name) LIKE '%'||lower(trim(split_part(r.factor_name,'(',1)))||'%' OR r.category=a.category ORDER BY CASE WHEN r.unit=a.unit THEN 0 ELSE 1 END,CASE WHEN lower(r.factor_name)=lower(a.activity_name) THEN 0 ELSE 1 END,r.factor_id LIMIT 1),mapping_status='MAPPED',updated_at=current_timestamp WHERE a.project_id=? AND a.factor_id IS NULL AND EXISTS (SELECT 1 FROM emission_activity_request q JOIN emission_activity_submission_item i ON i.submission_id=q.last_submission_id WHERE q.project_id=a.project_id AND q.tenant_id=? AND q.request_status='ACCEPTED' AND i.activity_id=a.activity_id) AND EXISTS (SELECT 1 FROM emission_factor_reference r WHERE lower(r.factor_name) LIKE '%'||lower(a.activity_name)||'%' OR lower(a.activity_name) LIKE '%'||lower(trim(split_part(r.factor_name,'(',1)))||'%' OR r.category=a.category)",projectId,tenant);
         jdbc.update("INSERT INTO emission_factor_mapping_decision(tenant_id,project_id,activity_id,factor_id,mapping_method,confidence_score,unit_match,decision_reason,decided_by) SELECT ?,a.project_id,a.activity_id,a.factor_id,'AUTO',CASE WHEN lower(f.factor_name)=lower(a.activity_name) AND f.unit=a.unit THEN 1 WHEN f.unit=a.unit THEN .85 ELSE .55 END,f.unit=a.unit,'명칭·구분·단위 결정 규칙 자동 추천',? FROM emission_activity_data a JOIN emission_factor_reference f ON f.factor_id=a.factor_id JOIN emission_activity_request q ON q.project_id=a.project_id AND q.tenant_id=? AND q.request_status='ACCEPTED' JOIN emission_activity_submission_item i ON i.submission_id=q.last_submission_id AND i.activity_id=a.activity_id WHERE a.project_id=? AND NOT EXISTS (SELECT 1 FROM emission_factor_mapping_decision d WHERE d.project_id=a.project_id AND d.activity_id=a.activity_id AND d.active_yn='Y') ON CONFLICT DO NOTHING",tenant,user,tenant,projectId);
         jdbc.update("INSERT INTO emission_project_history(project_id,event_type,event_description,actor_name) SELECT ?,'FACTOR_MAPPING',?||'건의 배출계수가 자동 매핑되었습니다.',owner_name FROM emission_project_registry WHERE project_id=?",projectId,String.valueOf(changed),projectId);
@@ -400,7 +438,7 @@ public class EmissionProjectRegistryService {
 
     @Transactional
     public int uploadActivities(String projectId,String tenantId,String actor,boolean override,MultipartFile file) throws Exception {
-        requireProjectActor(projectId,requiredValue(tenantId,"tenantId"),requiredValue(actor,"actor"),"SITE_DATA_OWNER",override);
+        requireProjectActor(projectId,requiredValue(tenantId,"tenantId"),requiredValue(actor,"actor"),PROJECT_OPERATION,PROJECT_RESOURCE,"SITE_DATA_OWNER",override);
         if(file==null||file.isEmpty()) throw new IllegalArgumentException("엑셀 파일을 선택해 주세요.");
         int count=0; DataFormatter formatter=new DataFormatter();
         try(InputStream in=file.getInputStream(); XSSFWorkbook workbook=new XSSFWorkbook(in)) {
@@ -418,7 +456,8 @@ public class EmissionProjectRegistryService {
     }
 
     public Map<String,Object> calculationResult(String projectId,String tenantId,String actor,boolean override) {
-        String tenant=requiredValue(tenantId,"tenantId"); assertTenantAccess(projectId,tenant);
+        String tenant=requiredValue(tenantId,"tenantId"),user=requiredValue(actor,"actor");
+        assertTenantAccessAudited(projectId,tenant,user,PROJECT_OPERATION,PROJECT_RESOURCE);
         Map<String,Object> result=new LinkedHashMap<>(); result.put("project",detail(projectId));
         List<Map<String,Object>> runs=jdbc.queryForList("SELECT calculation_id AS \"id\",version_no AS \"version\",calculation_status AS \"status\",total_emission AS \"totalEmission\",result_unit AS \"resultUnit\",accepted_submission_ids AS \"submissionIds\",input_snapshot_hash AS \"snapshotHash\",methodology_code AS methodology,calculated_by AS \"calculatedBy\",calculated_at AS \"calculatedAt\" FROM emission_calculation_run WHERE project_id=? ORDER BY version_no DESC",projectId);
         result.put("runs",runs);
@@ -481,7 +520,7 @@ public class EmissionProjectRegistryService {
     @Transactional
     public long calculate(String projectId,String tenantId,String actor,boolean override) {
         String tenant=requiredValue(tenantId,"tenantId"),user=requiredValue(actor,"actor");
-        requireProjectActor(projectId,tenant,user,"CALCULATOR",override);
+        requireProjectActor(projectId,tenant,user,PROJECT_OPERATION,PROJECT_RESOURCE,"CALCULATOR",override);
         requireAcceptedActivityData(projectId);
         jdbc.query("SELECT pg_advisory_xact_lock(hashtext(?))",rs->{},tenant+":"+projectId+":CALCULATION");
         String accepted="WITH accepted AS (SELECT DISTINCT ON (i.activity_id) i.activity_id,i.activity_name,i.category,i.activity_period,i.quantity,i.unit,r.last_submission_id FROM emission_activity_request r JOIN emission_activity_submission_item i ON i.submission_id=r.last_submission_id WHERE r.project_id=? AND r.tenant_id=? AND r.request_status='ACCEPTED' ORDER BY i.activity_id,r.accepted_at DESC) ";
@@ -591,7 +630,7 @@ public class EmissionProjectRegistryService {
     public Map<String,Object> decideStepApplicability(String tenantId,String account,boolean override,String projectId,String processCode,String stepCode,Map<String,Object> body) {
         String tenant=requiredValue(tenantId,"tenantId"),user=requiredValue(account,"account"),project=requiredValue(projectId,"projectId");
         String process=requiredValue(processCode,"processCode"),step=requiredValue(stepCode,"stepCode");
-        requireProjectActor(project,tenant,user,"COMPANY_MANAGER",override);
+        requireProjectActor(project,tenant,user,PROJECT_OPERATION,PROJECT_RESOURCE,"COMPANY_MANAGER",override);
         Integer conditional=jdbc.queryForObject("select count(*) from framework_step_guidance_contract where process_code=? and step_code=? and use_at='Y' and applicability_type='CONDITIONAL'",Integer.class,process,step);
         if(conditional==null||conditional==0) throw new IllegalArgumentException("ONLY_CONDITIONAL_STEP_CAN_BE_DECIDED");
         String status=required(body,"decisionStatus").toUpperCase(),reason=text(body.get("reasonText"));
@@ -988,7 +1027,7 @@ public class EmissionProjectRegistryService {
         String tenant=requiredValue(tenantId,"tenantId"),user=requiredValue(actor,"actor");
         // The data owner runs the pre-submit gate and the verifier independently
         // reruns the same deterministic rules during the verification stage.
-        requireProjectActorAny(projectId,tenant,user,override,"SITE_DATA_OWNER","VERIFIER");
+        requireProjectActorAny(projectId,tenant,user,PROJECT_OPERATION,PROJECT_RESOURCE,override,"SITE_DATA_OWNER","VERIFIER");
         List<Map<String,Object>> activities=jdbc.queryForList("SELECT a.activity_id AS id,a.activity_name AS name,a.category,a.activity_period AS period,a.quantity,a.unit,a.evidence_note AS note,a.factor_id AS factorId,f.unit AS factorUnit,(SELECT count(*) FROM emission_activity_evidence e WHERE e.tenant_id=? AND e.project_id=a.project_id AND e.activity_id=a.activity_id) AS evidenceFileCount FROM emission_activity_data a LEFT JOIN emission_factor_reference f ON f.factor_id=a.factor_id WHERE a.project_id=? ORDER BY a.activity_id",tenant,projectId);
         List<QualityIssue> issues=new ArrayList<>();
         Set<String> allowedUnits=Set.of("L","Nm3","kWh","ton","kg","km","m3","GJ","MJ");
@@ -1026,7 +1065,7 @@ public class EmissionProjectRegistryService {
     public Map<String,Object> saveSubmission(String projectId,String tenantId,String actor,boolean override,Map<String,Object> body) {
         Map<String,Object> project=detail(projectId);
         String tenant=requiredValue(tenantId,"tenantId"),user=requiredValue(actor,"actor"),key=required(body,"idempotencyKey");
-        requireProjectActor(projectId,tenant,user,"SITE_DATA_OWNER",override);
+        requireProjectActor(projectId,tenant,user,PROJECT_OPERATION,PROJECT_RESOURCE,"SITE_DATA_OWNER",override);
         List<Map<String,Object>> existing=jdbc.queryForList("SELECT submission_id AS id,submission_state AS state,version_no AS version FROM emission_activity_submission WHERE project_id=? AND tenant_id=? AND idempotency_key=?",projectId,tenant,key);
         if(!existing.isEmpty()) return new LinkedHashMap<>(existing.get(0));
         LocalDate deadline=project.get("dueDate")==null?null:LocalDate.parse(String.valueOf(project.get("dueDate")));
@@ -1039,7 +1078,7 @@ public class EmissionProjectRegistryService {
     @Transactional
     public Map<String,Object> submitActivities(String projectId,long submissionId,String tenantId,String actor,boolean override,Map<String,Object> body) {
         String tenant=requiredValue(tenantId,"tenantId"),user=requiredValue(actor,"actor");
-        requireProjectActor(projectId,tenant,user,"SITE_DATA_OWNER",override);
+        requireProjectActor(projectId,tenant,user,PROJECT_OPERATION,PROJECT_RESOURCE,"SITE_DATA_OWNER",override);
         List<Map<String,Object>> rows=jdbc.queryForList("SELECT submission_state AS state,deadline_date AS deadline FROM emission_activity_submission WHERE submission_id=? AND project_id=? AND tenant_id=? FOR UPDATE",submissionId,projectId,tenant);
         if(rows.isEmpty()) throw new SecurityException("SUBMISSION_SCOPE_DENIED");
         String state=String.valueOf(rows.get(0).get("state"));
@@ -1080,7 +1119,7 @@ public class EmissionProjectRegistryService {
 
     public Map<String,Object> activityRequests(String projectId,String tenantId,String actor,boolean override) {
         String tenant=requiredValue(tenantId,"tenantId"),user=requiredValue(actor,"actor");
-        assertTenantAccess(projectId,tenant);
+        assertTenantAccessAudited(projectId,tenant,user,PROJECT_OPERATION,PROJECT_RESOURCE);
         Map<String,Object> result=new LinkedHashMap<>();
         result.put("project",detail(projectId));
         result.put("items",jdbc.queryForList("SELECT request_id AS \"id\",request_title AS \"title\",request_detail AS \"detail\",requested_items AS \"requestedItems\",requester_id AS \"requester\",assignee_id AS \"assignee\",due_date AS \"dueDate\",request_status AS \"status\",last_submission_id AS \"submissionId\",submitted_by AS \"submittedBy\",submitted_at AS \"submittedAt\",correction_reason AS \"correctionReason\",correction_due_date AS \"correctionDueDate\",correction_count AS \"correctionCount\",accepted_by AS \"acceptedBy\",accepted_at AS \"acceptedAt\",created_at AS \"createdAt\" FROM emission_activity_request WHERE tenant_id=? AND project_id=? AND (? OR lower(requester_id)=lower(?) OR lower(assignee_id)=lower(?)) ORDER BY created_at DESC",tenant,projectId,override,user,user));
@@ -1095,7 +1134,7 @@ public class EmissionProjectRegistryService {
     @Transactional
     public Map<String,Object> createActivityRequest(String projectId,String tenantId,String actor,boolean override,Map<String,Object> body) {
         String tenant=requiredValue(tenantId,"tenantId"),user=requiredValue(actor,"actor");
-        requireProjectActor(projectId,tenant,user,"COMPANY_MANAGER",override);
+        requireProjectActor(projectId,tenant,user,PROJECT_OPERATION,PROJECT_RESOURCE,"COMPANY_MANAGER",override);
         String title=required(body,"title"),requestDetail=required(body,"detail"),items=required(body,"requestedItems"),assignee=required(body,"assignee");
         LocalDate due=LocalDate.parse(required(body,"dueDate"));
         Integer assigned=jdbc.queryForObject("SELECT count(*) FROM framework_project_actor_assignment WHERE project_id=? AND actor_code='SITE_DATA_OWNER' AND lower(user_id)=lower(?) AND active_yn='Y'",Integer.class,projectId,assignee);
@@ -1111,7 +1150,7 @@ public class EmissionProjectRegistryService {
     @Transactional
     public Map<String,Object> startActivityRequest(String projectId,long requestId,String tenantId,String actor,boolean override) {
         String tenant=requiredValue(tenantId,"tenantId"),user=requiredValue(actor,"actor");
-        requireProjectActor(projectId,tenant,user,"SITE_DATA_OWNER",override);
+        requireProjectActor(projectId,tenant,user,PROJECT_OPERATION,PROJECT_RESOURCE,"SITE_DATA_OWNER",override);
         List<Map<String,Object>> rows=jdbc.queryForList("SELECT request_status AS status FROM emission_activity_request WHERE request_id=? AND project_id=? AND tenant_id=? AND (? OR lower(assignee_id)=lower(?)) AND request_status IN ('REQUESTED','CORRECTION_REQUIRED') FOR UPDATE",requestId,projectId,tenant,override,user);
         if(rows.isEmpty()) throw new IllegalStateException("ACTIVITY_REQUEST_NOT_STARTABLE");
         String previous=text(rows.get(0).get("status"));
@@ -1125,7 +1164,7 @@ public class EmissionProjectRegistryService {
     @Transactional
     public Map<String,Object> decideActivityRequest(String projectId,long requestId,String tenantId,String actor,boolean override,Map<String,Object> body) {
         String tenant=requiredValue(tenantId,"tenantId"),user=requiredValue(actor,"actor"),decision=required(body,"decision").toUpperCase();
-        requireProjectActorAny(projectId,tenant,user,override,"APPROVER","COMPANY_MANAGER");
+        requireProjectActorAny(projectId,tenant,user,PROJECT_OPERATION,PROJECT_RESOURCE,override,"APPROVER","COMPANY_MANAGER");
         List<Map<String,Object>> rows=jdbc.queryForList("SELECT request_status AS status,request_title AS title,assignee_id AS assignee,last_submission_id AS submission FROM emission_activity_request WHERE request_id=? AND project_id=? AND tenant_id=? FOR UPDATE",requestId,projectId,tenant);
         if(rows.isEmpty()) throw new IllegalArgumentException("ACTIVITY_REQUEST_NOT_FOUND");
         Map<String,Object> row=rows.get(0); if(!"SUBMITTED".equals(text(row.get("status")))) throw new IllegalStateException("ACTIVITY_REQUEST_DECISION_REQUIRES_SUBMITTED");
@@ -1177,7 +1216,13 @@ public class EmissionProjectRegistryService {
     }
 
     @Transactional public Map<String,Object> createRegulatorySubmission(String projectId,String tenantId,String actor,boolean override,Map<String,Object> body) {
-        String tenant=effectiveProjectTenant(projectId,tenantId,override),user=requiredValue(actor,"actor"); requireProjectActor(projectId,tenant,user,"COMPANY_MANAGER",override);
+        String user=requiredValue(actor,"actor");
+        String tenant=effectiveProjectTenant(projectId,tenantId,override,user,
+                ScopeAccessAuditService.ActionCode.REGULATORY_SUBMISSION_CREATE,
+                ScopeAccessAuditService.ResourceType.REGULATORY_SUBMISSION);
+        requireProjectActor(projectId,tenant,user,
+                ScopeAccessAuditService.ActionCode.REGULATORY_SUBMISSION_CREATE,
+                ScopeAccessAuditService.ResourceType.REGULATORY_SUBMISSION,"COMPANY_MANAGER",override);
         long reportId=Long.parseLong(required(body,"reportId")); String requestId=required(body,"clientRequestId");
         if(requestId.length()>100)throw new IllegalArgumentException("CLIENT_REQUEST_ID_TOO_LONG");
         jdbc.query("SELECT pg_advisory_xact_lock(hashtext(?))",rs->{},tenant+":"+projectId+":"+requestId);
@@ -1198,12 +1243,15 @@ public class EmissionProjectRegistryService {
     }
 
     @Transactional public Map<String,Object> transitionRegulatorySubmission(String projectId,long submissionId,String tenantId,String actor,boolean override,Map<String,Object> body) {
-        String tenant=effectiveProjectTenant(projectId,tenantId,override),user=requiredValue(actor,"actor"),action=required(body,"action").toUpperCase(),note=text(body.get("note"));
-        if("ACCEPT".equals(action)) requireProjectActorAny(projectId,tenant,user,override,"APPROVER","VERIFIER");
-        else if(List.of("RECORD_RECEIPT","REQUEST_CORRECTION").contains(action)) requireProjectActorAny(projectId,tenant,user,override,"VERIFIER","COMPANY_MANAGER");
-        else requireProjectActor(projectId,tenant,user,"COMPANY_MANAGER",override);
+        String user=requiredValue(actor,"actor"),action=required(body,"action").toUpperCase(),note=text(body.get("note"));
+        ScopeAccessAuditService.ActionCode auditAction=ScopeAccessAuditService.ActionCode.REGULATORY_SUBMISSION_TRANSITION;
+        ScopeAccessAuditService.ResourceType auditResource=ScopeAccessAuditService.ResourceType.REGULATORY_SUBMISSION;
+        String tenant=effectiveProjectTenant(projectId,tenantId,override,user,auditAction,auditResource);
+        if("ACCEPT".equals(action)) requireProjectActorAny(projectId,tenant,user,auditAction,auditResource,override,"APPROVER","VERIFIER");
+        else if(List.of("RECORD_RECEIPT","REQUEST_CORRECTION").contains(action)) requireProjectActorAny(projectId,tenant,user,auditAction,auditResource,override,"VERIFIER","COMPANY_MANAGER");
+        else requireProjectActor(projectId,tenant,user,auditAction,auditResource,"COMPANY_MANAGER",override);
         List<Map<String,Object>> rows=jdbc.queryForList("SELECT status,package_hash,external_receipt_no FROM emission_regulatory_submission WHERE regulatory_submission_id=? AND tenant_id=? AND project_id=? FOR UPDATE",submissionId,tenant,projectId);
-        if(rows.isEmpty())throw new SecurityException("REGULATORY_SUBMISSION_SCOPE_DENIED"); String previous=text(rows.get(0).get("status")),next;
+        if(rows.isEmpty())throw denied(user,tenant,projectId,auditAction,auditResource,"REGULATORY_SUBMISSION_SCOPE_DENIED"); String previous=text(rows.get(0).get("status")),next;
         switch(action){
             case "SUBMIT" -> {if(!"PACKAGED".equals(previous))throw new IllegalStateException("SUBMISSION_REQUIRES_PACKAGED");next="SUBMITTED";}
             case "RECORD_RECEIPT" -> {if(!List.of("SUBMITTED","RESUBMITTED").contains(previous))throw new IllegalStateException("RECEIPT_REQUIRES_SUBMITTED");if(required(body,"receiptNo").length()>120)throw new IllegalArgumentException("RECEIPT_NO_TOO_LONG");next="RECEIVED";}
@@ -1228,7 +1276,7 @@ public class EmissionProjectRegistryService {
     }
 
     @Transactional public Map<String,Object> createReport(String projectId,String tenantId,String actor,boolean override,Map<String,Object> body) {
-        String tenant=requiredValue(tenantId,"tenantId"),user=requiredValue(actor,"actor"); requireProjectActorAny(projectId,tenant,user,override,"CALCULATOR","COMPANY_MANAGER");
+        String tenant=requiredValue(tenantId,"tenantId"),user=requiredValue(actor,"actor"); requireProjectActorAny(projectId,tenant,user,PROJECT_OPERATION,PROJECT_RESOURCE,override,"CALCULATOR","COMPANY_MANAGER");
         List<Map<String,Object>> source=jdbc.queryForList("SELECT s.submission_id AS submission_id,c.calculation_id AS calculation_id FROM emission_activity_submission s JOIN emission_submission_review r ON r.submission_id=s.submission_id AND r.review_stage='APPROVAL' AND r.decision='APPROVED' JOIN emission_calculation_run c ON c.calculation_id=r.calculation_id WHERE s.tenant_id=? AND s.project_id=? AND s.submission_state='APPROVED' AND c.locked_at IS NOT NULL ORDER BY r.created_at DESC LIMIT 1",tenant,projectId);
         if(source.isEmpty()) throw new IllegalStateException("REPORT_REQUIRES_APPROVED_LOCKED_CALCULATION");
         Map<String,Object> project=detail(projectId),row=source.get(0); String language=text(body.get("language")); if(!List.of("ko","en").contains(language))language="ko";
@@ -1240,7 +1288,7 @@ public class EmissionProjectRegistryService {
     }
 
     @Transactional public Map<String,Object> finalizeReport(String projectId,long reportId,String tenantId,String actor,boolean override) {
-        String tenant=requiredValue(tenantId,"tenantId"),user=requiredValue(actor,"actor"); requireProjectActorAny(projectId,tenant,user,override,"VERIFIER","COMPANY_MANAGER");
+        String tenant=requiredValue(tenantId,"tenantId"),user=requiredValue(actor,"actor"); requireProjectActorAny(projectId,tenant,user,PROJECT_OPERATION,PROJECT_RESOURCE,override,"VERIFIER","COMPANY_MANAGER");
         int changed=jdbc.update("UPDATE emission_project_report SET report_status='FINALIZED',finalized_by=?,finalized_at=current_timestamp,updated_at=current_timestamp WHERE report_id=? AND project_id=? AND tenant_id=? AND report_status='DRAFT'",user,reportId,projectId,tenant);
         if(changed==0) { Integer exists=jdbc.queryForObject("SELECT count(*) FROM emission_project_report WHERE report_id=? AND project_id=? AND tenant_id=? AND report_status='FINALIZED'",Integer.class,reportId,projectId,tenant); if(exists==null||exists==0)throw new IllegalStateException("REPORT_FINALIZE_STATE_INVALID"); }
         completeWorkflowTask(projectId,"REPORT",user);
@@ -1250,7 +1298,7 @@ public class EmissionProjectRegistryService {
     }
 
     @Transactional public Map<String,Object> issueReportCertificate(String projectId,long reportId,String tenantId,String actor,boolean override) {
-        String tenant=requiredValue(tenantId,"tenantId"),user=requiredValue(actor,"actor"); requireProjectActorAny(projectId,tenant,user,override,"APPROVER","COMPANY_MANAGER");
+        String tenant=requiredValue(tenantId,"tenantId"),user=requiredValue(actor,"actor"); requireProjectActorAny(projectId,tenant,user,PROJECT_OPERATION,PROJECT_RESOURCE,override,"APPROVER","COMPANY_MANAGER");
         List<Map<String,Object>> rows=jdbc.queryForList("SELECT report_id,version_no,report_title,report_status,certificate_id,integrity_hash FROM emission_project_report WHERE report_id=? AND project_id=? AND tenant_id=? FOR UPDATE",reportId,projectId,tenant);
         if(rows.isEmpty())throw new SecurityException("REPORT_SCOPE_DENIED"); Map<String,Object> row=rows.get(0);
         if(!"FINALIZED".equals(text(row.get("report_status"))))throw new IllegalStateException("CERTIFICATE_REQUIRES_FINALIZED_REPORT");
@@ -1267,10 +1315,11 @@ public class EmissionProjectRegistryService {
     }
 
     @Transactional public void recordReportDownload(String projectId,long reportId,String tenantId,String actor,String ip,String userAgent) {
-        String tenant=requiredValue(tenantId,"tenantId"); assertTenantAccess(projectId,tenant);
+        String tenant=requiredValue(tenantId,"tenantId"),user=requiredValue(actor,"actor");
+        assertTenantAccessAudited(projectId,tenant,user,PROJECT_OPERATION,PROJECT_RESOURCE);
         int changed=jdbc.update("UPDATE emission_project_report SET download_count=download_count+1,last_downloaded_at=current_timestamp WHERE report_id=? AND project_id=? AND tenant_id=? AND report_status='FINALIZED' AND certificate_id IS NOT NULL AND certificate_status='ACTIVE'",reportId,projectId,tenant);
         if(changed==0)throw new IllegalStateException("ACTIVE_CERTIFICATE_REQUIRED");
-        jdbc.update("INSERT INTO emission_report_access_ledger(tenant_id,project_id,report_id,certificate_id,action_code,actor_id,client_ip,user_agent) SELECT tenant_id,project_id,report_id,certificate_id,'DOWNLOAD',?,?,? FROM emission_project_report WHERE report_id=?",actor,ip,userAgent,reportId);
+        jdbc.update("INSERT INTO emission_report_access_ledger(tenant_id,project_id,report_id,certificate_id,action_code,actor_id,client_ip,user_agent) SELECT tenant_id,project_id,report_id,certificate_id,'DOWNLOAD',?,?,? FROM emission_project_report WHERE report_id=?",user,ip,userAgent,reportId);
     }
 
     public Map<String,Object> reportAccessHistory(String tenantId,String actor,boolean all) { String tenant=requiredValue(tenantId,"tenantId"); String sql="SELECT l.access_id AS \"id\",l.project_id AS \"projectId\",p.project_name AS \"projectName\",r.report_title AS \"reportTitle\",r.version_no AS version,l.certificate_id AS \"certificateId\",l.action_code AS action,l.actor_id AS actor,l.client_ip AS ip,l.share_expires_at AS \"expiresAt\",l.share_revoked_at AS \"revokedAt\",l.created_at AS \"createdAt\" FROM emission_report_access_ledger l JOIN emission_project_report r ON r.report_id=l.report_id JOIN emission_project_registry p ON p.project_id=l.project_id WHERE l.tenant_id=?"+(all?"":" AND lower(coalesce(l.actor_id,''))=lower(?)")+" ORDER BY l.created_at DESC LIMIT 500"; Map<String,Object>x=new LinkedHashMap<>();x.put("items",jdbc.queryForList(sql,all?new Object[]{tenant}:new Object[]{tenant,actor}));return x; }
@@ -1307,7 +1356,7 @@ public class EmissionProjectRegistryService {
     @Transactional
     public Map<String,Object> startVerification(String projectId,long submissionId,String tenantId,String actor,boolean override) {
         String tenant=requiredValue(tenantId,"tenantId"),user=requiredValue(actor,"actor");
-        requireProjectActor(projectId,tenant,user,"VERIFIER",override);
+        requireProjectActor(projectId,tenant,user,PROJECT_OPERATION,PROJECT_RESOURCE,"VERIFIER",override);
         List<Map<String,Object>> rows=jdbc.queryForList("SELECT submission_state AS state FROM emission_activity_submission WHERE submission_id=? AND project_id=? AND tenant_id=? FOR UPDATE",submissionId,projectId,tenant);
         if(rows.isEmpty()) throw new SecurityException("SUBMISSION_SCOPE_DENIED");
         String state=text(rows.get(0).get("state"));
@@ -1325,7 +1374,7 @@ public class EmissionProjectRegistryService {
     @Transactional
     public Map<String,Object> decideVerification(String projectId,long submissionId,String tenantId,String actor,boolean override,Map<String,Object> body) {
         String tenant=requiredValue(tenantId,"tenantId"),user=requiredValue(actor,"actor"),decision=required(body,"decision").toUpperCase();
-        requireProjectActor(projectId,tenant,user,"VERIFIER",override);
+        requireProjectActor(projectId,tenant,user,PROJECT_OPERATION,PROJECT_RESOURCE,"VERIFIER",override);
         if(!List.of("PASSED","CORRECTION_REQUESTED").contains(decision)) throw new IllegalArgumentException("VERIFICATION_DECISION_INVALID");
         String comment=text(body.get("comment")); int issues=Integer.parseInt(String.valueOf(body.getOrDefault("issueCount",0)));
         if("CORRECTION_REQUESTED".equals(decision)&&comment.isBlank()) throw new IllegalArgumentException("CORRECTION_REASON_REQUIRED");
@@ -1343,7 +1392,7 @@ public class EmissionProjectRegistryService {
     @Transactional
     public Map<String,Object> decideApproval(String projectId,long submissionId,String tenantId,String actor,boolean override,Map<String,Object> body) {
         String tenant=requiredValue(tenantId,"tenantId"),user=requiredValue(actor,"actor"),decision=required(body,"decision").toUpperCase(),comment=text(body.get("comment"));
-        requireProjectActor(projectId,tenant,user,"APPROVER",override);
+        requireProjectActor(projectId,tenant,user,PROJECT_OPERATION,PROJECT_RESOURCE,"APPROVER",override);
         if(!List.of("APPROVED","REJECTED").contains(decision)) throw new IllegalArgumentException("APPROVAL_DECISION_INVALID");
         if("REJECTED".equals(decision)&&comment.isBlank()) throw new IllegalArgumentException("REJECTION_REASON_REQUIRED");
         List<Map<String,Object>> rows=jdbc.queryForList("SELECT submission_state AS state FROM emission_activity_submission WHERE submission_id=? AND project_id=? AND tenant_id=? FOR UPDATE",submissionId,projectId,tenant);
@@ -1360,20 +1409,27 @@ public class EmissionProjectRegistryService {
         return Map.of("id",submissionId,"state",next,"calculationId",calculationId);
     }
 
-    private void requireProjectActor(String projectId,String tenant,String user,String actorCode,boolean override) {
-        assertTenantAccess(projectId,tenant); if(override)return;
+    private void requireProjectActor(String projectId,String tenant,String user,
+                                     ScopeAccessAuditService.ActionCode actionCode,
+                                     ScopeAccessAuditService.ResourceType resourceType,
+                                     String actorCode,boolean override) {
+        assertTenantAccessAudited(projectId,tenant,user,actionCode,resourceType); if(override)return;
         Integer count=jdbc.queryForObject("SELECT count(*) FROM framework_account_actor_assignment a WHERE a.tenant_id=? AND lower(a.account_id)=lower(?) AND a.actor_code=? AND a.assignment_status='ACTIVE' AND (a.valid_from IS NULL OR a.valid_from<=current_date) AND (a.valid_until IS NULL OR a.valid_until>=current_date) AND a.project_id IN ('*',?) AND (a.data_scope='*' OR ?=ANY(string_to_array(replace(a.data_scope,' ',''),',')))",Integer.class,tenant,user,actorCode,projectId,projectId);
-        if(count==null||count==0) throw new SecurityException("ACTOR_NOT_AUTHORIZED:"+actorCode);
+        if(count==null||count==0) throw denied(user,tenant,projectId,actionCode,resourceType,"ACTOR_NOT_AUTHORIZED:"+actorCode);
     }
 
-    private void requireProjectActorAny(String projectId,String tenant,String user,boolean override,String... actorCodes) {
-        assertTenantAccess(projectId,tenant); if(override)return;
+    private void requireProjectActorAny(String projectId,String tenant,String user,
+                                        ScopeAccessAuditService.ActionCode actionCode,
+                                        ScopeAccessAuditService.ResourceType resourceType,
+                                        boolean override,String... actorCodes) {
+        assertTenantAccessAudited(projectId,tenant,user,actionCode,resourceType); if(override)return;
         Integer count=jdbc.queryForObject("SELECT count(*) FROM framework_account_actor_assignment a WHERE a.tenant_id=? AND lower(a.account_id)=lower(?) AND a.actor_code=ANY(string_to_array(?,',')) AND a.assignment_status='ACTIVE' AND (a.valid_from IS NULL OR a.valid_from<=current_date) AND (a.valid_until IS NULL OR a.valid_until>=current_date) AND a.project_id IN ('*',?) AND (a.data_scope='*' OR ?=ANY(string_to_array(replace(a.data_scope,' ',''),',')))",Integer.class,tenant,user,String.join(",",actorCodes),projectId,projectId);
-        if(count==null||count==0) throw new SecurityException("ACTOR_NOT_AUTHORIZED:"+String.join("|",actorCodes));
+        if(count==null||count==0) throw denied(user,tenant,projectId,actionCode,resourceType,"ACTOR_NOT_AUTHORIZED:"+String.join("|",actorCodes));
     }
 
     public Map<String,Object> organizationalBoundary(String projectId,String tenantId,String actor,boolean override) {
-        String tenant=requiredValue(tenantId,"tenantId");assertTenantAccess(projectId,tenant);
+        String tenant=requiredValue(tenantId,"tenantId"),user=requiredValue(actor,"actor");
+        assertTenantAccessAudited(projectId,tenant,user,PROJECT_OPERATION,PROJECT_RESOURCE);
         Map<String,Object> out=new LinkedHashMap<>();out.put("tenantId",tenant);out.put("project",detail(projectId));
         List<Map<String,Object>> boundaries=jdbc.queryForList("SELECT boundary_id AS \"id\",version_no AS version,boundary_method AS \"boundaryMethod\",reporting_basis AS \"reportingBasis\",rationale,effective_from AS \"effectiveFrom\",effective_until AS \"effectiveUntil\",boundary_status AS status,row_version AS \"rowVersion\",created_by AS \"createdBy\",approved_by AS \"approvedBy\",approved_at AS \"approvedAt\",updated_at AS \"updatedAt\" FROM emission_organizational_boundary WHERE tenant_id=? AND project_id=? ORDER BY version_no DESC",tenant,projectId);
         out.put("versions",boundaries);
@@ -1386,7 +1442,7 @@ public class EmissionProjectRegistryService {
     }
 
     @Transactional public Map<String,Object> saveOrganizationalBoundary(String projectId,String tenantId,String actor,boolean override,Map<String,Object> body) {
-        String tenant=requiredValue(tenantId,"tenantId"),user=requiredValue(actor,"actor");requireProjectActor(projectId,tenant,user,"COMPANY_MANAGER",override);
+        String tenant=requiredValue(tenantId,"tenantId"),user=requiredValue(actor,"actor");requireProjectActor(projectId,tenant,user,PROJECT_OPERATION,PROJECT_RESOURCE,"COMPANY_MANAGER",override);
         String method=required(body,"boundaryMethod"),basis=required(body,"reportingBasis"),rationale=required(body,"rationale"),from=required(body,"effectiveFrom");
         if(!List.of("OPERATIONAL_CONTROL","FINANCIAL_CONTROL","EQUITY_SHARE").contains(method))throw new IllegalArgumentException("INVALID_BOUNDARY_METHOD");
         List<Map<String,Object>> current=jdbc.queryForList("SELECT boundary_id AS id,version_no AS version,boundary_status AS status,row_version AS \"rowVersion\" FROM emission_organizational_boundary WHERE tenant_id=? AND project_id=? ORDER BY version_no DESC LIMIT 1 FOR UPDATE",tenant,projectId);
@@ -1412,7 +1468,7 @@ public class EmissionProjectRegistryService {
     }
 
     @Transactional public Map<String,Object> markOrganizationalBoundaryReviewReady(String projectId,String tenantId,String actor,boolean override) {
-        String tenant=requiredValue(tenantId,"tenantId"),user=requiredValue(actor,"actor");requireProjectActor(projectId,tenant,user,"COMPANY_MANAGER",override);
+        String tenant=requiredValue(tenantId,"tenantId"),user=requiredValue(actor,"actor");requireProjectActor(projectId,tenant,user,PROJECT_OPERATION,PROJECT_RESOURCE,"COMPANY_MANAGER",override);
         Long id=jdbc.query("SELECT boundary_id FROM emission_organizational_boundary WHERE tenant_id=? AND project_id=? AND boundary_status='DRAFT' ORDER BY version_no DESC LIMIT 1",rs->rs.next()?rs.getLong(1):null,tenant,projectId);
         if(id==null)throw new IllegalStateException("DRAFT_BOUNDARY_NOT_FOUND");
         Integer included=jdbc.queryForObject("SELECT count(*) FROM emission_organizational_boundary_member WHERE boundary_id=? AND included_yn='Y'",Integer.class,id);if(included==null||included==0)throw new IllegalStateException("INCLUDED_ENTITY_REQUIRED");
@@ -1423,7 +1479,7 @@ public class EmissionProjectRegistryService {
     }
 
     @Transactional public Map<String,Object> consolidateOrganizationalBoundary(String projectId,String tenantId,String actor,boolean override,Map<String,Object> body) {
-        String tenant=requiredValue(tenantId,"tenantId"),user=requiredValue(actor,"actor");requireProjectActor(projectId,tenant,user,"CALCULATOR",override);
+        String tenant=requiredValue(tenantId,"tenantId"),user=requiredValue(actor,"actor");requireProjectActor(projectId,tenant,user,PROJECT_OPERATION,PROJECT_RESOURCE,"CALCULATOR",override);
         Long id=jdbc.query("SELECT boundary_id FROM emission_organizational_boundary WHERE tenant_id=? AND project_id=? AND boundary_status IN ('REVIEW_READY','CONSOLIDATED') ORDER BY version_no DESC LIMIT 1 FOR UPDATE",rs->rs.next()?rs.getLong(1):null,tenant,projectId);if(id==null)throw new IllegalStateException("BOUNDARY_NOT_READY_FOR_CONSOLIDATION");
         java.math.BigDecimal gross=new java.math.BigDecimal(required(body,"grossEmission"));jdbc.update("DELETE FROM emission_organizational_boundary_elimination WHERE boundary_id=?",id);
         java.math.BigDecimal eliminated=java.math.BigDecimal.ZERO;Object raw=body.getOrDefault("eliminations",List.of());if(raw instanceof List<?> rows)for(Object item:rows){if(!(item instanceof Map<?,?> m))continue;java.math.BigDecimal amount=new java.math.BigDecimal(mapValue(m,"eliminatedEmission","0"));eliminated=eliminated.add(amount);
@@ -1439,7 +1495,7 @@ public class EmissionProjectRegistryService {
     }
 
     @Transactional public Map<String,Object> decideOrganizationalBoundary(String projectId,String tenantId,String actor,boolean override,Map<String,Object> body) {
-        String tenant=requiredValue(tenantId,"tenantId"),user=requiredValue(actor,"actor"),decision=required(body,"decision");requireProjectActor(projectId,tenant,user,"APPROVER",override);
+        String tenant=requiredValue(tenantId,"tenantId"),user=requiredValue(actor,"actor"),decision=required(body,"decision");requireProjectActor(projectId,tenant,user,PROJECT_OPERATION,PROJECT_RESOURCE,"APPROVER",override);
         if(!List.of("APPROVE","REJECT").contains(decision))throw new IllegalArgumentException("INVALID_BOUNDARY_DECISION");
         Long id=jdbc.query("SELECT boundary_id FROM emission_organizational_boundary WHERE tenant_id=? AND project_id=? AND boundary_status='CONSOLIDATED' ORDER BY version_no DESC LIMIT 1 FOR UPDATE",rs->rs.next()?rs.getLong(1):null,tenant,projectId);if(id==null)throw new IllegalStateException("CONSOLIDATED_BOUNDARY_NOT_FOUND");
         jdbc.update("UPDATE emission_organizational_boundary SET boundary_status=?,approved_by=?,approved_at=current_timestamp,row_version=row_version+1,updated_at=current_timestamp WHERE boundary_id=?","APPROVE".equals(decision)?"APPROVED":"REJECTED",user,id);
@@ -1487,7 +1543,7 @@ public class EmissionProjectRegistryService {
     @Transactional
     public String copy(String sourceId,String tenantId,String actor,boolean override) {
         String tenant=requiredValue(tenantId,"tenantId");
-        requireProjectActor(sourceId,tenant,requiredValue(actor,"actor"),"COMPANY_MANAGER",override);
+        requireProjectActor(sourceId,tenant,requiredValue(actor,"actor"),PROJECT_OPERATION,PROJECT_RESOURCE,"COMPANY_MANAGER",override);
         Map<String, Object> source = detail(sourceId);
         Map<String,String> actors=new LinkedHashMap<>();
         jdbc.queryForList("SELECT actor_code,user_id FROM framework_project_actor_assignment WHERE project_id=? AND active_yn='Y'",sourceId)
@@ -1528,7 +1584,7 @@ public class EmissionProjectRegistryService {
         if(!Set.of("UPDATED_DESC","UPDATED_ASC","DUE_ASC","PROGRESS_DESC","NAME_ASC").contains(sort)) throw new IllegalArgumentException("PORTFOLIO_SORT_CODE_INVALID");
         if(keyword.length()>200||status.length()>40||site.length()>200||nextTask.length()>120) throw new IllegalArgumentException("PORTFOLIO_PREFERENCE_VALUE_TOO_LONG");
         if(!project.isBlank()) {
-            assertTenantAccess(project,tenant);
+            assertTenantAccessAudited(project,tenant,account,PROJECT_OPERATION,PROJECT_RESOURCE);
             if(!override) detailForActor(project,tenant,account,false);
         }
         long expectedVersion;
@@ -1593,7 +1649,7 @@ public class EmissionProjectRegistryService {
     public Map<String,Object> synchronizeProjectProcesses(String projectId,String tenantId,String actor,boolean override) {
         String tenant=requiredValue(tenantId,"tenantId");
         String user=requiredValue(actor,"actor");
-        requireProjectActor(projectId,tenant,user,"COMPANY_MANAGER",override);
+        requireProjectActor(projectId,tenant,user,PROJECT_OPERATION,PROJECT_RESOURCE,"COMPANY_MANAGER",override);
         Map<String,Object> summary=new LinkedHashMap<>(jdbc.queryForMap("SELECT * FROM framework_sync_project_processes(?,?)",projectId,user));
         summary.put("projectId",projectId);
         summary.put("items",jdbc.queryForList("SELECT process_code AS \"processCode\",process_name AS \"processName\",workflow_order AS \"workflowOrder\",workflow_phase AS \"workflowPhase\",process_role AS \"processRole\",applicability_status AS \"applicabilityStatus\",implementation_status AS \"implementationStatus\",task_generation_status AS \"taskGenerationStatus\",execution_status AS \"executionStatus\",reason_code AS \"reasonCode\",reason_text AS \"reasonText\",task_count AS \"taskCount\",completed_task_count AS \"completedTaskCount\" FROM framework_project_process_readiness WHERE project_id=? ORDER BY workflow_order,process_code",projectId));
@@ -1611,7 +1667,7 @@ public class EmissionProjectRegistryService {
     @Transactional
     public int delete(String id,String tenantId,String actor,boolean override) {
         String tenant=requiredValue(tenantId,"tenantId");
-        requireProjectActor(id,tenant,requiredValue(actor,"actor"),"COMPANY_MANAGER",override);
+        requireProjectActor(id,tenant,requiredValue(actor,"actor"),PROJECT_OPERATION,PROJECT_RESOURCE,"COMPANY_MANAGER",override);
         // Regulatory packages deliberately RESTRICT report deletion so issued
         // evidence cannot disappear accidentally. Project deletion is the
         // explicit aggregate teardown path, therefore remove that child first.

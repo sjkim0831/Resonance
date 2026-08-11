@@ -1,16 +1,38 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
+umask 077
 
 ROOT="${RESONANCE_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
 BASE_URL="${CARBONET_RUNTIME_BASE_URL:-http://127.0.0.1}"
-LOGIN_USER="${CARBONET_RUNTIME_TEST_USER:-webmaster}"
-LOGIN_PASSWORD="${CARBONET_RUNTIME_TEST_PASSWORD:-rhdxhd12}"
+LOGIN_USER=""
+LOGIN_PASSWORD=""
 SOURCE_COMMIT="$(git -C "$ROOT" rev-parse HEAD)"
 KUBE_NAMESPACE="${CARBONET_KUBE_NAMESPACE:-carbonet-prod}"
 RUNTIME_DEPLOYMENT="${CARBONET_RUNTIME_DEPLOYMENT:-carbonet-runtime}"
 REACT_OVERLAY_PATH="${CARBONET_REACT_OVERLAY_PATH:-/app/react-app-overlay}"
-COOKIE="$(mktemp)"; BODY="$(mktemp)"
-trap 'rm -f "$COOKIE" "$BODY"' EXIT
+COOKIE="$(mktemp)"; BODY="$(mktemp)"; LOGIN_PAYLOAD="$(mktemp)"; LOGIN_RESPONSE="$(mktemp)"; LOGOUT_RESPONSE="$(mktemp)"
+SESSION_ACTIVE=0
+
+source "$ROOT/ops/scripts/runtime-qa-auth-common.sh"
+carbonet_qa_load_credentials LOGIN_USER LOGIN_PASSWORD \
+  "${CARBONET_RUNTIME_TEST_USER:-}" "${CARBONET_RUNTIME_TEST_PASSWORD:-}" \
+  "${CARBONET_RUNTIME_AUTH_SECRET:-carbonet-screen-smoke}" "$KUBE_NAMESPACE"
+
+cleanup() {
+  local status=$? logout_status=""
+  trap - EXIT
+  set +e
+  if [[ "$SESSION_ACTIVE" == 1 ]]; then
+    logout_status="$(curl -sS -b "$COOKIE" -o "$LOGOUT_RESPONSE" -w '%{http_code}' -X POST "$BASE_URL/signin/actionLogout")"
+    if { [[ "$logout_status" != 200 ]] || ! jq -e '(.status // "") == "success"' "$LOGOUT_RESPONSE" >/dev/null 2>&1; } && [[ "$status" == 0 ]]; then
+      echo "[member-assurance] FAIL logout status=$logout_status" >&2
+      status=1
+    fi
+  fi
+  rm -f "$COOKIE" "$BODY" "$LOGIN_PAYLOAD" "$LOGIN_RESPONSE" "$LOGOUT_RESPONSE"
+  exit "$status"
+}
+trap cleanup EXIT
 
 bash "$ROOT/ops/scripts/validate-member-registration-runtime.sh" >/dev/null
 bash "$ROOT/gradlew" -p "$ROOT" :modules:resonance-common:carbonet-common-core:test \
@@ -25,9 +47,14 @@ kubectl -n "$KUBE_NAMESPACE" exec "deployment/$RUNTIME_DEPLOYMENT" -- \
   grep -Rql 'joinVerificationSuccess' "$REACT_OVERLAY_PATH" \
   || { echo '[member-assurance] FAIL deployed join identity overlay asset' >&2; exit 1; }
 
-login="$(curl -fsS -c "$COOKIE" -H 'Content-Type: application/json' -X POST "$BASE_URL/admin/login/actionLogin" \
-  --data "{\"userId\":\"$LOGIN_USER\",\"userPw\":\"$LOGIN_PASSWORD\",\"userSe\":\"USR\"}")"
-jq -e '.status=="loginSuccess"' >/dev/null <<<"$login" || { echo '[member-assurance] FAIL administrator login' >&2; exit 1; }
+printf '%s' "$LOGIN_PASSWORD" | jq -Rsc --arg id "$LOGIN_USER" '{userId:$id,userPw:.,userSe:"USR"}' >"$LOGIN_PAYLOAD"
+LOGIN_PASSWORD=""
+unset LOGIN_PASSWORD CARBONET_RUNTIME_TEST_PASSWORD
+login_code="$(curl -sS -c "$COOKIE" -o "$LOGIN_RESPONSE" -w '%{http_code}' -H 'Content-Type: application/json' -X POST "$BASE_URL/signin/actionLogin" --data-binary "@$LOGIN_PAYLOAD")"
+rm -f "$LOGIN_PAYLOAD"
+[[ "$login_code" == 200 ]] && jq -e --arg user "$LOGIN_USER" '.status == "loginSuccess" and (.userId | ascii_downcase) == ($user | ascii_downcase)' "$LOGIN_RESPONSE" >/dev/null \
+  || { echo "[member-assurance] FAIL administrator login status=$login_code" >&2; exit 1; }
+SESSION_ACTIVE=1
 for path in /admin/member/list /admin/member/approve /admin/system/consent-history; do
   code="$(curl -sS -L -b "$COOKIE" -o "$BODY" -w '%{http_code}' "$BASE_URL$path")"
   [[ "$code" == 200 ]] && grep -qi '<!doctype html' "$BODY" \

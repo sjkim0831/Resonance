@@ -104,6 +104,21 @@ class ActorProcessGovernanceApiControllerAssignmentTest {
     }
 
     @Test
+    void professionalScreenContractPreviewRequiresSystemAdministrationAndUsesResolvedIdentity(){
+        Map<String,Object> body=Map.of("contractId","26");
+        when(users.resolve(request)).thenReturn(context("company-user","TENANT_A","ROLE_ADMIN",true,false));
+        assertEquals(403,controller.professionalScreenContractPreview(body,request).getStatusCode().value());
+        verify(service,never()).saveProfessionalScreenContractPreview(any(),anyString());
+
+        when(users.resolve(request)).thenReturn(context("system-admin","DEFAULT","ROLE_SYSTEM_ADMIN",true,false));
+        when(service.saveProfessionalScreenContractPreview(body,"system-admin"))
+                .thenReturn(Map.of("success",true,"preview",true,"rolledBack",true,"committed",false));
+        var response=controller.professionalScreenContractPreview(body,request);
+        assertEquals(200,response.getStatusCode().value());
+        verify(service).saveProfessionalScreenContractPreview(body,"system-admin");
+    }
+
+    @Test
     void stepDetailRequiresPlatformAdministrationAndReturnsOnlyTheFullSelectedStep(){
         when(users.resolve(request)).thenReturn(context("company-user","TENANT_A","ROLE_ADMIN",true,false));
         assertEquals(403,controller.systemTestReportStepDetail("EMISSION_PROJECT","STEP_1",request).getStatusCode().value());

@@ -4,23 +4,32 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 HELPER="$ROOT/ops/scripts/runtime-qa-auth-common.sh"
 POST_DEPLOY_VALIDATOR="$ROOT/ops/scripts/run-post-deploy-validation-groups.sh"
+AUTO_DEPLOY="$ROOT/ops/scripts/auto-deploy-main.sh"
+SCREEN_GATE_WRAPPER="$ROOT/ops/scripts/run-runtime-screen-gate-serialized.sh"
+SCREEN_GATE="$ROOT/ops/scripts/resonance-full-screen-deploy-gate.sh"
 TMP_DIR="$(mktemp -d /tmp/runtime-qa-auth-concurrency.XXXXXX)"
 trap 'rm -rf "$TMP_DIR"' EXIT
 
 [[ -f "$HELPER" ]] || { echo '[runtime-qa-auth-concurrency] helper missing' >&2; exit 1; }
 [[ -f "$POST_DEPLOY_VALIDATOR" ]] || { echo '[runtime-qa-auth-concurrency] post-deploy validator missing' >&2; exit 1; }
+[[ -f "$AUTO_DEPLOY" ]] || { echo '[runtime-qa-auth-concurrency] auto-deploy runner missing' >&2; exit 1; }
+[[ -f "$SCREEN_GATE_WRAPPER" ]] || { echo '[runtime-qa-auth-concurrency] screen gate wrapper missing' >&2; exit 1; }
+[[ -f "$SCREEN_GATE" ]] || { echo '[runtime-qa-auth-concurrency] full screen gate missing' >&2; exit 1; }
 bash -n "$HELPER"
 bash -n "$POST_DEPLOY_VALIDATOR"
-grep -Fq 'CARBONET_QA_AUTH_LOCK_FILE:-/tmp/carbonet-qa-auth-session.lock' "$POST_DEPLOY_VALIDATOR" \
-  || { echo '[runtime-qa-auth-concurrency] emission validators do not share the canonical lock' >&2; exit 1; }
-grep -Fq 'flock -w "${CARBONET_QA_AUTH_LOCK_TIMEOUT_SECONDS:-120}" 9' "$POST_DEPLOY_VALIDATOR" \
-  || { echo '[runtime-qa-auth-concurrency] emission validator lock is not fail-closed' >&2; exit 1; }
+bash -n "$AUTO_DEPLOY"
+bash -n "$SCREEN_GATE_WRAPPER"
+bash -n "$SCREEN_GATE"
 
-python3 - "$HELPER" <<'PY'
+python3 - "$HELPER" "$POST_DEPLOY_VALIDATOR" "$AUTO_DEPLOY" "$SCREEN_GATE_WRAPPER" "$SCREEN_GATE" <<'PY'
 from pathlib import Path
 import sys
 
 source = Path(sys.argv[1]).read_text(encoding="utf-8")
+validator = Path(sys.argv[2]).read_text(encoding="utf-8")
+auto_deploy = Path(sys.argv[3]).read_text(encoding="utf-8")
+screen_wrapper = Path(sys.argv[4]).read_text(encoding="utf-8")
+screen_gate = Path(sys.argv[5]).read_text(encoding="utf-8")
 
 def assert_owner_contract(value):
     assert "CARBONET_QA_AUTH_LOCK_OWNER_BASHPID" in value
@@ -30,6 +39,16 @@ def assert_owner_contract(value):
     assert "unset CARBONET_QA_AUTH_LOCK_FD CARBONET_QA_AUTH_LOCK_OWNER_BASHPID" in value
 
 assert_owner_contract(source)
+assert "carbonet_qa_load_credentials()" in source
+assert 'explicit credential pair is incomplete' in source
+assert 'jsonpath=\'{.data.username}\'' in source
+assert 'jsonpath=\'{.data.password}\'' in source
+assert 'printf -v "$output_password_var"' in source
+assert 'credential pair is unavailable or malformed' in source
+assert "carbonet_qa_auth_run_serialized() (" in source
+assert 'trap carbonet_qa_auth_release_lock EXIT' in source
+assert '"$@" || lifecycle_status=$?' in source
+assert 'return "$lifecycle_status"' in source
 mutated = source.replace(
     'if [[ -n "$lock_fd" && "$lock_owner" != "$current_pid" ]]; then',
     'if [[ -n "$lock_fd" && "$lock_owner" == "$current_pid" ]]; then',
@@ -41,8 +60,328 @@ except AssertionError:
     pass
 else:
     raise AssertionError("borrowed-release owner-check mutation survived")
-print("RUNTIME_QA_AUTH_OWNER_STATIC_PASS mutation=detected")
+credential_mutation = source.replace('if [[ -z "$explicit_user" || -z "$explicit_password" ]]; then', 'if false; then', 1)
+try:
+    assert 'if [[ -z "$explicit_user" || -z "$explicit_password" ]]; then' in credential_mutation
+except AssertionError:
+    pass
+else:
+    raise AssertionError("incomplete explicit credential mutation survived")
+
+def assert_validator_contract(value):
+    assert 'source "$root/ops/scripts/runtime-qa-auth-common.sh"' in value
+    assert 'CARBONET_QA_AUTH_LOCK_TIMEOUT_SECONDS:-300' in value
+    assert 'exec 9>"${CARBONET_QA_AUTH_LOCK_FILE' not in value
+    assert 'flock -w "${CARBONET_QA_AUTH_LOCK_TIMEOUT_SECONDS' not in value
+    shared_marker = "carbonet_qa_auth_run_serialized emission-shared-runtime"
+    assert value.count(shared_marker) == 1
+    shared_function_start = value.index("run_emission_shared_runtime() {")
+    shared_function_end = value.index("\n  }", shared_function_start)
+    shared_function = value[shared_function_start:shared_function_end]
+    shared = [
+        ("customer", "validate-customer-work-journey.sh"),
+        ("activity", "validate-activity-data-runtime.sh"),
+        ("calculation", "validate-emission-calculation-runtime.sh"),
+        ("organizational-boundary", "validate-organizational-boundary-runtime.sh"),
+        ("governance-change", "validate-governance-change-runtime.sh"),
+        ("report", "validate-report-certification-runtime.sh"),
+    ]
+    positions = []
+    for name, script in shared:
+        command = f"run_emission_runtime_step {name} bash ops/scripts/{script}"
+        assert command in shared_function
+        positions.append(shared_function.index(command))
+    assert positions == sorted(positions)
+    assert shared_function.count("run_emission_runtime_step ") == 6
+    assert shared_function.count("aggregate_status=1") == 6
+    assert shared_function.count("[emission-shared-runtime] RECORDED name=") == 6
+    assert 'return "$aggregate_status"' in shared_function
+    assert "|| return $?" not in shared_function
+    actor_start = 'if [[ "${VALIDATE_ACTOR_ACCOUNT:-true}" == "true" ]]'
+    actor_script = "bash ops/scripts/validate-actor-account-customer-journey.sh"
+    assert actor_start in value and actor_script in value
+    actor_block = value[value.index(actor_start):value.index("else", value.index(actor_start))]
+    assert "carbonet_qa_auth_run_serialized" not in actor_block
+    assert value.index("start_emission_prep activity activity_prep") < value.index(shared_marker)
+    assert value.index("start_emission_prep calculation calculation_prep") < value.index(shared_marker)
+    assert value.index("start_emission_prep report report_prep") < value.index(shared_marker)
+    assert value.index("wait_emission_preps") < value.index(shared_marker)
+    assert value.index(shared_marker) < value.index('wait "$actor_pid"')
+    assert 'wait "$lane_pid" || lane_status=$?' in value
+    assert 'FAIL name=$lane_name status=$lane_status' in value
+    assert 'cat "$lane_dir/$lane_name.log" >&2' in value
+    assert 'FAIL status=$shared_status' in value
+    assert 'FAIL name=actor-account-journey status=$actor_status' in value
+
+def assert_auto_deploy_cohort(value, wrapper=screen_wrapper, gate=screen_gate):
+    assert "run_serialized_carbonet_auth_lifecycle() {" in value
+    alias_start = value.index("run_serialized_carbonet_auth_lifecycle() {")
+    alias_end = value.index("run_actor_process_role_e2e_if_required() {", alias_start)
+    alias = value[alias_start:alias_end]
+    assert 'run_serialized_carbonet_actor_process_e2e_job "$@"' in alias
+    assert value.count("run_serialized_carbonet_auth_lifecycle runtime-screen-gate") == 1
+    assert 'carbonet_qa_auth_run_serialized runtime-screen-gate' in wrapper
+    assert 'CARBONET_QA_AUTH_LOCK_TIMEOUT_SECONDS:-300' in wrapper
+    assert 'bash ops/scripts/resonance-full-screen-deploy-gate.sh verify' in wrapper
+    assert 'FULL_SCREEN_SMOKE_CACHE_DIR:-$FRONTEND_DIR/.cache/full-screen-smoke' in gate
+    assert '"$smoke_cache_dir/manifest.json"' in gate
+    frontend_start = value.index('frontend_smoke_pattern="$(node')
+    frontend_end = value.index('echo "[auto-deploy] frontend overlay deployed', frontend_start)
+    frontend = value[frontend_start:frontend_end]
+    assert "run_serialized_carbonet_auth_lifecycle runtime-screen-gate" in frontend
+    assert "bash ops/scripts/resonance-full-screen-deploy-gate.sh verify" in frontend
+    background_start = value.index("runtime_screen_gate_log=", frontend_end)
+    background_end = value.index("enable_postdeploy_candidate_mode", background_start)
+    background = value[background_start:background_end]
+    assert "setsid env RESONANCE_ROOT=" in background
+    assert "bash ops/scripts/run-runtime-screen-gate-serialized.sh" in background
+    assert 'FULL_SCREEN_SMOKE_CACHE_DIR="$runtime_screen_gate_cache_dir"' in background
+    assert '>"$runtime_screen_gate_log" 2>&1 &' in background
+    assert 'runtime_screen_gate_pgid="$runtime_screen_gate_pid"' in background
+    cleanup_start = value.index("terminate_runtime_screen_gate_group() {")
+    cleanup_end = value.index("cleanup_deploy() {", cleanup_start)
+    cleanup = value[cleanup_start:cleanup_end]
+    assert 'kill -TERM -- "-$pgid"' in cleanup
+    assert 'kill -KILL -- "-$pgid"' in cleanup
+    assert 'for attempt in $(seq 1 50)' in cleanup
+    assert 'cleanup_runtime_screen_gate_cache' in cleanup
+    assert 'rm -rf -- "$runtime_screen_gate_cache_dir"' in value
+    assert '"$ROOT_DIR"/var/run/runtime-screen-gate/*' in value
+    assert 'pkill' not in cleanup and 'killall' not in cleanup
+    assert 'wait "$runtime_screen_gate_pid" || runtime_screen_gate_status=$?' in value
+    assert 'concurrent browser gate failed status=$runtime_screen_gate_status' in value
+    screen_save_start = value.index("run_screen_contract_runtime_save_gate_if_required() {")
+    screen_save_end = value.index("# Database availability", screen_save_start)
+    screen_save = value[screen_save_start:screen_save_end]
+    assert "run_serialized_carbonet_auth_lifecycle screen-contract-runtime-save" in screen_save
+    assert "bash ops/scripts/validate-screen-contract-runtime-save.sh" in screen_save
+
+assert_validator_contract(validator)
+assert_auto_deploy_cohort(auto_deploy)
+mutated = validator.replace(
+    "carbonet_qa_auth_run_serialized emission-shared-runtime",
+    "run_without_auth_serialization emission-shared-runtime",
+    1,
+)
+try:
+    assert_validator_contract(mutated)
+except AssertionError:
+    pass
+else:
+    raise AssertionError("shared-lifecycle serialization-removal mutation survived")
+mutated = validator.replace(
+    "bash ops/scripts/validate-actor-account-customer-journey.sh",
+    "carbonet_qa_auth_run_serialized actor-account-runtime bash ops/scripts/validate-actor-account-customer-journey.sh",
+    1,
+)
+try:
+    assert_validator_contract(mutated)
+except AssertionError:
+    pass
+else:
+    raise AssertionError("independent actor lane serialization mutation survived")
+mutated = validator.replace("run_emission_runtime_step activity bash", "run_emission_runtime_step __ORDER_TMP__ bash", 1)
+mutated = mutated.replace("run_emission_runtime_step calculation bash", "run_emission_runtime_step activity bash", 1)
+mutated = mutated.replace("run_emission_runtime_step __ORDER_TMP__ bash", "run_emission_runtime_step calculation bash", 1)
+try:
+    assert_validator_contract(mutated)
+except AssertionError:
+    pass
+else:
+    raise AssertionError("shared-runtime order mutation survived")
+mutated = validator.replace('CARBONET_QA_AUTH_LOCK_TIMEOUT_SECONDS:-300', 'CARBONET_QA_AUTH_LOCK_TIMEOUT_SECONDS:-120', 1)
+try:
+    assert_validator_contract(mutated)
+except AssertionError:
+    pass
+else:
+    raise AssertionError("post-deploy auth timeout regression mutation survived")
+for old, new, label in (
+    ("run_serialized_carbonet_auth_lifecycle runtime-screen-gate", "run_unlocked_carbonet_auth_lifecycle runtime-screen-gate", "foreground-screen-gate"),
+    ("run_serialized_carbonet_auth_lifecycle screen-contract-runtime-save", "run_unlocked_carbonet_auth_lifecycle screen-contract-runtime-save", "screen-save-gate"),
+    ('run_serialized_carbonet_actor_process_e2e_job "$@"', '"$@"', "cohort-alias"),
+):
+    mutated = auto_deploy.replace(old, new, 1)
+    try:
+        assert_auto_deploy_cohort(mutated)
+    except AssertionError:
+        pass
+    else:
+        raise AssertionError(f"{label} serialization mutation survived")
+mutated = screen_wrapper.replace("carbonet_qa_auth_run_serialized runtime-screen-gate", "run_unlocked_carbonet_auth_lifecycle runtime-screen-gate", 1)
+try:
+    assert_auto_deploy_cohort(auto_deploy, mutated)
+except AssertionError:
+    pass
+else:
+    raise AssertionError("background-screen-gate serialization mutation survived")
+mutated_gate = screen_gate.replace('"$smoke_cache_dir/manifest.json"', '"$FRONTEND_DIR/.cache/full-screen-smoke/manifest.json"')
+try:
+    assert_auto_deploy_cohort(auto_deploy, screen_wrapper, mutated_gate)
+except AssertionError:
+    pass
+else:
+    raise AssertionError("owned screen cache mutation survived")
+for old, new, label in (
+    ("setsid env RESONANCE_ROOT=", "env RESONANCE_ROOT=", "screen-process-group"),
+    ('kill -TERM -- "-$pgid"', 'kill -TERM "$pid"', "group-term"),
+    ('kill -KILL -- "-$pgid"', 'kill -KILL "$pid"', "group-kill"),
+    ('"$ROOT_DIR"/var/run/runtime-screen-gate/*', '/*', "cache-path-ownership"),
+):
+    mutated = auto_deploy.replace(old, new, 1)
+    try:
+        assert_auto_deploy_cohort(mutated)
+    except AssertionError:
+        pass
+    else:
+        raise AssertionError(f"{label} mutation survived")
+print("RUNTIME_QA_AUTH_OWNER_STATIC_PASS mutations=15 credentialLoader=secret-or-complete-env sharedLifecycles=6 lockAcquisitions=1 timeout=300s order=customer-activity-calculation-boundary-governance-report continueAfterFailure=true screenGatePaths=2 processGroup=owned-term-wait-kill ownedCache=exact screenSave=1 independentActorLane=parallel")
 PY
+
+# Execute the validator's actual nested runtime functions with a mocked bash
+# command. A first-step failure must be retained while all later validators,
+# including the final report, still run under the same lifecycle.
+python3 - "$POST_DEPLOY_VALIDATOR" "$TMP_DIR/emission-functions.sh" <<'PY'
+from pathlib import Path
+import sys
+text = Path(sys.argv[1]).read_text(encoding="utf-8")
+chunks = []
+for name in ("run_emission_runtime_step", "run_emission_shared_runtime"):
+    start = text.index(f"  {name}() {{")
+    end = text.index("\n  }", start) + len("\n  }")
+    chunks.append(text[start:end].replace("\n  ", "\n", 1).lstrip())
+Path(sys.argv[2]).write_text("\n".join(chunks) + "\n", encoding="utf-8")
+PY
+source "$TMP_DIR/emission-functions.sh"
+bash() {
+  printf '%s\n' "$1" >>"$TMP_DIR/emission-executed.log"
+  [[ "$1" != ops/scripts/validate-customer-work-journey.sh ]] || return 23
+  return 0
+}
+set +e
+run_emission_shared_runtime >"$TMP_DIR/emission-aggregate.log" 2>&1
+emission_aggregate_status=$?
+set -e
+[[ "$emission_aggregate_status" == 1 ]]
+[[ "$(wc -l <"$TMP_DIR/emission-executed.log" | tr -d ' ')" == 6 ]]
+grep -Fxq ops/scripts/validate-report-certification-runtime.sh "$TMP_DIR/emission-executed.log"
+grep -Fq 'RECORDED name=customer status=23' "$TMP_DIR/emission-aggregate.log"
+unset -f bash
+
+python3 - "$AUTO_DEPLOY" "$TMP_DIR/screen-group-functions.sh" <<'PY'
+from pathlib import Path
+import sys
+text = Path(sys.argv[1]).read_text(encoding="utf-8")
+chunks = []
+for name in ("cleanup_runtime_screen_gate_cache", "terminate_runtime_screen_gate_group"):
+    start = text.index(f"{name}() {{")
+    end = text.index("\n}\n", start) + 2
+    chunks.append(text[start:end])
+Path(sys.argv[2]).write_text("\n".join(chunks) + "\n", encoding="utf-8")
+PY
+source "$TMP_DIR/screen-group-functions.sh"
+ROOT_DIR="$TMP_DIR/process-group-root"
+runtime_screen_gate_cache_dir="$ROOT_DIR/var/run/runtime-screen-gate/owned-run"
+mkdir -p "$runtime_screen_gate_cache_dir" "$ROOT_DIR/var/run/unrelated"
+touch "$runtime_screen_gate_cache_dir/auth-state-owned.json" "$ROOT_DIR/var/run/unrelated/keep"
+group_child_file="$TMP_DIR/screen-group-child.pid"
+setsid bash -c 'trap "exit 0" TERM; sleep 30 & child=$!; printf "%s\n" "$child" >"$1"; wait "$child"' _ "$group_child_file" &
+runtime_screen_gate_pid=$!
+runtime_screen_gate_pgid=$runtime_screen_gate_pid
+for _ in $(seq 1 50); do [[ -s "$group_child_file" ]] && break; sleep 0.02; done
+[[ -s "$group_child_file" ]]
+screen_group_child="$(<"$group_child_file")"
+sleep 30 & unrelated_node_like_pid=$!
+terminate_runtime_screen_gate_group
+! kill -0 "$screen_group_child" 2>/dev/null
+kill -0 "$unrelated_node_like_pid" 2>/dev/null
+[[ ! -e "$ROOT_DIR/var/run/runtime-screen-gate/owned-run" ]]
+[[ -e "$ROOT_DIR/var/run/unrelated/keep" ]]
+kill "$unrelated_node_like_pid"
+wait "$unrelated_node_like_pid" 2>/dev/null || true
+
+LIFECYCLE_LOCK="$TMP_DIR/lifecycle.lock"
+LIFECYCLE_STATE_LOCK="$TMP_DIR/lifecycle-state.lock"
+LIFECYCLE_ACTIVE="$TMP_DIR/lifecycle-active"
+LIFECYCLE_EVENTS="$TMP_DIR/lifecycle-events"
+LIFECYCLE_FIRST_STARTED="$TMP_DIR/lifecycle-first-started"
+LIFECYCLE_INDEPENDENT_OVERLAP="$TMP_DIR/lifecycle-independent-overlap"
+export LIFECYCLE_STATE_LOCK LIFECYCLE_ACTIVE LIFECYCLE_EVENTS LIFECYCLE_FIRST_STARTED
+source "$HELPER"
+export CARBONET_QA_AUTH_LOCK_FILE="$LIFECYCLE_LOCK" CARBONET_QA_AUTH_LOCK_TIMEOUT_SECONDS=10
+
+loader_log="$TMP_DIR/credential-loader.log"
+carbonet_qa_load_credentials LOADER_USER LOADER_PASSWORD explicit-user 'Explicit-Password-1!' >"$loader_log" 2>&1
+[[ "$LOADER_USER" == explicit-user && "$LOADER_PASSWORD" == 'Explicit-Password-1!' && ! -s "$loader_log" ]]
+unset LOADER_USER LOADER_PASSWORD
+kubectl() {
+  if [[ "$*" == *'.data.username'* ]]; then printf '%s' 'secret-user' | base64;
+  elif [[ "$*" == *'.data.password'* ]]; then printf '%s' 'Secret-Password-2!' | base64;
+  else return 1; fi
+}
+carbonet_qa_load_credentials LOADER_USER LOADER_PASSWORD '' '' carbonet-screen-smoke carbonet-prod >"$loader_log" 2>&1
+[[ "$LOADER_USER" == secret-user && "$LOADER_PASSWORD" == 'Secret-Password-2!' && ! -s "$loader_log" ]]
+if carbonet_qa_load_credentials LOADER_USER LOADER_PASSWORD only-user '' carbonet-screen-smoke carbonet-prod >"$loader_log" 2>&1; then
+  echo '[runtime-qa-auth-concurrency] incomplete explicit credential pair did not fail closed' >&2
+  exit 1
+fi
+grep -Fq 'explicit credential pair is incomplete' "$loader_log"
+unset -f kubectl
+unset LOADER_USER LOADER_PASSWORD
+
+lifecycle_worker() {
+  local label="$1" state_fd
+  exec {state_fd}>"$LIFECYCLE_STATE_LOCK"
+  flock "$state_fd"
+  if [[ -e "$LIFECYCLE_ACTIVE" ]]; then
+    printf 'OVERLAP %s\n' "$label" >>"$LIFECYCLE_EVENTS"
+    flock -u "$state_fd"
+    return 91
+  fi
+  touch "$LIFECYCLE_ACTIVE"
+  printf 'START %s\n' "$label" >>"$LIFECYCLE_EVENTS"
+  touch "$LIFECYCLE_FIRST_STARTED"
+  flock -u "$state_fd"
+  sleep 0.3
+  flock "$state_fd"
+  rm -f "$LIFECYCLE_ACTIVE"
+  printf 'END %s\n' "$label" >>"$LIFECYCLE_EVENTS"
+  flock -u "$state_fd"
+}
+export -f lifecycle_worker
+
+declare -a lifecycle_pids=()
+for label in first second; do
+  carbonet_qa_auth_run_serialized "$label" bash -c 'lifecycle_worker "$1"' _ "$label" \
+    >"$TMP_DIR/$label.log" 2>&1 &
+  lifecycle_pids+=("$!")
+done
+(
+  for _ in $(seq 1 100); do [[ -e "$LIFECYCLE_FIRST_STARTED" ]] && break; sleep 0.01; done
+  [[ -e "$LIFECYCLE_FIRST_STARTED" ]]
+  [[ -e "$LIFECYCLE_ACTIVE" ]] && touch "$LIFECYCLE_INDEPENDENT_OVERLAP"
+) &
+independent_pid=$!
+lifecycle_failed=0
+for pid in "${lifecycle_pids[@]}"; do wait "$pid" || lifecycle_failed=1; done
+wait "$independent_pid"
+(( lifecycle_failed == 0 )) || { echo '[runtime-qa-auth-concurrency] serialized lifecycle failed' >&2; exit 1; }
+[[ -e "$LIFECYCLE_INDEPENDENT_OVERLAP" ]] || { echo '[runtime-qa-auth-concurrency] independent lane did not remain parallel' >&2; exit 1; }
+[[ "$(grep -c '^START ' "$LIFECYCLE_EVENTS")" == 2 && "$(grep -c '^END ' "$LIFECYCLE_EVENTS")" == 2 ]]
+! grep -q '^OVERLAP ' "$LIFECYCLE_EVENTS" || { echo '[runtime-qa-auth-concurrency] shared lifecycles overlapped' >&2; exit 1; }
+
+carbonet_qa_auth_run_serialized nested-helper-probe \
+  bash -c 'source "$1"; carbonet_qa_auth_acquire_lock; carbonet_qa_auth_release_lock; \
+    [[ -n "${CARBONET_QA_AUTH_LOCK_FD:-}" && -n "${CARBONET_QA_AUTH_LOCK_OWNER_BASHPID:-}" ]]' \
+  _ "$HELPER" >"$TMP_DIR/nested.log" 2>&1
+set +e
+failure_log="$(carbonet_qa_auth_run_serialized failure-probe bash -c 'echo CHILD_FAILURE_MARKER; exit 23' 2>&1)"
+failure_status=$?
+set -e
+[[ "$failure_status" == 23 ]] || { echo "[runtime-qa-auth-concurrency] lifecycle failure status lost status=$failure_status" >&2; exit 1; }
+grep -Fq 'CHILD_FAILURE_MARKER' <<<"$failure_log"
+grep -Fq 'lifecycle failed name=failure-probe status=23' <<<"$failure_log"
+carbonet_qa_auth_run_serialized recovery-probe bash -c 'exit 0' >"$TMP_DIR/recovery.log" 2>&1
 
 LOCK_FILE="$TMP_DIR/shared.lock"
 MARKER="$TMP_DIR/holder-ready"
@@ -188,4 +527,4 @@ carbonet_qa_logout "$TMP_DIR/success-cookie" http://invalid.example
   exit 1
 }
 
-printf '[runtime-qa-auth-concurrency] PASS serialized=true borrowedRelease=no-op ownerRelease=exclusive competitorBlocked=true timeout=fail-closed logout200=required logout503=rejected lockReleased=true\n'
+printf '[runtime-qa-auth-concurrency] PASS sharedLifecycles=6 lockAcquisitions=1 authTimeout=300s deterministicOrder=customer-activity-calculation-boundary-governance-report firstFailure=23 finalReport=executed aggregateStatus=1 overlap=0 independentActorLane=parallel independentPreparation=parallel nestedDeadlock=prevented failureStatus=23 failureLog=propagated borrowedRelease=no-op ownerRelease=exclusive competitorBlocked=true timeout=fail-closed logout200=required logout503=rejected lockReleased=true\n'

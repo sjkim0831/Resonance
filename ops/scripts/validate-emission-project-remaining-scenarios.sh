@@ -1,24 +1,46 @@
 #!/usr/bin/env bash
 set -euo pipefail
+umask 077
 
 ROOT="${RESONANCE_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
 BASE_URL="${CARBONET_RUNTIME_BASE_URL:-http://127.0.0.1}"
+NAMESPACE="${CARBONET_K8S_NAMESPACE:-carbonet-prod}"
 REFERENCE_ROOT="${REFERENCE_ROOT:-/opt/reference}"
 SOURCE_COMMIT="$(git -C "$ROOT" rev-parse HEAD)"
-COOKIE_JAR="$(mktemp)"; BODY="$(mktemp)"
+COOKIE_JAR="$(mktemp)"; BODY="$(mktemp)"; LOGIN_PAYLOAD="$(mktemp)"; LOGIN_RESPONSE="$(mktemp)"; LOGOUT_RESPONSE="$(mktemp)"
+LOGIN_USER=""
+LOGIN_PASSWORD=""
+SESSION_ACTIVE=0
 project="TEST-DEADLINE-$(date +%s)"
 submission_id=""
 
+source "$ROOT/ops/scripts/runtime-qa-auth-common.sh"
 source "$ROOT/ops/scripts/lib/carbonet-postgres-query.sh"
 carbonet_postgres_query_init
 q(){ carbonet_postgres_query "$1"; }
 cleanup(){
-  if [[ -n "$submission_id" ]]; then
-    q "delete from emission_workflow_notification where project_id='$project'; delete from emission_activity_submission_event where submission_id=$submission_id; delete from emission_activity_submission_evidence where submission_id=$submission_id; delete from emission_activity_submission_item where submission_id=$submission_id; delete from emission_activity_submission where submission_id=$submission_id; delete from emission_activity_quality_issue where run_id in(select run_id from emission_activity_quality_run where project_id='$project'); delete from emission_activity_quality_run where project_id='$project'; delete from emission_activity_data where project_id='$project'; delete from emission_project_task where project_id='$project'; delete from emission_project_registry where project_id='$project';" >/dev/null 2>&1 || true
+  local status=$? logout_status=""
+  trap - EXIT
+  set +e
+  if [[ "$SESSION_ACTIVE" == 1 ]]; then
+    logout_status="$(curl -sS -b "$COOKIE_JAR" -o "$LOGOUT_RESPONSE" -w '%{http_code}' -X POST "$BASE_URL/signin/actionLogout")"
+    if { [[ "$logout_status" != 200 ]] || ! jq -e '(.status // "") == "success"' "$LOGOUT_RESPONSE" >/dev/null 2>&1; } && [[ "$status" == 0 ]]; then
+      echo "[emission-scenarios] FAIL logout status=$logout_status" >&2
+      status=1
+    fi
   fi
-  rm -f "$COOKIE_JAR" "$BODY"
+  if [[ -n "$submission_id" ]]; then
+    q "delete from emission_activity_submission_event where submission_id=$submission_id; delete from emission_activity_submission_evidence where submission_id=$submission_id; delete from emission_activity_submission_item where submission_id=$submission_id; delete from emission_activity_submission where submission_id=$submission_id;" >/dev/null 2>&1 || true
+  fi
+  q "delete from emission_workflow_notification where project_id='$project'; delete from emission_activity_quality_issue where run_id in(select run_id from emission_activity_quality_run where project_id='$project'); delete from emission_activity_quality_run where project_id='$project'; delete from emission_activity_data where project_id='$project'; delete from emission_project_task where project_id='$project'; delete from emission_project_registry where project_id='$project';" >/dev/null 2>&1 || true
+  rm -f "$COOKIE_JAR" "$BODY" "$LOGIN_PAYLOAD" "$LOGIN_RESPONSE" "$LOGOUT_RESPONSE"
+  exit "$status"
 }
 trap cleanup EXIT
+
+carbonet_qa_load_credentials LOGIN_USER LOGIN_PASSWORD \
+  "${CARBONET_RUNTIME_TEST_USER:-}" "${CARBONET_RUNTIME_TEST_PASSWORD:-}" \
+  "${CARBONET_RUNTIME_AUTH_SECRET:-carbonet-screen-smoke}" "$NAMESPACE"
 
 types=(CONTENT DASHBOARD DETAIL REPORT UPLOAD)
 for type in "${types[@]}"; do
@@ -32,7 +54,14 @@ done
 
 q "insert into emission_project_registry(project_id,project_name,site_name,calculation_period,scope_name,owner_name,current_step,due_date,project_status,reporting_year,period_start,period_end,tenant_id) values('$project','마감 안전성 자동 검증','자동 검증 사업장','2026-01-01 ~ 2026-12-31','Scope 1','webmaster','활동자료 수집',current_date-1,'TEST',2026,date '2026-01-01',date '2026-12-31','DEFAULT'); insert into emission_activity_data(project_id,activity_name,category,activity_period,quantity,unit,evidence_note) values('$project','자동 검증 전력','ENERGY','2026-07',1,'kWh','마감 안전성 검증 증적')" >/dev/null
 
-curl -fsS -c "$COOKIE_JAR" -H 'Content-Type: application/json' -X POST "$BASE_URL/admin/login/actionLogin" --data '{"userId":"webmaster","userPw":"rhdxhd12","userSe":"USR"}' >/dev/null
+printf '%s' "$LOGIN_PASSWORD" | jq -Rsc --arg id "$LOGIN_USER" '{userId:$id,userPw:.,userSe:"USR"}' >"$LOGIN_PAYLOAD"
+LOGIN_PASSWORD=""
+unset LOGIN_PASSWORD CARBONET_RUNTIME_TEST_PASSWORD
+login_code="$(curl -sS -c "$COOKIE_JAR" -o "$LOGIN_RESPONSE" -w '%{http_code}' -H 'Content-Type: application/json' -X POST "$BASE_URL/signin/actionLogin" --data-binary "@$LOGIN_PAYLOAD")"
+rm -f "$LOGIN_PAYLOAD"
+[[ "$login_code" == 200 ]] && jq -e --arg user "$LOGIN_USER" '.status == "loginSuccess" and (.userId | ascii_downcase) == ($user | ascii_downcase)' "$LOGIN_RESPONSE" >/dev/null \
+  || { echo "[emission-scenarios] FAIL login status=$login_code" >&2; exit 1; }
+SESSION_ACTIVE=1
 created="$(curl -fsS -b "$COOKIE_JAR" -H 'Content-Type: application/json' -X POST "$BASE_URL/home/api/emission-projects/$project/submissions" --data "{\"idempotencyKey\":\"deadline-$project\"}")"
 submission_id="$(jq -er '.id' <<<"$created")"
 activity_ids="$(q "select json_agg(activity_id)::text from emission_activity_data where project_id='$project'")"

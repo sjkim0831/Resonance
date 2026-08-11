@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
+umask 077
 
 USERNAME="${1:-resonance-requester}"
 NAMESPACE="${KEYCLOAK_NAMESPACE:-resonance-ops}"
@@ -29,6 +30,7 @@ flock -w "${OIDC_TOKEN_LOCK_WAIT_SECONDS:-60}" "$token_lock_fd" || {
 }
 run_dir="$(mktemp -d "$WORK_ROOT/run.XXXXXXXX")"
 cleanup() {
+  unset password BACKSTAGE_E2E_PASSWORD
   if [[ "${OIDC_TOKEN_KEEP_WORK:-false}" == "true" ]]; then
     echo "[oidc-token] diagnostic directory: $run_dir" >&2
   else
@@ -37,6 +39,18 @@ cleanup() {
 }
 trap cleanup EXIT
 password="${BACKSTAGE_E2E_PASSWORD:-}"
+if [[ -z "$password" && -n "${BACKSTAGE_E2E_PASSWORD_FILE:-}" ]]; then
+  [[ -f "$BACKSTAGE_E2E_PASSWORD_FILE" && ! -L "$BACKSTAGE_E2E_PASSWORD_FILE" ]] || {
+    echo "[oidc-token] password file must be a regular non-symlink file" >&2
+    exit 2
+  }
+  mode="$(stat -c '%a' "$BACKSTAGE_E2E_PASSWORD_FILE")"
+  [[ "$mode" == 600 || "$mode" == 400 ]] || {
+    echo "[oidc-token] password file must have mode 0600 or 0400" >&2
+    exit 2
+  }
+  password="$(<"$BACKSTAGE_E2E_PASSWORD_FILE")"
+fi
 if [[ -z "$password" ]]; then
   password="$(kubectl -n "$NAMESPACE" get secret resonance-keycloak-e2e-users \
     -o jsonpath='{.data.PASSWORD}' | base64 -d)"
@@ -45,6 +59,22 @@ fi
   echo "[oidc-token] identity credential is missing" >&2
   exit 2
 }
+form_path="$run_dir/login.form"
+printf '%s' "$password" | USERNAME="$USERNAME" FORM_PATH="$form_path" node -e '
+  const fs = require("fs");
+  let password = "";
+  process.stdin.setEncoding("utf8");
+  process.stdin.on("data", chunk => { password += chunk; });
+  process.stdin.on("end", () => {
+    const encode = encodeURIComponent;
+    fs.writeFileSync(process.env.FORM_PATH,
+      `username=${encode(process.env.USERNAME)}&password=${encode(password)}&credentialId=`,
+      { mode: 0o600 });
+    password = "";
+  });
+'
+chmod 0600 "$form_path"
+unset password BACKSTAGE_E2E_PASSWORD
 
 curl --cacert "$CA_CERT" -fsS \
   -D "$run_dir/start.headers" -o /dev/null -c "$run_dir/cookies" \
@@ -68,9 +98,8 @@ action="$(LOGIN_HTML="$run_dir/login.html" node -e '
 curl --cacert "$CA_CERT" -fsS -L \
   -b "$run_dir/cookies" -c "$run_dir/cookies" \
   -o "$run_dir/result.html" \
-  --data-urlencode "username=$USERNAME" \
-  --data-urlencode "password=$password" \
-  --data-urlencode credentialId= "$action"
+  -H 'content-type: application/x-www-form-urlencoded' \
+  --data-binary @"$form_path" "$action"
 
 RESULT_HTML="$run_dir/result.html" EXPECTED_USER="$USERNAME" node -e '
   const fs = require("fs");

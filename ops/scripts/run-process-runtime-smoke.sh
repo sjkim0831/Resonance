@@ -1,29 +1,52 @@
 #!/usr/bin/env bash
 set -euo pipefail
+umask 077
 
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 BASE="${CARBONET_RUNTIME_BASE_URL:-http://127.0.0.1}"
-USER_ID="${CARBONET_RUNTIME_SMOKE_USER:-webmaster}"
-PASSWORD="${CARBONET_RUNTIME_SMOKE_PASSWORD:-${CARBONET_ACTOR_TEST_PASSWORD:-}}"
+USER_ID=""
+PASSWORD=""
 EVIDENCE_DIR="${CARBONET_RUNTIME_SMOKE_EVIDENCE_DIR:-/opt/Resonance/var/test-evidence/process-runtime-smoke}"
 PROCESS_CODE="${CARBONET_RUNTIME_SMOKE_PROCESS:-}"
 PROMOTE="${CARBONET_RUNTIME_SMOKE_PROMOTE:-false}"
-if [[ -z "$PASSWORD" ]] && command -v kubectl >/dev/null 2>&1; then
-  namespace="${K8S_NAMESPACE:-carbonet-prod}"
-  if [[ "$USER_ID" == "webmaster" ]]; then
-    PASSWORD="$(kubectl -n "$namespace" get secret carbonet-runtime-smoke-admin -o jsonpath='{.data.password}' 2>/dev/null | base64 -d || true)"
-  else
-    PASSWORD="$(kubectl -n "$namespace" get secret carbonet-test-account-switch -o jsonpath='{.data.password}' 2>/dev/null | base64 -d || true)"
-  fi
+EVIDENCE_MODE="${CARBONET_POSTDEPLOY_EVIDENCE_MODE:-legacy}"
+if [[ "$EVIDENCE_MODE" == "candidate" && "$PROMOTE" == "true" ]]; then
+  echo '[process-runtime-smoke] FAIL candidate mode forbids current simulation/job promotion' >&2
+  exit 2
 fi
-[[ -n "$PASSWORD" ]] || { echo '[process-runtime-smoke] FAIL password not configured' >&2; exit 1; }
+source "$ROOT/ops/scripts/runtime-qa-auth-common.sh"
+carbonet_qa_load_credentials USER_ID PASSWORD \
+  "${CARBONET_RUNTIME_SMOKE_USER:-}" "${CARBONET_RUNTIME_SMOKE_PASSWORD:-${CARBONET_ACTOR_TEST_PASSWORD:-}}" \
+  "${CARBONET_RUNTIME_AUTH_SECRET:-carbonet-screen-smoke}" "${K8S_NAMESPACE:-carbonet-prod}"
 
-tmp="$(mktemp -d)"; trap 'rm -rf "$tmp"' EXIT
+tmp="$(mktemp -d)"
+SESSION_ACTIVE=0
+finalize() {
+  local status=$? logout_status=""
+  trap - EXIT
+  set +e
+  if [[ "$SESSION_ACTIVE" == 1 ]]; then
+    logout_status="$(curl -sS -b "$cookie" -o "$tmp/logout.json" -w '%{http_code}' -X POST "$BASE/signin/actionLogout")"
+    if { [[ "$logout_status" != 200 ]] || ! jq -e '(.status // "") == "success"' "$tmp/logout.json" >/dev/null 2>&1; } && [[ "$status" == 0 ]]; then
+      echo "[process-runtime-smoke] FAIL logout status=$logout_status" >&2
+      status=1
+    fi
+  fi
+  rm -rf "$tmp"
+  exit "$status"
+}
+trap finalize EXIT
 mkdir -p "$EVIDENCE_DIR"
-stamp="$(date -u +%Y%m%dT%H%M%SZ)"
-cookie="$tmp/cookie"; login="$tmp/login.json"; runtime="$tmp/runtime.json"
+cookie="$tmp/cookie"; login="$tmp/login.json"; login_payload="$tmp/login-payload.json"; runtime="$tmp/runtime.json"
 
-code="$(curl -sS -c "$cookie" -o "$login" -w '%{http_code}' -H 'Content-Type: application/json' -X POST "$BASE/signin/actionLogin" --data "{\"userId\":\"$USER_ID\",\"userPw\":\"$PASSWORD\",\"userSe\":\"USR\"}")"
-[[ "$code" == 200 ]] || { echo "[process-runtime-smoke] FAIL login status=$code" >&2; exit 1; }
+printf '%s' "$PASSWORD" | jq -Rsc --arg id "$USER_ID" '{userId:$id,userPw:.,userSe:"USR"}' >"$login_payload"
+PASSWORD=""
+unset PASSWORD CARBONET_RUNTIME_SMOKE_PASSWORD CARBONET_ACTOR_TEST_PASSWORD
+code="$(curl -sS -c "$cookie" -o "$login" -w '%{http_code}' -H 'Content-Type: application/json' -X POST "$BASE/signin/actionLogin" --data-binary "@$login_payload")"
+rm -f "$login_payload"
+[[ "$code" == 200 ]] && jq -e --arg user "$USER_ID" '.status == "loginSuccess" and (.userId | ascii_downcase) == ($user | ascii_downcase)' "$login" >/dev/null \
+  || { echo "[process-runtime-smoke] FAIL login status=$code" >&2; exit 1; }
+SESSION_ACTIVE=1
 
 health_code="$(curl -sS -o "$tmp/health.json" -w '%{http_code}' "$BASE/actuator/health")"
 [[ "$health_code" == 200 ]] || { echo "[process-runtime-smoke] FAIL health status=$health_code" >&2; exit 1; }
@@ -73,7 +96,22 @@ for route in "${routes[@]}"; do
   [[ "$page_code" == 200 ]] || { echo "[process-runtime-smoke] FAIL route=$route status=$page_code" >&2; exit 1; }
 done
 
-ROUTES_JSON="$(printf '%s\n' "${routes[@]}" | jq -R . | jq -s -c .)" python3 - "$runtime" "$rollback" "$EVIDENCE_DIR/$stamp.json" <<'PY'
+process_name="$(RUNTIME="$runtime" python3 - <<'PY'
+import json,os
+print(json.load(open(os.environ['RUNTIME'],encoding='utf-8'))['processCode'])
+PY
+)"
+[[ "$process_name" =~ ^[A-Z0-9_]{3,80}$ ]] || { echo '[process-runtime-smoke] FAIL invalid resolved process code' >&2; exit 1; }
+run_identity="${CARBONET_POSTDEPLOY_CANDIDATE_ID:-}"
+if [[ -n "$run_identity" ]]; then
+  [[ "$run_identity" =~ ^[A-Za-z0-9._:-]{12,160}$ ]] || { echo '[process-runtime-smoke] FAIL invalid candidate run identity' >&2; exit 1; }
+else
+  run_identity="standalone-$(tr -d '-' </proc/sys/kernel/random/uuid)"
+fi
+stamp="$(date -u +%Y%m%dT%H%M%S%N)"
+evidence_path="$EVIDENCE_DIR/${process_name}-${run_identity}-${stamp}.json"
+[[ ! -e "$evidence_path" && ! -L "$evidence_path" ]] || { echo '[process-runtime-smoke] FAIL evidence path collision' >&2; exit 1; }
+ROUTES_JSON="$(printf '%s\n' "${routes[@]}" | jq -R . | jq -s -c .)" python3 - "$runtime" "$rollback" "$tmp/evidence.json" <<'PY'
 import json,sys,datetime,os
 p=json.load(open(sys.argv[1],encoding='utf-8'))
 p['rollbackPersistenceCheck']=json.load(open(sys.argv[2],encoding='utf-8'))
@@ -82,16 +120,10 @@ p['routes']=json.loads(os.environ['ROUTES_JSON'])
 p['protectedUserRoutes']=['/emission/organizational-boundary']
 json.dump(p,open(sys.argv[3],'w',encoding='utf-8'),ensure_ascii=False,indent=2)
 PY
-exec 8>"$EVIDENCE_DIR/.latest.lock"
-flock 8
-ln -sfn "$stamp.json" "$EVIDENCE_DIR/latest.json"
-flock -u 8
-exec 8>&-
-process_name="$(RUNTIME="$runtime" python3 - <<'PY'
-import json,os
-print(json.load(open(os.environ['RUNTIME'],encoding='utf-8'))['processCode'])
-PY
-)"
+chmod 0444 "$tmp/evidence.json"
+mv -- "$tmp/evidence.json" "$evidence_path"
+[[ -f "$evidence_path" && ! -L "$evidence_path" && "$(stat -c %a "$evidence_path")" == 444 ]] \
+  || { echo '[process-runtime-smoke] FAIL immutable evidence publication' >&2; exit 1; }
 if [[ "$PROMOTE" == "true" ]]; then
   case_response="$tmp/case-response.json"; cases="$tmp/cases.tsv"
   code="$(curl -sS -b "$cookie" -o "$case_response" -w '%{http_code}' --get --data-urlencode "processCode=$process_name" "$BASE/admin/api/system/actor-process/cases")"
@@ -106,7 +138,7 @@ if found != required: raise SystemExit(f'missing safety cases: {sorted(required-
 for row in rows: print(f"{row['caseCode']}\t{row['caseType']}")
 PY
   while IFS=$'\t' read -r case_code case_type; do
-    payload="$(CASE_CODE="$case_code" CASE_TYPE="$case_type" EVIDENCE="$EVIDENCE_DIR/$stamp.json" python3 - <<'PY'
+    payload="$(CASE_CODE="$case_code" CASE_TYPE="$case_type" EVIDENCE="$evidence_path" python3 - <<'PY'
 import json,os
 print(json.dumps({'caseCode':os.environ['CASE_CODE'],'result':'PASSED','evidenceJson':json.dumps({'runtimeEvidence':os.environ['EVIDENCE'],'caseType':os.environ['CASE_TYPE'],'rollbackVerified':True})}))
 PY
@@ -133,4 +165,13 @@ PY
     [[ "$code" == 200 ]] || { echo "[process-runtime-smoke] FAIL approve step=$step_code status=$code body=$(tr -d '\n' < "$tmp/approve.json" | head -c 2000)" >&2; exit 1; }
   done < "$tmp/steps.txt"
 fi
-echo "[process-runtime-smoke] PASS process=$process_name evidence=$EVIDENCE_DIR/$stamp.json"
+if [[ "$EVIDENCE_MODE" != candidate ]]; then
+  exec 8>"$EVIDENCE_DIR/.latest.lock"
+  flock 8
+  ln -sfn "$(basename "$evidence_path")" "$EVIDENCE_DIR/latest.json"
+  flock -u 8
+  exec 8>&-
+fi
+evidence_hash="$(sha256sum "$evidence_path" | awk '{print $1}')"
+echo "[process-runtime-smoke] EVIDENCE evidencePath=$evidence_path evidenceHash=$evidence_hash process=$process_name runIdentity=$run_identity"
+echo "[process-runtime-smoke] PASS process=$process_name evidencePath=$evidence_path"

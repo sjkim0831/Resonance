@@ -14,6 +14,58 @@ carbonet_qa_auth_require() {
   }
 }
 
+# Resolve one credential pair without placing the password in argv or logs.
+# Explicit credentials are accepted only as a complete pair; otherwise both
+# fields are read from one Kubernetes Secret and returned through caller-owned
+# variable names. The helper never supplies a tracked default password.
+carbonet_qa_load_credentials() {
+  if (($# < 2 || $# > 6)); then
+    echo "[runtime-qa-auth] credential loader requires output variable names and optional explicit pair/Secret/namespace" >&2
+    return 2
+  fi
+  local output_user_var="$1" output_password_var="$2"
+  local explicit_user="${3:-}" explicit_password="${4:-}"
+  local secret_name="${5:-carbonet-screen-smoke}"
+  local namespace="${6:-${K8S_NAMESPACE:-carbonet-prod}}"
+  local resolved_user="" resolved_password=""
+  [[ "$output_user_var" =~ ^[A-Za-z_][A-Za-z0-9_]*$ && "$output_password_var" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]] || {
+    echo "[runtime-qa-auth] credential output variable name is invalid" >&2
+    return 1
+  }
+  if [[ -n "$explicit_user" || -n "$explicit_password" ]]; then
+    if [[ -z "$explicit_user" || -z "$explicit_password" ]]; then
+      echo "[runtime-qa-auth] explicit credential pair is incomplete" >&2
+      return 1
+    fi
+    resolved_user="$explicit_user"
+    resolved_password="$explicit_password"
+  else
+    carbonet_qa_auth_require kubectl || return 1
+    carbonet_qa_auth_require base64 || return 1
+    [[ "$secret_name" =~ ^[a-z0-9]([-a-z0-9.]*[a-z0-9])?$ ]] || {
+      echo "[runtime-qa-auth] credential Secret name is invalid" >&2
+      return 1
+    }
+    [[ "$namespace" =~ ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$ ]] || {
+      echo "[runtime-qa-auth] credential namespace is invalid" >&2
+      return 1
+    }
+    resolved_user="$(kubectl -n "$namespace" get secret "$secret_name" -o jsonpath='{.data.username}' 2>/dev/null | base64 -d 2>/dev/null || true)"
+    resolved_password="$(kubectl -n "$namespace" get secret "$secret_name" -o jsonpath='{.data.password}' 2>/dev/null | base64 -d 2>/dev/null || true)"
+  fi
+  if [[ -z "$resolved_user" || -z "$resolved_password" || "$resolved_user" == *$'\n'* || "$resolved_password" == *$'\n'* ]]; then
+    resolved_password=""
+    unset resolved_password explicit_password
+    echo "[runtime-qa-auth] credential pair is unavailable or malformed" >&2
+    return 1
+  fi
+  printf -v "$output_user_var" '%s' "$resolved_user"
+  printf -v "$output_password_var" '%s' "$resolved_password"
+  resolved_password=""
+  explicit_password=""
+  unset resolved_password explicit_password
+}
+
 carbonet_qa_auth_acquire_lock() {
   local lock_file="${CARBONET_QA_AUTH_LOCK_FILE:-/tmp/carbonet-qa-auth-session.lock}"
   local timeout_seconds="${CARBONET_QA_AUTH_LOCK_TIMEOUT_SECONDS:-60}"
@@ -67,6 +119,36 @@ carbonet_qa_auth_release_lock() {
   fi
   unset CARBONET_QA_AUTH_LOCK_FD CARBONET_QA_AUTH_LOCK_OWNER_BASHPID
 }
+
+# Run one complete authenticated verifier lifecycle under the canonical lock.
+# The command runs in a child of the lock owner, so a nested call to this helper
+# borrows the exported descriptor and cannot deadlock or release its parent.
+carbonet_qa_auth_run_serialized() (
+  if (($# < 2)); then
+    echo "[runtime-qa-auth] serialized lifecycle requires a name and command" >&2
+    return 2
+  fi
+  local lifecycle_name="$1"
+  local lifecycle_started lifecycle_status
+  shift
+  lifecycle_started="$(date +%s)"
+  lifecycle_status=0
+  if ! carbonet_qa_auth_acquire_lock; then
+    echo "[runtime-qa-auth] lifecycle lock failed name=$lifecycle_name" >&2
+    return 1
+  fi
+  trap carbonet_qa_auth_release_lock EXIT
+  echo "[runtime-qa-auth] lifecycle lock acquired name=$lifecycle_name"
+  "$@" || lifecycle_status=$?
+  carbonet_qa_auth_release_lock
+  trap - EXIT
+  if (( lifecycle_status != 0 )); then
+    echo "[runtime-qa-auth] lifecycle failed name=$lifecycle_name status=$lifecycle_status" >&2
+  else
+    echo "[runtime-qa-auth] lifecycle PASS name=$lifecycle_name duration=$(( $(date +%s) - lifecycle_started ))s"
+  fi
+  return "$lifecycle_status"
+)
 
 carbonet_qa_login() {
   local cookie_jar="$1"

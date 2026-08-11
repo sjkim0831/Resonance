@@ -2,8 +2,10 @@ package egovframework.com.feature.home.web;
 
 import egovframework.com.feature.auth.service.CurrentUserContextService;
 import egovframework.com.feature.home.service.EmissionProjectRegistryService;
+import egovframework.com.feature.home.service.ScopeAccessAuditService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.junit.jupiter.api.Test;
+import org.springframework.dao.DataAccessResourceFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.server.ResponseStatusException;
@@ -111,6 +113,25 @@ class EmissionProjectRegistryControllerAuthenticationTest {
         EmissionProjectRegistryController controller = new EmissionProjectRegistryController(projects, users);
 
         assertEquals(HttpStatus.UNAUTHORIZED, controller.simulate("PRJ-1", Map.of(), request).getStatusCode());
+    }
+
+    @Test
+    void regulatoryAcceptWrongActorAndAuditOutageBothRemainHttp403() {
+        EmissionProjectRegistryService projects=mock(EmissionProjectRegistryService.class);
+        CurrentUserContextService users=mock(CurrentUserContextService.class);
+        HttpServletRequest request=mock(HttpServletRequest.class);
+        CurrentUserContextService.CurrentUserContext context=authenticatedContext();
+        when(users.resolve(request)).thenReturn(context);
+        Map<String,Object> accept=Map.of("action","ACCEPT");
+        when(projects.transitionRegulatorySubmission("PRJ-1",77L,"TENANT-1","data.owner",false,accept))
+                .thenThrow(new ScopeAccessAuditService.AuditPersistenceException(
+                        new DataAccessResourceFailureException("audit database offline")));
+        EmissionProjectRegistryController controller=new EmissionProjectRegistryController(projects,users);
+
+        ResponseEntity<?> response=controller.transitionRegulatorySubmission("PRJ-1",77L,accept,request);
+
+        assertEquals(HttpStatus.FORBIDDEN,response.getStatusCode());
+        verify(projects).transitionRegulatorySubmission("PRJ-1",77L,"TENANT-1","data.owner",false,accept);
     }
 
     private CurrentUserContextService.CurrentUserContext authenticatedContext() {

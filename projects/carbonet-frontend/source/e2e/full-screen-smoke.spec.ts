@@ -46,6 +46,7 @@ const resultDir = path.resolve(process.env.FULL_SCREEN_SMOKE_RESULT_DIR || ".cac
 const baseUrl = String(process.env.FULL_SCREEN_SMOKE_BASE_URL || "http://172.16.1.232").replace(/\/$/, "");
 const username = String(process.env.FULL_SCREEN_SMOKE_ADMIN_USER || "");
 const password = String(process.env.FULL_SCREEN_SMOKE_ADMIN_PASSWORD || "");
+const requireSharedPreauth = process.env.FULL_SCREEN_SMOKE_REQUIRE_PREAUTH === "true";
 const manifest = JSON.parse(readFileSync(manifestPath, "utf8")) as SmokeManifest;
 const routesById = new Map(manifest.routes.map((route) => [route.id, route]));
 
@@ -73,7 +74,9 @@ async function ensureAdminSession(page: Page) {
       await waitForAdminMount(page);
       return;
     }
+    if (requireSharedPreauth) throw new Error("shared preauthenticated session became invalid; per-shard login is forbidden");
   }
+  if (requireSharedPreauth) throw new Error("shared preauthenticated session is required; per-shard login is forbidden");
   await page.goto(`${baseUrl}/admin/login/loginView`, { waitUntil: "domcontentloaded" });
   if (!/\/admin\/login\/loginView$/.test(new URL(page.url()).pathname)) return;
   if (!username || !password) throw new Error("FULL_SCREEN_SMOKE_ADMIN_USER and FULL_SCREEN_SMOKE_ADMIN_PASSWORD are required");

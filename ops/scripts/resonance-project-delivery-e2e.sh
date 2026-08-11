@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
+umask 077
 
 ROOT="${RESONANCE_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
 BACKSTAGE_URL="${BACKSTAGE_URL:-https://backstage.172.16.1.232.nip.io}"
@@ -10,13 +11,22 @@ for command in curl node; do
 done
 [[ -s "$CA_CERT" ]] || { echo "[project-delivery-e2e] internal CA is missing" >&2; exit 2; }
 
-token="$($ROOT/ops/scripts/resonance-backstage-oidc-token.sh resonance-approver)"
-response="$(mktemp)"
-trap 'rm -f "$response"' EXIT
+run_dir="$(mktemp -d)"
+response="$run_dir/response.json"
+token_file="$run_dir/token"
+auth_header="$run_dir/authorization.header"
+payload_file="$run_dir/payload.json"
+trap 'rm -rf -- "$run_dir"' EXIT
+"$ROOT/ops/scripts/resonance-backstage-oidc-token.sh" resonance-approver >"$token_file"
+[[ -s "$token_file" ]] || { echo '[project-delivery-e2e] empty OIDC token' >&2; exit 2; }
+{ printf 'authorization: Bearer '; cat "$token_file"; printf '\n'; } >"$auth_header"
+printf '%s' '{"command":"project-delivery.e2e"}' >"$payload_file"
+chmod 0600 "$auth_header" "$payload_file"
+rm -f -- "$token_file"
 status="$(curl --cacert "$CA_CERT" -sS -o "$response" -w '%{http_code}' \
-  -H "authorization: Bearer $token" -H 'content-type: application/json' \
+  --header @"$auth_header" -H 'content-type: application/json' \
   -X POST "$BACKSTAGE_URL/api/resonance-projects/actor-process/commands" \
-  --data '{"command":"project-delivery.e2e"}')"
+  --data-binary @"$payload_file")"
 [[ "$status" == 200 ]] || { echo "[project-delivery-e2e] command failed: HTTP $status" >&2; exit 3; }
 
 RESPONSE="$response" node <<'NODE'

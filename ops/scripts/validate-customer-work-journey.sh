@@ -1,13 +1,41 @@
 #!/usr/bin/env bash
 set -euo pipefail
-ROOT="${CARBONET_DEPLOY_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.."&&pwd)}";NS="${CARBONET_K8S_NAMESPACE:-carbonet-prod}";DB="${POSTGRES_DB:-carbonet}";U="${POSTGRES_ADMIN_USER:-postgres}";BASE="${CARBONET_RUNTIME_BASE_URL:-http://127.0.0.1}";COMMIT="$(git -C "$ROOT" rev-parse HEAD)";COOKIE="$(mktemp)";TIMES="$(mktemp)";API_BODY="$(mktemp)";PAGE_BODY="$(mktemp)";MEMBER_TARGETS="$(mktemp)";REQUEST_TMP="$(mktemp -d)";trap 'rm -f "$COOKIE" "$TIMES" "$API_BODY" "$PAGE_BODY" "$MEMBER_TARGETS"; rm -rf "$REQUEST_TMP"' EXIT
+umask 077
+ROOT="${CARBONET_DEPLOY_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.."&&pwd)}";NS="${CARBONET_K8S_NAMESPACE:-carbonet-prod}";DB="${POSTGRES_DB:-carbonet}";U="${POSTGRES_ADMIN_USER:-postgres}";BASE="${CARBONET_RUNTIME_BASE_URL:-http://127.0.0.1}";COMMIT="${CARBONET_POSTDEPLOY_SOURCE_COMMIT:-$(git -C "$ROOT" rev-parse HEAD)}";EVIDENCE_MODE="${CARBONET_POSTDEPLOY_EVIDENCE_MODE:-legacy}";COOKIE="$(mktemp)";TIMES="$(mktemp)";API_BODY="$(mktemp)";PAGE_BODY="$(mktemp)";MEMBER_TARGETS="$(mktemp)";REQUEST_TMP="$(mktemp -d)"
 POSTGRES_ADAPTER="$ROOT/ops/scripts/lib/carbonet-postgres-query.sh";[[ -f "$POSTGRES_ADAPTER" ]]||{ echo '[customer-journey] FAIL PostgreSQL query adapter missing' >&2;exit 1;};source "$POSTGRES_ADAPTER";CARBONET_PG_NAMESPACE="$NS";POSTGRES_DB="$DB";POSTGRES_ADMIN_USER="$U";carbonet_postgres_query_init;q(){ carbonet_postgres_query "$1";}
+# shellcheck source=ops/scripts/runtime-qa-auth-common.sh
+source "$ROOT/ops/scripts/runtime-qa-auth-common.sh"
+cleanup_customer_journey() {
+  local original_status=$? cleanup_status=0
+  trap - EXIT INT TERM
+  set +e
+  carbonet_qa_logout "$COOKIE" "$BASE" || cleanup_status=1
+  rm -f "$COOKIE" "$TIMES" "$API_BODY" "$PAGE_BODY" "$MEMBER_TARGETS"
+  rm -rf "$REQUEST_TMP"
+  if (( original_status == 0 && cleanup_status != 0 )); then original_status=1; fi
+  exit "$original_status"
+}
+trap cleanup_customer_journey EXIT INT TERM
+carbonet_qa_load_credentials LOGIN_USER LOGIN_PASSWORD \
+  "${CARBONET_RUNTIME_TEST_USER:-}" "${CARBONET_RUNTIME_TEST_PASSWORD:-}" \
+  "${CARBONET_RUNTIME_TEST_AUTH_SECRET:-carbonet-screen-smoke}" "$NS"
 IFS='|' read -r project cert report_id <<<"$(q "select p.project_id||'|'||r.certificate_id||'|'||r.report_id from emission_project_registry p join emission_project_report r on r.project_id=p.project_id where r.report_status='FINALIZED' and r.certificate_status='ACTIVE' and r.certificate_id is not null and exists(select 1 from emission_project_task t where t.project_id=p.project_id group by t.project_id having count(*)=7 and count(*)filter(where task_status='DONE')>=6) order by r.issued_at desc nulls last limit 1")";[[ -n "$cert" ]]||{ echo '[customer-journey] FAIL certified seven-step fixture missing' >&2;exit 1;}
-curl -fsS -c "$COOKIE" -H 'Content-Type: application/json' -X POST "$BASE/admin/login/actionLogin" --data '{"userId":"webmaster","userPw":"rhdxhd12","userSe":"USR"}' >/dev/null
+jq -n --arg id "$LOGIN_USER" --arg password "$LOGIN_PASSWORD" '{userId:$id,userPw:$password,userSe:"USR"}' >"$REQUEST_TMP/login.json"
+LOGIN_PASSWORD=""; unset LOGIN_PASSWORD CARBONET_RUNTIME_TEST_PASSWORD
+login_code="$(curl -sS -c "$COOKIE" -o "$REQUEST_TMP/login-response.json" -w '%{http_code}' -H 'Content-Type: application/json' \
+  -X POST "$BASE/signin/actionLogin" --data-binary @"$REQUEST_TMP/login.json")" || login_code=000
+[[ "$login_code" == 200 ]] && jq -e --arg user "$LOGIN_USER" '.status=="loginSuccess" and (.userId|ascii_downcase)==($user|ascii_downcase)' "$REQUEST_TMP/login-response.json" >/dev/null \
+  || { echo "[customer-journey] FAIL login status=$login_code" >&2; exit 1; }
+CARBONET_QA_AUTH_SESSION_ACTIVE=1
+export CARBONET_QA_AUTH_SESSION_ACTIVE
 
 # Drive the newly added regulatory submission leg through the real API when the fixture is not accepted yet.
 regulatory_id="$(q "select coalesce(max(regulatory_submission_id),0) from emission_regulatory_submission where project_id='$project' and status='ACCEPTED'")"
 if [[ "$regulatory_id" == 0 ]]; then
+  if [[ "$EVIDENCE_MODE" == candidate ]]; then
+    echo "[customer-journey] BLOCKED accepted regulatory fixture missing project=$project; candidate mode is read-only" >&2
+    exit 75
+  fi
   deadline="$(date -d '+30 days' +%F)"; request_id="customer-journey-$project"
   body="$(curl -fsS -b "$COOKIE" -H 'Content-Type: application/json' -X POST "$BASE/home/api/emission-projects/$project/regulatory-submissions" --data "{\"reportId\":$report_id,\"clientRequestId\":\"$request_id\",\"authorityCode\":\"MOE\",\"authorityName\":\"환경부\",\"reportingProgram\":\"자동 검증 정기보고\",\"reportingPeriod\":\"$(date +%Y)\",\"legalBasis\":\"탄소중립기본법 및 배출량 산정·보고 지침\",\"channel\":\"SYSTEM\",\"deadline\":\"$deadline\",\"note\":\"customer journey runtime validation\"}")"
   regulatory_id="$(python3 -c 'import json,sys;print(json.load(sys.stdin)["id"])'<<<"$body")"
@@ -67,9 +95,21 @@ printf '%s\0' "${pages[@]}" | xargs -0 -r -n1 -P8 bash -c '
   fi
 ' _
 export project
-seq 1 20 | xargs -r -n1 -P10 bash -c 'curl -sS -b "$COOKIE" -o /dev/null -w "%{time_total}\n" "$BASE/home/api/emission-projects/$project/completion"' _ >"$TIMES"
+for _ in $(seq 1 20); do
+  read -r sample_status sample_time <<<"$(curl -sS -b "$COOKIE" -o /dev/null -w '%{http_code} %{time_total}' "$BASE/home/api/emission-projects/$project/completion")"
+  [[ "$sample_status" == 200 ]] || { echo "[customer-journey] FAIL p95 probe status=$sample_status" >&2; exit 1; }
+  printf '%s\n' "$sample_time" >>"$TIMES"
+done
 p95="$(sort -n "$TIMES"|awk 'NR==19{printf "%d",$1*1000}')";[[ "$p95" -le 2500 ]]||exit 1
 read -r desired ready available<<<"$(kubectl -n "$NS" get deploy carbonet-runtime -o jsonpath='{.spec.replicas} {.status.readyReplicas} {.status.availableReplicas}')";[[ -n "$desired"&&"$desired" -gt 0&&"$ready" -ge "$desired"&&"$available" -ge "$desired" ]]||{ echo "[customer-work-journey] FAIL replicas desired=$desired ready=$ready available=$available" >&2;exit 1;}
 gate="$(q "select (select count(*) from framework_process_step where process_code='CUSTOMER_WORK_COORDINATION')=7 and (select count(*) from framework_professional_screen_readiness where process_code='CUSTOMER_WORK_COORDINATION' and readiness_score=100)=14 and (select count(distinct actor_code) from framework_process_step where process_code='CUSTOMER_WORK_COORDINATION')>=6 and (select count(*) from emission_project_task where project_id='$project')=7 and (select count(*) from emission_project_task where project_id='$project' and task_status='DONE')=7 and exists(select 1 from emission_regulatory_submission where project_id='$project' and status='ACCEPTED' and external_receipt_no is not null and length(package_hash)=64) and not exists(select 1 from emission_project_task where project_id='$project' and target_url similar to '%(data_input|simulate)%') and exists(select 1 from emission_calculation_run r join emission_calculation_item i on i.calculation_id=r.calculation_id where r.project_id='$project' group by r.calculation_id,r.total_emission having abs(r.total_emission-sum(i.emission_value))<0.000001) and (select count(distinct case_type) from framework_simulation_case where process_code='CUSTOMER_WORK_COORDINATION')>=5")";[[ "$gate" == t ]]||{ echo '[customer-journey] FAIL actor/task/state/data/design gate' >&2;exit 1;}
-sql="begin;update framework_development_job set job_status='COMPLETED',approval_status='APPROVED',quality_status='PASSED',evidence_ref='runtime:cross-process-customer-journey',last_error=null,completed_at=current_timestamp,updated_at=current_timestamp where process_code='CUSTOMER_WORK_COORDINATION';update framework_process_artifact set delivery_status='VERIFIED',evidence_ref='runtime:cross-process-customer-journey',updated_at=current_timestamp where process_code='CUSTOMER_WORK_COORDINATION';insert into framework_customer_journey_validation_run(project_id,validation_status,actor_count,task_count,authenticated_api_count,protected_api_count,page_count,p95_millis,evidence_json,source_commit)values('$project','PASSED',6,7,${#apis[@]},5,${#pages[@]},$p95,'{\"certificate\":\"$cert\",\"regulatorySubmissionId\":$regulatory_id,\"taskLineage\":\"7/7\",\"formula\":\"reconciled\"}','$COMMIT');commit;";q "$sql">/dev/null
+if [[ "$EVIDENCE_MODE" == "candidate" ]];then
+  jq -cn --arg projectId "$project" --arg certificate "$cert" --argjson regulatorySubmissionId "$regulatory_id" \
+    --argjson authenticatedApiCount "${#apis[@]}" --argjson protectedApiCount 5 --argjson pageCount "${#pages[@]}" \
+    --argjson p95Millis "$p95" --argjson readyReplicas "$ready" \
+    '{projectId:$projectId,certificate:$certificate,regulatorySubmissionId:$regulatorySubmissionId,actorCount:6,taskCount:7,authenticatedApiCount:$authenticatedApiCount,protectedApiCount:$protectedApiCount,pageCount:$pageCount,p95Millis:$p95Millis,readyReplicas:$readyReplicas,taskLineage:"7/7",formula:"reconciled",regulatoryFixture:"EXISTING_ACCEPTED_READ_ONLY",currentBusinessWrites:0}'|
+    bash "$ROOT/ops/scripts/stage-postdeploy-evidence-candidate.sh" CUSTOMER_WORK_COORDINATION_RUNTIME CUSTOMER_WORK_COORDINATION RUNTIME "$COMMIT"
+else
+  sql="begin;update framework_development_job set job_status='COMPLETED',approval_status='APPROVED',quality_status='PASSED',evidence_ref='runtime:cross-process-customer-journey',last_error=null,completed_at=current_timestamp,updated_at=current_timestamp where process_code='CUSTOMER_WORK_COORDINATION';update framework_process_artifact set delivery_status='VERIFIED',evidence_ref='runtime:cross-process-customer-journey',updated_at=current_timestamp where process_code='CUSTOMER_WORK_COORDINATION';insert into framework_customer_journey_validation_run(project_id,validation_status,actor_count,task_count,authenticated_api_count,protected_api_count,page_count,p95_millis,evidence_json,source_commit)values('$project','PASSED',6,7,${#apis[@]},5,${#pages[@]},$p95,'{\"certificate\":\"$cert\",\"regulatorySubmissionId\":$regulatory_id,\"taskLineage\":\"7/7\",\"formula\":\"reconciled\"}','$COMMIT');commit;";q "$sql">/dev/null
+fi
 echo "[customer-journey] PASS project=$project actors=6 tasks=7/7 api=${#apis[@]} protected=5 pages=${#pages[@]} certificate=valid regulatory=accepted formula=reconciled p95=${p95}ms replicas=$ready/$desired"

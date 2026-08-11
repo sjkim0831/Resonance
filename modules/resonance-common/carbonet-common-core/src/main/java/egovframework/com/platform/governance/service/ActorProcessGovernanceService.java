@@ -757,16 +757,40 @@ public class ActorProcessGovernanceService {
                      run.evidence_json::text evidence_json,run.executed_by,run.executed_at
                 from target_fingerprints target
                 left join lateral (
-                  select evidence.run_id,evidence.result,evidence.passed_check_count,evidence.total_check_count,
-                         evidence.blocker_codes,evidence.evidence_json,evidence.executed_by,evidence.executed_at
-                    from framework_screen_workflow_test_run evidence
-                   where evidence.screen_resource_id=target.screen_resource_id
-                     and evidence.process_code=target.process_code and evidence.step_code=target.step_code
-                     and evidence.capability_code=target.capability_code
-                     and coalesce(evidence.evidence_json->>'audience','')=coalesce(target.audience,'')
-                     and evidence.evidence_json ?? 'contractFingerprint'
-                     and evidence.evidence_json->>'contractFingerprint'=target.contract_fingerprint
-                   order by evidence.executed_at desc,evidence.run_id desc limit 1
+                  select candidate.*
+                    from (
+                      (select evidence.run_id,evidence.result,evidence.passed_check_count,evidence.total_check_count,
+                              evidence.blocker_codes,evidence.evidence_json,evidence.executed_by,evidence.executed_at
+                         from framework_screen_workflow_test_run evidence
+                        where evidence.audit_batch_id is null
+                          and evidence.screen_resource_id=target.screen_resource_id
+                          and evidence.process_code=target.process_code and evidence.step_code=target.step_code
+                          and evidence.capability_code=target.capability_code
+                          and coalesce(evidence.evidence_json->>'audience','')=coalesce(target.audience,'')
+                          and evidence.evidence_json ?? 'contractFingerprint'
+                          and evidence.evidence_json->>'contractFingerprint'=target.contract_fingerprint
+                          and not exists (
+                            select 1 from framework_screen_workflow_audit_incident_run incident_run
+                             where incident_run.run_id=evidence.run_id
+                          )
+                        order by evidence.executed_at desc,evidence.run_id desc limit 1)
+                      union all
+                      (select evidence.run_id,evidence.result,evidence.passed_check_count,evidence.total_check_count,
+                              evidence.blocker_codes,evidence.evidence_json,evidence.executed_by,evidence.executed_at
+                         from framework_screen_workflow_test_run evidence
+                         join framework_screen_workflow_audit_batch audit_batch
+                           on audit_batch.audit_batch_id=evidence.audit_batch_id
+                          and audit_batch.batch_status='COMPLETE'
+                        where evidence.audit_batch_id is not null
+                          and evidence.screen_resource_id=target.screen_resource_id
+                          and evidence.process_code=target.process_code and evidence.step_code=target.step_code
+                          and evidence.capability_code=target.capability_code
+                          and coalesce(evidence.evidence_json->>'audience','')=coalesce(target.audience,'')
+                          and evidence.evidence_json ?? 'contractFingerprint'
+                          and evidence.evidence_json->>'contractFingerprint'=target.contract_fingerprint
+                        order by evidence.executed_at desc,evidence.run_id desc limit 1)
+                    ) candidate
+                   order by candidate.executed_at desc,candidate.run_id desc limit 1
                 ) run on true
             ), step_rollup as (
               select process_code,step_code,
@@ -1323,6 +1347,36 @@ public class ActorProcessGovernanceService {
      * transitions, and therefore must never be presented as business E2E.
      */
     @Transactional
+    public Map<String,Object> startSystemProcessContractAuditBatch(Map<String,Object> body,String requestedBy){
+        int pageSize=Math.max(1,Math.min(integerOr(body,"pageSize",250),500));
+        Map<String,Object> batch=jsonMap(jdbc.queryForObject(
+                "select framework_start_screen_workflow_audit_batch(?,?)::text",String.class,requestedBy,pageSize));
+        batch.put("batchStatus",batch.get("status"));
+        return Map.of("success",true,"batch",batch);
+    }
+
+    @Transactional
+    public Map<String,Object> completeSystemProcessContractAuditBatch(UUID auditBatchId,String requestedBy){
+        Map<String,Object> batch=jsonMap(jdbc.queryForObject(
+                "select framework_complete_screen_workflow_audit_batch(?,?)::text",String.class,auditBatchId,requestedBy));
+        batch.put("batchStatus",batch.get("status"));
+        batch.put("stagedPageCount",batch.get("pageCount"));
+        batch.put("stagedTargetCount",batch.get("targetCount"));
+        return Map.of("success",true,"batch",batch);
+    }
+
+    @Transactional
+    public Map<String,Object> failSystemProcessContractAuditBatch(UUID auditBatchId,Map<String,Object> body,String requestedBy){
+        String failureCode=def(body,"failureCode","AUDIT_EXECUTION_FAILED");
+        String failureDetail=str(body,"failureDetail");
+        Map<String,Object> batch=jsonMap(jdbc.queryForObject(
+                "select framework_fail_screen_workflow_audit_batch(?,?,?,?)::text",String.class,
+                auditBatchId,requestedBy,failureCode,failureDetail));
+        batch.put("batchStatus",batch.get("status"));
+        return Map.of("success",true,"batch",batch);
+    }
+
+    @Transactional
     public Map<String,Object> auditSystemProcessContracts(Map<String,Object> body,String executedBy){
         String domain=str(body,"domainCode").toUpperCase(Locale.ROOT);
         String process=str(body,"processCode").toUpperCase(Locale.ROOT);
@@ -1331,7 +1385,67 @@ public class ActorProcessGovernanceService {
         int maxSteps=Math.max(1,Math.min(integerOr(body,"maxSteps",1000),2000));
         int targetOffset=Math.max(0,integerOr(body,"targetOffset",0));
         int maxTargets=Math.max(1,Math.min(integerOr(body,"maxTargets",250),500));
-        List<Map<String,Object>> targets=jdbc.queryForList("""
+        String auditBatchId=str(body,"auditBatchId").trim();
+        Map<String,Object> auditBatch=null;
+        int auditPageNumber=-1;
+        if(!auditBatchId.isBlank()){
+            UUID.fromString(auditBatchId);
+            List<Map<String,Object>> batches=jdbc.queryForList("""
+                select audit_batch_id::text as "auditBatchId",source_commit as "sourceCommit",
+                       runtime_identity_hash as "runtimeIdentityHash",catalog_fingerprint as "catalogFingerprint",
+                       target_inventory_fingerprint as "targetInventoryFingerprint",
+                       expected_page_count as "expectedPageCount",expected_target_count as "expectedTargetCount",
+                       page_size as "pageSize",batch_status as "batchStatus",requested_by as "requestedBy"
+                  from framework_screen_workflow_audit_batch where audit_batch_id=cast(? as uuid)
+                """,auditBatchId);
+            if(batches.size()!=1)throw new IllegalArgumentException("SCREEN_WORKFLOW_AUDIT_BATCH_NOT_FOUND");
+            auditBatch=batches.get(0);
+            if(!"RUNNING".equals(auditBatch.get("batchStatus"))||!executedBy.equals(auditBatch.get("requestedBy")))
+                throw new SecurityException("SCREEN_WORKFLOW_AUDIT_BATCH_OR_ACTOR_MISMATCH");
+            if(!domain.isBlank()||!process.isBlank()||!step.isBlank()||body.containsKey("maxSteps"))
+                throw new IllegalArgumentException("HOURLY_ALL_PROCESS_BATCH_REQUIRES_UNFILTERED_CANONICAL_SCOPE");
+            if(((Number)auditBatch.get("pageSize")).intValue()!=maxTargets||targetOffset%maxTargets!=0)
+                throw new IllegalArgumentException("SCREEN_WORKFLOW_AUDIT_PAGE_GEOMETRY_MISMATCH");
+            domain="";process="";step="";maxSteps=Integer.MAX_VALUE;
+            auditPageNumber=targetOffset/maxTargets;
+        }
+        List<Map<String,Object>> targets;
+        if(auditBatch!=null){
+            targets=jdbc.queryForList("""
+                select m.item_id as "itemId",target.binding_id as "bindingId",target.audience,
+                       case when target.binding_id is null then null else 'ACTIVE' end as "bindingStatus",
+                       target.screen_resource_id as "screenResourceId",target.route_key as "routePath",
+                       screen.screen_name as "screenName",screen.implementation_status as "implementationStatus",
+                       target.process_code as "processCode",target.step_code as "stepCode",
+                       target.capability_code as "capabilityCode",fixture.test_case_id as "testCaseId",
+                       fixture.pre_input_json as "fixturePreInputJson",fixture.expected_result as "fixtureExpectedResult",
+                       fixture.expected_state as "fixtureExpectedState",batch.expected_target_count as "totalEligibleTargetCount",
+                       target.target_ordinal as "auditTargetOrdinal",target.target_key as "auditTargetKey"
+                  from framework_screen_workflow_audit_batch_target target
+                  join framework_screen_workflow_audit_batch batch using(audit_batch_id)
+                  left join framework_screen_resource screen using(screen_resource_id)
+                  left join lateral (
+                     select master.item_id from framework_page_development_item master
+                      where master.screen_resource_id=target.screen_resource_id
+                      order by case master.design_status when 'VERIFIED' then 0 else 1 end,
+                               master.sequence_no,master.item_id limit 1
+                   ) m on true
+                  left join lateral (
+                     select test.test_case_id,test.pre_input_json::text pre_input_json,
+                            test.expected_result,coalesce(test.expected_state,'') expected_state
+                       from framework_screen_workflow_test_case test
+                      where test.screen_resource_id=target.screen_resource_id
+                        and test.process_code=target.process_code and test.step_code=target.step_code
+                        and test.capability_code in(target.capability_code,'ALL')
+                        and test.expected_result='PASSED' and test.active=true
+                      order by case when test.capability_code=target.capability_code then 0 else 1 end,
+                               test.updated_at desc,test.test_case_id desc limit 1
+                   ) fixture on true
+                 where target.audit_batch_id=cast(? as uuid) and target.target_ordinal>=?
+                 order by target.target_ordinal limit ?
+                """,auditBatchId,(long)targetOffset,maxTargets+1);
+        }else{
+            targets=jdbc.queryForList("""
             with scoped_steps as materialized (
               select p.development_order,s.process_code,s.step_code,s.step_order
                 from framework_process_step s join framework_process_definition p on p.process_code=s.process_code
@@ -1388,15 +1502,36 @@ public class ActorProcessGovernanceService {
                       case target.audience when 'USER' then 0 when 'ADMIN' then 1 when 'PUBLIC' then 2 else 3 end,
                       target.route_key,target.binding_id,target.capability_code
             """,domain,domain,process,process,step,step,maxSteps,maxTargets+1,targetOffset);
+        }
         boolean hasMore=targets.size()>maxTargets;
-        long totalEligibleTargetCount=targets.isEmpty()?0L:
-                targets.get(0).get("totalEligibleTargetCount") instanceof Number total?total.longValue():targetOffset+targets.size();
+        long totalEligibleTargetCount=auditBatch==null
+                ?(targets.isEmpty()?0L:targets.get(0).get("totalEligibleTargetCount") instanceof Number total?total.longValue():targetOffset+targets.size())
+                :((Number)auditBatch.get("expectedTargetCount")).longValue();
         if(hasMore)targets=new ArrayList<>(targets.subList(0,maxTargets));
         List<Map<String,Object>> runs=new ArrayList<>();
         ContractAuditQueryCache auditCache=new ContractAuditQueryCache();
         int passed=0,blocked=0,errors=0;
         Set<String> auditedSteps=new HashSet<>(),auditedBindings=new HashSet<>();
-        for(Map<String,Object> target:targets){
+        for(int targetIndex=0;targetIndex<targets.size();targetIndex++){
+            Map<String,Object> target=targets.get(targetIndex);
+            if(auditBatch!=null){
+                long expectedOrdinal=(long)targetOffset+targetIndex;
+                long snapshotOrdinal=((Number)target.get("auditTargetOrdinal")).longValue();
+                String snapshotKey=String.valueOf(target.get("auditTargetKey"));
+                String computedTargetKey=sha256Hex(String.join("\u001f",
+                        auditTargetPart(target.get("screenResourceId")),auditTargetPart(target.get("processCode")),
+                        auditTargetPart(target.get("stepCode")),auditTargetPart(target.get("bindingId")),
+                        auditTargetPart(target.get("audience")),auditTargetPart(target.get("routePath")),
+                        auditTargetPart(target.get("capabilityCode"))));
+                if(snapshotOrdinal!=expectedOrdinal||!snapshotKey.equals(computedTargetKey))
+                    throw new IllegalStateException("SCREEN_WORKFLOW_AUDIT_TARGET_SNAPSHOT_MISMATCH");
+                target.put("_auditBatchId",auditBatchId);
+                target.put("_auditSourceCommit",auditBatch.get("sourceCommit"));
+                target.put("_auditRuntimeIdentityHash",auditBatch.get("runtimeIdentityHash"));
+                target.put("_auditPageNumber",auditPageNumber);
+                target.put("_auditTargetOrdinal",snapshotOrdinal);
+                target.put("_auditTargetKey",snapshotKey);
+            }
             auditedSteps.add(target.get("processCode")+"|"+target.get("stepCode"));
             if(target.get("bindingId")!=null)auditedBindings.add(String.valueOf(target.get("bindingId")));
             if(target.get("screenResourceId")==null||target.get("itemId")==null){
@@ -1434,6 +1569,18 @@ public class ActorProcessGovernanceService {
         response.put("auditedStepCount",auditedSteps.size());response.put("auditedBindingCount",auditedBindings.size());
         response.put("auditedCapabilityTargetCount",targets.stream().filter(row->row.get("screenResourceId")!=null).count());
         response.put("passedCount",passed);response.put("blockedCount",blocked);response.put("errorCount",errors);
+        if(auditBatch!=null){
+            Map<String,Object> pageReceipt=jsonMap(jdbc.queryForObject(
+                    "select framework_record_screen_workflow_audit_page(cast(? as uuid),?,?,?,?,?,?,?,?)::text",
+                    String.class,auditBatchId,executedBy,auditPageNumber,targetOffset,totalEligibleTargetCount,
+                    passed,blocked,errors,hasMore));
+            response.put("auditBatchId",auditBatchId);response.put("auditPageNumber",auditPageNumber);
+            response.put("auditSourceCommit",auditBatch.get("sourceCommit"));
+            response.put("auditRuntimeIdentityHash",auditBatch.get("runtimeIdentityHash"));
+            response.put("auditCatalogFingerprint",auditBatch.get("catalogFingerprint"));
+            response.put("auditTargetInventoryFingerprint",auditBatch.get("targetInventoryFingerprint"));
+            response.put("auditPageFingerprint",pageReceipt.get("pageFingerprint"));
+        }
         if(compactResponse){
             Map<String,Object> diagnostics=compactContractAuditDiagnostics(runs);
             response.putAll(diagnostics);
@@ -1863,8 +2010,23 @@ public class ActorProcessGovernanceService {
         String result="PASSED".equals(observedResult)&&(!hasFixture||"PASSED".equals(fixtureAssertionResult))?"PASSED":"BLOCKED";
         int passed=(int)checks.stream().filter(row->Boolean.TRUE.equals(row.get("passed"))).count();
         Map<String,Object> evidenceMap=new LinkedHashMap<>();evidenceMap.put("evidenceType","CONTRACT_SIMULATION");evidenceMap.put("businessFunctionsExecuted",false);evidenceMap.put("itemId",itemId);evidenceMap.put("screenResourceId",screenId);evidenceMap.put("processCode",process);evidenceMap.put("stepCode",step);evidenceMap.put("audience",audience);evidenceMap.put("capabilityCode",capability);evidenceMap.put("routePath",route);evidenceMap.put("contractFingerprint",contractFingerprint);evidenceMap.put("testCaseId",testCaseId);evidenceMap.put("preInputJson",preInputJson);evidenceMap.put("expectedResult",expectedResult);evidenceMap.put("expectedState",expectedState);evidenceMap.put("observedContractResult",observedResult);evidenceMap.put("observedState",observedState);evidenceMap.put("observedBlockerCodes",observedBlockers);evidenceMap.put("fixtureAssertionResult",fixtureAssertionResult);evidenceMap.put("checks",checks);
+        Object rawAuditBatchId=trustedAuditTarget==null?null:trustedAuditTarget.get("_auditBatchId");
+        if(rawAuditBatchId!=null){
+            evidenceMap.put("auditBatchId",String.valueOf(rawAuditBatchId));
+            evidenceMap.put("auditSourceCommit",String.valueOf(trustedAuditTarget.get("_auditSourceCommit")));
+            evidenceMap.put("auditRuntimeIdentityHash",String.valueOf(trustedAuditTarget.get("_auditRuntimeIdentityHash")));
+            evidenceMap.put("auditPageNumber",trustedAuditTarget.get("_auditPageNumber"));
+            evidenceMap.put("auditTargetOrdinal",trustedAuditTarget.get("_auditTargetOrdinal"));
+            evidenceMap.put("auditTargetKey",trustedAuditTarget.get("_auditTargetKey"));
+            evidenceMap.put("auditBindingId",trustedAuditTarget.get("bindingId"));
+        }
         String evidence=toJson(evidenceMap);
-        Long runId=jdbc.queryForObject("insert into framework_screen_workflow_test_run(screen_resource_id,process_code,step_code,capability_code,route_key,result,passed_check_count,total_check_count,blocker_codes,evidence_json,executed_by,test_case_id) values(?,?,?,?,?,?,?,?,case when ?='' then ARRAY[]::text[] else string_to_array(?,',') end,?::jsonb,?,?) returning run_id",Long.class,screenId,process,step,capability,route,result,passed,checks.size(),String.join(",",blockers),String.join(",",blockers),evidence,executedBy,testCaseId);
+        Long runId;
+        if(rawAuditBatchId==null){
+            runId=jdbc.queryForObject("insert into framework_screen_workflow_test_run(screen_resource_id,process_code,step_code,capability_code,route_key,result,passed_check_count,total_check_count,blocker_codes,evidence_json,executed_by,test_case_id) values(?,?,?,?,?,?,?,?,case when ?='' then ARRAY[]::text[] else string_to_array(?,',') end,?::jsonb,?,?) returning run_id",Long.class,screenId,process,step,capability,route,result,passed,checks.size(),String.join(",",blockers),String.join(",",blockers),evidence,executedBy,testCaseId);
+        }else{
+            runId=jdbc.queryForObject("insert into framework_screen_workflow_test_run(screen_resource_id,process_code,step_code,capability_code,route_key,result,passed_check_count,total_check_count,blocker_codes,evidence_json,executed_by,test_case_id,audit_batch_id,audit_source_commit,audit_runtime_identity_hash,audit_page_number,audit_target_ordinal,audit_target_key) values(?,?,?,?,?,?,?,?,case when ?='' then ARRAY[]::text[] else string_to_array(?,',') end,?::jsonb,?,?,cast(? as uuid),?,?,?,?,?) returning run_id",Long.class,screenId,process,step,capability,route,result,passed,checks.size(),String.join(",",blockers),String.join(",",blockers),evidence,executedBy,testCaseId,String.valueOf(rawAuditBatchId),String.valueOf(trustedAuditTarget.get("_auditSourceCommit")),String.valueOf(trustedAuditTarget.get("_auditRuntimeIdentityHash")),trustedAuditTarget.get("_auditPageNumber"),trustedAuditTarget.get("_auditTargetOrdinal"),trustedAuditTarget.get("_auditTargetKey"));
+        }
         Map<String,Object> response=new LinkedHashMap<>();
         response.put("success",true);response.put("runId",runId);response.put("result",result);
         response.put("passedCheckCount",passed);response.put("totalCheckCount",checks.size());
@@ -1872,6 +2034,7 @@ public class ActorProcessGovernanceService {
         response.put("processCode",process);response.put("stepCode",step);response.put("audience",audience);response.put("capabilityCode",capability);
         response.put("contractFingerprint",contractFingerprint);response.put("expectedResult",expectedResult);response.put("expectedState",expectedState);
         response.put("observedContractResult",observedResult);response.put("observedState",observedState);response.put("fixtureAssertionResult",fixtureAssertionResult);response.put("executedBy",executedBy);
+        if(rawAuditBatchId!=null){response.put("auditBatchId",rawAuditBatchId);response.put("auditPageNumber",trustedAuditTarget.get("_auditPageNumber"));response.put("auditTargetOrdinal",trustedAuditTarget.get("_auditTargetOrdinal"));}
         return response;
     }
 
@@ -2172,6 +2335,28 @@ public class ActorProcessGovernanceService {
         jdbc.update("update framework_page_development_item i set design_status=case when g.design_gate_status='PASSED' then 'VERIFIED' else 'REVIEW_REQUIRED' end,blocker_reason=case when g.design_gate_status='PASSED' then null else array_to_string(g.design_gate_issues,', ') end,next_action=case when g.design_gate_status='PASSED' then 'Design verified; generation may proceed.' else 'Resolve design gate issues before generation: '||array_to_string(g.design_gate_issues,', ') end,updated_by=?,updated_at=current_timestamp from framework_page_design_assurance g join framework_screen_resource r using(screen_resource_id) join framework_professional_screen_contract c on lower(split_part(c.route_path,'?',1))=r.route_key where c.contract_id=? and i.screen_resource_id=g.screen_resource_id",actor,id);
         Map<String,Object> gate=jdbc.queryForMap("select g.design_gate_status as \"status\",g.design_gate_score as \"score\",array_to_string(g.design_gate_issues,', ') as \"issues\" from framework_page_design_assurance g join framework_screen_resource r using(screen_resource_id) join framework_professional_screen_contract c on lower(split_part(c.route_path,'?',1))=r.route_key where c.contract_id=?",id);
         return Map.of("success",true,"contract",readiness,"designGate",gate,"autoImplementation",automation,"runtimePublication",runtimePublication);
+    }
+
+    /**
+     * Executes the canonical professional-contract save and runtime publication
+     * path, then marks the enclosing transaction rollback-only.  The preview is
+     * deliberately DB-only: ScreenContractRuntimeService owns no filesystem,
+     * network, messaging, or process side effects, so rollback restores the
+     * contract, publication, audit event, cache epoch, and workflow rows as one
+     * unit while still exercising all production validation logic.
+     */
+    @Transactional public Map<String,Object> saveProfessionalScreenContractPreview(Map<String,Object>b,String actor){
+        Map<String,Object> response=new LinkedHashMap<>(saveProfessionalScreenContract(b,actor));
+        markCurrentTransactionRollbackOnly();
+        response.put("preview",true);
+        response.put("rolledBack",true);
+        response.put("committed",false);
+        response.put("mutationScope","DB_TRANSACTION_ROLLBACK_ONLY");
+        return response;
+    }
+
+    void markCurrentTransactionRollbackOnly(){
+        TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
     }
 
     static boolean isSupportedProfessionalContractStatus(String status) {
@@ -4760,6 +4945,7 @@ public class ActorProcessGovernanceService {
     private static boolean bool(Map<String,Object>b,String k){return Boolean.parseBoolean(str(b,k));}
     private static int integer(Map<String,Object>b,String k){try{return Integer.parseInt(req(b,k));}catch(Exception e){throw new IllegalArgumentException(k+" must be a number");}}
     private static int integerOr(Map<String,Object>b,String k,int d){String v=str(b,k);if(v.isEmpty())return d;try{return Integer.parseInt(v);}catch(Exception e){throw new IllegalArgumentException(k+" must be a number");}}
+    private static String auditTargetPart(Object value){return value==null?"#":String.valueOf(value);}
     private static void validateJsonObject(String value,String field){try{if(!new com.fasterxml.jackson.databind.ObjectMapper().readTree(value).isObject())throw new IllegalArgumentException(field+" must be a JSON object");}catch(com.fasterxml.jackson.core.JsonProcessingException e){throw new IllegalArgumentException(field+" must be valid JSON",e);}}
     private static void validateJsonArray(String value,String field){try{if(!new com.fasterxml.jackson.databind.ObjectMapper().readTree(value).isArray())throw new IllegalArgumentException(field+" must be a JSON array");}catch(com.fasterxml.jackson.core.JsonProcessingException e){throw new IllegalArgumentException(field+" must be valid JSON",e);}}
     private static String toJson(Object value){try{return new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(value==null?Map.of():value);}catch(Exception e){throw new IllegalArgumentException("configuration must be JSON serializable",e);}}

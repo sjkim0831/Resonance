@@ -60,9 +60,11 @@ grep -q 'runtime release ledger and deployment target-commit annotation differ' 
 ! grep -q 'carbonet-main-success.commit' "$CAPTURE"
 ! grep -q 'E2E_ALLOW_LEGACY_DEPLOYMENT_WITHOUT_ANNOTATION' "$CAPTURE"
 grep -q 'framework_current_process_step_contract_fingerprint' "$CAPTURE"
-grep -q 'deployed commit changed during E2E' "$GENERIC"
-grep -q 'deployed commit changed during E2E' "$PORTFOLIO"
-grep -q 'deployment changed during E2E' "$EMISSION"
+grep -q 'runtime contract changed during E2E' "$GENERIC"
+grep -q 'runtime commit is not an ancestor of the validation commit' "$PORTFOLIO"
+grep -q 'unreleased runtime change detected' "$PORTFOLIO"
+grep -q 'runtime commit is not validation ancestor' "$EMISSION"
+grep -q 'unreleased runtime change key=' "$EMISSION"
 grep -q 'stepAssertions' "$EMISSION"
 grep -q 'validators:' "$EMISSION"
 grep -q 'inline://business-e2e/sha256/' "$EMISSION"
@@ -86,27 +88,32 @@ grep -q "resonance.ai/target-commit-'" "$BUILD_DEPLOY"
 
 node - "$AUTO_DEPLOY" <<'NODE'
 const fs = require('fs');
-const lines = fs.readFileSync(process.argv[2], 'utf8').split(/\r?\n/);
-const markers = [];
-for (let i = 0; i < lines.length; i += 1) {
-  if (lines[i].includes('> "${DEPLOY_STATE_FILE}.tmp"')) markers.push(i);
+const deploy = fs.readFileSync(process.argv[2], 'utf8');
+if (!deploy.includes('RUNTIME_DEPLOY_STATE_FILE="${CARBONET_RUNTIME_DEPLOY_STATE_FILE:-')) {
+  throw new Error('dedicated runtime identity marker is missing');
 }
-if (markers.length !== 5) throw new Error(`expected 5 Carbonet success markers, found ${markers.length}`);
-let guarded = 0;
-for (const index of markers) {
-  let previous = index - 1;
-  while (previous >= 0 && !lines[previous].trim()) previous -= 1;
-  if (lines[previous]?.includes('record_runtime_release_state "$target_commit"')) guarded += 1;
+const finalizerStart = deploy.indexOf('finalize_postdeploy_candidate_release() {');
+const finalizer = deploy.slice(finalizerStart,
+                               deploy.indexOf('# Recovery executes immediately', finalizerStart));
+const release = finalizer.indexOf('record_runtime_release_state "$target_commit"');
+const promoter = finalizer.indexOf('promote-postdeploy-candidate-evidence.sh');
+const runtimeMarker = finalizer.indexOf('"$RUNTIME_DEPLOY_STATE_FILE"', promoter);
+const authority = finalizer.indexOf('postdeploy_authoritative_promotion_status', promoter);
+const appliedMarker = finalizer.indexOf('write_applied_deploy_state "$target_commit"', authority);
+if (!(release >= 0 && promoter > release && runtimeMarker > promoter && authority > runtimeMarker && appliedMarker > authority)) {
+  throw new Error('runtime publication must promote DB/runtime marker before the overall applied marker');
 }
-if (guarded !== 3) throw new Error(`expected all 3 runtime-surface markers to be ledger guarded, found ${guarded}`);
-const releaseRecords = lines.map((line, index) => line.includes('record_runtime_release_state "$target_commit"') ? index : -1).filter((index) => index >= 0);
-if (releaseRecords.length !== 3) throw new Error(`expected 3 runtime surface publication paths, found ${releaseRecords.length}`);
-const postDeployValidation = lines.findIndex((line) => line.includes('run-post-deploy-validation-groups.sh'));
-const finalMarker = markers.at(-1);
-const mainRuntimeRecord = releaseRecords.at(-1);
-const runtimeInvalidation = lines.findIndex((line) => line.trim() === 'invalidate_runtime_release_state');
-if (!(runtimeInvalidation < postDeployValidation && postDeployValidation < mainRuntimeRecord && mainRuntimeRecord < finalMarker)) {
-  throw new Error('main runtime must invalidate after health, validate fail-closed, then publish identity immediately before its marker');
+if ((deploy.match(/write_applied_deploy_state "\$target_commit"/g) || []).length !== 3) {
+  throw new Error('expected one runtime finalizer and two non-runtime applied-marker call sites');
+}
+const verifierStart = deploy.indexOf('verify_operational_usage_ledger_current_runtime_identity() {');
+const verifier = deploy.slice(verifierStart,
+                              deploy.indexOf('# A DB COMMIT can outlive', verifierStart));
+if (!verifier.includes('$RUNTIME_DEPLOY_STATE_FILE') || verifier.includes('$DEPLOY_STATE_FILE')) {
+  throw new Error('current runtime identity must use only the dedicated runtime marker');
+}
+if (!deploy.includes('FULL_SCREEN_GATE_BASE_COMMIT="$runtime_deployed_commit"')) {
+  throw new Error('rollback snapshot is not bound to the serving runtime identity');
 }
 NODE
 

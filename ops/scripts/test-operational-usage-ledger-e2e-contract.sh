@@ -14,6 +14,9 @@ FRONTEND_PIPELINE="$ROOT/projects/carbonet-frontend/source/scripts/run-frontend-
 FRONTEND_PACKAGE="$ROOT/projects/carbonet-frontend/source/package.json"
 PLANNER="$ROOT/ops/scripts/plan-incremental-work.sh"
 DEPLOY="$ROOT/ops/scripts/auto-deploy-main.sh"
+PROVISION_CONTRACT="$ROOT/ops/tests/test-usage-ledger-system-admin-provision-contract.sh"
+PROVISION="$ROOT/ops/scripts/provision-usage-ledger-system-admin.sh"
+DB_POSTCONDITION="$ROOT/ops/tests/test-usage-ledger-system-admin-db-postcondition.sh"
 TMP_DIR="$(mktemp -d)"
 trap 'rm -rf "$TMP_DIR"' EXIT
 
@@ -21,13 +24,15 @@ fail(){ printf '[operational-usage-ledger-e2e-contract] FAIL: %s\n' "$*" >&2; ex
 contains(){ local file="$1" needle="$2"; grep -Fq -- "$needle" "$file" || fail "missing contract in ${file#$ROOT/}: $needle"; }
 not_contains(){ local file="$1" needle="$2"; ! grep -Fq -- "$needle" "$file" || fail "forbidden contract in ${file#$ROOT/}: $needle"; }
 
-for file in "$HARNESS" "$CONTROLLER" "$SERVICE" "$SERVICE_TEST" "$CONTROLLER_TEST" "$MIGRATION" "$PANEL" "$FRONTEND_AUDIT" "$FRONTEND_PIPELINE" "$FRONTEND_PACKAGE" "$PLANNER" "$DEPLOY"; do [[ -f "$file" ]] || fail "required file missing: ${file#$ROOT/}"; done
+for file in "$HARNESS" "$CONTROLLER" "$SERVICE" "$SERVICE_TEST" "$CONTROLLER_TEST" "$MIGRATION" "$PANEL" "$FRONTEND_AUDIT" "$FRONTEND_PIPELINE" "$FRONTEND_PACKAGE" "$PLANNER" "$DEPLOY" "$PROVISION_CONTRACT" "$PROVISION" "$DB_POSTCONDITION"; do [[ -f "$file" ]] || fail "required file missing: ${file#$ROOT/}"; done
 bash -n "$HARNESS"
 bash "$HARNESS" --self-test >/dev/null
+bash "$PROVISION_CONTRACT" "$ROOT" >/dev/null
 node "$FRONTEND_AUDIT" >/dev/null
 
 contains "$HARNESS" 'source "$ROOT/ops/scripts/runtime-qa-auth-common.sh"'
-contains "$HARNESS" 'carbonet-screen-smoke'
+contains "$HARNESS" 'carbonet-usage-ledger-system-admin'
+not_contains "$HARNESS" 'CARBONET_USAGE_LEDGER_ALLOWED_AUTH_SECRET:-carbonet-screen-smoke'
 contains "$HARNESS" 'carbonet-test-account-switch'
 contains "$HARNESS" 'carbonet_qa_login'
 contains "$HARNESS" 'carbonet_qa_logout'
@@ -117,6 +122,9 @@ contains "$FRONTEND_PACKAGE" '"audit:operational-usage-ledger": "node scripts/ve
 
 contains "$PLANNER" 'runtime:operational-usage-ledger-e2e'
 contains "$PLANNER" 'operational-usage-ledger-contract'
+contains "$PLANNER" 'ops/scripts/provision-usage-ledger-system-admin.sh'
+contains "$PLANNER" 'ops/tests/test-usage-ledger-system-admin-provision-contract.sh'
+contains "$PLANNER" 'ops/tests/test-usage-ledger-system-admin-db-postcondition.sh'
 contains "$PLANNER" 'ops/scripts/auto-deploy-main.sh'
 contains "$PLANNER" 'ops/scripts/plan-incremental-work.sh'
 contains "$PLANNER" 'projects/carbonet-frontend/source/scripts/run-frontend-pipeline.mjs'
@@ -129,7 +137,7 @@ contains "$DEPLOY" 'verify_operational_usage_ledger_current_runtime_identity'
 contains "$DEPLOY" 'framework_runtime_release_state'
 contains "$DEPLOY" 'resonance.ai/target-commit'
 contains "$DEPLOY" 'STATIC_ONLY_BLOCKED_RUNTIME_IDENTITY_MISMATCH'
-contains "$DEPLOY" 'run_operational_usage_ledger_current_runtime_e2e_if_required "$deployed_commit"'
+contains "$DEPLOY" 'run_operational_usage_ledger_current_runtime_e2e_if_required "$runtime_deployed_commit"'
 contains "$DEPLOY" 'CARBONET_USAGE_LEDGER_E2E_TIMEOUT_SECONDS:-60'
 contains "$DEPLOY" 'invalidate_runtime_release_state'
 
@@ -143,14 +151,14 @@ pipeline_contract() {
     grep -Fq 'runAsync(process.execPath, ["scripts/verify-operational-usage-ledger.mjs"])' "$frontend_pipeline" &&
     grep -Fq '"audit:operational-usage-ledger": "node scripts/verify-operational-usage-ledger.mjs"' "$frontend_package" &&
     [[ "$(grep -Ec '^[[:space:]]*run_operational_usage_ledger_static_contract_if_required$' "$deploy")" == "2" ]] &&
-    [[ "$(grep -Ec '^[[:space:]]*run_operational_usage_ledger_current_runtime_e2e_if_required "\$deployed_commit"$' "$deploy")" == "2" ]]
+    [[ "$(grep -Ec '^[[:space:]]*run_operational_usage_ledger_current_runtime_e2e_if_required "\$runtime_deployed_commit"$' "$deploy")" == "2" ]]
 }
 pipeline_contract "$PLANNER" "$DEPLOY" "$FRONTEND_PIPELINE" "$FRONTEND_PACKAGE" || fail "usage-ledger pipeline wiring contract is incomplete"
 sed 's/runtime:operational-usage-ledger-e2e/runtime:REMOVED/g' "$PLANNER" >"$TMP_DIR/planner-token-removed.sh"
 if pipeline_contract "$TMP_DIR/planner-token-removed.sh" "$DEPLOY" "$FRONTEND_PIPELINE" "$FRONTEND_PACKAGE"; then
   fail "planner-token removal mutation survived"
 fi
-sed '/^[[:space:]]*run_operational_usage_ledger_current_runtime_e2e_if_required "\$deployed_commit"$/d' \
+sed '/^[[:space:]]*run_operational_usage_ledger_current_runtime_e2e_if_required "\$runtime_deployed_commit"$/d' \
   "$DEPLOY" >"$TMP_DIR/live-pipeline-call-removed.sh"
 if pipeline_contract "$PLANNER" "$TMP_DIR/live-pipeline-call-removed.sh" "$FRONTEND_PIPELINE" "$FRONTEND_PACKAGE"; then
   fail "live-pipeline-call removal mutation survived"
@@ -165,12 +173,16 @@ sed 's#"audit:operational-usage-ledger": "node scripts/verify-operational-usage-
 if pipeline_contract "$PLANNER" "$DEPLOY" "$FRONTEND_PIPELINE" "$TMP_DIR/frontend-package-audit-script-removed.json"; then
   fail "frontend-package audit-script removal mutation survived"
 fi
-awk '
-  /record_runtime_release_state "\$target_commit"/ { released=1; live=0; next }
-  released && /run_operational_usage_ledger_live_e2e_if_required/ { live=1; next }
-  released && live && /DEPLOY_STATE_FILE.*\.tmp/ { pairs++; released=0; live=0 }
-  END { exit pairs==3 ? 0 : 1 }
-' "$DEPLOY" || fail "each of the three runtime release paths must run live E2E before its success marker"
+finalizer_body="$(sed -n '/^finalize_postdeploy_candidate_release() {/,/^}/p' "$DEPLOY")"
+printf '%s\n' "$finalizer_body" | awk '
+  /record_runtime_release_state "\$target_commit"/ { ledger=NR }
+  /run_operational_usage_ledger_live_e2e_if_required "\$target_commit"/ { usage=NR }
+  /verify_postdeploy_candidate_staged/ { staged=NR }
+  /promote-postdeploy-candidate-evidence\.sh/ { promoter=NR }
+  END { exit !(ledger>0 && usage>ledger && staged>usage && promoter>staged) }
+' || fail "candidate finalizer must publish ledger, run usage, precheck 12 units, then promote marker"
+[[ "$(grep -Ec '^[[:space:]]*finalize_postdeploy_candidate_release$' "$DEPLOY")" == 3 ]] \
+  || fail "each of the three runtime release paths must use the candidate finalizer"
 merge_line="$(rg -n '^git merge --ff-only "\$target_commit"$' "$DEPLOY" | cut -d: -f1)"
 static_line="$(rg -n '^run_operational_usage_ledger_static_contract_if_required$' "$DEPLOY" | cut -d: -f1)"
 flyway_line="$(rg -n 'verify-flyway-migration-immutability\.sh' "$DEPLOY" | tail -1 | cut -d: -f1)"
@@ -178,10 +190,21 @@ flyway_line="$(rg -n 'verify-flyway-migration-immutability\.sh' "$DEPLOY" | tail
   || fail "static usage-ledger contract must run after candidate merge and before Flyway/build work"
 static_only_merge_line="$(rg -n '^  git merge --ff-only "\$target_commit"$' "$DEPLOY" | head -1 | cut -d: -f1)"
 static_only_static_line="$(rg -n '^  run_operational_usage_ledger_static_contract_if_required$' "$DEPLOY" | head -1 | cut -d: -f1)"
-static_only_live_line="$(rg -n '^  run_operational_usage_ledger_current_runtime_e2e_if_required "\$deployed_commit"$' "$DEPLOY" | head -1 | cut -d: -f1)"
-static_only_marker_line="$(awk -v start="$static_only_live_line" 'NR > start && /printf .*DEPLOY_STATE_FILE.*\.tmp/ { print NR; exit }' "$DEPLOY")"
+static_only_live_line="$(rg -n '^  run_operational_usage_ledger_current_runtime_e2e_if_required "\$runtime_deployed_commit"$' "$DEPLOY" | head -1 | cut -d: -f1)"
+static_only_marker_line="$(awk -v start="$static_only_live_line" 'NR > start && /write_applied_deploy_state "\$target_commit"/ { print NR; exit }' "$DEPLOY")"
 [[ "$static_only_merge_line" =~ ^[0-9]+$ && "$static_only_static_line" =~ ^[0-9]+$ && "$static_only_live_line" =~ ^[0-9]+$ && "$static_only_marker_line" =~ ^[0-9]+$ \
    && "$static_only_merge_line" -lt "$static_only_static_line" && "$static_only_static_line" -lt "$static_only_live_line" && "$static_only_live_line" -lt "$static_only_marker_line" ]] \
   || fail "static-only pipeline must merge, run static contract, verify current runtime live, then advance marker"
+
+grep -Fq 'RUNTIME_DEPLOY_STATE_FILE="${CARBONET_RUNTIME_DEPLOY_STATE_FILE:-/opt/resonance-data/deploy/carbonet-runtime-identity-success.commit}"' "$DEPLOY" \
+  || fail "dedicated runtime identity marker is missing"
+grep -Fq 'marker_commit="$(tr -d '\''[:space:]'\'' <"$RUNTIME_DEPLOY_STATE_FILE" 2>/dev/null' "$DEPLOY" \
+  || fail "runtime identity verifier still reads the overall applied marker"
+grep -Fq 'FULL_SCREEN_GATE_BASE_COMMIT="$runtime_deployed_commit"' "$DEPLOY" \
+  || fail "rollback snapshot is not bound to the serving runtime commit"
+grep -Fq 'runtime identity marker bootstrapped from DB+K8s' "$DEPLOY" \
+  || fail "fail-closed DB+K8s legacy runtime-marker bootstrap is missing"
+! sed -n '/^verify_operational_usage_ledger_current_runtime_identity() {/,/^}/p' "$DEPLOY" | grep -Fq '$DEPLOY_STATE_FILE' \
+  || fail "runtime identity verifier references the overall applied marker"
 
 printf '[operational-usage-ledger-e2e-contract] PASS auth=allowed+anonymous2+denied7 pagination=dynamic orderContract=5keys+stepCodeTieMutation detail=full redactionMutations=7 branchTruth=actors+dualRoutes review=create-reload-idempotent-mismatch409-cleanup pipeline=planner+frontend-pipeline+package+static+identity3+healthy-release-live pipelineRemovalMutations=4 browser=desktop+390 helpAnchors=5 forbiddenChangeRequest=1\n'

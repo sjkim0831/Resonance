@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
+umask 077
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 NAMESPACE="${CARBONET_K8S_NAMESPACE:-carbonet-prod}"
@@ -7,15 +8,32 @@ DATABASE="${POSTGRES_DB:-carbonet}"
 USER_NAME="${POSTGRES_ADMIN_USER:-postgres}"
 CONTAINER="${CARBONET_POSTGRES_CONTAINER:-patroni}"
 BASE_URL="${CARBONET_RUNTIME_BASE_URL:-http://127.0.0.1}"
-LOGIN_USER="${CARBONET_RUNTIME_TEST_USER:-webmaster}"
-LOGIN_PASSWORD="${CARBONET_RUNTIME_TEST_PASSWORD:-rhdxhd12}"
-SOURCE_COMMIT="$(git -C "$ROOT" rev-parse HEAD)"
+LOGIN_USER=""
+LOGIN_PASSWORD=""
+SOURCE_COMMIT="${CARBONET_POSTDEPLOY_SOURCE_COMMIT:-$(git -C "$ROOT" rev-parse HEAD)}"
+EVIDENCE_MODE="${CARBONET_POSTDEPLOY_EVIDENCE_MODE:-legacy}"
 COOKIE_JAR="$(mktemp)"
 TIMINGS="$(mktemp)"
 API_BODY="$(mktemp)"
 PAGE_BODY="$(mktemp)"
-trap 'rm -f "$COOKIE_JAR" "$TIMINGS" "$API_BODY" "$PAGE_BODY"' EXIT
+LOGIN_PAYLOAD="$(mktemp)"
+  LOGIN_RESPONSE="$(mktemp)"
 
+# shellcheck source=ops/scripts/runtime-qa-auth-common.sh
+source "$ROOT/ops/scripts/runtime-qa-auth-common.sh"
+cleanup_activity_runtime() {
+  local original_status=$? cleanup_status=0
+  trap - EXIT INT TERM
+  set +e
+  carbonet_qa_logout "$COOKIE_JAR" "$BASE_URL" || cleanup_status=1
+  rm -f "$COOKIE_JAR" "$TIMINGS" "$API_BODY" "$PAGE_BODY" "$LOGIN_PAYLOAD" "$LOGIN_RESPONSE"
+  if (( original_status == 0 && cleanup_status != 0 )); then original_status=1; fi
+  exit "$original_status"
+}
+trap cleanup_activity_runtime EXIT INT TERM
+carbonet_qa_load_credentials LOGIN_USER LOGIN_PASSWORD \
+  "${CARBONET_RUNTIME_TEST_USER:-}" "${CARBONET_RUNTIME_TEST_PASSWORD:-}" \
+  "${CARBONET_RUNTIME_TEST_AUTH_SECRET:-carbonet-screen-smoke}" "$NAMESPACE"
 source "$ROOT/ops/scripts/lib/carbonet-postgres-query.sh"
 carbonet_postgres_query_init
 psqlq(){ carbonet_postgres_query "$1"; }
@@ -24,14 +42,23 @@ project_id="$(psqlq "select project.project_id from emission_project_registry pr
 [[ -n "$project_id" ]] || { echo "[activity-runtime] FAIL no testable emission project" >&2; exit 1; }
 activity_id="$(psqlq "select activity_id from emission_activity_data where project_id='$project_id' order by activity_id limit 1")"
 
-login_body="$(curl -fsS -c "$COOKIE_JAR" -H 'Content-Type: application/json' -X POST "$BASE_URL/admin/login/actionLogin" \
-  --data "{\"userId\":\"$LOGIN_USER\",\"userPw\":\"$LOGIN_PASSWORD\",\"userSe\":\"USR\"}")"
-if ! jq -e '.status == "loginSuccess" and (.userId | length > 0)' >/dev/null <<<"$login_body"; then
-  login_body="$(curl -fsS -c "$COOKIE_JAR" -H 'Content-Type: application/json' -X POST "$BASE_URL/admin/login/actionLogin" \
-    --data "{\"userId\":\"$LOGIN_USER\",\"userPw\":\"$LOGIN_PASSWORD\",\"userSe\":\"ENT\"}")"
+write_login_payload() {
+  jq -n --arg id "$LOGIN_USER" --arg password "$LOGIN_PASSWORD" --arg userSe "$1" \
+    '{userId:$id,userPw:$password,userSe:$userSe}' >"$LOGIN_PAYLOAD"
+}
+write_login_payload USR
+login_code="$(curl -sS -c "$COOKIE_JAR" -o "$LOGIN_RESPONSE" -w '%{http_code}' -H 'Content-Type: application/json' \
+  -X POST "$BASE_URL/signin/actionLogin" --data-binary @"$LOGIN_PAYLOAD")" || login_code=000
+if [[ "$login_code" != 200 ]] || ! jq -e '.status == "loginSuccess" and (.userId | length > 0)' "$LOGIN_RESPONSE" >/dev/null; then
+  write_login_payload ENT
+  login_code="$(curl -sS -c "$COOKIE_JAR" -o "$LOGIN_RESPONSE" -w '%{http_code}' -H 'Content-Type: application/json' \
+    -X POST "$BASE_URL/signin/actionLogin" --data-binary @"$LOGIN_PAYLOAD")" || login_code=000
 fi
-jq -e --arg user "$LOGIN_USER" '.status == "loginSuccess" and (.userId | ascii_downcase) == ($user | ascii_downcase)' >/dev/null <<<"$login_body" \
+LOGIN_PASSWORD=""; unset LOGIN_PASSWORD CARBONET_RUNTIME_TEST_PASSWORD
+[[ "$login_code" == 200 ]] && jq -e --arg user "$LOGIN_USER" '.status == "loginSuccess" and (.userId | ascii_downcase) == ($user | ascii_downcase)' "$LOGIN_RESPONSE" >/dev/null \
   || { echo "[activity-runtime] FAIL login rejected or malformed response" >&2; exit 1; }
+CARBONET_QA_AUTH_SESSION_ACTIVE=1
+export CARBONET_QA_AUTH_SESSION_ACTIVE
 
 session_body="$(curl -fsS -b "$COOKIE_JAR" "$BASE_URL/api/frontend/session")"
 jq -e --arg user "$LOGIN_USER" '.authenticated == true and (.userId | ascii_downcase) == ($user | ascii_downcase)' >/dev/null <<<"$session_body" \
@@ -80,7 +107,9 @@ for path in "${page_paths[@]}"; do
 done
 
 for i in $(seq 1 20); do
-  curl -sS -b "$COOKIE_JAR" -o /dev/null -w '%{time_total}\n' "$BASE_URL/home/api/emission-projects/$project_id/activities" >>"$TIMINGS"
+  read -r sample_status sample_time <<<"$(curl -sS -b "$COOKIE_JAR" -o /dev/null -w '%{http_code} %{time_total}' "$BASE_URL/home/api/emission-projects/$project_id/activities")"
+  [[ "$sample_status" == 200 ]] || { echo "[activity-runtime] FAIL p95 probe status=$sample_status" >&2; exit 1; }
+  printf '%s\n' "$sample_time" >>"$TIMINGS"
 done
 p95_ms="$(sort -n "$TIMINGS" | awk 'NR==19 {printf "%d",$1*1000}')"
 [[ -n "$p95_ms" && "$p95_ms" -le 2500 ]] || { echo "[activity-runtime] FAIL p95=${p95_ms:-unknown}ms" >&2; exit 1; }
@@ -129,6 +158,13 @@ db_gate="$(psqlq "select
 [[ "$db_gate" == "t" ]] || { echo "[activity-runtime] FAIL DB/actor/scenario gate" >&2; exit 1; }
 
 evidence="{\"projectId\":\"$project_id\",\"authenticatedApis\":${#api_paths[@]},\"protectedApis\":${#protected_paths[@]},\"pages\":${#page_paths[@]},\"p95Millis\":$p95_ms,\"actorAssignments\":5,\"simulationTypes\":5}"
+if [[ "$EVIDENCE_MODE" == "candidate" ]]; then
+  jq -cn --arg projectId "$project_id" --argjson authenticatedApiCount "${#api_paths[@]}" \
+    --argjson protectedApiCount "${#protected_paths[@]}" --argjson pageCount "${#page_paths[@]}" \
+    --argjson p95Millis "$p95_ms" --argjson readyReplicas "$ready" \
+    '{projectId:$projectId,authenticatedApiCount:$authenticatedApiCount,protectedApiCount:$protectedApiCount,pageCount:$pageCount,p95Millis:$p95Millis,readyReplicas:$readyReplicas,actorAssignments:5,simulationTypes:5}' |
+    bash "$ROOT/ops/scripts/stage-postdeploy-evidence-candidate.sh" ACTIVITY_DATA_RUNTIME ACTIVITY_DATA RUNTIME "$SOURCE_COMMIT"
+else
 sql="begin;
 insert into framework_activity_runtime_validation_run(validation_status,authenticated_api_count,protected_api_count,page_count,p95_millis,ready_replicas,evidence_json,source_commit,executed_by)
 values('PASSED',${#api_paths[@]},${#protected_paths[@]},${#page_paths[@]},$p95_ms,$ready,'$evidence','$SOURCE_COMMIT','AUTO_DEPLOY');
@@ -139,4 +175,5 @@ update framework_process_artifact set delivery_status='VERIFIED',evidence_ref='r
 where process_code='ACTIVITY_DATA';
 commit;"
 psqlq "$sql" >/dev/null
+fi
 echo "[activity-runtime] PASS project=$project_id api=${#api_paths[@]} protected=${#protected_paths[@]} pages=${#page_paths[@]} p95=${p95_ms}ms replicas=$ready/$desired"

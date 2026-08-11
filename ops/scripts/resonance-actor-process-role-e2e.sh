@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
+umask 077
 
 ROOT="${RESONANCE_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
 BACKSTAGE_URL="${BACKSTAGE_URL:-https://backstage.172.16.1.232.nip.io}"
@@ -7,7 +8,7 @@ CA_CERT="${RESONANCE_INTERNAL_CA:-$HOME/.config/resonance/backstage-tls/ca.crt}"
 TEST_PROJECT_ID="${RESONANCE_ROLE_E2E_PROJECT_ID:-PRJ-2026-AD5D0F}"
 WORK_ROOT="${ROLE_E2E_WORK_ROOT:-$HOME/.cache/resonance/actor-process-role-e2e}"
 
-for command in curl node; do
+for command in curl node kubectl; do
   command -v "$command" >/dev/null || {
     echo "[actor-process-role-e2e] missing command: $command" >&2
     exit 1
@@ -26,14 +27,32 @@ cleanup() {
 }
 trap cleanup EXIT
 
+POSTGRES_ADAPTER="$ROOT/ops/scripts/lib/carbonet-postgres-query.sh"
+[[ -f "$POSTGRES_ADAPTER" ]] || { echo '[actor-process-role-e2e] PostgreSQL query adapter missing' >&2; exit 2; }
+# shellcheck source=ops/scripts/lib/carbonet-postgres-query.sh
+source "$POSTGRES_ADAPTER"
+CARBONET_PG_NAMESPACE="${CARBONET_K8S_NAMESPACE:-carbonet-prod}"
+POSTGRES_DB="${POSTGRES_DB:-carbonet}"
+POSTGRES_ADMIN_USER="${POSTGRES_ADMIN_USER:-postgres}"
+carbonet_postgres_query_init
+workflow_state_digest() {
+  carbonet_postgres_query "select encode(sha256(convert_to(concat_ws('|',
+    coalesce((select jsonb_agg(to_jsonb(e) order by e.execution_id)::text from framework_process_execution e where e.project_id='$TEST_PROJECT_ID'),'[]'),
+    coalesce((select jsonb_agg(to_jsonb(v) order by v.event_id)::text from framework_process_execution_event v where exists(select 1 from framework_process_execution e where e.execution_id=v.execution_id and e.project_id='$TEST_PROJECT_ID')),'[]'),
+    coalesce((select jsonb_agg(to_jsonb(d) order by d.draft_id)::text from framework_process_work_draft d where d.project_id='$TEST_PROJECT_ID'),'[]'),
+    coalesce((select jsonb_agg(to_jsonb(t) order by t.task_id)::text from emission_project_task t where t.project_id='$TEST_PROJECT_ID'),'[]'),
+    coalesce((select jsonb_agg(to_jsonb(s) order by s.schemaname,s.sequencename)::text from pg_sequences s where s.schemaname=current_schema() and s.sequencename=regexp_replace(pg_get_serial_sequence('framework_process_execution_event','event_id'),'^.*\\.','')),'[]')
+  ),'UTF8')),'hex')"
+}
+
 token_for() {
   "$ROOT/ops/scripts/resonance-backstage-oidc-token.sh" "$1"
 }
 
 fetch_dataset() {
-  local token="$1" dataset="$2" output="$3"
+  local auth_header="$1" dataset="$2" output="$3"
   curl --cacert "$CA_CERT" -fsS \
-    -H "authorization: Bearer $token" \
+    --header @"$auth_header" \
     "$BACKSTAGE_URL/api/resonance-projects/actor-process/runtime-dashboard?dataset=$dataset" \
     -o "$output"
 }
@@ -51,16 +70,19 @@ done
   echo "[actor-process-role-e2e] concurrent token acquisition failed" >&2
   exit 3
 }
-requester_token="$(cat "$run_dir/requester.token")"
-reviewer_token="$(cat "$run_dir/reviewer.token")"
-approver_token="$(cat "$run_dir/approver.token")"
-[[ -n "$requester_token" && -n "$reviewer_token" && -n "$approver_token" ]]
+for account in requester reviewer approver; do
+  token_path="$run_dir/$account.token"
+  header_path="$run_dir/$account.header"
+  [[ -s "$token_path" ]] || { echo "[actor-process-role-e2e] empty token: $account" >&2; exit 3; }
+  { printf 'authorization: Bearer '; cat "$token_path"; printf '\n'; } >"$header_path"
+  chmod 0600 "$header_path"
+  rm -f -- "$token_path"
+done
 
 declare -a dataset_pids=()
 for dataset in actors processes steps processExecutions emissionProjectTasks; do
   for role in requester reviewer approver; do
-    token_variable="${role}_token"
-    fetch_dataset "${!token_variable}" "$dataset" "$run_dir/$role-$dataset.json" &
+    fetch_dataset "$run_dir/$role.header" "$dataset" "$run_dir/$role-$dataset.json" &
     dataset_pids+=("$!")
   done
 done
@@ -153,10 +175,12 @@ console.log(`[actor-process-role-e2e] dataset PASS: 3 accounts, ${reviewerExecut
 NODE
 
 execution_id="$(cat "$run_dir/execution-id")"
+workflow_digest_before="$(workflow_state_digest)"
+[[ "$workflow_digest_before" =~ ^[0-9a-f]{64}$ ]] || { echo '[actor-process-role-e2e] pre-command workflow digest invalid' >&2; exit 3; }
 payload="$(printf '{"command":"execution.validate","executionId":"%s","requireDraft":true}' "$execution_id")"
 
 allowed_status="$(curl --cacert "$CA_CERT" -sS -o "$run_dir/reviewer-command.json" -w '%{http_code}' \
-  -H "authorization: Bearer $reviewer_token" \
+  --header @"$run_dir/reviewer.header" \
   -H 'content-type: application/json' \
   -d "$payload" \
   "$BACKSTAGE_URL/api/resonance-projects/actor-process/commands")"
@@ -170,7 +194,7 @@ RESPONSE_FILE="$run_dir/reviewer-command.json" node -e '
 '
 
 requester_status="$(curl --cacert "$CA_CERT" -sS -o "$run_dir/requester-command.json" -w '%{http_code}' \
-  -H "authorization: Bearer $requester_token" \
+  --header @"$run_dir/requester.header" \
   -H 'content-type: application/json' -d "$payload" \
   "$BACKSTAGE_URL/api/resonance-projects/actor-process/commands")"
 [[ "$requester_status" == "403" ]] || {
@@ -184,7 +208,7 @@ development_payload="$(printf '{"command":"development.execute","processCode":"E
 )")"
 development_denied_status="$(curl --cacert "$CA_CERT" -sS \
   -o "$run_dir/requester-development-command.json" -w '%{http_code}' \
-  -H "authorization: Bearer $requester_token" \
+  --header @"$run_dir/requester.header" \
   -H 'content-type: application/json' -d "$development_payload" \
   "$BACKSTAGE_URL/api/resonance-projects/actor-process/commands")"
 [[ "$development_denied_status" == "403" ]] || {
@@ -194,7 +218,7 @@ development_denied_status="$(curl --cacert "$CA_CERT" -sS \
 
 retry_denied_status="$(curl --cacert "$CA_CERT" -sS \
   -o "$run_dir/requester-development-retry.json" -w '%{http_code}' \
-  -H "authorization: Bearer $requester_token" \
+  --header @"$run_dir/requester.header" \
   -H 'content-type: application/json' \
   -d '{"command":"development.retry","jobId":"1"}' \
   "$BACKSTAGE_URL/api/resonance-projects/actor-process/commands")"
@@ -205,7 +229,7 @@ retry_denied_status="$(curl --cacert "$CA_CERT" -sS \
 
 rollback_request_denied_status="$(curl --cacert "$CA_CERT" -sS \
   -o "$run_dir/requester-development-rollback-request.json" -w '%{http_code}' \
-  -H "authorization: Bearer $requester_token" \
+  --header @"$run_dir/requester.header" \
   -H 'content-type: application/json' \
   -d '{"command":"development.rollback.request","jobId":"1","reason":"role-e2e"}' \
   "$BACKSTAGE_URL/api/resonance-projects/actor-process/commands")"
@@ -216,7 +240,7 @@ rollback_request_denied_status="$(curl --cacert "$CA_CERT" -sS \
 
 rollback_approve_denied_status="$(curl --cacert "$CA_CERT" -sS \
   -o "$run_dir/requester-development-rollback-approve.json" -w '%{http_code}' \
-  -H "authorization: Bearer $requester_token" \
+  --header @"$run_dir/requester.header" \
   -H 'content-type: application/json' \
   -d '{"command":"development.rollback.approve","rollbackRequestId":"1"}' \
   "$BACKSTAGE_URL/api/resonance-projects/actor-process/commands")"
@@ -227,7 +251,7 @@ rollback_approve_denied_status="$(curl --cacert "$CA_CERT" -sS \
 
 actor_save_denied_status="$(curl --cacert "$CA_CERT" -sS \
   -o "$run_dir/requester-actor-save.json" -w '%{http_code}' \
-  -H "authorization: Bearer $requester_token" \
+  --header @"$run_dir/requester.header" \
   -H 'content-type: application/json' \
   -d '{"command":"actor.save"}' \
   "$BACKSTAGE_URL/api/resonance-projects/actor-process/commands")"
@@ -238,7 +262,7 @@ actor_save_denied_status="$(curl --cacert "$CA_CERT" -sS \
 
 process_save_denied_status="$(curl --cacert "$CA_CERT" -sS \
   -o "$run_dir/requester-process-save.json" -w '%{http_code}' \
-  -H "authorization: Bearer $requester_token" \
+  --header @"$run_dir/requester.header" \
   -H 'content-type: application/json' \
   -d '{"command":"process.save"}' \
   "$BACKSTAGE_URL/api/resonance-projects/actor-process/commands")"
@@ -249,7 +273,7 @@ process_save_denied_status="$(curl --cacert "$CA_CERT" -sS \
 
 step_save_denied_status="$(curl --cacert "$CA_CERT" -sS \
   -o "$run_dir/requester-step-save.json" -w '%{http_code}' \
-  -H "authorization: Bearer $requester_token" \
+  --header @"$run_dir/requester.header" \
   -H 'content-type: application/json' \
   -d '{"command":"step.save"}' \
   "$BACKSTAGE_URL/api/resonance-projects/actor-process/commands")"
@@ -260,7 +284,7 @@ step_save_denied_status="$(curl --cacert "$CA_CERT" -sS \
 
 screen_flow_denied_status="$(curl --cacert "$CA_CERT" -sS \
   -o "$run_dir/requester-screen-flow-save.json" -w '%{http_code}' \
-  -H "authorization: Bearer $requester_token" \
+  --header @"$run_dir/requester.header" \
   -H 'content-type: application/json' \
   -d '{"command":"screen.bind-archetype"}' \
   "$BACKSTAGE_URL/api/resonance-projects/actor-process/commands")"
@@ -271,7 +295,7 @@ screen_flow_denied_status="$(curl --cacert "$CA_CERT" -sS \
 
 data_contract_denied_status="$(curl --cacert "$CA_CERT" -sS \
   -o "$run_dir/requester-data-contract-save.json" -w '%{http_code}' \
-  -H "authorization: Bearer $requester_token" \
+  --header @"$run_dir/requester.header" \
   -H 'content-type: application/json' \
   -d '{"command":"screen.contract.save"}' \
   "$BACKSTAGE_URL/api/resonance-projects/actor-process/commands")"
@@ -282,7 +306,7 @@ data_contract_denied_status="$(curl --cacert "$CA_CERT" -sS \
 
 assignment_save_denied_status="$(curl --cacert "$CA_CERT" -sS \
   -o "$run_dir/requester-assignment-save.json" -w '%{http_code}' \
-  -H "authorization: Bearer $requester_token" \
+  --header @"$run_dir/requester.header" \
   -H 'content-type: application/json' \
   -d '{"command":"assignment.save"}' \
   "$BACKSTAGE_URL/api/resonance-projects/actor-process/commands")"
@@ -292,13 +316,17 @@ assignment_save_denied_status="$(curl --cacert "$CA_CERT" -sS \
 }
 
 approver_status="$(curl --cacert "$CA_CERT" -sS -o "$run_dir/approver-command.json" -w '%{http_code}' \
-  -H "authorization: Bearer $approver_token" \
+  --header @"$run_dir/approver.header" \
   -H 'content-type: application/json' -d "$payload" \
   "$BACKSTAGE_URL/api/resonance-projects/actor-process/commands")"
 [[ "$approver_status" == "200" ]] || {
   echo "[actor-process-role-e2e] system-master override expected HTTP 200, received $approver_status" >&2
   exit 7
 }
+RESPONSE_FILE="$run_dir/approver-command.json" node -e '
+  const value = JSON.parse(require("fs").readFileSync(process.env.RESPONSE_FILE, "utf8"));
+  if (value.success !== true || value.validated !== true || value.committed !== false) process.exit(1);
+'
 
 anonymous_status="$(curl --cacert "$CA_CERT" -sS -o "$run_dir/anonymous-command.json" -w '%{http_code}' \
   -H 'content-type: application/json' -d "$payload" \
@@ -308,4 +336,10 @@ anonymous_status="$(curl --cacert "$CA_CERT" -sS -o "$run_dir/anonymous-command.
   exit 8
 }
 
-echo "[actor-process-role-e2e] command PASS: 2 allowed, 11 forbidden, 1 unauthenticated, 0 workflow mutations"
+workflow_digest_after="$(workflow_state_digest)"
+[[ "$workflow_digest_after" == "$workflow_digest_before" ]] || {
+  echo '[actor-process-role-e2e] validation command changed canonical workflow state or event sequence' >&2
+  exit 9
+}
+
+echo "[actor-process-role-e2e] command PASS: 2 allowed noncommitting, 11 forbidden, 1 unauthenticated, 0 workflow mutations digest=$workflow_digest_after"

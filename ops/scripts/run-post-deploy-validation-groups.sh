@@ -6,6 +6,10 @@ revision="${2:-$(git -C "$root" rev-parse HEAD)}"
 base_revision="${3:-}"
 cd "$root"
 
+# shellcheck source=ops/scripts/runtime-qa-auth-common.sh
+source "$root/ops/scripts/runtime-qa-auth-common.sh"
+export CARBONET_QA_AUTH_LOCK_TIMEOUT_SECONDS="${CARBONET_QA_AUTH_LOCK_TIMEOUT_SECONDS:-300}"
+
 log_dir="$root/var/logs/deploy-validation/$(date +%Y%m%d-%H%M%S)-${revision:0:10}"
 mkdir -p "$log_dir"
 declare -a names=()
@@ -47,91 +51,154 @@ validate_emission_workflow_group() {
   bash ops/scripts/validate-emission-project-workflow.sh
   bash ops/scripts/validate-emission-activity-collection.sh
 
-  # These lanes own independent evidence tables, but their authenticated
-  # validators share a single-token-per-user runtime account. Keep the lanes
-  # concurrent as processes while serializing each authenticated lifetime on
-  # the canonical QA lock; otherwise a later login revokes an earlier lane.
-  local lane_dir lane_failed lane_name lane_pid
+  # Evidence preparation has no authenticated session, and the actor journey
+  # uses separate principals, so keep both parallel. Once preparation is done,
+  # hold the canonical owner-aware lock once while the six shared-account
+  # runtimes execute in their declared order. This prevents token revocation,
+  # nested deadlock, and an unrelated screen gate interleaving mid-workflow.
+  local lane_dir prep_failed lane_name lane_pid actor_pid actor_status shared_status
   lane_dir="$(mktemp -d "$log_dir/emission-lanes.XXXXXX")"
-  lane_failed=0
+  prep_failed=0
+  actor_pid=""
+  actor_status=0
+  shared_status=0
   declare -a lane_names=()
   declare -a lane_pids=()
-  start_emission_lane() {
+  start_emission_prep() {
     lane_name="$1"
     shift
     lane_names+=("$lane_name")
     (
       lane_started="$(date +%s)"
-      exec 9>"${CARBONET_QA_AUTH_LOCK_FILE:-/tmp/carbonet-qa-auth-session.lock}"
-      flock -w "${CARBONET_QA_AUTH_LOCK_TIMEOUT_SECONDS:-120}" 9 \
-        || { echo "[emission-lane] FAIL auth-lock name=$lane_name" >&2; exit 1; }
       "$@"
-      echo "[emission-lane] PASS name=$lane_name duration=$(( $(date +%s) - lane_started ))s"
+      echo "[emission-prep] PASS name=$lane_name duration=$(( $(date +%s) - lane_started ))s"
     ) >"$lane_dir/$lane_name.log" 2>&1 &
     lane_pids+=("$!")
   }
-  wait_emission_lanes() {
-    local lane_index
+  wait_emission_preps() {
+    local lane_index lane_status
     for lane_index in "${!lane_pids[@]}"; do
       lane_name="${lane_names[$lane_index]}"
       lane_pid="${lane_pids[$lane_index]}"
-      if wait "$lane_pid"; then
+      lane_status=0
+      wait "$lane_pid" || lane_status=$?
+      if (( lane_status == 0 )); then
         cat "$lane_dir/$lane_name.log"
       else
-        lane_failed=1
-        echo "[emission-lane] FAIL name=$lane_name" >&2
+        prep_failed=1
+        echo "[emission-prep] FAIL name=$lane_name status=$lane_status" >&2
         cat "$lane_dir/$lane_name.log" >&2
       fi
     done
     lane_names=()
     lane_pids=()
   }
-  activity_lane() {
+  activity_prep() {
     bash ops/scripts/complete-activity-data-evidence-jobs.sh
     bash ops/scripts/validate-activity-workflow-links.sh
-    bash ops/scripts/validate-activity-data-runtime.sh
   }
-  calculation_lane() {
+  calculation_prep() {
     bash ops/scripts/complete-emission-calculation-evidence-jobs.sh
-    bash ops/scripts/validate-emission-calculation-runtime.sh
   }
-  organizational_boundary_lane() {
-    bash ops/scripts/validate-organizational-boundary-runtime.sh
-  }
-  governance_change_lane() {
-    bash ops/scripts/validate-governance-change-runtime.sh
-  }
-  report_lane() {
+  report_prep() {
     bash ops/scripts/complete-report-certification-evidence-jobs.sh
-    bash ops/scripts/validate-report-certification-runtime.sh
   }
-  # These journeys validate stable runtime/DB state and do not consume evidence
-  # produced by the five lanes below. Keep one fail-closed barrier: splitting a
-  # cold JVM into two waves increased total verification time without reducing
-  # load or improving readiness.
-  start_emission_lane customer-journey \
-    bash ops/scripts/validate-customer-work-journey.sh
+  run_emission_runtime_step() {
+    local step_name="$1" step_started step_status
+    shift
+    step_started="$(date +%s)"
+    step_status=0
+    "$@" || step_status=$?
+    if (( step_status != 0 )); then
+      echo "[emission-shared-runtime] FAIL name=$step_name status=$step_status" >&2
+      return "$step_status"
+    fi
+    echo "[emission-shared-runtime] PASS name=$step_name duration=$(( $(date +%s) - step_started ))s"
+  }
+  run_emission_shared_runtime() {
+    local aggregate_status=0 step_status=0
+    run_emission_runtime_step customer bash ops/scripts/validate-customer-work-journey.sh \
+      || { step_status=$?; aggregate_status=1; echo "[emission-shared-runtime] RECORDED name=customer status=$step_status" >&2; }
+    run_emission_runtime_step activity bash ops/scripts/validate-activity-data-runtime.sh \
+      || { step_status=$?; aggregate_status=1; echo "[emission-shared-runtime] RECORDED name=activity status=$step_status" >&2; }
+    run_emission_runtime_step calculation bash ops/scripts/validate-emission-calculation-runtime.sh \
+      || { step_status=$?; aggregate_status=1; echo "[emission-shared-runtime] RECORDED name=calculation status=$step_status" >&2; }
+    run_emission_runtime_step organizational-boundary bash ops/scripts/validate-organizational-boundary-runtime.sh \
+      || { step_status=$?; aggregate_status=1; echo "[emission-shared-runtime] RECORDED name=organizational-boundary status=$step_status" >&2; }
+    run_emission_runtime_step governance-change bash ops/scripts/validate-governance-change-runtime.sh \
+      || { step_status=$?; aggregate_status=1; echo "[emission-shared-runtime] RECORDED name=governance-change status=$step_status" >&2; }
+    run_emission_runtime_step report bash ops/scripts/validate-report-certification-runtime.sh \
+      || { step_status=$?; aggregate_status=1; echo "[emission-shared-runtime] RECORDED name=report status=$step_status" >&2; }
+    return "$aggregate_status"
+  }
+
   if [[ "${VALIDATE_ACTOR_ACCOUNT:-true}" == "true" ]]; then
-    start_emission_lane actor-account-journey \
+    (
+      actor_started="$(date +%s)"
       bash ops/scripts/validate-actor-account-customer-journey.sh
+      echo "[emission-lane] PASS name=actor-account-journey duration=$(( $(date +%s) - actor_started ))s"
+    ) >"$lane_dir/actor-account-journey.log" 2>&1 &
+    actor_pid="$!"
   else
     echo "[actor-account-journey] skipped only for an explicit operator benchmark"
   fi
-  start_emission_lane activity activity_lane
-  start_emission_lane calculation calculation_lane
-  start_emission_lane organizational-boundary organizational_boundary_lane
-  start_emission_lane governance-change governance_change_lane
-  start_emission_lane report report_lane
-  wait_emission_lanes
+
+  start_emission_prep activity activity_prep
+  start_emission_prep calculation calculation_prep
+  start_emission_prep report report_prep
+  wait_emission_preps
+
+  if (( prep_failed == 0 )); then
+    carbonet_qa_auth_run_serialized emission-shared-runtime \
+      run_emission_shared_runtime \
+      >"$lane_dir/emission-shared-runtime.log" 2>&1 || shared_status=$?
+    if (( shared_status == 0 )); then
+      cat "$lane_dir/emission-shared-runtime.log"
+    else
+      echo "[emission-shared-runtime] FAIL status=$shared_status" >&2
+      cat "$lane_dir/emission-shared-runtime.log" >&2
+    fi
+  fi
+
+  if [[ -n "$actor_pid" ]]; then
+    wait "$actor_pid" || actor_status=$?
+    if (( actor_status == 0 )); then
+      cat "$lane_dir/actor-account-journey.log"
+    else
+      echo "[emission-lane] FAIL name=actor-account-journey status=$actor_status" >&2
+      cat "$lane_dir/actor-account-journey.log" >&2
+    fi
+  fi
   rm -rf "$lane_dir"
-  (( lane_failed == 0 )) || return 1
+  (( prep_failed == 0 && shared_status == 0 && actor_status == 0 )) || return 1
 }
 
 validate_identity_design_group() {
-  RESONANCE_ROOT="$root" \
-    bash ops/scripts/resonance-keycloak-carbonet-identity-sync-install.sh
-  bash ops/scripts/resonance-keycloak-carbonet-identity-sync.sh
-  bash ops/scripts/validate-keycloak-carbonet-identity-sync.sh
+  identity_current_digest() {
+    kubectl -n "${CARBONET_K8S_NAMESPACE:-carbonet-prod}" exec "${RESONANCE_POSTGRES_LEADER_POD}" -c patroni -- \
+      psql -h 127.0.0.1 -U "${POSTGRES_ADMIN_USER:-postgres}" -d "${POSTGRES_DB:-carbonet}" -X -qAt -v ON_ERROR_STOP=1 -c "
+        select encode(sha256(convert_to(concat_ws('|',
+          coalesce((select jsonb_agg(to_jsonb(e) order by lower(e.emplyr_id))::text from comtnemplyrinfo e where trim(e.group_id)='GROUP_KEYCLOAK'),'[]'),
+          coalesce((select jsonb_agg(to_jsonb(s) order by s.scrty_dtrmn_trget_id)::text from comtnemplyrscrtyestbs s join comtnemplyrinfo e on e.esntl_id=s.scrty_dtrmn_trget_id where trim(e.group_id)='GROUP_KEYCLOAK'),'[]'),
+          coalesce((select jsonb_agg(to_jsonb(a) order by a.assignment_id)::text from framework_account_actor_assignment a where exists(select 1 from comtnemplyrinfo e where lower(e.emplyr_id)=lower(a.account_id) and trim(e.group_id)='GROUP_KEYCLOAK')),'[]'),
+          coalesce((select jsonb_agg(to_jsonb(l) order by to_jsonb(l)::text)::text from framework_identity_actor_assignment_link l),'[]'),
+          coalesce((select jsonb_agg(to_jsonb(a) order by a.sync_id)::text from framework_identity_sync_audit a),'[]')
+        ),'UTF8')),'hex')"
+  }
+  if [[ "${CARBONET_POSTDEPLOY_EVIDENCE_MODE:-}" == candidate ]]; then
+    local identity_before identity_after
+    identity_before="$(identity_current_digest)"
+    [[ "$identity_before" =~ ^[0-9a-f]{64}$ ]] || { echo '[identity-contracts] FAIL current identity snapshot unavailable' >&2; return 1; }
+    bash ops/scripts/validate-keycloak-carbonet-identity-sync.sh
+    identity_after="$(identity_current_digest)"
+    [[ "$identity_after" == "$identity_before" ]] || { echo '[identity-contracts] FAIL verify-only gate changed current identity state' >&2; return 1; }
+    echo '[identity-contracts] PASS mode=verify-only currentWrites=0'
+  else
+    RESONANCE_ROOT="$root" \
+      bash ops/scripts/resonance-keycloak-carbonet-identity-sync-install.sh
+    bash ops/scripts/resonance-keycloak-carbonet-identity-sync.sh
+    bash ops/scripts/validate-keycloak-carbonet-identity-sync.sh
+  fi
   bash ops/scripts/validate-project-auto-completion.sh
   bash ops/scripts/validate-contract-completion-algorithm.sh
   bash ops/scripts/validate-unified-work-design-runtime.sh

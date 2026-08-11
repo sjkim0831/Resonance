@@ -16,6 +16,7 @@ database_required=false
 infrastructure_required=false
 backstage_required=false
 catalog_only=true
+changed_count=0
 declare -a tests=()
 declare -a reasons=()
 
@@ -33,9 +34,14 @@ add_reason() {
 
 while IFS= read -r path; do
   [[ -z "$path" ]] && continue
+  changed_count=$((changed_count + 1))
   case "$path" in
     ops/scripts/validate-operational-usage-ledger-e2e.sh|\
     ops/scripts/test-operational-usage-ledger-e2e-contract.sh|\
+    ops/scripts/provision-usage-ledger-system-admin.sh|\
+    ops/tests/test-usage-ledger-system-admin-provision-contract.sh|\
+    ops/tests/test-usage-ledger-system-admin-db-postcondition.sh|\
+    ops/scripts/runtime-qa-auth-common.sh|\
     ops/scripts/auto-deploy-main.sh|\
     ops/scripts/plan-incremental-work.sh|\
     modules/resonance-common/carbonet-common-core/src/main/java/egovframework/com/platform/governance/service/ActorProcessGovernanceService.java|\
@@ -52,7 +58,20 @@ while IFS= read -r path; do
       ;;
   esac
   case "$path" in
+    apps/*/src/main/*[Ii]dentity*|modules/*/src/main/*[Ii]dentity*|common/*/src/main/*[Ii]dentity*|\
+    apps/carbonet-api/src/main/resources/db/migration/*[Ii]dentity*|\
+    deploy/*[Kk]eycloak*|manifests/*[Kk]eycloak*|ops/config/*[Ii]dentity*)
+      # Identity design changes currently have no candidate-state reconciler.
+      # Classify them explicitly so auto-deploy can fail closed before any
+      # Keycloak or Carbonet current-state mutation occurs.
+      add_test "runtime:identity-staged-reconcile-required"
+      add_reason "identity-design-requires-staged-reconcile"
+      ;;
+  esac
+  case "$path" in
     ops/scripts/validate-screen-contract-runtime-save.sh|\
+    ops/scripts/runtime-qa-auth-common.sh|\
+    ops/tests/test-runtime-qa-auth-concurrency.sh|\
     ops/scripts/validate-screen-contract-runtime-save.mjs)
       infrastructure_required=true
       add_test "automation:shell-syntax"
@@ -68,7 +87,11 @@ while IFS= read -r path; do
       add_test "backstage:build-deploy"
       add_reason "backstage-deploy-contract"
       ;;
+    ops/scripts/run-runtime-screen-gate-serialized.sh|\
+    ops/scripts/resonance-full-screen-deploy-gate.sh|\
     projects/carbonet-frontend/source/scripts/run-full-screen-smoke.sh|\
+    projects/carbonet-frontend/source/scripts/prepare-full-screen-auth-state.mjs|\
+    projects/carbonet-frontend/source/scripts/logout-full-screen-auth-state.mjs|\
     projects/carbonet-frontend/source/scripts/finalize-full-screen-smoke.mjs|\
     projects/carbonet-frontend/source/scripts/generate-full-screen-smoke-manifest.mjs|\
     projects/carbonet-frontend/source/scripts/export-full-screen-smoke-manifest.sh|\
@@ -188,6 +211,11 @@ while IFS= read -r path; do
       ;;
   esac
 done < <(git diff --name-only --diff-filter=ACMRD "$BASE_REF" "$TARGET_REF")
+
+if (( changed_count > 0 )); then
+  add_test "runtime:postdeploy-candidate-evidence"
+  add_reason "atomic-postdeploy-evidence"
+fi
 
 tests_csv="$(IFS=,; echo "${tests[*]:-catalog:sync}")"
 reasons_csv="$(IFS=,; echo "${reasons[*]:-no-change}")"

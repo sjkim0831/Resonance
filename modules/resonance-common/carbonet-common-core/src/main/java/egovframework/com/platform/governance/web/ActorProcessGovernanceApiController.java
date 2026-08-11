@@ -85,6 +85,21 @@ public class ActorProcessGovernanceApiController {
         var context=currentUserContextService.resolve(request);ResponseEntity<?> denied=systemReportAccessFailure(context);if(denied!=null)return denied;
         try{return ResponseEntity.ok(service.auditSystemProcessContracts(b==null?Map.of():b,context.getUserId()));}catch(Exception e){return bad(e);}
     }
+    @PostMapping("/system-test-report/audit-batches/start")
+    public ResponseEntity<?> startSystemTestReportAuditBatch(@RequestBody(required=false) Map<String,Object>b,HttpServletRequest request){
+        var context=currentUserContextService.resolve(request);ResponseEntity<?> denied=systemReportAccessFailure(context);if(denied!=null)return denied;
+        try{return ResponseEntity.ok(service.startSystemProcessContractAuditBatch(b==null?Map.of():b,context.getUserId()));}catch(Exception e){return bad(e);}
+    }
+    @PostMapping("/system-test-report/audit-batches/{auditBatchId}/complete")
+    public ResponseEntity<?> completeSystemTestReportAuditBatch(@PathVariable UUID auditBatchId,HttpServletRequest request){
+        var context=currentUserContextService.resolve(request);ResponseEntity<?> denied=systemReportAccessFailure(context);if(denied!=null)return denied;
+        try{return ResponseEntity.ok(service.completeSystemProcessContractAuditBatch(auditBatchId,context.getUserId()));}catch(Exception e){return bad(e);}
+    }
+    @PostMapping("/system-test-report/audit-batches/{auditBatchId}/fail")
+    public ResponseEntity<?> failSystemTestReportAuditBatch(@PathVariable UUID auditBatchId,@RequestBody(required=false) Map<String,Object>b,HttpServletRequest request){
+        var context=currentUserContextService.resolve(request);ResponseEntity<?> denied=systemReportAccessFailure(context);if(denied!=null)return denied;
+        try{return ResponseEntity.ok(service.failSystemProcessContractAuditBatch(auditBatchId,b==null?Map.of():b,context.getUserId()));}catch(Exception e){return bad(e);}
+    }
     @PostMapping("/system-test-report/reviews")
     public ResponseEntity<?> saveSystemTestReportReview(@RequestBody Map<String,Object>b,HttpServletRequest request){
         var context=currentUserContextService.resolve(request);ResponseEntity<?> denied=systemReportAccessFailure(context);if(denied!=null)return denied;
@@ -103,6 +118,11 @@ public class ActorProcessGovernanceApiController {
     @PostMapping("/qa-sessions") public ResponseEntity<?> saveQaSession(@RequestBody Map<String,Object>b,HttpServletRequest request){Principal p=request.getUserPrincipal();try{return ResponseEntity.ok(service.saveQaProcessTestSession(b,p==null?"SYSTEM":p.getName()));}catch(Exception e){return bad(e);}}
     @PostMapping("/common-features/install") public ResponseEntity<?> installFeature(@RequestBody Map<String,Object>b,HttpServletRequest request){Principal p=request.getUserPrincipal();try{return ResponseEntity.ok(service.installCommonFeature(String.valueOf(b.get("featureCode")),String.valueOf(b.getOrDefault("projectScope","PLATFORM")),p==null?"SYSTEM":p.getName(),config(b.get("configuration"))));}catch(Exception e){return bad(e);}}
     @PostMapping("/professional-screen-contracts") public ResponseEntity<?> professionalScreenContract(@RequestBody Map<String,Object>b,HttpServletRequest request){Principal p=request.getUserPrincipal();try{return ResponseEntity.ok(service.saveProfessionalScreenContract(b,p==null?"SYSTEM":p.getName()));}catch(Exception e){return bad(e);}}
+    @PostMapping("/professional-screen-contracts/preview")
+    public ResponseEntity<?> professionalScreenContractPreview(@RequestBody Map<String,Object>b,HttpServletRequest request){
+        var context=currentUserContextService.resolve(request);ResponseEntity<?> denied=systemReportAccessFailure(context);if(denied!=null)return denied;
+        try{return ResponseEntity.ok(service.saveProfessionalScreenContractPreview(b,context.getUserId()));}catch(Exception e){return bad(e);}
+    }
     @PostMapping("/professional-factory/execute") public ResponseEntity<?> executeProfessionalFactory(@RequestBody Map<String,Object>b,HttpServletRequest request){Principal p=request.getUserPrincipal();try{return ResponseEntity.ok(service.executeProfessionalFactory(b,p==null?"SYSTEM":p.getName()));}catch(Exception e){return bad(e);}}
     @PostMapping("/professional-factory/evidence") public ResponseEntity<?> recordProfessionalEvidence(@RequestBody Map<String,Object>b,HttpServletRequest request){Principal p=request.getUserPrincipal();try{return ResponseEntity.ok(service.recordProfessionalEvidence(b,p==null?"SYSTEM":p.getName()));}catch(Exception e){return bad(e);}}
     @PostMapping("/professional-factory/assemble-assets") public ResponseEntity<?> assembleAssets(@RequestBody Map<String,Object>b,HttpServletRequest request){Principal p=request.getUserPrincipal();try{return ResponseEntity.ok(service.assembleScreenAssets(String.valueOf(b.get("processCode")),p==null?"SYSTEM":p.getName()));}catch(Exception e){return bad(e);}}

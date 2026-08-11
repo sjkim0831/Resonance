@@ -12,6 +12,8 @@ Environment=HOME=/home/sjkim
 Environment=RESONANCE_ROOT=/opt/Resonance/var/deploy-worktrees/runtime-build
 Environment=PATH=/usr/local/bin:/usr/bin:/bin
 Environment=KUBECONFIG=/home/sjkim/.kube/config
+Environment=CARBONET_QA_AUTH_LOCK_TIMEOUT_SECONDS=300
+UMask=0077
 ExecStart=/usr/bin/bash /opt/resonance-data/control-plane/bin/run-all-process-contract-audit-hourly.sh
 SuccessExitStatus=3
 TimeoutStartSec=930s

@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
+umask 077
 
 NAMESPACE="${KEYCLOAK_NAMESPACE:-resonance-ops}"
 REALM="${KEYCLOAK_REALM:-resonance}"
@@ -18,6 +19,18 @@ flock -w 60 9 || {
   echo "[identity-sync] synchronization lock timed out after 60 seconds" >&2
   exit 3
 }
+
+secret_tmp="$(mktemp -d /tmp/keycloak-carbonet-identity-sync.XXXXXX)"
+chmod 700 "$secret_tmp"
+cleanup() {
+  local status=$?
+  trap - EXIT INT TERM
+  admin_password=""; admin_token=""; integrated_password=""; integrated_hash=""
+  unset admin_password admin_token integrated_password integrated_hash
+  rm -rf -- "$secret_tmp"
+  exit "$status"
+}
+trap cleanup EXIT INT TERM
 
 find_leader() {
   local podref pod state
@@ -56,20 +69,28 @@ admin_password="$(
   kubectl -n "$NAMESPACE" get secret resonance-keycloak \
     -o jsonpath='{.data.KC_BOOTSTRAP_ADMIN_PASSWORD}' | base64 -d
 )"
+encoded_admin_password="$(printf '%s' "$admin_password" | jq -sRr @uri)"
+printf 'client_id=admin-cli&username=resonance-admin&password=%s&grant_type=password' \
+  "$encoded_admin_password" >"$secret_tmp/token-form"
+chmod 0600 "$secret_tmp/token-form"
+encoded_admin_password=""
+unset encoded_admin_password
 admin_token="$(
   curl -fsS --max-time 10 \
     -X POST "$keycloak_admin_url/realms/master/protocol/openid-connect/token" \
-    --data-urlencode 'client_id=admin-cli' \
-    --data-urlencode 'username=resonance-admin' \
-    --data-urlencode "password=$admin_password" \
-    --data-urlencode 'grant_type=password' |
+    -H 'Content-Type: application/x-www-form-urlencoded' \
+    --data-binary @"$secret_tmp/token-form" |
     jq -er '.access_token'
 )"
 admin_password=
+unset admin_password
+rm -f -- "$secret_tmp/token-form"
+printf 'Authorization: Bearer %s\n' "$admin_token" >"$secret_tmp/keycloak-auth.header"
+chmod 0600 "$secret_tmp/keycloak-auth.header"
 
 keycloak_get() {
   curl -fsS --max-time 10 \
-    -H "Authorization: Bearer $admin_token" \
+    --header @"$secret_tmp/keycloak-auth.header" \
     "$keycloak_admin_url$1"
 }
 
@@ -104,6 +125,8 @@ while IFS= read -r managed_group; do
   )"
 done < <(jq -r '.[]' <<<"$MANAGED_GROUPS")
 admin_token=
+unset admin_token
+rm -f -- "$secret_tmp/keycloak-auth.header"
 
 integrated_username=""
 integrated_hash=""
@@ -124,8 +147,7 @@ if kubectl -n "$NAMESPACE" get secret resonance-keycloak-integrated-admin \
   integrated_password=
 fi
 
-sql_batch="$(mktemp)"
-trap 'rm -f "$sql_batch"' EXIT
+sql_batch="$secret_tmp/identity-sync.sql"
 printf 'BEGIN;\n' >"$sql_batch"
 synced=0
 while IFS= read -r user; do

@@ -10,7 +10,20 @@ export FULL_SCREEN_SMOKE_RESULT_DIR="$result_dir"
 export FULL_SCREEN_SMOKE_BASELINE="${FULL_SCREEN_SMOKE_BASELINE:-$cache_dir/last-success.json}"
 auth_state_path=""
 cleanup_smoke_secrets() {
-  [[ -z "$auth_state_path" ]] || rm -f -- "$auth_state_path"
+  local exit_status=$?
+  local logout_status=0
+  trap - EXIT
+  if [[ -n "$auth_state_path" && -f "$auth_state_path" ]]; then
+    set +e
+    node "$root_dir/scripts/logout-full-screen-auth-state.mjs"
+    logout_status=$?
+    set -e
+    rm -f -- "$auth_state_path"
+  fi
+  if [[ "$exit_status" -eq 0 && "$logout_status" -ne 0 ]]; then
+    exit_status="$logout_status"
+  fi
+  exit "$exit_status"
 }
 trap cleanup_smoke_secrets EXIT
 
@@ -49,7 +62,13 @@ rm -f "$result_dir"/shard-*.json
 
 # Authenticate once through the same JSON endpoint used by the React login
 # form, then give every isolated browser context the resulting cookie state.
-# If preparation fails, the existing per-shard UI login remains the fail-safe.
+# Candidate and nightly gates share a single-session principal: one shard must
+# never invalidate every other shard by falling back to a fresh UI login.
+strict_preauth="${FULL_SCREEN_SMOKE_REQUIRE_PREAUTH:-false}"
+if [[ "${CARBONET_POSTDEPLOY_EVIDENCE_MODE:-}" == candidate ]]; then
+  strict_preauth=true
+fi
+export FULL_SCREEN_SMOKE_REQUIRE_PREAUTH="$strict_preauth"
 auth_state_path="$cache_dir/auth-state-$$.json"
 rm -f -- "$auth_state_path"
 export FULL_SCREEN_SMOKE_STORAGE_STATE="$auth_state_path"
@@ -59,6 +78,10 @@ else
   rm -f -- "$auth_state_path"
   auth_state_path=""
   unset FULL_SCREEN_SMOKE_STORAGE_STATE FULL_SCREEN_SMOKE_PREAUTHENTICATED
+  if [[ "$strict_preauth" == true ]]; then
+    printf '[full-screen-smoke] shared authentication unavailable; strict gate forbids per-shard login\n' >&2
+    exit 75
+  fi
   printf '[full-screen-smoke] shared authentication unavailable; using per-shard UI login\n' >&2
 fi
 

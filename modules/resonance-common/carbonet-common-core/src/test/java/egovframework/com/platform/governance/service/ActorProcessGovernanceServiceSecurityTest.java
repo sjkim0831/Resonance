@@ -18,6 +18,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
@@ -32,6 +33,24 @@ class ActorProcessGovernanceServiceSecurityTest {
     void persistedDesignCompleteStatusCanBeSavedAgain() {
         assertTrue(ActorProcessGovernanceService.isSupportedProfessionalContractStatus("DESIGN_COMPLETE"));
         assertFalse(ActorProcessGovernanceService.isSupportedProfessionalContractStatus("IMPLEMENTED"));
+    }
+
+    @Test
+    void professionalScreenContractPreviewUsesCanonicalSaveAndMarksRollbackOnly() {
+        Map<String,Object> body=Map.of("contractId","26");
+        doReturn(Map.of("success",true,"runtimePublication",Map.of("contractId",26L)))
+                .when(service).saveProfessionalScreenContract(body,"system-admin");
+        doNothing().when(service).markCurrentTransactionRollbackOnly();
+
+        Map<String,Object> preview=service.saveProfessionalScreenContractPreview(body,"system-admin");
+
+        verify(service).saveProfessionalScreenContract(body,"system-admin");
+        verify(service).markCurrentTransactionRollbackOnly();
+        assertEquals(true,preview.get("success"));
+        assertEquals(true,preview.get("preview"));
+        assertEquals(true,preview.get("rolledBack"));
+        assertEquals(false,preview.get("committed"));
+        assertEquals("DB_TRANSACTION_ROLLBACK_ONLY",preview.get("mutationScope"));
     }
 
     @Test
@@ -65,6 +84,12 @@ class ActorProcessGovernanceServiceSecurityTest {
         assertTrue(sqlCaptor.getValue().contains("left join lateral")
                         && !sqlCaptor.getValue().contains("row_number() over(partition by target.process_code"),
                 "latest immutable evidence must use a bounded lookup instead of joining and sorting every historical run");
+        assertTrue(sqlCaptor.getValue().contains("evidence.audit_batch_id is null")
+                        && sqlCaptor.getValue().contains("framework_screen_workflow_audit_incident_run incident_run")
+                        && sqlCaptor.getValue().contains("audit_batch.batch_status='COMPLETE'"),
+                "latest evidence must independently index legacy rows, exclude FAILED_UNBOUND rows, and expose only COMPLETE batches");
+        assertFalse(sqlCaptor.getValue().contains("framework_current_screen_workflow_test_run evidence"),
+                "the UNION current view must not prevent target predicates and order/limit from reaching the evidence index");
         assertTrue(sqlCaptor.getValue().contains("binding_targets as (")
                         && sqlCaptor.getValue().contains("left join framework_screen_capability c using(screen_resource_id)")
                         && sqlCaptor.getValue().contains("coalesce(c.capability_code,'ALL') capability_code"),
@@ -250,6 +275,65 @@ class ActorProcessGovernanceServiceSecurityTest {
         assertFalse(sqlCaptor.getValue().contains("b.binding_status='DRAFT'"),"draft bindings are not executable audit targets");
         assertFalse(sqlCaptor.getValue().contains("select candidate.*"),"audit inventory must not collapse bindings through limit 1");
         verify(jdbc,never()).queryForList(argThat(sql -> sql.startsWith("select test_case_id")),any(Object[].class));
+    }
+
+    @Test
+    void hourlyBatchRejectsScopedAndReducedCatalogRequests() {
+        String batchId="11111111-1111-4111-8111-111111111111";
+        when(jdbc.queryForList(argThat(sql -> sql!=null&&sql.contains("from framework_screen_workflow_audit_batch where audit_batch_id")),
+                any(Object[].class))).thenReturn(List.of(Map.of(
+                        "auditBatchId",batchId,"batchStatus","RUNNING","requestedBy","system-auditor")));
+
+        assertThrows(IllegalArgumentException.class, () -> service.auditSystemProcessContracts(
+                Map.of("auditBatchId",batchId,"processCode","MEMBER_REGISTRATION"),"system-auditor"));
+        assertThrows(IllegalArgumentException.class, () -> service.auditSystemProcessContracts(
+                Map.of("auditBatchId",batchId,"maxSteps",1),"system-auditor"));
+
+        verify(jdbc,never()).queryForList(argThat(sql -> sql!=null&&sql.contains(
+                "framework_screen_workflow_audit_batch_target target")),any(Object[].class));
+    }
+
+    @Test
+    void hourlyBatchPagesOnlyTheAttemptFixedTargetSnapshot() throws Exception {
+        String batchId="22222222-2222-4222-8222-222222222222";
+        Map<String,Object> batch=Map.ofEntries(
+                Map.entry("auditBatchId",batchId),Map.entry("sourceCommit","a".repeat(40)),
+                Map.entry("runtimeIdentityHash","b".repeat(64)),Map.entry("catalogFingerprint","c".repeat(64)),
+                Map.entry("targetInventoryFingerprint","d".repeat(64)),Map.entry("expectedPageCount",1),
+                Map.entry("expectedTargetCount",1L),Map.entry("pageSize",250),
+                Map.entry("batchStatus","RUNNING"),Map.entry("requestedBy","system-auditor"));
+        String targetMaterial=String.join("\u001f","201","PROCESS_A","STEP_A","101","USER","/screen-a","SAVE");
+        String targetKey=java.util.HexFormat.of().formatHex(java.security.MessageDigest.getInstance("SHA-256")
+                .digest(targetMaterial.getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+        Map<String,Object> target=new java.util.LinkedHashMap<>();
+        target.put("bindingId",101L);target.put("audience","USER");target.put("bindingStatus","ACTIVE");
+        target.put("screenResourceId",201L);target.put("routePath","/screen-a");target.put("screenName","Screen A");
+        target.put("implementationStatus","VERIFIED");target.put("processCode","PROCESS_A");target.put("stepCode","STEP_A");
+        target.put("capabilityCode","SAVE");target.put("totalEligibleTargetCount",1L);
+        target.put("auditTargetOrdinal",0L);target.put("auditTargetKey",targetKey);
+        when(jdbc.queryForList(argThat(sql -> sql!=null&&sql.contains("from framework_screen_workflow_audit_batch where audit_batch_id")),
+                any(Object[].class))).thenReturn(List.of(batch));
+        when(jdbc.queryForList(argThat(sql -> sql!=null&&sql.contains("from framework_screen_workflow_audit_batch_target target")),
+                any(Object[].class))).thenReturn(List.of(target));
+        when(jdbc.queryForObject(argThat(sql -> sql!=null&&sql.contains("framework_record_screen_workflow_audit_page")),
+                org.mockito.ArgumentMatchers.eq(String.class),any(Object[].class)))
+                .thenReturn("{\"pageFingerprint\":\""+"e".repeat(64)+"\"}");
+
+        Map<String,Object> result=service.auditSystemProcessContracts(
+                Map.of("auditBatchId",batchId,"maxTargets",250,"targetOffset",0),"system-auditor");
+
+        assertEquals(1L,result.get("totalEligibleTargetCount"));
+        assertEquals(0,result.get("auditPageNumber"));
+        assertEquals("ERROR",result.get("outcome"));
+        ArgumentCaptor<String> sqlCaptor=ArgumentCaptor.forClass(String.class);
+        verify(jdbc,org.mockito.Mockito.atLeastOnce()).queryForList(sqlCaptor.capture(),any(Object[].class));
+        String snapshotSql=sqlCaptor.getAllValues().stream()
+                .filter(sql -> sql.contains("framework_screen_workflow_audit_batch_target target"))
+                .findFirst().orElseThrow();
+        assertTrue(snapshotSql.contains("target.target_ordinal>=?")
+                        &&snapshotSql.contains("order by target.target_ordinal limit ?"));
+        assertFalse(snapshotSql.contains("with scoped_steps as materialized"),
+                "a RUNNING attempt must never reselect a mutable same-count target inventory");
     }
 
     @Test

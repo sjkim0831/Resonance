@@ -49,7 +49,7 @@ The user wants:
 ## Important Verified Account
 
 - Admin user `webmaster` exists.
-- Candidate password `rhdxhd12` was verified against the actual app password algorithm.
+- Administrator credentials are loaded only from the managed Kubernetes Secret; no candidate password is tracked in this repository.
 - `webmaster` has `ROLE_SYSTEM_MASTER`.
 - Do not print password hash.
 
@@ -330,4 +330,3 @@ NodePort `30083` is not directly reliable because kind host port mapping was not
   - `apps/carbonet-app/src/main/resources/static/react-app/assets`
   - `target`
   - `node_modules`
-

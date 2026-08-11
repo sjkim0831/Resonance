@@ -66,7 +66,8 @@ capture() {
 
   runtime_image="$(kubectl -n "$NAMESPACE" get deployment "$RUNTIME_DEPLOYMENT" -o jsonpath='{.spec.template.spec.containers[0].image}')"
   web_image="$(kubectl -n "$NAMESPACE" get deployment "$WEB_DEPLOYMENT" -o jsonpath='{.spec.template.spec.containers[0].image}')"
-  git_sha="$(git -C "$ROOT_DIR" rev-parse HEAD)"
+  git_sha="${FULL_SCREEN_GATE_BASE_COMMIT:-$(git -C "$ROOT_DIR" rev-parse HEAD)}"
+  [[ "$git_sha" =~ ^[0-9a-f]{40}$ ]] || fail "rollback baseline commit is invalid"
   test -s "$OVERLAY_DIR/index.html"
   # Overlay updates use rsync's temporary-file-and-rename path and atomically
   # replace index/marker files. A hard-link tree therefore preserves the old
@@ -90,6 +91,7 @@ SNAPSHOT_FORMAT='$snapshot_format'
 RUNTIME_IMAGE='$runtime_image'
 WEB_IMAGE='$web_image'
 GIT_SHA='$git_sha'
+BASELINE_SOURCE_COMMIT='$git_sha'
 EOF
   mv "$ACTIVE_FILE.tmp" "$ACTIVE_FILE"
   log "captured snapshot=$snapshot_id format=$snapshot_format runtime=$runtime_image web=$web_image git=$git_sha"
@@ -173,6 +175,7 @@ verify() {
     FULL_SCREEN_SMOKE_CHANGED_ONLY="${FULL_SCREEN_SMOKE_CHANGED_ONLY:-false}" \
     FULL_SCREEN_SMOKE_ROUTE_PATTERN="${FULL_SCREEN_SMOKE_ROUTE_PATTERN:-}" \
     FULL_SCREEN_SMOKE_SHARDS="${FULL_SCREEN_SMOKE_SHARDS:-1}" \
+    FULL_SCREEN_SMOKE_REQUIRE_PREAUTH="${FULL_SCREEN_SMOKE_REQUIRE_PREAUTH:-${FULL_SCREEN_GATE_DEFER_ACCEPT:-false}}" \
     FULL_SCREEN_SMOKE_SKIP_QUALITY_REFRESH="${FULL_SCREEN_SMOKE_SKIP_QUALITY_REFRESH:-true}" \
     FULL_SCREEN_SMOKE_SUMMARY="$run_report/summary.json" \
       bash scripts/run-full-screen-smoke.sh
@@ -193,6 +196,7 @@ verify() {
       FULL_SCREEN_SMOKE_CHANGED_ONLY="${FULL_SCREEN_SMOKE_CHANGED_ONLY:-false}" \
       FULL_SCREEN_SMOKE_ROUTE_PATTERN="${FULL_SCREEN_SMOKE_ROUTE_PATTERN:-}" \
       FULL_SCREEN_SMOKE_SHARDS="${FULL_SCREEN_SMOKE_SHARDS:-1}" \
+      FULL_SCREEN_SMOKE_REQUIRE_PREAUTH="${FULL_SCREEN_SMOKE_REQUIRE_PREAUTH:-${FULL_SCREEN_GATE_DEFER_ACCEPT:-false}}" \
       FULL_SCREEN_SMOKE_SKIP_QUALITY_REFRESH="${FULL_SCREEN_SMOKE_SKIP_QUALITY_REFRESH:-true}" \
       FULL_SCREEN_SMOKE_SUMMARY="$run_report/summary.json" \
       FULL_SCREEN_SMOKE_WORKERS=1 \
@@ -202,7 +206,8 @@ verify() {
     smoke_status=${PIPESTATUS[0]}
     set -e
   fi
-  [[ -f "$FRONTEND_DIR/.cache/full-screen-smoke/manifest.json" ]] && cp "$FRONTEND_DIR/.cache/full-screen-smoke/manifest.json" "$run_report/manifest.json"
+  local smoke_cache_dir="${FULL_SCREEN_SMOKE_CACHE_DIR:-$FRONTEND_DIR/.cache/full-screen-smoke}"
+  [[ -f "$smoke_cache_dir/manifest.json" ]] && cp "$smoke_cache_dir/manifest.json" "$run_report/manifest.json"
   [[ -f "$run_report/summary.json" ]] || summary_status=1
   [[ "${FULL_SCREEN_GATE_TEST_FORCE_FAILURE:-false}" == "true" ]] && smoke_status=97
 
@@ -246,8 +251,12 @@ NODE
     fi
     return 1
   fi
-  rm -f "$ACTIVE_FILE"
-  prune_snapshots
+  if [[ "${FULL_SCREEN_GATE_DEFER_ACCEPT:-false}" != true ]]; then
+    rm -f "$ACTIVE_FILE"
+    prune_snapshots
+  else
+    log "candidate snapshot retained until atomic promotion snapshot=$SNAPSHOT_ID"
+  fi
   find "$REPORT_DIR" -mindepth 1 -maxdepth 1 -type d -mtime +14 -exec rm -rf -- {} +
   log "PASS report=$run_report"
 }
@@ -258,15 +267,27 @@ accept_fast() {
   health_status="$(curl -fsS --max-time 15 "$BASE_URL/actuator/health" || true)"
   [[ "$health_status" == *'"status":"UP"'* ]] || fail "fast gate health check is not UP"
   node "$ROOT_DIR/ops/scripts/verify-react-asset-closure.mjs" "$OVERLAY_DIR"
+  if [[ "${FULL_SCREEN_GATE_DEFER_ACCEPT:-false}" != true ]]; then
+    rm -f "$ACTIVE_FILE"
+    prune_snapshots
+  else
+    log "candidate snapshot retained until atomic promotion snapshot=$SNAPSHOT_ID"
+  fi
+  log "PASS fast runtime gate snapshot=$SNAPSHOT_ID"
+}
+
+finalize_success() {
+  load_active
   rm -f "$ACTIVE_FILE"
   prune_snapshots
-  log "PASS fast runtime gate snapshot=$SNAPSHOT_ID"
+  log "finalized successful candidate snapshot=$SNAPSHOT_ID baseline=$BASELINE_SOURCE_COMMIT"
 }
 
 case "$ACTION" in
   capture) capture ;;
   verify) verify ;;
   accept-fast) accept_fast ;;
+  finalize-success) finalize_success ;;
   restore) restore ;;
-  *) fail "usage: $0 {capture|verify|accept-fast|restore}" ;;
+  *) fail "usage: $0 {capture|verify|accept-fast|finalize-success|restore}" ;;
 esac

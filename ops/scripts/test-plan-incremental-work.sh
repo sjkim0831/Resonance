@@ -23,6 +23,7 @@ docs="$(git rev-parse HEAD)"
 eval "$(bash "$PLANNER" "$base" "$docs" --format env)"
 [[ "$PLAN_RUNTIME_REQUIRED" == false ]]
 [[ "$PLAN_CATALOG_ONLY" == true ]]
+[[ "$PLAN_TESTS" == *"runtime:postdeploy-candidate-evidence"* ]]
 
 printf 'export const page = 1;\n' > projects/carbonet-frontend/source/src/page.tsx
 git add . && git commit -qm frontend
@@ -32,6 +33,7 @@ eval "$(bash "$PLANNER" "$docs" "$frontend" --format env)"
 [[ "$PLAN_FRONTEND_REQUIRED" == true ]]
 [[ "$PLAN_BACKEND_REQUIRED" == false ]]
 [[ "$PLAN_DATABASE_REQUIRED" == false ]]
+[[ "$PLAN_TESTS" == *"runtime:postdeploy-candidate-evidence"* ]]
 
 printf '#!/usr/bin/env bash\n' > projects/carbonet-frontend/source/scripts/run-contract-typecheck.sh
 git add . && git commit -qm frontend-test-automation
@@ -42,13 +44,56 @@ eval "$(bash "$PLANNER" "$frontend" "$frontend_test_automation" --format env)"
 [[ "$PLAN_INFRASTRUCTURE_REQUIRED" == true ]]
 [[ "$PLAN_TESTS" == *"automation:full-screen-smoke"* ]]
 
+printf 'export const prepare = true;\n' > projects/carbonet-frontend/source/scripts/prepare-full-screen-auth-state.mjs
+printf 'export const logout = true;\n' > projects/carbonet-frontend/source/scripts/logout-full-screen-auth-state.mjs
+git add . && git commit -qm full-screen-auth-helper-automation
+full_screen_auth_helpers="$(git rev-parse HEAD)"
+eval "$(bash "$PLANNER" "$frontend_test_automation" "$full_screen_auth_helpers" --format env)"
+[[ "$PLAN_RUNTIME_REQUIRED" == false ]]
+[[ "$PLAN_FRONTEND_REQUIRED" == false ]]
+[[ "$PLAN_BACKEND_REQUIRED" == false ]]
+[[ "$PLAN_DATABASE_REQUIRED" == false ]]
+[[ "$PLAN_INFRASTRUCTURE_REQUIRED" == true ]]
+[[ "$PLAN_TESTS" == *"automation:full-screen-smoke"* ]]
+[[ ",$PLAN_TESTS," != *",frontend:build,"* ]]
+[[ "$PLAN_REASONS" == *"smoke-automation-only"* ]]
+
+# Consecutive deployment contract: the helper commit advances only the overall
+# applied source. The immediately following runtime commit must still plan a
+# real frontend runtime build from that helper commit without inheriting a
+# false backend/database requirement.
+printf 'export const afterHelperRuntime = true;\n' > projects/carbonet-frontend/source/src/after-helper-runtime.ts
+git add . && git commit -qm runtime-after-full-screen-helper
+runtime_after_full_screen_helper="$(git rev-parse HEAD)"
+eval "$(bash "$PLANNER" "$full_screen_auth_helpers" "$runtime_after_full_screen_helper" --format env)"
+[[ "$PLAN_RUNTIME_REQUIRED" == true ]]
+[[ "$PLAN_FRONTEND_REQUIRED" == true ]]
+[[ "$PLAN_BACKEND_REQUIRED" == false ]]
+[[ "$PLAN_DATABASE_REQUIRED" == false ]]
+[[ "$PLAN_INFRASTRUCTURE_REQUIRED" == false ]]
+[[ "$PLAN_TESTS" == *"frontend:build"* ]]
+
+# Race contract: promoted runtime A may be awaiting marker reconciliation when
+# a helper-only remote B arrives. Re-planning A..B must remain automation-only.
+printf 'export const prepare = "after-runtime";\n' > projects/carbonet-frontend/source/scripts/prepare-full-screen-auth-state.mjs
+git add . && git commit -qm helper-after-promoted-runtime
+helper_after_promoted_runtime="$(git rev-parse HEAD)"
+eval "$(bash "$PLANNER" "$runtime_after_full_screen_helper" "$helper_after_promoted_runtime" --format env)"
+[[ "$PLAN_RUNTIME_REQUIRED" == false ]]
+[[ "$PLAN_FRONTEND_REQUIRED" == false ]]
+[[ "$PLAN_BACKEND_REQUIRED" == false ]]
+[[ "$PLAN_DATABASE_REQUIRED" == false ]]
+[[ "$PLAN_INFRASTRUCTURE_REQUIRED" == true ]]
+[[ ",$PLAN_TESTS," != *",frontend:build,"* ]]
+
 printf '#!/usr/bin/env bash\n' > ops/scripts/resonance-k8s-build-deploy-80-v2.sh
 git add . && git commit -qm build-deploy-engine
 build_deploy_engine="$(git rev-parse HEAD)"
-eval "$(bash "$PLANNER" "$frontend_test_automation" "$build_deploy_engine" --format env)"
+eval "$(bash "$PLANNER" "$helper_after_promoted_runtime" "$build_deploy_engine" --format env)"
 [[ "$PLAN_RUNTIME_REQUIRED" == false ]]
 [[ "$PLAN_INFRASTRUCTURE_REQUIRED" == true ]]
 [[ "$PLAN_TESTS" == *"automation:shell-syntax"* ]]
+[[ "$PLAN_TESTS" == *"runtime:postdeploy-candidate-evidence"* ]]
 
 printf '#!/usr/bin/env bash\n' > ops/tests/runtime-contract-e2e.sh
 git add . && git commit -qm ops-contract-test
@@ -67,6 +112,7 @@ eval "$(bash "$PLANNER" "$ops_contract_test" "$backend" --format env)"
 [[ "$PLAN_RUNTIME_REQUIRED" == true ]]
 [[ "$PLAN_FRONTEND_REQUIRED" == false ]]
 [[ "$PLAN_BACKEND_REQUIRED" == true ]]
+[[ "$PLAN_TESTS" == *"runtime:postdeploy-candidate-evidence"* ]]
 
 printf 'select 1;\n' > apps/carbonet-api/src/main/resources/db/migration/V1__test.sql
 git add . && git commit -qm database
@@ -76,11 +122,20 @@ eval "$(bash "$PLANNER" "$backend" "$database" --format env)"
 [[ "$PLAN_FRONTEND_REQUIRED" == false ]]
 [[ "$PLAN_BACKEND_REQUIRED" == true ]]
 [[ "$PLAN_DATABASE_REQUIRED" == true ]]
+[[ "$PLAN_TESTS" == *"runtime:postdeploy-candidate-evidence"* ]]
+
+printf 'class IdentityPolicy {}\n' > apps/carbonet-api/src/main/java/example/IdentityPolicy.java
+git add . && git commit -qm identity-design
+identity_design="$(git rev-parse HEAD)"
+eval "$(bash "$PLANNER" "$database" "$identity_design" --format env)"
+[[ "$PLAN_RUNTIME_REQUIRED" == true ]]
+[[ "$PLAN_TESTS" == *"runtime:identity-staged-reconcile-required"* ]]
+[[ "$PLAN_REASONS" == *"identity-design-requires-staged-reconcile"* ]]
 
 printf '*.sh text eol=lf\n' > .gitattributes
 git add . && git commit -qm repository-policy
 policy="$(git rev-parse HEAD)"
-eval "$(bash "$PLANNER" "$database" "$policy" --format env)"
+eval "$(bash "$PLANNER" "$identity_design" "$policy" --format env)"
 [[ "$PLAN_RUNTIME_REQUIRED" == false ]]
 [[ "$PLAN_CATALOG_ONLY" == true ]]
 

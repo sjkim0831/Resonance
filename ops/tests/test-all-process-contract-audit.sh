@@ -25,9 +25,9 @@ import sys
 
 source = Path(sys.argv[1]).read_text(encoding="utf-8")
 for required in (
-    'order by p.domain_order,p.development_order,p.process_code,p.step_order',
+    'order by p.domain_order,p.workflow_order,p.process_code,p.step_order,p.step_code',
     '"scope","WORK_TYPE_PROCESS_STEP"',
-    'List.of("domainOrder","developmentOrder","processCode","stepOrder")',
+    'List.of("domainOrder","workflowOrder","processCode","stepOrder","stepCode")',
 ):
     if required not in source:
         raise SystemExit(f"system-test-report canonical order contract missing: {required}")
@@ -47,23 +47,27 @@ if (forbidden.some((pattern) => pattern.test(source))) {
 }
 NODE
 grep -q 'kubectl -n "$NAMESPACE" get secret "$SECRET_NAME"' "$WRAPPER"
-grep -q 'CARBONET_ADMIN_AUDIT_SECRET:-carbonet-screen-smoke' "$WRAPPER"
+grep -q 'CARBONET_ADMIN_AUDIT_SECRET:-carbonet-usage-ledger-system-admin' "$WRAPPER"
+grep -q 'CARBONET_QA_AUTH_LOCK_TIMEOUT_SECONDS:-300' "$WRAPPER"
+grep -q 'CARBONET_ADMIN_AUDIT_CREDENTIAL_FILE' "$WRAPPER"
+! grep -Eq 'CARBONET_ADMIN_AUDIT_(USER|PASSWORD)' "$WRAPPER"
 grep -q 'AUDIT_ENGINE="${RESONANCE_AUDIT_ENGINE:-$SCRIPT_DIR/resonance-all-process-contract-audit.mjs}"' "$WRAPPER"
 grep -q 'READ_ONLY_AUDIT_BUSINESS_PASS_REQUIRES_CURRENT_VERSION_LEDGER_NO_PROMOTION' "$SCRIPT"
 node - "$SCRIPT" <<'NODE'
 const fs = require("fs");
 const source = fs.readFileSync(process.argv[2], "utf8");
-if ((source.match(/method:\s*"POST"/g) || []).length !== 2
-    || !source.includes("/admin/login/actionLogin")
+if (!source.includes("/admin/login/actionLogin")
+    || !source.includes("/signin/actionLogout")
     || !source.includes('const auditPath = `${reportPath}/audit`')
+    || !source.includes('const auditBatchPath = `${reportPath}/audit-batches`')
     || !source.includes('const compactReportPath = `${reportPath}?compact=true`')
     || !source.includes('fetch(`${baseUrl}${compactReportPath}`')) {
-  throw new Error("the contract audit must POST only login and paged immutable-evidence refresh");
+  throw new Error("the contract audit must use canonical login, batch, report and logout endpoints");
 }
 if (/method:\s*"(?:PUT|PATCH|DELETE)"/.test(source) || /process-executions\/start|\/commands/.test(source)) {
   throw new Error("business-mutating endpoint detected in contract audit");
 }
-for (const required of ["runContractAuditPages", "while (true)", "targetOffset", "maxTargets: auditPageSize", "compact: true", "nextTargetOffset", "contractAuditPagination", "errorSamples", "reasonCounts", "samples=${JSON.stringify(samples)}"]) {
+for (const required of ["runContractAuditPages", "completeAuditBatch", "markAuditBatchFailed", "while (true)", "targetOffset", "maxTargets: auditPageSize", "compact: true", "nextTargetOffset", "contractAuditPagination", "targetInventoryFingerprint", "errorSamples", "reasonCounts", "samples=${JSON.stringify(samples)}"]) {
   if (!source.includes(required)) throw new Error(`paged contract audit guard missing: ${required}`);
 }
 for (const required of ["--deployment-preflight", "SYSTEM_TEST_REPORT_DEPLOYMENT_PREFLIGHT", "AUTHENTICATED_COMPACT_REPORT_DEPLOYMENT_PREFLIGHT", "DEPLOYMENT_PREFLIGHT_COMPACT_REPORT_VALIDATION"]) {
@@ -101,7 +105,7 @@ cat > "$TMP/blocked.json" <<'JSON'
   "businessFunctionsExecuted": false,
   "orderContract": {
     "scope": "WORK_TYPE_PROCESS_STEP",
-    "fields": ["domainOrder", "developmentOrder", "processCode", "stepOrder"],
+    "fields": ["domainOrder", "workflowOrder", "processCode", "stepOrder", "stepCode"],
     "direction": "ASC"
   },
   "targetCount": 2,
@@ -330,6 +334,12 @@ let loginRequests = 0;
 let compactGetRequests = 0;
 let evidenceRefreshRequests = 0;
 let compactEvidenceRefreshRequests = 0;
+let batchStartRequests = 0;
+let batchCompleteRequests = 0;
+let batchFailRequests = 0;
+let logoutRequests = 0;
+let routeRequests = 0;
+const auditBatchId = "11111111-1111-4111-8111-111111111111";
 
 const server = http.createServer((request, response) => {
   if (request.method === "POST" && request.url === "/admin/login/actionLogin") {
@@ -340,6 +350,24 @@ const server = http.createServer((request, response) => {
       "set-cookie": "JSESSIONID=contract-audit-fixture; Path=/; HttpOnly",
     });
     response.end(JSON.stringify({ status: "loginSuccess" }));
+    return;
+  }
+  if (request.method === "POST" && request.url === "/signin/actionLogout") {
+    logoutRequests += 1;
+    request.resume();
+    response.writeHead(200, { "content-type": "application/json" });
+    response.end(JSON.stringify({ status: "success" }));
+    return;
+  }
+  if (request.method === "POST" && request.url === "/admin/api/system/actor-process/system-test-report/audit-batches/start") {
+    batchStartRequests += 1;
+    request.resume();
+    response.writeHead(200, { "content-type": "application/json" });
+    response.end(JSON.stringify({ success: true, batch: {
+      auditBatchId, batchStatus: "RUNNING", sourceCommit: "a".repeat(40),
+      runtimeIdentityHash: "b".repeat(64), catalogFingerprint: "c".repeat(64),
+      targetInventoryFingerprint: "d".repeat(64), expectedTargetCount: 2, expectedPageCount: 1,
+    } }));
     return;
   }
   if (request.method === "POST" && request.url === "/admin/api/system/actor-process/system-test-report/audit") {
@@ -366,8 +394,30 @@ const server = http.createServer((request, response) => {
         errorSamples: [],
         runs: [],
         hasMore: false,
+        auditBatchId,
+        auditPageNumber: 0,
+        totalEligibleTargetCount: 2,
       }));
     });
+    return;
+  }
+  if (request.method === "POST" && request.url === `/admin/api/system/actor-process/system-test-report/audit-batches/${auditBatchId}/complete`) {
+    batchCompleteRequests += 1;
+    request.resume();
+    response.writeHead(200, { "content-type": "application/json" });
+    response.end(JSON.stringify({ success: true, batch: {
+      auditBatchId, batchStatus: "COMPLETE", stagedPageCount: 1, stagedTargetCount: 2,
+      sourceCommit: "a".repeat(40), runtimeIdentityHash: "b".repeat(64),
+      catalogFingerprint: "c".repeat(64), targetInventoryFingerprint: "d".repeat(64),
+      resultFingerprint: "e".repeat(64),
+    } }));
+    return;
+  }
+  if (request.method === "POST" && request.url === `/admin/api/system/actor-process/system-test-report/audit-batches/${auditBatchId}/fail`) {
+    batchFailRequests += 1;
+    request.resume();
+    response.writeHead(200, { "content-type": "application/json" });
+    response.end(JSON.stringify({ success: true, batch: { auditBatchId, batchStatus: "FAILED" } }));
     return;
   }
   if (request.method === "GET" && request.url === "/admin/api/system/actor-process/system-test-report?compact=true") {
@@ -376,19 +426,29 @@ const server = http.createServer((request, response) => {
     response.end(fixture);
     return;
   }
+  if (request.method === "GET") {
+    routeRequests += 1;
+    response.writeHead(200, { "content-type": "text/html" });
+    response.end("<!doctype html><title>route fixture</title>");
+    return;
+  }
   response.writeHead(404, { "content-type": "application/json" });
   response.end(JSON.stringify({ error: "not found" }));
 });
 
 function runAudit(baseUrl, deploymentPreflight) {
+  const credentialPath = `${fixturePath}.credentials.json`;
+  fs.writeFileSync(credentialPath, JSON.stringify({ data: {
+    username: Buffer.from("fixture-user").toString("base64"),
+    password: Buffer.from("fixture-password").toString("base64"),
+  } }), { mode: 0o600 });
   return new Promise((resolve, reject) => {
     const child = spawn(process.execPath, [script], {
       env: {
         ...process.env,
         CARBONET_RUNTIME_BASE_URL: baseUrl,
-        CARBONET_ADMIN_AUDIT_USER: "fixture-user",
-        CARBONET_ADMIN_AUDIT_PASSWORD: "fixture-password",
-        SYSTEM_TEST_REPORT_SKIP_HTTP_SMOKE: "1",
+        CARBONET_ADMIN_AUDIT_CREDENTIAL_FILE: credentialPath,
+        SYSTEM_TEST_REPORT_SKIP_HTTP_SMOKE: deploymentPreflight ? "1" : "0",
         SYSTEM_TEST_REPORT_DEPLOYMENT_PREFLIGHT: deploymentPreflight ? "1" : "0",
       },
       stdio: ["ignore", "pipe", "pipe"],
@@ -422,8 +482,8 @@ server.listen(0, "127.0.0.1", async () => {
     if (preflight.contractAuditPagination?.skipped !== true || preflight.contractAuditPagination?.reason !== "DEPLOYMENT_PREFLIGHT_COMPACT_REPORT_VALIDATION") {
       throw new Error("deployment preflight did not report the deliberate refresh skip");
     }
-    if (loginRequests !== 1 || compactGetRequests !== 1 || evidenceRefreshRequests !== 0) {
-      throw new Error(`deployment preflight request mismatch login=${loginRequests} compact=${compactGetRequests} refresh=${evidenceRefreshRequests}`);
+    if (loginRequests !== 1 || logoutRequests !== 1 || compactGetRequests !== 1 || evidenceRefreshRequests !== 0 || batchStartRequests !== 0) {
+      throw new Error(`deployment preflight request mismatch login=${loginRequests} logout=${logoutRequests} compact=${compactGetRequests} refresh=${evidenceRefreshRequests}`);
     }
 
     const hourly = await runAudit(baseUrl, false);
@@ -432,8 +492,9 @@ server.listen(0, "127.0.0.1", async () => {
     if (hourly.contractAuditPagination?.skipped !== false || hourly.contractAuditPagination?.complete !== true) {
       throw new Error("hourly mode did not complete evidence refresh");
     }
-    if (loginRequests !== 2 || compactGetRequests !== 2 || evidenceRefreshRequests !== 1 || compactEvidenceRefreshRequests !== 1) {
-      throw new Error(`hourly request mismatch login=${loginRequests} compact=${compactGetRequests} refresh=${evidenceRefreshRequests} compactRefresh=${compactEvidenceRefreshRequests}`);
+    if (loginRequests !== 2 || logoutRequests !== 2 || compactGetRequests !== 2 || evidenceRefreshRequests !== 1 || compactEvidenceRefreshRequests !== 1
+        || batchStartRequests !== 1 || batchCompleteRequests !== 1 || batchFailRequests !== 0 || routeRequests !== 2) {
+      throw new Error(`hourly request mismatch login=${loginRequests} logout=${logoutRequests} compact=${compactGetRequests} refresh=${evidenceRefreshRequests} start=${batchStartRequests} complete=${batchCompleteRequests} fail=${batchFailRequests} routes=${routeRequests}`);
     }
   } catch (error) {
     console.error(error.message);
@@ -697,7 +758,7 @@ secret_error="$(SYSTEM_TEST_REPORT_FIXTURE= PATH="$TMP/bin:$PATH" bash "$WRAPPER
 secret_status=$?
 set -e
 [[ "$secret_status" -eq 2 ]] || { echo "expected secret read ERROR exit 2, got $secret_status" >&2; exit 1; }
-grep -q 'unable to read admin username secret' <<<"$secret_error"
+grep -q 'unable to read isolated admin credential Secret' <<<"$secret_error"
 if grep -Eiq 'password=.*|userPw|authorization:|accessToken' <<<"$secret_error"; then
   echo 'secret error output exposed credential material' >&2
   exit 1

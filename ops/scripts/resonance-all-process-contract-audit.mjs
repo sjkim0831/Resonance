@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { readFile } from "node:fs/promises";
+import { readFile, stat } from "node:fs/promises";
 import { availableParallelism } from "node:os";
 
 const startedAt = Date.now();
@@ -8,6 +8,7 @@ const baseUrl = String(process.env.CARBONET_RUNTIME_BASE_URL || "http://127.0.0.
 const reportPath = "/admin/api/system/actor-process/system-test-report";
 const compactReportPath = `${reportPath}?compact=true`;
 const auditPath = `${reportPath}/audit`;
+const auditBatchPath = `${reportPath}/audit-batches`;
 const fixturePath = argumentValue("--fixture") || process.env.SYSTEM_TEST_REPORT_FIXTURE || "";
 const skipHttpSmoke = process.argv.includes("--skip-http-smoke") || process.env.SYSTEM_TEST_REPORT_SKIP_HTTP_SMOKE === "1";
 // Deployment already runs the full hourly audit independently.  Its rollout
@@ -25,6 +26,10 @@ const smokeProgressIntervalMs = boundedInteger(process.env.SYSTEM_TEST_REPORT_SM
 const maxRouteSmokes = boundedInteger(process.env.SYSTEM_TEST_REPORT_MAX_ROUTE_SMOKES, 5_000, 1, 100_000);
 const auditPageSize = boundedInteger(process.env.SYSTEM_TEST_REPORT_AUDIT_PAGE_SIZE, 250, 1, 500);
 const maxAuditPages = boundedInteger(process.env.SYSTEM_TEST_REPORT_MAX_AUDIT_PAGES, 10_000, 1, 100_000);
+const credentialFile = text(process.env.CARBONET_ADMIN_AUDIT_CREDENTIAL_FILE);
+let liveSessionCookie = "";
+let liveAuditBatchId = "";
+let liveAuditBatchCompleted = false;
 
 const PASS_RESULTS = new Set(["PASSED"]);
 const NOT_RUN_RESULTS = new Set(["", "NOT_RUN", "NOT-RUN"]);
@@ -38,7 +43,7 @@ const SUMMARY_FIELDS = {
   verifiedContractCount: ["verifiedContractCount"],
   totalContractCount: ["totalContractCount"],
 };
-const CANONICAL_ORDER_FIELDS = ["domainOrder", "developmentOrder", "processCode", "stepOrder"];
+const CANONICAL_ORDER_FIELDS = ["domainOrder", "workflowOrder", "processCode", "stepOrder", "stepCode"];
 
 function argumentValue(name) {
   const index = process.argv.indexOf(name);
@@ -166,11 +171,13 @@ function validate(payload) {
     const stepCode = text(item.stepCode);
     const domainOrder = numeric(item.domainOrder);
     const developmentOrder = numeric(item.developmentOrder);
+    const workflowOrder = numeric(item.workflowOrder ?? item.developmentOrder);
     const stepOrder = numeric(item.stepOrder);
     const issues = [];
     if (!text(item.domainCode)) addIssue(issues, "DOMAIN_CODE_MISSING");
     if (domainOrder == null || domainOrder < 1) addIssue(issues, "DOMAIN_ORDER_INVALID");
     if (developmentOrder == null || developmentOrder < 1) addIssue(issues, "PROCESS_ORDER_INVALID");
+    if (workflowOrder == null || workflowOrder < 1) addIssue(issues, "WORKFLOW_ORDER_INVALID");
     if (!processCode) addIssue(issues, "PROCESS_CODE_MISSING");
     if (!text(item.processName)) addIssue(issues, "PROCESS_NAME_MISSING");
     if (!stepCode) addIssue(issues, "STEP_CODE_MISSING");
@@ -254,14 +261,14 @@ function validate(payload) {
     } else if (text(item.businessEvidenceStatus) !== "NO_CURRENT_VERSION_EVIDENCE") {
       addIssue(issues, "BUSINESS_EVIDENCE_STATUS_INVALID");
     }
-    if (processCode && processOrders.has(processCode) && processOrders.get(processCode).developmentOrder !== developmentOrder) {
+    if (processCode && processOrders.has(processCode) && processOrders.get(processCode).workflowOrder !== workflowOrder) {
       addIssue(issues, "PROCESS_ORDER_INCONSISTENT");
     } else if (processCode && processOrders.has(processCode) && processOrders.get(processCode).domainOrder !== domainOrder) {
       addIssue(issues, "DOMAIN_ORDER_INCONSISTENT");
     } else if (processCode) {
-      processOrders.set(processCode, { domainOrder, developmentOrder });
+      processOrders.set(processCode, { domainOrder, developmentOrder, workflowOrder });
     }
-    const normalized = { sourceIndex, processCode, stepCode, domainOrder, developmentOrder, stepOrder, contractResult, simulationResult, businessResult, issues };
+    const normalized = { sourceIndex, processCode, stepCode, domainOrder, developmentOrder, workflowOrder, stepOrder, contractResult, simulationResult, businessResult, issues };
     itemResults.push(normalized);
     if (!processGroups.has(processCode)) processGroups.set(processCode, []);
     processGroups.get(processCode).push(normalized);
@@ -270,12 +277,12 @@ function validate(payload) {
   const orderViolations = [];
   let previousProcess = null;
   for (const [processCode, order] of processOrders) {
-    const { domainOrder, developmentOrder } = order;
-    const comparable = domainOrder != null && developmentOrder != null;
+    const { domainOrder, developmentOrder, workflowOrder } = order;
+    const comparable = domainOrder != null && workflowOrder != null;
     const outOfOrder = comparable && previousProcess != null && (
       domainOrder < previousProcess.domainOrder
-      || (domainOrder === previousProcess.domainOrder && developmentOrder < previousProcess.developmentOrder)
-      || (domainOrder === previousProcess.domainOrder && developmentOrder === previousProcess.developmentOrder
+      || (domainOrder === previousProcess.domainOrder && workflowOrder < previousProcess.workflowOrder)
+      || (domainOrder === previousProcess.domainOrder && workflowOrder === previousProcess.workflowOrder
           && processCode.localeCompare(previousProcess.processCode) < 0)
     );
     if (outOfOrder) {
@@ -283,9 +290,11 @@ function validate(payload) {
         processCode,
         domainOrder,
         developmentOrder,
+        workflowOrder,
         previousProcessCode: previousProcess.processCode,
         previousDomainOrder: previousProcess.domainOrder,
         previousDevelopmentOrder: previousProcess.developmentOrder,
+        previousWorkflowOrder: previousProcess.workflowOrder,
         type: "PROCESS",
       });
       const first = processGroups.get(processCode)?.[0];
@@ -294,7 +303,7 @@ function validate(payload) {
         issueCounts.set("PROCESS_ORDER_NOT_ASCENDING", (issueCounts.get("PROCESS_ORDER_NOT_ASCENDING") || 0) + 1);
       }
     }
-    if (comparable) previousProcess = { processCode, domainOrder, developmentOrder };
+    if (comparable) previousProcess = { processCode, domainOrder, developmentOrder, workflowOrder };
   }
   for (const [processCode, group] of processGroups) {
     let previous = -Infinity;
@@ -407,17 +416,100 @@ function cookieHeader(headers) {
   return values.map((value) => value.split(";", 1)[0]).filter(Boolean).join("; ");
 }
 
+async function loadAuditCredentials() {
+  if (!credentialFile) throw new Error("isolated audit credential file was not supplied");
+  const metadata = await stat(credentialFile);
+  if (!metadata.isFile() || (metadata.mode & 0o077) !== 0) {
+    throw new Error("isolated audit credential file must be a private regular file");
+  }
+  const secret = JSON.parse(await readFile(credentialFile, "utf8"));
+  const encodedUser = text(secret?.data?.username);
+  const encodedPassword = text(secret?.data?.password);
+  if (!encodedUser || !encodedPassword) throw new Error("isolated audit credential Secret is incomplete");
+  const username = Buffer.from(encodedUser, "base64").toString("utf8");
+  const password = Buffer.from(encodedPassword, "base64").toString("utf8");
+  if (!username || !password || /[\r\n]/.test(username) || /[\r\n]/.test(password)) {
+    throw new Error("isolated audit credential Secret is malformed");
+  }
+  return { username, password };
+}
+
+async function postAuditJson(path, cookie, body, label) {
+  const response = await fetch(`${baseUrl}${path}`, {
+    method: "POST",
+    headers: { accept: "application/json", "content-type": "application/json", cookie },
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(Math.max(smokeTimeoutMs, 60_000)),
+  });
+  const contentType = response.headers.get("content-type") || "";
+  const payload = contentType.toLowerCase().includes("application/json")
+    ? await response.json().catch(() => ({}))
+    : {};
+  if (!response.ok || payload?.success === false) {
+    throw new Error(`${label} failed with HTTP ${response.status}`);
+  }
+  return payload;
+}
+
+async function markAuditBatchFailed(cookie, reason) {
+  if (!liveAuditBatchId || liveAuditBatchCompleted) return;
+  const failureCode = text(reason?.code || reason?.name || "AUDIT_EXECUTION_FAILED")
+    .replace(/[^A-Za-z0-9_.-]/g, "_").slice(0, 120) || "AUDIT_EXECUTION_FAILED";
+  const failureDetail = text(reason?.message || reason || "audit execution failed").slice(0, 500);
+  try {
+    await postAuditJson(`${auditBatchPath}/${encodeURIComponent(liveAuditBatchId)}/fail`, cookie, { failureCode, failureDetail }, "audit batch failure finalization");
+  } catch (failureError) {
+    let recoveryCookie = "";
+    try {
+      recoveryCookie = await loginLive();
+      await postAuditJson(`${auditBatchPath}/${encodeURIComponent(liveAuditBatchId)}/fail`, recoveryCookie, { failureCode, failureDetail }, "audit batch failure recovery finalization");
+    } catch (recoveryError) {
+      process.stderr.write(`[all-process-contract-audit] unable to mark hidden batch FAILED: ${failureError.message}; recovery=${recoveryError.message}\n`);
+    } finally {
+      if (recoveryCookie) await logoutLive(recoveryCookie).catch((error) => {
+        process.stderr.write(`[all-process-contract-audit] recovery logout failed: ${error.message}\n`);
+      });
+    }
+  }
+}
+
+async function logoutLive(cookie) {
+  if (!cookie) return;
+  const response = await fetch(`${baseUrl}/signin/actionLogout`, {
+    method: "POST", headers: { accept: "application/json", cookie },
+    signal: AbortSignal.timeout(smokeTimeoutMs),
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok || payload?.status !== "success") {
+    throw new Error(`audit logout failed with HTTP ${response.status}`);
+  }
+}
+
 async function runContractAuditPages(cookie) {
+  const started = await postAuditJson(`${auditBatchPath}/start`, cookie, { pageSize: auditPageSize }, "audit batch start");
+  const batch = started?.batch || started;
+  liveAuditBatchId = text(batch?.auditBatchId);
+  liveAuditBatchCompleted = false;
+  const expectedBatchTargetCount = numeric(batch?.expectedTargetCount);
+  const expectedBatchPageCount = numeric(batch?.expectedPageCount);
+  if (!/^[0-9a-f-]{36}$/i.test(liveAuditBatchId) || !/^[0-9a-f]{40}$/.test(text(batch?.sourceCommit)) ||
+      !/^[0-9a-f]{64}$/.test(text(batch?.runtimeIdentityHash)) || !/^[0-9a-f]{64}$/.test(text(batch?.catalogFingerprint)) ||
+      !/^[0-9a-f]{64}$/.test(text(batch?.targetInventoryFingerprint)) || expectedBatchTargetCount == null ||
+      expectedBatchTargetCount <= 0 || expectedBatchPageCount == null || expectedBatchPageCount <= 0) {
+    throw new Error("audit batch start returned incomplete provenance");
+  }
   let targetOffset = 0;
   let pageCount = 0;
+  let expectedTargetCount = expectedBatchTargetCount;
   const totals = { targetCount: 0, passedCount: 0, blockedCount: 0, errorCount: 0 };
-  while (true) {
+  try {
+    while (true) {
     pageCount += 1;
     if (pageCount > maxAuditPages) throw new Error(`contract audit exceeded ${maxAuditPages} pages`);
     const response = await fetch(`${baseUrl}${auditPath}`, {
       method: "POST",
       headers: { accept: "application/json", "content-type": "application/json", cookie },
-      body: JSON.stringify({ targetOffset, maxTargets: auditPageSize, compact: true }),
+      body: JSON.stringify({ auditBatchId: liveAuditBatchId, targetOffset, maxTargets: auditPageSize, compact: true }),
       signal: AbortSignal.timeout(Math.max(smokeTimeoutMs, 60_000)),
     });
     const contentType = response.headers.get("content-type") || "";
@@ -428,6 +520,14 @@ async function runContractAuditPages(cookie) {
     if (page?.success === false || page?.businessFunctionsExecuted !== false) {
       throw new Error(`contract audit page ${pageCount} violated the contract-only execution policy`);
     }
+    if (text(page.auditBatchId) !== liveAuditBatchId || numeric(page.auditPageNumber) !== pageCount - 1) {
+      throw new Error(`contract audit page ${pageCount} returned mismatched batch provenance`);
+    }
+    const pageTotal = numeric(page.totalEligibleTargetCount);
+    if (pageTotal == null || pageTotal <= 0 || (expectedTargetCount != null && pageTotal !== expectedTargetCount)) {
+      throw new Error(`contract audit page ${pageCount} changed the exact target total`);
+    }
+    expectedTargetCount = pageTotal;
     const errorCount = numeric(page.errorCount) ?? 0;
     if (text(page.outcome ?? page.result).toUpperCase() === "ERROR" || errorCount > 0) {
       const failures = Array.isArray(page.errorSamples)
@@ -466,31 +566,73 @@ async function runContractAuditPages(cookie) {
     totals.blockedCount += numeric(page.blockedCount) ?? 0;
     totals.errorCount += errorCount;
     const hasMore = bool(page.hasMore);
-    if (!hasMore) return { ...totals, pageCount, complete: true, lastTargetOffset: targetOffset };
+    if (!hasMore) break;
     const nextTargetOffset = numeric(page.nextTargetOffset);
     if (nextTargetOffset == null || nextTargetOffset <= targetOffset) {
       throw new Error(`contract audit page ${pageCount} returned an invalid nextTargetOffset`);
     }
     targetOffset = nextTargetOffset;
+    }
+    if (totals.targetCount !== expectedTargetCount || pageCount !== expectedBatchPageCount) {
+      throw new Error(`contract audit staged ${totals.targetCount} of ${expectedTargetCount} targets`);
+    }
+    return {
+      ...totals, pageCount, complete: false, staged: true, lastTargetOffset: targetOffset,
+      auditBatchId: liveAuditBatchId, sourceCommit: text(batch.sourceCommit),
+      runtimeIdentityHash: text(batch.runtimeIdentityHash),
+      catalogFingerprint: text(batch.catalogFingerprint),
+      targetInventoryFingerprint: text(batch.targetInventoryFingerprint),
+    };
+  } catch (error) {
+    await markAuditBatchFailed(cookie, error);
+    throw error;
   }
 }
 
-async function loadLiveReport() {
-  const username = text(process.env.CARBONET_ADMIN_AUDIT_USER);
-  const password = String(process.env.CARBONET_ADMIN_AUDIT_PASSWORD || "");
-  if (!username || !password) throw new Error("Kubernetes admin audit credentials were not supplied");
+async function completeAuditBatch(cookie, stagedAudit) {
+  if (!liveAuditBatchId || liveAuditBatchCompleted) throw new Error("audit batch completion state is invalid");
+  const finalized = await postAuditJson(`${auditBatchPath}/${encodeURIComponent(liveAuditBatchId)}/complete`, cookie, {}, "audit batch completion");
+  const completedBatch = finalized?.batch || finalized;
+  if (text(completedBatch?.auditBatchId) !== liveAuditBatchId || text(completedBatch?.batchStatus) !== "COMPLETE" ||
+      numeric(completedBatch?.stagedPageCount) !== stagedAudit.pageCount ||
+      numeric(completedBatch?.stagedTargetCount) !== stagedAudit.targetCount ||
+      text(completedBatch?.targetInventoryFingerprint) !== stagedAudit.targetInventoryFingerprint ||
+      !/^[0-9a-f]{64}$/.test(text(completedBatch?.resultFingerprint))) {
+    throw new Error("audit batch completion returned an invalid exact-coverage receipt");
+  }
+  liveAuditBatchCompleted = true;
+  return {
+    ...stagedAudit, complete: true, staged: false,
+    sourceCommit: text(completedBatch.sourceCommit),
+    runtimeIdentityHash: text(completedBatch.runtimeIdentityHash),
+    catalogFingerprint: text(completedBatch.catalogFingerprint),
+    targetInventoryFingerprint: text(completedBatch.targetInventoryFingerprint),
+    resultFingerprint: text(completedBatch.resultFingerprint),
+  };
+}
+
+async function loginLive() {
+  const credentials = await loadAuditCredentials();
   const response = await fetch(`${baseUrl}/admin/login/actionLogin`, {
     method: "POST",
     redirect: "manual",
     headers: { "content-type": "application/json", accept: "application/json" },
-    body: JSON.stringify({ userId: username, userPw: password, userSe: "USR" }),
+    body: JSON.stringify({ userId: credentials.username, userPw: credentials.password, userSe: "USR" }),
     signal: AbortSignal.timeout(smokeTimeoutMs),
   });
   const body = await response.json().catch(() => ({}));
   const cookie = cookieHeader(response.headers);
+  credentials.username = "";
+  credentials.password = "";
   if (!response.ok || body.status !== "loginSuccess" || !cookie) {
     throw new Error(`admin login failed with HTTP ${response.status}`);
   }
+  return cookie;
+}
+
+async function loadLiveReport() {
+  const cookie = await loginLive();
+  liveSessionCookie = cookie;
   const contractAudit = deploymentPreflight
     ? {
         pageCount: 0,
@@ -619,6 +761,12 @@ async function main() {
   }
   const audited = validate(payload);
   const routes = await smokeRoutes(audited.routes, cookie);
+  if (authenticated && !deploymentPreflight) {
+    if (routes.skippedCount > 0 || routes.unreachableCount > 0 || audited.routeCandidateCount > maxRouteSmokes) {
+      throw new Error(`route smoke did not complete successfully: skipped=${routes.skippedCount} unreachable=${routes.unreachableCount} candidates=${audited.routeCandidateCount}`);
+    }
+    contractAudit = await completeAuditBatch(cookie, contractAudit);
+  }
   const business = audited.processSummary.reduce((summary, process) => ({
     passedCount: summary.passedCount + process.businessPassedCount,
     blockedCount: summary.blockedCount + process.businessBlockedCount,
@@ -675,11 +823,24 @@ async function main() {
     evidencePolicy: "READ_ONLY_AUDIT_BUSINESS_PASS_REQUIRES_CURRENT_VERSION_LEDGER_NO_PROMOTION",
     durationMs: Date.now() - startedAt,
   };
+  if (authenticated) {
+    await logoutLive(cookie);
+    liveSessionCookie = "";
+  }
   process.stdout.write(`${JSON.stringify(output)}\n`);
   process.exitCode = blocked ? 3 : 0;
 }
 
-main().catch((error) => {
+try {
+  await main();
+} catch (error) {
+  await markAuditBatchFailed(liveSessionCookie, error);
+  if (liveSessionCookie) {
+    await logoutLive(liveSessionCookie).catch((logoutError) => {
+      process.stderr.write(`[all-process-contract-audit] logout after failure failed: ${logoutError.message}\n`);
+    });
+    liveSessionCookie = "";
+  }
   process.stderr.write(`[all-process-contract-audit] ${error.message}\n`);
   process.stdout.write(`${JSON.stringify({
     status: "ERROR",
@@ -690,4 +851,4 @@ main().catch((error) => {
     durationMs: Date.now() - startedAt,
   })}\n`);
   process.exitCode = 2;
-});
+}

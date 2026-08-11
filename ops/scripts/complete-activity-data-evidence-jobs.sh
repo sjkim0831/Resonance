@@ -9,6 +9,8 @@ CONTAINER="${CARBONET_POSTGRES_CONTAINER:-patroni}"
 CONTROLLER="$ROOT/modules/resonance-common/carbonet-common-core/src/main/java/egovframework/com/feature/home/web/EmissionProjectRegistryController.java"
 SERVICE="$ROOT/modules/resonance-common/carbonet-common-core/src/main/java/egovframework/com/feature/home/service/EmissionProjectRegistryService.java"
 ROUTES="$ROOT/projects/carbonet-frontend/source/src/app/routes/families/emissionMonitoringFamily.ts"
+EVIDENCE_MODE="${CARBONET_POSTDEPLOY_EVIDENCE_MODE:-legacy}"
+SOURCE_COMMIT="${CARBONET_POSTDEPLOY_SOURCE_COMMIT:-$(git -C "$ROOT" rev-parse HEAD)}"
 
 for pattern in activity-requests activities/upload submissions verification/decision approval/decision; do
   grep -Fq "$pattern" "$CONTROLLER" || { echo "[activity-evidence] FAIL missing controller contract: $pattern" >&2; exit 1; }
@@ -37,6 +39,7 @@ begin
   -- older user-route placeholder was already verified. Reconcile this exact
   -- implemented route from the source contracts checked above; otherwise the
   -- later generic design upsert leaves a permanent false-negative blocker.
+  if '$EVIDENCE_MODE'<>'candidate' then
   update framework_professional_screen_contract
      set contract_status='VERIFIED',api_verified=true,database_verified=true,
          authority_verified=true,responsive_verified=true,accessibility_verified=true,
@@ -53,6 +56,7 @@ begin
          updated_by='ACTIVITY_DATA_EVIDENCE_RECONCILIATION',updated_at=current_timestamp
    where process_code='ACTIVITY_DATA' and step_code='ACTIVITY_DATA_02_WORK'
      and audience='ADMIN' and lower(split_part(route_path,'?',1))='/admin/emission/survey-admin-data';
+  end if;
 
   select count(*) into missing_tables from (values
     ('emission_activity_request'),('emission_activity_data'),('emission_activity_evidence'),('emission_activity_quality_run'),
@@ -70,12 +74,15 @@ begin
     raise exception 'activity evidence gate failed tables=% contracts=% routes=%',missing_tables,invalid_contracts,uncovered_routes;
   end if;
 
-  perform framework_sync_professional_contract_screen_graph('ACTIVITY_DATA');
+  if '$EVIDENCE_MODE'<>'candidate' then
+    perform framework_sync_professional_contract_screen_graph('ACTIVITY_DATA');
+  end if;
   if (select count(*) from framework_professional_screen_readiness
       where process_code='ACTIVITY_DATA' and readiness_score=100)<>9 then
     raise exception 'activity evidence gate failed ready screens are not 9/9';
   end if;
 
+  if '$EVIDENCE_MODE'<>'candidate' then
   update framework_development_job set job_status='COMPLETED',approval_status='APPROVED',quality_status='PASSED',
     evidence_ref='verified:activity-data-source+schema+route+common-assets',last_error=null,completed_at=current_timestamp,updated_at=current_timestamp
   where process_code='ACTIVITY_DATA' and job_type in
@@ -88,9 +95,15 @@ begin
     ('AUTO:DESIGN','AUTO:DATABASE','AUTO:API','AUTO:BACKEND','AUTO:API_QUALITY','AUTO:DATABASE_QUALITY',
      'AUTO:FRONTEND_USER','AUTO:FRONTEND_ADMIN','AUTO:DESIGN_PREFLIGHT','AUTO:COMPONENT_COMMON',
      'AUTO:CLASS_PROPERTY_COMMON','AUTO:UI_QUALITY','AUTO:SEARCH');
+  end if;
 end \$\$;
 select count(*) filter(where job_status in ('COMPLETED','VERIFIED'))||'|'||count(*)
 from framework_development_job where process_code='ACTIVITY_DATA' and required;
 "
 result="$(kubectl -n "$NAMESPACE" exec "$leader" -c "$CONTAINER" -- psql -h 127.0.0.1 -U "$USER_NAME" -d "$DATABASE" -AtF'|' -c "$sql")"
+if [[ "$EVIDENCE_MODE" == "candidate" ]]; then
+  jq -cn --arg completedRequired "$result" '{completedRequired:$completedRequired,sourceVerified:true,schemaVerified:true,routesVerified:true,commonAssetsVerified:true}' |
+    bash "$ROOT/ops/scripts/stage-postdeploy-evidence-candidate.sh" \
+      ACTIVITY_DATA_STATIC ACTIVITY_DATA STATIC "$SOURCE_COMMIT"
+fi
 echo "[activity-evidence] PASS completed-required=$result source=verified schema=verified routes=verified common-assets=verified"

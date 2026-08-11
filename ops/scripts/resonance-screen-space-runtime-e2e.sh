@@ -1,8 +1,17 @@
 #!/usr/bin/env bash
-set -euo pipefail
+set -Eeuo pipefail
+umask 077
 
 current_gate="bootstrap"
-trap 'rc=$?; if [[ $rc -ne 0 ]]; then echo "[screen-space-runtime-e2e] FAIL gate=$current_gate rc=$rc" >&2; fi' EXIT
+run_dir="$(mktemp -d)"
+cleanup() {
+  local rc=$?
+  unset password token bridge_token BACKSTAGE_E2E_PASSWORD
+  rm -rf -- "$run_dir"
+  if [[ $rc -ne 0 ]]; then echo "[screen-space-runtime-e2e] FAIL gate=$current_gate rc=$rc" >&2; fi
+  return "$rc"
+}
+trap cleanup EXIT
 
 ROOT="${RESONANCE_ROOT:-/opt/Resonance}"
 NAMESPACE="${NAMESPACE:-resonance-ops}"
@@ -13,25 +22,33 @@ CA_CERT="${RESONANCE_INTERNAL_CA:-/opt/resonance-data/pki/resonance-internal-ca/
 API="$BASE_URL/api/resonance-projects"
 CARBONET_URL="${CARBONET_RUNTIME_BASE_URL:-http://172.16.1.232}"
 
-password="$(
-  kubectl -n "$NAMESPACE" get secret "$SECRET_NAME" \
-    -o jsonpath='{.data.PASSWORD}' | base64 -d
-)"
-token="$(
-  BACKSTAGE_E2E_PASSWORD="$password" \
-  RESONANCE_INTERNAL_CA="$CA_CERT" \
-    bash "$ROOT/ops/scripts/resonance-backstage-oidc-token.sh" "$USERNAME"
-)"
-bridge_token="$(
-  kubectl -n carbonet-prod get secret resonance-ops-bridge \
-    -o jsonpath='{.data.RESONANCE_OPS_TOKEN}' | base64 -d
-)"
+password_file="$run_dir/backstage.password"
+token_file="$run_dir/backstage.token"
+auth_header="$run_dir/backstage.header"
+bridge_token_file="$run_dir/bridge.token"
+bridge_header="$run_dir/bridge.header"
+kubectl -n "$NAMESPACE" get secret "$SECRET_NAME" \
+  -o jsonpath='{.data.PASSWORD}' | base64 -d >"$password_file"
+chmod 0600 "$password_file"
+BACKSTAGE_E2E_PASSWORD_FILE="$password_file" \
+RESONANCE_INTERNAL_CA="$CA_CERT" \
+  bash "$ROOT/ops/scripts/resonance-backstage-oidc-token.sh" "$USERNAME" >"$token_file"
+kubectl -n carbonet-prod get secret resonance-ops-bridge \
+  -o jsonpath='{.data.RESONANCE_OPS_TOKEN}' | base64 -d >"$bridge_token_file"
+[[ -s "$token_file" && -s "$bridge_token_file" ]] || {
+  echo '[screen-space-runtime-e2e] required token is empty' >&2
+  exit 2
+}
+{ printf 'authorization: Bearer '; cat "$token_file"; printf '\n'; } >"$auth_header"
+{ printf 'X-Resonance-Token: '; cat "$bridge_token_file"; printf '\n'; } >"$bridge_header"
+chmod 0600 "$auth_header" "$bridge_header"
+rm -f -- "$password_file" "$token_file" "$bridge_token_file"
 
 current_gate="load-work-pack"
 work_pack="$(
   curl --silent --show-error --fail \
     --cacert "$CA_CERT" \
-    -H "authorization: Bearer $token" \
+    --header @"$auth_header" \
     "$API/screen-space/work-pack/emission"
 )"
 
@@ -76,15 +93,42 @@ payload="$(
     dataContracts: ($stage.inputContract + $stage.outputContract)
   }'
 )"
+payload_file="$run_dir/materialize.json"
+printf '%s' "$payload" >"$payload_file"
+chmod 0600 "$payload_file"
+
+if [[ "${CARBONET_POSTDEPLOY_EVIDENCE_MODE:-}" == candidate \
+   || "${SCREEN_SPACE_VERIFY_ONLY:-0}" == 1 ]]; then
+  current_gate="candidate-read-only-index"
+  index_file="$run_dir/index.json"
+  curl --silent --show-error --fail --cacert "$CA_CERT" \
+    --header @"$auth_header" \
+    "$API/screen-space/specs?projectId=CCUS-PLATFORM" -o "$index_file"
+  jq -e '
+    [.specs[] | select(.status == "VERIFIED") | .routePath] as $routes
+    | ($routes | index("/emission/project/create")) != null
+      and ($routes | index("/generated/screen-space-runtime-e2e")) != null
+  ' "$index_file" >/dev/null
+  current_gate="candidate-read-only-contracts"
+  curl --silent --show-error --fail \
+    "$CARBONET_URL/home/api/process-executions/screen-contract?routePath=%2Femission%2Fproject%2Fcreate" \
+    | jq -e '.enabled == false and .protectedExisting == true and .source == "REGISTERED_IMPLEMENTATION"' >/dev/null
+  curl --silent --show-error --fail \
+    "$CARBONET_URL/home/api/process-executions/screen-contract?routePath=%2Fgenerated%2Fscreen-space-runtime-e2e" \
+    | jq -e '.enabled == true and .source == "SCREEN_SPACE_RUNTIME" and .validationStatus == "VERIFIED"' >/dev/null
+  current_gate="complete"
+  echo '[screen-space-runtime-e2e] PASS mode=candidate verifyOnly=true currentWrites=0 fixtures=2'
+  exit 0
+fi
 
 current_gate="materialize-registered-screen"
 materialized="$(
   curl --silent --show-error --fail \
     --cacert "$CA_CERT" \
-    -H "authorization: Bearer $token" \
+    --header @"$auth_header" \
     -H 'content-type: application/json' \
     -X POST \
-    --data "$payload" \
+    --data-binary @"$payload_file" \
     "$API/screen-space/materialize"
 )"
 coordinate="$(jq -er '.coordinate' <<<"$materialized")"
@@ -101,7 +145,7 @@ jq -e '
 
 current_gate="verify-registered-runtime-publication"
 curl --silent --show-error --fail \
-  -H "X-Resonance-Token: $bridge_token" \
+  --header @"$bridge_header" \
   "$CARBONET_URL/api/internal/screen-space/specs?routePath=%2Femission%2Fproject%2Fcreate" \
   | jq -e --arg coordinate "$coordinate" '
       .success == true
@@ -129,14 +173,17 @@ runtime_payload="$(
     | .routePath = "/generated/screen-space-runtime-e2e"
   ' <<<"$payload"
 )"
+runtime_payload_file="$run_dir/runtime-materialize.json"
+printf '%s' "$runtime_payload" >"$runtime_payload_file"
+chmod 0600 "$runtime_payload_file"
 current_gate="materialize-runtime-screen"
 runtime_materialized="$(
   curl --silent --show-error --fail \
     --cacert "$CA_CERT" \
-    -H "authorization: Bearer $token" \
+    --header @"$auth_header" \
     -H 'content-type: application/json' \
     -X POST \
-    --data "$runtime_payload" \
+    --data-binary @"$runtime_payload_file" \
     "$API/screen-space/materialize"
 )"
 runtime_coordinate="$(jq -er '.coordinate' <<<"$runtime_materialized")"
@@ -172,7 +219,7 @@ curl --silent --show-error --fail \
 current_gate="verify-backstage-screen-index"
 curl --silent --show-error --fail \
   --cacert "$CA_CERT" \
-  -H "authorization: Bearer $token" \
+  --header @"$auth_header" \
   "$API/screen-space/specs?projectId=CCUS-PLATFORM" \
   | jq -e --arg coordinate "$coordinate" '
       .specs

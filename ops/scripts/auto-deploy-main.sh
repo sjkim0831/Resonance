@@ -109,6 +109,7 @@ BRANCH="${CARBONET_DEPLOY_BRANCH:-main}"
 REMOTE="${CARBONET_DEPLOY_REMOTE:-origin}"
 LOCK_FILE="${CARBONET_DEPLOY_LOCK_FILE:-/tmp/carbonet-auto-deploy.lock}"
 DEPLOY_STATE_FILE="${CARBONET_DEPLOY_STATE_FILE:-/opt/resonance-data/deploy/carbonet-main-success.commit}"
+RUNTIME_DEPLOY_STATE_FILE="${CARBONET_RUNTIME_DEPLOY_STATE_FILE:-/opt/resonance-data/deploy/carbonet-runtime-identity-success.commit}"
 DESIRED_REVISION_FILE="${CARBONET_DESIRED_REVISION_FILE:-/opt/resonance-data/deploy/github-webhook/desired-revision}"
 BACKSTAGE_DEPLOY_STATE_FILE="${BACKSTAGE_DEPLOY_STATE_FILE:-/opt/resonance-data/deploy/backstage-runtime-success.commit}"
 RUNTIME_CANDIDATE_CHECKPOINT_FILE="${CARBONET_RUNTIME_CANDIDATE_CHECKPOINT_FILE:-/opt/resonance-data/deploy/carbonet-runtime-candidate.json}"
@@ -119,10 +120,49 @@ POSTGRES_POD="${CARBONET_POSTGRES_POD:-}"
 POSTGRES_CONTAINER="${CARBONET_POSTGRES_CONTAINER:-patroni}"
 POSTGRES_DB="${POSTGRES_DB:-carbonet}"
 POSTGRES_USER="${POSTGRES_ADMIN_USER:-postgres}"
+RUNTIME_LEDGER_QUARANTINE_FILE="${CARBONET_RUNTIME_LEDGER_QUARANTINE_FILE:-$ROOT_DIR/var/run/runtime-ledger-invalidation.quarantine}"
+POSTDEPLOY_MARKER_PENDING_FILE="${CARBONET_POSTDEPLOY_MARKER_PENDING_FILE:-${CARBONET_DEPLOY_STATE_DIR:-/opt/resonance-data/deploy}/postdeploy-marker-pending.state}"
 MIN_BACKUP_BYTES="${CARBONET_MIN_BACKUP_BYTES:-1048576}"
 BACKUP_TIMEOUT_SECONDS="${CARBONET_BACKUP_TIMEOUT_SECONDS:-1200}"
 KUBECONFIG="${CARBONET_KUBECONFIG:-${KUBECONFIG:-/home/sjkim/.kube/config}}"
 export KUBECONFIG
+
+# The applied-source marker drives incremental planning and is advanced for
+# catalog/automation-only commits.  The runtime marker is a separate serving
+# identity and advances only after a DB-authoritative runtime promotion.  All
+# marker writes are same-directory, exact-target renames so a directory or
+# symlink cannot silently consume the prepared file.
+write_commit_marker_exact() {
+  local destination="$1" commit="$2" label="$3"
+  local marker_dir marker_name marker_tmp="" ok=true
+  [[ "$commit" =~ ^[0-9a-f]{40}$ ]] || return 1
+  marker_dir="$(dirname "$destination")"
+  marker_name="$(basename "$destination")"
+  [[ "$marker_name" != . && "$marker_name" != .. ]] || return 1
+  mkdir -p "$marker_dir" || return 1
+  marker_dir="$(realpath "$marker_dir")" || return 1
+  destination="$marker_dir/$marker_name"
+  if [[ -e "$destination" || -L "$destination" ]]; then
+    [[ -f "$destination" && ! -L "$destination" ]] || return 1
+  fi
+  marker_tmp="$(mktemp "$marker_dir/.${marker_name}.${label}.XXXXXX")" || return 1
+  printf '%s\n' "$commit" >"$marker_tmp" || ok=false
+  [[ "$ok" == true ]] && chmod 0644 "$marker_tmp" || ok=false
+  [[ "$ok" == true ]] && mv -fT -- "$marker_tmp" "$destination" || ok=false
+  if [[ "$ok" != true || ! -f "$destination" || -L "$destination" \
+     || "$(tr -d '[:space:]' <"$destination" 2>/dev/null || true)" != "$commit" ]]; then
+    rm -f -- "$marker_tmp"
+    return 1
+  fi
+}
+
+write_applied_deploy_state() {
+  write_commit_marker_exact "$DEPLOY_STATE_FILE" "$1" applied
+}
+
+write_runtime_deploy_state() {
+  write_commit_marker_exact "$RUNTIME_DEPLOY_STATE_FILE" "$1" runtime
+}
 
 # Publish the serving release identity before the filesystem success marker.
 # The helper invalidates the old DB singleton first, verifies Kubernetes
@@ -140,12 +180,171 @@ record_runtime_release_state() {
     bash "$ROOT_DIR/ops/scripts/record-runtime-release-state.sh" "$commit"
 }
 
-invalidate_runtime_release_state() {
+invalidate_runtime_release_state_once() {
   CARBONET_DEPLOY_ROOT="$ROOT_DIR" \
   CARBONET_K8S_NAMESPACE="$NAMESPACE" \
   POSTGRES_DB="$POSTGRES_DB" \
   POSTGRES_ADMIN_USER="$POSTGRES_USER" \
     bash "$ROOT_DIR/ops/scripts/record-runtime-release-state.sh" --invalidate
+}
+
+invalidate_runtime_release_state() {
+  local attempts="${CARBONET_RUNTIME_LEDGER_INVALIDATE_ATTEMPTS:-3}"
+  local attempt ledger_pod ledger_count invalidate_status
+  [[ "$attempts" =~ ^[1-9][0-9]*$ ]] || return 1
+  for ((attempt=1; attempt<=attempts; attempt++)); do
+    invalidate_status=0
+    invalidate_runtime_release_state_once || invalidate_status=$?
+    ledger_pod="$(K8S_NAMESPACE="$NAMESPACE" bash "$ROOT_DIR/ops/scripts/resolve-patroni-primary-pod.sh" 2>/dev/null || true)"
+    if [[ -n "$ledger_pod" ]]; then
+      ledger_count="$(kubectl -n "$NAMESPACE" exec "$ledger_pod" -c "$POSTGRES_CONTAINER" -- \
+        psql -h 127.0.0.1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" -X -qAt -v ON_ERROR_STOP=1 \
+          -c "select count(*) from framework_runtime_release_state where release_key='CARBONET_RUNTIME'" 2>/dev/null || true)"
+      if [[ "$ledger_count" == 0 ]]; then
+        echo "[auto-deploy] runtime ledger invalidation verified attempt=$attempt/$attempts helperStatus=$invalidate_status"
+        return 0
+      fi
+    fi
+    (( attempt == attempts )) || sleep 0.2
+  done
+  echo "[auto-deploy] FAIL runtime ledger remains present or unreadable after attempts=$attempts" >&2
+  return 1
+}
+
+# Promotion is authoritative only when the immutable promotion row is bound to
+# the exact current runtime-ledger identity for the same source commit.  The
+# filesystem marker is deliberately absent from this decision: it is a derived
+# cache which may lag a committed DB transaction after a signal or failed mv.
+postdeploy_authoritative_promotion_status() {
+  local source_commit="$1" leader status
+  [[ "$source_commit" =~ ^[0-9a-f]{40}$ ]] || return 2
+  leader="$(K8S_NAMESPACE="$NAMESPACE" bash "$ROOT_DIR/ops/scripts/resolve-patroni-primary-pod.sh" 2>/dev/null)" \
+    || return 2
+  [[ -n "$leader" ]] || return 2
+  status="$(cat <<'SQL' | kubectl -n "$NAMESPACE" exec -i "$leader" -c "$POSTGRES_CONTAINER" -- \
+    psql -h 127.0.0.1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" -X -qAt -v ON_ERROR_STOP=1 \
+      -v source_commit="$source_commit" 2>/dev/null
+WITH current_runtime AS (
+  SELECT source_commit,health_status,
+         encode(sha256(convert_to(concat_ws('|',
+           source_commit,deployment_namespace,deployment_name,deployment_uid,
+           deployment_generation,observed_generation,desired_replicas,
+           image_ref,image_id,health_status
+         ),'UTF8')),'hex') AS runtime_identity_hash
+  FROM framework_runtime_release_state
+  WHERE release_key='CARBONET_RUNTIME' AND source_commit=:'source_commit'
+), authoritative AS (
+  SELECT 1
+  FROM current_runtime runtime
+  JOIN framework_postdeploy_evidence_promotion promotion
+    ON promotion.source_commit=runtime.source_commit
+   AND promotion.runtime_identity_hash=runtime.runtime_identity_hash
+  WHERE runtime.health_status='UP'
+    AND promotion.process_count=6 AND promotion.unit_count=12
+    AND promotion.promoted_definition_count=2
+    AND promotion.appended_validation_count=3
+    AND promotion.appended_simulation_count=0
+    AND promotion.marker_contract='DB_AUTHORITATIVE_FILESYSTEM_DERIVED'
+)
+SELECT CASE WHEN EXISTS(SELECT 1 FROM authoritative)
+            THEN 'PROMOTED' ELSE 'NOT_PROMOTED' END;
+SQL
+)" || return 2
+  status="$(printf '%s' "$status" | tr -d '[:space:]')"
+  case "$status" in
+    PROMOTED) return 0 ;;
+    NOT_PROMOTED) return 1 ;;
+    *) return 2 ;;
+  esac
+}
+
+write_postdeploy_recovery_state() {
+  local destination="$1" reason="$2" state_dir state_name state_tmp=""
+  local applied_marker="" runtime_marker="" ok=true
+  state_dir="$(dirname "$destination")"
+  state_name="$(basename "$destination")"
+  mkdir -p "$state_dir" || return 1
+  state_tmp="$(mktemp "$state_dir/.${state_name}.XXXXXX")" || return 1
+  applied_marker="$(tr -d '[:space:]' 2>/dev/null <"$DEPLOY_STATE_FILE" || true)"
+  runtime_marker="$(tr -d '[:space:]' 2>/dev/null <"$RUNTIME_DEPLOY_STATE_FILE" || true)"
+  printf 'schemaVersion=1\ntargetCommit=%s\ncandidateId=%s\nreason=%s\nobservedAppliedMarker=%s\nobservedRuntimeMarker=%s\n' \
+    "$target_commit" "$postdeploy_candidate_id" "$reason" "$applied_marker" "$runtime_marker" >"$state_tmp" || ok=false
+  [[ "$ok" == true ]] && chmod 0600 "$state_tmp" || ok=false
+  if [[ -e "$destination" || -L "$destination" ]]; then
+    [[ -f "$destination" && ! -L "$destination" ]] || ok=false
+  fi
+  [[ "$ok" == true ]] && mv -fT -- "$state_tmp" "$destination" || ok=false
+  if [[ "$ok" != true || ! -f "$destination" || -L "$destination" \
+     || "$(stat -c '%a' "$destination" 2>/dev/null)" != 600 \
+     || "$(sed -n '2p' "$destination" 2>/dev/null)" != "targetCommit=$target_commit" \
+     || "$(sed -n '4p' "$destination" 2>/dev/null)" != "reason=$reason" ]]; then
+    rm -f -- "$state_tmp"
+    return 1
+  fi
+}
+
+write_postdeploy_promotion_quarantine() {
+  write_postdeploy_recovery_state "$RUNTIME_LEDGER_QUARANTINE_FILE" "$1"
+}
+
+write_postdeploy_marker_pending() {
+  write_postdeploy_recovery_state "$POSTDEPLOY_MARKER_PENDING_FILE" "${1:-DB_PROMOTED_MARKER_PENDING}"
+}
+
+clear_postdeploy_marker_pending() {
+  local expected_commit="${1:-$target_commit}"
+  [[ -f "$POSTDEPLOY_MARKER_PENDING_FILE" && ! -L "$POSTDEPLOY_MARKER_PENDING_FILE" ]] || return 0
+  grep -Fx "targetCommit=$expected_commit" "$POSTDEPLOY_MARKER_PENDING_FILE" >/dev/null 2>&1 || return 0
+  rm -f -- "$POSTDEPLOY_MARKER_PENDING_FILE"
+}
+
+reconcile_postdeploy_candidate_after_failure() {
+  local authority_status=2 applied_marker="" runtime_marker=""
+  if [[ "$postdeploy_candidate_authority_unknown" == true ]]; then
+    if [[ ! -f "$RUNTIME_LEDGER_QUARANTINE_FILE" || -L "$RUNTIME_LEDGER_QUARANTINE_FILE" \
+       || "$(stat -c '%a' "$RUNTIME_LEDGER_QUARANTINE_FILE" 2>/dev/null)" != 600 ]]; then
+      write_postdeploy_promotion_quarantine 'PROMOTION_DB_CHECK_UNAVAILABLE' \
+        || echo '[auto-deploy] FAIL unable to persist promotion DB-check quarantine' >&2
+    fi
+    return 79
+  fi
+
+  if postdeploy_authoritative_promotion_status "$target_commit"; then authority_status=0; else authority_status=$?; fi
+  case "$authority_status" in
+    0)
+      # COMMIT may precede a signal or either marker rename. Preserve current
+      # evidence/ledger and leave a durable, mode-0600 retry obligation.
+      postdeploy_candidate_promoted=true
+      applied_marker="$(tr -d '[:space:]' 2>/dev/null <"$DEPLOY_STATE_FILE" || true)"
+      runtime_marker="$(tr -d '[:space:]' 2>/dev/null <"$RUNTIME_DEPLOY_STATE_FILE" || true)"
+      if [[ "$applied_marker" == "$target_commit" && "$runtime_marker" == "$target_commit" ]]; then
+        clear_postdeploy_marker_pending || true
+      elif ! write_postdeploy_marker_pending 'DB_PROMOTED_MARKER_PENDING'; then
+        write_postdeploy_promotion_quarantine 'MARKER_PENDING_STATE_WRITE_FAILED' || true
+        return 79
+      fi
+      echo '[auto-deploy] DB-authoritative promotion confirmed during cleanup; ledger preserved' >&2
+      return 0
+      ;;
+    1)
+      # Only a successful DB check proving no current promotion may clear the
+      # runtime ledger. Marker equality is never promotion authority.
+      if ! invalidate_runtime_release_state; then
+        write_postdeploy_promotion_quarantine 'LEDGER_INVALIDATION_UNVERIFIED' \
+          || echo '[auto-deploy] FAIL unable to persist runtime-ledger quarantine evidence' >&2
+        echo '[auto-deploy] FAIL candidate ledger invalidation unverified; deployment quarantined' >&2
+        return 79
+      fi
+      return 0
+      ;;
+    *)
+      postdeploy_candidate_authority_unknown=true
+      write_postdeploy_promotion_quarantine 'PROMOTION_DB_CHECK_UNAVAILABLE' \
+        || echo '[auto-deploy] FAIL unable to persist promotion DB-check quarantine' >&2
+      echo '[auto-deploy] FAIL promotion DB check unavailable; marker ignored and ledger preserved under quarantine' >&2
+      return 79
+      ;;
+  esac
 }
 
 record_deploy_performance() {
@@ -160,8 +359,14 @@ record_deploy_performance() {
 mkdir -p \
   "$(dirname "$LOCK_FILE")" \
   "$(dirname "$DEPLOY_STATE_FILE")" \
+  "$(dirname "$RUNTIME_DEPLOY_STATE_FILE")" \
   "$(dirname "$BACKSTAGE_DEPLOY_STATE_FILE")" \
-  "$(dirname "$RUNTIME_CANDIDATE_CHECKPOINT_FILE")"
+  "$(dirname "$RUNTIME_CANDIDATE_CHECKPOINT_FILE")" \
+  "$(dirname "$RUNTIME_LEDGER_QUARANTINE_FILE")"
+if [[ -s "$RUNTIME_LEDGER_QUARANTINE_FILE" ]]; then
+  echo "[auto-deploy] BLOCKED unresolved runtime-ledger invalidation quarantine: $RUNTIME_LEDGER_QUARANTINE_FILE" >&2
+  exit 79
+fi
 exec 9>"$LOCK_FILE"
 flock -n 9 || { echo "[auto-deploy] another deployment is running"; exit 0; }
 
@@ -239,6 +444,15 @@ deployed_commit="$(cat "$DEPLOY_STATE_FILE" 2>/dev/null || true)"
 if ! git cat-file -e "${deployed_commit}^{commit}" 2>/dev/null; then
   deployed_commit="$current_commit"
 fi
+runtime_deployed_commit="$(tr -d '[:space:]' 2>/dev/null <"$RUNTIME_DEPLOY_STATE_FILE" || true)"
+runtime_marker_bootstrap_allowed=false
+if [[ ! -e "$RUNTIME_DEPLOY_STATE_FILE" && ! -L "$RUNTIME_DEPLOY_STATE_FILE" ]]; then
+  runtime_deployed_commit=""
+  runtime_marker_bootstrap_allowed=true
+elif [[ ! -f "$RUNTIME_DEPLOY_STATE_FILE" || -L "$RUNTIME_DEPLOY_STATE_FILE" \
+     || ! "$runtime_deployed_commit" =~ ^[0-9a-f]{40}$ ]]; then
+  runtime_deployed_commit="__INVALID_RUNTIME_MARKER__"
+fi
 desired_commit="$(tr -d '[:space:]' <"$DESIRED_REVISION_FILE" 2>/dev/null || true)"
 if [[ "$desired_commit" =~ ^[0-9a-f]{40}$ \
    && "$desired_commit" != "$deployed_commit" ]] &&
@@ -254,18 +468,51 @@ else
   target_commit="$(git rev-parse "$REMOTE/$BRANCH")"
 fi
 record_deploy_phase "remote_change_detection"
+no_change_candidate=false
+no_change_recovery_hint=false
 if [[ "$deployed_commit" == "$target_commit" ]]; then
-  no_change_elapsed_ms=$(( $(monotonic_milliseconds) - DEPLOY_STARTED_EPOCH_MILLISECONDS ))
-  echo "[auto-deploy] already deployed: $deployed_commit (${no_change_elapsed_ms}ms)"
-  if [[ -s "$RUNTIME_CANDIDATE_CHECKPOINT_FILE" \
-     && -f "$ROOT_DIR/ops/scripts/runtime-candidate-checkpoint.sh" ]]; then
-    CARBONET_RUNTIME_CANDIDATE_CHECKPOINT_FILE="$RUNTIME_CANDIDATE_CHECKPOINT_FILE" \
-    CARBONET_CHECKPOINT_TARGET_COMMIT="$target_commit" \
-      bash "$ROOT_DIR/ops/scripts/runtime-candidate-checkpoint.sh" clear-success ||
-      echo "[auto-deploy] WARN stale runtime checkpoint was retained for operator review" >&2
+  no_change_candidate=true
+  early_runtime_marker=""
+  if [[ -f "$RUNTIME_DEPLOY_STATE_FILE" && ! -L "$RUNTIME_DEPLOY_STATE_FILE" ]]; then
+    early_runtime_marker="$(tr -d '[:space:]' <"$RUNTIME_DEPLOY_STATE_FILE" 2>/dev/null || true)"
   fi
-  rm -f -- "$DEPLOY_PHASE_FILE" "${CARBONET_DEPLOY_SNAPSHOT_PATH:-}"
-  exit 0
+  early_persistent_gate_active="${FULL_SCREEN_GATE_STATE_DIR:-$persistent_build_worktree/var/run/full-screen-deploy-gate}/active.env"
+  if [[ -e "$POSTDEPLOY_MARKER_PENDING_FILE" || -L "$POSTDEPLOY_MARKER_PENDING_FILE" \
+     || -s "$early_persistent_gate_active" ]]; then
+    no_change_recovery_hint=true
+  fi
+  early_deployment_json=""
+  early_kubectl_status=0
+  early_deployment_json="$(timeout 4s kubectl --request-timeout=3s -n "$NAMESPACE" \
+    get "deployment/$DEPLOYMENT" -o json 2>/dev/null)" || early_kubectl_status=$?
+  early_runtime_annotation="$(jq -r '.metadata.annotations["resonance.ai/target-commit"] // empty' \
+    <<<"$early_deployment_json" 2>/dev/null || true)"
+  if [[ "$early_kubectl_status" == 0 && "$early_runtime_annotation" =~ ^[0-9a-f]{40}$ \
+     && ( ! "$early_runtime_marker" =~ ^[0-9a-f]{40}$ \
+          || "$early_runtime_annotation" != "$early_runtime_marker" ) ]]; then
+    no_change_recovery_hint=true
+  fi
+  if [[ "$no_change_recovery_hint" != true \
+     && "$early_kubectl_status" == 0 \
+     && "$early_runtime_marker" =~ ^[0-9a-f]{40}$ \
+     && "$early_runtime_annotation" == "$early_runtime_marker" ]]; then
+    no_change_elapsed_ms=$(( $(monotonic_milliseconds) - DEPLOY_STARTED_EPOCH_MILLISECONDS ))
+    echo "[auto-deploy] already deployed with coherent runtime identity: $deployed_commit (${no_change_elapsed_ms}ms)"
+    if [[ -s "$RUNTIME_CANDIDATE_CHECKPOINT_FILE" \
+       && -f "$ROOT_DIR/ops/scripts/runtime-candidate-checkpoint.sh" ]]; then
+      CARBONET_RUNTIME_CANDIDATE_CHECKPOINT_FILE="$RUNTIME_CANDIDATE_CHECKPOINT_FILE" \
+      CARBONET_CHECKPOINT_TARGET_COMMIT="$target_commit" \
+        bash "$ROOT_DIR/ops/scripts/runtime-candidate-checkpoint.sh" clear-success ||
+        echo "[auto-deploy] WARN stale runtime checkpoint was retained for operator review" >&2
+    fi
+    rm -f -- "$DEPLOY_PHASE_FILE" "${CARBONET_DEPLOY_SNAPSHOT_PATH:-}"
+    exit 0
+  fi
+  if [[ "$no_change_recovery_hint" != true ]]; then
+    echo '[auto-deploy] RETRY no-change runtime identity read is temporarily unavailable; durable state unchanged' >&2
+    exit 75
+  fi
+  echo "[auto-deploy] no-change fast path deferred for DB-authoritative runtime recovery"
 fi
 
 # Publish the in-flight state before any mutable platform work. Authenticated
@@ -287,7 +534,6 @@ PLAN_BACKSTAGE_REQUIRED="${PLAN_BACKSTAGE_REQUIRED:-false}"
 record_deploy_phase "incremental_plan"
 echo "[auto-deploy] incremental plan: runtime=$PLAN_RUNTIME_REQUIRED frontend=$PLAN_FRONTEND_REQUIRED backend=$PLAN_BACKEND_REQUIRED database=$PLAN_DATABASE_REQUIRED backstage=$PLAN_BACKSTAGE_REQUIRED"
 echo "[auto-deploy] selected checks: $PLAN_TESTS ($PLAN_REASONS)"
-
 platform_preflight_cache="${CARBONET_PLATFORM_PREFLIGHT_CACHE:-/opt/resonance-data/deploy/platform-preflight.cache}"
 platform_preflight_cache_reused=false
 printf -v platform_preflight_now '%(%s)T' -1
@@ -468,12 +714,17 @@ schema_restore_database=""
 runtime_asset_sync_pid=""
 runtime_asset_sync_log=""
 runtime_screen_gate_pid=""
+runtime_screen_gate_pgid=""
 runtime_screen_gate_log=""
+runtime_screen_gate_cache_dir=""
 catalog_identity_sync_pid=""
 catalog_identity_sync_log=""
 backstage_visual_e2e_pid=""
 backstage_visual_e2e_log=""
 backstage_e2e_effective_routes=""
+postdeploy_candidate_initialized=false
+postdeploy_candidate_promoted=false
+postdeploy_candidate_authority_unknown=false
 cleanup_remote_backup() {
   [[ "$backup_cleanup_required" == "true" ]] || return 0
   # A terminated `kubectl exec` can leave pg_dump alive inside the pod. End
@@ -485,15 +736,49 @@ cleanup_remote_backup() {
     -c "select pg_terminate_backend(pid) from pg_stat_activity where application_name=:'app_name' and pid<>pg_backend_pid()" \
     >/dev/null 2>&1 || true
 }
+cleanup_runtime_screen_gate_cache() {
+  [[ -n "$runtime_screen_gate_cache_dir" ]] || return 0
+  case "$runtime_screen_gate_cache_dir" in
+    "$ROOT_DIR"/var/run/runtime-screen-gate/*)
+      rm -rf -- "$runtime_screen_gate_cache_dir"
+      ;;
+    *)
+      echo "[auto-deploy] refusing unsafe runtime screen cache cleanup path=$runtime_screen_gate_cache_dir" >&2
+      return 1
+      ;;
+  esac
+  runtime_screen_gate_cache_dir=""
+}
+terminate_runtime_screen_gate_group() {
+  local pgid="${runtime_screen_gate_pgid:-}" pid="${runtime_screen_gate_pid:-}" attempt
+  if [[ "$pgid" =~ ^[1-9][0-9]*$ ]]; then
+    kill -TERM -- "-$pgid" 2>/dev/null || true
+    for attempt in $(seq 1 50); do
+      kill -0 -- "-$pgid" 2>/dev/null || break
+      sleep 0.1
+    done
+    if kill -0 -- "-$pgid" 2>/dev/null; then
+      kill -KILL -- "-$pgid" 2>/dev/null || true
+    fi
+  elif [[ "$pid" =~ ^[1-9][0-9]*$ ]] && kill -0 "$pid" 2>/dev/null; then
+    # A missing/invalid PGID is fail-closed, but retain a bounded fallback for
+    # the wrapper so cleanup cannot block deployment shutdown indefinitely.
+    kill -TERM "$pid" 2>/dev/null || true
+  fi
+  if [[ "$pid" =~ ^[1-9][0-9]*$ ]]; then wait "$pid" 2>/dev/null || true; fi
+  runtime_screen_gate_pid=""
+  runtime_screen_gate_pgid=""
+  cleanup_runtime_screen_gate_cache || true
+}
 cleanup_deploy() {
+  local original_status=$? recovery_status=0
+  trap - EXIT INT TERM
+  set +e
   if [[ -n "$runtime_asset_sync_pid" ]] && kill -0 "$runtime_asset_sync_pid" 2>/dev/null; then
     kill "$runtime_asset_sync_pid" 2>/dev/null || true
     wait "$runtime_asset_sync_pid" 2>/dev/null || true
   fi
-  if [[ -n "$runtime_screen_gate_pid" ]] && kill -0 "$runtime_screen_gate_pid" 2>/dev/null; then
-    kill "$runtime_screen_gate_pid" 2>/dev/null || true
-    wait "$runtime_screen_gate_pid" 2>/dev/null || true
-  fi
+  terminate_runtime_screen_gate_group
   if [[ -n "$catalog_identity_sync_pid" ]] && kill -0 "$catalog_identity_sync_pid" 2>/dev/null; then
     kill "$catalog_identity_sync_pid" 2>/dev/null || true
     wait "$catalog_identity_sync_pid" 2>/dev/null || true
@@ -522,9 +807,25 @@ cleanup_deploy() {
   if [[ -n "${CARBONET_DEPLOY_SNAPSHOT_PATH:-}" ]]; then
     rm -f -- "$CARBONET_DEPLOY_SNAPSHOT_PATH"
   fi
+  if [[ "$postdeploy_candidate_initialized" == true && "$postdeploy_candidate_promoted" != true ]]; then
+    reconcile_postdeploy_candidate_after_failure || recovery_status=$?
+    (( recovery_status == 0 )) || original_status="$recovery_status"
+  fi
   rm -f -- "${DEPLOY_PHASE_FILE:-}"
+  exit "$original_status"
 }
 trap cleanup_deploy EXIT INT TERM
+
+# Prepare an attempt-unique identity now, but enable candidate writes only in a
+# path that actually changes the served runtime identity. Catalog/backstage and
+# automation-only paths keep validating the already deployed runtime.
+postdeploy_candidate_id="postdeploy:${target_commit:0:12}:$(date -u +%Y%m%dT%H%M%S%N):$$:${RANDOM}${RANDOM}"
+[[ "$postdeploy_candidate_id" =~ ^[A-Za-z0-9._:-]{12,160}$ ]] || {
+  echo '[auto-deploy] generated postdeploy candidate id is invalid' >&2
+  exit 18
+}
+unset CARBONET_POSTDEPLOY_EVIDENCE_MODE CARBONET_POSTDEPLOY_CANDIDATE_ID CARBONET_POSTDEPLOY_SOURCE_COMMIT
+echo "[auto-deploy] postdeploy candidate identity prepared id=$postdeploy_candidate_id sourceCommit=$target_commit"
 
 run_runtime_candidate_checkpoint() {
   local action="$1"
@@ -554,11 +855,15 @@ run_runtime_candidate_checkpoint() {
 }
 
 run_screen_contract_runtime_save_gate_if_required() {
-  [[ ",${PLAN_TESTS:-}," == *",runtime-contract:screen-save,"* ]] || return 0
+  [[ "${CARBONET_POSTDEPLOY_EVIDENCE_MODE:-}" == candidate \
+     || "${CARBONET_SCREEN_CONTRACT_PREVIEW_ONLY:-}" == 1 \
+     || ",${PLAN_TESTS:-}," == *",runtime-contract:screen-save,"* ]] || return 0
   echo "[auto-deploy] screen contract runtime save gate started"
-  CARBONET_DEPLOY_ROOT="$ROOT_DIR" \
-  CARBONET_RUNTIME_BASE_URL="${CARBONET_RUNTIME_BASE_URL:-http://127.0.0.1}" \
-  CARBONET_SCREEN_CONTRACT_RENDER_PROBE="${CARBONET_SCREEN_CONTRACT_RENDER_PROBE:-1}" \
+  run_serialized_carbonet_auth_lifecycle screen-contract-runtime-save \
+    env CARBONET_DEPLOY_ROOT="$ROOT_DIR" \
+    CARBONET_RUNTIME_BASE_URL="${CARBONET_RUNTIME_BASE_URL:-http://127.0.0.1}" \
+    CARBONET_SCREEN_CONTRACT_RENDER_PROBE="${CARBONET_SCREEN_CONTRACT_RENDER_PROBE:-1}" \
+    CARBONET_SCREEN_CONTRACT_PREVIEW_ONLY="${CARBONET_SCREEN_CONTRACT_PREVIEW_ONLY:-0}" \
     bash ops/scripts/validate-screen-contract-runtime-save.sh
   echo "[auto-deploy] screen contract runtime save gate passed"
 }
@@ -979,6 +1284,13 @@ run_serialized_carbonet_actor_process_e2e_job() {
   )
 }
 
+# All verifiers that currently resolve to the shared single-session Carbonet
+# principal join the same lifecycle lock. The actor/process name remains as a
+# compatibility entrypoint for its existing callers and contract tests.
+run_serialized_carbonet_auth_lifecycle() {
+  run_serialized_carbonet_actor_process_e2e_job "$@"
+}
+
 run_actor_process_role_e2e_if_required() {
   if [[ -n "${backstage_e2e_effective_routes:-}" ]] &&
     [[ ",${backstage_e2e_effective_routes}," != *",/actor-process-"* ]] &&
@@ -1049,15 +1361,16 @@ sync_keycloak_actor_assignments_if_required() {
     echo "[auto-deploy] identity reconciliation skipped: no identity contract change"
     return 0
   fi
-  # Keycloak realm provisioning is intentionally not repeated in the hot
-  # application deployment path. It can take several minutes because it
-  # reconciles every identity. The periodic identity sync below applies the
-  # already-provisioned attributes to Carbonet without another realm rebuild.
-  bash ops/scripts/resonance-keycloak-e2e-scope-sync.sh
-  RESONANCE_ROOT="$ROOT_DIR" \
-    bash ops/scripts/resonance-keycloak-carbonet-identity-sync-install.sh
-  bash ops/scripts/resonance-keycloak-carbonet-identity-sync.sh
+  [[ ",${PLAN_TESTS:-}," != *",runtime:identity-staged-reconcile-required,"* ]] || {
+    echo '[auto-deploy] BLOCKED identity reconciliation before any current-state write' >&2
+    return 78
+  }
+  # Deployment validation never reconciles mutable Keycloak/Carbonet identity
+  # state. Credential/harness-only changes prove that the already-provisioned
+  # mapping is exact; a real identity-design change is blocked by the planner
+  # above until a staged reconcile+rollback contract exists.
   bash ops/scripts/validate-keycloak-carbonet-identity-sync.sh
+  echo '[auto-deploy] identity reconciliation verify-only PASS currentWrites=0'
 }
 
 run_backstage_screen_space_e2e_if_required() {
@@ -1066,6 +1379,7 @@ run_backstage_screen_space_e2e_if_required() {
     return 0
   fi
   RESONANCE_ROOT="$ROOT_DIR" \
+  SCREEN_SPACE_VERIFY_ONLY=1 \
     bash ops/scripts/resonance-screen-space-runtime-e2e.sh
 }
 
@@ -1140,6 +1454,47 @@ deploy_path_changed() {
     done
   done
   return 1
+}
+
+sync_auto_deploy_failure_runtime_if_required() {
+  local authority_helper_install_tmp
+  local -a failure_runtime_contract_files=(
+    ops/scripts/auto-deploy-main.sh
+    ops/scripts/carbonet-auto-deploy-failure-handler.sh
+    ops/scripts/check-postdeploy-authoritative-promotion.sh
+    ops/scripts/carbonet-deploy-notify.sh
+    ops/scripts/test-auto-deploy-failure-handler.sh
+    ops/scripts/record-deploy-performance.sh
+    ops/systemd/carbonet-auto-deploy.service
+    ops/systemd/carbonet-auto-deploy-failure-handler.service
+  )
+  if ! deploy_path_changed "${failure_runtime_contract_files[@]}" \
+     && git diff --quiet "$deployed_commit" "$target_commit" -- \
+          "${failure_runtime_contract_files[@]}"; then
+    return 0
+  fi
+  bash ops/scripts/test-auto-deploy-failure-handler.sh
+  sudo -n install -d -m 0755 -o root -g root \
+    /opt/resonance-data/control-plane/bin
+  sudo -n install -m 0750 -o root -g root \
+    ops/scripts/carbonet-auto-deploy-failure-handler.sh \
+    /opt/resonance-data/control-plane/bin/carbonet-auto-deploy-failure-handler.sh
+  authority_helper_install_tmp="/opt/resonance-data/control-plane/bin/.check-postdeploy-authoritative-promotion.sh.$$"
+  sudo -n install -m 0750 -o root -g root \
+    ops/scripts/check-postdeploy-authoritative-promotion.sh \
+    "$authority_helper_install_tmp"
+  sudo -n mv -fT -- "$authority_helper_install_tmp" \
+    /opt/resonance-data/control-plane/bin/check-postdeploy-authoritative-promotion.sh
+  sudo -n install -m 0750 -o root -g root \
+    ops/scripts/carbonet-deploy-notify.sh \
+    /opt/resonance-data/control-plane/bin/carbonet-deploy-notify.sh
+  sudo -n install -m 0644 ops/systemd/carbonet-auto-deploy.service \
+    /etc/systemd/system/carbonet-auto-deploy.service
+  sudo -n install -m 0644 \
+    ops/systemd/carbonet-auto-deploy-failure-handler.service \
+    /etc/systemd/system/carbonet-auto-deploy-failure-handler.service
+  sudo -n systemctl daemon-reload
+  echo "[auto-deploy] failure classification and one-shot recovery synchronized"
 }
 
 sync_postgres_backup_cronjobs_if_required() {
@@ -1548,7 +1903,8 @@ run_operational_usage_ledger_static_contract_if_required() {
 run_operational_usage_ledger_live_e2e_if_required() {
   local expected_commit="${1:-$target_commit}"
   local timeout_seconds="${CARBONET_USAGE_LEDGER_E2E_TIMEOUT_SECONDS:-60}"
-  [[ ",${PLAN_TESTS:-}," == *",runtime:operational-usage-ledger-e2e,"* ]] || return 0
+  [[ "${CARBONET_POSTDEPLOY_EVIDENCE_MODE:-}" == candidate \
+     || ",${PLAN_TESTS:-}," == *",runtime:operational-usage-ledger-e2e,"* ]] || return 0
   [[ "$timeout_seconds" =~ ^[1-9][0-9]*$ ]] || {
     echo "[auto-deploy] invalid operational usage ledger E2E timeout" >&2
     invalidate_runtime_release_state
@@ -1565,34 +1921,232 @@ run_operational_usage_ledger_live_e2e_if_required() {
 }
 
 verify_operational_usage_ledger_current_runtime_identity() {
-  local expected_commit="$1"
-  local marker_commit annotation_commit ledger_commit deployment_json
-  local marker_matches=false annotation_matches=false ledger_matches=false
+  local expected_commit="${1:-}"
+  local marker_recovery_mode="${2:-strict}"
+  local marker_commit annotation_commit ledger_commit deployment_json ledger_json
+  local marker_matches=false annotation_matches=false ledger_matches=false image_matches=false
+  local image_ref ledger_image_ref ledger_image_id selector pods_json pod_image_ids
 
-  [[ "$expected_commit" =~ ^[0-9a-f]{40}$ ]] || {
-    echo "[auto-deploy] STATIC_ONLY_BLOCKED_RUNTIME_IDENTITY_MISMATCH expected commit is invalid" >&2
-    return 1
-  }
-  marker_commit="$(tr -d '[:space:]' <"$DEPLOY_STATE_FILE" 2>/dev/null || true)"
+  if [[ -f "$RUNTIME_DEPLOY_STATE_FILE" && ! -L "$RUNTIME_DEPLOY_STATE_FILE" ]]; then
+    marker_commit="$(tr -d '[:space:]' <"$RUNTIME_DEPLOY_STATE_FILE" 2>/dev/null || true)"
+  else
+    marker_commit=""
+  fi
   deployment_json="$(kubectl -n "$NAMESPACE" get "deployment/$DEPLOYMENT" -o json 2>/dev/null || true)"
   annotation_commit="$(jq -r '.metadata.annotations["resonance.ai/target-commit"] // empty' <<<"$deployment_json" 2>/dev/null || true)"
-  ledger_commit="$(
-    printf '%s\n' "select source_commit from framework_runtime_release_state where release_key='CARBONET_RUNTIME' and health_status='UP';" |
+  ledger_json="$(
+    printf '%s\n' "select jsonb_build_object('sourceCommit',source_commit,'imageRef',image_ref,'imageId',image_id,'healthStatus',health_status)::text from framework_runtime_release_state where release_key='CARBONET_RUNTIME' and health_status='UP';" |
       kubectl -n "$NAMESPACE" exec -i "$POSTGRES_POD" -c "$POSTGRES_CONTAINER" -- \
         psql -h 127.0.0.1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" -X -q -At -v ON_ERROR_STOP=1 \
         2>/dev/null || true
   )"
+  ledger_commit="$(jq -r '.sourceCommit // empty' <<<"$ledger_json" 2>/dev/null || true)"
+  ledger_image_ref="$(jq -r '.imageRef // empty' <<<"$ledger_json" 2>/dev/null || true)"
+  ledger_image_id="$(jq -r '.imageId // empty' <<<"$ledger_json" 2>/dev/null || true)"
+  image_ref="$(jq -r --arg container "${CARBONET_K8S_CONTAINER:-carbonet-runtime}" '.spec.template.spec.containers[]|select(.name==$container)|.image' <<<"$deployment_json" 2>/dev/null || true)"
+  selector="$(jq -r '.spec.selector.matchLabels//{}|to_entries|map("\(.key)=\(.value)")|join(",")' <<<"$deployment_json" 2>/dev/null || true)"
+  pods_json="$(kubectl -n "$NAMESPACE" get pods -l "$selector" -o json 2>/dev/null || true)"
+  pod_image_ids="$(jq -c --arg container "${CARBONET_K8S_CONTAINER:-carbonet-runtime}" '[.items[]|select(any(.status.conditions[]?;.type=="Ready" and .status=="True"))|.status.containerStatuses[]?|select(.name==$container and .ready==true)|.imageID]|unique' <<<"$pods_json" 2>/dev/null || true)"
   marker_commit="$(printf '%s' "$marker_commit" | tr -d '[:space:]')"
   annotation_commit="$(printf '%s' "$annotation_commit" | tr -d '[:space:]')"
   ledger_commit="$(printf '%s' "$ledger_commit" | tr -d '[:space:]')"
+  if [[ "$image_ref" == "$ledger_image_ref" && "$ledger_image_id" =~ sha256:[0-9a-f]{64}$ \
+     && "$(jq -r 'length' <<<"$pod_image_ids" 2>/dev/null || true)" == 1 \
+     && "$(jq -r '.[0] // empty' <<<"$pod_image_ids" 2>/dev/null || true)" == "$ledger_image_id" ]]; then
+    image_matches=true
+  fi
+  # One-time legacy bootstrap is permitted only when the dedicated runtime
+  # marker is absent and the live K8s annotation, DB ledger and immutable pod
+  # image already agree. The overall applied marker is intentionally ignored.
+  [[ -n "$expected_commit" ]] || expected_commit="$marker_commit"
+  if [[ "$marker_recovery_mode" == proof-only ]]; then
+    if [[ "$expected_commit" =~ ^[0-9a-f]{40}$ \
+       && "$annotation_commit" == "$expected_commit" \
+       && "$ledger_commit" == "$expected_commit" \
+       && "$image_matches" == true ]]; then
+      echo "[auto-deploy] current runtime authority proof PASS annotation=ledger=immutable-image commit=$expected_commit"
+      return 0
+    fi
+    echo '[auto-deploy] STATIC_ONLY_BLOCKED_RUNTIME_IDENTITY_MISMATCH proof-only runtime authority is incomplete' >&2
+    return 1
+  fi
+  if [[ "$runtime_marker_bootstrap_allowed" == true \
+     && ! -e "$RUNTIME_DEPLOY_STATE_FILE" && ! -L "$RUNTIME_DEPLOY_STATE_FILE" ]]; then
+    if [[ "$annotation_commit" =~ ^[0-9a-f]{40}$ \
+       && "$ledger_commit" == "$annotation_commit" && "$image_matches" == true ]] \
+       && write_runtime_deploy_state "$annotation_commit"; then
+      marker_commit="$annotation_commit"
+      expected_commit="$annotation_commit"
+      runtime_deployed_commit="$annotation_commit"
+      runtime_marker_bootstrap_allowed=false
+      echo "[auto-deploy] runtime identity marker bootstrapped from DB+K8s commit=$annotation_commit"
+    else
+      echo '[auto-deploy] STATIC_ONLY_BLOCKED_RUNTIME_IDENTITY_MISMATCH runtime marker bootstrap proof is incomplete' >&2
+      return 1
+    fi
+  fi
+  [[ -n "$expected_commit" ]] || expected_commit="$marker_commit"
+  [[ "$expected_commit" =~ ^[0-9a-f]{40}$ ]] || {
+    echo "[auto-deploy] STATIC_ONLY_BLOCKED_RUNTIME_IDENTITY_MISMATCH expected runtime commit is invalid" >&2
+    return 1
+  }
+  if [[ "$marker_recovery_mode" == reconcile && "$marker_commit" != "$expected_commit" ]]; then
+    if [[ "$annotation_commit" == "$expected_commit" && "$ledger_commit" == "$expected_commit" \
+       && "$image_matches" == true ]] && write_runtime_deploy_state "$expected_commit"; then
+      marker_commit="$expected_commit"
+      runtime_deployed_commit="$expected_commit"
+    else
+      echo '[auto-deploy] STATIC_ONLY_BLOCKED_RUNTIME_IDENTITY_MISMATCH authoritative marker reconciliation failed' >&2
+      return 1
+    fi
+  fi
   [[ "$marker_commit" == "$expected_commit" ]] && marker_matches=true
   [[ "$annotation_commit" == "$expected_commit" ]] && annotation_matches=true
   [[ "$ledger_commit" == "$expected_commit" ]] && ledger_matches=true
-  if [[ "$marker_matches" != "true" || "$annotation_matches" != "true" || "$ledger_matches" != "true" ]]; then
-    echo "[auto-deploy] STATIC_ONLY_BLOCKED_RUNTIME_IDENTITY_MISMATCH markerMatch=$marker_matches annotationMatch=$annotation_matches ledgerMatch=$ledger_matches" >&2
+  if [[ "$marker_matches" != "true" || "$annotation_matches" != "true" || "$ledger_matches" != "true" || "$image_matches" != true ]]; then
+    echo "[auto-deploy] STATIC_ONLY_BLOCKED_RUNTIME_IDENTITY_MISMATCH markerMatch=$marker_matches annotationMatch=$annotation_matches ledgerMatch=$ledger_matches imageMatch=$image_matches" >&2
     return 1
   fi
-  echo "[auto-deploy] current runtime identity PASS marker=annotation=ledger"
+  echo "[auto-deploy] current runtime identity PASS marker=annotation=ledger=immutable-image"
+}
+
+# A DB COMMIT can outlive the promoter process or its marker rename. Recover
+# that exact release before the ordinary runtime preflight, otherwise a stale
+# derived runtime marker would deadlock the idempotent ALREADY_PROMOTED retry.
+discover_postdeploy_current_runtime_source() {
+  local deployment_json annotation_commit leader ledger_commit
+  deployment_json="$(kubectl -n "$NAMESPACE" get "deployment/$DEPLOYMENT" -o json 2>/dev/null)" || return 2
+  annotation_commit="$(jq -r '.metadata.annotations["resonance.ai/target-commit"] // empty' <<<"$deployment_json" 2>/dev/null || true)"
+  leader="${POSTGRES_POD:-}"
+  if [[ -z "$leader" ]]; then
+    leader="$(K8S_NAMESPACE="$NAMESPACE" bash "$ROOT_DIR/ops/scripts/resolve-patroni-primary-pod.sh" 2>/dev/null)" || return 2
+  fi
+  [[ -n "$leader" ]] || return 2
+  ledger_commit="$(printf '%s\n' '/* POSTDEPLOY_RECOVERY_SOURCE */ select source_commit from framework_runtime_release_state where release_key='"'"'CARBONET_RUNTIME'"'"' and health_status='"'"'UP'"'"';' | \
+    kubectl -n "$NAMESPACE" exec -i "$leader" -c "$POSTGRES_CONTAINER" -- \
+      psql -h 127.0.0.1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" -X -qAt -v ON_ERROR_STOP=1 \
+      2>/dev/null)" || return 2
+  annotation_commit="$(printf '%s' "$annotation_commit" | tr -d '[:space:]')"
+  ledger_commit="$(printf '%s' "$ledger_commit" | tr -d '[:space:]')"
+  [[ "$annotation_commit" =~ ^[0-9a-f]{40}$ && "$ledger_commit" == "$annotation_commit" ]] || return 2
+  printf '%s\n' "$ledger_commit"
+}
+
+recover_authoritative_postdeploy_marker_pending() {
+  local pending_target="" pending_candidate="" pending_reason="" authority_status=2
+  local pending_present=false live_target="" applied_marker="" reconciled_applied=""
+  local gate_active="${FULL_SCREEN_GATE_STATE_DIR:-$ROOT_DIR/var/run/full-screen-deploy-gate}/active.env"
+  if [[ -e "$POSTDEPLOY_MARKER_PENDING_FILE" || -L "$POSTDEPLOY_MARKER_PENDING_FILE" ]]; then
+    pending_present=true
+    if [[ ! -f "$POSTDEPLOY_MARKER_PENDING_FILE" || -L "$POSTDEPLOY_MARKER_PENDING_FILE" \
+       || "$(stat -c '%a' "$POSTDEPLOY_MARKER_PENDING_FILE" 2>/dev/null)" != 600 ]]; then
+      write_postdeploy_promotion_quarantine 'MARKER_PENDING_CONTRACT_INVALID' || true
+      return 79
+    fi
+    pending_target="$(sed -n 's/^targetCommit=//p' "$POSTDEPLOY_MARKER_PENDING_FILE")"
+    pending_candidate="$(sed -n 's/^candidateId=//p' "$POSTDEPLOY_MARKER_PENDING_FILE")"
+    pending_reason="$(sed -n 's/^reason=//p' "$POSTDEPLOY_MARKER_PENDING_FILE")"
+    if [[ "$(sed -n '1p' "$POSTDEPLOY_MARKER_PENDING_FILE")" != schemaVersion=1 \
+       || ! "$pending_target" =~ ^[0-9a-f]{40}$ \
+       || ! "$pending_candidate" =~ ^[A-Za-z0-9._:-]{12,160}$ \
+       || "$pending_reason" != DB_PROMOTED_* ]]; then
+      write_postdeploy_promotion_quarantine 'MARKER_PENDING_CONTRACT_INVALID' || true
+      return 79
+    fi
+  fi
+
+  # Pending state and an armed rollback snapshot are hints only.  The serving
+  # source is derived afresh from the live K8s annotation and current DB runtime
+  # ledger so COMMIT -> SIGKILL is recoverable even when neither hint exists and
+  # even when a newer remote target arrived meanwhile.
+  live_target="$(discover_postdeploy_current_runtime_source)" || {
+    if [[ "$pending_present" == true ]]; then
+      write_postdeploy_promotion_quarantine 'ORPHAN_PROMOTION_SOURCE_UNAVAILABLE' || true
+      return 79
+    fi
+    return 1
+  }
+  if [[ "$pending_present" == true && "$pending_target" != "$live_target" ]]; then
+    write_postdeploy_promotion_quarantine 'MARKER_PENDING_LIVE_SOURCE_MISMATCH' || true
+    return 79
+  fi
+  pending_target="$live_target"
+  if [[ "$pending_present" != true ]]; then
+    pending_candidate="orphan:${pending_target:0:12}:crash-recovery"
+    pending_reason='DB_PROMOTED_ORPHAN_COMMIT'
+  fi
+  if ! git -C "$ROOT_DIR" cat-file -e "${pending_target}^{commit}" 2>/dev/null \
+     || ! git -C "$ROOT_DIR" merge-base --is-ancestor "$pending_target" "$target_commit"; then
+    write_postdeploy_promotion_quarantine 'PROMOTED_SOURCE_NOT_TARGET_ANCESTOR' || true
+    return 79
+  fi
+  if postdeploy_authoritative_promotion_status "$pending_target"; then authority_status=0; else authority_status=$?; fi
+  if (( authority_status != 0 )); then
+    [[ "$pending_present" == true ]] || return 1
+    if (( authority_status == 1 )); then
+      write_postdeploy_promotion_quarantine 'MARKER_PENDING_DB_NOT_PROMOTED' || true
+    else
+      write_postdeploy_promotion_quarantine 'PROMOTION_DB_CHECK_UNAVAILABLE' || true
+    fi
+    return 79
+  fi
+  # Prove the complete live identity before disarming anything.  Once DB
+  # authority is confirmed, disarm the rollback snapshot before either derived
+  # marker write; a crash at every later cut point must preserve promoted A.
+  if ! verify_operational_usage_ledger_current_runtime_identity "$pending_target" proof-only; then
+    write_postdeploy_promotion_quarantine 'MARKER_PENDING_RUNTIME_PROOF_FAILED' || true
+    return 79
+  fi
+  if [[ -s "$gate_active" ]]; then
+    FULL_SCREEN_GATE_DEFER_ACCEPT=true bash ops/scripts/resonance-full-screen-deploy-gate.sh finalize-success \
+      || { write_postdeploy_promotion_quarantine 'MARKER_PENDING_SNAPSHOT_DISARM_FAILED' || true; return 79; }
+  fi
+  if ! verify_operational_usage_ledger_current_runtime_identity "$pending_target" reconcile; then
+    write_postdeploy_promotion_quarantine 'MARKER_PENDING_RUNTIME_RECONCILE_FAILED' || true
+    return 79
+  fi
+
+  # The applied marker may legitimately be a helper-only descendant of the
+  # serving runtime commit.  Advance an ancestor, preserve a descendant, and
+  # quarantine divergence.  Missing is bootstrapped from the DB-authoritative
+  # live commit; an existing malformed marker is never inferred through.
+  if [[ ! -e "$DEPLOY_STATE_FILE" && ! -L "$DEPLOY_STATE_FILE" ]]; then
+    write_applied_deploy_state "$pending_target" || {
+      write_postdeploy_promotion_quarantine 'MARKER_PENDING_APPLIED_RECONCILE_FAILED' || true
+      return 79
+    }
+    reconciled_applied="$pending_target"
+  elif [[ -f "$DEPLOY_STATE_FILE" && ! -L "$DEPLOY_STATE_FILE" ]]; then
+    applied_marker="$(tr -d '[:space:]' <"$DEPLOY_STATE_FILE" 2>/dev/null || true)"
+    if [[ ! "$applied_marker" =~ ^[0-9a-f]{40}$ ]] \
+       || ! git -C "$ROOT_DIR" cat-file -e "${applied_marker}^{commit}" 2>/dev/null; then
+      write_postdeploy_promotion_quarantine 'APPLIED_MARKER_CONTRACT_INVALID' || true
+      return 79
+    elif [[ "$applied_marker" == "$pending_target" ]]; then
+      reconciled_applied="$applied_marker"
+    elif git -C "$ROOT_DIR" merge-base --is-ancestor "$applied_marker" "$pending_target"; then
+      write_applied_deploy_state "$pending_target" || {
+        write_postdeploy_promotion_quarantine 'MARKER_PENDING_APPLIED_RECONCILE_FAILED' || true
+        return 79
+      }
+      reconciled_applied="$pending_target"
+    elif git -C "$ROOT_DIR" merge-base --is-ancestor "$pending_target" "$applied_marker" \
+       && git -C "$ROOT_DIR" merge-base --is-ancestor "$applied_marker" "$target_commit"; then
+      reconciled_applied="$applied_marker"
+    else
+      write_postdeploy_promotion_quarantine 'APPLIED_MARKER_DIVERGED_FROM_PROMOTED_RUNTIME' || true
+      return 79
+    fi
+  else
+    write_postdeploy_promotion_quarantine 'APPLIED_MARKER_CONTRACT_INVALID' || true
+    return 79
+  fi
+  runtime_deployed_commit="$pending_target"
+  deployed_commit="$reconciled_applied"
+  postdeploy_recovered_commit="$reconciled_applied"
+  [[ "$pending_present" != true ]] || clear_postdeploy_marker_pending "$pending_target"
+  echo "[auto-deploy] DB-authoritative marker recovery PASS runtime=$pending_target applied=$reconciled_applied reason=$pending_reason snapshot=disarmed"
+  return 0
 }
 
 run_operational_usage_ledger_current_runtime_e2e_if_required() {
@@ -1602,15 +2156,222 @@ run_operational_usage_ledger_current_runtime_e2e_if_required() {
   run_operational_usage_ledger_live_e2e_if_required "$expected_commit"
 }
 
+run_postdeploy_candidate_static_contract_if_required() {
+  [[ ",${PLAN_TESTS:-}," == *",runtime:postdeploy-candidate-evidence,"* ]] || return 0
+  bash ops/tests/test-postdeploy-candidate-evidence-contract.sh "$ROOT_DIR"
+  echo "[auto-deploy] postdeploy candidate static contract PASS"
+}
+
+enable_postdeploy_candidate_mode() {
+  [[ "$postdeploy_candidate_initialized" != true ]] || return 0
+  export CARBONET_POSTDEPLOY_EVIDENCE_MODE=candidate
+  export CARBONET_POSTDEPLOY_CANDIDATE_ID="$postdeploy_candidate_id"
+  export CARBONET_POSTDEPLOY_SOURCE_COMMIT="$target_commit"
+  postdeploy_candidate_initialized=true
+  echo "[auto-deploy] postdeploy candidate enabled id=$postdeploy_candidate_id sourceCommit=$target_commit"
+}
+
+run_postdeploy_candidate_validation_groups() {
+  local asset_sync_precompleted="${1:-false}"
+  [[ "$postdeploy_candidate_initialized" == true \
+     && "${CARBONET_POSTDEPLOY_EVIDENCE_MODE:-}" == candidate ]] \
+    || { echo '[auto-deploy] candidate validation requested outside a runtime release path' >&2; return 1; }
+  if [[ ",${PLAN_TESTS:-}," == *",runtime:identity-staged-reconcile-required,"* ]]; then
+    echo '[auto-deploy] BLOCKED identity design changed without a staged reconcile and rollback contract' >&2
+    return 78
+  fi
+  invalidate_runtime_release_state
+  UNIFIED_ASSET_SYNC_PRECOMPLETED="$asset_sync_precompleted" \
+    bash ops/scripts/run-post-deploy-validation-groups.sh "$ROOT_DIR" "$target_commit" "$deployed_commit"
+}
+
+verify_postdeploy_candidate_staged() {
+  local staged
+  staged="$({
+    cat <<'SQL'
+WITH expected(unit_code,process_code,evidence_kind) AS (VALUES
+  ('ACTIVITY_DATA_RUNTIME','ACTIVITY_DATA','RUNTIME'),
+  ('ACTIVITY_DATA_STATIC','ACTIVITY_DATA','STATIC'),
+  ('ACTOR_ACCOUNT_CUSTOMER_JOURNEY','CUSTOMER_WORK_COORDINATION','RUNTIME'),
+  ('CUSTOMER_WORK_COORDINATION_RUNTIME','CUSTOMER_WORK_COORDINATION','RUNTIME'),
+  ('EMISSION_CALCULATION_RUNTIME','EMISSION_CALCULATION','RUNTIME'),
+  ('EMISSION_CALCULATION_STATIC','EMISSION_CALCULATION','STATIC'),
+  ('GOVERNANCE_CHANGE_RUNTIME','GOVERNANCE_CHANGE','RUNTIME'),
+  ('OPERATIONAL_USAGE_LEDGER_GATE','__RELEASE__','RELEASE_GATE'),
+  ('ORGANIZATIONAL_BOUNDARY_RUNTIME','ORGANIZATIONAL_BOUNDARY','RUNTIME'),
+  ('REPORT_CERTIFICATION_RUNTIME','REPORT_CERTIFICATION','RUNTIME'),
+  ('REPORT_CERTIFICATION_STATIC','REPORT_CERTIFICATION','STATIC'),
+  ('SCREEN_CONTRACT_RUNTIME_SAVE_PREVIEW','__RELEASE__','RELEASE_GATE')
+), actual AS (
+  SELECT unit_code,process_code,evidence_kind,source_commit,evidence_status,evidence_json,evidence_hash
+  FROM framework_postdeploy_evidence_candidate WHERE candidate_id=:'candidate_id'
+), matching AS (
+  SELECT a.unit_code FROM actual a JOIN expected e USING(unit_code,process_code,evidence_kind)
+)
+SELECT jsonb_build_object(
+  'unitCount',(SELECT count(*) FROM actual),
+  'tupleCount',(SELECT count(*) FROM matching),
+  'processCount',(SELECT count(DISTINCT process_code) FROM actual WHERE process_code<>'__RELEASE__'),
+  'bound',coalesce((SELECT bool_and(source_commit=:'source_commit' AND evidence_status='CANDIDATE_VERIFIED'
+    AND evidence_hash ~ '^[0-9a-f]{64}$' AND evidence_json->>'status'='PASS'
+    AND evidence_json->>'sourceCommit'=:'source_commit') FROM actual),false)
+)::text;
+SQL
+  } | kubectl -n "$NAMESPACE" exec -i "$POSTGRES_POD" -c "$POSTGRES_CONTAINER" -- \
+      psql -h 127.0.0.1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" -X -qAt -v ON_ERROR_STOP=1 \
+        -v candidate_id="$postdeploy_candidate_id" -v source_commit="$target_commit")"
+  jq -e '.unitCount==12 and .tupleCount==12 and .processCount==6 and .bound==true' <<<"$staged" >/dev/null \
+    || { echo "[auto-deploy] candidate staged precheck failed candidate=$postdeploy_candidate_id" >&2; return 1; }
+  echo "[auto-deploy] candidate staged precheck PASS units=12/12 processes=6 candidate=$postdeploy_candidate_id"
+}
+
+finalize_postdeploy_candidate_release() {
+  local promoter_status=0 authority_status=2 applied_marker="" runtime_marker=""
+  record_runtime_release_state "$target_commit"
+  run_operational_usage_ledger_live_e2e_if_required "$target_commit"
+  verify_postdeploy_candidate_staged
+  if CARBONET_DEPLOY_ROOT="$ROOT_DIR" \
+     CARBONET_K8S_NAMESPACE="$NAMESPACE" \
+     CARBONET_K8S_DEPLOYMENT="$DEPLOYMENT" \
+     CARBONET_POSTGRES_CONTAINER="$POSTGRES_CONTAINER" \
+     POSTGRES_DB="$POSTGRES_DB" POSTGRES_ADMIN_USER="$POSTGRES_USER" \
+       bash ops/scripts/promote-postdeploy-candidate-evidence.sh \
+         "$ROOT_DIR" "$postdeploy_candidate_id" "$target_commit" "$RUNTIME_DEPLOY_STATE_FILE"; then
+    promoter_status=0
+  else
+    promoter_status=$?
+  fi
+
+  if postdeploy_authoritative_promotion_status "$target_commit"; then authority_status=0; else authority_status=$?; fi
+  case "$authority_status" in
+    0)
+      postdeploy_candidate_promoted=true
+      # DB promotion is the immutable acceptance point. Disarm the rollback
+      # snapshot immediately so a later derived-marker fault cannot restore an
+      # already promoted runtime and split it from current evidence.
+      if [[ -s "${FULL_SCREEN_GATE_STATE_DIR:-$ROOT_DIR/var/run/full-screen-deploy-gate}/active.env" ]]; then
+        FULL_SCREEN_GATE_DEFER_ACCEPT=true bash ops/scripts/resonance-full-screen-deploy-gate.sh finalize-success \
+          || {
+            write_postdeploy_promotion_quarantine 'PROMOTED_SNAPSHOT_DISARM_FAILED' || true
+            echo '[auto-deploy] FAIL promoted runtime snapshot could not be disarmed' >&2
+            return 79
+          }
+      fi
+      runtime_marker="$(tr -d '[:space:]' 2>/dev/null <"$RUNTIME_DEPLOY_STATE_FILE" || true)"
+      if [[ "$runtime_marker" != "$target_commit" ]]; then
+        # The promoter's mv can fail after COMMIT. Retry the derived marker
+        # with the shared exact-target writer in the same process first.
+        if write_runtime_deploy_state "$target_commit"; then
+          runtime_marker="$target_commit"
+          echo "[auto-deploy] reconciled runtime marker after committed promoter fault status=$promoter_status"
+        else
+          if ! write_postdeploy_marker_pending 'DB_PROMOTED_RUNTIME_MARKER_PENDING'; then
+            write_postdeploy_promotion_quarantine 'MARKER_PENDING_STATE_WRITE_FAILED' || true
+            echo '[auto-deploy] FAIL DB promotion committed but marker-pending state could not be persisted' >&2
+            return 79
+          fi
+          echo "[auto-deploy] MARKER_PENDING DB promotion committed; next preflight will reconcile runtime marker promoterStatus=$promoter_status" >&2
+          return 75
+        fi
+      fi
+      if ! write_applied_deploy_state "$target_commit"; then
+        write_postdeploy_marker_pending 'DB_PROMOTED_APPLIED_MARKER_PENDING' \
+          || write_postdeploy_promotion_quarantine 'MARKER_PENDING_STATE_WRITE_FAILED' || true
+        echo '[auto-deploy] MARKER_PENDING runtime promotion is current; retry will reconcile applied marker' >&2
+        return 75
+      fi
+      applied_marker="$(tr -d '[:space:]' 2>/dev/null <"$DEPLOY_STATE_FILE" || true)"
+      [[ "$applied_marker" == "$target_commit" ]] || {
+        write_postdeploy_marker_pending 'DB_PROMOTED_APPLIED_MARKER_PENDING' || true
+        return 75
+      }
+      runtime_deployed_commit="$target_commit"
+      clear_postdeploy_marker_pending || true
+      ;;
+    1)
+      postdeploy_candidate_promoted=false
+      if (( promoter_status != 0 )); then return "$promoter_status"; fi
+      echo '[auto-deploy] FAIL promoter returned success without an authoritative DB promotion' >&2
+      return 1
+      ;;
+    *)
+      postdeploy_candidate_authority_unknown=true
+      write_postdeploy_promotion_quarantine 'PROMOTION_DB_CHECK_UNAVAILABLE' \
+        || echo '[auto-deploy] FAIL unable to persist promotion DB-check quarantine' >&2
+      echo '[auto-deploy] FAIL promotion DB check unavailable; marker ignored and release quarantined' >&2
+      return 79
+      ;;
+  esac
+  if [[ -s "${FULL_SCREEN_GATE_STATE_DIR:-$ROOT_DIR/var/run/full-screen-deploy-gate}/active.env" ]]; then
+    FULL_SCREEN_GATE_DEFER_ACCEPT=true bash ops/scripts/resonance-full-screen-deploy-gate.sh finalize-success \
+      || echo '[auto-deploy] WARN promoted release retained its rollback snapshot for later cleanup' >&2
+  fi
+}
+
+# Recovery executes immediately after the required functions and DB leader are
+# available, before catalog branching, pg_dump, checkpoint work or builds.
+postdeploy_pending_recovery_status=1
+postdeploy_recovered_commit=""
+if recover_authoritative_postdeploy_marker_pending; then
+  postdeploy_pending_recovery_status=0
+else
+  postdeploy_pending_recovery_status=$?
+fi
+case "$postdeploy_pending_recovery_status" in
+  0)
+    record_deploy_phase "postdeploy_marker_reconcile"
+    if [[ "$postdeploy_recovered_commit" == "$target_commit" ]]; then
+      if [[ -s "$RUNTIME_CANDIDATE_CHECKPOINT_FILE" \
+         && -f "$ROOT_DIR/ops/scripts/runtime-candidate-checkpoint.sh" ]]; then
+        CARBONET_RUNTIME_CANDIDATE_CHECKPOINT_FILE="$RUNTIME_CANDIDATE_CHECKPOINT_FILE" \
+        CARBONET_CHECKPOINT_TARGET_COMMIT="$target_commit" \
+          bash "$ROOT_DIR/ops/scripts/runtime-candidate-checkpoint.sh" clear-success || {
+            write_postdeploy_promotion_quarantine 'RECOVERED_CHECKPOINT_DISARM_FAILED' || true
+            exit 79
+          }
+      fi
+      record_deploy_performance recovery || echo '[auto-deploy] WARN recovery performance telemetry failed' >&2
+      rm -f -- "$DEPLOY_PHASE_FILE" "${CARBONET_DEPLOY_SNAPSHOT_PATH:-}"
+      echo "[auto-deploy] recovered already promoted runtime without rebuild: $target_commit"
+      exit 0
+    fi
+    # Remote B may arrive after promoted A committed but before its derived
+    # markers. Reconcile A, then re-plan A..B so a helper-only B remains build0.
+    eval "$(bash "$PLAN_SCRIPT" "$postdeploy_recovered_commit" "$target_commit" --format env)"
+    PLAN_BACKSTAGE_REQUIRED="${PLAN_BACKSTAGE_REQUIRED:-false}"
+    record_deploy_phase "incremental_replan_after_marker_reconcile"
+    echo "[auto-deploy] recovered promoted ancestor=$postdeploy_recovered_commit; re-planned target=$target_commit runtime=$PLAN_RUNTIME_REQUIRED frontend=$PLAN_FRONTEND_REQUIRED backend=$PLAN_BACKEND_REQUIRED database=$PLAN_DATABASE_REQUIRED"
+    ;;
+  1)
+    if [[ "$no_change_candidate" == true ]]; then
+      write_postdeploy_promotion_quarantine 'NO_CHANGE_RUNTIME_AUTHORITY_UNPROVEN' || true
+      echo '[auto-deploy] BLOCKED no-change runtime identity could not be proven or recovered' >&2
+      exit 79
+    fi
+    ;;
+  *) exit "$postdeploy_pending_recovery_status" ;;
+esac
+
+# Identity-design changes are evaluated only after a previously committed live
+# release has been recovered and A..B re-planned.  This prevents a newer remote
+# B from trapping promoted A behind a pre-recovery exit while retaining the
+# mutation-before-state-write block for the actual plan being executed.
+if [[ ",${PLAN_TESTS:-}," == *",runtime:identity-staged-reconcile-required,"* ]]; then
+  echo '[auto-deploy] BLOCKED before mutation: identity design changed without staged reconcile and rollback' >&2
+  exit 78
+fi
+
 # Documentation, design metadata, catalog and automation-only changes do not
 # alter the running application. Fast-forward and refresh the searchable source
 # catalog without an unnecessary DB dump, JVM build, image build or rollout.
 if [[ "$PLAN_RUNTIME_REQUIRED" != "true" ]]; then
   git merge --ff-only "$target_commit"
+  run_postdeploy_candidate_static_contract_if_required
   run_operational_usage_ledger_static_contract_if_required
   mapfile -t deploy_changed_paths < <(
     git diff --name-only --diff-filter=ACMRD "$deployed_commit" "$target_commit"
   )
+  sync_auto_deploy_failure_runtime_if_required
   control_plane_drift_marker="$ROOT_DIR/var/run/control-plane-drift-last"
   printf -v control_plane_drift_now '%(%s)T' -1
   control_plane_drift_last=0
@@ -1664,6 +2425,7 @@ if [[ "$PLAN_RUNTIME_REQUIRED" != "true" ]]; then
       ops/scripts/postgres-storage-guard.sh \
       ops/scripts/test-postgres-storage-guard-install.sh \
       ops/scripts/carbonet-auto-deploy-failure-handler.sh \
+      ops/scripts/check-postdeploy-authoritative-promotion.sh \
       ops/scripts/carbonet-deploy-notify.sh \
       ops/scripts/test-auto-deploy-failure-handler.sh \
       ops/scripts/patroni-auto-heal.sh \
@@ -1714,30 +2476,6 @@ if [[ "$PLAN_RUNTIME_REQUIRED" != "true" ]]; then
       run_parallel_contract_tests "${catalog_contract_tests[@]}"
     else
       echo "[auto-deploy] catalog contract tests skipped: no mapped contract impact"
-    fi
-    if deploy_path_changed \
-        ops/scripts/carbonet-auto-deploy-failure-handler.sh \
-        ops/scripts/carbonet-deploy-notify.sh \
-        ops/scripts/test-auto-deploy-failure-handler.sh \
-        ops/scripts/record-deploy-performance.sh \
-        ops/systemd/carbonet-auto-deploy.service \
-        ops/systemd/carbonet-auto-deploy-failure-handler.service; then
-      bash ops/scripts/test-auto-deploy-failure-handler.sh
-      sudo -n install -d -m 0755 -o root -g root \
-        /opt/resonance-data/control-plane/bin
-      sudo -n install -m 0750 -o root -g root \
-        ops/scripts/carbonet-auto-deploy-failure-handler.sh \
-        /opt/resonance-data/control-plane/bin/carbonet-auto-deploy-failure-handler.sh
-      sudo -n install -m 0750 -o root -g root \
-        ops/scripts/carbonet-deploy-notify.sh \
-        /opt/resonance-data/control-plane/bin/carbonet-deploy-notify.sh
-      sudo -n install -m 0644 ops/systemd/carbonet-auto-deploy.service \
-        /etc/systemd/system/carbonet-auto-deploy.service
-      sudo -n install -m 0644 \
-        ops/systemd/carbonet-auto-deploy-failure-handler.service \
-        /etc/systemd/system/carbonet-auto-deploy-failure-handler.service
-      sudo -n systemctl daemon-reload
-      echo "[auto-deploy] failure classification and one-shot recovery synchronized"
     fi
     if deploy_path_changed \
         ops/scripts/resonance-github-deploy-webhook.py \
@@ -1855,7 +2593,7 @@ if [[ "$PLAN_RUNTIME_REQUIRED" != "true" ]]; then
   record_deploy_phase "catalog_sync"
   deploy_backstage_if_required
   record_deploy_phase "backstage_build_rollout"
-  run_screen_contract_runtime_save_gate_if_required
+  CARBONET_SCREEN_CONTRACT_PREVIEW_ONLY=1 run_screen_contract_runtime_save_gate_if_required
   if [[ -z "$backstage_visual_e2e_pid" ]]; then
     start_backstage_visual_e2e
   fi
@@ -1872,13 +2610,12 @@ if [[ "$PLAN_RUNTIME_REQUIRED" != "true" ]]; then
   record_deploy_phase "actor_role_e2e"
   wait_backstage_visual_e2e
   record_deploy_phase "backstage_visual_e2e"
-  run_operational_usage_ledger_current_runtime_e2e_if_required "$deployed_commit"
-  printf '%s\n' "$target_commit" > "${DEPLOY_STATE_FILE}.tmp"
-  mv "${DEPLOY_STATE_FILE}.tmp" "$DEPLOY_STATE_FILE"
+  run_operational_usage_ledger_current_runtime_e2e_if_required "$runtime_deployed_commit"
+  write_applied_deploy_state "$target_commit"
   if [[ "$PLAN_BACKSTAGE_REQUIRED" == "true" ]]; then
-    record_deploy_performance backstage
+    record_deploy_performance backstage || echo '[auto-deploy] WARN backstage performance telemetry failed' >&2
   else
-    record_deploy_performance catalog
+    record_deploy_performance catalog || echo '[auto-deploy] WARN catalog performance telemetry failed' >&2
   fi
   echo "[auto-deploy] catalog-only update completed without application rollout: $target_commit"
   exit 0
@@ -2196,7 +2933,9 @@ echo "[auto-deploy] frontend build required: $([[ "$skip_frontend" == "true" ]] 
 # Preserve the last verified runtime closure across the merge. The isolated
 # frontend build will replace it only after closure validation.
 git merge --ff-only "$target_commit"
+sync_auto_deploy_failure_runtime_if_required
 restore_live_frontend_overlay
+run_postdeploy_candidate_static_contract_if_required
 run_operational_usage_ledger_static_contract_if_required
 if [[ "$PLAN_BACKEND_REQUIRED" == "true" ]]; then
   # Run guards introduced by the pending commit only after that exact revision
@@ -2212,7 +2951,8 @@ POSTGRES_POD="$POSTGRES_POD" \
 # Capture the last known-good runtime, web proxy and frontend overlay before
 # any deployable artifact changes. The post-deploy screen gate restores this
 # snapshot automatically if a governed route becomes blank or unavailable.
-bash ops/scripts/resonance-full-screen-deploy-gate.sh capture
+verify_operational_usage_ledger_current_runtime_identity "$runtime_deployed_commit"
+FULL_SCREEN_GATE_BASE_COMMIT="$runtime_deployed_commit" bash ops/scripts/resonance-full-screen-deploy-gate.sh capture
 
 # A frontend-only commit is compiled directly into the already mounted,
 # guarded React overlay. The overlay script verifies the complete hashed asset
@@ -2242,20 +2982,22 @@ if [[ "$PLAN_FRONTEND_REQUIRED" == "true" \
   # fingerprints. Always exercise a bounded cross-domain canary set here so a
   # common bundle regression can never result in a zero-screen deploy gate.
   # The scheduled nightly sweep remains the global 1,000-screen safety net.
-  FULL_SCREEN_SMOKE_CHANGED_ONLY=false \
-  FULL_SCREEN_SMOKE_ROUTE_PATTERN="$frontend_smoke_pattern" \
+  run_serialized_carbonet_auth_lifecycle runtime-screen-gate \
+    env FULL_SCREEN_SMOKE_CHANGED_ONLY=false \
+    FULL_SCREEN_SMOKE_ROUTE_PATTERN="$frontend_smoke_pattern" \
+    FULL_SCREEN_SMOKE_REQUIRE_PREAUTH=true \
+    FULL_SCREEN_GATE_DEFER_ACCEPT=true \
     bash ops/scripts/resonance-full-screen-deploy-gate.sh verify
   # Successful prebuilds may also refresh tracked generated inventories. Keep
   # the persistent deployment worktree clean for the next incremental run.
   bash ops/scripts/cleanup-failed-frontend-generated-changes.sh "$ROOT_DIR"
-  run_screen_contract_runtime_save_gate_if_required
   bash ops/scripts/sync-unified-asset-catalog.sh "$deployed_commit" "$target_commit"
+  enable_postdeploy_candidate_mode
+  run_postdeploy_candidate_validation_groups true
+  run_screen_contract_runtime_save_gate_if_required
   record_deploy_phase "frontend_build_and_verify"
-  record_runtime_release_state "$target_commit"
-  run_operational_usage_ledger_live_e2e_if_required
-  printf '%s\n' "$target_commit" > "${DEPLOY_STATE_FILE}.tmp"
-  mv "${DEPLOY_STATE_FILE}.tmp" "$DEPLOY_STATE_FILE"
-  record_deploy_performance frontend
+  finalize_postdeploy_candidate_release
+  record_deploy_performance frontend || echo '[auto-deploy] WARN frontend performance telemetry failed' >&2
   echo "[auto-deploy] frontend overlay deployed without Java/image build or rollout: $target_commit"
   exit 0
 fi
@@ -2271,13 +3013,13 @@ if [[ "$PLAN_RUNTIME_REQUIRED" == "true" \
   CARBONET_DEPLOY_ROOT="$ROOT_DIR" \
     bash ops/scripts/promote-runtime-startup-profile.sh
   bash ops/scripts/sync-unified-asset-catalog.sh "$deployed_commit" "$target_commit"
+  enable_postdeploy_candidate_mode
+  run_postdeploy_candidate_validation_groups true
+  run_screen_contract_runtime_save_gate_if_required
+  run_actor_process_role_e2e_if_required
   record_deploy_phase "runtime_profile_and_verify"
-  rm -f "$ROOT_DIR/var/run/full-screen-deploy-gate/active.env"
-  record_runtime_release_state "$target_commit"
-  run_operational_usage_ledger_live_e2e_if_required
-  printf '%s\n' "$target_commit" > "${DEPLOY_STATE_FILE}.tmp"
-  mv "${DEPLOY_STATE_FILE}.tmp" "$DEPLOY_STATE_FILE"
-  record_deploy_performance runtime
+  finalize_postdeploy_candidate_release
+  record_deploy_performance runtime || echo '[auto-deploy] WARN runtime-profile performance telemetry failed' >&2
   echo "[auto-deploy] JVM profile promoted without Java/frontend rebuild: $target_commit"
   exit 0
 fi
@@ -2300,6 +3042,7 @@ if [[ "$PLAN_FRONTEND_REQUIRED" != "true" \
   bash ops/scripts/test-fast-browser-deploy-gate.sh
   bash ops/scripts/test-postdeploy-parallel-browser-gate.sh
   bash ops/scripts/test-candidate-release-rollout-gate.sh
+  bash ops/tests/test-postdeploy-candidate-evidence-contract.sh "$ROOT_DIR"
   bash ops/scripts/test-process-worker-deploy-marker.sh
   bash ops/scripts/test-database-plan-flyway-gate.sh
   bash ops/scripts/test-frontend-parallel-build-pipeline.sh
@@ -2317,12 +3060,13 @@ if [[ "$PLAN_FRONTEND_REQUIRED" != "true" \
   fi
   node "$ROOT_DIR/ops/scripts/verify-react-asset-closure.mjs" "$live_frontend_overlay"
   bash ops/scripts/sync-unified-asset-catalog.sh "$deployed_commit" "$target_commit"
-  run_operational_usage_ledger_current_runtime_e2e_if_required "$deployed_commit"
+  CARBONET_SCREEN_CONTRACT_PREVIEW_ONLY=1 run_screen_contract_runtime_save_gate_if_required
+  run_actor_process_role_e2e_if_required
   record_deploy_phase "automation_validation"
   rm -f "$ROOT_DIR/var/run/full-screen-deploy-gate/active.env"
-  printf '%s\n' "$target_commit" > "${DEPLOY_STATE_FILE}.tmp"
-  mv "${DEPLOY_STATE_FILE}.tmp" "$DEPLOY_STATE_FILE"
-  record_deploy_performance automation
+  run_operational_usage_ledger_current_runtime_e2e_if_required "$runtime_deployed_commit"
+  write_applied_deploy_state "$target_commit"
+  record_deploy_performance automation || echo '[auto-deploy] WARN automation performance telemetry failed' >&2
   echo "[auto-deploy] automation-only change validated without frontend/backend build: $target_commit"
   exit 0
 fi
@@ -2405,27 +3149,48 @@ fi
 # sequential five-second tail without reducing test coverage.
 if [[ "$PLAN_FRONTEND_REQUIRED" == "true" ]]; then
   runtime_screen_gate_log="$ROOT_DIR/var/logs/runtime-screen-gate-${target_commit:0:10}.log"
-  (
+  runtime_screen_gate_cache_dir="$ROOT_DIR/var/run/runtime-screen-gate/${target_commit:0:10}-$$"
+  mkdir -p "$runtime_screen_gate_cache_dir"
+  chmod 700 "$runtime_screen_gate_cache_dir"
+  command -v setsid >/dev/null 2>&1 || { echo '[auto-deploy] setsid is required for bounded browser process-group cleanup' >&2; exit 19; }
+  setsid env RESONANCE_ROOT="$ROOT_DIR" \
     FULL_SCREEN_SMOKE_CHANGED_ONLY=false \
+    FULL_SCREEN_GATE_DEFER_ACCEPT=true \
+    FULL_SCREEN_SMOKE_REQUIRE_PREAUTH=true \
+    FULL_SCREEN_SMOKE_CACHE_DIR="$runtime_screen_gate_cache_dir" \
     FULL_SCREEN_SMOKE_ROUTE_PATTERN='^/(home|emission/project_list|emission/project/create|emission/my-tasks|home/certificate-verify|admin|admin/system/menu|admin/system/actor-process|admin/emission/survey-admin|admin/emission/survey-admin-data|admin/emission/survey-report|admin/emission/survey-report-print)([?#]|$)' \
-      bash ops/scripts/resonance-full-screen-deploy-gate.sh verify
-  ) >"$runtime_screen_gate_log" 2>&1 &
+    bash ops/scripts/run-runtime-screen-gate-serialized.sh \
+    >"$runtime_screen_gate_log" 2>&1 &
   runtime_screen_gate_pid="$!"
-  echo "[auto-deploy] bounded browser gate running concurrently pid=$runtime_screen_gate_pid"
+  runtime_screen_gate_pgid="$runtime_screen_gate_pid"
+  echo "[auto-deploy] bounded browser gate running concurrently pid=$runtime_screen_gate_pid pgid=$runtime_screen_gate_pgid"
 fi
 
 # These groups use independent tables and contracts. Ordering remains strict
 # inside a group; the reusable harness provides bounded parallelism, isolated
 # logs, and one fail-closed result for both deployment and operator testing.
-UNIFIED_ASSET_SYNC_PRECOMPLETED="$asset_sync_precompleted" \
-  bash ops/scripts/run-post-deploy-validation-groups.sh "$ROOT_DIR" "$target_commit" "$deployed_commit"
+enable_postdeploy_candidate_mode
+run_postdeploy_candidate_validation_groups "$asset_sync_precompleted"
 run_screen_contract_runtime_save_gate_if_required
 if [[ "$PLAN_FRONTEND_REQUIRED" == "true" ]]; then
-  if wait "$runtime_screen_gate_pid"; then
-    cat "$runtime_screen_gate_log"
-    runtime_screen_gate_pid=""
+  runtime_screen_gate_status=0
+  wait "$runtime_screen_gate_pid" || runtime_screen_gate_status=$?
+  # The session leader normally exits after all children. Terminate only its
+  # dedicated group if a Playwright descendant survived, then remove the exact
+  # per-run cache containing auth-state files.
+  completed_runtime_screen_gate_pid="$runtime_screen_gate_pid"
+  runtime_screen_gate_pid=""
+  if [[ "$runtime_screen_gate_pgid" =~ ^[1-9][0-9]*$ ]] && kill -0 -- "-$runtime_screen_gate_pgid" 2>/dev/null; then
+    runtime_screen_gate_pid="$completed_runtime_screen_gate_pid"
+    terminate_runtime_screen_gate_group
   else
-    echo "[auto-deploy] refusing success marker: concurrent browser gate failed" >&2
+    runtime_screen_gate_pgid=""
+    cleanup_runtime_screen_gate_cache
+  fi
+  if (( runtime_screen_gate_status == 0 )); then
+    cat "$runtime_screen_gate_log"
+  else
+    echo "[auto-deploy] refusing success marker: concurrent browser gate failed status=$runtime_screen_gate_status" >&2
     cat "$runtime_screen_gate_log" >&2
     exit 19
   fi
@@ -2435,7 +3200,7 @@ else
   # second 333-route browser sweep adds minutes without exercising new UI.
   # Keep the rollback snapshot and immutable asset closure checks, then accept
   # the healthy runtime. Mixed/frontend/database changes retain the full gate.
-  bash ops/scripts/resonance-full-screen-deploy-gate.sh accept-fast
+  FULL_SCREEN_GATE_DEFER_ACCEPT=true bash ops/scripts/resonance-full-screen-deploy-gate.sh accept-fast
 fi
 sync_backstage_catalog_if_required
 deploy_backstage_if_required
@@ -2462,13 +3227,10 @@ sync_react_asset_prune_worker_if_required
 # incremental deployment never inherits stale or duplicate build output.
 bash ops/scripts/normalize-deploy-generated-assets.sh "$ROOT_DIR"
 record_deploy_phase "postdeploy_validation"
-record_runtime_release_state "$target_commit"
-run_operational_usage_ledger_live_e2e_if_required
-printf '%s\n' "$target_commit" > "${DEPLOY_STATE_FILE}.tmp"
-mv "${DEPLOY_STATE_FILE}.tmp" "$DEPLOY_STATE_FILE"
 if [[ "$runtime_candidate_checkpoint_eligible" == "true" ]]; then
   run_runtime_candidate_checkpoint clear-success
 fi
-record_deploy_performance runtime
 sudo docker image prune -a -f >/dev/null || true
+finalize_postdeploy_candidate_release
+record_deploy_performance runtime || echo '[auto-deploy] WARN runtime performance telemetry failed' >&2
 echo "[auto-deploy] deployed $target_commit after one-shot Flyway verification; runtime migration disabled"
