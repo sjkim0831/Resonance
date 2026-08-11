@@ -47,9 +47,10 @@ validate_emission_workflow_group() {
   bash ops/scripts/validate-emission-project-workflow.sh
   bash ops/scripts/validate-emission-activity-collection.sh
 
-  # These five lanes own independent evidence tables and runtime contracts.
-  # Execute each lane in order internally, but overlap the lanes so a cold
-  # runtime does not multiply network and PostgreSQL round-trip latency.
+  # These lanes own independent evidence tables, but their authenticated
+  # validators share a single-token-per-user runtime account. Keep the lanes
+  # concurrent as processes while serializing each authenticated lifetime on
+  # the canonical QA lock; otherwise a later login revokes an earlier lane.
   local lane_dir lane_failed lane_name lane_pid
   lane_dir="$(mktemp -d "$log_dir/emission-lanes.XXXXXX")"
   lane_failed=0
@@ -61,6 +62,9 @@ validate_emission_workflow_group() {
     lane_names+=("$lane_name")
     (
       lane_started="$(date +%s)"
+      exec 9>"${CARBONET_QA_AUTH_LOCK_FILE:-/tmp/carbonet-qa-auth-session.lock}"
+      flock -w "${CARBONET_QA_AUTH_LOCK_TIMEOUT_SECONDS:-120}" 9 \
+        || { echo "[emission-lane] FAIL auth-lock name=$lane_name" >&2; exit 1; }
       "$@"
       echo "[emission-lane] PASS name=$lane_name duration=$(( $(date +%s) - lane_started ))s"
     ) >"$lane_dir/$lane_name.log" 2>&1 &

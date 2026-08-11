@@ -31,8 +31,8 @@ token_count() {
 }
 
 [[ "$(token_count)" == "1" ]] || { echo '[auth-logout-live] login token row was not persisted exactly once' >&2; exit 1; }
-logout_code="$(curl -sS -b "$COOKIE_JAR" -o "$TMP_DIR/logout.json" -w '%{http_code}' -X POST "$BASE_URL/signin/actionLogout")"
-[[ "$logout_code" == "200" ]] || { echo "[auth-logout-live] logout failed http=$logout_code" >&2; exit 1; }
+carbonet_qa_logout "$COOKIE_JAR" "$BASE_URL" \
+  || { echo '[auth-logout-live] authoritative logout failed' >&2; exit 1; }
 [[ "$(token_count)" == "0" ]] || { echo '[auth-logout-live] token row survived logout' >&2; exit 1; }
 
 session_code="$(curl -sS -b "$STALE_COOKIE_JAR" -o "$TMP_DIR/session.json" -w '%{http_code}' "$BASE_URL/api/frontend/session")"

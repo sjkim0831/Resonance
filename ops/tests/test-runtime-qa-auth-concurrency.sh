@@ -3,11 +3,18 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 HELPER="$ROOT/ops/scripts/runtime-qa-auth-common.sh"
+POST_DEPLOY_VALIDATOR="$ROOT/ops/scripts/run-post-deploy-validation-groups.sh"
 TMP_DIR="$(mktemp -d /tmp/runtime-qa-auth-concurrency.XXXXXX)"
 trap 'rm -rf "$TMP_DIR"' EXIT
 
 [[ -f "$HELPER" ]] || { echo '[runtime-qa-auth-concurrency] helper missing' >&2; exit 1; }
+[[ -f "$POST_DEPLOY_VALIDATOR" ]] || { echo '[runtime-qa-auth-concurrency] post-deploy validator missing' >&2; exit 1; }
 bash -n "$HELPER"
+bash -n "$POST_DEPLOY_VALIDATOR"
+grep -Fq 'CARBONET_QA_AUTH_LOCK_FILE:-/tmp/carbonet-qa-auth-session.lock' "$POST_DEPLOY_VALIDATOR" \
+  || { echo '[runtime-qa-auth-concurrency] emission validators do not share the canonical lock' >&2; exit 1; }
+grep -Fq 'flock -w "${CARBONET_QA_AUTH_LOCK_TIMEOUT_SECONDS:-120}" 9' "$POST_DEPLOY_VALIDATOR" \
+  || { echo '[runtime-qa-auth-concurrency] emission validator lock is not fail-closed' >&2; exit 1; }
 
 LOCK_FILE="$TMP_DIR/shared.lock"
 MARKER="$TMP_DIR/holder-ready"
