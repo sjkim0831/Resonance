@@ -41,12 +41,35 @@ INSERT INTO required_lineage_field(process_code,step_code,audience,field_code)
 SELECT DISTINCT step_contract.process_code,step_contract.step_code,step_contract.audience,used.field_code
 FROM framework_professional_screen_contract step_contract
 JOIN (
-  SELECT DISTINCT c.process_code,c.audience,f->>'fieldCode' field_code
+  SELECT DISTINCT c.process_code,c.audience,coalesce(f->>'fieldCode',f->>'apiProperty') field_code
   FROM framework_professional_screen_contract c
   CROSS JOIN LATERAL jsonb_array_elements(c.field_contract::jsonb) f
   WHERE lower(f->>'fieldCode') IN ('tenantid','projectid','recordid','rowversion')
 ) used USING(process_code,audience)
 ON CONFLICT DO NOTHING;
+
+-- Remove only reconciler-shaped duplicates. Older generated contracts can use
+-- apiProperty without fieldCode, so both names form one logical identity.
+WITH cleaned AS (
+  SELECT c.contract_id,jsonb_agg(f ORDER BY ord) fields
+  FROM framework_professional_screen_contract c
+  CROSS JOIN LATERAL jsonb_array_elements(c.field_contract::jsonb) WITH ORDINALITY e(f,ord)
+  WHERE NOT (
+    coalesce((f->>'fieldOrder')::integer,0)>=910
+    AND lower(coalesce(f->>'fieldCode','')) IN ('tenantid','projectid','recordid','rowversion')
+    AND EXISTS (
+      SELECT 1 FROM jsonb_array_elements(c.field_contract::jsonb) WITH ORDINALITY other(g,gord)
+      WHERE gord<>ord
+        AND lower(coalesce(g->>'fieldCode',g->>'apiProperty',''))=lower(coalesce(f->>'fieldCode',f->>'apiProperty',''))
+    )
+  )
+  GROUP BY c.contract_id
+)
+UPDATE framework_professional_screen_contract c
+SET field_contract=cleaned.fields::text,contract_revision=c.contract_revision+1,
+    updated_by='CORE_LINEAGE_RECONCILER',updated_at=current_timestamp
+FROM cleaned WHERE cleaned.contract_id=c.contract_id
+  AND c.field_contract::jsonb IS DISTINCT FROM cleaned.fields;
 
 WITH targets AS (
   SELECT c.contract_id,c.route_path,c.audience,c.field_contract::jsonb fields,
@@ -67,7 +90,7 @@ WITH targets AS (
     'validation',CASE field_code WHEN 'rowVersion' THEN '{"min":0}'::jsonb WHEN 'recordId' THEN '{"source":"SERVER_CONTEXT","required":false,"immutable":true}'::jsonb ELSE '{"minLength":1}'::jsonb END
   ) ORDER BY field_code) missing_fields
   FROM targets t
-  WHERE NOT EXISTS (SELECT 1 FROM jsonb_array_elements(t.fields) f WHERE lower(f->>'fieldCode')=lower(t.field_code))
+  WHERE NOT EXISTS (SELECT 1 FROM jsonb_array_elements(t.fields) f WHERE lower(coalesce(f->>'fieldCode',f->>'apiProperty'))=lower(t.field_code))
   GROUP BY contract_id
 )
 UPDATE framework_professional_screen_contract c
@@ -80,7 +103,7 @@ DO $$ DECLARE missing_count integer; target_count integer; BEGIN
   IF target_count<16 THEN RAISE EXCEPTION 'unexpected required lineage target count %',target_count; END IF;
   SELECT count(*) INTO missing_count
   FROM framework_professional_screen_contract c JOIN required_lineage_field r USING(process_code,step_code,audience)
-  WHERE NOT EXISTS (SELECT 1 FROM jsonb_array_elements(c.field_contract::jsonb) f WHERE lower(f->>'fieldCode')=lower(r.field_code));
+  WHERE NOT EXISTS (SELECT 1 FROM jsonb_array_elements(c.field_contract::jsonb) f WHERE lower(coalesce(f->>'fieldCode',f->>'apiProperty'))=lower(r.field_code));
   IF missing_count<>0 THEN RAISE EXCEPTION 'core lineage reconciliation incomplete missing=%',missing_count; END IF;
 END $$;
 COMMIT;
