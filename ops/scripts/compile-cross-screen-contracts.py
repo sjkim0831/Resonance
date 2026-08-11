@@ -26,7 +26,13 @@ def family(value):
     return value
 def key_for(f):
     table=f.get("sourceTable"); column=f.get("sourceColumn")
-    if table and column:return f"db:{table.lower()}.{column.lower()}"
+    if table and column:
+        base=f"db:{table.lower()}.{column.lower()}"
+        column_meta=db.get((str(table).lower(),str(column).lower()),{})
+        if "json" in str(column_meta.get("type") or column_meta.get("dataType") or "").lower():
+            prop=str(f.get("apiProperty") or f.get("fieldCode") or "").strip().lower()
+            return f"{base}#{prop}" if prop else base
+        return base
     prop=f.get("apiProperty") or f.get("fieldCode")
     return f"api:{str(prop).strip().lower()}"
 def parse_api(value):
