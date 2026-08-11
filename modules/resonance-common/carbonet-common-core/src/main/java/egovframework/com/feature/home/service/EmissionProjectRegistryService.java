@@ -20,6 +20,7 @@ import java.util.Set;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.HashMap;
+import java.math.BigDecimal;
 import java.io.InputStream;
 import java.security.MessageDigest;
 import java.util.HexFormat;
@@ -431,6 +432,50 @@ public class EmissionProjectRegistryService {
         result.put("factors",jdbc.queryForList("SELECT factor_id AS id,factor_name AS name,category,unit,factor_value AS value,source_name AS source FROM emission_factor_reference ORDER BY category,factor_name"));
         result.put("actorRoles",override?List.of("CALCULATOR"):jdbc.queryForList("SELECT actor_code FROM framework_project_actor_assignment WHERE project_id=? AND lower(user_id)=lower(?) AND active_yn='Y' ORDER BY actor_code",projectId,requiredValue(actor,"actor")).stream().map(row->text(row.get("actor_code"))).toList());
         return result;
+    }
+
+    public Map<String,Object> simulationWorkflow(String projectId,String tenantId,String actor,boolean override) {
+        String tenant=requiredValue(tenantId,"tenantId"),user=requiredValue(actor,"actor");
+        assertProjectParticipant(projectId,tenant,user,override);
+        Map<String,Object> result=new LinkedHashMap<>();
+        result.put("project",detail(projectId));
+        result.put("latestCalculation",jdbc.queryForList("SELECT calculation_id AS \"calculationId\",version_no AS version,total_emission AS \"totalEmission\",result_unit AS unit,calculated_at AS \"calculatedAt\" FROM emission_calculation_run WHERE project_id=? ORDER BY version_no DESC LIMIT 1",projectId).stream().findFirst().orElse(null));
+        result.put("scenarios",jdbc.queryForList("SELECT scenario_id AS \"scenarioId\",scenario_code AS \"scenarioCode\",version_no AS version,tech_investment AS \"techInvestment\",efficiency_gain AS \"efficiencyGain\",renewable_rate AS \"renewableRate\",ccus_scale AS \"ccusScale\",projected_reduction AS \"projectedReduction\",result_unit AS unit,input_hash AS \"inputHash\",created_by AS \"createdBy\",created_at AS \"createdAt\" FROM emission_reduction_scenario WHERE tenant_id=? AND project_id=? ORDER BY version_no DESC LIMIT 50",tenant,projectId));
+        result.put("bounds",Map.of("techInvestment",Map.of("min",0,"max",100),"efficiencyGain",Map.of("min",0,"max",100),"renewableRate",Map.of("min",0,"max",100),"ccusScale",Map.of("min",0,"max",100)));
+        return result;
+    }
+
+    @Transactional
+    public Map<String,Object> simulate(String projectId,String tenantId,String actor,boolean override,Map<String,Object> body) {
+        String tenant=requiredValue(tenantId,"tenantId"),user=requiredValue(actor,"actor");
+        assertProjectParticipant(projectId,tenant,user,override);
+        Integer calculations=jdbc.queryForObject("SELECT count(*) FROM emission_calculation_run WHERE project_id=? AND tenant_id=?",Integer.class,projectId,tenant);
+        if(calculations==null||calculations==0) throw new IllegalStateException("SIMULATION_REQUIRES_CALCULATION");
+        String scenario=required(body,"scenarioCode").toUpperCase();
+        if(!Set.of("BALANCED","ACCELERATED").contains(scenario)) throw new IllegalArgumentException("SCENARIO_CODE_INVALID");
+        int tech=boundedInt(body,"techInvestment"),efficiency=boundedInt(body,"efficiencyGain"),renewable=boundedInt(body,"renewableRate"),ccus=boundedInt(body,"ccusScale");
+        String idempotency=required(body,"idempotencyKey");
+        if(idempotency.length()>100) throw new IllegalArgumentException("IDEMPOTENCY_KEY_TOO_LONG");
+        jdbc.query("SELECT pg_advisory_xact_lock(hashtext(?))",rs->{},tenant+":"+projectId+":SIMULATION");
+        List<Map<String,Object>> existing=jdbc.queryForList("SELECT scenario_id AS \"scenarioId\",scenario_code AS \"scenarioCode\",version_no AS version,projected_reduction AS \"projectedReduction\",result_unit AS unit,input_hash AS \"inputHash\",created_by AS \"createdBy\",created_at AS \"createdAt\" FROM emission_reduction_scenario WHERE tenant_id=? AND project_id=? AND idempotency_key=?",tenant,projectId,idempotency);
+        if(!existing.isEmpty()) return existing.get(0);
+        BigDecimal projected=BigDecimal.valueOf(tech*120L+efficiency*90L+renewable*130L+ccus*80L);
+        if("ACCELERATED".equals(scenario)) projected=projected.multiply(new BigDecimal("1.18")).setScale(0,java.math.RoundingMode.HALF_UP);
+        String inputHash=sha256(projectId+"|"+scenario+"|"+tech+"|"+efficiency+"|"+renewable+"|"+ccus);
+        Integer version=jdbc.queryForObject("SELECT coalesce(max(version_no),0)+1 FROM emission_reduction_scenario WHERE tenant_id=? AND project_id=?",Integer.class,tenant,projectId);
+        jdbc.update("INSERT INTO emission_reduction_scenario(tenant_id,project_id,scenario_code,version_no,tech_investment,efficiency_gain,renewable_rate,ccus_scale,projected_reduction,input_hash,idempotency_key,created_by) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)",tenant,projectId,scenario,version,tech,efficiency,renewable,ccus,projected,inputHash,idempotency,user);
+        return jdbc.queryForMap("SELECT scenario_id AS \"scenarioId\",scenario_code AS \"scenarioCode\",version_no AS version,projected_reduction AS \"projectedReduction\",result_unit AS unit,input_hash AS \"inputHash\",created_by AS \"createdBy\",created_at AS \"createdAt\" FROM emission_reduction_scenario WHERE tenant_id=? AND project_id=? AND idempotency_key=?",tenant,projectId,idempotency);
+    }
+
+    private int boundedInt(Map<String,Object> body,String key) {
+        Object raw=body.get(key); if(raw==null) throw new IllegalArgumentException(key+" is required");
+        try { int value=Integer.parseInt(String.valueOf(raw)); if(value<0||value>100)throw new IllegalArgumentException(key+" must be between 0 and 100"); return value; }
+        catch(NumberFormatException e){throw new IllegalArgumentException(key+" must be an integer");}
+    }
+
+    private String sha256(String value) {
+        try{return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(value.getBytes(java.nio.charset.StandardCharsets.UTF_8)));}
+        catch(Exception e){throw new IllegalStateException("SHA-256_UNAVAILABLE",e);}
     }
 
     @Transactional

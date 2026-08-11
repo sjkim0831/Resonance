@@ -34,6 +34,8 @@ type ScenarioCard = {
   label: string;
 };
 
+type SimulationWorkflow = { scenarios?: Array<{ scenarioCode:string; techInvestment:number; efficiencyGain:number; renewableRate:number; ccusScale:number; projectedReduction:number; version:number }> };
+
 type BuilderCopy = {
   tech: string;
   efficiency: string;
@@ -153,6 +155,35 @@ export function EmissionSimulateMigrationPage() {
   const [renewableRate, setRenewableRate] = useState(35);
   const [ccusScale, setCcusScale] = useState(20);
   const [saveMessage, setSaveMessage] = useState("");
+  const [saving, setSaving] = useState(false);
+  const projectId = useMemo(() => new URLSearchParams(window.location.search).get("projectId")?.trim() || "", []);
+  const simulationWorkflow = useAsyncValue<SimulationWorkflow>(async () => {
+    if (!projectId) return { scenarios: [] };
+    const response = await fetch(buildLocalizedPath(`/home/api/emission-projects/${encodeURIComponent(projectId)}/simulation-workflow`, `/en/home/api/emission-projects/${encodeURIComponent(projectId)}/simulation-workflow`), { credentials: "include", headers: { Accept: "application/json" } });
+    if (!response.ok) throw new Error(en ? "Unable to load the simulation workflow." : "시뮬레이션 업무를 불러오지 못했습니다.");
+    return response.json();
+  }, [en, projectId], { initialValue: { scenarios: [] } });
+
+  useEffect(() => {
+    const latest = simulationWorkflow.value?.scenarios?.[0];
+    if (!latest) return;
+    setScenarioId(latest.scenarioCode === "ACCELERATED" ? "accelerated" : "balanced");
+    setTechInvestment(latest.techInvestment); setEfficiencyGain(latest.efficiencyGain);
+    setRenewableRate(latest.renewableRate); setCcusScale(latest.ccusScale);
+  }, [simulationWorkflow.value]);
+
+  async function saveScenario() {
+    if (!projectId) { setSaveMessage(en ? "Select a project before saving a scenario." : "프로젝트를 선택한 뒤 시나리오를 저장해 주세요."); return; }
+    setSaving(true); setSaveMessage("");
+    try {
+      const response = await fetch(buildLocalizedPath(`/home/api/emission-projects/${encodeURIComponent(projectId)}/simulate`, `/en/home/api/emission-projects/${encodeURIComponent(projectId)}/simulate`), { method: "POST", credentials: "include", headers: { "Content-Type": "application/json", Accept: "application/json" }, body: JSON.stringify({ scenarioCode: scenarioId.toUpperCase(), techInvestment, efficiencyGain, renewableRate, ccusScale, idempotencyKey: crypto.randomUUID() }) });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(String(payload.message || (en ? "Scenario save failed." : "시나리오 저장에 실패했습니다.")));
+      setSaveMessage(en ? `Scenario version ${payload.version} saved with auditable inputs.` : `시나리오 버전 ${payload.version}이 입력 해시와 함께 저장되었습니다.`);
+      await simulationWorkflow.reload();
+    } catch (error) { setSaveMessage(error instanceof Error ? error.message : (en ? "Scenario save failed." : "시나리오 저장에 실패했습니다.")); }
+    finally { setSaving(false); }
+  }
 
   const payloadState = useAsyncValue<HomePayload>(
     () => fetchHomePayload(),
@@ -555,10 +586,11 @@ export function EmissionSimulateMigrationPage() {
                       </button>
                       <button
                         className="flex-1 px-4 py-3 rounded-lg bg-slate-900 text-sm font-bold text-white hover:bg-slate-950"
-                        onClick={() => setSaveMessage(en ? "Scenario saved. Continue with validation or open the result detail." : "시나리오가 저장되었습니다. 검증 또는 결과 상세로 이어갈 수 있습니다.")}
+                        disabled={saving}
+                        onClick={() => void saveScenario()}
                         type="button"
                       >
-                        {builderCopy.save}
+                        {saving ? (en ? "Saving..." : "저장 중...") : builderCopy.save}
                       </button>
                     </div>
                     {saveMessage ? (

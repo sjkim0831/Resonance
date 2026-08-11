@@ -84,6 +84,35 @@ class EmissionProjectRegistryControllerAuthenticationTest {
         assertEquals(HttpStatus.UNAUTHORIZED, response.getStatusCode());
     }
 
+    @Test
+    void authenticatedParticipantCanLoadAndRunSimulation() {
+        EmissionProjectRegistryService projects = mock(EmissionProjectRegistryService.class);
+        CurrentUserContextService users = mock(CurrentUserContextService.class);
+        HttpServletRequest request = mock(HttpServletRequest.class);
+        CurrentUserContextService.CurrentUserContext context = authenticatedContext();
+        when(users.resolve(request)).thenReturn(context);
+        when(projects.simulationWorkflow("PRJ-1", "TENANT-1", "data.owner", false)).thenReturn(Map.of("scenarios", java.util.List.of()));
+        when(projects.simulate("PRJ-1", "TENANT-1", "data.owner", false, Map.of("scenarioCode", "BALANCED"))).thenReturn(Map.of("version", 1));
+        EmissionProjectRegistryController controller = new EmissionProjectRegistryController(projects, users);
+
+        assertEquals(HttpStatus.OK, controller.simulationWorkflow("PRJ-1", request).getStatusCode());
+        assertEquals(HttpStatus.OK, controller.simulate("PRJ-1", Map.of("scenarioCode", "BALANCED"), request).getStatusCode());
+        verify(projects).simulationWorkflow("PRJ-1", "TENANT-1", "data.owner", false);
+        verify(projects).simulate("PRJ-1", "TENANT-1", "data.owner", false, Map.of("scenarioCode", "BALANCED"));
+    }
+
+    @Test
+    void anonymousActorCannotRunSimulation() {
+        EmissionProjectRegistryService projects = mock(EmissionProjectRegistryService.class);
+        CurrentUserContextService users = mock(CurrentUserContextService.class);
+        HttpServletRequest request = mock(HttpServletRequest.class);
+        CurrentUserContextService.CurrentUserContext context = new CurrentUserContextService.CurrentUserContext();
+        when(users.resolve(request)).thenReturn(context);
+        EmissionProjectRegistryController controller = new EmissionProjectRegistryController(projects, users);
+
+        assertEquals(HttpStatus.UNAUTHORIZED, controller.simulate("PRJ-1", Map.of(), request).getStatusCode());
+    }
+
     private CurrentUserContextService.CurrentUserContext authenticatedContext() {
         CurrentUserContextService.CurrentUserContext context = new CurrentUserContextService.CurrentUserContext();
         context.setAuthenticated(true);
