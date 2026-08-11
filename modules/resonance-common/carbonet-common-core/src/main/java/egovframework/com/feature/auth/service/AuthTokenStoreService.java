@@ -16,6 +16,7 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
 
 @Service
@@ -239,6 +240,19 @@ public class AuthTokenStoreService {
             String snakeKey = key.replaceAll("([a-z])([A-Z])", "$1_$2").toUpperCase();
             value = row.get(snakeKey);
         }
+        if (value == null) {
+            String normalizedKey = normalizeMapKey(key);
+            for (Map.Entry<String, Object> entry : row.entrySet()) {
+                if (normalizeMapKey(entry.getKey()).equals(normalizedKey)) {
+                    value = entry.getValue();
+                    break;
+                }
+            }
+        }
         return value == null ? "" : String.valueOf(value).trim();
+    }
+
+    private String normalizeMapKey(Object key) {
+        return key == null ? "" : String.valueOf(key).replaceAll("[^A-Za-z0-9]", "").toLowerCase(Locale.ROOT);
     }
 }

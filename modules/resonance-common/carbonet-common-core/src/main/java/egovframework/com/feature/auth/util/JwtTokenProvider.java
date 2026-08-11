@@ -23,6 +23,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
+import java.util.Locale;
 import java.util.Map;
 
 @Configuration
@@ -247,7 +248,25 @@ public class JwtTokenProvider {
             String snakeKey = key.replaceAll("([a-z])([A-Z])", "$1_$2").toUpperCase();
             value = row.get(snakeKey);
         }
+        if (value == null) {
+            String normalizedKey = normalizeMapKey(key);
+            for (Map.Entry<String, Object> entry : row.entrySet()) {
+                if (normalizeMapKey(entry.getKey()).equals(normalizedKey)) {
+                    value = entry.getValue();
+                    break;
+                }
+            }
+        }
         return value == null ? "" : String.valueOf(value).trim();
+    }
+
+    /**
+     * PostgreSQL folds unquoted aliases such as {@code accessTokenHash} to
+     * {@code accesstokenhash}. Normalize mapper keys so token validation does not
+     * depend on a driver's alias casing or underscore convention.
+     */
+    private String normalizeMapKey(Object key) {
+        return key == null ? "" : String.valueOf(key).replaceAll("[^A-Za-z0-9]", "").toLowerCase(Locale.ROOT);
     }
 
     public ResponseCookie createCookie(HttpServletRequest request, String tokenName, String tokenValue, long tokenMaxAge) {

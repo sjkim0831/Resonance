@@ -46,6 +46,15 @@ class JwtTokenProviderAccessRevocationTest {
     }
 
     @Test
+    void acceptsPostgresFoldedAliasKey() {
+        String token = accessToken("member01");
+        when(mapper.selectActiveAuthToken("member01"))
+                .thenReturn(Map.of("accesstokenhash", provider.generateTokenHash(token)));
+
+        assertEquals(200, provider.accessValidateToken(token));
+    }
+
+    @Test
     void rejectsTokenImmediatelyAfterStoreRowIsDeleted() {
         String token = accessToken("member01");
         when(mapper.selectActiveAuthToken("member01")).thenReturn(null);

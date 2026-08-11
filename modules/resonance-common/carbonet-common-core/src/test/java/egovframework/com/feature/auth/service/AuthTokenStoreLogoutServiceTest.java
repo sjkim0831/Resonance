@@ -51,6 +51,22 @@ class AuthTokenStoreLogoutServiceTest {
     }
 
     @Test
+    void postgresFoldedAliasKeysStillRevokeBoundAccount() {
+        Claims claims = claims("encoded-member01");
+        when(provider.accessExtractClaims("access")).thenReturn(claims);
+        when(provider.decrypt("encoded-member01")).thenReturn("member01");
+        when(mapper.selectActiveAuthToken("member01")).thenReturn(Map.of(
+                "userid", "member01",
+                "accesstokenhash", "access-hash"));
+        when(provider.tokenHashMatches("access-hash", "access")).thenReturn(true);
+        when(mapper.deleteAuthTokenByUserId("member01")).thenReturn(1);
+
+        assertEquals(AuthTokenStoreService.LogoutRevocationResult.REVOKED,
+                service.revokeLogoutTokens("access", ""));
+        verify(mapper).deleteAuthTokenByUserId("member01");
+    }
+
+    @Test
     void staleRefreshCannotSelectAnAccountForRevocation() {
         Claims claims = claims("encoded-member01");
         when(provider.refreshExtractClaims("stale-refresh")).thenReturn(claims);
