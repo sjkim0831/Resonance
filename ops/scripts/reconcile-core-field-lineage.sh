@@ -35,6 +35,19 @@ INSERT INTO required_lineage_field VALUES
 ('CUSTOMER_WORK_COORDINATION','CUSTOMER_WORK_APPROVE','USER','recordId'),
 ('CUSTOMER_WORK_COORDINATION','CUSTOMER_WORK_APPROVE','USER','rowVersion');
 
+-- Once a process uses a core identity field, every step carries it. This prevents
+-- fixing one transition from merely moving the lineage gap to an earlier step.
+INSERT INTO required_lineage_field(process_code,step_code,audience,field_code)
+SELECT DISTINCT step_contract.process_code,step_contract.step_code,step_contract.audience,used.field_code
+FROM framework_professional_screen_contract step_contract
+JOIN (
+  SELECT DISTINCT c.process_code,c.audience,f->>'fieldCode' field_code
+  FROM framework_professional_screen_contract c
+  CROSS JOIN LATERAL jsonb_array_elements(c.field_contract::jsonb) f
+  WHERE lower(f->>'fieldCode') IN ('tenantid','projectid','recordid','rowversion')
+) used USING(process_code,audience)
+ON CONFLICT DO NOTHING;
+
 WITH targets AS (
   SELECT c.contract_id,c.route_path,c.audience,c.field_contract::jsonb fields,
          coalesce(c.field_contract::jsonb->0->>'pageCode',c.process_code||'_'||c.step_code||'_'||c.audience) page_code,
@@ -64,7 +77,7 @@ FROM additions a WHERE a.contract_id=c.contract_id;
 
 DO $$ DECLARE missing_count integer; target_count integer; BEGIN
   SELECT count(*) INTO target_count FROM required_lineage_field;
-  IF target_count<>16 THEN RAISE EXCEPTION 'unexpected required lineage target count %',target_count; END IF;
+  IF target_count<16 THEN RAISE EXCEPTION 'unexpected required lineage target count %',target_count; END IF;
   SELECT count(*) INTO missing_count
   FROM framework_professional_screen_contract c JOIN required_lineage_field r USING(process_code,step_code,audience)
   WHERE NOT EXISTS (SELECT 1 FROM jsonb_array_elements(c.field_contract::jsonb) f WHERE lower(f->>'fieldCode')=lower(r.field_code));
@@ -72,4 +85,4 @@ DO $$ DECLARE missing_count integer; target_count integer; BEGIN
 END $$;
 COMMIT;
 SQL
-printf '{"status":"RECONCILED","coreLineageFields":16}\n'
+printf '{"status":"RECONCILED","coreLineageMinimumFields":16,"strategy":"PROCESS_WIDE_CARRY_FORWARD"}\n'
