@@ -71,7 +71,7 @@ public class KisaExternalAuthProvider implements ExternalAuthProvider {
         descriptor.setIcon(resolveIcon(normalized));
         boolean sdkAvailable = resolveAdapter().isAvailable();
         boolean liveReady = kisaSdkV1Adapter.isReadyForLiveFlow();
-        descriptor.setAvailable(properties.isMockSuccessEnabled() || liveReady || sdkAvailable);
+        descriptor.setAvailable(properties.isMockSuccessEnabled() || liveReady);
 
         if ("SIMPLE".equals(normalized)) {
             descriptor.setDisplayName("간편인증");
@@ -96,6 +96,9 @@ public class KisaExternalAuthProvider implements ExternalAuthProvider {
         } else if (liveReady) {
             descriptor.setStatus("ready");
             descriptor.setStatusMessage("SDK adapter and live endpoints ready");
+        } else if (sdkAvailable && kisaSdkV1Adapter.hasCompleteLiveConfiguration()) {
+            descriptor.setStatus("integration-pending");
+            descriptor.setStatusMessage("SDK and configuration are present. Verified prepare/result orchestration is required.");
         } else if (sdkAvailable) {
             descriptor.setStatus("sdk-ready");
             descriptor.setStatusMessage("SDK loaded. Live endpoint configuration is required for production authentication.");

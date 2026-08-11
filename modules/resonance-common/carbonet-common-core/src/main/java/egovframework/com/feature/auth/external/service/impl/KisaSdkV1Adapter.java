@@ -35,8 +35,26 @@ public class KisaSdkV1Adapter implements ExternalAuthAdapter {
 
     public boolean isReadyForLiveFlow() {
         return isAvailable()
-                && !ObjectUtils.isEmpty(properties.getKisa().getPrepareEndpoint())
-                && !ObjectUtils.isEmpty(properties.getKisa().getResultEndpoint());
+                && hasCompleteLiveConfiguration()
+                && isLiveOrchestrationImplemented();
+    }
+
+    public boolean hasCompleteLiveConfiguration() {
+        ExternalAuthProperties.Kisa kisa = properties.getKisa();
+        return !ObjectUtils.isEmpty(kisa.getClientId())
+                && !ObjectUtils.isEmpty(kisa.getServiceCode())
+                && !ObjectUtils.isEmpty(kisa.getCaCode())
+                && !ObjectUtils.isEmpty(kisa.getPrepareEndpoint())
+                && !ObjectUtils.isEmpty(kisa.getResultEndpoint())
+                && !ObjectUtils.isEmpty(kisa.getCallbackScheme());
+    }
+
+    /**
+     * Fail closed until the provider-specific request signing, result polling,
+     * signature verification, and CI/DI extraction contract is implemented.
+     */
+    public boolean isLiveOrchestrationImplemented() {
+        return false;
     }
 
     @Override
@@ -60,7 +78,7 @@ public class KisaSdkV1Adapter implements ExternalAuthAdapter {
             if (!isAvailable()) {
                 throw new IllegalStateException("KISA SDK jar is not available or could not be loaded.");
             }
-            session.setMessage("KISA SDK is loaded. Configure clientId, serviceCode, CA code, prepareEndpoint, and resultEndpoint for live authentication.");
+            session.setMessage("KISA SDK is loaded, but the complete provider configuration and verified live orchestration are required.");
             return session;
         }
 
@@ -118,7 +136,7 @@ public class KisaSdkV1Adapter implements ExternalAuthAdapter {
             throw new IllegalStateException("KISA SDK jar is not available or could not be loaded.");
         }
         if (!isReadyForLiveFlow()) {
-            throw new IllegalStateException("KISA live endpoints are not configured.");
+            throw new IllegalStateException("KISA live configuration or verified provider orchestration is incomplete.");
         }
     }
 

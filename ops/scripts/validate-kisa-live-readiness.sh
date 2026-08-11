@@ -14,7 +14,7 @@ container="$(kubectl -n "$NAMESPACE" get pod "$pod" -o jsonpath='{.spec.containe
 methods="$(curl -fsS --max-time 10 "$BASE_URL/signin/external-auth/methods")"
 method_count="$(jq '[.methods[]|select(.methodCode=="SIMPLE" or .methodCode=="JOINT" or .methodCode=="FINANCIAL")]|length' <<<"$methods")"
 sdk_ready=false
-if [[ "$method_count" == 3 ]] && jq -e 'all(.methods[]; .available==true and (.status=="sdk-ready" or .status=="ready"))' <<<"$methods" >/dev/null; then
+if [[ "$method_count" == 3 ]] && jq -e 'all(.methods[]; (.status=="sdk-ready" or .status=="integration-pending" or .status=="ready"))' <<<"$methods" >/dev/null; then
   sdk_ready=true
 fi
 
@@ -45,14 +45,19 @@ for key in "${keys[@]}"; do
   fi
 done
 live_ready=false
-if [[ "$sdk_ready" == true && "$jar_mounted" == true && "$(jq length <<<"$missing_json")" == 0 ]] \
-   && jq -e 'all(.methods[]; .status=="ready")' <<<"$methods" >/dev/null; then
+orchestration_implemented=false
+if jq -e 'all(.methods[]; .available==true and .status=="ready")' <<<"$methods" >/dev/null; then
+  orchestration_implemented=true
+fi
+if [[ "$sdk_ready" == true && "$jar_mounted" == true && "$(jq length <<<"$missing_json")" == 0 \
+   && "$orchestration_implemented" == true ]]; then
   live_ready=true
 fi
 report="$(jq -cn --argjson methods "$method_count" --argjson sdk "$sdk_ready" --argjson jar "$jar_mounted" \
-  --argjson configured "$configured_json" --argjson missing "$missing_json" --argjson live "$live_ready" \
+  --argjson configured "$configured_json" --argjson missing "$missing_json" --argjson orchestration "$orchestration_implemented" --argjson live "$live_ready" \
   '{provider:"KISA_DAPC",methodCount:$methods,sdkReady:$sdk,jarMounted:$jar,configuredKeys:$configured,
-    missingKeys:$missing,configuredCount:($configured|length),requiredCount:6,liveReady:$live}')"
+    missingKeys:$missing,configuredCount:($configured|length),requiredCount:6,orchestrationImplemented:$orchestration,
+    acceptancePassed:false,overallChecks:8,liveReady:$live}')"
 printf '%s\n' "$report"
 if [[ "$REPORT_ONLY" != true && "$live_ready" != true ]]; then
   echo "[kisa-readiness] BLOCKED configured=$(jq length <<<"$configured_json")/6" >&2
