@@ -138,6 +138,15 @@ try {
   mark("EMISSION_CALCULATION", "EMISSION_CALCULATION_04_APPROVE", "APPROVER",
     ["POST /approval/decision", "GET /calculation"], { status: "DONE", calculationId: calculation.id });
 
+  const simulationKey = `QA-SIM-${marker}`;
+  const simulationInput = { scenarioCode: "BALANCED", techInvestment: 51, efficiencyGain: 63, renewableRate: 36, ccusScale: 21, idempotencyKey: simulationKey };
+  const simulation = await call(clients.calculator, "post", `/home/api/emission-projects/${projectId}/simulate`, simulationInput);
+  const simulationReplay = await call(clients.calculator, "post", `/home/api/emission-projects/${projectId}/simulate`, simulationInput);
+  const simulationWorkflow = await call(clients.calculator, "get", `/home/api/emission-projects/${projectId}/simulation-workflow`);
+  if (!simulation.scenarioId || simulation.scenarioId !== simulationReplay.scenarioId || simulation.version !== simulationReplay.version) throw new Error("simulation idempotency contract failed");
+  if (!(simulationWorkflow.scenarios || []).some((row) => Number(row.scenarioId) === Number(simulation.scenarioId))) throw new Error("simulation workflow readback failed");
+  evidence.simulation = { actor: "CALCULATOR", account: users.calculator, input: { scenarioCode: simulationInput.scenarioCode, techInvestment: 51, efficiencyGain: 63, renewableRate: 36, ccusScale: 21 }, output: { scenarioId: simulation.scenarioId, version: simulation.version, projectedReduction: simulation.projectedReduction, unit: simulation.unit }, create: true, replay: true, readback: true };
+
   await call(clients.owner, "get", `/home/api/emission-projects/${projectId}/completion`);
   mark("REPORT_CERTIFICATION", "REPORT_CERTIFICATION_01_PLAN", "COMPANY_MANAGER",
     "GET /completion", { status: "DONE" });
