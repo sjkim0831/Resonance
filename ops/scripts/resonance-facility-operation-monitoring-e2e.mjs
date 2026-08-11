@@ -119,15 +119,12 @@ try {
       const actorApi = clients.get(transition.actorCode);
       const context = await browser.newContext({ storageState: await actorApi.storageState(), viewport: { width: 1440, height: 1000 } });
       browserContexts.set(transition.actorCode, context);
-      for (const viewport of [{ name: "desktop", width: 1440, height: 1000 }, { name: "mobile", width: 390, height: 844 }]) {
-        const warmup = await context.newPage();
-        await warmup.setViewportSize({ width: viewport.width, height: viewport.height });
-        const initialRoute = routeFor(transition.stepCode, routeBases[0]);
-        const warmRoute = `${initialRoute}${initialRoute.includes("?") ? "&" : "?"}projectId=${encodeURIComponent(projectId)}`;
-        await warmup.goto(`${baseURL}${warmRoute}`, { waitUntil: "domcontentloaded", timeout: 20_000 });
-        await warmup.waitForFunction(() => (document.querySelector("#root")?.children.length || 0) > 0 && document.querySelectorAll("h1,h2").length > 0, undefined, { timeout: 40_000 });
-        browserPages.set(`${transition.actorCode}:${viewport.name}`, warmup);
-      }
+      const warmup = await context.newPage();
+      const initialRoute = routeFor(transition.stepCode, routeBases[0]);
+      const warmRoute = `${initialRoute}${initialRoute.includes("?") ? "&" : "?"}projectId=${encodeURIComponent(projectId)}`;
+      await warmup.goto(`${baseURL}${warmRoute}`, { waitUntil: "domcontentloaded", timeout: 20_000 });
+      await warmup.waitForFunction(() => (document.querySelector("#root")?.children.length || 0) > 0 && document.querySelectorAll("h1,h2").length > 0, undefined, { timeout: 20_000 });
+      browserPages.set(transition.actorCode, warmup);
     }
     for (const transition of transitions) {
       for (const routePattern of routeBases) {
@@ -135,12 +132,15 @@ try {
         const route = `${screenRoute}${screenRoute.includes("?") ? "&" : "?"}projectId=${encodeURIComponent(projectId)}`;
         const durations = {};
         const states = {};
-        for (const viewportName of ["desktop", "mobile"]) {
-          const page = browserPages.get(`${transition.actorCode}:${viewportName}`);
-          if (!page) throw new Error(`missing warmed actor page=${transition.actorCode}:${viewportName}`);
+        for (const viewport of [{ name: "desktop", width: 1440, height: 1000 }, { name: "mobile", width: 390, height: 844 }]) {
+          const viewportName = viewport.name;
+          const page = browserPages.get(transition.actorCode);
+          if (!page) throw new Error(`missing warmed actor page=${transition.actorCode}`);
+          await page.setViewportSize({ width: viewport.width, height: viewport.height });
+          const viewportRoute = `${route}${route.includes("?") ? "&" : "?"}qaViewport=${viewportName}`;
           const startedAt = Date.now();
-          await page.evaluate(nextRoute => { history.pushState({}, "", nextRoute); window.dispatchEvent(new Event("carbonet:navigate")); }, route);
-          await page.waitForFunction(({ pathname, stepCode }) => location.pathname === pathname && (document.querySelector("#root")?.children.length || 0) > 0 && document.querySelectorAll("h1,h2").length > 0 && (document.body?.innerText || "").toUpperCase().includes(String(stepCode).toUpperCase()), { pathname: screenRoute, stepCode: transition.stepCode }, { timeout: 10_000 });
+          await page.evaluate(nextRoute => { history.pushState({}, "", nextRoute); window.dispatchEvent(new Event("carbonet:navigate")); }, viewportRoute);
+          await page.waitForFunction(({ pathname, stepCode, viewportName }) => location.pathname === pathname && new URLSearchParams(location.search).get("qaViewport") === viewportName && (document.querySelector("#root")?.children.length || 0) > 0 && document.querySelectorAll("h1,h2").length > 0 && (document.body?.innerText || "").toUpperCase().includes(String(stepCode).toUpperCase()), { pathname: screenRoute, stepCode: transition.stepCode, viewportName }, { timeout: 10_000 });
           durations[viewportName] = Date.now() - startedAt;
           states[viewportName] = await page.evaluate(() => ({ overflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 2, controls: document.querySelectorAll("input,select,textarea,button").length, headings: document.querySelectorAll("h1,h2").length }));
         }
