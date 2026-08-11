@@ -29,7 +29,7 @@ kubectl -n "$NAMESPACE" exec "$leader" -c patroni -- psql -h 127.0.0.1 -U postgr
 contract_statuses="$(kubectl -n "$NAMESPACE" exec "$leader" -c patroni -- psql -h 127.0.0.1 \
   -U postgres -d carbonet -X -Atqc "select coalesce(jsonb_object_agg(contract_id::text,contract_status),'{}'::jsonb) from framework_professional_screen_contract")"
 jq --argjson statuses "$contract_statuses" \
-  '(.contracts[] | .contractStatus) = ($statuses[(.contractId|tostring)] // "REVIEW_REQUIRED")' \
+  '.contracts |= map(.contractStatus = ($statuses[(.contractId|tostring)] // "REVIEW_REQUIRED"))' \
   "$snapshot" >"$enriched"
 python3 "$ROOT/ops/scripts/compile-cross-screen-contracts.py" "$enriched" >"$result"
 next_hash="$(jq -r '.contractHash' "$result")"
