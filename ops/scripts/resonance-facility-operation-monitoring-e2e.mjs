@@ -140,7 +140,12 @@ try {
           const viewportRoute = `${route}${route.includes("?") ? "&" : "?"}qaViewport=${viewportName}`;
           const startedAt = Date.now();
           await page.evaluate(nextRoute => { history.pushState({}, "", nextRoute); window.dispatchEvent(new Event("carbonet:navigate")); }, viewportRoute);
-          await page.waitForFunction(({ pathname, stepCode, viewportName }) => location.pathname === pathname && new URLSearchParams(location.search).get("qaViewport") === viewportName && (document.querySelector("#root")?.children.length || 0) > 0 && document.querySelectorAll("h1,h2").length > 0 && (document.body?.innerText || "").toUpperCase().includes(String(stepCode).toUpperCase()), { pathname: screenRoute, stepCode: transition.stepCode, viewportName }, { timeout: 10_000 });
+          try {
+            await page.waitForFunction(({ pathname, stepCode, viewportName }) => location.pathname === pathname && new URLSearchParams(location.search).get("qaViewport") === viewportName && (document.querySelector("#root")?.children.length || 0) > 0 && document.querySelectorAll("h1,h2").length > 0 && (document.body?.innerText || "").toUpperCase().includes(String(stepCode).toUpperCase()), { pathname: screenRoute, stepCode: transition.stepCode, viewportName }, { timeout: 10_000 });
+          } catch (error) {
+            const diagnostic = await page.evaluate(stepCode => ({ pathname: location.pathname, viewport: new URLSearchParams(location.search).get("qaViewport"), root: document.querySelector("#root")?.children.length || 0, headings: document.querySelectorAll("h1,h2").length, stepVisible: (document.body?.innerText || "").toUpperCase().includes(String(stepCode).toUpperCase()), coordinate: Array.from(document.querySelectorAll("p")).find(node => node.previousElementSibling?.textContent?.includes("SCREEN COORDINATE"))?.textContent || "" }), transition.stepCode);
+            throw new Error(`relay SPA navigation timeout route=${screenRoute} step=${transition.stepCode} viewport=${viewportName} actualPath=${diagnostic.pathname} actualViewport=${diagnostic.viewport} root=${diagnostic.root} headings=${diagnostic.headings} stepVisible=${diagnostic.stepVisible} coordinate=${diagnostic.coordinate.slice(0, 180)} cause=${error instanceof Error ? error.name : "UNKNOWN"}`);
+          }
           durations[viewportName] = Date.now() - startedAt;
           states[viewportName] = await page.evaluate(() => ({ overflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 2, controls: document.querySelectorAll("input,select,textarea,button").length, headings: document.querySelectorAll("h1,h2").length }));
         }
