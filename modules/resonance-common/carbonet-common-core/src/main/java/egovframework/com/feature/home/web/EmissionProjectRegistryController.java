@@ -88,6 +88,35 @@ public class EmissionProjectRegistryController {
     @PostMapping({"/home/api/emission-projects/{id}/activities","/en/home/api/emission-projects/{id}/activities"})
     public ResponseEntity<?> saveActivity(@PathVariable String id,@RequestBody Map<String,Object> body,HttpServletRequest request) {var c=currentUserContextService.resolve(request);try{return ResponseEntity.ok(Map.of("success",true,"id",service.saveActivity(id,tenant(c),c.getUserId(),c.isWebmaster(),body)));}catch(SecurityException e){return ResponseEntity.status(403).body(Map.of("message",e.getMessage()));}catch(Exception e){return ResponseEntity.badRequest().body(Map.of("message",e.getMessage()));} }
 
+    @GetMapping({"/home/api/emission-projects/{id}/activities/{activityId}","/en/home/api/emission-projects/{id}/activities/{activityId}"})
+    public ResponseEntity<?> activity(@PathVariable String id,@PathVariable long activityId,HttpServletRequest request) {
+        var c=currentUserContextService.resolve(request);
+        if(!c.isAuthenticated()) return ResponseEntity.status(401).body(Map.of("message","로그인이 필요합니다."));
+        try{return ResponseEntity.ok(service.activity(id,activityId,tenant(c),c.getUserId(),c.isWebmaster()));}
+        catch(SecurityException e){return ResponseEntity.status(403).body(Map.of("message",e.getMessage()));}
+        catch(IllegalArgumentException e){return ResponseEntity.notFound().build();}
+    }
+
+    @PostMapping({"/home/api/emission-projects/{id}/activities/{activityId}","/en/home/api/emission-projects/{id}/activities/{activityId}"})
+    public ResponseEntity<?> updateActivity(@PathVariable String id,@PathVariable long activityId,@RequestBody Map<String,Object> body,HttpServletRequest request) {
+        var c=currentUserContextService.resolve(request);
+        if(!c.isAuthenticated()) return ResponseEntity.status(401).body(Map.of("message","로그인이 필요합니다."));
+        try{return ResponseEntity.ok(Map.of("success",service.updateActivity(id,activityId,tenant(c),c.getUserId(),c.isWebmaster(),body)>0));}
+        catch(SecurityException e){return ResponseEntity.status(403).body(Map.of("message",e.getMessage()));}
+        catch(IllegalStateException e){return ResponseEntity.status(409).body(Map.of("message",e.getMessage()));}
+        catch(IllegalArgumentException e){return ResponseEntity.badRequest().body(Map.of("message",e.getMessage()));}
+    }
+
+    @DeleteMapping({"/home/api/emission-projects/{id}/activities/{activityId}","/en/home/api/emission-projects/{id}/activities/{activityId}"})
+    public ResponseEntity<?> deleteActivity(@PathVariable String id,@PathVariable long activityId,HttpServletRequest request) {
+        var c=currentUserContextService.resolve(request);
+        if(!c.isAuthenticated()) return ResponseEntity.status(401).body(Map.of("message","로그인이 필요합니다."));
+        try{return ResponseEntity.ok(Map.of("success",service.deleteActivity(id,activityId,tenant(c),c.getUserId(),c.isWebmaster())>0));}
+        catch(SecurityException e){return ResponseEntity.status(403).body(Map.of("message",e.getMessage()));}
+        catch(IllegalStateException e){return ResponseEntity.status(409).body(Map.of("message",e.getMessage()));}
+        catch(IllegalArgumentException e){return ResponseEntity.notFound().build();}
+    }
+
     @PostMapping({"/home/api/emission-projects/{id}/activities/upload","/en/home/api/emission-projects/{id}/activities/upload"})
     public ResponseEntity<?> uploadActivities(@PathVariable String id,@RequestParam("file") MultipartFile file,HttpServletRequest request) {var c=currentUserContextService.resolve(request);try{return ResponseEntity.ok(Map.of("success",true,"count",service.uploadActivities(id,tenant(c),c.getUserId(),c.isWebmaster(),file)));}catch(SecurityException e){return ResponseEntity.status(403).body(Map.of("message",e.getMessage()));}catch(Exception e){return ResponseEntity.badRequest().body(Map.of("message",e.getMessage()));} }
 

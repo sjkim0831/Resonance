@@ -287,6 +287,39 @@ public class EmissionProjectRegistryService {
         return id==null?0:id;
     }
 
+    public Map<String,Object> activity(String projectId,long activityId,String tenantId,String actor,boolean override) {
+        String tenant=requiredValue(tenantId,"tenantId"),user=requiredValue(actor,"actor");
+        requireAnyProjectActor(projectId,tenant,user,override);
+        List<Map<String,Object>> rows=jdbc.queryForList("SELECT a.activity_id AS \"id\",a.activity_name AS \"name\",a.category,a.activity_period AS \"period\",a.quantity,a.unit,a.evidence_note AS \"note\",a.factor_id AS \"factorId\",f.factor_name AS \"factorName\",f.factor_value AS \"factorValue\",a.mapping_status AS \"mappingStatus\",a.created_at AS \"createdAt\",a.updated_at AS \"updatedAt\" FROM emission_activity_data a LEFT JOIN emission_factor_reference f ON f.factor_id=a.factor_id WHERE a.project_id=? AND a.activity_id=?",projectId,activityId);
+        if(rows.isEmpty()) throw new IllegalArgumentException("ACTIVITY_NOT_FOUND");
+        return rows.get(0);
+    }
+
+    @Transactional
+    public int updateActivity(String projectId,long activityId,String tenantId,String actor,boolean override,Map<String,Object> body) {
+        String tenant=requiredValue(tenantId,"tenantId"),user=requiredValue(actor,"actor");
+        requireProjectActor(projectId,tenant,user,"SITE_DATA_OWNER",override); requireActivity(projectId,activityId);
+        String name=required(body,"name"),category=required(body,"category"),period=required(body,"period"),unit=required(body,"unit");
+        double quantity=Double.parseDouble(required(body,"quantity")); if(quantity<0) throw new IllegalArgumentException("활동량은 0보다 작을 수 없습니다.");
+        String note=required(body,"note"); if(note.length()>500) throw new IllegalArgumentException("ACTIVITY_EVIDENCE_TOO_LONG");
+        int changed=jdbc.update("UPDATE emission_activity_data SET activity_name=?,category=?,activity_period=?,quantity=?,unit=?,evidence_note=?,updated_at=CURRENT_TIMESTAMP WHERE project_id=? AND activity_id=?",name,category,period,quantity,unit,note,projectId,activityId);
+        if(changed==0) throw new IllegalArgumentException("ACTIVITY_NOT_FOUND");
+        jdbc.update("INSERT INTO emission_project_history(project_id,event_type,event_description,actor_name) VALUES (?,'ACTIVITY_UPDATED',?,?)",projectId,String.valueOf(activityId),user);
+        return changed;
+    }
+
+    @Transactional
+    public int deleteActivity(String projectId,long activityId,String tenantId,String actor,boolean override) {
+        String tenant=requiredValue(tenantId,"tenantId"),user=requiredValue(actor,"actor");
+        requireProjectActor(projectId,tenant,user,"SITE_DATA_OWNER",override); requireActivity(projectId,activityId);
+        Integer dependencies=jdbc.queryForObject("SELECT (SELECT count(*) FROM emission_activity_evidence WHERE project_id=? AND activity_id=?)+(SELECT count(*) FROM emission_activity_submission_item WHERE activity_id=?)+(SELECT count(*) FROM emission_activity_submission_evidence WHERE activity_id=?)+(SELECT count(*) FROM emission_calculation_item WHERE activity_id=?)",Integer.class,projectId,activityId,activityId,activityId,activityId);
+        if(dependencies!=null&&dependencies>0) throw new IllegalStateException("ACTIVITY_DELETE_BLOCKED_BY_DEPENDENCY");
+        int changed=jdbc.update("DELETE FROM emission_activity_data WHERE project_id=? AND activity_id=?",projectId,activityId);
+        if(changed==0) throw new IllegalArgumentException("ACTIVITY_NOT_FOUND");
+        jdbc.update("INSERT INTO emission_project_history(project_id,event_type,event_description,actor_name) VALUES (?,'ACTIVITY_DELETED',?,?)",projectId,String.valueOf(activityId),user);
+        return changed;
+    }
+
     public Map<String,Object> activityEvidence(String projectId,long activityId,String tenantId,String actor,boolean override) {
         String tenant=requiredValue(tenantId,"tenantId"),user=requiredValue(actor,"actor");
         requireAnyProjectActor(projectId,tenant,user,override); requireActivity(projectId,activityId);
