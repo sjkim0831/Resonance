@@ -9,8 +9,15 @@ type Submission={id:number;reportId:number;version:number;authorityCode:string;a
 type Event={id:number;submissionId:number;code:string;previousStatus?:string;newStatus:string;actor:string;note?:string;createdAt:string};
 type Workflow={project:Project;eligibleReports:Report[];items:Submission[];events:Event[]};
 
+const PROCESS_CODE="REGULATORY_SUBMISSION";
 const STATUS_LABEL:Record<string,string>={PACKAGED:"패키지 준비",SUBMITTED:"제출 완료",RECEIVED:"접수 확인",CORRECTION_REQUIRED:"보완 필요",RESUBMITTED:"재제출",ACCEPTED:"수리 완료",CANCELLED:"취소"};
 const STATUS_TONE:Record<string,string>={PACKAGED:"bg-slate-100 text-slate-700",SUBMITTED:"bg-blue-100 text-blue-800",RECEIVED:"bg-cyan-100 text-cyan-800",CORRECTION_REQUIRED:"bg-amber-100 text-amber-900",RESUBMITTED:"bg-indigo-100 text-indigo-800",ACCEPTED:"bg-emerald-100 text-emerald-800",CANCELLED:"bg-rose-100 text-rose-800"};
+const STEP_CONTEXT:Record<string,{order:number;label:string;actor:string;completion:string}>={
+ REGULATORY_SUBMISSION_S1:{order:1,label:"제출 범위·기한 확인",actor:"기업 관리자",completion:"제출 기관·보고 기간·법적 근거·마감일 확정"},
+ REGULATORY_SUBMISSION_S2:{order:2,label:"제출 패키지 생성·서명",actor:"기업 관리자",completion:"확정 보고서와 SHA-256 패키지 지문 생성"},
+ REGULATORY_SUBMISSION_S3:{order:3,label:"기관 제출·접수 추적",actor:"검증 담당자",completion:"기관 제출과 접수번호·접수 시각 기록"},
+ REGULATORY_SUBMISSION_S4:{order:4,label:"보완·수리·종결",actor:"승인 담당자",completion:"보완 또는 최종 수리 결정과 감사 이력 저장"},
+};
 
 async function json(response:Response){const text=await response.text();let body:any={};try{body=text?JSON.parse(text):{}}catch{throw new Error(`서버 응답 형식이 올바르지 않습니다. (${response.status})`)}if(!response.ok)throw new Error(body.message||`요청 처리 실패 (${response.status})`);return body}
 function isoAfter(days:number){const date=new Date();date.setDate(date.getDate()+days);return date.toISOString().slice(0,10)}
@@ -18,7 +25,7 @@ function date(value?:string){return value?new Date(value).toLocaleString():"-"}
 
 function RegulatorySubmissionWorkspace({admin=false}:{admin?:boolean}){
  const en=isEnglish();
- const initialId=new URLSearchParams(location.search).get("projectId")||"";
+ const params=new URLSearchParams(location.search),initialId=params.get("projectId")||"",stepCode=(params.get("step")||"").toUpperCase(),stepContext=STEP_CONTEXT[stepCode];
  const[projectId,setProjectId]=useState(initialId),[projects,setProjects]=useState<Project[]>([]),[data,setData]=useState<Workflow|null>(null),[loading,setLoading]=useState(false),[busy,setBusy]=useState(false),[message,setMessage]=useState(""),[error,setError]=useState("");
  const[form,setForm]=useState({reportId:"",authorityCode:"MOE",authorityName:"환경부",reportingProgram:"온실가스 배출량 정기보고",reportingPeriod:String(new Date().getFullYear()-1),legalBasis:"탄소중립기본법 및 온실가스 배출량 산정·보고 지침",channel:"PORTAL",deadline:isoAfter(30),note:""});
  const base=projectId?buildLocalizedPath(`/home/api/emission-projects/${projectId}/regulatory-submissions`,`/en/home/api/emission-projects/${projectId}/regulatory-submissions`):"";
@@ -33,6 +40,7 @@ function RegulatorySubmissionWorkspace({admin=false}:{admin?:boolean}){
  const actionLabel:Record<string,string>={SUBMIT:"기관 제출",CANCEL:"패키지 취소",RECORD_RECEIPT:"접수번호 등록",REQUEST_CORRECTION:"보완 요구",RESUBMIT:"보완 재제출",ACCEPT:"최종 수리"};
  return <div className="space-y-6" data-testid={admin?"admin-regulatory-submission":"user-regulatory-submission"}>
   <section className="overflow-hidden rounded-2xl bg-gradient-to-r from-[#052b57] to-[#174ea6] p-6 text-white shadow-lg lg:p-8"><div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between"><div><p className="text-sm font-bold text-blue-200">REGULATORY SUBMISSION CONTROL</p><h1 className="mt-2 text-3xl font-black">규제기관 제출·접수·보완</h1><p className="mt-3 max-w-3xl leading-7 text-blue-50">승인된 보고서 버전을 제출 패키지로 고정하고 기관 접수번호, 보완 기한, 재제출과 최종 수리까지 하나의 감사 가능한 흐름으로 관리합니다.</p></div><label className="min-w-72 text-sm font-bold">프로젝트 선택<select className="mt-2 h-12 w-full rounded-lg border border-white/30 bg-white px-3 text-slate-900" value={projectId} onChange={event=>choose(event.target.value)}><option value="">프로젝트를 선택하세요</option>{projects.map(project=><option key={project.id} value={project.id}>{project.name} · {project.site}</option>)}</select></label></div></section>
+  {stepContext&&<section className="rounded-2xl border border-blue-200 bg-blue-50 p-5" data-qa-coordinate={`${PROCESS_CODE}:${stepCode}`}><div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div><p className="text-sm font-bold text-blue-700">현재 절차 · {stepContext.order}/4</p><h2 className="mt-1 text-xl font-black text-[#052b57]">{stepContext.label}</h2><p className="mt-2 text-sm text-slate-700">완료 조건: {stepContext.completion}</p></div><div className="rounded-xl bg-white px-4 py-3 text-sm shadow-sm"><span className="block text-slate-500">담당자</span><strong className="text-[#052b57]">{stepContext.actor}</strong><span className="sr-only">{stepCode}</span></div></div></section>}
   {message&&<p className="rounded-xl border border-blue-200 bg-blue-50 p-4 font-bold text-blue-900" role="status">{message}</p>}{error&&<p className="rounded-xl border border-red-200 bg-red-50 p-4 font-bold text-red-800" role="alert">{error}</p>}
   {!projectId?<section className="rounded-2xl border bg-white p-10 text-center"><span className="material-symbols-outlined text-5xl text-slate-300">assignment</span><h2 className="mt-3 text-xl font-black">제출할 프로젝트를 선택하세요</h2><p className="mt-2 text-slate-600">확정 보고서가 존재하는 프로젝트에서 제출 패키지를 만들 수 있습니다.</p></section>:loading?<p className="rounded-2xl border bg-white p-10 text-center font-bold" role="status">제출 현황을 불러오는 중입니다.</p>:<>
    <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{[["프로젝트",data?.project?.name||projectId],["확정 보고서",`${data?.eligibleReports?.length||0}건`],["현재 제출 상태",latest?STATUS_LABEL[latest.status]||latest.status:"미생성"],["제출 기한",latest?.deadline||"-"]].map(([label,value])=><article className="rounded-2xl border bg-white p-5" key={label}><p className="text-sm font-bold text-slate-500">{label}</p><strong className="mt-2 block break-words text-xl font-black text-[#052b57]">{value}</strong></article>)}</section>
