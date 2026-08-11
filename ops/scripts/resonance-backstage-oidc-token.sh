@@ -8,7 +8,7 @@ KEYCLOAK_URL="${KEYCLOAK_URL:-https://identity.172.16.1.232.nip.io}"
 CA_CERT="${RESONANCE_INTERNAL_CA:-$HOME/.config/resonance/backstage-tls/ca.crt}"
 WORK_ROOT="${OIDC_TOKEN_WORK_ROOT:-$HOME/.cache/resonance/oidc-token}"
 
-for command in curl kubectl node; do
+for command in curl kubectl node flock; do
   command -v "$command" >/dev/null || {
     echo "[oidc-token] missing command: $command" >&2
     exit 1
@@ -21,6 +21,12 @@ done
 
 mkdir -p "$WORK_ROOT"
 chmod 700 "$WORK_ROOT"
+token_lock_file="${OIDC_TOKEN_LOCK_FILE:-$WORK_ROOT/token-issuance.lock}"
+exec {token_lock_fd}>"$token_lock_file"
+flock -w "${OIDC_TOKEN_LOCK_WAIT_SECONDS:-60}" "$token_lock_fd" || {
+  echo "[oidc-token] token issuance lock timeout" >&2
+  exit 4
+}
 run_dir="$(mktemp -d "$WORK_ROOT/run.XXXXXXXX")"
 cleanup() {
   if [[ "${OIDC_TOKEN_KEEP_WORK:-false}" == "true" ]]; then
