@@ -367,9 +367,10 @@ public class EmissionProjectRegistryService {
     }
 
     private void requireAnyProjectActor(String projectId,String tenant,String user,boolean override) {
-        assertTenantAccess(projectId,tenant); if(override)return;
-        Integer count=jdbc.queryForObject("SELECT count(*) FROM framework_project_actor_assignment WHERE project_id=? AND lower(user_id)=lower(?) AND active_yn='Y'",Integer.class,projectId,user);
-        if(count==null||count==0) throw new SecurityException("PROJECT_ACTOR_SCOPE_DENIED");
+        // The account-to-actor assignment is the canonical authorization source.
+        // Rechecking the legacy project assignment table here made a user able to
+        // create an activity and then receive 403 while reading the same record.
+        assertProjectParticipant(projectId,tenant,user,override);
     }
 
     @Transactional
