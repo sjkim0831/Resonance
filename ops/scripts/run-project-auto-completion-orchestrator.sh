@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 ROOT_DIR="${ROOT_DIR:-/opt/Resonance}"; NAMESPACE="${K8S_NAMESPACE:-carbonet-prod}"; DB="${PGDATABASE:-carbonet}"; DB_USER="${PGUSER:-postgres}"; MAX_PARALLEL_WORKERS="${MAX_PARALLEL_WORKERS:-3}"
+BUSINESS_E2E_RUNNER="${CURRENT_BUSINESS_E2E_RUNNER:-/opt/resonance-data/control-plane/bin/run-next-current-business-e2e.sh}"
+BUSINESS_E2E_REGISTRY="${BUSINESS_E2E_RUNNER_REGISTRY:-/opt/resonance-data/control-plane/runtime-metadata/business-e2e-runner-registry.json}"
+BUSINESS_E2E_RUNTIME_ROOT="${BUSINESS_E2E_RUNTIME_ROOT:-/opt/Resonance/var/deploy-worktrees/runtime-build}"
 PROJECT_WORK_RUNNER="${PROJECT_WORK_RUNNER:-$ROOT_DIR/ops/scripts/run-hermes-project-work.sh}"
 PROCESS_DEVELOPMENT_DISPATCHER="${PROCESS_DEVELOPMENT_DISPATCHER:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/run-process-development-dispatcher.sh}"
 LOCK_FILE="${PROJECT_AUTO_COMPLETION_LOCK:-/tmp/resonance-project-auto-completion.lock}"
@@ -1393,9 +1396,11 @@ if [[ "$(psqlq -c "select (to_regprocedure('framework_incremental_screen_generat
   fi
 fi
 business_e2e_result='{"status":"NOT_INSTALLED"}'
-if [[ -x "$ROOT_DIR/ops/scripts/run-next-current-business-e2e.sh" ]]; then
+if [[ -x "$BUSINESS_E2E_RUNNER" && -s "$BUSINESS_E2E_REGISTRY" ]]; then
   set +e
-  business_e2e_output="$(timeout 900 bash "$ROOT_DIR/ops/scripts/run-next-current-business-e2e.sh" 2>&1)"
+  business_e2e_output="$(RESONANCE_ROOT="$BUSINESS_E2E_RUNTIME_ROOT" \
+    BUSINESS_E2E_RUNNER_REGISTRY="$BUSINESS_E2E_REGISTRY" \
+    timeout 900 bash "$BUSINESS_E2E_RUNNER" 2>&1)"
   business_e2e_rc=$?
   set -e
   if (( business_e2e_rc == 0 )); then

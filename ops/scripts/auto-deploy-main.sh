@@ -1278,6 +1278,10 @@ process_development_control_plane_in_sync() {
       /opt/resonance-data/control-plane/bin/run-process-development-worker.sh &&
     cmp -s ops/scripts/run-project-auto-completion-orchestrator.sh \
       /opt/resonance-data/control-plane/bin/run-project-auto-completion-orchestrator.sh &&
+    cmp -s ops/scripts/run-next-current-business-e2e.sh \
+      /opt/resonance-data/control-plane/bin/run-next-current-business-e2e.sh &&
+    cmp -s ops/runtime-metadata/business-e2e-runner-registry.json \
+      /opt/resonance-data/control-plane/runtime-metadata/business-e2e-runner-registry.json &&
     cmp -s ops/systemd/resonance-process-development-worker.service \
       /etc/systemd/system/resonance-process-development-worker.service &&
     cmp -s ops/systemd/resonance-process-development-worker.timer \
@@ -1298,6 +1302,8 @@ sync_process_development_worker_if_required() {
       ops/scripts/run-process-development-worker.sh \
       ops/scripts/test-process-worker-deploy-marker.sh \
       ops/scripts/run-project-auto-completion-orchestrator.sh \
+      ops/scripts/run-next-current-business-e2e.sh \
+      ops/runtime-metadata/business-e2e-runner-registry.json \
       ops/systemd/resonance-process-development-worker.service \
       ops/systemd/resonance-process-development-worker.timer \
       ops/systemd/resonance-project-auto-completion.service \
@@ -1313,6 +1319,8 @@ sync_process_development_worker_if_required() {
       ops/scripts/run-process-development-worker.sh \
       ops/scripts/test-process-worker-deploy-marker.sh \
       ops/scripts/run-project-auto-completion-orchestrator.sh \
+      ops/scripts/run-next-current-business-e2e.sh \
+      ops/runtime-metadata/business-e2e-runner-registry.json \
       ops/systemd/resonance-process-development-worker.service \
       ops/systemd/resonance-process-development-worker.timer \
       ops/systemd/resonance-project-auto-completion.service \
@@ -1324,7 +1332,8 @@ sync_process_development_worker_if_required() {
       grep -Fq '/opt/resonance-data/control-plane/bin/run-process-development-dispatcher.sh'; then
     bash ops/scripts/test-process-worker-deploy-marker.sh
     sudo -n install -d -m 0755 -o root -g root \
-      /opt/resonance-data/control-plane/bin
+      /opt/resonance-data/control-plane/bin \
+      /opt/resonance-data/control-plane/runtime-metadata
     sudo -n install -m 0750 -o sjkim -g sjkim \
       ops/scripts/run-process-development-dispatcher.sh \
       /opt/resonance-data/control-plane/bin/run-process-development-dispatcher.sh
@@ -1334,6 +1343,12 @@ sync_process_development_worker_if_required() {
     sudo -n install -m 0750 -o sjkim -g sjkim \
       ops/scripts/run-project-auto-completion-orchestrator.sh \
       /opt/resonance-data/control-plane/bin/run-project-auto-completion-orchestrator.sh
+    sudo -n install -m 0750 -o sjkim -g sjkim \
+      ops/scripts/run-next-current-business-e2e.sh \
+      /opt/resonance-data/control-plane/bin/run-next-current-business-e2e.sh
+    sudo -n install -m 0644 -o sjkim -g sjkim \
+      ops/runtime-metadata/business-e2e-runner-registry.json \
+      /opt/resonance-data/control-plane/runtime-metadata/business-e2e-runner-registry.json
     sudo -n install -m 0644 \
       ops/systemd/resonance-process-development-worker.service \
       /etc/systemd/system/resonance-process-development-worker.service

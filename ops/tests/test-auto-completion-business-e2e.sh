@@ -6,7 +6,9 @@ TARGET="$ROOT/ops/scripts/run-project-auto-completion-orchestrator.sh"
 bash -n "$TARGET"
 
 for contract in \
-  'timeout 900 bash "$ROOT_DIR/ops/scripts/run-next-current-business-e2e.sh"' \
+  'timeout 900 bash "$BUSINESS_E2E_RUNNER"' \
+  'BUSINESS_E2E_RUNNER_REGISTRY="$BUSINESS_E2E_REGISTRY"' \
+  'BUSINESS_E2E_RUNTIME_ROOT' \
   'business_e2e_rc == 75' \
   'status:"DEFERRED"' \
   'dispatcher_failed=1' \

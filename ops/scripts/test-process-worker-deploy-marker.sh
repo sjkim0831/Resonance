@@ -66,6 +66,12 @@ grep -Fq 'OnUnitInactiveSec=2min' "$ORCHESTRATOR_TIMER" \
   || fail "orchestrator timer must not immediately rerun after a long execution"
 grep -Fq '/opt/resonance-data/control-plane/bin/run-project-auto-completion-orchestrator.sh' "$AUTO_DEPLOY" \
   || fail "auto-deploy does not install the orchestrator script"
+grep -Fq '/opt/resonance-data/control-plane/bin/run-next-current-business-e2e.sh' "$AUTO_DEPLOY" \
+  || fail "auto-deploy does not install the governed BUSINESS_E2E runner"
+grep -Fq '/opt/resonance-data/control-plane/runtime-metadata/business-e2e-runner-registry.json' "$AUTO_DEPLOY" \
+  || fail "auto-deploy does not install the governed BUSINESS_E2E registry"
+grep -Fq 'BUSINESS_E2E_RUNTIME_ROOT' "$ORCHESTRATOR" \
+  || fail "orchestrator does not bind BUSINESS_E2E to the locked deployment worktree"
 frontend_branch="$(sed -n '/FRONTEND_USER|FRONTEND_ADMIN)/,/API|API_QUALITY|BACKEND|BACKEND_QUALITY)/p' "$DETERMINISTIC_RUNNER")"
 grep -Fq 'generate-full-stack-design-packages.sh' <<<"$frontend_branch" \
   || fail "generated frontend cannot materialize its missing step package deterministically"
