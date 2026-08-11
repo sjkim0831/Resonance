@@ -14,6 +14,7 @@
       "expectedCurrentPassedSteps": 3,
       "totalSteps": 3,
       "timeoutSeconds": 300,
+      "deployLockMode": "SHARED_PARENT",
       "externalBlockers": []
     },
     {
@@ -24,9 +25,23 @@
       "expectedCurrentPassedSteps": 3,
       "totalSteps": 5,
       "timeoutSeconds": 300,
+      "deployLockMode": "SHARED_PARENT",
       "externalBlockers": [
         "MEMBER_REGISTRATION_S3:EXTERNAL_IDENTITY_PROVIDER_UNAVAILABLE",
         "MEMBER_REGISTRATION_S4:SUCCESSFUL_IDENTITY_REQUIRED"
+      ]
+    },
+    {
+      "priority": 30,
+      "processCode": "COMPANY_REAPPLICATION_PUBLIC",
+      "runner": "ops/tests/run-company-reapplication-business-e2e.sh",
+      "automation": "AUTOMATIC_PARTIAL",
+      "expectedCurrentPassedSteps": 1,
+      "totalSteps": 2,
+      "timeoutSeconds": 600,
+      "deployLockMode": "EXCLUSIVE_SELF",
+      "externalBlockers": [
+        "COMPANY_REAPPLICATION_APPROVER_REVIEW:SEPARATE_APPROVAL_EVIDENCE_REQUIRED"
       ]
     }
   ]

@@ -23,12 +23,17 @@ for runner in "${runners[@]}"; do
   expected="$(jq -r '.expectedCurrentPassedSteps' <<<"$runner")"
   total="$(jq -r '.totalSteps' <<<"$runner")"
   timeout_seconds="$(jq -r '.timeoutSeconds' <<<"$runner")"
+  deploy_lock_mode="$(jq -r '.deployLockMode' <<<"$runner")"
   [[ "$process" =~ ^[A-Z0-9_]+$ && "$path" =~ ^ops/(scripts|tests)/[a-zA-Z0-9._/-]+\.sh$ && -f "$ROOT/$path" ]] || {
     echo "[current-business-e2e] invalid registry entry process=$process" >&2
     exit 2
   }
   [[ "$expected" =~ ^[0-9]+$ && "$total" =~ ^[0-9]+$ && "$timeout_seconds" =~ ^[0-9]+$ ]] || exit 2
   (( expected > 0 && expected <= total && timeout_seconds >= 30 && timeout_seconds <= 900 )) || exit 2
+  [[ "$deploy_lock_mode" == "SHARED_PARENT" || "$deploy_lock_mode" == "EXCLUSIVE_SELF" ]] || {
+    echo "[current-business-e2e] invalid deploy lock mode process=$process" >&2
+    exit 2
+  }
 
   current="$(carbonet_postgres_query "select count(*) from framework_current_business_e2e_evidence where process_code='$process' and business_test_result='PASSED' and current_version;")"
   if (( current >= expected )); then
@@ -37,6 +42,12 @@ for runner in "${runners[@]}"; do
 
   started="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
   log="$LOG_DIR/${process}-$(date -u +%Y%m%dT%H%M%SZ).log"
+  # A few browser suites need an exclusive deploy lock for the entire
+  # capture-to-promotion interval. Release the parent shared lock immediately
+  # before those allowlisted runners acquire the same lock themselves.
+  if [[ "$deploy_lock_mode" == "EXCLUSIVE_SELF" ]]; then
+    flock -u 8
+  fi
   if ! timeout "$timeout_seconds" bash "$ROOT/$path" >"$log" 2>&1; then
     echo "[current-business-e2e] FAILED process=$process log=$log" >&2
     exit 1

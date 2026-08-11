@@ -7,14 +7,20 @@ REGISTRY="$ROOT/ops/runtime-metadata/business-e2e-runner-registry.json"
 bash -n "$RUNNER"
 jq -e '.policy.maxRunsPerInvocation==1 and .policy.failClosed==true
   and ([.runners[].processCode]|unique|length)==(.runners|length)
-  and ([.runners[]|select(.automation=="AUTOMATIC" or .automation=="AUTOMATIC_PARTIAL")]|length)==2
-  and (.runners[]|select(.processCode=="MEMBER_REGISTRATION")|.externalBlockers|length)==2' "$REGISTRY" >/dev/null
+  and ([.runners[]|select(.automation=="AUTOMATIC" or .automation=="AUTOMATIC_PARTIAL")]|length)==3
+  and ([.runners[].deployLockMode]|all(.=="SHARED_PARENT" or .=="EXCLUSIVE_SELF"))
+  and (.runners[]|select(.processCode=="MEMBER_REGISTRATION")|.externalBlockers|length)==2
+  and (.runners[]|select(.processCode=="COMPANY_REAPPLICATION_PUBLIC")
+    |.automation=="AUTOMATIC_PARTIAL" and .expectedCurrentPassedSteps==1 and .totalSteps==2
+      and .deployLockMode=="EXCLUSIVE_SELF" and (.externalBlockers|length)==1)' "$REGISTRY" >/dev/null
 
 for contract in \
   'framework_current_business_e2e_evidence' \
   'maxRunsPerInvocation==1' \
   'timeout "$timeout_seconds"' \
   'flock -s -w 30 8' \
+  'flock -u 8' \
+  'EXCLUSIVE_SELF' \
   'current_after" == "$expected' \
   'invalid registry entry' \
   'AUTOMATIC_PARTIAL'; do
@@ -28,4 +34,4 @@ if grep -Eq '\beval\b|find .*business.*e2e|for .*ops/tests/\*' "$RUNNER"; then
   echo '[current-business-e2e-runner] FAIL ungoverned runner discovery' >&2
   exit 1
 fi
-echo '[current-business-e2e-runner] PASS allowlist=2 max-runs=1 timeout=bounded evidence=current-version external-blockers=explicit'
+echo '[current-business-e2e-runner] PASS allowlist=3 max-runs=1 timeout=bounded evidence=current-version deploy-lock=governed external-blockers=explicit'
