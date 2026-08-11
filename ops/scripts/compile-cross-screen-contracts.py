@@ -12,11 +12,12 @@ endpoints={(x["method"].upper(),normalize_path(x["path"])) for x in data["regist
 canon={}; bindings=[]; issues=[]; issue_keys=set(); screens=defaultdict(list)
 
 def issue(code,severity,resource,field,message,evidence=None):
-    signature=(code,severity,resource,field or "")
+    evidence=evidence or {}
+    signature=(code,severity,resource,field or "",json.dumps(evidence,sort_keys=True,separators=(",",":")))
     if signature in issue_keys:return
     issue_keys.add(signature)
     issues.append({"issueCode":code,"severity":severity,"resourceKey":resource,
-      "fieldKey":field or "","message":message,"evidence":evidence or {}})
+      "fieldKey":field or "","message":message,"evidence":evidence})
 def family(value):
     value=value.upper()
     if value in {"STRING","TEXT","CODE","UUID","YEAR","HASH"}:return "TEXT"

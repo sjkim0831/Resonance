@@ -42,7 +42,9 @@ for (method,path),resources in sorted(gaps.items()):
         scored.append((score,candidate))
     scored.sort(reverse=True)
     candidates=[{"score":score,"path":candidate} for score,candidate in scored[:3]]
-    high=bool(candidates and candidates[0]["score"]>=.92 and (len(candidates)==1 or candidates[0]["score"]-candidates[1]["score"]>=.08))
+    top_path=candidates[0]["path"] if candidates else ""
+    same_shape=(path.count("{}") == top_path.count("{}") and path.rsplit("/",1)[-1] == top_path.rsplit("/",1)[-1])
+    high=bool(candidates and same_shape and candidates[0]["score"]>=.92 and (len(candidates)==1 or candidates[0]["score"]-candidates[1]["score"]>=.08))
     result.append({"method":method,"path":path,"usageCount":len(resources),"resources":resources,
                    "highConfidenceCorrection":high,"candidates":candidates})
 
