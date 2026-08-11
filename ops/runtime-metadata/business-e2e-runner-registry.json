@@ -35,14 +35,12 @@
       "priority": 30,
       "processCode": "COMPANY_REAPPLICATION_PUBLIC",
       "runner": "ops/tests/run-company-reapplication-business-e2e.sh",
-      "automation": "AUTOMATIC_PARTIAL",
-      "expectedCurrentPassedSteps": 1,
+      "automation": "AUTOMATIC",
+      "expectedCurrentPassedSteps": 2,
       "totalSteps": 2,
       "timeoutSeconds": 600,
       "deployLockMode": "EXCLUSIVE_SELF",
-      "externalBlockers": [
-        "COMPANY_REAPPLICATION_APPROVER_REVIEW:SEPARATE_APPROVAL_EVIDENCE_REQUIRED"
-      ]
+      "externalBlockers": []
     }
   ]
 }

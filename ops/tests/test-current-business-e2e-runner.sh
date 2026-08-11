@@ -11,8 +11,8 @@ jq -e '.policy.maxRunsPerInvocation==1 and .policy.failClosed==true
   and ([.runners[].deployLockMode]|all(.=="SHARED_PARENT" or .=="EXCLUSIVE_SELF"))
   and (.runners[]|select(.processCode=="MEMBER_REGISTRATION")|.externalBlockers|length)==2
   and (.runners[]|select(.processCode=="COMPANY_REAPPLICATION_PUBLIC")
-    |.automation=="AUTOMATIC_PARTIAL" and .expectedCurrentPassedSteps==1 and .totalSteps==2
-      and .deployLockMode=="EXCLUSIVE_SELF" and (.externalBlockers|length)==1)' "$REGISTRY" >/dev/null
+    |.automation=="AUTOMATIC" and .expectedCurrentPassedSteps==2 and .totalSteps==2
+      and .deployLockMode=="EXCLUSIVE_SELF" and (.externalBlockers|length)==0)' "$REGISTRY" >/dev/null
 
 for contract in \
   'framework_current_business_e2e_evidence' \
