@@ -15,6 +15,8 @@ SCRIPTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=ops/scripts/build.sh
 source "$ROOT_DIR/ops/scripts/build.sh" 2>/dev/null || true
 init_build_tool
+# shellcheck source=ops/scripts/docker-registry-cache.sh
+source "$ROOT_DIR/ops/scripts/docker-registry-cache.sh"
 NAMESPACE="${NAMESPACE:-carbonet-prod}"
 DEPLOYMENT="${DEPLOYMENT:-carbonet-runtime}"
 CONTAINER="${CONTAINER:-carbonet-runtime}"
@@ -716,10 +718,29 @@ build_image() {
   mkdir -p "$RELEASE_DIR/ops/config"
   cp -r "$ROOT_DIR/ops/config/"* "$RELEASE_DIR/ops/config/" 2>/dev/null || true
 
+  local cache_ref=""
+  local -a registry_cache_args=()
+  cache_ref="$(
+    kubectl -n "$NAMESPACE" get "deployment/$DEPLOYMENT" -o json 2>/dev/null \
+      | jq -er --arg container "$CONTAINER" '
+          [.spec.template.spec.containers[] | select(.name == $container)]
+          | if length == 1 then .[0].image else empty end
+        ' 2>/dev/null || true
+  )"
+  if [[ -n "$cache_ref" ]]; then
+    if append_docker_registry_cache_from registry_cache_args "$cache_ref"; then
+      log_detail "Using current runtime image as registry cache: $cache_ref"
+    else
+      log_warning "Ignoring invalid runtime registry cache reference"
+    fi
+  else
+    log_detail "No current runtime registry cache reference; building without registry cache"
+  fi
+
   log_cmd "docker build --build-arg PROJECT_ID=$PROJECT_ID -t $IMAGE_NAME $RELEASE_DIR"
 
   if root_cmd docker build --build-arg PROJECT_ID="$PROJECT_ID" --build-arg RUNTIME_BASE_IMAGE="$RUNTIME_BASE_IMAGE" --build-arg BUILDKIT_INLINE_CACHE=1 \
-    --cache-from "type=registry,ref=$IMAGE_NAME" --cache-from "type=registry,ref=${IMAGE_NAME%-*}:*" \
+    "${registry_cache_args[@]}" \
     -f "$ROOT_DIR/ops/docker/Dockerfile.runtime" \
     -t "$IMAGE_NAME" "$RELEASE_DIR" > >(tee "$DOCKER_ERROR_LOG") 2>&1; then
     log_success "Docker image built"
