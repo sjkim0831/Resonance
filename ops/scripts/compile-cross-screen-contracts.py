@@ -89,7 +89,10 @@ for c in data["contracts"]:
 lineage=[]
 core={"api:tenantid","api:projectid","api:recordid","api:rowversion"}
 by_contract=defaultdict(set)
-for b in bindings:by_contract[b["contractId"]].add(b["canonicalKey"])
+logical_by_contract=defaultdict(set)
+for b in bindings:
+    by_contract[b["contractId"]].add(b["canonicalKey"])
+    logical_by_contract[b["contractId"]].add(str(b["fieldCode"]).strip().lower())
 for (process,audience),contracts in screens.items():
     ordered=sorted(contracts,key=lambda x:(x["stepOrder"],x["contractId"]))
     # one representative contract per process step and audience
@@ -102,7 +105,10 @@ for (process,audience),contracts in screens.items():
             lineage.append({"processCode":process,"audience":audience,
               "fromStepCode":left["stepCode"],"toStepCode":right["stepCode"],
               "canonicalKey":ck,"lineageType":"CARRY_FORWARD","compatibilityStatus":"COMPATIBLE"})
-        for ck in sorted((core&rset)-lset):
+        left_logical,right_logical=logical_by_contract[left["contractId"]],logical_by_contract[right["contractId"]]
+        for ck in sorted(core):
+            logical=ck.removeprefix("api:")
+            if logical not in right_logical or logical in left_logical:continue
             issue("CORE_FIELD_LINEAGE_MISSING","BLOCKING",
               f'{process}:{left["stepCode"]}->{right["stepCode"]}:{audience}',ck,
               "다음 단계의 핵심 필드가 이전 단계에서 전달되지 않습니다.")
