@@ -19,7 +19,7 @@ def issue(code,severity,resource,field,message,evidence=None):
       "fieldKey":field or "","message":message,"evidence":evidence or {}})
 def family(value):
     value=value.upper()
-    if value in {"STRING","TEXT","CODE","UUID","YEAR"}:return "TEXT"
+    if value in {"STRING","TEXT","CODE","UUID","YEAR","HASH"}:return "TEXT"
     if value in {"INTEGER","LONG","DECIMAL","NUMBER","FLOAT","DOUBLE"}:return "NUMBER"
     if value in {"DATE","DATETIME","TIMESTAMP"}:return "TEMPORAL"
     if value in {"BOOLEAN","BOOL"}:return "BOOLEAN"
@@ -36,7 +36,8 @@ def parse_api(value):
         parts=value.strip().split(maxsplit=1)
         return (parts[0].upper(),normalize_path(parts[1])) if len(parts)==2 else None
     if isinstance(value,dict):
-        return (str(value.get("method","GET")).upper(),normalize_path(value.get("path") or value.get("routePath","")))
+        path=normalize_path(value.get("path") or value.get("routePath", ""))
+        return (str(value.get("method","GET")).upper(),path) if path else None
 
 for c in data["contracts"]:
     resource=f'{c["processCode"]}:{c["stepCode"]}:{c["audience"]}:{c["routePath"]}'
