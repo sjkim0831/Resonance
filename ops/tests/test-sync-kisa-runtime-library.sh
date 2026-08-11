@@ -18,4 +18,9 @@ if KISA_RUNTIME_LIBRARY_SOURCE="$tmp/missing.jar" \
   exit 1
 fi
 grep -Fq 'sync-kisa-runtime-library.sh' "$ROOT/ops/scripts/resonance-k8s-build-deploy-80-v2.sh"
+grep -Fq '/opt/Resonance/third_party/kisa/kr.or.kisa.dapc.core-1.0.0.jar' "$TARGET"
+if grep -Fq 'if [[ -f "$ROOT_DIR/third_party/kisa/' "$ROOT/ops/scripts/resonance-k8s-build-deploy-80-v2.sh"; then
+  echo '[kisa-runtime-library-contract] deploy still skips an untracked SDK' >&2
+  exit 1
+fi
 echo '[kisa-runtime-library-contract] PASS atomic=1 checksum=1 missing=blocked deploy=connected'

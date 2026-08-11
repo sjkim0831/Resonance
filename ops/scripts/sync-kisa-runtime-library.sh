@@ -3,6 +3,10 @@ set -Eeuo pipefail
 
 ROOT="${RESONANCE_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
 SOURCE="${KISA_RUNTIME_LIBRARY_SOURCE:-$ROOT/third_party/kisa/kr.or.kisa.dapc.core-1.0.0.jar}"
+if [[ -z "${KISA_RUNTIME_LIBRARY_SOURCE:-}" && ! -s "$SOURCE" \
+   && -s /opt/Resonance/third_party/kisa/kr.or.kisa.dapc.core-1.0.0.jar ]]; then
+  SOURCE=/opt/Resonance/third_party/kisa/kr.or.kisa.dapc.core-1.0.0.jar
+fi
 TARGET_DIR="${CARBONET_BACKEND_LIB_OVERLAY_DIR:-/opt/Resonance/projects/carbonet-backend-lib}"
 TARGET="$TARGET_DIR/$(basename "$SOURCE")"
 

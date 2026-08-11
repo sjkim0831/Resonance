@@ -706,12 +706,11 @@ build_image() {
       "cp $(jbooted project-runtime) $RELEASE_DIR/carbonet-api.jar"
   }
 
-  if [[ -f "$ROOT_DIR/third_party/kisa/kr.or.kisa.dapc.core-1.0.0.jar" ]]; then
-    log_detail "Copying KISA library..."
-    cp "$ROOT_DIR/third_party/kisa/kr.or.kisa.dapc.core-1.0.0.jar" "$RELEASE_DIR/lib/"
-    RESONANCE_ROOT="$ROOT_DIR" \
-      bash "$ROOT_DIR/ops/scripts/sync-kisa-runtime-library.sh"
-  fi
+  log_detail "Synchronizing KISA library..."
+  RESONANCE_ROOT="$ROOT_DIR" \
+    bash "$ROOT_DIR/ops/scripts/sync-kisa-runtime-library.sh"
+  cp "${CARBONET_BACKEND_LIB_OVERLAY_DIR:-/opt/Resonance/projects/carbonet-backend-lib}/kr.or.kisa.dapc.core-1.0.0.jar" \
+    "$RELEASE_DIR/lib/"
 
   log_detail "Copying config files..."
   mkdir -p "$RELEASE_DIR/ops/config"
