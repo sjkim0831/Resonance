@@ -41,6 +41,17 @@
       "timeoutSeconds": 600,
       "deployLockMode": "EXCLUSIVE_SELF",
       "externalBlockers": []
+    },
+    {
+      "priority": 40,
+      "processCode": "COMPANY_ONBOARDING",
+      "runner": "ops/tests/run-company-onboarding-business-e2e.sh",
+      "automation": "AUTOMATIC",
+      "expectedCurrentPassedSteps": 5,
+      "totalSteps": 5,
+      "timeoutSeconds": 300,
+      "deployLockMode": "SHARED_PARENT",
+      "externalBlockers": []
     }
   ]
 }
