@@ -4,7 +4,7 @@ set -euo pipefail
 ROOT="${RESONANCE_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
 
 usage() {
-  echo "usage: $0 PROCESS_CODE STEP_CODE REQUIRED_CHECKS [USER|ADMIN|PUBLIC|ALL] [--validate-only]" >&2
+  echo "usage: $0 PROCESS_CODE STEP_CODE REQUIRED_CHECKS [USER|ADMIN|PUBLIC|ALL] [--validate-only|--prepare-only]" >&2
   exit 2
 }
 
@@ -20,7 +20,7 @@ elif [[ -n "${4:-}" ]]; then AUDIENCE="$4"; MODE="${5:-}"; fi
 [[ "$STEP_CODE" =~ ^[A-Z0-9_]+$ ]] || { echo "invalid step code" >&2; exit 2; }
 [[ "$REQUIRED_CHECKS" =~ ^[A-Za-z0-9_,=]+$ ]] || { echo "invalid required checks" >&2; exit 2; }
 [[ "$AUDIENCE" =~ ^(USER|ADMIN|PUBLIC|ALL)$ ]] || usage
-[[ -z "$MODE" || "$MODE" == "--validate-only" ]] || usage
+[[ -z "$MODE" || "$MODE" == "--validate-only" || "$MODE" == "--prepare-only" ]] || usage
 
 EVIDENCE="$(cat)"
 node -e '
@@ -100,6 +100,18 @@ CURRENT_CONTRACT="$(K8S_NAMESPACE="${K8S_NAMESPACE:-carbonet-prod}" bash "$ROOT/
 }
 EXECUTION_ENVIRONMENT="${E2E_EXECUTION_ENVIRONMENT:-carbonet-prod}"
 EVIDENCE_URI="${E2E_EVIDENCE_URI:-inline://business-e2e/sha256/$EVIDENCE_SHA256}"
+if [[ "$MODE" == "--prepare-only" ]]; then
+  jq -cn \
+    --arg processCode "$PROCESS_CODE" --arg stepCode "$STEP_CODE" \
+    --arg audience "$AUDIENCE" --arg evidenceB64 "$EVIDENCE_B64" \
+    --arg evidenceSha256 "$EVIDENCE_SHA256" --arg sourceCommit "$SOURCE_COMMIT" \
+    --arg processVersion "$PROCESS_VERSION" --arg contractFingerprint "$CONTRACT_FINGERPRINT" \
+    --arg executionEnvironment "$EXECUTION_ENVIRONMENT" --arg evidenceUri "$EVIDENCE_URI" \
+    '{processCode:$processCode,stepCode:$stepCode,audience:$audience,evidenceB64:$evidenceB64,
+      evidenceSha256:$evidenceSha256,sourceCommit:$sourceCommit,processVersion:$processVersion,
+      contractFingerprint:$contractFingerprint,executionEnvironment:$executionEnvironment,evidenceUri:$evidenceUri}'
+  exit 0
+fi
 K8S_NAMESPACE="${K8S_NAMESPACE:-carbonet-prod}"
 PATRONI_POD="${PATRONI_POD:-$(K8S_NAMESPACE="$K8S_NAMESPACE" bash "$ROOT/ops/scripts/resolve-patroni-primary-pod.sh")}"
 

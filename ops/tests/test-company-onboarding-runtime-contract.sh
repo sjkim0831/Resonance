@@ -146,16 +146,13 @@ assert(deploy.includes('/opt/resonance-data/carbonet/files/instt'), 'deployment 
 assert(deploy.includes('CARBONET_FILE_INSTT_DIR'), 'deployment must bind the application membership evidence directory');
 assert(deploy.includes('member-evidence-files') && deploy.includes('/var/file/instt'), 'deployment must mount shared membership evidence into every runtime replica');
 assert(/install -d -m 0750 -o 1000 -g 1000/.test(deploy), 'persistent membership evidence storage must be writable only by the runtime identity');
-assert(wrapper.includes('promote-screen-contract-after-e2e.sh'), 'wrapper must use the common BUSINESS_E2E promoter');
-assert(wrapper.includes('--validate-only'), 'wrapper must validate all evidence before promotion');
+assert(wrapper.includes('promote-company-onboarding-screens-atomically.sh'), 'wrapper must use the atomic five-step BUSINESS_E2E promoter');
 for (const code of stepCodes) {
   assert(wrapper.includes(code), `wrapper is missing contract capture/promotion step ${code}`);
 }
 const capturePosition = wrapper.indexOf('capture-business-e2e-contract.sh');
-const validatePosition = wrapper.indexOf('--validate-only');
-const promoterPositions = [...wrapper.matchAll(/promote-screen-contract-after-e2e\.sh/g)].map((match) => match.index);
-assert(capturePosition >= 0 && validatePosition > capturePosition, 'contract capture must precede promoter validation');
-assert(promoterPositions.length >= 1, 'common promoter invocation missing');
+const atomicPromotionPosition = wrapper.indexOf('promote-company-onboarding-screens-atomically.sh');
+assert(capturePosition >= 0 && atomicPromotionPosition > capturePosition, 'contract capture must precede atomic promotion');
 assert(/contracts[^\n]{0,80}(?:length|count)[^\n]{0,40}5/i.test(harness + '\n' + wrapper) || /stepCodes[^\n]{0,120}5/i.test(harness + '\n' + wrapper), 'E2E evidence must assert exactly 5 captured contracts');
 assert(/promotionEligible\s*[:=][^\n]{0,20}false/i.test(harness), 'self-test/failure path must be ineligible for promotion');
 assert(/status\s*[:=]\s*['"]SELF_TEST_PASS['"]/i.test(harness), 'self-test must be explicitly distinguishable from BUSINESS_E2E PASS');

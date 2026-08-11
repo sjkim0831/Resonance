@@ -60,17 +60,11 @@ for step in "${STEPS[@]}"; do
   jq -e --arg step "$step" '.steps[$step].result=="PASSED" and (.steps[$step].dbReread|type)=="object"' "$TMP_DIR/evidence.json" >/dev/null
 done
 
-# Validate every target first. No current-version evidence is written unless
-# the complete five-step suite and every individual step are successful.
-for step in "${STEPS[@]}"; do
-  RESONANCE_ROOT="$ROOT" bash "$ROOT/ops/scripts/promote-screen-contract-after-e2e.sh" \
-    COMPANY_ONBOARDING "$step" "$REQUIRED_CHECKS" ALL --validate-only <"$TMP_DIR/evidence.json" >/dev/null
-done
-
-for step in "${STEPS[@]}"; do
-  RESONANCE_ROOT="$ROOT" E2E_EXECUTION_ENVIRONMENT="$NAMESPACE" \
-    bash "$ROOT/ops/scripts/promote-screen-contract-after-e2e.sh" \
-      COMPANY_ONBOARDING "$step" "$REQUIRED_CHECKS" ALL <"$TMP_DIR/evidence.json"
-done
+# All five target contracts are freshness-checked before one PostgreSQL
+# transaction writes any current-version evidence. A failure in any step rolls
+# back every step instead of leaving a partially promoted onboarding process.
+RESONANCE_ROOT="$ROOT" E2E_EXECUTION_ENVIRONMENT="$NAMESPACE" \
+  bash "$ROOT/ops/scripts/promote-company-onboarding-screens-atomically.sh" \
+    <"$TMP_DIR/evidence.json" >/dev/null
 
 cat "$TMP_DIR/evidence.json"
