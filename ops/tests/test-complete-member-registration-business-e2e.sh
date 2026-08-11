@@ -10,6 +10,7 @@ for value in MEMBER_REGISTRATION_S1 MEMBER_REGISTRATION_S2 MEMBER_REGISTRATION_S
   LIVE_PROVIDER_ACCEPTANCE_PENDING LIVE_PROVIDER_IDENTITY_REQUIRED \
   framework_current_business_e2e_evidence BUSINESS_E2E MemberRegistrationIdentityFlowTest \
   methodBinding clientBinding replayBlocked isolatedIdentityProviderContract \
+  validate-kisa-live-readiness.sh kisaLiveReadiness \
   capture-business-e2e-contract.sh run-member-registration-step5-business-e2e.sh; do
   grep -Fq "$value" "$TARGET" || { echo "missing contract: $value" >&2; exit 1; }
 done

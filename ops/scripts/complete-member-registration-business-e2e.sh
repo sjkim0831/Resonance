@@ -29,6 +29,8 @@ timeout 90 bash "$ROOT/gradlew" :modules:resonance-common:carbonet-common-core:t
   >"$identity_test_log" 2>&1
 grep -q 'BUILD SUCCESSFUL' "$identity_test_log"
 identity_contract='MemberRegistrationIdentityFlowTest PASS cases=2 methodBinding=1 clientBinding=1 replayBlocked=1 step4Handoff=1'
+kisa_readiness="$(bash "$ROOT/ops/scripts/validate-kisa-live-readiness.sh" --report)"
+jq -e '.sdkReady==true and .jarMounted==true and .requiredCount==6' <<<"$kisa_readiness" >/dev/null
 
 current_contracts='[]'
 for step in "${PROMOTED_STEPS[@]}"; do
@@ -39,9 +41,9 @@ done
   echo '[member-registration-business-e2e] contract changed during E2E' >&2; exit 3;
 }
 
-evidence="$(jq -cn --argjson contracts "$contracts" --arg runtime "$runtime" --arg receipt "$receipt" --arg identity "$identity_contract" \
+evidence="$(jq -cn --argjson contracts "$contracts" --arg runtime "$runtime" --arg receipt "$receipt" --arg identity "$identity_contract" --argjson kisa "$kisa_readiness" \
   '{suite:"MEMBER_REGISTRATION_CURRENT_BUSINESS_E2E",contracts:$contracts,
-    validators:{publicStepsOneAndTwo:$runtime,receiptAndAdminHandoff:$receipt,isolatedIdentityProviderContract:$identity},
+    validators:{publicStepsOneAndTwo:$runtime,receiptAndAdminHandoff:$receipt,isolatedIdentityProviderContract:$identity,kisaLiveReadiness:$kisa},
     stepAssertions:{MEMBER_REGISTRATION_S1:["public step1 API","invalid value","session isolation","recovery"],
       MEMBER_REGISTRATION_S2:["required consent validation","accepted consent","session progression"],
       MEMBER_REGISTRATION_S5:["public receipt","desktop/mobile","missing-value exception","context isolation","reload recovery","administrator approval/rejection","database/audit/cleanup"]},
