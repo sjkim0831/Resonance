@@ -949,6 +949,36 @@ run_backstage_identity_e2e_if_required() {
     bash ops/scripts/resonance-identity-admin-e2e.sh
 }
 
+run_serialized_carbonet_actor_process_e2e_job() {
+  local job_name="$1"
+  shift
+  (
+    # The Carbonet browser E2Es use the same single-session QA principals. Hold
+    # the canonical authentication lock for the complete child lifecycle so
+    # another login cannot revoke a token between login and the final check.
+    # The helper records the owning BASHPID: children borrow the inherited file
+    # descriptor without reacquiring it, and their release is a no-op so only
+    # this owner can unlock the complete lifecycle.
+    export CARBONET_QA_AUTH_LOCK_TIMEOUT_SECONDS="${CARBONET_QA_AUTH_LOCK_TIMEOUT_SECONDS:-300}"
+    # shellcheck source=ops/scripts/runtime-qa-auth-common.sh
+    source "$ROOT_DIR/ops/scripts/runtime-qa-auth-common.sh"
+    if ! carbonet_qa_auth_acquire_lock; then
+      echo "[auto-deploy] actor/process E2E auth lock failed job=$job_name" >&2
+      return 1
+    fi
+    local job_status=0
+    trap carbonet_qa_auth_release_lock EXIT
+    echo "[auto-deploy] actor/process E2E auth lock acquired job=$job_name"
+    "$@" || job_status=$?
+    carbonet_qa_auth_release_lock
+    trap - EXIT
+    if ((job_status != 0)); then
+      echo "[auto-deploy] actor/process E2E job failed job=$job_name status=$job_status" >&2
+    fi
+    return "$job_status"
+  )
+}
+
 run_actor_process_role_e2e_if_required() {
   if [[ -n "${backstage_e2e_effective_routes:-}" ]] &&
     [[ ",${backstage_e2e_effective_routes}," != *",/actor-process-"* ]] &&
@@ -983,9 +1013,11 @@ run_actor_process_role_e2e_if_required() {
     >"$parallel_log_dir/actor-role.log" 2>&1 & actor_pid=$!
   (RESONANCE_ROOT="$ROOT_DIR" bash ops/scripts/resonance-project-delivery-e2e.sh) \
     >"$parallel_log_dir/project-delivery.log" 2>&1 & delivery_pid=$!
-  (RESONANCE_ROOT="$ROOT_DIR" bash ops/scripts/resonance-project-task-browser-e2e.sh) \
+  run_serialized_carbonet_actor_process_e2e_job project-task-browser \
+    env RESONANCE_ROOT="$ROOT_DIR" bash ops/scripts/resonance-project-task-browser-e2e.sh \
     >"$parallel_log_dir/browser.log" 2>&1 & browser_pid=$!
-  (RESONANCE_ROOT="$ROOT_DIR" bash ops/scripts/resonance-seven-step-disposable-e2e.sh) \
+  run_serialized_carbonet_actor_process_e2e_job seven-step \
+    env RESONANCE_ROOT="$ROOT_DIR" bash ops/scripts/resonance-seven-step-disposable-e2e.sh \
     >"$parallel_log_dir/seven-step.log" 2>&1 & lifecycle_pid=$!
 
   set +e
@@ -1002,7 +1034,7 @@ run_actor_process_role_e2e_if_required() {
     echo "[auto-deploy] parallel actor/process E2E failed actor=$actor_status delivery=$delivery_status browser=$browser_status lifecycle=$lifecycle_status logs=$parallel_log_dir" >&2
     return 1
   fi
-  echo "[auto-deploy] parallel actor/process E2E PASS jobs=4 logs=$parallel_log_dir"
+  echo "[auto-deploy] parallel actor/process E2E PASS jobs=4 carbonetAuthLifecycles=2 serialized=true logs=$parallel_log_dir"
 }
 
 sync_keycloak_actor_assignments_if_required() {

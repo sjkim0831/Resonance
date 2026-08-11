@@ -16,6 +16,34 @@ grep -Fq 'CARBONET_QA_AUTH_LOCK_FILE:-/tmp/carbonet-qa-auth-session.lock' "$POST
 grep -Fq 'flock -w "${CARBONET_QA_AUTH_LOCK_TIMEOUT_SECONDS:-120}" 9' "$POST_DEPLOY_VALIDATOR" \
   || { echo '[runtime-qa-auth-concurrency] emission validator lock is not fail-closed' >&2; exit 1; }
 
+python3 - "$HELPER" <<'PY'
+from pathlib import Path
+import sys
+
+source = Path(sys.argv[1]).read_text(encoding="utf-8")
+
+def assert_owner_contract(value):
+    assert "CARBONET_QA_AUTH_LOCK_OWNER_BASHPID" in value
+    assert 'local current_pid="${BASHPID:-$$}"' in value
+    assert '"$lock_owner" != "$current_pid"' in value
+    assert "Keep both inherited variables intact" in value
+    assert "unset CARBONET_QA_AUTH_LOCK_FD CARBONET_QA_AUTH_LOCK_OWNER_BASHPID" in value
+
+assert_owner_contract(source)
+mutated = source.replace(
+    'if [[ -n "$lock_fd" && "$lock_owner" != "$current_pid" ]]; then',
+    'if [[ -n "$lock_fd" && "$lock_owner" == "$current_pid" ]]; then',
+    1,
+)
+try:
+    assert_owner_contract(mutated)
+except AssertionError:
+    pass
+else:
+    raise AssertionError("borrowed-release owner-check mutation survived")
+print("RUNTIME_QA_AUTH_OWNER_STATIC_PASS mutation=detected")
+PY
+
 LOCK_FILE="$TMP_DIR/shared.lock"
 MARKER="$TMP_DIR/holder-ready"
 (
@@ -38,6 +66,62 @@ SECONDS=0
 )
 wait "$holder"
 (( SECONDS >= 1 )) || { echo '[runtime-qa-auth-concurrency] concurrent verifier was not serialized' >&2; exit 1; }
+
+BORROW_LOCK="$TMP_DIR/borrowed-release.lock"
+BORROW_OWNER_READY="$TMP_DIR/borrow-owner-ready"
+BORROW_CHILD_RELEASED="$TMP_DIR/borrow-child-released"
+BORROW_OWNER_RELEASE="$TMP_DIR/borrow-owner-release"
+BORROW_COMPETITOR_ACQUIRED="$TMP_DIR/borrow-competitor-acquired"
+(
+  export CARBONET_QA_AUTH_LOCK_FILE="$BORROW_LOCK" CARBONET_QA_AUTH_LOCK_TIMEOUT_SECONDS=60
+  source "$HELPER"
+  carbonet_qa_auth_acquire_lock
+  [[ "${CARBONET_QA_AUTH_LOCK_OWNER_BASHPID:-}" == "${BASHPID:-$$}" ]]
+  touch "$BORROW_OWNER_READY"
+  (
+    source "$HELPER"
+    inherited_fd="${CARBONET_QA_AUTH_LOCK_FD:-}"
+    inherited_owner="${CARBONET_QA_AUTH_LOCK_OWNER_BASHPID:-}"
+    [[ -n "$inherited_fd" && -n "$inherited_owner" ]]
+    [[ "$inherited_owner" != "${BASHPID:-$$}" ]]
+    carbonet_qa_auth_acquire_lock
+    carbonet_qa_auth_release_lock
+    [[ "${CARBONET_QA_AUTH_LOCK_FD:-}" == "$inherited_fd" ]]
+    [[ "${CARBONET_QA_AUTH_LOCK_OWNER_BASHPID:-}" == "$inherited_owner" ]]
+    touch "$BORROW_CHILD_RELEASED"
+  )
+  while [[ ! -e "$BORROW_OWNER_RELEASE" ]]; do sleep 0.01; done
+  carbonet_qa_auth_release_lock
+) &
+borrow_owner_pid=$!
+for _ in $(seq 1 50); do [[ -f "$BORROW_OWNER_READY" ]] && break; sleep 0.05; done
+[[ -f "$BORROW_OWNER_READY" ]] || { echo '[runtime-qa-auth-concurrency] borrowed owner did not acquire lock' >&2; exit 1; }
+for _ in $(seq 1 50); do [[ -f "$BORROW_CHILD_RELEASED" ]] && break; sleep 0.05; done
+[[ -f "$BORROW_CHILD_RELEASED" ]] || { echo '[runtime-qa-auth-concurrency] borrowed child did not release' >&2; exit 1; }
+if (
+  export CARBONET_QA_AUTH_LOCK_FILE="$BORROW_LOCK" CARBONET_QA_AUTH_LOCK_TIMEOUT_SECONDS=1
+  unset CARBONET_QA_AUTH_LOCK_FD CARBONET_QA_AUTH_LOCK_OWNER_BASHPID
+  source "$HELPER"
+  if carbonet_qa_auth_acquire_lock; then
+    touch "$BORROW_COMPETITOR_ACQUIRED"
+    carbonet_qa_auth_release_lock
+    exit 0
+  fi
+  exit 1
+); then
+  echo '[runtime-qa-auth-concurrency] borrowed child unlocked the owner critical section' >&2
+  exit 1
+fi
+[[ ! -e "$BORROW_COMPETITOR_ACQUIRED" ]]
+touch "$BORROW_OWNER_RELEASE"
+wait "$borrow_owner_pid"
+(
+  export CARBONET_QA_AUTH_LOCK_FILE="$BORROW_LOCK" CARBONET_QA_AUTH_LOCK_TIMEOUT_SECONDS=2
+  unset CARBONET_QA_AUTH_LOCK_FD CARBONET_QA_AUTH_LOCK_OWNER_BASHPID
+  source "$HELPER"
+  carbonet_qa_auth_acquire_lock
+  carbonet_qa_auth_release_lock
+)
 
 TIMEOUT_LOCK="$TMP_DIR/timeout.lock"
 TIMEOUT_MARKER="$TMP_DIR/timeout-ready"
@@ -81,7 +165,10 @@ if carbonet_qa_logout "$TMP_DIR/failure-cookie" http://invalid.example; then
   echo '[runtime-qa-auth-concurrency] HTTP 503 logout was ignored' >&2
   exit 1
 fi
-[[ -z "${CARBONET_QA_AUTH_LOCK_FD:-}" ]] || { echo '[runtime-qa-auth-concurrency] failed logout leaked lock' >&2; exit 1; }
+[[ -z "${CARBONET_QA_AUTH_LOCK_FD:-}" && -z "${CARBONET_QA_AUTH_LOCK_OWNER_BASHPID:-}" ]] || {
+  echo '[runtime-qa-auth-concurrency] failed logout leaked lock ownership' >&2
+  exit 1
+}
 
 carbonet_qa_auth_acquire_lock
 CARBONET_QA_AUTH_SESSION_ACTIVE=1
@@ -96,6 +183,9 @@ curl() {
   printf '%s' "$MOCK_LOGOUT_STATUS"
 }
 carbonet_qa_logout "$TMP_DIR/success-cookie" http://invalid.example
-[[ -z "${CARBONET_QA_AUTH_LOCK_FD:-}" ]] || { echo '[runtime-qa-auth-concurrency] successful logout leaked lock' >&2; exit 1; }
+[[ -z "${CARBONET_QA_AUTH_LOCK_FD:-}" && -z "${CARBONET_QA_AUTH_LOCK_OWNER_BASHPID:-}" ]] || {
+  echo '[runtime-qa-auth-concurrency] successful logout leaked lock ownership' >&2
+  exit 1
+}
 
-printf '[runtime-qa-auth-concurrency] PASS serialized=true timeout=fail-closed logout200=required logout503=rejected lockReleased=true\n'
+printf '[runtime-qa-auth-concurrency] PASS serialized=true borrowedRelease=no-op ownerRelease=exclusive competitorBlocked=true timeout=fail-closed logout200=required logout503=rejected lockReleased=true\n'

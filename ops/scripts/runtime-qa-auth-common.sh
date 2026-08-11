@@ -18,7 +18,16 @@ carbonet_qa_auth_acquire_lock() {
   local lock_file="${CARBONET_QA_AUTH_LOCK_FILE:-/tmp/carbonet-qa-auth-session.lock}"
   local timeout_seconds="${CARBONET_QA_AUTH_LOCK_TIMEOUT_SECONDS:-60}"
   local lock_fd
+  local current_pid="${BASHPID:-$$}"
   if [[ -n "${CARBONET_QA_AUTH_LOCK_FD:-}" ]]; then
+    if [[ ! "${CARBONET_QA_AUTH_LOCK_FD:-}" =~ ^[0-9]+$ \
+       || ! "${CARBONET_QA_AUTH_LOCK_OWNER_BASHPID:-}" =~ ^[0-9]+$ ]]; then
+      echo "[runtime-qa-auth] inherited authentication lock metadata is invalid" >&2
+      return 1
+    fi
+    # A forked child borrows the owner's open file description. Reacquiring
+    # that same flock would deadlock, so the inherited descriptor is reused;
+    # release remains exclusively owned by the BASHPID that acquired it.
     return 0
   fi
   carbonet_qa_auth_require flock || return 1
@@ -37,16 +46,26 @@ carbonet_qa_auth_acquire_lock() {
     return 1
   fi
   CARBONET_QA_AUTH_LOCK_FD="$lock_fd"
-  export CARBONET_QA_AUTH_LOCK_FD
+  CARBONET_QA_AUTH_LOCK_OWNER_BASHPID="$current_pid"
+  export CARBONET_QA_AUTH_LOCK_FD CARBONET_QA_AUTH_LOCK_OWNER_BASHPID
 }
 
 carbonet_qa_auth_release_lock() {
   local lock_fd="${CARBONET_QA_AUTH_LOCK_FD:-}"
+  local lock_owner="${CARBONET_QA_AUTH_LOCK_OWNER_BASHPID:-}"
+  local current_pid="${BASHPID:-$$}"
+  # flock locks are attached to the shared open file description. A borrowed
+  # child's flock -u would therefore unlock the owner's critical section.
+  # Keep both inherited variables intact so every later nested acquire in the
+  # borrower remains a no-op until the owning process exits.
+  if [[ -n "$lock_fd" && "$lock_owner" != "$current_pid" ]]; then
+    return 0
+  fi
   if [[ "$lock_fd" =~ ^[0-9]+$ ]]; then
     flock -u "$lock_fd" >/dev/null 2>&1 || true
     eval "exec ${lock_fd}>&-"
   fi
-  unset CARBONET_QA_AUTH_LOCK_FD
+  unset CARBONET_QA_AUTH_LOCK_FD CARBONET_QA_AUTH_LOCK_OWNER_BASHPID
 }
 
 carbonet_qa_login() {

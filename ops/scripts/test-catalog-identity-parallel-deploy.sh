@@ -114,6 +114,16 @@ assert "no identity contract change" in identity
 e2e_start = source.index("run_actor_process_role_e2e_if_required() {")
 e2e_end = source.index("sync_keycloak_actor_assignments_if_required() {", e2e_start)
 e2e = source[e2e_start:e2e_end]
+wrapper_start = source.index("run_serialized_carbonet_actor_process_e2e_job() {")
+wrapper = source[wrapper_start:e2e_start]
+assert 'source "$ROOT_DIR/ops/scripts/runtime-qa-auth-common.sh"' in wrapper
+assert "carbonet_qa_auth_acquire_lock" in wrapper
+assert "trap carbonet_qa_auth_release_lock EXIT" in wrapper
+assert '"$@" || job_status=$?' in wrapper
+assert 'return "$job_status"' in wrapper
+assert "CARBONET_QA_AUTH_LOCK_TIMEOUT_SECONDS:-300" in wrapper
+assert "CARBONET_QA_AUTH_LOCK_FILE" not in wrapper
+assert "owning BASHPID" in wrapper
 assert "ops/scripts/auto-deploy-main.sh" not in e2e
 assert "ops/scripts/test-catalog-identity-parallel-deploy.sh" not in e2e
 for job in ["actor_pid", "delivery_pid", "browser_pid", "lifecycle_pid"]:
@@ -123,9 +133,113 @@ for status in ["actor_status", "delivery_status", "browser_status", "lifecycle_s
     assert f'{status} != 0' in e2e
 assert "parallel actor/process E2E PASS jobs=4" in e2e
 assert "parallel actor/process E2E failed" in e2e
+assert "carbonetAuthLifecycles=2 serialized=true" in e2e
 
-print("CATALOG_IDENTITY_PARALLEL_DEPLOY_PASS")
+serialized_jobs = {
+    "project-task-browser": "resonance-project-task-browser-e2e.sh",
+    "seven-step": "resonance-seven-step-disposable-e2e.sh",
+}
+def assert_all_jobs_serialized(block):
+    for label, script_name in serialized_jobs.items():
+        assert f"run_serialized_carbonet_actor_process_e2e_job {label}" in block
+        assert script_name in block
+
+assert_all_jobs_serialized(e2e)
+assert "run_serialized_carbonet_actor_process_e2e_job actor-role" not in e2e
+assert "run_serialized_carbonet_actor_process_e2e_job project-delivery" not in e2e
+mutated = e2e.replace(
+    "run_serialized_carbonet_actor_process_e2e_job project-task-browser",
+    "run_unlocked_actor_process_e2e_job project-task-browser",
+    1,
+)
+try:
+    assert_all_jobs_serialized(mutated)
+except AssertionError:
+    pass
+else:
+    raise AssertionError("serialization-removal mutation survived")
+
+print("CATALOG_IDENTITY_PARALLEL_DEPLOY_PASS jobs=4 backstageParallel=2 carbonetSerialized=2 mutation=detected failure=propagated")
 PY
+
+auth_test_tmp="$(mktemp -d /tmp/actor-process-auth-serialization.XXXXXX)"
+trap 'rm -rf "$auth_test_tmp"' EXIT
+python3 - "$script" "$auth_test_tmp/wrapper.sh" <<'PY'
+from pathlib import Path
+import sys
+
+source = Path(sys.argv[1]).read_text(encoding="utf-8")
+start = source.index("run_serialized_carbonet_actor_process_e2e_job() {")
+end = source.index("run_actor_process_role_e2e_if_required() {", start)
+Path(sys.argv[2]).write_text(source[start:end], encoding="utf-8")
+PY
+ROOT_DIR="$root"
+# shellcheck disable=SC1090
+source "$auth_test_tmp/wrapper.sh"
+export CARBONET_QA_AUTH_LOCK_FILE="$auth_test_tmp/canonical-auth.lock"
+export CARBONET_QA_AUTH_LOCK_TIMEOUT_SECONDS=10
+export AUTH_SERIALIZATION_ACTIVE="$auth_test_tmp/active"
+export AUTH_SERIALIZATION_EVENTS="$auth_test_tmp/events"
+export AUTH_SERIALIZATION_GATE="$auth_test_tmp/gate"
+export AUTH_SERIALIZATION_GUARD="$auth_test_tmp/state.lock"
+
+actor_process_serialization_worker() {
+  local label="$1" state_fd
+  while [[ ! -e "$AUTH_SERIALIZATION_GATE" ]]; do sleep 0.01; done
+  exec {state_fd}>"$AUTH_SERIALIZATION_GUARD"
+  flock "$state_fd"
+  if [[ -e "$AUTH_SERIALIZATION_ACTIVE" ]]; then
+    printf 'OVERLAP %s\n' "$label" >>"$AUTH_SERIALIZATION_EVENTS"
+    flock -u "$state_fd"
+    return 91
+  fi
+  touch "$AUTH_SERIALIZATION_ACTIVE"
+  printf 'START %s\n' "$label" >>"$AUTH_SERIALIZATION_EVENTS"
+  flock -u "$state_fd"
+  sleep 0.12
+  flock "$state_fd"
+  rm -f "$AUTH_SERIALIZATION_ACTIVE"
+  printf 'END %s\n' "$label" >>"$AUTH_SERIALIZATION_EVENTS"
+  flock -u "$state_fd"
+}
+export -f actor_process_serialization_worker
+
+declare -a auth_serialization_pids=()
+for label in project-task-browser seven-step; do
+  run_serialized_carbonet_actor_process_e2e_job "$label" \
+    bash -c 'actor_process_serialization_worker "$1"' _ "$label" &
+  auth_serialization_pids+=("$!")
+done
+touch "$AUTH_SERIALIZATION_GATE"
+auth_serialization_failed=0
+for pid in "${auth_serialization_pids[@]}"; do
+  wait "$pid" || auth_serialization_failed=1
+done
+((auth_serialization_failed == 0)) || {
+  echo '[actor-process-auth-serialization] one of two Carbonet lifecycles failed' >&2
+  exit 1
+}
+[[ "$(grep -c '^START ' "$AUTH_SERIALIZATION_EVENTS")" == "2" ]]
+[[ "$(grep -c '^END ' "$AUTH_SERIALIZATION_EVENTS")" == "2" ]]
+if grep -q '^OVERLAP ' "$AUTH_SERIALIZATION_EVENTS"; then
+  echo '[actor-process-auth-serialization] authenticated lifecycles overlapped' >&2
+  exit 1
+fi
+
+set +e
+run_serialized_carbonet_actor_process_e2e_job failure-probe bash -c 'exit 23'
+failure_status=$?
+set -e
+[[ "$failure_status" == "23" ]] || {
+  echo "[actor-process-auth-serialization] child failure was not propagated status=$failure_status" >&2
+  exit 1
+}
+run_serialized_carbonet_actor_process_e2e_job recovery-probe bash -c 'exit 0'
+run_serialized_carbonet_actor_process_e2e_job nested-helper-probe \
+  bash -c 'source "$1"; carbonet_qa_auth_acquire_lock; carbonet_qa_auth_release_lock; \
+    [[ -n "${CARBONET_QA_AUTH_LOCK_FD:-}" && -n "${CARBONET_QA_AUTH_LOCK_OWNER_BASHPID:-}" ]]' \
+  _ "$root/ops/scripts/runtime-qa-auth-common.sh"
+echo 'ACTOR_PROCESS_AUTH_SERIALIZATION_PASS jobs=4 backstageParallel=2 carbonetSerialized=2 overlap=0 failureStatus=23 lockReleased=true borrowedRelease=no-op nestedDeadlock=prevented'
 
 grep -q 'resolve_postgres_leader_once' "$validation_groups"
 grep -q 'export RESONANCE_POSTGRES_LEADER_POD=' "$validation_groups"
