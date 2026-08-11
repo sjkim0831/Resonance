@@ -59,12 +59,14 @@ class MemberRegistrationIdentityFlowTest {
         HttpServletRequest request = mock(HttpServletRequest.class);
         HttpServletResponse response = mock(HttpServletResponse.class);
         when(request.getSession(false)).thenReturn(httpSession);
+        when(request.getRemoteAddr()).thenReturn("127.0.0.1");
 
         ExternalAuthSession providerSession = new ExternalAuthSession();
         providerSession.setProviderCode("KISA");
         providerSession.setMethodCode("SIMPLE");
         providerSession.setTxId("join-test-tx");
         providerSession.setRequestedAt(LocalDateTime.now());
+        providerSession.setRequestClientIp("127.0.0.1");
         providerSession.setUrlScheme("mock://external-auth/join-test-tx");
 
         ExternalAuthIdentity identity = new ExternalAuthIdentity();
@@ -97,6 +99,9 @@ class MemberRegistrationIdentityFlowTest {
         assertEquals("TEST-CI-JOIN", joinVO.getAuthCi());
         assertEquals("TEST-DI-JOIN", joinVO.getAuthDi());
         assertEquals(3, attributes.get("joinStep"));
+
+        Map<String, Object> replay = externalAuth.complete(complete, request, response);
+        assertEquals("AUTH_SESSION_NOT_FOUND", replay.get("code"));
 
         MemberJoinController controller = new MemberJoinController();
         EnterpriseMemberService memberService = mock(EnterpriseMemberService.class);
@@ -138,6 +143,55 @@ class MemberRegistrationIdentityFlowTest {
         verify(memberService).ensureEnterpriseSecurityMapping(joinVO.getUniqId());
         verify(consentHistoryService).linkMember(any(String.class), org.mockito.ArgumentMatchers.eq("member-test"));
         assertTrue(!attributes.containsKey("joinVO") && !attributes.containsKey("joinStep"));
+    }
+
+    @Test
+    void externalIdentitySessionRejectsMethodAndClientChangesWithoutConsumingIt() {
+        HttpServletRequest originalRequest = mock(HttpServletRequest.class);
+        when(originalRequest.getRemoteAddr()).thenReturn("127.0.0.1");
+        ExternalAuthSession providerSession = new ExternalAuthSession();
+        providerSession.setProviderCode("KISA");
+        providerSession.setMethodCode("SIMPLE");
+        providerSession.setTxId("bound-join-test-tx");
+        providerSession.setRequestedAt(LocalDateTime.now());
+        providerSession.setRequestClientIp("127.0.0.1");
+
+        ExternalAuthIdentity identity = new ExternalAuthIdentity();
+        identity.setProviderCode("KISA");
+        identity.setMethodCode("SIMPLE");
+        identity.setAuthTy("SIMPLE");
+        identity.setAuthCi("BOUND-CI");
+        identity.setAuthDi("BOUND-DI");
+
+        ExternalAuthProvider provider = mock(ExternalAuthProvider.class);
+        when(provider.supports("SIMPLE")).thenReturn(true);
+        when(provider.start(any(ExternalAuthStartRequest.class), any(HttpServletRequest.class))).thenReturn(providerSession);
+        when(provider.complete(any(ExternalAuthSession.class), any(ExternalAuthCompleteRequest.class), any(HttpServletRequest.class)))
+                .thenReturn(identity);
+        ExternalAuthServiceImpl externalAuth = new ExternalAuthServiceImpl(
+                List.of(provider), mock(AuthService.class), mock(AuthTokenLoginService.class));
+        ExternalAuthStartRequest start = new ExternalAuthStartRequest();
+        start.setMethodCode("SIMPLE");
+        externalAuth.start(start, originalRequest);
+
+        ExternalAuthCompleteRequest wrongMethod = new ExternalAuthCompleteRequest();
+        wrongMethod.setMethodCode("JOINT");
+        wrongMethod.setTxId("bound-join-test-tx");
+        assertEquals("AUTH_SESSION_METHOD_MISMATCH",
+                externalAuth.complete(wrongMethod, originalRequest, mock(HttpServletResponse.class)).get("code"));
+
+        HttpServletRequest otherClient = mock(HttpServletRequest.class);
+        when(otherClient.getRemoteAddr()).thenReturn("127.0.0.2");
+        ExternalAuthCompleteRequest correctMethod = new ExternalAuthCompleteRequest();
+        correctMethod.setMethodCode("SIMPLE");
+        correctMethod.setTxId("bound-join-test-tx");
+        assertEquals("AUTH_SESSION_CLIENT_MISMATCH",
+                externalAuth.complete(correctMethod, otherClient, mock(HttpServletResponse.class)).get("code"));
+
+        Map<String, Object> accepted = externalAuth.complete(correctMethod, originalRequest, mock(HttpServletResponse.class));
+        assertEquals("LINK_REQUIRED", accepted.get("code"));
+        assertEquals("AUTH_SESSION_NOT_FOUND",
+                externalAuth.complete(correctMethod, originalRequest, mock(HttpServletResponse.class)).get("code"));
     }
 
     private static void setField(Object target, String fieldName, Object value) throws Exception {

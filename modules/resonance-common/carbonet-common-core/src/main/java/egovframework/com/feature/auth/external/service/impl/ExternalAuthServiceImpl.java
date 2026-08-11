@@ -93,6 +93,17 @@ public class ExternalAuthServiceImpl implements ExternalAuthService {
             return failure("AUTH_SESSION_NOT_FOUND", "인증 세션을 찾을 수 없습니다.");
         }
 
+        String requestedMethod = normalize(request.getMethodCode());
+        String sessionMethod = normalize(session.getMethodCode());
+        if (requestedMethod.isEmpty() || !sessionMethod.equalsIgnoreCase(requestedMethod)) {
+            return failure("AUTH_SESSION_METHOD_MISMATCH", "인증 시작 시 선택한 인증수단과 완료 요청이 일치하지 않습니다.");
+        }
+        String boundClientIp = normalize(session.getRequestClientIp());
+        String completingClientIp = servletRequest == null ? "" : normalize(servletRequest.getRemoteAddr());
+        if (!boundClientIp.isEmpty() && !boundClientIp.equals(completingClientIp)) {
+            return failure("AUTH_SESSION_CLIENT_MISMATCH", "인증을 시작한 브라우저에서 다시 진행해 주세요.");
+        }
+
         ExternalAuthProvider provider = findProvider(request.getMethodCode());
         ExternalAuthIdentity identity = provider.complete(session, request, servletRequest);
         sessions.remove(request.getTxId());
@@ -216,5 +227,9 @@ public class ExternalAuthServiceImpl implements ExternalAuthService {
             return second.trim();
         }
         return "";
+    }
+
+    private String normalize(String value) {
+        return value == null ? "" : value.trim();
     }
 }

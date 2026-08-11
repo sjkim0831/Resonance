@@ -6,8 +6,10 @@ TARGET="$ROOT/ops/scripts/complete-member-registration-business-e2e.sh"
 bash -n "$TARGET"
 
 for value in MEMBER_REGISTRATION_S1 MEMBER_REGISTRATION_S2 MEMBER_REGISTRATION_S5 \
-  MEMBER_REGISTRATION_S3 MEMBER_REGISTRATION_S4 EXTERNAL_IDENTITY_PROVIDER_UNAVAILABLE \
-  SUCCESSFUL_IDENTITY_REQUIRED framework_current_business_e2e_evidence BUSINESS_E2E \
+  MEMBER_REGISTRATION_S3 MEMBER_REGISTRATION_S4 \
+  LIVE_PROVIDER_ACCEPTANCE_PENDING LIVE_PROVIDER_IDENTITY_REQUIRED \
+  framework_current_business_e2e_evidence BUSINESS_E2E MemberRegistrationIdentityFlowTest \
+  methodBinding clientBinding replayBlocked isolatedIdentityProviderContract \
   capture-business-e2e-contract.sh run-member-registration-step5-business-e2e.sh; do
   grep -Fq "$value" "$TARGET" || { echo "missing contract: $value" >&2; exit 1; }
 done

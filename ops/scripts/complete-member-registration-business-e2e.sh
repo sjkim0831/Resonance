@@ -22,6 +22,13 @@ runtime="$(timeout 120 bash "$ROOT/ops/scripts/validate-member-registration-runt
 grep -Eq '^\[member-registration\] PASS steps=5 screens=11 tests=15/15 ' <<<"$runtime"
 receipt="$(timeout 300 bash "$ROOT/ops/tests/run-member-registration-step5-business-e2e.sh")"
 grep -Eq '^\[member-step5-e2e\] PASS cases=5 public-completion=1 admin-handoff=1 database=1 audit=1 cleanup=1 ' <<<"$receipt"
+identity_test_log="$(mktemp)"
+trap 'rm -f "$identity_test_log"' EXIT
+timeout 90 bash "$ROOT/gradlew" :modules:resonance-common:carbonet-common-core:test \
+  --tests egovframework.com.feature.member.MemberRegistrationIdentityFlowTest --no-daemon \
+  >"$identity_test_log" 2>&1
+grep -q 'BUILD SUCCESSFUL' "$identity_test_log"
+identity_contract='MemberRegistrationIdentityFlowTest PASS cases=2 methodBinding=1 clientBinding=1 replayBlocked=1 step4Handoff=1'
 
 current_contracts='[]'
 for step in "${PROMOTED_STEPS[@]}"; do
@@ -32,13 +39,15 @@ done
   echo '[member-registration-business-e2e] contract changed during E2E' >&2; exit 3;
 }
 
-evidence="$(jq -cn --argjson contracts "$contracts" --arg runtime "$runtime" --arg receipt "$receipt" \
+evidence="$(jq -cn --argjson contracts "$contracts" --arg runtime "$runtime" --arg receipt "$receipt" --arg identity "$identity_contract" \
   '{suite:"MEMBER_REGISTRATION_CURRENT_BUSINESS_E2E",contracts:$contracts,
-    validators:{publicStepsOneAndTwo:$runtime,receiptAndAdminHandoff:$receipt},
+    validators:{publicStepsOneAndTwo:$runtime,receiptAndAdminHandoff:$receipt,isolatedIdentityProviderContract:$identity},
     stepAssertions:{MEMBER_REGISTRATION_S1:["public step1 API","invalid value","session isolation","recovery"],
       MEMBER_REGISTRATION_S2:["required consent validation","accepted consent","session progression"],
       MEMBER_REGISTRATION_S5:["public receipt","desktop/mobile","missing-value exception","context isolation","reload recovery","administrator approval/rejection","database/audit/cleanup"]},
-    intentionallyNotPromoted:{MEMBER_REGISTRATION_S3:"EXTERNAL_IDENTITY_PROVIDER_UNAVAILABLE",MEMBER_REGISTRATION_S4:"SUCCESSFUL_IDENTITY_REQUIRED"}}')"
+    simulatedStepAssertions:{MEMBER_REGISTRATION_S3:["provider success","method binding","client binding","single use","replay blocked"],
+      MEMBER_REGISTRATION_S4:["verified identity handoff","required field rejection","successful multipart submission","administrator handoff"]},
+    intentionallyNotPromoted:{MEMBER_REGISTRATION_S3:"LIVE_PROVIDER_ACCEPTANCE_PENDING",MEMBER_REGISTRATION_S4:"LIVE_PROVIDER_IDENTITY_REQUIRED"}}')"
 evidence_sha="$(printf '%s' "$evidence" | sha256sum | awk '{print $1}')"
 evidence_b64="$(printf '%s' "$evidence" | base64 -w0)"
 evidence_uri="inline://business-e2e/sha256/$evidence_sha"
@@ -89,4 +98,4 @@ persisted="$(kubectl -n "$NAMESPACE" exec "$pod" -c patroni -- psql -h 127.0.0.1
   exit 4
 }
 
-echo "[member-registration-business-e2e] PASS current=3/5 blocked=2 provider=unavailable evidence=${evidence_sha:0:12}"
+echo "[member-registration-business-e2e] PASS current=3/5 simulated=2/2 blocked=2 live-provider=pending evidence=${evidence_sha:0:12}"
