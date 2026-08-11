@@ -52,6 +52,17 @@
       "timeoutSeconds": 300,
       "deployLockMode": "SHARED_PARENT",
       "externalBlockers": []
+    },
+    {
+      "priority": 50,
+      "processCode": "EMISSION_PROJECT_PORTFOLIO",
+      "runner": "ops/tests/run-project-portfolio-contract-e2e.sh",
+      "automation": "AUTOMATIC",
+      "expectedCurrentPassedSteps": 1,
+      "totalSteps": 1,
+      "timeoutSeconds": 180,
+      "deployLockMode": "SHARED_PARENT",
+      "externalBlockers": []
     }
   ]
 }

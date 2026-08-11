@@ -19,7 +19,21 @@ PROCESS_VERSION="$(jq -r '.contract.processVersion' <<<"$EVIDENCE")"
 CONTRACT_FINGERPRINT="$(jq -r '.contract.contractFingerprint' <<<"$EVIDENCE")"
 DEPLOY_STATE_FILE="${CARBONET_DEPLOY_STATE_FILE:-/opt/resonance-data/deploy/carbonet-main-success.commit}"
 CURRENT_DEPLOYED_COMMIT="${E2E_DEPLOYED_COMMIT:-$(tr -d '[:space:]' < "$DEPLOY_STATE_FILE" 2>/dev/null || true)}"
-[[ "$SOURCE_COMMIT" == "$CURRENT_DEPLOYED_COMMIT" ]] || { echo '[portfolio-promoter] deployed commit changed during E2E; refusing stale evidence' >&2; exit 3; }
+VALIDATION_COMMIT="${E2E_VALIDATION_COMMIT:-$(git -C "$ROOT" rev-parse HEAD)}"
+[[ "$CURRENT_DEPLOYED_COMMIT" == "$VALIDATION_COMMIT" ]] || {
+  echo '[portfolio-promoter] validation commit is not the deployed success marker' >&2; exit 3;
+}
+if [[ "$SOURCE_COMMIT" != "$VALIDATION_COMMIT" ]]; then
+  git -C "$ROOT" merge-base --is-ancestor "$SOURCE_COMMIT" "$VALIDATION_COMMIT" || {
+    echo '[portfolio-promoter] runtime commit is not an ancestor of the validation commit' >&2; exit 3;
+  }
+  PLAN="$(bash "$ROOT/ops/scripts/plan-incremental-work.sh" "$SOURCE_COMMIT" "$VALIDATION_COMMIT" --format env)"
+  for KEY in PLAN_RUNTIME_REQUIRED PLAN_FRONTEND_REQUIRED PLAN_BACKEND_REQUIRED PLAN_DATABASE_REQUIRED; do
+    [[ "$(awk -F= -v key="$KEY" '$1==key{print $2}' <<<"$PLAN")" == false ]] || {
+      echo "[portfolio-promoter] unreleased runtime change detected key=$KEY" >&2; exit 3;
+    }
+  done
+fi
 EVIDENCE_SHA256="$(printf '%s' "$EVIDENCE" | sha256sum | awk '{print $1}')"
 EVIDENCE_B64="$(printf '%s' "$EVIDENCE" | base64 -w0)"
 EXECUTION_ENVIRONMENT="${E2E_EXECUTION_ENVIRONMENT:-carbonet-prod}"
