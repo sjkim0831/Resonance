@@ -3,10 +3,10 @@ set -Eeuo pipefail
 ROOT="${RESONANCE_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"; PROCESS=REGULATORY_SUBMISSION
 VALIDATION_COMMIT="$(git -C "$ROOT" rev-parse HEAD)"; [[ "$(tr -d '[:space:]' </opt/resonance-data/deploy/carbonet-main-success.commit)" == "$VALIDATION_COMMIT" ]] || exit 3
 WORKFLOW="$(bash "$ROOT/ops/scripts/validate-regulatory-submission-workflow.sh")"; grep -q 'tables=2 steps=4 contracts=8 menus=2' <<<"$WORKFLOW" || exit 1
-RELAY="$(bash "$ROOT/ops/tests/run-regulatory-submission-business-e2e.sh")"; grep -q '"status":"PROMOTED"' <<<"$RELAY" || exit 1
+RELAY="$(bash "$ROOT/ops/tests/run-regulatory-submission-business-e2e.sh")"; RELAY_JSON="$(tail -n 1 <<<"$RELAY")"; jq -e '.status=="PROMOTED" and .processCode=="REGULATORY_SUBMISSION" and .steps==4 and .cleanup==true' <<<"$RELAY_JSON" >/dev/null
 ADMIN="$(bash "$ROOT/ops/scripts/resonance-regulatory-admin-e2e.sh")"; jq -e '.status=="PASS" and .desktop==1 and .mobile==1 and .accessibility==1 and .authority==1' <<<"$ADMIN" >/dev/null
 CUSTOMER="$(bash "$ROOT/ops/scripts/validate-customer-work-journey.sh")"; grep -Eq '^\[customer-journey\] PASS .*regulatory=accepted ' <<<"$CUSTOMER" || exit 1
-SOURCE_COMMIT="$(jq -r '.sourceCommit' <<<"$RELAY")"; EVIDENCE="$(jq -cn --arg workflow "$WORKFLOW" --argjson admin "$ADMIN" --arg customer "$CUSTOMER" --arg relay "$RELAY" '{suite:"REGULATORY_SUBMISSION_ASSURANCE",workflow:$workflow,relay:$relay,admin:$admin,customer:$customer}')"; SHA="$(printf '%s' "$EVIDENCE"|sha256sum|awk '{print $1}')"; B64="$(printf '%s' "$EVIDENCE"|base64 -w0)"
+SOURCE_COMMIT="$(jq -r '.sourceCommit' <<<"$RELAY_JSON")"; EVIDENCE="$(jq -cn --arg workflow "$WORKFLOW" --argjson admin "$ADMIN" --arg customer "$CUSTOMER" --argjson relay "$RELAY_JSON" '{suite:"REGULATORY_SUBMISSION_ASSURANCE",workflow:$workflow,relay:$relay,admin:$admin,customer:$customer}')"; SHA="$(printf '%s' "$EVIDENCE"|sha256sum|awk '{print $1}')"; B64="$(printf '%s' "$EVIDENCE"|base64 -w0)"
 source "$ROOT/ops/scripts/lib/carbonet-postgres-query.sh"; carbonet_postgres_query_init
 carbonet_postgres_query "DO \$\$ DECLARE jobs integer; tests integer; BEGIN
  INSERT INTO framework_simulation_run(case_code,process_version,result,failure_reason,evidence_json,executed_by,source_commit,execution_environment,evidence_hash)
