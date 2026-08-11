@@ -14,6 +14,7 @@ for contract in \
   'framework_current_business_e2e_evidence' \
   'maxRunsPerInvocation==1' \
   'timeout "$timeout_seconds"' \
+  'flock -s -w 30 8' \
   'current_after" == "$expected' \
   'invalid registry entry' \
   'AUTOMATIC_PARTIAL'; do

@@ -4,9 +4,12 @@ set -Eeuo pipefail
 ROOT="${RESONANCE_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
 REGISTRY="${BUSINESS_E2E_RUNNER_REGISTRY:-$ROOT/ops/runtime-metadata/business-e2e-runner-registry.json}"
 LOCK="${BUSINESS_E2E_RUNNER_LOCK:-/tmp/resonance-current-business-e2e-runner.lock}"
+DEPLOY_LOCK="${CARBONET_AUTO_DEPLOY_LOCK:-/tmp/carbonet-auto-deploy.lock}"
 LOG_DIR="${BUSINESS_E2E_LOG_DIR:-$ROOT/var/test-evidence/current-business-e2e}"
 exec 9>"$LOCK"
 flock -n 9 || { echo '[current-business-e2e] already running' >&2; exit 75; }
+exec 8<>"$DEPLOY_LOCK"
+flock -s -w 30 8 || { echo '[current-business-e2e] deployment lock busy' >&2; exit 75; }
 
 jq -e '.schemaVersion=="1.0.0" and .policy.maxRunsPerInvocation==1 and .policy.failClosed==true' "$REGISTRY" >/dev/null
 source "$ROOT/ops/scripts/lib/carbonet-postgres-query.sh"
