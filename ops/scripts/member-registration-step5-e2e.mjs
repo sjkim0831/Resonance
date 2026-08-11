@@ -45,7 +45,7 @@ async function inspect(context, route, expected = {}) {
   if ((response?.status() || 0) >= 400 || pageErrors.length || state.overflow || state.fatal || state.unnamedActions || state.duplicateIds) {
     throw new Error(`step5 visual contract failed ${JSON.stringify({ status: response?.status(), ...state, pageErrorCount: pageErrors.length })}`);
   }
-  for (const text of expected.present || []) await page.getByText(text, { exact: true }).waitFor();
+  for (const text of expected.present || []) await page.getByText(text, { exact: true }).first().waitFor();
   for (const text of expected.absent || []) {
     if (await page.getByText(text, { exact: true }).count()) throw new Error("step5 isolation contract failed");
   }

@@ -13,6 +13,7 @@ for (const contract of [
   "document.documentElement.scrollWidth",
   "unnamedActions",
   "duplicateIds",
+  "getByText(text, { exact: true }).first().waitFor()",
   "production-runtime+browser+admin-handoff",
   "administratorApprovalAndRejection",
   "member-registration-step5-relay-e2e",
