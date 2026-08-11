@@ -1136,7 +1136,7 @@ export function FindPasswordPage() {
       if (body.status !== "success") {
         throw new Error(body.errors || (en ? "Failed to change password." : "비밀번호 변경에 실패했습니다."));
       }
-      navigate(buildLocalizedPath("/signin/findPassword/result", "/en/signin/findPassword/result"));
+      window.location.assign(buildLocalizedPath("/signin/findPassword/result", "/en/signin/findPassword/result"));
     } catch (error) {
       window.alert(error instanceof Error ? error.message : (en ? "Failed to change password." : "비밀번호 변경에 실패했습니다."));
     } finally {

@@ -172,6 +172,11 @@ public class AuthPageController {
     @GetMapping("/findPassword/result")
     public String findPasswordResult(@RequestParam(value = "language", required = false) String language, Model model,
             HttpServletRequest request) {
+        if (!AccountRecoveryResultSession.consume(request)) {
+            return "en".equals(resolveLanguage(language, request))
+                    ? "redirect:/en/signin/findPassword"
+                    : "redirect:/signin/findPassword";
+        }
         return renderPublicSigninPage(language, model, request, "/findPassword/result", "signin-find-password-result");
     }
 

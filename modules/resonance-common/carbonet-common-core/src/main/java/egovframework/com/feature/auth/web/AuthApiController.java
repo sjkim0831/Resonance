@@ -513,7 +513,7 @@ public class AuthApiController {
 
         if (ObjectUtils.isEmpty(userId) || ObjectUtils.isEmpty(newPassword)) {
             message.put("status", "fail");
-            message.put("errors", isEn ? "Required values are missing." : "?꾩닔 媛믪씠 ?꾨씫?섏뿀?듬땲??");
+            message.put("errors", isEn ? "Required values are missing." : "필수 값이 누락되었습니다.");
             return ResponseEntity.ok(message);
         }
 
@@ -521,7 +521,7 @@ public class AuthApiController {
             message.put("status", "fail");
             message.put("errors", isEn
                     ? "Please meet the password policy (at least 9 chars and 3 character types)."
-                    : "鍮꾨?踰덊샇 ?뺤콉(9?먮━ ?댁긽, 3醫낅쪟 議고빀)??異⑹”??二쇱꽭??");
+                    : "비밀번호 정책(9자리 이상, 3종류 조합)을 충족해 주세요.");
             return ResponseEntity.ok(message);
         }
 
@@ -531,10 +531,11 @@ public class AuthApiController {
         boolean updated = "success".equals(recoveryResult.status());
         if (!updated) {
             message.put("status", "fail");
-            message.put("errors", isEn ? "No matching user was found." : "?쇱튂?섎뒗 ?ъ슜?먮? 李얠쓣 ???놁뒿?덈떎.");
+            message.put("errors", isEn ? "No matching user was found." : "일치하는 사용자를 찾을 수 없습니다.");
             return ResponseEntity.ok(message);
         }
 
+        AccountRecoveryResultSession.grant(request);
         message.put("status", "success");
         return ResponseEntity.ok(message);
     }
