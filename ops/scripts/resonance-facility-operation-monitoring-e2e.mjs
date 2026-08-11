@@ -140,7 +140,7 @@ try {
           if (!page) throw new Error(`missing warmed actor page=${transition.actorCode}:${viewportName}`);
           const startedAt = Date.now();
           await page.evaluate(nextRoute => { history.pushState({}, "", nextRoute); window.dispatchEvent(new PopStateEvent("popstate")); }, route);
-          await page.waitForFunction(({ pathname, stepCode }) => location.pathname === pathname && (document.querySelector("#root")?.children.length || 0) > 0 && document.querySelectorAll("h1,h2").length > 0 && (document.body?.innerText || "").toUpperCase().includes(String(stepCode).toUpperCase()), { pathname: screenRoute, stepCode: transition.stepCode }, { timeout: 10_000 });
+          await page.waitForFunction(({ pathname, stepCode }) => location.pathname === pathname && (document.querySelector("#root")?.children.length || 0) > 0 && document.querySelectorAll("h1,h2").length > 0 && (document.body?.innerText || "").includes(stepCode), { pathname: screenRoute, stepCode: transition.stepCode }, { timeout: 10_000 });
           durations[viewportName] = Date.now() - startedAt;
           states[viewportName] = await page.evaluate(() => ({ overflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 2, controls: document.querySelectorAll("input,select,textarea,button").length, headings: document.querySelectorAll("h1,h2").length }));
         }
