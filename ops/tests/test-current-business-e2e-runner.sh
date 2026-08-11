@@ -7,7 +7,7 @@ REGISTRY="$ROOT/ops/runtime-metadata/business-e2e-runner-registry.json"
 bash -n "$RUNNER"
 jq -e '.policy.maxRunsPerInvocation==1 and .policy.failClosed==true
   and ([.runners[].processCode]|unique|length)==(.runners|length)
-  and ([.runners[]|select(.automation=="AUTOMATIC" or .automation=="AUTOMATIC_PARTIAL")]|length)==10
+  and ([.runners[]|select(.automation=="AUTOMATIC" or .automation=="AUTOMATIC_PARTIAL")]|length)==11
   and ([.runners[].deployLockMode]|all(.=="SHARED_PARENT" or .=="EXCLUSIVE_SELF"))
   and (.runners[]|select(.processCode=="MEMBER_REGISTRATION")|.externalBlockers|length)==2
   and (.runners[]|select(.processCode=="COMPANY_REAPPLICATION_PUBLIC")
@@ -33,6 +33,9 @@ jq -e '.policy.maxRunsPerInvocation==1 and .policy.failClosed==true
       and .deployLockMode=="SHARED_PARENT" and (.externalBlockers|length)==0)
   and (.runners[]|select(.processCode=="REPORT_CERTIFICATION")
     |.automation=="AUTOMATIC" and .expectedCurrentPassedSteps==4 and .totalSteps==4
+      and .deployLockMode=="SHARED_PARENT" and (.externalBlockers|length)==0)
+  and (.runners[]|select(.processCode=="CUSTOMER_WORK_COORDINATION")
+    |.automation=="AUTOMATIC" and .expectedCurrentPassedSteps==7 and .totalSteps==7
       and .deployLockMode=="SHARED_PARENT" and (.externalBlockers|length)==0)' "$REGISTRY" >/dev/null
 
 for contract in \
@@ -55,4 +58,4 @@ if grep -Eq '\beval\b|find .*business.*e2e|for .*ops/tests/\*' "$RUNNER"; then
   echo '[current-business-e2e-runner] FAIL ungoverned runner discovery' >&2
   exit 1
 fi
-echo '[current-business-e2e-runner] PASS allowlist=10 max-runs=1 timeout=bounded evidence=current-version deploy-lock=governed external-blockers=explicit'
+echo '[current-business-e2e-runner] PASS allowlist=11 max-runs=1 timeout=bounded evidence=current-version deploy-lock=governed external-blockers=explicit'

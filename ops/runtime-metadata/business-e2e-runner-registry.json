@@ -118,6 +118,17 @@
       "timeoutSeconds": 300,
       "deployLockMode": "SHARED_PARENT",
       "externalBlockers": []
+    },
+    {
+      "priority": 110,
+      "processCode": "CUSTOMER_WORK_COORDINATION",
+      "runner": "ops/scripts/complete-customer-work-coordination-assurance.sh",
+      "automation": "AUTOMATIC",
+      "expectedCurrentPassedSteps": 7,
+      "totalSteps": 7,
+      "timeoutSeconds": 300,
+      "deployLockMode": "SHARED_PARENT",
+      "externalBlockers": []
     }
   ]
 }
