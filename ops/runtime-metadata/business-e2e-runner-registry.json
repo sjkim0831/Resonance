@@ -1,0 +1,33 @@
+{
+  "schemaVersion": "1.0.0",
+  "policy": {
+    "selection": "FIRST_MISSING_CURRENT_EVIDENCE",
+    "maxRunsPerInvocation": 1,
+    "failClosed": true
+  },
+  "runners": [
+    {
+      "priority": 10,
+      "processCode": "COMPANY_MANAGER_DELEGATION",
+      "runner": "ops/tests/run-company-manager-delegation-business-e2e.sh",
+      "automation": "AUTOMATIC",
+      "expectedCurrentPassedSteps": 3,
+      "totalSteps": 3,
+      "timeoutSeconds": 300,
+      "externalBlockers": []
+    },
+    {
+      "priority": 20,
+      "processCode": "MEMBER_REGISTRATION",
+      "runner": "ops/scripts/complete-member-registration-business-e2e.sh",
+      "automation": "AUTOMATIC_PARTIAL",
+      "expectedCurrentPassedSteps": 3,
+      "totalSteps": 5,
+      "timeoutSeconds": 300,
+      "externalBlockers": [
+        "MEMBER_REGISTRATION_S3:EXTERNAL_IDENTITY_PROVIDER_UNAVAILABLE",
+        "MEMBER_REGISTRATION_S4:SUCCESSFUL_IDENTITY_REQUIRED"
+      ]
+    }
+  ]
+}
