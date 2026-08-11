@@ -2002,4 +2002,5 @@ export const GENERATED_SCREEN_CATALOG = [
   screen_emission_project_emission_project_correct_user,
   screen_emission_project_emission_project_setup_admin
 ] as const satisfies readonly GeneratedScreenDefinition[];
-export function findGeneratedScreen(pathname:string){const normalized=pathname.replace(/^\/en(?=\/)/,"")||"/";return GENERATED_SCREEN_CATALOG.find(screen=>screen.routePath===normalized);}
+export type GeneratedScreenLookup={processCode?:string;stepCode?:string;audience?:string};
+export function findGeneratedScreen(pathname:string,lookup:GeneratedScreenLookup={}){const parsed=new URL(pathname,"http://screen.local");const normalized=parsed.pathname.replace(/^\/en(?=\/)/,"")||"/";const processCode=(lookup.processCode||parsed.searchParams.get("processCode")||"").toUpperCase();const stepCode=(lookup.stepCode||parsed.searchParams.get("step")||parsed.searchParams.get("stepCode")||"").toUpperCase();const audience=(lookup.audience||(normalized.startsWith("/admin/")?"ADMIN":"USER")).toUpperCase();const candidates=GENERATED_SCREEN_CATALOG.filter(screen=>screen.routePath===normalized&&screen.audience===audience);return candidates.find(screen=>(!processCode||screen.processCode===processCode)&&(!stepCode||screen.stepCode===stepCode))||candidates.find(screen=>!processCode||screen.processCode===processCode)||candidates[0];}

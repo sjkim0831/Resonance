@@ -297,12 +297,22 @@ function applyVersionedContract(base: GeneratedScreenDefinition, envelope: Versi
   } as GeneratedScreenDefinition;
 }
 
+function requestedScreenCoordinate(base: GeneratedScreenDefinition) {
+  const params = new URLSearchParams(window.location.search);
+  return {
+    processCode: (params.get("processCode") || base.processCode).trim().toUpperCase(),
+    stepCode: (params.get("step") || params.get("stepCode") || base.stepCode).trim().toUpperCase(),
+    audience: (params.get("audience") || (window.location.pathname.startsWith("/admin/") ? "ADMIN" : base.audience)).trim().toUpperCase(),
+  };
+}
+
 async function loadVersionedContract(base: GeneratedScreenDefinition): Promise<GeneratedScreenDefinition> {
+  const coordinate = requestedScreenCoordinate(base);
   const query = new URLSearchParams({
     routePath: contractLookupPath(),
-    processCode: base.processCode,
-    stepCode: base.stepCode,
-    audience: base.audience,
+    processCode: coordinate.processCode,
+    stepCode: coordinate.stepCode,
+    audience: coordinate.audience,
   });
   const response = await fetch(`/runtime/screens/resolve?${query}`, { credentials: "include", headers: { Accept: "application/json" } });
   if (!response.ok) return base;
