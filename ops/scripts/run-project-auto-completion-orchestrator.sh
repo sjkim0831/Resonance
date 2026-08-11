@@ -1357,6 +1357,27 @@ if [[ "$executable" -gt 0 ]]; then
     POSTGRES_POD="$leader" PGHOST="127.0.0.1" K8S_NAMESPACE="$NAMESPACE" \
     PROJECT_WORK_RUNNER="$PROJECT_WORK_RUNNER" bash "$PROCESS_DEVELOPMENT_DISPATCHER" || dispatcher_failed=1
 fi
+full_stack_ready_before="$(psqlq -c "select count(*) from framework_step_execution_spec where design_status='DESIGN_COMPLETE' and approval_status='APPROVED' and generation_status='READY';")"
+full_stack_generation_result="$(jq -cn --argjson ready "$full_stack_ready_before" '{status:(if $ready>0 then "PENDING" else "UNCHANGED" end),readyBefore:$ready,readyAfter:$ready,elapsedMillis:0}')"
+if (( full_stack_ready_before > 0 )); then
+  full_stack_started_ms="$(date +%s%3N)"
+  set +e
+  full_stack_output="$(FULL_STACK_PACKAGE_OUT="${FULL_STACK_PACKAGE_OUT:-$ROOT_DIR/var/runtime/full-stack-generation/generated}" \
+    FULL_STACK_PREVIEW_OUT="${FULL_STACK_PREVIEW_OUT:-$ROOT_DIR/var/runtime/full-stack-generation/design-preview}" \
+    K8S_NAMESPACE="$NAMESPACE" PGDATABASE="$DB" PGUSER="$DB_USER" POSTGRES_POD="$leader" \
+    bash "$ROOT_DIR/ops/scripts/generate-full-stack-design-packages.sh" "$ROOT_DIR" 2>&1)"
+  full_stack_rc=$?
+  set -e
+  full_stack_elapsed_ms="$(( $(date +%s%3N) - full_stack_started_ms ))"
+  full_stack_ready_after="$(psqlq -c "select count(*) from framework_step_execution_spec where design_status='DESIGN_COMPLETE' and approval_status='APPROVED' and generation_status='READY';")"
+  if (( full_stack_rc != 0 || full_stack_ready_after != 0 )); then
+    dispatcher_failed=1
+    full_stack_generation_result="$(jq -cn --arg error "$full_stack_output" --argjson before "$full_stack_ready_before" --argjson after "$full_stack_ready_after" --argjson elapsed "$full_stack_elapsed_ms" '{status:"FAILED",readyBefore:$before,readyAfter:$after,elapsedMillis:$elapsed,error:$error}')"
+  else
+    full_stack_generation_result="$(jq -cn --argjson before "$full_stack_ready_before" --argjson elapsed "$full_stack_elapsed_ms" '{status:"GENERATED",readyBefore:$before,readyAfter:0,elapsedMillis:$elapsed}')"
+  fi
+fi
+
 screen_generation_result='{"status":"NOT_INSTALLED"}'
 if [[ "$(psqlq -c "select (to_regprocedure('framework_incremental_screen_generation_snapshot(integer,character varying)') is not null)::integer;")" == "1" ]]; then
   set +e
@@ -1376,4 +1397,4 @@ blocked="$(psqlq -c "select count(*) from framework_process_delivery_priority_qu
 remaining="$(psqlq -c "select count(*) from framework_process_delivery_priority_queue where next_action<>'COMPLETE';")"
 status="PROGRESSING"; [[ "$remaining" == "0" ]] && status="COMPLETED"; [[ "$blocked" -gt 0 || ( "$remaining" -gt 0 && "$executable" == "0" ) || "$dispatcher_failed" -gt 0 || "$static_contract_gate_failed" -gt 0 ]] && status="ATTENTION_REQUIRED"
 psqlq -c "update framework_project_completion_run set run_status='$status',selected_process_count=$selected,executable_job_count=$executable,retried_job_count=$retried,completed_process_count=$completed,blocked_process_count=$blocked,result_json='{\"remainingProcesses\":$remaining,\"dispatcherFailed\":$dispatcher_failed}',completed_at=current_timestamp where run_id='$run_id';" >/dev/null
-echo "[project-auto-completion] $status selected=$selected executable=$executable retried=$retried deterministicSafetyCasesApproved=$deterministic_safety_cases_approved embeddedTestsSynced=$embedded_tests_synced deterministicSpecsApproved=$deterministic_specs_approved staticContractGate=$(jq -c . <<<"$static_contract_gate_result") incompleteSpecDemoted=$incomplete_spec_demoted specApprovalWaiting=$spec_approval_waiting approvedGeneratorRetried=$approved_generator_retried frontendPackageRetried=$frontend_package_retried groupedFieldGeneratorRetried=$grouped_field_generator_retried packageContractGeneratorRetried=$package_contract_generator_retried generatedDimensionRetried=$generated_dimension_retried commonContractRetried=$common_contract_retried databaseConstraintRetried=$database_constraint_retried deliveryInfrastructureRetried=$delivery_infrastructure_retried deterministicDiffScopeRetried=$deterministic_diff_scope_retried designEvidenceAdopted=$design_evidence_adopted notApplicableCompleted=$not_applicable_completed contractJobsApproved=$contract_jobs_approved exhaustedPlannedRetried=$exhausted_planned_retried adopted=$server_adopted completed=$completed blocked=$blocked remaining=$remaining dispatcherFailed=$dispatcher_failed contractCompletion=$contract_completion_result screenGeneration=$(jq -c '{status:(.status//"GENERATED"),requested:(.requested//0),generated:(.generated//0),unchanged:(.unchanged//0),elapsedMillis:(.elapsedMillis//0)}' <<<"$screen_generation_result")"
+echo "[project-auto-completion] $status selected=$selected executable=$executable retried=$retried deterministicSafetyCasesApproved=$deterministic_safety_cases_approved embeddedTestsSynced=$embedded_tests_synced deterministicSpecsApproved=$deterministic_specs_approved staticContractGate=$(jq -c . <<<"$static_contract_gate_result") incompleteSpecDemoted=$incomplete_spec_demoted specApprovalWaiting=$spec_approval_waiting approvedGeneratorRetried=$approved_generator_retried frontendPackageRetried=$frontend_package_retried groupedFieldGeneratorRetried=$grouped_field_generator_retried packageContractGeneratorRetried=$package_contract_generator_retried generatedDimensionRetried=$generated_dimension_retried commonContractRetried=$common_contract_retried databaseConstraintRetried=$database_constraint_retried deliveryInfrastructureRetried=$delivery_infrastructure_retried deterministicDiffScopeRetried=$deterministic_diff_scope_retried designEvidenceAdopted=$design_evidence_adopted notApplicableCompleted=$not_applicable_completed contractJobsApproved=$contract_jobs_approved exhaustedPlannedRetried=$exhausted_planned_retried adopted=$server_adopted completed=$completed blocked=$blocked remaining=$remaining dispatcherFailed=$dispatcher_failed contractCompletion=$contract_completion_result fullStackGeneration=$(jq -c . <<<"$full_stack_generation_result") screenGeneration=$(jq -c '{status:(.status//"GENERATED"),requested:(.requested//0),generated:(.generated//0),unchanged:(.unchanged//0),elapsedMillis:(.elapsedMillis//0)}' <<<"$screen_generation_result")"
