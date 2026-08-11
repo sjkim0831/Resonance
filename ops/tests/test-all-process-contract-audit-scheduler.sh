@@ -7,13 +7,15 @@ INSTALLER="$ROOT/ops/scripts/install-all-process-contract-audit.sh"
 SERVICE="$ROOT/ops/systemd/resonance-all-process-contract-audit.service"
 TIMER="$ROOT/ops/systemd/resonance-all-process-contract-audit.timer"
 DEPLOY="$ROOT/ops/scripts/auto-deploy-main.sh"
+INCREMENTAL_SERVICE="$ROOT/ops/systemd/resonance-incremental-screen-generation.service"
+INCREMENTAL_TIMER="$ROOT/ops/systemd/resonance-incremental-screen-generation.timer"
 
 fail() {
   echo "[test-all-process-contract-audit-scheduler] FAIL: $*" >&2
   exit 1
 }
 
-for file in "$RUNNER" "$INSTALLER" "$SERVICE" "$TIMER" "$DEPLOY"; do
+for file in "$RUNNER" "$INSTALLER" "$SERVICE" "$TIMER" "$DEPLOY" "$INCREMENTAL_SERVICE" "$INCREMENTAL_TIMER"; do
   [[ -f "$file" ]] || fail "missing ${file#$ROOT/}"
 done
 
@@ -33,6 +35,10 @@ grep -Fq 'OnCalendar=hourly' "$TIMER" || fail 'timer must use a wall-clock hourl
 grep -Fq 'Persistent=true' "$TIMER" || fail 'timer must recover missed runs'
 ! grep -Eq '^On(?:Active|UnitActive|Boot)Sec=' "$TIMER" || fail 'timer must not fall back to monotonic scheduling'
 ! grep -Fq 'project-auto-completion' "$SERVICE" "$TIMER" "$RUNNER" || fail 'audit must not be coupled to the two-minute auto-completion loop'
+grep -Fq 'WorkingDirectory=/opt/Resonance/var/deploy-worktrees/runtime-build' "$INCREMENTAL_SERVICE" || fail 'incremental compiler must execute from the current deploy worktree'
+grep -Fq 'Environment=RESONANCE_ROOT=/opt/Resonance/var/deploy-worktrees/runtime-build' "$INCREMENTAL_SERVICE" || fail 'incremental compiler must expose the canonical current root'
+grep -Fq 'generate-db-first-framework.sh /opt/Resonance/var/deploy-worktrees/runtime-build' "$INCREMENTAL_SERVICE" || fail 'incremental compiler must pass the current root explicitly'
+! grep -Fq 'ExecStart=/usr/bin/bash /opt/Resonance/ops/' "$INCREMENTAL_SERVICE" || fail 'incremental compiler must not execute stale repository scripts'
 if command -v systemd-analyze >/dev/null 2>&1; then
   systemd-analyze calendar hourly >/dev/null || fail 'systemd rejected the hourly calendar expression'
 fi
@@ -78,6 +84,8 @@ grep -Fq '"$preflight_rc" -ne 0 && "$preflight_rc" -ne 3' <<<"$audit_sync_body" 
 grep -Fq 'RESONANCE_AUDIT_LOCK_FILE:-/opt/resonance-data/control-plane/run/all-process-contract-audit.lock' <<<"$audit_sync_body" || fail 'deploy preflight must share the scheduled audit lock'
 grep -Fq 'flock -n "$audit_lock_fd"' <<<"$audit_sync_body" || fail 'deploy preflight must acquire the audit lock before starting an audit'
 grep -Fq 'RESONANCE_ROOT="$ROOT_DIR"' <<<"$audit_sync_body" || fail 'deploy preflight must pass its exact current worktree to the installed audit wrapper'
+grep -Fq 'ops/systemd/resonance-incremental-screen-generation.service' "$DEPLOY" || fail 'auto-deploy must synchronize the incremental compiler service'
+grep -Fq 'ops/systemd/resonance-incremental-screen-generation.timer' "$DEPLOY" || fail 'auto-deploy must synchronize the incremental compiler timer'
 grep -Fq 'flock -w "$audit_lock_wait_seconds" "$audit_lock_fd"' <<<"$audit_sync_body" || fail 'deploy preflight must wait for an incumbent audit instead of starting a duplicate'
 grep -Fq 'concurrent all-process audit did not publish a fresh atomic report' <<<"$audit_sync_body" || fail 'deploy must reject stale reports after audit lock contention'
 ! grep -Fq 'SYSTEM_TEST_REPORT_DEPLOYMENT_PREFLIGHT' "$RUNNER" || fail 'hourly runner must never inherit deployment-only evidence-refresh skipping'

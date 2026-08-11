@@ -5,8 +5,9 @@ After=network-online.target
 [Service]
 Type=oneshot
 User=sjkim
-WorkingDirectory=/opt/Resonance
-ExecStart=/usr/bin/bash /opt/Resonance/ops/scripts/generate-db-first-framework.sh
+WorkingDirectory=/opt/Resonance/var/deploy-worktrees/runtime-build
+Environment=RESONANCE_ROOT=/opt/Resonance/var/deploy-worktrees/runtime-build
+ExecStart=/usr/bin/bash /opt/Resonance/var/deploy-worktrees/runtime-build/ops/scripts/generate-db-first-framework.sh /opt/Resonance/var/deploy-worktrees/runtime-build
 Nice=10
 IOSchedulingClass=best-effort
 IOSchedulingPriority=7

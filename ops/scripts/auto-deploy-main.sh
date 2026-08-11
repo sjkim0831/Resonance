@@ -1285,7 +1285,11 @@ process_development_control_plane_in_sync() {
     cmp -s ops/systemd/resonance-project-auto-completion.service \
       /etc/systemd/system/resonance-project-auto-completion.service &&
     cmp -s ops/systemd/resonance-project-auto-completion.timer \
-      /etc/systemd/system/resonance-project-auto-completion.timer
+      /etc/systemd/system/resonance-project-auto-completion.timer &&
+    cmp -s ops/systemd/resonance-incremental-screen-generation.service \
+      /etc/systemd/system/resonance-incremental-screen-generation.service &&
+    cmp -s ops/systemd/resonance-incremental-screen-generation.timer \
+      /etc/systemd/system/resonance-incremental-screen-generation.timer
 }
 
 sync_process_development_worker_if_required() {
@@ -1297,7 +1301,9 @@ sync_process_development_worker_if_required() {
       ops/systemd/resonance-process-development-worker.service \
       ops/systemd/resonance-process-development-worker.timer \
       ops/systemd/resonance-project-auto-completion.service \
-      ops/systemd/resonance-project-auto-completion.timer &&
+      ops/systemd/resonance-project-auto-completion.timer \
+      ops/systemd/resonance-incremental-screen-generation.service \
+      ops/systemd/resonance-incremental-screen-generation.timer &&
     [[ "$control_plane_drift_check_due" != "true" ]] &&
     process_development_control_plane_in_sync; then
     return 0
@@ -1310,7 +1316,9 @@ sync_process_development_worker_if_required() {
       ops/systemd/resonance-process-development-worker.service \
       ops/systemd/resonance-process-development-worker.timer \
       ops/systemd/resonance-project-auto-completion.service \
-      ops/systemd/resonance-project-auto-completion.timer || \
+      ops/systemd/resonance-project-auto-completion.timer \
+      ops/systemd/resonance-incremental-screen-generation.service \
+      ops/systemd/resonance-incremental-screen-generation.timer || \
     ! process_development_control_plane_in_sync || \
     ! systemctl cat resonance-process-development-worker.service 2>/dev/null | \
       grep -Fq '/opt/resonance-data/control-plane/bin/run-process-development-dispatcher.sh'; then
@@ -1338,10 +1346,17 @@ sync_process_development_worker_if_required() {
     sudo -n install -m 0644 \
       ops/systemd/resonance-project-auto-completion.timer \
       /etc/systemd/system/resonance-project-auto-completion.timer
+    sudo -n install -m 0644 \
+      ops/systemd/resonance-incremental-screen-generation.service \
+      /etc/systemd/system/resonance-incremental-screen-generation.service
+    sudo -n install -m 0644 \
+      ops/systemd/resonance-incremental-screen-generation.timer \
+      /etc/systemd/system/resonance-incremental-screen-generation.timer
     sudo -n systemctl daemon-reload
     sudo -n systemctl enable --now \
       resonance-process-development-worker.timer \
-      resonance-project-auto-completion.timer >/dev/null
+      resonance-project-auto-completion.timer \
+      resonance-incremental-screen-generation.timer >/dev/null
     echo "[auto-deploy] process development worker control plane synchronized"
   fi
 }
