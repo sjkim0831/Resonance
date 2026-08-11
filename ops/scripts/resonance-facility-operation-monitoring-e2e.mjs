@@ -112,42 +112,41 @@ try {
 
   const browser = await chromium.launch({ headless: true });
   const browserContexts = new Map();
+  const browserPages = new Map();
   try {
     for (const transition of transitions) {
       if (browserContexts.has(transition.actorCode)) continue;
       const actorApi = clients.get(transition.actorCode);
       const context = await browser.newContext({ storageState: await actorApi.storageState(), viewport: { width: 1440, height: 1000 } });
       browserContexts.set(transition.actorCode, context);
-      const warmup = await context.newPage();
-      const initialRoute = routeFor(transition.stepCode, routeBases[0]);
-      const warmRoute = `${initialRoute}${initialRoute.includes("?") ? "&" : "?"}projectId=${encodeURIComponent(projectId)}`;
-      await warmup.goto(`${baseURL}${warmRoute}`, { waitUntil: "domcontentloaded", timeout: 20_000 });
-      await warmup.waitForFunction(() => (document.querySelector("#root")?.children.length || 0) > 0 && document.querySelectorAll("h1,h2").length > 0, undefined, { timeout: 20_000 });
-      await warmup.close();
+      for (const viewport of [{ name: "desktop", width: 1440, height: 1000 }, { name: "mobile", width: 390, height: 844 }]) {
+        const warmup = await context.newPage();
+        await warmup.setViewportSize({ width: viewport.width, height: viewport.height });
+        const initialRoute = routeFor(transition.stepCode, routeBases[0]);
+        const warmRoute = `${initialRoute}${initialRoute.includes("?") ? "&" : "?"}projectId=${encodeURIComponent(projectId)}`;
+        await warmup.goto(`${baseURL}${warmRoute}`, { waitUntil: "domcontentloaded", timeout: 20_000 });
+        await warmup.waitForFunction(() => (document.querySelector("#root")?.children.length || 0) > 0 && document.querySelectorAll("h1,h2").length > 0, undefined, { timeout: 20_000 });
+        browserPages.set(`${transition.actorCode}:${viewport.name}`, warmup);
+      }
     }
     for (const transition of transitions) {
       for (const routePattern of routeBases) {
-      const api = clients.get(transition.actorCode);
-      const context = browserContexts.get(transition.actorCode);
-      if (!context) throw new Error(`missing warmed actor context=${transition.actorCode}`);
-      const page = await context.newPage();
-      const screenRoute = routeFor(transition.stepCode, routePattern);
-      const route = `${screenRoute}${screenRoute.includes("?") ? "&" : "?"}projectId=${encodeURIComponent(projectId)}`;
-      const startedAt = Date.now();
-      const response = await page.goto(`${baseURL}${route}`, { waitUntil: "domcontentloaded", timeout: 20_000 });
-      await page.waitForFunction(() => (document.querySelector("#root")?.children.length || 0) > 0 && document.querySelectorAll("h1,h2").length > 0, undefined, { timeout: 10_000 });
-      const desktopDurationMs = Date.now() - startedAt;
-      const desktop = await page.evaluate(() => ({ overflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 2, controls: document.querySelectorAll("input,select,textarea,button").length, headings: document.querySelectorAll("h1,h2").length }));
-      await page.setViewportSize({ width: 390, height: 844 });
-      const mobileStartedAt = Date.now();
-      await page.reload({ waitUntil: "domcontentloaded", timeout: 20_000 });
-      await page.waitForFunction(() => (document.querySelector("#root")?.children.length || 0) > 0, undefined, { timeout: 10_000 });
-      const mobileDurationMs = Date.now() - mobileStartedAt;
-      const mobileOverflow = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth + 2);
-      if ((response?.status() || 0) >= 400 || desktop.overflow || mobileOverflow || desktop.controls < 4 || desktop.headings < 1) throw new Error(`responsive screen failed ${transition.stepCode}`);
-      routeEvidence.push({ stepCode: transition.stepCode, actorCode: transition.actorCode, routePath: screenRoute, desktop: 1, mobile: 1, controls: desktop.controls, desktopDurationMs, mobileDurationMs, durationMs: Math.max(desktopDurationMs, mobileDurationMs) });
-      samples.push(desktopDurationMs, mobileDurationMs);
-      await page.close();
+        const screenRoute = routeFor(transition.stepCode, routePattern);
+        const route = `${screenRoute}${screenRoute.includes("?") ? "&" : "?"}projectId=${encodeURIComponent(projectId)}`;
+        const durations = {};
+        const states = {};
+        for (const viewportName of ["desktop", "mobile"]) {
+          const page = browserPages.get(`${transition.actorCode}:${viewportName}`);
+          if (!page) throw new Error(`missing warmed actor page=${transition.actorCode}:${viewportName}`);
+          const startedAt = Date.now();
+          await page.evaluate(nextRoute => { history.pushState({}, "", nextRoute); window.dispatchEvent(new PopStateEvent("popstate")); }, route);
+          await page.waitForFunction(({ pathname, stepCode }) => location.pathname === pathname && (document.querySelector("#root")?.children.length || 0) > 0 && document.querySelectorAll("h1,h2").length > 0 && (document.body?.innerText || "").includes(stepCode), { pathname: screenRoute, stepCode: transition.stepCode }, { timeout: 10_000 });
+          durations[viewportName] = Date.now() - startedAt;
+          states[viewportName] = await page.evaluate(() => ({ overflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 2, controls: document.querySelectorAll("input,select,textarea,button").length, headings: document.querySelectorAll("h1,h2").length }));
+        }
+        if (states.desktop.overflow || states.mobile.overflow || states.desktop.controls < 4 || states.desktop.headings < 1) throw new Error(`responsive screen failed ${transition.stepCode}`);
+        routeEvidence.push({ stepCode: transition.stepCode, actorCode: transition.actorCode, routePath: screenRoute, desktop: 1, mobile: 1, controls: states.desktop.controls, desktopDurationMs: durations.desktop, mobileDurationMs: durations.mobile, durationMs: Math.max(durations.desktop, durations.mobile) });
+        samples.push(durations.desktop, durations.mobile);
       }
     }
   } finally { await browser.close(); }
