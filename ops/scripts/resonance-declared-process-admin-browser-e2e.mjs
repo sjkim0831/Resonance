@@ -23,11 +23,23 @@ if (login.status() !== 200 || loginBody.status !== "loginSuccess") throw new Err
 const browser = await chromium.launch({ headless: true });
 const routes = [];
 const samples = [];
+const contexts = new Map();
 try {
+  const storageState = await api.storageState();
+  for (const viewport of [{ name: "desktop", width: 1440, height: 1000 }, { name: "mobile", width: 390, height: 844 }]) {
+    const context = await browser.newContext({ storageState, viewport });
+    contexts.set(viewport.name, context);
+    const warmup = await context.newPage();
+    const separator = routeBase.includes("?") ? "&" : "?";
+    await warmup.goto(`${baseURL}${routeBase}${separator}step=${encodeURIComponent(steps[0].toLowerCase())}`, { waitUntil: "domcontentloaded", timeout: 20_000 });
+    await warmup.waitForFunction(() => (document.body?.innerText || "").includes("SCREEN COORDINATE"), undefined, { timeout: 10_000 });
+    await warmup.close();
+  }
   for (const stepCode of steps) {
     for (const viewport of [{ name: "desktop", width: 1440, height: 1000 }, { name: "mobile", width: 390, height: 844 }]) {
       for (let round = 1; round <= sampleRounds; round += 1) {
-      const context = await browser.newContext({ storageState: await api.storageState(), viewport });
+      const context = contexts.get(viewport.name);
+      if (!context) throw new Error(`missing warmed context: ${viewport.name}`);
       const page = await context.newPage();
       const failures = [];
       page.on("pageerror", error => failures.push(`pageerror:${error.name}`));
@@ -50,7 +62,7 @@ try {
       }
       samples.push(durationMs);
       routes.push({ stepCode, viewport: viewport.name, round, durationMs, headings: state.headings, controls: state.controls });
-      await context.close();
+      await page.close();
       }
     }
   }
