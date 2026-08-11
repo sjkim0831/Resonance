@@ -14,6 +14,11 @@ for file in "$SCRIPT" "$WRAPPER" "$PLAN" "$PANEL" "$SERVICE"; do
   [[ -f "$file" ]] || { echo "missing file: $file" >&2; exit 1; }
 done
 
+grep -Fq 'deploymentPreflight ? 60_000 : 30_000' "$SCRIPT" || {
+  echo '[all-process-contract-audit-test] deployment preflight report timeout is not bounded independently' >&2
+  exit 1
+}
+
 python3 - "$SERVICE" <<'PY'
 from pathlib import Path
 import sys

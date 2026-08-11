@@ -505,7 +505,12 @@ async function loadLiveReport() {
     : await runContractAuditPages(cookie);
   const reportResponse = await fetch(`${baseUrl}${compactReportPath}`, {
     headers: { accept: "application/json", cookie },
-    signal: AbortSignal.timeout(Math.max(smokeTimeoutMs, 30_000)),
+    // The authenticated compact report performs a bounded cross-process DB
+    // aggregation. Production normally completes near 30 seconds, so using
+    // that same value as the abort boundary caused healthy catalog-only
+    // deployments to fail nondeterministically. Keep the ordinary audit
+    // budget unchanged and give deployment preflight one explicit 60s bound.
+    signal: AbortSignal.timeout(Math.max(smokeTimeoutMs, deploymentPreflight ? 60_000 : 30_000)),
   });
   if (!reportResponse.ok) throw new Error(`system-test-report failed with HTTP ${reportResponse.status}`);
   const contentType = reportResponse.headers.get("content-type") || "";
