@@ -18,24 +18,36 @@ CREATE TEMP TABLE member_api_reconcile_map(
 INSERT INTO member_api_reconcile_map VALUES
  (3018,'POST','/api/public/account-recovery/requests','POST','/signin/account-recovery/requests'),
  (3019,'POST','/api/public/account-recovery/requests','POST','/signin/account-recovery/requests'),
+ (3020,'POST','/api/public/account-recovery/requests/{requestId}/verify','POST','/signin/account-recovery/requests/{requestId}/verify'),
+ (3021,'POST','/api/public/account-recovery/requests/{requestId}/verify','POST','/signin/account-recovery/requests/{requestId}/verify'),
  (26248,'GET','/api/auth/groups','GET','/api/auth/roles'),
  (26248,'POST','/api/auth/groups','POST','/api/auth/roles'),
+ (26248,'PUT','/api/auth/groups/{id}','PUT','/api/auth/roles/{authorCode}'),
  (26290,'GET','/api/members/admin-accounts','GET','/admin/api/admin/member/admin-account/page'),
  (26290,'POST','/api/members/admin-accounts','POST','/admin/api/admin/member/admin-account'),
+ (26291,'GET','/api/members/admin-accounts/{id}/permissions','GET','/admin/api/admin/member/admin-account/permissions'),
+ (26291,'PUT','/api/members/admin-accounts/{id}/permissions','POST','/admin/api/admin/member/admin-account/permissions'),
  (26292,'GET','/api/members/admin-list','GET','/admin/api/admin/member/admin-list/page'),
  (26294,'GET','/api/members/company-accounts','GET','/admin/api/admin/member/company-account/page'),
+ (26294,'PUT','/api/members/company-accounts/{id}','POST','/admin/api/admin/member/company-account'),
  (26295,'POST','/api/members/register','POST','/admin/api/admin/member/register'),
  (26296,'GET','/api/members/stats','GET','/admin/member/stats/page-data'),
- (26306,'GET','/api/system/authorities','GET','/api/auth/roles');
+ (26306,'GET','/api/system/authorities','GET','/api/auth/roles'),
+ (26306,'PUT','/api/system/authorities/{id}','PUT','/api/auth/roles/{authorCode}');
 
-DO $$ DECLARE expected integer; found integer; BEGIN
+DO $$ DECLARE expected integer; found integer; already integer; BEGIN
  SELECT count(*) INTO expected FROM member_api_reconcile_map;
  SELECT count(*) INTO found
  FROM member_api_reconcile_map m
  JOIN framework_professional_screen_contract c ON c.contract_id=m.contract_id
  CROSS JOIN LATERAL jsonb_array_elements(c.api_contract::jsonb) api
  WHERE api->>'method'=m.old_method AND api->>'path'=m.old_path;
- IF found<>expected THEN RAISE EXCEPTION 'member API source contract guard failed expected=% found=%',expected,found; END IF;
+ SELECT count(*) INTO already
+ FROM member_api_reconcile_map m
+ JOIN framework_professional_screen_contract c ON c.contract_id=m.contract_id
+ CROSS JOIN LATERAL jsonb_array_elements(c.api_contract::jsonb) api
+ WHERE api->>'method'=m.new_method AND api->>'path'=m.new_path;
+ IF found+already<>expected THEN RAISE EXCEPTION 'member API idempotency guard failed expected=% source=% target=%',expected,found,already; END IF;
 END $$;
 
 WITH rebuilt AS (
@@ -70,4 +82,4 @@ DO $$ DECLARE expected integer; good integer; old_left integer; BEGIN
 END $$;
 COMMIT;
 SQL
-printf '{"status":"RECONCILED","contracts":9,"apiUsages":11}\n'
+printf '{"status":"RECONCILED","contracts":12,"apiUsages":18}\n'
