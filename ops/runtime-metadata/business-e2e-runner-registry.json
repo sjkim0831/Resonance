@@ -96,6 +96,17 @@
       "timeoutSeconds": 300,
       "deployLockMode": "SHARED_PARENT",
       "externalBlockers": []
+    },
+    {
+      "priority": 90,
+      "processCode": "EMISSION_CALCULATION",
+      "runner": "ops/scripts/complete-emission-calculation-assurance.sh",
+      "automation": "AUTOMATIC",
+      "expectedCurrentPassedSteps": 4,
+      "totalSteps": 4,
+      "timeoutSeconds": 300,
+      "deployLockMode": "SHARED_PARENT",
+      "externalBlockers": []
     }
   ]
 }
