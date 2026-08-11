@@ -14,6 +14,8 @@ FRONTEND_PIPELINE="$ROOT/projects/carbonet-frontend/source/scripts/run-frontend-
 FRONTEND_PACKAGE="$ROOT/projects/carbonet-frontend/source/package.json"
 PLANNER="$ROOT/ops/scripts/plan-incremental-work.sh"
 DEPLOY="$ROOT/ops/scripts/auto-deploy-main.sh"
+AUTH_LOGOUT_LIVE="$ROOT/ops/tests/test-auth-logout-revocation-live.sh"
+AUTH_LOGOUT_LEADER_CONTRACT="$ROOT/ops/tests/test-auth-logout-revocation-leader-contract.sh"
 PROVISION_CONTRACT="$ROOT/ops/tests/test-usage-ledger-system-admin-provision-contract.sh"
 PROVISION="$ROOT/ops/scripts/provision-usage-ledger-system-admin.sh"
 DB_POSTCONDITION="$ROOT/ops/tests/test-usage-ledger-system-admin-db-postcondition.sh"
@@ -24,9 +26,10 @@ fail(){ printf '[operational-usage-ledger-e2e-contract] FAIL: %s\n' "$*" >&2; ex
 contains(){ local file="$1" needle="$2"; grep -Fq -- "$needle" "$file" || fail "missing contract in ${file#$ROOT/}: $needle"; }
 not_contains(){ local file="$1" needle="$2"; ! grep -Fq -- "$needle" "$file" || fail "forbidden contract in ${file#$ROOT/}: $needle"; }
 
-for file in "$HARNESS" "$CONTROLLER" "$SERVICE" "$SERVICE_TEST" "$CONTROLLER_TEST" "$MIGRATION" "$PANEL" "$FRONTEND_AUDIT" "$FRONTEND_PIPELINE" "$FRONTEND_PACKAGE" "$PLANNER" "$DEPLOY" "$PROVISION_CONTRACT" "$PROVISION" "$DB_POSTCONDITION"; do [[ -f "$file" ]] || fail "required file missing: ${file#$ROOT/}"; done
-bash -n "$HARNESS"
+for file in "$HARNESS" "$CONTROLLER" "$SERVICE" "$SERVICE_TEST" "$CONTROLLER_TEST" "$MIGRATION" "$PANEL" "$FRONTEND_AUDIT" "$FRONTEND_PIPELINE" "$FRONTEND_PACKAGE" "$PLANNER" "$DEPLOY" "$AUTH_LOGOUT_LIVE" "$AUTH_LOGOUT_LEADER_CONTRACT" "$PROVISION_CONTRACT" "$PROVISION" "$DB_POSTCONDITION"; do [[ -f "$file" ]] || fail "required file missing: ${file#$ROOT/}"; done
+bash -n "$HARNESS" "$AUTH_LOGOUT_LIVE" "$AUTH_LOGOUT_LEADER_CONTRACT"
 bash "$HARNESS" --self-test >/dev/null
+bash "$AUTH_LOGOUT_LEADER_CONTRACT" >/dev/null
 bash "$PROVISION_CONTRACT" "$ROOT" >/dev/null
 node "$FRONTEND_AUDIT" >/dev/null
 
@@ -125,6 +128,8 @@ contains "$PLANNER" 'operational-usage-ledger-contract'
 contains "$PLANNER" 'ops/scripts/provision-usage-ledger-system-admin.sh'
 contains "$PLANNER" 'ops/tests/test-usage-ledger-system-admin-provision-contract.sh'
 contains "$PLANNER" 'ops/tests/test-usage-ledger-system-admin-db-postcondition.sh'
+contains "$PLANNER" 'ops/tests/test-auth-logout-revocation-live.sh'
+contains "$PLANNER" 'ops/tests/test-auth-logout-revocation-leader-contract.sh'
 contains "$PLANNER" 'ops/scripts/auto-deploy-main.sh'
 contains "$PLANNER" 'ops/scripts/plan-incremental-work.sh'
 contains "$PLANNER" 'projects/carbonet-frontend/source/scripts/run-frontend-pipeline.mjs'
@@ -207,4 +212,4 @@ grep -Fq 'runtime identity marker bootstrapped from DB+K8s' "$DEPLOY" \
 ! sed -n '/^verify_operational_usage_ledger_current_runtime_identity() {/,/^}/p' "$DEPLOY" | grep -Fq '$DEPLOY_STATE_FILE' \
   || fail "runtime identity verifier references the overall applied marker"
 
-printf '[operational-usage-ledger-e2e-contract] PASS auth=allowed+anonymous2+denied7 pagination=dynamic orderContract=5keys+stepCodeTieMutation detail=full redactionMutations=7 branchTruth=actors+dualRoutes review=create-reload-idempotent-mismatch409-cleanup pipeline=planner+frontend-pipeline+package+static+identity3+healthy-release-live pipelineRemovalMutations=4 browser=desktop+390 helpAnchors=5 forbiddenChangeRequest=1\n'
+printf '[operational-usage-ledger-e2e-contract] PASS auth=allowed+anonymous2+denied7+logoutLeaderExact1 pagination=dynamic orderContract=5keys+stepCodeTieMutation detail=full redactionMutations=7 branchTruth=actors+dualRoutes review=create-reload-idempotent-mismatch409-cleanup pipeline=planner+frontend-pipeline+package+static+identity3+healthy-release-live pipelineRemovalMutations=4 browser=desktop+390 helpAnchors=5 forbiddenChangeRequest=1\n'

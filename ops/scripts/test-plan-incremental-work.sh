@@ -3,8 +3,27 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 PLANNER="$ROOT_DIR/ops/scripts/plan-incremental-work.sh"
+USAGE_LEDGER_CONTRACT="$ROOT_DIR/ops/scripts/test-operational-usage-ledger-e2e-contract.sh"
 TMP_DIR="$(mktemp -d)"
 trap 'rm -rf "$TMP_DIR"' EXIT
+
+fail() {
+  printf '[incremental-plan] FAIL: %s\n' "$*" >&2
+  exit 1
+}
+
+assert_usage_ledger_plan() {
+  local planner="$1" base_ref="$2" target_ref="$3" summary
+  summary="$(bash "$planner" "$base_ref" "$target_ref")" || return 1
+  grep -Fq 'runtime:operational-usage-ledger-e2e' <<<"$summary" &&
+    grep -Fq 'operational-usage-ledger-contract' <<<"$summary"
+}
+
+assert_leader_contract_caller() {
+  local candidate="$1"
+  grep -Fq 'AUTH_LOGOUT_LEADER_CONTRACT="$ROOT/ops/tests/test-auth-logout-revocation-leader-contract.sh"' "$candidate" &&
+    grep -Fq 'bash "$AUTH_LOGOUT_LEADER_CONTRACT" >/dev/null' "$candidate"
+}
 
 cd "$TMP_DIR"
 git init -q
@@ -105,10 +124,22 @@ eval "$(bash "$PLANNER" "$build_deploy_engine" "$ops_contract_test" --format env
 [[ "$PLAN_INFRASTRUCTURE_REQUIRED" == true ]]
 [[ "$PLAN_TESTS" == *"automation:shell-syntax"* ]]
 
+printf '#!/usr/bin/env bash\n' > ops/tests/test-auth-logout-revocation-live.sh
+git add ops/tests/test-auth-logout-revocation-live.sh && git commit -qm auth-logout-live
+auth_logout_live="$(git rev-parse HEAD)"
+assert_usage_ledger_plan "$PLANNER" "$ops_contract_test" "$auth_logout_live" \
+  || fail 'auth logout live verifier did not select the operational usage-ledger E2E'
+
+printf '#!/usr/bin/env bash\n' > ops/tests/test-auth-logout-revocation-leader-contract.sh
+git add ops/tests/test-auth-logout-revocation-leader-contract.sh && git commit -qm auth-logout-leader-contract
+auth_logout_leader_contract="$(git rev-parse HEAD)"
+assert_usage_ledger_plan "$PLANNER" "$auth_logout_live" "$auth_logout_leader_contract" \
+  || fail 'auth logout leader contract did not select the operational usage-ledger E2E'
+
 printf 'class App {}\n' > apps/carbonet-api/src/main/java/example/App.java
 git add . && git commit -qm backend
 backend="$(git rev-parse HEAD)"
-eval "$(bash "$PLANNER" "$ops_contract_test" "$backend" --format env)"
+eval "$(bash "$PLANNER" "$auth_logout_leader_contract" "$backend" --format env)"
 [[ "$PLAN_RUNTIME_REQUIRED" == true ]]
 [[ "$PLAN_FRONTEND_REQUIRED" == false ]]
 [[ "$PLAN_BACKEND_REQUIRED" == true ]]
@@ -203,4 +234,24 @@ eval "$(bash "$PLANNER" "$backstage" "$backstage_test" --format env)"
 [[ "$PLAN_TESTS" == *"backstage:visual-e2e"* ]]
 [[ "$PLAN_REASONS" == *"backstage-test-only"* ]]
 
-echo "[incremental-plan] PASS source changes build selectively while policy and generated metadata remain no-build"
+assert_leader_contract_caller "$USAGE_LEDGER_CONTRACT" \
+  || fail 'operational usage-ledger static gate does not call the logout leader contract'
+
+grep -vF 'ops/tests/test-auth-logout-revocation-live.sh' "$PLANNER" > "$TMP_DIR/planner-without-auth-logout-live.sh"
+bash -n "$TMP_DIR/planner-without-auth-logout-live.sh"
+if assert_usage_ledger_plan "$TMP_DIR/planner-without-auth-logout-live.sh" "$ops_contract_test" "$auth_logout_live"; then
+  fail 'auth logout live planner-path removal mutation survived'
+fi
+
+grep -vF 'ops/tests/test-auth-logout-revocation-leader-contract.sh' "$PLANNER" > "$TMP_DIR/planner-without-auth-logout-leader.sh"
+bash -n "$TMP_DIR/planner-without-auth-logout-leader.sh"
+if assert_usage_ledger_plan "$TMP_DIR/planner-without-auth-logout-leader.sh" "$auth_logout_live" "$auth_logout_leader_contract"; then
+  fail 'auth logout leader planner-path removal mutation survived'
+fi
+
+grep -vF 'bash "$AUTH_LOGOUT_LEADER_CONTRACT" >/dev/null' "$USAGE_LEDGER_CONTRACT" > "$TMP_DIR/usage-ledger-without-leader-caller.sh"
+if assert_leader_contract_caller "$TMP_DIR/usage-ledger-without-leader-caller.sh"; then
+  fail 'logout leader-contract caller removal mutation survived'
+fi
+
+echo "[incremental-plan] PASS source changes build selectively while policy and generated metadata remain no-build usageLedgerAuthPaths=2 removalMutations=3"

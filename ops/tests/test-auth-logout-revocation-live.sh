@@ -20,11 +20,35 @@ trap cleanup EXIT
 command -v kubectl >/dev/null 2>&1 || { echo '[auth-logout-live] kubectl is required' >&2; exit 1; }
 command -v jq >/dev/null 2>&1 || { echo '[auth-logout-live] jq is required' >&2; exit 1; }
 
+resolve_patroni_leader() {
+  local pod recovery
+  local -a leaders=()
+  while IFS= read -r pod; do
+    [[ -n "$pod" ]] || continue
+    recovery="$(kubectl -n "$NAMESPACE" exec "$pod" -c patroni -- \
+      psql -h 127.0.0.1 -U postgres -d carbonet -X -Atqc 'select pg_is_in_recovery()' 2>/dev/null || true)"
+    [[ "$recovery" == "f" ]] && leaders+=("$pod")
+  done < <(kubectl -n "$NAMESPACE" get pods -l app=postgres-patroni \
+    -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}')
+  if (( ${#leaders[@]} != 1 )); then
+    echo "[auth-logout-live] expected exactly one writable Patroni leader; found=${#leaders[@]}" >&2
+    return 1
+  fi
+  printf '%s\n' "${leaders[0]}"
+}
+
+pod="$(resolve_patroni_leader)" || exit 1
+if [[ "${1:-}" == "--resolve-leader-only" ]]; then
+  [[ "$#" == "1" ]] || { echo '[auth-logout-live] leader-only probe accepts no extra arguments' >&2; exit 2; }
+  printf '%s\n' "$pod"
+  exit 0
+fi
+[[ "$#" == "0" ]] || { echo '[auth-logout-live] unexpected argument' >&2; exit 2; }
+
 carbonet_qa_login "$COOKIE_JAR" "$BASE_URL"
 cp "$COOKIE_JAR" "$STALE_COOKIE_JAR"
 user="$CARBONET_QA_AUTH_EFFECTIVE_USER"
 [[ "$user" =~ ^[A-Za-z0-9_.-]+$ ]] || { echo '[auth-logout-live] invalid QA account identifier' >&2; exit 1; }
-pod="$(kubectl -n "$NAMESPACE" get pods -l app=postgres-patroni -o jsonpath='{.items[0].metadata.name}')"
 token_count() {
   kubectl -n "$NAMESPACE" exec "$pod" -c patroni -- psql -h 127.0.0.1 -U postgres -d carbonet -X -At \
     -c "select count(*) from comtnauthtokenstore where lower(user_id)=lower('$user')"

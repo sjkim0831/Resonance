@@ -41,6 +41,8 @@ while IFS= read -r path; do
     ops/scripts/provision-usage-ledger-system-admin.sh|\
     ops/tests/test-usage-ledger-system-admin-provision-contract.sh|\
     ops/tests/test-usage-ledger-system-admin-db-postcondition.sh|\
+    ops/tests/test-auth-logout-revocation-live.sh|\
+    ops/tests/test-auth-logout-revocation-leader-contract.sh|\
     ops/scripts/runtime-qa-auth-common.sh|\
     ops/scripts/auto-deploy-main.sh|\
     ops/scripts/plan-incremental-work.sh|\
