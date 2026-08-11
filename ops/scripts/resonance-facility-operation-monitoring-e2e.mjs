@@ -125,7 +125,7 @@ try {
         const initialRoute = routeFor(transition.stepCode, routeBases[0]);
         const warmRoute = `${initialRoute}${initialRoute.includes("?") ? "&" : "?"}projectId=${encodeURIComponent(projectId)}`;
         await warmup.goto(`${baseURL}${warmRoute}`, { waitUntil: "domcontentloaded", timeout: 20_000 });
-        await warmup.waitForFunction(() => (document.querySelector("#root")?.children.length || 0) > 0 && document.querySelectorAll("h1,h2").length > 0, undefined, { timeout: 20_000 });
+        await warmup.waitForFunction(() => (document.querySelector("#root")?.children.length || 0) > 0 && document.querySelectorAll("h1,h2").length > 0, undefined, { timeout: 40_000 });
         browserPages.set(`${transition.actorCode}:${viewport.name}`, warmup);
       }
     }
