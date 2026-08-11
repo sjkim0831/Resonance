@@ -85,6 +85,17 @@
       "timeoutSeconds": 300,
       "deployLockMode": "SHARED_PARENT",
       "externalBlockers": []
+    },
+    {
+      "priority": 80,
+      "processCode": "ACTIVITY_DATA",
+      "runner": "ops/scripts/complete-activity-data-assurance.sh",
+      "automation": "AUTOMATIC",
+      "expectedCurrentPassedSteps": 4,
+      "totalSteps": 4,
+      "timeoutSeconds": 300,
+      "deployLockMode": "SHARED_PARENT",
+      "externalBlockers": []
     }
   ]
 }
