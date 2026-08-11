@@ -75,6 +75,12 @@ update framework_process_definition set definition_locked=true,process_status='A
 commit;" >/dev/null
 
 status="$(q "select completion_score||'|'||passed_tests||'/'||test_count||'|'||completed_tasks||'/'||required_tasks||'|'||verified_artifacts||'/'||required_artifacts||'|'||ready_screens||'/'||screen_contracts||'|'||next_action from framework_process_delivery_queue where process_code='MEMBER_REGISTRATION'")"
-[[ "$status" == 100\|10/10\|57/57\|6/6\|11/11\|COMPLETE ]] \
+IFS='|' read -r score tests tasks artifacts screens next_action <<<"$status"
+complete_ratio(){ local ratio="$1" minimum="$2"; local completed="${ratio%/*}" required="${ratio#*/}"; [[ "$completed" =~ ^[0-9]+$ && "$required" =~ ^[0-9]+$ && "$completed" == "$required" && "$required" -ge "$minimum" ]]; }
+[[ "$score" == 100 && "$next_action" == COMPLETE ]] \
+  && complete_ratio "$tests" 15 \
+  && complete_ratio "$tasks" 57 \
+  && complete_ratio "$artifacts" 6 \
+  && complete_ratio "$screens" 11 \
   || { echo "[member-assurance] FAIL delivery=$status" >&2; exit 1; }
 echo "[member-assurance] PASS delivery=$status admin-pages=3 transaction=verified provider-contract=verified"
