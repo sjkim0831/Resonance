@@ -33,7 +33,9 @@ DB_ROWS="$(carbonet_postgres_query "WITH process AS (
         count(*) FILTER(WHERE responsive_verified AND accessibility_verified
           AND exception_states_verified AND audit_evidence_ref<>'') test_ready_screens,
         count(*) FILTER(WHERE readiness_score=100) ready_screens
- FROM framework_professional_screen_readiness GROUP BY process_code
+ FROM framework_professional_screen_readiness
+ WHERE audit_evidence_ref <> 'RETIRED_DUPLICATE_ADMIN_FLOW'
+ GROUP BY process_code
 ), simulation AS (
  SELECT c.process_code,count(DISTINCT c.case_type) FILTER(WHERE c.case_status='APPROVED') approved_types,
         count(DISTINCT c.case_type) FILTER(WHERE c.case_status='APPROVED' AND c.automated AND EXISTS(SELECT 1 FROM framework_simulation_run r WHERE r.case_code=c.case_code AND r.result='PASSED')) passed_types
