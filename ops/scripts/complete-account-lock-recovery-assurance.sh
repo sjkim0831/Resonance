@@ -26,6 +26,11 @@ set -e
   exit 4
 }
 jq -e '.assuranceReady==true
+  and .partialEvidence.process.definitionCount==1
+  and .partialEvidence.process.versionCount==1
+  and .partialEvidence.process.processVersion=="3.0.0"
+  and .partialEvidence.process.processStatus=="IN_DEVELOPMENT"
+  and .partialEvidence.process.definitionLocked==true
   and .partialEvidence.contracts.total==4
   and .partialEvidence.contracts.implementationReady==4
   and .partialEvidence.businessE2e.passedSteps==4
@@ -50,7 +55,8 @@ carbonet_postgres_query_init
 carbonet_postgres_query "BEGIN ISOLATION LEVEL SERIALIZABLE;
 DO \$\$
 DECLARE
-  process_version_value text; runtime_source_commit text;
+  process_version_value text; process_status_value text; definition_locked_value boolean;
+  definition_count integer; version_count integer; runtime_source_commit text;
   step_count integer; aligned_steps integer; contract_count integer; implementation_contracts integer;
   actual_steps integer; approved_cases integer; passed_cases integer;
   approved_types integer; passed_types integer;
@@ -59,8 +65,19 @@ DECLARE
 BEGIN
   PERFORM pg_advisory_xact_lock(hashtext('$PROCESS:ASSURANCE'));
 
-  SELECT process_version INTO STRICT process_version_value
-  FROM framework_process_definition WHERE process_code='$PROCESS' FOR UPDATE;
+  SELECT count(*),count(*) FILTER (WHERE process_version='3.0.0')
+  INTO definition_count,version_count
+  FROM framework_process_definition WHERE process_code='$PROCESS';
+  IF definition_count<>1 OR version_count<>1 THEN
+    RAISE EXCEPTION 'account recovery definition/version mismatch definitions=% version3=%',definition_count,version_count;
+  END IF;
+  SELECT process_version,process_status,definition_locked
+  INTO STRICT process_version_value,process_status_value,definition_locked_value
+  FROM framework_process_definition
+  WHERE process_code='$PROCESS' AND process_version='3.0.0' FOR UPDATE;
+  IF process_status_value<>'IN_DEVELOPMENT' OR NOT definition_locked_value THEN
+    RAISE EXCEPTION 'account recovery pre-promotion status mismatch status=% locked=%',process_status_value,definition_locked_value;
+  END IF;
   SELECT source_commit INTO STRICT runtime_source_commit
   FROM framework_runtime_release_state WHERE release_key='$RUNTIME_RELEASE_KEY' FOR SHARE;
   IF runtime_source_commit<>'$source_commit' THEN
@@ -270,11 +287,27 @@ BEGIN
           e.source_commit||':sha256:'||e.evidence_hash);
 
   UPDATE framework_process_definition
-  SET process_status='ACTIVE',definition_locked=true,updated_at=current_timestamp WHERE process_code='$PROCESS';
+  SET process_status='ACTIVE',definition_locked=true,updated_at=current_timestamp
+  WHERE process_code='$PROCESS' AND process_version='3.0.0'
+    AND process_status='IN_DEVELOPMENT' AND definition_locked;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'account recovery process status promotion did not update exactly one eligible definition';
+  END IF;
+
+  IF (SELECT count(*) FROM framework_process_definition WHERE process_code='$PROCESS')<>1
+      OR (SELECT count(*) FROM framework_process_definition
+          WHERE process_code='$PROCESS' AND process_version='3.0.0'
+            AND process_status='ACTIVE' AND definition_locked)<>1 THEN
+    RAISE EXCEPTION 'account recovery post-promotion status mismatch';
+  END IF;
 
   IF (SELECT count(*) FROM framework_development_job WHERE process_code='$PROCESS' AND required
       AND job_status='VERIFIED' AND approval_status='APPROVED' AND quality_status='VERIFIED')<>43 THEN
     RAISE EXCEPTION 'account recovery atomic promotion did not verify 43 jobs';
+  END IF;
+  IF (SELECT count(*) FROM framework_process_artifact WHERE process_code='$PROCESS' AND required
+      AND delivery_status='VERIFIED')<>4 THEN
+    RAISE EXCEPTION 'account recovery atomic promotion did not verify 4 artifacts';
   END IF;
 END \$\$;
 COMMIT;" >/dev/null
@@ -282,7 +315,14 @@ COMMIT;" >/dev/null
 # The deploy lock is still held. A second full audit proves provider, release
 # identity, case evidence, and persistent promotion state did not drift.
 post_report="$(bash "$AUDIT_SCRIPT")"
-jq -e '.assuranceReady==true and .partialEvidence.jobs.verified==43' <<<"$post_report" >/dev/null
+jq -e '.assuranceReady==true
+  and .partialEvidence.jobs.verified==43
+  and .partialEvidence.artifacts.verified==4
+  and .partialEvidence.process.definitionCount==1
+  and .partialEvidence.process.versionCount==1
+  and .partialEvidence.process.processVersion=="3.0.0"
+  and .partialEvidence.process.processStatus=="ACTIVE"
+  and .partialEvidence.process.definitionLocked==true' <<<"$post_report" >/dev/null
 
 jq -cn --arg processCode "$PROCESS" --arg sourceCommit "$source_commit" --arg evidenceHash "$evidence_sha" \
   '{status:"PROMOTED",processCode:$processCode,jobs:"43/43",steps:"4/4",sourceCommit:$sourceCommit,evidenceHash:$evidenceHash}'

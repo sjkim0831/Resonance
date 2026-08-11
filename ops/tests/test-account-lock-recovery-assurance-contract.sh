@@ -4,9 +4,13 @@ set -Eeuo pipefail
 ROOT="${RESONANCE_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
 AUDIT="$ROOT/ops/scripts/audit-account-lock-recovery-assurance.sh"
 PROMOTER="$ROOT/ops/scripts/complete-account-lock-recovery-assurance.sh"
+STATUS_MIGRATION="$ROOT/apps/carbonet-api/src/main/resources/db/migration/postgresql/V20260811194000__fail_close_account_recovery_until_assured.sql"
+STATUS_POSTGRES_TEST="$ROOT/ops/tests/test-account-lock-recovery-process-status-gate-postgres.sh"
 
 bash -n "$AUDIT"
 bash -n "$PROMOTER"
+bash -n "$STATUS_POSTGRES_TEST"
+[[ -f "$STATUS_MIGRATION" ]]
 
 ACCOUNT_RECOVERY_ASSURANCE_VALIDATE_URL_ONLY=true \
 ACCOUNT_RECOVERY_DELIVERY_URL='https://delivery.internal.example/v1/recovery' \
@@ -43,6 +47,13 @@ for token in \
   'passedCases==.partialEvidence.tests.approvedCases' \
   'runtimeIdentityCurrent' \
   'sourceCheckoutCurrent' \
+  'PROCESS_ASSURANCE_STATUS_INVALID' \
+  'processStatus:["IN_DEVELOPMENT","ACTIVE"]' \
+  "'promotable',a.promotable,'verified',a.verified" \
+  'then .partialEvidence.jobs.verified==43' \
+  'else .partialEvidence.jobs.promotable==43 end' \
+  'then .partialEvidence.artifacts.verified==4' \
+  'else .partialEvidence.artifacts.promotable==4 end' \
   'assuranceReady'; do
   grep -Fq "$token" "$AUDIT" || { echo "[account-lock-recovery-assurance-contract] FAIL audit missing=$token" >&2; exit 1; }
 done
@@ -56,6 +67,10 @@ for token in \
   'FOR SHARE OF r' \
   'FOR SHARE OF g' \
   'runtime_source_commit' \
+  '.partialEvidence.process.processStatus=="IN_DEVELOPMENT"' \
+  "process_status_value<>'IN_DEVELOPMENT'" \
+  "process_status='ACTIVE' AND definition_locked" \
+  '.partialEvidence.process.processStatus=="ACTIVE"' \
   'contract_count<>4 OR implementation_contracts<>4' \
   'approved_cases<8 OR passed_cases<>approved_cases' \
   'approved_types<5 OR passed_types<>approved_types' \
@@ -68,8 +83,29 @@ for token in \
   'e.source_commit=runtime_source_commit' \
   "g.evidence_ref=j.evidence_ref" \
   'ASSURANCE_VERIFIED' \
+  'account recovery atomic promotion did not verify 4 artifacts' \
+  '.partialEvidence.artifacts.verified==4' \
   'post_report'; do
   grep -Fq "$token" "$PROMOTER" || { echo "[account-lock-recovery-assurance-contract] FAIL promoter missing=$token" >&2; exit 1; }
+done
+
+for token in \
+  'definition_total<>1 OR version_total<>1' \
+  'known_pre_state_total<>1' \
+  "process_status IN ('ACTIVE','IN_DEVELOPMENT')" \
+  'AND definition_locked' \
+  "process_status='IN_DEVELOPMENT'" \
+  'definition_locked=true' \
+  'updated_total<>1' \
+  'gated_total<>1' \
+  'DISABLE TRIGGER trg_guard_locked_process_definition' \
+  'ENABLE TRIGGER trg_guard_locked_process_definition'; do
+  grep -Fq "$token" "$STATUS_MIGRATION" || { echo "[account-lock-recovery-assurance-contract] FAIL status migration missing=$token" >&2; exit 1; }
+done
+
+for token in unexpected-version draft-status unlocked-definition \
+  'definition/version/pre-state mismatch'; do
+  grep -Fq "$token" "$STATUS_POSTGRES_TEST" || { echo "[account-lock-recovery-assurance-contract] FAIL status rollback test missing=$token" >&2; exit 1; }
 done
 
 if grep -Fq 'INSERT INTO framework_simulation_run' "$PROMOTER"; then

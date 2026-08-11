@@ -103,7 +103,12 @@ pods_json="$(kubectl -n "$NAMESPACE" get pods -l app=carbonet-runtime -o json)"
 
 db_report="$(carbonet_postgres_query "WITH
 process_summary AS (
-  SELECT process_version FROM framework_process_definition WHERE process_code='$PROCESS'
+  SELECT count(*) AS definition_count,
+         count(*) FILTER (WHERE process_version='3.0.0') AS version_count,
+         max(process_version) AS process_version,
+         max(process_status) AS process_status,
+         coalesce(bool_and(definition_locked),false) AS definition_locked
+  FROM framework_process_definition WHERE process_code='$PROCESS'
 ), runtime_summary AS (
   SELECT source_commit,deployment_namespace,deployment_name,deployment_uid,
          deployment_generation,observed_generation,desired_replicas,image_ref,image_id,health_status
@@ -235,7 +240,35 @@ process_summary AS (
                          AND translate(e.evidence_hash,'0123456789abcdef','')=''
                          AND framework_process_artifact.evidence_ref='qa-run:'||
                            framework_process_artifact.process_code||':'||e.evidence_process_version||':'||
-                           e.source_commit||':sha256:'||e.evidence_hash)) AS promotable
+                           e.source_commit||':sha256:'||e.evidence_hash)) AS promotable,
+         count(*) FILTER (WHERE required AND artifact_type='PAGE'
+           AND owner_actor_code='MEMBER_USER'
+           AND target_path=CASE step_code
+             WHEN 'ACCOUNT_LOCK_RECOVERY_S1' THEN '/signin/findPassword'
+             WHEN 'ACCOUNT_LOCK_RECOVERY_S2' THEN '/signin/findPassword'
+             WHEN 'ACCOUNT_LOCK_RECOVERY_S3' THEN '/signin/findPassword'
+             WHEN 'ACCOUNT_LOCK_RECOVERY_S4' THEN '/signin/findPassword/result' END
+           AND contract_ref='process://ACCOUNT_LOCK_RECOVERY/'||
+             (SELECT process_version FROM process_summary)||'/'||step_code
+           AND delivery_status='VERIFIED'
+           AND evidence_ref LIKE 'qa-run:'||process_code||':'||
+             (SELECT process_version FROM process_summary)||':'||
+             (SELECT source_commit FROM runtime_summary)||':sha256:%'
+           AND array_length(string_to_array(evidence_ref,':'),1)=6
+           AND split_part(evidence_ref,':',5)='sha256'
+           AND length(split_part(evidence_ref,':',6))=64
+           AND translate(split_part(evidence_ref,':',6),'0123456789abcdef','')=''
+           AND EXISTS (SELECT 1 FROM framework_current_business_e2e_evidence e
+                       WHERE e.process_code=framework_process_artifact.process_code
+                         AND e.step_code=framework_process_artifact.step_code
+                         AND e.business_test_result='PASSED' AND e.current_version
+                         AND e.source_commit=(SELECT source_commit FROM runtime_summary)
+                         AND e.evidence_process_version=(SELECT process_version FROM process_summary)
+                         AND length(e.evidence_hash)=64
+                         AND translate(e.evidence_hash,'0123456789abcdef','')=''
+                         AND framework_process_artifact.evidence_ref='qa-run:'||
+                           framework_process_artifact.process_code||':'||e.evidence_process_version||':'||
+                           e.source_commit||':sha256:'||e.evidence_hash)) AS verified
   FROM framework_process_artifact WHERE process_code='$PROCESS'
 ), e2e_summary AS (
   SELECT count(DISTINCT step_code) FILTER (WHERE business_test_result='PASSED'
@@ -262,15 +295,22 @@ process_summary AS (
 )
 SELECT jsonb_build_object(
   'runtime',(SELECT to_jsonb(r) FROM runtime_summary r),
+  'process',jsonb_build_object(
+    'definitionCount',p.definition_count,
+    'versionCount',p.version_count,
+    'processVersion',p.process_version,
+    'processStatus',p.process_status,
+    'definitionLocked',p.definition_locked),
   'steps',jsonb_build_object('total',s.total,'aligned',s.aligned),
   'contracts',jsonb_build_object('total',c.total,'implementationReady',c.implementation_ready),
   'jobs',jsonb_build_object('total',j.total,'promotable',j.promotable,'verified',j.verified),
-  'artifacts',jsonb_build_object('total',a.total,'aligned',a.aligned,'promotable',a.promotable),
+  'artifacts',jsonb_build_object('total',a.total,'aligned',a.aligned,
+    'promotable',a.promotable,'verified',a.verified),
   'businessE2e',jsonb_build_object('passedSteps',e.passed_steps,'requiredSteps',4),
   'tests',jsonb_build_object('approvedCases',t.approved_cases,'passedCases',t.passed_cases,
     'approvedTypes',t.approved_types,'passedTypes',t.passed_types,'minimumCases',8,'minimumTypes',5)
 )
-FROM step_summary s CROSS JOIN contract_summary c CROSS JOIN job_summary j
+FROM process_summary p CROSS JOIN step_summary s CROSS JOIN contract_summary c CROSS JOIN job_summary j
 CROSS JOIN artifact_summary a CROSS JOIN e2e_summary e CROSS JOIN test_summary t;")"
 
 runtime_commit="$(jq -r '.runtime.source_commit // ""' <<<"$db_report")"
@@ -346,13 +386,41 @@ report="$(jq -cn \
       (if .sourceCheckoutCurrent then empty else {code:"DIRTY_OR_UNTRACKED_ASSURANCE_SOURCE"} end),
       (if .runtimeIdentityCurrent then empty else {code:"RUNTIME_RELEASE_IDENTITY_MISMATCH"} end),
       (if .deployedCurrent then empty else {code:"STALE_OR_UNDEPLOYED_SOURCE",actual:.validationCommit,expected:.deployedCommit,marker:.markerCommit} end),
+      (if .partialEvidence.process.definitionCount==1
+          and .partialEvidence.process.versionCount==1
+          and .partialEvidence.process.processVersion=="3.0.0"
+          and .partialEvidence.process.definitionLocked==true
+          and (.partialEvidence.process.processStatus=="IN_DEVELOPMENT"
+            or .partialEvidence.process.processStatus=="ACTIVE")
+        then empty
+        else {code:"PROCESS_ASSURANCE_STATUS_INVALID",actual:.partialEvidence.process,
+          expected:{definitionCount:1,versionCount:1,processVersion:"3.0.0",
+            definitionLocked:true,processStatus:["IN_DEVELOPMENT","ACTIVE"]}}
+        end),
       (if .partialEvidence.steps.total==4 and .partialEvidence.steps.aligned==4 then empty else {code:"SELF_SERVICE_STEP_CONTRACT_INCOMPLETE",actual:.partialEvidence.steps.aligned,expected:4} end),
       (if .partialEvidence.contracts.total==4 and .partialEvidence.contracts.implementationReady==4 then empty else {code:"SCREEN_IMPLEMENTATION_EVIDENCE_INCOMPLETE",actual:.partialEvidence.contracts.implementationReady,expected:4,total:.partialEvidence.contracts.total} end),
       (if .partialEvidence.businessE2e.passedSteps==4 then empty else {code:"FOUR_STEP_BUSINESS_E2E_INCOMPLETE",actual:.partialEvidence.businessE2e.passedSteps,expected:4} end),
       (if .partialEvidence.tests.approvedCases>=8 and .partialEvidence.tests.passedCases==.partialEvidence.tests.approvedCases then empty else {code:"APPROVED_TEST_CASES_INCOMPLETE",actual:.partialEvidence.tests.passedCases,expected:.partialEvidence.tests.approvedCases,minimum:8} end),
       (if .partialEvidence.tests.approvedTypes>=5 and .partialEvidence.tests.passedTypes==.partialEvidence.tests.approvedTypes then empty else {code:"APPROVED_TEST_TYPES_INCOMPLETE",actual:.partialEvidence.tests.passedTypes,expected:.partialEvidence.tests.approvedTypes,minimum:5} end),
-      (if .partialEvidence.jobs.total==43 and .partialEvidence.jobs.promotable==43 then empty else {code:"JOB_GATE_EVIDENCE_INCOMPLETE",actual:.partialEvidence.jobs.promotable,expected:43,total:.partialEvidence.jobs.total} end),
-      (if .partialEvidence.artifacts.total==4 and .partialEvidence.artifacts.aligned==4 and .partialEvidence.artifacts.promotable==4 then empty else {code:"ARTIFACT_EVIDENCE_INCOMPLETE",actual:.partialEvidence.artifacts.promotable,aligned:.partialEvidence.artifacts.aligned,expected:4,total:.partialEvidence.artifacts.total} end)
+      (if .partialEvidence.jobs.total==43
+          and (if .partialEvidence.process.processStatus=="ACTIVE"
+            then .partialEvidence.jobs.verified==43
+            else .partialEvidence.jobs.promotable==43 end)
+        then empty
+        else {code:"JOB_GATE_EVIDENCE_INCOMPLETE",
+          actual:(if .partialEvidence.process.processStatus=="ACTIVE" then .partialEvidence.jobs.verified else .partialEvidence.jobs.promotable end),
+          expected:43,total:.partialEvidence.jobs.total,processStatus:.partialEvidence.process.processStatus}
+        end),
+      (if .partialEvidence.artifacts.total==4 and .partialEvidence.artifacts.aligned==4
+          and (if .partialEvidence.process.processStatus=="ACTIVE"
+            then .partialEvidence.artifacts.verified==4
+            else .partialEvidence.artifacts.promotable==4 end)
+        then empty
+        else {code:"ARTIFACT_EVIDENCE_INCOMPLETE",
+          actual:(if .partialEvidence.process.processStatus=="ACTIVE" then .partialEvidence.artifacts.verified else .partialEvidence.artifacts.promotable end),
+          aligned:.partialEvidence.artifacts.aligned,expected:4,total:.partialEvidence.artifacts.total,
+          processStatus:.partialEvidence.process.processStatus}
+        end)
     ])
   | .assuranceReady = (.deployedCurrent and (.externalBlockers|length)==0 and (.internalGaps|length)==0)
 ')"
