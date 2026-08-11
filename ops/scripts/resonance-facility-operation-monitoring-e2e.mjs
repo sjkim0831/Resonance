@@ -18,6 +18,7 @@ const accounts = JSON.parse(process.env.CARBONET_RELAY_ACCOUNTS_JSON || '{"FACIL
 const expectedSteps = String(process.env.CARBONET_RELAY_STEPS || "FOM_PLAN,FOM_OPERATE,FOM_HANDOVER").split(",").filter(Boolean);
 const stepActors = String(process.env.CARBONET_RELAY_STEP_ACTORS || "FACILITY_OPERATOR,FACILITY_OPERATOR,HSE_MANAGER").split(",").filter(Boolean);
 const routeBase = String(process.env.CARBONET_RELAY_ROUTE || "/ccus/facility/facility-operation-monitoring");
+const routeBases = String(process.env.CARBONET_RELAY_ROUTES || routeBase).split(",").map(value => value.trim()).filter(Boolean);
 const evidenceFile = String(process.env.CARBONET_RELAY_EVIDENCE_FILE || process.env.CARBONET_FOM_EVIDENCE_FILE || "");
 if (expectedSteps.length !== stepActors.length || !evidenceFile) throw new Error("relay step, actor, and evidence contracts are required");
 const clients = new Map();
@@ -60,9 +61,9 @@ function value(field, sequence) {
   if (type === "INTEGER" || type === "DECIMAL" || type === "NUMBER" || code.includes("value") || code.includes("version")) return sequence;
   return `QA process relay ${sequence}`;
 }
-function routeFor(stepCode) {
+function routeFor(stepCode, pattern = routeBase) {
   const normalizedStep = stepCode.toLowerCase().replaceAll("_", "-");
-  return routeBase.includes("{step}") ? routeBase.replace("{step}", normalizedStep) : `${routeBase}?step=${stepCode.toLowerCase()}`;
+  return pattern.includes("{step}") ? pattern.replace("{step}", normalizedStep) : `${pattern}?step=${stepCode.toLowerCase()}`;
 }
 
 for (const [actor, user] of Object.entries(accounts)) clients.set(actor, await login(user));
@@ -118,17 +119,20 @@ try {
       const context = await browser.newContext({ storageState: await actorApi.storageState(), viewport: { width: 1440, height: 1000 } });
       browserContexts.set(transition.actorCode, context);
       const warmup = await context.newPage();
-      const warmRoute = `${routeFor(transition.stepCode)}${routeFor(transition.stepCode).includes("?") ? "&" : "?"}projectId=${encodeURIComponent(projectId)}`;
+      const initialRoute = routeFor(transition.stepCode, routeBases[0]);
+      const warmRoute = `${initialRoute}${initialRoute.includes("?") ? "&" : "?"}projectId=${encodeURIComponent(projectId)}`;
       await warmup.goto(`${baseURL}${warmRoute}`, { waitUntil: "domcontentloaded", timeout: 20_000 });
       await warmup.waitForFunction(() => (document.querySelector("#root")?.children.length || 0) > 0 && document.querySelectorAll("h1,h2").length > 0, undefined, { timeout: 20_000 });
       await warmup.close();
     }
     for (const transition of transitions) {
+      for (const routePattern of routeBases) {
       const api = clients.get(transition.actorCode);
       const context = browserContexts.get(transition.actorCode);
       if (!context) throw new Error(`missing warmed actor context=${transition.actorCode}`);
       const page = await context.newPage();
-      const route = `${routeFor(transition.stepCode)}${routeFor(transition.stepCode).includes("?") ? "&" : "?"}projectId=${encodeURIComponent(projectId)}`;
+      const screenRoute = routeFor(transition.stepCode, routePattern);
+      const route = `${screenRoute}${screenRoute.includes("?") ? "&" : "?"}projectId=${encodeURIComponent(projectId)}`;
       const startedAt = Date.now();
       const response = await page.goto(`${baseURL}${route}`, { waitUntil: "domcontentloaded", timeout: 20_000 });
       await page.waitForFunction(() => (document.querySelector("#root")?.children.length || 0) > 0 && document.querySelectorAll("h1,h2").length > 0, undefined, { timeout: 10_000 });
@@ -141,9 +145,10 @@ try {
       const mobileDurationMs = Date.now() - mobileStartedAt;
       const mobileOverflow = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth + 2);
       if ((response?.status() || 0) >= 400 || desktop.overflow || mobileOverflow || desktop.controls < 4 || desktop.headings < 1) throw new Error(`responsive screen failed ${transition.stepCode}`);
-      routeEvidence.push({ stepCode: transition.stepCode, actorCode: transition.actorCode, desktop: 1, mobile: 1, controls: desktop.controls, desktopDurationMs, mobileDurationMs, durationMs: Math.max(desktopDurationMs, mobileDurationMs) });
+      routeEvidence.push({ stepCode: transition.stepCode, actorCode: transition.actorCode, routePath: screenRoute, desktop: 1, mobile: 1, controls: desktop.controls, desktopDurationMs, mobileDurationMs, durationMs: Math.max(desktopDurationMs, mobileDurationMs) });
       samples.push(desktopDurationMs, mobileDurationMs);
       await page.close();
+      }
     }
   } finally { await browser.close(); }
 
@@ -152,7 +157,7 @@ try {
   }
 
   const sorted = [...samples].sort((a, b) => a - b);
-  const evidence = { schemaVersion: 1, status: "PASSED", processCode: PROCESS, projectId, stepCount: transitions.length, transitionCount: transitions.length, api: 1, database: database === expectedSteps.length ? 1 : 0, authority: authority === expectedSteps.length ? 1 : 0, responsive: routeEvidence.length === expectedSteps.length ? 1 : 0, accessibility: routeEvidence.every(row => row.controls >= 4) ? 1 : 0, exceptionStates: exceptions >= 1 ? 1 : 0, audit: audit === expectedSteps.length ? 1 : 0, recovery, cleanup: false, performanceP95Ms: sorted[Math.max(0, Math.ceil(sorted.length * .95) - 1)], performanceSampleCount: sorted.length, transitions, routes: routeEvidence };
+  const evidence = { schemaVersion: 1, status: "PASSED", processCode: PROCESS, projectId, stepCount: transitions.length, transitionCount: transitions.length, api: 1, database: database === expectedSteps.length ? 1 : 0, authority: authority === expectedSteps.length ? 1 : 0, responsive: routeEvidence.length === expectedSteps.length * routeBases.length ? 1 : 0, accessibility: routeEvidence.every(row => row.controls >= 4) ? 1 : 0, exceptionStates: exceptions >= 1 ? 1 : 0, audit: audit === expectedSteps.length ? 1 : 0, recovery, cleanup: false, performanceP95Ms: sorted[Math.max(0, Math.ceil(sorted.length * .95) - 1)], performanceSampleCount: sorted.length, transitions, routes: routeEvidence };
   writeFileSync(evidenceFile, `${JSON.stringify(evidence, null, 2)}\n`);
   console.log(`PROCESS_RELAY_E2E_PASS process=${PROCESS} steps=${transitions.length} routes=${routeEvidence.length} authority=${authority} database=${database}`);
 } finally {

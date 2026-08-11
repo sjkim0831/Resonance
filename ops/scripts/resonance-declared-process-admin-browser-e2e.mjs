@@ -14,6 +14,7 @@ const routeBase = String(process.env.CARBONET_RELAY_ADMIN_ROUTE || "");
 const steps = String(process.env.CARBONET_RELAY_STEPS || "").split(",").filter(Boolean);
 const sampleRounds = Math.max(4, Number(process.env.CARBONET_ADMIN_SAMPLE_ROUNDS || 4));
 if (!password || !evidenceFile || !routeBase || !steps.length) throw new Error("admin relay browser inputs are required");
+function routeFor(stepCode) { const slug=stepCode.toLowerCase().replaceAll("_","-"); return routeBase.includes("{step}") ? routeBase.replace("{step}",slug) : `${routeBase}${routeBase.includes("?") ? "&" : "?"}step=${encodeURIComponent(stepCode.toLowerCase())}`; }
 
 const api = await request.newContext({ baseURL, ignoreHTTPSErrors: true });
 const login = await api.post("/admin/login/actionLogin", { data: { userId: account, userPw: password, userSe: "USR" }, failOnStatusCode: false });
@@ -31,8 +32,7 @@ try {
     const context = await browser.newContext({ storageState, viewport });
     contexts.set(viewport.name, context);
     const warmup = await context.newPage();
-    const separator = routeBase.includes("?") ? "&" : "?";
-    await warmup.goto(`${baseURL}${routeBase}${separator}step=${encodeURIComponent(steps[0].toLowerCase())}`, { waitUntil: "domcontentloaded", timeout: 20_000 });
+    await warmup.goto(`${baseURL}${routeFor(steps[0])}`, { waitUntil: "domcontentloaded", timeout: 20_000 });
     await warmup.waitForFunction(expected => (document.body?.innerText || "").includes("SCREEN COORDINATE") && (document.body?.innerText || "").includes(expected), steps[0], { timeout: 20_000 });
     pages.set(viewport.name, warmup);
   }
@@ -46,8 +46,7 @@ try {
       const failures = [];
       page.on("pageerror", error => failures.push(`pageerror:${error.name}`));
       page.on("response", response => { if (response.status() >= 500 && response.url().startsWith(baseURL)) failures.push(`http:${response.status()}`); });
-      const separator = routeBase.includes("?") ? "&" : "?";
-      const route = `${routeBase}${separator}step=${encodeURIComponent(stepCode.toLowerCase())}`;
+      const route = routeFor(stepCode);
       const startedAt = Date.now();
       await page.evaluate(nextRoute => { history.pushState({}, "", nextRoute); window.dispatchEvent(new PopStateEvent("popstate")); }, route);
       await page.waitForFunction(expected => (document.querySelector("#root")?.children.length || 0) > 0 && (document.body?.innerText || "").includes("SCREEN COORDINATE") && (document.body?.innerText || "").includes(expected) && document.querySelectorAll("input,select,textarea,button,a[href]").length >= 8, stepCode, { timeout: 10_000 });
@@ -63,7 +62,7 @@ try {
         throw new Error(`admin browser failed step=${stepCode} viewport=${viewport.name} headings=${state.headings} controls=${state.controls} overflow=${state.overflow} fatal=${state.fatal} failures=${failures.join(",")}`);
       }
       samples.push(durationMs);
-      routes.push({ stepCode, viewport: viewport.name, round, durationMs, headings: state.headings, controls: state.controls });
+      routes.push({ stepCode, routePath: route, viewport: viewport.name, round, durationMs, headings: state.headings, controls: state.controls });
       }
     }
   }
@@ -76,5 +75,5 @@ const sortedAdmin = [...samples].sort((a, b) => a - b);
 if (sortedAdmin.length < 20) throw new Error(`admin performance sample count too small: ${sortedAdmin.length}`);
 const adminP95 = sortedAdmin[Math.max(0, Math.ceil(sortedAdmin.length * .95) - 1)];
 const p95 = Math.max(Number(evidence.performanceP95Ms || 0), adminP95);
-writeFileSync(evidenceFile, `${JSON.stringify({ ...evidence, adminBrowser: 1, adminResponsive: 1, adminAccessibility: 1, adminRoutes: routes, adminPerformanceP95Ms: adminP95, performanceP95Ms: p95, performanceSampleCount: Number(evidence.performanceSampleCount || 0) + samples.length }, null, 2)}\n`);
+writeFileSync(evidenceFile, `${JSON.stringify({ ...evidence, adminBrowser: 1, adminResponsive: 1, adminAccessibility: 1, adminRoutes: [...(evidence.adminRoutes || []), ...routes], adminPerformanceP95Ms: Math.max(Number(evidence.adminPerformanceP95Ms || 0), adminP95), performanceP95Ms: p95, performanceSampleCount: Number(evidence.performanceSampleCount || 0) + samples.length }, null, 2)}\n`);
 console.log(`DECLARED_PROCESS_ADMIN_BROWSER_PASS steps=${steps.length} routes=${routes.length} p95=${p95}`);
