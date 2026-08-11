@@ -44,7 +44,7 @@ evidence_b64="$(printf '%s' "$evidence" | base64 -w0)"
 evidence_uri="inline://business-e2e/sha256/$evidence_sha"
 pod="$(K8S_NAMESPACE="$NAMESPACE" bash "$ROOT/ops/scripts/resolve-patroni-primary-pod.sh")"
 
-kubectl -n "$NAMESPACE" exec "$pod" -c patroni -- psql -h 127.0.0.1 -U postgres -d carbonet -X -q -v ON_ERROR_STOP=1 <<SQL
+kubectl -n "$NAMESPACE" exec -i "$pod" -c patroni -- psql -h 127.0.0.1 -U postgres -d carbonet -X -q -v ON_ERROR_STOP=1 <<SQL
 do \$\$
 declare promoted integer; blocked_promoted integer;
 begin
@@ -81,5 +81,12 @@ begin
   if blocked_promoted<>0 then raise exception 'identity-dependent steps were promoted without evidence'; end if;
 end \$\$;
 SQL
+
+persisted="$(kubectl -n "$NAMESPACE" exec "$pod" -c patroni -- psql -h 127.0.0.1 -U postgres -d carbonet -X -At -v ON_ERROR_STOP=1 \
+  -c "select count(*) from framework_current_business_e2e_evidence where process_code='$PROCESS' and step_code in ('MEMBER_REGISTRATION_S1','MEMBER_REGISTRATION_S2','MEMBER_REGISTRATION_S5') and business_test_result='PASSED' and source_commit='$source_commit' and evidence_hash='$evidence_sha'")"
+[[ "$persisted" == "3" ]] || {
+  echo "[member-registration-business-e2e] persisted evidence mismatch ${persisted:-missing}/3" >&2
+  exit 4
+}
 
 echo "[member-registration-business-e2e] PASS current=3/5 blocked=2 provider=unavailable evidence=${evidence_sha:0:12}"

@@ -14,6 +14,9 @@ done
 grep -Fq 'promoted<>3' "$TARGET"
 grep -Fq 'blocked_promoted<>0' "$TARGET"
 grep -Fq 'contract changed during E2E' "$TARGET"
+grep -Fq 'exec -i "$pod" -c patroni' "$TARGET"
+grep -Fq 'persisted evidence mismatch' "$TARGET"
+grep -Fq '[[ "$persisted" == "3" ]]' "$TARGET"
 if grep -Eq "S3'.*PASSED|S4'.*PASSED" "$TARGET"; then
   echo '[member-registration-business-contract] FAIL identity-dependent step is hard-coded PASSED' >&2
   exit 1
