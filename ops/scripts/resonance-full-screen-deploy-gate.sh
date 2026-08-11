@@ -9,7 +9,9 @@ WEB_DEPLOYMENT="${WEB_DEPLOYMENT:-carbonet-web}"
 RUNTIME_CONTAINER="${RUNTIME_CONTAINER:-carbonet-runtime}"
 WEB_CONTAINER="${WEB_CONTAINER:-web}"
 FRONTEND_DIR="${FRONTEND_DIR:-$ROOT_DIR/projects/carbonet-frontend/source}"
-OVERLAY_DIR="${OVERLAY_DIR:-$ROOT_DIR/projects/carbonet-frontend/src/main/resources/static/react-app}"
+# The rollback authority is the hostPath mounted by carbonet-runtime/web, not a
+# deployment worktree copy. Tests may override OVERLAY_DIR explicitly.
+OVERLAY_DIR="${OVERLAY_DIR:-/opt/Resonance/projects/carbonet-frontend/src/main/resources/static/react-app}"
 STATE_DIR="${FULL_SCREEN_GATE_STATE_DIR:-$ROOT_DIR/var/run/full-screen-deploy-gate}"
 REPORT_DIR="${FULL_SCREEN_GATE_REPORT_DIR:-$ROOT_DIR/var/reports/full-screen-deploy-gate}"
 CREDENTIAL_SECRET="${FULL_SCREEN_GATE_CREDENTIAL_SECRET:-carbonet-screen-smoke}"
@@ -26,7 +28,8 @@ require_safe_path() {
 }
 
 load_active() {
-  [[ -s "$ACTIVE_FILE" ]] || fail "deployment snapshot is missing: $ACTIVE_FILE"
+  [[ -f "$ACTIVE_FILE" && ! -L "$ACTIVE_FILE" && -s "$ACTIVE_FILE" ]] \
+    || fail "deployment snapshot is missing or unsafe: $ACTIVE_FILE"
   # shellcheck disable=SC1090
   source "$ACTIVE_FILE"
   SNAPSHOT_FORMAT="${SNAPSHOT_FORMAT:-legacy-gzip}"
@@ -57,18 +60,29 @@ prune_snapshots() {
 }
 
 capture() {
+  local snapshot_id snapshot_dir snapshot_verify_dir="" runtime_image web_image git_sha snapshot_format
+  local active_tmp="" previous_umask
+  previous_umask="$(umask)"
+  umask 077
   mkdir -p "$STATE_DIR" "$REPORT_DIR"
-  local snapshot_id snapshot_dir runtime_image web_image git_sha snapshot_format
   snapshot_id="$(date +%Y%m%d-%H%M%S)-$$"
   snapshot_dir="$STATE_DIR/snapshots/$snapshot_id"
   require_safe_path "$snapshot_dir" "$STATE_DIR"
-  mkdir -p "$snapshot_dir"
 
   runtime_image="$(kubectl -n "$NAMESPACE" get deployment "$RUNTIME_DEPLOYMENT" -o jsonpath='{.spec.template.spec.containers[0].image}')"
   web_image="$(kubectl -n "$NAMESPACE" get deployment "$WEB_DEPLOYMENT" -o jsonpath='{.spec.template.spec.containers[0].image}')"
   git_sha="${FULL_SCREEN_GATE_BASE_COMMIT:-$(git -C "$ROOT_DIR" rev-parse HEAD)}"
   [[ "$git_sha" =~ ^[0-9a-f]{40}$ ]] || fail "rollback baseline commit is invalid"
-  test -s "$OVERLAY_DIR/index.html"
+  # Never move the active rollback pointer to an incomplete or stale bundle
+  # graph. Validate the live mounted closure before allocating its snapshot,
+  # then validate the copied closure again before publishing active.env.
+  node "$ROOT_DIR/ops/scripts/verify-react-asset-closure.mjs" "$OVERLAY_DIR" \
+    || fail "live overlay asset closure is incomplete: $OVERLAY_DIR"
+  if [[ -e "$ACTIVE_FILE" || -L "$ACTIVE_FILE" ]]; then
+    [[ -f "$ACTIVE_FILE" && ! -L "$ACTIVE_FILE" ]] \
+      || fail "active rollback pointer target is unsafe: $ACTIVE_FILE"
+  fi
+  mkdir -p "$snapshot_dir"
   # Overlay updates use rsync's temporary-file-and-rename path and atomically
   # replace index/marker files. A hard-link tree therefore preserves the old
   # inodes as a complete rollback closure in milliseconds. Fall back to a
@@ -81,10 +95,31 @@ capture() {
     snapshot_format="plain-tar"
     tar -C "$OVERLAY_DIR" -cf "$snapshot_dir/frontend-overlay.tar" .
   fi
+  if [[ "$snapshot_format" == "hardlink-tree" ]]; then
+    if ! node "$ROOT_DIR/ops/scripts/verify-react-asset-closure.mjs" \
+        "$snapshot_dir/frontend-overlay"; then
+      rm -rf -- "$snapshot_dir"
+      fail "captured hard-link overlay closure is incomplete"
+    fi
+  else
+    snapshot_verify_dir="$(mktemp -d "$STATE_DIR/capture-verify.XXXXXX")"
+    require_safe_path "$snapshot_verify_dir" "$STATE_DIR"
+    if ! tar -C "$snapshot_verify_dir" -xf "$snapshot_dir/frontend-overlay.tar" \
+       || ! node "$ROOT_DIR/ops/scripts/verify-react-asset-closure.mjs" "$snapshot_verify_dir"; then
+      rm -rf -- "$snapshot_verify_dir" "$snapshot_dir"
+      fail "captured tar overlay closure is incomplete"
+    fi
+    rm -rf -- "$snapshot_verify_dir"
+  fi
   kubectl -n "$NAMESPACE" get configmap carbonet-web-nginx -o jsonpath='{.data.nginx\.conf}' > "$snapshot_dir/nginx.conf"
   test -s "$snapshot_dir/nginx.conf"
 
-  cat > "$ACTIVE_FILE.tmp" <<EOF
+  active_tmp="$(mktemp "$STATE_DIR/.active.env.XXXXXX")" || {
+    rm -rf -- "$snapshot_dir"
+    fail "active rollback pointer temp allocation failed"
+  }
+  require_safe_path "$active_tmp" "$STATE_DIR"
+  if ! cat > "$active_tmp" <<EOF
 SNAPSHOT_ID='$snapshot_id'
 SNAPSHOT_DIR='$snapshot_dir'
 SNAPSHOT_FORMAT='$snapshot_format'
@@ -93,7 +128,43 @@ WEB_IMAGE='$web_image'
 GIT_SHA='$git_sha'
 BASELINE_SOURCE_COMMIT='$git_sha'
 EOF
-  mv "$ACTIVE_FILE.tmp" "$ACTIVE_FILE"
+  then
+    rm -f -- "$active_tmp"
+    rm -rf -- "$snapshot_dir"
+    fail "active rollback pointer temp write failed"
+  fi
+  if ! chmod 0600 "$active_tmp"; then
+    rm -f -- "$active_tmp"
+    rm -rf -- "$snapshot_dir"
+    fail "active rollback pointer temp permission failed"
+  fi
+  if [[ ! -f "$active_tmp" || -L "$active_tmp" \
+     || "$(stat -c '%a' "$active_tmp" 2>/dev/null)" != 600 \
+     || "$(sed -n '1p' "$active_tmp")" != "SNAPSHOT_ID='$snapshot_id'" \
+     || "$(sed -n '2p' "$active_tmp")" != "SNAPSHOT_DIR='$snapshot_dir'" ]]; then
+    rm -f -- "$active_tmp"
+    rm -rf -- "$snapshot_dir"
+    fail "active rollback pointer temp verification failed"
+  fi
+  if [[ -e "$ACTIVE_FILE" || -L "$ACTIVE_FILE" ]]; then
+    if [[ ! -f "$ACTIVE_FILE" || -L "$ACTIVE_FILE" ]]; then
+      rm -f -- "$active_tmp"
+      rm -rf -- "$snapshot_dir"
+      fail "active rollback pointer target changed before publish"
+    fi
+  fi
+  if ! mv -fT -- "$active_tmp" "$ACTIVE_FILE"; then
+    rm -f -- "$active_tmp"
+    rm -rf -- "$snapshot_dir"
+    fail "active rollback pointer publish failed"
+  fi
+  if [[ ! -f "$ACTIVE_FILE" || -L "$ACTIVE_FILE" \
+     || "$(stat -c '%a' "$ACTIVE_FILE" 2>/dev/null)" != 600 \
+     || "$(sed -n '1p' "$ACTIVE_FILE")" != "SNAPSHOT_ID='$snapshot_id'" \
+     || "$(sed -n '2p' "$ACTIVE_FILE")" != "SNAPSHOT_DIR='$snapshot_dir'" ]]; then
+    fail "active rollback pointer reread verification failed"
+  fi
+  umask "$previous_umask"
   log "captured snapshot=$snapshot_id format=$snapshot_format runtime=$runtime_image web=$web_image git=$git_sha"
 }
 

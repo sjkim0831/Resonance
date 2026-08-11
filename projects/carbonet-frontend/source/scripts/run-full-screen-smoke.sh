@@ -3,8 +3,37 @@ set -euo pipefail
 
 root_dir="${FRONTEND_ROOT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 smoke_started_at="$(date +%s)"
-cache_dir="${FULL_SCREEN_SMOKE_CACHE_DIR:-$root_dir/.cache/full-screen-smoke}"
-result_dir="${FULL_SCREEN_SMOKE_RESULT_DIR:-$cache_dir/results}"
+command -v realpath >/dev/null || { echo 'realpath is required for safe smoke output paths' >&2; exit 2; }
+physical_root_dir="$(realpath -e -- "$root_dir")" || {
+  echo "frontend root is missing or unsafe: $root_dir" >&2
+  exit 2
+}
+expected_cache_root="$physical_root_dir/.cache/full-screen-smoke"
+assert_physical_smoke_cache_root() {
+  local resolved_cache_root
+  if [[ -L "$physical_root_dir/.cache" || -L "$expected_cache_root" ]]; then
+    echo "unsafe symlinked smoke cache root: $expected_cache_root" >&2
+    return 1
+  fi
+  resolved_cache_root="$(realpath -m -- "$expected_cache_root")" || return 1
+  if [[ "$resolved_cache_root" != "$expected_cache_root" ]]; then
+    echo "unsafe non-physical smoke cache root: $expected_cache_root -> $resolved_cache_root" >&2
+    return 1
+  fi
+}
+assert_physical_smoke_cache_root || exit 2
+canonical_cache_root="$expected_cache_root"
+cache_dir="$(realpath -m -- "${FULL_SCREEN_SMOKE_CACHE_DIR:-$canonical_cache_root}")"
+result_dir="$(realpath -m -- "${FULL_SCREEN_SMOKE_RESULT_DIR:-$cache_dir/results}")"
+case "$cache_dir" in
+  "$canonical_cache_root"|"$canonical_cache_root"/*) ;;
+  *) echo "unsafe smoke cache directory: $cache_dir" >&2; exit 2 ;;
+esac
+case "$result_dir" in
+  "$cache_dir"/*) ;;
+  *) echo "unsafe smoke result directory: $result_dir" >&2; exit 2 ;;
+esac
+export FULL_SCREEN_SMOKE_CACHE_DIR="$cache_dir"
 export FULL_SCREEN_SMOKE_MANIFEST="${FULL_SCREEN_SMOKE_MANIFEST:-$cache_dir/manifest.json}"
 export FULL_SCREEN_SMOKE_RESULT_DIR="$result_dir"
 export FULL_SCREEN_SMOKE_BASELINE="${FULL_SCREEN_SMOKE_BASELINE:-$cache_dir/last-success.json}"
@@ -53,10 +82,6 @@ for generated_output in "$root_dir/test-results" "$root_dir/playwright-report"; 
   fi
 done
 
-case "$result_dir" in
-  "$root_dir"/.cache/full-screen-smoke/*) ;;
-  *) echo "unsafe smoke result directory: $result_dir" >&2; exit 2 ;;
-esac
 mkdir -p "$result_dir"
 rm -f "$result_dir"/shard-*.json
 

@@ -736,14 +736,33 @@ cleanup_remote_backup() {
     -c "select pg_terminate_backend(pid) from pg_stat_activity where application_name=:'app_name' and pid<>pg_backend_pid()" \
     >/dev/null 2>&1 || true
 }
+canonical_runtime_screen_gate_cache_root() {
+  local physical_frontend_root expected_cache_root resolved_cache_root
+  physical_frontend_root="$(realpath -e -- "$ROOT_DIR/projects/carbonet-frontend/source")" || return 1
+  expected_cache_root="$physical_frontend_root/.cache/full-screen-smoke/runtime-screen-gate"
+  if [[ -L "$physical_frontend_root/.cache" \
+     || -L "$physical_frontend_root/.cache/full-screen-smoke" \
+     || -L "$expected_cache_root" ]]; then
+    return 1
+  fi
+  resolved_cache_root="$(realpath -m -- "$expected_cache_root")" || return 1
+  [[ "$resolved_cache_root" == "$expected_cache_root" ]] || return 1
+  printf '%s\n' "$expected_cache_root"
+}
 cleanup_runtime_screen_gate_cache() {
   [[ -n "$runtime_screen_gate_cache_dir" ]] || return 0
-  case "$runtime_screen_gate_cache_dir" in
-    "$ROOT_DIR"/var/run/runtime-screen-gate/*)
-      rm -rf -- "$runtime_screen_gate_cache_dir"
+  local cache_root canonical_candidate
+  cache_root="$(canonical_runtime_screen_gate_cache_root)" || {
+    echo "[auto-deploy] refusing unsafe runtime screen cache root" >&2
+    return 1
+  }
+  canonical_candidate="$(realpath -m -- "$runtime_screen_gate_cache_dir")" || return 1
+  case "$canonical_candidate" in
+    "$cache_root"/*)
+      rm -rf -- "$canonical_candidate"
       ;;
     *)
-      echo "[auto-deploy] refusing unsafe runtime screen cache cleanup path=$runtime_screen_gate_cache_dir" >&2
+      echo "[auto-deploy] refusing unsafe runtime screen cache cleanup path=$runtime_screen_gate_cache_dir resolved=$canonical_candidate" >&2
       return 1
       ;;
   esac
@@ -769,6 +788,82 @@ terminate_runtime_screen_gate_group() {
   runtime_screen_gate_pid=""
   runtime_screen_gate_pgid=""
   cleanup_runtime_screen_gate_cache || true
+}
+run_runtime_release_validation_lanes() {
+  local asset_sync_precompleted="${1:-false}"
+  local validation_status=0 screen_save_status=0 browser_status=0
+  local release_failure_status=0 rollback_status=0 completed_runtime_screen_gate_pid=""
+  local release_overlay="${live_frontend_overlay:-${CARBONET_LIVE_FRONTEND_OVERLAY_DIR:-/opt/Resonance/projects/carbonet-frontend/src/main/resources/static/react-app}}"
+
+  if run_postdeploy_candidate_validation_groups "$asset_sync_precompleted"; then
+    validation_status=0
+  else
+    validation_status=$?
+  fi
+  if (( validation_status == 0 )); then
+    if run_screen_contract_runtime_save_gate_if_required; then
+      screen_save_status=0
+    else
+      screen_save_status=$?
+    fi
+  else
+    echo "[auto-deploy] screen contract runtime save skipped: validation groups failed status=$validation_status" >&2
+  fi
+
+  # Join the browser process before deciding or restoring. Its cleanup may
+  # still own auth state and report files even when another validation lane has
+  # already failed.
+  if [[ "$PLAN_FRONTEND_REQUIRED" == "true" ]]; then
+    if [[ "$runtime_screen_gate_pid" =~ ^[1-9][0-9]*$ ]]; then
+      if wait "$runtime_screen_gate_pid"; then browser_status=0; else browser_status=$?; fi
+      completed_runtime_screen_gate_pid="$runtime_screen_gate_pid"
+      runtime_screen_gate_pid=""
+      if [[ "$runtime_screen_gate_pgid" =~ ^[1-9][0-9]*$ ]] \
+         && kill -0 -- "-$runtime_screen_gate_pgid" 2>/dev/null; then
+        runtime_screen_gate_pid="$completed_runtime_screen_gate_pid"
+        terminate_runtime_screen_gate_group
+      else
+        runtime_screen_gate_pgid=""
+        cleanup_runtime_screen_gate_cache || browser_status=19
+      fi
+    else
+      browser_status=19
+      echo '[auto-deploy] concurrent browser gate pid is missing' >&2
+    fi
+    if (( browser_status == 0 )); then
+      cat "$runtime_screen_gate_log" || true
+    else
+      echo "[auto-deploy] concurrent browser gate failed status=$browser_status" >&2
+      cat "$runtime_screen_gate_log" >&2 || true
+    fi
+  else
+    if OVERLAY_DIR="$release_overlay" FULL_SCREEN_GATE_DEFER_ACCEPT=true \
+        bash ops/scripts/resonance-full-screen-deploy-gate.sh accept-fast; then
+      browser_status=0
+    else
+      browser_status=$?
+    fi
+  fi
+
+  if (( validation_status != 0 )); then
+    release_failure_status="$validation_status"
+  elif (( screen_save_status != 0 )); then
+    release_failure_status="$screen_save_status"
+  elif (( browser_status != 0 )); then
+    release_failure_status="$browser_status"
+  fi
+  (( release_failure_status != 0 )) || return 0
+
+  echo "[auto-deploy] release validation failed validation=$validation_status screenSave=$screen_save_status browser=$browser_status; restoring rollback snapshot" >&2
+  if OVERLAY_DIR="$release_overlay" \
+      bash ops/scripts/resonance-full-screen-deploy-gate.sh restore; then
+    echo "[auto-deploy] synchronous rollback completed before validation exit status=$release_failure_status" >&2
+  else
+    rollback_status=$?
+    echo "[auto-deploy] FAIL synchronous rollback failed status=$rollback_status originalValidationStatus=$release_failure_status" >&2
+    return "$rollback_status"
+  fi
+  return "$release_failure_status"
 }
 cleanup_deploy() {
   local original_status=$? recovery_status=0
@@ -1064,7 +1159,7 @@ fi
 # closure before restoring generated worktree files: otherwise a catalog-only
 # fast-forward can replace a freshly verified bundle graph with the stale
 # repository copy after the screen gate has already passed.
-live_frontend_overlay="$ROOT_DIR/projects/carbonet-frontend/src/main/resources/static/react-app"
+live_frontend_overlay="${CARBONET_LIVE_FRONTEND_OVERLAY_DIR:-/opt/Resonance/projects/carbonet-frontend/src/main/resources/static/react-app}"
 merge_overlay_backup="$(mktemp -d "$ROOT_DIR/var/run/pre-merge-overlay.XXXXXX")"
 merge_overlay_backup_valid=false
 if [[ -f "$live_frontend_overlay/index.html" \
@@ -2036,6 +2131,7 @@ recover_authoritative_postdeploy_marker_pending() {
   local pending_target="" pending_candidate="" pending_reason="" authority_status=2
   local pending_present=false live_target="" applied_marker="" reconciled_applied=""
   local gate_active="${FULL_SCREEN_GATE_STATE_DIR:-$ROOT_DIR/var/run/full-screen-deploy-gate}/active.env"
+  local gate_overlay="${live_frontend_overlay:-${CARBONET_LIVE_FRONTEND_OVERLAY_DIR:-/opt/Resonance/projects/carbonet-frontend/src/main/resources/static/react-app}}"
   if [[ -e "$POSTDEPLOY_MARKER_PENDING_FILE" || -L "$POSTDEPLOY_MARKER_PENDING_FILE" ]]; then
     pending_present=true
     if [[ ! -f "$POSTDEPLOY_MARKER_PENDING_FILE" || -L "$POSTDEPLOY_MARKER_PENDING_FILE" \
@@ -2098,7 +2194,8 @@ recover_authoritative_postdeploy_marker_pending() {
     return 79
   fi
   if [[ -s "$gate_active" ]]; then
-    FULL_SCREEN_GATE_DEFER_ACCEPT=true bash ops/scripts/resonance-full-screen-deploy-gate.sh finalize-success \
+    OVERLAY_DIR="$gate_overlay" FULL_SCREEN_GATE_DEFER_ACCEPT=true \
+      bash ops/scripts/resonance-full-screen-deploy-gate.sh finalize-success \
       || { write_postdeploy_promotion_quarantine 'MARKER_PENDING_SNAPSHOT_DISARM_FAILED' || true; return 79; }
   fi
   if ! verify_operational_usage_ledger_current_runtime_identity "$pending_target" reconcile; then
@@ -2227,6 +2324,7 @@ SQL
 
 finalize_postdeploy_candidate_release() {
   local promoter_status=0 authority_status=2 applied_marker="" runtime_marker=""
+  local gate_overlay="${live_frontend_overlay:-${CARBONET_LIVE_FRONTEND_OVERLAY_DIR:-/opt/Resonance/projects/carbonet-frontend/src/main/resources/static/react-app}}"
   record_runtime_release_state "$target_commit"
   run_operational_usage_ledger_live_e2e_if_required "$target_commit"
   verify_postdeploy_candidate_staged
@@ -2250,7 +2348,8 @@ finalize_postdeploy_candidate_release() {
       # snapshot immediately so a later derived-marker fault cannot restore an
       # already promoted runtime and split it from current evidence.
       if [[ -s "${FULL_SCREEN_GATE_STATE_DIR:-$ROOT_DIR/var/run/full-screen-deploy-gate}/active.env" ]]; then
-        FULL_SCREEN_GATE_DEFER_ACCEPT=true bash ops/scripts/resonance-full-screen-deploy-gate.sh finalize-success \
+        OVERLAY_DIR="$gate_overlay" FULL_SCREEN_GATE_DEFER_ACCEPT=true \
+          bash ops/scripts/resonance-full-screen-deploy-gate.sh finalize-success \
           || {
             write_postdeploy_promotion_quarantine 'PROMOTED_SNAPSHOT_DISARM_FAILED' || true
             echo '[auto-deploy] FAIL promoted runtime snapshot could not be disarmed' >&2
@@ -2303,7 +2402,8 @@ finalize_postdeploy_candidate_release() {
       ;;
   esac
   if [[ -s "${FULL_SCREEN_GATE_STATE_DIR:-$ROOT_DIR/var/run/full-screen-deploy-gate}/active.env" ]]; then
-    FULL_SCREEN_GATE_DEFER_ACCEPT=true bash ops/scripts/resonance-full-screen-deploy-gate.sh finalize-success \
+    OVERLAY_DIR="$gate_overlay" FULL_SCREEN_GATE_DEFER_ACCEPT=true \
+      bash ops/scripts/resonance-full-screen-deploy-gate.sh finalize-success \
       || echo '[auto-deploy] WARN promoted release retained its rollback snapshot for later cleanup' >&2
   fi
 }
@@ -2952,7 +3052,8 @@ POSTGRES_POD="$POSTGRES_POD" \
 # any deployable artifact changes. The post-deploy screen gate restores this
 # snapshot automatically if a governed route becomes blank or unavailable.
 verify_operational_usage_ledger_current_runtime_identity "$runtime_deployed_commit"
-FULL_SCREEN_GATE_BASE_COMMIT="$runtime_deployed_commit" bash ops/scripts/resonance-full-screen-deploy-gate.sh capture
+OVERLAY_DIR="$live_frontend_overlay" FULL_SCREEN_GATE_BASE_COMMIT="$runtime_deployed_commit" \
+  bash ops/scripts/resonance-full-screen-deploy-gate.sh capture
 
 # A frontend-only commit is compiled directly into the already mounted,
 # guarded React overlay. The overlay script verifies the complete hashed asset
@@ -2987,6 +3088,7 @@ if [[ "$PLAN_FRONTEND_REQUIRED" == "true" \
     FULL_SCREEN_SMOKE_ROUTE_PATTERN="$frontend_smoke_pattern" \
     FULL_SCREEN_SMOKE_REQUIRE_PREAUTH=true \
     FULL_SCREEN_GATE_DEFER_ACCEPT=true \
+    OVERLAY_DIR="$live_frontend_overlay" \
     bash ops/scripts/resonance-full-screen-deploy-gate.sh verify
   # Successful prebuilds may also refresh tracked generated inventories. Keep
   # the persistent deployment worktree clean for the next incremental run.
@@ -3149,13 +3251,28 @@ fi
 # sequential five-second tail without reducing test coverage.
 if [[ "$PLAN_FRONTEND_REQUIRED" == "true" ]]; then
   runtime_screen_gate_log="$ROOT_DIR/var/logs/runtime-screen-gate-${target_commit:0:10}.log"
-  runtime_screen_gate_cache_dir="$ROOT_DIR/var/run/runtime-screen-gate/${target_commit:0:10}-$$"
+  runtime_screen_gate_cache_root="$(canonical_runtime_screen_gate_cache_root)" || {
+    echo '[auto-deploy] refusing symlinked runtime screen cache root' >&2
+    exit 19
+  }
+  mkdir -p "$runtime_screen_gate_cache_root"
+  verified_runtime_screen_gate_cache_root="$(canonical_runtime_screen_gate_cache_root)" || {
+    echo '[auto-deploy] runtime screen cache root changed during initialization' >&2
+    exit 19
+  }
+  [[ "$verified_runtime_screen_gate_cache_root" == "$runtime_screen_gate_cache_root" ]] || {
+    echo '[auto-deploy] runtime screen cache root identity mismatch' >&2
+    exit 19
+  }
+  runtime_screen_gate_cache_dir="$runtime_screen_gate_cache_root/${target_commit:0:10}-$$"
   mkdir -p "$runtime_screen_gate_cache_dir"
   chmod 700 "$runtime_screen_gate_cache_dir"
   command -v setsid >/dev/null 2>&1 || { echo '[auto-deploy] setsid is required for bounded browser process-group cleanup' >&2; exit 19; }
   setsid env RESONANCE_ROOT="$ROOT_DIR" \
+    OVERLAY_DIR="$live_frontend_overlay" \
     FULL_SCREEN_SMOKE_CHANGED_ONLY=false \
     FULL_SCREEN_GATE_DEFER_ACCEPT=true \
+    FULL_SCREEN_GATE_AUTO_ROLLBACK=false \
     FULL_SCREEN_SMOKE_REQUIRE_PREAUTH=true \
     FULL_SCREEN_SMOKE_CACHE_DIR="$runtime_screen_gate_cache_dir" \
     FULL_SCREEN_SMOKE_ROUTE_PATTERN='^/(home|emission/project_list|emission/project/create|emission/my-tasks|home/certificate-verify|admin|admin/system/menu|admin/system/actor-process|admin/emission/survey-admin|admin/emission/survey-admin-data|admin/emission/survey-report|admin/emission/survey-report-print)([?#]|$)' \
@@ -3170,38 +3287,7 @@ fi
 # inside a group; the reusable harness provides bounded parallelism, isolated
 # logs, and one fail-closed result for both deployment and operator testing.
 enable_postdeploy_candidate_mode
-run_postdeploy_candidate_validation_groups "$asset_sync_precompleted"
-run_screen_contract_runtime_save_gate_if_required
-if [[ "$PLAN_FRONTEND_REQUIRED" == "true" ]]; then
-  runtime_screen_gate_status=0
-  wait "$runtime_screen_gate_pid" || runtime_screen_gate_status=$?
-  # The session leader normally exits after all children. Terminate only its
-  # dedicated group if a Playwright descendant survived, then remove the exact
-  # per-run cache containing auth-state files.
-  completed_runtime_screen_gate_pid="$runtime_screen_gate_pid"
-  runtime_screen_gate_pid=""
-  if [[ "$runtime_screen_gate_pgid" =~ ^[1-9][0-9]*$ ]] && kill -0 -- "-$runtime_screen_gate_pgid" 2>/dev/null; then
-    runtime_screen_gate_pid="$completed_runtime_screen_gate_pid"
-    terminate_runtime_screen_gate_group
-  else
-    runtime_screen_gate_pgid=""
-    cleanup_runtime_screen_gate_cache
-  fi
-  if (( runtime_screen_gate_status == 0 )); then
-    cat "$runtime_screen_gate_log"
-  else
-    echo "[auto-deploy] refusing success marker: concurrent browser gate failed status=$runtime_screen_gate_status" >&2
-    cat "$runtime_screen_gate_log" >&2
-    exit 19
-  fi
-else
-  # Backend/database-only commits already pass the domain runtime/API/schema
-  # gates above. A
-  # second 333-route browser sweep adds minutes without exercising new UI.
-  # Keep the rollback snapshot and immutable asset closure checks, then accept
-  # the healthy runtime. Mixed/frontend/database changes retain the full gate.
-  FULL_SCREEN_GATE_DEFER_ACCEPT=true bash ops/scripts/resonance-full-screen-deploy-gate.sh accept-fast
-fi
+run_runtime_release_validation_lanes "$asset_sync_precompleted" || exit $?
 sync_backstage_catalog_if_required
 deploy_backstage_if_required
 run_backstage_identity_e2e_if_required

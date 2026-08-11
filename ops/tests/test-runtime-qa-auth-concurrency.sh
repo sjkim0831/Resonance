@@ -7,6 +7,7 @@ POST_DEPLOY_VALIDATOR="$ROOT/ops/scripts/run-post-deploy-validation-groups.sh"
 AUTO_DEPLOY="$ROOT/ops/scripts/auto-deploy-main.sh"
 SCREEN_GATE_WRAPPER="$ROOT/ops/scripts/run-runtime-screen-gate-serialized.sh"
 SCREEN_GATE="$ROOT/ops/scripts/resonance-full-screen-deploy-gate.sh"
+FULL_SCREEN_SMOKE="$ROOT/projects/carbonet-frontend/source/scripts/run-full-screen-smoke.sh"
 TMP_DIR="$(mktemp -d /tmp/runtime-qa-auth-concurrency.XXXXXX)"
 trap 'rm -rf "$TMP_DIR"' EXIT
 
@@ -15,13 +16,79 @@ trap 'rm -rf "$TMP_DIR"' EXIT
 [[ -f "$AUTO_DEPLOY" ]] || { echo '[runtime-qa-auth-concurrency] auto-deploy runner missing' >&2; exit 1; }
 [[ -f "$SCREEN_GATE_WRAPPER" ]] || { echo '[runtime-qa-auth-concurrency] screen gate wrapper missing' >&2; exit 1; }
 [[ -f "$SCREEN_GATE" ]] || { echo '[runtime-qa-auth-concurrency] full screen gate missing' >&2; exit 1; }
+[[ -f "$FULL_SCREEN_SMOKE" ]] || { echo '[runtime-qa-auth-concurrency] full screen smoke runner missing' >&2; exit 1; }
 bash -n "$HELPER"
 bash -n "$POST_DEPLOY_VALIDATOR"
 bash -n "$AUTO_DEPLOY"
 bash -n "$SCREEN_GATE_WRAPPER"
 bash -n "$SCREEN_GATE"
+bash -n "$FULL_SCREEN_SMOKE"
 
-python3 - "$HELPER" "$POST_DEPLOY_VALIDATOR" "$AUTO_DEPLOY" "$SCREEN_GATE_WRAPPER" "$SCREEN_GATE" <<'PY'
+smoke_path_init="$TMP_DIR/full-screen-smoke-path-init.sh"
+sed -n '1,/^auth_state_path=""$/p' "$FULL_SCREEN_SMOKE" >"$smoke_path_init"
+bash -n "$smoke_path_init"
+assert_smoke_output_path_contract() {
+  local init_script="$1"
+  local frontend_root="$ROOT/projects/carbonet-frontend/source"
+  local wrapper_cache="$frontend_root/.cache/full-screen-smoke/runtime-screen-gate/fb84867b79-123"
+  FRONTEND_ROOT_DIR="$frontend_root" \
+    FULL_SCREEN_SMOKE_CACHE_DIR="$wrapper_cache" \
+    FULL_SCREEN_SMOKE_RESULT_DIR="$wrapper_cache/results" \
+    bash "$init_script" >/dev/null
+  if FRONTEND_ROOT_DIR="$frontend_root" \
+      FULL_SCREEN_SMOKE_CACHE_DIR="$wrapper_cache" \
+      FULL_SCREEN_SMOKE_RESULT_DIR="$TMP_DIR/unsafe-results" \
+      bash "$init_script" >/dev/null 2>&1; then
+    return 1
+  fi
+}
+assert_smoke_output_path_contract "$smoke_path_init"
+assert_smoke_symlink_root_rejected() {
+  local init_script="$1" component="$2"
+  local fixture="$TMP_DIR/smoke-symlink-$component" frontend_root="$TMP_DIR/smoke-symlink-$component/frontend"
+  local outside="$TMP_DIR/smoke-symlink-$component/outside" wrapper_cache sentinel
+  rm -rf -- "$fixture"
+  mkdir -p "$frontend_root" "$outside"
+  if [[ "$component" == cache ]]; then
+    ln -s "$outside" "$frontend_root/.cache"
+    wrapper_cache="$frontend_root/.cache/full-screen-smoke/runtime-screen-gate/owned-run"
+    sentinel="$outside/full-screen-smoke/runtime-screen-gate/owned-run/keep"
+  else
+    mkdir -p "$frontend_root/.cache"
+    ln -s "$outside" "$frontend_root/.cache/full-screen-smoke"
+    wrapper_cache="$frontend_root/.cache/full-screen-smoke/runtime-screen-gate/owned-run"
+    sentinel="$outside/runtime-screen-gate/owned-run/keep"
+  fi
+  mkdir -p "$(dirname "$sentinel")"
+  touch "$sentinel"
+  if FRONTEND_ROOT_DIR="$frontend_root" \
+      FULL_SCREEN_SMOKE_CACHE_DIR="$wrapper_cache" \
+      FULL_SCREEN_SMOKE_RESULT_DIR="$wrapper_cache/results" \
+      bash "$init_script" >/dev/null 2>&1; then
+    return 1
+  fi
+  [[ -e "$sentinel" ]]
+}
+assert_smoke_symlink_root_rejected "$smoke_path_init" cache
+assert_smoke_symlink_root_rejected "$smoke_path_init" full-screen-smoke
+mutated_smoke_path_init="$TMP_DIR/full-screen-smoke-path-init-no-result-guard.sh"
+sed '/^case "$result_dir" in$/,/^esac$/d' "$smoke_path_init" >"$mutated_smoke_path_init"
+if assert_smoke_output_path_contract "$mutated_smoke_path_init"; then
+  echo '[runtime-qa-auth-concurrency] smoke result allow-check removal mutation survived' >&2
+  exit 1
+fi
+mutated_smoke_root_init="$TMP_DIR/full-screen-smoke-path-init-symlink-trust.sh"
+sed \
+  -e '/^assert_physical_smoke_cache_root || exit 2$/d' \
+  -e 's|^canonical_cache_root="$expected_cache_root"$|canonical_cache_root="$(realpath -m -- "$expected_cache_root")"|' \
+  "$smoke_path_init" >"$mutated_smoke_root_init"
+if assert_smoke_symlink_root_rejected "$mutated_smoke_root_init" cache; then
+  echo '[runtime-qa-auth-concurrency] symlinked cache-root trust mutation survived' >&2
+  exit 1
+fi
+echo '[runtime-screen-cache-contract] PASS wrapperPath=canonical unsafeResult=blocked cacheSymlink=blocked fullScreenSymlink=blocked outsideSentinel=preserved mutations=2'
+
+python3 - "$HELPER" "$POST_DEPLOY_VALIDATOR" "$AUTO_DEPLOY" "$SCREEN_GATE_WRAPPER" "$SCREEN_GATE" "$FULL_SCREEN_SMOKE" "$ROOT" <<'PY'
 from pathlib import Path
 import sys
 
@@ -30,6 +97,8 @@ validator = Path(sys.argv[2]).read_text(encoding="utf-8")
 auto_deploy = Path(sys.argv[3]).read_text(encoding="utf-8")
 screen_wrapper = Path(sys.argv[4]).read_text(encoding="utf-8")
 screen_gate = Path(sys.argv[5]).read_text(encoding="utf-8")
+full_screen_smoke = Path(sys.argv[6]).read_text(encoding="utf-8")
+root = Path(sys.argv[7]).resolve()
 
 def assert_owner_contract(value):
     assert "CARBONET_QA_AUTH_LOCK_OWNER_BASHPID" in value
@@ -136,6 +205,8 @@ def assert_auto_deploy_cohort(value, wrapper=screen_wrapper, gate=screen_gate):
     assert "setsid env RESONANCE_ROOT=" in background
     assert "bash ops/scripts/run-runtime-screen-gate-serialized.sh" in background
     assert 'FULL_SCREEN_SMOKE_CACHE_DIR="$runtime_screen_gate_cache_dir"' in background
+    assert 'FULL_SCREEN_GATE_AUTO_ROLLBACK=false' in background
+    assert 'OVERLAY_DIR="$live_frontend_overlay"' in background
     assert '>"$runtime_screen_gate_log" 2>&1 &' in background
     assert 'runtime_screen_gate_pgid="$runtime_screen_gate_pid"' in background
     cleanup_start = value.index("terminate_runtime_screen_gate_group() {")
@@ -145,11 +216,34 @@ def assert_auto_deploy_cohort(value, wrapper=screen_wrapper, gate=screen_gate):
     assert 'kill -KILL -- "-$pgid"' in cleanup
     assert 'for attempt in $(seq 1 50)' in cleanup
     assert 'cleanup_runtime_screen_gate_cache' in cleanup
-    assert 'rm -rf -- "$runtime_screen_gate_cache_dir"' in value
-    assert '"$ROOT_DIR"/var/run/runtime-screen-gate/*' in value
+    assert 'canonical_runtime_screen_gate_cache_root() {' in value
+    assert '[[ "$resolved_cache_root" == "$expected_cache_root" ]] || return 1' in value
+    assert 'rm -rf -- "$canonical_candidate"' in value
     assert 'pkill' not in cleanup and 'killall' not in cleanup
-    assert 'wait "$runtime_screen_gate_pid" || runtime_screen_gate_status=$?' in value
-    assert 'concurrent browser gate failed status=$runtime_screen_gate_status' in value
+    assert 'if wait "$runtime_screen_gate_pid"; then browser_status=0; else browser_status=$?; fi' in value
+    assert 'concurrent browser gate failed status=$browser_status' in value
+    lane_start = value.index("run_runtime_release_validation_lanes() {")
+    lane_end = value.index("\n}\ncleanup_deploy()", lane_start)
+    lane = value[lane_start:lane_end]
+    assert lane.index('wait "$runtime_screen_gate_pid"') < lane.index('bash ops/scripts/resonance-full-screen-deploy-gate.sh restore')
+    assert lane.count('bash ops/scripts/resonance-full-screen-deploy-gate.sh restore') == 1
+    assert 'if (( validation_status == 0 )); then' in lane
+    assert 'screen contract runtime save skipped: validation groups failed' in lane
+    assert 'return "$rollback_status"' in lane and 'return "$release_failure_status"' in lane
+    assert 'live_frontend_overlay="${CARBONET_LIVE_FRONTEND_OVERLAY_DIR:-/opt/Resonance/projects/carbonet-frontend/src/main/resources/static/react-app}"' in value
+    assert 'OVERLAY_DIR="${OVERLAY_DIR:-/opt/Resonance/projects/carbonet-frontend/src/main/resources/static/react-app}"' in gate
+    assert 'verify-react-asset-closure.mjs" "$OVERLAY_DIR"' in gate
+    gate_call = 'bash ops/scripts/resonance-full-screen-deploy-gate.sh'
+    gate_positions = []
+    offset = 0
+    while True:
+        position = value.find(gate_call, offset)
+        if position < 0:
+            break
+        gate_positions.append(position)
+        offset = position + 1
+    assert len(gate_positions) == 7
+    assert all('OVERLAY_DIR=' in value[max(0, position - 180):position] for position in gate_positions)
     screen_save_start = value.index("run_screen_contract_runtime_save_gate_if_required() {")
     screen_save_end = value.index("# Database availability", screen_save_start)
     screen_save = value[screen_save_start:screen_save_end]
@@ -158,6 +252,33 @@ def assert_auto_deploy_cohort(value, wrapper=screen_wrapper, gate=screen_gate):
 
 assert_validator_contract(validator)
 assert_auto_deploy_cohort(auto_deploy)
+
+def assert_screen_cache_contract(deploy, runner):
+    canonical_relative = "projects/carbonet-frontend/source/.cache/full-screen-smoke"
+    assert 'runtime_screen_gate_cache_dir="$runtime_screen_gate_cache_root/${target_commit:0:10}-$$"' in deploy
+    assert 'physical_root_dir="$(realpath -e -- "$root_dir")"' in runner
+    assert 'expected_cache_root="$physical_root_dir/.cache/full-screen-smoke"' in runner
+    assert 'assert_physical_smoke_cache_root || exit 2' in runner
+    assert '[[ "$resolved_cache_root" != "$expected_cache_root" ]]' in runner
+    assert 'canonical_cache_root="$expected_cache_root"' in runner
+    assert 'cache_dir="$(realpath -m -- "${FULL_SCREEN_SMOKE_CACHE_DIR:-$canonical_cache_root}")"' in runner
+    assert 'result_dir="$(realpath -m -- "${FULL_SCREEN_SMOKE_RESULT_DIR:-$cache_dir/results}")"' in runner
+    assert '"$canonical_cache_root"|"$canonical_cache_root"/*) ;;' in runner
+    assert '"$cache_dir"/*) ;;' in runner
+    assert 'unsafe smoke cache directory' in runner and 'unsafe smoke result directory' in runner
+    canonical_root = (root / canonical_relative).resolve()
+    wrapper_result = (canonical_root / "runtime-screen-gate" / "fb84867b79-123" / "results").resolve()
+    assert wrapper_result.is_relative_to(canonical_root)
+
+assert_screen_cache_contract(auto_deploy, full_screen_smoke)
+mutated_smoke = full_screen_smoke.replace('"$cache_dir"/*) ;;', '*) ;;', 1)
+assert mutated_smoke != full_screen_smoke
+try:
+    assert_screen_cache_contract(auto_deploy, mutated_smoke)
+except AssertionError:
+    pass
+else:
+    raise AssertionError("smoke result allow-check removal mutation survived")
 mutated = validator.replace(
     "carbonet_qa_auth_run_serialized emission-shared-runtime",
     "run_without_auth_serialization emission-shared-runtime",
@@ -226,7 +347,9 @@ for old, new, label in (
     ("setsid env RESONANCE_ROOT=", "env RESONANCE_ROOT=", "screen-process-group"),
     ('kill -TERM -- "-$pgid"', 'kill -TERM "$pid"', "group-term"),
     ('kill -KILL -- "-$pgid"', 'kill -KILL "$pid"', "group-kill"),
-    ('"$ROOT_DIR"/var/run/runtime-screen-gate/*', '/*', "cache-path-ownership"),
+    ('[[ "$resolved_cache_root" == "$expected_cache_root" ]] || return 1', 'true', "cache-root-identity"),
+    ('FULL_SCREEN_GATE_AUTO_ROLLBACK=false', 'FULL_SCREEN_GATE_AUTO_ROLLBACK=true', "child-auto-rollback"),
+    ('OVERLAY_DIR="$live_frontend_overlay" FULL_SCREEN_GATE_BASE_COMMIT=', 'FULL_SCREEN_GATE_BASE_COMMIT=', "capture-live-overlay"),
 ):
     mutated = auto_deploy.replace(old, new, 1)
     try:
@@ -235,7 +358,7 @@ for old, new, label in (
         pass
     else:
         raise AssertionError(f"{label} mutation survived")
-print("RUNTIME_QA_AUTH_OWNER_STATIC_PASS mutations=15 credentialLoader=secret-or-complete-env sharedLifecycles=6 lockAcquisitions=1 timeout=300s order=customer-activity-calculation-boundary-governance-report continueAfterFailure=true screenGatePaths=2 processGroup=owned-term-wait-kill ownedCache=exact screenSave=1 independentActorLane=parallel")
+print("RUNTIME_QA_AUTH_OWNER_STATIC_PASS mutations=21 credentialLoader=secret-or-complete-env sharedLifecycles=6 lockAcquisitions=1 timeout=300s order=customer-activity-calculation-boundary-governance-report continueAfterFailure=true screenGatePaths=2 processGroup=owned-term-wait-kill ownedCache=physical-root screenSave=skip-on-validation-failure rollback=main-process-exactly-once overlay=mounted-all-paths")
 PY
 
 # Execute the validator's actual nested runtime functions with a mocked bash
@@ -273,7 +396,7 @@ from pathlib import Path
 import sys
 text = Path(sys.argv[1]).read_text(encoding="utf-8")
 chunks = []
-for name in ("cleanup_runtime_screen_gate_cache", "terminate_runtime_screen_gate_group"):
+for name in ("canonical_runtime_screen_gate_cache_root", "cleanup_runtime_screen_gate_cache", "terminate_runtime_screen_gate_group"):
     start = text.index(f"{name}() {{")
     end = text.index("\n}\n", start) + 2
     chunks.append(text[start:end])
@@ -281,7 +404,7 @@ Path(sys.argv[2]).write_text("\n".join(chunks) + "\n", encoding="utf-8")
 PY
 source "$TMP_DIR/screen-group-functions.sh"
 ROOT_DIR="$TMP_DIR/process-group-root"
-runtime_screen_gate_cache_dir="$ROOT_DIR/var/run/runtime-screen-gate/owned-run"
+runtime_screen_gate_cache_dir="$ROOT_DIR/projects/carbonet-frontend/source/.cache/full-screen-smoke/runtime-screen-gate/owned-run"
 mkdir -p "$runtime_screen_gate_cache_dir" "$ROOT_DIR/var/run/unrelated"
 touch "$runtime_screen_gate_cache_dir/auth-state-owned.json" "$ROOT_DIR/var/run/unrelated/keep"
 group_child_file="$TMP_DIR/screen-group-child.pid"
@@ -295,10 +418,61 @@ sleep 30 & unrelated_node_like_pid=$!
 terminate_runtime_screen_gate_group
 ! kill -0 "$screen_group_child" 2>/dev/null
 kill -0 "$unrelated_node_like_pid" 2>/dev/null
-[[ ! -e "$ROOT_DIR/var/run/runtime-screen-gate/owned-run" ]]
+[[ ! -e "$ROOT_DIR/projects/carbonet-frontend/source/.cache/full-screen-smoke/runtime-screen-gate/owned-run" ]]
 [[ -e "$ROOT_DIR/var/run/unrelated/keep" ]]
 kill "$unrelated_node_like_pid"
 wait "$unrelated_node_like_pid" 2>/dev/null || true
+
+assert_auto_cleanup_symlink_rejected() {
+  local helper_script="$1" component="$2"
+  local fixture="$TMP_DIR/auto-cleanup-symlink-$component" root="$TMP_DIR/auto-cleanup-symlink-$component/root"
+  local outside="$TMP_DIR/auto-cleanup-symlink-$component/outside" candidate sentinel
+  rm -rf -- "$fixture"
+  mkdir -p "$root/projects/carbonet-frontend/source" "$outside"
+  if [[ "$component" == cache ]]; then
+    ln -s "$outside" "$root/projects/carbonet-frontend/source/.cache"
+    candidate="$root/projects/carbonet-frontend/source/.cache/full-screen-smoke/runtime-screen-gate/owned-run"
+    sentinel="$outside/full-screen-smoke/runtime-screen-gate/owned-run/keep"
+  else
+    mkdir -p "$root/projects/carbonet-frontend/source/.cache"
+    ln -s "$outside" "$root/projects/carbonet-frontend/source/.cache/full-screen-smoke"
+    candidate="$root/projects/carbonet-frontend/source/.cache/full-screen-smoke/runtime-screen-gate/owned-run"
+    sentinel="$outside/runtime-screen-gate/owned-run/keep"
+  fi
+  mkdir -p "$(dirname "$sentinel")"
+  touch "$sentinel"
+  (
+    source "$helper_script"
+    ROOT_DIR="$root"
+    runtime_screen_gate_cache_dir="$candidate"
+    if cleanup_runtime_screen_gate_cache >/dev/null 2>&1; then
+      return 1
+    fi
+    [[ -e "$sentinel" ]]
+  )
+}
+assert_auto_cleanup_symlink_rejected "$TMP_DIR/screen-group-functions.sh" cache
+assert_auto_cleanup_symlink_rejected "$TMP_DIR/screen-group-functions.sh" full-screen-smoke
+python3 - "$TMP_DIR/screen-group-functions.sh" "$TMP_DIR/screen-group-functions-trust-symlink.sh" <<'PY'
+from pathlib import Path
+import sys
+text = Path(sys.argv[1]).read_text(encoding="utf-8")
+guard = '''  if [[ -L "$physical_frontend_root/.cache" \\
+     || -L "$physical_frontend_root/.cache/full-screen-smoke" \\
+     || -L "$expected_cache_root" ]]; then
+    return 1
+  fi
+'''
+assert guard in text
+text = text.replace(guard, "", 1)
+text = text.replace('  [[ "$resolved_cache_root" == "$expected_cache_root" ]] || return 1\n', "", 1)
+text = text.replace("  printf '%s\\n' \"$expected_cache_root\"\n", "  printf '%s\\n' \"$resolved_cache_root\"\n", 1)
+Path(sys.argv[2]).write_text(text, encoding="utf-8")
+PY
+if assert_auto_cleanup_symlink_rejected "$TMP_DIR/screen-group-functions-trust-symlink.sh" cache; then
+  echo '[runtime-qa-auth-concurrency] auto cleanup symlink-root trust mutation survived' >&2
+  exit 1
+fi
 
 LIFECYCLE_LOCK="$TMP_DIR/lifecycle.lock"
 LIFECYCLE_STATE_LOCK="$TMP_DIR/lifecycle-state.lock"
