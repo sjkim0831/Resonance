@@ -54,17 +54,9 @@ PROCESS_VERSION="$(jq -r '.contract.processVersion' <<<"$EVIDENCE")"
   echo COMPANY_REAPPLICATION_PROCESS_EVIDENCE_IDENTITY_INVALID >&2; exit 3;
 }
 
-ADMIN_CONTRACT="$(K8S_NAMESPACE="$NAMESPACE" bash "$ROOT/ops/scripts/capture-business-e2e-contract.sh" "$PROCESS" "$ADMIN_STEP")"
-ADMIN_EVIDENCE="$(jq -c --argjson adminContract "$ADMIN_CONTRACT" '
-  .contracts=(((.contracts // []) + [.contract,$adminContract]) | unique_by(.stepCode))
-  | .contract=$adminContract
-' <<<"$EVIDENCE")"
-export E2E_VALIDATION_COMMIT="$(jq -r '.validationCommit // .harnessCommit' <<<"$ADMIN_EVIDENCE")"
-export E2E_DEPLOYED_COMMIT="$(jq -r '.sourceCommit' <<<"$ADMIN_CONTRACT")"
-bash "$ROOT/ops/scripts/promote-screen-contract-after-e2e.sh" \
-  "$PROCESS" "$ADMIN_STEP" "$REQUIRED" ADMIN --validate-only <<<"$ADMIN_EVIDENCE" >/dev/null
-bash "$ROOT/ops/scripts/promote-screen-contract-after-e2e.sh" \
-  "$PROCESS" "$ADMIN_STEP" "$REQUIRED" ADMIN <<<"$ADMIN_EVIDENCE" >/dev/null
+export E2E_VALIDATION_COMMIT="$(jq -r '.validationCommit // .harnessCommit' <<<"$EVIDENCE")"
+export E2E_DEPLOYED_COMMIT="$SOURCE_COMMIT"
+bash "$ROOT/ops/scripts/promote-company-reapplication-screens-atomically.sh" <<<"$EVIDENCE" >/dev/null
 
 PATRONI_POD="${PATRONI_POD:-$(K8S_NAMESPACE="$NAMESPACE" bash "$ROOT/ops/scripts/resolve-patroni-primary-pod.sh")}" 
 kubectl -n "$NAMESPACE" exec -i "$PATRONI_POD" -c patroni -- \

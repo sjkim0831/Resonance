@@ -318,11 +318,13 @@ export CARBONET_BROWSER_BASE_URL="$BROWSER_BASE_URL" CARBONET_REAPPLICATION_BROW
 VALIDATION_COMMIT="$(git -C "$ROOT" rev-parse HEAD)"
 [[ "$VALIDATION_COMMIT" =~ ^[0-9a-f]{40}$ ]] || { echo COMPANY_REAPPLICATION_VALIDATION_COMMIT_INVALID >&2; exit 3; }
 git -C "$ROOT" diff --quiet -- ops/scripts/validate-company-reapplication-browser.mjs ops/scripts/promote-screen-contract-after-e2e.sh \
+  ops/scripts/promote-company-reapplication-process-after-e2e.sh ops/scripts/promote-company-reapplication-screens-atomically.sh \
   ops/scripts/validate-company-reapplication-admin-relay.mjs ops/scripts/lib/company-reapplication-browser-rate-limit-candidate.jq \
   ops/tests/run-company-reapplication-business-e2e.sh || {
   echo COMPANY_REAPPLICATION_VALIDATION_HARNESS_DIRTY >&2; exit 3;
 }
 git -C "$ROOT" diff --cached --quiet -- ops/scripts/validate-company-reapplication-browser.mjs ops/scripts/promote-screen-contract-after-e2e.sh \
+  ops/scripts/promote-company-reapplication-process-after-e2e.sh ops/scripts/promote-company-reapplication-screens-atomically.sh \
   ops/scripts/validate-company-reapplication-admin-relay.mjs ops/scripts/lib/company-reapplication-browser-rate-limit-candidate.jq \
   ops/tests/run-company-reapplication-business-e2e.sh || {
   echo COMPANY_REAPPLICATION_VALIDATION_HARNESS_STAGED_DIRTY >&2; exit 3;
@@ -419,7 +421,7 @@ jq -n --arg validationCommit "$VALIDATION_COMMIT" --slurpfile runtime "$TMP/runt
 bash "$ROOT/ops/scripts/promote-screen-contract-after-e2e.sh"   "$PROCESS" "$STEP" "$REQUIRED" PUBLIC --validate-only <"$TMP/evidence.json" >/dev/null
 verify_release_identity "$SOURCE_COMMIT" "$VALIDATION_COMMIT" before-promotion
 export E2E_VALIDATION_COMMIT="$VALIDATION_COMMIT" E2E_DEPLOYED_COMMIT="$SOURCE_COMMIT"
-bash "$ROOT/ops/scripts/promote-screen-contract-after-e2e.sh"   "$PROCESS" "$STEP" "$REQUIRED" PUBLIC <"$TMP/evidence.json" >"$TMP/promotion.json"
+bash "$ROOT/ops/scripts/promote-company-reapplication-process-after-e2e.sh" <"$TMP/evidence.json" >"$TMP/promotion.json"
 
 code="$(curl -sS -G -o "$TMP/context.json" -w '%{http_code}'   --data-urlencode 'routePath=/join/companyReapply' --data-urlencode 'pageId=join-company-reapply'   --data-urlencode 'audience=PUBLIC' --data-urlencode "processCode=$PROCESS"   --data-urlencode "stepCode=$STEP" --data-urlencode 'actorCode=PUBLIC_APPLICANT'   "$BASE_URL/home/api/screen-context")"
 [[ "$code" == 200 ]] && jq -e '.linked==true and .selectionRequired==false and .classification=="EXECUTABLE" and .reasonCode=="RUNTIME_WORKFLOW_RESOLVED"' "$TMP/context.json" >/dev/null || {
