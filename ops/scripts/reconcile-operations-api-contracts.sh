@@ -33,7 +33,17 @@ INSERT INTO operations_api_map VALUES
  (26311,'차단 목록 조회','GET','/api/system/blocklist','GET','/admin/system/blocklist/page-data'),
  (26313,'코드 목록','GET','/api/system/codes','GET','/admin/system/code/page-data'),
  (26314,'프로비저닝 목록','GET','/api/system/codex-provisions','GET','/admin/system/codex-provision/page-data'),
- (26314,'프로비저닝 생성','POST','/api/system/codex-provisions','POST','/admin/system/codex-provision/execute');
+ (26314,'프로비저닝 생성','POST','/api/system/codex-provisions','POST','/admin/system/codex-provision/execute'),
+ (26280,'연결 목록 조회','GET','/api/external/connections','GET','/admin/external/connection_list/page-data'),
+ (26281,'API 키 목록','GET','/api/external/keys','GET','/admin/external/keys/page-data'),
+ (26282,'외부 로그 조회','GET','/api/external/logs','GET','/admin/external/logs/page-data'),
+ (26283,'유지보수 일정 조회','GET','/api/external/maintenance','GET','/admin/external/maintenance/page-data'),
+ (26284,'모니터링 데이터 조회','GET','/api/external/monitoring','GET','/admin/external/monitoring/page-data'),
+ (26285,'재시도 목록','GET','/api/external/retry-queue','GET','/admin/external/retry/page-data'),
+ (26286,'스키마 목록','GET','/api/external/schemas','GET','/admin/external/schema/page-data'),
+ (26287,'동기화 작업 목록','GET','/api/external/sync-jobs','GET','/admin/external/sync/page-data'),
+ (26288,'사용량 통계 조회','GET','/api/external/usage','GET','/admin/external/usage/page-data'),
+ (26289,'웹훅 목록','GET','/api/external/webhooks','GET','/admin/external/webhooks/page-data');
 
 DO $$ DECLARE expected int; source_count int; target_count int; BEGIN
  SELECT count(*) INTO expected FROM operations_api_map;
@@ -81,4 +91,4 @@ DO $$ DECLARE expected int; good int; old_left int; BEGIN
 END $$;
 COMMIT;
 SQL
-printf '{"status":"RECONCILED","contracts":13,"apiUsages":18}\n'
+printf '{"status":"RECONCILED","contracts":23,"apiUsages":28}\n'
