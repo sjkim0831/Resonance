@@ -6,5 +6,6 @@ export RELAY_STEPS="DISCLOSURE_CORRECTION_S1,DISCLOSURE_CORRECTION_S2,DISCLOSURE
 export RELAY_STEP_ACTORS="CALCULATOR,CALCULATOR,VERIFIER,APPROVER"
 export RELAY_ACCOUNTS_JSON='{"CALCULATOR":"qacalc26","VERIFIER":"qaverify26","APPROVER":"qaapprove26"}'
 export RELAY_ROUTE="/generated/disclosure-correction/{step}"
+export CARBONET_RELAY_ROUTES="/generated/disclosure-correction/{step},/planned/emission/disclosure-correction/{step}"
 export RELAY_PREFIX="DC"
 exec bash "$ROOT/ops/tests/run-declared-process-relay-e2e.sh"
