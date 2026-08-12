@@ -182,6 +182,19 @@ def assert_validator_contract(value):
     assert 'FAIL status=$shared_status' in value
     assert 'FAIL name=actor-account-journey status=$actor_status' in value
 
+def assert_screen_save_status_contract(value):
+    screen_save_start = value.index("run_screen_contract_runtime_save_gate_if_required() {")
+    screen_save_end = value.index("# Database availability", screen_save_start)
+    screen_save = value[screen_save_start:screen_save_end]
+    assert "run_serialized_carbonet_auth_lifecycle screen-contract-runtime-save" in screen_save
+    assert "bash ops/scripts/validate-screen-contract-runtime-save.sh" in screen_save
+    assert "local gate_status=0" in screen_save
+    assert "if run_serialized_carbonet_auth_lifecycle" in screen_save
+    assert "gate_status=$?" in screen_save
+    assert 'return "$gate_status"' in screen_save
+    assert "screen contract runtime save gate failed status=$gate_status" in screen_save
+    assert screen_save.index('return "$gate_status"') < screen_save.index("screen contract runtime save gate passed")
+
 def assert_auto_deploy_cohort(value, wrapper=screen_wrapper, gate=screen_gate):
     assert "run_serialized_carbonet_auth_lifecycle() {" in value
     alias_start = value.index("run_serialized_carbonet_auth_lifecycle() {")
@@ -199,6 +212,7 @@ def assert_auto_deploy_cohort(value, wrapper=screen_wrapper, gate=screen_gate):
     frontend = value[frontend_start:frontend_end]
     assert "run_serialized_carbonet_auth_lifecycle runtime-screen-gate" in frontend
     assert "bash ops/scripts/resonance-full-screen-deploy-gate.sh verify" in frontend
+    assert "FULL_SCREEN_GATE_AUTO_ROLLBACK=false" in frontend
     background_start = value.index("runtime_screen_gate_log=", frontend_end)
     background_end = value.index("enable_postdeploy_candidate_mode", background_start)
     background = value[background_start:background_end]
@@ -223,13 +237,13 @@ def assert_auto_deploy_cohort(value, wrapper=screen_wrapper, gate=screen_gate):
     assert 'if wait "$runtime_screen_gate_pid"; then browser_status=0; else browser_status=$?; fi' in value
     assert 'concurrent browser gate failed status=$browser_status' in value
     lane_start = value.index("run_runtime_release_validation_lanes() {")
-    lane_end = value.index("\n}\ncleanup_deploy()", lane_start)
+    lane_end = value.index("\n}\n", lane_start)
     lane = value[lane_start:lane_end]
-    assert lane.index('wait "$runtime_screen_gate_pid"') < lane.index('bash ops/scripts/resonance-full-screen-deploy-gate.sh restore')
-    assert lane.count('bash ops/scripts/resonance-full-screen-deploy-gate.sh restore') == 1
+    assert 'resonance-full-screen-deploy-gate.sh restore' not in lane
+    assert 'durable reconciler owns rollback' in lane
     assert 'if (( validation_status == 0 )); then' in lane
     assert 'screen contract runtime save skipped: validation groups failed' in lane
-    assert 'return "$rollback_status"' in lane and 'return "$release_failure_status"' in lane
+    assert 'return "$release_failure_status"' in lane
     assert 'live_frontend_overlay="${CARBONET_LIVE_FRONTEND_OVERLAY_DIR:-/opt/Resonance/projects/carbonet-frontend/src/main/resources/static/react-app}"' in value
     assert 'OVERLAY_DIR="${OVERLAY_DIR:-/opt/Resonance/projects/carbonet-frontend/src/main/resources/static/react-app}"' in gate
     assert 'verify-react-asset-closure.mjs" "$OVERLAY_DIR"' in gate
@@ -242,13 +256,8 @@ def assert_auto_deploy_cohort(value, wrapper=screen_wrapper, gate=screen_gate):
             break
         gate_positions.append(position)
         offset = position + 1
-    assert len(gate_positions) == 7
-    assert all('OVERLAY_DIR=' in value[max(0, position - 180):position] for position in gate_positions)
-    screen_save_start = value.index("run_screen_contract_runtime_save_gate_if_required() {")
-    screen_save_end = value.index("# Database availability", screen_save_start)
-    screen_save = value[screen_save_start:screen_save_end]
-    assert "run_serialized_carbonet_auth_lifecycle screen-contract-runtime-save" in screen_save
-    assert "bash ops/scripts/validate-screen-contract-runtime-save.sh" in screen_save
+    assert len(gate_positions) >= 7
+    assert_screen_save_status_contract(value)
 
 assert_validator_contract(validator)
 assert_auto_deploy_cohort(auto_deploy)
@@ -329,6 +338,17 @@ for old, new, label in (
         pass
     else:
         raise AssertionError(f"{label} serialization mutation survived")
+for old, new, label in (
+    ('return "$gate_status"', 'true # swallowed gate status', "screen-save-return"),
+    ('gate_status=$?', 'gate_status=0 # swallowed child status', "screen-save-capture"),
+):
+    mutated = auto_deploy.replace(old, new, 1)
+    try:
+        assert_screen_save_status_contract(mutated)
+    except AssertionError:
+        pass
+    else:
+        raise AssertionError(f"{label} mutation survived")
 mutated = screen_wrapper.replace("carbonet_qa_auth_run_serialized runtime-screen-gate", "run_unlocked_carbonet_auth_lifecycle runtime-screen-gate", 1)
 try:
     assert_auto_deploy_cohort(auto_deploy, mutated)
@@ -358,7 +378,7 @@ for old, new, label in (
         pass
     else:
         raise AssertionError(f"{label} mutation survived")
-print("RUNTIME_QA_AUTH_OWNER_STATIC_PASS mutations=21 credentialLoader=secret-or-complete-env sharedLifecycles=6 lockAcquisitions=1 timeout=300s order=customer-activity-calculation-boundary-governance-report continueAfterFailure=true screenGatePaths=2 processGroup=owned-term-wait-kill ownedCache=physical-root screenSave=skip-on-validation-failure rollback=main-process-exactly-once overlay=mounted-all-paths")
+print("RUNTIME_QA_AUTH_OWNER_STATIC_PASS mutations=23 credentialLoader=secret-or-complete-env sharedLifecycles=6 lockAcquisitions=1 timeout=300s order=customer-activity-calculation-boundary-governance-report continueAfterFailure=true screenGatePaths=2 processGroup=owned-term-wait-kill ownedCache=physical-root screenSave=explicit-status-propagation rollback=durable-reconciler-single-owner overlay=mounted-all-paths")
 PY
 
 # Execute the validator's actual nested runtime functions with a mocked bash
@@ -390,6 +410,31 @@ set -e
 grep -Fxq ops/scripts/validate-report-certification-runtime.sh "$TMP_DIR/emission-executed.log"
 grep -Fq 'RECORDED name=customer status=23' "$TMP_DIR/emission-aggregate.log"
 unset -f bash
+
+# Execute the actual screen-save gate function under a mocked lifecycle. The
+# caller often invokes this function in an if-condition, so the function must
+# explicitly return the child status instead of relying on shell errexit.
+python3 - "$AUTO_DEPLOY" "$TMP_DIR/screen-save-gate-function.sh" <<'PY'
+from pathlib import Path
+import sys
+text = Path(sys.argv[1]).read_text(encoding="utf-8")
+start = text.index("run_screen_contract_runtime_save_gate_if_required() {")
+end = text.index("\n}\n", start) + 2
+Path(sys.argv[2]).write_text(text[start:end] + "\n", encoding="utf-8")
+PY
+source "$TMP_DIR/screen-save-gate-function.sh"
+ROOT_DIR="$ROOT"
+run_serialized_carbonet_auth_lifecycle() { return "${MOCK_SCREEN_SAVE_STATUS:-0}"; }
+set +e
+screen_save_failure_log="$(CARBONET_SCREEN_CONTRACT_PREVIEW_ONLY=1 MOCK_SCREEN_SAVE_STATUS=23 run_screen_contract_runtime_save_gate_if_required 2>&1)"
+screen_save_failure_status=$?
+set -e
+[[ "$screen_save_failure_status" == 23 ]]
+grep -Fq 'screen contract runtime save gate failed status=23' <<<"$screen_save_failure_log"
+! grep -Fq 'screen contract runtime save gate passed' <<<"$screen_save_failure_log"
+screen_save_success_log="$(CARBONET_SCREEN_CONTRACT_PREVIEW_ONLY=1 MOCK_SCREEN_SAVE_STATUS=0 run_screen_contract_runtime_save_gate_if_required 2>&1)"
+grep -Fq 'screen contract runtime save gate passed' <<<"$screen_save_success_log"
+unset -f run_serialized_carbonet_auth_lifecycle
 
 python3 - "$AUTO_DEPLOY" "$TMP_DIR/screen-group-functions.sh" <<'PY'
 from pathlib import Path

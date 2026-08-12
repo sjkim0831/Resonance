@@ -2312,16 +2312,20 @@ public class ActorProcessGovernanceService {
     }
 
     @Transactional public Map<String,Object> saveProfessionalScreenContract(Map<String,Object>b,String actor){
-        long id=Long.parseLong(req(b,"contractId"));
-        for(String field:List.of("kpiContract","sectionContract","fieldContract","commandContract","stateContract","apiContract","dataContract","evidenceContract")){
-            validateJsonArray(def(b,field,"[]"),field);
-        }
-        String status=def(b,"contractStatus","REVIEW_REQUIRED").trim().toUpperCase(Locale.ROOT);
-        if(!isSupportedProfessionalContractStatus(status))throw new IllegalArgumentException("Unsupported contractStatus: "+status);
+        Map<String,Object> values=professionalScreenContractInput(b);
+        long id=((Number)values.get("contractId")).longValue();
+        Map<String,Object> readiness=professionalContractReadiness(id,values);
+        Map<String,Object> gate=previewProfessionalScreenDesignGate(id,values);
         int updated=jdbc.update("update framework_professional_screen_contract set business_purpose=?,entry_condition=?,exit_condition=?,kpi_contract=?,section_contract=?,field_contract=?,command_contract=?,state_contract=?,api_contract=?,data_contract=?,evidence_contract=?,responsive_contract=?,accessibility_contract=?,security_contract=?,api_verified=?,database_verified=?,authority_verified=?,responsive_verified=?,accessibility_verified=?,exception_states_verified=?,audit_evidence_ref=?,contract_status=?,updated_by=?,updated_at=current_timestamp where contract_id=?",
-            req(b,"businessPurpose"),req(b,"entryCondition"),req(b,"exitCondition"),def(b,"kpiContract","[]"),def(b,"sectionContract","[]"),def(b,"fieldContract","[]"),def(b,"commandContract","[]"),def(b,"stateContract","[\"LOADING\",\"EMPTY\",\"ERROR\",\"FORBIDDEN\",\"READY\"]"),def(b,"apiContract","[]"),def(b,"dataContract","[]"),def(b,"evidenceContract","[]"),def(b,"responsiveContract","360px, 768px, 1280px 검증"),def(b,"accessibilityContract","KRDS 및 WCAG 2.1 AA"),def(b,"securityContract","테넌트·프로젝트·액터 권한 서버 검증"),bool(b,"apiVerified"),bool(b,"databaseVerified"),bool(b,"authorityVerified"),bool(b,"responsiveVerified"),bool(b,"accessibilityVerified"),bool(b,"exceptionStatesVerified"),str(b,"auditEvidenceRef"),status,actor,id);
+            values.get("businessPurpose"),values.get("entryCondition"),values.get("exitCondition"),
+            values.get("kpiContract"),values.get("sectionContract"),values.get("fieldContract"),
+            values.get("commandContract"),values.get("stateContract"),values.get("apiContract"),
+            values.get("dataContract"),values.get("evidenceContract"),values.get("responsiveContract"),
+            values.get("accessibilityContract"),values.get("securityContract"),values.get("apiVerified"),
+            values.get("databaseVerified"),values.get("authorityVerified"),values.get("responsiveVerified"),
+            values.get("accessibilityVerified"),values.get("exceptionStatesVerified"),values.get("auditEvidenceRef"),
+            values.get("contractStatus"),actor,id);
         if(updated==0)throw new IllegalArgumentException("화면 완성 계약을 찾을 수 없습니다: "+id);
-        Map<String,Object> readiness=jdbc.queryForMap("select contract_id as \"contractId\",readiness_score as \"readinessScore\",readiness_gaps as \"readinessGaps\" from framework_professional_screen_readiness where contract_id=?",id);
         if(((Number)readiness.get("readinessScore")).intValue()==100){jdbc.update("update framework_professional_screen_contract set contract_status='VERIFIED',updated_at=current_timestamp where contract_id=?",id);}
         Map<String,Object> runtimePublication=screenContractRuntimeService.publishProfessionalContract(id,actor);
         String process=jdbc.queryForObject("select process_code from framework_professional_screen_contract where contract_id=?",String.class,id);
@@ -2333,30 +2337,186 @@ public class ActorProcessGovernanceService {
             "fullGenerationEndpoint","/admin/api/system/actor-process/development/direct"
         );
         jdbc.update("update framework_page_development_item i set design_status=case when g.design_gate_status='PASSED' then 'VERIFIED' else 'REVIEW_REQUIRED' end,blocker_reason=case when g.design_gate_status='PASSED' then null else array_to_string(g.design_gate_issues,', ') end,next_action=case when g.design_gate_status='PASSED' then 'Design verified; generation may proceed.' else 'Resolve design gate issues before generation: '||array_to_string(g.design_gate_issues,', ') end,updated_by=?,updated_at=current_timestamp from framework_page_design_assurance g join framework_screen_resource r using(screen_resource_id) join framework_professional_screen_contract c on lower(split_part(c.route_path,'?',1))=r.route_key where c.contract_id=? and i.screen_resource_id=g.screen_resource_id",actor,id);
-        Map<String,Object> gate=jdbc.queryForMap("select g.design_gate_status as \"status\",g.design_gate_score as \"score\",array_to_string(g.design_gate_issues,', ') as \"issues\" from framework_page_design_assurance g join framework_screen_resource r using(screen_resource_id) join framework_professional_screen_contract c on lower(split_part(c.route_path,'?',1))=r.route_key where c.contract_id=?",id);
         return Map.of("success",true,"contract",readiness,"designGate",gate,"autoImplementation",automation,"runtimePublication",runtimePublication);
     }
 
     /**
-     * Executes the canonical professional-contract save and runtime publication
-     * path, then marks the enclosing transaction rollback-only.  The preview is
-     * deliberately DB-only: ScreenContractRuntimeService owns no filesystem,
-     * network, messaging, or process side effects, so rollback restores the
-     * contract, publication, audit event, cache epoch, and workflow rows as one
-     * unit while still exercising all production validation logic.
+     * Validates the exact canonical save input and predicts readiness, design
+     * gate, and runtime publication without executing the production mutation
+     * path.  The read-only transaction is a second guard against accidental
+     * INSERT, UPDATE, DELETE, or sequence allocation in candidate validation.
      */
-    @Transactional public Map<String,Object> saveProfessionalScreenContractPreview(Map<String,Object>b,String actor){
-        Map<String,Object> response=new LinkedHashMap<>(saveProfessionalScreenContract(b,actor));
-        markCurrentTransactionRollbackOnly();
+    @Transactional(readOnly=true) public Map<String,Object> saveProfessionalScreenContractPreview(Map<String,Object>b,String actor){
+        Map<String,Object> values=professionalScreenContractInput(b);
+        long id=((Number)values.get("contractId")).longValue();
+        Map<String,Object> readiness=professionalContractReadiness(id,values);
+        Map<String,Object> gate=previewProfessionalScreenDesignGate(id,values);
+        Map<String,Object> runtimeValues=new LinkedHashMap<>(values);
+        runtimeValues.remove("contractId");
+        runtimeValues.remove("kpiContract");
+        if(((Number)readiness.get("readinessScore")).intValue()==100)runtimeValues.put("contractStatus","VERIFIED");
+        Map<String,Object> runtimePublication=screenContractRuntimeService.predictProfessionalContract(id,runtimeValues);
+        String process=jdbc.queryForObject("select process_code from framework_professional_screen_contract where contract_id=?",String.class,id);
+        Map<String,Object> automation=Map.of(
+            "status","RUNTIME_CONTRACT_PREDICTED",
+            "processCode",process,
+            "buildRequired",false,
+            "fullGenerationDeferred",true,
+            "fullGenerationEndpoint","/admin/api/system/actor-process/development/direct"
+        );
+        Map<String,Object> response=new LinkedHashMap<>();
+        response.put("success",true);
+        response.put("contract",readiness);
+        response.put("designGate",gate);
+        response.put("autoImplementation",automation);
+        response.put("runtimePublication",runtimePublication);
         response.put("preview",true);
         response.put("rolledBack",true);
         response.put("committed",false);
-        response.put("mutationScope","DB_TRANSACTION_ROLLBACK_ONLY");
+        response.put("mutationScope","READ_ONLY_PREDICTION");
+        response.put("rollbackMode","NO_MUTATION_REQUIRED");
         return response;
     }
 
-    void markCurrentTransactionRollbackOnly(){
-        TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
+    Map<String,Object> professionalScreenContractInput(Map<String,Object>b){
+        Map<String,Object> values=new LinkedHashMap<>();
+        long id;
+        try{id=Long.parseLong(req(b,"contractId"));}
+        catch(NumberFormatException e){throw new IllegalArgumentException("contractId must be a number",e);}
+        values.put("contractId",id);
+        values.put("businessPurpose",req(b,"businessPurpose"));
+        values.put("entryCondition",req(b,"entryCondition"));
+        values.put("exitCondition",req(b,"exitCondition"));
+        Map<String,String> arrays=new LinkedHashMap<>();
+        arrays.put("kpiContract",def(b,"kpiContract","[]"));
+        arrays.put("sectionContract",def(b,"sectionContract","[]"));
+        arrays.put("fieldContract",def(b,"fieldContract","[]"));
+        arrays.put("commandContract",def(b,"commandContract","[]"));
+        arrays.put("stateContract",def(b,"stateContract","[\"LOADING\",\"EMPTY\",\"ERROR\",\"FORBIDDEN\",\"READY\"]"));
+        arrays.put("apiContract",def(b,"apiContract","[]"));
+        arrays.put("dataContract",def(b,"dataContract","[]"));
+        arrays.put("evidenceContract",def(b,"evidenceContract","[]"));
+        arrays.forEach((field,value)->{validateJsonArray(value,field);values.put(field,value);});
+        values.put("responsiveContract",def(b,"responsiveContract","360px, 768px, 1280px 검증"));
+        values.put("accessibilityContract",def(b,"accessibilityContract","KRDS 및 WCAG 2.1 AA"));
+        values.put("securityContract",def(b,"securityContract","테넌트·프로젝트·액터 권한 서버 검증"));
+        values.put("apiVerified",bool(b,"apiVerified"));
+        values.put("databaseVerified",bool(b,"databaseVerified"));
+        values.put("authorityVerified",bool(b,"authorityVerified"));
+        values.put("responsiveVerified",bool(b,"responsiveVerified"));
+        values.put("accessibilityVerified",bool(b,"accessibilityVerified"));
+        values.put("exceptionStatesVerified",bool(b,"exceptionStatesVerified"));
+        values.put("auditEvidenceRef",str(b,"auditEvidenceRef"));
+        String status=def(b,"contractStatus","REVIEW_REQUIRED").toUpperCase(Locale.ROOT);
+        if(!isSupportedProfessionalContractStatus(status))throw new IllegalArgumentException("Unsupported contractStatus: "+status);
+        values.put("contractStatus",status);
+        return values;
+    }
+
+    Map<String,Object> professionalContractReadiness(long id,Map<String,Object> values){
+        List<Map<String,Object>> source=jdbc.queryForList(
+            "select menu_verified as \"menuVerified\" from framework_professional_screen_contract where contract_id=?",id);
+        if(source.isEmpty())throw new IllegalArgumentException("화면 완성 계약을 찾을 수 없습니다: "+id);
+        boolean menuVerified=flag(source.get(0).get("menuVerified"));
+        int score=0;
+        if(text(values,"businessPurpose").length()>=20)score+=5;
+        if(text(values,"entryCondition").length()>=10&&text(values,"exitCondition").length()>=20)score+=5;
+        if(!"[]".equals(text(values,"kpiContract")))score+=5;
+        if(!"[]".equals(text(values,"sectionContract"))&&!"[]".equals(text(values,"fieldContract")))score+=10;
+        if(!"[]".equals(text(values,"commandContract")))score+=5;
+        String states=text(values,"stateContract");
+        if(states.contains("LOADING")&&states.contains("EMPTY")&&states.contains("ERROR")&&states.contains("FORBIDDEN"))score+=10;
+        if(!"[]".equals(text(values,"apiContract"))&&!"[]".equals(text(values,"dataContract")))score+=5;
+        if(!"[]".equals(text(values,"evidenceContract")))score+=5;
+        if(menuVerified)score+=5;
+        if(flag(values.get("apiVerified")))score+=10;
+        if(flag(values.get("databaseVerified")))score+=5;
+        if(flag(values.get("authorityVerified")))score+=10;
+        if(flag(values.get("responsiveVerified")))score+=5;
+        if(flag(values.get("accessibilityVerified")))score+=5;
+        if(flag(values.get("exceptionStatesVerified")))score+=5;
+        if(!text(values,"auditEvidenceRef").isEmpty())score+=5;
+        List<String> gaps=new ArrayList<>();
+        if(!menuVerified)gaps.add("DB 메뉴·화면·권한 연결");
+        if("[]".equals(text(values,"apiContract"))||!flag(values.get("apiVerified")))gaps.add("실 API 검증");
+        if("[]".equals(text(values,"dataContract"))||!flag(values.get("databaseVerified")))gaps.add("DB 영속성 검증");
+        if(!flag(values.get("authorityVerified")))gaps.add("액터·테넌트 권한 검증");
+        if(!flag(values.get("responsiveVerified")))gaps.add("반응형 검증");
+        if(!flag(values.get("accessibilityVerified")))gaps.add("접근성 검증");
+        if(!flag(values.get("exceptionStatesVerified")))gaps.add("로딩·빈값·오류·권한없음 상태 검증");
+        if(text(values,"auditEvidenceRef").isEmpty())gaps.add("브라우저 E2E 증적");
+        Map<String,Object> readiness=new LinkedHashMap<>();
+        readiness.put("contractId",id);readiness.put("readinessScore",score);
+        readiness.put("readinessGaps",String.join(", ",gaps));
+        return readiness;
+    }
+
+    Map<String,Object> previewProfessionalScreenDesignGate(long id,Map<String,Object> values){
+        Map<String,Object> context=jdbc.queryForMap("""
+            select lower(split_part(c.route_path,'?',1)) as "routePath",
+                   g.actor_passed as "actorPassed",g.process_passed as "processPassed",
+                   g.lineage_passed as "lineagePassed",g.transition_passed as "transitionPassed",
+                   g.admin_counterpart_passed as "adminCounterpartPassed",g.test_passed as "testPassed",
+                   (select count(*) from framework_process_step_screen_binding binding
+                     where binding.screen_resource_id=r.screen_resource_id and binding.binding_status='ACTIVE') as "bindingCount"
+              from framework_professional_screen_contract c
+              join framework_screen_resource r on lower(split_part(c.route_path,'?',1))=r.route_key
+              join framework_page_design_assurance g using(screen_resource_id)
+             where c.contract_id=?
+            """,id);
+        List<Map<String,Object>> contracts=jdbc.queryForList("""
+            select contract_id as "contractId",business_purpose as "businessPurpose",
+                   entry_condition as "entryCondition",exit_condition as "exitCondition",
+                   section_contract as "sectionContract",field_contract as "fieldContract",
+                   command_contract as "commandContract",state_contract as "stateContract",
+                   data_contract as "dataContract",evidence_contract as "evidenceContract",
+                   authority_verified as "authorityVerified",exception_states_verified as "exceptionStatesVerified",
+                   audit_evidence_ref as "auditEvidenceRef"
+              from framework_professional_screen_contract
+             where lower(split_part(route_path,'?',1))=?
+             order by contract_id
+            """,context.get("routePath"));
+        List<Map<String,Object>> proposedContracts=new ArrayList<>();
+        for(Map<String,Object> contract:contracts){
+            Map<String,Object> proposed=new LinkedHashMap<>(contract);
+            if(((Number)contract.get("contractId")).longValue()==id)proposed.putAll(values);
+            proposedContracts.add(proposed);
+        }
+        int bindingCount=((Number)context.getOrDefault("bindingCount",0)).intValue();
+        long semanticCount=proposedContracts.stream().filter(contract->
+            text(contract,"businessPurpose").length()>=20&&text(contract,"entryCondition").length()>=10
+            &&text(contract,"exitCondition").length()>=10&&!"[]".equals(text(contract,"sectionContract"))
+            &&!"[]".equals(text(contract,"fieldContract"))&&!"[]".equals(text(contract,"commandContract"))).count();
+        boolean contractPassed=proposedContracts.size()>=bindingCount&&semanticCount>=bindingCount;
+        boolean authorityPassed=!proposedContracts.isEmpty()&&proposedContracts.stream().allMatch(contract->flag(contract.get("authorityVerified")));
+        boolean versionPassed=!proposedContracts.isEmpty()&&proposedContracts.stream().allMatch(contract->
+            !text(contract,"auditEvidenceRef").isEmpty()&&(text(contract,"dataContract").toLowerCase(Locale.ROOT).contains("version")
+                ||text(contract,"evidenceContract").toLowerCase(Locale.ROOT).contains("version")));
+        boolean exceptionPassed=!proposedContracts.isEmpty()&&proposedContracts.stream().allMatch(contract->
+            flag(contract.get("exceptionStatesVerified"))&&text(contract,"stateContract").contains("ERROR")
+                &&text(contract,"stateContract").contains("FORBIDDEN"));
+        LinkedHashMap<String,Boolean> checks=new LinkedHashMap<>();
+        checks.put("ACTOR_BINDING_MISSING",flag(context.get("actorPassed")));
+        checks.put("PROCESS_STEP_MISSING",flag(context.get("processPassed")));
+        checks.put("PROFESSIONAL_CONTRACT_INCOMPLETE",contractPassed);
+        checks.put("INPUT_OUTPUT_LINEAGE_INCOMPLETE",flag(context.get("lineagePassed")));
+        checks.put("STATE_TRANSITION_INCOMPLETE",flag(context.get("transitionPassed")));
+        checks.put("AUTHORITY_NOT_VERIFIED",authorityPassed);
+        checks.put("VERSION_AUDIT_CONTRACT_MISSING",versionPassed);
+        checks.put("EXCEPTION_RECOVERY_NOT_VERIFIED",exceptionPassed);
+        checks.put("ADMIN_COUNTERPART_MISSING",flag(context.get("adminCounterpartPassed")));
+        checks.put("INDEPENDENT_TEST_COVERAGE_INCOMPLETE",flag(context.get("testPassed")));
+        int score=(int)checks.values().stream().filter(Boolean::booleanValue).count()*10;
+        String issues=String.join(", ",checks.entrySet().stream().filter(entry->!entry.getValue()).map(Map.Entry::getKey).toList());
+        return Map.of("status",score==100?"PASSED":"FAILED","score",score,"issues",issues);
+    }
+
+    private static boolean flag(Object value){
+        return value instanceof Boolean result?result:Boolean.parseBoolean(String.valueOf(value));
+    }
+
+    private static String text(Map<String,Object> values,String key){
+        Object value=values.get(key);return value==null?"":String.valueOf(value).trim();
     }
 
     static boolean isSupportedProfessionalContractStatus(String status) {
@@ -2992,6 +3152,13 @@ public class ActorProcessGovernanceService {
     }
 
     @Transactional public Map<String,Object> executeProcessCommand(UUID executionId,Map<String,Object>b,String user){
+        Map<String,Object> preconditions=resolveProcessCommandPreconditions(executionId,b,user);
+        if(preconditions.containsKey("replay"))return (Map<String,Object>)preconditions.get("replay");
+        return commitProcessCommand(executionId,b,user,preconditions);
+    }
+
+    private Map<String,Object> resolveProcessCommandPreconditions(
+            UUID executionId,Map<String,Object>b,String user){
         String tenant=req(b,"tenantId"),project=req(b,"projectId"),process=req(b,"processCode"),step=req(b,"stepCode"),actor=req(b,"actorCode"),command=req(b,"commandCode"),key=req(b,"idempotencyKey");
         List<Map<String,Object>> executions=jdbc.queryForList("select * from framework_process_execution where execution_id=? for update",executionId);
         if(executions.isEmpty())throw new IllegalArgumentException("프로세스 실행 건이 없습니다.");
@@ -3004,7 +3171,7 @@ public class ActorProcessGovernanceService {
             replay.put("success",true);replay.put("idempotent",true);
             replay.put("eventId",event.get("eventId"));replay.put("toState",event.get("toState"));
             replay.put("event",event);
-            return replay;
+            return Map.of("replay",replay);
         }
         requireActorAssignment(tenant,project,actor,user);
         if(!step.equals(String.valueOf(execution.get("current_step_code"))))throw new IllegalStateException("현재 실행 단계는 "+execution.get("current_step_code")+"입니다.");
@@ -3044,12 +3211,29 @@ public class ActorProcessGovernanceService {
             if(!missingFields.isEmpty())throw new IllegalStateException("Required work fields are missing: "+String.join(", ",missingFields));
             assertRelayPrerequisitesReady(tenant,project,process,step);
         }
-        Long eventId=jdbc.queryForObject("insert into framework_process_execution_event(execution_id,step_code,actor_code,command_code,from_state,to_state,idempotency_key,request_json,result_json,executed_by) values(?,?,?,?,?,?,?,?,?,?) returning event_id",Long.class,executionId,step,actor,command,from,to,key,def(b,"requestJson","{}"),def(b,"resultJson","{}"),user);
         int order=((Number)contract.get("step_order")).intValue();
         List<Map<String,Object>> next=jdbc.queryForList("select step_code,actor_code,user_path,admin_path from framework_process_step where process_code=? and step_code<>? and from_state=? order by case when step_order>? then 0 else 1 end,step_order limit 1",process,step,to,order);
-        String snapshotRef=def(b,"snapshotRef","");
         List<Map<String,Object>> policies=jdbc.queryForList("select completion_type,snapshot_required from framework_step_completion_policy where process_code=? and step_code=? and use_at='Y'",process,step);
-        if(!policies.isEmpty()&&Boolean.TRUE.equals(policies.get(0).get("snapshot_required"))&&snapshotRef.isBlank())
+        Map<String,Object> resolved=new LinkedHashMap<>();
+        resolved.put("tenant",tenant);resolved.put("project",project);resolved.put("process",process);
+        resolved.put("step",step);resolved.put("actor",actor);resolved.put("command",command);resolved.put("key",key);
+        resolved.put("from",from);resolved.put("to",to);resolved.put("execution",execution);
+        resolved.put("next",next);resolved.put("snapshotRequired",!policies.isEmpty()&&Boolean.TRUE.equals(policies.get(0).get("snapshot_required")));
+        return resolved;
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<String,Object> commitProcessCommand(
+            UUID executionId,Map<String,Object>b,String user,Map<String,Object> preconditions){
+        String tenant=String.valueOf(preconditions.get("tenant")),project=String.valueOf(preconditions.get("project"));
+        String process=String.valueOf(preconditions.get("process")),step=String.valueOf(preconditions.get("step"));
+        String actor=String.valueOf(preconditions.get("actor")),command=String.valueOf(preconditions.get("command"));
+        String key=String.valueOf(preconditions.get("key")),from=String.valueOf(preconditions.get("from")),to=String.valueOf(preconditions.get("to"));
+        Map<String,Object> execution=(Map<String,Object>)preconditions.get("execution");
+        List<Map<String,Object>> next=(List<Map<String,Object>>)preconditions.get("next");
+        Long eventId=jdbc.queryForObject("insert into framework_process_execution_event(execution_id,step_code,actor_code,command_code,from_state,to_state,idempotency_key,request_json,result_json,executed_by) values(?,?,?,?,?,?,?,?,?,?) returning event_id",Long.class,executionId,step,actor,command,from,to,key,def(b,"requestJson","{}"),def(b,"resultJson","{}"),user);
+        String snapshotRef=def(b,"snapshotRef","");
+        if(Boolean.TRUE.equals(preconditions.get("snapshotRequired"))&&snapshotRef.isBlank())
             snapshotRef=executionId+":"+step+":"+eventId;
         if(next.isEmpty())jdbc.update("update framework_process_execution set current_state=?,execution_status='COMPLETED',handoff_status='HANDED_OFF',snapshot_ref=nullif(?,''),completed_at=current_timestamp,updated_at=current_timestamp where execution_id=?",to,snapshotRef,executionId);
         else jdbc.update("update framework_process_execution set current_step_code=?,current_state=?,handoff_status='HANDED_OFF',snapshot_ref=nullif(?,''),updated_at=current_timestamp where execution_id=?",String.valueOf(next.get(0).get("step_code")),to,snapshotRef,executionId);
@@ -3061,6 +3245,60 @@ public class ActorProcessGovernanceService {
         result.put("nextActorCode",next.isEmpty()?"":String.valueOf(next.get(0).get("actor_code")));result.put("nextUserPath",next.isEmpty()?"":String.valueOf(next.get(0).get("user_path")));
         result.put("nextAdminPath",next.isEmpty()?"":String.valueOf(next.get(0).get("admin_path")));result.put("handoffStatus","HANDED_OFF");result.put("snapshotRef",snapshotRef);
         result.putAll(nextProcess);return result;
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<String,Object> predictProcessCommandResult(
+            UUID executionId,Map<String,Object>b,Map<String,Object> preconditions){
+        List<Map<String,Object>> next=(List<Map<String,Object>>)preconditions.get("next");
+        String step=String.valueOf(preconditions.get("step"));
+        String snapshotRef=def(b,"snapshotRef","");
+        Map<String,Object> result=new LinkedHashMap<>();
+        result.put("success",true);result.put("idempotent",false);
+        result.put("fromState",preconditions.get("from"));result.put("toState",preconditions.get("to"));
+        result.put("executionStatus",next.isEmpty()?"COMPLETED":"RUNNING");
+        result.put("nextStepCode",next.isEmpty()?"":String.valueOf(next.get(0).get("step_code")));
+        result.put("nextActorCode",next.isEmpty()?"":String.valueOf(next.get(0).get("actor_code")));
+        result.put("nextUserPath",next.isEmpty()?"":String.valueOf(next.get(0).get("user_path")));
+        result.put("nextAdminPath",next.isEmpty()?"":String.valueOf(next.get(0).get("admin_path")));
+        result.put("handoffStatus","HANDED_OFF");result.put("snapshotRef",snapshotRef);
+        result.put("snapshotRequired",preconditions.get("snapshotRequired"));
+        result.put("predictedEventRef",executionId+":"+step+":<allocated-on-commit>");
+        if(next.isEmpty())result.putAll(predictChainedProcess(preconditions));
+        return result;
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<String,Object> predictChainedProcess(Map<String,Object> preconditions){
+        String tenant=String.valueOf(preconditions.get("tenant")),project=String.valueOf(preconditions.get("project"));
+        String completedProcess=String.valueOf(preconditions.get("process"));
+        Map<String,Object> completedExecution=(Map<String,Object>)preconditions.get("execution");
+        List<Map<String,Object>> chain=jdbc.queryForList("select next_process_code from framework_process_chain where process_code=? and use_at='Y' and auto_start_yn='Y' and nullif(next_process_code,'') is not null order by process_order limit 1",completedProcess);
+        if(chain.isEmpty())return Map.of("relayCompleted",true);
+        String nextProcess=String.valueOf(chain.get(0).get("next_process_code"));
+        List<Map<String,Object>> firstSteps=jdbc.queryForList("select step_code,actor_code,from_state,user_path,admin_path from framework_process_step where process_code=? order by step_order limit 1",nextProcess);
+        if(firstSteps.isEmpty())throw new IllegalStateException("다음 프로세스 단계가 없습니다: "+nextProcess);
+        int relayExecutionVersion=((Number)completedExecution.getOrDefault("execution_version",1)).intValue();
+        List<Map<String,Object>> active=jdbc.queryForList("select execution_id,current_step_code from framework_process_execution where tenant_id=? and project_id=? and process_code=? and execution_version=? and execution_status='RUNNING' order by started_at desc limit 1",tenant,project,nextProcess,relayExecutionVersion);
+        Map<String,Object> relayStep=firstSteps.get(0);
+        Object nextExecutionId="";
+        if(!active.isEmpty()){
+            Map<String,Object> activeExecution=active.get(0);
+            nextExecutionId=activeExecution.get("execution_id");
+            String activeStepCode=String.valueOf(activeExecution.get("current_step_code"));
+            relayStep=jdbc.queryForList("select step_code,actor_code,from_state,user_path,admin_path from framework_process_step where process_code=? and step_code=?",nextProcess,activeStepCode)
+                    .stream().findFirst().orElseThrow(()->new IllegalStateException("활성 다음 프로세스의 현재 단계 계약이 없습니다: "+nextProcess+"/"+activeStepCode));
+        }
+        assertRelayPrerequisitesReady(tenant,project,nextProcess,String.valueOf(relayStep.get("step_code")));
+        Map<String,Object> prediction=new LinkedHashMap<>();
+        prediction.put("nextProcessCode",nextProcess);prediction.put("nextProcessExecutionId",nextExecutionId);
+        prediction.put("nextProcessExecutionPending",active.isEmpty());
+        prediction.put("nextProcessStepCode",String.valueOf(relayStep.get("step_code")));
+        prediction.put("nextProcessActorCode",String.valueOf(relayStep.get("actor_code")));
+        prediction.put("nextProcessUserPath",String.valueOf(relayStep.get("user_path")));
+        prediction.put("nextProcessAdminPath",String.valueOf(relayStep.get("admin_path")));
+        prediction.put("relayCompleted",false);
+        return prediction;
     }
     private Map<String,Object> startChainedProcess(String tenant,String project,String completedProcess,Map<String,Object> completedExecution,String user){
         List<Map<String,Object>> chain=jdbc.queryForList("select next_process_code from framework_process_chain where process_code=? and use_at='Y' and auto_start_yn='Y' and nullif(next_process_code,'') is not null order by process_order limit 1",completedProcess);
@@ -3102,19 +3340,21 @@ public class ActorProcessGovernanceService {
 
 
     /**
-     * Runs the same command path used by customer screens, but resolves the account
+     * Runs the same command checks used by customer screens, but resolves the account
      * assigned to the current step instead of trusting a control-plane supplied
-     * account id. Validation is always rolled back; advancement is committed.
+     * account id. Validation returns before event-id allocation or any DML; advancement
+     * continues through the canonical committed command path.
      */
     @Transactional
     public Map<String,Object> validateProcessCommandFromControlPlane(
             UUID executionId, Map<String,Object> options, String operator) {
         Map<String,Object> context=controlPlaneExecutionCommand(executionId,options);
-        Map<String,Object> result=executeProcessCommand(
-                executionId,
-                (Map<String,Object>)context.get("request"),
-                String.valueOf(context.get("accountId")));
-        TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
+        Map<String,Object> request=(Map<String,Object>)context.get("request");
+        Map<String,Object> preconditions=resolveProcessCommandPreconditions(
+                executionId,request,String.valueOf(context.get("accountId")));
+        Map<String,Object> result=preconditions.containsKey("replay")
+                ? new LinkedHashMap<>((Map<String,Object>)preconditions.get("replay"))
+                : predictProcessCommandResult(executionId,request,preconditions);
         Map<String,Object> response=new LinkedHashMap<>(result);
         response.put("success",true);
         response.put("validated",true);
@@ -3122,6 +3362,8 @@ public class ActorProcessGovernanceService {
         response.put("operator",operator);
         response.put("accountId",context.get("accountId"));
         response.put("executionId",executionId);
+        response.put("mutationScope","READ_ONLY_VALIDATION");
+        response.put("databaseCurrentWrites",0);
         return response;
     }
 

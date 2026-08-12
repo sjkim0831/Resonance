@@ -256,12 +256,20 @@ unset FAIL_HEALTH
   exit 1
 }
 
+expect_failure unverified-failed-clear run_checkpoint clear-failed
+[[ -s "$checkpoint" ]] || exit 1
+export CARBONET_CHECKPOINT_FAILURE_RECOVERY_VERIFIED=true
+run_checkpoint clear-failed
+unset CARBONET_CHECKPOINT_FAILURE_RECOVERY_VERIFIED
+[[ ! -e "$checkpoint" ]] || exit 1
+
 if [[ "${CHECKPOINT_TEST_SKIP_STATIC_SOURCE_ASSERTIONS:-false}" != "true" ]]; then
   grep -Fq 'run_runtime_candidate_checkpoint verify' "$AUTO_DEPLOY"
   grep -Fq 'run_runtime_candidate_checkpoint mark-ready' "$AUTO_DEPLOY"
   grep -Fq 'run_runtime_candidate_checkpoint clear-success' "$AUTO_DEPLOY"
+  grep -Fq 'run_runtime_candidate_checkpoint clear-failed' "$AUTO_DEPLOY"
   grep -Fq 'CARBONET_TARGET_COMMIT="$target_commit"' "$AUTO_DEPLOY"
   grep -Fq 'resonance.ai/target-commit=$target_commit_annotation' "$BUILD_DEPLOY"
 fi
 
-echo '[runtime-checkpoint-test] PASS exact target/image/release/generation/replicas/health/assets/migrations are fail-closed; atomic lifecycle preserves failures and clears success'
+echo '[runtime-checkpoint-test] PASS exact target/image/release/generation/replicas/health/assets/migrations are fail-closed; atomic lifecycle preserves failures and clears verified success/failure'

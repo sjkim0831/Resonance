@@ -26,12 +26,15 @@ changed=false
 
 rollback() {
   local exit_code=$?
-  if [[ "$changed" == "true" && "$exit_code" -ne 0 ]]; then
+  if [[ "$changed" == "true" && "$exit_code" -ne 0 \
+     && "${DEFER_ROLLBACK_TO_ATTEMPT_RECONCILER:-false}" != true ]]; then
     echo "[startup-profile] validation failed; restoring previous JVM profile" >&2
     kubectl -n "$namespace" set env "deployment/$deployment" \
       "JAVA_OPTS=$old_java_opts" >/dev/null
     kubectl -n "$namespace" rollout status "deployment/$deployment" \
       --timeout=180s >/dev/null || true
+  elif [[ "$changed" == "true" && "$exit_code" -ne 0 ]]; then
+    echo "[startup-profile] validation failed; durable attempt reconciler owns rollback" >&2
   fi
   exit "$exit_code"
 }
@@ -62,4 +65,3 @@ CARBONET_DEPLOY_ROOT="$root" \
 changed=false
 trap - EXIT
 echo "[startup-profile] PASS deployment=$deployment health=UP rollback=armed validation=complete"
-

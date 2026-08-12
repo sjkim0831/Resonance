@@ -4,13 +4,14 @@ set -Eeuo pipefail
 ROOT="${1:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
 MIGRATION="$ROOT/apps/carbonet-api/src/main/resources/db/migration/postgresql/V20260812023000__stage_and_atomically_promote_postdeploy_evidence.sql"
 SCOPE_AUDIT_MIGRATION="$ROOT/apps/carbonet-api/src/main/resources/db/migration/postgresql/V20260812033000__harden_scope_access_audit_append_only.sql"
+LIFECYCLE_MIGRATION="$ROOT/apps/carbonet-api/src/main/resources/db/migration/postgresql/V20260812080000__bind_postdeploy_attempt_lifecycle.sql"
 NAMESPACE="${CARBONET_K8S_NAMESPACE:-carbonet-prod}"
 DATABASE="${POSTGRES_DB:-carbonet}"
 DATABASE_USER="${POSTGRES_ADMIN_USER:-postgres}"
 CONTAINER="${CARBONET_POSTGRES_CONTAINER:-patroni}"
 SOURCE_COMMIT="${POSTDEPLOY_CANDIDATE_TEST_COMMIT:-$(git -C "$ROOT" rev-parse HEAD)}"
 [[ "$SOURCE_COMMIT" =~ ^[0-9a-f]{40}$ ]]
-[[ -s "$MIGRATION" && -s "$SCOPE_AUDIT_MIGRATION" ]]
+[[ -s "$MIGRATION" && -s "$SCOPE_AUDIT_MIGRATION" && -s "$LIFECYCLE_MIGRATION" ]]
 leader="${RESONANCE_POSTGRES_LEADER_POD:-$(K8S_NAMESPACE="$NAMESPACE" bash "$ROOT/ops/scripts/resolve-patroni-primary-pod.sh")}"
 [[ -n "$leader" ]]
 
@@ -18,8 +19,22 @@ leader="${RESONANCE_POSTGRES_LEADER_POD:-$(K8S_NAMESPACE="$NAMESPACE" bash "$ROO
 printf '%s\n' "BEGIN;" "SET LOCAL lock_timeout='5s';" "SET LOCAL statement_timeout='120s';"
 cat "$MIGRATION"
 cat "$SCOPE_AUDIT_MIGRATION"
+cat "$LIFECYCLE_MIGRATION"
 cat <<'SQL'
 SELECT set_config('resonance.postdeploy_test_commit',:'source_commit',false);
+
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM pg_proc proc
+    CROSS JOIN LATERAL aclexplode(coalesce(proc.proacl,acldefault('f',proc.proowner))) acl
+    WHERE proc.oid='framework_promote_postdeploy_evidence_candidate_v1(varchar,varchar,varchar)'::regprocedure
+      AND acl.privilege_type='EXECUTE' AND acl.grantee<>proc.proowner
+  ) THEN
+    RAISE EXCEPTION 'internal v1 promoter remains executable outside its owner';
+  END IF;
+END
+$$;
 
 INSERT INTO framework_runtime_release_state(
   release_key,source_commit,deployment_namespace,deployment_name,deployment_uid,
@@ -81,6 +96,12 @@ INSERT INTO postdeploy_units VALUES
  ('REPORT_CERTIFICATION_RUNTIME','REPORT_CERTIFICATION','RUNTIME'),
  ('REPORT_CERTIFICATION_STATIC','REPORT_CERTIFICATION','STATIC'),
  ('SCREEN_CONTRACT_RUNTIME_SAVE_PREVIEW','__RELEASE__','RELEASE_GATE');
+
+SELECT framework_stage_postdeploy_release_attempt(candidate_id,current_setting('resonance.postdeploy_test_commit'))
+FROM (VALUES
+  ('candidate-test-split-a'),('candidate-test-split-b'),('candidate-test-complete'),
+  ('candidate-test-retry-complete'),('candidate-test-reduced-hash')
+) attempt(candidate_id);
 
 -- Candidate audit evidence is bound to the V330 authoritative row. Explicit
 -- ids avoid advancing the non-transactional production sequence in this
@@ -300,6 +321,19 @@ $$;
 
 CREATE TEMP TABLE promoted_once_digest AS SELECT pg_temp.postdeploy_current_digest() digest;
 
+DO $$
+DECLARE canonical framework_postdeploy_release_attempt%ROWTYPE;
+BEGIN
+  SELECT * INTO canonical FROM framework_postdeploy_release_attempt
+   WHERE candidate_id='candidate-test-complete';
+  IF canonical.attempt_status<>'PROMOTED'
+     OR canonical.runtime_identity_hash<>pg_temp.postdeploy_runtime_identity_hash()
+     OR canonical.promotion_id IS NULL OR canonical.terminal_reason<>'PROMOTION_COMMITTED' THEN
+    RAISE EXCEPTION 'canonical attempt lifecycle was not atomically promoted';
+  END IF;
+END
+$$;
+
 -- The same candidate and a different attempt id for the same commit are both
 -- idempotent.  The canonical first candidate remains authoritative and no
 -- second validation, simulation, event, or promotion row can be appended.
@@ -318,6 +352,12 @@ BEGIN
      OR retry_replay->>'candidateId'<>'candidate-test-complete'
      OR retry_replay->>'requestedCandidateId'<>'candidate-test-retry-complete' THEN
     RAISE EXCEPTION 'different candidate retry did not reconcile to canonical promotion: %',retry_replay;
+  END IF;
+  IF (SELECT attempt_status FROM framework_postdeploy_release_attempt
+      WHERE candidate_id='candidate-test-retry-complete')<>'ABORTED'
+     OR (SELECT terminal_reason FROM framework_postdeploy_release_attempt
+         WHERE candidate_id='candidate-test-retry-complete')<>'RECONCILED_TO_EXISTING_SOURCE_PROMOTION' THEN
+    RAISE EXCEPTION 'same-source retry attempt was not terminally reconciled';
   END IF;
   IF (SELECT digest FROM promoted_once_digest)<>pg_temp.postdeploy_current_digest() THEN
     RAISE EXCEPTION 'same-commit retry appended duplicate current evidence';
@@ -339,8 +379,35 @@ BEGIN
 END
 $$;
 
+DO $$
+DECLARE aborted jsonb; replay jsonb; rejected boolean:=false;
+BEGIN
+  PERFORM framework_stage_postdeploy_release_attempt('candidate-test-abort-cas',repeat('9',40));
+  aborted:=framework_abort_postdeploy_release_attempt(
+    'candidate-test-abort-cas',repeat('9',40),NULL,'VALIDATION_FAILED');
+  replay:=framework_abort_postdeploy_release_attempt(
+    'candidate-test-abort-cas',repeat('9',40),NULL,'VALIDATION_FAILED');
+  IF aborted->>'status'<>'ABORTED' OR replay<>aborted THEN
+    RAISE EXCEPTION 'attempt abort exact replay mismatch';
+  END IF;
+  BEGIN
+    PERFORM framework_abort_postdeploy_release_attempt(
+      'candidate-test-abort-cas',repeat('9',40),NULL,'OTHER_FAILURE');
+  EXCEPTION WHEN OTHERS THEN rejected:=true;
+  END;
+  IF NOT rejected THEN RAISE EXCEPTION 'divergent abort CAS unexpectedly succeeded'; END IF;
+  rejected:=false;
+  BEGIN
+    UPDATE framework_postdeploy_release_attempt SET terminal_reason='MUTATED'
+    WHERE candidate_id='candidate-test-complete';
+  EXCEPTION WHEN OTHERS THEN rejected:=true;
+  END;
+  IF NOT rejected THEN RAISE EXCEPTION 'terminal attempt mutation unexpectedly succeeded'; END IF;
+END
+$$;
+
 ROLLBACK;
-\echo POSTDEPLOY_CANDIDATE_POSTGRES_PASS units=12 processes=6 failedCandidates=3 reducedRowHashRejected=1 currentMutation=rollback-only simulationsFabricated=0 staleRejected=1 retryDifferentCandidate=1 runtimeIdentityBound=1
+\echo POSTDEPLOY_CANDIDATE_POSTGRES_PASS units=12 processes=6 failedCandidates=3 reducedRowHashRejected=1 currentMutation=rollback-only simulationsFabricated=0 staleRejected=1 retryDifferentCandidate=1 runtimeIdentityBound=1 lifecycleCAS=STAGED_PROMOTED_ABORTED internalV1Execute=ownerOnly
 SQL
 } | kubectl -n "$NAMESPACE" exec -i "$leader" -c "$CONTAINER" -- \
   psql -h 127.0.0.1 -U "$DATABASE_USER" -d "$DATABASE" -X -v ON_ERROR_STOP=1 \

@@ -3,6 +3,7 @@ package egovframework.com.platform.governance.service;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -13,17 +14,30 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeSet;
 
 @Service
 public class ScreenContractRuntimeService {
     private static final Set<String> REQUIRED_LAYERS = Set.of(
         "screen", "data", "ui", "action", "process", "permission", "test", "operations"
     );
+    private static final Set<String> PROFESSIONAL_PREDICTION_FIELDS = Set.of(
+        "businessPurpose", "entryCondition", "exitCondition", "sectionContract", "fieldContract",
+        "commandContract", "stateContract", "apiContract", "dataContract", "evidenceContract",
+        "responsiveContract", "accessibilityContract", "securityContract", "apiVerified",
+        "databaseVerified", "authorityVerified", "responsiveVerified", "accessibilityVerified",
+        "exceptionStatesVerified", "auditEvidenceRef", "contractStatus"
+    );
     private final JdbcTemplate jdbc;
     private final ObjectMapper mapper;
 
+    @Autowired
     public ScreenContractRuntimeService(DataSource dataSource, ObjectMapper mapper) {
-        this.jdbc = new JdbcTemplate(dataSource);
+        this(new JdbcTemplate(dataSource), mapper);
+    }
+
+    ScreenContractRuntimeService(JdbcTemplate jdbc, ObjectMapper mapper) {
+        this.jdbc = jdbc;
         this.mapper = mapper;
     }
 
@@ -82,62 +96,11 @@ public class ScreenContractRuntimeService {
 
     @Transactional
     public Map<String,Object> publishProfessionalContract(long contractId, String actor) {
-        List<Map<String,Object>> source = jdbc.queryForList("""
-            select c.process_code as "processCode",c.step_code as "stepCode",c.audience,
-                   lower(split_part(c.route_path,'?',1)) as "routePath",
-                   jsonb_build_object(
-                     'schemaVersion','1.0',
-                     'screen',jsonb_build_object(
-                       'screenKey',upper(c.process_code||'__'||c.step_code||'__'||c.audience),
-                       'name',c.screen_name,'route',lower(split_part(c.route_path,'?',1)),
-                       'audience',c.audience),
-                     'data',jsonb_build_object(
-                       'fields',framework_try_jsonb(c.field_contract),
-                       'contract',framework_try_jsonb(c.data_contract)),
-                     'ui',jsonb_build_object(
-                       'sections',framework_try_jsonb(c.section_contract),
-                       'responsive',c.responsive_contract,
-                       'accessibility',c.accessibility_contract),
-                     'action',jsonb_build_object(
-                       'commands',framework_try_jsonb(c.command_contract),
-                       'apis',framework_try_jsonb(c.api_contract)),
-                     'process',jsonb_build_object(
-                       'processCode',c.process_code,'stepCode',c.step_code,
-                       'entryCondition',c.entry_condition,'exitCondition',c.exit_condition,
-                       'states',framework_try_jsonb(c.state_contract)),
-                     'permission',jsonb_build_object(
-                       'actorCode',c.actor_code,'audience',c.audience,
-                       'security',c.security_contract),
-                     'test',jsonb_build_object(
-                       'evidence',framework_try_jsonb(c.evidence_contract),
-                       'apiVerified',c.api_verified,'databaseVerified',c.database_verified,
-                       'authorityVerified',c.authority_verified,
-                       'responsiveVerified',c.responsive_verified,
-                       'accessibilityVerified',c.accessibility_verified,
-                       'exceptionStatesVerified',c.exception_states_verified),
-                     'operations',jsonb_build_object(
-                       'contractStatus',c.contract_status,'auditEvidenceRef',c.audit_evidence_ref,
-                       'publicationSource','DESIGN_SAVE')
-                   )::text as "payload"
-              from framework_professional_screen_contract c
-             where c.contract_id=?
-             for update
-            """, contractId);
-        if (source.isEmpty()) throw new IllegalArgumentException("Screen design contract not found: " + contractId);
-        Map<String,Object> row = source.get(0);
-        String payload = String.valueOf(row.get("payload"));
-        Map<String,Object> contract = json(payload);
-        validateContract(contract);
-        String hash = jdbc.queryForObject("select md5((?::jsonb)::text)", String.class, payload);
-        List<Map<String,Object>> active = jdbc.queryForList("""
-            select b.screen_key as "screenKey",v.version_id as "versionId",v.version_no as "versionNo",
-                   v.contract_hash as "contractHash"
-              from framework_screen_contract_binding b
-              left join framework_screen_contract_version v on v.version_id=b.active_version_id
-             where b.contract_id=?
-             order by b.screen_key
-             for update of b
-            """, contractId);
+        PreparedProfessionalContract prepared = prepareProfessionalContract(contractId, Map.of(), true);
+        Map<String,Object> row = prepared.source();
+        String payload = prepared.payload();
+        String hash = prepared.hash();
+        List<Map<String,Object>> active = activeProfessionalContractBindings(contractId, true);
         if (active.isEmpty()) {
             String stableKey = stableScreenKey(row, contractId);
             jdbc.update("""
@@ -149,15 +112,10 @@ public class ScreenContractRuntimeService {
         }
         Map<String,Object> current = active.get(0);
         if (hash != null && hash.equals(current.get("contractHash"))) {
-            Map<String,Object> unchanged = new LinkedHashMap<>();
-            unchanged.put("published",false);unchanged.put("reason","UNCHANGED");unchanged.put("contractId",contractId);
-            unchanged.put("versionId",current.get("versionId"));unchanged.put("versionNo",current.get("versionNo"));
-            unchanged.put("bindingCount",active.size());unchanged.put("contractHash",hash);
-            return unchanged;
+            return publicationResult(false, "UNCHANGED", contractId, current.get("versionId"),
+                current.get("versionNo"), active.size(), hash, false);
         }
-        List<Map<String,Object>> historical = jdbc.queryForList(
-            "select version_id as \"versionId\",version_no as \"versionNo\" from framework_screen_contract_version where contract_id=? and contract_hash=? order by version_no desc limit 1",
-            contractId, hash);
+        List<Map<String,Object>> historical = historicalProfessionalContractVersions(contractId, hash);
         int next;
         long versionId;
         String publicationReason;
@@ -189,9 +147,187 @@ public class ScreenContractRuntimeService {
             select screen_key,'PUBLISH',previous_version_id,?, ?,jsonb_build_object('source','DESIGN_SAVE','contractId',?)
               from framework_screen_contract_binding where contract_id=?
             """, versionId, actor, contractId, contractId);
-        return Map.of("published",true,"reason",publicationReason,"contractId",contractId,
-            "versionId",versionId,"versionNo",next,"bindingCount",active.size(),"contractHash",hash);
+        return publicationResult(true, publicationReason, contractId, versionId, next,
+            active.size(), hash, false);
     }
+
+    /**
+     * Builds and validates the exact production runtime payload, then predicts
+     * publication from current bindings and version history without acquiring
+     * write locks or executing INSERT, UPDATE, DELETE, or nextval.
+     */
+    @Transactional(readOnly = true)
+    public Map<String,Object> predictProfessionalContract(long contractId, Map<String,Object> proposedValues) {
+        Map<String,Object> validatedValues = validateProfessionalPredictionValues(proposedValues);
+        PreparedProfessionalContract prepared = prepareProfessionalContract(contractId, validatedValues, false);
+        String hash = prepared.hash();
+        List<Map<String,Object>> active = activeProfessionalContractBindings(contractId, false);
+        if (active.isEmpty()) {
+            Map<String,Object> synthetic = new LinkedHashMap<>();
+            synthetic.put("screenKey", stableScreenKey(prepared.source(), contractId));
+            synthetic.put("versionId", null);
+            synthetic.put("versionNo", null);
+            synthetic.put("contractHash", null);
+            active = List.of(synthetic);
+        }
+        Map<String,Object> current = active.get(0);
+        if (hash != null && hash.equals(current.get("contractHash"))) {
+            return publicationResult(false, "UNCHANGED", contractId, current.get("versionId"),
+                current.get("versionNo"), active.size(), hash, true);
+        }
+        List<Map<String,Object>> historical = historicalProfessionalContractVersions(contractId, hash);
+        if (!historical.isEmpty()) {
+            Map<String,Object> reusable = historical.get(0);
+            return publicationResult(true, "HISTORICAL_VERSION_REUSED", contractId,
+                reusable.get("versionId"), reusable.get("versionNo"), active.size(), hash, true);
+        }
+        Integer next = jdbc.queryForObject(
+            "select coalesce(max(version_no),0)+1 from framework_screen_contract_version where contract_id=?",
+            Integer.class, contractId);
+        return publicationResult(true, "DESIGN_CHANGED", contractId, null, next,
+            active.size(), hash, true);
+    }
+
+    private static Map<String,Object> validateProfessionalPredictionValues(Map<String,Object> proposedValues) {
+        if (proposedValues == null || proposedValues.isEmpty()) return Map.of();
+        Set<String> unsupported = new TreeSet<>();
+        for (String key : proposedValues.keySet()) {
+            if (key == null || !PROFESSIONAL_PREDICTION_FIELDS.contains(key)) {
+                unsupported.add(String.valueOf(key));
+            }
+        }
+        if (!unsupported.isEmpty()) {
+            throw new IllegalArgumentException("Unsupported professional contract prediction fields: "
+                + String.join(", ", unsupported));
+        }
+        return new LinkedHashMap<>(proposedValues);
+    }
+
+    private PreparedProfessionalContract prepareProfessionalContract(
+            long contractId, Map<String,Object> proposedValues, boolean lockForPublish) {
+        String sql = """
+            select c.process_code as "processCode",c.step_code as "stepCode",c.audience,
+                   lower(split_part(c.route_path,'?',1)) as "routePath",c.screen_name as "screenName",
+                   c.actor_code as "actorCode",c.business_purpose as "businessPurpose",
+                   c.entry_condition as "entryCondition",c.exit_condition as "exitCondition",
+                   c.section_contract as "sectionContract",c.field_contract as "fieldContract",
+                   c.command_contract as "commandContract",c.state_contract as "stateContract",
+                   c.api_contract as "apiContract",c.data_contract as "dataContract",
+                   c.evidence_contract as "evidenceContract",c.responsive_contract as "responsiveContract",
+                   c.accessibility_contract as "accessibilityContract",c.security_contract as "securityContract",
+                   c.api_verified as "apiVerified",c.database_verified as "databaseVerified",
+                   c.authority_verified as "authorityVerified",c.responsive_verified as "responsiveVerified",
+                   c.accessibility_verified as "accessibilityVerified",
+                   c.exception_states_verified as "exceptionStatesVerified",
+                   c.audit_evidence_ref as "auditEvidenceRef",c.contract_status as "contractStatus"
+              from framework_professional_screen_contract c
+             where c.contract_id=?
+            """ + (lockForPublish ? " for update" : "");
+        List<Map<String,Object>> source = jdbc.queryForList(sql, contractId);
+        if (source.isEmpty()) throw new IllegalArgumentException("Screen design contract not found: " + contractId);
+        Map<String,Object> row = new LinkedHashMap<>(source.get(0));
+        if (proposedValues != null) row.putAll(proposedValues);
+
+        Map<String,Object> contract = new LinkedHashMap<>();
+        contract.put("schemaVersion", "1.0");
+        contract.put("screen", linkedMap(
+            "screenKey", text(row, "processCode").toUpperCase(Locale.ROOT) + "__"
+                + text(row, "stepCode").toUpperCase(Locale.ROOT) + "__"
+                + text(row, "audience").toUpperCase(Locale.ROOT),
+            "name", row.get("screenName"), "route", row.get("routePath"), "audience", row.get("audience")));
+        contract.put("data", linkedMap(
+            "fields", jsonValue(text(row, "fieldContract")),
+            "contract", jsonValue(text(row, "dataContract"))));
+        contract.put("ui", linkedMap(
+            "sections", jsonValue(text(row, "sectionContract")),
+            "responsive", row.get("responsiveContract"), "accessibility", row.get("accessibilityContract")));
+        contract.put("action", linkedMap(
+            "commands", jsonValue(text(row, "commandContract")),
+            "apis", jsonValue(text(row, "apiContract"))));
+        contract.put("process", linkedMap(
+            "processCode", row.get("processCode"), "stepCode", row.get("stepCode"),
+            "entryCondition", row.get("entryCondition"), "exitCondition", row.get("exitCondition"),
+            "states", jsonValue(text(row, "stateContract"))));
+        contract.put("permission", linkedMap(
+            "actorCode", row.get("actorCode"), "audience", row.get("audience"),
+            "security", row.get("securityContract")));
+        contract.put("test", linkedMap(
+            "evidence", jsonValue(text(row, "evidenceContract")),
+            "apiVerified", booleanValue(row.get("apiVerified")),
+            "databaseVerified", booleanValue(row.get("databaseVerified")),
+            "authorityVerified", booleanValue(row.get("authorityVerified")),
+            "responsiveVerified", booleanValue(row.get("responsiveVerified")),
+            "accessibilityVerified", booleanValue(row.get("accessibilityVerified")),
+            "exceptionStatesVerified", booleanValue(row.get("exceptionStatesVerified"))));
+        contract.put("operations", linkedMap(
+            "contractStatus", row.get("contractStatus"), "auditEvidenceRef", row.get("auditEvidenceRef"),
+            "publicationSource", "DESIGN_SAVE"));
+        validateContract(contract);
+        String payload = write(contract);
+        String hash = jdbc.queryForObject("select md5((?::jsonb)::text)", String.class, payload);
+        return new PreparedProfessionalContract(row, payload, hash);
+    }
+
+    private List<Map<String,Object>> activeProfessionalContractBindings(long contractId, boolean lockForPublish) {
+        String sql = """
+            select b.screen_key as "screenKey",v.version_id as "versionId",v.version_no as "versionNo",
+                   v.contract_hash as "contractHash"
+              from framework_screen_contract_binding b
+              left join framework_screen_contract_version v on v.version_id=b.active_version_id
+             where b.contract_id=?
+             order by b.screen_key
+            """ + (lockForPublish ? " for update of b" : "");
+        return jdbc.queryForList(sql, contractId);
+    }
+
+    private List<Map<String,Object>> historicalProfessionalContractVersions(long contractId, String hash) {
+        return jdbc.queryForList(
+            "select version_id as \"versionId\",version_no as \"versionNo\" from framework_screen_contract_version where contract_id=? and contract_hash=? order by version_no desc limit 1",
+            contractId, hash);
+    }
+
+    private Map<String,Object> publicationResult(boolean published, String reason, long contractId,
+            Object versionId, Object versionNo, int bindingCount, String hash, boolean predicted) {
+        Map<String,Object> result = new LinkedHashMap<>();
+        result.put("published", predicted ? false : published);
+        result.put("reason", reason);
+        result.put("contractId", contractId);
+        result.put("versionId", versionId);
+        result.put("versionNo", versionNo);
+        result.put("bindingCount", bindingCount);
+        result.put("contractHash", hash);
+        if (predicted) {
+            result.put("predicted", true);
+            result.put("applied", false);
+            result.put("wouldPublish", published);
+            result.put("publicationMode", "PREDICTED_READ_ONLY");
+        }
+        return result;
+    }
+
+    private static Map<String,Object> linkedMap(Object... entries) {
+        Map<String,Object> result = new LinkedHashMap<>();
+        for (int index = 0; index < entries.length; index += 2) {
+            result.put(String.valueOf(entries[index]), entries[index + 1]);
+        }
+        return result;
+    }
+
+    private static String text(Map<String,Object> row, String key) {
+        Object value = row.get(key);
+        return value == null ? "" : String.valueOf(value);
+    }
+
+    private static boolean booleanValue(Object value) {
+        return value instanceof Boolean flag ? flag : Boolean.parseBoolean(String.valueOf(value));
+    }
+
+    private Object jsonValue(String value) {
+        try { return mapper.readValue(value, Object.class); }
+        catch (JsonProcessingException e) { throw new IllegalArgumentException("화면 계약 JSON이 올바르지 않습니다.", e); }
+    }
+
+    private record PreparedProfessionalContract(Map<String,Object> source, String payload, String hash) {}
 
     @Transactional
     public Map<String,Object> publish(String rawScreenKey, Map<String,Object> body, String actor) {

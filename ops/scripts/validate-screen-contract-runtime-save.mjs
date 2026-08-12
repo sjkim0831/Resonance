@@ -154,6 +154,7 @@ async function main() {
       preview: saved.body?.preview,
       rolledBack: saved.body?.rolledBack,
       committed: saved.body?.committed,
+      mutationScope: saved.body?.mutationScope,
     });
     assertOk(saved.response.status === 200 && saved.body?.success === true, `save failed attempt=${attempt} status=${saved.response.status}`, saves.at(-1));
     assertOk(saved.elapsedMs <= maxSaveMillis, `save too slow attempt=${attempt} elapsedMs=${saved.elapsedMs} max=${maxSaveMillis}`, saves.at(-1));
@@ -163,11 +164,40 @@ async function main() {
     if (previewMode) {
       assertOk(saved.body?.preview === true && saved.body?.rolledBack === true && saved.body?.committed === false,
         `preview rollback contract failed attempt=${attempt}`, saves.at(-1));
-      assertOk(saved.body?.mutationScope === "DB_TRANSACTION_ROLLBACK_ONLY",
+      assertOk(saved.body?.mutationScope === "READ_ONLY_PREDICTION",
         `preview mutation scope failed attempt=${attempt}`, saves.at(-1));
-      assertOk(saved.body?.runtimePublication?.published === false && saved.body?.runtimePublication?.reason === "UNCHANGED",
-        `preview payload is not exact unchanged canonical state attempt=${attempt}`, saves.at(-1));
+      const publication = saved.body?.runtimePublication;
+      const validReason = ["UNCHANGED", "DESIGN_CHANGED", "HISTORICAL_VERSION_REUSED"].includes(publication?.reason);
+      const wouldPublishMatchesReason = publication?.wouldPublish === (publication?.reason !== "UNCHANGED");
+      assertOk(publication?.predicted === true && publication?.applied === false
+        && publication?.published === false && publication?.publicationMode === "PREDICTED_READ_ONLY"
+        && validReason && wouldPublishMatchesReason,
+      `preview publication prediction is invalid attempt=${attempt}`, saves.at(-1));
+      assertOk(/^[0-9a-f]{32}$/.test(String(publication?.contractHash || ""))
+        && Number(publication?.versionNo) >= 1 && Number(publication?.bindingCount) >= 1,
+      `preview publication identity is incomplete attempt=${attempt}`, saves.at(-1));
     }
+  }
+
+  let prediction = null;
+  if (previewMode) {
+    const predictions = saves.map(({ publication }) => ({
+      published: publication?.published,
+      wouldPublish: publication?.wouldPublish,
+      reason: publication?.reason,
+      contractHash: publication?.contractHash,
+      versionId: publication?.versionId ?? null,
+      versionNo: publication?.versionNo,
+      bindingCount: publication?.bindingCount,
+      predicted: publication?.predicted,
+      applied: publication?.applied,
+      publicationMode: publication?.publicationMode,
+    }));
+    const fingerprints = predictions.map(digest);
+    assertOk(new Set(fingerprints).size === 1,
+      "preview publication prediction changed across identical read-only attempts",
+      { predictions, fingerprints });
+    prediction = { ...predictions[0], stable: true, fingerprint: fingerprints[0] };
   }
 
   const resolved = await request(`/runtime/screens/resolve?${params.toString()}`);
@@ -208,6 +238,7 @@ async function main() {
     saves,
     previewCount: previewMode ? saves.length : 0,
     rolledBack: previewMode,
+    prediction,
     contractHashBefore,
     contractHashAfter,
     runtimeHashBefore,

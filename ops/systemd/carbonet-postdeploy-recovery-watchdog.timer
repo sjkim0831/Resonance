@@ -1,0 +1,12 @@
+[Unit]
+Description=Periodically resume unfinished Carbonet postdeploy recovery
+
+[Timer]
+OnBootSec=75s
+OnUnitActiveSec=75s
+AccuracySec=5s
+Persistent=true
+Unit=carbonet-postdeploy-recovery-watchdog.service
+
+[Install]
+WantedBy=timers.target

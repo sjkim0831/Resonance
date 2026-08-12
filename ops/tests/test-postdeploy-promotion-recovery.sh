@@ -52,21 +52,25 @@ if [[ "$args" == *" get pods "* ]]; then cat "$FAKE_PODS_JSON"; exit 0; fi
 if [[ "$args" == *" exec runtime-0 "* && "$args" == *" curl "* ]]; then printf '{"status":"UP"}\n'; exit 0; fi
 if [[ "$args" == *" psql "* ]]; then
   sql="$(cat)"
-  if [[ "$sql" == *"POSTDEPLOY_RECOVERY_SOURCE"* ]]; then
+  if [[ "$sql" == *"to_regclass('public.framework_postdeploy_release_attempt')"* ]]; then
+    printf '%s\n' "${FAKE_LIFECYCLE_STATE:-AVAILABLE}"
+  elif [[ "$sql" == *"POSTDEPLOY_RECOVERY_SOURCE"* ]]; then
     jq -r '.sourceCommit' "$FAKE_LEDGER_JSON"
   elif [[ "$sql" == *"framework_postdeploy_evidence_candidate"* && "$sql" == *"runtimeEvidence"* ]]; then
     cat "$FAKE_CANDIDATE_JSON"
   elif [[ "$sql" == *"framework_promote_postdeploy_evidence_candidate"* ]]; then
     [[ "${FAKE_DB_MODE:-commit}" != precommit-fault ]] || exit 93
     if [[ -s "$FAKE_PROMOTION_STATE" ]]; then
-      printf '{"status":"ALREADY_PROMOTED","requestedCandidateId":"%s","sourceCommit":"%s","processCount":6,"unitCount":12}\n' "$FAKE_CANDIDATE" "$FAKE_SOURCE"
+      printf '{"status":"ALREADY_PROMOTED","candidateId":"%s","requestedCandidateId":"%s","requestedAttemptCandidateId":"%s","requestedAttemptStatus":"PROMOTED","sourceCommit":"%s","runtimeIdentityHash":"%s","processCount":6,"unitCount":12}\n' "$FAKE_CANDIDATE" "$FAKE_CANDIDATE" "$FAKE_CANDIDATE" "$FAKE_SOURCE" "$FAKE_RUNTIME_HASH"
     else
       printf 'PROMOTED\n' >"$FAKE_PROMOTION_STATE"
-      printf '{"status":"PROMOTED","candidateId":"%s","sourceCommit":"%s","runtimeIdentityHash":"%s","processCount":6,"unitCount":12}\n' "$FAKE_CANDIDATE" "$FAKE_SOURCE" "$FAKE_RUNTIME_HASH"
+      printf '{"status":"PROMOTED","candidateId":"%s","requestedAttemptCandidateId":"%s","requestedAttemptStatus":"PROMOTED","sourceCommit":"%s","runtimeIdentityHash":"%s","processCount":6,"unitCount":12}\n' "$FAKE_CANDIDATE" "$FAKE_CANDIDATE" "$FAKE_SOURCE" "$FAKE_RUNTIME_HASH"
     fi
   elif [[ "$sql" == *"framework_postdeploy_evidence_promotion"* ]]; then
     [[ "${FAKE_AUTHORITY_MODE:-ok}" != fault ]] || exit 92
-    if [[ -s "$FAKE_PROMOTION_STATE" ]]; then printf 'PROMOTED\n'; else printf 'NOT_PROMOTED\n'; fi
+    if [[ "${FAKE_AUTHORITY_MODE:-ok}" == divergence ]]; then
+      printf 'UNKNOWN\n'
+    elif [[ -s "$FAKE_PROMOTION_STATE" ]]; then printf 'PROMOTED\n'; else printf 'NOT_PROMOTED\n'; fi
   elif [[ "$sql" == *"framework_runtime_release_state"* ]]; then
     cat "$FAKE_LEDGER_JSON"
   else
@@ -133,6 +137,18 @@ run_promoter "$RUNTIME_MARKER" commit 0 >"$TMP/retry.log"
 grep -Fq ALREADY_PROMOTED "$TMP/retry.log"
 [[ "$(tr -d '[:space:]' <"$RUNTIME_MARKER")" == "$SOURCE" ]]
 
+# A promotion row whose current runtime ledger diverged is UNKNOWN, never a
+# definitive rollback authorization. The migration-absent bridge preserves
+# the same three-way classification for a rolling upgrade.
+status=0
+PATH="$TMP/bin:$PATH" FAKE_AUTHORITY_MODE=divergence RESONANCE_POSTGRES_LEADER_POD=postgres-0 \
+CARBONET_K8S_NAMESPACE=test-ns CARBONET_RUNTIME_LEDGER_KUBECTL_BIN="$TMP/bin/kubectl" \
+  bash "$ROOT/ops/scripts/check-postdeploy-authoritative-promotion.sh" "$ROOT" "$SOURCE" >/dev/null || status=$?
+[[ "$status" == 2 ]]
+PATH="$TMP/bin:$PATH" FAKE_LIFECYCLE_STATE=ABSENT RESONANCE_POSTGRES_LEADER_POD=postgres-0 \
+CARBONET_K8S_NAMESPACE=test-ns CARBONET_RUNTIME_LEDGER_KUBECTL_BIN="$TMP/bin/kubectl" \
+  bash "$ROOT/ops/scripts/check-postdeploy-authoritative-promotion.sh" "$ROOT" "$SOURCE" >/dev/null
+
 # A transaction fault before COMMIT creates no promotion/current truth and
 # cannot advance the marker.
 rm -f "$FAKE_PROMOTION_STATE"
@@ -182,6 +198,7 @@ eval "$(sed -n '/^write_commit_marker_exact() {$/,/^# Publish the serving releas
 eval "$(sed -n '/^verify_operational_usage_ledger_current_runtime_identity() {$/,/^run_operational_usage_ledger_current_runtime_e2e_if_required() {$/p' "$AUTO" | sed '$d')"
 FULL_SCREEN_GATE_STATE_DIR="$TMP/full-screen"
 mkdir -p "$FULL_SCREEN_GATE_STATE_DIR/snapshots/fixture"
+chmod 0700 "$FULL_SCREEN_GATE_STATE_DIR"
 cat >"$FULL_SCREEN_GATE_STATE_DIR/active.env" <<EOF
 SNAPSHOT_ID='fixture'
 SNAPSHOT_DIR='$FULL_SCREEN_GATE_STATE_DIR/snapshots/fixture'
@@ -191,6 +208,7 @@ WEB_IMAGE='web:fixture'
 GIT_SHA='$OLD'
 BASELINE_SOURCE_COMMIT='$OLD'
 EOF
+chmod 0600 "$FULL_SCREEN_GATE_STATE_DIR/active.env"
 export FULL_SCREEN_GATE_STATE_DIR
 ROOT_DIR="$ROOT"; export ROOT_DIR
 NAMESPACE=test-ns; DEPLOYMENT=carbonet-runtime; POSTGRES_POD=postgres-0; POSTGRES_CONTAINER=patroni

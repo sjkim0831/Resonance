@@ -1,0 +1,10 @@
+[Unit]
+Description=Resume an unfinished Carbonet postdeploy recovery
+ConditionPathExists=/opt/resonance-data/deploy/carbonet-postdeploy-attempt.json
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=root
+ExecStart=/usr/bin/systemctl start carbonet-auto-deploy-failure-handler.service

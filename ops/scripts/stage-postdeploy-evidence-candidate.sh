@@ -44,6 +44,10 @@ result="$(kubectl -n "$NAMESPACE" exec -i "$leader" -c "$CONTAINER" -- \
     -v process_code="$PROCESS_CODE" -v evidence_kind="$EVIDENCE_KIND" \
     -v source_commit="$SOURCE_COMMIT" -v payload_b64="$payload_b64" <<'SQL'
 BEGIN;
+-- Create/lock the durable attempt in the same transaction as every immutable
+-- unit.  A terminal or candidate/source-colliding attempt fails before an
+-- evidence row can be inserted.
+SELECT framework_stage_postdeploy_release_attempt(:'candidate_id',:'source_commit');
 INSERT INTO framework_postdeploy_evidence_candidate(
   candidate_id,unit_code,process_code,evidence_kind,source_commit,evidence_json,evidence_hash
 )

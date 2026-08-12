@@ -27,8 +27,18 @@ if ! (umask 077 && printf 'ok\n' >"$tmp_probe") 2>/dev/null; then
 fi
 rm -f -- "$tmp_probe"
 
-git -C "$ROOT_DIR" fetch --quiet --prune "$REMOTE" "$BRANCH"
-target_commit="$(git -C "$ROOT_DIR" rev-parse "$REMOTE/$BRANCH")"
+if [[ "${CARBONET_RECOVERY_ONLY:-false}" == true ]]; then
+  target_commit="${CARBONET_RECOVERY_TARGET_COMMIT:-}"
+  [[ "$target_commit" =~ ^[0-9a-f]{40}$ \
+     && "$(git -C "$ROOT_DIR" cat-file -t "$target_commit" 2>/dev/null || true)" == commit ]] || {
+    echo '[auto-deploy-launcher] recovery target is absent from the local object store' >&2
+    exit 79
+  }
+  echo "[auto-deploy-launcher] recovery-only local target=$target_commit (fetch bypassed)"
+else
+  git -C "$ROOT_DIR" fetch --quiet --prune "$REMOTE" "$BRANCH"
+  target_commit="$(git -C "$ROOT_DIR" rev-parse "$REMOTE/$BRANCH")"
+fi
 snapshot_dir="$(mktemp -d /tmp/carbonet-auto-deploy-main.XXXXXX)"
 snapshot_script="$snapshot_dir/auto-deploy-main.sh"
 snapshot_plan="$snapshot_dir/plan-incremental-work.sh"

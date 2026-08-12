@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.mockito.ArgumentCaptor;
 
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -14,11 +15,12 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.doReturn;
-import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
@@ -26,8 +28,9 @@ import static org.mockito.Mockito.when;
 
 class ActorProcessGovernanceServiceSecurityTest {
     private final JdbcTemplate jdbc = mock(JdbcTemplate.class);
+    private final ScreenContractRuntimeService runtimeService = mock(ScreenContractRuntimeService.class);
     private final ActorProcessGovernanceService service = spy(new ActorProcessGovernanceService(
-            jdbc, mock(ScreenDevelopmentNoteService.class), mock(CodexProvisioningService.class), mock(ScreenContractRuntimeService.class)));
+            jdbc, mock(ScreenDevelopmentNoteService.class), mock(CodexProvisioningService.class), runtimeService));
 
     @Test
     void persistedDesignCompleteStatusCanBeSavedAgain() {
@@ -36,21 +39,54 @@ class ActorProcessGovernanceServiceSecurityTest {
     }
 
     @Test
-    void professionalScreenContractPreviewUsesCanonicalSaveAndMarksRollbackOnly() {
-        Map<String,Object> body=Map.of("contractId","26");
-        doReturn(Map.of("success",true,"runtimePublication",Map.of("contractId",26L)))
-                .when(service).saveProfessionalScreenContract(body,"system-admin");
-        doNothing().when(service).markCurrentTransactionRollbackOnly();
+    void professionalScreenContractPreviewPredictsWithoutCanonicalSaveOrMutationSql() {
+        Map<String,Object> body=new LinkedHashMap<>();
+        body.put("contractId","26");
+        body.put("businessPurpose","A complete professional business purpose for preview validation.");
+        body.put("entryCondition","A valid assigned actor and target exist.");
+        body.put("exitCondition","The completed result and immutable audit evidence are available.");
+        body.put("kpiContract","[\"completionRate\"]");
+        body.put("sectionContract","[\"SUMMARY\"]");
+        body.put("fieldContract","[\"version\"]");
+        body.put("commandContract","[\"SAVE\"]");
+        body.put("stateContract","[\"LOADING\",\"EMPTY\",\"ERROR\",\"FORBIDDEN\",\"READY\"]");
+        body.put("apiContract","[\"POST /preview\"]");
+        body.put("dataContract","[\"version\"]");
+        body.put("evidenceContract","[\"versionAudit\"]");
+        body.put("apiVerified",true);body.put("databaseVerified",true);body.put("authorityVerified",true);
+        body.put("responsiveVerified",true);body.put("accessibilityVerified",true);body.put("exceptionStatesVerified",true);
+        body.put("auditEvidenceRef","qa-run:sha256:0123456789abcdef");
+        body.put("contractStatus","DESIGN_COMPLETE");
+        when(jdbc.queryForList(argThat(sql->sql!=null&&sql.contains("select menu_verified")),any(Object[].class)))
+                .thenReturn(List.of(Map.of("menuVerified",true)));
+        when(jdbc.queryForMap(argThat(sql->sql!=null&&sql.contains("framework_page_design_assurance g")
+                        &&sql.contains("bindingCount")),any(Object[].class)))
+                .thenReturn(Map.of("routePath","/preview","actorPassed",true,"processPassed",true,
+                        "lineagePassed",true,"transitionPassed",true,"adminCounterpartPassed",true,
+                        "testPassed",true,"bindingCount",1));
+        when(jdbc.queryForList(argThat(sql->sql!=null&&sql.contains("business_purpose as \"businessPurpose\"")
+                        &&sql.contains("order by contract_id")),any(Object[].class)))
+                .thenReturn(List.of(Map.of("contractId",26L)));
+        when(runtimeService.predictProfessionalContract(eq(26L),argThat(values->"VERIFIED".equals(values.get("contractStatus"))
+                        &&!values.containsKey("contractId")&&!values.containsKey("kpiContract"))))
+                .thenReturn(Map.of("contractId",26L,"predicted",true,"published",false,"wouldPublish",true,
+                        "applied",false,"reason","DESIGN_CHANGED","contractHash","ae5c83c034aab359960c3558d4b0406b"));
+        when(jdbc.queryForObject(argThat(sql->sql!=null&&sql.contains("select process_code from framework_professional_screen_contract")),
+                eq(String.class),any(Object[].class))).thenReturn("DISCLOSURE_CORRECTION");
 
         Map<String,Object> preview=service.saveProfessionalScreenContractPreview(body,"system-admin");
 
-        verify(service).saveProfessionalScreenContract(body,"system-admin");
-        verify(service).markCurrentTransactionRollbackOnly();
+        verify(service,never()).saveProfessionalScreenContract(any(),anyString());
+        verify(runtimeService).predictProfessionalContract(eq(26L),argThat(values->"VERIFIED".equals(values.get("contractStatus"))
+                &&!values.containsKey("contractId")&&!values.containsKey("kpiContract")));
+        verify(runtimeService,never()).publishProfessionalContract(anyLong(),anyString());
+        verify(jdbc,never()).update(anyString(),any(Object[].class));
         assertEquals(true,preview.get("success"));
         assertEquals(true,preview.get("preview"));
         assertEquals(true,preview.get("rolledBack"));
         assertEquals(false,preview.get("committed"));
-        assertEquals("DB_TRANSACTION_ROLLBACK_ONLY",preview.get("mutationScope"));
+        assertEquals("READ_ONLY_PREDICTION",preview.get("mutationScope"));
+        assertEquals("NO_MUTATION_REQUIRED",preview.get("rollbackMode"));
     }
 
     @Test
@@ -575,6 +611,67 @@ class ActorProcessGovernanceServiceSecurityTest {
         assertTrue(failure.getMessage().contains("Authenticated control-plane account"));
         verify(jdbc,never()).queryForList(argThat(sql -> sql.contains(
                 "from framework_account_actor_assignment")),any(Object[].class));
+    }
+
+    @Test
+    void controlPlaneValidationDoesNotAllocateAnEventIdOrExecuteDml() {
+        UUID executionId=UUID.randomUUID();
+        java.util.concurrent.atomic.AtomicLong eventSequence=new java.util.concurrent.atomic.AtomicLong(41);
+        when(jdbc.queryForList(anyString(),any(Object[].class))).thenAnswer(invocation -> {
+            String sql=invocation.getArgument(0);
+            if(sql.contains("from framework_process_execution e")){
+                return List.of(Map.of(
+                        "tenantId","TENANT_A","projectId","PROJECT_A",
+                        "processCode","PROCESS_A","stepCode","STEP_1",
+                        "executionStatus","RUNNING","actorCode","COMPANY_MANAGER",
+                        "commandCode","RUN"));
+            }
+            if(sql.contains("from framework_account_actor_assignment")){
+                return List.of(Map.of("accountId","manager-a"));
+            }
+            if(sql.contains("from framework_process_execution where execution_id=? for update")){
+                return List.of(Map.of(
+                        "tenant_id","TENANT_A","project_id","PROJECT_A",
+                        "process_code","PROCESS_A","current_step_code","STEP_1",
+                        "current_state","READY","execution_status","RUNNING"));
+            }
+            if(sql.contains("from framework_process_step where process_code=? and step_code=?")){
+                return List.of(Map.of(
+                        "step_order",1,"actor_code","COMPANY_MANAGER",
+                        "command_code","RUN","from_state","READY","to_state","DONE"));
+            }
+            return List.of();
+        });
+        when(jdbc.queryForObject(argThat(sql -> sql != null && sql.contains("ROLE_SYSTEM_MASTER")),
+                org.mockito.ArgumentMatchers.eq(Integer.class),any(Object[].class))).thenReturn(0);
+        when(jdbc.queryForObject(argThat(sql -> sql != null && sql.contains("select count(*) from framework_account_actor_assignment")),
+                org.mockito.ArgumentMatchers.eq(Integer.class),any(Object[].class))).thenReturn(1);
+        when(jdbc.queryForObject(argThat(sql -> sql != null && sql.contains("insert into framework_process_execution_event")),
+                org.mockito.ArgumentMatchers.eq(Long.class),any(Object[].class)))
+                .thenAnswer(invocation -> eventSequence.incrementAndGet());
+
+        long sequenceBefore=eventSequence.get();
+        Map<String,Object> reviewerValidation=service.validateProcessCommandFromControlPlane(
+                executionId,Map.of("requestingAccount","manager-a","requireDraft",false),
+                "REVIEWER");
+        Map<String,Object> approverValidation=service.validateProcessCommandFromControlPlane(
+                executionId,Map.of("requestingAccount","manager-a","requireDraft",false),
+                "APPROVER");
+
+        for(Map<String,Object> validation:List.of(reviewerValidation,approverValidation)){
+            assertEquals(true,validation.get("success"));
+            assertEquals(true,validation.get("validated"));
+            assertEquals(false,validation.get("committed"));
+            assertEquals("READ_ONLY_VALIDATION",validation.get("mutationScope"));
+            assertEquals(0,validation.get("databaseCurrentWrites"));
+            assertEquals("COMPLETED",validation.get("executionStatus"));
+            assertEquals(true,validation.get("relayCompleted"));
+        }
+        assertEquals(sequenceBefore,eventSequence.get(),"two allowed validations must not allocate event ids");
+        verify(jdbc,never()).queryForObject(argThat(sql -> sql != null && sql.contains(
+                "insert into framework_process_execution_event")),
+                org.mockito.ArgumentMatchers.eq(Long.class),any(Object[].class));
+        verify(jdbc,never()).update(anyString(),any(Object[].class));
     }
 
     @Test

@@ -41,6 +41,12 @@ INCREMENTAL="${INCREMENTAL:-true}"
 PRE_ROLLOUT_IMAGE="${PRE_ROLLOUT_IMAGE:-}"
 PRE_ROLLOUT_TARGET_COMMIT="${PRE_ROLLOUT_TARGET_COMMIT:-}"
 PRE_ROLLOUT_IDENTITY_CAPTURED="${PRE_ROLLOUT_IDENTITY_CAPTURED:-false}"
+DEFER_ROLLBACK_TO_ATTEMPT_RECONCILER="${DEFER_ROLLBACK_TO_ATTEMPT_RECONCILER:-false}"
+CARBONET_DURABLE_ATTEMPT_REQUIRED="${CARBONET_DURABLE_ATTEMPT_REQUIRED:-false}"
+CARBONET_DEFER_LIVE_MUTATIONS_UNTIL_POST_FLYWAY="${CARBONET_DEFER_LIVE_MUTATIONS_UNTIL_POST_FLYWAY:-false}"
+POSTDEPLOY_DB_ATTEMPT_STAGED="${POSTDEPLOY_DB_ATTEMPT_STAGED:-false}"
+PENDING_FRONTEND_STAGING_DIR=""
+PENDING_FRONTEND_PREVIOUS_MANIFEST=""
 
 RELEASE_DIR="$ROOT_DIR/var/releases/$PROJECT_ID/image-context"
 RUN_DIR="$ROOT_DIR/var/run"
@@ -180,14 +186,17 @@ rollback_and_fail() {
   echo -e "${YELLOW}Diagnostic Log:${NC} $DIAGNOSTIC_LOG"
   echo -e "${YELLOW}Error Logs Dir:${NC} $ERROR_LOG_DIR/"
 
-  if [[ -n "${PRE_ROLLOUT_IMAGE:-}" ]]; then
+  if [[ "$DEFER_ROLLBACK_TO_ATTEMPT_RECONCILER" == true ]]; then
+    log_warning "Durable attempt reconciler owns rollback; child performs no physical restore"
+  elif [[ -n "${PRE_ROLLOUT_IMAGE:-}" ]]; then
     log_warning "Restoring previous deployment image: $PRE_ROLLOUT_IMAGE"
     kubectl -n "$NAMESPACE" set image "deployment/$DEPLOYMENT" "$CONTAINER=$PRE_ROLLOUT_IMAGE" >/dev/null 2>&1 || true
     kubectl -n "$NAMESPACE" rollout status "deployment/$DEPLOYMENT" --timeout=180s >/dev/null 2>&1 || true
   else
     log_warning "No previous deployment image captured; leaving deployment unchanged"
   fi
-  if [[ "${PRE_ROLLOUT_IDENTITY_CAPTURED:-false}" == "true" ]]; then
+  if [[ "$DEFER_ROLLBACK_TO_ATTEMPT_RECONCILER" != true \
+     && "${PRE_ROLLOUT_IDENTITY_CAPTURED:-false}" == "true" ]]; then
     if [[ "$PRE_ROLLOUT_TARGET_COMMIT" =~ ^[0-9a-f]{40}$ ]]; then
       if kubectl -n "$NAMESPACE" annotate "deployment/$DEPLOYMENT" \
         "resonance.ai/target-commit=$PRE_ROLLOUT_TARGET_COMMIT" --overwrite >/dev/null 2>&1; then
@@ -455,6 +464,12 @@ build_frontend() {
   # browsers that loaded the previous index can finish lazy chunk requests.
   promote_frontend_staging() {
     node "$ROOT_DIR/ops/scripts/verify-react-asset-closure.mjs" "$staging_dir"
+    if [[ "$CARBONET_DEFER_LIVE_MUTATIONS_UNTIL_POST_FLYWAY" == true ]]; then
+      PENDING_FRONTEND_STAGING_DIR="$staging_dir"
+      PENDING_FRONTEND_PREVIOUS_MANIFEST="$previous_manifest"
+      log "Verified frontend staging retained until durable DB attempt is armed"
+      return
+    fi
     root_cmd mkdir -p "$OVERLAY_HOST_PATH"
     root_cmd rsync -a --exclude='/index.html' "$staging_dir/" "$OVERLAY_HOST_PATH/"
     root_cmd cp "$staging_dir/index.html" "$OVERLAY_HOST_PATH/.index.html.next"
@@ -493,6 +508,11 @@ build_frontend() {
 
   promote_frontend_staging
 
+  if [[ -n "$PENDING_FRONTEND_STAGING_DIR" ]]; then
+    local elapsed=$(( $(date +%s) - start_time ))
+    log_success "Frontend candidate built without live publish in ${elapsed}s"
+    return
+  fi
   validate_frontend
   guard_frontend_overlay write-marker
   guard_frontend_overlay verify-source
@@ -501,11 +521,38 @@ build_frontend() {
   log_success "Frontend built in ${elapsed}s"
 }
 
+publish_pending_frontend_staging() {
+  [[ -n "$PENDING_FRONTEND_STAGING_DIR" ]] || return 0
+  [[ "$POSTDEPLOY_DB_ATTEMPT_STAGED" == true ]] \
+    || rollback_and_fail "ATTEMPT_NOT_ARMED" "Refusing live overlay publish before durable DB attempt stage" "Inspect the postdeploy attempt journal"
+  node "$ROOT_DIR/ops/scripts/verify-react-asset-closure.mjs" "$PENDING_FRONTEND_STAGING_DIR"
+  root_cmd mkdir -p "$OVERLAY_HOST_PATH"
+  root_cmd rsync -a --exclude='/index.html' "$PENDING_FRONTEND_STAGING_DIR/" "$OVERLAY_HOST_PATH/"
+  root_cmd cp "$PENDING_FRONTEND_STAGING_DIR/index.html" "$OVERLAY_HOST_PATH/.index.html.next"
+  root_cmd mv -f "$OVERLAY_HOST_PATH/.index.html.next" "$OVERLAY_HOST_PATH/index.html"
+  node "$ROOT_DIR/ops/scripts/verify-react-asset-closure.mjs" "$OVERLAY_HOST_PATH"
+  node "$ROOT_DIR/ops/scripts/prune-react-asset-generations.mjs" \
+    "$OVERLAY_HOST_PATH" "$PENDING_FRONTEND_PREVIOUS_MANIFEST"
+  node "$ROOT_DIR/ops/scripts/verify-react-asset-closure.mjs" "$OVERLAY_HOST_PATH"
+  rm -f -- "$PENDING_FRONTEND_PREVIOUS_MANIFEST"
+  rm -rf -- "$PENDING_FRONTEND_STAGING_DIR"
+  PENDING_FRONTEND_STAGING_DIR=""
+  PENDING_FRONTEND_PREVIOUS_MANIFEST=""
+  validate_frontend
+  guard_frontend_overlay write-marker
+  guard_frontend_overlay verify-source
+}
+
 sync_overlay() {
   log_step "Sync Overlay"
 
   if [[ "$SKIP_OVERLAY_SYNC" == "true" ]]; then
     log "Skipped (SKIP_OVERLAY_SYNC=true)"
+    if [[ "$CARBONET_DEFER_LIVE_MUTATIONS_UNTIL_POST_FLYWAY" == true \
+       && -n "$PENDING_FRONTEND_STAGING_DIR" ]]; then
+      log "Live overlay verification deferred until durable DB attempt stage"
+      return
+    fi
     guard_frontend_overlay verify-local
     guard_frontend_overlay verify-source
     return
@@ -817,33 +864,6 @@ build_image() {
 rollout_image() {
   log_step "Rollout"
 
-  log_detail "Applying canonical carbonet-web Service contract..."
-  local carbonet_web_service_json
-  if ! carbonet_web_service_json="$(
-    kubectl apply --dry-run=client -f "$ROOT_DIR/manifests/carbonet-split-runtime.yaml" -o json \
-      | jq -ce '
-          [.items[]? | select(.kind == "Service" and .metadata.name == "carbonet-web")]
-          | if length == 1 then .[0]
-            else error("expected exactly one carbonet-web Service, found \(length)")
-            end
-        '
-  )"; then
-    rollback_and_fail "CARBONET_WEB_SERVICE_EXTRACT_FAILED" \
-      "Canonical manifest must contain exactly one valid carbonet-web Service" \
-      "kubectl apply --dry-run=client -f $ROOT_DIR/manifests/carbonet-split-runtime.yaml -o json"
-  fi
-  if ! printf '%s\n' "$carbonet_web_service_json" | kubectl apply -f - >/dev/null; then
-    rollback_and_fail "CARBONET_WEB_MANIFEST_APPLY_FAILED" \
-      "Failed to apply the extracted carbonet-web Service" \
-      "Inspect the canonical manifest and kubectl apply output"
-  fi
-  if ! bash "$ROOT_DIR/ops/scripts/validate-carbonet-web-nodeport-client-ip-contract.sh" \
-      --live --namespace "$NAMESPACE"; then
-    rollback_and_fail "CARBONET_WEB_CLIENT_IP_CONTRACT_FAILED" \
-      "Live carbonet-web Service does not preserve the original client address" \
-      "kubectl -n $NAMESPACE get service carbonet-web -o yaml"
-  fi
-
   PRE_ROLLOUT_IMAGE="$(kubectl -n "$NAMESPACE" get "deployment/$DEPLOYMENT" -o jsonpath='{.spec.template.spec.containers[0].image}' 2>/dev/null || true)"
   PRE_ROLLOUT_TARGET_COMMIT="$(kubectl -n "$NAMESPACE" get "deployment/$DEPLOYMENT" -o jsonpath='{.metadata.annotations.resonance\.ai/target-commit}' 2>/dev/null || true)"
   PRE_ROLLOUT_IDENTITY_CAPTURED=true
@@ -893,12 +913,59 @@ rollout_image() {
         "Candidate image database migration failed before rollout" \
         "Inspect $ROOT_DIR/var/logs/flyway-jobs and the failed Kubernetes Job"
     fi
-    kubectl -n "$NAMESPACE" set env "deployment/$DEPLOYMENT" \
-      CARBONET_FLYWAY_ENABLED=false \
-      CARBONET_LIQUIBASE_ENABLED=false >/dev/null ||
-      rollback_and_fail "RUNTIME_MIGRATION_DISABLE_FAILED" \
-        "Failed to disable per-pod migration after the deployment migration passed" \
-        "kubectl -n $NAMESPACE set env deployment/$DEPLOYMENT CARBONET_FLYWAY_ENABLED=false"
+  fi
+
+  if [[ "$CARBONET_DURABLE_ATTEMPT_REQUIRED" == true && "$POSTDEPLOY_DB_ATTEMPT_STAGED" != true ]]; then
+    if CARBONET_POSTDEPLOY_ATTEMPT_JOURNAL_FILE="${CARBONET_POSTDEPLOY_ATTEMPT_JOURNAL_FILE:-}" \
+       CARBONET_K8S_NAMESPACE="$NAMESPACE" CARBONET_POSTGRES_CONTAINER="${CARBONET_POSTGRES_CONTAINER:-patroni}" \
+       POSTGRES_DB="${POSTGRES_DB:-carbonet}" POSTGRES_ADMIN_USER="${POSTGRES_ADMIN_USER:-postgres}" \
+       bash "$ROOT_DIR/ops/scripts/stage-postdeploy-release-attempt.sh" \
+         "$ROOT_DIR" "${CARBONET_POSTDEPLOY_CANDIDATE_ID:-}" "${CARBONET_POSTDEPLOY_SOURCE_COMMIT:-}"; then
+      POSTDEPLOY_DB_ATTEMPT_STAGED=true
+    else
+      rollback_and_fail "ATTEMPT_DB_STAGE_FAILED" \
+        "Candidate Flyway completed but the durable DB attempt could not be armed" \
+        "Inspect framework_postdeploy_release_attempt and the attempt journal"
+    fi
+  fi
+  [[ "$CARBONET_DURABLE_ATTEMPT_REQUIRED" != true || "$POSTDEPLOY_DB_ATTEMPT_STAGED" == true ]] \
+    || rollback_and_fail "ATTEMPT_NOT_ARMED" "Refusing live mutation before durable DB attempt stage" "Inspect the attempt lifecycle migration"
+
+  publish_pending_frontend_staging
+
+  local -a runtime_env=(CARBONET_FLYWAY_ENABLED=false CARBONET_LIQUIBASE_ENABLED=false
+    CARBONET_REACT_APP_FS_OVERRIDE_ENABLED=true CARBONET_STATIC_FS_OVERRIDE_ENABLED=true)
+  [[ -z "${CARBONET_RUNTIME_JAVA_OPTS:-}" ]] || runtime_env+=("JAVA_OPTS=$CARBONET_RUNTIME_JAVA_OPTS")
+  kubectl -n "$NAMESPACE" set env "deployment/$DEPLOYMENT" "${runtime_env[@]}" >/dev/null ||
+    rollback_and_fail "RUNTIME_MIGRATION_DISABLE_FAILED" \
+      "Failed to configure the candidate runtime after durable attempt stage" \
+      "kubectl -n $NAMESPACE set env deployment/$DEPLOYMENT"
+
+  log_detail "Applying canonical carbonet-web Service contract..."
+  local carbonet_web_service_json
+  if ! carbonet_web_service_json="$(
+    kubectl apply --dry-run=client -f "$ROOT_DIR/manifests/carbonet-split-runtime.yaml" -o json \
+      | jq -ce '
+          [.items[]? | select(.kind == "Service" and .metadata.name == "carbonet-web")]
+          | if length == 1 then .[0]
+            else error("expected exactly one carbonet-web Service, found \(length)")
+            end
+        '
+  )"; then
+    rollback_and_fail "CARBONET_WEB_SERVICE_EXTRACT_FAILED" \
+      "Canonical manifest must contain exactly one valid carbonet-web Service" \
+      "kubectl apply --dry-run=client -f $ROOT_DIR/manifests/carbonet-split-runtime.yaml -o json"
+  fi
+  if ! printf '%s\n' "$carbonet_web_service_json" | kubectl apply -f - >/dev/null; then
+    rollback_and_fail "CARBONET_WEB_MANIFEST_APPLY_FAILED" \
+      "Failed to apply the extracted carbonet-web Service" \
+      "Inspect the canonical manifest and kubectl apply output"
+  fi
+  if ! bash "$ROOT_DIR/ops/scripts/validate-carbonet-web-nodeport-client-ip-contract.sh" \
+      --live --namespace "$NAMESPACE"; then
+    rollback_and_fail "CARBONET_WEB_CLIENT_IP_CONTRACT_FAILED" \
+      "Live carbonet-web Service does not preserve the original client address" \
+      "kubectl -n $NAMESPACE get service carbonet-web -o yaml"
   fi
 
   log_detail "Ensuring the canonical reference library is mounted read-only..."
@@ -1189,7 +1256,8 @@ main() {
 
   if [[ "$IMMUTABLE_FRONTEND_IMAGE" == "true" ]]; then
     log_step "Immutable Frontend Build"
-    if [[ "$SKIP_FRONTEND" != "true" && "$SKIP_BACKEND" != "true" ]]; then
+    if [[ "$SKIP_FRONTEND" != "true" && "$SKIP_BACKEND" != "true" \
+       && "$CARBONET_DEFER_LIVE_MUTATIONS_UNTIL_POST_FLYWAY" != true ]]; then
       # Java compilation does not consume the candidate React closure. Warm
       # Gradle classes in parallel with Vite, then force only resources and the
       # executable JAR to be reassembled after the verified frontend promotion.
@@ -1211,18 +1279,17 @@ main() {
           "Inspect $FRONTEND_ERROR_LOG and $MAVEN_ERROR_LOG"
       fi
       log_success "Immutable prebuilds completed concurrently in $(( $(date +%s) - immutable_parallel_started ))s"
+      [[ -z "$PENDING_FRONTEND_STAGING_DIR" ]] || IMMUTABLE_FRONTEND_SOURCE_DIR="$PENDING_FRONTEND_STAGING_DIR"
       prepare_immutable_frontend
       build_maven
     else
       build_frontend
+      [[ -z "$PENDING_FRONTEND_STAGING_DIR" ]] || IMMUTABLE_FRONTEND_SOURCE_DIR="$PENDING_FRONTEND_STAGING_DIR"
       prepare_immutable_frontend
       build_maven
     fi
     verify_immutable_frontend_jar
     SKIP_OVERLAY_SYNC=true
-    kubectl -n "$NAMESPACE" set env deployment/"$DEPLOYMENT" \
-      CARBONET_REACT_APP_FS_OVERRIDE_ENABLED=true \
-      CARBONET_STATIC_FS_OVERRIDE_ENABLED=true
     sync_overlay
     build_image
     rollout_image

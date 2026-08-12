@@ -14,7 +14,7 @@ assert_parallel_contract() {
   grep -q 'wait "$runtime_screen_gate_pid"' "$candidate" || return 1
   grep -q 'FULL_SCREEN_GATE_AUTO_ROLLBACK=false' "$candidate" || return 1
   grep -q 'screen contract runtime save skipped: validation groups failed' "$candidate" || return 1
-  grep -q 'synchronous rollback completed before validation exit' "$candidate" || return 1
+  grep -q 'durable reconciler owns rollback' "$candidate" || return 1
   grep -Fq 'OVERLAY_DIR="$live_frontend_overlay"' "$candidate" || return 1
   grep -Fq 'kill -TERM -- "-$pgid"' "$candidate" || return 1
   grep -Fq 'kill -KILL -- "-$pgid"' "$candidate" || return 1
@@ -24,10 +24,9 @@ from pathlib import Path
 import sys
 text = Path(sys.argv[1]).read_text(encoding="utf-8")
 start = text.index("run_runtime_release_validation_lanes() {")
-end = text.index("\n}\ncleanup_deploy()", start)
+end = text.index("\n}\n", start)
 lane = text[start:end]
-assert lane.index('wait "$runtime_screen_gate_pid"') < lane.index('bash ops/scripts/resonance-full-screen-deploy-gate.sh restore')
-assert lane.count('bash ops/scripts/resonance-full-screen-deploy-gate.sh restore') == 1
+assert 'resonance-full-screen-deploy-gate.sh restore' not in lane
 assert lane.index('run_postdeploy_candidate_validation_groups') < lane.index('run_screen_contract_runtime_save_gate_if_required')
 assert 'if (( validation_status == 0 )); then' in lane
 PY
@@ -49,14 +48,14 @@ fi
 
 # Exercise the actual coordinator with a validator failure and a concurrent
 # browser lane. The main process must join the browser, skip screen-save, run
-# exactly one synchronous restore to completion, and preserve the originating
-# status unless rollback itself fails.
+# no physical restore in the lane, and preserve the originating status for the
+# single durable cleanup reconciler.
 python3 - "$script" "$tmp/release-lanes.sh" <<'PY'
 from pathlib import Path
 import sys
 text = Path(sys.argv[1]).read_text(encoding="utf-8")
 start = text.index("run_runtime_release_validation_lanes() {")
-end = text.index("\n}\ncleanup_deploy()", start) + 2
+end = text.index("\n}\n", start) + 2
 Path(sys.argv[2]).write_text(text[start:end] + "\n", encoding="utf-8")
 PY
 source "$tmp/release-lanes.sh"
@@ -79,23 +78,16 @@ terminate_runtime_screen_gate_group() {
   cleanup_runtime_screen_gate_cache
 }
 bash() {
-  [[ "$*" == *'resonance-full-screen-deploy-gate.sh restore'* ]] || return 90
-  printf 'RESTORE_START\n' >>"$EVENTS"
-  [[ -e "$BROWSER_JOINED" ]] || return 91
-  touch "$ROLLBACK_IN_PROGRESS"
-  sleep 0.08
-  printf 'RESTORE_END\n' >>"$EVENTS"
-  rm -f "$ROLLBACK_IN_PROGRESS"
-  return "$MOCK_ROLLBACK_STATUS"
+  printf 'UNEXPECTED_BASH:%s\n' "$*" >>"$EVENTS"
+  return 90
 }
 
 run_lane_scenario() {
-  local rollback_status="$1" expected_status="$2" label="$3" lane_status=0
+  local expected_status="$1" label="$2" lane_status=0
   EVENTS="$tmp/events-$label"
   BROWSER_JOINED="$tmp/browser-joined-$label"
   ROLLBACK_IN_PROGRESS="$tmp/rollback-in-progress-$label"
-  MOCK_ROLLBACK_STATUS="$rollback_status"
-  export EVENTS BROWSER_JOINED ROLLBACK_IN_PROGRESS MOCK_ROLLBACK_STATUS
+  export EVENTS BROWSER_JOINED ROLLBACK_IN_PROGRESS
   : >"$EVENTS"
   runtime_screen_gate_log="$tmp/browser-$label.log"
   : >"$runtime_screen_gate_log"
@@ -115,18 +107,16 @@ run_lane_scenario() {
   set -e
   [[ "$lane_status" == "$expected_status" ]]
   [[ ! -e "$ROLLBACK_IN_PROGRESS" ]]
-  [[ "$(grep -c '^RESTORE_START$' "$EVENTS")" == 1 ]]
-  [[ "$(grep -c '^RESTORE_END$' "$EVENTS")" == 1 ]]
+  ! grep -q '^UNEXPECTED_BASH:' "$EVENTS"
   ! grep -q '^SCREEN_SAVE_RAN$' "$EVENTS"
   python3 - "$EVENTS" <<'PY'
 from pathlib import Path
 import sys
 events = Path(sys.argv[1]).read_text(encoding="utf-8").splitlines()
-assert events.index("VALIDATOR_FAIL") < events.index("BROWSER_JOINED") < events.index("RESTORE_START") < events.index("RESTORE_END")
+assert events.index("VALIDATOR_FAIL") < events.index("BROWSER_JOINED")
 PY
 }
 
-run_lane_scenario 0 23 rollback-success
-run_lane_scenario 71 71 rollback-failure
+run_lane_scenario 23 deferred-rollback
 
-echo "[postdeploy-browser-parallel-test] PASS bounded=true joinedBeforeRestore=true screenSaveSkipped=true synchronousRestore=exactly-once rollbackCompletion=awaited originalStatus=23 rollbackFailureStatus=71 staticMutation=rejected"
+echo "[postdeploy-browser-parallel-test] PASS bounded=true browserJoined=true screenSaveSkipped=true laneRestore=zero durableReconciler=singleOwner originalStatus=23 staticMutation=rejected"

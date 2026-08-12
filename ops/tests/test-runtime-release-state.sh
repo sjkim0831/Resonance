@@ -78,6 +78,7 @@ elif [[ "$args" == *" get deployment/carbonet-runtime -o json "* ]]; then
   fi
   cat "$FIXTURE_DIR/deployment.json"
 elif [[ "$args" == *" annotate deployment/carbonet-runtime "* ]]; then
+  printf '%s\n' "$*" >>"$FIXTURE_DIR/annotate.calls"
   [[ "${FAIL_ANNOTATE:-false}" != "true" ]] || exit 41
   commit=""
   for value in "$@"; do
@@ -89,8 +90,12 @@ elif [[ "$args" == *" annotate deployment/carbonet-runtime "* ]]; then
   mv "$FIXTURE_DIR/deployment.tmp" "$FIXTURE_DIR/deployment.json"
 elif [[ "$args" == *" get pods "* ]]; then
   cat "$FIXTURE_DIR/pods.json"
-elif [[ "$args" == *" exec runtime-0 "* && "$args" == *"/actuator/health "* ]]; then
-  printf '{"status":"UP"}\n'
+elif [[ "$args" == *" exec runtime-"* && "$args" == *"/actuator/health "* ]]; then
+  if [[ "$args" == *" exec runtime-1 "* && "${UNHEALTHY_RUNTIME_1:-false}" == true ]]; then
+    printf '{"status":"DOWN"}\n'
+  else
+    printf '{"status":"UP"}\n'
+  fi
 else
   echo "unexpected kubectl invocation: $*" >&2
   exit 90
@@ -159,4 +164,35 @@ write_pods
 bash "$HELPER" --invalidate >/dev/null
 [[ ! -s "$TMP/fixtures/ledger.json" ]] || { echo 'explicit invalidation retained the ledger' >&2; exit 1; }
 
-echo '[runtime-release-state-test] PASS ready=recorded transient-unready=retried replicas=exact imageID=single-digest annotation-failure=invalidated unready=preserved explicit-invalidate=cleared'
+# Rollback publication observes the already restored annotation and performs
+# zero Kubernetes writes. Both Ready pods must independently report UP.
+write_deployment 2 "$target_commit"
+write_old_ledger
+write_pods
+rm -f "$TMP/fixtures/annotate.calls"
+CARBONET_RUNTIME_LEDGER_OBSERVE_ONLY=true bash "$HELPER" "$target_commit" >/dev/null
+[[ ! -e "$TMP/fixtures/annotate.calls" ]]
+[[ "$(jq -r '.sourceCommit' "$TMP/fixtures/ledger.json")" == "$target_commit" ]]
+
+write_deployment 2 "$target_commit"
+write_old_ledger
+rm -f "$TMP/fixtures/annotate.calls"
+set +e
+CARBONET_RUNTIME_LEDGER_OBSERVE_ONLY=true UNHEALTHY_RUNTIME_1=true \
+  bash "$HELPER" "$target_commit" >/dev/null 2>&1
+unhealthy_status=$?
+set -e
+[[ "$unhealthy_status" -ne 0 && ! -e "$TMP/fixtures/annotate.calls" ]]
+[[ ! -s "$TMP/fixtures/ledger.json" ]] || { echo 'unhealthy second pod retained stale ledger' >&2; exit 1; }
+
+write_deployment 2 "$old_commit"
+write_old_ledger
+set +e
+CARBONET_RUNTIME_LEDGER_OBSERVE_ONLY=true bash "$HELPER" "$target_commit" >/dev/null 2>&1
+observe_annotation_status=$?
+set -e
+[[ "$observe_annotation_status" -ne 0 ]]
+[[ "$(jq -r '.sourceCommit' "$TMP/fixtures/ledger.json")" == "$old_commit" ]] \
+  || { echo 'observe-only annotation mismatch mutated the prior ledger' >&2; exit 1; }
+
+echo '[runtime-release-state-test] PASS ready=recorded transient-unready=retried replicas=exact imageID=single-digest allPodHealth=required observeOnly=annotate0 annotation-failure=invalidated unready=preserved explicit-invalidate=cleared'

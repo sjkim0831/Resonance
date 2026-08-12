@@ -347,10 +347,28 @@ clear_success() {
   log "cleared successful target=$target_commit"
 }
 
+clear_failed() {
+  [[ -e "$checkpoint_file" ]] || return 0
+  [[ "${CARBONET_CHECKPOINT_FAILURE_RECOVERY_VERIFIED:-false}" == "true" ]] ||
+    fail "failed checkpoint clear requires verified rollback recovery"
+  [[ "$base_commit" =~ ^[0-9a-f]{40}$ ]] || fail "invalid failed-clear base commit"
+  [[ "$target_commit" =~ ^[0-9a-f]{40}$ ]] || fail "invalid failed-clear target commit"
+  jq -e --arg base "$base_commit" --arg target "$target_commit" '
+    .schemaVersion == 1
+    and (.stage == "PREPARED" or .stage == "RUNTIME_CANDIDATE_READY")
+    and .baseCommit == $base and .targetCommit == $target
+  ' "$checkpoint_file" >/dev/null ||
+    fail "refusing to remove failed checkpoint for another deployment identity"
+  rm -f -- "$checkpoint_file"
+  sync -f "$(dirname "$checkpoint_file")" 2>/dev/null || true
+  log "cleared failed target=$target_commit rollback=$base_commit"
+}
+
 case "$action" in
   prepare) prepare_checkpoint ;;
   mark-ready) mark_ready ;;
   verify) verify_resume ;;
   clear-success) clear_success ;;
+  clear-failed) clear_failed ;;
   *) fail "unknown action: $action" ;;
 esac

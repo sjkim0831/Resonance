@@ -205,6 +205,11 @@ SQL
    or (.status=="ALREADY_PROMOTED" and .requestedCandidateId==$candidate))
   and .sourceCommit==$source
   and .processCount==6 and .unitCount==12
+  and .requestedAttemptCandidateId==$candidate
+  and (if .candidateId==$candidate
+       then .requestedAttemptStatus=="PROMOTED"
+       else .requestedAttemptStatus=="ABORTED"
+       end)
 ' <<<"$promotion" >/dev/null || fail 'promotion result contract mismatch'
 
 # Do not add fallible gates after this point.  A failed mv leaves the exact DB

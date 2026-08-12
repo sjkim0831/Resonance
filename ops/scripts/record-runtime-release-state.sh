@@ -13,6 +13,8 @@ RECORDED_BY="${CARBONET_RUNTIME_LEDGER_RECORDED_BY:-auto-deploy-main}"
 ACTION="${1:-}"
 ROLLOUT_READY_ATTEMPTS="${CARBONET_RUNTIME_LEDGER_READY_ATTEMPTS:-11}"
 ROLLOUT_READY_DELAY_SECONDS="${CARBONET_RUNTIME_LEDGER_READY_DELAY_SECONDS:-2}"
+OBSERVE_ONLY="${CARBONET_RUNTIME_LEDGER_OBSERVE_ONLY:-false}"
+LEADER_RESOLVER="${CARBONET_POSTDEPLOY_LEADER_RESOLVER:-$ROOT/ops/scripts/resolve-patroni-primary-pod.sh}"
 
 log() { printf '[runtime-release-state] %s\n' "$*"; }
 fail() { log "FAIL $*" >&2; exit 1; }
@@ -20,10 +22,12 @@ fail() { log "FAIL $*" >&2; exit 1; }
   fail "ready attempts must be a positive integer"
 [[ "$ROLLOUT_READY_DELAY_SECONDS" =~ ^[0-9]+$ ]] ||
   fail "ready delay seconds must be a non-negative integer"
+[[ "$OBSERVE_ONLY" == true || "$OBSERVE_ONLY" == false ]] ||
+  fail "observe-only must be true or false"
 
 
 if [[ -z "${POSTGRES_POD:-}" ]]; then
-  POSTGRES_POD="$(K8S_NAMESPACE="$NAMESPACE" bash "$ROOT/ops/scripts/resolve-patroni-primary-pod.sh")"
+  POSTGRES_POD="$(K8S_NAMESPACE="$NAMESPACE" bash "$LEADER_RESOLVER")"
 fi
 [[ -n "$POSTGRES_POD" ]] || fail "Patroni primary pod is unavailable"
 
@@ -80,22 +84,29 @@ for ((rollout_attempt=1; rollout_attempt<=ROLLOUT_READY_ATTEMPTS; rollout_attemp
   sleep "$ROLLOUT_READY_DELAY_SECONDS"
 done
 
-# Clear the prior identity before touching Kubernetes.  Every later failure is
-# therefore visible to readers as RUNTIME_COMMIT_UNAVAILABLE instead of
-# accidentally retaining evidence from an older release.
-invalidate_ledger
-
-if ! "$KUBECTL_BIN" -n "$NAMESPACE" annotate "deployment/$DEPLOYMENT" \
-  "resonance.ai/target-commit=$TARGET_COMMIT" --overwrite >/dev/null; then
-  fail "deployment target-commit annotation could not be updated; ledger remains invalidated"
-fi
-
-deployment_json="$($KUBECTL_BIN -n "$NAMESPACE" get "deployment/$DEPLOYMENT" -o json)" ||
-  fail "annotated deployment cannot be reread; ledger remains invalidated"
-validate_rollout "$deployment_json"
-
 annotated_commit="$(jq -r '.metadata.annotations["resonance.ai/target-commit"] // empty' <<<"$deployment_json")"
-[[ "$annotated_commit" == "$TARGET_COMMIT" ]] || fail "deployment annotation does not exactly match target commit; ledger remains invalidated"
+if [[ "$OBSERVE_ONLY" == true ]]; then
+  [[ "$annotated_commit" == "$TARGET_COMMIT" ]] \
+    || fail "observe-only deployment annotation does not exactly match target commit"
+  # The reconciler has already restored and verified the exact owned
+  # annotations.  Re-annotating here would be a second Kubernetes writer and
+  # could invalidate the captured deployment identity.
+  invalidate_ledger
+else
+  # Clear the prior identity before touching Kubernetes. Every later failure
+  # is visible as RUNTIME_COMMIT_UNAVAILABLE.
+  invalidate_ledger
+  if ! "$KUBECTL_BIN" -n "$NAMESPACE" annotate "deployment/$DEPLOYMENT" \
+    "resonance.ai/target-commit=$TARGET_COMMIT" --overwrite >/dev/null; then
+    fail "deployment target-commit annotation could not be updated; ledger remains invalidated"
+  fi
+  deployment_json="$($KUBECTL_BIN -n "$NAMESPACE" get "deployment/$DEPLOYMENT" -o json)" ||
+    fail "annotated deployment cannot be reread; ledger remains invalidated"
+  validate_rollout "$deployment_json"
+  annotated_commit="$(jq -r '.metadata.annotations["resonance.ai/target-commit"] // empty' <<<"$deployment_json")"
+  [[ "$annotated_commit" == "$TARGET_COMMIT" ]] \
+    || fail "deployment annotation does not exactly match target commit; ledger remains invalidated"
+fi
 
 selector="$(jq -r '.spec.selector.matchLabels // {} | to_entries | map("\(.key)=\(.value)") | join(",")' <<<"$deployment_json")"
 [[ -n "$selector" ]] || fail "deployment pod selector is unavailable; ledger remains invalidated"
@@ -118,14 +129,16 @@ runtime_image_id_count="$(jq -r '[.[].imageId | select(length>0)] | unique | len
 runtime_image_id="$(jq -r '.[0].imageId // empty' <<<"$ready_runtime_pods")"
 [[ "$runtime_image_id_count" == "1" && "$runtime_image_id" =~ sha256:[0-9a-f]{64}$ ]] ||
   fail "Ready pods do not share one immutable imageID digest; ledger remains invalidated"
-runtime_pod="$(jq -r '.[0].name // empty' <<<"$ready_runtime_pods")"
-[[ -n "$runtime_pod" ]] || fail "no Ready runtime pod is available; ledger remains invalidated"
-
-health_json="$($KUBECTL_BIN -n "$NAMESPACE" exec "$runtime_pod" -c "$CONTAINER" -- \
-  curl -fsS --max-time 15 http://127.0.0.1:8080/actuator/health)" ||
-  fail "runtime health request failed; ledger remains invalidated"
-jq -e '.status=="UP"' <<<"$health_json" >/dev/null ||
-  fail "runtime health is not UP; ledger remains invalidated"
+mapfile -t runtime_pods < <(jq -r '.[].name' <<<"$ready_runtime_pods")
+[[ "${#runtime_pods[@]}" == "$desired_replicas" ]] \
+  || fail "Ready runtime pod list does not equal desired replicas; ledger remains invalidated"
+for runtime_pod in "${runtime_pods[@]}"; do
+  health_json="$($KUBECTL_BIN -n "$NAMESPACE" exec "$runtime_pod" -c "$CONTAINER" -- \
+    curl -fsS --max-time 15 http://127.0.0.1:8080/actuator/health)" ||
+    fail "runtime health request failed for $runtime_pod; ledger remains invalidated"
+  jq -e '.status=="UP"' <<<"$health_json" >/dev/null ||
+    fail "runtime health is not UP for $runtime_pod; ledger remains invalidated"
+done
 
 deployment_uid="$(jq -r '.metadata.uid' <<<"$deployment_json")"
 deployment_generation="$(jq -r '.metadata.generation // 0' <<<"$deployment_json")"
@@ -209,4 +222,4 @@ jq -e \
     fail "runtime release ledger reread did not match the healthy deployment"
   }
 
-log "PASS commit=$TARGET_COMMIT deployment=$NAMESPACE/$DEPLOYMENT generation=$deployment_generation replicas=$desired_replicas imageID=$runtime_image_id pod=$runtime_pod"
+log "PASS commit=$TARGET_COMMIT deployment=$NAMESPACE/$DEPLOYMENT generation=$deployment_generation replicas=$desired_replicas imageID=$runtime_image_id pods=${#runtime_pods[@]} observeOnly=$OBSERVE_ONLY"

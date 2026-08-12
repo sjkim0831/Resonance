@@ -5,9 +5,17 @@ state_dir="${CARBONET_DEPLOY_STATE_DIR:-/opt/resonance-data/deploy}"
 status_file="$state_dir/deploy-status.json"
 evidence_dir="$state_dir/failure-evidence"
 root="${CARBONET_DEPLOY_ROOT:-/opt/Resonance}"
+deploy_owner="${CARBONET_DEPLOY_OWNER:-sjkim}"
+deploy_owner_uid="$(id -u "$deploy_owner" 2>/dev/null || true)"
+deploy_group="$(id -gn "$deploy_owner" 2>/dev/null || true)"
 marker_pending_file="${CARBONET_POSTDEPLOY_MARKER_PENDING_FILE:-$state_dir/postdeploy-marker-pending.state}"
+attempt_journal_file="${CARBONET_POSTDEPLOY_ATTEMPT_JOURNAL_FILE:-$state_dir/carbonet-postdeploy-attempt.json}"
+attempt_journal_helper="${CARBONET_POSTDEPLOY_ATTEMPT_JOURNAL_HELPER:-/opt/resonance-data/control-plane/bin/postdeploy-attempt-journal.py}"
+recovery_launcher="${CARBONET_AUTO_DEPLOY_RECOVERY_LAUNCHER:-/opt/resonance-data/control-plane/bin/auto-deploy-main-recovery.sh}"
+recovery_runner="${CARBONET_POSTDEPLOY_RECOVERY_RUNNER:-/opt/resonance-data/control-plane/bin/postdeploy-attempt-recovery-runner.sh}"
+recovery_bundle="${CARBONET_POSTDEPLOY_RECOVERY_BUNDLE_DIR:-/opt/resonance-data/control-plane/bin}"
 promotion_authority_script="${CARBONET_POSTDEPLOY_PROMOTION_AUTHORITY_SCRIPT:-/opt/resonance-data/control-plane/bin/check-postdeploy-authoritative-promotion.sh}"
-full_screen_active_file="${CARBONET_FULL_SCREEN_ACTIVE_FILE:-$root/var/deploy-worktrees/runtime-build/var/run/full-screen-deploy-gate/active.env}"
+full_screen_active_file="${CARBONET_FULL_SCREEN_ACTIVE_FILE:-$state_dir/full-screen-deploy-gate/active.env}"
 notify_script="${CARBONET_DEPLOY_NOTIFY_SCRIPT:-/opt/resonance-data/control-plane/bin/carbonet-deploy-notify.sh}"
 KUBECONFIG="${CARBONET_KUBECONFIG:-${KUBECONFIG:-/home/sjkim/.kube/config}}"
 export KUBECONFIG
@@ -30,14 +38,40 @@ retry_allowed=false
 promotion_authoritative=false
 snapshot_preserved=false
 pending_target=""
-if [[ -e "$marker_pending_file" || -L "$marker_pending_file" ]]; then
+pending_candidate=""
+attempt_recovery_pending=false
+if [[ -e "$attempt_journal_file" || -L "$attempt_journal_file" ]]; then
+  if [[ -f "$attempt_journal_file" && ! -L "$attempt_journal_file" \
+     && "$(stat -c '%a' "$attempt_journal_file" 2>/dev/null)" == 600 \
+     && -f "$attempt_journal_helper" ]]; then
+    attempt_json="$(CARBONET_POSTDEPLOY_ATTEMPT_JOURNAL_OWNER_UID="$deploy_owner_uid" \
+      python3 "$attempt_journal_helper" --file "$attempt_journal_file" read 2>/dev/null || true)"
+    pending_target="$(jq -r '.sourceCommit // empty' <<<"$attempt_json" 2>/dev/null || true)"
+    pending_candidate="$(jq -r '.candidateId // empty' <<<"$attempt_json" 2>/dev/null || true)"
+    if [[ "$pending_target" =~ ^[0-9a-f]{40}$ \
+       && "$pending_candidate" =~ ^[A-Za-z0-9._:-]{12,160}$ \
+       && "$(jq -r '.lifecycleStatus // empty' <<<"$attempt_json")" =~ ^(STAGED|PROMOTED|ABORTED)$ ]]; then
+      category=ATTEMPT_RECOVERY_PENDING
+      retry_allowed=true
+      attempt_recovery_pending=true
+      [[ ! -s "$full_screen_active_file" ]] || snapshot_preserved=true
+    else
+      category=ATTEMPT_JOURNAL_INVALID
+    fi
+  else
+    category=ATTEMPT_JOURNAL_INVALID
+  fi
+elif [[ -e "$marker_pending_file" || -L "$marker_pending_file" ]]; then
   if [[ -f "$marker_pending_file" && ! -L "$marker_pending_file" \
      && "$(stat -c '%a' "$marker_pending_file" 2>/dev/null)" == 600 \
      && "$(sed -n '1p' "$marker_pending_file")" == schemaVersion=1 ]]; then
     pending_target="$(sed -n 's/^targetCommit=//p' "$marker_pending_file")"
+    pending_candidate="$(sed -n 's/^candidateId=//p' "$marker_pending_file")"
   fi
-  if [[ -r "$KUBECONFIG" && "$pending_target" =~ ^[0-9a-f]{40}$ ]] \
-     && CARBONET_DEPLOY_ROOT="$root" bash "$promotion_authority_script" "$root" "$pending_target" >/dev/null; then
+  if [[ -r "$KUBECONFIG" && "$pending_target" =~ ^[0-9a-f]{40}$ \
+     && "$pending_candidate" =~ ^[A-Za-z0-9._:-]{12,160}$ ]] \
+     && CARBONET_DEPLOY_ROOT="$root" bash "$promotion_authority_script" \
+       "$root" "$pending_target" "$pending_candidate" >/dev/null; then
     category=PROMOTION_MARKER_PENDING
     retry_allowed=true
     promotion_authoritative=true
@@ -64,18 +98,120 @@ target="$pending_target"
 [[ -n "$target" ]] || target="$(git ls-remote https://github.com/sjkim0831/Resonance.git refs/heads/main 2>/dev/null | awk '{print $1}' || true)"
 [[ -n "$target" ]] || target="unknown-$run_key"
 if [[ "$promotion_authoritative" == true ]]; then
-  retry_marker="$state_dir/promotion-marker-reconcile-${target}.attempted"
+  retry_identity="$(printf '%s\0%s' "$pending_candidate" "$target" | sha256sum | awk '{print $1}')"
+  retry_marker="$state_dir/postdeploy-recovery-schedule-${retry_identity}.json"
+elif [[ "$attempt_recovery_pending" == true ]]; then
+  retry_identity="$(printf '%s\0%s' "$pending_candidate" "$target" | sha256sum | awk '{print $1}')"
+  retry_marker="$state_dir/postdeploy-recovery-schedule-${retry_identity}.json"
 else
   retry_marker="$state_dir/retry-${target}.attempted"
 fi
 retry_attempted=false
 status=FAILED
-if [[ "$retry_allowed" == true && ! -e "$retry_marker" ]]; then
-  : >"$retry_marker"
+retry_state_valid=true
+schedule_existing_status=""
+schedule_reusable=false
+recovery_unit=""
+schedule_lease_seconds="${CARBONET_RECOVERY_SCHEDULE_LEASE_SECONDS:-60}"
+[[ "$schedule_lease_seconds" =~ ^[1-9][0-9]*$ && "$schedule_lease_seconds" -le 3600 ]] || exit 79
+if [[ "$retry_allowed" == true && ( "$attempt_recovery_pending" == true || "$promotion_authoritative" == true ) \
+   && ( -e "$retry_marker" || -L "$retry_marker" ) ]]; then
+  if [[ ! -f "$retry_marker" || -L "$retry_marker" \
+     || "$(stat -c '%U:%G:%a' "$retry_marker" 2>/dev/null)" != "$deploy_owner:$deploy_group:600" ]] \
+     || ! jq -e --arg candidate "$pending_candidate" --arg source "$target" '
+       .schemaVersion==1 and .candidateId==$candidate and .sourceCommit==$source
+       and ((.status=="SCHEDULED"
+              and (.unitName|test("^carbonet-auto-deploy-recovery-[0-9a-f]{20}-[0-9]+$"))
+              and keys==["candidateId","scheduledAt","schemaVersion","sourceCommit","status","unitName"])
+         or ((.status=="SUCCEEDED" or .status=="EXHAUSTED")
+              and (.unitName|test("^carbonet-auto-deploy-recovery-[0-9a-f]{20}-[0-9]+$"))
+              and keys==["attempts","candidateId","exitStatus","finishedAt","scheduledAt","schemaVersion","sourceCommit","status","unitName"]))
+     ' "$retry_marker" >/dev/null 2>&1; then
+    retry_state_valid=false
+    retry_allowed=false
+    category=RETRY_STATE_INVALID
+  fi
+  if [[ "$retry_state_valid" == true ]]; then
+    schedule_existing_status="$(jq -r '.status' "$retry_marker")"
+    if [[ "$schedule_existing_status" == SCHEDULED ]]; then
+      schedule_epoch="$(date -d "$(jq -r '.scheduledAt' "$retry_marker")" +%s 2>/dev/null || printf 0)"
+      now_epoch="$(date +%s)"
+      recovery_unit="$(jq -r '.unitName' "$retry_marker")"
+      unit_active="$(systemctl is-active "$recovery_unit" 2>/dev/null || true)"
+      if [[ "$unit_active" != active && "$unit_active" != activating \
+         && "$schedule_epoch" =~ ^[0-9]+$ \
+         && $((now_epoch - schedule_epoch)) -ge "$schedule_lease_seconds" ]]; then
+        schedule_reusable=true
+      fi
+    fi
+  fi
+fi
+if [[ "$retry_allowed" == true && "$retry_state_valid" == true \
+   && ( ( ! -e "$retry_marker" && ! -L "$retry_marker" ) || "$schedule_reusable" == true ) ]]; then
+  if [[ "$attempt_recovery_pending" == true || "$promotion_authoritative" == true ]]; then
+    schedule_generation="$(date +%s%N)"
+    recovery_unit="carbonet-auto-deploy-recovery-${retry_identity:0:20}-${schedule_generation}"
+    retry_tmp="$(mktemp "$state_dir/.postdeploy-recovery-schedule.XXXXXX")"
+    jq -n --arg candidateId "$pending_candidate" --arg sourceCommit "$target" \
+      --arg scheduledAt "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" \
+      --arg unitName "$recovery_unit" \
+      '{schemaVersion:1,status:"SCHEDULED",candidateId:$candidateId,sourceCommit:$sourceCommit,scheduledAt:$scheduledAt,unitName:$unitName}' \
+      >"$retry_tmp"
+    chmod 0600 "$retry_tmp"
+    chown "$deploy_owner:$deploy_group" "$retry_tmp"
+    [[ "$(stat -c '%U:%G:%a' "$retry_tmp")" == "$deploy_owner:$deploy_group:600" ]] || exit 79
+    mv -fT -- "$retry_tmp" "$retry_marker"
+  else
+    : >"$retry_marker"
+  fi
   retry_attempted=true
-  if [[ "$promotion_authoritative" == true ]]; then status=RECONCILE_SCHEDULED; else status=RETRY_SCHEDULED; fi
-  systemd-run --quiet --unit="carbonet-auto-deploy-retry-${run_key}" \
-    --on-active=10s /usr/bin/systemctl start carbonet-auto-deploy.service
+  if [[ "$attempt_recovery_pending" == true ]]; then
+    status=RECOVERY_SCHEDULED
+  elif [[ "$promotion_authoritative" == true ]]; then
+    status=RECONCILE_SCHEDULED
+  else
+    status=RETRY_SCHEDULED
+  fi
+  if [[ "$attempt_recovery_pending" == true ]]; then
+    # Run only the bounded recovery path directly. This transient unit is not
+    # subject to the main deployment service's maintenance-hold condition and
+    # CARBONET_RECOVERY_ONLY forbids a new build, migration or rollout.
+    if ! systemd-run --quiet --unit="$recovery_unit" \
+      --uid="$deploy_owner" --gid="$deploy_group" --working-directory="$root" \
+      --property=OnFailure=carbonet-auto-deploy-failure-handler.service \
+      --on-active=10s /usr/bin/env \
+      CARBONET_RECOVERY_ONLY=true CARBONET_DEPLOY_ROOT="$root" \
+      CARBONET_RECOVERY_TARGET_COMMIT="$target" \
+      CARBONET_RECOVERY_CANDIDATE_ID="$pending_candidate" \
+      CARBONET_RECOVERY_SCHEDULE_MARKER="$retry_marker" \
+      CARBONET_POSTDEPLOY_ATTEMPT_JOURNAL_FILE="$attempt_journal_file" \
+      CARBONET_POSTDEPLOY_ATTEMPT_JOURNAL_OWNER_UID="$deploy_owner_uid" \
+      CARBONET_AUTO_DEPLOY_RECOVERY_LAUNCHER="$recovery_launcher" \
+      CARBONET_POSTDEPLOY_ATTEMPT_JOURNAL_HELPER="$attempt_journal_helper" \
+      CARBONET_POSTDEPLOY_GATE_SCRIPT="$recovery_bundle/resonance-full-screen-deploy-gate.sh" \
+      CARBONET_POSTDEPLOY_RECORD_RUNTIME_SCRIPT="$recovery_bundle/record-runtime-release-state.sh" \
+      CARBONET_POSTDEPLOY_CHECKPOINT_SCRIPT="$recovery_bundle/runtime-candidate-checkpoint.sh" \
+      CARBONET_POSTDEPLOY_STAGE_SCRIPT="$recovery_bundle/stage-postdeploy-release-attempt.sh" \
+      CARBONET_POSTDEPLOY_ABORT_SCRIPT="$recovery_bundle/abort-postdeploy-release-attempt.sh" \
+      CARBONET_POSTDEPLOY_AUTHORITY_SCRIPT="$promotion_authority_script" \
+      CARBONET_POSTDEPLOY_LEADER_RESOLVER="$recovery_bundle/resolve-patroni-primary-pod.sh" \
+      FULL_SCREEN_GATE_ASSET_CLOSURE_VERIFIER="$recovery_bundle/verify-react-asset-closure.mjs" \
+      /usr/bin/bash "$recovery_runner"; then
+      failed_marker="${retry_marker}.schedule-failed.$(date +%s)"
+      [[ ! -e "$failed_marker" && ! -L "$failed_marker" ]] \
+        && mv -T -- "$retry_marker" "$failed_marker"
+      exit 79
+    fi
+  elif [[ "$promotion_authoritative" == true ]]; then
+    systemd-run --quiet --unit="$recovery_unit" \
+      --uid="$deploy_owner" --gid="$deploy_group" --working-directory="$root" \
+      --property=OnFailure=carbonet-auto-deploy-failure-handler.service \
+      --on-active=10s /usr/bin/env CARBONET_RECOVERY_ONLY=true CARBONET_DEPLOY_ROOT="$root" \
+      CARBONET_RECOVERY_TARGET_COMMIT="$target" /usr/bin/bash "$recovery_launcher"
+  else
+    systemd-run --quiet --unit="carbonet-auto-deploy-retry-${run_key}" \
+      --on-active=10s /usr/bin/systemctl start carbonet-auto-deploy.service
+  fi
 fi
 
 jq -n \
@@ -88,7 +224,8 @@ jq -n \
   --argjson retryAttempted "$retry_attempted" \
   --argjson promotionAuthoritative "$promotion_authoritative" \
   --argjson snapshotPreserved "$snapshot_preserved" \
-  '{checkedAt:$checkedAt,status:$status,category:$category,targetCommit:$targetCommit,retryAllowed:$retryAllowed,retryAttempted:$retryAttempted,promotionAuthoritative:$promotionAuthoritative,snapshotPreserved:$snapshotPreserved,evidence:$evidence}' \
+  --argjson attemptRecoveryPending "$attempt_recovery_pending" \
+  '{checkedAt:$checkedAt,status:$status,category:$category,targetCommit:$targetCommit,retryAllowed:$retryAllowed,retryAttempted:$retryAttempted,promotionAuthoritative:$promotionAuthoritative,attemptRecoveryPending:$attemptRecoveryPending,snapshotPreserved:$snapshotPreserved,evidence:$evidence}' \
   >"${status_file}.tmp"
 chmod 0644 "${status_file}.tmp"
 mv "${status_file}.tmp" "$status_file"
