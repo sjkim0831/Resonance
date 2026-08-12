@@ -6,7 +6,7 @@ import { availableParallelism } from "node:os";
 const startedAt = Date.now();
 const baseUrl = String(process.env.CARBONET_RUNTIME_BASE_URL || "http://127.0.0.1").replace(/\/$/, "");
 const reportPath = "/admin/api/system/actor-process/system-test-report";
-const compactReportPath = `${reportPath}?compact=true`;
+const compactReportPath = `${reportPath}?compact=true&page=0&size=50`;
 const auditPath = `${reportPath}/audit`;
 const auditBatchPath = `${reportPath}/audit-batches`;
 const fixturePath = argumentValue("--fixture") || process.env.SYSTEM_TEST_REPORT_FIXTURE || "";

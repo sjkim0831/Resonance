@@ -60,7 +60,7 @@ if (!source.includes("/admin/login/actionLogin")
     || !source.includes("/signin/actionLogout")
     || !source.includes('const auditPath = `${reportPath}/audit`')
     || !source.includes('const auditBatchPath = `${reportPath}/audit-batches`')
-    || !source.includes('const compactReportPath = `${reportPath}?compact=true`')
+    || !source.includes('const compactReportPath = `${reportPath}?compact=true&page=0&size=50`')
     || !source.includes('fetch(`${baseUrl}${compactReportPath}`')) {
   throw new Error("the contract audit must use canonical login, batch, report and logout endpoints");
 }
@@ -420,7 +420,7 @@ const server = http.createServer((request, response) => {
     response.end(JSON.stringify({ success: true, batch: { auditBatchId, batchStatus: "FAILED" } }));
     return;
   }
-  if (request.method === "GET" && request.url === "/admin/api/system/actor-process/system-test-report?compact=true") {
+  if (request.method === "GET" && request.url === "/admin/api/system/actor-process/system-test-report?compact=true&page=0&size=50") {
     compactGetRequests += 1;
     response.writeHead(200, { "content-type": "application/json" });
     response.end(fixture);
