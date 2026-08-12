@@ -146,7 +146,7 @@ export KUBECONFIG
 [[ -v CARBONET_POSTDEPLOY_ABORT_SCRIPT ]] && POSTDEPLOY_ABORT_SCRIPT_EXPLICIT=true || POSTDEPLOY_ABORT_SCRIPT_EXPLICIT=false
 [[ -v CARBONET_POSTDEPLOY_AUTHORITY_SCRIPT ]] && POSTDEPLOY_AUTHORITY_SCRIPT_EXPLICIT=true || POSTDEPLOY_AUTHORITY_SCRIPT_EXPLICIT=false
 [[ -v CARBONET_POSTDEPLOY_LEADER_RESOLVER ]] && POSTDEPLOY_LEADER_RESOLVER_EXPLICIT=true || POSTDEPLOY_LEADER_RESOLVER_EXPLICIT=false
-POSTDEPLOY_JOURNAL_HELPER="${CARBONET_POSTDEPLOY_ATTEMPT_JOURNAL_HELPER:-$ROOT_DIR/ops/scripts/postdeploy-attempt-journal.py}"
+POSTDEPLOY_JOURNAL_HELPER="${CARBONET_POSTDEPLOY_ATTEMPT_JOURNAL_HELPER:-/opt/resonance-data/control-plane/bin/postdeploy-attempt-journal.py}"
 POSTDEPLOY_GATE_SCRIPT="${CARBONET_POSTDEPLOY_GATE_SCRIPT:-$ROOT_DIR/ops/scripts/resonance-full-screen-deploy-gate.sh}"
 POSTDEPLOY_RECORD_RUNTIME_SCRIPT="${CARBONET_POSTDEPLOY_RECORD_RUNTIME_SCRIPT:-$ROOT_DIR/ops/scripts/record-runtime-release-state.sh}"
 POSTDEPLOY_CHECKPOINT_SCRIPT="${CARBONET_POSTDEPLOY_CHECKPOINT_SCRIPT:-$ROOT_DIR/ops/scripts/runtime-candidate-checkpoint.sh}"
@@ -156,7 +156,7 @@ POSTDEPLOY_AUTHORITY_SCRIPT="${CARBONET_POSTDEPLOY_AUTHORITY_SCRIPT:-$ROOT_DIR/o
 POSTDEPLOY_LEADER_RESOLVER="${CARBONET_POSTDEPLOY_LEADER_RESOLVER:-$ROOT_DIR/ops/scripts/resolve-patroni-primary-pod.sh}"
 
 rebind_default_postdeploy_helpers() {
-  [[ "$POSTDEPLOY_JOURNAL_HELPER_EXPLICIT" == true ]] || POSTDEPLOY_JOURNAL_HELPER="$ROOT_DIR/ops/scripts/postdeploy-attempt-journal.py"
+  [[ "$POSTDEPLOY_JOURNAL_HELPER_EXPLICIT" == true ]] || POSTDEPLOY_JOURNAL_HELPER="/opt/resonance-data/control-plane/bin/postdeploy-attempt-journal.py"
   [[ "$POSTDEPLOY_GATE_SCRIPT_EXPLICIT" == true ]] || POSTDEPLOY_GATE_SCRIPT="$ROOT_DIR/ops/scripts/resonance-full-screen-deploy-gate.sh"
   [[ "$POSTDEPLOY_RECORD_RUNTIME_SCRIPT_EXPLICIT" == true ]] || POSTDEPLOY_RECORD_RUNTIME_SCRIPT="$ROOT_DIR/ops/scripts/record-runtime-release-state.sh"
   [[ "$POSTDEPLOY_CHECKPOINT_SCRIPT_EXPLICIT" == true ]] || POSTDEPLOY_CHECKPOINT_SCRIPT="$ROOT_DIR/ops/scripts/runtime-candidate-checkpoint.sh"
@@ -164,6 +164,16 @@ rebind_default_postdeploy_helpers() {
   [[ "$POSTDEPLOY_ABORT_SCRIPT_EXPLICIT" == true ]] || POSTDEPLOY_ABORT_SCRIPT="$ROOT_DIR/ops/scripts/abort-postdeploy-release-attempt.sh"
   [[ "$POSTDEPLOY_AUTHORITY_SCRIPT_EXPLICIT" == true ]] || POSTDEPLOY_AUTHORITY_SCRIPT="$ROOT_DIR/ops/scripts/check-postdeploy-authoritative-promotion.sh"
   [[ "$POSTDEPLOY_LEADER_RESOLVER_EXPLICIT" == true ]] || POSTDEPLOY_LEADER_RESOLVER="$ROOT_DIR/ops/scripts/resolve-patroni-primary-pod.sh"
+}
+
+resolve_postdeploy_postgres_pod() {
+  local resolved=""
+  [[ -z "$POSTGRES_POD" ]] || return 0
+  resolved="$(K8S_NAMESPACE="$NAMESPACE" bash "$POSTDEPLOY_LEADER_RESOLVER" 2>/dev/null)" \
+    || return 1
+  [[ "$resolved" =~ ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$ ]] || return 1
+  POSTGRES_POD="$resolved"
+  return 0
 }
 
 # The applied-source marker drives incremental planning and is advanced for
@@ -298,6 +308,12 @@ write_postdeploy_recovery_state() {
 }
 
 write_postdeploy_promotion_quarantine() {
+  if [[ "${attempt_recovery_quarantine_deferred:-false}" == true ]]; then
+    [[ -f "$RUNTIME_LEDGER_QUARANTINE_FILE" && ! -L "$RUNTIME_LEDGER_QUARANTINE_FILE" \
+       && "$(sha256sum "$RUNTIME_LEDGER_QUARANTINE_FILE" | awk '{print $1}')" == "$attempt_recovery_quarantine_hash" ]] || return 1
+    echo "[auto-deploy] retained pinned durable-attempt quarantine; additionalReason=$1" >&2
+    return 1
+  fi
   if [[ "${legacy_false_discovery_quarantine_deferred:-false}" == true ]]; then
     [[ -f "$RUNTIME_LEDGER_QUARANTINE_FILE" && ! -L "$RUNTIME_LEDGER_QUARANTINE_FILE" \
        && "$(sha256sum "$RUNTIME_LEDGER_QUARANTINE_FILE" | awk '{print $1}')" == "$legacy_false_discovery_quarantine_hash" ]] || return 1
@@ -320,8 +336,17 @@ clear_postdeploy_marker_pending() {
 
 retire_matching_runtime_quarantine() {
   local expected_candidate="${1:-$postdeploy_candidate_id}" expected_source="${2:-$target_commit}"
-  local observed_candidate observed_source destination
+  local observed_candidate observed_source destination observed_hash
   [[ -e "$RUNTIME_LEDGER_QUARANTINE_FILE" || -L "$RUNTIME_LEDGER_QUARANTINE_FILE" ]] || return 0
+  if [[ "${attempt_recovery_quarantine_deferred:-false}" == true ]]; then
+    [[ -f "$RUNTIME_LEDGER_QUARANTINE_FILE" && ! -L "$RUNTIME_LEDGER_QUARANTINE_FILE" \
+       && "$(stat -c '%a:%u' "$RUNTIME_LEDGER_QUARANTINE_FILE" 2>/dev/null)" == "600:$(id -u)" ]] \
+      || return 1
+    observed_hash="$(sha256sum "$RUNTIME_LEDGER_QUARANTINE_FILE" 2>/dev/null | awk '{print $1}')" || return 1
+    [[ "$expected_candidate" == "$attempt_recovery_quarantine_candidate" \
+       && "$expected_source" == "$attempt_recovery_quarantine_target" \
+       && "$observed_hash" == "$attempt_recovery_quarantine_hash" ]] || return 1
+  fi
   [[ -f "$RUNTIME_LEDGER_QUARANTINE_FILE" && ! -L "$RUNTIME_LEDGER_QUARANTINE_FILE" \
      && "$(stat -c '%a' "$RUNTIME_LEDGER_QUARANTINE_FILE" 2>/dev/null)" == 600 ]] || return 1
   observed_source="$(sed -n 's/^targetCommit=//p' "$RUNTIME_LEDGER_QUARANTINE_FILE" 2>/dev/null || true)"
@@ -431,6 +456,48 @@ defer_exact_legacy_false_discovery_quarantine() {
   [[ "$legacy_false_discovery_quarantine_hash" =~ ^[0-9a-f]{64}$ ]]
 }
 
+attempt_recovery_quarantine_deferred=false
+attempt_recovery_quarantine_hash=""
+attempt_recovery_quarantine_target=""
+attempt_recovery_quarantine_candidate=""
+
+defer_exact_durable_attempt_recovery_quarantine() {
+  local keys expected_keys reason applied runtime candidate target journal
+  [[ -f "$RUNTIME_LEDGER_QUARANTINE_FILE" && ! -L "$RUNTIME_LEDGER_QUARANTINE_FILE" \
+     && "$(stat -c '%a' "$RUNTIME_LEDGER_QUARANTINE_FILE" 2>/dev/null)" == 600 \
+     && "$(stat -c '%u' "$RUNTIME_LEDGER_QUARANTINE_FILE" 2>/dev/null)" == "$(id -u)" ]] || return 1
+  expected_keys=$'candidateId\nobservedAppliedMarker\nobservedRuntimeMarker\nreason\nschemaVersion\ntargetCommit'
+  keys="$(sed -n 's/^\([A-Za-z][A-Za-z0-9]*\)=.*/\1/p' "$RUNTIME_LEDGER_QUARANTINE_FILE" | LC_ALL=C sort)"
+  [[ "$keys" == "$expected_keys" && "$(awk 'END{print NR}' "$RUNTIME_LEDGER_QUARANTINE_FILE")" == 6 ]] || return 1
+  [[ "$(sed -n 's/^schemaVersion=//p' "$RUNTIME_LEDGER_QUARANTINE_FILE")" == 1 ]] || return 1
+  target="$(sed -n 's/^targetCommit=//p' "$RUNTIME_LEDGER_QUARANTINE_FILE")"
+  candidate="$(sed -n 's/^candidateId=//p' "$RUNTIME_LEDGER_QUARANTINE_FILE")"
+  reason="$(sed -n 's/^reason=//p' "$RUNTIME_LEDGER_QUARANTINE_FILE")"
+  applied="$(sed -n 's/^observedAppliedMarker=//p' "$RUNTIME_LEDGER_QUARANTINE_FILE")"
+  runtime="$(sed -n 's/^observedRuntimeMarker=//p' "$RUNTIME_LEDGER_QUARANTINE_FILE")"
+  [[ "$target" =~ ^[0-9a-f]{40}$ && "$candidate" =~ ^[A-Za-z0-9._:-]{12,160}$ \
+     && "$applied" =~ ^[0-9a-f]{40}$ && "$runtime" =~ ^[0-9a-f]{40}$ ]] || return 1
+  case "$reason" in
+    ATTEMPT_DB_STAGE_UNAVAILABLE|ATTEMPT_ABORT_PROMOTION_RACE_UNKNOWN|PROMOTION_DB_CHECK_UNAVAILABLE|RECONCILED_ATTEMPT_DB_RECONFIRM_FAILED|ABORTED_ATTEMPT_DB_RECONFIRM_FAILED|PERSISTENT_PROMOTED_ATTEMPT_DIVERGED) ;;
+    *) return 1 ;;
+  esac
+  journal="$(CARBONET_POSTDEPLOY_ATTEMPT_JOURNAL_OWNER_UID="$(id -u)" \
+    python3 "$POSTDEPLOY_JOURNAL_HELPER" --file "$POSTDEPLOY_ATTEMPT_JOURNAL_FILE" read 2>/dev/null)" \
+    || return 1
+  jq -e --arg candidate "$candidate" --arg source "$target" \
+    --arg applied "$applied" --arg runtime "$runtime" '
+      .schemaVersion==2 and .candidateId==$candidate and .attemptId==$candidate
+      and .sourceCommit==$source
+      and (.lifecycleStatus=="STAGED" or .lifecycleStatus=="PROMOTED" or .lifecycleStatus=="ABORTED")
+      and (($applied==.baseCommit or $applied==.sourceCommit)
+           and ($runtime==.baseCommit or $runtime==.sourceCommit))
+    ' <<<"$journal" >/dev/null || return 1
+  attempt_recovery_quarantine_deferred=true
+  attempt_recovery_quarantine_hash="$(sha256sum "$RUNTIME_LEDGER_QUARANTINE_FILE" | awk '{print $1}')"
+  attempt_recovery_quarantine_target="$target"
+  attempt_recovery_quarantine_candidate="$candidate"
+  [[ "$attempt_recovery_quarantine_hash" =~ ^[0-9a-f]{64}$ ]]
+}
 mkdir -p \
   "$(dirname "$LOCK_FILE")" \
   "$(dirname "$DEPLOY_STATE_FILE")" \
@@ -444,7 +511,9 @@ chmod 0700 "$POSTDEPLOY_LEGACY_RETIRE_DIR"
 if [[ -s "$RUNTIME_LEDGER_QUARANTINE_FILE" \
    && ( "${CARBONET_RECOVERY_ONLY:-false}" != true \
         || ! -s "$POSTDEPLOY_ATTEMPT_JOURNAL_FILE" ) ]]; then
-  if defer_exact_legacy_false_discovery_quarantine; then
+  if defer_exact_durable_attempt_recovery_quarantine; then
+    echo "[auto-deploy] exact durable-attempt quarantine deferred until journal recovery hash=$attempt_recovery_quarantine_hash"
+  elif defer_exact_legacy_false_discovery_quarantine; then
     echo "[auto-deploy] exact legacy false-discovery quarantine deferred until pair retirement hash=$legacy_false_discovery_quarantine_hash"
   else
     echo "[auto-deploy] BLOCKED unresolved runtime-ledger invalidation quarantine: $RUNTIME_LEDGER_QUARANTINE_FILE" >&2
@@ -836,6 +905,10 @@ else
   PLAN_INFRASTRUCTURE_REQUIRED=false
   PLAN_TESTS=""
   PLAN_REASONS="durable-recovery-only"
+  resolve_postdeploy_postgres_pod || {
+    echo '[auto-deploy] recovery-only writable PostgreSQL leader is unavailable' >&2
+    exit 79
+  }
   echo "[auto-deploy] recovery-only deploy preparation bypassed target=$target_commit"
   record_deploy_phase "recovery_identity"
 fi
@@ -1415,6 +1488,8 @@ stage_postdeploy_release_attempt_db() {
   CARBONET_POSTDEPLOY_CANDIDATE_ID="$postdeploy_candidate_id" \
   CARBONET_POSTDEPLOY_SOURCE_COMMIT="$target_commit" \
   CARBONET_POSTDEPLOY_ATTEMPT_JOURNAL_FILE="$POSTDEPLOY_ATTEMPT_JOURNAL_FILE" \
+  CARBONET_POSTDEPLOY_ATTEMPT_JOURNAL_HELPER="$POSTDEPLOY_JOURNAL_HELPER" \
+  CARBONET_POSTDEPLOY_LEADER_RESOLVER="$POSTDEPLOY_LEADER_RESOLVER" \
   CARBONET_K8S_NAMESPACE="$NAMESPACE" CARBONET_POSTGRES_CONTAINER="$POSTGRES_CONTAINER" \
   POSTGRES_DB="$POSTGRES_DB" POSTGRES_ADMIN_USER="$POSTGRES_USER" \
   RESONANCE_POSTGRES_LEADER_POD="${POSTGRES_POD:-}" \
@@ -2637,6 +2712,10 @@ verify_operational_usage_ledger_current_runtime_identity() {
   local deployment_uid generation observed desired ready_count pod pod_health
   local -a ready_pods=()
 
+  resolve_postdeploy_postgres_pod || {
+    echo '[auto-deploy] runtime identity proof has no writable PostgreSQL leader' >&2
+    return 1
+  }
   if [[ -f "$RUNTIME_DEPLOY_STATE_FILE" && ! -L "$RUNTIME_DEPLOY_STATE_FILE" ]]; then
     marker_commit="$(tr -d '[:space:]' <"$RUNTIME_DEPLOY_STATE_FILE" 2>/dev/null || true)"
   else
@@ -4528,8 +4607,11 @@ CARBONET_DURABLE_ATTEMPT_REQUIRED=true \
 CARBONET_DEFER_LIVE_MUTATIONS_UNTIL_POST_FLYWAY="$([[ "$PLAN_DATABASE_REQUIRED" == true || "$postdeploy_db_attempt_staged" != true ]] && echo true || echo false)" \
 POSTDEPLOY_DB_ATTEMPT_STAGED="$postdeploy_db_attempt_staged" \
 CARBONET_POSTDEPLOY_ATTEMPT_JOURNAL_FILE="$POSTDEPLOY_ATTEMPT_JOURNAL_FILE" \
+CARBONET_POSTDEPLOY_ATTEMPT_JOURNAL_HELPER="$POSTDEPLOY_JOURNAL_HELPER" \
 CARBONET_POSTDEPLOY_CANDIDATE_ID="$postdeploy_candidate_id" \
 CARBONET_POSTDEPLOY_SOURCE_COMMIT="$target_commit" \
+CARBONET_POSTDEPLOY_LEADER_RESOLVER="$POSTDEPLOY_LEADER_RESOLVER" \
+RESONANCE_POSTGRES_LEADER_POD="${POSTGRES_POD:-}" \
 CARBONET_POSTGRES_CONTAINER="$POSTGRES_CONTAINER" POSTGRES_DB="$POSTGRES_DB" POSTGRES_ADMIN_USER="$POSTGRES_USER" \
 CARBONET_RUNTIME_JAVA_OPTS="$CARBONET_RUNTIME_JAVA_OPTS" \
   bash ops/scripts/resonance-k8s-build-deploy-80-v2.sh

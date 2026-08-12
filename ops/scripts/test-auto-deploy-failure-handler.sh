@@ -24,7 +24,14 @@ grep -q '/opt/resonance-data/control-plane/bin/carbonet-auto-deploy-failure-hand
 grep -Fq 'Restart=on-failure' "$failure_service"
 grep -Fq 'ConditionPathExists=/opt/resonance-data/deploy/carbonet-postdeploy-attempt.json' "$watchdog_service"
 grep -Fq 'carbonet-auto-deploy-failure-handler.service' "$watchdog_service"
+grep -Fxq 'ExecStartPre=/usr/bin/systemctl reset-failed carbonet-auto-deploy-failure-handler.service' "$watchdog_service"
 grep -Fq 'OnBootSec=75s' "$watchdog_timer"
+python3 - "$watchdog_service" <<'PY'
+from pathlib import Path
+import sys
+lines=Path(sys.argv[1]).read_text().splitlines()
+assert lines.index("ExecStartPre=/usr/bin/systemctl reset-failed carbonet-auto-deploy-failure-handler.service") < lines.index("ExecStart=/usr/bin/systemctl start carbonet-auto-deploy-failure-handler.service")
+PY
 grep -Fq 'OnUnitActiveSec=75s' "$watchdog_timer"
 grep -Fq 'Persistent=true' "$watchdog_timer"
 grep -Fq 'enable --now carbonet-postdeploy-recovery-watchdog.timer' "$deploy"
@@ -112,6 +119,36 @@ assert not contract(deploy.replace(authority_rebind, "AUTHORITY_REBIND_REMOVED",
 assert not contract(deploy.replace(clean_rebind_call, '\n  cd "$ROOT_DIR"', 1), handler, authority)
 PY
 
+watchdog_fixture="$(mktemp -d)"
+mkdir -p "$watchdog_fixture/bin"
+cat >"$watchdog_fixture/bin/systemctl" <<'SH'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >>"${WATCHDOG_SYSTEMCTL_RECORD:?}"
+if [[ "$1" == reset-failed ]]; then
+  rm -f -- "${WATCHDOG_START_LIMIT:?}"
+elif [[ "$1" == start && -e "${WATCHDOG_START_LIMIT:?}" ]]; then
+  exit 42
+fi
+SH
+chmod 0755 "$watchdog_fixture/bin/systemctl"
+: >"$watchdog_fixture/start-limit"
+watchdog_blocked=0
+WATCHDOG_SYSTEMCTL_RECORD="$watchdog_fixture/systemctl.record" \
+WATCHDOG_START_LIMIT="$watchdog_fixture/start-limit" \
+PATH="$watchdog_fixture/bin:$PATH" systemctl start carbonet-auto-deploy-failure-handler.service \
+  || watchdog_blocked=$?
+[[ "$watchdog_blocked" == 42 ]]
+while IFS='=' read -r directive command; do
+  [[ "$directive" == ExecStartPre || "$directive" == ExecStart ]] || continue
+  command="${command#/usr/bin/}"
+  WATCHDOG_SYSTEMCTL_RECORD="$watchdog_fixture/systemctl.record" \
+  WATCHDOG_START_LIMIT="$watchdog_fixture/start-limit" \
+  PATH="$watchdog_fixture/bin:$PATH" bash -c "$command"
+done <"$watchdog_service"
+mapfile -t watchdog_calls <"$watchdog_fixture/systemctl.record"
+[[ "${watchdog_calls[*]}" == "start carbonet-auto-deploy-failure-handler.service reset-failed carbonet-auto-deploy-failure-handler.service start carbonet-auto-deploy-failure-handler.service" ]]
+[[ ! -e "$watchdog_fixture/start-limit" ]]
+rm -rf -- "$watchdog_fixture"
 if command -v jq >/dev/null 2>&1; then
   fixture="$(mktemp -d)"
   trap 'rm -rf "$fixture"' EXIT
@@ -299,7 +336,9 @@ if command -v jq >/dev/null 2>&1; then
   runner_sha='5555555555555555555555555555555555555555555555555555555555555555'
   runner_image_id='docker-pullable://registry.invalid/carbonet@sha256:6666666666666666666666666666666666666666666666666666666666666666'
   runner_journal="$runner_fixture/state/carbonet-postdeploy-attempt.json"
-  runner_schedule="$runner_fixture/state/schedule.json"
+  runner_retry_identity="$(printf '%s\0%s' "$runner_candidate" "$runner_target" |
+    sha256sum | awk '{print $1}')"
+  runner_schedule="$runner_fixture/state/postdeploy-recovery-schedule-${runner_retry_identity}.json"
   stage_runner_journal() {
     rm -f -- "$runner_journal" "$runner_fixture/state/.carbonet-postdeploy-attempt.json.lock"
     jq -cn --arg attempt "$runner_candidate" --arg source "$runner_target" \
@@ -366,6 +405,40 @@ SH
   [[ "$quarantine_count" == 1 ]]
   [[ "$(find "$runner_fixture/state" -maxdepth 1 -type f -name 'recovery-quarantine-*.json' -printf '%m\n')" == 600 ]]
 
+  cat >"$runner_fixture/bin/systemctl" <<'SH'
+#!/usr/bin/env bash
+if [[ "$*" == *InvocationID* ]]; then printf 'exhausted-fixture\n'; else printf '777\n'; fi
+SH
+  cat >"$runner_fixture/bin/journalctl" <<'SH'
+#!/usr/bin/env bash
+printf 'durable attempt recovery exhausted\n'
+SH
+  cat >"$runner_fixture/bin/systemd-run" <<'SH'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >>"${FAKE_SYSTEMD_RUN_RECORD:?}"
+SH
+  cat >"$runner_fixture/notify.sh" <<'SH'
+#!/usr/bin/env bash
+exit 0
+SH
+  chmod 0755 "$runner_fixture/bin/systemctl" "$runner_fixture/bin/journalctl" \
+    "$runner_fixture/bin/systemd-run" "$runner_fixture/notify.sh"
+  exhausted_quarantine="$(find "$runner_fixture/state" -maxdepth 1 -type f \
+    -name 'recovery-quarantine-*.json' -print -quit)"
+  exhausted_hashes_before="$(sha256sum "$runner_journal" "$runner_schedule" "$exhausted_quarantine")"
+  for tick in 1 2; do
+    FAKE_SYSTEMD_RUN_RECORD="$runner_fixture/systemd-run.record" \
+    PATH="$runner_fixture/bin:$PATH" CARBONET_DEPLOY_OWNER="$(id -un)" \
+    CARBONET_DEPLOY_ROOT="$root" CARBONET_DEPLOY_STATE_DIR="$runner_fixture/state" \
+    CARBONET_POSTDEPLOY_ATTEMPT_JOURNAL_HELPER="$root/ops/scripts/postdeploy-attempt-journal.py" \
+    CARBONET_DEPLOY_NOTIFY_SCRIPT="$runner_fixture/notify.sh" \
+      bash "$handler" >/dev/null
+  done
+  [[ ! -e "$runner_fixture/systemd-run.record" ]]
+  [[ "$(sha256sum "$runner_journal" "$runner_schedule" "$exhausted_quarantine")" == "$exhausted_hashes_before" ]]
+  jq -e '.status=="FAILED" and .category=="ATTEMPT_RECOVERY_PENDING"
+    and .retryAllowed==true and .retryAttempted==false' "$runner_fixture/state/deploy-status.json" >/dev/null
+  jq -e '.status=="EXHAUSTED" and .attempts==3 and .exitStatus==75' "$runner_schedule" >/dev/null
   rm -f "$runner_fixture/calls"
   stage_runner_journal
   set +e

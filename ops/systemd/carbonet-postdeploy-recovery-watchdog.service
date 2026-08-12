@@ -7,4 +7,5 @@ Wants=network-online.target
 [Service]
 Type=oneshot
 User=root
+ExecStartPre=/usr/bin/systemctl reset-failed carbonet-auto-deploy-failure-handler.service
 ExecStart=/usr/bin/systemctl start carbonet-auto-deploy-failure-handler.service

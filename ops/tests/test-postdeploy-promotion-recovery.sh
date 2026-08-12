@@ -195,6 +195,7 @@ grep -Fxq 'reason=DB_PROMOTED_MARKER_PENDING' "$POSTDEPLOY_MARKER_PENDING_FILE"
 # reconcile both derived markers from DB+K8s truth and disarm active.env before
 # the ordinary runtime identity preflight can deadlock the retry.
 eval "$(sed -n '/^write_commit_marker_exact() {$/,/^# Publish the serving release identity/p' "$AUTO" | sed '$d')"
+eval "$(sed -n '/^resolve_postdeploy_postgres_pod() {$/,/^}$/p' "$AUTO")"
 eval "$(sed -n '/^verify_operational_usage_ledger_current_runtime_identity() {$/,/^run_operational_usage_ledger_current_runtime_e2e_if_required() {$/p' "$AUTO" | sed '$d')"
 FULL_SCREEN_GATE_STATE_DIR="$TMP/full-screen"
 mkdir -p "$FULL_SCREEN_GATE_STATE_DIR/snapshots/fixture"

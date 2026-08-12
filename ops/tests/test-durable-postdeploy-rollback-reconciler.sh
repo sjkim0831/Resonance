@@ -83,6 +83,112 @@ PY
 # shellcheck disable=SC1090
 source "$tmp/orphan-function.sh"
 
+python3 - "$AUTO" "$tmp/resolve-leader-function.sh" <<'PY'
+from pathlib import Path
+import sys
+text=Path(sys.argv[1]).read_text(encoding="utf-8")
+start=text.index("resolve_postdeploy_postgres_pod() {")
+end=text.index("\n}\n",start)+3
+Path(sys.argv[2]).write_text(text[start:end],encoding="utf-8")
+PY
+# shellcheck disable=SC1090
+source "$tmp/resolve-leader-function.sh"
+cat >"$tmp/leader-resolver.sh" <<'SH'
+#!/usr/bin/env bash
+printf '%s\n' "${K8S_NAMESPACE:-}" >"${LEADER_NAMESPACE_RECORD:?}"
+[[ "${LEADER_RESOLVER_FAIL:-false}" != true ]] || exit 1
+printf '%s\n' postgres-patroni-2
+SH
+chmod 0755 "$tmp/leader-resolver.sh"
+NAMESPACE=recovery-ns
+POSTDEPLOY_LEADER_RESOLVER="$tmp/leader-resolver.sh"
+POSTGRES_POD=""
+LEADER_NAMESPACE_RECORD="$tmp/leader-namespace" resolve_postdeploy_postgres_pod
+[[ "$POSTGRES_POD" == postgres-patroni-2 ]]
+[[ "$(cat "$tmp/leader-namespace")" == recovery-ns ]]
+POSTGRES_POD=""
+leader_failure=0
+LEADER_RESOLVER_FAIL=true \
+  LEADER_NAMESPACE_RECORD="$tmp/leader-namespace" \
+  resolve_postdeploy_postgres_pod || leader_failure=$?
+[[ "$leader_failure" == 1 && -z "$POSTGRES_POD" ]]
+
+python3 - "$AUTO" "$tmp/attempt-quarantine-functions.sh" <<'PY'
+from pathlib import Path
+import sys
+text=Path(sys.argv[1]).read_text(encoding="utf-8")
+names=["defer_exact_durable_attempt_recovery_quarantine","retire_matching_runtime_quarantine"]
+out=[]
+for name in names:
+    start=text.index(name+"() {")
+    i=text.index("{",start); depth=0; quote=None; escaped=False
+    for j in range(i,len(text)):
+        ch=text[j]
+        if escaped: escaped=False; continue
+        if ch=="\\": escaped=True; continue
+        if quote:
+            if ch==quote: quote=None
+            continue
+        if ch in "'\"": quote=ch; continue
+        if ch=="{": depth+=1
+        elif ch=="}":
+            depth-=1
+            if depth==0:
+                out.append(text[start:j+1]+"\n")
+                break
+Path(sys.argv[2]).write_text("\n".join(out),encoding="utf-8")
+PY
+(
+  source "$tmp/attempt-quarantine-functions.sh"
+  qdir="$tmp/attempt-quarantine"
+  mkdir -p "$qdir/retired"
+  chmod 0700 "$qdir"
+  POSTDEPLOY_ATTEMPT_JOURNAL_FILE="$qdir/attempt.json"
+  POSTDEPLOY_JOURNAL_HELPER="$JOURNAL_HELPER"
+  RUNTIME_LEDGER_QUARANTINE_FILE="$qdir/quarantine.state"
+  POSTDEPLOY_LEGACY_RETIRE_DIR="$qdir/retired"
+  qcandidate='postdeploy:test:quarantine:123456'
+  qsource='aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
+  qbase='bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb'
+  qsha='cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc'
+  qimage='docker-pullable://registry.invalid/carbonet@sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd'
+  jq -cn --arg attempt "$qcandidate" --arg source "$qsource" --arg base "$qbase" \
+    --arg sha "$qsha" --arg imageId "$qimage" '
+    {schemaVersion:2,lifecycleStatus:"STAGED",rollbackStage:"SNAPSHOT_CAPTURED",dbAttemptStaged:false,
+     attemptId:$attempt,candidateId:$attempt,sourceCommit:$source,baseCommit:$base,
+     runtimeIdentityHash:null,terminalReason:null,stagedAt:"2026-08-12T09:00:00Z",terminalAt:null,
+     rollback:{snapshotId:"quarantine-fixture",snapshotDir:"/opt/resonance-data/deploy/full-screen-deploy-gate/snapshots/quarantine-fixture",
+       snapshotManifestSha256:$sha,runtimeImageRef:"registry.invalid/baseline",runtimeImageId:$imageId,
+       deploymentUid:"uid",deploymentGeneration:1,deploymentAnnotationsSha256:$sha,podTemplateSha256:$sha,
+       appliedMarkerCommit:$base,appliedMarkerSha256:$sha,runtimeMarkerCommit:$base,runtimeMarkerSha256:$sha}}' |
+    python3 "$JOURNAL_HELPER" --file "$POSTDEPLOY_ATTEMPT_JOURNAL_FILE" stage >/dev/null
+  write_attempt_quarantine() {
+    local reason="$1" candidate_id="${2:-$qcandidate}"
+    printf 'schemaVersion=1\ntargetCommit=%s\ncandidateId=%s\nreason=%s\nobservedAppliedMarker=%s\nobservedRuntimeMarker=%s\n' \
+      "$qsource" "$candidate_id" "$reason" "$qbase" "$qbase" >"$RUNTIME_LEDGER_QUARANTINE_FILE"
+    chmod 0600 "$RUNTIME_LEDGER_QUARANTINE_FILE"
+  }
+  write_attempt_quarantine WRONG_REASON
+  ! defer_exact_durable_attempt_recovery_quarantine
+  write_attempt_quarantine ATTEMPT_DB_STAGE_UNAVAILABLE wrong-candidate
+  ! defer_exact_durable_attempt_recovery_quarantine
+  write_attempt_quarantine ATTEMPT_DB_STAGE_UNAVAILABLE
+  printf 'extra=bad\n' >>"$RUNTIME_LEDGER_QUARANTINE_FILE"
+  ! defer_exact_durable_attempt_recovery_quarantine
+  write_attempt_quarantine ATTEMPT_DB_STAGE_UNAVAILABLE
+  defer_exact_durable_attempt_recovery_quarantine
+  pinned_hash="$attempt_recovery_quarantine_hash"
+  write_attempt_quarantine PROMOTION_DB_CHECK_UNAVAILABLE
+  drift_hash="$(sha256sum "$RUNTIME_LEDGER_QUARANTINE_FILE" | awk '{print $1}')"
+  [[ "$drift_hash" != "$pinned_hash" ]]
+  ! retire_matching_runtime_quarantine "$qcandidate" "$qsource"
+  [[ -f "$RUNTIME_LEDGER_QUARANTINE_FILE" ]]
+  write_attempt_quarantine ATTEMPT_DB_STAGE_UNAVAILABLE
+  [[ "$(sha256sum "$RUNTIME_LEDGER_QUARANTINE_FILE" | awk '{print $1}')" == "$pinned_hash" ]]
+  retire_matching_runtime_quarantine "$qcandidate" "$qsource"
+  [[ ! -e "$RUNTIME_LEDGER_QUARANTINE_FILE" ]]
+  [[ -f "$POSTDEPLOY_LEGACY_RETIRE_DIR/${qcandidate}.recovery-quarantine.state" ]]
+)
 candidate='postdeploy:test:reconciler:123456'
 source_commit='1111111111111111111111111111111111111111'
 baseline='0000000000000000000000000000000000000000'
@@ -644,6 +750,12 @@ python3 - "$AUTO" <<'PY'
 from pathlib import Path
 import sys
 text=Path(sys.argv[1]).read_text()
+recovery=text[text.index('else\n  recovery_target_commit='):
+              text.index('live_frontend_overlay=')]
+assert recovery.index("resolve_postdeploy_postgres_pod") < recovery.index('record_deploy_phase "recovery_identity"')
+dispatch=text.index("if recover_persistent_postdeploy_attempt; then")
+assert text.index("resolve_postdeploy_postgres_pod", text.index('else\n  recovery_target_commit=')) < dispatch
+assert "runtime identity proof has no writable PostgreSQL leader" in text
 guard=text.index("BLOCKED deferred legacy false-discovery quarantine")
 mutation=text.index('postdeploy_pending_recovery_status=1')
 assert guard < mutation

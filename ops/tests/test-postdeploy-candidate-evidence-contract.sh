@@ -65,9 +65,12 @@ stage_bundle_source='aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
 stage_bundle_base='bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb'
 stage_bundle_sha='cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc'
 stage_bundle_image_id='docker-pullable://registry.invalid/carbonet@sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd'
-mkdir -p "$stage_bundle_tmp/state"
+mkdir -p "$stage_bundle_tmp/state" "$stage_bundle_tmp/mutable-checkout/ops/scripts"
 chmod 0700 "$stage_bundle_tmp/state"
 install -m 0755 "$JOURNAL_HELPER" "$stage_bundle_tmp/installed-journal-helper.py"
+install -m 0775 "$JOURNAL_HELPER" \
+  "$stage_bundle_tmp/mutable-checkout/ops/scripts/postdeploy-attempt-journal.py"
+: >"$stage_bundle_tmp/kubectl.calls"
 jq -cn --arg attempt "$stage_bundle_candidate" --arg source "$stage_bundle_source" \
   --arg base "$stage_bundle_base" --arg sha "$stage_bundle_sha" --arg imageId "$stage_bundle_image_id" '
   {schemaVersion:2,lifecycleStatus:"STAGED",rollbackStage:"SNAPSHOT_CAPTURED",dbAttemptStaged:false,
@@ -81,6 +84,7 @@ jq -cn --arg attempt "$stage_bundle_candidate" --arg source "$stage_bundle_sourc
     --file "$stage_bundle_tmp/state/attempt.json" stage >/dev/null
 stage_bundle_kubectl() {
   local sql candidate="${STAGE_BUNDLE_CANDIDATE:?}" source="${STAGE_BUNDLE_SOURCE:?}"
+  printf '%s\n' "$*" >>"${STAGE_BUNDLE_CALLS:?}"
   sql="$(cat)"
   if [[ "$sql" == *to_regprocedure* ]]; then
     printf 'AVAILABLE\n'
@@ -90,17 +94,30 @@ stage_bundle_kubectl() {
   fi
 }
 export -f stage_bundle_kubectl
+export STAGE_BUNDLE_CALLS="$stage_bundle_tmp/kubectl.calls"
+stage_bundle_unsafe_status=0
+CARBONET_RUNTIME_LEDGER_KUBECTL_BIN=stage_bundle_kubectl \
+STAGE_BUNDLE_CANDIDATE="$stage_bundle_candidate" STAGE_BUNDLE_SOURCE="$stage_bundle_source" \
+CARBONET_POSTDEPLOY_ATTEMPT_JOURNAL_FILE="$stage_bundle_tmp/state/attempt.json" \
+RESONANCE_POSTGRES_LEADER_POD=fake-primary \
+  bash "$ROOT/ops/scripts/stage-postdeploy-release-attempt.sh" \
+    "$stage_bundle_tmp/mutable-checkout" "$stage_bundle_candidate" "$stage_bundle_source" \
+    >"$stage_bundle_tmp/unsafe.log" 2>&1 || stage_bundle_unsafe_status=$?
+[[ "$stage_bundle_unsafe_status" == 1 && ! -s "$stage_bundle_tmp/kubectl.calls" ]]
+grep -Fq 'journal helper mode is unsafe' "$stage_bundle_tmp/unsafe.log"
 CARBONET_RUNTIME_LEDGER_KUBECTL_BIN=stage_bundle_kubectl \
 STAGE_BUNDLE_CANDIDATE="$stage_bundle_candidate" STAGE_BUNDLE_SOURCE="$stage_bundle_source" \
 CARBONET_POSTDEPLOY_ATTEMPT_JOURNAL_HELPER="$stage_bundle_tmp/installed-journal-helper.py" \
 CARBONET_POSTDEPLOY_ATTEMPT_JOURNAL_FILE="$stage_bundle_tmp/state/attempt.json" \
 RESONANCE_POSTGRES_LEADER_POD=fake-primary \
   bash "$ROOT/ops/scripts/stage-postdeploy-release-attempt.sh" \
-    "$stage_bundle_tmp/missing-checkout" "$stage_bundle_candidate" "$stage_bundle_source" >/dev/null
+    "$stage_bundle_tmp/mutable-checkout" "$stage_bundle_candidate" "$stage_bundle_source" >/dev/null
 python3 "$stage_bundle_tmp/installed-journal-helper.py" --file "$stage_bundle_tmp/state/attempt.json" read |
   jq -e '.dbAttemptStaged==true and .rollbackStage=="ARMED"' >/dev/null
+[[ "$(wc -l <"$stage_bundle_tmp/kubectl.calls" | tr -d ' ')" == 2 ]]
 rm -rf -- "$stage_bundle_tmp"
 unset -f stage_bundle_kubectl
+unset STAGE_BUNDLE_CALLS
 
 # Exercise the real stager without touching Kubernetes or PostgreSQL. Bash
 # parses `${input:-{}}` as a parameter expansion followed by a literal `}`,
@@ -484,6 +501,20 @@ if os.environ.get("CANDIDATE_EVIDENCE_SKIP_DEPLOY_WIRING") != "true":
                   deploy.index("current_runtime_identity_hash() {")]
     assert init.index("POSTDEPLOY_JOURNAL_HELPER") < init.index("stage_postdeploy_release_attempt_db")
     assert 'rollbackStage:"SNAPSHOT_CAPTURED"' in init and "postdeploy_db_attempt_staged=true" in init
+    installed_journal_helper = "/opt/resonance-data/control-plane/bin/postdeploy-attempt-journal.py"
+    assert f'POSTDEPLOY_JOURNAL_HELPER="${{CARBONET_POSTDEPLOY_ATTEMPT_JOURNAL_HELPER:-{installed_journal_helper}}}"' in deploy
+    rebind = deploy[deploy.index("rebind_default_postdeploy_helpers() {"):
+                    deploy.index("# The applied-source marker")]
+    assert f'POSTDEPLOY_JOURNAL_HELPER="{installed_journal_helper}"' in rebind
+    stage_db = deploy[deploy.index("stage_postdeploy_release_attempt_db() {"):
+                      deploy.index("verify_postdeploy_release_attempt_db_staged() {")]
+    assert 'CARBONET_POSTDEPLOY_ATTEMPT_JOURNAL_HELPER="$POSTDEPLOY_JOURNAL_HELPER"' in stage_db
+    build_child = deploy[deploy.index("IMMUTABLE_FRONTEND_IMAGE=true"):
+                         deploy.index("verify_postdeploy_release_attempt_db_staged ||")]
+    assert 'CARBONET_POSTDEPLOY_ATTEMPT_JOURNAL_HELPER="$POSTDEPLOY_JOURNAL_HELPER"' in build_child
+    assert 'CARBONET_POSTDEPLOY_LEADER_RESOLVER="$POSTDEPLOY_LEADER_RESOLVER"' in stage_db
+    assert 'CARBONET_POSTDEPLOY_LEADER_RESOLVER="$POSTDEPLOY_LEADER_RESOLVER"' in build_child
+    assert 'RESONANCE_POSTGRES_LEADER_POD="${POSTGRES_POD:-}"' in build_child
     enable = deploy[deploy.index("enable_postdeploy_candidate_mode() {"):
                     deploy.index("run_postdeploy_candidate_validation_groups() {")]
     assert "stage_postdeploy_release_attempt_db" not in enable
@@ -519,6 +550,9 @@ if os.environ.get("CANDIDATE_EVIDENCE_SKIP_DEPLOY_WIRING") != "true":
     assert 'FULL_SCREEN_GATE_EXPECTED_MANIFEST_SHA256' in gate
     rollout = build_deploy[build_deploy.index("rollout_image() {"):
                            build_deploy.index("verify_runtime() {")]
+    post_flyway = rollout[rollout.index('if [[ "$CARBONET_DURABLE_ATTEMPT_REQUIRED"'):
+                           rollout.index("publish_pending_frontend_staging")]
+    assert "CARBONET_POSTDEPLOY_ATTEMPT_JOURNAL_HELPER" in post_flyway
     arm = rollout.index("stage-postdeploy-release-attempt.sh")
     for mutation in ("publish_pending_frontend_staging", 'kubectl -n "$NAMESPACE" set env',
                      'kubectl apply -f -', 'kubectl -n "$NAMESPACE" patch'):
