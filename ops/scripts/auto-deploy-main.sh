@@ -138,6 +138,14 @@ MIN_BACKUP_BYTES="${CARBONET_MIN_BACKUP_BYTES:-1048576}"
 BACKUP_TIMEOUT_SECONDS="${CARBONET_BACKUP_TIMEOUT_SECONDS:-1200}"
 KUBECONFIG="${CARBONET_KUBECONFIG:-${KUBECONFIG:-/home/sjkim/.kube/config}}"
 export KUBECONFIG
+[[ -v CARBONET_POSTDEPLOY_ATTEMPT_JOURNAL_HELPER ]] && POSTDEPLOY_JOURNAL_HELPER_EXPLICIT=true || POSTDEPLOY_JOURNAL_HELPER_EXPLICIT=false
+[[ -v CARBONET_POSTDEPLOY_GATE_SCRIPT ]] && POSTDEPLOY_GATE_SCRIPT_EXPLICIT=true || POSTDEPLOY_GATE_SCRIPT_EXPLICIT=false
+[[ -v CARBONET_POSTDEPLOY_RECORD_RUNTIME_SCRIPT ]] && POSTDEPLOY_RECORD_RUNTIME_SCRIPT_EXPLICIT=true || POSTDEPLOY_RECORD_RUNTIME_SCRIPT_EXPLICIT=false
+[[ -v CARBONET_POSTDEPLOY_CHECKPOINT_SCRIPT ]] && POSTDEPLOY_CHECKPOINT_SCRIPT_EXPLICIT=true || POSTDEPLOY_CHECKPOINT_SCRIPT_EXPLICIT=false
+[[ -v CARBONET_POSTDEPLOY_STAGE_SCRIPT ]] && POSTDEPLOY_STAGE_SCRIPT_EXPLICIT=true || POSTDEPLOY_STAGE_SCRIPT_EXPLICIT=false
+[[ -v CARBONET_POSTDEPLOY_ABORT_SCRIPT ]] && POSTDEPLOY_ABORT_SCRIPT_EXPLICIT=true || POSTDEPLOY_ABORT_SCRIPT_EXPLICIT=false
+[[ -v CARBONET_POSTDEPLOY_AUTHORITY_SCRIPT ]] && POSTDEPLOY_AUTHORITY_SCRIPT_EXPLICIT=true || POSTDEPLOY_AUTHORITY_SCRIPT_EXPLICIT=false
+[[ -v CARBONET_POSTDEPLOY_LEADER_RESOLVER ]] && POSTDEPLOY_LEADER_RESOLVER_EXPLICIT=true || POSTDEPLOY_LEADER_RESOLVER_EXPLICIT=false
 POSTDEPLOY_JOURNAL_HELPER="${CARBONET_POSTDEPLOY_ATTEMPT_JOURNAL_HELPER:-$ROOT_DIR/ops/scripts/postdeploy-attempt-journal.py}"
 POSTDEPLOY_GATE_SCRIPT="${CARBONET_POSTDEPLOY_GATE_SCRIPT:-$ROOT_DIR/ops/scripts/resonance-full-screen-deploy-gate.sh}"
 POSTDEPLOY_RECORD_RUNTIME_SCRIPT="${CARBONET_POSTDEPLOY_RECORD_RUNTIME_SCRIPT:-$ROOT_DIR/ops/scripts/record-runtime-release-state.sh}"
@@ -146,6 +154,17 @@ POSTDEPLOY_STAGE_SCRIPT="${CARBONET_POSTDEPLOY_STAGE_SCRIPT:-$ROOT_DIR/ops/scrip
 POSTDEPLOY_ABORT_SCRIPT="${CARBONET_POSTDEPLOY_ABORT_SCRIPT:-$ROOT_DIR/ops/scripts/abort-postdeploy-release-attempt.sh}"
 POSTDEPLOY_AUTHORITY_SCRIPT="${CARBONET_POSTDEPLOY_AUTHORITY_SCRIPT:-$ROOT_DIR/ops/scripts/check-postdeploy-authoritative-promotion.sh}"
 POSTDEPLOY_LEADER_RESOLVER="${CARBONET_POSTDEPLOY_LEADER_RESOLVER:-$ROOT_DIR/ops/scripts/resolve-patroni-primary-pod.sh}"
+
+rebind_default_postdeploy_helpers() {
+  [[ "$POSTDEPLOY_JOURNAL_HELPER_EXPLICIT" == true ]] || POSTDEPLOY_JOURNAL_HELPER="$ROOT_DIR/ops/scripts/postdeploy-attempt-journal.py"
+  [[ "$POSTDEPLOY_GATE_SCRIPT_EXPLICIT" == true ]] || POSTDEPLOY_GATE_SCRIPT="$ROOT_DIR/ops/scripts/resonance-full-screen-deploy-gate.sh"
+  [[ "$POSTDEPLOY_RECORD_RUNTIME_SCRIPT_EXPLICIT" == true ]] || POSTDEPLOY_RECORD_RUNTIME_SCRIPT="$ROOT_DIR/ops/scripts/record-runtime-release-state.sh"
+  [[ "$POSTDEPLOY_CHECKPOINT_SCRIPT_EXPLICIT" == true ]] || POSTDEPLOY_CHECKPOINT_SCRIPT="$ROOT_DIR/ops/scripts/runtime-candidate-checkpoint.sh"
+  [[ "$POSTDEPLOY_STAGE_SCRIPT_EXPLICIT" == true ]] || POSTDEPLOY_STAGE_SCRIPT="$ROOT_DIR/ops/scripts/stage-postdeploy-release-attempt.sh"
+  [[ "$POSTDEPLOY_ABORT_SCRIPT_EXPLICIT" == true ]] || POSTDEPLOY_ABORT_SCRIPT="$ROOT_DIR/ops/scripts/abort-postdeploy-release-attempt.sh"
+  [[ "$POSTDEPLOY_AUTHORITY_SCRIPT_EXPLICIT" == true ]] || POSTDEPLOY_AUTHORITY_SCRIPT="$ROOT_DIR/ops/scripts/check-postdeploy-authoritative-promotion.sh"
+  [[ "$POSTDEPLOY_LEADER_RESOLVER_EXPLICIT" == true ]] || POSTDEPLOY_LEADER_RESOLVER="$ROOT_DIR/ops/scripts/resolve-patroni-primary-pod.sh"
+}
 
 # The applied-source marker drives incremental planning and is advanced for
 # catalog/automation-only commits.  The runtime marker is a separate serving
@@ -279,6 +298,12 @@ write_postdeploy_recovery_state() {
 }
 
 write_postdeploy_promotion_quarantine() {
+  if [[ "${legacy_false_discovery_quarantine_deferred:-false}" == true ]]; then
+    [[ -f "$RUNTIME_LEDGER_QUARANTINE_FILE" && ! -L "$RUNTIME_LEDGER_QUARANTINE_FILE" \
+       && "$(sha256sum "$RUNTIME_LEDGER_QUARANTINE_FILE" | awk '{print $1}')" == "$legacy_false_discovery_quarantine_hash" ]] || return 1
+    echo "[auto-deploy] retained pinned legacy false-discovery quarantine; additionalReason=$1" >&2
+    return 1
+  fi
   write_postdeploy_recovery_state "$RUNTIME_LEDGER_QUARANTINE_FILE" "$1"
 }
 
@@ -374,6 +399,38 @@ record_deploy_performance() {
       "$mode" "$target_commit" "$elapsed_ms"
 }
 
+legacy_false_discovery_quarantine_deferred=false
+legacy_false_discovery_quarantine_hash=""
+legacy_false_discovery_quarantine_target=""
+legacy_false_discovery_quarantine_candidate=""
+legacy_false_discovery_quarantine_baseline=""
+
+defer_exact_legacy_false_discovery_quarantine() {
+  local keys expected_keys reason applied runtime candidate target
+  [[ -f "$RUNTIME_LEDGER_QUARANTINE_FILE" && ! -L "$RUNTIME_LEDGER_QUARANTINE_FILE" \
+     && "$(stat -c '%a' "$RUNTIME_LEDGER_QUARANTINE_FILE" 2>/dev/null)" == 600 \
+     && "$(stat -c '%u' "$RUNTIME_LEDGER_QUARANTINE_FILE" 2>/dev/null)" == "$(id -u)" ]] || return 1
+  expected_keys=$'candidateId\nobservedAppliedMarker\nobservedRuntimeMarker\nreason\nschemaVersion\ntargetCommit'
+  keys="$(sed -n 's/^\([A-Za-z][A-Za-z0-9]*\)=.*/\1/p' "$RUNTIME_LEDGER_QUARANTINE_FILE" | LC_ALL=C sort)"
+  [[ "$keys" == "$expected_keys" && "$(awk 'END{print NR}' "$RUNTIME_LEDGER_QUARANTINE_FILE")" == 6 ]] || return 1
+  [[ "$(sed -n 's/^schemaVersion=//p' "$RUNTIME_LEDGER_QUARANTINE_FILE")" == 1 ]] || return 1
+  target="$(sed -n 's/^targetCommit=//p' "$RUNTIME_LEDGER_QUARANTINE_FILE")"
+  candidate="$(sed -n 's/^candidateId=//p' "$RUNTIME_LEDGER_QUARANTINE_FILE")"
+  reason="$(sed -n 's/^reason=//p' "$RUNTIME_LEDGER_QUARANTINE_FILE")"
+  applied="$(sed -n 's/^observedAppliedMarker=//p' "$RUNTIME_LEDGER_QUARANTINE_FILE")"
+  runtime="$(sed -n 's/^observedRuntimeMarker=//p' "$RUNTIME_LEDGER_QUARANTINE_FILE")"
+  [[ "$target" =~ ^[0-9a-f]{40}$ && "$candidate" =~ ^postdeploy:${target:0:12}:[A-Za-z0-9._:-]{12,140}$ \
+     && "$reason" == LEGACY_PARTIAL_STATE_CONTRACT_INVALID \
+     && "$applied" =~ ^[0-9a-f]{40}$ && "$runtime" == "$applied" ]] || return 1
+  [[ ! -e "$POSTDEPLOY_ATTEMPT_JOURNAL_FILE" && ! -L "$POSTDEPLOY_ATTEMPT_JOURNAL_FILE" ]] || return 1
+  legacy_false_discovery_quarantine_deferred=true
+  legacy_false_discovery_quarantine_hash="$(sha256sum "$RUNTIME_LEDGER_QUARANTINE_FILE" | awk '{print $1}')"
+  legacy_false_discovery_quarantine_target="$target"
+  legacy_false_discovery_quarantine_candidate="$candidate"
+  legacy_false_discovery_quarantine_baseline="$applied"
+  [[ "$legacy_false_discovery_quarantine_hash" =~ ^[0-9a-f]{64}$ ]]
+}
+
 mkdir -p \
   "$(dirname "$LOCK_FILE")" \
   "$(dirname "$DEPLOY_STATE_FILE")" \
@@ -387,8 +444,12 @@ chmod 0700 "$POSTDEPLOY_LEGACY_RETIRE_DIR"
 if [[ -s "$RUNTIME_LEDGER_QUARANTINE_FILE" \
    && ( "${CARBONET_RECOVERY_ONLY:-false}" != true \
         || ! -s "$POSTDEPLOY_ATTEMPT_JOURNAL_FILE" ) ]]; then
-  echo "[auto-deploy] BLOCKED unresolved runtime-ledger invalidation quarantine: $RUNTIME_LEDGER_QUARANTINE_FILE" >&2
-  exit 79
+  if defer_exact_legacy_false_discovery_quarantine; then
+    echo "[auto-deploy] exact legacy false-discovery quarantine deferred until pair retirement hash=$legacy_false_discovery_quarantine_hash"
+  else
+    echo "[auto-deploy] BLOCKED unresolved runtime-ledger invalidation quarantine: $RUNTIME_LEDGER_QUARANTINE_FILE" >&2
+    exit 79
+  fi
 fi
 exec 9>"$LOCK_FILE"
 if [[ "${CARBONET_RECOVERY_ONLY:-false}" == true ]]; then
@@ -1590,6 +1651,7 @@ if [[ -n "$tracked_source_changes" ]]; then
   fi
   ROOT_DIR="$clean_worktree"
   export ROOT_DIR CARBONET_DEPLOY_ROOT="$clean_worktree" CARBONET_CLEAN_WORKTREE_ACTIVE=true
+  rebind_default_postdeploy_helpers
   cd "$ROOT_DIR"
   current_commit="$target_commit"
   # A failed build may leave generated tracked outputs when HEAD already equals
@@ -2571,7 +2633,8 @@ verify_operational_usage_ledger_current_runtime_identity() {
   local marker_commit annotation_commit ledger_commit deployment_json ledger_json
   local marker_matches=false annotation_matches=false ledger_matches=false image_matches=false
   local image_ref ledger_image_ref ledger_image_id selector pods_json pod_image_ids
-  local desired ready_count pod pod_health
+  local ledger_namespace ledger_deployment ledger_uid ledger_generation ledger_observed ledger_desired
+  local deployment_uid generation observed desired ready_count pod pod_health
   local -a ready_pods=()
 
   if [[ -f "$RUNTIME_DEPLOY_STATE_FILE" && ! -L "$RUNTIME_DEPLOY_STATE_FILE" ]]; then
@@ -2582,7 +2645,7 @@ verify_operational_usage_ledger_current_runtime_identity() {
   deployment_json="$(kubectl -n "$NAMESPACE" get "deployment/$DEPLOYMENT" -o json 2>/dev/null || true)"
   annotation_commit="$(jq -r '.metadata.annotations["resonance.ai/target-commit"] // empty' <<<"$deployment_json" 2>/dev/null || true)"
   ledger_json="$(
-    printf '%s\n' "select jsonb_build_object('sourceCommit',source_commit,'imageRef',image_ref,'imageId',image_id,'healthStatus',health_status)::text from framework_runtime_release_state where release_key='CARBONET_RUNTIME' and health_status='UP';" |
+    printf '%s\n' "select jsonb_build_object('sourceCommit',source_commit,'deploymentNamespace',deployment_namespace,'deploymentName',deployment_name,'deploymentUid',deployment_uid,'deploymentGeneration',deployment_generation,'observedGeneration',observed_generation,'desiredReplicas',desired_replicas,'imageRef',image_ref,'imageId',image_id,'healthStatus',health_status)::text from framework_runtime_release_state where release_key='CARBONET_RUNTIME' and health_status='UP';" |
       kubectl -n "$NAMESPACE" exec -i "$POSTGRES_POD" -c "$POSTGRES_CONTAINER" -- \
         psql -h 127.0.0.1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" -X -q -At -v ON_ERROR_STOP=1 \
         2>/dev/null || true
@@ -2590,11 +2653,20 @@ verify_operational_usage_ledger_current_runtime_identity() {
   ledger_commit="$(jq -r '.sourceCommit // empty' <<<"$ledger_json" 2>/dev/null || true)"
   ledger_image_ref="$(jq -r '.imageRef // empty' <<<"$ledger_json" 2>/dev/null || true)"
   ledger_image_id="$(jq -r '.imageId // empty' <<<"$ledger_json" 2>/dev/null || true)"
+  ledger_namespace="$(jq -r '.deploymentNamespace // empty' <<<"$ledger_json" 2>/dev/null || true)"
+  ledger_deployment="$(jq -r '.deploymentName // empty' <<<"$ledger_json" 2>/dev/null || true)"
+  ledger_uid="$(jq -r '.deploymentUid // empty' <<<"$ledger_json" 2>/dev/null || true)"
+  ledger_generation="$(jq -r '.deploymentGeneration // empty' <<<"$ledger_json" 2>/dev/null || true)"
+  ledger_observed="$(jq -r '.observedGeneration // empty' <<<"$ledger_json" 2>/dev/null || true)"
+  ledger_desired="$(jq -r '.desiredReplicas // empty' <<<"$ledger_json" 2>/dev/null || true)"
   image_ref="$(jq -r --arg container "${CARBONET_K8S_CONTAINER:-carbonet-runtime}" '.spec.template.spec.containers[]|select(.name==$container)|.image' <<<"$deployment_json" 2>/dev/null || true)"
   selector="$(jq -r '.spec.selector.matchLabels//{}|to_entries|map("\(.key)=\(.value)")|join(",")' <<<"$deployment_json" 2>/dev/null || true)"
   pods_json="$(kubectl -n "$NAMESPACE" get pods -l "$selector" -o json 2>/dev/null || true)"
   pod_image_ids="$(jq -c --arg container "${CARBONET_K8S_CONTAINER:-carbonet-runtime}" '[.items[]|select(any(.status.conditions[]?;.type=="Ready" and .status=="True"))|.status.containerStatuses[]?|select(.name==$container and .ready==true)|.imageID]|unique' <<<"$pods_json" 2>/dev/null || true)"
   desired="$(jq -r '.spec.replicas // 0' <<<"$deployment_json" 2>/dev/null || true)"
+  deployment_uid="$(jq -r '.metadata.uid // empty' <<<"$deployment_json" 2>/dev/null || true)"
+  generation="$(jq -r '.metadata.generation // empty' <<<"$deployment_json" 2>/dev/null || true)"
+  observed="$(jq -r '.status.observedGeneration // empty' <<<"$deployment_json" 2>/dev/null || true)"
   ready_count="$(jq -r --arg container "${CARBONET_K8S_CONTAINER:-carbonet-runtime}" --arg image "$image_ref" '
     [.items[]
       | select(.metadata.deletionTimestamp==null and .status.phase=="Running")
@@ -2634,6 +2706,10 @@ verify_operational_usage_ledger_current_runtime_identity() {
   annotation_commit="$(printf '%s' "$annotation_commit" | tr -d '[:space:]')"
   ledger_commit="$(printf '%s' "$ledger_commit" | tr -d '[:space:]')"
   if [[ "$image_ref" == "$ledger_image_ref" && "$ledger_image_id" =~ sha256:[0-9a-f]{64}$ \
+     && "$ledger_namespace" == "$NAMESPACE" && "$ledger_deployment" == "$DEPLOYMENT" \
+     && -n "$deployment_uid" && "$ledger_uid" == "$deployment_uid" \
+     && "$ledger_generation" == "$generation" && "$ledger_observed" == "$observed" \
+     && "$ledger_desired" == "$desired" \
      && "$(jq -r 'length' <<<"$pod_image_ids" 2>/dev/null || true)" == 1 \
      && "$(jq -r '.[0] // empty' <<<"$pod_image_ids" 2>/dev/null || true)" == "$ledger_image_id" \
      && "$readiness_exact" == true ]]; then
@@ -2876,12 +2952,96 @@ retire_orphan_versioned_snapshot() {
   return 0
 }
 
+legacy_owned_runtime_projection_hash() {
+  kubectl -n "$NAMESPACE" get "deployment/$DEPLOYMENT" -o json | jq -cS \
+    --arg container "${CARBONET_K8S_CONTAINER:-carbonet-runtime}" '
+      {uid:.metadata.uid,generation:.metadata.generation,
+       deployOwnedAnnotations:((.metadata.annotations//{})|with_entries(select(.key|startswith("resonance.ai/")))),
+       replicas:.spec.replicas,minReadySeconds:.spec.minReadySeconds,
+       progressDeadlineSeconds:.spec.progressDeadlineSeconds,strategy:.spec.strategy,
+       selector:.spec.selector,templateMetadata:.spec.template.metadata,
+       container:(.spec.template.spec.containers[]|select(.name==$container)|{name,image})}
+    ' | sha256sum | awk '{print $1}'
+}
+
+legacy_overlay_tree_hash() {
+  local directory="$1"
+  [[ -d "$directory" && ! -L "$directory" ]] || return 1
+  ! find "$directory" -type l -print -quit | grep -q . || return 1
+  ! find "$directory" ! -user "$(id -u)" -print -quit | grep -q . || return 1
+  (cd "$directory" && find . -type f ! -path './current-nginx.conf' -print0 | \
+    LC_ALL=C sort -z | xargs -0 -r sha256sum) | sha256sum | awk '{print $1}'
+}
+
+legacy_live_nginx_hash() {
+  local current_nginx result
+  current_nginx="$(mktemp /tmp/carbonet-legacy-nginx.XXXXXX)" || return 1
+  if kubectl -n "$NAMESPACE" get configmap carbonet-web-nginx \
+      -o jsonpath='{.data.nginx\.conf}' >"$current_nginx"; then
+    result="$(sha256sum "$current_nginx" | awk '{print $1}')"
+  else
+    rm -f -- "$current_nginx"
+    return 1
+  fi
+  rm -f -- "$current_nginx"
+  printf '%s\n' "$result"
+}
+
+postdeploy_source_has_no_attempt_or_promotion_rows() {
+  local source="$1" lifecycle result
+  [[ "$source" =~ ^[0-9a-f]{40}$ && -n "$POSTGRES_POD" ]] || return 2
+  lifecycle="$(printf '%s\n' "SELECT CASE WHEN to_regclass('public.framework_postdeploy_release_attempt') IS NULL THEN 'ABSENT' ELSE 'AVAILABLE' END;" | \
+    kubectl -n "$NAMESPACE" exec -i "$POSTGRES_POD" -c "$POSTGRES_CONTAINER" -- \
+      psql -h 127.0.0.1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" -X -qAt -v ON_ERROR_STOP=1 \
+        2>/dev/null)" || return 2
+  lifecycle="$(printf '%s' "$lifecycle" | tr -d '[:space:]')"
+  [[ "$lifecycle" == AVAILABLE || "$lifecycle" == ABSENT ]] || return 2
+  [[ "$lifecycle" != ABSENT ]] || return 0
+  result="$(printf '%s\n' "SELECT CASE WHEN (SELECT count(*) FROM framework_postdeploy_release_attempt WHERE source_commit=:'source_commit')=0 AND (SELECT count(*) FROM framework_postdeploy_evidence_promotion WHERE source_commit=:'source_commit')=0 THEN 'EMPTY' ELSE 'PRESENT' END;" | \
+    kubectl -n "$NAMESPACE" exec -i "$POSTGRES_POD" -c "$POSTGRES_CONTAINER" -- \
+      psql -h 127.0.0.1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" -X -qAt -v ON_ERROR_STOP=1 \
+        -v source_commit="$source" 2>/dev/null)" || return 2
+  result="$(printf '%s' "$result" | tr -d '[:space:]')"
+  [[ "$result" == EMPTY ]]
+}
+
+resolve_legacy_full_screen_gate_state_dir() {
+  local evidence_path="" snapshot_dir="" gate_dir="" configured_root persistent_root
+  local candidate match_count=0
+  if [[ -f "$POSTDEPLOY_LEGACY_RETIRE_DIR/legacy-retire.intent.json" \
+     && ! -L "$POSTDEPLOY_LEGACY_RETIRE_DIR/legacy-retire.intent.json" ]]; then
+    evidence_path="$(jq -r '.sourceActive // empty' "$POSTDEPLOY_LEGACY_RETIRE_DIR/legacy-retire.intent.json" 2>/dev/null || true)"
+    [[ "$evidence_path" == */active.env ]] || return 79
+    gate_dir="$(realpath -m "$(dirname "$evidence_path")")"
+  elif [[ -f "$RUNTIME_CANDIDATE_CHECKPOINT_FILE" && ! -L "$RUNTIME_CANDIDATE_CHECKPOINT_FILE" ]]; then
+    snapshot_dir="$(jq -r '.snapshotDir // empty' "$RUNTIME_CANDIDATE_CHECKPOINT_FILE" 2>/dev/null || true)"
+    [[ "$snapshot_dir" == */snapshots/* ]] || return 79
+    gate_dir="$(realpath -m "$(dirname "$(dirname "$snapshot_dir")")")"
+  else
+    [[ ! -e "$RUNTIME_CANDIDATE_CHECKPOINT_FILE" && ! -L "$RUNTIME_CANDIDATE_CHECKPOINT_FILE" ]] || return 79
+    return 1
+  fi
+  configured_root="$(realpath -m "$LEGACY_FULL_SCREEN_GATE_STATE_DIR")"
+  persistent_root="$(realpath -m "${CARBONET_CLEAN_WORKTREE_BASE:-${CARBONET_DEPLOY_ORIGINAL_ROOT:-$ROOT_DIR}/var/deploy-worktrees}/runtime-build/var/run/full-screen-deploy-gate")"
+  for candidate in "$configured_root" "$persistent_root"; do
+    [[ "$candidate" == "$gate_dir" ]] || continue
+    if (( match_count == 0 )) || [[ "$candidate" != "$configured_root" ]]; then
+      match_count=$((match_count + 1))
+    fi
+  done
+  [[ "$match_count" == 1 ]] || return 79
+  [[ -d "$gate_dir" && ! -L "$gate_dir" && "$(stat -c '%u' "$gate_dir" 2>/dev/null)" == "$(id -u)" ]] || return 79
+  LEGACY_FULL_SCREEN_GATE_STATE_DIR="$gate_dir"
+}
+
 retire_legacy_partial_runtime_attempt() {
   local gate_active="$LEGACY_FULL_SCREEN_GATE_STATE_DIR/active.env"
   local checkpoint="$RUNTIME_CANDIDATE_CHECKPOINT_FILE" active_hash checkpoint_hash
   local expected_gate_active="$gate_active" expected_checkpoint="$checkpoint"
   local snapshot_id snapshot_dir baseline candidate authority_status=2 applied_marker
   local retired_active retired_checkpoint summary summary_tmp deployment_hash
+  local snapshot_overlay_hash live_overlay_hash snapshot_nginx_hash live_nginx_hash
+  local quarantine_hash="" quarantine_target="" quarantine_candidate="" quarantine_destination=""
   local intent="$POSTDEPLOY_LEGACY_RETIRE_DIR/legacy-retire.intent.json" intent_tmp completed_intent
   [[ ! -e "$POSTDEPLOY_ATTEMPT_JOURNAL_FILE" && ! -L "$POSTDEPLOY_ATTEMPT_JOURNAL_FILE" ]] || return 1
   if [[ -e "$intent" || -L "$intent" ]]; then
@@ -2890,13 +3050,17 @@ retire_legacy_partial_runtime_attempt() {
        && "$(stat -c '%u' "$intent" 2>/dev/null)" == "$(id -u)" ]] || return 79
     jq -e '
       keys==["activeSha256","baselineCommit","candidateCommit","checkpointSha256","createdAt",
-             "deploymentSha256","retiredActive","retiredCheckpoint","schemaVersion","snapshotId",
-             "sourceActive","sourceCheckpoint","status"]
+             "deploymentSha256","liveNginxSha256","liveOverlaySha256","quarantineCandidateId",
+             "quarantineRetired","quarantineSha256","quarantineTargetCommit","retiredActive",
+             "retiredCheckpoint","schemaVersion","snapshotId","sourceActive","sourceCheckpoint","status"]
       and .schemaVersion==1 and .status=="PENDING"
     ' "$intent" >/dev/null || return 79
     candidate="$(jq -r '.candidateCommit' "$intent")"; baseline="$(jq -r '.baselineCommit' "$intent")"
     snapshot_id="$(jq -r '.snapshotId' "$intent")"; active_hash="$(jq -r '.activeSha256' "$intent")"
     checkpoint_hash="$(jq -r '.checkpointSha256' "$intent")"; deployment_hash="$(jq -r '.deploymentSha256' "$intent")"
+    live_overlay_hash="$(jq -r '.liveOverlaySha256' "$intent")"; live_nginx_hash="$(jq -r '.liveNginxSha256' "$intent")"
+    quarantine_hash="$(jq -r '.quarantineSha256' "$intent")"; quarantine_target="$(jq -r '.quarantineTargetCommit' "$intent")"
+    quarantine_candidate="$(jq -r '.quarantineCandidateId' "$intent")"; quarantine_destination="$(jq -r '.quarantineRetired' "$intent")"
     gate_active="$(jq -r '.sourceActive' "$intent")"; checkpoint="$(jq -r '.sourceCheckpoint' "$intent")"
     retired_active="$(jq -r '.retiredActive' "$intent")"; retired_checkpoint="$(jq -r '.retiredCheckpoint' "$intent")"
     [[ "$gate_active" == "$expected_gate_active" \
@@ -2904,11 +3068,21 @@ retire_legacy_partial_runtime_attempt() {
        && "$retired_active" == "$(dirname "$expected_gate_active")/retired/${snapshot_id}.legacy.env" \
        && "$retired_checkpoint" == "$(dirname "$expected_checkpoint")/retired/${candidate}.legacy-checkpoint.json" ]] \
       || return 79
+    if [[ -n "$quarantine_hash" ]]; then
+      [[ "$quarantine_hash" =~ ^[0-9a-f]{64}$ && "$quarantine_target" =~ ^[0-9a-f]{40}$ \
+         && "$quarantine_candidate" =~ ^postdeploy:${quarantine_target:0:12}:[A-Za-z0-9._:-]{12,140}$ \
+         && "$quarantine_destination" == "$POSTDEPLOY_LEGACY_RETIRE_DIR/${quarantine_candidate}.legacy-false-discovery-quarantine.state" ]] || return 79
+    else
+      [[ -z "$quarantine_target$quarantine_candidate$quarantine_destination" ]] || return 79
+    fi
     snapshot_dir="$(sed -n "s/^SNAPSHOT_DIR='\([^']*\)'$/\1/p" "${gate_active:-/nonexistent}" 2>/dev/null || true)"
   else
     if [[ ! -e "$gate_active" && ! -e "$checkpoint" ]]; then return 1; fi
   [[ -f "$gate_active" && ! -L "$gate_active" && "$(stat -c '%a' "$gate_active" 2>/dev/null)" == 600 \
-     && -f "$checkpoint" && ! -L "$checkpoint" ]] || {
+     && "$(stat -c '%u' "$gate_active" 2>/dev/null)" == "$(id -u)" \
+     && -f "$checkpoint" && ! -L "$checkpoint" \
+     && "$(stat -c '%a' "$checkpoint" 2>/dev/null)" == 644 \
+     && "$(stat -c '%u' "$checkpoint" 2>/dev/null)" == "$(id -u)" ]] || {
     write_postdeploy_promotion_quarantine 'LEGACY_PARTIAL_STATE_CONTRACT_INVALID' || true
     return 79
   }
@@ -2922,6 +3096,23 @@ retire_legacy_partial_runtime_attempt() {
     write_postdeploy_promotion_quarantine 'LEGACY_ACTIVE_POINTER_INVALID' || true
     return 79
   fi
+  [[ "$(sed -n "s/^\([A-Z_]*\)='.*'$/\1/p" "$gate_active" | LC_ALL=C sort)" == $'BASELINE_SOURCE_COMMIT\nGIT_SHA\nRUNTIME_IMAGE\nSNAPSHOT_DIR\nSNAPSHOT_FORMAT\nSNAPSHOT_ID\nWEB_IMAGE' \
+     && "$(awk 'END{print NR}' "$gate_active")" == 7 ]] || {
+    write_postdeploy_promotion_quarantine 'LEGACY_ACTIVE_POINTER_INVALID' || true
+    return 79
+  }
+  jq -e '
+    keys==["activeFileSha256","assetManifestSha256","baseCommit","deploymentGeneration",
+           "deploymentUid","desiredReplicas","imageIdDigest","imageRef","migrationEvidenceSha256",
+           "migrationFingerprint","migrationRequired","planFingerprint","preparedAt","releaseId",
+           "schemaVersion","snapshotDir","snapshotId","stage","targetCommit","verifiedAt"]
+    and .schemaVersion==1 and .stage=="RUNTIME_CANDIDATE_READY"
+    and (.migrationRequired|type)=="boolean" and (.deploymentGeneration|type)=="number"
+    and (.desiredReplicas|type)=="number" and .desiredReplicas>0
+  ' "$checkpoint" >/dev/null || {
+    write_postdeploy_promotion_quarantine 'LEGACY_CHECKPOINT_CONTRACT_INVALID' || true
+    return 79
+  }
   snapshot_id="$(sed -n "s/^SNAPSHOT_ID='\([^']*\)'$/\1/p" "$gate_active")"
   snapshot_dir="$(sed -n "s/^SNAPSHOT_DIR='\([^']*\)'$/\1/p" "$gate_active")"
   baseline="$(sed -n "s/^BASELINE_SOURCE_COMMIT='\([^']*\)'$/\1/p" "$gate_active")"
@@ -2947,9 +3138,28 @@ retire_legacy_partial_runtime_attempt() {
     write_postdeploy_promotion_quarantine 'LEGACY_SNAPSHOT_CLOSURE_INCOMPLETE' || true
     return 79
   }
+  [[ "$(stat -c '%u' "$snapshot_dir" 2>/dev/null)" == "$(id -u)" \
+     && ! -L "$snapshot_dir" && "$(sed -n "s/^SNAPSHOT_FORMAT='\([^']*\)'$/\1/p" "$gate_active")" == hardlink-tree \
+     && -d "$snapshot_dir/frontend-overlay" && ! -L "$snapshot_dir/frontend-overlay" ]] || {
+    write_postdeploy_promotion_quarantine 'LEGACY_SNAPSHOT_OWNERSHIP_INVALID' || true
+    return 79
+  }
+  snapshot_overlay_hash="$(legacy_overlay_tree_hash "$snapshot_dir/frontend-overlay")" || return 79
+  live_overlay_hash="$(legacy_overlay_tree_hash "$live_frontend_overlay")" || return 79
+  snapshot_nginx_hash="$(sha256sum "$snapshot_dir/nginx.conf" | awk '{print $1}')"
+  live_nginx_hash="$(legacy_live_nginx_hash)" || return 79
+  [[ "$snapshot_overlay_hash" =~ ^[0-9a-f]{64}$ && "$snapshot_overlay_hash" == "$live_overlay_hash" \
+     && "$snapshot_nginx_hash" =~ ^[0-9a-f]{64}$ && "$snapshot_nginx_hash" == "$live_nginx_hash" ]] || {
+    write_postdeploy_promotion_quarantine 'LEGACY_BASELINE_OVERLAY_OR_NGINX_MISMATCH' || true
+    return 79
+  }
   if postdeploy_authoritative_promotion_status "$candidate"; then authority_status=0; else authority_status=$?; fi
   [[ "$authority_status" == 1 ]] || {
     write_postdeploy_promotion_quarantine 'LEGACY_CANDIDATE_PROMOTION_NOT_DEFINITIVELY_ABSENT' || true
+    return 79
+  }
+  postdeploy_source_has_no_attempt_or_promotion_rows "$candidate" || {
+    write_postdeploy_promotion_quarantine 'LEGACY_CANDIDATE_ATTEMPT_ABSENCE_UNPROVEN' || true
     return 79
   }
   verify_operational_usage_ledger_current_runtime_identity "$baseline" proof-only || {
@@ -2961,7 +3171,21 @@ retire_legacy_partial_runtime_attempt() {
     write_postdeploy_promotion_quarantine 'LEGACY_BASELINE_MARKERS_MISMATCH' || true
     return 79
   }
-  deployment_hash="$(kubectl -n "$NAMESPACE" get "deployment/$DEPLOYMENT" -o json | jq -cS . | sha256sum | awk '{print $1}')" || return 79
+  deployment_hash="$(legacy_owned_runtime_projection_hash)" || return 79
+  if [[ "$legacy_false_discovery_quarantine_deferred" == true ]]; then
+    [[ "$legacy_false_discovery_quarantine_baseline" == "$baseline" ]] || return 79
+    if [[ "$legacy_false_discovery_quarantine_target" != "$target_commit" ]]; then
+      git -C "$ROOT_DIR" merge-base --is-ancestor \
+        "$legacy_false_discovery_quarantine_target" "$target_commit" || return 79
+    fi
+    if postdeploy_authoritative_promotion_status "$legacy_false_discovery_quarantine_target"; then authority_status=0; else authority_status=$?; fi
+    [[ "$authority_status" == 1 ]] || return 79
+    postdeploy_source_has_no_attempt_or_promotion_rows "$legacy_false_discovery_quarantine_target" || return 79
+    quarantine_hash="$legacy_false_discovery_quarantine_hash"
+    quarantine_target="$legacy_false_discovery_quarantine_target"
+    quarantine_candidate="$legacy_false_discovery_quarantine_candidate"
+    quarantine_destination="$POSTDEPLOY_LEGACY_RETIRE_DIR/${quarantine_candidate}.legacy-false-discovery-quarantine.state"
+  fi
   mkdir -p "$(dirname "$gate_active")/retired" "$(dirname "$checkpoint")/retired" "$POSTDEPLOY_LEGACY_RETIRE_DIR"
   retired_active="$(dirname "$gate_active")/retired/${snapshot_id}.legacy.env"
   retired_checkpoint="$(dirname "$checkpoint")/retired/${candidate}.legacy-checkpoint.json"
@@ -2971,11 +3195,17 @@ retire_legacy_partial_runtime_attempt() {
   jq -n --arg createdAt "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" --arg candidate "$candidate" \
     --arg baseline "$baseline" --arg snapshotId "$snapshot_id" --arg activeHash "$active_hash" \
     --arg checkpointHash "$checkpoint_hash" --arg deploymentHash "$deployment_hash" \
+    --arg liveOverlayHash "$live_overlay_hash" --arg liveNginxHash "$live_nginx_hash" \
+    --arg quarantineHash "$quarantine_hash" --arg quarantineTarget "$quarantine_target" \
+    --arg quarantineCandidate "$quarantine_candidate" --arg quarantineRetired "$quarantine_destination" \
     --arg sourceActive "$gate_active" --arg sourceCheckpoint "$checkpoint" \
     --arg retiredActive "$retired_active" --arg retiredCheckpoint "$retired_checkpoint" '
     {schemaVersion:1,status:"PENDING",createdAt:$createdAt,candidateCommit:$candidate,
      baselineCommit:$baseline,snapshotId:$snapshotId,activeSha256:$activeHash,
      checkpointSha256:$checkpointHash,deploymentSha256:$deploymentHash,
+     liveOverlaySha256:$liveOverlayHash,liveNginxSha256:$liveNginxHash,
+     quarantineSha256:$quarantineHash,quarantineTargetCommit:$quarantineTarget,
+     quarantineCandidateId:$quarantineCandidate,quarantineRetired:$quarantineRetired,
      sourceActive:$sourceActive,sourceCheckpoint:$sourceCheckpoint,
      retiredActive:$retiredActive,retiredCheckpoint:$retiredCheckpoint}
   ' >"$intent_tmp" && chmod 0600 "$intent_tmp" && mv -fT -- "$intent_tmp" "$intent" || return 79
@@ -2984,12 +3214,31 @@ retire_legacy_partial_runtime_attempt() {
 
   [[ "$candidate" =~ ^[0-9a-f]{40}$ && "$baseline" =~ ^[0-9a-f]{40}$ \
      && "$snapshot_id" =~ ^[A-Za-z0-9._-]+$ && "$active_hash" =~ ^[0-9a-f]{64}$ \
-     && "$checkpoint_hash" =~ ^[0-9a-f]{64}$ && "$deployment_hash" =~ ^[0-9a-f]{64}$ ]] || return 79
+     && "$checkpoint_hash" =~ ^[0-9a-f]{64}$ && "$deployment_hash" =~ ^[0-9a-f]{64}$ \
+     && "$live_overlay_hash" =~ ^[0-9a-f]{64}$ && "$live_nginx_hash" =~ ^[0-9a-f]{64}$ ]] || return 79
   if postdeploy_authoritative_promotion_status "$candidate"; then authority_status=0; else authority_status=$?; fi
   [[ "$authority_status" == 1 ]] || return 79
   verify_operational_usage_ledger_current_runtime_identity "$baseline" proof-only || return 79
   applied_marker="$(tr -d '[:space:]' <"$DEPLOY_STATE_FILE" 2>/dev/null || true)"
   [[ "$applied_marker" == "$baseline" && "$runtime_deployed_commit" == "$baseline" ]] || return 79
+  [[ "$(legacy_owned_runtime_projection_hash)" == "$deployment_hash" \
+     && "$(legacy_overlay_tree_hash "$live_frontend_overlay")" == "$live_overlay_hash" \
+     && "$(legacy_live_nginx_hash)" == "$live_nginx_hash" ]] || return 79
+  postdeploy_source_has_no_attempt_or_promotion_rows "$candidate" || return 79
+  if [[ -n "$quarantine_hash" ]]; then
+    if postdeploy_authoritative_promotion_status "$quarantine_target"; then authority_status=0; else authority_status=$?; fi
+    [[ "$authority_status" == 1 ]] || return 79
+    postdeploy_source_has_no_attempt_or_promotion_rows "$quarantine_target" || return 79
+    if [[ -e "$RUNTIME_LEDGER_QUARANTINE_FILE" || -L "$RUNTIME_LEDGER_QUARANTINE_FILE" ]]; then
+      [[ -f "$RUNTIME_LEDGER_QUARANTINE_FILE" && ! -L "$RUNTIME_LEDGER_QUARANTINE_FILE" \
+         && "$(stat -c '%a' "$RUNTIME_LEDGER_QUARANTINE_FILE")" == 600 \
+         && "$(stat -c '%u' "$RUNTIME_LEDGER_QUARANTINE_FILE")" == "$(id -u)" \
+         && "$(sha256sum "$RUNTIME_LEDGER_QUARANTINE_FILE" | awk '{print $1}')" == "$quarantine_hash" ]] || return 79
+    else
+      [[ -f "$quarantine_destination" && ! -L "$quarantine_destination" \
+         && "$(sha256sum "$quarantine_destination" | awk '{print $1}')" == "$quarantine_hash" ]] || return 79
+    fi
+  fi
   mkdir -p "$(dirname "$retired_active")" "$(dirname "$retired_checkpoint")" "$POSTDEPLOY_LEGACY_RETIRE_DIR"
   if [[ -e "$gate_active" || -L "$gate_active" ]]; then
     [[ -f "$gate_active" && ! -L "$gate_active" \
@@ -3014,18 +3263,38 @@ retire_legacy_partial_runtime_attempt() {
   jq -n --arg retiredAt "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" --arg candidate "$candidate" \
     --arg baseline "$baseline" --arg snapshotId "$snapshot_id" --arg activeHash "$active_hash" \
     --arg checkpointHash "$checkpoint_hash" --arg deploymentHash "$deployment_hash" \
+    --arg liveOverlayHash "$live_overlay_hash" --arg liveNginxHash "$live_nginx_hash" \
+    --arg quarantineHash "$quarantine_hash" --arg quarantineTarget "$quarantine_target" \
+    --arg quarantineCandidate "$quarantine_candidate" --arg quarantineEvidence "$quarantine_destination" \
     --arg activeEvidence "$retired_active" --arg checkpointEvidence "$retired_checkpoint" '
     {schemaVersion:1,status:"RETIRED",reason:"LEGACY_ROLLED_BACK_CANDIDATE",
      retiredAt:$retiredAt,candidateCommit:$candidate,baselineCommit:$baseline,snapshotId:$snapshotId,
      activeFileSha256:$activeHash,checkpointSha256:$checkpointHash,liveDeploymentSha256:$deploymentHash,
+     liveOverlaySha256:$liveOverlayHash,liveNginxSha256:$liveNginxHash,
+     quarantineSha256:$quarantineHash,quarantineTargetCommit:$quarantineTarget,
+     quarantineCandidateId:$quarantineCandidate,quarantineEvidence:$quarantineEvidence,
      activeEvidence:$activeEvidence,checkpointEvidence:$checkpointEvidence}
   ' >"$summary_tmp"
   chmod 0600 "$summary_tmp" && mv -fT -- "$summary_tmp" "$summary"
   else
-    jq -e --arg candidate "$candidate" --arg activeHash "$active_hash" --arg checkpointHash "$checkpoint_hash" '
+    jq -e --arg candidate "$candidate" --arg activeHash "$active_hash" --arg checkpointHash "$checkpoint_hash" \
+      --arg quarantineHash "$quarantine_hash" '
       .status=="RETIRED" and .candidateCommit==$candidate and .activeFileSha256==$activeHash
-      and .checkpointSha256==$checkpointHash
+      and .checkpointSha256==$checkpointHash and .quarantineSha256==$quarantineHash
     ' "$summary" >/dev/null || return 79
+  fi
+  # Retire the pinned false-discovery artifact last, only after both legacy
+  # evidence files and their immutable RETIRED summary are durable.
+  if [[ -n "$quarantine_hash" ]]; then
+    if [[ -e "$RUNTIME_LEDGER_QUARANTINE_FILE" || -L "$RUNTIME_LEDGER_QUARANTINE_FILE" ]]; then
+      [[ -f "$RUNTIME_LEDGER_QUARANTINE_FILE" && ! -L "$RUNTIME_LEDGER_QUARANTINE_FILE" \
+         && "$(sha256sum "$RUNTIME_LEDGER_QUARANTINE_FILE" | awk '{print $1}')" == "$quarantine_hash" \
+         && ! -e "$quarantine_destination" && ! -L "$quarantine_destination" ]] || return 79
+      mv -T -- "$RUNTIME_LEDGER_QUARANTINE_FILE" "$quarantine_destination" || return 79
+      chmod 0600 "$quarantine_destination" || return 79
+    fi
+    [[ -f "$quarantine_destination" && ! -L "$quarantine_destination" \
+       && "$(sha256sum "$quarantine_destination" | awk '{print $1}')" == "$quarantine_hash" ]] || return 79
   fi
   completed_intent="$POSTDEPLOY_LEGACY_RETIRE_DIR/${candidate}.legacy-retire.completed.json"
   if [[ -e "$intent" || -L "$intent" ]]; then
@@ -3360,13 +3629,31 @@ case "$persistent_attempt_recovery_status" in
     esac
     legacy_retire_status=1
     if [[ "$orphan_retire_status" != 0 ]]; then
-      if retire_legacy_partial_runtime_attempt; then legacy_retire_status=0; else legacy_retire_status=$?; fi
+      legacy_resolve_status=1
+      if resolve_legacy_full_screen_gate_state_dir; then legacy_resolve_status=0; else legacy_resolve_status=$?; fi
+      case "$legacy_resolve_status" in
+        0) if retire_legacy_partial_runtime_attempt; then legacy_retire_status=0; else legacy_retire_status=$?; fi ;;
+        1) ;;
+        *) legacy_retire_status="$legacy_resolve_status" ;;
+      esac
     fi
     case "$legacy_retire_status" in
       0) record_deploy_phase "legacy_partial_attempt_retired" ;;
       1) ;;
       *) exit "$legacy_retire_status" ;;
     esac
+    if [[ "$legacy_false_discovery_quarantine_deferred" == true ]]; then
+      legacy_quarantine_retired="$POSTDEPLOY_LEGACY_RETIRE_DIR/${legacy_false_discovery_quarantine_candidate}.legacy-false-discovery-quarantine.state"
+      [[ "$legacy_retire_status" == 0 \
+         && ! -e "$RUNTIME_LEDGER_QUARANTINE_FILE" && ! -L "$RUNTIME_LEDGER_QUARANTINE_FILE" \
+         && -f "$legacy_quarantine_retired" && ! -L "$legacy_quarantine_retired" \
+         && "$(stat -c '%a' "$legacy_quarantine_retired" 2>/dev/null)" == 600 \
+         && "$(stat -c '%u' "$legacy_quarantine_retired" 2>/dev/null)" == "$(id -u)" \
+         && "$(sha256sum "$legacy_quarantine_retired" | awk '{print $1}')" == "$legacy_false_discovery_quarantine_hash" ]] || {
+        echo '[auto-deploy] BLOCKED deferred legacy false-discovery quarantine was not retired with its exact evidence pair' >&2
+        exit 79
+      }
+    fi
     ;;
   2) ;;
   *) exit "$persistent_attempt_recovery_status" ;;

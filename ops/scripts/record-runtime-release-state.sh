@@ -43,8 +43,32 @@ invalidate_ledger() {
   printf '%s\n' "delete from framework_runtime_release_state where release_key='CARBONET_RUNTIME';" | db_psql >/dev/null
 }
 
+runtime_ledger_count() {
+  printf '%s\n' "select count(*) from framework_runtime_release_state where release_key='CARBONET_RUNTIME';" | \
+    db_psql | tr -d '[:space:]'
+}
+
+invalidate_ledger_verified() {
+  local remaining
+  invalidate_ledger || return 1
+  remaining="$(runtime_ledger_count)" || return 1
+  [[ "$remaining" == 0 ]]
+}
+
+fail_after_ledger_publish() {
+  local reason="$1"
+  if invalidate_ledger_verified; then
+    fail "$reason; published ledger invalidated and count=0 verified"
+  fi
+  log "QUARANTINE $reason; published ledger cleanup could not be verified" >&2
+  exit 79
+}
+
 if [[ "$ACTION" == "--invalidate" ]]; then
-  invalidate_ledger
+  invalidate_ledger_verified || {
+    log "QUARANTINE runtime ledger invalidation could not be verified" >&2
+    exit 79
+  }
   log "PASS state=RUNTIME_COMMIT_UNAVAILABLE"
   exit 0
 fi
@@ -91,11 +115,13 @@ if [[ "$OBSERVE_ONLY" == true ]]; then
   # The reconciler has already restored and verified the exact owned
   # annotations.  Re-annotating here would be a second Kubernetes writer and
   # could invalidate the captured deployment identity.
-  invalidate_ledger
 else
   # Clear the prior identity before touching Kubernetes. Every later failure
   # is visible as RUNTIME_COMMIT_UNAVAILABLE.
-  invalidate_ledger
+  invalidate_ledger_verified || {
+    log "QUARANTINE prior runtime ledger invalidation could not be verified" >&2
+    exit 79
+  }
   if ! "$KUBECTL_BIN" -n "$NAMESPACE" annotate "deployment/$DEPLOYMENT" \
     "resonance.ai/target-commit=$TARGET_COMMIT" --overwrite >/dev/null; then
     fail "deployment target-commit annotation could not be updated; ledger remains invalidated"
@@ -108,6 +134,16 @@ else
     || fail "deployment annotation does not exactly match target commit; ledger remains invalidated"
 fi
 
+deployment_identity_token() {
+  jq -cS --arg container "$CONTAINER" '
+    {resourceVersion:.metadata.resourceVersion,uid:.metadata.uid,generation:.metadata.generation,
+     observedGeneration:.status.observedGeneration,replicas:.spec.replicas,
+     targetCommit:(.metadata.annotations["resonance.ai/target-commit"]//""),
+     image:(.spec.template.spec.containers[]|select(.name==$container)|.image)}
+  ' <<<"$1"
+}
+deployment_token="$(deployment_identity_token "$deployment_json")"
+
 selector="$(jq -r '.spec.selector.matchLabels // {} | to_entries | map("\(.key)=\(.value)") | join(",")' <<<"$deployment_json")"
 [[ -n "$selector" ]] || fail "deployment pod selector is unavailable; ledger remains invalidated"
 pods_json="$($KUBECTL_BIN -n "$NAMESPACE" get pods -l "$selector" -o json)" ||
@@ -116,35 +152,56 @@ image_ref="$(jq -r --arg container "$CONTAINER" '.spec.template.spec.containers[
 desired_replicas="$(jq -r '.spec.replicas // 0' <<<"$deployment_json")"
 ready_runtime_pods="$(jq -c --arg container "$CONTAINER" --arg image "$image_ref" '
   [.items[]
+   | select(.metadata.deletionTimestamp==null)
    | select(.status.phase=="Running")
    | select(any(.spec.containers[]?; .name==$container and .image==$image))
    | select(any(.status.conditions[]?; .type=="Ready" and .status=="True"))
    | select(any(.status.containerStatuses[]?; .name==$container and .ready==true))
-   | {name:.metadata.name,imageId:([.status.containerStatuses[] | select(.name==$container) | .imageID][0] // "") }]
+   | {name:.metadata.name,imageId:([.status.containerStatuses[] | select(.name==$container and .ready==true) | (.imageID // "")][0] // "")}
+   | select(.imageId|test("sha256:[0-9a-f]{64}$"))]
 ' <<<"$pods_json")"
 ready_runtime_count="$(jq -r 'length' <<<"$ready_runtime_pods")"
 [[ "$ready_runtime_count" == "$desired_replicas" ]] ||
   fail "Ready pods for the exact deployment image do not match desired replicas; ledger remains invalidated"
-runtime_image_id_count="$(jq -r '[.[].imageId | select(length>0)] | unique | length' <<<"$ready_runtime_pods")"
+runtime_image_id_count="$(jq -r '[.[].imageId] | unique | length' <<<"$ready_runtime_pods")"
 runtime_image_id="$(jq -r '.[0].imageId // empty' <<<"$ready_runtime_pods")"
-[[ "$runtime_image_id_count" == "1" && "$runtime_image_id" =~ sha256:[0-9a-f]{64}$ ]] ||
+[[ "$runtime_image_id_count" == "1" && "$runtime_image_id" =~ sha256:[0-9a-f]{64}$ \
+   && "$(jq -r '[.[]|(.imageId|test("sha256:[0-9a-f]{64}$"))]|all' <<<"$ready_runtime_pods")" == true ]] ||
   fail "Ready pods do not share one immutable imageID digest; ledger remains invalidated"
 mapfile -t runtime_pods < <(jq -r '.[].name' <<<"$ready_runtime_pods")
 [[ "${#runtime_pods[@]}" == "$desired_replicas" ]] \
   || fail "Ready runtime pod list does not equal desired replicas; ledger remains invalidated"
 for runtime_pod in "${runtime_pods[@]}"; do
-  health_json="$($KUBECTL_BIN -n "$NAMESPACE" exec "$runtime_pod" -c "$CONTAINER" -- \
-    curl -fsS --max-time 15 http://127.0.0.1:8080/actuator/health)" ||
+  if ! health_json="$($KUBECTL_BIN -n "$NAMESPACE" exec "$runtime_pod" -c "$CONTAINER" -- \
+      curl -fsS --max-time 15 http://127.0.0.1:8080/actuator/health)"; then
+    [[ "$OBSERVE_ONLY" != true ]] || invalidate_ledger_verified || {
+      log "QUARANTINE unhealthy runtime ledger invalidation could not be verified" >&2
+      exit 79
+    }
     fail "runtime health request failed for $runtime_pod; ledger remains invalidated"
-  jq -e '.status=="UP"' <<<"$health_json" >/dev/null ||
+  fi
+  if ! jq -e '.status=="UP"' <<<"$health_json" >/dev/null; then
+    [[ "$OBSERVE_ONLY" != true ]] || invalidate_ledger_verified || {
+      log "QUARANTINE unhealthy runtime ledger invalidation could not be verified" >&2
+      exit 79
+    }
     fail "runtime health is not UP for $runtime_pod; ledger remains invalidated"
+  fi
 done
+
+# Health evidence and the DB row must describe one stable Kubernetes read.
+# Observe-only never writes Kubernetes and never deletes the old ledger row.
+deployment_recheck="$($KUBECTL_BIN -n "$NAMESPACE" get "deployment/$DEPLOYMENT" -o json)" ||
+  fail "deployment cannot be reread before ledger transaction"
+validate_rollout "$deployment_recheck"
+[[ "$(deployment_identity_token "$deployment_recheck")" == "$deployment_token" ]] ||
+  fail "deployment identity drifted before ledger transaction"
 
 deployment_uid="$(jq -r '.metadata.uid' <<<"$deployment_json")"
 deployment_generation="$(jq -r '.metadata.generation // 0' <<<"$deployment_json")"
 observed_generation="$(jq -r '.status.observedGeneration // 0' <<<"$deployment_json")"
 
-cat <<'SQL' | db_psql \
+if ! cat <<'SQL' | db_psql \
   -v source_commit="$TARGET_COMMIT" \
   -v deployment_namespace="$NAMESPACE" \
   -v deployment_name="$DEPLOYMENT" \
@@ -155,6 +212,7 @@ cat <<'SQL' | db_psql \
   -v image_ref="$image_ref" \
   -v image_id="$runtime_image_id" \
   -v recorded_by="$RECORDED_BY" >/dev/null
+begin;
 insert into framework_runtime_release_state(
   release_key,source_commit,deployment_namespace,deployment_name,deployment_uid,
   deployment_generation,observed_generation,desired_replicas,image_ref,image_id,health_status,recorded_by,recorded_at
@@ -175,28 +233,28 @@ on conflict (release_key) do update set
   health_status=excluded.health_status,
   recorded_by=excluded.recorded_by,
   recorded_at=excluded.recorded_at;
+commit;
 SQL
+then
+  fail_after_ledger_publish "runtime release ledger transaction outcome is unavailable"
+fi
 
-recorded_json="$(cat <<'SQL' | db_psql
+# Never trust output observed before COMMIT. Reread the committed singleton
+# through an independent DB command, then compare every identity field.
+if ! recorded_json="$(cat <<'SQL' | db_psql
 select jsonb_build_object(
-  'releaseKey',release_key,
-  'sourceCommit',source_commit,
-  'deploymentNamespace',deployment_namespace,
-  'deploymentName',deployment_name,
-  'deploymentUid',deployment_uid,
-  'deploymentGeneration',deployment_generation,
-  'observedGeneration',observed_generation,
-  'desiredReplicas',desired_replicas,
-  'imageRef',image_ref,
-  'imageId',image_id,
-  'healthStatus',health_status
-)::text
-from framework_runtime_release_state
-where release_key='CARBONET_RUNTIME';
+  'releaseKey',release_key,'sourceCommit',source_commit,
+  'deploymentNamespace',deployment_namespace,'deploymentName',deployment_name,
+  'deploymentUid',deployment_uid,'deploymentGeneration',deployment_generation,
+  'observedGeneration',observed_generation,'desiredReplicas',desired_replicas,
+  'imageRef',image_ref,'imageId',image_id,'healthStatus',health_status
+)::text from framework_runtime_release_state where release_key='CARBONET_RUNTIME';
 SQL
-)"
+)"; then
+  fail_after_ledger_publish "runtime release ledger post-commit reread failed"
+fi
 
-jq -e \
+if ! jq -e \
   --arg commit "$TARGET_COMMIT" \
   --arg namespace "$NAMESPACE" \
   --arg deployment "$DEPLOYMENT" \
@@ -217,9 +275,15 @@ jq -e \
     .imageRef==$image and
     .imageId==$imageId and
     .healthStatus=="UP"
-  ' <<<"$recorded_json" >/dev/null || {
-    invalidate_ledger || true
-    fail "runtime release ledger reread did not match the healthy deployment"
-  }
+  ' <<<"$recorded_json" >/dev/null; then
+  fail_after_ledger_publish "runtime release ledger post-commit reread did not match the healthy deployment"
+fi
+
+deployment_recheck="$($KUBECTL_BIN -n "$NAMESPACE" get "deployment/$DEPLOYMENT" -o json)" ||
+  fail_after_ledger_publish "deployment cannot be reread after ledger transaction"
+if ! rollout_ready "$deployment_recheck" \
+   || [[ "$(deployment_identity_token "$deployment_recheck")" != "$deployment_token" ]]; then
+  fail_after_ledger_publish "deployment identity drifted after ledger transaction"
+fi
 
 log "PASS commit=$TARGET_COMMIT deployment=$NAMESPACE/$DEPLOYMENT generation=$deployment_generation replicas=$desired_replicas imageID=$runtime_image_id pods=${#runtime_pods[@]} observeOnly=$OBSERVE_ONLY"

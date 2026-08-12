@@ -6,6 +6,7 @@ AUTO="$ROOT/ops/scripts/auto-deploy-main.sh"
 JOURNAL_HELPER="$ROOT/ops/scripts/postdeploy-attempt-journal.py"
 POSTDEPLOY_JOURNAL_HELPER="$JOURNAL_HELPER"
 POSTDEPLOY_GATE_SCRIPT="$ROOT/ops/scripts/resonance-full-screen-deploy-gate.sh"
+RECORD_RUNTIME="$ROOT/ops/scripts/record-runtime-release-state.sh"
 tmp="$(mktemp -d)"
 trap 'rm -rf -- "$tmp"' EXIT
 
@@ -340,4 +341,251 @@ grep -Fxq DISARM "$EVENTS"
 [[ ! -e "$POSTDEPLOY_ATTEMPT_JOURNAL_FILE" ]]
 assert_order DISARM QUARANTINE_RETIRE CHECKPOINT ARCHIVE
 
-echo '[durable-rollback-reconciler-test] PASS order=authority-dbCAS-journal-physical-ledger-markers-checkpoint-archive-retire faults=6 restartConvergence=true dbStageCommitJournalCut=replayed abortCommitCrash=converged stagedPromotionSnapshotBinding=exact reconciledQuarantineBeforeArchive=true abortedDbReconfirm=required promotionRaceRestore=0 reconciledRetryRestore=0 unknownMutation=0 migrationAbsentPreRuntimeMutation=0'
+# Legacy first-upgrade checkpoint evidence may live under the persistent build
+# worktree even when bootstrap ROOT still points at /opt/Resonance. Exercise
+# exact path ownership, stale-ledger blocking, false-quarantine reachability,
+# and a crash immediately before the quarantine-last retirement cut.
+python3 - "$AUTO" "$tmp/legacy-functions.sh" <<'PY'
+from pathlib import Path
+import sys
+text=Path(sys.argv[1]).read_text(encoding="utf-8")
+names=["rebind_default_postdeploy_helpers","defer_exact_legacy_false_discovery_quarantine",
+       "legacy_owned_runtime_projection_hash","legacy_overlay_tree_hash","legacy_live_nginx_hash",
+       "postdeploy_source_has_no_attempt_or_promotion_rows","resolve_legacy_full_screen_gate_state_dir",
+       "retire_legacy_partial_runtime_attempt"]
+out=[]
+for name in names:
+    start=text.index(name+"() {")
+    i=text.index("{",start); depth=0; quote=None; escaped=False
+    for j in range(i,len(text)):
+        ch=text[j]
+        if escaped: escaped=False; continue
+        if ch=="\\": escaped=True; continue
+        if quote:
+            if ch==quote: quote=None
+            continue
+        if ch in "'\"": quote=ch; continue
+        if ch=="{": depth+=1
+        elif ch=="}":
+            depth-=1
+            if depth==0:
+                out.append(text[start:j+1]+"\n")
+                break
+    else: raise SystemExit(f"function end not found: {name}")
+Path(sys.argv[2]).write_text("\n".join(out),encoding="utf-8")
+PY
+
+(
+  # shellcheck disable=SC1090
+  source "$tmp/legacy-functions.sh"
+  legacy="$tmp/legacy"
+  baseline='0000000000000000000000000000000000000000'
+  old_candidate='1111111111111111111111111111111111111111'
+  retry_target='5555555555555555555555555555555555555555'
+  snapshot_id='snapshot-legacy-path'
+  gate="$legacy/worktrees/runtime-build/var/run/full-screen-deploy-gate"
+  snapshot="$gate/snapshots/$snapshot_id"
+  live_frontend_overlay="$legacy/live-overlay"
+  mkdir -p "$snapshot/frontend-overlay" "$live_frontend_overlay" "$legacy/retired"
+  printf 'baseline-index\n' >"$snapshot/frontend-overlay/index.html"
+  printf 'baseline-index\n' >"$live_frontend_overlay/index.html"
+  printf 'nginx-baseline\n' >"$snapshot/nginx.conf"
+  cat >"$gate/active.env" <<EOF
+SNAPSHOT_ID='$snapshot_id'
+SNAPSHOT_DIR='$snapshot'
+SNAPSHOT_FORMAT='hardlink-tree'
+RUNTIME_IMAGE='registry.invalid/carbonet:baseline'
+WEB_IMAGE='nginx:baseline'
+GIT_SHA='$baseline'
+BASELINE_SOURCE_COMMIT='$baseline'
+EOF
+  chmod 0600 "$gate/active.env"
+  active_hash="$(sha256sum "$gate/active.env" | awk '{print $1}')"
+  RUNTIME_CANDIDATE_CHECKPOINT_FILE="$legacy/checkpoint.json"
+  jq -n --arg base "$baseline" --arg target "$old_candidate" --arg snapshot "$snapshot_id" \
+    --arg dir "$snapshot" --arg active "$active_hash" '
+    {schemaVersion:1,stage:"RUNTIME_CANDIDATE_READY",baseCommit:$base,targetCommit:$target,
+     planFingerprint:("a"*64),migrationRequired:true,migrationFingerprint:("b"*64),
+     preparedAt:"2026-08-12T00:00:00Z",imageRef:"registry.invalid/carbonet:candidate",
+     releaseId:"release-legacy",deploymentUid:"deployment-uid",deploymentGeneration:7,
+     desiredReplicas:2,imageIdDigest:("sha256:"+("c"*64)),snapshotId:$snapshot,snapshotDir:$dir,
+     activeFileSha256:$active,assetManifestSha256:("d"*64),migrationEvidenceSha256:("e"*64),
+     verifiedAt:"2026-08-12T00:01:00Z"}' >"$RUNTIME_CANDIDATE_CHECKPOINT_FILE"
+  chmod 0644 "$RUNTIME_CANDIDATE_CHECKPOINT_FILE"
+
+  DEPLOY_STATE_FILE="$legacy/applied.commit"
+  RUNTIME_DEPLOY_STATE_FILE="$legacy/runtime.commit"
+  POSTDEPLOY_ATTEMPT_JOURNAL_FILE="$legacy/no-journal.json"
+  POSTDEPLOY_LEGACY_RETIRE_DIR="$legacy/retired"
+  RUNTIME_LEDGER_QUARANTINE_FILE="$legacy/runtime-ledger.quarantine"
+  LEGACY_FULL_SCREEN_GATE_STATE_DIR="$legacy/wrong-root"
+  CARBONET_CLEAN_WORKTREE_BASE="$legacy/worktrees"
+  CARBONET_DEPLOY_ORIGINAL_ROOT="$legacy/bootstrap"
+  ROOT_DIR="$legacy/worktrees/runtime-build"
+  NAMESPACE=carbonet-prod DEPLOYMENT=carbonet-runtime POSTGRES_POD=postgres-patroni-0 POSTGRES_CONTAINER=patroni POSTGRES_USER=postgres POSTGRES_DB=carbonet
+  target_commit="$retry_target" runtime_deployed_commit="$baseline"
+  printf '%s\n' "$baseline" >"$DEPLOY_STATE_FILE"
+  printf '%s\n' "$baseline" >"$RUNTIME_DEPLOY_STATE_FILE"
+  cat >"$legacy/deployment.json" <<EOF
+{"metadata":{"uid":"deployment-uid","generation":9,"annotations":{"resonance.ai/target-commit":"$baseline"}},"spec":{"replicas":2,"minReadySeconds":10,"progressDeadlineSeconds":300,"strategy":{"type":"RollingUpdate"},"selector":{"matchLabels":{"app":"carbonet-runtime"}},"template":{"metadata":{"labels":{"app":"carbonet-runtime"}},"spec":{"containers":[{"name":"carbonet-runtime","image":"registry.invalid/carbonet:baseline"}]}}}}
+EOF
+  write_quarantine() {
+    local qcandidate="${1:-postdeploy:${retry_target:0:12}:20260812T000000000000000:123:456}"
+    local reason="${2:-LEGACY_PARTIAL_STATE_CONTRACT_INVALID}"
+    cat >"$RUNTIME_LEDGER_QUARANTINE_FILE" <<EOF
+schemaVersion=1
+targetCommit=$retry_target
+candidateId=$qcandidate
+reason=$reason
+observedAppliedMarker=$baseline
+observedRuntimeMarker=$baseline
+EOF
+    chmod 0600 "$RUNTIME_LEDGER_QUARANTINE_FILE"
+  }
+  kubectl() {
+    case "$*" in
+      *"get deployment/carbonet-runtime"*) cat "$legacy/deployment.json" ;;
+      *"get configmap carbonet-web-nginx"*) printf 'nginx-baseline\n' ;;
+      *) return 1 ;;
+    esac
+  }
+  postdeploy_authoritative_promotion_status() { return "${AUTHORITY_STATUS:-1}"; }
+  postdeploy_source_has_no_attempt_or_promotion_rows() { [[ "${DB_ABSENCE_EXACT:-true}" == true ]]; }
+  verify_operational_usage_ledger_current_runtime_identity() { [[ "${LEDGER_EXACT:-true}" == true ]]; }
+  write_postdeploy_promotion_quarantine() { :; }
+
+  write_quarantine "postdeploy:ffffffffffff:bad-source"; ! defer_exact_legacy_false_discovery_quarantine
+  write_quarantine "postdeploy:${retry_target:0:12}:20260812T000000000000000:123:456" WRONG_REASON
+  ! defer_exact_legacy_false_discovery_quarantine
+  write_quarantine
+  defer_exact_legacy_false_discovery_quarantine
+  resolve_legacy_full_screen_gate_state_dir
+  [[ "$LEGACY_FULL_SCREEN_GATE_STATE_DIR" == "$gate" ]]
+
+  chmod 0600 "$RUNTIME_CANDIDATE_CHECKPOINT_FILE"
+  bad_mode_status=0; retire_legacy_partial_runtime_attempt || bad_mode_status=$?
+  [[ "$bad_mode_status" == 79 && -f "$gate/active.env" && -f "$RUNTIME_CANDIDATE_CHECKPOINT_FILE" ]]
+  chmod 0644 "$RUNTIME_CANDIDATE_CHECKPOINT_FILE"
+  LEDGER_EXACT=false
+  stale_status=0; retire_legacy_partial_runtime_attempt || stale_status=$?
+  [[ "$stale_status" == 79 && -f "$gate/active.env" && -f "$RUNTIME_CANDIDATE_CHECKPOINT_FILE" ]]
+  LEDGER_EXACT=true DB_ABSENCE_EXACT=false
+  db_unknown_status=0; retire_legacy_partial_runtime_attempt || db_unknown_status=$?
+  [[ "$db_unknown_status" == 79 && -f "$gate/active.env" ]]
+  DB_ABSENCE_EXACT=true
+
+  quarantine_destination="$POSTDEPLOY_LEGACY_RETIRE_DIR/$(sed -n 's/^candidateId=//p' "$RUNTIME_LEDGER_QUARANTINE_FILE").legacy-false-discovery-quarantine.state"
+  mv() {
+    local destination="${!#}"
+    if [[ "$destination" == "$quarantine_destination" && ! -e "$legacy/quarantine-move-faulted" ]]; then
+      : >"$legacy/quarantine-move-faulted"
+      return 1
+    fi
+    command mv "$@"
+  }
+  crash_status=0; retire_legacy_partial_runtime_attempt || crash_status=$?
+  [[ "$crash_status" == 79 && ! -e "$gate/active.env" && ! -e "$RUNTIME_CANDIDATE_CHECKPOINT_FILE" \
+     && -f "$RUNTIME_LEDGER_QUARANTINE_FILE" && -f "$POSTDEPLOY_LEGACY_RETIRE_DIR/${old_candidate}.legacy-retired.json" \
+     && -f "$POSTDEPLOY_LEGACY_RETIRE_DIR/legacy-retire.intent.json" ]]
+  resolve_legacy_full_screen_gate_state_dir
+  retire_legacy_partial_runtime_attempt
+  [[ ! -e "$RUNTIME_LEDGER_QUARANTINE_FILE" && -f "$quarantine_destination" \
+     && -f "$POSTDEPLOY_LEGACY_RETIRE_DIR/${old_candidate}.legacy-retire.completed.json" ]]
+)
+
+# Observe-only ledger reconciliation is an uninterrupted UPSERT transaction:
+# no pre-health DELETE, and post-transaction K8s drift invalidates the new row.
+record_fixture="$tmp/record-runtime"
+mkdir -p "$record_fixture"
+cat >"$record_fixture/kubectl" <<'SH'
+#!/usr/bin/env bash
+set -euo pipefail
+args="$*"
+if [[ "$args" == *" get deployment/carbonet-runtime -o json"* ]]; then
+  count="$(cat "$FAKE_GET_COUNT" 2>/dev/null || printf 0)"; count=$((count + 1)); printf '%s\n' "$count" >"$FAKE_GET_COUNT"
+  generation=9
+  [[ "${FAKE_DRIFT_AFTER:-0}" != "$count" ]] || generation=10
+  sed "s/__GENERATION__/$generation/g" "$FAKE_DEPLOYMENT_JSON"
+elif [[ "$args" == *" get pods "* ]]; then
+  cat "$FAKE_PODS_JSON"
+elif [[ "$args" == *" curl -fsS "* ]]; then
+  printf '{"status":"UP"}\n'
+elif [[ "$args" == *" psql "* ]]; then
+  sql="$(cat)"
+  printf '%s\n--CALL--\n' "$sql" >>"$FAKE_SQL_LOG"
+  if [[ "$sql" == *"to_regclass('public.framework_runtime_release_state')"* ]]; then
+    printf 'framework_runtime_release_state\n'
+  elif [[ "$sql" == *"insert into framework_runtime_release_state"* ]]; then
+    printf '1\n' >"$FAKE_LEDGER_STATE"
+  elif [[ "$sql" == *"jsonb_build_object"* ]]; then
+    [[ "$(cat "$FAKE_LEDGER_STATE" 2>/dev/null || printf 0)" != 1 ]] || cat "$FAKE_RECORDED_JSON"
+  elif [[ "$sql" == *"delete from framework_runtime_release_state"* ]]; then
+    printf '0\n' >"$FAKE_LEDGER_STATE"
+  elif [[ "$sql" == *"select count(*) from framework_runtime_release_state"* ]]; then
+    cat "$FAKE_LEDGER_STATE" 2>/dev/null || printf '0\n'
+  fi
+else
+  printf 'unexpected fake kubectl args: %s\n' "$args" >&2
+  exit 9
+fi
+SH
+chmod +x "$record_fixture/kubectl"
+cat >"$record_fixture/deployment.json" <<'JSON'
+{"metadata":{"resourceVersion":"rv-9","uid":"deployment-uid","generation":__GENERATION__,"annotations":{"resonance.ai/target-commit":"0000000000000000000000000000000000000000"}},"spec":{"replicas":2,"selector":{"matchLabels":{"app":"carbonet-runtime"}},"template":{"spec":{"containers":[{"name":"carbonet-runtime","image":"registry.invalid/carbonet:baseline"}]}}},"status":{"observedGeneration":__GENERATION__,"updatedReplicas":2,"readyReplicas":2,"availableReplicas":2,"unavailableReplicas":0}}
+JSON
+cat >"$record_fixture/pods.json" <<'JSON'
+{"items":[{"metadata":{"name":"runtime-0"},"status":{"phase":"Running","conditions":[{"type":"Ready","status":"True"}],"containerStatuses":[{"name":"carbonet-runtime","ready":true,"imageID":"docker-pullable://registry.invalid/carbonet@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}]},"spec":{"containers":[{"name":"carbonet-runtime","image":"registry.invalid/carbonet:baseline"}]}},{"metadata":{"name":"runtime-1"},"status":{"phase":"Running","conditions":[{"type":"Ready","status":"True"}],"containerStatuses":[{"name":"carbonet-runtime","ready":true,"imageID":"docker-pullable://registry.invalid/carbonet@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}]},"spec":{"containers":[{"name":"carbonet-runtime","image":"registry.invalid/carbonet:baseline"}]}}]}
+JSON
+cat >"$record_fixture/recorded.json" <<'JSON'
+{"releaseKey":"CARBONET_RUNTIME","sourceCommit":"0000000000000000000000000000000000000000","deploymentNamespace":"carbonet-prod","deploymentName":"carbonet-runtime","deploymentUid":"deployment-uid","deploymentGeneration":9,"observedGeneration":9,"desiredReplicas":2,"imageRef":"registry.invalid/carbonet:baseline","imageId":"docker-pullable://registry.invalid/carbonet@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","healthStatus":"UP"}
+JSON
+export FAKE_GET_COUNT="$record_fixture/get-count" FAKE_SQL_LOG="$record_fixture/sql.log"
+export FAKE_DEPLOYMENT_JSON="$record_fixture/deployment.json" FAKE_PODS_JSON="$record_fixture/pods.json" FAKE_RECORDED_JSON="$record_fixture/recorded.json"
+export FAKE_LEDGER_STATE="$record_fixture/ledger-state"
+rm -f "$FAKE_GET_COUNT" "$FAKE_SQL_LOG" "$FAKE_LEDGER_STATE"
+CARBONET_RUNTIME_LEDGER_KUBECTL_BIN="$record_fixture/kubectl" \
+CARBONET_RUNTIME_LEDGER_OBSERVE_ONLY=true POSTGRES_POD=postgres-patroni-0 \
+  bash "$RECORD_RUNTIME" 0000000000000000000000000000000000000000 >/dev/null
+grep -Fqi 'begin;' "$FAKE_SQL_LOG"
+grep -Fqi 'insert into framework_runtime_release_state' "$FAKE_SQL_LOG"
+grep -Fqi 'commit;' "$FAKE_SQL_LOG"
+! grep -Fqi 'delete from framework_runtime_release_state' "$FAKE_SQL_LOG"
+
+rm -f "$FAKE_GET_COUNT" "$FAKE_SQL_LOG"
+drift_status=0
+FAKE_DRIFT_AFTER=3 CARBONET_RUNTIME_LEDGER_KUBECTL_BIN="$record_fixture/kubectl" \
+CARBONET_RUNTIME_LEDGER_OBSERVE_ONLY=true POSTGRES_POD=postgres-patroni-0 \
+  bash "$RECORD_RUNTIME" 0000000000000000000000000000000000000000 >/dev/null 2>&1 || drift_status=$?
+[[ "$drift_status" != 0 ]]
+python3 - "$FAKE_SQL_LOG" <<'PY'
+from pathlib import Path
+import sys
+text=Path(sys.argv[1]).read_text()
+assert text.lower().index("insert into framework_runtime_release_state") < text.lower().index("delete from framework_runtime_release_state")
+PY
+
+# The helper contract must preserve explicit recovery overrides and rebind all
+# default-derived paths after the clean-worktree switch.
+grep -Fq 'rebind_default_postdeploy_helpers' "$AUTO"
+grep -Fq 'ROOT_DIR="$clean_worktree"' "$AUTO"
+grep -Fq '&& "$ledger_generation" == "$generation"' "$AUTO"
+grep -Fq '&& "$ledger_desired" == "$desired"' "$AUTO"
+grep -Fq 'BLOCKED deferred legacy false-discovery quarantine was not retired with its exact evidence pair' "$AUTO"
+
+# Dispatch reachability contract: an exact-shaped deferred quarantine is never
+# allowed past recovery unless the pair retirement returned success and the
+# pinned quarantine moved to its exact terminal destination.
+python3 - "$AUTO" <<'PY'
+from pathlib import Path
+import sys
+text=Path(sys.argv[1]).read_text()
+guard=text.index("BLOCKED deferred legacy false-discovery quarantine")
+mutation=text.index('postdeploy_pending_recovery_status=1')
+assert guard < mutation
+window=text[guard-1000:guard+300]
+for required in ('legacy_retire_status" == 0','! -e "$RUNTIME_LEDGER_QUARANTINE_FILE"',
+                 'legacy_quarantine_retired','legacy_false_discovery_quarantine_hash','exit 79'):
+    assert required in window, required
+PY
+
+echo '[durable-rollback-reconciler-test] PASS order=authority-dbCAS-journal-physical-ledger-markers-checkpoint-archive-retire faults=6 restartConvergence=true dbStageCommitJournalCut=replayed abortCommitCrash=converged stagedPromotionSnapshotBinding=exact reconciledQuarantineBeforeArchive=true abortedDbReconfirm=required promotionRaceRestore=0 reconciledRetryRestore=0 unknownMutation=0 migrationAbsentPreRuntimeMutation=0 legacyPathResolution=checkpoint-owned legacyFalseQuarantine=reachable-hash-bound-last legacyCrashResume=true staleLedgerMutation=blocked malformedQuarantine=blocked'

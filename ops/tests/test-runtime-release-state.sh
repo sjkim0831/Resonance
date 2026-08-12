@@ -14,7 +14,7 @@ image_id='docker-pullable://registry/carbonet@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaa
 write_deployment() {
   local ready="${1:-2}" annotation="${2:-$old_commit}"
   jq -n --arg annotation "$annotation" --argjson ready "$ready" '{
-    metadata:{uid:"deployment-uid-1",generation:7,annotations:{"resonance.ai/target-commit":$annotation}},
+    metadata:{resourceVersion:"rv-7",uid:"deployment-uid-1",generation:7,annotations:{"resonance.ai/target-commit":$annotation}},
     spec:{replicas:2,selector:{matchLabels:{app:"carbonet-runtime"}},template:{spec:{containers:[{name:"carbonet-runtime",image:"registry/carbonet:test"}]}}},
     status:{observedGeneration:7,updatedReplicas:2,readyReplicas:$ready,availableReplicas:$ready,unavailableReplicas:(2-$ready)}
   }' >"$TMP/fixtures/deployment.json"
@@ -25,9 +25,9 @@ write_old_ledger() {
 }
 
 write_pods() {
-  local second_image_id="${1:-$image_id}"
-  jq -n --arg first "$image_id" --arg second "$second_image_id" '{items:[
-    {metadata:{name:"runtime-0"},spec:{containers:[{name:"carbonet-runtime",image:"registry/carbonet:test"}]},status:{phase:"Running",conditions:[{type:"Ready",status:"True"}],containerStatuses:[{name:"carbonet-runtime",ready:true,imageID:$first}]}},
+  local second_image_id="${1-$image_id}" terminating="${2:-false}"
+  jq -n --arg first "$image_id" --arg second "$second_image_id" --argjson terminating "$terminating" '{items:[
+    {metadata:({name:"runtime-0"}+if $terminating then {deletionTimestamp:"2026-08-12T00:00:00Z"} else {} end),spec:{containers:[{name:"carbonet-runtime",image:"registry/carbonet:test"}]},status:{phase:"Running",conditions:[{type:"Ready",status:"True"}],containerStatuses:[{name:"carbonet-runtime",ready:true,imageID:$first}]}},
     {metadata:{name:"runtime-1"},spec:{containers:[{name:"carbonet-runtime",image:"registry/carbonet:test"}]},status:{phase:"Running",conditions:[{type:"Ready",status:"True"}],containerStatuses:[{name:"carbonet-runtime",ready:true,imageID:$second}]}}
   ]}' >"$TMP/fixtures/pods.json"
 }
@@ -42,9 +42,11 @@ set -Eeuo pipefail
 args=" $* "
 if [[ "$args" == *" exec -i $POSTGRES_POD "* ]]; then
   sql="$(cat)"
+  printf '%s\n--CALL--\n' "$sql" >>"$FIXTURE_DIR/sql.calls"
   if [[ "$sql" == *"to_regclass('public.framework_runtime_release_state')"* ]]; then
     printf 'framework_runtime_release_state\n'
   elif [[ "$sql" == *"delete from framework_runtime_release_state"* ]]; then
+    [[ "${FAIL_DELETE:-false}" != true ]] || exit 51
     : >"$FIXTURE_DIR/ledger.json"
   elif [[ "$sql" == *"insert into framework_runtime_release_state"* ]]; then
     deployment="$(cat "$FIXTURE_DIR/deployment.json")"
@@ -60,13 +62,21 @@ if [[ "$args" == *" exec -i $POSTGRES_POD "* ]]; then
       --argjson desired "$(jq -r .spec.replicas <<<"$deployment")" \
       '{releaseKey:"CARBONET_RUNTIME",sourceCommit:$commit,deploymentNamespace:$namespace,deploymentName:$deployment,deploymentUid:$uid,deploymentGeneration:$generation,observedGeneration:$observed,desiredReplicas:$desired,imageRef:$image,imageId:$imageId,healthStatus:"UP"}' \
       >"$FIXTURE_DIR/ledger.json"
+    [[ "${COMMIT_OUTPUT_ILLUSION:-false}" != true ]] || printf '{"sourceCommit":"forged-pre-commit"}\n'
+    [[ "${COMMIT_OUTPUT_ILLUSION:-false}" == true || "$sql" != *"jsonb_build_object"* ]] || cat "$FIXTURE_DIR/ledger.json"
   elif [[ "$sql" == *"jsonb_build_object"* ]]; then
+    [[ "${FAIL_POST_COMMIT_READ:-false}" != true ]] || exit 52
     cat "$FIXTURE_DIR/ledger.json"
+  elif [[ "$sql" == *"select count(*) from framework_runtime_release_state"* ]]; then
+    [[ -s "$FIXTURE_DIR/ledger.json" ]] && printf '1\n' || printf '0\n'
   else
     echo "unexpected SQL: $sql" >&2
     exit 90
   fi
 elif [[ "$args" == *" get deployment/carbonet-runtime -o json "* ]]; then
+  identity_counter_file="$FIXTURE_DIR/identity-get-count"
+  identity_count="$(( $(cat "$identity_counter_file" 2>/dev/null || printf '0') + 1 ))"
+  printf '%s\n' "$identity_count" >"$identity_counter_file"
   if [[ -n "${BECOME_READY_AFTER:-}" ]]; then
     counter_file="$FIXTURE_DIR/deployment-get-count"
     count="$(( $(cat "$counter_file" 2>/dev/null || printf '0') + 1 ))"
@@ -76,7 +86,11 @@ elif [[ "$args" == *" get deployment/carbonet-runtime -o json "* ]]; then
       mv "$FIXTURE_DIR/deployment.tmp" "$FIXTURE_DIR/deployment.json"
     fi
   fi
-  cat "$FIXTURE_DIR/deployment.json"
+  if [[ -n "${DRIFT_AFTER_DEPLOYMENT_GET:-}" && "$identity_count" == "$DRIFT_AFTER_DEPLOYMENT_GET" ]]; then
+    jq '.metadata.resourceVersion="rv-drift" | .metadata.generation+=1 | .status.observedGeneration+=1' "$FIXTURE_DIR/deployment.json"
+  else
+    cat "$FIXTURE_DIR/deployment.json"
+  fi
 elif [[ "$args" == *" annotate deployment/carbonet-runtime "* ]]; then
   printf '%s\n' "$*" >>"$FIXTURE_DIR/annotate.calls"
   [[ "${FAIL_ANNOTATE:-false}" != "true" ]] || exit 41
@@ -128,7 +142,7 @@ export CARBONET_RUNTIME_LEDGER_READY_ATTEMPTS=3
 bash "$HELPER" "$target_commit" >/dev/null
 unset BECOME_READY_AFTER
 export CARBONET_RUNTIME_LEDGER_READY_ATTEMPTS=1
-[[ "$(cat "$TMP/fixtures/deployment-get-count")" == "3" ]]
+[[ "$(cat "$TMP/fixtures/deployment-get-count")" == "5" ]]
 [[ "$(jq -r '.sourceCommit' "$TMP/fixtures/ledger.json")" == "$target_commit" ]]
 write_deployment 2 "$old_commit"
 write_old_ledger
@@ -160,6 +174,26 @@ set -e
 
 write_deployment 2 "$old_commit"
 write_old_ledger
+write_pods "$image_id" true
+set +e
+bash "$HELPER" "$target_commit" >/dev/null 2>&1
+terminating_status=$?
+set -e
+[[ "$terminating_status" -ne 0 && ! -s "$TMP/fixtures/ledger.json" ]] \
+  || { echo 'terminating Ready pod was accepted' >&2; exit 1; }
+
+write_deployment 2 "$old_commit"
+write_old_ledger
+write_pods ''
+set +e
+bash "$HELPER" "$target_commit" >/dev/null 2>&1
+empty_image_id_status=$?
+set -e
+[[ "$empty_image_id_status" -ne 0 && ! -s "$TMP/fixtures/ledger.json" ]] \
+  || { echo 'empty imageID pod was accepted' >&2; exit 1; }
+
+write_deployment 2 "$old_commit"
+write_old_ledger
 write_pods
 bash "$HELPER" --invalidate >/dev/null
 [[ ! -s "$TMP/fixtures/ledger.json" ]] || { echo 'explicit invalidation retained the ledger' >&2; exit 1; }
@@ -170,9 +204,55 @@ write_deployment 2 "$target_commit"
 write_old_ledger
 write_pods
 rm -f "$TMP/fixtures/annotate.calls"
-CARBONET_RUNTIME_LEDGER_OBSERVE_ONLY=true bash "$HELPER" "$target_commit" >/dev/null
+rm -f "$TMP/fixtures/sql.calls" "$TMP/fixtures/identity-get-count"
+COMMIT_OUTPUT_ILLUSION=true CARBONET_RUNTIME_LEDGER_OBSERVE_ONLY=true \
+  bash "$HELPER" "$target_commit" >/dev/null
 [[ ! -e "$TMP/fixtures/annotate.calls" ]]
 [[ "$(jq -r '.sourceCommit' "$TMP/fixtures/ledger.json")" == "$target_commit" ]]
+grep -Fqi 'begin;' "$TMP/fixtures/sql.calls"
+grep -Fqi 'commit;' "$TMP/fixtures/sql.calls"
+! grep -Fqi 'delete from framework_runtime_release_state' "$TMP/fixtures/sql.calls"
+python3 - "$TMP/fixtures/sql.calls" <<'PY'
+from pathlib import Path
+import sys
+calls=Path(sys.argv[1]).read_text().lower().split("--call--")
+insert=next(i for i,v in enumerate(calls) if "insert into framework_runtime_release_state" in v)
+reread=next(i for i,v in enumerate(calls) if "jsonb_build_object" in v and "insert into" not in v)
+assert insert < reread
+PY
+
+# A post-COMMIT read failure must either clear and prove count=0 or emit the
+# quarantine exit. A failed DELETE can never be treated as successful cleanup.
+write_deployment 2 "$target_commit"
+write_old_ledger
+write_pods
+rm -f "$TMP/fixtures/sql.calls" "$TMP/fixtures/identity-get-count"
+set +e
+FAIL_POST_COMMIT_READ=true FAIL_DELETE=true CARBONET_RUNTIME_LEDGER_OBSERVE_ONLY=true \
+  bash "$HELPER" "$target_commit" >"$TMP/fixtures/delete-failure.log" 2>&1
+delete_failure_status=$?
+set -e
+[[ "$delete_failure_status" == 79 && -s "$TMP/fixtures/ledger.json" ]]
+grep -Fq 'QUARANTINE' "$TMP/fixtures/delete-failure.log"
+
+# A deployment identity change after the committed UPSERT invalidates the new
+# row instead of publishing stale generation/replica evidence.
+write_deployment 2 "$target_commit"
+write_old_ledger
+write_pods
+rm -f "$TMP/fixtures/sql.calls" "$TMP/fixtures/identity-get-count"
+set +e
+DRIFT_AFTER_DEPLOYMENT_GET=3 CARBONET_RUNTIME_LEDGER_OBSERVE_ONLY=true \
+  bash "$HELPER" "$target_commit" >/dev/null 2>&1
+drift_status=$?
+set -e
+[[ "$drift_status" -ne 0 && ! -s "$TMP/fixtures/ledger.json" ]]
+python3 - "$TMP/fixtures/sql.calls" <<'PY'
+from pathlib import Path
+import sys
+text=Path(sys.argv[1]).read_text().lower()
+assert text.index("insert into framework_runtime_release_state") < text.index("delete from framework_runtime_release_state")
+PY
 
 write_deployment 2 "$target_commit"
 write_old_ledger
@@ -195,4 +275,4 @@ set -e
 [[ "$(jq -r '.sourceCommit' "$TMP/fixtures/ledger.json")" == "$old_commit" ]] \
   || { echo 'observe-only annotation mismatch mutated the prior ledger' >&2; exit 1; }
 
-echo '[runtime-release-state-test] PASS ready=recorded transient-unready=retried replicas=exact imageID=single-digest allPodHealth=required observeOnly=annotate0 annotation-failure=invalidated unready=preserved explicit-invalidate=cleared'
+echo '[runtime-release-state-test] PASS ready=recorded transient-unready=retried replicas=exact imageID=all-nonempty-single-digest terminatingPod=rejected allPodHealth=required observeOnly=annotate0 transaction=commit-then-independent-reread postTransactionDrift=invalidated cleanupDeleteFailure=quarantined annotation-failure=invalidated unready=preserved explicit-invalidate=cleared'
