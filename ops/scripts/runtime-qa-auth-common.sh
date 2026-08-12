@@ -138,7 +138,7 @@ carbonet_qa_auth_run_serialized() (
     return 1
   fi
   trap carbonet_qa_auth_release_lock EXIT
-  echo "[runtime-qa-auth] lifecycle lock acquired name=$lifecycle_name"
+  echo "[runtime-qa-auth] lifecycle lock acquired name=$lifecycle_name" >&2
   "$@" || lifecycle_status=$?
   carbonet_qa_auth_release_lock
   trap - EXIT
@@ -146,7 +146,7 @@ carbonet_qa_auth_run_serialized() (
     echo "[runtime-qa-auth] lifecycle failed name=$lifecycle_name status=$lifecycle_status" >&2
   else
     echo "[runtime-qa-auth] lifecycle PASS name=$lifecycle_name duration=$(( $(date +%s) - lifecycle_started ))s"
-  fi
+  fi >&2
   return "$lifecycle_status"
 )
 
