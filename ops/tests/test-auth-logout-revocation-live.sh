@@ -56,6 +56,11 @@ if [[ "${1:-}" == "--resolve-leader-only" ]]; then
 fi
 [[ "$#" == "0" ]] || { echo '[auth-logout-live] unexpected argument' >&2; exit 2; }
 
+# This verifier owns a dedicated Secret identity. The deploy service also
+# carries actor-test credentials for unrelated process lanes; never let those
+# inherited explicit fields bypass this Secret or seed stale session state.
+unset CARBONET_QA_AUTH_USER CARBONET_QA_AUTH_PASSWORD CARBONET_ACTOR_TEST_PASSWORD
+unset CARBONET_QA_AUTH_EFFECTIVE_USER CARBONET_QA_AUTH_SESSION_ACTIVE
 export CARBONET_QA_AUTH_SECRET="${CARBONET_QA_AUTH_SECRET:-carbonet-usage-ledger-system-admin}"
 EXPECTED_USER=qausageadmin26
 

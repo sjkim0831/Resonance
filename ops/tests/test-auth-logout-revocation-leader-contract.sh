@@ -201,6 +201,8 @@ assert_source_contract() {
   grep -Fq '.authenticated==false' "$candidate" || return 1
   grep -Fq '.success==false and .message=="AUTHENTICATION_REQUIRED"' "$candidate" || return 1
   grep -Fq 'refresh_code" == "401" || "$refresh_code" == "403"' "$candidate" || return 1
+  grep -Fq 'unset CARBONET_QA_AUTH_USER CARBONET_QA_AUTH_PASSWORD CARBONET_ACTOR_TEST_PASSWORD' "$candidate" || return 1
+  grep -Fq 'unset CARBONET_QA_AUTH_EFFECTIVE_USER CARBONET_QA_AUTH_SESSION_ACTIVE' "$candidate" || return 1
   grep -Fq 'rm -rf -- "$TMP_DIR"' "$candidate" || return 1
   grep -Fq 'return "$original_status"' "$candidate" || return 1
   ! grep -Fq ".items[0].metadata.name" "$candidate"
@@ -211,6 +213,16 @@ MUTANT="$TMP_DIR/items-zero-mutant.sh"
 sed 's/{range \.items\[\*\]}{\.metadata\.name}{"\\n"}{end}/{.items[0].metadata.name}/' "$LIVE" > "$MUTANT"
 if assert_source_contract "$MUTANT"; then
   fail 'items[0] mutation survived the leader contract'
+fi
+MUTANT="$TMP_DIR/inherited-credential-reset-mutant.sh"
+sed '/^unset CARBONET_QA_AUTH_USER CARBONET_QA_AUTH_PASSWORD CARBONET_ACTOR_TEST_PASSWORD$/d' "$LIVE" > "$MUTANT"
+if assert_source_contract "$MUTANT"; then
+  fail 'inherited credential reset mutation survived the logout contract'
+fi
+MUTANT="$TMP_DIR/inherited-session-reset-mutant.sh"
+sed '/^unset CARBONET_QA_AUTH_EFFECTIVE_USER CARBONET_QA_AUTH_SESSION_ACTIVE$/d' "$LIVE" > "$MUTANT"
+if assert_source_contract "$MUTANT"; then
+  fail 'inherited session reset mutation survived the logout contract'
 fi
 
 mkdir -p "$TMP_DIR/bin"
@@ -271,6 +283,11 @@ run_full() {
   error_file="$state_dir/stderr"
   mkdir -p "$state_dir"
   output="$(env \
+    -u CARBONET_QA_AUTH_USER \
+    -u CARBONET_QA_AUTH_PASSWORD \
+    -u CARBONET_ACTOR_TEST_PASSWORD \
+    -u CARBONET_QA_AUTH_EFFECTIVE_USER \
+    -u CARBONET_QA_AUTH_SESSION_ACTIVE \
     PATH="$TMP_DIR/bin:$PATH" \
     FAKE_STATE_DIR="$state_dir" \
     FAKE_PATRONI_STATE=failover \
@@ -299,6 +316,12 @@ run_full() {
 }
 
 run_full exact pass -
+run_full inherited-auth-env pass - \
+  CARBONET_QA_AUTH_USER=other-admin \
+  CARBONET_QA_AUTH_PASSWORD=outer-password-must-be-ignored \
+  CARBONET_ACTOR_TEST_PASSWORD=outer-actor-password-must-be-ignored \
+  CARBONET_QA_AUTH_EFFECTIVE_USER=stale-user \
+  CARBONET_QA_AUTH_SESSION_ACTIVE=1
 run_full account-not-dedicated fail 'authenticated QA account is not the dedicated usage-ledger administrator' FAKE_SECRET_USER=other-admin FAKE_SESSION_USER=other-admin
 run_full identity-mismatch fail 'authenticated session identity mismatch' FAKE_SESSION_USER=wrong-user
 run_full pre-session-unauthenticated fail 'authenticated session identity mismatch' FAKE_PRE_SESSION_AUTHENTICATED=false
@@ -315,4 +338,4 @@ run_full session-stale-authenticated fail 'stale session remained authenticated'
 run_full refresh-302 fail 'stale refresh denial was not authoritative (http=302)' FAKE_REFRESH_STATUS=302
 run_full refresh-500 fail 'stale refresh denial was not authoritative (http=500)' FAKE_REFRESH_STATUS=500
 
-printf '[auth-logout-leader-contract] PASS selected=patroni-1 zeroLeaders=failed twoLeaders=failed failover=leader-reresolved exitStatus=preserved exactAccount=enforced identityMismatch=failed preSession=failed preProtected=failed tokenCount2=failed logout500=cleaned logoutTokenSurvived=cleaned protected302=failed protectedJsonMutants=failed staleSession=failed refresh302=failed refresh500=failed credentialArgvLog=clean items0Mutation=killed\n'
+printf '[auth-logout-leader-contract] PASS selected=patroni-1 zeroLeaders=failed twoLeaders=failed failover=leader-reresolved exitStatus=preserved exactAccount=enforced inheritedAuthEnv=isolated identityMismatch=failed preSession=failed preProtected=failed tokenCount2=failed logout500=cleaned logoutTokenSurvived=cleaned protected302=failed protectedJsonMutants=failed staleSession=failed refresh302=failed refresh500=failed credentialArgvLog=clean items0Mutation=killed authEnvMutations=2-killed\n'
