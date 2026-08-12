@@ -310,9 +310,11 @@ try {
     const errors = [];
     page.on("pageerror", (error) => errors.push(error.message));
     const response = await page.goto(`${base}/admin/system/actor-process?tab=system-test-report`, { waitUntil: "domcontentloaded", timeout: 30000 });
-    await page.getByText("전 시스템 실사용 검수 대장", { exact: true }).waitFor({ state: "visible", timeout: 30000 });
-    await page.locator('[data-help-id="usage-ledger-table"] tbody tr').first().waitFor({ state: "visible", timeout: 30000 });
-    await page.getByRole("button", { name: /상세 보기/ }).first().click();
+    await page.getByTestId("operational-usage-verification-ledger").waitFor({ state: "visible", timeout: 30000 });
+    await page.getByRole("heading", { name: /실사용 검수 대장/ }).waitFor({ state: "visible", timeout: 30000 });
+    const firstDetailButton = page.getByRole("button", { name: /상세 보기/ }).first();
+    await firstDetailButton.waitFor({ state: "visible", timeout: 90000 });
+    await firstDetailButton.evaluate(button => button.click());
     const reviewEditor = page.getByTestId("operational-review-editor").first();
     await reviewEditor.waitFor({ state: "visible", timeout: 30000 });
     await reviewEditor.locator("select").waitFor({ state: "visible", timeout: 10000 });
