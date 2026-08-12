@@ -29,6 +29,8 @@ type Props = {
 type TestResult = "PASSED" | "BLOCKED" | "NOT_RUN";
 type ReviewStatus = "UNREVIEWED" | "REVIEWED" | "CHANGE_REQUESTED";
 type EvidenceFilter = "" | "BUSINESS_E2E" | "CONTRACT_SIMULATION" | "DESIGN" | "NO_EVIDENCE";
+type ExecutionReadiness = "E2E_READY" | "CONTRACT_ONLY" | "INPUT_FIXTURE_MISSING" | "ACTOR_AUTH_MISSING";
+type ExecutionReadinessFilter = "" | ExecutionReadiness;
 type ReviewDraft = { status: ReviewStatus; note: string };
 type ReviewScope = { key: string; label: string; screenResourceId?: number; capabilityCode: string; partial: boolean };
 type NextDestination = { label: string; code: string; routePath: string; sourceLabel: string };
@@ -116,6 +118,7 @@ export function SystemProcessTestReportPanel({ base }: Props) {
   const [processCode, setProcessCode] = useState("");
   const [resultFilter, setResultFilter] = useState("");
   const [evidenceFilter, setEvidenceFilter] = useState<EvidenceFilter>("");
+  const [executionReadinessFilter, setExecutionReadinessFilter] = useState<ExecutionReadinessFilter>("");
   const [reviewFilter, setReviewFilter] = useState("");
   const [searchKeyword, setSearchKeyword] = useState("");
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
@@ -440,9 +443,10 @@ export function SystemProcessTestReportPanel({ base }: Props) {
       .filter(row => !processCode || text(row, "processCode") === processCode)
       .filter(row => !resultFilter || normalizeResult(row) === resultFilter)
       .filter(row => !evidenceFilter || evidenceState(row) === evidenceFilter)
+      .filter(row => !executionReadinessFilter || executionReadiness(row) === executionReadinessFilter)
       .filter(row => !reviewFilter || normalizeAggregateReviewStatus(row) === reviewFilter)
       .filter(row => !keyword || rowSearchText(row).includes(keyword));
-  }, [evidenceFilter, orderedItems, processCode, resultFilter, reviewFilter, searchKeyword, workTypeCode]);
+  }, [evidenceFilter, executionReadinessFilter, orderedItems, processCode, resultFilter, reviewFilter, searchKeyword, workTypeCode]);
   const displayedItems = printAllRows ? orderedItems : filteredItems;
 
   const computedSummary = useMemo(() => {
@@ -467,6 +471,10 @@ export function SystemProcessTestReportPanel({ base }: Props) {
       fixtureSuiteCompleteSteps: items.filter(row => text(row, "fixtureSuiteCoverageState") === "COMPLETE").length,
       fixtureSuiteIncompleteSteps: items.filter(row => text(row, "fixtureSuiteCoverageState") !== "COMPLETE").length,
       fixtureSuiteCurrentRuns: items.reduce((sum, row) => sum + number(row, "fixtureSuiteCurrentRunCount"), 0),
+      e2eReady: items.filter(row => executionReadiness(row) === "E2E_READY").length,
+      contractOnly: items.filter(row => executionReadiness(row) === "CONTRACT_ONLY").length,
+      inputFixtureMissing: items.filter(row => executionReadiness(row) === "INPUT_FIXTURE_MISSING").length,
+      actorAuthMissing: items.filter(row => executionReadiness(row) === "ACTOR_AUTH_MISSING").length,
       reviewed: items.filter(row => normalizeAggregateReviewStatus(row) === "REVIEWED").length,
       changeRequested: items.filter(row => normalizeAggregateReviewStatus(row) === "CHANGE_REQUESTED").length
     };
@@ -701,6 +709,16 @@ export function SystemProcessTestReportPanel({ base }: Props) {
       {summaryValues.map(([label, metric, color]) => <article className="rounded-xl border border-slate-200 bg-white p-4" key={label}><span className="text-xs font-bold text-slate-500">{label}</span><strong className={`mt-1 block text-2xl font-black ${color}`}>{metric.toLocaleString("ko-KR")}</strong></article>)}
     </section>
 
+    <section className="report-print-break rounded-2xl border border-emerald-200 bg-emerald-50/40 p-5" aria-label="실제 업무 E2E 준비도 자동 분류">
+      <div><p className="text-xs font-black tracking-[0.1em] text-emerald-700">EXECUTABLE DESIGN READINESS</p><h3 className="mt-1 font-black text-[#052b57]">설계 보강 우선순위 · 상호 배타적 4단계 분류</h3><p className="mt-1 text-sm leading-6 text-slate-600">액터 계정·권한 → 입력·5종 픽스처 → 실제 업무 E2E 가능 → 계약 전용 순서로 각 절차를 정확히 한 분류에 배정합니다.</p></div>
+      <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <FixtureMetric label="실제 업무 E2E 가능" value={computedSummary.e2eReady}/>
+        <FixtureMetric label="계약 검증만 가능" value={computedSummary.contractOnly} warning/>
+        <FixtureMetric label="입력·픽스처 누락" value={computedSummary.inputFixtureMissing} warning/>
+        <FixtureMetric label="액터 계정·권한 누락" value={computedSummary.actorAuthMissing} warning/>
+      </div>
+    </section>
+
     <section className="report-print-break rounded-2xl border border-violet-200 bg-violet-50/40 p-5" aria-label="워크플로 픽스처 스위트 범위">
       <div className="flex flex-col gap-2 lg:flex-row lg:items-end lg:justify-between">
         <div><p className="text-xs font-black tracking-[0.1em] text-violet-700">WORKFLOW FIXTURE SUITE COVERAGE</p><h3 className="mt-1 font-black text-[#052b57]">5대 안전 시나리오 전체 등록·실행 증적</h3><p className="mt-1 text-sm leading-6 text-slate-600">HAPPY_PATH · AUTHORITY · ISOLATION · EXCEPTION · RECOVERY 바인딩 전체를 집계합니다. 계약 건전성 감사가 선택하는 정상 픽스처 1건 및 실제 업무 E2E와 서로 다른 증적입니다.</p></div>
@@ -753,6 +771,15 @@ export function SystemProcessTestReportPanel({ base }: Props) {
             <option value="CHANGE_REQUESTED">설계·기능 변경 요청</option>
           </select>
         </label>
+        <label className="text-sm font-bold text-slate-700">실제 실행 준비도
+          <select className={fieldClass} value={executionReadinessFilter} onChange={event => setExecutionReadinessFilter(event.target.value as ExecutionReadinessFilter)}>
+            <option value="">전체 준비도</option>
+            <option value="E2E_READY">실제 업무 E2E 가능</option>
+            <option value="CONTRACT_ONLY">계약 검증만 가능</option>
+            <option value="INPUT_FIXTURE_MISSING">입력·픽스처 누락</option>
+            <option value="ACTOR_AUTH_MISSING">액터 계정·권한 누락</option>
+          </select>
+        </label>
         <label className="text-sm font-bold text-slate-700">통합 검색
           <input className={fieldClass} onChange={event => setSearchKeyword(event.target.value)} placeholder="업무·절차·화면·담당자·기능·경로" type="search" value={searchKeyword}/>
         </label>
@@ -762,7 +789,7 @@ export function SystemProcessTestReportPanel({ base }: Props) {
         <div className="flex flex-wrap gap-2">
           <button className={`min-h-10 rounded-lg border border-blue-300 bg-white px-4 text-sm font-bold text-blue-700 hover:bg-blue-50 ${focusClass}`} onClick={expandVisibleRows} type="button">현재 결과 모두 펼치기</button>
           <button className={`min-h-10 rounded-lg border border-slate-300 bg-white px-4 text-sm font-bold text-slate-700 hover:bg-slate-50 ${focusClass}`} onClick={() => setExpandedRows(new Set())} type="button">모두 접기</button>
-          <button className={`min-h-10 rounded-lg border border-slate-300 bg-white px-4 text-sm font-bold text-slate-700 hover:bg-slate-50 ${focusClass}`} onClick={() => { setWorkTypeCode(""); setProcessCode(""); setResultFilter(""); setEvidenceFilter(""); setReviewFilter(""); setSearchKeyword(""); }} type="button">필터 초기화</button>
+          <button className={`min-h-10 rounded-lg border border-slate-300 bg-white px-4 text-sm font-bold text-slate-700 hover:bg-slate-50 ${focusClass}`} onClick={() => { setWorkTypeCode(""); setProcessCode(""); setResultFilter(""); setEvidenceFilter(""); setExecutionReadinessFilter(""); setReviewFilter(""); setSearchKeyword(""); }} type="button">필터 초기화</button>
         </div>
       </div>
     </section>
@@ -816,7 +843,7 @@ export function SystemProcessTestReportPanel({ base }: Props) {
                   <td className="px-4 py-4"><strong className="block text-slate-800">{stepLabel(row, index)}</strong><span className="mt-1 block font-mono text-[11px] text-slate-400">{text(row, "stepCode") || "-"}</span></td>
                   <td className="px-4 py-4"><strong className="block text-slate-800">{text(row, "screenName") || "연결 화면 미등록"}</strong><span className="mt-1 block break-all font-mono text-[11px] text-slate-500">{routePath || "경로 없음"}</span><span className="mt-2 line-clamp-2 block text-xs leading-5 text-blue-700">{text(row, "functionCodes", "capabilityNames", "functionNames") || "기능 계약 미등록"}</span></td>
                   <td className="px-4 py-4"><span className="block font-bold text-slate-700">{text(row, "actorName", "assigneeName") || "담당자 미지정"}</span><span className="mt-1 block font-mono text-[11px] text-slate-400">{text(row, "actorCode", "assigneeActorCode") || "-"}</span><span className="mt-2 block text-xs text-slate-500">전체 범위 후보 계정 {text(row, "assignedAccountCount") || "0"}개</span><span className="mt-1 block text-xs text-blue-700">실제 실행 {text(row, "businessExecutedBy", "actualExecutedBy", "executedBy") || "증적 없음"}</span></td>
-                  <td className="px-4 py-4"><ResultBadge result={result}/>{text(row, "latestBlockerCodes", "resultMessage", "message", "failureReason") && <span className="mt-2 line-clamp-2 block max-w-56 text-xs leading-5 text-slate-500">{formatStructuredValue(firstValue(row, "latestBlockerCodes", "resultMessage", "message", "failureReason"))}</span>}</td>
+                  <td className="px-4 py-4"><ResultBadge result={result}/><span className="mt-2 block"><ExecutionReadinessBadge row={row}/></span>{text(row, "latestBlockerCodes", "resultMessage", "message", "failureReason") && <span className="mt-2 line-clamp-2 block max-w-56 text-xs leading-5 text-slate-500">{formatStructuredValue(firstValue(row, "latestBlockerCodes", "resultMessage", "message", "failureReason"))}</span>}</td>
                   <td className="px-4 py-4"><FixtureSuiteBadge row={row}/><span className="mt-2 block max-w-56 text-xs leading-5 text-slate-500">{text(row, "fixtureSuiteMissingTypes") ? `누락: ${text(row, "fixtureSuiteMissingTypes")}` : `${text(row, "fixtureSuiteCoveredTypeCount") || "0"}/5 유형 · ${text(row, "fixtureSuiteCaseCount") || "0"}건`}</span></td>
                   <td className="px-4 py-4"><SimulationResultBadge row={row}/><span className="mt-2 block max-w-48 text-xs leading-5 text-slate-500">{text(row, "simulationCaseCode") || "시뮬레이션 증적 없음"}</span></td>
                   <td className="px-4 py-4"><BusinessResultBadge row={row}/><span className="mt-2 block max-w-48 text-xs leading-5 text-slate-500">{text(row, "businessEvidenceStatus") || "EVIDENCE_LEDGER_UNAVAILABLE"}</span></td>
@@ -1027,6 +1054,23 @@ function ResultBadge({ result }: { result: TestResult }) {
   return <span className={`inline-flex rounded-full border px-3 py-1 text-xs font-black ${RESULT_CLASSES[result]}`}>{RESULT_LABELS[result]} · {result}</span>;
 }
 
+function ExecutionReadinessBadge({ row }: { row: Row }) {
+  const state = executionReadiness(row);
+  const labels: Record<ExecutionReadiness, string> = {
+    E2E_READY: "실제 업무 E2E 가능",
+    CONTRACT_ONLY: "계약 검증만 가능",
+    INPUT_FIXTURE_MISSING: "입력·픽스처 누락",
+    ACTOR_AUTH_MISSING: "액터 계정·권한 누락"
+  };
+  const classes: Record<ExecutionReadiness, string> = {
+    E2E_READY: "border-emerald-200 bg-emerald-50 text-emerald-800",
+    CONTRACT_ONLY: "border-blue-200 bg-blue-50 text-blue-800",
+    INPUT_FIXTURE_MISSING: "border-amber-200 bg-amber-50 text-amber-900",
+    ACTOR_AUTH_MISSING: "border-red-200 bg-red-50 text-red-800"
+  };
+  return <span className={`inline-flex rounded-full border px-3 py-1 text-xs font-black ${classes[state]}`}>{labels[state]} · {state}</span>;
+}
+
 function ReviewBadge({ status, scopeLabel = "절차 전체" }: { status: ReviewStatus; scopeLabel?: string }) {
   const scopedLabel = status === "REVIEWED" && scopeLabel !== "절차 전체" ? "부분 검토 완료" : REVIEW_LABELS[status];
   return <span className={`inline-flex flex-col rounded-lg border px-3 py-1 text-xs font-black ${REVIEW_CLASSES[status]}`}><span>{scopedLabel} · {status}</span><span className="mt-0.5 max-w-48 truncate font-medium">{scopeLabel}</span></span>;
@@ -1225,6 +1269,24 @@ function reviewNoteForScope(row: Row, scope: ReviewScope) {
 
 function reviewDraftKey(row: Row, index: number, scope: ReviewScope) {
   return `${rowKey(row, index)}:${scope.key}`;
+}
+
+function executionReadiness(row: Row): ExecutionReadiness {
+  const blockers = text(row, "latestBlockerCodes", "observedBlockerCodes", "resultMessage").toUpperCase();
+  const accountOrAuthorityMissing = number(row, "assignedAccountCount") < 1
+    || !text(row, "actorCode", "assigneeActorCode")
+    || blockers.includes("AUTHORITY");
+  if (accountOrAuthorityMissing) return "ACTOR_AUTH_MISSING";
+  const fixtureOrInputMissing = text(row, "fixtureSuiteCoverageState") !== "COMPLETE"
+    || number(row, "fixtureSuiteCoveredTypeCount") < Math.max(5, number(row, "fixtureSuiteRequiredTypeCount"))
+    || blockers.includes("PREINPUT_REQUIRED")
+    || blockers.includes("PREINPUT_FIELD_SCOPE")
+    || blockers.includes("FIELD_CONTRACT");
+  if (fixtureOrInputMissing) return "INPUT_FIXTURE_MISSING";
+  const routeReady = Boolean(primaryRoutePath(row));
+  const screenFunctionsReady = number(row, "screenCount") > 0 || Boolean(text(row, "screenFunctionInventoryJson", "functionCodes", "capabilityNames"));
+  if (routeReady && screenFunctionsReady) return "E2E_READY";
+  return "CONTRACT_ONLY";
 }
 
 function evidenceState(row: Row): Exclude<EvidenceFilter, ""> {

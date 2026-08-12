@@ -211,6 +211,9 @@ expect(source.includes(".sort(compareRows)"), "Work, process and step order must
 expect(source.includes("actualInput") && source.includes("actualOutput") && source.includes("actualEvidenceJson"), "Actual input, output and evidence fields are missing.");
 expect(source.includes("screenFunctionInventoryJson"), "Per-screen function inventory is missing.");
 expect(source.includes("assignedAccountCount") && source.includes("assignedAccountIds") && source.includes("actorCapabilityCodes"), "Actor account and capability fields are missing.");
+expect(source.includes('type ExecutionReadiness = "E2E_READY" | "CONTRACT_ONLY" | "INPUT_FIXTURE_MISSING" | "ACTOR_AUTH_MISSING";'), "Four-way executable design readiness type is missing.");
+expect(source.includes("function executionReadiness") && source.includes('number(row, "assignedAccountCount") < 1') && source.includes('text(row, "fixtureSuiteCoverageState") !== "COMPLETE"') && source.includes("primaryRoutePath(row)"), "Executable design readiness priority classifier is incomplete.");
+expect(source.includes("실제 업무 E2E 준비도 자동 분류") && source.includes("실제 실행 준비도") && source.includes("ExecutionReadinessBadge"), "Executable design readiness summary, filter or row badge is missing.");
 expect(source.includes("nextProcessCode") && source.includes("nextStepCode") && source.includes("nextRoutePath") && source.includes("nextTransitionSource"), "Explicit next-work fields are missing.");
 expect(source.includes("명시적 NEXT 계약이 없어 다른 프로세스를 추정하지 않습니다."), "The UI must not infer an unregistered cross-process transition.");
 expect(source.includes("system-test-report/reviews") && source.includes('reviewStatus: status === "REVIEWED" ? "APPROVED" : "CHANGE_REQUESTED"'), "Human review persistence is missing.");
