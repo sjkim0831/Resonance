@@ -3006,8 +3006,11 @@ postdeploy_source_has_no_attempt_or_promotion_rows() {
 }
 
 resolve_legacy_full_screen_gate_state_dir() {
-  local evidence_path="" snapshot_dir="" gate_dir="" configured_root persistent_root
+  local evidence_path="" snapshot_dir="" gate_dir="" configured_root persistent_root current_root
   local candidate match_count=0
+  configured_root="$(realpath -m "$LEGACY_FULL_SCREEN_GATE_STATE_DIR")"
+  persistent_root="$(realpath -m "${CARBONET_CLEAN_WORKTREE_BASE:-${CARBONET_DEPLOY_ORIGINAL_ROOT:-$ROOT_DIR}/var/deploy-worktrees}/runtime-build/var/run/full-screen-deploy-gate")"
+  current_root="$(realpath -m "$FULL_SCREEN_GATE_STATE_DIR")"
   if [[ -f "$POSTDEPLOY_LEGACY_RETIRE_DIR/legacy-retire.intent.json" \
      && ! -L "$POSTDEPLOY_LEGACY_RETIRE_DIR/legacy-retire.intent.json" ]]; then
     evidence_path="$(jq -r '.sourceActive // empty' "$POSTDEPLOY_LEGACY_RETIRE_DIR/legacy-retire.intent.json" 2>/dev/null || true)"
@@ -3015,14 +3018,37 @@ resolve_legacy_full_screen_gate_state_dir() {
     gate_dir="$(realpath -m "$(dirname "$evidence_path")")"
   elif [[ -f "$RUNTIME_CANDIDATE_CHECKPOINT_FILE" && ! -L "$RUNTIME_CANDIDATE_CHECKPOINT_FILE" ]]; then
     snapshot_dir="$(jq -r '.snapshotDir // empty' "$RUNTIME_CANDIDATE_CHECKPOINT_FILE" 2>/dev/null || true)"
-    [[ "$snapshot_dir" == */snapshots/* ]] || return 79
+    if [[ "$snapshot_dir" != */snapshots/* ]]; then
+      # `prepare` is written before backup, build, Flyway and snapshot capture.
+      # An exact non-live PREPARED checkpoint is therefore a retry hint, not a
+      # legacy runtime attempt. Everything else remains fail-closed.
+      [[ "$(stat -c '%a' "$RUNTIME_CANDIDATE_CHECKPOINT_FILE" 2>/dev/null)" == 644 \
+         && "$(stat -c '%u' "$RUNTIME_CANDIDATE_CHECKPOINT_FILE" 2>/dev/null)" == "$(id -u)" ]] || return 79
+      jq -e '
+        keys==["baseCommit","migrationFingerprint","migrationRequired","planFingerprint",
+               "preparedAt","schemaVersion","stage","targetCommit"]
+        and .schemaVersion==1 and .stage=="PREPARED"
+        and (.baseCommit|type=="string" and test("^[0-9a-f]{40}$"))
+        and (.targetCommit|type=="string" and test("^[0-9a-f]{40}$"))
+        and (.planFingerprint|type=="string" and test("^[0-9a-f]{64}$"))
+        and (.migrationFingerprint|type=="string" and test("^[0-9a-f]{64}$"))
+        and (.migrationRequired|type=="boolean")
+        and (.preparedAt|type=="string" and length>0)
+      ' "$RUNTIME_CANDIDATE_CHECKPOINT_FILE" >/dev/null 2>&1 || return 79
+      for candidate in "$configured_root/active.env" "$persistent_root/active.env" "$current_root/active.env"; do
+        [[ ! -e "$candidate" && ! -L "$candidate" ]] || return 79
+      done
+      [[ ! -e "$POSTDEPLOY_LEGACY_RETIRE_DIR/legacy-retire.intent.json" \
+         && ! -L "$POSTDEPLOY_LEGACY_RETIRE_DIR/legacy-retire.intent.json" \
+         && ! -e "$POSTDEPLOY_ATTEMPT_JOURNAL_FILE" && ! -L "$POSTDEPLOY_ATTEMPT_JOURNAL_FILE" \
+         && ! -e "$RUNTIME_LEDGER_QUARANTINE_FILE" && ! -L "$RUNTIME_LEDGER_QUARANTINE_FILE" ]] || return 79
+      return 1
+    fi
     gate_dir="$(realpath -m "$(dirname "$(dirname "$snapshot_dir")")")"
   else
     [[ ! -e "$RUNTIME_CANDIDATE_CHECKPOINT_FILE" && ! -L "$RUNTIME_CANDIDATE_CHECKPOINT_FILE" ]] || return 79
     return 1
   fi
-  configured_root="$(realpath -m "$LEGACY_FULL_SCREEN_GATE_STATE_DIR")"
-  persistent_root="$(realpath -m "${CARBONET_CLEAN_WORKTREE_BASE:-${CARBONET_DEPLOY_ORIGINAL_ROOT:-$ROOT_DIR}/var/deploy-worktrees}/runtime-build/var/run/full-screen-deploy-gate")"
   for candidate in "$configured_root" "$persistent_root"; do
     [[ "$candidate" == "$gate_dir" ]] || continue
     if (( match_count == 0 )) || [[ "$candidate" != "$configured_root" ]]; then

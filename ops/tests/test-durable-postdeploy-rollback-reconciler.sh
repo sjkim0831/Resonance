@@ -375,6 +375,71 @@ for name in names:
 Path(sys.argv[2]).write_text("\n".join(out),encoding="utf-8")
 PY
 
+# A checkpoint written by `prepare` has no live runtime or rollback evidence.
+# Treat only its exact helper-owned shape as non-legacy so normal checkpoint
+# preparation can atomically replace it for the new target. Malformed, READY,
+# or evidence-bearing states remain fail-closed.
+(
+  # shellcheck disable=SC1090
+  source "$tmp/legacy-functions.sh"
+  prepared="$tmp/prepared-checkpoint-resolver"
+  RUNTIME_CANDIDATE_CHECKPOINT_FILE="$prepared/checkpoint.json"
+  POSTDEPLOY_ATTEMPT_JOURNAL_FILE="$prepared/no-journal.json"
+  POSTDEPLOY_LEGACY_RETIRE_DIR="$prepared/retired"
+  RUNTIME_LEDGER_QUARANTINE_FILE="$prepared/no-quarantine.state"
+  LEGACY_FULL_SCREEN_GATE_STATE_DIR="$prepared/configured-gate"
+  CARBONET_CLEAN_WORKTREE_BASE="$prepared/worktrees"
+  CARBONET_DEPLOY_ORIGINAL_ROOT="$prepared/bootstrap"
+  ROOT_DIR="$prepared/worktrees/runtime-build"
+  FULL_SCREEN_GATE_STATE_DIR="$prepared/current-gate"
+  persistent_gate="$CARBONET_CLEAN_WORKTREE_BASE/runtime-build/var/run/full-screen-deploy-gate"
+  mkdir -p "$POSTDEPLOY_LEGACY_RETIRE_DIR" "$LEGACY_FULL_SCREEN_GATE_STATE_DIR" \
+    "$persistent_gate" "$FULL_SCREEN_GATE_STATE_DIR"
+  write_prepared_checkpoint() {
+    jq -n '
+      {schemaVersion:1,stage:"PREPARED",
+       baseCommit:("0"*40),targetCommit:("1"*40),
+       planFingerprint:("a"*64),migrationRequired:true,
+       migrationFingerprint:("b"*64),preparedAt:"2026-08-12T12:47:12+09:00"}
+    ' >"$RUNTIME_CANDIDATE_CHECKPOINT_FILE"
+    chmod 0644 "$RUNTIME_CANDIDATE_CHECKPOINT_FILE"
+  }
+  resolver_status=0
+  write_prepared_checkpoint
+  resolve_legacy_full_screen_gate_state_dir || resolver_status=$?
+  [[ "$resolver_status" == 1 ]]
+
+  jq '.unexpected=true' "$RUNTIME_CANDIDATE_CHECKPOINT_FILE" >"${RUNTIME_CANDIDATE_CHECKPOINT_FILE}.tmp"
+  mv -fT -- "${RUNTIME_CANDIDATE_CHECKPOINT_FILE}.tmp" "$RUNTIME_CANDIDATE_CHECKPOINT_FILE"
+  resolver_status=0; resolve_legacy_full_screen_gate_state_dir || resolver_status=$?
+  [[ "$resolver_status" == 79 ]]
+
+  write_prepared_checkpoint
+  jq '.stage="RUNTIME_CANDIDATE_READY"' "$RUNTIME_CANDIDATE_CHECKPOINT_FILE" >"${RUNTIME_CANDIDATE_CHECKPOINT_FILE}.tmp"
+  mv -fT -- "${RUNTIME_CANDIDATE_CHECKPOINT_FILE}.tmp" "$RUNTIME_CANDIDATE_CHECKPOINT_FILE"
+  resolver_status=0; resolve_legacy_full_screen_gate_state_dir || resolver_status=$?
+  [[ "$resolver_status" == 79 ]]
+
+  write_prepared_checkpoint
+  printf 'unexpected-active\n' >"$persistent_gate/active.env"
+  resolver_status=0; resolve_legacy_full_screen_gate_state_dir || resolver_status=$?
+  [[ "$resolver_status" == 79 ]]
+  rm -f -- "$persistent_gate/active.env"
+
+  printf '{}\n' >"$POSTDEPLOY_ATTEMPT_JOURNAL_FILE"
+  resolver_status=0; resolve_legacy_full_screen_gate_state_dir || resolver_status=$?
+  [[ "$resolver_status" == 79 ]]
+  rm -f -- "$POSTDEPLOY_ATTEMPT_JOURNAL_FILE"
+  printf 'reason=unexpected\n' >"$RUNTIME_LEDGER_QUARANTINE_FILE"
+  resolver_status=0; resolve_legacy_full_screen_gate_state_dir || resolver_status=$?
+  [[ "$resolver_status" == 79 ]]
+  rm -f -- "$RUNTIME_LEDGER_QUARANTINE_FILE"
+
+  chmod 0600 "$RUNTIME_CANDIDATE_CHECKPOINT_FILE"
+  resolver_status=0; resolve_legacy_full_screen_gate_state_dir || resolver_status=$?
+  [[ "$resolver_status" == 79 ]]
+)
+
 (
   # shellcheck disable=SC1090
   source "$tmp/legacy-functions.sh"
