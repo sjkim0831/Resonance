@@ -68,21 +68,34 @@ tokens = (
     "ops/scripts/check-postdeploy-authoritative-promotion.sh",
     "/opt/resonance-data/control-plane/bin/check-postdeploy-authoritative-promotion.sh",
 )
+authority_explicit_flag = '[[ -v CARBONET_POSTDEPLOY_AUTHORITY_SCRIPT ]] && POSTDEPLOY_AUTHORITY_SCRIPT_EXPLICIT=true || POSTDEPLOY_AUTHORITY_SCRIPT_EXPLICIT=false'
+authority_default = 'POSTDEPLOY_AUTHORITY_SCRIPT="${CARBONET_POSTDEPLOY_AUTHORITY_SCRIPT:-$ROOT_DIR/ops/scripts/check-postdeploy-authoritative-promotion.sh}"'
+authority_rebind = '[[ "$POSTDEPLOY_AUTHORITY_SCRIPT_EXPLICIT" == true ]] || POSTDEPLOY_AUTHORITY_SCRIPT="$ROOT_DIR/ops/scripts/check-postdeploy-authoritative-promotion.sh"'
+clean_rebind_call = '\n  rebind_default_postdeploy_helpers\n  cd "$ROOT_DIR"'
 def contract(d, h, a):
     try:
         function_start = d.index("sync_auto_deploy_failure_runtime_if_required() {")
         function_end = d.index("sync_postgres_backup_cronjobs_if_required() {", function_start)
         function_body = d[function_start:function_end]
+        rebind_start = d.index("rebind_default_postdeploy_helpers() {")
+        rebind_end = d.index("# The applied-source marker", rebind_start)
+        rebind_body = d[rebind_start:rebind_end]
         fast_start = d.index("# Documentation, design metadata")
         fast_end = d.index("# A failed post-deploy gate", fast_start)
         fast_body = d[fast_start:fast_end]
         runtime_merge = d.rindex('git merge --ff-only "$target_commit"')
         runtime_sync = d.index("sync_auto_deploy_failure_runtime_if_required", runtime_merge)
         runtime_restore = d.index("restore_live_frontend_overlay", runtime_merge)
-        return (d.count(tokens[0]) == 4 and d.count(tokens[1]) == 1
+        clean_root_switch = d.index('ROOT_DIR="$clean_worktree"')
+        clean_rebind = d.index(clean_rebind_call, clean_root_switch)
+        clean_cd = d.index('cd "$ROOT_DIR"', clean_rebind)
+        return (d.count(tokens[0]) == 5 and d.count(tokens[1]) == 1
                 and 'mv -fT -- "$authority_helper_install_tmp"' in d
+                and authority_explicit_flag in d and authority_default in d
+                and authority_rebind in rebind_body
                 and fast_body.index('git merge --ff-only "$target_commit"') < fast_body.index("sync_auto_deploy_failure_runtime_if_required")
                 and runtime_merge < runtime_sync < runtime_restore
+                and clean_root_switch < clean_rebind < clean_cd
                 and d.count("sync_auto_deploy_failure_runtime_if_required") == 3
                 and tokens[1] in h and "[[ -r \"$KUBECONFIG\" ]] || exit 2" in a)
     except ValueError:
@@ -95,6 +108,8 @@ assert not contract(deploy, handler, authority.replace("[[ -r \"$KUBECONFIG\" ]]
 runtime_call = deploy.rindex('git merge --ff-only "$target_commit"')
 mutated_mixed_runtime = deploy[:runtime_call] + deploy[runtime_call:].replace("sync_auto_deploy_failure_runtime_if_required", "MIXED_RUNTIME_INSTALL_REMOVED", 1)
 assert not contract(mutated_mixed_runtime, handler, authority)
+assert not contract(deploy.replace(authority_rebind, "AUTHORITY_REBIND_REMOVED", 1), handler, authority)
+assert not contract(deploy.replace(clean_rebind_call, '\n  cd "$ROOT_DIR"', 1), handler, authority)
 PY
 
 if command -v jq >/dev/null 2>&1; then
