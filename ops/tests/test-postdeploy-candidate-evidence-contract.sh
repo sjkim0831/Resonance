@@ -557,6 +557,15 @@ if os.environ.get("CANDIDATE_EVIDENCE_SKIP_DEPLOY_WIRING") != "true":
     for mutation in ("publish_pending_frontend_staging", 'kubectl -n "$NAMESPACE" set env',
                      'kubectl apply -f -', 'kubectl -n "$NAMESPACE" patch'):
         assert arm < rollout.index(mutation, arm), f"live mutation precedes durable DB arm: {mutation}"
+    sync_overlay = build_deploy[build_deploy.index("sync_overlay() {"):
+                                build_deploy.index("build_maven() {")]
+    defer_guard = 'if [[ "$CARBONET_DEFER_LIVE_MUTATIONS_UNTIL_POST_FLYWAY" == true'
+    assert defer_guard in sync_overlay
+    assert sync_overlay.index(defer_guard) < sync_overlay.index("guard_frontend_overlay backup")
+    assert 'verify-react-asset-closure.mjs" "$PENDING_FRONTEND_STAGING_DIR"' in sync_overlay
+    assert "Live overlay verification and publish deferred until durable DB attempt stage" in sync_overlay
+    deferred_mutant = sync_overlay.replace(defer_guard, 'if [[ false == true', 1)
+    assert deferred_mutant.index("if [[ false == true") < deferred_mutant.index("guard_frontend_overlay backup")
     assert "DEFER_ROLLBACK_TO_ATTEMPT_RECONCILER" in build_deploy
     child_rollback = build_deploy[build_deploy.index("rollback_and_fail() {"):
                                   build_deploy.index("root_cmd() {")]

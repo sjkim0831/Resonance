@@ -546,6 +546,18 @@ publish_pending_frontend_staging() {
 sync_overlay() {
   log_step "Sync Overlay"
 
+  # A database-bearing release builds React into an isolated candidate tree.
+  # Until Flyway has installed and the durable DB attempt is ARMED, the live
+  # overlay still belongs to the baseline source and its marker is expected to
+  # differ from the candidate source. Validate the candidate closure here and
+  # defer every live-overlay guard/write to publish_pending_frontend_staging.
+  if [[ "$CARBONET_DEFER_LIVE_MUTATIONS_UNTIL_POST_FLYWAY" == true \
+     && -n "$PENDING_FRONTEND_STAGING_DIR" ]]; then
+    node "$ROOT_DIR/ops/scripts/verify-react-asset-closure.mjs" "$PENDING_FRONTEND_STAGING_DIR"
+    log "Live overlay verification and publish deferred until durable DB attempt stage"
+    return
+  fi
+
   if [[ "$SKIP_OVERLAY_SYNC" == "true" ]]; then
     log "Skipped (SKIP_OVERLAY_SYNC=true)"
     if [[ "$CARBONET_DEFER_LIVE_MUTATIONS_UNTIL_POST_FLYWAY" == true \
