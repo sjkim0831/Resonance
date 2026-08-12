@@ -300,6 +300,10 @@ assert '--data-binary "@$login_payload"' in actor and "/signin/actionLogout" in 
 assert 'if [[ "$EVIDENCE_MODE" != candidate ]]' in actor
 assert 'draftMutation:"SKIPPED_CANDIDATE_READ_ONLY"' in actor and "mutableBusinessWrites:0" in actor
 assert "securityAuditAppendDelta:2" in actor and "authTokenCleanupVerified:true" in actor
+assert "CARBONET_ACTOR_TOKEN_STALE_AFTER_SECONDS" in actor
+assert "created_at >= clock_timestamp() - make_interval" in actor
+assert "recovering stale dedicated QA sessions" in actor
+assert "recent_token_baseline" in actor and "exit 75" in actor
 assert "scopeAuditIdDelta:1" in actor and "actorAuditIdDelta:1" in actor
 for token in (
     "'schemaVersion',schema_version", "'rowHash',row_hash",

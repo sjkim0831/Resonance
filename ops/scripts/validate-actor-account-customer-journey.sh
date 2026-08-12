@@ -11,6 +11,7 @@ PASSWORD="${CARBONET_ACTOR_TEST_PASSWORD:-}"
 ROOT="${CARBONET_DEPLOY_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
 SOURCE_COMMIT="${CARBONET_POSTDEPLOY_SOURCE_COMMIT:-$(git -C "$ROOT" rev-parse HEAD)}"
 EVIDENCE_MODE="${CARBONET_POSTDEPLOY_EVIDENCE_MODE:-legacy}"
+TOKEN_STALE_AFTER_SECONDS="${CARBONET_ACTOR_TOKEN_STALE_AFTER_SECONDS:-900}"
 POSTGRES_ADAPTER="$ROOT/ops/scripts/lib/carbonet-postgres-query.sh"
 
 [[ -f "$POSTGRES_ADAPTER" ]] || {
@@ -99,6 +100,7 @@ if [[ -n "$account_tenant" && "$project_tenant" != "$account_tenant" ]]; then
 fi
 [[ -n "$PROJECT" ]] || { echo '[actor-account-journey] FAIL tenant-aligned actor project missing' >&2; exit 1; }
 [[ "$SOURCE_COMMIT" =~ ^[0-9a-f]{40}$ ]] || { echo '[actor-account-journey] FAIL source commit is invalid' >&2; exit 1; }
+[[ "$TOKEN_STALE_AFTER_SECONDS" =~ ^[1-9][0-9]*$ ]] || { echo '[actor-account-journey] FAIL token stale threshold is invalid' >&2; exit 1; }
 
 mutable_business_digest() {
   q "select encode(sha256(convert_to(concat_ws('|',
@@ -133,7 +135,14 @@ account_contract="$(q "select count(*)=5 from (
 [[ "$account_contract" == t ]] || { echo '[actor-account-journey] FAIL account actor contract' >&2; exit 1; }
 
 token_baseline="$(q "select count(*) from COMTNAUTHTOKENSTORE where lower(user_id) in ('qaowner26','qadata26','qacalc26','qaverify26','qaapprove26')")"
-[[ "$token_baseline" == 0 ]] || { echo "[actor-account-journey] BLOCKED active QA actor sessions baseline=$token_baseline" >&2; exit 75; }
+if [[ "$token_baseline" != 0 ]]; then
+  recent_token_baseline="$(q "select count(*) from COMTNAUTHTOKENSTORE where lower(user_id) in ('qaowner26','qadata26','qacalc26','qaverify26','qaapprove26') and created_at >= clock_timestamp() - make_interval(secs => $TOKEN_STALE_AFTER_SECONDS)")"
+  [[ "$recent_token_baseline" == 0 ]] || {
+    echo "[actor-account-journey] BLOCKED active QA actor sessions baseline=$token_baseline recent=$recent_token_baseline" >&2
+    exit 75
+  }
+  echo "[actor-account-journey] recovering stale dedicated QA sessions baseline=$token_baseline thresholdSeconds=$TOKEN_STALE_AFTER_SECONDS"
+fi
 if [[ -n "$PASSWORD" ]]; then
   printf '%s' "$PASSWORD" >"$tmp/actor-password"
 else
