@@ -22,9 +22,68 @@ ACTIVE_FILE="$STATE_DIR/active.env"
 APPLIED_MARKER_FILE="${CARBONET_DEPLOY_STATE_FILE:-/opt/resonance-data/deploy/carbonet-main-success.commit}"
 RUNTIME_MARKER_FILE="${CARBONET_RUNTIME_DEPLOY_STATE_FILE:-/opt/resonance-data/deploy/carbonet-runtime-identity-success.commit}"
 ACTION="${1:-verify}"
+CAPTURE_PENDING_SNAPSHOT_DIR=""
+CAPTURE_VERIFY_DIR=""
+CAPTURE_ACTIVE_TMP=""
+CAPTURE_PUBLISHED=false
+CAPTURE_PENDING_ACTIVE_SHA256=""
+CAPTURE_PENDING_MANIFEST_SHA256=""
+CAPTURE_BASELINE_ACTIVE_STATE="unknown"
+CAPTURE_BASELINE_ACTIVE_SHA256=""
 
 log() { printf '[full-screen-gate] %s %s\n' "$(date -Is)" "$*"; }
 fail() { log "FAIL: $*" >&2; exit 1; }
+
+# Capture is a prepare/publish transaction. Until active.env is atomically
+# replaced, every generated path is private and must disappear on any error.
+# Keep the cleanup path direct-child bounded so a malformed value can never
+# widen removal beyond this gate's own state directory.
+capture_cleanup_pre_publish() {
+  local original_status=$? active_hash="" manifest_hash="" current_matches_baseline=false
+  if (( original_status != 0 )) && [[ "$CAPTURE_PUBLISHED" != true ]]; then
+    if [[ -f "$ACTIVE_FILE" && ! -L "$ACTIVE_FILE" \
+       && "$(stat -c '%a' "$ACTIVE_FILE" 2>/dev/null)" == 600 \
+       && "$(stat -c '%u' "$ACTIVE_FILE" 2>/dev/null)" == "$(id -u)" ]]; then
+      active_hash="$(sha256sum "$ACTIVE_FILE" 2>/dev/null | awk '{print $1}')"
+    fi
+    if [[ -n "$CAPTURE_PENDING_ACTIVE_SHA256" \
+       && "$active_hash" == "$CAPTURE_PENDING_ACTIVE_SHA256" \
+       && -d "$CAPTURE_PENDING_SNAPSHOT_DIR" && ! -L "$CAPTURE_PENDING_SNAPSHOT_DIR" \
+       && -f "$CAPTURE_PENDING_SNAPSHOT_DIR/manifest.json" \
+       && ! -L "$CAPTURE_PENDING_SNAPSHOT_DIR/manifest.json" ]]; then
+      manifest_hash="$(sha256sum "$CAPTURE_PENDING_SNAPSHOT_DIR/manifest.json" 2>/dev/null | awk '{print $1}')"
+      if [[ "$manifest_hash" == "$CAPTURE_PENDING_MANIFEST_SHA256" ]]; then
+        CAPTURE_PUBLISHED=true
+        log "WARN: capture publication completed before final flag; preserving exact active snapshot=$CAPTURE_PENDING_SNAPSHOT_DIR"
+      fi
+    fi
+    if [[ "$CAPTURE_BASELINE_ACTIVE_STATE" == absent \
+       && ! -e "$ACTIVE_FILE" && ! -L "$ACTIVE_FILE" ]]; then
+      current_matches_baseline=true
+    elif [[ "$CAPTURE_BASELINE_ACTIVE_STATE" == regular \
+         && -n "$CAPTURE_BASELINE_ACTIVE_SHA256" \
+         && "$active_hash" == "$CAPTURE_BASELINE_ACTIVE_SHA256" ]]; then
+      current_matches_baseline=true
+    fi
+    if [[ -n "$CAPTURE_ACTIVE_TMP" && "${CAPTURE_ACTIVE_TMP%/*}" == "$STATE_DIR" \
+       && "${CAPTURE_ACTIVE_TMP##*/}" == .active.env.* ]]; then
+      rm -f -- "$CAPTURE_ACTIVE_TMP" 2>/dev/null || true
+    fi
+    if [[ -n "$CAPTURE_VERIFY_DIR" && "${CAPTURE_VERIFY_DIR%/*}" == "$STATE_DIR" \
+       && "${CAPTURE_VERIFY_DIR##*/}" == capture-verify.* ]]; then
+      rm -rf -- "$CAPTURE_VERIFY_DIR" 2>/dev/null || true
+    fi
+    if [[ "$CAPTURE_PUBLISHED" != true && "$current_matches_baseline" == true \
+       && -n "$CAPTURE_PENDING_SNAPSHOT_DIR" \
+       && "${CAPTURE_PENDING_SNAPSHOT_DIR%/*}" == "$STATE_DIR/snapshots" \
+       && -n "${CAPTURE_PENDING_SNAPSHOT_DIR##*/}" ]]; then
+      rm -rf -- "$CAPTURE_PENDING_SNAPSHOT_DIR" 2>/dev/null || true
+    elif [[ "$CAPTURE_PUBLISHED" != true && -n "$CAPTURE_PENDING_SNAPSHOT_DIR" ]]; then
+      log "WARN: capture cleanup could not prove active pointer state; preserving pending snapshot=$CAPTURE_PENDING_SNAPSHOT_DIR"
+    fi
+  fi
+  return "$original_status"
+}
 
 require_safe_path() {
   local path="$1" parent="$2"
@@ -156,6 +215,18 @@ capture() {
   local annotations_hash template_hash rollout_policy_hash web_state_hash service_hash overlay_hash nginx_hash manifest_hash
   local applied_marker="" applied_marker_hash="" runtime_marker="" runtime_marker_hash=""
   local desired_replicas ready_runtime_count
+  CAPTURE_PENDING_SNAPSHOT_DIR=""
+  CAPTURE_VERIFY_DIR=""
+  CAPTURE_ACTIVE_TMP=""
+  CAPTURE_PUBLISHED=false
+  CAPTURE_PENDING_ACTIVE_SHA256=""
+  CAPTURE_PENDING_MANIFEST_SHA256=""
+  CAPTURE_BASELINE_ACTIVE_STATE="unknown"
+  CAPTURE_BASELINE_ACTIVE_SHA256=""
+  trap capture_cleanup_pre_publish EXIT
+  trap 'exit 143' TERM
+  trap 'exit 130' INT
+  trap 'exit 129' HUP
   previous_umask="$(umask)"
   umask 077
   ensure_state_dir true
@@ -163,6 +234,7 @@ capture() {
   snapshot_id="$(date +%Y%m%d-%H%M%S)-$$"
   snapshot_dir="$STATE_DIR/snapshots/$snapshot_id"
   require_safe_path "$snapshot_dir" "$STATE_DIR"
+  CAPTURE_PENDING_SNAPSHOT_DIR="$snapshot_dir"
 
   runtime_json="$(kubectl -n "$NAMESPACE" get deployment "$RUNTIME_DEPLOYMENT" -o json)" \
     || fail "runtime deployment baseline is unavailable"
@@ -219,6 +291,13 @@ capture() {
   if [[ -e "$ACTIVE_FILE" || -L "$ACTIVE_FILE" ]]; then
     [[ -f "$ACTIVE_FILE" && ! -L "$ACTIVE_FILE" ]] \
       || fail "active rollback pointer target is unsafe: $ACTIVE_FILE"
+    [[ "$(stat -c '%a' "$ACTIVE_FILE" 2>/dev/null)" == 600 \
+       && "$(stat -c '%u' "$ACTIVE_FILE" 2>/dev/null)" == "$(id -u)" ]] \
+      || fail "active rollback pointer ownership or mode is unsafe"
+    CAPTURE_BASELINE_ACTIVE_STATE="regular"
+    CAPTURE_BASELINE_ACTIVE_SHA256="$(sha256sum "$ACTIVE_FILE" | awk '{print $1}')"
+  else
+    CAPTURE_BASELINE_ACTIVE_STATE="absent"
   fi
   mkdir -p "$snapshot_dir"
   # One read-only tar inode is independent of the live overlay.  Hard-link
@@ -228,6 +307,7 @@ capture() {
     || { rm -rf -- "$snapshot_dir"; fail "overlay snapshot archive failed"; }
   mv -fT -- "$snapshot_dir/.frontend-overlay.tar.tmp" "$snapshot_dir/frontend-overlay.tar"
   snapshot_verify_dir="$(mktemp -d "$STATE_DIR/capture-verify.XXXXXX")"
+  CAPTURE_VERIFY_DIR="$snapshot_verify_dir"
   require_safe_path "$snapshot_verify_dir" "$STATE_DIR"
   if ! tar -C "$snapshot_verify_dir" -xf "$snapshot_dir/frontend-overlay.tar" \
      || ! node "$ASSET_CLOSURE_VERIFIER" "$snapshot_verify_dir"; then
@@ -236,6 +316,7 @@ capture() {
   fi
   overlay_hash="$(cd "$snapshot_verify_dir" && find . -type f -print0 | LC_ALL=C sort -z | xargs -0 -r sha256sum | sha256sum | awk '{print $1}')"
   rm -rf -- "$snapshot_verify_dir"
+  CAPTURE_VERIFY_DIR=""
 
   # Controller-owned annotations (notably deployment.kubernetes.io/revision)
   # are intentionally excluded: a template restore creates a new ReplicaSet
@@ -244,14 +325,17 @@ capture() {
   jq -cS '(.metadata.annotations//{})|with_entries(select(.key|startswith("resonance.ai/")))' \
     <<<"$runtime_json" >"$snapshot_dir/deployment-annotations.json"
   jq -cS '.spec.template' <<<"$runtime_json" >"$snapshot_dir/pod-template.json"
-  jq -cS '.spec|{minReadySeconds,progressDeadlineSeconds,strategy}' \
+  # The Kubernetes API omits minReadySeconds when its semantic default is 0.
+  # Canonicalize only the absent field; an explicit null or malformed value
+  # must still fail the strict snapshot contract below.
+  jq -cS '.spec|{minReadySeconds:(if has("minReadySeconds") then .minReadySeconds else 0 end),progressDeadlineSeconds,strategy}' \
     <<<"$runtime_json" >"$snapshot_dir/deployment-rollout-policy.json"
   jq -e '(.minReadySeconds|type)=="number" and (.progressDeadlineSeconds|type)=="number"
     and (.strategy|type)=="object"' "$snapshot_dir/deployment-rollout-policy.json" >/dev/null \
-    || fail "runtime deployment rollout policy baseline is incomplete"
+    || { rm -rf -- "$snapshot_dir"; fail "runtime deployment rollout policy baseline is incomplete"; }
   jq -cS '{metadata:{annotations:((.metadata.annotations//{})|with_entries(select(.key|startswith("resonance.ai/"))))},
-    spec:{replicas:.spec.replicas,minReadySeconds:.spec.minReadySeconds,
-      progressDeadlineSeconds:.spec.progressDeadlineSeconds,strategy:.spec.strategy,template:.spec.template}}' \
+    spec:(.spec|{replicas,minReadySeconds:(if has("minReadySeconds") then .minReadySeconds else 0 end),
+      progressDeadlineSeconds,strategy,template})}' \
     <<<"$web_json" >"$snapshot_dir/web-deployment-state.json"
   jq -e '(.spec.replicas|type)=="number" and .spec.replicas>0
     and (.spec.minReadySeconds|type)=="number" and (.spec.progressDeadlineSeconds|type)=="number"
@@ -324,6 +408,7 @@ capture() {
     }
   ' >"$snapshot_dir/manifest.json"
   manifest_hash="$(sha256sum "$snapshot_dir/manifest.json" | awk '{print $1}')"
+  CAPTURE_PENDING_MANIFEST_SHA256="$manifest_hash"
   chmod 0400 "$snapshot_dir/frontend-overlay.tar" "$snapshot_dir/nginx.conf" \
     "$snapshot_dir/deployment-annotations.json" "$snapshot_dir/pod-template.json" \
     "$snapshot_dir/deployment-rollout-policy.json" "$snapshot_dir/web-deployment-state.json" \
@@ -333,6 +418,7 @@ capture() {
     rm -rf -- "$snapshot_dir"
     fail "active rollback pointer temp allocation failed"
   }
+  CAPTURE_ACTIVE_TMP="$active_tmp"
   require_safe_path "$active_tmp" "$STATE_DIR"
   if ! cat > "$active_tmp" <<EOF
 ACTIVE_SCHEMA_VERSION='2'
@@ -367,6 +453,7 @@ EOF
     rm -rf -- "$snapshot_dir"
     fail "active rollback pointer temp verification failed"
   fi
+  CAPTURE_PENDING_ACTIVE_SHA256="$(sha256sum "$active_tmp" | awk '{print $1}')"
   if [[ -e "$ACTIVE_FILE" || -L "$ACTIVE_FILE" ]]; then
     if [[ ! -f "$ACTIVE_FILE" || -L "$ACTIVE_FILE" ]]; then
       rm -f -- "$active_tmp"
@@ -379,6 +466,8 @@ EOF
     rm -rf -- "$snapshot_dir"
     fail "active rollback pointer publish failed"
   fi
+  CAPTURE_ACTIVE_TMP=""
+  CAPTURE_PUBLISHED=true
   if [[ ! -f "$ACTIVE_FILE" || -L "$ACTIVE_FILE" \
      || "$(stat -c '%a' "$ACTIVE_FILE" 2>/dev/null)" != 600 \
      || "$(sed -n '1p' "$ACTIVE_FILE")" != "ACTIVE_SCHEMA_VERSION='2'" \
@@ -387,6 +476,8 @@ EOF
     fail "active rollback pointer reread verification failed"
   fi
   umask "$previous_umask"
+  trap - EXIT TERM INT HUP
+  CAPTURE_PENDING_SNAPSHOT_DIR=""
   log "captured snapshot=$snapshot_id format=$snapshot_format runtime=$runtime_image imageID=$runtime_image_id web=$web_image git=$git_sha manifest=$manifest_hash"
 }
 
@@ -474,7 +565,7 @@ verify_restored_physical_loaded() {
     --slurpfile template "$SNAPSHOT_DIR/pod-template.json" \
     --slurpfile policy "$SNAPSHOT_DIR/deployment-rollout-policy.json" --arg image "$RUNTIME_IMAGE" '
     $owned==$baselineOwned[0] and .spec.template==$template[0]
-    and ({minReadySeconds:.spec.minReadySeconds,progressDeadlineSeconds:.spec.progressDeadlineSeconds,strategy:.spec.strategy}==$policy[0])
+    and ((.spec|{minReadySeconds:(if has("minReadySeconds") then .minReadySeconds else 0 end),progressDeadlineSeconds,strategy})==$policy[0])
     and any(.spec.template.spec.containers[]?;.name==$container and .image==$image)
     and (.status.observedGeneration // -1) >= (.metadata.generation // 0)
     and (.status.updatedReplicas // 0)==$desired
@@ -494,8 +585,8 @@ verify_restored_physical_loaded() {
   jq -e --argjson owned "$web_owned_annotations" --argjson desired "$web_desired" \
     --slurpfile baseline "$SNAPSHOT_DIR/web-deployment-state.json" '
     $owned==$baseline[0].metadata.annotations
-    and ({replicas:.spec.replicas,minReadySeconds:.spec.minReadySeconds,
-      progressDeadlineSeconds:.spec.progressDeadlineSeconds,strategy:.spec.strategy,template:.spec.template}==$baseline[0].spec)
+    and ((.spec|{replicas,minReadySeconds:(if has("minReadySeconds") then .minReadySeconds else 0 end),
+      progressDeadlineSeconds,strategy,template})==$baseline[0].spec)
     and (.status.observedGeneration // -1) >= (.metadata.generation // 0)
     and (.status.updatedReplicas // 0)==$desired and (.status.readyReplicas // 0)==$desired
     and (.status.availableReplicas // 0)==$desired and (.status.unavailableReplicas // 0)==0

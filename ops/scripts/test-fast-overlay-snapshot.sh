@@ -71,6 +71,7 @@ capture_report="$tmp/report"
 mkdir -p "$capture_overlay/.vite" "$capture_overlay/assets" "$tmp/bin"
 printf '%s\n' 1111111111111111111111111111111111111111 >"$tmp/applied.commit"
 printf '%s\n' 1111111111111111111111111111111111111111 >"$tmp/runtime.commit"
+printf '%s\n' malformed-marker >"$tmp/applied-invalid.commit"
 printf '<script type="module" src="/assets/app.js"></script>\n' > "$capture_overlay/index.html"
 printf '{"src/main.tsx":{"file":"assets/app.js","css":["assets/app.css"]}}\n' \
   > "$capture_overlay/.vite/manifest.json"
@@ -79,27 +80,56 @@ printf 'body{}\n' > "$capture_overlay/assets/app.css"
 cat > "$tmp/bin/kubectl" <<'SH'
 #!/usr/bin/env bash
 case "$*" in
-  *"get deployment carbonet-runtime"*) cat <<'JSON'
+  *"get deployment carbonet-runtime"*)
+    runtime_json="$(cat <<'JSON'
 {"metadata":{"uid":"runtime-uid","generation":7,"annotations":{"deployment.kubernetes.io/revision":"683","kubectl.kubernetes.io/last-applied-configuration":"managed","resonance.ai/target-commit":"1111111111111111111111111111111111111111","resonance.ai/image":"baseline"}},"spec":{"replicas":1,"minReadySeconds":5,"progressDeadlineSeconds":600,"strategy":{"type":"RollingUpdate","rollingUpdate":{"maxSurge":"25%","maxUnavailable":"25%"}},"selector":{"matchLabels":{"app":"carbonet-runtime"}},"template":{"metadata":{"labels":{"app":"carbonet-runtime","resonance.ai/release-id":"baseline"}},"spec":{"containers":[{"name":"carbonet-runtime","image":"registry.invalid/carbonet-runtime:baseline"}]}}},"status":{"observedGeneration":7,"updatedReplicas":1,"readyReplicas":1,"availableReplicas":1,"unavailableReplicas":0}}
 JSON
+    )"
+    case "${FAULT_CAPTURE_PHASE:-none}" in
+      defaults-omitted) jq -c 'del(.spec.minReadySeconds)' <<<"$runtime_json" ;;
+      runtime-null) jq -c '.spec.minReadySeconds=null' <<<"$runtime_json" ;;
+      *) printf '%s\n' "$runtime_json" ;;
+    esac
     ;;
-  *"get deployment carbonet-web"*) cat <<'JSON'
+  *"get deployment carbonet-web"*)
+    web_json="$(cat <<'JSON'
 {"metadata":{"uid":"web-uid","generation":3,"annotations":{"deployment.kubernetes.io/revision":"7","resonance.ai/target-commit":"1111111111111111111111111111111111111111"}},"spec":{"replicas":1,"minReadySeconds":0,"progressDeadlineSeconds":600,"strategy":{"type":"RollingUpdate","rollingUpdate":{"maxSurge":"25%","maxUnavailable":"25%"}},"selector":{"matchLabels":{"app":"carbonet-web"}},"template":{"metadata":{"labels":{"app":"carbonet-web"}},"spec":{"containers":[{"name":"web","image":"registry.invalid/carbonet-web:baseline"}]}}},"status":{"observedGeneration":3,"updatedReplicas":1,"readyReplicas":1,"availableReplicas":1,"unavailableReplicas":0}}
 JSON
+    )"
+    case "${FAULT_CAPTURE_PHASE:-none}" in
+      defaults-omitted) jq -c 'del(.spec.minReadySeconds)' <<<"$web_json" ;;
+      web-null) jq -c '.spec.minReadySeconds=null' <<<"$web_json" ;;
+      *) printf '%s\n' "$web_json" ;;
+    esac
     ;;
-  *"get service carbonet-web"*) cat <<'JSON'
-{"metadata":{"labels":{"app":"carbonet-web","tier":"frontend"},"annotations":{"kubectl.kubernetes.io/last-applied-configuration":"managed","resonance.ai/target-commit":"1111111111111111111111111111111111111111"}},"spec":{"clusterIP":"10.96.1.20","clusterIPs":["10.96.1.20"],"externalTrafficPolicy":"Local","ports":[{"name":"http","nodePort":30080,"port":80,"protocol":"TCP","targetPort":8080}],"selector":{"app":"carbonet-web"},"sessionAffinity":"None","type":"NodePort"}}
-JSON
+  *"get service carbonet-web"*)
+    service_json='{"metadata":{"labels":{"app":"carbonet-web","tier":"frontend"},"annotations":{"kubectl.kubernetes.io/last-applied-configuration":"managed","resonance.ai/target-commit":"1111111111111111111111111111111111111111"}},"spec":{"clusterIP":"10.96.1.20","clusterIPs":["10.96.1.20"],"externalTrafficPolicy":"Local","ports":[{"name":"http","nodePort":30080,"port":80,"protocol":"TCP","targetPort":8080}],"selector":{"app":"carbonet-web"},"sessionAffinity":"None","type":"NodePort"}}'
+    if [[ "${FAULT_CAPTURE_PHASE:-none}" == service-json ]]; then
+      printf '%s\n' '{invalid-service-json'
+    else
+      printf '%s\n' "$service_json"
+    fi
     ;;
+  *"get configmap carbonet-web-nginx"*)
+    [[ "${FAULT_CAPTURE_PHASE:-none}" == nginx-empty ]] || printf 'server { listen 8080; }\n'
+    ;;
+  *"exec runtime-0"*) printf '{"status":"UP"}\n' ;;
   *"get pods -l app=carbonet-runtime"*) cat <<'JSON'
 {"items":[{"metadata":{"name":"runtime-0"},"spec":{"containers":[{"name":"carbonet-runtime","image":"registry.invalid/carbonet-runtime:baseline"}]},"status":{"phase":"Running","conditions":[{"type":"Ready","status":"True"}],"containerStatuses":[{"name":"carbonet-runtime","ready":true,"imageID":"docker-pullable://registry.invalid/carbonet-runtime@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}]}}]}
 JSON
     ;;
-  *"get configmap carbonet-web-nginx"*) printf 'server { listen 8080; }\n' ;;
   *) printf 'unexpected fake kubectl call: %s\n' "$*" >&2; exit 91 ;;
 esac
 SH
 chmod 700 "$tmp/bin/kubectl"
+cat > "$tmp/bin/chmod" <<'SH'
+#!/usr/bin/env bash
+if [[ "${FAULT_CAPTURE_PHASE:-none}" == manifest-chmod && "$*" == *'/manifest.json'* ]]; then
+  exit 95
+fi
+exec /usr/bin/chmod "$@"
+SH
+chmod 700 "$tmp/bin/chmod"
 cat > "$tmp/bin/tar" <<'SH'
 #!/usr/bin/env bash
 /usr/bin/tar "$@" || exit $?
@@ -123,22 +153,30 @@ last="${!#}"
 if [[ "${FAULT_ACTIVE_MV:-false}" == true && "$last" == "${FAULT_ACTIVE_FILE:-}" ]]; then
   exit 96
 fi
+if [[ "${FAULT_CAPTURE_PHASE:-none}" == post-mv-term && "$last" == "${FAULT_ACTIVE_FILE:-}" ]]; then
+  /usr/bin/mv "$@" || exit $?
+  kill -TERM "$PPID"
+  exit 0
+fi
 exec /usr/bin/mv "$@"
 SH
 chmod 700 "$tmp/bin/mv"
 
 run_isolated_capture() {
   local state="${1:-$capture_state}" mktemp_fault="${2:-false}" mv_fault="${3:-false}"
+  local fault_phase="${4:-none}" applied_marker="$tmp/applied.commit"
+  [[ "$fault_phase" != marker-invalid ]] || applied_marker="$tmp/applied-invalid.commit"
   PATH="$tmp/bin:$PATH" \
   FAULT_ACTIVE_MKTEMP="$mktemp_fault" \
   FAULT_ACTIVE_MV="$mv_fault" \
   FAULT_ACTIVE_FILE="$state/active.env" \
+  FAULT_CAPTURE_PHASE="$fault_phase" \
   ROOT_DIR="$ROOT_DIR" \
   OVERLAY_DIR="$capture_overlay" \
   FULL_SCREEN_GATE_STATE_DIR="$state" \
   FULL_SCREEN_GATE_REPORT_DIR="$capture_report" \
   FULL_SCREEN_GATE_BASE_COMMIT=1111111111111111111111111111111111111111 \
-  CARBONET_DEPLOY_STATE_FILE="$tmp/applied.commit" \
+  CARBONET_DEPLOY_STATE_FILE="$applied_marker" \
   CARBONET_RUNTIME_DEPLOY_STATE_FILE="$tmp/runtime.commit" \
     bash "$gate" capture
 }
@@ -159,6 +197,60 @@ jq -e '.deploymentRolloutPolicySha256|test("^[0-9a-f]{64}$")' "$snapshot_dir/man
 jq -e '.webDeploymentStateSha256|test("^[0-9a-f]{64}$")' "$snapshot_dir/manifest.json" >/dev/null
 jq -e '.minReadySeconds==5 and .progressDeadlineSeconds==600
   and .strategy.rollingUpdate.maxSurge=="25%"' "$snapshot_dir/deployment-rollout-policy.json" >/dev/null
+
+# Kubernetes omits the default minReadySeconds=0 from live runtime and web
+# Deployment JSON. Capture and restored-state verification share that default,
+# while malformed explicit null and every later pre-publish fault fail closed.
+omitted_state="$tmp/omitted-min-ready-state"
+run_isolated_capture "$omitted_state" false false defaults-omitted >"$tmp/capture-omitted-min-ready.log"
+omitted_snapshot_dir="$(sed -n "s/^SNAPSHOT_DIR='\(.*\)'$/\1/p" "$omitted_state/active.env")"
+jq -e '.minReadySeconds==0 and .progressDeadlineSeconds==600
+  and .strategy.type=="RollingUpdate"' "$omitted_snapshot_dir/deployment-rollout-policy.json" >/dev/null
+jq -e '.spec.minReadySeconds==0 and .spec.progressDeadlineSeconds==600
+  and .spec.strategy.type=="RollingUpdate"' "$omitted_snapshot_dir/web-deployment-state.json" >/dev/null
+PATH="$tmp/bin:$PATH" FAULT_CAPTURE_PHASE=defaults-omitted ROOT_DIR="$ROOT_DIR" \
+OVERLAY_DIR="$capture_overlay" FULL_SCREEN_GATE_STATE_DIR="$omitted_state" \
+FULL_SCREEN_GATE_REPORT_DIR="$capture_report" CARBONET_DEPLOY_STATE_FILE="$tmp/applied.commit" \
+CARBONET_RUNTIME_DEPLOY_STATE_FILE="$tmp/runtime.commit" \
+  bash "$gate" verify-restored-physical >"$tmp/verify-omitted-min-ready.log"
+
+policy_active_hash="$(sha256sum "$active_file" | awk '{print $1}')"
+policy_snapshot_count="$(find "$capture_state/snapshots" -mindepth 1 -maxdepth 1 -type d | wc -l | tr -d ' ')"
+for fault_phase in runtime-null web-null service-json nginx-empty marker-invalid manifest-chmod; do
+  if run_isolated_capture "$capture_state" false false "$fault_phase" >"$tmp/capture-${fault_phase}.log" 2>&1; then
+    echo "pre-publish fault unexpectedly succeeded: $fault_phase" >&2
+    exit 1
+  fi
+  [[ "$(sha256sum "$active_file" | awk '{print $1}')" == "$policy_active_hash" ]]
+  [[ "$(find "$capture_state/snapshots" -mindepth 1 -maxdepth 1 -type d | wc -l | tr -d ' ')" == "$policy_snapshot_count" ]]
+done
+grep -Fq 'runtime deployment rollout policy baseline is incomplete' "$tmp/capture-runtime-null.log"
+grep -Fq 'web deployment baseline is incomplete' "$tmp/capture-web-null.log"
+grep -Fq 'applied marker commit is invalid' "$tmp/capture-marker-invalid.log"
+
+post_mv_active_hash_before="$(sha256sum "$active_file" | awk '{print $1}')"
+post_mv_snapshot_count_before="$(find "$capture_state/snapshots" -mindepth 1 -maxdepth 1 -type d | wc -l | tr -d ' ')"
+post_mv_status=0
+run_isolated_capture "$capture_state" false false post-mv-term \
+  >"$tmp/capture-post-mv-term.log" 2>&1 || post_mv_status=$?
+[[ "$post_mv_status" == 143 ]] || {
+  echo "post-mv TERM fault status mismatch: $post_mv_status" >&2
+  exit 1
+}
+post_mv_active_hash_after="$(sha256sum "$active_file" | awk '{print $1}')"
+[[ "$post_mv_active_hash_after" != "$post_mv_active_hash_before" ]]
+[[ -f "$active_file" && ! -L "$active_file" \
+  && "$(stat -c '%a' "$active_file")" == 600 \
+  && "$(stat -c '%u' "$active_file")" == "$(id -u)" ]]
+post_mv_snapshot_dir="$(sed -n "s/^SNAPSHOT_DIR='\(.*\)'$/\1/p" "$active_file")"
+post_mv_manifest_hash="$(sed -n "s/^SNAPSHOT_MANIFEST_SHA256='\(.*\)'$/\1/p" "$active_file")"
+[[ -n "$post_mv_snapshot_dir" && -d "$post_mv_snapshot_dir" && ! -L "$post_mv_snapshot_dir" ]]
+[[ -n "$post_mv_manifest_hash" \
+  && "$(sha256sum "$post_mv_snapshot_dir/manifest.json" | awk '{print $1}')" == "$post_mv_manifest_hash" ]]
+[[ "$(find "$capture_state/snapshots" -mindepth 1 -maxdepth 1 -type d | wc -l | tr -d ' ')" \
+  == "$((post_mv_snapshot_count_before + 1))" ]]
+grep -Fq 'capture publication completed before final flag; preserving exact active snapshot=' \
+  "$tmp/capture-post-mv-term.log"
 jq -e '.spec.replicas==1 and .spec.template.spec.containers[0].image=="registry.invalid/carbonet-web:baseline"
   and .metadata.annotations=={"resonance.ai/target-commit":"1111111111111111111111111111111111111111"}' \
   "$snapshot_dir/web-deployment-state.json" >/dev/null
@@ -354,4 +446,4 @@ if FULL_SCREEN_GATE_EXPECTED_SNAPSHOT_ID="$retired_snapshot_id" \
   exit 1
 fi
 
-echo "[fast-overlay-snapshot-test] PASS persistentState=0700 immutableArchive=0400 manifest=imageID+ownedAnnotations+runtimePolicy+webTemplate+service+readiness+markers serviceLateFailure=restored overlayOrder=copy-index-delete retiredResume=exact controllerRevision=excluded currentNginx=temp sourceClosure=verified copiedClosure=verified activeParser=strict duplicateUnknownModeOwner=rejected symlinkLoad=rejected"
+echo "[fast-overlay-snapshot-test] PASS persistentState=0700 immutableArchive=0400 manifest=imageID+ownedAnnotations+runtimePolicy+webTemplate+service+readiness+markers minReadySeconds=runtime+web-missing-default0+restore-verified+null-rejected prePublishCleanup=6faults+activeHashExact+snapshotCountExact postMvTerm=active+snapshot+manifest-coherent serviceLateFailure=restored overlayOrder=copy-index-delete retiredResume=exact controllerRevision=excluded currentNginx=temp sourceClosure=verified copiedClosure=verified activeParser=strict duplicateUnknownModeOwner=rejected symlinkLoad=rejected"
