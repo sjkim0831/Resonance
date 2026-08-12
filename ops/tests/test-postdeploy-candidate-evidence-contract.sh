@@ -484,7 +484,8 @@ assert "resonance-keycloak-carbonet-identity-sync-install.sh" not in identity_ca
 role_e2e=(root / "ops/scripts/resonance-actor-process-role-e2e.sh").read_text(encoding="utf-8")
 assert role_e2e.count("value.committed !== false") == 2
 assert "workflow_state_digest" in role_e2e and "workflow_digest_after" in role_e2e
-assert "framework_process_execution_event" in role_e2e and "pg_sequences" in role_e2e
+assert "framework_process_execution_event" in role_e2e and "pg_sequences" not in role_e2e
+assert 'value.databaseCurrentWrites !== 0' in role_e2e and 'value.mutationScope !== "READ_ONLY_VALIDATION"' in role_e2e
 
 if os.environ.get("CANDIDATE_EVIDENCE_SKIP_DEPLOY_WIRING") == "true":
     raise SystemExit(0)

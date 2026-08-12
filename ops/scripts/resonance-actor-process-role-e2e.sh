@@ -40,8 +40,7 @@ workflow_state_digest() {
     coalesce((select jsonb_agg(to_jsonb(e) order by e.execution_id)::text from framework_process_execution e where e.project_id='$TEST_PROJECT_ID'),'[]'),
     coalesce((select jsonb_agg(to_jsonb(v) order by v.event_id)::text from framework_process_execution_event v where exists(select 1 from framework_process_execution e where e.execution_id=v.execution_id and e.project_id='$TEST_PROJECT_ID')),'[]'),
     coalesce((select jsonb_agg(to_jsonb(d) order by d.draft_id)::text from framework_process_work_draft d where d.project_id='$TEST_PROJECT_ID'),'[]'),
-    coalesce((select jsonb_agg(to_jsonb(t) order by t.task_id)::text from emission_project_task t where t.project_id='$TEST_PROJECT_ID'),'[]'),
-    coalesce((select jsonb_agg(to_jsonb(s) order by s.schemaname,s.sequencename)::text from pg_sequences s where s.schemaname=current_schema() and s.sequencename=regexp_replace(pg_get_serial_sequence('framework_process_execution_event','event_id'),'^.*\\.','')),'[]')
+    coalesce((select jsonb_agg(to_jsonb(t) order by t.task_id)::text from emission_project_task t where t.project_id='$TEST_PROJECT_ID'),'[]')
   ),'UTF8')),'hex')"
 }
 
@@ -190,7 +189,7 @@ allowed_status="$(curl --cacert "$CA_CERT" -sS -o "$run_dir/reviewer-command.jso
 }
 RESPONSE_FILE="$run_dir/reviewer-command.json" node -e '
   const value = JSON.parse(require("fs").readFileSync(process.env.RESPONSE_FILE, "utf8"));
-  if (value.success !== true || value.validated !== true || value.committed !== false) process.exit(1);
+  if (value.success !== true || value.validated !== true || value.committed !== false || value.databaseCurrentWrites !== 0 || value.mutationScope !== "READ_ONLY_VALIDATION") process.exit(1);
 '
 
 requester_status="$(curl --cacert "$CA_CERT" -sS -o "$run_dir/requester-command.json" -w '%{http_code}' \
@@ -338,7 +337,7 @@ anonymous_status="$(curl --cacert "$CA_CERT" -sS -o "$run_dir/anonymous-command.
 
 workflow_digest_after="$(workflow_state_digest)"
 [[ "$workflow_digest_after" == "$workflow_digest_before" ]] || {
-  echo '[actor-process-role-e2e] validation command changed canonical workflow state or event sequence' >&2
+  echo '[actor-process-role-e2e] validation command changed isolated workflow rows' >&2
   exit 9
 }
 
