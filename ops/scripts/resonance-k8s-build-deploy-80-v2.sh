@@ -1321,16 +1321,22 @@ main() {
 
   local frontend_pid="" maven_pid="" frontend_exit=0 maven_exit=0
 
-  build_frontend &
-  frontend_pid=$!
-
-  build_maven &
-  maven_pid=$!
-
-  log "Waiting for frontend (PID: $frontend_pid) and backend (PID: $maven_pid)..."
-
-  wait $frontend_pid || frontend_exit=$?
-  wait $maven_pid || maven_exit=$?
+  if [[ "$CARBONET_DEFER_LIVE_MUTATIONS_UNTIL_POST_FLYWAY" == true ]]; then
+    # Keep the pending frontend staging path in the parent shell while Maven runs in parallel.
+    build_maven &
+    maven_pid=$!
+    log "Building frontend in parent while backend runs in parallel (PID: $maven_pid)..."
+    build_frontend || frontend_exit=$?
+    wait "$maven_pid" || maven_exit=$?
+  else
+    build_frontend &
+    frontend_pid=$!
+    build_maven &
+    maven_pid=$!
+    log "Waiting for frontend (PID: $frontend_pid) and backend (PID: $maven_pid)..."
+    wait "$frontend_pid" || frontend_exit=$?
+    wait "$maven_pid" || maven_exit=$?
+  fi
 
   local build_elapsed=$(( $(date +%s) - build_start ))
   log_success "Parallel build completed in ${build_elapsed}s (frontend: exit=$frontend_exit, backend: exit=$maven_exit)"

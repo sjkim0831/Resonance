@@ -566,6 +566,18 @@ if os.environ.get("CANDIDATE_EVIDENCE_SKIP_DEPLOY_WIRING") != "true":
     assert "Live overlay verification and publish deferred until durable DB attempt stage" in sync_overlay
     deferred_mutant = sync_overlay.replace(defer_guard, 'if [[ false == true', 1)
     assert deferred_mutant.index("if [[ false == true") < deferred_mutant.index("guard_frontend_overlay backup")
+    parallel_build = build_deploy[build_deploy.index('log_step "Parallel Build (Frontend + Backend)"'):
+                                  build_deploy.index("sync_overlay", build_deploy.index('log_step "Parallel Build (Frontend + Backend)"'))]
+    parent_guard = 'if [[ "$CARBONET_DEFER_LIVE_MUTATIONS_UNTIL_POST_FLYWAY" == true ]]'
+    assert parent_guard in parallel_build
+    parent_branch = parallel_build[parallel_build.index(parent_guard):
+                                   parallel_build.index("else", parallel_build.index(parent_guard))]
+    assert "build_frontend &" not in parent_branch
+    assert parent_branch.index("build_maven &") < parent_branch.index("build_frontend")
+    assert parent_branch.index("build_frontend") < parent_branch.index('wait "$maven_pid"')
+    parent_mutant = parent_branch.replace("build_frontend || frontend_exit=$?",
+                                          "build_frontend &\n    frontend_pid=$!", 1)
+    assert "build_frontend &" in parent_mutant
     assert "DEFER_ROLLBACK_TO_ATTEMPT_RECONCILER" in build_deploy
     child_rollback = build_deploy[build_deploy.index("rollback_and_fail() {"):
                                   build_deploy.index("root_cmd() {")]
