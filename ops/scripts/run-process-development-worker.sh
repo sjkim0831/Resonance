@@ -16,15 +16,732 @@ LOCK_FILE="${LOCK_FILE:-/tmp/resonance-process-development-worker-${WORKER_SLOT:
 K8S_NAMESPACE="${K8S_NAMESPACE:-carbonet-prod}"
 POSTGRES_POD="${POSTGRES_POD:-postgres-patroni-0}"
 PGHOST="${PGHOST:-postgres-haproxy}"
+CANONICAL_TEMP_PATHS=()
+
+register_canonical_temp_path() {
+  local path="$1"
+  [[ -n "$path" && -d "$path" && ! -L "$path" ]] || return 1
+  CANONICAL_TEMP_PATHS+=("$path")
+}
+
+cleanup_canonical_temp_paths() {
+  local path
+  for path in "${CANONICAL_TEMP_PATHS[@]:-}"; do
+    [[ -n "$path" ]] && rm -rf -- "$path"
+  done
+  CANONICAL_TEMP_PATHS=()
+}
 
 mkdir -p "$WORKTREE_ROOT" "$LOG_ROOT" "$(dirname "$LOCK_FILE")"
 exec 9>"$LOCK_FILE"
 flock -n 9 || exit 0
 
 psqlq() {
+  if [[ -n "${PROCESS_WORKER_PSQLQ_COMMAND:-}" ]]; then
+    [[ -x "$PROCESS_WORKER_PSQLQ_COMMAND" ]] || {
+      echo "PROCESS_WORKER_PSQLQ_COMMAND is not executable" >&2
+      return 126
+    }
+    "$PROCESS_WORKER_PSQLQ_COMMAND" "$@"
+    return
+  fi
   kubectl -n "$K8S_NAMESPACE" exec "$POSTGRES_POD" -- env PGPASSWORD="$PGPASSWORD" \
     psql -h "$PGHOST" -U "$PGUSER" -d "$PGDATABASE" -X -q -v ON_ERROR_STOP=1 -At "$@"
 }
+
+transition_job_to_failed_if_owned() {
+  local job_id="$1" lease_token="$2" worker_id="$3" message="$4" rollback_ref="$5" log_file="$6"
+  [[ "$job_id" =~ ^[0-9]+$ && "$lease_token" =~ ^[0-9a-fA-F-]{36}$ ]] || return 1
+  psqlq -c "with failed as (
+    update framework_development_job
+    set job_status='FAILED',last_error=\$err\$${message}\$err\$,
+        rollback_ref=nullif(\$rollback\$${rollback_ref}\$rollback\$,''),
+        lease_token=null,lease_until=null,updated_at=current_timestamp
+    where job_id=${job_id} and job_status='RUNNING'
+      and lease_token=\$lease\$${lease_token}\$lease\$
+    returning job_id
+  )
+  insert into framework_development_job_event(job_id,event_type,from_status,to_status,worker_id,detail_json)
+  select job_id,'FAILED','RUNNING','FAILED',\$worker\$${worker_id}\$worker\$,
+    jsonb_build_object('log',\$log\$${log_file}\$log\$)::text
+  from failed;" >/dev/null
+}
+
+canonical_diff_line_count() {
+  local worktree="$1" ref="${2:-}" temp index output
+  if [[ -n "$ref" ]]; then
+    git -C "$worktree" diff --numstat "${ref}^" "$ref" |
+      awk '$1=="-" || $2=="-" {exit 2} {total+=$1+$2} END {if (!failed) print total+0}'
+    return
+  fi
+  temp="$(mktemp -d "${TMPDIR:-/tmp}/canonical-diff-index.XXXXXX")" || return 1
+  index="$temp/index"
+  if ! GIT_INDEX_FILE="$index" git -C "$worktree" read-tree HEAD \
+      || ! GIT_INDEX_FILE="$index" git -C "$worktree" add -A \
+      || ! output="$(GIT_INDEX_FILE="$index" git -C "$worktree" diff --cached --numstat HEAD)"; then
+    rm -rf -- "$temp"
+    return 1
+  fi
+  rm -rf -- "$temp"
+  awk '$1=="-" || $2=="-" {exit 2} {total+=$1+$2} END {print total+0}' <<<"$output"
+}
+
+canonical_commit_status() {
+  local worktree="$1" ref="$2"
+  git -C "$worktree" diff --name-status --no-renames "${ref}^" "$ref" |
+    awk -F '\t' '
+      NF==2 && $1 ~ /^[AMD]$/ { printf "%s  %s\n",$1,$2; next }
+      { exit 2 }
+    '
+}
+
+validate_canonical_generated_diff() {
+  local worktree="$1" process_code="$2" changed="$3" diff_lines="$4" base_ref="${5:-HEAD}"
+  [[ -n "$changed" ]] || return 1
+  printf '%s\n' "$changed" |
+    bash "$worktree/ops/scripts/validate-deterministic-fullstack-diff.sh" \
+      "$process_code" "$diff_lines" "$worktree" "$base_ref"
+}
+
+compile_canonical_generated_endpoint() {
+  local worktree="$1" process_code="$2"
+  local source_dir="$worktree/projects/carbonet-backend-metadata/process-runtime/generated-endpoints/$process_code/src/main/java"
+  # Compile the exact current-process source plus every already-committed
+  # canonical process. This catches duplicate classes, Spring bean names and
+  # route-level Java conflicts introduced by a concurrent process publication.
+  # The Gradle source-set validator rechecks every manifest, release hash and
+  # Java byte before javac sees it.
+  local endpoint_root="$worktree/projects/carbonet-backend-metadata/process-runtime/generated-endpoints"
+  [[ -d "$endpoint_root" && ! -L "$endpoint_root" ]] || return 1
+  local -a source_dirs=()
+  local process_dir candidate candidate_process current_seen=0
+  while IFS= read -r -d '' process_dir; do
+    [[ -d "$process_dir" && ! -L "$process_dir" ]] || return 1
+    candidate_process="$(basename "$process_dir")"
+    [[ "$candidate_process" =~ ^[A-Z][A-Z0-9_]{1,79}$ ]] || return 1
+    candidate="$process_dir/src/main/java"
+    [[ -d "$candidate" && ! -L "$candidate" ]] || return 1
+    source_dirs+=("$candidate")
+    [[ "$candidate" != "$source_dir" ]] || current_seen=1
+  done < <(find "$endpoint_root" -mindepth 1 -maxdepth 1 -print0 | sort -z)
+  (( current_seen == 1 && ${#source_dirs[@]} > 0 )) || return 1
+  local joined_sources
+  joined_sources="$(IFS=:; printf '%s' "${source_dirs[*]}")"
+  if [[ -n "${CANONICAL_ENDPOINT_COMPILE_COMMAND:-}" ]]; then
+    [[ -x "$CANONICAL_ENDPOINT_COMPILE_COMMAND" ]] || return 1
+    CANONICAL_ENDPOINT_SOURCE_DIRS="$joined_sources" \
+      "$CANONICAL_ENDPOINT_COMPILE_COMMAND" "$worktree" "$process_code"
+    return
+  fi
+  CANONICAL_ENDPOINT_SOURCE_DIRS="$joined_sources" \
+    bash "$worktree/gradlew" :modules:resonance-common:carbonet-common-core:compileJava \
+      --no-daemon --console=plain --no-build-cache --rerun-tasks
+}
+
+canonical_generated_worktree_fingerprint() {
+  local worktree="$1"
+  python3 - "$worktree" <<'PY'
+import hashlib
+import os
+import sys
+from pathlib import Path
+
+root = Path(sys.argv[1]).absolute()
+generated = root / "projects/carbonet-backend-metadata/process-runtime"
+digest = hashlib.sha256()
+for lane in ("generated", "design-preview", "generated-endpoints"):
+    base = generated / lane
+    if not base.exists():
+        continue
+    if base.is_symlink() or not base.is_dir():
+        raise SystemExit(f"canonical generated root is unsafe: {base}")
+    for directory, names, files in os.walk(base, followlinks=False):
+        directory_path = Path(directory)
+        for name in names:
+            if (directory_path / name).is_symlink():
+                raise SystemExit("canonical generated tree contains a directory symlink")
+        for name in files:
+            path = directory_path / name
+            if path.is_symlink() or not path.is_file():
+                raise SystemExit("canonical generated tree contains a non-regular file")
+            relative = path.relative_to(root).as_posix().encode()
+            digest.update(relative); digest.update(b"\0")
+            digest.update(hashlib.sha256(path.read_bytes()).digest())
+print(digest.hexdigest())
+PY
+}
+
+compile_canonical_generated_endpoint_immutable() {
+  local worktree="$1" process_code="$2" before after
+  before="$(canonical_generated_worktree_fingerprint "$worktree")" || return 1
+  compile_canonical_generated_endpoint "$worktree" "$process_code" || return 1
+  after="$(canonical_generated_worktree_fingerprint "$worktree")" || return 1
+  [[ "$before" == "$after" ]]
+}
+
+canonical_runtime_mappings_json() {
+  if [[ -n "${CANONICAL_RUNTIME_MAPPINGS_COMMAND:-}" ]]; then
+    [[ -x "$CANONICAL_RUNTIME_MAPPINGS_COMMAND" ]] || return 1
+    "$CANONICAL_RUNTIME_MAPPINGS_COMMAND"
+    return
+  fi
+  if [[ -n "${CANONICAL_RUNTIME_MAPPINGS_FILE:-}" ]]; then
+    [[ -f "$CANONICAL_RUNTIME_MAPPINGS_FILE" && ! -L "$CANONICAL_RUNTIME_MAPPINGS_FILE" ]] || return 1
+    cat -- "$CANONICAL_RUNTIME_MAPPINGS_FILE"
+    return
+  fi
+  local pod
+  pod="$(kubectl --request-timeout=5s -n "$K8S_NAMESPACE" get pods \
+    -l 'app=carbonet-runtime' --field-selector=status.phase=Running -o json \
+    | jq -er '[.items[] | select(.metadata.deletionTimestamp == null)
+        | select(any(.status.conditions[]?; .type == "Ready" and .status == "True"))]
+        | sort_by(.metadata.creationTimestamp) | last | .metadata.name')" || return 1
+  [[ "$pod" =~ ^[a-z0-9]([-a-z0-9.]*[a-z0-9])?$ ]] || return 1
+  kubectl --request-timeout=15s -n "$K8S_NAMESPACE" exec "$pod" -c carbonet-runtime -- \
+    curl -fsS --max-time 10 http://127.0.0.1:8080/actuator/mappings
+}
+
+canonical_deployed_commit_value() {
+  local deployed=""
+  if [[ -n "${CANONICAL_DEPLOYED_COMMIT_COMMAND:-}" ]]; then
+    [[ -x "$CANONICAL_DEPLOYED_COMMIT_COMMAND" ]] || return 1
+    deployed="$($CANONICAL_DEPLOYED_COMMIT_COMMAND)" || return 1
+  elif [[ -n "${CANONICAL_DEPLOYED_COMMIT_SEQUENCE_FILE:-}" ]]; then
+    [[ -f "$CANONICAL_DEPLOYED_COMMIT_SEQUENCE_FILE" \
+        && ! -L "$CANONICAL_DEPLOYED_COMMIT_SEQUENCE_FILE" ]] || return 1
+    local sequence current rest
+    sequence="$(cat -- "$CANONICAL_DEPLOYED_COMMIT_SEQUENCE_FILE")" || return 1
+    current="${sequence%%$'\n'*}"
+    if [[ "$sequence" == *$'\n'* ]]; then
+      rest="${sequence#*$'\n'}"
+      [[ -n "$rest" ]] || rest="$current"
+    else
+      rest="$current"
+    fi
+    printf '%s\n' "$rest" >"$CANONICAL_DEPLOYED_COMMIT_SEQUENCE_FILE" || return 1
+    deployed="$current"
+  elif [[ -n "${CANONICAL_DEPLOYED_COMMIT:-}" ]]; then
+    deployed="$CANONICAL_DEPLOYED_COMMIT"
+  elif [[ -r "$DEPLOY_STATE_FILE" ]]; then
+    deployed="$(tr -d '[:space:]' <"$DEPLOY_STATE_FILE")"
+  fi
+  if [[ ! "$deployed" =~ ^[0-9a-f]{40}$ ]] \
+      && [[ -d "$DEPLOY_WORKTREE/.git" || -f "$DEPLOY_WORKTREE/.git" ]]; then
+    deployed="$(git -C "$DEPLOY_WORKTREE" rev-parse HEAD 2>/dev/null || true)"
+  fi
+  [[ "$deployed" =~ ^[0-9a-f]{40}$ ]] || return 1
+  printf '%s\n' "$deployed"
+}
+
+verify_canonical_runtime_bindings() {
+  local manifest="$1" mappings_file="$2"
+  python3 - "$manifest" "$mappings_file" <<'PY'
+import json
+import re
+import sys
+from pathlib import Path
+
+manifest_path, mappings_path = map(Path, sys.argv[1:])
+sha = re.compile(r"^[0-9a-f]{64}$")
+operation_key = re.compile(r"^[A-Za-z][A-Za-z0-9_]{1,79}$")
+java_class = re.compile(r"^[A-Za-z_$][A-Za-z0-9_$]*(?:\.[A-Za-z_$][A-Za-z0-9_$]*)+$")
+route_path = re.compile(r"^/[A-Za-z0-9_{}./-]+$")
+exact_keys = {"operationKey", "method", "path", "handlerClass", "handlerMethod", "designHash", "endpointHash"}
+
+try:
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    mappings = json.loads(mappings_path.read_text(encoding="utf-8"))
+except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+    raise SystemExit(f"invalid canonical runtime binding input: {exc}")
+operations = manifest.get("operations")
+if manifest.get("schema") != "carbonet.generated-endpoints/v1" or not isinstance(operations, list) or not operations:
+    raise SystemExit("canonical manifest operations are required")
+if operations != sorted(operations, key=lambda item: item.get("operationKey", "").casefold()):
+    raise SystemExit("canonical manifest operations are not casefold-sorted")
+
+expected = {}
+for operation in operations:
+    if not isinstance(operation, dict) or set(operation) != exact_keys:
+        raise SystemExit("canonical manifest operation keys are not exact")
+    values = tuple(operation[key] for key in exact_keys)
+    if not all(isinstance(value, str) for value in values):
+        raise SystemExit("canonical manifest operation values must be strings")
+    key = operation["operationKey"].casefold()
+    java_name = "".join(part[:1].upper() + part[1:]
+                        for part in re.split(r"[^A-Za-z0-9]+", operation["operationKey"]) if part)
+    expected_class = f"egovframework.com.generated.canonical.{java_name}Controller"
+    variables = re.findall(r"\{[^{}]*\}", operation["path"])
+    if (not operation_key.fullmatch(operation["operationKey"]) or key in expected
+            or operation["method"] != "POST"
+            or not route_path.fullmatch(operation["path"])
+            or operation["path"].startswith("//") or "//" in operation["path"]
+            or any(part in {"", ".", ".."} for part in operation["path"].split("/")[1:])
+            or variables != ["{executionId}"] or operation["path"].count("{") != 1
+            or operation["path"].count("}") != 1
+            or not java_class.fullmatch(operation["handlerClass"])
+            or operation["handlerClass"] != expected_class
+            or operation["handlerMethod"] != "execute"
+            or not sha.fullmatch(operation["designHash"])
+            or not sha.fullmatch(operation["endpointHash"])):
+        raise SystemExit("canonical manifest operation is invalid")
+    expected[key] = operation
+
+try:
+    servlet_mappings = mappings["contexts"]
+except (KeyError, TypeError):
+    raise SystemExit("Spring actuator mappings shape is invalid")
+actual = []
+for context in servlet_mappings.values():
+    dispatchers = context.get("mappings", {}).get("dispatcherServlets", {}) if isinstance(context, dict) else {}
+    for rows in dispatchers.values():
+        if not isinstance(rows, list):
+            continue
+        for row in rows:
+            details = row.get("details", {}) if isinstance(row, dict) else {}
+            handler = details.get("handlerMethod", {}) if isinstance(details, dict) else {}
+            conditions = details.get("requestMappingConditions", {}) if isinstance(details, dict) else {}
+            methods = conditions.get("methods", []) if isinstance(conditions, dict) else []
+            patterns = conditions.get("patterns", []) if isinstance(conditions, dict) else []
+            if not isinstance(handler, dict) or not isinstance(methods, list) or not isinstance(patterns, list):
+                continue
+            for method in methods:
+                for path in patterns:
+                    actual.append((method, path, handler.get("className"), handler.get("name")))
+
+expected_signatures = {
+    (operation["method"], operation["path"], operation["handlerClass"], operation["handlerMethod"])
+    for operation in expected.values()
+}
+managed_classes = {operation["handlerClass"] for operation in expected.values()}
+for operation in expected.values():
+    signature = (operation["method"], operation["path"], operation["handlerClass"], operation["handlerMethod"])
+    count = actual.count(signature)
+    if count != 1:
+        raise SystemExit(f"canonical runtime binding mismatch: {operation['operationKey']} count={count}")
+    # No second Spring handler may bind the same method/path. That would make
+    # the generated mapping ambiguous even if the expected handler exists.
+    route_bindings = [item for item in actual if item[:2] == signature[:2]]
+    if len(route_bindings) != 1:
+        raise SystemExit(f"canonical runtime binding is not exclusive: {operation['operationKey']}")
+
+# A stale mapping on a manifest-owned controller can survive with a different
+# route and would otherwise be invisible when checking only expected routes.
+# Other processes intentionally share the canonical Java package, so ownership
+# is the exact manifest handler class rather than the whole package.
+for binding in actual:
+    handler_class = binding[2]
+    if handler_class in managed_classes and binding not in expected_signatures:
+        raise SystemExit(f"unexpected canonical runtime binding: {binding[0]} {binding[1]}")
+
+print(json.dumps({"status": "PASS", "operationCount": len(expected)}, sort_keys=True, separators=(",", ":")))
+PY
+}
+
+verify_canonical_runtime_release() {
+  local manifest="$1" output mappings result
+  mappings="$(mktemp "${TMPDIR:-/tmp}/canonical-runtime-mappings.XXXXXX.json")" || return 1
+  if canonical_runtime_mappings_json >"$mappings"; then
+    result="$(verify_canonical_runtime_bindings "$manifest" "$mappings")" || {
+      rm -f -- "$mappings"
+      return 1
+    }
+  else
+    rm -f -- "$mappings"
+    return 1
+  fi
+  rm -f -- "$mappings"
+  printf '%s\n' "$result"
+}
+
+verify_stable_canonical_runtime_deployment() {
+  local worktree="$1" result_commit="$2" process_code="$3" step_code="$4"
+  local attempt before after tree mappings result mapping_ok
+  for attempt in 1 2 3; do
+    before="$(canonical_deployed_commit_value)" || return 1
+    canonical_process_tree_unchanged "$worktree" "$result_commit" "$before" "$process_code" || return 1
+    tree="$(mktemp -d "${TMPDIR:-/tmp}/canonical-stable-deployed.XXXXXX")" || return 1
+    mappings="$(mktemp "${TMPDIR:-/tmp}/canonical-stable-mappings.XXXXXX.json")" || {
+      rm -rf -- "$tree"; return 1;
+    }
+    mapping_ok=0
+    result=""
+    if canonical_commit_evidence_files "$worktree" "$before" "$process_code" "$step_code" "$tree" \
+        && canonical_runtime_mappings_json >"$mappings" \
+        && result="$(verify_canonical_runtime_bindings "$tree/manifest.json" "$mappings")"; then
+      mapping_ok=1
+    fi
+    after="$(canonical_deployed_commit_value || true)"
+    rm -rf -- "$tree" "$mappings"
+    [[ "$after" =~ ^[0-9a-f]{40}$ ]] || return 1
+    if [[ "$before" != "$after" ]]; then
+      continue
+    fi
+    (( mapping_ok == 1 )) || return 1
+    jq -c --arg deployedCommit "$before" '. + {deployedCommit:$deployedCommit}' <<<"$result"
+    return
+  done
+  return 1
+}
+
+canonical_deployed_marker_is() {
+  local expected="$1" current
+  [[ "$expected" =~ ^[0-9a-f]{40}$ ]] || return 1
+  current="$(canonical_deployed_commit_value)" || return 1
+  [[ "$current" == "$expected" ]]
+}
+
+canonical_deploy_elapsed_seconds() {
+  local started="${CANONICAL_DEPLOY_STARTED_EPOCH_SECONDS:-}" finished
+  finished="$(date +%s)" || return 1
+  [[ "$started" =~ ^[0-9]+$ && "$finished" =~ ^[0-9]+$ && "$finished" -ge "$started" ]] \
+    || return 1
+  printf '%s\n' "$((finished-started))"
+}
+
+revalidate_canonical_commit_after_rebase() {
+  local ref="${1:-HEAD}" changed lines
+  changed="$(canonical_commit_status "$WT" "$ref")" \
+    || fail_job "canonical post-rebase change inventory failed"
+  lines="$(canonical_diff_line_count "$WT" "$ref")" \
+    || fail_job "canonical post-rebase diff line calculation failed"
+  validate_canonical_generated_diff "$WT" "$PROCESS_CODE" "$changed" "$lines" "${ref}^" \
+    >>"$LOG_FILE" 2>&1 || fail_job "canonical post-rebase manifest diff validation failed"
+  compile_canonical_generated_endpoint_immutable "$WT" "$PROCESS_CODE" >>"$LOG_FILE" 2>&1 \
+    || fail_job "canonical generated endpoint compile failed after rebase"
+  canonical_worktree_paths_clean "$WT" "$PROCESS_CODE" \
+    || fail_job "canonical compile mutated generated publication paths"
+  gate_result "CANONICAL_ENDPOINT_COMPILE" "PASSED" \
+    "{\"processCode\":\"$PROCESS_CODE\",\"phase\":\"POST_REBASE\"}"
+}
+
+canonical_generation_evidence() {
+  local package_file="$1" release_file="$2" process_code="$3" step_code="$4"
+  python3 - "$package_file" "$release_file" "$process_code" "$step_code" <<'PY'
+import hashlib
+import json
+import re
+import sys
+from pathlib import Path
+
+package_path, release_path = map(Path, sys.argv[1:3])
+process_code, step_code = sys.argv[3:5]
+sha256 = re.compile(r"^[0-9a-f]{64}$")
+source_fingerprint = re.compile(r"^(?:[0-9a-f]{32}|[0-9a-f]{64})$")
+code = re.compile(r"^[A-Z0-9_]+$")
+
+def stable(value):
+    return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+
+def verified_document(path, hash_key):
+    value = json.loads(path.read_text(encoding="utf-8"))
+    expected = value.get(hash_key)
+    if not isinstance(expected, str) or not sha256.fullmatch(expected):
+        raise SystemExit(f"{path}: invalid {hash_key}")
+    unhashed = dict(value)
+    del unhashed[hash_key]
+    actual = hashlib.sha256(stable(unhashed).encode()).hexdigest()
+    if actual != expected:
+        raise SystemExit(f"{path}: {hash_key} mismatch")
+    return value
+
+if not code.fullmatch(process_code) or not code.fullmatch(step_code):
+    raise SystemExit("canonical process/step code is invalid")
+package = verified_document(package_path, "packageHash")
+release = verified_document(release_path, "releaseHash")
+package_index = verified_document(package_path.parent / "index.json", "manifestHash")
+endpoint_manifest = verified_document(release_path.parent / "manifest.json", "bundleHash")
+if package.get("process", {}).get("code") != process_code or package.get("step", {}).get("code") != step_code:
+    raise SystemExit("canonical package process/step mismatch")
+if release.get("schema") != "carbonet.canonical-full-stack-release/v1":
+    raise SystemExit("canonical release schema mismatch")
+if not isinstance(package.get("sourceHash"), str) or not source_fingerprint.fullmatch(package["sourceHash"]):
+    raise SystemExit("canonical package sourceHash is invalid")
+if not isinstance(package.get("packageHash"), str) or not sha256.fullmatch(package["packageHash"]):
+    raise SystemExit("canonical package packageHash is invalid")
+for key in ("designCatalogHash", "endpointCatalogHash", "releaseHash"):
+    if not isinstance(release.get(key), str) or not sha256.fullmatch(release[key]):
+        raise SystemExit(f"canonical release {key} is invalid")
+if (package.get("canonicalCatalogHash") != release["designCatalogHash"]
+        or package_index.get("canonicalCatalogHash") != release["designCatalogHash"]
+        or package_index.get("manifestHash") != release.get("packageManifestHash")):
+    raise SystemExit("canonical package manifest is not bound to the release")
+matching_packages = [item for item in package_index.get("packages", [])
+                     if item.get("processCode") == process_code and item.get("stepCode") == step_code]
+if len(matching_packages) != 1 or matching_packages[0].get("packageHash") != package["packageHash"]:
+    raise SystemExit("exact package hash is absent from the canonical manifest")
+if (endpoint_manifest.get("catalogHash") != release["endpointCatalogHash"]
+        or endpoint_manifest.get("bundleHash") != release.get("endpointBundleHash")):
+    raise SystemExit("canonical endpoint manifest is not bound to the release")
+print(stable({
+    "schema": "carbonet.canonical-generation-evidence/v1",
+    "processCode": process_code,
+    "stepCode": step_code,
+    "sourceHash": package["sourceHash"],
+    "packageHash": package["packageHash"],
+    "designCatalogHash": release["designCatalogHash"],
+    "endpointCatalogHash": release["endpointCatalogHash"],
+    "releaseHash": release["releaseHash"],
+}))
+PY
+}
+
+canonical_commit_evidence_files() {
+  local worktree="$1" result_commit="$2" process_code="$3" step_code="$4" output_dir="$5"
+  local runtime_base="projects/carbonet-backend-metadata/process-runtime/generated/$process_code"
+  local endpoint_base="projects/carbonet-backend-metadata/process-runtime/generated-endpoints/$process_code"
+  local relative destination
+  [[ "$result_commit" =~ ^[0-9a-f]{40}$ && "$process_code" =~ ^[A-Z0-9_]+$ \
+      && "$step_code" =~ ^[A-Z0-9_]+$ && -d "$output_dir" && ! -L "$output_dir" ]] || return 1
+  local -a relatives=(
+    "$runtime_base/${process_code}__${step_code}.json"
+    "$runtime_base/index.json"
+    "$endpoint_base/manifest.json"
+    "$endpoint_base/full-stack-release.json"
+  )
+  for relative in "${relatives[@]}"; do
+    destination="$output_dir/$(basename "$relative")"
+    git -C "$worktree" cat-file -e "${result_commit}:${relative}" 2>/dev/null || return 1
+    [[ "$(git -C "$worktree" cat-file -t "${result_commit}:${relative}" 2>/dev/null)" == blob ]] || return 1
+    git -C "$worktree" show "${result_commit}:${relative}" >"$destination" || return 1
+    [[ -f "$destination" && ! -L "$destination" ]] || return 1
+  done
+}
+
+canonical_worktree_paths_clean() {
+  local worktree="$1" process_code="$2"
+  local runtime_path="projects/carbonet-backend-metadata/process-runtime/generated"
+  local preview_path="projects/carbonet-backend-metadata/process-runtime/design-preview"
+  local endpoint_path="projects/carbonet-backend-metadata/process-runtime/generated-endpoints"
+  [[ "$process_code" =~ ^[A-Z0-9_]+$ ]] || return 1
+  [[ -z "$(git -C "$worktree" status --porcelain=v1 --untracked-files=all -- \
+    "$runtime_path" "$preview_path" "$endpoint_path")" ]]
+}
+
+canonical_process_tree_unchanged() {
+  local worktree="$1" result_commit="$2" deployed="$3" process_code="$4"
+  [[ "$result_commit" =~ ^[0-9a-f]{40}$ && "$deployed" =~ ^[0-9a-f]{40}$ \
+      && "$process_code" =~ ^[A-Z0-9_]+$ ]] || return 1
+  git -C "$worktree" cat-file -e "${result_commit}^{commit}" 2>/dev/null || return 1
+  git -C "$worktree" cat-file -e "${deployed}^{commit}" 2>/dev/null || return 1
+  git -C "$worktree" merge-base --is-ancestor "$result_commit" "$deployed" || return 1
+  git -C "$worktree" diff --quiet "$result_commit" "$deployed" -- \
+    "projects/carbonet-backend-metadata/process-runtime/generated/$process_code" \
+    "projects/carbonet-backend-metadata/process-runtime/design-preview/$process_code" \
+    "projects/carbonet-backend-metadata/process-runtime/generated-endpoints/$process_code"
+}
+
+canonical_result_parent() {
+  local worktree="$1" result_commit="$2" parent parents
+  [[ "$result_commit" =~ ^[0-9a-f]{40}$ ]] || return 1
+  parents="$(git -C "$worktree" rev-list --parents -n 1 "$result_commit" 2>/dev/null)" || return 1
+  read -r _ parent extra <<<"$parents"
+  [[ -z "${extra:-}" && "$parent" =~ ^[0-9a-f]{40}$ ]] || return 1
+  git -C "$worktree" merge-base --is-ancestor "$parent" "$result_commit" || return 1
+  printf '%s\n' "$parent"
+}
+
+verify_canonical_commit_published() {
+  local worktree="$1" result_commit="$2"
+  [[ "$result_commit" =~ ^[0-9a-f]{40}$ ]] || return 1
+  git -C "$worktree" fetch --quiet origin main
+  local remote_main
+  remote_main="$(git -C "$worktree" rev-parse origin/main)"
+  [[ "$remote_main" =~ ^[0-9a-f]{40}$ ]] || return 1
+  git -C "$worktree" merge-base --is-ancestor "$result_commit" "$remote_main"
+}
+
+finalize_canonical_generation() {
+  local job_id="$1" lease_token="$2" worker_id="$3" result_commit="$4"
+  local rollback_commit="$5" process_code="$6" step_code="$7" log_file="$8" evidence_json="$9"
+  local source_hash package_hash design_hash endpoint_hash release_hash evidence_ref readback
+  source_hash="$(jq -er '.sourceHash' <<<"$evidence_json")"
+  package_hash="$(jq -er '.packageHash' <<<"$evidence_json")"
+  design_hash="$(jq -er '.designCatalogHash' <<<"$evidence_json")"
+  endpoint_hash="$(jq -er '.endpointCatalogHash' <<<"$evidence_json")"
+  release_hash="$(jq -er '.releaseHash' <<<"$evidence_json")"
+  [[ "$job_id" =~ ^[0-9]+$ && "$lease_token" =~ ^[0-9a-fA-F-]{36}$ \
+      && "$result_commit" =~ ^[0-9a-f]{40}$ && "$rollback_commit" =~ ^[0-9a-f]{40}$ \
+      && "$source_hash" =~ ^([0-9a-f]{32}|[0-9a-f]{64})$ \
+      && "$package_hash$design_hash$endpoint_hash$release_hash" =~ ^[0-9a-f]{256}$ ]] || return 1
+  local canonical_git_worktree="${CANONICAL_WORKTREE:-${WT:-$ROOT_DIR}}"
+  [[ "$rollback_commit" == "$(canonical_result_parent "$canonical_git_worktree" "$result_commit")" ]] || return 1
+  evidence_ref="git:${result_commit};release:${release_hash};log:${log_file}"
+
+  local finalize_sql readback_sql
+  finalize_sql="
+-- CANONICAL_FINALIZE_AFTER_PUSH_DEPLOY_HEALTH
+begin;
+do \$finalize\$
+declare changed integer; current_source text;
+begin
+  select source_hash into current_source
+  from framework_step_execution_spec
+  where process_code=\$process\$${process_code}\$process\$
+    and step_code=\$step\$${step_code}\$step\$
+    and design_status='DESIGN_COMPLETE' and approval_status='APPROVED'
+  for update;
+  if current_source is distinct from \$source\$${source_hash}\$source\$ then
+    raise exception 'STALE_CANONICAL_SOURCE_HASH';
+  end if;
+
+  if exists (select 1 from framework_development_job where job_id=${job_id} and job_status in ('VERIFIED','COMPLETED')) then
+    if not exists (
+      select 1 from framework_development_job
+      where job_id=${job_id} and job_status='VERIFIED' and quality_status='VERIFIED'
+        and framework_try_jsonb(result_json)->>'commit'=\$commit\$${result_commit}\$commit\$
+        and rollback_ref=\$rollback\$${rollback_commit}\$rollback\$
+        and framework_try_jsonb(result_json)->'canonicalGeneration'=\$payload\$${evidence_json}\$payload\$::jsonb
+    ) then
+      raise exception 'CANONICAL_TERMINAL_EVIDENCE_IMMUTABLE';
+    end if;
+  else
+    update framework_development_job
+    set job_status='VERIFIED',quality_status='VERIFIED',
+        result_json=(coalesce(framework_try_jsonb(result_json),'{}'::jsonb)||
+          jsonb_build_object('commit',\$commit\$${result_commit}\$commit\$,
+            'canonicalGeneration',\$payload\$${evidence_json}\$payload\$::jsonb))::text,
+        evidence_ref=\$ref\$${evidence_ref}\$ref\$,rollback_ref=\$rollback\$${rollback_commit}\$rollback\$,
+        completed_at=current_timestamp,lease_token=null,lease_until=null,updated_at=current_timestamp
+    where job_id=${job_id} and job_status='RUNNING' and lease_token=\$lease\$${lease_token}\$lease\$;
+    get diagnostics changed=row_count;
+    if changed<>1 then raise exception 'CANONICAL_JOB_LEASE_LOST'; end if;
+  end if;
+
+  update framework_step_execution_spec
+  set generation_status='GENERATED',updated_at=current_timestamp
+  where process_code=\$process\$${process_code}\$process\$
+    and step_code=\$step\$${step_code}\$step\$
+    and source_hash=\$source\$${source_hash}\$source\$;
+  get diagnostics changed=row_count;
+  if changed<>1 then raise exception 'CANONICAL_SPEC_FINALIZE_LOST'; end if;
+  update framework_process_artifact
+  set delivery_status='VERIFIED',evidence_ref=\$ref\$${evidence_ref}\$ref\$,updated_at=current_timestamp
+  where process_code=\$process\$${process_code}\$process\$
+    and step_code=\$step\$${step_code}\$step\$
+    and contract_ref=\$contract\$AUTO:${JOB_TYPE:-FULL_STACK_GENERATION}\$contract\$;
+  get diagnostics changed=row_count;
+  if changed<>1 then raise exception 'CANONICAL_ARTIFACT_FINALIZE_LOST'; end if;
+  insert into framework_development_job_event(job_id,event_type,from_status,to_status,worker_id,detail_json)
+  select ${job_id},'CANONICAL_RELEASE_FINALIZED','RUNNING','VERIFIED',
+    \$worker\$${worker_id}\$worker\$,\$payload\$${evidence_json}\$payload\$
+  where not exists (
+    select 1 from framework_development_job_event
+    where job_id=${job_id} and event_type='CANONICAL_RELEASE_FINALIZED'
+      and framework_try_jsonb(detail_json)=\$payload\$${evidence_json}\$payload\$::jsonb
+  );
+end \$finalize\$;
+commit;"
+  readback_sql="
+-- CANONICAL_FINALIZE_READBACK
+select count(*) from framework_development_job j
+join framework_step_execution_spec s on s.process_code=\$process\$${process_code}\$process\$
+  and s.step_code=\$step\$${step_code}\$step\$
+where j.job_id=${job_id} and j.job_status='VERIFIED' and j.quality_status='VERIFIED'
+  and s.generation_status='GENERATED' and s.source_hash=\$source\$${source_hash}\$source\$
+  and framework_try_jsonb(j.result_json)->>'commit'=\$commit\$${result_commit}\$commit\$
+  and j.rollback_ref=\$rollback\$${rollback_commit}\$rollback\$
+  and framework_try_jsonb(j.result_json)->'canonicalGeneration'=\$payload\$${evidence_json}\$payload\$::jsonb
+  and (select count(*) from framework_development_job_event e
+       where e.job_id=j.job_id and e.event_type='CANONICAL_RELEASE_FINALIZED'
+         and framework_try_jsonb(e.detail_json)=\$payload\$${evidence_json}\$payload\$::jsonb)=1
+  and (select count(*) from framework_process_artifact a
+       where a.process_code=\$process\$${process_code}\$process\$
+         and a.step_code=\$step\$${step_code}\$step\$
+         and a.contract_ref=\$contract\$AUTO:${JOB_TYPE:-FULL_STACK_GENERATION}\$contract\$
+         and a.delivery_status='VERIFIED'
+         and a.evidence_ref=\$ref\$${evidence_ref}\$ref\$)=1;"
+
+  for finalize_attempt in 1 2 3; do
+    psqlq -c "$finalize_sql" >/dev/null 2>&1 || true
+    readback="$(psqlq -c "$readback_sql" 2>/dev/null || true)"
+    [[ "$readback" == "1" ]] && return 0
+    if (( finalize_attempt < 3 )); then
+      sleep "$(( ${CANONICAL_FINALIZE_RETRY_SLEEP_SECONDS:-1} * finalize_attempt ))"
+    fi
+  done
+  return 1
+}
+
+if [[ "${1:-}" == "--canonical-failure-transition-contract" ]]; then
+  : "${CANONICAL_JOB_ID:?CANONICAL_JOB_ID is required}"
+  : "${CANONICAL_LEASE_TOKEN:?CANONICAL_LEASE_TOKEN is required}"
+  transition_job_to_failed_if_owned "$CANONICAL_JOB_ID" "$CANONICAL_LEASE_TOKEN" \
+    "${CANONICAL_WORKER_ID:-contract-test}" "${CANONICAL_FAILURE_MESSAGE:-contract failure}" \
+    "${CANONICAL_ROLLBACK_COMMIT:-}" "${CANONICAL_LOG_FILE:-contract-test.log}"
+  exit $?
+elif [[ "${1:-}" == "--canonical-prepublish-contract" ]]; then
+  : "${CANONICAL_WORKTREE:?CANONICAL_WORKTREE is required}"
+  : "${CANONICAL_PROCESS_CODE:?CANONICAL_PROCESS_CODE is required}"
+  contract_changed="$(git -C "$CANONICAL_WORKTREE" status --porcelain=v1 --untracked-files=all)"
+  contract_lines="$(canonical_diff_line_count "$CANONICAL_WORKTREE")"
+  validate_canonical_generated_diff "$CANONICAL_WORKTREE" "$CANONICAL_PROCESS_CODE" \
+    "$contract_changed" "$contract_lines"
+  compile_canonical_generated_endpoint_immutable "$CANONICAL_WORKTREE" "$CANONICAL_PROCESS_CODE"
+  if [[ -n "${CANONICAL_CONTRACT_REBASE_COMMAND:-}" ]]; then
+    [[ -x "$CANONICAL_CONTRACT_REBASE_COMMAND" ]]
+    "$CANONICAL_CONTRACT_REBASE_COMMAND" "$CANONICAL_WORKTREE" "$CANONICAL_PROCESS_CODE"
+    contract_changed="$(git -C "$CANONICAL_WORKTREE" status --porcelain=v1 --untracked-files=all)"
+    contract_lines="$(canonical_diff_line_count "$CANONICAL_WORKTREE")"
+    validate_canonical_generated_diff "$CANONICAL_WORKTREE" "$CANONICAL_PROCESS_CODE" \
+      "$contract_changed" "$contract_lines"
+    compile_canonical_generated_endpoint_immutable "$CANONICAL_WORKTREE" "$CANONICAL_PROCESS_CODE"
+  fi
+  if [[ -n "${CANONICAL_CONTRACT_PUSH_COMMAND:-}" ]]; then
+    [[ -x "$CANONICAL_CONTRACT_PUSH_COMMAND" ]]
+    "$CANONICAL_CONTRACT_PUSH_COMMAND" "$CANONICAL_WORKTREE" "$CANONICAL_PROCESS_CODE"
+  fi
+  exit 0
+elif [[ "${1:-}" == "--canonical-runtime-binding-contract" ]]; then
+  : "${CANONICAL_ENDPOINT_MANIFEST:?CANONICAL_ENDPOINT_MANIFEST is required}"
+  : "${CANONICAL_RUNTIME_MAPPINGS_FILE:?CANONICAL_RUNTIME_MAPPINGS_FILE is required}"
+  verify_canonical_runtime_bindings "$CANONICAL_ENDPOINT_MANIFEST" "$CANONICAL_RUNTIME_MAPPINGS_FILE"
+  exit $?
+elif [[ "${1:-}" == "--canonical-finalize-contract" ]]; then
+  : "${CANONICAL_PACKAGE_FILE:?CANONICAL_PACKAGE_FILE is required}"
+  : "${CANONICAL_RELEASE_FILE:?CANONICAL_RELEASE_FILE is required}"
+  : "${CANONICAL_RESULT_COMMIT:?CANONICAL_RESULT_COMMIT is required}"
+  : "${CANONICAL_JOB_ID:?CANONICAL_JOB_ID is required}"
+  : "${CANONICAL_LEASE_TOKEN:?CANONICAL_LEASE_TOKEN is required}"
+  : "${CANONICAL_PROCESS_CODE:?CANONICAL_PROCESS_CODE is required}"
+  : "${CANONICAL_STEP_CODE:?CANONICAL_STEP_CODE is required}"
+  contract_tree="$(mktemp -d "${TMPDIR:-/tmp}/canonical-finalize-tree.XXXXXX")" || exit 1
+  register_canonical_temp_path "$contract_tree" || exit 1
+  trap cleanup_canonical_temp_paths EXIT
+  canonical_worktree_paths_clean "${CANONICAL_WORKTREE:?CANONICAL_WORKTREE is required}" "$CANONICAL_PROCESS_CODE" || {
+    echo 'canonical worktree paths are dirty after publication' >&2
+    exit 1
+  }
+  canonical_commit_evidence_files "$CANONICAL_WORKTREE" "$CANONICAL_RESULT_COMMIT" \
+    "$CANONICAL_PROCESS_CODE" "$CANONICAL_STEP_CODE" "$contract_tree" || exit 1
+  contract_evidence="$(canonical_generation_evidence \
+    "$contract_tree/${CANONICAL_PROCESS_CODE}__${CANONICAL_STEP_CODE}.json" \
+    "$contract_tree/full-stack-release.json" "$CANONICAL_PROCESS_CODE" "$CANONICAL_STEP_CODE")"
+  contract_binding="$(verify_stable_canonical_runtime_deployment \
+    "$CANONICAL_WORKTREE" "$CANONICAL_RESULT_COMMIT" \
+    "$CANONICAL_PROCESS_CODE" "$CANONICAL_STEP_CODE")" || {
+    echo 'canonical deployed marker/mappings proof did not stabilize' >&2
+    exit 1
+  }
+  contract_stable_deployed="$(jq -er '.deployedCommit' <<<"$contract_binding")" || exit 1
+  [[ "${CANONICAL_DEPLOY_ELAPSED_SECONDS:?CANONICAL_DEPLOY_ELAPSED_SECONDS is required}" =~ ^[0-9]+$ \
+      && "$CANONICAL_DEPLOY_ELAPSED_SECONDS" -le 60 ]] || {
+    echo 'canonical deployment exceeded the 60-second terminal SLO' >&2
+    exit 1
+  }
+  verify_canonical_commit_published "${CANONICAL_WORKTREE:?CANONICAL_WORKTREE is required}" "$CANONICAL_RESULT_COMMIT" || {
+    echo 'canonical result commit is not published on origin/main' >&2
+    exit 1
+  }
+  canonical_deployed_marker_is "$contract_stable_deployed" || {
+    echo 'canonical deployed marker changed before terminal finalization' >&2
+    exit 1
+  }
+  contract_rollback="$(canonical_result_parent "$CANONICAL_WORKTREE" "$CANONICAL_RESULT_COMMIT")" || exit 1
+  finalize_canonical_generation "$CANONICAL_JOB_ID" "$CANONICAL_LEASE_TOKEN" "${CANONICAL_WORKER_ID:-contract-test}" \
+    "$CANONICAL_RESULT_COMMIT" "$contract_rollback" "$CANONICAL_PROCESS_CODE" "$CANONICAL_STEP_CODE" \
+    "${CANONICAL_LOG_FILE:-contract-test.log}" "$contract_evidence"
+  exit $?
+fi
 runtime_health_url() {
   if [[ -n "${CARBONET_HEALTH_CHECK_URL:-}" ]]; then
     printf '%s\n' "$CARBONET_HEALTH_CHECK_URL"
@@ -46,16 +763,7 @@ runtime_is_healthy() {
   curl -fsS --max-time 10 "$health_url" | jq -e '.status == "UP"' >/dev/null
 }
 deployed_commit() {
-  local deployed=""
-  if [[ -r "$DEPLOY_STATE_FILE" ]]; then
-    deployed="$(tr -d '[:space:]' <"$DEPLOY_STATE_FILE")"
-  fi
-  if [[ ! "$deployed" =~ ^[0-9a-f]{40}$ ]] \
-    && [[ -d "$DEPLOY_WORKTREE/.git" || -f "$DEPLOY_WORKTREE/.git" ]]; then
-    deployed="$(git -C "$DEPLOY_WORKTREE" rev-parse HEAD 2>/dev/null || true)"
-  fi
-  [[ "$deployed" =~ ^[0-9a-f]{40}$ ]] || return 1
-  printf '%s\n' "$deployed"
+  canonical_deployed_commit_value
 }
 deployment_is_ready() {
   local counts desired updated ready available
@@ -84,7 +792,15 @@ with candidate as (
    and not exists (
      select 1 from framework_development_job running_job
      where running_job.job_status='RUNNING' and running_job.job_id<>j.job_id
-       and coalesce(running_job.target_path,'')<>'' and running_job.target_path=coalesce(j.target_path,'')
+       and coalesce(running_job.target_path,'')<>''
+       and (
+         running_job.target_path=coalesce(j.target_path,'')
+         or (
+           running_job.target_path like 'canonical://%'
+           and coalesce(j.target_path,'') like 'canonical://%'
+           and split_part(running_job.target_path,'/',3)=split_part(j.target_path,'/',3)
+         )
+       )
    )
  order by coalesce(phase.phase_order,1000),j.process_code,j.step_code,j.job_id
  for update of j skip locked limit 1
@@ -131,11 +847,12 @@ gate_result() {
 }
 fail_job() {
   trap - ERR
+  cleanup_canonical_temp_paths
   local message="${1:-worker failed}"
   message="${message//$'\n'/ }"
   message="${message:0:1800}"
-  psqlq -c "update framework_development_job set job_status='FAILED',last_error=\$err\$${message}\$err\$,rollback_ref=nullif('${BASE_COMMIT}',''),lease_token=null,lease_until=null,updated_at=current_timestamp where job_id=${JOB_ID} and lease_token='${LEASE_TOKEN}';" >/dev/null || true
-  event "FAILED" "RUNNING" "FAILED" "{\"log\":\"${LOG_FILE}\"}" || true
+  transition_job_to_failed_if_owned "$JOB_ID" "$LEASE_TOKEN" "$WORKER_ID" \
+    "$message" "${BASE_COMMIT:-}" "$LOG_FILE" || true
   git -C "$ROOT_DIR" worktree remove --force "$WT" >/dev/null 2>&1 || true
   exit 1
 }
@@ -557,13 +1274,86 @@ if [ "$KILO_CODE" -ne 0 ] && grep -Eq 'HTTP 429|Too Many Requests|status.?=.?429
 fi
 [ "$KILO_CODE" -eq 0 ] || fail_job "Hermes project worker exited with code ${KILO_CODE}"
 
-CHANGED="$(git -C "$WT" status --porcelain)"
+CHANGED="$(git -C "$WT" status --porcelain=v1 --untracked-files=all)"
 if [ -z "$CHANGED" ] && [ "$DETERMINISTIC_HANDLED" = 1 ] && [[ "$JOB_TYPE" =~ ^FULL_STACK(_GENERATION)?$ ]]; then
   # A sibling step can publish the same process package first because one
   # deterministic process render contains every approved step. The current
   # runner has already re-rendered, hash-checked, and contract-tested that
   # package. Reuse the identical main artifact instead of creating a duplicate
   # commit or reporting a false failure.
+  canonical_package="$WT/projects/carbonet-backend-metadata/process-runtime/generated/$PROCESS_CODE/${PROCESS_CODE}__${STEP_CODE}.json"
+  canonical_release="$WT/projects/carbonet-backend-metadata/process-runtime/generated-endpoints/$PROCESS_CODE/full-stack-release.json"
+  if [[ -f "$canonical_package" && -f "$canonical_release" ]]; then
+    adopted_tree="$(mktemp -d "${TMPDIR:-/tmp}/canonical-adopt-tree.XXXXXX")" \
+      || fail_job "adopted canonical commit extraction failed"
+    register_canonical_temp_path "$adopted_tree" \
+      || fail_job "adopted canonical temp registration failed"
+    canonical_worktree_paths_clean "$WT" "$PROCESS_CODE" \
+      || fail_job "adopted canonical worktree paths are dirty"
+    canonical_commit_evidence_files "$WT" "$BASE_COMMIT" "$PROCESS_CODE" "$STEP_CODE" "$adopted_tree" \
+      || fail_job "adopted canonical commit extraction failed"
+    canonical_evidence="$(canonical_generation_evidence \
+      "$adopted_tree/${PROCESS_CODE}__${STEP_CODE}.json" "$adopted_tree/full-stack-release.json" \
+      "$PROCESS_CODE" "$STEP_CODE")" \
+      || fail_job "adopted canonical package/release hash verification failed"
+    CANONICAL_DEPLOY_STARTED_EPOCH_SECONDS="$(date +%s)"
+    adopted_deploy_ok=0
+    for _ in $(seq 1 60); do
+      DEPLOYED="$(deployed_commit || true)"
+      if [[ -n "$DEPLOYED" ]] \
+        && git -C "$WT" merge-base --is-ancestor "$BASE_COMMIT" "$DEPLOYED" 2>/dev/null \
+        && deployment_is_ready && runtime_is_healthy; then
+        adopted_deploy_ok=1
+        break
+      fi
+      sleep 1
+    done
+    canonical_deploy_seconds="$(canonical_deploy_elapsed_seconds)" \
+      || fail_job "adopted canonical deployment duration evidence is invalid"
+    if [[ "$adopted_deploy_ok" != 1 ]] || (( canonical_deploy_seconds > 60 )); then
+      gate_result "CANONICAL_DEPLOY_SLO" "FAILED" \
+        "{\"elapsedSeconds\":$canonical_deploy_seconds,\"targetSeconds\":60,\"deploymentReady\":false,\"terminalWrite\":0}"
+      fail_job "adopted canonical deployment missed the 60-second terminal SLO"
+    fi
+    if ! canonical_binding_evidence="$(verify_stable_canonical_runtime_deployment \
+        "$WT" "$BASE_COMMIT" "$PROCESS_CODE" "$STEP_CODE")"; then
+      canonical_deploy_seconds="$(canonical_deploy_elapsed_seconds)" \
+        || fail_job "adopted canonical deployment duration evidence is invalid"
+      if (( canonical_deploy_seconds > 60 )); then
+        gate_result "CANONICAL_DEPLOY_SLO" "FAILED" \
+          "{\"elapsedSeconds\":$canonical_deploy_seconds,\"targetSeconds\":60,\"terminalWrite\":0}"
+      fi
+      gate_result "CANONICAL_RUNTIME_BINDING" "FAILED" '{"terminalWrite":0}'
+      fail_job "adopted canonical deployed Spring mapping verification failed"
+    fi
+    adopted_stable_deployed="$(jq -er '.deployedCommit' <<<"$canonical_binding_evidence")" \
+      || fail_job "adopted canonical stable deploy marker is invalid"
+    gate_result "CANONICAL_RUNTIME_BINDING" "PASSED" "$canonical_binding_evidence"
+    adopted_published=0
+    verify_canonical_commit_published "$WT" "$BASE_COMMIT" && adopted_published=1
+    canonical_deploy_seconds="$(canonical_deploy_elapsed_seconds)" \
+      || fail_job "adopted canonical deployment duration evidence is invalid"
+    if (( canonical_deploy_seconds > 60 )); then
+      gate_result "CANONICAL_DEPLOY_SLO" "FAILED" \
+        "{\"elapsedSeconds\":$canonical_deploy_seconds,\"targetSeconds\":60,\"terminalWrite\":0}"
+      fail_job "adopted canonical deployment exceeded the 60-second terminal SLO"
+    fi
+    [[ "$adopted_published" = 1 ]] \
+      || fail_job "adopted canonical release is no longer published on origin/main"
+    canonical_deployed_marker_is "$adopted_stable_deployed" \
+      || fail_job "adopted canonical deploy marker changed before terminal finalization"
+    gate_result "CANONICAL_DEPLOY_SLO" "PASSED" \
+      "{\"elapsedSeconds\":$canonical_deploy_seconds,\"targetSeconds\":60}"
+    adopted_rollback="$(canonical_result_parent "$WT" "$BASE_COMMIT")" \
+      || fail_job "adopted canonical rollback commit is invalid"
+    finalize_canonical_generation "$JOB_ID" "$LEASE_TOKEN" "$WORKER_ID" \
+      "$BASE_COMMIT" "$adopted_rollback" "$PROCESS_CODE" "$STEP_CODE" "$LOG_FILE" "$canonical_evidence" \
+      || fail_job "adopted canonical generation evidence finalization failed"
+    cleanup_canonical_temp_paths
+    git -C "$ROOT_DIR" worktree remove --force "$WT" >/dev/null 2>&1 || true
+    printf 'VERIFIED adopted canonical package job=%s commit=%s\n' "$JOB_ID" "$BASE_COMMIT"
+    exit 0
+  fi
   EVIDENCE="git:${BASE_COMMIT};generated-package:${PROCESS_CODE};log:${LOG_FILE}"
   psqlq -c "update framework_development_job set job_status='VERIFIED',quality_status='VERIFIED',result_json=\$json\${\"commit\":\"${BASE_COMMIT}\",\"strategy\":\"ADOPT_GENERATED_PROCESS_PACKAGE\"}\$json\$,evidence_ref='${EVIDENCE}',rollback_ref='${BASE_COMMIT}',completed_at=current_timestamp,lease_token=null,lease_until=null,updated_at=current_timestamp where job_id=${JOB_ID} and lease_token='${LEASE_TOKEN}'; update framework_process_artifact set delivery_status='VERIFIED',evidence_ref='${EVIDENCE}',updated_at=current_timestamp where process_code='${PROCESS_CODE}' and step_code='${STEP_CODE}' and contract_ref='AUTO:${JOB_TYPE}';" >/dev/null
   event "VERIFIED" "RUNNING" "VERIFIED" "{\"commit\":\"${BASE_COMMIT}\",\"strategy\":\"ADOPT_GENERATED_PROCESS_PACKAGE\"}"
@@ -590,14 +1380,14 @@ if [ -z "$CHANGED" ] && [ "$JOB_TYPE" = "REFERENCE_ANALYSIS" ] && [ -n "${ARTIFA
 - Search context: ${SEARCH_CONTEXT}
 - Approved specification: ${SPEC}
 EOF
-  CHANGED="$(git -C "$WT" status --porcelain)"
+  CHANGED="$(git -C "$WT" status --porcelain=v1 --untracked-files=all)"
 fi
 if [ -z "$CHANGED" ] && [[ "$JOB_TYPE" == FRONTEND_* ]]; then
   ADOPTION_JSON="$(python3 "$WT/ops/scripts/adopt-existing-frontend-job.py" "$WT" "$PROCESS_CODE" "$STEP_CODE" "$JOB_ID" "$TARGET_PATH")" \
     || fail_job "existing frontend adoption contract failed"
   verify_adopted_frontend_tree || fail_job "existing frontend adoption type check failed"
   gate_result "ADOPT_EXISTING_SOURCE" "PASSED" "$ADOPTION_JSON"
-  CHANGED="$(git -C "$WT" status --porcelain)"
+  CHANGED="$(git -C "$WT" status --porcelain=v1 --untracked-files=all)"
 fi
 [ -n "$CHANGED" ] || fail_job "AI completed without a source or metadata change"
 if [ "$JOB_TYPE" = "DESIGN" ]; then
@@ -610,16 +1400,37 @@ if [ "$JOB_TYPE" = "DESIGN" ]; then
   fi
 fi
 FILE_COUNT="$(printf '%s\n' "$CHANGED" | wc -l)"
-[ "$FILE_COUNT" -le "$MAX_FILES" ] || fail_job "changed file limit exceeded: ${FILE_COUNT}/${MAX_FILES}"
-DIFF_LINES="$(git -C "$WT" diff --numstat | awk '{a+=$1+$2} END{print a+0}')"
-if [ "$DIFF_LINES" -gt "$MAX_LINES" ]; then
+CANONICAL_ENDPOINT_MANIFEST="$WT/projects/carbonet-backend-metadata/process-runtime/generated-endpoints/$PROCESS_CODE/manifest.json"
+CANONICAL_PUBLICATION_ACTIVE=0
+if [[ "$DETERMINISTIC_HANDLED" = 1 && "$JOB_TYPE" =~ ^FULL_STACK(_GENERATION)?$ ]]; then
+  [[ -f "$CANONICAL_ENDPOINT_MANIFEST" ]] \
+    || fail_job "canonical endpoint manifest is required before publication"
+  CANONICAL_PUBLICATION_ACTIVE=1
+  DIFF_LINES="$(canonical_diff_line_count "$WT")" \
+    || fail_job "canonical diff line calculation failed"
+  if validate_canonical_generated_diff "$WT" "$PROCESS_CODE" "$CHANGED" "$DIFF_LINES" \
+      >>"$LOG_FILE" 2>&1; then
+    gate_result "DETERMINISTIC_DIFF_SCOPE" "PASSED" \
+      "{\"files\":$FILE_COUNT,\"lines\":$DIFF_LINES,\"limitSource\":\"CANONICAL_MANIFESTS\"}"
+  else
+    fail_job "canonical manifest-derived diff scope failed"
+  fi
+  compile_canonical_generated_endpoint_immutable "$WT" "$PROCESS_CODE" >>"$LOG_FILE" 2>&1 \
+    || fail_job "canonical generated endpoint compile failed"
+  gate_result "CANONICAL_ENDPOINT_COMPILE" "PASSED" \
+    "{\"processCode\":\"$PROCESS_CODE\",\"phase\":\"PRE_COMMIT\"}"
+else
+  [ "$FILE_COUNT" -le "$MAX_FILES" ] || fail_job "changed file limit exceeded: ${FILE_COUNT}/${MAX_FILES}"
+  DIFF_LINES="$(git -C "$WT" diff --numstat | awk '{a+=$1+$2} END{print a+0}')"
+  if [ "$DIFF_LINES" -gt "$MAX_LINES" ]; then
   if [ "$DETERMINISTIC_HANDLED" = 1 ] && [[ "$JOB_TYPE" =~ ^FULL_STACK(_GENERATION)?$ ]] \
       && printf '%s\n' "$CHANGED" | bash "$WT/ops/scripts/validate-deterministic-fullstack-diff.sh" \
-        "$PROCESS_CODE" "$DIFF_LINES" >>"$LOG_FILE" 2>&1; then
+        "$PROCESS_CODE" "$DIFF_LINES" "$WT" >>"$LOG_FILE" 2>&1; then
     gate_result "DETERMINISTIC_DIFF_SCOPE" "PASSED" \
       "{\"files\":$FILE_COUNT,\"lines\":$DIFF_LINES,\"defaultLimit\":$MAX_LINES}"
   else
     fail_job "diff line limit exceeded: ${DIFF_LINES}/${MAX_LINES}"
+  fi
   fi
 fi
 if printf '%s\n' "$CHANGED" | grep -Eq '(^| )((\.github|release|deploy|data|var)/|.*\.(db|sqlite|pem|key)$|.*secret)'; then
@@ -664,6 +1475,9 @@ git -C "$WT" add -A
 git -C "$WT" diff --cached --check >>"$LOG_FILE" 2>&1 || { gate_result "DIFF_CHECK" "FAILED" "git diff --check"; fail_job "git diff check failed"; }
 gate_result "DIFF_CHECK" "PASSED" "git diff --check"
 git -C "$WT" -c user.name='Resonance AI Worker' -c user.email='ai-worker@resonance.local' commit -m "auto: ${PROCESS_CODE} ${JOB_TYPE} job ${JOB_ID}" >>"$LOG_FILE" 2>&1
+if [[ "$CANONICAL_PUBLICATION_ACTIVE" = 1 ]]; then
+  revalidate_canonical_commit_after_rebase HEAD
+fi
 
 # Parallel workers develop in isolated worktrees, then serialize only the short
 # publication window. Rebase onto the latest verified main instead of discarding
@@ -673,6 +1487,10 @@ flock 8
 git -C "$WT" fetch origin main >>"$LOG_FILE" 2>&1
 if [ "$(git -C "$WT" rev-parse origin/main)" != "$BASE_COMMIT" ]; then
   git -C "$WT" rebase origin/main >>"$LOG_FILE" 2>&1 || fail_job "parallel publish rebase conflict"
+  if [[ "$DETERMINISTIC_HANDLED" = 1 && "$JOB_TYPE" =~ ^FULL_STACK(_GENERATION)?$ \
+      && -f "$CANONICAL_ENDPOINT_MANIFEST" ]]; then
+    revalidate_canonical_commit_after_rebase HEAD
+  fi
   if printf '%s\n' "$CHANGED" | grep -q 'projects/carbonet-frontend/source/'; then
     "$ROOT_DIR/projects/carbonet-frontend/source/node_modules/.bin/tsc" -b "$WT/projects/carbonet-frontend/source/tsconfig.json" --pretty false >>"$LOG_FILE" 2>&1 || fail_job "frontend type check failed after rebase"
   fi
@@ -684,6 +1502,10 @@ if [ "$(git -C "$WT" rev-parse origin/main)" != "$BASE_COMMIT" ]; then
 fi
 RESULT_COMMIT="$(git -C "$WT" rev-parse HEAD)"
 publish_succeeded=0
+CANONICAL_DEPLOY_STARTED_EPOCH_SECONDS=""
+if [[ "$CANONICAL_PUBLICATION_ACTIVE" = 1 ]]; then
+  CANONICAL_DEPLOY_STARTED_EPOCH_SECONDS="$(date +%s)"
+fi
 for publish_attempt in 1 2 3; do
   if git -C "$WT" push origin "HEAD:main" >>"$LOG_FILE" 2>&1; then
     publish_succeeded=1
@@ -694,6 +1516,10 @@ for publish_attempt in 1 2 3; do
   git -C "$WT" fetch origin main >>"$LOG_FILE" 2>&1 || continue
   if ! git -C "$WT" merge-base --is-ancestor origin/main HEAD; then
     git -C "$WT" rebase origin/main >>"$LOG_FILE" 2>&1 || fail_job "parallel publish rebase conflict"
+    if [[ "$DETERMINISTIC_HANDLED" = 1 && "$JOB_TYPE" =~ ^FULL_STACK(_GENERATION)?$ \
+        && -f "$CANONICAL_ENDPOINT_MANIFEST" ]]; then
+      revalidate_canonical_commit_after_rebase HEAD
+    fi
     RESULT_COMMIT="$(git -C "$WT" rev-parse HEAD)"
   fi
 done
@@ -723,22 +1549,104 @@ else
   exec 8>&-
 fi
 
-for _ in $(seq 1 90); do
+deploy_wait_attempts=90
+deploy_wait_seconds=10
+if [[ "$CANONICAL_PUBLICATION_ACTIVE" = 1 ]]; then
+  deploy_wait_attempts=60
+  deploy_wait_seconds=1
+fi
+deployment_observed=0
+for _ in $(seq 1 "$deploy_wait_attempts"); do
   DEPLOYED="$(deployed_commit || true)"
   if [[ -n "$DEPLOYED" ]] \
     && git -C "$WT" merge-base --is-ancestor "$RESULT_COMMIT" "$DEPLOYED" 2>/dev/null \
-    && deployment_is_ready && runtime_is_healthy; then break; fi
-  sleep 10
+    && deployment_is_ready && runtime_is_healthy; then
+    deployment_observed=1
+    break
+  fi
+  sleep "$deploy_wait_seconds"
 done
-DEPLOYED="$(deployed_commit || true)"
-[[ -n "$DEPLOYED" ]] \
-  && git -C "$WT" merge-base --is-ancestor "$RESULT_COMMIT" "$DEPLOYED" 2>/dev/null \
-  || fail_job "result commit was not deployed according to the canonical deploy marker"
-deployment_is_ready || fail_job "deployment replica readiness check failed"
-runtime_is_healthy || fail_job "deployment health check failed"
+if [[ "$CANONICAL_PUBLICATION_ACTIVE" = 1 ]]; then
+  CANONICAL_DEPLOY_SECONDS="$(canonical_deploy_elapsed_seconds)" \
+    || fail_job "canonical deployment duration evidence is invalid"
+  if [[ "$deployment_observed" != 1 ]] || (( CANONICAL_DEPLOY_SECONDS > 60 )); then
+    gate_result "CANONICAL_DEPLOY_SLO" "FAILED" \
+      "{\"elapsedSeconds\":$CANONICAL_DEPLOY_SECONDS,\"targetSeconds\":60,\"deploymentReady\":false,\"terminalWrite\":0}"
+    fail_job "canonical deployment missed the 60-second terminal SLO"
+  fi
+else
+  DEPLOYED="$(deployed_commit || true)"
+  [[ -n "$DEPLOYED" ]] \
+    && git -C "$WT" merge-base --is-ancestor "$RESULT_COMMIT" "$DEPLOYED" 2>/dev/null \
+    || fail_job "result commit was not deployed according to the canonical deploy marker"
+  deployment_is_ready || fail_job "deployment replica readiness check failed"
+  runtime_is_healthy || fail_job "deployment health check failed"
+fi
 
-EVIDENCE="git:${RESULT_COMMIT};log:${LOG_FILE}"
-psqlq -c "update framework_development_job set job_status='VERIFIED',quality_status='VERIFIED',result_json=\$json\${\"commit\":\"${RESULT_COMMIT}\"}\$json\$,evidence_ref='${EVIDENCE}',rollback_ref='${BASE_COMMIT}',completed_at=current_timestamp,lease_token=null,lease_until=null,updated_at=current_timestamp where job_id=${JOB_ID} and lease_token='${LEASE_TOKEN}'; update framework_process_artifact set delivery_status='VERIFIED',evidence_ref='${EVIDENCE}',updated_at=current_timestamp where process_code='${PROCESS_CODE}' and step_code='${STEP_CODE}' and contract_ref='AUTO:${JOB_TYPE}';" >/dev/null
-event "VERIFIED" "RUNNING" "VERIFIED" "{\"commit\":\"${RESULT_COMMIT}\"}"
+CANONICAL_PACKAGE_FILE="$WT/projects/carbonet-backend-metadata/process-runtime/generated/$PROCESS_CODE/${PROCESS_CODE}__${STEP_CODE}.json"
+CANONICAL_RELEASE_FILE="$WT/projects/carbonet-backend-metadata/process-runtime/generated-endpoints/$PROCESS_CODE/full-stack-release.json"
+if [[ "$CANONICAL_PUBLICATION_ACTIVE" = 1 \
+    && ( -e "$CANONICAL_PACKAGE_FILE" || -e "$CANONICAL_RELEASE_FILE" ) ]]; then
+  [[ -f "$CANONICAL_PACKAGE_FILE" && -f "$CANONICAL_RELEASE_FILE" ]] \
+    || fail_job "canonical package/release evidence is incomplete"
+  CANONICAL_COMMIT_TREE="$(mktemp -d "${TMPDIR:-/tmp}/canonical-result-tree.XXXXXX")" \
+    || fail_job "canonical result commit extraction failed"
+  register_canonical_temp_path "$CANONICAL_COMMIT_TREE" \
+    || fail_job "canonical result temp registration failed"
+  canonical_worktree_paths_clean "$WT" "$PROCESS_CODE" \
+    || fail_job "canonical worktree paths are dirty after publication"
+  canonical_commit_evidence_files "$WT" "$RESULT_COMMIT" "$PROCESS_CODE" "$STEP_CODE" "$CANONICAL_COMMIT_TREE" \
+    || fail_job "canonical result commit extraction failed"
+  CANONICAL_EVIDENCE_JSON="$(canonical_generation_evidence \
+    "$CANONICAL_COMMIT_TREE/${PROCESS_CODE}__${STEP_CODE}.json" \
+    "$CANONICAL_COMMIT_TREE/full-stack-release.json" "$PROCESS_CODE" "$STEP_CODE")" \
+    || fail_job "canonical package/release hash verification failed"
+  if ! CANONICAL_BINDING_EVIDENCE="$(verify_stable_canonical_runtime_deployment \
+      "$WT" "$RESULT_COMMIT" "$PROCESS_CODE" "$STEP_CODE")"; then
+    CANONICAL_DEPLOY_SECONDS="$(canonical_deploy_elapsed_seconds)" \
+      || fail_job "canonical deployment duration evidence is invalid"
+    if (( CANONICAL_DEPLOY_SECONDS > 60 )); then
+      gate_result "CANONICAL_DEPLOY_SLO" "FAILED" \
+        "{\"elapsedSeconds\":$CANONICAL_DEPLOY_SECONDS,\"targetSeconds\":60,\"terminalWrite\":0}"
+    fi
+    gate_result "CANONICAL_RUNTIME_BINDING" "FAILED" '{"terminalWrite":0}'
+    fail_job "canonical deployed Spring mapping verification failed"
+  fi
+  CANONICAL_STABLE_DEPLOYED="$(jq -er '.deployedCommit' <<<"$CANONICAL_BINDING_EVIDENCE")" \
+    || fail_job "canonical stable deploy marker is invalid"
+  gate_result "CANONICAL_RUNTIME_BINDING" "PASSED" "$CANONICAL_BINDING_EVIDENCE"
+  # Publication is re-proved immediately before the terminal transaction.
+  # A push rejection or signal can therefore never mark a READY design as
+  # GENERATED. A later sibling commit is allowed only when RESULT_COMMIT is an
+  # ancestor of the current origin/main.
+  canonical_published=0
+  verify_canonical_commit_published "$WT" "$RESULT_COMMIT" && canonical_published=1
+  CANONICAL_DEPLOY_SECONDS="$(canonical_deploy_elapsed_seconds)" \
+    || fail_job "canonical deployment duration evidence is invalid"
+  if (( CANONICAL_DEPLOY_SECONDS > 60 )); then
+    gate_result "CANONICAL_DEPLOY_SLO" "FAILED" \
+      "{\"elapsedSeconds\":$CANONICAL_DEPLOY_SECONDS,\"targetSeconds\":60,\"terminalWrite\":0}"
+    fail_job "canonical deployment exceeded the 60-second terminal SLO"
+  fi
+  [[ "$canonical_published" = 1 ]] \
+    || fail_job "canonical result commit is not published on origin/main"
+  canonical_deployed_marker_is "$CANONICAL_STABLE_DEPLOYED" \
+    || fail_job "canonical deploy marker changed before terminal finalization"
+  gate_result "CANONICAL_DEPLOY_SLO" "PASSED" \
+    "{\"elapsedSeconds\":$CANONICAL_DEPLOY_SECONDS,\"targetSeconds\":60}"
+  CANONICAL_ROLLBACK_COMMIT="$(canonical_result_parent "$WT" "$RESULT_COMMIT")" \
+    || fail_job "canonical rollback commit is invalid"
+  finalize_canonical_generation "$JOB_ID" "$LEASE_TOKEN" "$WORKER_ID" \
+    "$RESULT_COMMIT" "$CANONICAL_ROLLBACK_COMMIT" "$PROCESS_CODE" "$STEP_CODE" "$LOG_FILE" "$CANONICAL_EVIDENCE_JSON" \
+    || fail_job "canonical generation evidence finalization failed"
+  cleanup_canonical_temp_paths
+  EVIDENCE="git:${RESULT_COMMIT};release:$(jq -r '.releaseHash' <<<"$CANONICAL_EVIDENCE_JSON");log:${LOG_FILE}"
+else
+  # Rolling-upgrade legacy packages keep their established terminal update.
+  # Canonical packages always use the exact evidence transaction above.
+  EVIDENCE="git:${RESULT_COMMIT};log:${LOG_FILE}"
+  psqlq -c "update framework_development_job set job_status='VERIFIED',quality_status='VERIFIED',result_json=\$json\${\"commit\":\"${RESULT_COMMIT}\"}\$json\$,evidence_ref='${EVIDENCE}',rollback_ref='${BASE_COMMIT}',completed_at=current_timestamp,lease_token=null,lease_until=null,updated_at=current_timestamp where job_id=${JOB_ID} and lease_token='${LEASE_TOKEN}'; update framework_process_artifact set delivery_status='VERIFIED',evidence_ref='${EVIDENCE}',updated_at=current_timestamp where process_code='${PROCESS_CODE}' and step_code='${STEP_CODE}' and contract_ref='AUTO:${JOB_TYPE}';" >/dev/null
+  event "VERIFIED" "RUNNING" "VERIFIED" "{\"commit\":\"${RESULT_COMMIT}\"}"
+fi
 git -C "$ROOT_DIR" worktree remove --force "$WT" >/dev/null 2>&1 || true
 printf 'VERIFIED job=%s commit=%s\n' "$JOB_ID" "$RESULT_COMMIT"

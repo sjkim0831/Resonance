@@ -17,15 +17,19 @@ generated_paths=(
   projects/carbonet-frontend/source/src/generated/screen-generation/generatedScreenTypes.ts
   projects/carbonet-backend-metadata/process-runtime/design-preview
   projects/carbonet-backend-metadata/process-runtime/generated
+  projects/carbonet-backend-metadata/process-runtime/generated-endpoints
 )
 
 for generated_path in "${generated_paths[@]}"; do
-  [[ -e "$worktree/$generated_path" ]] || continue
   tracked="$(git -C "$worktree" ls-files -- "$generated_path")"
+  [[ -n "$tracked" || -e "$worktree/$generated_path" ]] || continue
   if [[ -n "$tracked" ]]; then
     git -C "$worktree" restore --worktree -- "$generated_path"
   fi
-  git -C "$worktree" clean -ffd -- "$generated_path" >/dev/null
+  # Generated source roots must contain exactly the target commit. Include
+  # ignored files: an ignored stale Java class is still visible to Gradle and
+  # can otherwise compile into the candidate runtime.
+  git -C "$worktree" clean -ffdx -- "$generated_path" >/dev/null
 done
 
 remaining="$(git -C "$worktree" status --porcelain=v1 -- "${generated_paths[@]}")"

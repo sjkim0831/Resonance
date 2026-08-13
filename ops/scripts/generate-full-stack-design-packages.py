@@ -10,9 +10,17 @@ from __future__ import annotations
 
 import argparse
 import copy
+from concurrent.futures import ThreadPoolExecutor
+import contextlib
+import fcntl
 import hashlib
 import json
+import os
 from pathlib import Path
+import shutil
+import signal
+import sys
+import tempfile
 from typing import Any
 
 
@@ -22,6 +30,344 @@ def fail(message: str) -> None:
 
 def stable(value: Any) -> str:
     return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+
+
+def fsync_directory(path: Path) -> None:
+    descriptor = os.open(path, os.O_RDONLY)
+    try:
+        os.fsync(descriptor)
+    finally:
+        os.close(descriptor)
+
+
+def publication_control_paths(destinations: list[Path]) -> tuple[Path, Path]:
+    common = Path(os.path.commonpath([str(path.parent) for path in destinations]))
+    destination_key = "\n".join(sorted(str(path.resolve(strict=False)) for path in destinations))
+    lock_key = hashlib.sha256(destination_key.encode()).hexdigest()[:24]
+    journal = common / f".canonical-publish-{lock_key}.journal.json"
+    lock = Path(tempfile.gettempdir()) / f"canonical-publish-{lock_key}.lock"
+    return journal, lock
+
+
+@contextlib.contextmanager
+def publication_lock(path: Path):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("a+b") as handle:
+        fcntl.flock(handle.fileno(), fcntl.LOCK_EX)
+        try:
+            yield
+        finally:
+            fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
+
+
+def write_journal(path: Path, value: dict[str, Any]) -> None:
+    descriptor, temporary_name = tempfile.mkstemp(prefix=f".{path.name}.", dir=path.parent)
+    temporary = Path(temporary_name)
+    try:
+        with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
+            os.fchmod(handle.fileno(), 0o600)
+            handle.write(stable(value) + "\n")
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(temporary, path)
+        fsync_directory(path.parent)
+    finally:
+        temporary.unlink(missing_ok=True)
+
+
+def recover_journal(path: Path, expected_destinations: set[Path] | None = None) -> bool:
+    if not path.exists():
+        return False
+    try:
+        value = json.loads(path.read_text(encoding="utf-8"))
+        entries = value["entries"]
+    except (OSError, json.JSONDecodeError, KeyError, TypeError) as exc:
+        fail(f"publish recovery journal is invalid: {exc}")
+    if value.get("schema") != "carbonet.atomic-publish-journal/v1" or not isinstance(entries, list):
+        fail("publish recovery journal schema is invalid")
+    transaction_id = value.get("transactionId")
+    if not isinstance(transaction_id, str) or not transaction_id:
+        fail("publish recovery transaction id is invalid")
+    destinations: set[Path] = set()
+    validated: list[tuple[Path, Path, Path, bool, str, str | None]] = []
+    for entry in entries:
+        if not isinstance(entry, dict) or set(entry) != {"destination", "incoming", "backup", "hadDestination", "stagedHash", "originalHash"}:
+            fail("publish recovery entry is invalid")
+        destination = Path(entry["destination"])
+        incoming = Path(entry["incoming"])
+        backup = Path(entry["backup"])
+        if not all(path.is_absolute() for path in (destination, incoming, backup)):
+            fail("publish recovery paths must be absolute")
+        destination = destination.resolve(strict=False)
+        if destination in destinations:
+            fail("publish recovery destinations must be unique")
+        if incoming.parent != destination.parent or backup.parent != destination.parent:
+            fail("publish recovery artifact escaped destination parent")
+        if (incoming.name != f".{destination.name}.incoming-{transaction_id}"
+                or backup.name != f".{destination.name}.backup-{transaction_id}"):
+            fail("publish recovery artifact name is invalid")
+        for component in (destination, *destination.parents, incoming, backup):
+            if component.is_symlink():
+                fail("publish recovery path cannot traverse a symlink")
+        staged_hash = entry["stagedHash"]
+        if not isinstance(staged_hash, str) or len(staged_hash) != 64:
+            fail("publish recovery staged hash is invalid")
+        original_hash = entry["originalHash"]
+        if original_hash is not None and (not isinstance(original_hash, str) or len(original_hash) != 64):
+            fail("publish recovery original hash is invalid")
+        destinations.add(destination)
+        validated.append((destination, incoming, backup, entry["hadDestination"] is True, staged_hash, original_hash))
+    for destination in destinations:
+        if any(destination in other.parents or other in destination.parents
+               for other in destinations if other != destination):
+            fail("publish recovery destinations cannot be nested")
+    if expected_destinations is not None and destinations != expected_destinations:
+        fail("publish recovery destinations do not match the journal")
+    committed = value.get("phase") == "COMMITTED"
+    committed_mismatch = any(
+        not destination.is_dir() or destination.is_symlink() or directory_hash(destination) != staged_hash
+        for destination, _, _, _, staged_hash, _ in validated
+    ) if committed else False
+    if committed_mismatch and any(
+        had_destination and (not backup.is_dir() or backup.is_symlink())
+        for _, _, backup, had_destination, _, _ in validated
+    ):
+        fail("committed publish mismatch cannot be rolled back; recovery journal preserved")
+    if (committed_mismatch or not committed):
+        for destination, _, backup, had_destination, staged_hash, original_hash in validated:
+            if backup.exists():
+                if original_hash is None or backup.is_symlink() or not backup.is_dir() or directory_hash(backup) != original_hash:
+                    fail(f"publish recovery backup hash mismatch: {backup}")
+            elif had_destination:
+                if not destination.is_dir() or destination.is_symlink() or directory_hash(destination) != original_hash:
+                    fail(f"publish recovery cannot prove old destination: {destination}")
+            elif destination.exists() and directory_hash(destination) != staged_hash:
+                fail(f"publish recovery unexpected new destination: {destination}")
+    for destination, incoming, backup, had_destination, staged_hash, original_hash in reversed(validated):
+        if committed:
+            if committed_mismatch:
+                if backup.is_dir() and not backup.is_symlink():
+                    shutil.rmtree(destination, ignore_errors=True)
+                    os.replace(backup, destination)
+                    fsync_directory(destination.parent)
+                elif not had_destination:
+                    shutil.rmtree(destination, ignore_errors=True)
+                    fsync_directory(destination.parent)
+                continue
+            shutil.rmtree(incoming, ignore_errors=True)
+            shutil.rmtree(backup, ignore_errors=True)
+            continue
+        if backup.exists():
+            if destination.exists():
+                shutil.rmtree(destination)
+            os.replace(backup, destination)
+            fsync_directory(destination.parent)
+        elif had_destination:
+            if not destination.exists() or directory_hash(destination) != original_hash:
+                fail(f"publish recovery cannot prove old destination: {destination}")
+        elif not had_destination and destination.exists() and not incoming.exists():
+            shutil.rmtree(destination)
+            fsync_directory(destination.parent)
+        shutil.rmtree(incoming, ignore_errors=True)
+        shutil.rmtree(backup, ignore_errors=True)
+    path.unlink()
+    fsync_directory(path.parent)
+    if committed_mismatch:
+        fail("committed publish hash mismatch was rolled back")
+    return True
+
+
+def recover_publish_destinations(destinations: list[Path]) -> bool:
+    resolved = [path.resolve(strict=False) for path in destinations]
+    if not resolved:
+        fail("recover publish set requires destinations")
+    journal, lock = publication_control_paths(resolved)
+    with publication_lock(lock):
+        return recover_journal(journal, set(resolved))
+
+
+def maybe_kill(phase: str, index: int) -> None:
+    if os.environ.get("CANONICAL_PUBLISH_KILL_AFTER") == f"{phase}:{index}":
+        os.kill(os.getpid(), signal.SIGKILL)
+
+
+def directory_bytes(root: Path) -> dict[str, bytes]:
+    if root.is_symlink():
+        fail(f"publish tree cannot be a symlink: {root}")
+    if not root.is_dir():
+        return {}
+    result: dict[str, bytes] = {}
+    for path in root.rglob("*"):
+        if path.is_symlink():
+            fail(f"publish tree cannot contain symlinks: {path}")
+        if path.is_file():
+            result[str(path.relative_to(root)).replace(os.sep, "/")] = path.read_bytes()
+    return result
+
+
+def directory_hash(root: Path) -> str:
+    value = hashlib.sha256()
+    for relative, content in sorted(directory_bytes(root).items()):
+        value.update(relative.encode("utf-8")); value.update(b"\0")
+        value.update(hashlib.sha256(content).digest())
+    return value.hexdigest()
+
+
+def validate_publish_pairs(pairs: list[tuple[Path, Path]]) -> list[tuple[Path, Path]]:
+    if not pairs:
+        fail("publish set requires existing staged directories")
+    normalized: list[tuple[Path, Path]] = []
+    for staged, destination in pairs:
+        for component in (staged.absolute(), *staged.absolute().parents,
+                          destination.absolute(), *destination.absolute().parents):
+            if component.is_symlink():
+                fail(f"publish path cannot traverse a symlink: {component}")
+        if staged.is_symlink() or not staged.is_dir():
+            fail(f"publish stage must be a real directory: {staged}")
+        if destination.is_symlink():
+            fail(f"publish destination cannot be a symlink: {destination}")
+        staged_resolved = staged.resolve(strict=True)
+        destination_resolved = destination.resolve(strict=False)
+        if (staged_resolved == destination_resolved
+                or staged_resolved in destination_resolved.parents
+                or destination_resolved in staged_resolved.parents):
+            fail("publish stage and destination cannot be nested")
+        normalized.append((staged_resolved, destination_resolved))
+    destinations = [destination for _, destination in normalized]
+    for index, destination in enumerate(destinations):
+        if any(destination == other or destination in other.parents or other in destination.parents
+               for other in destinations[index + 1:]):
+            fail("publish destinations must be unique and non-nested")
+    for staged, _ in normalized:
+        directory_bytes(staged)
+    return normalized
+
+
+def publish_directories(pairs: list[tuple[Path, Path]]) -> int:
+    """Publish a validated set of directories together, with rollback."""
+    pairs = validate_publish_pairs(pairs)
+    destinations = [destination for _, destination in pairs]
+    journal_path, lock_path = publication_control_paths(destinations)
+    with publication_lock(lock_path):
+        recover_journal(journal_path, set(destinations))
+        return _publish_directories_locked(pairs, journal_path)
+
+
+def _publish_directories_locked(pairs: list[tuple[Path, Path]], journal_path: Path) -> int:
+    changed = [(staged, destination) for staged, destination in pairs
+               if directory_bytes(staged) != directory_bytes(destination)]
+    if not changed:
+        return 0
+    transaction_id = f"{os.getpid()}-{os.urandom(8).hex()}"
+    prepared: list[tuple[Path, Path, Path]] = []
+    activated: list[tuple[Path, Path]] = []
+    created_parents: list[Path] = []
+    success = False
+    try:
+        for staged, destination in changed:
+            missing: list[Path] = []
+            cursor = destination.parent
+            while not cursor.exists():
+                missing.append(cursor)
+                cursor = cursor.parent
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            created_parents.extend(missing)
+            incoming = destination.parent / f".{destination.name}.incoming-{transaction_id}"
+            backup = destination.parent / f".{destination.name}.backup-{transaction_id}"
+            if incoming.exists() or incoming.is_symlink() or backup.exists() or backup.is_symlink():
+                fail("publish recovery artifact already exists")
+            incoming.mkdir(mode=0o700)
+            prepared.append((destination, incoming, backup))
+            shutil.copytree(staged, incoming, dirs_exist_ok=True)
+            for copied in incoming.rglob("*"):
+                if copied.is_file():
+                    with copied.open("rb") as handle:
+                        os.fsync(handle.fileno())
+            fsync_directory(incoming)
+        journal = {
+            "schema": "carbonet.atomic-publish-journal/v1",
+            "transactionId": transaction_id,
+            "phase": "PREPARED",
+            "entries": [
+                {"destination": str(destination), "incoming": str(incoming),
+                 "backup": str(backup), "hadDestination": destination.exists(),
+                 "stagedHash": directory_hash(staged),
+                 "originalHash": directory_hash(destination) if destination.exists() else None}
+                for (staged, _), (destination, incoming, backup) in zip(changed, prepared)
+            ],
+        }
+        write_journal(journal_path, journal)
+        for index, (destination, _, backup) in enumerate(prepared, 1):
+            journal["phase"] = "BACKING_UP"
+            journal["backupIndex"] = index
+            write_journal(journal_path, journal)
+            if destination.exists():
+                os.replace(destination, backup)
+                fsync_directory(destination.parent)
+            maybe_kill("backup", index)
+        for index, (destination, incoming, backup) in enumerate(prepared, 1):
+            journal["phase"] = "ACTIVATING"
+            journal["activationIndex"] = index
+            write_journal(journal_path, journal)
+            staged_hash = journal["entries"][index - 1]["stagedHash"]
+            if directory_hash(incoming) != staged_hash:
+                fail(f"prepared publish tree hash mismatch: {incoming}")
+            os.replace(incoming, destination)
+            fsync_directory(destination.parent)
+            activated.append((destination, backup))
+            maybe_kill("activation", index)
+        maybe_kill("commit", 0)
+        journal["phase"] = "COMMITTED"
+        write_journal(journal_path, journal)
+        maybe_kill("commit", 1)
+        success = True
+    except BaseException:
+        rollback_ok = True
+        try:
+            for entry, (destination, _, backup) in zip(journal.get("entries", []), prepared):
+                original_hash = entry["originalHash"]
+                if backup.exists() and (original_hash is None or directory_hash(backup) != original_hash):
+                    raise RuntimeError(f"rollback backup hash mismatch: {backup}")
+                if not backup.exists() and original_hash is not None and (
+                        not destination.is_dir() or directory_hash(destination) != original_hash):
+                    raise RuntimeError(f"rollback original cannot be proven: {destination}")
+            for entry, (destination, _, backup) in reversed(list(zip(journal.get("entries", []), prepared))):
+                original_hash = entry["originalHash"]
+                if backup.exists():
+                    if destination.exists():
+                        shutil.rmtree(destination, ignore_errors=False)
+                    os.replace(backup, destination)
+                    fsync_directory(destination.parent)
+                elif original_hash is None:
+                    if destination.exists():
+                        shutil.rmtree(destination, ignore_errors=False)
+                elif not destination.exists() or directory_hash(destination) != original_hash:
+                    raise RuntimeError(f"rollback original cannot be proven: {destination}")
+            if any(entry["originalHash"] is not None and directory_hash(Path(entry["destination"])) != entry["originalHash"]
+                   for entry in journal.get("entries", [])):
+                raise RuntimeError("rollback verification failed")
+        except BaseException:
+            rollback_ok = False
+        if rollback_ok:
+            journal_path.unlink(missing_ok=True)
+            fsync_directory(journal_path.parent)
+        raise
+    finally:
+        for destination, incoming, backup in prepared:
+            shutil.rmtree(incoming, ignore_errors=True)
+        if not success:
+            for parent in sorted(set(created_parents), key=lambda path: len(path.parts), reverse=True):
+                try:
+                    parent.rmdir()
+                except OSError:
+                    pass
+    if success:
+        for index, (_, backup) in enumerate(activated, 1):
+            shutil.rmtree(backup, ignore_errors=True)
+            maybe_kill("cleanup", index)
+        journal_path.unlink(missing_ok=True)
+        fsync_directory(journal_path.parent)
+    return len(changed)
 
 
 JSON_SCHEMA_KEYS = {
@@ -844,30 +1190,120 @@ def render_step(
     return body
 
 
-def main() -> None:
-    parser = argparse.ArgumentParser()
-    parser.add_argument("snapshot", type=Path)
-    parser.add_argument("--out", type=Path, required=True)
-    parser.add_argument("--allow-review-required", action="store_true")
-    parser.add_argument("--check", action="store_true")
-    args = parser.parse_args()
-    data = load(args.snapshot)
-    for process in data["processes"]:
-        process["steps"] = [normalize_step_contract(step) for step in process.get("steps", [])]
-    packages: list[tuple[str, dict[str, Any]]] = []
+def render_packages(data: dict[str, Any], allow_review_required: bool, workers: int) -> tuple[list[tuple[str, dict[str, Any]]], int]:
+    jobs: list[tuple[dict[str, Any], dict[str, Any], list[dict[str, Any]]]] = []
     skipped_review = 0
     for process in data["processes"]:
         shared_screens = [
             screen
             for process_step in process.get("steps", [])
-            for screen in (process_step.get("screen_contract", []) if isinstance(process_step.get("screen_contract"), list) else [])
+            for screen in (process_step.get("screen_contract", [])
+                           if isinstance(process_step.get("screen_contract"), list) else [])
         ]
         for step in process.get("steps", []):
-            if step.get("approval_status") != "APPROVED" and not args.allow_review_required:
+            if step.get("approval_status") != "APPROVED" and not allow_review_required:
                 skipped_review += 1
                 continue
-            package = render_step(process, step, shared_screens)
-            packages.append((f"{process['processCode']}__{step['step_code']}.json", package))
+            jobs.append((process, step, shared_screens))
+    bounded_workers = max(1, min(workers, 16))
+    with ThreadPoolExecutor(max_workers=bounded_workers) as pool:
+        rendered = list(pool.map(lambda job: render_step(*job), jobs))
+    packages = [(f"{process['processCode']}__{step['step_code']}.json", package)
+                for (process, step, _), package in zip(jobs, rendered)]
+    return packages, skipped_review
+
+
+def canonical_screens_for_step(catalog: dict[str, Any], process_code: str, step_code: str) -> list[dict[str, str]]:
+    screens = catalog.get("screens")
+    if catalog.get("schema") != "carbonet.canonical-design/v1" or not isinstance(screens, list):
+        fail("canonical design catalog is invalid")
+    matches = [
+        {"screenKey": screen["screenKey"], "designHash": screen["designHash"]}
+        for screen in screens
+        if isinstance(screen, dict)
+        and screen.get("processCode") == process_code
+        and screen.get("stepCode") == step_code
+        and isinstance(screen.get("screenKey"), str)
+        and isinstance(screen.get("designHash"), str)
+    ]
+    matches.sort(key=lambda item: item["screenKey"])
+    if not matches:
+        fail(f"canonical design catalog has no screen for {process_code}/{step_code}")
+    return matches
+
+
+def subset_canonical_catalog(catalog: dict[str, Any], process_code: str | None) -> dict[str, Any]:
+    if catalog.get("schema") != "carbonet.canonical-design/v1" or not isinstance(catalog.get("screens"), list):
+        fail("canonical design catalog is invalid")
+    screens = [screen for screen in catalog["screens"]
+               if not process_code or screen.get("processCode") == process_code]
+    if not screens:
+        fail(f"canonical design catalog has no screens for {process_code or 'all processes'}")
+    lines = [screen["screenKey"] + "\x1f" + screen["designHash"] for screen in screens]
+    return {
+        "schema": "carbonet.canonical-design/v1",
+        "catalogHash": hashlib.sha256("\n".join(lines).encode()).hexdigest(),
+        "screenCount": len(screens),
+        "screens": screens,
+    }
+
+
+def main() -> None:
+    if len(sys.argv) > 1 and sys.argv[1] == "--subset-canonical-catalog":
+        if len(sys.argv) not in (3, 4):
+            fail("--subset-canonical-catalog requires CATALOG [PROCESS_CODE]")
+        try:
+            catalog = json.loads(Path(sys.argv[2]).read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            fail(f"invalid canonical catalog: {exc}")
+        print(stable(subset_canonical_catalog(catalog, sys.argv[3] if len(sys.argv) == 4 else None)))
+        return
+    if len(sys.argv) > 1 and sys.argv[1] == "--recover-publish-set":
+        destinations = [Path(value) for value in sys.argv[2:]]
+        recovered = recover_publish_destinations(destinations)
+        print(stable({"recovered": recovered, "destinationCount": len(destinations)}))
+        return
+    if len(sys.argv) > 1 and sys.argv[1] == "--publish-set":
+        values = [Path(value) for value in sys.argv[2:]]
+        if not values or len(values) % 2:
+            fail("--publish-set requires STAGED DESTINATION pairs")
+        changed = publish_directories(list(zip(values[0::2], values[1::2])))
+        print(stable({"published": True, "directoriesChanged": changed,
+                      "directoryCount": len(values) // 2}))
+        return
+    parser = argparse.ArgumentParser()
+    parser.add_argument("snapshot", type=Path)
+    parser.add_argument("--out", type=Path, required=True)
+    parser.add_argument("--workers", type=int, default=1)
+    parser.add_argument("--allow-review-required", action="store_true")
+    parser.add_argument("--check", action="store_true")
+    parser.add_argument("--canonical-catalog", type=Path)
+    args = parser.parse_args()
+    data = load(args.snapshot)
+    for process in data["processes"]:
+        process["steps"] = [normalize_step_contract(step) for step in process.get("steps", [])]
+    packages, skipped_review = render_packages(data, args.allow_review_required, args.workers)
+    canonical_catalog = None
+    canonical_catalog_hash = None
+    if args.canonical_catalog:
+        try:
+            canonical_catalog = json.loads(args.canonical_catalog.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            fail(f"invalid canonical catalog: {exc}")
+        canonical_catalog_hash = canonical_catalog.get("catalogHash")
+        if not isinstance(canonical_catalog_hash, str) or len(canonical_catalog_hash) != 64:
+            fail("canonical design catalogHash is invalid")
+        enriched = []
+        for filename, package in packages:
+            package["canonicalCatalogHash"] = canonical_catalog_hash
+            package["canonicalScreens"] = canonical_screens_for_step(
+                canonical_catalog, package["process"]["code"], package["step"]["code"]
+            )
+            package["packageHash"] = hashlib.sha256(stable({
+                key: value for key, value in package.items() if key != "packageHash"
+            }).encode()).hexdigest()
+            enriched.append((filename, package))
+        packages = enriched
     if args.check:
         print(stable({"valid": True, "packages": len(packages), "skippedReview": skipped_review}))
         return
@@ -889,6 +1325,12 @@ def main() -> None:
         "schemaVersion": "2.0.0", "packageCount": len(index),
         "skippedReviewRequired": skipped_review, "packages": sorted(index, key=lambda x: (x["processCode"], x["stepCode"])),
     }
+    if canonical_catalog_hash:
+        manifest["canonicalCatalogHash"] = canonical_catalog_hash
+        manifest["canonicalScreens"] = sorted(
+            [screen for _, package in packages for screen in package["canonicalScreens"]],
+            key=lambda item: item["screenKey"],
+        )
     manifest["manifestHash"] = hashlib.sha256(stable(manifest).encode()).hexdigest()
     (args.out / "index.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     print(stable({"generated": len(index), "skippedReview": skipped_review, "manifestHash": manifest["manifestHash"]}))

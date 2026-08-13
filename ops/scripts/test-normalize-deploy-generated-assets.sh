@@ -15,10 +15,13 @@ mkdir -p \
   "$tmp/projects/carbonet-frontend/source/src/generated/screen-generation/definitions" \
   "$tmp/projects/carbonet-backend-metadata/process-runtime/design-preview/ORGANIZATIONAL_BOUNDARY" \
   "$tmp/projects/carbonet-backend-metadata/process-runtime/generated/ORGANIZATIONAL_BOUNDARY" \
+  "$tmp/projects/carbonet-backend-metadata/process-runtime/generated-endpoints/ORGANIZATIONAL_BOUNDARY/src/main/java/example" \
   "$tmp/.gradle/caches"
 printf 'tracked\n' >"$tmp/apps/carbonet-api/src/main/resources/static/react-app/index.html"
 printf 'tracked\n' >"$tmp/projects/carbonet-frontend/src/main/resources/static/react-app/index.html"
-printf '.gradle/\n' >"$tmp/.gitignore"
+printf 'package example; public class GeneratedEndpoint {}\n' \
+  >"$tmp/projects/carbonet-backend-metadata/process-runtime/generated-endpoints/ORGANIZATIONAL_BOUNDARY/src/main/java/example/GeneratedEndpoint.java"
+printf '.gradle/\n**/StaleIgnoredEndpoint.java\n' >"$tmp/.gitignore"
 git -C "$tmp" add .
 git -C "$tmp" commit -qm seed
 
@@ -28,10 +31,17 @@ printf 'generated\n' >"$tmp/projects/carbonet-frontend/src/main/resources/static
 printf 'generated\n' >"$tmp/projects/carbonet-frontend/source/src/generated/screen-generation/definitions/new.json"
 printf 'generated\n' >"$tmp/projects/carbonet-backend-metadata/process-runtime/design-preview/ORGANIZATIONAL_BOUNDARY/preview.json"
 printf 'generated\n' >"$tmp/projects/carbonet-backend-metadata/process-runtime/generated/ORGANIZATIONAL_BOUNDARY/spec.json"
+endpoint_java="$tmp/projects/carbonet-backend-metadata/process-runtime/generated-endpoints/ORGANIZATIONAL_BOUNDARY/src/main/java/example"
+printf 'package example; public class GeneratedEndpoint { BROKEN }\n' >"$endpoint_java/GeneratedEndpoint.java"
+printf 'package example; public class StaleEndpoint {}\n' >"$endpoint_java/StaleEndpoint.java"
+printf 'package example; public class StaleIgnoredEndpoint {}\n' >"$endpoint_java/StaleIgnoredEndpoint.java"
 printf 'cache\n' >"$tmp/.gradle/caches/keep.bin"
 
 bash "$normalizer" "$tmp" | grep -q GENERATED_WORKTREE_CLEAN
 [[ "$(cat "$tmp/apps/carbonet-api/src/main/resources/static/react-app/index.html")" == tracked ]]
+grep -Fq 'public class GeneratedEndpoint {}' "$endpoint_java/GeneratedEndpoint.java"
+[[ ! -e "$endpoint_java/StaleEndpoint.java" ]]
+[[ ! -e "$endpoint_java/StaleIgnoredEndpoint.java" ]]
 [[ -f "$tmp/.gradle/caches/keep.bin" ]]
 [[ -z "$(git -C "$tmp" status --porcelain=v1)" ]]
 echo "GENERATED_WORKTREE_NORMALIZE_TEST_PASS"

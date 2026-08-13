@@ -188,6 +188,14 @@ while IFS= read -r path; do
       add_test "automation:shell-syntax"
       add_reason "automation-only"
       ;;
+    projects/carbonet-backend-metadata/process-runtime/generated-endpoints/*)
+      # Canonical endpoint Java is a real backend source root (wired by the
+      # carbonet-common-core source set), not mounted catalog metadata. Any
+      # committed endpoint release therefore requires compile + runtime deploy.
+      runtime_required=true; backend_required=true; catalog_only=false
+      add_test "backend:compile"
+      add_reason "generated-endpoint-runtime-source"
+      ;;
     ops/runtime-metadata/*|projects/carbonet-backend-metadata/*)
       # These declarative packages are consumed from the mounted project path.
       # Contract validation/reload is sufficient; no Java or Vite build.

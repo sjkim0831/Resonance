@@ -31,6 +31,7 @@ git config user.name planner-test
 git config user.email planner-test@example.invalid
 mkdir -p docs tests ops/scripts ops/tests projects/carbonet-frontend/source/src projects/carbonet-frontend/source/scripts apps/carbonet-api/src/main/java/example \
   apps/carbonet-api/src/main/resources/db/migration projects/carbonet-backend-metadata/process-runtime/generated \
+  projects/carbonet-backend-metadata/process-runtime/generated-endpoints/PROCESS_A/src/main/java/example \
   platform/control-plane/catalog platform/control-plane/backstage/packages/app/src deploy/k8s/control-plane
 printf 'base\n' > README.md
 git add . && git commit -qm base
@@ -170,11 +171,30 @@ eval "$(bash "$PLANNER" "$identity_design" "$policy" --format env)"
 [[ "$PLAN_RUNTIME_REQUIRED" == false ]]
 [[ "$PLAN_CATALOG_ONLY" == true ]]
 
+# Generated endpoint Java is compiled by carbonet-common-core. Its more
+# specific path must win before the generic backend-metadata catalog rule and
+# select a real backend runtime deployment.
+printf 'package example; public class GeneratedEndpoint {}\n' \
+  > projects/carbonet-backend-metadata/process-runtime/generated-endpoints/PROCESS_A/src/main/java/example/GeneratedEndpoint.java
+git add . && git commit -qm generated-endpoint-runtime
+endpoint_runtime="$(git rev-parse HEAD)"
+eval "$(bash "$PLANNER" "$policy" "$endpoint_runtime" --format env)"
+[[ "$PLAN_RUNTIME_REQUIRED" == true ]]
+[[ "$PLAN_FRONTEND_REQUIRED" == false ]]
+[[ "$PLAN_BACKEND_REQUIRED" == true ]]
+[[ "$PLAN_DATABASE_REQUIRED" == false ]]
+[[ "$PLAN_CATALOG_ONLY" == false ]]
+[[ "$PLAN_TESTS" == *"backend:compile"* ]]
+[[ "$PLAN_REASONS" == *"generated-endpoint-runtime-source"* ]]
+
+# Legacy mounted process metadata keeps its no-build behavior; endpoint source
+# classification must not widen the generic metadata rule.
 printf '{}\n' > projects/carbonet-backend-metadata/process-runtime/generated/index.json
 git add . && git commit -qm runtime-metadata
 metadata="$(git rev-parse HEAD)"
-eval "$(bash "$PLANNER" "$policy" "$metadata" --format env)"
+eval "$(bash "$PLANNER" "$endpoint_runtime" "$metadata" --format env)"
 [[ "$PLAN_RUNTIME_REQUIRED" == false ]]
+[[ "$PLAN_BACKEND_REQUIRED" == false ]]
 [[ "$PLAN_CATALOG_ONLY" == true ]]
 
 printf 'print(\"ok\")\n' > tests/test_ai_builder_contract_generator.py

@@ -3,7 +3,12 @@
 
 from importlib.util import module_from_spec, spec_from_file_location
 from pathlib import Path
+import os
+import subprocess
+import sys
+import tempfile
 import unittest
+from unittest import mock
 
 
 MODULE_PATH = Path(__file__).with_name("generate-full-stack-design-packages.py")
@@ -14,6 +19,324 @@ SPEC.loader.exec_module(GENERATOR)
 
 
 class GroupFieldsByAudienceTest(unittest.TestCase):
+    def test_canonical_catalog_hashes_are_bound_to_each_runtime_step(self) -> None:
+        catalog = {
+            "schema": "carbonet.canonical-design/v1",
+            "screens": [
+                {"processCode": "P1", "stepCode": "S1", "screenKey": "P1|S1|USER|/a", "designHash": "a" * 64},
+                {"processCode": "P1", "stepCode": "S1", "screenKey": "P1|S1|ADMIN|/b", "designHash": "b" * 64},
+                {"processCode": "P1", "stepCode": "S2", "screenKey": "P1|S2|USER|/c", "designHash": "c" * 64},
+            ],
+        }
+        self.assertEqual(
+            [
+                {"screenKey": "P1|S1|ADMIN|/b", "designHash": "b" * 64},
+                {"screenKey": "P1|S1|USER|/a", "designHash": "a" * 64},
+            ],
+            GENERATOR.canonical_screens_for_step(catalog, "P1", "S1"),
+        )
+        with self.assertRaisesRegex(SystemExit, "no screen"):
+            GENERATOR.canonical_screens_for_step(catalog, "P1", "MISSING")
+        subset = GENERATOR.subset_canonical_catalog(catalog, "P1")
+        self.assertEqual(3, subset["screenCount"])
+        self.assertRegex(subset["catalogHash"], r"^[0-9a-f]{64}$")
+        with self.assertRaisesRegex(SystemExit, "no screens"):
+            GENERATOR.subset_canonical_catalog(catalog, "MISSING")
+
+    def test_parallel_rendering_is_bounded_and_deterministic(self) -> None:
+        data = {"processes": [{
+            "processCode": "PROCESS_A",
+            "steps": [
+                {"step_code": f"STEP_{index:02d}", "approval_status": "APPROVED", "screen_contract": []}
+                for index in range(24)
+            ],
+        }]}
+        def projected(process, step, shared):
+            return {"identity": f"{process['processCode']}/{step['step_code']}", "shared": shared}
+        with mock.patch.object(GENERATOR, "render_step", side_effect=projected):
+            serial, serial_skipped = GENERATOR.render_packages(data, False, 1)
+            parallel, parallel_skipped = GENERATOR.render_packages(data, False, 999)
+        self.assertEqual(0, serial_skipped)
+        self.assertEqual(serial_skipped, parallel_skipped)
+        self.assertEqual(serial, parallel)
+        self.assertEqual(24, len(parallel))
+
+    def test_atomic_publish_is_zero_rewrite_and_rolls_back_all_directories(self) -> None:
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            stages = [root / f"stage-{index}" for index in range(3)]
+            outputs = [root / f"out-{index}" for index in range(3)]
+            for index, (stage, output) in enumerate(zip(stages, outputs)):
+                stage.mkdir(); output.mkdir()
+                (stage / "artifact.txt").write_text(f"new-{index}", encoding="utf-8")
+                (output / "artifact.txt").write_text(f"old-{index}", encoding="utf-8")
+            pairs = list(zip(stages, outputs))
+            self.assertEqual(3, GENERATOR.publish_directories(pairs))
+            mtimes = [(output / "artifact.txt").stat().st_mtime_ns for output in outputs]
+            self.assertEqual(0, GENERATOR.publish_directories(pairs))
+            self.assertEqual(mtimes, [(output / "artifact.txt").stat().st_mtime_ns for output in outputs])
+
+            for index, stage in enumerate(stages):
+                (stage / "artifact.txt").write_text(f"next-{index}", encoding="utf-8")
+            original_replace = GENERATOR.os.replace
+            def fail_second_activation(source, destination):
+                if ".out-1.incoming-" in str(source):
+                    raise OSError("schema mutation publication failure")
+                return original_replace(source, destination)
+            with mock.patch.object(GENERATOR.os, "replace", side_effect=fail_second_activation):
+                with self.assertRaisesRegex(OSError, "schema mutation"):
+                    GENERATOR.publish_directories(pairs)
+            self.assertEqual(
+                [f"new-{index}" for index in range(3)],
+                [(output / "artifact.txt").read_text(encoding="utf-8") for output in outputs],
+            )
+            self.assertFalse(any("incoming" in path.name or "backup" in path.name for path in root.iterdir()))
+
+    def test_atomic_publish_restores_all_directories_when_backup_phase_crashes(self) -> None:
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            stages = [root / f"stage-{index}" for index in range(3)]
+            outputs = [root / f"out-{index}" for index in range(3)]
+            for index, (stage, output) in enumerate(zip(stages, outputs)):
+                stage.mkdir(); output.mkdir()
+                (stage / "artifact.txt").write_text(f"new-{index}", encoding="utf-8")
+                (output / "artifact.txt").write_text(f"old-{index}", encoding="utf-8")
+            original_replace = GENERATOR.os.replace
+            backup_count = 0
+
+            def fail_second_backup(source, destination):
+                nonlocal backup_count
+                if ".backup-" in str(destination):
+                    backup_count += 1
+                    if backup_count == 2:
+                        raise OSError("backup phase crash")
+                return original_replace(source, destination)
+
+            with mock.patch.object(GENERATOR.os, "replace", side_effect=fail_second_backup):
+                with self.assertRaisesRegex(OSError, "backup phase"):
+                    GENERATOR.publish_directories(list(zip(stages, outputs)))
+            self.assertEqual(
+                [f"old-{index}" for index in range(3)],
+                [(output / "artifact.txt").read_text(encoding="utf-8") for output in outputs],
+            )
+            self.assertFalse(any("incoming" in path.name or "backup" in path.name for path in root.iterdir()))
+
+    def test_atomic_publish_rejects_symlink_and_nested_paths_before_writes(self) -> None:
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            stage = root / "stage"; stage.mkdir()
+            (stage / "artifact.txt").write_text("new", encoding="utf-8")
+            output = root / "output"; output.mkdir()
+            (output / "artifact.txt").write_text("old", encoding="utf-8")
+            linked = root / "linked"
+            try:
+                linked.symlink_to(output, target_is_directory=True)
+            except OSError:
+                self.skipTest("directory symlinks are unavailable")
+            with self.assertRaisesRegex(SystemExit, "symlink"):
+                GENERATOR.publish_directories([(stage, linked)])
+            linked.unlink()
+            nested = output / "nested"
+            with self.assertRaisesRegex(SystemExit, "nested"):
+                GENERATOR.publish_directories([(stage, output), (stage, nested)])
+            inside_link = stage / "escape"
+            inside_link.symlink_to(output, target_is_directory=True)
+            with self.assertRaisesRegex(SystemExit, "symlink"):
+                GENERATOR.publish_directories([(stage, root / "other")])
+            self.assertEqual("old", (output / "artifact.txt").read_text(encoding="utf-8"))
+            self.assertFalse((root / "other").exists())
+
+    def test_process_scoped_publish_preserves_sibling_endpoint_tree(self) -> None:
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            endpoint_root = root / "generated-endpoints"
+            process_a = endpoint_root / "PROCESS_A"
+            process_b = endpoint_root / "PROCESS_B"
+            process_a.mkdir(parents=True); process_b.mkdir()
+            (process_a / "manifest.json").write_text("old-a", encoding="utf-8")
+            (process_b / "manifest.json").write_text("stable-b", encoding="utf-8")
+            stage = root / "stage-a"; stage.mkdir()
+            (stage / "manifest.json").write_text("new-a", encoding="utf-8")
+
+            self.assertEqual(1, GENERATOR.publish_directories([(stage, process_a)]))
+            self.assertEqual("new-a", (process_a / "manifest.json").read_text(encoding="utf-8"))
+            self.assertEqual("stable-b", (process_b / "manifest.json").read_text(encoding="utf-8"))
+            self.assertEqual(0, GENERATOR.publish_directories([(stage, process_a)]))
+
+    def test_sigkill_publish_is_recovered_on_next_run(self) -> None:
+        for cut in ("backup:1", "backup:3", "activation:1", "activation:3", "commit:0", "commit:1", "cleanup:1", "cleanup:3"):
+            with self.subTest(cut=cut), tempfile.TemporaryDirectory() as folder:
+                root = Path(folder)
+                stages = [root / f"stage-{index}" for index in range(3)]
+                outputs = [root / f"out-{index}" for index in range(3)]
+                for index, (stage, output) in enumerate(zip(stages, outputs)):
+                    stage.mkdir(); output.mkdir()
+                    (stage / "artifact.txt").write_text(f"new-{index}", encoding="utf-8")
+                    (output / "artifact.txt").write_text(f"old-{index}", encoding="utf-8")
+                command = [sys.executable, str(MODULE_PATH), "--publish-set"]
+                for stage, output in zip(stages, outputs):
+                    command.extend((str(stage), str(output)))
+                environment = os.environ.copy(); environment["CANONICAL_PUBLISH_KILL_AFTER"] = cut
+                crashed = subprocess.run(command, env=environment, capture_output=True, text=True)
+                self.assertNotEqual(0, crashed.returncode)
+                recovered = subprocess.run(
+                    [sys.executable, str(MODULE_PATH), "--recover-publish-set", *map(str, outputs)],
+                    capture_output=True, text=True,
+                )
+                self.assertEqual(0, recovered.returncode, recovered.stderr)
+                self.assertTrue(__import__("json").loads(recovered.stdout)["recovered"])
+                expected = "new" if cut in {"commit:1", "cleanup:1", "cleanup:3"} else "old"
+                self.assertEqual(
+                    [f"{expected}-{index}" for index in range(3)],
+                    [(output / "artifact.txt").read_text(encoding="utf-8") for output in outputs],
+                )
+                self.assertFalse(any("incoming" in path.name or "backup" in path.name or "journal" in path.name
+                                     for path in root.iterdir()))
+
+    def test_recovery_rejects_tampered_journal_without_touching_outside_path(self) -> None:
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            outputs = [root / f"out-{index}" for index in range(3)]
+            for output in outputs:
+                output.mkdir(); (output / "artifact.txt").write_text("old", encoding="utf-8")
+            journal, _ = GENERATOR.publication_control_paths(outputs)
+            outside = root.parent / "outside-do-not-touch"
+            outside.mkdir(exist_ok=True)
+            marker = outside / "marker"; marker.write_text("safe", encoding="utf-8")
+            transaction = "tampered"
+            entries = []
+            for output in outputs:
+                entries.append({
+                    "destination": str(output),
+                    "incoming": str(outside),
+                    "backup": str(output.parent / f".{output.name}.backup-{transaction}"),
+                    "hadDestination": True,
+                    "stagedHash": "0" * 64,
+                    "originalHash": GENERATOR.directory_hash(output),
+                })
+            journal.write_text(__import__("json").dumps({
+                "schema": "carbonet.atomic-publish-journal/v1", "transactionId": transaction,
+                "phase": "PREPARED", "entries": entries,
+            }), encoding="utf-8")
+            with self.assertRaisesRegex(SystemExit, "escaped|name"):
+                GENERATOR.recover_publish_destinations(outputs)
+            self.assertEqual("safe", marker.read_text(encoding="utf-8"))
+            journal.unlink()
+
+    def test_process_scoped_journals_do_not_block_sibling_publish(self) -> None:
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            stage_a = root / "stage-a"; stage_b = root / "stage-b"
+            out_a = root / "generated" / "PROCESS_A"
+            out_b = root / "generated" / "PROCESS_B"
+            for stage, output, label in ((stage_a, out_a, "a"), (stage_b, out_b, "b")):
+                stage.mkdir(parents=True); output.mkdir(parents=True)
+                (stage / "artifact").write_text(f"new-{label}", encoding="utf-8")
+                (output / "artifact").write_text(f"old-{label}", encoding="utf-8")
+            crashed = subprocess.run(
+                [sys.executable, str(MODULE_PATH), "--publish-set", str(stage_a), str(out_a)],
+                env={**os.environ, "CANONICAL_PUBLISH_KILL_AFTER": "backup:1"},
+                capture_output=True, text=True,
+            )
+            self.assertNotEqual(0, crashed.returncode)
+            self.assertEqual(1, GENERATOR.publish_directories([(stage_b, out_b)]))
+            self.assertEqual("new-b", (out_b / "artifact").read_text(encoding="utf-8"))
+            self.assertTrue(GENERATOR.recover_publish_destinations([out_a]))
+            self.assertEqual("old-a", (out_a / "artifact").read_text(encoding="utf-8"))
+
+    def test_committed_tamper_rolls_back_once_and_next_recovery_is_clean(self) -> None:
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            stages = [root / f"stage-{index}" for index in range(3)]
+            outputs = [root / f"out-{index}" for index in range(3)]
+            for index, (stage, output) in enumerate(zip(stages, outputs)):
+                stage.mkdir(); output.mkdir()
+                (stage / "artifact").write_text(f"new-{index}", encoding="utf-8")
+                (output / "artifact").write_text(f"old-{index}", encoding="utf-8")
+            command = [sys.executable, str(MODULE_PATH), "--publish-set"]
+            for stage, output in zip(stages, outputs): command.extend((str(stage), str(output)))
+            crashed = subprocess.run(command, env={**os.environ, "CANONICAL_PUBLISH_KILL_AFTER": "commit:1"})
+            self.assertNotEqual(0, crashed.returncode)
+            (outputs[1] / "artifact").write_text("tampered", encoding="utf-8")
+            with self.assertRaisesRegex(SystemExit, "rolled back"):
+                GENERATOR.recover_publish_destinations(outputs)
+            self.assertEqual([f"old-{index}" for index in range(3)],
+                             [(output / "artifact").read_text(encoding="utf-8") for output in outputs])
+            self.assertFalse(GENERATOR.recover_publish_destinations(outputs))
+
+    def test_committed_tamper_after_backup_cleanup_preserves_journal(self) -> None:
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            stages = [root / f"stage-{index}" for index in range(3)]
+            outputs = [root / f"out-{index}" for index in range(3)]
+            for index, (stage, output) in enumerate(zip(stages, outputs)):
+                stage.mkdir(); output.mkdir()
+                (stage / "artifact").write_text(f"new-{index}", encoding="utf-8")
+                (output / "artifact").write_text(f"old-{index}", encoding="utf-8")
+            command = [sys.executable, str(MODULE_PATH), "--publish-set"]
+            for stage, output in zip(stages, outputs): command.extend((str(stage), str(output)))
+            crashed = subprocess.run(command, env={**os.environ, "CANONICAL_PUBLISH_KILL_AFTER": "cleanup:1"})
+            self.assertNotEqual(0, crashed.returncode)
+            (outputs[1] / "artifact").write_text("tampered", encoding="utf-8")
+            journal, _ = GENERATOR.publication_control_paths(outputs)
+            for _ in range(2):
+                with self.assertRaisesRegex(SystemExit, "journal preserved"):
+                    GENERATOR.recover_publish_destinations(outputs)
+                self.assertTrue(journal.exists())
+
+    def test_rollback_failure_preserves_backup_and_journal_for_retry(self) -> None:
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            stage = root / "stage"; output = root / "out"
+            stage.mkdir(); output.mkdir()
+            (stage / "artifact").write_text("new", encoding="utf-8")
+            (output / "artifact").write_text("old", encoding="utf-8")
+            real_replace = GENERATOR.os.replace
+            calls = 0
+
+            def fail_activation_and_rollback(source, destination):
+                nonlocal calls
+                calls += 1
+                if ".incoming-" in str(source) or (".backup-" in str(source) and str(destination)==str(output)):
+                    raise OSError("rollback blocked")
+                return real_replace(source, destination)
+
+            with mock.patch.object(GENERATOR.os, "replace", side_effect=fail_activation_and_rollback):
+                with self.assertRaises(OSError):
+                    GENERATOR.publish_directories([(stage, output)])
+            journal, _ = GENERATOR.publication_control_paths([output])
+            self.assertTrue(journal.exists())
+            value = __import__("json").loads(journal.read_text())
+            backup = Path(value["entries"][0]["backup"])
+            self.assertTrue(backup.is_dir())
+            self.assertEqual("old", (backup / "artifact").read_text(encoding="utf-8"))
+            self.assertTrue(GENERATOR.recover_publish_destinations([output]))
+            self.assertEqual("old", (output / "artifact").read_text(encoding="utf-8"))
+
+    def test_tampered_second_backup_causes_zero_recovery_mutations(self) -> None:
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            stages = [root / f"stage-{index}" for index in range(3)]
+            outputs = [root / f"out-{index}" for index in range(3)]
+            for index, (stage, output) in enumerate(zip(stages, outputs)):
+                stage.mkdir(); output.mkdir()
+                (stage / "artifact").write_text(f"new-{index}", encoding="utf-8")
+                (output / "artifact").write_text(f"old-{index}", encoding="utf-8")
+            command=[sys.executable,str(MODULE_PATH),"--publish-set"]
+            for stage,output in zip(stages,outputs): command.extend((str(stage),str(output)))
+            crashed=subprocess.run(command,env={**os.environ,"CANONICAL_PUBLISH_KILL_AFTER":"backup:3"})
+            self.assertNotEqual(0,crashed.returncode)
+            journal,_=GENERATOR.publication_control_paths(outputs)
+            value=__import__("json").loads(journal.read_text())
+            backups=[Path(entry["backup"]) for entry in value["entries"]]
+            (backups[1]/"artifact").write_text("tampered",encoding="utf-8")
+            before=[GENERATOR.directory_bytes(path) for path in [*outputs,*backups]]
+            with self.assertRaisesRegex(SystemExit,"backup hash mismatch"):
+                GENERATOR.recover_publish_destinations(outputs)
+            after=[GENERATOR.directory_bytes(path) for path in [*outputs,*backups]]
+            self.assertEqual(before,after)
+            self.assertTrue(journal.exists())
+
     def test_normalizes_singleton_runtime_contracts(self) -> None:
         normalized = GENERATOR.normalize_step_contract({
             "command_contract": {"commandCode": "SAVE"},

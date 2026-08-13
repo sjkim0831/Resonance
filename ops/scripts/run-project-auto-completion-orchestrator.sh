@@ -9,6 +9,28 @@ PROCESS_DEVELOPMENT_DISPATCHER="${PROCESS_DEVELOPMENT_DISPATCHER:-$(cd "$(dirnam
 LOCK_FILE="${PROJECT_AUTO_COMPLETION_LOCK:-/tmp/resonance-project-auto-completion.lock}"
 HEAVY_DB_LOCK_FILE="${RESONANCE_HEAVY_DB_LOCK_FILE:-/opt/resonance-data/control-plane/run/heavy-db-automation.lock}"
 AUTOMATION_PGOPTIONS="${PROJECT_AUTO_COMPLETION_PGOPTIONS:--c work_mem=16MB -c maintenance_work_mem=128MB -c statement_timeout=180000 -c lock_timeout=10000}"
+
+canonical_generation_decision() {
+  local before="$1" after="$2" canonical="$3" active="$4" failed="$5" exact="$6" queued="$7"
+  if (( failed > 0 && active == 0 )); then
+    jq -cn --argjson before "$before" --argjson after "$after" \
+      --argjson canonical "$canonical" --argjson failed "$failed" --argjson queued "$queued" \
+      '{status:"FAILED",reason:"CANONICAL_EVIDENCE_JOB_FAILED",readyBefore:$before,readyAfter:$after,canonicalReady:$canonical,failedJobs:$failed,queuedJobs:$queued,elapsedMillis:0}'
+  else
+    jq -cn --argjson before "$before" --argjson after "$after" \
+      --argjson canonical "$canonical" --argjson active "$active" \
+      --argjson exact "$exact" --argjson queued "$queued" \
+      '{status:"DEFERRED",reason:"CANONICAL_EVIDENCE_PUBLICATION_PENDING",readyBefore:$before,readyAfter:$after,canonicalReady:$canonical,activeJobs:$active,exactEvidenceJobs:$exact,queuedJobs:$queued,elapsedMillis:0}'
+  fi
+}
+
+if [[ "${1:-}" == "--canonical-generation-decision-contract" ]]; then
+  canonical_generation_decision \
+    "${CANONICAL_READY_BEFORE:?}" "${CANONICAL_READY_AFTER:?}" "${CANONICAL_READY_COUNT:?}" \
+    "${CANONICAL_ACTIVE_JOBS:?}" "${CANONICAL_FAILED_JOBS:?}" \
+    "${CANONICAL_EXACT_JOBS:?}" "${CANONICAL_QUEUED_JOBS:?}"
+  exit
+fi
 exec 9>"$LOCK_FILE"
 if [[ "${PROJECT_AUTO_COMPLETION_WAIT_FOR_LOCK:-false}" == "true" ]]; then
   flock -w "${PROJECT_AUTO_COMPLETION_LOCK_WAIT_SECONDS:-14400}" 9 || {
@@ -1338,6 +1360,70 @@ with candidate as (
 select count(*) from released;")"
 
 retried="$((retried+spec_approval_waiting+approved_generator_retried+frontend_package_retried+grouped_field_generator_retried+package_contract_generator_retried+generated_dimension_retried+common_contract_retried+database_constraint_retried+delivery_infrastructure_retried+deterministic_diff_scope_retried))"
+
+# Once the canonical endpoint compiler is installed, tracked full-stack output
+# is owned by evidence-backed development workers. Queue an exact source-hash
+# job when contract completion has not already done so. A new source hash gets
+# a new immutable target; workers serialize all canonical targets for the same
+# process during claim/publication.
+canonical_endpoint_compiler_installed="$(psqlq -c "
+select case when
+  to_regprocedure('public.framework_canonical_endpoint_catalog(integer)') is not null
+  and to_regprocedure('public.framework_canonical_endpoint_readiness(integer,character varying)') is not null
+then 1 else 0 end;")"
+canonical_evidence_jobs_queued=0
+if [[ "$canonical_endpoint_compiler_installed" == "1" ]]; then
+  canonical_evidence_jobs_queued="$(psqlq -c "
+with ready_process as materialized (
+  select distinct s.process_code
+  from framework_step_execution_spec s
+  where s.design_status='DESIGN_COMPLETE' and s.approval_status='APPROVED'
+    and s.generation_status='READY'
+), eligible_process as materialized (
+  select process_code from ready_process
+  where framework_canonical_endpoint_readiness(5000,process_code)->>'status'='COMPLETE'
+), candidate as (
+  select s.process_code,s.step_code,s.source_hash,
+    coalesce(nullif(btrim(step.requirement_text),''),
+      step.step_name||' 업무를 전문적으로 완료하고 검증 가능한 산출물을 생성한다.') requirement
+  from framework_step_execution_spec s
+  join eligible_process p using(process_code)
+  join framework_process_step step using(process_code,step_code)
+  where s.design_status='DESIGN_COMPLETE' and s.approval_status='APPROVED'
+    and s.generation_status='READY'
+    and not exists (
+      select 1 from framework_development_job j
+      where j.process_code=s.process_code and j.step_code=s.step_code
+        and j.job_type in ('FULL_STACK','FULL_STACK_GENERATION')
+        and (
+          j.job_status in ('PLANNED','RETRY','RUNNING')
+          or (
+            j.job_status='VERIFIED' and j.quality_status='VERIFIED'
+            and framework_try_jsonb(j.result_json)->'canonicalGeneration'->>'sourceHash'=s.source_hash
+          )
+        )
+    )
+), queued as (
+  insert into framework_development_job(
+    process_code,step_code,job_type,job_name,target_path,specification_json,
+    job_status,approval_status,execution_mode,job_group_code,required,
+    progress_weight,max_attempts,quality_status,created_by
+  )
+  select process_code,step_code,'FULL_STACK_GENERATION','정규 설계 전체 스택 자동 생성',
+    'canonical://'||process_code||'/'||source_hash,
+    jsonb_build_object(
+      'algorithm','CANONICAL_EVIDENCE_PUBLICATION_V1','generatorRequired',true,
+      'reuseCommonAssets',true,'requirement',requirement,'sourceHash',source_hash,
+      'requiredGates',jsonb_build_array('DESIGN','FRONTEND','API','DATABASE','HELP','CARDS','BUILD','PUBLISH','DEPLOY_HEALTH'),
+      'verifiedEvidenceRequired',true)::text,
+    'PLANNED','APPROVED','SEQUENTIAL',process_code||'_CANONICAL_PUBLICATION',true,
+    10,3,'PENDING','CANONICAL_ENDPOINT_ORCHESTRATOR'
+  from candidate
+  on conflict do nothing
+  returning job_id
+)
+select count(*) from queued;")"
+fi
 executable="$(psqlq -c "
 select count(*) from framework_development_job j
 where j.approval_status='APPROVED' and (j.job_status='PLANNED' or (j.job_status='RETRY' and (j.lease_until is null or j.lease_until<current_timestamp))) and j.attempt_count<j.max_attempts
@@ -1363,21 +1449,71 @@ fi
 full_stack_ready_before="$(psqlq -c "select count(*) from framework_step_execution_spec where design_status='DESIGN_COMPLETE' and approval_status='APPROVED' and generation_status='READY';")"
 full_stack_generation_result="$(jq -cn --argjson ready "$full_stack_ready_before" '{status:(if $ready>0 then "PENDING" else "UNCHANGED" end),readyBefore:$ready,readyAfter:$ready,elapsedMillis:0}')"
 if (( full_stack_ready_before > 0 )); then
-  full_stack_started_ms="$(date +%s%3N)"
-  set +e
-  full_stack_output="$(FULL_STACK_PACKAGE_OUT="${FULL_STACK_PACKAGE_OUT:-$ROOT_DIR/var/runtime/full-stack-generation/generated}" \
-    FULL_STACK_PREVIEW_OUT="${FULL_STACK_PREVIEW_OUT:-$ROOT_DIR/var/runtime/full-stack-generation/design-preview}" \
-    K8S_NAMESPACE="$NAMESPACE" PGDATABASE="$DB" PGUSER="$DB_USER" POSTGRES_POD="$leader" \
-    bash "$ROOT_DIR/ops/scripts/generate-full-stack-design-packages.sh" "$ROOT_DIR" 2>&1)"
-  full_stack_rc=$?
-  set -e
-  full_stack_elapsed_ms="$(( $(date +%s%3N) - full_stack_started_ms ))"
-  full_stack_ready_after="$(psqlq -c "select count(*) from framework_step_execution_spec where design_status='DESIGN_COMPLETE' and approval_status='APPROVED' and generation_status='READY';")"
-  if (( full_stack_rc != 0 || full_stack_ready_after != 0 )); then
-    dispatcher_failed=1
-    full_stack_generation_result="$(jq -cn --arg error "$full_stack_output" --argjson before "$full_stack_ready_before" --argjson after "$full_stack_ready_after" --argjson elapsed "$full_stack_elapsed_ms" '{status:"FAILED",readyBefore:$before,readyAfter:$after,elapsedMillis:$elapsed,error:$error}')"
+  canonical_ready_before=0
+  if [[ "$canonical_endpoint_compiler_installed" == "1" ]]; then
+    canonical_ready_before="$(psqlq -c "
+      with ready_process as materialized (
+        select distinct process_code from framework_step_execution_spec
+        where design_status='DESIGN_COMPLETE' and approval_status='APPROVED'
+          and generation_status='READY'
+      ), eligible_process as materialized (
+        select process_code from ready_process
+        where framework_canonical_endpoint_readiness(5000,process_code)->>'status'='COMPLETE'
+      )
+      select count(*) from framework_step_execution_spec s
+      join eligible_process p using(process_code)
+      where s.design_status='DESIGN_COMPLETE' and s.approval_status='APPROVED'
+        and s.generation_status='READY';")"
+  fi
+  if (( canonical_ready_before > 0 )); then
+    IFS='|' read -r canonical_active_jobs canonical_failed_jobs canonical_exact_jobs <<<"$(psqlq -c "
+      with ready_process as materialized (
+        select distinct process_code from framework_step_execution_spec
+        where design_status='DESIGN_COMPLETE' and approval_status='APPROVED'
+          and generation_status='READY'
+      ), eligible_process as materialized (
+        select process_code from ready_process
+        where framework_canonical_endpoint_readiness(5000,process_code)->>'status'='COMPLETE'
+      )
+      select
+        count(*) filter(where j.job_status in ('PLANNED','RETRY','RUNNING')),
+        count(*) filter(where j.job_status in ('FAILED','BLOCKED')),
+        count(*) filter(where j.job_status='VERIFIED' and j.quality_status='VERIFIED'
+          and framework_try_jsonb(j.result_json)->'canonicalGeneration'->>'sourceHash'=s.source_hash)
+      from framework_step_execution_spec s
+      join eligible_process p using(process_code)
+      left join framework_development_job j
+        on j.process_code=s.process_code and j.step_code=s.step_code
+       and j.job_type in ('FULL_STACK','FULL_STACK_GENERATION')
+      where s.design_status='DESIGN_COMPLETE' and s.approval_status='APPROVED'
+        and s.generation_status='READY';")"
+    full_stack_ready_after="$full_stack_ready_before"
+    if (( canonical_failed_jobs > 0 && canonical_active_jobs == 0 )); then
+      dispatcher_failed=1
+    fi
+    full_stack_generation_result="$(canonical_generation_decision \
+      "$full_stack_ready_before" "$full_stack_ready_after" "$canonical_ready_before" \
+      "$canonical_active_jobs" "$canonical_failed_jobs" "$canonical_exact_jobs" \
+      "$canonical_evidence_jobs_queued")"
   else
-    full_stack_generation_result="$(jq -cn --argjson before "$full_stack_ready_before" --argjson elapsed "$full_stack_elapsed_ms" '{status:"GENERATED",readyBefore:$before,readyAfter:0,elapsedMillis:$elapsed}')"
+    # Rolling-upgrade and endpoint-PARTIAL contracts retain the legacy direct
+    # generator. Canonical COMPLETE contracts never write tracked output here.
+    full_stack_started_ms="$(date +%s%3N)"
+    set +e
+    full_stack_output="$(FULL_STACK_PACKAGE_OUT="${FULL_STACK_PACKAGE_OUT:-$ROOT_DIR/var/runtime/full-stack-generation/generated}" \
+      FULL_STACK_PREVIEW_OUT="${FULL_STACK_PREVIEW_OUT:-$ROOT_DIR/var/runtime/full-stack-generation/design-preview}" \
+      K8S_NAMESPACE="$NAMESPACE" PGDATABASE="$DB" PGUSER="$DB_USER" POSTGRES_POD="$leader" \
+      bash "$ROOT_DIR/ops/scripts/generate-full-stack-design-packages.sh" "$ROOT_DIR" 2>&1)"
+    full_stack_rc=$?
+    set -e
+    full_stack_elapsed_ms="$(( $(date +%s%3N) - full_stack_started_ms ))"
+    full_stack_ready_after="$(psqlq -c "select count(*) from framework_step_execution_spec where design_status='DESIGN_COMPLETE' and approval_status='APPROVED' and generation_status='READY';")"
+    if (( full_stack_rc != 0 || full_stack_ready_after != 0 )); then
+      dispatcher_failed=1
+      full_stack_generation_result="$(jq -cn --arg error "$full_stack_output" --argjson before "$full_stack_ready_before" --argjson after "$full_stack_ready_after" --argjson elapsed "$full_stack_elapsed_ms" '{status:"FAILED",readyBefore:$before,readyAfter:$after,elapsedMillis:$elapsed,error:$error}')"
+    else
+      full_stack_generation_result="$(jq -cn --argjson before "$full_stack_ready_before" --argjson elapsed "$full_stack_elapsed_ms" '{status:"GENERATED",readyBefore:$before,readyAfter:0,elapsedMillis:$elapsed}')"
+    fi
   fi
 fi
 
@@ -1415,6 +1551,11 @@ fi
 completed="$(psqlq -c "with done as (update framework_process_definition p set process_status='DEVELOPMENT_READY',updated_at=current_timestamp from framework_process_delivery_priority_queue q where q.process_code=p.process_code and q.next_action='COMPLETE' and p.process_status<>'DEVELOPMENT_READY' returning 1) select count(*) from done;")"
 blocked="$(psqlq -c "select count(*) from framework_process_delivery_priority_queue where delivery_priority='BLOCKER';")"
 remaining="$(psqlq -c "select count(*) from framework_process_delivery_priority_queue where next_action<>'COMPLETE';")"
-status="PROGRESSING"; [[ "$remaining" == "0" ]] && status="COMPLETED"; [[ "$blocked" -gt 0 || ( "$remaining" -gt 0 && "$executable" == "0" ) || "$dispatcher_failed" -gt 0 || "$static_contract_gate_failed" -gt 0 ]] && status="ATTENTION_REQUIRED"
-psqlq -c "update framework_project_completion_run set run_status='$status',selected_process_count=$selected,executable_job_count=$executable,retried_job_count=$retried,completed_process_count=$completed,blocked_process_count=$blocked,result_json='{\"remainingProcesses\":$remaining,\"dispatcherFailed\":$dispatcher_failed}',completed_at=current_timestamp where run_id='$run_id';" >/dev/null
+full_stack_deferred=0
+[[ "$(jq -r '.status' <<<"$full_stack_generation_result")" == "DEFERRED" ]] && full_stack_deferred=1
+status="PROGRESSING"; [[ "$remaining" == "0" ]] && status="COMPLETED"; [[ "$blocked" -gt 0 || ( "$remaining" -gt 0 && "$executable" == "0" && "$full_stack_deferred" == "0" ) || "$dispatcher_failed" -gt 0 || "$static_contract_gate_failed" -gt 0 ]] && status="ATTENTION_REQUIRED"
+completion_result_json="$(jq -cn --argjson remaining "$remaining" --argjson dispatcherFailed "$dispatcher_failed" \
+  --argjson fullStackGeneration "$full_stack_generation_result" \
+  '{remainingProcesses:$remaining,dispatcherFailed:$dispatcherFailed,fullStackGeneration:$fullStackGeneration}')"
+psqlq -c "update framework_project_completion_run set run_status='$status',selected_process_count=$selected,executable_job_count=$executable,retried_job_count=$retried,completed_process_count=$completed,blocked_process_count=$blocked,result_json=\$result\$${completion_result_json}\$result\$,completed_at=current_timestamp where run_id='$run_id';" >/dev/null
 echo "[project-auto-completion] $status selected=$selected executable=$executable retried=$retried deterministicSafetyCasesApproved=$deterministic_safety_cases_approved embeddedTestsSynced=$embedded_tests_synced deterministicSpecsApproved=$deterministic_specs_approved staticContractGate=$(jq -c . <<<"$static_contract_gate_result") incompleteSpecDemoted=$incomplete_spec_demoted specApprovalWaiting=$spec_approval_waiting approvedGeneratorRetried=$approved_generator_retried frontendPackageRetried=$frontend_package_retried groupedFieldGeneratorRetried=$grouped_field_generator_retried packageContractGeneratorRetried=$package_contract_generator_retried generatedDimensionRetried=$generated_dimension_retried commonContractRetried=$common_contract_retried databaseConstraintRetried=$database_constraint_retried deliveryInfrastructureRetried=$delivery_infrastructure_retried deterministicDiffScopeRetried=$deterministic_diff_scope_retried designEvidenceAdopted=$design_evidence_adopted notApplicableCompleted=$not_applicable_completed contractJobsApproved=$contract_jobs_approved exhaustedPlannedRetried=$exhausted_planned_retried adopted=$server_adopted completed=$completed blocked=$blocked remaining=$remaining dispatcherFailed=$dispatcher_failed contractCompletion=$contract_completion_result fullStackGeneration=$(jq -c . <<<"$full_stack_generation_result") screenGeneration=$(jq -c '{status:(.status//"GENERATED"),requested:(.requested//0),generated:(.generated//0),unchanged:(.unchanged//0),elapsedMillis:(.elapsedMillis//0)}' <<<"$screen_generation_result") businessE2E=$(jq -c . <<<"$business_e2e_result")"
