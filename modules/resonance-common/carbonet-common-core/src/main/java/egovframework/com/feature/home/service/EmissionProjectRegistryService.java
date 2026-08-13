@@ -1,7 +1,10 @@
 package egovframework.com.feature.home.service;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import egovframework.com.platform.governance.service.ActorProcessGovernanceService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.BadSqlGrammarException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,11 +26,19 @@ import java.util.LinkedHashSet;
 import java.util.HashMap;
 import java.math.BigDecimal;
 import java.io.InputStream;
+import java.sql.SQLException;
 import java.security.MessageDigest;
 import java.util.HexFormat;
+import java.util.Locale;
 
 @Service
 public class EmissionProjectRegistryService {
+    private static final ObjectMapper CANONICAL_SUPPORT_JSON = new ObjectMapper();
+    private static final Set<String> CANONICAL_SUPPORT_KEYS = Set.of(
+            "schemaVersion", "designHash", "catalogHash", "help", "workGuide", "qa",
+            "designCard", "assetBindings", "lanes");
+    private static final Set<String> CANONICAL_LANE_KEYS = Set.of(
+            "HELP", "WORK_GUIDE", "QA", "DESIGN_CARD", "FRONTEND", "API", "DATABASE");
     private static final ScopeAccessAuditService.ActionCode PROJECT_OPERATION =
             ScopeAccessAuditService.ActionCode.EMISSION_PROJECT_OPERATION;
     private static final ScopeAccessAuditService.ResourceType PROJECT_RESOURCE =
@@ -588,6 +599,10 @@ public class EmissionProjectRegistryService {
         workflows.forEach(this::enrichCompletionReadiness);
         applyWorkflowActorAccess(workflows,tenant,actor,showAll);
         result.put("workflows",workflows);
+        List<Map<String,Object>> canonicalSupportTargets=new ArrayList<>(items.size()+workflows.size());
+        canonicalSupportTargets.addAll(items);
+        canonicalSupportTargets.addAll(workflows);
+        result.put("canonicalSupportSummary",enrichCanonicalDesignSupport(canonicalSupportTargets));
         String readinessScope=workflowAll?" WHERE r.tenant_id=?":" WHERE r.tenant_id=? AND EXISTS (SELECT 1 FROM framework_account_actor_assignment a WHERE a.tenant_id=r.tenant_id AND lower(a.account_id)=lower(?) AND a.assignment_status='ACTIVE' AND (a.valid_from IS NULL OR a.valid_from<=current_date) AND (a.valid_until IS NULL OR a.valid_until>=current_date) AND a.project_id IN ('*',r.project_id) AND (a.data_scope='*' OR r.project_id=ANY(string_to_array(replace(a.data_scope,' ',''),','))))";
         result.put("projectProcesses",jdbc.queryForList("SELECT r.project_id AS \"projectId\",r.project_name AS \"projectName\",r.process_code AS \"processCode\",r.process_name AS \"processName\",r.workflow_order AS \"workflowOrder\",r.workflow_phase AS \"workflowPhase\",r.process_role AS \"processRole\",r.applicability_status AS \"applicabilityStatus\",r.implementation_status AS \"implementationStatus\",r.task_generation_status AS \"taskGenerationStatus\",r.execution_status AS \"executionStatus\",r.reason_code AS \"reasonCode\",r.reason_text AS \"reasonText\",r.task_count AS \"taskCount\",r.completed_task_count AS \"completedTaskCount\" FROM framework_project_process_readiness r"+readinessScope+" ORDER BY r.project_id,r.workflow_order,r.process_code",workflowAll?new Object[]{tenant}:new Object[]{tenant,actor}));
         result.put("summary",jdbc.queryForMap("SELECT count(*) AS total,count(*) FILTER(WHERE t.task_status='DONE') AS completed,count(*) FILTER(WHERE t.due_date=current_date AND t.task_status<>'DONE') AS today,count(*) FILTER(WHERE t.due_date<current_date AND t.task_status<>'DONE') AS overdue,count(*) FILTER(WHERE t.task_code='APPROVAL' AND t.task_status<>'DONE') AS approval FROM emission_project_task t JOIN emission_project_registry p ON p.project_id=t.project_id WHERE p.tenant_id=?"+(showAll?"":" AND lower(coalesce(t.assignee_id,''))=lower(?) AND EXISTS (SELECT 1 FROM framework_account_actor_assignment a WHERE a.tenant_id=p.tenant_id AND lower(a.account_id)=lower(?) AND a.assignment_status='ACTIVE' AND (a.valid_from IS NULL OR a.valid_from<=current_date) AND (a.valid_until IS NULL OR a.valid_until>=current_date) AND a.project_id IN ('*',p.project_id) AND (a.data_scope='*' OR p.project_id=ANY(string_to_array(replace(a.data_scope,' ',''),','))))"),showAll?new Object[]{tenant}:new Object[]{tenant,actor,actor}));
@@ -602,6 +617,255 @@ public class EmissionProjectRegistryService {
         }
         return result;
     }
+
+    /**
+     * Enriches all task cards from already-published runtime contracts with one route-batch query.
+     * Missing or malformed optional support is isolated to its card so the work overview stays usable.
+     */
+    Map<String,Object> enrichCanonicalDesignSupport(List<Map<String,Object>> tasks) {
+        LinkedHashSet<String> requestedRoutes=new LinkedHashSet<>();
+        for(Map<String,Object> task:tasks) {
+            String route=canonicalTaskRoute(task.get("targetUrl"));
+            if(!route.isBlank()) requestedRoutes.add(route);
+        }
+        if(requestedRoutes.isEmpty()) {
+            tasks.forEach(task->markCanonicalSupport(task,"ABSENT","TASK_ROUTE_MISSING"));
+            return canonicalSupportSummary(tasks,0,"NO_ROUTES",0);
+        }
+
+        String values=String.join(",",java.util.Collections.nCopies(requestedRoutes.size(),"(?)"));
+        List<Map<String,Object>> rows;
+        try {
+            rows=jdbc.queryForList("""
+                with requested(route_path) as (values %s)
+                select lower(split_part(b.route_path,'?',1)) as "routePath",
+                       upper(coalesce(v.contract_json #>> '{process,processCode}','')) as "processCode",
+                       upper(coalesce(v.contract_json #>> '{process,stepCode}','')) as "stepCode",
+                       upper(coalesce(v.contract_json #>> '{screen,audience}',
+                                      v.contract_json #>> '{permission,audience}','')) as "audience",
+                       v.contract_json #>> '{screen,route}' as "screenRoute",
+                       (v.contract_json #> '{support}')::text as "supportJson",
+                       v.contract_json #>> '{operations,designHash}' as "operationsDesignHash",
+                       v.contract_json #>> '{operations,catalogHash}' as "operationsCatalogHash"
+                  from framework_screen_contract_binding b
+                  join framework_screen_contract_version v on v.version_id=b.active_version_id
+                  join requested r on r.route_path=lower(split_part(b.route_path,'?',1))
+                 where v.version_status='PUBLISHED'
+                 order by lower(split_part(b.route_path,'?',1)),
+                          upper(coalesce(v.contract_json #>> '{process,processCode}','')),
+                          upper(coalesce(v.contract_json #>> '{process,stepCode}','')),
+                          case upper(coalesce(v.contract_json #>> '{screen,audience}',
+                                              v.contract_json #>> '{permission,audience}',''))
+                            when 'USER' then 0 when 'ADMIN' then 1 else 2 end,
+                          b.updated_at desc,b.screen_key
+                """.formatted(values),requestedRoutes.toArray());
+        } catch(BadSqlGrammarException schemaNotReady) {
+            if(!canonicalSupportRolloutSchemaMissing(schemaNotReady)) throw schemaNotReady;
+            tasks.forEach(task->markCanonicalSupport(task,"ABSENT","PUBLISHED_SUPPORT_SCHEMA_NOT_READY"));
+            return canonicalSupportSummary(tasks,1,"ROLLOUT_SCHEMA_NOT_READY",0);
+        }
+
+        Map<String,List<CanonicalSupportCandidate>> candidates=new LinkedHashMap<>();
+        int malformedRowCount=0;
+        for(Map<String,Object> row:rows) {
+            CanonicalSupportCandidate candidate=canonicalSupportCandidate(row);
+            if(!candidate.valid()) malformedRowCount++;
+            candidates.computeIfAbsent(candidate.identityKey(),ignored->new ArrayList<>()).add(candidate);
+        }
+        for(Map<String,Object> task:tasks) {
+            String route=canonicalTaskRoute(task.get("targetUrl"));
+            if(route.isBlank()) {
+                markCanonicalSupport(task,"ABSENT","TASK_ROUTE_MISSING");
+                continue;
+            }
+            String identity=canonicalSupportIdentity(route,text(task.get("processCode")),text(task.get("processStepCode")));
+            List<CanonicalSupportCandidate> matches=candidates.getOrDefault(identity,List.of());
+            List<CanonicalSupportCandidate> userMatches=matches.stream()
+                    .filter(candidate->"USER".equals(candidate.audience())).toList();
+            if(matches.isEmpty()) {
+                markCanonicalSupport(task,"ABSENT","PUBLISHED_SUPPORT_NOT_FOUND");
+            } else if(userMatches.isEmpty()) {
+                markCanonicalSupport(task,"ABSENT","PUBLISHED_USER_SUPPORT_NOT_FOUND");
+            } else if(userMatches.size()!=1) {
+                markCanonicalSupport(task,"INVALID","PUBLISHED_SUPPORT_IDENTITY_DUPLICATE");
+            } else if(!userMatches.get(0).valid()) {
+                markCanonicalSupport(task,"INVALID",userMatches.get(0).reason());
+            } else {
+                applyCanonicalSupport(task,userMatches.get(0).support());
+            }
+        }
+        return canonicalSupportSummary(tasks,1,"AVAILABLE",malformedRowCount);
+    }
+
+    private boolean canonicalSupportRolloutSchemaMissing(BadSqlGrammarException failure) {
+        SQLException mostSpecificSqlException=null;
+        for(Throwable cause=failure;cause!=null;cause=cause.getCause()) {
+            if(cause instanceof SQLException sqlException) mostSpecificSqlException=sqlException;
+        }
+        if(mostSpecificSqlException==null) return false;
+        String sqlState=mostSpecificSqlException.getSQLState();
+        return "42P01".equals(sqlState)||"42703".equals(sqlState);
+    }
+
+    private CanonicalSupportCandidate canonicalSupportCandidate(Map<String,Object> row) {
+        String route=canonicalTaskRoute(row.get("routePath"));
+        String process=text(row.get("processCode")).toUpperCase(Locale.ROOT);
+        String step=text(row.get("stepCode")).toUpperCase(Locale.ROOT);
+        String audience=text(row.get("audience")).toUpperCase(Locale.ROOT);
+        String identity=canonicalSupportIdentity(route,process,step);
+        if(route.isBlank()||process.isBlank()||step.isBlank()) {
+            return new CanonicalSupportCandidate(identity,audience,Map.of(),false,"PUBLISHED_SUPPORT_IDENTITY_INVALID");
+        }
+        if(!route.equals(canonicalTaskRoute(row.get("screenRoute")))) {
+            return new CanonicalSupportCandidate(identity,audience,Map.of(),false,"PUBLISHED_SUPPORT_ROUTE_MISMATCH");
+        }
+        Map<String,Object> support=parseCanonicalSupport(row.get("supportJson"));
+        if(!canonicalSupportValid(support,text(row.get("operationsDesignHash")),text(row.get("operationsCatalogHash")))) {
+            return new CanonicalSupportCandidate(identity,audience,Map.of(),false,"PUBLISHED_SUPPORT_HASH_OR_LANE_INVALID");
+        }
+        return new CanonicalSupportCandidate(identity,audience,support,true,"");
+    }
+
+    private boolean canonicalSupportValid(Map<String,Object> support,String operationsDesignHash,String operationsCatalogHash) {
+        if(!support.keySet().equals(CANONICAL_SUPPORT_KEYS)
+                ||!"carbonet.executable-screen-support/v1".equals(support.get("schemaVersion"))) return false;
+        String designHash=text(support.get("designHash"));
+        String catalogHash=text(support.get("catalogHash"));
+        boolean catalogHashValid=catalogHash.isBlank()
+                ? operationsCatalogHash.isBlank()
+                : catalogHash.matches("[0-9a-f]{64}")&&catalogHash.equals(operationsCatalogHash);
+        if(!designHash.matches("[0-9a-f]{64}")
+                ||!designHash.equals(operationsDesignHash)||!catalogHashValid) return false;
+        Map<String,Object> lanes=canonicalObject(support.get("lanes"));
+        Map<String,Object> help=canonicalObject(support.get("help"));
+        Map<String,Object> workGuide=canonicalObject(support.get("workGuide"));
+        Map<String,Object> qa=canonicalObject(support.get("qa"));
+        Map<String,Object> designCard=canonicalObject(support.get("designCard"));
+        if(!lanes.keySet().equals(CANONICAL_LANE_KEYS)
+                ||!(lanes.get("API") instanceof List<?>)||!(lanes.get("DATABASE") instanceof List<?>)
+                ||!(lanes.get("FRONTEND") instanceof Map<?,?>)
+                ||!help.equals(canonicalObject(lanes.get("HELP")))
+                ||!workGuide.equals(canonicalObject(lanes.get("WORK_GUIDE")))
+                ||!qa.equals(canonicalObject(lanes.get("QA")))
+                ||!designCard.equals(canonicalObject(lanes.get("DESIGN_CARD")))) return false;
+        Object assets=support.get("assetBindings");
+        return assets instanceof List<?> && assets.equals(designCard.get("assetBindings"))
+                && help.get("items") instanceof List<?> helpItems && !helpItems.isEmpty()
+                && workGuide.get("steps") instanceof List<?> guideSteps && !guideSteps.isEmpty()
+                && workGuide.get("nextAction") instanceof Map<?,?>
+                && qa.get("requiredScenarioTypes") instanceof List<?> scenarioTypes && scenarioTypes.size()==5
+                && qa.get("checks") instanceof List<?> checks && !checks.isEmpty();
+    }
+
+    private void applyCanonicalSupport(Map<String,Object> task,Map<String,Object> support) {
+        Map<String,Object> adjustedSupport=CANONICAL_SUPPORT_JSON.convertValue(
+                support,new TypeReference<Map<String,Object>>(){});
+        Map<String,Object> workGuide=new LinkedHashMap<>(canonicalObject(adjustedSupport.get("workGuide")));
+        Map<String,Object> nextAction=new LinkedHashMap<>(canonicalObject(workGuide.get("nextAction")));
+        String nextRoute=canonicalTaskRoute(task.get("nextTaskUrl"));
+        nextAction.remove("routePath");
+        if(!nextRoute.isBlank()) {
+            nextAction.put("routePath",nextRoute);
+            String nextName=text(task.get("nextTaskName"));
+            if(!nextName.isBlank()) nextAction.put("label",nextName);
+            String nextActor=text(task.get("nextActorCode"));
+            if(!nextActor.isBlank()) nextAction.put("actorCode",nextActor);
+            nextAction.put("source","WORKFLOW_NEXT_TASK");
+        } else {
+            nextAction.put("source","WORKFLOW_TERMINAL_OR_UNROUTED");
+        }
+        workGuide.put("nextAction",nextAction);
+
+        Map<String,Object> adjustedLanes=new LinkedHashMap<>(canonicalObject(adjustedSupport.get("lanes")));
+        adjustedLanes.put("WORK_GUIDE",workGuide);
+        adjustedSupport.put("workGuide",workGuide);
+        adjustedSupport.put("lanes",adjustedLanes);
+        Map<String,Object> help=canonicalObject(adjustedSupport.get("help"));
+
+        task.put("canonicalSupportStatus","PRESENT");
+        task.remove("canonicalSupportReason");
+        task.put("designHash",adjustedSupport.get("designHash"));
+        task.put("catalogHash",adjustedSupport.get("catalogHash"));
+        task.put("help",help);
+        task.put("workGuide",workGuide);
+        task.put("qa",adjustedSupport.get("qa"));
+        task.put("designCard",adjustedSupport.get("designCard"));
+        task.put("assetBindings",adjustedSupport.get("assetBindings"));
+        task.put("support",adjustedSupport);
+        replaceWhenPresent(task,"workPurpose",workGuide.get("requirement"));
+        replaceWhenPresent(task,"completionRule",workGuide.get("completionRule"));
+        replaceWhenPresent(task,"requiredInputs",workGuide.get("inputContract"));
+        replaceWhenPresent(task,"expectedOutput",workGuide.get("outputContract"));
+        replaceWhenPresent(task,"entryState",workGuide.get("fromState"));
+        replaceWhenPresent(task,"commandCode",workGuide.get("commandCode"));
+        List<?> guideSteps=workGuide.get("steps") instanceof List<?> values?values:List.of();
+        if(!guideSteps.isEmpty()) replaceWhenPresent(task,"name",canonicalObject(guideSteps.get(0)).get("name"));
+    }
+
+    private void replaceWhenPresent(Map<String,Object> task,String key,Object value) {
+        String rendered=canonicalDisplayValue(value);
+        if(!rendered.isBlank()) task.put(key,rendered);
+    }
+
+    private String canonicalDisplayValue(Object value) {
+        if(value==null) return "";
+        if(value instanceof String string) return string.trim();
+        try { return CANONICAL_SUPPORT_JSON.writeValueAsString(value); }
+        catch(Exception invalid) { return ""; }
+    }
+
+    private void markCanonicalSupport(Map<String,Object> task,String status,String reason) {
+        task.put("canonicalSupportStatus",status);
+        task.put("canonicalSupportReason",reason);
+    }
+
+    private Map<String,Object> canonicalSupportSummary(List<Map<String,Object>> tasks,int queryCount,String lookupStatus,int malformedRowCount) {
+        long present=tasks.stream().filter(task->"PRESENT".equals(task.get("canonicalSupportStatus"))).count();
+        long invalid=tasks.stream().filter(task->"INVALID".equals(task.get("canonicalSupportStatus"))).count();
+        Map<String,Object> summary=new LinkedHashMap<>();
+        summary.put("schema","carbonet.task-canonical-support-summary/v1");
+        summary.put("lookupStatus",lookupStatus);
+        summary.put("queryCount",queryCount);
+        summary.put("recordCount",tasks.size());
+        summary.put("presentCount",present);
+        summary.put("absentCount",tasks.size()-present-invalid);
+        summary.put("invalidCount",invalid);
+        summary.put("malformedPublishedRowCount",malformedRowCount);
+        return summary;
+    }
+
+    private Map<String,Object> parseCanonicalSupport(Object raw) {
+        String value=text(raw);
+        if(value.isBlank()||"null".equals(value)) return Map.of();
+        try { return CANONICAL_SUPPORT_JSON.readValue(value,new TypeReference<Map<String,Object>>(){}); }
+        catch(Exception invalid) { return Map.of(); }
+    }
+
+    private Map<String,Object> canonicalObject(Object value) {
+        if(!(value instanceof Map<?,?> source)) return Map.of();
+        Map<String,Object> result=new LinkedHashMap<>();
+        source.forEach((key,item)->result.put(String.valueOf(key),item));
+        return result;
+    }
+
+    private String canonicalTaskRoute(Object raw) {
+        String route=text(raw);
+        if(route.isBlank()) return "";
+        int query=route.indexOf('?');
+        int fragment=route.indexOf('#');
+        int end=route.length();
+        if(query>=0) end=Math.min(end,query);
+        if(fragment>=0) end=Math.min(end,fragment);
+        route=route.substring(0,end).trim().toLowerCase(Locale.ROOT);
+        return route.startsWith("/")?route:"";
+    }
+
+    private String canonicalSupportIdentity(String route,String process,String step) {
+        return route+"|"+text(process).toUpperCase(Locale.ROOT)+"|"+text(step).toUpperCase(Locale.ROOT);
+    }
+
+    private record CanonicalSupportCandidate(String identityKey,String audience,Map<String,Object> support,
+                                             boolean valid,String reason) {}
 
     private boolean canManageWorkAssignments(String tenant,String account,boolean override) {
         if(override) return true;

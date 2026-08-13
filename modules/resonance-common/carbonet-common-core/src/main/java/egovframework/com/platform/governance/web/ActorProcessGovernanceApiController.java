@@ -52,7 +52,14 @@ public class ActorProcessGovernanceApiController {
     @PostMapping("/development/plan") public ResponseEntity<?> plan(@RequestBody Map<String,Object>b,HttpServletRequest request){Principal p=request.getUserPrincipal();try{return ResponseEntity.ok(service.generateDevelopmentPlan(String.valueOf(b.get("processCode")),String.valueOf(b.get("stepCode")),p==null?"SYSTEM":p.getName()));}catch(Exception e){return bad(e);}}
     @PostMapping("/development/bootstrap-process") public ResponseEntity<?> bootstrapProcess(@RequestBody Map<String,Object>b,HttpServletRequest request){Principal p=request.getUserPrincipal();try{return ResponseEntity.ok(service.bootstrapProcessDevelopment(b,p==null?"SYSTEM":p.getName()));}catch(Exception e){return bad(e);}}
     @PostMapping("/development/direct") public ResponseEntity<?> directDevelopment(@RequestBody Map<String,Object>b,HttpServletRequest request){Principal p=request.getUserPrincipal();try{return ResponseEntity.ok(service.executeDesignDirectDevelopment(b,p==null?"SYSTEM":p.getName()));}catch(Exception e){return bad(e);}}
-    @PostMapping("/design/save-and-generate") public ResponseEntity<?> saveDesignAndGenerate(@RequestBody Map<String,Object>b,HttpServletRequest request){Principal p=request.getUserPrincipal();try{return ResponseEntity.ok(service.saveDesignAndGenerate(b,p==null?"SYSTEM":p.getName()));}catch(Exception e){return bad(e);}}
+    @PostMapping("/design/save-and-generate")
+    public ResponseEntity<?> saveDesignAndGenerate(@RequestBody Map<String,Object>b,HttpServletRequest request){
+        var context=currentUserContextService.resolve(request);
+        ResponseEntity<?> denied=designMutationAccessFailure(context);
+        if(denied!=null)return denied;
+        try{return ResponseEntity.ok(service.saveDesignAndGenerate(b,context.getUserId()));}
+        catch(Exception e){return bad(e);}
+    }
     @PostMapping("/development/approve") public ResponseEntity<?> approve(@RequestBody Map<String,Object>b,HttpServletRequest request){Principal p=request.getUserPrincipal();try{return ResponseEntity.ok(service.approveDevelopmentPlan(String.valueOf(b.get("processCode")),String.valueOf(b.get("stepCode")),p==null?"SYSTEM":p.getName()));}catch(Exception e){return bad(e);}}
     @PostMapping("/development/preflight") public ResponseEntity<?> developmentPreflight(@RequestBody Map<String,Object>b,HttpServletRequest request){Principal p=request.getUserPrincipal();try{return ResponseEntity.ok(service.runScreenDevelopmentPreflight(String.valueOf(b.get("processCode")),String.valueOf(b.get("stepCode")),p==null?"SYSTEM":p.getName()));}catch(Exception e){return bad(e);}}
     @PostMapping("/design/validate") public ResponseEntity<?> validateDesign(@RequestBody Map<String,Object>b,HttpServletRequest request){Principal p=request.getUserPrincipal();try{return ResponseEntity.ok(service.validateProcessDesign(String.valueOf(b.get("processCode")),p==null?"SYSTEM":p.getName()));}catch(Exception e){return bad(e);}}
@@ -154,6 +161,17 @@ public class ActorProcessGovernanceApiController {
         String authority=context.getAuthorCode()==null?"":context.getAuthorCode().trim().toUpperCase(java.util.Locale.ROOT);
         return java.util.Set.of("ROLE_SYSTEM_MASTER","ROLE_SYSTEM_ADMIN","ROLE_OPERATION_ADMIN").contains(authority);
     }
+    private ResponseEntity<?> designMutationAccessFailure(CurrentUserContextService.CurrentUserContext context){
+        if(context==null||!context.isAuthenticated()||context.getUserId()==null||context.getUserId().isBlank())
+            return ResponseEntity.status(401).body(Map.of("success",false,"message","AUTHENTICATION_REQUIRED"));
+        if(!context.isWebmaster()){
+            String authority=context.getAuthorCode()==null?"":context.getAuthorCode().trim().toUpperCase(java.util.Locale.ROOT);
+            if(!java.util.Set.of("ROLE_SYSTEM_MASTER","ROLE_SYSTEM_ADMIN").contains(authority))
+            return ResponseEntity.status(403).body(Map.of("success",false,"message","DESIGN_ADMIN_REQUIRED"));
+        }
+        return null;
+    }
+
     private ResponseEntity<?> systemReportAccessFailure(CurrentUserContextService.CurrentUserContext context){
         if(!context.isAuthenticated()||context.getUserId()==null||context.getUserId().isBlank())
             return ResponseEntity.status(401).body(Map.of("success",false,"message","AUTHENTICATION_REQUIRED"));

@@ -229,8 +229,12 @@ public class ActorProcessControlPlaneBridgeController {
                     }
                     result = governance.saveProfessionalScreenContract(body, actor);
                 }
-                case "screen.design.generate" ->
+                case "screen.design.generate" -> {
+                    if (!governance.isControlPlaneAdministrator(account)) {
+                        throw new SecurityException("Administrator authority is required to save and generate a screen design.");
+                    }
                         result = governance.saveDesignAndGenerate(body, actor);
+                }
                 case "assignment.save" -> {
                     if (!governance.isControlPlaneAdministrator(account)) {
                         throw new SecurityException("Administrator authority is required to save an actor assignment.");

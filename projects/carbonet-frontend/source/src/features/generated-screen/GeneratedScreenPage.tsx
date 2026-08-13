@@ -1,6 +1,7 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { findGeneratedScreen, type GeneratedScreenDefinition } from "../../generated/screen-generation/generatedScreenCatalog";
 import { isEnglish } from "../../lib/navigation/runtime";
+import { CommonContentCard, CommonStatusBadge, CommonTimeline } from "../../components/common-design/CommonDesignPrimitives";
 import { runtimeUuid } from "../../lib/runtime-id";
 import { AdminPageShell } from "../admin-entry/AdminPageShell";
 import { ContractFieldControl } from "./ContractFieldControl";
@@ -17,9 +18,22 @@ const contractLookupPath = () => {
   return step ? `${location.pathname}?step=${encodeURIComponent(step)}` : location.pathname;
 };
 
-function GeneratedContent({ screen }: { screen: GeneratedScreenDefinition }) {
+const helpAnchorAttributes = (value: unknown): Record<string, string> => {
+  const selector = text((value as Record<string, unknown> | undefined)?.anchorSelector);
+  const id = selector.match(/^#([A-Za-z][\w:.-]*)$/)?.[1];
+  if (id) return { id };
+  const dataHelpId = selector.match(/^\[data-help-id=["']([^"']+)["']\]$/)?.[1];
+  return dataHelpId ? { "data-help-id": dataHelpId } : {};
+};
+
+function GeneratedContent({ screen, runtimeWarning = "" }: { screen: GeneratedScreenDefinition; runtimeWarning?: string }) {
   const en = isEnglish();
   const spec = screen.specification;
+  const support = record(screen.support || spec.support);
+  const help = record(support.help), helpItems = Array.isArray(help.items) ? help.items : [];
+  const workGuide = record(support.workGuide), guideSteps = items(workGuide.steps, "GUIDE"), nextAction = record(workGuide.nextAction);
+  const qa = record(support.qa), qaChecks = items(qa.checks, "QA"), qaScenarios = list(qa.requiredScenarioTypes);
+  const designCard = record(support.designCard), assetBindings = items(support.assetBindings || designCard.assetBindings, "ASSET");
   const materialized = useMemo(() => materializeScreen(screen, {
     actorCode: screen.actorCode,
     locale: en ? "EN" : "KO",
@@ -136,6 +150,7 @@ function GeneratedContent({ screen }: { screen: GeneratedScreenDefinition }) {
 
   return <main className="mx-auto max-w-7xl px-4 py-8 lg:px-8">
     <header className="flex flex-col gap-4 border-b border-slate-200 pb-6 lg:flex-row lg:items-end lg:justify-between"><div><p className="gov-text-label font-black text-[#246beb]">{screen.processCode} · {screen.stepCode}</p><h1 className="gov-text-heading-lg mt-2 font-black text-[#052b57]">{screen.pageName}</h1><p className="gov-text-body mt-2 max-w-3xl text-slate-600">{text(spec.businessPurpose) || `${screen.actorCode} · ${screen.screenType}`}</p></div><a className="krds-control inline-flex items-center justify-center rounded-lg border border-[#246beb] bg-white px-4 font-bold text-[#246beb]" href={en ? "/en/emission/my-tasks" : "/emission/my-tasks"}>{en ? "Back to my tasks" : "내 업무로 돌아가기"}</a></header>
+    {runtimeWarning && <p className="mt-5 rounded-xl border border-amber-300 bg-amber-50 p-4 font-bold text-amber-900" role="alert">{runtimeWarning}</p>}
     <section className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{([
       [en ? "Actor" : "담당 액터", screen.actorCode],
       [en ? "Entry state" : "진입 상태", text(spec.fromState) || text(spec.entryCondition)],
@@ -151,8 +166,9 @@ function GeneratedContent({ screen }: { screen: GeneratedScreenDefinition }) {
     {(message || error) && <p className={`mt-5 rounded-xl border p-4 font-bold ${error ? "border-red-200 bg-red-50 text-red-700" : "border-emerald-200 bg-emerald-50 text-emerald-800"}`}>{error || message}</p>}
     <section className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(20rem,1fr)]"><div className="space-y-6">
       {kpis.length > 0 && <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{kpis.map(item=><article className="krds-component rounded-xl border bg-white" key={item.code}><span className="gov-text-label font-bold text-slate-500">{item.label}</span><strong className="gov-text-heading-md mt-2 block text-[#052b57]">-</strong></article>)}</section>}
-      <section className="krds-component rounded-xl border bg-white"><div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"><div><h2 className="gov-text-heading-md font-black text-[#052b57]">{en ? "Work data" : "업무 데이터"}</h2><p className="gov-text-body-sm mt-2 text-slate-600">{text(spec.completionRule)}</p></div><span className="gov-text-label rounded-full bg-slate-100 px-3 py-2 font-bold text-slate-700">{draftStatus} · v{draftVersion}</span></div><div className="mt-5 grid gap-4 md:grid-cols-2">{resolvedFieldEntries.map(field=><ContractFieldControl field={field} key={field.code} value={values[field.code] || ""} onChange={value=>setValues(current=>({...current,[field.code]:value}))}/>)}</div><div className="mt-5 flex flex-wrap justify-end gap-2"><button className="krds-control rounded-lg border border-[#246beb] bg-white px-4 font-black text-[#246beb] disabled:opacity-50" disabled={busy} onClick={()=>void loadDraft()} type="button">{en ? "Load draft" : "임시저장 불러오기"}</button><button className="krds-control rounded-lg bg-[#246beb] px-4 font-black text-white disabled:opacity-50" disabled={busy} onClick={()=>void saveDraft()} type="button">{en ? "Save draft" : "임시저장"}</button></div></section>
-      {sections.length > 0 && <section className="grid gap-4 md:grid-cols-2">{sections.map(section=><article className="krds-component min-h-36 rounded-xl border bg-white" key={section.code}><h2 className="gov-text-heading-sm font-black text-[#052b57]">{section.label}</h2><p className="gov-text-body-sm mt-3 text-slate-600">{en ? "This section uses the registered shared component and data contract." : "등록된 공통 컴포넌트와 데이터 계약을 사용하는 영역입니다."}</p></article>)}</section>}
+      <section className="krds-component rounded-xl border bg-white"><div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"><div><h2 className="gov-text-heading-md font-black text-[#052b57]">{en ? "Work data" : "업무 데이터"}</h2><p className="gov-text-body-sm mt-2 text-slate-600">{text(spec.completionRule)}</p></div><span className="gov-text-label rounded-full bg-slate-100 px-3 py-2 font-bold text-slate-700">{draftStatus} · v{draftVersion}</span></div><div className="mt-5 grid gap-4 md:grid-cols-2">{resolvedFieldEntries.map((field,index)=><div {...helpAnchorAttributes(helpItems[sections.length+index])} key={field.code}><ContractFieldControl field={field} value={values[field.code] || ""} onChange={value=>setValues(current=>({...current,[field.code]:value}))}/></div>)}</div><div className="mt-5 flex flex-wrap justify-end gap-2"><button className="krds-control rounded-lg border border-[#246beb] bg-white px-4 font-black text-[#246beb] disabled:opacity-50" disabled={busy} onClick={()=>void loadDraft()} type="button">{en ? "Load draft" : "임시저장 불러오기"}</button><button className="krds-control rounded-lg bg-[#246beb] px-4 font-black text-white disabled:opacity-50" disabled={busy} onClick={()=>void saveDraft()} type="button">{en ? "Save draft" : "임시저장"}</button></div></section>
+      {sections.length > 0 && <section className="grid gap-4 md:grid-cols-2">{sections.map((section,index)=><CommonContentCard {...helpAnchorAttributes(helpItems[index])} className="krds-component min-h-36 p-5" key={section.code}><h2 className="gov-text-heading-sm font-black text-[#052b57]">{section.label}</h2><p className="gov-text-body-sm mt-3 text-slate-600">{en ? "This section uses the registered shared component and data contract." : "등록된 공통 컴포넌트와 데이터 계약을 사용하는 영역입니다."}</p></CommonContentCard>)}</section>}
+      {helpItems.length > sections.length+resolvedFieldEntries.length && <section aria-label={en ? "Additional screen guide anchors" : "추가 화면 도움말"} className="grid gap-3 md:grid-cols-2">{helpItems.slice(sections.length+resolvedFieldEntries.length).map((entry,index)=>{const item=record(entry);return <CommonContentCard {...helpAnchorAttributes(item)} className="p-5" key={text(item.id)||`help-${index}`}><h2 className="gov-text-heading-sm font-black text-[#052b57]">{text(item.title)}</h2><p className="gov-text-body-sm mt-2 text-slate-600">{text(item.body)}</p></CommonContentCard>;})}</section>}
     </div><aside className="space-y-5">
       <section className="krds-component rounded-xl border bg-white">
         <h2 className="gov-text-heading-sm font-black text-[#052b57]">{en ? "Runtime status" : "실행 상태"}</h2>
@@ -161,6 +177,9 @@ function GeneratedContent({ screen }: { screen: GeneratedScreenDefinition }) {
       </section>
       <form className="krds-component rounded-xl border bg-white" onSubmit={start}><h2 className="gov-text-heading-sm font-black text-[#052b57]">{en ? "Process context" : "프로세스 실행 문맥"}</h2><div className="mt-4 space-y-3"><label className="gov-text-label font-bold">Tenant<input className={`${inputClass} mt-2`} value={tenantId} onChange={event=>setTenantId(event.target.value)} required/></label><label className="gov-text-label font-bold">{en ? "Project ID" : "프로젝트 ID"}<input className={`${inputClass} mt-2`} value={projectId} onChange={event=>setProjectId(event.target.value)} required/></label><label className="gov-text-label font-bold">{en ? "Execution ID" : "실행 ID"}<input className={`${inputClass} mt-2`} value={executionId} onChange={event=>setExecutionId(event.target.value)}/></label></div><button className="krds-control mt-4 w-full rounded-lg bg-[#052b57] font-black text-white disabled:opacity-50" disabled={busy} type="submit">{en ? "Start process" : "프로세스 시작"}</button></form>
       <section className="krds-component rounded-xl border bg-white"><h2 className="gov-text-heading-sm font-black text-[#052b57]">{en ? "Complete step" : "단계 완료"}</h2><p className="gov-text-body-sm mt-2 text-slate-600">{en ? "Required fields and a saved draft are validated before transition." : "필수 항목과 임시저장을 검증한 뒤 다음 상태로 전환합니다."}</p><div className="mt-4 grid gap-2">{(actions.length ? actions : [{code:commandCode,label:commandCode}]).slice(0,1).map(action=><button className="krds-control rounded-lg bg-[#246beb] font-black text-white disabled:opacity-50" disabled={busy||draftStatus!=="DRAFT"} key={action.code} onClick={()=>void execute(commandCode)} type="button">{en ? "Complete and continue" : `${action.label} 완료`}</button>)}</div></section>
+      {guideSteps.length > 0 && <CommonTimeline title={text(workGuide.title) || (en ? "Work guide" : "업무 길잡이")}>{guideSteps.map((step,index)=><div className="relative pl-5" key={step.code}><span aria-hidden="true" className="absolute -left-1.5 top-1.5 h-3 w-3 rounded-full bg-[#246beb]"/><p className="gov-text-label font-black text-[#052b57]">{index+1}. {step.label}</p>{text(step.description)&&<p className="gov-text-body-sm mt-1 text-slate-600">{text(step.description)}</p>}</div>)}{text(nextAction.routePath)&&text(nextAction.routePath)!==screen.routePath&&<a className="krds-control ml-5 inline-flex items-center rounded-lg bg-[#246beb] px-4 font-black text-white" href={text(nextAction.routePath)}>{text(nextAction.label)||(en?"Continue":"다음 업무 진행")}</a>}</CommonTimeline>}
+      {qaScenarios.length > 0 && <CommonContentCard className="p-5"><h2 className="gov-text-heading-sm font-black text-[#052b57]">{text(qa.title)||(en?"QA verification":"QA 검증")}</h2><div className="mt-3 flex flex-wrap gap-2">{qaScenarios.map(scenario=><CommonStatusBadge className="bg-blue-50 text-blue-800" key={scenario}>{scenario}</CommonStatusBadge>)}</div>{qaChecks.length>0&&<ul className="mt-4 space-y-2">{qaChecks.map(check=>{const passed=check.passed===true,failed=check.passed===false,status=passed?(en?"Passed":"통과"):failed?(en?"Failed":"실패"):(en?"Not verified":"미확인");return <li aria-label={`${check.label}: ${status}`} className={`gov-text-body-sm flex gap-2 ${passed?"text-emerald-800":failed?"text-red-700":"text-slate-600"}`} key={check.code}><span aria-hidden="true">{passed?"✓":failed?"✕":"?"}</span><span>{check.label} · {status}</span></li>;})}</ul>}</CommonContentCard>}
+      {Object.keys(designCard).length > 0 && <CommonContentCard className="p-5"><div className="flex items-start justify-between gap-3"><h2 className="gov-text-heading-sm font-black text-[#052b57]">{en?"Design summary":"화면 설계 요약"}</h2><CommonStatusBadge className="bg-slate-100 text-slate-700">{text(designCard.designSystem)||"KRDS"}</CommonStatusBadge></div><dl className="gov-text-body-sm mt-4 grid grid-cols-[auto_1fr] gap-x-3 gap-y-2"><dt className="font-bold text-slate-500">{en?"Type":"화면 유형"}</dt><dd>{text(designCard.screenType)||screen.screenType}</dd><dt className="font-bold text-slate-500">{en?"Template":"템플릿"}</dt><dd>{text(designCard.templateCode)||screen.templateCode}</dd><dt className="font-bold text-slate-500">{en?"Assets":"공통 자산"}</dt><dd>{assetBindings.length}</dd><dt className="font-bold text-slate-500">Design hash</dt><dd className="break-all font-mono text-xs">{screen.designHash||"-"}</dd></dl></CommonContentCard>}
       <section className="krds-component rounded-xl border bg-white"><h2 className="gov-text-heading-sm font-black text-[#052b57]">{en ? "Required states and tests" : "필수 상태·테스트"}</h2><div className="mt-3 flex flex-wrap gap-2">{[...states,...scenarios].map(item=><span className="gov-text-label rounded-full bg-slate-100 px-3 py-2 font-bold text-slate-700" key={item}>{item}</span>)}</div></section>
       <section className="krds-component rounded-xl border bg-white"><h2 className="gov-text-heading-sm font-black text-[#052b57]">{en ? "Contract validation" : "계약 자동 검증"}</h2>{materialized.issues.length ? <ul className="mt-3 space-y-2">{materialized.issues.map(issue=><li className="rounded-lg bg-red-50 px-3 py-2 text-sm font-bold text-red-700" key={issue.code}>{issue.message}</li>)}</ul> : <p className="mt-3 rounded-lg bg-emerald-50 px-3 py-2 text-sm font-bold text-emerald-800">{en ? "Screen, data, policy and test contracts are connected." : "화면·데이터·권한·테스트 계약이 모두 연결되었습니다."}</p>}</section>
       {nextTask&&<section className="krds-component rounded-xl border border-emerald-300 bg-emerald-50"><h2 className="gov-text-heading-sm font-black text-emerald-900">{en ? "Next task" : "다음 업무"}</h2><p className="gov-text-body-sm mt-2 text-emerald-900">{nextTask.stepCode} · {nextTask.actorCode}</p>{nextTask.path&&<a className="krds-control mt-4 inline-flex w-full items-center justify-center rounded-lg bg-emerald-700 font-black text-white" href={`${nextTask.path}${nextTask.path.includes("?")?"&":"?"}projectId=${encodeURIComponent(projectId)}`}>{en ? "Open next task" : "다음 업무 화면 열기"}</a>}</section>}
@@ -206,6 +225,8 @@ function toGeneratedScreen(row: Record<string, unknown>): GeneratedScreenDefinit
     screenCoordinateKey: Object.values(coordinate).map(value => encodeURIComponent(value)).join("::"),
     specification,
     traceability,
+    designHash: String(row.designHash || ""),
+    support: record(specification.support) as GeneratedScreenDefinition["support"],
     designCompleteness: {
       score: Number(row.designScore || 0),
       complete: Boolean(row.designComplete),
@@ -240,6 +261,7 @@ function applyVersionedContract(base: GeneratedScreenDefinition, envelope: Versi
   const processLayer = record(contract.process);
   const permissionLayer = record(contract.permission);
   const operationLayer = record(contract.operations);
+  const supportLayer = record(contract.support);
   const rawFields = contractArray(dataLayer.fields, "fields").length
     ? contractArray(dataLayer.fields, "fields")
     : contractArray(dataLayer.fields);
@@ -276,6 +298,7 @@ function applyVersionedContract(base: GeneratedScreenDefinition, envelope: Versi
     sections: sections.length ? sections : base.specification.sections,
     actions: commands.length ? commands : base.specification.actions,
     commandCode: commands[0]?.code || base.specification.commandCode,
+    support: Object.keys(supportLayer).length ? supportLayer : base.specification.support,
     runtimeContract: {
       source: "DB_VERSIONED_CONTRACT",
       screenKey: envelope.screenKey,
@@ -294,6 +317,8 @@ function applyVersionedContract(base: GeneratedScreenDefinition, envelope: Versi
     actorCode: String(permissionLayer.actorCode || base.actorCode),
     audience: String(screenLayer.audience || permissionLayer.audience || base.audience) === "ADMIN" ? "ADMIN" : "USER",
     specification,
+    designHash: String(supportLayer.designHash || base.designHash || ""),
+    support: (Object.keys(supportLayer).length ? supportLayer : base.support) as GeneratedScreenDefinition["support"],
   } as GeneratedScreenDefinition;
 }
 
@@ -315,7 +340,7 @@ async function loadVersionedContract(base: GeneratedScreenDefinition): Promise<G
     audience: coordinate.audience,
   });
   const response = await fetch(`/runtime/screens/resolve?${query}`, { credentials: "include", headers: { Accept: "application/json" } });
-  if (!response.ok) return base;
+  if (!response.ok) throw new Error(`VERSIONED_CONTRACT_${response.status}`);
   return applyVersionedContract(base, await response.json() as VersionedContractEnvelope);
 }
 
@@ -323,7 +348,7 @@ export function GeneratedScreenPage() {
   const en = isEnglish();
   const staticScreen: GeneratedScreenDefinition | undefined =
     findGeneratedScreen(contractLookupPath()) as GeneratedScreenDefinition | undefined;
-  const [screen,setScreen]=useState<GeneratedScreenDefinition|undefined>(staticScreen),[loading,setLoading]=useState(!staticScreen);
+  const [screen,setScreen]=useState<GeneratedScreenDefinition|undefined>(staticScreen),[loading,setLoading]=useState(!staticScreen),[runtimeWarning,setRuntimeWarning]=useState("");
   useEffect(() => {
     let cancelled = false;
     setLoading(!staticScreen);
@@ -336,8 +361,15 @@ export function GeneratedScreenPage() {
           });
     basePromise.then(async base => {
       if (!base || cancelled) return;
-      const resolved = await loadVersionedContract(base).catch(() => base);
-      if (!cancelled) setScreen(resolved);
+      try {
+        const resolved = await loadVersionedContract(base);
+        if (!cancelled) { setScreen(resolved); setRuntimeWarning(""); }
+      } catch {
+        if (!cancelled) {
+          setScreen(base);
+          setRuntimeWarning(en ? "[FALLBACK_STALE] The latest screen contract could not be loaded. A potentially stale generated design is displayed." : "[FALLBACK_STALE] 최신 화면 계약을 불러오지 못해 이전 자동 생성 설계를 표시합니다.");
+        }
+      }
     }).finally(() => {
       if (!cancelled) setLoading(false);
     });
@@ -347,6 +379,6 @@ export function GeneratedScreenPage() {
   }, [en, staticScreen]);
   if(loading) return <main className="mx-auto max-w-7xl px-4 py-12 lg:px-8"><p className="gov-text-body font-bold">{en?"Loading the latest design...":"최신 화면 설계를 불러오는 중입니다."}</p></main>;
   if (!screen) return <main className="mx-auto max-w-7xl px-4 py-12 lg:px-8"><h1 className="gov-text-heading-lg font-black">{en ? "Screen contract not found" : "화면 설계 계약을 찾을 수 없습니다."}</h1></main>;
-  if (screen.audience === "ADMIN") return <AdminPageShell breadcrumbs={[{label:en ? "System" : "시스템 관리",href:en?"/en/admin":"/admin"},{label:en ? "Generated screen" : "자동 생성 화면"}]} title={screen.pageName}><GeneratedContent screen={screen}/></AdminPageShell>;
-  return <GeneratedContent screen={screen}/>;
+  if (screen.audience === "ADMIN") return <AdminPageShell breadcrumbs={[{label:en ? "System" : "시스템 관리",href:en?"/en/admin":"/admin"},{label:en ? "Generated screen" : "자동 생성 화면"}]} title={screen.pageName}><GeneratedContent runtimeWarning={runtimeWarning} screen={screen}/></AdminPageShell>;
+  return <GeneratedContent runtimeWarning={runtimeWarning} screen={screen}/>;
 }

@@ -795,31 +795,22 @@ class ActorProcessGovernanceServiceSecurityTest {
     }
 
     @Test
-    void designSaveWithoutProcessBindingReturnsAnExplicitGenerationGate() {
+    void designSaveWithoutExactCanonicalIdentityFailsBeforeWrite() {
         ScreenDevelopmentNoteService notes = mock(ScreenDevelopmentNoteService.class);
         ActorProcessGovernanceService isolated = new ActorProcessGovernanceService(
                 jdbc, notes, mock(CodexProvisioningService.class), mock(ScreenContractRuntimeService.class));
-        when(notes.save(any(), anyString())).thenReturn(Map.of("version", 3));
-        when(jdbc.queryForList(argThat(sql -> sql.contains("framework_professional_screen_contract")),
-                org.mockito.ArgumentMatchers.eq(String.class), any(Object[].class))).thenReturn(List.of());
-        UUID recoveryRun=UUID.randomUUID();
-        when(jdbc.queryForObject(argThat(sql -> sql.contains("framework_design_self_healing_run")),
-                org.mockito.ArgumentMatchers.eq(UUID.class), any(Object[].class))).thenReturn(recoveryRun);
-        when(jdbc.queryForList(argThat(sql -> sql.contains("from framework_screen_blueprint where")),
+        when(jdbc.queryForList(argThat(sql -> sql != null && sql.contains("for update of b,c")),
                 any(Object[].class))).thenReturn(List.of());
 
-        Map<String, Object> result = isolated.saveDesignAndGenerate(Map.of(
+        IllegalStateException error=assertThrows(IllegalStateException.class,()->isolated.saveDesignAndGenerate(Map.of(
                 "routePath", "/emission/unbound",
                 "designNote", "layout",
                 "functionNote", "function",
-                "acceptanceNote", "acceptance"), "designer");
+                "acceptanceNote", "acceptance"), "designer"));
 
-        assertEquals("PROCESS_BINDING_REQUIRED", result.get("generationStatus"));
-        assertEquals(false, result.get("buildRequired"));
-        assertEquals(List.of(), result.get("codeOutputs"));
-        assertEquals(recoveryRun, result.get("selfHealingRunId"));
-        assertEquals("TRANSACTION_ROLLBACK", result.get("rollbackPolicy"));
-        verify(jdbc).update(argThat(sql -> sql.contains("update framework_design_self_healing_run")), any(Object[].class));
+        assertTrue(error.getMessage().contains("CANONICAL_SCREEN_IDENTITY_NOT_EXACT"));
+        verify(notes,never()).save(any(),anyString());
+        verify(jdbc,never()).update(anyString(),any(Object[].class));
     }
 
     @Test

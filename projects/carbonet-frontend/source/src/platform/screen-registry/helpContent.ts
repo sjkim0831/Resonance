@@ -1,3 +1,4 @@
+import { findGeneratedScreenSupport } from "../../generated/screen-generation/generatedScreenSupportCatalog";
 import { getPageManifest } from "./pageManifests";
 
 const HELP_SAMPLE_IMAGE = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='960' height='360' viewBox='0 0 960 360'><rect width='960' height='360' rx='24' fill='%23eef4fb'/><rect x='48' y='48' width='300' height='28' rx='14' fill='%2300378b' opacity='0.18'/><rect x='48' y='102' width='864' height='170' rx='18' fill='white'/><rect x='76' y='134' width='248' height='18' rx='9' fill='%2310233f' opacity='0.16'/><rect x='76' y='170' width='808' height='14' rx='7' fill='%23577287' opacity='0.14'/><rect x='76' y='198' width='730' height='14' rx='7' fill='%23577287' opacity='0.1'/><rect x='732' y='294' width='180' height='34' rx='17' fill='%2300378b' opacity='0.88'/></svg>";
@@ -2079,7 +2080,34 @@ const PAGE_HELP: Record<string, PageHelpContent> = {
   }
 };
 
+function generatedPageHelp(pageIdOrPath: string): PageHelpContent | null {
+  const entry = findGeneratedScreenSupport(pageIdOrPath);
+  const help = entry?.support?.help;
+  if (!help || !Array.isArray(help.items) || help.items.length === 0) {
+    return null;
+  }
+  return {
+    pageId: String(help.pageId || entry.pageId || pageIdOrPath),
+    title: String(help.title || "화면 도움말"),
+    summary: String(help.summary || "등록된 설계 계약을 기준으로 화면을 안내합니다."),
+    items: help.items.map((item, index) => ({
+      id: String(item.id || `${entry.pageId}-item-${index + 1}`),
+      title: String(item.title || ""),
+      body: String(item.body || ""),
+      anchorSelector: item.anchorSelector ? String(item.anchorSelector) : undefined,
+      placement: item.placement ? String(item.placement) as HelpItem["placement"] : undefined,
+      imageUrl: item.imageUrl ? String(item.imageUrl) : undefined,
+      iconName: item.iconName ? String(item.iconName) : undefined,
+      highlightStyle: item.highlightStyle ? String(item.highlightStyle) as HelpItem["highlightStyle"] : undefined,
+      ctaLabel: item.ctaLabel ? String(item.ctaLabel) : undefined,
+      ctaUrl: item.ctaUrl ? String(item.ctaUrl) : undefined
+    }))
+  };
+}
+
 export function getPageHelp(pageId: string): PageHelpContent {
+  const generated = generatedPageHelp(pageId);
+  if (generated) return generated;
   const explicit = PAGE_HELP[pageId];
   if (explicit) {
     return explicit;

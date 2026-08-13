@@ -10,6 +10,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import javax.sql.DataSource;
 import java.util.LinkedHashMap;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -113,7 +116,7 @@ public class ScreenContractRuntimeService {
         Map<String,Object> current = active.get(0);
         if (hash != null && hash.equals(current.get("contractHash"))) {
             return publicationResult(false, "UNCHANGED", contractId, current.get("versionId"),
-                current.get("versionNo"), active.size(), hash, false);
+                current.get("versionNo"), active.size(), hash, false, payload);
         }
         List<Map<String,Object>> historical = historicalProfessionalContractVersions(contractId, hash);
         int next;
@@ -148,7 +151,7 @@ public class ScreenContractRuntimeService {
               from framework_screen_contract_binding where contract_id=?
             """, versionId, actor, contractId, contractId);
         return publicationResult(true, publicationReason, contractId, versionId, next,
-            active.size(), hash, false);
+            active.size(), hash, false, payload);
     }
 
     /**
@@ -173,19 +176,19 @@ public class ScreenContractRuntimeService {
         Map<String,Object> current = active.get(0);
         if (hash != null && hash.equals(current.get("contractHash"))) {
             return publicationResult(false, "UNCHANGED", contractId, current.get("versionId"),
-                current.get("versionNo"), active.size(), hash, true);
+                current.get("versionNo"), active.size(), hash, true, prepared.payload());
         }
         List<Map<String,Object>> historical = historicalProfessionalContractVersions(contractId, hash);
         if (!historical.isEmpty()) {
             Map<String,Object> reusable = historical.get(0);
             return publicationResult(true, "HISTORICAL_VERSION_REUSED", contractId,
-                reusable.get("versionId"), reusable.get("versionNo"), active.size(), hash, true);
+                reusable.get("versionId"), reusable.get("versionNo"), active.size(), hash, true, prepared.payload());
         }
         Integer next = jdbc.queryForObject(
             "select coalesce(max(version_no),0)+1 from framework_screen_contract_version where contract_id=?",
             Integer.class, contractId);
         return publicationResult(true, "DESIGN_CHANGED", contractId, null, next,
-            active.size(), hash, true);
+            active.size(), hash, true, prepared.payload());
     }
 
     private static Map<String,Object> validateProfessionalPredictionValues(Map<String,Object> proposedValues) {
@@ -219,7 +222,10 @@ public class ScreenContractRuntimeService {
                    c.authority_verified as "authorityVerified",c.responsive_verified as "responsiveVerified",
                    c.accessibility_verified as "accessibilityVerified",
                    c.exception_states_verified as "exceptionStatesVerified",
-                   c.audit_evidence_ref as "auditEvidenceRef",c.contract_status as "contractStatus"
+                   c.audit_evidence_ref as "auditEvidenceRef",c.contract_status as "contractStatus",
+                   framework_canonical_screen_bundle(
+                     c.process_code,c.step_code,c.audience,lower(split_part(c.route_path,'?',1))
+                   )::text as "canonicalBundle"
               from framework_professional_screen_contract c
              where c.contract_id=?
             """ + (lockForPublish ? " for update" : "");
@@ -259,13 +265,88 @@ public class ScreenContractRuntimeService {
             "responsiveVerified", booleanValue(row.get("responsiveVerified")),
             "accessibilityVerified", booleanValue(row.get("accessibilityVerified")),
             "exceptionStatesVerified", booleanValue(row.get("exceptionStatesVerified"))));
+        Map<String,Object> support = supportContract(row);
+        contract.put("support", support);
         contract.put("operations", linkedMap(
             "contractStatus", row.get("contractStatus"), "auditEvidenceRef", row.get("auditEvidenceRef"),
-            "publicationSource", "DESIGN_SAVE"));
+            "publicationSource", "DESIGN_SAVE",
+            "designHash", support.get("designHash"),
+            "catalogHash", support.get("catalogHash")));
         validateContract(contract);
         String payload = write(contract);
         String hash = jdbc.queryForObject("select md5((?::jsonb)::text)", String.class, payload);
         return new PreparedProfessionalContract(row, payload, hash);
+    }
+
+    /**
+     * Exposes the seven immutable design lanes without recomputing operator
+     * support in Java. The database canonical bundle is the single authority.
+     */
+    private Map<String,Object> supportContract(Map<String,Object> row) {
+        Map<String,Object> canonicalBundle = jsonObjectValue(row.get("canonicalBundle"));
+        Map<String,Object> canonicalDesign = object(canonicalBundle.get("canonicalDesign"));
+        String canonicalText = firstText(canonicalBundle, "canonicalText");
+        Map<String,Object> canonicalLanes = object(canonicalDesign.get("lanes"));
+        String designHash = firstText(canonicalBundle, "designHash");
+        Object rawCatalogHash = canonicalBundle.get("catalogHash");
+        boolean catalogHashValid = rawCatalogHash == null
+            || rawCatalogHash instanceof String catalogHash
+                && (catalogHash.isBlank() || catalogHash.matches("[0-9a-f]{64}"));
+        Set<String> requiredLanes = Set.of(
+            "HELP", "WORK_GUIDE", "QA", "DESIGN_CARD", "FRONTEND", "API", "DATABASE");
+        boolean envelopeValid = canonicalBundle.keySet().equals(
+                Set.of("schema", "catalogHash", "designHash", "canonicalText", "canonicalDesign"))
+            && "carbonet.canonical-design/v1".equals(canonicalBundle.get("schema"))
+            && canonicalDesign.keySet().equals(Set.of("identity", "process", "step", "lanes"))
+            && canonicalDesign.get("identity") instanceof Map<?,?>
+            && canonicalDesign.get("process") instanceof Map<?,?>
+            && canonicalDesign.get("step") instanceof Map<?,?>;
+        boolean laneShapesValid = canonicalLanes.get("HELP") instanceof Map<?,?>
+            && canonicalLanes.get("WORK_GUIDE") instanceof Map<?,?>
+            && canonicalLanes.get("QA") instanceof Map<?,?>
+            && canonicalLanes.get("DESIGN_CARD") instanceof Map<?,?>
+            && canonicalLanes.get("FRONTEND") instanceof Map<?,?>
+            && canonicalLanes.get("API") instanceof List<?>
+            && canonicalLanes.get("DATABASE") instanceof List<?>;
+        Object assetBindings = object(canonicalLanes.get("DESIGN_CARD")).get("assetBindings");
+        if (canonicalText.isBlank() || !canonicalDesign.equals(jsonObjectValue(canonicalText))
+                || !designHash.equals(sha256(canonicalText))
+                || !designHash.matches("[0-9a-f]{64}")
+                || !catalogHashValid || !envelopeValid
+                || !canonicalLanes.keySet().equals(requiredLanes) || !laneShapesValid
+                || !(assetBindings instanceof List<?>)) {
+            throw new IllegalStateException("Canonical screen bundle hash/lane contract is incomplete.");
+        }
+        return linkedMap("schemaVersion", "carbonet.executable-screen-support/v1",
+            "designHash", designHash, "catalogHash", rawCatalogHash,
+            "help", canonicalLanes.get("HELP"),
+            "workGuide", canonicalLanes.get("WORK_GUIDE"),
+            "qa", canonicalLanes.get("QA"),
+            "designCard", canonicalLanes.get("DESIGN_CARD"),
+            "assetBindings", assetBindings,
+            "lanes", canonicalLanes);
+    }
+    private static String sha256(String value) {
+        try {
+            byte[] digest = MessageDigest.getInstance("SHA-256")
+                .digest(value.getBytes(StandardCharsets.UTF_8));
+            return java.util.HexFormat.of().formatHex(digest);
+        } catch (NoSuchAlgorithmException error) {
+            throw new IllegalStateException("SHA-256 digest is unavailable.", error);
+        }
+
+    }
+    private Map<String,Object> jsonObjectValue(Object value) {
+        String raw = value == null ? "" : String.valueOf(value).trim();
+        return raw.isEmpty() || "null".equals(raw) ? Map.of() : object(jsonValue(raw));
+    }
+
+    private static String firstText(Map<String,Object> value, String... keys) {
+        for (String key : keys) {
+            Object item = value.get(key);
+            if (item != null && !String.valueOf(item).isBlank()) return String.valueOf(item).trim();
+        }
+        return "";
     }
 
     private List<Map<String,Object>> activeProfessionalContractBindings(long contractId, boolean lockForPublish) {
@@ -287,7 +368,7 @@ public class ScreenContractRuntimeService {
     }
 
     private Map<String,Object> publicationResult(boolean published, String reason, long contractId,
-            Object versionId, Object versionNo, int bindingCount, String hash, boolean predicted) {
+            Object versionId, Object versionNo, int bindingCount, String hash, boolean predicted, String payload) {
         Map<String,Object> result = new LinkedHashMap<>();
         result.put("published", predicted ? false : published);
         result.put("reason", reason);
@@ -296,6 +377,11 @@ public class ScreenContractRuntimeService {
         result.put("versionNo", versionNo);
         result.put("bindingCount", bindingCount);
         result.put("contractHash", hash);
+        Map<String,Object> support = object(json(payload).get("support"));
+        result.put("designHash", support.get("designHash"));
+        result.put("catalogHash", support.get("catalogHash"));
+        result.put("support", support);
+        result.put("buildRequired", false);
         if (predicted) {
             result.put("predicted", true);
             result.put("applied", false);

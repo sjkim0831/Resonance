@@ -71,8 +71,11 @@ export function ScreenDevelopmentNotePanel({ pageId, routePath, workContext }: {
       const body=await readJson(response);if(!response.ok)throw new Error(body.message||"화면 설계를 저장하지 못했습니다.");
       setNote({...EMPTY,...body.note});
       const generated=Array.isArray(body.codeOutputs)?body.codeOutputs.length:0;
+      const designHash=String(body.designHash||"").slice(0,12);
       setMessage(body.generationStatus==="GENERATED"
-        ? `화면 설계 v${body.note.version} 저장과 코드 계약 ${generated}건 생성을 완료했습니다.`
+        ? `화면 설계 v${body.note.version}을 저장했습니다. 코드 계약 ${generated}건과 도움말·업무 길잡이·QA·설계 카드를 즉시 갱신했습니다.${designHash?` 설계 해시 ${designHash}`:""}`
+        : body.generationStatus==="UNCHANGED"
+          ? `화면 설계 v${body.note.version}은 이미 최신입니다.${designHash?` 설계 해시 ${designHash}`:""}`
         : body.generationStatus==="PROCESS_BINDING_REQUIRED"
           ? `화면 설계 v${body.note.version}을 저장했습니다. 프로세스 연결 후 코드가 자동 생성됩니다.`
           : `화면 설계 v${body.note.version}을 저장했지만 품질 게이트 보완이 필요합니다.`);
@@ -95,7 +98,7 @@ export function ScreenDevelopmentNotePanel({ pageId, routePath, workContext }: {
         <label className="mt-4 block"><span className="text-sm font-black text-slate-700">설계 상태</span><select className="gov-select mt-1" value={note.status} onChange={event=>setNote(current=>({...current,status:event.target.value}))}><option value="DRAFT">초안</option><option value="READY">개발 준비</option><option value="IN_DEVELOPMENT">개발 중</option><option value="VERIFIED">검증 완료</option></select></label>
         <div className="mt-5"><ScreenHtmlMockupManager routePath={designRoutePath} pageId={pageId} mockups={note.mockups||[]} onChanged={body=>setNote(current=>({...current,...body as Partial<Note>}))} compact/></div>
         {note.updatedAt?<p className="mt-3 text-xs text-slate-500">최근 저장: {note.updatedAt} · {note.updatedBy||"-"}</p>:null}
-        {message?<p className={`mt-3 rounded-lg p-3 text-sm font-bold ${message.includes("저장했습니다")?"bg-emerald-50 text-emerald-800":"bg-rose-50 text-rose-800"}`} role="status">{message}</p>:null}
+        {message?<p className={`mt-3 rounded-lg p-3 text-sm font-bold ${message.includes("저장했습니다")||message.includes("이미 최신입니다")?"bg-emerald-50 text-emerald-800":"bg-rose-50 text-rose-800"}`} role="status">{message}</p>:null}
       </div>
       <footer className="flex shrink-0 items-center justify-between gap-3 border-t border-slate-200 bg-slate-50 px-5 py-4"><p className="text-xs font-bold text-slate-500">저장 즉시 설계 검증·화면 계약·개발 작업을 갱신합니다.</p><button className="min-h-11 shrink-0 rounded-lg bg-[#246beb] px-5 font-black text-white disabled:opacity-50" disabled={busy} onClick={()=>void save()} type="button">{busy?"생성 중...":"저장·즉시 생성"}</button></footer>
     </section>}

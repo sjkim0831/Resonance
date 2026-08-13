@@ -38,6 +38,8 @@ public class ActorProcessGovernanceService {
     private static final Set<String> PROFESSIONAL_CONTRACT_STATUSES = Set.of(
         "DRAFT", "REVIEW_REQUIRED", "DESIGN_COMPLETE", "APPROVED", "VERIFIED"
     );
+    private static final String DESIGN_AUTOMATION_NAMESPACE =
+        "CARBONET_DESIGN_AUTOMATION_V1";
     private final JdbcTemplate jdbc;
     private final ScreenDevelopmentNoteService screenDevelopmentNoteService;
     private final CodexProvisioningService codexProvisioningService;
@@ -2269,46 +2271,317 @@ public class ActorProcessGovernanceService {
     }
 
     /**
-     * Saves a route design and recompiles every bound process in one
-     * transaction. Renderable blueprint contracts are returned immediately so
-     * metadata-driven pages do not require a frontend rebuild.
+     * Compiles one route note into the exact professional-contract/blueprint
+     * identity in the same transaction.  The canonical database bundle is the
+     * commit invariant: a changed source must change both hashes and expose the
+     * typed note through the operator-support lanes.
      */
     @Transactional public Map<String,Object> saveDesignAndGenerate(Map<String,Object> body,String actor){
         String route=ScreenDevelopmentNoteService.cleanRoute(req(body,"routePath"));
-        List<String> processes=jdbc.queryForList(
-            "select distinct process_code from ("+
-            "select process_code from framework_professional_screen_contract where lower(split_part(route_path,'?',1))=lower(?) "+
-            "union all select process_code from framework_screen_blueprint where lower(split_part(route_path,'?',1))=lower(?)"+
-            ") p where process_code is not null and trim(process_code)<>'' order by process_code",
-            String.class,route,route);
+        jdbc.query("select pg_advisory_xact_lock(hashtext(lower(?)))",rs->{},route);
+        String designNote=req(body,"designNote");
+        String functionNote=req(body,"functionNote");
+        String acceptanceNote=req(body,"acceptanceNote");
+        List<Map<String,Object>> identities=jdbc.queryForList("""
+            select b.blueprint_id as "blueprintId",c.contract_id as "contractId",
+                   b.process_code as "processCode",b.step_code as "stepCode",b.audience,
+                   lower(split_part(b.route_path,'?',1)) as "routePath",
+                   c.section_contract as "sectionContract",c.field_contract as "fieldContract",
+                   c.command_contract as "commandContract",c.state_contract as "stateContract",
+                   c.api_contract as "apiContract",c.data_contract as "dataContract",
+                   c.evidence_contract as "evidenceContract",
+                   b.specification_json as "specificationJson",
+                   b.traceability_json as "traceabilityJson"
+              from framework_screen_blueprint b
+              join framework_professional_screen_contract c
+                on c.process_code=b.process_code and c.step_code=b.step_code
+               and c.audience=b.audience
+               and lower(split_part(c.route_path,'?',1))=
+                   lower(split_part(b.route_path,'?',1))
+             where b.validation_status='VALID'
+               and lower(split_part(b.route_path,'?',1))=lower(?)
+             order by b.blueprint_id,c.contract_id
+             for update of b,c
+            """,route);
+        if(identities.size()!=1)throw new IllegalStateException(
+            "CANONICAL_SCREEN_IDENTITY_NOT_EXACT: route="+route+", count="+identities.size());
+        Map<String,Object> identity=new LinkedHashMap<>(identities.get(0));
+        route=String.valueOf(identity.get("routePath"));
+        validateDesignCompilationSource(identity);
+        Map<String,Object> compiledNote=compileTypedDesignNote(
+            route,body,designNote,functionNote,acceptanceNote);
+        Map<String,Object> before=canonicalScreenBundle(identity);
+        Map<String,Object> currentNote=screenDevelopmentNoteService.find(route);
+        boolean canonicalNoteUnchanged=canonicalDesignNoteMatches(currentNote,designNote,functionNote,acceptanceNote);
+        boolean noteUnchanged=designNoteMatches(
+            currentNote,body,designNote,functionNote,acceptanceNote);
+        boolean sourceAlreadyCompiled=sourceContainsCompiledNote(identity,compiledNote);
+        List<String> processes=List.of(String.valueOf(identity.get("processCode")));
+        if(noteUnchanged&&sourceAlreadyCompiled){
+            requireCanonicalCompiledNote(before,compiledNote);
+            List<Map<String,Object>> outputs=designCodeOutputs(route);
+            Map<String,Object> result=new LinkedHashMap<>();
+            result.put("success",true);result.put("changed",false);result.put("note",currentNote);
+            result.put("routePath",route);result.put("processCodes",processes);
+            result.put("deliveries",List.of());result.put("codeOutputs",outputs);
+            result.put("generationStatus","UNCHANGED");result.put("selfHealingRunId",null);
+            result.put("designHash",canonicalHash(before,"designHash"));
+            result.put("catalogHash",before.get("catalogHash"));
+            result.put("support",canonicalSupport(before));
+            result.put("hashTransition",hashTransition(before,before));
+            Map<String,Object> unchangedPublication=new LinkedHashMap<>();
+            unchangedPublication.put("reason","UNCHANGED");
+            unchangedPublication.put("published",false);
+            unchangedPublication.put("designHash",canonicalHash(before,"designHash"));
+            unchangedPublication.put("catalogHash",before.get("catalogHash"));
+            result.put("runtimePublication",unchangedPublication);
+            result.put("rollbackPolicy","TRANSACTION_ROLLBACK");result.put("buildRequired",false);
+            return result;
+        }
         UUID recoveryRun=jdbc.queryForObject(
             "insert into framework_design_self_healing_run(route_key,affected_process_codes,executed_by) values(?,?,?) returning run_id",
             UUID.class,route,processes.toArray(String[]::new),actor);
         Map<String,Object> note=screenDevelopmentNoteService.save(body,actor);
+        String compiledJson=toJson(compiledNote);
+        long contractId=((Number)identity.get("contractId")).longValue();
+        long blueprintId=((Number)identity.get("blueprintId")).longValue();
+        int contractWrites=jdbc.update("""
+            with next_contract as (
+              select c.contract_id,
+                     coalesce((
+                       select jsonb_agg(e.value order by e.ordinality)
+                         from jsonb_array_elements(c.evidence_contract::jsonb)
+                              with ordinality e(value,ordinality)
+                        where not (jsonb_typeof(e.value)='object'
+                          and coalesce(e.value->>'namespace','')=? )
+                     ),'[]'::jsonb)||jsonb_build_array(cast(? as jsonb)) as next_evidence
+                from framework_professional_screen_contract c
+               where c.contract_id=?
+            )
+            update framework_professional_screen_contract c
+               set evidence_contract=next_contract.next_evidence::text,
+                   updated_by=?,updated_at=current_timestamp
+              from next_contract
+             where c.contract_id=next_contract.contract_id
+               and c.evidence_contract::jsonb is distinct from next_contract.next_evidence
+            """,DESIGN_AUTOMATION_NAMESPACE,compiledJson,contractId,actor);
         List<Map<String,Object>> deliveries=new java.util.ArrayList<>();
         for(String process:processes){
             deliveries.add(autoImplementCompletedDesign(process,actor));
             generateProfessionalDesignGraph(process,actor);
         }
-        List<Map<String,Object>> outputs=jdbc.queryForList(
-            "select blueprint_id as \"blueprintId\",blueprint_code as \"blueprintCode\",process_code as \"processCode\",step_code as \"stepCode\",audience,page_id as \"pageId\",route_path as \"routePath\",screen_type as \"screenType\",template_code as \"templateCode\",specification_json as \"specificationJson\",traceability_json as \"traceabilityJson\",validation_status as \"validationStatus\",validation_message as \"validationMessage\" from framework_screen_blueprint where lower(split_part(route_path,'?',1))=lower(?) order by audience,blueprint_id",
-            route);
+        int blueprintWrites=jdbc.update("""
+            with next_blueprint as (
+              select b.blueprint_id,
+                     b.specification_json::jsonb||jsonb_build_object(
+                       'extensions',coalesce(b.specification_json::jsonb->'extensions','{}'::jsonb)
+                         ||jsonb_build_object('designAutomation',cast(? as jsonb))
+                     ) as next_specification
+                from framework_screen_blueprint b
+               where b.blueprint_id=?
+            )
+            update framework_screen_blueprint b
+               set specification_json=next_blueprint.next_specification::text,
+                   updated_at=current_timestamp
+              from next_blueprint
+             where b.blueprint_id=next_blueprint.blueprint_id
+               and b.specification_json::jsonb is distinct from next_blueprint.next_specification
+            """,compiledJson,blueprintId);
+        Map<String,Object> after=canonicalScreenBundle(identity);
+        requireCanonicalCompiledNote(after,compiledNote);
+        boolean canonicalContentChanged=!canonicalNoteUnchanged||contractWrites>0||blueprintWrites>0;
+        boolean sourceChanged=!noteUnchanged||canonicalContentChanged;
+        if(!sourceChanged)throw new IllegalStateException(
+            "DESIGN_SOURCE_WRITE_INVARIANT: changed request produced no canonical source write");
+        if(canonicalContentChanged&&canonicalHash(before,"designHash").equals(canonicalHash(after,"designHash")))
+            throw new IllegalStateException("CANONICAL_DESIGN_HASH_INVARIANT: changed content retained designHash");
+        Map<String,Object> runtimePublication=screenContractRuntimeService.publishProfessionalContract(contractId,actor);
+        if(!canonicalHash(after,"designHash").equals(runtimePublication.get("designHash")))
+            throw new IllegalStateException("RUNTIME_PUBLICATION_CANONICAL_HASH_MISMATCH");
+        List<Map<String,Object>> outputs=designCodeOutputs(route);
         long invalidScreens=outputs.stream().filter(row->!"VALID".equals(String.valueOf(row.get("validationStatus")))).count();
-        String generationStatus=processes.isEmpty()?"PROCESS_BINDING_REQUIRED":
-            deliveries.stream().anyMatch(row->"DESIGN_INCOMPLETE".equals(row.get("status")))||invalidScreens>0?"DESIGN_INCOMPLETE":
+        String generationStatus=deliveries.stream().anyMatch(row->"DESIGN_INCOMPLETE".equals(row.get("status")))||invalidScreens>0?"DESIGN_INCOMPLETE":
             deliveries.stream().allMatch(row->"UNCHANGED".equals(row.get("status")))?"UNCHANGED":"GENERATED";
         Map<String,Object> recoveryResult=new LinkedHashMap<>();
         recoveryResult.put("routePath",route);recoveryResult.put("processCodes",processes);
         recoveryResult.put("deliveries",deliveries);recoveryResult.put("generatedScreens",outputs.size());
-        recoveryResult.put("invalidScreens",invalidScreens);recoveryResult.put("buildRequired",false);
+        recoveryResult.put("invalidScreens",invalidScreens);
+        recoveryResult.put("designHash",canonicalHash(after,"designHash"));
+        recoveryResult.put("catalogHash",after.get("catalogHash"));
+        recoveryResult.put("buildRequired",false);
         jdbc.update("update framework_design_self_healing_run set run_status=?,regenerated_process_count=?,generated_screen_count=?,invalid_screen_count=?,result_json=cast(? as jsonb),completed_at=current_timestamp where run_id=?",
             generationStatus,processes.size(),outputs.size(),invalidScreens,toJson(recoveryResult),recoveryRun);
         Map<String,Object> result=new LinkedHashMap<>();
-        result.put("success",true);result.put("note",note);result.put("routePath",route);
+        result.put("success",true);result.put("changed",true);result.put("note",note);result.put("routePath",route);
         result.put("processCodes",processes);result.put("deliveries",deliveries);result.put("codeOutputs",outputs);
         result.put("generationStatus",generationStatus);result.put("selfHealingRunId",recoveryRun);
+        result.put("designHash",canonicalHash(after,"designHash"));
+        result.put("catalogHash",after.get("catalogHash"));
+        result.put("support",canonicalSupport(after));
+        result.put("hashTransition",hashTransition(before,after));
+        result.put("runtimePublication",runtimePublication);
         result.put("rollbackPolicy","TRANSACTION_ROLLBACK");result.put("buildRequired",false);
         return result;
+    }
+
+    private static Map<String,Object> compileTypedDesignNote(String route,Map<String,Object> request,String design,
+            String functions,String acceptance){
+        Map<String,Object> compiled=new LinkedHashMap<>();
+        compiled.put("schema","carbonet.design-note/v1");
+        compiled.put("namespace",DESIGN_AUTOMATION_NAMESPACE);
+        compiled.put("routePath",route);
+        compiled.put("design",typedNoteValue("DESIGN_REQUIREMENT",design));
+        compiled.put("functions",typedNoteValue("FUNCTION_REQUIREMENT",functions));
+        compiled.put("acceptance",typedNoteValue("ACCEPTANCE_RULE",acceptance));
+        Map<String,Object> page=new LinkedHashMap<>();
+        page.put("pageId",def(request,"pageId",""));
+        page.put("pageTitle",def(request,"pageTitle",""));
+        page.put("status",def(request,"status","READY"));
+        compiled.put("page",page);
+        compiled.put("noteHash",sha256Hex(toJson(compiled)));
+        return compiled;
+    }
+
+    private static Map<String,Object> typedNoteValue(String type,String text){
+        Map<String,Object> value=new LinkedHashMap<>();
+        value.put("type",type);value.put("text",text);return value;
+    }
+
+    private static void validateDesignCompilationSource(Map<String,Object> source){
+        for(String field:List.of("sectionContract","fieldContract","commandContract","stateContract",
+                "apiContract","dataContract","evidenceContract"))
+            validateJsonArray(String.valueOf(source.get(field)),field);
+        validateJsonObject(String.valueOf(source.get("specificationJson")),"specificationJson");
+        validateJsonObject(String.valueOf(source.get("traceabilityJson")),"traceabilityJson");
+        try{
+            com.fasterxml.jackson.databind.JsonNode specification=
+                new com.fasterxml.jackson.databind.ObjectMapper().readTree(
+                    String.valueOf(source.get("specificationJson")));
+            if(specification.has("extensions")&&!specification.get("extensions").isObject())
+                throw new IllegalArgumentException("specificationJson.extensions must be a JSON object");
+        }catch(com.fasterxml.jackson.core.JsonProcessingException error){
+            throw new IllegalArgumentException("specificationJson must be valid JSON",error);
+        }
+    }
+
+    private static boolean designNoteMatches(Map<String,Object> current,Map<String,Object> requested,
+            String design,String functions,String acceptance){
+        String requestedStatus=def(requested,"status","READY");
+        return design.equals(String.valueOf(current.getOrDefault("designNote","")))
+            &&functions.equals(String.valueOf(current.getOrDefault("functionNote","")))
+            &&acceptance.equals(String.valueOf(current.getOrDefault("acceptanceNote","")))
+            &&def(requested,"pageId","").equals(String.valueOf(current.getOrDefault("pageId","")))
+            &&def(requested,"pageTitle","").equals(String.valueOf(current.getOrDefault("pageTitle","")))
+            &&requestedStatus.equals(String.valueOf(current.getOrDefault("status","DRAFT")));
+    }
+
+    private static boolean sourceContainsCompiledNote(Map<String,Object> source,Map<String,Object> compiled){
+        try{
+            com.fasterxml.jackson.databind.ObjectMapper mapper=new com.fasterxml.jackson.databind.ObjectMapper();
+            com.fasterxml.jackson.databind.JsonNode expected=mapper.valueToTree(compiled);
+            com.fasterxml.jackson.databind.JsonNode evidence=mapper.readTree(String.valueOf(source.get("evidenceContract")));
+            boolean evidenceFound=false;
+            for(com.fasterxml.jackson.databind.JsonNode item:evidence)if(expected.equals(item)){evidenceFound=true;break;}
+            com.fasterxml.jackson.databind.JsonNode specification=mapper.readTree(String.valueOf(source.get("specificationJson")));
+            return evidenceFound&&expected.equals(specification.path("extensions").path("designAutomation"));
+        }catch(com.fasterxml.jackson.core.JsonProcessingException error){
+            throw new IllegalArgumentException("design source JSON is invalid",error);
+        }
+    }
+
+    private static boolean canonicalDesignNoteMatches(Map<String,Object> current,String design,
+            String functions,String acceptance){
+        return design.equals(String.valueOf(current.getOrDefault("designNote","")))
+            &&functions.equals(String.valueOf(current.getOrDefault("functionNote","")))
+            &&acceptance.equals(String.valueOf(current.getOrDefault("acceptanceNote","")));
+    }
+
+    private Map<String,Object> canonicalScreenBundle(Map<String,Object> identity){
+        String raw=jdbc.queryForObject(
+            "select framework_canonical_screen_bundle(?,?,?,?)::text",String.class,
+            identity.get("processCode"),identity.get("stepCode"),identity.get("audience"),identity.get("routePath"));
+        Map<String,Object> bundle=jsonMap(raw);
+        if(!bundle.keySet().equals(Set.of("schema","catalogHash","designHash","canonicalText","canonicalDesign"))
+                ||!"carbonet.canonical-design/v1".equals(bundle.get("schema")))
+            throw new IllegalStateException("CANONICAL_BUNDLE_ENVELOPE_INVALID");
+        String canonicalText=String.valueOf(bundle.getOrDefault("canonicalText",""));
+        String designHash=canonicalHash(bundle,"designHash");
+        Object rawCatalogHash=bundle.get("catalogHash");
+        boolean catalogHashValid=rawCatalogHash==null
+            ||rawCatalogHash instanceof String catalogHash
+                &&(catalogHash.isBlank()||catalogHash.matches("[0-9a-f]{64}"));
+        if(!designHash.matches("[0-9a-f]{64}")
+                ||!catalogHashValid
+                ||!designHash.equals(sha256Hex(canonicalText))
+                ||!jsonMap(canonicalText).equals(canonicalObject(bundle.get("canonicalDesign"),"canonicalDesign")))
+            throw new IllegalStateException("CANONICAL_BUNDLE_HASH_INVALID");
+        Map<String,Object> canonicalDesign=canonicalObject(bundle.get("canonicalDesign"),"canonicalDesign");
+        Map<String,Object> lanes=canonicalObject(canonicalDesign.get("lanes"),"canonicalDesign.lanes");
+        if(!lanes.keySet().equals(Set.of("HELP","WORK_GUIDE","QA","DESIGN_CARD","FRONTEND","API","DATABASE"))
+                ||!(lanes.get("HELP") instanceof Map<?,?>)||!(lanes.get("WORK_GUIDE") instanceof Map<?,?>)
+                ||!(lanes.get("QA") instanceof Map<?,?>)||!(lanes.get("DESIGN_CARD") instanceof Map<?,?>)
+                ||!(lanes.get("FRONTEND") instanceof Map<?,?>)||!(lanes.get("API") instanceof List<?>)
+                ||!(lanes.get("DATABASE") instanceof List<?>))
+            throw new IllegalStateException("CANONICAL_BUNDLE_LANES_INVALID");
+        return bundle;
+    }
+
+    private static void requireCanonicalCompiledNote(Map<String,Object> bundle,Map<String,Object> compiled){
+        Map<String,Object> design=canonicalObject(bundle.get("canonicalDesign"),"canonicalDesign");
+        Map<String,Object> lanes=canonicalObject(design.get("lanes"),"canonicalDesign.lanes");
+        Map<String,Object> help=canonicalObject(lanes.get("HELP"),"HELP");
+        Map<String,Object> qa=canonicalObject(lanes.get("QA"),"QA");
+        Map<String,Object> card=canonicalObject(lanes.get("DESIGN_CARD"),"DESIGN_CARD");
+        Map<String,Object> specification=canonicalObject(card.get("specification"),"DESIGN_CARD.specification");
+        Map<String,Object> extensions=canonicalObject(specification.get("extensions"),"DESIGN_CARD.specification.extensions");
+        if(!jsonArrayContains(help.get("evidence"),compiled)
+                ||!jsonArrayContains(qa.get("evidence"),compiled)
+                ||!compiled.equals(extensions.get("designAutomation")))
+            throw new IllegalStateException("CANONICAL_DESIGN_NOTE_NOT_PROPAGATED");
+    }
+
+    private static boolean jsonArrayContains(Object value,Map<String,Object> expected){
+        if(!(value instanceof List<?> items))return false;
+        return items.stream().anyMatch(expected::equals);
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Map<String,Object> canonicalObject(Object value,String field){
+        if(!(value instanceof Map<?,?>))throw new IllegalStateException(field+" must be an object");
+        return new LinkedHashMap<>((Map<String,Object>)value);
+    }
+
+    private static String canonicalHash(Map<String,Object> bundle,String field){
+        Object value=bundle.get(field);return value==null?"":String.valueOf(value);
+    }
+
+    private static Map<String,Object> canonicalSupport(Map<String,Object> bundle){
+        Map<String,Object> design=canonicalObject(bundle.get("canonicalDesign"),"canonicalDesign");
+        Map<String,Object> lanes=canonicalObject(design.get("lanes"),"canonicalDesign.lanes");
+        Map<String,Object> card=canonicalObject(lanes.get("DESIGN_CARD"),"DESIGN_CARD");
+        Map<String,Object> support=new LinkedHashMap<>();
+        support.put("schemaVersion","carbonet.executable-screen-support/v1");
+        support.put("designHash",canonicalHash(bundle,"designHash"));
+        support.put("catalogHash",bundle.get("catalogHash"));
+        support.put("help",lanes.get("HELP"));support.put("workGuide",lanes.get("WORK_GUIDE"));
+        support.put("qa",lanes.get("QA"));support.put("designCard",card);
+        support.put("assetBindings",card.get("assetBindings"));support.put("lanes",lanes);
+        return support;
+    }
+
+    private static Map<String,Object> hashTransition(Map<String,Object> before,Map<String,Object> after){
+        Map<String,Object> transition=new LinkedHashMap<>();
+        transition.put("beforeDesignHash",canonicalHash(before,"designHash"));
+        transition.put("afterDesignHash",canonicalHash(after,"designHash"));
+        transition.put("beforeCatalogHash",before.get("catalogHash"));
+        transition.put("afterCatalogHash",after.get("catalogHash"));
+        return transition;
+    }
+
+    private List<Map<String,Object>> designCodeOutputs(String route){
+        return jdbc.queryForList(
+            "select blueprint_id as \"blueprintId\",blueprint_code as \"blueprintCode\",process_code as \"processCode\",step_code as \"stepCode\",audience,page_id as \"pageId\",route_path as \"routePath\",screen_type as \"screenType\",template_code as \"templateCode\",specification_json as \"specificationJson\",traceability_json as \"traceabilityJson\",validation_status as \"validationStatus\",validation_message as \"validationMessage\" from framework_screen_blueprint where lower(split_part(route_path,'?',1))=lower(?) order by audience,blueprint_id",
+            route);
     }
 
     @Transactional public Map<String,Object> saveProfessionalScreenContract(Map<String,Object>b,String actor){

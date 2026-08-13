@@ -59,6 +59,56 @@ class ActorProcessGovernanceApiControllerAssignmentTest {
     }
 
     @Test
+    void anonymousDesignGenerationReturns401WithoutMutation(){
+        Map<String,Object> body=Map.of("routePath","/design/route");
+        when(users.resolve(request)).thenReturn(context("","","",false,false));
+
+        var response=controller.saveDesignAndGenerate(body,request);
+
+        assertEquals(401,response.getStatusCode().value());
+        assertEquals("AUTHENTICATION_REQUIRED",((Map<?,?>)response.getBody()).get("message"));
+        verify(service,never()).saveDesignAndGenerate(any(),anyString());
+    }
+
+    @Test
+    void operationAdministratorCannotMutateCanonicalDesign(){
+        Map<String,Object> body=Map.of("routePath","/design/route");
+        when(users.resolve(request)).thenReturn(
+            context("operations-user","DEFAULT","ROLE_OPERATION_ADMIN",true,false));
+
+        var response=controller.saveDesignAndGenerate(body,request);
+
+        assertEquals(403,response.getStatusCode().value());
+        assertEquals("DESIGN_ADMIN_REQUIRED",((Map<?,?>)response.getBody()).get("message"));
+        verify(service,never()).saveDesignAndGenerate(any(),anyString());
+    }
+
+    @Test
+    void ordinaryAuthenticatedAccountReturns403WithoutMutation(){
+        Map<String,Object> body=Map.of("routePath","/design/route");
+        when(users.resolve(request)).thenReturn(context("designer","TENANT_A","ROLE_ADMIN",true,false));
+
+        var response=controller.saveDesignAndGenerate(body,request);
+
+        assertEquals(403,response.getStatusCode().value());
+        assertEquals("DESIGN_ADMIN_REQUIRED",((Map<?,?>)response.getBody()).get("message"));
+        verify(service,never()).saveDesignAndGenerate(any(),anyString());
+    }
+
+    @Test
+    void platformAdministratorCanSaveAndGenerateWithResolvedIdentity(){
+        Map<String,Object> body=Map.of("routePath","/design/route");
+        when(users.resolve(request)).thenReturn(context("system-admin","DEFAULT","ROLE_SYSTEM_ADMIN",true,false));
+        when(service.saveDesignAndGenerate(body,"system-admin"))
+            .thenReturn(Map.of("success",true,"buildRequired",false));
+
+        var response=controller.saveDesignAndGenerate(body,request);
+
+        assertEquals(200,response.getStatusCode().value());
+        verify(service).saveDesignAndGenerate(body,"system-admin");
+    }
+
+    @Test
     void anonymousSystemReportReadIsRejectedBeforeTheService(){
         when(users.resolve(request)).thenReturn(context("","","",false,false));
 

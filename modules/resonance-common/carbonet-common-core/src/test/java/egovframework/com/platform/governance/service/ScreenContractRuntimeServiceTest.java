@@ -9,6 +9,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import javax.sql.DataSource;
 
@@ -95,6 +96,146 @@ class ScreenContractRuntimeServiceTest {
                 && !normalized.matches("(?s).*\\b(insert|update|delete|nextval)\\b.*");
         }), "read-only prediction executed mutation SQL or acquired a write lock");
         verify(jdbc, never()).update(anyString(), any(Object[].class));
+    }
+    @Test
+    @SuppressWarnings("unchecked")
+    void predictsOneHashedSupportBundleFromTheCanonicalDesign() {
+        JdbcTemplate jdbc = mock(JdbcTemplate.class);
+        ScreenContractRuntimeService service = new ScreenContractRuntimeService(jdbc, new ObjectMapper());
+        stubProfessionalPredictionReads(jdbc,
+            professionalActiveBinding("old", 2022L, 2), "new", List.of());
+        when(jdbc.queryForObject(argThat(sql -> sql != null && sql.contains("coalesce(max(version_no),0)+1")),
+            eq(Integer.class), any(Object[].class))).thenReturn(3);
+
+        Map<String,Object> prediction = service.predictProfessionalContract(37865L, Map.of());
+
+        assertEquals("new", prediction.get("contractHash"));
+        assertEquals("ef42c8bce9df1444d32766962be7f4ce05e845bc9532769ca75cb95844288728",
+            prediction.get("designHash"));
+        assertEquals("bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            prediction.get("catalogHash"));
+        assertEquals(false, prediction.get("buildRequired"));
+        Map<String,Object> responseSupport = (Map<String,Object>)prediction.get("support");
+        assertEquals("carbonet.executable-screen-support/v1", responseSupport.get("schemaVersion"));
+        assertTrue(responseSupport.keySet().containsAll(Set.of("help", "workGuide", "qa", "designCard", "assetBindings")));
+        assertTrue(mockingDetails(jdbc).getInvocations().stream().anyMatch(invocation -> {
+            Object[] arguments = invocation.getArguments();
+            if (arguments.length < 3 || !(arguments[0] instanceof String sql)
+                    || !sql.startsWith("select md5")) return false;
+            try {
+                Map<String,Object> contract = new ObjectMapper().readValue(String.valueOf(arguments[2]), Map.class);
+                Map<String,Object> support = (Map<String,Object>)contract.get("support");
+                Map<String,Object> operations = (Map<String,Object>)contract.get("operations");
+                return "carbonet.executable-screen-support/v1".equals(support.get("schemaVersion"))
+                    && String.valueOf(support.get("designHash")).matches("[0-9a-f]{64}")
+                    && String.valueOf(support.get("catalogHash")).matches("[0-9a-f]{64}")
+                    && support.keySet().containsAll(Set.of("help", "workGuide", "qa", "designCard", "lanes"))
+                    && support.get("designHash").equals(operations.get("designHash"))
+                    && support.get("catalogHash").equals(operations.get("catalogHash"));
+            } catch (Exception ignored) {
+                return false;
+            }
+        }), "versioned runtime contract omitted canonical support hashes or surfaces");
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void acceptsNullOrLegacyBlankCatalogHashAndRetainsExactSupportValue() {
+        for(Object catalogHash:java.util.Arrays.asList(null,"  ")){
+            JdbcTemplate jdbc = mock(JdbcTemplate.class);
+            ScreenContractRuntimeService service = new ScreenContractRuntimeService(jdbc, new ObjectMapper());
+            stubProfessionalPredictionReads(jdbc,
+                professionalActiveBinding("old", 2022L, 2), "new", List.of());
+            when(jdbc.queryForList(
+                argThat(sql -> sql != null && sql.contains("from framework_professional_screen_contract c")),
+                any(Object[].class))).thenReturn(List.of(
+                    professionalContractSourceWithCatalogHash(catalogHash)));
+            when(jdbc.queryForObject(
+                argThat(sql -> sql != null && sql.contains("coalesce(max(version_no),0)+1")),
+                eq(Integer.class), any(Object[].class))).thenReturn(3);
+
+            Map<String,Object> prediction = service.predictProfessionalContract(37865L, Map.of());
+
+            assertEquals("ef42c8bce9df1444d32766962be7f4ce05e845bc9532769ca75cb95844288728",
+                prediction.get("designHash"));
+            assertTrue(prediction.containsKey("catalogHash"));
+            assertEquals(catalogHash, prediction.get("catalogHash"));
+            Map<String,Object> support = (Map<String,Object>)prediction.get("support");
+            assertEquals(Set.of("schemaVersion", "designHash", "catalogHash", "help", "workGuide",
+                "qa", "designCard", "assetBindings", "lanes"), support.keySet());
+            assertEquals(catalogHash, support.get("catalogHash"));
+        }
+    }
+
+    @Test
+    void rejectsMalformedOrNonStringCatalogHashBeforeVersionOrBindingMutation() {
+        for(Object invalidCatalogHash:List.of(
+                "not-a-sha256",new java.math.BigInteger("1".repeat(64)))){
+            JdbcTemplate jdbc = mock(JdbcTemplate.class);
+            ScreenContractRuntimeService service = new ScreenContractRuntimeService(jdbc, new ObjectMapper());
+            stubProfessionalPredictionReads(jdbc,
+                professionalActiveBinding("old", 2022L, 2), "new", List.of());
+            when(jdbc.queryForList(
+                argThat(sql -> sql != null && sql.contains("from framework_professional_screen_contract c")),
+                any(Object[].class))).thenReturn(List.of(
+                    professionalContractSourceWithCatalogHash(invalidCatalogHash)));
+
+            IllegalStateException error = assertThrows(IllegalStateException.class,
+                () -> service.predictProfessionalContract(37865L, Map.of()));
+
+            assertTrue(error.getMessage().contains("Canonical screen bundle"));
+            verify(jdbc, never()).update(anyString(), any(Object[].class));
+        }
+    }
+
+    @Test
+    void rejectsIncompleteCanonicalBundleBeforeVersionOrBindingMutation() {
+        JdbcTemplate jdbc = mock(JdbcTemplate.class);
+        ScreenContractRuntimeService service = new ScreenContractRuntimeService(jdbc, new ObjectMapper());
+        stubProfessionalPredictionReads(jdbc,
+            professionalActiveBinding("old", 2022L, 2), "new", List.of());
+        Map<String,Object> incompleteSource = professionalContractSource();
+        incompleteSource.put("canonicalBundle", """
+            {"schema":"carbonet.canonical-design/v1",
+             "designHash":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+             "catalogHash":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+             "canonicalDesign":{"lanes":{"HELP":{}}}}
+            """);
+        when(jdbc.queryForList(
+            argThat(sql -> sql != null && sql.contains("from framework_professional_screen_contract c")),
+            any(Object[].class))).thenReturn(List.of(incompleteSource));
+
+        IllegalStateException error = assertThrows(IllegalStateException.class,
+            () -> service.predictProfessionalContract(37865L, Map.of()));
+
+        assertTrue(error.getMessage().contains("Canonical screen bundle"));
+        verify(jdbc, never()).update(anyString(), any(Object[].class));
+    }
+
+    @Test
+    void rejectsCanonicalTextHashDriftBeforeVersionOrBindingMutation() {
+        JdbcTemplate jdbc = mock(JdbcTemplate.class);
+        ScreenContractRuntimeService service = new ScreenContractRuntimeService(jdbc, new ObjectMapper());
+        stubProfessionalPredictionReads(jdbc,
+            professionalActiveBinding("old", 2022L, 2), "new", List.of());
+        Map<String,Object> driftedSource = professionalContractSource();
+        String bundle = String.valueOf(driftedSource.get("canonicalBundle"));
+        driftedSource.put("canonicalBundle", bundle.replace(
+            "ef42c8bce9df1444d32766962be7f4ce05e845bc9532769ca75cb95844288728",
+            "0000000000000000000000000000000000000000000000000000000000000000"));
+        when(jdbc.queryForList(
+            argThat(sql -> sql != null && sql.contains("from framework_professional_screen_contract c")),
+            any(Object[].class))).thenReturn(List.of(driftedSource));
+
+        IllegalStateException error = assertThrows(IllegalStateException.class,
+            () -> service.predictProfessionalContract(37865L, Map.of()));
+
+        assertTrue(error.getMessage().contains("Canonical screen bundle"));
+        assertTrue(mockingDetails(jdbc).getInvocations().stream().noneMatch(invocation -> {
+            Object[] arguments = invocation.getArguments();
+            return arguments.length > 0 && arguments[0] instanceof String sql
+                && sql.toLowerCase(java.util.Locale.ROOT).matches("(?s).*\\b(insert|update|delete)\\b.*");
+        }));
     }
 
     @Test
@@ -200,7 +341,41 @@ class ScreenContractRuntimeServiceTest {
         source.put("exceptionStatesVerified", true);
         source.put("auditEvidenceRef", "qa-run:sha256:0123456789abcdef");
         source.put("contractStatus", "VERIFIED");
+        source.put("canonicalBundle", """
+            {"schema":"carbonet.canonical-design/v1",
+             "designHash":"ef42c8bce9df1444d32766962be7f4ce05e845bc9532769ca75cb95844288728",
+             "canonicalText":"{\\\"identity\\\":{\\\"pageId\\\":\\\"DISCLOSURE_CORRECTION_S1\\\"},\\\"process\\\":{\\\"processCode\\\":\\\"DISCLOSURE_CORRECTION\\\"},\\\"step\\\":{\\\"stepCode\\\":\\\"DISCLOSURE_CORRECTION_S1\\\"},\\\"lanes\\\":{\\\"HELP\\\":{\\\"items\\\":[]},\\\"WORK_GUIDE\\\":{\\\"actorCode\\\":\\\"COMPANY_MANAGER\\\"},\\\"QA\\\":{\\\"requiredScenarios\\\":[\\\"HAPPY_PATH\\\",\\\"AUTHORITY\\\",\\\"ISOLATION\\\",\\\"EXCEPTION\\\",\\\"RECOVERY\\\"]},\\\"DESIGN_CARD\\\":{\\\"assetBindings\\\":[]},\\\"FRONTEND\\\":{},\\\"API\\\":[],\\\"DATABASE\\\":[]}}",
+             "catalogHash":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+             "canonicalDesign":{
+               "identity":{"pageId":"DISCLOSURE_CORRECTION_S1"},
+               "process":{"processCode":"DISCLOSURE_CORRECTION"},
+               "step":{"stepCode":"DISCLOSURE_CORRECTION_S1"},
+               "lanes":{
+               "HELP":{"items":[]},
+               "WORK_GUIDE":{"actorCode":"COMPANY_MANAGER"},
+               "QA":{"requiredScenarios":["HAPPY_PATH","AUTHORITY","ISOLATION","EXCEPTION","RECOVERY"]},
+               "DESIGN_CARD":{"assetBindings":[]},
+               "FRONTEND":{},
+               "API":[],
+               "DATABASE":[]
+             }}}}
+            """);
         return source;
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<String,Object> professionalContractSourceWithCatalogHash(Object catalogHash) {
+        Map<String,Object> source = professionalContractSource();
+        try {
+            ObjectMapper mapper = new ObjectMapper();
+            Map<String,Object> bundle = mapper.readValue(
+                String.valueOf(source.get("canonicalBundle")), Map.class);
+            bundle.put("catalogHash", catalogHash);
+            source.put("canonicalBundle", mapper.writeValueAsString(bundle));
+            return source;
+        } catch (Exception error) {
+            throw new IllegalStateException(error);
+        }
     }
 
     private Map<String,Object> validContract() {
