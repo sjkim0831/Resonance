@@ -1,0 +1,8 @@
+Material Symbols Outlined self-hosted font
+
+Source package: material-symbols@0.46.0
+Registry: https://registry.npmjs.org/material-symbols/-/material-symbols-0.46.0.tgz
+Package integrity: sha512-YxmTXwOhLOI6EupAwFfxFERbaDe61dG/tveOSy2HecndGKqvJ74WqXrrXLNWpIGDkk6TDpieuQPDS+hA7+z3Ig==
+Font SHA-256: 9ec3f3deed0be4da191a434b78fdc53e76ead92333290d3f8ee9f3dde34b6339
+License: Apache-2.0 (see MaterialSymbolsOutlined-LICENSE.txt)
+Runtime network dependency: none
