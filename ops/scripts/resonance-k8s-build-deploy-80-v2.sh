@@ -502,7 +502,7 @@ build_frontend() {
     root_cmd mv -f "$OVERLAY_HOST_PATH/.index.html.next" "$OVERLAY_HOST_PATH/index.html"
     node "$ROOT_DIR/ops/scripts/verify-react-asset-closure.mjs" "$OVERLAY_HOST_PATH"
     node "$ROOT_DIR/ops/scripts/prune-react-asset-generations.mjs" \
-      "$OVERLAY_HOST_PATH" "$previous_manifest"
+      "$OVERLAY_HOST_PATH" "$previous_manifest" "$staging_dir"
     node "$ROOT_DIR/ops/scripts/verify-react-asset-closure.mjs" "$OVERLAY_HOST_PATH"
     rm -f "$previous_manifest"
     rm -rf "$staging_dir"
@@ -558,7 +558,8 @@ publish_pending_frontend_staging() {
   root_cmd mv -f "$OVERLAY_HOST_PATH/.index.html.next" "$OVERLAY_HOST_PATH/index.html"
   node "$ROOT_DIR/ops/scripts/verify-react-asset-closure.mjs" "$OVERLAY_HOST_PATH"
   node "$ROOT_DIR/ops/scripts/prune-react-asset-generations.mjs" \
-    "$OVERLAY_HOST_PATH" "$PENDING_FRONTEND_PREVIOUS_MANIFEST"
+    "$OVERLAY_HOST_PATH" "$PENDING_FRONTEND_PREVIOUS_MANIFEST" \
+    "$PENDING_FRONTEND_STAGING_DIR"
   node "$ROOT_DIR/ops/scripts/verify-react-asset-closure.mjs" "$OVERLAY_HOST_PATH"
   rm -f -- "$PENDING_FRONTEND_PREVIOUS_MANIFEST"
   rm -rf -- "$PENDING_FRONTEND_STAGING_DIR"
