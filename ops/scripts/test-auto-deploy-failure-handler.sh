@@ -43,6 +43,10 @@ grep -q 'category=NETWORK_TRANSIENT' "$handler"
 grep -q '_SYSTEMD_INVOCATION_ID=' "$handler"
 grep -q 'retry_allowed=true' "$handler"
 grep -q 'category=DATABASE' "$handler"
+grep -q 'category=DATABASE_DETERMINISTIC' "$handler"
+grep -q 'category=DEPLOY_TERMINATED' "$handler"
+grep -Fq 'ExecMainStatus' "$handler"
+grep -Fq 'FLYWAY_JOB_FAILED' "$handler"
 grep -q 'category=E2E' "$handler"
 grep -q 'systemd-run.*--quiet' "$handler"
 grep -q 'retryAttempted' "$handler"
@@ -169,6 +173,85 @@ JSON
   CARBONET_TEAMS_WEBHOOK_FILE="$fixture/missing.url" \
     bash "$notifier" >/dev/null
   [[ "$(wc -l <"$fixture/deploy-alerts.jsonl")" -eq 1 ]]
+fi
+
+if command -v jq >/dev/null 2>&1; then
+  classifier_fixture="$(mktemp -d)"
+  mkdir -p "$classifier_fixture/bin"
+  cat >"$classifier_fixture/bin/systemctl" <<'SH'
+#!/usr/bin/env bash
+case "$*" in
+  *ExecMainStartTimestampMonotonic*) printf 'classifier-run\n' ;;
+  *InvocationID*) printf 'classifier-invocation\n' ;;
+  *ExecMainStatus*) printf '%s\n' "${FAKE_EXEC_MAIN_STATUS:?}" ;;
+  *) exit 0 ;;
+esac
+SH
+  cat >"$classifier_fixture/bin/journalctl" <<'SH'
+#!/usr/bin/env bash
+cat "${FAKE_JOURNAL_SOURCE:?}"
+SH
+  cat >"$classifier_fixture/bin/git" <<'SH'
+#!/usr/bin/env bash
+[[ "$1" == ls-remote ]] || exit 97
+printf '%s\trefs/heads/main\n' "${FAKE_TARGET_COMMIT:?}"
+SH
+  cat >"$classifier_fixture/bin/systemd-run" <<'SH'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >>"${FAKE_SYSTEMD_RUN_RECORD:?}"
+SH
+  cat >"$classifier_fixture/notify.sh" <<'SH'
+#!/usr/bin/env bash
+exit 0
+SH
+  chmod 0755 "$classifier_fixture/bin/"* "$classifier_fixture/notify.sh"
+  classifier_target='aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
+
+  run_classifier_mutant() {
+    local name="$1"
+    local exit_status="$2"
+    local journal_text="$3"
+    local expected_category="$4"
+    local expected_status="$5"
+    local expected_retry_allowed="$6"
+    local expected_retry_attempted="$7"
+    local expected_schedule_count="$8"
+    local case_dir="$classifier_fixture/$name"
+    local schedule_count
+    local retry_marker_count
+    mkdir -p "$case_dir/state"
+    printf '%s\n' "$journal_text" >"$case_dir/journal.log"
+    FAKE_EXEC_MAIN_STATUS="$exit_status" \
+    FAKE_JOURNAL_SOURCE="$case_dir/journal.log" \
+    FAKE_TARGET_COMMIT="$classifier_target" \
+    FAKE_SYSTEMD_RUN_RECORD="$case_dir/systemd-run.record" \
+    PATH="$classifier_fixture/bin:$PATH" \
+    CARBONET_DEPLOY_OWNER="$(id -un)" \
+    CARBONET_DEPLOY_ROOT="$root" \
+    CARBONET_DEPLOY_STATE_DIR="$case_dir/state" \
+    CARBONET_DEPLOY_NOTIFY_SCRIPT="$classifier_fixture/notify.sh" \
+      bash "$handler" >/dev/null
+    jq -e --arg category "$expected_category" --arg status "$expected_status" \
+      --argjson allowed "$expected_retry_allowed" --argjson attempted "$expected_retry_attempted" \
+      '.category==$category and .status==$status and .retryAllowed==$allowed and .retryAttempted==$attempted' \
+      "$case_dir/state/deploy-status.json" >/dev/null
+    schedule_count=0
+    [[ ! -e "$case_dir/systemd-run.record" ]] || schedule_count="$(wc -l <"$case_dir/systemd-run.record" | tr -d ' ')"
+    [[ "$schedule_count" == "$expected_schedule_count" ]]
+    retry_marker_count="$(find "$case_dir/state" -maxdepth 1 -type f -name 'retry-*.attempted' | wc -l | tr -d ' ')"
+    [[ "$retry_marker_count" == "$expected_schedule_count" ]]
+  }
+
+  run_classifier_mutant network_503 1 \
+    'readiness returned 503 while probing the candidate' \
+    NETWORK_TRANSIENT RETRY_SCHEDULED true true 1
+  run_classifier_mutant flyway_p0001 79 \
+    $'error: timed out waiting for condition\nFLYWAY_JOB_FAILED\nSQL State  : P0001\nWORK_EXECUTION stage B precondition failed\nChanges successfully rolled back' \
+    DATABASE_DETERMINISTIC FAILED false false 0
+  run_classifier_mutant explicit_term_79 79 \
+    $'explicit TERM79 requested after operator stop\ntimed out waiting for condition' \
+    DEPLOY_TERMINATED FAILED false false 0
+  rm -rf -- "$classifier_fixture"
 fi
 
 if command -v jq >/dev/null 2>&1; then
@@ -469,10 +552,14 @@ SH
   rm -rf -- "$runner_fixture"
 fi
 
-e2e_line="$(grep -n "category=E2E" "$handler" | head -1 | cut -d: -f1)"
-database_line="$(grep -n "category=DATABASE" "$handler" | head -1 | cut -d: -f1)"
+deterministic_database_line="$(grep -n 'category=DATABASE_DETERMINISTIC' "$handler" | head -1 | cut -d: -f1)"
+terminated_line="$(grep -n 'category=DEPLOY_TERMINATED' "$handler" | head -1 | cut -d: -f1)"
 network_line="$(grep -n "category=NETWORK_TRANSIENT" "$handler" | head -1 | cut -d: -f1)"
+e2e_line="$(grep -n "category=E2E" "$handler" | head -1 | cut -d: -f1)"
+database_line="$(grep -n '^[[:space:]]*category=DATABASE$' "$handler" | head -1 | cut -d: -f1)"
+[[ "$deterministic_database_line" -lt "$terminated_line" ]]
+[[ "$terminated_line" -lt "$network_line" ]]
 [[ "$network_line" -lt "$e2e_line" ]]
 [[ "$e2e_line" -lt "$database_line" ]]
 
-echo "AUTO_DEPLOY_FAILURE_HANDLER_PASS promotionPending=DB-authoritative attemptRecovery=deploy-owner+hold-bypass+fetch0+candidateBound3x"
+echo "AUTO_DEPLOY_FAILURE_HANDLER_PASS promotionPending=DB-authoritative attemptRecovery=deploy-owner+hold-bypass+fetch0+candidateBound3x classifier=network503-retry1+flywayP0001-retry0+term79-retry0"

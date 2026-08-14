@@ -29,6 +29,9 @@ chmod 0750 "$evidence_dir"
 timestamp="$(date -Iseconds)"
 run_key="$(systemctl show carbonet-auto-deploy.service -p ExecMainStartTimestampMonotonic --value 2>/dev/null || date +%s)"
 invocation_id="$(systemctl show carbonet-auto-deploy.service -p InvocationID --value 2>/dev/null || true)"
+deploy_exit_status="$(systemctl show carbonet-auto-deploy.service -p ExecMainStatus --value 2>/dev/null || true)"
+deploy_exit_status="${deploy_exit_status//[[:space:]]/}"
+[[ "$deploy_exit_status" =~ ^[0-9]+$ ]] || deploy_exit_status=""
 evidence="$evidence_dir/${run_key}.log"
 if [[ -n "$invocation_id" ]]; then
   journalctl "_SYSTEMD_INVOCATION_ID=$invocation_id" --no-pager >"$evidence"
@@ -83,6 +86,15 @@ elif [[ -e "$marker_pending_file" || -L "$marker_pending_file" ]]; then
   else
     category=PROMOTION_AUTHORITY_UNAVAILABLE
   fi
+elif grep -Eqi 'SQL State[[:space:]]*:[[:space:]]*P0001|SQLSTATE[[:space:]]*[:=]?[[:space:]]*P0001|precondition failed|FLYWAY_JOB_FAILED' "$evidence"; then
+  # A Flyway contract/precondition failure is deterministic even when a later
+  # kubectl wait emits a generic timeout. Never let that wrapper timeout turn
+  # an already rolled-back migration into an automatic deployment retry.
+  category=DATABASE_DETERMINISTIC
+elif [[ "$deploy_exit_status" == 79 ]]; then
+  # Exit 79 is the deployment harness's explicit fail-closed terminal status.
+  # It may require operator reconciliation, but it must never self-retry.
+  category=DEPLOY_TERMINATED
 elif grep -Eqi 'connection reset|connection refused|temporary failure|timed out|timeout|TLS handshake|unable to connect|i/o timeout|HTTP 50[234]|requested URL returned error: 50[234]|readiness returned 50[234]|concurrent token acquisition failed' "$evidence"; then
   category=NETWORK_TRANSIENT
   retry_allowed=true
