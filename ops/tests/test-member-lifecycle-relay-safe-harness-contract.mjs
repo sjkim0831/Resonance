@@ -83,24 +83,60 @@ function violations(candidate) {
     ["full-workflow-lane-dom", candidate.includes("data-task-quest-panel")
       && candidate.includes('name: "전체 업무 보기", exact: true')
       && candidate.includes('getByRole("dialog", { name: "전체 업무 프로세스", exact: true })')
+      && candidate.includes('getByLabel("업무 프로세스", { exact: true })')
+      && candidate.includes("workflowProcess.inputValue() !== processCode")
       && candidate.includes('name: "전체 업무 닫기", exact: true')],
     ["qa-lane-dom", candidate.includes('name: "QA 검증", exact: true')
-      && candidate.includes("data-process-qa-card") && candidate.includes('name: "QA 업무", exact: true')],
+      && candidate.includes("data-process-qa-card") && candidate.includes('name: "QA 업무", exact: true')
+      && candidate.includes('data-qa-screen-context][data-screen-classification="EXECUTABLE"')
+      && candidate.includes("QA workflow context is access restricted")],
     ["design-card-lane-dom", candidate.includes('name: "화면 설계 요약", exact: true')
       && candidate.includes('data-common-component="COMMON_STATUS_BADGE"') && candidate.includes("hasText: /^KRDS$/")],
     ["next-handoff-lane-dom", (candidate.match(/name: "다음 업무", exact: true/g) || []).length >= 3
       && candidate.includes("data-utility-panel-state")],
     ["api-coordinate-contract", candidate.includes("process.processCode === processCode")
+      && candidate.includes('screen.route === "/work/execution"') && candidate.includes('screen.audience === "USER"')
       && candidate.includes("process.stepCode === step.stepCode") && candidate.includes("permission.actorCode === step.actorCode")],
     ["api-support-lanes", candidate.includes("const help = support.help || {}")
       && candidate.includes("const workGuide = support.workGuide || {}")
       && candidate.includes("const qa = support.qa || {}")
       && candidate.includes("const designCard = support.designCard || {}")
-      && candidate.includes("workGuide.nextAction") && candidate.includes("qa.checks.every((check) => check.passed === true)")
+      && candidate.includes("workGuide.nextAction") && candidate.includes("qa.requiredScenarioTypes.length === requiredScenarios.length")
+      && candidate.includes("qa.checks.every((check) => check.passed === true)")
       && candidate.includes("testContract[key] === true")],
+    ["api-version-hash-contract", candidate.includes('/^[0-9a-f]{32}$/.test(contractHash)')
+      && candidate.includes("Number.isSafeInteger(versionId)") && candidate.includes("versionId < 1")],
+    ["direct-resolver-status-hash-binding", candidate.includes('const runtimeContractResult = await json(actorApi, "GET", runtimeContractPath, undefined, [200])')
+      && candidate.includes("runtimeContractResult.response.status() !== 200")
+      && candidate.includes("evidence.supportContracts.push(supportContract)")],
+    ["page-resolver-mandatory", candidate.includes("const pageContractPromise = page.waitForResponse")
+      && candidate.includes('candidate.request().method() === "GET"')
+      && candidate.includes("const [response, pageContractResponse] = await Promise.all([")
+      && candidate.includes("pageContractPromise," )],
+    ["page-resolver-non200-fast", !candidate.includes("candidate.status() === 200")
+      && candidate.includes("if (pageContractResponse.status() !== 200)")],
     ["page-api-contract-binding", candidate.includes('candidateUrl.pathname === "/runtime/screens/resolve"')
+      && candidate.includes('candidateUrl.searchParams.get("routePath") === "/work/execution"')
+      && candidate.includes('candidateUrl.searchParams.get("processCode") === processCode')
       && candidate.includes('candidateUrl.searchParams.get("stepCode") === step.stepCode')
-      && candidate.includes("pageSupportContract.contractHash !== supportContract.contractHash")],
+      && candidate.includes('candidateUrl.searchParams.get("audience") === "USER"')
+      && candidate.includes("pageSupportContract.contractHash !== supportContract.contractHash")
+      && candidate.includes("pageSupportContract.versionId !== supportContract.versionId")],
+    ["dom-contract-binding", candidate.includes('page.locator("[data-versioned-support-contract]")')
+      && candidate.includes('"data-contract-hash", supportContract.contractHash')
+      && candidate.includes('"data-version-id", String(supportContract.versionId)')
+      && candidate.includes('"data-process-code", processCode')
+      && candidate.includes('"data-step-code", step.stepCode')
+      && candidate.includes('"data-actor-code", step.actorCode')
+      && candidate.includes('"data-required-scenario-count", String(supportContract.requiredScenarioCount)')
+      && candidate.includes("assertSupportDom(page, step, supportContract)")
+      && candidate.includes("supportContractVersionId: supportContract.versionId")
+      && candidate.includes("supportContractHash: pageSupportContract.contractHash")],
+    ["support-surface-open-contract", candidate.includes("await helpButton.click()")
+      && candidate.includes('data-help-work-context][data-screen-classification="EXECUTABLE"')
+      && candidate.includes('getByRole("button", { name: "QA 업무", exact: true }).click()')
+      && candidate.includes("qaWorkContext")
+      && candidate.includes("workflowProcess.inputValue() !== processCode")],
     ["desktop-mobile-eight", candidate.includes('{ name: "desktop", width: 1440, height: 1000 }')
       && candidate.includes('{ name: "mobile", width: 390, height: 844 }')
       && candidate.includes("evidence.screenshotPaths.length !== 8")],
@@ -130,6 +166,7 @@ function violations(candidate) {
       && candidate.includes("evidence.screenshotPaths.push") && candidate.includes('createHash("sha256")')],
     ["no-secret-output", !/(console\.(?:log|error)|JSON\.stringify)\s*\([^\n]*(credentialPassword|credentials\.password|selected\.password)/.test(candidate)],
   ];
+  violations.lastCheckCount = checks.length;
   return checks.filter(([, passed]) => !passed).map(([name]) => name);
 }
 
@@ -182,7 +219,27 @@ for (const mutation of laneMutations) mutate(...mutation);
 
 mutate("API actor binding removal", "permission.actorCode === step.actorCode", "permission.actorCode !== step.actorCode", "api-coordinate-contract");
 mutate("support QA contract removal", "const qa = support.qa || {}", "const qa = {}", "api-support-lanes");
+mutate("support scenario five weakening", "qa.requiredScenarioTypes.length === requiredScenarios.length", "qa.requiredScenarioTypes.length >= requiredScenarios.length", "api-support-lanes");
+mutate("direct resolver audience binding removal", 'screen.audience === "USER"', 'screen.audience === "ADMIN"', "api-coordinate-contract");
+mutate("direct resolver status binding removal", "runtimeContractResult.response.status() !== 200", "false", "direct-resolver-status-hash-binding");
+mutate("direct resolver hash format removal", "/^[0-9a-f]{32}$/.test(contractHash)", "Boolean(contractHash)", "api-version-hash-contract");
+mutate("direct resolver version gate removal", "Number.isSafeInteger(versionId)", "Number.isFinite(versionId)", "api-version-hash-contract");
+mutate("zero-page-resolver fixture", "const pageContractPromise = page.waitForResponse", "const pageContractPromise = Promise.resolve", "page-resolver-mandatory");
+mutate("page resolver mandatory wait detached", "          pageContractPromise,", "          Promise.resolve(null),", "page-resolver-mandatory");
+mutate("page resolver non-200 slow wait", 'candidate.request().method() === "GET"', 'candidate.request().method() === "GET" && candidate.status() === 200', "page-resolver-non200-fast");
+mutate("page contract route binding removal", 'candidateUrl.searchParams.get("routePath") === "/work/execution"', "true", "page-api-contract-binding");
+mutate("page contract audience binding removal", 'candidateUrl.searchParams.get("audience") === "USER"', "true", "page-api-contract-binding");
 mutate("page contract step binding removal", 'candidateUrl.searchParams.get("stepCode") === step.stepCode', "true", "page-api-contract-binding");
+mutate("page contract version binding removal", "pageSupportContract.versionId !== supportContract.versionId", "false", "page-api-contract-binding");
+mutate("DOM contract hash binding removal", '"data-contract-hash", supportContract.contractHash', '"data-contract-hash", "unbound"', "dom-contract-binding");
+mutate("DOM contract version binding removal", '"data-version-id", String(supportContract.versionId)', '"data-version-id", "0"', "dom-contract-binding");
+mutate("DOM process binding removal", '"data-process-code", processCode', '"data-process-code", "OTHER"', "dom-contract-binding");
+mutate("DOM step binding removal", '"data-step-code", step.stepCode', '"data-step-code", "OTHER"', "dom-contract-binding");
+mutate("DOM actor binding removal", '"data-actor-code", step.actorCode', '"data-actor-code", "OTHER"', "dom-contract-binding");
+mutate("DOM scenario count binding removal", '"data-required-scenario-count", String(supportContract.requiredScenarioCount)', '"data-required-scenario-count", "0"', "dom-contract-binding");
+mutate("help open verification removal", "await helpButton.click();", "void helpButton;", "support-surface-open-contract");
+mutate("QA panel open verification removal", 'getByRole("button", { name: "QA 업무", exact: true }).click()', 'getByRole("button", { name: "QA 업무", exact: true }).focus()', "support-surface-open-contract");
+mutate("full workflow coordinate weakening", "workflowProcess.inputValue() !== processCode", "false", "full-workflow-lane-dom");
 mutate("console observer removal", 'page.on("console"', 'page.on("ignored-console"', "console-error-gate");
 mutate("console blocker removal", "consoleErrors.length || failedRequests.length", "false || failedRequests.length", "console-error-gate");
 mutate("network observer removal", 'page.on("requestfailed"', 'page.on("ignored-requestfailed"', "request-failed-gate");
@@ -198,5 +255,5 @@ mutate("immutable evidence write removal", '{ flag: "wx", mode: 0o600 }', "{ mod
 mutate("screenshot count regression", "evidence.screenshotPaths.length !== 8", "evidence.screenshotPaths.length !== 7", "desktop-mobile-eight");
 mutate("credential console exposure", "credentialPassword = credentials.password;", "credentialPassword = credentials.password; console.log(credentials.password);", "no-secret-output");
 
-const checkCount = 42;
-console.log(`MEMBER_LIFECYCLE_RELAY_SAFE_HARNESS_CONTRACT_PASS checks=${checkCount} mutants=${mutantCount} screenshots=8 supportLanes=6 cleanup=owned-reset-delete+logout+tokens+full-residue`);
+const checkCount = Number(violations.lastCheckCount || 0);
+console.log(`MEMBER_LIFECYCLE_RELAY_SAFE_HARNESS_CONTRACT_PASS checks=${checkCount} mutants=${mutantCount} screenshots=8 supportLanes=6 pageResolver=mandatory+non200-fast domBinding=hash+version+process+step+actor+scenario5 cleanup=owned-reset-delete+logout+tokens+full-residue`);

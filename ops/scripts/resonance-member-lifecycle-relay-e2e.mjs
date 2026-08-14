@@ -545,6 +545,7 @@ function qaProvenance(step) {
 
 function requireSupportContract(envelope, step) {
   const contract = envelope?.contract || {};
+  const screen = contract.screen || {};
   const process = contract.process || {};
   const permission = contract.permission || {};
   const support = contract.support || {};
@@ -554,7 +555,9 @@ function requireSupportContract(envelope, step) {
   const designCard = support.designCard || {};
   const testContract = contract.test || {};
   const requiredScenarios = ["HAPPY_PATH", "AUTHORITY", "ISOLATION", "EXCEPTION", "RECOVERY"];
-  const exactCoordinate = process.processCode === processCode
+  const exactCoordinate = screen.route === "/work/execution"
+    && screen.audience === "USER"
+    && process.processCode === processCode
     && process.stepCode === step.stepCode
     && permission.actorCode === step.actorCode;
   const completeLanes = Array.isArray(help.items) && help.items.length > 0
@@ -564,6 +567,7 @@ function requireSupportContract(envelope, step) {
     && workGuide.nextAction && typeof workGuide.nextAction === "object"
     && String(workGuide.nextAction.routePath || "") === "/work/execution"
     && Array.isArray(qa.requiredScenarioTypes)
+    && qa.requiredScenarioTypes.length === requiredScenarios.length
     && requiredScenarios.every((scenario) => qa.requiredScenarioTypes.includes(scenario))
     && Array.isArray(qa.checks) && qa.checks.length > 0 && qa.checks.every((check) => check.passed === true)
     && ["apiVerified", "databaseVerified", "authorityVerified", "responsiveVerified", "accessibilityVerified", "exceptionStatesVerified"]
@@ -572,14 +576,20 @@ function requireSupportContract(envelope, step) {
     && typeof designCard.specification === "object" && designCard.specification !== null
     && typeof designCard.traceability === "object" && designCard.traceability !== null
     && Array.isArray(designCard.assetBindings) && designCard.assetBindings.length > 0;
-  if (!exactCoordinate || !completeLanes || !envelope.contractHash || !envelope.versionId) {
+  const contractHash = String(envelope.contractHash || "");
+  const versionId = Number(envelope.versionId);
+  if (!exactCoordinate || !completeLanes || !/^[0-9a-f]{32}$/.test(contractHash)
+      || !Number.isSafeInteger(versionId) || versionId < 1) {
     throw new Error(`versioned support contract incomplete actor=${step.actorCode} step=${step.stepCode}`);
   }
   return {
+    routePath: screen.route,
+    audience: screen.audience,
     actorCode: permission.actorCode,
     stepCode: process.stepCode,
-    contractHash: String(envelope.contractHash),
-    versionId: Number(envelope.versionId),
+    contractHash,
+    versionId,
+    requiredScenarioCount: requiredScenarios.length,
     lanes: ["help", "workGuide", "fullWorkflow", "qa", "designCard", "nextHandoff"],
   };
 }
@@ -591,8 +601,23 @@ async function requireVisible(locator, label) {
   if (await locator.count() < 1) throw new Error(`support surface missing: ${label}`);
 }
 
-async function assertSupportDom(page, step) {
-  const cards = page.locator('article[data-common-component="COMMON_CONTENT_CARD"]');
+async function requireExactAttribute(locator, attribute, expected, label) {
+  const actual = await locator.first().getAttribute(attribute);
+  if (actual !== expected) throw new Error(`support contract DOM ${label} expected=${expected} actual=${actual || ""}`);
+}
+
+async function assertSupportDom(page, step, supportContract) {
+  const supportRoot = page.locator("[data-versioned-support-contract]");
+  await requireVisible(supportRoot, "versioned support contract root");
+  if (await supportRoot.count() !== 1) throw new Error("versioned support contract root must be unique");
+  await requireExactAttribute(supportRoot, "data-contract-hash", supportContract.contractHash, "hash");
+  await requireExactAttribute(supportRoot, "data-version-id", String(supportContract.versionId), "version");
+  await requireExactAttribute(supportRoot, "data-process-code", processCode, "process");
+  await requireExactAttribute(supportRoot, "data-step-code", step.stepCode, "step");
+  await requireExactAttribute(supportRoot, "data-actor-code", step.actorCode, "actor");
+  await requireExactAttribute(supportRoot, "data-required-scenario-count", String(supportContract.requiredScenarioCount), "required scenarios");
+
+  const cards = supportRoot.locator('article[data-common-component="COMMON_CONTENT_CARD"]');
   const helpButton = page.locator("button.help-fab").filter({ hasText: /^도움말$/ });
   const workGuideCard = cards.filter({ has: page.getByRole("heading", { name: "업무 길잡이", exact: true }) });
   const qaCard = cards.filter({ has: page.getByRole("heading", { name: "QA 검증", exact: true }) });
@@ -610,6 +635,27 @@ async function assertSupportDom(page, step) {
   await requireVisible(processQaCard, "QA 업무 panel");
   await requireVisible(processQaCard.getByRole("button", { name: "QA 업무", exact: true }), "QA 업무 trigger");
 
+  await helpButton.click();
+  const helpDialog = page.getByRole("dialog").filter({ has: page.locator("[data-help-work-context]") });
+  await requireVisible(helpDialog, "도움말 dialog");
+  const helpWorkContext = helpDialog.locator('[data-help-work-context][data-screen-classification="EXECUTABLE"]');
+  await requireVisible(helpWorkContext, "도움말 current workflow");
+  if (await helpWorkContext.getAttribute("data-screen-access-restricted") === "true") {
+    throw new Error(`help workflow context is access restricted ${step.stepCode}`);
+  }
+  await helpDialog.getByRole("button", { name: "닫기", exact: true }).click();
+  await helpDialog.waitFor({ state: "hidden", timeout: 8_000 });
+
+  await processQaCard.getByRole("button", { name: "QA 업무", exact: true }).click();
+  await page.waitForFunction(() => document.querySelector('[data-process-qa-card]')?.getAttribute("data-utility-panel-state") === "open", null, { timeout: 8_000 });
+  const qaWorkContext = processQaCard.locator('[data-qa-screen-context][data-screen-classification="EXECUTABLE"]');
+  await requireVisible(qaWorkContext, "QA current workflow");
+  if (await qaWorkContext.getAttribute("data-screen-access-restricted") === "true") {
+    throw new Error(`QA workflow context is access restricted ${step.stepCode}`);
+  }
+  await processQaCard.getByRole("button", { name: "닫기", exact: true }).click();
+  await requireVisible(processQaCard.getByRole("button", { name: "QA 업무", exact: true }), "QA 업무 closed trigger");
+
   if (await taskPanel.getAttribute("data-utility-panel-state") !== "closed") {
     await taskPanel.getByRole("button", { name: "접기", exact: true }).click();
   }
@@ -622,6 +668,12 @@ async function assertSupportDom(page, step) {
   await fullWorkflowButton.click();
   const fullWorkflowDialog = page.getByRole("dialog", { name: "전체 업무 프로세스", exact: true });
   await requireVisible(fullWorkflowDialog, "전체 업무 프로세스");
+  const workflowProcess = fullWorkflowDialog.getByLabel("업무 프로세스", { exact: true });
+  await requireVisible(workflowProcess, "전체 업무 current process");
+  await page.waitForFunction((expected) => Array.from(document.querySelectorAll('[role="dialog"] select')).some((select) => select.value === expected), processCode, { timeout: 8_000 });
+  if (await workflowProcess.inputValue() !== processCode) {
+    throw new Error(`full workflow process mismatch ${step.stepCode}`);
+  }
   await fullWorkflowDialog.getByRole("button", { name: "전체 업무 닫기", exact: true }).click();
   await fullWorkflowDialog.waitFor({ state: "hidden", timeout: 8_000 });
   await taskPanel.getByRole("button", { name: "접기", exact: true }).click();
@@ -630,6 +682,10 @@ async function assertSupportDom(page, step) {
   return {
     stepCode: step.stepCode,
     actorCode: step.actorCode,
+    contractHash: supportContract.contractHash,
+    versionId: supportContract.versionId,
+    requiredScenarioCount: supportContract.requiredScenarioCount,
+    coordinateBound: true,
     lanes: {
       help: true, workGuide: true, fullWorkflow: true,
       qaVerification: true, designCard: true, nextHandoff: true,
@@ -763,6 +819,9 @@ async function executeRelay() {
       routePath: "/work/execution", processCode, stepCode: step.stepCode, audience: "USER",
     })}`;
     const runtimeContractResult = await json(actorApi, "GET", runtimeContractPath, undefined, [200]);
+    if (runtimeContractResult.response.status() !== 200) {
+      throw new Error(`direct runtime contract HTTP ${runtimeContractResult.response.status()}`);
+    }
     const supportContract = requireSupportContract(runtimeContractResult.body, step);
     evidence.supportContracts.push(supportContract);
 
@@ -786,7 +845,9 @@ async function executeRelay() {
         const route = `/work/execution?${new URLSearchParams({ tenantId, projectId, processCode, stepCode: step.stepCode, guide: "1" })}`;
         const pageContractPromise = page.waitForResponse((candidate) => {
           const candidateUrl = new URL(candidate.url());
-          return candidateUrl.pathname === "/runtime/screens/resolve"
+          return candidate.request().method() === "GET"
+            && candidateUrl.pathname === "/runtime/screens/resolve"
+            && candidateUrl.searchParams.get("routePath") === "/work/execution"
             && candidateUrl.searchParams.get("processCode") === processCode
             && candidateUrl.searchParams.get("stepCode") === step.stepCode
             && candidateUrl.searchParams.get("audience") === "USER";
@@ -798,11 +859,12 @@ async function executeRelay() {
         assertRelayActive(`${step.stepCode} ${viewport.name} page contract response`);
         if (pageContractResponse.status() !== 200) throw new Error(`page runtime contract HTTP ${pageContractResponse.status()}`);
         const pageSupportContract = requireSupportContract(await pageContractResponse.json(), step);
-        if (pageSupportContract.contractHash !== supportContract.contractHash) {
-          throw new Error(`page/API support contract hash mismatch ${step.stepCode}`);
+        if (pageSupportContract.contractHash !== supportContract.contractHash
+            || pageSupportContract.versionId !== supportContract.versionId) {
+          throw new Error(`page/API support contract version or hash mismatch ${step.stepCode}`);
         }
         await page.waitForFunction((code) => document.body.innerText.includes(code), step.stepCode, { timeout: 12_000 });
-        const supportDom = await assertSupportDom(page, step);
+        const supportDom = await assertSupportDom(page, step, supportContract);
         const state = await page.evaluate((code) => ({
           hasStep: document.body.innerText.includes(code),
           controls: document.querySelectorAll("input,textarea,select").length,
@@ -834,6 +896,8 @@ async function executeRelay() {
           viewport: viewport.name,
           controls: state.controls,
           supportDom,
+          supportContractStatus: pageContractResponse.status(),
+          supportContractVersionId: supportContract.versionId,
           supportContractHash: pageSupportContract.contractHash,
           consoleErrorCount: consoleErrors.length,
           failedRequestCount: failedRequests.length,
