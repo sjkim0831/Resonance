@@ -14,6 +14,7 @@ function violations(candidate) {
     ["secret-credential-source", candidate.includes('loadSecretField("username")') && candidate.includes('loadSecretField("password")')],
     ["password-env-cleared", candidate.includes("for (const key of explicitPairs.flat()) delete process.env[key]")],
     ["canonical-auth-lock", candidate.includes('"/tmp/carbonet-qa-auth-session.lock"') && candidate.includes('spawnSync("flock"') && candidate.includes('CARBONET_MEMBER_RELAY_LOCK_HELD: "1"')],
+    ["active-token-expiry", candidate.includes("and (expiration_at is null or expiration_at > current_timestamp)")],
     ["active-token-baseline-zero", candidate.includes("evidence.cleanup.activeTokenBaseline !== 0")],
     ["finally-cleanup", /finally\s*\{\s*await cleanupRun\(\);\s*await persistEvidence\(\);\s*\}/s.test(candidate)],
     ["reset-in-cleanup", /async function cleanupRun\(\)[\s\S]*await resetProcessState\(cleanupOwnerApi\);/.test(candidate)],
@@ -71,6 +72,18 @@ mutate(
   "canonical-auth-lock",
 );
 mutate(
+  "active token expiry predicate removal",
+  "and (expiration_at is null or expiration_at > current_timestamp)",
+  "and true",
+  "active-token-expiry",
+);
+mutate(
+  "active token null fail-closed weakening",
+  "expiration_at is null or expiration_at > current_timestamp",
+  "expiration_at > current_timestamp",
+  "active-token-expiry",
+);
+mutate(
   "cleanup RESET removal",
   "await resetProcessState(cleanupOwnerApi);",
   "void cleanupOwnerApi;",
@@ -125,4 +138,4 @@ mutate(
   "no-secret-output",
 );
 
-console.log("MEMBER_LIFECYCLE_RELAY_SAFE_HARNESS_CONTRACT_PASS checks=19 mutants=13 screenshots=8 cleanup=reset+logout+tokens+residue");
+console.log("MEMBER_LIFECYCLE_RELAY_SAFE_HARNESS_CONTRACT_PASS checks=20 mutants=15 screenshots=8 cleanup=reset+logout+tokens+residue");

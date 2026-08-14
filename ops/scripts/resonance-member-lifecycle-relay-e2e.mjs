@@ -204,7 +204,9 @@ function databaseQuery(sql, label) {
 function activeTokenCount() {
   const accounts = [...new Set([adminUser, ...switchedAccounts].map((value) => value.toLowerCase()))];
   const literals = accounts.map((account) => sqlLiteral(account, "token account", /^[a-z0-9_.@-]{3,64}$/)).join(",");
-  const value = databaseQuery(`select count(*) from COMTNAUTHTOKENSTORE where lower(user_id) in (${literals})`, "active QA token query");
+  const value = databaseQuery(`select count(*) from COMTNAUTHTOKENSTORE
+    where lower(user_id) in (${literals})
+      and (expiration_at is null or expiration_at > current_timestamp)`, "active QA token query");
   if (!/^\d+$/.test(value)) throw new Error("active QA token query returned an invalid count");
   return Number(value);
 }
