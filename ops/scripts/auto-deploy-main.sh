@@ -139,6 +139,10 @@ MIN_BACKUP_BYTES="${CARBONET_MIN_BACKUP_BYTES:-1048576}"
 BACKUP_TIMEOUT_SECONDS="${CARBONET_BACKUP_TIMEOUT_SECONDS:-1200}"
 KUBECONFIG="${CARBONET_KUBECONFIG:-${KUBECONFIG:-/home/sjkim/.kube/config}}"
 export KUBECONFIG
+ORPHAN_RECOVERY_HELPER_EXPLICIT=false
+[[ -v CARBONET_DEPLOY_ORPHAN_RECOVERY_HELPER ]] && ORPHAN_RECOVERY_HELPER_EXPLICIT=true
+ORPHAN_RECOVERY_HELPER="${CARBONET_DEPLOY_ORPHAN_RECOVERY_HELPER:-$ROOT_DIR/ops/scripts/reconcile-exact-legacy-orphan-runtime-quarantine.sh}"
+ORPHAN_RECOVERY_HELPER_SHA256="${CARBONET_DEPLOY_ORPHAN_RECOVERY_HELPER_SHA256:-}"
 [[ -v CARBONET_POSTDEPLOY_ATTEMPT_JOURNAL_HELPER ]] && POSTDEPLOY_JOURNAL_HELPER_EXPLICIT=true || POSTDEPLOY_JOURNAL_HELPER_EXPLICIT=false
 [[ -v CARBONET_POSTDEPLOY_GATE_SCRIPT ]] && POSTDEPLOY_GATE_SCRIPT_EXPLICIT=true || POSTDEPLOY_GATE_SCRIPT_EXPLICIT=false
 [[ -v CARBONET_POSTDEPLOY_RECORD_RUNTIME_SCRIPT ]] && POSTDEPLOY_RECORD_RUNTIME_SCRIPT_EXPLICIT=true || POSTDEPLOY_RECORD_RUNTIME_SCRIPT_EXPLICIT=false
@@ -175,6 +179,70 @@ resolve_postdeploy_postgres_pod() {
   [[ "$resolved" =~ ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$ ]] || return 1
   POSTGRES_POD="$resolved"
   return 0
+}
+
+fail_bootstrap_orphan_recovery_helper() {
+  echo "[auto-deploy] BLOCKED invalid target orphan-recovery helper: $1" >&2
+  return 79
+}
+
+verify_bootstrap_orphan_recovery_helper() {
+  local target_commit="${CARBONET_DEPLOY_SNAPSHOT_TARGET_COMMIT:-}"
+  local helper_real binding_root_real snapshot_dir_real actual_sha target_sha helper_mode_owner
+  local installed_binding_root="${CARBONET_DEPLOY_ORPHAN_RECOVERY_BINDING_ROOT:-}"
+  if [[ ! -s "$ORPHAN_RECOVERY_HELPER" || -L "$ORPHAN_RECOVERY_HELPER" ]]; then
+    fail_bootstrap_orphan_recovery_helper missing-or-symlink
+    return $?
+  fi
+  actual_sha="$(sha256sum "$ORPHAN_RECOVERY_HELPER" | awk '{print $1}')"
+  if [[ -n "$target_commit" ]]; then
+    if [[ ! "$target_commit" =~ ^[0-9a-f]{40}$ \
+       || "$ORPHAN_RECOVERY_HELPER_EXPLICIT" != true \
+       || ! "$ORPHAN_RECOVERY_HELPER_SHA256" =~ ^[0-9a-f]{64}$ ]]; then
+      fail_bootstrap_orphan_recovery_helper incomplete-target-binding
+      return $?
+    fi
+    helper_mode_owner="$(stat -c '%a:%u' "$ORPHAN_RECOVERY_HELPER" 2>/dev/null || true)"
+    helper_real="$(readlink -f "$ORPHAN_RECOVERY_HELPER" 2>/dev/null || true)"
+    if [[ -n "${CARBONET_DEPLOY_SNAPSHOT_PATH:-}" ]]; then
+      snapshot_dir_real="$(dirname "$(readlink -f "$CARBONET_DEPLOY_SNAPSHOT_PATH" 2>/dev/null || true)")"
+      if [[ "$helper_mode_owner" != "700:$(id -u)" \
+         || -z "$helper_real" || "$(dirname "$helper_real")" != "$snapshot_dir_real" ]]; then
+        fail_bootstrap_orphan_recovery_helper outside-private-target-snapshot
+        return $?
+      fi
+    elif [[ "${CARBONET_RECOVERY_ONLY:-false}" == true && -n "$installed_binding_root" ]]; then
+      binding_root_real="$(readlink -f "$installed_binding_root" 2>/dev/null || true)"
+      if [[ "$helper_mode_owner" != 755:0 \
+         || "$(stat -c '%a:%u:%g' "$binding_root_real" 2>/dev/null || true)" != 755:0:0 \
+         || -z "$helper_real" || "$(dirname "$helper_real")" != "$binding_root_real" ]]; then
+        fail_bootstrap_orphan_recovery_helper outside-installed-recovery-bundle
+        return $?
+      fi
+    else
+      fail_bootstrap_orphan_recovery_helper missing-helper-binding-root
+      return $?
+    fi
+    if ! target_sha="$(git -C "$POLICY_ROOT" show --format= --no-textconv \
+      "$target_commit:ops/scripts/reconcile-exact-legacy-orphan-runtime-quarantine.sh" 2>/dev/null \
+      | sha256sum | awk '{print $1}')"; then
+      fail_bootstrap_orphan_recovery_helper target-blob-unavailable
+      return $?
+    fi
+    if [[ "$target_sha" != "$ORPHAN_RECOVERY_HELPER_SHA256" ]]; then
+      fail_bootstrap_orphan_recovery_helper target-hash-mismatch
+      return $?
+    fi
+  elif [[ -n "$ORPHAN_RECOVERY_HELPER_SHA256" \
+       && ! "$ORPHAN_RECOVERY_HELPER_SHA256" =~ ^[0-9a-f]{64}$ ]]; then
+    fail_bootstrap_orphan_recovery_helper invalid-hash
+    return $?
+  fi
+  if [[ -n "$ORPHAN_RECOVERY_HELPER_SHA256" \
+     && "$actual_sha" != "$ORPHAN_RECOVERY_HELPER_SHA256" ]]; then
+    fail_bootstrap_orphan_recovery_helper snapshot-hash-mismatch
+    return $?
+  fi
 }
 
 # The applied-source marker drives incremental planning and is advanced for
@@ -509,7 +577,14 @@ mkdir -p \
   "$POSTDEPLOY_LEGACY_RETIRE_DIR" \
   "$(dirname "$RUNTIME_LEDGER_QUARANTINE_FILE")"
 chmod 0700 "$POSTDEPLOY_LEGACY_RETIRE_DIR"
-bash "$ROOT_DIR/ops/scripts/reconcile-exact-legacy-orphan-runtime-quarantine.sh" "$ROOT_DIR"
+verify_bootstrap_orphan_recovery_helper || exit $?
+orphan_recovery_target_commit="${CARBONET_DEPLOY_SNAPSHOT_TARGET_COMMIT:-${CARBONET_RECOVERY_TARGET_COMMIT:-}}"
+if [[ -n "$orphan_recovery_target_commit" ]]; then
+  CARBONET_ORPHAN_RECOVERY_TARGET_COMMIT="$orphan_recovery_target_commit" \
+    bash "$ORPHAN_RECOVERY_HELPER" "$ROOT_DIR"
+else
+  bash "$ORPHAN_RECOVERY_HELPER" "$ROOT_DIR"
+fi
 if [[ -s "$RUNTIME_LEDGER_QUARANTINE_FILE" \
    && ( "${CARBONET_RECOVERY_ONLY:-false}" != true \
         || ! -s "$POSTDEPLOY_ATTEMPT_JOURNAL_FILE" ) ]]; then
@@ -2479,11 +2554,14 @@ deploy_path_changed() {
 }
 
 sync_auto_deploy_failure_runtime_if_required() {
-  local authority_helper_install_tmp launcher_install_tmp recovery_main_install_tmp
+  local authority_helper_install_tmp launcher_install_tmp recovery_main_install_tmp orphan_recovery_helper_install_tmp
+  local orphan_recovery_helper_source_sha256 orphan_recovery_helper_staged_sha256
+  local recovery_main_source_sha256 recovery_main_staged_sha256
   local -a failure_runtime_contract_files=(
     ops/scripts/auto-deploy-main.sh
     ops/scripts/auto-deploy-main-launcher.sh
     ops/scripts/carbonet-auto-deploy-failure-handler.sh
+    ops/scripts/reconcile-exact-legacy-orphan-runtime-quarantine.sh
     ops/scripts/check-postdeploy-authoritative-promotion.sh
     ops/scripts/abort-postdeploy-release-attempt.sh
     ops/scripts/stage-postdeploy-release-attempt.sh
@@ -2525,11 +2603,48 @@ sync_auto_deploy_failure_runtime_if_required() {
   sudo -n install -m 0755 -o root -g root \
     ops/scripts/postdeploy-attempt-recovery-runner.sh \
     /opt/resonance-data/control-plane/bin/postdeploy-attempt-recovery-runner.sh
+  orphan_recovery_helper_install_tmp="/opt/resonance-data/control-plane/bin/.reconcile-exact-legacy-orphan-runtime-quarantine.$$"
+  orphan_recovery_helper_source_sha256="$(sha256sum ops/scripts/reconcile-exact-legacy-orphan-runtime-quarantine.sh | awk '{print $1}')"
+  if ! sudo -n install -m 0755 -o root -g root \
+      ops/scripts/reconcile-exact-legacy-orphan-runtime-quarantine.sh \
+      "$orphan_recovery_helper_install_tmp" \
+     || ! sudo -n bash -n "$orphan_recovery_helper_install_tmp"; then
+    sudo -n rm -f -- "$orphan_recovery_helper_install_tmp" || true
+    return 79
+  fi
+  orphan_recovery_helper_staged_sha256="$(sudo -n sha256sum "$orphan_recovery_helper_install_tmp" | awk '{print $1}')"
+  if [[ "$orphan_recovery_helper_source_sha256" != "$orphan_recovery_helper_staged_sha256" \
+     || "$(sudo -n stat -c '%a:%u:%g' "$orphan_recovery_helper_install_tmp")" != 755:0:0 ]]; then
+    sudo -n rm -f -- "$orphan_recovery_helper_install_tmp" || true
+    return 79
+  fi
+  sudo -n mv -fT -- "$orphan_recovery_helper_install_tmp" \
+    /opt/resonance-data/control-plane/bin/reconcile-exact-legacy-orphan-runtime-quarantine.sh
+  sudo -n sync -f /opt/resonance-data/control-plane/bin/reconcile-exact-legacy-orphan-runtime-quarantine.sh
+  sudo -n sync -f /opt/resonance-data/control-plane/bin
+  [[ "$(stat -c '%a:%u:%g' /opt/resonance-data/control-plane/bin/reconcile-exact-legacy-orphan-runtime-quarantine.sh)" == 755:0:0 \
+     && "$(sha256sum /opt/resonance-data/control-plane/bin/reconcile-exact-legacy-orphan-runtime-quarantine.sh | awk '{print $1}')" == "$orphan_recovery_helper_source_sha256" ]] || return 79
+  # Main is the activation point after the exact helper is durable.
   recovery_main_install_tmp="/opt/resonance-data/control-plane/bin/.auto-deploy-main-recovery.$$"
-  sudo -n install -m 0755 -o root -g root \
-    ops/scripts/auto-deploy-main.sh "$recovery_main_install_tmp"
+  recovery_main_source_sha256="$(sha256sum ops/scripts/auto-deploy-main.sh | awk '{print $1}')"
+  if ! sudo -n install -m 0755 -o root -g root \
+      ops/scripts/auto-deploy-main.sh "$recovery_main_install_tmp" \
+     || ! sudo -n bash -n "$recovery_main_install_tmp"; then
+    sudo -n rm -f -- "$recovery_main_install_tmp" || true
+    return 79
+  fi
+  recovery_main_staged_sha256="$(sudo -n sha256sum "$recovery_main_install_tmp" | awk '{print $1}')"
+  if [[ "$recovery_main_source_sha256" != "$recovery_main_staged_sha256" \
+     || "$(sudo -n stat -c '%a:%u:%g' "$recovery_main_install_tmp")" != 755:0:0 ]]; then
+    sudo -n rm -f -- "$recovery_main_install_tmp" || true
+    return 79
+  fi
   sudo -n mv -fT -- "$recovery_main_install_tmp" \
     /opt/resonance-data/control-plane/bin/auto-deploy-main-recovery.sh
+  sudo -n sync -f /opt/resonance-data/control-plane/bin/auto-deploy-main-recovery.sh
+  sudo -n sync -f /opt/resonance-data/control-plane/bin
+  [[ "$(stat -c '%a:%u:%g' /opt/resonance-data/control-plane/bin/auto-deploy-main-recovery.sh)" == 755:0:0 \
+     && "$(sha256sum /opt/resonance-data/control-plane/bin/auto-deploy-main-recovery.sh | awk '{print $1}')" == "$recovery_main_source_sha256" ]] || return 79
   sudo -n install -m 0755 -o root -g root \
     ops/scripts/abort-postdeploy-release-attempt.sh \
     /opt/resonance-data/control-plane/bin/abort-postdeploy-release-attempt.sh

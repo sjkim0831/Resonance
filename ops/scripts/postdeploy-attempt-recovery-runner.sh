@@ -5,6 +5,10 @@ state_dir="${CARBONET_DEPLOY_STATE_DIR:-/opt/resonance-data/deploy}"
 journal_file="${CARBONET_POSTDEPLOY_ATTEMPT_JOURNAL_FILE:-$state_dir/carbonet-postdeploy-attempt.json}"
 journal_helper="${CARBONET_POSTDEPLOY_ATTEMPT_JOURNAL_HELPER:-/opt/resonance-data/control-plane/bin/postdeploy-attempt-journal.py}"
 launcher="${CARBONET_AUTO_DEPLOY_RECOVERY_LAUNCHER:-/opt/resonance-data/control-plane/bin/auto-deploy-main-recovery.sh}"
+deploy_root="${CARBONET_DEPLOY_ROOT:-/opt/Resonance}"
+orphan_recovery_binding_root="${CARBONET_DEPLOY_ORPHAN_RECOVERY_BINDING_ROOT:-/opt/resonance-data/control-plane/bin}"
+orphan_recovery_helper="${CARBONET_DEPLOY_ORPHAN_RECOVERY_HELPER:-/opt/resonance-data/control-plane/bin/reconcile-exact-legacy-orphan-runtime-quarantine.sh}"
+orphan_recovery_helper_sha256="${CARBONET_DEPLOY_ORPHAN_RECOVERY_HELPER_SHA256:-}"
 marker_pending_file="${CARBONET_POSTDEPLOY_MARKER_PENDING_FILE:-$state_dir/postdeploy-marker-pending.state}"
 schedule_marker="${CARBONET_RECOVERY_SCHEDULE_MARKER:-}"
 expected_candidate="${CARBONET_RECOVERY_CANDIDATE_ID:-}"
@@ -23,6 +27,11 @@ fail() { log "FAIL: $*" >&2; exit 79; }
 [[ "$attempt_timeout" =~ ^[1-9][0-9]*$ && "$attempt_timeout" -le 1800 ]] || fail 'attempt timeout is invalid'
 [[ -x "$launcher" || -f "$launcher" ]] || fail 'persistent recovery launcher is missing'
 [[ -f "$journal_helper" && ! -L "$journal_helper" ]] || fail 'persistent journal helper is missing'
+[[ -s "$orphan_recovery_helper" && ! -L "$orphan_recovery_helper" \
+   && "$orphan_recovery_helper_sha256" =~ ^[0-9a-f]{64}$ ]] \
+  || fail 'target orphan-recovery helper binding is invalid'
+[[ "$(sha256sum "$orphan_recovery_helper" | awk '{print $1}')" == "$orphan_recovery_helper_sha256" ]] \
+  || fail 'target orphan-recovery helper hash changed'
 mkdir -p "$state_dir"
 [[ -d "$state_dir" && ! -L "$state_dir" ]] || fail 'state directory is unsafe'
 umask 077
@@ -92,7 +101,15 @@ for ((attempt=1; attempt<=attempts; attempt++)); do
   read_exact_attempt >/dev/null || fail 'attempt identity drifted during retry'
   last_status=0
   CARBONET_RECOVERY_ONLY=true \
+  CARBONET_DEPLOY_ROOT="$deploy_root" \
+  CARBONET_DEPLOY_SNAPSHOT_ACTIVE=true \
+  CARBONET_DEPLOY_ORIGINAL_ROOT="$deploy_root" \
+  CARBONET_DEPLOY_SNAPSHOT_TARGET_COMMIT="$expected_source" \
+  CARBONET_DEPLOY_ORPHAN_RECOVERY_BINDING_ROOT="$orphan_recovery_binding_root" \
   CARBONET_RECOVERY_TARGET_COMMIT="$expected_source" \
+  CARBONET_ORPHAN_RECOVERY_TARGET_COMMIT="$expected_source" \
+  CARBONET_DEPLOY_ORPHAN_RECOVERY_HELPER="$orphan_recovery_helper" \
+  CARBONET_DEPLOY_ORPHAN_RECOVERY_HELPER_SHA256="$orphan_recovery_helper_sha256" \
     timeout --signal=TERM --kill-after=10s "${attempt_timeout}s" \
       /usr/bin/bash "$launcher" || last_status=$?
   if (( last_status == 0 )); then

@@ -42,16 +42,37 @@ fi
 snapshot_dir="$(mktemp -d /tmp/carbonet-auto-deploy-main.XXXXXX)"
 snapshot_script="$snapshot_dir/auto-deploy-main.sh"
 snapshot_plan="$snapshot_dir/plan-incremental-work.sh"
+snapshot_orphan_recovery_helper="$snapshot_dir/reconcile-exact-legacy-orphan-runtime-quarantine.sh"
 trap 'rm -rf -- "$snapshot_dir"' EXIT INT TERM
 
 git -C "$ROOT_DIR" show --format= --no-textconv \
   "$target_commit:ops/scripts/auto-deploy-main.sh" >"$snapshot_script"
 git -C "$ROOT_DIR" show --format= --no-textconv \
   "$target_commit:ops/scripts/plan-incremental-work.sh" >"$snapshot_plan"
-chmod 700 "$snapshot_script" "$snapshot_plan"
+if ! git -C "$ROOT_DIR" show --format= --no-textconv \
+  "$target_commit:ops/scripts/reconcile-exact-legacy-orphan-runtime-quarantine.sh" \
+  >"$snapshot_orphan_recovery_helper"; then
+  echo '[auto-deploy-launcher] target orphan-recovery helper is missing' >&2
+  exit 79
+fi
+[[ -s "$snapshot_orphan_recovery_helper" ]] || {
+  echo '[auto-deploy-launcher] target orphan-recovery helper is empty' >&2
+  exit 79
+}
+snapshot_orphan_recovery_helper_sha256="$(sha256sum "$snapshot_orphan_recovery_helper" | awk '{print $1}')"
+[[ "$snapshot_orphan_recovery_helper_sha256" =~ ^[0-9a-f]{64}$ ]] || exit 79
+chmod 700 "$snapshot_script" "$snapshot_plan" "$snapshot_orphan_recovery_helper"
+[[ "$(stat -c '%a:%u' "$snapshot_orphan_recovery_helper" 2>/dev/null || true)" \
+   == "700:$(id -u)" ]] || {
+  echo '[auto-deploy-launcher] target orphan-recovery helper snapshot is not private' >&2
+  exit 79
+}
 
 CARBONET_DEPLOY_SNAPSHOT_ACTIVE=true \
 CARBONET_DEPLOY_ORIGINAL_ROOT="$ROOT_DIR" \
 CARBONET_DEPLOY_SNAPSHOT_PATH="$snapshot_script" \
 CARBONET_DEPLOY_PLAN_SCRIPT="$snapshot_plan" \
+CARBONET_DEPLOY_SNAPSHOT_TARGET_COMMIT="$target_commit" \
+CARBONET_DEPLOY_ORPHAN_RECOVERY_HELPER="$snapshot_orphan_recovery_helper" \
+CARBONET_DEPLOY_ORPHAN_RECOVERY_HELPER_SHA256="$snapshot_orphan_recovery_helper_sha256" \
   bash "$snapshot_script" "$@"

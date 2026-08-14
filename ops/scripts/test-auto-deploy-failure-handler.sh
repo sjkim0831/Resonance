@@ -13,6 +13,10 @@ authority="$root/ops/scripts/check-postdeploy-authoritative-promotion.sh"
 runner="$root/ops/scripts/postdeploy-attempt-recovery-runner.sh"
 launcher="$root/ops/scripts/auto-deploy-main-launcher.sh"
 
+export CARBONET_DEPLOY_ORPHAN_RECOVERY_HELPER="$root/ops/scripts/reconcile-exact-legacy-orphan-runtime-quarantine.sh"
+EXPECTED_ORPHAN_RECOVERY_HELPER_SHA256="$(sha256sum "$CARBONET_DEPLOY_ORPHAN_RECOVERY_HELPER" | awk '{print $1}')"
+unset CARBONET_DEPLOY_ORPHAN_RECOVERY_HELPER_SHA256
+
 bash -n "$handler"
 bash -n "$notifier"
 bash -n "$authority"
@@ -279,6 +283,10 @@ SH
   grep -Fq 'CARBONET_RECOVERY_ONLY=true' "$attempt_fixture/systemd-run.record"
   grep -Fq "CARBONET_DEPLOY_ROOT=$root" "$attempt_fixture/systemd-run.record"
   grep -Fq "CARBONET_RECOVERY_TARGET_COMMIT=$target" "$attempt_fixture/systemd-run.record"
+  grep -Fq "CARBONET_DEPLOY_SNAPSHOT_TARGET_COMMIT=$target" "$attempt_fixture/systemd-run.record"
+  grep -Fq "CARBONET_DEPLOY_ORPHAN_RECOVERY_HELPER=$CARBONET_DEPLOY_ORPHAN_RECOVERY_HELPER" "$attempt_fixture/systemd-run.record"
+  grep -Fq "CARBONET_DEPLOY_ORPHAN_RECOVERY_HELPER_SHA256=$EXPECTED_ORPHAN_RECOVERY_HELPER_SHA256" "$attempt_fixture/systemd-run.record"
+  grep -Fq 'CARBONET_DEPLOY_SNAPSHOT_ACTIVE=true' "$attempt_fixture/systemd-run.record"
   grep -Fq "CARBONET_RECOVERY_CANDIDATE_ID=$candidate" "$attempt_fixture/systemd-run.record"
   grep -Fq 'postdeploy-attempt-recovery-runner.sh' "$attempt_fixture/systemd-run.record"
   grep -Fq -- '--property=OnFailure=carbonet-auto-deploy-failure-handler.service' "$attempt_fixture/systemd-run.record"
@@ -327,6 +335,8 @@ fi
 # network access: transient failures converge on the third call, while an
 # exhausted run preserves the 0600 journal byte-for-byte and quarantines it.
 if command -v jq >/dev/null 2>&1; then
+  CARBONET_DEPLOY_ORPHAN_RECOVERY_HELPER_SHA256="$EXPECTED_ORPHAN_RECOVERY_HELPER_SHA256"
+  export CARBONET_DEPLOY_ORPHAN_RECOVERY_HELPER_SHA256
   runner_fixture="$(mktemp -d)"
   mkdir -p "$runner_fixture/state" "$runner_fixture/bin"
   chmod 0700 "$runner_fixture/state"

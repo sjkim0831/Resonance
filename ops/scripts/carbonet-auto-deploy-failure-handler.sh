@@ -14,6 +14,10 @@ attempt_journal_helper="${CARBONET_POSTDEPLOY_ATTEMPT_JOURNAL_HELPER:-/opt/reson
 recovery_launcher="${CARBONET_AUTO_DEPLOY_RECOVERY_LAUNCHER:-/opt/resonance-data/control-plane/bin/auto-deploy-main-recovery.sh}"
 recovery_runner="${CARBONET_POSTDEPLOY_RECOVERY_RUNNER:-/opt/resonance-data/control-plane/bin/postdeploy-attempt-recovery-runner.sh}"
 recovery_bundle="${CARBONET_POSTDEPLOY_RECOVERY_BUNDLE_DIR:-/opt/resonance-data/control-plane/bin}"
+orphan_recovery_helper_explicit=false
+[[ -v CARBONET_DEPLOY_ORPHAN_RECOVERY_HELPER ]] && orphan_recovery_helper_explicit=true
+orphan_recovery_helper="${CARBONET_DEPLOY_ORPHAN_RECOVERY_HELPER:-$recovery_bundle/reconcile-exact-legacy-orphan-runtime-quarantine.sh}"
+orphan_recovery_helper_sha256="${CARBONET_DEPLOY_ORPHAN_RECOVERY_HELPER_SHA256:-}"
 promotion_authority_script="${CARBONET_POSTDEPLOY_PROMOTION_AUTHORITY_SCRIPT:-/opt/resonance-data/control-plane/bin/check-postdeploy-authoritative-promotion.sh}"
 full_screen_active_file="${CARBONET_FULL_SCREEN_ACTIVE_FILE:-$state_dir/full-screen-deploy-gate/active.env}"
 notify_script="${CARBONET_DEPLOY_NOTIFY_SCRIPT:-/opt/resonance-data/control-plane/bin/carbonet-deploy-notify.sh}"
@@ -149,6 +153,23 @@ fi
 if [[ "$retry_allowed" == true && "$retry_state_valid" == true \
    && ( ( ! -e "$retry_marker" && ! -L "$retry_marker" ) || "$schedule_reusable" == true ) ]]; then
   if [[ "$attempt_recovery_pending" == true || "$promotion_authoritative" == true ]]; then
+    [[ -s "$orphan_recovery_helper" && ! -L "$orphan_recovery_helper" ]] || exit 79
+    if [[ "$orphan_recovery_helper_explicit" != true ]]; then
+      orphan_recovery_helper_real="$(readlink -f "$orphan_recovery_helper" 2>/dev/null || true)"
+      recovery_bundle_real="$(readlink -f "$recovery_bundle" 2>/dev/null || true)"
+      [[ -n "$orphan_recovery_helper_real" \
+         && "$(dirname "$orphan_recovery_helper_real")" == "$recovery_bundle_real" \
+         && "$(stat -c '%a:%u:%g' "$orphan_recovery_helper_real" 2>/dev/null || true)" == 755:0:0 \
+         && "$(stat -c '%a:%u:%g' "$recovery_bundle_real" 2>/dev/null || true)" == 755:0:0 ]] \
+        || exit 79
+    fi
+    actual_orphan_recovery_helper_sha256="$(sha256sum "$orphan_recovery_helper" | awk '{print $1}')"
+    [[ "$actual_orphan_recovery_helper_sha256" =~ ^[0-9a-f]{64}$ ]] || exit 79
+    [[ -z "$orphan_recovery_helper_sha256" \
+       || "$orphan_recovery_helper_sha256" == "$actual_orphan_recovery_helper_sha256" ]] || exit 79
+    orphan_recovery_helper_sha256="$actual_orphan_recovery_helper_sha256"
+  fi
+  if [[ "$attempt_recovery_pending" == true || "$promotion_authoritative" == true ]]; then
     schedule_generation="$(date +%s%N)"
     recovery_unit="carbonet-auto-deploy-recovery-${retry_identity:0:20}-${schedule_generation}"
     retry_tmp="$(mktemp "$state_dir/.postdeploy-recovery-schedule.XXXXXX")"
@@ -181,12 +202,18 @@ if [[ "$retry_allowed" == true && "$retry_state_valid" == true \
       --property=OnFailure=carbonet-auto-deploy-failure-handler.service \
       --on-active=10s /usr/bin/env \
       CARBONET_RECOVERY_ONLY=true CARBONET_DEPLOY_ROOT="$root" \
+      CARBONET_DEPLOY_SNAPSHOT_ACTIVE=true \
+      CARBONET_DEPLOY_ORIGINAL_ROOT="$root" \
+      CARBONET_DEPLOY_SNAPSHOT_TARGET_COMMIT="$target" \
+      CARBONET_DEPLOY_ORPHAN_RECOVERY_BINDING_ROOT="$recovery_bundle" \
       CARBONET_RECOVERY_TARGET_COMMIT="$target" \
       CARBONET_RECOVERY_CANDIDATE_ID="$pending_candidate" \
       CARBONET_RECOVERY_SCHEDULE_MARKER="$retry_marker" \
       CARBONET_POSTDEPLOY_ATTEMPT_JOURNAL_FILE="$attempt_journal_file" \
       CARBONET_POSTDEPLOY_ATTEMPT_JOURNAL_OWNER_UID="$deploy_owner_uid" \
       CARBONET_AUTO_DEPLOY_RECOVERY_LAUNCHER="$recovery_launcher" \
+      CARBONET_DEPLOY_ORPHAN_RECOVERY_HELPER="$orphan_recovery_helper" \
+      CARBONET_DEPLOY_ORPHAN_RECOVERY_HELPER_SHA256="$orphan_recovery_helper_sha256" \
       CARBONET_POSTDEPLOY_ATTEMPT_JOURNAL_HELPER="$attempt_journal_helper" \
       CARBONET_POSTDEPLOY_GATE_SCRIPT="$recovery_bundle/resonance-full-screen-deploy-gate.sh" \
       CARBONET_POSTDEPLOY_RECORD_RUNTIME_SCRIPT="$recovery_bundle/record-runtime-release-state.sh" \
@@ -207,7 +234,14 @@ if [[ "$retry_allowed" == true && "$retry_state_valid" == true \
       --uid="$deploy_owner" --gid="$deploy_group" --working-directory="$root" \
       --property=OnFailure=carbonet-auto-deploy-failure-handler.service \
       --on-active=10s /usr/bin/env CARBONET_RECOVERY_ONLY=true CARBONET_DEPLOY_ROOT="$root" \
-      CARBONET_RECOVERY_TARGET_COMMIT="$target" /usr/bin/bash "$recovery_launcher"
+      CARBONET_DEPLOY_SNAPSHOT_ACTIVE=true \
+      CARBONET_DEPLOY_ORIGINAL_ROOT="$root" \
+      CARBONET_DEPLOY_SNAPSHOT_TARGET_COMMIT="$target" \
+      CARBONET_DEPLOY_ORPHAN_RECOVERY_BINDING_ROOT="$recovery_bundle" \
+      CARBONET_RECOVERY_TARGET_COMMIT="$target" \
+      CARBONET_DEPLOY_ORPHAN_RECOVERY_HELPER="$orphan_recovery_helper" \
+      CARBONET_DEPLOY_ORPHAN_RECOVERY_HELPER_SHA256="$orphan_recovery_helper_sha256" \
+      /usr/bin/bash "$recovery_launcher"
   else
     systemd-run --quiet --unit="carbonet-auto-deploy-retry-${run_key}" \
       --on-active=10s /usr/bin/systemctl start carbonet-auto-deploy.service
