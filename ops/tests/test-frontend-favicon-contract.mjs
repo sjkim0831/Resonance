@@ -80,6 +80,10 @@ function validatePipeline(source, label) {
   for (const gate of pipelineGates) {
     assert.ok(validationTasks.includes(gate), `${label}: ${gate} must stay in the parallel validation lane`);
   }
+  const relayGate = validationTasks.split(/\r?\n/)
+    .find((line) => line.includes("test-member-lifecycle-relay-safe-harness-contract.mjs"));
+  assert.ok(relayGate?.includes("{ cwd: repositoryRoot }"),
+    `${label}: relay harness gate must execute from the repository root`);
 }
 
 let mutantCount = 0;
@@ -194,6 +198,10 @@ rejectMutation("malformed SVG", () => validateSvg(faviconSvg.replace("</svg>", "
 for (const gate of pipelineGates) {
   rejectMutation(`removed pipeline gate ${gate}`, () => validatePipeline(pipelineSource.replace(gate, "removed-validation-gate"), "pipeline mutant"));
 }
+rejectMutation("relay gate repository cwd removal", () => validatePipeline(
+  pipelineSource.replace("{ cwd: repositoryRoot }", "{}"),
+  "relay cwd mutant",
+));
 
 const sourceServer = await startStaticServer({
   indexFile: indexPath,

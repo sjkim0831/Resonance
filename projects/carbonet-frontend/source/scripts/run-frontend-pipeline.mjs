@@ -19,11 +19,12 @@ function run(command, args) {
   if (result.status !== 0) process.exit(result.status ?? 1);
 }
 
-function runAsync(command, args) {
+function runAsync(command, args, { cwd } = {}) {
   return new Promise((resolve, reject) => {
     const child = spawn(command, args, {
       env,
       stdio: "inherit",
+      ...(cwd ? { cwd } : {}),
     });
     child.once("error", reject);
     child.once("exit", (code, signal) => {
@@ -90,7 +91,7 @@ if (process.argv.includes("--build")) {
     runAsync(process.execPath, [path.join(repositoryRoot, "ops/tests/test-global-user-gnb-home-fetch-stability.mjs")]),
     runAsync(process.execPath, [path.join(repositoryRoot, "ops/tests/test-frontend-favicon-contract.mjs")]),
     runAsync(process.execPath, [path.join(repositoryRoot, "ops/tests/test-material-symbols-self-hosting.mjs")]),
-    runAsync(process.execPath, [path.join(repositoryRoot, "ops/tests/test-member-lifecycle-relay-safe-harness-contract.mjs")]),
+    runAsync(process.execPath, [path.join(repositoryRoot, "ops/tests/test-member-lifecycle-relay-safe-harness-contract.mjs")], { cwd: repositoryRoot }),
   ];
   const bundlerCommand = process.execPath;
   const bundlerArgs = frontendBundler === "rolldown"
