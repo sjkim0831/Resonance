@@ -121,6 +121,7 @@ grep -q "interval '5 minutes'" "$DEPLOY_SCRIPT"
 [[ "$(printf '%s\n' 'apps/carbonet-api/src/main/resources/db/migration/postgresql/V1__reset_company_reapplication_policy_for_response_revision.sql' | bash "$BACKUP_SCOPE_CLASSIFIER")" == governance ]]
 for table in framework_screen_resource framework_screen_workflow_policy \
   framework_process_step_screen_binding framework_professional_screen_contract \
+  framework_screen_blueprint \
   framework_page_design framework_page_field_definition \
   framework_company_reapplication_audit comtninsttinfo comtninsttfile; do
   grep -Eq -- "-t[[:space:]]+$table([[:space:]\\]|$)" "$DEPLOY_SCRIPT" || {
@@ -129,4 +130,17 @@ for table in framework_screen_resource framework_screen_workflow_policy \
   }
 done
 
-echo "[safe-additive-ddl] PASS safe=1 reversible=1 pinnedBundle=3 pinnedMutants=3 unsafe=10 functions=bounded triggers=new-schema-only archive=custom restoreCatalog=verified governanceReapplication=9 orphanReap=5m fail-closed=true"
+member_migration='apps/carbonet-api/src/main/resources/db/migration/postgresql/V20260814052000__close_member_lifecycle_canonical_runtime_contract.sql'
+[[ "$(printf '%s\n' "$member_migration" | bash "$BACKUP_SCOPE_CLASSIFIER")" == governance ]]
+governance_branch="$(sed -n '/elif \[\[ "$governance_backup_only"/,/elif \[\[ "$activity_backup_only"/p' "$DEPLOY_SCRIPT")"
+[[ "$(grep -Ec -- '-t[[:space:]]+framework_screen_blueprint([[:space:]\\]|$)' <<<"$governance_branch")" == 1 ]] || {
+  echo "governance backup must dump framework_screen_blueprint exactly once" >&2
+  exit 1
+}
+governance_mutant="${governance_branch//          -t framework_screen_blueprint \\/}"
+if grep -Eq -- '-t[[:space:]]+framework_screen_blueprint([[:space:]\\]|$)' <<<"$governance_mutant"; then
+  echo "governance backup omission mutant unexpectedly retained framework_screen_blueprint" >&2
+  exit 1
+fi
+
+echo "[safe-additive-ddl] PASS safe=1 reversible=1 pinnedBundle=3 pinnedMutants=3 unsafe=10 functions=bounded triggers=new-schema-only archive=custom restoreCatalog=verified governanceReapplication=10 governanceBlueprintDump=1 omissionMutant=rejected orphanReap=5m fail-closed=true"
