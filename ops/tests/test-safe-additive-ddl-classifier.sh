@@ -5,8 +5,41 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 CLASSIFIER="$ROOT_DIR/ops/scripts/classify-safe-additive-ddl.py"
 DEPLOY_SCRIPT="$ROOT_DIR/ops/scripts/auto-deploy-main.sh"
 BACKUP_SCOPE_CLASSIFIER="$ROOT_DIR/ops/scripts/classify-db-backup-scope.sh"
+MIGRATIONS="$ROOT_DIR/apps/carbonet-api/src/main/resources/db/migration/postgresql"
 tmp_dir="$(mktemp -d)"
 trap 'rm -rf "$tmp_dir"' EXIT
+
+pinned_migrations=(
+  "$MIGRATIONS/V20260813093000__compile_canonical_screen_design_release.sql"
+  "$MIGRATIONS/V20260813113000__compile_canonical_endpoint_contract_catalog.sql"
+  "$MIGRATIONS/V20260813150000__stage_validate_publish_legacy_endpoint_upgrade.sql"
+)
+pinned_result="$(python3 "$CLASSIFIER" --schema-reversible "${pinned_migrations[@]}")"
+grep -q '^safe-additive pinned-schema-reversible-bundle=' <<<"$pinned_result"
+if python3 "$CLASSIFIER" "${pinned_migrations[@]}" >/dev/null 2>&1; then
+  echo "pinned bundle was accepted without explicit schema-reversible mode" >&2
+  exit 1
+fi
+if python3 "$CLASSIFIER" --schema-reversible "${pinned_migrations[@]:0:2}" >/dev/null 2>&1; then
+  echo "incomplete pinned bundle was accepted" >&2
+  exit 1
+fi
+
+for mutant in data_write drop destructive_alter; do
+  mutant_dir="$tmp_dir/pinned-$mutant"
+  mkdir -p "$mutant_dir"
+  cp "${pinned_migrations[@]}" "$mutant_dir/"
+  target="$mutant_dir/V20260813093000__compile_canonical_screen_design_release.sql"
+  case "$mutant" in
+    data_write) printf '\nUPDATE framework_screen_blueprint SET validation_status='\''VALID'\'';\n' >>"$target" ;;
+    drop) printf '\nDROP TABLE framework_screen_blueprint;\n' >>"$target" ;;
+    destructive_alter) printf '\nALTER TABLE framework_screen_blueprint DROP COLUMN blueprint_code;\n' >>"$target" ;;
+  esac
+  if python3 "$CLASSIFIER" --schema-reversible "$mutant_dir"/*.sql >/dev/null 2>&1; then
+    echo "mutated pinned bundle was accepted: $mutant" >&2
+    exit 1
+  fi
+done
 
 cat >"$tmp_dir/safe.sql" <<'SQL'
 CREATE TABLE IF NOT EXISTS framework_safe_example (
@@ -96,4 +129,4 @@ for table in framework_screen_resource framework_screen_workflow_policy \
   }
 done
 
-echo "[safe-additive-ddl] PASS safe=1 reversible=1 unsafe=10 functions=bounded triggers=new-schema-only archive=custom restoreCatalog=verified governanceReapplication=9 orphanReap=5m fail-closed=true"
+echo "[safe-additive-ddl] PASS safe=1 reversible=1 pinnedBundle=3 pinnedMutants=3 unsafe=10 functions=bounded triggers=new-schema-only archive=custom restoreCatalog=verified governanceReapplication=9 orphanReap=5m fail-closed=true"

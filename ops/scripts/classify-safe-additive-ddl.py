@@ -3,9 +3,26 @@
 
 from __future__ import annotations
 
+import hashlib
 import re
 import sys
 from pathlib import Path
+
+
+# These three migrations form one audited, ordered release.  Their top-level
+# statements are limited to precondition checks, schema DDL, ACL changes and
+# comments.  DML text occurs only inside function bodies that the migrations do
+# not invoke.  A byte-level pin keeps this narrow exception fail-closed: a
+# changed, missing, duplicated or mixed migration set falls back to a full
+# backup instead of widening the general SQL grammar.
+PINNED_SCHEMA_REVERSIBLE_BUNDLE = {
+    "V20260813093000__compile_canonical_screen_design_release.sql":
+        "c543f1f9d74d833034294b82aa0a6e30e3a1291b4a55a6687a45764622495176",
+    "V20260813113000__compile_canonical_endpoint_contract_catalog.sql":
+        "64db39d8fe72daddd8e502d12acd84e731e2506cf768f524ccc90f70c383a041",
+    "V20260813150000__stage_validate_publish_legacy_endpoint_upgrade.sql":
+        "72f25f4dd61e6b32a48b249a7b98da31f8e99a575f8041511ffbc1d340f4e267",
+}
 
 
 def strip_comments(sql: str) -> str:
@@ -65,6 +82,37 @@ def normalized_name(value: str) -> str:
     return value.replace('"', "").lower()
 
 
+def classify_pinned_schema_reversible_bundle(
+    paths: list[Path], schema_reversible: bool
+) -> tuple[bool, str] | None:
+    if not schema_reversible:
+        return None
+
+    names = [path.name for path in paths]
+    expected_names = set(PINNED_SCHEMA_REVERSIBLE_BUNDLE)
+    if not expected_names.intersection(names):
+        return None
+    if len(names) != len(expected_names) or set(names) != expected_names:
+        return False, (
+            "pinned-bundle-incomplete-or-mixed:"
+            f"expected={len(expected_names)},actual={len(names)}"
+        )
+
+    mismatches = []
+    for path in paths:
+        actual = hashlib.sha256(path.read_bytes()).hexdigest()
+        if actual != PINNED_SCHEMA_REVERSIBLE_BUNDLE[path.name]:
+            mismatches.append(path.name)
+    if mismatches:
+        return False, "pinned-bundle-hash-mismatch:" + ",".join(sorted(mismatches))
+
+    return True, (
+        "pinned-schema-reversible-bundle="
+        + ",".join(sorted(expected_names))
+        + f",files={len(paths)}"
+    )
+
+
 def classify(paths: list[Path], schema_reversible: bool = False) -> tuple[bool, str]:
     created_tables: set[str] = set()
     created_functions: set[str] = set()
@@ -72,6 +120,14 @@ def classify(paths: list[Path], schema_reversible: bool = False) -> tuple[bool, 
     for path in paths:
         if not path.is_file() or path.suffix.lower() != ".sql":
             return False, f"missing-or-non-sql:{path}"
+
+    pinned_result = classify_pinned_schema_reversible_bundle(
+        paths, schema_reversible=schema_reversible
+    )
+    if pinned_result is not None:
+        return pinned_result
+
+    for path in paths:
         for statement in split_statements(strip_comments(path.read_text(encoding="utf-8"))):
             statements.append((path, re.sub(r"\s+", " ", statement).strip()))
 
