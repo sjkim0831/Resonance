@@ -86,6 +86,7 @@ if (process.argv.includes("--build")) {
     runAsync(process.execPath, [path.join(repositoryRoot, "ops/tests/test-work-execution-versioned-support-ui.mjs")]),
     runAsync(process.execPath, [path.join(repositoryRoot, "ops/tests/test-work-execution-route-ownership.mjs")]),
     runAsync(process.execPath, [path.join(repositoryRoot, "ops/tests/test-taskquest-session-gate.mjs")]),
+    runAsync(process.execPath, [path.join(repositoryRoot, "ops/tests/test-global-user-gnb-home-fetch-stability.mjs")]),
   ];
   const bundlerCommand = process.execPath;
   const bundlerArgs = frontendBundler === "rolldown"

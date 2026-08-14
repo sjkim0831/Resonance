@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useAsyncValue } from "../../app/hooks/useAsyncValue";
 import { useFrontendSession } from "../../app/hooks/useFrontendSession";
 import { fetchHomePayload } from "../../lib/api/appBootstrap";
@@ -25,13 +25,17 @@ export function shouldUseGlobalUserGnb(pathname: string) {
 export function GlobalUserGnbShell({ children }: { children: ReactNode }) {
   const en = isEnglish();
   const content = LOCALIZED_CONTENT[en ? "en" : "ko"];
+  const initialHomePayload = useMemo(
+    () => ({ isLoggedIn: false, isEn: en, homeMenu: [] }),
+    [en]
+  );
   const home = useAsyncValue(() => fetchHomePayload(), [en], {
-    initialValue: { isLoggedIn: false, isEn: en, homeMenu: [] },
+    initialValue: initialHomePayload,
     onError: () => undefined
   });
   const session = useFrontendSession();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const payload = home.value || { isLoggedIn: false, isEn: en, homeMenu: [] };
+  const payload = home.value || initialHomePayload;
 
   useEffect(() => {
     document.body.classList.toggle("mobile-menu-open", mobileMenuOpen);
