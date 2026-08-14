@@ -10,6 +10,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicReference;
 
 import javax.sql.DataSource;
 
@@ -140,6 +141,64 @@ class ScreenContractRuntimeServiceTest {
 
     @Test
     @SuppressWarnings("unchecked")
+    void projectsLegacyEightStatesIntoOneFinalTenStateRuntimeAndSupportHash() throws Exception {
+        JdbcTemplate jdbc = mock(JdbcTemplate.class);
+        ScreenContractRuntimeService service = new ScreenContractRuntimeService(jdbc, new ObjectMapper());
+        List<String> finalTen = List.of(
+            "LOADING", "EMPTY", "READY", "DIRTY", "SAVING",
+            "SUCCESS", "ERROR", "FORBIDDEN", "CONFLICT", "RECOVERY");
+        String finalTenJson = new ObjectMapper().writeValueAsString(finalTen);
+        AtomicReference<String> projectionJson = new AtomicReference<>();
+        AtomicReference<String> runtimePayload = new AtomicReference<>();
+
+        when(jdbc.queryForList(
+            argThat(sql -> sql != null && sql.contains("from framework_professional_screen_contract c")),
+            any(Object[].class))).thenAnswer(invocation -> {
+                projectionJson.set(String.valueOf((Object)invocation.getArgument(1)));
+                return List.of(professionalContractSourceWithCanonicalStates(finalTen));
+            });
+        when(jdbc.queryForList(
+            argThat(sql -> sql != null && sql.contains("from framework_screen_contract_binding b")),
+            any(Object[].class))).thenReturn(List.of(
+                professionalActiveBinding("legacy-eight-hash", 2022L, 2)));
+        when(jdbc.queryForList(
+            argThat(sql -> sql != null && sql.contains(
+                "from framework_screen_contract_version where contract_id=? and contract_hash=?")),
+            any(Object[].class))).thenReturn(List.of());
+        when(jdbc.queryForObject(
+            argThat(sql -> sql != null && sql.startsWith("select md5")),
+            eq(String.class), any(Object[].class))).thenAnswer(invocation -> {
+                runtimePayload.set(String.valueOf((Object)invocation.getArgument(2)));
+                return "final-ten-runtime-hash";
+            });
+        when(jdbc.queryForObject(
+            argThat(sql -> sql != null && sql.contains("coalesce(max(version_no),0)+1")),
+            eq(Integer.class), any(Object[].class))).thenReturn(3);
+
+        Map<String,Object> prediction = service.predictProfessionalContract(
+            37865L, Map.of("stateContract", finalTenJson));
+
+        Map<String,Object> projected = new ObjectMapper().readValue(projectionJson.get(), Map.class);
+        assertEquals(finalTenJson, projected.get("stateContract"));
+        Map<String,Object> payload = new ObjectMapper().readValue(runtimePayload.get(), Map.class);
+        Map<String,Object> process = (Map<String,Object>)payload.get("process");
+        Map<String,Object> support = (Map<String,Object>)payload.get("support");
+        Map<String,Object> lanes = (Map<String,Object>)support.get("lanes");
+        Map<String,Object> help = (Map<String,Object>)lanes.get("HELP");
+        Map<String,Object> frontend = (Map<String,Object>)lanes.get("FRONTEND");
+        Map<String,Object> operations = (Map<String,Object>)payload.get("operations");
+        assertEquals(finalTen, process.get("states"));
+        assertEquals(finalTen, help.get("exceptionStates"));
+        assertEquals(finalTen, frontend.get("states"));
+        assertEquals(support.get("designHash"), operations.get("designHash"));
+        assertEquals(support.get("catalogHash"), operations.get("catalogHash"));
+        assertEquals(support.get("designHash"), prediction.get("designHash"));
+        assertEquals("final-ten-runtime-hash", prediction.get("contractHash"));
+        verify(jdbc, never()).update(anyString(), any(Object[].class));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
     void acceptsNullOrLegacyBlankCatalogHashAndRetainsExactSupportValue() {
         for(Object catalogHash:java.util.Arrays.asList(null,"  ")){
             JdbcTemplate jdbc = mock(JdbcTemplate.class);
@@ -247,6 +306,21 @@ class ScreenContractRuntimeServiceTest {
             IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
                 () -> service.predictProfessionalContract(37865L, Map.of(field, "OVERRIDE")));
             assertTrue(error.getMessage().contains(field));
+        }
+        verifyNoInteractions(jdbc);
+    }
+
+    @Test
+    void rejectsNonCanonicalProfessionalPredictionStatusesBeforeDatabaseAccess() {
+        JdbcTemplate jdbc = mock(JdbcTemplate.class);
+        ScreenContractRuntimeService service = new ScreenContractRuntimeService(jdbc, new ObjectMapper());
+
+        for (Object status : java.util.Arrays.asList("BOGUS", "verified", 7, null)) {
+            Map<String,Object> proposed = new LinkedHashMap<>();
+            proposed.put("contractStatus", status);
+            IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
+                () -> service.predictProfessionalContract(37865L, proposed));
+            assertTrue(error.getMessage().contains("contractStatus"));
         }
         verifyNoInteractions(jdbc);
     }
@@ -371,6 +445,33 @@ class ScreenContractRuntimeServiceTest {
             Map<String,Object> bundle = mapper.readValue(
                 String.valueOf(source.get("canonicalBundle")), Map.class);
             bundle.put("catalogHash", catalogHash);
+            source.put("canonicalBundle", mapper.writeValueAsString(bundle));
+            return source;
+        } catch (Exception error) {
+            throw new IllegalStateException(error);
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<String,Object> professionalContractSourceWithCanonicalStates(List<String> states) {
+        Map<String,Object> source = professionalContractSource();
+        source.put("stateContract",
+            "[\"LOADING\",\"EMPTY\",\"READY\",\"DIRTY\",\"SAVING\",\"SUCCESS\",\"ERROR\",\"FORBIDDEN\"]");
+        try {
+            ObjectMapper mapper = new ObjectMapper();
+            Map<String,Object> bundle = mapper.readValue(
+                String.valueOf(source.get("canonicalBundle")), Map.class);
+            Map<String,Object> design = (Map<String,Object>)bundle.get("canonicalDesign");
+            Map<String,Object> lanes = (Map<String,Object>)design.get("lanes");
+            ((Map<String,Object>)lanes.get("HELP")).put("exceptionStates", states);
+            ((Map<String,Object>)lanes.get("FRONTEND")).put("states", states);
+            String canonicalText = mapper.writeValueAsString(design);
+            String designHash = java.util.HexFormat.of().formatHex(
+                java.security.MessageDigest.getInstance("SHA-256").digest(
+                    canonicalText.getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+            bundle.put("canonicalText", canonicalText);
+            bundle.put("designHash", designHash);
+            bundle.put("catalogHash", null);
             source.put("canonicalBundle", mapper.writeValueAsString(bundle));
             return source;
         } catch (Exception error) {

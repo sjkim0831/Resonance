@@ -4,6 +4,7 @@ umask 077
 
 ROOT="${1:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
 MIGRATION="$ROOT/apps/carbonet-api/src/main/resources/db/migration/postgresql/V20260813093000__compile_canonical_screen_design_release.sql"
+PROJECTION_MIGRATION="$ROOT/apps/carbonet-api/src/main/resources/db/migration/postgresql/V20260814173000__project_professional_screen_preview_bundle.sql"
 IMAGE="${CANONICAL_DESIGN_POSTGRES_IMAGE:-docker.io/library/postgres:16}"
 NAMESPACE="${CONTAINERD_NAMESPACE:-k8s.io}"
 CONTAINER_ID="codex-canonical-design-$RANDOM-$$"
@@ -23,6 +24,7 @@ cleanup() {
 trap cleanup EXIT INT TERM
 
 [[ -f "$MIGRATION" ]] || fail "migration missing"
+[[ -f "$PROJECTION_MIGRATION" ]] || fail "projection migration missing"
 command -v psql >/dev/null || fail "psql missing"
 command -v python3 >/dev/null || fail "python3 missing"
 sudo -n true >/dev/null || fail "passwordless sudo required"
@@ -143,6 +145,195 @@ GRANT SELECT ON framework_process_definition,framework_process_step,
 SQL
 
 db -f "$MIGRATION" >/dev/null
+db -f "$PROJECTION_MIGRATION" >/dev/null
+
+db <<'SQL'
+BEGIN;
+UPDATE framework_professional_screen_contract
+   SET state_contract='["LOADING","EMPTY","READY","DIRTY","SAVING","ERROR","FORBIDDEN","CONFLICT"]'
+ WHERE process_code='PROC' AND step_code='STEP' AND audience='USER';
+DO $$
+DECLARE
+  persisted framework_professional_screen_contract%ROWTYPE;
+  all_fields framework_professional_screen_contract%ROWTYPE;
+  source_before jsonb;
+  legacy_bundle jsonb;
+  empty_projection jsonb;
+  released_legacy_bundle jsonb;
+  predicted_final_bundle jsonb;
+  actual_final_bundle jsonb;
+  release_result jsonb;
+  release_count_before integer;
+  member_count_before integer;
+  sequence_before bigint;
+  sequence_called_before boolean;
+  final_states jsonb := '["LOADING","EMPTY","READY","DIRTY","SAVING","SUCCESS","ERROR","FORBIDDEN","CONFLICT","RECOVERY"]'::jsonb;
+BEGIN
+  SELECT * INTO STRICT persisted
+    FROM framework_professional_screen_contract
+   WHERE process_code='PROC' AND step_code='STEP' AND audience='USER';
+  source_before:=to_jsonb(persisted);
+  legacy_bundle:=framework_canonical_screen_bundle('PROC','STEP','USER','/screen/1');
+  empty_projection:=framework_canonical_screen_bundle(
+    'PROC','STEP','USER','/screen/1','{}'::jsonb
+  );
+  IF legacy_bundle<>empty_projection
+     OR legacy_bundle::text<>empty_projection::text THEN
+    RAISE EXCEPTION 'empty projection is not byte-exact with the 4-argument compiler';
+  END IF;
+
+  all_fields:=framework_project_professional_screen_contract(persisted,jsonb_build_object(
+    'businessPurpose','Projected professional purpose',
+    'entryCondition','Projected entry',
+    'exitCondition','Projected exit',
+    'sectionContract','["PROJECTED_SECTION"]',
+    'fieldContract','["PROJECTED_FIELD"]',
+    'commandContract','["PROJECTED_COMMAND"]',
+    'stateContract',final_states::text,
+    'apiContract','[{"path":"/projected"}]',
+    'dataContract','[{"table":"projected"}]',
+    'evidenceContract','["PROJECTED_EVIDENCE"]',
+    'responsiveContract','projected responsive',
+    'accessibilityContract','projected accessibility',
+    'securityContract','projected security',
+    'apiVerified',false,
+    'databaseVerified',false,
+    'authorityVerified',false,
+    'responsiveVerified',false,
+    'accessibilityVerified',false,
+    'exceptionStatesVerified',false,
+    'auditEvidenceRef','projected-evidence',
+    'contractStatus','REVIEW_REQUIRED'
+  ));
+  IF to_jsonb(all_fields)<>(source_before||jsonb_build_object(
+       'business_purpose','Projected professional purpose',
+       'entry_condition','Projected entry',
+       'exit_condition','Projected exit',
+       'section_contract','["PROJECTED_SECTION"]',
+       'field_contract','["PROJECTED_FIELD"]',
+       'command_contract','["PROJECTED_COMMAND"]',
+       'state_contract',final_states::text,
+       'api_contract','[{"path":"/projected"}]',
+       'data_contract','[{"table":"projected"}]',
+       'evidence_contract','["PROJECTED_EVIDENCE"]',
+       'responsive_contract','projected responsive',
+       'accessibility_contract','projected accessibility',
+       'security_contract','projected security',
+       'api_verified',false,
+       'database_verified',false,
+       'authority_verified',false,
+       'responsive_verified',false,
+       'accessibility_verified',false,
+       'exception_states_verified',false,
+       'audit_evidence_ref','projected-evidence',
+       'contract_status','REVIEW_REQUIRED'
+     )) THEN
+    RAISE EXCEPTION 'one or more allowed projection fields did not map exactly';
+  END IF;
+  IF to_jsonb(framework_project_professional_screen_contract(persisted,'{}'))
+       <>source_before THEN
+    RAISE EXCEPTION 'absent projection fields did not preserve the persisted row';
+  END IF;
+
+  release_result:=framework_publish_canonical_design_release('projection-test');
+  released_legacy_bundle:=framework_canonical_screen_bundle(
+    'PROC','STEP','USER','/screen/1'
+  );
+  IF released_legacy_bundle->>'catalogHash'<>release_result->>'catalogHash' THEN
+    RAISE EXCEPTION 'exact released legacy design lost catalog membership';
+  END IF;
+  predicted_final_bundle:=framework_canonical_screen_bundle(
+    'PROC','STEP','USER','/screen/1',
+    jsonb_build_object('stateContract',final_states::text)
+  );
+  IF predicted_final_bundle->'catalogHash'<>'null'::jsonb
+     OR predicted_final_bundle->>'designHash'=released_legacy_bundle->>'designHash'
+     OR predicted_final_bundle#>'{canonicalDesign,lanes,HELP,exceptionStates}'<>final_states
+     OR predicted_final_bundle#>'{canonicalDesign,lanes,FRONTEND,states}'<>final_states THEN
+    RAISE EXCEPTION 'legacy8 to final10 projection hash/lane/release semantics mismatch';
+  END IF;
+
+  SELECT count(*) INTO release_count_before
+    FROM framework_canonical_design_release_evidence;
+  SELECT count(*) INTO member_count_before
+    FROM framework_canonical_design_release_member;
+  SELECT last_value,is_called INTO sequence_before,sequence_called_before
+    FROM framework_professional_screen_contract_contract_id_seq;
+  PERFORM framework_canonical_screen_bundle(
+    'PROC','STEP','USER','/screen/1',jsonb_build_object('stateContract',final_states::text)
+  );
+  IF (SELECT to_jsonb(current_row) FROM framework_professional_screen_contract current_row
+       WHERE current_row.contract_id=persisted.contract_id)<>source_before
+     OR (SELECT count(*) FROM framework_canonical_design_release_evidence)<>release_count_before
+     OR (SELECT count(*) FROM framework_canonical_design_release_member)<>member_count_before
+     OR (SELECT last_value FROM framework_professional_screen_contract_contract_id_seq)<>sequence_before
+     OR (SELECT is_called FROM framework_professional_screen_contract_contract_id_seq)<>sequence_called_before THEN
+    RAISE EXCEPTION 'projection mutated source, release evidence, membership, or sequence state';
+  END IF;
+
+  BEGIN
+    PERFORM framework_canonical_screen_bundle(
+      'PROC','STEP','USER','/screen/1','{"processCode":"OTHER"}'::jsonb
+    );
+    RAISE EXCEPTION 'identity projection mutant survived';
+  EXCEPTION WHEN sqlstate '22023' THEN NULL; END;
+  BEGIN
+    PERFORM framework_canonical_screen_bundle(
+      'PROC','STEP','USER','/screen/1','{"stateContract":null}'::jsonb
+    );
+    RAISE EXCEPTION 'null projection mutant survived';
+  EXCEPTION WHEN sqlstate '22023' THEN NULL; END;
+  BEGIN
+    PERFORM framework_canonical_screen_bundle(
+      'PROC','STEP','USER','/screen/1','{"stateContract":"not-json"}'::jsonb
+    );
+    RAISE EXCEPTION 'malformed JSON-array projection mutant survived';
+  EXCEPTION WHEN sqlstate '22023' THEN NULL; END;
+  BEGIN
+    PERFORM framework_canonical_screen_bundle(
+      'PROC','STEP','USER','/screen/1','{"apiVerified":"true"}'::jsonb
+    );
+    RAISE EXCEPTION 'boolean type projection mutant survived';
+  EXCEPTION WHEN sqlstate '22023' THEN NULL; END;
+  BEGIN
+    PERFORM framework_canonical_screen_bundle(
+      'PROC','STEP','USER','/screen/1','{"contractStatus":"BOGUS"}'::jsonb
+    );
+    RAISE EXCEPTION 'bogus contractStatus projection mutant survived';
+  EXCEPTION WHEN sqlstate '22023' THEN NULL; END;
+  BEGIN
+    PERFORM framework_canonical_screen_bundle(
+      'PROC','STEP','USER','/screen/1','{"contractStatus":"verified"}'::jsonb
+    );
+    RAISE EXCEPTION 'lowercase contractStatus projection mutant survived';
+  EXCEPTION WHEN sqlstate '22023' THEN NULL; END;
+  BEGIN
+    PERFORM framework_canonical_screen_bundle(
+      'PROC','STEP','USER','/screen/1','{"contractStatus":7}'::jsonb
+    );
+    RAISE EXCEPTION 'nonstring contractStatus projection mutant survived';
+  EXCEPTION WHEN sqlstate '22023' THEN NULL; END;
+  IF (SELECT to_jsonb(current_row) FROM framework_professional_screen_contract current_row
+       WHERE current_row.contract_id=persisted.contract_id)<>source_before
+     OR (SELECT count(*) FROM framework_canonical_design_release_evidence)<>release_count_before
+     OR (SELECT count(*) FROM framework_canonical_design_release_member)<>member_count_before
+     OR (SELECT last_value FROM framework_professional_screen_contract_contract_id_seq)<>sequence_before
+     OR (SELECT is_called FROM framework_professional_screen_contract_contract_id_seq)<>sequence_called_before THEN
+    RAISE EXCEPTION 'failed projection changed source, release, membership, or sequence state';
+  END IF;
+
+  UPDATE framework_professional_screen_contract
+     SET state_contract=final_states::text
+   WHERE contract_id=persisted.contract_id;
+  actual_final_bundle:=framework_canonical_screen_bundle('PROC','STEP','USER','/screen/1');
+  IF predicted_final_bundle<>actual_final_bundle
+     OR predicted_final_bundle::text<>actual_final_bundle::text THEN
+    RAISE EXCEPTION 'projected bundle/hash did not equal the post-save compiler result';
+  END IF;
+END
+$$;
+ROLLBACK;
+SQL
 
 db <<'SQL'
 DO $$

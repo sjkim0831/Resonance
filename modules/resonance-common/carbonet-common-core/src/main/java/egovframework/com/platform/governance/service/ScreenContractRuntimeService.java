@@ -31,6 +31,9 @@ public class ScreenContractRuntimeService {
         "databaseVerified", "authorityVerified", "responsiveVerified", "accessibilityVerified",
         "exceptionStatesVerified", "auditEvidenceRef", "contractStatus"
     );
+    private static final Set<String> PROFESSIONAL_CONTRACT_STATUSES = Set.of(
+        "DRAFT", "REVIEW_REQUIRED", "DESIGN_COMPLETE", "APPROVED", "VERIFIED"
+    );
     private final JdbcTemplate jdbc;
     private final ObjectMapper mapper;
 
@@ -203,6 +206,13 @@ public class ScreenContractRuntimeService {
             throw new IllegalArgumentException("Unsupported professional contract prediction fields: "
                 + String.join(", ", unsupported));
         }
+        if (proposedValues.containsKey("contractStatus")) {
+            Object value = proposedValues.get("contractStatus");
+            if (!(value instanceof String status) || !PROFESSIONAL_CONTRACT_STATUSES.contains(status)) {
+                throw new IllegalArgumentException(
+                    "Unsupported professional contract prediction contractStatus: " + String.valueOf(value));
+            }
+        }
         return new LinkedHashMap<>(proposedValues);
     }
 
@@ -224,12 +234,14 @@ public class ScreenContractRuntimeService {
                    c.exception_states_verified as "exceptionStatesVerified",
                    c.audit_evidence_ref as "auditEvidenceRef",c.contract_status as "contractStatus",
                    framework_canonical_screen_bundle(
-                     c.process_code,c.step_code,c.audience,lower(split_part(c.route_path,'?',1))
+                     c.process_code,c.step_code,c.audience,lower(split_part(c.route_path,'?',1)),
+                     ?::jsonb
                    )::text as "canonicalBundle"
               from framework_professional_screen_contract c
              where c.contract_id=?
             """ + (lockForPublish ? " for update" : "");
-        List<Map<String,Object>> source = jdbc.queryForList(sql, contractId);
+        Map<String,Object> projection = proposedValues == null ? Map.of() : proposedValues;
+        List<Map<String,Object>> source = jdbc.queryForList(sql, write(projection), contractId);
         if (source.isEmpty()) throw new IllegalArgumentException("Screen design contract not found: " + contractId);
         Map<String,Object> row = new LinkedHashMap<>(source.get(0));
         if (proposedValues != null) row.putAll(proposedValues);

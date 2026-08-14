@@ -183,7 +183,7 @@ trap - EXIT
 
 python3 - "$ROOT" "$MIGRATION" "$STAGER" "$PROMOTER" "$DEPLOY" <<'PY'
 from pathlib import Path
-import os, sys
+import os, re, sys
 
 root, migration_path, stager_path, promoter_path, deploy_path = map(Path, sys.argv[1:])
 migration = migration_path.read_text(encoding="utf-8")
@@ -366,6 +366,7 @@ service = (root / "modules/resonance-common/carbonet-common-core/src/main/java/e
 controller = (root / "modules/resonance-common/carbonet-common-core/src/main/java/egovframework/com/platform/governance/web/ActorProcessGovernanceApiController.java").read_text(encoding="utf-8")
 runtime_service = (root / "modules/resonance-common/carbonet-common-core/src/main/java/egovframework/com/platform/governance/service/ScreenContractRuntimeService.java").read_text(encoding="utf-8")
 runtime_service_test = (root / "modules/resonance-common/carbonet-common-core/src/test/java/egovframework/com/platform/governance/service/ScreenContractRuntimeServiceTest.java").read_text(encoding="utf-8")
+preview_bundle_migration = (root / "apps/carbonet-api/src/main/resources/db/migration/postgresql/V20260814173000__project_professional_screen_preview_bundle.sql").read_text(encoding="utf-8")
 assert "SCREEN_CONTRACT_RUNTIME_SAVE_PREVIEW" in screen_wrapper and "previewMode==true" in screen_wrapper
 assert "/professional-screen-contracts/preview" in screen_mjs and "previewCount: previewMode ? saves.length : 0" in screen_mjs
 assert "/signin/actionLogout" in screen_mjs
@@ -440,7 +441,16 @@ def assert_read_only_preview(actor_source,runtime_source):
     assert "jdbc.update" not in predictor and "nextval" not in predictor.lower()
     assert 'publicationResult(true, "DESIGN_CHANGED"' in predictor
     assert "PROFESSIONAL_PREDICTION_FIELDS" in runtime_source
+    assert "PROFESSIONAL_CONTRACT_STATUSES" in runtime_source
+    assert 'proposedValues.containsKey("contractStatus")' in runtime_source
+    assert "PROFESSIONAL_CONTRACT_STATUSES.contains(status)" in runtime_source
     assert "Unsupported professional contract prediction fields" in runtime_source
+    preparer=runtime_source[runtime_source.index("private PreparedProfessionalContract prepareProfessionalContract"):
+                            runtime_source.index("private Map<String,Object> supportContract")]
+    assert "framework_canonical_screen_bundle(" in preparer
+    canonical_call=preparer[preparer.index("framework_canonical_screen_bundle("):
+                            preparer.index(')::text as "canonicalBundle"')]
+    assert "?::jsonb" in canonical_call and "write(projection), contractId" in preparer
     assert 'result.put("published", predicted ? false : published)' in runtime_source
     assert 'result.put("wouldPublish", published)' in runtime_source
     publisher=runtime_source[runtime_source.index("public Map<String,Object> publishProfessionalContract"):
@@ -453,9 +463,35 @@ assert "AnnotationConfigApplicationContext" in runtime_service_test
 assert "context.registerBean(ScreenContractRuntimeService.class)" in runtime_service_test
 for token in ("rejectsImmutableAndUnknownProfessionalPredictionOverridesBeforeDatabaseAccess",
               'List.of("processCode", "routePath", "contractId", "kpiContract", "unknownField")',
+              "projectsLegacyEightStatesIntoOneFinalTenStateRuntimeAndSupportHash",
+              "rejectsNonCanonicalProfessionalPredictionStatusesBeforeDatabaseAccess",
               "predictsUnchangedWithoutClaimingPublication",
               "predictsHistoricalVersionReuseWithoutClaimingPublication"):
     assert token in runtime_service_test
+for token in (
+    "framework_project_professional_screen_contract",
+    "jsonb_populate_record(persisted,overlay)",
+    "framework_strict_jsonb_array(entry.value#>>'{}')",
+    "framework_canonical_screen_design($1,$2,$3,$4,'{}'::jsonb)",
+    "framework_canonical_screen_bundle($1,$2,$3,$4,'{}'::jsonb)",
+):
+    assert token in preview_bundle_migration
+for field in (
+    "businessPurpose", "entryCondition", "exitCondition", "sectionContract",
+    "fieldContract", "commandContract", "stateContract", "apiContract",
+    "dataContract", "evidenceContract", "responsiveContract",
+    "accessibilityContract", "securityContract", "apiVerified",
+    "databaseVerified", "authorityVerified", "responsiveVerified",
+    "accessibilityVerified", "exceptionStatesVerified", "auditEvidenceRef",
+    "contractStatus",
+):
+    assert preview_bundle_migration.count("'"+field+"'") >= 2
+for status in ("DRAFT", "REVIEW_REQUIRED", "DESIGN_COMPLETE", "APPROVED", "VERIFIED"):
+    assert "'"+status+"'" in preview_bundle_migration
+    assert '"'+status+'"' in runtime_service
+assert "proposed ? 'contractStatus'" in preview_bundle_migration
+assert "proposed->>'contractStatus'=ANY(contract_statuses)" in preview_bundle_migration
+assert not re.search(r"\b(insert|update|delete|nextval)\b", preview_bundle_migration, re.I)
 for actor_mutation,runtime_mutation,label in (
     (service.replace("@Transactional(readOnly=true) public Map<String,Object> saveProfessionalScreenContractPreview",
                      "@Transactional public Map<String,Object> saveProfessionalScreenContractPreview",1),runtime_service,"read-only-transaction"),
@@ -463,6 +499,12 @@ for actor_mutation,runtime_mutation,label in (
                                      "prepareProfessionalContract(contractId, validatedValues, true)",1),"runtime-write-lock"),
     (service,runtime_service.replace("validateProfessionalPredictionValues(proposedValues)",
                                      "new LinkedHashMap<>(proposedValues)",1),"runtime-allowlist-bypass"),
+    (service,runtime_service.replace("PROFESSIONAL_CONTRACT_STATUSES.contains(status)",
+                                     "true",1),"runtime-status-enum-bypass"),
+    (service,runtime_service.replace(
+        '?::jsonb\n                   )::text as "canonicalBundle"',
+        '\'{}\'::jsonb\n                   )::text as "canonicalBundle"',1),
+     "runtime-stale-bundle-projection"),
     (service.replace('runtimeValues.remove("contractId");',"",1),runtime_service,"actor-contract-id-leak"),
     (service,runtime_service.replace('result.put("published", predicted ? false : published)',
                                      'result.put("published", published)',1),"preview-published-semantics"),
