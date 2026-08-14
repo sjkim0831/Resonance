@@ -255,8 +255,8 @@ carbonet_postgres_query "$PAYLOAD_SQL" >"$input_file"
 jq -e '
   length==4
   and ([.[].payload.contractId]==[216005,216006,216007,216008])
-  and all(.[].payload.contractStatus=="VERIFIED")
-  and all(.[].expected.processCode=="MEMBER_LIFECYCLE" and .expected.audience=="USER"
+  and all(.[]; .payload.contractStatus=="VERIFIED")
+  and all(.[]; .expected.processCode=="MEMBER_LIFECYCLE" and .expected.audience=="USER"
     and .expected.routePath=="/work/execution"
     and (.expected.designHash|test("^[0-9a-f]{64}$"))
     and ((.expected.catalogHash==null) or (.expected.catalogHash=="")

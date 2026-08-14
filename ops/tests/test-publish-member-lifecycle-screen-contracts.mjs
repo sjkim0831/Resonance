@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
 import { readFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -59,6 +60,56 @@ const rows = steps.map((suffix, index) => {
     },
   };
 });
+
+function extractDbSourceGate(shellSource) {
+  const match = shellSource.match(/jq -e '\n(  length==4[\s\S]*?)\n' "\$input_file" >\/dev\/null \|\| \{/);
+  assert.ok(match, "current-DB jq source gate is missing");
+  return match[1];
+}
+
+function executeDbSourceGate(shellSource, fixture) {
+  const result = spawnSync("jq", ["-e", extractDbSourceGate(shellSource)], {
+    input: JSON.stringify(fixture),
+    encoding: "utf8",
+  });
+  assert.notEqual(result.error?.code, "ENOENT", "jq executable is required for the publisher contract test");
+  return result;
+}
+
+const validDbGate = executeDbSourceGate(wrapper, rows);
+assert.equal(validDbGate.status, 0,
+  `the exact four valid DB rows must pass the real jq gate: ${validDbGate.stderr}`);
+
+const dbGateMutants = [
+  ["missing target", rows.slice(0, 3)],
+  ["contract id order", structuredClone(rows)],
+  ["unverified contract", structuredClone(rows)],
+  ["wrong audience", structuredClone(rows)],
+  ["invalid design hash", structuredClone(rows)],
+  ["invalid catalog hash", structuredClone(rows)],
+];
+dbGateMutants[1][1][0].payload.contractId = 216008;
+dbGateMutants[2][1][0].payload.contractStatus = "DRAFT";
+dbGateMutants[3][1][0].expected.audience = "ADMIN";
+dbGateMutants[4][1][0].expected.designHash = "not-a-sha256";
+dbGateMutants[5][1][0].expected.catalogHash = "not-a-sha256";
+for (const [name, mutant] of dbGateMutants) {
+  const result = executeDbSourceGate(wrapper, mutant);
+  assert.notEqual(result.status, 0, `${name} mutant passed the real jq gate`);
+}
+
+for (const [name, sourceMutant] of [
+  ["payload all-generator regression", wrapper.replace(
+    "all(.[]; .payload.contractStatus", "all(.[].payload.contractStatus")],
+  ["expected all-generator regression", wrapper.replace(
+    "all(.[]; .expected.processCode", "all(.[].expected.processCode")],
+]) {
+  assert.notEqual(sourceMutant, wrapper, `${name} mutation was not applied`);
+  const result = executeDbSourceGate(sourceMutant, rows);
+  assert.notEqual(result.status, 0, `${name} survived against four valid rows`);
+}
+assert.doesNotMatch(wrapper, /all\(\.\[\]\.(?:payload|expected)/,
+  "one-argument all must not re-iterate each row object");
 
 function supportFor(row) {
   const card = { assetBindings: [{ type: "route", value: row.expected.routePath }] };
@@ -204,4 +255,4 @@ for (const scenario of [
   }
 }
 
-process.stdout.write("MEMBER_LIFECYCLE_SCREEN_CONTRACT_PUBLISHER_PASS happyPhases=2 targets=4 previewBeforeMutation=4/4 resolver=4/4 negativeCases=3 passwordOutput=0\n");
+process.stdout.write("MEMBER_LIFECYCLE_SCREEN_CONTRACT_PUBLISHER_PASS happyPhases=2 targets=4 previewBeforeMutation=4/4 resolver=4/4 negativeCases=3 dbJqValid=4 dbJqDataMutants=6 dbJqSourceMutants=2 passwordOutput=0\n");
