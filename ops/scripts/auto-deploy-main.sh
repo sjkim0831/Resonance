@@ -4813,6 +4813,8 @@ if [[ "$backup_required" == "true" ]]; then
           -t framework_screen_workflow_policy \
           -t framework_process_step_screen_binding \
           -t framework_professional_screen_contract \
+          -t framework_process_work_draft \
+          -t framework_screen_data_binding \
           -t framework_screen_blueprint \
           -t framework_page_design -t framework_page_field_definition \
           -t framework_company_reapplication_audit \

@@ -972,6 +972,61 @@ class ActorProcessGovernanceServiceSecurityTest {
     }
 
     @Test
+    void workDraftResponseExposesTheGeneratedEvidenceObjectCount() {
+        when(jdbc.queryForList(argThat(sql -> sql != null && sql.contains("runtime_step.step_code as \"stepCode\"")),
+                any(Object[].class))).thenReturn(List.of(Map.of("actorCode", "SITE_DATA_OWNER")));
+        when(jdbc.queryForObject(argThat(sql -> sql != null && sql.contains("framework_account_actor_assignment")
+                        && sql.contains("actor_code=?")), eq(Integer.class), any(Object[].class))).thenReturn(1);
+        when(jdbc.queryForList(argThat(sql -> sql != null
+                        && sql.contains("evidence_count as \"evidenceCount\"")
+                        && sql.contains("from framework_process_work_draft")), any(Object[].class)))
+                .thenReturn(List.of(Map.of(
+                        "draftId", UUID.randomUUID(), "evidenceJson", "{\"documentId\":\"DOC-1\"}",
+                        "evidenceCount", 1, "draftVersion", 3, "draftStatus", "DRAFT")));
+        when(jdbc.queryForList(argThat(sql -> sql != null && sql.contains("with target as (")),
+                any(Object[].class))).thenReturn(List.of());
+        when(jdbc.queryForList(argThat(sql -> sql != null && sql.contains("as \"defaultPayloadJson\"")),
+                any(Object[].class))).thenReturn(List.of());
+        doReturn(Map.of("ready", true, "items", List.of())).when(service)
+                .relayPrerequisiteReadiness("TENANT_A", "PROJECT_A", "EMISSION_PROJECT", "EMISSION_PROJECT_COLLECT");
+
+        Map<String,Object> response=service.loadWorkDraft(
+                "TENANT_A", "PROJECT_A", "EMISSION_PROJECT", "EMISSION_PROJECT_COLLECT", "user-a");
+
+        Map<?,?> draft=(Map<?,?>)response.get("draft");
+        assertEquals(1,draft.get("evidenceCount"));
+        assertEquals("{\"documentId\":\"DOC-1\"}",draft.get("evidenceJson"));
+        verify(jdbc).queryForList(argThat(sql -> sql != null
+                && sql.contains("evidence_count as \"evidenceCount\"")), any(Object[].class));
+    }
+
+    @Test
+    void workDraftResponseExposesZeroEvidenceCountWhenNoDraftExists() {
+        when(jdbc.queryForList(argThat(sql -> sql != null && sql.contains("runtime_step.step_code as \"stepCode\"")),
+                any(Object[].class))).thenReturn(List.of(Map.of("actorCode", "SITE_DATA_OWNER")));
+        when(jdbc.queryForObject(argThat(sql -> sql != null && sql.contains("framework_account_actor_assignment")
+                        && sql.contains("actor_code=?")), eq(Integer.class), any(Object[].class))).thenReturn(1);
+        when(jdbc.queryForList(argThat(sql -> sql != null
+                        && sql.contains("evidence_count as \"evidenceCount\"")
+                        && sql.contains("from framework_process_work_draft")), any(Object[].class)))
+                .thenReturn(List.of());
+        when(jdbc.queryForList(argThat(sql -> sql != null && sql.contains("with target as (")),
+                any(Object[].class))).thenReturn(List.of());
+        when(jdbc.queryForList(argThat(sql -> sql != null && sql.contains("as \"defaultPayloadJson\"")),
+                any(Object[].class))).thenReturn(List.of());
+        doReturn(Map.of("ready", true, "items", List.of())).when(service)
+                .relayPrerequisiteReadiness("TENANT_A", "PROJECT_A", "EMISSION_PROJECT", "EMISSION_PROJECT_COLLECT");
+
+        Map<String,Object> response=service.loadWorkDraft(
+                "TENANT_A", "PROJECT_A", "EMISSION_PROJECT", "EMISSION_PROJECT_COLLECT", "user-a");
+
+        Map<?,?> draft=(Map<?,?>)response.get("draft");
+        assertEquals(false,response.get("found"));
+        assertEquals(0,draft.get("evidenceCount"));
+        assertEquals("NOT_SAVED",draft.get("draftStatus"));
+    }
+
+    @Test
     void projectDeliveryRequiresEveryBlueprintActorBindingBeforeMutation() {
         when(jdbc.queryForObject(argThat(sql -> sql.contains("select specification::text")),
                 org.mockito.ArgumentMatchers.eq(String.class), any(Object[].class)))

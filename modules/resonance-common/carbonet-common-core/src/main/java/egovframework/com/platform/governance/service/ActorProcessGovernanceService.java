@@ -4108,7 +4108,7 @@ public class ActorProcessGovernanceService {
         if(contracts.isEmpty())throw new IllegalArgumentException("Work step contract does not exist: "+process+" / "+step);
         Map<String,Object> contract=contracts.get(0);
         requireActorAssignment(tenant,project,String.valueOf(contract.get("actorCode")),user);
-        List<Map<String,Object>> drafts=jdbc.queryForList("select draft_id as \"draftId\",tenant_id as \"tenantId\",project_id as \"projectId\",process_code as \"processCode\",step_code as \"stepCode\",actor_code as \"actorCode\",payload_json::text as \"payloadJson\",evidence_json::text as \"evidenceJson\",draft_version as \"draftVersion\",draft_status as \"draftStatus\",saved_at as \"savedAt\",submitted_at as \"submittedAt\" from framework_process_work_draft where tenant_id=? and project_id=? and process_code=? and step_code=? and lower(account_id)=lower(?)",tenant,project,process,step,user);
+        List<Map<String,Object>> drafts=jdbc.queryForList("select draft_id as \"draftId\",tenant_id as \"tenantId\",project_id as \"projectId\",process_code as \"processCode\",step_code as \"stepCode\",actor_code as \"actorCode\",payload_json::text as \"payloadJson\",evidence_json::text as \"evidenceJson\",evidence_count as \"evidenceCount\",draft_version as \"draftVersion\",draft_status as \"draftStatus\",saved_at as \"savedAt\",submitted_at as \"submittedAt\" from framework_process_work_draft where tenant_id=? and project_id=? and process_code=? and step_code=? and lower(account_id)=lower(?)",tenant,project,process,step,user);
         List<Map<String,Object>> handoffs=jdbc.queryForList("""
             with target as (
               select step_order from framework_process_step where process_code=? and step_code=?
@@ -4154,7 +4154,7 @@ public class ActorProcessGovernanceService {
             """,process,step,process,process,tenant,project,process,step);
         Map<String,Object> result=new LinkedHashMap<>();
         result.put("success",true);result.put("found",!drafts.isEmpty());result.put("contract",contract);
-        result.put("draft",drafts.isEmpty()?Map.of("draftVersion",0,"draftStatus","NOT_SAVED"):drafts.get(0));
+        result.put("draft",drafts.isEmpty()?Map.of("draftVersion",0,"draftStatus","NOT_SAVED","evidenceCount",0):drafts.get(0));
         result.put("handoff",handoffs.isEmpty()?Map.of():handoffs.get(0));
         result.put("prerequisiteReadiness",relayPrerequisiteReadiness(tenant,project,process,step));
         List<Map<String,Object>> executionContext=jdbc.queryForList("""
