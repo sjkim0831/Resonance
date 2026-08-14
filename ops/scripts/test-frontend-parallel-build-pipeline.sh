@@ -14,6 +14,7 @@ grep -Fq 'four independent generators and customer-journey audit run concurrentl
 grep -Fq 'generateAsync("page-completeness-inventory"' "$pipeline"
 grep -Fq 'runAsync(process.execPath, ["scripts/check-customer-journey-governance.mjs"])' "$pipeline"
 grep -Fq 'runAsync(bundlerCommand, bundlerArgs)' "$pipeline"
+grep -Fq 'ops/tests/test-work-execution-versioned-support-ui.mjs' "$pipeline"
 
 dedupe_line="$(grep -n 'run(process.execPath, \["scripts/dedupe-generated-route-family.mjs"\])' "$pipeline" | head -1 | cut -d: -f1)"
 validation_line="$(grep -n 'const validationTasks = \[' "$pipeline" | head -1 | cut -d: -f1)"

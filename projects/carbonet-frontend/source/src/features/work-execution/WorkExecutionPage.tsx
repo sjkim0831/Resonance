@@ -1,13 +1,22 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { buildLocalizedPath, isEnglish, replace } from "../../lib/navigation/runtime";
 import { runtimeUuid } from "../../lib/runtime-id";
 import { ContractFieldControl, type ContractField } from "../generated-screen/ContractFieldControl";
+import { ExecutableScreenSupportCards, requireVersionedExecutableSupport, type VersionedExecutableSupport } from "../generated-screen/ExecutableScreenSupportCards";
 
 type Row = Record<string, unknown>;
 type WorkDraft = Row & { found?: boolean; contract?: Row; draft?: Row; handoff?: Row; prerequisiteReadiness?: Row };
 type Execution = Row & { found?: boolean; events?: Row[] };
 
 const inputClass = "krds-control min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-slate-900 focus:border-[#246beb] focus:outline-none focus:ring-2 focus:ring-blue-100";
+const EMPTY_FORM = { workSummary: "", decisionBasis: "", resultValue: "", resultUnit: "", exceptionReason: "" };
+const EMPTY_EVIDENCE = { documentId: "", sourceUrl: "", checksum: "" };
+const contextKey = (tenantId: string, projectId: string, processCode: string, stepCode: string) => [
+  tenantId.trim(),
+  projectId.trim(),
+  processCode.trim().toUpperCase(),
+  stepCode.trim().toUpperCase(),
+].join("\u001f");
 const value = (row: Row | undefined, key: string) => String(row?.[key] ?? "");
 const parseObject = (raw: unknown): Row => {
   if (raw && typeof raw === "object") return raw as Row;
@@ -51,17 +60,22 @@ export function WorkExecutionPage() {
   const [values, setValues] = useState<Record<string,string>>({});
   const [work, setWork] = useState<WorkDraft>({});
   const [execution, setExecution] = useState<Execution>({});
-  const [form, setForm] = useState({ workSummary: "", decisionBasis: "", resultValue: "", resultUnit: "", exceptionReason: "" });
-  const [evidence, setEvidence] = useState({ documentId: "", sourceUrl: "", checksum: "" });
+  const [versionedSupport, setVersionedSupport] = useState<VersionedExecutableSupport | null>(null);
+  const [loadedCoordinate, setLoadedCoordinate] = useState("");
+  const [form, setForm] = useState({ ...EMPTY_FORM });
+  const [evidence, setEvidence] = useState({ ...EMPTY_EVIDENCE });
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [handoff, setHandoff] = useState<Row>({});
+  const loadSequence = useRef(0);
 
-  const contract = work.contract || {};
-  const draft = work.draft || {};
-  const upstreamHandoff = work.handoff || {};
-  const prerequisiteReadiness = work.prerequisiteReadiness || {};
+  const loadedContextCurrent = loadedCoordinate !== ""
+    && loadedCoordinate === contextKey(tenantId, projectId, processCode, stepCode);
+  const contract = loadedContextCurrent ? work.contract || {} : {};
+  const draft = loadedContextCurrent ? work.draft || {} : {};
+  const upstreamHandoff = loadedContextCurrent ? work.handoff || {} : {};
+  const prerequisiteReadiness = loadedContextCurrent ? work.prerequisiteReadiness || {} : {};
   const prerequisiteItems = Array.isArray(prerequisiteReadiness.items) ? prerequisiteReadiness.items as Row[] : [];
   const prerequisitesReady = prerequisiteReadiness.ready !== false;
   const upstreamPayload = useMemo(() => parseObject(upstreamHandoff.payloadJson), [upstreamHandoff.payloadJson]);
@@ -105,6 +119,13 @@ export function WorkExecutionPage() {
     return true;
   };
 
+  const requireLoadedContext = () => {
+    if (!requireContext()) return false;
+    if (loadedContextCurrent) return true;
+    setError(en ? "Load the current work coordinate before continuing." : "현재 테넌트·프로젝트·프로세스·단계의 업무를 먼저 불러오세요.");
+    return false;
+  };
+
   const applyDraft = (body: WorkDraft) => {
     setWork(body);
     const payload = parseObject(body.draft?.payloadJson);
@@ -124,8 +145,22 @@ export function WorkExecutionPage() {
     setEvidence({ documentId: String(evidenceRow.documentId || ""), sourceUrl: String(evidenceRow.sourceUrl || ""), checksum: String(evidenceRow.checksum || "") });
   };
 
+  const clearLoadedContext = () => {
+    setLoadedCoordinate("");
+    setVersionedSupport(null);
+    setWork({});
+    setExecution({});
+    setHandoff({});
+    setValues({});
+    setForm({ ...EMPTY_FORM });
+    setEvidence({ ...EMPTY_EVIDENCE });
+  };
+
   const load = async (requestedProcess = processCode, requestedStep = stepCode) => {
+    const sequence = ++loadSequence.current;
+    clearLoadedContext();
     if (!tenantId.trim() || !projectId.trim() || !requestedProcess.trim() || !requestedStep.trim()) {
+      setBusy(false);
       setError(en ? "Enter tenant, project, process, and step." : "테넌트·프로젝트·프로세스·단계를 모두 입력하세요.");
       return;
     }
@@ -133,17 +168,33 @@ export function WorkExecutionPage() {
     try {
       const base = buildLocalizedPath("/home/api/process-executions", "/en/home/api/process-executions");
       const executionBody = await requestJson(`${base}?${new URLSearchParams({ tenantId: tenantId.trim(), projectId: projectId.trim(), processCode: requestedProcess })}`);
+      if (sequence !== loadSequence.current) return;
       const currentStepCode = String(executionBody.currentStepCode || "");
       const effectiveStep = String(executionBody.executionStatus || "") === "RUNNING" && currentStepCode ? currentStepCode : requestedStep;
       const requestedContext = new URLSearchParams({ tenantId: tenantId.trim(), projectId: projectId.trim(), processCode: requestedProcess, stepCode: effectiveStep });
-      const draftBody = await requestJson(`${base}/draft?${requestedContext}`);
+      const versionedContext = new URLSearchParams({ routePath: "/work/execution", processCode: requestedProcess, stepCode: effectiveStep, audience: "USER" });
+      const [draftBody, versionedBody] = await Promise.all([
+        requestJson(`${base}/draft?${requestedContext}`),
+        requestJson(`/runtime/screens/resolve?${versionedContext}`, { headers: { Accept: "application/json" } }),
+      ]);
+      if (sequence !== loadSequence.current) return;
+      const resolvedSupport = requireVersionedExecutableSupport(versionedBody, {
+        actorCode: value((draftBody as WorkDraft).contract, "actorCode"),
+        processCode: requestedProcess,
+        stepCode: effectiveStep,
+      });
       applyDraft(draftBody as WorkDraft);
       setExecution(executionBody as Execution);
-      setProcessCode(requestedProcess);
-      setStepCode(effectiveStep);
+      setVersionedSupport(resolvedSupport);
+      setProcessCode(resolvedSupport.processCode);
+      setStepCode(resolvedSupport.stepCode);
+      setLoadedCoordinate(contextKey(tenantId, projectId, resolvedSupport.processCode, resolvedSupport.stepCode));
       setMessage(en ? "The latest work context was loaded." : "최신 업무 문맥과 임시저장을 불러왔습니다.");
-    } catch (reason) { setError(reason instanceof Error ? reason.message : String(reason)); }
-    finally { setBusy(false); }
+    } catch (reason) {
+      if (sequence === loadSequence.current) setError(reason instanceof Error ? reason.message : String(reason));
+    } finally {
+      if (sequence === loadSequence.current) setBusy(false);
+    }
   };
 
   useEffect(() => {
@@ -169,7 +220,7 @@ export function WorkExecutionPage() {
   };
 
   const saveDraft = async () => {
-    if (!requireContext()) return;
+    if (!requireLoadedContext()) return;
     setBusy(true); setError(""); setMessage("");
     try {
       await persistDraft();
@@ -179,7 +230,7 @@ export function WorkExecutionPage() {
   };
 
   const startExecution = async () => {
-    if (!requireContext() || !actorCode) return;
+    if (!requireLoadedContext() || !actorCode) return;
     setBusy(true); setError(""); setMessage("");
     try {
       await requestJson(buildLocalizedPath("/home/api/process-executions/start", "/en/home/api/process-executions/start"), {
@@ -193,6 +244,7 @@ export function WorkExecutionPage() {
 
   const complete = async () => {
     const executionId = value(execution, "executionId");
+    if (!requireLoadedContext()) return;
     if (!readyToComplete || !executionId) { setError(en ? "Resolve every completion check first." : "완료 점검 항목을 모두 충족하세요."); return; }
     setBusy(true); setError(""); setMessage("");
     try {
@@ -239,14 +291,22 @@ export function WorkExecutionPage() {
     </header>
 
     <section className="mt-6 grid gap-4 rounded-2xl border border-slate-200 bg-white p-5 md:grid-cols-2 xl:grid-cols-5">
-      <Field label={en ? "Tenant ID" : "테넌트 ID"}><input className={inputClass} value={tenantId} onChange={event => setTenantId(event.target.value)} /></Field>
-      <Field label={en ? "Project ID" : "프로젝트 ID"}><input className={inputClass} value={projectId} onChange={event => setProjectId(event.target.value)} /></Field>
-      <Field label={en ? "Process" : "프로세스"}><input className={inputClass} value={processCode} onChange={event => setProcessCode(event.target.value)} /></Field>
-      <Field label={en ? "Step" : "단계"}><input className={inputClass} value={stepCode} onChange={event => setStepCode(event.target.value)} /></Field>
+      <Field label={en ? "Tenant ID" : "테넌트 ID"}><input className={inputClass} data-work-coordinate="tenant" disabled={busy} value={tenantId} onChange={event => setTenantId(event.target.value)} /></Field>
+      <Field label={en ? "Project ID" : "프로젝트 ID"}><input className={inputClass} data-work-coordinate="project" disabled={busy} value={projectId} onChange={event => setProjectId(event.target.value)} /></Field>
+      <Field label={en ? "Process" : "프로세스"}><input className={inputClass} data-work-coordinate="process" disabled={busy} value={processCode} onChange={event => setProcessCode(event.target.value)} /></Field>
+      <Field label={en ? "Step" : "단계"}><input className={inputClass} data-work-coordinate="step" disabled={busy} value={stepCode} onChange={event => setStepCode(event.target.value)} /></Field>
       <div className="flex items-end"><button className="krds-control min-h-11 w-full rounded-lg bg-[#246beb] px-4 font-black text-white disabled:opacity-50" disabled={busy} onClick={() => void load()}>{en ? "Load work" : "업무 불러오기"}</button></div>
     </section>
 
     {(message || error) && <p aria-live="polite" className={`mt-5 rounded-xl border p-4 font-bold ${error ? "border-red-200 bg-red-50 text-red-700" : "border-emerald-200 bg-emerald-50 text-emerald-800"}`}>{error || message}</p>}
+
+    {loadedContextCurrent && versionedSupport && <ExecutableScreenSupportCards
+      {...versionedSupport}
+      className="mt-6 grid gap-5 lg:grid-cols-3"
+      en={en}
+      projectId={projectId}
+      tenantId={tenantId}
+    />}
 
     <section className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,2fr)_22rem]">
       <div className="space-y-6">

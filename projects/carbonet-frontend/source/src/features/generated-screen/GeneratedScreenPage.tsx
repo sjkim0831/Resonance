@@ -1,10 +1,11 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { findGeneratedScreen, type GeneratedScreenDefinition } from "../../generated/screen-generation/generatedScreenCatalog";
 import { isEnglish } from "../../lib/navigation/runtime";
-import { CommonContentCard, CommonStatusBadge, CommonTimeline } from "../../components/common-design/CommonDesignPrimitives";
+import { CommonContentCard } from "../../components/common-design/CommonDesignPrimitives";
 import { runtimeUuid } from "../../lib/runtime-id";
 import { AdminPageShell } from "../admin-entry/AdminPageShell";
 import { ContractFieldControl } from "./ContractFieldControl";
+import { ExecutableScreenSupportCards } from "./ExecutableScreenSupportCards";
 import { materializeScreen, resolveScreenCoordinate } from "./screenSpaceRuntime";
 
 type ContractItem = { code: string; label: string; [key: string]: unknown };
@@ -31,9 +32,6 @@ function GeneratedContent({ screen, runtimeWarning = "" }: { screen: GeneratedSc
   const spec = screen.specification;
   const support = record(screen.support || spec.support);
   const help = record(support.help), helpItems = Array.isArray(help.items) ? help.items : [];
-  const workGuide = record(support.workGuide), guideSteps = items(workGuide.steps, "GUIDE"), nextAction = record(workGuide.nextAction);
-  const qa = record(support.qa), qaChecks = items(qa.checks, "QA"), qaScenarios = list(qa.requiredScenarioTypes);
-  const designCard = record(support.designCard), assetBindings = items(support.assetBindings || designCard.assetBindings, "ASSET");
   const materialized = useMemo(() => materializeScreen(screen, {
     actorCode: screen.actorCode,
     locale: en ? "EN" : "KO",
@@ -177,9 +175,19 @@ function GeneratedContent({ screen, runtimeWarning = "" }: { screen: GeneratedSc
       </section>
       <form className="krds-component rounded-xl border bg-white" onSubmit={start}><h2 className="gov-text-heading-sm font-black text-[#052b57]">{en ? "Process context" : "프로세스 실행 문맥"}</h2><div className="mt-4 space-y-3"><label className="gov-text-label font-bold">Tenant<input className={`${inputClass} mt-2`} value={tenantId} onChange={event=>setTenantId(event.target.value)} required/></label><label className="gov-text-label font-bold">{en ? "Project ID" : "프로젝트 ID"}<input className={`${inputClass} mt-2`} value={projectId} onChange={event=>setProjectId(event.target.value)} required/></label><label className="gov-text-label font-bold">{en ? "Execution ID" : "실행 ID"}<input className={`${inputClass} mt-2`} value={executionId} onChange={event=>setExecutionId(event.target.value)}/></label></div><button className="krds-control mt-4 w-full rounded-lg bg-[#052b57] font-black text-white disabled:opacity-50" disabled={busy} type="submit">{en ? "Start process" : "프로세스 시작"}</button></form>
       <section className="krds-component rounded-xl border bg-white"><h2 className="gov-text-heading-sm font-black text-[#052b57]">{en ? "Complete step" : "단계 완료"}</h2><p className="gov-text-body-sm mt-2 text-slate-600">{en ? "Required fields and a saved draft are validated before transition." : "필수 항목과 임시저장을 검증한 뒤 다음 상태로 전환합니다."}</p><div className="mt-4 grid gap-2">{(actions.length ? actions : [{code:commandCode,label:commandCode}]).slice(0,1).map(action=><button className="krds-control rounded-lg bg-[#246beb] font-black text-white disabled:opacity-50" disabled={busy||draftStatus!=="DRAFT"} key={action.code} onClick={()=>void execute(commandCode)} type="button">{en ? "Complete and continue" : `${action.label} 완료`}</button>)}</div></section>
-      {guideSteps.length > 0 && <CommonTimeline title={text(workGuide.title) || (en ? "Work guide" : "업무 길잡이")}>{guideSteps.map((step,index)=><div className="relative pl-5" key={step.code}><span aria-hidden="true" className="absolute -left-1.5 top-1.5 h-3 w-3 rounded-full bg-[#246beb]"/><p className="gov-text-label font-black text-[#052b57]">{index+1}. {step.label}</p>{text(step.description)&&<p className="gov-text-body-sm mt-1 text-slate-600">{text(step.description)}</p>}</div>)}{text(nextAction.routePath)&&text(nextAction.routePath)!==screen.routePath&&<a className="krds-control ml-5 inline-flex items-center rounded-lg bg-[#246beb] px-4 font-black text-white" href={text(nextAction.routePath)}>{text(nextAction.label)||(en?"Continue":"다음 업무 진행")}</a>}</CommonTimeline>}
-      {qaScenarios.length > 0 && <CommonContentCard className="p-5"><h2 className="gov-text-heading-sm font-black text-[#052b57]">{text(qa.title)||(en?"QA verification":"QA 검증")}</h2><div className="mt-3 flex flex-wrap gap-2">{qaScenarios.map(scenario=><CommonStatusBadge className="bg-blue-50 text-blue-800" key={scenario}>{scenario}</CommonStatusBadge>)}</div>{qaChecks.length>0&&<ul className="mt-4 space-y-2">{qaChecks.map(check=>{const passed=check.passed===true,failed=check.passed===false,status=passed?(en?"Passed":"통과"):failed?(en?"Failed":"실패"):(en?"Not verified":"미확인");return <li aria-label={`${check.label}: ${status}`} className={`gov-text-body-sm flex gap-2 ${passed?"text-emerald-800":failed?"text-red-700":"text-slate-600"}`} key={check.code}><span aria-hidden="true">{passed?"✓":failed?"✕":"?"}</span><span>{check.label} · {status}</span></li>;})}</ul>}</CommonContentCard>}
-      {Object.keys(designCard).length > 0 && <CommonContentCard className="p-5"><div className="flex items-start justify-between gap-3"><h2 className="gov-text-heading-sm font-black text-[#052b57]">{en?"Design summary":"화면 설계 요약"}</h2><CommonStatusBadge className="bg-slate-100 text-slate-700">{text(designCard.designSystem)||"KRDS"}</CommonStatusBadge></div><dl className="gov-text-body-sm mt-4 grid grid-cols-[auto_1fr] gap-x-3 gap-y-2"><dt className="font-bold text-slate-500">{en?"Type":"화면 유형"}</dt><dd>{text(designCard.screenType)||screen.screenType}</dd><dt className="font-bold text-slate-500">{en?"Template":"템플릿"}</dt><dd>{text(designCard.templateCode)||screen.templateCode}</dd><dt className="font-bold text-slate-500">{en?"Assets":"공통 자산"}</dt><dd>{assetBindings.length}</dd><dt className="font-bold text-slate-500">Design hash</dt><dd className="break-all font-mono text-xs">{screen.designHash||"-"}</dd></dl></CommonContentCard>}
+      {Object.keys(support).length > 0 && <ExecutableScreenSupportCards
+        actorCode={screen.actorCode}
+        className="space-y-5"
+        contractHash={text(record(spec.runtimeContract).contractHash) || screen.designHash || "static"}
+        en={en}
+        processCode={screen.processCode}
+        projectId={projectId}
+        source={text(record(spec.runtimeContract).source) === "DB_VERSIONED_CONTRACT" ? "DB_VERSIONED_CONTRACT" : undefined}
+        stepCode={screen.stepCode}
+        support={support}
+        tenantId={tenantId}
+        versionId={Number(record(spec.runtimeContract).versionId || 0)}
+      />}
       <section className="krds-component rounded-xl border bg-white"><h2 className="gov-text-heading-sm font-black text-[#052b57]">{en ? "Required states and tests" : "필수 상태·테스트"}</h2><div className="mt-3 flex flex-wrap gap-2">{[...states,...scenarios].map(item=><span className="gov-text-label rounded-full bg-slate-100 px-3 py-2 font-bold text-slate-700" key={item}>{item}</span>)}</div></section>
       <section className="krds-component rounded-xl border bg-white"><h2 className="gov-text-heading-sm font-black text-[#052b57]">{en ? "Contract validation" : "계약 자동 검증"}</h2>{materialized.issues.length ? <ul className="mt-3 space-y-2">{materialized.issues.map(issue=><li className="rounded-lg bg-red-50 px-3 py-2 text-sm font-bold text-red-700" key={issue.code}>{issue.message}</li>)}</ul> : <p className="mt-3 rounded-lg bg-emerald-50 px-3 py-2 text-sm font-bold text-emerald-800">{en ? "Screen, data, policy and test contracts are connected." : "화면·데이터·권한·테스트 계약이 모두 연결되었습니다."}</p>}</section>
       {nextTask&&<section className="krds-component rounded-xl border border-emerald-300 bg-emerald-50"><h2 className="gov-text-heading-sm font-black text-emerald-900">{en ? "Next task" : "다음 업무"}</h2><p className="gov-text-body-sm mt-2 text-emerald-900">{nextTask.stepCode} · {nextTask.actorCode}</p>{nextTask.path&&<a className="krds-control mt-4 inline-flex w-full items-center justify-center rounded-lg bg-emerald-700 font-black text-white" href={`${nextTask.path}${nextTask.path.includes("?")?"&":"?"}projectId=${encodeURIComponent(projectId)}`}>{en ? "Open next task" : "다음 업무 화면 열기"}</a>}</section>}
@@ -237,6 +245,7 @@ function toGeneratedScreen(row: Record<string, unknown>): GeneratedScreenDefinit
 
 type VersionedContractEnvelope = {
   contract?: Record<string, unknown>;
+  source?: string;
   versionId?: number;
   versionNo?: number;
   contractHash?: string;
@@ -300,7 +309,7 @@ function applyVersionedContract(base: GeneratedScreenDefinition, envelope: Versi
     commandCode: commands[0]?.code || base.specification.commandCode,
     support: Object.keys(supportLayer).length ? supportLayer : base.specification.support,
     runtimeContract: {
-      source: "DB_VERSIONED_CONTRACT",
+      source: envelope.source,
       screenKey: envelope.screenKey,
       versionId: envelope.versionId,
       versionNo: envelope.versionNo,
@@ -341,7 +350,9 @@ async function loadVersionedContract(base: GeneratedScreenDefinition): Promise<G
   });
   const response = await fetch(`/runtime/screens/resolve?${query}`, { credentials: "include", headers: { Accept: "application/json" } });
   if (!response.ok) throw new Error(`VERSIONED_CONTRACT_${response.status}`);
-  return applyVersionedContract(base, await response.json() as VersionedContractEnvelope);
+  const envelope = await response.json() as VersionedContractEnvelope;
+  if (envelope.source !== "DB_VERSIONED_CONTRACT") throw new Error("VERSIONED_CONTRACT_SOURCE");
+  return applyVersionedContract(base, envelope);
 }
 
 export function GeneratedScreenPage() {

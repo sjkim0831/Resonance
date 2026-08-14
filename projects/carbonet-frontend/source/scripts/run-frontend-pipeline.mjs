@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 
 const scriptRoot = path.dirname(fileURLToPath(import.meta.url));
 const frontendRoot = path.resolve(scriptRoot, "..");
+const repositoryRoot = path.resolve(frontendRoot, "../../..");
 const frontendBundler = process.env.CARBONET_FRONTEND_BUNDLER === "rolldown" ? "rolldown" : "vite";
 const env = {
   ...process.env,
@@ -82,6 +83,7 @@ if (process.argv.includes("--build")) {
     runAsync(process.execPath, ["scripts/check-route-registry-uniqueness.mjs"]),
     runAsync(process.execPath, ["scripts/verify-screen-work-context-integration.mjs"]),
     runAsync(process.execPath, ["scripts/verify-operational-usage-ledger.mjs"]),
+    runAsync(process.execPath, [path.join(repositoryRoot, "ops/tests/test-work-execution-versioned-support-ui.mjs")]),
   ];
   const bundlerCommand = process.execPath;
   const bundlerArgs = frontendBundler === "rolldown"
