@@ -56,6 +56,8 @@ if [[ "${FAKE_KUBECTL_MODE:-runtime}" == schema ]]; then
     printf 'restore-history:%s\n' "$args" >>"$FAKE_CALL_LOG"; exit 0
   elif [[ "$args" == *'select count(*) from carbonet_flyway_schema_history'* ]]; then
     printf '%s\n' "${FAKE_HISTORY_COUNT:-42}"; exit 0
+  elif [[ "$args" == *'select count(*) from pg_class'* ]]; then
+    printf '%s\n' "${FAKE_SCHEMA_OBJECT_COUNT:-3}"; exit 0
   elif [[ "$args" == *'drop database'* ]]; then
     printf 'drop\n' >>"$FAKE_CALL_LOG"; exit 0
   fi
@@ -219,18 +221,30 @@ extract_function() { sed -n "/^$1() {$/,/^}$/p" "$AUTO"; }
 eval "$(extract_function verify_schema_backup_restore_in_scratch)"
 printf 'FULL_SCHEMA_FIXTURE:users,orders,carbonet_flyway_schema_history\n' >"$TMP/schema.dump"
 printf 'FLYWAY_HISTORY_FIXTURE:42\n' >"$TMP/flyway.dump"
-export FAKE_KUBECTL_MODE=schema FAKE_CALL_LOG="$TMP/schema-calls" FAKE_HISTORY_COUNT=42 FAKE_SCHEMA_RESULT=ok
+export FAKE_KUBECTL_MODE=schema FAKE_CALL_LOG="$TMP/schema-calls" FAKE_HISTORY_COUNT=42 FAKE_SCHEMA_OBJECT_COUNT=3 FAKE_SCHEMA_RESULT=ok
 NAMESPACE=test-ns; POSTGRES_POD=postgres-0; POSTGRES_CONTAINER=patroni; POSTGRES_USER=postgres
-schema_restore_database=""; restored_history_count=""
+schema_restore_database=""; restored_history_count=""; restored_schema_object_count=""
 started_ms="$(awk '{printf "%.0f",$1*1000}' /proc/uptime)"
-verify_schema_backup_restore_in_scratch "$TMP/schema.dump" "$TMP/flyway.dump" carbonet_schema_verify_fixture
+verify_schema_backup_restore_in_scratch \
+  "$TMP/schema.dump" "$TMP/flyway.dump" carbonet_schema_verify_fixture 42 3
 elapsed_ms=$(( $(awk '{printf "%.0f",$1*1000}' /proc/uptime) - started_ms ))
-[[ "$restored_history_count" == 42 && -z "$schema_restore_database" && "$elapsed_ms" -lt 60000 ]]
+[[ "$restored_history_count" == 42 && "$restored_schema_object_count" == 3 \
+   && -z "$schema_restore_database" && "$elapsed_ms" -lt 60000 ]]
 grep -Fq 'restore-schema:' "$FAKE_CALL_LOG"; grep -Fq 'restore-history:' "$FAKE_CALL_LOG"
 [[ "$(grep -c '^create$' "$FAKE_CALL_LOG")" == 1 && "$(grep -c '^drop$' "$FAKE_CALL_LOG")" == 1 ]]
+export FAKE_SCHEMA_OBJECT_COUNT=2
+schema_restore_database=""; restored_schema_object_count=""; status=0
+verify_schema_backup_restore_in_scratch \
+  "$TMP/schema.dump" "$TMP/flyway.dump" carbonet_schema_verify_object_mismatch 42 3 \
+  >/dev/null 2>&1 || status=$?
+[[ "$status" != 0 && "$schema_restore_database" == carbonet_schema_verify_object_mismatch \
+   && "$restored_schema_object_count" == 2 ]]
+export FAKE_SCHEMA_OBJECT_COUNT=3
 export FAKE_HISTORY_COUNT=0
-schema_restore_database=""; status=0
-verify_schema_backup_restore_in_scratch "$TMP/schema.dump" "$TMP/flyway.dump" carbonet_schema_verify_empty >/dev/null 2>&1 || status=$?
+schema_restore_database=""; restored_history_count=""; restored_schema_object_count=""; status=0
+verify_schema_backup_restore_in_scratch \
+  "$TMP/schema.dump" "$TMP/flyway.dump" carbonet_schema_verify_empty 42 3 \
+  >/dev/null 2>&1 || status=$?
 [[ "$status" != 0 && "$schema_restore_database" == carbonet_schema_verify_empty ]]
 
 # The outer EXIT trap owns scratch cleanup on every verifier failure. Execute
@@ -241,6 +255,7 @@ drop_before="$(grep -c '^drop$' "$FAKE_CALL_LOG")"
 (
   terminate_runtime_screen_gate_group() { :; }
   cleanup_remote_backup() { :; }
+  cleanup_local_schema_restore_container() { :; }
   runtime_asset_sync_pid=""; catalog_identity_sync_pid=""; backstage_visual_e2e_pid=""
   schema_restore_database=carbonet_schema_verify_empty; schema_backup_dir=""
   ROOT_DIR="$TMP/nonexistent-root"; persistent_build_worktree="$TMP/nonexistent-worktree"
@@ -252,4 +267,4 @@ drop_before="$(grep -c '^drop$' "$FAKE_CALL_LOG")"
 [[ "$(grep -c '^drop$' "$FAKE_CALL_LOG")" == "$((drop_before + 1))" ]]
 
 grep -Fq 'reconcile-exact-legacy-orphan-runtime-quarantine.sh' "$AUTO"
-printf '[legacy-orphan-quarantine-test] PASS exact6+mode600+owner hashPinned markers=stable+equal ancestry=baseline-orphan-next DB=attempt0+promotion0+runtime0 baseline=ledger1+healthUP archive=0400+samefs+fsync+sourceAbsent failClosed=rows+unknown+health+obligation+ancestry+postArchiveDrift concurrent=2 schemaRestore=full+flywayRows+failureCleanup elapsedMs=%s\n' "$elapsed_ms"
+printf '[legacy-orphan-quarantine-test] PASS exact6+mode600+owner hashPinned markers=stable+equal ancestry=baseline-orphan-next DB=attempt0+promotion0+runtime0 baseline=ledger1+healthUP archive=0400+samefs+fsync+sourceAbsent failClosed=rows+unknown+health+obligation+ancestry+postArchiveDrift concurrent=2 schemaRestore=full+flywayRows+objectParity+objectMismatch+failureCleanup elapsedMs=%s\n' "$elapsed_ms"
