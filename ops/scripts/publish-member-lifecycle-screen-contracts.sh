@@ -144,7 +144,7 @@ runtime_snapshot() {
     echo '[member-contract-publisher] runtime health is not UP' >&2
     return 1
   }
-  jq -cS --arg source "$source_commit" --arg container "$CONTAINER" \
+  jq -ncS --arg source "$source_commit" --arg container "$CONTAINER" \
     --slurpfile deployment "$deployment_file" --slurpfile pods "$pods_file" '
     ($deployment[0]) as $d | ($pods[0]) as $p |
     {

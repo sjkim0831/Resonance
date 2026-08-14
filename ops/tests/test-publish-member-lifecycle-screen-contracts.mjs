@@ -1,14 +1,100 @@
 #!/usr/bin/env node
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { readFile } from "node:fs/promises";
-import { dirname, resolve } from "node:path";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { publishMemberLifecycleContracts } from "../scripts/publish-member-lifecycle-screen-contracts.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const wrapper = await readFile(resolve(here, "../scripts/publish-member-lifecycle-screen-contracts.sh"), "utf8");
 const runner = await readFile(resolve(here, "../scripts/publish-member-lifecycle-screen-contracts.mjs"), "utf8");
+
+function extractRuntimeSnapshotGenerator(shellSource) {
+  const match = shellSource.match(
+    /jq (?<flags>-[A-Za-z]+) --arg source "\$source_commit" --arg container "\$CONTAINER"[\s\S]*?--slurpfile deployment "\$deployment_file" --slurpfile pods "\$pods_file" '\n(?<filter>[\s\S]*?\n    \})'\n\}/,
+  );
+  assert.ok(match?.groups, "runtime snapshot jq generator is missing");
+  return match.groups;
+}
+
+function executeRuntimeSnapshot(shellSource, deploymentFile, podsFile, sourceCommit) {
+  const { flags, filter } = extractRuntimeSnapshotGenerator(shellSource);
+  const result = spawnSync("jq", [
+    flags,
+    "--arg", "source", sourceCommit,
+    "--arg", "container", "carbonet-runtime",
+    "--slurpfile", "deployment", deploymentFile,
+    "--slurpfile", "pods", podsFile,
+    filter,
+  ], {
+    input: "{poisoned-stdin-is-not-json\n",
+    encoding: "utf8",
+  });
+  assert.notEqual(result.error?.code, "ENOENT", "jq executable is required for the publisher contract test");
+  return result;
+}
+
+const snapshotDir = await mkdtemp(join(tmpdir(), "member-contract-runtime-snapshot-"));
+try {
+  const sourceCommit = "a".repeat(40);
+  const deploymentFile = join(snapshotDir, "deployment.json");
+  const podsFile = join(snapshotDir, "pods.json");
+  await writeFile(deploymentFile, JSON.stringify({
+    metadata: {
+      uid: "deployment-uid-1",
+      generation: 42,
+      annotations: { "resonance.ai/target-commit": sourceCommit },
+    },
+    spec: {
+      replicas: 2,
+      template: {
+        metadata: { labels: { "resonance.ai/release-id": "release-42" } },
+        spec: { containers: [{ name: "carbonet-runtime", image: "registry/carbonet:release-42" }] },
+      },
+    },
+    status: { observedGeneration: 42, updatedReplicas: 2, readyReplicas: 2, availableReplicas: 2 },
+  }));
+  await writeFile(podsFile, JSON.stringify({ items: [
+    { metadata: { name: "runtime-b" }, status: { containerStatuses: [
+      { name: "carbonet-runtime", imageID: "sha256:runtime-image" },
+    ] } },
+    { metadata: { name: "runtime-a" }, status: { containerStatuses: [
+      { name: "carbonet-runtime", imageID: "sha256:runtime-image" },
+    ] } },
+  ] }));
+
+  const snapshotResult = executeRuntimeSnapshot(wrapper, deploymentFile, podsFile, sourceCommit);
+  assert.equal(snapshotResult.status, 0,
+    `runtime snapshot must ignore poisoned stdin: ${snapshotResult.stderr}`);
+  assert.ok(snapshotResult.stdout.trim().length > 2, "runtime snapshot JSON must be nonempty");
+  assert.deepEqual(JSON.parse(snapshotResult.stdout), {
+    sourceCommit,
+    targetCommit: sourceCommit,
+    deploymentUid: "deployment-uid-1",
+    deploymentGeneration: 42,
+    observedGeneration: 42,
+    desiredReplicas: 2,
+    updatedReplicas: 2,
+    readyReplicas: 2,
+    availableReplicas: 2,
+    releaseId: "release-42",
+    imageRef: "registry/carbonet:release-42",
+    podNames: ["runtime-a", "runtime-b"],
+    imageIds: ["sha256:runtime-image"],
+    healthStatus: "UP",
+  });
+
+  const missingNullInputMutant = wrapper.replace(
+    'jq -ncS --arg source "$source_commit"', 'jq -cS --arg source "$source_commit"');
+  assert.notEqual(missingNullInputMutant, wrapper, "missing -n mutation was not applied");
+  const mutantResult = executeRuntimeSnapshot(missingNullInputMutant, deploymentFile, podsFile, sourceCommit);
+  assert.notEqual(mutantResult.status, 0, "missing -n mutant consumed poisoned stdin without failing");
+  assert.equal(mutantResult.stdout.trim(), "", "missing -n mutant unexpectedly emitted a snapshot");
+} finally {
+  await rm(snapshotDir, { recursive: true, force: true });
+}
 
 for (const required of [
   "carbonet_qa_auth_acquire_lock",
@@ -29,6 +115,7 @@ for (const required of [
   "Deployment drifted during initial publication",
   "runtimeStability:{status:\"STABLE\"",
   "sourceCommit:$sourceCommit",
+  "jq -ncS --arg source",
   "--connect-timeout \"$CURL_CONNECT_TIMEOUT\" --max-time \"$CURL_MAX_TIME\"",
 ]) assert.ok(wrapper.includes(required) || runner.includes(required), `missing safety contract: ${required}`);
 assert.doesNotMatch(wrapper, /echo[^\n]*(?:PASSWORD|PUBLISH_PASSWORD)|printf[^\n]*(?:PASSWORD|PUBLISH_PASSWORD)/i);
@@ -255,4 +342,4 @@ for (const scenario of [
   }
 }
 
-process.stdout.write("MEMBER_LIFECYCLE_SCREEN_CONTRACT_PUBLISHER_PASS happyPhases=2 targets=4 previewBeforeMutation=4/4 resolver=4/4 negativeCases=3 dbJqValid=4 dbJqDataMutants=6 dbJqSourceMutants=2 passwordOutput=0\n");
+process.stdout.write("MEMBER_LIFECYCLE_SCREEN_CONTRACT_PUBLISHER_PASS happyPhases=2 targets=4 previewBeforeMutation=4/4 resolver=4/4 negativeCases=3 dbJqValid=4 dbJqDataMutants=6 dbJqSourceMutants=2 runtimeSnapshotPoisonedStdin=PASS runtimeSnapshotMissingNMutant=CAUGHT passwordOutput=0\n");
