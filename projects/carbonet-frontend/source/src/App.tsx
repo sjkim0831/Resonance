@@ -199,7 +199,11 @@ export default function App() {
   const RegisteredPage = getPageComponent(page);
   const [generatedRuntime,setGeneratedRuntime]=useState(false);
   useEffect(()=>{let cancelled=false;setGeneratedRuntime(false);fetch(`${locale==="en"?"/en":""}/home/api/process-executions/screen-contract?routePath=${encodeURIComponent(generatedContractRoutePath)}`,{credentials:"include"}).then(response=>response.ok?response.json():null).then(result=>{if(!cancelled)setGeneratedRuntime(Boolean(result?.enabled))}).catch(()=>undefined);return()=>{cancelled=true}},[generatedContractRoutePath,locale]);
-  const CurrentPage = generatedRuntime ? GeneratedScreenRuntime : RegisteredPage;
+  const preserveRegisteredWorkExecutionPage =
+    page === "work-execution" || location.pathname === "/work/execution";
+  const CurrentPage = generatedRuntime && !preserveRegisteredWorkExecutionPage
+    ? GeneratedScreenRuntime
+    : RegisteredPage;
   const boundaryResetKey = `${page}|${location.pathname}|${location.search}`;
   const pageInstanceKey = page === "company-manager-delegation"
     ? `${page}|${location.pathname}`

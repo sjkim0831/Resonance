@@ -84,6 +84,7 @@ if (process.argv.includes("--build")) {
     runAsync(process.execPath, ["scripts/verify-screen-work-context-integration.mjs"]),
     runAsync(process.execPath, ["scripts/verify-operational-usage-ledger.mjs"]),
     runAsync(process.execPath, [path.join(repositoryRoot, "ops/tests/test-work-execution-versioned-support-ui.mjs")]),
+    runAsync(process.execPath, [path.join(repositoryRoot, "ops/tests/test-work-execution-route-ownership.mjs")]),
   ];
   const bundlerCommand = process.execPath;
   const bundlerArgs = frontendBundler === "rolldown"
