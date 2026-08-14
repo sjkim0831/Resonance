@@ -32,6 +32,10 @@ function runAsync(command, args) {
   });
 }
 
+// Local builds and official deployment builds consume the same immutable
+// catalog/definition/type closure before any TypeScript or Vite process starts.
+run(process.execPath, ["scripts/ensure-shared-generated-screen-assets.mjs"]);
+
 if (!process.argv.includes("--build")) {
   const generateAsync = (key, script, outputs, inputs) =>
     runAsync(process.execPath, [

@@ -1,66 +1,160 @@
 import {
-  existsSync,
-  lstatSync,
-  mkdirSync,
-  readFileSync,
-  renameSync,
-  symlinkSync,
-  writeFileSync,
-} from "node:fs";
+  copyFile,
+  lstat,
+  mkdir,
+  readFile,
+  readdir,
+  rename,
+  rm,
+  writeFile,
+} from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { GENERATED_SCREEN_TYPES_SOURCE } from "./generated-screen-type-contract.mjs";
+import {
+  inspectGeneratedScreenDefinitionSet,
+  parseGeneratedScreenDefinitionImports,
+  validateGeneratedScreenDefinitionClosure,
+} from "./generated-screen-definition-closure.mjs";
 
-const scriptRoot=path.dirname(fileURLToPath(import.meta.url));
-const frontendRoot=path.resolve(scriptRoot,"..");
-const generatedRoot=path.resolve(process.env.GENERATED_SCREEN_DIR||
-  path.join(frontendRoot,"src/generated/screen-generation"));
-const sharedRoot=path.resolve(process.env.SHARED_GENERATED_SCREEN_DIR||
+const scriptRoot = path.dirname(fileURLToPath(import.meta.url));
+const frontendRoot = path.resolve(scriptRoot, "..");
+const generatedRoot = path.resolve(process.env.GENERATED_SCREEN_DIR ||
+  path.join(frontendRoot, "src/generated/screen-generation"));
+const sharedRoot = path.resolve(process.env.SHARED_GENERATED_SCREEN_DIR ||
   "/opt/Resonance/projects/carbonet-frontend/source/src/generated/screen-generation");
-const required=[
-  {name:"definitions",type:"dir"},
-  {name:"generatedScreenTypes.ts",type:"file"},
-];
+const catalogPath = path.join(generatedRoot, "generatedScreenCatalog.ts");
+const manifestPath = path.join(generatedRoot, "generatedScreenDefinitionClosure.json");
+const targetDefinitions = path.join(generatedRoot, "definitions");
+const targetTypes = path.join(generatedRoot, "generatedScreenTypes.ts");
+const sourceDefinitions = path.join(sharedRoot, "definitions");
 
-function atomicWriteIfChanged(target,content){
-  if(existsSync(target)&&readFileSync(target,"utf8")===content)return false;
-  mkdirSync(path.dirname(target),{recursive:true});
-  const temporary=`${target}.tmp-${process.pid}`;
-  writeFileSync(temporary,content);
-  renameSync(temporary,target);
+if (generatedRoot === sharedRoot) {
+  throw new Error("generated screen closure must materialize in an isolated candidate worktree");
+}
+
+async function exists(target) {
+  try { await lstat(target); return true; } catch (error) {
+    if (error?.code === "ENOENT") return false;
+    throw error;
+  }
+}
+
+async function atomicWriteIfChanged(target, content) {
+  try {
+    const currentStat = await lstat(target);
+    if (currentStat.isFile() && !currentStat.isSymbolicLink()
+        && await readFile(target, "utf8") === content) return false;
+  } catch (error) {
+    if (error?.code !== "ENOENT") throw error;
+  }
+  const temporary = `${target}.tmp-${process.pid}`;
+  await rm(temporary, { force: true, recursive: true });
+  await writeFile(temporary, content, { mode: 0o644 });
+  if (await exists(target)) await rm(target, { force: true, recursive: true });
+  await rename(temporary, target);
   return true;
 }
 
-// The shared directory can outlive a deploy worktree. Repair its small type
-// contract before linking it so newly generated definitions and stale shared
-// assets can never enter TypeScript with different shapes.
-const sharedTypes=path.join(sharedRoot,"generatedScreenTypes.ts");
-const typeContractRepaired=atomicWriteIfChanged(sharedTypes,GENERATED_SCREEN_TYPES_SOURCE);
-
-mkdirSync(generatedRoot,{recursive:true});
-for(const asset of required){
-  const target=path.join(generatedRoot,asset.name);
-  if(existsSync(target)){
-    if(asset.name==="generatedScreenTypes.ts")atomicWriteIfChanged(target,GENERATED_SCREEN_TYPES_SOURCE);
-    continue;
+async function targetIsExact(imports, manifest, catalogSource) {
+  try {
+    const targetEntries = (await readdir(targetDefinitions, { withFileTypes: true }))
+      .filter((entry) => entry.isFile() && entry.name.endsWith(".ts"));
+    if (targetEntries.length !== imports.length) return false;
+    const definitionSet = await inspectGeneratedScreenDefinitionSet(targetDefinitions, imports);
+    validateGeneratedScreenDefinitionClosure({
+      manifest,
+      catalogSource,
+      typeContractSource: GENERATED_SCREEN_TYPES_SOURCE,
+      definitionSet,
+    });
+    return definitionSet.extraFiles.length === 0;
+  } catch {
+    return false;
   }
-  const source=path.join(sharedRoot,asset.name);
-  if(!existsSync(source)){
-    throw new Error(`generated screen asset is unavailable: ${asset.name}; sharedRoot=${sharedRoot}`);
-  }
-  const sourceStat=lstatSync(source);
-  if(asset.type==="dir"&&!sourceStat.isDirectory()){
-    throw new Error(`generated screen asset must be a directory: ${source}`);
-  }
-  if(asset.type==="file"&&!sourceStat.isFile()){
-    throw new Error(`generated screen asset must be a file: ${source}`);
-  }
-  symlinkSync(source,target,asset.type==="dir"?"dir":"file");
-  console.log(`[generated-screen-assets] linked ${asset.name}`);
 }
 
-for(const asset of required){
-  const target=path.join(generatedRoot,asset.name);
-  if(!existsSync(target))throw new Error(`generated screen asset link failed: ${target}`);
+async function materializeExactDefinitions(imports) {
+  const staging = path.join(generatedRoot, `.definitions.closure-${process.pid}`);
+  const retired = path.join(generatedRoot, `.definitions.retired-${process.pid}`);
+  await rm(staging, { recursive: true, force: true });
+  await rm(retired, { recursive: true, force: true });
+  await mkdir(staging, { recursive: true, mode: 0o755 });
+  try {
+    for (const entry of imports) {
+      const source = path.join(sourceDefinitions, entry.file);
+      const sourceStat = await lstat(source);
+      if (!sourceStat.isFile() || sourceStat.isSymbolicLink()) {
+        throw new Error(`shared generated screen definition must be a regular file: ${source}`);
+      }
+      await copyFile(source, path.join(staging, entry.file));
+    }
+    if (await exists(targetDefinitions)) await rename(targetDefinitions, retired);
+    try {
+      await rename(staging, targetDefinitions);
+    } catch (error) {
+      if (await exists(retired)) await rename(retired, targetDefinitions);
+      throw error;
+    }
+    await rm(retired, { recursive: true, force: true });
+  } finally {
+    await rm(staging, { recursive: true, force: true });
+  }
 }
-console.log(`[generated-screen-assets] ready count=${required.length} typeContractRepaired=${typeContractRepaired?1:0}`);
+
+await mkdir(generatedRoot, { recursive: true });
+const manifestTextBefore = await readFile(manifestPath, "utf8");
+const manifest = JSON.parse(manifestTextBefore);
+const catalogSource = await readFile(catalogPath, "utf8");
+const imports = parseGeneratedScreenDefinitionImports(catalogSource);
+
+const sharedSetBefore = await inspectGeneratedScreenDefinitionSet(sourceDefinitions, imports);
+validateGeneratedScreenDefinitionClosure({
+  manifest,
+  catalogSource,
+  typeContractSource: GENERATED_SCREEN_TYPES_SOURCE,
+  definitionSet: sharedSetBefore,
+});
+
+const typeContractChanged = await atomicWriteIfChanged(targetTypes, GENERATED_SCREEN_TYPES_SOURCE);
+let definitionsChanged = false;
+if (!await targetIsExact(imports, manifest, catalogSource)) {
+  await materializeExactDefinitions(imports);
+  definitionsChanged = true;
+}
+
+const targetSet = await inspectGeneratedScreenDefinitionSet(targetDefinitions, imports);
+validateGeneratedScreenDefinitionClosure({
+  manifest,
+  catalogSource,
+  typeContractSource: await readFile(targetTypes, "utf8"),
+  definitionSet: targetSet,
+});
+if (targetSet.actualFileCount !== imports.length || targetSet.extraFiles.length) {
+  throw new Error("materialized generated screen definitions are not an exact catalog closure");
+}
+
+const manifestTextAfter = await readFile(manifestPath, "utf8");
+if (manifestTextAfter !== manifestTextBefore) {
+  throw new Error("generated screen definition closure changed during materialization");
+}
+const sharedSetAfter = await inspectGeneratedScreenDefinitionSet(sourceDefinitions, imports);
+validateGeneratedScreenDefinitionClosure({
+  manifest,
+  catalogSource,
+  typeContractSource: GENERATED_SCREEN_TYPES_SOURCE,
+  definitionSet: sharedSetAfter,
+});
+
+console.log(JSON.stringify({
+  status: "PASS",
+  definitionCount: imports.length,
+  sharedDefinitionCount: sharedSetAfter.actualFileCount,
+  excludedSharedDefinitions: sharedSetAfter.extraFiles.length,
+  targetDefinitionCount: targetSet.actualFileCount,
+  catalogSha256: manifest.catalog.sha256,
+  definitionSetHash: manifest.definitions.setHash,
+  closureHash: manifest.closureHash,
+  definitionsChanged,
+  typeContractChanged,
+}));

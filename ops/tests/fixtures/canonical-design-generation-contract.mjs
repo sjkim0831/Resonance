@@ -282,6 +282,21 @@ try {
   const catalogSource = readFileSync(join(outB, "generatedScreenCatalog.ts"), "utf8");
   assert(catalogSource.includes(inputB.catalogHash), "generated catalog catalogHash");
   assert(catalogSource.includes(newHash), "generated catalog page designHash");
+  const closure = readJson(join(outB, "generatedScreenDefinitionClosure.json"));
+  const importMatch = catalogSource.match(/^import \{ (screen_[a-z0-9_]+) \} from "\.\/definitions\/([a-z0-9-]+)";$/m);
+  assert(importMatch, "definition import closure");
+  const definitionFile = `${importMatch[2]}.ts`;
+  const definitionSource = readFileSync(join(outB, "definitions", definitionFile), "utf8");
+  const definitionSetHash = sha256(`${definitionFile}\u0000${importMatch[1]}\u0000${sha256(definitionSource)}`);
+  assert(closure.schema === "carbonet.generated-screen-definition-closure/v1"
+    && closure.catalog.sha256 === sha256(catalogSource)
+    && closure.definitions.count === 1
+    && closure.definitions.setHash === definitionSetHash,
+  "generated definition closure provenance");
+  const { closureHash, ...closureCore } = closure;
+  assert(closureHash === sha256(stableJson(closureCore)), "generated definition closureHash");
+  const oneByteMutantSetHash = sha256(`${definitionFile}\u0000${importMatch[1]}\u0000${sha256(`${definitionSource} `)}`);
+  assert(oneByteMutantSetHash !== closure.definitions.setHash, "definition one-byte mutant");
   const oldCount = textB.split(oldHash).length - 1, newCount = textB.split(newHash).length - 1;
   assert(oldCount === 0 && newCount >= 10, "hash propagation old=" + oldCount + " new=" + newCount);
   ["generatedScreenCatalog.ts", "generatedScreenFamily.ts", "generatedScreenTests.ts",

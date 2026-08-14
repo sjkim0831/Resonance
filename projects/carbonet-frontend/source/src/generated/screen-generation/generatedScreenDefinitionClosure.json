@@ -1,0 +1,18 @@
+{
+  "schema": "carbonet.generated-screen-definition-closure/v1",
+  "algorithm": "sha256",
+  "catalog": {
+    "file": "generatedScreenCatalog.ts",
+    "sha256": "0d98e398142cbc8d49023afd6cb25708309849ac233b540c298e391cd6b25b56"
+  },
+  "typeContract": {
+    "file": "generatedScreenTypes.ts",
+    "sha256": "9eaf6ffece7cc9b9d41f1ff4827f92f0c144a5b49734934f86192ee19a54ef67"
+  },
+  "definitions": {
+    "directory": "definitions",
+    "count": 1378,
+    "setHash": "7e637d82a2795a9c41218d97df2b109fd577243a1d44520222e8956072d37459"
+  },
+  "closureHash": "14b780db8870335c6eabb675f238c3a2ad17830fb6d3943049b8dbbe80121d00"
+}

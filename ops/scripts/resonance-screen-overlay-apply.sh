@@ -114,25 +114,15 @@ ensure_frontend_dependencies() {
 
 ensure_generated_screen_assets() {
   local generated_dir="$SOURCE_DIR/src/generated/screen-generation"
-  local definitions_dir="$generated_dir/definitions"
-  local types_file="$generated_dir/generatedScreenTypes.ts"
-
-  mkdir -p "$generated_dir"
-  if [[ ! -d "$definitions_dir" \
-     && -d "$SHARED_GENERATED_SCREEN_DIR/definitions" ]]; then
-    ln -s "$SHARED_GENERATED_SCREEN_DIR/definitions" "$definitions_dir"
-    echo "[screen-overlay-apply] linked shared generated screen definitions"
-  fi
-  if [[ ! -f "$types_file" \
-     && -f "$SHARED_GENERATED_SCREEN_DIR/generatedScreenTypes.ts" ]]; then
-    ln -s "$SHARED_GENERATED_SCREEN_DIR/generatedScreenTypes.ts" "$types_file"
-    echo "[screen-overlay-apply] linked shared generated screen types"
-  fi
-
-  [[ -d "$definitions_dir" && -f "$types_file" ]] || {
-    echo "[screen-overlay-apply] generated screen assets are incomplete" >&2
-    exit 1
-  }
+  local closure_result
+  closure_result="$(cd "$SOURCE_DIR" && \
+    GENERATED_SCREEN_DIR="$generated_dir" \
+    SHARED_GENERATED_SCREEN_DIR="$SHARED_GENERATED_SCREEN_DIR" \
+    node scripts/ensure-shared-generated-screen-assets.mjs)" || {
+      echo "[screen-overlay-apply] generated screen closure is invalid" >&2
+      exit 1
+    }
+  echo "[screen-overlay-apply] generated screen closure $closure_result"
 }
 
 ensure_frontend_bundler() {

@@ -8,6 +8,7 @@ import {
   registerCanonicalRoute,
 } from "./route-path-canonicalization.mjs";
 import { GENERATED_SCREEN_TYPES_SOURCE } from "./generated-screen-type-contract.mjs";
+import { buildGeneratedScreenDefinitionClosure } from "./generated-screen-definition-closure.mjs";
 
 const startedAt = performance.now();
 const args = Object.fromEntries(process.argv.slice(2).map((value,index,all)=>value.startsWith("--")?[value.slice(2),all[index+1]?.startsWith("--")?"true":all[index+1]]:null).filter(Boolean));
@@ -337,8 +338,9 @@ const generationCatalogHash=canonicalInput?String(input.catalogHash):sha256(norm
 // normal application type checking can begin.
 const symbols=definitionImports.map(x=>`${x.symbol} as GeneratedScreenDefinition`).join(",\n  ");
 if(await atomicWriteIfChanged(resolve(outDir,"generatedScreenTypes.ts"),GENERATED_SCREEN_TYPES_SOURCE))contractFilesChanged++;
-if(await atomicWriteIfChanged(resolve(outDir,"generatedScreenCatalog.ts"),`import type { GeneratedScreenDefinition } from "./generatedScreenTypes";\n${imports}\nexport type { GeneratedScreenDefinition } from "./generatedScreenTypes";\nexport const GENERATED_SCREEN_CATALOG: readonly GeneratedScreenDefinition[] = [\n  ${symbols}\n];\nexport const GENERATED_SCREEN_CATALOG_HASH=${JSON.stringify(generationCatalogHash)};\nexport const GENERATED_SCREEN_CATALOG_DESIGN_HASHES=${json(Object.fromEntries(normalized.map(screen=>[screen.pageId,screen.designHash])))} as const;\nexport type GeneratedScreenLookup={processCode?:string;stepCode?:string;audience?:string};
-export function findGeneratedScreen(pathname:string,lookup:GeneratedScreenLookup={}){const parsed=new URL(pathname,"http://screen.local");const normalized=parsed.pathname.replace(/^\\/en(?=\\/)/,"")||"/";const processCode=(lookup.processCode||parsed.searchParams.get("processCode")||"").toUpperCase();const stepCode=(lookup.stepCode||parsed.searchParams.get("step")||parsed.searchParams.get("stepCode")||"").toUpperCase();const audience=(lookup.audience||(normalized.startsWith("/admin/")?"ADMIN":"USER")).toUpperCase();const candidates=GENERATED_SCREEN_CATALOG.filter(screen=>screen.routePath===normalized&&screen.audience===audience);return candidates.find(screen=>(!processCode||screen.processCode===processCode)&&(!stepCode||screen.stepCode===stepCode))||candidates.find(screen=>!processCode||screen.processCode===processCode)||candidates[0];}\n`))contractFilesChanged++;
+const catalogContent=`import type { GeneratedScreenDefinition } from "./generatedScreenTypes";\n${imports}\nexport type { GeneratedScreenDefinition } from "./generatedScreenTypes";\nexport const GENERATED_SCREEN_CATALOG: readonly GeneratedScreenDefinition[] = [\n  ${symbols}\n];\nexport const GENERATED_SCREEN_CATALOG_HASH=${JSON.stringify(generationCatalogHash)};\nexport const GENERATED_SCREEN_CATALOG_DESIGN_HASHES=${json(Object.fromEntries(normalized.map(screen=>[screen.pageId,screen.designHash])))} as const;\nexport type GeneratedScreenLookup={processCode?:string;stepCode?:string;audience?:string};
+export function findGeneratedScreen(pathname:string,lookup:GeneratedScreenLookup={}){const parsed=new URL(pathname,"http://screen.local");const normalized=parsed.pathname.replace(/^\\/en(?=\\/)/,"")||"/";const processCode=(lookup.processCode||parsed.searchParams.get("processCode")||"").toUpperCase();const stepCode=(lookup.stepCode||parsed.searchParams.get("step")||parsed.searchParams.get("stepCode")||"").toUpperCase();const audience=(lookup.audience||(normalized.startsWith("/admin/")?"ADMIN":"USER")).toUpperCase();const candidates=GENERATED_SCREEN_CATALOG.filter(screen=>screen.routePath===normalized&&screen.audience===audience);return candidates.find(screen=>(!processCode||screen.processCode===processCode)&&(!stepCode||screen.stepCode===stepCode))||candidates.find(screen=>!processCode||screen.processCode===processCode)||candidates[0];}\n`;
+if(await atomicWriteIfChanged(resolve(outDir,"generatedScreenCatalog.ts"),catalogContent))contractFilesChanged++;
 const routeScreens=Array.from(new Map(normalized.map(x=>[x.routePath,x])).values());
 const routes=routeScreens.map(x=>({id:x.id,label:x.pageName,group:x.audience==="ADMIN"?"admin":"home",koPath:x.routePath,enPath:`/en${x.routePath}`}));
 const routeDesignHashes=Object.fromEntries(routeScreens.map(x=>[x.id,x.designHash]));
@@ -365,7 +367,19 @@ const bundleManifest={...manifestCore,bundleHash:sha256(manifestCore)};
 if(await atomicWriteIfChanged(resolve(outDir,"generatedScreenBundleManifest.json"),json(bundleManifest)))contractFilesChanged++;
 const staleDefinitions=(await readdir(definitionsDir)).filter(file=>file.endsWith(".ts")&&!expectedDefinitionFiles.has(file));
 await mapConcurrent(staleDefinitions,file=>rm(resolve(definitionsDir,file),{force:true}));
-const contractFileCount=normalized.length+7;
+// This manifest is the publication commit marker. Consumers reject an old or
+// partially written catalog/definition set, so an interrupted or concurrent
+// generation can fail closed but can never enter TypeScript as a mixed bundle.
+const definitionClosure=await buildGeneratedScreenDefinitionClosure({
+  catalogSource:catalogContent,
+  typeContractSource:GENERATED_SCREEN_TYPES_SOURCE,
+  definitionsRoot:definitionsDir,
+});
+if(definitionClosure.definitionSet.actualFileCount!==normalized.length||definitionClosure.definitionSet.extraFiles.length){
+  throw new Error("Generated definition directory is not an exact catalog closure.");
+}
+if(await atomicWriteIfChanged(resolve(outDir,"generatedScreenDefinitionClosure.json"),`${json(definitionClosure.manifest)}\n`))contractFilesChanged++;
+const contractFileCount=normalized.length+8;
 const dimensionNames=["domain","process","step","state","actor","policy","view","device","locale","variant"];
 const discoveredDimensionCounts=Object.fromEntries(dimensionNames.map(key=>[key,new Set(normalized.map(x=>x.screenCoordinate[key])).size]));
 const declaredDimensionCounts=input.screenSpace?.dimensionCounts || {};

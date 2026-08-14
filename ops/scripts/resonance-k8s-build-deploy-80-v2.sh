@@ -441,24 +441,21 @@ build_frontend() {
   fi
 
   # Generated screen definitions are runtime materialization assets and are
-  # intentionally not committed one-by-one. A clean deployment worktree must
-  # restore them before TypeScript resolves generatedScreenCatalog imports.
+  # intentionally not committed one-by-one. Materialize only the exact
+  # manifest-pinned catalog closure; shared extras and stale shared type files
+  # must never enter TypeScript.
   local generated_dir="$FRONTEND_DIR/src/generated/screen-generation"
   local shared_generated_dir="${SHARED_GENERATED_SCREEN_DIR:-/opt/Resonance/projects/carbonet-frontend/source/src/generated/screen-generation}"
-  mkdir -p "$generated_dir"
-  if [[ ! -d "$generated_dir/definitions" && -d "$shared_generated_dir/definitions" ]]; then
-    ln -s "$shared_generated_dir/definitions" "$generated_dir/definitions"
-    log "Linked shared generated screen definitions into clean worktree"
-  fi
-  if [[ ! -f "$generated_dir/generatedScreenTypes.ts" && -f "$shared_generated_dir/generatedScreenTypes.ts" ]]; then
-    ln -s "$shared_generated_dir/generatedScreenTypes.ts" "$generated_dir/generatedScreenTypes.ts"
-    log "Linked shared generated screen types into clean worktree"
-  fi
-  if [[ ! -d "$generated_dir/definitions" || ! -f "$generated_dir/generatedScreenTypes.ts" ]]; then
-    rollback_and_fail "GENERATED_SCREEN_ASSETS_MISSING" \
-      "Generated screen definitions/types are unavailable before frontend build" \
-      "verify shared generated assets or run generate-screen-blueprints.mjs"
-  fi
+  local generated_closure_result
+  generated_closure_result="$(cd "$FRONTEND_DIR" && \
+    GENERATED_SCREEN_DIR="$generated_dir" \
+    SHARED_GENERATED_SCREEN_DIR="$shared_generated_dir" \
+    node scripts/ensure-shared-generated-screen-assets.mjs)" || {
+      rollback_and_fail "GENERATED_SCREEN_CLOSURE_INVALID" \
+        "Generated screen catalog/definition/type provenance is invalid" \
+        "regenerate the screen bundle and its definition closure manifest"
+    }
+  log "Generated screen closure: $generated_closure_result"
 
   # Never let Vite empty or partially rewrite the live hostPath overlay. Build
   # into an isolated directory, verify its complete hashed-asset closure, copy
