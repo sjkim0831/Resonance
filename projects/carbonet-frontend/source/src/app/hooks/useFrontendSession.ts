@@ -1,6 +1,7 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import {
   fetchFrontendSession,
+  getFrontendSessionInvalidationEventName,
   invalidateFrontendSessionCache,
   readFrontendSessionSnapshot
 } from "../../lib/api/adminShell";
@@ -20,6 +21,22 @@ export function useFrontendSession(options: UseFrontendSessionOptions = {}) {
     initialValue: initialSession,
     skipInitialLoad: Boolean(initialSession)
   });
+  const reloadRef = useRef(sessionState.reload);
+  reloadRef.current = sessionState.reload;
+
+  useEffect(() => {
+    if (!enabled || typeof window === "undefined") {
+      return;
+    }
+    const eventName = getFrontendSessionInvalidationEventName();
+    const handleInvalidation = () => {
+      sessionState.setValue(null);
+      sessionState.setError("");
+      void reloadRef.current();
+    };
+    window.addEventListener(eventName, handleInvalidation);
+    return () => window.removeEventListener(eventName, handleInvalidation);
+  }, [enabled, sessionState.setError, sessionState.setValue]);
   const logoutMessage = isEnglish()
     ? "Do you want to log out?"
     : "로그아웃 하시겠습니까?";

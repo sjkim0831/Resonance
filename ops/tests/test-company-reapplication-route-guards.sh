@@ -6,22 +6,24 @@ MAPPER="$ROOT/modules/resonance-common/carbonet-common-core/src/main/java/egovfr
 MAPPER_TEST="$ROOT/modules/resonance-common/carbonet-common-core/src/test/java/egovframework/com/common/util/ReactPageUrlMapperTest.java"
 BROWSER="$ROOT/ops/scripts/validate-company-reapplication-browser.mjs"
 TASK_PANEL="$ROOT/projects/carbonet-frontend/source/src/features/task-quest/TaskQuestPanel.tsx"
+TASK_SESSION_GATE="$ROOT/projects/carbonet-frontend/source/src/features/task-quest/taskQuestSessionGate.ts"
 NOTE_PANEL="$ROOT/projects/carbonet-frontend/source/src/features/screen-development-note/ScreenDevelopmentNotePanel.tsx"
 REAPPLY_PAGE="$ROOT/projects/carbonet-frontend/source/src/features/join-company-reapply/JoinCompanyReapplyMigrationPage.tsx"
 APP_ENTRY="$ROOT/projects/carbonet-frontend/source/src/main.tsx"
 LIGHTWEIGHT_ENTRY="$ROOT/projects/carbonet-frontend/source/src/features/join-company-reapply/JoinCompanyReapplyEntry.tsx"
 
-for file in "$MAPPER" "$MAPPER_TEST" "$BROWSER" "$TASK_PANEL" "$NOTE_PANEL" "$REAPPLY_PAGE" "$APP_ENTRY" "$LIGHTWEIGHT_ENTRY"; do
+for file in "$MAPPER" "$MAPPER_TEST" "$BROWSER" "$TASK_PANEL" "$TASK_SESSION_GATE" "$NOTE_PANEL" "$REAPPLY_PAGE" "$APP_ENTRY" "$LIGHTWEIGHT_ENTRY"; do
   [[ -f "$file" ]] || { echo "[company-reapplication-route-guards] missing $file" >&2; exit 1; }
 done
 
-node - "$MAPPER" "$MAPPER_TEST" "$BROWSER" "$TASK_PANEL" "$NOTE_PANEL" "$REAPPLY_PAGE" "$APP_ENTRY" "$LIGHTWEIGHT_ENTRY" <<'NODE'
+node - "$MAPPER" "$MAPPER_TEST" "$BROWSER" "$TASK_PANEL" "$TASK_SESSION_GATE" "$NOTE_PANEL" "$REAPPLY_PAGE" "$APP_ENTRY" "$LIGHTWEIGHT_ENTRY" <<'NODE'
 const fs=require("node:fs");
-const [mapperPath,mapperTestPath,browserPath,taskPath,notePath,reapplyPagePath,appEntryPath,lightweightEntryPath]=process.argv.slice(2);
+const [mapperPath,mapperTestPath,browserPath,taskPath,taskGatePath,notePath,reapplyPagePath,appEntryPath,lightweightEntryPath]=process.argv.slice(2);
 const mapper=fs.readFileSync(mapperPath,"utf8");
 const mapperTest=fs.readFileSync(mapperTestPath,"utf8");
 const browser=fs.readFileSync(browserPath,"utf8");
 const task=fs.readFileSync(taskPath,"utf8");
+const taskGate=fs.readFileSync(taskGatePath,"utf8");
 const note=fs.readFileSync(notePath,"utf8");
 const reapplyPage=fs.readFileSync(reapplyPagePath,"utf8");
 const appEntry=fs.readFileSync(appEntryPath,"utf8");
@@ -38,7 +40,11 @@ assert(browser.includes('submitButton.press("Enter")')&&browser.includes("submit
   "browser harness does not exercise keyboard submit with fail-closed diagnostics");
 assert(!browser.includes('page.keyboard.press("Enter")'),
   "browser harness still relies on page-global keyboard focus");
-assert(task.includes("const canLoadPrivateTasks=frontendSession.authenticated===true")&&task.includes("if(!canLoadPrivateTasks)"),
+assert(task.includes("const sessionState = useFrontendSession()")&&
+  task.includes("const canLoadPrivateTasks = canLoadTaskQuestPrivateTasks(sessionState.value)")&&
+  task.includes("if(!canLoadPrivateTasks)")&&
+  !task.includes("__CARBONET_REACT_BOOTSTRAP__")&&
+  taskGate.includes("return session?.authenticated === true"),
   "anonymous public pages can still call the private task API");
 assert(note.includes("const canUseAdminDesignNotes=frontendSession.authenticated===true&&frontendSession.canEnterAdminConsole===true")&&note.includes("if(!canUseAdminDesignNotes)"),
   "non-admin pages can still call the admin design-note API");

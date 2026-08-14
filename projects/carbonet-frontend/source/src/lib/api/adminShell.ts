@@ -29,11 +29,13 @@ function removeLegacyAdminMenuTreeCaches() {
 }
 
 const ADMIN_MENU_TREE_REFRESH_EVENT = "carbonet:admin-menu-tree:refresh";
+const FRONTEND_SESSION_INVALIDATION_EVENT = "carbonet:frontend-session:invalidate";
 const ADMIN_MENU_TREE_REFRESH_STORAGE_KEY = "carbonet:admin-menu-tree:refresh-at";
 const SESSION_CACHE_TTL_MS = 5 * 60 * 1000;
 
 let frontendSessionCache: FrontendSession | null = null;
 let frontendSessionPromise: Promise<FrontendSession> | null = null;
+let frontendSessionGeneration = 0;
 let adminMenuTreeCache: AdminMenuTreePayload | null = null;
 let adminMenuTreePromise: Promise<AdminMenuTreePayload> | null = null;
 
@@ -65,6 +67,10 @@ export function getAdminMenuTreeRefreshEventName() {
   return ADMIN_MENU_TREE_REFRESH_EVENT;
 }
 
+export function getFrontendSessionInvalidationEventName() {
+  return FRONTEND_SESSION_INVALIDATION_EVENT;
+}
+
 let adminMenuTreeCrossTabRefreshReady = false;
 
 function ensureAdminMenuTreeCrossTabRefresh() {
@@ -82,6 +88,7 @@ function ensureAdminMenuTreeCrossTabRefresh() {
 }
 
 export function invalidateFrontendSessionCache() {
+  frontendSessionGeneration += 1;
   removeLegacyAdminMenuTreeCaches();
   frontendSessionCache = null;
   frontendSessionPromise = null;
@@ -89,6 +96,13 @@ export function invalidateFrontendSessionCache() {
   adminMenuTreePromise = null;
   removeSessionStorageCache(FRONTEND_SESSION_STORAGE_KEY);
   removeSessionStorageCache(ADMIN_MENU_TREE_STORAGE_KEY);
+  if (typeof window !== "undefined") {
+    const bootstrap = window.__CARBONET_REACT_BOOTSTRAP__ as Record<string, unknown> | undefined;
+    if (bootstrap) {
+      delete bootstrap.frontendSession;
+    }
+    window.dispatchEvent(new Event(FRONTEND_SESSION_INVALIDATION_EVENT));
+  }
 }
 
 export function readAdminMenuTreeSnapshot(): AdminMenuTreePayload | null {
@@ -141,16 +155,25 @@ export async function fetchFrontendSession(): Promise<FrontendSession> {
     return frontendSessionCache;
   }
   if (!frontendSessionPromise) {
-    frontendSessionPromise = fetchJsonWithResponse<FrontendSession>("/api/frontend/session").then(({ response, body: session }) => {
-      if (!response.ok) {
-        throw new Error(`Failed to load session: ${response.status}`);
-      }
-      frontendSessionCache = session;
-      writeSessionStorageCache(FRONTEND_SESSION_STORAGE_KEY, session, SESSION_CACHE_TTL_MS);
-      return session;
-    }).finally(() => {
-      frontendSessionPromise = null;
-    });
+    const generation = frontendSessionGeneration;
+    let request: Promise<FrontendSession>;
+    request = fetchJsonWithResponse<FrontendSession>("/api/frontend/session")
+      .then(({ response, body: session }) => {
+        if (!response.ok) {
+          throw new Error(`Failed to load session: ${response.status}`);
+        }
+        if (generation === frontendSessionGeneration) {
+          frontendSessionCache = session;
+          writeSessionStorageCache(FRONTEND_SESSION_STORAGE_KEY, session, SESSION_CACHE_TTL_MS);
+        }
+        return session;
+      })
+      .finally(() => {
+        if (frontendSessionPromise === request) {
+          frontendSessionPromise = null;
+        }
+      });
+    frontendSessionPromise = request;
   }
   if (!frontendSessionPromise) {
     throw new Error("Frontend session promise was not initialized");

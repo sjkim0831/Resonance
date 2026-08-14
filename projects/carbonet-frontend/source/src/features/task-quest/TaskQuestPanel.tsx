@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useFrontendSession } from "../../app/hooks/useFrontendSession";
 import { EMISSION_END_TO_END_PROCESS_CODE, EMISSION_INTERNAL_PROCESS_CODES, emissionPhaseLabel, isCustomerVisibleEmissionProcess, parentEmissionStepCode } from "../../lib/workflow/emissionProcessHierarchy";
 import { normalizeScreenRoute, type ScreenWorkContext, type ScreenWorkContextCandidate } from "../runtime-assist/screenWorkContext";
 
@@ -65,6 +66,14 @@ import { createPortal } from "react-dom";
 import { buildLocalizedPath, isEnglish, navigate } from "../../lib/navigation/runtime";
 import { QA_TEST_ACCOUNTS, switchQaAccount } from "../home-entry/TestAccountSwitcher";
 import { ContractFieldControl, type ContractField } from "../generated-screen/ContractFieldControl";
+import {
+  beginTaskQuestPrivateLoad,
+  canLoadTaskQuestPrivateTasks,
+  invalidateTaskQuestPrivateLoad,
+  isCurrentTaskQuestPrivateLoad,
+  resolveTaskQuestWorkflowCoordinate,
+  resolveTaskQuestWorkflowDomainCode,
+} from "./taskQuestSessionGate";
 
 type QuestTask = {
   id: number;
@@ -551,15 +560,14 @@ export function TaskQuestPanel({
   const screenClassification = screenContext?.classification
     || (screenContext?.workflow || screenContext?.candidates?.length ? "EXECUTABLE" : "REVIEW_REQUIRED");
   const screenContextExecutable = screenClassification === "EXECUTABLE";
-  const frontendSession=(window.__CARBONET_REACT_BOOTSTRAP__?.frontendSession||{}) as {
-    authenticated?: boolean;
-  };
-  const canLoadPrivateTasks=frontendSession.authenticated===true;
+  const sessionState = useFrontendSession();
+  const canLoadPrivateTasks = canLoadTaskQuestPrivateTasks(sessionState.value);
   const api = buildLocalizedPath(
     "/home/api/emission-tasks",
     "/en/home/api/emission-tasks",
   );
   const [data, setData] = useState<QuestResponse | null>(null);
+  const privateLoadSequence = useRef(0);
   const [open, setOpen] = useState(
     () => localStorage.getItem("task-quest-open") === "1",
   );
@@ -632,29 +640,38 @@ export function TaskQuestPanel({
   const [assignmentMessage, setAssignmentMessage] = useState("");
 
   async function load() {
-    if(!canLoadPrivateTasks){setLoading(false);return;}
+    const sequence = beginTaskQuestPrivateLoad(privateLoadSequence);
+    if(!canLoadPrivateTasks){setData(null);setLoading(false);return;}
     try {
       const response = await fetch(api, { credentials: "include" });
-      if (response.status === 401 || response.status === 403) return;
+      if (response.status === 401 || response.status === 403) {
+        if (isCurrentTaskQuestPrivateLoad(privateLoadSequence, sequence)) setData(null);
+        return;
+      }
       const body = await response.json();
       if (!response.ok)
         throw new Error(
           body.message ||
             (en ? "Unable to load tasks." : "업무를 불러오지 못했습니다."),
         );
+      if (!isCurrentTaskQuestPrivateLoad(privateLoadSequence, sequence)) return;
       setData(body);
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : String(error));
+      if (isCurrentTaskQuestPrivateLoad(privateLoadSequence, sequence))
+        setMessage(error instanceof Error ? error.message : String(error));
     } finally {
-      setLoading(false);
+      if (isCurrentTaskQuestPrivateLoad(privateLoadSequence, sequence)) setLoading(false);
     }
   }
 
   useEffect(() => {
-    if(!canLoadPrivateTasks){setLoading(false);return;}
+    if(!canLoadPrivateTasks){invalidateTaskQuestPrivateLoad(privateLoadSequence);setData(null);setLoading(false);return;}
     void load();
     const timer = window.setInterval(() => void load(), 60_000);
-    return () => window.clearInterval(timer);
+    return () => {
+      window.clearInterval(timer);
+      invalidateTaskQuestPrivateLoad(privateLoadSequence);
+    };
   }, [api,canLoadPrivateTasks]);
 
   const qaCompanies = useMemo(
@@ -1547,7 +1564,7 @@ export function TaskQuestPanel({
     return Array.from(groups.entries());
   }, [selectedCatalogProcessCode, selectedWorkflowItems]);
 
-  if (!data) return null;
+  if (!canLoadPrivateTasks || !data) return null;
 
   function toggle() {
     const next = !open;
@@ -1629,13 +1646,28 @@ export function TaskQuestPanel({
   }
 
   function openFullWorkflow() {
-    const processCode = focusedWorkflow?.processCode || task?.processCode || "";
+    const routeUrl = new URL(routePath, window.location.origin);
+    const routeProcessCode = routeUrl.searchParams.get("processCode") || routeUrl.searchParams.get("process") || "";
+    const routeStepCode = routeUrl.searchParams.get("stepCode") || "";
+    const requestedCoordinate = resolveTaskQuestWorkflowCoordinate({
+      screenContext: screenContext?.workflow,
+      route: { processCode: routeProcessCode, stepCode: routeStepCode },
+      selectedProcessCode: selectedCatalogProcessCode,
+      focused: { processCode: focusedWorkflow?.processCode, stepCode: focusedStepCode },
+      task: { processCode: task?.processCode, stepCode: task?.processStepCode },
+    });
+    const requestedProcessCode = requestedCoordinate.processCode;
+    const processCode = EMISSION_INTERNAL_PROCESS_CODES.has(requestedProcessCode)
+      ? EMISSION_END_TO_END_PROCESS_CODE
+      : requestedProcessCode;
     const process = (data?.processCatalog || []).find(
       (item) => item.processCode === processCode,
     );
-    const domainCode = String(
-      task?.domainCode || process?.domainCode || selectedWorkType || "ALL",
-    ).toUpperCase();
+    const domainCode = resolveTaskQuestWorkflowDomainCode(
+      process?.domainCode,
+      task?.domainCode,
+      selectedWorkType,
+    );
     if (domainCode && domainCode !== "ALL") {
       setSelectedWorkType(domainCode);
       localStorage.setItem("task-quest-work-type", domainCode);
@@ -1644,7 +1676,9 @@ export function TaskQuestPanel({
       const processSteps = (data?.processCatalogSteps || [])
         .filter((step) => step.processCode === processCode)
         .sort((left, right) => Number(left.stepOrder) - Number(right.stepOrder));
-      const requestedStepCode = focusedStepCode || task?.processStepCode || "";
+      const requestedStepCode = processCode === EMISSION_END_TO_END_PROCESS_CODE
+        ? parentEmissionStepCode(requestedProcessCode) || requestedCoordinate.stepCode
+        : requestedCoordinate.stepCode;
       const stepIndex = Math.max(
         0,
         requestedStepCode
@@ -2371,6 +2405,7 @@ export function TaskQuestPanel({
       >
         {!open ? (
           <button
+            aria-label={en ? "My next task" : "다음 업무"}
             className="ml-auto flex min-h-12 items-center gap-2 rounded-full border border-[#16408d] bg-white px-4 py-2 font-bold text-[#12356b] shadow-[0_10px_30px_rgba(15,43,87,.2)]"
             onClick={toggle}
             type="button"
@@ -2634,7 +2669,7 @@ export function TaskQuestPanel({
         )}
       </aside>
       <aside className={`fixed z-[1260] ${qaOpen ? "right-3 top-1/2 -translate-y-1/2 sm:right-5 lg:right-8" : "bottom-20 left-3 right-auto top-auto translate-y-0 sm:left-5"}`} data-process-qa-card="" data-utility-panel-state={qaOpen ? "open" : "closed"}>
-        {!qaOpen ? <button className="flex min-h-12 items-center gap-2 rounded-full border border-emerald-700 bg-white px-4 py-2 font-bold text-emerald-800 shadow-lg" onClick={openQaPanel} type="button"><span className="material-symbols-outlined">fact_check</span>{en ? "QA workflow" : "QA 업무"}</button> :
+        {!qaOpen ? <button aria-label={en ? "QA workflow" : "QA 업무"} className="flex min-h-12 items-center gap-2 rounded-full border border-emerald-700 bg-white px-4 py-2 font-bold text-emerald-800 shadow-lg" onClick={openQaPanel} type="button"><span className="material-symbols-outlined">fact_check</span>{en ? "QA workflow" : "QA 업무"}</button> :
           <section className="w-[calc(100vw-1.5rem)] max-w-[36rem] overflow-hidden rounded-2xl border border-emerald-200 bg-white shadow-2xl">
             <header className="flex items-center justify-between bg-emerald-800 px-4 py-3 text-white"><div className="flex items-center gap-2"><span className="material-symbols-outlined">fact_check</span><strong>{en ? "QA workflow runner" : "QA 업무 실행"}</strong></div><button aria-label={en ? "Close" : "닫기"} onClick={() => { setQaOpen(false); localStorage.setItem("process-qa-card-open", "0"); }} type="button"><span className="material-symbols-outlined">close</span></button></header>
             <div className="max-h-[70vh] overflow-y-auto p-4">
@@ -2725,9 +2760,10 @@ export function TaskQuestPanel({
               role="dialog"
             >
               <button
-                aria-label={en ? "Close workflow" : "전체 업무 닫기"}
+                aria-hidden="true"
                 className="absolute inset-0 cursor-default"
                 onClick={() => setFlowOpen(false)}
+                tabIndex={-1}
                 type="button"
               />
               <section className="relative flex max-h-[94vh] w-full max-w-[96rem] flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
@@ -2751,6 +2787,7 @@ export function TaskQuestPanel({
                     </p>
                   </div>
                   <button
+                    aria-label={en ? "Close workflow" : "전체 업무 닫기"}
                     className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-100"
                     onClick={() => setFlowOpen(false)}
                     type="button"
@@ -2809,6 +2846,7 @@ export function TaskQuestPanel({
                         <label className="min-w-[18rem] text-sm font-bold text-slate-700">
                           {en ? "Process" : "업무 프로세스"}
                           <select
+                            aria-label={en ? "Process" : "업무 프로세스"}
                             className="mt-2 min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3 font-semibold text-[#052b57]"
                             onChange={(event) => selectCatalogProcess(event.target.value)}
                             value={selectedCatalogProcessCode}
