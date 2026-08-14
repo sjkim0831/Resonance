@@ -919,6 +919,14 @@ backup_application_name="carbonet-auto-deploy-$$"
 backup_cleanup_required=false
 schema_backup_dir=""
 schema_restore_database=""
+schema_restore_container=""
+schema_restore_container_id=""
+schema_restore_image_ref=""
+schema_restore_image_id=""
+schema_restore_postgres_version=""
+schema_restore_verifier=""
+restored_history_count=""
+restored_schema_object_count=""
 runtime_asset_sync_pid=""
 runtime_asset_sync_log=""
 runtime_screen_gate_pid=""
@@ -937,10 +945,259 @@ postdeploy_attempt_journal_initialized=false
 postdeploy_db_attempt_staged=false
 postdeploy_rollback_restored=false
 
+# BEGIN isolated-local-schema-restore
+schema_restore_docker() {
+  sudo -n docker "$@"
+}
+
+cleanup_local_schema_restore_container() {
+  local container="${schema_restore_container:-}"
+  local container_id="${schema_restore_container_id:-}"
+  local inspect_json=""
+  [[ -n "$container" || -n "$container_id" ]] || return 0
+  [[ "$container" =~ ^carbonet-schema-restore-[0-9a-f]{12}-[0-9]+-[0-9]+$ \
+     && "$container_id" =~ ^[0-9a-f]{64}$ ]] || return 79
+  schema_restore_docker info >/dev/null 2>&1 || return 1
+  if ! inspect_json="$(schema_restore_docker container inspect "$container_id" 2>/dev/null)"; then
+    # The owned ID is gone. A container now occupying the old name is foreign;
+    # never delete it and make the ownership race a hard failure.
+    schema_restore_docker info >/dev/null 2>&1 || return 1
+    if schema_restore_docker container inspect "$container" >/dev/null 2>&1; then
+      return 79
+    fi
+    schema_restore_container=""
+    schema_restore_container_id=""
+    return 0
+  fi
+  jq -e --arg id "$container_id" --arg name "/$container" --arg source "$target_commit" '
+    length == 1
+    and .[0].Id == $id
+    and .[0].Name == $name
+    and .[0].Config.Labels["resonance.ai/purpose"] == "predeploy-schema-restore"
+    and .[0].Config.Labels["resonance.ai/source-commit"] == $source
+  ' <<<"$inspect_json" >/dev/null || return 79
+  schema_restore_docker rm -f -- "$container_id" >/dev/null 2>&1 || return 1
+  # Failed inspect is absence proof only while the daemon itself is healthy.
+  schema_restore_docker info >/dev/null 2>&1 || return 1
+  if schema_restore_docker container inspect "$container_id" >/dev/null 2>&1 \
+     || schema_restore_docker container inspect "$container" >/dev/null 2>&1; then
+    return 1
+  fi
+  schema_restore_container=""
+  schema_restore_container_id=""
+}
+
+reset_schema_restore_evidence_for_fallback() {
+  schema_restore_image_ref=""
+  schema_restore_image_id=""
+  schema_restore_postgres_version=""
+  schema_restore_verifier=""
+  restored_history_count=""
+  restored_schema_object_count=""
+}
+
+local_schema_restore_fail() {
+  local requested_status="${1:-1}"
+  local cleanup_status=0
+  cleanup_local_schema_restore_container || cleanup_status=$?
+  reset_schema_restore_evidence_for_fallback
+  (( cleanup_status == 0 )) || return 79
+  return "$requested_status"
+}
+
+# Restore the complete schema and Flyway history into a disposable PostgreSQL
+# 16 instance on node-local tmpfs. The container has no network, no host bind,
+# and is started by immutable image ID. Any unavailable/invalid local runtime
+# falls back to the existing Patroni scratch proof; an unremovable container is
+# a hard failure so retries cannot accumulate privileged residue.
+verify_schema_backup_restore_locally() {
+  local schema_dump="$1" flyway_history_dump="$2"
+  local expected_history_count="$3" expected_schema_object_count="$4"
+  local image_ref="${CARBONET_LOCAL_SCHEMA_RESTORE_IMAGE:-postgres@sha256:11a9d238fbb48bab14599c57e41123254452b1a2d93c6c8595bce96f346bd082}"
+  local ready_timeout="${CARBONET_LOCAL_SCHEMA_RESTORE_READY_TIMEOUT_SECONDS:-30}"
+  local image_id container_id container_name inspect_json marker deadline server_version_num
+  local postgres_version pg_restore_version schema_toc_count flyway_toc_count
+  local restored_database="carbonet_schema_verify"
+
+  [[ -s "$schema_dump" && -s "$flyway_history_dump" \
+     && "$expected_history_count" =~ ^[1-9][0-9]*$ \
+     && "$expected_schema_object_count" =~ ^[1-9][0-9]*$ \
+     && "$ready_timeout" =~ ^[0-9]+$ \
+     && "$ready_timeout" -ge 5 && "$ready_timeout" -le 120 ]] || return 2
+  [[ -z "${schema_restore_container:-}" ]] || return 79
+  [[ -z "${schema_restore_container_id:-}" ]] || return 79
+  reset_schema_restore_evidence_for_fallback
+  # The verifier is an optional fast path. Only an immutable digest/ID may run;
+  # a mutable tag or an unavailable pinned image falls back to Patroni.
+  [[ "$image_ref" =~ @sha256:[0-9a-f]{64}$ \
+     || "$image_ref" =~ ^sha256:[0-9a-f]{64}$ ]] || return 2
+  schema_restore_docker info >/dev/null 2>&1 || return 2
+  image_id="$(schema_restore_docker image inspect --format '{{.Id}}' "$image_ref" 2>/dev/null)" \
+    || return 2
+  [[ "$image_id" =~ ^sha256:[0-9a-f]{64}$ ]] || return 2
+  schema_restore_image_ref="$image_ref"
+  schema_restore_image_id="$image_id"
+  container_name="carbonet-schema-restore-${target_commit:0:12}-$$-${RANDOM}"
+  [[ "$container_name" =~ ^carbonet-schema-restore-[0-9a-f]{12}-[0-9]+-[0-9]+$ ]] \
+    || return 2
+
+  container_id="$(schema_restore_docker run -d --pull never \
+    --name "$container_name" \
+    --label resonance.ai/purpose=predeploy-schema-restore \
+    --label "resonance.ai/source-commit=$target_commit" \
+    --network none \
+    --tmpfs /var/lib/postgresql/data:rw,noexec,nosuid,size=768m \
+    -e POSTGRES_HOST_AUTH_METHOD=trust \
+    "$image_id" 2>/dev/null)" || {
+      # docker run did not establish ownership. In particular, a foreign
+      # same-name container must remain untouched.
+      reset_schema_restore_evidence_for_fallback
+      return 2
+    }
+  if [[ ! "$container_id" =~ ^[0-9a-f]{64}$ ]]; then
+    # A successful run without an immutable ID cannot be cleaned by name.
+    schema_restore_container="$container_name"
+    return 79
+  fi
+  schema_restore_container="$container_name"
+  schema_restore_container_id="$container_id"
+  inspect_json="$(schema_restore_docker container inspect "$schema_restore_container_id" 2>/dev/null)" || {
+    local_schema_restore_fail 1
+    return $?
+  }
+  jq -e --arg id "$schema_restore_container_id" --arg name "/$schema_restore_container" \
+    --arg image "$image_id" --arg source "$target_commit" '
+    length == 1
+    and .[0].Id == $id
+    and .[0].Name == $name
+    and .[0].Image == $image
+    and .[0].HostConfig.NetworkMode == "none"
+    and ((. [0].HostConfig.Binds // []) | length) == 0
+    and .[0].Config.Labels["resonance.ai/purpose"] == "predeploy-schema-restore"
+    and .[0].Config.Labels["resonance.ai/source-commit"] == $source
+    and (. [0].HostConfig.Tmpfs["/var/lib/postgresql/data"] | type == "string")
+    and (. [0].HostConfig.Tmpfs["/var/lib/postgresql/data"] | test("(^|,)rw(,|$)"))
+    and (. [0].HostConfig.Tmpfs["/var/lib/postgresql/data"] | test("(^|,)noexec(,|$)"))
+    and (. [0].HostConfig.Tmpfs["/var/lib/postgresql/data"] | test("(^|,)nosuid(,|$)"))
+    and (. [0].HostConfig.Tmpfs["/var/lib/postgresql/data"] | test("(^|,)size=(768m|805306368)(,|$)"))
+  ' <<<"$inspect_json" >/dev/null || {
+    local_schema_restore_fail 1
+    return $?
+  }
+
+  # pg_isready can briefly succeed against the entrypoint's temporary server.
+  # Never accept it until the final-entrypoint marker has been observed.
+  marker='PostgreSQL init process complete; ready for start up.'
+  deadline=$((SECONDS + ready_timeout))
+  while ! schema_restore_docker logs "$schema_restore_container_id" 2>&1 | grep -Fq "$marker"; do
+    [[ "$(schema_restore_docker container inspect --format '{{.State.Running}}' \
+      "$schema_restore_container_id" 2>/dev/null || true)" == true ]] || {
+      local_schema_restore_fail 1
+      return $?
+    }
+    (( SECONDS < deadline )) || {
+      local_schema_restore_fail 1
+      return $?
+    }
+    sleep 0.1
+  done
+  while ! schema_restore_docker exec "$schema_restore_container_id" \
+      pg_isready -U postgres -d postgres -q >/dev/null 2>&1; do
+    (( SECONDS < deadline )) || {
+      local_schema_restore_fail 1
+      return $?
+    }
+    sleep 0.1
+  done
+
+  postgres_version="$(schema_restore_docker exec "$schema_restore_container_id" postgres --version 2>/dev/null)" \
+    || {
+      local_schema_restore_fail 1
+      return $?
+    }
+  pg_restore_version="$(schema_restore_docker exec "$schema_restore_container_id" pg_restore --version 2>/dev/null)" \
+    || {
+      local_schema_restore_fail 1
+      return $?
+    }
+  server_version_num="$(schema_restore_docker exec "$schema_restore_container_id" \
+    psql -U postgres -d postgres -X -q -At -v ON_ERROR_STOP=1 \
+      -c "select current_setting('server_version_num')" 2>/dev/null)" || {
+    local_schema_restore_fail 1
+    return $?
+  }
+  [[ "$postgres_version" =~ PostgreSQL\)[[:space:]]16\. \
+     && "$pg_restore_version" =~ PostgreSQL\)[[:space:]]16\. \
+     && "$server_version_num" =~ ^16[0-9]{4}$ ]] || {
+    local_schema_restore_fail 2
+    return $?
+  }
+  schema_restore_postgres_version="$postgres_version; $pg_restore_version"
+
+  schema_toc_count="$(schema_restore_docker exec -i "$schema_restore_container_id" \
+    pg_restore --list <"$schema_dump" | awk '!/^;/ && NF {n++} END {print n+0}')" || {
+    local_schema_restore_fail 1
+    return $?
+  }
+  flyway_toc_count="$(schema_restore_docker exec -i "$schema_restore_container_id" \
+    pg_restore --list <"$flyway_history_dump" | awk '!/^;/ && NF {n++} END {print n+0}')" || {
+    local_schema_restore_fail 1
+    return $?
+  }
+  [[ "$schema_toc_count" =~ ^[1-9][0-9]*$ && "$flyway_toc_count" =~ ^[1-9][0-9]*$ ]] || {
+    local_schema_restore_fail 1
+    return $?
+  }
+
+  schema_restore_docker exec "$schema_restore_container_id" \
+    psql -U postgres -d postgres -X -q -v ON_ERROR_STOP=1 \
+      -c "create database $restored_database" >/dev/null || {
+    local_schema_restore_fail 1
+    return $?
+  }
+  schema_restore_docker exec -i "$schema_restore_container_id" \
+    pg_restore -U postgres -d "$restored_database" --exit-on-error \
+      --schema-only --no-owner --no-privileges <"$schema_dump" >/dev/null || {
+    local_schema_restore_fail 1
+    return $?
+  }
+  schema_restore_docker exec -i "$schema_restore_container_id" \
+    pg_restore -U postgres -d "$restored_database" --exit-on-error \
+      --data-only --no-owner --no-privileges -t carbonet_flyway_schema_history \
+      <"$flyway_history_dump" >/dev/null || {
+    local_schema_restore_fail 1
+    return $?
+  }
+  restored_history_count="$(schema_restore_docker exec "$schema_restore_container_id" \
+    psql -U postgres -d "$restored_database" -X -q -At -v ON_ERROR_STOP=1 \
+      -c 'select count(*) from carbonet_flyway_schema_history' 2>/dev/null)" || {
+    local_schema_restore_fail 1
+    return $?
+  }
+  restored_schema_object_count="$(schema_restore_docker exec "$schema_restore_container_id" \
+    psql -U postgres -d "$restored_database" -X -q -At -v ON_ERROR_STOP=1 \
+      -c "select count(*) from pg_class where relnamespace not in (select oid from pg_namespace where nspname like 'pg_%' or nspname='information_schema')" 2>/dev/null)" || {
+    local_schema_restore_fail 1
+    return $?
+  }
+  [[ "$restored_history_count" == "$expected_history_count" \
+     && "$restored_schema_object_count" == "$expected_schema_object_count" ]] || {
+    local_schema_restore_fail 1
+    return $?
+  }
+  cleanup_local_schema_restore_container || return 79
+  schema_restore_verifier="local-pg16-tmpfs"
+  echo "[auto-deploy] local schema restore PASS imageId=$schema_restore_image_id rows=$restored_history_count objects=$restored_schema_object_count schemaToc=$schema_toc_count flywayToc=$flyway_toc_count"
+}
+# END isolated-local-schema-restore
+
 verify_schema_backup_restore_in_scratch() {
   local schema_dump="$1" flyway_history_dump="$2" scratch_database="$3"
+  local expected_history_count="$4" expected_schema_object_count="$5"
   [[ -s "$schema_dump" && -s "$flyway_history_dump" \
-     && "$scratch_database" =~ ^carbonet_schema_verify_[a-zA-Z0-9_]+$ ]] || return 1
+     && "$scratch_database" =~ ^carbonet_schema_verify_[a-zA-Z0-9_]+$ \
+     && "$expected_history_count" =~ ^[1-9][0-9]*$ \
+     && "$expected_schema_object_count" =~ ^[1-9][0-9]*$ ]] || return 1
   schema_restore_database="$scratch_database"
   kubectl -n "$NAMESPACE" exec "$POSTGRES_POD" -c "$POSTGRES_CONTAINER" -- \
     psql -U "$POSTGRES_USER" -h 127.0.0.1 -d postgres -v ON_ERROR_STOP=1 \
@@ -958,11 +1215,18 @@ verify_schema_backup_restore_in_scratch() {
   restored_history_count="$(kubectl -n "$NAMESPACE" exec "$POSTGRES_POD" -c "$POSTGRES_CONTAINER" -- \
     psql -U "$POSTGRES_USER" -h 127.0.0.1 -d "$schema_restore_database" -Atqc \
       'select count(*) from carbonet_flyway_schema_history')" || return 1
-  [[ "$restored_history_count" =~ ^[1-9][0-9]*$ ]] || return 1
+  restored_schema_object_count="$(kubectl -n "$NAMESPACE" exec "$POSTGRES_POD" -c "$POSTGRES_CONTAINER" -- \
+    psql -U "$POSTGRES_USER" -h 127.0.0.1 -d "$schema_restore_database" -Atqc \
+      "select count(*) from pg_class where relnamespace not in (select oid from pg_namespace where nspname like 'pg_%' or nspname='information_schema')")" || return 1
+  [[ "$restored_history_count" == "$expected_history_count" \
+     && "$restored_schema_object_count" == "$expected_schema_object_count" ]] || return 1
   kubectl -n "$NAMESPACE" exec "$POSTGRES_POD" -c "$POSTGRES_CONTAINER" -- \
     psql -U "$POSTGRES_USER" -h 127.0.0.1 -d postgres -v ON_ERROR_STOP=1 \
       -c "drop database \"$schema_restore_database\" with (force)" >/dev/null || return 1
   schema_restore_database=""
+  schema_restore_postgres_version="$(kubectl -n "$NAMESPACE" exec "$POSTGRES_POD" -c "$POSTGRES_CONTAINER" -- \
+    postgres --version 2>/dev/null || true)"
+  schema_restore_verifier="patroni-scratch"
 }
 
 cleanup_remote_backup() {
@@ -1392,6 +1656,7 @@ cleanup_deploy() {
     wait "$backstage_visual_e2e_pid" 2>/dev/null || true
   fi
   cleanup_remote_backup
+  cleanup_local_schema_restore_container || original_status=79
   if [[ -n "$schema_restore_database" ]]; then
     kubectl -n "$NAMESPACE" exec "$POSTGRES_POD" -c "$POSTGRES_CONTAINER" -- \
       psql -U "$POSTGRES_USER" -h 127.0.0.1 -d postgres \
@@ -4214,6 +4479,19 @@ if [[ "$backup_required" == "true" ]]; then
   if [[ "$schema_backup_only" == "true" ]]; then
     backup_file="$BACKUP_DIR/carbonet-schema-$timestamp-$current_commit.tar"
     schema_backup_dir="$(mktemp -d)"
+    source_restore_counts="$(kubectl -n "$NAMESPACE" exec "$POSTGRES_POD" -c "$POSTGRES_CONTAINER" -- \
+      psql -U "$POSTGRES_USER" -h 127.0.0.1 -d "$POSTGRES_DB" -X -q -At -F $'\t' \
+        -v ON_ERROR_STOP=1 -c "select \
+          (select count(*) from carbonet_flyway_schema_history), \
+          (select count(*) from pg_class where relnamespace not in \
+            (select oid from pg_namespace where nspname like 'pg_%' or nspname='information_schema'))" \
+      2>/dev/null)" || {
+      echo "[auto-deploy] refusing deployment: source restore counts unavailable" >&2
+      exit 18
+    }
+    IFS=$'\t' read -r expected_history_count expected_schema_object_count <<<"$source_restore_counts"
+    [[ "$expected_history_count" =~ ^[1-9][0-9]*$ && "$expected_schema_object_count" =~ ^[1-9][0-9]*$ ]] || {
+      echo "[auto-deploy] refusing deployment: source restore counts invalid" >&2; exit 18; }
     echo "[auto-deploy] safe additive DDL detected; creating schema and Flyway-history backup"
     if ! timeout --signal=TERM --kill-after=30s "$BACKUP_TIMEOUT_SECONDS" \
         kubectl -n "$NAMESPACE" exec "$POSTGRES_POD" -c "$POSTGRES_CONTAINER" -- \
@@ -4247,15 +4525,39 @@ if [[ "$backup_required" == "true" ]]; then
         exit 18
       fi
     done
-    schema_restore_database="carbonet_schema_verify_${timestamp//-/_}_$$"
-    if ! verify_schema_backup_restore_in_scratch \
+    schema_restore_database_name="carbonet_schema_verify_${timestamp//-/_}_$$"
+    local_restore_rc=0
+    verify_schema_backup_restore_locally \
       "$schema_backup_dir/schema.dump" "$schema_backup_dir/flyway-history.dump" \
-      "$schema_restore_database"; then
+      "$expected_history_count" "$expected_schema_object_count" || local_restore_rc=$?
+    if (( local_restore_rc == 79 )); then
+      echo "[auto-deploy] refusing deployment: local schema restore container cleanup failed" >&2
+      exit 19
+    elif (( local_restore_rc != 0 )); then
+      echo "[auto-deploy] local schema restore unavailable or invalid rc=$local_restore_rc; using Patroni scratch fallback" >&2
+      reset_schema_restore_evidence_for_fallback
+      if ! verify_schema_backup_restore_in_scratch \
+        "$schema_backup_dir/schema.dump" "$schema_backup_dir/flyway-history.dump" \
+        "$schema_restore_database_name" "$expected_history_count" "$expected_schema_object_count"; then
+        echo "[auto-deploy] refusing deployment: full schema and Flyway-history restore verification failed" >&2
+        exit 19
+      fi
+    fi
+    jq -n --arg verifier "$schema_restore_verifier" \
+      --arg imageRef "$schema_restore_image_ref" \
+      --arg imageId "$schema_restore_image_id" \
+      --arg postgresVersion "$schema_restore_postgres_version" \
+      --arg schemaSha256 "$(sha256sum "$schema_backup_dir/schema.dump" | awk '{print $1}')" \
+      --arg flywaySha256 "$(sha256sum "$schema_backup_dir/flyway-history.dump" | awk '{print $1}')" \
+      --argjson flywayRows "$restored_history_count" \
+      --argjson schemaObjects "$restored_schema_object_count" \
+      '{verifier:$verifier,imageRef:$imageRef,imageId:$imageId,postgresVersion:$postgresVersion,schemaSha256:$schemaSha256,flywaySha256:$flywaySha256,flywayRows:$flywayRows,schemaObjects:$schemaObjects}' \
+      >"$schema_backup_dir/restore-evidence.json" || {
       echo "[auto-deploy] refusing deployment: full schema and Flyway-history restore verification failed" >&2
       exit 19
-    fi
+    }
     tar -C "$schema_backup_dir" -cf "$backup_file" \
-      schema.dump flyway-history.dump migrations.manifest migrations.patch
+      schema.dump flyway-history.dump migrations.manifest migrations.patch restore-evidence.json
     backup_bytes="$(stat -c %s "$backup_file")"
     if [[ "$backup_bytes" -lt 2048 ]] || ! tar -tf "$backup_file" | grep -q '^schema.dump$'; then
       rm -f "$backup_file"
@@ -4264,7 +4566,7 @@ if [[ "$backup_required" == "true" ]]; then
     fi
     rm -rf "$schema_backup_dir"
     schema_backup_dir=""
-    echo "[auto-deploy] schema backup verified: $backup_file (${backup_bytes} bytes, restoredFlywayRows=${restored_history_count})"
+    echo "[auto-deploy] schema backup verified: $backup_file (${backup_bytes} bytes, verifier=${schema_restore_verifier}, restoredFlywayRows=${restored_history_count}, restoredSchemaObjects=${restored_schema_object_count})"
   elif [[ "$menu_backup_only" == "true" ]]; then
     backup_file="$BACKUP_DIR/carbonet-menu-$timestamp-$current_commit.sql.gz"
     echo "[auto-deploy] menu-only migration detected; creating targeted transactional backup"
