@@ -6,6 +6,7 @@ usage() {
 Usage:
   bash ops/scripts/validate-operational-usage-ledger-e2e.sh [root] [expected-commit] [base-url]
   bash ops/scripts/validate-operational-usage-ledger-e2e.sh --self-test
+  bash ops/scripts/validate-operational-usage-ledger-e2e.sh --self-test-pagination
 
 Runs only against an already-published healthy runtime release. It verifies the
 ordered operational usage ledger API, an exact full step detail, secret
@@ -22,6 +23,28 @@ fail() {
 
 info() {
   printf '[operational-usage-ledger-e2e] %s\n' "$*"
+}
+
+PAGE_SIZE="${CARBONET_USAGE_LEDGER_PAGE_SIZE:-200}"
+PAGE_FETCH_CONCURRENCY="${CARBONET_USAGE_LEDGER_PAGE_CONCURRENCY:-1}"
+
+assert_pagination_performance_mutations() {
+  local total=572 legacy_page_size=50 page_count legacy_page_count page active=0 max_active=0 covered=0 expected_count
+  [[ "$PAGE_SIZE" == "200" ]] || fail "page-size regression mutation survived"
+  [[ "$PAGE_FETCH_CONCURRENCY" == "1" ]] || fail "shared-cookie concurrency mutation survived"
+  page_count=$(( (total + PAGE_SIZE - 1) / PAGE_SIZE ))
+  legacy_page_count=$(( (total + legacy_page_size - 1) / legacy_page_size ))
+  [[ "$page_count" == "3" && "$legacy_page_count" == "12" ]] \
+    || fail "pagination request reduction contract mismatch"
+  for ((page=0; page<page_count; page+=1)); do
+    active=$((active+1)); (( active > max_active )) && max_active="$active"
+    expected_count=$(( total - page * PAGE_SIZE )); (( expected_count > PAGE_SIZE )) && expected_count="$PAGE_SIZE"
+    covered=$((covered+expected_count))
+    active=$((active-1))
+  done
+  [[ "$covered" == "$total" && "$max_active" == "1" && "$active" == "0" ]] \
+    || fail "sequential pagination coverage/concurrency mutation survived"
+  info "pagination self-test PASS total=${total} pageSize=${PAGE_SIZE} calls=${page_count} legacyCalls=${legacy_page_count} requestReduction=75% maxConcurrency=${max_active}"
 }
 
 assert_local_mutations() {
@@ -97,6 +120,7 @@ NODE
 
 if [[ "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then usage; exit 0; fi
 if [[ "${1:-}" == "--self-test" ]]; then assert_local_mutations; exit 0; fi
+if [[ "${1:-}" == "--self-test-pagination" ]]; then assert_pagination_performance_mutations; exit 0; fi
 
 ROOT="${1:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
 EXPECTED_COMMIT="${2:-$(git -C "$ROOT" rev-parse HEAD)}"
@@ -114,7 +138,6 @@ BASE_URL="${BASE_URL%/}"
 NAMESPACE="${CARBONET_K8S_NAMESPACE:-carbonet-prod}"
 DATABASE="${POSTGRES_DB:-carbonet}"
 DATABASE_USER="${POSTGRES_ADMIN_USER:-postgres}"
-PAGE_SIZE=50
 TMP_DIR="$(mktemp -d /tmp/operational-usage-ledger-e2e.XXXXXX)"
 COOKIE_JAR="$TMP_DIR/master.cookies"
 ORDINARY_COOKIE_JAR="$TMP_DIR/ordinary.cookies"
@@ -135,6 +158,10 @@ for command_name in curl jq node kubectl git awk sort uniq; do require_cmd "$com
 [[ "$EVIDENCE_MODE" != candidate || "$SOURCE_COMMIT" == "$EXPECTED_COMMIT" ]] \
   || fail "candidate source commit does not match expected runtime commit"
 [[ "$REVIEW_KEY" =~ ^[A-Za-z0-9._:-]+$ ]] || fail "generated review ownership key is unsafe"
+[[ "$PAGE_SIZE" =~ ^[1-9][0-9]*$ ]] && (( PAGE_SIZE <= 200 )) \
+  || fail "usage ledger page size must be an integer from 1 to 200"
+[[ "$PAGE_FETCH_CONCURRENCY" == "1" ]] \
+  || fail "usage ledger pagination must remain sequential for cookie and database snapshot safety"
 
 resolve_postgres_leader() {
   local pod recovery
@@ -385,6 +412,9 @@ jq -e --arg user "$CARBONET_QA_AUTH_EFFECTIVE_USER" '.authenticated==true and ((
 
 page_count=$(( (TOTAL_STEPS + PAGE_SIZE - 1) / PAGE_SIZE ))
 : > "$ORDER_FILE"; : > "$IDS_FILE"
+# This loop intentionally remains sequential: api_status reads and writes the
+# same authenticated cookie jar, and each complex page query needs a stable,
+# ordered validation boundary without a concurrent database burst.
 for ((page=0; page<page_count; page+=1)); do
   page_file="$TMP_DIR/page-${page}.json"
   status="$(api_status "$page_file" GET "/admin/api/system/actor-process/system-test-report?compact=true&page=${page}&size=${PAGE_SIZE}")"
@@ -417,7 +447,7 @@ awk -F '\t' '
 ' "$ORDER_FILE" || fail "global 5-key WORK_TYPE_PROCESS_STEP order regressed across pages"
 db_total_after="$(db_scalar "select count(*) from framework_process_definition p join framework_process_step s using(process_code)")"
 [[ "$db_total_after" == "$TOTAL_STEPS" ]] || fail "structural catalogue changed during pagination; retry after design writes settle"
-info "pagination PASS totalSteps=${TOTAL_STEPS} pages=${page_count} pageSize=${PAGE_SIZE} duplicates=0 orderRegressions=0"
+info "pagination PASS totalSteps=${TOTAL_STEPS} pages=${page_count} pageSize=${PAGE_SIZE} concurrency=${PAGE_FETCH_CONCURRENCY} duplicates=0 orderRegressions=0"
 
 selected="$(for ((page=0; page<page_count; page+=1)); do jq -r '.items[] | select((.screenCount // 0)>0) | [.processCode,.stepCode] | @tsv' "$TMP_DIR/page-${page}.json"; done | sed -n '1p')"
 IFS=$'\t' read -r SELECTED_PROCESS SELECTED_STEP <<< "$selected"

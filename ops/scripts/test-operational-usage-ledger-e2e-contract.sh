@@ -43,6 +43,9 @@ contains "$HARNESS" 'anonymous_api_status'
 contains "$HARNESS" '/admin/api/system/actor-process/dashboard/core'
 contains "$HARNESS" '/admin/api/system/actor-process/design-assets'
 contains "$HARNESS" 'compact=true&page=${page}&size=${PAGE_SIZE}'
+contains "$HARNESS" 'PAGE_SIZE="${CARBONET_USAGE_LEDGER_PAGE_SIZE:-200}"'
+contains "$HARNESS" 'PAGE_FETCH_CONCURRENCY="${CARBONET_USAGE_LEDGER_PAGE_CONCURRENCY:-1}"'
+contains "$HARNESS" '[[ "$PAGE_FETCH_CONCURRENCY" == "1" ]]'
 contains "$HARNESS" 'system-test-report/step-detail'
 contains "$HARNESS" 'reviewStatus:"APPROVED"'
 contains "$HARNESS" 'IDEMPOTENCY_KEY_REUSE_MISMATCH'
@@ -69,6 +72,44 @@ contains "$HARNESS" 'persistentFixtures=0'
 not_contains "$HARNESS" 'reviewStatus:"CHANGE_REQUESTED"'
 not_contains "$HARNESS" 'capabilityCount==6'
 not_contains "$HARNESS" 'set -x'
+
+pagination_performance_contract() {
+  local candidate="$1" pagination_body
+  grep -Fq 'PAGE_SIZE="${CARBONET_USAGE_LEDGER_PAGE_SIZE:-200}"' "$candidate" &&
+    grep -Fq 'PAGE_FETCH_CONCURRENCY="${CARBONET_USAGE_LEDGER_PAGE_CONCURRENCY:-1}"' "$candidate" &&
+    grep -Fq '[[ "$PAGE_FETCH_CONCURRENCY" == "1" ]]' "$candidate" &&
+    grep -Fq 'status="$(api_status "$page_file" GET "/admin/api/system/actor-process/system-test-report?compact=true&page=${page}&size=${PAGE_SIZE}")"' "$candidate" \
+    || return 1
+  pagination_body="$(sed -n '/^page_count=\$(( (TOTAL_STEPS/,/^done$/p' "$candidate")"
+  [[ "$pagination_body" == *'for ((page=0; page<page_count; page+=1)); do'* ]] || return 1
+  ! printf '%s\n' "$pagination_body" | grep -Eq '[[:space:]]&[[:space:]]*$'
+}
+
+pagination_self_test="$(env -u CARBONET_USAGE_LEDGER_PAGE_SIZE -u CARBONET_USAGE_LEDGER_PAGE_CONCURRENCY \
+  bash "$HARNESS" --self-test-pagination)"
+[[ "$pagination_self_test" == *'pageSize=200'* && "$pagination_self_test" == *'calls=3'* \
+   && "$pagination_self_test" == *'legacyCalls=12'* && "$pagination_self_test" == *'requestReduction=75%'* \
+   && "$pagination_self_test" == *'maxConcurrency=1'* ]] \
+  || fail "dynamic pagination performance self-test contract mismatch"
+pagination_performance_contract "$HARNESS" || fail "production pagination performance contract is incomplete"
+
+sed 's/CARBONET_USAGE_LEDGER_PAGE_SIZE:-200/CARBONET_USAGE_LEDGER_PAGE_SIZE:-50/' \
+  "$HARNESS" > "$TMP_DIR/page-size-regression-mutation.sh"
+if env -u CARBONET_USAGE_LEDGER_PAGE_SIZE -u CARBONET_USAGE_LEDGER_PAGE_CONCURRENCY \
+  bash "$TMP_DIR/page-size-regression-mutation.sh" --self-test-pagination >/dev/null 2>&1; then
+  fail "page-size regression mutation survived"
+fi
+sed 's/CARBONET_USAGE_LEDGER_PAGE_CONCURRENCY:-1/CARBONET_USAGE_LEDGER_PAGE_CONCURRENCY:-2/' \
+  "$HARNESS" > "$TMP_DIR/shared-cookie-concurrency-mutation.sh"
+if env -u CARBONET_USAGE_LEDGER_PAGE_SIZE -u CARBONET_USAGE_LEDGER_PAGE_CONCURRENCY \
+  bash "$TMP_DIR/shared-cookie-concurrency-mutation.sh" --self-test-pagination >/dev/null 2>&1; then
+  fail "shared-cookie concurrency mutation survived"
+fi
+sed '/status=.*api_status.*system-test-report?compact=true/ s/$/ \&/' \
+  "$HARNESS" > "$TMP_DIR/background-fetch-mutation.sh"
+if pagination_performance_contract "$TMP_DIR/background-fetch-mutation.sh"; then
+  fail "background shared-cookie fetch mutation survived"
+fi
 
 contains "$CONTROLLER" '@GetMapping("/system-test-report")'
 contains "$CONTROLLER" '@GetMapping("/system-test-report/step-detail")'
@@ -212,4 +253,4 @@ grep -Fq 'runtime identity marker bootstrapped from DB+K8s' "$DEPLOY" \
 ! sed -n '/^verify_operational_usage_ledger_current_runtime_identity() {/,/^}/p' "$DEPLOY" | grep -Fq '$DEPLOY_STATE_FILE' \
   || fail "runtime identity verifier references the overall applied marker"
 
-printf '[operational-usage-ledger-e2e-contract] PASS auth=allowed+anonymous2+denied7+logoutLeaderExact1 pagination=dynamic orderContract=5keys+stepCodeTieMutation detail=full redactionMutations=7 branchTruth=actors+dualRoutes review=create-reload-idempotent-mismatch409-cleanup pipeline=planner+frontend-pipeline+package+static+identity3+healthy-release-live pipelineRemovalMutations=4 browser=desktop+390 helpAnchors=5 forbiddenChangeRequest=1\n'
+printf '[operational-usage-ledger-e2e-contract] PASS auth=allowed+anonymous2+denied7+logoutLeaderExact1 pagination=dynamic+pageSize200+sequential1+requestReduction75pct orderContract=5keys+stepCodeTieMutation detail=full redactionMutations=7 branchTruth=actors+dualRoutes review=create-reload-idempotent-mismatch409-cleanup pipeline=planner+frontend-pipeline+package+static+identity3+healthy-release-live pipelineRemovalMutations=4 paginationMutations=3 browser=desktop+390 helpAnchors=5 forbiddenChangeRequest=1\n'
