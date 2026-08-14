@@ -19,6 +19,14 @@ done
   echo "[oidc-token] invalid identity or missing internal CA" >&2
   exit 2
 }
+OIDC_CONNECT_TIMEOUT_SECONDS="${OIDC_TOKEN_CONNECT_TIMEOUT_SECONDS:-5}"
+OIDC_HTTP_TIMEOUT_SECONDS="${OIDC_TOKEN_HTTP_TIMEOUT_SECONDS:-15}"
+[[ "$OIDC_CONNECT_TIMEOUT_SECONDS" =~ ^[1-5]$ \
+   && "$OIDC_HTTP_TIMEOUT_SECONDS" =~ ^([1-9]|1[0-5])$ ]] \
+  && ((OIDC_CONNECT_TIMEOUT_SECONDS <= OIDC_HTTP_TIMEOUT_SECONDS)) || {
+  echo '[oidc-token] invalid HTTP timeout bound' >&2
+  exit 2
+}
 
 mkdir -p "$WORK_ROOT"
 chmod 700 "$WORK_ROOT"
@@ -76,18 +84,37 @@ printf '%s' "$password" | USERNAME="$USERNAME" FORM_PATH="$form_path" node -e '
 chmod 0600 "$form_path"
 unset password BACKSTAGE_E2E_PASSWORD
 
-curl --cacert "$CA_CERT" -fsS \
+start_status="$(curl --cacert "$CA_CERT" --connect-timeout "$OIDC_CONNECT_TIMEOUT_SECONDS" \
+  --max-time "$OIDC_HTTP_TIMEOUT_SECONDS" -fsS \
   -D "$run_dir/start.headers" -o /dev/null -c "$run_dir/cookies" \
-  "$BACKSTAGE_URL/api/auth/oidc/start?env=production&origin=https%3A%2F%2Fbackstage.172.16.1.232.nip.io"
+  -w '%{http_code}' \
+  "$BACKSTAGE_URL/api/auth/oidc/start?env=production&origin=https%3A%2F%2Fbackstage.172.16.1.232.nip.io")" || {
+  start_status="${start_status:-000}"
+  echo "[oidc-token] Backstage OIDC start failed: HTTP $start_status" >&2
+  exit 3
+}
+[[ "$start_status" =~ ^30[2378]$ ]] || {
+  echo "[oidc-token] Backstage OIDC start returned unexpected HTTP $start_status" >&2
+  exit 3
+}
 auth_url="$(awk 'BEGIN{IGNORECASE=1}/^location:/{sub(/^location:[[:space:]]*/,"");gsub(/\r/,"");print}' \
   "$run_dir/start.headers")"
 [[ "$auth_url" == "$KEYCLOAK_URL/"* ]] || {
   echo "[oidc-token] Backstage did not redirect to Keycloak" >&2
   exit 3
 }
-curl --cacert "$CA_CERT" -fsS \
+login_page_status="$(curl --cacert "$CA_CERT" --connect-timeout "$OIDC_CONNECT_TIMEOUT_SECONDS" \
+  --max-time "$OIDC_HTTP_TIMEOUT_SECONDS" -fsS \
   -b "$run_dir/cookies" -c "$run_dir/cookies" \
-  "$auth_url" -o "$run_dir/login.html"
+  "$auth_url" -o "$run_dir/login.html" -w '%{http_code}')" || {
+  login_page_status="${login_page_status:-000}"
+  echo "[oidc-token] Keycloak login page failed: HTTP $login_page_status" >&2
+  exit 3
+}
+[[ "$login_page_status" == 200 ]] || {
+  echo "[oidc-token] Keycloak login page returned unexpected HTTP $login_page_status" >&2
+  exit 3
+}
 action="$(LOGIN_HTML="$run_dir/login.html" node -e '
   const fs = require("fs");
   const html = fs.readFileSync(process.env.LOGIN_HTML, "utf8");
@@ -95,11 +122,20 @@ action="$(LOGIN_HTML="$run_dir/login.html" node -e '
   if (!match) process.exit(1);
   process.stdout.write(match[1].replaceAll("&amp;", "&"));
 ')"
-curl --cacert "$CA_CERT" -fsS -L \
+callback_status="$(curl --cacert "$CA_CERT" --connect-timeout "$OIDC_CONNECT_TIMEOUT_SECONDS" \
+  --max-time "$OIDC_HTTP_TIMEOUT_SECONDS" -fsS -L \
   -b "$run_dir/cookies" -c "$run_dir/cookies" \
   -o "$run_dir/result.html" \
   -H 'content-type: application/x-www-form-urlencoded' \
-  --data-binary @"$form_path" "$action"
+  --data-binary @"$form_path" "$action" -w '%{http_code}')" || {
+  callback_status="${callback_status:-000}"
+  echo "[oidc-token] OIDC callback failed: HTTP $callback_status" >&2
+  exit 3
+}
+[[ "$callback_status" == 200 ]] || {
+  echo "[oidc-token] OIDC callback returned unexpected HTTP $callback_status" >&2
+  exit 3
+}
 
 RESULT_HTML="$run_dir/result.html" EXPECTED_USER="$USERNAME" node -e '
   const fs = require("fs");

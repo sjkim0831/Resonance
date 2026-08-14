@@ -5,6 +5,7 @@ root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 script="$root/ops/scripts/auto-deploy-main.sh"
 validation_groups="$root/ops/scripts/run-post-deploy-validation-groups.sh"
 browser_e2e="$root/ops/scripts/resonance-project-task-browser-e2e.mjs"
+oidc_token="$root/ops/scripts/resonance-backstage-oidc-token.sh"
 emission_service="$root/modules/resonance-common/carbonet-common-core/src/main/java/egovframework/com/feature/home/service/EmissionProjectRegistryService.java"
 page_advice="$root/modules/resonance-common/carbonet-common-core/src/main/java/egovframework/com/common/web/PageIsolationExceptionAdvice.java"
 static_page_advice="$root/modules/resonance-common/carbonet-common-core/src/main/java/egovframework/com/common/web/StaticPageIsolationExceptionAdvice.java"
@@ -114,8 +115,31 @@ assert "no identity contract change" in identity
 e2e_start = source.index("run_actor_process_role_e2e_if_required() {")
 e2e_end = source.index("sync_keycloak_actor_assignments_if_required() {", e2e_start)
 e2e = source[e2e_start:e2e_end]
+readiness_start = source.index("backstage_actor_process_readiness_status() {")
 wrapper_start = source.index("run_serialized_carbonet_actor_process_e2e_job() {")
+readiness = source[readiness_start:wrapper_start]
 wrapper = source[wrapper_start:e2e_start]
+assert '--connect-timeout 2 --max-time "$http_timeout_seconds"' in readiness
+assert 'RESONANCE_BACKSTAGE_SELF_HEAL_TIMEOUT_SECONDS:-30' in readiness
+assert 'RESONANCE_BACKSTAGE_SELF_HEAL_PRECHECK_ATTEMPTS:-3' in readiness
+assert 'RESONANCE_BACKSTAGE_SELF_HEAL_READINESS_ATTEMPTS:-5' in readiness
+assert 'RESONANCE_BACKSTAGE_SELF_HEAL_HTTP_TIMEOUT_SECONDS:-2' in readiness
+assert '((self_heal_budget_seconds < 60))' in readiness
+assert readiness.count('rollout restart "deployment/$deployment"') == 1
+assert 'rollout status "deployment/$deployment"' in readiness
+assert 'selfHealRestarts=0' in readiness
+assert 'selfHealRestarts=1' in readiness
+assert 'Backstage self-heal failed HTTP' in readiness
+assert 'ensure_backstage_actor_process_e2e_ready || return $?' in e2e
+assert e2e.index('ensure_backstage_actor_process_e2e_ready || return $?') < e2e.index('& actor_pid=$!')
+mutated_timeout = readiness.replace('RESONANCE_BACKSTAGE_SELF_HEAL_HTTP_TIMEOUT_SECONDS:-2', 'RESONANCE_BACKSTAGE_SELF_HEAL_HTTP_TIMEOUT_SECONDS:-0')
+assert mutated_timeout != readiness
+try:
+    assert 'RESONANCE_BACKSTAGE_SELF_HEAL_HTTP_TIMEOUT_SECONDS:-2' in mutated_timeout
+except AssertionError:
+    pass
+else:
+    raise AssertionError("Backstage HTTP timeout bound mutation survived")
 assert 'source "$ROOT_DIR/ops/scripts/runtime-qa-auth-common.sh"' in wrapper
 assert "carbonet_qa_auth_acquire_lock" in wrapper
 assert "trap carbonet_qa_auth_release_lock EXIT" in wrapper
@@ -147,6 +171,13 @@ def assert_all_jobs_serialized(block):
 assert_all_jobs_serialized(e2e)
 assert "run_serialized_carbonet_actor_process_e2e_job actor-role" not in e2e
 assert "run_serialized_carbonet_actor_process_e2e_job project-delivery" not in e2e
+mutated_preflight = e2e.replace('ensure_backstage_actor_process_e2e_ready || return $?', 'true # readiness bypassed', 1)
+try:
+    assert 'ensure_backstage_actor_process_e2e_ready || return $?' in mutated_preflight
+except AssertionError:
+    pass
+else:
+    raise AssertionError("Backstage readiness gate removal mutation survived")
 mutated = e2e.replace(
     "run_serialized_carbonet_actor_process_e2e_job project-task-browser",
     "run_unlocked_actor_process_e2e_job project-task-browser",
@@ -164,7 +195,7 @@ PY
 
 auth_test_tmp="$(mktemp -d /tmp/actor-process-auth-serialization.XXXXXX)"
 trap 'rm -rf "$auth_test_tmp"' EXIT
-python3 - "$script" "$auth_test_tmp/wrapper.sh" <<'PY'
+python3 - "$script" "$auth_test_tmp/wrapper.sh" "$auth_test_tmp/readiness.sh" <<'PY'
 from pathlib import Path
 import sys
 
@@ -172,10 +203,128 @@ source = Path(sys.argv[1]).read_text(encoding="utf-8")
 start = source.index("run_serialized_carbonet_actor_process_e2e_job() {")
 end = source.index("run_actor_process_role_e2e_if_required() {", start)
 Path(sys.argv[2]).write_text(source[start:end], encoding="utf-8")
+readiness_start = source.index("backstage_actor_process_readiness_status() {")
+Path(sys.argv[3]).write_text(source[readiness_start:start], encoding="utf-8")
 PY
 ROOT_DIR="$root"
 # shellcheck disable=SC1090
 source "$auth_test_tmp/wrapper.sh"
+# shellcheck disable=SC1090
+source "$auth_test_tmp/readiness.sh"
+
+export BACKSTAGE_READINESS_TEST_DIR="$auth_test_tmp/readiness"
+mkdir -p "$BACKSTAGE_READINESS_TEST_DIR"
+curl() {
+  local call_number status
+  call_number="$(( $(wc -l < "$BACKSTAGE_READINESS_TEST_DIR/curl.calls") + 1 ))"
+  status="$(sed -n "${call_number}p" "$BACKSTAGE_READINESS_TEST_DIR/statuses")"
+  [[ -n "$status" ]] || status="$(tail -1 "$BACKSTAGE_READINESS_TEST_DIR/statuses")"
+  printf '%s\n' "$call_number" >>"$BACKSTAGE_READINESS_TEST_DIR/curl.calls"
+  printf '%s' "$status"
+}
+kubectl() {
+  printf '%s\n' "$*" >>"$BACKSTAGE_READINESS_TEST_DIR/kubectl.calls"
+  if [[ "$*" == *' get deployment/resonance-backstage -o name' ]]; then
+    printf '%s\n' 'deployment.apps/resonance-backstage'
+  fi
+}
+export -f curl kubectl
+export RESONANCE_BACKSTAGE_SELF_HEAL_READINESS_ATTEMPTS=3
+export RESONANCE_BACKSTAGE_SELF_HEAL_RETRY_DELAY_SECONDS=0
+
+reset_backstage_readiness_case() {
+  local statuses="$1"
+  rm -rf "$BACKSTAGE_READINESS_TEST_DIR"
+  mkdir -p "$BACKSTAGE_READINESS_TEST_DIR"
+  printf '%s\n' "$statuses" >"$BACKSTAGE_READINESS_TEST_DIR/statuses"
+  : >"$BACKSTAGE_READINESS_TEST_DIR/curl.calls"
+  : >"$BACKSTAGE_READINESS_TEST_DIR/kubectl.calls"
+}
+
+reset_backstage_readiness_case 200
+ensure_backstage_actor_process_e2e_ready >"$auth_test_tmp/readiness-healthy.log"
+[[ "$(wc -l < "$BACKSTAGE_READINESS_TEST_DIR/curl.calls")" == 1 ]]
+[[ ! -s "$BACKSTAGE_READINESS_TEST_DIR/kubectl.calls" ]]
+
+reset_backstage_readiness_case $'503\n200'
+ensure_backstage_actor_process_e2e_ready >"$auth_test_tmp/readiness-transient.log" 2>&1
+[[ "$(wc -l < "$BACKSTAGE_READINESS_TEST_DIR/curl.calls")" == 2 ]]
+[[ ! -s "$BACKSTAGE_READINESS_TEST_DIR/kubectl.calls" ]]
+grep -q 'selfHealRestarts=0 precheckAttempts=2' "$auth_test_tmp/readiness-transient.log"
+
+reset_backstage_readiness_case $'503\n503\n503\n200'
+ensure_backstage_actor_process_e2e_ready >"$auth_test_tmp/readiness-recovered.log" 2>&1
+[[ "$(grep -c 'rollout restart deployment/resonance-backstage' "$BACKSTAGE_READINESS_TEST_DIR/kubectl.calls")" == 1 ]]
+grep -q 'selfHealRestarts=1 attempts=1' "$auth_test_tmp/readiness-recovered.log"
+
+reset_backstage_readiness_case $'503\n503\n503\n503\n503\n503\n503\n503'
+e2e_launches=0
+set +e
+ensure_backstage_actor_process_e2e_ready >"$auth_test_tmp/readiness-persistent.log" 2>&1
+persistent_status=$?
+if ((persistent_status == 0)); then
+  e2e_launches=$((e2e_launches + 1))
+fi
+set -e
+[[ "$persistent_status" != 0 && "$e2e_launches" == 0 ]]
+[[ "$(grep -c 'rollout restart deployment/resonance-backstage' "$BACKSTAGE_READINESS_TEST_DIR/kubectl.calls")" == 1 ]]
+grep -q 'Backstage self-heal failed HTTP 503 restarts=1 attempts=3' "$auth_test_tmp/readiness-persistent.log"
+reset_backstage_readiness_case 200
+set +e
+RESONANCE_BACKSTAGE_SELF_HEAL_HTTP_TIMEOUT_SECONDS=0 \
+  ensure_backstage_actor_process_e2e_ready >"$auth_test_tmp/readiness-invalid-bound.log" 2>&1
+invalid_bound_status=$?
+set -e
+[[ "$invalid_bound_status" == 2 ]]
+[[ ! -s "$BACKSTAGE_READINESS_TEST_DIR/curl.calls" && ! -s "$BACKSTAGE_READINESS_TEST_DIR/kubectl.calls" ]]
+grep -q 'invalid Backstage self-heal bound' "$auth_test_tmp/readiness-invalid-bound.log"
+unset -f curl kubectl reset_backstage_readiness_case
+echo 'BACKSTAGE_ACTOR_PROCESS_READINESS_SELF_HEAL_PASS healthyRestart=0 transient503Restart=0 persistentPrecheckRestart=1 recovered=200 persistentFailure=503 e2eLaunches=0 bounds=precheck3x2s+rollout30s+postcheck5x2s mutation=detected'
+
+for diagnostic in \
+  '[oidc-token] Backstage OIDC start failed: HTTP $start_status' \
+  '[oidc-token] Keycloak login page failed: HTTP $login_page_status' \
+  '[oidc-token] OIDC callback failed: HTTP $callback_status'; do
+  grep -Fq "$diagnostic" "$oidc_token"
+done
+grep -Fq 'OIDC_TOKEN_CONNECT_TIMEOUT_SECONDS:-5' "$oidc_token"
+grep -Fq 'OIDC_TOKEN_HTTP_TIMEOUT_SECONDS:-15' "$oidc_token"
+grep -Fq -- '--connect-timeout "$OIDC_CONNECT_TIMEOUT_SECONDS"' "$oidc_token"
+grep -Fq -- '--max-time "$OIDC_HTTP_TIMEOUT_SECONDS"' "$oidc_token"
+printf '%s\n' 'diagnostic-password-must-not-escape' >"$auth_test_tmp/oidc-password"
+printf '%s\n' 'test-ca' >"$auth_test_tmp/oidc-ca.crt"
+chmod 0600 "$auth_test_tmp/oidc-password"
+curl() {
+  printf '503'
+  return 22
+}
+export -f curl
+set +e
+BACKSTAGE_E2E_PASSWORD_FILE="$auth_test_tmp/oidc-password" \
+RESONANCE_INTERNAL_CA="$auth_test_tmp/oidc-ca.crt" \
+OIDC_TOKEN_WORK_ROOT="$auth_test_tmp/oidc-work" \
+  bash "$oidc_token" resonance-requester >"$auth_test_tmp/oidc.stdout" 2>"$auth_test_tmp/oidc.stderr"
+oidc_status=$?
+set -e
+unset -f curl
+[[ "$oidc_status" == 3 ]]
+grep -q '^\[oidc-token\] Backstage OIDC start failed: HTTP 503$' "$auth_test_tmp/oidc.stderr"
+if grep -R -Fq 'diagnostic-password-must-not-escape' "$auth_test_tmp/oidc.stdout" "$auth_test_tmp/oidc.stderr"; then
+  echo '[oidc-token-diagnostic] credential leaked to diagnostics' >&2
+  exit 1
+fi
+set +e
+OIDC_TOKEN_HTTP_TIMEOUT_SECONDS=0 \
+BACKSTAGE_E2E_PASSWORD_FILE="$auth_test_tmp/oidc-password" \
+RESONANCE_INTERNAL_CA="$auth_test_tmp/oidc-ca.crt" \
+OIDC_TOKEN_WORK_ROOT="$auth_test_tmp/oidc-work-invalid" \
+  bash "$oidc_token" resonance-requester >"$auth_test_tmp/oidc-invalid.stdout" 2>"$auth_test_tmp/oidc-invalid.stderr"
+oidc_invalid_status=$?
+set -e
+[[ "$oidc_invalid_status" == 2 ]]
+grep -q '^\[oidc-token\] invalid HTTP timeout bound$' "$auth_test_tmp/oidc-invalid.stderr"
+echo 'OIDC_TOKEN_STAGE_DIAGNOSTIC_PASS stage=start http=503 status=3 credentialOutput=0'
+
 export CARBONET_QA_AUTH_LOCK_FILE="$auth_test_tmp/canonical-auth.lock"
 export CARBONET_QA_AUTH_LOCK_TIMEOUT_SECONDS=10
 export AUTH_SERIALIZATION_ACTIVE="$auth_test_tmp/active"

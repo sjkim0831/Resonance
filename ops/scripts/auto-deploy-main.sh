@@ -2349,6 +2349,88 @@ run_backstage_identity_e2e_if_required() {
     bash ops/scripts/resonance-identity-admin-e2e.sh
 }
 
+backstage_actor_process_readiness_status() {
+  local backstage_url="${BACKSTAGE_URL:-https://backstage.172.16.1.232.nip.io}"
+  local ca_cert="${RESONANCE_INTERNAL_CA:-$HOME/.config/resonance/backstage-tls/ca.crt}"
+  local http_timeout_seconds="${RESONANCE_BACKSTAGE_SELF_HEAL_HTTP_TIMEOUT_SECONDS:-2}"
+  local status
+  status="$(curl --cacert "$ca_cert" --connect-timeout 2 --max-time "$http_timeout_seconds" \
+    -sS -o /dev/null -w '%{http_code}' \
+    "$backstage_url/.backstage/health/v1/readiness")" || status=000
+  printf '%s\n' "$status"
+}
+
+ensure_backstage_actor_process_e2e_ready() {
+  local namespace="${RESONANCE_BACKSTAGE_NAMESPACE:-resonance-ops}"
+  local deployment="${RESONANCE_BACKSTAGE_DEPLOYMENT:-resonance-backstage}"
+  local rollout_timeout_seconds="${RESONANCE_BACKSTAGE_SELF_HEAL_TIMEOUT_SECONDS:-30}"
+  local precheck_attempts="${RESONANCE_BACKSTAGE_SELF_HEAL_PRECHECK_ATTEMPTS:-3}"
+  local readiness_attempts="${RESONANCE_BACKSTAGE_SELF_HEAL_READINESS_ATTEMPTS:-5}"
+  local retry_delay_seconds="${RESONANCE_BACKSTAGE_SELF_HEAL_RETRY_DELAY_SECONDS:-1}"
+  local http_timeout_seconds="${RESONANCE_BACKSTAGE_SELF_HEAL_HTTP_TIMEOUT_SECONDS:-2}"
+  local final_status attempt observed_deployment self_heal_budget_seconds
+  [[ "$namespace" =~ ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$ \
+     && "$deployment" =~ ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$ ]] || {
+    echo '[auto-deploy] invalid Backstage self-heal target' >&2
+    return 2
+  }
+  [[ "$rollout_timeout_seconds" =~ ^[1-9][0-9]?$ \
+     && "$precheck_attempts" =~ ^[1-9]$ \
+     && "$readiness_attempts" =~ ^[1-9]$ \
+     && "$http_timeout_seconds" =~ ^[1-5]$ \
+     && "$retry_delay_seconds" =~ ^[0-5]$ ]] || {
+    echo '[auto-deploy] invalid Backstage self-heal bound' >&2
+    return 2
+  }
+  self_heal_budget_seconds=$((
+    rollout_timeout_seconds
+    + (precheck_attempts + readiness_attempts) * http_timeout_seconds
+    + (precheck_attempts + readiness_attempts - 2) * retry_delay_seconds
+  ))
+  ((self_heal_budget_seconds < 60)) || {
+    echo "[auto-deploy] Backstage self-heal budget exceeds 59s: ${self_heal_budget_seconds}s" >&2
+    return 2
+  }
+
+  for attempt in $(seq 1 "$precheck_attempts"); do
+    final_status="$(backstage_actor_process_readiness_status)"
+    if [[ "$final_status" == 200 ]]; then
+      echo "[auto-deploy] Backstage actor/process readiness PASS selfHealRestarts=0 precheckAttempts=$attempt"
+      return 0
+    fi
+    ((attempt == precheck_attempts)) || sleep "$retry_delay_seconds"
+  done
+
+  echo "[auto-deploy] Backstage actor/process readiness remained HTTP $final_status after $precheck_attempts checks; starting one bounded self-heal restart" >&2
+  observed_deployment="$(kubectl -n "$namespace" get "deployment/$deployment" -o name)" || {
+    echo '[auto-deploy] Backstage self-heal target lookup failed' >&2
+    return 1
+  }
+  [[ "$observed_deployment" == "deployment.apps/$deployment" ]] || {
+    echo "[auto-deploy] Backstage self-heal target mismatch: $observed_deployment" >&2
+    return 1
+  }
+  kubectl -n "$namespace" rollout restart "deployment/$deployment" >/dev/null || {
+    echo '[auto-deploy] Backstage self-heal restart failed' >&2
+    return 1
+  }
+  kubectl -n "$namespace" rollout status "deployment/$deployment" \
+    --timeout="${rollout_timeout_seconds}s" >/dev/null || {
+    echo "[auto-deploy] Backstage self-heal rollout failed timeout=${rollout_timeout_seconds}s" >&2
+    return 1
+  }
+  for attempt in $(seq 1 "$readiness_attempts"); do
+    final_status="$(backstage_actor_process_readiness_status)"
+    if [[ "$final_status" == 200 ]]; then
+      echo "[auto-deploy] Backstage actor/process readiness PASS selfHealRestarts=1 attempts=$attempt"
+      return 0
+    fi
+    ((attempt == readiness_attempts)) || sleep "$retry_delay_seconds"
+  done
+  echo "[auto-deploy] Backstage self-heal failed HTTP $final_status restarts=1 attempts=$readiness_attempts" >&2
+  return 1
+}
+
 run_serialized_carbonet_actor_process_e2e_job() {
   local job_name="$1"
   shift
@@ -2413,6 +2495,11 @@ run_actor_process_role_e2e_if_required() {
   local parallel_log_dir="$ROOT_DIR/var/logs/actor-process-parallel-${target_commit:0:10}"
   local actor_pid delivery_pid browser_pid lifecycle_pid
   local actor_status delivery_status browser_status lifecycle_status
+
+  # The OIDC-dependent jobs require a Ready Backstage backend. One bounded
+  # rollout restart repairs the observed stuck-but-live state; a persistent
+  # failure stops before any actor/process E2E is launched.
+  ensure_backstage_actor_process_e2e_ready || return $?
   rm -rf "$parallel_log_dir"
   mkdir -p "$parallel_log_dir"
 
