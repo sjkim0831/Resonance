@@ -560,7 +560,12 @@ function requireSupportContract(envelope, step) {
     && process.processCode === processCode
     && process.stepCode === step.stepCode
     && permission.actorCode === step.actorCode;
-  const completeLanes = Array.isArray(help.items) && help.items.length > 0
+  const helpAnchorSelector = /^(?:#[A-Za-z][\w:.-]*|\[data-help-id=(?:"[^"\\\r\n]+"|'[^'\\\r\n]+')\])$/;
+  const completeLanes = String(help.title || "").trim() !== ""
+    && String(help.summary || "").trim() !== ""
+    && Array.isArray(help.items) && help.items.length > 0
+    && help.items.every((item) => String(item?.id || "").trim() && String(item?.title || "").trim() && String(item?.body || "").trim())
+    && help.items.every((item) => !String(item?.anchorSelector || "").trim() || helpAnchorSelector.test(String(item.anchorSelector).trim()))
     && Array.isArray(workGuide.steps) && workGuide.steps.length > 0
     && workGuide.processCode === processCode && workGuide.stepCode === step.stepCode
     && workGuide.actorCode === step.actorCode
@@ -590,6 +595,16 @@ function requireSupportContract(envelope, step) {
     contractHash,
     versionId,
     requiredScenarioCount: requiredScenarios.length,
+    help: {
+      title: String(help.title),
+      summary: String(help.summary),
+      itemCount: help.items.length,
+      items: help.items.map((item) => ({
+        title: String(item.title),
+        body: String(item.body),
+        anchorSelector: String(item.anchorSelector || ""),
+      })),
+    },
     lanes: ["help", "workGuide", "fullWorkflow", "qa", "designCard", "nextHandoff"],
   };
 }
@@ -615,10 +630,11 @@ async function assertSupportDom(page, step, supportContract) {
   await requireExactAttribute(supportRoot, "data-process-code", processCode, "process");
   await requireExactAttribute(supportRoot, "data-step-code", step.stepCode, "step");
   await requireExactAttribute(supportRoot, "data-actor-code", step.actorCode, "actor");
+  await requireExactAttribute(supportRoot, "data-audience", supportContract.audience, "audience");
   await requireExactAttribute(supportRoot, "data-required-scenario-count", String(supportContract.requiredScenarioCount), "required scenarios");
 
   const cards = supportRoot.locator('article[data-common-component="COMMON_CONTENT_CARD"]');
-  const helpButton = page.locator("button.help-fab").filter({ hasText: /^도움말$/ });
+  const helpButton = supportRoot.locator('button[data-versioned-support-help]');
   const workGuideCard = cards.filter({ has: page.getByRole("heading", { name: "업무 길잡이", exact: true }) });
   const qaCard = cards.filter({ has: page.getByRole("heading", { name: "QA 검증", exact: true }) });
   const designCard = cards.filter({ has: page.getByRole("heading", { name: "화면 설계 요약", exact: true }) });
@@ -626,6 +642,44 @@ async function assertSupportDom(page, step, supportContract) {
   const processQaCard = page.locator('[data-process-qa-card]');
 
   await requireVisible(helpButton, "도움말");
+
+  if (await helpButton.count() !== 1 || await page.locator('button[data-versioned-support-help]').count() !== 1) {
+    throw new Error("versioned support help trigger must be unique and scoped to support root");
+  }
+  await helpButton.click();
+  const helpDialog = page.locator('[role="dialog"][data-versioned-support-help-dialog]');
+  await requireVisible(helpDialog, "도움말 dialog");
+  if (await helpDialog.count() !== 1) throw new Error("versioned support help dialog must be unique");
+  await requireExactAttribute(helpDialog, "data-contract-hash", supportContract.contractHash, "help hash");
+  await requireExactAttribute(helpDialog, "data-version-id", String(supportContract.versionId), "help version");
+  await requireExactAttribute(helpDialog, "data-process-code", processCode, "help process");
+  await requireExactAttribute(helpDialog, "data-step-code", step.stepCode, "help step");
+  await requireExactAttribute(helpDialog, "data-actor-code", step.actorCode, "help actor");
+  await requireExactAttribute(helpDialog, "data-audience", supportContract.audience, "help audience");
+  await requireExactAttribute(helpDialog, "data-support-source", "DB_VERSIONED_CONTRACT", "help source");
+  await requireExactAttribute(helpDialog, "data-screen-classification", "EXECUTABLE", "help classification");
+  await requireExactAttribute(helpDialog, "data-screen-access-restricted", "false", "help unrestricted access");
+  await requireExactAttribute(helpDialog, "data-help-title", supportContract.help.title, "help title");
+  await requireExactAttribute(helpDialog, "data-help-summary", supportContract.help.summary, "help summary");
+  await requireExactAttribute(helpDialog, "data-help-item-count", String(supportContract.help.itemCount), "help item count");
+  await requireVisible(helpDialog.getByRole("heading", { name: supportContract.help.title, exact: true }), "versioned help title");
+  await requireVisible(helpDialog.getByText(supportContract.help.summary, { exact: true }), "versioned help summary");
+  for (const [helpIndex, helpItem] of supportContract.help.items.entries()) {
+    await requireVisible(helpDialog.getByRole("heading", { name: helpItem.title, exact: true }), `versioned help item ${helpIndex + 1} title`);
+    await requireVisible(helpDialog.getByText(helpItem.body, { exact: true }), `versioned help item ${helpIndex + 1} body`);
+    if (helpIndex < supportContract.help.items.length - 1) {
+      const nextHelpItem = helpDialog.getByRole("button", { name: "다음", exact: true });
+      if (await nextHelpItem.isDisabled()) throw new Error(`versioned help next disabled before item ${helpIndex + 2}`);
+      await nextHelpItem.click();
+    }
+  }
+  const helpWorkContext = helpDialog.locator('[data-help-work-context][data-screen-classification="EXECUTABLE"]');
+  await requireVisible(helpWorkContext, "도움말 current workflow");
+  if (await helpWorkContext.getAttribute("data-screen-access-restricted") === "true") {
+    throw new Error(`help workflow context is access restricted ${step.stepCode}`);
+  }
+  await helpDialog.getByRole("button", { name: "닫기", exact: true }).click();
+  await helpDialog.waitFor({ state: "hidden", timeout: 8_000 });
   await requireVisible(workGuideCard, "업무 길잡이");
   await requireVisible(workGuideCard.locator('[data-common-component="COMMON_STEP_FLOW"]'), "업무 길잡이 step flow");
   await requireVisible(qaCard, "QA 검증");
@@ -634,17 +688,6 @@ async function assertSupportDom(page, step, supportContract) {
   await requireVisible(taskPanel, "다음 업무 panel");
   await requireVisible(processQaCard, "QA 업무 panel");
   await requireVisible(processQaCard.getByRole("button", { name: "QA 업무", exact: true }), "QA 업무 trigger");
-
-  await helpButton.click();
-  const helpDialog = page.getByRole("dialog").filter({ has: page.locator("[data-help-work-context]") });
-  await requireVisible(helpDialog, "도움말 dialog");
-  const helpWorkContext = helpDialog.locator('[data-help-work-context][data-screen-classification="EXECUTABLE"]');
-  await requireVisible(helpWorkContext, "도움말 current workflow");
-  if (await helpWorkContext.getAttribute("data-screen-access-restricted") === "true") {
-    throw new Error(`help workflow context is access restricted ${step.stepCode}`);
-  }
-  await helpDialog.getByRole("button", { name: "닫기", exact: true }).click();
-  await helpDialog.waitFor({ state: "hidden", timeout: 8_000 });
 
   await processQaCard.getByRole("button", { name: "QA 업무", exact: true }).click();
   await page.waitForFunction(() => document.querySelector('[data-process-qa-card]')?.getAttribute("data-utility-panel-state") === "open", null, { timeout: 8_000 });
@@ -829,11 +872,20 @@ async function executeRelay() {
       assertRelayActive(`${step.stepCode} ${viewport.name} visual verification`);
       const uiContext = await browser.newContext({ storageState: await actorApi.storageState(), ignoreHTTPSErrors: true, viewport });
       browserContexts.add(uiContext);
+      let page = null;
+      const runtimeErrors = [];
+      const consoleErrors = [];
+      const failedRequests = [];
+      let homeFetchCount = 0;
+      const route = `/work/execution?${new URLSearchParams({ tenantId, projectId, processCode, stepCode: step.stepCode, guide: "1" })}`;
+      let uiFailure = null;
+      const uiDiagnostic = (reason) => new Error(`work UI diagnostic ${viewport.name} ${step.stepCode}`
+        + ` url=${safeError(page?.url() || `${baseUrl}${route}`)}`
+        + ` pageerror=${runtimeErrors.join(" | ")} console=${consoleErrors.join(" | ")}`
+        + ` requestfailed=${failedRequests.join(" | ")} homeFetchCount=${homeFetchCount}`
+        + ` cause=${safeError(reason)}`);
       try {
-        const page = await uiContext.newPage();
-        const runtimeErrors = [];
-        const consoleErrors = [];
-        const failedRequests = [];
+        page = await uiContext.newPage();
         page.on("pageerror", (error) => runtimeErrors.push(safeError(error)));
         page.on("console", (message) => {
           if (message.type() === "error") consoleErrors.push(safeError(message.text()));
@@ -842,7 +894,12 @@ async function executeRelay() {
           const failedUrl = new URL(failedRequest.url());
           failedRequests.push(`${failedRequest.method()} ${failedUrl.pathname} ${safeError(failedRequest.failure()?.errorText)}`);
         });
-        const route = `/work/execution?${new URLSearchParams({ tenantId, projectId, processCode, stepCode: step.stepCode, guide: "1" })}`;
+        page.on("request", (candidateRequest) => {
+          const candidateUrl = new URL(candidateRequest.url());
+          if (candidateRequest.method() === "GET" && ["/api/home", "/en/api/home"].includes(candidateUrl.pathname)) {
+            homeFetchCount += 1;
+          }
+        });
         const pageContractPromise = page.waitForResponse((candidate) => {
           const candidateUrl = new URL(candidate.url());
           return candidate.request().method() === "GET"
@@ -872,6 +929,9 @@ async function executeRelay() {
           hasRuntimeError: document.body.innerText.includes("페이지 처리 중 오류") || document.body.innerText.includes("AUTHENTICATION_REQUIRED"),
         }), step.stepCode);
         const screenshotName = `${String(index + 1).padStart(2, "0")}-${step.stepCode}-${viewport.name}.png`;
+        if (homeFetchCount !== 1) {
+          throw new Error(`global home fetch count must equal one before screenshot actual=${homeFetchCount}`);
+        }
         const screenshotPath = path.join(evidenceDirectory, screenshotName);
         if (existsSync(screenshotPath)) throw new Error(`immutable screenshot path already exists ${screenshotName}`);
         await page.screenshot({ path: screenshotPath, fullPage: true, animations: "disabled" });
@@ -902,11 +962,20 @@ async function executeRelay() {
           consoleErrorCount: consoleErrors.length,
           failedRequestCount: failedRequests.length,
           screenshotPath: relativeScreenshotPath,
+          homeFetchCount,
           ok: true,
         });
+      } catch (reason) {
+        uiFailure = uiDiagnostic(reason);
+        throw uiFailure;
       } finally {
-        await uiContext.close();
-        browserContexts.delete(uiContext);
+        try {
+          await uiContext.close();
+        } catch (closeReason) {
+          if (!uiFailure) throw uiDiagnostic(closeReason);
+        } finally {
+          browserContexts.delete(uiContext);
+        }
       }
     }
 

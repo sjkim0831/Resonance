@@ -77,7 +77,9 @@ function violations(candidate) {
       && reset.indexOf('action: "DELETE"') > reset.indexOf('action: "RESET"')
       && reset.includes("deletedExecutions) === 1")],
     ["full-residue-zero", cleanup.includes("residue.executionCount !== 0 || residue.eventCount !== 0 || residue.draftCount !== 0")],
-    ["help-lane-dom", candidate.includes('page.locator("button.help-fab").filter({ hasText: /^도움말$/ })')],
+    ["help-lane-dom", candidate.includes("const helpButton = supportRoot.locator('button[data-versioned-support-help]')")
+      && candidate.includes("page.locator('button[data-versioned-support-help]').count() !== 1")
+      && candidate.includes("versioned support help trigger must be unique and scoped to support root")],
     ["work-guide-lane-dom", candidate.includes('name: "업무 길잡이", exact: true')
       && candidate.includes('data-common-component="COMMON_STEP_FLOW"')],
     ["full-workflow-lane-dom", candidate.includes("data-task-quest-panel")
@@ -128,6 +130,11 @@ function violations(candidate) {
       && candidate.includes('"data-process-code", processCode')
       && candidate.includes('"data-step-code", step.stepCode')
       && candidate.includes('"data-actor-code", step.actorCode')
+      && candidate.includes('requireExactAttribute(supportRoot, "data-contract-hash", supportContract.contractHash')
+      && candidate.includes('requireExactAttribute(supportRoot, "data-version-id", String(supportContract.versionId)')
+      && candidate.includes('requireExactAttribute(supportRoot, "data-process-code", processCode')
+      && candidate.includes('requireExactAttribute(supportRoot, "data-step-code", step.stepCode')
+      && candidate.includes('requireExactAttribute(supportRoot, "data-actor-code", step.actorCode')
       && candidate.includes('"data-required-scenario-count", String(supportContract.requiredScenarioCount)')
       && candidate.includes("assertSupportDom(page, step, supportContract)")
       && candidate.includes("supportContractVersionId: supportContract.versionId")
@@ -208,7 +215,7 @@ mutate("reset removal", 'action: "RESET"', 'action: "KEEP"', "reset-then-delete"
 mutate("execution residue weakening", "residue.executionCount !== 0", "residue.executionCount < 0", "full-residue-zero");
 
 const laneMutations = [
-  ["help lane removal", 'page.locator("button.help-fab").filter({ hasText: /^도움말$/ })', 'page.locator("button.missing-help")', "help-lane-dom"],
+  ["help lane removal", "const helpButton = supportRoot.locator('button[data-versioned-support-help]')", "const helpButton = page.locator('button.help-fab')", "help-lane-dom"],
   ["work-guide lane removal", 'data-common-component="COMMON_STEP_FLOW"', 'data-common-component="REMOVED_STEP_FLOW"', "work-guide-lane-dom"],
   ["full-workflow lane removal", 'name: "전체 업무 보기", exact: true', 'name: "없는 전체 업무", exact: true', "full-workflow-lane-dom"],
   ["QA lane removal", 'name: "QA 검증", exact: true', 'name: "없는 QA", exact: true', "qa-lane-dom"],

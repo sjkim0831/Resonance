@@ -9,10 +9,19 @@ type HelpOverlayProps = {
   pageId: string;
   helpContent: PageHelpContent;
   workContext?: ScreenWorkContext | null;
+  versionedBinding?: {
+    actorCode: string;
+    audience: "USER";
+    contractHash: string;
+    processCode: string;
+    source: "DB_VERSIONED_CONTRACT";
+    stepCode: string;
+    versionId: number;
+  } | null;
   onClose: () => void;
 };
 
-export function HelpOverlay({ open, pageId, helpContent, workContext, onClose }: HelpOverlayProps) {
+export function HelpOverlay({ open, pageId, helpContent, workContext, versionedBinding = null, onClose }: HelpOverlayProps) {
   const [stepIndex, setStepIndex] = useState(0);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const dragStateRef = useRef<{ pointerId: number; startX: number; startY: number; baseX: number; baseY: number } | null>(null);
@@ -51,7 +60,12 @@ export function HelpOverlay({ open, pageId, helpContent, workContext, onClose }:
     if (!open || !activeItem?.anchorSelector) {
       return;
     }
-    const element = document.querySelector(activeItem.anchorSelector);
+    let element: Element | null = null;
+    try {
+      element = document.querySelector(activeItem.anchorSelector);
+    } catch {
+      return;
+    }
     if (!(element instanceof HTMLElement)) {
       return;
     }
@@ -125,7 +139,25 @@ export function HelpOverlay({ open, pageId, helpContent, workContext, onClose }:
   const overlay = (
     <>
       <div className="help-overlay-backdrop" onClick={onClose} />
-      <div className={placementClass} role="dialog" aria-modal="true" aria-labelledby="help-overlay-title">
+      <div
+        aria-labelledby="help-overlay-title"
+        aria-modal="true"
+        className={placementClass}
+        data-actor-code={versionedBinding?.actorCode}
+        data-audience={versionedBinding?.audience}
+        data-contract-hash={versionedBinding?.contractHash}
+        data-help-item-count={versionedBinding ? String(helpContent.items.length) : undefined}
+        data-help-summary={versionedBinding ? helpContent.summary : undefined}
+        data-help-title={versionedBinding ? helpContent.title : undefined}
+        data-process-code={versionedBinding?.processCode}
+        data-screen-access-restricted={versionedBinding ? "false" : undefined}
+        data-screen-classification={versionedBinding ? "EXECUTABLE" : undefined}
+        data-step-code={versionedBinding?.stepCode}
+        data-support-source={versionedBinding?.source}
+        data-version-id={versionedBinding ? String(versionedBinding.versionId) : undefined}
+        data-versioned-support-help-dialog={versionedBinding ? "" : undefined}
+        role="dialog"
+      >
         <div className="help-overlay-panel" style={{ transform: `translate(${dragOffset.x}px, ${dragOffset.y}px)` }}>
           <div
             className="help-overlay-header help-overlay-drag-handle"

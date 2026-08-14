@@ -177,6 +177,7 @@ function GeneratedContent({ screen, runtimeWarning = "" }: { screen: GeneratedSc
       <section className="krds-component rounded-xl border bg-white"><h2 className="gov-text-heading-sm font-black text-[#052b57]">{en ? "Complete step" : "단계 완료"}</h2><p className="gov-text-body-sm mt-2 text-slate-600">{en ? "Required fields and a saved draft are validated before transition." : "필수 항목과 임시저장을 검증한 뒤 다음 상태로 전환합니다."}</p><div className="mt-4 grid gap-2">{(actions.length ? actions : [{code:commandCode,label:commandCode}]).slice(0,1).map(action=><button className="krds-control rounded-lg bg-[#246beb] font-black text-white disabled:opacity-50" disabled={busy||draftStatus!=="DRAFT"} key={action.code} onClick={()=>void execute(commandCode)} type="button">{en ? "Complete and continue" : `${action.label} 완료`}</button>)}</div></section>
       {Object.keys(support).length > 0 && <ExecutableScreenSupportCards
         actorCode={screen.actorCode}
+        audience={screen.audience}
         className="space-y-5"
         contractHash={text(record(spec.runtimeContract).contractHash) || screen.designHash || "static"}
         en={en}

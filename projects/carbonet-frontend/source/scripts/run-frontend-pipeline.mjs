@@ -84,6 +84,7 @@ if (process.argv.includes("--build")) {
     runAsync(process.execPath, ["scripts/verify-screen-work-context-integration.mjs"]),
     runAsync(process.execPath, ["scripts/verify-operational-usage-ledger.mjs"]),
     runAsync(process.execPath, [path.join(repositoryRoot, "ops/tests/test-work-execution-versioned-support-ui.mjs")]),
+    runAsync(process.execPath, [path.join(repositoryRoot, "ops/tests/test-versioned-support-help-integration.mjs")]),
     runAsync(process.execPath, [path.join(repositoryRoot, "ops/tests/test-work-execution-route-ownership.mjs")]),
     runAsync(process.execPath, [path.join(repositoryRoot, "ops/tests/test-taskquest-session-gate.mjs")]),
     runAsync(process.execPath, [path.join(repositoryRoot, "ops/tests/test-global-user-gnb-home-fetch-stability.mjs")]),

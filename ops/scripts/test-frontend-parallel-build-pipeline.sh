@@ -15,6 +15,7 @@ grep -Fq 'generateAsync("page-completeness-inventory"' "$pipeline"
 grep -Fq 'runAsync(process.execPath, ["scripts/check-customer-journey-governance.mjs"])' "$pipeline"
 grep -Fq 'runAsync(bundlerCommand, bundlerArgs)' "$pipeline"
 grep -Fq 'ops/tests/test-work-execution-versioned-support-ui.mjs' "$pipeline"
+grep -Fq 'ops/tests/test-versioned-support-help-integration.mjs' "$pipeline"
 grep -Fq 'ops/tests/test-taskquest-session-gate.mjs' "$pipeline"
 grep -Fq 'ops/tests/test-global-user-gnb-home-fetch-stability.mjs' "$pipeline"
 
