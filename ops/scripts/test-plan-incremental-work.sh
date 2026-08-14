@@ -115,10 +115,27 @@ eval "$(bash "$PLANNER" "$helper_after_promoted_runtime" "$build_deploy_engine" 
 [[ "$PLAN_TESTS" == *"automation:shell-syntax"* ]]
 [[ "$PLAN_TESTS" == *"runtime:postdeploy-candidate-evidence"* ]]
 
+# Changing the source-hash algorithm makes the previous build marker
+# incomparable. Bootstrap that one release with a real frontend build, while
+# keeping unrelated backend/database work disabled.
+printf '#!/usr/bin/env bash\n' > ops/scripts/resonance-frontend-overlay-guard.sh
+git add . && git commit -qm frontend-overlay-source-hash-contract
+overlay_source_hash_contract="$(git rev-parse HEAD)"
+eval "$(bash "$PLANNER" "$build_deploy_engine" "$overlay_source_hash_contract" --format env)"
+[[ "$PLAN_RUNTIME_REQUIRED" == true ]]
+[[ "$PLAN_FRONTEND_REQUIRED" == true ]]
+[[ "$PLAN_BACKEND_REQUIRED" == false ]]
+[[ "$PLAN_DATABASE_REQUIRED" == false ]]
+[[ "$PLAN_INFRASTRUCTURE_REQUIRED" == true ]]
+[[ "$PLAN_CATALOG_ONLY" == false ]]
+[[ "$PLAN_TESTS" == *"frontend:build"* ]]
+[[ "$PLAN_TESTS" == *"automation:shell-syntax"* ]]
+[[ "$PLAN_REASONS" == *"frontend-overlay-source-hash-contract"* ]]
+
 printf '#!/usr/bin/env bash\n' > ops/tests/runtime-contract-e2e.sh
 git add . && git commit -qm ops-contract-test
 ops_contract_test="$(git rev-parse HEAD)"
-eval "$(bash "$PLANNER" "$build_deploy_engine" "$ops_contract_test" --format env)"
+eval "$(bash "$PLANNER" "$overlay_source_hash_contract" "$ops_contract_test" --format env)"
 [[ "$PLAN_RUNTIME_REQUIRED" == false ]]
 [[ "$PLAN_FRONTEND_REQUIRED" == false ]]
 [[ "$PLAN_BACKEND_REQUIRED" == false ]]
@@ -274,4 +291,22 @@ if assert_leader_contract_caller "$TMP_DIR/usage-ledger-without-leader-caller.sh
   fail 'logout leader-contract caller removal mutation survived'
 fi
 
-echo "[incremental-plan] PASS source changes build selectively while policy and generated metadata remain no-build usageLedgerAuthPaths=2 removalMutations=3"
+mkdir -p "$TMP_DIR/failing-git-bin"
+REAL_GIT="$(command -v git)"
+cat > "$TMP_DIR/failing-git-bin/git" <<EOF
+#!/usr/bin/env bash
+if [[ "\${1:-}" == diff ]]; then
+  exit 42
+fi
+exec "$REAL_GIT" "\$@"
+EOF
+chmod 755 "$TMP_DIR/failing-git-bin/git"
+set +e
+PATH="$TMP_DIR/failing-git-bin:$PATH" \
+  bash "$PLANNER" "$base" "$docs" --format env >/dev/null 2>&1
+git_inventory_status=$?
+set -e
+[[ "$git_inventory_status" == 2 ]] \
+  || fail "Git inventory failure did not fail closed: $git_inventory_status"
+
+echo "[incremental-plan] PASS source changes build selectively while policy and generated metadata remain no-build usageLedgerAuthPaths=2 removalMutations=3 inventoryFailureMutants=1"

@@ -7,7 +7,7 @@ OVERLAY_DIR="${OVERLAY_DIR:-$ROOT_DIR/projects/carbonet-frontend/src/main/resour
 GUARD_SCRIPT="${GUARD_SCRIPT:-$ROOT_DIR/ops/scripts/resonance-frontend-overlay-guard.sh}"
 STATUS_DIR="${STATUS_DIR:-$ROOT_DIR/var/run}"
 STATUS_FILE="${STATUS_FILE:-$STATUS_DIR/frontend-screen-apply-status.json}"
-LOCK_FILE="${LOCK_FILE:-$STATUS_DIR/frontend-screen-apply.lock}"
+LOCK_FILE="${CARBONET_FRONTEND_OVERLAY_LOCK_FILE:-/opt/resonance-data/deploy/carbonet-frontend-overlay.lock}"
 NAMESPACE="${NAMESPACE:-carbonet-prod}"
 DEPLOYMENT="${DEPLOYMENT:-carbonet-runtime}"
 BASE_URL="${BASE_URL:-http://127.0.0.1}"
@@ -16,6 +16,7 @@ SKIP_FRONTEND_BUILD="${SKIP_FRONTEND_BUILD:-false}"
 FRONTEND_TYPECHECK_MODE="${FRONTEND_TYPECHECK_MODE:-project}"
 FRONTEND_BUNDLER="${FRONTEND_BUNDLER:-rolldown}"
 UPDATE_GIT_METADATA="${UPDATE_GIT_METADATA:-true}"
+FRONTEND_EXPECTED_OVERLAY_PROVENANCE_SHA256=""
 SKIP_OVERLAY_BACKUP="${SKIP_OVERLAY_BACKUP:-false}"
 DEFER_REACT_MOUNT_VERIFY="${DEFER_REACT_MOUNT_VERIFY:-false}"
 SHARED_FRONTEND_NODE_MODULES="${SHARED_FRONTEND_NODE_MODULES:-/opt/Resonance/projects/carbonet-frontend/source/node_modules}"
@@ -55,12 +56,14 @@ if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
   exit 0
 fi
 
-mkdir -p "$STATUS_DIR"
+mkdir -p "$STATUS_DIR" "$(dirname "$LOCK_FILE")"
 exec 9>"$LOCK_FILE"
 if ! flock -n 9; then
   echo "[screen-overlay-apply] another frontend screen apply is running: $LOCK_FILE" >&2
   exit 75
 fi
+export CARBONET_FRONTEND_OVERLAY_LOCK_FD=9
+export CARBONET_FRONTEND_OVERLAY_LOCK_FILE="$LOCK_FILE"
 
 started_at="$(date +%s)"
 started_iso="$(date -Is)"
@@ -208,6 +211,19 @@ if [[ "$SKIP_FRONTEND_BUILD" != "true" ]]; then
     fi
   fi
   node "$ROOT_DIR/ops/scripts/verify-react-asset-closure.mjs" "$staging_dir"
+  FRONTEND_EXPECTED_OVERLAY_PROVENANCE_SHA256="$(
+    OVERLAY_DIR="$staging_dir" SOURCE_DIR="$SOURCE_DIR" \
+      bash "$GUARD_SCRIPT" print-overlay-provenance
+  )" || {
+    echo "[screen-overlay-apply] staging overlay provenance failed" >&2
+    rm -rf "$staging_dir"
+    exit 1
+  }
+  [[ "$FRONTEND_EXPECTED_OVERLAY_PROVENANCE_SHA256" =~ ^[0-9a-f]{64}$ ]] || {
+    echo "[screen-overlay-apply] staging overlay provenance is malformed" >&2
+    rm -rf "$staging_dir"
+    exit 1
+  }
   # Hashed assets are immutable. Copy only hashes not already present instead
   # of rewriting hundreds of unchanged files on the shared overlay filesystem.
   # Non-asset metadata remains replaceable and index.html is still promoted
@@ -233,8 +249,13 @@ else
   echo "[screen-overlay-apply] frontend build skipped by SKIP_FRONTEND_BUILD=true"
 fi
 
-echo "[screen-overlay-apply] write marker"
-bash "$GUARD_SCRIPT" write-marker
+if [[ "$SKIP_FRONTEND_BUILD" != "true" ]]; then
+  echo "[screen-overlay-apply] write marker from the completed frontend build"
+  CARBONET_FRONTEND_EXPECTED_OVERLAY_PROVENANCE_SHA256="$FRONTEND_EXPECTED_OVERLAY_PROVENANCE_SHA256" \
+    bash "$GUARD_SCRIPT" write-marker
+else
+  echo "[screen-overlay-apply] preserve existing marker for verify-only reuse"
+fi
 
 echo "[screen-overlay-apply] verify overlay/http/source"
 BASE_URL="$BASE_URL" bash "$GUARD_SCRIPT" verify-all

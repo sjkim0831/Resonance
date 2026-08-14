@@ -5119,6 +5119,8 @@ SKIP_FRONTEND="$skip_frontend" \
 SKIP_NOTIFY="${SKIP_NOTIFY:-true}" \
 RUN_FLYWAY_MIGRATION_JOB="$PLAN_DATABASE_REQUIRED" \
 CARBONET_TARGET_COMMIT="$target_commit" \
+CARBONET_BASELINE_COMMIT="$runtime_deployed_commit" \
+CARBONET_FRONTEND_OVERLAY_LOCK_FILE="/opt/resonance-data/deploy/carbonet-frontend-overlay.lock" \
 DEFER_ROLLBACK_TO_ATTEMPT_RECONCILER=true \
 CARBONET_DURABLE_ATTEMPT_REQUIRED=true \
 CARBONET_DEFER_LIVE_MUTATIONS_UNTIL_POST_FLYWAY="$([[ "$PLAN_DATABASE_REQUIRED" == true || "$postdeploy_db_attempt_staged" != true ]] && echo true || echo false)" \

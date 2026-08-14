@@ -49,6 +49,7 @@ CARBONET_DEFER_LIVE_MUTATIONS_UNTIL_POST_FLYWAY="${CARBONET_DEFER_LIVE_MUTATIONS
 POSTDEPLOY_DB_ATTEMPT_STAGED="${POSTDEPLOY_DB_ATTEMPT_STAGED:-false}"
 PENDING_FRONTEND_STAGING_DIR=""
 PENDING_FRONTEND_PREVIOUS_MANIFEST=""
+FRONTEND_EXPECTED_OVERLAY_PROVENANCE_SHA256=""
 
 RELEASE_DIR="$ROOT_DIR/var/releases/$PROJECT_ID/image-context"
 RUN_DIR="$ROOT_DIR/var/run"
@@ -58,6 +59,8 @@ ERROR_LOG_DIR="$RUN_DIR/build-errors"
 EVENT_LOG="$ROOT_DIR/var/ai-runtime/k8s-build-deploy-events.jsonl"
 MANIFEST_LOG="$ROOT_DIR/var/ai-runtime/k8s-release-manifest.jsonl"
 LOCK_FILE="$RUN_DIR/resonance-k8s-build-deploy-80.lock"
+FRONTEND_OVERLAY_LOCK_FILE="${CARBONET_FRONTEND_OVERLAY_LOCK_FILE:-/opt/resonance-data/deploy/carbonet-frontend-overlay.lock}"
+FRONTEND_OVERLAY_LOCK_TIMEOUT_SECONDS="${CARBONET_FRONTEND_OVERLAY_LOCK_TIMEOUT_SECONDS:-60}"
 DIAGNOSTIC_LOG="$RUN_DIR/diagnostic-$(date +%Y%m%d-%H%M%S).log"
 
 OVERLAY_HOST_PATH="/opt/Resonance/projects/carbonet-frontend/src/main/resources/static/react-app"
@@ -132,6 +135,19 @@ acquire_lock() {
       exit 1
     fi
   fi
+  [[ "$FRONTEND_OVERLAY_LOCK_TIMEOUT_SECONDS" =~ ^[1-9][0-9]*$ \
+     && "$FRONTEND_OVERLAY_LOCK_TIMEOUT_SECONDS" -le 300 ]] || {
+    log_error "CARBONET_FRONTEND_OVERLAY_LOCK_TIMEOUT_SECONDS must be 1..300"
+    exit 2
+  }
+  mkdir -p "$(dirname "$FRONTEND_OVERLAY_LOCK_FILE")"
+  exec 8>"$FRONTEND_OVERLAY_LOCK_FILE"
+  if ! flock -w "$FRONTEND_OVERLAY_LOCK_TIMEOUT_SECONDS" 8; then
+    log_error "Frontend overlay mutation lock timed out: $FRONTEND_OVERLAY_LOCK_FILE"
+    exit 75
+  fi
+  export CARBONET_FRONTEND_OVERLAY_LOCK_FD=8
+  export CARBONET_FRONTEND_OVERLAY_LOCK_FILE="$FRONTEND_OVERLAY_LOCK_FILE"
   echo "$$" > "$LOCK_FILE"
 }
 release_lock() { rm -f "$LOCK_FILE"; }
@@ -352,6 +368,7 @@ guard_frontend_overlay() {
   # persistent isolated worktree containing a rollback snapshot. Always bind
   # the guard to the exact overlay and source used by this candidate build.
   if ! OVERLAY_DIR="$OVERLAY_HOST_PATH" SOURCE_DIR="$FRONTEND_DIR" \
+      CARBONET_FRONTEND_EXPECTED_OVERLAY_PROVENANCE_SHA256="$FRONTEND_EXPECTED_OVERLAY_PROVENANCE_SHA256" \
       "$FRONTEND_GUARD_SCRIPT" "$action" >> "$DIAGNOSTIC_LOG" 2>&1; then
     rollback_and_fail "FRONTEND_OVERLAY_GUARD_FAILED" \
       "Frontend overlay guard failed: $action" \
@@ -463,6 +480,16 @@ build_frontend() {
   # browsers that loaded the previous index can finish lazy chunk requests.
   promote_frontend_staging() {
     node "$ROOT_DIR/ops/scripts/verify-react-asset-closure.mjs" "$staging_dir"
+    FRONTEND_EXPECTED_OVERLAY_PROVENANCE_SHA256="$(
+      OVERLAY_DIR="$staging_dir" SOURCE_DIR="$FRONTEND_DIR" \
+        "$FRONTEND_GUARD_SCRIPT" print-overlay-provenance
+    )" || rollback_and_fail "FRONTEND_STAGING_PROVENANCE_FAILED" \
+      "Frontend staging provenance could not be computed" \
+      "$FRONTEND_GUARD_SCRIPT print-overlay-provenance"
+    [[ "$FRONTEND_EXPECTED_OVERLAY_PROVENANCE_SHA256" =~ ^[0-9a-f]{64}$ ]] \
+      || rollback_and_fail "FRONTEND_STAGING_PROVENANCE_FAILED" \
+        "Frontend staging provenance is malformed" \
+        "$FRONTEND_GUARD_SCRIPT print-overlay-provenance"
     if [[ "$CARBONET_DEFER_LIVE_MUTATIONS_UNTIL_POST_FLYWAY" == true ]]; then
       PENDING_FRONTEND_STAGING_DIR="$staging_dir"
       PENDING_FRONTEND_PREVIOUS_MANIFEST="$previous_manifest"

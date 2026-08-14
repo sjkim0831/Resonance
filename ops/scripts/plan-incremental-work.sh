@@ -32,6 +32,11 @@ add_reason() {
   reasons+=("$candidate")
 }
 
+if ! changed_output="$(git diff --name-only --diff-filter=ACMRD "$BASE_REF" "$TARGET_REF")"; then
+  echo "[incremental-plan] Git change inventory failed closed" >&2
+  exit 2
+fi
+
 while IFS= read -r path; do
   [[ -z "$path" ]] && continue
   changed_count=$((changed_count + 1))
@@ -71,6 +76,15 @@ while IFS= read -r path; do
       ;;
   esac
   case "$path" in
+    ops/scripts/resonance-frontend-overlay-guard.sh)
+      # A guard hash-policy change cannot reuse a marker written by the old
+      # algorithm. Force one real frontend build so this release writes the
+      # new stable marker before later automation-only releases verify it.
+      runtime_required=true; frontend_required=true; infrastructure_required=true; catalog_only=false
+      add_test "frontend:build"
+      add_test "automation:shell-syntax"
+      add_reason "frontend-overlay-source-hash-contract"
+      ;;
     ops/scripts/validate-screen-contract-runtime-save.sh|\
     ops/scripts/runtime-qa-auth-common.sh|\
     ops/tests/test-runtime-qa-auth-concurrency.sh|\
@@ -220,7 +234,7 @@ while IFS= read -r path; do
       add_reason "unclassified-change"
       ;;
   esac
-done < <(git diff --name-only --diff-filter=ACMRD "$BASE_REF" "$TARGET_REF")
+done <<<"$changed_output"
 
 if (( changed_count > 0 )); then
   add_test "runtime:postdeploy-candidate-evidence"
