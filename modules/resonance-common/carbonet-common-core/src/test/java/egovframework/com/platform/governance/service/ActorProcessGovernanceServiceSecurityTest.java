@@ -8,6 +8,7 @@ import org.mockito.ArgumentCaptor;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -768,7 +769,73 @@ class ActorProcessGovernanceServiceSecurityTest {
     }
 
     @Test
-    void idempotentReplayKeepsTheOriginalCommandResponseContract() {
+    void unassignedActorCannotReadIdempotencyEvidence() {
+        UUID executionId = UUID.randomUUID();
+        when(jdbc.queryForList(argThat(sql -> sql != null
+                        && sql.contains("from framework_process_execution where execution_id=? for update")),
+                any(Object[].class))).thenReturn(List.of(Map.of(
+                "execution_status", "COMPLETED", "tenant_id", "TENANT_A", "project_id", "PROJECT_A",
+                "process_code", "PROCESS_A", "current_step_code", "FINAL_STEP")));
+        when(jdbc.queryForObject(argThat(sql -> sql != null
+                        && sql.contains("framework_account_actor_assignment")),
+                eq(Integer.class), any(Object[].class))).thenReturn(0);
+
+        assertThrows(SecurityException.class, () -> service.executeProcessCommand(executionId, Map.of(
+                "tenantId", "TENANT_A", "projectId", "PROJECT_A", "processCode", "PROCESS_A",
+                "stepCode", "STEP_1", "actorCode", "COMPANY_MANAGER", "commandCode", "RUN",
+                "idempotencyKey", "unauthorized-replay"), "unassigned-user"));
+
+        verify(jdbc, never()).queryForList(argThat(sql -> sql != null
+                && sql.contains("framework_process_execution_event")
+                && sql.contains("idempotency_key")), any(Object[].class));
+    }
+
+    @Test
+    void freshProcessCommandCommitsExactlyOneTransition() {
+        UUID executionId = UUID.randomUUID();
+        when(jdbc.queryForList(anyString(), any(Object[].class))).thenAnswer(invocation -> {
+            String sql = invocation.getArgument(0);
+            if (sql.contains("from framework_process_execution where execution_id=? for update")) {
+                return List.of(Map.of(
+                        "execution_status", "RUNNING", "tenant_id", "TENANT_A", "project_id", "PROJECT_A",
+                        "process_code", "PROCESS_A", "current_step_code", "STEP_1", "current_state", "READY"));
+            }
+            if (sql.contains("framework_process_execution_event") && sql.contains("idempotency_key")) {
+                return List.of();
+            }
+            if (sql.contains("select step_order,actor_code,command_code,from_state,to_state")) {
+                return List.of(Map.of("step_order", 1, "actor_code", "COMPANY_MANAGER",
+                        "command_code", "RUN", "from_state", "READY", "to_state", "SUBMITTED"));
+            }
+            if (sql.contains("step_code<>?")) {
+                return List.of(Map.of("step_code", "STEP_2", "actor_code", "REVIEWER",
+                        "user_path", "/review", "admin_path", "/admin/review"));
+            }
+            return List.of();
+        });
+        when(jdbc.queryForObject(argThat(sql -> sql != null
+                        && sql.contains("framework_account_actor_assignment")),
+                eq(Integer.class), any(Object[].class))).thenReturn(1);
+        when(jdbc.queryForObject(argThat(sql -> sql != null
+                        && sql.startsWith("insert into framework_process_execution_event")),
+                eq(Long.class), any(Object[].class))).thenReturn(77L);
+
+        Map<String, Object> result = service.executeProcessCommand(executionId, Map.of(
+                "tenantId", "TENANT_A", "projectId", "PROJECT_A", "processCode", "PROCESS_A",
+                "stepCode", "STEP_1", "actorCode", "COMPANY_MANAGER", "commandCode", "RUN",
+                "idempotencyKey", "fresh-key"), "user-a");
+
+        assertFalse((Boolean) result.get("idempotent"));
+        assertEquals(77L, result.get("eventId"));
+        assertEquals("SUBMITTED", result.get("toState"));
+        assertEquals("RUNNING", result.get("executionStatus"));
+        verify(jdbc).queryForObject(argThat(sql -> sql != null
+                        && sql.startsWith("insert into framework_process_execution_event")),
+                eq(Long.class), any(Object[].class));
+    }
+
+    @Test
+    void runningExecutionReplayReturnsTheFrozenFourKeyContract() {
         UUID executionId = UUID.randomUUID();
         when(jdbc.queryForList(anyString(), any(Object[].class))).thenAnswer(invocation -> {
             String sql = invocation.getArgument(0);
@@ -782,16 +849,52 @@ class ActorProcessGovernanceServiceSecurityTest {
             }
             return List.of();
         });
+        when(jdbc.queryForObject(argThat(sql -> sql != null
+                        && sql.contains("framework_account_actor_assignment")),
+                eq(Integer.class), any(Object[].class))).thenReturn(1);
 
         Map<String, Object> replay = service.executeProcessCommand(executionId, Map.of(
                 "tenantId", "TENANT_A", "projectId", "PROJECT_A", "processCode", "PROCESS_A",
                 "stepCode", "STEP_1", "actorCode", "COMPANY_MANAGER", "commandCode", "RUN",
                 "idempotencyKey", "same-key"), "user-a");
 
+        assertEquals(Set.of("success", "idempotent", "eventId", "toState"), replay.keySet());
         assertTrue((Boolean) replay.get("idempotent"));
         assertEquals(73L, replay.get("eventId"));
         assertEquals("SUBMITTED", replay.get("toState"));
-        assertEquals(73L, ((Map<?, ?>) replay.get("event")).get("eventId"));
+    }
+
+    @Test
+    void completedExecutionReplayReturnsTheFrozenFourKeyContractBeforeLifecycleGates() {
+        UUID executionId = UUID.randomUUID();
+        when(jdbc.queryForList(anyString(), any(Object[].class))).thenAnswer(invocation -> {
+            String sql = invocation.getArgument(0);
+            if (sql.contains("from framework_process_execution where execution_id=? for update")) {
+                return List.of(Map.of(
+                        "execution_status", "COMPLETED", "tenant_id", "TENANT_A", "project_id", "PROJECT_A",
+                        "process_code", "PROCESS_A", "current_step_code", "FINAL_STEP"));
+            }
+            if (sql.contains("framework_process_execution_event") && sql.contains("idempotency_key")) {
+                return List.of(Map.of("eventId", 91L, "toState", "COMPLETED"));
+            }
+            return List.of();
+        });
+        when(jdbc.queryForObject(argThat(sql -> sql != null
+                        && sql.contains("framework_account_actor_assignment")),
+                eq(Integer.class), any(Object[].class))).thenReturn(1);
+
+        Map<String, Object> replay = service.executeProcessCommand(executionId, Map.of(
+                "tenantId", "TENANT_A", "projectId", "PROJECT_A", "processCode", "PROCESS_A",
+                "stepCode", "STEP_1", "actorCode", "COMPANY_MANAGER", "commandCode", "RUN",
+                "idempotencyKey", "completed-retry"), "user-a");
+
+        assertEquals(Set.of("success", "idempotent", "eventId", "toState"), replay.keySet());
+        assertTrue((Boolean) replay.get("idempotent"));
+        assertEquals(91L, replay.get("eventId"));
+        assertEquals("COMPLETED", replay.get("toState"));
+        verify(jdbc, never()).queryForList(argThat(sql -> sql != null
+                && sql.contains("from framework_process_step")), any(Object[].class));
+        verify(jdbc, never()).update(anyString(), any(Object[].class));
     }
 
     @Test
