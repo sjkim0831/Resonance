@@ -259,7 +259,7 @@ function otherFingerprintSql() {
   return `jsonb_build_object(
     'execution',jsonb_build_object('count',(select count(*) from framework_process_execution other_execution where other_execution.execution_id<>${sqlLiteral(FIXTURE.executionId)}::uuid),'fingerprint',(select md5(coalesce(string_agg(md5(to_jsonb(other_execution)::text),'' order by other_execution.execution_id::text),'')) from framework_process_execution other_execution where other_execution.execution_id<>${sqlLiteral(FIXTURE.executionId)}::uuid)),
     'event',jsonb_build_object('count',(select count(*) from framework_process_execution_event other_event where other_event.execution_id<>${sqlLiteral(FIXTURE.executionId)}::uuid),'fingerprint',(select md5(coalesce(string_agg(md5(to_jsonb(other_event)::text),'' order by other_event.event_id::text),'')) from framework_process_execution_event other_event where other_event.execution_id<>${sqlLiteral(FIXTURE.executionId)}::uuid)),
-    'draft',jsonb_build_object('count',(select count(*) from framework_process_work_draft other_draft where not(other_draft.tenant_id=${sqlLiteral(FIXTURE.tenantId)} and other_draft.project_id=${sqlLiteral(FIXTURE.projectId)} and other_draft.process_code=${sqlLiteral(FIXTURE.processCode)})),'fingerprint',(select md5(coalesce(string_agg(md5(to_jsonb(other_draft)::text),'' order by other_draft.draft_id::text),'')) from framework_process_work_draft other_draft where not(other_draft.tenant_id=${sqlLiteral(FIXTURE.tenantId)} and other_draft.project_id=${sqlLiteral(FIXTURE.projectId)} and other_draft.process_code=${sqlLiteral(FIXTURE.processCode)})))`;
+    'draft',jsonb_build_object('count',(select count(*) from framework_process_work_draft other_draft where not(other_draft.tenant_id=${sqlLiteral(FIXTURE.tenantId)} and other_draft.project_id=${sqlLiteral(FIXTURE.projectId)} and other_draft.process_code=${sqlLiteral(FIXTURE.processCode)})),'fingerprint',(select md5(coalesce(string_agg(md5(to_jsonb(other_draft)::text),'' order by other_draft.draft_id::text),'')) from framework_process_work_draft other_draft where not(other_draft.tenant_id=${sqlLiteral(FIXTURE.tenantId)} and other_draft.project_id=${sqlLiteral(FIXTURE.projectId)} and other_draft.process_code=${sqlLiteral(FIXTURE.processCode)}))))`;
 }
 
 function snapshotSql(adminUser) {
@@ -414,11 +414,12 @@ function validateArchiveEnvelope(archive, sourceCommit) {
   }
   if (sourceCommit && value.sourceCommit !== sourceCommit) blocked("legacy fixture archive belongs to a different deployed source commit");
 }
-function validateReceiptEnvelope(receipt, archiveSha256) {
+function validateReceiptEnvelope(receipt, archive) {
   const value = receipt.value;
   if (value?.schemaVersion !== "carbonet.legacy-member-lifecycle-retirement-receipt/v1"
       || value?.retirementId !== RETIREMENT_ID || value?.executionId !== FIXTURE.executionId
-      || value?.archiveSha256 !== archiveSha256 || value?.status !== "RETIRED"
+      || value?.archiveSha256 !== archive.sha256 || value?.archivePath !== archivePath
+      || value?.sourceCommit !== archive.value.sourceCommit || value?.status !== "RETIRED"
       || value?.postcondition?.execution !== 0 || value?.postcondition?.event !== 0
       || value?.postcondition?.draft !== 0 || value?.postcondition?.activeToken !== 0
       || value?.otherRowsWriteCount !== 0 || !/^[0-9a-f]{40}$/.test(String(value?.sourceCommit || ""))) {
@@ -446,7 +447,7 @@ async function main() {
   if (existingArchive) validateArchiveEnvelope(existingArchive, "");
   if (existingReceipt) {
     if (!existingArchive) blocked("retirement receipt exists without its immutable archive");
-    validateReceiptEnvelope(existingReceipt, existingArchive.sha256);
+    validateReceiptEnvelope(existingReceipt, existingArchive);
   }
 
   if (initial.state === "ABSENT") {
@@ -457,14 +458,14 @@ async function main() {
       status: "RETIRED",
       outcome: "RECOVERED_AFTER_COMMIT",
       executionId: FIXTURE.executionId,
-      sourceCommit,
+      sourceCommit: existingArchive.value.sourceCommit,
       archivePath,
       archiveSha256: existingArchive.sha256,
       retiredAt: new Date().toISOString(),
       postcondition: { execution: 0, event: 0, draft: 0, activeToken: 0 },
       otherRowsWriteCount: 0,
     });
-    validateReceiptEnvelope(receipt, existingArchive.sha256);
+    validateReceiptEnvelope(receipt, existingArchive);
     return { outcome: existingReceipt ? "ALREADY_RETIRED" : "RECOVERED_AFTER_COMMIT", sourceCommit, archive: existingArchive, receipt };
   }
 
@@ -513,7 +514,7 @@ async function main() {
     postcondition: { execution: 0, event: 0, draft: 0, activeToken: 0 },
     otherRowsWriteCount: 0,
   });
-  validateReceiptEnvelope(receipt, archiveReadback.sha256);
+  validateReceiptEnvelope(receipt, archiveReadback);
   return { outcome: "RESET_DELETE_COMMITTED", sourceCommit, liveTargetCommit, archive: archiveReadback, receipt, mutation };
 }
 

@@ -39,6 +39,7 @@ requirements={
   "delete": "LEGACY_MEMBER_RETIRE_DELETE_POSTCONDITION",
   "other-row-proof": "LEGACY_MEMBER_RETIRE_FOREIGN_ROW_DRIFT",
   "receipt": "carbonet.legacy-member-lifecycle-retirement-receipt/v1",
+  "receipt-source-binding": "value?.sourceCommit !== archive.value.sourceCommit",
   "idempotent": '"ALREADY_RETIRED"',
   "foreign-guard": 'initial.state === "MISMATCH"',
 }
@@ -184,6 +185,20 @@ crash_recovery="$(run_retirement "$case_crash" good)"
 jq -e '.outcome=="RECOVERED_AFTER_COMMIT" and .deletedExecutions==0' <<<"$crash_recovery" >/dev/null
 [[ "$(cat "$case_crash/mutation-calls")" == 1 ]]
 
+case_receipt="$(make_case receipt exact)"
+run_retirement "$case_receipt" >/dev/null
+receipt_tamper="$case_receipt/retired/member-lifecycle/legacy-member-lifecycle-20260806-22877354.retired.json"
+chmod 600 "$receipt_tamper"
+jq '.sourceCommit="0000000000000000000000000000000000000000"' "$receipt_tamper" >"$receipt_tamper.tmp"
+mv -f "$receipt_tamper.tmp" "$receipt_tamper"
+chmod 400 "$receipt_tamper"
+set +e
+run_retirement "$case_receipt" >"$case_receipt/out" 2>"$case_receipt/err"
+status=$?
+set -e
+[[ "$status" == 79 && "$(cat "$case_receipt/mutation-calls")" == 1 ]]
+grep -Fq 'receipt contract is invalid' "$case_receipt/err"
+
 chmod 600 "$archive"
 printf 'tamper\n' >>"$archive"
 chmod 400 "$archive"
@@ -194,4 +209,4 @@ set -e
 [[ "$status" == 79 && "$(cat "$case_main/mutation-calls")" == 1 ]]
 grep -Eq 'archive contract is invalid|JSON' "$case_main/tamper-err"
 
-echo 'LEGACY_MEMBER_LIFECYCLE_RETIREMENT_CONTRACT_PASS dynamicCases=5 exactRows=1/4/4 activeTokens=0 otherRowsWrite=0 idempotentRetries=3'
+echo 'LEGACY_MEMBER_LIFECYCLE_RETIREMENT_CONTRACT_PASS dynamicCases=6 exactRows=1/4/4 activeTokens=0 otherRowsWrite=0 idempotentRetries=3'
