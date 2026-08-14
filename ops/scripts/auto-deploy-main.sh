@@ -58,6 +58,7 @@ policy_contract_files=(
   ops/scripts/test-backstage-runtime-fingerprint.sh
   ops/scripts/resonance-backstage-deploy.sh
   ops/scripts/auto-deploy-main.sh
+  ops/scripts/reconcile-exact-legacy-orphan-runtime-quarantine.sh
   ops/scripts/resonance-backstage-visual-e2e.sh
   ops/scripts/resonance-backstage-full-e2e.sh
   ops/scripts/resonance-actor-process-role-e2e.sh
@@ -508,6 +509,7 @@ mkdir -p \
   "$POSTDEPLOY_LEGACY_RETIRE_DIR" \
   "$(dirname "$RUNTIME_LEDGER_QUARANTINE_FILE")"
 chmod 0700 "$POSTDEPLOY_LEGACY_RETIRE_DIR"
+bash "$ROOT_DIR/ops/scripts/reconcile-exact-legacy-orphan-runtime-quarantine.sh" "$ROOT_DIR"
 if [[ -s "$RUNTIME_LEDGER_QUARANTINE_FILE" \
    && ( "${CARBONET_RECOVERY_ONLY:-false}" != true \
         || ! -s "$POSTDEPLOY_ATTEMPT_JOURNAL_FILE" ) ]]; then
@@ -934,6 +936,35 @@ postdeploy_candidate_authority_unknown=false
 postdeploy_attempt_journal_initialized=false
 postdeploy_db_attempt_staged=false
 postdeploy_rollback_restored=false
+
+verify_schema_backup_restore_in_scratch() {
+  local schema_dump="$1" flyway_history_dump="$2" scratch_database="$3"
+  [[ -s "$schema_dump" && -s "$flyway_history_dump" \
+     && "$scratch_database" =~ ^carbonet_schema_verify_[a-zA-Z0-9_]+$ ]] || return 1
+  schema_restore_database="$scratch_database"
+  kubectl -n "$NAMESPACE" exec "$POSTGRES_POD" -c "$POSTGRES_CONTAINER" -- \
+    psql -U "$POSTGRES_USER" -h 127.0.0.1 -d postgres -v ON_ERROR_STOP=1 \
+      -c "create database \"$schema_restore_database\"" >/dev/null || return 1
+  # Archive catalog readability is not restore proof. Restore every schema
+  # object into the isolated database before relying on this fast backup.
+  kubectl -n "$NAMESPACE" exec -i "$POSTGRES_POD" -c "$POSTGRES_CONTAINER" -- \
+    pg_restore -U "$POSTGRES_USER" -h 127.0.0.1 -d "$schema_restore_database" \
+      --exit-on-error --schema-only --no-owner --no-privileges \
+      < "$schema_dump" || return 1
+  kubectl -n "$NAMESPACE" exec -i "$POSTGRES_POD" -c "$POSTGRES_CONTAINER" -- \
+    pg_restore -U "$POSTGRES_USER" -h 127.0.0.1 -d "$schema_restore_database" \
+      --exit-on-error --data-only --no-owner --no-privileges -t carbonet_flyway_schema_history \
+      < "$flyway_history_dump" || return 1
+  restored_history_count="$(kubectl -n "$NAMESPACE" exec "$POSTGRES_POD" -c "$POSTGRES_CONTAINER" -- \
+    psql -U "$POSTGRES_USER" -h 127.0.0.1 -d "$schema_restore_database" -Atqc \
+      'select count(*) from carbonet_flyway_schema_history')" || return 1
+  [[ "$restored_history_count" =~ ^[1-9][0-9]*$ ]] || return 1
+  kubectl -n "$NAMESPACE" exec "$POSTGRES_POD" -c "$POSTGRES_CONTAINER" -- \
+    psql -U "$POSTGRES_USER" -h 127.0.0.1 -d postgres -v ON_ERROR_STOP=1 \
+      -c "drop database \"$schema_restore_database\" with (force)" >/dev/null || return 1
+  schema_restore_database=""
+}
+
 cleanup_remote_backup() {
   [[ "$backup_cleanup_required" == "true" ]] || return 0
   # A terminated `kubectl exec` can leave pg_dump alive inside the pod. End
@@ -4217,31 +4248,12 @@ if [[ "$backup_required" == "true" ]]; then
       fi
     done
     schema_restore_database="carbonet_schema_verify_${timestamp//-/_}_$$"
-    kubectl -n "$NAMESPACE" exec "$POSTGRES_POD" -c "$POSTGRES_CONTAINER" -- \
-      psql -U "$POSTGRES_USER" -h 127.0.0.1 -d postgres -v ON_ERROR_STOP=1 \
-        -c "create database \"$schema_restore_database\"" >/dev/null
-    if ! kubectl -n "$NAMESPACE" exec -i "$POSTGRES_POD" -c "$POSTGRES_CONTAINER" -- \
-      pg_restore -U "$POSTGRES_USER" -h 127.0.0.1 -d "$schema_restore_database" \
-        --schema-only --no-owner --no-privileges -t carbonet_flyway_schema_history \
-        < "$schema_backup_dir/schema.dump" \
-      || ! kubectl -n "$NAMESPACE" exec -i "$POSTGRES_POD" -c "$POSTGRES_CONTAINER" -- \
-        pg_restore -U "$POSTGRES_USER" -h 127.0.0.1 -d "$schema_restore_database" \
-          --data-only --no-owner --no-privileges -t carbonet_flyway_schema_history \
-          < "$schema_backup_dir/flyway-history.dump"; then
-      echo "[auto-deploy] refusing deployment: Flyway-history restore verification failed" >&2
+    if ! verify_schema_backup_restore_in_scratch \
+      "$schema_backup_dir/schema.dump" "$schema_backup_dir/flyway-history.dump" \
+      "$schema_restore_database"; then
+      echo "[auto-deploy] refusing deployment: full schema and Flyway-history restore verification failed" >&2
       exit 19
     fi
-    restored_history_count="$(kubectl -n "$NAMESPACE" exec "$POSTGRES_POD" -c "$POSTGRES_CONTAINER" -- \
-      psql -U "$POSTGRES_USER" -h 127.0.0.1 -d "$schema_restore_database" -Atqc \
-        "select count(*) from carbonet_flyway_schema_history")"
-    [[ "$restored_history_count" =~ ^[1-9][0-9]*$ ]] || {
-      echo "[auto-deploy] refusing deployment: restored Flyway history is empty" >&2
-      exit 19
-    }
-    kubectl -n "$NAMESPACE" exec "$POSTGRES_POD" -c "$POSTGRES_CONTAINER" -- \
-      psql -U "$POSTGRES_USER" -h 127.0.0.1 -d postgres -v ON_ERROR_STOP=1 \
-        -c "drop database \"$schema_restore_database\" with (force)" >/dev/null
-    schema_restore_database=""
     tar -C "$schema_backup_dir" -cf "$backup_file" \
       schema.dump flyway-history.dump migrations.manifest migrations.patch
     backup_bytes="$(stat -c %s "$backup_file")"
