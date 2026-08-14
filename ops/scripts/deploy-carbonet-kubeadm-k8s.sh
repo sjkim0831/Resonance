@@ -48,10 +48,34 @@ ensure_secret() {
     --dry-run=client -o yaml | kubectl apply -f -
 }
 
+migration_secret_valid() {
+  kubectl -n "$NAMESPACE" get secret "$MIGRATION_SECRET_NAME" -o json 2>/dev/null |
+    MIGRATION_PASSWORD_KEY="$MIGRATION_PASSWORD_KEY" python3 -c '
+import base64
+import json
+import os
+import sys
+
+try:
+    encoded = json.load(sys.stdin).get("data", {}).get(os.environ["MIGRATION_PASSWORD_KEY"])
+    decoded = base64.b64decode(encoded, validate=True) if isinstance(encoded, str) else b""
+except (ValueError, TypeError, json.JSONDecodeError):
+    decoded = b""
+raise SystemExit(0 if decoded else 1)
+' >/dev/null
+}
+
 ensure_migration_secret() {
-  if kubectl -n "$NAMESPACE" get secret "$MIGRATION_SECRET_NAME" >/dev/null 2>&1 \
-      && [[ "${ROTATE_RUNTIME_SECRETS:-false}" != "true" ]]; then
-    return 0
+  if kubectl -n "$NAMESPACE" get secret "$MIGRATION_SECRET_NAME" >/dev/null 2>&1; then
+    if migration_secret_valid; then
+      if [[ "${ROTATE_RUNTIME_SECRETS:-false}" != "true" ]]; then
+        return 0
+      fi
+    elif [[ "${ROTATE_RUNTIME_SECRETS:-false}" != "true" ]]; then
+      printf '%s/%s is missing, invalid, or decoded-empty; refusing implicit overwrite\n' \
+        "$MIGRATION_SECRET_NAME" "$MIGRATION_PASSWORD_KEY" >&2
+      return 1
+    fi
   fi
   if [[ -z "$DB_PASSWORD" ]]; then
     printf 'DB_PASSWORD is required to provision %s\n' "$MIGRATION_SECRET_NAME" >&2
@@ -62,6 +86,11 @@ ensure_migration_secret() {
       --from-file="$MIGRATION_PASSWORD_KEY=/dev/stdin" \
       --dry-run=client -o yaml |
     kubectl apply -f - >/dev/null
+  if ! migration_secret_valid; then
+    printf '%s/%s failed decoded-nonempty verification after provisioning\n' \
+      "$MIGRATION_SECRET_NAME" "$MIGRATION_PASSWORD_KEY" >&2
+    return 1
+  fi
 }
 
 apply_runtime_config() {
@@ -397,6 +426,12 @@ auto_git_sync() {
     git push origin HEAD
   fi
 }
+
+if [[ "${CARBONET_KUBEADM_MIGRATION_SECRET_ENSURE_ONLY:-false}" == "true" ]]; then
+  ensure_migration_secret
+  printf 'MIGRATION_SECRET_ENSURE_OK %s/%s\n' "$MIGRATION_SECRET_NAME" "$MIGRATION_PASSWORD_KEY"
+  exit 0
+fi
 
 apply_runtime_config
 build_frontend

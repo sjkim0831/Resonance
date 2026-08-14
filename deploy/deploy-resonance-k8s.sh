@@ -9,7 +9,9 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DEPLOY_DIR="${ROOT_DIR}/deploy/k8s"
 NAMESPACE_RESonANCE_OPS="resonance-ops"
-NAMESPACE_CARBONET="carbonet-prod"
+NAMESPACE_CARBONET="${NAMESPACE_CARBONET:-carbonet-prod}"
+MIGRATION_SECRET_NAME="carbonet-migration-secret"
+MIGRATION_PASSWORD_KEY="SPRING_FLYWAY_PASSWORD"
 LOG_FILE="${ROOT_DIR}/var/deploy-$(date +%Y%m%d-%H%M%S).log"
 
 # Colors for output
@@ -95,6 +97,65 @@ deploy_base() {
     success "Base resources deployed"
 }
 
+migration_secret_valid() {
+    kubectl -n "$NAMESPACE_CARBONET" get secret "$MIGRATION_SECRET_NAME" -o json 2>/dev/null |
+        MIGRATION_PASSWORD_KEY="$MIGRATION_PASSWORD_KEY" python3 -c '
+import base64
+import json
+import os
+import sys
+
+try:
+    encoded = json.load(sys.stdin).get("data", {}).get(os.environ["MIGRATION_PASSWORD_KEY"])
+    decoded = base64.b64decode(encoded, validate=True) if isinstance(encoded, str) else b""
+except (ValueError, TypeError, json.JSONDecodeError):
+    decoded = b""
+raise SystemExit(0 if decoded else 1)
+' >/dev/null
+}
+
+ensure_migration_secret() {
+    command -v python3 >/dev/null 2>&1 || {
+        error "python3 is required to validate migration Secret data"
+        return 1
+    }
+    if kubectl -n "$NAMESPACE_CARBONET" get secret "$MIGRATION_SECRET_NAME" >/dev/null 2>&1; then
+        if migration_secret_valid && [[ "${ROTATE_MIGRATION_SECRET:-false}" != "true" ]]; then
+            return 0
+        fi
+        if [[ "${ROTATE_MIGRATION_SECRET:-false}" != "true" ]]; then
+            error "$MIGRATION_SECRET_NAME/$MIGRATION_PASSWORD_KEY is missing, invalid, or decoded-empty; refusing implicit overwrite"
+            return 1
+        fi
+    fi
+
+    if [[ "${CARBONET_MIGRATION_PASSWORD+x}" != "x" ]] \
+        || [[ -z "$CARBONET_MIGRATION_PASSWORD" ]]; then
+        error "Set nonempty CARBONET_MIGRATION_PASSWORD to provision $MIGRATION_SECRET_NAME"
+        return 1
+    fi
+    if ! CARBONET_MIGRATION_PASSWORD="$CARBONET_MIGRATION_PASSWORD" python3 -c '
+import os
+import sys
+
+value = os.environ["CARBONET_MIGRATION_PASSWORD"].encode()
+if not value:
+    raise SystemExit(1)
+sys.stdout.buffer.write(value)
+' |
+        kubectl -n "$NAMESPACE_CARBONET" create secret generic "$MIGRATION_SECRET_NAME" \
+            --from-file="$MIGRATION_PASSWORD_KEY=/dev/stdin" \
+            --dry-run=client -o yaml |
+        kubectl apply -f - >/dev/null; then
+        error "$MIGRATION_SECRET_NAME could not be provisioned from stdin"
+        return 1
+    fi
+    if ! migration_secret_valid; then
+        error "$MIGRATION_SECRET_NAME/$MIGRATION_PASSWORD_KEY failed decoded-nonempty verification after provisioning"
+        return 1
+    fi
+}
+
 # Deploy project resources (Carbonet)
 deploy_project() {
     log "Deploying Carbonet project resources..."
@@ -111,6 +172,8 @@ deploy_project() {
     else
         warning "Carbonet secret file not found, skipping..."
     fi
+
+    ensure_migration_secret
     
     # Deploy the main application
     kubectl apply -f "${DEPLOY_DIR}/projects/carbonet/carbonet-runtime.deployment.yaml"
@@ -246,6 +309,13 @@ main() {
             ;;
     esac
 }
+
+# Secret-only mode is used by deployment preflights and isolated contract tests.
+if [[ "${RESONANCE_MIGRATION_SECRET_ENSURE_ONLY:-false}" == "true" ]]; then
+    ensure_migration_secret
+    success "Migration Secret is decoded-nonempty"
+    exit 0
+fi
 
 # Run main function
 main "$@"

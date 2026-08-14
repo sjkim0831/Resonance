@@ -5,10 +5,14 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 JOB_SCRIPT="$ROOT/ops/scripts/run-flyway-migration-job.sh"
 DEPLOY_SCRIPT="$ROOT/ops/scripts/resonance-k8s-build-deploy-80-v2.sh"
 KUBEADM_SCRIPT="$ROOT/ops/scripts/deploy-carbonet-kubeadm-k8s.sh"
+STATIC_DEPLOY_SCRIPT="$ROOT/deploy/deploy-resonance-k8s.sh"
+DESKTOP_GATE_SCRIPT="$ROOT/ops/scripts/prepare-docker-desktop-k8s-gate.sh"
 
 bash -n "$JOB_SCRIPT"
 bash -n "$DEPLOY_SCRIPT"
 bash -n "$KUBEADM_SCRIPT"
+bash -n "$STATIC_DEPLOY_SCRIPT"
+bash -n "$DESKTOP_GATE_SCRIPT"
 
 python3 - "$ROOT" <<'PY'
 import pathlib
@@ -62,10 +66,42 @@ for needle in (
         raise SystemExit(f"candidate rollout patch missing: {needle}")
 if '.data[$key] | type == "string" and length > 0' not in deploy:
     raise SystemExit("candidate rollout must reject a missing or empty migration Secret key")
+
+static_deploy = (root / "deploy/deploy-resonance-k8s.sh").read_text(encoding="utf-8")
+desktop_gate = (root / "ops/scripts/prepare-docker-desktop-k8s-gate.sh").read_text(encoding="utf-8")
+for name, source in (
+    ("kubeadm", kubeadm),
+    ("static deploy", static_deploy),
+    ("desktop gate", desktop_gate),
+):
+    for needle in ("base64.b64decode(encoded, validate=True)", "decoded else 1"):
+        if needle not in source:
+            raise SystemExit(f"{name} lacks decoded-nonempty validation: {needle}")
+if static_deploy.index("\n    ensure_migration_secret\n") > static_deploy.index(
+    'kubectl apply -f "${DEPLOY_DIR}/projects/carbonet/carbonet-runtime.deployment.yaml"'
+):
+    raise SystemExit("static deploy must ensure the migration Secret before applying the runtime")
+if '--from-literal=' in desktop_gate:
+    raise SystemExit("desktop Secret values must not be passed in argv")
+for needle in (
+    '--from-env-file=/dev/stdin',
+    '--from-file="$MIGRATION_PASSWORD_KEY=/dev/stdin"',
+    "MIGRATION_SECRET_OK",
+):
+    if needle not in desktop_gate:
+        raise SystemExit(f"desktop gate contract missing: {needle}")
 PY
 
 tmp="$(mktemp -d)"
-trap 'rm -rf "$tmp"' EXIT
+mutation_namespace="${CARBONET_SECRET_REF_MUTATION_NAMESPACE:-}"
+cleanup() {
+  rm -rf "$tmp"
+  if [[ -n "$mutation_namespace" ]]; then
+    kubectl -n "$mutation_namespace" delete secret carbonet-migration-secret \
+      --ignore-not-found=true --wait=false >/dev/null 2>&1 || true
+  fi
+}
+trap cleanup EXIT
 mkdir -p "$tmp/bin" "$tmp/captures" "$tmp/logs"
 
 cat >"$tmp/deployment.json" <<'JSON'
@@ -174,4 +210,123 @@ for path in sys.argv[1:]:
         raise SystemExit(f"{path}: fixture literal leaked into Job manifest")
 PY
 
-echo "PASS migration-secret-ref contract: yaml=2 kubeadm=1 rollout=1 dryRun=client,server missingKeyRejected=1"
+actual_dry_runs=0
+mutation_checks=0
+integration_namespace="${CARBONET_SECRET_REF_TEST_NAMESPACE:-carbonet-prod}"
+if command -v kubectl >/dev/null 2>&1 \
+    && kubectl get namespace "$integration_namespace" >/dev/null 2>&1; then
+  dry_run_secret="migration-secret-contract-$PPID-$$"
+  for mode in client server; do
+    printf 'fixture-not-a-secret' |
+      kubectl -n "$integration_namespace" create secret generic "$dry_run_secret" \
+        --from-file=SPRING_FLYWAY_PASSWORD=/dev/stdin \
+        --dry-run="$mode" -o json |
+      python3 -c '
+import base64
+import json
+import sys
+
+encoded = json.load(sys.stdin).get("data", {}).get("SPRING_FLYWAY_PASSWORD")
+decoded = base64.b64decode(encoded, validate=True) if isinstance(encoded, str) else b""
+raise SystemExit(0 if decoded else 1)
+' >/dev/null
+    actual_dry_runs=$((actual_dry_runs + 1))
+  done
+
+  if kubectl -n "$integration_namespace" get deployment carbonet-runtime >/dev/null 2>&1; then
+    runtime_patch='{"spec":{"template":{"spec":{"containers":[{"name":"carbonet-runtime","env":[{"name":"SPRING_FLYWAY_PASSWORD","value":null,"valueFrom":{"secretKeyRef":{"name":"carbonet-migration-secret","key":"SPRING_FLYWAY_PASSWORD"}}}]}]}}}}'
+    for mode in client server; do
+      kubectl -n "$integration_namespace" patch deployment/carbonet-runtime \
+        --type=strategic --dry-run="$mode" -p="$runtime_patch" -o json |
+        python3 -c '
+import json
+import sys
+
+deployment = json.load(sys.stdin)
+containers = deployment["spec"]["template"]["spec"]["containers"]
+runtime = next(container for container in containers if container["name"] == "carbonet-runtime")
+entries = [entry for entry in runtime.get("env", []) if entry.get("name") == "SPRING_FLYWAY_PASSWORD"]
+expected = [{
+    "name": "SPRING_FLYWAY_PASSWORD",
+    "valueFrom": {"secretKeyRef": {
+        "name": "carbonet-migration-secret",
+        "key": "SPRING_FLYWAY_PASSWORD",
+    }},
+}]
+raise SystemExit(0 if entries == expected else 1)
+' >/dev/null
+      actual_dry_runs=$((actual_dry_runs + 1))
+    done
+  fi
+fi
+if [[ "${CARBONET_SECRET_REF_REQUIRE_SERVER_DRY_RUN:-false}" == "true" && "$actual_dry_runs" -lt 4 ]]; then
+  echo "required client/server cluster dry-runs were unavailable" >&2
+  exit 1
+fi
+
+if [[ -n "$mutation_namespace" ]]; then
+  kubectl get namespace "$mutation_namespace" >/dev/null
+
+  printf 'fixture-not-a-secret' |
+    kubectl -n "$mutation_namespace" create secret generic carbonet-migration-secret \
+      --from-file=OTHER_KEY=/dev/stdin --dry-run=client -o yaml |
+    kubectl apply -f - >/dev/null
+  if NAMESPACE="$mutation_namespace" DB_PASSWORD='' \
+      CARBONET_KUBEADM_MIGRATION_SECRET_ENSURE_ONLY=true \
+      bash "$KUBEADM_SCRIPT" >/dev/null 2>&1; then
+    echo "kubeadm accepted an existing migration Secret with the required key missing" >&2
+    exit 1
+  fi
+  mutation_checks=$((mutation_checks + 1))
+
+  printf '' |
+    kubectl -n "$mutation_namespace" create secret generic carbonet-migration-secret \
+      --from-file=SPRING_FLYWAY_PASSWORD=/dev/stdin --dry-run=client -o yaml |
+    kubectl apply -f - >/dev/null
+  if NAMESPACE="$mutation_namespace" DB_PASSWORD='' \
+      CARBONET_KUBEADM_MIGRATION_SECRET_ENSURE_ONLY=true \
+      bash "$KUBEADM_SCRIPT" >/dev/null 2>&1; then
+    echo "kubeadm accepted an existing decoded-empty migration Secret key" >&2
+    exit 1
+  fi
+  mutation_checks=$((mutation_checks + 1))
+
+  printf 'fixture-not-a-secret' |
+    kubectl -n "$mutation_namespace" create secret generic carbonet-migration-secret \
+      --from-file=SPRING_FLYWAY_PASSWORD=/dev/stdin --dry-run=client -o yaml |
+    kubectl apply -f - >/dev/null
+  NAMESPACE="$mutation_namespace" DB_PASSWORD='' \
+    CARBONET_KUBEADM_MIGRATION_SECRET_ENSURE_ONLY=true \
+    bash "$KUBEADM_SCRIPT" >/dev/null
+  mutation_checks=$((mutation_checks + 1))
+
+  kubectl -n "$mutation_namespace" delete secret carbonet-migration-secret \
+    --ignore-not-found=true >/dev/null
+  if env -u CARBONET_MIGRATION_PASSWORD \
+      NAMESPACE_CARBONET="$mutation_namespace" \
+      RESONANCE_MIGRATION_SECRET_ENSURE_ONLY=true \
+      bash "$STATIC_DEPLOY_SCRIPT" >/dev/null 2>&1; then
+    echo "static deploy provisioned a missing migration Secret without an explicit password source" >&2
+    exit 1
+  fi
+  mutation_checks=$((mutation_checks + 1))
+  NAMESPACE_CARBONET="$mutation_namespace" \
+    CARBONET_MIGRATION_PASSWORD='fixture-not-a-secret' \
+    RESONANCE_MIGRATION_SECRET_ENSURE_ONLY=true \
+    bash "$STATIC_DEPLOY_SCRIPT" >/dev/null
+  mutation_checks=$((mutation_checks + 1))
+
+  kubectl -n "$mutation_namespace" delete secret carbonet-migration-secret \
+    --ignore-not-found=true >/dev/null
+  CARBONET_NS="$mutation_namespace" \
+    CARBONET_DB_PASSWORD='fixture-not-a-secret' \
+    CARBONET_DESKTOP_MIGRATION_SECRET_ENSURE_ONLY=true \
+    bash "$DESKTOP_GATE_SCRIPT" >/dev/null
+  mutation_checks=$((mutation_checks + 1))
+fi
+if [[ "${CARBONET_SECRET_REF_REQUIRE_MUTATION:-false}" == "true" && "$mutation_checks" -lt 6 ]]; then
+  echo "required isolated Secret mutation checks were unavailable" >&2
+  exit 1
+fi
+
+echo "PASS migration-secret-ref contract: yaml=2 kubeadm=1 staticDeploy=1 desktopGate=1 rollout=1 mockedJobDryRun=2 actualDryRun=$actual_dry_runs mutationChecks=$mutation_checks missingKeyRejected=1"
