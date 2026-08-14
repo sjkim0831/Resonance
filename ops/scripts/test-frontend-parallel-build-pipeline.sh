@@ -21,6 +21,7 @@ grep -Fq 'ops/tests/test-taskquest-session-gate.mjs' "$pipeline"
 grep -Fq 'ops/tests/test-global-user-gnb-home-fetch-stability.mjs' "$pipeline"
 grep -Fq 'ops/tests/test-frontend-favicon-contract.mjs' "$pipeline"
 grep -Fq 'ops/tests/test-material-symbols-self-hosting.mjs' "$pipeline"
+grep -Fq 'ops/tests/test-member-lifecycle-relay-safe-harness-contract.mjs' "$pipeline"
 
 dedupe_line="$(grep -n 'run(process.execPath, \["scripts/dedupe-generated-route-family.mjs"\])' "$pipeline" | head -1 | cut -d: -f1)"
 validation_line="$(grep -n 'const validationTasks = \[' "$pipeline" | head -1 | cut -d: -f1)"

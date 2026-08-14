@@ -66,6 +66,7 @@ const pipelineGates = [
   "test-global-user-gnb-home-fetch-stability.mjs",
   "test-frontend-favicon-contract.mjs",
   "test-material-symbols-self-hosting.mjs",
+  "test-member-lifecycle-relay-safe-harness-contract.mjs",
 ];
 
 function validatePipeline(source, label) {
