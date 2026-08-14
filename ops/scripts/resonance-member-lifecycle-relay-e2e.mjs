@@ -116,6 +116,7 @@ const evidence = {
   },
   supportContracts: [],
   uiRoutes: [],
+  uiDiagnostics: [],
   screenshotPaths: [],
   screenshots: [],
   cleanup: {
@@ -876,13 +877,17 @@ async function executeRelay() {
       const runtimeErrors = [];
       const consoleErrors = [];
       const failedRequests = [];
+      const httpErrors = [];
       let homeFetchCount = 0;
       const route = `/work/execution?${new URLSearchParams({ tenantId, projectId, processCode, stepCode: step.stepCode, guide: "1" })}`;
       let uiFailure = null;
+      const formatHttpErrors = () => httpErrors
+        .map(({ method, pathname, status }) => `${method} ${pathname} HTTP ${status}`)
+        .join(" | ");
       const uiDiagnostic = (reason) => new Error(`work UI diagnostic ${viewport.name} ${step.stepCode}`
         + ` url=${safeError(page?.url() || `${baseUrl}${route}`)}`
         + ` pageerror=${runtimeErrors.join(" | ")} console=${consoleErrors.join(" | ")}`
-        + ` requestfailed=${failedRequests.join(" | ")} homeFetchCount=${homeFetchCount}`
+        + ` requestfailed=${failedRequests.join(" | ")} http=${formatHttpErrors()} homeFetchCount=${homeFetchCount}`
         + ` cause=${safeError(reason)}`);
       try {
         page = await uiContext.newPage();
@@ -893,6 +898,16 @@ async function executeRelay() {
         page.on("requestfailed", (failedRequest) => {
           const failedUrl = new URL(failedRequest.url());
           failedRequests.push(`${failedRequest.method()} ${failedUrl.pathname} ${safeError(failedRequest.failure()?.errorText)}`);
+        });
+        page.on("response", (candidateResponse) => {
+          const status = candidateResponse.status();
+          if (status < 400) return;
+          const candidateUrl = new URL(candidateResponse.url());
+          httpErrors.push({
+            method: candidateResponse.request().method(),
+            pathname: candidateUrl.pathname,
+            status,
+          });
         });
         page.on("request", (candidateRequest) => {
           const candidateUrl = new URL(candidateRequest.url());
@@ -946,9 +961,9 @@ async function executeRelay() {
           path: relativeScreenshotPath,
           sha256: screenshotHash,
         });
-        if ((response?.status() || 0) >= 400 || runtimeErrors.length || consoleErrors.length || failedRequests.length
+        if ((response?.status() || 0) >= 400 || runtimeErrors.length || consoleErrors.length || failedRequests.length || httpErrors.length
             || !state.hasStep || state.controls < 8 || state.pageOverflow || state.hasRuntimeError) {
-          throw new Error(`work UI failed ${viewport.name} ${step.stepCode} ${JSON.stringify(state)} page=${runtimeErrors.join(" | ")} console=${consoleErrors.join(" | ")} network=${failedRequests.join(" | ")}`);
+          throw new Error(`work UI failed ${viewport.name} ${step.stepCode} ${JSON.stringify(state)} page=${runtimeErrors.join(" | ")} console=${consoleErrors.join(" | ")} network=${failedRequests.join(" | ")} http=${formatHttpErrors()}`);
         }
         evidence.uiRoutes.push({
           stepCode: step.stepCode,
@@ -961,12 +976,25 @@ async function executeRelay() {
           supportContractHash: pageSupportContract.contractHash,
           consoleErrorCount: consoleErrors.length,
           failedRequestCount: failedRequests.length,
+          httpErrorCount: httpErrors.length,
           screenshotPath: relativeScreenshotPath,
           homeFetchCount,
           ok: true,
         });
       } catch (reason) {
         uiFailure = uiDiagnostic(reason);
+        evidence.uiDiagnostics.push({
+          stepCode: step.stepCode,
+          accountId: step.accountId,
+          viewport: viewport.name,
+          url: page?.url() || `${baseUrl}${route}`,
+          pageErrors: [...runtimeErrors],
+          consoleErrors: [...consoleErrors],
+          failedRequests: [...failedRequests],
+          httpErrors: httpErrors.map(({ method, pathname, status }) => ({ method, pathname, status })),
+          homeFetchCount,
+          failure: safeError(reason),
+        });
         throw uiFailure;
       } finally {
         try {

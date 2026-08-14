@@ -151,6 +151,15 @@ function violations(candidate) {
       && candidate.includes("consoleErrors.length || failedRequests.length")],
     ["request-failed-gate", candidate.includes('page.on("requestfailed"')
       && candidate.includes("failedRequests.push") && candidate.includes("consoleErrors.length || failedRequests.length")],
+    ["http-response-error-gate", candidate.includes('page.on("response"')
+      && candidate.includes("if (status < 400) return;")
+      && candidate.includes("method: candidateResponse.request().method()")
+      && candidate.includes("pathname: candidateUrl.pathname")
+      && candidate.includes("failedRequests.length || httpErrors.length")],
+    ["http-response-error-evidence", candidate.includes("evidence.uiDiagnostics.push({")
+      && candidate.includes("httpErrors: httpErrors.map(({ method, pathname, status }) => ({ method, pathname, status }))")
+      && candidate.includes("http=${formatHttpErrors()}")
+      && candidate.includes("httpErrorCount: httpErrors.length")],
     ["total-deadline", candidate.includes("CARBONET_MEMBER_RELAY_TOTAL_DEADLINE_MS")
       && candidate.includes("CARBONET_MEMBER_RELAY_STARTED_AT_MS: String(wrapperStartedAtMs)")
       && candidate.includes("Math.max(0, deadlineAt - Date.now())")
@@ -251,6 +260,12 @@ mutate("console observer removal", 'page.on("console"', 'page.on("ignored-consol
 mutate("console blocker removal", "consoleErrors.length || failedRequests.length", "false || failedRequests.length", "console-error-gate");
 mutate("network observer removal", 'page.on("requestfailed"', 'page.on("ignored-requestfailed"', "request-failed-gate");
 mutate("network blocker removal", "consoleErrors.length || failedRequests.length", "consoleErrors.length || false", "request-failed-gate");
+mutate("HTTP response observer removal", 'page.on("response"', 'page.on("ignored-response"', "http-response-error-gate");
+mutate("HTTP response 4xx weakening", "if (status < 400) return;", "if (status < 500) return;", "http-response-error-gate");
+mutate("HTTP response method removal", "method: candidateResponse.request().method()", 'method: "UNKNOWN"', "http-response-error-gate");
+mutate("HTTP response pathname removal", "pathname: candidateUrl.pathname", 'pathname: ""', "http-response-error-gate");
+mutate("HTTP response blocker removal", "failedRequests.length || httpErrors.length", "failedRequests.length || false", "http-response-error-gate");
+mutate("HTTP response evidence removal", "evidence.uiDiagnostics.push({", "void ({", "http-response-error-evidence");
 mutate("SIGTERM handler removal", 'process.once("SIGTERM", onSigterm)', 'process.once("IGNORED", onSigterm)', "sigterm-finally");
 mutate("wrapper SIGTERM forwarding removal", 'process.once("SIGTERM", forwardSigterm)', 'process.once("IGNORED", forwardSigterm)', "sigterm-finally");
 mutate("absolute deadline propagation removal", "CARBONET_MEMBER_RELAY_STARTED_AT_MS: String(wrapperStartedAtMs)", "CARBONET_MEMBER_RELAY_STARTED_AT_MS: String(Date.now())", "total-deadline");
