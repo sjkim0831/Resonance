@@ -5112,11 +5112,11 @@ RUNTIME_JVM_PROFILE="$ROOT_DIR/ops/config/runtime-jvm-profile.env"
 # shellcheck source=ops/config/runtime-jvm-profile.env
 source "$RUNTIME_JVM_PROFILE"
 : "${CARBONET_RUNTIME_JAVA_OPTS:?runtime JAVA_OPTS profile is required}"
-IMMUTABLE_FRONTEND_IMAGE=true \
 # Every database plan stages the frontend build but withholds all live overlay,
 # Service, environment and workload mutations until the candidate Flyway job
 # succeeds. A pre-existing lifecycle row is rollback authority, not permission
 # to serve a new UI against the old schema.
+IMMUTABLE_FRONTEND_IMAGE=true \
 SKIP_FRONTEND="$skip_frontend" \
 SKIP_NOTIFY="${SKIP_NOTIFY:-true}" \
 RUN_FLYWAY_MIGRATION_JOB="$PLAN_DATABASE_REQUIRED" \
