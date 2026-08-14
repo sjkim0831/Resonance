@@ -61,8 +61,11 @@ function validateSvg(svg, label) {
 const pipelineGates = [
   "test-work-execution-versioned-support-ui.mjs",
   "test-versioned-support-help-integration.mjs",
+  "test-work-execution-route-ownership.mjs",
+  "test-taskquest-session-gate.mjs",
   "test-global-user-gnb-home-fetch-stability.mjs",
   "test-frontend-favicon-contract.mjs",
+  "test-material-symbols-self-hosting.mjs",
 ];
 
 function validatePipeline(source, label) {

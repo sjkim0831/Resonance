@@ -16,8 +16,11 @@ grep -Fq 'runAsync(process.execPath, ["scripts/check-customer-journey-governance
 grep -Fq 'runAsync(bundlerCommand, bundlerArgs)' "$pipeline"
 grep -Fq 'ops/tests/test-work-execution-versioned-support-ui.mjs' "$pipeline"
 grep -Fq 'ops/tests/test-versioned-support-help-integration.mjs' "$pipeline"
+grep -Fq 'ops/tests/test-work-execution-route-ownership.mjs' "$pipeline"
 grep -Fq 'ops/tests/test-taskquest-session-gate.mjs' "$pipeline"
 grep -Fq 'ops/tests/test-global-user-gnb-home-fetch-stability.mjs' "$pipeline"
+grep -Fq 'ops/tests/test-frontend-favicon-contract.mjs' "$pipeline"
+grep -Fq 'ops/tests/test-material-symbols-self-hosting.mjs' "$pipeline"
 
 dedupe_line="$(grep -n 'run(process.execPath, \["scripts/dedupe-generated-route-family.mjs"\])' "$pipeline" | head -1 | cut -d: -f1)"
 validation_line="$(grep -n 'const validationTasks = \[' "$pipeline" | head -1 | cut -d: -f1)"
