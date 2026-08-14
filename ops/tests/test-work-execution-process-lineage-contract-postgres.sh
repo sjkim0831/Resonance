@@ -10,6 +10,8 @@ fi
 ROOT="${1:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
 MIGRATION="$ROOT/apps/carbonet-api/src/main/resources/db/migration/postgresql/V20260814172000__normalize_work_execution_process_lineage_contract.sql"
 BACKUP_SCOPE_CLASSIFIER="$ROOT/ops/scripts/classify-db-backup-scope.sh"
+WORK_EXECUTION_PAGE="$ROOT/projects/carbonet-frontend/source/src/features/work-execution/WorkExecutionPage.tsx"
+GOVERNANCE_SERVICE="$ROOT/modules/resonance-common/carbonet-common-core/src/main/java/egovframework/com/platform/governance/service/ActorProcessGovernanceService.java"
 IMAGE="${WORK_EXECUTION_LINEAGE_POSTGRES_IMAGE:-docker.io/library/postgres:16}"
 NAMESPACE="${CONTAINERD_NAMESPACE:-k8s.io}"
 CONTAINER="work-execution-contract-pg-$RANDOM-$$"
@@ -33,17 +35,20 @@ cleanup() {
 }
 trap cleanup EXIT INT TERM
 
-[[ -f "$MIGRATION" && -f "$BACKUP_SCOPE_CLASSIFIER" ]] || fail "migration or backup classifier missing"
+[[ -f "$MIGRATION" && -f "$BACKUP_SCOPE_CLASSIFIER" && -f "$WORK_EXECUTION_PAGE" && -f "$GOVERNANCE_SERVICE" ]] \
+  || fail "migration, runtime evidence, or backup classifier missing"
 for command_name in python3 psql ctr sudo timeout; do command -v "$command_name" >/dev/null || fail "$command_name missing"; done
 sudo -n true >/dev/null || fail "passwordless sudo required"
 sudo ctr -n "$NAMESPACE" images ls -q | grep -Fxq "$IMAGE" || fail "cached image missing: $IMAGE"
 
-python3 - "$MIGRATION" <<'PY'
+python3 - "$MIGRATION" "$WORK_EXECUTION_PAGE" "$GOVERNANCE_SERVICE" <<'PY'
 from pathlib import Path
 import re
 import sys
 
 sql = Path(sys.argv[1]).read_text()
+page = Path(sys.argv[2]).read_text()
+service = Path(sys.argv[3]).read_text()
 required = (
     "SET lock_timeout='5s'", "SET statement_timeout='30s'",
     "LOCK TABLE public.framework_screen_resource IN SHARE MODE",
@@ -54,11 +59,12 @@ required = (
     "left(data_element_code,4)='PSC_'",
     "psc_editable_logical_count<>25", "psc_server_logical_count<>4",
     "canonical_contract_mismatch<>0", "draft_schema_mismatch<>0",
-    "psc_resolved_contract_mismatch<>0", "psc_server_contract_mismatch<>0",
+    "psc_resolved_contract_mismatch<>0", "psc_editable_field_count<>25",
+    "psc_server_contract_mismatch<>0",
     "physical_source_mismatch<>0", "5d489072ab71f9533680c3bd4cc43ea6",
     "EXCEPT ALL",
     "editable_updated<>25", "server_updated<>4",
-    "NEW.api_property='draft.payloadJson.'||NEW.field_code",
+    "NEW.api_property=NEW.field_code",
     "WHEN 'recordId' THEN 'draft_id'",
     "WHEN 'rowVersion' THEN 'draft_version'",
     "WHEN 'statusCode' THEN 'draft_status'",
@@ -83,6 +89,21 @@ if re.search(r"(?i)like\s+'(?:PSC_|PLATFORM\.WORK_EXECUTION\.)", sql):
     raise SystemExit("stage B uses wildcard-sensitive LIKE for literal prefixes")
 if re.search(r"(?i)create\s+or\s+replace\s+function|drop\s+trigger", sql):
     raise SystemExit("stage B can overwrite a preexisting function or trigger")
+for token in (
+    'code: String(field.fieldCode || field.code || "")',
+    '[field.code]: next',
+    'value={values[field.code] || ""}',
+    'payloadJson: JSON.stringify({ ...values, ...form })',
+):
+    if token not in page:
+        raise SystemExit(f"work execution bare-field payload evidence missing: {token}")
+for token in (
+    "framework_step_contract_fields(execution_spec.field_contract,'USER')",
+    'String payload=def(b,"payloadJson","{}")',
+    'payload_json=cast(? as jsonb)',
+):
+    if token not in service:
+        raise SystemExit(f"work draft persistence evidence missing: {token}")
 PY
 
 migration_path='apps/carbonet-api/src/main/resources/db/migration/postgresql/V20260814172000__normalize_work_execution_process_lineage_contract.sql'
@@ -244,7 +265,7 @@ INSERT INTO framework_screen_data_binding(
   source_table,source_column,required,editable,lineage_status
 )
 SELECT 1,'PSC_EDITABLE_'||lpad(i::text,2,'0'),'editable_'||i,'editable '||i,
-       'draft.payloadJson.editable_'||i,NULL,NULL,i<=12,true,'LOGICAL_CONTRACT'
+       'editable_'||i,NULL,NULL,i<=12,true,'LOGICAL_CONTRACT'
   FROM generate_series(1,25) i;
 
 INSERT INTO framework_screen_data_binding(
@@ -367,9 +388,11 @@ expect_migration_fail wrong-resolved-required
 expect_migration_fail wrong-resolved-editable
 "${PSQL[@]}" -c "update framework_screen_data_binding set editable=true where screen_resource_id=1 and data_element_code='PSC_582A4FC69651C4F123CFB2DC'" >/dev/null
 
-"${PSQL[@]}" -c "update framework_screen_data_binding set api_property='wrong.editable_1' where screen_resource_id=1 and data_element_code='PSC_EDITABLE_01'" >/dev/null
-expect_migration_fail wrong-editable-api
 "${PSQL[@]}" -c "update framework_screen_data_binding set api_property='draft.payloadJson.editable_1' where screen_resource_id=1 and data_element_code='PSC_EDITABLE_01'" >/dev/null
+expect_migration_fail prefixed-editable-api
+"${PSQL[@]}" -c "update framework_screen_data_binding set api_property='otherBareKey' where screen_resource_id=1 and data_element_code='PSC_EDITABLE_01'" >/dev/null
+expect_migration_fail mismatched-editable-api
+"${PSQL[@]}" -c "update framework_screen_data_binding set api_property='editable_1' where screen_resource_id=1 and data_element_code='PSC_EDITABLE_01'" >/dev/null
 
 "${PSQL[@]}" -c "update framework_screen_data_binding set api_property='custom.recordId' where screen_resource_id=1 and data_element_code='PSC_SERVER_recordId'" >/dev/null
 expect_migration_fail custom-server-api
@@ -423,7 +446,7 @@ base_counts="$("${PSQL[@]}" -AtF '|' -c "
          count(*) filter(where lineage_status in('DB_RESOLVED','IMPLEMENTATION_VERIFIED')
            and source_table is not null and source_column is not null),
          count(*) filter(where left(data_element_code,4)='PSC_' and editable
-           and source_column='payload_json'),
+           and api_property=field_code and source_column='payload_json'),
          count(*) filter(where left(data_element_code,4)='PSC_' and not editable
            and field_code in('recordId','rowVersion','statusCode','evidenceCount')
            and source_table='framework_process_work_draft'),
@@ -460,7 +483,7 @@ INSERT INTO framework_screen_data_binding(
   screen_resource_id,data_element_code,field_code,field_name,api_property,
   source_table,source_column,required,editable,lineage_status
 ) VALUES
-  (1,'PSC_FUTURE_EDIT','futureEdit','future edit','draft.payloadJson.futureEdit',NULL,NULL,false,true,'LOGICAL_CONTRACT'),
+  (1,'PSC_FUTURE_EDIT','futureEdit','future edit','futureEdit',NULL,NULL,false,true,'LOGICAL_CONTRACT'),
   (1,'PSC_FUTURE_RECORD','recordId','record','recordId',NULL,NULL,false,false,'LOGICAL_CONTRACT'),
   (1,'PSC_FUTURE_VERSION','rowVersion','version','rowVersion',NULL,NULL,true,false,'LOGICAL_CONTRACT'),
   (1,'PSC_FUTURE_STATUS','statusCode','status','statusCode',NULL,NULL,true,false,'LOGICAL_CONTRACT'),
@@ -474,12 +497,12 @@ INSERT INTO framework_screen_data_binding(
   screen_resource_id,data_element_code,field_code,field_name,api_property,
   source_table,source_column,required,editable,lineage_status
 ) VALUES
-  (1,'PSC_FUTURE_WRONG_API','wrongApi','wrong api','wrong.api',NULL,NULL,false,true,'LOGICAL_CONTRACT'),
-  (1,'PSC_FUTURE_PARTIAL','partial','partial','draft.payloadJson.partial','custom_table',NULL,false,true,'LOGICAL_CONTRACT'),
-  (1,'PSC_FUTURE_CUSTOM','custom','custom','draft.payloadJson.custom','custom_table','custom_column',false,true,'LOGICAL_CONTRACT'),
+  (1,'PSC_FUTURE_WRONG_API','wrongApi','wrong api','draft.payloadJson.wrongApi',NULL,NULL,false,true,'LOGICAL_CONTRACT'),
+  (1,'PSC_FUTURE_PARTIAL','partial','partial','partial','custom_table',NULL,false,true,'LOGICAL_CONTRACT'),
+  (1,'PSC_FUTURE_CUSTOM','custom','custom','custom','custom_table','custom_column',false,true,'LOGICAL_CONTRACT'),
   (1,'PSC_FUTURE_UNSUPPORTED','unsupported','unsupported','unsupported',NULL,NULL,false,false,'LOGICAL_CONTRACT'),
   (1,'PSC_FUTURE_CUSTOM_SERVER','recordId','custom server','custom.recordId',NULL,NULL,false,false,'LOGICAL_CONTRACT'),
-  (8,'PSC_FOREIGN_EDIT','foreignEdit','foreign','draft.payloadJson.foreignEdit',NULL,NULL,false,true,'LOGICAL_CONTRACT');
+  (8,'PSC_FOREIGN_EDIT','foreignEdit','foreign','foreignEdit',NULL,NULL,false,true,'LOGICAL_CONTRACT');
 SQL
 
 fail_closed="$("${PSQL[@]}" -AtF '|' -c "
@@ -490,7 +513,7 @@ fail_closed="$("${PSQL[@]}" -AtF '|' -c "
 expected_fail_closed=$'PSC_FOREIGN_EDIT|LOGICAL_CONTRACT|<null>|<null>\nPSC_FUTURE_CUSTOM|LOGICAL_CONTRACT|custom_table|custom_column\nPSC_FUTURE_CUSTOM_SERVER|LOGICAL_CONTRACT|<null>|<null>\nPSC_FUTURE_PARTIAL|LOGICAL_CONTRACT|custom_table|<null>\nPSC_FUTURE_UNSUPPORTED|LOGICAL_CONTRACT|<null>|<null>\nPSC_FUTURE_WRONG_API|LOGICAL_CONTRACT|<null>|<null>'
 [[ "$fail_closed" == "$expected_fail_closed" ]] || fail "trigger overwrote unsafe or foreign rows: $fail_closed"
 
-"${PSQL[@]}" -c "update framework_screen_data_binding set api_property='draft.payloadJson.wrongApi' where screen_resource_id=1 and data_element_code='PSC_FUTURE_WRONG_API'" >/dev/null
+"${PSQL[@]}" -c "update framework_screen_data_binding set api_property='wrongApi' where screen_resource_id=1 and data_element_code='PSC_FUTURE_WRONG_API'" >/dev/null
 [[ "$("${PSQL[@]}" -AtF '|' -c "select lineage_status,source_table,source_column from framework_screen_data_binding where data_element_code='PSC_FUTURE_WRONG_API'")" == 'DB_RESOLVED|framework_process_work_draft|payload_json' ]] \
   || fail "safe UPDATE did not normalize"
 [[ "$("${PSQL[@]}" -AtF '|' -c "select lineage_passed,design_gate_score,field_count from framework_page_design_assurance where screen_resource_id=1")" == 'f|90|79' ]] \
@@ -500,4 +523,4 @@ expected_fail_closed=$'PSC_FOREIGN_EDIT|LOGICAL_CONTRACT|<null>|<null>\nPSC_FUTU
 
 elapsed=$(( $(date +%s) - started_at ))
 (( elapsed < 30 )) || fail "test exceeded 30-second budget duration=${elapsed}s"
-printf 'WORK_EXECUTION_PROCESS_LINEAGE_POSTGRES_PASS pre=33+25+4+7 updates=25+4 gate=90-100 physicalSources=69 immutableCanonical=33 immutableResolvedPsc=7 foreignFingerprint=unchanged viewFingerprint=unchanged triggerInsert=5 triggerUpdate=1 failClosedRows=5 unrelatedLogical=true lockTimeout=%ss mutants=18 objectCollision=rejected reapply=rejected duration=%ss\n' "$lock_elapsed" "$elapsed"
+printf 'WORK_EXECUTION_PROCESS_LINEAGE_POSTGRES_PASS pre=33+25+4+7 updates=25+4 gate=90-100 physicalSources=69 immutableCanonical=33 immutableResolvedPsc=7 foreignFingerprint=unchanged viewFingerprint=unchanged triggerInsert=5 triggerUpdate=1 failClosedRows=5 unrelatedLogical=true lockTimeout=%ss mutants=19 objectCollision=rejected reapply=rejected duration=%ss\n' "$lock_elapsed" "$elapsed"

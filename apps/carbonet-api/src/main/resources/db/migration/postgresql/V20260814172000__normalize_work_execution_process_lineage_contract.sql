@@ -20,6 +20,7 @@ DECLARE
   psc_resolved_count integer;
   psc_resolved_contract_mismatch integer;
   psc_editable_logical_count integer;
+  psc_editable_field_count integer;
   psc_server_logical_count integer;
   psc_server_field_count integer;
   psc_server_contract_mismatch integer;
@@ -113,10 +114,17 @@ BEGIN
            AND nullif(btrim(source_table),'') IS NOT NULL
            AND nullif(btrim(source_column),'') IS NOT NULL),
          count(*) FILTER (WHERE left(data_element_code,4)='PSC_'
-           AND lineage_status='LOGICAL_CONTRACT' AND editable
-           AND api_property='draft.payloadJson.'||field_code
-           AND nullif(btrim(source_table),'') IS NULL
-           AND nullif(btrim(source_column),'') IS NULL),
+            AND lineage_status='LOGICAL_CONTRACT' AND editable
+            AND nullif(btrim(field_code),'') IS NOT NULL
+            AND api_property=field_code
+            AND nullif(btrim(source_table),'') IS NULL
+            AND nullif(btrim(source_column),'') IS NULL),
+         count(DISTINCT field_code) FILTER (WHERE left(data_element_code,4)='PSC_'
+            AND lineage_status='LOGICAL_CONTRACT' AND editable
+            AND nullif(btrim(field_code),'') IS NOT NULL
+            AND api_property=field_code
+            AND nullif(btrim(source_table),'') IS NULL
+            AND nullif(btrim(source_column),'') IS NULL),
          count(*) FILTER (WHERE left(data_element_code,4)='PSC_'
            AND lineage_status='LOGICAL_CONTRACT' AND NOT editable
            AND field_code IN('recordId','rowVersion','statusCode','evidenceCount')
@@ -130,7 +138,8 @@ BEGIN
     INTO total_count,canonical_count,canonical_data_count,canonical_field_count,
          canonical_required_count,canonical_resolved_count,psc_count,
          psc_logical_count,psc_resolved_count,psc_editable_logical_count,
-         psc_server_logical_count,psc_server_field_count,other_target_count
+         psc_editable_field_count,psc_server_logical_count,
+         psc_server_field_count,other_target_count
     FROM public.framework_screen_data_binding
    WHERE screen_resource_id=target_resource_id;
 
@@ -234,18 +243,18 @@ BEGIN
      OR canonical_contract_mismatch<>0
      OR psc_count<>36 OR psc_logical_count<>29 OR psc_resolved_count<>7
      OR psc_resolved_contract_mismatch<>0
-     OR psc_editable_logical_count<>25
+     OR psc_editable_logical_count<>25 OR psc_editable_field_count<>25
      OR psc_server_logical_count<>4 OR psc_server_field_count<>4
      OR psc_server_contract_mismatch<>0
      OR other_target_count<>0
      OR pre_lineage IS DISTINCT FROM false OR pre_score<>90 OR pre_status<>'FAILED'
      OR pre_issues IS DISTINCT FROM ARRAY['INPUT_OUTPUT_LINEAGE_INCOMPLETE']::text[] THEN
     RAISE EXCEPTION
-      'WORK_EXECUTION stage B precondition failed: total=% canonical=%/%/% required=% resolved=% canonicalMismatch=% psc=% logical=% resolvedPsc=% resolvedMismatch=% editableLogical=% serverLogical=%/% serverMismatch=% other=% gate=%/%/% issues=%',
+      'WORK_EXECUTION stage B precondition failed: total=% canonical=%/%/% required=% resolved=% canonicalMismatch=% psc=% logical=% resolvedPsc=% resolvedMismatch=% editableLogical=%/% serverLogical=%/% serverMismatch=% other=% gate=%/%/% issues=%',
       total_count,canonical_count,canonical_data_count,canonical_field_count,
       canonical_required_count,canonical_resolved_count,canonical_contract_mismatch,
       psc_count,psc_logical_count,psc_resolved_count,psc_resolved_contract_mismatch,
-      psc_editable_logical_count,psc_server_logical_count,
+      psc_editable_logical_count,psc_editable_field_count,psc_server_logical_count,
       psc_server_field_count,psc_server_contract_mismatch,other_target_count,
       pre_lineage,pre_score,pre_status,pre_issues;
   END IF;
@@ -307,7 +316,9 @@ BEGIN
         RETURN NEW;
       END IF;
 
-      IF NEW.editable AND NEW.api_property='draft.payloadJson.'||NEW.field_code THEN
+      IF NEW.editable
+         AND nullif(btrim(NEW.field_code),'') IS NOT NULL
+         AND NEW.api_property=NEW.field_code THEN
         NEW.source_table:='framework_process_work_draft';
         NEW.source_column:='payload_json';
         NEW.lineage_status:='DB_RESOLVED';
@@ -358,7 +369,8 @@ BEGIN
      AND left(binding.data_element_code,4)='PSC_'
      AND binding.lineage_status='LOGICAL_CONTRACT'
      AND binding.editable
-     AND binding.api_property='draft.payloadJson.'||binding.field_code
+     AND nullif(btrim(binding.field_code),'') IS NOT NULL
+     AND binding.api_property=binding.field_code
      AND nullif(btrim(binding.source_table),'') IS NULL
      AND nullif(btrim(binding.source_column),'') IS NULL;
   GET DIAGNOSTICS editable_updated=ROW_COUNT;
@@ -400,7 +412,8 @@ BEGIN
            AND nullif(btrim(source_table),'') IS NOT NULL
            AND nullif(btrim(source_column),'') IS NOT NULL),
          count(*) FILTER (WHERE left(data_element_code,4)='PSC_'
-           AND editable AND api_property='draft.payloadJson.'||field_code
+           AND editable AND nullif(btrim(field_code),'') IS NOT NULL
+           AND api_property=field_code
            AND source_table='framework_process_work_draft'
            AND source_column='payload_json' AND lineage_status='DB_RESOLVED'),
          count(*) FILTER (WHERE left(data_element_code,4)='PSC_' AND NOT editable
