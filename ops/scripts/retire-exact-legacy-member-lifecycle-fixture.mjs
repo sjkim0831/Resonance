@@ -33,6 +33,7 @@ const FIXTURE = Object.freeze({
   eventCount: 4,
   draftCount: 4,
 });
+const RESET_TARGET = Object.freeze({ stepCode: "MEMBER_LIFECYCLE_01_PLAN", fromState: "DRAFT" });
 const ACTOR_ACCOUNTS = Object.freeze(["qaowner26", "qadata26", "qaverify26", "qaapprove26"]);
 
 class BlockedError extends Error {}
@@ -353,13 +354,14 @@ begin
   delete from framework_process_work_draft where tenant_id=${sqlLiteral(FIXTURE.tenantId)} and project_id=${sqlLiteral(FIXTURE.projectId)} and process_code=${sqlLiteral(FIXTURE.processCode)};
   get diagnostics reset_drafts=row_count;
   update framework_process_execution set
-    current_step_code=(select step_code from framework_process_step where process_code=${sqlLiteral(FIXTURE.processCode)} order by step_order limit 1),
-    current_state=(select from_state from framework_process_step where process_code=${sqlLiteral(FIXTURE.processCode)} order by step_order limit 1),
+    current_step_code=${sqlLiteral(RESET_TARGET.stepCode)},current_state=${sqlLiteral(RESET_TARGET.fromState)},
     execution_status='RUNNING',handoff_status='NOT_READY',snapshot_ref=null,completed_at=null,started_at=current_timestamp,updated_at=current_timestamp
    where execution_id=${sqlLiteral(FIXTURE.executionId)}::uuid;
   get diagnostics reset_executions=row_count;
   if reset_events<>${FIXTURE.eventCount} or reset_drafts<>${FIXTURE.draftCount} or reset_executions<>1 then raise exception 'LEGACY_MEMBER_RETIRE_RESET_CARDINALITY'; end if;
-  if not exists(select 1 from framework_process_execution execution where execution.execution_id=${sqlLiteral(FIXTURE.executionId)}::uuid and execution.execution_status='RUNNING' and execution.snapshot_ref is null and execution.completed_at is null)
+  if not exists(select 1 from framework_process_execution execution where execution.execution_id=${sqlLiteral(FIXTURE.executionId)}::uuid
+       and execution.current_step_code=${sqlLiteral(RESET_TARGET.stepCode)} and execution.current_state=${sqlLiteral(RESET_TARGET.fromState)}
+       and execution.execution_status='RUNNING' and execution.handoff_status='NOT_READY' and execution.snapshot_ref is null and execution.completed_at is null)
      or exists(select 1 from framework_process_execution_event where execution_id=${sqlLiteral(FIXTURE.executionId)}::uuid)
      or exists(select 1 from framework_process_work_draft where tenant_id=${sqlLiteral(FIXTURE.tenantId)} and project_id=${sqlLiteral(FIXTURE.projectId)} and process_code=${sqlLiteral(FIXTURE.processCode)})
   then raise exception 'LEGACY_MEMBER_RETIRE_RESET_POSTCONDITION'; end if;
@@ -375,7 +377,8 @@ begin
   if other_after is distinct from other_before then raise exception 'LEGACY_MEMBER_RETIRE_FOREIGN_ROW_DRIFT'; end if;
   insert into legacy_member_retire_result(payload) values(jsonb_build_object(
     'status','RETIRED','retirementId',${sqlLiteral(RETIREMENT_ID)},'executionId',${sqlLiteral(FIXTURE.executionId)},
-    'archiveSha256',${sqlLiteral(archiveSha256)},'reset',jsonb_build_object('executions',reset_executions,'events',reset_events,'drafts',reset_drafts),
+    'archiveSha256',${sqlLiteral(archiveSha256)},'reset',jsonb_build_object('executions',reset_executions,'events',reset_events,'drafts',reset_drafts,
+      'currentStepCode',${sqlLiteral(RESET_TARGET.stepCode)},'fromState',${sqlLiteral(RESET_TARGET.fromState)}),
     'delete',jsonb_build_object('executions',deleted_executions),'activeTokenBefore',0,'activeTokenAfter',0,
     'otherRowsWriteCount',0,'otherRowsFingerprintBefore',other_before,'otherRowsFingerprintAfter',other_after));
 end
@@ -392,6 +395,7 @@ function mutateExactFixture(adminUser, archivedSnapshot, archiveSha256) {
   if (result?.status !== "RETIRED" || result?.retirementId !== RETIREMENT_ID || result?.executionId !== FIXTURE.executionId
       || result?.archiveSha256 !== archiveSha256 || result?.reset?.executions !== 1
       || result?.reset?.events !== FIXTURE.eventCount || result?.reset?.drafts !== FIXTURE.draftCount
+      || result?.reset?.currentStepCode !== RESET_TARGET.stepCode || result?.reset?.fromState !== RESET_TARGET.fromState
       || result?.delete?.executions !== 1 || result?.activeTokenBefore !== 0 || result?.activeTokenAfter !== 0
       || result?.otherRowsWriteCount !== 0
       || stableJson(result?.otherRowsFingerprintBefore) !== stableJson(result?.otherRowsFingerprintAfter)) {

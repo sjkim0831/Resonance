@@ -23,6 +23,8 @@ requirements={
   "exact-completed": 'completedAt: "2026-08-06T02:09:00.953069"',
   "exact-snapshot": 'snapshotRef: "qa:22877354-a7a7-48ce-b60b-b296e2a75321:MEMBER_LIFECYCLE_04_APPROVE"',
   "exact-counts": 'eventCount: 4,\n  draftCount: 4,',
+  "reset-step": 'stepCode: "MEMBER_LIFECYCLE_01_PLAN"',
+  "reset-state": 'fromState: "DRAFT"',
   "dedicated-secret": '"carbonet-usage-ledger-system-admin"',
   "canonical-lock": '"/tmp/carbonet-qa-auth-session.lock"',
   "source-live-binding": '(requireSourceMatch && liveTargetCommit !== sourceCommit)',
@@ -81,10 +83,10 @@ elif [[ "$args" == *" exec -i "* ]]; then
     case "${MOCK_MUTATION_MODE:-good}" in
       good)
         printf 'absent\n' >"$MOCK_CASE/state"
-        jq -cn --arg hash "$hash" '{status:"RETIRED",retirementId:"legacy-member-lifecycle-20260806-22877354",executionId:"22877354-a7a7-48ce-b60b-b296e2a75321",archiveSha256:$hash,reset:{executions:1,events:4,drafts:4},delete:{executions:1},activeTokenBefore:0,activeTokenAfter:0,otherRowsWriteCount:0,otherRowsFingerprintBefore:{execution:{count:9,fingerprint:"a"},event:{count:8,fingerprint:"b"},draft:{count:7,fingerprint:"c"}},otherRowsFingerprintAfter:{execution:{count:9,fingerprint:"a"},event:{count:8,fingerprint:"b"},draft:{count:7,fingerprint:"c"}}}'
+        jq -cn --arg hash "$hash" '{status:"RETIRED",retirementId:"legacy-member-lifecycle-20260806-22877354",executionId:"22877354-a7a7-48ce-b60b-b296e2a75321",archiveSha256:$hash,reset:{executions:1,events:4,drafts:4,currentStepCode:"MEMBER_LIFECYCLE_01_PLAN",fromState:"DRAFT"},delete:{executions:1},activeTokenBefore:0,activeTokenAfter:0,otherRowsWriteCount:0,otherRowsFingerprintBefore:{execution:{count:9,fingerprint:"a"},event:{count:8,fingerprint:"b"},draft:{count:7,fingerprint:"c"}},otherRowsFingerprintAfter:{execution:{count:9,fingerprint:"a"},event:{count:8,fingerprint:"b"},draft:{count:7,fingerprint:"c"}}}'
         ;;
       foreign)
-        jq -cn --arg hash "$hash" '{status:"RETIRED",retirementId:"legacy-member-lifecycle-20260806-22877354",executionId:"22877354-a7a7-48ce-b60b-b296e2a75321",archiveSha256:$hash,reset:{executions:1,events:4,drafts:4},delete:{executions:1},activeTokenBefore:0,activeTokenAfter:0,otherRowsWriteCount:1,otherRowsFingerprintBefore:{x:1},otherRowsFingerprintAfter:{x:2}}'
+        jq -cn --arg hash "$hash" '{status:"RETIRED",retirementId:"legacy-member-lifecycle-20260806-22877354",executionId:"22877354-a7a7-48ce-b60b-b296e2a75321",archiveSha256:$hash,reset:{executions:1,events:4,drafts:4,currentStepCode:"MEMBER_LIFECYCLE_01_PLAN",fromState:"DRAFT"},delete:{executions:1},activeTokenBefore:0,activeTokenAfter:0,otherRowsWriteCount:1,otherRowsFingerprintBefore:{x:1},otherRowsFingerprintAfter:{x:2}}'
         ;;
       crash)
         printf 'absent\n' >"$MOCK_CASE/state"
@@ -142,7 +144,7 @@ run_retirement() {
 
 case_main="$(make_case main exact)"
 first="$(run_retirement "$case_main")"
-jq -e '.status=="PASS" and .outcome=="RESET_DELETE_COMMITTED" and .reset=={executions:1,events:4,drafts:4} and .deletedExecutions==1 and .otherRowsWriteCount==0 and .activeTokens==0' <<<"$first" >/dev/null
+jq -e '.status=="PASS" and .outcome=="RESET_DELETE_COMMITTED" and .reset=={executions:1,events:4,drafts:4,currentStepCode:"MEMBER_LIFECYCLE_01_PLAN",fromState:"DRAFT"} and .deletedExecutions==1 and .otherRowsWriteCount==0 and .activeTokens==0' <<<"$first" >/dev/null
 [[ "$(cat "$case_main/mutation-calls")" == 1 && "$(cat "$case_main/state")" == absent ]]
 archive="$case_main/retired/member-lifecycle/legacy-member-lifecycle-20260806-22877354.snapshot.json"
 receipt="$case_main/retired/member-lifecycle/legacy-member-lifecycle-20260806-22877354.retired.json"
