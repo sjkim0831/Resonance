@@ -23,6 +23,18 @@ full_screen_active_file="${CARBONET_FULL_SCREEN_ACTIVE_FILE:-$state_dir/full-scr
 notify_script="${CARBONET_DEPLOY_NOTIFY_SCRIPT:-/opt/resonance-data/control-plane/bin/carbonet-deploy-notify.sh}"
 KUBECONFIG="${CARBONET_KUBECONFIG:-${KUBECONFIG:-/home/sjkim/.kube/config}}"
 export KUBECONFIG
+
+# OnFailure can be delivered after a later invocation has already completed.
+# Treat only the exact successful terminal 4-tuple as stale; any missing,
+# duplicated or contradictory field falls through to normal fail-closed
+# classification. This guard must stay ahead of every state/evidence write.
+main_service_snapshot="$(systemctl show carbonet-auto-deploy.service \
+  -p ActiveState -p SubState -p Result -p ExecMainStatus --no-pager 2>/dev/null || true)"
+main_service_tuple="$(printf '%s\n' "$main_service_snapshot" | LC_ALL=C sort)"
+if [[ "$main_service_tuple" == $'ActiveState=inactive\nExecMainStatus=0\nResult=success\nSubState=dead' ]]; then
+  exit 0
+fi
+
 mkdir -p "$evidence_dir"
 chmod 0750 "$evidence_dir"
 

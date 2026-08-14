@@ -46,6 +46,9 @@ grep -q 'category=DATABASE' "$handler"
 grep -q 'category=DATABASE_DETERMINISTIC' "$handler"
 grep -q 'category=DEPLOY_TERMINATED' "$handler"
 grep -Fq 'ExecMainStatus' "$handler"
+grep -Fq 'ActiveState=inactive' "$handler"
+grep -Fq 'SubState=dead' "$handler"
+grep -Fq 'Result=success' "$handler"
 grep -Fq 'FLYWAY_JOB_FAILED' "$handler"
 grep -q 'category=E2E' "$handler"
 grep -q 'systemd-run.*--quiet' "$handler"
@@ -180,6 +183,14 @@ if command -v jq >/dev/null 2>&1; then
   mkdir -p "$classifier_fixture/bin"
   cat >"$classifier_fixture/bin/systemctl" <<'SH'
 #!/usr/bin/env bash
+if [[ "$*" == *ActiveState* && "$*" == *SubState* && "$*" == *Result* && "$*" == *ExecMainStatus* ]]; then
+  if [[ -n "${FAKE_MAIN_SERVICE_SNAPSHOT:-}" ]]; then
+    printf '%s\n' "$FAKE_MAIN_SERVICE_SNAPSHOT"
+  else
+    printf 'ActiveState=failed\nSubState=failed\nResult=exit-code\nExecMainStatus=%s\n' "${FAKE_EXEC_MAIN_STATUS:?}"
+  fi
+  exit 0
+fi
 case "$*" in
   *ExecMainStartTimestampMonotonic*) printf 'classifier-run\n' ;;
   *InvocationID*) printf 'classifier-invocation\n' ;;
@@ -206,6 +217,30 @@ exit 0
 SH
   chmod 0755 "$classifier_fixture/bin/"* "$classifier_fixture/notify.sh"
   classifier_target='aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
+
+  stale_case_dir="$classifier_fixture/stale_success"
+  mkdir -p "$stale_case_dir/state"
+  printf '%s\n' '{"checkedAt":"2026-08-14T00:00:00+09:00","status":"FAILED","category":"STALE_SENTINEL"}' \
+    >"$stale_case_dir/state/deploy-status.json"
+  cp "$stale_case_dir/state/deploy-status.json" "$stale_case_dir/deploy-status.before"
+  stale_status_hash_before="$(sha256sum "$stale_case_dir/state/deploy-status.json" | awk '{print $1}')"
+  stale_status_bytes_before="$(wc -c <"$stale_case_dir/state/deploy-status.json" | tr -d ' ')"
+  stale_state_tree_before="$(find "$stale_case_dir/state" -printf '%P|%y|%s\n' | LC_ALL=C sort)"
+  FAKE_MAIN_SERVICE_SNAPSHOT=$'SubState=dead\nResult=success\nExecMainStatus=0\nActiveState=inactive' \
+  FAKE_SYSTEMD_RUN_RECORD="$stale_case_dir/systemd-run.record" \
+  PATH="$classifier_fixture/bin:$PATH" \
+  CARBONET_DEPLOY_OWNER="$(id -un)" \
+  CARBONET_DEPLOY_ROOT="$root" \
+  CARBONET_DEPLOY_STATE_DIR="$stale_case_dir/state" \
+  CARBONET_DEPLOY_NOTIFY_SCRIPT="$classifier_fixture/notify.sh" \
+    bash "$handler" >/dev/null
+  cmp -s "$stale_case_dir/deploy-status.before" "$stale_case_dir/state/deploy-status.json"
+  [[ "$(sha256sum "$stale_case_dir/state/deploy-status.json" | awk '{print $1}')" == "$stale_status_hash_before" ]]
+  [[ "$(wc -c <"$stale_case_dir/state/deploy-status.json" | tr -d ' ')" == "$stale_status_bytes_before" ]]
+  [[ "$(find "$stale_case_dir/state" -printf '%P|%y|%s\n' | LC_ALL=C sort)" == "$stale_state_tree_before" ]]
+  [[ ! -e "$stale_case_dir/state/failure-evidence" ]]
+  [[ "$(find "$stale_case_dir/state" -maxdepth 1 -name 'retry-*' | wc -l | tr -d ' ')" == 0 ]]
+  [[ ! -e "$stale_case_dir/systemd-run.record" ]]
 
   run_classifier_mutant() {
     local name="$1"
@@ -562,4 +597,4 @@ database_line="$(grep -n '^[[:space:]]*category=DATABASE$' "$handler" | head -1 
 [[ "$network_line" -lt "$e2e_line" ]]
 [[ "$e2e_line" -lt "$database_line" ]]
 
-echo "AUTO_DEPLOY_FAILURE_HANDLER_PASS promotionPending=DB-authoritative attemptRecovery=deploy-owner+hold-bypass+fetch0+candidateBound3x classifier=network503-retry1+flywayP0001-retry0+term79-retry0"
+echo "AUTO_DEPLOY_FAILURE_HANDLER_PASS promotionPending=DB-authoritative attemptRecovery=deploy-owner+hold-bypass+fetch0+candidateBound3x classifier=staleSuccess-write0+network503-retry1+flywayP0001-retry0+term79-retry0"
