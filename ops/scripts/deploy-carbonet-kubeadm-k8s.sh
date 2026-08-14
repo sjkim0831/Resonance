@@ -14,6 +14,8 @@ E4B_RUNTIME_BASE_URL="${CARBONET_KRDS_AI_BASE_URL:-http://172.16.1.232:24451/v1}
 DB_NAME="${DB_NAME:-carbonet}"
 DB_USER="${DB_USER:-dba}"
 DB_PASSWORD="${DB_PASSWORD:-}"
+MIGRATION_SECRET_NAME="carbonet-migration-secret"
+MIGRATION_PASSWORD_KEY="SPRING_FLYWAY_PASSWORD"
 IMAGE_NAME="${IMAGE_NAME:-registry.local/carbonet-runtime:$(date +%Y.%m.%d-%H%M%S-kubeadm)}"
 RELEASE_DIR="$ROOT_DIR/var/releases/$PROJECT_ID/image-context"
 LOG_DIR="$ROOT_DIR/var/logs"
@@ -44,6 +46,22 @@ ensure_secret() {
     --from-literal=TOKEN_ACCESS_SECRET="$access_secret" \
     --from-literal=TOKEN_REFRESH_SECRET="$refresh_secret" \
     --dry-run=client -o yaml | kubectl apply -f -
+}
+
+ensure_migration_secret() {
+  if kubectl -n "$NAMESPACE" get secret "$MIGRATION_SECRET_NAME" >/dev/null 2>&1 \
+      && [[ "${ROTATE_RUNTIME_SECRETS:-false}" != "true" ]]; then
+    return 0
+  fi
+  if [[ -z "$DB_PASSWORD" ]]; then
+    printf 'DB_PASSWORD is required to provision %s\n' "$MIGRATION_SECRET_NAME" >&2
+    return 1
+  fi
+  printf '%s' "$DB_PASSWORD" |
+    kubectl -n "$NAMESPACE" create secret generic "$MIGRATION_SECRET_NAME" \
+      --from-file="$MIGRATION_PASSWORD_KEY=/dev/stdin" \
+      --dry-run=client -o yaml |
+    kubectl apply -f - >/dev/null
 }
 
 apply_runtime_config() {
@@ -124,6 +142,7 @@ JSON
     --dry-run=client -o yaml | kubectl apply -f -
 
   ensure_secret carbonet-runtime-secret
+  ensure_migration_secret
   kubectl -n "$NAMESPACE" create secret generic carbonet-runtime-ecoinvent-secret \
     --from-literal=CARBONET_ECOINVENT_CLIENT_ID="${CARBONET_ECOINVENT_CLIENT_ID:-}" \
     --from-literal=CARBONET_ECOINVENT_CLIENT_SECRET="${CARBONET_ECOINVENT_CLIENT_SECRET:-}" \
@@ -255,6 +274,11 @@ spec:
                 secretKeyRef:
                   name: carbonet-runtime-ecoinvent-secret
                   key: CARBONET_ECOINVENT_CLIENT_SECRET
+            - name: SPRING_FLYWAY_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: ${MIGRATION_SECRET_NAME}
+                  key: ${MIGRATION_PASSWORD_KEY}
           volumeMounts:
             - name: runtime-manifest
               mountPath: /app/config/manifest.json

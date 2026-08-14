@@ -6,6 +6,9 @@ namespace="${CARBONET_K8S_NAMESPACE:-carbonet-prod}"
 deployment="${CARBONET_K8S_DEPLOYMENT:-carbonet-runtime}"
 container="${CARBONET_K8S_CONTAINER:-carbonet-runtime}"
 timeout="${CARBONET_FLYWAY_JOB_TIMEOUT:-120s}"
+migration_secret_name="${CARBONET_MIGRATION_SECRET_NAME:-carbonet-migration-secret}"
+migration_password_key="${CARBONET_MIGRATION_PASSWORD_KEY:-SPRING_FLYWAY_PASSWORD}"
+dry_run_mode="${CARBONET_FLYWAY_JOB_DRY_RUN:-none}"
 job="carbonet-flyway-$(date +%Y%m%d%H%M%S)-$(printf '%s' "$image" | sha256sum | cut -c1-6)"
 started_epoch="$(date +%s)"
 manifest="$(mktemp)"
@@ -18,8 +21,35 @@ cleanup() {
 }
 trap cleanup EXIT
 
+if [[ ! "$migration_secret_name" =~ ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$ ]]; then
+  echo "[flyway-job] invalid migration Secret name" >&2
+  exit 2
+fi
+if [[ ! "$migration_password_key" =~ ^[-._A-Za-z][-._A-Za-z0-9]*$ ]]; then
+  echo "[flyway-job] invalid migration Secret key" >&2
+  exit 2
+fi
+if [[ "$dry_run_mode" != "none" && "$dry_run_mode" != "client" && "$dry_run_mode" != "server" ]]; then
+  echo "[flyway-job] CARBONET_FLYWAY_JOB_DRY_RUN must be none, client, or server" >&2
+  exit 2
+fi
+if [[ "$dry_run_mode" != "client" ]]; then
+  if ! kubectl -n "$namespace" get secret "$migration_secret_name" -o json |
+      MIGRATION_PASSWORD_KEY="$migration_password_key" python3 -c '
+import json, os, sys
+secret = json.load(sys.stdin)
+value = secret.get("data", {}).get(os.environ["MIGRATION_PASSWORD_KEY"])
+raise SystemExit(0 if isinstance(value, str) and value else 1)
+' >/dev/null; then
+    echo "[flyway-job] migration Secret or required key is unavailable" >&2
+    exit 1
+  fi
+fi
+
 kubectl -n "$namespace" get deployment "$deployment" -o json |
-  JOB_NAME="$job" CONTAINER_NAME="$container" CANDIDATE_IMAGE="$image" python3 -c '
+  JOB_NAME="$job" CONTAINER_NAME="$container" CANDIDATE_IMAGE="$image" \
+  MIGRATION_SECRET_NAME="$migration_secret_name" MIGRATION_PASSWORD_KEY="$migration_password_key" \
+  python3 -c '
 import json, os, sys
 source = json.load(sys.stdin)
 pod = source["spec"]["template"]["spec"]
@@ -31,11 +61,24 @@ for current in pod["containers"]:
         continue
     env = [
         value for value in current.get("env", [])
-        if value.get("name") not in ("CARBONET_FLYWAY_ENABLED", "CARBONET_LIQUIBASE_ENABLED")
+        if value.get("name") not in (
+            "CARBONET_FLYWAY_ENABLED",
+            "CARBONET_LIQUIBASE_ENABLED",
+            "SPRING_FLYWAY_PASSWORD",
+        )
     ]
     env.extend([
         {"name": "CARBONET_FLYWAY_ENABLED", "value": "true"},
         {"name": "CARBONET_LIQUIBASE_ENABLED", "value": "false"},
+        {
+            "name": "SPRING_FLYWAY_PASSWORD",
+            "valueFrom": {
+                "secretKeyRef": {
+                    "name": os.environ["MIGRATION_SECRET_NAME"],
+                    "key": os.environ["MIGRATION_PASSWORD_KEY"],
+                }
+            },
+        },
     ])
     migrated = {
         "name": "flyway",
@@ -94,6 +137,36 @@ job = {
 }
 print(json.dumps(job))
 ' >"$manifest"
+
+MIGRATION_SECRET_NAME="$migration_secret_name" MIGRATION_PASSWORD_KEY="$migration_password_key" \
+  python3 - "$manifest" <<'PY'
+import json
+import os
+import sys
+
+job = json.load(open(sys.argv[1], encoding="utf-8"))
+containers = job["spec"]["template"]["spec"]["containers"]
+if len(containers) != 1:
+    raise SystemExit("flyway manifest must contain exactly one container")
+entries = [entry for entry in containers[0].get("env", []) if entry.get("name") == "SPRING_FLYWAY_PASSWORD"]
+expected = {
+    "name": "SPRING_FLYWAY_PASSWORD",
+    "valueFrom": {
+        "secretKeyRef": {
+            "name": os.environ["MIGRATION_SECRET_NAME"],
+            "key": os.environ["MIGRATION_PASSWORD_KEY"],
+        }
+    },
+}
+if entries != [expected]:
+    raise SystemExit("flyway password must be one exact SecretKeyRef")
+PY
+
+if [[ "$dry_run_mode" != "none" ]]; then
+  kubectl -n "$namespace" apply --dry-run="$dry_run_mode" -f "$manifest" >/dev/null
+  echo "[flyway-job] DRY_RUN_PASS mode=$dry_run_mode secretRef=$migration_secret_name/$migration_password_key"
+  exit 0
+fi
 
 echo "[flyway-job] applying $job image=$image"
 kubectl -n "$namespace" apply -f "$manifest" >/dev/null

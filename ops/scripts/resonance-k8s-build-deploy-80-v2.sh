@@ -21,6 +21,8 @@ NAMESPACE="${NAMESPACE:-carbonet-prod}"
 DEPLOYMENT="${DEPLOYMENT:-carbonet-runtime}"
 CONTAINER="${CONTAINER:-carbonet-runtime}"
 SERVICE="${SERVICE:-carbonet-runtime}"
+MIGRATION_SECRET_NAME="${CARBONET_MIGRATION_SECRET_NAME:-carbonet-migration-secret}"
+MIGRATION_PASSWORD_KEY="${CARBONET_MIGRATION_PASSWORD_KEY:-SPRING_FLYWAY_PASSWORD}"
 PROJECT_ID="${PROJECT_ID:-P003}"
 CUBRID_HOST="${CUBRID_HOST:-postgres-haproxy.${NAMESPACE}.svc.cluster.local}"
 E4B_RUNTIME_BASE_URL="${CARBONET_KRDS_AI_BASE_URL:-http://172.16.1.232:24451/v1}"
@@ -920,6 +922,8 @@ rollout_image() {
     if ! CARBONET_K8S_NAMESPACE="$NAMESPACE" \
       CARBONET_K8S_DEPLOYMENT="$DEPLOYMENT" \
       CARBONET_K8S_CONTAINER="$CONTAINER" \
+      CARBONET_MIGRATION_SECRET_NAME="$MIGRATION_SECRET_NAME" \
+      CARBONET_MIGRATION_PASSWORD_KEY="$MIGRATION_PASSWORD_KEY" \
       bash "$ROOT_DIR/ops/scripts/run-flyway-migration-job.sh" "$IMAGE_NAME"; then
       rollback_and_fail "FLYWAY_JOB_FAILED" \
         "Candidate image database migration failed before rollout" \
@@ -1015,15 +1019,43 @@ rollout_image() {
   local candidate_release_id
   candidate_release_id="$(date -u +%Y%m%d%H%M%S)-$$"
   CANDIDATE_RELEASE_ID="$candidate_release_id"
+  if [[ ! "$MIGRATION_SECRET_NAME" =~ ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$ \
+      || ! "$MIGRATION_PASSWORD_KEY" =~ ^[-._A-Za-z][-._A-Za-z0-9]*$ ]]; then
+    rollback_and_fail "MIGRATION_SECRET_REF_INVALID" \
+      "Migration Secret name or key is invalid" \
+      "Use a DNS-compatible Secret name and a Kubernetes-compatible key"
+  fi
+  if ! kubectl -n "$NAMESPACE" get secret "$MIGRATION_SECRET_NAME" -o json |
+      jq -e --arg key "$MIGRATION_PASSWORD_KEY" \
+        '.data[$key] | type == "string" and length > 0' >/dev/null; then
+    rollback_and_fail "MIGRATION_SECRET_UNAVAILABLE" \
+      "Migration Secret or required key is unavailable" \
+      "Provision $MIGRATION_SECRET_NAME/$MIGRATION_PASSWORD_KEY without placing its value in a Deployment"
+  fi
   log_cmd "kubectl patch deployment/$DEPLOYMENT image=$IMAGE_NAME release-id=$candidate_release_id"
   if ! kubectl -n "$NAMESPACE" patch "deployment/$DEPLOYMENT" --type='strategic' \
-    -p="{\"spec\":{\"template\":{\"metadata\":{\"labels\":{\"resonance.ai/release-id\":\"$candidate_release_id\"}},\"spec\":{\"containers\":[{\"name\":\"$CONTAINER\",\"image\":\"$IMAGE_NAME\",\"env\":[{\"name\":\"CARBONET_TEST_ACCOUNT_SWITCH_ENABLED\",\"value\":\"true\"},{\"name\":\"CARBONET_TEST_ACCOUNT_SWITCH_PASSWORD\",\"valueFrom\":{\"secretKeyRef\":{\"name\":\"carbonet-test-account-switch\",\"key\":\"password\",\"optional\":true}}}]}]}}}}" \
+    -p="{\"spec\":{\"template\":{\"metadata\":{\"labels\":{\"resonance.ai/release-id\":\"$candidate_release_id\"}},\"spec\":{\"containers\":[{\"name\":\"$CONTAINER\",\"image\":\"$IMAGE_NAME\",\"env\":[{\"name\":\"CARBONET_TEST_ACCOUNT_SWITCH_ENABLED\",\"value\":\"true\"},{\"name\":\"CARBONET_TEST_ACCOUNT_SWITCH_PASSWORD\",\"valueFrom\":{\"secretKeyRef\":{\"name\":\"carbonet-test-account-switch\",\"key\":\"password\",\"optional\":true}}},{\"name\":\"SPRING_FLYWAY_PASSWORD\",\"value\":null,\"valueFrom\":{\"secretKeyRef\":{\"name\":\"$MIGRATION_SECRET_NAME\",\"key\":\"$MIGRATION_PASSWORD_KEY\"}}}]}]}}}}" \
     2>"$KUBECTL_ERROR_LOG" >/dev/null; then
     log_error "kubectl candidate patch failed:"
     tail -20 "$KUBECTL_ERROR_LOG"
     rollback_and_fail "SET_IMAGE_FAILED" \
       "Failed to set deployment image and candidate release label" \
       "kubectl -n $NAMESPACE get deployment/$DEPLOYMENT -o yaml"
+  fi
+  if ! kubectl -n "$NAMESPACE" get "deployment/$DEPLOYMENT" -o json |
+      jq -e --arg container "$CONTAINER" --arg secret "$MIGRATION_SECRET_NAME" --arg key "$MIGRATION_PASSWORD_KEY" '
+        [.spec.template.spec.containers[]
+          | select(.name == $container)
+          | .env[]?
+          | select(.name == "SPRING_FLYWAY_PASSWORD")]
+        == [{
+          "name": "SPRING_FLYWAY_PASSWORD",
+          "valueFrom": {"secretKeyRef": {"name": $secret, "key": $key}}
+        }]
+      ' >/dev/null; then
+    rollback_and_fail "MIGRATION_SECRET_REF_FAILED" \
+      "Candidate runtime did not retain the exact migration SecretKeyRef" \
+      "Inspect deployment/$DEPLOYMENT without reading Secret data"
   fi
 
   log_detail "Ensuring imagePullPolicy allows local registry reuse..."
