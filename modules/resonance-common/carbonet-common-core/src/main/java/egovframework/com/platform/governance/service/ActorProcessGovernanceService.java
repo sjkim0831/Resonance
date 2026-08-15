@@ -2301,7 +2301,8 @@ public class ActorProcessGovernanceService {
         if(!designHash.matches("[0-9a-f]{64}"))
             throw new IllegalArgumentException("designHash must be a SHA-256 value");
 
-        jdbc.query("select pg_advisory_xact_lock(hashtext(?))",rs->{},process+":"+step);
+        jdbc.query("select pg_advisory_xact_lock(hashtextextended("+
+            "'CANONICAL_PROCESS_PUBLICATION_V1:'||upper(btrim(?)),0))",rs->{},process);
         String currentDesignHash=jdbc.queryForObject(
             "select framework_canonical_screen_bundle(?,?,?,?)->>'designHash'",String.class,
             process,step,audience,route);
@@ -2471,91 +2472,86 @@ public class ActorProcessGovernanceService {
         if(refreshed.size()!=1)throw new IllegalStateException(
             "STRUCTURED_GENERATION_SPEC_NOT_EXACT: "+process+" / "+step);
         List<Map<String,Object>> headed=jdbc.queryForList("""
-            with blueprint_candidates as materialized (
-              select b.process_code,b.step_code,upper(b.audience) audience,
-                     lower(split_part(b.route_path,'?',1)) route_path,b.blueprint_id,c.contract_id,
-                     (b.transition_status='CONTRACT_LINKED' and lower(b.source_reference) in(
-                       'framework_professional_screen_contract:'||c.contract_id,
-                       'professional_screen_contract:'||c.contract_id)) explicit_link,
-                     count(*) over(partition by c.contract_id) candidate_count,
-                     count(*) filter(where b.transition_status='CONTRACT_LINKED'
-                       and lower(b.source_reference) in(
-                         'framework_professional_screen_contract:'||c.contract_id,
-                         'professional_screen_contract:'||c.contract_id))
-                       over(partition by c.contract_id) explicit_count
-                from framework_screen_blueprint b
-                join framework_professional_screen_contract c
-                  on c.process_code=b.process_code and c.step_code=b.step_code
-                 and upper(c.audience)=upper(b.audience)
-                 and lower(split_part(c.route_path,'?',1))=lower(split_part(b.route_path,'?',1))
-               where b.process_code=? and b.step_code=? and b.validation_status='VALID'
-            ), exact_identity as materialized (
-              select process_code,step_code,audience,route_path,
-                     upper(process_code)||'|'||upper(step_code)||'|'||audience||'|'||route_path screen_key,
-                     min(blueprint_id) blueprint_id,min(contract_id) contract_id
-                from blueprint_candidates
-               where (explicit_count=1 and explicit_link)
-                  or (explicit_count=0 and candidate_count=1)
-               group by process_code,step_code,audience,route_path
-              having count(distinct blueprint_id)=1 and count(distinct contract_id)=1
-            ), digest as (
-              select encode(sha256(convert_to(string_agg(
-                       identity.screen_key||E'\\x1f'||
-                       (framework_canonical_screen_bundle(identity.process_code,identity.step_code,
-                         identity.audience,identity.route_path)->>'designHash'),E'\\n'
-                       order by identity.screen_key),'UTF8')),'hex') step_design_hash,
-                     count(*) design_count
-                from exact_identity identity
-            ), candidate as (
-              select spec.process_code,spec.step_code,digest.step_design_hash,digest.design_count,
-                     encode(sha256(convert_to(
-                       spec.actor_contract::text||spec.business_contract::text||
-                       spec.transition_contract::text||spec.input_contract::text||
-                       spec.output_contract::text||spec.screen_contract::text||
-                       spec.field_contract::text||spec.command_contract::text||
-                       spec.api_contract::text||spec.persistence_contract::text||
-                       spec.handoff_contract::text||spec.test_contract::text||
-                       spec.guide_contract::text||spec.nonfunctional_contract::text||
-                       digest.step_design_hash,'UTF8')),'hex') source_hash
-                from framework_step_execution_spec spec,digest
-               where spec.process_code=? and spec.step_code=?
-                 and spec.design_status='DESIGN_COMPLETE' and spec.approval_status='APPROVED'
-                 and digest.design_count>0
+            with generation_head as materialized (
+              select framework_process_generation_input(?::text) head
             ), updated as (
               update framework_step_execution_spec spec
-                 set source_hash=candidate.source_hash,
-                     spec_version=case when spec.source_hash is distinct from candidate.source_hash
+                 set source_hash=head->>'processInputHash',
+                     spec_version=case when spec.source_hash is distinct from head->>'processInputHash'
                        then spec.spec_version+1 else spec.spec_version end,
-                     generation_status=case when spec.source_hash is distinct from candidate.source_hash
+                     generation_status=case when spec.source_hash is distinct from head->>'processInputHash'
                        then 'READY' else spec.generation_status end,
                      updated_at=current_timestamp
-                from candidate
-               where spec.process_code=candidate.process_code and spec.step_code=candidate.step_code
-              returning spec.source_hash,candidate.step_design_hash,candidate.design_count
+                from generation_head
+               where spec.process_code=?
+                 and spec.design_status='DESIGN_COMPLETE'
+                 and spec.approval_status='APPROVED'
+                 and spec.generation_status in('READY','GENERATED')
+              returning spec.step_code
             )
-            select source_hash as "sourceHash",step_design_hash as "stepDesignHash",
-                   design_count as "designCount" from updated
-            """,process,step,process,step);
+            select head->>'processInputHash' as "sourceHash",
+                   head->>'designSetHash' as "designSetHash",
+                   head->>'designCatalogHash' as "designCatalogHash",
+                   head->>'designCatalogTextHash' as "designCatalogTextHash",
+                   head->>'endpointCatalogHash' as "endpointCatalogHash",
+                   head->>'endpointCatalogTextHash' as "endpointCatalogTextHash",
+                   head->>'coordinatorStep' as "coordinatorStep",
+                   (head->>'processStepCount')::integer as "processStepCount",
+                   (head->>'generationReadyStepCount')::integer as "generationReadyStepCount",
+                   (head->>'processEndpointExpected')::integer as "processEndpointExpected",
+                   (head->>'screenCount')::integer as "designCount",
+                   (select count(*) from updated)::integer as "updatedCount"
+              from generation_head
+             where (head->>'generationReadyStepCount')::integer>0
+               and (head->>'coordinatorStep') is not null
+            """,process,process);
         if(headed.size()!=1)throw new IllegalStateException(
-            "CANONICAL_GENERATION_HEAD_NOT_EXACT: "+process+" / "+step);
+            "CANONICAL_PROCESS_GENERATION_HEAD_NOT_EXACT: "+process);
         String sourceHash=String.valueOf(headed.get(0).get("sourceHash"));
-        String stepDesignHash=String.valueOf(headed.get(0).get("stepDesignHash"));
-        if(!sourceHash.matches("[0-9a-f]{32}|[0-9a-f]{64}"))
+        String designSetHash=String.valueOf(headed.get(0).get("designSetHash"));
+        String designCatalogHash=String.valueOf(headed.get(0).get("designCatalogHash"));
+        String designCatalogTextHash=String.valueOf(headed.get(0).get("designCatalogTextHash"));
+        String endpointCatalogHash=String.valueOf(headed.get(0).get("endpointCatalogHash"));
+        String endpointCatalogTextHash=String.valueOf(headed.get(0).get("endpointCatalogTextHash"));
+        String coordinatorStep=String.valueOf(headed.get(0).get("coordinatorStep"));
+        int processStepCount=((Number)headed.get(0).getOrDefault("processStepCount",0)).intValue();
+        int generationReadyStepCount=((Number)headed.get(0)
+            .getOrDefault("generationReadyStepCount",0)).intValue();
+        int processEndpointExpected=((Number)headed.get(0)
+            .getOrDefault("processEndpointExpected",0)).intValue();
+        int updatedCount=((Number)headed.get(0).getOrDefault("updatedCount",0)).intValue();
+        if(!sourceHash.matches("[0-9a-f]{64}"))
             throw new IllegalStateException("CANONICAL_SOURCE_HASH_INVALID");
-        if(!stepDesignHash.matches("[0-9a-f]{64}"))
+        if(!designSetHash.matches("[0-9a-f]{64}")
+                ||!designCatalogHash.matches("[0-9a-f]{64}")
+                ||!designCatalogTextHash.matches("[0-9a-f]{64}")
+                ||!endpointCatalogHash.matches("[0-9a-f]{64}")
+                ||!endpointCatalogTextHash.matches("[0-9a-f]{64}"))
             throw new IllegalStateException("CANONICAL_DESIGN_SET_HASH_INVALID");
+        if(coordinatorStep.isBlank()||processStepCount<1||generationReadyStepCount<1
+                ||updatedCount!=generationReadyStepCount)
+            throw new IllegalStateException("CANONICAL_PROCESS_GENERATION_COVERAGE_NOT_EXACT");
         int endpointExpected=((Number)refreshed.get(0).getOrDefault("endpointExpected",0)).intValue();
         if(endpointExpected<1)throw new IllegalStateException("CANONICAL_ENDPOINT_OUTPUT_REQUIRED");
 
-        String target="canonical://"+process+"/"+sourceHash+"/"+designHash;
+        String target="canonical://"+process+"/"+sourceHash;
         Map<String,Object> generationSpec=new LinkedHashMap<>();
-        generationSpec.put("algorithm","CANONICAL_EVIDENCE_PUBLICATION_V1");
+        generationSpec.put("algorithm","CANONICAL_PROCESS_PUBLICATION_V1");
         generationSpec.put("generatorRequired",true);generationSpec.put("reuseCommonAssets",true);
-        generationSpec.put("processCode",process);generationSpec.put("stepCode",step);
+        generationSpec.put("processCode",process);generationSpec.put("stepCode",coordinatorStep);
+        generationSpec.put("coordinatorStep",coordinatorStep);
+        generationSpec.put("processInputHash",sourceHash);
+        generationSpec.put("processStepCount",processStepCount);
+        generationSpec.put("generationReadyStepCount",generationReadyStepCount);
         generationSpec.put("routePath",route);generationSpec.put("audience",audience);
         generationSpec.put("designHash",designHash);generationSpec.put("sourceHash",sourceHash);
-        generationSpec.put("designSetHash",stepDesignHash);
-        generationSpec.put("endpointExpected",endpointExpected);
+        generationSpec.put("designSetHash",designSetHash);
+        generationSpec.put("designCatalogHash",designCatalogHash);
+        generationSpec.put("designCatalogTextHash",designCatalogTextHash);
+        generationSpec.put("endpointCatalogHash",endpointCatalogHash);
+        generationSpec.put("endpointCatalogTextHash",endpointCatalogTextHash);
+        generationSpec.put("endpointExpected",processEndpointExpected);
+        generationSpec.put("triggerEndpointExpected",endpointExpected);
         generationSpec.put("requiredGates",List.of(
             "DESIGN","FRONTEND","API","DATABASE","HELP","CARDS","BUILD","PUBLISH"));
         generationSpec.put("verifiedEvidenceRequired",true);generationSpec.put("autoDeploy",false);
@@ -2563,8 +2559,8 @@ public class ActorProcessGovernanceService {
         String specification=toJson(generationSpec);
         String canonicalGroup=process+"_CANONICAL_PUBLICATION";
         List<Map<String,Object>> existing=jdbc.queryForList(
-            "select job_id as \"jobId\",job_status as \"jobStatus\",target_path as \"targetPath\" from framework_development_job where process_code=? and step_code=? and job_type='FULL_STACK_GENERATION' and job_group_code=? for update",
-            process,step,canonicalGroup);
+            "select job_id as \"jobId\",job_status as \"jobStatus\",target_path as \"targetPath\" from framework_development_job where process_code=? and job_type='FULL_STACK_GENERATION' and job_group_code=? for update",
+            process,canonicalGroup);
         long jobId;
         boolean queued;
         boolean resetArtifact;
@@ -2576,7 +2572,7 @@ public class ActorProcessGovernanceService {
                   progress_weight,max_attempts,quality_status,created_by)
                 values(?,?,'FULL_STACK_GENERATION','구조화 설계 전체 스택 자동 생성',?, ?,
                   'PLANNED','APPROVED','SEQUENTIAL',?,true,10,3,'PENDING',?) returning job_id
-                """,Long.class,process,step,target,specification,
+                """,Long.class,process,coordinatorStep,target,specification,
                 canonicalGroup,actor);
             queued=true;
             resetArtifact=true;
@@ -2589,14 +2585,14 @@ public class ActorProcessGovernanceService {
                 queued=true;resetArtifact=true;
                 int revisionReset=jdbc.update("""
                     update framework_development_job
-                       set target_path=?,specification_json=?,job_status='PLANNED',
+                       set step_code=?,target_path=?,specification_json=?,job_status='PLANNED',
                            approval_status='APPROVED',quality_status='PENDING',quality_report='{}',
                            worker_id=null,lease_token=null,lease_until=null,attempt_count=0,
                            started_at=null,completed_at=null,result_json='{}',evidence_ref=null,
                            rollback_ref=null,last_error=null,updated_at=current_timestamp
-                     where job_id=? and process_code=? and step_code=?
+                     where job_id=? and process_code=?
                        and job_type='FULL_STACK_GENERATION' and job_group_code=?
-                    """,target,specification,jobId,process,step,canonicalGroup);
+                    """,coordinatorStep,target,specification,jobId,process,canonicalGroup);
                 if(revisionReset!=1)throw new IllegalStateException(
                     "CANONICAL_GENERATION_JOB_REVISION_RESET_FAILED");
                 jdbc.update("delete from framework_development_job_gate_result where job_id=?",jobId);
@@ -2609,16 +2605,16 @@ public class ActorProcessGovernanceService {
                 queued=true;resetArtifact=true;
                 jdbc.update("""
                 update framework_development_job
-                   set specification_json=?,job_status='PLANNED',approval_status='APPROVED',
+                   set step_code=?,specification_json=?,job_status='PLANNED',approval_status='APPROVED',
                        quality_status='PENDING',worker_id=null,lease_token=null,lease_until=null,
                        last_error=null,completed_at=null,updated_at=current_timestamp
                  where job_id=?
-                """,specification,jobId);
+                """,coordinatorStep,specification,jobId);
             }else throw new IllegalStateException("CANONICAL_GENERATION_JOB_STATUS_INVALID: "+status);
         }
         Integer artifactCount=jdbc.queryForObject(
-            "select count(*) from framework_process_artifact where process_code=? and step_code=? and contract_ref='AUTO:FULL_STACK_GENERATION'",
-            Integer.class,process,step);
+            "select count(*) from framework_process_artifact where process_code=? and contract_ref='AUTO:FULL_STACK_GENERATION'",
+            Integer.class,process);
         if(artifactCount==null||artifactCount>1)
             throw new IllegalStateException("CANONICAL_GENERATION_ARTIFACT_NOT_EXACT");
         if(artifactCount==0)jdbc.update("""
@@ -2630,21 +2626,21 @@ public class ActorProcessGovernanceService {
               (select actor_code from framework_process_step where process_code=? and step_code=?),
               '동일 designHash/sourceHash의 결정적 산출물과 자동 테스트가 통과해야 한다.',
               'save-and-generate direct path')
-            """,process,step,(process+"_"+step+"_FULL_STACK_GENERATION").replaceAll("[^A-Za-z0-9_]","_"),
-            target,process,step);
+            """,process,coordinatorStep,(process+"_FULL_STACK_GENERATION").replaceAll("[^A-Za-z0-9_]","_"),
+            target,process,coordinatorStep);
         else jdbc.update("""
             update framework_process_artifact
-               set target_path=?,delivery_status=case when ? then 'PLANNED' else delivery_status end,
+               set step_code=?,target_path=?,delivery_status=case when ? then 'PLANNED' else delivery_status end,
                    evidence_ref=case when ? then null else evidence_ref end,
                    updated_at=current_timestamp
-             where process_code=? and step_code=? and contract_ref='AUTO:FULL_STACK_GENERATION'
-            """,target,resetArtifact,resetArtifact,process,step);
+             where process_code=? and contract_ref='AUTO:FULL_STACK_GENERATION'
+            """,coordinatorStep,target,resetArtifact,resetArtifact,process);
 
         Integer canonicalJobCount=jdbc.queryForObject("""
             select count(*) from framework_development_job
-             where process_code=? and step_code=? and job_type='FULL_STACK_GENERATION'
+             where process_code=? and job_type='FULL_STACK_GENERATION'
                and job_group_code=?
-            """,Integer.class,process,step,canonicalGroup);
+            """,Integer.class,process,canonicalGroup);
         if(canonicalJobCount==null||canonicalJobCount!=1)
             throw new IllegalStateException("CANONICAL_GENERATION_JOB_NOT_EXACT");
 
@@ -2653,8 +2649,12 @@ public class ActorProcessGovernanceService {
         result.put("generationQueued",queued);result.put("jobCount",canonicalJobCount);result.put("jobId",jobId);
         result.put("processCode",process);result.put("stepCode",step);result.put("routePath",route);
         result.put("designHash",designHash);result.put("sourceHash",sourceHash);
-        result.put("designSetHash",stepDesignHash);
-        result.put("endpointExpected",endpointExpected);result.put("publishCount",0);
+        result.put("processInputHash",sourceHash);result.put("designSetHash",designSetHash);
+        result.put("designCatalogHash",designCatalogHash);
+        result.put("endpointCatalogHash",endpointCatalogHash);
+        result.put("coordinatorStep",coordinatorStep);result.put("processStepCount",processStepCount);
+        result.put("generationReadyStepCount",generationReadyStepCount);
+        result.put("endpointExpected",processEndpointExpected);result.put("publishCount",0);
         return result;
     }
 

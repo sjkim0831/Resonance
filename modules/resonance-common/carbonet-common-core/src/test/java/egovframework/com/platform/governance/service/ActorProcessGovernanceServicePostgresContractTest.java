@@ -76,7 +76,7 @@ class ActorProcessGovernanceServicePostgresContractTest {
             insert into comtnthemedefinition(theme_id,use_at,is_active)
             values('REGISTERED_THEME','Y','Y'),('KRDS_GOV_DEFAULT','Y','Y')
             """);
-        jdbc.update("insert into framework_process_step(process_code,step_code,actor_code) values('PROC','STEP','ACTOR')");
+        jdbc.update("insert into framework_process_step(process_code,step_code,step_order,actor_code) values('PROC','STEP',1,'ACTOR')");
         contractId=jdbc.queryForObject("""
             insert into framework_professional_screen_contract(
               process_code,step_code,audience,route_path,screen_name,actor_code,permission_codes,business_purpose,
@@ -440,6 +440,94 @@ class ActorProcessGovernanceServicePostgresContractTest {
     }
 
     @Test
+    void twoStepProcessUsesOneCoordinatorJobAndOneInputHashAcrossRevisions(){
+        long secondContract=seedSecondStep();
+
+        Map<String,Object> first=direct();
+        long jobId=((Number)first.get("jobId")).longValue();
+        String firstHash=String.valueOf(first.get("processInputHash"));
+        assertEquals(2,number(first,"processStepCount"));
+        assertEquals(1,number(first,"generationReadyStepCount"));
+        assertEquals("STEP",first.get("coordinatorStep"));
+
+        Map<String,Object> second=direct("STEP_B","/screen-b");
+        String secondHash=String.valueOf(second.get("processInputHash"));
+        assertEquals(jobId,((Number)second.get("jobId")).longValue());
+        assertNotEquals(firstHash,secondHash);
+        assertEquals(2,number(second,"generationReadyStepCount"));
+        assertEquals(2,number(second,"endpointExpected"));
+        assertEquals(1,count("framework_development_job"));
+        assertEquals(1,jdbc.queryForObject(
+            "select count(distinct source_hash) from framework_step_execution_spec",Integer.class));
+        assertEquals(secondHash,jdbc.queryForObject(
+            "select min(source_hash) from framework_step_execution_spec",String.class));
+
+        jdbc.update("insert into comtnthemedefinition(theme_id,use_at,is_active) values('STEP_B_THEME','Y','Y')");
+        jdbc.update("""
+            update framework_screen_blueprint
+               set specification_json='{"layout":"REGISTERED_LAYOUT","theme":"STEP_B_THEME"}'
+             where step_code='STEP_B'
+            """);
+        Map<String,Object> third=direct("STEP_B","/screen-b");
+
+        assertEquals(jobId,((Number)third.get("jobId")).longValue());
+        assertNotEquals(secondHash,third.get("processInputHash"));
+        assertEquals(1,number(third,"jobCount"));
+        assertEquals(1,count("framework_development_job"));
+        assertEquals("STEP",jdbc.queryForObject(
+            "select step_code from framework_development_job",String.class));
+        assertEquals(2,jdbc.queryForObject("""
+            select count(*) from framework_step_execution_spec
+             where source_hash=(select specification_json::jsonb->>'processInputHash'
+                                  from framework_development_job)
+            """,Integer.class));
+        assertEquals("STEP_B_THEME",jdbc.queryForObject("""
+            select screen_contract->0->>'theme' from framework_step_execution_spec
+             where step_code='STEP_B'
+            """,String.class));
+        assertEquals(secondContract,jdbc.queryForObject(
+            "select contract_id from framework_professional_screen_contract where step_code='STEP_B'",
+            Long.class));
+    }
+
+    @Test
+    void processInputExcludesVolatileTimestampsAndBindsCatalogHashes(){
+        direct();
+        long started=System.nanoTime();
+        String plan=transaction.execute(status->{
+            jdbc.execute("set local statement_timeout='5s'");
+            return jdbc.queryForObject("""
+                explain (analyze,buffers,format json)
+                select framework_process_generation_input('PROC')
+                """,String.class);
+        });
+        long elapsedMillis=(System.nanoTime()-started)/1_000_000L;
+        assertTrue(elapsedMillis<5_000,"process input exceeded 5 seconds: "+elapsedMillis);
+        assertTrue(plan!=null&&!plan.matches(
+            "(?s).*\\\"Temp (?:Read|Written) Blocks\\\": [1-9][0-9]*.*"),plan);
+        Map<String,Object> before=jdbc.queryForMap("""
+            select head->>'processInputHash' as "processInputHash",
+                   head->>'designCatalogHash' as "designCatalogHash",
+                   head->>'endpointCatalogHash' as "endpointCatalogHash"
+              from (select framework_process_generation_input('PROC') head) input
+            """);
+
+        jdbc.update("update framework_process_definition set updated_at=current_timestamp+interval '1 day'");
+        jdbc.update("update framework_step_execution_spec set updated_at=current_timestamp+interval '1 day'");
+        Map<String,Object> timestampOnly=jdbc.queryForMap("""
+            select head->>'processInputHash' as "processInputHash"
+              from (select framework_process_generation_input('PROC') head) input
+            """);
+        assertEquals(before.get("processInputHash"),timestampOnly.get("processInputHash"));
+
+        jdbc.update("update framework_professional_screen_contract set api_contract='[{\"method\":\"PUT\",\"path\":\"/api/items/{id}\"}]' where contract_id=?",contractId);
+        Map<String,Object> after=direct();
+        assertNotEquals(before.get("processInputHash"),after.get("processInputHash"));
+        assertNotEquals(before.get("designCatalogHash"),after.get("designCatalogHash"));
+        assertNotEquals(before.get("endpointCatalogHash"),after.get("endpointCatalogHash"));
+    }
+
+    @Test
     void duplicateBlueprintRequiresExactlyOneExplicitAuthority(){
         jdbc.update("""
             insert into framework_screen_blueprint(
@@ -485,9 +573,13 @@ class ActorProcessGovernanceServicePostgresContractTest {
     }
 
     private Map<String,Object> direct(){
+        return direct("STEP","/screen");
+    }
+
+    private Map<String,Object> direct(String step,String route){
         return transaction.execute(status->service.executeDesignDirectDevelopment(Map.of(
-            "processCode","PROC","stepCode","STEP","audience","USER",
-            "routePath","/screen","designHash",designHash()),"ADMIN"));
+            "processCode","PROC","stepCode",step,"audience","USER",
+            "routePath",route,"designHash",designHash(step,route)),"ADMIN"));
     }
 
     private Map<String,Object> updateDesign(Map<String,Object> values){
@@ -495,8 +587,49 @@ class ActorProcessGovernanceServicePostgresContractTest {
     }
 
     private String designHash(){
+        return designHash("STEP","/screen");
+    }
+
+    private String designHash(String step,String route){
         return jdbc.queryForObject(
-            "select framework_canonical_screen_bundle('PROC','STEP','USER','/screen')->>'designHash'",String.class);
+            "select framework_canonical_screen_bundle('PROC',?,'USER',?)->>'designHash'",
+            String.class,step,route);
+    }
+
+    private long seedSecondStep(){
+        jdbc.update("insert into framework_screen_resource(route_key,layout_type) values('/screen-b','REGISTERED_LAYOUT')");
+        jdbc.update("insert into framework_process_step(process_code,step_code,step_order,actor_code) values('PROC','STEP_B',2,'ACTOR')");
+        long secondContract=jdbc.queryForObject("""
+            insert into framework_professional_screen_contract(
+              process_code,step_code,audience,route_path,screen_name,actor_code,permission_codes,business_purpose,
+              entry_condition,exit_condition,section_contract,field_contract,command_contract,
+              state_contract,api_contract,data_contract,evidence_contract,responsive_contract,
+              accessibility_contract,security_contract)
+            values('PROC','STEP_B','USER','/screen-b','Screen B','ACTOR','[]','purpose B','entry','exit',
+              '[{"sectionId":"WORK_B"}]','[{"fieldCode":"nameB"}]',
+              '[{"commandCode":"SAVE_B"}]','[{"state":"READY"}]',
+              '[{"method":"POST","path":"/api/items-b"}]','[{"entity":"itemB"}]',
+              '[{"evidence":"audit"}]','responsive','accessible','security') returning contract_id
+            """,Long.class);
+        jdbc.update("""
+            insert into framework_screen_blueprint(
+              process_code,step_code,audience,route_path,page_id,page_name,screen_type,
+              template_code,specification_json,source_reference,transition_status,validation_status)
+            values('PROC','STEP_B','USER','/screen-b','PAGE_B','Screen B','FORM','KRDS_FORM',
+              '{"layout":"REGISTERED_LAYOUT","theme":"REGISTERED_THEME"}',?,
+              'CONTRACT_LINKED','VALID')
+            ""","framework_professional_screen_contract:"+secondContract);
+        jdbc.update("""
+            insert into framework_step_execution_spec(
+              process_code,step_code,actor_contract,business_contract,transition_contract,
+              input_contract,output_contract,screen_contract,field_contract,command_contract,
+              api_contract,persistence_contract,handoff_contract,test_contract,guide_contract,
+              nonfunctional_contract,design_status,approval_status,generation_status,blocker_codes,
+              source_hash,spec_version)
+            values('PROC','STEP_B','{"actor":"ACTOR"}','{}','{}','{}','{}','[]',
+              '{}','[]','[]','{}','{}','{}','{}','{}','DRAFT','PENDING','BLOCKED','[]',?,1)
+            ""","b".repeat(64));
+        return secondContract;
     }
 
     private void resetGenerationState(){
@@ -636,7 +769,17 @@ class ActorProcessGovernanceServicePostgresContractTest {
                 requested_process,requested_step,requested_actor,'','')
             $$
             """);
-        jdbc.execute("create table framework_process_step(process_code text,step_code text,actor_code text,primary key(process_code,step_code))");
+        jdbc.execute("""
+            create table framework_process_definition(
+              process_code text primary key,process_name text not null,goal text not null,
+              created_at timestamp default current_timestamp,updated_at timestamp default current_timestamp)
+            """);
+        jdbc.update("insert into framework_process_definition(process_code,process_name,goal) values('PROC','Process','goal')");
+        jdbc.execute("""
+            create table framework_process_step(
+              process_code text,step_code text,step_order integer not null,actor_code text,
+              primary key(process_code,step_code))
+            """);
         jdbc.execute("""
             create table framework_step_execution_spec(
               process_code text,step_code text,actor_contract jsonb,business_contract jsonb,
@@ -664,7 +807,10 @@ class ActorProcessGovernanceServicePostgresContractTest {
               gate_code text not null,result text not null)
             """);
         try{
-            jdbc.execute(Files.readString(findRepositoryFile(CANONICAL_JOB_MIGRATION)));
+            String migration=Files.readString(findRepositoryFile(CANONICAL_JOB_MIGRATION))
+                .replace("public.",schema+".")
+                .replace("search_path = pg_catalog, public","search_path = pg_catalog, "+schema);
+            jdbc.execute(migration);
         }catch(java.io.IOException error){
             throw new IllegalStateException("canonical job migration cannot be read",error);
         }
@@ -736,6 +882,59 @@ class ActorProcessGovernanceServicePostgresContractTest {
                where b.blueprint_id=selected_id;
               return jsonb_build_object('designHash',design_hash);
             end $$
+            """);
+        jdbc.execute("""
+            create function framework_canonical_design_catalog(requested_limit integer,requested_process text)
+            returns jsonb language sql stable as $$
+              with screens as materialized (
+                select c.step_code,upper(c.audience) audience,
+                       lower(split_part(c.route_path,'?',1)) route_path,
+                       upper(c.process_code)||'|'||upper(c.step_code)||'|'||upper(c.audience)||'|'||
+                         lower(split_part(c.route_path,'?',1)) screen_key,
+                       framework_canonical_screen_bundle(c.process_code,c.step_code,c.audience,c.route_path)
+                         ->>'designHash' design_hash
+                  from framework_professional_screen_contract c
+                 where c.process_code=requested_process
+              ), aggregate as (
+                select encode(sha256(convert_to(string_agg(
+                         screen_key||E'\\x1f'||design_hash,E'\\n' order by screen_key),'UTF8')),'hex') catalog_hash,
+                       jsonb_agg(jsonb_build_object('screenKey',screen_key,'stepCode',step_code,
+                         'audience',audience,'routePath',route_path,'designHash',design_hash)
+                         order by screen_key) screens
+                  from screens
+              )
+              select jsonb_build_object('schema','carbonet.canonical-design/v1',
+                       'catalogHash',catalog_hash,'screens',screens) from aggregate
+            $$
+            """);
+        jdbc.execute("""
+            create function framework_canonical_endpoint_readiness(requested_limit integer,requested_process text)
+            returns jsonb language sql stable as $$
+              select jsonb_build_object('schema','carbonet.canonical-endpoint-readiness/v1',
+                'status','COMPLETE')
+            $$
+            """);
+        jdbc.execute("""
+            create function framework_canonical_endpoint_catalog(requested_limit integer,requested_process text)
+            returns jsonb language sql stable as $$
+              with endpoints as materialized (
+                select upper(c.process_code)||'|'||upper(c.step_code)||'|'||upper(c.audience)||'|'||
+                         lower(split_part(c.route_path,'?',1)) screen_key,
+                       encode(sha256(convert_to(
+                         framework_canonical_screen_bundle(c.process_code,c.step_code,c.audience,c.route_path)
+                           ->>'designHash'||E'\\x1f'||c.api_contract,'UTF8')),'hex') endpoint_hash
+                  from framework_professional_screen_contract c
+                 where c.process_code=requested_process
+              ), aggregate as (
+                select encode(sha256(convert_to(string_agg(
+                         screen_key||E'\\x1f'||endpoint_hash,E'\\n' order by screen_key),'UTF8')),'hex') catalog_hash,
+                       jsonb_agg(jsonb_build_object('screenKey',screen_key,'endpointHash',endpoint_hash)
+                         order by screen_key) endpoints
+                  from endpoints
+              )
+              select jsonb_build_object('schema','carbonet.canonical-endpoint-catalog/v1',
+                       'catalogHash',catalog_hash,'endpoints',endpoints) from aggregate
+            $$
             """);
     }
 
