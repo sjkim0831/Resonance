@@ -34,4 +34,15 @@ describe('DesignAssetControlPage SOURCE immediate contract', () => {
     expect(source).not.toContain('requestRollback');
     expect(source).not.toContain('DESIGN_ASSET_PROMOTION');
   });
+
+  it('does not treat a split 202 receipt as success or replace the fingerprint optimistically', () => {
+    expect(source).toContain('sourceResponse.status === 202');
+    expect(source).toContain("result.controlPlaneSnapshot === 'SYNC_REQUIRED'");
+    expect(source).toContain('result.syncReceiptId');
+    expect(source).toContain('pollDesignAssetSync');
+    expect(source).toContain("result.controlPlaneSnapshot === 'SYNCHRONIZED'");
+    expect(source).toContain(
+      'authoritative.fingerprint !== sync.receipt.snapshotFingerprint',
+    );
+  });
 });

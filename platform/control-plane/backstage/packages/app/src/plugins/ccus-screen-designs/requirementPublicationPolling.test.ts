@@ -1,5 +1,6 @@
 import {
   pollRequirementPublication,
+  pollRequirementDocumentSet,
   REQUIREMENT_PUBLICATION_POLL_DELAYS_MS,
 } from './requirementPublicationPolling';
 
@@ -91,5 +92,58 @@ describe('requirement publication polling', () => {
       expect.objectContaining({ outcome: 'CANCELLED', attempts: 1 }),
     );
     expect(readReceipt).toHaveBeenCalledTimes(1);
+  });
+
+  it('observes all queued documents through backend truth without mutation races', async () => {
+    const readDocuments = jest
+      .fn()
+      .mockResolvedValueOnce([
+        { documentId: 'doc-1', status: 'GENERATION_QUEUED' },
+        { documentId: 'doc-2', status: 'GENERATION_QUEUED' },
+      ])
+      .mockResolvedValueOnce([
+        { documentId: 'doc-1', status: 'GENERATION_APPLIED' },
+        { documentId: 'doc-2', status: 'FAILED' },
+      ]);
+    const resultPromise = pollRequirementDocumentSet({
+      readDocuments,
+      signal: new AbortController().signal,
+      delaysMs: [1000],
+    });
+    await flush();
+    await jest.advanceTimersByTimeAsync(1000);
+
+    await expect(resultPromise).resolves.toMatchObject({
+      outcome: 'TERMINAL',
+      attempts: 2,
+      documents: [
+        { documentId: 'doc-1', status: 'GENERATION_APPLIED' },
+        { documentId: 'doc-2', status: 'FAILED' },
+      ],
+    });
+    expect(readDocuments).toHaveBeenCalledTimes(2);
+  });
+
+  it('waits for every requested target and cancels the shared timer on unmount', async () => {
+    const readDocuments = jest.fn().mockResolvedValue([
+      { documentId: 'doc-1', status: 'APPLIED' },
+      { documentId: 'doc-2', status: 'GENERATION_QUEUED' },
+    ]);
+    const controller = new AbortController();
+    const resultPromise = pollRequirementDocumentSet({
+      readDocuments,
+      targetDocumentIds: ['doc-1', 'doc-2'],
+      signal: controller.signal,
+      delaysMs: [1000, 2000],
+    });
+    await flush();
+    controller.abort();
+    await jest.runOnlyPendingTimersAsync();
+
+    await expect(resultPromise).resolves.toMatchObject({
+      outcome: 'CANCELLED',
+      attempts: 1,
+    });
+    expect(readDocuments).toHaveBeenCalledTimes(1);
   });
 });

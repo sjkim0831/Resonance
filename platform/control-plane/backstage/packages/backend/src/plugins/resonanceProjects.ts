@@ -3,7 +3,7 @@ import {
   createBackendPlugin,
 } from '@backstage/backend-plugin-api';
 import { Router, json, type Request, type Response } from 'express';
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import {
   analyzeRequirementText,
@@ -32,11 +32,22 @@ import {
   buildSourceDesignAssetMutation,
   synchronizeGlobalDesignAssetSnapshots,
   type DesignAssetSnapshot,
+  type SourceDesignAssetMutation,
 } from './designAssetSourceImmediate';
 import {
   bootstrapProjectDesignRoles,
   validateProjectDesignRoleAssignments,
 } from './projectDesignRoles';
+import {
+  RECEIPT_RECONCILIATION_BATCH_SIZE,
+  RECEIPT_RECONCILIATION_LEASE_MS,
+  reconcileDesignSnapshotSyncBatch,
+  reconcileRequirementReceiptBatch,
+  receiptRetryDelayMs,
+  selectFairRequirementClaims,
+  type DesignSnapshotSyncClaim,
+  type RequirementReceiptClaim,
+} from './receiptReconciliation';
 
 type ProjectInput = {
   projectId?: string;
@@ -243,9 +254,17 @@ export default createBackendPlugin({
         httpAuth: coreServices.httpAuth,
         httpRouter: coreServices.httpRouter,
         logger: coreServices.logger,
+        scheduler: coreServices.scheduler,
         userInfo: coreServices.userInfo,
       },
-      async init({ database, httpAuth, httpRouter, logger, userInfo }) {
+      async init({
+        database,
+        httpAuth,
+        httpRouter,
+        logger,
+        scheduler,
+        userInfo,
+      }) {
         const knex = await database.getClient();
         if (!(await knex.schema.hasTable('resonance_projects__project'))) {
           await knex.schema.createTable(
@@ -380,6 +399,64 @@ export default createBackendPlugin({
             },
           );
         }
+        if (
+          !(await knex.schema.hasTable(
+            'resonance_projects__design_asset_source_sync',
+          ))
+        ) {
+          await knex.schema.createTable(
+            'resonance_projects__design_asset_source_sync',
+            table => {
+              table.string('sync_id', 64).primary();
+              table.string('project_id', 64).notNullable();
+              table.string('asset_type', 32).notNullable();
+              table.string('asset_id', 200).notNullable();
+              table.string('snapshot_base_fingerprint', 64).notNullable();
+              table.string('base_fingerprint', 64).notNullable();
+              table.string('asset_fingerprint', 64).notNullable();
+              table.jsonb('mutation_payload').notNullable();
+              table.jsonb('runtime_receipt').notNullable();
+              table.string('sync_status', 32).notNullable();
+              table.integer('retry_attempt').notNullable().defaultTo(0);
+              table.timestamp('next_attempt_at', { useTz: true }).notNullable();
+              table.string('claim_token', 64).nullable();
+              table.timestamp('lease_expires_at', { useTz: true }).nullable();
+              table.text('last_error').nullable();
+              table.string('created_by', 300).notNullable();
+              table.timestamp('created_at', { useTz: true }).notNullable();
+              table.timestamp('updated_at', { useTz: true }).notNullable();
+              table.timestamp('synchronized_at', { useTz: true }).nullable();
+              table.unique(
+                ['project_id', 'asset_type', 'asset_id', 'asset_fingerprint'],
+                'resonance_design_asset_source_sync_identity_uq',
+              );
+              table.index(
+                ['sync_status', 'next_attempt_at', 'project_id'],
+                'resonance_design_asset_source_sync_due_idx',
+              );
+            },
+          );
+        }
+        if (
+          !(await knex.schema.hasColumn(
+            'resonance_projects__design_asset_source_sync',
+            'snapshot_base_fingerprint',
+          ))
+        ) {
+          await knex.schema.alterTable(
+            'resonance_projects__design_asset_source_sync',
+            table =>
+              table
+                .string('snapshot_base_fingerprint', 64)
+                .notNullable()
+                .defaultTo(''),
+          );
+        }
+        await knex.raw(`
+          create unique index if not exists resonance_design_asset_source_sync_active_uq
+              on resonance_projects__design_asset_source_sync(asset_type,asset_id)
+           where sync_status in ('PREPARED','PENDING','RUNNING')
+        `);
         if (
           !(await knex.schema.hasTable(
             'resonance_projects__design_asset_audit',
@@ -609,6 +686,70 @@ export default createBackendPlugin({
           create index if not exists resonance_requirement_document_identity_head_idx
           on resonance_projects__requirement_document(project_id,identity_key,design_version desc)
         `);
+        const requirementReceiptColumns = [
+          [
+            'publication_reconcile_status',
+            (table: any) =>
+              table.string('publication_reconcile_status', 32).nullable(),
+          ],
+          [
+            'publication_poll_attempt_count',
+            (table: any) =>
+              table
+                .integer('publication_poll_attempt_count')
+                .notNullable()
+                .defaultTo(0),
+          ],
+          [
+            'publication_next_attempt_at',
+            (table: any) =>
+              table
+                .timestamp('publication_next_attempt_at', { useTz: true })
+                .nullable(),
+          ],
+          [
+            'publication_claim_token',
+            (table: any) =>
+              table.string('publication_claim_token', 64).nullable(),
+          ],
+          [
+            'publication_lease_expires_at',
+            (table: any) =>
+              table
+                .timestamp('publication_lease_expires_at', { useTz: true })
+                .nullable(),
+          ],
+          [
+            'publication_last_error',
+            (table: any) => table.text('publication_last_error').nullable(),
+          ],
+          [
+            'publication_reconciled_at',
+            (table: any) =>
+              table
+                .timestamp('publication_reconciled_at', { useTz: true })
+                .nullable(),
+          ],
+        ] as const;
+        for (const [column, addColumn] of requirementReceiptColumns) {
+          if (
+            !(await knex.schema.hasColumn(
+              'resonance_projects__requirement_document',
+              column,
+            ))
+          ) {
+            await knex.schema.alterTable(
+              'resonance_projects__requirement_document',
+              addColumn,
+            );
+          }
+        }
+        await knex.raw(`
+          create index if not exists resonance_requirement_document_receipt_due_idx
+          on resonance_projects__requirement_document(
+            analysis_status,publication_next_attempt_at,project_id,created_at
+          )
+        `);
         if (
           !(await knex.schema.hasTable('resonance_projects__requirement_item'))
         ) {
@@ -727,6 +868,7 @@ export default createBackendPlugin({
           existingRevision,
           disposition,
           publication,
+          reconciliationClaimToken,
         }: {
           projectId: string;
           documentId: string;
@@ -734,6 +876,7 @@ export default createBackendPlugin({
           existingRevision: boolean;
           disposition: RequirementPublicationDisposition;
           publication: Record<string, unknown>;
+          reconciliationClaimToken?: string;
         }) => {
           const recordedAt = new Date();
           const target = requirementPublicationPersistence(disposition);
@@ -748,9 +891,7 @@ export default createBackendPlugin({
               : {};
           const terminalError = target.successful
             ? null
-            : String(
-                generation.message ?? publication.message ?? disposition,
-              );
+            : String(generation.message ?? publication.message ?? disposition);
           const rawAttempt = Number(
             generation.retryAttempt ?? publication.retryAttempt ?? 0,
           );
@@ -784,6 +925,32 @@ export default createBackendPlugin({
             const currentDisposition = requirementPublicationDisposition({
               releaseStatus: currentReleaseStatus,
             });
+            let claimedPollAttempt = 0;
+            if (reconciliationClaimToken) {
+              const claimedDocument = await transaction(
+                'resonance_projects__requirement_document',
+              )
+                .select(
+                  'publication_claim_token',
+                  'publication_reconcile_status',
+                  'publication_poll_attempt_count',
+                )
+                .where({ project_id: projectId, document_id: documentId })
+                .forUpdate()
+                .first();
+              if (
+                !claimedDocument ||
+                claimedDocument.publication_claim_token !==
+                  reconciliationClaimToken ||
+                claimedDocument.publication_reconcile_status !== 'RUNNING'
+              ) {
+                throw new Error('REQUIREMENT_RECEIPT_CLAIM_IS_STALE');
+              }
+              claimedPollAttempt = Math.max(
+                1,
+                Number(claimedDocument.publication_poll_attempt_count ?? 1),
+              );
+            }
             const transitionAllowed = requirementReceiptTransitionAllowed({
               currentReleaseStatus,
               currentAttempt,
@@ -792,7 +959,42 @@ export default createBackendPlugin({
               existingRevision,
             });
             if (!transitionAllowed) {
-              if (currentDisposition) return currentDisposition;
+              if (currentDisposition) {
+                if (reconciliationClaimToken) {
+                  const terminal = [
+                    'APPLIED',
+                    'FAILED',
+                    'REVIEW_REQUIRED',
+                  ].includes(currentDisposition);
+                  const settled = await transaction(
+                    'resonance_projects__requirement_document',
+                  )
+                    .where({
+                      project_id: projectId,
+                      document_id: documentId,
+                      publication_claim_token: reconciliationClaimToken,
+                      publication_reconcile_status: 'RUNNING',
+                    })
+                    .update({
+                      publication_reconcile_status: terminal
+                        ? 'TERMINAL'
+                        : 'PENDING',
+                      publication_next_attempt_at: terminal
+                        ? null
+                        : new Date(
+                            recordedAt.getTime() +
+                              receiptRetryDelayMs(claimedPollAttempt),
+                          ),
+                      publication_claim_token: null,
+                      publication_lease_expires_at: null,
+                      publication_reconciled_at: terminal ? recordedAt : null,
+                    });
+                  if (settled !== 1) {
+                    throw new Error('REQUIREMENT_RECEIPT_CLAIM_IS_STALE');
+                  }
+                }
+                return currentDisposition;
+              }
               throw new Error('REQUIREMENT_RELEASE_RECEIPT_CAS_NOT_EXACT');
             }
             const releaseUpdates = await transaction(
@@ -819,9 +1021,60 @@ export default createBackendPlugin({
                 status: target.projectStatus,
                 updated_at: recordedAt,
               });
-            await transaction('resonance_projects__requirement_document')
-              .where({ project_id: projectId, document_id: documentId })
-              .update({ analysis_status: target.analysisStatus });
+            const documentReceiptUpdate: Record<string, unknown> = {
+              analysis_status: target.analysisStatus,
+              publication_last_error: terminalError,
+            };
+            if (reconciliationClaimToken) {
+              Object.assign(documentReceiptUpdate, {
+                publication_reconcile_status: target.completeTasks
+                  ? 'TERMINAL'
+                  : 'PENDING',
+                publication_next_attempt_at: target.completeTasks
+                  ? null
+                  : new Date(
+                      recordedAt.getTime() +
+                        receiptRetryDelayMs(claimedPollAttempt),
+                    ),
+                publication_claim_token: null,
+                publication_lease_expires_at: null,
+                publication_reconciled_at: target.completeTasks
+                  ? recordedAt
+                  : null,
+              });
+            } else {
+              Object.assign(documentReceiptUpdate, {
+                publication_reconcile_status: target.completeTasks
+                  ? 'TERMINAL'
+                  : 'PENDING',
+                publication_poll_attempt_count: target.completeTasks
+                  ? retryAttempt
+                  : 0,
+                publication_next_attempt_at: target.completeTasks
+                  ? null
+                  : recordedAt,
+                publication_claim_token: null,
+                publication_lease_expires_at: null,
+                publication_reconciled_at: target.completeTasks
+                  ? recordedAt
+                  : null,
+              });
+            }
+            const documentUpdateQuery = transaction(
+              'resonance_projects__requirement_document',
+            ).where({ project_id: projectId, document_id: documentId });
+            if (reconciliationClaimToken) {
+              documentUpdateQuery.where({
+                publication_claim_token: reconciliationClaimToken,
+                publication_reconcile_status: 'RUNNING',
+              });
+            }
+            const documentUpdates = await documentUpdateQuery.update(
+              documentReceiptUpdate,
+            );
+            if (documentUpdates !== 1) {
+              throw new Error('REQUIREMENT_RECEIPT_DOCUMENT_CAS_NOT_EXACT');
+            }
             await transaction('resonance_projects__requirement_item')
               .where({ project_id: projectId, document_id: documentId })
               .update({ implementation_status: target.itemStatus });
@@ -842,6 +1095,489 @@ export default createBackendPlugin({
             return disposition;
           });
         };
+
+        const runtimeBridgeBaseUrl = () =>
+          String(
+            process.env.CARBONET_RUNTIME_BASE_URL ??
+              'http://carbonet-api.carbonet-prod.svc.cluster.local:8080',
+          ).replace(/\/+$/, '');
+        const runtimeBridgeToken = () =>
+          String(process.env.RESONANCE_OPS_TOKEN ?? '');
+        const parseJsonRecord = (value: unknown): Record<string, unknown> => {
+          if (value && typeof value === 'object') {
+            return value as Record<string, unknown>;
+          }
+          if (typeof value === 'string') {
+            const parsed = JSON.parse(value) as unknown;
+            if (parsed && typeof parsed === 'object') {
+              return parsed as Record<string, unknown>;
+            }
+          }
+          throw new Error('RECEIPT_PAYLOAD_OBJECT_REQUIRED');
+        };
+        const readRuntimeJson = async (
+          url: string,
+          init: RequestInit,
+        ): Promise<{
+          ok: boolean;
+          status: number;
+          body: Record<string, unknown>;
+        }> => {
+          const token = runtimeBridgeToken();
+          if (!token) throw new Error('RUNTIME_RECEIPT_TOKEN_UNAVAILABLE');
+          let result: globalThis.Response;
+          try {
+            result = await fetch(url, {
+              ...init,
+              signal: AbortSignal.timeout(10_000),
+              headers: {
+                accept: 'application/json',
+                'x-resonance-token': token,
+                ...init.headers,
+              },
+            });
+          } catch (error) {
+            throw new Error(`RUNTIME_RECEIPT_REQUEST_FAILED: ${String(error)}`);
+          }
+          const text = await result.text();
+          let body: Record<string, unknown>;
+          try {
+            body = parseJsonRecord(text);
+          } catch {
+            throw new Error('RUNTIME_RECEIPT_RESPONSE_NOT_JSON');
+          }
+          return { ok: result.ok, status: result.status, body };
+        };
+
+        const claimRequirementReceipts = async (
+          limit: number,
+        ): Promise<RequirementReceiptClaim[]> => {
+          const now = new Date();
+          const leaseExpiresAt = new Date(
+            now.getTime() + RECEIPT_RECONCILIATION_LEASE_MS,
+          );
+          const claimToken = randomUUID();
+          return knex.transaction(async transaction => {
+            const dueRows = await transaction(
+              'resonance_projects__requirement_document as document',
+            )
+              .join(
+                'resonance_projects__design_release as release',
+                function joinRequirementRelease() {
+                  this.on(
+                    'release.project_id',
+                    '=',
+                    'document.project_id',
+                  ).andOn(
+                    'release.design_version',
+                    '=',
+                    'document.design_version',
+                  );
+                },
+              )
+              .whereIn('document.analysis_status', [
+                'GENERATION_QUEUED',
+                'GENERATION_RUNNING',
+                'QUEUED',
+                'RUNNING',
+              ])
+              .whereIn('release.release_status', ['QUEUED', 'RUNNING'])
+              .andWhere(builder =>
+                builder
+                  .whereNull('document.publication_next_attempt_at')
+                  .orWhere('document.publication_next_attempt_at', '<=', now),
+              )
+              .andWhere(builder =>
+                builder
+                  .whereNull('document.publication_claim_token')
+                  .orWhereNull('document.publication_lease_expires_at')
+                  .orWhere('document.publication_lease_expires_at', '<=', now),
+              )
+              .select(
+                'document.document_id as documentId',
+                'document.project_id as projectId',
+                'document.design_version as designVersion',
+                'document.publication_next_attempt_at as dueAt',
+              )
+              .select(
+                transaction.raw(`
+                  row_number() over (
+                    partition by document.project_id
+                    order by coalesce(
+                      document.publication_next_attempt_at,
+                      document.created_at
+                    ),document.created_at,document.document_id
+                  ) as "projectRank"
+                `),
+              )
+              .orderBy('projectRank', 'asc')
+              .orderByRaw(
+                'coalesce(document.publication_next_attempt_at,document.created_at) asc',
+              )
+              .orderBy('document.project_id', 'asc')
+              .orderBy('document.document_id', 'asc')
+              .limit(Math.min(1_000, Math.max(limit * 20, 100)));
+            const fair = selectFairRequirementClaims(dueRows, limit);
+            if (!fair.length) return [];
+            const locked = await transaction(
+              'resonance_projects__requirement_document as document',
+            )
+              .join(
+                'resonance_projects__design_release as release',
+                function joinRequirementRelease() {
+                  this.on(
+                    'release.project_id',
+                    '=',
+                    'document.project_id',
+                  ).andOn(
+                    'release.design_version',
+                    '=',
+                    'document.design_version',
+                  );
+                },
+              )
+              .whereIn(
+                'document.document_id',
+                fair.map(candidate => candidate.documentId),
+              )
+              .whereIn('document.analysis_status', [
+                'GENERATION_QUEUED',
+                'GENERATION_RUNNING',
+                'QUEUED',
+                'RUNNING',
+              ])
+              .whereIn('release.release_status', ['QUEUED', 'RUNNING'])
+              .andWhere(builder =>
+                builder
+                  .whereNull('document.publication_claim_token')
+                  .orWhereNull('document.publication_lease_expires_at')
+                  .orWhere('document.publication_lease_expires_at', '<=', now),
+              )
+              .select(
+                'document.document_id as documentId',
+                'document.project_id as projectId',
+                'document.design_version as designVersion',
+                'document.publication_poll_attempt_count as pollAttempt',
+                'release.contract_sha256 as contractSha256',
+              )
+              .forUpdate()
+              .skipLocked();
+            if (!locked.length) return [];
+            const lockedIds = locked.map(row => String(row.documentId));
+            await transaction('resonance_projects__requirement_document')
+              .whereIn('document_id', lockedIds)
+              .update({
+                publication_reconcile_status: 'RUNNING',
+                publication_claim_token: claimToken,
+                publication_lease_expires_at: leaseExpiresAt,
+                publication_last_error: null,
+                publication_poll_attempt_count: transaction.raw(
+                  'coalesce(publication_poll_attempt_count,0)+1',
+                ),
+              });
+            return locked.map(row => ({
+              documentId: String(row.documentId),
+              projectId: String(row.projectId),
+              designVersion: Number(row.designVersion),
+              contractSha256: String(row.contractSha256),
+              claimToken,
+              pollAttempt: Number(row.pollAttempt ?? 0) + 1,
+            }));
+          });
+        };
+        const readRequirementRuntimeReceipt = async (
+          claim: RequirementReceiptClaim,
+        ) => {
+          const result = await readRuntimeJson(
+            `${runtimeBridgeBaseUrl()}/api/internal/actor-process/design-releases/${encodeURIComponent(
+              claim.projectId,
+            )}/${claim.designVersion}?contractSha256=${encodeURIComponent(
+              claim.contractSha256,
+            )}`,
+            { method: 'GET' },
+          );
+          if (!result.ok) {
+            throw new Error(
+              String(
+                result.body.message ?? `RUNTIME_RECEIPT_HTTP_${result.status}`,
+              ),
+            );
+          }
+          return result.body;
+        };
+        const retryRequirementReceiptClaim = async (
+          claim: RequirementReceiptClaim,
+          message: string,
+          nextAttemptAt: Date,
+        ) =>
+          (await knex('resonance_projects__requirement_document')
+            .where({
+              document_id: claim.documentId,
+              publication_claim_token: claim.claimToken,
+              publication_reconcile_status: 'RUNNING',
+            })
+            .update({
+              publication_reconcile_status: 'PENDING',
+              publication_next_attempt_at: nextAttemptAt,
+              publication_claim_token: null,
+              publication_lease_expires_at: null,
+              publication_last_error: message,
+            })) === 1;
+
+        const designSnapshotSyncId = (
+          projectId: string,
+          mutation: Record<string, unknown>,
+        ) =>
+          createHash('sha256')
+            .update(
+              `${projectId}\0${String(mutation.assetType)}\0${String(
+                mutation.assetId,
+              )}\0${String(mutation.baseFingerprint)}\0${String(
+                mutation.assetFingerprint,
+              )}`,
+            )
+            .digest('hex');
+        const queueDesignSnapshotSync = async ({
+          projectId,
+          mutation,
+          actorRef,
+          snapshotBaseFingerprint,
+        }: {
+          projectId: string;
+          mutation: Record<string, unknown>;
+          actorRef: string;
+          snapshotBaseFingerprint: string;
+        }) => {
+          const syncId = designSnapshotSyncId(projectId, mutation);
+          const now = new Date();
+          const claimToken = randomUUID();
+          const leaseExpiresAt = new Date(
+            now.getTime() + RECEIPT_RECONCILIATION_LEASE_MS,
+          );
+          await knex.transaction(async transaction => {
+            const existing = await transaction(
+              'resonance_projects__design_asset_source_sync',
+            )
+              .where({ sync_id: syncId })
+              .forUpdate()
+              .first();
+            const row = {
+              project_id: projectId,
+              asset_type: String(mutation.assetType),
+              asset_id: String(mutation.assetId),
+              snapshot_base_fingerprint: snapshotBaseFingerprint,
+              base_fingerprint: String(mutation.baseFingerprint),
+              asset_fingerprint: String(mutation.assetFingerprint),
+              mutation_payload: JSON.stringify(mutation),
+              runtime_receipt: JSON.stringify({}),
+              sync_status: 'PREPARED',
+              retry_attempt: Number(existing?.retry_attempt ?? 0),
+              next_attempt_at: now,
+              claim_token: claimToken,
+              lease_expires_at: leaseExpiresAt,
+              last_error: null,
+              created_by: actorRef,
+              created_at: existing?.created_at ?? now,
+              updated_at: now,
+              synchronized_at: null,
+            };
+            if (existing) {
+              await transaction('resonance_projects__design_asset_source_sync')
+                .where({ sync_id: syncId })
+                .update(row);
+            } else {
+              await transaction(
+                'resonance_projects__design_asset_source_sync',
+              ).insert({ sync_id: syncId, ...row });
+            }
+          });
+          return { syncId, claimToken, retryNotBefore: leaseExpiresAt };
+        };
+        const cancelPreparedDesignSnapshotSync = async (
+          prepared: { syncId: string; claimToken: string },
+          message: string,
+        ) =>
+          (await knex('resonance_projects__design_asset_source_sync')
+            .where({
+              sync_id: prepared.syncId,
+              sync_status: 'PREPARED',
+              claim_token: prepared.claimToken,
+            })
+            .update({
+              sync_status: 'CANCELLED',
+              claim_token: null,
+              lease_expires_at: null,
+              last_error: message.slice(0, 2_000),
+              updated_at: new Date(),
+            })) === 1;
+        const claimDesignSnapshotSyncs = async (
+          limit: number,
+        ): Promise<DesignSnapshotSyncClaim[]> => {
+          const now = new Date();
+          const leaseExpiresAt = new Date(
+            now.getTime() + RECEIPT_RECONCILIATION_LEASE_MS,
+          );
+          const claimToken = randomUUID();
+          return knex.transaction(async transaction => {
+            const rows = await transaction(
+              'resonance_projects__design_asset_source_sync',
+            )
+              .whereIn('sync_status', ['PREPARED', 'PENDING', 'RUNNING'])
+              .andWhere('next_attempt_at', '<=', now)
+              .andWhere(builder =>
+                builder
+                  .whereNull('claim_token')
+                  .orWhereNull('lease_expires_at')
+                  .orWhere('lease_expires_at', '<=', now),
+              )
+              .orderBy('next_attempt_at', 'asc')
+              .orderBy('project_id', 'asc')
+              .limit(limit)
+              .forUpdate()
+              .skipLocked();
+            if (!rows.length) return [];
+            const ids = rows.map(row => String(row.sync_id));
+            await transaction('resonance_projects__design_asset_source_sync')
+              .whereIn('sync_id', ids)
+              .update({
+                sync_status: 'RUNNING',
+                claim_token: claimToken,
+                lease_expires_at: leaseExpiresAt,
+                retry_attempt: transaction.raw('coalesce(retry_attempt,0)+1'),
+                last_error: null,
+                updated_at: now,
+              });
+            return rows.map(row => ({
+              syncId: String(row.sync_id),
+              projectId: String(row.project_id),
+              assetType: String(row.asset_type),
+              assetId: String(row.asset_id),
+              snapshotBaseFingerprint: String(row.snapshot_base_fingerprint),
+              assetFingerprint: String(row.asset_fingerprint),
+              mutation: parseJsonRecord(row.mutation_payload),
+              actorRef: String(row.created_by),
+              claimToken,
+              retryAttempt: Number(row.retry_attempt ?? 0) + 1,
+            }));
+          });
+        };
+        const replayDesignAssetSource = async (
+          claim: DesignSnapshotSyncClaim,
+        ) => {
+          const result = await readRuntimeJson(
+            `${runtimeBridgeBaseUrl()}/api/internal/actor-process/design-assets/source`,
+            {
+              method: 'POST',
+              headers: {
+                'content-type': 'application/json',
+                'x-resonance-actor': claim.actorRef,
+              },
+              body: JSON.stringify({
+                projectId: claim.projectId,
+                ...claim.mutation,
+              }),
+            },
+          );
+          if (!result.ok && result.body.sourceCommitted !== true) {
+            throw new Error(
+              String(
+                result.body.message ??
+                  `RUNTIME_SOURCE_REPLAY_HTTP_${result.status}`,
+              ),
+            );
+          }
+          return result.body;
+        };
+        const commitDesignSnapshotSync = async (
+          claim: DesignSnapshotSyncClaim,
+          receipt: Record<string, unknown>,
+        ) => {
+          const mutation = claim.mutation;
+          const nextFingerprint = String(mutation.assetFingerprint);
+          if (
+            String(mutation.assetType) !== claim.assetType ||
+            String(mutation.assetId) !== claim.assetId ||
+            nextFingerprint.toLowerCase() !==
+              claim.assetFingerprint.toLowerCase()
+          ) {
+            throw new Error('DESIGN_SNAPSHOT_SYNC_CLAIM_PAYLOAD_MISMATCH');
+          }
+          return knex.transaction(async transaction => {
+            const activeClaim = await transaction(
+              'resonance_projects__design_asset_source_sync',
+            )
+              .where({
+                sync_id: claim.syncId,
+                sync_status: 'RUNNING',
+                claim_token: claim.claimToken,
+              })
+              .forUpdate()
+              .first();
+            if (!activeClaim) return false;
+            const now = new Date();
+            const synchronizedProjectCount =
+              await synchronizeGlobalDesignAssetSnapshots(
+                transaction,
+                mutation as SourceDesignAssetMutation,
+                now,
+              );
+            const updated = await transaction(
+              'resonance_projects__design_asset_source_sync',
+            )
+              .where({
+                sync_id: claim.syncId,
+                sync_status: 'RUNNING',
+                claim_token: claim.claimToken,
+              })
+              .update({
+                sync_status: 'SYNCHRONIZED',
+                runtime_receipt: JSON.stringify(receipt),
+                next_attempt_at: now,
+                claim_token: null,
+                lease_expires_at: null,
+                last_error: null,
+                updated_at: now,
+                synchronized_at: now,
+              });
+            if (updated !== 1) {
+              throw new Error('DESIGN_SNAPSHOT_SYNC_COMMIT_FENCE_LOST');
+            }
+            await transaction('resonance_projects__design_asset_audit').insert({
+              project_id: claim.projectId,
+              action_code: 'SOURCE_IMMEDIATE_SNAPSHOT_RECONCILED',
+              actor_ref: 'system:receipt-reconciler',
+              details: JSON.stringify({
+                syncId: claim.syncId,
+                assetType: claim.assetType,
+                assetId: claim.assetId,
+                snapshotBaseFingerprint: claim.snapshotBaseFingerprint,
+                assetFingerprint: claim.assetFingerprint,
+                synchronizedProjectCount,
+              }),
+              created_at: now,
+            });
+            return true;
+          });
+        };
+        const retryDesignSnapshotSyncClaim = async (
+          claim: DesignSnapshotSyncClaim,
+          message: string,
+          nextAttemptAt: Date,
+        ) =>
+          (await knex('resonance_projects__design_asset_source_sync')
+            .where({
+              sync_id: claim.syncId,
+              sync_status: 'RUNNING',
+              claim_token: claim.claimToken,
+            })
+            .update({
+              sync_status: 'PENDING',
+              next_attempt_at: nextAttemptAt,
+              claim_token: null,
+              lease_expires_at: null,
+              last_error: message,
+              updated_at: new Date(),
+            })) === 1;
 
         const router = Router();
         router.use(json({ limit: '10mb' }));
@@ -1898,7 +2634,36 @@ export default createBackendPlugin({
               .trim()
               .toUpperCase();
             const requestedId = String(request.body?.assetId ?? '').trim();
+            const pendingSnapshotSync = await knex(
+              'resonance_projects__design_asset_source_sync',
+            )
+              .where({ asset_type: requestedType, asset_id: requestedId })
+              .whereIn('sync_status', ['PREPARED', 'PENDING', 'RUNNING'])
+              .orderBy('created_at', 'asc')
+              .first();
+            if (pendingSnapshotSync) {
+              response.status(409).json({
+                success: false,
+                sourceCommitted: false,
+                controlPlaneSnapshot: 'SYNC_REQUIRED',
+                syncReceiptId: String(pendingSnapshotSync.sync_id),
+                retryAttempt: Number(pendingSnapshotSync.retry_attempt ?? 0),
+                retryNotBefore: pendingSnapshotSync.next_attempt_at,
+                message:
+                  'an earlier runtime source commit is still synchronizing this global design asset',
+              });
+              return;
+            }
             let committedReceipt: Record<string, unknown> | undefined;
+            let committedMutation: Record<string, unknown> | undefined;
+            let committedSnapshotBaseFingerprint: string | undefined;
+            let preparedSync:
+              | {
+                  syncId: string;
+                  claimToken: string;
+                  retryNotBefore: Date;
+                }
+              | undefined;
             try {
               const result = await knex.transaction(async transaction => {
                 await transaction.raw(
@@ -1907,6 +2672,34 @@ export default createBackendPlugin({
                     `BACKSTAGE_COMMON_DESIGN_SOURCE_V1:${requestedType}:${requestedId}`,
                   ],
                 );
+                const activeSync = await transaction(
+                  'resonance_projects__design_asset_source_sync',
+                )
+                  .where({ asset_type: requestedType, asset_id: requestedId })
+                  .whereIn('sync_status', [
+                    'PREPARED',
+                    'PENDING',
+                    'RUNNING',
+                  ])
+                  .orderBy('created_at', 'asc')
+                  .first();
+                if (activeSync) {
+                  return {
+                    status: 409,
+                    body: {
+                      success: false,
+                      sourceCommitted: false,
+                      controlPlaneSnapshot: 'SYNC_REQUIRED',
+                      syncReceiptId: String(activeSync.sync_id),
+                      retryAttempt: Number(activeSync.retry_attempt ?? 0),
+                      retryNotBefore:
+                        activeSync.lease_expires_at ??
+                        activeSync.next_attempt_at,
+                      message:
+                        'an earlier runtime source commit is still synchronizing this global design asset',
+                    },
+                  };
+                }
                 let headResponse: globalThis.Response;
                 try {
                   const headParameters = new URLSearchParams({
@@ -1969,6 +2762,7 @@ export default createBackendPlugin({
                     },
                   };
                 }
+                committedSnapshotBaseFingerprint = current.fingerprint;
                 let mutation;
                 try {
                   mutation = buildSourceDesignAssetMutation(
@@ -1988,6 +2782,14 @@ export default createBackendPlugin({
                     },
                   };
                 }
+                committedMutation = { ...mutation };
+                preparedSync = await queueDesignSnapshotSync({
+                  projectId,
+                  mutation: committedMutation,
+                  actorRef: access.actorRef,
+                  snapshotBaseFingerprint:
+                    committedSnapshotBaseFingerprint,
+                });
                 let runtimeResponse: globalThis.Response;
                 try {
                   runtimeResponse = await fetch(
@@ -2004,17 +2806,13 @@ export default createBackendPlugin({
                     },
                   );
                 } catch (error) {
-                  return {
-                    status: 502,
-                    body: {
-                      message:
-                        error instanceof Error
-                          ? error.message
-                          : 'runtime design source is unavailable',
-                      sourceCommitted: false,
-                      jobCount: 0,
-                    },
-                  };
+                  throw new Error(
+                    `RUNTIME_SOURCE_COMMIT_UNKNOWN: ${
+                      error instanceof Error
+                        ? error.message
+                        : 'runtime design source is unavailable'
+                    }`,
+                  );
                 }
                 const runtimeText = await runtimeResponse.text();
                 let receipt: Record<string, unknown>;
@@ -2027,6 +2825,23 @@ export default createBackendPlugin({
                   };
                 }
                 if (receipt.sourceCommitted !== true) {
+                  if (receipt.sourceCommitted !== false || !preparedSync) {
+                    throw new Error(
+                      String(
+                        receipt.message ?? 'RUNTIME_SOURCE_COMMIT_UNKNOWN',
+                      ),
+                    );
+                  }
+                  const cancelled = await cancelPreparedDesignSnapshotSync(
+                    preparedSync,
+                    String(receipt.message ?? 'runtime source rejected'),
+                  );
+                  if (!cancelled) {
+                    throw new Error(
+                      'DESIGN_SOURCE_PREPARED_RECEIPT_CANCEL_FENCE_LOST',
+                    );
+                  }
+                  preparedSync = undefined;
                   return {
                     status: runtimeResponse.ok ? 502 : runtimeResponse.status,
                     body: {
@@ -2056,6 +2871,32 @@ export default createBackendPlugin({
                   details: JSON.stringify(receipt),
                   created_at: now,
                 });
+                if (!preparedSync) {
+                  throw new Error('DESIGN_SOURCE_PREPARED_RECEIPT_REQUIRED');
+                }
+                const synchronizedReceipt = await transaction(
+                  'resonance_projects__design_asset_source_sync',
+                )
+                  .where({
+                    sync_id: preparedSync.syncId,
+                    sync_status: 'PREPARED',
+                    claim_token: preparedSync.claimToken,
+                  })
+                  .update({
+                    runtime_receipt: JSON.stringify(receipt),
+                    sync_status: 'SYNCHRONIZED',
+                    next_attempt_at: now,
+                    claim_token: null,
+                    lease_expires_at: null,
+                    last_error: null,
+                    updated_at: now,
+                    synchronized_at: now,
+                  });
+                if (synchronizedReceipt !== 1) {
+                  throw new Error(
+                    'DESIGN_SOURCE_PREPARED_RECEIPT_COMMIT_FENCE_LOST',
+                  );
+                }
                 return {
                   status: runtimeResponse.status,
                   body: {
@@ -2063,18 +2904,28 @@ export default createBackendPlugin({
                     controlPlaneSnapshot: 'SYNCHRONIZED',
                     snapshotFingerprint: mutation.assetFingerprint,
                     synchronizedProjectCount,
+                    syncReceiptId: preparedSync.syncId,
                   },
                 };
               });
               response.status(result.status).json(result.body);
             } catch (error) {
-              if (committedReceipt?.sourceCommitted === true) {
+              if (preparedSync && committedMutation) {
                 response.status(202).json({
-                  ...committedReceipt,
+                  ...(committedReceipt ?? {}),
                   success: false,
+                  sourceCommitState:
+                    committedReceipt?.sourceCommitted === true
+                      ? 'COMMITTED'
+                      : 'UNKNOWN',
                   controlPlaneSnapshot: 'SYNC_REQUIRED',
+                  syncReceiptId: preparedSync.syncId,
+                  retryAttempt: 0,
+                  retryNotBefore: preparedSync.retryNotBefore,
                   message:
-                    'runtime source committed; control-plane snapshot synchronization must be retried',
+                    committedReceipt?.sourceCommitted === true
+                      ? 'runtime source committed; automatic control-plane snapshot synchronization is pending'
+                      : 'runtime source commit state is unknown; automatic idempotent reconciliation is pending',
                 });
                 return;
               }
@@ -2087,6 +2938,61 @@ export default createBackendPlugin({
                 jobCount: 0,
               });
             }
+          },
+        );
+        router.get(
+          '/design-assets/:projectId/source-sync/:syncId',
+          async (request, response) => {
+            const projectId = normalizeProjectId(request.params.projectId);
+            const access = await resolveDesignAssetAccess(request, projectId);
+            if (
+              !access.roles.some(role =>
+                ['DESIGN_APPROVER', 'DESIGN_AUDITOR'].includes(role),
+              )
+            ) {
+              response.status(403).json({
+                success: false,
+                message:
+                  'missing required role: DESIGN_APPROVER or DESIGN_AUDITOR',
+              });
+              return;
+            }
+            const syncId = String(request.params.syncId ?? '').toLowerCase();
+            if (!/^[0-9a-f]{64}$/.test(syncId)) {
+              response.status(400).json({
+                success: false,
+                message: 'invalid source synchronization receipt id',
+              });
+              return;
+            }
+            const sync = await knex(
+              'resonance_projects__design_asset_source_sync',
+            )
+              .where({ project_id: projectId, sync_id: syncId })
+              .first();
+            if (!sync) {
+              response.status(404).json({
+                success: false,
+                message: 'source synchronization receipt not found',
+              });
+              return;
+            }
+            const synchronized = sync.sync_status === 'SYNCHRONIZED';
+            response.json({
+              success: synchronized,
+              syncReceiptId: syncId,
+              status: String(sync.sync_status),
+              controlPlaneSnapshot: synchronized
+                ? 'SYNCHRONIZED'
+                : 'SYNC_REQUIRED',
+              snapshotFingerprint: synchronized
+                ? String(sync.asset_fingerprint)
+                : undefined,
+              retryAttempt: Number(sync.retry_attempt ?? 0),
+              retryNotBefore: sync.next_attempt_at,
+              message: sync.last_error ?? undefined,
+              synchronizedAt: sync.synchronized_at,
+            });
           },
         );
         router.get(
@@ -2594,6 +3500,10 @@ export default createBackendPlugin({
               'process_code',
               'created_by',
               'created_at',
+              'publication_reconcile_status',
+              'publication_poll_attempt_count',
+              'publication_next_attempt_at',
+              'publication_last_error',
             )
             .orderBy('created_at', 'desc');
           response.json({
@@ -2612,6 +3522,10 @@ export default createBackendPlugin({
               processCode: document.process_code,
               createdBy: document.created_by,
               createdAt: document.created_at,
+              reconciliationStatus: document.publication_reconcile_status,
+              pollAttempt: Number(document.publication_poll_attempt_count ?? 0),
+              retryNotBefore: document.publication_next_attempt_at,
+              lastError: document.publication_last_error,
             })),
           });
         });
@@ -2620,7 +3534,10 @@ export default createBackendPlugin({
           async (request, response) => {
             const projectId = normalizeProjectId(request.params.projectId);
             const documentId = String(request.params.documentId ?? '').trim();
-            const designAccess = await resolveDesignAssetAccess(request, projectId);
+            const designAccess = await resolveDesignAssetAccess(
+              request,
+              projectId,
+            );
             if (!designAccess.roles.includes('DESIGN_APPROVER')) {
               response.status(403).json({
                 success: false,
@@ -2634,9 +3551,10 @@ export default createBackendPlugin({
               .where({ project_id: projectId, document_id: documentId })
               .first();
             if (!document) {
-              response
-                .status(404)
-                .json({ success: false, message: 'Requirement document not found' });
+              response.status(404).json({
+                success: false,
+                message: 'Requirement document not found',
+              });
               return;
             }
             const release = await knex('resonance_projects__design_release')
@@ -2678,7 +3596,13 @@ export default createBackendPlugin({
                   let receiptResponse: globalThis.Response;
                   try {
                     receiptResponse = await fetch(
-                      `${runtimeBaseUrl}/api/internal/actor-process/design-releases/${encodeURIComponent(projectId)}/${Number(document.design_version)}?contractSha256=${encodeURIComponent(String(release.contract_sha256))}`,
+                      `${runtimeBaseUrl}/api/internal/actor-process/design-releases/${encodeURIComponent(
+                        projectId,
+                      )}/${Number(
+                        document.design_version,
+                      )}?contractSha256=${encodeURIComponent(
+                        String(release.contract_sha256),
+                      )}`,
                       {
                         headers: {
                           accept: 'application/json',
@@ -2689,7 +3613,9 @@ export default createBackendPlugin({
                   } catch (error) {
                     throw new RequirementPublicationError({
                       success: false,
-                      message: `Runtime receipt request failed: ${String(error)}`,
+                      message: `Runtime receipt request failed: ${String(
+                        error,
+                      )}`,
                     });
                   }
                   let receipt: Record<string, unknown>;
@@ -3135,39 +4061,36 @@ export default createBackendPlugin({
             if (terminalFailure) responseStatus = 409;
             else if (finalDisposition !== 'APPLIED') responseStatus = 202;
             else if (persistence.kind === 'CREATED') responseStatus = 201;
-            response
-              .status(responseStatus)
-              .json({
-                success: finalDisposition === 'APPLIED',
-                message: terminalMessage,
-                idempotent: persistence.kind === 'EXISTING',
-                publicationRetried:
-                  persistence.kind === 'EXISTING' &&
-                  publicationResult.attempted,
-                projectId,
-                documentId: persistence.documentId,
-                designVersion: persistence.designVersion,
-                processCode: persistence.processCode,
-                requirementCount: persistence.requirementCount,
-                screenCount: persistence.requirementCount,
-                endpointCount: persistence.requirementCount,
-                contractSha256: persistence.contractSha256,
-                status:
-                  finalDisposition === 'APPLIED' ||
-                  ['APPLIED', 'GENERATION_APPLIED'].includes(
-                    String(persistence.analysisStatus).toUpperCase(),
-                  ) ||
-                  String(persistence.releaseStatus).toUpperCase() === 'APPLIED'
-                    ? 'APPLIED'
-                    : finalDisposition === 'FAILED'
-                    ? 'FAILED'
-                    : finalDisposition === 'REVIEW_REQUIRED'
-                    ? 'REVIEW_REQUIRED'
-                    : publicationResult.completed
-                    ? 'GENERATION_QUEUED'
-                    : persistence.analysisStatus,
-                publication: publicationResult.publication,
-              });
+            response.status(responseStatus).json({
+              success: finalDisposition === 'APPLIED',
+              message: terminalMessage,
+              idempotent: persistence.kind === 'EXISTING',
+              publicationRetried:
+                persistence.kind === 'EXISTING' && publicationResult.attempted,
+              projectId,
+              documentId: persistence.documentId,
+              designVersion: persistence.designVersion,
+              processCode: persistence.processCode,
+              requirementCount: persistence.requirementCount,
+              screenCount: persistence.requirementCount,
+              endpointCount: persistence.requirementCount,
+              contractSha256: persistence.contractSha256,
+              status:
+                finalDisposition === 'APPLIED' ||
+                ['APPLIED', 'GENERATION_APPLIED'].includes(
+                  String(persistence.analysisStatus).toUpperCase(),
+                ) ||
+                String(persistence.releaseStatus).toUpperCase() === 'APPLIED'
+                  ? 'APPLIED'
+                  : finalDisposition === 'FAILED'
+                  ? 'FAILED'
+                  : finalDisposition === 'REVIEW_REQUIRED'
+                  ? 'REVIEW_REQUIRED'
+                  : publicationResult.completed
+                  ? 'GENERATION_QUEUED'
+                  : persistence.analysisStatus,
+              publication: publicationResult.publication,
+            });
           },
         );
         router.post(
@@ -3344,6 +4267,47 @@ export default createBackendPlugin({
         });
 
         registerProjectLifecycleRoutes({ router, knex, logger });
+
+        await scheduler.scheduleTask({
+          id: 'resonance-projects-receipt-reconciliation-v1',
+          frequency: { seconds: 15 },
+          timeout: { seconds: 50 },
+          initialDelay: { seconds: 2 },
+          fn: async () => {
+            const [requirements, designSnapshots] = await Promise.all([
+              reconcileRequirementReceiptBatch({
+                claimDue: claimRequirementReceipts,
+                readReceipt: readRequirementRuntimeReceipt,
+                persistReceipt: (claim, disposition, receipt) =>
+                  persistRequirementPublicationReceipt({
+                    projectId: claim.projectId,
+                    documentId: claim.documentId,
+                    designVersion: claim.designVersion,
+                    existingRevision: true,
+                    disposition,
+                    publication: receipt,
+                    reconciliationClaimToken: claim.claimToken,
+                  }),
+                retryClaim: retryRequirementReceiptClaim,
+                batchSize: RECEIPT_RECONCILIATION_BATCH_SIZE,
+              }),
+              reconcileDesignSnapshotSyncBatch({
+                claimDue: claimDesignSnapshotSyncs,
+                replaySource: replayDesignAssetSource,
+                commitSnapshot: commitDesignSnapshotSync,
+                retryClaim: retryDesignSnapshotSyncClaim,
+                batchSize: RECEIPT_RECONCILIATION_BATCH_SIZE,
+              }),
+            ]);
+            if (requirements.claimed || designSnapshots.claimed) {
+              logger.info(
+                `Receipt reconciliation: requirements=${JSON.stringify(
+                  requirements,
+                )}, designSnapshots=${JSON.stringify(designSnapshots)}`,
+              );
+            }
+          },
+        });
 
         httpRouter.addAuthPolicy({
           path: '/health',

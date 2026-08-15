@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Content, Header, Page } from '@backstage/core-components';
 import { fetchApiRef, useApi } from '@backstage/core-plugin-api';
 import {
@@ -22,6 +22,7 @@ import {
   getSharedProjectId,
   useSharedProjectSelection,
 } from './useSharedProjectSelection';
+import { pollDesignAssetSync } from './designAssetSyncPolling';
 
 type AssetType = 'THEME' | 'CSS' | 'SECTION' | 'COMPONENT' | 'SCREEN' | 'MENU';
 type DesignAsset = {
@@ -53,6 +54,9 @@ type SourceReceipt = {
   activationPolicy?: string;
   controlPlaneSnapshot?: string;
   snapshotFingerprint?: string;
+  syncReceiptId?: string;
+  retryAttempt?: number;
+  retryNotBefore?: string;
   affectedScreenCount?: number;
   affectedProcessCount?: number;
   jobCount?: number;
@@ -146,6 +150,7 @@ export function DesignAssetControlPage() {
   const [saveState, setSaveState] = useState('');
   const [receipt, setReceipt] = useState<SourceReceipt | null>(null);
   const [access, setAccess] = useState<DesignAccess | null>(null);
+  const sourceSyncPollRef = useRef<AbortController | null>(null);
   const activeType = types[tab]?.code ?? 'THEME';
 
   const load = useCallback(async () => {
@@ -174,6 +179,7 @@ export function DesignAssetControlPage() {
     setAssets(assetPayload.assets ?? []);
     setCounts(assetPayload.counts ?? {});
     setAccess(accessPayload);
+    return (assetPayload.assets ?? []) as DesignAsset[];
   }, [activeType, fetchApi, projectId]);
 
   useEffect(() => {
@@ -190,6 +196,8 @@ export function DesignAssetControlPage() {
       .catch(reason => setError(String(reason.message || reason)));
   }, [load]);
 
+  useEffect(() => () => sourceSyncPollRef.current?.abort(), []);
+
   const visible = useMemo(() => {
     const needle = query.trim().toLowerCase();
     if (!needle) return assets;
@@ -202,6 +210,7 @@ export function DesignAssetControlPage() {
   }, [assets, query]);
 
   const openAsset = (asset: DesignAsset) => {
+    sourceSyncPollRef.current?.abort();
     setSelected(asset);
     setEditorName(asset.assetName);
     setEditorPayload(JSON.stringify(asset.payload, null, 2));
@@ -245,9 +254,76 @@ export function DesignAssetControlPage() {
     );
     const result = (await sourceResponse.json()) as SourceReceipt;
     setReceipt(result);
-    if (result.sourceCommitted === true) {
-      const nextFingerprint =
-        result.snapshotFingerprint ?? selected.fingerprint;
+    if (
+      sourceResponse.status === 202 &&
+      result.sourceCommitted === true &&
+      result.controlPlaneSnapshot === 'SYNC_REQUIRED'
+    ) {
+      if (!result.syncReceiptId) {
+        setSaveState('동기화 추적 실패');
+        throw new Error(
+          result.message ||
+            '자동 동기화 영수증이 없어 완료로 처리할 수 없습니다.',
+        );
+      }
+      setSaveState('런타임 원본 커밋됨 · 제어판 동기화 대기');
+      setError(result.message || '제어판 스냅샷 자동 동기화를 기다립니다.');
+      const controller = new AbortController();
+      sourceSyncPollRef.current?.abort();
+      sourceSyncPollRef.current = controller;
+      const sync = await pollDesignAssetSync({
+        signal: controller.signal,
+        readReceipt: async () => {
+          const syncResponse = await fetchApi.fetch(
+            `/api/resonance-projects/design-assets/${encodeURIComponent(
+              projectId,
+            )}/source-sync/${encodeURIComponent(result.syncReceiptId!)}`,
+            { signal: controller.signal },
+          );
+          const syncReceipt = (await syncResponse.json()) as SourceReceipt;
+          if (!syncResponse.ok && syncResponse.status !== 202) {
+            throw new Error(
+              syncReceipt.message ||
+                `동기화 상태 조회 실패 (${syncResponse.status})`,
+            );
+          }
+          return syncReceipt;
+        },
+      });
+      if (controller.signal.aborted || sync.outcome === 'CANCELLED') return;
+      if (sync.outcome === 'SYNCHRONIZED' && sync.receipt) {
+        const authoritativeAssets = await load();
+        const authoritative = authoritativeAssets.find(
+          asset =>
+            asset.assetType === selected.assetType &&
+            asset.assetId === selected.assetId,
+        );
+        if (
+          !authoritative ||
+          authoritative.fingerprint !== sync.receipt.snapshotFingerprint
+        ) {
+          setSaveState('동기화 검증 대기');
+          throw new Error('동기화 영수증과 재조회한 스냅샷 지문이 다릅니다.');
+        }
+        setSelected(authoritative);
+        setReceipt({ ...result, ...sync.receipt });
+        setSaveState('동기화 완료 · 백엔드 영수증 검증됨');
+        setError('');
+        return;
+      }
+      setSaveState('동기화 진행 중 · 백엔드 자동 재시도 유지');
+      setError(
+        sync.receipt?.message ||
+          '화면 확인 시간은 끝났지만 백엔드 자동 동기화는 계속됩니다.',
+      );
+      return;
+    }
+    if (
+      result.sourceCommitted === true &&
+      result.controlPlaneSnapshot === 'SYNCHRONIZED' &&
+      /^[0-9a-f]{64}$/.test(String(result.snapshotFingerprint ?? ''))
+    ) {
+      const nextFingerprint = String(result.snapshotFingerprint);
       setSelected({
         ...selected,
         assetName: editorName,
@@ -272,9 +348,24 @@ export function DesignAssetControlPage() {
       }
       return;
     }
-    setSaveState('적용되지 않음 · 생성 작업 0');
-    throw new Error(result.message || '설계 원본 즉시 반영 실패');
+    setSaveState(
+      result.sourceCommitted === true
+        ? '런타임 원본 커밋됨 · 제어판 미동기화'
+        : '적용되지 않음 · 생성 작업 0',
+    );
+    throw new Error(
+      result.message ||
+        '런타임 원본과 제어판 스냅샷이 모두 확인되지 않아 완료로 처리할 수 없습니다.',
+    );
   };
+
+  const receiptSynchronized =
+    receipt?.sourceCommitted === true &&
+    receipt.controlPlaneSnapshot === 'SYNCHRONIZED' &&
+    /^[0-9a-f]{64}$/.test(String(receipt.snapshotFingerprint ?? ''));
+  let sourceStorageLabel = '안 됨';
+  if (receipt?.sourceCommitted) sourceStorageLabel = '커밋됨 · 동기화 대기';
+  if (receiptSynchronized) sourceStorageLabel = '및 스냅샷 동기화 완료';
 
   return (
     <Page themeId="tool">
@@ -319,17 +410,17 @@ export function DesignAssetControlPage() {
               <Box p={2}>
                 <Box display="flex" flexWrap="wrap" gridGap={8}>
                   <Chip
-                    color={receipt.sourceCommitted ? 'primary' : 'default'}
-                    label={receipt.status ?? 'UNKNOWN'}
+                    color={receiptSynchronized ? 'primary' : 'default'}
+                    label={
+                      receiptSynchronized
+                        ? receipt.status ?? 'SYNCHRONIZED'
+                        : 'PENDING'
+                    }
                   />
                   <Chip
                     label={receipt.activationPolicy ?? 'SOURCE_IMMEDIATE_V1'}
                   />
-                  <Chip
-                    label={`원본 저장 ${
-                      receipt.sourceCommitted ? '완료' : '안 됨'
-                    }`}
-                  />
+                  <Chip label={`원본 저장 ${sourceStorageLabel}`} />
                   <Chip
                     label={`스냅샷 ${receipt.controlPlaneSnapshot ?? '-'}`}
                   />
@@ -417,7 +508,10 @@ export function DesignAssetControlPage() {
       <Drawer
         anchor="right"
         open={Boolean(selected)}
-        onClose={() => setSelected(null)}
+        onClose={() => {
+          sourceSyncPollRef.current?.abort();
+          setSelected(null);
+        }}
       >
         {selected && (
           <Box className={classes.drawer}>
@@ -426,7 +520,12 @@ export function DesignAssetControlPage() {
                 <Typography variant="overline">{selected.assetType}</Typography>
                 <Typography variant="h5">{selected.assetName}</Typography>
               </Box>
-              <IconButton onClick={() => setSelected(null)}>
+              <IconButton
+                onClick={() => {
+                  sourceSyncPollRef.current?.abort();
+                  setSelected(null);
+                }}
+              >
                 <CloseIcon />
               </IconButton>
             </Box>
@@ -482,7 +581,12 @@ export function DesignAssetControlPage() {
                   }
                   onClick={() =>
                     void saveSource().catch(reason => {
-                      setSaveState('적용되지 않음 · 생성 작업 0');
+                      setSaveState(current =>
+                        current.includes('런타임 원본 커밋됨') ||
+                        current.includes('동기화')
+                          ? current
+                          : '적용되지 않음 · 생성 작업 0',
+                      );
                       setError(String(reason.message || reason));
                     })
                   }

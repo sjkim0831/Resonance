@@ -288,8 +288,8 @@ describe('requirement automation', () => {
     expect(panelSource).not.toContain('설계 승격');
     expect(panelSource).not.toContain('autoPromote');
     expect(panelSource).toContain("payload.status ?? 'FAILED'");
-    expect(panelSource).toContain('pollDocumentPublication');
-    expect(panelSource).toContain('/publication/reconcile');
+    expect(panelSource).toContain('pollRequirementDocumentSet');
+    expect(panelSource).not.toContain('/publication/reconcile');
     expect(panelSource).toContain('publicationPollRef.current?.abort()');
     expect(panelSource).not.toContain('setInterval(');
   });
