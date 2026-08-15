@@ -1703,6 +1703,52 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
     }
 
     @Test
+    void stolenGenerationLeaseFencesBothWorkersBeforeAnyGenerationSideEffect(){
+        String firstWorker=UUID.randomUUID().toString();
+        String takeoverWorker=UUID.randomUUID().toString();
+        jdbc.update("""
+            insert into framework_actor_process_design_release(
+              project_id,design_version,contract_sha256,contract_payload,
+              release_status,received_at,generation_result)
+            values('PROJECT_LEASE',1,repeat('f',64),'{}','RUNNING',
+              current_timestamp,jsonb_build_object('claimToken',?,'retryAttempt',1))
+            """,firstWorker);
+        assertEquals(1,jdbc.update("""
+            update framework_actor_process_design_release
+               set generation_result=jsonb_set(generation_result,'{claimToken}',to_jsonb(?::text))
+             where project_id='PROJECT_LEASE' and design_version=1
+               and generation_result->>'claimToken'=?
+            """,takeoverWorker,firstWorker));
+        List<String> sideEffectTables=List.of(
+            "framework_simulation_case","framework_professional_screen_contract",
+            "framework_page_design","framework_screen_blueprint",
+            "framework_screen_generation_batch","framework_development_job");
+        Map<String,Integer> before=new LinkedHashMap<>();
+        sideEffectTables.forEach(table->before.put(table,count(table)));
+
+        Map<String,Object> staleRetry=transaction.execute(status->
+            service.recoverRequirementProcessesForGenerationClaim(
+                "PROJECT_LEASE",1,firstWorker,List.of("PROC"),
+                "REQUIREMENT_SELF_HEALER"));
+        Map<String,Object> staleCompile=transaction.execute(status->
+            service.compileAndQueueScreensForGenerationClaim(
+                "PROJECT_LEASE",1,firstWorker,
+                Map.of("processCode","","maxScreens",1000),
+                "BACKSTAGE_CONTROL_PLANE"));
+
+        assertEquals("CLAIM_LOST",staleRetry.get("status"));
+        assertEquals(0,staleRetry.get("sideEffectCount"));
+        assertEquals("CLAIM_LOST",staleCompile.get("status"));
+        assertEquals(0,staleCompile.get("sideEffectCount"));
+        sideEffectTables.forEach(table->assertEquals(before.get(table),count(table),table));
+        assertEquals(takeoverWorker,jdbc.queryForObject("""
+            select generation_result->>'claimToken'
+              from framework_actor_process_design_release
+             where project_id='PROJECT_LEASE' and design_version=1
+            """,String.class));
+    }
+
+    @Test
     void lockedGuardRejectsForgedGucButControlledServiceRevisionQueuesOneJob(){
         jdbc.update("update framework_process_definition set definition_locked=true "+
             "where process_code='PROC'");

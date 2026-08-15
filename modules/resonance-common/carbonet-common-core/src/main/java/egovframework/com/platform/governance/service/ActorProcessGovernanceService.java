@@ -6655,6 +6655,104 @@ public class ActorProcessGovernanceService {
     }
 
     /**
+     * Runs global screen compilation while the exact design-release claim row is
+     * locked.  The lock and the side effects share this transaction, so a lease
+     * takeover either happens before the guard (write zero) or after all writes
+     * commit; it can never steal the claim in the middle of queue creation.
+     */
+    @Transactional public Map<String,Object> compileAndQueueScreensForGenerationClaim(
+            String projectId,int designVersion,String claimToken,
+            Map<String,Object> body,String actor){
+        if(!lockOwnedGenerationClaim(projectId,designVersion,claimToken))
+            return generationClaimLost(projectId,designVersion);
+        Map<String,Object> result=compileAndQueueScreens(body,actor);
+        heartbeatLockedGenerationClaim(projectId,designVersion,claimToken);
+        return result;
+    }
+
+    /**
+     * Rebuilds every requirement-owned process under one exact release claim.
+     * All ensure/finalize calls join this transaction and therefore cannot emit
+     * a job after another worker has taken the lease.
+     */
+    @Transactional public Map<String,Object> recoverRequirementProcessesForGenerationClaim(
+            String projectId,int designVersion,String claimToken,
+            java.util.Collection<String> processCodes,String actor){
+        if(!lockOwnedGenerationClaim(projectId,designVersion,claimToken))
+            return generationClaimLost(projectId,designVersion);
+        java.util.SortedSet<String> processes=new java.util.TreeSet<>();
+        if(processCodes!=null)for(String raw:processCodes){
+            String process=raw==null?"":raw.trim().toUpperCase(Locale.ROOT);
+            if(!process.matches("^[A-Z][A-Z0-9_:-]{1,79}$"))
+                throw new IllegalArgumentException("INVALID_PROCESS_CODE");
+            processes.add(process);
+        }
+        if(processes.isEmpty())throw new IllegalArgumentException("PROCESS_CODE_REQUIRED");
+        List<Map<String,Object>> publications=new java.util.ArrayList<>();
+        for(String process:processes){
+            int safety=ensureGeneratedProcessSafetyCases(process);
+            int contracts=ensureGeneratedProcessDesignContracts(process,actor);
+            int pages=ensureGeneratedProcessPageDesigns(process,actor);
+            Map<String,Object> publication=finalizeAndQueueProcessDesign(
+                    process,actor,"REQUIREMENT_PROCESS_RECOVERY");
+            if(safety<5||!Boolean.TRUE.equals(publication.get("success"))
+                    ||Set.of("FAILED","BLOCKED","SKIPPED").contains(
+                        String.valueOf(publication.get("status")))){
+                throw new IllegalStateException("REQUIREMENT_RETRY_NOT_QUEUED: "+process);
+            }
+            Map<String,Object> receipt=new LinkedHashMap<>(publication);
+            receipt.put("safetyScenarioTypes",safety);
+            receipt.put("designContractCount",contracts);
+            receipt.put("pageDesignCount",pages);
+            publications.add(receipt);
+        }
+        heartbeatLockedGenerationClaim(projectId,designVersion,claimToken);
+        return Map.of("success",true,"status","RECOVERED",
+                "projectId",projectId,"designVersion",designVersion,
+                "processCount",processes.size(),"publications",publications);
+    }
+
+    private boolean lockOwnedGenerationClaim(
+            String projectId,int designVersion,String claimToken){
+        String project=projectId==null?"":projectId.trim().toUpperCase(Locale.ROOT);
+        String token=claimToken==null?"":claimToken.trim();
+        if(!project.matches("^[A-Z][A-Z0-9_:-]{1,99}$")||designVersion<1
+                ||!token.matches("^[0-9a-fA-F-]{36}$"))return false;
+        List<Integer> owned=jdbc.queryForList("""
+            select 1
+              from framework_actor_process_design_release
+             where project_id=? and design_version=? and release_status='RUNNING'
+               and generation_result->>'claimToken'=?
+             for update
+            """,Integer.class,project,designVersion,token);
+        if(owned.size()!=1)return false;
+        return jdbc.update("""
+            update framework_actor_process_design_release
+               set received_at=current_timestamp
+             where project_id=? and design_version=? and release_status='RUNNING'
+               and generation_result->>'claimToken'=?
+            """,project,designVersion,token)==1;
+    }
+
+    private void heartbeatLockedGenerationClaim(
+            String projectId,int designVersion,String claimToken){
+        if(jdbc.update("""
+            update framework_actor_process_design_release
+               set received_at=current_timestamp
+            where project_id=? and design_version=? and release_status='RUNNING'
+               and generation_result->>'claimToken'=?
+            """,projectId.trim().toUpperCase(Locale.ROOT),designVersion,
+                claimToken.trim())!=1)
+            throw new IllegalStateException("GENERATION_CLAIM_LOST_DURING_TRANSACTION");
+    }
+
+    private Map<String,Object> generationClaimLost(String projectId,int designVersion){
+        return Map.of("success",false,"status","CLAIM_LOST","sideEffectCount",0,
+                "projectId",projectId==null?"":projectId.trim().toUpperCase(Locale.ROOT),
+                "designVersion",designVersion);
+    }
+
+    /**
      * Resolves one browser location into the canonical screen and executable
      * actor/process contract. A screen is N:M with process steps, therefore an
      * ambiguous route is never silently bound to the first row.

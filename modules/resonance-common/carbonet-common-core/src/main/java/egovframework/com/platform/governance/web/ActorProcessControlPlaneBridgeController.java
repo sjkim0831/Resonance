@@ -705,12 +705,13 @@ public class ActorProcessControlPlaneBridgeController {
     @PostMapping("/screen-workflow-test-cases")
     public ResponseEntity<?> saveScreenWorkflowTestCase(
             @RequestHeader(value = "X-Resonance-Token", defaultValue = "") String suppliedToken,
-            @RequestHeader(value = "X-Resonance-Actor", defaultValue = "BACKSTAGE_CONTROL_PLANE") String actor,
+            @RequestHeader(value = "X-Resonance-Actor", defaultValue = "") String actor,
+            @RequestHeader(value = "X-Resonance-Account", defaultValue = "") String account,
             @RequestBody Map<String, Object> body) {
-        if (!authorized(suppliedToken)) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(Map.of("success", false, "message", "Invalid control-plane bridge token."));
-        }
+        ResponseEntity<?> denied=controlPlaneMutationAccessFailure(suppliedToken,account);
+        if(denied!=null)return denied;
+        if(actor==null||actor.isBlank())return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(Map.of("success",false,"message","Authenticated control-plane actor is required."));
         try {
             return ResponseEntity.ok(governance.saveScreenWorkflowTestCase(body, actor));
         } catch (Exception exception) {
@@ -722,12 +723,13 @@ public class ActorProcessControlPlaneBridgeController {
     @PostMapping("/screen-workflow-test")
     public ResponseEntity<?> runScreenWorkflowTest(
             @RequestHeader(value = "X-Resonance-Token", defaultValue = "") String suppliedToken,
-            @RequestHeader(value = "X-Resonance-Actor", defaultValue = "BACKSTAGE_CONTROL_PLANE") String actor,
+            @RequestHeader(value = "X-Resonance-Actor", defaultValue = "") String actor,
+            @RequestHeader(value = "X-Resonance-Account", defaultValue = "") String account,
             @RequestBody Map<String, Object> body) {
-        if (!authorized(suppliedToken)) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(Map.of("success", false, "message", "Invalid control-plane bridge token."));
-        }
+        ResponseEntity<?> denied=controlPlaneMutationAccessFailure(suppliedToken,account);
+        if(denied!=null)return denied;
+        if(actor==null||actor.isBlank())return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(Map.of("success",false,"message","Authenticated control-plane actor is required."));
         try {
             return ResponseEntity.ok(governance.runDeterministicScreenWorkflowTest(body, actor));
         } catch (Exception exception) {
@@ -740,13 +742,19 @@ public class ActorProcessControlPlaneBridgeController {
     @Transactional
     public ResponseEntity<?> cutoverControlAssetMenus(
             @RequestHeader(value = "X-Resonance-Token", defaultValue = "") String suppliedToken,
+            @RequestHeader(value = "X-Resonance-Actor", defaultValue = "") String actor,
+            @RequestHeader(value = "X-Resonance-Account", defaultValue = "") String account,
             @RequestBody Map<String, Object> body) {
-        if (!authorized(suppliedToken)) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(Map.of("success", false, "message", "Invalid control-plane bridge token."));
-        }
+        ResponseEntity<?> denied=controlPlaneMutationAccessFailure(suppliedToken,account);
+        if(denied!=null)return denied;
+        if(actor==null||actor.isBlank())return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(Map.of("success",false,"message","Authenticated control-plane actor is required."));
         try {
             String projectId = required(body, "projectId").toUpperCase();
+            String requestedBy=String.valueOf(body.getOrDefault("requestedBy","")).trim();
+            if(!actor.equals(requestedBy))return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of("success",false,"message",
+                            "Cutover actor does not match the authenticated control-plane identity."));
             String action = required(body, "action").toUpperCase();
             Object rawRoutes = body.get("sourceRoutes");
             if (!(rawRoutes instanceof List<?> routeValues) || routeValues.isEmpty()
@@ -832,6 +840,8 @@ public class ActorProcessControlPlaneBridgeController {
                     "routeCount", routes.size(),
                     "matchedMenus", matched,
                     "changedMenus", changed,
+                    "authorizedAccount", account,
+                    "authorizedActor", actor,
                     "reversible", true));
         } catch (Exception exception) {
             return ResponseEntity.badRequest().body(Map.of(
@@ -899,26 +909,12 @@ public class ActorProcessControlPlaneBridgeController {
             }
         }
         processes.add(processCode);
-        for(String retryProcess:processes){
-            if(!refreshGenerationClaim(projectId,designVersion,claimToken))return false;
-            governance.ensureGeneratedProcessSafetyCases(retryProcess);
-            if(!refreshGenerationClaim(projectId,designVersion,claimToken))return false;
-            governance.ensureGeneratedProcessDesignContracts(
-                    retryProcess,"REQUIREMENT_SELF_HEALER");
-            if(!refreshGenerationClaim(projectId,designVersion,claimToken))return false;
-            governance.ensureGeneratedProcessPageDesigns(
-                    retryProcess,"REQUIREMENT_SELF_HEALER");
-            if(!refreshGenerationClaim(projectId,designVersion,claimToken))return false;
-            Map<String,Object> publication=governance.finalizeAndQueueProcessDesign(
-                    retryProcess,"REQUIREMENT_SELF_HEALER",
-                    "REQUIREMENT_PROCESS_RECOVERY");
-            if(!Boolean.TRUE.equals(publication.get("success"))
-                    ||Set.of("FAILED","BLOCKED","SKIPPED").contains(
-                        String.valueOf(publication.get("status"))))
-                throw new IllegalStateException(
-                        "REQUIREMENT_RETRY_NOT_QUEUED: "+retryProcess);
-        }
-        return true;
+        if(!refreshGenerationClaim(projectId,designVersion,claimToken))return false;
+        Map<String,Object> recovery=
+                governance.recoverRequirementProcessesForGenerationClaim(
+                    projectId,designVersion,claimToken,processes,
+                    "REQUIREMENT_SELF_HEALER");
+        return recovery!=null&&!"CLAIM_LOST".equals(recovery.get("status"));
     }
 
     private void recordGenerationFailure(String projectId,int designVersion,
@@ -1015,9 +1011,12 @@ public class ActorProcessControlPlaneBridgeController {
                 return;
             }
             if(!refreshGenerationClaim(projectId,designVersion,claimToken))return;
-            Map<String, Object> generation = governance.compileAndQueueScreens(
-                    Map.of("processCode", "", "maxScreens", 1000),
-                    "BACKSTAGE_CONTROL_PLANE");
+            Map<String, Object> generation =
+                    governance.compileAndQueueScreensForGenerationClaim(
+                        projectId,designVersion,claimToken,
+                        Map.of("processCode", "", "maxScreens", 1000),
+                        "BACKSTAGE_CONTROL_PLANE");
+            if(generation==null||"CLAIM_LOST".equals(generation.get("status")))return;
             String releaseStatus = "REVIEW_REQUIRED".equals(generation.get("status"))
                     ? "REVIEW_REQUIRED" : "APPLIED";
             Map<String,Object> terminal=new LinkedHashMap<>(generation);
@@ -1903,6 +1902,19 @@ public class ActorProcessControlPlaneBridgeController {
         } catch (Exception exception) {
             return "{\"status\":\"FAILED\",\"message\":\"Result serialization failed.\"}";
         }
+    }
+
+    private ResponseEntity<?> controlPlaneMutationAccessFailure(
+            String suppliedToken,String account){
+        if(!authorized(suppliedToken))return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(Map.of("success",false,"message","Invalid control-plane bridge token."));
+        if(account==null||account.isBlank()
+                ||!governance.isControlPlaneAdministrator(account)){
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of(
+                    "success",false,
+                    "message","System administrator authority is required for control-plane mutation."));
+        }
+        return null;
     }
 
     private boolean authorized(String suppliedToken) {

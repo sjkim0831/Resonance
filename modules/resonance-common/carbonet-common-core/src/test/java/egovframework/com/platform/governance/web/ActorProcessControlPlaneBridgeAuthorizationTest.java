@@ -212,6 +212,72 @@ class ActorProcessControlPlaneBridgeAuthorizationTest {
     }
 
     @Test
+    void workflowTestMutationsRequireTheCentralAdministratorAccountBeforeService(){
+        when(governance.isControlPlaneAdministrator("auditor")).thenReturn(false);
+        Map<String,Object> body=Map.of("processCode","PROCESS_A","stepCode","STEP_A");
+
+        var save=controller.saveScreenWorkflowTestCase(
+                "secret-token","user:default/auditor","auditor",body);
+        var run=controller.runScreenWorkflowTest(
+                "secret-token","user:default/auditor","auditor",body);
+
+        assertEquals(403,save.getStatusCode().value());
+        assertEquals(403,run.getStatusCode().value());
+        verify(governance,times(2)).isControlPlaneAdministrator("auditor");
+        verify(governance,never()).saveScreenWorkflowTestCase(any(),anyString());
+        verify(governance,never()).runDeterministicScreenWorkflowTest(any(),anyString());
+        verifyNoInteractions(jdbc);
+    }
+
+    @Test
+    void workflowTestMutationsUseTheExactAuthenticatedActorAfterAccountAuthorization(){
+        when(governance.isControlPlaneAdministrator("system-admin")).thenReturn(true);
+        when(governance.saveScreenWorkflowTestCase(any(),anyString()))
+                .thenReturn(Map.of("success",true));
+        when(governance.runDeterministicScreenWorkflowTest(any(),anyString()))
+                .thenReturn(Map.of("success",true));
+        Map<String,Object> body=Map.of("processCode","PROCESS_A","stepCode","STEP_A");
+
+        assertEquals(200,controller.saveScreenWorkflowTestCase(
+                "secret-token","user:default/system-admin","system-admin",body)
+                .getStatusCode().value());
+        assertEquals(200,controller.runScreenWorkflowTest(
+                "secret-token","user:default/system-admin","system-admin",body)
+                .getStatusCode().value());
+
+        verify(governance).saveScreenWorkflowTestCase(
+                body,"user:default/system-admin");
+        verify(governance).runDeterministicScreenWorkflowTest(
+                body,"user:default/system-admin");
+    }
+
+    @Test
+    void cutoverRequiresAdministratorAccountAndMatchingActorBeforeDatabaseWrites(){
+        when(governance.isControlPlaneAdministrator("auditor")).thenReturn(false);
+        Map<String,Object> body=Map.of(
+                "projectId","PROJECT_A","action","RETIRE",
+                "sourceRoutes",List.of("/admin/system/actor-process"),
+                "requestedBy","user:default/auditor");
+
+        var denied=controller.cutoverControlAssetMenus(
+                "secret-token","user:default/auditor","auditor",body);
+
+        assertEquals(403,denied.getStatusCode().value());
+        verify(governance).isControlPlaneAdministrator("auditor");
+
+        when(governance.isControlPlaneAdministrator("system-admin")).thenReturn(true);
+        var mismatched=controller.cutoverControlAssetMenus(
+                "secret-token","user:default/system-admin","system-admin",
+                Map.of("projectId","PROJECT_A","action","RETIRE",
+                    "sourceRoutes",List.of("/admin/system/actor-process"),
+                    "requestedBy","user:default/forged"));
+
+        assertEquals(403,mismatched.getStatusCode().value());
+        verify(governance).isControlPlaneAdministrator("system-admin");
+        verifyNoInteractions(jdbc);
+    }
+
+    @Test
     void authenticatedAdministratorCanRunExactDesignMutation(){
         when(governance.isControlPlaneAdministrator("system-admin")).thenReturn(true);
         when(governance.saveDesignAndGenerate(any(),eq("system-admin")))
@@ -1049,11 +1115,35 @@ class ActorProcessControlPlaneBridgeAuthorizationTest {
             "generation_result=cast(? as jsonb)"));
         org.junit.jupiter.api.Assertions.assertTrue(compile.contains(
             "if(!refreshGenerationClaim(projectId,designVersion,claimToken))return;"));
+        org.junit.jupiter.api.Assertions.assertTrue(compile.contains(
+            "compileAndQueueScreensForGenerationClaim("));
         String retry=source.substring(source.indexOf(
             "private boolean prepareRequirementRetry"),source.indexOf(
             "private void recordGenerationFailure"));
-        assertEquals(4,retry.split(
+        assertEquals(1,retry.split(
             "refreshGenerationClaim\\(projectId,designVersion,claimToken\\)",-1).length-1);
+        org.junit.jupiter.api.Assertions.assertTrue(retry.contains(
+            "recoverRequirementProcessesForGenerationClaim("));
+
+        String service=Files.readString(findRepositoryFile(
+            "modules/resonance-common/carbonet-common-core/src/main/java/"+
+            "egovframework/com/platform/governance/service/"+
+            "ActorProcessGovernanceService.java"));
+        String guardedCompile=service.substring(service.indexOf(
+            "compileAndQueueScreensForGenerationClaim"),service.indexOf(
+            "/**\n     * Resolves one browser location"));
+        org.junit.jupiter.api.Assertions.assertTrue(guardedCompile.contains(
+            "for update"));
+        org.junit.jupiter.api.Assertions.assertTrue(guardedCompile.contains(
+            "compileAndQueueScreens(body,actor)"));
+        org.junit.jupiter.api.Assertions.assertTrue(guardedCompile.contains(
+            "ensureGeneratedProcessSafetyCases(process)"));
+        org.junit.jupiter.api.Assertions.assertTrue(guardedCompile.contains(
+            "ensureGeneratedProcessDesignContracts(process,actor)"));
+        org.junit.jupiter.api.Assertions.assertTrue(guardedCompile.contains(
+            "ensureGeneratedProcessPageDesigns(process,actor)"));
+        org.junit.jupiter.api.Assertions.assertTrue(guardedCompile.contains(
+            "finalizeAndQueueProcessDesign("));
     }
 
     @Test

@@ -1156,6 +1156,7 @@ export default createBackendPlugin({
                   'content-type': 'application/json',
                   'x-resonance-token': bridgeToken,
                   'x-resonance-actor': runtimeIdentity.userEntityRef,
+                  'x-resonance-account': runtimeIdentity.accountId,
                 },
                 body: JSON.stringify(request.body ?? {}),
               },
@@ -1190,6 +1191,7 @@ export default createBackendPlugin({
                   'content-type': 'application/json',
                   'x-resonance-token': bridgeToken,
                   'x-resonance-actor': runtimeIdentity.userEntityRef,
+                  'x-resonance-account': runtimeIdentity.accountId,
                 },
                 body: JSON.stringify(request.body ?? {}),
               },
@@ -1672,6 +1674,11 @@ export default createBackendPlugin({
           '/control-assets/:projectId/sync',
           async (request, response) => {
             const projectId = normalizeProjectId(request.params.projectId);
+            const access = await requireDesignAssetRole(
+              request,
+              projectId,
+              'DESIGN_APPROVER',
+            );
             const project = await knex('resonance_projects__project')
               .where({ project_id: projectId })
               .first();
@@ -1768,6 +1775,15 @@ export default createBackendPlugin({
                     updated_at: now,
                   });
               }
+              await transaction(
+                'resonance_projects__design_asset_audit',
+              ).insert({
+                project_id: projectId,
+                action_code: 'CONTROL_ASSETS_SYNCHRONIZED',
+                actor_ref: access.actorRef,
+                details: JSON.stringify({ assetCount: normalized.length }),
+                created_at: now,
+              });
             });
             const summary = (await knex(
               'resonance_projects__control_asset_migration',
@@ -1783,6 +1799,7 @@ export default createBackendPlugin({
             response.json({
               projectId,
               synchronized: normalized.length,
+              actorRef: access.actorRef,
               summary: summary.map(row => ({
                 ownershipLane: row.ownership_lane,
                 migrationStatus: row.migration_status,
@@ -2218,6 +2235,11 @@ export default createBackendPlugin({
           '/control-assets/:projectId/transition',
           async (request, response) => {
             const projectId = normalizeProjectId(request.params.projectId);
+            const access = await requireDesignAssetRole(
+              request,
+              projectId,
+              'DESIGN_APPROVER',
+            );
             const assetId = String(request.body?.assetId ?? '').trim();
             const nextStatus = String(request.body?.nextStatus ?? '').trim();
             const evidence =
@@ -2287,19 +2309,46 @@ export default createBackendPlugin({
               return;
             }
             const now = new Date();
-            await knex('resonance_projects__control_asset_migration')
-              .where({ project_id: projectId, asset_id: assetId })
-              .update({
-                migration_status: nextStatus,
-                verification_evidence: JSON.stringify(evidence),
-                updated_at: now,
+            await knex.transaction(async transaction => {
+              const updated = await transaction(
+                'resonance_projects__control_asset_migration',
+              )
+                .where({
+                  project_id: projectId,
+                  asset_id: assetId,
+                  migration_status: asset.migration_status,
+                })
+                .update({
+                  migration_status: nextStatus,
+                  verification_evidence: JSON.stringify(evidence),
+                  updated_at: now,
+                });
+              if (updated !== 1) {
+                throw new Error(
+                  'control asset transition changed concurrently',
+                );
+              }
+              await transaction(
+                'resonance_projects__design_asset_audit',
+              ).insert({
+                project_id: projectId,
+                action_code: 'CONTROL_ASSET_TRANSITIONED',
+                actor_ref: access.actorRef,
+                details: JSON.stringify({
+                  assetId,
+                  previousStatus: asset.migration_status,
+                  nextStatus,
+                }),
+                created_at: now,
               });
+            });
             response.json({
               projectId,
               assetId,
               previousStatus: asset.migration_status,
               migrationStatus: nextStatus,
               verificationEvidence: evidence,
+              actorRef: access.actorRef,
               updatedAt: now,
             });
           },
@@ -2308,6 +2357,11 @@ export default createBackendPlugin({
           '/control-assets/:projectId/verify-native',
           async (request, response) => {
             const projectId = normalizeProjectId(request.params.projectId);
+            const access = await requireDesignAssetRole(
+              request,
+              projectId,
+              'DESIGN_APPROVER',
+            );
             const targets: { assetId?: unknown; targetUrl?: unknown }[] =
               Array.isArray(request.body?.targets) ? request.body.targets : [];
             const evidence =
@@ -2396,6 +2450,15 @@ export default createBackendPlugin({
                     updated_at: now,
                   });
               }
+              await transaction(
+                'resonance_projects__design_asset_audit',
+              ).insert({
+                project_id: projectId,
+                action_code: 'CONTROL_ASSETS_NATIVE_VERIFIED',
+                actor_ref: access.actorRef,
+                details: JSON.stringify({ assetIds, evidence }),
+                created_at: now,
+              });
               return assets.length;
             });
 
@@ -2404,6 +2467,7 @@ export default createBackendPlugin({
               verified,
               targetCount: targetUrls.size,
               migrationStatus: 'VERIFIED',
+              actorRef: access.actorRef,
               updatedAt: now,
             });
           },
@@ -2412,6 +2476,12 @@ export default createBackendPlugin({
           '/control-assets/:projectId/retire-source',
           async (request, response) => {
             const projectId = normalizeProjectId(request.params.projectId);
+            const access = await requireDesignAssetRole(
+              request,
+              projectId,
+              'DESIGN_APPROVER',
+            );
+            const runtimeIdentity = await resolveRuntimeAccount(request);
             const assetIds = Array.isArray(request.body?.assetIds)
               ? request.body.assetIds.map((value: unknown) =>
                   String(value).trim(),
@@ -2471,11 +2541,14 @@ export default createBackendPlugin({
                   accept: 'application/json',
                   'content-type': 'application/json',
                   'x-resonance-token': bridgeToken,
+                  'x-resonance-actor': runtimeIdentity.userEntityRef,
+                  'x-resonance-account': runtimeIdentity.accountId,
                 },
                 body: JSON.stringify({
                   projectId,
                   action: 'RETIRE',
                   sourceRoutes,
+                  requestedBy: runtimeIdentity.userEntityRef,
                 }),
               },
             );
@@ -2514,6 +2587,20 @@ export default createBackendPlugin({
                     updated_at: now,
                   });
               }
+              await transaction(
+                'resonance_projects__design_asset_audit',
+              ).insert({
+                project_id: projectId,
+                action_code: 'CONTROL_ASSET_SOURCE_RETIRED',
+                actor_ref: access.actorRef,
+                details: JSON.stringify({
+                  assetIds,
+                  sourceRoutes,
+                  runtimeAccount: runtimeIdentity.accountId,
+                  runtimeActor: runtimeIdentity.userEntityRef,
+                }),
+                created_at: now,
+              });
             });
             response.json({
               projectId,
@@ -2522,6 +2609,7 @@ export default createBackendPlugin({
               bridgeResult,
               migrationStatus: 'RETIRED_SOURCE',
               reversible: true,
+              actorRef: access.actorRef,
             });
           },
         );
