@@ -7,12 +7,22 @@ ORCHESTRATOR="$ROOT/ops/scripts/run-project-auto-completion-orchestrator.sh"
 TMP="$(mktemp -d)"
 PG_CONTAINER="canonical-status-$RANDOM-$$"
 PG_STARTED=0
+PG_RUNTIME=""
+PUBLICATION_PIDS=()
 cleanup() {
   set +e
+  if (( ${#PUBLICATION_PIDS[@]} )); then
+    kill -TERM "${PUBLICATION_PIDS[@]}" >/dev/null 2>&1 || true
+    wait "${PUBLICATION_PIDS[@]}" >/dev/null 2>&1 || true
+  fi
   if (( PG_STARTED )); then
-    sudo ctr -n k8s.io tasks kill --signal SIGKILL "$PG_CONTAINER" >/dev/null 2>&1 || true
-    sudo ctr -n k8s.io tasks rm --force "$PG_CONTAINER" >/dev/null 2>&1 || true
-    sudo ctr -n k8s.io containers rm "$PG_CONTAINER" >/dev/null 2>&1 || true
+    if [[ "$PG_RUNTIME" == ctr ]]; then
+      sudo ctr -n k8s.io tasks kill --signal SIGKILL "$PG_CONTAINER" >/dev/null 2>&1 || true
+      sudo ctr -n k8s.io tasks rm --force "$PG_CONTAINER" >/dev/null 2>&1 || true
+      sudo ctr -n k8s.io containers rm "$PG_CONTAINER" >/dev/null 2>&1 || true
+    elif [[ "$PG_RUNTIME" == docker ]]; then
+      docker rm -f "$PG_CONTAINER" >/dev/null 2>&1 || true
+    fi
   fi
   rm -rf "$TMP"
 }
@@ -34,6 +44,8 @@ if not push < deploy < binding < publication < final_slo < finalize:
     raise AssertionError("canonical finalization is not after deploy/binding/publication/final SLO proof")
 if "CANONICAL_RUNTIME_BINDING_VERIFIED" in worker:
     raise AssertionError("caller-supplied runtime binding boolean can bypass exact mappings proof")
+if "canonical_job_head_is_current" in worker:
+    raise AssertionError("retired step-local head checker can reject the process-wide publication head")
 for token in (
     "CANONICAL_FINALIZE_AFTER_PUSH_DEPLOY_HEALTH",
     "CANONICAL_FINALIZE_READBACK",
@@ -48,6 +60,15 @@ for token in (
     "CANONICAL_ENDPOINT_SOURCE_DIRS",
     "CANONICAL_RUNTIME_BINDING",
     "CANONICAL_DEPLOY_SLO",
+    "CANONICAL_PROCESS_PUBLICATION_V1:",
+    "framework_process_generation_input(j.process_code)",
+    "CANONICAL_PROCESS_JOB_HEAD",
+    "CANONICAL_MAIN_PUBLICATION_LOCK_CLASS_ID=1128353359",
+    "CANONICAL_MAIN_PUBLICATION_LOCK_OBJECT_ID=1296124238",
+    "PROCESS_WORKER_PSQL_SESSION_COMMAND",
+    "timeout --foreground --signal=TERM --kill-after=5s",
+    'read -r -t "$timeout_seconds"',
+    "canonical_publication_complete_push",
     "/actuator/mappings",
     "--untracked-files=all",
 ):
@@ -76,6 +97,17 @@ if not canonical_limit < manifest_validation < generic_limit:
 for rebase in [index for index in range(len(worker)) if worker.startswith('git -C "$WT" rebase origin/main', index)]:
     if 'revalidate_canonical_commit_after_rebase HEAD' not in worker[rebase:rebase + 900]:
         raise AssertionError("canonical rebase can reach push without manifest validation and compile")
+publication_begin = worker.index('canonical_publication_begin "$PROCESS_CODE"', canonical_limit)
+head_check = worker.index('canonical_process_job_head_is_current', publication_begin)
+push_loop = worker.index('for publish_attempt in 1 2 3; do', head_check)
+loop_session_check = worker.index('canonical_publication_db_session_alive', push_loop)
+loop_head_check = worker.index('canonical_process_job_head_is_current', loop_session_check)
+push = worker.index('git -C "$WT" push origin "HEAD:main"', loop_head_check)
+main_release = worker.index('canonical_publication_complete_push', push)
+finalize_call = worker.index('finalize_canonical_generation "$JOB_ID"', main_release)
+publication_end = worker.index('canonical_publication_end', finalize_call)
+if not publication_begin < head_check < push_loop < loop_session_check < loop_head_check < push < main_release < finalize_call < publication_end:
+    raise AssertionError("canonical DB locks/head checks do not enclose every push attempt")
 PY
 
 REMOTE="$TMP/remote.git"
@@ -666,17 +698,26 @@ env PGDATABASE=fake PGUSER=fake PGPASSWORD=fake ROOT_DIR="$PREPUBLISH" \
 # instance. The fake DB above controls transport ambiguity; this fixture proves
 # the SQL itself and terminal idempotency.
 IMAGE="docker.io/library/postgres:16"
-sudo -n true >/dev/null
-sudo ctr -n k8s.io images ls -q | grep -Fxq "$IMAGE"
 PG_PORT="$(python3 - <<'PY'
 import socket
 s=socket.socket(); s.bind(("127.0.0.1",0)); print(s.getsockname()[1]); s.close()
 PY
 )"
 PG_PASSWORD="status-$RANDOM-$$"
-sudo ctr -n k8s.io run --detach --net-host \
-  --env "POSTGRES_PASSWORD=$PG_PASSWORD" --env POSTGRES_DB=status \
-  --env "PGPORT=$PG_PORT" "$IMAGE" "$PG_CONTAINER"
+if command -v ctr >/dev/null 2>&1 && sudo -n true >/dev/null 2>&1 \
+    && sudo ctr -n k8s.io images ls -q | grep -Fxq "$IMAGE"; then
+  PG_RUNTIME=ctr
+  sudo ctr -n k8s.io run --detach --net-host \
+    --env "POSTGRES_PASSWORD=$PG_PASSWORD" --env POSTGRES_DB=status \
+    --env "PGPORT=$PG_PORT" "$IMAGE" "$PG_CONTAINER"
+else
+  PG_RUNTIME=docker
+  docker image inspect postgres:16 >/dev/null
+  docker run --detach --rm --name "$PG_CONTAINER" \
+    --publish "127.0.0.1:${PG_PORT}:${PG_PORT}" \
+    --env "POSTGRES_PASSWORD=$PG_PASSWORD" --env POSTGRES_DB=status \
+    postgres:16 -c "port=$PG_PORT" >/dev/null
+fi
 PG_STARTED=1
 export PGPASSWORD="$PG_PASSWORD"
 for _ in $(seq 1 100); do
@@ -694,7 +735,7 @@ CREATE TABLE framework_step_execution_spec(
 CREATE TABLE framework_development_job(
  job_id bigint PRIMARY KEY,job_status text,quality_status text,result_json text,
  evidence_ref text,rollback_ref text,completed_at timestamp,lease_token text,
- lease_until timestamp,updated_at timestamp,last_error text);
+ lease_until timestamp,updated_at timestamp,last_error text,specification_json text);
 CREATE TABLE framework_process_artifact(
  artifact_id bigserial PRIMARY KEY,
  process_code text,step_code text,contract_ref text,delivery_status text,
@@ -704,7 +745,7 @@ CREATE TABLE framework_development_job_event(
 INSERT INTO framework_step_execution_spec VALUES(
  'PROC','STEP','aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa','DESIGN_COMPLETE','APPROVED','READY',now());
 INSERT INTO framework_development_job VALUES(
- 202,'RUNNING','PENDING','{}',null,null,null,'22222222-2222-2222-2222-222222222222',now()+interval '1 hour',now(),null);
+ 202,'RUNNING','PENDING','{}',null,null,null,'22222222-2222-2222-2222-222222222222',now()+interval '1 hour',now(),null,'{}');
 INSERT INTO framework_process_artifact(process_code,step_code,contract_ref,delivery_status,evidence_ref,updated_at) VALUES(
  'PROC','STEP','AUTO:FULL_STACK_GENERATION','PENDING',null,now());
 SQL
@@ -734,8 +775,8 @@ reset_real_case() {
 truncate framework_development_job_event,framework_process_artifact,framework_development_job,framework_step_execution_spec restart identity;
 insert into framework_step_execution_spec values(
  'PROC','STEP','aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa','DESIGN_COMPLETE','APPROVED','READY',now());
-insert into framework_development_job values(
- 202,'RUNNING','PENDING','{}',null,null,null,'22222222-2222-2222-2222-222222222222',now()+interval '1 hour',now(),null);
+  insert into framework_development_job values(
+  202,'RUNNING','PENDING','{}',null,null,null,'22222222-2222-2222-2222-222222222222',now()+interval '1 hour',now(),null,'{}');
 SQL
   case "$artifact_case" in
     exact)
@@ -799,4 +840,368 @@ owned_failure="$(psql -h 127.0.0.1 -p "$PG_PORT" -U postgres -d status -Atqc \
   "select job_status||'|'||(select count(*) from framework_development_job_event where event_type='FAILED') from framework_development_job where job_id=202")"
 [[ "$owned_failure" == 'FAILED|1' ]]
 
-echo 'CANONICAL_GENERATION_PUBLICATION_STATUS_PASS prePushWrites=0 pushFailureWrites=0 runtimeMissingWrites=0 runtimeMismatchWrites=0 runtimeExtraWrites=0 slo61Writes=0 successWrites=1 ambiguousWrites=1 staleWrites=0 terminalEvents=1 terminalImmutable=1 artifactMissingWrites=0 artifactWrongWrites=0 artifactDuplicateWrites=0 mutableWorktreeWrites=0 rollbackParentExact=1 unrelatedDescendant=PASS sameProcessDescendantWrites=0 markerAdvanceUnrelated=RETRY_PASS markerAdvanceSameProcessWrites=0 markerContinuousWrites=0 markerTerminalEdgeWrites=0 postTerminalFalseFailedEvents=0 leaseLostFailureWrites=0 ownedFailureEvents=1 bindingMutations=1 crossProcessCompileDirs=2 prepublishCompileFailCount=2 prepublishPushOnFail=0 compileHookMutationPush=0 prepublishCompilePassCount=2 prepublishPushOnPass=1 realPostgres=1 orchestrator=DEFERRED legacy=preserved liveDb=0'
+# The publication critical section is a real PostgreSQL session, not a sequence
+# of unrelated psql calls. This fixture supplies the same process-wide head
+# shape as V20260815121600 and exercises cross-host contention and stale saves.
+psql -h 127.0.0.1 -p "$PG_PORT" -U postgres -d status -v ON_ERROR_STOP=1 >/dev/null <<'SQL'
+alter table framework_development_job
+  add column process_code text,
+  add column step_code text,
+  add column job_type text,
+  add column job_group_code text,
+  add column worker_id text;
+create table framework_process_generation_head_fixture(
+  process_code text primary key,
+  process_input_hash text not null,
+  process_step_count integer not null,
+  generation_ready_step_count integer not null,
+  coordinator_step text not null,
+  process_endpoint_expected integer not null,
+  screen_count integer not null,
+  design_set_hash text not null,
+  design_catalog_hash text not null,
+  design_catalog_text_hash text not null,
+  endpoint_catalog_hash text not null,
+  endpoint_catalog_text_hash text not null
+);
+create or replace function framework_process_generation_input(requested_process text)
+returns jsonb language sql stable as $$
+  select jsonb_build_object(
+    'schema','carbonet.process-generation-head/v1',
+    'processCode',head.process_code,
+    'processInputHash',head.process_input_hash,
+    'processStepCount',head.process_step_count,
+    'generationReadyStepCount',head.generation_ready_step_count,
+    'coordinatorStep',head.coordinator_step,
+    'processEndpointExpected',head.process_endpoint_expected,
+    'screenCount',head.screen_count,
+    'designSetHash',head.design_set_hash,
+    'designCatalogHash',head.design_catalog_hash,
+    'designCatalogTextHash',head.design_catalog_text_hash,
+    'endpointCatalogHash',head.endpoint_catalog_hash,
+    'endpointCatalogTextHash',head.endpoint_catalog_text_hash,
+    'input','{}'::jsonb)
+  from framework_process_generation_head_fixture head
+  where head.process_code=requested_process
+$$;
+SQL
+
+HASH_1="$(printf '1%.0s' {1..64})"
+HASH_2="$(printf '2%.0s' {1..64})"
+HASH_3="$(printf '3%.0s' {1..64})"
+HASH_4="$(printf '4%.0s' {1..64})"
+HASH_5="$(printf '5%.0s' {1..64})"
+HASH_6="$(printf '6%.0s' {1..64})"
+HASH_7="$(printf '7%.0s' {1..64})"
+DESIGN_SET_HASH="$(printf 'd%.0s' {1..64})"
+DESIGN_CATALOG_HASH="$(printf 'b%.0s' {1..64})"
+DESIGN_CATALOG_TEXT_HASH="$(printf 'c%.0s' {1..64})"
+ENDPOINT_CATALOG_HASH="$(printf 'e%.0s' {1..64})"
+ENDPOINT_CATALOG_TEXT_HASH="$(printf 'f%.0s' {1..64})"
+TRIGGER_DESIGN_HASH="$(printf 'a%.0s' {1..64})"
+LOCK_LEASE_1=31111111-1111-1111-1111-111111111111
+LOCK_LEASE_2=32222222-2222-2222-2222-222222222222
+LOCK_LEASE_3=33333333-3333-3333-3333-333333333333
+LOCK_LEASE_4=34444444-4444-4444-4444-444444444444
+LOCK_LEASE_5=35555555-5555-5555-5555-555555555555
+LOCK_LEASE_6=36666666-6666-6666-6666-666666666666
+LOCK_LEASE_7=37777777-7777-7777-7777-777777777777
+
+publication_spec() {
+  local process="$1" hash="$2" step_count="$3" endpoint_count="$4"
+  jq -cn --arg process "$process" --arg hash "$hash" \
+    --arg design_set_hash "$DESIGN_SET_HASH" --arg design_hash "$TRIGGER_DESIGN_HASH" \
+    --arg design_catalog_hash "$DESIGN_CATALOG_HASH" \
+    --arg design_catalog_text_hash "$DESIGN_CATALOG_TEXT_HASH" \
+    --arg endpoint_catalog_hash "$ENDPOINT_CATALOG_HASH" \
+    --arg endpoint_catalog_text_hash "$ENDPOINT_CATALOG_TEXT_HASH" \
+    --argjson step_count "$step_count" --argjson endpoint_count "$endpoint_count" '{
+      algorithm:"CANONICAL_PROCESS_PUBLICATION_V1",generatorRequired:true,reuseCommonAssets:true,
+      processCode:$process,stepCode:"STEP_1",coordinatorStep:"STEP_1",
+      processInputHash:$hash,sourceHash:$hash,designSetHash:$design_set_hash,
+      designCatalogHash:$design_catalog_hash,designCatalogTextHash:$design_catalog_text_hash,
+      endpointCatalogHash:$endpoint_catalog_hash,endpointCatalogTextHash:$endpoint_catalog_text_hash,
+      designHash:$design_hash,processStepCount:$step_count,
+      generationReadyStepCount:$step_count,endpointExpected:$endpoint_count,
+      routePath:"/fixture",audience:"USER",autoDeploy:false
+    }'
+}
+
+reset_publication_process() {
+  local process="$1" job_id="$2" lease="$3" hash="$4" step_count="$5" endpoint_count="$6" spec="$7"
+  psql -h 127.0.0.1 -p "$PG_PORT" -U postgres -d status -v ON_ERROR_STOP=1 \
+    -v process="$process" -v job_id="$job_id" -v lease="$lease" -v hash="$hash" \
+    -v step_count="$step_count" -v endpoint_count="$endpoint_count" \
+    -v design_set_hash="$DESIGN_SET_HASH" -v design_catalog_hash="$DESIGN_CATALOG_HASH" \
+    -v design_catalog_text_hash="$DESIGN_CATALOG_TEXT_HASH" \
+    -v endpoint_catalog_hash="$ENDPOINT_CATALOG_HASH" \
+    -v endpoint_catalog_text_hash="$ENDPOINT_CATALOG_TEXT_HASH" -v spec="$spec" >/dev/null <<'SQL'
+delete from framework_development_job where process_code=:'process';
+delete from framework_step_execution_spec where process_code=:'process';
+delete from framework_process_generation_head_fixture where process_code=:'process';
+insert into framework_process_generation_head_fixture values(
+  :'process',:'hash',:step_count,:step_count,'STEP_1',:endpoint_count,:step_count,:'design_set_hash',
+  :'design_catalog_hash',:'design_catalog_text_hash',:'endpoint_catalog_hash',:'endpoint_catalog_text_hash');
+insert into framework_step_execution_spec(
+  process_code,step_code,source_hash,design_status,approval_status,generation_status,updated_at)
+select :'process','STEP_'||series,:'hash','DESIGN_COMPLETE','APPROVED','READY',now()
+from generate_series(1,:step_count) series;
+insert into framework_development_job(
+  job_id,job_status,quality_status,result_json,lease_token,lease_until,updated_at,
+  process_code,step_code,job_type,job_group_code,specification_json,worker_id)
+values(:job_id,'RUNNING','PENDING','{}',:'lease',now()+interval '1 hour',now(),
+  :'process','STEP_1','FULL_STACK_GENERATION',:'process'||'_CANONICAL_PUBLICATION',:'spec','publication-fixture');
+SQL
+}
+
+invoke_publication_contract() {
+  local process="$1" job_id="$2" lease="$3" spec="$4" slot_lock="$5" host_lock="$6" app_name="$7"
+  shift 7
+  local specification_base64
+  specification_base64="$(printf '%s' "$spec" | base64 | tr -d '\n')"
+  local -a publication_command=(
+    env "ROOT_DIR=$REPO" "WORKTREE_ROOT=$TMP/publication-wt" "LOG_ROOT=$TMP/publication-logs"
+    "LOCK_FILE=$slot_lock" "AI_PUBLISH_LOCK_FILE=$host_lock"
+    PGDATABASE=status PGUSER=postgres "PGPASSWORD=$PG_PASSWORD"
+    "PROCESS_WORKER_PSQLQ_COMMAND=$REAL_PSQL" "PROCESS_WORKER_PSQL_SESSION_COMMAND=$REAL_PSQL"
+    "CANONICAL_JOB_ID=$job_id" "CANONICAL_LEASE_TOKEN=$lease" "CANONICAL_PROCESS_CODE=$process"
+    "CANONICAL_SPECIFICATION_B64=$specification_base64"
+    "CANONICAL_PUBLICATION_DB_APPLICATION_NAME=$app_name"
+    "$@" bash "$WORKER" --canonical-publication-lock-contract
+  )
+  if [[ "${PUBLICATION_CONTRACT_REPLACE_SHELL:-0}" = 1 ]]; then
+    exec "${publication_command[@]}"
+  fi
+  "${publication_command[@]}"
+}
+
+wait_for_file() {
+  local path="$1"
+  for _ in $(seq 1 100); do
+    [[ -e "$path" ]] && return 0
+    sleep .05
+  done
+  return 1
+}
+
+WAIT_PUSH="$TMP/wait-publication-push.sh"
+PASS_PUSH="$TMP/pass-publication-push.sh"
+RETRY_PUSH="$TMP/retry-publication-push.sh"
+cat >"$WAIT_PUSH" <<'SH'
+#!/usr/bin/env bash
+set -Eeuo pipefail
+while [[ ! -e "${PUBLICATION_RELEASE_FILE:?}" ]]; do sleep .05; done
+SH
+cat >"$PASS_PUSH" <<'SH'
+#!/usr/bin/env bash
+set -Eeuo pipefail
+[[ -z "${PUBLICATION_PUSH_MARKER:-}" ]] || : >"$PUBLICATION_PUSH_MARKER"
+SH
+cat >"$RETRY_PUSH" <<'SH'
+#!/usr/bin/env bash
+set -Eeuo pipefail
+process="$1"
+attempt="$2"
+observed="$("${PROCESS_WORKER_PSQLQ_COMMAND:?}" -c "
+  select pg_try_advisory_lock(1128353359,1296124238)||'|'||
+    pg_try_advisory_lock(hashtextextended(
+      'CANONICAL_PROCESS_PUBLICATION_V1:'||upper(btrim(\$process\$${process}\$process\$)),0));")"
+printf '%s\n' "$observed" >>"${PUBLICATION_LOCK_OBSERVATIONS:?}"
+printf '%s\n' "$attempt" >"${PUBLICATION_RETRY_COUNT:?}"
+[[ "$observed" == 'false|false' && "$attempt" -ge 3 ]]
+SH
+chmod +x "$WAIT_PUSH" "$PASS_PUSH" "$RETRY_PUSH"
+
+# Session A holds both DB locks. A second worker with a different host flock
+# reaches PostgreSQL and waits on the fixed MAIN key, proving cross-host scope.
+LOCK_SPEC_1="$(publication_spec PROC_LOCK "$HASH_1" 2 2)"
+OTHER_SPEC="$(publication_spec PROC_OTHER "$HASH_3" 1 1)"
+reset_publication_process PROC_LOCK 301 "$LOCK_LEASE_1" "$HASH_1" 2 2 "$LOCK_SPEC_1"
+reset_publication_process PROC_OTHER 302 "$LOCK_LEASE_3" "$HASH_3" 1 1 "$OTHER_SPEC"
+LOCK_READY_A="$TMP/publication-a.ready"
+LOCK_READY_B="$TMP/publication-b.ready"
+LOCK_RELEASE_A="$TMP/publication-a.release"
+invoke_publication_contract PROC_LOCK 301 "$LOCK_LEASE_1" "$LOCK_SPEC_1" \
+  "$TMP/slot-a.lock" "$TMP/host-a.lock" publication-lock-a \
+  CANONICAL_PUBLICATION_READY_FILE="$LOCK_READY_A" \
+  CANONICAL_PUBLICATION_PUSH_COMMAND="$WAIT_PUSH" \
+  PUBLICATION_RELEASE_FILE="$LOCK_RELEASE_A" >"$TMP/publication-a.log" 2>&1 &
+PUBLICATION_A_PID=$!
+PUBLICATION_PIDS+=("$PUBLICATION_A_PID")
+wait_for_file "$LOCK_READY_A"
+invoke_publication_contract PROC_OTHER 302 "$LOCK_LEASE_3" "$OTHER_SPEC" \
+  "$TMP/slot-b.lock" "$TMP/host-b.lock" publication-lock-b \
+  CANONICAL_PUBLICATION_READY_FILE="$LOCK_READY_B" \
+  CANONICAL_PUBLICATION_PUSH_COMMAND="$PASS_PUSH" >"$TMP/publication-b.log" 2>&1 &
+PUBLICATION_B_PID=$!
+PUBLICATION_PIDS+=("$PUBLICATION_B_PID")
+main_waiters=0
+for _ in $(seq 1 100); do
+  main_waiters="$(psql -h 127.0.0.1 -p "$PG_PORT" -U postgres -d status -Atqc \
+    "select count(*) from pg_locks where locktype='advisory' and classid=1128353359 and objid=1296124238 and not granted")"
+  (( main_waiters > 0 )) && break
+  sleep .05
+done
+(( main_waiters > 0 ))
+[[ ! -e "$LOCK_READY_B" ]]
+
+# A design save uses the exact process key. It remains blocked until A's push
+# hook succeeds, then atomically installs the new process input and job revision.
+LOCK_SPEC_2="$(publication_spec PROC_LOCK "$HASH_2" 2 2)"
+psql -h 127.0.0.1 -p "$PG_PORT" -U postgres -d status -v ON_ERROR_STOP=1 \
+  -v hash="$HASH_2" -v process=PROC_LOCK -v spec="$LOCK_SPEC_2" >"$TMP/save-wait.log" <<'SQL' &
+begin;
+select pg_advisory_xact_lock(hashtextextended(
+  'CANONICAL_PROCESS_PUBLICATION_V1:'||upper(btrim(:'process')),0));
+update framework_process_generation_head_fixture set process_input_hash=:'hash' where process_code=:'process';
+update framework_step_execution_spec set source_hash=:'hash',generation_status='READY' where process_code=:'process';
+update framework_development_job
+   set specification_json=:'spec',job_status='PLANNED',lease_token=null,lease_until=null,updated_at=now()
+ where process_code=:'process';
+commit;
+SQL
+SAVE_PID=$!
+PUBLICATION_PIDS+=("$SAVE_PID")
+sleep .25
+kill -0 "$SAVE_PID"
+blocked_state="$(psql -h 127.0.0.1 -p "$PG_PORT" -U postgres -d status -Atqc \
+  "select head.process_input_hash||'|'||job.job_status from framework_process_generation_head_fixture head join framework_development_job job using(process_code) where head.process_code='PROC_LOCK'")"
+[[ "$blocked_state" == "$HASH_1|RUNNING" ]]
+: >"$LOCK_RELEASE_A"
+wait "$PUBLICATION_A_PID"
+wait "$SAVE_PID"
+wait "$PUBLICATION_B_PID"
+[[ -e "$LOCK_READY_B" ]]
+saved_state="$(psql -h 127.0.0.1 -p "$PG_PORT" -U postgres -d status -Atqc \
+  "select head.process_input_hash||'|'||job.job_status||'|'||coalesce(job.lease_token,'') from framework_process_generation_head_fixture head join framework_development_job job using(process_code) where head.process_code='PROC_LOCK'")"
+[[ "$saved_state" == "$HASH_2|PLANNED|" ]]
+
+# The stale claimed bytes/lease are rejected after the save. Only the newly
+# claimed revision with the new process head may enter its push hook.
+if invoke_publication_contract PROC_LOCK 301 "$LOCK_LEASE_1" "$LOCK_SPEC_1" \
+    "$TMP/slot-stale.lock" "$TMP/host-stale.lock" publication-stale \
+    CANONICAL_PUBLICATION_PUSH_COMMAND="$PASS_PUSH" >/dev/null 2>&1; then
+  echo 'stale process generation head unexpectedly entered publication' >&2
+  exit 1
+fi
+psql -h 127.0.0.1 -p "$PG_PORT" -U postgres -d status -v ON_ERROR_STOP=1 \
+  -v lease="$LOCK_LEASE_2" >/dev/null <<'SQL'
+update framework_development_job
+   set job_status='RUNNING',lease_token=:'lease',lease_until=now()+interval '1 hour'
+ where process_code='PROC_LOCK';
+SQL
+invoke_publication_contract PROC_LOCK 301 "$LOCK_LEASE_2" "$LOCK_SPEC_2" \
+  "$TMP/slot-new.lock" "$TMP/host-new.lock" publication-new \
+  CANONICAL_PUBLICATION_PUSH_COMMAND="$PASS_PUSH" >/dev/null
+
+# All three simulated push attempts observe both advisory locks as unavailable
+# from an independent session. No retry releases/reacquires either lock.
+RETRY_SPEC="$(publication_spec PROC_RETRY "$HASH_3" 1 1)"
+reset_publication_process PROC_RETRY 303 "$LOCK_LEASE_3" "$HASH_3" 1 1 "$RETRY_SPEC"
+RETRY_COUNT="$TMP/publication-retry.count"
+RETRY_OBSERVATIONS="$TMP/publication-retry.observations"
+if ! invoke_publication_contract PROC_RETRY 303 "$LOCK_LEASE_3" "$RETRY_SPEC" \
+    "$TMP/slot-retry.lock" "$TMP/host-retry.lock" publication-retry \
+    CANONICAL_PUBLICATION_PUSH_COMMAND="$RETRY_PUSH" \
+    PUBLICATION_RETRY_COUNT="$RETRY_COUNT" \
+    PUBLICATION_LOCK_OBSERVATIONS="$RETRY_OBSERVATIONS" \
+    CANONICAL_PUBLICATION_RETRY_SLEEP_SECONDS=0 >"$TMP/publication-retry.log" 2>&1; then
+  cat "$TMP/publication-retry.log" >&2
+  [[ ! -f "$RETRY_OBSERVATIONS" ]] || cat "$RETRY_OBSERVATIONS" >&2
+  exit 1
+fi
+[[ "$(cat "$RETRY_COUNT")" == 3 ]]
+[[ "$(wc -l <"$RETRY_OBSERVATIONS")" == 3 ]]
+[[ "$(sort -u "$RETRY_OBSERVATIONS")" == 'false|false' ]]
+
+# Push completion releases the MAIN/host locks but keeps the process lock. A
+# different process can publish immediately while a same-process save remains
+# blocked until terminal cleanup (well below the 60-second deploy SLO here).
+HOLD_SPEC="$(publication_spec PROC_HOLD "$HASH_6" 1 1)"
+NEXT_SPEC="$(publication_spec PROC_NEXT "$HASH_7" 1 1)"
+reset_publication_process PROC_HOLD 306 "$LOCK_LEASE_6" "$HASH_6" 1 1 "$HOLD_SPEC"
+reset_publication_process PROC_NEXT 307 "$LOCK_LEASE_7" "$HASH_7" 1 1 "$NEXT_SPEC"
+AFTER_PUSH_FIFO="$TMP/publication-after-push.fifo"
+AFTER_PUSH_READY="$TMP/publication-after-push.ready"
+NEXT_PUSH_MARKER="$TMP/publication-next.push"
+mkfifo "$AFTER_PUSH_FIFO"
+PUBLICATION_CONTRACT_REPLACE_SHELL=1 invoke_publication_contract \
+  PROC_HOLD 306 "$LOCK_LEASE_6" "$HOLD_SPEC" \
+  "$TMP/slot-hold.lock" "$TMP/host-hold.lock" publication-hold \
+  CANONICAL_PUBLICATION_PUSH_COMMAND="$PASS_PUSH" \
+  CANONICAL_PUBLICATION_AFTER_PUSH_READY_FILE="$AFTER_PUSH_READY" \
+  CANONICAL_PUBLICATION_AFTER_PUSH_WAIT_FIFO="$AFTER_PUSH_FIFO" \
+  >"$TMP/publication-hold.log" 2>&1 &
+HOLD_WORKER_PID=$!
+PUBLICATION_PIDS+=("$HOLD_WORKER_PID")
+wait_for_file "$AFTER_PUSH_READY"
+invoke_publication_contract PROC_NEXT 307 "$LOCK_LEASE_7" "$NEXT_SPEC" \
+  "$TMP/slot-next.lock" "$TMP/host-next.lock" publication-next \
+  CANONICAL_PUBLICATION_LOCK_WAIT_SECONDS=2 \
+  CANONICAL_PUBLICATION_PUSH_COMMAND="$PASS_PUSH" \
+  PUBLICATION_PUSH_MARKER="$NEXT_PUSH_MARKER" >/dev/null
+[[ -e "$NEXT_PUSH_MARKER" ]]
+same_process_wait_started="$(date +%s%3N)"
+$REAL_PSQL -c "select pg_advisory_xact_lock(hashtextextended(
+  'CANONICAL_PROCESS_PUBLICATION_V1:PROC_HOLD',0));" >"$TMP/same-process-save.log" &
+SAME_PROCESS_SAVE_PID=$!
+PUBLICATION_PIDS+=("$SAME_PROCESS_SAVE_PID")
+sleep .25
+kill -0 "$SAME_PROCESS_SAVE_PID"
+printf 'terminal\n' >"$AFTER_PUSH_FIFO"
+wait "$HOLD_WORKER_PID"
+wait "$SAME_PROCESS_SAVE_PID"
+same_process_wait_millis="$(( $(date +%s%3N) - same_process_wait_started ))"
+(( same_process_wait_millis < 60000 ))
+
+# SIGTERM runs the worker trap, closes the persistent psql process and releases
+# both locks. A FIFO keeps the main shell itself blocked, avoiding child-signal
+# ambiguity in the mutant.
+TERM_SPEC="$(publication_spec PROC_TERM "$HASH_4" 1 1)"
+reset_publication_process PROC_TERM 304 "$LOCK_LEASE_4" "$HASH_4" 1 1 "$TERM_SPEC"
+TERM_FIFO="$TMP/publication-term.fifo"
+TERM_READY="$TMP/publication-term.ready"
+mkfifo "$TERM_FIFO"
+PUBLICATION_CONTRACT_REPLACE_SHELL=1 invoke_publication_contract PROC_TERM 304 "$LOCK_LEASE_4" "$TERM_SPEC" \
+  "$TMP/slot-term.lock" "$TMP/host-term.lock" publication-term \
+  CANONICAL_PUBLICATION_READY_FILE="$TERM_READY" CANONICAL_PUBLICATION_WAIT_FIFO="$TERM_FIFO" \
+  CANONICAL_PUBLICATION_PUSH_COMMAND="$PASS_PUSH" >"$TMP/publication-term.log" 2>&1 &
+TERM_WORKER_PID=$!
+PUBLICATION_PIDS+=("$TERM_WORKER_PID")
+wait_for_file "$TERM_READY"
+term_held="$($REAL_PSQL -c "select pg_try_advisory_lock(1128353359,1296124238)||'|'||pg_try_advisory_lock(hashtextextended('CANONICAL_PROCESS_PUBLICATION_V1:PROC_TERM',0))")"
+[[ "$term_held" == 'false|false' ]]
+kill -TERM "$TERM_WORKER_PID"
+if wait "$TERM_WORKER_PID"; then
+  echo 'SIGTERM publication worker unexpectedly exited successfully' >&2
+  exit 1
+fi
+term_released="$($REAL_PSQL -c "select pg_try_advisory_lock(1128353359,1296124238)||'|'||pg_try_advisory_lock(hashtextextended('CANONICAL_PROCESS_PUBLICATION_V1:PROC_TERM',0))")"
+[[ "$term_released" == 'true|true' ]]
+
+# PostgreSQL backend loss itself releases both locks. Once the blocked shell is
+# resumed, its heartbeat fails and the push hook is never accepted.
+DROP_SPEC="$(publication_spec PROC_DROP "$HASH_5" 1 1)"
+reset_publication_process PROC_DROP 305 "$LOCK_LEASE_5" "$HASH_5" 1 1 "$DROP_SPEC"
+DROP_FIFO="$TMP/publication-drop.fifo"
+DROP_READY="$TMP/publication-drop.ready"
+mkfifo "$DROP_FIFO"
+PUBLICATION_CONTRACT_REPLACE_SHELL=1 invoke_publication_contract PROC_DROP 305 "$LOCK_LEASE_5" "$DROP_SPEC" \
+  "$TMP/slot-drop.lock" "$TMP/host-drop.lock" publication-drop \
+  CANONICAL_PUBLICATION_READY_FILE="$DROP_READY" CANONICAL_PUBLICATION_WAIT_FIFO="$DROP_FIFO" \
+  CANONICAL_PUBLICATION_PUSH_COMMAND="$PASS_PUSH" >"$TMP/publication-drop.log" 2>&1 &
+DROP_WORKER_PID=$!
+PUBLICATION_PIDS+=("$DROP_WORKER_PID")
+wait_for_file "$DROP_READY"
+drop_backend="$($REAL_PSQL -c "select pid from pg_stat_activity where application_name='publication-drop' and pid<>pg_backend_pid()")"
+[[ "$drop_backend" =~ ^[0-9]+$ ]]
+[[ "$($REAL_PSQL -c "select pg_terminate_backend($drop_backend)")" == t ]]
+drop_released="$($REAL_PSQL -c "select pg_try_advisory_lock(1128353359,1296124238)||'|'||pg_try_advisory_lock(hashtextextended('CANONICAL_PROCESS_PUBLICATION_V1:PROC_DROP',0))")"
+[[ "$drop_released" == 'true|true' ]]
+printf 'resume\n' >"$DROP_FIFO"
+if wait "$DROP_WORKER_PID"; then
+  echo 'disconnected publication DB session unexpectedly reached push success' >&2
+  exit 1
+fi
+
+echo 'CANONICAL_GENERATION_PUBLICATION_STATUS_PASS prePushWrites=0 pushFailureWrites=0 runtimeMissingWrites=0 runtimeMismatchWrites=0 runtimeExtraWrites=0 slo61Writes=0 successWrites=1 ambiguousWrites=1 staleWrites=0 terminalEvents=1 terminalImmutable=1 artifactMissingWrites=0 artifactWrongWrites=0 artifactDuplicateWrites=0 mutableWorktreeWrites=0 rollbackParentExact=1 unrelatedDescendant=PASS sameProcessDescendantWrites=0 markerAdvanceUnrelated=RETRY_PASS markerAdvanceSameProcessWrites=0 markerContinuousWrites=0 markerTerminalEdgeWrites=0 postTerminalFalseFailedEvents=0 leaseLostFailureWrites=0 ownedFailureEvents=1 bindingMutations=1 crossProcessCompileDirs=2 prepublishCompileFailCount=2 prepublishPushOnFail=0 compileHookMutationPush=0 prepublishCompilePassCount=2 prepublishPushOnPass=1 realPostgres=1 publicationSessions=2 mainContention=PASS staleSaveBlocked=PASS newHead=PASS pushRetriesLocked=3 mainReleaseBeforeDeploy=PASS processLockThroughFinalize=PASS sameProcessWaitUnder60s=PASS sigtermRelease=PASS disconnectRelease=PASS orchestrator=DEFERRED legacy=preserved liveDb=0'

@@ -17,6 +17,19 @@ K8S_NAMESPACE="${K8S_NAMESPACE:-carbonet-prod}"
 POSTGRES_POD="${POSTGRES_POD:-postgres-patroni-0}"
 PGHOST="${PGHOST:-postgres-haproxy}"
 CANONICAL_TEMP_PATHS=()
+CANONICAL_PUBLICATION_DB_ACTIVE=0
+CANONICAL_PUBLICATION_DB_LOCKS_HELD=0
+CANONICAL_PUBLICATION_DB_MAIN_LOCK_HELD=0
+CANONICAL_PUBLICATION_DB_PROCESS_LOCK_HELD=0
+CANONICAL_PUBLICATION_DB_PID=""
+CANONICAL_PUBLICATION_DB_READ_FD=""
+CANONICAL_PUBLICATION_DB_WRITE_FD=""
+CANONICAL_PUBLICATION_PROCESS_CODE=""
+CANONICAL_PUBLICATION_HOST_LOCK_HELD=0
+# The two-int advisory namespace keeps the fixed MAIN publication lock separate
+# from the bigint process locks. 0x43414e4f / 0x4d41494e spells CANO / MAIN.
+readonly CANONICAL_MAIN_PUBLICATION_LOCK_CLASS_ID=1128353359
+readonly CANONICAL_MAIN_PUBLICATION_LOCK_OBJECT_ID=1296124238
 
 register_canonical_temp_path() {
   local path="$1"
@@ -47,6 +60,267 @@ psqlq() {
   fi
   kubectl -n "$K8S_NAMESPACE" exec "$POSTGRES_POD" -- env PGPASSWORD="$PGPASSWORD" \
     psql -h "$PGHOST" -U "$PGUSER" -d "$PGDATABASE" -X -q -v ON_ERROR_STOP=1 -At "$@"
+}
+
+canonical_publication_psql_session() {
+  local application_name="${CANONICAL_PUBLICATION_DB_APPLICATION_NAME:-carbonet-canonical-publish-${CANONICAL_PUBLICATION_PROCESS_CODE}-$$}"
+  local session_timeout_seconds="${CANONICAL_PUBLICATION_SESSION_TIMEOUT_SECONDS:-180}"
+  local connect_timeout_seconds="${CANONICAL_PUBLICATION_CONNECT_TIMEOUT_SECONDS:-10}"
+  application_name="${application_name:0:63}"
+  [[ "$session_timeout_seconds" =~ ^[0-9]+$ && "$session_timeout_seconds" -ge 30 \
+      && "$session_timeout_seconds" -le 300 \
+      && "$connect_timeout_seconds" =~ ^[0-9]+$ && "$connect_timeout_seconds" -ge 1 \
+      && "$connect_timeout_seconds" -le 30 ]] || return 1
+  command -v timeout >/dev/null 2>&1 || return 1
+  if [[ -n "${PROCESS_WORKER_PSQL_SESSION_COMMAND:-}" ]]; then
+    [[ -x "$PROCESS_WORKER_PSQL_SESSION_COMMAND" ]] || {
+      echo "PROCESS_WORKER_PSQL_SESSION_COMMAND is not executable" >&2
+      return 126
+    }
+    exec timeout --foreground --signal=TERM --kill-after=5s "${session_timeout_seconds}s" \
+      env PGAPPNAME="$application_name" PGCONNECT_TIMEOUT="$connect_timeout_seconds" \
+      "$PROCESS_WORKER_PSQL_SESSION_COMMAND"
+  fi
+  if [[ -n "${PROCESS_WORKER_PSQLQ_COMMAND:-}" ]]; then
+    [[ -x "$PROCESS_WORKER_PSQLQ_COMMAND" ]] || return 126
+    exec timeout --foreground --signal=TERM --kill-after=5s "${session_timeout_seconds}s" \
+      env PGAPPNAME="$application_name" PGCONNECT_TIMEOUT="$connect_timeout_seconds" \
+      "$PROCESS_WORKER_PSQLQ_COMMAND"
+  fi
+  exec timeout --foreground --signal=TERM --kill-after=5s "${session_timeout_seconds}s" \
+    kubectl -n "$K8S_NAMESPACE" exec -i "$POSTGRES_POD" -- env \
+    PGPASSWORD="$PGPASSWORD" PGAPPNAME="$application_name" PGCONNECT_TIMEOUT="$connect_timeout_seconds" \
+    psql -h "$PGHOST" -U "$PGUSER" -d "$PGDATABASE" -X -q -v ON_ERROR_STOP=1 -At
+}
+
+canonical_publication_close_db_session() {
+  local pid="${CANONICAL_PUBLICATION_DB_PID:-}"
+  if [[ -n "${CANONICAL_PUBLICATION_DB_WRITE_FD:-}" ]]; then
+    exec {CANONICAL_PUBLICATION_DB_WRITE_FD}>&- || true
+  fi
+  if [[ -n "${CANONICAL_PUBLICATION_DB_READ_FD:-}" ]]; then
+    exec {CANONICAL_PUBLICATION_DB_READ_FD}<&- || true
+  fi
+  if [[ "$pid" =~ ^[0-9]+$ ]]; then
+    for _ in $(seq 1 10); do
+      kill -0 "$pid" 2>/dev/null || break
+      sleep .05
+    done
+    if kill -0 "$pid" 2>/dev/null; then
+      kill -TERM "$pid" 2>/dev/null || true
+    fi
+    for _ in $(seq 1 20); do
+      kill -0 "$pid" 2>/dev/null || break
+      sleep .05
+    done
+    if kill -0 "$pid" 2>/dev/null; then
+      kill -KILL "$pid" 2>/dev/null || true
+    fi
+    wait "$pid" 2>/dev/null || true
+  fi
+  CANONICAL_PUBLICATION_DB_ACTIVE=0
+  CANONICAL_PUBLICATION_DB_LOCKS_HELD=0
+  CANONICAL_PUBLICATION_DB_MAIN_LOCK_HELD=0
+  CANONICAL_PUBLICATION_DB_PROCESS_LOCK_HELD=0
+  CANONICAL_PUBLICATION_DB_PID=""
+  CANONICAL_PUBLICATION_DB_READ_FD=""
+  CANONICAL_PUBLICATION_DB_WRITE_FD=""
+  CANONICAL_PUBLICATION_PROCESS_CODE=""
+}
+
+canonical_publication_db_roundtrip() {
+  local sql="$1" marker="$2" timeout_seconds="${3:-${CANONICAL_PUBLICATION_ROUNDTRIP_TIMEOUT_SECONDS:-5}}" line
+  [[ "$CANONICAL_PUBLICATION_DB_ACTIVE" = 1 \
+      && -n "${CANONICAL_PUBLICATION_DB_READ_FD:-}" \
+      && -n "${CANONICAL_PUBLICATION_DB_WRITE_FD:-}" \
+      && "$timeout_seconds" =~ ^[0-9]+$ && "$timeout_seconds" -ge 1 \
+      && "$timeout_seconds" -le 90 ]] || return 1
+  printf '%s\n' "$sql" "select '${marker}';" \
+    >&"$CANONICAL_PUBLICATION_DB_WRITE_FD" || return 1
+  while IFS= read -r -t "$timeout_seconds" -u "$CANONICAL_PUBLICATION_DB_READ_FD" line; do
+    [[ "$line" == "$marker" ]] && return 0
+  done
+  return 1
+}
+
+canonical_publication_open_db_session() {
+  [[ "$CANONICAL_PUBLICATION_DB_ACTIVE" = 0 ]] || return 1
+  coproc CANONICAL_PUBLICATION_PSQL_SESSION {
+    canonical_publication_psql_session 2>>"${LOG_FILE:-/dev/null}"
+  }
+  local original_read_fd="${CANONICAL_PUBLICATION_PSQL_SESSION[0]}"
+  local original_write_fd="${CANONICAL_PUBLICATION_PSQL_SESSION[1]}"
+  CANONICAL_PUBLICATION_DB_PID="$CANONICAL_PUBLICATION_PSQL_SESSION_PID"
+  exec {CANONICAL_PUBLICATION_DB_READ_FD}<&"$original_read_fd"
+  exec {CANONICAL_PUBLICATION_DB_WRITE_FD}>&"$original_write_fd"
+  CANONICAL_PUBLICATION_DB_ACTIVE=1
+}
+
+canonical_publication_acquire_db_locks() {
+  local process_code="$1" lock_wait_seconds="${CANONICAL_PUBLICATION_LOCK_WAIT_SECONDS:-70}"
+  [[ "$process_code" =~ ^[A-Z][A-Z0-9_:-]{1,79}$ ]] || return 1
+  [[ "$lock_wait_seconds" =~ ^[0-9]+$ && "$lock_wait_seconds" -ge 1 \
+      && "$lock_wait_seconds" -le 85 ]] || return 1
+  CANONICAL_PUBLICATION_PROCESS_CODE="$process_code"
+  canonical_publication_open_db_session || return 1
+  local acquire_sql
+  acquire_sql="
+set statement_timeout='${lock_wait_seconds}s';
+select pg_advisory_lock(${CANONICAL_MAIN_PUBLICATION_LOCK_CLASS_ID},${CANONICAL_MAIN_PUBLICATION_LOCK_OBJECT_ID});
+select pg_advisory_lock(hashtextextended(
+  'CANONICAL_PROCESS_PUBLICATION_V1:'||upper(btrim(\$process\$${process_code}\$process\$)),0));"
+  if ! canonical_publication_db_roundtrip "$acquire_sql" \
+      "CANONICAL_PUBLICATION_LOCKED_${$}" "$((lock_wait_seconds + 5))"; then
+    canonical_publication_close_db_session
+    return 1
+  fi
+  CANONICAL_PUBLICATION_DB_LOCKS_HELD=1
+  CANONICAL_PUBLICATION_DB_MAIN_LOCK_HELD=1
+  CANONICAL_PUBLICATION_DB_PROCESS_LOCK_HELD=1
+}
+
+canonical_publication_db_session_alive() {
+  canonical_publication_db_roundtrip "select 1;" \
+    "CANONICAL_PUBLICATION_ALIVE_${$}_${RANDOM}"
+}
+
+canonical_publication_release_db_locks() {
+  local status=0 process_code="${CANONICAL_PUBLICATION_PROCESS_CODE:-}"
+  if [[ "$CANONICAL_PUBLICATION_DB_ACTIVE" = 1 \
+      && "$CANONICAL_PUBLICATION_DB_LOCKS_HELD" = 1 ]]; then
+    local release_sql=""
+    if [[ "$CANONICAL_PUBLICATION_DB_PROCESS_LOCK_HELD" = 1 ]]; then
+      release_sql+="
+select pg_advisory_unlock(hashtextextended(
+  'CANONICAL_PROCESS_PUBLICATION_V1:'||upper(btrim(\$process\$${process_code}\$process\$)),0));"
+    fi
+    if [[ "$CANONICAL_PUBLICATION_DB_MAIN_LOCK_HELD" = 1 ]]; then
+      release_sql+="
+select pg_advisory_unlock(${CANONICAL_MAIN_PUBLICATION_LOCK_CLASS_ID},${CANONICAL_MAIN_PUBLICATION_LOCK_OBJECT_ID});"
+    fi
+    if [[ -n "$release_sql" ]] && ! canonical_publication_db_roundtrip "$release_sql" \
+        "CANONICAL_PUBLICATION_UNLOCKED_${$}"; then
+      status=1
+    fi
+    if [[ -n "${CANONICAL_PUBLICATION_DB_WRITE_FD:-}" ]]; then
+      printf '\\q\n' >&"$CANONICAL_PUBLICATION_DB_WRITE_FD" 2>/dev/null || true
+    fi
+  fi
+  canonical_publication_close_db_session
+  return "$status"
+}
+
+canonical_publication_release_main_lock() {
+  [[ "$CANONICAL_PUBLICATION_DB_ACTIVE" = 1 \
+      && "$CANONICAL_PUBLICATION_DB_MAIN_LOCK_HELD" = 1 \
+      && "$CANONICAL_PUBLICATION_DB_PROCESS_LOCK_HELD" = 1 ]] || return 1
+  canonical_publication_db_roundtrip \
+    "select pg_advisory_unlock(${CANONICAL_MAIN_PUBLICATION_LOCK_CLASS_ID},${CANONICAL_MAIN_PUBLICATION_LOCK_OBJECT_ID});" \
+    "CANONICAL_MAIN_PUBLICATION_UNLOCKED_${$}" || return 1
+  CANONICAL_PUBLICATION_DB_MAIN_LOCK_HELD=0
+}
+
+canonical_publication_begin() {
+  local process_code="$1"
+  [[ "$CANONICAL_PUBLICATION_HOST_LOCK_HELD" = 0 ]] || return 1
+  exec 8>"${AI_PUBLISH_LOCK_FILE:-/tmp/resonance-ai-main-publish.lock}"
+  flock -w "${CANONICAL_PUBLICATION_LOCK_WAIT_SECONDS:-70}" 8 \
+    || { exec 8>&-; return 1; }
+  CANONICAL_PUBLICATION_HOST_LOCK_HELD=1
+  if ! canonical_publication_acquire_db_locks "$process_code"; then
+    flock -u 8 || true
+    exec 8>&-
+    CANONICAL_PUBLICATION_HOST_LOCK_HELD=0
+    return 1
+  fi
+}
+
+canonical_publication_complete_push() {
+  local status=0
+  canonical_publication_release_main_lock || status=1
+  if [[ "$CANONICAL_PUBLICATION_HOST_LOCK_HELD" = 1 ]]; then
+    flock -u 8 || status=1
+    exec 8>&-
+    CANONICAL_PUBLICATION_HOST_LOCK_HELD=0
+  fi
+  return "$status"
+}
+
+canonical_publication_end() {
+  local status=0
+  canonical_publication_release_db_locks || status=1
+  if [[ "$CANONICAL_PUBLICATION_HOST_LOCK_HELD" = 1 ]]; then
+    flock -u 8 || status=1
+    exec 8>&-
+    CANONICAL_PUBLICATION_HOST_LOCK_HELD=0
+  fi
+  return "$status"
+}
+
+canonical_process_job_head_is_current() {
+  [[ "${JOB_ID:-}" =~ ^[0-9]+$ \
+      && "${LEASE_TOKEN:-}" =~ ^[0-9a-fA-F-]{36}$ \
+      && "${PROCESS_CODE:-}" =~ ^[A-Z][A-Z0-9_:-]{1,79}$ \
+      && "${SPEC_B64:-}" =~ ^[A-Za-z0-9+/]+={0,2}$ ]] || return 1
+  jq -e --arg process "$PROCESS_CODE" '
+    .algorithm=="CANONICAL_PROCESS_PUBLICATION_V1" and
+    .generatorRequired==true and .processCode==$process and
+    (.sourceHash|type=="string" and test("^[0-9a-f]{64}$")) and
+    .processInputHash==.sourceHash and
+    (.designSetHash|type=="string" and test("^[0-9a-f]{64}$")) and
+    (.designCatalogHash|type=="string" and test("^[0-9a-f]{64}$")) and
+    (.designCatalogTextHash|type=="string" and test("^[0-9a-f]{64}$")) and
+    (.endpointCatalogHash|type=="string" and test("^[0-9a-f]{64}$")) and
+    (.endpointCatalogTextHash|type=="string" and test("^[0-9a-f]{64}$")) and
+    (.coordinatorStep|type=="string" and length>0) and
+    .stepCode==.coordinatorStep and
+    (.processStepCount|type=="number" and floor==. and .>0) and
+    (.generationReadyStepCount|type=="number" and floor==. and .>0) and
+    (.endpointExpected|type=="number" and floor==. and .>=0)
+  ' <<<"$SPEC" >/dev/null 2>&1 || return 1
+  [[ "$(psqlq -c "
+    with job as materialized (
+      select j.*,framework_try_jsonb(j.specification_json,'{}'::jsonb) spec
+        from framework_development_job j
+       where j.job_id=${JOB_ID}
+    ), generation_head as materialized (
+      select framework_process_generation_input(j.process_code) head from job j
+    ), coverage as materialized (
+      select count(*)::integer eligible_count,
+             count(*) filter(where spec.source_hash=head.head->>'processInputHash')::integer exact_source_count
+        from job j cross join generation_head head
+        join framework_step_execution_spec spec on spec.process_code=j.process_code
+       where spec.design_status='DESIGN_COMPLETE'
+         and spec.approval_status='APPROVED'
+         and spec.generation_status in('READY','GENERATED')
+    )
+    select count(*)
+      from job j cross join generation_head generation cross join coverage
+     where j.job_status='RUNNING'
+       and j.lease_token=\$lease\$${LEASE_TOKEN}\$lease\$
+       and j.process_code=\$process\$${PROCESS_CODE}\$process\$
+       and j.job_type='FULL_STACK_GENERATION'
+       and j.job_group_code=j.process_code||'_CANONICAL_PUBLICATION'
+       and j.spec=convert_from(decode('${SPEC_B64}','base64'),'UTF8')::jsonb
+       and generation.head->>'schema'='carbonet.process-generation-head/v1'
+       and generation.head->>'processCode'=j.process_code
+       and j.step_code=generation.head->>'coordinatorStep'
+       and j.spec->>'algorithm'='CANONICAL_PROCESS_PUBLICATION_V1'
+       and j.spec->>'processCode'=generation.head->>'processCode'
+       and j.spec->>'stepCode'=generation.head->>'coordinatorStep'
+       and j.spec->>'coordinatorStep'=generation.head->>'coordinatorStep'
+       and j.spec->>'sourceHash'=generation.head->>'processInputHash'
+       and j.spec->>'processInputHash'=generation.head->>'processInputHash'
+       and j.spec->>'designSetHash'=generation.head->>'designSetHash'
+       and j.spec->>'designCatalogHash'=generation.head->>'designCatalogHash'
+       and j.spec->>'designCatalogTextHash'=generation.head->>'designCatalogTextHash'
+       and j.spec->>'endpointCatalogHash'=generation.head->>'endpointCatalogHash'
+       and j.spec->>'endpointCatalogTextHash'=generation.head->>'endpointCatalogTextHash'
+       and j.spec->'processStepCount'=generation.head->'processStepCount'
+       and j.spec->'generationReadyStepCount'=generation.head->'generationReadyStepCount'
+       and j.spec->'endpointExpected'=generation.head->'processEndpointExpected'
+       and coverage.eligible_count=(generation.head->>'generationReadyStepCount')::integer
+       and coverage.exact_source_count=coverage.eligible_count;")" == "1" ]]
 }
 
 transition_job_to_failed_if_owned() {
@@ -718,6 +992,77 @@ if [[ "${1:-}" == "--canonical-failure-transition-contract" ]]; then
     "${CANONICAL_WORKER_ID:-contract-test}" "${CANONICAL_FAILURE_MESSAGE:-contract failure}" \
     "${CANONICAL_ROLLBACK_COMMIT:-}" "${CANONICAL_LOG_FILE:-contract-test.log}"
   exit $?
+elif [[ "${1:-}" == "--canonical-publication-lock-contract" ]]; then
+  : "${CANONICAL_JOB_ID:?CANONICAL_JOB_ID is required}"
+  : "${CANONICAL_LEASE_TOKEN:?CANONICAL_LEASE_TOKEN is required}"
+  : "${CANONICAL_PROCESS_CODE:?CANONICAL_PROCESS_CODE is required}"
+  : "${CANONICAL_SPECIFICATION_B64:?CANONICAL_SPECIFICATION_B64 is required}"
+  JOB_ID="$CANONICAL_JOB_ID"
+  LEASE_TOKEN="$CANONICAL_LEASE_TOKEN"
+  PROCESS_CODE="$CANONICAL_PROCESS_CODE"
+  SPEC_B64="$CANONICAL_SPECIFICATION_B64"
+  SPEC="$(printf '%s' "$SPEC_B64" | base64 -d)"
+  LOG_FILE="${CANONICAL_LOG_FILE:-/dev/null}"
+  canonical_publication_contract_interrupt() {
+    trap - INT TERM
+    canonical_publication_end || true
+    exit 143
+  }
+  trap canonical_publication_contract_interrupt INT TERM
+  canonical_publication_begin "$PROCESS_CODE" || exit 1
+  if ! canonical_publication_db_session_alive \
+      || ! canonical_process_job_head_is_current; then
+    canonical_publication_end || true
+    exit 1
+  fi
+  if [[ -n "${CANONICAL_PUBLICATION_READY_FILE:-}" ]]; then
+    : >"$CANONICAL_PUBLICATION_READY_FILE"
+  fi
+  if [[ -n "${CANONICAL_PUBLICATION_WAIT_FIFO:-}" ]]; then
+    [[ -p "$CANONICAL_PUBLICATION_WAIT_FIFO" ]] || {
+      canonical_publication_end || true
+      exit 1
+    }
+    exec 7<>"$CANONICAL_PUBLICATION_WAIT_FIFO"
+    IFS= read -r -u 7 _
+    exec 7>&-
+  fi
+  contract_publish_succeeded=0
+  for contract_publish_attempt in 1 2 3; do
+    if ! canonical_publication_db_session_alive \
+        || ! canonical_process_job_head_is_current; then
+      break
+    fi
+    if [[ -z "${CANONICAL_PUBLICATION_PUSH_COMMAND:-}" ]] \
+        || { [[ -x "$CANONICAL_PUBLICATION_PUSH_COMMAND" ]] \
+             && "$CANONICAL_PUBLICATION_PUSH_COMMAND" "$PROCESS_CODE" "$contract_publish_attempt"; }; then
+      contract_publish_succeeded=1
+      break
+    fi
+    sleep "${CANONICAL_PUBLICATION_RETRY_SLEEP_SECONDS:-0}"
+  done
+  canonical_publication_db_session_alive || contract_publish_succeeded=0
+  if [[ "$contract_publish_succeeded" = 1 ]]; then
+    canonical_publication_complete_push || contract_publish_succeeded=0
+  fi
+  if [[ "$contract_publish_succeeded" = 1 \
+      && -n "${CANONICAL_PUBLICATION_AFTER_PUSH_READY_FILE:-}" ]]; then
+    : >"$CANONICAL_PUBLICATION_AFTER_PUSH_READY_FILE"
+  fi
+  if [[ "$contract_publish_succeeded" = 1 \
+      && -n "${CANONICAL_PUBLICATION_AFTER_PUSH_WAIT_FIFO:-}" ]]; then
+    [[ -p "$CANONICAL_PUBLICATION_AFTER_PUSH_WAIT_FIFO" ]] \
+      || contract_publish_succeeded=0
+    if [[ "$contract_publish_succeeded" = 1 ]]; then
+      exec 7<>"$CANONICAL_PUBLICATION_AFTER_PUSH_WAIT_FIFO"
+      IFS= read -r -u 7 _
+      exec 7>&-
+    fi
+  fi
+  canonical_publication_end || contract_publish_succeeded=0
+  trap - INT TERM
+  [[ "$contract_publish_succeeded" = 1 ]]
+  exit $?
 elif [[ "${1:-}" == "--canonical-prepublish-contract" ]]; then
   : "${CANONICAL_WORKTREE:?CANONICAL_WORKTREE is required}"
   : "${CANONICAL_PROCESS_CODE:?CANONICAL_PROCESS_CODE is required}"
@@ -896,6 +1241,8 @@ gate_result() {
 }
 fail_job() {
   trap - ERR
+  trap - INT TERM
+  canonical_publication_end || true
   cleanup_canonical_temp_paths
   local message="${1:-worker failed}"
   message="${message//$'\n'/ }"
@@ -907,6 +1254,8 @@ fail_job() {
 }
 defer_rate_limited_job() {
   trap - ERR
+  trap - INT TERM
+  canonical_publication_end || true
   psqlq -c "update framework_development_job set job_status='RETRY',last_error='NVIDIA rate limited; retry deferred',attempt_count=greatest(0,attempt_count-1),worker_id=null,lease_token=null,lease_until=current_timestamp+interval '15 minutes',updated_at=current_timestamp where job_id=${JOB_ID} and lease_token='${LEASE_TOKEN}';" >/dev/null || true
   event "RATE_LIMIT_DEFERRED" "RUNNING" "RETRY" "{\"retryAfterMinutes\":15}" || true
   git -C "$ROOT_DIR" worktree remove --force "$WT" >/dev/null 2>&1 || true
@@ -959,72 +1308,6 @@ if [[ -d "$frontend_root/node_modules" && -d "$frontend_worktree" && ! -e "$fron
 fi
 
 SPEC="$(printf '%s' "$SPEC_B64" | base64 -d)"
-
-canonical_job_head_is_current() {
-  jq -e '
-    (.sourceHash|type=="string" and test("^(?:[0-9a-f]{32}|[0-9a-f]{64})$")) and
-    (.designHash|type=="string" and test("^[0-9a-f]{64}$")) and
-    (.designSetHash|type=="string" and test("^[0-9a-f]{64}$")) and
-    (.routePath|type=="string" and startswith("/")) and
-    (.audience=="USER" or .audience=="ADMIN")
-  ' <<<"$SPEC" >/dev/null 2>&1 || return 1
-  local receipt_source_hash receipt_design_hash receipt_design_set_hash
-  receipt_source_hash="$(jq -r '.sourceHash' <<<"$SPEC")"
-  receipt_design_hash="$(jq -r '.designHash' <<<"$SPEC")"
-  receipt_design_set_hash="$(jq -r '.designSetHash' <<<"$SPEC")"
-  [[ "$(psqlq -c "
-    with job as materialized (
-      select j.*,framework_try_jsonb(j.specification_json) spec
-      from framework_development_job j where j.job_id=${JOB_ID}
-    ), blueprint_candidates as materialized (
-      select b.process_code,b.step_code,upper(b.audience) audience,
-             lower(split_part(b.route_path,'?',1)) route_path,b.blueprint_id,c.contract_id,
-             (b.transition_status='CONTRACT_LINKED' and lower(b.source_reference) in(
-               'framework_professional_screen_contract:'||c.contract_id,
-               'professional_screen_contract:'||c.contract_id)) explicit_link,
-             count(*) over(partition by c.contract_id) candidate_count,
-             count(*) filter(where b.transition_status='CONTRACT_LINKED'
-               and lower(b.source_reference) in(
-                 'framework_professional_screen_contract:'||c.contract_id,
-                 'professional_screen_contract:'||c.contract_id))
-               over(partition by c.contract_id) explicit_count
-      from framework_screen_blueprint b join framework_professional_screen_contract c
-        on c.process_code=b.process_code and c.step_code=b.step_code
-       and upper(c.audience)=upper(b.audience)
-       and lower(split_part(c.route_path,'?',1))=lower(split_part(b.route_path,'?',1))
-      join job j on j.process_code=b.process_code and j.step_code=b.step_code
-      where b.validation_status='VALID'
-    ), exact_identity as (
-      select process_code,step_code,audience,route_path,
-             upper(process_code)||'|'||upper(step_code)||'|'||audience||'|'||route_path screen_key
-        from blueprint_candidates
-       where (explicit_count=1 and explicit_link)
-          or (explicit_count=0 and candidate_count=1)
-       group by process_code,step_code,audience,route_path
-      having count(distinct blueprint_id)=1 and count(distinct contract_id)=1
-    ), digest as (
-      select encode(sha256(convert_to(string_agg(screen_key||E'\\x1f'||
-        (framework_canonical_screen_bundle(process_code,step_code,audience,route_path)->>'designHash'),
-        E'\\n' order by screen_key),'UTF8')),'hex') design_set_hash from exact_identity
-    )
-    select count(*) from job j
-    join framework_step_execution_spec s using(process_code,step_code),digest
-    where j.job_id=${JOB_ID}
-      and j.spec->>'sourceHash'='${receipt_source_hash}'
-      and j.spec->>'designHash'='${receipt_design_hash}'
-      and j.spec->>'designSetHash'='${receipt_design_set_hash}'
-      and s.source_hash=j.spec->>'sourceHash'
-      and framework_canonical_screen_bundle(
-        j.process_code,j.step_code,j.spec->>'audience',j.spec->>'routePath')->>'designHash'
-          =j.spec->>'designHash'
-      and digest.design_set_hash=j.spec->>'designSetHash';")" == "1" ]]
-}
-
-if [[ "$JOB_TYPE" =~ ^FULL_STACK(_GENERATION)?$ ]] && jq -e 'has("designHash")' <<<"$SPEC" >/dev/null 2>&1; then
-  canonical_job_head_is_current || fail_job "STALE_CANONICAL_JOB_HEAD"
-  gate_result "CANONICAL_JOB_HEAD" "PASSED" \
-    "{\"sourceHash\":\"$(jq -r '.sourceHash' <<<"$SPEC")\",\"designHash\":\"$(jq -r '.designHash' <<<"$SPEC")\"}"
-fi
 
 # Jobs created before requirement_text became part of every generated
 # specification can still be valid approved work. Resolve the missing value
@@ -1595,10 +1878,23 @@ if [[ "$CANONICAL_PUBLICATION_ACTIVE" = 1 ]]; then
 fi
 
 # Parallel workers develop in isolated worktrees, then serialize only the short
-# publication window. Rebase onto the latest verified main instead of discarding
-# otherwise valid work merely because a sibling job published first.
-exec 8>"${AI_PUBLISH_LOCK_FILE:-/tmp/resonance-ai-main-publish.lock}"
-flock 8
+# publication window. Canonical publishers also hold cross-host PostgreSQL MAIN
+# and process locks in one persistent session. The process lock is the same key
+# used by design-save transactions, so a save cannot pass the final head check
+# and race a later push.
+if [[ "$CANONICAL_PUBLICATION_ACTIVE" = 1 ]]; then
+  canonical_publication_begin "$PROCESS_CODE" \
+    || fail_job "canonical publication locks unavailable"
+  canonical_publication_db_session_alive \
+    || fail_job "canonical publication database session disconnected"
+  canonical_process_job_head_is_current \
+    || fail_job "STALE_CANONICAL_PROCESS_JOB_HEAD_BEFORE_PUBLISH"
+  gate_result "CANONICAL_PROCESS_JOB_HEAD" "PASSED" \
+    "{\"processCode\":\"$PROCESS_CODE\",\"processInputHash\":\"$(jq -r '.processInputHash' <<<"$SPEC")\"}"
+else
+  exec 8>"${AI_PUBLISH_LOCK_FILE:-/tmp/resonance-ai-main-publish.lock}"
+  flock 8
+fi
 git -C "$WT" fetch origin main >>"$LOG_FILE" 2>&1
 if [ "$(git -C "$WT" rev-parse origin/main)" != "$BASE_COMMIT" ]; then
   git -C "$WT" rebase origin/main >>"$LOG_FILE" 2>&1 || fail_job "parallel publish rebase conflict"
@@ -1619,12 +1915,15 @@ RESULT_COMMIT="$(git -C "$WT" rev-parse HEAD)"
 publish_succeeded=0
 CANONICAL_DEPLOY_STARTED_EPOCH_SECONDS=""
 if [[ "$CANONICAL_PUBLICATION_ACTIVE" = 1 ]]; then
-  if jq -e 'has("designHash")' <<<"$SPEC" >/dev/null 2>&1; then
-    canonical_job_head_is_current || fail_job "STALE_CANONICAL_JOB_HEAD_BEFORE_PUBLISH"
-  fi
   CANONICAL_DEPLOY_STARTED_EPOCH_SECONDS="$(date +%s)"
 fi
 for publish_attempt in 1 2 3; do
+  if [[ "$CANONICAL_PUBLICATION_ACTIVE" = 1 ]]; then
+    canonical_publication_db_session_alive \
+      || fail_job "canonical publication database session disconnected before push"
+    canonical_process_job_head_is_current \
+      || fail_job "STALE_CANONICAL_PROCESS_JOB_HEAD_BEFORE_PUSH"
+  fi
   if git -C "$WT" push origin "HEAD:main" >>"$LOG_FILE" 2>&1; then
     publish_succeeded=1
     break
@@ -1642,8 +1941,15 @@ for publish_attempt in 1 2 3; do
   fi
 done
 [ "$publish_succeeded" = 1 ] || fail_job "main push rejected after 3 guarded attempts"
-flock -u 8
-exec 8>&-
+if [[ "$CANONICAL_PUBLICATION_ACTIVE" = 1 ]]; then
+  canonical_publication_db_session_alive \
+    || fail_job "canonical publication database session disconnected during push"
+  canonical_publication_complete_push \
+    || fail_job "canonical MAIN publication lock did not release cleanly"
+else
+  flock -u 8
+  exec 8>&-
+fi
 
 METADATA_ONLY=0
 if printf '%s\n' "$CHANGED" | sed -E 's/^.. //' | grep -Ev '^docs/ai/(80-adopted-existing|85-adopted-quality)/' | grep -q .; then
@@ -1685,6 +1991,8 @@ for _ in $(seq 1 "$deploy_wait_attempts"); do
   sleep "$deploy_wait_seconds"
 done
 if [[ "$CANONICAL_PUBLICATION_ACTIVE" = 1 ]]; then
+  canonical_publication_db_session_alive \
+    || fail_job "canonical process publication lock was lost during deploy wait"
   CANONICAL_DEPLOY_SECONDS="$(canonical_deploy_elapsed_seconds)" \
     || fail_job "canonical deployment duration evidence is invalid"
   if [[ "$deployment_observed" != 1 ]] || (( CANONICAL_DEPLOY_SECONDS > 60 )); then
@@ -1754,9 +2062,13 @@ if [[ "$CANONICAL_PUBLICATION_ACTIVE" = 1 \
     "{\"elapsedSeconds\":$CANONICAL_DEPLOY_SECONDS,\"targetSeconds\":60}"
   CANONICAL_ROLLBACK_COMMIT="$(canonical_result_parent "$WT" "$RESULT_COMMIT")" \
     || fail_job "canonical rollback commit is invalid"
+  canonical_publication_db_session_alive \
+    || fail_job "canonical process publication lock was lost before finalization"
   finalize_canonical_generation "$JOB_ID" "$LEASE_TOKEN" "$WORKER_ID" \
     "$RESULT_COMMIT" "$CANONICAL_ROLLBACK_COMMIT" "$PROCESS_CODE" "$STEP_CODE" "$LOG_FILE" "$CANONICAL_EVIDENCE_JSON" \
     || fail_job "canonical generation evidence finalization failed"
+  canonical_publication_end \
+    || printf 'canonical process publication lock cleanup required forced session close\n' >>"$LOG_FILE"
   cleanup_canonical_temp_paths
   EVIDENCE="git:${RESULT_COMMIT};release:$(jq -r '.releaseHash' <<<"$CANONICAL_EVIDENCE_JSON");log:${LOG_FILE}"
 else
