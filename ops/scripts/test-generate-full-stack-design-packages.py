@@ -3,6 +3,7 @@
 
 from importlib.util import module_from_spec, spec_from_file_location
 from pathlib import Path
+import copy
 import os
 import subprocess
 import sys
@@ -19,6 +20,34 @@ SPEC.loader.exec_module(GENERATOR)
 
 
 class GroupFieldsByAudienceTest(unittest.TestCase):
+    @staticmethod
+    def changed_paths(before, after, prefix=()):
+        if isinstance(before, dict) and isinstance(after, dict):
+            changed = set()
+            for key in before.keys() | after.keys():
+                if key not in before or key not in after:
+                    changed.add(prefix + (key,))
+                else:
+                    changed.update(
+                        GroupFieldsByAudienceTest.changed_paths(
+                            before[key], after[key], prefix + (key,)
+                        )
+                    )
+            return changed
+        if isinstance(before, list) and isinstance(after, list):
+            changed = set()
+            for index in range(max(len(before), len(after))):
+                if index >= len(before) or index >= len(after):
+                    changed.add(prefix + (index,))
+                else:
+                    changed.update(
+                        GroupFieldsByAudienceTest.changed_paths(
+                            before[index], after[index], prefix + (index,)
+                        )
+                    )
+            return changed
+        return {prefix} if before != after else set()
+
     def test_canonical_catalog_hashes_are_bound_to_each_runtime_step(self) -> None:
         catalog = {
             "schema": "carbonet.canonical-design/v1",
@@ -101,6 +130,102 @@ class GroupFieldsByAudienceTest(unittest.TestCase):
         with patches[0], patches[1], patches[2], patches[3], patches[4], patches[5], patches[6]:
             review_required = GENERATOR.render_step(process, step, [])
         self.assertNotEqual(before["packageHash"], review_required["packageHash"])
+
+    def test_structured_design_mutations_change_exact_runtime_package_sources(self) -> None:
+        process = {
+            "processCode": "PROCESS_A", "processName": "Process A",
+            "domainCode": "TEST", "workTypeCode": "TEST", "goal": "complete",
+        }
+        step = {
+            "step_code": "STEP_A", "spec_version": 7,
+            "actor_contract": {"actorCode": "PROCESS_ACTOR", "permissions": ["READ"]},
+            "business_contract": {"stepName": "Step A", "requirement": "Complete step A"},
+            "transition_contract": {
+                "commandCode": "COMPLETE", "fromState": "READY", "toState": "DONE",
+            },
+            "input_contract": {"schema": {}}, "output_contract": {"schema": {}},
+            "guide_contract": {},
+            "screen_contract": [{
+                "audience": "USER", "pageCode": "STEP_A_USER_WORKSPACE",
+                "actualRoute": "/process-a/step-a", "plannedRoute": "/process-a/step-a",
+                "routeStatus": "IMPLEMENTED", "screenType": "WORKSPACE",
+                "title": "Step A", "purpose": "Complete step A", "exceptions": [],
+                "responsive": {"mobile": "single-column"},
+                "accessibility": {"standard": "WCAG 2.1 AA"},
+                "sections": ["TASK_CONTEXT", "TASK_CONTENT", "TASK_HANDOFF"],
+            }],
+            "field_contract": {
+                "fields": [{"fieldCode": "amount", "audience": "USER"}],
+            },
+            "command_contract": [{"commandCode": "COMPLETE", "label": "Complete"}],
+            "api_contract": [{"method": "POST", "path": "/api/process-a/{executionId}/complete"}],
+            "persistence_contract": {"policy": {}, "mappings": [], "extensions": {}},
+            "handoff_contract": {"policy": {}, "transitions": []},
+            "test_contract": [], "nonfunctional_contract": {},
+            "source_hash": "a" * 64, "approval_status": "APPROVED",
+        }
+
+        def render(value):
+            with mock.patch.object(GENERATOR, "validate_step"), \
+                    mock.patch.object(GENERATOR, "tests_for_step", return_value=[]):
+                return GENERATOR.render_step(process, value, [])
+
+        baseline = render(step)
+        self.assertEqual(
+            ["TASK_CONTEXT", "TASK_CONTENT", "TASK_HANDOFF"],
+            baseline["frontend"]["pages"][0]["sections"],
+        )
+        mutations = {
+            "layout": (
+                lambda value: value["screen_contract"][0]["sections"].__setitem__(
+                    1, "TASK_REVIEW_GRID"
+                ),
+                {
+                    ("frontend", "pages", 0, "sections", 1),
+                    ("packageHash",),
+                },
+            ),
+            "command": (
+                lambda value: value["command_contract"][0].update(label="Approve"),
+                {
+                    ("frontend", "pages", 0, "commands", 0, "label"),
+                    ("backend", "commands", 0, "label"),
+                    ("packageHash",),
+                },
+            ),
+            "permission": (
+                lambda value: value["actor_contract"]["permissions"].append("APPROVE"),
+                {
+                    ("step", "actor", "permissions", 1),
+                    ("backend", "authorization", "permissions", 1),
+                    ("packageHash",),
+                },
+            ),
+            "api": (
+                lambda value: value["api_contract"][0].update(
+                    path="/api/process-a/{executionId}/approve"
+                ),
+                {
+                    ("backend", "apis", 0, "path"),
+                    ("packageHash",),
+                },
+            ),
+        }
+        for name, (mutate, expected_paths) in mutations.items():
+            with self.subTest(name=name):
+                value = copy.deepcopy(step)
+                mutate(value)
+                generated = render(value)
+                self.assertNotEqual(baseline["packageHash"], generated["packageHash"])
+                self.assertEqual(
+                    expected_paths,
+                    self.changed_paths(baseline, generated),
+                )
+
+        invalid = copy.deepcopy(step)
+        invalid["screen_contract"][0]["sections"] = "TASK_CONTENT"
+        with self.assertRaisesRegex(SystemExit, "sections must be an array"):
+            render(invalid)
 
     def test_atomic_publish_is_zero_rewrite_and_rolls_back_all_directories(self) -> None:
         with tempfile.TemporaryDirectory() as folder:

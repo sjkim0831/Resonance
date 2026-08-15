@@ -172,6 +172,105 @@ class GeneratorTest(unittest.TestCase):
             self.assertNotEqual(old["bundleHash"], updated["bundleHash"])
             self.assertFalse(any("previous" in str(path) for path in out.parent.rglob("*")))
 
+    def test_layout_command_permission_and_api_mutations_change_exact_endpoint_sources(self):
+        mutation_cases = {
+            "layout": (
+                lambda canonical, operation: canonical["lanes"].update({
+                    "FRONTEND": {"sections": ["TASK_CONTEXT", "TASK_REVIEW_GRID", "TASK_HANDOFF"]}
+                }),
+                None,
+            ),
+            "command": (
+                lambda canonical, operation: (
+                    canonical["step"].update(commandCode="APPROVE"),
+                    operation.update(commandCode="APPROVE"),
+                    operation["rollback"].update(commandCode="APPROVE"),
+                ),
+                'payload.put("commandCode","APPROVE")',
+            ),
+            "permission": (
+                lambda canonical, operation: (
+                    canonical["identity"].update(actorCode="ACTIVITY_REVIEWER"),
+                    operation["authority"].update(actorCodes=["ACTIVITY_REVIEWER"]),
+                ),
+                '"ACTIVITY_REVIEWER".equals(request.actorCode())',
+            ),
+            "api": (
+                lambda canonical, operation: (
+                    canonical["lanes"].update({
+                        "API": {"path": "/api/generated/activity/{executionId}/approve"}
+                    }),
+                    operation.update(path="/api/generated/activity/{executionId}/approve"),
+                ),
+                '@org.springframework.web.bind.annotation.PostMapping(path="/api/generated/activity/{executionId}/approve"',
+            ),
+        }
+        expected_files = {
+            "manifest.json",
+            "src/main/java/egovframework/com/generated/canonical/CompleteActivityPlanRequest.java",
+            "src/main/java/egovframework/com/generated/canonical/CompleteActivityPlanResponse.java",
+            "src/main/java/egovframework/com/generated/canonical/CompleteActivityPlanController.java",
+        }
+
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            baseline_out = root / "baseline"
+            self.assertEqual(0, self.run_generator(catalog(), baseline_out).returncode)
+            baseline_files = {
+                str(path.relative_to(baseline_out)): path.read_bytes()
+                for path in baseline_out.rglob("*") if path.is_file()
+            }
+            baseline_manifest = json.loads(baseline_files["manifest.json"])
+
+            for name, (mutate, controller_token) in mutation_cases.items():
+                with self.subTest(name=name):
+                    value = catalog()
+                    endpoint = value["endpoints"][0]
+                    canonical = json.loads(endpoint["canonicalText"])
+                    operation = endpoint["endpointContract"]["operations"][0]
+                    mutate(canonical, operation)
+                    endpoint["canonicalText"] = stable(canonical)
+                    endpoint["designHash"] = sha(endpoint["canonicalText"])
+                    endpoint["endpointContract"]["source"]["designHash"] = endpoint["designHash"]
+                    refresh(value)
+
+                    out = root / name
+                    result = self.run_generator(value, out)
+                    self.assertEqual(0, result.returncode, result.stderr)
+                    generated_files = {
+                        str(path.relative_to(out)): path.read_bytes()
+                        for path in out.rglob("*") if path.is_file()
+                    }
+                    self.assertEqual(expected_files, set(generated_files))
+                    self.assertEqual(
+                        expected_files,
+                        {
+                            path for path in expected_files
+                            if generated_files[path] != baseline_files[path]
+                        },
+                    )
+
+                    manifest = json.loads(generated_files["manifest.json"])
+                    self.assertNotEqual(
+                        baseline_manifest["operations"][0]["designHash"],
+                        manifest["operations"][0]["designHash"],
+                    )
+                    self.assertNotEqual(
+                        baseline_manifest["operations"][0]["endpointHash"],
+                        manifest["operations"][0]["endpointHash"],
+                    )
+                    self.assertNotEqual(baseline_manifest["bundleHash"], manifest["bundleHash"])
+                    self.assertEqual(endpoint["designHash"], manifest["operations"][0]["designHash"])
+                    self.assertEqual(endpoint["endpointHash"], manifest["operations"][0]["endpointHash"])
+
+                    controller = generated_files[
+                        "src/main/java/egovframework/com/generated/canonical/CompleteActivityPlanController.java"
+                    ].decode()
+                    if controller_token is None:
+                        self.assertIn(f"designHash={endpoint['designHash']}", controller)
+                    else:
+                        self.assertIn(controller_token, controller)
+
     def test_manifest_operation_removal_mismatch_and_duplicate_fail_closed(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

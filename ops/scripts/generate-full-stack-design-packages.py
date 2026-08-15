@@ -24,6 +24,15 @@ import tempfile
 from typing import Any
 
 
+DEFAULT_SCREEN_SECTIONS = [
+    "TASK_CONTEXT",
+    "TASK_ACTIONS",
+    "TASK_CONTENT",
+    "TASK_EVIDENCE",
+    "TASK_HANDOFF",
+]
+
+
 def fail(message: str) -> None:
     raise SystemExit(f"[full-stack-generator] {message}")
 
@@ -1128,6 +1137,15 @@ def render_step(
             if field_code not in server_context and field_code not in existing_field_codes:
                 page_fields.append(projected_input_field(field_code, audience, len(page_fields) + 1))
                 existing_field_codes.add(field_code)
+        if "sections" in page:
+            if not isinstance(page["sections"], list):
+                fail(
+                    f"{process['processCode']}/{step['step_code']}: "
+                    "screen_contract sections must be an array"
+                )
+            page_sections = copy.deepcopy(page["sections"])
+        else:
+            page_sections = copy.deepcopy(DEFAULT_SCREEN_SECTIONS)
         pages.append({
             "pageCode": page["pageCode"],
             "route": page.get("actualRoute") or page["plannedRoute"],
@@ -1138,7 +1156,7 @@ def render_step(
             "purpose": page["purpose"],
             "layout": "COMMON_KRDS_TASK_LAYOUT",
             "theme": "COMMON_KRDS_GOV",
-            "sections": ["TASK_CONTEXT", "TASK_ACTIONS", "TASK_CONTENT", "TASK_EVIDENCE", "TASK_HANDOFF"],
+            "sections": page_sections,
             "fields": page_fields,
             "commands": executable_commands,
             "states": page["exceptions"],
