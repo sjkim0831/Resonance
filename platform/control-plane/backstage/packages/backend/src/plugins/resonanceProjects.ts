@@ -2492,6 +2492,7 @@ export default createBackendPlugin({
               projectId,
               document.fileName,
               document.text,
+              document.identity,
             );
             const [{ max }] = await knex(
               'resonance_projects__design_release',
