@@ -210,6 +210,43 @@ describe('requirement automation', () => {
     expect(canonical.contentSha256).toBe(contract.contentSha256);
   });
 
+  it('uses locale-independent code-point ordering for canonical sets', () => {
+    const { document, analysis } = prepare();
+    const multilingual = clone(analysis);
+    const endpoint = {
+      method: multilingual.requirements[0].endpoint.method,
+      path: multilingual.requirements[0].endpoint.path,
+      한글: '값',
+      ASCII: 'value',
+    };
+    multilingual.requirements[0].endpoint = endpoint as unknown as {
+      method: string;
+      path: string;
+    };
+    multilingual.requirements[0].apiContract = JSON.parse(
+      JSON.stringify(multilingual.requirements[0].endpoint),
+    ) as { method: string; path: string };
+    const forward = buildRequirementDesignContract({
+      projectId: 'CCUS-PLATFORM',
+      designVersion: 1,
+      document,
+      analysis: multilingual,
+    });
+    multilingual.requirements[0].endpoint = Object.fromEntries(
+      Object.entries(multilingual.requirements[0].endpoint).reverse(),
+    ) as unknown as { method: string; path: string };
+    multilingual.requirements[0].apiContract = JSON.parse(
+      JSON.stringify(multilingual.requirements[0].endpoint),
+    ) as { method: string; path: string };
+    const reversed = buildRequirementDesignContract({
+      projectId: 'CCUS-PLATFORM',
+      designVersion: 1,
+      document,
+      analysis: multilingual,
+    });
+    expect(reversed.contentSha256).toBe(forward.contentSha256);
+  });
+
   it('fails closed for ambiguous identity and incomplete design closure', () => {
     expect(() =>
       analyzeRequirementText('P1', 'r.md', '사용자는 조회한다.', {

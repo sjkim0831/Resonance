@@ -85,12 +85,15 @@ export type RequirementAnalysis = {
 const digest = (value: string | Buffer) =>
   createHash('sha256').update(value).digest('hex');
 
+const codePointCompare = (left: string, right: string) =>
+  left < right ? -1 : left > right ? 1 : 0;
+
 const canonicalJson = (value: unknown): string => {
   if (value === null || typeof value !== 'object') return JSON.stringify(value);
   if (Array.isArray(value)) return `[${value.map(canonicalJson).join(',')}]`;
   return `{${Object.entries(value as Record<string, unknown>)
     .filter(([, item]) => item !== undefined)
-    .sort(([left], [right]) => left.localeCompare(right))
+    .sort(([left], [right]) => codePointCompare(left, right))
     .map(([key, item]) => `${JSON.stringify(key)}:${canonicalJson(item)}`)
     .join(',')}}`;
 };
@@ -366,19 +369,21 @@ export const analyzeRequirementText = (
 
 const canonicalAnalysis = (source: RequirementAnalysis) => {
   const analysis = JSON.parse(JSON.stringify(source)) as RequirementAnalysis;
-  analysis.workspaces.sort((left, right) => left.id.localeCompare(right.id));
+  analysis.workspaces.sort((left, right) =>
+    codePointCompare(left.id, right.id),
+  );
   analysis.workspaces.forEach(workspace => {
     workspace.tabs.sort((left, right) => left.order - right.order);
     workspace.tabs.forEach(tab => tab.sections.sort());
   });
   analysis.actorDefinitions.sort((left, right) =>
-    left.actorCode.localeCompare(right.actorCode),
+    codePointCompare(left.actorCode, right.actorCode),
   );
   analysis.actorDefinitions.forEach(actor => actor.permissionCodes.sort());
   analysis.requirements.sort(
     (left, right) =>
       left.stepOrder - right.stepOrder ||
-      left.stepCode.localeCompare(right.stepCode),
+      codePointCompare(left.stepCode, right.stepCode),
   );
   analysis.requirements.forEach(step => {
     step.permissionCodes.sort();
