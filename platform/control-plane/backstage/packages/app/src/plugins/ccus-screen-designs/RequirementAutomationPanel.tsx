@@ -28,6 +28,7 @@ type RequirementDocument = {
   reconciliationStatus?: string;
   pollAttempt?: number;
   retryNotBefore?: string;
+  retryExhausted?: boolean;
   lastError?: string;
 };
 
@@ -189,9 +190,13 @@ export function RequirementAutomationPanel({
           );
           finalStatus = String(document?.status ?? 'FAILED');
           if (
-            ['FAILED', 'GENERATION_FAILED', 'REVIEW_REQUIRED'].includes(
-              finalStatus,
-            )
+            [
+              'FAILED',
+              'GENERATION_FAILED',
+              'REVIEW_REQUIRED',
+              'CANCELLED',
+              'GENERATION_CANCELLED',
+            ].includes(finalStatus)
           ) {
             throw new Error(`${finalStatus}: 생성 작업이 종료되었습니다.`);
           }

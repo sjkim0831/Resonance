@@ -608,10 +608,13 @@ class ActorProcessControlPlaneBridgeAuthorizationTest {
                 "{\"status\":\"APPLIED\",\"evidenceRef\":\"receipt://7\"}")))
             .thenReturn(List.of(Map.of("contract_sha256",checksum,
                 "release_status","FAILED","generation_result_json",
-                "{\"status\":\"FAILED\",\"message\":\"worker failed\"}")))
+                "{\"status\":\"FAILED\",\"message\":\"worker failed\",\"retryAttempt\":3}")))
             .thenReturn(List.of(Map.of("contract_sha256",checksum,
                 "release_status","REVIEW_REQUIRED","generation_result_json",
-                "{\"status\":\"REVIEW_REQUIRED\"}")));
+                "{\"status\":\"REVIEW_REQUIRED\",\"retryAttempt\":3}")))
+            .thenReturn(List.of(Map.of("contract_sha256",checksum,
+                "release_status","CANCELLED","generation_result_json",
+                "{\"status\":\"CANCELLED\",\"retryAttempt\":0}")));
 
         assertEquals(401,controller.designReleaseReceipt("wrong-token",
             "PROJECT_A",4,checksum).getStatusCode().value());
@@ -621,7 +624,7 @@ class ActorProcessControlPlaneBridgeAuthorizationTest {
         Map<String,Object> pendingBody=(Map<String,Object>)pending.getBody();
         assertEquals("PENDING",pendingBody.get("applicationStatus"));
         assertEquals("QUEUED",pendingBody.get("releaseStatus"));
-        for(String status:List.of("APPLIED","FAILED","REVIEW_REQUIRED")){
+        for(String status:List.of("APPLIED","FAILED","REVIEW_REQUIRED","CANCELLED")){
             var response=controller.designReleaseReceipt("secret-token",
                 "PROJECT_A",4,checksum);
             assertEquals(200,response.getStatusCode().value());
@@ -631,9 +634,35 @@ class ActorProcessControlPlaneBridgeAuthorizationTest {
             assertEquals(status,body.get("releaseStatus"));
             assertEquals(status,body.get("applicationStatus"));
             assertEquals(checksum,body.get("contractSha256"));
+            assertEquals(true,body.get("terminal"));
+            if(!"APPLIED".equals(status))assertEquals(true,body.get("retryExhausted"));
         }
         verify(jdbc,never()).update(anyString(),any(Object[].class));
         verifyNoInteractions(governance);
+    }
+
+    @Test
+    void failedReceiptRemainsPendingUntilRuntimeRetryBudgetIsExhausted(){
+        String checksum="a".repeat(64);
+        when(jdbc.queryForList(anyString(),any(Object[].class))).thenReturn(List.of(Map.of(
+            "contract_sha256",checksum,"release_status","FAILED",
+            "generation_result_json","{\"status\":\"FAILED\",\"retryAttempt\":0,"+
+                "\"retryLimit\":3,\"retryNotBeforeEpoch\":1893456000}")));
+
+        var response=controller.designReleaseReceipt("secret-token",
+            "PROJECT_A",4,checksum);
+
+        @SuppressWarnings("unchecked")
+        Map<String,Object> body=(Map<String,Object>)response.getBody();
+        assertEquals("FAILED",body.get("releaseStatus"));
+        assertEquals("PENDING",body.get("applicationStatus"));
+        assertEquals(false,body.get("terminal"));
+        assertEquals(0,body.get("retryAttempt"));
+        assertEquals(3,body.get("retryLimit"));
+        assertEquals(false,body.get("retryExhausted"));
+        assertEquals(1893456000L,body.get("retryNotBeforeEpoch"));
+        assertEquals("2030-01-01T00:00:00Z",body.get("retryNotBefore"));
+        verify(jdbc,never()).update(anyString(),any(Object[].class));
     }
 
     @Test

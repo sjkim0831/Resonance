@@ -58,7 +58,11 @@ export const pollDesignAssetSync = async ({
       ) {
         return { outcome: 'SYNCHRONIZED' as const, attempts, receipt };
       }
-      if (['FAILED', 'SYNC_TRACKING_FAILED'].includes(String(receipt.status))) {
+      if (
+        ['FAILED', 'SYNC_TRACKING_FAILED', 'CANCELLED'].includes(
+          String(receipt.status).toUpperCase(),
+        )
+      ) {
         return { outcome: 'FAILED' as const, attempts, receipt };
       }
     } catch (pollError) {

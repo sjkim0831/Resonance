@@ -24,6 +24,7 @@ import {
   requirementPublicationDisposition,
   requirementPublicationPersistence,
   requirementReceiptTransitionAllowed,
+  requirementRuntimeRetryExhausted,
   sameRequirementRevision,
   type RequirementPublicationDisposition,
 } from './requirementIngestionLifecycle';
@@ -48,6 +49,7 @@ import {
   reconcileRequirementReceiptBatch,
   receiptRetryDelayMs,
   selectFairRequirementClaims,
+  type DesignSnapshotRetryOutcome,
   type DesignSnapshotSyncClaim,
   type RequirementReceiptClaim,
 } from './receiptReconciliation';
@@ -93,6 +95,7 @@ type ScreenCoordinateInput = {
 };
 
 const RUNTIME_DESIGN_SOURCE_TIMEOUT_MS = 10_000;
+const DESIGN_SNAPSHOT_SYNC_MAX_ATTEMPTS = 5;
 
 const SCREEN_DIMENSIONS = [
   'projectId',
@@ -479,6 +482,22 @@ export default createBackendPlugin({
               on resonance_projects__design_asset_source_sync(asset_type,asset_id)
            where sync_status in ('PREPARED','PENDING','RUNNING')
         `);
+        await knex.raw(`
+          create index if not exists resonance_design_asset_source_sync_retry_due_idx
+              on resonance_projects__design_asset_source_sync(
+                next_attempt_at,project_id,sync_id
+              )
+           where sync_status in ('PREPARED','PENDING','RUNNING')
+             and retry_attempt < ${DESIGN_SNAPSHOT_SYNC_MAX_ATTEMPTS}
+        `);
+        await knex.raw(`
+          create index if not exists resonance_design_asset_source_sync_exhausted_idx
+              on resonance_projects__design_asset_source_sync(
+                sync_status,lease_expires_at,sync_id
+              )
+           where sync_status in ('PREPARED','PENDING','RUNNING')
+             and retry_attempt >= ${DESIGN_SNAPSHOT_SYNC_MAX_ATTEMPTS}
+        `);
         if (
           !(await knex.schema.hasTable(
             'resonance_projects__design_asset_audit',
@@ -752,6 +771,11 @@ export default createBackendPlugin({
                 .timestamp('publication_reconciled_at', { useTz: true })
                 .nullable(),
           ],
+          [
+            'publication_retry_exhausted',
+            (table: any) =>
+              table.boolean('publication_retry_exhausted').nullable(),
+          ],
         ] as const;
         for (const [column, addColumn] of requirementReceiptColumns) {
           if (
@@ -939,6 +963,26 @@ export default createBackendPlugin({
           );
           const retryAttempt =
             Number.isInteger(rawAttempt) && rawAttempt >= 0 ? rawAttempt : 0;
+          const retryExhausted = requirementRuntimeRetryExhausted(publication);
+          const rawRetryNotBefore =
+            publication.retryNotBefore ?? generation.retryNotBefore;
+          const rawRetryNotBeforeEpoch = Number(
+            publication.retryNotBeforeEpoch ??
+              generation.retryNotBeforeEpoch ??
+              Number.NaN,
+          );
+          let parsedRetryNotBefore: Date | undefined;
+          if (rawRetryNotBefore) {
+            parsedRetryNotBefore = new Date(String(rawRetryNotBefore));
+          } else if (Number.isFinite(rawRetryNotBeforeEpoch)) {
+            parsedRetryNotBefore = new Date(rawRetryNotBeforeEpoch * 1_000);
+          }
+          const runtimeRetryNotBefore =
+            parsedRetryNotBefore &&
+            Number.isFinite(parsedRetryNotBefore.getTime()) &&
+            parsedRetryNotBefore > recordedAt
+              ? parsedRetryNotBefore
+              : undefined;
           return knex.transaction(async transaction => {
             const currentRelease = await transaction(
               'resonance_projects__design_release',
@@ -998,6 +1042,7 @@ export default createBackendPlugin({
               currentAttempt,
               incomingDisposition: disposition,
               incomingAttempt: retryAttempt,
+              incomingRetryExhausted: retryExhausted,
               existingRevision,
             });
             if (!transitionAllowed) {
@@ -1007,6 +1052,7 @@ export default createBackendPlugin({
                     'APPLIED',
                     'FAILED',
                     'REVIEW_REQUIRED',
+                    'CANCELLED',
                   ].includes(currentDisposition);
                   const settled = await transaction(
                     'resonance_projects__requirement_document',
@@ -1075,8 +1121,11 @@ export default createBackendPlugin({
                 publication_next_attempt_at: target.completeTasks
                   ? null
                   : new Date(
-                      recordedAt.getTime() +
-                        receiptRetryDelayMs(claimedPollAttempt),
+                      Math.max(
+                        recordedAt.getTime() +
+                          receiptRetryDelayMs(claimedPollAttempt),
+                        runtimeRetryNotBefore?.getTime() ?? 0,
+                      ),
                     ),
                 publication_claim_token: null,
                 publication_lease_expires_at: null,
@@ -1094,12 +1143,17 @@ export default createBackendPlugin({
                   : 0,
                 publication_next_attempt_at: target.completeTasks
                   ? null
-                  : recordedAt,
+                  : runtimeRetryNotBefore ?? recordedAt,
                 publication_claim_token: null,
                 publication_lease_expires_at: null,
                 publication_reconciled_at: target.completeTasks
                   ? recordedAt
                   : null,
+              });
+            }
+            if (retryExhausted !== undefined) {
+              Object.assign(documentReceiptUpdate, {
+                publication_retry_exhausted: retryExhausted,
               });
             }
             const documentUpdateQuery = transaction(
@@ -1291,6 +1345,11 @@ export default createBackendPlugin({
               .whereIn('release.release_status', ['QUEUED', 'RUNNING'])
               .andWhere(builder =>
                 builder
+                  .whereNull('document.publication_next_attempt_at')
+                  .orWhere('document.publication_next_attempt_at', '<=', now),
+              )
+              .andWhere(builder =>
+                builder
                   .whereNull('document.publication_claim_token')
                   .orWhereNull('document.publication_lease_expires_at')
                   .orWhere('document.publication_lease_expires_at', '<=', now),
@@ -1443,10 +1502,74 @@ export default createBackendPlugin({
           );
           const claimToken = randomUUID();
           return knex.transaction(async transaction => {
+            const exhaustedRows = await transaction(
+              'resonance_projects__design_asset_source_sync',
+            )
+              .whereIn('sync_status', ['PREPARED', 'PENDING', 'RUNNING'])
+              .andWhere(
+                'retry_attempt',
+                '>=',
+                DESIGN_SNAPSHOT_SYNC_MAX_ATTEMPTS,
+              )
+              .andWhere(builder =>
+                builder
+                  .whereNot('sync_status', 'RUNNING')
+                  .orWhereNull('lease_expires_at')
+                  .orWhere('lease_expires_at', '<=', now),
+              )
+              .orderBy('lease_expires_at', 'asc')
+              .orderBy('sync_id', 'asc')
+              .limit(limit)
+              .forUpdate()
+              .skipLocked();
+            for (const exhausted of exhaustedRows) {
+              const deadLettered = await transaction(
+                'resonance_projects__design_asset_source_sync',
+              )
+                .where({
+                  sync_id: exhausted.sync_id,
+                  sync_status: exhausted.sync_status,
+                })
+                .andWhere(
+                  'retry_attempt',
+                  '>=',
+                  DESIGN_SNAPSHOT_SYNC_MAX_ATTEMPTS,
+                )
+                .update({
+                  sync_status: 'SYNC_TRACKING_FAILED',
+                  next_attempt_at: now,
+                  claim_token: null,
+                  lease_expires_at: null,
+                  last_error:
+                    exhausted.last_error ||
+                    'maximum source synchronization attempt lease expired',
+                  updated_at: now,
+                });
+              if (deadLettered !== 1) {
+                throw new Error('DESIGN_SOURCE_SYNC_DEAD_LETTER_CAS_NOT_EXACT');
+              }
+              await transaction(
+                'resonance_projects__design_asset_audit',
+              ).insert({
+                project_id: exhausted.project_id,
+                action_code: 'SOURCE_SYNC_TRACKING_FAILED',
+                actor_ref: 'system:receipt-reconciler',
+                details: JSON.stringify({
+                  syncId: exhausted.sync_id,
+                  assetType: exhausted.asset_type,
+                  assetId: exhausted.asset_id,
+                  retryAttempt: Number(exhausted.retry_attempt),
+                  retryLimit: DESIGN_SNAPSHOT_SYNC_MAX_ATTEMPTS,
+                  reason: 'MAX_ATTEMPT_LEASE_EXPIRED',
+                }),
+                created_at: now,
+              });
+            }
             const rows = await transaction(
               'resonance_projects__design_asset_source_sync',
             )
               .whereIn('sync_status', ['PREPARED', 'PENDING', 'RUNNING'])
+              .andWhere('retry_attempt', '<', DESIGN_SNAPSHOT_SYNC_MAX_ATTEMPTS)
               .andWhere('next_attempt_at', '<=', now)
               .andWhere(builder =>
                 builder
@@ -1721,21 +1844,65 @@ export default createBackendPlugin({
           claim: DesignSnapshotSyncClaim,
           message: string,
           nextAttemptAt: Date,
-        ) =>
-          (await knex('resonance_projects__design_asset_source_sync')
-            .where({
-              sync_id: claim.syncId,
-              sync_status: 'RUNNING',
-              claim_token: claim.claimToken,
-            })
-            .update({
-              sync_status: 'PENDING',
-              next_attempt_at: nextAttemptAt,
-              claim_token: null,
-              lease_expires_at: null,
-              last_error: message,
-              updated_at: new Date(),
-            })) === 1;
+          receipt?: Record<string, unknown>,
+        ): Promise<DesignSnapshotRetryOutcome> =>
+          knex.transaction(async transaction => {
+            const active = await transaction(
+              'resonance_projects__design_asset_source_sync',
+            )
+              .where({
+                sync_id: claim.syncId,
+                sync_status: 'RUNNING',
+                claim_token: claim.claimToken,
+              })
+              .forUpdate()
+              .first();
+            if (!active) return 'STALE';
+            const now = new Date();
+            const exhausted =
+              claim.retryAttempt >= DESIGN_SNAPSHOT_SYNC_MAX_ATTEMPTS;
+            const nextStatus = exhausted ? 'SYNC_TRACKING_FAILED' : 'PENDING';
+            const updated = await transaction(
+              'resonance_projects__design_asset_source_sync',
+            )
+              .where({
+                sync_id: claim.syncId,
+                sync_status: 'RUNNING',
+                claim_token: claim.claimToken,
+              })
+              .update({
+                sync_status: nextStatus,
+                next_attempt_at: exhausted ? now : nextAttemptAt,
+                claim_token: null,
+                lease_expires_at: null,
+                last_error: message.slice(0, 2_000),
+                runtime_receipt: receipt
+                  ? JSON.stringify(receipt)
+                  : active.runtime_receipt,
+                updated_at: now,
+              });
+            if (updated !== 1) return 'STALE';
+            if (exhausted) {
+              await transaction(
+                'resonance_projects__design_asset_audit',
+              ).insert({
+                project_id: claim.projectId,
+                action_code: 'SOURCE_SYNC_TRACKING_FAILED',
+                actor_ref: 'system:receipt-reconciler',
+                details: JSON.stringify({
+                  syncId: claim.syncId,
+                  assetType: claim.assetType,
+                  assetId: claim.assetId,
+                  retryAttempt: claim.retryAttempt,
+                  retryLimit: DESIGN_SNAPSHOT_SYNC_MAX_ATTEMPTS,
+                  message: message.slice(0, 2_000),
+                }),
+                created_at: now,
+              });
+              return 'DEAD_LETTERED';
+            }
+            return 'RETRIED';
+          });
 
         const router = Router();
         router.use(json({ limit: '10mb' }));
@@ -2377,17 +2544,18 @@ export default createBackendPlugin({
             }
           }
           const published = runtimePublication.success === true;
-          response
-            .status(status !== 'VERIFIED' ? 422 : published ? 201 : 502)
-            .json({
-              success: status === 'VERIFIED' && published,
-              coordinate,
-              status,
-              specSha256: checksum,
-              validation: { checks, missing },
-              screenSpec,
-              runtimePublication,
-            });
+          let httpStatus = 502;
+          if (status !== 'VERIFIED') httpStatus = 422;
+          else if (published) httpStatus = 201;
+          response.status(httpStatus).json({
+            success: status === 'VERIFIED' && published,
+            coordinate,
+            status,
+            specSha256: checksum,
+            validation: { checks, missing },
+            screenSpec,
+            runtimePublication,
+          });
         });
         router.get(
           '/design-assets/:projectId/access',
@@ -3152,13 +3320,31 @@ export default createBackendPlugin({
               return;
             }
             const synchronized = sync.sync_status === 'SYNCHRONIZED';
-            response.json({
+            const cancelled = sync.sync_status === 'CANCELLED';
+            const trackingFailed = sync.sync_status === 'SYNC_TRACKING_FAILED';
+            const terminalFailure = cancelled || trackingFailed;
+            const runtimeReceipt = parseJsonRecord(sync.runtime_receipt);
+            const sourceCommitted =
+              typeof runtimeReceipt.sourceCommitted === 'boolean'
+                ? runtimeReceipt.sourceCommitted
+                : undefined;
+            let controlPlaneSnapshot = 'SYNC_REQUIRED';
+            if (synchronized) controlPlaneSnapshot = 'SYNCHRONIZED';
+            else if (terminalFailure) controlPlaneSnapshot = 'SYNC_FAILED';
+            let sourceCommitState = 'UNKNOWN';
+            if (sourceCommitted === true) sourceCommitState = 'COMMITTED';
+            else if (sourceCommitted === false) sourceCommitState = 'REJECTED';
+            response.status(synchronized || terminalFailure ? 200 : 202).json({
               success: synchronized,
               syncReceiptId: syncId,
               status: String(sync.sync_status),
-              controlPlaneSnapshot: synchronized
-                ? 'SYNCHRONIZED'
-                : 'SYNC_REQUIRED',
+              controlPlaneSnapshot,
+              terminal: synchronized || terminalFailure,
+              retryExhausted: trackingFailed,
+              retryable: trackingFailed,
+              retryLimit: DESIGN_SNAPSHOT_SYNC_MAX_ATTEMPTS,
+              sourceCommitted,
+              sourceCommitState,
               snapshotFingerprint: synchronized
                 ? String(sync.asset_fingerprint)
                 : undefined,
@@ -3167,6 +3353,163 @@ export default createBackendPlugin({
               message: sync.last_error ?? undefined,
               synchronizedAt: sync.synchronized_at,
             });
+          },
+        );
+        router.post(
+          '/design-assets/:projectId/source-sync/:syncId/retry',
+          async (request, response) => {
+            const projectId = normalizeProjectId(request.params.projectId);
+            const sourceIdentity = await resolveAuthenticatedProjectIdentity(
+              request,
+            );
+            const syncId = String(request.params.syncId ?? '').toLowerCase();
+            if (!/^[0-9a-f]{64}$/.test(syncId)) {
+              response.status(400).json({
+                success: false,
+                message: 'invalid source synchronization receipt id',
+              });
+              return;
+            }
+            try {
+              const result = await knex.transaction(async transaction => {
+                const globalAuthorityPrincipal =
+                  await lockGlobalDesignSourceAuthority(
+                    transaction,
+                    sourceIdentity.principals,
+                  );
+                if (!globalAuthorityPrincipal) {
+                  return {
+                    status: 403,
+                    syncStatus: 'SYNC_TRACKING_FAILED',
+                    retryable: true,
+                    message:
+                      'CCUS-PLATFORM DESIGN_APPROVER authority is required for global common design retry',
+                  };
+                }
+                await transaction.raw(
+                  'select pg_advisory_xact_lock(hashtextextended(?,0))',
+                  [`BACKSTAGE_COMMON_DESIGN_SYNC_RETRY_V1:${syncId}`],
+                );
+                const sync = await transaction(
+                  'resonance_projects__design_asset_source_sync',
+                )
+                  .where({ project_id: projectId, sync_id: syncId })
+                  .forUpdate()
+                  .first();
+                if (!sync)
+                  return {
+                    status: 404,
+                    syncStatus: 'UNKNOWN',
+                    retryable: false,
+                    message: 'not found',
+                  };
+                if (sync.sync_status !== 'SYNC_TRACKING_FAILED') {
+                  return {
+                    status: 409,
+                    syncStatus: String(sync.sync_status),
+                    retryable: false,
+                    message:
+                      sync.sync_status === 'CANCELLED'
+                        ? 'cancelled source synchronization is terminal and cannot be retried'
+                        : 'only a dead-lettered source synchronization can be retried',
+                  };
+                }
+                const active = await transaction(
+                  'resonance_projects__design_asset_source_sync',
+                )
+                  .where({
+                    asset_type: sync.asset_type,
+                    asset_id: sync.asset_id,
+                  })
+                  .whereIn('sync_status', ['PREPARED', 'PENDING', 'RUNNING'])
+                  .whereNot({ sync_id: syncId })
+                  .forUpdate()
+                  .first();
+                if (active) {
+                  return {
+                    status: 409,
+                    syncStatus: 'SYNC_TRACKING_FAILED',
+                    retryable: true,
+                    message:
+                      'another source synchronization is active for this design asset',
+                  };
+                }
+                const now = new Date();
+                const updated = await transaction(
+                  'resonance_projects__design_asset_source_sync',
+                )
+                  .where({
+                    project_id: projectId,
+                    sync_id: syncId,
+                    sync_status: 'SYNC_TRACKING_FAILED',
+                  })
+                  .update({
+                    sync_status: 'PENDING',
+                    retry_attempt: 0,
+                    next_attempt_at: now,
+                    claim_token: null,
+                    lease_expires_at: null,
+                    last_error: null,
+                    created_by: sourceIdentity.actorRef,
+                    account_id: sourceIdentity.accountId,
+                    authority_principal: globalAuthorityPrincipal,
+                    updated_at: now,
+                    synchronized_at: null,
+                  });
+                if (updated !== 1) {
+                  throw new Error('DESIGN_SOURCE_SYNC_RETRY_CAS_NOT_EXACT');
+                }
+                await transaction(
+                  'resonance_projects__design_asset_audit',
+                ).insert({
+                  project_id: projectId,
+                  action_code: 'SOURCE_SYNC_RETRY_REQUESTED',
+                  actor_ref: sourceIdentity.actorRef,
+                  details: JSON.stringify({
+                    syncId,
+                    assetType: sync.asset_type,
+                    assetId: sync.asset_id,
+                    previousRetryAttempt: Number(sync.retry_attempt ?? 0),
+                    retryLimit: DESIGN_SNAPSHOT_SYNC_MAX_ATTEMPTS,
+                  }),
+                  created_at: now,
+                });
+                return {
+                  status: 202,
+                  syncStatus: 'PENDING',
+                  retryable: false,
+                  message: 'retry queued',
+                };
+              });
+              const terminal = ['CANCELLED', 'SYNC_TRACKING_FAILED'].includes(
+                result.syncStatus,
+              );
+              response.status(result.status).json({
+                success: result.status === 202,
+                status: result.syncStatus,
+                controlPlaneSnapshot: terminal
+                  ? 'SYNC_FAILED'
+                  : 'SYNC_REQUIRED',
+                terminal,
+                retryExhausted: result.syncStatus === 'SYNC_TRACKING_FAILED',
+                retryable: result.retryable,
+                syncReceiptId: syncId,
+                retryAttempt: result.status === 202 ? 0 : undefined,
+                retryLimit: DESIGN_SNAPSHOT_SYNC_MAX_ATTEMPTS,
+                retryNotBefore: result.status === 202 ? new Date() : undefined,
+                message: result.message,
+              });
+            } catch (error) {
+              response.status(409).json({
+                success: false,
+                status: 'SYNC_TRACKING_FAILED',
+                syncReceiptId: syncId,
+                message:
+                  error instanceof Error
+                    ? error.message
+                    : 'source synchronization retry failed',
+              });
+            }
           },
         );
         router.get(
@@ -3678,6 +4021,7 @@ export default createBackendPlugin({
               'publication_poll_attempt_count',
               'publication_next_attempt_at',
               'publication_last_error',
+              'publication_retry_exhausted',
             )
             .orderBy('created_at', 'desc');
           response.json({
@@ -3699,6 +4043,17 @@ export default createBackendPlugin({
               reconciliationStatus: document.publication_reconcile_status,
               pollAttempt: Number(document.publication_poll_attempt_count ?? 0),
               retryNotBefore: document.publication_next_attempt_at,
+              retryExhausted:
+                document.publication_retry_exhausted === null ||
+                document.publication_retry_exhausted === undefined
+                  ? [
+                      'GENERATION_FAILED',
+                      'FAILED',
+                      'REVIEW_REQUIRED',
+                      'GENERATION_CANCELLED',
+                      'CANCELLED',
+                    ].includes(String(document.analysis_status).toUpperCase())
+                  : Boolean(document.publication_retry_exhausted),
               lastError: document.publication_last_error,
             })),
           });
@@ -3832,9 +4187,12 @@ export default createBackendPlugin({
               response.json({
                 success: true,
                 reconciled: result.reconciled,
-                terminal: ['APPLIED', 'FAILED', 'REVIEW_REQUIRED'].includes(
-                  result.disposition,
-                ),
+                terminal: [
+                  'APPLIED',
+                  'FAILED',
+                  'REVIEW_REQUIRED',
+                  'CANCELLED',
+                ].includes(result.disposition),
                 status:
                   result.disposition === 'QUEUED'
                     ? 'GENERATION_QUEUED'
@@ -4212,9 +4570,11 @@ export default createBackendPlugin({
                 analysisStatus: persistence.analysisStatus,
                 releaseStatus: persistence.releaseStatus,
               });
-            const terminalFailure = ['FAILED', 'REVIEW_REQUIRED'].includes(
-              String(finalDisposition),
-            );
+            const terminalFailure = [
+              'FAILED',
+              'REVIEW_REQUIRED',
+              'CANCELLED',
+            ].includes(String(finalDisposition));
             const responsePublication = publicationResult.publication as Record<
               string,
               unknown
@@ -4235,6 +4595,27 @@ export default createBackendPlugin({
             if (terminalFailure) responseStatus = 409;
             else if (finalDisposition !== 'APPLIED') responseStatus = 202;
             else if (persistence.kind === 'CREATED') responseStatus = 201;
+            let finalStatus = String(persistence.analysisStatus);
+            if (
+              finalDisposition === 'APPLIED' ||
+              ['APPLIED', 'GENERATION_APPLIED'].includes(
+                String(persistence.analysisStatus).toUpperCase(),
+              ) ||
+              String(persistence.releaseStatus).toUpperCase() === 'APPLIED'
+            ) {
+              finalStatus = 'APPLIED';
+            } else if (
+              ['FAILED', 'REVIEW_REQUIRED', 'CANCELLED'].includes(
+                String(finalDisposition),
+              )
+            ) {
+              finalStatus = String(finalDisposition);
+            } else if (
+              finalDisposition === 'QUEUED' ||
+              publicationResult.completed
+            ) {
+              finalStatus = 'GENERATION_QUEUED';
+            }
             response.status(responseStatus).json({
               success: finalDisposition === 'APPLIED',
               message: terminalMessage,
@@ -4249,20 +4630,7 @@ export default createBackendPlugin({
               screenCount: persistence.requirementCount,
               endpointCount: persistence.requirementCount,
               contractSha256: persistence.contractSha256,
-              status:
-                finalDisposition === 'APPLIED' ||
-                ['APPLIED', 'GENERATION_APPLIED'].includes(
-                  String(persistence.analysisStatus).toUpperCase(),
-                ) ||
-                String(persistence.releaseStatus).toUpperCase() === 'APPLIED'
-                  ? 'APPLIED'
-                  : finalDisposition === 'FAILED'
-                  ? 'FAILED'
-                  : finalDisposition === 'REVIEW_REQUIRED'
-                  ? 'REVIEW_REQUIRED'
-                  : publicationResult.completed
-                  ? 'GENERATION_QUEUED'
-                  : persistence.analysisStatus,
+              status: finalStatus,
               publication: publicationResult.publication,
             });
           },

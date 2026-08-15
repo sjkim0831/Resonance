@@ -36,13 +36,27 @@ describe('DesignAssetControlPage SOURCE immediate contract', () => {
   });
 
   it('does not treat a split 202 receipt as success or replace the fingerprint optimistically', () => {
+    const splitStart = source.indexOf('sourceResponse.status === 202');
+    const splitConditionEnd = source.indexOf(') {', splitStart);
+    const splitCondition = source.slice(splitStart, splitConditionEnd);
     expect(source).toContain('sourceResponse.status === 202');
     expect(source).toContain("result.controlPlaneSnapshot === 'SYNC_REQUIRED'");
+    expect(splitCondition).not.toContain('result.sourceCommitted === true');
+    expect(source).toContain('런타임 원본 확인 중');
     expect(source).toContain('result.syncReceiptId');
     expect(source).toContain('pollDesignAssetSync');
     expect(source).toContain("result.controlPlaneSnapshot === 'SYNCHRONIZED'");
     expect(source).toContain(
       'authoritative.fingerprint !== sync.receipt.snapshotFingerprint',
     );
+  });
+
+  it('shows truthful cancelled/unknown states and exposes dead-letter retry only', () => {
+    expect(source).toContain("sync.receipt?.status === 'CANCELLED'");
+    expect(source).toContain('동기화 취소됨 · 재시도 불가');
+    expect(source).toContain("receipt?.sourceCommitState === 'UNKNOWN'");
+    expect(source).toContain('receipt.retryable && receipt.syncReceiptId');
+    expect(source).toContain('/retry`');
+    expect(source).toContain('동기화 재시도');
   });
 });

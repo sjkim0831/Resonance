@@ -2,6 +2,7 @@ export type RequirementPublicationReceipt = {
   status?: string;
   message?: string;
   terminal?: boolean;
+  retryExhausted?: boolean;
   [key: string]: unknown;
 };
 
@@ -15,6 +16,7 @@ export type RequirementPublicationPollResult = {
 export type RequirementDocumentPublication = {
   documentId: string;
   status: string;
+  retryExhausted?: boolean;
   [key: string]: unknown;
 };
 
@@ -29,21 +31,38 @@ export const REQUIREMENT_PUBLICATION_POLL_DELAYS_MS = [
   1000, 2000, 4000, 8000, 15000, 30000, 30000,
 ] as const;
 
-export const isRequirementPublicationTerminal = (status: unknown) =>
-  [
-    'APPLIED',
-    'GENERATION_APPLIED',
-    'FAILED',
-    'GENERATION_FAILED',
-    'REVIEW_REQUIRED',
-  ].includes(
-    String(status ?? '')
-      .trim()
-      .toUpperCase(),
-  );
+export const isRequirementPublicationTerminal = (
+  status: unknown,
+  retryExhausted?: boolean,
+) => {
+  const normalized = String(status ?? '')
+    .trim()
+    .toUpperCase();
+  if (
+    [
+      'APPLIED',
+      'GENERATION_APPLIED',
+      'CANCELLED',
+      'GENERATION_CANCELLED',
+    ].includes(normalized)
+  ) {
+    return true;
+  }
+  if (['FAILED', 'GENERATION_FAILED', 'REVIEW_REQUIRED'].includes(normalized)) {
+    // Missing metadata keeps compatibility with historical final receipts.
+    return retryExhausted !== false;
+  }
+  return false;
+};
 
 export const isRequirementPublicationPending = (status: unknown) =>
-  ['QUEUED', 'GENERATION_QUEUED', 'RUNNING', 'GENERATION_RUNNING'].includes(
+  [
+    'QUEUED',
+    'GENERATION_QUEUED',
+    'RUNNING',
+    'GENERATION_RUNNING',
+    'UNKNOWN',
+  ].includes(
     String(status ?? '')
       .trim()
       .toUpperCase(),
@@ -90,7 +109,10 @@ export const pollRequirementPublication = async ({
     try {
       receipt = await readReceipt();
       error = undefined;
-      if (isRequirementPublicationTerminal(receipt.status)) {
+      if (
+        receipt.terminal === true ||
+        isRequirementPublicationTerminal(receipt.status, receipt.retryExhausted)
+      ) {
         return { outcome: 'TERMINAL', attempts, receipt };
       }
     } catch (pollError) {
@@ -133,13 +155,12 @@ export const pollRequirementDocumentSet = async ({
         ? documents.filter(document => targets.has(document.documentId))
         : documents;
       const targetsPresent = !targets || observed.length === targets.size;
-      const converged = targets
-        ? observed.every(document =>
-            isRequirementPublicationTerminal(document.status),
-          )
-        : observed.every(
-            document => !isRequirementPublicationPending(document.status),
-          );
+      const converged = observed.every(document =>
+        isRequirementPublicationTerminal(
+          document.status,
+          document.retryExhausted,
+        ),
+      );
       if (targetsPresent && converged) {
         return { outcome: 'TERMINAL', attempts, documents };
       }

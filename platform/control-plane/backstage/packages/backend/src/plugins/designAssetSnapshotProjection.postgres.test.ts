@@ -517,7 +517,7 @@ describePostgres(
           }
         },
         cancelClaim: async () => false,
-        retryClaim: async () => false,
+        retryClaim: async () => 'STALE',
       });
 
       expect(summary).toEqual({
@@ -525,6 +525,7 @@ describePostgres(
         terminal: 1,
         pending: 0,
         retried: 0,
+        deadLettered: 0,
         stale: 0,
       });
       const snapshots = await client.query(

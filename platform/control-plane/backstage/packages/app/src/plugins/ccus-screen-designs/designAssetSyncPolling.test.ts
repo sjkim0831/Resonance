@@ -13,7 +13,8 @@ describe('design asset snapshot sync polling', () => {
     const readReceipt = jest
       .fn()
       .mockResolvedValueOnce({
-        status: 'PENDING',
+        status: 'UNKNOWN',
+        sourceCommitState: 'UNKNOWN',
         controlPlaneSnapshot: 'SYNC_REQUIRED',
       })
       .mockResolvedValueOnce({
@@ -35,6 +36,29 @@ describe('design asset snapshot sync polling', () => {
     });
     expect(readReceipt).toHaveBeenCalledTimes(2);
   });
+
+  it.each(['CANCELLED', 'SYNC_TRACKING_FAILED'])(
+    'stops on terminal %s without another retry',
+    async status => {
+      const readReceipt = jest.fn().mockResolvedValue({
+        status,
+        controlPlaneSnapshot: 'SYNC_FAILED',
+      });
+      const result = pollDesignAssetSync({
+        readReceipt,
+        signal: new AbortController().signal,
+        delaysMs: [1000],
+      });
+      await flush();
+
+      await expect(result).resolves.toMatchObject({
+        outcome: 'FAILED',
+        attempts: 1,
+        receipt: { status },
+      });
+      expect(readReceipt).toHaveBeenCalledTimes(1);
+    },
+  );
 
   it('cleans up its pending timer when the screen closes', async () => {
     const readReceipt = jest.fn().mockResolvedValue({

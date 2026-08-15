@@ -54,6 +54,64 @@ describe('requirement publication polling', () => {
     },
   );
 
+  it('keeps FAILED(0) pending through QUEUED(1) and stops only after APPLIED', async () => {
+    const readReceipt = jest
+      .fn()
+      .mockResolvedValueOnce({
+        status: 'FAILED',
+        terminal: false,
+        retryAttempt: 0,
+        retryExhausted: false,
+      })
+      .mockResolvedValueOnce({
+        status: 'QUEUED',
+        terminal: false,
+        retryAttempt: 1,
+        retryExhausted: false,
+      })
+      .mockResolvedValueOnce({
+        status: 'APPLIED',
+        terminal: true,
+        retryAttempt: 1,
+        retryExhausted: false,
+      });
+    const resultPromise = pollRequirementPublication({
+      readReceipt,
+      signal: new AbortController().signal,
+      delaysMs: [100, 200],
+    });
+    await flush();
+    await jest.advanceTimersByTimeAsync(300);
+
+    await expect(resultPromise).resolves.toMatchObject({
+      outcome: 'TERMINAL',
+      attempts: 3,
+      receipt: { status: 'APPLIED', retryAttempt: 1 },
+    });
+    expect(readReceipt).toHaveBeenCalledTimes(3);
+  });
+
+  it('treats CANCELLED as final without retry but keeps UNKNOWN pending', async () => {
+    const readReceipt = jest
+      .fn()
+      .mockResolvedValueOnce({ status: 'UNKNOWN', terminal: false })
+      .mockResolvedValueOnce({ status: 'CANCELLED', terminal: true });
+    const resultPromise = pollRequirementPublication({
+      readReceipt,
+      signal: new AbortController().signal,
+      delaysMs: [100],
+    });
+    await flush();
+    await jest.advanceTimersByTimeAsync(100);
+
+    await expect(resultPromise).resolves.toMatchObject({
+      outcome: 'TERMINAL',
+      attempts: 2,
+      receipt: { status: 'CANCELLED' },
+    });
+    expect(readReceipt).toHaveBeenCalledTimes(2);
+  });
+
   it('backs off transient failures and stops at the bounded timeout', async () => {
     const readReceipt = jest
       .fn()
@@ -122,6 +180,45 @@ describe('requirement publication polling', () => {
       ],
     });
     expect(readDocuments).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not finalize a document set on a non-exhausted FAILED receipt', async () => {
+    const readDocuments = jest
+      .fn()
+      .mockResolvedValueOnce([
+        {
+          documentId: 'doc-1',
+          status: 'FAILED',
+          retryExhausted: false,
+        },
+      ])
+      .mockResolvedValueOnce([
+        {
+          documentId: 'doc-1',
+          status: 'GENERATION_QUEUED',
+          retryExhausted: false,
+        },
+      ])
+      .mockResolvedValueOnce([
+        {
+          documentId: 'doc-1',
+          status: 'GENERATION_APPLIED',
+          retryExhausted: false,
+        },
+      ]);
+    const resultPromise = pollRequirementDocumentSet({
+      readDocuments,
+      signal: new AbortController().signal,
+      delaysMs: [100, 200],
+    });
+    await flush();
+    await jest.advanceTimersByTimeAsync(300);
+
+    await expect(resultPromise).resolves.toMatchObject({
+      outcome: 'TERMINAL',
+      attempts: 3,
+      documents: [{ documentId: 'doc-1', status: 'GENERATION_APPLIED' }],
+    });
   });
 
   it('waits for every requested target and cancels the shared timer on unmount', async () => {

@@ -39,14 +39,18 @@ export type ReceiptReconciliationSummary = {
   terminal: number;
   pending: number;
   retried: number;
+  deadLettered: number;
   stale: number;
 };
+
+export type DesignSnapshotRetryOutcome = 'RETRIED' | 'DEAD_LETTERED' | 'STALE';
 
 const emptySummary = (): ReceiptReconciliationSummary => ({
   claimed: 0,
   terminal: 0,
   pending: 0,
   retried: 0,
+  deadLettered: 0,
   stale: 0,
 });
 
@@ -158,9 +162,12 @@ export const reconcileRequirementReceiptBatch = async ({
         runtimeDisposition,
         receipt,
       );
-      const terminal = ['APPLIED', 'FAILED', 'REVIEW_REQUIRED'].includes(
-        effectiveDisposition,
-      );
+      const terminal = [
+        'APPLIED',
+        'FAILED',
+        'REVIEW_REQUIRED',
+        'CANCELLED',
+      ].includes(effectiveDisposition);
       if (terminal) summary.terminal += 1;
       else summary.pending += 1;
     } catch (error) {
@@ -204,7 +211,8 @@ export const reconcileDesignSnapshotSyncBatch = async ({
     claim: DesignSnapshotSyncClaim,
     message: string,
     nextAttemptAt: Date,
-  ) => Promise<boolean>;
+    receipt?: Record<string, unknown>,
+  ) => Promise<DesignSnapshotRetryOutcome>;
   batchSize?: number;
   concurrency?: number;
   now?: () => Date;
@@ -213,8 +221,9 @@ export const reconcileDesignSnapshotSyncBatch = async ({
   const claims = await claimDue(batchSize);
   summary.claimed = claims.length;
   await runWithConcurrency(claims, concurrency, async claim => {
+    let receipt: Record<string, unknown> | undefined;
     try {
-      const receipt = await replaySource(claim);
+      receipt = await replaySource(claim);
       if (receipt.sourceCommitted === false) {
         const cancelled = await cancelClaim(
           claim,
@@ -242,8 +251,17 @@ export const reconcileDesignSnapshotSyncBatch = async ({
       const nextAttemptAt = new Date(
         now().getTime() + receiptRetryDelayMs(claim.retryAttempt),
       );
-      if (await retryClaim(claim, errorMessage(error), nextAttemptAt)) {
+      const retryOutcome = await retryClaim(
+        claim,
+        errorMessage(error),
+        nextAttemptAt,
+        receipt,
+      );
+      if (retryOutcome === 'RETRIED') {
         summary.retried += 1;
+      } else if (retryOutcome === 'DEAD_LETTERED') {
+        summary.deadLettered += 1;
+        summary.terminal += 1;
       } else {
         summary.stale += 1;
       }

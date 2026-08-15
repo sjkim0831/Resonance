@@ -860,7 +860,11 @@ class ActorProcessGovernanceServiceSecurityTest {
     @Test
     void expiredLeaseIsReclaimedAtTheBoundaryWithANewToken() {
         when(jdbc.queryForList(anyString())).thenReturn(List.of(Map.of(
-                "job_id",17L,"job_status","RUNNING","lease_token","expired-token")));
+                "job_id",17L,"job_status","RUNNING","lease_token","expired-token",
+                "attempt_count",0,"max_attempts",3)));
+        when(jdbc.update(argThat(sql->sql!=null
+                &&sql.startsWith("update framework_development_job set job_status='RUNNING'")),
+                any(Object[].class))).thenReturn(1);
 
         Map<String,Object> result=service.claimDevelopmentJob("worker-a");
 
@@ -870,6 +874,8 @@ class ActorProcessGovernanceServiceSecurityTest {
         assertTrue(sql.getValue().contains("j.lease_until<=current_timestamp"));
         assertFalse("expired-token".equals(result.get("leaseToken")));
         UUID.fromString(String.valueOf(result.get("leaseToken")));
+        assertEquals(1,result.get("attemptCount"));
+        assertEquals("RUNNING",result.get("jobStatus"));
     }
 
     @Test

@@ -296,15 +296,39 @@ public class ActorProcessControlPlaneBridgeController {
                     "success",false,"message","Design release checksum does not match the immutable receipt."));
         }
         String releaseStatus=String.valueOf(release.get("release_status")).trim().toUpperCase();
+        Map<String,Object> generation=generationResult(
+                release.get("generation_result_json"));
+        int retryAttempt=retryAttempt(generation);
+        boolean retryableFailure=Set.of("FAILED","REVIEW_REQUIRED")
+                .contains(releaseStatus);
+        boolean retryExhausted="CANCELLED".equals(releaseStatus)
+                ||retryableFailure&&retryAttempt>=MAX_GENERATION_RETRIES;
+        boolean terminal="APPLIED".equals(releaseStatus)
+                ||"CANCELLED".equals(releaseStatus)
+                ||retryableFailure&&retryExhausted;
         Map<String,Object> response=new LinkedHashMap<>();
         response.put("success",true);
         response.put("projectId",normalizedProject);
         response.put("designVersion",designVersion);
         response.put("contractSha256",currentChecksum);
         response.put("releaseStatus",releaseStatus);
-        response.put("applicationStatus",Set.of("APPLIED","FAILED","REVIEW_REQUIRED")
-                .contains(releaseStatus)?releaseStatus:"PENDING");
-        response.put("generation",generationResult(release.get("generation_result_json")));
+        response.put("status",releaseStatus);
+        response.put("applicationStatus",terminal?releaseStatus:"PENDING");
+        response.put("terminal",terminal);
+        response.put("retryAttempt",retryAttempt);
+        response.put("retryLimit",MAX_GENERATION_RETRIES);
+        response.put("retryExhausted",retryExhausted);
+        Object rawRetryNotBefore=generation.get("retryNotBeforeEpoch");
+        long retryNotBeforeEpoch=rawRetryNotBefore instanceof Number number
+                ?number.longValue():String.valueOf(rawRetryNotBefore)
+                    .matches("^[0-9]{1,12}$")
+                        ?Long.parseLong(String.valueOf(rawRetryNotBefore)):0L;
+        if(retryableFailure&&!retryExhausted&&retryNotBeforeEpoch>0L){
+            response.put("retryNotBeforeEpoch",retryNotBeforeEpoch);
+            response.put("retryNotBefore",java.time.Instant
+                    .ofEpochSecond(retryNotBeforeEpoch).toString());
+        }
+        response.put("generation",generation);
         return ResponseEntity.ok().header("Cache-Control","no-store").body(response);
     }
 

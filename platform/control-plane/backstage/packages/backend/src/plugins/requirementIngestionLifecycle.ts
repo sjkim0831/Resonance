@@ -15,7 +15,8 @@ export type RequirementPublicationDisposition =
   | 'QUEUED'
   | 'APPLIED'
   | 'FAILED'
-  | 'REVIEW_REQUIRED';
+  | 'REVIEW_REQUIRED'
+  | 'CANCELLED';
 
 export type RequirementPublicationPersistence = {
   releaseStatus: string;
@@ -114,6 +115,39 @@ const publicationStatuses = (payload: Record<string, unknown>) => {
   ].map(normalizedStatus);
 };
 
+const publicationGeneration = (payload: Record<string, unknown>) =>
+  payload.generation && typeof payload.generation === 'object'
+    ? (payload.generation as Record<string, unknown>)
+    : {};
+
+/**
+ * Runtime FAILED/REVIEW_REQUIRED is only terminal after the runtime retry
+ * budget is exhausted. Older receipts do not carry this bit, so they retain
+ * their historical terminal meaning instead of being retried without a bound.
+ */
+export const requirementRuntimeRetryExhausted = (
+  payload: Record<string, unknown>,
+): boolean | undefined => {
+  const generation = publicationGeneration(payload);
+  const explicit = payload.retryExhausted ?? generation.retryExhausted;
+  if (typeof explicit === 'boolean') return explicit;
+  const attempt = Number(
+    payload.retryAttempt ?? generation.retryAttempt ?? Number.NaN,
+  );
+  const limit = Number(
+    payload.retryLimit ?? generation.retryLimit ?? Number.NaN,
+  );
+  if (
+    Number.isInteger(attempt) &&
+    attempt >= 0 &&
+    Number.isInteger(limit) &&
+    limit > 0
+  ) {
+    return attempt >= limit;
+  }
+  return undefined;
+};
+
 export const requirementPublicationDisposition = ({
   analysisStatus,
   releaseStatus,
@@ -126,6 +160,12 @@ export const requirementPublicationDisposition = ({
   ) {
     return 'APPLIED';
   }
+  if (
+    statuses.some(status =>
+      ['GENERATION_CANCELLED', 'CANCELLED'].includes(status),
+    )
+  )
+    return 'CANCELLED';
   if (statuses.includes('REVIEW_REQUIRED')) return 'REVIEW_REQUIRED';
   if (statuses.some(status => ['GENERATION_FAILED', 'FAILED'].includes(status)))
     return 'FAILED';
@@ -150,14 +190,33 @@ export const bridgePublicationDisposition = (
   ) {
     return 'APPLIED';
   }
-  if (statuses.includes('REVIEW_REQUIRED')) return 'REVIEW_REQUIRED';
-  if (statuses.some(status => ['GENERATION_FAILED', 'FAILED'].includes(status)))
-    return 'FAILED';
   if (
     statuses.some(status =>
-      ['GENERATION_QUEUED', 'QUEUED', 'PENDING', 'PLANNED', 'RUNNING'].includes(
-        status,
-      ),
+      ['GENERATION_CANCELLED', 'CANCELLED'].includes(status),
+    )
+  )
+    return 'CANCELLED';
+  const reviewRequired = statuses.includes('REVIEW_REQUIRED');
+  const failed = statuses.some(status =>
+    ['GENERATION_FAILED', 'FAILED'].includes(status),
+  );
+  if (reviewRequired || failed) {
+    // A failed runtime attempt remains pending while its durable self-healer
+    // owns another attempt. This prevents Backstage from freezing the local
+    // release/tasks before FAILED(0) -> QUEUED(1) -> APPLIED converges.
+    if (requirementRuntimeRetryExhausted(payload) === false) return 'QUEUED';
+    return reviewRequired ? 'REVIEW_REQUIRED' : 'FAILED';
+  }
+  if (
+    statuses.some(status =>
+      [
+        'GENERATION_QUEUED',
+        'QUEUED',
+        'PENDING',
+        'PLANNED',
+        'RUNNING',
+        'UNKNOWN',
+      ].includes(status),
     )
   ) {
     return 'QUEUED';
@@ -201,6 +260,17 @@ export const requirementPublicationPersistence = (
       successful: false,
     };
   }
+  if (disposition === 'CANCELLED') {
+    return {
+      releaseStatus: 'CANCELLED',
+      projectStatus: 'GENERATION_CANCELLED',
+      analysisStatus: 'GENERATION_CANCELLED',
+      itemStatus: 'GENERATION_CANCELLED',
+      completeTasks: true,
+      taskStatus: 'FAILED',
+      successful: false,
+    };
+  }
   return {
     releaseStatus: 'QUEUED',
     projectStatus: 'GENERATION_QUEUED',
@@ -217,20 +287,29 @@ export const requirementReceiptTransitionAllowed = ({
   currentAttempt,
   incomingDisposition,
   incomingAttempt,
+  incomingRetryExhausted,
   existingRevision,
 }: {
   currentReleaseStatus: unknown;
   currentAttempt: number;
   incomingDisposition: RequirementPublicationDisposition;
   incomingAttempt: number;
+  incomingRetryExhausted?: boolean;
   existingRevision: boolean;
 }) => {
   const current = normalizedStatus(currentReleaseStatus);
-  if (current === 'APPLIED') return false;
+  if (['APPLIED', 'CANCELLED'].includes(current)) return false;
   if (incomingDisposition === 'APPLIED') return true;
-  const currentTerminal = ['FAILED', 'REVIEW_REQUIRED'].includes(current);
+  const currentTerminal = ['FAILED', 'REVIEW_REQUIRED', 'CANCELLED'].includes(
+    current,
+  );
   if (incomingDisposition === 'QUEUED' && currentTerminal) {
-    return existingRevision && incomingAttempt > currentAttempt;
+    return (
+      existingRevision &&
+      (incomingAttempt > currentAttempt ||
+        (incomingRetryExhausted === false &&
+          incomingAttempt === currentAttempt))
+    );
   }
   if (incomingDisposition === 'QUEUED' && current === 'QUEUED') {
     return incomingAttempt > currentAttempt;
@@ -252,13 +331,13 @@ export const reconcileRequirementPublicationReceipt = async ({
   ) => Promise<RequirementPublicationDisposition>;
 }) => {
   const localDisposition = requirementPublicationDisposition(state);
-  if (
-    localDisposition &&
-    ['APPLIED', 'FAILED', 'REVIEW_REQUIRED'].includes(localDisposition)
-  ) {
+  if (localDisposition && ['APPLIED', 'CANCELLED'].includes(localDisposition)) {
     return { disposition: localDisposition, reconciled: false };
   }
-  if (localDisposition !== 'QUEUED') {
+  if (
+    !localDisposition ||
+    !['QUEUED', 'FAILED', 'REVIEW_REQUIRED'].includes(localDisposition)
+  ) {
     throw new RequirementPublicationError(
       {
         success: false,
@@ -310,7 +389,7 @@ export const ensureRequirementPublication = async ({
   const currentDisposition = requirementPublicationDisposition(state);
   if (
     currentDisposition &&
-    (currentDisposition === 'APPLIED' || !refreshExisting)
+    (['APPLIED', 'CANCELLED'].includes(currentDisposition) || !refreshExisting)
   ) {
     return {
       attempted: false,

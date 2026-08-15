@@ -66,7 +66,7 @@ class ActorProcessGovernanceServicePostgresContractTest {
     @BeforeEach
     void seed(){
         jdbc.execute("drop trigger if exists reject_generation_job on framework_development_job");
-        jdbc.execute("truncate framework_development_job_gate_result,framework_development_job,"+
+        jdbc.execute("truncate framework_development_job_event,framework_development_job_gate_result,framework_development_job,"+
             "framework_process_artifact,"+
             "framework_permission_grant_v1,framework_permission_requirement_v1,framework_step_execution_spec,"+
             "framework_screen_blueprint,framework_professional_screen_contract,"+
@@ -431,6 +431,62 @@ class ActorProcessGovernanceServicePostgresContractTest {
     }
 
     @Test
+    void sameHeadExhaustedFailureOrBlockResetsOneJobAndWorkerClaimsExactNewAttempt(){
+        Map<String,Object> first=direct();
+        long jobId=((Number)first.get("jobId")).longValue();
+        jdbc.update("""
+            update framework_development_job
+               set job_status='FAILED',quality_status='FAILED',attempt_count=max_attempts,
+                   completed_at=current_timestamp,result_json='{"failed":true}',
+                   evidence_ref='failed-evidence',last_error='worker failed'
+             where job_id=?
+            """,jobId);
+        jdbc.update("""
+            insert into framework_development_job_gate_result(job_id,gate_code,result)
+            values(?,'FAILED_GATE','FAILED')
+            """,jobId);
+
+        Map<String,Object> recovered=direct();
+
+        assertEquals("QUEUED",recovered.get("status"));
+        assertEquals(true,recovered.get("recoveryReset"));
+        assertEquals(true,recovered.get("workerCanProgress"));
+        assertEquals(0,number(recovered,"jobAttemptCount"));
+        assertEquals(1,count("framework_development_job"));
+        assertEquals(0,jdbc.queryForObject(
+            "select count(*) from framework_development_job_gate_result where job_id=?",
+            Integer.class,jobId));
+        assertEquals("PLANNED",jdbc.queryForObject(
+            "select job_status from framework_development_job where job_id=?",String.class,jobId));
+        assertEquals(0,jdbc.queryForObject(
+            "select attempt_count from framework_development_job where job_id=?",Integer.class,jobId));
+
+        Map<String,Object> claim=transaction.execute(status->
+            service.claimDevelopmentJob("retry-worker"));
+        assertEquals(true,claim.get("available"));
+        assertEquals(jobId,((Number)claim.get("jobId")).longValue());
+        assertEquals(1,((Number)claim.get("attemptCount")).intValue());
+        assertEquals("RUNNING",claim.get("jobStatus"));
+        assertEquals(1,jdbc.queryForObject(
+            "select attempt_count from framework_development_job where job_id=?",Integer.class,jobId));
+
+        jdbc.update("""
+            update framework_development_job
+               set job_status='BLOCKED',quality_status='FAILED',attempt_count=max_attempts,
+                   lease_token=null,lease_until=null,last_error='quality gate blocked'
+             where job_id=?
+            """,jobId);
+        Map<String,Object> recoveredBlock=direct();
+        assertEquals("QUEUED",recoveredBlock.get("status"));
+        assertEquals(true,recoveredBlock.get("recoveryReset"));
+        assertEquals(true,recoveredBlock.get("workerCanProgress"));
+        assertEquals("PLANNED",jdbc.queryForObject(
+            "select job_status from framework_development_job where job_id=?",String.class,jobId));
+        assertEquals(0,jdbc.queryForObject(
+            "select attempt_count from framework_development_job where job_id=?",Integer.class,jobId));
+    }
+
+    @Test
     void completedJobIsReopenedInPlaceForANewDesignRevision(){
         jdbc.update("insert into comtnthemedefinition(theme_id,use_at,is_active) values('ALT_REGISTERED_THEME','Y','Y')");
         Map<String,Object> first=direct();
@@ -652,7 +708,7 @@ class ActorProcessGovernanceServicePostgresContractTest {
     }
 
     private void resetGenerationState(){
-        jdbc.execute("truncate framework_development_job_gate_result,"+
+        jdbc.execute("truncate framework_development_job_event,framework_development_job_gate_result,"+
             "framework_development_job,framework_process_artifact restart identity");
         jdbc.update("""
             update framework_step_execution_spec set screen_contract='[]',field_contract='{}',
@@ -825,6 +881,22 @@ class ActorProcessGovernanceServicePostgresContractTest {
               completed_at timestamp,result_json text not null default '{}',evidence_ref text,
               rollback_ref text,last_error text,quality_report text not null default '{}',
               updated_at timestamp default current_timestamp)
+            """);
+        jdbc.execute("""
+            create table framework_development_job_event(
+              event_id bigserial primary key,
+              job_id bigint not null references framework_development_job(job_id) on delete cascade,
+              event_type text not null,from_status text,to_status text not null,
+              worker_id text,detail_json text not null default '{}',
+              created_at timestamp not null default current_timestamp)
+            """);
+        jdbc.execute("""
+            create table framework_development_phase(
+              job_type text primary key,phase_order integer,active_yn text)
+            """);
+        jdbc.execute("""
+            create table framework_development_job_dependency(
+              job_id bigint,depends_on_job_id bigint,dependency_type text)
             """);
         jdbc.execute("""
             create table framework_development_job_gate_result(

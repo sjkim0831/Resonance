@@ -50,6 +50,7 @@ type SourceReceipt = {
   status?: string;
   success?: boolean;
   sourceCommitted?: boolean;
+  sourceCommitState?: 'COMMITTED' | 'REJECTED' | 'UNKNOWN';
   idempotent?: boolean;
   activationPolicy?: string;
   controlPlaneSnapshot?: string;
@@ -57,6 +58,9 @@ type SourceReceipt = {
   syncReceiptId?: string;
   retryAttempt?: number;
   retryNotBefore?: string;
+  retryExhausted?: boolean;
+  retryable?: boolean;
+  retryLimit?: number;
   affectedScreenCount?: number;
   affectedProcessCount?: number;
   jobCount?: number;
@@ -256,7 +260,6 @@ export function DesignAssetControlPage() {
     setReceipt(result);
     if (
       sourceResponse.status === 202 &&
-      result.sourceCommitted === true &&
       result.controlPlaneSnapshot === 'SYNC_REQUIRED'
     ) {
       if (!result.syncReceiptId) {
@@ -266,7 +269,11 @@ export function DesignAssetControlPage() {
             '자동 동기화 영수증이 없어 완료로 처리할 수 없습니다.',
         );
       }
-      setSaveState('런타임 원본 커밋됨 · 제어판 동기화 대기');
+      setSaveState(
+        result.sourceCommitted === true
+          ? '런타임 원본 커밋됨 · 제어판 동기화 대기'
+          : '런타임 원본 확인 중 · 제어판 동기화 대기',
+      );
       setError(result.message || '제어판 스냅샷 자동 동기화를 기다립니다.');
       const controller = new AbortController();
       sourceSyncPollRef.current?.abort();
@@ -291,6 +298,7 @@ export function DesignAssetControlPage() {
         },
       });
       if (controller.signal.aborted || sync.outcome === 'CANCELLED') return;
+      setReceipt({ ...result, ...sync.receipt });
       if (sync.outcome === 'SYNCHRONIZED' && sync.receipt) {
         const authoritativeAssets = await load();
         const authoritative = authoritativeAssets.find(
@@ -309,6 +317,15 @@ export function DesignAssetControlPage() {
         setReceipt({ ...result, ...sync.receipt });
         setSaveState('동기화 완료 · 백엔드 영수증 검증됨');
         setError('');
+        return;
+      }
+      if (sync.outcome === 'FAILED') {
+        setSaveState(
+          sync.receipt?.status === 'CANCELLED'
+            ? '동기화 취소됨 · 재시도 불가'
+            : '동기화 추적 실패 · 승인자 재시도 가능',
+        );
+        setError(sync.receipt?.message || '자동 동기화가 종료되었습니다.');
         return;
       }
       setSaveState('동기화 진행 중 · 백엔드 자동 재시도 유지');
@@ -359,11 +376,35 @@ export function DesignAssetControlPage() {
     );
   };
 
+  const retrySourceSync = async () => {
+    if (!receipt?.syncReceiptId) return;
+    const retryResponse = await fetchApi.fetch(
+      `/api/resonance-projects/design-assets/${encodeURIComponent(
+        projectId,
+      )}/source-sync/${encodeURIComponent(receipt.syncReceiptId)}/retry`,
+      { method: 'POST' },
+    );
+    const retryReceipt = (await retryResponse.json()) as SourceReceipt;
+    setReceipt({ ...receipt, ...retryReceipt });
+    if (!retryResponse.ok) {
+      setSaveState('동기화 재시도 요청 실패');
+      setError(retryReceipt.message || `재시도 실패 (${retryResponse.status})`);
+      return;
+    }
+    setSaveState('동기화 재시도 등록됨 · 백엔드 자동 확인 중');
+    setError('');
+  };
+
   const receiptSynchronized =
     receipt?.sourceCommitted === true &&
     receipt.controlPlaneSnapshot === 'SYNCHRONIZED' &&
     /^[0-9a-f]{64}$/.test(String(receipt.snapshotFingerprint ?? ''));
   let sourceStorageLabel = '안 됨';
+  if (
+    receipt?.sourceCommitState === 'UNKNOWN' &&
+    receipt.controlPlaneSnapshot === 'SYNC_REQUIRED'
+  )
+    sourceStorageLabel = '확인 중';
   if (receipt?.sourceCommitted) sourceStorageLabel = '커밋됨 · 동기화 대기';
   if (receiptSynchronized) sourceStorageLabel = '및 스냅샷 동기화 완료';
 
@@ -414,7 +455,7 @@ export function DesignAssetControlPage() {
                     label={
                       receiptSynchronized
                         ? receipt.status ?? 'SYNCHRONIZED'
-                        : 'PENDING'
+                        : receipt.status ?? 'PENDING'
                     }
                   />
                   <Chip
@@ -424,6 +465,16 @@ export function DesignAssetControlPage() {
                   <Chip
                     label={`스냅샷 ${receipt.controlPlaneSnapshot ?? '-'}`}
                   />
+                  {receipt.retryable && receipt.syncReceiptId && (
+                    <Button
+                      size="small"
+                      color="primary"
+                      variant="outlined"
+                      onClick={() => void retrySourceSync()}
+                    >
+                      동기화 재시도
+                    </Button>
+                  )}
                 </Box>
                 <Box mt={1}>
                   <Typography variant="body2">

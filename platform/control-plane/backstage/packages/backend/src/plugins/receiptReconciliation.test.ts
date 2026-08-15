@@ -84,6 +84,7 @@ describe('headless receipt reconciliation', () => {
       terminal: 3,
       pending: 0,
       retried: 0,
+      deadLettered: 0,
       stale: 0,
     });
   });
@@ -197,7 +198,7 @@ describe('headless receipt reconciliation', () => {
           return true;
         },
         cancelClaim: async () => false,
-        retryClaim: async () => true,
+        retryClaim: async () => 'RETRIED',
       });
 
     await expect(run()).resolves.toMatchObject({ retried: 1, terminal: 0 });
@@ -222,7 +223,7 @@ describe('headless receipt reconciliation', () => {
     };
     const commitSnapshot = jest.fn();
     const cancelClaim = jest.fn(async () => true);
-    const retryClaim = jest.fn(async () => true);
+    const retryClaim = jest.fn(async () => 'RETRIED' as const);
 
     const summary = await reconcileDesignSnapshotSyncBatch({
       claimDue: async () => [claim],
@@ -240,6 +241,7 @@ describe('headless receipt reconciliation', () => {
       terminal: 1,
       pending: 0,
       retried: 0,
+      deadLettered: 0,
       stale: 0,
     });
     expect(cancelClaim).toHaveBeenCalledWith(
@@ -265,7 +267,7 @@ describe('headless receipt reconciliation', () => {
       retryAttempt: 1,
     };
     const cancelClaim = jest.fn(async () => true);
-    const retryClaim = jest.fn(async () => true);
+    const retryClaim = jest.fn(async () => 'RETRIED' as const);
 
     const summary = await reconcileDesignSnapshotSyncBatch({
       claimDue: async () => [claim],
@@ -278,6 +280,51 @@ describe('headless receipt reconciliation', () => {
     expect(summary).toMatchObject({ retried: 1, terminal: 0, stale: 0 });
     expect(cancelClaim).not.toHaveBeenCalled();
     expect(retryClaim).toHaveBeenCalledTimes(1);
+  });
+
+  it('dead-letters the finite fifth source-sync attempt and preserves its confirmed runtime receipt', async () => {
+    const claim: DesignSnapshotSyncClaim = {
+      syncId: 'sync-dead-letter',
+      projectId: 'A',
+      assetType: 'THEME',
+      assetId: 'KRDS',
+      snapshotBaseFingerprint: 'a'.repeat(64),
+      assetFingerprint: 'b'.repeat(64),
+      mutation: { assetFingerprint: 'b'.repeat(64) },
+      actorRef: 'user:default/approver',
+      claimToken: 'lease-dead-letter',
+      retryAttempt: 5,
+    };
+    const receipt = {
+      sourceCommitted: true,
+      assetFingerprint: 'b'.repeat(64),
+    };
+    const retryClaim = jest.fn(async () => 'DEAD_LETTERED' as const);
+
+    const summary = await reconcileDesignSnapshotSyncBatch({
+      claimDue: async () => [claim],
+      replaySource: async () => receipt,
+      commitSnapshot: async () => {
+        throw new Error('snapshot database unavailable');
+      },
+      cancelClaim: async () => false,
+      retryClaim,
+    });
+
+    expect(summary).toEqual({
+      claimed: 1,
+      terminal: 1,
+      pending: 0,
+      retried: 0,
+      deadLettered: 1,
+      stale: 0,
+    });
+    expect(retryClaim).toHaveBeenCalledWith(
+      claim,
+      'snapshot database unavailable',
+      expect.any(Date),
+      receipt,
+    );
   });
 
   it('persists split source receipts before returning 202 without a snapshot fingerprint', () => {
@@ -413,5 +460,75 @@ describe('headless receipt reconciliation', () => {
       "['project_id', 'asset_type', 'asset_id', 'asset_fingerprint']",
     );
     expect(route).toContain('cancelClaim: cancelDesignSnapshotSyncClaim');
+  });
+
+  it('uses a finite indexed source-sync queue with auditable dead-letter and authenticated retry', () => {
+    const route = readFileSync(join(__dirname, 'resonanceProjects.ts'), 'utf8');
+    const claimStart = route.indexOf('const claimDesignSnapshotSyncs = async');
+    const replayStart = route.indexOf(
+      'const replayDesignAssetSource = async',
+      claimStart,
+    );
+    const claim = route.slice(claimStart, replayStart);
+    const retryStart = route.indexOf(
+      'const retryDesignSnapshotSyncClaim = async',
+    );
+    const routerStart = route.indexOf('const router = Router()', retryStart);
+    const retry = route.slice(retryStart, routerStart);
+    const manualRetryStart = route.indexOf(
+      "'/design-assets/:projectId/source-sync/:syncId/retry'",
+      routerStart,
+    );
+    const manualRetryEnd = route.indexOf(
+      "'/design-assets/:projectId/drafts'",
+      manualRetryStart,
+    );
+    const manualRetry = route.slice(manualRetryStart, manualRetryEnd);
+
+    expect(route).toContain('const DESIGN_SNAPSHOT_SYNC_MAX_ATTEMPTS = 5;');
+    expect(route).toContain('resonance_design_asset_source_sync_retry_due_idx');
+    expect(route).toContain('resonance_design_asset_source_sync_exhausted_idx');
+    expect(route).toContain(
+      'and retry_attempt < ${DESIGN_SNAPSHOT_SYNC_MAX_ATTEMPTS}',
+    );
+    expect(claim).toContain("'retry_attempt',");
+    expect(claim).toContain('.forUpdate()');
+    expect(claim).toContain('.skipLocked()');
+    expect(claim).toContain("reason: 'MAX_ATTEMPT_LEASE_EXPIRED'");
+    expect(claim).toContain("sync_status: 'SYNC_TRACKING_FAILED'");
+    expect(retry).toContain(
+      "const nextStatus = exhausted ? 'SYNC_TRACKING_FAILED' : 'PENDING';",
+    );
+    expect(retry).toContain("action_code: 'SOURCE_SYNC_TRACKING_FAILED'");
+    expect(retry).toContain("return 'DEAD_LETTERED'");
+    expect(route).toContain(
+      "'/design-assets/:projectId/source-sync/:syncId/retry'",
+    );
+    expect(route).toContain("action_code: 'SOURCE_SYNC_RETRY_REQUESTED'");
+    expect(manualRetry).toContain('resolveAuthenticatedProjectIdentity(');
+    expect(manualRetry).toContain('lockGlobalDesignSourceAuthority(');
+    expect(manualRetry).toContain('sourceIdentity.principals');
+    expect(manualRetry).toContain('created_by: sourceIdentity.actorRef');
+    expect(manualRetry).toContain('account_id: sourceIdentity.accountId');
+    expect(manualRetry).toContain(
+      'authority_principal: globalAuthorityPrincipal',
+    );
+    expect(manualRetry).not.toContain('requireDesignAssetRole(');
+    expect(route).toContain("status: 'CANCELLED'");
+    expect(route).toContain('retryExhausted: trackingFailed');
+    expect(route).toContain('retryable: trackingFailed');
+  });
+
+  it('rechecks the requirement due timestamp in the locked SKIP LOCKED query', () => {
+    const route = readFileSync(join(__dirname, 'resonanceProjects.ts'), 'utf8');
+    const lockedStart = route.indexOf('const locked = await transaction(');
+    const lockedEnd = route.indexOf('.skipLocked();', lockedStart);
+    const lockedClaim = route.slice(lockedStart, lockedEnd);
+
+    expect(lockedStart).toBeGreaterThan(0);
+    expect(lockedClaim).toContain(
+      ".orWhere('document.publication_next_attempt_at', '<=', now)",
+    );
+    expect(lockedClaim).toContain('.forUpdate()');
   });
 });

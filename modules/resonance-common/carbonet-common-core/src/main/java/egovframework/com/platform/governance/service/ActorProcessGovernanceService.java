@@ -3222,11 +3222,22 @@ public class ActorProcessGovernanceService {
         String specification=toJson(generationSpec);
         String canonicalGroup=process+"_CANONICAL_PUBLICATION";
         List<Map<String,Object>> existing=jdbc.queryForList(
-            "select job_id as \"jobId\",job_status as \"jobStatus\",target_path as \"targetPath\" from framework_development_job where process_code=? and job_type='FULL_STACK_GENERATION' and job_group_code=? for update",
+            "select job_id as \"jobId\",job_status as \"jobStatus\","+
+            "target_path as \"targetPath\",attempt_count as \"attemptCount\","+
+            "max_attempts as \"maxAttempts\",(lease_until is not null and "+
+            "lease_until>current_timestamp) as \"leaseActive\","+
+            "(lease_until is not null) as \"leasePresent\" "+
+            "from framework_development_job where process_code=? and "+
+            "job_type='FULL_STACK_GENERATION' and job_group_code=? for update",
             process,canonicalGroup);
         long jobId;
         boolean queued;
         boolean resetArtifact;
+        boolean recoveryReset=false;
+        String executableStatus;
+        int executableAttempt;
+        int executableMaximum;
+        boolean executableLeasePresent;
         if(existing.isEmpty()){
             jobId=jdbc.queryForObject("""
                 insert into framework_development_job(
@@ -3239,11 +3250,28 @@ public class ActorProcessGovernanceService {
                 canonicalGroup,actor);
             queued=true;
             resetArtifact=true;
+            executableStatus="PLANNED";
+            executableAttempt=0;
+            executableMaximum=3;
+            executableLeasePresent=false;
         }else{
             if(existing.size()!=1)throw new IllegalStateException("CANONICAL_GENERATION_JOB_NOT_EXACT");
             jobId=((Number)existing.get(0).get("jobId")).longValue();
             String status=String.valueOf(existing.get(0).get("jobStatus"));
             boolean sameHeads=target.equals(String.valueOf(existing.get(0).get("targetPath")));
+            int attemptCount=((Number)existing.get(0).getOrDefault("attemptCount",0)).intValue();
+            int maxAttempts=Math.max(1,
+                ((Number)existing.get(0).getOrDefault("maxAttempts",3)).intValue());
+            boolean leaseActive=Boolean.TRUE.equals(existing.get(0).get("leaseActive"));
+            boolean leasePresent=Boolean.TRUE.equals(existing.get(0).get("leasePresent"));
+            executableStatus=status;
+            executableAttempt=attemptCount;
+            executableMaximum=maxAttempts;
+            executableLeasePresent=leasePresent;
+            boolean exhaustedInactive=attemptCount>=maxAttempts
+                &&!("RUNNING".equals(status)&&leaseActive);
+            boolean orphanedState="CLAIMED".equals(status)
+                ||"RUNNING".equals(status)&&!leasePresent;
             if(!sameHeads){
                 queued=true;resetArtifact=true;
                 int revisionReset=jdbc.update("""
@@ -3259,20 +3287,30 @@ public class ActorProcessGovernanceService {
                 if(revisionReset!=1)throw new IllegalStateException(
                     "CANONICAL_GENERATION_JOB_REVISION_RESET_FAILED");
                 jdbc.update("delete from framework_development_job_gate_result where job_id=?",jobId);
+                executableStatus="PLANNED";executableAttempt=0;
+                executableLeasePresent=false;
             }else if(Set.of("VERIFIED","COMPLETED").contains(status)){
                 queued=false;resetArtifact=false;
-            }else if(Set.of("PLANNED","CLAIMED","RUNNING").contains(status)){
-                queued=true;resetArtifact=false;
-            }
-            else if(Set.of("FAILED","BLOCKED").contains(status)){
-                queued=true;resetArtifact=true;
-                jdbc.update("""
+            }else if(Set.of("FAILED","BLOCKED").contains(status)
+                    ||exhaustedInactive||orphanedState){
+                queued=true;resetArtifact=true;recoveryReset=true;
+                int retryReset=jdbc.update("""
                 update framework_development_job
                    set step_code=?,specification_json=?,job_status='PLANNED',approval_status='APPROVED',
-                       quality_status='PENDING',worker_id=null,lease_token=null,lease_until=null,
-                       last_error=null,completed_at=null,updated_at=current_timestamp
-                 where job_id=?
-                """,coordinatorStep,specification,jobId);
+                       quality_status='PENDING',quality_report='{}',worker_id=null,
+                       lease_token=null,lease_until=null,attempt_count=0,started_at=null,
+                       completed_at=null,result_json='{}',evidence_ref=null,rollback_ref=null,
+                       last_error=null,updated_at=current_timestamp
+                 where job_id=? and process_code=? and job_type='FULL_STACK_GENERATION'
+                   and job_group_code=? and target_path=?
+                """,coordinatorStep,specification,jobId,process,canonicalGroup,target);
+                if(retryReset!=1)throw new IllegalStateException(
+                    "CANONICAL_GENERATION_JOB_RETRY_RESET_FAILED");
+                jdbc.update("delete from framework_development_job_gate_result where job_id=?",jobId);
+                executableStatus="PLANNED";executableAttempt=0;
+                executableLeasePresent=false;
+            }else if(Set.of("PLANNED","RETRY","RUNNING").contains(status)){
+                queued=true;resetArtifact=false;
             }else throw new IllegalStateException("CANONICAL_GENERATION_JOB_STATUS_INVALID: "+status);
         }
         Integer artifactCount=jdbc.queryForObject(
@@ -3306,6 +3344,11 @@ public class ActorProcessGovernanceService {
             """,Integer.class,process,canonicalGroup);
         if(canonicalJobCount==null||canonicalJobCount!=1)
             throw new IllegalStateException("CANONICAL_GENERATION_JOB_NOT_EXACT");
+        boolean workerCanProgress=(Set.of("PLANNED","RETRY").contains(executableStatus)
+                &&executableAttempt<executableMaximum)
+            ||("RUNNING".equals(executableStatus)&&executableLeasePresent);
+        if(queued&&!workerCanProgress)throw new IllegalStateException(
+            "CANONICAL_GENERATION_JOB_UNCLAIMABLE: "+jobId);
 
         Map<String,Object> result=new LinkedHashMap<>();
         result.put("success",true);result.put("status",queued?"QUEUED":"UNCHANGED");
@@ -3317,6 +3360,10 @@ public class ActorProcessGovernanceService {
         result.put("designHash",str(trigger,"designHash").isBlank()
             ?designSetHash:str(trigger,"designHash"));
         result.put("sourceHash",sourceHash);
+        result.put("jobAttemptCount",executableAttempt);
+        result.put("jobMaxAttempts",executableMaximum);
+        result.put("workerCanProgress",!queued||workerCanProgress);
+        result.put("recoveryReset",recoveryReset);
         result.put("processInputHash",sourceHash);result.put("designSetHash",designSetHash);
         result.put("designCatalogHash",designCatalogHash);
         result.put("endpointCatalogHash",endpointCatalogHash);
@@ -7750,9 +7797,11 @@ public class ActorProcessGovernanceService {
         List<Map<String,Object>> rows=jdbc.queryForList("select j.* from framework_development_job j left join framework_development_phase phase on phase.job_type=j.job_type and phase.active_yn='Y' where j.approval_status='APPROVED' and (j.job_status in ('PLANNED','RETRY') or (j.job_status='RUNNING' and j.lease_until is not null and j.lease_until<=current_timestamp)) and j.attempt_count<j.max_attempts and not exists(select 1 from framework_development_job_dependency d join framework_development_job required_job on required_job.job_id=d.depends_on_job_id where d.job_id=j.job_id and d.dependency_type='REQUIRED' and required_job.job_status not in ('VERIFIED','COMPLETED')) order by coalesce(phase.phase_order,1000),j.process_code,j.step_code,j.job_id for update of j skip locked limit 1");
         if(rows.isEmpty())return Map.of("success",true,"available",false);
         Map<String,Object> job=rows.get(0); long id=((Number)job.get("job_id")).longValue(); String from=String.valueOf(job.get("job_status")),token=UUID.randomUUID().toString();
-        jdbc.update("update framework_development_job set job_status='RUNNING',worker_id=?,lease_token=?,lease_until=current_timestamp+interval '10 minutes',attempt_count=attempt_count+1,started_at=coalesce(started_at,current_timestamp),last_error=null,updated_at=current_timestamp where job_id=?",worker,token,id);
+        int nextAttempt=((Number)job.getOrDefault("attempt_count",0)).intValue()+1;
+        int claimed=jdbc.update("update framework_development_job set job_status='RUNNING',worker_id=?,lease_token=?,lease_until=current_timestamp+interval '10 minutes',attempt_count=attempt_count+1,started_at=coalesce(started_at,current_timestamp),last_error=null,updated_at=current_timestamp where job_id=? and job_status=? and attempt_count=? and attempt_count<max_attempts",worker,token,id,from,nextAttempt-1);
+        if(claimed!=1)throw new IllegalStateException("DEVELOPMENT_JOB_CLAIM_CAS_NOT_EXACT");
         event(id,"CLAIMED",from,"RUNNING",worker,"{}");
-        Map<String,Object> out=new LinkedHashMap<>(job);out.put("jobId",id);out.put("leaseToken",token);out.put("available",true);out.put("success",true);return out;
+        Map<String,Object> out=new LinkedHashMap<>(job);out.put("jobId",id);out.put("leaseToken",token);out.put("jobStatus","RUNNING");out.put("job_status","RUNNING");out.put("attemptCount",nextAttempt);out.put("attempt_count",nextAttempt);out.put("available",true);out.put("success",true);return out;
     }
 
     @Transactional public Map<String,Object> heartbeatDevelopmentJob(long jobId,String token,String worker){

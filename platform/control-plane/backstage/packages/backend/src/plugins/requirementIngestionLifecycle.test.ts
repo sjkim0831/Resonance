@@ -119,9 +119,9 @@ describe('requirement ingestion lifecycle', () => {
       routeSource.indexOf("'/:projectId/design-releases'", lifecycleStart),
       routeSource.indexOf("'/:projectId/development-contract'", lifecycleStart),
     );
-    expect(retiredMutationRoutes.match(/response\.status\(410\)/g)).toHaveLength(
-      2,
-    );
+    expect(
+      retiredMutationRoutes.match(/response\.status\(410\)/g),
+    ).toHaveLength(2);
     expect(retiredMutationRoutes).not.toContain('RESONANCE_OPS_TOKEN');
     expect(retiredMutationRoutes).not.toContain('contract_payload');
     expect(retiredMutationRoutes).not.toContain('.onConflict(');
@@ -142,9 +142,8 @@ describe('requirement ingestion lifecycle', () => {
     expect(routeSource).toContain(
       'finished_at: target.completeTasks ? recordedAt : null',
     );
-    expect(lifecycle).toContain(
-      "const terminalFailure = ['FAILED', 'REVIEW_REQUIRED']",
-    );
+    expect(lifecycle).toContain("'CANCELLED',");
+    expect(lifecycle).toContain('const terminalFailure = [');
     expect(routeSource).toContain(
       ".where('design_version', '<=', designVersion)",
     );
@@ -212,9 +211,13 @@ describe('requirement ingestion lifecycle', () => {
       ),
       receiptLifecycle.indexOf('export const ensureRequirementPublication'),
     );
+    expect(reconciliationHelper).toContain("['APPLIED', 'CANCELLED']");
     expect(
-      reconciliationHelper.indexOf("['APPLIED', 'FAILED', 'REVIEW_REQUIRED']"),
+      reconciliationHelper.indexOf("['APPLIED', 'CANCELLED']"),
     ).toBeLessThan(reconciliationHelper.indexOf('await readReceipt()'));
+    expect(reconciliationHelper).not.toContain(
+      "['APPLIED', 'FAILED', 'REVIEW_REQUIRED']",
+    );
     expect(reconciliation).toContain("'x-resonance-token': bridgeToken");
     expect(reconciliation).not.toContain('contract_payload');
   });
@@ -395,6 +398,7 @@ describe('requirement ingestion lifecycle', () => {
           status: 'FAILED',
           message: 'worker failed',
           retryAttempt: 3,
+          retryExhausted: true,
         },
       },
       {
@@ -416,6 +420,7 @@ describe('requirement ingestion lifecycle', () => {
           status: 'REVIEW_REQUIRED',
           message: 'design review required',
           retryAttempt: 2,
+          retryExhausted: true,
         },
       },
       {
@@ -457,8 +462,8 @@ describe('requirement ingestion lifecycle', () => {
     },
   );
 
-  it('rejects a successful bridge response without an exact queued or applied state', async () => {
-    let recorded = false;
+  it('keeps UNKNOWN pending so a later receipt can synchronize it', async () => {
+    const recorded: string[] = [];
     await expect(
       ensureRequirementPublication({
         sourceImmediate: true,
@@ -470,16 +475,18 @@ describe('requirement ingestion lifecycle', () => {
           ok: true,
           payload: { success: true, status: 'UNKNOWN' },
         }),
-        recordPublication: async () => {
-          recorded = true;
+        recordPublication: async disposition => {
+          recorded.push(disposition);
         },
       }),
-    ).rejects.toMatchObject({
-      publication: expect.objectContaining({
-        error: 'UNRECOGNIZED_RUNTIME_PUBLICATION_STATE',
+    ).resolves.toEqual(
+      expect.objectContaining({
+        disposition: 'QUEUED',
+        completed: false,
+        successful: false,
       }),
-    });
-    expect(recorded).toBe(false);
+    );
+    expect(recorded).toEqual(['QUEUED']);
   });
 
   it('preserves the runtime stale-head conflict status instead of translating it to 502', async () => {
@@ -539,17 +546,20 @@ describe('requirement ingestion lifecycle', () => {
       incomingDisposition: RequirementPublicationDisposition,
       incomingAttempt: number,
       existingRevision = true,
+      incomingRetryExhausted?: boolean,
     ) =>
       requirementReceiptTransitionAllowed({
         currentReleaseStatus,
         currentAttempt,
         incomingDisposition,
         incomingAttempt,
+        incomingRetryExhausted,
         existingRevision,
       });
 
     expect(allowed('APPLIED', 1, 'QUEUED', 2)).toBe(false);
     expect(allowed('FAILED', 1, 'QUEUED', 1)).toBe(false);
+    expect(allowed('FAILED', 1, 'QUEUED', 1, true, false)).toBe(true);
     expect(allowed('REVIEW_REQUIRED', 1, 'QUEUED', 2, false)).toBe(false);
     expect(allowed('FAILED', 1, 'QUEUED', 2)).toBe(true);
     expect(allowed('QUEUED', 2, 'QUEUED', 2)).toBe(false);
@@ -557,6 +567,104 @@ describe('requirement ingestion lifecycle', () => {
     expect(allowed('QUEUED', 2, 'FAILED', 1)).toBe(false);
     expect(allowed('QUEUED', 2, 'FAILED', 2)).toBe(true);
     expect(allowed('FAILED', 2, 'APPLIED', 2)).toBe(true);
+    expect(allowed('CANCELLED', 1, 'QUEUED', 2)).toBe(false);
+    expect(allowed('CANCELLED', 1, 'APPLIED', 2)).toBe(false);
+  });
+
+  it('keeps FAILED(0) pending through QUEUED(1) and only completes on APPLIED', async () => {
+    const state = {
+      analysisStatus: 'GENERATION_FAILED',
+      releaseStatus: 'FAILED',
+    };
+    const receipts = [
+      {
+        releaseStatus: 'FAILED',
+        retryAttempt: 0,
+        retryLimit: 3,
+        retryExhausted: false,
+        retryNotBefore: '2026-08-16T00:01:00Z',
+        generation: { status: 'FAILED', retryAttempt: 0, retryLimit: 3 },
+      },
+      {
+        releaseStatus: 'QUEUED',
+        retryAttempt: 1,
+        retryLimit: 3,
+        retryExhausted: false,
+        generation: { status: 'PENDING', retryAttempt: 1, retryLimit: 3 },
+      },
+      {
+        releaseStatus: 'APPLIED',
+        retryAttempt: 1,
+        retryLimit: 3,
+        retryExhausted: false,
+        generation: { status: 'APPLIED', retryAttempt: 1, retryLimit: 3 },
+      },
+    ];
+    const timeline: string[] = [];
+    for (const receipt of receipts) {
+      const result = await reconcileRequirementPublicationReceipt({
+        state,
+        readReceipt: async () => receipt,
+        persistReceipt: async disposition => {
+          timeline.push(disposition);
+          const target = requirementPublicationPersistence(disposition);
+          state.analysisStatus = target.analysisStatus;
+          state.releaseStatus = target.releaseStatus;
+          return disposition;
+        },
+      });
+      expect(result.reconciled).toBe(true);
+    }
+    expect(timeline).toEqual(['QUEUED', 'QUEUED', 'APPLIED']);
+    expect(state).toEqual({
+      analysisStatus: 'GENERATION_APPLIED',
+      releaseStatus: 'APPLIED',
+    });
+  });
+
+  it('keeps CANCELLED terminal without a runtime read or retry', async () => {
+    const readReceipt = jest.fn(async () => ({ status: 'APPLIED' }));
+    const persistReceipt = jest.fn();
+    await expect(
+      reconcileRequirementPublicationReceipt({
+        state: {
+          analysisStatus: 'GENERATION_CANCELLED',
+          releaseStatus: 'CANCELLED',
+        },
+        readReceipt,
+        persistReceipt,
+      }),
+    ).resolves.toEqual({ disposition: 'CANCELLED', reconciled: false });
+    expect(readReceipt).not.toHaveBeenCalled();
+    expect(persistReceipt).not.toHaveBeenCalled();
+  });
+
+  it('never republishes a cancelled revision even when existing heads refresh', async () => {
+    const publish = jest.fn(async () => ({
+      ok: true,
+      payload: { success: true, status: 'APPLIED' },
+    }));
+    const recordPublication = jest.fn();
+
+    await expect(
+      ensureRequirementPublication({
+        sourceImmediate: true,
+        refreshExisting: true,
+        state: {
+          analysisStatus: 'GENERATION_CANCELLED',
+          releaseStatus: 'CANCELLED',
+        },
+        publish,
+        recordPublication,
+      }),
+    ).resolves.toMatchObject({
+      attempted: false,
+      completed: false,
+      successful: false,
+      disposition: 'CANCELLED',
+    });
+    expect(publish).not.toHaveBeenCalled();
+    expect(recordPublication).not.toHaveBeenCalled();
   });
 
   it('keeps an already applied local head terminal without another bridge call', async () => {
