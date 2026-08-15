@@ -26,6 +26,32 @@ import static org.mockito.Mockito.when;
 class ActorProcessGovernanceMutationPropagationTest {
 
     @Test
+    void commonDesignFingerprintIsByteIdenticalToBackstageStableJson(){
+        Map<String,Object> canonical=Map.ofEntries(
+            Map.entry("assetType","SCREEN"),Map.entry("assetId","SCREEN_GLOBAL"),
+            Map.entry("assetName","전역 화면"),Map.entry("routePath","/global"),
+            Map.entry("version","1.0.0"),Map.entry("active",true),
+            Map.entry("payload",Map.ofEntries(
+                Map.entry("schemaVersion","1.0.0"),Map.entry("pageName","전역 화면"),
+                Map.entry("layout","KRDS_WORKSPACE"),Map.entry("theme","KRDS_GOV_DEFAULT"),
+                Map.entry("sections",List.of("SUMMARY","FORM")),
+                Map.entry("components",List.of("JSON_FORM")),
+                Map.entry("dependencies",List.of()))));
+
+        assertEquals("8e54f5c6185545bc94fea05909ce1b4ef9f8f0520566bbccd695f3cd19f4f2a7",
+            ActorProcessGovernanceService.commonDesignAssetFingerprint(canonical));
+        assertEquals("ab37e189a99684ecd2cbad7cb21874b42402f460b7143c932e2c70ef151ff4ad",
+            ActorProcessGovernanceService.commonDesignAssetFingerprint(Map.of(
+                "numbers",List.of(1,1.5,1e-7,1e-6,1e21,-0.0,-1.25e21,1e23,
+                    Double.longBitsToDouble(1L)),
+                "text","control\u000f😀")));
+        Map<String,Object> nonCanonicalRoute=new java.util.LinkedHashMap<>(canonical);
+        nonCanonicalRoute.put("routePath","//global?draft=1#editor");
+        assertEquals(ActorProcessGovernanceService.commonDesignAssetFingerprint(canonical),
+            ActorProcessGovernanceService.commonDesignAssetFingerprint(nonCanonicalRoute));
+    }
+
+    @Test
     void commonDesignSourceFailsClosedBeforeAnyRuntimeWriteOrGenerationJob(){
         JdbcTemplate jdbc=mock(JdbcTemplate.class);
         ActorProcessGovernanceService service=service(jdbc);
@@ -69,11 +95,21 @@ class ActorProcessGovernanceMutationPropagationTest {
         int fanout=mutation.indexOf("refreshAndQueueCanonicalProcess(process,actor,trigger)");
         assertTrue(registry>0&&canonical>registry&&graph>canonical&&fanout>graph);
         assertTrue(mutation.contains("COMMON_DESIGN_REGISTRY_WRITE_NOT_EXACT"));
+        assertTrue(mutation.contains("DESIGN_ASSET_BASE_FINGERPRINT_FORGED"));
+        assertTrue(mutation.contains("DESIGN_ASSET_AFTER_FINGERPRINT_FORGED"));
+        assertTrue(mutation.contains("DESIGN_ASSET_GLOBAL_FINGERPRINT_CHANGED"));
         assertTrue(mutation.contains("COMMON_DESIGN_CANONICAL_HASH_UNCHANGED"));
         assertTrue(mutation.contains("sourceCommitted\",true"));
         assertTrue(mutation.contains("jobCount"));
         assertTrue(mutation.contains("endpointExpected"));
         assertFalse(mutation.contains("DESIGN_ASSET_PROMOTION"));
+        assertTrue(source.contains("\"COMMON_DESIGN_SOURCE_V1:\"+identity"));
+        assertFalse(source.contains("\"COMMON_DESIGN_SOURCE_V1:\"+projectId"));
+        assertTrue(source.contains("case \"THEME\"")||
+            source.contains("if(\"THEME\".equals(assetType))"));
+        assertTrue(source.contains("if(\"SECTION\".equals(assetType))"));
+        assertTrue(source.contains("if(\"COMPONENT\".equals(assetType))"));
+        assertTrue(source.contains("from ui_page_manifest where page_id=? for update"));
 
         int impactEnd=source.indexOf("private int updateCommonDesignRegistry(",end);
         String impact=source.substring(end,impactEnd);

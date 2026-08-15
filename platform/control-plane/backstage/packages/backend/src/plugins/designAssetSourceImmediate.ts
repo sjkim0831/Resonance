@@ -38,6 +38,7 @@ export type SourceDesignAssetMutation = {
   active: boolean;
   payload: Record<string, unknown>;
   dependencies: DesignAssetDependency[];
+  baseAsset: Omit<DesignAssetSnapshot, 'fingerprint'>;
   baseFingerprint: string;
   assetFingerprint: string;
 };
@@ -163,21 +164,153 @@ const assertJsonShape = (value: unknown, label: string, depth = 0): void => {
   throw new Error(`${label} contains a non-JSON value`);
 };
 
+const assertUnicodeScalarString = (value: string): void => {
+  for (let index = 0; index < value.length; index += 1) {
+    const code = value.charCodeAt(index);
+    if (code >= 0xd800 && code <= 0xdbff) {
+      const trail = value.charCodeAt(index + 1);
+      if (!(trail >= 0xdc00 && trail <= 0xdfff)) {
+        throw new Error('value contains an unpaired Unicode surrogate');
+      }
+      index += 1;
+    } else if (code >= 0xdc00 && code <= 0xdfff) {
+      throw new Error('value contains an unpaired Unicode surrogate');
+    }
+  }
+};
+
+const canonicalString = (value: string): string => {
+  assertUnicodeScalarString(value);
+  return `"${Buffer.from(value, 'utf8').toString('hex')}"`;
+};
+
+const canonicalNumber = (value: number): string => {
+  if (!Number.isFinite(value)) {
+    throw new Error('value contains a non-finite number');
+  }
+  const bytes = new ArrayBuffer(8);
+  const view = new DataView(bytes);
+  view.setFloat64(0, Object.is(value, -0) ? 0 : value, false);
+  return `@${view.getUint32(0, false).toString(16).padStart(8, '0')}${view
+    .getUint32(4, false)
+    .toString(16)
+    .padStart(8, '0')}`;
+};
+
 export const stableJson = (value: unknown): string => {
   if (value === undefined) throw new Error('value contains undefined');
   if (Array.isArray(value)) return `[${value.map(stableJson).join(',')}]`;
   if (value && typeof value === 'object') {
     return `{${Object.entries(value as Record<string, unknown>)
-      .sort(([left], [right]) => left.localeCompare(right))
-      .map(([key, item]) => `${JSON.stringify(key)}:${stableJson(item)}`)
+      .sort(([left], [right]) => (left < right ? -1 : left > right ? 1 : 0))
+      .map(([key, item]) => `${canonicalString(key)}:${stableJson(item)}`)
       .join(',')}}`;
   }
-  return JSON.stringify(value) as string;
+  if (typeof value === 'number') return canonicalNumber(value);
+  if (typeof value === 'string') return canonicalString(value);
+  if (typeof value === 'boolean') return value ? 'true' : 'false';
+  if (value === null) return 'null';
+  throw new Error('value contains a non-JSON value');
+};
+
+export const canonicalDesignAssetRoute = (value: unknown): string => {
+  const raw = String(value ?? '').trim();
+  if (!raw) return '';
+  const query = raw.indexOf('?');
+  const fragment = raw.indexOf('#');
+  const boundary = [query, fragment]
+    .filter(index => index >= 0)
+    .reduce((left, right) => Math.min(left, right), raw.length);
+  const path = raw.slice(0, boundary).replace(/\/{2,}/g, '/');
+  return path || '/';
 };
 
 export const designAssetFingerprint = (
   asset: Omit<DesignAssetSnapshot, 'fingerprint'>,
-) => createHash('sha256').update(stableJson(asset)).digest('hex');
+) =>
+  createHash('sha256')
+    .update(
+      stableJson({
+        ...asset,
+        routePath: canonicalDesignAssetRoute(asset.routePath),
+      }),
+    )
+    .digest('hex');
+
+type ProjectionDatabase = {
+  raw: (
+    sql: string,
+    bindings?: unknown[],
+  ) => Promise<{ rows?: Record<string, unknown>[] }>;
+};
+
+export const synchronizeGlobalDesignAssetSnapshots = async (
+  transaction: ProjectionDatabase,
+  mutation: Pick<
+    SourceDesignAssetMutation,
+    | 'assetType'
+    | 'assetId'
+    | 'assetName'
+    | 'routePath'
+    | 'version'
+    | 'active'
+    | 'payload'
+    | 'assetFingerprint'
+  >,
+  now: Date,
+): Promise<number> => {
+  await transaction.raw('lock table resonance_projects__project in share mode');
+  const projectResult = await transaction.raw(
+    'select count(*)::integer as count from resonance_projects__project',
+  );
+  const projectCount = Number(projectResult.rows?.[0]?.count ?? 0);
+  const synchronized = await transaction.raw(
+    `insert into resonance_projects__design_asset_snapshot (
+       project_id,asset_type,asset_id,asset_name,route_path,
+       asset_version,active,asset_payload,asset_sha256,synced_at)
+     select project_id,?,?,?,?,?,?,cast(? as jsonb),?,?
+       from resonance_projects__project
+     on conflict (project_id,asset_type,asset_id) do update set
+       asset_name=excluded.asset_name,
+       route_path=excluded.route_path,
+       asset_version=excluded.asset_version,
+       active=excluded.active,
+       asset_payload=excluded.asset_payload,
+       asset_sha256=excluded.asset_sha256,
+       synced_at=excluded.synced_at
+     returning project_id`,
+    [
+      mutation.assetType,
+      mutation.assetId,
+      mutation.assetName,
+      mutation.routePath,
+      mutation.version,
+      mutation.active,
+      JSON.stringify(mutation.payload),
+      mutation.assetFingerprint,
+      now,
+    ],
+  );
+  const synchronizedProjectCount = Array.isArray(synchronized.rows)
+    ? synchronized.rows.length
+    : 0;
+  const projectionResult = await transaction.raw(
+    `select count(*)::integer as count
+       from resonance_projects__design_asset_snapshot
+      where asset_type=? and asset_id=? and asset_sha256=?`,
+    [mutation.assetType, mutation.assetId, mutation.assetFingerprint],
+  );
+  if (
+    projectCount < 1 ||
+    synchronizedProjectCount !== projectCount ||
+    Number(projectionResult.rows?.[0]?.count ?? 0) !== projectCount
+  ) {
+    throw new Error(
+      'global control-plane snapshot synchronization was not exact',
+    );
+  }
+  return synchronizedProjectCount;
+};
 
 const validatePayload = (assetType: SourceDesignAssetType, raw: unknown) => {
   const payload = object(raw, 'payload');
@@ -194,16 +327,28 @@ const validatePayload = (assetType: SourceDesignAssetType, raw: unknown) => {
       'shadowConfig',
     ])
       object(payload[key], `payload.${key}`);
+    for (const key of ['description', 'themeType', 'classPrefix']) {
+      nonEmpty(payload[key], `payload.${key}`);
+    }
+    if (typeof payload.isDefault !== 'boolean') {
+      throw new Error('payload.isDefault must be boolean');
+    }
   } else if (assetType === 'SECTION') {
     for (const key of [
       'sectionType',
       'layoutContract',
       'responsiveContract',
       'accessibilityContract',
+      'designReference',
     ])
       nonEmpty(payload[key], `payload.${key}`);
   } else if (assetType === 'COMPONENT') {
-    for (const key of ['componentType', 'ownerDomain', 'designReference']) {
+    for (const key of [
+      'componentType',
+      'ownerDomain',
+      'designReference',
+      'category',
+    ]) {
       nonEmpty(payload[key], `payload.${key}`);
     }
     object(payload.propsSchema, 'payload.propsSchema');
@@ -257,9 +402,9 @@ const dependencies = (
           `payload.dependencies[${index}] has an invalid identity`,
         );
       }
-      if (fingerprint && !HASH.test(fingerprint)) {
+      if (!HASH.test(fingerprint)) {
         throw new Error(
-          `payload.dependencies[${index}].fingerprint must be SHA-256`,
+          `payload.dependencies[${index}].fingerprint must be a non-empty SHA-256`,
         );
       }
       const identity = `${assetType}:${assetId}`;
@@ -269,9 +414,13 @@ const dependencies = (
       return { assetType, assetId, fingerprint };
     })
     .sort((left, right) =>
-      `${left.assetType}:${left.assetId}`.localeCompare(
-        `${right.assetType}:${right.assetId}`,
-      ),
+      `${left.assetType}:${left.assetId}` <
+      `${right.assetType}:${right.assetId}`
+        ? -1
+        : `${left.assetType}:${left.assetId}` >
+          `${right.assetType}:${right.assetId}`
+        ? 1
+        : 0,
     );
 };
 
@@ -337,6 +486,18 @@ export const buildSourceDesignAssetMutation = (
   if (!HASH.test(baseFingerprint) || baseFingerprint !== current.fingerprint) {
     throw new Error('source fingerprint changed; refresh before editing');
   }
+  const baseAsset: Omit<DesignAssetSnapshot, 'fingerprint'> = {
+    assetType: current.assetType,
+    assetId: current.assetId,
+    assetName: current.assetName,
+    routePath: canonicalDesignAssetRoute(current.routePath),
+    version: current.version,
+    active: current.active,
+    payload: current.payload,
+  };
+  if (designAssetFingerprint(baseAsset) !== baseFingerprint) {
+    throw new Error('source snapshot fingerprint is not canonical');
+  }
   const payload = validatePayload(
     assetType as SourceDesignAssetType,
     input.payload,
@@ -346,7 +507,9 @@ export const buildSourceDesignAssetMutation = (
     'assetName',
     300,
   );
-  const routePath = String(input.routePath ?? current.routePath).trim();
+  const routePath = canonicalDesignAssetRoute(
+    input.routePath ?? current.routePath,
+  );
   if (routePath && (!routePath.startsWith('/') || routePath.length > 500)) {
     throw new Error('routePath must be an absolute application path');
   }
@@ -371,6 +534,7 @@ export const buildSourceDesignAssetMutation = (
     ...snapshot,
     assetType: assetType as SourceDesignAssetType,
     dependencies: dependencies(payload),
+    baseAsset,
     baseFingerprint,
     assetFingerprint: designAssetFingerprint(snapshot),
   };

@@ -73,6 +73,28 @@ class ActorProcessControlPlaneBridgeAuthorizationTest {
     }
 
     @Test
+    void designSourceHeadsRequireBridgeTokenAndReturnRuntimeAuthority(){
+        var unauthorized=controller.commonDesignAssetSourceHeads(
+            "wrong-token","SCREEN","SCREEN_A","",100);
+        assertEquals(401,unauthorized.getStatusCode().value());
+        verify(governance,never()).commonDesignAssetSourceHeads(
+            anyString(),anyString(),anyString(),org.mockito.ArgumentMatchers.anyInt());
+
+        when(governance.commonDesignAssetSourceHeads(
+            "SCREEN","SCREEN_A","",1)).thenReturn(List.of(Map.of(
+                "assetType","SCREEN","assetId","SCREEN_A",
+                "fingerprint","a".repeat(64))));
+        var accepted=controller.commonDesignAssetSourceHeads(
+            "secret-token","SCREEN","SCREEN_A","",1);
+
+        assertEquals(200,accepted.getStatusCode().value());
+        @SuppressWarnings("unchecked")
+        Map<String,Object> body=(Map<String,Object>)accepted.getBody();
+        assertEquals("RUNTIME_GLOBAL_SOURCE_HEAD",body.get("authority"));
+        assertEquals(1,body.get("count"));
+    }
+
+    @Test
     void designSourceReturnsAcceptedOnlyForACommittedQueuedReceipt(){
         when(governance.applyCommonDesignAssetSource(any(),eq("user:default/approver")))
             .thenReturn(Map.ofEntries(
@@ -109,6 +131,22 @@ class ActorProcessControlPlaneBridgeAuthorizationTest {
         Map<String,Object> receipt=(Map<String,Object>)response.getBody();
         assertEquals(true,receipt.get("sourceCommitted"));
         assertEquals("REVIEW_REQUIRED",receipt.get("status"));
+    }
+
+    @Test
+    void staleGlobalDesignSourceReturns409WithNoCommittedWriteOrJob(){
+        when(governance.applyCommonDesignAssetSource(any(),anyString()))
+            .thenThrow(new IllegalStateException(
+                "DESIGN_ASSET_GLOBAL_FINGERPRINT_CHANGED"));
+
+        var response=controller.applyCommonDesignAssetSource(
+            "secret-token","user:default/approver",Map.of());
+
+        assertEquals(409,response.getStatusCode().value());
+        @SuppressWarnings("unchecked")
+        Map<String,Object> receipt=(Map<String,Object>)response.getBody();
+        assertEquals(false,receipt.get("sourceCommitted"));
+        assertEquals(0,receipt.get("jobCount"));
     }
 
     @Test

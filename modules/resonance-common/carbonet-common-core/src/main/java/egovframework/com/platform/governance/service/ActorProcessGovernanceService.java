@@ -4243,13 +4243,59 @@ public class ActorProcessGovernanceService {
      * draft, cohort or promotion state in this path.
      */
     @Transactional
+    public List<Map<String,Object>> commonDesignAssetSourceHeads(
+            String requestedType,String requestedId,String search,int requestedLimit){
+        String assetType=requestedType==null?"":requestedType.trim().toUpperCase(Locale.ROOT);
+        String assetId=requestedId==null?"":requestedId.trim();
+        String needle=search==null?"":search.trim();
+        if(!assetType.isBlank()&&!SOURCE_IMMEDIATE_DESIGN_ASSET_TYPES.contains(assetType))
+            throw new IllegalArgumentException("INVALID_DESIGN_ASSET_TYPE");
+        if(!assetId.isBlank()&&!assetId.matches("[A-Za-z0-9][A-Za-z0-9_.:-]{1,199}"))
+            throw new IllegalArgumentException("INVALID_DESIGN_ASSET_ID");
+        int limit=Math.max(1,Math.min(requestedLimit,500));
+        List<Map<String,Object>> identities=jdbc.queryForList("""
+            select asset_type as "assetType",asset_id as "assetId",
+                   to_char(updated_at at time zone 'UTC',
+                     'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') as "syncedAt"
+              from framework_common_design_asset_source_state
+             where (?='' or asset_type=?) and (?='' or asset_id=?)
+               and (?='' or asset_id ilike ('%'||?||'%')
+                    or canonical_asset->>'assetName' ilike ('%'||?||'%')
+                    or canonical_asset->>'routePath' ilike ('%'||?||'%'))
+             order by asset_type collate "C",asset_id collate "C" limit ?
+            """,assetType,assetType,assetId,assetId,needle,needle,needle,needle,limit);
+        for(Map<String,Object> identity:identities){
+            String type=String.valueOf(identity.get("assetType"));
+            String id=String.valueOf(identity.get("assetId"));
+            jdbc.query("select pg_advisory_xact_lock(hashtextextended(?,0))",row->{},
+                "COMMON_DESIGN_SOURCE_V1:"+type+":"+id);
+        }
+        Set<String> persistedStates=new HashSet<>();
+        List<Map<String,Object>> heads=new ArrayList<>();
+        for(Map<String,Object> identity:identities){
+            String type=String.valueOf(identity.get("assetType"));
+            String id=String.valueOf(identity.get("assetId"));
+            Map<String,Object> canonical=lockedCommonDesignSourceState(
+                type,id,persistedStates);
+            if(canonical==null)throw new IllegalStateException(
+                "DESIGN_ASSET_SOURCE_STATE_REQUIRED: "+type+":"+id);
+            assertCommonDesignRuntimeRegistry(canonical);
+            Map<String,Object> head=new LinkedHashMap<>(canonical);
+            head.put("fingerprint",commonDesignAssetFingerprint(canonical));
+            head.put("syncedAt",identity.get("syncedAt"));
+            heads.add(head);
+        }
+        return heads;
+    }
+
+    @Transactional
     public Map<String,Object> applyCommonDesignAssetSource(
             Map<String,Object> body,String actor){
         if(actor==null||actor.isBlank()||!actor.equals(actor.trim())||actor.length()>300)
             throw new SecurityException("DESIGN_APPROVER_IDENTITY_REQUIRED");
         Set<String> requestFields=Set.of("activationPolicy","authorityMode","projectId",
             "assetType","assetId","assetName","routePath","version","active",
-            "payload","dependencies","baseFingerprint","assetFingerprint");
+            "payload","dependencies","baseAsset","baseFingerprint","assetFingerprint");
         java.util.SortedSet<String> unsupportedRequestFields=
             new java.util.TreeSet<>(body.keySet());
         unsupportedRequestFields.removeAll(requestFields);
@@ -4272,8 +4318,9 @@ public class ActorProcessGovernanceService {
             throw new IllegalArgumentException("INVALID_DESIGN_ASSET_ID");
         String assetName=req(body,"assetName");
         if(assetName.length()>300)throw new IllegalArgumentException("INVALID_DESIGN_ASSET_NAME");
-        String route=ScreenDevelopmentNoteService.cleanRoute(str(body,"routePath"));
-        if(!str(body,"routePath").isBlank()&&!route.startsWith("/"))
+        String rawRoute=str(body,"routePath");
+        String route=canonicalCommonDesignRoute(rawRoute);
+        if(!rawRoute.isBlank()&&!route.startsWith("/"))
             throw new IllegalArgumentException("INVALID_DESIGN_ASSET_ROUTE");
         String version=def(body,"version","v1");
         if(!version.matches("[A-Za-z0-9][A-Za-z0-9._-]{0,79}"))
@@ -4291,10 +4338,48 @@ public class ActorProcessGovernanceService {
                 dependencyFingerprints(payloadDependencies)))
             throw new IllegalArgumentException(
                 "DESIGN_ASSET_DEPENDENCY_CONTRACT_MISMATCH");
-        validateDesignAssetDependencies(dependencies);
+        if(!(body.get("active") instanceof Boolean active))
+            throw new IllegalArgumentException("DESIGN_ASSET_ACTIVE_BOOLEAN_REQUIRED");
+        Map<String,Object> proposed=canonicalCommonDesignAsset(assetType,assetId,
+            assetName,route,version,active,payload);
+        Map<String,Object> base=canonicalCommonDesignAsset(body.get("baseAsset"));
+        if(!assetType.equals(base.get("assetType"))||!assetId.equals(base.get("assetId")))
+            throw new IllegalArgumentException("DESIGN_ASSET_BASE_IDENTITY_MISMATCH");
+        String computedBaseFingerprint=commonDesignAssetFingerprint(base);
+        String computedAfterFingerprint=commonDesignAssetFingerprint(proposed);
+        if(!beforeFingerprint.equals(computedBaseFingerprint))
+            throw new IllegalArgumentException("DESIGN_ASSET_BASE_FINGERPRINT_FORGED");
+        if(!afterFingerprint.equals(computedAfterFingerprint))
+            throw new IllegalArgumentException("DESIGN_ASSET_AFTER_FINGERPRINT_FORGED");
 
-        jdbc.query("select pg_advisory_xact_lock(hashtextextended(?,0))",row->{},
-            "COMMON_DESIGN_SOURCE_V1:"+projectId+":"+assetType+":"+assetId);
+        Set<String> persistedSourceStates=new HashSet<>();
+        Map<String,Map<String,Object>> lockedAssets=lockCommonDesignAssets(
+            assetType,assetId,dependencies,persistedSourceStates);
+        String targetIdentity=assetType+":"+assetId;
+        Map<String,Object> current=lockedAssets.get(targetIdentity);
+        String currentFingerprint=commonDesignAssetFingerprint(current);
+        if(currentFingerprint.equals(afterFingerprint)){
+            Map<String,Object> replay=new LinkedHashMap<>();
+            replay.put("success",true);replay.put("status","APPLIED");
+            replay.put("sourceCommitted",true);replay.put("idempotent",true);
+            replay.put("activationPolicy",SOURCE_IMMEDIATE_ACTIVATION_POLICY);
+            replay.put("authorityMode","SOURCE");replay.put("projectId",projectId);
+            replay.put("assetType",assetType);replay.put("assetId",assetId);
+            replay.put("baseFingerprint",beforeFingerprint);
+            replay.put("assetFingerprint",afterFingerprint);
+            replay.put("registryWrites",0);replay.put("sourceStateWrites",0);
+            replay.put("canonicalWrites",0);replay.put("affectedScreenCount",0);
+            replay.put("affectedProcessCount",0);replay.put("screens",List.of());
+            replay.put("processes",List.of());replay.put("runtimePublications",List.of());
+            replay.put("jobCount",0);replay.put("endpointExpected",0);
+            replay.put("buildRequired",false);
+            replay.put("rollbackPolicy","TRANSACTION_ROLLBACK");
+            return replay;
+        }
+        if(!currentFingerprint.equals(beforeFingerprint))
+            throw new IllegalStateException("DESIGN_ASSET_GLOBAL_FINGERPRINT_CHANGED: "+
+                currentFingerprint);
+
         List<Map<String,Object>> identities=affectedCommonDesignScreens(
             assetType,assetId,route,payload);
         for(Map<String,Object> identity:identities){
@@ -4319,10 +4404,20 @@ public class ActorProcessGovernanceService {
         }
 
         int registryWrites=updateCommonDesignRegistry(
-            assetType,assetId,assetName,route,version,boolDefault(body,"active",true),
+            assetType,assetId,assetName,route,version,active,
             payload,afterFingerprint,actor);
         if(registryWrites!=1)throw new IllegalStateException(
             "COMMON_DESIGN_REGISTRY_WRITE_NOT_EXACT: "+registryWrites);
+        int sourceStateWrites=writeCommonDesignSourceState(proposed,afterFingerprint,
+            actor,persistedSourceStates.contains(targetIdentity),currentFingerprint);
+        if(sourceStateWrites!=1)throw new IllegalStateException(
+            "COMMON_DESIGN_SOURCE_STATE_WRITE_NOT_EXACT: "+sourceStateWrites);
+        assertCommonDesignRuntimeRegistry(proposed);
+        Map<String,Object> persistedAfter=lockedCommonDesignSourceState(
+            assetType,assetId,new HashSet<>());
+        if(persistedAfter==null||!afterFingerprint.equals(
+                commonDesignAssetFingerprint(persistedAfter)))
+            throw new IllegalStateException("COMMON_DESIGN_AFTER_FINGERPRINT_MISMATCH");
         Map<String,Object> marker=new LinkedHashMap<>();
         marker.put("schema","carbonet.common-design-asset-source/v1");
         marker.put("activationPolicy",SOURCE_IMMEDIATE_ACTIVATION_POLICY);
@@ -4422,6 +4517,7 @@ public class ActorProcessGovernanceService {
         result.put("baseFingerprint",beforeFingerprint);
         result.put("assetFingerprint",afterFingerprint);
         result.put("registryWrites",registryWrites);
+        result.put("sourceStateWrites",sourceStateWrites);
         result.put("canonicalWrites",canonicalWrites);
         result.put("affectedScreenCount",identities.size());
         result.put("affectedProcessCount",processes.size());
@@ -4521,7 +4617,7 @@ public class ActorProcessGovernanceService {
                   spacing_config=?,border_config=?,shadow_config=?,class_prefix=?,
                   is_default=?,is_active=?,use_at=?,updt_pnttm=current_timestamp,
                   updt_user_id=? where theme_id=?
-                """,value(payload,"themeName",assetName),
+                """,assetName,
                 value(payload,"description",current.get("theme_dc")),
                 value(payload,"themeType",current.get("theme_type")),
                 toJson(payload.get("colorConfig")),toJson(payload.get("typographyConfig")),
@@ -4538,7 +4634,7 @@ public class ActorProcessGovernanceService {
                   responsive_contract=?,accessibility_contract=?,design_reference=?,
                   asset_fingerprint=?,active_yn=?,updated_at=current_timestamp
                  where section_id=?
-                """,value(payload,"sectionName",assetName),req(payload,"sectionType"),
+                """,assetName,req(payload,"sectionType"),
                 req(payload,"layoutContract"),req(payload,"responsiveContract"),
                 req(payload,"accessibilityContract"),str(payload,"designReference"),
                 fingerprint,active?"Y":"N",assetId);
@@ -4550,7 +4646,7 @@ public class ActorProcessGovernanceService {
                   props_schema_json=?,design_reference=?,default_props=?,category=?,
                   asset_fingerprint=?,active_yn=?,updated_at=current_timestamp
                  where component_id=?
-                """,value(payload,"componentName",assetName),req(payload,"componentType"),
+                """,assetName,req(payload,"componentType"),
                 req(payload,"ownerDomain"),toJson(payload.get("propsSchema")),
                 req(payload,"designReference"),toJson(payload.get("defaultProps")),
                 def(payload,"category","COMMON"),fingerprint,active?"Y":"N",assetId);
@@ -4567,7 +4663,7 @@ public class ActorProcessGovernanceService {
             update ui_page_manifest set page_name=?,route_path=?,layout_version=?,
                    design_token_version=?,active_yn=?,updated_at=current_timestamp
              where page_id=?
-            """,value(payload,"pageName",assetName),route,version,
+            """,assetName,route,version,
             req(payload,"theme"),active?"Y":"N",pageId);
     }
 
@@ -4605,12 +4701,15 @@ public class ActorProcessGovernanceService {
         if("THEME".equals(assetType)){
             for(String field:List.of("colorConfig","typographyConfig","spacingConfig",
                     "borderConfig","shadowConfig"))requireMap(payload.get(field),"payload."+field);
+            for(String field:List.of("description","themeType","classPrefix"))req(payload,field);
+            if(!(payload.get("isDefault") instanceof Boolean))
+                throw new IllegalArgumentException("payload.isDefault must be boolean");
         }else if("SECTION".equals(assetType)){
             for(String field:List.of("sectionType","layoutContract","responsiveContract",
-                    "accessibilityContract"))req(payload,field);
+                    "accessibilityContract","designReference"))req(payload,field);
         }else if("COMPONENT".equals(assetType)){
             req(payload,"componentType");req(payload,"ownerDomain");
-            req(payload,"designReference");
+            req(payload,"designReference");req(payload,"category");
             requireMap(payload.get("propsSchema"),"payload.propsSchema");
             requireMap(payload.get("defaultProps"),"payload.defaultProps");
         }else{
@@ -4641,7 +4740,7 @@ public class ActorProcessGovernanceService {
                     ||!id.matches("[A-Za-z0-9][A-Za-z0-9_.:-]{1,199}"))
                 throw new IllegalArgumentException("DESIGN_ASSET_DEPENDENCY_INVALID");
             String fingerprint=str(dependency,"fingerprint").toLowerCase(Locale.ROOT);
-            if(!fingerprint.isBlank()&&!fingerprint.matches("[0-9a-f]{64}"))
+            if(!fingerprint.matches("[0-9a-f]{64}"))
                 throw new IllegalArgumentException("DESIGN_ASSET_DEPENDENCY_SHA256_INVALID");
             if(!identities.add(type+":"+id))
                 throw new IllegalArgumentException("DUPLICATE_DESIGN_ASSET_DEPENDENCY");
@@ -4662,30 +4761,301 @@ public class ActorProcessGovernanceService {
         return index;
     }
 
-    private void validateDesignAssetDependencies(List<Map<String,Object>> dependencies){
+    private Map<String,Map<String,Object>> lockCommonDesignAssets(
+            String targetType,String targetId,
+            List<Map<String,Object>> dependencies,Set<String> persistedStates){
+        String targetIdentity=targetType+":"+targetId;
+        Map<String,Map<String,Object>> dependencyIndex=new TreeMap<>();
         for(Map<String,Object> dependency:dependencies){
-            String type=String.valueOf(dependency.get("assetType"));
-            String id=String.valueOf(dependency.get("assetId"));
-            String sql=switch(type){
-                case "THEME" -> "select count(*) from comtnthemedefinition where theme_id=? and use_at='Y' and is_active='Y'";
-                case "SECTION" -> "select count(*) from ui_section_registry where section_id=? and active_yn='Y'";
-                case "COMPONENT" -> "select count(*) from ui_component_registry where component_id=? and active_yn='Y'";
-                case "SCREEN" -> "select count(*) from ui_page_manifest where page_id=? and active_yn='Y'";
-                default -> throw new IllegalArgumentException("DESIGN_ASSET_DEPENDENCY_INVALID");
-            };
-            Integer count=jdbc.queryForObject(sql,Integer.class,id);
-            if(count==null||count!=1)throw new IllegalArgumentException(
-                "DESIGN_ASSET_DEPENDENCY_NOT_EXACT: "+type+":"+id);
-            String expected=String.valueOf(dependency.get("fingerprint"));
-            if(!expected.isBlank()&&Set.of("SECTION","COMPONENT").contains(type)){
-                String relation="SECTION".equals(type)?"ui_section_registry":"ui_component_registry";
-                String key="SECTION".equals(type)?"section_id":"component_id";
-                String actual=jdbc.queryForObject("select coalesce(asset_fingerprint,'') from "+
-                    relation+" where "+key+"=?",String.class,id);
-                if(!expected.equals(actual))throw new IllegalArgumentException(
-                    "DESIGN_ASSET_DEPENDENCY_FINGERPRINT_CHANGED: "+type+":"+id);
+            String identity=String.valueOf(dependency.get("assetType"))+":"+
+                String.valueOf(dependency.get("assetId"));
+            if(targetIdentity.equals(identity))throw new IllegalArgumentException(
+                "DESIGN_ASSET_SELF_DEPENDENCY_FORBIDDEN");
+            dependencyIndex.put(identity,dependency);
+        }
+        java.util.SortedSet<String> identities=new java.util.TreeSet<>(dependencyIndex.keySet());
+        identities.add(targetIdentity);
+        // The registry is global. Project identity must never partition this lock.
+        for(String identity:identities){
+            jdbc.query("select pg_advisory_xact_lock(hashtextextended(?,0))",row->{},
+                "COMMON_DESIGN_SOURCE_V1:"+identity);
+        }
+        Map<String,Map<String,Object>> locked=new TreeMap<>();
+        for(String identity:identities){
+            int separator=identity.indexOf(':');
+            String type=identity.substring(0,separator),id=identity.substring(separator+1);
+            Map<String,Object> canonical=lockedCommonDesignSourceState(
+                type,id,persistedStates);
+            if(canonical==null)throw new IllegalStateException(
+                (identity.equals(targetIdentity)
+                    ?"DESIGN_ASSET_SOURCE_STATE_REQUIRED: "
+                    :"DESIGN_ASSET_DEPENDENCY_SOURCE_STATE_REQUIRED: ")+identity);
+            assertCommonDesignRuntimeRegistry(canonical);
+            String fingerprint=commonDesignAssetFingerprint(canonical);
+            Map<String,Object> dependency=dependencyIndex.get(identity);
+            if(dependency!=null){
+                if(!Boolean.TRUE.equals(canonical.get("active")))
+                    throw new IllegalStateException(
+                        "DESIGN_ASSET_DEPENDENCY_INACTIVE: "+identity);
+                if(!fingerprint.equals(dependency.get("fingerprint")))
+                    throw new IllegalStateException(
+                        "DESIGN_ASSET_DEPENDENCY_FINGERPRINT_CHANGED: "+identity);
+            }
+            locked.put(identity,canonical);
+        }
+        return locked;
+    }
+
+    private Map<String,Object> lockedCommonDesignSourceState(
+            String assetType,String assetId,Set<String> persistedStates){
+        List<Map<String,Object>> rows=jdbc.queryForList("""
+            select canonical_asset::text as "canonicalAsset",
+                   asset_fingerprint as "assetFingerprint"
+              from framework_common_design_asset_source_state
+             where asset_type=? and asset_id=? for update
+            """,assetType,assetId);
+        if(rows.size()>1)throw new IllegalStateException(
+            "COMMON_DESIGN_SOURCE_STATE_NOT_EXACT: "+assetType+":"+assetId);
+        if(rows.isEmpty())return null;
+        Map<String,Object> canonical=canonicalCommonDesignAsset(
+            jsonMap(String.valueOf(rows.get(0).get("canonicalAsset"))));
+        if(!assetType.equals(canonical.get("assetType"))
+                ||!assetId.equals(canonical.get("assetId")))
+            throw new IllegalStateException("COMMON_DESIGN_SOURCE_STATE_IDENTITY_MISMATCH");
+        String computed=commonDesignAssetFingerprint(canonical);
+        Object stored=rows.get(0).get("assetFingerprint");
+        if(stored==null){
+            int initialized=jdbc.update("""
+                update framework_common_design_asset_source_state
+                   set asset_fingerprint=?,updated_by='SYSTEM_RUNTIME_BACKFILL',
+                       updated_at=current_timestamp
+                 where asset_type=? and asset_id=? and asset_fingerprint is null
+                """,computed,assetType,assetId);
+            if(initialized!=1)throw new IllegalStateException(
+                "COMMON_DESIGN_SOURCE_STATE_INITIALIZATION_NOT_EXACT");
+        }else if(!computed.equals(String.valueOf(stored).trim())){
+            throw new IllegalStateException("COMMON_DESIGN_SOURCE_STATE_FINGERPRINT_CORRUPT");
+        }
+        persistedStates.add(assetType+":"+assetId);
+        return canonical;
+    }
+
+    private int writeCommonDesignSourceState(Map<String,Object> canonical,
+            String fingerprint,String actor,boolean exists,String currentFingerprint){
+        String assetType=String.valueOf(canonical.get("assetType"));
+        String assetId=String.valueOf(canonical.get("assetId"));
+        if(exists)return jdbc.update("""
+            update framework_common_design_asset_source_state
+               set canonical_asset=cast(? as jsonb),asset_fingerprint=?,
+                   updated_by=?,updated_at=current_timestamp
+             where asset_type=? and asset_id=? and asset_fingerprint=?
+            """,toJson(canonical),fingerprint,actor,assetType,assetId,currentFingerprint);
+        return jdbc.update("""
+            insert into framework_common_design_asset_source_state(
+              asset_type,asset_id,canonical_asset,asset_fingerprint,updated_by)
+            values(?,?,cast(? as jsonb),?,?)
+            """,assetType,assetId,toJson(canonical),fingerprint,actor);
+    }
+
+    private void assertCommonDesignRuntimeRegistry(Map<String,Object> canonical){
+        String assetType=String.valueOf(canonical.get("assetType"));
+        String assetId=String.valueOf(canonical.get("assetId"));
+        String assetName=String.valueOf(canonical.get("assetName"));
+        String route=String.valueOf(canonical.get("routePath"));
+        String version=String.valueOf(canonical.get("version"));
+        boolean active=Boolean.TRUE.equals(canonical.get("active"));
+        Map<String,Object> payload=requireMap(canonical.get("payload"),"canonical.payload");
+        if("THEME".equals(assetType)){
+            Map<String,Object> row=exactRegistryRow("""
+                select theme_nm as "assetName",coalesce(theme_type,'') as "themeType",
+                       coalesce(theme_dc,'') as description,
+                       coalesce(color_config::text,'{}') as "colorConfig",
+                       coalesce(typography_config::text,'{}') as "typographyConfig",
+                       coalesce(spacing_config::text,'{}') as "spacingConfig",
+                       coalesce(border_config::text,'{}') as "borderConfig",
+                       coalesce(shadow_config::text,'{}') as "shadowConfig",
+                       coalesce(class_prefix,'') as "classPrefix",
+                       is_default='Y' as "isDefault",
+                       use_at='Y' and is_active='Y' as active
+                  from comtnthemedefinition where theme_id=? for update
+                """,assetId);
+            assertDesignScalar("assetName",assetName,row.get("assetName"));
+            assertDesignScalar("routePath",route,"");
+            assertDesignScalar("active",active,row.get("active"));
+            assertDesignScalar("description",str(payload,"description"),row.get("description"));
+            assertDesignScalar("themeType",str(payload,"themeType"),row.get("themeType"));
+            assertDesignJson("colorConfig",payload.get("colorConfig"),row.get("colorConfig"));
+            assertDesignJson("typographyConfig",payload.get("typographyConfig"),row.get("typographyConfig"));
+            assertDesignJson("spacingConfig",payload.get("spacingConfig"),row.get("spacingConfig"));
+            assertDesignJson("borderConfig",payload.get("borderConfig"),row.get("borderConfig"));
+            assertDesignJson("shadowConfig",payload.get("shadowConfig"),row.get("shadowConfig"));
+            assertDesignScalar("classPrefix",str(payload,"classPrefix"),row.get("classPrefix"));
+            assertDesignScalar("isDefault",flag(payload.get("isDefault")),row.get("isDefault"));
+            return;
+        }
+        if("SECTION".equals(assetType)){
+            Map<String,Object> row=exactRegistryRow("""
+                select section_name as "assetName",section_type as "sectionType",
+                       layout_contract as "layoutContract",
+                       responsive_contract as "responsiveContract",
+                       accessibility_contract as "accessibilityContract",
+                       coalesce(design_reference,'') as "designReference",
+                       active_yn='Y' as active
+                  from ui_section_registry where section_id=? for update
+                """,assetId);
+            assertDesignScalar("assetName",assetName,row.get("assetName"));
+            assertDesignScalar("routePath",route,"");
+            assertDesignScalar("active",active,row.get("active"));
+            for(String field:List.of("sectionType","layoutContract","responsiveContract",
+                    "accessibilityContract","designReference"))
+                assertDesignScalar(field,str(payload,field),row.get(field));
+            return;
+        }
+        if("COMPONENT".equals(assetType)){
+            Map<String,Object> row=exactRegistryRow("""
+                select component_name as "assetName",component_type as "componentType",
+                       owner_domain as "ownerDomain",
+                       coalesce(props_schema_json::text,'{}') as "propsSchema",
+                       coalesce(design_reference,'') as "designReference",
+                       coalesce(default_props::text,'{}') as "defaultProps",
+                       coalesce(category,'COMMON') as category,active_yn='Y' as active
+                  from ui_component_registry where component_id=? for update
+                """,assetId);
+            assertDesignScalar("assetName",assetName,row.get("assetName"));
+            assertDesignScalar("routePath",route,"");
+            assertDesignScalar("active",active,row.get("active"));
+            for(String field:List.of("componentType","ownerDomain","designReference","category"))
+                assertDesignScalar(field,str(payload,field),row.get(field));
+            assertDesignJson("propsSchema",payload.get("propsSchema"),row.get("propsSchema"));
+            assertDesignJson("defaultProps",payload.get("defaultProps"),row.get("defaultProps"));
+            return;
+        }
+        Map<String,Object> row=exactRegistryRow("""
+            select page_name as "assetName",route_path as "routePath",
+                   layout_version as version,design_token_version as theme,
+                   active_yn='Y' as active
+              from ui_page_manifest where page_id=? for update
+            """,assetId);
+        assertDesignScalar("assetName",assetName,row.get("assetName"));
+        assertDesignScalar("routePath",route,row.get("routePath"));
+        assertDesignScalar("version",version,row.get("version"));
+        assertDesignScalar("active",active,row.get("active"));
+        assertDesignScalar("theme",str(payload,"theme"),row.get("theme"));
+    }
+
+    private static void assertDesignScalar(String field,Object expected,Object actual){
+        if(!String.valueOf(expected).equals(String.valueOf(actual)))
+            throw new IllegalStateException("DESIGN_ASSET_RUNTIME_STATE_CHANGED: "+field);
+    }
+
+    private static void assertDesignJson(String field,Object expected,Object actual){
+        Object parsed=actual;
+        if(actual instanceof String text){
+            try{parsed=new com.fasterxml.jackson.databind.ObjectMapper().readValue(text,Object.class);}
+            catch(Exception error){throw new IllegalStateException(
+                "DESIGN_ASSET_RUNTIME_JSON_INVALID: "+field,error);}
+        }
+        if(!stableDesignJson(expected).equals(stableDesignJson(parsed)))
+            throw new IllegalStateException("DESIGN_ASSET_RUNTIME_STATE_CHANGED: "+field);
+    }
+
+    private static Map<String,Object> canonicalCommonDesignAsset(Object raw){
+        Map<String,Object> source=requireMap(raw,"baseAsset");
+        Set<String> allowed=Set.of("assetType","assetId","assetName","routePath",
+            "version","active","payload");
+        if(source.size()!=allowed.size()||!source.keySet().equals(allowed))
+            throw new IllegalArgumentException("DESIGN_ASSET_BASE_SCHEMA_INVALID");
+        String assetType=req(source,"assetType").toUpperCase(Locale.ROOT);
+        String assetId=req(source,"assetId");
+        String assetName=req(source,"assetName");
+        String rawRoute=str(source,"routePath");
+        String route=canonicalCommonDesignRoute(rawRoute);
+        String version=req(source,"version");
+        if(!(source.get("active") instanceof Boolean active))
+            throw new IllegalArgumentException("DESIGN_ASSET_ACTIVE_BOOLEAN_REQUIRED");
+        Map<String,Object> payload=designAssetPayload(source.get("payload"),assetType);
+        designAssetDependencies(payload.get("dependencies"));
+        return canonicalCommonDesignAsset(assetType,assetId,assetName,route,
+            version,active,payload);
+    }
+
+    private static Map<String,Object> canonicalCommonDesignAsset(String assetType,
+            String assetId,String assetName,String route,String version,boolean active,
+            Map<String,Object> payload){
+        if(!SOURCE_IMMEDIATE_DESIGN_ASSET_TYPES.contains(assetType)
+                ||!assetId.matches("[A-Za-z0-9][A-Za-z0-9_.:-]{1,199}"))
+            throw new IllegalArgumentException("INVALID_DESIGN_ASSET_IDENTITY");
+        if(assetName.isBlank()||assetName.length()>300)
+            throw new IllegalArgumentException("INVALID_DESIGN_ASSET_NAME");
+        if(!route.isBlank()&&(!route.startsWith("/")||route.length()>500))
+            throw new IllegalArgumentException("INVALID_DESIGN_ASSET_ROUTE");
+        if(!version.matches("[A-Za-z0-9][A-Za-z0-9._-]{0,79}"))
+            throw new IllegalArgumentException("INVALID_DESIGN_ASSET_VERSION");
+        Map<String,Object> canonical=new LinkedHashMap<>();
+        canonical.put("assetType",assetType);canonical.put("assetId",assetId);
+        canonical.put("assetName",assetName);canonical.put("routePath",route);
+        canonical.put("version",version);canonical.put("active",active);
+        canonical.put("payload",payload);
+        return canonical;
+    }
+
+    static String commonDesignAssetFingerprint(Map<String,Object> canonical){
+        Map<String,Object> normalized=new LinkedHashMap<>(canonical);
+        if(normalized.containsKey("routePath"))normalized.put("routePath",
+            canonicalCommonDesignRoute(normalized.get("routePath") == null
+                ?"":String.valueOf(normalized.get("routePath"))));
+        return sha256Hex(stableDesignJson(normalized));
+    }
+
+    private static String canonicalCommonDesignRoute(String value){
+        String raw=value==null?"":value.trim();
+        if(raw.isBlank())return "";
+        int query=raw.indexOf('?'),fragment=raw.indexOf('#'),boundary=raw.length();
+        if(query>=0)boundary=Math.min(boundary,query);
+        if(fragment>=0)boundary=Math.min(boundary,fragment);
+        String path=raw.substring(0,boundary).replaceAll("/{2,}","/");
+        return path.isBlank()?"/":path;
+    }
+
+    private static String stableDesignJson(Object value){
+        if(value==null)return "null";
+        if(value instanceof Map<?,?> raw){
+            java.util.SortedMap<String,Object> sorted=new java.util.TreeMap<>();
+            raw.forEach((key,item)->sorted.put(String.valueOf(key),item));
+            return sorted.entrySet().stream().map(entry->
+                canonicalDesignString(entry.getKey())+":"+stableDesignJson(entry.getValue()))
+                .collect(java.util.stream.Collectors.joining(",","{","}"));
+        }
+        if(value instanceof List<?> list)return list.stream().map(
+            ActorProcessGovernanceService::stableDesignJson)
+            .collect(java.util.stream.Collectors.joining(",","[","]"));
+        if(value instanceof Number number){
+            double normalized=number.doubleValue();
+            if(!Double.isFinite(normalized))
+                throw new IllegalArgumentException("DESIGN_ASSET_NONFINITE_NUMBER");
+            if(normalized==0d)normalized=0d;
+            return String.format(Locale.ROOT,"@%016x",Double.doubleToLongBits(normalized));
+        }
+        if(value instanceof String text)return canonicalDesignString(text);
+        if(value instanceof Boolean bool)return bool?"true":"false";
+        throw new IllegalArgumentException("DESIGN_ASSET_NON_JSON_VALUE");
+    }
+
+    private static String canonicalDesignString(String value){
+        for(int index=0;index<value.length();index++){
+            char current=value.charAt(index);
+            if(Character.isHighSurrogate(current)){
+                if(index+1>=value.length()||!Character.isLowSurrogate(value.charAt(index+1)))
+                    throw new IllegalArgumentException("DESIGN_ASSET_UNPAIRED_SURROGATE");
+                index++;
+            }else if(Character.isLowSurrogate(current)){
+                throw new IllegalArgumentException("DESIGN_ASSET_UNPAIRED_SURROGATE");
             }
         }
+        byte[] bytes=value.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        StringBuilder encoded=new StringBuilder(bytes.length*2+2).append('"');
+        for(byte item:bytes)encoded.append(String.format(Locale.ROOT,"%02x",item&0xff));
+        return encoded.append('"').toString();
     }
 
     @SuppressWarnings("unchecked")
@@ -4706,10 +5076,6 @@ public class ActorProcessGovernanceService {
     private static String value(Map<String,Object> source,String key,Object fallback){
         String value=str(source,key);
         return value.isBlank()?(fallback==null?"":String.valueOf(fallback)):value;
-    }
-
-    private static boolean boolDefault(Map<String,Object> source,String key,boolean fallback){
-        return source.containsKey(key)?flag(source.get(key)):fallback;
     }
 
     private static boolean commonAssetMarkerMatches(String specification,

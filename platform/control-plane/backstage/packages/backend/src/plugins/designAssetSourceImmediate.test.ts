@@ -1,23 +1,28 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { createHash } from 'node:crypto';
 import {
   buildSourceDesignAssetMutation,
   designAssetFingerprint,
   stableJson,
+  synchronizeGlobalDesignAssetSnapshots,
   type DesignAssetSnapshot,
   type SourceDesignAssetType,
 } from './designAssetSourceImmediate';
 
-const baseFingerprint = 'a'.repeat(64);
 const payloads: Record<SourceDesignAssetType, Record<string, unknown>> = {
   THEME: {
     schemaVersion: '1.0.0',
     themeName: 'KRDS default',
+    description: 'KRDS government default theme',
+    themeType: 'SYSTEM',
     colorConfig: { primary: '#005ea8' },
     typographyConfig: { body: 'Pretendard' },
     spacingConfig: { unit: 4 },
     borderConfig: { radius: 8 },
     shadowConfig: { panel: '0 1px 3px #0002' },
+    classPrefix: 'krds-',
+    isDefault: true,
     dependencies: [],
   },
   SECTION: {
@@ -52,16 +57,18 @@ const payloads: Record<SourceDesignAssetType, Record<string, unknown>> = {
   },
 };
 
-const current = (assetType: SourceDesignAssetType): DesignAssetSnapshot => ({
-  assetType,
-  assetId: `${assetType}_ASSET`,
-  assetName: `${assetType} asset`,
-  routePath: assetType === 'SCREEN' ? '/applications/workspace' : '',
-  version: '1.0.0',
-  active: true,
-  payload: payloads[assetType],
-  fingerprint: baseFingerprint,
-});
+const current = (assetType: SourceDesignAssetType): DesignAssetSnapshot => {
+  const asset = {
+    assetType,
+    assetId: `${assetType}_ASSET`,
+    assetName: `${assetType} asset`,
+    routePath: assetType === 'SCREEN' ? '/applications/workspace' : '',
+    version: '1.0.0',
+    active: true,
+    payload: payloads[assetType],
+  };
+  return { ...asset, fingerprint: designAssetFingerprint(asset) };
+};
 
 const request = (
   assetType: SourceDesignAssetType,
@@ -71,7 +78,7 @@ const request = (
   authorityMode: 'SOURCE',
   assetType,
   assetId: `${assetType}_ASSET`,
-  baseFingerprint,
+  baseFingerprint: current(assetType).fingerprint,
   assetName: `${assetType} asset v2`,
   routePath: assetType === 'SCREEN' ? '/applications/workspace' : '',
   version: '1.0.1',
@@ -96,10 +103,19 @@ describe('source-immediate common design mutation', () => {
         authorityMode: 'SOURCE',
         assetType,
         assetId: `${assetType}_ASSET`,
-        baseFingerprint,
+        baseFingerprint: before.fingerprint,
       });
       expect(mutation.assetFingerprint).toMatch(/^[0-9a-f]{64}$/);
-      expect(mutation.assetFingerprint).not.toBe(baseFingerprint);
+      expect(mutation.assetFingerprint).not.toBe(before.fingerprint);
+      expect(mutation.baseAsset).toEqual({
+        assetType: before.assetType,
+        assetId: before.assetId,
+        assetName: before.assetName,
+        routePath: before.routePath,
+        version: before.version,
+        active: before.active,
+        payload: before.payload,
+      });
       expect(before).toEqual(beforeCopy);
     },
   );
@@ -130,6 +146,52 @@ describe('source-immediate common design mutation', () => {
     ).toBe(untouchedHash);
     expect(stableJson({ z: 1, a: { y: 2, b: 3 } })).toBe(
       stableJson({ a: { b: 3, y: 2 }, z: 1 }),
+    );
+    expect(
+      stableJson({ numbers: [1, 1.5, 1e-7, 1e-6, 1e21, -0, -1.25e21] }),
+    ).toBe(
+      '{"6e756d62657273":[@3ff0000000000000,@3ff8000000000000,@3e7ad7f29abcaf48,@3eb0c6f7a0b5ed8d,@444b1ae4d6e2ef50,@0000000000000000,@c450f0cf064dd592]}',
+    );
+    expect(
+      designAssetFingerprint({
+        assetType: 'SCREEN',
+        assetId: 'SCREEN_GLOBAL',
+        assetName: '전역 화면',
+        routePath: '/global',
+        version: '1.0.0',
+        active: true,
+        payload: {
+          schemaVersion: '1.0.0',
+          pageName: '전역 화면',
+          layout: 'KRDS_WORKSPACE',
+          theme: 'KRDS_GOV_DEFAULT',
+          sections: ['SUMMARY', 'FORM'],
+          components: ['JSON_FORM'],
+          dependencies: [],
+        },
+      }),
+    ).toBe('8e54f5c6185545bc94fea05909ce1b4ef9f8f0520566bbccd695f3cd19f4f2a7');
+    expect(
+      createHash('sha256')
+        .update(
+          stableJson({
+            numbers: [1, 1.5, 1e-7, 1e-6, 1e21, -0, -1.25e21, 1e23, 5e-324],
+            text: 'control\u000f😀',
+          }),
+        )
+        .digest('hex'),
+    ).toBe('ab37e189a99684ecd2cbad7cb21874b42402f460b7143c932e2c70ef151ff4ad');
+    const { fingerprint: _fingerprint, ...routed } = current('SCREEN');
+    expect(
+      designAssetFingerprint({
+        ...routed,
+        routePath: '//applications//workspace?draft=1#editor',
+      }),
+    ).toBe(
+      designAssetFingerprint({
+        ...routed,
+        routePath: '/applications/workspace',
+      }),
     );
   });
 
@@ -179,6 +241,23 @@ describe('source-immediate common design mutation', () => {
     expect(() =>
       buildSourceDesignAssetMutation(
         current('SCREEN'),
+        request('SCREEN', {
+          payload: {
+            ...payloads.SCREEN,
+            dependencies: [
+              {
+                assetType: 'THEME',
+                assetId: 'KRDS_GOV_DEFAULT',
+                fingerprint: '',
+              },
+            ],
+          },
+        }),
+      ),
+    ).toThrow('non-empty SHA-256');
+    expect(() =>
+      buildSourceDesignAssetMutation(
+        current('SCREEN'),
         request('SCREEN', { baseFingerprint: 'c'.repeat(64) }),
       ),
     ).toThrow('source fingerprint changed');
@@ -192,21 +271,36 @@ describe('source-immediate common design mutation', () => {
     const routeStart = routeSource.indexOf(
       "'/design-assets/:projectId/source'",
     );
-    const retiredStart = routeSource.indexOf(
-      'const retiredDesignAssetMutation',
+    const routeEnd = routeSource.indexOf(
+      "'/design-assets/:projectId/drafts'",
       routeStart,
     );
-    const route = routeSource.slice(routeStart, retiredStart);
+    const route = routeSource.slice(routeStart, routeEnd);
 
     expect(routeStart).toBeGreaterThan(0);
     expect(route).toContain("'DESIGN_APPROVER'");
-    expect(route).toContain('.forUpdate()');
+    expect(route).toContain('BACKSTAGE_COMMON_DESIGN_SOURCE_V1:');
+    expect(route).toContain('/design-assets/source-heads?');
     expect(route).toContain('/api/internal/actor-process/design-assets/source');
-    expect(route).toContain('asset_sha256: mutation.assetFingerprint');
+    expect(route).toContain('synchronizeGlobalDesignAssetSnapshots');
+    const projection = synchronizeGlobalDesignAssetSnapshots.toString();
+    expect(projection).toContain(
+      'insert into resonance_projects__design_asset_snapshot',
+    );
+    expect(projection).toContain('from resonance_projects__project');
+    expect(projection).toContain(
+      'on conflict (project_id,asset_type,asset_id) do update',
+    );
+    expect(projection).toContain('asset_sha256=excluded.asset_sha256');
     expect(route).toContain("controlPlaneSnapshot: 'SYNCHRONIZED'");
+    expect(route).not.toContain('.where({ project_id: projectId })');
+    expect(route).not.toContain('dependencyRows');
     expect(route).not.toContain("'resonance_projects__task'");
     expect(routeSource).not.toContain('DESIGN_ASSET_PROMOTION');
 
+    const retiredStart = routeSource.indexOf(
+      'const retiredDesignAssetMutation',
+    );
     const retired = routeSource.slice(
       retiredStart,
       routeSource.indexOf(
@@ -214,7 +308,18 @@ describe('source-immediate common design mutation', () => {
         retiredStart,
       ),
     );
-    expect(retired.match(/retiredDesignAssetMutation/g)).toHaveLength(6);
+    expect(retired.match(/retiredDesignAssetMutation/g)).toHaveLength(7);
     expect(retired).toContain('response.status(410)');
+    const syncStart = retired.indexOf("'/design-assets/:projectId/sync'");
+    const sourceStart = retired.indexOf(
+      "'/design-assets/:projectId/source'",
+      syncStart,
+    );
+    const retiredSync = retired.slice(syncStart, sourceStart);
+    expect(retiredSync).toContain('retiredDesignAssetMutation');
+    expect(retiredSync).not.toContain('request.body');
+    expect(retiredSync).not.toContain(
+      'resonance_projects__design_asset_snapshot',
+    );
   });
 });

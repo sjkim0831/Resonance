@@ -30,6 +30,7 @@ import {
 import { registerProjectLifecycleRoutes } from './projectLifecycleRoutes';
 import {
   buildSourceDesignAssetMutation,
+  synchronizeGlobalDesignAssetSnapshots,
   type DesignAssetSnapshot,
 } from './designAssetSourceImmediate';
 import {
@@ -56,16 +57,6 @@ type ControlAssetInput = {
   targetPlugin?: string;
   capabilities?: string[];
   dependencyContracts?: string[];
-};
-
-type DesignAssetSnapshotInput = {
-  assetType?: string;
-  assetId?: string;
-  assetName?: string;
-  routePath?: string;
-  version?: string;
-  active?: boolean;
-  payload?: Record<string, unknown>;
 };
 
 type ScreenCoordinateInput = {
@@ -1818,151 +1809,70 @@ export default createBackendPlugin({
             1,
             Math.min(Number(request.query.limit ?? 100), 500),
           );
-          const query = knex('resonance_projects__design_asset_snapshot')
-            .select('*')
-            .where({ project_id: projectId });
-          if (assetType) query.andWhere({ asset_type: assetType });
-          if (search) {
-            query.andWhere(builder =>
-              builder
-                .whereILike('asset_id', `%${search}%`)
-                .orWhereILike('asset_name', `%${search}%`)
-                .orWhereILike('route_path', `%${search}%`),
-            );
+          const bridgeToken = String(process.env.RESONANCE_OPS_TOKEN ?? '');
+          if (!bridgeToken) {
+            response
+              .status(503)
+              .json({ message: 'control-plane bridge token is missing' });
+            return;
           }
-          const assets = await query
-            .orderBy('asset_type', 'asc')
-            .orderBy('asset_name', 'asc')
-            .limit(limit);
-          const counts = (await knex(
-            'resonance_projects__design_asset_snapshot',
-          )
-            .select('asset_type')
-            .count({ count: '*' })
-            .where({ project_id: projectId, active: true })
-            .groupBy('asset_type')) as {
-            asset_type: string;
-            count: string | number;
-          }[];
+          const runtimeBaseUrl = String(
+            process.env.CARBONET_RUNTIME_BASE_URL ??
+              'http://carbonet-api.carbonet-prod.svc.cluster.local:8080',
+          ).replace(/\/+$/, '');
+          const parameters = new URLSearchParams({
+            assetType,
+            search,
+            limit: String(limit),
+          });
+          const runtimeResponse = await fetch(
+            `${runtimeBaseUrl}/api/internal/actor-process/design-assets/source-heads?${parameters}`,
+            {
+              headers: {
+                accept: 'application/json',
+                'X-Resonance-Token': bridgeToken,
+              },
+            },
+          );
+          const runtimePayload = (await runtimeResponse.json()) as {
+            assets?: DesignAssetSnapshot[];
+            message?: string;
+          };
+          if (!runtimeResponse.ok) {
+            response.status(runtimeResponse.status).json(runtimePayload);
+            return;
+          }
+          const assets = Array.isArray(runtimePayload.assets)
+            ? runtimePayload.assets
+            : [];
+          const counts = assets
+            .filter(asset => asset.active)
+            .reduce<Record<string, number>>((index, asset) => {
+              index[asset.assetType] = (index[asset.assetType] ?? 0) + 1;
+              return index;
+            }, {});
           response.json({
             projectId,
-            counts: Object.fromEntries(
-              counts.map(row => [row.asset_type, Number(row.count)]),
-            ),
-            assets: assets.map(asset => ({
-              assetType: asset.asset_type,
-              assetId: asset.asset_id,
-              assetName: asset.asset_name,
-              routePath: asset.route_path,
-              version: asset.asset_version,
-              active: asset.active,
-              payload: asset.asset_payload,
-              fingerprint: asset.asset_sha256,
-              syncedAt: asset.synced_at,
-            })),
+            authority: 'RUNTIME_GLOBAL_SOURCE_HEAD',
+            counts,
+            assets,
           });
         });
+        const retiredDesignAssetMutation = (
+          _request: Request,
+          response: Response,
+        ) => {
+          response.status(410).json({
+            status: 'RETIRED',
+            activationPolicy: 'SOURCE_IMMEDIATE_V1',
+            replacement: '/design-assets/:projectId/source',
+            message:
+              'This mutation API is retired; approved source changes are applied immediately.',
+          });
+        };
         router.post(
           '/design-assets/:projectId/sync',
-          async (request, response) => {
-            const projectId = normalizeProjectId(request.params.projectId);
-            const project = await knex('resonance_projects__project')
-              .where({ project_id: projectId })
-              .first();
-            if (!project) {
-              response.status(404).json({ message: 'project not found' });
-              return;
-            }
-            const assets = Array.isArray(request.body?.assets)
-              ? (request.body.assets as DesignAssetSnapshotInput[])
-              : [];
-            const allowedTypes = new Set([
-              'THEME',
-              'CSS',
-              'SECTION',
-              'COMPONENT',
-              'SCREEN',
-              'MENU',
-            ]);
-            if (assets.length > 10000) {
-              response.status(413).json({ message: 'too many design assets' });
-              return;
-            }
-            const now = new Date();
-            const rows = assets.map((asset, index) => {
-              const assetType = String(asset.assetType ?? '').toUpperCase();
-              const assetId = String(asset.assetId ?? '').trim();
-              const payload =
-                asset.payload && typeof asset.payload === 'object'
-                  ? asset.payload
-                  : {};
-              if (!allowedTypes.has(assetType) || !assetId) {
-                throw new Error(`invalid design asset at index ${index}`);
-              }
-              const canonical = JSON.stringify({
-                assetType,
-                assetId,
-                assetName: String(asset.assetName ?? assetId),
-                routePath: String(asset.routePath ?? ''),
-                version: String(asset.version ?? 'v1'),
-                active: asset.active !== false,
-                payload,
-              });
-              return {
-                project_id: projectId,
-                asset_type: assetType,
-                asset_id: assetId,
-                asset_name: String(asset.assetName ?? assetId),
-                route_path: String(asset.routePath ?? ''),
-                asset_version: String(asset.version ?? 'v1'),
-                active: asset.active !== false,
-                asset_payload: JSON.stringify(payload),
-                asset_sha256: createHash('sha256')
-                  .update(canonical)
-                  .digest('hex'),
-                synced_at: now,
-              };
-            });
-            if (
-              new Set(rows.map(row => `${row.asset_type}:${row.asset_id}`))
-                .size !== rows.length
-            ) {
-              response.status(400).json({ message: 'duplicate design assets' });
-              return;
-            }
-            await knex.transaction(async transaction => {
-              for (const row of rows) {
-                await transaction('resonance_projects__design_asset_snapshot')
-                  .insert(row)
-                  .onConflict(['project_id', 'asset_type', 'asset_id'])
-                  .merge({
-                    asset_name: row.asset_name,
-                    route_path: row.route_path,
-                    asset_version: row.asset_version,
-                    active: row.active,
-                    asset_payload: row.asset_payload,
-                    asset_sha256: row.asset_sha256,
-                    synced_at: now,
-                  });
-              }
-            });
-            response.json({
-              projectId,
-              synchronized: rows.length,
-              fingerprint: createHash('sha256')
-                .update(
-                  rows
-                    .map(
-                      row =>
-                        `${row.asset_type}:${row.asset_id}:${row.asset_sha256}`,
-                    )
-                    .sort()
-                    .join('\n'),
-                )
-                .digest('hex'),
-              syncedAt: now,
-            });
-          },
+          retiredDesignAssetMutation,
         );
         router.post(
           '/design-assets/:projectId/source',
@@ -1991,36 +1901,74 @@ export default createBackendPlugin({
             let committedReceipt: Record<string, unknown> | undefined;
             try {
               const result = await knex.transaction(async transaction => {
-                const row = await transaction(
-                  'resonance_projects__design_asset_snapshot',
-                )
-                  .where({
-                    project_id: projectId,
-                    asset_type: requestedType,
-                    asset_id: requestedId,
-                  })
-                  .forUpdate()
-                  .first();
-                if (!row) {
+                await transaction.raw(
+                  'select pg_advisory_xact_lock(hashtextextended(?,0))',
+                  [
+                    `BACKSTAGE_COMMON_DESIGN_SOURCE_V1:${requestedType}:${requestedId}`,
+                  ],
+                );
+                let headResponse: globalThis.Response;
+                try {
+                  const headParameters = new URLSearchParams({
+                    assetType: requestedType,
+                    assetId: requestedId,
+                    limit: '1',
+                  });
+                  headResponse = await fetch(
+                    `${runtimeBaseUrl}/api/internal/actor-process/design-assets/source-heads?${headParameters}`,
+                    {
+                      headers: {
+                        accept: 'application/json',
+                        'x-resonance-token': bridgeToken,
+                      },
+                    },
+                  );
+                } catch (error) {
                   return {
-                    status: 404,
-                    body: { message: 'design asset not found' },
+                    status: 502,
+                    body: {
+                      message:
+                        error instanceof Error
+                          ? error.message
+                          : 'runtime design source head is unavailable',
+                      sourceCommitted: false,
+                      jobCount: 0,
+                    },
                   };
                 }
-                const currentPayload =
-                  typeof row.asset_payload === 'string'
-                    ? JSON.parse(row.asset_payload)
-                    : row.asset_payload;
-                const current: DesignAssetSnapshot = {
-                  assetType: String(row.asset_type),
-                  assetId: String(row.asset_id),
-                  assetName: String(row.asset_name),
-                  routePath: String(row.route_path ?? ''),
-                  version: String(row.asset_version),
-                  active: Boolean(row.active),
-                  payload: currentPayload as Record<string, unknown>,
-                  fingerprint: String(row.asset_sha256),
+                const headPayload = (await headResponse.json()) as {
+                  assets?: DesignAssetSnapshot[];
+                  message?: string;
                 };
+                if (!headResponse.ok) {
+                  return { status: headResponse.status, body: headPayload };
+                }
+                const current = headPayload.assets?.[0];
+                if (
+                  !current ||
+                  current.assetType !== requestedType ||
+                  current.assetId !== requestedId
+                ) {
+                  return {
+                    status: 404,
+                    body: { message: 'design asset source head not found' },
+                  };
+                }
+                const requestedBaseFingerprint = String(
+                  request.body?.baseFingerprint ?? '',
+                ).toLowerCase();
+                if (requestedBaseFingerprint !== current.fingerprint) {
+                  return {
+                    status: 409,
+                    body: {
+                      message:
+                        'source fingerprint changed; refresh before editing',
+                      sourceCommitted: false,
+                      jobCount: 0,
+                      current,
+                    },
+                  };
+                }
                 let mutation;
                 try {
                   mutation = buildSourceDesignAssetMutation(
@@ -2039,48 +1987,6 @@ export default createBackendPlugin({
                       jobCount: 0,
                     },
                   };
-                }
-                if (mutation.dependencies.length) {
-                  const dependencyRows = await transaction(
-                    'resonance_projects__design_asset_snapshot',
-                  )
-                    .where({ project_id: projectId })
-                    .andWhere(builder => {
-                      mutation.dependencies.forEach((dependency, index) => {
-                        const condition = {
-                          asset_type: dependency.assetType,
-                          asset_id: dependency.assetId,
-                        };
-                        if (index === 0) builder.where(condition);
-                        else builder.orWhere(condition);
-                      });
-                    })
-                    .select('asset_type', 'asset_id', 'asset_sha256', 'active');
-                  const dependencyIndex = new Map(
-                    dependencyRows.map(dependency => [
-                      `${dependency.asset_type}:${dependency.asset_id}`,
-                      dependency,
-                    ]),
-                  );
-                  for (const dependency of mutation.dependencies) {
-                    const identity = `${dependency.assetType}:${dependency.assetId}`;
-                    const snapshot = dependencyIndex.get(identity);
-                    if (
-                      !snapshot ||
-                      snapshot.active !== true ||
-                      (dependency.fingerprint &&
-                        dependency.fingerprint !== snapshot.asset_sha256)
-                    ) {
-                      return {
-                        status: 422,
-                        body: {
-                          message: `dependency is missing, inactive or changed: ${identity}`,
-                          sourceCommitted: false,
-                          jobCount: 0,
-                        },
-                      };
-                    }
-                  }
                 }
                 let runtimeResponse: globalThis.Response;
                 try {
@@ -2132,29 +2038,12 @@ export default createBackendPlugin({
                 }
                 committedReceipt = receipt;
                 const now = new Date();
-                const updated = await transaction(
-                  'resonance_projects__design_asset_snapshot',
-                )
-                  .where({
-                    project_id: projectId,
-                    asset_type: mutation.assetType,
-                    asset_id: mutation.assetId,
-                    asset_sha256: mutation.baseFingerprint,
-                  })
-                  .update({
-                    asset_name: mutation.assetName,
-                    route_path: mutation.routePath,
-                    asset_version: mutation.version,
-                    active: mutation.active,
-                    asset_payload: JSON.stringify(mutation.payload),
-                    asset_sha256: mutation.assetFingerprint,
-                    synced_at: now,
-                  });
-                if (updated !== 1) {
-                  throw new Error(
-                    'control-plane snapshot compare-and-set was not exact',
+                const synchronizedProjectCount =
+                  await synchronizeGlobalDesignAssetSnapshots(
+                    transaction,
+                    mutation,
+                    now,
                   );
-                }
                 await transaction(
                   'resonance_projects__design_asset_audit',
                 ).insert({
@@ -2173,6 +2062,7 @@ export default createBackendPlugin({
                     ...receipt,
                     controlPlaneSnapshot: 'SYNCHRONIZED',
                     snapshotFingerprint: mutation.assetFingerprint,
+                    synchronizedProjectCount,
                   },
                 };
               });
@@ -2199,18 +2089,6 @@ export default createBackendPlugin({
             }
           },
         );
-        const retiredDesignAssetMutation = (
-          _request: Request,
-          response: Response,
-        ) => {
-          response.status(410).json({
-            status: 'RETIRED',
-            activationPolicy: 'SOURCE_IMMEDIATE_V1',
-            replacement: '/design-assets/:projectId/source',
-            message:
-              'This mutation API is retired; approved source changes are applied immediately.',
-          });
-        };
         router.get(
           '/design-assets/:projectId/drafts',
           retiredDesignAssetMutation,

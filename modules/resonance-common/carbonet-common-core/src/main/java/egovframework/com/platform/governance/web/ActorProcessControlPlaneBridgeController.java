@@ -510,6 +510,32 @@ public class ActorProcessControlPlaneBridgeController {
         }
     }
 
+    @GetMapping("/design-assets/source-heads")
+    public ResponseEntity<?> commonDesignAssetSourceHeads(
+            @RequestHeader(value = "X-Resonance-Token", defaultValue = "") String suppliedToken,
+            @RequestParam(defaultValue = "") String assetType,
+            @RequestParam(defaultValue = "") String assetId,
+            @RequestParam(defaultValue = "") String search,
+            @RequestParam(defaultValue = "100") int limit) {
+        if (!authorized(suppliedToken)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("success", false, "message", "Invalid control-plane bridge token."));
+        }
+        try {
+            List<Map<String,Object>> assets=governance.commonDesignAssetSourceHeads(
+                    assetType,assetId,search,limit);
+            return ResponseEntity.ok(Map.of(
+                    "success",true,"authority","RUNTIME_GLOBAL_SOURCE_HEAD",
+                    "assets",assets,"count",assets.size()));
+        } catch (IllegalArgumentException exception) {
+            return ResponseEntity.unprocessableEntity().body(Map.of(
+                    "success",false,"message",exception.getMessage()));
+        } catch (IllegalStateException exception) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of(
+                    "success",false,"message",exception.getMessage()));
+        }
+    }
+
     @PostMapping("/design-assets/source")
     public ResponseEntity<?> applyCommonDesignAssetSource(
             @RequestHeader(value = "X-Resonance-Token", defaultValue = "") String suppliedToken,
