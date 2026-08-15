@@ -164,6 +164,62 @@ class ActorProcessControlPlaneBridgeAuthorizationTest {
     }
 
     @Test
+    void requirementReleaseRequiresPositiveInt32DesignVersion(){
+        for(Object invalidVersion:List.of(0,2147483648L,1.5d,"1")){
+            var response=controller.applyDesignRelease("secret-token",Map.of(
+                "projectId","PROJECT_A","designVersion",invalidVersion,
+                "contractSha256","a".repeat(64),"contract",Map.of()));
+            assertEquals(422,response.getStatusCode().value(),String.valueOf(invalidVersion));
+        }
+        verifyNoInteractions(jdbc,governance);
+    }
+
+    @Test
+    void exactRequirementSchemaRejectsMissingDuplicateUnknownTrimmedAndOversizedValues()
+            throws Exception {
+        List<java.util.function.Consumer<Map<String,Object>>> mutations=List.of(
+            contract->requirementSteps(contract).get(0).remove("title"),
+            contract->requirementSteps(contract).get(1).put("requirementId",
+                requirementSteps(contract).get(0).get("requirementId")),
+            contract->requirementSteps(contract).get(0).put("unknownField",true),
+            contract->requirementSteps(contract).get(0).put("title"," Trimmed title"),
+            contract->requirementSteps(contract).get(0).put("requirementId","R".repeat(121)),
+            contract->requirementSteps(contract).get(0).put("title","T".repeat(241)),
+            contract->requirementSteps(contract).get(0).put("screenName","S".repeat(161)),
+            contract->requirementActors(contract).get(0).put("actorName","A".repeat(121)),
+            contract->requirementSteps(contract).get(0).put("routePath","/"+"r".repeat(300)),
+            contract->{
+                Map<String,Object> step=requirementSteps(contract).get(0);
+                String path="/"+"e".repeat(270);
+                requiredTestObject(step,"endpoint").put("path",path);
+                requiredTestObject(step,"apiContract").put("path",path);
+            },
+            contract->{
+                Map<String,Object> step=requirementSteps(contract).get(0);
+                requiredTestObject(step,"endpoint").put("method","post");
+                requiredTestObject(step,"apiContract").put("method","post");
+            },
+            contract->java.util.Collections.swap(requirementWorkspaces(contract),0,1),
+            contract->requirementWorkspaces(contract).get(0).put("unknownField",true),
+            contract->requiredTestTabs(requirementWorkspaces(contract).get(0)).get(0)
+                .put("order",20)
+        );
+
+        int mutationIndex=0;
+        for(java.util.function.Consumer<Map<String,Object>> mutation:mutations){
+            Map<String,Object> contract=goldenRequirementContract();
+            mutation.accept(contract);
+            rehashRequirementContract(contract);
+            var response=controller.applyDesignRelease("secret-token",Map.of(
+                "projectId","PROJECT_A","designVersion",contract.get("designVersion"),
+                "contractSha256",canonicalChecksum(contract),"contract",contract));
+            assertEquals(400,response.getStatusCode().value(),"mutation "+mutationIndex);
+            mutationIndex++;
+        }
+        verifyNoInteractions(jdbc,governance);
+    }
+
+    @Test
     void exactReleaseHeadReplayIsIdempotentWithoutImportOrWrite() throws Exception {
         Map<String,Object> contract=requirementContract("PROCESS_A",4,Map.ofEntries(
             Map.entry("stepCode","STEP_ONE"),Map.entry("actorCode","WORKER_ACTOR"),
@@ -682,6 +738,50 @@ class ActorProcessControlPlaneBridgeAuthorizationTest {
             &&sql.contains("contract_payload")),eq("PROJECT_A"),eq(1));
     }
 
+    private Map<String,Object> goldenRequirementContract() throws Exception {
+        Map<String,Object> fixture=mapper.readValue(Files.readString(findRepositoryFile(
+                "ops/tests/fixtures/requirement-design-cross-language-v1.json")),
+            new com.fasterxml.jackson.core.type.TypeReference<LinkedHashMap<String,Object>>(){});
+        return mapper.convertValue(fixture.get("contract"),
+            new com.fasterxml.jackson.core.type.TypeReference<LinkedHashMap<String,Object>>(){});
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Map<String,Object> requiredTestObject(Map<String,Object> value,String key){
+        return (Map<String,Object>)value.get(key);
+    }
+
+    @SuppressWarnings("unchecked")
+    private static List<Map<String,Object>> requirementSteps(Map<String,Object> contract){
+        return (List<Map<String,Object>>)requiredTestObject(contract,"process").get("steps");
+    }
+
+    @SuppressWarnings("unchecked")
+    private static List<Map<String,Object>> requirementActors(Map<String,Object> contract){
+        return (List<Map<String,Object>>)contract.get("actorDefinitions");
+    }
+
+    @SuppressWarnings("unchecked")
+    private static List<Map<String,Object>> requirementWorkspaces(Map<String,Object> contract){
+        return (List<Map<String,Object>>)contract.get("workspaces");
+    }
+
+    @SuppressWarnings("unchecked")
+    private static List<Map<String,Object>> requiredTestTabs(Map<String,Object> workspace){
+        return (List<Map<String,Object>>)workspace.get("tabs");
+    }
+
+    private void rehashRequirementContract(Map<String,Object> contract) throws Exception {
+        List<String> hashBoundKeys=List.of("schemaVersion","projectId","tenantId","identity",
+            "contextFields","workspaces","actorDefinitions","process","generation",
+            "reconciliation","qualityGates");
+        LinkedHashMap<String,Object> hashBound=new LinkedHashMap<>();
+        hashBoundKeys.forEach(key->hashBound.put(key,contract.get(key)));
+        String contentSha=canonicalChecksum(hashBound);
+        contract.put("contentSha256",contentSha);
+        requiredTestObject(contract,"source").put("contentSha256",contentSha);
+    }
+
     private Map<String,Object> requirementContract(
             String processCode,int designVersion,Map<String,Object> rawStep) throws Exception {
         String stepCode=String.valueOf(rawStep.get("stepCode"));
@@ -694,6 +794,8 @@ class ActorProcessControlPlaneBridgeAuthorizationTest {
             "sectionCode","MAIN_TASK","order",1,"componentType","JSON_FORM"));
         LinkedHashMap<String,Object> step=new LinkedHashMap<>(rawStep);
         step.put("requirementId","REQ_"+stepCode);
+        step.put("title",String.valueOf(rawStep.get("screenName")));
+        step.put("processCode",processCode);
         step.put("stepOrder",10);
         step.put("layoutCode","RESPONSIVE_WORKSPACE");
         step.put("themeCode","KRDS_GOV_DEFAULT");
@@ -714,8 +816,7 @@ class ActorProcessControlPlaneBridgeAuthorizationTest {
             "stableKey","PROJECT_A:REQUIREMENTS","processCode",processCode));
         hashBound.put("contextFields",List.of("projectId","tenantId","designVersion",
             "actorCode","processCode","stepCode"));
-        hashBound.put("workspaces",List.of(Map.of("id","PRIMARY_WORKSPACE","tabs",List.of(
-            Map.of("id","TASK","label","Task","sections",sections)))));
+        hashBound.put("workspaces",canonicalRequirementWorkspaces());
         hashBound.put("actorDefinitions",List.of(Map.of(
             "actorCode",actorCode,"actorName",actorCode,"description","Requirement actor",
             "permissionCodes",List.of(command))));
@@ -740,12 +841,35 @@ class ActorProcessControlPlaneBridgeAuthorizationTest {
         LinkedHashMap<String,Object> contract=new LinkedHashMap<>(hashBound);
         contract.put("designVersion",designVersion);
         contract.put("contentSha256",contentSha);
+        contract.put("contentHashAlgorithm","SHA-256/CANONICAL-JSON-V1");
         contract.put("source",Map.ofEntries(
             Map.entry("type","REQUIREMENT_DOCUMENT"),
             Map.entry("fileName","requirements.json"),Map.entry("documentSha256","b".repeat(64)),
             Map.entry("textSha256","c".repeat(64)),Map.entry("stableKey","PROJECT_A:REQUIREMENTS"),
             Map.entry("processCode",processCode),Map.entry("contentSha256",contentSha)));
         return contract;
+    }
+
+    private static List<Map<String,Object>> canonicalRequirementWorkspaces(){
+        List<Map<String,Object>> workspaces=new java.util.ArrayList<>();
+        for(String workspaceId:List.of("design","develop","operate")){
+            List<Map<String,Object>> tabs=new java.util.ArrayList<>();
+            int tabCount="operate".equals(workspaceId)?9:8;
+            for(int tabIndex=1;tabIndex<=tabCount;tabIndex++){
+                List<Map<String,Object>> sections=new java.util.ArrayList<>();
+                int sectionIndex=0;
+                for(String sectionCode:List.of("HELP","NEXT_TASK","QA","SCREEN_DESIGN")){
+                    sectionIndex++;
+                    sections.add(Map.of("sectionCode",sectionCode,"componentType",sectionCode,
+                        "order",sectionIndex*10));
+                }
+                tabs.add(Map.of("id",workspaceId+"-"+tabIndex,
+                    "label",workspaceId.toUpperCase()+" "+tabIndex,
+                    "order",tabIndex*10,"sections",sections));
+            }
+            workspaces.add(Map.of("id",workspaceId,"tabs",tabs));
+        }
+        return workspaces;
     }
 
     private String canonicalChecksum(Object contract) throws Exception {

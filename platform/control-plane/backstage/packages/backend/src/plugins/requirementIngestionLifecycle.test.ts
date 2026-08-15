@@ -2,11 +2,13 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import {
   RequirementPublicationError,
+  bridgePublicationDisposition,
   ensureRequirementPublication,
   nextRequirementDesignVersion,
   requirementContentFingerprint,
   requirementDocumentId,
   requirementItemId,
+  requirementPublicationPersistence,
   sameRequirementRevision,
 } from './requirementIngestionLifecycle';
 
@@ -111,6 +113,25 @@ describe('requirement ingestion lifecycle', () => {
       'drop constraint if exists resonance_requirement_document_project_hash_uq',
     );
     expect(routeSource.match(/response\.status\(410\)/g)).toHaveLength(2);
+    const retiredMutationRoutes = routeSource.slice(
+      routeSource.indexOf("'/:projectId/design-releases'", lifecycleStart),
+      routeSource.indexOf("'/:projectId/development-contract'", lifecycleStart),
+    );
+    expect(retiredMutationRoutes).not.toContain('RESONANCE_OPS_TOKEN');
+    expect(retiredMutationRoutes).not.toContain('contract_payload');
+    expect(retiredMutationRoutes).not.toContain('.onConflict(');
+    expect(retiredMutationRoutes).not.toContain('await fetch(');
+    expect(lifecycle).toContain(
+      'requirementPublicationPersistence(disposition)',
+    );
+    expect(lifecycle).toContain("evidenceType: 'RUNTIME_PUBLICATION_RECEIPT'");
+    const developmentContract = routeSource.slice(
+      routeSource.indexOf("'/:projectId/development-contract'"),
+      routeSource.indexOf("router.post('/',", routeSource.indexOf("'/:projectId/development-contract'")),
+    );
+    expect(developmentContract).toContain(
+      "query.whereIn('release_status', ['PROMOTED', 'APPLIED'])",
+    );
   });
 
   it('retries a failed bridge publication and no-ops after it is queued', async () => {
@@ -125,36 +146,37 @@ describe('requirement ingestion lifecycle', () => {
         ? { ok: false, payload: { success: false, status: 'REJECTED' } }
         : { ok: true, payload: { success: true, status: 'QUEUED' } };
     };
-    const markQueued = async () => {
-      state.analysisStatus = 'GENERATION_QUEUED';
-      state.releaseStatus = 'PROMOTED';
+    const recordPublication = async (disposition: 'QUEUED' | 'APPLIED') => {
+      state.analysisStatus =
+        disposition === 'APPLIED' ? 'GENERATION_APPLIED' : 'GENERATION_QUEUED';
+      state.releaseStatus = disposition === 'APPLIED' ? 'APPLIED' : 'PROMOTED';
     };
 
     await expect(
       ensureRequirementPublication({
-        autoPromote: true,
+        sourceImmediate: true,
         state,
         publish,
-        markQueued,
+        recordPublication,
       }),
     ).rejects.toBeInstanceOf(RequirementPublicationError);
     expect(state.analysisStatus).toBe('DESIGN_VALIDATED');
 
     const retry = await ensureRequirementPublication({
-      autoPromote: true,
+      sourceImmediate: true,
       state,
       publish,
-      markQueued,
+      recordPublication,
     });
     expect(retry).toEqual(
       expect.objectContaining({ attempted: true, completed: true }),
     );
 
     const replay = await ensureRequirementPublication({
-      autoPromote: true,
+      sourceImmediate: true,
       state,
       publish,
-      markQueued,
+      recordPublication,
     });
     expect(replay).toEqual(
       expect.objectContaining({ attempted: false, completed: true }),
@@ -162,16 +184,117 @@ describe('requirement ingestion lifecycle', () => {
     expect(attempts).toBe(2);
   });
 
+  it('records an idempotent runtime APPLIED receipt without queue downgrades', async () => {
+    const recorded: Array<{ disposition: string; publication: unknown }> = [];
+    const publication = {
+      success: true,
+      idempotent: true,
+      releaseStatus: 'APPLIED',
+      applicationStatus: 'GENERATION_APPLIED',
+      generation: { status: 'APPLIED', evidenceRef: 'receipt://release/7' },
+    };
+
+    const result = await ensureRequirementPublication({
+      sourceImmediate: true,
+      refreshQueued: true,
+      state: {
+        analysisStatus: 'GENERATION_QUEUED',
+        releaseStatus: 'PROMOTED',
+      },
+      publish: async () => ({ ok: true, payload: publication }),
+      recordPublication: async (disposition, receipt) => {
+        recorded.push({ disposition, publication: receipt });
+      },
+    });
+
+    expect(bridgePublicationDisposition(publication)).toBe('APPLIED');
+    expect(result).toEqual(
+      expect.objectContaining({
+        attempted: true,
+        completed: true,
+        disposition: 'APPLIED',
+      }),
+    );
+    expect(recorded).toEqual([{ disposition: 'APPLIED', publication }]);
+    expect(requirementPublicationPersistence('APPLIED')).toEqual({
+      releaseStatus: 'APPLIED',
+      projectStatus: 'GENERATION_APPLIED',
+      analysisStatus: 'GENERATION_APPLIED',
+      itemStatus: 'GENERATION_APPLIED',
+      completeTasks: true,
+    });
+    expect(requirementPublicationPersistence('QUEUED')).toEqual(
+      expect.objectContaining({
+        releaseStatus: 'PROMOTED',
+        projectStatus: 'GENERATION_QUEUED',
+        completeTasks: false,
+      }),
+    );
+  });
+
+  it('rejects a successful bridge response without an exact queued or applied state', async () => {
+    let recorded = false;
+    await expect(
+      ensureRequirementPublication({
+        sourceImmediate: true,
+        state: {
+          analysisStatus: 'DESIGN_VALIDATED',
+          releaseStatus: 'VALIDATED',
+        },
+        publish: async () => ({
+          ok: true,
+          payload: { success: true, status: 'UNKNOWN' },
+        }),
+        recordPublication: async () => {
+          recorded = true;
+        },
+      }),
+    ).rejects.toMatchObject({
+      publication: expect.objectContaining({
+        error: 'UNRECOGNIZED_RUNTIME_PUBLICATION_STATE',
+      }),
+    });
+    expect(recorded).toBe(false);
+  });
+
+  it('keeps an already applied local head terminal without another bridge call', async () => {
+    let bridgeCalls = 0;
+    let recordCalls = 0;
+    const result = await ensureRequirementPublication({
+      sourceImmediate: true,
+      state: { analysisStatus: 'GENERATION_APPLIED', releaseStatus: 'APPLIED' },
+      publish: async () => {
+        bridgeCalls += 1;
+        return { ok: true, payload: { success: true, status: 'QUEUED' } };
+      },
+      recordPublication: async () => {
+        recordCalls += 1;
+      },
+    });
+
+    expect(result).toEqual(
+      expect.objectContaining({
+        attempted: false,
+        disposition: 'APPLIED',
+        publication: { success: true, status: 'ALREADY_APPLIED' },
+      }),
+    );
+    expect({ bridgeCalls, recordCalls }).toEqual({
+      bridgeCalls: 0,
+      recordCalls: 0,
+    });
+  });
+
   it('does not downgrade a completed publication when auto promotion is off', async () => {
     let attempts = 0;
     const result = await ensureRequirementPublication({
-      autoPromote: false,
+      sourceImmediate: false,
       state: { analysisStatus: 'GENERATION_APPLIED', releaseStatus: 'APPLIED' },
       publish: async () => {
         attempts += 1;
         return { ok: true, payload: { success: true } };
       },
-      markQueued: async () => undefined,
+      recordPublication: async () => undefined,
     });
 
     expect(result).toEqual(

@@ -92,10 +92,19 @@ public class ActorProcessControlPlaneBridgeController {
         }
         try {
             String projectId = required(body, "projectId").toUpperCase();
-            int designVersion = Integer.parseInt(required(body, "designVersion"));
+            Object rawDesignVersion=body.get("designVersion");
+            if(!(rawDesignVersion instanceof Number versionNumber)
+                    ||versionNumber.longValue()<1L
+                    ||versionNumber.longValue()>Integer.MAX_VALUE
+                    ||versionNumber.doubleValue()!=versionNumber.longValue()){
+                return ResponseEntity.unprocessableEntity().body(Map.of(
+                        "success", false,
+                        "message", "designVersion must be a positive 32-bit integer."));
+            }
+            int designVersion = versionNumber.intValue();
             String checksum = required(body, "contractSha256");
             Object contract = body.get("contract");
-            if (designVersion < 1 || !checksum.matches("^[0-9a-f]{64}$")
+            if (!checksum.matches("^[0-9a-f]{64}$")
                     || !(contract instanceof Map<?, ?>)) {
                 return ResponseEntity.unprocessableEntity().body(Map.of(
                         "success", false,
@@ -1110,7 +1119,9 @@ public class ActorProcessControlPlaneBridgeController {
         validateRequirementEnvelope(contract,projectId,designVersion);
         Map<String,Object> source=requiredObject(contract,"source");
         Map<String,Object> identity=requiredObject(contract,"identity");
+        requireOnlyKeys(identity,"identity","strategy","stableKey","processCode");
         Map<String,Object> process=requiredObject(contract,"process");
+        requireOnlyKeys(process,"process","processCode","startState","endState","steps");
         String processCode=canonicalCode(process,"processCode");
         if(!processCode.equals(canonicalCode(identity,"processCode"))
                 ||!processCode.equals(canonicalCode(source,"processCode")))
@@ -1121,11 +1132,16 @@ public class ActorProcessControlPlaneBridgeController {
         Map<String,java.util.SortedSet<String>> actorPermissions=validateRequirementActors(
             requiredObjectList(contract,"actorDefinitions",1,1000));
         Map<String,Object> generation=requiredObject(contract,"generation");
+        requireOnlyKeys(generation,"generation","strategy","maxScreens","commonTheme",
+            "commonLayout","genericEndpoints");
         RequirementSets sets=validateRequirementSteps(process,processCode,actorPermissions,
             governedCode(generation,"commonLayout"),governedCode(generation,"commonTheme"));
         if(!actorPermissions.keySet().equals(sets.actors()))
             throw new IllegalArgumentException("REQUIREMENT_ACTOR_DEFINITION_SET_NOT_EXACT");
         Map<String,Object> reconciliation=requiredObject(contract,"reconciliation");
+        requireOnlyKeys(reconciliation,"reconciliation","mode","staleIdentityIntent",
+            "stepCodes","routePaths","screenKeys","commandCodes","endpointIdentities",
+            "actorCodes");
         if(!"EXACT_SET".equals(requiredRaw(reconciliation,"mode"))
                 ||!"REMOVE_GENERATOR_OWNED_MISSING".equals(requiredRaw(reconciliation,"staleIdentityIntent")))
             throw new IllegalArgumentException("REQUIREMENT_RECONCILIATION_POLICY_UNSUPPORTED");
@@ -1136,15 +1152,26 @@ public class ActorProcessControlPlaneBridgeController {
     }
 
     private void validateRequirementEnvelope(Map<String,Object> contract,String projectId,int designVersion){
+        requireOnlyKeys(contract,"contract","schemaVersion","projectId","tenantId","identity",
+            "contextFields","workspaces","actorDefinitions","process","generation",
+            "reconciliation","qualityGates","designVersion","contentSha256",
+            "contentHashAlgorithm","source");
+        Object rawVersion=contract.get("designVersion");
         if(!"3.0.0".equals(contract.get("schemaVersion"))
-                ||!projectId.equals(requiredRaw(contract,"projectId").toUpperCase())
-                ||!(contract.get("designVersion") instanceof Number version)||version.intValue()!=designVersion)
+                ||!projectId.equals(requiredRaw(contract,"projectId",64).toUpperCase())
+                ||!(rawVersion instanceof Number version)
+                ||version.longValue()<1L||version.longValue()>Integer.MAX_VALUE
+                ||version.doubleValue()!=version.longValue()||version.intValue()!=designVersion)
             throw new IllegalArgumentException("REQUIREMENT_RELEASE_IDENTITY_MISMATCH");
-        requiredRaw(contract,"tenantId");
+        requiredRaw(contract,"tenantId",100);
+        if(!"SHA-256/CANONICAL-JSON-V1".equals(requiredRaw(contract,"contentHashAlgorithm")))
+            throw new IllegalArgumentException("REQUIREMENT_CONTENT_HASH_ALGORITHM_UNSUPPORTED");
         Map<String,Object> source=requiredObject(contract,"source");
+        requireOnlyKeys(source,"source","type","fileName","documentSha256","textSha256",
+            "stableKey","processCode","contentSha256");
         if(!"REQUIREMENT_DOCUMENT".equals(requiredRaw(source,"type")))
             throw new IllegalArgumentException("UNSUPPORTED_DESIGN_RELEASE_SOURCE");
-        requiredRaw(source,"fileName");requiredRaw(source,"stableKey");
+        requiredRaw(source,"fileName",240);requiredRaw(source,"stableKey",240);
         requireSha256(source,"documentSha256");requireSha256(source,"textSha256");
         String contentSha=requireSha256(contract,"contentSha256");
         if(!contentSha.equals(requireSha256(source,"contentSha256")))
@@ -1174,8 +1201,10 @@ public class ActorProcessControlPlaneBridgeController {
             List<Map<String,Object>> actors){
         Map<String,java.util.SortedSet<String>> permissions=new java.util.TreeMap<>();
         for(Map<String,Object> actor:actors){
+            requireOnlyKeys(actor,"actorDefinition","actorCode","actorName","description",
+                "permissionCodes");
             String code=canonicalActorCode(actor,"actorCode");
-            requiredRaw(actor,"actorName");requiredRaw(actor,"description");
+            requiredRaw(actor,"actorName",120);requiredRaw(actor,"description");
             if(permissions.put(code,canonicalPermissionSet(
                     requiredStringList(actor,"permissionCodes",1,200)))!=null)
                 throw new IllegalArgumentException("REQUIREMENT_ACTOR_DUPLICATE: "+code);
@@ -1188,18 +1217,31 @@ public class ActorProcessControlPlaneBridgeController {
         List<Map<String,Object>> steps=requiredObjectList(process,"steps",1,1000);
         RequirementSets ids=new RequirementSets(new java.util.TreeSet<>(),new java.util.TreeSet<>(),
             new java.util.TreeSet<>(),new java.util.TreeSet<>(),new java.util.TreeSet<>(),new java.util.TreeSet<>());
+        java.util.Set<String> requirementIds=new java.util.HashSet<>();
         String expectedFrom=canonicalCode(process,"startState");
         int previousOrder=0;
         for(int index=0;index<steps.size();index++){
             Map<String,Object> step=steps.get(index);
-            if(!(step.get("stepOrder") instanceof Number order)||order.intValue()<=previousOrder)
+            requireOnlyKeys(step,"process.steps["+index+"]","requirementId","title","description",
+                "actorCode","processCode","stepCode","stepOrder","screenName","routePath",
+                "layoutCode","themeCode","sections","permissionCodes","commandCode",
+                "fromState","toState","endpoint","apiContract","fields","acceptanceCriteria");
+            int order=requiredPositiveJavaInteger(step,"stepOrder","process.steps["+index+"]");
+            if(order<=previousOrder)
                 throw new IllegalArgumentException("REQUIREMENT_STEP_ORDER_NOT_INCREASING");
-            previousOrder=order.intValue();
-            requiredRaw(step,"requirementId");requiredRaw(step,"screenName");requiredRaw(step,"description");
+            previousOrder=order;
+            String requirementId=requiredRaw(step,"requirementId",120);
+            if(!requirementIds.add(requirementId))
+                throw new IllegalArgumentException("REQUIREMENT_ID_DUPLICATE: "+requirementId);
+            requiredRaw(step,"title",240);requiredRaw(step,"screenName",160);
+            requiredRaw(step,"description");
             String code=canonicalCode(step,"stepCode"),actor=canonicalActorCode(step,"actorCode");
             String command=canonicalCode(step,"commandCode"),from=canonicalCode(step,"fromState");
-            String to=canonicalCode(step,"toState"),route=requiredRaw(step,"routePath");
-            if(!expectedFrom.equals(from)||!route.matches("^/[A-Za-z0-9/_{}:.~-]{1,399}$")||route.contains("//"))
+            String to=canonicalCode(step,"toState"),route=requiredRaw(step,"routePath",300);
+            if(!processCode.equals(canonicalCode(step,"processCode"))
+                    ||from.length()>60||to.length()>60
+                    ||!expectedFrom.equals(from)
+                    ||!route.matches("^/[A-Za-z0-9/_{}:.~-]{1,299}$")||route.contains("//"))
                 throw new IllegalArgumentException("REQUIREMENT_STEP_PATH_OR_STATE_INVALID: "+code);
             expectedFrom=to;
             step.putIfAbsent("layoutCode",commonLayout);step.putIfAbsent("themeCode",commonTheme);
@@ -1212,10 +1254,12 @@ public class ActorProcessControlPlaneBridgeController {
             if(!actorPermissions.getOrDefault(actor,new java.util.TreeSet<>()).containsAll(permissions))
                 throw new IllegalArgumentException("REQUIREMENT_ACTOR_PERMISSION_COVERAGE_MISSING: "+actor);
             Map<String,Object> endpoint=requiredObject(step,"endpoint"),api=requiredObject(step,"apiContract");
-            String method=requiredRaw(endpoint,"method").toUpperCase(),path=requiredRaw(endpoint,"path");
+            requireOnlyKeys(endpoint,"process.steps["+index+"].endpoint","method","path");
+            requireOnlyKeys(api,"process.steps["+index+"].apiContract","method","path");
+            String method=requiredRaw(endpoint,"method"),path=requiredRaw(endpoint,"path",270);
             if(!Set.of("GET","POST","PUT","PATCH","DELETE").contains(method)
-                    ||!path.matches("^/[A-Za-z0-9/_{}:.~-]{1,399}$")
-                    ||!method.equals(requiredRaw(api,"method").toUpperCase())||!path.equals(requiredRaw(api,"path")))
+                    ||!path.matches("^/[A-Za-z0-9/_{}:.~-]{1,269}$")||path.contains("//")
+                    ||!method.equals(requiredRaw(api,"method"))||!path.equals(requiredRaw(api,"path")))
                 throw new IllegalArgumentException("REQUIREMENT_ENDPOINT_INVALID: "+code);
             if(!ids.steps().add(code)||!ids.routes().add(route)||!ids.commands().add(command))
                 throw new IllegalArgumentException("REQUIREMENT_STEP_IDENTITY_DUPLICATE: "+code);
@@ -1288,37 +1332,92 @@ public class ActorProcessControlPlaneBridgeController {
     }
 
     private static void validateWorkspaces(List<Map<String,Object>> workspaces){
-        java.util.Set<String> ids=new java.util.HashSet<>();
-        for(Map<String,Object> workspace:workspaces){
-            if(!ids.add(requiredRaw(workspace,"id")))throw new IllegalArgumentException("WORKSPACE_DUPLICATE");
-            java.util.Set<String> tabIds=new java.util.HashSet<>();
-            for(Map<String,Object> tab:requiredObjectList(workspace,"tabs",1,100)){
-                if(!tabIds.add(requiredRaw(tab,"id")))throw new IllegalArgumentException("WORKSPACE_TAB_DUPLICATE");
-                requiredRaw(tab,"label");
-                validateSections(requiredObjectList(tab,"sections",1,200));
+        List<String> expectedWorkspaceIds=List.of("design","develop","operate");
+        List<String> expectedSectionCodes=List.of("HELP","NEXT_TASK","QA","SCREEN_DESIGN");
+        if(workspaces.size()!=expectedWorkspaceIds.size())
+            throw new IllegalArgumentException("REQUIREMENT_WORKSPACES_NOT_EXACT");
+        for(int workspaceIndex=0;workspaceIndex<workspaces.size();workspaceIndex++){
+            Map<String,Object> workspace=workspaces.get(workspaceIndex);
+            String workspacePath="workspaces["+workspaceIndex+"]";
+            requireOnlyKeys(workspace,workspacePath,"id","tabs");
+            String expectedWorkspaceId=expectedWorkspaceIds.get(workspaceIndex);
+            if(!expectedWorkspaceId.equals(requiredRaw(workspace,"id")))
+                throw new IllegalArgumentException("REQUIREMENT_WORKSPACE_ORDER_NOT_EXACT");
+            int expectedTabCount="operate".equals(expectedWorkspaceId)?9:8;
+            List<Map<String,Object>> tabs=requiredObjectList(
+                workspace,"tabs",expectedTabCount,expectedTabCount);
+            for(int tabIndex=0;tabIndex<tabs.size();tabIndex++){
+                Map<String,Object> tab=tabs.get(tabIndex);
+                String tabPath=workspacePath+".tabs["+tabIndex+"]";
+                requireOnlyKeys(tab,tabPath,"id","label","order","sections");
+                String expectedTabId=expectedWorkspaceId+"-"+(tabIndex+1);
+                String expectedLabel=expectedWorkspaceId.toUpperCase()+" "+(tabIndex+1);
+                if(!expectedTabId.equals(requiredRaw(tab,"id"))
+                        ||!expectedLabel.equals(requiredRaw(tab,"label"))
+                        ||requiredPositiveJavaInteger(tab,"order",tabPath)!=(tabIndex+1)*10)
+                    throw new IllegalArgumentException("REQUIREMENT_WORKSPACE_TAB_NOT_EXACT: "+expectedTabId);
+                List<Map<String,Object>> sections=requiredObjectList(
+                    tab,"sections",expectedSectionCodes.size(),expectedSectionCodes.size());
+                validateSections(sections);
+                for(int sectionIndex=0;sectionIndex<sections.size();sectionIndex++){
+                    Map<String,Object> section=sections.get(sectionIndex);
+                    String expectedCode=expectedSectionCodes.get(sectionIndex);
+                    if(!expectedCode.equals(section.get("sectionCode"))
+                            ||!expectedCode.equals(section.get("componentType"))
+                            ||!Integer.valueOf((sectionIndex+1)*10).equals(section.get("order")))
+                        throw new IllegalArgumentException(
+                            "REQUIREMENT_WORKSPACE_SECTION_NOT_EXACT: "+expectedTabId);
+                }
             }
         }
     }
 
     private static void validateSections(List<Map<String,Object>> sections){
         int previous=0;java.util.Set<String> codes=new java.util.HashSet<>();
-        for(Map<String,Object> section:sections){
+        for(int index=0;index<sections.size();index++){
+            Map<String,Object> section=sections.get(index);
+            requireOnlyKeys(section,"section["+index+"]","sectionCode","order","componentType");
             String code=canonicalCode(section,"sectionCode");
-            if(!codes.add(code)||!(section.get("order") instanceof Number order)||order.intValue()<=previous)
+            int order=requiredPositiveJavaInteger(section,"order","section["+index+"]");
+            if(!codes.add(code)||order<=previous)
                 throw new IllegalArgumentException("REQUIREMENT_SECTION_ORDER_NOT_EXACT: "+code);
-            previous=order.intValue();requiredRaw(section,"componentType");
+            previous=order;canonicalCode(section,"componentType");
         }
     }
 
     private static void validateFields(List<Map<String,Object>> fields){
         int previous=0;java.util.Set<String> codes=new java.util.HashSet<>();
-        for(Map<String,Object> field:fields){
+        for(int index=0;index<fields.size();index++){
+            Map<String,Object> field=fields.get(index);
+            requireOnlyKeys(field,"field["+index+"]","fieldCode","label","type","required","order");
             String code=canonicalCode(field,"fieldCode");requiredRaw(field,"label");requiredRaw(field,"type");
-            if(!codes.add(code)||!(field.get("order") instanceof Number order)||order.intValue()<=previous
+            int order=requiredPositiveJavaInteger(field,"order","field["+index+"]");
+            if(!codes.add(code)||order<=previous
                     ||!(field.get("required") instanceof Boolean))
                 throw new IllegalArgumentException("REQUIREMENT_FIELD_INVALID: "+code);
-            previous=order.intValue();
+            previous=order;
         }
+    }
+
+    private static int requiredPositiveJavaInteger(
+            Map<String,Object> body,String key,String path){
+        Object raw=body.get(key);
+        if(!(raw instanceof Number number)||number.longValue()<1L
+                ||number.longValue()>Integer.MAX_VALUE
+                ||number.doubleValue()!=number.longValue())
+            throw new IllegalArgumentException(path+"."+key+" must be a positive 32-bit integer");
+        return number.intValue();
+    }
+
+    private static void requireOnlyKeys(
+            Map<?,?> body,String path,String... allowedKeys){
+        java.util.Set<String> allowed=Set.of(allowedKeys);
+        java.util.SortedSet<String> unknown=new java.util.TreeSet<>();
+        for(Object key:body.keySet()){
+            if(!(key instanceof String text)||!allowed.contains(text))unknown.add(String.valueOf(key));
+        }
+        if(!unknown.isEmpty())throw new IllegalArgumentException(
+            path+" contains unknown fields: "+String.join(",",unknown));
     }
 
     private static void requireExactList(Map<String,Object> body,String key,List<String> expected){
@@ -1389,9 +1488,15 @@ public class ActorProcessControlPlaneBridgeController {
     }
 
     private static String requiredRaw(Map<?, ?> body, String key) {
+        return requiredRaw(body,key,Integer.MAX_VALUE);
+    }
+
+    private static String requiredRaw(Map<?, ?> body, String key,int maximumLength) {
         Object value = body.get(key);
-        String text = value == null ? "" : String.valueOf(value).trim();
-        if (text.isEmpty()) throw new IllegalArgumentException(key + " is required");
+        if(!(value instanceof String text)||text.isBlank()||!text.equals(text.trim()))
+            throw new IllegalArgumentException(key + " must be a canonical non-empty string");
+        if(text.length()>maximumLength)
+            throw new IllegalArgumentException(key+" exceeds maximum length "+maximumLength);
         return text;
     }
 

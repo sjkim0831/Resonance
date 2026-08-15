@@ -17,6 +17,8 @@ export type RequirementDocumentInput = RequirementDocumentIdentityInput & {
   mimeType?: string;
   contentBase64?: string;
   extractedText?: string;
+  sourceImmediate?: boolean;
+  /** Compatibility input for older clients; new UI uses sourceImmediate. */
   autoPromote?: boolean;
 };
 
@@ -215,7 +217,8 @@ export const decodeRequirementDocument = (input: RequirementDocumentInput) => {
   if (raw.length > 8 * 1024 * 1024) {
     throw new Error('requirement document exceeds 8MB');
   }
-  let text = String(input.extractedText ?? '').trim();
+  const extractedText = String(input.extractedText ?? '');
+  let text = extractedText.trim();
   if (!text && ['txt', 'md', 'csv', 'json'].includes(extension)) {
     text = raw
       .toString('utf8')
@@ -232,13 +235,19 @@ export const decodeRequirementDocument = (input: RequirementDocumentInput) => {
   if (text.length > 2_000_000) {
     throw new Error('extracted requirement text is too large');
   }
+  const mimeType = String(input.mimeType ?? 'application/octet-stream').trim();
+  if (!mimeType || mimeType.length > 160) {
+    throw new Error('mimeType must fit the 160 character storage contract');
+  }
   return {
     fileName,
     extension,
-    mimeType: String(input.mimeType ?? 'application/octet-stream'),
+    mimeType,
     text,
     byteSize: raw.length || Buffer.byteLength(text),
-    documentSha256: digest(raw.length ? raw.toString('base64') : text),
+    documentSha256: digest(
+      raw.length ? raw : Buffer.from(extractedText || text, 'utf8'),
+    ),
     textSha256: digest(text),
     identity: normalizedIdentityInput(input),
   };
@@ -310,6 +319,19 @@ const structuredString = (
     throw new Error(`${path}.${key} must be a canonical non-empty string`);
   }
   return String(object[key]);
+};
+
+const boundedStructuredString = (
+  object: StructuredObject,
+  key: string,
+  path: string,
+  maximum: number,
+) => {
+  const value = structuredString(object, key, path);
+  if (value.length > maximum) {
+    throw new Error(`${path}.${key} exceeds ${maximum} characters`);
+  }
+  return value;
 };
 
 const structuredCode = (
@@ -389,7 +411,7 @@ const parseStructuredEndpoint = (value: unknown, path: string) => {
   const endpointPath = structuredString(endpoint, 'path', path);
   if (
     !['DELETE', 'GET', 'PATCH', 'POST', 'PUT'].includes(method) ||
-    !/^\/[A-Za-z0-9/_{}:.~-]{1,399}$/.test(endpointPath) ||
+    !/^\/[A-Za-z0-9/_{}:.~-]{1,269}$/.test(endpointPath) ||
     endpointPath.includes('//')
   ) {
     throw new Error(`${path} is not a canonical endpoint`);
@@ -446,14 +468,14 @@ const parseStructuredStep = (
   ]);
   const routePath = structuredString(step, 'routePath', path);
   if (
-    !/^\/[A-Za-z0-9/_{}:.~-]{1,399}$/.test(routePath) ||
+    !/^\/[A-Za-z0-9/_{}:.~-]{1,299}$/.test(routePath) ||
     routePath.includes('//')
   ) {
     throw new Error(`${path}.routePath is not canonical`);
   }
   return {
-    requirementId: structuredString(step, 'requirementId', path),
-    title: structuredString(step, 'title', path),
+    requirementId: boundedStructuredString(step, 'requirementId', path, 120),
+    title: boundedStructuredString(step, 'title', path, 240),
     description: structuredString(step, 'description', path),
     actorCode: structuredCode(
       step,
@@ -464,7 +486,7 @@ const parseStructuredStep = (
     processCode: structuredCode(step, 'processCode', path),
     stepCode: structuredCode(step, 'stepCode', path),
     stepOrder: structuredOrder(step, 'stepOrder', path),
-    screenName: structuredString(step, 'screenName', path),
+    screenName: boundedStructuredString(step, 'screenName', path, 160),
     routePath,
     layoutCode: structuredCode(
       step,
@@ -490,8 +512,13 @@ const parseStructuredStep = (
       /^[A-Z][A-Z0-9_:-]{1,79}$/,
     ),
     commandCode: structuredCode(step, 'commandCode', path),
-    fromState: structuredCode(step, 'fromState', path),
-    toState: structuredCode(step, 'toState', path),
+    fromState: structuredCode(
+      step,
+      'fromState',
+      path,
+      /^[A-Z][A-Z0-9_:-]{1,59}$/,
+    ),
+    toState: structuredCode(step, 'toState', path, /^[A-Z][A-Z0-9_:-]{1,59}$/),
     endpoint: parseStructuredEndpoint(step.endpoint, `${path}.endpoint`),
     apiContract: parseStructuredEndpoint(
       step.apiContract,
@@ -525,7 +552,7 @@ const parseStructuredActor = (value: unknown, index: number) => {
       path,
       /^[A-Z][A-Z0-9_]{1,59}$/,
     ),
-    actorName: structuredString(actor, 'actorName', path),
+    actorName: boundedStructuredString(actor, 'actorName', path, 120),
     description: structuredString(actor, 'description', path),
     permissionCodes: structuredStringList(
       actor,
@@ -824,13 +851,9 @@ const validateAnalysis = (analysis: RequirementAnalysis) => {
     if (condition) throw new Error(message);
   };
   fail(
-    analysis.workspaces.length !== 3 ||
-      analysis.workspaces
-        .map(item => item.id)
-        .sort()
-        .join(',') !== 'design,develop,operate' ||
-      analysis.workspaces.flatMap(item => item.tabs).length !== 25,
-    'workspaces must contain 3 workspaces and 25 tabs',
+    canonicalRequirementJson(analysis.workspaces) !==
+      canonicalRequirementJson(workspaces),
+    'workspaces must match the canonical design/develop/operate 25-tab contract',
   );
   fail(
     !analysis.requirements.length || analysis.requirements.length > 1000,
@@ -991,8 +1014,12 @@ export const buildRequirementDesignContract = ({
   document: ReturnType<typeof decodeRequirementDocument>;
   analysis: RequirementAnalysis;
 }) => {
-  if (!Number.isInteger(designVersion) || designVersion <= 0) {
-    throw new Error('designVersion must be a positive integer');
+  if (
+    !Number.isInteger(designVersion) ||
+    designVersion <= 0 ||
+    designVersion > 2_147_483_647
+  ) {
+    throw new Error('designVersion must be a positive PostgreSQL integer');
   }
   const analysis = canonicalAnalysis(sourceAnalysis);
   validateAnalysis(analysis);

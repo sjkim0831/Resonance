@@ -32,6 +32,8 @@ import {
   ActorProcessWorkspaceId,
   buildCustomerJourneySimulation,
   buildProcessGraph,
+  hydrateStringDraft,
+  professionalContractSaveValues,
   REQUIRED_SIMULATION_TYPES,
   resolveProcessBranches,
 } from './actorProcessWorkspaces';
@@ -3453,10 +3455,7 @@ function DataContractWorkspace({
   const missing = [draft.contractId, draft.businessPurpose, draft.entryCondition,
     draft.exitCondition, draft.layoutCode, draft.themeCode].some(value => !value.trim());
   const selectContract = (row: RuntimeRow) => {
-    const next = emptyDataContract();
-    (Object.keys(next) as Array<keyof DataContractDraft>).forEach(key => {
-      if (row[key] !== undefined && row[key] !== null) next[key] = String(row[key]);
-    });
+    const next = hydrateStringDraft(emptyDataContract(), row);
     setSelectedId(String(row.contractId ?? ''));
     setDraft(next);
   };
@@ -3496,8 +3495,7 @@ function DataContractWorkspace({
             {!selectedId ? <Box mt={2} p={3} style={{ background: '#f5f7fa', borderRadius: 8 }}><Typography color="textSecondary">왼쪽에서 화면 계약을 선택하세요. 계약은 기존 등록 화면을 기준으로만 수정됩니다.</Typography></Box> : <form onSubmit={event => {
               event.preventDefault();
               if (missing || invalidJson) return;
-              const values: Record<string, unknown> = { ...draft,
-                contractId: Number(draft.contractId), layout: draft.layoutCode, theme: draft.themeCode };
+              const values = professionalContractSaveValues(draft);
               verificationFields.forEach(([field]) => { values[field] = draft[field] === 'true'; });
               void onSave(values);
             }}>

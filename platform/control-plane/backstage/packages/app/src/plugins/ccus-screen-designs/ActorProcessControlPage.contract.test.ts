@@ -25,8 +25,8 @@ describe('ActorProcessControlPage SOURCE immediate contract', () => {
       expect(source).toContain(field);
     }
     expect(source).toContain("command: 'screen.contract.save'");
-    expect(source).toContain('layout: draft.layoutCode');
-    expect(source).toContain('theme: draft.themeCode');
+    expect(source).toContain('professionalContractSaveValues(draft)');
+    expect(source).toContain('hydrateStringDraft(emptyDataContract(), row)');
   });
 
   it('does not retain the incompatible schema-v2 promotion workflow', () => {

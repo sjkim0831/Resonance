@@ -48,6 +48,35 @@ export const REQUIRED_SIMULATION_TYPES = [
   'RECOVERY',
 ] as const;
 
+export const hydrateStringDraft = <T extends Record<string, string>>(
+  defaults: T,
+  row: Record<string, unknown>,
+): T => {
+  const hydrated = { ...defaults } as Record<string, string>;
+  Object.keys(defaults).forEach(key => {
+    if (row[key] !== undefined && row[key] !== null) {
+      hydrated[key] = String(row[key]);
+    }
+  });
+  return hydrated as T;
+};
+
+export const professionalContractSaveValues = <
+  T extends Record<string, string> & {
+    contractId: string;
+    permissionCodes: string;
+    layoutCode: string;
+    themeCode: string;
+  },
+>(
+  draft: T,
+): Record<string, unknown> => ({
+  ...draft,
+  contractId: Number(draft.contractId),
+  layout: draft.layoutCode,
+  theme: draft.themeCode,
+});
+
 const rowValue = (row: Record<string, unknown>, camel: string, snake: string) =>
   row[camel] ?? row[snake];
 

@@ -7,6 +7,8 @@ import {
   ACTOR_PROCESS_WORKSPACES,
   buildCustomerJourneySimulation,
   buildProcessGraph,
+  hydrateStringDraft,
+  professionalContractSaveValues,
   resolveProcessBranches,
 } from './actorProcessWorkspaces';
 
@@ -74,6 +76,34 @@ describe('actorProcessWorkspaces', () => {
     expect(sourceImmediateText).toContain('SOURCE');
     expect(sourceImmediateText).toContain('즉시');
     expect(sourceImmediateText).not.toMatch(/승인|승격|게이트 통과 후/);
+  });
+
+  it('round-trips the canonical dashboard permission, layout and theme unchanged', () => {
+    const defaults = {
+      contractId: '',
+      permissionCodes: '[]',
+      layoutCode: '',
+      themeCode: 'KRDS_GOV_DEFAULT',
+      sectionContract: '[]',
+    };
+    const draft = hydrateStringDraft(defaults, {
+      contractId: 31,
+      permissionCodes: '["ITEM_READ", "ITEM_WRITE"]',
+      layoutCode: 'RESPONSIVE_WORKSPACE',
+      themeCode: 'KRDS_GOV_DEFAULT',
+      sectionContract: '[{"sectionCode":"SUMMARY"}]',
+    });
+
+    const save = professionalContractSaveValues(draft);
+
+    expect(save).toEqual(
+      expect.objectContaining({
+        contractId: 31,
+        permissionCodes: '["ITEM_READ", "ITEM_WRITE"]',
+        layout: 'RESPONSIVE_WORKSPACE',
+        theme: 'KRDS_GOV_DEFAULT',
+      }),
+    );
   });
 
   it('resolves the emission workflow by state instead of array position', () => {

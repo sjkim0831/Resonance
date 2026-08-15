@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { createHash } from 'node:crypto';
 import {
   analyzeRequirementText,
   buildRequirementDesignContract,
@@ -156,6 +157,30 @@ const prepareStructured = (
 };
 
 describe('requirement automation', () => {
+  it('hashes the exact uploaded bytes and uses UTF-8 extracted text only as fallback', () => {
+    const raw = Buffer.from([0, 255, 10, 65, 66, 67]);
+    const binary = decodeRequirementDocument({
+      fileName: 'requirements.pdf',
+      contentBase64: raw.toString('base64'),
+      extractedText: 'extracted requirement',
+      documentSlot: 'main-rfp',
+    });
+    const textOnly = decodeRequirementDocument({
+      fileName: 'requirements.txt',
+      extractedText: '  text-only requirement\n',
+      documentSlot: 'main-rfp',
+    });
+
+    expect(binary.documentSha256).toBe(
+      createHash('sha256').update(raw).digest('hex'),
+    );
+    expect(textOnly.documentSha256).toBe(
+      createHash('sha256')
+        .update(Buffer.from('  text-only requirement\n', 'utf8'))
+        .digest('hex'),
+    );
+  });
+
   it('matches the Java bridge golden contract and canonical SHA bytes', () => {
     const input = crossLanguageFixture.input;
     const document = decodeRequirementDocument({
@@ -228,7 +253,7 @@ describe('requirement automation', () => {
       ).toString('base64'),
       extractedText: JSON.stringify(structuredDesign),
       documentSlot: 'structured-main',
-      autoPromote: true,
+      sourceImmediate: true,
     };
     const document = decodeRequirementDocument(panelRequest);
     const analysis = analyzeRequirementText(
@@ -247,6 +272,21 @@ describe('requirement automation', () => {
     expect(document.text).toBe(panelRequest.extractedText);
     expect(contract.process).toEqual(structuredDesign.process);
     expect(contract.workspaces).toEqual(structuredDesign.workspaces);
+  });
+
+  it('presents requirement automation as SOURCE immediate without promotion staging', () => {
+    const panelSource = readFileSync(
+      resolve(
+        __dirname,
+        '../../../app/src/plugins/ccus-screen-designs/RequirementAutomationPanel.tsx',
+      ),
+      'utf8',
+    );
+
+    expect(panelSource).toContain('sourceImmediate: true');
+    expect(panelSource).toContain('SOURCE 설계·엔드포인트 즉시 반영');
+    expect(panelSource).not.toContain('설계 승격');
+    expect(panelSource).not.toContain('autoPromote');
   });
 
   it.each([
@@ -463,6 +503,55 @@ describe('requirement automation', () => {
     expect(() => prepareStructured(order)).toThrow(
       'stepOrder must be a positive Java integer',
     );
+
+    const title = cloneJson(structuredDesign);
+    title.process.steps[0].title = 'T'.repeat(241);
+    expect(() => prepareStructured(title)).toThrow(
+      'title exceeds 240 characters',
+    );
+
+    const screenName = cloneJson(structuredDesign);
+    screenName.process.steps[0].screenName = 'S'.repeat(161);
+    expect(() => prepareStructured(screenName)).toThrow(
+      'screenName exceeds 160 characters',
+    );
+
+    const actorName = cloneJson(structuredDesign);
+    actorName.actorDefinitions[0].actorName = 'A'.repeat(121);
+    expect(() => prepareStructured(actorName)).toThrow(
+      'actorName exceeds 120 characters',
+    );
+
+    const route = cloneJson(structuredDesign);
+    route.process.steps[0].routePath = `/${'r'.repeat(300)}`;
+    expect(() => prepareStructured(route)).toThrow(
+      'routePath is not canonical',
+    );
+
+    const endpoint = cloneJson(structuredDesign);
+    endpoint.process.steps[0].endpoint.path = `/${'e'.repeat(270)}`;
+    endpoint.process.steps[0].apiContract.path =
+      endpoint.process.steps[0].endpoint.path;
+    expect(() => prepareStructured(endpoint)).toThrow(
+      'endpoint is not a canonical endpoint',
+    );
+
+    const workspace = cloneJson(structuredDesign);
+    workspace.workspaces[0].tabs[0].label = 'DESIGN WRONG';
+    expect(() => prepareStructured(workspace)).toThrow(
+      'workspaces must match the canonical design/develop/operate 25-tab contract',
+    );
+
+    expect(() =>
+      decodeRequirementDocument({
+        fileName: 'requirements.txt',
+        extractedText: 'requirement',
+        mimeType: 'x'.repeat(161),
+      }),
+    ).toThrow('mimeType must fit the 160 character storage contract');
+    expect(() =>
+      prepare(requirementText, 'requirements.md', 2_147_483_648),
+    ).toThrow('designVersion must be a positive PostgreSQL integer');
   });
   it('keeps logical process identity stable across content and file changes', () => {
     const first = prepare();
@@ -547,12 +636,6 @@ describe('requirement automation', () => {
       (analysis: RequirementAnalysis) => {
         analysis.commonTheme = 'KRDS_HIGH_CONTRAST';
         analysis.requirements[0].themeCode = analysis.commonTheme;
-      },
-    ],
-    [
-      'workspace tab',
-      (analysis: RequirementAnalysis) => {
-        analysis.workspaces[0].tabs[0].label = '요구사항 전문 설계';
       },
     ],
     [

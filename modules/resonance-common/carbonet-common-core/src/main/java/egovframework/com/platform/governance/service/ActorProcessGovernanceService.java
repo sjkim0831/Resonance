@@ -48,7 +48,8 @@ public class ActorProcessGovernanceService {
     public List<Map<String, Object>> dashboardDataset(String dataset) {
         if("professionalScreenContracts".equals(dataset)){
             return jdbc.queryForList("""
-                select readiness.*,contract.permission_codes::text as permission_codes,
+                select readiness.*,
+                       contract.permission_codes::text as canonical_permission_codes,
                        coalesce(nullif(framework_try_jsonb(blueprint.specification_json)->>'layout',''),
                          resource.layout_type) as layout_code,
                        coalesce(nullif(framework_try_jsonb(blueprint.specification_json)->>'theme',''),
@@ -74,7 +75,7 @@ public class ActorProcessGovernanceService {
                      limit 1
                   ) blueprint on true
                  order by contract.process_code,contract.step_code,contract.audience
-                """).stream().map(this::camelCaseColumns).toList();
+                """).stream().map(this::professionalContractDashboardRow).toList();
         }
         if ("processExecutions".equals(dataset)) {
             return jdbc.queryForList("""
@@ -258,6 +259,16 @@ public class ActorProcessGovernanceService {
             }
             converted.put(name.toString(), value);
         });
+        return converted;
+    }
+
+    private Map<String,Object> professionalContractDashboardRow(Map<String,Object> row){
+        Map<String,Object> converted=camelCaseColumns(row);
+        Object canonicalPermissionCodes=converted.remove("canonicalPermissionCodes");
+        if(canonicalPermissionCodes==null){
+            throw new IllegalStateException("PROFESSIONAL_PERMISSION_CODES_NOT_PROJECTED");
+        }
+        converted.put("permissionCodes",String.valueOf(canonicalPermissionCodes));
         return converted;
     }
 

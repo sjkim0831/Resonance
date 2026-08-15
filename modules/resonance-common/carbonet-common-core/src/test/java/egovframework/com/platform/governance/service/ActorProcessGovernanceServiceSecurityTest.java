@@ -64,6 +64,27 @@ class ActorProcessGovernanceServiceSecurityTest {
     }
 
     @Test
+    void professionalDashboardUsesTheCanonicalPermissionStringDespiteTheReadinessDuplicate(){
+        Map<String,Object> databaseRow=new LinkedHashMap<>();
+        databaseRow.put("contract_id",31L);
+        databaseRow.put("permission_codes",new Object());
+        databaseRow.put("canonical_permission_codes","[\"ITEM_READ\", \"ITEM_WRITE\"]");
+        databaseRow.put("layout_code","RESPONSIVE_WORKSPACE");
+        databaseRow.put("theme_code","KRDS_GOV_DEFAULT");
+        when(jdbc.queryForList(argThat(sql->sql!=null
+                &&sql.contains("canonical_permission_codes"))))
+            .thenReturn(List.of(databaseRow));
+
+        Map<String,Object> result=service.dashboardDataset(
+            "professionalScreenContracts").get(0);
+
+        assertEquals("[\"ITEM_READ\", \"ITEM_WRITE\"]",result.get("permissionCodes"));
+        assertEquals("RESPONSIVE_WORKSPACE",result.get("layoutCode"));
+        assertEquals("KRDS_GOV_DEFAULT",result.get("themeCode"));
+        assertFalse(result.containsKey("canonicalPermissionCodes"));
+    }
+
+    @Test
     void professionalScreenContractPreviewPredictsWithoutCanonicalSaveOrMutationSql() {
         Map<String,Object> body=new LinkedHashMap<>();
         body.put("contractId","26");
