@@ -47,8 +47,8 @@ def validate_screen(screen: dict[str, Any]) -> None:
         "pageId", "pageName", "routePath", "screenType", "templateCode",
         "ownershipMode", "designHash",
     )
-    if not isinstance(screen.get("blueprintId"), int):
-        fail(f"{identity}: blueprintId must be an integer")
+    if not isinstance(screen.get("blueprintId"), int) or screen["blueprintId"] <= 0:
+        fail(f"{identity}: blueprintId must be a positive integer")
     for key in required_text:
         if not isinstance(screen.get(key), str) or not screen[key].strip():
             fail(f"{identity}: {key} is required")

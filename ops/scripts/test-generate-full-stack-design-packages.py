@@ -26,19 +26,23 @@ class GroupFieldsByAudienceTest(unittest.TestCase):
                 {"processCode": "P1", "stepCode": "S1", "screenKey": "P1|S1|USER|/a", "designHash": "a" * 64},
                 {"processCode": "P1", "stepCode": "S1", "screenKey": "P1|S1|ADMIN|/b", "designHash": "b" * 64},
                 {"processCode": "P1", "stepCode": "S2", "screenKey": "P1|S2|USER|/c", "designHash": "c" * 64},
+                {"processCode": "p1", "stepCode": "s1", "audience": "user",
+                 "routePath": "/A?preview=true", "screenKey": "P1|S1|USER|/a",
+                 "designHash": "d" * 64},
             ],
         }
         self.assertEqual(
             [
                 {"screenKey": "P1|S1|ADMIN|/b", "designHash": "b" * 64},
                 {"screenKey": "P1|S1|USER|/a", "designHash": "a" * 64},
+                {"screenKey": "P1|S1|USER|/a", "designHash": "d" * 64},
             ],
             GENERATOR.canonical_screens_for_step(catalog, "P1", "S1"),
         )
         with self.assertRaisesRegex(SystemExit, "no screen"):
             GENERATOR.canonical_screens_for_step(catalog, "P1", "MISSING")
         subset = GENERATOR.subset_canonical_catalog(catalog, "P1")
-        self.assertEqual(3, subset["screenCount"])
+        self.assertEqual(4, subset["screenCount"])
         self.assertRegex(subset["catalogHash"], r"^[0-9a-f]{64}$")
         with self.assertRaisesRegex(SystemExit, "no screens"):
             GENERATOR.subset_canonical_catalog(catalog, "MISSING")
@@ -60,6 +64,43 @@ class GroupFieldsByAudienceTest(unittest.TestCase):
         self.assertEqual(serial_skipped, parallel_skipped)
         self.assertEqual(serial, parallel)
         self.assertEqual(24, len(parallel))
+
+    def test_bookkeeping_statuses_never_self_invalidate_package_hash(self) -> None:
+        process = {
+            "processCode": "PROCESS_A", "processName": "Process A",
+            "domainCode": "TEST", "workTypeCode": "TEST", "goal": "complete",
+        }
+        step = {
+            "step_code": "STEP_A", "spec_version": 7,
+            "actor_contract": {}, "business_contract": {}, "transition_contract": {},
+            "input_contract": {"schema": {}}, "output_contract": {"schema": {}},
+            "guide_contract": {}, "screen_contract": [], "field_contract": [],
+            "handoff_contract": {"policy": {}, "transitions": []},
+            "nonfunctional_contract": {}, "source_hash": "a" * 64,
+            "design_status": "DESIGN_COMPLETE", "approval_status": "APPROVED",
+            "generation_status": "READY",
+        }
+        patches = (
+            mock.patch.object(GENERATOR, "validate_step"),
+            mock.patch.object(GENERATOR, "tests_for_step", return_value=[]),
+            mock.patch.object(GENERATOR, "commands_for_step", return_value=[]),
+            mock.patch.object(GENERATOR, "group_fields_by_audience", return_value={}),
+            mock.patch.object(GENERATOR, "screens_for_step", return_value=[]),
+            mock.patch.object(GENERATOR, "apis_for_step", return_value=[]),
+            mock.patch.object(GENERATOR, "persistence_for_step", return_value={}),
+        )
+        with patches[0], patches[1], patches[2], patches[3], patches[4], patches[5], patches[6]:
+            before = GENERATOR.render_step(process, step, [])
+            step["generation_status"] = "GENERATED"
+            after = GENERATOR.render_step(process, step, [])
+        self.assertEqual(before, after)
+        self.assertEqual("APPROVED", before["approvalStatus"])
+        self.assertNotIn("generationStatus", before)
+        self.assertRegex(before["packageHash"], r"^[0-9a-f]{64}$")
+        step["approval_status"] = "REVIEW_REQUIRED"
+        with patches[0], patches[1], patches[2], patches[3], patches[4], patches[5], patches[6]:
+            review_required = GENERATOR.render_step(process, step, [])
+        self.assertNotEqual(before["packageHash"], review_required["packageHash"])
 
     def test_atomic_publish_is_zero_rewrite_and_rolls_back_all_directories(self) -> None:
         with tempfile.TemporaryDirectory() as folder:

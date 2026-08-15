@@ -16,6 +16,8 @@ PROJECT_AUTO_COMPLETION_LIBRARY_ONLY=true source "$ORCHESTRATOR"
 unset PROJECT_AUTO_COMPLETION_LIBRARY_ONLY
 declare -F run_design_causality_post_commit_compiler >/dev/null \
   || fail 'compiler function boundary is not sourceable'
+[[ "$(grep -Ec "^[[:space:]]+\('trg_design_causality_" "$ORCHESTRATOR")" -eq 26 ]] \
+  || fail 'runtime readiness does not bind all 26 exact M1.1 triggers'
 
 READINESS='READY'; COMPILE_SEQUENCE="$TMP/compile"; CALL_LOG="$TMP/calls"
 EVIDENCE_STATE="$TMP/evidence-state"
@@ -121,10 +123,11 @@ run_case() {
 }
 
 hash_a="$(printf 'a%.0s' {1..64})"; hash_b="$(printf 'b%.0s' {1..64})"
+codegen_hash="$(printf 'c%.0s' {1..64})"
 
 # New script / old DB blocks all project writes.
 READINESS='MIGRATION_NOT_READY'
-set_sequence "$COMPILE_SEQUENCE" "NO_WORK|BASELINE|0|0|null|0|$hash_a"
+set_sequence "$COMPILE_SEQUENCE" "NO_WORK|BASELINE|0|0|1|null|0|$hash_a|null|READY|[]|0"
 run_case PRE_WORK "$TMP/missing.out" "$TMP/missing.err"
 [[ "$CASE_RC" -eq 75 && ! -s "$TMP/missing.out" ]] \
   || fail 'migration-absent rolling state was not write-blocking'
@@ -132,19 +135,41 @@ run_case PRE_WORK "$TMP/missing.out" "$TMP/missing.err"
 
 # NO_WORK is the fresh REPEATABLE READ linearization point and performs no DML.
 READINESS='READY'; MAX_ATTEMPTS=4
-set_sequence "$COMPILE_SEQUENCE" "NO_WORK|BASELINE|0|0|null|0|$hash_a"
+set_sequence "$COMPILE_SEQUENCE" "NO_WORK|BASELINE|0|0|2|null|0|$hash_a|$codegen_hash|READY|[]|0"
 run_case PRE_WORK "$TMP/no-work.out" "$TMP/no-work.err"
 [[ "$CASE_RC" -eq 0 ]] || { sed -n '1,20p' "$TMP/no-work.err" >&2; fail 'NO_WORK proof failed'; }
 json_assert "$(<"$TMP/no-work.out")" \
-  "d['result']=='NO_WORK' and d['dirtyAtLinearization']==0 and d['attempts']==1 and d['revisionBefore']==0 and d['revisionAfter']==0 and d['currentEventId'] is None and d['canonicalHash']=='$hash_a' and 0<=d['elapsedMillis']<20000"
+  "d['schema'].endswith('/v2') and d['result']=='NO_WORK' and d['dirtyAtLinearization']==0 and d['attempts']==1 and d['revisionBefore']==0 and d['revisionAfter']==0 and d['currentEventId'] is None and d['canonicalHash']=='$hash_a' and d['canonicalSchemaVersion']==2 and d['codegenInputHash']=='$codegen_hash' and d['codegenReadiness']=='READY' and d['activeBindingCount']==0 and 0<=d['elapsedMillis']<20000"
 [[ "$(grep -c '^compile$' "$CALL_LOG")" -eq 1 ]] \
   || fail 'NO_WORK did not use exactly one worker API transaction'
 
+# A v1 head remains fail-closed. A structurally valid v2 raw-source snapshot is
+# accepted for remediation even when code generation readiness is BLOCKED.
+set_sequence "$COMPILE_SEQUENCE" "NO_WORK|BASELINE|0|0|1|null|0|$hash_a|null|READY|[]|0"
+run_case PRE_WORK "$TMP/v1-head.out" "$TMP/v1-head.err"
+[[ "$CASE_RC" -eq 75 ]] || fail 'old-v1 compiler result crossed the write gate'
+set_sequence "$COMPILE_SEQUENCE" "NO_WORK|CANONICAL_COMPILED|1|1|2|11|0|$hash_b|$codegen_hash|BLOCKED|[\"ACTIVE_RELEASE_BINDING_SOURCE_ONLY\"]|1"
+run_case PRE_WORK "$TMP/active-binding.out" "$TMP/active-binding.err"
+[[ "$CASE_RC" -eq 0 ]] || fail 'BLOCKED v2 source snapshot did not permit remediation'
+json_assert "$(<"$TMP/active-binding.out")" \
+  "d['codegenReadiness']=='BLOCKED' and d['codegenReadinessReasons']==['ACTIVE_RELEASE_BINDING_SOURCE_ONLY'] and d['activeBindingCount']==1"
+
+# Readiness envelopes are internally consistent before they can become
+# durable project evidence.
+set_sequence "$COMPILE_SEQUENCE" \
+  "NO_WORK|CANONICAL_COMPILED|1|1|2|11|0|$hash_b|$codegen_hash|BLOCKED|[]|0"
+run_case PRE_WORK "$TMP/blocked-empty.out" "$TMP/blocked-empty.err"
+[[ "$CASE_RC" -eq 70 ]] || fail 'BLOCKED readiness without reasons was accepted'
+set_sequence "$COMPILE_SEQUENCE" \
+  "NO_WORK|CANONICAL_COMPILED|1|1|2|11|0|$hash_b|$codegen_hash|READY|[\"SOURCE_CONTRACT_INVALID\"]|0"
+run_case PRE_WORK "$TMP/ready-reason.out" "$TMP/ready-reason.err"
+[[ "$CASE_RC" -eq 70 ]] || fail 'READY readiness with blocker reasons was accepted'
+
 # BUSY and COMPILED both require a later fresh NO_WORK result.
 set_sequence "$COMPILE_SEQUENCE" \
-  "BUSY|BASELINE|0|0|null|1|$hash_a" \
-  "COMPILED|CANONICAL_COMPILED|0|1|11|0|$hash_b" \
-  "NO_WORK|CANONICAL_COMPILED|1|1|11|0|$hash_b"
+  "BUSY|BASELINE|0|0|2|null|1|$hash_a|$codegen_hash|READY|[]|0" \
+  "COMPILED|CANONICAL_COMPILED|0|1|2|11|0|$hash_b|$codegen_hash|READY|[]|0" \
+  "NO_WORK|CANONICAL_COMPILED|1|1|2|11|0|$hash_b|$codegen_hash|READY|[]|0"
 run_case PRE_WORK "$TMP/busy.out" "$TMP/busy.err"
 [[ "$CASE_RC" -eq 0 ]] || fail 'BUSY/COMPILED drain failed'
 json_assert "$(<"$TMP/busy.out")" \
@@ -154,8 +179,8 @@ json_assert "$(<"$TMP/busy.out")" \
 secret='pii-account@example.test private-scope password=qwer1234'
 set_sequence "$COMPILE_SEQUENCE" \
   "ERROR40001:$secret" \
-  "NO_SEMANTIC_CHANGE|CANONICAL_COMPILED|1|1|11|0|$hash_b" \
-  "NO_WORK|CANONICAL_COMPILED|1|1|11|0|$hash_b"
+  "NO_SEMANTIC_CHANGE|CANONICAL_COMPILED|1|1|2|11|0|$hash_b|$codegen_hash|READY|[]|0" \
+  "NO_WORK|CANONICAL_COMPILED|1|1|2|11|0|$hash_b|$codegen_hash|READY|[]|0"
 run_case POST_WORK "$TMP/db-retry.out" "$TMP/db-retry.err"
 [[ "$CASE_RC" -eq 0 ]] || fail 'serialization retry did not recover'
 json_assert "$(<"$TMP/db-retry.out")" \
@@ -165,30 +190,30 @@ if grep -Fq "$secret" "$TMP/db-retry.out" "$TMP/db-retry.err"; then
 fi
 set_sequence "$COMPILE_SEQUENCE" \
   'TIMEOUT:bounded transport deadline' \
-  "NO_WORK|CANONICAL_COMPILED|1|1|11|0|$hash_b"
+  "NO_WORK|CANONICAL_COMPILED|1|1|2|11|0|$hash_b|$codegen_hash|READY|[]|0"
 run_case PRE_WORK "$TMP/timeout.out" "$TMP/timeout.err"
 [[ "$CASE_RC" -eq 0 ]] || fail 'bounded wall timeout did not recover'
 json_assert "$(<"$TMP/timeout.out")" \
   "d['result']=='DRAINED' and d['databaseRetries']==1 and d['attempts']==2 and d['elapsedMillis']<20000"
 set_sequence "$COMPILE_SEQUENCE" 'FATAL:permission contract changed' \
-  "NO_WORK|BASELINE|0|0|null|0|$hash_a"
+  "NO_WORK|BASELINE|0|0|2|null|0|$hash_a|$codegen_hash|READY|[]|0"
 run_case PRE_WORK "$TMP/fatal.out" "$TMP/fatal.err"
 [[ "$CASE_RC" -eq 70 && "$(grep -c '^compile$' "$CALL_LOG")" -eq 1 ]] \
   || fail 'contract/ACL error consumed retries'
 
 # Malformed NO_WORK and persistent BUSY fail closed.
-set_sequence "$COMPILE_SEQUENCE" "NO_WORK|BASELINE|0|0|null|1|$hash_a"
+set_sequence "$COMPILE_SEQUENCE" "NO_WORK|BASELINE|0|0|2|null|1|$hash_a|$codegen_hash|READY|[]|0"
 run_case PRE_WORK "$TMP/forged.out" "$TMP/forged.err"
 [[ "$CASE_RC" -eq 70 ]] || fail 'NO_WORK with dirty signal was accepted'
 MAX_ATTEMPTS=2
 set_sequence "$COMPILE_SEQUENCE" \
-  "BUSY|BASELINE|0|0|null|1|$hash_a" "BUSY|BASELINE|0|0|null|1|$hash_a"
+  "BUSY|BASELINE|0|0|2|null|1|$hash_a|$codegen_hash|READY|[]|0" "BUSY|BASELINE|0|0|2|null|1|$hash_a|$codegen_hash|READY|[]|0"
 run_case PRE_WORK "$TMP/exhausted.out" "$TMP/exhausted.err"
 [[ "$CASE_RC" -eq 75 ]] || fail "BUSY exhaustion rc=$CASE_RC"
 
 # Missing membership and role/ACL drift are immediate.
 READINESS='NOT_AUTHORIZED'; MAX_ATTEMPTS=4
-set_sequence "$COMPILE_SEQUENCE" "NO_WORK|BASELINE|0|0|null|0|$hash_a"
+set_sequence "$COMPILE_SEQUENCE" "NO_WORK|BASELINE|0|0|2|null|0|$hash_a|$codegen_hash|READY|[]|0"
 run_case PRE_WORK "$TMP/unauthorized.out" "$TMP/unauthorized.err"
 [[ "$CASE_RC" -eq 77 && "$(<"$CALL_LOG")" == readiness ]] \
   || fail 'unauthorized worker was not blocked'
@@ -203,7 +228,7 @@ printf '%s\n' \
   '{"runStatus":"RUNNING","result":{"designCausality":{"compilerInvocation":{"preWork":{"result":"NO_WORK"}}}}}' \
   >"$EVIDENCE_STATE"
 set_sequence "$COMPILE_SEQUENCE" \
-  "NO_WORK|CANONICAL_COMPILED|1|1|11|0|$hash_b"
+  "NO_WORK|CANONICAL_COMPILED|1|1|2|11|0|$hash_b|$codegen_hash|READY|[]|0"
 if hermes_post="$(finalize_hermes_policy_invalid_run \
   '00000000-0000-0000-0000-000000000001' 7 3 2)"; then
   :
@@ -305,10 +330,13 @@ grep -Fq 'framework_run_design_causality_compiler_worker()' <<<"$function_body" 
 if grep -Eq 'PGPASSWORD|PGHOST|kubectl|psql -' <<<"$function_body"; then
   fail 'compiler introduced an independent credential path'
 fi
-[[ "$(grep -Fc "to_regclass('public." <<<"$function_body")" -eq 22 ]] \
-  || fail 'runtime readiness does not inspect 20 relations and 2 sequences'
-[[ "$(grep -Fc "to_regprocedure('public.framework_" <<<"$function_body")" -ge 11 ]] \
+[[ "$(grep -Fc "to_regclass('public." <<<"$function_body")" -eq 32 ]] \
+  || fail 'runtime readiness does not inspect 29 relations, 2 sequences, and exact trigger targets'
+[[ "$(grep -Fc "to_regprocedure('public.framework_" <<<"$function_body")" -ge 18 ]] \
   || fail 'runtime readiness does not inspect every M1 protected function'
+if grep -Fq 'design-causality-compiler-invocation/v1' "$ORCHESTRATOR"; then
+  fail 'active orchestrator path retains a v1 compiler envelope'
+fi
 grep -Fq 'from pg_authid' <<<"$function_body" \
   || fail 'runtime readiness role attribute boundary incomplete'
 grep -Fq "has_schema_privilege(role_oid,'public','CREATE')" <<<"$function_body" \
@@ -373,4 +401,4 @@ if grep -Fq 'producerCoverage' <<<"$function_body"; then
   fail 'invocation falsely claims persistent producer coverage'
 fi
 
-echo '[design-causality-compiler-worker] PASS mutants=30 oldDbWriteBlock=1 noWorkLinearized=1 maxGateSeconds=18 piiLogs=0 durableHeadLink=1 hermesPostDrain=1 abnormalCompilerCalls=0 originalErrRc=preserved nextPreRecovery=required prePost=2 persistentCoverageClaim=0 deploymentWiring=0'
+echo '[design-causality-compiler-worker] PASS mutants=35 oldDbWriteBlock=1 oldV1WriteBlock=1 exactTriggerReadiness=26 blockedRemediation=allowed readinessConsistency=2 noWorkLinearized=1 maxGateSeconds=18 piiLogs=0 durableHeadLink=1 hermesPostDrain=1 abnormalCompilerCalls=0 originalErrRc=preserved nextPreRecovery=required prePost=2 generationEnforcement=false persistentCoverageClaim=0 deploymentWiring=0'

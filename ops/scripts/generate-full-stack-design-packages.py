@@ -1184,7 +1184,6 @@ def render_step(
         "nonfunctional": step["nonfunctional_contract"],
         "sourceHash": step["source_hash"],
         "approvalStatus": step["approval_status"],
-        "generationStatus": step["generation_status"],
     }
     body["packageHash"] = hashlib.sha256(stable(body).encode()).hexdigest()
     return body
@@ -1213,6 +1212,15 @@ def render_packages(data: dict[str, Any], allow_review_required: bool, workers: 
     return packages, skipped_review
 
 
+def canonical_screen_identity(screen: dict[str, Any]) -> tuple[str, str, str, str]:
+    return (
+        str(screen.get("processCode") or "").strip().upper(),
+        str(screen.get("stepCode") or "").strip().upper(),
+        str(screen.get("audience") or "").strip().upper(),
+        str(screen.get("routePath") or "").split("?", 1)[0].strip().lower(),
+    )
+
+
 def canonical_screens_for_step(catalog: dict[str, Any], process_code: str, step_code: str) -> list[dict[str, str]]:
     screens = catalog.get("screens")
     if catalog.get("schema") != "carbonet.canonical-design/v1" or not isinstance(screens, list):
@@ -1221,8 +1229,8 @@ def canonical_screens_for_step(catalog: dict[str, Any], process_code: str, step_
         {"screenKey": screen["screenKey"], "designHash": screen["designHash"]}
         for screen in screens
         if isinstance(screen, dict)
-        and screen.get("processCode") == process_code
-        and screen.get("stepCode") == step_code
+        and canonical_screen_identity(screen)[:2]
+            == (str(process_code).strip().upper(), str(step_code).strip().upper())
         and isinstance(screen.get("screenKey"), str)
         and isinstance(screen.get("designHash"), str)
     ]
@@ -1235,8 +1243,10 @@ def canonical_screens_for_step(catalog: dict[str, Any], process_code: str, step_
 def subset_canonical_catalog(catalog: dict[str, Any], process_code: str | None) -> dict[str, Any]:
     if catalog.get("schema") != "carbonet.canonical-design/v1" or not isinstance(catalog.get("screens"), list):
         fail("canonical design catalog is invalid")
+    normalized_process = str(process_code).strip().upper() if process_code else None
     screens = [screen for screen in catalog["screens"]
-               if not process_code or screen.get("processCode") == process_code]
+               if not normalized_process
+               or canonical_screen_identity(screen)[0] == normalized_process]
     if not screens:
         fail(f"canonical design catalog has no screens for {process_code or 'all processes'}")
     lines = [screen["screenKey"] + "\x1f" + screen["designHash"] for screen in screens]

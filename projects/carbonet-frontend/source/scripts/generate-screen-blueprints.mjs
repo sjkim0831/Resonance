@@ -132,6 +132,24 @@ if(canonicalInput){
 }
 const sourceBlueprints=Array.isArray(input.blueprints)?input.blueprints:(canonicalInput?input.screens.map(canonicalScreenToBlueprint):null);
 if(!sourceBlueprints||(!canonicalInput&&!["1.0.0","2.0.0","4.0.0"].includes(input.schemaVersion)))throw new Error("Unsupported or invalid blueprint export.");
+const parseJsonSource=(value,fallback={})=>{
+  if(typeof value!=="string")return value??fallback;
+  return value.trim()?JSON.parse(value):fallback;
+};
+const semanticJson=(value)=>{try{return stableValue(parseJsonSource(value));}catch{return value;}};
+const blueprintSemanticKey=(item)=>stableJson({
+  blueprintCode:item.blueprintCode,processCode:item.processCode,stepCode:item.stepCode,
+  actorCode:item.actorCode,audience:item.audience,pageId:item.pageId,pageName:item.pageName,
+  routePath:item.routePath,screenType:item.screenType,templateCode:item.templateCode,
+  domainCode:item.domainCode,projectCode:item.projectCode,policyCode:item.policyCode,
+  viewCode:item.viewCode,designHash:item.designHash,
+  specification:semanticJson(item.specificationJson),
+  traceability:semanticJson(item.traceabilityJson),support:semanticJson(item.supportJson)
+});
+const orderedSourceBlueprints=[...sourceBlueprints].sort((left,right)=>{
+  const leftKey=blueprintSemanticKey(left),rightKey=blueprintSemanticKey(right);
+  return leftKey<rightKey?-1:leftKey>rightKey?1:0;
+});
 const inputSchemaVersion=canonicalInput?"4.0.0":input.schemaVersion;
 const limit = Math.min(5000, Math.max(1, Number(args.limit || 5000)));
 const strict = args.strict === "true";
@@ -161,7 +179,7 @@ try {
 } catch (error) {
   if (error?.code !== "ENOENT") throw error;
 }
-const validBlueprints = sourceBlueprints.filter((item) => (item.validationStatus||"VALID") === "VALID");
+const validBlueprints = orderedSourceBlueprints.filter((item) => (item.validationStatus||"VALID") === "VALID");
 const skippedReservedRoutes = validBlueprints
   .filter((item) => reservedRoutes.has(comparableRouteKey(item.routePath)))
   .map((item) => ({
@@ -172,8 +190,8 @@ const blueprints = validBlueprints
   .filter((item) => !reservedRoutes.has(comparableRouteKey(item.routePath)))
   .slice(0, limit);
 const seenIds = new Set(), seenRoutes = new Set();
-const json = (value) => JSON.stringify(value,null,2);
-const parse = (value, code) => { try { return typeof value === "string" ? JSON.parse(value || "{}") : value || {}; } catch { throw new Error(`Invalid JSON contract: ${code}`); } };
+const json = (value) => JSON.stringify(stableValue(value),null,2);
+const parse = (value, code) => { try { return parseJsonSource(value); } catch { throw new Error(`Invalid JSON contract: ${code}`); } };
 const strings = (value) => Array.isArray(value) ? value.map(item=>typeof item === "string" ? item : item?.name || item?.code || item?.label).filter(Boolean) : [];
 const objects = (value, kind) => Array.isArray(value) ? value.map((item,index)=>typeof item === "string" ? { code:`${kind}_${index+1}`, label:item } : item).filter(Boolean) : [];
 const record=(value)=>value&&typeof value==="object"&&!Array.isArray(value)?value:{};

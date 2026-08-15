@@ -32,12 +32,18 @@ design_causality_compiler_result() {
   local authorized="$5" attempts="$6" compiled="$7" semantic_noops="$8"
   local busy_retries="$9" database_retries="${10}" dirty_at_linearization="${11}"
   local revision_before="${12}" revision_after="${13}" current_event_id="${14}"
-  local canonical_hash="${15}" elapsed_millis="${16}"
-  printf '{"schema":"carbonet.design-causality-compiler-invocation/v1","phase":"%s","result":"%s","currentStage":"%s","migrationReady":%s,"authorized":%s,"attempts":%s,"compiledEvents":%s,"semanticNoops":%s,"busyRetries":%s,"databaseRetries":%s,"dirtyAtLinearization":%s,"revisionBefore":%s,"revisionAfter":%s,"currentEventId":%s,"canonicalHash":"%s","elapsedMillis":%s}\n' \
+  local canonical_hash="${15}" canonical_schema_version="${16}"
+  local codegen_input_hash="${17}" codegen_readiness="${18}"
+  local codegen_readiness_reasons="${19}" active_binding_count="${20}"
+  local elapsed_millis="${21}"
+  printf '{"schema":"carbonet.design-causality-compiler-invocation/v2","phase":"%s","result":"%s","currentStage":"%s","migrationReady":%s,"authorized":%s,"attempts":%s,"compiledEvents":%s,"semanticNoops":%s,"busyRetries":%s,"databaseRetries":%s,"dirtyAtLinearization":%s,"revisionBefore":%s,"revisionAfter":%s,"currentEventId":%s,"canonicalHash":"%s","canonicalSchemaVersion":%s,"codegenInputHash":"%s","codegenReadiness":"%s","codegenReadinessReasons":%s,"activeBindingCount":%s,"elapsedMillis":%s}\n' \
     "$phase" "$result" "$stage" "$migration_ready" "$authorized" \
     "$attempts" "$compiled" "$semantic_noops" "$busy_retries" \
     "$database_retries" "$dirty_at_linearization" "$revision_before" \
-    "$revision_after" "$current_event_id" "$canonical_hash" "$elapsed_millis"
+    "$revision_after" "$current_event_id" "$canonical_hash" \
+    "$canonical_schema_version" "$codegen_input_hash" "$codegen_readiness" \
+    "$codegen_readiness_reasons" \
+    "$active_binding_count" "$elapsed_millis"
 }
 
 design_causality_compiler_log() {
@@ -50,7 +56,10 @@ run_design_causality_post_commit_compiler() {
   local retry_delay="${DESIGN_CAUSALITY_COMPILER_RETRY_DELAY_SECONDS:-1}"
   local wall_timeout="${DESIGN_CAUSALITY_COMPILER_WALL_TIMEOUT_SECONDS:-2}"
   local readiness stage compile_status compiler_response compiler_error compiler_rc extra
-  local before_revision head_revision current_event_id dirty_signal_count canonical_hash
+  local before_revision head_revision canonical_schema_version current_event_id
+  local dirty_signal_count canonical_hash codegen_input_hash codegen_readiness
+  local codegen_readiness_reasons active_binding_count
+  local reason_count reason_has_active reason_meta
   local revision_before=''
   local attempts=0 compiled=0 semantic_noops=0 busy_retries=0 database_retries=0
   local started_millis elapsed_millis
@@ -80,10 +89,60 @@ run_design_causality_post_commit_compiler() {
         ) worker_oid,
         to_regprocedure(
           'public.framework_compile_design_changes(character varying,bigint,character varying)'
-        ) compiler_oid
+        ) compiler_oid,
+        to_regprocedure(
+          'public.framework_design_causality_codegen_input_component()'
+        ) codegen_component_oid,
+        to_regprocedure(
+          'public.framework_design_causality_codegen_readiness()'
+        ) codegen_readiness_oid
+    ), expected_trigger(trigger_name,relation_name,function_signature) as (values
+      ('trg_design_causality_screen_blueprint_codegen_dirty','framework_screen_blueprint','framework_capture_design_causality_codegen_dirty()'),
+      ('trg_design_causality_professional_screen_codegen_dirty','framework_professional_screen_contract','framework_capture_design_causality_codegen_dirty()'),
+      ('trg_design_causality_step_execution_codegen_dirty','framework_step_execution_spec','framework_capture_design_causality_codegen_dirty()'),
+      ('trg_design_causality_screen_blueprint_codegen_truncate_dirty','framework_screen_blueprint','framework_capture_design_causality_codegen_truncate_dirty()'),
+      ('trg_design_causality_professional_screen_codegen_truncate_dirty','framework_professional_screen_contract','framework_capture_design_causality_codegen_truncate_dirty()'),
+      ('trg_design_causality_step_execution_codegen_truncate_dirty','framework_step_execution_spec','framework_capture_design_causality_codegen_truncate_dirty()'),
+      ('trg_design_causality_permission_requirement_cache_dirty','framework_permission_requirement_v1','framework_capture_design_permission_cache_dirty()'),
+      ('trg_design_causality_menu_function_cache_dirty','comtnmenufunctioninfo','framework_capture_design_permission_cache_dirty()'),
+      ('trg_design_causality_page_design_cache_dirty','framework_page_design','framework_capture_design_permission_cache_dirty()'),
+      ('trg_design_causality_page_field_cache_dirty','framework_page_field_definition','framework_capture_design_permission_cache_dirty()'),
+      ('trg_design_causality_mapping_cache_dirty','framework_permission_mapping_control_v1','framework_capture_design_permission_cache_dirty()'),
+      ('trg_design_causality_process_step_raw_csv_dirty','framework_process_step','framework_capture_design_causality_process_step_raw_dirty()'),
+      ('trg_design_causality_process_definition_truncate_dirty','framework_process_definition','framework_capture_design_causality_v2_truncate_dirty()'),
+      ('trg_design_causality_process_step_truncate_dirty','framework_process_step','framework_capture_design_causality_v2_truncate_dirty()'),
+      ('trg_design_causality_actor_truncate_dirty','framework_actor_definition','framework_capture_design_causality_v2_truncate_dirty()'),
+      ('trg_design_causality_account_assignment_truncate_dirty','framework_account_actor_assignment','framework_capture_design_causality_v2_truncate_dirty()'),
+      ('trg_design_causality_permission_requirement_truncate_dirty','framework_permission_requirement_v1','framework_capture_design_causality_v2_truncate_dirty()'),
+      ('trg_design_causality_permission_grant_truncate_dirty','framework_permission_grant_v1','framework_capture_design_causality_v2_truncate_dirty()'),
+      ('trg_design_causality_mapping_truncate_dirty','framework_permission_mapping_control_v1','framework_capture_design_causality_v2_truncate_dirty()'),
+      ('trg_design_causality_page_design_truncate_dirty','framework_page_design','framework_capture_design_causality_v2_truncate_dirty()'),
+      ('trg_design_causality_page_field_truncate_dirty','framework_page_field_definition','framework_capture_design_causality_v2_truncate_dirty()'),
+      ('trg_design_causality_menu_function_truncate_dirty','comtnmenufunctioninfo','framework_capture_design_causality_v2_truncate_dirty()'),
+      ('trg_design_causality_role_function_grant_truncate_dirty','comtnauthorfunctionrelate','framework_capture_design_causality_v2_truncate_dirty()'),
+      ('trg_design_causality_user_override_grant_truncate_dirty','comtnuserfeatureoverride','framework_capture_design_causality_v2_truncate_dirty()'),
+      ('trg_design_causality_account_role_grant_truncate_dirty','comtnemplyrscrtyestbs','framework_capture_design_causality_v2_truncate_dirty()'),
+      ('trg_design_causality_source_classification_guard','framework_design_causality_stage','framework_enforce_design_causality_source_classification()')
     )
     select case
       when role_oid is null or worker_oid is null or compiler_oid is null
+        or codegen_component_oid is null or codegen_readiness_oid is null
+        or not exists(
+          select 1 from information_schema.columns
+          where table_schema='public' and table_name='framework_design_causality_head'
+            and column_name='codegen_input_hash' and udt_name='varchar'
+        ) or not exists(
+          select 1 from information_schema.columns
+          where table_schema='public' and table_name='framework_design_causality_event'
+            and column_name='codegen_input_hash' and udt_name='varchar'
+        ) or exists(
+          select 1 from expected_trigger e
+          left join pg_trigger t
+            on t.tgname=e.trigger_name and not t.tgisinternal and t.tgenabled='A'
+           and t.tgrelid=to_regclass('public.'||e.relation_name)
+           and t.tgfoid=to_regprocedure('public.'||e.function_signature)
+          where t.oid is null
+        )
         then 'MIGRATION_NOT_READY'
       when exists(
         select 1 from pg_roles where oid=role_oid and (
@@ -113,6 +172,24 @@ run_design_causality_post_commit_compiler() {
             to_regprocedure('public.framework_design_causality_account_component()'),
             to_regprocedure('public.framework_design_causality_permission_requirement_component()'),
             to_regprocedure('public.framework_design_causality_permission_grant_component()'),
+            to_regprocedure('public.framework_design_causality_codegen_input_component()'),
+            to_regprocedure('public.framework_design_causality_codegen_readiness()'),
+            to_regprocedure('public.framework_design_causality_valid_inventory_item(jsonb)'),
+            to_regprocedure('public.framework_design_causality_valid_incremental_item(jsonb)'),
+            to_regprocedure('public.framework_design_causality_codegen_semantic_row(text,jsonb)'),
+            to_regprocedure('public.framework_capture_design_causality_codegen_dirty()'),
+            to_regprocedure('public.framework_capture_design_causality_codegen_truncate_dirty()'),
+            to_regprocedure('public.framework_capture_design_permission_cache_dirty()'),
+            to_regprocedure('public.framework_capture_design_causality_v2_truncate_dirty()'),
+            to_regprocedure('public.framework_capture_design_causality_process_step_raw_dirty()'),
+            to_regprocedure('public.framework_refresh_design_codegen_blueprint_leaf(bigint)'),
+            to_regprocedure('public.framework_refresh_design_codegen_contract_leaf(bigint)'),
+            to_regprocedure('public.framework_refresh_design_codegen_step_leaf(text,text)'),
+            to_regprocedure('public.framework_refresh_design_permission_requirement_leaf(text,text,text,text)'),
+            to_regprocedure('public.framework_refresh_design_permission_feature_leaf(text)'),
+            to_regprocedure('public.framework_refresh_design_permission_field_leaf(bigint)'),
+            to_regprocedure('public.framework_refresh_design_permission_page_leafs(bigint)'),
+            to_regprocedure('public.framework_enforce_design_causality_source_classification()'),
             to_regprocedure('public.framework_compile_design_changes(character varying,bigint,character varying)'),
             to_regprocedure('public.framework_cas_design_causality_stage(bigint,character varying,bigint,character varying,character varying,jsonb)'),
             to_regprocedure('public.framework_design_causality_status()')
@@ -138,7 +215,16 @@ run_design_causality_post_commit_compiler() {
           to_regclass('public.framework_account_actor_assignment'),
           to_regclass('public.framework_page_design'),
           to_regclass('public.framework_page_field_definition'),
+          to_regclass('public.framework_screen_blueprint'),
+          to_regclass('public.framework_step_execution_spec'),
           to_regclass('public.framework_professional_screen_contract'),
+          to_regclass('public.framework_design_codegen_blueprint_leaf_cache'),
+          to_regclass('public.framework_design_codegen_contract_leaf_cache'),
+          to_regclass('public.framework_design_codegen_step_leaf_cache'),
+          to_regclass('public.framework_design_permission_requirement_leaf_cache'),
+          to_regclass('public.framework_design_permission_feature_leaf_cache'),
+          to_regclass('public.framework_design_permission_field_leaf_cache'),
+          to_regclass('public.framework_canonical_endpoint_upgrade_activation_event'),
           to_regclass('public.comtnmenufunctioninfo'),
           to_regclass('public.comtnauthorfunctionrelate'),
           to_regclass('public.comtnuserfeatureoverride'),
@@ -232,22 +318,50 @@ run_design_causality_post_commit_compiler() {
              coalesce(result->>'currentStage','INVALID')||'|'||
              coalesce(result->>'beforeRevision','INVALID')||'|'||
              coalesce(result->>'headRevision','INVALID')||'|'||
+             coalesce(result->>'canonicalSchemaVersion','INVALID')||'|'||
              coalesce(result->>'currentEventId','null')||'|'||
              coalesce(result->>'dirtySignalCount','INVALID')||'|'||
-             coalesce(result->>'canonicalHash','INVALID')
+             coalesce(result->>'canonicalHash','INVALID')||'|'||
+             coalesce(result->>'codegenInputHash','null')||'|'||
+             coalesce(result#>>'{codegenReadiness,status}','INVALID')||'|'||
+             coalesce(result#>'{codegenReadiness,reasons}','[]'::jsonb)::text||'|'||
+             coalesce(result#>>'{codegenReadiness,activeBindingCount}','null')
       from invoked;
       commit;" 2>&1)"; then
       compiler_response="${compiler_response//$'\r'/}"
       IFS='|' read -r compile_status stage before_revision head_revision \
-        current_event_id dirty_signal_count canonical_hash extra <<<"$compiler_response"
+        canonical_schema_version current_event_id dirty_signal_count canonical_hash \
+        codegen_input_hash codegen_readiness codegen_readiness_reasons \
+        active_binding_count extra <<<"$compiler_response"
       if [[ -n "${extra:-}" ]] || [[ ! "$stage" =~ ^[A-Z][A-Z_]{0,31}$ ]] ||
          [[ ! "$before_revision" =~ ^[0-9]+$ ]] ||
          [[ ! "$head_revision" =~ ^[0-9]+$ ]] ||
+         [[ ! "$canonical_schema_version" =~ ^[12]$ ]] ||
          [[ ! "$current_event_id" =~ ^(null|[1-9][0-9]*)$ ]] ||
          [[ ! "$dirty_signal_count" =~ ^[0-9]+$ ]] ||
-         [[ ! "$canonical_hash" =~ ^[0-9a-f]{64}$ ]]; then
+         [[ ! "$canonical_hash" =~ ^[0-9a-f]{64}$ ]] ||
+         [[ ! "$codegen_input_hash" =~ ^(null|[0-9a-f]{64})$ ]] ||
+         [[ ! "$codegen_readiness" =~ ^(READY|BLOCKED)$ ]] ||
+         ! python3 -c 'import json,re,sys
+x=json.loads(sys.argv[1]);sys.exit(0 if isinstance(x,list) and len(x)<=16 and all(isinstance(v,str) and re.fullmatch(r"[A-Z][A-Z0-9_]{0,63}",v) for v in x) else 1)' \
+           "$codegen_readiness_reasons" >/dev/null 2>&1 ||
+         [[ ! "$active_binding_count" =~ ^(null|[0-9]+)$ ]]; then
         design_causality_compiler_log \
           "phase=$phase result=INVALID_COMPILER_RESPONSE attempts=$attempts"
+        return 70
+      fi
+      reason_meta="$(python3 -c 'import json,sys
+x=json.loads(sys.argv[1]);print(len(x),int("ACTIVE_RELEASE_BINDING_SOURCE_ONLY" in x),sep="|")' \
+        "$codegen_readiness_reasons")"
+      IFS='|' read -r reason_count reason_has_active <<<"$reason_meta"
+      if [[ "$codegen_readiness" == READY && "$reason_count" != 0 ]] ||
+         [[ "$codegen_readiness" == BLOCKED && "$reason_count" == 0 ]] ||
+         { [[ "$active_binding_count" != null && "$active_binding_count" != 0 ]] &&
+           [[ "$reason_has_active" != 1 ]]; } ||
+         { [[ "$active_binding_count" == 0 ]] &&
+           [[ "$reason_has_active" == 1 ]]; }; then
+        design_causality_compiler_log \
+          "phase=$phase result=CONTRADICTORY_READINESS attempts=$attempts"
         return 70
       fi
       [[ -n "$revision_before" ]] || revision_before="$before_revision"
@@ -274,6 +388,15 @@ run_design_causality_post_commit_compiler() {
               "phase=$phase result=INVALID_NO_WORK_PROOF attempts=$attempts"
             return 70
           fi
+          if [[ "$canonical_schema_version" != 2 ]] ||
+             [[ ! "$codegen_input_hash" =~ ^[0-9a-f]{64}$ ]]; then
+            design_causality_compiler_log \
+              "phase=$phase result=SCHEMA_V2_NOT_READY attempts=$attempts"
+            return 75
+          fi
+          # A captured v2 raw-source root may be BLOCKED while this orchestrator
+          # repairs duplicate/incomplete source contracts. PRE_WORK proves the
+          # immutable input snapshot; generation remains gated below on READY.
           elapsed_millis="$(( $(date +%s%3N) - started_millis ))"
           if (( attempts == 1 && compiled == 0 && semantic_noops == 0 )); then
             compile_status='NO_WORK'
@@ -286,7 +409,10 @@ run_design_causality_post_commit_compiler() {
             "$phase" "$compile_status" "$stage" true true "$attempts" \
             "$compiled" "$semantic_noops" "$busy_retries" "$database_retries" 0 \
             "$revision_before" "$head_revision" "$current_event_id" \
-            "$canonical_hash" "$elapsed_millis"
+            "$canonical_hash" "$canonical_schema_version" \
+            "$codegen_input_hash" "$codegen_readiness" \
+            "$codegen_readiness_reasons" \
+            "$active_binding_count" "$elapsed_millis"
           return 0
           ;;
         BUSY) busy_retries=$((busy_retries+1)) ;;
@@ -358,7 +484,7 @@ finalize_design_causality_post_work() {
   fi
 
   failure_invocation="$(printf \
-    '{"schema":"carbonet.design-causality-compiler-invocation/v1","phase":"POST_WORK","result":"FAILED","reason":"%s","exitCode":%s}' \
+    '{"schema":"carbonet.design-causality-compiler-invocation/v2","phase":"POST_WORK","result":"FAILED","reason":"%s","exitCode":%s}' \
     "$failure_reason" "$compiler_rc")"
   psqlq -c "update framework_project_completion_run
     set run_status='FAILED',completed_at=current_timestamp,
@@ -427,7 +553,7 @@ record_design_causality_deferred_recovery() {
     [[ "$signal" == null && "$failed_line" =~ ^[1-9][0-9]*$ ]] || return 64
   fi
   deferred_json="$(printf \
-    '{"schema":"carbonet.design-causality-compiler-invocation/v1","phase":"POST_WORK","result":"DEFERRED_RECOVERY_REQUIRED","invoked":false,"recoveryPhase":"NEXT_PRE_WORK","dirtyState":"PRESERVED_UNOBSERVED","reason":"%s","signal":%s,"exitCode":%s,"failedLine":%s}' \
+    '{"schema":"carbonet.design-causality-compiler-invocation/v2","phase":"POST_WORK","result":"DEFERRED_RECOVERY_REQUIRED","invoked":false,"recoveryPhase":"NEXT_PRE_WORK","dirtyState":"PRESERVED_UNOBSERVED","reason":"%s","signal":%s,"exitCode":%s,"failedLine":%s}' \
     "$reason" "$(if [[ "$signal" == null ]]; then printf null; else printf '"%s"' "$signal"; fi)" \
     "$exit_code" "$failed_line")"
   persisted="$(psqlq -c "with current_run as materialized (
@@ -531,9 +657,12 @@ if design_causality_pre_invocation="$(
   run_design_causality_post_commit_compiler PRE_WORK
 )"; then
   jq -e '
-    .schema=="carbonet.design-causality-compiler-invocation/v1" and
+    .schema=="carbonet.design-causality-compiler-invocation/v2" and
     .phase=="PRE_WORK" and .migrationReady and .authorized and
-    .dirtyAtLinearization==0
+    .dirtyAtLinearization==0 and .canonicalSchemaVersion==2 and
+    (.codegenInputHash|test("^[0-9a-f]{64}$")) and
+    (.codegenReadiness=="READY" or .codegenReadiness=="BLOCKED") and
+    (.activeBindingCount|type)=="number" and .activeBindingCount>=0
   ' <<<"$design_causality_pre_invocation" >/dev/null
 else
   compiler_rc=$?
@@ -2048,12 +2177,15 @@ else
 fi
 blocked="$(psqlq -c "select count(*) from framework_process_delivery_priority_queue where delivery_priority='BLOCKER';")"
 remaining="$(psqlq -c "select count(*) from framework_process_delivery_priority_queue where next_action<>'COMPLETE';")"
+design_causality_post_readiness="$(jq -r '.codegenReadiness' \
+  <<<"$design_causality_post_invocation")"
 full_stack_deferred=0
 [[ "$(jq -r '.status' <<<"$full_stack_generation_result")" == "DEFERRED" ]] && full_stack_deferred=1
-status="PROGRESSING"; [[ "$remaining" == "0" ]] && status="COMPLETED"; [[ "$blocked" -gt 0 || ( "$remaining" -gt 0 && "$executable" == "0" && "$full_stack_deferred" == "0" ) || "$dispatcher_failed" -gt 0 || "$static_contract_gate_failed" -gt 0 ]] && status="ATTENTION_REQUIRED"
+status="PROGRESSING"; [[ "$remaining" == "0" ]] && status="COMPLETED"; [[ "$blocked" -gt 0 || ( "$remaining" -gt 0 && "$executable" == "0" && "$full_stack_deferred" == "0" ) || "$dispatcher_failed" -gt 0 || "$static_contract_gate_failed" -gt 0 || "$design_causality_post_readiness" != "READY" ]] && status="ATTENTION_REQUIRED"
 completion_result_json="$(jq -cn --argjson remaining "$remaining" --argjson dispatcherFailed "$dispatcher_failed" \
+  --arg designCausalityReadiness "$design_causality_post_readiness" \
   --argjson fullStackGeneration "$full_stack_generation_result" \
-  '{remainingProcesses:$remaining,dispatcherFailed:$dispatcherFailed,fullStackGeneration:$fullStackGeneration}')"
+  '{remainingProcesses:$remaining,dispatcherFailed:$dispatcherFailed,designCausalityReadiness:$designCausalityReadiness,fullStackGeneration:$fullStackGeneration}')"
 psqlq -c "update framework_project_completion_run set run_status='$status',selected_process_count=$selected,executable_job_count=$executable,retried_job_count=$retried,completed_process_count=$completed,blocked_process_count=$blocked,result_json=(coalesce(framework_try_jsonb(result_json),'{}'::jsonb)||\$result\$${completion_result_json}\$result\$::jsonb)::text,completed_at=current_timestamp where run_id='$run_id';" >/dev/null
 design_causality_pre_log="$(jq -c 'del(.canonicalHash)' <<<"$design_causality_pre_invocation")"
 design_causality_post_log="$(jq -c 'del(.canonicalHash)' <<<"$design_causality_post_invocation")"

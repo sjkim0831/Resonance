@@ -9,6 +9,18 @@ MIGRATION="$ROOT/apps/carbonet-api/src/main/resources/db/migration/postgresql/V2
 
 bash -n "$RUNNER"
 PYTHONPYCACHEPREFIX="${TMPDIR:-/tmp}/resonance-pycache" python3 -m py_compile "$GENERATOR"
+PYTHONPYCACHEPREFIX="${TMPDIR:-/tmp}/resonance-pycache" python3 - "$GENERATOR" <<'PY'
+import importlib.util, sys
+spec=importlib.util.spec_from_file_location("incremental_generator",sys.argv[1])
+module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
+base=module.synthetic_snapshot(1)["screens"][0]
+for invalid_id in (0,-1):
+    mutant={**base,"blueprintId":invalid_id}
+    try: module.validate_screen(mutant)
+    except SystemExit as exc:
+        assert "positive integer" in str(exc)
+    else: raise AssertionError(f"blueprintId={invalid_id} accepted")
+PY
 
 grep -Fq "ownership_mode IN ('GENERATED','MANUAL','HYBRID')" "$MIGRATION"
 grep -Fq 'framework_screen_design_hash' "$MIGRATION"
