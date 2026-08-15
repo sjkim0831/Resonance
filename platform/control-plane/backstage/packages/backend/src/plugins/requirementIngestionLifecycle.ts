@@ -23,11 +23,35 @@ const normalizedStatus = (value: unknown) =>
 
 export const requirementDocumentId = (
   projectId: string,
-  documentSha256: string,
+  identityKey: string,
+  designVersion: number,
+  contentFingerprint: string,
 ) =>
   createHash('sha256')
-    .update(`${normalizedStatus(projectId)}\0${documentSha256.toLowerCase()}`)
+    .update(
+      `${normalizedStatus(
+        projectId,
+      )}\0${identityKey}\0${designVersion}\0${contentFingerprint}`,
+    )
     .digest('hex');
+
+export const requirementContentFingerprint = (
+  documentSha256: string,
+  textSha256: string,
+) =>
+  createHash('sha256')
+    .update(`${documentSha256.toLowerCase()}\0${textSha256.toLowerCase()}`)
+    .digest('hex');
+
+export const sameRequirementRevision = (
+  latest: { identityKey?: unknown; contentFingerprint?: unknown } | undefined,
+  identityKey: string,
+  contentFingerprint: string,
+) =>
+  latest !== undefined &&
+  String(latest.identityKey ?? '') === identityKey &&
+  String(latest.contentFingerprint ?? '').toLowerCase() ===
+    contentFingerprint.toLowerCase();
 
 export const requirementItemId = (
   projectId: string,
@@ -68,18 +92,18 @@ export const ensureRequirementPublication = async ({
   publish: () => Promise<RequirementBridgeResponse>;
   markQueued: () => Promise<void>;
 }) => {
-  if (!autoPromote) {
-    return {
-      attempted: false,
-      completed: false,
-      publication: { success: false, status: 'AWAITING_PROMOTION' },
-    };
-  }
   if (requirementPublicationComplete(state)) {
     return {
       attempted: false,
       completed: true,
       publication: { success: true, status: 'ALREADY_QUEUED' },
+    };
+  }
+  if (!autoPromote) {
+    return {
+      attempted: false,
+      completed: false,
+      publication: { success: false, status: 'AWAITING_PROMOTION' },
     };
   }
   let result: RequirementBridgeResponse;

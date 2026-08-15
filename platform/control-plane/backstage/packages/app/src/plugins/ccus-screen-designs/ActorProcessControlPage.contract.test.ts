@@ -7,23 +7,26 @@ describe('ActorProcessControlPage SOURCE immediate contract', () => {
     'utf8',
   );
 
-  it('routes the design workspace to the immediate runtime generator', () => {
-    expect(source).toContain("command: 'screen.design.generate'");
+  it('routes the standard design action to the structured immediate contract workspace', () => {
+    expect(source).not.toContain("command: 'screen.design.generate'");
     expect(source).toContain(
-      "onClick={() => openControlTab('design-release')}",
+      "onClick={() => openControlTab('data-contracts')}",
     );
     expect(source).toContain('activationPolicy=SOURCE_IMMEDIATE_V1');
     for (const field of [
-      'routePath',
-      'pageId',
-      'pageTitle',
-      'designNote',
-      'functionNote',
-      'acceptanceNote',
-      'status',
+      'permissionCodes',
+      'layoutCode',
+      'themeCode',
+      'sectionContract',
+      'fieldContract',
+      'commandContract',
+      'apiContract',
     ]) {
-      expect(source).toContain(`name: '${field}'`);
+      expect(source).toContain(field);
     }
+    expect(source).toContain("command: 'screen.contract.save'");
+    expect(source).toContain('layout: draft.layoutCode');
+    expect(source).toContain('theme: draft.themeCode');
   });
 
   it('does not retain the incompatible schema-v2 promotion workflow', () => {

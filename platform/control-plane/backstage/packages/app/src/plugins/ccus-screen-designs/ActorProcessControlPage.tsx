@@ -323,21 +323,6 @@ const TAB_COMMANDS: Record<string, TabCommand> = {
       },
     ],
   },
-  'design-release': {
-    command: 'screen.design.generate',
-    label: '설계 저장·코드 자동 반영',
-    description:
-      '화면 설계를 SOURCE 정본에 저장하고 SDUI·권한·기능·엔드포인트 코드 생성을 즉시 등록합니다.',
-    fields: [
-      { name: 'routePath', label: '화면 경로', required: true },
-      { name: 'pageId', label: '페이지 ID' },
-      { name: 'pageTitle', label: '화면 제목', required: true },
-      { name: 'designNote', label: '레이아웃·테마·섹션 설계', required: true, type: 'textarea' },
-      { name: 'functionNote', label: '기능·권한·입출력·엔드포인트 설계', required: true, type: 'textarea' },
-      { name: 'acceptanceNote', label: '페이지·프로세스 QA 인수 기준', required: true, type: 'textarea' },
-      { name: 'status', label: '설계 상태', defaultValue: 'READY' },
-    ],
-  },
   'development-plan': {
     command: 'development.plan',
     label: '개발 계획 생성',
@@ -3380,6 +3365,9 @@ type DataContractDraft = {
   apiContract: string;
   dataContract: string;
   evidenceContract: string;
+  permissionCodes: string;
+  layoutCode: string;
+  themeCode: string;
   responsiveContract: string;
   accessibilityContract: string;
   securityContract: string;
@@ -3406,6 +3394,9 @@ const emptyDataContract = (): DataContractDraft => ({
   apiContract: '[]',
   dataContract: '[]',
   evidenceContract: '[]',
+  permissionCodes: '[]',
+  layoutCode: '',
+  themeCode: 'KRDS_GOV_DEFAULT',
   responsiveContract: '360px, 768px, 1280px 검증',
   accessibilityContract: 'KRDS 및 WCAG 2.1 AA',
   securityContract: '테넌트·프로젝트·액터 권한 서버 검증',
@@ -3446,6 +3437,7 @@ function DataContractWorkspace({
     ['apiContract', 'API 계약 JSON'],
     ['dataContract', 'DB·데이터 계약 JSON'],
     ['evidenceContract', '증적 계약 JSON'],
+    ['permissionCodes', '화면 권한 코드 JSON'],
   ];
   const verificationFields: Array<[keyof DataContractDraft, string]> = [
     ['apiVerified', 'API'],
@@ -3458,7 +3450,8 @@ function DataContractWorkspace({
   const invalidJson = jsonFields.some(([field]) => {
     try { return !Array.isArray(JSON.parse(draft[field])); } catch { return true; }
   });
-  const missing = [draft.contractId, draft.businessPurpose, draft.entryCondition, draft.exitCondition].some(value => !value.trim());
+  const missing = [draft.contractId, draft.businessPurpose, draft.entryCondition,
+    draft.exitCondition, draft.layoutCode, draft.themeCode].some(value => !value.trim());
   const selectContract = (row: RuntimeRow) => {
     const next = emptyDataContract();
     (Object.keys(next) as Array<keyof DataContractDraft>).forEach(key => {
@@ -3503,11 +3496,14 @@ function DataContractWorkspace({
             {!selectedId ? <Box mt={2} p={3} style={{ background: '#f5f7fa', borderRadius: 8 }}><Typography color="textSecondary">왼쪽에서 화면 계약을 선택하세요. 계약은 기존 등록 화면을 기준으로만 수정됩니다.</Typography></Box> : <form onSubmit={event => {
               event.preventDefault();
               if (missing || invalidJson) return;
-              const values: Record<string, unknown> = { ...draft, contractId: Number(draft.contractId) };
+              const values: Record<string, unknown> = { ...draft,
+                contractId: Number(draft.contractId), layout: draft.layoutCode, theme: draft.themeCode };
               verificationFields.forEach(([field]) => { values[field] = draft[field] === 'true'; });
               void onSave(values);
             }}>
               <Grid container spacing={2} style={{ marginTop: 4 }}>
+                <Grid item xs={12} md={6}><TextField fullWidth required size="small" variant="outlined" label="등록 레이아웃 코드" value={draft.layoutCode} onChange={event => update('layoutCode', event.target.value.toUpperCase())} /></Grid>
+                <Grid item xs={12} md={6}><TextField fullWidth required size="small" variant="outlined" label="등록 KRDS 테마 코드" value={draft.themeCode} onChange={event => update('themeCode', event.target.value.toUpperCase())} /></Grid>
                 <Grid item xs={12}><TextField fullWidth required multiline rows={2} size="small" variant="outlined" label="업무 목적" value={draft.businessPurpose} onChange={event => update('businessPurpose', event.target.value)} /></Grid>
                 <Grid item xs={12} md={6}><TextField fullWidth required multiline rows={2} size="small" variant="outlined" label="진입 조건" value={draft.entryCondition} onChange={event => update('entryCondition', event.target.value)} /></Grid>
                 <Grid item xs={12} md={6}><TextField fullWidth required multiline rows={2} size="small" variant="outlined" label="완료·이탈 조건" value={draft.exitCondition} onChange={event => update('exitCondition', event.target.value)} /></Grid>
@@ -6549,7 +6545,7 @@ export function ActorProcessControlPage(props: {
               variant="contained"
               color="primary"
               startIcon={<LaunchIcon />}
-              onClick={() => openControlTab('design-release')}
+              onClick={() => openControlTab('data-contracts')}
             >
               설계 저장·코드 자동 반영
             </Button>
@@ -6772,7 +6768,7 @@ export function ActorProcessControlPage(props: {
                 onSave={executeScreenFlowCommand}
               />
             )}
-            {selectedTab.id === 'data-contracts' && (
+            {['data-contracts', 'design-release'].includes(selectedTab.id) && (
               <DataContractWorkspace
                 contracts={sourceRows}
                 pending={commandPending}
@@ -6819,6 +6815,7 @@ export function ActorProcessControlPage(props: {
               'steps',
               'screen-flow',
               'data-contracts',
+              'design-release',
               'screen-workflow-tests',
             ].includes(selectedTab.id) && (
               <Grid container spacing={2} style={{ marginTop: 8 }}>
@@ -6865,6 +6862,7 @@ export function ActorProcessControlPage(props: {
                 'steps',
                 'screen-flow',
                 'data-contracts',
+                'design-release',
                 'screen-workflow-tests',
               ].includes(selectedTab.id) && (
                 <Box

@@ -302,7 +302,7 @@ export const ACTOR_PROCESS_DATASET_BY_TAB: Record<string, string> = {
   'data-contracts': 'professionalScreenContracts',
   'test-scenarios': 'cases',
   'design-assets': 'referenceAssets',
-  'design-release': 'designValidationRuns',
+  'design-release': 'professionalScreenContracts',
   'development-plan': 'processDevelopmentProgress',
   'generation-queue': 'developmentJobs',
   frontend: 'screenDevelopmentGates',

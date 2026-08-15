@@ -46,6 +46,36 @@ public class ActorProcessGovernanceService {
     private final ScreenContractRuntimeService screenContractRuntimeService;
 
     public List<Map<String, Object>> dashboardDataset(String dataset) {
+        if("professionalScreenContracts".equals(dataset)){
+            return jdbc.queryForList("""
+                select readiness.*,contract.permission_codes::text as permission_codes,
+                       coalesce(nullif(framework_try_jsonb(blueprint.specification_json)->>'layout',''),
+                         resource.layout_type) as layout_code,
+                       coalesce(nullif(framework_try_jsonb(blueprint.specification_json)->>'theme',''),
+                         'KRDS_GOV_DEFAULT') as theme_code
+                  from framework_professional_screen_readiness readiness
+                  join framework_professional_screen_contract contract using(contract_id)
+                  left join framework_screen_resource resource
+                    on resource.route_key=lower(split_part(contract.route_path,'?',1))
+                  left join lateral(
+                    select candidate.specification_json
+                      from framework_screen_blueprint candidate
+                     where candidate.process_code=contract.process_code
+                       and candidate.step_code=contract.step_code
+                       and upper(candidate.audience)=upper(contract.audience)
+                       and lower(split_part(candidate.route_path,'?',1))=
+                           lower(split_part(contract.route_path,'?',1))
+                       and candidate.validation_status='VALID'
+                     order by case when candidate.transition_status='CONTRACT_LINKED'
+                         and lower(candidate.source_reference) in(
+                           'framework_professional_screen_contract:'||contract.contract_id,
+                           'professional_screen_contract:'||contract.contract_id)
+                         then 0 else 1 end,candidate.blueprint_id
+                     limit 1
+                  ) blueprint on true
+                 order by contract.process_code,contract.step_code,contract.audience
+                """).stream().map(this::camelCaseColumns).toList();
+        }
         if ("processExecutions".equals(dataset)) {
             return jdbc.queryForList("""
                 select execution.*,step.actor_code as current_actor_code,

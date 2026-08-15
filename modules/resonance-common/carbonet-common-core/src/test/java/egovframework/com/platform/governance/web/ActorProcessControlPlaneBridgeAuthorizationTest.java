@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import egovframework.com.platform.governance.service.ActorProcessGovernanceService;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
@@ -38,6 +39,12 @@ class ActorProcessControlPlaneBridgeAuthorizationTest {
         new ActorProcessControlPlaneBridgeController(jdbc,mapper,governance,"secret-token");
     private final Map<String,Object> command=Map.of(
         "command","screen.design.generate","routePath","/design/route");
+
+    @BeforeEach void releaseInsertSucceedsByDefault(){
+        when(jdbc.update(org.mockito.ArgumentMatchers.argThat(sql->sql!=null
+            &&sql.contains("insert into framework_actor_process_design_release")),
+            any(Object[].class))).thenReturn(1);
+    }
 
     @AfterEach void close(){
         if(TransactionSynchronizationManager.isSynchronizationActive())
@@ -78,6 +85,50 @@ class ActorProcessControlPlaneBridgeAuthorizationTest {
                 "screen.design.generate".equals(body.get("command"))
                     &&"system-admin".equals(body.get("requestingAccount"))),
             eq("system-admin"));
+        @SuppressWarnings("unchecked")
+        Map<String,Object> payload=(Map<String,Object>)response.getBody();
+        assertEquals("NOTE_ONLY",payload.get("mutationKind"));
+        assertEquals(false,payload.get("structuredChanged"));
+    }
+
+    @Test
+    void structuredDesignGenerateDelegatesToCanonicalProfessionalSave(){
+        when(governance.isControlPlaneAdministrator("system-admin")).thenReturn(true);
+        Map<String,Object> structured=new LinkedHashMap<>();
+        structured.put("command","screen.design.generate");
+        structured.put("contractId",31);
+        structured.put("businessPurpose","Persist an exact structured screen contract.");
+        structured.put("entryCondition","Assigned actor may enter the screen.");
+        structured.put("exitCondition","Validated command persists and rereads its output.");
+        structured.put("sectionContract","[{\"sectionCode\":\"SUMMARY\"}]");
+        structured.put("fieldContract","[{\"fieldCode\":\"amount\"}]");
+        structured.put("commandContract","[{\"commandCode\":\"SAVE\"}]");
+        structured.put("stateContract","[{\"stateCode\":\"READY\"}]");
+        structured.put("apiContract","[{\"method\":\"POST\",\"path\":\"/api/save\"}]");
+        structured.put("dataContract","[{\"entity\":\"ITEM\"}]");
+        structured.put("permissionCodes","[\"ITEM_WRITE\"]");
+        structured.put("layout","RESPONSIVE_WORKSPACE");
+        structured.put("theme","KRDS_GOV_DEFAULT");
+        when(governance.saveProfessionalScreenContract(any(),eq("system-admin")))
+            .thenReturn(Map.of("success",true,"generationQueued",true,
+                "sourceHash","a".repeat(64),"endpointExpected",1));
+
+        var response=controller.executeGovernanceCommand(
+            "secret-token","BACKSTAGE","system-admin",structured);
+
+        assertEquals(200,response.getStatusCode().value());
+        @SuppressWarnings("unchecked")
+        Map<String,Object> payload=(Map<String,Object>)response.getBody();
+        assertEquals(true,payload.get("generationQueued"));
+        assertEquals("a".repeat(64),payload.get("sourceHash"));
+        assertEquals(1,payload.get("endpointExpected"));
+        verify(governance).saveProfessionalScreenContract(
+            org.mockito.ArgumentMatchers.argThat(body->
+                "[\"ITEM_WRITE\"]".equals(body.get("permissionCodes"))
+                    &&"RESPONSIVE_WORKSPACE".equals(body.get("layout"))
+                    &&"KRDS_GOV_DEFAULT".equals(body.get("theme"))),
+            eq("system-admin"));
+        verify(governance,never()).saveDesignAndGenerate(any(),anyString());
     }
 
     @Test
@@ -110,6 +161,59 @@ class ActorProcessControlPlaneBridgeAuthorizationTest {
 
         assertEquals(400,response.getStatusCode().value());
         verifyNoInteractions(jdbc,governance);
+    }
+
+    @Test
+    void exactReleaseHeadReplayIsIdempotentWithoutImportOrWrite() throws Exception {
+        Map<String,Object> contract=requirementContract("PROCESS_A",4,Map.ofEntries(
+            Map.entry("stepCode","STEP_ONE"),Map.entry("actorCode","WORKER_ACTOR"),
+            Map.entry("routePath","/work/one"),Map.entry("screenName","Step one"),
+            Map.entry("description","Complete step one"),
+            Map.entry("endpoint",Map.of("method","POST","path","/api/work/one"))));
+        String checksum=canonicalChecksum(contract);
+        when(jdbc.queryForObject(org.mockito.ArgumentMatchers.argThat(sql->sql!=null
+            &&sql.contains("'designVersion',design_version")),eq(String.class),
+            any(Object[].class))).thenReturn(mapper.writeValueAsString(Map.of(
+                "designVersion",4,"contractSha256",checksum,
+                "releaseStatus","QUEUED","generationResult",Map.of("status","PENDING"))));
+
+        var response=controller.applyDesignRelease("secret-token",Map.of(
+            "projectId","PROJECT_A","designVersion",4,
+            "contractSha256",checksum,"contract",contract));
+
+        assertEquals(200,response.getStatusCode().value());
+        @SuppressWarnings("unchecked")
+        Map<String,Object> payload=(Map<String,Object>)response.getBody();
+        assertEquals(true,payload.get("idempotent"));
+        verifyNoInteractions(governance);
+        verify(jdbc,never()).update(anyString(),any(Object[].class));
+    }
+
+    @Test
+    void staleOrConflictingReleaseVersionReturns409WithoutImport() throws Exception {
+        Map<String,Object> step=Map.ofEntries(
+            Map.entry("stepCode","STEP_ONE"),Map.entry("actorCode","WORKER_ACTOR"),
+            Map.entry("routePath","/work/one"),Map.entry("screenName","Step one"),
+            Map.entry("description","Complete step one"),
+            Map.entry("endpoint",Map.of("method","POST","path","/api/work/one")));
+        Map<String,Object> staleContract=requirementContract("PROCESS_A",3,step);
+        Map<String,Object> conflictingContract=requirementContract("PROCESS_A",4,step);
+        when(jdbc.queryForObject(org.mockito.ArgumentMatchers.argThat(sql->sql!=null
+            &&sql.contains("'designVersion',design_version")),eq(String.class),
+            any(Object[].class))).thenReturn(mapper.writeValueAsString(Map.of(
+                "designVersion",4,"contractSha256","f".repeat(64),
+                "releaseStatus","APPLIED","generationResult",Map.of("status","APPLIED"))));
+
+        for(Map<String,Object> contract:List.of(staleContract,conflictingContract)){
+            int version=((Number)contract.get("designVersion")).intValue();
+            String checksum=canonicalChecksum(contract);
+            var response=controller.applyDesignRelease("secret-token",Map.of(
+                "projectId","PROJECT_A","designVersion",version,
+                "contractSha256",checksum,"contract",contract));
+            assertEquals(409,response.getStatusCode().value());
+        }
+        verifyNoInteractions(governance);
+        verify(jdbc,never()).update(anyString(),any(Object[].class));
     }
 
     @Test

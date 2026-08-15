@@ -4,24 +4,61 @@ import {
   RequirementPublicationError,
   ensureRequirementPublication,
   nextRequirementDesignVersion,
+  requirementContentFingerprint,
   requirementDocumentId,
   requirementItemId,
+  sameRequirementRevision,
 } from './requirementIngestionLifecycle';
 
 describe('requirement ingestion lifecycle', () => {
-  it('scopes identical document bytes to the project', () => {
-    const sha = 'a'.repeat(64);
-    const storedDocumentIds = new Set([
-      requirementDocumentId('PROJECT-A', sha),
-      requirementDocumentId('PROJECT-B', sha),
-    ]);
-    expect(storedDocumentIds.size).toBe(2);
-    expect(requirementDocumentId('project-a', sha)).toBe(
-      requirementDocumentId('PROJECT-A', sha),
+  it('scopes immutable revision ids to project, logical slot and version', () => {
+    const fingerprint = requirementContentFingerprint(
+      'a'.repeat(64),
+      'b'.repeat(64),
     );
+    const storedDocumentIds = new Set([
+      requirementDocumentId('PROJECT-A', 'slot:main', 2, fingerprint),
+      requirementDocumentId('PROJECT-B', 'slot:main', 2, fingerprint),
+      requirementDocumentId('PROJECT-A', 'slot:supporting', 2, fingerprint),
+      requirementDocumentId('PROJECT-A', 'slot:main', 3, fingerprint),
+    ]);
+    expect(storedDocumentIds.size).toBe(4);
+    expect(
+      requirementDocumentId('project-a', 'slot:main', 2, fingerprint),
+    ).toBe(requirementDocumentId('PROJECT-A', 'slot:main', 2, fingerprint));
     expect(requirementItemId('PROJECT-A', 'doc-1', 'REQ-1')).not.toBe(
       requirementItemId('PROJECT-A', 'doc-2', 'REQ-1'),
     );
+  });
+
+  it('only reuses the latest logical-slot head with the same byte and text fingerprint', () => {
+    const bytes = 'a'.repeat(64);
+    const textA = 'b'.repeat(64);
+    const textB = 'c'.repeat(64);
+    const fingerprintA = requirementContentFingerprint(bytes, textA);
+    const fingerprintB = requirementContentFingerprint(bytes, textB);
+    const latest = {
+      identityKey: 'slot:main-rfp',
+      contentFingerprint: fingerprintA,
+    };
+
+    expect(sameRequirementRevision(latest, 'slot:main-rfp', fingerprintA)).toBe(
+      true,
+    );
+    expect(sameRequirementRevision(latest, 'slot:main-rfp', fingerprintB)).toBe(
+      false,
+    );
+    expect(
+      sameRequirementRevision(latest, 'slot:another-rfp', fingerprintA),
+    ).toBe(false);
+    // A -> B -> A compares against B, so the returning A is a new version.
+    expect(
+      sameRequirementRevision(
+        { identityKey: 'slot:main-rfp', contentFingerprint: fingerprintB },
+        'slot:main-rfp',
+        fingerprintA,
+      ),
+    ).toBe(false);
   });
 
   it('allocates distinct maximum-plus-one versions for concurrent uploads', async () => {
@@ -65,6 +102,15 @@ describe('requirement ingestion lifecycle', () => {
     expect(lifecycle.indexOf('.forUpdate()')).toBeLessThan(
       lifecycle.indexOf(".max({ max: 'design_version' })"),
     );
+    expect(lifecycle).toContain('identity_key: identityKey');
+    expect(lifecycle).toContain(".orderBy('design_version', 'desc')");
+    expect(lifecycle).toContain('content_fingerprint: contentFingerprint');
+    expect(lifecycle).toContain("implementation_status: 'DESIGN_VALIDATED'");
+    expect(lifecycle).toContain("'DESIGN_APPROVER'");
+    expect(routeSource).toContain(
+      'drop constraint if exists resonance_requirement_document_project_hash_uq',
+    );
+    expect(routeSource.match(/response\.status\(410\)/g)).toHaveLength(2);
   });
 
   it('retries a failed bridge publication and no-ops after it is queued', async () => {
@@ -114,5 +160,23 @@ describe('requirement ingestion lifecycle', () => {
       expect.objectContaining({ attempted: false, completed: true }),
     );
     expect(attempts).toBe(2);
+  });
+
+  it('does not downgrade a completed publication when auto promotion is off', async () => {
+    let attempts = 0;
+    const result = await ensureRequirementPublication({
+      autoPromote: false,
+      state: { analysisStatus: 'GENERATION_APPLIED', releaseStatus: 'APPLIED' },
+      publish: async () => {
+        attempts += 1;
+        return { ok: true, payload: { success: true } };
+      },
+      markQueued: async () => undefined,
+    });
+
+    expect(result).toEqual(
+      expect.objectContaining({ attempted: false, completed: true }),
+    );
+    expect(attempts).toBe(0);
   });
 });

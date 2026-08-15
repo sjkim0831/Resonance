@@ -16,9 +16,11 @@ import {
   RequirementPublicationError,
   ensureRequirementPublication,
   nextRequirementDesignVersion,
+  requirementContentFingerprint,
   requirementDocumentId,
   requirementItemId,
   requirementPublicationComplete,
+  sameRequirementRevision,
 } from './requirementIngestionLifecycle';
 import { registerProjectLifecycleRoutes } from './projectLifecycleRoutes';
 
@@ -586,6 +588,8 @@ export default createBackendPlugin({
               table.bigInteger('byte_size').notNullable();
               table.string('document_sha256', 64).notNullable();
               table.string('text_sha256', 64).notNullable();
+              table.string('identity_key', 240).notNullable();
+              table.string('content_fingerprint', 64).notNullable();
               table.text('extracted_text').notNullable();
               table.string('analysis_status', 32).notNullable();
               table.integer('requirement_count').notNullable();
@@ -593,9 +597,9 @@ export default createBackendPlugin({
               table.string('process_code', 80).notNullable();
               table.string('created_by', 160).notNullable();
               table.timestamp('created_at', { useTz: true }).notNullable();
-              table.unique(
-                ['project_id', 'document_sha256'],
-                'resonance_requirement_document_project_hash_uq',
+              table.index(
+                ['project_id', 'identity_key', 'design_version'],
+                'resonance_requirement_document_identity_head_idx',
               );
               table.index(
                 ['project_id', 'created_at'],
@@ -604,6 +608,37 @@ export default createBackendPlugin({
             },
           );
         }
+        for (const [column, length] of [
+          ['identity_key', 240],
+          ['content_fingerprint', 64],
+        ] as const) {
+          if (!(await knex.schema.hasColumn(
+            'resonance_projects__requirement_document', column,
+          ))) {
+            await knex.schema.alterTable(
+              'resonance_projects__requirement_document',
+              table => table.string(column, length).nullable(),
+            );
+          }
+        }
+        await knex.raw(
+          'alter table resonance_projects__requirement_document drop constraint if exists resonance_requirement_document_project_hash_uq',
+        );
+        await knex.raw(`
+          update resonance_projects__requirement_document
+             set identity_key=coalesce(identity_key,'legacy:raw:'||document_sha256),
+                 content_fingerprint=coalesce(content_fingerprint,document_sha256)
+           where identity_key is null or content_fingerprint is null
+        `);
+        await knex.raw(`
+          alter table resonance_projects__requirement_document
+            alter column identity_key set not null,
+            alter column content_fingerprint set not null
+        `);
+        await knex.raw(`
+          create index if not exists resonance_requirement_document_identity_head_idx
+          on resonance_projects__requirement_document(project_id,identity_key,design_version desc)
+        `);
         if (
           !(await knex.schema.hasTable('resonance_projects__requirement_item'))
         ) {
@@ -2405,6 +2440,8 @@ export default createBackendPlugin({
               'mime_type',
               'byte_size',
               'document_sha256',
+              'identity_key',
+              'content_fingerprint',
               'analysis_status',
               'requirement_count',
               'design_version',
@@ -2421,6 +2458,8 @@ export default createBackendPlugin({
               mimeType: document.mime_type,
               byteSize: Number(document.byte_size),
               documentSha256: document.document_sha256,
+              identityKey: document.identity_key,
+              contentFingerprint: document.content_fingerprint,
               status: document.analysis_status,
               requirementCount: document.requirement_count,
               designVersion: document.design_version,
@@ -2463,6 +2502,14 @@ export default createBackendPlugin({
               response.status(404).json({ message: 'Project not found' });
               return;
             }
+            const designAccess = await resolveDesignAssetAccess(request, projectId);
+            if (!designAccess.roles.includes('DESIGN_APPROVER')) {
+              response.status(403).json({
+                success: false,
+                message: 'missing required role: DESIGN_APPROVER',
+              });
+              return;
+            }
             const account = await resolveRuntimeAccount(request);
             let document: ReturnType<typeof decodeRequirementDocument>;
             try {
@@ -2486,15 +2533,31 @@ export default createBackendPlugin({
               if (!lockedProject) {
                 return { kind: 'PROJECT_MISSING' as const };
               }
+              const analysis = analyzeRequirementText(
+                projectId,
+                document.fileName,
+                document.text,
+                document.identity,
+              );
+              const identityKey = analysis.identity.stableKey;
+              const contentFingerprint = requirementContentFingerprint(
+                document.documentSha256,
+                document.textSha256,
+              );
               const existing = await transaction(
                 'resonance_projects__requirement_document',
               )
-                .where({
-                  project_id: projectId,
-                  document_sha256: document.documentSha256,
-                })
+                .where({ project_id: projectId, identity_key: identityKey })
+                .orderBy('design_version', 'desc')
                 .first();
-              if (existing) {
+              if (sameRequirementRevision(
+                existing ? {
+                  identityKey: existing.identity_key,
+                  contentFingerprint: existing.content_fingerprint,
+                } : undefined,
+                identityKey,
+                contentFingerprint,
+              )) {
                 const release = await transaction(
                   'resonance_projects__design_release',
                 )
@@ -2524,12 +2587,6 @@ export default createBackendPlugin({
                   contract: storedContract as Record<string, unknown>,
                 };
               }
-              const analysis = analyzeRequirementText(
-                projectId,
-                document.fileName,
-                document.text,
-                document.identity,
-              );
               const [{ max }] = await transaction(
                 'resonance_projects__design_release',
               )
@@ -2552,7 +2609,9 @@ export default createBackendPlugin({
               const contractSha256 = requirementContractSha256(contract);
               const documentId = requirementDocumentId(
                 projectId,
-                document.documentSha256,
+                identityKey,
+                designVersion,
+                contentFingerprint,
               );
               const now = new Date();
               await transaction(
@@ -2565,6 +2624,8 @@ export default createBackendPlugin({
                 byte_size: document.byteSize,
                 document_sha256: document.documentSha256,
                 text_sha256: document.textSha256,
+                identity_key: identityKey,
+                content_fingerprint: contentFingerprint,
                 extracted_text: document.text,
                 analysis_status: 'DESIGN_VALIDATED',
                 requirement_count: analysis.requirements.length,
@@ -2593,7 +2654,7 @@ export default createBackendPlugin({
                   endpoint_path: item.endpoint.path,
                   field_contract: JSON.stringify(item.fields),
                   acceptance_criteria: JSON.stringify(item.acceptanceCriteria),
-                  implementation_status: 'GENERATION_QUEUED',
+                  implementation_status: 'DESIGN_VALIDATED',
                   created_at: now,
                 })),
               );
@@ -2736,6 +2797,12 @@ export default createBackendPlugin({
                         document_id: persistence.documentId,
                       })
                       .update({ analysis_status: 'GENERATION_QUEUED' });
+                    await transaction('resonance_projects__requirement_item')
+                      .where({
+                        project_id: projectId,
+                        document_id: persistence.documentId,
+                      })
+                      .update({ implementation_status: 'GENERATION_QUEUED' });
                   });
                 },
               });
@@ -2766,9 +2833,13 @@ export default createBackendPlugin({
               screenCount: persistence.requirementCount,
               endpointCount: persistence.requirementCount,
               contractSha256: persistence.contractSha256,
-              status: publicationResult.completed
-                ? 'GENERATION_QUEUED'
-                : persistence.analysisStatus,
+              status: ['APPLIED', 'GENERATION_APPLIED'].includes(
+                String(persistence.analysisStatus).toUpperCase(),
+              ) || String(persistence.releaseStatus).toUpperCase() === 'APPLIED'
+                ? 'APPLIED'
+                : publicationResult.completed
+                  ? 'GENERATION_QUEUED'
+                  : persistence.analysisStatus,
               publication: publicationResult.publication,
             });
           },
@@ -2776,6 +2847,11 @@ export default createBackendPlugin({
         router.post(
           '/:projectId/design-releases',
           async (request, response) => {
+            response.status(410).json({
+              success: false,
+              message: 'Legacy design release mutation is retired; use the structured SOURCE-immediate screen contract workflow.',
+            });
+            return;
             const projectId = normalizeProjectId(request.params.projectId);
             const input = (request.body ?? {}) as DesignContractInput;
             const project = await knex('resonance_projects__project')
@@ -2788,10 +2864,7 @@ export default createBackendPlugin({
             const designVersion = Number(
               input.designVersion ?? project.design_version,
             );
-            const contract =
-              input.contract && typeof input.contract === 'object'
-                ? input.contract
-                : {};
+            const contract: Record<string, unknown> = input.contract ?? {};
             if (!Number.isInteger(designVersion) || designVersion < 1) {
               response.status(400).json({ message: 'Invalid designVersion' });
               return;
@@ -2839,6 +2912,11 @@ export default createBackendPlugin({
         router.post(
           '/:projectId/design-releases/:designVersion/promote',
           async (request, response) => {
+            response.status(410).json({
+              success: false,
+              message: 'Legacy design promotion is retired; SOURCE_IMMEDIATE_V1 applies structured contracts directly.',
+            });
+            return;
             const projectId = normalizeProjectId(request.params.projectId);
             const designVersion = Number(request.params.designVersion);
             const release = await knex('resonance_projects__design_release')

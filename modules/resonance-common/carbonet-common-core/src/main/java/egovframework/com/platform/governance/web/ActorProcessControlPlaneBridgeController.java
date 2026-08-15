@@ -112,8 +112,46 @@ public class ActorProcessControlPlaneBridgeController {
                         "success", false,
                         "message", "contractSha256 does not match the canonical contract payload."));
             }
+            Map<String,Object> validatedContract=validateRequirementProcessContract(
+                    (Map<?,?>)contract,projectId,designVersion);
+            jdbc.query("select pg_advisory_xact_lock(hashtextextended('BACKSTAGE_DESIGN_RELEASE_V1:'||?,0))",
+                    row->{},projectId);
+            String latestReleaseJson=jdbc.queryForObject("""
+                    select coalesce((
+                      select jsonb_build_object(
+                        'designVersion',design_version,'contractSha256',contract_sha256,
+                        'releaseStatus',release_status,'generationResult',generation_result)
+                        from framework_actor_process_design_release
+                       where project_id=? order by design_version desc limit 1 for update
+                    ),'{}'::jsonb)::text
+                    """,String.class,projectId);
+            Map<String,Object> latest=latestReleaseJson==null||latestReleaseJson.isBlank()
+                    ?Map.of():mapper.readValue(latestReleaseJson,
+                        new com.fasterxml.jackson.core.type.TypeReference<LinkedHashMap<String,Object>>(){});
+            if(!latest.isEmpty()){
+                int latestVersion=((Number)latest.get("designVersion")).intValue();
+                String latestChecksum=String.valueOf(latest.get("contractSha256"));
+                if(designVersion<latestVersion||designVersion==latestVersion
+                        &&!checksum.equals(latestChecksum)){
+                    return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of(
+                            "success",false,"projectId",projectId,
+                            "designVersion",designVersion,"currentDesignVersion",latestVersion,
+                            "message","Design release version is stale or conflicts with the immutable project head."));
+                }
+                if(designVersion==latestVersion){
+                    Map<String,Object> response=new LinkedHashMap<>();
+                    response.put("success",true);response.put("idempotent",true);
+                    response.put("projectId",projectId);response.put("designVersion",designVersion);
+                    response.put("sourceOfTruth","BACKSTAGE");
+                    response.put("releaseStatus",String.valueOf(latest.get("releaseStatus")));
+                    response.put("applicationStatus",String.valueOf(latest.get("releaseStatus")));
+                    response.put("generation",latest.get("generationResult"));
+                    response.put("importedRequirementSteps",0);
+                    return ResponseEntity.ok(response);
+                }
+            }
             Map<String,Object> requirementImport =
-                    importRequirementProcessContract((Map<?, ?>) contract,projectId,designVersion);
+                    importRequirementProcessContract(validatedContract,projectId,designVersion);
             int importedSteps = ((Number) requirementImport.getOrDefault(
                     "importedSteps", 0)).intValue();
             Object publication = requirementImport.getOrDefault(
@@ -127,19 +165,14 @@ public class ActorProcessControlPlaneBridgeController {
             expectedProcessReceipts.forEach((expectedProcess,receipt)->
                     expectedProcessHeads.put(expectedProcess,
                             String.valueOf(receipt.get("processInputHash"))));
-            jdbc.update("""
+            int insertedRelease=jdbc.update("""
                     insert into framework_actor_process_design_release(
                       project_id,design_version,contract_sha256,contract_payload,release_status
                     ) values(?,?,?,cast(? as jsonb),'PROMOTED')
-                    on conflict(project_id,design_version) do update set
-                      contract_sha256=excluded.contract_sha256,
-                      contract_payload=excluded.contract_payload,
-                      source_system='BACKSTAGE',
-                      release_status='PROMOTED',
-                      received_at=current_timestamp,
-                      applied_at=null,
-                      generation_result=null
+                    on conflict(project_id,design_version) do nothing
                     """, projectId, designVersion, checksum, contractJson);
+            if(insertedRelease!=1)throw new IllegalStateException(
+                    "DESIGN_RELEASE_HEAD_INSERT_NOT_EXACT: "+projectId+" / "+designVersion);
 
             Map<String,Object> pendingResult=new LinkedHashMap<>();
             pendingResult.put("status","PENDING");
@@ -267,7 +300,20 @@ public class ActorProcessControlPlaneBridgeController {
                     if (!governance.isControlPlaneAdministrator(account)) {
                         throw new SecurityException("Administrator authority is required to save and generate a screen design.");
                     }
-                        result = governance.saveDesignAndGenerate(body, account);
+                    Set<String> structuredFields=Set.of(
+                        "contractId","businessPurpose","entryCondition","exitCondition",
+                        "sectionContract","fieldContract","commandContract",
+                        "stateContract","apiContract","dataContract","permissionCodes",
+                        "layout","theme");
+                    if(body.keySet().containsAll(structuredFields)){
+                        result=governance.saveProfessionalScreenContract(body,account);
+                    }else{
+                        Map<String,Object> noteResult=new LinkedHashMap<>(
+                            governance.saveDesignAndGenerate(body,account));
+                        noteResult.put("mutationKind","NOTE_ONLY");
+                        noteResult.put("structuredChanged",false);
+                        result=noteResult;
+                    }
                 }
                 case "assignment.save" -> {
                     if (!governance.isControlPlaneAdministrator(account)) {
