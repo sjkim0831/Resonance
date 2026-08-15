@@ -17,6 +17,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import re
 import shutil
 import signal
 import sys
@@ -31,6 +32,7 @@ DEFAULT_SCREEN_SECTIONS = [
     "TASK_EVIDENCE",
     "TASK_HANDOFF",
 ]
+GOVERNED_DESIGN_CODE = re.compile(r"^(?:COMMON|KRDS)_[A-Z0-9_]{2,78}$")
 
 
 def fail(message: str) -> None:
@@ -39,6 +41,18 @@ def fail(message: str) -> None:
 
 def stable(value: Any) -> str:
     return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+
+
+def governed_design_code(
+    page: dict[str, Any], key: str, default: str, identity: str
+) -> str:
+    value = page.get(key, default)
+    if not isinstance(value, str) or not GOVERNED_DESIGN_CODE.fullmatch(value):
+        fail(
+            f"{identity}: screen_contract {key} must be a registered "
+            "COMMON_* or KRDS_* design code"
+        )
+    return value
 
 
 def fsync_directory(path: Path) -> None:
@@ -1146,6 +1160,14 @@ def render_step(
             page_sections = copy.deepcopy(page["sections"])
         else:
             page_sections = copy.deepcopy(DEFAULT_SCREEN_SECTIONS)
+        page_layout = governed_design_code(
+            page, "layout", "COMMON_KRDS_TASK_LAYOUT",
+            f"{process['processCode']}/{step['step_code']}",
+        )
+        page_theme = governed_design_code(
+            page, "theme", "COMMON_KRDS_GOV",
+            f"{process['processCode']}/{step['step_code']}",
+        )
         pages.append({
             "pageCode": page["pageCode"],
             "route": page.get("actualRoute") or page["plannedRoute"],
@@ -1154,8 +1176,8 @@ def render_step(
             "screenType": page["screenType"],
             "title": page["title"],
             "purpose": page["purpose"],
-            "layout": "COMMON_KRDS_TASK_LAYOUT",
-            "theme": "COMMON_KRDS_GOV",
+            "layout": page_layout,
+            "theme": page_theme,
             "sections": page_sections,
             "fields": page_fields,
             "commands": executable_commands,

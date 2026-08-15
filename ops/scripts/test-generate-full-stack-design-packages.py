@@ -152,6 +152,7 @@ class GroupFieldsByAudienceTest(unittest.TestCase):
                 "title": "Step A", "purpose": "Complete step A", "exceptions": [],
                 "responsive": {"mobile": "single-column"},
                 "accessibility": {"standard": "WCAG 2.1 AA"},
+                "layout": "COMMON_KRDS_TASK_LAYOUT", "theme": "COMMON_KRDS_GOV",
                 "sections": ["TASK_CONTEXT", "TASK_CONTENT", "TASK_HANDOFF"],
             }],
             "field_contract": {
@@ -177,6 +178,24 @@ class GroupFieldsByAudienceTest(unittest.TestCase):
         )
         mutations = {
             "layout": (
+                lambda value: value["screen_contract"][0].update(
+                    layout="KRDS_REVIEW_GRID"
+                ),
+                {
+                    ("frontend", "pages", 0, "layout"),
+                    ("packageHash",),
+                },
+            ),
+            "theme": (
+                lambda value: value["screen_contract"][0].update(
+                    theme="KRDS_GOV_HIGH_CONTRAST"
+                ),
+                {
+                    ("frontend", "pages", 0, "theme"),
+                    ("packageHash",),
+                },
+            ),
+            "sections": (
                 lambda value: value["screen_contract"][0]["sections"].__setitem__(
                     1, "TASK_REVIEW_GRID"
                 ),
@@ -225,6 +244,10 @@ class GroupFieldsByAudienceTest(unittest.TestCase):
         invalid = copy.deepcopy(step)
         invalid["screen_contract"][0]["sections"] = "TASK_CONTENT"
         with self.assertRaisesRegex(SystemExit, "sections must be an array"):
+            render(invalid)
+        invalid = copy.deepcopy(step)
+        invalid["screen_contract"][0]["layout"] = "display:grid; color:red"
+        with self.assertRaisesRegex(SystemExit, r"registered COMMON_\* or KRDS_\*"):
             render(invalid)
 
     def test_atomic_publish_is_zero_rewrite_and_rolls_back_all_directories(self) -> None:
