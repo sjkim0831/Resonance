@@ -89,6 +89,8 @@ type ScreenCoordinateInput = {
   dataContracts?: string[];
 };
 
+const RUNTIME_DESIGN_SOURCE_TIMEOUT_MS = 10_000;
+
 const SCREEN_DIMENSIONS = [
   'projectId',
   'domainObject',
@@ -1129,7 +1131,7 @@ export default createBackendPlugin({
           try {
             result = await fetch(url, {
               ...init,
-              signal: AbortSignal.timeout(10_000),
+              signal: AbortSignal.timeout(RUNTIME_DESIGN_SOURCE_TIMEOUT_MS),
               headers: {
                 accept: 'application/json',
                 'x-resonance-token': token,
@@ -1478,7 +1480,11 @@ export default createBackendPlugin({
               }),
             },
           );
-          if (!result.ok && result.body.sourceCommitted !== true) {
+          if (
+            !result.ok &&
+            result.body.sourceCommitted !== true &&
+            result.body.sourceCommitted !== false
+          ) {
             throw new Error(
               String(
                 result.body.message ??
@@ -1487,6 +1493,31 @@ export default createBackendPlugin({
             );
           }
           return result.body;
+        };
+        const cancelDesignSnapshotSyncClaim = async (
+          claim: DesignSnapshotSyncClaim,
+          message: string,
+          receipt: Record<string, unknown>,
+        ) => {
+          const now = new Date();
+          return (
+            (await knex('resonance_projects__design_asset_source_sync')
+              .where({
+                sync_id: claim.syncId,
+                sync_status: 'RUNNING',
+                claim_token: claim.claimToken,
+              })
+              .update({
+                sync_status: 'CANCELLED',
+                runtime_receipt: JSON.stringify(receipt),
+                next_attempt_at: now,
+                claim_token: null,
+                lease_expires_at: null,
+                last_error: message.slice(0, 2_000),
+                updated_at: now,
+                synchronized_at: null,
+              })) === 1
+          );
         };
         const commitDesignSnapshotSync = async (
           claim: DesignSnapshotSyncClaim,
@@ -2701,6 +2732,10 @@ export default createBackendPlugin({
                   };
                 }
                 let headResponse: globalThis.Response;
+                let headPayload: {
+                  assets?: DesignAssetSnapshot[];
+                  message?: string;
+                };
                 try {
                   const headParameters = new URLSearchParams({
                     assetType: requestedType,
@@ -2710,12 +2745,19 @@ export default createBackendPlugin({
                   headResponse = await fetch(
                     `${runtimeBaseUrl}/api/internal/actor-process/design-assets/source-heads?${headParameters}`,
                     {
+                      signal: AbortSignal.timeout(
+                        RUNTIME_DESIGN_SOURCE_TIMEOUT_MS,
+                      ),
                       headers: {
                         accept: 'application/json',
                         'x-resonance-token': bridgeToken,
                       },
                     },
                   );
+                  headPayload = (await headResponse.json()) as {
+                    assets?: DesignAssetSnapshot[];
+                    message?: string;
+                  };
                 } catch (error) {
                   return {
                     status: 502,
@@ -2729,10 +2771,6 @@ export default createBackendPlugin({
                     },
                   };
                 }
-                const headPayload = (await headResponse.json()) as {
-                  assets?: DesignAssetSnapshot[];
-                  message?: string;
-                };
                 if (!headResponse.ok) {
                   return { status: headResponse.status, body: headPayload };
                 }
@@ -2796,6 +2834,9 @@ export default createBackendPlugin({
                     `${runtimeBaseUrl}/api/internal/actor-process/design-assets/source`,
                     {
                       method: 'POST',
+                      signal: AbortSignal.timeout(
+                        RUNTIME_DESIGN_SOURCE_TIMEOUT_MS,
+                      ),
                       headers: {
                         accept: 'application/json',
                         'content-type': 'application/json',
@@ -4295,6 +4336,7 @@ export default createBackendPlugin({
                 claimDue: claimDesignSnapshotSyncs,
                 replaySource: replayDesignAssetSource,
                 commitSnapshot: commitDesignSnapshotSync,
+                cancelClaim: cancelDesignSnapshotSyncClaim,
                 retryClaim: retryDesignSnapshotSyncClaim,
                 batchSize: RECEIPT_RECONCILIATION_BATCH_SIZE,
               }),

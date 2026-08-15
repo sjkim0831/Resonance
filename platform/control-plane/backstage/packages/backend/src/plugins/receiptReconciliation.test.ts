@@ -196,6 +196,7 @@ describe('headless receipt reconciliation', () => {
           pending = false;
           return true;
         },
+        cancelClaim: async () => false,
         retryClaim: async () => true,
       });
 
@@ -204,6 +205,79 @@ describe('headless receipt reconciliation', () => {
     await expect(run()).resolves.toMatchObject({ retried: 0, terminal: 1 });
     expect(snapshotWrites).toBe(1);
     expect(pending).toBe(false);
+  });
+
+  it('cancels an explicit runtime rejection without snapshot or retry writes', async () => {
+    const claim: DesignSnapshotSyncClaim = {
+      syncId: 'sync-rejected',
+      projectId: 'A',
+      assetType: 'THEME',
+      assetId: 'KRDS',
+      snapshotBaseFingerprint: 'a'.repeat(64),
+      assetFingerprint: 'b'.repeat(64),
+      mutation: { assetFingerprint: 'b'.repeat(64) },
+      actorRef: 'user:default/approver',
+      claimToken: 'lease-rejected',
+      retryAttempt: 1,
+    };
+    const commitSnapshot = jest.fn();
+    const cancelClaim = jest.fn(async () => true);
+    const retryClaim = jest.fn(async () => true);
+
+    const summary = await reconcileDesignSnapshotSyncBatch({
+      claimDue: async () => [claim],
+      replaySource: async () => ({
+        sourceCommitted: false,
+        message: 'DEPENDENCY_FINGERPRINT_CHANGED',
+      }),
+      commitSnapshot,
+      cancelClaim,
+      retryClaim,
+    });
+
+    expect(summary).toEqual({
+      claimed: 1,
+      terminal: 1,
+      pending: 0,
+      retried: 0,
+      stale: 0,
+    });
+    expect(cancelClaim).toHaveBeenCalledWith(
+      claim,
+      'DEPENDENCY_FINGERPRINT_CHANGED',
+      expect.objectContaining({ sourceCommitted: false }),
+    );
+    expect(commitSnapshot).not.toHaveBeenCalled();
+    expect(retryClaim).not.toHaveBeenCalled();
+  });
+
+  it('retries only an unknown runtime outcome and does not cancel it', async () => {
+    const claim: DesignSnapshotSyncClaim = {
+      syncId: 'sync-unknown',
+      projectId: 'A',
+      assetType: 'THEME',
+      assetId: 'KRDS',
+      snapshotBaseFingerprint: 'a'.repeat(64),
+      assetFingerprint: 'b'.repeat(64),
+      mutation: { assetFingerprint: 'b'.repeat(64) },
+      actorRef: 'user:default/approver',
+      claimToken: 'lease-unknown',
+      retryAttempt: 1,
+    };
+    const cancelClaim = jest.fn(async () => true);
+    const retryClaim = jest.fn(async () => true);
+
+    const summary = await reconcileDesignSnapshotSyncBatch({
+      claimDue: async () => [claim],
+      replaySource: async () => ({ message: 'response was truncated' }),
+      commitSnapshot: async () => true,
+      cancelClaim,
+      retryClaim,
+    });
+
+    expect(summary).toMatchObject({ retried: 1, terminal: 0, stale: 0 });
+    expect(cancelClaim).not.toHaveBeenCalled();
+    expect(retryClaim).toHaveBeenCalledTimes(1);
   });
 
   it('persists split source receipts before returning 202 without a snapshot fingerprint', () => {
@@ -240,5 +314,77 @@ describe('headless receipt reconciliation', () => {
     expect(splitReceipt).toContain('syncReceiptId');
     expect(splitReceipt).toContain('sourceCommitState:');
     expect(splitReceipt).not.toContain('snapshotFingerprint');
+  });
+
+  it('bounds both source calls and preserves timeout truthfulness', () => {
+    const route = readFileSync(join(__dirname, 'resonanceProjects.ts'), 'utf8');
+    const sourceStart = route.indexOf("'/design-assets/:projectId/source'");
+    const syncEndpoint = route.indexOf(
+      "'/design-assets/:projectId/source-sync/:syncId'",
+      sourceStart,
+    );
+    const source = route.slice(sourceStart, syncEndpoint);
+    const headStart = source.indexOf('/design-assets/source-heads?');
+    const prepareStart = source.indexOf('queueDesignSnapshotSync({');
+    const postStart = source.indexOf(
+      '/api/internal/actor-process/design-assets/source`',
+      prepareStart,
+    );
+    const headCall = source.slice(headStart, prepareStart);
+    const postCall = source.slice(
+      postStart,
+      source.indexOf('const runtimeText'),
+    );
+
+    expect(route).toContain('const RUNTIME_DESIGN_SOURCE_TIMEOUT_MS = 10_000;');
+    expect(headStart).toBeGreaterThan(0);
+    expect(prepareStart).toBeGreaterThan(headStart);
+    expect(postStart).toBeGreaterThan(prepareStart);
+    expect(headCall).toContain(
+      'signal: AbortSignal.timeout(\n                        RUNTIME_DESIGN_SOURCE_TIMEOUT_MS',
+    );
+    expect(headCall.indexOf('headResponse.json()')).toBeLessThan(
+      headCall.indexOf('} catch (error) {'),
+    );
+    expect(headCall).toContain('status: 502');
+    expect(postCall).toContain(
+      'signal: AbortSignal.timeout(\n                        RUNTIME_DESIGN_SOURCE_TIMEOUT_MS',
+    );
+    expect(postCall).toContain('RUNTIME_SOURCE_COMMIT_UNKNOWN');
+    expect(source).toContain(
+      "sourceCommitState:\n                    committedReceipt?.sourceCommitted === true\n                      ? 'COMMITTED'\n                      : 'UNKNOWN'",
+    );
+  });
+
+  it('fences worker rejection cancellation and releases the active identity', () => {
+    const route = readFileSync(join(__dirname, 'resonanceProjects.ts'), 'utf8');
+    const cancelStart = route.indexOf(
+      'const cancelDesignSnapshotSyncClaim = async',
+    );
+    const commitStart = route.indexOf(
+      'const commitDesignSnapshotSync = async',
+      cancelStart,
+    );
+    const cancel = route.slice(cancelStart, commitStart);
+    const activeIndexStart = route.indexOf(
+      'resonance_design_asset_source_sync_active_uq',
+    );
+    const activeIndex = route.slice(activeIndexStart, activeIndexStart + 300);
+    const replayStart = route.indexOf('const replayDesignAssetSource = async');
+    const replay = route.slice(replayStart, cancelStart);
+
+    expect(cancelStart).toBeGreaterThan(0);
+    expect(replay).toContain('result.body.sourceCommitted !== false');
+    expect(cancel).toContain("sync_status: 'RUNNING'");
+    expect(cancel).toContain('claim_token: claim.claimToken');
+    expect(cancel).toContain("sync_status: 'CANCELLED'");
+    expect(cancel).toContain('claim_token: null');
+    expect(cancel).toContain('lease_expires_at: null');
+    expect(cancel).toContain('runtime_receipt: JSON.stringify(receipt)');
+    expect(activeIndex).toContain(
+      "where sync_status in ('PREPARED','PENDING','RUNNING')",
+    );
+    expect(activeIndex).not.toContain('CANCELLED');
+    expect(route).toContain('cancelClaim: cancelDesignSnapshotSyncClaim');
   });
 });

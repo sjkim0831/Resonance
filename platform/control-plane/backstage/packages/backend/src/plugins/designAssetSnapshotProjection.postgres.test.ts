@@ -304,6 +304,7 @@ describePostgres(
             throw error;
           }
         },
+        cancelClaim: async () => false,
         retryClaim: async () => false,
       });
 

@@ -179,6 +179,7 @@ export const reconcileDesignSnapshotSyncBatch = async ({
   claimDue,
   replaySource,
   commitSnapshot,
+  cancelClaim,
   retryClaim,
   batchSize = RECEIPT_RECONCILIATION_BATCH_SIZE,
   concurrency = RECEIPT_RECONCILIATION_CONCURRENCY,
@@ -190,6 +191,11 @@ export const reconcileDesignSnapshotSyncBatch = async ({
   ) => Promise<Record<string, unknown>>;
   commitSnapshot: (
     claim: DesignSnapshotSyncClaim,
+    receipt: Record<string, unknown>,
+  ) => Promise<boolean>;
+  cancelClaim: (
+    claim: DesignSnapshotSyncClaim,
+    message: string,
     receipt: Record<string, unknown>,
   ) => Promise<boolean>;
   retryClaim: (
@@ -207,6 +213,16 @@ export const reconcileDesignSnapshotSyncBatch = async ({
   await runWithConcurrency(claims, concurrency, async claim => {
     try {
       const receipt = await replaySource(claim);
+      if (receipt.sourceCommitted === false) {
+        const cancelled = await cancelClaim(
+          claim,
+          String(receipt.message ?? 'RUNTIME_SOURCE_REJECTED'),
+          receipt,
+        );
+        if (cancelled) summary.terminal += 1;
+        else summary.stale += 1;
+        return;
+      }
       if (receipt.sourceCommitted !== true) {
         throw new Error(
           String(receipt.message ?? 'RUNTIME_SOURCE_NOT_COMMITTED'),
