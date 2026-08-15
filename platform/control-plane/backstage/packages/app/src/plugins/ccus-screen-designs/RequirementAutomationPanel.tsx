@@ -1,4 +1,4 @@
-import { ChangeEvent, useCallback, useEffect, useState } from 'react';
+import { ChangeEvent, useCallback, useEffect, useRef, useState } from 'react';
 import { fetchApiRef, useApi } from '@backstage/core-plugin-api';
 import { Box, Button, Chip, LinearProgress, Paper, TextField, Typography } from '@material-ui/core';
 import CloudUploadIcon from '@material-ui/icons/CloudUpload';
@@ -7,6 +7,7 @@ import {
   readRequirementDocumentSlot,
   withRequirementDocumentSlot,
 } from './requirementDocumentSlot';
+import { pollRequirementPublication } from './requirementPublicationPolling';
 
 type RequirementDocument = {
   documentId: string; fileName: string; status: string; requirementCount: number;
@@ -31,16 +32,52 @@ export function RequirementAutomationPanel({ projectId }: { projectId: string })
   const [documents, setDocuments] = useState<RequirementDocument[]>([]);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
+  const publicationPollRef = useRef<AbortController | null>(null);
 
   const refresh = useCallback(async () => {
     if (!projectId) return;
     const response = await fetchApi.fetch(`/api/resonance-projects/${encodeURIComponent(projectId)}/requirements`);
     if (!response.ok) throw new Error(`요구분석 이력 조회 실패 (${response.status})`);
     const payload = (await response.json()) as { documents?: RequirementDocument[] };
-    setDocuments(payload.documents ?? []);
+    const nextDocuments = payload.documents ?? [];
+    setDocuments(nextDocuments);
+    return nextDocuments;
   }, [fetchApi, projectId]);
 
-  useEffect(() => { void refresh().catch(error => setMessage(String(error))); }, [refresh]);
+  const pollDocumentPublication = useCallback((documentId: string, signal: AbortSignal) =>
+    pollRequirementPublication({
+      signal,
+      readReceipt: async () => {
+        const response = await fetchApi.fetch(`/api/resonance-projects/${encodeURIComponent(projectId)}/requirements/${encodeURIComponent(documentId)}/publication/reconcile`, {
+          method: 'POST', signal,
+        });
+        const payload = (await response.json()) as { status?: string; message?: string };
+        if (!response.ok) throw new Error(payload.message ?? `생성 상태 확인 실패 (${response.status})`);
+        return payload;
+      },
+    }), [fetchApi, projectId]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    publicationPollRef.current?.abort();
+    publicationPollRef.current = controller;
+    void refresh().then(async nextDocuments => {
+      if (!nextDocuments) return;
+      const queued = nextDocuments.find(document => document.status.includes('QUEUED'));
+      if (!queued) return;
+      const result = await pollDocumentPublication(queued.documentId, controller.signal);
+      if (controller.signal.aborted) return;
+      if (result.outcome === 'TERMINAL') {
+        const status = String(result.receipt?.status ?? 'FAILED');
+        setMessage(status === 'APPLIED' ? `완료: 설계 v${queued.designVersion} · APPLIED` : `${status}: ${result.receipt?.message ?? '생성 작업이 종료되었습니다.'}`);
+        await refresh();
+      } else if (result.outcome === 'TIMEOUT') {
+        setMessage(`진행 중: 설계 v${queued.designVersion} · 자동 확인 시간 초과, 이력에서 다시 확인합니다.`);
+      }
+    }).catch(error => { if (!controller.signal.aborted) setMessage(String(error)); });
+    return () => controller.abort();
+  }, [pollDocumentPublication, refresh]);
+  useEffect(() => () => publicationPollRef.current?.abort(), []);
   useEffect(() => {
     setDocumentSlot(readRequirementDocumentSlot(
       projectId,
@@ -56,18 +93,39 @@ export function RequirementAutomationPanel({ projectId }: { projectId: string })
 
   const automate = async () => {
     if (!file) return;
+    publicationPollRef.current?.abort();
+    const controller = new AbortController();
+    publicationPollRef.current = controller;
     setBusy(true); setMessage('');
     try {
       const response = await fetchApi.fetch(`/api/resonance-projects/${encodeURIComponent(projectId)}/requirements/automate`, {
         method: 'POST', headers: { 'content-type': 'application/json' },
+        signal: controller.signal,
         body: JSON.stringify(withRequirementDocumentSlot({ fileName: file.name, mimeType: file.type, contentBase64: await toBase64(file), extractedText, sourceImmediate: true }, documentSlot)),
       });
-      const payload = (await response.json()) as { message?: string; requirementCount?: number; designVersion?: number; status?: string };
+      const payload = (await response.json()) as { documentId?: string; message?: string; requirementCount?: number; designVersion?: number; status?: string };
       if (!response.ok) throw new Error(`${payload.status ?? 'FAILED'}: ${payload.message ?? `자동화 실패 (${response.status})`}`);
-      setMessage(`완료: 요구사항 ${payload.requirementCount ?? 0}건 · 설계 v${payload.designVersion ?? '-'} · ${payload.status}`);
+      let finalStatus = String(payload.status ?? 'GENERATION_QUEUED');
+      if (finalStatus.includes('QUEUED') && payload.documentId) {
+        setMessage(`진행 중: 설계 v${payload.designVersion ?? '-'} 코드 생성 상태를 자동 확인합니다.`);
+        const result = await pollDocumentPublication(payload.documentId, controller.signal);
+        if (result.outcome === 'CANCELLED') return;
+        if (result.outcome === 'TERMINAL') {
+          finalStatus = String(result.receipt?.status ?? 'FAILED');
+          if (finalStatus === 'FAILED' || finalStatus === 'REVIEW_REQUIRED') {
+            await refresh();
+            throw new Error(`${finalStatus}: ${result.receipt?.message ?? '생성 작업이 종료되었습니다.'}`);
+          }
+        } else {
+          setMessage(`진행 중: 설계 v${payload.designVersion ?? '-'} · 자동 확인 시간 초과, 이력에서 다시 확인합니다.`);
+          await refresh();
+          return;
+        }
+      }
+      setMessage(`완료: 요구사항 ${payload.requirementCount ?? 0}건 · 설계 v${payload.designVersion ?? '-'} · ${finalStatus}`);
       await refresh();
-    } catch (error) { setMessage(error instanceof Error ? error.message : String(error)); }
-    finally { setBusy(false); }
+    } catch (error) { if (!controller.signal.aborted) { await refresh().catch(() => undefined); setMessage(error instanceof Error ? error.message : String(error)); } }
+    finally { if (!controller.signal.aborted) setBusy(false); }
   };
 
   return (

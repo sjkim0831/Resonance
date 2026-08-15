@@ -328,6 +328,62 @@ class ActorProcessControlPlaneBridgeAuthorizationTest {
     }
 
     @Test
+    void exactReceiptReadConvergesAllTerminalStatesWithoutMutation(){
+        String checksum="a".repeat(64);
+        when(jdbc.queryForList(org.mockito.ArgumentMatchers.argThat(sql->sql!=null
+            &&sql.contains("generation_result::text generation_result_json")
+            &&sql.contains("project_id=? and design_version=?")),any(Object[].class)))
+            .thenReturn(List.of(Map.of("contract_sha256",checksum,
+                "release_status","QUEUED","generation_result_json",
+                "{\"status\":\"PENDING\",\"retryAttempt\":0}")))
+            .thenReturn(List.of(Map.of("contract_sha256",checksum,
+                "release_status","APPLIED","generation_result_json",
+                "{\"status\":\"APPLIED\",\"evidenceRef\":\"receipt://7\"}")))
+            .thenReturn(List.of(Map.of("contract_sha256",checksum,
+                "release_status","FAILED","generation_result_json",
+                "{\"status\":\"FAILED\",\"message\":\"worker failed\"}")))
+            .thenReturn(List.of(Map.of("contract_sha256",checksum,
+                "release_status","REVIEW_REQUIRED","generation_result_json",
+                "{\"status\":\"REVIEW_REQUIRED\"}")));
+
+        assertEquals(401,controller.designReleaseReceipt("wrong-token",
+            "PROJECT_A",4,checksum).getStatusCode().value());
+        var pending=controller.designReleaseReceipt("secret-token",
+            "PROJECT_A",4,checksum);
+        @SuppressWarnings("unchecked")
+        Map<String,Object> pendingBody=(Map<String,Object>)pending.getBody();
+        assertEquals("PENDING",pendingBody.get("applicationStatus"));
+        assertEquals("QUEUED",pendingBody.get("releaseStatus"));
+        for(String status:List.of("APPLIED","FAILED","REVIEW_REQUIRED")){
+            var response=controller.designReleaseReceipt("secret-token",
+                "PROJECT_A",4,checksum);
+            assertEquals(200,response.getStatusCode().value());
+            assertEquals("no-store",response.getHeaders().getFirst("Cache-Control"));
+            @SuppressWarnings("unchecked")
+            Map<String,Object> body=(Map<String,Object>)response.getBody();
+            assertEquals(status,body.get("releaseStatus"));
+            assertEquals(status,body.get("applicationStatus"));
+            assertEquals(checksum,body.get("contractSha256"));
+        }
+        verify(jdbc,never()).update(anyString(),any(Object[].class));
+        verifyNoInteractions(governance);
+    }
+
+    @Test
+    void receiptReadRejectsAStaleChecksumWithoutMutation(){
+        when(jdbc.queryForList(anyString(),any(Object[].class))).thenReturn(List.of(Map.of(
+            "contract_sha256","b".repeat(64),"release_status","APPLIED",
+            "generation_result_json","{\"status\":\"APPLIED\"}")));
+
+        var response=controller.designReleaseReceipt("secret-token",
+            "PROJECT_A",4,"a".repeat(64));
+
+        assertEquals(409,response.getStatusCode().value());
+        verify(jdbc,never()).update(anyString(),any(Object[].class));
+        verifyNoInteractions(governance);
+    }
+
+    @Test
     void staleOrConflictingReleaseVersionReturns409WithoutImport() throws Exception {
         Map<String,Object> step=Map.ofEntries(
             Map.entry("stepCode","STEP_ONE"),Map.entry("actorCode","WORKER_ACTOR"),

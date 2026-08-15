@@ -16,6 +16,7 @@ import {
   RequirementPublicationError,
   ensureRequirementPublication,
   nextRequirementDesignVersion,
+  reconcileRequirementPublicationReceipt,
   requirementContentFingerprint,
   requirementDocumentId,
   requirementItemId,
@@ -24,6 +25,7 @@ import {
   requirementPublicationPersistence,
   requirementReceiptTransitionAllowed,
   sameRequirementRevision,
+  type RequirementPublicationDisposition,
 } from './requirementIngestionLifecycle';
 import { registerProjectLifecycleRoutes } from './projectLifecycleRoutes';
 
@@ -747,6 +749,129 @@ export default createBackendPlugin({
             actor_ref: actorRef,
             details: JSON.stringify(details),
             created_at: new Date(),
+          });
+        };
+
+        const persistRequirementPublicationReceipt = async ({
+          projectId,
+          documentId,
+          designVersion,
+          existingRevision,
+          disposition,
+          publication,
+        }: {
+          projectId: string;
+          documentId: string;
+          designVersion: number;
+          existingRevision: boolean;
+          disposition: RequirementPublicationDisposition;
+          publication: Record<string, unknown>;
+        }) => {
+          const recordedAt = new Date();
+          const target = requirementPublicationPersistence(disposition);
+          const publicationEvidence = JSON.stringify({
+            evidenceType: 'RUNTIME_PUBLICATION_RECEIPT',
+            disposition,
+            publication,
+          });
+          const generation =
+            publication.generation && typeof publication.generation === 'object'
+              ? (publication.generation as Record<string, unknown>)
+              : {};
+          const terminalError = target.successful
+            ? null
+            : String(
+                generation.message ?? publication.message ?? disposition,
+              );
+          const rawAttempt = Number(
+            generation.retryAttempt ?? publication.retryAttempt ?? 0,
+          );
+          const retryAttempt =
+            Number.isInteger(rawAttempt) && rawAttempt >= 0 ? rawAttempt : 0;
+          return knex.transaction(async transaction => {
+            const currentRelease = await transaction(
+              'resonance_projects__design_release',
+            )
+              .select('release_status')
+              .where({ project_id: projectId, design_version: designVersion })
+              .forUpdate()
+              .first();
+            if (!currentRelease) {
+              throw new Error('REQUIREMENT_RELEASE_RECEIPT_CAS_NOT_EXACT');
+            }
+            const currentReleaseStatus = String(
+              currentRelease.release_status,
+            ).toUpperCase();
+            const currentTask = await transaction('resonance_projects__task')
+              .select('attempt_count')
+              .where({ project_id: projectId })
+              .whereRaw("payload->>'documentId' = ?", [documentId])
+              .whereNotNull('attempt_count')
+              .orderBy('attempt_count', 'desc')
+              .first();
+            const currentAttempt = Math.max(
+              0,
+              Number(currentTask?.attempt_count ?? 0),
+            );
+            const currentDisposition = requirementPublicationDisposition({
+              releaseStatus: currentReleaseStatus,
+            });
+            const transitionAllowed = requirementReceiptTransitionAllowed({
+              currentReleaseStatus,
+              currentAttempt,
+              incomingDisposition: disposition,
+              incomingAttempt: retryAttempt,
+              existingRevision,
+            });
+            if (!transitionAllowed) {
+              if (currentDisposition) return currentDisposition;
+              throw new Error('REQUIREMENT_RELEASE_RECEIPT_CAS_NOT_EXACT');
+            }
+            const releaseUpdates = await transaction(
+              'resonance_projects__design_release',
+            )
+              .where({
+                project_id: projectId,
+                design_version: designVersion,
+                release_status: currentReleaseStatus,
+              })
+              .update({
+                release_status: target.releaseStatus,
+                promoted_at: recordedAt,
+                updated_at: recordedAt,
+              });
+            if (releaseUpdates !== 1) {
+              throw new Error('REQUIREMENT_RELEASE_RECEIPT_CAS_NOT_EXACT');
+            }
+            await transaction('resonance_projects__project')
+              .where({ project_id: projectId })
+              .where('design_version', '<=', designVersion)
+              .update({
+                design_version: designVersion,
+                status: target.projectStatus,
+                updated_at: recordedAt,
+              });
+            await transaction('resonance_projects__requirement_document')
+              .where({ project_id: projectId, document_id: documentId })
+              .update({ analysis_status: target.analysisStatus });
+            await transaction('resonance_projects__requirement_item')
+              .where({ project_id: projectId, document_id: documentId })
+              .update({ implementation_status: target.itemStatus });
+            const taskUpdates = transaction('resonance_projects__task')
+              .where({ project_id: projectId })
+              .whereRaw("payload->>'documentId' = ?", [documentId]);
+            if (target.taskStatus !== 'COMPLETED') {
+              taskUpdates.whereNot('status', 'COMPLETED');
+            }
+            await taskUpdates.update({
+              status: target.taskStatus,
+              result: publicationEvidence,
+              error_message: terminalError,
+              attempt_count: retryAttempt,
+              finished_at: target.completeTasks ? recordedAt : null,
+              updated_at: recordedAt,
+            });
+            return disposition;
           });
         };
 
@@ -2466,6 +2591,147 @@ export default createBackendPlugin({
             })),
           });
         });
+        router.post(
+          '/:projectId/requirements/:documentId/publication/reconcile',
+          async (request, response) => {
+            const projectId = normalizeProjectId(request.params.projectId);
+            const documentId = String(request.params.documentId ?? '').trim();
+            const designAccess = await resolveDesignAssetAccess(request, projectId);
+            if (!designAccess.roles.includes('DESIGN_APPROVER')) {
+              response.status(403).json({
+                success: false,
+                message: 'missing required role: DESIGN_APPROVER',
+              });
+              return;
+            }
+            const document = await knex(
+              'resonance_projects__requirement_document',
+            )
+              .where({ project_id: projectId, document_id: documentId })
+              .first();
+            if (!document) {
+              response
+                .status(404)
+                .json({ success: false, message: 'Requirement document not found' });
+              return;
+            }
+            const release = await knex('resonance_projects__design_release')
+              .where({
+                project_id: projectId,
+                design_version: Number(document.design_version),
+              })
+              .first();
+            if (!release) {
+              response.status(409).json({
+                success: false,
+                message: 'Requirement document has no matching design release',
+              });
+              return;
+            }
+            try {
+              const result = await reconcileRequirementPublicationReceipt({
+                state: {
+                  analysisStatus: document.analysis_status,
+                  releaseStatus: release.release_status,
+                },
+                readReceipt: async () => {
+                  const bridgeToken = String(
+                    process.env.RESONANCE_OPS_TOKEN ?? '',
+                  );
+                  if (!bridgeToken) {
+                    throw new RequirementPublicationError(
+                      {
+                        success: false,
+                        message: 'Runtime receipt token is unavailable',
+                      },
+                      503,
+                    );
+                  }
+                  const runtimeBaseUrl = String(
+                    process.env.CARBONET_RUNTIME_BASE_URL ??
+                      'http://carbonet-api.carbonet-prod.svc.cluster.local:8080',
+                  ).replace(/\/+$/, '');
+                  let receiptResponse: globalThis.Response;
+                  try {
+                    receiptResponse = await fetch(
+                      `${runtimeBaseUrl}/api/internal/actor-process/design-releases/${encodeURIComponent(projectId)}/${Number(document.design_version)}?contractSha256=${encodeURIComponent(String(release.contract_sha256))}`,
+                      {
+                        headers: {
+                          accept: 'application/json',
+                          'x-resonance-token': bridgeToken,
+                        },
+                      },
+                    );
+                  } catch (error) {
+                    throw new RequirementPublicationError({
+                      success: false,
+                      message: `Runtime receipt request failed: ${String(error)}`,
+                    });
+                  }
+                  let receipt: Record<string, unknown>;
+                  try {
+                    receipt = (await receiptResponse.json()) as Record<
+                      string,
+                      unknown
+                    >;
+                  } catch {
+                    throw new RequirementPublicationError({
+                      success: false,
+                      message: 'Runtime receipt response is not valid JSON',
+                    });
+                  }
+                  if (!receiptResponse.ok) {
+                    throw new RequirementPublicationError(
+                      {
+                        ...receipt,
+                        success: false,
+                        message: String(
+                          receipt.message ??
+                            'Runtime receipt reconciliation failed',
+                        ),
+                      },
+                      receiptResponse.status === 409 ? 409 : 502,
+                    );
+                  }
+                  return receipt;
+                },
+                persistReceipt: (disposition, receipt) =>
+                  persistRequirementPublicationReceipt({
+                    projectId,
+                    documentId,
+                    designVersion: Number(document.design_version),
+                    existingRevision: true,
+                    disposition,
+                    publication: receipt,
+                  }),
+              });
+              response.json({
+                success: true,
+                reconciled: result.reconciled,
+                terminal: ['APPLIED', 'FAILED', 'REVIEW_REQUIRED'].includes(
+                  result.disposition,
+                ),
+                status:
+                  result.disposition === 'QUEUED'
+                    ? 'GENERATION_QUEUED'
+                    : result.disposition,
+                documentId,
+                designVersion: Number(document.design_version),
+                publication: result.receipt,
+              });
+            } catch (error) {
+              if (error instanceof RequirementPublicationError) {
+                response.status(error.statusCode).json({
+                  success: false,
+                  message: error.message,
+                  publication: error.publication,
+                });
+                return;
+              }
+              throw error;
+            }
+          },
+        );
         router.get(
           '/:projectId/requirements/:documentId',
           async (request, response) => {
@@ -2774,148 +3040,15 @@ export default createBackendPlugin({
                     payload: publication,
                   };
                 },
-                recordPublication: async (disposition, publication) => {
-                  const recordedAt = new Date();
-                  const target = requirementPublicationPersistence(disposition);
-                  const publicationEvidence = JSON.stringify({
-                    evidenceType: 'RUNTIME_PUBLICATION_RECEIPT',
+                recordPublication: (disposition, publication) =>
+                  persistRequirementPublicationReceipt({
+                    projectId,
+                    documentId: persistence.documentId,
+                    designVersion: persistence.designVersion,
+                    existingRevision: persistence.kind === 'EXISTING',
                     disposition,
                     publication,
-                  });
-                  const generation =
-                    publication.generation &&
-                    typeof publication.generation === 'object'
-                      ? (publication.generation as Record<string, unknown>)
-                      : {};
-                  const terminalError = target.successful
-                    ? null
-                    : String(
-                        generation.message ??
-                          publication.message ??
-                          disposition,
-                      );
-                  const rawAttempt = Number(
-                    generation.retryAttempt ?? publication.retryAttempt ?? 0,
-                  );
-                  const retryAttempt =
-                    Number.isInteger(rawAttempt) && rawAttempt >= 0
-                      ? rawAttempt
-                      : 0;
-                  return knex.transaction(async transaction => {
-                    const currentRelease = await transaction(
-                      'resonance_projects__design_release',
-                    )
-                      .select('release_status')
-                      .where({
-                        project_id: projectId,
-                        design_version: persistence.designVersion,
-                      })
-                      .forUpdate()
-                      .first();
-                    if (!currentRelease) {
-                      throw new Error(
-                        'REQUIREMENT_RELEASE_RECEIPT_CAS_NOT_EXACT',
-                      );
-                    }
-                    const currentReleaseStatus = String(
-                      currentRelease.release_status,
-                    ).toUpperCase();
-                    const currentTask = await transaction(
-                      'resonance_projects__task',
-                    )
-                      .select('attempt_count')
-                      .where({ project_id: projectId })
-                      .whereRaw("payload->>'documentId' = ?", [
-                        persistence.documentId,
-                      ])
-                      .whereNotNull('attempt_count')
-                      .orderBy('attempt_count', 'desc')
-                      .first();
-                    const currentAttempt = Math.max(
-                      0,
-                      Number(currentTask?.attempt_count ?? 0),
-                    );
-                    const currentDisposition = requirementPublicationDisposition(
-                      { releaseStatus: currentReleaseStatus },
-                    );
-                    const transitionAllowed = requirementReceiptTransitionAllowed({
-                      currentReleaseStatus,
-                      currentAttempt,
-                      incomingDisposition: disposition,
-                      incomingAttempt: retryAttempt,
-                      existingRevision: persistence.kind === 'EXISTING',
-                    });
-                    if (!transitionAllowed) {
-                      if (currentDisposition) return currentDisposition;
-                      throw new Error(
-                        'REQUIREMENT_RELEASE_RECEIPT_CAS_NOT_EXACT',
-                      );
-                    }
-                    const releaseUpdates = await transaction(
-                      'resonance_projects__design_release',
-                    )
-                      .where({
-                        project_id: projectId,
-                        design_version: persistence.designVersion,
-                        release_status: currentReleaseStatus,
-                      })
-                      .update({
-                        release_status: target.releaseStatus,
-                        promoted_at: recordedAt,
-                        updated_at: recordedAt,
-                      });
-                    if (releaseUpdates !== 1) {
-                      throw new Error(
-                        'REQUIREMENT_RELEASE_RECEIPT_CAS_NOT_EXACT',
-                      );
-                    }
-                    await transaction('resonance_projects__project')
-                      .where({ project_id: projectId })
-                      .where('design_version', '<=', persistence.designVersion)
-                      .update({
-                        design_version: persistence.designVersion,
-                        status: target.projectStatus,
-                        updated_at: recordedAt,
-                      });
-                    await transaction(
-                      'resonance_projects__requirement_document',
-                    )
-                      .where({
-                        project_id: projectId,
-                        document_id: persistence.documentId,
-                      })
-                      .update({
-                        analysis_status: target.analysisStatus,
-                      });
-                    await transaction('resonance_projects__requirement_item')
-                      .where({
-                        project_id: projectId,
-                        document_id: persistence.documentId,
-                      })
-                      .update({
-                        implementation_status: target.itemStatus,
-                      });
-                    const taskUpdates = transaction(
-                      'resonance_projects__task',
-                    )
-                      .where({ project_id: projectId })
-                      .whereRaw("payload->>'documentId' = ?", [
-                        persistence.documentId,
-                      ]);
-                    if (target.taskStatus !== 'COMPLETED') {
-                      taskUpdates.whereNot('status', 'COMPLETED');
-                    }
-                    await taskUpdates.update({
-                      status: target.taskStatus,
-                      result: publicationEvidence,
-                      error_message: terminalError,
-                      attempt_count: retryAttempt,
-                      finished_at: target.completeTasks ? recordedAt : null,
-                      updated_at: recordedAt,
-                    });
-                    return disposition;
-                  });
-                },
+                  }),
               });
             } catch (error) {
               if (error instanceof RequirementPublicationError) {

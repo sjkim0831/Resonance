@@ -244,6 +244,55 @@ export const requirementReceiptTransitionAllowed = ({
   return incomingAttempt >= currentAttempt;
 };
 
+export const reconcileRequirementPublicationReceipt = async ({
+  state,
+  readReceipt,
+  persistReceipt,
+}: {
+  state: RequirementPublicationState;
+  readReceipt: () => Promise<Record<string, unknown>>;
+  persistReceipt: (
+    disposition: RequirementPublicationDisposition,
+    receipt: Record<string, unknown>,
+  ) => Promise<RequirementPublicationDisposition>;
+}) => {
+  const localDisposition = requirementPublicationDisposition(state);
+  if (
+    localDisposition &&
+    ['APPLIED', 'FAILED', 'REVIEW_REQUIRED'].includes(localDisposition)
+  ) {
+    return { disposition: localDisposition, reconciled: false };
+  }
+  if (localDisposition !== 'QUEUED') {
+    throw new RequirementPublicationError(
+      {
+        success: false,
+        status: String(state.analysisStatus ?? state.releaseStatus ?? ''),
+        message: 'Requirement publication is not queued for reconciliation',
+      },
+      409,
+    );
+  }
+  const receipt = await readReceipt();
+  const runtimeDisposition = bridgePublicationDisposition(receipt);
+  if (!runtimeDisposition) {
+    throw new RequirementPublicationError(
+      {
+        ...receipt,
+        success: false,
+        message: 'Runtime receipt has no recognized publication state',
+      },
+      502,
+    );
+  }
+  const disposition = await persistReceipt(runtimeDisposition, receipt);
+  return {
+    disposition,
+    reconciled: disposition === runtimeDisposition,
+    receipt,
+  };
+};
+
 export const ensureRequirementPublication = async ({
   sourceImmediate,
   refreshExisting = false,

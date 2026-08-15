@@ -249,6 +249,57 @@ public class ActorProcessControlPlaneBridgeController {
         }
     }
 
+    @GetMapping("/design-releases/{projectId}/{designVersion}")
+    public ResponseEntity<?> designReleaseReceipt(
+            @RequestHeader(value = "X-Resonance-Token", defaultValue = "") String suppliedToken,
+            @PathVariable String projectId,
+            @PathVariable int designVersion,
+            @RequestParam("contractSha256") String contractSha256) {
+        if (!authorized(suppliedToken)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("success", false, "message", "Invalid control-plane bridge token."));
+        }
+        String normalizedProject=projectId.trim().toUpperCase();
+        String normalizedChecksum=contractSha256.trim();
+        if(!normalizedProject.matches("^[A-Z][A-Z0-9_-]{2,63}$")
+                ||designVersion<1||!normalizedChecksum.matches("^[0-9a-f]{64}$")){
+            return ResponseEntity.unprocessableEntity().body(Map.of(
+                    "success",false,"message","Canonical project, version and checksum are required."));
+        }
+        List<Map<String,Object>> releases=jdbc.queryForList("""
+                select contract_sha256,release_status,
+                       generation_result::text generation_result_json
+                  from framework_actor_process_design_release
+                 where project_id=? and design_version=?
+                """,normalizedProject,designVersion);
+        if(releases.isEmpty()){
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of(
+                    "success",false,"message","Design release was not found."));
+        }
+        if(releases.size()!=1){
+            return ResponseEntity.internalServerError().body(Map.of(
+                    "success",false,"message","Design release identity is not exact."));
+        }
+        Map<String,Object> release=releases.get(0);
+        String currentChecksum=String.valueOf(release.get("contract_sha256"));
+        if(!MessageDigest.isEqual(normalizedChecksum.getBytes(StandardCharsets.US_ASCII),
+                currentChecksum.getBytes(StandardCharsets.US_ASCII))){
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of(
+                    "success",false,"message","Design release checksum does not match the immutable receipt."));
+        }
+        String releaseStatus=String.valueOf(release.get("release_status")).trim().toUpperCase();
+        Map<String,Object> response=new LinkedHashMap<>();
+        response.put("success",true);
+        response.put("projectId",normalizedProject);
+        response.put("designVersion",designVersion);
+        response.put("contractSha256",currentChecksum);
+        response.put("releaseStatus",releaseStatus);
+        response.put("applicationStatus",Set.of("APPLIED","FAILED","REVIEW_REQUIRED")
+                .contains(releaseStatus)?releaseStatus:"PENDING");
+        response.put("generation",generationResult(release.get("generation_result_json")));
+        return ResponseEntity.ok().header("Cache-Control","no-store").body(response);
+    }
+
     @GetMapping("/dashboard")
     public ResponseEntity<?> dashboard(
             @RequestHeader(value = "X-Resonance-Token", defaultValue = "") String suppliedToken,

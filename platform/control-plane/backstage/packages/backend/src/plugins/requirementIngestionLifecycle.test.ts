@@ -5,6 +5,7 @@ import {
   bridgePublicationDisposition,
   ensureRequirementPublication,
   nextRequirementDesignVersion,
+  reconcileRequirementPublicationReceipt,
   requirementContentFingerprint,
   requirementDocumentId,
   requirementItemId,
@@ -123,30 +124,35 @@ describe('requirement ingestion lifecycle', () => {
     expect(retiredMutationRoutes).not.toContain('contract_payload');
     expect(retiredMutationRoutes).not.toContain('.onConflict(');
     expect(retiredMutationRoutes).not.toContain('await fetch(');
-    expect(lifecycle).toContain(
+    expect(routeSource).toContain(
       'requirementPublicationPersistence(disposition)',
     );
-    expect(lifecycle).toContain("evidenceType: 'RUNTIME_PUBLICATION_RECEIPT'");
-    expect(lifecycle).toContain('status: target.taskStatus');
-    expect(lifecycle).toContain('error_message: terminalError');
-    expect(lifecycle).toContain('attempt_count: retryAttempt');
-    expect(lifecycle).toContain("target.taskStatus !== 'COMPLETED'");
-    expect(lifecycle).toContain("taskUpdates.whereNot('status', 'COMPLETED')");
-    expect(lifecycle).toContain(
+    expect(routeSource).toContain(
+      "evidenceType: 'RUNTIME_PUBLICATION_RECEIPT'",
+    );
+    expect(routeSource).toContain('status: target.taskStatus');
+    expect(routeSource).toContain('error_message: terminalError');
+    expect(routeSource).toContain('attempt_count: retryAttempt');
+    expect(routeSource).toContain("target.taskStatus !== 'COMPLETED'");
+    expect(routeSource).toContain(
+      "taskUpdates.whereNot('status', 'COMPLETED')",
+    );
+    expect(routeSource).toContain(
       'finished_at: target.completeTasks ? recordedAt : null',
     );
     expect(lifecycle).toContain(
       "const terminalFailure = ['FAILED', 'REVIEW_REQUIRED']",
     );
-    expect(lifecycle).toContain(
-      ".where('design_version', '<=', persistence.designVersion)",
+    expect(routeSource).toContain(
+      ".where('design_version', '<=', designVersion)",
     );
     expect(lifecycle).toContain('message: terminalMessage');
-    expect(lifecycle).toContain('requirementReceiptTransitionAllowed({');
-    expect(lifecycle).toContain(
+    expect(routeSource).toContain('requirementReceiptTransitionAllowed({');
+    expect(routeSource).toContain(
       'return knex.transaction(async transaction => {',
     );
-    expect(lifecycle).toContain('.forUpdate()');
+    expect(routeSource).toContain('.forUpdate()');
+    expect(lifecycle).toContain('persistRequirementPublicationReceipt({');
     expect(lifecycle).toContain('response.status(error.statusCode)');
     const developmentContract = routeSource.slice(
       routeSource.indexOf("'/:projectId/development-contract'"),
@@ -158,6 +164,45 @@ describe('requirement ingestion lifecycle', () => {
     expect(developmentContract).toContain(
       "query.whereIn('release_status', ['PROMOTED', 'APPLIED'])",
     );
+  });
+
+  it('reconciles queued runtime receipts without exposing the ops token or reuploading', () => {
+    const routeSource = readFileSync(
+      join(__dirname, 'resonanceProjects.ts'),
+      'utf8',
+    );
+    const start = routeSource.indexOf(
+      "'/:projectId/requirements/:documentId/publication/reconcile'",
+    );
+    const reconciliation = routeSource.slice(
+      start,
+      routeSource.indexOf("'/:projectId/requirements/:documentId'", start),
+    );
+
+    expect(start).toBeGreaterThan(0);
+    expect(reconciliation).toContain("'DESIGN_APPROVER'");
+    expect(reconciliation).toContain(
+      '/api/internal/actor-process/design-releases/',
+    );
+    expect(reconciliation).toContain(
+      'reconcileRequirementPublicationReceipt({',
+    );
+    expect(reconciliation).toContain('persistRequirementPublicationReceipt({');
+    const receiptLifecycle = readFileSync(
+      join(__dirname, 'requirementIngestionLifecycle.ts'),
+      'utf8',
+    );
+    const reconciliationHelper = receiptLifecycle.slice(
+      receiptLifecycle.indexOf(
+        'export const reconcileRequirementPublicationReceipt',
+      ),
+      receiptLifecycle.indexOf('export const ensureRequirementPublication'),
+    );
+    expect(
+      reconciliationHelper.indexOf("['APPLIED', 'FAILED', 'REVIEW_REQUIRED']"),
+    ).toBeLessThan(reconciliationHelper.indexOf('await readReceipt()'));
+    expect(reconciliation).toContain("'x-resonance-token': bridgeToken");
+    expect(reconciliation).not.toContain('contract_payload');
   });
 
   it('retries a failed bridge publication and no-ops after it is queued', async () => {
@@ -518,6 +563,58 @@ describe('requirement ingestion lifecycle', () => {
       bridgeCalls: 0,
       recordCalls: 0,
     });
+  });
+
+  it.each(['APPLIED', 'FAILED', 'REVIEW_REQUIRED'] as const)(
+    'reconciles an exact queued runtime receipt to %s once',
+    async disposition => {
+      const receipt = {
+        success: true,
+        releaseStatus: disposition,
+        generation: { status: disposition, retryAttempt: 2 },
+      };
+      const readReceipt = jest.fn(async () => receipt);
+      const persistReceipt = jest.fn(
+        async (incoming: RequirementPublicationDisposition) => incoming,
+      );
+
+      await expect(
+        reconcileRequirementPublicationReceipt({
+          state: {
+            analysisStatus: 'GENERATION_QUEUED',
+            releaseStatus: 'PROMOTED',
+          },
+          readReceipt,
+          persistReceipt,
+        }),
+      ).resolves.toEqual({
+        disposition,
+        reconciled: true,
+        receipt,
+      });
+      expect(readReceipt).toHaveBeenCalledTimes(1);
+      expect(persistReceipt).toHaveBeenCalledWith(disposition, receipt);
+    },
+  );
+
+  it('absorbs an applied local receipt without a runtime read or persistence write', async () => {
+    const readReceipt = jest.fn(async () => ({ releaseStatus: 'QUEUED' }));
+    const persistReceipt = jest.fn(
+      async (incoming: RequirementPublicationDisposition) => incoming,
+    );
+
+    await expect(
+      reconcileRequirementPublicationReceipt({
+        state: {
+          analysisStatus: 'GENERATION_APPLIED',
+          releaseStatus: 'APPLIED',
+        },
+        readReceipt,
+        persistReceipt,
+      }),
+    ).resolves.toEqual({ disposition: 'APPLIED', reconciled: false });
+    expect(readReceipt).not.toHaveBeenCalled();
+    expect(persistReceipt).not.toHaveBeenCalled();
   });
 
   it('does not downgrade a completed publication when auto promotion is off', async () => {
