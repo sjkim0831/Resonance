@@ -14,6 +14,7 @@ import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.util.HexFormat;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -92,7 +93,26 @@ class ActorProcessControlPlaneBridgeAuthorizationTest {
     }
 
     @Test
-    void exactCanonicalContractChecksumQueuesWithoutRequirementMutation() throws Exception {
+    void forgedInnerRequirementContentHashIsRejectedBeforeMutation() throws Exception {
+        Map<String,Object> step=Map.ofEntries(
+            Map.entry("stepCode","STEP_ONE"),Map.entry("actorCode","WORKER_ACTOR"),
+            Map.entry("routePath","/work/one"),Map.entry("screenName","Step one"),
+            Map.entry("description","Complete step one"),
+            Map.entry("endpoint",Map.of("method","POST","path","/api/work/one")),
+            Map.entry("fields",List.of(Map.of("fieldCode","name"))));
+        Map<String,Object> contract=requirementContract("PROCESS_A",1,step);
+        contract.put("contentSha256","f".repeat(64));
+
+        var response=controller.applyDesignRelease("secret-token",Map.of(
+            "projectId","PROJECT_A","designVersion",1,
+            "contractSha256",canonicalChecksum(contract),"contract",contract));
+
+        assertEquals(400,response.getStatusCode().value());
+        verifyNoInteractions(jdbc,governance);
+    }
+
+    @Test
+    void unsupportedCanonicalDesignDocumentFailsClosedWithoutReleaseWrite() throws Exception {
         LinkedHashMap<String,Object> contract=new LinkedHashMap<>();
         contract.put("zeta",Map.of("b",2,"a",1));
         contract.put("source",Map.of("type","DESIGN_DOCUMENT"));
@@ -107,9 +127,10 @@ class ActorProcessControlPlaneBridgeAuthorizationTest {
             "projectId","PROJECT_A","designVersion",1,
             "contractSha256",checksum,"contract",contract));
 
-        assertEquals(200,response.getStatusCode().value());
-        assertEquals("PENDING",((Map<?,?>)response.getBody()).get("applicationStatus"));
+        assertEquals(400,response.getStatusCode().value());
         verify(governance,never()).createProcessForRequirementImport(any(),anyString());
+        verify(jdbc,never()).update(org.mockito.ArgumentMatchers.argThat(sql->sql!=null
+            &&sql.contains("framework_actor_process_design_release")),any(Object[].class));
     }
 
     @Test
@@ -121,9 +142,7 @@ class ActorProcessControlPlaneBridgeAuthorizationTest {
             Map.entry("description","Complete step one"),
             Map.entry("endpoint",Map.of("method","POST","path","/api/work/one")),
             Map.entry("fields",java.util.List.of(Map.of("fieldCode","name"))));
-        Map<String,Object> contract=Map.of(
-            "source",Map.of("type","REQUIREMENT_DOCUMENT"),
-            "process",Map.of("processCode","PROCESS_A","steps",java.util.List.of(step)));
+        Map<String,Object> contract=requirementContract("PROCESS_A",1,step);
         when(governance.lockRequirementImportProcesses(eq("PROCESS_A"),any()))
             .thenReturn(java.util.List.of("PROCESS_A","PROCESS_B"));
         when(governance.createActorForRequirementImport(any(),anyString()))
@@ -147,6 +166,9 @@ class ActorProcessControlPlaneBridgeAuthorizationTest {
             "PROCESS_A","BACKSTAGE_REQUIREMENT_AUTOMATION")).thenReturn(1);
         when(governance.ensureGeneratedProcessPageDesigns(
             "PROCESS_A","BACKSTAGE_REQUIREMENT_AUTOMATION")).thenReturn(1);
+        when(governance.applyRequirementProcessDesignProjection(eq("PROCESS_A"),any(),
+            eq("BACKSTAGE_REQUIREMENT_AUTOMATION"))).thenReturn(Map.of(
+                "success",true,"screenCount",1));
         when(governance.finalizeAndQueueProcessDesign("PROCESS_A",
             "BACKSTAGE_REQUIREMENT_AUTOMATION","REQUIREMENT_PROCESS_CONTRACT"))
             .thenReturn(new LinkedHashMap<>(Map.of("success",true,"status","QUEUED",
@@ -167,15 +189,35 @@ class ActorProcessControlPlaneBridgeAuthorizationTest {
         assertEquals(200,response.getStatusCode().value());
         var order=inOrder(governance);
         order.verify(governance).lockRequirementImportProcesses(eq("PROCESS_A"),any());
-        order.verify(governance).createActorForRequirementImport(any(),anyString());
+        order.verify(governance).createActorForRequirementImport(
+            org.mockito.ArgumentMatchers.argThat(actor->
+                "WORKER_ACTOR".equals(actor.get("actorCode"))
+                    &&"EXECUTE_STEP_ONE".equals(actor.get("capabilityCodes"))),anyString());
         order.verify(governance).createProcessForRequirementImport(any(),anyString());
-        order.verify(governance).addStepForRequirementImport(any(),anyString());
+        order.verify(governance).addStepForRequirementImport(
+            org.mockito.ArgumentMatchers.argThat(request->
+                "EXECUTE_STEP_ONE".equals(request.get("commandCode"))
+                    &&Integer.valueOf(10).equals(request.get("stepOrder"))
+                    &&"DRAFT".equals(request.get("fromState"))
+                    &&"COMPLETED".equals(request.get("toState"))
+                    &&String.valueOf(request.get("apiContract")).contains("/api/work/one")),
+            anyString());
         order.verify(governance).reconcileRequirementImportSteps(anyString(),any(),anyString());
         order.verify(governance).ensureGeneratedProcessSafetyCases("PROCESS_A");
         order.verify(governance).ensureGeneratedProcessDesignContracts(
             "PROCESS_A","BACKSTAGE_REQUIREMENT_AUTOMATION");
         order.verify(governance).ensureGeneratedProcessPageDesigns(
             "PROCESS_A","BACKSTAGE_REQUIREMENT_AUTOMATION");
+        order.verify(governance).applyRequirementProcessDesignProjection(eq("PROCESS_A"),
+            org.mockito.ArgumentMatchers.argThat(design->{
+                Map<?,?> process=(Map<?,?>)design.get("process");
+                Map<?,?> projectedStep=(Map<?,?>)((List<?>)process.get("steps")).get(0);
+                return "RESPONSIVE_WORKSPACE".equals(projectedStep.get("layoutCode"))
+                    &&"KRDS_GOV_DEFAULT".equals(projectedStep.get("themeCode"))
+                    &&List.of("EXECUTE_STEP_ONE").equals(projectedStep.get("permissionCodes"))
+                    &&"MAIN_TASK".equals(((Map<?,?>)((List<?>)
+                        projectedStep.get("sections")).get(0)).get("sectionCode"));
+            }),eq("BACKSTAGE_REQUIREMENT_AUTOMATION"));
         order.verify(governance).finalizeAndQueueProcessDesign("PROCESS_A",
             "BACKSTAGE_REQUIREMENT_AUTOMATION","REQUIREMENT_PROCESS_CONTRACT");
         order.verify(governance).finalizeAndQueueProcessDesign("PROCESS_B",
@@ -205,6 +247,33 @@ class ActorProcessControlPlaneBridgeAuthorizationTest {
                     return false;
                 }
             }),eq("PROJECT_A"),eq(1));
+    }
+
+    @Test
+    void requirementImportRejectsAnAffectedProcessOutsideThePrelockedSet()
+            throws Exception {
+        Map<String,Object> step=Map.ofEntries(
+            Map.entry("stepCode","STEP_ONE"),Map.entry("actorCode","WORKER_ACTOR"),
+            Map.entry("routePath","/work/one"),Map.entry("screenName","Step one"),
+            Map.entry("description","Complete step one"),
+            Map.entry("endpoint",Map.of("method","POST","path","/api/work/one")),
+            Map.entry("fields",java.util.List.of(Map.of("fieldCode","name"))));
+        Map<String,Object> contract=requirementContract("PROCESS_A",1,step);
+        when(governance.lockRequirementImportProcesses("PROCESS_A",java.util.Set.of("WORKER_ACTOR")))
+            .thenReturn(java.util.List.of("PROCESS_A"));
+        when(governance.createActorForRequirementImport(any(),anyString()))
+            .thenReturn(Map.of("success",true,
+                "affectedProcessCodes",java.util.List.of("PROCESS_OUTSIDE_LOCK_SET")));
+        TransactionSynchronizationManager.initSynchronization();
+
+        var response=controller.applyDesignRelease("secret-token",Map.of(
+            "projectId","PROJECT_A","designVersion",1,
+            "contractSha256",canonicalChecksum(contract),"contract",contract));
+
+        assertEquals(400,response.getStatusCode().value());
+        verify(governance,never()).createProcessForRequirementImport(any(),anyString());
+        verify(jdbc,never()).update(org.mockito.ArgumentMatchers.argThat(sql->sql!=null
+            &&sql.contains("framework_actor_process_design_release")),any(Object[].class));
     }
 
     @Test
@@ -304,6 +373,20 @@ class ActorProcessControlPlaneBridgeAuthorizationTest {
     }
 
     @Test
+    void appliedRequirementReleaseIsATerminalReconciliationNoOp(){
+        String captured="{\"status\":\"APPLIED\",\"receipt\":\"immutable\"}";
+        when(jdbc.queryForList(anyString(),any(Object[].class)))
+            .thenReturn(java.util.List.of(Map.of(
+                "contract_sha256","d".repeat(64),"release_status","APPLIED",
+                "generation_result_json",captured,"expected_receipts_json","{}")));
+
+        controller.reconcileRequirementRelease("PROJECT_A",1,"PROCESS_A");
+
+        verify(jdbc,never()).update(org.mockito.ArgumentMatchers.argThat(sql->sql!=null
+            &&sql.contains("set release_status=?")),any(Object[].class));
+    }
+
+    @Test
     void incompleteRelatedProcessPublicationRejectsTheAtomicRequirementRelease()
             throws Exception {
         Map<String,Object> step=Map.ofEntries(
@@ -312,9 +395,7 @@ class ActorProcessControlPlaneBridgeAuthorizationTest {
             Map.entry("description","Complete step one"),
             Map.entry("endpoint",Map.of("method","POST","path","/api/work/one")),
             Map.entry("fields",java.util.List.of(Map.of("fieldCode","name"))));
-        Map<String,Object> contract=Map.of(
-            "source",Map.of("type","REQUIREMENT_DOCUMENT"),
-            "process",Map.of("processCode","PROCESS_A","steps",java.util.List.of(step)));
+        Map<String,Object> contract=requirementContract("PROCESS_A",2,step);
         when(governance.lockRequirementImportProcesses(eq("PROCESS_A"),any()))
             .thenReturn(java.util.List.of("PROCESS_A","PROCESS_B"));
         when(governance.createActorForRequirementImport(any(),anyString()))
@@ -338,6 +419,9 @@ class ActorProcessControlPlaneBridgeAuthorizationTest {
             "PROCESS_A","BACKSTAGE_REQUIREMENT_AUTOMATION")).thenReturn(1);
         when(governance.ensureGeneratedProcessPageDesigns(
             "PROCESS_A","BACKSTAGE_REQUIREMENT_AUTOMATION")).thenReturn(1);
+        when(governance.applyRequirementProcessDesignProjection(eq("PROCESS_A"),any(),
+            eq("BACKSTAGE_REQUIREMENT_AUTOMATION"))).thenReturn(Map.of(
+                "success",true,"screenCount",1));
         when(governance.finalizeAndQueueProcessDesign("PROCESS_A",
             "BACKSTAGE_REQUIREMENT_AUTOMATION","REQUIREMENT_PROCESS_CONTRACT"))
             .thenReturn(new LinkedHashMap<>(Map.of("success",true,"status","QUEUED",
@@ -412,6 +496,72 @@ class ActorProcessControlPlaneBridgeAuthorizationTest {
             org.springframework.transaction.support.TransactionSynchronization::afterCommit);
         verify(jdbc,timeout(1000)).queryForMap(org.mockito.ArgumentMatchers.argThat(sql->sql!=null
             &&sql.contains("contract_payload")),eq("PROJECT_A"),eq(1));
+    }
+
+    private Map<String,Object> requirementContract(
+            String processCode,int designVersion,Map<String,Object> rawStep) throws Exception {
+        String stepCode=String.valueOf(rawStep.get("stepCode"));
+        String actorCode=String.valueOf(rawStep.get("actorCode"));
+        String route=String.valueOf(rawStep.get("routePath"));
+        String command="EXECUTE_"+stepCode;
+        @SuppressWarnings("unchecked")
+        Map<String,Object> endpoint=(Map<String,Object>)rawStep.get("endpoint");
+        List<Map<String,Object>> sections=List.of(Map.of(
+            "sectionCode","MAIN_TASK","order",1,"componentType","JSON_FORM"));
+        LinkedHashMap<String,Object> step=new LinkedHashMap<>(rawStep);
+        step.put("requirementId","REQ_"+stepCode);
+        step.put("stepOrder",10);
+        step.put("layoutCode","RESPONSIVE_WORKSPACE");
+        step.put("themeCode","KRDS_GOV_DEFAULT");
+        step.put("sections",sections);
+        step.put("permissionCodes",List.of(command));
+        step.put("commandCode",command);
+        step.put("fromState","DRAFT");
+        step.put("toState","COMPLETED");
+        step.put("apiContract",new LinkedHashMap<>(endpoint));
+        step.put("fields",List.of(Map.of("fieldCode","NAME","label","Name",
+            "type","TEXT","required",true,"order",1)));
+        step.put("acceptanceCriteria",List.of("Persist and reread the completed work."));
+        LinkedHashMap<String,Object> hashBound=new LinkedHashMap<>();
+        hashBound.put("schemaVersion","3.0.0");
+        hashBound.put("projectId","PROJECT_A");
+        hashBound.put("tenantId","TENANT_A");
+        hashBound.put("identity",Map.of("strategy","STABLE_DOCUMENT_KEY",
+            "stableKey","PROJECT_A:REQUIREMENTS","processCode",processCode));
+        hashBound.put("contextFields",List.of("projectId","tenantId","designVersion",
+            "actorCode","processCode","stepCode"));
+        hashBound.put("workspaces",List.of(Map.of("id","PRIMARY_WORKSPACE","tabs",List.of(
+            Map.of("id","TASK","label","Task","sections",sections)))));
+        hashBound.put("actorDefinitions",List.of(Map.of(
+            "actorCode",actorCode,"actorName",actorCode,"description","Requirement actor",
+            "permissionCodes",List.of(command))));
+        hashBound.put("process",Map.of("processCode",processCode,"startState","DRAFT",
+            "endState","COMPLETED","steps",List.of(step)));
+        hashBound.put("generation",Map.of("commonLayout","RESPONSIVE_WORKSPACE",
+            "commonTheme","KRDS_GOV_DEFAULT"));
+        String audience=actorCode.contains("ADMIN")?"ADMIN":"USER";
+        hashBound.put("reconciliation",Map.ofEntries(
+            Map.entry("mode","EXACT_SET"),
+            Map.entry("staleIdentityIntent","REMOVE_GENERATOR_OWNED_MISSING"),
+            Map.entry("stepCodes",List.of(stepCode)),
+            Map.entry("routePaths",List.of(route)),
+            Map.entry("screenKeys",List.of(String.join("|",processCode,stepCode,audience,route))),
+            Map.entry("commandCodes",List.of(command)),
+            Map.entry("endpointIdentities",List.of(endpoint.get("method")+" "+endpoint.get("path"))),
+            Map.entry("actorCodes",List.of(actorCode))));
+        hashBound.put("qualityGates",List.of("ACTOR_PROCESS_TRACEABILITY",
+            "INPUT_OUTPUT_HANDOFF","AUTHORITY_ISOLATION","DATABASE_REREAD",
+            "RESPONSIVE_ACCESSIBILITY","RECOVERY_EVIDENCE"));
+        String contentSha=canonicalChecksum(hashBound);
+        LinkedHashMap<String,Object> contract=new LinkedHashMap<>(hashBound);
+        contract.put("designVersion",designVersion);
+        contract.put("contentSha256",contentSha);
+        contract.put("source",Map.ofEntries(
+            Map.entry("type","REQUIREMENT_DOCUMENT"),
+            Map.entry("fileName","requirements.json"),Map.entry("documentSha256","b".repeat(64)),
+            Map.entry("textSha256","c".repeat(64)),Map.entry("stableKey","PROJECT_A:REQUIREMENTS"),
+            Map.entry("processCode",processCode),Map.entry("contentSha256",contentSha)));
+        return contract;
     }
 
     private String canonicalChecksum(Object contract) throws Exception {

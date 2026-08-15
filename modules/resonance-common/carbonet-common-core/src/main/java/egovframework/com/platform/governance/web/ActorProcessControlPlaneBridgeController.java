@@ -113,7 +113,7 @@ public class ActorProcessControlPlaneBridgeController {
                         "message", "contractSha256 does not match the canonical contract payload."));
             }
             Map<String,Object> requirementImport =
-                    importRequirementProcessContract((Map<?, ?>) contract);
+                    importRequirementProcessContract((Map<?, ?>) contract,projectId,designVersion);
             int importedSteps = ((Number) requirementImport.getOrDefault(
                     "importedSteps", 0)).intValue();
             Object publication = requirementImport.getOrDefault(
@@ -714,6 +714,10 @@ public class ActorProcessControlPlaneBridgeController {
         String capturedReleaseStatus=String.valueOf(releaseRows.get(0).get("release_status"));
         String capturedGenerationResultJson=String.valueOf(
                 releaseRows.get(0).get("generation_result_json"));
+        // APPLIED binds a verified immutable receipt set.  A later head is a
+        // new design revision; recovery must never downgrade or rewrite the
+        // already-applied release while reconciling that newer head.
+        if("APPLIED".equals(capturedReleaseStatus))return;
         String capturedReceiptsJson=String.valueOf(
                 releaseRows.get(0).get("expected_receipts_json"));
         List<Map<String,Object>> rows=jdbc.queryForList("""
@@ -857,12 +861,10 @@ public class ActorProcessControlPlaneBridgeController {
                 "REQUIREMENT_RELEASE_CAS_NOT_EXACT: "+projectId+" / "+designVersion);
     }
 
-    private Map<String,Object> importRequirementProcessContract(Map<?, ?> contract) {
-        Object sourceValue = contract.get("source");
-        if (!(sourceValue instanceof Map<?, ?> source)
-                || !"REQUIREMENT_DOCUMENT".equals(String.valueOf(source.get("type")))) {
-            return Map.of("requirementRelease",false,"importedSteps",0);
-        }
+    private Map<String,Object> importRequirementProcessContract(
+            Map<?, ?> rawContract,String releaseProjectId,int releaseDesignVersion) {
+        Map<String,Object> contract=validateRequirementProcessContract(
+                rawContract,releaseProjectId,releaseDesignVersion);
         Object processValue = contract.get("process");
         if (!(processValue instanceof Map<?, ?> process)) {
             throw new IllegalArgumentException("Requirement process contract is missing.");
@@ -883,22 +885,41 @@ public class ActorProcessControlPlaneBridgeController {
             }
             actorCodes.add(requiredRaw(step, "actorCode").toUpperCase());
         }
-        java.util.SortedSet<String> affectedProcesses = new java.util.TreeSet<>(
+        java.util.SortedSet<String> lockedProcesses = new java.util.TreeSet<>(
                 governance.lockRequirementImportProcesses(processCode,actorCodes));
+        java.util.SortedSet<String> affectedProcesses = new java.util.TreeSet<>(lockedProcesses);
+        @SuppressWarnings("unchecked")
+        List<Map<String,Object>> actorDefinitions=(List<Map<String,Object>>)
+                contract.get("actorDefinitions");
+        Map<String,Map<String,Object>> actorsByCode=new java.util.TreeMap<>();
+        for(Map<String,Object> definition:actorDefinitions){
+            actorsByCode.put(String.valueOf(definition.get("actorCode")),definition);
+        }
         for (String actorCode : actorCodes) {
+            Map<String,Object> definition=actorsByCode.get(actorCode);
+            if(definition==null)throw new IllegalArgumentException(
+                    "Requirement actor definition is missing: "+actorCode);
+            @SuppressWarnings("unchecked")
+            List<String> permissionCodes=(List<String>)definition.get("permissionCodes");
+            String capabilityCodes=String.join(",",permissionCodes);
+            LinkedHashMap<String,Object> actorRequest=new LinkedHashMap<>();
+            actorRequest.put("actorCode",actorCode);
+            actorRequest.put("actorName",definition.get("actorName"));
+            actorRequest.put("actorNameEn",definition.get("actorName"));
+            actorRequest.put("actorType",actorCode.contains("ADMIN")?"ADMIN":"BUSINESS");
+            actorRequest.put("purpose",definition.get("description"));
+            actorRequest.put("capabilityCodes",capabilityCodes);
+            actorRequest.put("delegationAllowed",false);
+            actorRequest.put("useAt","Y");
             Map<String,Object> actorMutation=governance.createActorForRequirementImport(
-                    new LinkedHashMap<>(Map.of(
-                    "actorCode", actorCode,
-                    "actorName", actorCode,
-                    "actorNameEn", actorCode,
-                    "actorType", actorCode.contains("ADMIN") ? "ADMIN" : "BUSINESS",
-                    "purpose", "요구분석서 기반 " + actorCode + " 업무 수행",
-                    "capabilityCodes", "REQUIREMENT_AUTOMATION",
-                    "delegationAllowed", false,
-                    "useAt", "Y")),"BACKSTAGE_REQUIREMENT_AUTOMATION");
+                    actorRequest,"BACKSTAGE_REQUIREMENT_AUTOMATION");
             Object rawAffected=actorMutation.get("affectedProcessCodes");
-            if(rawAffected instanceof List<?> list)for(Object value:list)
-                affectedProcesses.add(String.valueOf(value));
+            if(rawAffected instanceof List<?> list)for(Object value:list){
+                String affected=String.valueOf(value);
+                if(!lockedProcesses.contains(affected))throw new IllegalStateException(
+                        "REQUIREMENT_PROCESS_LOCK_SET_EXPANDED: "+affected);
+                affectedProcesses.add(affected);
+            }
         }
         governance.createProcessForRequirementImport(new LinkedHashMap<>(Map.ofEntries(
                 Map.entry("processCode", processCode),
@@ -915,36 +936,42 @@ public class ActorProcessControlPlaneBridgeController {
                 Map.entry("riskLevel", "MEDIUM"),
                 Map.entry("developmentOrder", 1))),"BACKSTAGE_REQUIREMENT_AUTOMATION");
         int order = 0;
+        int previousStepOrder=0;
         LinkedHashSet<String> requestedStepCodes = new LinkedHashSet<>();
         for (Object stepValue : steps) {
             Map<?, ?> step = (Map<?, ?>) stepValue;
             order++;
+            int declaredOrder=((Number)step.get("stepOrder")).intValue();
+            if(declaredOrder<=previousStepOrder)throw new IllegalArgumentException(
+                    "Requirement step order is not strictly increasing: "+declaredOrder);
+            previousStepOrder=declaredOrder;
             String stepCode = requiredRaw(step, "stepCode").toUpperCase();
             if (!requestedStepCodes.add(stepCode)) {
                 throw new IllegalArgumentException("Duplicate requirement step: " + stepCode);
             }
             String actorCode = requiredRaw(step, "actorCode").toUpperCase();
-            String fromState = order == 1 ? "DRAFT" : "STEP_" + (order - 1) + "_COMPLETED";
-            String toState = order == steps.size() ? "COMPLETED" : "STEP_" + order + "_COMPLETED";
+            String fromState = requiredRaw(step,"fromState").toUpperCase();
+            String toState = requiredRaw(step,"toState").toUpperCase();
             String routePath = requiredRaw(step, "routePath");
-            Object endpointValue = step.get("endpoint");
-            String apiContract = endpointValue instanceof Map<?, ?> endpoint
-                    ? writeJson(endpoint) : "{}";
+            Object apiContractValue=step.get("apiContract");
+            String apiContract=writeJson(apiContractValue);
             Object fieldValue = step.get("fields");
             String inputContract = fieldValue instanceof List<?> fields
                     ? writeJson(Map.of("fields", fields)) : "{}";
             String requirement = requiredRaw(step, "description");
+            String completionRule=writeRequirementAcceptanceCriteria(
+                    step.get("acceptanceCriteria"));
             LinkedHashMap<String, Object> stepRequest = new LinkedHashMap<>();
             stepRequest.put("processCode", processCode);
             stepRequest.put("stepCode", stepCode);
-            stepRequest.put("stepOrder", order);
+            stepRequest.put("stepOrder", declaredOrder);
             stepRequest.put("stepName", requiredRaw(step, "screenName"));
             stepRequest.put("stepType", "TASK");
             stepRequest.put("actorCode", actorCode);
             stepRequest.put("fromState", fromState);
-            stepRequest.put("commandCode", "EXECUTE_" + stepCode);
+            stepRequest.put("commandCode", requiredRaw(step,"commandCode").toUpperCase());
             stepRequest.put("toState", toState);
-            stepRequest.put("completionRule", "필수 필드, 권한, DB 재조회, 증적 검증을 통과한다.");
+            stepRequest.put("completionRule", completionRule);
             stepRequest.put("requirementText", requirement);
             stepRequest.put("inputContract", inputContract);
             stepRequest.put("outputContract", writeJson(Map.of(
@@ -994,6 +1021,13 @@ public class ActorProcessControlPlaneBridgeController {
         if (pageDesigns < steps.size()) {
             throw new IllegalStateException("Requirement page and field designs are incomplete: " + processCode);
         }
+        Map<String,Object> designProjection=governance.applyRequirementProcessDesignProjection(
+                processCode,contract,"BACKSTAGE_REQUIREMENT_AUTOMATION");
+        if(!Boolean.TRUE.equals(designProjection.get("success"))
+                ||((Number)designProjection.getOrDefault("screenCount",0)).intValue()<steps.size()){
+            throw new IllegalStateException(
+                    "Requirement process structured design projection is incomplete: "+designProjection);
+        }
         Map<String,Object> publication = governance.finalizeAndQueueProcessDesign(
                 processCode,"BACKSTAGE_REQUIREMENT_AUTOMATION",
                 "REQUIREMENT_PROCESS_CONTRACT");
@@ -1013,6 +1047,247 @@ public class ActorProcessControlPlaneBridgeController {
         publication.put("relatedProcessPublications",relatedPublications);
         return Map.of("requirementRelease",true,"importedSteps",order,
                 "processCode",processCode,"publication",publication);
+    }
+
+    private record RequirementSets(java.util.SortedSet<String> steps,
+            java.util.SortedSet<String> routes,java.util.SortedSet<String> screens,
+            java.util.SortedSet<String> commands,java.util.SortedSet<String> endpoints,
+            java.util.SortedSet<String> actors){}
+
+    private Map<String,Object> validateRequirementProcessContract(
+            Map<?,?> raw,String projectId,int designVersion){
+        Map<String,Object> contract=mapper.convertValue(raw,
+            new com.fasterxml.jackson.core.type.TypeReference<LinkedHashMap<String,Object>>(){});
+        validateRequirementEnvelope(contract,projectId,designVersion);
+        Map<String,Object> source=requiredObject(contract,"source");
+        Map<String,Object> identity=requiredObject(contract,"identity");
+        Map<String,Object> process=requiredObject(contract,"process");
+        String processCode=canonicalCode(process,"processCode");
+        if(!processCode.equals(canonicalCode(identity,"processCode"))
+                ||!processCode.equals(canonicalCode(source,"processCode")))
+            throw new IllegalArgumentException("REQUIREMENT_PROCESS_IDENTITY_DIVERGED");
+        if(!Set.of("EXPLICIT_PROCESS_CODE","STABLE_DOCUMENT_KEY").contains(requiredRaw(identity,"strategy")))
+            throw new IllegalArgumentException("REQUIREMENT_IDENTITY_STRATEGY_UNSUPPORTED");
+        requiredRaw(identity,"stableKey");
+        Map<String,java.util.SortedSet<String>> actorPermissions=validateRequirementActors(
+            requiredObjectList(contract,"actorDefinitions",1,1000));
+        Map<String,Object> generation=requiredObject(contract,"generation");
+        RequirementSets sets=validateRequirementSteps(process,processCode,actorPermissions,
+            governedCode(generation,"commonLayout"),governedCode(generation,"commonTheme"));
+        if(!actorPermissions.keySet().equals(sets.actors()))
+            throw new IllegalArgumentException("REQUIREMENT_ACTOR_DEFINITION_SET_NOT_EXACT");
+        Map<String,Object> reconciliation=requiredObject(contract,"reconciliation");
+        if(!"EXACT_SET".equals(requiredRaw(reconciliation,"mode"))
+                ||!"REMOVE_GENERATOR_OWNED_MISSING".equals(requiredRaw(reconciliation,"staleIdentityIntent")))
+            throw new IllegalArgumentException("REQUIREMENT_RECONCILIATION_POLICY_UNSUPPORTED");
+        Map.of("stepCodes",sets.steps(),"routePaths",sets.routes(),"screenKeys",sets.screens(),
+            "commandCodes",sets.commands(),"endpointIdentities",sets.endpoints(),"actorCodes",sets.actors())
+            .forEach((key,expected)->requireExactSet(reconciliation,key,expected));
+        return contract;
+    }
+
+    private void validateRequirementEnvelope(Map<String,Object> contract,String projectId,int designVersion){
+        if(!"3.0.0".equals(contract.get("schemaVersion"))
+                ||!projectId.equals(requiredRaw(contract,"projectId").toUpperCase())
+                ||!(contract.get("designVersion") instanceof Number version)||version.intValue()!=designVersion)
+            throw new IllegalArgumentException("REQUIREMENT_RELEASE_IDENTITY_MISMATCH");
+        requiredRaw(contract,"tenantId");
+        Map<String,Object> source=requiredObject(contract,"source");
+        if(!"REQUIREMENT_DOCUMENT".equals(requiredRaw(source,"type")))
+            throw new IllegalArgumentException("UNSUPPORTED_DESIGN_RELEASE_SOURCE");
+        requiredRaw(source,"fileName");requiredRaw(source,"stableKey");
+        requireSha256(source,"documentSha256");requireSha256(source,"textSha256");
+        String contentSha=requireSha256(contract,"contentSha256");
+        if(!contentSha.equals(requireSha256(source,"contentSha256")))
+            throw new IllegalArgumentException("REQUIREMENT_CONTENT_HASH_DIVERGED");
+        List<String> keys=List.of("schemaVersion","projectId","tenantId","identity","contextFields",
+            "workspaces","actorDefinitions","process","generation","reconciliation","qualityGates");
+        LinkedHashMap<String,Object> bound=new LinkedHashMap<>();
+        keys.forEach(key->{if(!contract.containsKey(key))throw new IllegalArgumentException(
+            "REQUIREMENT_HASH_BOUND_FIELD_MISSING: "+key);bound.put(key,contract.get(key));});
+        try{
+            String canonical=mapper.writer().with(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS)
+                .writeValueAsString(bound);
+            if(!contentSha.equals(sha256(canonical)))
+                throw new IllegalArgumentException("REQUIREMENT_CONTENT_HASH_MISMATCH");
+        }catch(com.fasterxml.jackson.core.JsonProcessingException error){
+            throw new IllegalArgumentException("REQUIREMENT_CONTENT_NOT_CANONICAL",error);
+        }
+        requireExactList(contract,"contextFields",List.of("projectId","tenantId","designVersion",
+            "actorCode","processCode","stepCode"));
+        requireExactList(contract,"qualityGates",List.of("ACTOR_PROCESS_TRACEABILITY",
+            "INPUT_OUTPUT_HANDOFF","AUTHORITY_ISOLATION","DATABASE_REREAD",
+            "RESPONSIVE_ACCESSIBILITY","RECOVERY_EVIDENCE"));
+        validateWorkspaces(requiredObjectList(contract,"workspaces",1,200));
+    }
+
+    private static Map<String,java.util.SortedSet<String>> validateRequirementActors(
+            List<Map<String,Object>> actors){
+        Map<String,java.util.SortedSet<String>> permissions=new java.util.TreeMap<>();
+        for(Map<String,Object> actor:actors){
+            String code=canonicalActorCode(actor,"actorCode");
+            requiredRaw(actor,"actorName");requiredRaw(actor,"description");
+            if(permissions.put(code,canonicalPermissionSet(
+                    requiredStringList(actor,"permissionCodes",1,200)))!=null)
+                throw new IllegalArgumentException("REQUIREMENT_ACTOR_DUPLICATE: "+code);
+        }
+        return permissions;
+    }
+
+    private static RequirementSets validateRequirementSteps(Map<String,Object> process,String processCode,
+            Map<String,java.util.SortedSet<String>> actorPermissions,String commonLayout,String commonTheme){
+        List<Map<String,Object>> steps=requiredObjectList(process,"steps",1,1000);
+        RequirementSets ids=new RequirementSets(new java.util.TreeSet<>(),new java.util.TreeSet<>(),
+            new java.util.TreeSet<>(),new java.util.TreeSet<>(),new java.util.TreeSet<>(),new java.util.TreeSet<>());
+        String expectedFrom=canonicalCode(process,"startState");
+        int previousOrder=0;
+        for(int index=0;index<steps.size();index++){
+            Map<String,Object> step=steps.get(index);
+            if(!(step.get("stepOrder") instanceof Number order)||order.intValue()<=previousOrder)
+                throw new IllegalArgumentException("REQUIREMENT_STEP_ORDER_NOT_INCREASING");
+            previousOrder=order.intValue();
+            requiredRaw(step,"requirementId");requiredRaw(step,"screenName");requiredRaw(step,"description");
+            String code=canonicalCode(step,"stepCode"),actor=canonicalActorCode(step,"actorCode");
+            String command=canonicalCode(step,"commandCode"),from=canonicalCode(step,"fromState");
+            String to=canonicalCode(step,"toState"),route=requiredRaw(step,"routePath");
+            if(!expectedFrom.equals(from)||!route.matches("^/[A-Za-z0-9/_{}:.~-]{1,399}$")||route.contains("//"))
+                throw new IllegalArgumentException("REQUIREMENT_STEP_PATH_OR_STATE_INVALID: "+code);
+            expectedFrom=to;
+            step.putIfAbsent("layoutCode",commonLayout);step.putIfAbsent("themeCode",commonTheme);
+            governedCode(step,"layoutCode");governedCode(step,"themeCode");
+            validateSections(requiredObjectList(step,"sections",1,200));
+            validateFields(requiredObjectList(step,"fields",1,500));
+            requiredStringList(step,"acceptanceCriteria",1,100);
+            java.util.SortedSet<String> permissions=canonicalPermissionSet(
+                requiredStringList(step,"permissionCodes",1,200));
+            if(!actorPermissions.getOrDefault(actor,new java.util.TreeSet<>()).containsAll(permissions))
+                throw new IllegalArgumentException("REQUIREMENT_ACTOR_PERMISSION_COVERAGE_MISSING: "+actor);
+            Map<String,Object> endpoint=requiredObject(step,"endpoint"),api=requiredObject(step,"apiContract");
+            String method=requiredRaw(endpoint,"method").toUpperCase(),path=requiredRaw(endpoint,"path");
+            if(!Set.of("GET","POST","PUT","PATCH","DELETE").contains(method)
+                    ||!path.matches("^/[A-Za-z0-9/_{}:.~-]{1,399}$")
+                    ||!method.equals(requiredRaw(api,"method").toUpperCase())||!path.equals(requiredRaw(api,"path")))
+                throw new IllegalArgumentException("REQUIREMENT_ENDPOINT_INVALID: "+code);
+            if(!ids.steps().add(code)||!ids.routes().add(route)||!ids.commands().add(command))
+                throw new IllegalArgumentException("REQUIREMENT_STEP_IDENTITY_DUPLICATE: "+code);
+            ids.actors().add(actor);ids.endpoints().add(method+" "+path);
+            ids.screens().add(String.join("|",processCode,code,actor.contains("ADMIN")?"ADMIN":"USER",route));
+        }
+        if(!expectedFrom.equals(canonicalCode(process,"endState")))
+            throw new IllegalArgumentException("REQUIREMENT_END_STATE_NOT_REACHED");
+        return ids;
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Map<String,Object> requiredObject(Map<String,Object> body,String key){
+        if(!(body.get(key) instanceof Map<?,?> value))throw new IllegalArgumentException(key+" must be an object");
+        return (Map<String,Object>)value;
+    }
+
+    @SuppressWarnings("unchecked")
+    private static List<Map<String,Object>> requiredObjectList(
+            Map<String,Object> body,String key,int minimum,int maximum){
+        if(!(body.get(key) instanceof List<?> value)||value.size()<minimum||value.size()>maximum
+                ||value.stream().anyMatch(item->!(item instanceof Map<?,?>)))
+            throw new IllegalArgumentException(key+" must contain structured objects");
+        return (List<Map<String,Object>>)(List<?>)value;
+    }
+
+    private static List<String> requiredStringList(
+            Map<String,Object> body,String key,int minimum,int maximum){
+        if(!(body.get(key) instanceof List<?> raw)||raw.size()<minimum||raw.size()>maximum
+                ||raw.stream().anyMatch(value->!(value instanceof String text)||text.isBlank()||!text.equals(text.trim())))
+            throw new IllegalArgumentException(key+" must contain canonical strings");
+        List<String> values=raw.stream().map(String::valueOf).toList();
+        if(new java.util.HashSet<>(values).size()!=values.size())
+            throw new IllegalArgumentException(key+" contains duplicates");
+        return values;
+    }
+
+    private static java.util.SortedSet<String> canonicalPermissionSet(List<String> values){
+        java.util.SortedSet<String> set=new java.util.TreeSet<>(values);
+        if(!values.equals(List.copyOf(set))||set.stream().anyMatch(v->!v.matches("^[A-Z][A-Z0-9_:-]{1,79}$")))
+            throw new IllegalArgumentException("REQUIREMENT_PERMISSION_CODES_NOT_CANONICAL");
+        return set;
+    }
+
+    private static String canonicalCode(Map<String,Object> body,String key){
+        String value=requiredRaw(body,key);
+        if(!value.matches("^[A-Z][A-Z0-9_:-]{1,79}$"))
+            throw new IllegalArgumentException(key+" is not a canonical code: "+value);
+        return value;
+    }
+
+    private static String canonicalActorCode(Map<String,Object> body,String key){
+        String value=requiredRaw(body,key);
+        if(!value.matches("^[A-Z][A-Z0-9_]{1,59}$"))
+            throw new IllegalArgumentException(key+" is not a canonical actor code: "+value);
+        return value;
+    }
+
+    private static String governedCode(Map<String,Object> body,String key){
+        String value=requiredRaw(body,key);
+        if(!value.matches("^[A-Z][A-Z0-9_]{1,79}$"))
+            throw new IllegalArgumentException(key+" is not a governed design code: "+value);
+        return value;
+    }
+
+    private static String requireSha256(Map<String,Object> body,String key){
+        String value=requiredRaw(body,key);
+        if(!value.matches("^[0-9a-f]{64}$"))throw new IllegalArgumentException(key+" must be SHA-256");
+        return value;
+    }
+
+    private static void validateWorkspaces(List<Map<String,Object>> workspaces){
+        java.util.Set<String> ids=new java.util.HashSet<>();
+        for(Map<String,Object> workspace:workspaces){
+            if(!ids.add(requiredRaw(workspace,"id")))throw new IllegalArgumentException("WORKSPACE_DUPLICATE");
+            java.util.Set<String> tabIds=new java.util.HashSet<>();
+            for(Map<String,Object> tab:requiredObjectList(workspace,"tabs",1,100)){
+                if(!tabIds.add(requiredRaw(tab,"id")))throw new IllegalArgumentException("WORKSPACE_TAB_DUPLICATE");
+                requiredRaw(tab,"label");
+                validateSections(requiredObjectList(tab,"sections",1,200));
+            }
+        }
+    }
+
+    private static void validateSections(List<Map<String,Object>> sections){
+        int previous=0;java.util.Set<String> codes=new java.util.HashSet<>();
+        for(Map<String,Object> section:sections){
+            String code=canonicalCode(section,"sectionCode");
+            if(!codes.add(code)||!(section.get("order") instanceof Number order)||order.intValue()<=previous)
+                throw new IllegalArgumentException("REQUIREMENT_SECTION_ORDER_NOT_EXACT: "+code);
+            previous=order.intValue();requiredRaw(section,"componentType");
+        }
+    }
+
+    private static void validateFields(List<Map<String,Object>> fields){
+        int previous=0;java.util.Set<String> codes=new java.util.HashSet<>();
+        for(Map<String,Object> field:fields){
+            String code=canonicalCode(field,"fieldCode");requiredRaw(field,"label");requiredRaw(field,"type");
+            if(!codes.add(code)||!(field.get("order") instanceof Number order)||order.intValue()<=previous
+                    ||!(field.get("required") instanceof Boolean))
+                throw new IllegalArgumentException("REQUIREMENT_FIELD_INVALID: "+code);
+            previous=order.intValue();
+        }
+    }
+
+    private static void requireExactList(Map<String,Object> body,String key,List<String> expected){
+        if(!requiredStringList(body,key,expected.size(),expected.size()).equals(expected))
+            throw new IllegalArgumentException("REQUIREMENT_LIST_NOT_EXACT: "+key);
+    }
+
+    private static void requireExactSet(
+            Map<String,Object> body,String key,java.util.SortedSet<String> expected){
+        if(!requiredStringList(body,key,expected.size(),expected.size()).equals(List.copyOf(expected)))
+            throw new IllegalArgumentException("REQUIREMENT_RECONCILIATION_SET_NOT_EXACT: "+key);
+    }
+
+    private static String writeRequirementAcceptanceCriteria(Object value){
+        if(!(value instanceof List<?> criteria)||criteria.isEmpty()
+                ||criteria.stream().anyMatch(item->!(item instanceof String text)||text.isBlank()))
+            throw new IllegalArgumentException("acceptanceCriteria must be a non-empty string array");
+        return criteria.stream().map(String::valueOf).collect(java.util.stream.Collectors.joining("; "));
     }
 
     private java.util.SortedMap<String,Map<String,Object>> requirementExpectedProcessReceipts(

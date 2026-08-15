@@ -2606,6 +2606,10 @@ public class ActorProcessGovernanceService {
             actors.add(actor);
         }
         String actorSet=String.join(",",actors);
+        // Use the same actor-first order as ordinary actor/process/step edits.
+        // Missing actors are still protected by their advisory key until the
+        // requirement import creates them later in this transaction.
+        lockActorDefinitions(actors);
         List<String> affected=jdbc.queryForList("""
             with requested as materialized(
               select unnest(string_to_array(?,',')) actor_code
@@ -2688,7 +2692,7 @@ public class ActorProcessGovernanceService {
                 throw new IllegalStateException("STALE_CANONICAL_DESIGN_HASH");
         }
         if("PROCESS_STEP".equals(str(trigger,"triggerType")))
-            synchronizeGeneratedProfessionalPrimaryMarkers(process);
+            reconcileGeneratedProcessStepScreenIdentity(process);
         Map<String,Object> refresh=refreshProcessExecutionSpecs(process,actor);
         Map<String,Object> projection=exactProjection==null?Map.of():exactProjection.get();
         Map<String,Object> revision=Map.of();
@@ -2797,6 +2801,36 @@ public class ActorProcessGovernanceService {
             "MANUAL_PROFESSIONAL_PRIMARY_CONTRACT_REVISION_REQUIRED: "+process+" / "+mismatch);
     }
 
+    /**
+     * A direct step revision may move a generated screen to a different route,
+     * actor, or audience.  Reuse the requirement-owned identity reconciler only
+     * when a persisted screen authority already exists; a brand-new incomplete
+     * step must remain truthfully SKIPPED instead of inventing a design.
+     */
+    private void reconcileGeneratedProcessStepScreenIdentity(String process){
+        Boolean professional=jdbc.queryForObject("""
+            select exists(
+              select 1 from framework_professional_screen_contract
+               where process_code=?)
+            """,Boolean.class,process);
+        Boolean pageGraph=jdbc.queryForObject("""
+            select exists(
+              select 1 from framework_page_design where process_code=?
+              union all
+              select 1 from framework_screen_blueprint where process_code=?)
+            """,Boolean.class,process,process);
+        if(Boolean.TRUE.equals(professional)||Boolean.TRUE.equals(pageGraph)){
+            String reconciler="REQUIREMENT_SELF_HEALER";
+            reconcileRequirementOwnedProfessionalContracts(process,reconciler);
+            if(Boolean.TRUE.equals(pageGraph)){
+                reconcileRequirementOwnedPageDesigns(process);
+                upsertProcessPageDesignIdentities(process,reconciler,true);
+                reconcileRequirementOwnedBlueprints(process,reconciler);
+            }
+        }
+        synchronizeGeneratedProfessionalPrimaryMarkers(process);
+    }
+
     private Map<String,Object> refreshAndQueueCanonicalProcess(
             String process,String actor,Map<String,Object> trigger){
         return refreshAndQueueCanonicalProcess(process,actor,trigger,null);
@@ -2851,6 +2885,7 @@ public class ActorProcessGovernanceService {
             skipped.put("generationReadyStepCount",readyStepCount);
             skipped.put("skippedStepCount",Math.max(0,definedStepCount-readyStepCount));
             skipped.put("blockerCount",blockers.size());skipped.put("blockers",blockers);
+            skipped.put("activationPolicy","SOURCE_IMMEDIATE_V1");
             skipped.put("endpointExpected",0);skipped.put("publishCount",0);
             return skipped;
         }
@@ -2920,6 +2955,7 @@ public class ActorProcessGovernanceService {
         String target="canonical://"+process+"/"+sourceHash;
         Map<String,Object> generationSpec=new LinkedHashMap<>();
         generationSpec.put("algorithm","CANONICAL_PROCESS_PUBLICATION_V1");
+        generationSpec.put("activationPolicy","SOURCE_IMMEDIATE_V1");
         generationSpec.put("generatorRequired",true);generationSpec.put("reuseCommonAssets",true);
         generationSpec.put("processCode",process);generationSpec.put("stepCode",coordinatorStep);
         generationSpec.put("coordinatorStep",coordinatorStep);
@@ -3050,6 +3086,7 @@ public class ActorProcessGovernanceService {
         result.put("endpointCatalogHash",endpointCatalogHash);
         result.put("coordinatorStep",coordinatorStep);result.put("processStepCount",processStepCount);
         result.put("generationReadyStepCount",generationReadyStepCount);
+        result.put("activationPolicy","SOURCE_IMMEDIATE_V1");
         result.put("endpointExpected",processEndpointExpected);result.put("publishCount",0);
         return result;
     }
@@ -4265,6 +4302,10 @@ public class ActorProcessGovernanceService {
             if(!code.isEmpty())codes.add(code);
         }
         if(codes.isEmpty())return Map.of();
+        for(String code:codes){
+            jdbc.query("select pg_advisory_xact_lock(hashtextextended("+
+                "'CANONICAL_ACTOR_MUTATION_V1:'||upper(btrim(?)),0))",rs->{},code);
+        }
         List<Map<String,Object>> rows=jdbc.queryForList("""
             select actor_code,use_at
               from framework_actor_definition
@@ -4290,7 +4331,33 @@ public class ActorProcessGovernanceService {
 
     @Transactional public Map<String,Object> createActorForRequirementImport(
             Map<String,Object>b,String authenticatedActor){
-        return createActorInternal(b,authenticatedActor,false);
+        if(authenticatedActor==null||authenticatedActor.isBlank()
+                ||!authenticatedActor.equals(authenticatedActor.trim())
+                ||authenticatedActor.length()>100)
+            throw new SecurityException("AUTHENTICATED_ACTOR_REQUIRED");
+        String actorCode=req(b,"actorCode").trim().toUpperCase(Locale.ROOT);
+        if(!actorCode.matches("^[A-Z][A-Z0-9_]{1,59}$"))
+            throw new IllegalArgumentException("INVALID_ACTOR_CODE: "+actorCode);
+        Map<String,String> existing=lockActorDefinitions(java.util.Set.of(actorCode));
+        if(existing.containsKey(actorCode)){
+            if(!isActiveActor(existing,actorCode))
+                throw new IllegalArgumentException(
+                    "ACTIVE_ACTOR_NOT_FOUND: "+actorCode);
+            List<String> affected=affectedProcessesForActor(actorCode);
+            Map<String,Object> response=new LinkedHashMap<>();
+            response.put("success",true);response.put("actorCode",actorCode);
+            response.put("affectedProcessCount",affected.size());
+            response.put("affectedProcessCodes",affected);
+            response.put("propagationDeferred",true);
+            response.put("generationQueued",false);
+            response.put("queuedProcessCount",0);
+            response.put("processResults",List.of());
+            response.put("definitionChanged",false);
+            return response;
+        }
+        Map<String,Object> created=createActorInternal(b,authenticatedActor,false);
+        created.put("definitionChanged",true);
+        return created;
     }
 
     private Map<String,Object> createActorInternal(
@@ -4342,23 +4409,7 @@ public class ActorProcessGovernanceService {
             }
         }
         jdbc.update("insert into framework_actor_definition(actor_code,actor_name,actor_name_en,actor_type,purpose,capability_codes,delegation_allowed,use_at,responsibility_text,accountability_text,competency_requirements,conflict_actor_codes,max_concurrent_assignments,review_cycle_days) values(?,?,?,?,?,?,?,?,?,?,?,?,?,?) on conflict(actor_code) do update set actor_name=excluded.actor_name,actor_name_en=excluded.actor_name_en,actor_type=excluded.actor_type,purpose=excluded.purpose,capability_codes=excluded.capability_codes,delegation_allowed=excluded.delegation_allowed,use_at=excluded.use_at,responsibility_text=excluded.responsibility_text,accountability_text=excluded.accountability_text,competency_requirements=excluded.competency_requirements,conflict_actor_codes=excluded.conflict_actor_codes,max_concurrent_assignments=excluded.max_concurrent_assignments,review_cycle_days=excluded.review_cycle_days,updated_at=current_timestamp",actorCode,req(b,"actorName"),str(b,"actorNameEn"),def(b,"actorType","BUSINESS"),purpose,String.join(",",capabilities),bool(b,"delegationAllowed"),useAt,def(b,"responsibility",purpose),def(b,"accountability",purpose),def(b,"competency",purpose),String.join(",",conflicts),integerOr(b,"maxConcurrentAssignments",0),integerOr(b,"reviewCycleDays",365));
-        List<String> affected=jdbc.queryForList("""
-            select affected.process_code from (
-              select step.process_code from framework_process_step step
-               where step.actor_code=?
-              union
-              select process.process_code from framework_process_definition process
-               where process.owner_actor_code=?
-              union
-              select step.process_code from framework_process_step step
-               where step.escalation_actor_code=?
-              union
-               select step.process_code from framework_process_step step
-                where ?=any(regexp_split_to_array(
-                  coalesce(nullif(btrim(step.segregation_actor_codes),''),'__NONE__'),
-                  '[[:space:]]*,[[:space:]]*'))
-            ) affected order by affected.process_code collate "C"
-            """,String.class,actorCode,actorCode,actorCode,actorCode);
+        List<String> affected=affectedProcessesForActor(actorCode);
         List<Map<String,Object>> processResults=new java.util.ArrayList<>();
         int queuedCount=0;
         for(String process:affected){
@@ -4378,6 +4429,26 @@ public class ActorProcessGovernanceService {
         response.put("generationQueued",queuedCount>0);
         response.put("queuedProcessCount",queuedCount);response.put("processResults",processResults);
         return response;
+    }
+
+    private List<String> affectedProcessesForActor(String actorCode){
+        return jdbc.queryForList("""
+            select affected.process_code from (
+              select step.process_code from framework_process_step step
+               where step.actor_code=?
+              union
+              select process.process_code from framework_process_definition process
+               where process.owner_actor_code=?
+              union
+              select step.process_code from framework_process_step step
+               where step.escalation_actor_code=?
+              union
+               select step.process_code from framework_process_step step
+                where ?=any(regexp_split_to_array(
+                  coalesce(nullif(btrim(step.segregation_actor_codes),''),'__NONE__'),
+                  '[[:space:]]*,[[:space:]]*'))
+            ) affected order by affected.process_code collate "C"
+            """,String.class,actorCode,actorCode,actorCode,actorCode);
     }
     @Transactional public void saveWorkType(Map<String,Object>b){
         String code=req(b,"workTypeCode").trim().toUpperCase(Locale.ROOT);
@@ -5970,7 +6041,7 @@ public class ActorProcessGovernanceService {
     @Transactional public Map<String,Object> compileScreenBlueprints(Map<String,Object>b,String actor){
         String process=str(b,"processCode");int limit=Math.min(1000,Math.max(1,integerOr(b,"maxScreens",1000)));boolean dryRun=!"false".equalsIgnoreCase(str(b,"dryRun"));
         String batchCode="SCREEN_"+System.currentTimeMillis();
-        Long batchId=jdbc.queryForObject("insert into framework_screen_generation_batch(batch_code,batch_name,process_code,requested_count,dry_run,requested_by) values(?,?,?,?,?,?) returning batch_id",Long.class,batchCode,process.isBlank()?"전체 프로세스 화면 컴파일":process+" 화면 컴파일",process.isBlank()?null:process,limit,dryRun,actor);
+        Long batchId=dryRun?0L:jdbc.queryForObject("insert into framework_screen_generation_batch(batch_code,batch_name,process_code,requested_count,dry_run,requested_by) values(?,?,?,?,?,?) returning batch_id",Long.class,batchCode,process.isBlank()?"전체 프로세스 화면 컴파일":process+" 화면 컴파일",process.isBlank()?null:process,limit,false,actor);
         String filter=process.isBlank()?"":" and s.process_code=?";
         Object[] args=process.isBlank()?new Object[]{limit}:new Object[]{process,limit};
         List<Map<String,Object>> steps=jdbc.queryForList("select s.process_code,s.step_code,s.step_name,s.actor_code,s.command_code,s.from_state,s.to_state,s.completion_rule,s.user_path,s.admin_path,s.requires_user_page,s.requires_admin_page,p.domain_code from framework_process_step s join framework_process_definition p on p.process_code=s.process_code where (s.requires_user_page or s.requires_admin_page)"+filter+" order by p.development_order,s.process_code,s.step_order limit ?",args);
@@ -5993,13 +6064,50 @@ public class ActorProcessGovernanceService {
                 boolean registeredSource=registeredSourceRoutes.contains(ScreenDevelopmentNoteService.cleanRoute(safeRoute).toLowerCase(Locale.ROOT));
                 String strategy=!"VALID".equals(status)?"DESIGN_REQUIRED":registeredSource?"ADOPT_EXISTING":"GENERATED_RUNTIME";
                 String transition=!"VALID".equals(status)?"DESIGN_BLOCKED":registeredSource?"CONTRACT_LINKED":"RUNTIME_ACTIVE";
-                Long blueprintId=jdbc.queryForObject("insert into framework_screen_blueprint(blueprint_code,process_code,step_code,actor_code,audience,page_id,page_name,route_path,screen_type,template_code,specification_json,traceability_json,validation_status,validation_message,implementation_strategy,transition_status,created_by) values(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) on conflict(audience,route_path) do update set process_code=excluded.process_code,step_code=excluded.step_code,actor_code=excluded.actor_code,page_id=excluded.page_id,page_name=excluded.page_name,screen_type=excluded.screen_type,template_code=excluded.template_code,specification_json=excluded.specification_json,traceability_json=excluded.traceability_json,validation_status=excluded.validation_status,validation_message=excluded.validation_message,implementation_strategy=case when framework_screen_blueprint.implementation_strategy='ADOPT_EXISTING' then 'ADOPT_EXISTING' else excluded.implementation_strategy end,transition_status=case when framework_screen_blueprint.implementation_strategy='ADOPT_EXISTING' then 'CONTRACT_LINKED' else excluded.transition_status end,updated_at=current_timestamp returning blueprint_id",Long.class,code,processCode,stepCode,actorCode,audience,pageId,stepName+("USER".equals(audience)?"":" 관리"),safeRoute,screenType,"KRDS_"+screenType,spec,trace,status,validation,strategy,transition,actor);
+                if(dryRun){compiled++;if("VALID".equals(status))valid++;else invalid++;continue;}
+                String pageName=stepName+("USER".equals(audience)?"":" 관리");
+                List<Map<String,Object>> protectedRows=jdbc.queryForList("""
+                    select blueprint_id,
+                           process_code is not distinct from ?
+                       and step_code is not distinct from ?
+                       and actor_code is not distinct from ?
+                       and page_id is not distinct from ?
+                       and page_name is not distinct from ?
+                       and screen_type is not distinct from ?
+                       and template_code is not distinct from ?
+                       and specification_json is not distinct from ?
+                       and traceability_json is not distinct from ?
+                       and validation_status is not distinct from ?
+                       and validation_message is not distinct from ?
+                       and implementation_strategy is not distinct from ?
+                       and transition_status is not distinct from ? as exact_match
+                      from framework_screen_blueprint
+                     where audience=? and lower(split_part(route_path,'?',1))=lower(?)
+                       and implementation_strategy not in('GENERATED_RUNTIME','DESIGN_REQUIRED')
+                     for update
+                    """,processCode,stepCode,actorCode,pageId,pageName,screenType,
+                    "KRDS_"+screenType,spec,trace,status,validation,strategy,transition,
+                    audience,safeRoute);
+                Long blueprintId;
+                if(!protectedRows.isEmpty()){
+                    if(protectedRows.size()!=1||!Boolean.TRUE.equals(
+                            protectedRows.get(0).get("exact_match"))){
+                        throw new IllegalStateException(
+                            "MANUAL_BLUEPRINT_REVISION_REQUIRED: "+audience+" / "+safeRoute);
+                    }
+                    blueprintId=((Number)protectedRows.get(0).get("blueprint_id")).longValue();
+                }else{
+                    List<Long> written=jdbc.queryForList("insert into framework_screen_blueprint(blueprint_code,process_code,step_code,actor_code,audience,page_id,page_name,route_path,screen_type,template_code,specification_json,traceability_json,validation_status,validation_message,implementation_strategy,transition_status,created_by) values(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) on conflict(audience,route_path) do update set process_code=excluded.process_code,step_code=excluded.step_code,actor_code=excluded.actor_code,page_id=excluded.page_id,page_name=excluded.page_name,screen_type=excluded.screen_type,template_code=excluded.template_code,specification_json=excluded.specification_json,traceability_json=excluded.traceability_json,validation_status=excluded.validation_status,validation_message=excluded.validation_message,implementation_strategy=excluded.implementation_strategy,transition_status=excluded.transition_status,updated_at=current_timestamp where framework_screen_blueprint.implementation_strategy in('GENERATED_RUNTIME','DESIGN_REQUIRED') returning blueprint_id",Long.class,code,processCode,stepCode,actorCode,audience,pageId,pageName,safeRoute,screenType,"KRDS_"+screenType,spec,trace,status,validation,strategy,transition,actor);
+                    if(written.size()!=1)throw new IllegalStateException(
+                        "MANUAL_BLUEPRINT_REVISION_REQUIRED: "+audience+" / "+safeRoute);
+                    blueprintId=written.get(0);
+                }
                 jdbc.update("insert into framework_screen_generation_batch_item(batch_id,blueprint_id,item_order,item_status,validation_message) values(?,?,?,?,?) on conflict(batch_id,blueprint_id) do nothing",batchId,blueprintId,++order,status,validation);
                 compiled++;if("VALID".equals(status))valid++;else invalid++;
             }
         }
         String batchStatus=invalid==0?"COMPILED":"REVIEW_REQUIRED";
-        jdbc.update("update framework_screen_generation_batch set compiled_count=?,valid_count=?,invalid_count=?,batch_status=?,summary_json=?,completed_at=current_timestamp where batch_id=?",compiled,valid,invalid,batchStatus,"{\"coverage\":"+(compiled==0?0:Math.round(valid*100.0/compiled))+"}",batchId);
+        if(!dryRun)jdbc.update("update framework_screen_generation_batch set compiled_count=?,valid_count=?,invalid_count=?,batch_status=?,summary_json=?,completed_at=current_timestamp where batch_id=?",compiled,valid,invalid,batchStatus,"{\"coverage\":"+(compiled==0?0:Math.round(valid*100.0/compiled))+"}",batchId);
         return Map.of("success",true,"batchId",batchId,"batchCode",batchCode,"compiled",compiled,"valid",valid,"invalid",invalid,"status",batchStatus,"dryRun",dryRun);
     }
 
@@ -6932,11 +7040,8 @@ public class ActorProcessGovernanceService {
             """,process);
     }
 
-    @Transactional public int ensureGeneratedProcessPageDesigns(String processCode,String actor){
-        String process=req(Map.of("processCode",processCode),"processCode");
-        boolean requirementOwned=isRequirementAutomationActor(actor);
-        if(requirementOwned)reconcileRequirementOwnedPageDesigns(process);
-        jdbc.update("update framework_process_definition set domain_code='DATA_GOVERNANCE',updated_at=current_timestamp where process_code=?",process);
+    private void upsertProcessPageDesignIdentities(
+            String process,String actor,boolean generatedOnly){
         jdbc.update("""
             with ordered as (
               select s.*,lag(s.step_code) over(order by s.step_order) upstream_step,
@@ -6964,11 +7069,273 @@ public class ActorProcessGovernanceService {
             from pages
             on conflict(process_code,step_code,audience) do update set page_title=excluded.page_title,
               page_purpose=excluded.page_purpose,planned_route_path=excluded.planned_route_path,
+              actual_route_path=case
+                when framework_page_design.updated_by in(
+                  'BACKSTAGE_REQUIREMENT_AUTOMATION','REQUIREMENT_SELF_HEALER')
+                 and framework_page_design.actual_route_path is not null
+                then excluded.planned_route_path
+                else framework_page_design.actual_route_path end,
               actor_code=excluded.actor_code,entry_condition=excluded.entry_condition,exit_condition=excluded.exit_condition,
               design_status='DESIGN_COMPLETE',updated_by=excluded.updated_by,updated_at=current_timestamp
               where not ? or framework_page_design.updated_by in(
                 'BACKSTAGE_REQUIREMENT_AUTOMATION','REQUIREMENT_SELF_HEALER')
-            """,process,actor,requirementOwned);
+            """,process,actor,generatedOnly);
+    }
+
+    private record RequirementProjectionInput(
+            String process,String payload,String contentSha,int screenCount){}
+
+    /** Applies one hash-bound structured design before the process-wide queue refresh. */
+    @Transactional public Map<String,Object> applyRequirementProcessDesignProjection(
+            String processCode,Map<String,Object> contract,String actor){
+        RequirementProjectionInput input=prepareRequirementProjection(processCode,contract,actor);
+        Map<String,Object> writes=writeRequirementProjection(input,actor);
+        verifyRequirementProjection(input);
+        Map<String,Object> result=new LinkedHashMap<>(writes);
+        result.put("success",true);result.put("processCode",input.process());
+        result.put("contentSha256",input.contentSha());result.put("screenCount",input.screenCount());
+        return result;
+    }
+
+    private RequirementProjectionInput prepareRequirementProjection(
+            String processCode,Map<String,Object> contract,String actor){
+        String process=req(Map.of("processCode",processCode),"processCode").trim().toUpperCase(Locale.ROOT);
+        if(!process.matches("^[A-Z][A-Z0-9_:-]{1,79}$"))
+            throw new IllegalArgumentException("INVALID_PROCESS_CODE");
+        if(actor==null||actor.isBlank()||!isRequirementAutomationActor(actor))
+            throw new SecurityException("REQUIREMENT_AUTOMATION_ACTOR_REQUIRED");
+        if(contract==null)throw new IllegalArgumentException("REQUIREMENT_CONTRACT_REQUIRED");
+        String payload=toJson(contract);
+        if(payload.getBytes(java.nio.charset.StandardCharsets.UTF_8).length>8_000_000)
+            throw new IllegalArgumentException("REQUIREMENT_CONTRACT_TOO_LARGE");
+        lockCanonicalProcessPublication(process);
+        Map<String,Object> check=jdbc.queryForMap("""
+            with payload as materialized(select cast(? as jsonb) body),requested as materialized(
+              select body#>>'{process,processCode}' process_code,step.value item,
+                     step.value->>'stepCode' step_code,step.value->>'actorCode' actor_code,
+                     step.value->>'commandCode' command_code,step.value->>'fromState' from_state,
+                     step.value->>'toState' to_state,
+                     lower(split_part(step.value->>'routePath','?',1)) route_path,
+                     case when step.value->>'actorCode' like '%ADMIN%' then 'ADMIN' else 'USER' end audience,
+                     step.value->'apiContract' api_contract,step.value->>'layoutCode' layout_code,
+                     step.value->>'themeCode' theme_code
+                from payload cross join lateral jsonb_array_elements(case
+                  when jsonb_typeof(body#>'{process,steps}')='array' then body#>'{process,steps}'
+                  else '[]'::jsonb end) step(value)
+            )
+            select body->>'contentSha256' as "contentSha256",
+                   body#>>'{process,processCode}' as "processCode",count(requested.item)::integer as "screenCount",
+                   count(*) filter(where requested.item is not null and(
+                     jsonb_typeof(item->'sections')<>'array' or jsonb_array_length(item->'sections')=0
+                     or jsonb_typeof(item->'fields')<>'array' or jsonb_array_length(item->'fields')=0
+                     or jsonb_typeof(item->'permissionCodes')<>'array'
+                     or jsonb_typeof(item->'apiContract')<>'object'
+                     or layout_code!~'^[A-Z][A-Z0-9_]{1,79}$'
+                     or theme_code!~'^[A-Z][A-Z0-9_]{1,79}$'))::integer as "malformedCount",
+                   count(step.step_code)::integer as "matchedStepCount",
+                   count(*) filter(where requested.item is not null and(step.step_code is null
+                     or step.actor_code<>requested.actor_code
+                     or step.command_code<>requested.command_code
+                     or step.from_state<>requested.from_state or step.to_state<>requested.to_state
+                     or coalesce(framework_try_jsonb(step.api_contract),'{}'::jsonb)<>requested.api_contract
+                     or (requested.audience='USER' and(not step.requires_user_page
+                       or lower(split_part(step.user_path,'?',1))<>requested.route_path))
+                     or (requested.audience='ADMIN' and(not step.requires_admin_page
+                       or lower(split_part(step.admin_path,'?',1))<>requested.route_path))))::integer as "stepMismatchCount",
+                   count(*) filter(where requested.item is not null and(select count(distinct layout_type)
+                     from framework_screen_resource where layout_type=requested.layout_code)<>1)::integer
+                     as "layoutMismatchCount",
+                   count(*) filter(where requested.item is not null and(select count(*)
+                     from comtnthemedefinition where theme_id=requested.theme_code
+                       and use_at='Y' and is_active='Y')<>1)::integer as "themeMismatchCount",
+                   count(*) filter(where requested.item is not null and(select count(*)
+                     from framework_screen_resource where route_key=requested.route_path)<>1)::integer
+                     as "routeResourceMismatchCount",
+                   ((select count(*) from requested join framework_professional_screen_contract c
+                      on c.process_code=requested.process_code and c.step_code=requested.step_code
+                     and c.audience=requested.audience
+                     and lower(split_part(c.route_path,'?',1))=requested.route_path
+                    where c.updated_by not in('BACKSTAGE_REQUIREMENT_AUTOMATION','REQUIREMENT_SELF_HEALER'))+
+                    (select count(*) from requested join framework_page_design p
+                      on p.process_code=requested.process_code and p.step_code=requested.step_code
+                     and p.audience=requested.audience
+                     and lower(split_part(p.planned_route_path,'?',1))=requested.route_path
+                    where p.updated_by not in('BACKSTAGE_REQUIREMENT_AUTOMATION','REQUIREMENT_SELF_HEALER'))+
+                    (select count(*) from requested join framework_screen_blueprint b
+                      on b.process_code=requested.process_code and b.step_code=requested.step_code
+                     and b.audience=requested.audience
+                     and lower(split_part(b.route_path,'?',1))=requested.route_path
+                    where b.implementation_strategy='ADOPT_EXISTING' or b.created_by not in(
+                      'BACKSTAGE_REQUIREMENT_AUTOMATION','REQUIREMENT_SELF_HEALER')))::integer as "manualCount"
+              from payload left join requested on true left join framework_process_step step
+                on step.process_code=requested.process_code and step.step_code=requested.step_code group by body
+            """,payload);
+        String contentSha=String.valueOf(check.getOrDefault("contentSha256",""));
+        int screens=((Number)check.getOrDefault("screenCount",0)).intValue();
+        if(!contentSha.matches("^[0-9a-f]{64}$")||!process.equals(check.get("processCode"))
+                ||screens<1||number(check,"malformedCount")>0)
+            throw new IllegalArgumentException("REQUIREMENT_DESIGN_PROJECTION_MALFORMED");
+        for(String key:List.of("stepMismatchCount","layoutMismatchCount","themeMismatchCount",
+                "routeResourceMismatchCount","manualCount"))if(number(check,key)>0)
+            throw new IllegalStateException("REQUIREMENT_DESIGN_AUTHORITY_NOT_EXACT: "+key+"="+check.get(key));
+        if(number(check,"matchedStepCount")!=screens)
+            throw new IllegalStateException("REQUIREMENT_STEP_PROJECTION_NOT_EXACT");
+        return new RequirementProjectionInput(process,payload,contentSha,screens);
+    }
+
+    private Map<String,Object> writeRequirementProjection(RequirementProjectionInput input,String actor){
+        return jdbc.queryForMap("""
+            with payload as materialized(select cast(? as jsonb) body),requested as materialized(
+              select body#>>'{process,processCode}' process_code,body,step.value item,
+                     step.value->>'stepCode' step_code,step.value->>'actorCode' actor_code,
+                     lower(split_part(step.value->>'routePath','?',1)) route_path,
+                     case when step.value->>'actorCode' like '%ADMIN%' then 'ADMIN' else 'USER' end audience
+                from payload cross join lateral jsonb_array_elements(body#>'{process,steps}') step(value)),
+            resource_write as(
+              update framework_screen_resource r set layout_type=item->>'layoutCode'
+                from requested where r.route_key=requested.route_path
+                 and r.layout_type is distinct from item->>'layoutCode' returning 1),
+            professional_projected as materialized(
+              select c.contract_id,item,
+                framework_merge_primary_contract_marker(framework_try_jsonb(c.command_contract),
+                  'PRIMARY_STEP_COMMAND',jsonb_build_object('commandCode',item->>'commandCode',
+                    'actorCode',item->>'actorCode','entryState',item->>'fromState',
+                    'resultState',item->>'toState','serverAuthorization',true,
+                    'validationRequired',true,'auditRequired',true))::text commands,
+                framework_merge_primary_contract_marker(framework_try_jsonb(c.api_contract),
+                  'PRIMARY_STEP_API',jsonb_build_object('declaredContract',item->'apiContract',
+                    'actorCode',item->>'actorCode','commandCode',item->>'commandCode',
+                    'transactional',true,'tenantGuard',true,'projectGuard',true,'actorGuard',true,
+                    'idempotencyKey',true,'rowVersion',true))::text apis
+                from requested join framework_professional_screen_contract c
+                  on c.process_code=requested.process_code and c.step_code=requested.step_code
+                 and c.audience=requested.audience
+                 and lower(split_part(c.route_path,'?',1))=requested.route_path
+               where c.updated_by in('BACKSTAGE_REQUIREMENT_AUTOMATION','REQUIREMENT_SELF_HEALER')),
+            professional_write as(
+              update framework_professional_screen_contract c set screen_name=p.item->>'screenName',
+                business_purpose=p.item->>'description',entry_condition=p.item->>'fromState',
+                exit_condition=array_to_string(array(select jsonb_array_elements_text(
+                  p.item->'acceptanceCriteria')),'; '),section_contract=(p.item->'sections')::text,
+                field_contract=(p.item->'fields')::text,permission_codes=p.item->'permissionCodes',
+                command_contract=p.commands,api_contract=p.apis,updated_by=?,updated_at=current_timestamp
+                from professional_projected p where c.contract_id=p.contract_id and
+                 (c.screen_name,c.business_purpose,c.entry_condition,c.exit_condition,c.section_contract,
+                  c.field_contract,c.permission_codes,c.command_contract,c.api_contract) is distinct from
+                 (p.item->>'screenName',p.item->>'description',p.item->>'fromState',
+                  array_to_string(array(select jsonb_array_elements_text(p.item->'acceptanceCriteria')),'; '),
+                  (p.item->'sections')::text,(p.item->'fields')::text,p.item->'permissionCodes',p.commands,p.apis)
+                returning 1),
+            page_write as(
+              update framework_page_design p set page_title=item->>'screenName',
+                page_purpose=item->>'description',security_contract=jsonb_build_object(
+                  'actorCode',item->>'actorCode','permissionCodes',item->'permissionCodes',
+                  'tenantIsolation',true,'projectIsolation',true,'auditRequired',true),
+                updated_by=?,updated_at=current_timestamp from requested
+               where p.process_code=requested.process_code and p.step_code=requested.step_code
+                 and p.audience=requested.audience
+                 and lower(split_part(p.planned_route_path,'?',1))=requested.route_path
+                 and p.updated_by in('BACKSTAGE_REQUIREMENT_AUTOMATION','REQUIREMENT_SELF_HEALER')
+                 and (p.page_title,p.page_purpose,p.security_contract) is distinct from
+                  (item->>'screenName',item->>'description',jsonb_build_object(
+                    'actorCode',item->>'actorCode','permissionCodes',item->'permissionCodes',
+                    'tenantIsolation',true,'projectIsolation',true,'auditRequired',true)) returning 1),
+            blueprint_projected as materialized(
+              select b.blueprint_id,framework_try_jsonb(b.specification_json)||jsonb_build_object(
+                'schemaVersion',3,'source','REQUIREMENT_AUTOMATION','process',requested.process_code,
+                'step',requested.step_code,'actor',requested.actor_code,
+                'actorCode',requested.actor_code,
+                'commandCode',item->>'commandCode','fromState',item->>'fromState',
+                'toState',item->>'toState','layout',item->>'layoutCode','theme',item->>'themeCode',
+                'sections',item->'sections','permissionCodes',item->'permissionCodes',
+                'requirementContract',jsonb_build_object('schemaVersion',body->'schemaVersion',
+                  'contentSha256',body->'contentSha256','projectId',body->'projectId',
+                  'tenantId',body->'tenantId','identity',body->'identity',
+                  'contextFields',body->'contextFields','workspaces',body->'workspaces',
+                  'actorDefinition',(select a.value from jsonb_array_elements(body->'actorDefinitions') a(value)
+                    where a.value->>'actorCode'=requested.actor_code),'step',item,
+                  'generation',body->'generation','reconciliation',body->'reconciliation',
+                  'qualityGates',body->'qualityGates')) next_spec,
+                framework_try_jsonb(b.traceability_json)||jsonb_build_object(
+                  'source','REQUIREMENT_DOCUMENT','contentSha256',body->>'contentSha256') next_trace
+                from requested join framework_screen_blueprint b
+                  on b.process_code=requested.process_code and b.step_code=requested.step_code
+                 and b.audience=requested.audience and b.actor_code=requested.actor_code
+                 and lower(split_part(b.route_path,'?',1))=requested.route_path
+               where b.implementation_strategy='GENERATED_RUNTIME' and b.created_by in(
+                 'BACKSTAGE_REQUIREMENT_AUTOMATION','REQUIREMENT_SELF_HEALER')),
+            blueprint_write as(
+              update framework_screen_blueprint b set specification_json=p.next_spec::text,
+                traceability_json=p.next_trace::text,validation_status='VALID',validation_message=null,
+                transition_status='CONTRACT_LINKED',updated_at=current_timestamp
+                from blueprint_projected p where b.blueprint_id=p.blueprint_id and
+                 (framework_try_jsonb(b.specification_json),framework_try_jsonb(b.traceability_json),
+                  b.validation_status,b.validation_message,b.transition_status) is distinct from
+                 (p.next_spec,p.next_trace,'VALID'::text,null::text,'CONTRACT_LINKED'::text) returning 1)
+            select (select count(*) from resource_write)::integer as "resourceUpdates",
+                   (select count(*) from professional_write)::integer as "professionalUpdates",
+                   (select count(*) from page_write)::integer as "pageUpdates",
+                   (select count(*) from blueprint_write)::integer as "blueprintUpdates"
+            """,input.payload(),actor,actor);
+    }
+
+    private void verifyRequirementProjection(RequirementProjectionInput input){
+        Map<String,Object> exact=jdbc.queryForMap("""
+            with payload as materialized(select cast(? as jsonb) body), requested as materialized(
+              select step.value->>'stepCode' step_code,
+                     step.value->>'actorCode' actor_code,
+                     lower(split_part(step.value->>'routePath','?',1)) route_path,
+                     case when step.value->>'actorCode' like '%ADMIN%' then 'ADMIN' else 'USER' end audience,
+                     step.value item,body
+                from payload cross join lateral jsonb_array_elements(body#>'{process,steps}') step(value)
+            )
+            select count(*)::integer as "screenCount",
+                   count(contract.contract_id)::integer as "professionalCount",
+                   count(page.page_design_id)::integer as "pageCount",
+                   count(blueprint.blueprint_id)::integer as "blueprintCount",
+                   count(resource.screen_resource_id)::integer as "resourceCount",
+                   count(*) filter(where
+                     contract.section_contract::jsonb<>requested.item->'sections'
+                     or contract.field_contract::jsonb<>requested.item->'fields'
+                     or contract.permission_codes<>requested.item->'permissionCodes'
+                     or framework_try_jsonb(blueprint.specification_json)#>>
+                          '{requirementContract,contentSha256}'<>requested.body->>'contentSha256'
+                     or resource.layout_type<>requested.item->>'layoutCode'
+                     or framework_try_jsonb(blueprint.specification_json)->>'theme'<>
+                          requested.item->>'themeCode')::integer as "mismatchCount"
+              from requested
+              left join framework_professional_screen_contract contract
+                on contract.process_code=? and contract.step_code=requested.step_code
+               and contract.audience=requested.audience and contract.actor_code=requested.actor_code
+               and lower(split_part(contract.route_path,'?',1))=requested.route_path
+              left join framework_page_design page
+                on page.process_code=? and page.step_code=requested.step_code
+               and page.audience=requested.audience and page.actor_code=requested.actor_code
+               and lower(split_part(page.planned_route_path,'?',1))=requested.route_path
+              left join framework_screen_blueprint blueprint
+                on blueprint.process_code=? and blueprint.step_code=requested.step_code
+               and blueprint.audience=requested.audience and blueprint.actor_code=requested.actor_code
+               and lower(split_part(blueprint.route_path,'?',1))=requested.route_path
+               and blueprint.validation_status='VALID'
+              left join framework_screen_resource resource on resource.route_key=requested.route_path
+            """,input.payload(),input.process(),input.process(),input.process());
+        for(String key:List.of("professionalCount","pageCount","blueprintCount","resourceCount"))
+            if(number(exact,key)!=input.screenCount())
+                throw new IllegalStateException("REQUIREMENT_DESIGN_PROJECTION_NOT_EXACT: "+key);
+        if(number(exact,"mismatchCount")!=0)
+            throw new IllegalStateException("REQUIREMENT_DESIGN_PROJECTION_DIVERGED");
+    }
+
+    private static int number(Map<String,Object> values,String key){
+        return ((Number)values.getOrDefault(key,0)).intValue();
+    }
+
+    @Transactional public int ensureGeneratedProcessPageDesigns(String processCode,String actor){
+        String process=req(Map.of("processCode",processCode),"processCode");
+        boolean requirementOwned=isRequirementAutomationActor(actor);
+        if(requirementOwned)reconcileRequirementOwnedPageDesigns(process);
+        jdbc.update("update framework_process_definition set domain_code='DATA_GOVERNANCE',updated_at=current_timestamp where process_code=?",process);
+        upsertProcessPageDesignIdentities(process,actor,requirementOwned);
         jdbc.update("""
             insert into framework_page_field_definition(page_design_id,field_order,field_group,field_code,field_name,
               data_type,control_type,required,editable,list_visible,search_enabled,api_property,mapping_status,
