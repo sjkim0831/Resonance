@@ -427,7 +427,7 @@ CREATE OR REPLACE FUNCTION public.framework_canonical_screen_design(
 ) RETURNS jsonb
 LANGUAGE plpgsql
 STABLE
-SECURITY INVOKER
+SECURITY DEFINER
 SET search_path = pg_catalog, public
 AS $$
 DECLARE
@@ -631,10 +631,9 @@ SECURITY INVOKER
 SET search_path = pg_catalog, public
 AS $$
 DECLARE
-  source_catalog jsonb;
-  scoped_count integer;
-  scoped_screens jsonb;
-  scoped_hash text;
+  compilable_count integer;
+  compiled_count integer;
+  result jsonb;
 BEGIN
   IF requested_limit IS NULL OR requested_limit<1 OR requested_limit>5000 THEN
     RAISE EXCEPTION 'canonical catalog limit must be between 1 and 5000'
@@ -645,37 +644,149 @@ BEGIN
     RAISE EXCEPTION 'requested process must be an exact canonical CODE'
       USING ERRCODE='22023';
   END IF;
-  source_catalog:=public.framework_canonical_design_catalog(5000);
-  SELECT count(*)::integer,
-         coalesce(jsonb_agg(screen ORDER BY ordinal),'[]'::jsonb),
-         encode(sha256(convert_to(string_agg(
-           (screen->>'screenKey')||E'\\x1f'||(screen->>'designHash'),E'\\n'
-           ORDER BY ordinal
-         ),'UTF8')),'hex')
-    INTO scoped_count,scoped_screens,scoped_hash
-    FROM jsonb_array_elements(source_catalog->'screens')
-         WITH ORDINALITY source(screen,ordinal)
-   WHERE screen->>'processCode'=requested_process;
-  IF scoped_count=0 THEN
+
+  WITH blueprint_identities AS MATERIALIZED (
+    SELECT upper(b.process_code) process_code,
+           upper(b.step_code) step_code,
+           upper(b.audience) audience,
+           lower(split_part(b.route_path,'?',1)) route_path
+      FROM public.framework_screen_blueprint b
+     WHERE b.validation_status='VALID'
+       AND upper(b.process_code)=requested_process
+     GROUP BY upper(b.process_code),upper(b.step_code),upper(b.audience),
+              lower(split_part(b.route_path,'?',1))
+  ), contract_counts AS MATERIALIZED (
+    SELECT upper(c.process_code) process_code,
+           upper(c.step_code) step_code,
+           upper(c.audience) audience,
+           lower(split_part(c.route_path,'?',1)) route_path,
+           count(*)::integer contract_count,
+           count(*) FILTER (
+             WHERE jsonb_array_length(
+                     public.framework_strict_jsonb_array(c.api_contract))>0
+               AND jsonb_array_length(
+                     public.framework_strict_jsonb_array(c.data_contract))>0
+               AND jsonb_array_length(
+                     public.framework_strict_jsonb_array(c.section_contract))>0
+               AND jsonb_array_length(
+                     public.framework_strict_jsonb_array(c.field_contract))>0
+           )::integer complete_lane_count
+      FROM public.framework_professional_screen_contract c
+     WHERE upper(c.process_code)=requested_process
+     GROUP BY upper(c.process_code),upper(c.step_code),upper(c.audience),
+              lower(split_part(c.route_path,'?',1))
+  ), eligible AS MATERIALIZED (
+    SELECT b.*
+      FROM blueprint_identities b
+      JOIN contract_counts c USING(process_code,step_code,audience,route_path)
+     WHERE c.contract_count=1 AND c.complete_lane_count=1
+  )
+  SELECT count(*)::integer INTO compilable_count FROM eligible;
+
+  IF compilable_count=0 THEN
     RAISE EXCEPTION 'canonical catalog has no screens for process %',requested_process
       USING ERRCODE='P0002';
   END IF;
-  IF scoped_count>requested_limit THEN
+  IF compilable_count>requested_limit THEN
     RAISE EXCEPTION 'canonical process % has % logical screens and exceeds limit %',
-      requested_process,scoped_count,requested_limit USING ERRCODE='54000';
+      requested_process,compilable_count,requested_limit USING ERRCODE='54000';
   END IF;
-  RETURN jsonb_build_object(
-    'schema','carbonet.canonical-design/v1',
-    'catalogHash',scoped_hash,
-    'screenCount',scoped_count,
-    'screens',scoped_screens
-  );
+
+  WITH blueprint_identities AS MATERIALIZED (
+    SELECT upper(b.process_code) process_code,
+           upper(b.step_code) step_code,
+           upper(b.audience) audience,
+           lower(split_part(b.route_path,'?',1)) route_path
+      FROM public.framework_screen_blueprint b
+     WHERE b.validation_status='VALID'
+       AND upper(b.process_code)=requested_process
+     GROUP BY upper(b.process_code),upper(b.step_code),upper(b.audience),
+              lower(split_part(b.route_path,'?',1))
+  ), contract_counts AS MATERIALIZED (
+    SELECT upper(c.process_code) process_code,
+           upper(c.step_code) step_code,
+           upper(c.audience) audience,
+           lower(split_part(c.route_path,'?',1)) route_path,
+           count(*)::integer contract_count,
+           count(*) FILTER (
+             WHERE jsonb_array_length(
+                     public.framework_strict_jsonb_array(c.api_contract))>0
+               AND jsonb_array_length(
+                     public.framework_strict_jsonb_array(c.data_contract))>0
+               AND jsonb_array_length(
+                     public.framework_strict_jsonb_array(c.section_contract))>0
+               AND jsonb_array_length(
+                     public.framework_strict_jsonb_array(c.field_contract))>0
+           )::integer complete_lane_count
+      FROM public.framework_professional_screen_contract c
+     WHERE upper(c.process_code)=requested_process
+     GROUP BY upper(c.process_code),upper(c.step_code),upper(c.audience),
+              lower(split_part(c.route_path,'?',1))
+  ), eligible AS MATERIALIZED (
+    SELECT b.*
+      FROM blueprint_identities b
+      JOIN contract_counts c USING(process_code,step_code,audience,route_path)
+     WHERE c.contract_count=1 AND c.complete_lane_count=1
+  ), compiled AS MATERIALIZED (
+    SELECT p.development_order,e.process_code,s.step_order,e.audience,
+           e.route_path,e.step_code,
+           e.process_code||'|'||e.step_code||'|'||e.audience||'|'||
+             e.route_path screen_key,
+           public.framework_canonical_screen_design(
+             e.process_code,e.step_code,e.audience,e.route_path
+           ) canonical_design
+      FROM eligible e
+      JOIN public.framework_process_definition p
+        ON upper(p.process_code)=e.process_code
+      JOIN public.framework_process_step s
+        ON upper(s.process_code)=e.process_code
+       AND upper(s.step_code)=e.step_code
+  ), hashed AS MATERIALIZED (
+    SELECT *,canonical_design#>>'{identity,blueprintCode}' blueprint_code,
+           canonical_design::text canonical_text,
+           encode(sha256(convert_to(canonical_design::text,'UTF8')),'hex')
+             design_hash
+      FROM compiled
+  ), aggregate AS (
+    SELECT count(*)::integer screen_count,
+           encode(sha256(convert_to(string_agg(
+             screen_key||E'\\x1f'||design_hash,E'\\n'
+             ORDER BY development_order,process_code,step_order,
+                      audience,route_path,blueprint_code
+           ),'UTF8')),'hex') catalog_hash,
+           jsonb_agg(jsonb_build_object(
+             'screenKey',screen_key,
+             'processCode',process_code,
+             'stepCode',step_code,
+             'audience',audience,
+             'routePath',route_path,
+             'designHash',design_hash,
+             'canonicalText',canonical_text,
+             'canonicalDesign',canonical_design
+           ) ORDER BY development_order,process_code,step_order,
+                      audience,route_path,blueprint_code) screens
+      FROM hashed
+  )
+  SELECT screen_count,
+         jsonb_build_object(
+           'schema','carbonet.canonical-design/v1',
+           'catalogHash',catalog_hash,
+           'screenCount',screen_count,
+           'screens',screens
+         )
+    INTO compiled_count,result
+    FROM aggregate;
+  IF compiled_count<>compilable_count THEN
+    RAISE EXCEPTION 'canonical process % compiled % of % eligible identities',
+      requested_process,compiled_count,compilable_count USING ERRCODE='55000';
+  END IF;
+  RETURN result;
 END
 $$;
 
 COMMENT ON FUNCTION public.framework_source_canonical_design_catalog(
   integer,varchar
-) IS 'SOURCE process catalog filtered and rehashed from authority-resolved logical global screens';
+) IS 'SOURCE process catalog compiles only authority-resolved logical identities in the requested process';
 
 -- The source endpoint gate must use the same logical-screen denominator as
 -- the design catalog.  Resolvable duplicates count once; ambiguous duplicates
@@ -955,11 +1066,11 @@ REVOKE ALL ON FUNCTION public.framework_canonical_screen_design_exact(
 DO $$
 BEGIN
   IF EXISTS(SELECT 1 FROM pg_roles WHERE rolname='carbonet_app') THEN
+    REVOKE ALL ON FUNCTION public.framework_canonical_screen_design_exact(
+      bigint,bigint,jsonb
+    ) FROM carbonet_app;
     GRANT EXECUTE ON FUNCTION public.framework_canonical_blueprint_authority(
       varchar,varchar,varchar,varchar,bigint
-    ) TO carbonet_app;
-    GRANT EXECUTE ON FUNCTION public.framework_canonical_screen_design_exact(
-      bigint,bigint,jsonb
     ) TO carbonet_app;
   END IF;
 END

@@ -242,6 +242,79 @@ BEGIN
 END
 $$;
 
+SET ROLE carbonet_app;
+DO $$
+DECLARE contract bigint;
+DECLARE blueprint bigint;
+DECLARE denied boolean:=false;
+DECLARE compiled jsonb;
+BEGIN
+ SELECT contract_id INTO contract FROM framework_professional_screen_contract;
+ SELECT blueprint_id INTO blueprint FROM framework_screen_blueprint;
+ IF has_function_privilege(
+      current_user,
+      'public.framework_canonical_screen_design_exact(bigint,bigint,jsonb)',
+      'EXECUTE'
+    ) THEN
+   RAISE EXCEPTION 'carbonet_app retained exact compiler privilege';
+ END IF;
+ BEGIN
+   PERFORM framework_canonical_screen_design_exact(blueprint,contract,'{}'::jsonb);
+ EXCEPTION WHEN SQLSTATE '42501' THEN denied:=true; END;
+ compiled:=framework_canonical_screen_design(
+   'PROC_A','STEP_A','USER','/screen/1','{}'::jsonb
+ );
+ IF NOT denied
+    OR compiled#>>'{identity,blueprintCode}'<>'SCREEN_0001' THEN
+   RAISE EXCEPTION 'forged exact-call gate mismatch: denied=% compiled=%',
+     denied,compiled#>>'{identity,blueprintCode}';
+ END IF;
+END
+$$;
+RESET ROLE;
+
+-- A process-local SOURCE compile must not inspect an unrelated ambiguous
+-- process. A remains exact while B and the intentionally global catalog fail.
+SELECT test_add_screens(1001,1001);
+INSERT INTO framework_screen_blueprint(
+ blueprint_code,process_code,step_code,actor_code,audience,page_id,page_name,
+ route_path,screen_type,template_code,specification_json,traceability_json,
+ validation_status,generated_source_path,transition_status)
+SELECT 'SCREEN_B_AMBIGUOUS',process_code,step_code,actor_code,audience,
+       'ambiguous-'||page_id,page_name,route_path||'?variant=ambiguous',
+       screen_type,template_code,specification_json,traceability_json,
+       validation_status,generated_source_path,'PLANNED'
+  FROM framework_screen_blueprint
+ WHERE blueprint_code='SCREEN_1001';
+DO $$
+DECLARE process_a jsonb;
+DECLARE denied_b boolean:=false;
+DECLARE denied_global boolean:=false;
+DECLARE source_definition text;
+BEGIN
+ process_a:=framework_canonical_design_catalog(10,'PROC_A');
+ BEGIN PERFORM framework_canonical_design_catalog(10,'PROC_B');
+ EXCEPTION WHEN SQLSTATE 'P0003' THEN denied_b:=true; END;
+ BEGIN PERFORM framework_canonical_design_catalog(10);
+ EXCEPTION WHEN SQLSTATE 'P0003' THEN denied_global:=true; END;
+ SELECT pg_get_functiondef(
+          'public.framework_source_canonical_design_catalog(integer,character varying)'::regprocedure
+        ) INTO source_definition;
+ IF process_a->>'screenCount'<>'1'
+    OR process_a#>>'{screens,0,screenKey}'<>'PROC_A|STEP_A|USER|/screen/1'
+    OR NOT denied_b OR NOT denied_global
+    OR strpos(source_definition,'framework_canonical_design_catalog(5000)')>0
+ THEN
+   RAISE EXCEPTION 'process isolation mismatch: A=% Bdenied=% globalDenied=%',
+     process_a,denied_b,denied_global;
+ END IF;
+END
+$$;
+DELETE FROM framework_screen_blueprint
+ WHERE blueprint_code IN ('SCREEN_B_AMBIGUOUS','SCREEN_1001');
+DELETE FROM framework_professional_screen_contract
+ WHERE route_path='/screen/1001';
+
 INSERT INTO framework_screen_blueprint(
  blueprint_code,process_code,step_code,actor_code,audience,page_id,page_name,
  route_path,screen_type,template_code,specification_json,traceability_json,
@@ -392,4 +465,4 @@ $$;
 SQL
 
 elapsed_ms=$(( ($(date +%s%N)-started_ns)/1000000 ))
-printf 'CANONICAL_BLUEPRINT_AUTHORITY_OK cases=5 physical=1430 logical=1396 elapsedMs=%s\n' "$elapsed_ms"
+printf 'CANONICAL_BLUEPRINT_AUTHORITY_OK cases=7 physical=1430 logical=1396 elapsedMs=%s\n' "$elapsed_ms"

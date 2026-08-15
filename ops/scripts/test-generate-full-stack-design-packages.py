@@ -138,7 +138,14 @@ class GroupFieldsByAudienceTest(unittest.TestCase):
         }
         step = {
             "step_code": "STEP_A", "spec_version": 7,
-            "actor_contract": {"actorCode": "PROCESS_ACTOR", "permissions": ["READ"]},
+            "actor_contract": {
+                "actorCode": "PROCESS_ACTOR",
+                "permissions": [{
+                    "permissionCode": "PROCESS_ACTIVITY_COMPLETE",
+                    "scopeType": "PROJECT",
+                    "guard": {"tenantMatch": True, "projectMatch": True},
+                }],
+            },
             "business_contract": {"stepName": "Step A", "requirement": "Complete step A"},
             "transition_contract": {
                 "commandCode": "COMPLETE", "fromState": "READY", "toState": "DONE",
@@ -152,7 +159,7 @@ class GroupFieldsByAudienceTest(unittest.TestCase):
                 "title": "Step A", "purpose": "Complete step A", "exceptions": [],
                 "responsive": {"mobile": "single-column"},
                 "accessibility": {"standard": "WCAG 2.1 AA"},
-                "layout": "COMMON_KRDS_TASK_LAYOUT", "theme": "COMMON_KRDS_GOV",
+                "layout": "RESPONSIVE_WORKSPACE", "theme": "KRDS_GOV_DEFAULT",
                 "sections": ["TASK_CONTEXT", "TASK_CONTENT", "TASK_HANDOFF"],
             }],
             "field_contract": {
@@ -171,10 +178,48 @@ class GroupFieldsByAudienceTest(unittest.TestCase):
                     mock.patch.object(GENERATOR, "tests_for_step", return_value=[]):
                 return GENERATOR.render_step(process, value, [])
 
+        def release_hash(package):
+            package_manifest = {
+                "schemaVersion": "2.0.0",
+                "packageCount": 1,
+                "skippedReviewRequired": 0,
+                "packages": [{
+                    "processCode": package["process"]["code"],
+                    "stepCode": package["step"]["code"],
+                    "package": "PROCESS_A__STEP_A.json",
+                    "packageHash": package["packageHash"],
+                    "pages": len(package["frontend"]["pages"]),
+                }],
+            }
+            package_manifest["manifestHash"] = GENERATOR.hashlib.sha256(
+                GENERATOR.stable(package_manifest).encode()
+            ).hexdigest()
+            release = {
+                "schema": "carbonet.canonical-full-stack-release/v1",
+                "lanes": ["FRONTEND", "API", "DATABASE", "HELP", "CARDS"],
+                "designCatalogHash": "d" * 64,
+                "endpointCatalogHash": "e" * 64,
+                "designHashes": ["f" * 64],
+                "packageManifestHash": package_manifest["manifestHash"],
+                "endpointBundleHash": "a" * 64,
+            }
+            return GENERATOR.hashlib.sha256(
+                GENERATOR.stable(release).encode()
+            ).hexdigest()
+
         baseline = render(step)
+        baseline_release_hash = release_hash(baseline)
         self.assertEqual(
             ["TASK_CONTEXT", "TASK_CONTENT", "TASK_HANDOFF"],
             baseline["frontend"]["pages"][0]["sections"],
+        )
+        legacy = copy.deepcopy(step)
+        legacy["screen_contract"][0].pop("layout")
+        legacy["screen_contract"][0].pop("theme")
+        self.assertEqual(
+            baseline,
+            render(legacy),
+            "legacy omission must resolve to the registered live defaults",
         )
         mutations = {
             "layout": (
@@ -212,11 +257,23 @@ class GroupFieldsByAudienceTest(unittest.TestCase):
                     ("packageHash",),
                 },
             ),
-            "permission": (
-                lambda value: value["actor_contract"]["permissions"].append("APPROVE"),
+            "permissionCode": (
+                lambda value: value["actor_contract"]["permissions"][0].update(
+                    permissionCode="PROCESS_ACTIVITY_APPROVE"
+                ),
                 {
-                    ("step", "actor", "permissions", 1),
-                    ("backend", "authorization", "permissions", 1),
+                    ("step", "actor", "permissions", 0, "permissionCode"),
+                    ("backend", "authorization", "permissions", 0, "permissionCode"),
+                    ("packageHash",),
+                },
+            ),
+            "permissionGuard": (
+                lambda value: value["actor_contract"]["permissions"][0]["guard"].update(
+                    projectMatch=False
+                ),
+                {
+                    ("step", "actor", "permissions", 0, "guard", "projectMatch"),
+                    ("backend", "authorization", "permissions", 0, "guard", "projectMatch"),
                     ("packageHash",),
                 },
             ),
@@ -236,6 +293,11 @@ class GroupFieldsByAudienceTest(unittest.TestCase):
                 mutate(value)
                 generated = render(value)
                 self.assertNotEqual(baseline["packageHash"], generated["packageHash"])
+                self.assertNotEqual(
+                    baseline_release_hash,
+                    release_hash(generated),
+                    f"{name} must invalidate the full-stack release",
+                )
                 self.assertEqual(
                     expected_paths,
                     self.changed_paths(baseline, generated),
@@ -247,7 +309,7 @@ class GroupFieldsByAudienceTest(unittest.TestCase):
             render(invalid)
         invalid = copy.deepcopy(step)
         invalid["screen_contract"][0]["layout"] = "display:grid; color:red"
-        with self.assertRaisesRegex(SystemExit, r"registered COMMON_\* or KRDS_\*"):
+        with self.assertRaisesRegex(SystemExit, "registered governed design code"):
             render(invalid)
 
     def test_atomic_publish_is_zero_rewrite_and_rolls_back_all_directories(self) -> None:

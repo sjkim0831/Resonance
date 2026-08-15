@@ -32,7 +32,9 @@ DEFAULT_SCREEN_SECTIONS = [
     "TASK_EVIDENCE",
     "TASK_HANDOFF",
 ]
-GOVERNED_DESIGN_CODE = re.compile(r"^(?:COMMON|KRDS)_[A-Z0-9_]{2,78}$")
+GOVERNED_DESIGN_CODE = re.compile(
+    r"^(?:RESPONSIVE_WORKSPACE|(?:COMMON|KRDS)_[A-Z0-9_]{2,78})$"
+)
 
 
 def fail(message: str) -> None:
@@ -50,7 +52,7 @@ def governed_design_code(
     if not isinstance(value, str) or not GOVERNED_DESIGN_CODE.fullmatch(value):
         fail(
             f"{identity}: screen_contract {key} must be a registered "
-            "COMMON_* or KRDS_* design code"
+            "governed design code"
         )
     return value
 
@@ -1161,11 +1163,11 @@ def render_step(
         else:
             page_sections = copy.deepcopy(DEFAULT_SCREEN_SECTIONS)
         page_layout = governed_design_code(
-            page, "layout", "COMMON_KRDS_TASK_LAYOUT",
+            page, "layout", "RESPONSIVE_WORKSPACE",
             f"{process['processCode']}/{step['step_code']}",
         )
         page_theme = governed_design_code(
-            page, "theme", "COMMON_KRDS_GOV",
+            page, "theme", "KRDS_GOV_DEFAULT",
             f"{process['processCode']}/{step['step_code']}",
         )
         pages.append({

@@ -172,7 +172,7 @@ class GeneratorTest(unittest.TestCase):
             self.assertNotEqual(old["bundleHash"], updated["bundleHash"])
             self.assertFalse(any("previous" in str(path) for path in out.parent.rglob("*")))
 
-    def test_layout_command_permission_and_api_mutations_change_exact_endpoint_sources(self):
+    def test_layout_command_actor_and_api_mutations_change_exact_endpoint_sources(self):
         mutation_cases = {
             "layout": (
                 lambda canonical, operation: canonical["lanes"].update({
@@ -188,7 +188,7 @@ class GeneratorTest(unittest.TestCase):
                 ),
                 'payload.put("commandCode","APPROVE")',
             ),
-            "permission": (
+            "actor": (
                 lambda canonical, operation: (
                     canonical["identity"].update(actorCode="ACTIVITY_REVIEWER"),
                     operation["authority"].update(actorCodes=["ACTIVITY_REVIEWER"]),
@@ -270,6 +270,25 @@ class GeneratorTest(unittest.TestCase):
                         self.assertIn(f"designHash={endpoint['designHash']}", controller)
                     else:
                         self.assertIn(controller_token, controller)
+
+    def test_generated_controller_delegates_permission_enforcement_to_runtime_command_guard(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            out = Path(temporary) / "generated"
+            result = self.run_generator(catalog(), out)
+            self.assertEqual(0, result.returncode, result.stderr)
+            controller = (
+                out
+                / "src/main/java/egovframework/com/generated/canonical/CompleteActivityPlanController.java"
+            ).read_text(encoding="utf-8")
+            runtime_call = (
+                "service.executeProcessCommand(executionId,payload,context.getUserId())"
+            )
+            self.assertIn(runtime_call, controller)
+            self.assertNotIn("request.userId()", controller)
+            self.assertLess(
+                controller.index('payload.put("processCode","ACTIVITY_DATA")'),
+                controller.index(runtime_call),
+            )
 
     def test_manifest_operation_removal_mismatch_and_duplicate_fail_closed(self):
         with tempfile.TemporaryDirectory() as temporary:
