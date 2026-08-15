@@ -19,15 +19,18 @@ def require_contract(value: str) -> None:
         'LIMIT_VALIDATED=1',
         'LINKED_WORKTREE_VALIDATED=1',
         "to_regprocedure('public.framework_canonical_endpoint_catalog(integer)')",
-        "to_regprocedure('public.framework_canonical_endpoint_catalog(integer,character varying)')",
-        "to_regprocedure('public.framework_canonical_design_catalog(integer,character varying)')",
+        "to_regprocedure('public.framework_source_canonical_endpoint_catalog(integer,character varying)')",
+        "to_regprocedure('public.framework_source_canonical_design_catalog(integer,character varying)')",
+        "to_regprocedure('public.framework_source_canonical_endpoint_readiness(integer,character varying)')",
         'endpoint_readiness_expression',
-        "'endpointReadiness',$(endpoint_readiness_expression)",
+        'with source_snapshot as materialized',
+        '$(endpoint_readiness_expression) endpoint_readiness',
+        "'endpointReadiness',endpoint_readiness",
         'CANONICAL_ENDPOINT_DEFERRED',
         'explicit endpoint catalog rejected while canonical endpoint readiness is PARTIAL',
         'framework_canonical_endpoint_catalog(%s)',
-        "jsonb_build_object('runtime',framework_process_generation_snapshot($selector),'design'",
-        "'design',$(design_catalog_expression)",
+        'framework_process_generation_snapshot($selector) runtime',
+        '$(design_catalog_expression) design',
         "column_name in ('execution_id','tenant_id','project_id','execution_version')",
         'generate-spring-api-from-design.py',
         '"$ENDPOINT_STAGE" --workers "$WORKERS" --check',
@@ -50,6 +53,7 @@ def require_contract(value: str) -> None:
         'bash "$ROOT/gradlew" "$GRADLE_TASK"',
         '--publish-set',
         'carbonet.canonical-full-stack-release/v1',
+        'SOURCE_IMMEDIATE_V1',
         '"FRONTEND","API","DATABASE","HELP","CARDS"',
     )
     for token in required:
@@ -87,15 +91,15 @@ mutants=(
                    'generate-safe-migrations-from-design.py" "$RUNTIME_STAGE" --root "$ROOT"', 1),
     source.replace('--publish-set', '--publish-disabled', 1),
     source.replace("to_regprocedure('public.framework_canonical_endpoint_catalog(integer)')", "to_regprocedure('public.missing_endpoint_compiler(integer)')", 1),
-    source.replace("'endpointReadiness',$(endpoint_readiness_expression)", "'endpointReadiness',jsonb_build_object('status','COMPLETE')", 1),
+    source.replace('$(endpoint_readiness_expression) endpoint_readiness', "jsonb_build_object('status','COMPLETE') endpoint_readiness", 1),
     source.replace('.generated==0', '.generated>=0', 1),
     source.replace('(.legacySkipped+.unchanged)==.packages', '(.legacySkipped+.unchanged)<=.packages', 1),
     source.replace('([.endpoints[].endpointContract.operations[]|[.processCode,.stepCode]]|unique|sort)', '([])', 1),
     source.replace('--canonical-catalog "$DESIGN_CATALOG_TMP"', '', 1),
-    source.replace("'design',$(design_catalog_expression)", "'design',null", 1),
+    source.replace('$(design_catalog_expression) design', 'null design', 1),
     source.replace('bash "$ROOT/gradlew" "$GRADLE_TASK"', 'true "$GRADLE_TASK"', 1),
     source.replace('ENDPOINT_OUT="$ENDPOINT_OUT/$PROCESS_CODE"', 'ENDPOINT_OUT="$ENDPOINT_OUT"', 1),
-    source.replace("jsonb_build_object('runtime',framework_process_generation_snapshot($selector),'design'", "jsonb_build_object('runtime',framework_process_generation_snapshot($selector),'missingDesign'", 1),
+    source.replace('framework_process_generation_snapshot($selector) runtime', 'null runtime', 1),
 )
 for index, mutant in enumerate(mutants):
     try:
@@ -135,7 +139,7 @@ python3 - "$BUILD_WORK/generated" <<'PY'
 import hashlib,json,sys
 from pathlib import Path
 root=Path(sys.argv[1]); manifest=json.loads((root/'manifest.json').read_text())
-release={'schema':'carbonet.canonical-full-stack-release/v1','endpointCatalogHash':manifest['catalogHash'],
+release={'schema':'carbonet.canonical-full-stack-release/v1','activationPolicy':'SOURCE_IMMEDIATE_V1','endpointCatalogHash':manifest['catalogHash'],
          'endpointBundleHash':manifest['bundleHash']}
 release['releaseHash']=hashlib.sha256(json.dumps(release,sort_keys=True,separators=(',',':')).encode()).hexdigest()
 (root/'full-stack-release.json').write_text(json.dumps(release))
@@ -158,7 +162,7 @@ python3 - "$DEFAULT_ROOT/ACTIVITY_DATA" <<'PY'
 import json,sys
 from pathlib import Path
 root=Path(sys.argv[1]); manifest=json.loads((root/'manifest.json').read_text())
-release={'schema':'carbonet.canonical-full-stack-release/v1','endpointCatalogHash':manifest['catalogHash'],
+release={'schema':'carbonet.canonical-full-stack-release/v1','activationPolicy':'SOURCE_IMMEDIATE_V1','endpointCatalogHash':manifest['catalogHash'],
          'endpointBundleHash':manifest['bundleHash']}
 import hashlib
 release['releaseHash']=hashlib.sha256(json.dumps(release,sort_keys=True,separators=(',',':')).encode()).hexdigest()
@@ -314,7 +318,7 @@ esac
             process=root/"out/endpoints/OTHER_PROCESS"; (process/"src/main/java").mkdir(parents=True)
             (process/"src/main/java/Other.java").write_text("public final class Other {}")
             (process/"manifest.json").write_text(json.dumps({"schema":"carbonet.generated-endpoints/v1","catalogHash":"8"*64}))
-            (process/"full-stack-release.json").write_text(json.dumps({"schema":"carbonet.canonical-full-stack-release/v1","endpointCatalogHash":"8"*64,"releaseHash":"7"*64}))
+            (process/"full-stack-release.json").write_text(json.dumps({"schema":"carbonet.canonical-full-stack-release/v1","activationPolicy":"SOURCE_IMMEDIATE_V1","endpointCatalogHash":"8"*64,"releaseHash":"7"*64}))
             if scenario=="mixed_layout": (root/"out/endpoints/src/main/java").mkdir(parents=True)
             else:
                 crash=root/"out/endpoints/.OTHER_PROCESS.incoming-crash/src/main/java"; crash.mkdir(parents=True)

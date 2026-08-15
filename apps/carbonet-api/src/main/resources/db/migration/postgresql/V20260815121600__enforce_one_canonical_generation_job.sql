@@ -18,6 +18,7 @@ DECLARE
   process_input_hash text;
   design_set_hash text;
   design_catalog jsonb;
+  endpoint_readiness jsonb;
   endpoint_catalog jsonb;
   design_catalog_hash text;
   design_catalog_text_hash text;
@@ -96,12 +97,29 @@ BEGIN
       USING ERRCODE='55000';
   END IF;
 
-  -- Compile each expensive canonical catalog once. The endpoint compiler is
-  -- itself fail-closed on readiness, so a separate readiness compilation here
-  -- would only duplicate the same process scan.
-  design_catalog:=public.framework_canonical_design_catalog(5000,requested_process);
-  endpoint_catalog:=public.framework_canonical_endpoint_catalog(
-    5000,requested_process);
+  -- Direct generation follows mutable SOURCE immediately even when an older
+  -- release remains ACTIVE.  These three compiler calls share this statement's
+  -- MVCC snapshot; no effective/ACTIVE wrapper can contribute H1 bytes.
+  WITH source_snapshot AS MATERIALIZED (
+    SELECT public.framework_source_canonical_design_catalog(
+             5000,requested_process::varchar) design,
+           public.framework_source_canonical_endpoint_readiness(
+             5000,requested_process::varchar) readiness
+  ), complete_snapshot AS MATERIALIZED (
+    SELECT design,readiness,
+           CASE WHEN readiness->>'status'='COMPLETE'
+             THEN public.framework_source_canonical_endpoint_catalog(
+                    5000,requested_process::varchar)
+           END endpoint
+      FROM source_snapshot
+  )
+  SELECT design,readiness,endpoint
+    INTO design_catalog,endpoint_readiness,endpoint_catalog
+    FROM complete_snapshot;
+  IF endpoint_readiness->>'status'<>'COMPLETE' OR endpoint_catalog IS NULL THEN
+    RAISE EXCEPTION 'process SOURCE endpoint readiness is not COMPLETE: %',
+      requested_process USING ERRCODE='55000',DETAIL=endpoint_readiness::text;
+  END IF;
   design_catalog_hash:=design_catalog->>'catalogHash';
   endpoint_catalog_hash:=endpoint_catalog->>'catalogHash';
   design_catalog_text_hash:=encode(sha256(convert_to(
@@ -154,6 +172,7 @@ BEGIN
   stable_input:=jsonb_build_object(
     'schema','carbonet.process-generation-input/v1',
     'generatorContract',jsonb_build_object(
+      'activationPolicy','SOURCE_IMMEDIATE_V1',
       'fullStackPackageSchema','2.0.0',
       'designCatalogSchema',design_catalog->>'schema',
       'endpointCatalogSchema',endpoint_catalog->>'schema'),
@@ -170,6 +189,7 @@ BEGIN
 
   RETURN jsonb_build_object(
     'schema','carbonet.process-generation-head/v1',
+    'activationPolicy','SOURCE_IMMEDIATE_V1',
     'processCode',requested_process,
     'processInputHash',process_input_hash,
     'processStepCount',process_step_count,
@@ -188,7 +208,7 @@ END
 $$;
 
 COMMENT ON FUNCTION public.framework_process_generation_input(text) IS
-  'Versioned process-wide generator head over process/step contracts and exact canonical screen design hashes';
+  'SOURCE_IMMEDIATE_V1 process-wide head over one mutable SOURCE MVCC snapshot; ACTIVE release wrappers are not consulted';
 
 REVOKE ALL ON FUNCTION public.framework_process_generation_input(text)
   FROM PUBLIC;

@@ -13,6 +13,7 @@ ENDPOINT_ROOT="${CANONICAL_ENDPOINT_OUT:-$ROOT/projects/carbonet-backend-metadat
 ENDPOINT_OUT="$ENDPOINT_ROOT"
 ENDPOINT_AUTODETECT="${CANONICAL_ENDPOINT_AUTODETECT:-true}"
 ENDPOINT_LIMIT="${CANONICAL_ENDPOINT_LIMIT:-5000}"
+readonly ACTIVATION_POLICY="SOURCE_IMMEDIATE_V1"
 GRADLE_TASK="${CANONICAL_ENDPOINT_GRADLE_TASK:-:modules:resonance-common:carbonet-common-core:compileJava}"
 WORKERS="${CANONICAL_GENERATOR_WORKERS:-${FULL_STACK_GENERATOR_WORKERS:-4}}"
 TMP="$(mktemp)"
@@ -78,7 +79,7 @@ fi
 
 endpoint_catalog_expression() {
   if [[ -n "$PROCESS_CODE" ]]; then
-    printf "framework_canonical_endpoint_catalog(%s,'%s')" \
+    printf "framework_source_canonical_endpoint_catalog(%s,'%s')" \
       "$ENDPOINT_LIMIT" "$PROCESS_CODE"
   else
     printf "framework_canonical_endpoint_catalog(%s)" "$ENDPOINT_LIMIT"
@@ -87,7 +88,7 @@ endpoint_catalog_expression() {
 
 design_catalog_expression() {
   if [[ -n "$PROCESS_CODE" ]]; then
-    printf "framework_canonical_design_catalog(%s,'%s')" \
+    printf "framework_source_canonical_design_catalog(%s,'%s')" \
       "$ENDPOINT_LIMIT" "$PROCESS_CODE"
   else
     printf "framework_canonical_design_catalog(%s)" "$ENDPOINT_LIMIT"
@@ -96,7 +97,7 @@ design_catalog_expression() {
 
 endpoint_readiness_expression() {
   if [[ -n "$PROCESS_CODE" ]]; then
-    printf "framework_canonical_endpoint_readiness(%s,'%s')" \
+    printf "framework_source_canonical_endpoint_readiness(%s,'%s')" \
       "$ENDPOINT_LIMIT" "$PROCESS_CODE"
   else
     printf "framework_canonical_endpoint_readiness(%s)" "$ENDPOINT_LIMIT"
@@ -108,7 +109,7 @@ endpoint_catalog_sql() {
 }
 
 endpoint_process_sources() {
-  local candidate manifest release source_dir catalog_hash release_catalog
+  local candidate manifest release source_dir catalog_hash release_catalog release_policy
   [[ ! -e "$ENDPOINT_ROOT/src/main/java" ]] || {
     echo '[full-stack-generator] mixed legacy-root and process-scoped endpoint layouts are forbidden' >&2
     return 1
@@ -124,7 +125,8 @@ endpoint_process_sources() {
     }
     catalog_hash="$(jq -er 'select(.schema=="carbonet.generated-endpoints/v1")|.catalogHash' "$manifest")" || return 1
     release_catalog="$(jq -er 'select(.schema=="carbonet.canonical-full-stack-release/v1")|.endpointCatalogHash' "$release")" || return 1
-    [[ "$catalog_hash" == "$release_catalog" ]] || {
+    release_policy="$(jq -er '.activationPolicy' "$release")" || return 1
+    [[ "$catalog_hash" == "$release_catalog" && "$release_policy" == "$ACTIVATION_POLICY" ]] || {
       echo "[full-stack-generator] endpoint process release provenance mismatch: $candidate" >&2; return 1;
     }
     printf '%s\n' "$source_dir"
@@ -155,6 +157,7 @@ validate_endpoint_layout() {
 verify_published_release() {
   jq -e --slurpfile runtime "$OUT/index.json" --slurpfile manifest "$ENDPOINT_OUT/manifest.json" '
     .schema=="carbonet.canonical-full-stack-release/v1" and
+    .activationPolicy=="SOURCE_IMMEDIATE_V1" and
     .packageManifestHash==$runtime[0].manifestHash and
     .endpointBundleHash==$manifest[0].bundleHash and
     .endpointCatalogHash==$manifest[0].catalogHash and
@@ -165,7 +168,8 @@ verify_published_release() {
   }
   jq -cn --arg releaseHash "$(jq -r '.releaseHash' "$ENDPOINT_OUT/full-stack-release.json")" \
     --arg processCode "${PROCESS_CODE:-ALL}" \
-    '{event:"CANONICAL_RELEASE_READY",boundary:"GIT_COMMIT",processCode:$processCode,releaseHash:$releaseHash}'
+    --arg activationPolicy "$ACTIVATION_POLICY" \
+    '{event:"CANONICAL_RELEASE_READY",boundary:"GIT_COMMIT",activationPolicy:$activationPolicy,processCode:$processCode,releaseHash:$releaseHash}'
 }
 
 # Self-heal a process killed between directory swaps before reading a new DB
@@ -180,7 +184,7 @@ validate_endpoint_layout
 if [[ -z "$ENDPOINT_CATALOG" && "$ENDPOINT_AUTODETECT" == "true" ]]; then
   endpoint_compiler_available="$(kubectl -n "$NAMESPACE" exec "$leader" -c patroni -- \
     psql -h 127.0.0.1 -U "$DB_USER" -d "$DATABASE" -X -Atqc \
-    "select (to_regprocedure('public.framework_canonical_endpoint_catalog(integer)') is not null and to_regprocedure('public.framework_canonical_endpoint_readiness(integer,character varying)') is not null and ('$PROCESS_CODE'='' or (to_regprocedure('public.framework_canonical_endpoint_catalog(integer,character varying)') is not null and to_regprocedure('public.framework_canonical_design_catalog(integer,character varying)') is not null)))::text")"
+    "select (case when '$PROCESS_CODE'='' then to_regprocedure('public.framework_canonical_endpoint_catalog(integer)') is not null else to_regprocedure('public.framework_source_canonical_design_catalog(integer,character varying)') is not null and to_regprocedure('public.framework_source_canonical_endpoint_readiness(integer,character varying)') is not null and to_regprocedure('public.framework_source_canonical_endpoint_catalog(integer,character varying)') is not null end)::text")"
   if [[ "$endpoint_compiler_available" == "true" ]]; then
     # The authoritative endpoint bundle below performs the only canonical
     # readiness/catalog call. Use a marker here so explicit and autodetect paths
@@ -204,15 +208,15 @@ if [[ -n "$ENDPOINT_CATALOG" ]]; then
   PREVIEW_STAGE="$STAGE_ROOT/preview"
   ENDPOINT_STAGE="$STAGE_ROOT/endpoints"
 
-  # Export runtime, readiness and endpoint data in one PostgreSQL statement/
-  # MVCC snapshot. Pin external input to that exact catalogHash before output.
+  # Export runtime plus the three SOURCE catalogs in one PostgreSQL statement/
+  # MVCC snapshot. ACTIVE release wrappers cannot contribute older H1 bytes.
   DB_BUNDLE_TMP="$(mktemp)"
   AUTHORITATIVE_TMP="$(mktemp)"
   REBOUND_TMP="$(mktemp)"
   DESIGN_CATALOG_TMP="$(mktemp)"
   kubectl -n "$NAMESPACE" exec "$leader" -c patroni -- \
     psql -h 127.0.0.1 -U "$DB_USER" -d "$DATABASE" -X -q -v ON_ERROR_STOP=1 -At \
-    -c "select jsonb_build_object('runtime',framework_process_generation_snapshot($selector),'design',$(design_catalog_expression),'endpointReadiness',$(endpoint_readiness_expression),'endpoint',case when $(endpoint_readiness_expression)->>'status'='COMPLETE' then $(endpoint_catalog_expression) else null end);" >"$DB_BUNDLE_TMP"
+    -c "with source_snapshot as materialized (select framework_process_generation_snapshot($selector) runtime,$(design_catalog_expression) design,$(endpoint_readiness_expression) endpoint_readiness), complete_snapshot as materialized (select runtime,design,endpoint_readiness,case when endpoint_readiness->>'status'='COMPLETE' then $(endpoint_catalog_expression) else null end endpoint from source_snapshot) select jsonb_build_object('runtime',runtime,'design',design,'endpointReadiness',endpoint_readiness,'endpoint',endpoint) from complete_snapshot;" >"$DB_BUNDLE_TMP"
   endpoint_readiness="$(jq -e '.endpointReadiness' "$DB_BUNDLE_TMP")"
   if [[ "$(jq -er '.status' <<<"$endpoint_readiness")" != "COMPLETE" ]]; then
     if [[ "$EXTERNAL_ENDPOINT_CATALOG" == "__AUTODETECT__" ]]; then
@@ -301,10 +305,11 @@ if [[ -n "$ENDPOINT_CATALOG" ]]; then
     --out "$PREVIEW_STAGE" --workers "$WORKERS" --allow-review-required --canonical-catalog "$DESIGN_CATALOG_TMP"
   jq -n --arg designCatalogHash "$(jq -r '.catalogHash' "$DESIGN_CATALOG_TMP")" \
     --arg endpointCatalogHash "$(jq -r '.catalogHash' "$ENDPOINT_CATALOG")" \
+    --arg activationPolicy "$ACTIVATION_POLICY" \
     --arg packageManifestHash "$(jq -r '.manifestHash' "$RUNTIME_STAGE/index.json")" \
     --arg endpointBundleHash "$(jq -r '.bundleHash' "$ENDPOINT_STAGE/manifest.json")" \
     --argjson designHashes "$(jq -c '[.endpoints[].designHash]|unique|sort' "$ENDPOINT_CATALOG")" \
-    '{schema:"carbonet.canonical-full-stack-release/v1",lanes:["FRONTEND","API","DATABASE","HELP","CARDS"],designCatalogHash:$designCatalogHash,endpointCatalogHash:$endpointCatalogHash,designHashes:$designHashes,packageManifestHash:$packageManifestHash,endpointBundleHash:$endpointBundleHash}' \
+    '{schema:"carbonet.canonical-full-stack-release/v1",activationPolicy:$activationPolicy,lanes:["FRONTEND","API","DATABASE","HELP","CARDS"],designCatalogHash:$designCatalogHash,endpointCatalogHash:$endpointCatalogHash,designHashes:$designHashes,packageManifestHash:$packageManifestHash,endpointBundleHash:$endpointBundleHash}' \
     >"$ENDPOINT_STAGE/full-stack-release.json"
   release_hash="$(python3 - "$ENDPOINT_STAGE/full-stack-release.json" <<'PY'
 import hashlib,json,sys

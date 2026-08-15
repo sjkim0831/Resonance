@@ -264,6 +264,7 @@ canonical_process_job_head_is_current() {
       && "${SPEC_B64:-}" =~ ^[A-Za-z0-9+/]+={0,2}$ ]] || return 1
   jq -e --arg process "$PROCESS_CODE" '
     .algorithm=="CANONICAL_PROCESS_PUBLICATION_V1" and
+    .activationPolicy=="SOURCE_IMMEDIATE_V1" and
     .generatorRequired==true and .processCode==$process and
     (.sourceHash|type=="string" and test("^[0-9a-f]{64}$")) and
     .processInputHash==.sourceHash and
@@ -303,9 +304,11 @@ canonical_process_job_head_is_current() {
        and j.job_group_code=j.process_code||'_CANONICAL_PUBLICATION'
        and j.spec=convert_from(decode('${SPEC_B64}','base64'),'UTF8')::jsonb
        and generation.head->>'schema'='carbonet.process-generation-head/v1'
+       and generation.head->>'activationPolicy'='SOURCE_IMMEDIATE_V1'
        and generation.head->>'processCode'=j.process_code
        and j.step_code=generation.head->>'coordinatorStep'
        and j.spec->>'algorithm'='CANONICAL_PROCESS_PUBLICATION_V1'
+       and j.spec->>'activationPolicy'=generation.head->>'activationPolicy'
        and j.spec->>'processCode'=generation.head->>'processCode'
        and j.spec->>'stepCode'=generation.head->>'coordinatorStep'
        and j.spec->>'coordinatorStep'=generation.head->>'coordinatorStep'
@@ -728,6 +731,8 @@ if package.get("process", {}).get("code") != process_code or package.get("step",
     raise SystemExit("canonical package process/step mismatch")
 if release.get("schema") != "carbonet.canonical-full-stack-release/v1":
     raise SystemExit("canonical release schema mismatch")
+if release.get("activationPolicy") != "SOURCE_IMMEDIATE_V1":
+    raise SystemExit("canonical release activationPolicy mismatch")
 if not isinstance(package.get("sourceHash"), str) or not source_fingerprint.fullmatch(package["sourceHash"]):
     raise SystemExit("canonical package sourceHash is invalid")
 if not isinstance(package.get("packageHash"), str) or not sha256.fullmatch(package["packageHash"]):
@@ -748,6 +753,7 @@ if (endpoint_manifest.get("catalogHash") != release["endpointCatalogHash"]
     raise SystemExit("canonical endpoint manifest is not bound to the release")
 print(stable({
     "schema": "carbonet.canonical-generation-evidence/v1",
+    "activationPolicy": release["activationPolicy"],
     "processCode": process_code,
     "stepCode": step_code,
     "sourceHash": package["sourceHash"],
@@ -827,13 +833,15 @@ verify_canonical_commit_published() {
 finalize_canonical_generation() {
   local job_id="$1" lease_token="$2" worker_id="$3" result_commit="$4"
   local rollback_commit="$5" process_code="$6" step_code="$7" log_file="$8" evidence_json="$9"
-  local source_hash package_hash design_hash endpoint_hash release_hash evidence_ref readback
+  local activation_policy source_hash package_hash design_hash endpoint_hash release_hash evidence_ref readback
+  activation_policy="$(jq -er '.activationPolicy' <<<"$evidence_json")"
   source_hash="$(jq -er '.sourceHash' <<<"$evidence_json")"
   package_hash="$(jq -er '.packageHash' <<<"$evidence_json")"
   design_hash="$(jq -er '.designCatalogHash' <<<"$evidence_json")"
   endpoint_hash="$(jq -er '.endpointCatalogHash' <<<"$evidence_json")"
   release_hash="$(jq -er '.releaseHash' <<<"$evidence_json")"
-  [[ "$job_id" =~ ^[0-9]+$ && "$lease_token" =~ ^[0-9a-fA-F-]{36}$ \
+  [[ "$activation_policy" == "SOURCE_IMMEDIATE_V1" \
+      && "$job_id" =~ ^[0-9]+$ && "$lease_token" =~ ^[0-9a-fA-F-]{36}$ \
       && "$result_commit" =~ ^[0-9a-f]{40}$ && "$rollback_commit" =~ ^[0-9a-f]{40}$ \
       && "$source_hash" =~ ^([0-9a-f]{32}|[0-9a-f]{64})$ \
       && "$package_hash$design_hash$endpoint_hash$release_hash" =~ ^[0-9a-f]{256}$ ]] || return 1
@@ -859,6 +867,14 @@ begin
   end if;
   select framework_try_jsonb(specification_json) into job_spec
   from framework_development_job where job_id=${job_id} for update;
+  if job_spec->>'algorithm' is distinct from 'CANONICAL_PROCESS_PUBLICATION_V1'
+     or job_spec->>'activationPolicy' is distinct from 'SOURCE_IMMEDIATE_V1'
+     or job_spec->>'sourceHash' is distinct from \$source\$${source_hash}\$source\$
+     or job_spec->>'processInputHash' is distinct from \$source\$${source_hash}\$source\$
+     or job_spec->>'designCatalogHash' is distinct from \$hash\$${design_hash}\$hash\$
+     or job_spec->>'endpointCatalogHash' is distinct from \$hash\$${endpoint_hash}\$hash\$ then
+    raise exception 'CANONICAL_SOURCE_IMMEDIATE_RECEIPT_MISMATCH';
+  end if;
   if job_spec ? 'designHash' then
     if job_spec->>'sourceHash' is distinct from \$source\$${source_hash}\$source\$ then
       raise exception 'STALE_CANONICAL_JOB_SOURCE_HASH';

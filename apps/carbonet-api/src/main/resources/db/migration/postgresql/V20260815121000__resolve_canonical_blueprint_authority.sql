@@ -1080,7 +1080,7 @@ DECLARE
   endpoints jsonb;
   catalog_hash text;
 BEGIN
-  readiness:=public.framework_canonical_endpoint_readiness(
+  readiness:=public.framework_source_canonical_endpoint_readiness(
     requested_limit,requested_process
   );
   IF readiness->>'status'<>'COMPLETE' THEN
@@ -1159,6 +1159,15 @@ REVOKE ALL ON FUNCTION public.framework_canonical_blueprint_authority(
 REVOKE ALL ON FUNCTION public.framework_canonical_screen_design_exact(
   bigint,bigint,jsonb
 ) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.framework_source_canonical_design_catalog(
+  integer,varchar
+) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.framework_source_canonical_endpoint_readiness(
+  integer,varchar
+) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.framework_source_canonical_endpoint_catalog(
+  integer,varchar
+) FROM PUBLIC;
 
 DO $$
 BEGIN
@@ -1169,6 +1178,38 @@ BEGIN
     GRANT EXECUTE ON FUNCTION public.framework_canonical_blueprint_authority(
       varchar,varchar,varchar,varchar,bigint
     ) TO carbonet_app;
+    REVOKE ALL ON FUNCTION public.framework_source_canonical_design_catalog(
+      integer,varchar
+    ) FROM carbonet_app;
+    REVOKE ALL ON FUNCTION public.framework_source_canonical_endpoint_readiness(
+      integer,varchar
+    ) FROM carbonet_app;
+    REVOKE ALL ON FUNCTION public.framework_source_canonical_endpoint_catalog(
+      integer,varchar
+    ) FROM carbonet_app;
   END IF;
+END
+$$;
+
+DO $$
+DECLARE source_api oid;
+BEGIN
+  FOREACH source_api IN ARRAY ARRAY[
+    to_regprocedure('public.framework_source_canonical_design_catalog(integer,character varying)'),
+    to_regprocedure('public.framework_source_canonical_endpoint_readiness(integer,character varying)'),
+    to_regprocedure('public.framework_source_canonical_endpoint_catalog(integer,character varying)')
+  ] LOOP
+    IF source_api IS NULL OR EXISTS(
+      SELECT 1 FROM pg_proc function_row
+      CROSS JOIN LATERAL aclexplode(
+        coalesce(function_row.proacl,acldefault('f',function_row.proowner))) acl
+       WHERE function_row.oid=source_api
+         AND acl.grantee=0 AND acl.privilege_type='EXECUTE'
+    ) OR (EXISTS(SELECT 1 FROM pg_roles WHERE rolname='carbonet_app')
+      AND has_function_privilege('carbonet_app',source_api,'EXECUTE')) THEN
+      RAISE EXCEPTION 'SOURCE canonical compiler ACL is not private: %',source_api
+        USING ERRCODE='42501';
+    END IF;
+  END LOOP;
 END
 $$;
