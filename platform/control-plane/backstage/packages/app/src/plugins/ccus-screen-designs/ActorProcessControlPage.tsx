@@ -21,8 +21,6 @@ import {
   makeStyles,
 } from '@material-ui/core';
 import LaunchIcon from '@material-ui/icons/Launch';
-import SaveIcon from '@material-ui/icons/Save';
-import PublishIcon from '@material-ui/icons/Publish';
 import {
   ACTOR_PROCESS_TAB_COUNT,
   ACTOR_PROCESS_FULL_UI_COUNT,
@@ -50,11 +48,6 @@ type ProjectTask = {
   taskType: string;
   status: string;
   errorMessage?: string;
-};
-type DesignRelease = {
-  designVersion: number;
-  status: string;
-  contractSha256: string;
 };
 type OperationsSummary = {
   inventory?: {
@@ -331,11 +324,19 @@ const TAB_COMMANDS: Record<string, TabCommand> = {
     ],
   },
   'design-release': {
-    command: 'design.validate',
-    label: '프로세스 설계 검증',
+    command: 'screen.design.generate',
+    label: '설계 저장·코드 자동 반영',
     description:
-      '액터·상태·데이터·라우트·테스트 계약의 누락과 충돌을 검증합니다.',
-    fields: [{ name: 'processCode', label: '프로세스 코드', required: true }],
+      '화면 설계를 SOURCE 정본에 저장하고 SDUI·권한·기능·엔드포인트 코드 생성을 즉시 등록합니다.',
+    fields: [
+      { name: 'routePath', label: '화면 경로', required: true },
+      { name: 'pageId', label: '페이지 ID' },
+      { name: 'pageTitle', label: '화면 제목', required: true },
+      { name: 'designNote', label: '레이아웃·테마·섹션 설계', required: true, type: 'textarea' },
+      { name: 'functionNote', label: '기능·권한·입출력·엔드포인트 설계', required: true, type: 'textarea' },
+      { name: 'acceptanceNote', label: '페이지·프로세스 QA 인수 기준', required: true, type: 'textarea' },
+      { name: 'status', label: '설계 상태', defaultValue: 'READY' },
+    ],
   },
   'development-plan': {
     command: 'development.plan',
@@ -5771,8 +5772,6 @@ export function ActorProcessControlPage(props: {
       'CCUS-PLATFORM',
   );
   useSharedProjectSelection(projectId, setProjectId);
-  const [designVersion, setDesignVersion] = useState(1);
-  const [release, setRelease] = useState<DesignRelease | null>(null);
   const [summary, setSummary] = useState<OperationsSummary>({});
   const [runtimeDashboard, setRuntimeDashboard] = useState<RuntimeDashboard>(
     {},
@@ -5827,21 +5826,6 @@ export function ActorProcessControlPage(props: {
   const developmentContractUrl = `/api/resonance-projects/${encodeURIComponent(
     projectId,
   )}/development-contract`;
-
-  const loadReleases = async (targetProjectId: string) => {
-    const response = await fetchApi.fetch(
-      `/api/resonance-projects/${encodeURIComponent(
-        targetProjectId,
-      )}/design-releases`,
-    );
-    if (!response.ok) return;
-    const payload = (await response.json()) as {
-      releases?: DesignRelease[];
-    };
-    const latest = payload.releases?.[0] ?? null;
-    setRelease(latest);
-    if (latest) setDesignVersion(latest.designVersion);
-  };
 
   const loadRuntimeDataset = useCallback(
     async (targetDatasetKey: string) => {
@@ -6071,7 +6055,6 @@ export function ActorProcessControlPage(props: {
           `Actor·Process runtime dashboard ${runtimeResponse.status}`,
         );
       }
-      await loadReleases(projectId);
     } catch {
       setMessage(
         'Actor·Process 운영 데이터를 불러오지 못했습니다. 잠시 후 다시 시도하세요.',
@@ -6083,7 +6066,7 @@ export function ActorProcessControlPage(props: {
 
   useEffect(() => {
     void loadDashboard();
-    // projectId 변경 시 선택 프로젝트의 릴리스와 태스크를 다시 조회합니다.
+    // projectId 변경 시 선택 프로젝트와 SOURCE 런타임 상태를 다시 조회합니다.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectId]);
 
@@ -6483,76 +6466,6 @@ export function ActorProcessControlPage(props: {
     }
   };
 
-  const saveDesignRelease = async () => {
-    setMessage('설계 계약을 검증하고 저장하는 중입니다.');
-    const contract = {
-      schemaVersion: 2,
-      projectId,
-      tenantId: 'DEFAULT',
-      designVersion,
-      source: 'BACKSTAGE_ACTOR_PROCESS_CONTROL',
-      sourceOfTruth: 'BACKSTAGE',
-      contextFields: [
-        'projectId',
-        'tenantId',
-        'designVersion',
-        'actorCode',
-        'processCode',
-        'stepCode',
-      ],
-      workspaces: ACTOR_PROCESS_WORKSPACES,
-      runtimeBinding: {
-        designContract: developmentContractUrl,
-        runtime: 'RESONANCE',
-        generator:
-          '/admin/api/system/actor-process/generation/compile-and-queue',
-      },
-    };
-    const response = await fetchApi.fetch(
-      `/api/resonance-projects/${encodeURIComponent(
-        projectId,
-      )}/design-releases`,
-      {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ designVersion, contract }),
-      },
-    );
-    const payload = (await response.json()) as {
-      message?: string;
-      validation?: { failures?: string[] };
-    };
-    if (!response.ok) {
-      setMessage(
-        payload.validation?.failures?.join(', ') ??
-          payload.message ??
-          '설계 저장에 실패했습니다.',
-      );
-      return;
-    }
-    setMessage('설계가 검증되어 Backstage에 저장되었습니다.');
-    await loadReleases(projectId);
-  };
-
-  const promoteDesignRelease = async () => {
-    setMessage('검증된 설계를 Resonance 개발 기준으로 승격하는 중입니다.');
-    const response = await fetchApi.fetch(
-      `/api/resonance-projects/${encodeURIComponent(
-        projectId,
-      )}/design-releases/${designVersion}/promote`,
-      { method: 'POST' },
-    );
-    const payload = (await response.json()) as { message?: string };
-    if (!response.ok) {
-      setMessage(payload.message ?? '설계 승격에 실패했습니다.');
-      return;
-    }
-    setMessage(
-      '승격 완료: Resonance는 이 Backstage 개발 계약을 기준으로 생성·검증합니다.',
-    );
-    await loadDashboard();
-  };
-
   const selectWorkspace = (id: ActorProcessWorkspaceId) => {
     const next = ACTOR_PROCESS_WORKSPACES.find(item => item.id === id)!;
     setWorkspaceId(id);
@@ -6617,43 +6530,28 @@ export function ActorProcessControlPage(props: {
                 {selectedProject?.projectName ?? projectId}
               </Typography>
               <Typography variant="body2" color="textSecondary">
-                projectId={projectId} · tenantId=DEFAULT · designVersion=
-                {designVersion}
+                projectId={projectId} · tenantId=DEFAULT ·
+                activationPolicy=SOURCE_IMMEDIATE_V1
               </Typography>
               <Box mt={1} display="flex" gridGap={8} flexWrap="wrap">
                 <Chip
                   size="small"
-                  label={`설계 릴리스 ${release?.status ?? '미등록'}`}
-                  color={release?.status === 'PROMOTED' ? 'primary' : 'default'}
+                  label="설계 저장 즉시 SOURCE·SDUI·코드 반영"
+                  color="primary"
                 />
                 <Chip size="small" label={`개발 태스크 ${tasks.length}개`} />
                 <Chip size="small" label={`완료율 ${taskProgress}%`} />
-                {release?.contractSha256 && (
-                  <Chip
-                    size="small"
-                    label={`SHA-256 ${release.contractSha256.slice(0, 12)}`}
-                  />
-                )}
               </Box>
             </Grid>
           </Grid>
           <Box mt={2} display="flex" gridGap={8} flexWrap="wrap">
             <Button
-              variant="outlined"
-              color="primary"
-              startIcon={<SaveIcon />}
-              onClick={saveDesignRelease}
-            >
-              설계 검증·저장
-            </Button>
-            <Button
               variant="contained"
               color="primary"
-              startIcon={<PublishIcon />}
-              disabled={release?.status !== 'VALIDATED'}
-              onClick={promoteDesignRelease}
+              startIcon={<LaunchIcon />}
+              onClick={() => openControlTab('design-release')}
             >
-              Resonance 개발 기준으로 승격
+              설계 저장·코드 자동 반영
             </Button>
             <Button
               variant="outlined"
