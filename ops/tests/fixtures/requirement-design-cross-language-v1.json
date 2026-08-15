@@ -1,0 +1,994 @@
+{
+  "schema": "carbonet.requirement-cross-language/v1",
+  "input": {
+    "projectId": "CCUS-PLATFORM",
+    "designVersion": 7,
+    "fileName": "requirements.md",
+    "documentSlot": "main-rfp",
+    "requirementText": "기업 담당자는 프로젝트를 등록한다.\n검증자는 제출 자료를 검토한다."
+  },
+  "contract": {
+    "schemaVersion": "3.0.0",
+    "projectId": "CCUS-PLATFORM",
+    "tenantId": "DEFAULT",
+    "identity": {
+      "strategy": "STABLE_DOCUMENT_KEY",
+      "stableKey": "slot:main-rfp",
+      "processCode": "REQ_B63A3B7457AD"
+    },
+    "contextFields": [
+      "projectId",
+      "tenantId",
+      "designVersion",
+      "actorCode",
+      "processCode",
+      "stepCode"
+    ],
+    "workspaces": [
+      {
+        "id": "design",
+        "tabs": [
+          {
+            "id": "design-1",
+            "label": "DESIGN 1",
+            "order": 10,
+            "sections": [
+              {
+                "sectionCode": "HELP",
+                "componentType": "HELP",
+                "order": 10
+              },
+              {
+                "sectionCode": "NEXT_TASK",
+                "componentType": "NEXT_TASK",
+                "order": 20
+              },
+              {
+                "sectionCode": "QA",
+                "componentType": "QA",
+                "order": 30
+              },
+              {
+                "sectionCode": "SCREEN_DESIGN",
+                "componentType": "SCREEN_DESIGN",
+                "order": 40
+              }
+            ]
+          },
+          {
+            "id": "design-2",
+            "label": "DESIGN 2",
+            "order": 20,
+            "sections": [
+              {
+                "sectionCode": "HELP",
+                "componentType": "HELP",
+                "order": 10
+              },
+              {
+                "sectionCode": "NEXT_TASK",
+                "componentType": "NEXT_TASK",
+                "order": 20
+              },
+              {
+                "sectionCode": "QA",
+                "componentType": "QA",
+                "order": 30
+              },
+              {
+                "sectionCode": "SCREEN_DESIGN",
+                "componentType": "SCREEN_DESIGN",
+                "order": 40
+              }
+            ]
+          },
+          {
+            "id": "design-3",
+            "label": "DESIGN 3",
+            "order": 30,
+            "sections": [
+              {
+                "sectionCode": "HELP",
+                "componentType": "HELP",
+                "order": 10
+              },
+              {
+                "sectionCode": "NEXT_TASK",
+                "componentType": "NEXT_TASK",
+                "order": 20
+              },
+              {
+                "sectionCode": "QA",
+                "componentType": "QA",
+                "order": 30
+              },
+              {
+                "sectionCode": "SCREEN_DESIGN",
+                "componentType": "SCREEN_DESIGN",
+                "order": 40
+              }
+            ]
+          },
+          {
+            "id": "design-4",
+            "label": "DESIGN 4",
+            "order": 40,
+            "sections": [
+              {
+                "sectionCode": "HELP",
+                "componentType": "HELP",
+                "order": 10
+              },
+              {
+                "sectionCode": "NEXT_TASK",
+                "componentType": "NEXT_TASK",
+                "order": 20
+              },
+              {
+                "sectionCode": "QA",
+                "componentType": "QA",
+                "order": 30
+              },
+              {
+                "sectionCode": "SCREEN_DESIGN",
+                "componentType": "SCREEN_DESIGN",
+                "order": 40
+              }
+            ]
+          },
+          {
+            "id": "design-5",
+            "label": "DESIGN 5",
+            "order": 50,
+            "sections": [
+              {
+                "sectionCode": "HELP",
+                "componentType": "HELP",
+                "order": 10
+              },
+              {
+                "sectionCode": "NEXT_TASK",
+                "componentType": "NEXT_TASK",
+                "order": 20
+              },
+              {
+                "sectionCode": "QA",
+                "componentType": "QA",
+                "order": 30
+              },
+              {
+                "sectionCode": "SCREEN_DESIGN",
+                "componentType": "SCREEN_DESIGN",
+                "order": 40
+              }
+            ]
+          },
+          {
+            "id": "design-6",
+            "label": "DESIGN 6",
+            "order": 60,
+            "sections": [
+              {
+                "sectionCode": "HELP",
+                "componentType": "HELP",
+                "order": 10
+              },
+              {
+                "sectionCode": "NEXT_TASK",
+                "componentType": "NEXT_TASK",
+                "order": 20
+              },
+              {
+                "sectionCode": "QA",
+                "componentType": "QA",
+                "order": 30
+              },
+              {
+                "sectionCode": "SCREEN_DESIGN",
+                "componentType": "SCREEN_DESIGN",
+                "order": 40
+              }
+            ]
+          },
+          {
+            "id": "design-7",
+            "label": "DESIGN 7",
+            "order": 70,
+            "sections": [
+              {
+                "sectionCode": "HELP",
+                "componentType": "HELP",
+                "order": 10
+              },
+              {
+                "sectionCode": "NEXT_TASK",
+                "componentType": "NEXT_TASK",
+                "order": 20
+              },
+              {
+                "sectionCode": "QA",
+                "componentType": "QA",
+                "order": 30
+              },
+              {
+                "sectionCode": "SCREEN_DESIGN",
+                "componentType": "SCREEN_DESIGN",
+                "order": 40
+              }
+            ]
+          },
+          {
+            "id": "design-8",
+            "label": "DESIGN 8",
+            "order": 80,
+            "sections": [
+              {
+                "sectionCode": "HELP",
+                "componentType": "HELP",
+                "order": 10
+              },
+              {
+                "sectionCode": "NEXT_TASK",
+                "componentType": "NEXT_TASK",
+                "order": 20
+              },
+              {
+                "sectionCode": "QA",
+                "componentType": "QA",
+                "order": 30
+              },
+              {
+                "sectionCode": "SCREEN_DESIGN",
+                "componentType": "SCREEN_DESIGN",
+                "order": 40
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "develop",
+        "tabs": [
+          {
+            "id": "develop-1",
+            "label": "DEVELOP 1",
+            "order": 10,
+            "sections": [
+              {
+                "sectionCode": "HELP",
+                "componentType": "HELP",
+                "order": 10
+              },
+              {
+                "sectionCode": "NEXT_TASK",
+                "componentType": "NEXT_TASK",
+                "order": 20
+              },
+              {
+                "sectionCode": "QA",
+                "componentType": "QA",
+                "order": 30
+              },
+              {
+                "sectionCode": "SCREEN_DESIGN",
+                "componentType": "SCREEN_DESIGN",
+                "order": 40
+              }
+            ]
+          },
+          {
+            "id": "develop-2",
+            "label": "DEVELOP 2",
+            "order": 20,
+            "sections": [
+              {
+                "sectionCode": "HELP",
+                "componentType": "HELP",
+                "order": 10
+              },
+              {
+                "sectionCode": "NEXT_TASK",
+                "componentType": "NEXT_TASK",
+                "order": 20
+              },
+              {
+                "sectionCode": "QA",
+                "componentType": "QA",
+                "order": 30
+              },
+              {
+                "sectionCode": "SCREEN_DESIGN",
+                "componentType": "SCREEN_DESIGN",
+                "order": 40
+              }
+            ]
+          },
+          {
+            "id": "develop-3",
+            "label": "DEVELOP 3",
+            "order": 30,
+            "sections": [
+              {
+                "sectionCode": "HELP",
+                "componentType": "HELP",
+                "order": 10
+              },
+              {
+                "sectionCode": "NEXT_TASK",
+                "componentType": "NEXT_TASK",
+                "order": 20
+              },
+              {
+                "sectionCode": "QA",
+                "componentType": "QA",
+                "order": 30
+              },
+              {
+                "sectionCode": "SCREEN_DESIGN",
+                "componentType": "SCREEN_DESIGN",
+                "order": 40
+              }
+            ]
+          },
+          {
+            "id": "develop-4",
+            "label": "DEVELOP 4",
+            "order": 40,
+            "sections": [
+              {
+                "sectionCode": "HELP",
+                "componentType": "HELP",
+                "order": 10
+              },
+              {
+                "sectionCode": "NEXT_TASK",
+                "componentType": "NEXT_TASK",
+                "order": 20
+              },
+              {
+                "sectionCode": "QA",
+                "componentType": "QA",
+                "order": 30
+              },
+              {
+                "sectionCode": "SCREEN_DESIGN",
+                "componentType": "SCREEN_DESIGN",
+                "order": 40
+              }
+            ]
+          },
+          {
+            "id": "develop-5",
+            "label": "DEVELOP 5",
+            "order": 50,
+            "sections": [
+              {
+                "sectionCode": "HELP",
+                "componentType": "HELP",
+                "order": 10
+              },
+              {
+                "sectionCode": "NEXT_TASK",
+                "componentType": "NEXT_TASK",
+                "order": 20
+              },
+              {
+                "sectionCode": "QA",
+                "componentType": "QA",
+                "order": 30
+              },
+              {
+                "sectionCode": "SCREEN_DESIGN",
+                "componentType": "SCREEN_DESIGN",
+                "order": 40
+              }
+            ]
+          },
+          {
+            "id": "develop-6",
+            "label": "DEVELOP 6",
+            "order": 60,
+            "sections": [
+              {
+                "sectionCode": "HELP",
+                "componentType": "HELP",
+                "order": 10
+              },
+              {
+                "sectionCode": "NEXT_TASK",
+                "componentType": "NEXT_TASK",
+                "order": 20
+              },
+              {
+                "sectionCode": "QA",
+                "componentType": "QA",
+                "order": 30
+              },
+              {
+                "sectionCode": "SCREEN_DESIGN",
+                "componentType": "SCREEN_DESIGN",
+                "order": 40
+              }
+            ]
+          },
+          {
+            "id": "develop-7",
+            "label": "DEVELOP 7",
+            "order": 70,
+            "sections": [
+              {
+                "sectionCode": "HELP",
+                "componentType": "HELP",
+                "order": 10
+              },
+              {
+                "sectionCode": "NEXT_TASK",
+                "componentType": "NEXT_TASK",
+                "order": 20
+              },
+              {
+                "sectionCode": "QA",
+                "componentType": "QA",
+                "order": 30
+              },
+              {
+                "sectionCode": "SCREEN_DESIGN",
+                "componentType": "SCREEN_DESIGN",
+                "order": 40
+              }
+            ]
+          },
+          {
+            "id": "develop-8",
+            "label": "DEVELOP 8",
+            "order": 80,
+            "sections": [
+              {
+                "sectionCode": "HELP",
+                "componentType": "HELP",
+                "order": 10
+              },
+              {
+                "sectionCode": "NEXT_TASK",
+                "componentType": "NEXT_TASK",
+                "order": 20
+              },
+              {
+                "sectionCode": "QA",
+                "componentType": "QA",
+                "order": 30
+              },
+              {
+                "sectionCode": "SCREEN_DESIGN",
+                "componentType": "SCREEN_DESIGN",
+                "order": 40
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "operate",
+        "tabs": [
+          {
+            "id": "operate-1",
+            "label": "OPERATE 1",
+            "order": 10,
+            "sections": [
+              {
+                "sectionCode": "HELP",
+                "componentType": "HELP",
+                "order": 10
+              },
+              {
+                "sectionCode": "NEXT_TASK",
+                "componentType": "NEXT_TASK",
+                "order": 20
+              },
+              {
+                "sectionCode": "QA",
+                "componentType": "QA",
+                "order": 30
+              },
+              {
+                "sectionCode": "SCREEN_DESIGN",
+                "componentType": "SCREEN_DESIGN",
+                "order": 40
+              }
+            ]
+          },
+          {
+            "id": "operate-2",
+            "label": "OPERATE 2",
+            "order": 20,
+            "sections": [
+              {
+                "sectionCode": "HELP",
+                "componentType": "HELP",
+                "order": 10
+              },
+              {
+                "sectionCode": "NEXT_TASK",
+                "componentType": "NEXT_TASK",
+                "order": 20
+              },
+              {
+                "sectionCode": "QA",
+                "componentType": "QA",
+                "order": 30
+              },
+              {
+                "sectionCode": "SCREEN_DESIGN",
+                "componentType": "SCREEN_DESIGN",
+                "order": 40
+              }
+            ]
+          },
+          {
+            "id": "operate-3",
+            "label": "OPERATE 3",
+            "order": 30,
+            "sections": [
+              {
+                "sectionCode": "HELP",
+                "componentType": "HELP",
+                "order": 10
+              },
+              {
+                "sectionCode": "NEXT_TASK",
+                "componentType": "NEXT_TASK",
+                "order": 20
+              },
+              {
+                "sectionCode": "QA",
+                "componentType": "QA",
+                "order": 30
+              },
+              {
+                "sectionCode": "SCREEN_DESIGN",
+                "componentType": "SCREEN_DESIGN",
+                "order": 40
+              }
+            ]
+          },
+          {
+            "id": "operate-4",
+            "label": "OPERATE 4",
+            "order": 40,
+            "sections": [
+              {
+                "sectionCode": "HELP",
+                "componentType": "HELP",
+                "order": 10
+              },
+              {
+                "sectionCode": "NEXT_TASK",
+                "componentType": "NEXT_TASK",
+                "order": 20
+              },
+              {
+                "sectionCode": "QA",
+                "componentType": "QA",
+                "order": 30
+              },
+              {
+                "sectionCode": "SCREEN_DESIGN",
+                "componentType": "SCREEN_DESIGN",
+                "order": 40
+              }
+            ]
+          },
+          {
+            "id": "operate-5",
+            "label": "OPERATE 5",
+            "order": 50,
+            "sections": [
+              {
+                "sectionCode": "HELP",
+                "componentType": "HELP",
+                "order": 10
+              },
+              {
+                "sectionCode": "NEXT_TASK",
+                "componentType": "NEXT_TASK",
+                "order": 20
+              },
+              {
+                "sectionCode": "QA",
+                "componentType": "QA",
+                "order": 30
+              },
+              {
+                "sectionCode": "SCREEN_DESIGN",
+                "componentType": "SCREEN_DESIGN",
+                "order": 40
+              }
+            ]
+          },
+          {
+            "id": "operate-6",
+            "label": "OPERATE 6",
+            "order": 60,
+            "sections": [
+              {
+                "sectionCode": "HELP",
+                "componentType": "HELP",
+                "order": 10
+              },
+              {
+                "sectionCode": "NEXT_TASK",
+                "componentType": "NEXT_TASK",
+                "order": 20
+              },
+              {
+                "sectionCode": "QA",
+                "componentType": "QA",
+                "order": 30
+              },
+              {
+                "sectionCode": "SCREEN_DESIGN",
+                "componentType": "SCREEN_DESIGN",
+                "order": 40
+              }
+            ]
+          },
+          {
+            "id": "operate-7",
+            "label": "OPERATE 7",
+            "order": 70,
+            "sections": [
+              {
+                "sectionCode": "HELP",
+                "componentType": "HELP",
+                "order": 10
+              },
+              {
+                "sectionCode": "NEXT_TASK",
+                "componentType": "NEXT_TASK",
+                "order": 20
+              },
+              {
+                "sectionCode": "QA",
+                "componentType": "QA",
+                "order": 30
+              },
+              {
+                "sectionCode": "SCREEN_DESIGN",
+                "componentType": "SCREEN_DESIGN",
+                "order": 40
+              }
+            ]
+          },
+          {
+            "id": "operate-8",
+            "label": "OPERATE 8",
+            "order": 80,
+            "sections": [
+              {
+                "sectionCode": "HELP",
+                "componentType": "HELP",
+                "order": 10
+              },
+              {
+                "sectionCode": "NEXT_TASK",
+                "componentType": "NEXT_TASK",
+                "order": 20
+              },
+              {
+                "sectionCode": "QA",
+                "componentType": "QA",
+                "order": 30
+              },
+              {
+                "sectionCode": "SCREEN_DESIGN",
+                "componentType": "SCREEN_DESIGN",
+                "order": 40
+              }
+            ]
+          },
+          {
+            "id": "operate-9",
+            "label": "OPERATE 9",
+            "order": 90,
+            "sections": [
+              {
+                "sectionCode": "HELP",
+                "componentType": "HELP",
+                "order": 10
+              },
+              {
+                "sectionCode": "NEXT_TASK",
+                "componentType": "NEXT_TASK",
+                "order": 20
+              },
+              {
+                "sectionCode": "QA",
+                "componentType": "QA",
+                "order": 30
+              },
+              {
+                "sectionCode": "SCREEN_DESIGN",
+                "componentType": "SCREEN_DESIGN",
+                "order": 40
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "actorDefinitions": [
+      {
+        "actorCode": "COMPANY_MANAGER",
+        "actorName": "COMPANY_MANAGER",
+        "description": "COMPANY_MANAGER 업무 액터",
+        "permissionCodes": [
+          "PROCESS:REQ_B63A3B7457AD:STEP:REQ_B63A3B7457AD_S_00DB62BE6F:EXECUTE"
+        ]
+      },
+      {
+        "actorCode": "VERIFIER",
+        "actorName": "VERIFIER",
+        "description": "VERIFIER 업무 액터",
+        "permissionCodes": [
+          "PROCESS:REQ_B63A3B7457AD:STEP:REQ_B63A3B7457AD_S_B75C3E44A7:EXECUTE"
+        ]
+      }
+    ],
+    "process": {
+      "processCode": "REQ_B63A3B7457AD",
+      "startState": "DRAFT",
+      "endState": "COMPLETED",
+      "steps": [
+        {
+          "requirementId": "REQ_B63A3B7457AD_R_00DB62BE6F",
+          "title": "기업 담당자는 프로젝트를 등록한다.",
+          "description": "기업 담당자는 프로젝트를 등록한다.",
+          "actorCode": "COMPANY_MANAGER",
+          "processCode": "REQ_B63A3B7457AD",
+          "stepCode": "REQ_B63A3B7457AD_S_00DB62BE6F",
+          "stepOrder": 10,
+          "screenName": "기업 담당자는 프로젝트를 등록한다.",
+          "routePath": "/generated/ccus-platform/req_b63a3b7457ad/req_b63a3b7457ad_s_00db62be6f",
+          "layoutCode": "RESPONSIVE_WORKSPACE",
+          "themeCode": "KRDS_GOV_DEFAULT",
+          "sections": [
+            {
+              "sectionCode": "TASK_HEADER",
+              "componentType": "TASK_HEADER",
+              "order": 10
+            },
+            {
+              "sectionCode": "JSON_FORM",
+              "componentType": "JSON_FORM",
+              "order": 20
+            },
+            {
+              "sectionCode": "SCREEN_HELP",
+              "componentType": "SCREEN_HELP",
+              "order": 30
+            },
+            {
+              "sectionCode": "QA_EVIDENCE",
+              "componentType": "QA_EVIDENCE",
+              "order": 40
+            },
+            {
+              "sectionCode": "NEXT_TASK",
+              "componentType": "NEXT_TASK",
+              "order": 50
+            }
+          ],
+          "permissionCodes": [
+            "PROCESS:REQ_B63A3B7457AD:STEP:REQ_B63A3B7457AD_S_00DB62BE6F:EXECUTE"
+          ],
+          "commandCode": "SUBMIT_REQ_B63A3B7457AD_S_00DB62BE6F",
+          "fromState": "DRAFT",
+          "toState": "STEP_1_COMPLETED",
+          "endpoint": {
+            "method": "POST",
+            "path": "/admin/api/system/actor-process/executions/{executionId}/commands"
+          },
+          "apiContract": {
+            "method": "POST",
+            "path": "/admin/api/system/actor-process/executions/{executionId}/commands"
+          },
+          "fields": [
+            {
+              "fieldCode": "PROJECT_ID",
+              "label": "PROJECT_ID",
+              "type": "string",
+              "required": true,
+              "order": 10
+            },
+            {
+              "fieldCode": "ACTOR_CODE",
+              "label": "ACTOR_CODE",
+              "type": "string",
+              "required": true,
+              "order": 20
+            },
+            {
+              "fieldCode": "STATUS_CODE",
+              "label": "STATUS_CODE",
+              "type": "string",
+              "required": true,
+              "order": 30
+            },
+            {
+              "fieldCode": "COMMAND_CODE",
+              "label": "COMMAND_CODE",
+              "type": "string",
+              "required": true,
+              "order": 40
+            },
+            {
+              "fieldCode": "PAYLOAD",
+              "label": "PAYLOAD",
+              "type": "object",
+              "required": true,
+              "order": 50
+            }
+          ],
+          "acceptanceCriteria": [
+            "권한과 상태 전이를 검증한다.",
+            "모바일과 WCAG 2.1 AA 기준을 충족한다.",
+            "저장 후 DB 재조회 결과가 일치한다."
+          ]
+        },
+        {
+          "requirementId": "REQ_B63A3B7457AD_R_B75C3E44A7",
+          "title": "검증자는 제출 자료를 검토한다.",
+          "description": "검증자는 제출 자료를 검토한다.",
+          "actorCode": "VERIFIER",
+          "processCode": "REQ_B63A3B7457AD",
+          "stepCode": "REQ_B63A3B7457AD_S_B75C3E44A7",
+          "stepOrder": 20,
+          "screenName": "검증자는 제출 자료를 검토한다.",
+          "routePath": "/generated/ccus-platform/req_b63a3b7457ad/req_b63a3b7457ad_s_b75c3e44a7",
+          "layoutCode": "RESPONSIVE_WORKSPACE",
+          "themeCode": "KRDS_GOV_DEFAULT",
+          "sections": [
+            {
+              "sectionCode": "TASK_HEADER",
+              "componentType": "TASK_HEADER",
+              "order": 10
+            },
+            {
+              "sectionCode": "JSON_FORM",
+              "componentType": "JSON_FORM",
+              "order": 20
+            },
+            {
+              "sectionCode": "SCREEN_HELP",
+              "componentType": "SCREEN_HELP",
+              "order": 30
+            },
+            {
+              "sectionCode": "QA_EVIDENCE",
+              "componentType": "QA_EVIDENCE",
+              "order": 40
+            },
+            {
+              "sectionCode": "NEXT_TASK",
+              "componentType": "NEXT_TASK",
+              "order": 50
+            }
+          ],
+          "permissionCodes": [
+            "PROCESS:REQ_B63A3B7457AD:STEP:REQ_B63A3B7457AD_S_B75C3E44A7:EXECUTE"
+          ],
+          "commandCode": "SUBMIT_REQ_B63A3B7457AD_S_B75C3E44A7",
+          "fromState": "STEP_1_COMPLETED",
+          "toState": "COMPLETED",
+          "endpoint": {
+            "method": "POST",
+            "path": "/admin/api/system/actor-process/executions/{executionId}/commands"
+          },
+          "apiContract": {
+            "method": "POST",
+            "path": "/admin/api/system/actor-process/executions/{executionId}/commands"
+          },
+          "fields": [
+            {
+              "fieldCode": "PROJECT_ID",
+              "label": "PROJECT_ID",
+              "type": "string",
+              "required": true,
+              "order": 10
+            },
+            {
+              "fieldCode": "ACTOR_CODE",
+              "label": "ACTOR_CODE",
+              "type": "string",
+              "required": true,
+              "order": 20
+            },
+            {
+              "fieldCode": "STATUS_CODE",
+              "label": "STATUS_CODE",
+              "type": "string",
+              "required": true,
+              "order": 30
+            },
+            {
+              "fieldCode": "COMMAND_CODE",
+              "label": "COMMAND_CODE",
+              "type": "string",
+              "required": true,
+              "order": 40
+            },
+            {
+              "fieldCode": "PAYLOAD",
+              "label": "PAYLOAD",
+              "type": "object",
+              "required": true,
+              "order": 50
+            }
+          ],
+          "acceptanceCriteria": [
+            "권한과 상태 전이를 검증한다.",
+            "모바일과 WCAG 2.1 AA 기준을 충족한다.",
+            "저장 후 DB 재조회 결과가 일치한다."
+          ]
+        }
+      ]
+    },
+    "generation": {
+      "strategy": "METADATA_FIRST_INCREMENTAL",
+      "maxScreens": 1000,
+      "commonTheme": "KRDS_GOV_DEFAULT",
+      "commonLayout": "RESPONSIVE_WORKSPACE",
+      "genericEndpoints": [
+        "/admin/api/system/actor-process/executions/start",
+        "/admin/api/system/actor-process/executions/{executionId}/commands",
+        "/admin/api/system/actor-process/process-design",
+        "/admin/api/system/actor-process/backend/verify"
+      ]
+    },
+    "reconciliation": {
+      "mode": "EXACT_SET",
+      "staleIdentityIntent": "REMOVE_GENERATOR_OWNED_MISSING",
+      "stepCodes": [
+        "REQ_B63A3B7457AD_S_00DB62BE6F",
+        "REQ_B63A3B7457AD_S_B75C3E44A7"
+      ],
+      "routePaths": [
+        "/generated/ccus-platform/req_b63a3b7457ad/req_b63a3b7457ad_s_00db62be6f",
+        "/generated/ccus-platform/req_b63a3b7457ad/req_b63a3b7457ad_s_b75c3e44a7"
+      ],
+      "screenKeys": [
+        "REQ_B63A3B7457AD|REQ_B63A3B7457AD_S_00DB62BE6F|USER|/generated/ccus-platform/req_b63a3b7457ad/req_b63a3b7457ad_s_00db62be6f",
+        "REQ_B63A3B7457AD|REQ_B63A3B7457AD_S_B75C3E44A7|USER|/generated/ccus-platform/req_b63a3b7457ad/req_b63a3b7457ad_s_b75c3e44a7"
+      ],
+      "commandCodes": [
+        "SUBMIT_REQ_B63A3B7457AD_S_00DB62BE6F",
+        "SUBMIT_REQ_B63A3B7457AD_S_B75C3E44A7"
+      ],
+      "endpointIdentities": [
+        "POST /admin/api/system/actor-process/executions/{executionId}/commands"
+      ],
+      "actorCodes": ["COMPANY_MANAGER", "VERIFIER"]
+    },
+    "qualityGates": [
+      "ACTOR_PROCESS_TRACEABILITY",
+      "INPUT_OUTPUT_HANDOFF",
+      "AUTHORITY_ISOLATION",
+      "DATABASE_REREAD",
+      "RESPONSIVE_ACCESSIBILITY",
+      "RECOVERY_EVIDENCE"
+    ],
+    "designVersion": 7,
+    "contentSha256": "b60b067598016a59254d28849fdd0f657bc390d3c14f2aebbf295aa1fa1f8f15",
+    "contentHashAlgorithm": "SHA-256/CANONICAL-JSON-V1",
+    "source": {
+      "type": "REQUIREMENT_DOCUMENT",
+      "fileName": "requirements.md",
+      "documentSha256": "925f82c6573f728252af26d9e6995dc0fad345ae43360a65573b32d229d13748",
+      "textSha256": "925f82c6573f728252af26d9e6995dc0fad345ae43360a65573b32d229d13748",
+      "stableKey": "slot:main-rfp",
+      "processCode": "REQ_B63A3B7457AD",
+      "contentSha256": "b60b067598016a59254d28849fdd0f657bc390d3c14f2aebbf295aa1fa1f8f15"
+    }
+  },
+  "contractSha256": "d5a12b5d4683a0c3514f03baa17c2810336169dd57cbfff64e0b8ca7cb947557"
+}

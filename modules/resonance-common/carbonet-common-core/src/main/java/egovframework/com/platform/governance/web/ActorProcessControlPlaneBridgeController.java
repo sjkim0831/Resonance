@@ -887,7 +887,8 @@ public class ActorProcessControlPlaneBridgeController {
         }
         java.util.SortedSet<String> lockedProcesses = new java.util.TreeSet<>(
                 governance.lockRequirementImportProcesses(processCode,actorCodes));
-        java.util.SortedSet<String> affectedProcesses = new java.util.TreeSet<>(lockedProcesses);
+        java.util.SortedSet<String> affectedProcesses = new java.util.TreeSet<>();
+        affectedProcesses.add(processCode);
         @SuppressWarnings("unchecked")
         List<Map<String,Object>> actorDefinitions=(List<Map<String,Object>>)
                 contract.get("actorDefinitions");
@@ -913,12 +914,14 @@ public class ActorProcessControlPlaneBridgeController {
             actorRequest.put("useAt","Y");
             Map<String,Object> actorMutation=governance.createActorForRequirementImport(
                     actorRequest,"BACKSTAGE_REQUIREMENT_AUTOMATION");
-            Object rawAffected=actorMutation.get("affectedProcessCodes");
-            if(rawAffected instanceof List<?> list)for(Object value:list){
-                String affected=String.valueOf(value);
-                if(!lockedProcesses.contains(affected))throw new IllegalStateException(
-                        "REQUIREMENT_PROCESS_LOCK_SET_EXPANDED: "+affected);
-                affectedProcesses.add(affected);
+            if(Boolean.TRUE.equals(actorMutation.get("definitionChanged"))){
+                Object rawAffected=actorMutation.get("affectedProcessCodes");
+                if(rawAffected instanceof List<?> list)for(Object value:list){
+                    String affected=String.valueOf(value);
+                    if(!lockedProcesses.contains(affected))throw new IllegalStateException(
+                            "REQUIREMENT_PROCESS_LOCK_SET_EXPANDED: "+affected);
+                    affectedProcesses.add(affected);
+                }
             }
         }
         governance.createProcessForRequirementImport(new LinkedHashMap<>(Map.ofEntries(

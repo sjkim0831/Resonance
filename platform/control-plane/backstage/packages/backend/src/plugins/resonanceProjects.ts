@@ -9,6 +9,7 @@ import {
   analyzeRequirementText,
   buildRequirementDesignContract,
   decodeRequirementDocument,
+  requirementContractSha256,
   type RequirementDocumentInput,
 } from './requirementAutomation';
 import { registerProjectLifecycleRoutes } from './projectLifecycleRoutes';
@@ -2518,9 +2519,7 @@ export default createBackendPlugin({
               });
               return;
             }
-            const contractSha256 = createHash('sha256')
-              .update(JSON.stringify(contract))
-              .digest('hex');
+            const contractSha256 = requirementContractSha256(contract);
             const documentId = document.documentSha256;
             const now = new Date();
             await knex.transaction(async transaction => {

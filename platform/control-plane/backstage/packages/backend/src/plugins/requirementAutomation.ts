@@ -32,11 +32,7 @@ export type RequirementItem = {
   routePath: string;
   layoutCode: string;
   themeCode: string;
-  sections: {
-    sectionCode: string;
-    order: number;
-    componentType: string;
-  }[];
+  sections: RequirementSection[];
   permissionCodes: string[];
   commandCode: string;
   fromState: string;
@@ -51,6 +47,12 @@ export type RequirementItem = {
     order: number;
   }[];
   acceptanceCriteria: string[];
+};
+
+export type RequirementSection = {
+  sectionCode: string;
+  order: number;
+  componentType: string;
 };
 
 export type RequirementAnalysis = {
@@ -75,7 +77,7 @@ export type RequirementAnalysis = {
       id: string;
       label: string;
       order: number;
-      sections: string[];
+      sections: RequirementSection[];
     }[];
   }[];
   startState: string;
@@ -88,15 +90,28 @@ const digest = (value: string | Buffer) =>
 const codePointCompare = (left: string, right: string) =>
   left < right ? -1 : left > right ? 1 : 0;
 
-const canonicalJson = (value: unknown): string => {
+/**
+ * Canonical JSON used on both sides of the Backstage -> Java bridge.
+ * Java String.compareTo and ECMAScript relational comparison both order
+ * property names by UTF-16 code units.
+ */
+export const canonicalRequirementJson = (value: unknown): string => {
   if (value === null || typeof value !== 'object') return JSON.stringify(value);
-  if (Array.isArray(value)) return `[${value.map(canonicalJson).join(',')}]`;
+  if (Array.isArray(value)) {
+    return `[${value.map(canonicalRequirementJson).join(',')}]`;
+  }
   return `{${Object.entries(value as Record<string, unknown>)
     .filter(([, item]) => item !== undefined)
     .sort(([left], [right]) => codePointCompare(left, right))
-    .map(([key, item]) => `${JSON.stringify(key)}:${canonicalJson(item)}`)
+    .map(
+      ([key, item]) =>
+        `${JSON.stringify(key)}:${canonicalRequirementJson(item)}`,
+    )
     .join(',')}}`;
 };
+
+export const requirementContractSha256 = (value: unknown) =>
+  digest(canonicalRequirementJson(value));
 
 const normalizedCode = (value: unknown, field: string, maxLength = 160) => {
   const code = String(value ?? '')
@@ -172,7 +187,7 @@ const resolveIdentity = (
     strategy: 'STABLE_DOCUMENT_KEY' as const,
     stableKey,
     processCode: `REQ_${digest(
-      canonicalJson({
+      canonicalRequirementJson({
         projectId: normalizedCode(projectId, 'projectId', 64),
         stableKey,
       }),
@@ -229,13 +244,27 @@ export const decodeRequirementDocument = (input: RequirementDocumentInput) => {
   };
 };
 
+const workspaceSectionCodes = [
+  'HELP',
+  'NEXT_TASK',
+  'QA',
+  'SCREEN_DESIGN',
+] as const;
+
+const workspaceSections = (): RequirementSection[] =>
+  workspaceSectionCodes.map((sectionCode, index) => ({
+    sectionCode,
+    componentType: sectionCode,
+    order: (index + 1) * 10,
+  }));
+
 const workspaces = ['design', 'develop', 'operate'].map(id => ({
   id,
   tabs: Array.from({ length: id === 'operate' ? 9 : 8 }, (_, index) => ({
     id: `${id}-${index + 1}`,
     label: `${id.toUpperCase()} ${index + 1}`,
     order: (index + 1) * 10,
-    sections: ['HELP', 'NEXT_TASK', 'QA', 'SCREEN_DESIGN'],
+    sections: workspaceSections(),
   })),
 }));
 
@@ -283,7 +312,7 @@ export const analyzeRequirementText = (
       ? 'SUBMIT'
       : 'VIEW';
     const permissionCodes = [
-      `PROCESS.${identity.processCode}.STEP.${stepCode}.EXECUTE`,
+      `PROCESS:${identity.processCode}:STEP:${stepCode}:EXECUTE`,
     ];
     const endpoint = {
       method: 'POST',
@@ -374,7 +403,13 @@ const canonicalAnalysis = (source: RequirementAnalysis) => {
   );
   analysis.workspaces.forEach(workspace => {
     workspace.tabs.sort((left, right) => left.order - right.order);
-    workspace.tabs.forEach(tab => tab.sections.sort());
+    workspace.tabs.forEach(tab =>
+      tab.sections.sort(
+        (left, right) =>
+          left.order - right.order ||
+          codePointCompare(left.sectionCode, right.sectionCode),
+      ),
+    );
   });
   analysis.actorDefinitions.sort((left, right) =>
     codePointCompare(left.actorCode, right.actorCode),
@@ -454,7 +489,22 @@ const validateAnalysis = (analysis: RequirementAnalysis) => {
           !tab.sections.length,
         `tabs.${tab.id}.design is incomplete`,
       );
-      unique(tab.sections, `tabs.${tab.id}.sections`);
+      for (const [field, values] of Object.entries({
+        sectionCode: tab.sections.map(section => section.sectionCode),
+        sectionOrder: tab.sections.map(section => section.order),
+      })) {
+        unique(values, `tabs.${tab.id}.${field}`);
+      }
+      fail(
+        tab.sections.some(
+          (section, index) =>
+            !section.sectionCode ||
+            !section.componentType ||
+            !Number.isInteger(section.order) ||
+            (index > 0 && section.order <= tab.sections[index - 1].order),
+        ),
+        `tabs.${tab.id}.sections must be ordered structured objects`,
+      );
     });
   });
   analysis.actorDefinitions.forEach(actor => {
@@ -485,7 +535,8 @@ const validateAnalysis = (analysis: RequirementAnalysis) => {
         !['DELETE', 'GET', 'PATCH', 'POST', 'PUT'].includes(
           step.endpoint?.method,
         ) ||
-        canonicalJson(step.endpoint) !== canonicalJson(step.apiContract) ||
+        canonicalRequirementJson(step.endpoint) !==
+          canonicalRequirementJson(step.apiContract) ||
         step.processCode !== analysis.processCode ||
         step.sections.some(
           section =>
@@ -570,9 +621,13 @@ export const buildRequirementDesignContract = ({
       )
       .sort(),
     commandCodes: analysis.requirements.map(item => item.commandCode).sort(),
-    endpointIdentities: analysis.requirements
-      .map(item => `${item.endpoint.method} ${item.endpoint.path}`)
-      .sort(),
+    endpointIdentities: Array.from(
+      new Set(
+        analysis.requirements.map(
+          item => `${item.endpoint.method} ${item.endpoint.path}`,
+        ),
+      ),
+    ).sort(codePointCompare),
     actorCodes: analysis.actorDefinitions.map(item => item.actorCode).sort(),
   };
   const hashBound = {
@@ -618,7 +673,7 @@ export const buildRequirementDesignContract = ({
       'RECOVERY_EVIDENCE',
     ],
   };
-  const contentSha256 = digest(canonicalJson(hashBound));
+  const contentSha256 = requirementContractSha256(hashBound);
   return {
     ...hashBound,
     designVersion,

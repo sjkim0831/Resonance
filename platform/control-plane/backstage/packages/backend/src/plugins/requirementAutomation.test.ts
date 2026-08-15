@@ -1,7 +1,10 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import {
   analyzeRequirementText,
   buildRequirementDesignContract,
   decodeRequirementDocument,
+  requirementContractSha256,
   type RequirementAnalysis,
 } from './requirementAutomation';
 
@@ -37,7 +40,68 @@ const prepare = (
 const clone = (analysis: RequirementAnalysis) =>
   JSON.parse(JSON.stringify(analysis)) as RequirementAnalysis;
 
+const crossLanguageFixture = JSON.parse(
+  readFileSync(
+    resolve(
+      __dirname,
+      '../../../../../../../ops/tests/fixtures/requirement-design-cross-language-v1.json',
+    ),
+    'utf8',
+  ),
+) as {
+  input: {
+    projectId: string;
+    designVersion: number;
+    fileName: string;
+    documentSlot: string;
+    requirementText: string;
+  };
+  contract: ReturnType<typeof buildRequirementDesignContract>;
+  contractSha256: string;
+};
+
 describe('requirement automation', () => {
+  it('matches the Java bridge golden contract and canonical SHA bytes', () => {
+    const input = crossLanguageFixture.input;
+    const document = decodeRequirementDocument({
+      fileName: input.fileName,
+      extractedText: input.requirementText,
+      documentSlot: input.documentSlot,
+    });
+    const analysis = analyzeRequirementText(
+      input.projectId,
+      document.fileName,
+      document.text,
+      document.identity,
+    );
+    const contract = buildRequirementDesignContract({
+      projectId: input.projectId,
+      designVersion: input.designVersion,
+      document,
+      analysis,
+    });
+
+    expect(contract).toEqual(crossLanguageFixture.contract);
+    expect(requirementContractSha256(contract)).toBe(
+      crossLanguageFixture.contractSha256,
+    );
+    expect(contract.reconciliation.endpointIdentities).toEqual([
+      'POST /admin/api/system/actor-process/executions/{executionId}/commands',
+    ]);
+    expect(contract.process.steps).toHaveLength(2);
+    expect(
+      contract.workspaces.every(workspace =>
+        workspace.tabs.every(tab =>
+          tab.sections.every(
+            section =>
+              Boolean(section.sectionCode) &&
+              Boolean(section.componentType) &&
+              Number.isInteger(section.order),
+          ),
+        ),
+      ),
+    ).toBe(true);
+  });
   it('keeps logical process identity stable across content and file changes', () => {
     const first = prepare();
     const changed = prepare(
