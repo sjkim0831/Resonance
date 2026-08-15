@@ -407,6 +407,7 @@ class ScreenContractRuntimeServiceTest {
         source.put("responsiveContract", "360px, 768px, 1280px 검증");
         source.put("accessibilityContract", "KRDS 및 WCAG 2.1 AA");
         source.put("securityContract", "서버 권한 검증");
+        source.put("permissionCodes", "[]");
         source.put("apiVerified", true);
         source.put("databaseVerified", true);
         source.put("authorityVerified", true);

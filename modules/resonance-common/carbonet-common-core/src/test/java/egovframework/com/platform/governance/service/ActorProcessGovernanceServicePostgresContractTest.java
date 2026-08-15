@@ -79,11 +79,11 @@ class ActorProcessGovernanceServicePostgresContractTest {
         jdbc.update("insert into framework_process_step(process_code,step_code,actor_code) values('PROC','STEP','ACTOR')");
         contractId=jdbc.queryForObject("""
             insert into framework_professional_screen_contract(
-              process_code,step_code,audience,route_path,screen_name,business_purpose,
+              process_code,step_code,audience,route_path,screen_name,actor_code,permission_codes,business_purpose,
               entry_condition,exit_condition,section_contract,field_contract,command_contract,
               state_contract,api_contract,data_contract,evidence_contract,responsive_contract,
               accessibility_contract,security_contract)
-            values('PROC','STEP','USER','/screen','Screen','purpose','entry','exit',
+            values('PROC','STEP','USER','/screen','Screen','ACTOR','[]','purpose','entry','exit',
               '[{"sectionId":"WORK"}]','[{"fieldCode":"name"}]',
               '[{"commandCode":"SAVE"}]','[{"state":"READY"}]',
               '[{"method":"POST","path":"/api/items"}]','[{"entity":"item"}]',
@@ -220,6 +220,22 @@ class ActorProcessGovernanceServicePostgresContractTest {
     }
 
     @Test
+    void registeredButUngovernedLayoutCodeFailsClosed(){
+        jdbc.update("insert into framework_screen_resource(route_key,layout_type) values('/lower','lower-layout')");
+        jdbc.update("""
+            update framework_screen_blueprint
+               set specification_json='{"layout":"lower-layout","theme":"REGISTERED_THEME"}'
+            """);
+        String oldHash=sourceHash();
+
+        assertThrows(IllegalStateException.class,this::direct);
+
+        assertEquals(oldHash,sourceHash());
+        assertEquals(0,count("framework_development_job"));
+        assertEquals(0,count("framework_process_artifact"));
+    }
+
+    @Test
     void missingCodesUseExactRouteLayoutAndActiveKrdsDefaultTheme(){
         jdbc.update("update framework_screen_blueprint set specification_json='{}'");
 
@@ -276,6 +292,31 @@ class ActorProcessGovernanceServicePostgresContractTest {
         assertEquals("ALT_REGISTERED_THEME",jdbc.queryForObject(
             "select screen_contract->0->>'theme' from framework_step_execution_spec",String.class));
         assertEquals(1,count("framework_development_job"));
+    }
+
+    @Test
+    void permissionOnlyRevisionChangesBothHeadsAndReusesOneJob(){
+        Map<String,Object> first=direct();
+        long jobId=((Number)first.get("jobId")).longValue();
+        String oldDesignHash=String.valueOf(first.get("designHash"));
+        String oldSourceHash=String.valueOf(first.get("sourceHash"));
+
+        jdbc.update("update framework_professional_screen_contract set permission_codes='[\"SCREEN_WRITE\"]'::jsonb where contract_id=?",contractId);
+        String newDesignHash=designHash();
+        Map<String,Object> revision=direct();
+
+        assertNotEquals(oldDesignHash,newDesignHash);
+        assertEquals(newDesignHash,revision.get("designHash"));
+        assertNotEquals(oldSourceHash,revision.get("sourceHash"));
+        assertEquals(jobId,((Number)revision.get("jobId")).longValue());
+        assertEquals(1,number(revision,"jobCount"));
+        assertEquals(1,jdbc.queryForObject("""
+            select count(*) from framework_step_execution_spec spec
+            cross join lateral jsonb_array_elements(spec.actor_contract->'permissions') permission
+            where permission->>'permissionCode'='SCREEN_WRITE'
+              and permission->'guard'->>'actorCode'='ACTOR'
+              and permission->'resource'->>'routePath'='/screen'
+            """,Integer.class));
     }
 
     @Test
@@ -485,7 +526,8 @@ class ActorProcessGovernanceServicePostgresContractTest {
         jdbc.execute("""
             create table framework_professional_screen_contract(
               contract_id bigserial primary key,process_code text not null,step_code text not null,
-              audience text not null,route_path text not null,screen_name text,business_purpose text,
+              audience text not null,route_path text not null,screen_name text,actor_code text not null,
+              permission_codes jsonb not null default '[]',business_purpose text,
               entry_condition text,exit_condition text,section_contract text,field_contract text,
               command_contract text,state_contract text,api_contract text,data_contract text,
               evidence_contract text,responsive_contract text,accessibility_contract text,
@@ -514,17 +556,37 @@ class ActorProcessGovernanceServicePostgresContractTest {
         jdbc.execute("""
             create function framework_step_permission_requirements(requested_process text,requested_step text)
             returns jsonb language sql stable as $$
+              with requirements as (
+                select 0 source_order,permission_code,scope_type,
+                       resource_contract resource_value,guard_contract guard_value
+                  from framework_permission_requirement_v1
+                 where process_code=requested_process and step_code=requested_step and use_at='Y'
+                union all
+                select 1,upper(permission.value),'PROJECT',
+                       jsonb_build_object('routePath',lower(split_part(route_path,'?',1)),
+                         'audience',upper(audience),'contractId',contract_id),
+                       jsonb_build_object('actorCode',upper(actor_code),
+                         'source','PROFESSIONAL_SCREEN_CONTRACT')
+                  from framework_professional_screen_contract contract
+                  cross join lateral jsonb_array_elements_text(permission_codes) permission(value)
+                 where process_code=requested_process and step_code=requested_step
+                   and not exists(select 1 from framework_permission_requirement_v1 normalized
+                     where normalized.process_code=requested_process
+                       and normalized.step_code=requested_step
+                       and normalized.permission_code=upper(permission.value)
+                       and normalized.scope_type='PROJECT' and normalized.use_at='Y')
+              )
               select coalesce(jsonb_agg(jsonb_build_object(
                 'permissionCode',permission_code,'scope',scope_type,
-                'resource',resource_contract,'guard',guard_contract)
-                order by permission_code,scope_type),'[]'::jsonb)
-                from framework_permission_requirement_v1
-               where process_code=requested_process and step_code=requested_step and use_at='Y'
+                'resource',resource_value,'guard',guard_value)
+                order by source_order,permission_code,scope_type),'[]'::jsonb)
+                from requirements
             $$
             """);
         jdbc.execute("""
             create function framework_authorize_step_permissions(
-              requested_process text,requested_step text,requested_actor text)
+              requested_process text,requested_step text,requested_actor text,
+              requested_route text,requested_audience text)
             returns boolean language sql stable as $$
               select not exists(
                 select 1 from framework_permission_requirement_v1 requirement
@@ -540,6 +602,38 @@ class ActorProcessGovernanceServicePostgresContractTest {
                        and allowed_grant.permission_code=requirement.permission_code
                        and allowed_grant.scope_type=requirement.scope_type
                        and allowed_grant.effect='ALLOW' and allowed_grant.use_at='Y')))
+                and not exists(
+                  select 1 from framework_professional_screen_contract contract
+                  cross join lateral jsonb_array_elements_text(permission_codes) permission(value)
+                 where contract.process_code=requested_process
+                   and contract.step_code=requested_step
+                   and not exists(select 1 from framework_permission_requirement_v1 normalized
+                     where normalized.process_code=requested_process
+                       and normalized.step_code=requested_step
+                       and normalized.permission_code=upper(permission.value)
+                       and normalized.scope_type='PROJECT' and normalized.use_at='Y')
+                   and (requested_route='' or (
+                     lower(split_part(contract.route_path,'?',1))=lower(split_part(requested_route,'?',1))
+                     and upper(contract.audience)=upper(requested_audience)))
+                   and (exists(select 1 from framework_permission_grant_v1 denied_grant
+                     where denied_grant.actor_code=requested_actor
+                       and denied_grant.permission_code=upper(permission.value)
+                       and denied_grant.scope_type='PROJECT'
+                       and denied_grant.effect='DENY' and denied_grant.use_at='Y')
+                     or (upper(contract.actor_code)<>requested_actor
+                       and not exists(select 1 from framework_permission_grant_v1 allowed_grant
+                         where allowed_grant.actor_code=requested_actor
+                           and allowed_grant.permission_code=upper(permission.value)
+                           and allowed_grant.scope_type='PROJECT'
+                           and allowed_grant.effect='ALLOW' and allowed_grant.use_at='Y'))))
+            $$
+            """);
+        jdbc.execute("""
+            create function framework_authorize_step_permissions(
+              requested_process text,requested_step text,requested_actor text)
+            returns boolean language sql stable as $$
+              select framework_authorize_step_permissions(
+                requested_process,requested_step,requested_actor,'','')
             $$
             """);
         jdbc.execute("create table framework_process_step(process_code text,step_code text,actor_code text,primary key(process_code,step_code))");
@@ -631,7 +725,8 @@ class ActorProcessGovernanceServicePostgresContractTest {
               if selected_count<>1 then raise exception 'CANONICAL_SCREEN_IDENTITY_NOT_EXACT'; end if;
               select encode(sha256(convert_to(concat_ws('|',b.blueprint_id,b.template_code,
                        b.specification_json,c.section_contract,c.field_contract,c.command_contract,
-                       c.state_contract,c.api_contract,c.data_contract,c.evidence_contract),'UTF8')),'hex')
+                       c.state_contract,c.api_contract,c.data_contract,c.evidence_contract,
+                       c.actor_code,c.permission_codes::text),'UTF8')),'hex')
                 into design_hash
                 from framework_screen_blueprint b
                 join framework_professional_screen_contract c

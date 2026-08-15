@@ -29,7 +29,7 @@ public class ScreenContractRuntimeService {
         "commandContract", "stateContract", "apiContract", "dataContract", "evidenceContract",
         "responsiveContract", "accessibilityContract", "securityContract", "apiVerified",
         "databaseVerified", "authorityVerified", "responsiveVerified", "accessibilityVerified",
-        "exceptionStatesVerified", "auditEvidenceRef", "contractStatus"
+        "exceptionStatesVerified", "auditEvidenceRef", "contractStatus", "permissionCodes"
     );
     private static final Set<String> PROFESSIONAL_CONTRACT_STATUSES = Set.of(
         "DRAFT", "REVIEW_REQUIRED", "DESIGN_COMPLETE", "APPROVED", "VERIFIED"
@@ -228,6 +228,7 @@ public class ScreenContractRuntimeService {
                    c.api_contract as "apiContract",c.data_contract as "dataContract",
                    c.evidence_contract as "evidenceContract",c.responsive_contract as "responsiveContract",
                    c.accessibility_contract as "accessibilityContract",c.security_contract as "securityContract",
+                   c.permission_codes::text as "permissionCodes",
                    c.api_verified as "apiVerified",c.database_verified as "databaseVerified",
                    c.authority_verified as "authorityVerified",c.responsive_verified as "responsiveVerified",
                    c.accessibility_verified as "accessibilityVerified",
@@ -268,6 +269,7 @@ public class ScreenContractRuntimeService {
             "states", jsonValue(text(row, "stateContract"))));
         contract.put("permission", linkedMap(
             "actorCode", row.get("actorCode"), "audience", row.get("audience"),
+            "permissionCodes", jsonValue(text(row,"permissionCodes")),
             "security", row.get("securityContract")));
         contract.put("test", linkedMap(
             "evidence", jsonValue(text(row, "evidenceContract")),

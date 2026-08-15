@@ -556,7 +556,7 @@ public class ActorProcessGovernanceService {
         List<Map<String,Object>> fields=jdbc.queryForList("select data_element_code as \"dataElementCode\",field_code as \"fieldCode\",field_name as \"fieldName\",control_type as \"controlType\",api_property as \"apiProperty\",source_table as \"sourceTable\",source_column as \"sourceColumn\",required as \"required\",lineage_status as \"lineageStatus\" from framework_screen_data_binding where screen_resource_id=? order by data_element_code,field_code",screenId);
         List<Map<String,Object>> stepFields=jdbc.queryForList("select spec.process_code as \"processCode\",spec.step_code as \"stepCode\",field->>'fieldCode' as \"fieldCode\",field->>'fieldName' as \"fieldName\",field->>'fieldGroup' as \"fieldGroup\",coalesce((field->>'fieldOrder')::int,0) as \"fieldOrder\",field->>'controlType' as \"controlType\",field->>'apiProperty' as \"apiProperty\",field->>'sourceTable' as \"sourceTable\",field->>'sourceColumn' as \"sourceColumn\",coalesce((field->>'required')::boolean,false) as \"required\",field->>'mappingStatus' as \"lineageStatus\",field->>'dataType' as \"dataType\",field->'validation' as \"validation\" from framework_step_execution_spec spec cross join lateral jsonb_array_elements(coalesce(spec.field_contract->'fields','[]'::jsonb)) field where exists(select 1 from framework_process_step_screen_binding b where b.screen_resource_id=? and b.process_code=spec.process_code and b.step_code=spec.step_code and b.binding_status='ACTIVE') and lower(split_part(field->>'route','?',1))=(select route_key from framework_screen_resource where screen_resource_id=?) order by spec.process_code,spec.step_code,coalesce((field->>'fieldOrder')::int,0),field->>'fieldCode'",screenId,screenId);
         List<Map<String,Object>> tests=jdbc.queryForList("select distinct b.process_code as \"processCode\",b.step_code as \"stepCode\",t.case_code as \"caseCode\",t.case_name as \"caseName\",t.case_type as \"caseType\",t.case_status as \"caseStatus\" from framework_process_step_screen_binding b join framework_step_test_binding x on x.process_code=b.process_code and x.step_code=b.step_code join framework_simulation_case t on t.case_code=x.case_code where b.screen_resource_id=? and b.binding_status='ACTIVE' order by b.process_code,b.step_code,t.case_type,t.case_code",screenId);
-        List<Map<String,Object>> contracts=jdbc.queryForList("select contract_id as \"contractId\",process_code as \"processCode\",step_code as \"stepCode\",audience,route_path as \"routePath\",screen_name as \"screenName\",actor_code as \"actorCode\",business_purpose as \"businessPurpose\",entry_condition as \"entryCondition\",exit_condition as \"exitCondition\",kpi_contract as \"kpiContract\",section_contract as \"sectionContract\",field_contract as \"fieldContract\",command_contract as \"commandContract\",state_contract as \"stateContract\",api_contract as \"apiContract\",data_contract as \"dataContract\",evidence_contract as \"evidenceContract\",responsive_contract as \"responsiveContract\",accessibility_contract as \"accessibilityContract\",security_contract as \"securityContract\",api_verified as \"apiVerified\",database_verified as \"databaseVerified\",authority_verified as \"authorityVerified\",responsive_verified as \"responsiveVerified\",accessibility_verified as \"accessibilityVerified\",exception_states_verified as \"exceptionStatesVerified\",audit_evidence_ref as \"auditEvidenceRef\",contract_status as \"contractStatus\" from framework_professional_screen_contract where lower(split_part(route_path,'?',1))=(select route_key from framework_screen_resource where screen_resource_id=?) order by process_code,step_code,audience,contract_id",screenId);
+        List<Map<String,Object>> contracts=jdbc.queryForList("select contract_id as \"contractId\",process_code as \"processCode\",step_code as \"stepCode\",audience,route_path as \"routePath\",screen_name as \"screenName\",actor_code as \"actorCode\",permission_codes::text as \"permissionCodes\",business_purpose as \"businessPurpose\",entry_condition as \"entryCondition\",exit_condition as \"exitCondition\",kpi_contract as \"kpiContract\",section_contract as \"sectionContract\",field_contract as \"fieldContract\",command_contract as \"commandContract\",state_contract as \"stateContract\",api_contract as \"apiContract\",data_contract as \"dataContract\",evidence_contract as \"evidenceContract\",responsive_contract as \"responsiveContract\",accessibility_contract as \"accessibilityContract\",security_contract as \"securityContract\",api_verified as \"apiVerified\",database_verified as \"databaseVerified\",authority_verified as \"authorityVerified\",responsive_verified as \"responsiveVerified\",accessibility_verified as \"accessibilityVerified\",exception_states_verified as \"exceptionStatesVerified\",audit_evidence_ref as \"auditEvidenceRef\",contract_status as \"contractStatus\" from framework_professional_screen_contract where lower(split_part(route_path,'?',1))=(select route_key from framework_screen_resource where screen_resource_id=?) order by process_code,step_code,audience,contract_id",screenId);
         List<Map<String,Object>> assets=jdbc.queryForList("select a.asset_layer as \"assetLayer\",a.asset_ref as \"assetRef\",a.management_route as \"managementRoute\",a.decision,a.evidence_ref as \"evidenceRef\",a.protected as \"protected\" from framework_screen_asset_assembly a join framework_professional_screen_contract c using(contract_id) where lower(split_part(c.route_path,'?',1))=(select route_key from framework_screen_resource where screen_resource_id=?) order by a.asset_layer,a.asset_ref",screenId);
         List<Map<String,Object>> blueprints=jdbc.queryForList("""
             with candidates as materialized (
@@ -2387,7 +2387,8 @@ public class ActorProcessGovernanceService {
                          where jsonb_typeof(item)<>'object')
                        and not exists(select 1 from jsonb_array_elements(data_contract) item
                          where jsonb_typeof(item)<>'object')
-                       and layout_code is not null and theme_code is not null
+                       and layout_code~'^[A-Z][A-Z0-9_]{1,79}$'
+                       and theme_code~'^[A-Z][A-Z0-9_]{1,79}$'
                        and template_code~'^[A-Z][A-Z0-9_:-]{1,119}$') complete_count
                 from contract_source
             ), screens as (
@@ -3053,6 +3054,8 @@ public class ActorProcessGovernanceService {
             if(registered==null||registered!=1)
                 throw new IllegalArgumentException("REGISTERED_LAYOUT_REQUIRED: "+layout);
         }
+        if(!layout.matches("[A-Z][A-Z0-9_]{1,79}"))
+            throw new IllegalArgumentException("GOVERNED_LAYOUT_CODE_REQUIRED: "+layout);
         String theme=(body.containsKey("theme")
             ?str(body,"theme"):String.valueOf(current.getOrDefault("theme",""))).trim();
         if(theme.isBlank())theme="KRDS_GOV_DEFAULT";
@@ -3061,6 +3064,8 @@ public class ActorProcessGovernanceService {
             Integer.class,theme);
         if(registeredTheme==null||registeredTheme!=1)
             throw new IllegalArgumentException("ACTIVE_REGISTERED_THEME_REQUIRED: "+theme);
+        if(!theme.matches("[A-Z][A-Z0-9_]{1,79}"))
+            throw new IllegalArgumentException("GOVERNED_THEME_CODE_REQUIRED: "+theme);
 
         boolean changed=!layout.equals(String.valueOf(current.getOrDefault("layout","")))
             ||!theme.equals(String.valueOf(current.getOrDefault("theme","")));
@@ -3245,12 +3250,12 @@ public class ActorProcessGovernanceService {
         long id=((Number)values.get("contractId")).longValue();
         Map<String,Object> readiness=professionalContractReadiness(id,values);
         Map<String,Object> gate=previewProfessionalScreenDesignGate(id,values);
-        int updated=jdbc.update("update framework_professional_screen_contract set business_purpose=?,entry_condition=?,exit_condition=?,kpi_contract=?,section_contract=?,field_contract=?,command_contract=?,state_contract=?,api_contract=?,data_contract=?,evidence_contract=?,responsive_contract=?,accessibility_contract=?,security_contract=?,api_verified=?,database_verified=?,authority_verified=?,responsive_verified=?,accessibility_verified=?,exception_states_verified=?,audit_evidence_ref=?,contract_status=?,updated_by=?,updated_at=current_timestamp where contract_id=?",
+        int updated=jdbc.update("update framework_professional_screen_contract set business_purpose=?,entry_condition=?,exit_condition=?,kpi_contract=?,section_contract=?,field_contract=?,command_contract=?,state_contract=?,api_contract=?,data_contract=?,evidence_contract=?,responsive_contract=?,accessibility_contract=?,security_contract=?,permission_codes=?::jsonb,api_verified=?,database_verified=?,authority_verified=?,responsive_verified=?,accessibility_verified=?,exception_states_verified=?,audit_evidence_ref=?,contract_status=?,updated_by=?,updated_at=current_timestamp where contract_id=?",
             values.get("businessPurpose"),values.get("entryCondition"),values.get("exitCondition"),
             values.get("kpiContract"),values.get("sectionContract"),values.get("fieldContract"),
             values.get("commandContract"),values.get("stateContract"),values.get("apiContract"),
             values.get("dataContract"),values.get("evidenceContract"),values.get("responsiveContract"),
-            values.get("accessibilityContract"),values.get("securityContract"),values.get("apiVerified"),
+            values.get("accessibilityContract"),values.get("securityContract"),values.get("permissionCodes"),values.get("apiVerified"),
             values.get("databaseVerified"),values.get("authorityVerified"),values.get("responsiveVerified"),
             values.get("accessibilityVerified"),values.get("exceptionStatesVerified"),values.get("auditEvidenceRef"),
             values.get("contractStatus"),actor,id);
@@ -3358,6 +3363,7 @@ public class ActorProcessGovernanceService {
         arrays.put("dataContract",def(b,"dataContract","[]"));
         arrays.put("evidenceContract",def(b,"evidenceContract","[]"));
         arrays.forEach((field,value)->{validateJsonArray(value,field);values.put(field,value);});
+        values.put("permissionCodes",normalizePermissionCodes(def(b,"permissionCodes","[]")));
         values.put("responsiveContract",def(b,"responsiveContract","360px, 768px, 1280px 검증"));
         values.put("accessibilityContract",def(b,"accessibilityContract","KRDS 및 WCAG 2.1 AA"));
         values.put("securityContract",def(b,"securityContract","테넌트·프로젝트·액터 권한 서버 검증"));
@@ -4094,7 +4100,7 @@ public class ActorProcessGovernanceService {
         if(!requiredActor.equals(actor))throw new SecurityException("첫 단계 수행 액터는 "+requiredActor+"입니다.");
         String step=String.valueOf(first.get("step_code"));
         requireActorAssignment(tenant,project,actor,user);
-        requireStepPermissionGrants(process,step,actor);
+        requireStepPermissionGrants(process,step,actor,str(b,"routePath"),str(b,"audience"));
         List<Map<String,Object>> running=jdbc.queryForList("select execution_id as \"executionId\",current_step_code as \"currentStepCode\",current_state as \"currentState\",cycle_type as \"cycleType\",period_start as \"periodStart\",period_end as \"periodEnd\",execution_version as \"executionVersion\",handoff_status as \"handoffStatus\" from framework_process_execution where tenant_id=? and project_id=? and process_code=? and cycle_type=? and period_start is not distinct from nullif(?,'')::date and period_end is not distinct from nullif(?,'')::date and boundary_version=? and methodology_version=? and execution_version=? and execution_status='RUNNING'",tenant,project,process,cycleType,periodStart,periodEnd,boundaryVersion,methodologyVersion,executionVersion);
         if(!running.isEmpty())return Map.of("success",true,"created",false,"execution",running.get(0));
         UUID id=UUID.randomUUID();String state=String.valueOf(first.get("from_state"));
@@ -4128,7 +4134,7 @@ public class ActorProcessGovernanceService {
         Map<String,Object> execution=executions.get(0);
         if(!tenant.equals(String.valueOf(execution.get("tenant_id")))||!project.equals(String.valueOf(execution.get("project_id")))||!process.equals(String.valueOf(execution.get("process_code"))))throw new SecurityException("테넌트·프로젝트·프로세스 실행 문맥이 일치하지 않습니다.");
         requireActorAssignment(tenant,project,actor,user);
-        requireStepPermissionGrants(process,step,actor);
+        requireStepPermissionGrants(process,step,actor,str(b,"routePath"),str(b,"audience"));
         List<Map<String,Object>> existing=jdbc.queryForList("select event_id as \"eventId\",to_state as \"toState\" from framework_process_execution_event where execution_id=? and idempotency_key=?",executionId,key);
         if(!existing.isEmpty()){
             Map<String,Object> event=existing.get(0);
@@ -4753,11 +4759,17 @@ public class ActorProcessGovernanceService {
     }
 
     void requireStepPermissionGrants(String process,String step,String actor){
+        requireStepPermissionGrants(process,step,actor,"","");
+    }
+
+    void requireStepPermissionGrants(
+            String process,String step,String actor,String routePath,String audience){
         Boolean allowed=jdbc.queryForObject(
-            "select framework_authorize_step_permissions(?,?,?)",Boolean.class,
-            process,step,actor);
+            "select framework_authorize_step_permissions(?,?,?,?,?)",Boolean.class,
+            process,step,actor,routePath==null?"":routePath,audience==null?"":audience);
         if(!Boolean.TRUE.equals(allowed))throw new SecurityException(
-            "STEP_PERMISSION_DENIED: "+process+" / "+step+" / "+actor);
+            "STEP_PERMISSION_DENIED: "+process+" / "+step+" / "+actor+
+                " / "+(routePath==null?"":routePath)+" / "+(audience==null?"":audience));
     }
 
     @Transactional public Map<String,Object> manageQaProcessExecution(Map<String,Object>b,String user){
@@ -6159,6 +6171,27 @@ public class ActorProcessGovernanceService {
     private static int integer(Map<String,Object>b,String k){try{return Integer.parseInt(req(b,k));}catch(Exception e){throw new IllegalArgumentException(k+" must be a number");}}
     private static int integerOr(Map<String,Object>b,String k,int d){String v=str(b,k);if(v.isEmpty())return d;try{return Integer.parseInt(v);}catch(Exception e){throw new IllegalArgumentException(k+" must be a number");}}
     private static String auditTargetPart(Object value){return value==null?"#":String.valueOf(value);}
+    private static String normalizePermissionCodes(String value){
+        try{
+            com.fasterxml.jackson.databind.JsonNode parsed=
+                new com.fasterxml.jackson.databind.ObjectMapper().readTree(value);
+            if(!parsed.isArray())throw new IllegalArgumentException(
+                "permissionCodes must be a JSON array");
+            java.util.SortedSet<String> codes=new java.util.TreeSet<>();
+            for(com.fasterxml.jackson.databind.JsonNode item:parsed){
+                if(!item.isTextual())throw new IllegalArgumentException(
+                    "permissionCodes must contain strings only");
+                String code=item.textValue();
+                if(!code.matches("[A-Z][A-Z0-9_:-]{1,119}"))
+                    throw new IllegalArgumentException("invalid permissionCode: "+code);
+                if(!codes.add(code))throw new IllegalArgumentException(
+                    "duplicate permissionCode: "+code);
+            }
+            return toJson(codes);
+        }catch(com.fasterxml.jackson.core.JsonProcessingException e){
+            throw new IllegalArgumentException("permissionCodes must be valid JSON",e);
+        }
+    }
     private static void validateJsonObject(String value,String field){try{if(!new com.fasterxml.jackson.databind.ObjectMapper().readTree(value).isObject())throw new IllegalArgumentException(field+" must be a JSON object");}catch(com.fasterxml.jackson.core.JsonProcessingException e){throw new IllegalArgumentException(field+" must be valid JSON",e);}}
     private static void validateJsonArray(String value,String field){try{if(!new com.fasterxml.jackson.databind.ObjectMapper().readTree(value).isArray())throw new IllegalArgumentException(field+" must be a JSON array");}catch(com.fasterxml.jackson.core.JsonProcessingException e){throw new IllegalArgumentException(field+" must be valid JSON",e);}}
     private static String toJson(Object value){try{return new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(value==null?Map.of():value);}catch(Exception e){throw new IllegalArgumentException("configuration must be JSON serializable",e);}}

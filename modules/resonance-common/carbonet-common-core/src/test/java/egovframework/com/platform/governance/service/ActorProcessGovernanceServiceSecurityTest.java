@@ -46,6 +46,24 @@ class ActorProcessGovernanceServiceSecurityTest {
     }
 
     @Test
+    void professionalPermissionCodesAreCanonicalAndFailClosed(){
+        Map<String,Object> body=professionalContractBody();
+        body.put("permissionCodes","[\"Z_WRITE\",\"A_READ\"]");
+        assertEquals("[\"A_READ\",\"Z_WRITE\"]",
+            service.professionalScreenContractInput(body).get("permissionCodes"));
+
+        body.put("permissionCodes","[\"lower-case\"]");
+        assertThrows(IllegalArgumentException.class,
+            ()->service.professionalScreenContractInput(body));
+        body.put("permissionCodes","[\"A_READ\",\"A_READ\"]");
+        assertThrows(IllegalArgumentException.class,
+            ()->service.professionalScreenContractInput(body));
+        body.put("permissionCodes","[{\"code\":\"A_READ\"}]");
+        assertThrows(IllegalArgumentException.class,
+            ()->service.professionalScreenContractInput(body));
+    }
+
+    @Test
     void professionalScreenContractPreviewPredictsWithoutCanonicalSaveOrMutationSql() {
         Map<String,Object> body=new LinkedHashMap<>();
         body.put("contractId","26");
@@ -94,6 +112,17 @@ class ActorProcessGovernanceServiceSecurityTest {
         assertEquals(false,preview.get("committed"));
         assertEquals("READ_ONLY_PREDICTION",preview.get("mutationScope"));
         assertEquals("NO_MUTATION_REQUIRED",preview.get("rollbackMode"));
+    }
+
+    private static Map<String,Object> professionalContractBody(){
+        Map<String,Object> body=new LinkedHashMap<>();
+        body.put("contractId","26");body.put("businessPurpose","purpose");
+        body.put("entryCondition","entry");body.put("exitCondition","exit");
+        body.put("sectionContract","[]");body.put("fieldContract","[]");
+        body.put("commandContract","[]");body.put("stateContract","[]");
+        body.put("apiContract","[]");body.put("dataContract","[]");
+        body.put("evidenceContract","[]");
+        return body;
     }
 
     @Test
