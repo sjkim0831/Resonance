@@ -61,7 +61,10 @@ def catalog():
     canonical = {"identity": {"screenKey": screen_key, "blueprintCode": "ACTIVITY_PLAN_USER",
         "processCode": "ACTIVITY_DATA", "stepCode": "ACTIVITY_DATA_01_PLAN", "audience": "USER",
         "routePath": "/activity/plan", "pageId": "activity-plan", "actorCode": "ACTIVITY_MANAGER"},
-        "process": {}, "step": {"commandCode": "COMPLETE"}, "lanes": {}}
+        "process": {}, "step": {"commandCode": "COMPLETE"}, "lanes": {
+            "DESIGN_CARD": {"permissionCodes": ["ACTIVITY_PLAN_VIEW"]},
+            "FRONTEND": {"permissionCodes": ["ACTIVITY_PLAN_VIEW"]},
+        }}
     canonical_text = stable(canonical)
     design_hash = sha(canonical_text)
     contract = {"screenKey": screen_key, "routePath": "/activity/plan", "audience": "USER",
@@ -143,6 +146,8 @@ class GeneratorTest(unittest.TestCase):
                           '"ACCESS_DENIED"', '"INTERNAL_ERROR"',
                           "Response contract mismatch",
                           'payload.put("requireDraft",true)',
+                          'payload.put("routePath","/activity/plan")',
+                          'payload.put("audience","USER")',
                           "catch(IllegalArgumentException | IllegalStateException invalid)",
                           "catch(Exception unexpected)",
                           "Request serialization failed"):
@@ -175,8 +180,8 @@ class GeneratorTest(unittest.TestCase):
     def test_layout_command_actor_and_api_mutations_change_exact_endpoint_sources(self):
         mutation_cases = {
             "layout": (
-                lambda canonical, operation: canonical["lanes"].update({
-                    "FRONTEND": {"sections": ["TASK_CONTEXT", "TASK_REVIEW_GRID", "TASK_HANDOFF"]}
+                lambda canonical, operation: canonical["lanes"]["FRONTEND"].update({
+                    "sections": ["TASK_CONTEXT", "TASK_REVIEW_GRID", "TASK_HANDOFF"]
                 }),
                 None,
             ),
@@ -285,10 +290,78 @@ class GeneratorTest(unittest.TestCase):
             )
             self.assertIn(runtime_call, controller)
             self.assertNotIn("request.userId()", controller)
-            self.assertLess(
-                controller.index('payload.put("processCode","ACTIVITY_DATA")'),
-                controller.index(runtime_call),
+            authority_context = (
+                'payload.put("processCode","ACTIVITY_DATA")',
+                'payload.put("stepCode","ACTIVITY_DATA_01_PLAN")',
+                'payload.put("routePath","/activity/plan")',
+                'payload.put("audience","USER")',
             )
+            for exact_context in authority_context:
+                self.assertEqual(1, controller.count(exact_context))
+                self.assertLess(controller.index(exact_context), controller.index(runtime_call))
+            self.assertNotIn("request.routePath()", controller)
+            self.assertNotIn("request.audience()", controller)
+
+    def test_permission_codes_mutation_changes_design_endpoint_bundle_and_all_sources(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            baseline_out = root / "baseline"
+            baseline_value = catalog()
+            baseline_result = self.run_generator(baseline_value, baseline_out)
+            self.assertEqual(0, baseline_result.returncode, baseline_result.stderr)
+            baseline_manifest = json.loads((baseline_out / "manifest.json").read_text())
+            baseline_sources = {
+                str(path.relative_to(baseline_out)): path.read_bytes()
+                for path in baseline_out.rglob("*.java")
+            }
+
+            mutated_value = catalog()
+            endpoint = mutated_value["endpoints"][0]
+            canonical = json.loads(endpoint["canonicalText"])
+            canonical["lanes"]["DESIGN_CARD"]["permissionCodes"] = [
+                "ACTIVITY_PLAN_COMPLETE"
+            ]
+            canonical["lanes"]["FRONTEND"]["permissionCodes"] = [
+                "ACTIVITY_PLAN_COMPLETE"
+            ]
+            endpoint["canonicalText"] = stable(canonical)
+            endpoint["designHash"] = sha(endpoint["canonicalText"])
+            endpoint["endpointContract"]["source"]["designHash"] = endpoint["designHash"]
+            refresh(mutated_value)
+
+            mutated_out = root / "mutated"
+            mutated_result = self.run_generator(mutated_value, mutated_out)
+            self.assertEqual(0, mutated_result.returncode, mutated_result.stderr)
+            mutated_manifest = json.loads((mutated_out / "manifest.json").read_text())
+            mutated_sources = {
+                str(path.relative_to(mutated_out)): path.read_bytes()
+                for path in mutated_out.rglob("*.java")
+            }
+
+            self.assertNotEqual(
+                baseline_value["endpoints"][0]["designHash"], endpoint["designHash"])
+            self.assertNotEqual(
+                baseline_value["endpoints"][0]["endpointHash"], endpoint["endpointHash"])
+            persisted_canonical = json.loads(endpoint["canonicalText"])
+            self.assertEqual(
+                ["ACTIVITY_PLAN_COMPLETE"],
+                persisted_canonical["lanes"]["DESIGN_CARD"]["permissionCodes"],
+            )
+            self.assertEqual(
+                ["ACTIVITY_PLAN_COMPLETE"],
+                persisted_canonical["lanes"]["FRONTEND"]["permissionCodes"],
+            )
+            self.assertNotEqual(baseline_manifest["bundleHash"], mutated_manifest["bundleHash"])
+            self.assertEqual(set(baseline_sources), set(mutated_sources))
+            self.assertEqual(
+                set(baseline_sources),
+                {path for path in baseline_sources if baseline_sources[path] != mutated_sources[path]},
+            )
+            self.assertEqual(endpoint["designHash"], mutated_manifest["operations"][0]["designHash"])
+            self.assertEqual(endpoint["endpointHash"], mutated_manifest["operations"][0]["endpointHash"])
+            for artifact in mutated_manifest["artifacts"]:
+                self.assertEqual(endpoint["designHash"], artifact["designHash"])
+                self.assertEqual(endpoint["endpointHash"], artifact["endpointHash"])
 
     def test_manifest_operation_removal_mismatch_and_duplicate_fail_closed(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -315,6 +388,7 @@ class GeneratorTest(unittest.TestCase):
             lambda v: v["endpoints"][0]["endpointContract"]["operations"][0].update(path="/api/{executionId}/{other}"),
             lambda v: v["endpoints"][0]["endpointContract"]["operations"][0].update(path="/api/../{executionId}"),
             lambda v: v["endpoints"][0]["endpointContract"]["operations"][0]["authority"].update(authenticated=False),
+            lambda v: v["endpoints"][0]["endpointContract"]["operations"][0]["authority"].update(audience="ADMIN"),
             lambda v: v["endpoints"][0]["endpointContract"]["operations"][0]["authority"].update(actorCodes=["OTHER_ACTOR"]),
             lambda v: v["endpoints"][0]["endpointContract"]["operations"][0].update(persistence=[]),
             lambda v: v["endpoints"][0]["endpointContract"]["operations"][0].update(transactionPolicy="NONE"),
@@ -323,6 +397,8 @@ class GeneratorTest(unittest.TestCase):
             lambda v: v["endpoints"][0]["endpointContract"]["operations"][0]["request"]["schema"]["properties"].pop("tenantId"),
             lambda v: v["endpoints"][0]["endpointContract"]["operations"][0]["request"]["schema"]["properties"].update({"class": {"type": "string"}}),
             lambda v: v["endpoints"][0]["endpointContract"]["operations"][0]["request"]["schema"]["properties"].update({"requireDraft": {"type": "boolean"}}),
+            lambda v: v["endpoints"][0]["endpointContract"]["operations"][0]["request"]["schema"]["properties"].update({"routePath": {"type": "string"}}),
+            lambda v: v["endpoints"][0]["endpointContract"]["operations"][0]["request"]["schema"]["properties"].update({"audience": {"type": "string"}}),
             lambda v: v["endpoints"][0]["endpointContract"]["operations"][0]["persistence"].update(sql="delete from anything"),
             lambda v: v["endpoints"][0]["endpointContract"]["operations"][0]["rollback"].update(strategy="NONE"),
             lambda v: v["endpoints"][0].update(designHash="f" * 64),
@@ -335,6 +411,12 @@ class GeneratorTest(unittest.TestCase):
             lambda v: v["endpoints"][0]["endpointContract"]["operations"][0]["persistence"].update(entity="activity_plan"),
             lambda v: v["endpoints"][0]["endpointContract"]["operations"][0]["rollback"].update(strategy="COMPENSATING"),
             lambda v: v["endpoints"][0]["endpointContract"]["operations"][0]["rollback"].update(commandCode="ROLLBACK"),
+            lambda v: v["endpoints"][0].pop("routePath"),
+            lambda v: v["endpoints"][0].pop("audience"),
+            lambda v: v["endpoints"][0].update(routePath="/activity/other"),
+            lambda v: v["endpoints"][0].update(audience="ADMIN"),
+            lambda v: v["endpoints"][0]["endpointContract"].pop("routePath"),
+            lambda v: v["endpoints"][0]["endpointContract"].pop("audience"),
         ):
             value = catalog(); mutate(value)
             mutations.append(refresh(value))

@@ -48,7 +48,7 @@ RUNTIME_PERSISTENCE = {
 }
 RESERVED_FIELDS = RUNTIME_FIELDS | {
     "executionId", "processCode", "stepCode", "commandCode", "requestJson", "resultJson",
-    "requireDraft",
+    "requireDraft", "routePath", "audience",
 }
 JAVA_KEYWORDS = {
     "abstract", "assert", "boolean", "break", "byte", "case", "catch", "char",
@@ -297,6 +297,8 @@ public final class {name}Controller {{
         payload.put("processCode",{json.dumps(operation['processCode'])});
         payload.put("stepCode",{json.dumps(operation['stepCode'])});
         payload.put("commandCode",{json.dumps(operation['commandCode'])});
+        payload.put("routePath",{json.dumps(screen['routePath'])});
+        payload.put("audience",{json.dumps(screen['audience'])});
         payload.put("requireDraft",true);
         var business=new java.util.LinkedHashMap<String,Object>();
 {business_lines}
