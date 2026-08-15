@@ -818,6 +818,8 @@ class ActorProcessGovernanceServiceSecurityTest {
         assertTrue(sql.getValue().contains("j.lease_until<=current_timestamp"));
         assertFalse("expired-token".equals(result.get("leaseToken")));
         UUID.fromString(String.valueOf(result.get("leaseToken")));
+    }
+
     @Test
     void startPermissionDenialHappensBeforeExecutionMutation() {
         when(jdbc.queryForList(argThat(sql -> sql != null
