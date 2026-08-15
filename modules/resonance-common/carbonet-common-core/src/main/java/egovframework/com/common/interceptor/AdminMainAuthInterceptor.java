@@ -69,11 +69,6 @@ public class AdminMainAuthInterceptor implements HandlerInterceptor {
             deny(response);
             return false;
         }
-        // Unified-account mode: authentication is the only admin-console gate.
-        markCompanyScope(request, "ALLOW_AUTHENTICATED", "Authenticated unified account.",
-                resolveTargetInsttId(request, normalizeMenuUrl(requestUri)));
-        return true;
-        /*
         if (frameworkAuthorityPolicyService.isSystemMaster(authorCode)) {
             markCompanyScope(request, "ALLOW_MASTER", "System master bypassed company scope validation.",
                     resolveTargetInsttId(request, normalizeMenuUrl(requestUri)));
@@ -85,6 +80,13 @@ public class AdminMainAuthInterceptor implements HandlerInterceptor {
             return false;
         }
         if (ObjectUtils.isEmpty(normalizedMenuUrl)) {
+            return true;
+        }
+
+        // These operations are guarded again in ActorProcessGovernanceApiController.
+        // Their API paths do not have legacy menu-feature rows, so the local guard
+        // is the authoritative role check for this request.
+        if (isLocallyGuardedAdminOperation(request, normalizedMenuUrl)) {
             return true;
         }
 
@@ -120,7 +122,42 @@ public class AdminMainAuthInterceptor implements HandlerInterceptor {
             return false;
         }
         return true;
-        */
+    }
+
+    private boolean isLocallyGuardedAdminOperation(HttpServletRequest request, String normalizedMenuUrl) {
+        if (request == null || "GET".equalsIgnoreCase(request.getMethod())) {
+            return false;
+        }
+        String path = safeString(normalizedMenuUrl).toLowerCase(Locale.ROOT);
+        String prefix = "/admin/api/system/actor-process";
+        if (!path.startsWith(prefix)) {
+            return false;
+        }
+        String endpoint = path.substring(prefix.length());
+        return endpoint.equals("/actors")
+                || endpoint.equals("/work-types")
+                || endpoint.equals("/assignments")
+                || endpoint.equals("/processes")
+                || endpoint.equals("/steps")
+                || endpoint.equals("/design/save-and-generate")
+                || endpoint.equals("/design/validate")
+                || endpoint.equals("/design/generate-professional-graph")
+                || endpoint.equals("/development/plan")
+                || endpoint.equals("/development/bootstrap-process")
+                || endpoint.equals("/development/direct")
+                || endpoint.equals("/development/approve")
+                || endpoint.equals("/development/preflight")
+                || endpoint.equals("/generation/compile")
+                || endpoint.equals("/generation/compile-and-queue")
+                || endpoint.equals("/generation/adopt-existing")
+                || endpoint.equals("/generation/queue")
+                || endpoint.equals("/professional-screen-contracts")
+                || endpoint.equals("/professional-screen-contracts/preview")
+                || endpoint.equals("/professional-factory/execute")
+                || endpoint.equals("/professional-factory/evidence")
+                || endpoint.equals("/professional-factory/assemble-assets")
+                || endpoint.startsWith("/system-test-report/")
+                || endpoint.equals("/system-test-report");
     }
 
     private void redirectToLogin(HttpServletRequest request, HttpServletResponse response) throws Exception {
