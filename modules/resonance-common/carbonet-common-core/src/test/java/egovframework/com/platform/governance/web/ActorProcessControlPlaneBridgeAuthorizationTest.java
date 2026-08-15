@@ -227,26 +227,39 @@ class ActorProcessControlPlaneBridgeAuthorizationTest {
     void designDocumentMutationUsesAuthenticatedAdministratorAccount(){
         Map<String,Object> body=Map.of(
                 "processCode","PROCESS_A","documentType","API",
-                "title","API contract","content","POST /api/items",
-                "status","READY");
+                "title","API contract","content","{}",
+                "status","READY","revision",1);
         when(governance.isControlPlaneAdministrator("designer")).thenReturn(false);
 
-        var denied=controller.saveDesignDocument("secret-token","designer",body);
+        var denied=controller.saveDesignDocument(
+                "secret-token","designer","user:default/designer",body);
 
         assertEquals(403,denied.getStatusCode().value());
         verifyNoInteractions(jdbc);
 
         when(governance.isControlPlaneAdministrator("system-admin")).thenReturn(true);
-        when(jdbc.queryForObject(anyString(),eq(Long.class),any(Object[].class)))
-                .thenReturn(1L);
+        when(governance.saveIntegratedDesignDocument(body,"user:default/system-admin"))
+                .thenReturn(Map.of("success",true,"mutationKind","SOURCE_IMMEDIATE",
+                        "jobCount",1,"endpointExpected",1));
         var allowed=controller.saveDesignDocument(
-                "secret-token","system-admin",body);
+                "secret-token","system-admin","user:default/system-admin",body);
 
         assertEquals(200,allowed.getStatusCode().value());
-        verify(jdbc).update(org.mockito.ArgumentMatchers.argThat(sql->sql!=null
-                        &&sql.contains("insert into integrated_design_document")),
-                eq("PROCESS_A"),eq(""),eq(""),eq("API"),eq("API contract"),
-                eq("POST /api/items"),eq("READY"),eq("system-admin"));
+        verify(governance).saveIntegratedDesignDocument(
+                body,"user:default/system-admin");
+        verifyNoInteractions(jdbc);
+    }
+
+    @Test
+    void designDocumentMutationRequiresExactAuthenticatedActorAfterAdminCheck(){
+        when(governance.isControlPlaneAdministrator("system-admin")).thenReturn(true);
+
+        var denied=controller.saveDesignDocument(
+                "secret-token","system-admin","",Map.of());
+
+        assertEquals(403,denied.getStatusCode().value());
+        verify(governance,never()).saveIntegratedDesignDocument(any(),anyString());
+        verifyNoInteractions(jdbc);
     }
 
     @Test

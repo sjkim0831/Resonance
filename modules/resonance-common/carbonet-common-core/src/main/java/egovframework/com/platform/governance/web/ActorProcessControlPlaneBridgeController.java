@@ -627,10 +627,10 @@ public class ActorProcessControlPlaneBridgeController {
     }
 
     @PostMapping("/design-documents")
-    @Transactional
     public ResponseEntity<?> saveDesignDocument(
             @RequestHeader(value = "X-Resonance-Token", defaultValue = "") String suppliedToken,
             @RequestHeader(value = "X-Resonance-Account", defaultValue = "") String account,
+            @RequestHeader(value = "X-Resonance-Actor", defaultValue = "") String actor,
             @RequestBody Map<String, Object> body) {
         if (!authorized(suppliedToken)) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
@@ -641,37 +641,24 @@ public class ActorProcessControlPlaneBridgeController {
                     "success", false,
                     "message", "System administrator authority is required to save a design document."));
         }
-        String processCode = required(body, "processCode");
-        String stepCode = String.valueOf(body.getOrDefault("stepCode", "")).trim();
-        String routePath = String.valueOf(body.getOrDefault("routePath", "")).trim();
-        String documentType = required(body, "documentType").toUpperCase();
-        if (!DESIGN_DOCUMENT_TYPES.containsKey(documentType)) {
+        if(actor.isBlank()||!actor.equals(actor.trim())||actor.length()>100){
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of(
+                    "success",false,"message","Authenticated control-plane actor is required."));
+        }
+        try{
+            return ResponseEntity.ok(governance.saveIntegratedDesignDocument(body,actor));
+        }catch(SecurityException exception){
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of(
+                    "success",false,"message",exception.getMessage()));
+        }catch(IllegalArgumentException exception){
             return ResponseEntity.unprocessableEntity().body(Map.of(
-                    "success", false, "message", "Unsupported design document type."));
+                    "success",false,"sourceCommitted",false,"jobCount",0,
+                    "message",exception.getMessage()));
+        }catch(IllegalStateException exception){
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of(
+                    "success",false,"sourceCommitted",false,"jobCount",0,
+                    "message",exception.getMessage()));
         }
-        String title = String.valueOf(body.getOrDefault(
-                "title", DESIGN_DOCUMENT_TYPES.get(documentType))).trim();
-        String status = String.valueOf(body.getOrDefault("status", "DRAFT")).trim().toUpperCase();
-        if (!DESIGN_DOCUMENT_STATUSES.contains(status)) {
-            status = "DRAFT";
-        }
-        jdbc.update("""
-                insert into integrated_design_document(
-                  process_code,step_code,route_path,document_type,title,content,status,updated_by)
-                values(?,?,?,?,?,?,?,?)
-                on conflict(process_code,step_code,route_path,document_type) do update set
-                  title=excluded.title,content=excluded.content,status=excluded.status,
-                  active_yn='Y',updated_by=excluded.updated_by
-                """, processCode, stepCode, routePath, documentType, title,
-                String.valueOf(body.getOrDefault("content", "")), status, account);
-        Long revision = jdbc.queryForObject("""
-                select revision from integrated_design_document
-                 where process_code=? and step_code=? and route_path=? and document_type=?
-                """, Long.class, processCode, stepCode, routePath, documentType);
-        return ResponseEntity.ok(Map.of(
-                "success", true,
-                "documentType", documentType,
-                "revision", revision == null ? 0 : revision));
     }
 
     @GetMapping("/page-development-master")

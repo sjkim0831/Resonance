@@ -36,6 +36,7 @@ import {
 } from './designAssetSourceImmediate';
 import {
   bootstrapProjectDesignRoles,
+  canonicalProjectPrincipals,
   validateProjectDesignRoleAssignments,
 } from './projectDesignRoles';
 import {
@@ -803,9 +804,20 @@ export default createBackendPlugin({
             error.statusCode = 403;
             throw error;
           }
+          const systemAdministratorPrincipals = new Set(
+            canonicalProjectPrincipals([
+              'group:default/system-administrators',
+              ...String(
+                process.env.RESONANCE_SYSTEM_ADMIN_PRINCIPALS ?? '',
+              ).split(','),
+            ]),
+          );
           return {
             actorRef: String(user.userEntityRef).trim().toLowerCase(),
             principals,
+            systemAdministrator: principals.some(principal =>
+              systemAdministratorPrincipals.has(principal),
+            ),
           };
         };
         const resolveDesignAssetAccess = async (
@@ -4307,7 +4319,12 @@ export default createBackendPlugin({
           });
         });
 
-        registerProjectLifecycleRoutes({ router, knex, logger });
+        registerProjectLifecycleRoutes({
+          router,
+          knex,
+          logger,
+          resolveIdentity: resolveAuthenticatedProjectIdentity,
+        });
 
         await scheduler.scheduleTask({
           id: 'resonance-projects-receipt-reconciliation-v1',

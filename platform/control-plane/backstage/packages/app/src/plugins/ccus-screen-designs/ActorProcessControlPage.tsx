@@ -84,6 +84,24 @@ type DesignDocument = {
   updatedBy?: string;
   updatedAt?: string;
 };
+type DesignDocumentSaveReceipt = {
+  mutationKind?: 'SOURCE_IMMEDIATE' | 'NOTE_ONLY';
+  activationPolicy?: string;
+  sourceCommitted?: boolean;
+  generationQueued?: boolean;
+  jobCount?: number;
+  endpointExpected?: number;
+  status?: string;
+  message?: string;
+};
+const INTEGRATED_DESIGN_SOURCE_TYPES = new Set([
+  'AUTHORITY',
+  'PROCESS',
+  'ACTIVE_UI',
+  'DESIGN_ASSET',
+  'DATABASE',
+  'API',
+]);
 
 const TAB_COMMANDS: Record<string, TabCommand> = {
   actors: {
@@ -437,7 +455,7 @@ function WorkOperationsMap({
       stepCode: string;
       routePath: string;
     },
-  ) => Promise<void>;
+  ) => Promise<DesignDocumentSaveReceipt>;
 }) {
   const [detailTab, setDetailTab] = useState<
     'design' | 'data' | 'screen' | 'test' | 'task'
@@ -2166,7 +2184,7 @@ function DesignWorkbenchDialog({
       stepCode: string;
       routePath: string;
     },
-  ) => Promise<void>;
+  ) => Promise<DesignDocumentSaveReceipt>;
   onOpenTab: (tabId: string) => void;
 }) {
   const processCode = String(process?.processCode ?? '');
@@ -2204,7 +2222,7 @@ function DesignWorkbenchDialog({
     setBusy(true);
     setMessage('');
     try {
-      await saveDocument({
+      const receipt = await saveDocument({
         ...current,
         processCode,
         stepCode,
@@ -2212,7 +2230,11 @@ function DesignWorkbenchDialog({
       });
       const refreshed = await loadDocuments(processCode, stepCode, routePath);
       setDocuments(refreshed);
-      setMessage(`${current.title} 저장과 새 버전 생성을 완료했습니다.`);
+      setMessage(
+        receipt.mutationKind === 'SOURCE_IMMEDIATE'
+          ? `${current.title} SOURCE 즉시 반영 완료 · 정본 작업 ${receipt.jobCount ?? 0}개 · 엔드포인트 ${receipt.endpointExpected ?? 0}개 · ${receipt.status ?? 'QUEUED'}`
+          : `${current.title} 메모 버전을 저장했습니다. SOURCE·코드·엔드포인트는 변경하지 않았습니다.`,
+      );
     } catch (error) {
       setMessage(error instanceof Error ? error.message : String(error));
     } finally {
@@ -2314,7 +2336,11 @@ function DesignWorkbenchDialog({
                   minRows={16}
                   variant="outlined"
                   label="설계 내용"
-                  placeholder="목적, 액터, 선행조건, 입력, 처리 규칙, 출력, 예외, 완료 조건과 연결 화면을 구조적으로 기록합니다."
+                  placeholder={
+                    INTEGRATED_DESIGN_SOURCE_TYPES.has(current.documentType)
+                      ? '{\n  "schemaVersion": "carbonet.integrated-design-source/v1",\n  "contractId": 123,\n  "...": "선택 유형에 허용된 구조화 필드"\n}'
+                      : '검토 근거와 설계 메모를 기록합니다. 이 12종 메모는 SOURCE·코드·엔드포인트를 변경하지 않습니다.'
+                  }
                   value={current.content}
                   onChange={event =>
                     updateCurrent({ content: event.target.value })
@@ -2325,6 +2351,21 @@ function DesignWorkbenchDialog({
                   버전 {current.revision} · {current.updatedBy ?? '미저장'} ·{' '}
                   {current.updatedAt ?? '-'} · {current.content.length}자
                 </Typography>
+                <Box mt={1}>
+                  <Chip
+                    size="small"
+                    color={
+                      INTEGRATED_DESIGN_SOURCE_TYPES.has(current.documentType)
+                        ? 'primary'
+                        : 'default'
+                    }
+                    label={
+                      INTEGRATED_DESIGN_SOURCE_TYPES.has(current.documentType)
+                        ? '구조화 JSON → SOURCE 즉시 반영·정본 작업 1개'
+                        : 'NOTE_ONLY → 문서 버전만 저장'
+                    }
+                  />
+                </Box>
               </>
             ) : (
               <Typography variant="body2" color="textSecondary">
@@ -2407,7 +2448,11 @@ function DesignWorkbenchDialog({
           disabled={busy || !current}
           onClick={() => void save()}
         >
-          {busy ? '처리 중…' : '저장·버전 생성'}
+          {busy
+            ? '처리 중…'
+            : current && INTEGRATED_DESIGN_SOURCE_TYPES.has(current.documentType)
+            ? '저장·SOURCE 반영'
+            : '메모 버전 저장'}
         </Button>
       </DialogActions>
     </Dialog>
@@ -5874,10 +5919,11 @@ export function ActorProcessControlPage(props: {
           body: JSON.stringify(document),
         },
       );
-      const payload = (await response.json()) as { message?: string };
+      const payload = (await response.json()) as DesignDocumentSaveReceipt;
       if (!response.ok) {
         throw new Error(payload.message ?? '설계 문서 저장에 실패했습니다.');
       }
+      return payload;
     },
     [fetchApi],
   );

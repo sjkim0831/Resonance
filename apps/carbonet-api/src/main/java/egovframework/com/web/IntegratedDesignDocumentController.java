@@ -1,7 +1,9 @@
 package egovframework.com.web;
 
+import egovframework.com.platform.governance.service.ActorProcessGovernanceService;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -42,7 +44,12 @@ public class IntegratedDesignDocumentController {
     }
 
     private final JdbcTemplate jdbc;
-    public IntegratedDesignDocumentController(JdbcTemplate jdbc) { this.jdbc = jdbc; }
+    private final ActorProcessGovernanceService governance;
+    public IntegratedDesignDocumentController(
+            JdbcTemplate jdbc,ActorProcessGovernanceService governance) {
+        this.jdbc = jdbc;
+        this.governance = governance;
+    }
 
     @GetMapping
     public Map<String,Object> list(
@@ -73,31 +80,41 @@ public class IntegratedDesignDocumentController {
     }
 
     @PostMapping
-    @Transactional
-    public Map<String,Object> save(@RequestBody Map<String,Object> body, Principal principal) {
-        String processCode = required(body, "processCode");
-        String stepCode = text(body, "stepCode");
-        String routePath = text(body, "routePath");
-        String documentType = required(body, "documentType").toUpperCase();
-        if (!TYPES.containsKey(documentType)) throw new IllegalArgumentException("지원하지 않는 설계 문서 유형입니다.");
-        String title = text(body, "title");
-        if (title.isBlank()) title = TYPES.get(documentType);
-        String status = text(body, "status").toUpperCase();
-        if (!STATUSES.contains(status)) status = "DRAFT";
-        String actor = principal == null ? "SYSTEM" : principal.getName();
-        jdbc.update("""
-          INSERT INTO integrated_design_document(
-            process_code,step_code,route_path,document_type,title,content,status,updated_by)
-          VALUES(?,?,?,?,?,?,?,?)
-          ON CONFLICT(process_code,step_code,route_path,document_type) DO UPDATE SET
-            title=excluded.title,content=excluded.content,status=excluded.status,
-            active_yn='Y',updated_by=excluded.updated_by
-          """, processCode,stepCode,routePath,documentType,title,text(body,"content"),status,actor);
-        return Map.of("success", true, "documentType", documentType,
-                "revision", jdbc.queryForObject("""
-                  SELECT revision FROM integrated_design_document
-                   WHERE process_code=? AND step_code=? AND route_path=? AND document_type=?
-                  """, Long.class, processCode,stepCode,routePath,documentType));
+    public ResponseEntity<?> save(
+            @RequestBody Map<String,Object> body, Principal principal) {
+        String actor=principal==null?"":String.valueOf(principal.getName());
+        if(actor.isBlank())return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(Map.of("success",false,"message","Authentication is required."));
+        if(!actor.equals(actor.trim())||actor.length()>100)
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of(
+                    "success",false,"message","Authenticated actor identity is invalid."));
+        if(!governance.isControlPlaneAdministrator(actor))
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of(
+                    "success",false,
+                    "message","System administrator authority is required."));
+        String documentType=required(body,"documentType").toUpperCase();
+        if(!TYPES.containsKey(documentType))return ResponseEntity.unprocessableEntity()
+                .body(Map.of("success",false,"message","Unsupported design document type."));
+        Map<String,Object> canonicalBody=new LinkedHashMap<>(body);
+        canonicalBody.put("documentType",documentType);
+        if(text(canonicalBody,"title").isBlank())
+            canonicalBody.put("title",TYPES.get(documentType));
+        try{return ResponseEntity.ok(
+                governance.saveIntegratedDesignDocument(canonicalBody,actor));}
+        catch(SecurityException exception){
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of(
+                    "success",false,"sourceCommitted",false,"jobCount",0,
+                    "message",exception.getMessage()));
+        }
+        catch(IllegalArgumentException exception){
+            return ResponseEntity.unprocessableEntity().body(Map.of(
+                    "success",false,"sourceCommitted",false,"jobCount",0,
+                    "message",exception.getMessage()));
+        }catch(IllegalStateException exception){
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of(
+                    "success",false,"sourceCommitted",false,"jobCount",0,
+                    "message",exception.getMessage()));
+        }
     }
 
     private static String text(Map<String,Object> body, String key) {

@@ -45,6 +45,22 @@ public class ActorProcessGovernanceService {
     private static final Set<String> SOURCE_IMMEDIATE_DESIGN_ASSET_TYPES = Set.of(
         "THEME", "SECTION", "COMPONENT", "SCREEN"
     );
+    private static final String INTEGRATED_DESIGN_SOURCE_SCHEMA =
+        "carbonet.integrated-design-source/v1";
+    private static final Set<String> INTEGRATED_DESIGN_SOURCE_TYPES = Set.of(
+        "AUTHORITY", "PROCESS", "ACTIVE_UI", "DESIGN_ASSET", "DATABASE", "API"
+    );
+    private static final Map<String,Set<String>> INTEGRATED_DESIGN_SOURCE_FIELDS = Map.of(
+        "AUTHORITY",Set.of("permissionCodes","securityContract","authorityVerified"),
+        "PROCESS",Set.of("businessPurpose","entryCondition","exitCondition",
+            "commandContract","stateContract","evidenceContract",
+            "exceptionStatesVerified","auditEvidenceRef"),
+        "ACTIVE_UI",Set.of("sectionContract","fieldContract","responsiveContract",
+            "accessibilityContract","responsiveVerified","accessibilityVerified","layout"),
+        "DESIGN_ASSET",Set.of("sectionContract","layout","theme"),
+        "DATABASE",Set.of("dataContract","databaseVerified"),
+        "API",Set.of("apiContract","apiVerified")
+    );
     private final JdbcTemplate jdbc;
     private final ScreenDevelopmentNoteService screenDevelopmentNoteService;
     private final CodexProvisioningService codexProvisioningService;
@@ -444,6 +460,8 @@ public class ActorProcessGovernanceService {
 
     @Transactional
     public Map<String,Object> bindScreenProcessArchetype(Map<String,Object> body,String actor){
+        if(actor==null||actor.isBlank()||!actor.equals(actor.trim())||actor.length()>100)
+            throw new SecurityException("AUTHENTICATED_ACTOR_REQUIRED");
         String route=ScreenDevelopmentNoteService.cleanRoute(req(body,"routePath"));
         String archetype=req(body,"archetypeCode").trim().toUpperCase(Locale.ROOT);
         String role=def(body,"bindingRole","PRIMARY").trim().toUpperCase(Locale.ROOT);
@@ -455,21 +473,147 @@ public class ActorProcessGovernanceService {
         String bindingOptions=def(body,"bindingOptions","{}");
         if(!Set.of("PRIMARY","SUBPROCESS","EXCEPTION","COMMON").contains(role))throw new IllegalArgumentException("Unsupported bindingRole: "+role);
         validateJsonObject(bindingOptions,"bindingOptions");
-        Integer archetypeCount=jdbc.queryForObject("select count(*) from framework_process_archetype where archetype_code=? and active_yn='Y'",Integer.class,archetype);
-        if(archetypeCount==null||archetypeCount==0)throw new IllegalArgumentException("ACTIVE_ARCHETYPE_NOT_FOUND: "+archetype);
+        lockCanonicalProcessPublication(process);
+        List<Map<String,Object>> archetypes=jdbc.queryForList("""
+            select archetype_code as "archetypeCode",archetype_name as "archetypeName",
+                   category_code as "categoryCode",purpose,
+                   input_contract::text as "inputContract",
+                   output_contract::text as "outputContract",
+                   command_contract::text as "commandContract",
+                   state_contract::text as "stateContract",
+                   exception_contract::text as "exceptionContract",
+                   test_contract::text as "testContract"
+              from framework_process_archetype
+             where archetype_code=? and active_yn='Y' for update
+            """,archetype);
+        if(archetypes.size()!=1)throw new IllegalArgumentException(
+            "ACTIVE_ARCHETYPE_NOT_EXACT: "+archetype);
         Integer screenCount=jdbc.queryForObject("select count(*) from framework_screen_resource where route_key=lower(split_part(?,'?',1))",Integer.class,route);
-        if(screenCount==null||screenCount==0)throw new IllegalArgumentException("REGISTERED_SCREEN_NOT_FOUND: "+route);
-        Integer stepCount=jdbc.queryForObject("select count(*) from framework_process_step where process_code=? and step_code=?",Integer.class,process,step);
-        if(stepCount==null||stepCount==0)throw new IllegalArgumentException("REGISTERED_PROCESS_STEP_NOT_FOUND: "+process+" / "+step);
+        if(screenCount==null||screenCount!=1)throw new IllegalArgumentException(
+            "REGISTERED_SCREEN_NOT_EXACT: "+route+" / "+screenCount);
+        List<Map<String,Object>> steps=jdbc.queryForList("""
+            select actor_code as "actorCode",upper(case
+                     when lower(split_part(user_path,'?',1))=lower(?) then 'USER'
+                     when lower(split_part(admin_path,'?',1))=lower(?) then 'ADMIN'
+                   end) as audience
+              from framework_process_step
+             where process_code=? and step_code=? for update
+            """,route,route,process,step);
+        if(steps.size()!=1)throw new IllegalArgumentException(
+            "REGISTERED_PROCESS_STEP_NOT_EXACT: "+process+" / "+step);
+        if(!actorCode.equals(String.valueOf(steps.get(0).get("actorCode"))))
+            throw new IllegalArgumentException("CANONICAL_STEP_ACTOR_REQUIRED: "+
+                steps.get(0).get("actorCode"));
+        String audience=String.valueOf(steps.get(0).getOrDefault("audience", ""));
+        if(!Set.of("USER","ADMIN").contains(audience))throw new IllegalArgumentException(
+            "CANONICAL_STEP_ROUTE_REQUIRED: "+route);
         Integer actorCount=jdbc.queryForObject("select count(*) from framework_actor_definition where actor_code=? and use_at='Y'",Integer.class,actorCode);
-        if(actorCount==null||actorCount==0)throw new IllegalArgumentException("ACTIVE_ACTOR_NOT_FOUND: "+actorCode);
-        if("PRIMARY".equals(role))jdbc.update("update framework_screen_process_archetype_binding set active_yn='N',updated_at=current_timestamp where route_path=? and binding_role='PRIMARY' and active_yn='Y'",route);
-        jdbc.update("delete from framework_screen_process_archetype_binding where route_path=? and archetype_code=? and coalesce(process_code,'')=? and coalesce(step_code,'')=?",
-            route,archetype,process,step);
-        jdbc.update("insert into framework_screen_process_archetype_binding(route_path,archetype_code,binding_role,process_code,step_code,actor_code,entry_condition,completion_condition,binding_options,sort_order,created_by) values(?,?,?,nullif(?,''),nullif(?,''),nullif(?,''),nullif(?,''),nullif(?,''),?::jsonb,?,?)",
-            route,archetype,role,process,step,actorCode,entryCondition,completionCondition,bindingOptions,integerOr(body,"sortOrder",1),actor);
+        if(actorCount==null||actorCount!=1)throw new IllegalArgumentException(
+            "ACTIVE_ACTOR_NOT_EXACT: "+actorCode);
+        List<Map<String,Object>> primary=jdbc.queryForList("""
+            select binding_id as "bindingId",archetype_code as "archetypeCode",
+                   process_code as "processCode",step_code as "stepCode"
+              from framework_screen_process_archetype_binding
+             where route_path=? and binding_role='PRIMARY' and active_yn='Y'
+             for update
+            """,route);
+        if("PRIMARY".equals(role)&&primary.stream().anyMatch(existing->
+                !archetype.equals(String.valueOf(existing.get("archetypeCode")))
+                ||!process.equals(String.valueOf(existing.get("processCode")))
+                ||!step.equals(String.valueOf(existing.get("stepCode")))))
+            throw new IllegalStateException("PRIMARY_ARCHETYPE_BINDING_CONFLICT");
+        int sortOrder=integerOr(body,"sortOrder",1);
+        List<Map<String,Object>> written=jdbc.queryForList("""
+            insert into framework_screen_process_archetype_binding(
+              route_path,archetype_code,binding_role,process_code,step_code,actor_code,
+              entry_condition,completion_condition,binding_options,sort_order,created_by)
+            values(?,?,?,?,?,?,?,?,?::jsonb,?,?)
+            on conflict(route_path,archetype_code,process_code,step_code) do update set
+              binding_role=excluded.binding_role,actor_code=excluded.actor_code,
+              entry_condition=excluded.entry_condition,
+              completion_condition=excluded.completion_condition,
+              binding_options=excluded.binding_options,sort_order=excluded.sort_order,
+              active_yn='Y',created_by=excluded.created_by,updated_at=current_timestamp
+            where framework_screen_process_archetype_binding.binding_role is distinct from excluded.binding_role
+               or framework_screen_process_archetype_binding.actor_code is distinct from excluded.actor_code
+               or framework_screen_process_archetype_binding.entry_condition is distinct from excluded.entry_condition
+               or framework_screen_process_archetype_binding.completion_condition is distinct from excluded.completion_condition
+               or framework_screen_process_archetype_binding.binding_options is distinct from excluded.binding_options
+               or framework_screen_process_archetype_binding.sort_order is distinct from excluded.sort_order
+               or framework_screen_process_archetype_binding.active_yn<>'Y'
+            returning binding_id as "bindingId"
+            """,route,archetype,role,process,step,actorCode,entryCondition,
+            completionCondition,bindingOptions,sortOrder,actor);
+        boolean bindingChanged=!written.isEmpty();
+        List<Map<String,Object>> contracts=jdbc.queryForList("""
+            select contract_id as "contractId"
+              from framework_professional_screen_contract
+             where process_code=? and step_code=? and actor_code=?
+               and upper(audience)=? and lower(split_part(route_path,'?',1))=lower(?)
+             for update
+            """,process,step,actorCode,audience,route);
+        if(contracts.size()!=1)throw new IllegalStateException(
+            "ARCHETYPE_CANONICAL_CONTRACT_NOT_EXACT: "+contracts.size());
+        long contractId=((Number)contracts.get(0).get("contractId")).longValue();
+        Map<String,Object> identity=canonicalGenerationIdentity(contractId);
+        Map<String,Object> archetypeContract=new LinkedHashMap<>();
+        archetypeContract.put("schemaVersion","carbonet.screen-archetype-binding/v1");
+        archetypeContract.put("archetypeCode",archetype);
+        archetypeContract.put("bindingRole",role);
+        archetypeContract.put("processCode",process);archetypeContract.put("stepCode",step);
+        archetypeContract.put("actorCode",actorCode);archetypeContract.put("routePath",route);
+        archetypeContract.put("entryCondition",entryCondition);
+        archetypeContract.put("completionCondition",completionCondition);
+        archetypeContract.put("bindingOptions",jsonMap(bindingOptions));
+        Map<String,Object> archetypeRow=archetypes.get(0);
+        for(String field:List.of("archetypeName","categoryCode","purpose"))
+            archetypeContract.put(field,archetypeRow.get(field));
+        for(String field:List.of("inputContract","outputContract","commandContract",
+                "stateContract","exceptionContract","testContract"))
+            archetypeContract.put(field,jsonValue(String.valueOf(archetypeRow.get(field))));
+        String archetypeJson=toJson(archetypeContract);
+        int blueprintUpdated=jdbc.update("""
+            update framework_screen_blueprint
+               set specification_json=jsonb_set(
+                     framework_try_jsonb(specification_json),'{processArchetype}',?::jsonb,true)::text,
+                   updated_at=current_timestamp
+             where blueprint_id=? and validation_status='VALID'
+               and framework_try_jsonb(specification_json)->'processArchetype'
+                   is distinct from ?::jsonb
+            """,archetypeJson,identity.get("blueprintId"),archetypeJson);
+        if(blueprintUpdated<0||blueprintUpdated>1)throw new IllegalStateException(
+            "ARCHETYPE_BLUEPRINT_PROJECTION_NOT_EXACT");
+        Map<String,Object> trigger=new LinkedHashMap<>();
+        trigger.put("triggerType","SCREEN_ARCHETYPE_BINDING");
+        trigger.put("stepCode",step);trigger.put("routePath",route);
+        trigger.put("audience",audience);
+        Map<String,Object> generation=refreshAndQueueCanonicalProcess(
+            process,actor,trigger,()->Map.of(
+                "contractId",contractId,"blueprintId",identity.get("blueprintId"),
+                "archetypeCode",archetype,"endpointExpected",1));
+        int jobCount=generation.get("jobCount") instanceof Number number
+            ?number.intValue():0;
+        int endpointExpected=generation.get("endpointExpected") instanceof Number number
+            ?number.intValue():0;
+        if(jobCount!=1||endpointExpected<1
+                ||!str(generation,"sourceHash").matches("[0-9a-f]{64}"))
+            throw new IllegalStateException("ARCHETYPE_SOURCE_GENERATION_NOT_EXACT");
         Map<String,Object> coverage=jdbc.queryForMap("select count(*) as \"bindingCount\",count(*) filter(where binding_role='PRIMARY') as \"primaryCount\",count(distinct archetype_code) as \"archetypeCount\" from framework_screen_process_archetype_binding where route_path=? and active_yn='Y'",route);
-        return Map.of("success",true,"routePath",route,"archetypeCode",archetype,"bindingRole",role,"coverage",coverage);
+        Map<String,Object> result=new LinkedHashMap<>();
+        result.put("success",true);result.put("routePath",route);
+        result.put("archetypeCode",archetype);result.put("bindingRole",role);
+        result.put("coverage",coverage);result.put("sourceChanged",bindingChanged||blueprintUpdated==1);
+        result.put("sourceCommitted",bindingChanged||blueprintUpdated==1);
+        result.put("mutationKind","SOURCE_IMMEDIATE");
+        result.put("activationPolicy",SOURCE_IMMEDIATE_ACTIVATION_POLICY);
+        result.put("status",generation.get("status"));
+        result.put("generationQueued",generation.get("generationQueued"));
+        result.put("jobCount",jobCount);result.put("jobId",generation.get("jobId"));
+        result.put("endpointExpected",endpointExpected);
+        result.put("sourceHash",generation.get("sourceHash"));
+        result.put("designHash",generation.get("designHash"));
+        result.put("generation",generation);
+        return result;
     }
 
     public Map<String,Object> executableScreens(String requestedStatus,int requestedPage,int requestedSize) {
@@ -3745,6 +3889,214 @@ public class ActorProcessGovernanceService {
         return jdbc.queryForList(
             "select blueprint_id as \"blueprintId\",blueprint_code as \"blueprintCode\",process_code as \"processCode\",step_code as \"stepCode\",audience,page_id as \"pageId\",route_path as \"routePath\",screen_type as \"screenType\",template_code as \"templateCode\",specification_json as \"specificationJson\",traceability_json as \"traceabilityJson\",validation_status as \"validationStatus\",validation_message as \"validationMessage\" from framework_screen_blueprint where lower(split_part(route_path,'?',1))=lower(?) order by audience,blueprint_id",
             route);
+    }
+
+    /**
+     * Persists one workbench document with an exact revision CAS. Six executable
+     * document kinds are strict JSON projections into the canonical screen
+     * contract and may commit only when the existing deterministic generator
+     * exposes one process job and at least one endpoint. The remaining kinds are
+     * explicitly NOTE_ONLY and never claim a SOURCE or code mutation.
+     */
+    @Transactional public Map<String,Object> saveIntegratedDesignDocument(
+            Map<String,Object> body,String actor){
+        if(actor==null||actor.isBlank()||!actor.equals(actor.trim())||actor.length()>100)
+            throw new SecurityException("AUTHENTICATED_ACTOR_REQUIRED");
+        String process=req(body,"processCode").trim().toUpperCase(Locale.ROOT);
+        if(!process.matches("^[A-Z][A-Z0-9_:-]{1,79}$"))
+            throw new IllegalArgumentException("INVALID_PROCESS_CODE");
+        String step=str(body,"stepCode").trim().toUpperCase(Locale.ROOT);
+        if(!step.isEmpty()&&!step.matches("^[A-Z][A-Z0-9_:-]{1,99}$"))
+            throw new IllegalArgumentException("INVALID_STEP_CODE");
+        String route=str(body,"routePath");
+        if(!route.isEmpty())route=ScreenDevelopmentNoteService.cleanRoute(route);
+        String type=req(body,"documentType").trim().toUpperCase(Locale.ROOT);
+        Set<String> allTypes=Set.of("REQUIREMENT","ACTOR_RACI","AUTHORITY","PROCESS",
+            "STATE","NAVIGATION","ACTIVE_UI","DESIGN_ASSET","FIELD_DICTIONARY",
+            "DATA_HANDOFF","DATABASE","API","BUSINESS_RULE","VALIDATION",
+            "NOTIFICATION","TEST","TASK_EVIDENCE","RELEASE_AUDIT");
+        if(!allTypes.contains(type))throw new IllegalArgumentException(
+            "UNSUPPORTED_DESIGN_DOCUMENT_TYPE: "+type);
+        String title=req(body,"title");
+        if(title.length()>300)throw new IllegalArgumentException("DESIGN_DOCUMENT_TITLE_TOO_LONG");
+        String content=body.get("content")==null?"":String.valueOf(body.get("content"));
+        if(content.length()>1_048_576)
+            throw new IllegalArgumentException("DESIGN_DOCUMENT_CONTENT_TOO_LARGE");
+        String status=def(body,"status","DRAFT").toUpperCase(Locale.ROOT);
+        if(!Set.of("DRAFT","READY","IN_REVIEW","APPROVED","VERIFIED").contains(status))
+            throw new IllegalArgumentException("UNSUPPORTED_DESIGN_DOCUMENT_STATUS: "+status);
+        long expectedRevision;
+        try{expectedRevision=Long.parseLong(String.valueOf(
+            body.getOrDefault("revision",0)).trim());}
+        catch(NumberFormatException exception){throw new IllegalArgumentException(
+            "revision must be a non-negative integer",exception);}
+        if(expectedRevision<0)throw new IllegalArgumentException(
+            "revision must be a non-negative integer");
+
+        String documentLock=String.join("\u001f",process,step,route,type);
+        jdbc.query("select pg_advisory_xact_lock(hashtextextended(?,0))",
+            resultSet->{},"INTEGRATED_DESIGN_DOCUMENT_V1:"+documentLock);
+        List<Map<String,Object>> documentHeads=jdbc.queryForList("""
+            select document_id as "documentId",revision,title,content,status,
+                   updated_by as "updatedBy"
+              from integrated_design_document
+             where process_code=? and step_code=? and route_path=? and document_type=?
+             for update
+            """,process,step,route,type);
+        if(documentHeads.size()>1)throw new IllegalStateException(
+            "INTEGRATED_DESIGN_DOCUMENT_HEAD_NOT_EXACT");
+        long currentRevision=documentHeads.isEmpty()?0L:
+            ((Number)documentHeads.get(0).get("revision")).longValue();
+        if(currentRevision!=expectedRevision)throw new IllegalStateException(
+            "STALE_DESIGN_DOCUMENT_REVISION: expected="+expectedRevision+
+                ", current="+currentRevision);
+
+        boolean sourceType=INTEGRATED_DESIGN_SOURCE_TYPES.contains(type);
+        Map<String,Object> sourceReceipt=sourceType
+            ?applyIntegratedDesignSource(process,step,route,type,content,actor)
+            :Map.of();
+        boolean changed=documentHeads.isEmpty()
+            ||!title.equals(String.valueOf(documentHeads.get(0).get("title")))
+            ||!content.equals(String.valueOf(documentHeads.get(0).get("content")))
+            ||!status.equals(String.valueOf(documentHeads.get(0).get("status")));
+        long revision=currentRevision;
+        if(documentHeads.isEmpty()){
+            Long inserted=jdbc.queryForObject("""
+                insert into integrated_design_document(
+                  process_code,step_code,route_path,document_type,title,content,status,updated_by)
+                values(?,?,?,?,?,?,?,?) returning revision
+                """,Long.class,process,step,route,type,title,content,status,actor);
+            if(inserted==null)throw new IllegalStateException(
+                "INTEGRATED_DESIGN_DOCUMENT_INSERT_NOT_EXACT");
+            revision=inserted;
+        }else if(changed){
+            Long updated=jdbc.queryForObject("""
+                update integrated_design_document set
+                       title=?,content=?,status=?,active_yn='Y',updated_by=?
+                 where document_id=? and revision=? returning revision
+                """,Long.class,title,content,status,actor,
+                documentHeads.get(0).get("documentId"),expectedRevision);
+            if(updated==null)throw new IllegalStateException(
+                "INTEGRATED_DESIGN_DOCUMENT_CAS_NOT_EXACT");
+            revision=updated;
+        }
+
+        Map<String,Object> result=new LinkedHashMap<>();
+        result.put("success",true);result.put("documentType",type);
+        result.put("revision",revision);result.put("documentChanged",changed);
+        result.put("updatedBy",changed?actor:documentHeads.get(0).get("updatedBy"));
+        result.put("mutationKind",sourceType?"SOURCE_IMMEDIATE":"NOTE_ONLY");
+        result.put("sourceCommitted",sourceType);
+        result.put("activationPolicy",sourceType?SOURCE_IMMEDIATE_ACTIVATION_POLICY:"NONE");
+        result.put("generationQueued",sourceType&&Boolean.TRUE.equals(
+            sourceReceipt.get("generationQueued")));
+        result.put("jobCount",sourceType?sourceReceipt.get("jobCount"):0);
+        result.put("endpointExpected",sourceType?sourceReceipt.get("endpointExpected"):0);
+        result.put("sourceHash",sourceType?sourceReceipt.get("sourceHash"):"");
+        result.put("designHash",sourceType?sourceReceipt.get("designHash"):"");
+        result.put("sourceReceipt",sourceReceipt);
+        result.put("message",sourceType
+            ?"Structured design was committed to SOURCE and the canonical job was queued or reused."
+            :"Document note saved. SOURCE, generated code and endpoints were not changed.");
+        return result;
+    }
+
+    private Map<String,Object> applyIntegratedDesignSource(
+            String process,String step,String route,String type,String content,String actor){
+        if(step.isBlank()||route.isBlank())throw new IllegalArgumentException(
+            "STRUCTURED_DESIGN_REQUIRES_STEP_AND_ROUTE");
+        Map<String,Object> payload;
+        try{
+            @SuppressWarnings("unchecked")
+            Map<String,Object> parsed=new com.fasterxml.jackson.databind.ObjectMapper()
+                .readValue(content,LinkedHashMap.class);
+            payload=parsed;
+        }catch(Exception exception){throw new IllegalArgumentException(
+            "STRUCTURED_DESIGN_CONTENT_MUST_BE_A_JSON_OBJECT",exception);}
+        if(!INTEGRATED_DESIGN_SOURCE_SCHEMA.equals(str(payload,"schemaVersion")))
+            throw new IllegalArgumentException("STRUCTURED_DESIGN_SCHEMA_REQUIRED: "+
+                INTEGRATED_DESIGN_SOURCE_SCHEMA);
+        long contractId;
+        try{contractId=Long.parseLong(req(payload,"contractId"));}
+        catch(NumberFormatException exception){throw new IllegalArgumentException(
+            "contractId must be a positive integer",exception);}
+        if(contractId<1)throw new IllegalArgumentException(
+            "contractId must be a positive integer");
+        Set<String> allowed=new HashSet<>(INTEGRATED_DESIGN_SOURCE_FIELDS.get(type));
+        allowed.add("schemaVersion");allowed.add("contractId");
+        List<String> unsupported=payload.keySet().stream()
+            .filter(key->!allowed.contains(key)).sorted().toList();
+        if(!unsupported.isEmpty())throw new IllegalArgumentException(
+            "UNSUPPORTED_STRUCTURED_DESIGN_FIELDS: "+String.join(",",unsupported));
+        if(payload.keySet().stream().noneMatch(
+                INTEGRATED_DESIGN_SOURCE_FIELDS.get(type)::contains))
+            throw new IllegalArgumentException("STRUCTURED_DESIGN_CHANGE_REQUIRED");
+
+        lockCanonicalProcessPublication(process);
+        List<Map<String,Object>> contracts=jdbc.queryForList("""
+            select contract_id as "contractId",business_purpose as "businessPurpose",
+                   entry_condition as "entryCondition",exit_condition as "exitCondition",
+                   kpi_contract as "kpiContract",section_contract as "sectionContract",
+                   field_contract as "fieldContract",command_contract as "commandContract",
+                   state_contract as "stateContract",api_contract as "apiContract",
+                   data_contract as "dataContract",evidence_contract as "evidenceContract",
+                   responsive_contract as "responsiveContract",
+                   accessibility_contract as "accessibilityContract",
+                   security_contract as "securityContract",
+                   permission_codes::text as "permissionCodes",
+                   api_verified as "apiVerified",database_verified as "databaseVerified",
+                   authority_verified as "authorityVerified",
+                   responsive_verified as "responsiveVerified",
+                   accessibility_verified as "accessibilityVerified",
+                   exception_states_verified as "exceptionStatesVerified",
+                   audit_evidence_ref as "auditEvidenceRef",
+                   contract_status as "contractStatus"
+              from framework_professional_screen_contract
+             where contract_id=? and process_code=? and step_code=?
+               and lower(split_part(route_path,'?',1))=lower(?)
+             for update
+            """,contractId,process,step,route);
+        if(contracts.size()!=1)throw new IllegalStateException(
+            "STRUCTURED_DESIGN_CANONICAL_CONTRACT_NOT_EXACT: "+contractId);
+        Map<String,Object> mutation=new LinkedHashMap<>(contracts.get(0));
+        for(String field:INTEGRATED_DESIGN_SOURCE_FIELDS.get(type)){
+            if(!payload.containsKey(field))continue;
+            Object value=payload.get(field);
+            if(Set.of("sectionContract","fieldContract","commandContract",
+                    "stateContract","apiContract","dataContract","evidenceContract",
+                    "permissionCodes").contains(field)){
+                if(!(value instanceof List<?>))throw new IllegalArgumentException(
+                    field+" must be a JSON array");
+                mutation.put(field,toJson(value));
+            }else if(Set.of("apiVerified","databaseVerified","authorityVerified",
+                    "responsiveVerified","accessibilityVerified",
+                    "exceptionStatesVerified").contains(field)){
+                if(!(value instanceof Boolean))throw new IllegalArgumentException(
+                    field+" must be a boolean");
+                mutation.put(field,value);
+            }else{
+                if(!(value instanceof String text)||text.trim().isEmpty())
+                    throw new IllegalArgumentException(field+" must be a non-empty string");
+                mutation.put(field,text.trim());
+            }
+        }
+        Map<String,Object> receipt=saveProfessionalScreenContract(mutation,actor);
+        int jobCount=receipt.get("jobCount") instanceof Number number
+            ?number.intValue():0;
+        int endpointExpected=receipt.get("endpointExpected") instanceof Number number
+            ?number.intValue():0;
+        String sourceHash=str(receipt,"sourceHash");
+        String designHash=str(receipt,"designHash");
+        if(jobCount!=1||endpointExpected<1||!sourceHash.matches("[0-9a-f]{64}")
+                ||!designHash.matches("[0-9a-f]{64}"))
+            throw new IllegalStateException(
+                "INTEGRATED_DESIGN_SOURCE_NOT_GENERATABLE: jobCount="+jobCount+
+                    ", endpointExpected="+endpointExpected);
+        receipt.put("mutationKind","SOURCE_IMMEDIATE");
+        receipt.put("activationPolicy",SOURCE_IMMEDIATE_ACTIVATION_POLICY);
+        receipt.put("sourceCommitted",true);
+        receipt.put("documentType",type);
+        return receipt;
     }
 
     @Transactional public Map<String,Object> saveProfessionalScreenContract(Map<String,Object>b,String actor){
@@ -8658,6 +9010,7 @@ public class ActorProcessGovernanceService {
     private static void validateJsonObject(String value,String field){try{if(!new com.fasterxml.jackson.databind.ObjectMapper().readTree(value).isObject())throw new IllegalArgumentException(field+" must be a JSON object");}catch(com.fasterxml.jackson.core.JsonProcessingException e){throw new IllegalArgumentException(field+" must be valid JSON",e);}}
     private static void validateJsonArray(String value,String field){try{if(!new com.fasterxml.jackson.databind.ObjectMapper().readTree(value).isArray())throw new IllegalArgumentException(field+" must be a JSON array");}catch(com.fasterxml.jackson.core.JsonProcessingException e){throw new IllegalArgumentException(field+" must be valid JSON",e);}}
     private static String toJson(Object value){try{return new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(value==null?Map.of():value);}catch(Exception e){throw new IllegalArgumentException("configuration must be JSON serializable",e);}}
+    private static Object jsonValue(String value){try{return new com.fasterxml.jackson.databind.ObjectMapper().readValue(value,Object.class);}catch(Exception e){throw new IllegalArgumentException("database returned invalid JSON value",e);}}
     @SuppressWarnings("unchecked") private static Map<String,Object> jsonMap(String value){try{return new com.fasterxml.jackson.databind.ObjectMapper().readValue(value,LinkedHashMap.class);}catch(Exception e){throw new IllegalArgumentException("database returned invalid JSON",e);}}
     private static String jsonEscape(String value){return value==null?"":value.replace("\\","\\\\").replace("\"","\\\"").replace("\r","\\r").replace("\n","\\n");}
 }

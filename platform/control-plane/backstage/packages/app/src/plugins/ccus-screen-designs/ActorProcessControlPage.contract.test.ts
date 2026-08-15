@@ -41,4 +41,23 @@ describe('ActorProcessControlPage SOURCE immediate contract', () => {
     expect(lifecycleOptions).not.toContain("'PROMOTED'");
     expect(source).not.toContain('PROMOTED');
   });
+
+  it('labels the six projected document kinds and twelve note-only kinds truthfully', () => {
+    for (const type of [
+      'AUTHORITY',
+      'PROCESS',
+      'ACTIVE_UI',
+      'DESIGN_ASSET',
+      'DATABASE',
+      'API',
+    ]) {
+      expect(source).toContain(`'${type}'`);
+    }
+    expect(source).toContain('carbonet.integrated-design-source/v1');
+    expect(source).toContain('저장·SOURCE 반영');
+    expect(source).toContain('NOTE_ONLY → 문서 버전만 저장');
+    expect(source).toContain(
+      'SOURCE·코드·엔드포인트는 변경하지 않았습니다.',
+    );
+  });
 });
