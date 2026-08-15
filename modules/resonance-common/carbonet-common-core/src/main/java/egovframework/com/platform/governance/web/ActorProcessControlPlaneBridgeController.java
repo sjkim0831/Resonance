@@ -118,6 +118,10 @@ public class ActorProcessControlPlaneBridgeController {
                     "importedSteps", 0)).intValue();
             Object publication = requirementImport.getOrDefault(
                     "publication", Map.of("status", "QUEUED"));
+            boolean requirementRelease=Boolean.TRUE.equals(
+                    requirementImport.get("requirementRelease"));
+            java.util.SortedMap<String,String> expectedProcessHeads=requirementRelease
+                    ?requirementExpectedProcessHeads(publication):new java.util.TreeMap<>();
             jdbc.update("""
                     insert into framework_actor_process_design_release(
                       project_id,design_version,contract_sha256,contract_payload,release_status
@@ -132,15 +136,18 @@ public class ActorProcessControlPlaneBridgeController {
                       generation_result=null
                     """, projectId, designVersion, checksum, contractJson);
 
+            Map<String,Object> pendingResult=new LinkedHashMap<>();
+            pendingResult.put("status","PENDING");
+            pendingResult.put("publication",publication);
+            if(requirementRelease){
+                pendingResult.put("expectedProcessHeads",expectedProcessHeads);
+            }
             jdbc.update("""
                     update framework_actor_process_design_release
                        set release_status='QUEUED',applied_at=null,
                            generation_result=cast(? as jsonb)
                      where project_id=? and design_version=?
-                    """, mapper.writeValueAsString(Map.of(
-                    "status", "PENDING",
-                    "publication", publication
-            )), projectId, designVersion);
+                    """, mapper.writeValueAsString(pendingResult), projectId, designVersion);
 
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
                 @Override
@@ -683,51 +690,142 @@ public class ActorProcessControlPlaneBridgeController {
         }
     }
 
-    private void reconcileRequirementRelease(
+    void reconcileRequirementRelease(
             String projectId,int designVersion,String processCode){
-        List<Map<String,Object>> jobs=jdbc.queryForList("""
-                with head as (
-                  select framework_process_generation_input(?) value
+        List<Map<String,Object>> releaseRows=jdbc.queryForList("""
+                select contract_sha256,
+                       (case
+                         when jsonb_typeof(generation_result->'expectedProcessHeads')='object'
+                           then generation_result->'expectedProcessHeads'
+                         else jsonb_build_object(?,coalesce(
+                           generation_result->>'expectedProcessInputHash',
+                           generation_result->'publication'->>'processInputHash',''))
+                       end)::text expected_heads_json
+                  from framework_actor_process_design_release
+                 where project_id=? and design_version=?
+                """,processCode,projectId,designVersion);
+        if(releaseRows.size()!=1)return;
+        String capturedChecksum=String.valueOf(releaseRows.get(0).get("contract_sha256"));
+        String capturedHeadsJson=String.valueOf(
+                releaseRows.get(0).get("expected_heads_json"));
+        List<Map<String,Object>> rows=jdbc.queryForList("""
+                with release as (
+                  select cast(? as jsonb) expected_heads
+                ), expected as (
+                  select upper(entry.key) process_code,entry.value expected_input_hash
+                    from release
+                    cross join lateral jsonb_each_text(release.expected_heads) entry
+                ), headed as (
+                  select expected.process_code,expected.expected_input_hash,
+                         case when exists(
+                           select 1 from framework_process_definition process
+                            where process.process_code=expected.process_code)
+                           then framework_process_generation_input(expected.process_code)
+                           else '{}'::jsonb end current_head
+                    from expected
                 )
-                select job.job_id,job.job_status,job.quality_status,job.evidence_ref,
-                       job.target_path,framework_try_jsonb(job.specification_json)->>'processInputHash'
-                         as job_input_hash,head.value->>'processInputHash' as current_input_hash
-                  from framework_development_job job cross join head
-                 where job.process_code=? and job.job_type='FULL_STACK_GENERATION'
-                   and job.job_group_code=?||'_CANONICAL_PUBLICATION'
-                """,processCode,processCode,processCode);
-        if(jobs.size()!=1){
-            jdbc.update("""
-                    update framework_actor_process_design_release
-                       set release_status='REVIEW_REQUIRED',applied_at=null,
-                           generation_result=cast(? as jsonb)
-                     where project_id=? and design_version=?
-                    """,writeJson(Map.of("status","REVIEW_REQUIRED",
-                    "processCode",processCode,"jobCount",jobs.size())),projectId,designVersion);
-            return;
+                select headed.process_code as expected_process_code,
+                       headed.expected_input_hash,
+                       headed.current_head->>'processInputHash' as current_input_hash,
+                       job.job_id,job.job_status,job.quality_status,job.evidence_ref,
+                       job.target_path,
+                       framework_try_jsonb(job.specification_json)->>'processInputHash'
+                         as job_input_hash
+                  from headed
+                  left join framework_development_job job
+                    on job.process_code=headed.process_code
+                   and job.job_type='FULL_STACK_GENERATION'
+                   and job.job_group_code=headed.process_code||'_CANONICAL_PUBLICATION'
+                 order by headed.process_code collate "C",job.job_id
+                """,capturedHeadsJson);
+        java.util.SortedMap<String,String> expectedHeads=new java.util.TreeMap<>();
+        java.util.SortedMap<String,List<Map<String,Object>>> jobsByProcess=
+                new java.util.TreeMap<>();
+        boolean invalid=rows.isEmpty();
+        for(Map<String,Object> row:rows){
+            String expectedProcess=String.valueOf(row.get("expected_process_code"));
+            String expectedHash=String.valueOf(row.get("expected_input_hash"));
+            if(!expectedProcess.matches("^[A-Z][A-Z0-9_:-]{1,79}$")
+                    ||!expectedHash.matches("^[0-9a-f]{64}$"))invalid=true;
+            String previous=expectedHeads.put(expectedProcess,expectedHash);
+            if(previous!=null&&!previous.equals(expectedHash))invalid=true;
+            jobsByProcess.computeIfAbsent(expectedProcess,key->new java.util.ArrayList<>())
+                    .add(row);
         }
-        Map<String,Object> job=jobs.get(0);
-        String status=String.valueOf(job.get("job_status"));
-        String quality=String.valueOf(job.get("quality_status"));
-        String evidence=job.get("evidence_ref")==null?"":String.valueOf(job.get("evidence_ref")).trim();
-        String head=String.valueOf(job.get("current_input_hash"));
-        boolean exactHead=head.matches("[0-9a-f]{64}")
-                &&head.equals(String.valueOf(job.get("job_input_hash")))
-                &&("canonical://"+processCode+"/"+head).equals(job.get("target_path"));
-        boolean applied=exactHead&&Set.of("VERIFIED","COMPLETED").contains(status)
-                &&Set.of("VERIFIED","PASSED").contains(quality)&&!evidence.isBlank();
-        boolean failed=Set.of("FAILED","BLOCKED").contains(status);
-        String releaseStatus=applied?"APPLIED":failed?"REVIEW_REQUIRED":"QUEUED";
-        jdbc.update("""
+        if(!expectedHeads.containsKey(processCode))invalid=true;
+        boolean superseded=false;
+        boolean failed=false;
+        boolean pending=false;
+        List<Map<String,Object>> processResults=new java.util.ArrayList<>();
+        for(Map.Entry<String,String> expected:expectedHeads.entrySet()){
+            List<Map<String,Object>> jobs=jobsByProcess.getOrDefault(
+                    expected.getKey(),List.of());
+            Map<String,Object> processResult=new LinkedHashMap<>();
+            processResult.put("processCode",expected.getKey());
+            processResult.put("expectedProcessInputHash",expected.getValue());
+            int jobCount=(int)jobs.stream().filter(row->row.get("job_id")!=null).count();
+            processResult.put("jobCount",jobCount);
+            if(jobs.size()!=1||jobCount!=1){
+                invalid=true;
+                processResult.put("status","REVIEW_REQUIRED");
+                processResults.add(processResult);
+                continue;
+            }
+            Map<String,Object> job=jobs.get(0);
+            String status=String.valueOf(job.get("job_status"));
+            String quality=String.valueOf(job.get("quality_status"));
+            String evidence=job.get("evidence_ref")==null?"":
+                    String.valueOf(job.get("evidence_ref")).trim();
+            String head=String.valueOf(job.get("current_input_hash"));
+            boolean exactHead=expected.getValue().equals(head)
+                    &&head.equals(String.valueOf(job.get("job_input_hash")))
+                    &&("canonical://"+expected.getKey()+"/"+head)
+                        .equals(job.get("target_path"));
+            boolean terminal=Set.of("VERIFIED","COMPLETED").contains(status)
+                    &&Set.of("VERIFIED","PASSED").contains(quality)
+                    &&!evidence.isBlank();
+            boolean jobFailed=Set.of("FAILED","BLOCKED").contains(status);
+            if(!exactHead)superseded=true;
+            if(jobFailed)failed=true;
+            if(exactHead&&!terminal&&!jobFailed)pending=true;
+            processResult.put("jobId",job.get("job_id"));
+            processResult.put("jobStatus",status);
+            processResult.put("qualityStatus",quality);
+            processResult.put("currentProcessInputHash",head);
+            processResult.put("headExact",exactHead);
+            processResult.put("evidencePresent",!evidence.isBlank());
+            processResult.put("status",exactHead&&terminal?"APPLIED":
+                    !exactHead?"SUPERSEDED":jobFailed?"REVIEW_REQUIRED":"PENDING");
+            processResults.add(processResult);
+        }
+        boolean applied=!invalid&&!superseded&&!failed&&!pending&&!expectedHeads.isEmpty();
+        boolean reviewRequired=invalid||superseded||failed;
+        String releaseStatus=applied?"APPLIED":reviewRequired?"REVIEW_REQUIRED":"QUEUED";
+        Map<String,Object> result=new LinkedHashMap<>();
+        result.put("status",applied?"APPLIED":superseded?"SUPERSEDED":
+                reviewRequired?"REVIEW_REQUIRED":"PENDING");
+        result.put("processCode",processCode);
+        result.put("expectedProcessHeads",expectedHeads);
+        result.put("processResults",processResults);
+        result.put("expectedProcessCount",expectedHeads.size());
+        result.put("headExact",!invalid&&!superseded);
+        int reconciled=jdbc.update("""
                 update framework_actor_process_design_release
                    set release_status=?,applied_at=case when ? then current_timestamp else null end,
                        generation_result=cast(? as jsonb)
                  where project_id=? and design_version=?
-                """,releaseStatus,applied,writeJson(Map.of(
-                "status",applied?"APPLIED":failed?"REVIEW_REQUIRED":"PENDING",
-                "processCode",processCode,"jobId",job.get("job_id"),
-                "jobStatus",status,"qualityStatus",quality,
-                "headExact",exactHead,"evidencePresent",!evidence.isBlank())),projectId,designVersion);
+                   and contract_sha256=?
+                   and case
+                     when jsonb_typeof(generation_result->'expectedProcessHeads')='object'
+                       then generation_result->'expectedProcessHeads'
+                     else jsonb_build_object(?,coalesce(
+                       generation_result->>'expectedProcessInputHash',
+                       generation_result->'publication'->>'processInputHash',''))
+                   end=cast(? as jsonb)
+                """,releaseStatus,applied,writeJson(result),projectId,designVersion,
+                capturedChecksum,processCode,capturedHeadsJson);
+        if(reconciled>1)throw new IllegalStateException(
+                "REQUIREMENT_RELEASE_CAS_NOT_EXACT: "+projectId+" / "+designVersion);
     }
 
     private Map<String,Object> importRequirementProcessContract(Map<?, ?> contract) {
@@ -745,21 +843,18 @@ public class ActorProcessControlPlaneBridgeController {
         if (!(stepsValue instanceof List<?> steps) || steps.isEmpty() || steps.size() > 1000) {
             throw new IllegalArgumentException("Requirement process must contain 1-1000 steps.");
         }
-        governance.saveWorkType(new LinkedHashMap<>(Map.of(
-                "workTypeCode", "REQUIREMENT_AUTOMATION",
-                "workTypeName", "요구분석 자동 개발",
-                "workTypeNameEn", "Requirement Automation",
-                "description", "요구분석서에서 검증된 실행 설계와 개발 작업",
-                "sortOrder", 5,
-                "useAt", "N")));
-        LinkedHashSet<String> actorCodes = new LinkedHashSet<>();
+        if(!(steps.get(0) instanceof Map<?,?> firstStep)){
+            throw new IllegalArgumentException("Requirement step must be an object.");
+        }
+        String ownerActor=requiredRaw(firstStep,"actorCode").toUpperCase();
+        java.util.SortedSet<String> actorCodes = new java.util.TreeSet<>();
         for (Object stepValue : steps) {
             if (!(stepValue instanceof Map<?, ?> step)) {
                 throw new IllegalArgumentException("Requirement step must be an object.");
             }
             actorCodes.add(requiredRaw(step, "actorCode").toUpperCase());
         }
-        LinkedHashSet<String> affectedProcesses = new LinkedHashSet<>();
+        java.util.SortedSet<String> affectedProcesses = new java.util.TreeSet<>();
         for (String actorCode : actorCodes) {
             Map<String,Object> actorMutation=governance.createActorForRequirementImport(
                     new LinkedHashMap<>(Map.of(
@@ -775,7 +870,6 @@ public class ActorProcessControlPlaneBridgeController {
             if(rawAffected instanceof List<?> list)for(Object value:list)
                 affectedProcesses.add(String.valueOf(value));
         }
-        String ownerActor = actorCodes.iterator().next();
         governance.createProcessForRequirementImport(new LinkedHashMap<>(Map.ofEntries(
                 Map.entry("processCode", processCode),
                 Map.entry("processName", processCode + " 요구분석 실행"),
@@ -891,6 +985,48 @@ public class ActorProcessControlPlaneBridgeController {
                 "processCode",processCode,"publication",publication);
     }
 
+    private java.util.SortedMap<String,String> requirementExpectedProcessHeads(
+            Object publication){
+        java.util.SortedMap<String,String> expected=new java.util.TreeMap<>();
+        collectRequirementPublicationHead(publication,expected);
+        if(expected.isEmpty())
+            throw new IllegalStateException("REQUIREMENT_PUBLICATION_HEAD_REQUIRED");
+        return expected;
+    }
+
+    private void collectRequirementPublicationHead(
+            Object value,java.util.SortedMap<String,String> expected){
+        if(!(value instanceof Map<?,?> publication)
+                ||!Boolean.TRUE.equals(publication.get("success"))
+                ||"SKIPPED".equals(String.valueOf(publication.get("status")))){
+            throw new IllegalStateException(
+                    "REQUIREMENT_PUBLICATION_HEAD_REQUIRED: "+value);
+        }
+        String processCode=String.valueOf(publication.get("processCode"));
+        String processInputHash=String.valueOf(publication.get("processInputHash"));
+        if(!processCode.matches("^[A-Z][A-Z0-9_:-]{1,79}$")
+                ||!processInputHash.matches("^[0-9a-f]{64}$")
+                ||!(publication.get("jobCount") instanceof Number jobCount)
+                ||jobCount.intValue()!=1){
+            throw new IllegalStateException(
+                    "REQUIREMENT_PUBLICATION_HEAD_REQUIRED: "+processCode);
+        }
+        String previous=expected.put(processCode,processInputHash);
+        if(previous!=null&&!previous.equals(processInputHash)){
+            throw new IllegalStateException(
+                    "REQUIREMENT_PUBLICATION_HEAD_CONFLICT: "+processCode);
+        }
+        Object related=publication.get("relatedProcessPublications");
+        if(related instanceof List<?> relatedPublications){
+            for(Object relatedPublication:relatedPublications){
+                collectRequirementPublicationHead(relatedPublication,expected);
+            }
+        }else if(related!=null){
+            throw new IllegalStateException(
+                    "REQUIREMENT_RELATED_PUBLICATIONS_INVALID");
+        }
+    }
+
     private static String requiredRaw(Map<?, ?> body, String key) {
         Object value = body.get(key);
         String text = value == null ? "" : String.valueOf(value).trim();
@@ -918,7 +1054,6 @@ public class ActorProcessControlPlaneBridgeController {
         if (!Boolean.TRUE.equals(elected)) {
             return;
         }
-        jdbc.update("update framework_business_work_type set use_at='N',updated_at=current_timestamp where work_type_code='REQUIREMENT_AUTOMATION'");
         List<String> requirementProcesses = jdbc.queryForList("""
                 select process_code from framework_process_definition
                  where left(process_code,4)='REQ_'
@@ -942,11 +1077,18 @@ public class ActorProcessControlPlaneBridgeController {
                  order by received_at
                  limit 10
                 """);
-        for (Map<String, Object> release : releases) {
-            String projectId = String.valueOf(release.get("project_id"));
-            int designVersion = ((Number) release.get("design_version")).intValue();
-            generationExecutor.execute(() -> compilePromotedRelease(projectId, designVersion));
-        }
+        Runnable reconcile=()->{
+            for (Map<String, Object> release : releases) {
+                String projectId = String.valueOf(release.get("project_id"));
+                int designVersion = ((Number) release.get("design_version")).intValue();
+                generationExecutor.execute(() -> compilePromotedRelease(projectId, designVersion));
+            }
+        };
+        if(TransactionSynchronizationManager.isSynchronizationActive()){
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization(){
+                @Override public void afterCommit(){reconcile.run();}
+            });
+        }else reconcile.run();
     }
 
     @PreDestroy

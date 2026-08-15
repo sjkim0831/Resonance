@@ -4,6 +4,74 @@
 DROP TRIGGER IF EXISTS trg_zzz_framework_refresh_step_execution_source_hash
   ON public.framework_step_execution_spec;
 
+-- Seed the internal capability once. Runtime imports and the recovery loop are
+-- read-only with respect to this singleton so independent process imports do
+-- not serialize on a global work-type row.
+INSERT INTO public.framework_business_work_type(
+  work_type_code,work_type_name,work_type_name_en,description,sort_order,use_at
+)
+VALUES(
+  'REQUIREMENT_AUTOMATION','요구분석 자동 개발','Requirement Automation',
+  '요구분석서에서 검증된 실행 설계와 개발 작업',5,'N'
+)
+ON CONFLICT(work_type_code) DO UPDATE SET
+  work_type_name=excluded.work_type_name,
+  work_type_name_en=excluded.work_type_name_en,
+  description=excluded.description,
+  sort_order=excluded.sort_order,
+  use_at='N',
+  updated_at=current_timestamp;
+
+-- Presentation order allocation is deliberately sequence-backed.  The old
+-- max(workflow_order)+10 writer held one global advisory lock for the whole
+-- requirement import and serialized otherwise independent processes.
+CREATE SEQUENCE IF NOT EXISTS public.framework_business_workflow_order_seq
+  AS integer INCREMENT BY 10 MINVALUE 10 START WITH 10;
+DO $$
+DECLARE next_order integer;
+BEGIN
+  SELECT greatest(coalesce(max(workflow_order),0)+10,10)
+    INTO next_order FROM public.framework_business_process_sequence;
+  PERFORM setval('public.framework_business_workflow_order_seq'::regclass,
+    next_order,false);
+END
+$$;
+
+CREATE OR REPLACE FUNCTION public.framework_allocate_requirement_process_sequence(
+  requested_process text
+)
+RETURNS integer
+LANGUAGE plpgsql SECURITY DEFINER
+SET search_path = pg_catalog, public
+AS $$
+DECLARE allocated_order integer;
+BEGIN
+  IF requested_process IS NULL OR requested_process<>btrim(requested_process)
+     OR requested_process!~'^[A-Z][A-Z0-9_:-]{1,79}$' THEN
+    RAISE EXCEPTION 'invalid requirement process sequence identity'
+      USING ERRCODE='22023';
+  END IF;
+  INSERT INTO public.framework_business_process_sequence(
+    work_type_code,process_code,workflow_order,workflow_phase,process_role,
+    prerequisite_process_codes,next_process_code,sequence_status)
+  VALUES('DATA_GOVERNANCE',requested_process,
+    nextval('public.framework_business_workflow_order_seq'),
+    'REQUIREMENT_DELIVERY','ENTRY','','','ACTIVE')
+  ON CONFLICT(process_code) DO UPDATE SET
+    work_type_code='DATA_GOVERNANCE',
+    workflow_order=CASE
+      WHEN public.framework_business_process_sequence.work_type_code='DATA_GOVERNANCE'
+        THEN public.framework_business_process_sequence.workflow_order
+      ELSE excluded.workflow_order END,
+    workflow_phase=excluded.workflow_phase,process_role=excluded.process_role,
+    prerequisite_process_codes=excluded.prerequisite_process_codes,
+    next_process_code=excluded.next_process_code,
+    sequence_status=excluded.sequence_status,updated_at=current_timestamp
+  RETURNING workflow_order INTO allocated_order;
+  RETURN allocated_order;
+END
+$$;
+
 CREATE TABLE IF NOT EXISTS public.framework_process_design_revision_lease(
   backend_pid integer NOT NULL,
   transaction_id bigint NOT NULL,
@@ -324,6 +392,8 @@ REVOKE ALL ON FUNCTION public.framework_finalize_process_design_revision(text,te
   FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.framework_close_process_design_revision(text,text)
   FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.framework_allocate_requirement_process_sequence(text)
+  FROM PUBLIC;
 DO $$
 BEGIN
   IF EXISTS(SELECT 1 FROM pg_roles WHERE rolname='carbonet_app') THEN
@@ -332,6 +402,8 @@ BEGIN
     GRANT EXECUTE ON FUNCTION public.framework_finalize_process_design_revision(text,text)
       TO carbonet_app;
     GRANT EXECUTE ON FUNCTION public.framework_close_process_design_revision(text,text)
+      TO carbonet_app;
+    GRANT EXECUTE ON FUNCTION public.framework_allocate_requirement_process_sequence(text)
       TO carbonet_app;
   END IF;
 END
@@ -350,6 +422,8 @@ BEGIN
        'public.framework_finalize_process_design_revision(text,text)','EXECUTE')
      OR has_function_privilege('public',
        'public.framework_close_process_design_revision(text,text)','EXECUTE')
+     OR has_function_privilege('public',
+       'public.framework_allocate_requirement_process_sequence(text)','EXECUTE')
      OR has_table_privilege('public',
        'public.framework_process_design_revision_lease','SELECT') THEN
     RAISE EXCEPTION 'controlled process design revision postcondition failed'

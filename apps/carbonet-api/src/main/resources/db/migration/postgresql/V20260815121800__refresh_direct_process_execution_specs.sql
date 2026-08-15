@@ -3,6 +3,48 @@
 -- for their four structured projection fields and are refreshed by the exact
 -- route/audience save path in the same transaction.
 
+CREATE OR REPLACE FUNCTION public.framework_merge_primary_contract_marker(
+  existing_contract jsonb,
+  requested_marker_type text,
+  requested_marker jsonb
+)
+RETURNS jsonb
+LANGUAGE plpgsql IMMUTABLE
+SET search_path = pg_catalog, public
+AS $$
+DECLARE
+  source_contract jsonb:=coalesce(existing_contract,'[]'::jsonb);
+  retained_contract jsonb;
+BEGIN
+  IF requested_marker_type IS NULL
+     OR requested_marker_type<>btrim(requested_marker_type)
+     OR requested_marker_type!~'^[A-Z][A-Z0-9_]{1,79}$' THEN
+    RAISE EXCEPTION 'canonical contract marker type is invalid'
+      USING ERRCODE='22023';
+  END IF;
+  IF jsonb_typeof(source_contract)<>'array' THEN
+    RAISE EXCEPTION 'canonical contract marker source must be an array'
+      USING ERRCODE='22023';
+  END IF;
+  IF requested_marker IS NOT NULL AND jsonb_typeof(requested_marker)<>'object' THEN
+    RAISE EXCEPTION 'canonical contract marker must be an object'
+      USING ERRCODE='22023';
+  END IF;
+
+  SELECT coalesce(jsonb_agg(item.value ORDER BY item.ordinality),'[]'::jsonb)
+    INTO retained_contract
+    FROM jsonb_array_elements(source_contract)
+      WITH ORDINALITY item(value,ordinality)
+   WHERE (jsonb_typeof(item.value)='object'
+     AND item.value->>'markerType'=requested_marker_type) IS NOT TRUE;
+
+  IF requested_marker IS NULL THEN RETURN retained_contract; END IF;
+  RETURN retained_contract||jsonb_build_array(
+    requested_marker||jsonb_build_object(
+      'markerType',requested_marker_type,'primary',true));
+END
+$$;
+
 CREATE OR REPLACE FUNCTION public.framework_refresh_process_execution_specs(
   requested_process text,
   requested_actor text
@@ -67,6 +109,38 @@ BEGIN
        AND NOT EXISTS(
          SELECT 1 FROM public.framework_actor_definition actor
           WHERE actor.actor_code=segregation.actor_code AND actor.use_at='Y')
+  ) OR EXISTS(
+    SELECT 1
+      FROM (
+        SELECT process.owner_actor_code actor_code
+          FROM public.framework_process_definition process
+         WHERE process.process_code=requested_process
+        UNION
+        SELECT step.actor_code FROM public.framework_process_step step
+         WHERE step.process_code=requested_process
+        UNION
+        SELECT step.escalation_actor_code FROM public.framework_process_step step
+         WHERE step.process_code=requested_process
+           AND step.escalation_actor_code IS NOT NULL
+        UNION
+        SELECT segregation.actor_code
+          FROM public.framework_process_step step
+          CROSS JOIN LATERAL unnest(regexp_split_to_array(
+            coalesce(nullif(btrim(step.segregation_actor_codes),''),'__NONE__'),
+            '[[:space:]]*,[[:space:]]*')) segregation(actor_code)
+         WHERE step.process_code=requested_process
+           AND segregation.actor_code<>'__NONE__'
+      ) referenced
+      JOIN public.framework_actor_definition related
+        ON related.actor_code=referenced.actor_code
+      CROSS JOIN LATERAL unnest(regexp_split_to_array(
+        coalesce(nullif(btrim(related.conflict_actor_codes),''),'__NONE__'),
+        '[[:space:]]*,[[:space:]]*')) conflict(actor_code)
+     WHERE conflict.actor_code<>'__NONE__'
+       AND (conflict.actor_code=related.actor_code OR NOT EXISTS(
+         SELECT 1 FROM public.framework_actor_definition active_conflict
+          WHERE active_conflict.actor_code=conflict.actor_code
+            AND active_conflict.use_at='Y'))
   ) THEN
     RAISE EXCEPTION 'process actor reference is not exact: %',requested_process
       USING ERRCODE='23503';
@@ -111,18 +185,143 @@ BEGIN
              'accessibility',page.accessibility_contract,'security',page.security_contract,
              'exceptions',page.exception_contract)
              ORDER BY page.audience,page.page_code) screen_contract,
-           bool_or(upper(page.audience)='USER') has_user,
-           bool_or(upper(page.audience)='ADMIN') has_admin
+            count(*) FILTER(WHERE upper(page.audience)='USER')::integer user_count,
+            count(*) FILTER(WHERE upper(page.audience)='ADMIN')::integer admin_count,
+            bool_and(page.actor_code=source_step.actor_code) actor_exact,
+            bool_and(CASE upper(page.audience)
+              WHEN 'USER' THEN source_step.requires_user_page
+                AND nullif(btrim(source_step.user_path),'') IS NOT NULL
+                AND lower(split_part(btrim(page.planned_route_path),'?',1))=
+                    lower(split_part(btrim(source_step.user_path),'?',1))
+                AND (nullif(btrim(page.actual_route_path),'') IS NULL OR
+                  lower(split_part(btrim(page.actual_route_path),'?',1))=
+                    lower(split_part(btrim(source_step.user_path),'?',1)))
+                AND (page.route_status<>'IMPLEMENTED' OR
+                  nullif(btrim(page.actual_route_path),'') IS NOT NULL)
+              WHEN 'ADMIN' THEN source_step.requires_admin_page
+                AND nullif(btrim(source_step.admin_path),'') IS NOT NULL
+                AND lower(split_part(btrim(page.planned_route_path),'?',1))=
+                    lower(split_part(btrim(source_step.admin_path),'?',1))
+                AND (nullif(btrim(page.actual_route_path),'') IS NULL OR
+                  lower(split_part(btrim(page.actual_route_path),'?',1))=
+                    lower(split_part(btrim(source_step.admin_path),'?',1)))
+                AND (page.route_status<>'IMPLEMENTED' OR
+                  nullif(btrim(page.actual_route_path),'') IS NOT NULL)
+              ELSE false END) route_exact
       FROM public.framework_page_design page
+      JOIN public.framework_process_step source_step
+        USING(process_code,step_code)
      WHERE page.process_code=requested_process
      GROUP BY page.process_code,page.step_code
   ), professional_steps AS MATERIALIZED (
     SELECT contract.process_code,contract.step_code,
-           bool_or(upper(contract.audience)='USER') has_user,
-           bool_or(upper(contract.audience)='ADMIN') has_admin
+            count(*) FILTER(WHERE upper(contract.audience)='USER')::integer user_count,
+            count(*) FILTER(WHERE upper(contract.audience)='ADMIN')::integer admin_count,
+            bool_and(contract.actor_code=source_step.actor_code) actor_exact,
+            bool_and(CASE upper(contract.audience)
+              WHEN 'USER' THEN source_step.requires_user_page
+                AND nullif(btrim(source_step.user_path),'') IS NOT NULL
+                AND lower(split_part(btrim(contract.route_path),'?',1))=
+                    lower(split_part(btrim(source_step.user_path),'?',1))
+              WHEN 'ADMIN' THEN source_step.requires_admin_page
+                AND nullif(btrim(source_step.admin_path),'') IS NOT NULL
+                AND lower(split_part(btrim(contract.route_path),'?',1))=
+                    lower(split_part(btrim(source_step.admin_path),'?',1))
+              ELSE false END) route_exact,
+            jsonb_agg(coalesce((
+              SELECT screen.value FROM jsonb_array_elements(CASE
+                WHEN jsonb_typeof(source_spec.screen_contract)='array'
+                  THEN source_spec.screen_contract ELSE '[]'::jsonb END) screen(value)
+               WHERE upper(screen.value->>'audience')=upper(contract.audience)
+                  OR (screen.value->>'audience' IS NULL
+                    AND jsonb_array_length(source_spec.screen_contract)=1)
+               LIMIT 1),'{}'::jsonb)||jsonb_build_object(
+                'pageCode',coalesce(nullif((SELECT screen.value->>'pageCode'
+                  FROM jsonb_array_elements(CASE
+                    WHEN jsonb_typeof(source_spec.screen_contract)='array'
+                      THEN source_spec.screen_contract ELSE '[]'::jsonb END) screen(value)
+                  WHERE upper(screen.value->>'audience')=upper(contract.audience)
+                     OR (screen.value->>'audience' IS NULL
+                       AND jsonb_array_length(source_spec.screen_contract)=1)
+                  LIMIT 1),''),
+                  contract.process_code||'_'||contract.step_code||'_'||upper(contract.audience)),
+                'plannedRoute',lower(split_part(btrim(contract.route_path),'?',1)),
+                'actualRoute',lower(split_part(btrim(contract.route_path),'?',1)),
+                'routeStatus','IMPLEMENTED','audience',upper(contract.audience),
+                'screenType',coalesce(nullif((SELECT screen.value->>'screenType'
+                  FROM jsonb_array_elements(CASE
+                    WHEN jsonb_typeof(source_spec.screen_contract)='array'
+                      THEN source_spec.screen_contract ELSE '[]'::jsonb END) screen(value)
+                  WHERE upper(screen.value->>'audience')=upper(contract.audience)
+                     OR (screen.value->>'audience' IS NULL
+                       AND jsonb_array_length(source_spec.screen_contract)=1)
+                  LIMIT 1),''),'WORKSPACE'),
+                'templateCode',coalesce(nullif((SELECT screen.value->>'templateCode'
+                  FROM jsonb_array_elements(CASE
+                    WHEN jsonb_typeof(source_spec.screen_contract)='array'
+                      THEN source_spec.screen_contract ELSE '[]'::jsonb END) screen(value)
+                  WHERE upper(screen.value->>'audience')=upper(contract.audience)
+                     OR (screen.value->>'audience' IS NULL
+                       AND jsonb_array_length(source_spec.screen_contract)=1)
+                  LIMIT 1),''),'KRDS_WORKSPACE'),
+                'title',contract.screen_name,'purpose',contract.business_purpose,
+                'entryCondition',contract.entry_condition,'exitCondition',contract.exit_condition,
+                'actorCode',contract.actor_code,
+                'sections',public.framework_try_jsonb(contract.section_contract),
+                'fields',public.framework_try_jsonb(contract.field_contract),
+                'commands',public.framework_merge_primary_contract_marker(
+                  public.framework_try_jsonb(contract.command_contract),'PRIMARY_STEP_COMMAND',
+                  jsonb_build_object('commandCode',source_step.command_code,
+                    'actorCode',source_step.actor_code,'entryState',source_step.from_state,
+                    'resultState',source_step.to_state,'serverAuthorization',true,
+                    'validationRequired',true,'auditRequired',true)),
+                'states',public.framework_try_jsonb(contract.state_contract),
+                'apis',public.framework_merge_primary_contract_marker(
+                  public.framework_try_jsonb(contract.api_contract),'PRIMARY_STEP_API',
+                  CASE WHEN source_step.requires_api THEN jsonb_build_object(
+                    'declaredContract',coalesce(public.framework_try_jsonb(source_step.api_contract),
+                      to_jsonb(source_step.api_contract)),'actorCode',source_step.actor_code,
+                    'commandCode',source_step.command_code,'transactional',true,
+                    'tenantGuard',true,'projectGuard',true,'actorGuard',true,
+                    'idempotencyKey',true,'rowVersion',true) END),
+                'data',public.framework_try_jsonb(contract.data_contract),
+                'evidence',public.framework_try_jsonb(contract.evidence_contract),
+                'responsiveContract',contract.responsive_contract,
+                'accessibilityContract',contract.accessibility_contract,
+                'securityContract',contract.security_contract,
+                'exceptions',public.framework_try_jsonb(contract.state_contract))
+              ORDER BY upper(contract.audience),lower(split_part(contract.route_path,'?',1)),contract.contract_id)
+              screen_contract,
+            (SELECT coalesce(jsonb_agg(item.value ORDER BY source.audience,
+                lower(split_part(source.route_path,'?',1)),source.contract_id,item.ordinality),
+                '[]'::jsonb)
+               FROM public.framework_professional_screen_contract source
+               CROSS JOIN LATERAL jsonb_array_elements(CASE
+                 WHEN jsonb_typeof(public.framework_try_jsonb(source.command_contract))='array'
+                   THEN public.framework_try_jsonb(source.command_contract) ELSE '[]'::jsonb END)
+                 WITH ORDINALITY item(value,ordinality)
+              WHERE source.process_code=contract.process_code
+                AND source.step_code=contract.step_code) command_contract,
+            (SELECT coalesce(jsonb_agg(item.value ORDER BY source.audience,
+                lower(split_part(source.route_path,'?',1)),source.contract_id,item.ordinality),
+                '[]'::jsonb)
+               FROM public.framework_professional_screen_contract source
+               CROSS JOIN LATERAL jsonb_array_elements(CASE
+                 WHEN jsonb_typeof(public.framework_try_jsonb(source.api_contract))='array'
+                   THEN public.framework_try_jsonb(source.api_contract) ELSE '[]'::jsonb END)
+                 WITH ORDINALITY item(value,ordinality)
+              WHERE source.process_code=contract.process_code
+                AND source.step_code=contract.step_code) api_contract
       FROM public.framework_professional_screen_contract contract
+      JOIN public.framework_process_step source_step
+        USING(process_code,step_code)
+      LEFT JOIN public.framework_step_execution_spec source_spec
+        USING(process_code,step_code)
      WHERE contract.process_code=requested_process
-     GROUP BY contract.process_code,contract.step_code
+     GROUP BY contract.process_code,contract.step_code,
+       source_step.command_code,source_step.actor_code,source_step.from_state,
+       source_step.to_state,source_step.requires_api,source_step.api_contract,
+       source_spec.screen_contract
   ), compiled AS MATERIALIZED (
     SELECT process.process_code,step.step_code,process.definition_locked,
       jsonb_build_object(
@@ -183,8 +382,8 @@ BEGIN
         'idempotencyRequired',true,'auditRequired',true) transition_contract,
       schema_set.input_schema input_contract,
       schema_set.output_schema output_contract,
-      CASE WHEN professional.process_code IS NOT NULL AND existing.process_code IS NOT NULL
-        THEN existing.screen_contract ELSE coalesce(page.screen_contract,'[]'::jsonb) END screen_contract,
+      CASE WHEN professional.process_code IS NOT NULL
+        THEN professional.screen_contract ELSE coalesce(page.screen_contract,'[]'::jsonb) END screen_contract,
       CASE WHEN professional.process_code IS NOT NULL AND existing.process_code IS NOT NULL
         THEN existing.field_contract ELSE coalesce((
           SELECT jsonb_agg(jsonb_build_object('audience',grouped.audience,
@@ -200,19 +399,29 @@ BEGIN
                  AND field.value->>'audience'=design.audience
                GROUP BY design.audience
             ) grouped),'[]'::jsonb) END field_contract,
-      CASE WHEN professional.process_code IS NOT NULL AND existing.process_code IS NOT NULL
-        THEN existing.command_contract ELSE jsonb_build_array(jsonb_build_object(
+      public.framework_merge_primary_contract_marker(
+        CASE WHEN professional.process_code IS NOT NULL
+               AND jsonb_array_length(professional.command_contract)>0
+          THEN professional.command_contract
+          ELSE coalesce(existing.command_contract,'[]'::jsonb) END,
+        'PRIMARY_STEP_COMMAND',jsonb_build_object(
           'commandCode',step.command_code,'actorCode',step.actor_code,
           'entryState',step.from_state,'resultState',step.to_state,
           'serverAuthorization',true,'validationRequired',true,
-          'auditRequired',true)) END command_contract,
-      CASE WHEN professional.process_code IS NOT NULL AND existing.process_code IS NOT NULL
-        THEN existing.api_contract WHEN step.requires_api THEN jsonb_build_array(jsonb_build_object(
-          'declaredContract',step.api_contract,'transactional',true,
-          'tenantGuard',true,'projectGuard',true,'actorGuard',true,
-          'idempotencyKey',true,'rowVersion',true,'errorContract',jsonb_build_array(
-            'VALIDATION_ERROR','FORBIDDEN','CONFLICT','DEPENDENCY_BLOCKED','SERVER_ERROR')))
-        ELSE '[]'::jsonb END api_contract,
+          'auditRequired',true)) command_contract,
+      public.framework_merge_primary_contract_marker(
+        CASE WHEN professional.process_code IS NOT NULL
+               AND jsonb_array_length(professional.api_contract)>0
+          THEN professional.api_contract
+          ELSE coalesce(existing.api_contract,'[]'::jsonb) END,
+        'PRIMARY_STEP_API',CASE WHEN step.requires_api THEN jsonb_build_object(
+          'declaredContract',coalesce(public.framework_try_jsonb(step.api_contract),
+            to_jsonb(step.api_contract)),
+          'actorCode',step.actor_code,'commandCode',step.command_code,
+          'transactional',true,'tenantGuard',true,'projectGuard',true,
+          'actorGuard',true,'idempotencyKey',true,'rowVersion',true,
+          'errorContract',jsonb_build_array('VALIDATION_ERROR','FORBIDDEN',
+            'CONFLICT','DEPENDENCY_BLOCKED','SERVER_ERROR')) END) api_contract,
       schema_set.persistence_schema persistence_contract,
       CASE WHEN schema_set.handoff_schema='[]'::jsonb THEN jsonb_build_array(
         jsonb_build_object('handoffType','TERMINAL','toState',step.to_state,
@@ -244,15 +453,34 @@ BEGIN
           'resumeFromLastVerifiedState',true)) nonfunctional_contract,
       array_remove(ARRAY[
         CASE WHEN schema_set.completeness_status<>'COMPLETE' THEN 'STEP_SCHEMA_INCOMPLETE' END,
-        CASE WHEN (step.requires_user_page AND NOT CASE
+        CASE WHEN (step.requires_user_page AND CASE
                     WHEN professional.process_code IS NOT NULL
-                      THEN coalesce(professional.has_user,false)
-                    ELSE coalesce(page.has_user,false) END)
-               OR (step.requires_admin_page AND NOT CASE
+                      THEN coalesce(professional.user_count,0)=0
+                    ELSE coalesce(page.user_count,0)=0 END)
+               OR (step.requires_admin_page AND CASE
                     WHEN professional.process_code IS NOT NULL
-                      THEN coalesce(professional.has_admin,false)
-                    ELSE coalesce(page.has_admin,false) END)
+                      THEN coalesce(professional.admin_count,0)=0
+                    ELSE coalesce(page.admin_count,0)=0 END)
           THEN 'PAGE_DESIGN_MISSING' END,
+        CASE WHEN (CASE WHEN professional.process_code IS NOT NULL
+                      THEN coalesce(professional.user_count,0)
+                      ELSE coalesce(page.user_count,0) END)<>
+                    CASE WHEN step.requires_user_page THEN 1 ELSE 0 END
+               OR (CASE WHEN professional.process_code IS NOT NULL
+                      THEN coalesce(professional.admin_count,0)
+                      ELSE coalesce(page.admin_count,0) END)<>
+                    CASE WHEN step.requires_admin_page THEN 1 ELSE 0 END
+          THEN 'PAGE_AUDIENCE_NOT_EXACT' END,
+        CASE WHEN (professional.process_code IS NOT NULL
+                    AND NOT coalesce(professional.route_exact,false))
+               OR (page.process_code IS NOT NULL
+                    AND NOT coalesce(page.route_exact,false))
+          THEN 'PAGE_ROUTE_MISMATCH' END,
+        CASE WHEN (professional.process_code IS NOT NULL
+                    AND NOT coalesce(professional.actor_exact,false))
+               OR (page.process_code IS NOT NULL
+                    AND NOT coalesce(page.actor_exact,false))
+          THEN 'PAGE_ACTOR_MISMATCH' END,
         CASE WHEN coalesce(test.safety_family_count,0)<5
           THEN 'TEST_FAMILY_MISSING' END],NULL) blockers
     FROM public.framework_process_definition process
@@ -381,11 +609,18 @@ $$;
 COMMENT ON FUNCTION public.framework_refresh_process_execution_specs(text,text) IS
   'Refreshes all fourteen executable contracts for one process after an authenticated design mutation';
 
+COMMENT ON FUNCTION public.framework_merge_primary_contract_marker(jsonb,text,jsonb) IS
+  'Preserves authoritative UI contract arrays while replacing one canonical primary command or API marker';
+
+REVOKE ALL ON FUNCTION public.framework_merge_primary_contract_marker(jsonb,text,jsonb)
+  FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.framework_refresh_process_execution_specs(text,text)
   FROM PUBLIC;
 DO $$
 BEGIN
   IF EXISTS(SELECT 1 FROM pg_roles WHERE rolname='carbonet_app') THEN
+    GRANT EXECUTE ON FUNCTION public.framework_merge_primary_contract_marker(jsonb,text,jsonb)
+      TO carbonet_app;
     GRANT EXECUTE ON FUNCTION public.framework_refresh_process_execution_specs(text,text)
       TO carbonet_app;
   END IF;
