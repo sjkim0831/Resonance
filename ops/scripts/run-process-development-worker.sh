@@ -964,9 +964,14 @@ canonical_job_head_is_current() {
   jq -e '
     (.sourceHash|type=="string" and test("^(?:[0-9a-f]{32}|[0-9a-f]{64})$")) and
     (.designHash|type=="string" and test("^[0-9a-f]{64}$")) and
+    (.designSetHash|type=="string" and test("^[0-9a-f]{64}$")) and
     (.routePath|type=="string" and startswith("/")) and
     (.audience=="USER" or .audience=="ADMIN")
   ' <<<"$SPEC" >/dev/null 2>&1 || return 1
+  local receipt_source_hash receipt_design_hash receipt_design_set_hash
+  receipt_source_hash="$(jq -r '.sourceHash' <<<"$SPEC")"
+  receipt_design_hash="$(jq -r '.designHash' <<<"$SPEC")"
+  receipt_design_set_hash="$(jq -r '.designSetHash' <<<"$SPEC")"
   [[ "$(psqlq -c "
     with job as materialized (
       select j.*,framework_try_jsonb(j.specification_json) spec
@@ -1005,6 +1010,9 @@ canonical_job_head_is_current() {
     select count(*) from job j
     join framework_step_execution_spec s using(process_code,step_code),digest
     where j.job_id=${JOB_ID}
+      and j.spec->>'sourceHash'='${receipt_source_hash}'
+      and j.spec->>'designHash'='${receipt_design_hash}'
+      and j.spec->>'designSetHash'='${receipt_design_set_hash}'
       and s.source_hash=j.spec->>'sourceHash'
       and framework_canonical_screen_bundle(
         j.process_code,j.step_code,j.spec->>'audience',j.spec->>'routePath')->>'designHash'

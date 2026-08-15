@@ -2560,9 +2560,10 @@ public class ActorProcessGovernanceService {
         generationSpec.put("verifiedEvidenceRequired",true);generationSpec.put("autoDeploy",false);
         generationSpec.put("requirement","구조화 화면·기능·권한·엔드포인트 계약을 기존 결정적 제너레이터로 생성한다.");
         String specification=toJson(generationSpec);
+        String canonicalGroup=process+"_CANONICAL_PUBLICATION";
         List<Map<String,Object>> existing=jdbc.queryForList(
-            "select job_id as \"jobId\",job_status as \"jobStatus\" from framework_development_job where process_code=? and step_code=? and job_type='FULL_STACK_GENERATION' and target_path=? for update",
-            process,step,target);
+            "select job_id as \"jobId\",job_status as \"jobStatus\",target_path as \"targetPath\" from framework_development_job where process_code=? and step_code=? and job_type='FULL_STACK_GENERATION' and job_group_code=? for update",
+            process,step,canonicalGroup);
         long jobId;
         boolean queued;
         boolean resetArtifact;
@@ -2575,14 +2576,30 @@ public class ActorProcessGovernanceService {
                 values(?,?,'FULL_STACK_GENERATION','구조화 설계 전체 스택 자동 생성',?, ?,
                   'PLANNED','APPROVED','SEQUENTIAL',?,true,10,3,'PENDING',?) returning job_id
                 """,Long.class,process,step,target,specification,
-                process+"_CANONICAL_PUBLICATION",actor);
+                canonicalGroup,actor);
             queued=true;
             resetArtifact=true;
         }else{
             if(existing.size()!=1)throw new IllegalStateException("CANONICAL_GENERATION_JOB_NOT_EXACT");
             jobId=((Number)existing.get(0).get("jobId")).longValue();
             String status=String.valueOf(existing.get(0).get("jobStatus"));
-            if(Set.of("VERIFIED","COMPLETED").contains(status)){
+            boolean sameHeads=target.equals(String.valueOf(existing.get(0).get("targetPath")));
+            if(!sameHeads){
+                queued=true;resetArtifact=true;
+                int revisionReset=jdbc.update("""
+                    update framework_development_job
+                       set target_path=?,specification_json=?,job_status='PLANNED',
+                           approval_status='APPROVED',quality_status='PENDING',quality_report='{}',
+                           worker_id=null,lease_token=null,lease_until=null,attempt_count=0,
+                           started_at=null,completed_at=null,result_json='{}',evidence_ref=null,
+                           rollback_ref=null,last_error=null,updated_at=current_timestamp
+                     where job_id=? and process_code=? and step_code=?
+                       and job_type='FULL_STACK_GENERATION' and job_group_code=?
+                    """,target,specification,jobId,process,step,canonicalGroup);
+                if(revisionReset!=1)throw new IllegalStateException(
+                    "CANONICAL_GENERATION_JOB_REVISION_RESET_FAILED");
+                jdbc.update("delete from framework_development_job_gate_result where job_id=?",jobId);
+            }else if(Set.of("VERIFIED","COMPLETED").contains(status)){
                 queued=false;resetArtifact=false;
             }else if(Set.of("PLANNED","CLAIMED","RUNNING").contains(status)){
                 queued=true;resetArtifact=false;
@@ -2622,9 +2639,17 @@ public class ActorProcessGovernanceService {
              where process_code=? and step_code=? and contract_ref='AUTO:FULL_STACK_GENERATION'
             """,target,resetArtifact,resetArtifact,process,step);
 
+        Integer canonicalJobCount=jdbc.queryForObject("""
+            select count(*) from framework_development_job
+             where process_code=? and step_code=? and job_type='FULL_STACK_GENERATION'
+               and job_group_code=?
+            """,Integer.class,process,step,canonicalGroup);
+        if(canonicalJobCount==null||canonicalJobCount!=1)
+            throw new IllegalStateException("CANONICAL_GENERATION_JOB_NOT_EXACT");
+
         Map<String,Object> result=new LinkedHashMap<>();
         result.put("success",true);result.put("status",queued?"QUEUED":"UNCHANGED");
-        result.put("generationQueued",queued);result.put("jobCount",1);result.put("jobId",jobId);
+        result.put("generationQueued",queued);result.put("jobCount",canonicalJobCount);result.put("jobId",jobId);
         result.put("processCode",process);result.put("stepCode",step);result.put("routePath",route);
         result.put("designHash",designHash);result.put("sourceHash",sourceHash);
         result.put("designSetHash",stepDesignHash);

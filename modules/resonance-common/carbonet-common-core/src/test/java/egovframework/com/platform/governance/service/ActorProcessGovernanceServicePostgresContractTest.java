@@ -11,6 +11,8 @@ import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.springframework.transaction.support.TransactionTemplate;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Map;
 import java.util.UUID;
 
@@ -24,6 +26,9 @@ import static org.mockito.Mockito.verifyNoInteractions;
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class ActorProcessGovernanceServicePostgresContractTest {
+    private static final String CANONICAL_JOB_MIGRATION=
+        "apps/carbonet-api/src/main/resources/db/migration/postgresql/"+
+        "V20260815121600__enforce_one_canonical_generation_job.sql";
     private String schema;
     private JdbcTemplate admin;
     private JdbcTemplate jdbc;
@@ -61,7 +66,8 @@ class ActorProcessGovernanceServicePostgresContractTest {
     @BeforeEach
     void seed(){
         jdbc.execute("drop trigger if exists reject_generation_job on framework_development_job");
-        jdbc.execute("truncate framework_development_job,framework_process_artifact,"+
+        jdbc.execute("truncate framework_development_job_gate_result,framework_development_job,"+
+            "framework_process_artifact,"+
             "framework_permission_grant_v1,framework_permission_requirement_v1,framework_step_execution_spec,"+
             "framework_screen_blueprint,framework_professional_screen_contract,"+
             "framework_process_step,framework_screen_resource,comtnthemedefinition restart identity cascade");
@@ -303,6 +309,96 @@ class ActorProcessGovernanceServicePostgresContractTest {
     }
 
     @Test
+    void consecutiveLayoutAndThemeRevisionsReuseOneRowAndInvalidateOldLease(){
+        jdbc.update("insert into framework_screen_resource(route_key,layout_type) values('/alternate','ALT_REGISTERED_LAYOUT')");
+        jdbc.update("insert into comtnthemedefinition(theme_id,use_at,is_active) values('ALT_REGISTERED_THEME','Y','Y')");
+        updateDesign(Map.of("layout","ALT_REGISTERED_LAYOUT"));
+        Map<String,Object> revisionOne=direct();
+        long jobId=((Number)revisionOne.get("jobId")).longValue();
+        String oldSourceHash=String.valueOf(revisionOne.get("sourceHash"));
+        String oldDesignHash=String.valueOf(revisionOne.get("designHash"));
+        String oldSpecification=jdbc.queryForObject(
+            "select specification_json from framework_development_job where job_id=?",String.class,jobId);
+        jdbc.update("""
+            update framework_development_job set job_status='RUNNING',worker_id='old-worker',
+              lease_token='old-lease',lease_until=current_timestamp+interval '5 minutes',
+              attempt_count=2,started_at=current_timestamp,result_json='{"old":true}',
+              evidence_ref='old-evidence',rollback_ref='old-rollback',quality_report='{"old":true}'
+             where job_id=?
+            """,jobId);
+        jdbc.update("""
+            insert into framework_development_job_gate_result(job_id,gate_code,result)
+            values(?,'OLD_GATE','PASSED')
+            """,jobId);
+
+        updateDesign(Map.of("theme","ALT_REGISTERED_THEME"));
+        Map<String,Object> revisionTwo=direct();
+
+        assertEquals(jobId,((Number)revisionTwo.get("jobId")).longValue());
+        assertEquals(1,number(revisionTwo,"jobCount"));
+        assertEquals(count("framework_development_job"),number(revisionTwo,"jobCount"));
+        assertNotEquals(oldSourceHash,revisionTwo.get("sourceHash"));
+        assertNotEquals(oldDesignHash,revisionTwo.get("designHash"));
+        assertNotEquals(oldSpecification,jdbc.queryForObject(
+            "select specification_json from framework_development_job where job_id=?",String.class,jobId));
+        assertEquals(revisionTwo.get("sourceHash"),jdbc.queryForObject(
+            "select specification_json::jsonb->>'sourceHash' from framework_development_job where job_id=?",
+            String.class,jobId));
+        assertEquals(revisionTwo.get("designHash"),jdbc.queryForObject(
+            "select specification_json::jsonb->>'designHash' from framework_development_job where job_id=?",
+            String.class,jobId));
+        assertEquals("PLANNED",jdbc.queryForObject(
+            "select job_status from framework_development_job where job_id=?",String.class,jobId));
+        assertEquals(0,jdbc.queryForObject(
+            "select count(*) from framework_development_job where job_id=? and lease_token='old-lease'",
+            Integer.class,jobId));
+        assertEquals(0,jdbc.queryForObject(
+            "select count(*) from framework_development_job_gate_result where job_id=?",Integer.class,jobId));
+        assertThrows(IllegalArgumentException.class,()->service.completeDevelopmentJob(Map.of(
+            "jobId",jobId,"leaseToken","old-lease","result","VERIFIED"),"old-worker"));
+        assertEquals("PLANNED",jdbc.queryForObject(
+            "select job_status from framework_development_job where job_id=?",String.class,jobId));
+    }
+
+    @Test
+    void sameCompletedRevisionIsUnchangedAndKeepsOneActualRow(){
+        Map<String,Object> first=direct();
+        long jobId=((Number)first.get("jobId")).longValue();
+        jdbc.update("update framework_development_job set job_status='COMPLETED',quality_status='VERIFIED' where job_id=?",jobId);
+
+        Map<String,Object> replay=direct();
+
+        assertEquals("UNCHANGED",replay.get("status"));
+        assertEquals(false,replay.get("generationQueued"));
+        assertEquals(1,number(replay,"jobCount"));
+        assertEquals(count("framework_development_job"),number(replay,"jobCount"));
+        assertEquals("COMPLETED",jdbc.queryForObject(
+            "select job_status from framework_development_job where job_id=?",String.class,jobId));
+    }
+
+    @Test
+    void completedJobIsReopenedInPlaceForANewDesignRevision(){
+        jdbc.update("insert into comtnthemedefinition(theme_id,use_at,is_active) values('ALT_REGISTERED_THEME','Y','Y')");
+        Map<String,Object> first=direct();
+        long jobId=((Number)first.get("jobId")).longValue();
+        String oldSourceHash=String.valueOf(first.get("sourceHash"));
+        jdbc.update("update framework_development_job set job_status='COMPLETED',quality_status='VERIFIED' where job_id=?",jobId);
+
+        updateDesign(Map.of("theme","ALT_REGISTERED_THEME"));
+        Map<String,Object> revision=direct();
+
+        assertEquals(jobId,((Number)revision.get("jobId")).longValue());
+        assertNotEquals(oldSourceHash,revision.get("sourceHash"));
+        assertEquals(true,revision.get("generationQueued"));
+        assertEquals(1,number(revision,"jobCount"));
+        assertEquals(count("framework_development_job"),number(revision,"jobCount"));
+        assertEquals("PLANNED",jdbc.queryForObject(
+            "select job_status from framework_development_job where job_id=?",String.class,jobId));
+        assertEquals("PENDING",jdbc.queryForObject(
+            "select quality_status from framework_development_job where job_id=?",String.class,jobId));
+    }
+
+    @Test
     void duplicateBlueprintRequiresExactlyOneExplicitAuthority(){
         jdbc.update("""
             insert into framework_screen_blueprint(
@@ -363,7 +459,8 @@ class ActorProcessGovernanceServicePostgresContractTest {
     }
 
     private void resetGenerationState(){
-        jdbc.execute("truncate framework_development_job,framework_process_artifact restart identity");
+        jdbc.execute("truncate framework_development_job_gate_result,"+
+            "framework_development_job,framework_process_artifact restart identity");
         jdbc.update("""
             update framework_step_execution_spec set screen_contract='[]',field_contract='{}',
               command_contract='[]',api_contract='[]',actor_contract='{"actor":"ACTOR"}',
@@ -462,8 +559,21 @@ class ActorProcessGovernanceServicePostgresContractTest {
               target_path text,specification_json text,job_status text,approval_status text,
               execution_mode text,job_group_code text,required boolean,progress_weight integer,
               max_attempts integer,quality_status text,created_by text,worker_id text,lease_token text,
-              lease_until timestamp,last_error text,completed_at timestamp,updated_at timestamp default current_timestamp)
+              lease_until timestamp,attempt_count integer not null default 0,started_at timestamp,
+              completed_at timestamp,result_json text not null default '{}',evidence_ref text,
+              rollback_ref text,last_error text,quality_report text not null default '{}',
+              updated_at timestamp default current_timestamp)
             """);
+        jdbc.execute("""
+            create table framework_development_job_gate_result(
+              result_id bigserial primary key,job_id bigint not null references framework_development_job(job_id),
+              gate_code text not null,result text not null)
+            """);
+        try{
+            jdbc.execute(Files.readString(findRepositoryFile(CANONICAL_JOB_MIGRATION)));
+        }catch(java.io.IOException error){
+            throw new IllegalStateException("canonical job migration cannot be read",error);
+        }
         jdbc.execute("""
             create table framework_process_artifact(
               artifact_id bigserial primary key,process_code text,step_code text,artifact_code text,
@@ -532,5 +642,14 @@ class ActorProcessGovernanceServicePostgresContractTest {
               return jsonb_build_object('designHash',design_hash);
             end $$
             """);
+    }
+
+    private static Path findRepositoryFile(String relative){
+        Path cursor=Path.of("").toAbsolutePath();
+        for(int depth=0;cursor!=null&&depth<8;depth++,cursor=cursor.getParent()){
+            Path candidate=cursor.resolve(relative);
+            if(Files.isRegularFile(candidate))return candidate;
+        }
+        throw new IllegalStateException("repository file not found: "+relative);
     }
 }

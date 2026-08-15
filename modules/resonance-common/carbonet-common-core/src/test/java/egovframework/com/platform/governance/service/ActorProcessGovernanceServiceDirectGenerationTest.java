@@ -4,6 +4,8 @@ import egovframework.com.platform.codex.service.CodexProvisioningService;
 import org.junit.jupiter.api.Test;
 import org.springframework.jdbc.core.JdbcTemplate;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 
@@ -46,6 +48,9 @@ class ActorProcessGovernanceServiceDirectGenerationTest {
                 eq(Long.class),any(Object[].class))).thenReturn(77L);
         when(jdbc.queryForObject(argThat(sql->sql!=null&&sql.contains("framework_process_artifact")
                 &&sql.contains("count(*)")),eq(Integer.class),any(Object[].class))).thenReturn(0);
+        when(jdbc.queryForObject(argThat(sql->sql!=null&&sql.contains("framework_development_job")
+                &&sql.contains("job_group_code=?")&&sql.contains("count(*)")),
+                eq(Integer.class),any(Object[].class))).thenReturn(1);
 
         Map<String,Object> result=service.executeDesignDirectDevelopment(request(DESIGN_HASH),"system-admin");
 
@@ -83,6 +88,17 @@ class ActorProcessGovernanceServiceDirectGenerationTest {
         assertTrue(specification.contains("\"sourceHash\":\""+SOURCE_HASH+"\""));
         assertTrue(specification.contains("\"designHash\":\""+DESIGN_HASH+"\""));
         assertTrue(specification.contains("\"autoDeploy\":false"));
+    }
+
+    @Test
+    void workerHeadCheckBindsTheClaimedReceiptToTheCurrentJobRow() throws Exception {
+        String worker=Files.readString(findRepositoryFile(
+            "ops/scripts/run-process-development-worker.sh"));
+
+        assertTrue(worker.contains("(.designSetHash|type==\"string\""));
+        assertTrue(worker.contains("j.spec->>'sourceHash'='${receipt_source_hash}'"));
+        assertTrue(worker.contains("j.spec->>'designHash'='${receipt_design_hash}'"));
+        assertTrue(worker.contains("j.spec->>'designSetHash'='${receipt_design_set_hash}'"));
     }
 
     @Test
@@ -127,5 +143,14 @@ class ActorProcessGovernanceServiceDirectGenerationTest {
     private static Map<String,Object> request(String designHash){
         return Map.of("processCode",PROCESS,"stepCode",STEP,"routePath",ROUTE,
             "audience","USER","designHash",designHash);
+    }
+
+    private static Path findRepositoryFile(String relative){
+        Path cursor=Path.of("").toAbsolutePath();
+        for(int depth=0;cursor!=null&&depth<8;depth++,cursor=cursor.getParent()){
+            Path candidate=cursor.resolve(relative);
+            if(Files.isRegularFile(candidate))return candidate;
+        }
+        throw new IllegalStateException("repository file not found: "+relative);
     }
 }
