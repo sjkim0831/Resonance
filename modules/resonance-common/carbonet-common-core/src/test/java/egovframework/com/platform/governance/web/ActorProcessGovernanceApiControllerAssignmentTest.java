@@ -60,6 +60,17 @@ class ActorProcessGovernanceApiControllerAssignmentTest {
     }
 
     @Test
+    void operationAdministratorUsesTheOwnCompanyBoundedAssignmentPath(){
+        Map<String,Object> body=Map.of("accountId","data-owner","tenantId","TENANT_A","actorCode","SITE_DATA_OWNER");
+        when(users.resolve(request)).thenReturn(context("operations-user","TENANT_A","ROLE_OPERATION_ADMIN",true,false));
+
+        var response=controller.assignment(body,request);
+
+        assertEquals(200,response.getStatusCode().value());
+        verify(service).assignActorAuthorized(body,"operations-user","TENANT_A","ROLE_OPERATION_ADMIN",false);
+    }
+
+    @Test
     void anonymousDesignGenerationReturns401WithoutMutation(){
         Map<String,Object> body=Map.of("routePath","/design/route");
         when(users.resolve(request)).thenReturn(context("","","",false,false));

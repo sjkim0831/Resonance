@@ -761,6 +761,19 @@ class ActorProcessGovernanceServiceSecurityTest {
     }
 
     @Test
+    void workerHeartbeatRenewsOnlyAnUnexpiredLease() {
+        when(jdbc.update(argThat(sql -> sql.contains("lease_until is not null")
+                        && sql.contains("lease_until>current_timestamp")
+                        && sql.contains("lease_token=?") && sql.contains("worker_id=?")),
+                any(Object[].class))).thenReturn(1);
+
+        Map<String,Object> result=service.heartbeatDevelopmentJob(17L,"current-lease","worker-a");
+
+        assertEquals(true,result.get("success"));
+        assertEquals(17L,result.get("jobId"));
+    }
+
+    @Test
     void workerCompletionRequiresTheMatchingRunningLeaseBeforeAnyMutation() {
         when(jdbc.queryForList(argThat(sql -> sql.contains("lease_token=?")
                         && sql.contains("worker_id=?") && sql.contains("job_status='RUNNING'")),
@@ -771,6 +784,34 @@ class ActorProcessGovernanceServiceSecurityTest {
 
         verify(jdbc,never()).update(argThat(sql -> sql.startsWith(
                 "update framework_development_job set job_status=")),any(Object[].class));
+    }
+
+    @Test
+    void workerCompletionQueryRequiresAnUnexpiredLease() {
+        when(jdbc.queryForList(anyString(),any(Object[].class))).thenReturn(List.of());
+
+        assertThrows(IllegalArgumentException.class, () -> service.completeDevelopmentJob(Map.of(
+                "jobId",17L,"leaseToken","current-lease","result","VERIFIED"),"worker-a"));
+
+        ArgumentCaptor<String> sql=ArgumentCaptor.forClass(String.class);
+        verify(jdbc).queryForList(sql.capture(),any(Object[].class));
+        assertTrue(sql.getValue().contains("lease_until is not null"));
+        assertTrue(sql.getValue().contains("lease_until>current_timestamp"));
+    }
+
+    @Test
+    void expiredLeaseIsReclaimedAtTheBoundaryWithANewToken() {
+        when(jdbc.queryForList(anyString())).thenReturn(List.of(Map.of(
+                "job_id",17L,"job_status","RUNNING","lease_token","expired-token")));
+
+        Map<String,Object> result=service.claimDevelopmentJob("worker-a");
+
+        ArgumentCaptor<String> sql=ArgumentCaptor.forClass(String.class);
+        verify(jdbc).queryForList(sql.capture());
+        assertTrue(sql.getValue().contains("j.lease_until is not null"));
+        assertTrue(sql.getValue().contains("j.lease_until<=current_timestamp"));
+        assertFalse("expired-token".equals(result.get("leaseToken")));
+        UUID.fromString(String.valueOf(result.get("leaseToken")));
     }
 
     @Test
@@ -1083,6 +1124,17 @@ class ActorProcessGovernanceServiceSecurityTest {
         SecurityException failure=assertThrows(SecurityException.class,()->service.assignActorAuthorized(Map.of(
                 "accountId","target-user","tenantId","TENANT_B","projectId","*","actorCode","SITE_DATA_OWNER"),
                 "company-manager","TENANT_A","ROLE_ADMIN",false));
+
+        assertEquals("ACTOR_ASSIGNMENT_TENANT_FORBIDDEN",failure.getMessage());
+        verify(jdbc,never()).queryForObject(anyString(),org.mockito.ArgumentMatchers.eq(Integer.class),any(Object[].class));
+        verify(jdbc,never()).update(anyString(),any(Object[].class));
+    }
+
+    @Test
+    void operationAdministratorCannotBypassCrossTenantAssignmentBeforeAnyMutation() {
+        SecurityException failure=assertThrows(SecurityException.class,()->service.assignActorAuthorized(Map.of(
+                "accountId","target-user","tenantId","TENANT_B","projectId","*","actorCode","SITE_DATA_OWNER"),
+                "operations-user","TENANT_A","ROLE_OPERATION_ADMIN",false));
 
         assertEquals("ACTOR_ASSIGNMENT_TENANT_FORBIDDEN",failure.getMessage());
         verify(jdbc,never()).queryForObject(anyString(),org.mockito.ArgumentMatchers.eq(Integer.class),any(Object[].class));

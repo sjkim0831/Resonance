@@ -180,7 +180,7 @@ public class ActorProcessGovernanceApiController {
     private boolean isPlatformAdministrator(CurrentUserContextService.CurrentUserContext context){
         if(context.isWebmaster())return true;
         String authority=context.getAuthorCode()==null?"":context.getAuthorCode().trim().toUpperCase(java.util.Locale.ROOT);
-        return java.util.Set.of("ROLE_SYSTEM_MASTER","ROLE_SYSTEM_ADMIN","ROLE_OPERATION_ADMIN").contains(authority);
+        return java.util.Set.of("ROLE_SYSTEM_MASTER","ROLE_SYSTEM_ADMIN").contains(authority);
     }
     private ResponseEntity<?> designMutationAccessFailure(CurrentUserContextService.CurrentUserContext context){
         if(context==null||!context.isAuthenticated()||context.getUserId()==null||context.getUserId().isBlank())
