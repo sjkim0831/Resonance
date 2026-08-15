@@ -40,6 +40,11 @@ public class ActorProcessGovernanceService {
     );
     private static final String DESIGN_AUTOMATION_NAMESPACE =
         "CARBONET_DESIGN_AUTOMATION_V1";
+    private static final String SOURCE_IMMEDIATE_ACTIVATION_POLICY =
+        "SOURCE_IMMEDIATE_V1";
+    private static final Set<String> SOURCE_IMMEDIATE_DESIGN_ASSET_TYPES = Set.of(
+        "THEME", "SECTION", "COMPONENT", "SCREEN"
+    );
     private final JdbcTemplate jdbc;
     private final ScreenDevelopmentNoteService screenDevelopmentNoteService;
     private final CodexProvisioningService codexProvisioningService;
@@ -4228,6 +4233,495 @@ public class ActorProcessGovernanceService {
         out.put("duplicates",jdbc.queryForList("select asset_fingerprint as fingerprint,count(*) as count,string_agg(component_id,', ' order by component_id) as \"componentIds\" from ui_component_registry where active_yn='Y' and asset_fingerprint is not null group by asset_fingerprint having count(*)>1 order by count(*) desc"));
         out.put("recentPreflights",jdbc.queryForList("select preflight_id as \"preflightId\",page_id as \"pageId\",route_path as \"routePath\",theme_id as \"themeId\",section_id as \"sectionId\",component_id as \"componentId\",class_set_id as \"classSetId\",reuse_policy as \"reusePolicy\",source_scope as \"sourceScope\",decision,executed_by as \"executedBy\",executed_at as \"executedAt\" from framework_design_preflight order by preflight_id desc limit 50"));
         return out;
+    }
+
+    /**
+     * Applies an approved common-design edit to the authoritative runtime
+     * registry and every exact canonical screen that consumes the asset.  The
+     * registry write, canonical marker, runtime publication and one generation
+     * head per affected process share the caller transaction.  There is no
+     * draft, cohort or promotion state in this path.
+     */
+    @Transactional
+    public Map<String,Object> applyCommonDesignAssetSource(
+            Map<String,Object> body,String actor){
+        if(actor==null||actor.isBlank()||!actor.equals(actor.trim())||actor.length()>300)
+            throw new SecurityException("DESIGN_APPROVER_IDENTITY_REQUIRED");
+        Set<String> requestFields=Set.of("activationPolicy","authorityMode","projectId",
+            "assetType","assetId","assetName","routePath","version","active",
+            "payload","dependencies","baseFingerprint","assetFingerprint");
+        java.util.SortedSet<String> unsupportedRequestFields=
+            new java.util.TreeSet<>(body.keySet());
+        unsupportedRequestFields.removeAll(requestFields);
+        if(!unsupportedRequestFields.isEmpty())throw new IllegalArgumentException(
+            "UNSUPPORTED_DESIGN_ASSET_SOURCE_FIELDS: "+unsupportedRequestFields);
+        String activationPolicy=req(body,"activationPolicy").trim().toUpperCase(Locale.ROOT);
+        if(!SOURCE_IMMEDIATE_ACTIVATION_POLICY.equals(activationPolicy))
+            throw new SecurityException("SOURCE_IMMEDIATE_V1_AUTHORITY_REQUIRED");
+        String authorityMode=def(body,"authorityMode","SOURCE").trim().toUpperCase(Locale.ROOT);
+        if(!"SOURCE".equals(authorityMode))
+            throw new SecurityException("MANUAL_OR_ADOPT_DESIGN_AUTHORITY_FORBIDDEN");
+        String projectId=req(body,"projectId").trim().toUpperCase(Locale.ROOT);
+        if(!projectId.matches("[A-Z][A-Z0-9_-]{2,63}"))
+            throw new IllegalArgumentException("INVALID_PROJECT_ID");
+        String assetType=req(body,"assetType").trim().toUpperCase(Locale.ROOT);
+        if(!SOURCE_IMMEDIATE_DESIGN_ASSET_TYPES.contains(assetType))
+            throw new IllegalArgumentException("SOURCE_IMMEDIATE_ASSET_TYPE_UNSUPPORTED: "+assetType);
+        String assetId=req(body,"assetId").trim();
+        if(!assetId.matches("[A-Za-z0-9][A-Za-z0-9_.:-]{1,199}"))
+            throw new IllegalArgumentException("INVALID_DESIGN_ASSET_ID");
+        String assetName=req(body,"assetName");
+        if(assetName.length()>300)throw new IllegalArgumentException("INVALID_DESIGN_ASSET_NAME");
+        String route=ScreenDevelopmentNoteService.cleanRoute(str(body,"routePath"));
+        if(!str(body,"routePath").isBlank()&&!route.startsWith("/"))
+            throw new IllegalArgumentException("INVALID_DESIGN_ASSET_ROUTE");
+        String version=def(body,"version","v1");
+        if(!version.matches("[A-Za-z0-9][A-Za-z0-9._-]{0,79}"))
+            throw new IllegalArgumentException("INVALID_DESIGN_ASSET_VERSION");
+        String beforeFingerprint=req(body,"baseFingerprint").toLowerCase(Locale.ROOT);
+        String afterFingerprint=req(body,"assetFingerprint").toLowerCase(Locale.ROOT);
+        if(!beforeFingerprint.matches("[0-9a-f]{64}")
+                ||!afterFingerprint.matches("[0-9a-f]{64}"))
+            throw new IllegalArgumentException("DESIGN_ASSET_SHA256_REQUIRED");
+        Map<String,Object> payload=designAssetPayload(body.get("payload"),assetType);
+        List<Map<String,Object>> dependencies=designAssetDependencies(body.get("dependencies"));
+        List<Map<String,Object>> payloadDependencies=
+            designAssetDependencies(payload.get("dependencies"));
+        if(!dependencyFingerprints(dependencies).equals(
+                dependencyFingerprints(payloadDependencies)))
+            throw new IllegalArgumentException(
+                "DESIGN_ASSET_DEPENDENCY_CONTRACT_MISMATCH");
+        validateDesignAssetDependencies(dependencies);
+
+        jdbc.query("select pg_advisory_xact_lock(hashtextextended(?,0))",row->{},
+            "COMMON_DESIGN_SOURCE_V1:"+projectId+":"+assetType+":"+assetId);
+        List<Map<String,Object>> identities=affectedCommonDesignScreens(
+            assetType,assetId,route,payload);
+        for(Map<String,Object> identity:identities){
+            int blueprintLocks=jdbc.queryForList(
+                "select blueprint_id from framework_screen_blueprint where blueprint_id=? for update",
+                identity.get("blueprintId")).size();
+            int contractLocks=jdbc.queryForList(
+                "select contract_id from framework_professional_screen_contract where contract_id=? for update",
+                identity.get("contractId")).size();
+            if(blueprintLocks!=1||contractLocks!=1)
+                throw new IllegalStateException("COMMON_DESIGN_SCREEN_LOCK_NOT_EXACT");
+        }
+
+        Map<Long,Map<String,Object>> beforeBundles=new LinkedHashMap<>();
+        boolean idempotent=!identities.isEmpty();
+        for(Map<String,Object> identity:identities){
+            long blueprintId=((Number)identity.get("blueprintId")).longValue();
+            beforeBundles.put(blueprintId,canonicalScreenBundle(identity));
+            if(!commonAssetMarkerMatches(
+                    String.valueOf(identity.get("specificationJson")),
+                    assetType,assetId,afterFingerprint))idempotent=false;
+        }
+
+        int registryWrites=updateCommonDesignRegistry(
+            assetType,assetId,assetName,route,version,boolDefault(body,"active",true),
+            payload,afterFingerprint,actor);
+        if(registryWrites!=1)throw new IllegalStateException(
+            "COMMON_DESIGN_REGISTRY_WRITE_NOT_EXACT: "+registryWrites);
+        Map<String,Object> marker=new LinkedHashMap<>();
+        marker.put("schema","carbonet.common-design-asset-source/v1");
+        marker.put("activationPolicy",SOURCE_IMMEDIATE_ACTIVATION_POLICY);
+        marker.put("projectId",projectId);marker.put("assetType",assetType);
+        marker.put("assetId",assetId);marker.put("assetName",assetName);
+        marker.put("version",version);marker.put("assetFingerprint",afterFingerprint);
+        marker.put("payloadHash",sha256Hex(toJson(payload)));
+        marker.put("dependencies",dependencies);
+        String markerKey=assetType+":"+assetId;
+        int canonicalWrites=0;
+        for(Map<String,Object> identity:identities){
+            String nextLayout="SCREEN".equals(assetType)?req(payload,"layout"):"";
+            String nextTheme="SCREEN".equals(assetType)?req(payload,"theme"):"";
+            int changed=jdbc.update("""
+                with proposed as (
+                  select blueprint_id,
+                         framework_try_jsonb(specification_json)||
+                         jsonb_build_object(
+                           'sourceImmediateAssets',
+                           coalesce(framework_try_jsonb(specification_json)
+                                      ->'sourceImmediateAssets','{}'::jsonb)
+                           ||jsonb_build_object(?,cast(? as jsonb)))
+                         ||case when ?<>'' then jsonb_build_object('layout',?)
+                                 else '{}'::jsonb end
+                         ||case when ?<>'' then jsonb_build_object('theme',?)
+                                 else '{}'::jsonb end as next_specification
+                    from framework_screen_blueprint where blueprint_id=?
+                )
+                update framework_screen_blueprint blueprint
+                   set specification_json=proposed.next_specification::text,
+                       updated_at=current_timestamp
+                  from proposed
+                 where blueprint.blueprint_id=proposed.blueprint_id
+                   and framework_try_jsonb(blueprint.specification_json)
+                       is distinct from proposed.next_specification
+                """,markerKey,toJson(marker),nextLayout,nextLayout,nextTheme,nextTheme,
+                identity.get("blueprintId"));
+            if(changed>1)throw new IllegalStateException(
+                "COMMON_DESIGN_CANONICAL_WRITE_NOT_EXACT");
+            canonicalWrites+=changed;
+        }
+
+        java.util.SortedSet<String> processes=new java.util.TreeSet<>();
+        identities.forEach(identity->processes.add(String.valueOf(
+            identity.get("processCode"))));
+        for(String process:processes)generateProfessionalDesignGraph(process,actor);
+
+        List<Map<String,Object>> screenReceipts=new ArrayList<>();
+        List<Map<String,Object>> publications=new ArrayList<>();
+        for(Map<String,Object> identity:identities){
+            long blueprintId=((Number)identity.get("blueprintId")).longValue();
+            Map<String,Object> after=canonicalScreenBundle(identity);
+            String beforeHash=canonicalHash(beforeBundles.get(blueprintId),"designHash");
+            String afterHash=canonicalHash(after,"designHash");
+            if(!idempotent&&beforeHash.equals(afterHash))
+                throw new IllegalStateException(
+                    "COMMON_DESIGN_CANONICAL_HASH_UNCHANGED: "+blueprintId);
+            Map<String,Object> screen=new LinkedHashMap<>();
+            screen.put("blueprintId",blueprintId);
+            screen.put("contractId",identity.get("contractId"));
+            screen.put("processCode",identity.get("processCode"));
+            screen.put("stepCode",identity.get("stepCode"));
+            screen.put("audience",identity.get("audience"));
+            screen.put("routePath",identity.get("routePath"));
+            screen.put("beforeDesignHash",beforeHash);
+            screen.put("afterDesignHash",afterHash);
+            screen.put("changed",!beforeHash.equals(afterHash));
+            screenReceipts.add(screen);
+            publications.add(screenContractRuntimeService.publishProfessionalContract(
+                ((Number)identity.get("contractId")).longValue(),actor));
+        }
+
+        List<Map<String,Object>> generation=new ArrayList<>();
+        for(String process:processes){
+            Map<String,Object> trigger=new LinkedHashMap<>();
+            trigger.put("triggerType","COMMON_DESIGN_ASSET_SOURCE");
+            trigger.put("assetType",assetType);trigger.put("assetId",assetId);
+            trigger.put("assetFingerprint",afterFingerprint);
+            generation.add(refreshAndQueueCanonicalProcess(process,actor,trigger));
+        }
+        boolean reviewRequired=generation.stream().anyMatch(receipt->
+            Set.of("FAILED","BLOCKED","SKIPPED","REVIEW_REQUIRED").contains(
+                String.valueOf(receipt.get("status"))));
+        boolean queued=generation.stream().anyMatch(receipt->
+            Boolean.TRUE.equals(receipt.get("generationQueued")));
+        String status=reviewRequired?"REVIEW_REQUIRED":queued?"QUEUED":"APPLIED";
+        int jobCount=generation.stream().mapToInt(receipt->
+            ((Number)receipt.getOrDefault("jobCount",0)).intValue()).sum();
+        int endpointExpected=generation.stream().mapToInt(receipt->
+            ((Number)receipt.getOrDefault("endpointExpected",0)).intValue()).sum();
+        Map<String,Object> result=new LinkedHashMap<>();
+        result.put("success",!reviewRequired);result.put("status",status);
+        result.put("sourceCommitted",true);result.put("idempotent",idempotent);
+        result.put("activationPolicy",SOURCE_IMMEDIATE_ACTIVATION_POLICY);
+        result.put("authorityMode","SOURCE");result.put("projectId",projectId);
+        result.put("assetType",assetType);result.put("assetId",assetId);
+        result.put("baseFingerprint",beforeFingerprint);
+        result.put("assetFingerprint",afterFingerprint);
+        result.put("registryWrites",registryWrites);
+        result.put("canonicalWrites",canonicalWrites);
+        result.put("affectedScreenCount",identities.size());
+        result.put("affectedProcessCount",processes.size());
+        result.put("screens",screenReceipts);result.put("processes",generation);
+        result.put("runtimePublications",publications);
+        result.put("jobCount",jobCount);result.put("endpointExpected",endpointExpected);
+        result.put("buildRequired",false);
+        result.put("rollbackPolicy","TRANSACTION_ROLLBACK");
+        return result;
+    }
+
+    private List<Map<String,Object>> affectedCommonDesignScreens(
+            String assetType,String assetId,String route,Map<String,Object> payload){
+        String theme="THEME".equals(assetType)?assetId:str(payload,"theme");
+        return jdbc.queryForList("""
+            with candidates as materialized (
+              select blueprint.blueprint_id,contract.contract_id,
+                     (blueprint.transition_status='CONTRACT_LINKED'
+                       and lower(blueprint.source_reference) in(
+                         'framework_professional_screen_contract:'||contract.contract_id,
+                         'professional_screen_contract:'||contract.contract_id)) explicit_link,
+                     count(*) over(partition by contract.contract_id) candidate_count,
+                     count(*) filter(where blueprint.transition_status='CONTRACT_LINKED'
+                       and lower(blueprint.source_reference) in(
+                         'framework_professional_screen_contract:'||contract.contract_id,
+                         'professional_screen_contract:'||contract.contract_id))
+                       over(partition by contract.contract_id) explicit_count
+                from framework_screen_blueprint blueprint
+                join framework_professional_screen_contract contract
+                  on contract.process_code=blueprint.process_code
+                 and contract.step_code=blueprint.step_code
+                 and upper(contract.audience)=upper(blueprint.audience)
+                 and lower(split_part(contract.route_path,'?',1))=
+                     lower(split_part(blueprint.route_path,'?',1))
+               where blueprint.validation_status='VALID'
+            ), authority as materialized (
+              select blueprint_id,contract_id from candidates
+               where (explicit_count=1 and explicit_link)
+                  or (explicit_count=0 and candidate_count=1)
+            )
+            select blueprint.blueprint_id as "blueprintId",
+                   contract.contract_id as "contractId",
+                   blueprint.process_code as "processCode",
+                   blueprint.step_code as "stepCode",blueprint.audience,
+                   lower(split_part(blueprint.route_path,'?',1)) as "routePath",
+                   blueprint.specification_json as "specificationJson"
+              from authority selected
+              join framework_screen_blueprint blueprint using(blueprint_id)
+              join framework_professional_screen_contract contract using(contract_id)
+             where (
+               ?='THEME' and (
+                 framework_try_jsonb(blueprint.specification_json)->>'theme'=?
+                 or exists(select 1 from ui_page_manifest page
+                    where page.page_id=blueprint.page_id and page.active_yn='Y'
+                      and page.design_token_version=?)))
+                or (?='SECTION' and (
+                  exists(select 1 from ui_page_component_map mapping
+                    where mapping.page_id=blueprint.page_id
+                      and upper(mapping.layout_zone)=upper(?))
+                  or exists(select 1 from jsonb_array_elements(case
+                      when jsonb_typeof(framework_try_jsonb(blueprint.specification_json)
+                        ->'assetBindings')='array'
+                      then framework_try_jsonb(blueprint.specification_json)->'assetBindings'
+                      else '[]'::jsonb end) binding
+                    where upper(coalesce(binding->>'assetCode',binding->>'registryKey',''))=upper(?))))
+                or (?='COMPONENT' and (
+                  exists(select 1 from ui_page_component_map mapping
+                    where mapping.page_id=blueprint.page_id
+                      and upper(mapping.component_id)=upper(?))
+                  or exists(select 1 from jsonb_array_elements(case
+                      when jsonb_typeof(framework_try_jsonb(blueprint.specification_json)
+                        ->'assetBindings')='array'
+                      then framework_try_jsonb(blueprint.specification_json)->'assetBindings'
+                      else '[]'::jsonb end) binding
+                    where upper(coalesce(binding->>'assetCode',binding->>'registryKey',''))=upper(?))))
+                or (?='SCREEN' and (
+                  upper(blueprint.page_id)=upper(?)
+                  or (?<>'' and lower(split_part(blueprint.route_path,'?',1))=lower(?))))
+             order by blueprint.process_code collate "C",blueprint.step_code collate "C",
+                      blueprint.audience collate "C",blueprint.blueprint_id
+            """,assetType,theme,theme,assetType,assetId,assetId,
+            assetType,assetId,assetId,assetType,assetId,route,route);
+    }
+
+    private int updateCommonDesignRegistry(String assetType,String assetId,
+            String assetName,String route,String version,boolean active,
+            Map<String,Object> payload,String fingerprint,String actor){
+        if("THEME".equals(assetType)){
+            Map<String,Object> current=exactRegistryRow(
+                "select * from comtnthemedefinition where theme_id=? for update",assetId);
+            boolean defaultTheme=payload.containsKey("isDefault")
+                ?flag(payload.get("isDefault"))
+                :"Y".equalsIgnoreCase(String.valueOf(current.get("is_default")));
+            return jdbc.update("""
+                update comtnthemedefinition set
+                  theme_nm=?,theme_dc=?,theme_type=?,color_config=?,typography_config=?,
+                  spacing_config=?,border_config=?,shadow_config=?,class_prefix=?,
+                  is_default=?,is_active=?,use_at=?,updt_pnttm=current_timestamp,
+                  updt_user_id=? where theme_id=?
+                """,value(payload,"themeName",assetName),
+                value(payload,"description",current.get("theme_dc")),
+                value(payload,"themeType",current.get("theme_type")),
+                toJson(payload.get("colorConfig")),toJson(payload.get("typographyConfig")),
+                toJson(payload.get("spacingConfig")),toJson(payload.get("borderConfig")),
+                toJson(payload.get("shadowConfig")),
+                value(payload,"classPrefix",current.get("class_prefix")),
+                defaultTheme?"Y":"N",active?"Y":"N",active?"Y":"N",
+                actor,assetId);
+        }
+        if("SECTION".equals(assetType)){
+            exactRegistryRow("select section_id from ui_section_registry where section_id=? for update",assetId);
+            return jdbc.update("""
+                update ui_section_registry set section_name=?,section_type=?,layout_contract=?,
+                  responsive_contract=?,accessibility_contract=?,design_reference=?,
+                  asset_fingerprint=?,active_yn=?,updated_at=current_timestamp
+                 where section_id=?
+                """,value(payload,"sectionName",assetName),req(payload,"sectionType"),
+                req(payload,"layoutContract"),req(payload,"responsiveContract"),
+                req(payload,"accessibilityContract"),str(payload,"designReference"),
+                fingerprint,active?"Y":"N",assetId);
+        }
+        if("COMPONENT".equals(assetType)){
+            exactRegistryRow("select component_id from ui_component_registry where component_id=? for update",assetId);
+            return jdbc.update("""
+                update ui_component_registry set component_name=?,component_type=?,owner_domain=?,
+                  props_schema_json=?,design_reference=?,default_props=?,category=?,
+                  asset_fingerprint=?,active_yn=?,updated_at=current_timestamp
+                 where component_id=?
+                """,value(payload,"componentName",assetName),req(payload,"componentType"),
+                req(payload,"ownerDomain"),toJson(payload.get("propsSchema")),
+                req(payload,"designReference"),toJson(payload.get("defaultProps")),
+                def(payload,"category","COMMON"),fingerprint,active?"Y":"N",assetId);
+        }
+        List<Map<String,Object>> pages=jdbc.queryForList("""
+            select page_id from ui_page_manifest
+             where (upper(page_id)=upper(?) or (?<>'' and
+                    lower(split_part(route_path,'?',1))=lower(?))) for update
+            """,assetId,route,route);
+        if(pages.size()!=1)throw new IllegalArgumentException(
+            "SCREEN_DESIGN_ASSET_NOT_EXACT: "+assetId+", count="+pages.size());
+        String pageId=String.valueOf(pages.get(0).get("page_id"));
+        return jdbc.update("""
+            update ui_page_manifest set page_name=?,route_path=?,layout_version=?,
+                   design_token_version=?,active_yn=?,updated_at=current_timestamp
+             where page_id=?
+            """,value(payload,"pageName",assetName),route,version,
+            req(payload,"theme"),active?"Y":"N",pageId);
+    }
+
+    private Map<String,Object> exactRegistryRow(String sql,Object... arguments){
+        List<Map<String,Object>> rows=jdbc.queryForList(sql,arguments);
+        if(rows.size()!=1)throw new IllegalArgumentException(
+            "DESIGN_ASSET_RUNTIME_SOURCE_NOT_EXACT: count="+rows.size());
+        return rows.get(0);
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Map<String,Object> designAssetPayload(Object raw,String assetType){
+        if(!(raw instanceof Map<?,?> map)||map.isEmpty())
+            throw new IllegalArgumentException("DESIGN_ASSET_PAYLOAD_OBJECT_REQUIRED");
+        Map<String,Object> payload=new LinkedHashMap<>();
+        map.forEach((key,item)->payload.put(String.valueOf(key),item));
+        Set<String> allowed=switch(assetType){
+            case "THEME" -> Set.of("schemaVersion","themeName","description","themeType",
+                "colorConfig","typographyConfig","spacingConfig","borderConfig",
+                "shadowConfig","classPrefix","isDefault","dependencies");
+            case "SECTION" -> Set.of("schemaVersion","sectionName","sectionType",
+                "layoutContract","responsiveContract","accessibilityContract",
+                "designReference","dependencies");
+            case "COMPONENT" -> Set.of("schemaVersion","componentName","componentType",
+                "ownerDomain","propsSchema","designReference","defaultProps","category",
+                "dependencies");
+            case "SCREEN" -> Set.of("schemaVersion","pageName","layout","theme",
+                "sections","components","dependencies");
+            default -> Set.of();
+        };
+        java.util.SortedSet<String> unsupported=new java.util.TreeSet<>(payload.keySet());
+        unsupported.removeAll(allowed);
+        if(!unsupported.isEmpty())throw new IllegalArgumentException(
+            "UNSUPPORTED_DESIGN_ASSET_PAYLOAD_FIELDS: "+unsupported);
+        if("THEME".equals(assetType)){
+            for(String field:List.of("colorConfig","typographyConfig","spacingConfig",
+                    "borderConfig","shadowConfig"))requireMap(payload.get(field),"payload."+field);
+        }else if("SECTION".equals(assetType)){
+            for(String field:List.of("sectionType","layoutContract","responsiveContract",
+                    "accessibilityContract"))req(payload,field);
+        }else if("COMPONENT".equals(assetType)){
+            req(payload,"componentType");req(payload,"ownerDomain");
+            req(payload,"designReference");
+            requireMap(payload.get("propsSchema"),"payload.propsSchema");
+            requireMap(payload.get("defaultProps"),"payload.defaultProps");
+        }else{
+            String layout=req(payload,"layout"),theme=req(payload,"theme");
+            if(!layout.matches("[A-Z][A-Z0-9_]{1,79}")
+                    ||!theme.matches("[A-Z][A-Z0-9_]{1,79}"))
+                throw new IllegalArgumentException("GOVERNED_LAYOUT_AND_THEME_REQUIRED");
+            requireList(payload.get("sections"),"payload.sections");
+            requireList(payload.get("components"),"payload.components");
+        }
+        return payload;
+    }
+
+    private static List<Map<String,Object>> designAssetDependencies(Object raw){
+        if(raw==null)return List.of();
+        if(!(raw instanceof List<?> items)||items.size()>200)
+            throw new IllegalArgumentException("DESIGN_ASSET_DEPENDENCIES_ARRAY_REQUIRED");
+        List<Map<String,Object>> dependencies=new ArrayList<>();
+        Set<String> identities=new HashSet<>();
+        for(Object item:items){
+            Map<String,Object> dependency=requireMap(item,"dependency");
+            if(!dependency.keySet().stream().allMatch(
+                    Set.of("assetType","assetId","fingerprint")::contains))
+                throw new IllegalArgumentException("DESIGN_ASSET_DEPENDENCY_SCHEMA_INVALID");
+            String type=req(dependency,"assetType").toUpperCase(Locale.ROOT);
+            String id=req(dependency,"assetId");
+            if(!SOURCE_IMMEDIATE_DESIGN_ASSET_TYPES.contains(type)
+                    ||!id.matches("[A-Za-z0-9][A-Za-z0-9_.:-]{1,199}"))
+                throw new IllegalArgumentException("DESIGN_ASSET_DEPENDENCY_INVALID");
+            String fingerprint=str(dependency,"fingerprint").toLowerCase(Locale.ROOT);
+            if(!fingerprint.isBlank()&&!fingerprint.matches("[0-9a-f]{64}"))
+                throw new IllegalArgumentException("DESIGN_ASSET_DEPENDENCY_SHA256_INVALID");
+            if(!identities.add(type+":"+id))
+                throw new IllegalArgumentException("DUPLICATE_DESIGN_ASSET_DEPENDENCY");
+            dependencies.add(Map.of("assetType",type,"assetId",id,
+                "fingerprint",fingerprint));
+        }
+        return dependencies;
+    }
+
+    private static Map<String,String> dependencyFingerprints(
+            List<Map<String,Object>> dependencies){
+        Map<String,String> index=new TreeMap<>();
+        for(Map<String,Object> dependency:dependencies){
+            String identity=String.valueOf(dependency.get("assetType"))+":"+
+                String.valueOf(dependency.get("assetId"));
+            index.put(identity,String.valueOf(dependency.get("fingerprint")));
+        }
+        return index;
+    }
+
+    private void validateDesignAssetDependencies(List<Map<String,Object>> dependencies){
+        for(Map<String,Object> dependency:dependencies){
+            String type=String.valueOf(dependency.get("assetType"));
+            String id=String.valueOf(dependency.get("assetId"));
+            String sql=switch(type){
+                case "THEME" -> "select count(*) from comtnthemedefinition where theme_id=? and use_at='Y' and is_active='Y'";
+                case "SECTION" -> "select count(*) from ui_section_registry where section_id=? and active_yn='Y'";
+                case "COMPONENT" -> "select count(*) from ui_component_registry where component_id=? and active_yn='Y'";
+                case "SCREEN" -> "select count(*) from ui_page_manifest where page_id=? and active_yn='Y'";
+                default -> throw new IllegalArgumentException("DESIGN_ASSET_DEPENDENCY_INVALID");
+            };
+            Integer count=jdbc.queryForObject(sql,Integer.class,id);
+            if(count==null||count!=1)throw new IllegalArgumentException(
+                "DESIGN_ASSET_DEPENDENCY_NOT_EXACT: "+type+":"+id);
+            String expected=String.valueOf(dependency.get("fingerprint"));
+            if(!expected.isBlank()&&Set.of("SECTION","COMPONENT").contains(type)){
+                String relation="SECTION".equals(type)?"ui_section_registry":"ui_component_registry";
+                String key="SECTION".equals(type)?"section_id":"component_id";
+                String actual=jdbc.queryForObject("select coalesce(asset_fingerprint,'') from "+
+                    relation+" where "+key+"=?",String.class,id);
+                if(!expected.equals(actual))throw new IllegalArgumentException(
+                    "DESIGN_ASSET_DEPENDENCY_FINGERPRINT_CHANGED: "+type+":"+id);
+            }
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Map<String,Object> requireMap(Object value,String field){
+        if(!(value instanceof Map<?,?> raw))
+            throw new IllegalArgumentException(field+" must be an object");
+        Map<String,Object> result=new LinkedHashMap<>();
+        raw.forEach((key,item)->result.put(String.valueOf(key),item));
+        return result;
+    }
+
+    private static List<?> requireList(Object value,String field){
+        if(!(value instanceof List<?> list))
+            throw new IllegalArgumentException(field+" must be an array");
+        return list;
+    }
+
+    private static String value(Map<String,Object> source,String key,Object fallback){
+        String value=str(source,key);
+        return value.isBlank()?(fallback==null?"":String.valueOf(fallback)):value;
+    }
+
+    private static boolean boolDefault(Map<String,Object> source,String key,boolean fallback){
+        return source.containsKey(key)?flag(source.get(key)):fallback;
+    }
+
+    private static boolean commonAssetMarkerMatches(String specification,
+            String assetType,String assetId,String fingerprint){
+        Map<String,Object> spec=jsonMap(specification);
+        Object rawAssets=spec.get("sourceImmediateAssets");
+        if(!(rawAssets instanceof Map<?,?> assets))return false;
+        Object rawMarker=assets.get(assetType+":"+assetId);
+        if(!(rawMarker instanceof Map<?,?> marker))return false;
+        return fingerprint.equals(String.valueOf(marker.get("assetFingerprint")))
+            &&SOURCE_IMMEDIATE_ACTIVATION_POLICY.equals(
+                String.valueOf(marker.get("activationPolicy")));
     }
 
     public Map<String,Object> searchAssetCatalog(String query,String type,int requestedLimit){

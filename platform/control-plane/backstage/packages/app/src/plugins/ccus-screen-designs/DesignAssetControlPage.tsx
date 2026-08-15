@@ -18,7 +18,10 @@ import {
 } from '@material-ui/core';
 import CloseIcon from '@material-ui/icons/Close';
 import SearchIcon from '@material-ui/icons/Search';
-import { getSharedProjectId, useSharedProjectSelection } from './useSharedProjectSelection';
+import {
+  getSharedProjectId,
+  useSharedProjectSelection,
+} from './useSharedProjectSelection';
 
 type AssetType = 'THEME' | 'CSS' | 'SECTION' | 'COMPONENT' | 'SCREEN' | 'MENU';
 type DesignAsset = {
@@ -32,19 +35,6 @@ type DesignAsset = {
   fingerprint: string;
   syncedAt: string;
 };
-type DesignDraft = {
-  draftId: string;
-  assetType: AssetType;
-  assetId: string;
-  baseFingerprint: string;
-  patch: Record<string, unknown>;
-  status: string;
-  validationReport?: Record<string, unknown>;
-  createdBy: string;
-  createdAt: string;
-  updatedAt: string;
-  promotedAt?: string;
-};
 type DesignAccess = {
   actorRef: string;
   roles: string[];
@@ -55,6 +45,20 @@ type DesignAccess = {
     canAudit: boolean;
   };
 };
+type SourceReceipt = {
+  status?: string;
+  success?: boolean;
+  sourceCommitted?: boolean;
+  idempotent?: boolean;
+  activationPolicy?: string;
+  controlPlaneSnapshot?: string;
+  snapshotFingerprint?: string;
+  affectedScreenCount?: number;
+  affectedProcessCount?: number;
+  jobCount?: number;
+  endpointExpected?: number;
+  message?: string;
+};
 
 const types: { code: AssetType; label: string }[] = [
   { code: 'THEME', label: '테마' },
@@ -64,6 +68,12 @@ const types: { code: AssetType; label: string }[] = [
   { code: 'SCREEN', label: '화면' },
   { code: 'MENU', label: '메뉴' },
 ];
+const sourceMutableTypes = new Set<AssetType>([
+  'THEME',
+  'SECTION',
+  'COMPONENT',
+  'SCREEN',
+]);
 
 const useStyles = makeStyles(theme => ({
   hero: {
@@ -131,15 +141,15 @@ export function DesignAssetControlPage() {
   const [counts, setCounts] = useState<Record<string, number>>({});
   const [selected, setSelected] = useState<DesignAsset | null>(null);
   const [error, setError] = useState('');
-  const [draftName, setDraftName] = useState('');
-  const [draftPayload, setDraftPayload] = useState('');
-  const [draftStatus, setDraftStatus] = useState('');
-  const [drafts, setDrafts] = useState<DesignDraft[]>([]);
+  const [editorName, setEditorName] = useState('');
+  const [editorPayload, setEditorPayload] = useState('');
+  const [saveState, setSaveState] = useState('');
+  const [receipt, setReceipt] = useState<SourceReceipt | null>(null);
   const [access, setAccess] = useState<DesignAccess | null>(null);
-  const activeType = types[tab].code;
+  const activeType = types[tab]?.code ?? 'THEME';
 
   const load = useCallback(async () => {
-    const [assetResponse, draftResponse, accessResponse] = await Promise.all([
+    const [assetResponse, accessResponse] = await Promise.all([
       fetchApi.fetch(
         `/api/resonance-projects/design-assets/${encodeURIComponent(
           projectId,
@@ -148,31 +158,21 @@ export function DesignAssetControlPage() {
       fetchApi.fetch(
         `/api/resonance-projects/design-assets/${encodeURIComponent(
           projectId,
-        )}/drafts`,
-      ),
-      fetchApi.fetch(
-        `/api/resonance-projects/design-assets/${encodeURIComponent(
-          projectId,
         )}/access`,
       ),
     ]);
-    const [assetPayload, draftPayloadResult, accessPayload] = await Promise.all([
+    const [assetPayload, accessPayload] = await Promise.all([
       assetResponse.json(),
-      draftResponse.json(),
       accessResponse.json(),
     ]);
     if (!assetResponse.ok) {
       throw new Error(assetPayload.message || '자산 조회 실패');
-    }
-    if (!draftResponse.ok) {
-      throw new Error(draftPayloadResult.message || '변경 이력 조회 실패');
     }
     if (!accessResponse.ok) {
       throw new Error(accessPayload.message || '권한 조회 실패');
     }
     setAssets(assetPayload.assets ?? []);
     setCounts(assetPayload.counts ?? {});
-    setDrafts(draftPayloadResult.drafts ?? []);
     setAccess(accessPayload);
   }, [activeType, fetchApi, projectId]);
 
@@ -203,105 +203,94 @@ export function DesignAssetControlPage() {
 
   const openAsset = (asset: DesignAsset) => {
     setSelected(asset);
-    setDraftName(asset.assetName);
-    setDraftPayload(JSON.stringify(asset.payload, null, 2));
-    setDraftStatus('');
+    setEditorName(asset.assetName);
+    setEditorPayload(JSON.stringify(asset.payload, null, 2));
+    setSaveState('');
+    setReceipt(null);
   };
 
-  const saveDraft = async () => {
+  const saveSource = async () => {
     if (!selected) return;
     let payload: Record<string, unknown>;
     try {
-      payload = JSON.parse(draftPayload);
+      const parsed = JSON.parse(editorPayload);
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+        throw new Error('object required');
+      }
+      payload = parsed as Record<string, unknown>;
     } catch {
-      throw new Error('원본 계약 JSON 형식이 올바르지 않습니다.');
+      throw new Error('설계 계약 JSON은 객체 형식이어야 합니다.');
     }
-    const createResponse = await fetchApi.fetch(
+    setSaveState('저장·영향 분석·코드 생성 요청 중');
+    const sourceResponse = await fetchApi.fetch(
       `/api/resonance-projects/design-assets/${encodeURIComponent(
         projectId,
-      )}/drafts`,
+      )}/source`,
       {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
+          activationPolicy: 'SOURCE_IMMEDIATE_V1',
+          authorityMode: 'SOURCE',
           assetType: selected.assetType,
           assetId: selected.assetId,
           baseFingerprint: selected.fingerprint,
-          patch: {
-            assetName: draftName,
-            routePath: selected.routePath,
-            version: selected.version,
-            active: selected.active,
-            payload,
-          },
+          assetName: editorName,
+          routePath: selected.routePath,
+          version: selected.version,
+          active: selected.active,
+          payload,
         }),
       },
     );
-    const created = await createResponse.json();
-    if (!createResponse.ok) {
-      throw new Error(created.message || '초안 저장 실패');
-    }
-    setDraftStatus('DRAFT · 검토자 확인 대기');
-    await load();
-  };
-
-  const reviewDraft = async (target: DesignDraft) => {
-    const response = await fetchApi.fetch(
-      `/api/resonance-projects/design-assets/${encodeURIComponent(
-        projectId,
-      )}/drafts/${target.draftId}/validate`,
-      { method: 'POST' },
-    );
-    const payload = await response.json();
-    if (!response.ok) {
-      throw new Error(
-        payload.failures?.join(', ') || payload.message || '검토 실패',
+    const result = (await sourceResponse.json()) as SourceReceipt;
+    setReceipt(result);
+    if (result.sourceCommitted === true) {
+      const nextFingerprint =
+        result.snapshotFingerprint ?? selected.fingerprint;
+      setSelected({
+        ...selected,
+        assetName: editorName,
+        payload,
+        fingerprint: nextFingerprint,
+      });
+      setSaveState(
+        `${result.status ?? 'APPLIED'} · 화면 ${Number(
+          result.affectedScreenCount ?? 0,
+        )} · 프로세스 ${Number(
+          result.affectedProcessCount ?? 0,
+        )} · 생성 작업 ${Number(result.jobCount ?? 0)}`,
       );
+      await load();
+      if (!sourceResponse.ok) {
+        setError(
+          result.message ||
+            '설계 원본은 저장되었으며 후속 검토가 필요한 결과가 있습니다.',
+        );
+      } else {
+        setError('');
+      }
+      return;
     }
-    setDraftStatus('VALIDATED');
-    await load();
-  };
-
-  const approveDraft = async (target: DesignDraft) => {
-    const response = await fetchApi.fetch(
-      `/api/resonance-projects/design-assets/${encodeURIComponent(
-        projectId,
-      )}/drafts/${target.draftId}/promote`,
-      { method: 'POST' },
-    );
-    const payload = await response.json();
-    if (!response.ok) throw new Error(payload.message || '승격 실패');
-    setDraftStatus(`PROMOTED · TASK ${payload.taskId}`);
-    await load();
-  };
-
-  const requestRollback = async (target: DesignDraft) => {
-    const response = await fetchApi.fetch(
-      `/api/resonance-projects/design-assets/${encodeURIComponent(
-        projectId,
-      )}/drafts/${target.draftId}/rollback`,
-      { method: 'POST' },
-    );
-    const payload = await response.json();
-    if (!response.ok) {
-      throw new Error(payload.message || '롤백 요청 실패');
-    }
-    setDraftStatus(`ROLLBACK_QUEUED · TASK ${payload.taskId}`);
-    await load();
+    setSaveState('적용되지 않음 · 생성 작업 0');
+    throw new Error(result.message || '설계 원본 즉시 반영 실패');
   };
 
   return (
     <Page themeId="tool">
       <Header
         title="공통 디자인 자산 관리"
-        subtitle="테마·CSS·섹션·컴포넌트·화면·메뉴를 프로젝트별 단일 원장에서 관리합니다."
+        subtitle="테마·섹션·컴포넌트·화면 설계를 저장하면 영향 화면과 프로세스 코드가 즉시 동기화됩니다."
       />
       <Content>
         <Box className={classes.hero}>
-          <Typography variant="h5">Common Design Asset Registry</Typography>
+          <Typography variant="h5">
+            Common Design Source · SOURCE_IMMEDIATE_V1
+          </Typography>
           <Typography variant="body2">
-            Resonance 실행 DB의 검증된 자산을 읽기 전용 스냅샷으로 동기화하며,
-            설계 승인 후에만 생성 계약으로 승격합니다.
+            DESIGN_APPROVER가 설계 원본을 저장하면 스키마와 의존성을 먼저
+            검증하고, 같은 트랜잭션에서 canonical 화면을 변경한 뒤 영향
+            프로세스별 코드·엔드포인트 생성 작업을 자동 등록합니다.
           </Typography>
           {access && (
             <Box mt={2} display="flex" flexWrap="wrap" gridGap={8}>
@@ -324,6 +313,39 @@ export function DesignAssetControlPage() {
             </Grid>
           ))}
         </Grid>
+        {receipt && (
+          <Box mt={2} mb={2}>
+            <Paper variant="outlined">
+              <Box p={2}>
+                <Box display="flex" flexWrap="wrap" gridGap={8}>
+                  <Chip
+                    color={receipt.sourceCommitted ? 'primary' : 'default'}
+                    label={receipt.status ?? 'UNKNOWN'}
+                  />
+                  <Chip
+                    label={receipt.activationPolicy ?? 'SOURCE_IMMEDIATE_V1'}
+                  />
+                  <Chip
+                    label={`원본 저장 ${
+                      receipt.sourceCommitted ? '완료' : '안 됨'
+                    }`}
+                  />
+                  <Chip
+                    label={`스냅샷 ${receipt.controlPlaneSnapshot ?? '-'}`}
+                  />
+                </Box>
+                <Box mt={1}>
+                  <Typography variant="body2">
+                    영향 화면 {Number(receipt.affectedScreenCount ?? 0)}개 ·
+                    영향 프로세스 {Number(receipt.affectedProcessCount ?? 0)}개
+                    · 생성 작업 {Number(receipt.jobCount ?? 0)}개 · 예상
+                    엔드포인트 {Number(receipt.endpointExpected ?? 0)}개
+                  </Typography>
+                </Box>
+              </Box>
+            </Paper>
+          </Box>
+        )}
         <Paper className={classes.toolbar} elevation={0}>
           <Tabs
             value={tab}
@@ -365,7 +387,7 @@ export function DesignAssetControlPage() {
           </Typography>
         )}
         <Typography variant="body2" color="textSecondary" gutterBottom>
-          {visible.length.toLocaleString()}개 {types[tab].label} 자산
+          {visible.length.toLocaleString()}개 {types[tab]?.label} 자산
         </Typography>
         <Box className={classes.grid}>
           {visible.map(asset => (
@@ -391,121 +413,6 @@ export function DesignAssetControlPage() {
             </Paper>
           ))}
         </Box>
-        <Box mt={4}>
-          <Box display="flex" justifyContent="space-between" alignItems="center">
-            <Box>
-              <Typography variant="h6">적용·롤백 이력</Typography>
-              <Typography variant="body2" color="textSecondary">
-                원본 지문, 검증 결과, 런타임 백업과 최종 상태를 함께
-                보관합니다.
-              </Typography>
-            </Box>
-            <Button variant="outlined" onClick={() => void load()}>
-              새로고침
-            </Button>
-          </Box>
-          <Box mt={2} display="grid" gridGap={12}>
-            {drafts.slice(0, 20).map(draft => {
-              const report = draft.validationReport ?? {};
-              const failures = Array.isArray(report.failures)
-                ? report.failures.join(', ')
-                : '';
-              return (
-                <Paper key={draft.draftId} variant="outlined">
-                  <Box p={2}>
-                    <Box
-                      display="flex"
-                      justifyContent="space-between"
-                      alignItems="center"
-                      gridGap={12}
-                    >
-                      <Box minWidth={0}>
-                        <Typography variant="subtitle2">
-                          #{draft.draftId} · {draft.assetType} · {draft.assetId}
-                        </Typography>
-                        <Typography variant="caption" className={classes.mono}>
-                          {draft.baseFingerprint}
-                        </Typography>
-                        <Typography variant="caption" display="block">
-                          요청자: {draft.createdBy}
-                        </Typography>
-                      </Box>
-                      <Box display="flex" alignItems="center" gridGap={8}>
-                        <Chip
-                          size="small"
-                          color={
-                            draft.status === 'APPLIED' ? 'primary' : 'default'
-                          }
-                          label={draft.status}
-                        />
-                        {draft.status === 'DRAFT' &&
-                          access?.permissions.canReview &&
-                          draft.createdBy !== access.actorRef && (
-                            <Button
-                              size="small"
-                              variant="outlined"
-                              onClick={() =>
-                                void reviewDraft(draft).catch(reason =>
-                                  setError(String(reason.message || reason)),
-                                )
-                              }
-                            >
-                              계약 검토
-                            </Button>
-                          )}
-                        {draft.status === 'VALIDATED' &&
-                          access?.permissions.canApprove &&
-                          draft.createdBy !== access.actorRef && (
-                            <Button
-                              size="small"
-                              variant="contained"
-                              color="primary"
-                              onClick={() =>
-                                void approveDraft(draft).catch(reason =>
-                                  setError(String(reason.message || reason)),
-                                )
-                              }
-                            >
-                              승인 큐 등록
-                            </Button>
-                          )}
-                        {draft.status === 'APPLIED' &&
-                          access?.permissions.canApprove && (
-                          <Button
-                            size="small"
-                            variant="outlined"
-                            color="secondary"
-                            onClick={() =>
-                              void requestRollback(draft).catch(reason =>
-                                setError(String(reason.message || reason)),
-                              )
-                            }
-                          >
-                            이 버전으로 롤백
-                          </Button>
-                          )}
-                      </Box>
-                    </Box>
-                    <Box mt={1}>
-                      <Typography variant="body2">
-                        검증:{' '}
-                        {String(report.validation ?? report.status ?? '-')}
-                      </Typography>
-                      <Typography variant="body2">
-                        백업: {String(report.backup ?? '-')}
-                      </Typography>
-                      {failures && (
-                        <Typography variant="body2" color="error">
-                          실패 원인: {failures}
-                        </Typography>
-                      )}
-                    </Box>
-                  </Box>
-                </Paper>
-              );
-            })}
-          </Box>
-        </Box>
       </Content>
       <Drawer
         anchor="right"
@@ -529,7 +436,7 @@ export function DesignAssetControlPage() {
               <Typography>{selected.routePath || '-'}</Typography>
             </Box>
             <Box mt={2}>
-              <Typography variant="caption">버전 · 지문</Typography>
+              <Typography variant="caption">버전 · 원본 지문</Typography>
               <Typography className={classes.mono}>
                 {selected.version} · {selected.fingerprint}
               </Typography>
@@ -539,14 +446,19 @@ export function DesignAssetControlPage() {
               <Typography>{selected.syncedAt}</Typography>
             </Box>
             <Box mt={2}>
-              <Typography variant="caption">원본 계약</Typography>
+              <Typography variant="caption">설계 원본 계약</Typography>
+              <Typography variant="body2" color="textSecondary">
+                저장 즉시 영향 화면·기능·권한·API 계약을 다시 계산합니다.
+                실패하면 원본과 생성 작업을 모두 0건으로 되돌립니다.
+              </Typography>
               <TextField
                 fullWidth
                 variant="outlined"
                 label="자산명"
                 margin="dense"
-                value={draftName}
-                onChange={event => setDraftName(event.target.value)}
+                value={editorName}
+                disabled={!sourceMutableTypes.has(selected.assetType)}
+                onChange={event => setEditorName(event.target.value)}
               />
               <TextField
                 fullWidth
@@ -555,29 +467,40 @@ export function DesignAssetControlPage() {
                 variant="outlined"
                 label="계약 JSON"
                 margin="dense"
-                value={draftPayload}
-                onChange={event => setDraftPayload(event.target.value)}
+                value={editorPayload}
+                disabled={!sourceMutableTypes.has(selected.assetType)}
+                onChange={event => setEditorPayload(event.target.value)}
               />
               <Box display="flex" gridGap={12} mt={2}>
                 <Button
                   color="primary"
                   variant="contained"
                   disabled={
-                    !access?.permissions.canRequest ||
-                    draftStatus.startsWith('DRAFT')
+                    !access?.permissions.canApprove ||
+                    !sourceMutableTypes.has(selected.assetType) ||
+                    saveState.includes('요청 중')
                   }
                   onClick={() =>
-                    void saveDraft().catch(reason =>
-                      setError(String(reason.message || reason)),
-                    )
+                    void saveSource().catch(reason => {
+                      setSaveState('적용되지 않음 · 생성 작업 0');
+                      setError(String(reason.message || reason));
+                    })
                   }
                 >
-                  초안 저장
+                  설계 저장·코드 자동 반영
                 </Button>
               </Box>
-              {draftStatus && (
+              {!sourceMutableTypes.has(selected.assetType) && (
+                <Box mt={1}>
+                  <Typography variant="body2" color="textSecondary">
+                    CSS와 메뉴는 현재 조회 전용입니다. 테마·섹션·컴포넌트· 화면
+                    설계만 즉시 반영할 수 있습니다.
+                  </Typography>
+                </Box>
+              )}
+              {saveState && (
                 <Box mt={2}>
-                  <Chip color="primary" label={draftStatus} />
+                  <Chip color="primary" label={saveState} />
                 </Box>
               )}
             </Box>

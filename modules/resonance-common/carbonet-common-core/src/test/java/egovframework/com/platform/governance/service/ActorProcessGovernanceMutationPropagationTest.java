@@ -11,6 +11,7 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
@@ -19,9 +20,68 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockingDetails;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 class ActorProcessGovernanceMutationPropagationTest {
+
+    @Test
+    void commonDesignSourceFailsClosedBeforeAnyRuntimeWriteOrGenerationJob(){
+        JdbcTemplate jdbc=mock(JdbcTemplate.class);
+        ActorProcessGovernanceService service=service(jdbc);
+        Map<String,Object> forbidden=new java.util.LinkedHashMap<>();
+        forbidden.put("activationPolicy","SOURCE_IMMEDIATE_V1");
+        forbidden.put("authorityMode","MANUAL");
+
+        assertThrows(SecurityException.class,()->
+            service.applyCommonDesignAssetSource(forbidden,"design-approver"));
+
+        Map<String,Object> invalid=new java.util.LinkedHashMap<>();
+        invalid.put("activationPolicy","SOURCE_IMMEDIATE_V1");
+        invalid.put("authorityMode","SOURCE");invalid.put("projectId","PROJECT_A");
+        invalid.put("assetType","SCREEN");invalid.put("assetId","SCREEN_A");
+        invalid.put("assetName","Screen A");invalid.put("routePath","/screen-a");
+        invalid.put("version","1.0.0");invalid.put("active",true);
+        invalid.put("baseFingerprint","a".repeat(64));
+        invalid.put("assetFingerprint","b".repeat(64));
+        invalid.put("dependencies",List.of());
+        invalid.put("payload",Map.of("layout","KRDS_LAYOUT","theme","KRDS_THEME",
+            "sections",List.of(),"components",List.of(),"unexpected",true));
+
+        assertThrows(IllegalArgumentException.class,()->
+            service.applyCommonDesignAssetSource(invalid,"design-approver"));
+        verifyNoInteractions(jdbc);
+    }
+
+    @Test
+    void commonDesignSourceContractMutatesCanonicalSourceBeforeExactProcessFanout()
+            throws Exception {
+        String source=Files.readString(findRepositoryFile(
+            "modules/resonance-common/carbonet-common-core/src/main/java/"+
+            "egovframework/com/platform/governance/service/ActorProcessGovernanceService.java"));
+        int start=source.indexOf("Map<String,Object> applyCommonDesignAssetSource(");
+        int end=source.indexOf("private List<Map<String,Object>> affectedCommonDesignScreens(",start);
+        String mutation=source.substring(start,end);
+
+        int registry=mutation.indexOf("updateCommonDesignRegistry(");
+        int canonical=mutation.indexOf("update framework_screen_blueprint");
+        int graph=mutation.indexOf("generateProfessionalDesignGraph(process,actor)");
+        int fanout=mutation.indexOf("refreshAndQueueCanonicalProcess(process,actor,trigger)");
+        assertTrue(registry>0&&canonical>registry&&graph>canonical&&fanout>graph);
+        assertTrue(mutation.contains("COMMON_DESIGN_REGISTRY_WRITE_NOT_EXACT"));
+        assertTrue(mutation.contains("COMMON_DESIGN_CANONICAL_HASH_UNCHANGED"));
+        assertTrue(mutation.contains("sourceCommitted\",true"));
+        assertTrue(mutation.contains("jobCount"));
+        assertTrue(mutation.contains("endpointExpected"));
+        assertFalse(mutation.contains("DESIGN_ASSET_PROMOTION"));
+
+        int impactEnd=source.indexOf("private int updateCommonDesignRegistry(",end);
+        String impact=source.substring(end,impactEnd);
+        assertTrue(impact.contains("ui_page_component_map"));
+        assertTrue(impact.contains("assetBindings"));
+        assertTrue(impact.contains("upper(blueprint.page_id)=upper(?)"));
+        assertTrue(impact.contains("order by blueprint.process_code collate \"C\""));
+    }
 
     @Test
     void incompleteAddStepRefreshesSpecsAndSkipsWithoutLegacyFanout() throws Exception {

@@ -61,6 +61,57 @@ class ActorProcessControlPlaneBridgeAuthorizationTest {
     }
 
     @Test
+    void designSourceRequiresBridgeTokenAndAuthenticatedApproverIdentity(){
+        var unauthorized=controller.applyCommonDesignAssetSource(
+            "wrong-token","user:default/approver",Map.of());
+        var missingActor=controller.applyCommonDesignAssetSource(
+            "secret-token","",Map.of());
+
+        assertEquals(401,unauthorized.getStatusCode().value());
+        assertEquals(403,missingActor.getStatusCode().value());
+        verify(governance,never()).applyCommonDesignAssetSource(any(),anyString());
+    }
+
+    @Test
+    void designSourceReturnsAcceptedOnlyForACommittedQueuedReceipt(){
+        when(governance.applyCommonDesignAssetSource(any(),eq("user:default/approver")))
+            .thenReturn(Map.ofEntries(
+                Map.entry("success",true),Map.entry("status","QUEUED"),
+                Map.entry("sourceCommitted",true),Map.entry("jobCount",2),
+                Map.entry("affectedScreenCount",3),Map.entry("affectedProcessCount",2),
+                Map.entry("endpointExpected",4)));
+        Map<String,Object> body=Map.of(
+            "activationPolicy","SOURCE_IMMEDIATE_V1",
+            "authorityMode","SOURCE");
+
+        var response=controller.applyCommonDesignAssetSource(
+            "secret-token","user:default/approver",body);
+
+        assertEquals(202,response.getStatusCode().value());
+        @SuppressWarnings("unchecked")
+        Map<String,Object> receipt=(Map<String,Object>)response.getBody();
+        assertEquals(true,receipt.get("sourceCommitted"));
+        assertEquals(2,receipt.get("jobCount"));
+        verify(governance).applyCommonDesignAssetSource(body,"user:default/approver");
+    }
+
+    @Test
+    void designSourcePreservesCommittedReviewReceiptAsConflict(){
+        when(governance.applyCommonDesignAssetSource(any(),anyString()))
+            .thenReturn(Map.of("success",false,"status","REVIEW_REQUIRED",
+                "sourceCommitted",true,"jobCount",0));
+
+        var response=controller.applyCommonDesignAssetSource(
+            "secret-token","user:default/approver",Map.of());
+
+        assertEquals(409,response.getStatusCode().value());
+        @SuppressWarnings("unchecked")
+        Map<String,Object> receipt=(Map<String,Object>)response.getBody();
+        assertEquals(true,receipt.get("sourceCommitted"));
+        assertEquals("REVIEW_REQUIRED",receipt.get("status"));
+    }
+
+    @Test
     void authenticatedNonAdministratorReturns403WithoutMutation(){
         when(governance.isControlPlaneAdministrator("designer")).thenReturn(false);
 

@@ -2,7 +2,7 @@ import {
   coreServices,
   createBackendPlugin,
 } from '@backstage/backend-plugin-api';
-import { Router, json, type Request } from 'express';
+import { Router, json, type Request, type Response } from 'express';
 import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import {
@@ -28,6 +28,10 @@ import {
   type RequirementPublicationDisposition,
 } from './requirementIngestionLifecycle';
 import { registerProjectLifecycleRoutes } from './projectLifecycleRoutes';
+import {
+  buildSourceDesignAssetMutation,
+  type DesignAssetSnapshot,
+} from './designAssetSourceImmediate';
 
 type ProjectInput = {
   projectId?: string;
@@ -327,38 +331,6 @@ export default createBackendPlugin({
         }
         if (
           !(await knex.schema.hasTable(
-            'resonance_projects__design_asset_draft',
-          ))
-        ) {
-          await knex.schema.createTable(
-            'resonance_projects__design_asset_draft',
-            table => {
-              table.bigIncrements('draft_id').primary();
-              table
-                .string('project_id', 64)
-                .notNullable()
-                .references('project_id')
-                .inTable('resonance_projects__project')
-                .onDelete('CASCADE');
-              table.string('asset_type', 32).notNullable();
-              table.string('asset_id', 200).notNullable();
-              table.string('base_sha256', 64).notNullable();
-              table.jsonb('patch_payload').notNullable();
-              table.string('draft_status', 32).notNullable();
-              table.jsonb('validation_report').nullable();
-              table.string('created_by', 120).notNullable();
-              table.timestamp('created_at', { useTz: true }).notNullable();
-              table.timestamp('updated_at', { useTz: true }).notNullable();
-              table.timestamp('promoted_at', { useTz: true }).nullable();
-              table.index(
-                ['project_id', 'draft_status'],
-                'resonance_design_asset_draft_status_idx',
-              );
-            },
-          );
-        }
-        if (
-          !(await knex.schema.hasTable(
             'resonance_projects__design_asset_snapshot',
           ))
         ) {
@@ -423,7 +395,6 @@ export default createBackendPlugin({
             table => {
               table.bigIncrements('audit_id').primary();
               table.string('project_id', 64).notNullable();
-              table.bigInteger('draft_id').nullable();
               table.string('action_code', 64).notNullable();
               table.string('actor_ref', 300).notNullable();
               table.jsonb('details').notNullable().defaultTo('{}');
@@ -575,7 +546,9 @@ export default createBackendPlugin({
           );
         }
         if (
-          !(await knex.schema.hasTable('resonance_projects__requirement_document'))
+          !(await knex.schema.hasTable(
+            'resonance_projects__requirement_document',
+          ))
         ) {
           await knex.schema.createTable(
             'resonance_projects__requirement_document',
@@ -611,9 +584,12 @@ export default createBackendPlugin({
           ['identity_key', 240],
           ['content_fingerprint', 64],
         ] as const) {
-          if (!(await knex.schema.hasColumn(
-            'resonance_projects__requirement_document', column,
-          ))) {
+          if (
+            !(await knex.schema.hasColumn(
+              'resonance_projects__requirement_document',
+              column,
+            ))
+          ) {
             await knex.schema.alterTable(
               'resonance_projects__requirement_document',
               table => table.string(column, length).nullable(),
@@ -713,7 +689,6 @@ export default createBackendPlugin({
           if (!access.roles.includes(role)) {
             await knex('resonance_projects__design_asset_audit').insert({
               project_id: projectId,
-              draft_id: null,
               action_code: 'ACCESS_DENIED',
               actor_ref: access.actorRef,
               details: JSON.stringify({ requiredRole: role }),
@@ -729,29 +704,6 @@ export default createBackendPlugin({
           }
           return access;
         };
-        const writeDesignAssetAudit = async ({
-          projectId,
-          draftId,
-          actionCode,
-          actorRef,
-          details = {},
-        }: {
-          projectId: string;
-          draftId?: number;
-          actionCode: string;
-          actorRef: string;
-          details?: Record<string, unknown>;
-        }) => {
-          await knex('resonance_projects__design_asset_audit').insert({
-            project_id: projectId,
-            draft_id: draftId ?? null,
-            action_code: actionCode,
-            actor_ref: actorRef,
-            details: JSON.stringify(details),
-            created_at: new Date(),
-          });
-        };
-
         const persistRequirementPublicationReceipt = async ({
           projectId,
           documentId,
@@ -1061,7 +1013,9 @@ export default createBackendPlugin({
             ).replace(/\/+$/, '');
             const bridgeToken = String(process.env.RESONANCE_OPS_TOKEN ?? '');
             if (!bridgeToken) {
-              response.status(503).json({ message: 'control-plane bridge token is missing' });
+              response
+                .status(503)
+                .json({ message: 'control-plane bridge token is missing' });
               return;
             }
             const parameters = new URLSearchParams({
@@ -1071,18 +1025,31 @@ export default createBackendPlugin({
             });
             const runtimeResponse = await fetch(
               `${runtimeBaseUrl}/api/internal/actor-process/page-development-master?${parameters}`,
-              { headers: { accept: 'application/json', 'x-resonance-token': bridgeToken } },
+              {
+                headers: {
+                  accept: 'application/json',
+                  'x-resonance-token': bridgeToken,
+                },
+              },
             );
-            response.status(runtimeResponse.status).type('application/json').send(await runtimeResponse.text());
+            response
+              .status(runtimeResponse.status)
+              .type('application/json')
+              .send(await runtimeResponse.text());
           },
         );
         router.get(
           '/actor-process/page-development-master/:itemId',
           async (request, response) => {
-            const runtimeBaseUrl = String(process.env.CARBONET_RUNTIME_BASE_URL ?? 'http://carbonet-api.carbonet-prod.svc.cluster.local:8080').replace(/\/+$/, '');
+            const runtimeBaseUrl = String(
+              process.env.CARBONET_RUNTIME_BASE_URL ??
+                'http://carbonet-api.carbonet-prod.svc.cluster.local:8080',
+            ).replace(/\/+$/, '');
             const bridgeToken = String(process.env.RESONANCE_OPS_TOKEN ?? '');
             if (!bridgeToken) {
-              response.status(503).json({ message: 'control-plane bridge token is missing' });
+              response
+                .status(503)
+                .json({ message: 'control-plane bridge token is missing' });
               return;
             }
             const itemId = String(request.params.itemId ?? '');
@@ -1090,19 +1057,33 @@ export default createBackendPlugin({
               response.status(400).json({ message: 'invalid screen item id' });
               return;
             }
-            const runtimeResponse = await fetch(`${runtimeBaseUrl}/api/internal/actor-process/page-development-master/${itemId}`, {
-              headers: { accept: 'application/json', 'x-resonance-token': bridgeToken },
-            });
-            response.status(runtimeResponse.status).type('application/json').send(await runtimeResponse.text());
+            const runtimeResponse = await fetch(
+              `${runtimeBaseUrl}/api/internal/actor-process/page-development-master/${itemId}`,
+              {
+                headers: {
+                  accept: 'application/json',
+                  'x-resonance-token': bridgeToken,
+                },
+              },
+            );
+            response
+              .status(runtimeResponse.status)
+              .type('application/json')
+              .send(await runtimeResponse.text());
           },
         );
         router.get(
           '/actor-process/screen-workflow-test-cases',
           async (request, response) => {
-            const runtimeBaseUrl = String(process.env.CARBONET_RUNTIME_BASE_URL ?? 'http://carbonet-api.carbonet-prod.svc.cluster.local:8080').replace(/\/+$/, '');
+            const runtimeBaseUrl = String(
+              process.env.CARBONET_RUNTIME_BASE_URL ??
+                'http://carbonet-api.carbonet-prod.svc.cluster.local:8080',
+            ).replace(/\/+$/, '');
             const bridgeToken = String(process.env.RESONANCE_OPS_TOKEN ?? '');
             if (!bridgeToken) {
-              response.status(503).json({ message: 'control-plane bridge token is missing' });
+              response
+                .status(503)
+                .json({ message: 'control-plane bridge token is missing' });
               return;
             }
             const parameters = new URLSearchParams({
@@ -1111,46 +1092,87 @@ export default createBackendPlugin({
               stepCode: String(request.query.stepCode ?? ''),
               capabilityCode: String(request.query.capabilityCode ?? 'ALL'),
             });
-            const runtimeResponse = await fetch(`${runtimeBaseUrl}/api/internal/actor-process/screen-workflow-test-cases?${parameters}`, {
-              headers: { accept: 'application/json', 'x-resonance-token': bridgeToken },
-            });
-            response.status(runtimeResponse.status).type('application/json').send(await runtimeResponse.text());
+            const runtimeResponse = await fetch(
+              `${runtimeBaseUrl}/api/internal/actor-process/screen-workflow-test-cases?${parameters}`,
+              {
+                headers: {
+                  accept: 'application/json',
+                  'x-resonance-token': bridgeToken,
+                },
+              },
+            );
+            response
+              .status(runtimeResponse.status)
+              .type('application/json')
+              .send(await runtimeResponse.text());
           },
         );
         router.post(
           '/actor-process/screen-workflow-test-cases',
           async (request, response) => {
-            const runtimeBaseUrl = String(process.env.CARBONET_RUNTIME_BASE_URL ?? 'http://carbonet-api.carbonet-prod.svc.cluster.local:8080').replace(/\/+$/, '');
+            const runtimeBaseUrl = String(
+              process.env.CARBONET_RUNTIME_BASE_URL ??
+                'http://carbonet-api.carbonet-prod.svc.cluster.local:8080',
+            ).replace(/\/+$/, '');
             const bridgeToken = String(process.env.RESONANCE_OPS_TOKEN ?? '');
             if (!bridgeToken) {
-              response.status(503).json({ message: 'control-plane bridge token is missing' });
+              response
+                .status(503)
+                .json({ message: 'control-plane bridge token is missing' });
               return;
             }
             const runtimeIdentity = await resolveRuntimeAccount(request);
-            const runtimeResponse = await fetch(`${runtimeBaseUrl}/api/internal/actor-process/screen-workflow-test-cases`, {
-              method: 'POST',
-              headers: { accept: 'application/json', 'content-type': 'application/json', 'x-resonance-token': bridgeToken, 'x-resonance-actor': runtimeIdentity.userEntityRef },
-              body: JSON.stringify(request.body ?? {}),
-            });
-            response.status(runtimeResponse.status).type('application/json').send(await runtimeResponse.text());
+            const runtimeResponse = await fetch(
+              `${runtimeBaseUrl}/api/internal/actor-process/screen-workflow-test-cases`,
+              {
+                method: 'POST',
+                headers: {
+                  accept: 'application/json',
+                  'content-type': 'application/json',
+                  'x-resonance-token': bridgeToken,
+                  'x-resonance-actor': runtimeIdentity.userEntityRef,
+                },
+                body: JSON.stringify(request.body ?? {}),
+              },
+            );
+            response
+              .status(runtimeResponse.status)
+              .type('application/json')
+              .send(await runtimeResponse.text());
           },
         );
         router.post(
           '/actor-process/screen-workflow-test',
           async (request, response) => {
-            const runtimeBaseUrl = String(process.env.CARBONET_RUNTIME_BASE_URL ?? 'http://carbonet-api.carbonet-prod.svc.cluster.local:8080').replace(/\/+$/, '');
+            const runtimeBaseUrl = String(
+              process.env.CARBONET_RUNTIME_BASE_URL ??
+                'http://carbonet-api.carbonet-prod.svc.cluster.local:8080',
+            ).replace(/\/+$/, '');
             const bridgeToken = String(process.env.RESONANCE_OPS_TOKEN ?? '');
             if (!bridgeToken) {
-              response.status(503).json({ message: 'control-plane bridge token is missing' });
+              response
+                .status(503)
+                .json({ message: 'control-plane bridge token is missing' });
               return;
             }
             const runtimeIdentity = await resolveRuntimeAccount(request);
-            const runtimeResponse = await fetch(`${runtimeBaseUrl}/api/internal/actor-process/screen-workflow-test`, {
-              method: 'POST',
-              headers: { accept: 'application/json', 'content-type': 'application/json', 'x-resonance-token': bridgeToken, 'x-resonance-actor': runtimeIdentity.userEntityRef },
-              body: JSON.stringify(request.body ?? {}),
-            });
-            response.status(runtimeResponse.status).type('application/json').send(await runtimeResponse.text());
+            const runtimeResponse = await fetch(
+              `${runtimeBaseUrl}/api/internal/actor-process/screen-workflow-test`,
+              {
+                method: 'POST',
+                headers: {
+                  accept: 'application/json',
+                  'content-type': 'application/json',
+                  'x-resonance-token': bridgeToken,
+                  'x-resonance-actor': runtimeIdentity.userEntityRef,
+                },
+                body: JSON.stringify(request.body ?? {}),
+              },
+            );
+            response
+              .status(runtimeResponse.status)
+              .type('application/json')
+              .send(await runtimeResponse.text());
           },
         );
         router.post(
@@ -1186,42 +1208,39 @@ export default createBackendPlugin({
               .send(await runtimeResponse.text());
           },
         );
-        router.post(
-          '/actor-process/commands',
-          async (request, response) => {
-            const runtimeBaseUrl = String(
-              process.env.CARBONET_RUNTIME_BASE_URL ??
-                'http://carbonet-api.carbonet-prod.svc.cluster.local:8080',
-            ).replace(/\/+$/, '');
-            const bridgeToken = String(process.env.RESONANCE_OPS_TOKEN ?? '');
-            if (!bridgeToken) {
-              response
-                .status(503)
-                .json({ message: 'control-plane bridge token is missing' });
-              return;
-            }
-            const runtimeIdentity = await resolveRuntimeAccount(request);
-            const runtimeResponse = await fetch(
-              `${runtimeBaseUrl}/api/internal/actor-process/commands`,
-              {
-                method: 'POST',
-                headers: {
-                  accept: 'application/json',
-                  'content-type': 'application/json',
-                  'x-resonance-token': bridgeToken,
-                  'x-resonance-actor': runtimeIdentity.userEntityRef,
-                  'x-resonance-account': runtimeIdentity.accountId,
-                },
-                body: JSON.stringify(request.body ?? {}),
-              },
-            );
-            const body = await runtimeResponse.text();
+        router.post('/actor-process/commands', async (request, response) => {
+          const runtimeBaseUrl = String(
+            process.env.CARBONET_RUNTIME_BASE_URL ??
+              'http://carbonet-api.carbonet-prod.svc.cluster.local:8080',
+          ).replace(/\/+$/, '');
+          const bridgeToken = String(process.env.RESONANCE_OPS_TOKEN ?? '');
+          if (!bridgeToken) {
             response
-              .status(runtimeResponse.status)
-              .type('application/json')
-              .send(body);
-          },
-        );
+              .status(503)
+              .json({ message: 'control-plane bridge token is missing' });
+            return;
+          }
+          const runtimeIdentity = await resolveRuntimeAccount(request);
+          const runtimeResponse = await fetch(
+            `${runtimeBaseUrl}/api/internal/actor-process/commands`,
+            {
+              method: 'POST',
+              headers: {
+                accept: 'application/json',
+                'content-type': 'application/json',
+                'x-resonance-token': bridgeToken,
+                'x-resonance-actor': runtimeIdentity.userEntityRef,
+                'x-resonance-account': runtimeIdentity.accountId,
+              },
+              body: JSON.stringify(request.body ?? {}),
+            },
+          );
+          const body = await runtimeResponse.text();
+          response
+            .status(runtimeResponse.status)
+            .type('application/json')
+            .send(body);
+        });
         router.get(
           '/screen-space/work-pack/emission',
           async (_request, response) => {
@@ -1487,7 +1506,6 @@ export default createBackendPlugin({
               projectId,
               audit: rows.map(row => ({
                 auditId: String(row.audit_id),
-                draftId: row.draft_id ? String(row.draft_id) : null,
                 actionCode: row.action_code,
                 actorRef: row.actor_ref,
                 details: row.details,
@@ -1797,364 +1815,272 @@ export default createBackendPlugin({
             });
           },
         );
-        router.get(
-          '/design-assets/:projectId/drafts',
-          async (request, response) => {
-            const projectId = normalizeProjectId(request.params.projectId);
-            const drafts = await knex('resonance_projects__design_asset_draft')
-              .where({ project_id: projectId })
-              .orderBy('draft_id', 'desc')
-              .limit(100);
-            response.json({
-              projectId,
-              drafts: drafts.map(draft => ({
-                draftId: String(draft.draft_id),
-                assetType: draft.asset_type,
-                assetId: draft.asset_id,
-                baseFingerprint: draft.base_sha256,
-                patch: draft.patch_payload,
-                status: draft.draft_status,
-                validationReport: draft.validation_report,
-                createdBy: draft.created_by,
-                createdAt: draft.created_at,
-                updatedAt: draft.updated_at,
-                promotedAt: draft.promoted_at,
-              })),
-            });
-          },
-        );
         router.post(
-          '/design-assets/:projectId/drafts',
+          '/design-assets/:projectId/source',
           async (request, response) => {
             const projectId = normalizeProjectId(request.params.projectId);
             const access = await requireDesignAssetRole(
               request,
               projectId,
-              'DESIGN_REQUESTER',
+              'DESIGN_APPROVER',
             );
-            const assetType = String(
-              request.body?.assetType ?? '',
-            ).toUpperCase();
-            const assetId = String(request.body?.assetId ?? '').trim();
-            const baseFingerprint = String(
-              request.body?.baseFingerprint ?? '',
-            ).trim();
-            const patch =
-              request.body?.patch && typeof request.body.patch === 'object'
-                ? request.body.patch
-                : {};
-            const allowedPatchFields = new Set([
-              'assetName',
-              'routePath',
-              'version',
-              'active',
-              'payload',
-            ]);
-            const invalidFields = Object.keys(patch).filter(
-              field => !allowedPatchFields.has(field),
-            );
-            if (invalidFields.length) {
-              response.status(400).json({
-                message: `unsupported patch fields: ${invalidFields.join(
-                  ', ',
-                )}`,
+            const bridgeToken = String(process.env.RESONANCE_OPS_TOKEN ?? '');
+            if (!bridgeToken) {
+              response
+                .status(503)
+                .json({ message: 'control-plane bridge token is missing' });
+              return;
+            }
+            const runtimeBaseUrl = String(
+              process.env.CARBONET_RUNTIME_BASE_URL ??
+                'http://carbonet-api.carbonet-prod.svc.cluster.local:8080',
+            ).replace(/\/+$/, '');
+            const requestedType = String(request.body?.assetType ?? '')
+              .trim()
+              .toUpperCase();
+            const requestedId = String(request.body?.assetId ?? '').trim();
+            let committedReceipt: Record<string, unknown> | undefined;
+            try {
+              const result = await knex.transaction(async transaction => {
+                const row = await transaction(
+                  'resonance_projects__design_asset_snapshot',
+                )
+                  .where({
+                    project_id: projectId,
+                    asset_type: requestedType,
+                    asset_id: requestedId,
+                  })
+                  .forUpdate()
+                  .first();
+                if (!row) {
+                  return {
+                    status: 404,
+                    body: { message: 'design asset not found' },
+                  };
+                }
+                const currentPayload =
+                  typeof row.asset_payload === 'string'
+                    ? JSON.parse(row.asset_payload)
+                    : row.asset_payload;
+                const current: DesignAssetSnapshot = {
+                  assetType: String(row.asset_type),
+                  assetId: String(row.asset_id),
+                  assetName: String(row.asset_name),
+                  routePath: String(row.route_path ?? ''),
+                  version: String(row.asset_version),
+                  active: Boolean(row.active),
+                  payload: currentPayload as Record<string, unknown>,
+                  fingerprint: String(row.asset_sha256),
+                };
+                let mutation;
+                try {
+                  mutation = buildSourceDesignAssetMutation(
+                    current,
+                    request.body,
+                  );
+                } catch (error) {
+                  return {
+                    status: 422,
+                    body: {
+                      message:
+                        error instanceof Error
+                          ? error.message
+                          : 'invalid source design mutation',
+                      sourceCommitted: false,
+                      jobCount: 0,
+                    },
+                  };
+                }
+                if (mutation.dependencies.length) {
+                  const dependencyRows = await transaction(
+                    'resonance_projects__design_asset_snapshot',
+                  )
+                    .where({ project_id: projectId })
+                    .andWhere(builder => {
+                      mutation.dependencies.forEach((dependency, index) => {
+                        const condition = {
+                          asset_type: dependency.assetType,
+                          asset_id: dependency.assetId,
+                        };
+                        if (index === 0) builder.where(condition);
+                        else builder.orWhere(condition);
+                      });
+                    })
+                    .select('asset_type', 'asset_id', 'asset_sha256', 'active');
+                  const dependencyIndex = new Map(
+                    dependencyRows.map(dependency => [
+                      `${dependency.asset_type}:${dependency.asset_id}`,
+                      dependency,
+                    ]),
+                  );
+                  for (const dependency of mutation.dependencies) {
+                    const identity = `${dependency.assetType}:${dependency.assetId}`;
+                    const snapshot = dependencyIndex.get(identity);
+                    if (
+                      !snapshot ||
+                      snapshot.active !== true ||
+                      (dependency.fingerprint &&
+                        dependency.fingerprint !== snapshot.asset_sha256)
+                    ) {
+                      return {
+                        status: 422,
+                        body: {
+                          message: `dependency is missing, inactive or changed: ${identity}`,
+                          sourceCommitted: false,
+                          jobCount: 0,
+                        },
+                      };
+                    }
+                  }
+                }
+                let runtimeResponse: globalThis.Response;
+                try {
+                  runtimeResponse = await fetch(
+                    `${runtimeBaseUrl}/api/internal/actor-process/design-assets/source`,
+                    {
+                      method: 'POST',
+                      headers: {
+                        accept: 'application/json',
+                        'content-type': 'application/json',
+                        'x-resonance-token': bridgeToken,
+                        'x-resonance-actor': access.actorRef,
+                      },
+                      body: JSON.stringify({ projectId, ...mutation }),
+                    },
+                  );
+                } catch (error) {
+                  return {
+                    status: 502,
+                    body: {
+                      message:
+                        error instanceof Error
+                          ? error.message
+                          : 'runtime design source is unavailable',
+                      sourceCommitted: false,
+                      jobCount: 0,
+                    },
+                  };
+                }
+                const runtimeText = await runtimeResponse.text();
+                let receipt: Record<string, unknown>;
+                try {
+                  receipt = JSON.parse(runtimeText) as Record<string, unknown>;
+                } catch {
+                  receipt = {
+                    message:
+                      runtimeText || 'runtime returned an invalid receipt',
+                  };
+                }
+                if (receipt.sourceCommitted !== true) {
+                  return {
+                    status: runtimeResponse.ok ? 502 : runtimeResponse.status,
+                    body: {
+                      ...receipt,
+                      sourceCommitted: false,
+                      jobCount: Number(receipt.jobCount ?? 0),
+                    },
+                  };
+                }
+                committedReceipt = receipt;
+                const now = new Date();
+                const updated = await transaction(
+                  'resonance_projects__design_asset_snapshot',
+                )
+                  .where({
+                    project_id: projectId,
+                    asset_type: mutation.assetType,
+                    asset_id: mutation.assetId,
+                    asset_sha256: mutation.baseFingerprint,
+                  })
+                  .update({
+                    asset_name: mutation.assetName,
+                    route_path: mutation.routePath,
+                    asset_version: mutation.version,
+                    active: mutation.active,
+                    asset_payload: JSON.stringify(mutation.payload),
+                    asset_sha256: mutation.assetFingerprint,
+                    synced_at: now,
+                  });
+                if (updated !== 1) {
+                  throw new Error(
+                    'control-plane snapshot compare-and-set was not exact',
+                  );
+                }
+                await transaction(
+                  'resonance_projects__design_asset_audit',
+                ).insert({
+                  project_id: projectId,
+                  action_code:
+                    receipt.status === 'REVIEW_REQUIRED'
+                      ? 'SOURCE_IMMEDIATE_REVIEW_REQUIRED'
+                      : 'SOURCE_IMMEDIATE_APPLIED',
+                  actor_ref: access.actorRef,
+                  details: JSON.stringify(receipt),
+                  created_at: now,
+                });
+                return {
+                  status: runtimeResponse.status,
+                  body: {
+                    ...receipt,
+                    controlPlaneSnapshot: 'SYNCHRONIZED',
+                    snapshotFingerprint: mutation.assetFingerprint,
+                  },
+                };
               });
-              return;
-            }
-            const source = await knex(
-              'resonance_projects__design_asset_snapshot',
-            )
-              .where({
-                project_id: projectId,
-                asset_type: assetType,
-                asset_id: assetId,
-              })
-              .first();
-            if (!source) {
-              response.status(404).json({ message: 'design asset not found' });
-              return;
-            }
-            if (source.asset_sha256 !== baseFingerprint) {
-              response.status(409).json({
-                message: 'source fingerprint changed; refresh before editing',
+              response.status(result.status).json(result.body);
+            } catch (error) {
+              if (committedReceipt?.sourceCommitted === true) {
+                response.status(202).json({
+                  ...committedReceipt,
+                  success: false,
+                  controlPlaneSnapshot: 'SYNC_REQUIRED',
+                  message:
+                    'runtime source committed; control-plane snapshot synchronization must be retried',
+                });
+                return;
+              }
+              response.status(500).json({
+                message:
+                  error instanceof Error
+                    ? error.message
+                    : 'source design mutation failed',
+                sourceCommitted: false,
+                jobCount: 0,
               });
-              return;
             }
-            const [draft] = await knex('resonance_projects__design_asset_draft')
-              .insert({
-                project_id: projectId,
-                asset_type: assetType,
-                asset_id: assetId,
-                base_sha256: baseFingerprint,
-                patch_payload: JSON.stringify(patch),
-                draft_status: 'DRAFT',
-                created_by: access.actorRef,
-                created_at: new Date(),
-                updated_at: new Date(),
-              })
-              .returning('*');
-            await writeDesignAssetAudit({
-              projectId,
-              draftId: Number(draft.draft_id),
-              actionCode: 'DRAFT_CREATED',
-              actorRef: access.actorRef,
-              details: { assetType, assetId, baseFingerprint },
-            });
-            response.status(201).json({
-              projectId,
-              draftId: String(draft.draft_id),
-              status: draft.draft_status,
-            });
           },
+        );
+        const retiredDesignAssetMutation = (
+          _request: Request,
+          response: Response,
+        ) => {
+          response.status(410).json({
+            status: 'RETIRED',
+            activationPolicy: 'SOURCE_IMMEDIATE_V1',
+            replacement: '/design-assets/:projectId/source',
+            message:
+              'This mutation API is retired; approved source changes are applied immediately.',
+          });
+        };
+        router.get(
+          '/design-assets/:projectId/drafts',
+          retiredDesignAssetMutation,
+        );
+        router.post(
+          '/design-assets/:projectId/drafts',
+          retiredDesignAssetMutation,
         );
         router.post(
           '/design-assets/:projectId/drafts/:draftId/validate',
-          async (request, response) => {
-            const projectId = normalizeProjectId(request.params.projectId);
-            const access = await requireDesignAssetRole(
-              request,
-              projectId,
-              'DESIGN_REVIEWER',
-            );
-            const draftId = Number(request.params.draftId);
-            const draft = await knex('resonance_projects__design_asset_draft')
-              .where({ project_id: projectId, draft_id: draftId })
-              .first();
-            if (!draft) {
-              response.status(404).json({ message: 'draft not found' });
-              return;
-            }
-            if (draft.draft_status !== 'DRAFT') {
-              response.status(409).json({ message: 'draft is not editable' });
-              return;
-            }
-            if (draft.created_by === access.actorRef) {
-              await writeDesignAssetAudit({
-                projectId,
-                draftId,
-                actionCode: 'REVIEW_DENIED_SELF',
-                actorRef: access.actorRef,
-              });
-              response.status(409).json({
-                message: 'requester cannot review their own draft',
-              });
-              return;
-            }
-            const source = await knex(
-              'resonance_projects__design_asset_snapshot',
-            )
-              .where({
-                project_id: projectId,
-                asset_type: draft.asset_type,
-                asset_id: draft.asset_id,
-              })
-              .first();
-            const failures: string[] = [];
-            if (!source || source.asset_sha256 !== draft.base_sha256) {
-              failures.push('SOURCE_FINGERPRINT_CHANGED');
-            }
-            const patch = draft.patch_payload as Record<string, unknown>;
-            if (
-              Object.prototype.hasOwnProperty.call(patch, 'assetName') &&
-              !String(patch.assetName ?? '').trim()
-            ) {
-              failures.push('ASSET_NAME_REQUIRED');
-            }
-            if (
-              Object.prototype.hasOwnProperty.call(patch, 'routePath') &&
-              String(patch.routePath ?? '') &&
-              !String(patch.routePath).startsWith('/')
-            ) {
-              failures.push('ROUTE_PATH_INVALID');
-            }
-            const report = {
-              status: failures.length ? 'BLOCKED' : 'PASS',
-              failures,
-              baseFingerprint: draft.base_sha256,
-              validatedAt: new Date(),
-            };
-            await knex('resonance_projects__design_asset_draft')
-              .where({ project_id: projectId, draft_id: draftId })
-              .update({
-                draft_status: failures.length ? 'BLOCKED' : 'VALIDATED',
-                validation_report: JSON.stringify(report),
-                updated_at: new Date(),
-              });
-            await writeDesignAssetAudit({
-              projectId,
-              draftId,
-              actionCode: failures.length ? 'REVIEW_BLOCKED' : 'REVIEW_PASSED',
-              actorRef: access.actorRef,
-              details: report,
-            });
-            response.status(failures.length ? 409 : 200).json({
-              projectId,
-              draftId: String(draftId),
-              ...report,
-            });
-          },
+          retiredDesignAssetMutation,
         );
         router.post(
           '/design-assets/:projectId/drafts/:draftId/promote',
-          async (request, response) => {
-            const projectId = normalizeProjectId(request.params.projectId);
-            const access = await requireDesignAssetRole(
-              request,
-              projectId,
-              'DESIGN_APPROVER',
-            );
-            const draftId = Number(request.params.draftId);
-            const now = new Date();
-            const result = await knex.transaction(async transaction => {
-              const draft = await transaction(
-                'resonance_projects__design_asset_draft',
-              )
-                .where({ project_id: projectId, draft_id: draftId })
-                .forUpdate()
-                .first();
-              if (!draft) throw new Error('draft not found');
-              if (draft.draft_status !== 'VALIDATED') {
-                throw new Error('only validated drafts can be promoted');
-              }
-              if (draft.created_by === access.actorRef) {
-                throw new Error('requester cannot approve their own draft');
-              }
-              const review = await transaction(
-                'resonance_projects__design_asset_audit',
-              )
-                .where({
-                  project_id: projectId,
-                  draft_id: draftId,
-                  action_code: 'REVIEW_PASSED',
-                })
-                .orderBy('audit_id', 'desc')
-                .first();
-              if (!review || review.actor_ref === access.actorRef) {
-                throw new Error('approver must be different from the reviewer');
-              }
-              const source = await transaction(
-                'resonance_projects__design_asset_snapshot',
-              )
-                .where({
-                  project_id: projectId,
-                  asset_type: draft.asset_type,
-                  asset_id: draft.asset_id,
-                })
-                .first();
-              if (!source || source.asset_sha256 !== draft.base_sha256) {
-                throw new Error('source fingerprint changed');
-              }
-              await transaction('resonance_projects__design_asset_draft')
-                .where({ project_id: projectId, draft_id: draftId })
-                .update({
-                  draft_status: 'PROMOTED',
-                  promoted_at: now,
-                  updated_at: now,
-                });
-              const [task] = await transaction('resonance_projects__task')
-                .insert({
-                  project_id: projectId,
-                  task_type: 'DESIGN_ASSET_PROMOTION',
-                  status: 'PLANNED',
-                  payload: JSON.stringify({
-                    draftId,
-                    assetType: draft.asset_type,
-                    assetId: draft.asset_id,
-                    baseFingerprint: draft.base_sha256,
-                    patch: draft.patch_payload,
-                  }),
-                  created_at: now,
-                  updated_at: now,
-                })
-                .returning('*');
-              return task;
-            });
-            await writeDesignAssetAudit({
-              projectId,
-              draftId,
-              actionCode: 'APPROVAL_QUEUED',
-              actorRef: access.actorRef,
-              details: { taskId: String(result.task_id) },
-            });
-            response.json({
-              projectId,
-              draftId: String(draftId),
-              status: 'PROMOTED',
-              taskId: String(result.task_id),
-              taskStatus: result.status,
-            });
-          },
+          retiredDesignAssetMutation,
         );
         router.post(
           '/design-assets/:projectId/drafts/:draftId/rollback',
-          async (request, response) => {
-            const projectId = normalizeProjectId(request.params.projectId);
-            const access = await requireDesignAssetRole(
-              request,
-              projectId,
-              'DESIGN_APPROVER',
-            );
-            const draftId = Number(request.params.draftId);
-            const now = new Date();
-            const result = await knex.transaction(async transaction => {
-              const draft = await transaction(
-                'resonance_projects__design_asset_draft',
-              )
-                .where({ project_id: projectId, draft_id: draftId })
-                .forUpdate()
-                .first();
-              if (!draft) throw new Error('draft not found');
-              if (draft.draft_status !== 'APPLIED') {
-                throw new Error('only applied drafts can be rolled back');
-              }
-              const report = (draft.validation_report ?? {}) as Record<
-                string,
-                unknown
-              >;
-              const backup = String(report.backup ?? '');
-              const appliedFingerprint = String(report.afterFingerprint ?? '');
-              if (!backup || !/^[0-9a-f]{64}$/.test(appliedFingerprint)) {
-                throw new Error('verified runtime backup is missing');
-              }
-              await transaction('resonance_projects__design_asset_draft')
-                .where({ project_id: projectId, draft_id: draftId })
-                .update({
-                  draft_status: 'ROLLBACK_QUEUED',
-                  updated_at: now,
-                });
-              const [task] = await transaction('resonance_projects__task')
-                .insert({
-                  project_id: projectId,
-                  task_type: 'DESIGN_ASSET_ROLLBACK',
-                  status: 'PLANNED',
-                  payload: JSON.stringify({
-                    draftId,
-                    assetType: draft.asset_type,
-                    assetId: draft.asset_id,
-                    appliedFingerprint,
-                    backup,
-                  }),
-                  created_at: now,
-                  updated_at: now,
-                })
-                .returning('*');
-              return task;
-            });
-            await writeDesignAssetAudit({
-              projectId,
-              draftId,
-              actionCode: 'ROLLBACK_QUEUED',
-              actorRef: access.actorRef,
-              details: { taskId: String(result.task_id) },
-            });
-            response.json({
-              projectId,
-              draftId: String(draftId),
-              status: 'ROLLBACK_QUEUED',
-              taskId: String(result.task_id),
-              taskStatus: result.status,
-            });
-          },
+          retiredDesignAssetMutation,
         );
         router.post(
           '/control-assets/:projectId/transition',
@@ -2743,7 +2669,9 @@ export default createBackendPlugin({
               .where({ project_id: projectId, document_id: documentId })
               .first();
             if (!document) {
-              response.status(404).json({ message: 'Requirement document not found' });
+              response
+                .status(404)
+                .json({ message: 'Requirement document not found' });
               return;
             }
             const requirements = await knex(
@@ -2765,7 +2693,10 @@ export default createBackendPlugin({
               response.status(404).json({ message: 'Project not found' });
               return;
             }
-            const designAccess = await resolveDesignAssetAccess(request, projectId);
+            const designAccess = await resolveDesignAssetAccess(
+              request,
+              projectId,
+            );
             if (!designAccess.roles.includes('DESIGN_APPROVER')) {
               response.status(403).json({
                 success: false,
@@ -2813,14 +2744,18 @@ export default createBackendPlugin({
                 .where({ project_id: projectId, identity_key: identityKey })
                 .orderBy('design_version', 'desc')
                 .first();
-              if (sameRequirementRevision(
-                existing ? {
-                  identityKey: existing.identity_key,
-                  contentFingerprint: existing.content_fingerprint,
-                } : undefined,
-                identityKey,
-                contentFingerprint,
-              )) {
+              if (
+                sameRequirementRevision(
+                  existing
+                    ? {
+                        identityKey: existing.identity_key,
+                        contentFingerprint: existing.content_fingerprint,
+                      }
+                    : undefined,
+                  identityKey,
+                  contentFingerprint,
+                )
+              ) {
                 const release = await transaction(
                   'resonance_projects__design_release',
                 )
@@ -3094,8 +3029,8 @@ export default createBackendPlugin({
                 terminalFailure
                   ? 409
                   : persistence.kind === 'CREATED'
-                    ? 201
-                    : 200,
+                  ? 201
+                  : 200,
               )
               .json({
                 success: !terminalFailure,
@@ -3120,12 +3055,12 @@ export default createBackendPlugin({
                   String(persistence.releaseStatus).toUpperCase() === 'APPLIED'
                     ? 'APPLIED'
                     : finalDisposition === 'FAILED'
-                      ? 'FAILED'
-                      : finalDisposition === 'REVIEW_REQUIRED'
-                        ? 'REVIEW_REQUIRED'
-                        : publicationResult.completed
-                          ? 'GENERATION_QUEUED'
-                          : persistence.analysisStatus,
+                    ? 'FAILED'
+                    : finalDisposition === 'REVIEW_REQUIRED'
+                    ? 'REVIEW_REQUIRED'
+                    : publicationResult.completed
+                    ? 'GENERATION_QUEUED'
+                    : persistence.analysisStatus,
                 publication: publicationResult.publication,
               });
           },
@@ -3135,7 +3070,8 @@ export default createBackendPlugin({
           async (_request, response) => {
             response.status(410).json({
               success: false,
-              message: 'Legacy design release mutation is retired; use the structured SOURCE-immediate screen contract workflow.',
+              message:
+                'Legacy design release mutation is retired; use the structured SOURCE-immediate screen contract workflow.',
             });
           },
         );
@@ -3144,7 +3080,8 @@ export default createBackendPlugin({
           async (_request, response) => {
             response.status(410).json({
               success: false,
-              message: 'Legacy design promotion is retired; SOURCE_IMMEDIATE_V1 applies structured contracts directly.',
+              message:
+                'Legacy design promotion is retired; SOURCE_IMMEDIATE_V1 applies structured contracts directly.',
             });
           },
         );

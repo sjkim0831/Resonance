@@ -496,6 +496,55 @@ public class ActorProcessControlPlaneBridgeController {
         }
     }
 
+    @PostMapping("/design-assets/source")
+    public ResponseEntity<?> applyCommonDesignAssetSource(
+            @RequestHeader(value = "X-Resonance-Token", defaultValue = "") String suppliedToken,
+            @RequestHeader(value = "X-Resonance-Actor", defaultValue = "") String actor,
+            @RequestBody Map<String, Object> body) {
+        if (!authorized(suppliedToken)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("success", false, "message", "Invalid control-plane bridge token."));
+        }
+        if (actor.isBlank() || actor.length() > 300) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of(
+                    "success", false,
+                    "message", "Authenticated DESIGN_APPROVER identity is required."));
+        }
+        try {
+            Map<String,Object> result=governance.applyCommonDesignAssetSource(body,actor);
+            String status=String.valueOf(result.getOrDefault("status","REVIEW_REQUIRED"));
+            if(Set.of("FAILED","REVIEW_REQUIRED").contains(status))
+                return ResponseEntity.status(HttpStatus.CONFLICT).body(result);
+            if("QUEUED".equals(status))
+                return ResponseEntity.status(HttpStatus.ACCEPTED).body(result);
+            return ResponseEntity.ok(result);
+        } catch (SecurityException exception) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of(
+                    "success", false,
+                    "message", exception.getMessage() == null
+                            ? "Common design source authority is required." : exception.getMessage()));
+        } catch (IllegalArgumentException exception) {
+            return ResponseEntity.unprocessableEntity().body(Map.of(
+                    "success", false,
+                    "message", exception.getMessage() == null
+                            ? "Common design source contract is invalid." : exception.getMessage()));
+        } catch (IllegalStateException exception) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of(
+                    "success", false,
+                    "sourceCommitted", false,
+                    "jobCount", 0,
+                    "message", exception.getMessage() == null
+                            ? "Common design source transaction rolled back." : exception.getMessage()));
+        } catch (Exception exception) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of(
+                    "success", false,
+                    "sourceCommitted", false,
+                    "jobCount", 0,
+                    "message", exception.getMessage() == null
+                            ? "Common design source mutation failed." : exception.getMessage()));
+        }
+    }
+
     @GetMapping("/design-documents")
     public ResponseEntity<?> designDocuments(
             @RequestHeader(value = "X-Resonance-Token", defaultValue = "") String suppliedToken,
