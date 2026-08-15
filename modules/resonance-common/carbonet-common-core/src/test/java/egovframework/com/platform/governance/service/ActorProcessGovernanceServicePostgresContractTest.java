@@ -988,6 +988,27 @@ class ActorProcessGovernanceServicePostgresContractTest {
             $$
             """);
         jdbc.execute("""
+            create function framework_source_canonical_design_catalog(
+              requested_limit integer,requested_process text)
+            returns jsonb language sql stable as $$
+              select framework_canonical_design_catalog(requested_limit,requested_process)
+            $$
+            """);
+        jdbc.execute("""
+            create function framework_source_canonical_endpoint_readiness(
+              requested_limit integer,requested_process text)
+            returns jsonb language sql stable as $$
+              select framework_canonical_endpoint_readiness(requested_limit,requested_process)
+            $$
+            """);
+        jdbc.execute("""
+            create function framework_source_canonical_endpoint_catalog(
+              requested_limit integer,requested_process text)
+            returns jsonb language sql stable as $$
+              select framework_canonical_endpoint_catalog(requested_limit,requested_process)
+            $$
+            """);
+        jdbc.execute("""
             create function framework_refresh_process_execution_specs(
               requested_process text,requested_actor text)
             returns jsonb language sql as $$
