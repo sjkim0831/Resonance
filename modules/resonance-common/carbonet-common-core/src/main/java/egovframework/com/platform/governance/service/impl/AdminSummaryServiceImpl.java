@@ -2,7 +2,6 @@ package egovframework.com.platform.governance.service.impl;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import egovframework.com.common.logging.RequestExecutionLogPage;
 import egovframework.com.common.logging.RequestExecutionLogService;
 import egovframework.com.common.logging.RequestExecutionLogVO;
 import egovframework.com.platform.codex.mapper.AuthGroupManageMapper;
@@ -702,8 +701,13 @@ public class AdminSummaryServiceImpl extends EgovAbstractServiceImpl implements 
         try {
             List<RequestExecutionLogVO> auditLogs = new ArrayList<>();
             SecurityAuditAggregate aggregate = new SecurityAuditAggregate();
-            RequestExecutionLogPage auditPage = requestExecutionLogService.searchRecent(this::isSecurityAuditTarget, 1, 300);
-            for (RequestExecutionLogVO item : auditPage.getItems()) {
+            List<RequestExecutionLogVO> recentAuditLogs = requestExecutionLogService.readRecentMatching(
+                    this::isSecurityAuditTarget,
+                    300);
+            List<RequestExecutionLogVO> safeRecentAuditLogs = recentAuditLogs == null
+                    ? Collections.emptyList()
+                    : recentAuditLogs;
+            for (RequestExecutionLogVO item : safeRecentAuditLogs) {
                 auditLogs.add(item);
                 aggregate.accept(item);
             }
@@ -2212,8 +2216,10 @@ public class AdminSummaryServiceImpl extends EgovAbstractServiceImpl implements 
     }
 
     private List<RequestExecutionLogVO> loadSecurityMonitoringLogs() {
-        RequestExecutionLogPage page = requestExecutionLogService.searchRecent(this::isSecurityMonitoringLogCandidate, 1, 200);
-        return page == null ? Collections.emptyList() : page.getItems();
+        List<RequestExecutionLogVO> items = requestExecutionLogService.readRecentMatching(
+                this::isSecurityMonitoringLogCandidate,
+                200);
+        return items == null ? Collections.emptyList() : items;
     }
 
     private boolean isSecurityMonitoringLogCandidate(RequestExecutionLogVO item) {
