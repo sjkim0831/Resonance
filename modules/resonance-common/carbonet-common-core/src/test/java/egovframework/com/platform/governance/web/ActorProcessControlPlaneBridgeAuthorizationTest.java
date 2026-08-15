@@ -46,7 +46,7 @@ class ActorProcessControlPlaneBridgeAuthorizationTest {
     @Test
     void authenticatedAdministratorCanRunExactDesignMutation(){
         when(governance.isControlPlaneAdministrator("system-admin")).thenReturn(true);
-        when(governance.saveDesignAndGenerate(any(),eq("BACKSTAGE")))
+        when(governance.saveDesignAndGenerate(any(),eq("system-admin")))
             .thenReturn(Map.of("success",true,"buildRequired",false));
 
         var response=controller.executeGovernanceCommand(
@@ -57,7 +57,7 @@ class ActorProcessControlPlaneBridgeAuthorizationTest {
             org.mockito.ArgumentMatchers.argThat(body->
                 "screen.design.generate".equals(body.get("command"))
                     &&"system-admin".equals(body.get("requestingAccount"))),
-            eq("BACKSTAGE"));
+            eq("system-admin"));
     }
 
     private static <T> T eq(T value){return org.mockito.ArgumentMatchers.eq(value);}

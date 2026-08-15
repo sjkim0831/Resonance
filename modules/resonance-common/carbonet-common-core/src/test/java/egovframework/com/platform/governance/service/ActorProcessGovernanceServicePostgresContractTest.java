@@ -444,16 +444,16 @@ class ActorProcessGovernanceServicePostgresContractTest {
         long secondContract=seedSecondStep();
 
         Map<String,Object> first=direct();
-        long jobId=((Number)first.get("jobId")).longValue();
-        String firstHash=String.valueOf(first.get("processInputHash"));
+        assertEquals("SKIPPED",first.get("status"));
+        assertEquals(false,first.get("generationQueued"));
         assertEquals(2,number(first,"processStepCount"));
         assertEquals(1,number(first,"generationReadyStepCount"));
-        assertEquals("STEP",first.get("coordinatorStep"));
+        assertEquals(1,number(first,"skippedStepCount"));
+        assertEquals(0,count("framework_development_job"));
 
         Map<String,Object> second=direct("STEP_B","/screen-b");
+        long jobId=((Number)second.get("jobId")).longValue();
         String secondHash=String.valueOf(second.get("processInputHash"));
-        assertEquals(jobId,((Number)second.get("jobId")).longValue());
-        assertNotEquals(firstHash,secondHash);
         assertEquals(2,number(second,"generationReadyStepCount"));
         assertEquals(2,number(second,"endpointExpected"));
         assertEquals(1,count("framework_development_job"));
@@ -934,6 +934,16 @@ class ActorProcessGovernanceServicePostgresContractTest {
               )
               select jsonb_build_object('schema','carbonet.canonical-endpoint-catalog/v1',
                        'catalogHash',catalog_hash,'endpoints',endpoints) from aggregate
+            $$
+            """);
+        jdbc.execute("""
+            create function framework_refresh_process_execution_specs(
+              requested_process text,requested_actor text)
+            returns jsonb language sql as $$
+              select jsonb_build_object('processCode',requested_process,
+                'refreshedStepCount',(select count(*) from framework_step_execution_spec
+                  where process_code=requested_process),
+                'refreshedBy',requested_actor)
             $$
             """);
     }

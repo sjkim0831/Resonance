@@ -37,6 +37,7 @@ class ActorProcessGovernanceServiceDirectGenerationTest {
         when(jdbc.queryForObject(argThat(sql->sql!=null&&sql.contains("framework_canonical_screen_bundle")
                 &&sql.contains("designHash")),eq(String.class),any(Object[].class)))
             .thenReturn(DESIGN_HASH);
+        stubRefreshAndCoverage(jdbc);
         when(jdbc.queryForList(argThat(sql->sql!=null&&sql.contains("contract_source as materialized")),any(Object[].class)))
             .thenReturn(List.of(Map.of("endpointExpected",2)));
         when(jdbc.queryForList(argThat(sql->sql!=null&&sql.contains("framework_process_generation_input(?::text)")
@@ -127,6 +128,7 @@ class ActorProcessGovernanceServiceDirectGenerationTest {
         ActorProcessGovernanceService service=service(jdbc);
         when(jdbc.queryForObject(argThat(sql->sql!=null&&sql.contains("framework_canonical_screen_bundle")),
                 eq(String.class),any(Object[].class))).thenReturn(DESIGN_HASH);
+        stubRefreshAndCoverage(jdbc);
         when(jdbc.queryForList(argThat(sql->sql!=null&&sql.contains("contract_source as materialized")),
                 any(Object[].class))).thenReturn(List.of());
 
@@ -144,6 +146,7 @@ class ActorProcessGovernanceServiceDirectGenerationTest {
         ActorProcessGovernanceService service=service(jdbc);
         when(jdbc.queryForObject(argThat(sql->sql!=null&&sql.contains("framework_canonical_screen_bundle")),
                 eq(String.class),any(Object[].class))).thenReturn(DESIGN_HASH);
+        stubRefreshAndCoverage(jdbc);
         when(jdbc.queryForList(argThat(sql->sql!=null&&sql.contains("contract_source as materialized")),
                 any(Object[].class))).thenReturn(List.of(Map.of("endpointExpected",2)));
         when(jdbc.queryForList(argThat(sql->sql!=null&&sql.contains("framework_process_generation_input(?::text)")),
@@ -160,6 +163,18 @@ class ActorProcessGovernanceServiceDirectGenerationTest {
     private static ActorProcessGovernanceService service(JdbcTemplate jdbc){
         return new ActorProcessGovernanceService(jdbc,mock(ScreenDevelopmentNoteService.class),
             mock(CodexProvisioningService.class),mock(ScreenContractRuntimeService.class));
+    }
+
+    private static void stubRefreshAndCoverage(JdbcTemplate jdbc){
+        when(jdbc.queryForObject(argThat(sql->sql!=null
+                &&sql.contains("framework_refresh_process_execution_specs")),
+                eq(String.class),any(Object[].class)))
+            .thenReturn("{\"processCode\":\"PROCESS_A\",\"refreshedStepCount\":1}");
+        when(jdbc.queryForMap(argThat(sql->sql!=null
+                &&sql.contains("definedStepCount")&&sql.contains("canonicalJobCount")),
+                any(Object[].class))).thenReturn(Map.of(
+                    "definedStepCount",1,"specStepCount",1,
+                    "generationReadyStepCount",1,"canonicalJobCount",0));
     }
 
     private static Map<String,Object> request(String designHash){

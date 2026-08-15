@@ -130,8 +130,8 @@ class ActorProcessGovernanceApiControllerAssignmentTest {
         assertEquals(403,controller.step(body,request).getStatusCode().value());
         assertEquals(403,controller.compileScreens(body,request).getStatusCode().value());
 
-        verify(service,never()).createActor(any());
-        verify(service,never()).createProcess(any());
+        verify(service,never()).createActor(any(),anyString());
+        verify(service,never()).createProcess(any(),anyString());
         verify(service,never()).addStep(any(),anyString());
         verify(service,never()).compileScreenBlueprints(any(),anyString());
     }
@@ -140,6 +140,8 @@ class ActorProcessGovernanceApiControllerAssignmentTest {
     void systemAdministratorCanMutateDesignAndGenerateWithResolvedIdentity(){
         Map<String,Object> body=Map.of("processCode","PROCESS_A","stepCode","STEP_A");
         when(users.resolve(request)).thenReturn(context("system-admin","DEFAULT","ROLE_SYSTEM_ADMIN",true,false));
+        when(service.createActor(body,"system-admin")).thenReturn(Map.of("success",true));
+        when(service.createProcess(body,"system-admin")).thenReturn(Map.of("success",true));
         when(service.addStep(body,"system-admin")).thenReturn(Map.of("success",true));
         when(service.compileScreenBlueprints(body,"system-admin")).thenReturn(Map.of("success",true));
 
@@ -148,8 +150,8 @@ class ActorProcessGovernanceApiControllerAssignmentTest {
         assertEquals(200,controller.step(body,request).getStatusCode().value());
         assertEquals(200,controller.compileScreens(body,request).getStatusCode().value());
 
-        verify(service).createActor(body);
-        verify(service).createProcess(body);
+        verify(service).createActor(body,"system-admin");
+        verify(service).createProcess(body,"system-admin");
         verify(service).addStep(body,"system-admin");
         verify(service).compileScreenBlueprints(body,"system-admin");
     }

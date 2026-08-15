@@ -201,21 +201,19 @@ public class ActorProcessControlPlaneBridgeController {
                     if (!governance.isControlPlaneAdministrator(account)) {
                         throw new SecurityException("Administrator authority is required to save an actor definition.");
                     }
-                    governance.createActor(body);
-                    result = Map.of("success", true, "command", command, "actorCode", required(body, "actorCode"));
+                    result = governance.createActor(body, account);
                 }
                 case "process.save" -> {
                     if (!governance.isControlPlaneAdministrator(account)) {
                         throw new SecurityException("Administrator authority is required to save a process definition.");
                     }
-                    governance.createProcess(body);
-                    result = Map.of("success", true, "command", command, "processCode", required(body, "processCode"));
+                    result = governance.createProcess(body, account);
                 }
                 case "step.save" -> {
                     if (!governance.isControlPlaneAdministrator(account)) {
                         throw new SecurityException("Administrator authority is required to save a process step.");
                     }
-                    result = governance.addStep(body, actor);
+                    result = governance.addStep(body, account);
                 }
                 case "screen.bind-archetype" -> {
                     if (!governance.isControlPlaneAdministrator(account)) {
@@ -227,13 +225,13 @@ public class ActorProcessControlPlaneBridgeController {
                     if (!governance.isControlPlaneAdministrator(account)) {
                         throw new SecurityException("Administrator authority is required to save a screen data contract.");
                     }
-                    result = governance.saveProfessionalScreenContract(body, actor);
+                    result = governance.saveProfessionalScreenContract(body, account);
                 }
                 case "screen.design.generate" -> {
                     if (!governance.isControlPlaneAdministrator(account)) {
                         throw new SecurityException("Administrator authority is required to save and generate a screen design.");
                     }
-                        result = governance.saveDesignAndGenerate(body, actor);
+                        result = governance.saveDesignAndGenerate(body, account);
                 }
                 case "assignment.save" -> {
                     if (!governance.isControlPlaneAdministrator(account)) {
@@ -689,7 +687,7 @@ public class ActorProcessControlPlaneBridgeController {
                     "purpose", "요구분석서 기반 " + actorCode + " 업무 수행",
                     "capabilityCodes", "REQUIREMENT_AUTOMATION",
                     "delegationAllowed", false,
-                    "useAt", "Y")));
+                    "useAt", "Y")),"BACKSTAGE_REQUIREMENT_AUTOMATION");
         }
         String ownerActor = actorCodes.iterator().next();
         governance.createProcess(new LinkedHashMap<>(Map.ofEntries(
@@ -705,7 +703,7 @@ public class ActorProcessControlPlaneBridgeController {
                 Map.entry("lifecycleStatus", "VALIDATED"),
                 Map.entry("ownerActorCode", ownerActor),
                 Map.entry("riskLevel", "MEDIUM"),
-                Map.entry("developmentOrder", 1))));
+                Map.entry("developmentOrder", 1))),"BACKSTAGE_REQUIREMENT_AUTOMATION");
         int order = 0;
         for (Object stepValue : steps) {
             Map<?, ?> step = (Map<?, ?>) stepValue;

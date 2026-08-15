@@ -2301,15 +2301,12 @@ public class ActorProcessGovernanceService {
         if(!designHash.matches("[0-9a-f]{64}"))
             throw new IllegalArgumentException("designHash must be a SHA-256 value");
 
-        jdbc.query("select pg_advisory_xact_lock(hashtextextended("+
-            "'CANONICAL_PROCESS_PUBLICATION_V1:'||upper(btrim(?)),0))",rs->{},process);
-        String currentDesignHash=jdbc.queryForObject(
-            "select framework_canonical_screen_bundle(?,?,?,?)->>'designHash'",String.class,
-            process,step,audience,route);
-        if(!designHash.equals(currentDesignHash))
-            throw new IllegalStateException("STALE_CANONICAL_DESIGN_HASH");
-
-        List<Map<String,Object>> refreshed=jdbc.queryForList("""
+        Map<String,Object> trigger=new LinkedHashMap<>();
+        trigger.put("triggerType","PROFESSIONAL_SCREEN_CONTRACT");
+        trigger.put("stepCode",step);trigger.put("routePath",route);
+        trigger.put("audience",audience);trigger.put("designHash",designHash);
+        return refreshAndQueueCanonicalProcess(process,actor,trigger,()->{
+          List<Map<String,Object>> refreshed=jdbc.queryForList("""
             with blueprint_candidates as materialized (
               select c.contract_id,c.process_code,c.step_code,upper(c.audience) audience,
                      lower(split_part(c.route_path,'?',1)) route_path,c.screen_name,
@@ -2469,8 +2466,89 @@ public class ActorProcessGovernanceService {
                and fields.invalid_count=0 and commands.invalid_count=0 and apis.invalid_count=0
                and not exists(select 1 from refreshed)
             """,process,step,process,step,process,step,actor,process,step,process,step);
-        if(refreshed.size()!=1)throw new IllegalStateException(
-            "STRUCTURED_GENERATION_SPEC_NOT_EXACT: "+process+" / "+step);
+          if(refreshed.size()!=1)throw new IllegalStateException(
+              "STRUCTURED_GENERATION_SPEC_NOT_EXACT: "+process+" / "+step);
+          return new LinkedHashMap<>(refreshed.get(0));
+        });
+    }
+
+    private void lockCanonicalProcessPublication(String process){
+        jdbc.query("select pg_advisory_xact_lock(hashtextextended("+
+            "'CANONICAL_PROCESS_PUBLICATION_V1:'||upper(btrim(?)),0))",rs->{},process);
+    }
+
+    private Map<String,Object> refreshProcessExecutionSpecs(String process,String actor){
+        String refreshed=jdbc.queryForObject(
+            "select framework_refresh_process_execution_specs(?,?)::text",
+            String.class,process,actor);
+        if(refreshed==null)throw new IllegalStateException("PROCESS_SPEC_REFRESH_RESULT_REQUIRED");
+        return jsonMap(refreshed);
+    }
+
+    private Map<String,Object> refreshAndQueueCanonicalProcess(
+            String process,String actor,Map<String,Object> trigger,
+            java.util.function.Supplier<Map<String,Object>> exactProjection){
+        lockCanonicalProcessPublication(process);
+        String expectedDesignHash=str(trigger,"designHash");
+        if(!expectedDesignHash.isBlank()){
+            String currentDesignHash=jdbc.queryForObject(
+                "select framework_canonical_screen_bundle(?,?,?,?)->>'designHash'",String.class,
+                process,req(trigger,"stepCode"),req(trigger,"audience"),req(trigger,"routePath"));
+            if(!expectedDesignHash.equals(currentDesignHash))
+                throw new IllegalStateException("STALE_CANONICAL_DESIGN_HASH");
+        }
+        Map<String,Object> refresh=refreshProcessExecutionSpecs(process,actor);
+        Map<String,Object> projection=exactProjection==null?Map.of():exactProjection.get();
+        Map<String,Object> effectiveTrigger=new LinkedHashMap<>(trigger);
+        if(projection.containsKey("endpointExpected"))
+            effectiveTrigger.put("triggerEndpointExpected",projection.get("endpointExpected"));
+        Map<String,Object> result=queueCanonicalProcessGeneration(process,actor,effectiveTrigger);
+        result.put("specRefresh",refresh);result.put("exactProjection",projection);
+        return result;
+    }
+
+    private Map<String,Object> refreshAndQueueCanonicalProcess(
+            String process,String actor,Map<String,Object> trigger){
+        return refreshAndQueueCanonicalProcess(process,actor,trigger,null);
+    }
+
+    private Map<String,Object> queueCanonicalProcessGeneration(
+            String process,String actor,Map<String,Object> trigger){
+        Map<String,Object> coverage=jdbc.queryForMap("""
+            select (select count(*) from framework_process_step where process_code=?)::integer
+                     as "definedStepCount",
+                   (select count(*) from framework_step_execution_spec where process_code=?)::integer
+                     as "specStepCount",
+                   (select count(*) from framework_step_execution_spec
+                     where process_code=? and design_status='DESIGN_COMPLETE'
+                       and approval_status='APPROVED'
+                       and generation_status in('READY','GENERATED'))::integer
+                     as "generationReadyStepCount",
+                   (select count(*) from framework_development_job
+                     where process_code=? and job_type='FULL_STACK_GENERATION'
+                       and job_group_code=?||'_CANONICAL_PUBLICATION')::integer
+                     as "canonicalJobCount"
+            """,process,process,process,process,process);
+        int definedStepCount=((Number)coverage.getOrDefault("definedStepCount",0)).intValue();
+        int specStepCount=((Number)coverage.getOrDefault("specStepCount",0)).intValue();
+        int readyStepCount=((Number)coverage.getOrDefault("generationReadyStepCount",0)).intValue();
+        int existingJobCount=((Number)coverage.getOrDefault("canonicalJobCount",0)).intValue();
+        if(definedStepCount==0||specStepCount!=definedStepCount||readyStepCount!=definedStepCount){
+            List<String> blockers=new java.util.ArrayList<>();
+            if(definedStepCount==0)blockers.add("PROCESS_STEP_MISSING");
+            if(specStepCount!=definedStepCount)blockers.add("STEP_SPEC_COVERAGE_INCOMPLETE");
+            if(readyStepCount!=definedStepCount)blockers.add("GENERATION_APPROVAL_INCOMPLETE");
+            Map<String,Object> skipped=new LinkedHashMap<>();
+            skipped.put("success",true);skipped.put("status","SKIPPED");
+            skipped.put("generationQueued",false);skipped.put("jobCount",existingJobCount);
+            skipped.put("processCode",process);skipped.put("stepCode",str(trigger,"stepCode"));
+            skipped.put("processStepCount",definedStepCount);
+            skipped.put("generationReadyStepCount",readyStepCount);
+            skipped.put("skippedStepCount",Math.max(0,definedStepCount-readyStepCount));
+            skipped.put("blockerCount",blockers.size());skipped.put("blockers",blockers);
+            skipped.put("endpointExpected",0);skipped.put("publishCount",0);
+            return skipped;
+        }
         List<Map<String,Object>> headed=jdbc.queryForList("""
             with generation_head as materialized (
               select framework_process_generation_input(?::text) head
@@ -2528,11 +2606,15 @@ public class ActorProcessGovernanceService {
                 ||!endpointCatalogHash.matches("[0-9a-f]{64}")
                 ||!endpointCatalogTextHash.matches("[0-9a-f]{64}"))
             throw new IllegalStateException("CANONICAL_DESIGN_SET_HASH_INVALID");
-        if(coordinatorStep.isBlank()||processStepCount<1||generationReadyStepCount<1
+        if(coordinatorStep.isBlank()||processStepCount<1
+                ||generationReadyStepCount!=processStepCount
                 ||updatedCount!=generationReadyStepCount)
             throw new IllegalStateException("CANONICAL_PROCESS_GENERATION_COVERAGE_NOT_EXACT");
-        int endpointExpected=((Number)refreshed.get(0).getOrDefault("endpointExpected",0)).intValue();
-        if(endpointExpected<1)throw new IllegalStateException("CANONICAL_ENDPOINT_OUTPUT_REQUIRED");
+        int triggerEndpointExpected=trigger.get("triggerEndpointExpected") instanceof Number value
+            ?value.intValue():0;
+        if("PROFESSIONAL_SCREEN_CONTRACT".equals(str(trigger,"triggerType"))
+                &&triggerEndpointExpected<1)
+            throw new IllegalStateException("CANONICAL_ENDPOINT_OUTPUT_REQUIRED");
 
         String target="canonical://"+process+"/"+sourceHash;
         Map<String,Object> generationSpec=new LinkedHashMap<>();
@@ -2543,15 +2625,23 @@ public class ActorProcessGovernanceService {
         generationSpec.put("processInputHash",sourceHash);
         generationSpec.put("processStepCount",processStepCount);
         generationSpec.put("generationReadyStepCount",generationReadyStepCount);
-        generationSpec.put("routePath",route);generationSpec.put("audience",audience);
-        generationSpec.put("designHash",designHash);generationSpec.put("sourceHash",sourceHash);
+        generationSpec.put("triggerType",def(trigger,"triggerType","PROCESS_DEFINITION"));
+        if(!str(trigger,"stepCode").isBlank())
+            generationSpec.put("triggerStep",str(trigger,"stepCode"));
+        if(!str(trigger,"routePath").isBlank())
+            generationSpec.put("routePath",str(trigger,"routePath"));
+        if(!str(trigger,"audience").isBlank())
+            generationSpec.put("audience",str(trigger,"audience"));
+        if(!str(trigger,"designHash").isBlank())
+            generationSpec.put("designHash",str(trigger,"designHash"));
+        generationSpec.put("sourceHash",sourceHash);
         generationSpec.put("designSetHash",designSetHash);
         generationSpec.put("designCatalogHash",designCatalogHash);
         generationSpec.put("designCatalogTextHash",designCatalogTextHash);
         generationSpec.put("endpointCatalogHash",endpointCatalogHash);
         generationSpec.put("endpointCatalogTextHash",endpointCatalogTextHash);
         generationSpec.put("endpointExpected",processEndpointExpected);
-        generationSpec.put("triggerEndpointExpected",endpointExpected);
+        generationSpec.put("triggerEndpointExpected",triggerEndpointExpected);
         generationSpec.put("requiredGates",List.of(
             "DESIGN","FRONTEND","API","DATABASE","HELP","CARDS","BUILD","PUBLISH"));
         generationSpec.put("verifiedEvidenceRequired",true);generationSpec.put("autoDeploy",false);
@@ -2647,8 +2737,13 @@ public class ActorProcessGovernanceService {
         Map<String,Object> result=new LinkedHashMap<>();
         result.put("success",true);result.put("status",queued?"QUEUED":"UNCHANGED");
         result.put("generationQueued",queued);result.put("jobCount",canonicalJobCount);result.put("jobId",jobId);
-        result.put("processCode",process);result.put("stepCode",step);result.put("routePath",route);
-        result.put("designHash",designHash);result.put("sourceHash",sourceHash);
+        result.put("processCode",process);
+        result.put("stepCode",str(trigger,"stepCode").isBlank()
+            ?coordinatorStep:str(trigger,"stepCode"));
+        result.put("routePath",str(trigger,"routePath"));
+        result.put("designHash",str(trigger,"designHash").isBlank()
+            ?designSetHash:str(trigger,"designHash"));
+        result.put("sourceHash",sourceHash);
         result.put("processInputHash",sourceHash);result.put("designSetHash",designSetHash);
         result.put("designCatalogHash",designCatalogHash);
         result.put("endpointCatalogHash",endpointCatalogHash);
@@ -3687,7 +3782,11 @@ public class ActorProcessGovernanceService {
         return "KRDS_CONTENT_CARD";
     }
 
-    @Transactional public void createActor(Map<String,Object>b){
+    @Transactional public Map<String,Object> createActor(Map<String,Object>b,String authenticatedActor){
+        if(authenticatedActor==null||authenticatedActor.isBlank()
+                ||!authenticatedActor.equals(authenticatedActor.trim())
+                ||authenticatedActor.length()>100)
+            throw new SecurityException("AUTHENTICATED_ACTOR_REQUIRED");
         String actorCode=req(b,"actorCode").trim().toUpperCase(Locale.ROOT);
         String purpose=req(b,"purpose");
         if(!actorCode.matches("^[A-Z][A-Z0-9_]{1,59}$"))throw new IllegalArgumentException("actorCode must use uppercase letters, numbers, and underscores");
@@ -3698,6 +3797,39 @@ public class ActorProcessGovernanceService {
             if(activeAssignments!=null&&activeAssignments>0)throw new IllegalArgumentException("ACTIVE_ACTOR_ASSIGNMENTS_EXIST");
         }
         jdbc.update("insert into framework_actor_definition(actor_code,actor_name,actor_name_en,actor_type,purpose,capability_codes,delegation_allowed,use_at,responsibility_text,accountability_text,competency_requirements,conflict_actor_codes,max_concurrent_assignments,review_cycle_days) values(?,?,?,?,?,?,?,?,?,?,?,?,?,?) on conflict(actor_code) do update set actor_name=excluded.actor_name,actor_name_en=excluded.actor_name_en,actor_type=excluded.actor_type,purpose=excluded.purpose,capability_codes=excluded.capability_codes,delegation_allowed=excluded.delegation_allowed,use_at=excluded.use_at,responsibility_text=excluded.responsibility_text,accountability_text=excluded.accountability_text,competency_requirements=excluded.competency_requirements,conflict_actor_codes=excluded.conflict_actor_codes,max_concurrent_assignments=excluded.max_concurrent_assignments,review_cycle_days=excluded.review_cycle_days,updated_at=current_timestamp",actorCode,req(b,"actorName"),str(b,"actorNameEn"),def(b,"actorType","BUSINESS"),purpose,str(b,"capabilityCodes"),bool(b,"delegationAllowed"),useAt,def(b,"responsibility",purpose),def(b,"accountability",purpose),def(b,"competency",purpose),str(b,"conflictActorCodes"),integerOr(b,"maxConcurrentAssignments",0),integerOr(b,"reviewCycleDays",365));
+        List<String> affected=jdbc.queryForList("""
+            select affected.process_code from (
+              select step.process_code from framework_process_step step
+               where step.actor_code=?
+              union
+              select process.process_code from framework_process_definition process
+               where process.owner_actor_code=?
+              union
+              select step.process_code from framework_process_step step
+               where step.escalation_actor_code=?
+              union
+               select step.process_code from framework_process_step step
+                where ?=any(regexp_split_to_array(
+                  coalesce(nullif(btrim(step.segregation_actor_codes),''),'__NONE__'),
+                  '[[:space:]]*,[[:space:]]*'))
+            ) affected order by affected.process_code
+            """,String.class,actorCode,actorCode,actorCode,actorCode);
+        List<Map<String,Object>> processResults=new java.util.ArrayList<>();
+        int queuedCount=0;
+        for(String process:affected){
+            Map<String,Object> trigger=new LinkedHashMap<>();
+            trigger.put("triggerType","ACTOR_DEFINITION");trigger.put("actorCode",actorCode);
+            Map<String,Object> result=refreshAndQueueCanonicalProcess(
+                process,authenticatedActor,trigger);
+            if(Boolean.TRUE.equals(result.get("generationQueued")))queuedCount++;
+            processResults.add(result);
+        }
+        Map<String,Object> response=new LinkedHashMap<>();
+        response.put("success",true);response.put("actorCode",actorCode);
+        response.put("affectedProcessCount",affected.size());
+        response.put("generationQueued",queuedCount>0);
+        response.put("queuedProcessCount",queuedCount);response.put("processResults",processResults);
+        return response;
     }
     @Transactional public void saveWorkType(Map<String,Object>b){
         String code=req(b,"workTypeCode").trim().toUpperCase(Locale.ROOT);
@@ -3837,7 +3969,11 @@ public class ActorProcessGovernanceService {
         }
         return Map.of("success",true,"assignmentId",assignmentId,"accountId",accountId,"projectId",projectId,"actorCode",actorCode,"status","INACTIVE");
     }
-    @Transactional public void createProcess(Map<String,Object>b){
+    @Transactional public Map<String,Object> createProcess(Map<String,Object>b,String authenticatedActor){
+        if(authenticatedActor==null||authenticatedActor.isBlank()
+                ||!authenticatedActor.equals(authenticatedActor.trim())
+                ||authenticatedActor.length()>100)
+            throw new SecurityException("AUTHENTICATED_ACTOR_REQUIRED");
         String processCode=req(b,"processCode").trim().toUpperCase(Locale.ROOT);
         if(!processCode.matches("[A-Z0-9_]{3,80}"))throw new IllegalArgumentException("INVALID_PROCESS_CODE");
         String domainCode=req(b,"domainCode").trim().toUpperCase(Locale.ROOT);
@@ -3862,6 +3998,7 @@ public class ActorProcessGovernanceService {
         if(!Set.of("DRAFT","DESIGN","VALIDATED","PROMOTED","ACTIVE","DEPRECATED","RETIRED").contains(lifecycleStatus))throw new IllegalArgumentException("INVALID_LIFECYCLE_STATUS");
         String effectiveFrom=str(b,"effectiveFrom"),effectiveUntil=str(b,"effectiveUntil");
         if(!effectiveFrom.isEmpty()&&!effectiveUntil.isEmpty()&&effectiveFrom.compareTo(effectiveUntil)>0)throw new IllegalArgumentException("INVALID_EFFECTIVE_DATE_RANGE");
+        lockCanonicalProcessPublication(processCode);
         jdbc.update("""
             insert into framework_process_definition(
               process_code,process_name,domain_code,process_version,goal,start_condition,completion_condition,
@@ -3885,9 +4022,18 @@ public class ActorProcessGovernanceService {
             integerOr(b,"developmentOrder",0),str(b,"prerequisiteCodes"),processStatus,ownerActorCode,riskLevel,
             integerOr(b,"slaHours",0),integerOr(b,"reviewCycleDays",365),str(b,"regulationRefs"),
             lifecycleStatus,effectiveFrom,effectiveUntil);
+        Map<String,Object> trigger=new LinkedHashMap<>();
+        trigger.put("triggerType","PROCESS_DEFINITION");
+        Map<String,Object> result=refreshAndQueueCanonicalProcess(
+            processCode,authenticatedActor,trigger);
+        result.put("processCode",processCode);
+        return result;
     }
     @Transactional public Map<String,Object> addStep(Map<String,Object>b,String actor){
-        String process=req(b,"processCode"),step=req(b,"stepCode"); int order=integer(b,"stepOrder");
+        if(actor==null||actor.isBlank()||!actor.equals(actor.trim())||actor.length()>100)
+            throw new SecurityException("AUTHENTICATED_ACTOR_REQUIRED");
+        String process=req(b,"processCode").trim().toUpperCase(Locale.ROOT),
+            step=req(b,"stepCode").trim().toUpperCase(Locale.ROOT); int order=integer(b,"stepOrder");
         Integer processCount=jdbc.queryForObject("select count(*) from framework_process_definition where process_code=?",Integer.class,process);
         if(processCount==null||processCount==0)throw new IllegalArgumentException("PROCESS_NOT_FOUND: "+process);
         String actorCode=req(b,"actorCode").trim().toUpperCase(Locale.ROOT);
@@ -3898,8 +4044,32 @@ public class ActorProcessGovernanceService {
             Integer escalationCount=jdbc.queryForObject("select count(*) from framework_actor_definition where actor_code=? and use_at='Y'",Integer.class,escalationActorCode);
             if(escalationCount==null||escalationCount==0)throw new IllegalArgumentException("ACTIVE_ESCALATION_ACTOR_NOT_FOUND: "+escalationActorCode);
         }
+        java.util.SortedSet<String> segregationActors=new java.util.TreeSet<>();
+        for(String value:str(b,"segregationActorCodes").split(",")){
+            String code=value.trim().toUpperCase(Locale.ROOT);
+            if(code.isEmpty())continue;
+            if(!code.matches("^[A-Z][A-Z0-9_]{1,59}$"))
+                throw new IllegalArgumentException("INVALID_SEGREGATION_ACTOR_CODE: "+code);
+            if(code.equals(actorCode))
+                throw new IllegalArgumentException("SEGREGATION_ACTOR_MUST_DIFFER_FROM_PRIMARY: "+code);
+            segregationActors.add(code);
+        }
+        String segregationActorCodes=String.join(",",segregationActors);
+        if(!segregationActors.isEmpty()){
+            List<String> activeSegregationActors=jdbc.queryForList("""
+                select actor_code from framework_actor_definition
+                 where use_at='Y' and actor_code=any(string_to_array(?,','))
+                 order by actor_code
+                """,String.class,segregationActorCodes);
+            if(!new java.util.TreeSet<>(activeSegregationActors).equals(segregationActors)){
+                java.util.SortedSet<String> missing=new java.util.TreeSet<>(segregationActors);
+                missing.removeAll(activeSegregationActors);
+                throw new IllegalArgumentException("ACTIVE_SEGREGATION_ACTOR_NOT_FOUND: "+missing);
+            }
+        }
         validateJsonObject(def(b,"inputContract","{}"),"inputContract");
         validateJsonObject(def(b,"outputContract","{}"),"outputContract");
+        lockCanonicalProcessPublication(process);
         List<Map<String,Object>> currentSteps=jdbc.queryForList("select step_order from framework_process_step where process_code=? and step_code=? for update",process,step);
         if(currentSteps.isEmpty()){
             jdbc.update("update framework_process_step set step_order=step_order+10000 where process_code=? and step_order>=?",process,order);
@@ -3912,9 +4082,13 @@ public class ActorProcessGovernanceService {
                 else jdbc.update("update framework_process_step set step_order=step_order-1 where process_code=? and step_order>? and step_order<=?",process,currentOrder,order);
             }
         }
-        jdbc.update("insert into framework_process_step(process_code,step_order,step_code,step_name,parent_step_code,step_type,actor_code,from_state,command_code,to_state,completion_rule,requirement_text,input_contract,output_contract,requires_user_page,requires_admin_page,requires_api,requires_database,requires_notification,user_path,admin_path,api_contract,automation_status,sla_hours,escalation_actor_code,evidence_required,evidence_types,segregation_actor_codes,rollback_command_code,decision_rule) values(?,?,?,?,nullif(?,''),?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'PLANNED',?,nullif(?,''),?,?,?,?,?) on conflict(process_code,step_code) do update set step_order=excluded.step_order,step_name=excluded.step_name,parent_step_code=excluded.parent_step_code,step_type=excluded.step_type,actor_code=excluded.actor_code,from_state=excluded.from_state,command_code=excluded.command_code,to_state=excluded.to_state,completion_rule=excluded.completion_rule,requirement_text=excluded.requirement_text,input_contract=excluded.input_contract,output_contract=excluded.output_contract,requires_user_page=excluded.requires_user_page,requires_admin_page=excluded.requires_admin_page,requires_api=excluded.requires_api,requires_database=excluded.requires_database,requires_notification=excluded.requires_notification,user_path=excluded.user_path,admin_path=excluded.admin_path,api_contract=excluded.api_contract,automation_status='PLANNED',sla_hours=excluded.sla_hours,escalation_actor_code=excluded.escalation_actor_code,evidence_required=excluded.evidence_required,evidence_types=excluded.evidence_types,segregation_actor_codes=excluded.segregation_actor_codes,rollback_command_code=excluded.rollback_command_code,decision_rule=excluded.decision_rule",process,order,step,req(b,"stepName"),str(b,"parentStepCode"),def(b,"stepType","TASK"),actorCode,req(b,"fromState"),req(b,"commandCode"),req(b,"toState"),req(b,"completionRule"),def(b,"requirementText",req(b,"completionRule")),def(b,"inputContract","{}"),def(b,"outputContract","{}"),bool(b,"requiresUserPage"),bool(b,"requiresAdminPage"),bool(b,"requiresApi"),bool(b,"requiresDatabase"),bool(b,"requiresNotification"),str(b,"userPath"),str(b,"adminPath"),str(b,"apiContract"),integerOr(b,"slaHours",0),escalationActorCode,Boolean.parseBoolean(def(b,"evidenceRequired","true")),str(b,"evidenceTypes"),str(b,"segregationActorCodes"),str(b,"rollbackCommandCode"),str(b,"decisionRule"));
-        Map<String,Object> plan=generateDevelopmentPlan(process,step,actor);
-        return Map.of("success",true,"processCode",process,"stepCode",step,"generatedJobs",plan.get("generatedJobs"));
+        jdbc.update("insert into framework_process_step(process_code,step_order,step_code,step_name,parent_step_code,step_type,actor_code,from_state,command_code,to_state,completion_rule,requirement_text,input_contract,output_contract,requires_user_page,requires_admin_page,requires_api,requires_database,requires_notification,user_path,admin_path,api_contract,automation_status,sla_hours,escalation_actor_code,evidence_required,evidence_types,segregation_actor_codes,rollback_command_code,decision_rule) values(?,?,?,?,nullif(?,''),?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'PLANNED',?,nullif(?,''),?,?,?,?,?) on conflict(process_code,step_code) do update set step_order=excluded.step_order,step_name=excluded.step_name,parent_step_code=excluded.parent_step_code,step_type=excluded.step_type,actor_code=excluded.actor_code,from_state=excluded.from_state,command_code=excluded.command_code,to_state=excluded.to_state,completion_rule=excluded.completion_rule,requirement_text=excluded.requirement_text,input_contract=excluded.input_contract,output_contract=excluded.output_contract,requires_user_page=excluded.requires_user_page,requires_admin_page=excluded.requires_admin_page,requires_api=excluded.requires_api,requires_database=excluded.requires_database,requires_notification=excluded.requires_notification,user_path=excluded.user_path,admin_path=excluded.admin_path,api_contract=excluded.api_contract,automation_status='PLANNED',sla_hours=excluded.sla_hours,escalation_actor_code=excluded.escalation_actor_code,evidence_required=excluded.evidence_required,evidence_types=excluded.evidence_types,segregation_actor_codes=excluded.segregation_actor_codes,rollback_command_code=excluded.rollback_command_code,decision_rule=excluded.decision_rule",process,order,step,req(b,"stepName"),str(b,"parentStepCode"),def(b,"stepType","TASK"),actorCode,req(b,"fromState"),req(b,"commandCode"),req(b,"toState"),req(b,"completionRule"),def(b,"requirementText",req(b,"completionRule")),def(b,"inputContract","{}"),def(b,"outputContract","{}"),bool(b,"requiresUserPage"),bool(b,"requiresAdminPage"),bool(b,"requiresApi"),bool(b,"requiresDatabase"),bool(b,"requiresNotification"),str(b,"userPath"),str(b,"adminPath"),str(b,"apiContract"),integerOr(b,"slaHours",0),escalationActorCode,Boolean.parseBoolean(def(b,"evidenceRequired","true")),str(b,"evidenceTypes"),segregationActorCodes,str(b,"rollbackCommandCode"),str(b,"decisionRule"));
+        Map<String,Object> trigger=new LinkedHashMap<>();
+        trigger.put("triggerType","PROCESS_STEP");trigger.put("stepCode",step);
+        Map<String,Object> result=refreshAndQueueCanonicalProcess(process,actor,trigger);
+        result.put("success",true);result.put("processCode",process);result.put("stepCode",step);
+        result.put("generatedJobs",result.getOrDefault("jobCount",0));
+        return result;
     }
 
     @Transactional public Map<String,Object> generateDevelopmentPlan(String process,String step,String actor){

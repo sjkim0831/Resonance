@@ -35,7 +35,7 @@ public class ActorProcessGovernanceApiController {
     @PostMapping("/assets/refresh") public ResponseEntity<?> refreshAssets(HttpServletRequest request){return guardedDesignMutation(request,service::refreshAssetCatalog);}
     @PostMapping("/process-archetypes/bind-screen") public ResponseEntity<?> bindScreenArchetype(@RequestBody Map<String,Object>b,HttpServletRequest request){return guardedDesignMutation(request,actor->service.bindScreenProcessArchetype(b,actor));}
     @PostMapping("/design-assets/preflight") public ResponseEntity<?> designPreflight(@RequestBody Map<String,Object>b,HttpServletRequest request){return guardedDesignMutation(request,actor->service.runDesignPreflight(b,actor));}
-    @PostMapping("/actors") public ResponseEntity<?> actor(@RequestBody Map<String,Object>b,HttpServletRequest request){return guardedDesignMutation(request,actor->{service.createActor(b);return Map.of("success",true);});}
+    @PostMapping("/actors") public ResponseEntity<?> actor(@RequestBody Map<String,Object>b,HttpServletRequest request){return guardedDesignMutation(request,actor->service.createActor(b,actor));}
     @PostMapping("/work-types") public ResponseEntity<?> workType(@RequestBody Map<String,Object>b,HttpServletRequest request){return guardedDesignMutation(request,actor->{service.saveWorkType(b);return Map.of("success",true);});}
     @PostMapping("/assignments")
     public ResponseEntity<?> assignment(@RequestBody Map<String,Object>b,HttpServletRequest request){
@@ -53,7 +53,7 @@ public class ActorProcessGovernanceApiController {
     @PostMapping("/delivery/blueprints") public ResponseEntity<?> saveDeliveryBlueprint(@RequestBody Map<String,Object>b,HttpServletRequest request){return guardedDesignMutation(request,actor->service.saveProjectDeliveryBlueprint(b,actor));}
     @PostMapping("/delivery/validate") public ResponseEntity<?> validateDeliveryBlueprint(@RequestBody Map<String,Object>b){try{return ResponseEntity.ok(service.validateProjectDeliveryBlueprint(String.valueOf(b.getOrDefault("blueprintCode",""))));}catch(Exception e){return bad(e);}}
     @PostMapping("/delivery/apply") public ResponseEntity<?> applyDeliveryBlueprint(@RequestBody Map<String,Object>b,HttpServletRequest request){return guardedDesignMutation(request,actor->service.applyProjectDeliveryBlueprint(b,actor));}
-    @PostMapping("/processes") public ResponseEntity<?> process(@RequestBody Map<String,Object>b,HttpServletRequest request){return guardedDesignMutation(request,actor->{service.createProcess(b);return Map.of("success",true);});}
+    @PostMapping("/processes") public ResponseEntity<?> process(@RequestBody Map<String,Object>b,HttpServletRequest request){return guardedDesignMutation(request,actor->service.createProcess(b,actor));}
     @PostMapping("/steps") public ResponseEntity<?> step(@RequestBody Map<String,Object>b,HttpServletRequest request){return guardedDesignMutation(request,actor->service.addStep(b,actor));}
     @PostMapping("/development/plan") public ResponseEntity<?> plan(@RequestBody Map<String,Object>b,HttpServletRequest request){return guardedDesignMutation(request,actor->service.generateDevelopmentPlan(String.valueOf(b.get("processCode")),String.valueOf(b.get("stepCode")),actor));}
     @PostMapping("/development/bootstrap-process") public ResponseEntity<?> bootstrapProcess(@RequestBody Map<String,Object>b,HttpServletRequest request){return guardedDesignMutation(request,actor->service.bootstrapProcessDevelopment(b,actor));}
