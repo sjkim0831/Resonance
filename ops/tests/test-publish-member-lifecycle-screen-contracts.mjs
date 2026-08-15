@@ -101,6 +101,7 @@ for (const required of [
   "carbonet-usage-ledger-system-admin",
   "professional-screen-contracts/preview",
   "professional-screen-contracts",
+  "'permissionCodes',permission_codes",
   "[216005,216006,216007,216008]",
   "runtimeStateHashBefore",
   "runtimeWriteCount:0",
@@ -136,7 +137,12 @@ const steps = ["01_PLAN", "02_DATA", "03_VERIFY", "04_APPROVE"];
 const rows = steps.map((suffix, index) => {
   const designHash = (index + 1).toString(16).repeat(64);
   return {
-    payload: { contractId: 216005 + index, contractStatus: "VERIFIED", businessPurpose: `purpose-${index}` },
+    payload: {
+      contractId: 216005 + index,
+      contractStatus: "VERIFIED",
+      businessPurpose: `purpose-${index}`,
+      permissionCodes: index === 0 ? ["MEMBER_WORK_EXECUTE"] : [],
+    },
     expected: {
       processCode: "MEMBER_LIFECYCLE",
       stepCode: `MEMBER_LIFECYCLE_${suffix}`,
@@ -174,12 +180,16 @@ const dbGateMutants = [
   ["wrong audience", structuredClone(rows)],
   ["invalid design hash", structuredClone(rows)],
   ["invalid catalog hash", structuredClone(rows)],
+  ["missing permission codes", structuredClone(rows)],
+  ["invalid permission code", structuredClone(rows)],
 ];
 dbGateMutants[1][1][0].payload.contractId = 216008;
 dbGateMutants[2][1][0].payload.contractStatus = "DRAFT";
 dbGateMutants[3][1][0].expected.audience = "ADMIN";
 dbGateMutants[4][1][0].expected.designHash = "not-a-sha256";
 dbGateMutants[5][1][0].expected.catalogHash = "not-a-sha256";
+delete dbGateMutants[6][1][0].payload.permissionCodes;
+dbGateMutants[7][1][0].payload.permissionCodes = ["lowercase-not-allowed"];
 for (const [name, mutant] of dbGateMutants) {
   const result = executeDbSourceGate(wrapper, mutant);
   assert.notEqual(result.status, 0, `${name} mutant passed the real jq gate`);
@@ -295,10 +305,16 @@ function fakeRuntime(phase, corrupt = "") {
       let row;
       if (parsed.pathname.endsWith("/preview")) {
         kind = "preview";
-        row = rows.find((candidate) => candidate.payload.contractId === JSON.parse(options.body).contractId);
+        const body = JSON.parse(options.body);
+        row = rows.find((candidate) => candidate.payload.contractId === body.contractId);
+        assert.deepEqual(body.permissionCodes, row?.payload.permissionCodes,
+          "preview must preserve the exact DB permission set, including an explicit empty set");
       } else if (parsed.pathname.endsWith("/professional-screen-contracts")) {
         kind = "publish";
-        row = rows.find((candidate) => candidate.payload.contractId === JSON.parse(options.body).contractId);
+        const body = JSON.parse(options.body);
+        row = rows.find((candidate) => candidate.payload.contractId === body.contractId);
+        assert.deepEqual(body.permissionCodes, row?.payload.permissionCodes,
+          "publish must preserve the exact DB permission set, including an explicit empty set");
       } else {
         kind = "resolve";
         row = rows.find((candidate) => candidate.expected.stepCode === parsed.searchParams.get("stepCode"));
@@ -342,4 +358,4 @@ for (const scenario of [
   }
 }
 
-process.stdout.write("MEMBER_LIFECYCLE_SCREEN_CONTRACT_PUBLISHER_PASS happyPhases=2 targets=4 previewBeforeMutation=4/4 resolver=4/4 negativeCases=3 dbJqValid=4 dbJqDataMutants=6 dbJqSourceMutants=2 runtimeSnapshotPoisonedStdin=PASS runtimeSnapshotMissingNMutant=CAUGHT passwordOutput=0\n");
+process.stdout.write("MEMBER_LIFECYCLE_SCREEN_CONTRACT_PUBLISHER_PASS happyPhases=2 targets=4 previewBeforeMutation=4/4 resolver=4/4 permissionPreserved=1 permissionRemoved=3 negativeCases=3 dbJqValid=4 dbJqDataMutants=8 dbJqSourceMutants=2 runtimeSnapshotPoisonedStdin=PASS runtimeSnapshotMissingNMutant=CAUGHT passwordOutput=0\n");

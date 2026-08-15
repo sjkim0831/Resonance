@@ -226,6 +226,7 @@ select coalesce(jsonb_agg(jsonb_build_object(
     'responsiveContract',responsive_contract,
     'accessibilityContract',accessibility_contract,
     'securityContract',security_contract,
+    'permissionCodes',permission_codes,
     'apiVerified',api_verified,
     'databaseVerified',database_verified,
     'authorityVerified',authority_verified,
@@ -256,6 +257,9 @@ jq -e '
   length==4
   and ([.[].payload.contractId]==[216005,216006,216007,216008])
   and all(.[]; .payload.contractStatus=="VERIFIED")
+  and all(.[]; (.payload.permissionCodes|type)=="array"
+    and all(.payload.permissionCodes[];
+      type=="string" and test("^[A-Z][A-Z0-9_:-]{1,119}$")))
   and all(.[]; .expected.processCode=="MEMBER_LIFECYCLE" and .expected.audience=="USER"
     and .expected.routePath=="/work/execution"
     and (.expected.designHash|test("^[0-9a-f]{64}$"))
