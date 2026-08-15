@@ -2583,6 +2583,65 @@ public class ActorProcessGovernanceService {
             "'CANONICAL_PROCESS_PUBLICATION_V1:'||upper(btrim(?)),0))",rs->{},process);
     }
 
+    /**
+     * Requirement imports can mutate global actor definitions shared by several
+     * processes.  Resolve that complete committed impact set before the first
+     * mutation and acquire the same publication locks in one canonical order.
+     * This prevents two imports with opposite main/related process directions
+     * from taking X then Y / Y then X and deadlocking.
+     */
+    @Transactional public List<String> lockRequirementImportProcesses(
+            String mainProcess,java.util.Collection<String> actorCodes){
+        String main=req(Map.of("processCode",mainProcess),"processCode")
+            .trim().toUpperCase(Locale.ROOT);
+        if(!main.matches("^[A-Z][A-Z0-9_:-]{1,79}$"))
+            throw new IllegalArgumentException("INVALID_PROCESS_CODE: "+main);
+        if(actorCodes==null||actorCodes.isEmpty())
+            throw new IllegalArgumentException("REQUIREMENT_ACTOR_SET_REQUIRED");
+        java.util.SortedSet<String> actors=new java.util.TreeSet<>();
+        for(String raw:actorCodes){
+            String actor=raw==null?"":raw.trim().toUpperCase(Locale.ROOT);
+            if(!actor.matches("^[A-Z][A-Z0-9_]{1,59}$"))
+                throw new IllegalArgumentException("INVALID_ACTOR_CODE: "+actor);
+            actors.add(actor);
+        }
+        String actorSet=String.join(",",actors);
+        List<String> affected=jdbc.queryForList("""
+            with requested as materialized(
+              select unnest(string_to_array(?,',')) actor_code
+            ), affected as (
+              select ?::text process_code
+              union
+              select process.process_code
+                from framework_process_definition process
+                join requested actor on actor.actor_code=process.owner_actor_code
+              union
+              select step.process_code
+                from framework_process_step step
+                join requested actor on actor.actor_code=step.actor_code
+              union
+              select step.process_code
+                from framework_process_step step
+                join requested actor on actor.actor_code=step.escalation_actor_code
+              union
+              select step.process_code
+                from framework_process_step step
+               where exists(
+                 select 1 from requested actor
+                  where actor.actor_code=any(regexp_split_to_array(
+                    coalesce(nullif(btrim(step.segregation_actor_codes),''),'__NONE__'),
+                    '[[:space:]]*,[[:space:]]*')))
+            )
+            select process_code from affected
+             where process_code~'^[A-Z][A-Z0-9_:-]{1,79}$'
+             order by process_code collate "C"
+            """,String.class,actorSet,main);
+        if(affected.isEmpty()||!affected.contains(main))
+            throw new IllegalStateException("REQUIREMENT_PROCESS_LOCK_SET_NOT_EXACT: "+main);
+        for(String process:affected)lockCanonicalProcessPublication(process);
+        return List.copyOf(affected);
+    }
+
     private Map<String,Object> refreshProcessExecutionSpecs(String process,String actor){
         String refreshed=jdbc.queryForObject(
             "select framework_refresh_process_execution_specs(?,?)::text",
@@ -2628,6 +2687,8 @@ public class ActorProcessGovernanceService {
             if(!expectedDesignHash.equals(currentDesignHash))
                 throw new IllegalStateException("STALE_CANONICAL_DESIGN_HASH");
         }
+        if("PROCESS_STEP".equals(str(trigger,"triggerType")))
+            synchronizeGeneratedProfessionalPrimaryMarkers(process);
         Map<String,Object> refresh=refreshProcessExecutionSpecs(process,actor);
         Map<String,Object> projection=exactProjection==null?Map.of():exactProjection.get();
         Map<String,Object> revision=Map.of();
@@ -2660,6 +2721,80 @@ public class ActorProcessGovernanceService {
         result.put("specRefresh",refresh);result.put("exactProjection",projection);
         result.put("designRevision",revision);
         return result;
+    }
+
+    private void synchronizeGeneratedProfessionalPrimaryMarkers(String process){
+        jdbc.update("""
+            with projected as (
+              select contract.contract_id,
+                     framework_merge_primary_contract_marker(
+                       framework_try_jsonb(contract.command_contract),
+                       'PRIMARY_STEP_COMMAND',jsonb_build_object(
+                         'commandCode',step.command_code,'actorCode',step.actor_code,
+                         'entryState',step.from_state,'resultState',step.to_state,
+                         'serverAuthorization',true,'validationRequired',true,
+                         'auditRequired',true))::text next_command_contract,
+                     framework_merge_primary_contract_marker(
+                       framework_try_jsonb(contract.api_contract),'PRIMARY_STEP_API',
+                       case when step.requires_api then jsonb_build_object(
+                         'declaredContract',coalesce(framework_try_jsonb(step.api_contract),
+                           to_jsonb(step.api_contract)),'actorCode',step.actor_code,
+                         'commandCode',step.command_code,'transactional',true,
+                         'tenantGuard',true,'projectGuard',true,'actorGuard',true,
+                         'idempotencyKey',true,'rowVersion',true) end)::text next_api_contract
+                from framework_professional_screen_contract contract
+                join framework_process_step step using(process_code,step_code)
+               where contract.process_code=?
+                 and contract.updated_by in(
+                   'BACKSTAGE_REQUIREMENT_AUTOMATION','REQUIREMENT_SELF_HEALER')
+                 and not exists(
+                   select 1 from framework_screen_blueprint blueprint
+                    where blueprint.process_code=contract.process_code
+                      and blueprint.step_code=contract.step_code
+                      and upper(blueprint.audience)=upper(contract.audience)
+                      and lower(split_part(blueprint.route_path,'?',1))=
+                          lower(split_part(contract.route_path,'?',1))
+                      and (blueprint.implementation_strategy='ADOPT_EXISTING'
+                        or blueprint.created_by not in(
+                          'BACKSTAGE_REQUIREMENT_AUTOMATION','REQUIREMENT_SELF_HEALER')))
+            )
+            update framework_professional_screen_contract contract set
+              command_contract=projected.next_command_contract,
+              api_contract=projected.next_api_contract,updated_at=current_timestamp
+              from projected where contract.contract_id=projected.contract_id
+               and (contract.command_contract is distinct from projected.next_command_contract
+                 or contract.api_contract is distinct from projected.next_api_contract)
+            """,process);
+        Integer mismatch=jdbc.queryForObject("""
+            select count(*) from framework_professional_screen_contract contract
+              join framework_process_step step using(process_code,step_code)
+             where contract.process_code=? and (
+               (select count(*) from jsonb_array_elements(coalesce(
+                  framework_try_jsonb(contract.command_contract),'[]'::jsonb)) item
+                 where item->>'markerType'='PRIMARY_STEP_COMMAND')<>1
+               or (select count(*) from jsonb_array_elements(coalesce(
+                  framework_try_jsonb(contract.command_contract),'[]'::jsonb)) item
+                 where item->>'markerType'='PRIMARY_STEP_COMMAND'
+                   and item->>'commandCode'=step.command_code
+                   and item->>'actorCode'=step.actor_code)<>1
+               or (step.requires_api and (
+                 (select count(*) from jsonb_array_elements(coalesce(
+                    framework_try_jsonb(contract.api_contract),'[]'::jsonb)) item
+                   where item->>'markerType'='PRIMARY_STEP_API')<>1
+                 or (select count(*) from jsonb_array_elements(coalesce(
+                    framework_try_jsonb(contract.api_contract),'[]'::jsonb)) item
+                   where item->>'markerType'='PRIMARY_STEP_API'
+                     and item->>'commandCode'=step.command_code
+                     and item->>'actorCode'=step.actor_code
+                     and item->'declaredContract'=coalesce(
+                       framework_try_jsonb(step.api_contract),to_jsonb(step.api_contract)))<>1))
+               or (not step.requires_api and (select count(*)
+                 from jsonb_array_elements(coalesce(
+                   framework_try_jsonb(contract.api_contract),'[]'::jsonb)) item
+                where item->>'markerType'='PRIMARY_STEP_API')<>0))
+            """,Integer.class,process);
+        if(mismatch==null||mismatch>0)throw new IllegalStateException(
+            "MANUAL_PROFESSIONAL_PRIMARY_CONTRACT_REVISION_REQUIRED: "+process+" / "+mismatch);
     }
 
     private Map<String,Object> refreshAndQueueCanonicalProcess(
@@ -6658,6 +6793,79 @@ public class ActorProcessGovernanceService {
                 join framework_screen_resource resource
                   on resource.route_key=lower(split_part(lane.route_path,'?',1))
                where step.process_code=? and nullif(btrim(lane.route_path),'') is not null
+                 and resource.layout_type~'^[A-Z][A-Z0-9_]{1,79}$'
+            ), selected as (
+              select desired.*,blueprint.blueprint_id,
+                     row_number() over(partition by desired.process_code,desired.step_code,
+                       desired.audience order by
+                       case when lower(split_part(blueprint.route_path,'?',1))=desired.route_path
+                         then 0 else 1 end,blueprint.blueprint_id) authority_order
+                from desired
+                join framework_screen_blueprint blueprint
+                  on blueprint.process_code=desired.process_code
+                 and blueprint.step_code=desired.step_code
+                 and blueprint.audience=desired.audience
+                 and blueprint.implementation_strategy='GENERATED_RUNTIME'
+                 and blueprint.created_by in(
+                   'BACKSTAGE_REQUIREMENT_AUTOMATION','REQUIREMENT_SELF_HEALER')
+               where not exists(
+                 select 1 from framework_screen_blueprint manual
+                  where manual.process_code=desired.process_code
+                    and manual.step_code=desired.step_code
+                    and manual.audience=desired.audience
+                    and manual.actor_code=desired.actor_code
+                    and lower(split_part(manual.route_path,'?',1))=desired.route_path
+                    and (manual.implementation_strategy='ADOPT_EXISTING'
+                      or manual.created_by not in(
+                        'BACKSTAGE_REQUIREMENT_AUTOMATION','REQUIREMENT_SELF_HEALER')))
+            )
+            update framework_screen_blueprint blueprint set
+              actor_code=selected.actor_code,page_id=selected.page_code,
+              page_name=selected.page_title,route_path=selected.route_path,
+              screen_type=selected.screen_type,template_code='KRDS_'||selected.screen_type,
+              specification_json=jsonb_build_object(
+                'schemaVersion',1,'source','REQUIREMENT_AUTOMATION',
+                'process',selected.process_code,'step',selected.step_code,
+                'actor',selected.actor_code,'actorCode',selected.actor_code,
+                'commandCode',selected.command_code,'fromState',selected.from_state,
+                'toState',selected.to_state,'layout',selected.layout_type,
+                'theme',selected.theme_id)::text,
+              traceability_json=jsonb_build_object('source','REQUIREMENT_DOCUMENT',
+                'contractId',selected.contract_id)::text,
+              validation_status='VALID',validation_message=null,
+              source_reference='FRAMEWORK_PROFESSIONAL_SCREEN_CONTRACT:'||selected.contract_id,
+              transition_status='CONTRACT_LINKED',updated_at=current_timestamp
+              from selected
+             where blueprint.blueprint_id=selected.blueprint_id
+               and selected.authority_order=1 and selected.theme_id is not null
+            """,process);
+        jdbc.update("""
+            with desired as (
+              select step.process_code,step.step_code,step.step_name,step.actor_code,
+                     step.command_code,step.from_state,step.to_state,lane.audience,
+                     lower(split_part(lane.route_path,'?',1)) route_path,
+                     page.page_code,page.page_title,page.screen_type,
+                     resource.layout_type,contract.contract_id,
+                     (select theme_id from comtnthemedefinition
+                       where theme_id='KRDS_GOV_DEFAULT' and use_at='Y' and is_active='Y') theme_id
+                from framework_process_step step
+                cross join lateral(values
+                  ('USER'::text,case when step.requires_user_page then step.user_path end),
+                  ('ADMIN'::text,case when step.requires_admin_page then step.admin_path end)
+                ) lane(audience,route_path)
+                join framework_page_design page
+                  on page.process_code=step.process_code and page.step_code=step.step_code
+                 and page.audience=lane.audience
+                 and lower(split_part(page.planned_route_path,'?',1))=
+                     lower(split_part(lane.route_path,'?',1))
+                join framework_professional_screen_contract contract
+                  on contract.process_code=step.process_code and contract.step_code=step.step_code
+                 and contract.audience=lane.audience and contract.actor_code=step.actor_code
+                 and lower(split_part(contract.route_path,'?',1))=
+                     lower(split_part(lane.route_path,'?',1))
+                join framework_screen_resource resource
+                  on resource.route_key=lower(split_part(lane.route_path,'?',1))
+               where step.process_code=? and nullif(btrim(lane.route_path),'') is not null
                  and resource.layout_type~'^[A-Z][A-Z0-9_]{1,79}$')
             insert into framework_screen_blueprint(
               blueprint_code,process_code,step_code,actor_code,audience,page_id,page_name,
@@ -6675,17 +6883,15 @@ public class ActorProcessGovernanceService {
               'VALID',null,'GENERATED_RUNTIME',
               'FRAMEWORK_PROFESSIONAL_SCREEN_CONTRACT:'||contract_id,
               'CONTRACT_LINKED',?
-              from desired where theme_id is not null
-            on conflict(process_code,step_code,audience) do update set
-              actor_code=excluded.actor_code,page_id=excluded.page_id,page_name=excluded.page_name,
-              route_path=excluded.route_path,screen_type=excluded.screen_type,
-              template_code=excluded.template_code,specification_json=excluded.specification_json,
-              traceability_json=excluded.traceability_json,validation_status='VALID',
-              validation_message=null,source_reference=excluded.source_reference,
-              transition_status='CONTRACT_LINKED',updated_at=current_timestamp
-              where framework_screen_blueprint.implementation_strategy='GENERATED_RUNTIME'
-                and framework_screen_blueprint.created_by in(
-                  'BACKSTAGE_REQUIREMENT_AUTOMATION','REQUIREMENT_SELF_HEALER')
+              from desired
+             where theme_id is not null and not exists(
+               select 1 from framework_screen_blueprint existing
+                where existing.process_code=desired.process_code
+                  and existing.step_code=desired.step_code
+                  and existing.audience=desired.audience
+                  and existing.actor_code=desired.actor_code
+                  and lower(split_part(existing.route_path,'?',1))=desired.route_path)
+            on conflict(audience,route_path) do nothing
             """,process,actor);
         Integer missing=jdbc.queryForObject("""
             select count(*) from framework_process_step step

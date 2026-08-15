@@ -120,8 +120,13 @@ public class ActorProcessControlPlaneBridgeController {
                     "publication", Map.of("status", "QUEUED"));
             boolean requirementRelease=Boolean.TRUE.equals(
                     requirementImport.get("requirementRelease"));
-            java.util.SortedMap<String,String> expectedProcessHeads=requirementRelease
-                    ?requirementExpectedProcessHeads(publication):new java.util.TreeMap<>();
+            java.util.SortedMap<String,Map<String,Object>> expectedProcessReceipts=
+                    requirementRelease?requirementExpectedProcessReceipts(publication):
+                    new java.util.TreeMap<>();
+            java.util.SortedMap<String,String> expectedProcessHeads=new java.util.TreeMap<>();
+            expectedProcessReceipts.forEach((expectedProcess,receipt)->
+                    expectedProcessHeads.put(expectedProcess,
+                            String.valueOf(receipt.get("processInputHash"))));
             jdbc.update("""
                     insert into framework_actor_process_design_release(
                       project_id,design_version,contract_sha256,contract_payload,release_status
@@ -141,6 +146,7 @@ public class ActorProcessControlPlaneBridgeController {
             pendingResult.put("publication",publication);
             if(requirementRelease){
                 pendingResult.put("expectedProcessHeads",expectedProcessHeads);
+                pendingResult.put("expectedProcessReceipts",expectedProcessReceipts);
             }
             jdbc.update("""
                     update framework_actor_process_design_release
@@ -693,30 +699,41 @@ public class ActorProcessControlPlaneBridgeController {
     void reconcileRequirementRelease(
             String projectId,int designVersion,String processCode){
         List<Map<String,Object>> releaseRows=jdbc.queryForList("""
-                select contract_sha256,
+                select contract_sha256,release_status,
+                       generation_result::text generation_result_json,
                        (case
-                         when jsonb_typeof(generation_result->'expectedProcessHeads')='object'
-                           then generation_result->'expectedProcessHeads'
-                         else jsonb_build_object(?,coalesce(
-                           generation_result->>'expectedProcessInputHash',
-                           generation_result->'publication'->>'processInputHash',''))
-                       end)::text expected_heads_json
+                         when jsonb_typeof(generation_result->'expectedProcessReceipts')='object'
+                           then generation_result->'expectedProcessReceipts'
+                         else '{}'::jsonb
+                       end)::text expected_receipts_json
                   from framework_actor_process_design_release
                  where project_id=? and design_version=?
-                """,processCode,projectId,designVersion);
+                """,projectId,designVersion);
         if(releaseRows.size()!=1)return;
         String capturedChecksum=String.valueOf(releaseRows.get(0).get("contract_sha256"));
-        String capturedHeadsJson=String.valueOf(
-                releaseRows.get(0).get("expected_heads_json"));
+        String capturedReleaseStatus=String.valueOf(releaseRows.get(0).get("release_status"));
+        String capturedGenerationResultJson=String.valueOf(
+                releaseRows.get(0).get("generation_result_json"));
+        String capturedReceiptsJson=String.valueOf(
+                releaseRows.get(0).get("expected_receipts_json"));
         List<Map<String,Object>> rows=jdbc.queryForList("""
                 with release as (
-                  select cast(? as jsonb) expected_heads
+                  select cast(? as jsonb) expected_receipts
                 ), expected as (
-                  select upper(entry.key) process_code,entry.value expected_input_hash
+                  select upper(entry.key) process_code,
+                         entry.value->>'processInputHash' expected_input_hash,
+                         case
+                           when jsonb_typeof(entry.value)='object'
+                            and jsonb_typeof(entry.value->'jobId')='number'
+                            and entry.value->>'jobId'~'^[1-9][0-9]{0,17}$'
+                           then (entry.value->>'jobId')::bigint
+                           else null
+                         end expected_job_id
                     from release
-                    cross join lateral jsonb_each_text(release.expected_heads) entry
+                    cross join lateral jsonb_each(release.expected_receipts) entry
                 ), headed as (
                   select expected.process_code,expected.expected_input_hash,
+                         expected.expected_job_id,
                          case when exists(
                            select 1 from framework_process_definition process
                             where process.process_code=expected.process_code)
@@ -725,7 +742,7 @@ public class ActorProcessControlPlaneBridgeController {
                     from expected
                 )
                 select headed.process_code as expected_process_code,
-                       headed.expected_input_hash,
+                       headed.expected_input_hash,headed.expected_job_id,
                        headed.current_head->>'processInputHash' as current_input_hash,
                        job.job_id,job.job_status,job.quality_status,job.evidence_ref,
                        job.target_path,
@@ -733,36 +750,51 @@ public class ActorProcessControlPlaneBridgeController {
                          as job_input_hash
                   from headed
                   left join framework_development_job job
-                    on job.process_code=headed.process_code
+                    on job.job_id=headed.expected_job_id
+                   and job.process_code=headed.process_code
                    and job.job_type='FULL_STACK_GENERATION'
                    and job.job_group_code=headed.process_code||'_CANONICAL_PUBLICATION'
                  order by headed.process_code collate "C",job.job_id
-                """,capturedHeadsJson);
+                """,capturedReceiptsJson);
         java.util.SortedMap<String,String> expectedHeads=new java.util.TreeMap<>();
+        java.util.SortedMap<String,Map<String,Object>> expectedReceipts=
+                new java.util.TreeMap<>();
         java.util.SortedMap<String,List<Map<String,Object>>> jobsByProcess=
                 new java.util.TreeMap<>();
         boolean invalid=rows.isEmpty();
         for(Map<String,Object> row:rows){
             String expectedProcess=String.valueOf(row.get("expected_process_code"));
             String expectedHash=String.valueOf(row.get("expected_input_hash"));
+            Object expectedJobValue=row.get("expected_job_id");
+            long expectedJobId=expectedJobValue instanceof Number number?
+                    number.longValue():0L;
             if(!expectedProcess.matches("^[A-Z][A-Z0-9_:-]{1,79}$")
-                    ||!expectedHash.matches("^[0-9a-f]{64}$"))invalid=true;
+                    ||!expectedHash.matches("^[0-9a-f]{64}$")
+                    ||expectedJobId<1L)invalid=true;
             String previous=expectedHeads.put(expectedProcess,expectedHash);
             if(previous!=null&&!previous.equals(expectedHash))invalid=true;
+            Map<String,Object> receipt=new LinkedHashMap<>();
+            receipt.put("processInputHash",expectedHash);
+            receipt.put("jobId",expectedJobId);
+            Map<String,Object> previousReceipt=expectedReceipts.put(expectedProcess,receipt);
+            if(previousReceipt!=null&&!previousReceipt.equals(receipt))invalid=true;
             jobsByProcess.computeIfAbsent(expectedProcess,key->new java.util.ArrayList<>())
                     .add(row);
         }
-        if(!expectedHeads.containsKey(processCode))invalid=true;
+        if(!expectedReceipts.containsKey(processCode))invalid=true;
         boolean superseded=false;
         boolean failed=false;
         boolean pending=false;
         List<Map<String,Object>> processResults=new java.util.ArrayList<>();
-        for(Map.Entry<String,String> expected:expectedHeads.entrySet()){
+        for(Map.Entry<String,Map<String,Object>> expected:expectedReceipts.entrySet()){
             List<Map<String,Object>> jobs=jobsByProcess.getOrDefault(
                     expected.getKey(),List.of());
             Map<String,Object> processResult=new LinkedHashMap<>();
             processResult.put("processCode",expected.getKey());
-            processResult.put("expectedProcessInputHash",expected.getValue());
+            String expectedHash=String.valueOf(expected.getValue().get("processInputHash"));
+            long expectedJobId=((Number)expected.getValue().get("jobId")).longValue();
+            processResult.put("expectedProcessInputHash",expectedHash);
+            processResult.put("expectedJobId",expectedJobId);
             int jobCount=(int)jobs.stream().filter(row->row.get("job_id")!=null).count();
             processResult.put("jobCount",jobCount);
             if(jobs.size()!=1||jobCount!=1){
@@ -777,7 +809,8 @@ public class ActorProcessControlPlaneBridgeController {
             String evidence=job.get("evidence_ref")==null?"":
                     String.valueOf(job.get("evidence_ref")).trim();
             String head=String.valueOf(job.get("current_input_hash"));
-            boolean exactHead=expected.getValue().equals(head)
+            boolean exactHead=expectedJobId==((Number)job.get("job_id")).longValue()
+                    &&expectedHash.equals(head)
                     &&head.equals(String.valueOf(job.get("job_input_hash")))
                     &&("canonical://"+expected.getKey()+"/"+head)
                         .equals(job.get("target_path"));
@@ -806,6 +839,7 @@ public class ActorProcessControlPlaneBridgeController {
                 reviewRequired?"REVIEW_REQUIRED":"PENDING");
         result.put("processCode",processCode);
         result.put("expectedProcessHeads",expectedHeads);
+        result.put("expectedProcessReceipts",expectedReceipts);
         result.put("processResults",processResults);
         result.put("expectedProcessCount",expectedHeads.size());
         result.put("headExact",!invalid&&!superseded);
@@ -815,15 +849,10 @@ public class ActorProcessControlPlaneBridgeController {
                        generation_result=cast(? as jsonb)
                  where project_id=? and design_version=?
                    and contract_sha256=?
-                   and case
-                     when jsonb_typeof(generation_result->'expectedProcessHeads')='object'
-                       then generation_result->'expectedProcessHeads'
-                     else jsonb_build_object(?,coalesce(
-                       generation_result->>'expectedProcessInputHash',
-                       generation_result->'publication'->>'processInputHash',''))
-                   end=cast(? as jsonb)
+                   and release_status=?
+                   and generation_result=cast(? as jsonb)
                 """,releaseStatus,applied,writeJson(result),projectId,designVersion,
-                capturedChecksum,processCode,capturedHeadsJson);
+                capturedChecksum,capturedReleaseStatus,capturedGenerationResultJson);
         if(reconciled>1)throw new IllegalStateException(
                 "REQUIREMENT_RELEASE_CAS_NOT_EXACT: "+projectId+" / "+designVersion);
     }
@@ -854,7 +883,8 @@ public class ActorProcessControlPlaneBridgeController {
             }
             actorCodes.add(requiredRaw(step, "actorCode").toUpperCase());
         }
-        java.util.SortedSet<String> affectedProcesses = new java.util.TreeSet<>();
+        java.util.SortedSet<String> affectedProcesses = new java.util.TreeSet<>(
+                governance.lockRequirementImportProcesses(processCode,actorCodes));
         for (String actorCode : actorCodes) {
             Map<String,Object> actorMutation=governance.createActorForRequirementImport(
                     new LinkedHashMap<>(Map.of(
@@ -985,17 +1015,17 @@ public class ActorProcessControlPlaneBridgeController {
                 "processCode",processCode,"publication",publication);
     }
 
-    private java.util.SortedMap<String,String> requirementExpectedProcessHeads(
+    private java.util.SortedMap<String,Map<String,Object>> requirementExpectedProcessReceipts(
             Object publication){
-        java.util.SortedMap<String,String> expected=new java.util.TreeMap<>();
-        collectRequirementPublicationHead(publication,expected);
+        java.util.SortedMap<String,Map<String,Object>> expected=new java.util.TreeMap<>();
+        collectRequirementPublicationReceipt(publication,expected);
         if(expected.isEmpty())
-            throw new IllegalStateException("REQUIREMENT_PUBLICATION_HEAD_REQUIRED");
+            throw new IllegalStateException("REQUIREMENT_PUBLICATION_RECEIPT_REQUIRED");
         return expected;
     }
 
-    private void collectRequirementPublicationHead(
-            Object value,java.util.SortedMap<String,String> expected){
+    private void collectRequirementPublicationReceipt(
+            Object value,java.util.SortedMap<String,Map<String,Object>> expected){
         if(!(value instanceof Map<?,?> publication)
                 ||!Boolean.TRUE.equals(publication.get("success"))
                 ||"SKIPPED".equals(String.valueOf(publication.get("status")))){
@@ -1004,22 +1034,29 @@ public class ActorProcessControlPlaneBridgeController {
         }
         String processCode=String.valueOf(publication.get("processCode"));
         String processInputHash=String.valueOf(publication.get("processInputHash"));
+        Object jobIdValue=publication.get("jobId");
         if(!processCode.matches("^[A-Z][A-Z0-9_:-]{1,79}$")
                 ||!processInputHash.matches("^[0-9a-f]{64}$")
                 ||!(publication.get("jobCount") instanceof Number jobCount)
-                ||jobCount.intValue()!=1){
+                ||jobCount.intValue()!=1
+                ||!(jobIdValue instanceof Number jobId)
+                ||jobId.longValue()<1L
+                ||jobId.doubleValue()!=jobId.longValue()){
             throw new IllegalStateException(
-                    "REQUIREMENT_PUBLICATION_HEAD_REQUIRED: "+processCode);
+                    "REQUIREMENT_PUBLICATION_RECEIPT_REQUIRED: "+processCode);
         }
-        String previous=expected.put(processCode,processInputHash);
-        if(previous!=null&&!previous.equals(processInputHash)){
+        Map<String,Object> receipt=new LinkedHashMap<>();
+        receipt.put("processInputHash",processInputHash);
+        receipt.put("jobId",jobId.longValue());
+        Map<String,Object> previous=expected.put(processCode,receipt);
+        if(previous!=null&&!previous.equals(receipt)){
             throw new IllegalStateException(
-                    "REQUIREMENT_PUBLICATION_HEAD_CONFLICT: "+processCode);
+                    "REQUIREMENT_PUBLICATION_RECEIPT_CONFLICT: "+processCode);
         }
         Object related=publication.get("relatedProcessPublications");
         if(related instanceof List<?> relatedPublications){
             for(Object relatedPublication:relatedPublications){
-                collectRequirementPublicationHead(relatedPublication,expected);
+                collectRequirementPublicationReceipt(relatedPublication,expected);
             }
         }else if(related!=null){
             throw new IllegalStateException(

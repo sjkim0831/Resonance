@@ -33,6 +33,12 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
     private static final String MIGRATION=
         "apps/carbonet-api/src/main/resources/db/migration/postgresql/"+
         "V20260815121800__refresh_direct_process_execution_specs.sql";
+    private static final String BLUEPRINT_ADOPTION_MIGRATION=
+        "apps/carbonet-api/src/main/resources/db/migration/postgresql/"+
+        "V20260714224500__adopt_existing_screens_into_blueprints.sql";
+    private static final String BLUEPRINT_STRATEGY_MIGRATION=
+        "apps/carbonet-api/src/main/resources/db/migration/postgresql/"+
+        "V20260721101000__align_screen_blueprint_strategy_constraint.sql";
     private static final String LOCK_GUARD_MIGRATION=
         "apps/carbonet-api/src/main/resources/db/migration/postgresql/"+
         "V20260717090000__lock_implemented_process_definitions.sql";
@@ -68,6 +74,8 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
             org.mockito.Mockito.mock(egovframework.com.platform.codex.service.CodexProvisioningService.class),
             org.mockito.Mockito.mock(ScreenContractRuntimeService.class));
         createSchema();
+        applyMigration(BLUEPRINT_ADOPTION_MIGRATION,false);
+        applyMigration(BLUEPRINT_STRATEGY_MIGRATION,false);
         applyMigration(LOCK_GUARD_MIGRATION,false);
         applyMigration(LEGACY_SOURCE_HASH_MIGRATION,false);
         applyMigration(MIGRATION,true);
@@ -118,9 +126,10 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
         jdbc.update("""
             insert into framework_professional_screen_contract(
               process_code,step_code,audience,route_path,actor_code,
-              command_contract,api_contract)
+              command_contract,api_contract,updated_by)
             values('PROC','STEP','USER','/step','PRIMARY_ACTOR',
-              '[{"commandCode":"SAVE"}]','[{"path":"/api/items"}]')
+              '[{"commandCode":"SAVE"}]','[{"path":"/api/items"}]',
+              'BACKSTAGE_REQUIREMENT_AUTOMATION')
             """);
         jdbc.update("""
             insert into framework_step_execution_spec(
@@ -415,6 +424,99 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
     }
 
     @Test
+    void ordinaryStepRevisionPersistsPrimaryMarkersAndPreservesManualActionsInCanonicalSource(){
+        String beforeSource=jdbc.queryForObject("""
+            select encode(sha256(convert_to(command_contract||api_contract,'UTF8')),'hex')
+              from framework_professional_screen_contract
+             where process_code='PROC' and step_code='STEP'
+            """,String.class);
+        LinkedHashMap<String,Object> revised=new LinkedHashMap<>(stepBody("STEP",1));
+        revised.put("commandCode","EXECUTE_NEW");
+        revised.put("requiresUserPage",true);
+        revised.put("userPath","/step");
+        revised.put("apiContract","PUT /api/new");
+
+        Map<String,Object> result=transaction.execute(status->
+            service.addStep(revised,"authenticated-admin"));
+
+        assertEquals("QUEUED",result.get("status"));
+        assertEquals(Boolean.TRUE,result.get("generationQueued"));
+        assertEquals(1,result.get("jobCount"));
+        assertEquals(1,result.get("endpointExpected"));
+        String afterSource=jdbc.queryForObject("""
+            select encode(sha256(convert_to(command_contract||api_contract,'UTF8')),'hex')
+              from framework_professional_screen_contract
+             where process_code='PROC' and step_code='STEP'
+            """,String.class);
+        assertNotEquals(beforeSource,afterSource);
+        assertEquals(1,jdbc.queryForObject("""
+            select count(*) from framework_professional_screen_contract contract
+              cross join lateral jsonb_array_elements(
+                framework_try_jsonb(contract.command_contract)) item
+             where contract.process_code='PROC' and contract.step_code='STEP'
+               and item->>'markerType'='PRIMARY_STEP_COMMAND'
+               and item->>'commandCode'='EXECUTE_NEW'
+            """,Integer.class));
+        assertEquals(Boolean.TRUE,jdbc.queryForObject("""
+            select exists(select 1 from jsonb_array_elements(
+              framework_try_jsonb(command_contract)) item
+              where item->>'commandCode'='SAVE' and item->>'markerType' is null)
+              from framework_professional_screen_contract
+             where process_code='PROC' and step_code='STEP'
+            """,Boolean.class));
+        assertEquals(Boolean.TRUE,jdbc.queryForObject("""
+            select exists(select 1 from jsonb_array_elements(
+              framework_try_jsonb(api_contract)) item
+              where item->>'path'='/api/items' and item->>'markerType' is null)
+              from framework_professional_screen_contract
+             where process_code='PROC' and step_code='STEP'
+            """,Boolean.class));
+        assertEquals(1,jdbc.queryForObject("""
+            select count(*) from framework_professional_screen_contract contract
+              cross join lateral jsonb_array_elements(
+                framework_try_jsonb(contract.api_contract)) item
+             where contract.process_code='PROC' and contract.step_code='STEP'
+               and item->>'markerType'='PRIMARY_STEP_API'
+               and item->>'commandCode'='EXECUTE_NEW'
+               and item->>'declaredContract'='PUT /api/new'
+            """,Integer.class));
+        assertEquals(1,jdbc.queryForObject("""
+            select count(*) from framework_step_execution_spec spec
+              cross join lateral jsonb_array_elements(spec.command_contract) item
+             where item->>'markerType'='PRIMARY_STEP_COMMAND'
+               and item->>'commandCode'='EXECUTE_NEW'
+            """,Integer.class));
+
+        jdbc.update("""
+            update framework_professional_screen_contract
+               set command_contract='[{"commandCode":"MANUAL_ONLY"}]',
+                   api_contract='[{"path":"/manual"}]',updated_by='HUMAN_DESIGNER'
+             where process_code='PROC' and step_code='STEP'
+            """);
+        jdbc.update("""
+            insert into framework_screen_blueprint(
+              blueprint_code,process_code,step_code,actor_code,audience,page_id,page_name,
+              route_path,screen_type,template_code,specification_json,traceability_json,
+              validation_status,implementation_strategy,source_reference,transition_status,created_by)
+            values('MANUAL_BP','PROC','STEP','PRIMARY_ACTOR','USER','MANUAL','Manual','/step',
+              'WORKSPACE','KRDS_WORKSPACE','{}','{}','VALID','ADOPT_EXISTING',
+              'MANUAL','CONTRACT_LINKED','HUMAN_DESIGNER')
+            """);
+        LinkedHashMap<String,Object> rejected=new LinkedHashMap<>(revised);
+        rejected.put("commandCode","EXECUTE_REJECTED");
+        assertThrows(IllegalStateException.class,()->transaction.execute(status->
+            service.addStep(rejected,"authenticated-admin")));
+        assertEquals("EXECUTE_NEW",jdbc.queryForObject("""
+            select command_code from framework_process_step
+             where process_code='PROC' and step_code='STEP'
+            """,String.class));
+        assertEquals("[{\"commandCode\":\"MANUAL_ONLY\"}]",jdbc.queryForObject("""
+            select command_contract from framework_professional_screen_contract
+             where process_code='PROC' and step_code='STEP'
+            """,String.class));
+    }
+
+    @Test
     void distinctRequirementProcessOrderAllocationDoesNotHoldAGlobalTransactionLock()
             throws Exception {
         CountDownLatch firstAllocated=new CountDownLatch(1);
@@ -452,10 +554,60 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
     }
 
     @Test
+    void oppositeRelatedRequirementImportsPrelockEveryProcessInCanonicalOrder()
+            throws Exception {
+        insertActor("CROSS_ACTOR_X");
+        insertActor("CROSS_ACTOR_Y");
+        jdbc.update("""
+            insert into framework_process_definition(
+              process_code,process_name,domain_code,goal,start_condition,
+              completion_condition,owner_actor_code)
+            values('CROSS_PROCESS_X','Cross X','DOMAIN','x','start','complete','CROSS_ACTOR_Y'),
+                  ('CROSS_PROCESS_Y','Cross Y','DOMAIN','y','start','complete','CROSS_ACTOR_X')
+            """);
+        CountDownLatch firstLocked=new CountDownLatch(1);
+        CountDownLatch releaseFirst=new CountDownLatch(1);
+        CountDownLatch secondStarted=new CountDownLatch(1);
+        var executor=Executors.newFixedThreadPool(2);
+        try{
+            var first=executor.submit(()->transaction.execute(status->{
+                jdbc.execute("set local lock_timeout='3s'");
+                List<String> locked=service.lockRequirementImportProcesses(
+                    "CROSS_PROCESS_X",List.of("CROSS_ACTOR_X"));
+                firstLocked.countDown();
+                try{assertTrue(releaseFirst.await(5,TimeUnit.SECONDS));}
+                catch(InterruptedException error){
+                    Thread.currentThread().interrupt();throw new IllegalStateException(error);
+                }
+                return locked;
+            }));
+            assertTrue(firstLocked.await(3,TimeUnit.SECONDS));
+            var second=executor.submit(()->transaction.execute(status->{
+                jdbc.execute("set local lock_timeout='3s'");
+                secondStarted.countDown();
+                return service.lockRequirementImportProcesses(
+                    "CROSS_PROCESS_Y",List.of("CROSS_ACTOR_Y"));
+            }));
+            assertTrue(secondStarted.await(3,TimeUnit.SECONDS));
+            Thread.sleep(250);
+            assertEquals(false,second.isDone());
+            releaseFirst.countDown();
+            assertEquals(List.of("CROSS_PROCESS_X","CROSS_PROCESS_Y"),
+                first.get(3,TimeUnit.SECONDS));
+            assertEquals(List.of("CROSS_PROCESS_X","CROSS_PROCESS_Y"),
+                second.get(3,TimeUnit.SECONDS));
+        }finally{
+            releaseFirst.countDown();
+            executor.shutdownNow();
+        }
+    }
+
+    @Test
     void releaseReconciliationCasCannotOverwriteAConcurrentRepromotion() throws Exception {
         Map<String,Object> queued=transaction.execute(status->
             service.createProcess(processBody("release head"),"authenticated-admin"));
         String expectedHash=String.valueOf(queued.get("processInputHash"));
+        long expectedJobId=((Number)queued.get("jobId")).longValue();
         jdbc.update("""
             update framework_development_job
                set job_status='COMPLETED',quality_status='VERIFIED',
@@ -463,7 +615,6 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
              where process_code='PROC' and job_type='FULL_STACK_GENERATION'
             """);
         String originalChecksum="c".repeat(64);
-        String promotedChecksum="d".repeat(64);
         jdbc.update("""
             insert into framework_actor_process_design_release(
               project_id,design_version,contract_sha256,contract_payload,
@@ -471,9 +622,12 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
             values('PROJECT_A',1,?,
               jsonb_build_object('source',jsonb_build_object('type','REQUIREMENT_DOCUMENT'),
                 'process',jsonb_build_object('processCode','PROC')),
-              'QUEUED',jsonb_build_object('expectedProcessHeads',
-                jsonb_build_object('PROC',?)))
-            """,originalChecksum,expectedHash);
+              'QUEUED',jsonb_build_object(
+                'status','PENDING',
+                'expectedProcessHeads',jsonb_build_object('PROC',?),
+                'expectedProcessReceipts',jsonb_build_object('PROC',
+                  jsonb_build_object('processInputHash',?,'jobId',?))))
+            """,originalChecksum,expectedHash,expectedHash,expectedJobId);
         CountDownLatch headRead=new CountDownLatch(1);
         CountDownLatch continueReconcile=new CountDownLatch(1);
         PausingJdbcTemplate pausingJdbc=new PausingJdbcTemplate(
@@ -497,24 +651,81 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
             assertTrue(headRead.await(3,TimeUnit.SECONDS));
             jdbc.update("""
                 update framework_actor_process_design_release
-                   set contract_sha256=?,generation_result=jsonb_build_object(
-                     'expectedProcessHeads',jsonb_build_object('PROC',?)),
-                     release_status='QUEUED'
+                   set generation_result=jsonb_build_object(
+                     'status','APPLIED','reconcileVersion','CONCURRENT'),
+                     release_status='APPLIED',applied_at=current_timestamp
                  where project_id='PROJECT_A' and design_version=1
-                """,promotedChecksum,expectedHash);
+                """);
             continueReconcile.countDown();
             reconcile.get(3,TimeUnit.SECONDS);
-            assertEquals(promotedChecksum,jdbc.queryForObject("""
+            assertEquals(originalChecksum,jdbc.queryForObject("""
                 select contract_sha256 from framework_actor_process_design_release
                  where project_id='PROJECT_A' and design_version=1
                 """,String.class));
-            assertEquals("QUEUED",jdbc.queryForObject("""
+            assertEquals("APPLIED",jdbc.queryForObject("""
                 select release_status from framework_actor_process_design_release
+                 where project_id='PROJECT_A' and design_version=1
+                """,String.class));
+            assertEquals("CONCURRENT",jdbc.queryForObject("""
+                select generation_result->>'reconcileVersion'
+                  from framework_actor_process_design_release
                  where project_id='PROJECT_A' and design_version=1
                 """,String.class));
         }finally{
             continueReconcile.countDown();
             executor.shutdownNow();
+            bridge.shutdownGenerationExecutor();
+        }
+    }
+
+    @Test
+    void replacementCanonicalJobIdCannotSatisfyTheCapturedReleaseReceipt() throws Exception {
+        Map<String,Object> queued=transaction.execute(status->
+            service.createProcess(processBody("receipt head"),"authenticated-admin"));
+        String expectedHash=String.valueOf(queued.get("processInputHash"));
+        long expectedJobId=((Number)queued.get("jobId")).longValue();
+        jdbc.update("""
+            update framework_development_job
+               set job_status='COMPLETED',quality_status='VERIFIED',
+                   evidence_ref='receipt://replacement',completed_at=current_timestamp
+             where job_id=?
+            """,expectedJobId);
+        jdbc.update("""
+            insert into framework_actor_process_design_release(
+              project_id,design_version,contract_sha256,contract_payload,
+              release_status,generation_result)
+            values('PROJECT_REPLACED',1,repeat('e',64),'{}',
+              'QUEUED',jsonb_build_object(
+                'status','PENDING',
+                'expectedProcessHeads',jsonb_build_object('PROC',?),
+                'expectedProcessReceipts',jsonb_build_object('PROC',
+                  jsonb_build_object('processInputHash',?,'jobId',?))))
+            """,expectedHash,expectedHash,expectedJobId);
+        jdbc.update("update framework_development_job set job_id=job_id+1000 where job_id=?",
+            expectedJobId);
+        ActorProcessControlPlaneBridgeController bridge=
+            new ActorProcessControlPlaneBridgeController(jdbc,new ObjectMapper(),
+                org.mockito.Mockito.mock(ActorProcessGovernanceService.class),"secret");
+        try{
+            var method=ActorProcessControlPlaneBridgeController.class.getDeclaredMethod(
+                "reconcileRequirementRelease",String.class,int.class,String.class);
+            method.setAccessible(true);
+            method.invoke(bridge,"PROJECT_REPLACED",1,"PROC");
+            assertEquals("REVIEW_REQUIRED",jdbc.queryForObject("""
+                select release_status from framework_actor_process_design_release
+                 where project_id='PROJECT_REPLACED' and design_version=1
+                """,String.class));
+            assertEquals(String.valueOf(expectedJobId),jdbc.queryForObject("""
+                select generation_result#>>'{processResults,0,expectedJobId}'
+                  from framework_actor_process_design_release
+                 where project_id='PROJECT_REPLACED' and design_version=1
+                """,String.class));
+            assertEquals("0",jdbc.queryForObject("""
+                select generation_result#>>'{processResults,0,jobCount}'
+                  from framework_actor_process_design_release
+                 where project_id='PROJECT_REPLACED' and design_version=1
+                """,String.class));
+        }finally{
             bridge.shutdownGenerationExecutor();
         }
     }
@@ -577,6 +788,16 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
 
     @Test
     void requirementOwnedPageAndBlueprintIdentityIsReplacedRemovedAndManualAuthorityProtected(){
+        assertEquals(Boolean.FALSE,jdbc.queryForObject("""
+            select exists(select 1 from pg_constraint
+              where conrelid='framework_screen_blueprint'::regclass
+                and conname='framework_screen_blueprint_process_code_step_code_audience_key')
+            """,Boolean.class));
+        assertEquals(Boolean.TRUE,jdbc.queryForObject("""
+            select exists(select 1 from pg_constraint
+              where conrelid='framework_screen_blueprint'::regclass
+                and conname='framework_screen_blueprint_audience_route_path_key')
+            """,Boolean.class));
         jdbc.update("""
             update framework_professional_screen_contract
                set updated_by='BACKSTAGE_REQUIREMENT_AUTOMATION'
@@ -1331,13 +1552,14 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
             """);
         jdbc.execute("""
             create table framework_screen_blueprint(
-              blueprint_code text primary key,process_code text,step_code text,
+              blueprint_id bigserial primary key,blueprint_code text unique,
+              process_code text,step_code text,
               actor_code text,audience text,page_id text,page_name text,route_path text,
               screen_type text,template_code text,specification_json text,traceability_json text,
               validation_status text,validation_message text,implementation_strategy text,
               source_reference text,transition_status text,created_by text,
               updated_at timestamp default current_timestamp,
-              unique(process_code,step_code,audience))
+              unique(process_code,step_code,audience),unique(audience,route_path))
             """);
         jdbc.execute("""
             create table framework_process_step_screen_binding(
@@ -1444,8 +1666,12 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
                        count(*) filter(where eligible)::integer ready_count,
                        (array_agg(step_code order by step_order,step_code)
                          filter(where eligible))[1] coordinator,
-                       coalesce(sum(jsonb_array_length(api_contract))
-                         filter(where eligible),0)::integer endpoints
+                       (select count(*)::integer
+                          from framework_professional_screen_contract contract
+                          join ordered eligible_step
+                            on eligible_step.process_code=contract.process_code
+                           and eligible_step.step_code=contract.step_code
+                           and eligible_step.eligible) endpoints
                   from ordered
               ), head as (
                 select encode(sha256(convert_to(

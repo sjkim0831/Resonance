@@ -124,6 +124,8 @@ class ActorProcessControlPlaneBridgeAuthorizationTest {
         Map<String,Object> contract=Map.of(
             "source",Map.of("type","REQUIREMENT_DOCUMENT"),
             "process",Map.of("processCode","PROCESS_A","steps",java.util.List.of(step)));
+        when(governance.lockRequirementImportProcesses(eq("PROCESS_A"),any()))
+            .thenReturn(java.util.List.of("PROCESS_A","PROCESS_B"));
         when(governance.createActorForRequirementImport(any(),anyString()))
             .thenReturn(Map.of("success",true,
                 "affectedProcessCodes",java.util.List.of("PROCESS_B")));
@@ -149,12 +151,12 @@ class ActorProcessControlPlaneBridgeAuthorizationTest {
             "BACKSTAGE_REQUIREMENT_AUTOMATION","REQUIREMENT_PROCESS_CONTRACT"))
             .thenReturn(new LinkedHashMap<>(Map.of("success",true,"status","QUEUED",
                 "jobCount",1,"generationQueued",true,"processCode","PROCESS_A",
-                "processInputHash","a".repeat(64))));
+                "processInputHash","a".repeat(64),"jobId",7L)));
         when(governance.finalizeAndQueueProcessDesign("PROCESS_B",
             "BACKSTAGE_REQUIREMENT_AUTOMATION","REQUIREMENT_ACTOR_DEFINITION"))
             .thenReturn(new LinkedHashMap<>(Map.of("success",true,"status","UNCHANGED",
                 "jobCount",1,"generationQueued",false,"processCode","PROCESS_B",
-                "processInputHash","b".repeat(64))));
+                "processInputHash","b".repeat(64),"jobId",8L)));
         String checksum=canonicalChecksum(contract);
         TransactionSynchronizationManager.initSynchronization();
 
@@ -164,6 +166,7 @@ class ActorProcessControlPlaneBridgeAuthorizationTest {
 
         assertEquals(200,response.getStatusCode().value());
         var order=inOrder(governance);
+        order.verify(governance).lockRequirementImportProcesses(eq("PROCESS_A"),any());
         order.verify(governance).createActorForRequirementImport(any(),anyString());
         order.verify(governance).createProcessForRequirementImport(any(),anyString());
         order.verify(governance).addStepForRequirementImport(any(),anyString());
@@ -184,9 +187,23 @@ class ActorProcessControlPlaneBridgeAuthorizationTest {
                 &&sql.contains("set release_status='QUEUED'")),
             org.mockito.ArgumentMatchers.argThat(value->{
                 String json=String.valueOf(value);
-                return json.contains("\"expectedProcessHeads\"")
-                    &&json.contains("\"PROCESS_A\":\""+"a".repeat(64)+"\"")
-                    &&json.contains("\"PROCESS_B\":\""+"b".repeat(64)+"\"");
+                try{
+                    var release=mapper.readTree(json);
+                    return release.path("expectedProcessHeads").path("PROCESS_A")
+                            .asText().equals("a".repeat(64))
+                        &&release.path("expectedProcessHeads").path("PROCESS_B")
+                            .asText().equals("b".repeat(64))
+                        &&release.path("expectedProcessReceipts").path("PROCESS_A")
+                            .path("processInputHash").asText().equals("a".repeat(64))
+                        &&release.path("expectedProcessReceipts").path("PROCESS_A")
+                            .path("jobId").asLong()==7L
+                        &&release.path("expectedProcessReceipts").path("PROCESS_B")
+                            .path("processInputHash").asText().equals("b".repeat(64))
+                        &&release.path("expectedProcessReceipts").path("PROCESS_B")
+                            .path("jobId").asLong()==8L;
+                }catch(Exception invalidJson){
+                    return false;
+                }
             }),eq("PROJECT_A"),eq(1));
     }
 
@@ -198,12 +215,22 @@ class ActorProcessControlPlaneBridgeAuthorizationTest {
         String checksum="d".repeat(64);
         String expectedHeadsJson="{\"PROCESS_A\":\""+expectedMain+
             "\",\"PROCESS_B\":\""+expectedRelated+"\"}";
+        String expectedReceiptsJson="{\"PROCESS_A\":{"+
+            "\"processInputHash\":\""+expectedMain+"\",\"jobId\":7},"+
+            "\"PROCESS_B\":{\"processInputHash\":\""+expectedRelated+
+            "\",\"jobId\":8}}";
+        String capturedGenerationResult="{\"status\":\"PENDING\","+
+            "\"expectedProcessHeads\":"+expectedHeadsJson+","+
+            "\"expectedProcessReceipts\":"+expectedReceiptsJson+"}";
         when(jdbc.queryForList(anyString(),any(Object[].class)))
             .thenReturn(java.util.List.of(Map.of(
-                "contract_sha256",checksum,"expected_heads_json",expectedHeadsJson)))
+                "contract_sha256",checksum,"release_status","QUEUED",
+                "generation_result_json",capturedGenerationResult,
+                "expected_receipts_json",expectedReceiptsJson)))
             .thenReturn(java.util.List.of(
             Map.ofEntries(Map.entry("expected_process_code","PROCESS_A"),
                 Map.entry("expected_input_hash",expectedMain),
+                Map.entry("expected_job_id",7L),
                 Map.entry("current_input_hash",expectedMain),Map.entry("job_id",7L),
                 Map.entry("job_status","VERIFIED"),Map.entry("quality_status","PASSED"),
                 Map.entry("evidence_ref","receipt://main"),
@@ -211,6 +238,7 @@ class ActorProcessControlPlaneBridgeAuthorizationTest {
                 Map.entry("job_input_hash",expectedMain)),
             Map.ofEntries(Map.entry("expected_process_code","PROCESS_B"),
                 Map.entry("expected_input_hash",expectedRelated),
+                Map.entry("expected_job_id",8L),
                 Map.entry("current_input_hash",currentRelated),Map.entry("job_id",8L),
                 Map.entry("job_status","VERIFIED"),Map.entry("quality_status","PASSED"),
                 Map.entry("evidence_ref","receipt://newer-related"),
@@ -219,8 +247,13 @@ class ActorProcessControlPlaneBridgeAuthorizationTest {
 
         controller.reconcileRequirementRelease("PROJECT_A",1,"PROCESS_A");
 
+        verify(jdbc).queryForList(org.mockito.ArgumentMatchers.argThat(sql->sql!=null
+                &&sql.contains("job.job_id=headed.expected_job_id")),eq(expectedReceiptsJson));
         verify(jdbc).update(org.mockito.ArgumentMatchers.argThat(sql->sql!=null
-                &&sql.contains("set release_status=?")),eq("REVIEW_REQUIRED"),eq(false),
+                &&sql.contains("set release_status=?")
+                &&sql.contains("and release_status=?")
+                &&sql.contains("and generation_result=cast(? as jsonb)")),
+            eq("REVIEW_REQUIRED"),eq(false),
             org.mockito.ArgumentMatchers.argThat(value->{
                 String json=String.valueOf(value);
                 return json.contains("\"status\":\"SUPERSEDED\"")
@@ -228,7 +261,46 @@ class ActorProcessControlPlaneBridgeAuthorizationTest {
                     &&json.contains("\"PROCESS_B\":\""+expectedRelated+"\"")
                     &&json.contains("\"currentProcessInputHash\":\""+
                         currentRelated+"\"");
-            }),eq("PROJECT_A"),eq(1),eq(checksum),eq("PROCESS_A"),eq(expectedHeadsJson));
+            }),eq("PROJECT_A"),eq(1),eq(checksum),eq("QUEUED"),
+            eq(capturedGenerationResult));
+    }
+
+    @Test
+    void replacementCanonicalJobWithTheSameHashCannotSatisfyTheCapturedReceipt(){
+        String expectedHash="a".repeat(64);
+        String checksum="d".repeat(64);
+        String expectedReceiptsJson="{\"PROCESS_A\":{"+
+            "\"processInputHash\":\""+expectedHash+"\",\"jobId\":41}}";
+        String capturedGenerationResult="{\"status\":\"PENDING\","+
+            "\"expectedProcessReceipts\":"+expectedReceiptsJson+"}";
+        when(jdbc.queryForList(anyString(),any(Object[].class)))
+            .thenReturn(java.util.List.of(Map.of(
+                "contract_sha256",checksum,"release_status","QUEUED",
+                "generation_result_json",capturedGenerationResult,
+                "expected_receipts_json",expectedReceiptsJson)))
+            .thenReturn(java.util.List.of(Map.of(
+                "expected_process_code","PROCESS_A",
+                "expected_input_hash",expectedHash,
+                "expected_job_id",41L,
+                "current_input_hash",expectedHash)));
+
+        controller.reconcileRequirementRelease("PROJECT_A",1,"PROCESS_A");
+
+        verify(jdbc).queryForList(org.mockito.ArgumentMatchers.argThat(sql->sql!=null
+            &&sql.contains("job.job_id=headed.expected_job_id")
+            &&sql.contains("job.job_group_code=headed.process_code")),
+            eq(expectedReceiptsJson));
+        verify(jdbc).update(org.mockito.ArgumentMatchers.argThat(sql->sql!=null
+                &&sql.contains("and release_status=?")
+                &&sql.contains("and generation_result=cast(? as jsonb)")),
+            eq("REVIEW_REQUIRED"),eq(false),
+            org.mockito.ArgumentMatchers.argThat(value->{
+                String json=String.valueOf(value);
+                return json.contains("\"status\":\"REVIEW_REQUIRED\"")
+                    &&json.contains("\"expectedJobId\":41")
+                    &&json.contains("\"jobCount\":0");
+            }),eq("PROJECT_A"),eq(1),eq(checksum),eq("QUEUED"),
+            eq(capturedGenerationResult));
     }
 
     @Test
@@ -243,6 +315,8 @@ class ActorProcessControlPlaneBridgeAuthorizationTest {
         Map<String,Object> contract=Map.of(
             "source",Map.of("type","REQUIREMENT_DOCUMENT"),
             "process",Map.of("processCode","PROCESS_A","steps",java.util.List.of(step)));
+        when(governance.lockRequirementImportProcesses(eq("PROCESS_A"),any()))
+            .thenReturn(java.util.List.of("PROCESS_A","PROCESS_B"));
         when(governance.createActorForRequirementImport(any(),anyString()))
             .thenReturn(Map.of("success",true,
                 "affectedProcessCodes",java.util.List.of("PROCESS_B")));
@@ -268,7 +342,7 @@ class ActorProcessControlPlaneBridgeAuthorizationTest {
             "BACKSTAGE_REQUIREMENT_AUTOMATION","REQUIREMENT_PROCESS_CONTRACT"))
             .thenReturn(new LinkedHashMap<>(Map.of("success",true,"status","QUEUED",
                 "jobCount",1,"generationQueued",true,"processCode","PROCESS_A",
-                "processInputHash","a".repeat(64))));
+                "processInputHash","a".repeat(64),"jobId",7L)));
         when(governance.finalizeAndQueueProcessDesign("PROCESS_B",
             "BACKSTAGE_REQUIREMENT_AUTOMATION","REQUIREMENT_ACTOR_DEFINITION"))
             .thenReturn(new LinkedHashMap<>(Map.of("success",true,"status","SKIPPED",
@@ -292,8 +366,8 @@ class ActorProcessControlPlaneBridgeAuthorizationTest {
             "ActorProcessControlPlaneBridgeController.java"));
         String requirementImport=source.substring(
             source.indexOf("private Map<String,Object> importRequirementProcessContract"),
-            source.indexOf("private java.util.SortedMap<String,String> "+
-                "requirementExpectedProcessHeads"));
+            source.indexOf("private java.util.SortedMap<String,Map<String,Object>> "+
+                "requirementExpectedProcessReceipts"));
         String recovery=source.substring(
             source.indexOf("public void recoverQueuedDesignGeneration()"));
 

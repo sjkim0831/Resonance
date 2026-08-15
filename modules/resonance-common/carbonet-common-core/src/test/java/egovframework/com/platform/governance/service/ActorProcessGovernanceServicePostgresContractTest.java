@@ -76,7 +76,13 @@ class ActorProcessGovernanceServicePostgresContractTest {
             insert into comtnthemedefinition(theme_id,use_at,is_active)
             values('REGISTERED_THEME','Y','Y'),('KRDS_GOV_DEFAULT','Y','Y')
             """);
-        jdbc.update("insert into framework_process_step(process_code,step_code,step_order,actor_code) values('PROC','STEP',1,'ACTOR')");
+        jdbc.update("""
+            insert into framework_process_step(
+              process_code,step_code,step_order,actor_code,command_code,from_state,to_state,
+              requires_api,api_contract,user_path)
+            values('PROC','STEP',1,'ACTOR','SAVE','READY','DONE',true,
+              'POST /api/items','/screen')
+            """);
         contractId=jdbc.queryForObject("""
             insert into framework_professional_screen_contract(
               process_code,step_code,audience,route_path,screen_name,actor_code,permission_codes,business_purpose,
@@ -92,9 +98,9 @@ class ActorProcessGovernanceServicePostgresContractTest {
             """,Long.class);
         jdbc.update("""
             insert into framework_screen_blueprint(
-              process_code,step_code,audience,route_path,page_id,page_name,screen_type,
+              process_code,step_code,actor_code,audience,route_path,page_id,page_name,screen_type,
               template_code,specification_json,source_reference,transition_status,validation_status)
-            values('PROC','STEP','USER','/screen','PAGE','Screen','FORM','KRDS_FORM',
+            values('PROC','STEP','ACTOR','USER','/screen','PAGE','Screen','FORM','KRDS_FORM',
               '{"layout":"REGISTERED_LAYOUT","theme":"REGISTERED_THEME"}',?,
               'CONTRACT_LINKED','VALID')
             ""","framework_professional_screen_contract:"+contractId);
@@ -124,6 +130,13 @@ class ActorProcessGovernanceServicePostgresContractTest {
         assertTrue(Boolean.TRUE.equals(first.get("generationQueued")));
         assertEquals(1,number(first,"jobCount"));
         assertEquals(1,number(first,"endpointExpected"));
+        assertEquals(2,jdbc.queryForObject(
+            "select jsonb_array_length(api_contract) from framework_step_execution_spec",
+            Integer.class));
+        assertEquals(1,jdbc.queryForObject("""
+            select jsonb_array_length(
+              framework_canonical_endpoint_catalog(5000,'PROC')->'endpoints')
+            """,Integer.class));
         assertEquals(0,number(first,"publishCount"));
         assertNotEquals(oldHash,first.get("sourceHash"));
         assertEquals(first.get("sourceHash"),sourceHash());
@@ -531,9 +544,9 @@ class ActorProcessGovernanceServicePostgresContractTest {
     void duplicateBlueprintRequiresExactlyOneExplicitAuthority(){
         jdbc.update("""
             insert into framework_screen_blueprint(
-              process_code,step_code,audience,route_path,page_id,page_name,screen_type,
+              process_code,step_code,actor_code,audience,route_path,page_id,page_name,screen_type,
               template_code,specification_json,source_reference,transition_status,validation_status)
-            select process_code,step_code,audience,route_path,'DUP',page_name,screen_type,
+            select process_code,step_code,actor_code,audience,route_path,'DUP',page_name,screen_type,
               template_code,specification_json,null,'CONTRACT_LINKED',validation_status
               from framework_screen_blueprint where page_id='PAGE'
             """);
@@ -598,7 +611,13 @@ class ActorProcessGovernanceServicePostgresContractTest {
 
     private long seedSecondStep(){
         jdbc.update("insert into framework_screen_resource(route_key,layout_type) values('/screen-b','REGISTERED_LAYOUT')");
-        jdbc.update("insert into framework_process_step(process_code,step_code,step_order,actor_code) values('PROC','STEP_B',2,'ACTOR')");
+        jdbc.update("""
+            insert into framework_process_step(
+              process_code,step_code,step_order,actor_code,command_code,from_state,to_state,
+              requires_api,api_contract,user_path)
+            values('PROC','STEP_B',2,'ACTOR','SAVE_B','READY','DONE',true,
+              'POST /api/items-b','/screen-b')
+            """);
         long secondContract=jdbc.queryForObject("""
             insert into framework_professional_screen_contract(
               process_code,step_code,audience,route_path,screen_name,actor_code,permission_codes,business_purpose,
@@ -613,9 +632,9 @@ class ActorProcessGovernanceServicePostgresContractTest {
             """,Long.class);
         jdbc.update("""
             insert into framework_screen_blueprint(
-              process_code,step_code,audience,route_path,page_id,page_name,screen_type,
+              process_code,step_code,actor_code,audience,route_path,page_id,page_name,screen_type,
               template_code,specification_json,source_reference,transition_status,validation_status)
-            values('PROC','STEP_B','USER','/screen-b','PAGE_B','Screen B','FORM','KRDS_FORM',
+            values('PROC','STEP_B','ACTOR','USER','/screen-b','PAGE_B','Screen B','FORM','KRDS_FORM',
               '{"layout":"REGISTERED_LAYOUT","theme":"REGISTERED_THEME"}',?,
               'CONTRACT_LINKED','VALID')
             ""","framework_professional_screen_contract:"+secondContract);
@@ -669,7 +688,7 @@ class ActorProcessGovernanceServicePostgresContractTest {
         jdbc.execute("""
             create table framework_screen_blueprint(
               blueprint_id bigserial primary key,process_code text not null,step_code text not null,
-              audience text not null,route_path text not null,page_id text,page_name text,
+              actor_code text not null,audience text not null,route_path text not null,page_id text,page_name text,
               screen_type text,template_code text,specification_json text,source_reference text,
               transition_status text,validation_status text,
               updated_at timestamp default current_timestamp)
@@ -779,6 +798,9 @@ class ActorProcessGovernanceServicePostgresContractTest {
         jdbc.execute("""
             create table framework_process_step(
               process_code text,step_code text,step_order integer not null,actor_code text,
+              command_code text,from_state text,to_state text,
+              requires_api boolean not null default false,api_contract text,
+              user_path text,admin_path text,
               requires_user_page boolean not null default true,
               requires_admin_page boolean not null default false,
               primary key(process_code,step_code))
@@ -828,6 +850,32 @@ class ActorProcessGovernanceServicePostgresContractTest {
             create or replace function framework_try_jsonb(value text) returns jsonb
             language plpgsql immutable as $$
             begin return value::jsonb; exception when others then return null; end $$
+            """);
+        jdbc.execute("""
+            create or replace function framework_merge_primary_contract_marker(
+              existing_contract jsonb,requested_marker_type text,requested_marker jsonb)
+            returns jsonb language plpgsql immutable as $$
+            declare source_contract jsonb:=coalesce(existing_contract,'[]'::jsonb);
+            declare retained_contract jsonb;
+            begin
+              if requested_marker_type is null
+                 or requested_marker_type<>btrim(requested_marker_type)
+                 or requested_marker_type!~'^[A-Z][A-Z0-9_]{1,79}$'
+                 or jsonb_typeof(source_contract)<>'array'
+                 or (requested_marker is not null
+                   and jsonb_typeof(requested_marker)<>'object') then
+                raise exception 'invalid canonical contract marker' using errcode='22023';
+              end if;
+              select coalesce(jsonb_agg(item.value order by item.ordinality),'[]'::jsonb)
+                into retained_contract
+                from jsonb_array_elements(source_contract)
+                  with ordinality item(value,ordinality)
+               where (jsonb_typeof(item.value)='object'
+                 and item.value->>'markerType'=requested_marker_type) is not true;
+              if requested_marker is null then return retained_contract; end if;
+              return retained_contract||jsonb_build_array(requested_marker||
+                jsonb_build_object('markerType',requested_marker_type,'primary',true));
+            end $$
             """);
         jdbc.execute("""
             create or replace function framework_strict_jsonb_array(value text) returns jsonb

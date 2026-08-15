@@ -37,6 +37,10 @@ class ActorProcessGovernanceMutationPropagationTest {
                 Map.of("actor_code","ACTOR_A","use_at","Y")));
         when(jdbc.queryForList(argThat(sql->sql!=null&&sql.contains("select step_order")&&sql.contains("for update")),
             any(Object[].class))).thenReturn(List.of());
+        when(jdbc.queryForObject(argThat(sql->sql!=null
+                &&sql.contains("framework_professional_screen_contract contract")
+                &&sql.contains("PRIMARY_STEP_COMMAND")),eq(Integer.class),any(Object[].class)))
+            .thenReturn(0);
         stubSkippedRefresh(jdbc,1,1,0);
         Map<String,Object> body=Map.ofEntries(
             Map.entry("processCode","PROCESS_A"),Map.entry("stepCode","STEP_A"),

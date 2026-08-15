@@ -58,10 +58,9 @@ BEGIN
          count(*)::integer,
          count(*) FILTER(WHERE generation_eligible)::integer,
          (array_agg(step_code ORDER BY step_order,step_code COLLATE "C")
-           FILTER(WHERE generation_eligible))[1],
-         coalesce(sum(endpoint_count) FILTER(WHERE generation_eligible),0)::integer
+           FILTER(WHERE generation_eligible))[1]
     INTO steps_payload,process_step_count,generation_ready_step_count,
-         coordinator_step,process_endpoint_expected
+         coordinator_step
     FROM (
       SELECT step.step_order,step.step_code,
              to_jsonb(step)-'step_id'-'created_at'-'updated_at' step_payload,
@@ -69,7 +68,6 @@ BEGIN
              spec.design_status='DESIGN_COMPLETE'
                AND spec.approval_status='APPROVED'
                AND spec.generation_status IN ('READY','GENERATED') generation_eligible,
-             jsonb_array_length(spec.api_contract) endpoint_count,
              jsonb_build_object(
                'actor',spec.actor_contract,
                'business',spec.business_contract,
@@ -110,6 +108,11 @@ BEGIN
     design_catalog::text,'UTF8')),'hex');
   endpoint_catalog_text_hash:=encode(sha256(convert_to(
     endpoint_catalog::text,'UTF8')),'hex');
+  IF jsonb_typeof(endpoint_catalog->'endpoints')<>'array' THEN
+    RAISE EXCEPTION 'process canonical endpoint catalog is malformed: %',
+      requested_process USING ERRCODE='22023';
+  END IF;
+  process_endpoint_expected:=jsonb_array_length(endpoint_catalog->'endpoints');
   IF design_catalog_hash!~'^[0-9a-f]{64}$'
      OR endpoint_catalog_hash!~'^[0-9a-f]{64}$' THEN
     RAISE EXCEPTION 'process generator catalog hash is invalid: %',
@@ -132,6 +135,12 @@ BEGIN
          count(*)::integer
     INTO screens_payload,design_set_hash,screen_count
     FROM screen_rows;
+
+  IF process_endpoint_expected<>screen_count THEN
+    RAISE EXCEPTION 'process canonical endpoint coverage is not exact: % / % / %',
+      requested_process,process_endpoint_expected,screen_count
+      USING ERRCODE='55000';
+  END IF;
 
   IF EXISTS(
     SELECT 1
