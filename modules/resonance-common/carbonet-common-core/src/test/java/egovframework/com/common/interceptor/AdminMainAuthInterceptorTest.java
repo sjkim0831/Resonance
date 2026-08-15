@@ -99,6 +99,24 @@ class AdminMainAuthInterceptorTest {
         verify(permissions,never()).hasAuthorFeaturePermission(anyString(),anyString());
     }
 
+    @Test
+    void processActorWriteCanReachTheAssignmentGuardWithAnOrdinaryUserRole() throws Exception {
+        request("POST","/admin/api/system/actor-process/executions/start");
+        when(permissions.selectAuthorCodeByUserId("system-admin")).thenReturn("ROLE_USER");
+
+        assertTrue(interceptor.preHandle(request,response,new Object()));
+        verify(permissions,never()).hasAuthorFeaturePermission(anyString(),anyString());
+    }
+
+    @Test
+    void workerControlEndpointDefersAuthenticationToItsControlPlaneTokenGuard() throws Exception {
+        request("POST","/admin/api/system/actor-process/development/claim");
+
+        assertTrue(interceptor.preHandle(request,response,new Object()));
+        verify(currentUsers,never()).resolve(request);
+        verify(jwtProvider,never()).getCookie(request,"accessToken");
+    }
+
     private void request(String method,String uri){
         when(request.getMethod()).thenReturn(method);
         when(request.getRequestURI()).thenReturn(uri);

@@ -6,6 +6,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import org.junit.jupiter.api.Test;
 
 import java.util.Map;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
@@ -22,7 +23,7 @@ class ActorProcessGovernanceApiControllerAssignmentTest {
     private final ActorProcessGovernanceService service=mock(ActorProcessGovernanceService.class);
     private final CurrentUserContextService users=mock(CurrentUserContextService.class);
     private final HttpServletRequest request=mock(HttpServletRequest.class);
-    private final ActorProcessGovernanceApiController controller=new ActorProcessGovernanceApiController(service,users);
+    private final ActorProcessGovernanceApiController controller=new ActorProcessGovernanceApiController(service,users,"");
 
     @Test
     void unauthenticatedAssignmentRequestReturns401WithoutCallingTheService(){
@@ -140,6 +141,55 @@ class ActorProcessGovernanceApiControllerAssignmentTest {
         verify(service).createProcess(body);
         verify(service).addStep(body,"system-admin");
         verify(service).compileScreenBlueprints(body,"system-admin");
+    }
+
+    @Test
+    void anonymousProcessActorCannotStartAnExecution(){
+        Map<String,Object> body=Map.of("tenantId","TENANT_A","projectId","PROJECT_A","processCode","PROCESS_A","actorCode","REQUESTER");
+        when(users.resolve(request)).thenReturn(context("","","",false,false));
+
+        assertEquals(401,controller.startExecution(body,request).getStatusCode().value());
+        verify(service,never()).startProcessExecution(any(),anyString());
+    }
+
+    @Test
+    void assignedProcessActorIdentityIsPassedToTheExistingServiceGuard(){
+        Map<String,Object> body=Map.of("tenantId","TENANT_A","projectId","PROJECT_A","processCode","PROCESS_A","actorCode","REQUESTER");
+        when(users.resolve(request)).thenReturn(context("assigned-user","TENANT_A","ROLE_USER",true,false));
+        when(service.startProcessExecution(body,"assigned-user")).thenReturn(Map.of("success",true));
+
+        assertEquals(200,controller.startExecution(body,request).getStatusCode().value());
+        verify(service).startProcessExecution(body,"assigned-user");
+    }
+
+    @Test
+    void unassignedProcessActorDenialIsReturnedAs403(){
+        UUID executionId=UUID.randomUUID();
+        Map<String,Object> body=Map.of("tenantId","TENANT_A","projectId","PROJECT_A","processCode","PROCESS_A","stepCode","STEP_A","actorCode","APPROVER","commandCode","APPROVE","idempotencyKey","key-1");
+        when(users.resolve(request)).thenReturn(context("unassigned-user","TENANT_A","ROLE_USER",true,false));
+        doThrow(new SecurityException("계정에 해당 액터 권한이 없습니다."))
+                .when(service).executeProcessCommand(executionId,body,"unassigned-user");
+
+        var response=controller.executeCommand(executionId,body,request);
+
+        assertEquals(403,response.getStatusCode().value());
+        assertEquals("계정에 해당 액터 권한이 없습니다.",((Map<?,?>)response.getBody()).get("message"));
+    }
+
+    @Test
+    void workerEndpointsRequireTheExistingControlPlaneToken(){
+        Map<String,Object> body=Map.of("workerId","worker-1");
+        var workerController=new ActorProcessGovernanceApiController(service,users,"control-token");
+
+        assertEquals(401,workerController.claim(body,request).getStatusCode().value());
+        when(request.getHeader("X-Resonance-Token")).thenReturn("wrong-token");
+        assertEquals(401,workerController.claim(body,request).getStatusCode().value());
+        verify(service,never()).claimDevelopmentJob(anyString());
+
+        when(request.getHeader("X-Resonance-Token")).thenReturn("control-token");
+        when(service.claimDevelopmentJob("worker-1")).thenReturn(Map.of("success",true,"available",false));
+        assertEquals(200,workerController.claim(body,request).getStatusCode().value());
+        verify(service).claimDevelopmentJob("worker-1");
     }
 
     @Test

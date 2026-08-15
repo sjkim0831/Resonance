@@ -752,6 +752,28 @@ class ActorProcessGovernanceServiceSecurityTest {
     }
 
     @Test
+    void workerHeartbeatRequiresTheMatchingLeaseTokenAndWorkerIdentity() {
+        when(jdbc.update(argThat(sql -> sql.contains("lease_token=?") && sql.contains("worker_id=?")),
+                any(Object[].class))).thenReturn(0);
+
+        assertThrows(IllegalArgumentException.class,
+                () -> service.heartbeatDevelopmentJob(17L,"wrong-lease","worker-a"));
+    }
+
+    @Test
+    void workerCompletionRequiresTheMatchingRunningLeaseBeforeAnyMutation() {
+        when(jdbc.queryForList(argThat(sql -> sql.contains("lease_token=?")
+                        && sql.contains("worker_id=?") && sql.contains("job_status='RUNNING'")),
+                any(Object[].class))).thenReturn(List.of());
+
+        assertThrows(IllegalArgumentException.class, () -> service.completeDevelopmentJob(Map.of(
+                "jobId",17L,"leaseToken","wrong-lease","result","VERIFIED"),"worker-a"));
+
+        verify(jdbc,never()).update(argThat(sql -> sql.startsWith(
+                "update framework_development_job set job_status=")),any(Object[].class));
+    }
+
+    @Test
     void idempotencyEvidenceIsNotReadBeforeExecutionContextValidation() {
         UUID executionId = UUID.randomUUID();
         when(jdbc.queryForList(argThat(sql -> sql != null && sql.contains("from framework_process_execution where execution_id=? for update")),

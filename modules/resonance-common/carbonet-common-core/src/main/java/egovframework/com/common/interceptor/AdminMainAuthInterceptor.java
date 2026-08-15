@@ -75,18 +75,16 @@ public class AdminMainAuthInterceptor implements HandlerInterceptor {
             return true;
         }
         String normalizedMenuUrl = normalizeMenuUrl(request);
+        // These operations have stricter endpoint-local role, actor-assignment,
+        // tenant, or system-report authorization than the legacy menu mapping.
+        if (isLocallyGuardedAdminOperation(request, normalizedMenuUrl)) {
+            return true;
+        }
         String canonicalMenuUrl = canonicalizeAdminMenuUrl(normalizedMenuUrl);
         if (!checkCompanyScope(request, response, userId, authorCode, canonicalMenuUrl)) {
             return false;
         }
         if (ObjectUtils.isEmpty(normalizedMenuUrl)) {
-            return true;
-        }
-
-        // These operations are guarded again in ActorProcessGovernanceApiController.
-        // Their API paths do not have legacy menu-feature rows, so the local guard
-        // is the authoritative role check for this request.
-        if (isLocallyGuardedAdminOperation(request, normalizedMenuUrl)) {
             return true;
         }
 
@@ -134,9 +132,15 @@ public class AdminMainAuthInterceptor implements HandlerInterceptor {
             return false;
         }
         String endpoint = path.substring(prefix.length());
-        return endpoint.equals("/actors")
+        return endpoint.equals("/process-closing/audit")
+                || endpoint.equals("/assets/refresh")
+                || endpoint.equals("/process-archetypes/bind-screen")
+                || endpoint.equals("/design-assets/preflight")
+                || endpoint.equals("/actors")
                 || endpoint.equals("/work-types")
                 || endpoint.equals("/assignments")
+                || endpoint.equals("/delivery/blueprints")
+                || endpoint.equals("/delivery/apply")
                 || endpoint.equals("/processes")
                 || endpoint.equals("/steps")
                 || endpoint.equals("/design/save-and-generate")
@@ -147,6 +151,8 @@ public class AdminMainAuthInterceptor implements HandlerInterceptor {
                 || endpoint.equals("/development/direct")
                 || endpoint.equals("/development/approve")
                 || endpoint.equals("/development/preflight")
+                || endpoint.equals("/development/retry")
+                || endpoint.equals("/development/request")
                 || endpoint.equals("/generation/compile")
                 || endpoint.equals("/generation/compile-and-queue")
                 || endpoint.equals("/generation/adopt-existing")
@@ -156,6 +162,19 @@ public class AdminMainAuthInterceptor implements HandlerInterceptor {
                 || endpoint.equals("/professional-factory/execute")
                 || endpoint.equals("/professional-factory/evidence")
                 || endpoint.equals("/professional-factory/assemble-assets")
+                || endpoint.equals("/screen-workflow-test")
+                || endpoint.equals("/screen-workflow-test-cases")
+                || endpoint.equals("/qa-sessions")
+                || endpoint.equals("/common-features/install")
+                || endpoint.equals("/backend/verify")
+                || endpoint.equals("/backend/runtime-smoke")
+                || endpoint.equals("/references/scan")
+                || endpoint.equals("/cases")
+                || endpoint.equals("/artifacts")
+                || endpoint.equals("/runs")
+                || endpoint.equals("/standard-pack")
+                || endpoint.equals("/executions/start")
+                || endpoint.matches("/executions/[0-9a-f-]{36}/commands")
                 || endpoint.startsWith("/system-test-report/")
                 || endpoint.equals("/system-test-report");
     }
@@ -192,10 +211,21 @@ public class AdminMainAuthInterceptor implements HandlerInterceptor {
             return true;
         }
         String normalizedUri = canonicalizeAdminMenuUrl(normalizeMenuUrl(request));
-        return ObjectUtils.isEmpty(normalizedUri)
+        return isWorkerControlEndpoint(request, normalizedUri)
+                || ObjectUtils.isEmpty(normalizedUri)
                 || "/admin".equals(normalizedUri)
                 || "/admin/".equals(normalizedUri)
                 || normalizedUri.startsWith("/admin/assets/react/");
+    }
+
+    private boolean isWorkerControlEndpoint(HttpServletRequest request, String normalizedUri) {
+        if (request == null || !"POST".equalsIgnoreCase(request.getMethod())) {
+            return false;
+        }
+        String path=safeString(normalizedUri).toLowerCase(Locale.ROOT);
+        return "/admin/api/system/actor-process/development/claim".equals(path)
+                || "/admin/api/system/actor-process/development/heartbeat".equals(path)
+                || "/admin/api/system/actor-process/development/complete".equals(path);
     }
 
     private String normalizeMenuUrl(String requestUri) {
