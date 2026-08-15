@@ -143,16 +143,24 @@ json_assert "$(<"$TMP/no-work.out")" \
 [[ "$(grep -c '^compile$' "$CALL_LOG")" -eq 1 ]] \
   || fail 'NO_WORK did not use exactly one worker API transaction'
 
-# A v1 head remains fail-closed. A structurally valid v2 raw-source snapshot is
-# accepted for remediation even when code generation readiness is BLOCKED.
+# A v1 head remains fail-closed. Legacy ACTIVE bindings remain telemetry and do
+# not block an otherwise READY SOURCE snapshot.
 set_sequence "$COMPILE_SEQUENCE" "NO_WORK|BASELINE|0|0|1|null|0|$hash_a|null|READY|[]|0"
 run_case PRE_WORK "$TMP/v1-head.out" "$TMP/v1-head.err"
 [[ "$CASE_RC" -eq 75 ]] || fail 'old-v1 compiler result crossed the write gate'
-set_sequence "$COMPILE_SEQUENCE" "NO_WORK|CANONICAL_COMPILED|1|1|2|11|0|$hash_b|$codegen_hash|BLOCKED|[\"ACTIVE_RELEASE_BINDING_SOURCE_ONLY\"]|1"
+set_sequence "$COMPILE_SEQUENCE" "NO_WORK|CANONICAL_COMPILED|1|1|2|11|0|$hash_b|$codegen_hash|READY|[]|1"
 run_case PRE_WORK "$TMP/active-binding.out" "$TMP/active-binding.err"
-[[ "$CASE_RC" -eq 0 ]] || fail 'BLOCKED v2 source snapshot did not permit remediation'
+[[ "$CASE_RC" -eq 0 ]] || fail 'legacy ACTIVE telemetry blocked SOURCE immediate readiness'
 json_assert "$(<"$TMP/active-binding.out")" \
-  "d['codegenReadiness']=='BLOCKED' and d['codegenReadinessReasons']==['ACTIVE_RELEASE_BINDING_SOURCE_ONLY'] and d['activeBindingCount']==1"
+  "d['codegenReadiness']=='READY' and d['codegenReadinessReasons']==[] and d['activeBindingCount']==1"
+
+# A structurally valid v2 raw-source snapshot is accepted for remediation even
+# when a real code generation readiness condition is still BLOCKED.
+set_sequence "$COMPILE_SEQUENCE" "NO_WORK|CANONICAL_COMPILED|1|1|2|11|0|$hash_b|$codegen_hash|BLOCKED|[\"STEP_PACKAGE_SHAPE_ATTESTATION_PENDING\"]|1"
+run_case PRE_WORK "$TMP/blocked-remediation.out" "$TMP/blocked-remediation.err"
+[[ "$CASE_RC" -eq 0 ]] || fail 'BLOCKED v2 source snapshot did not permit remediation'
+json_assert "$(<"$TMP/blocked-remediation.out")" \
+  "d['codegenReadiness']=='BLOCKED' and d['codegenReadinessReasons']==['STEP_PACKAGE_SHAPE_ATTESTATION_PENDING'] and d['activeBindingCount']==1"
 
 # Readiness envelopes are internally consistent before they can become
 # durable project evidence.
@@ -401,4 +409,4 @@ if grep -Fq 'producerCoverage' <<<"$function_body"; then
   fail 'invocation falsely claims persistent producer coverage'
 fi
 
-echo '[design-causality-compiler-worker] PASS mutants=35 oldDbWriteBlock=1 oldV1WriteBlock=1 exactTriggerReadiness=26 blockedRemediation=allowed readinessConsistency=2 noWorkLinearized=1 maxGateSeconds=18 piiLogs=0 durableHeadLink=1 hermesPostDrain=1 abnormalCompilerCalls=0 originalErrRc=preserved nextPreRecovery=required prePost=2 generationEnforcement=false persistentCoverageClaim=0 deploymentWiring=0'
+echo '[design-causality-compiler-worker] PASS mutants=36 oldDbWriteBlock=1 oldV1WriteBlock=1 exactTriggerReadiness=26 activeBindingTelemetry=non-blocking blockedRemediation=allowed readinessConsistency=2 noWorkLinearized=1 maxGateSeconds=18 piiLogs=0 durableHeadLink=1 hermesPostDrain=1 abnormalCompilerCalls=0 originalErrRc=preserved nextPreRecovery=required prePost=2 sourceImmediateStatus=covered-separately'

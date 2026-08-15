@@ -385,7 +385,7 @@ export const ACTOR_PROCESS_WORKSPACES: ActorProcessWorkspace[] = [
     id: 'design',
     label: '설계',
     description:
-      '액터, 프로세스, 화면, 데이터와 테스트 계약을 하나의 버전으로 설계하고 승인합니다.',
+      '액터, 프로세스, 화면, 데이터와 테스트 계약을 SOURCE에 저장해 즉시 반영합니다.',
     tabs: [
       tab(
         'actors',
@@ -425,8 +425,8 @@ export const ACTOR_PROCESS_WORKSPACES: ActorProcessWorkspace[] = [
       ),
       tab(
         'design-release',
-        '설계 검증·승인',
-        '누락과 충돌을 검사하고 개발 기준 버전으로 승격합니다.',
+        '설계 검증·즉시 반영',
+        '누락과 충돌을 검사하고 SOURCE 저장 즉시 코드·권한·엔드포인트 입력에 반영합니다.',
         'DESIGN_RELEASE',
       ),
     ],
@@ -473,7 +473,7 @@ export const ACTOR_PROCESS_WORKSPACES: ActorProcessWorkspace[] = [
     id: 'delivery',
     label: '개발·배포',
     description:
-      '승격된 설계를 Resonance 생성 계약으로 전달하고 구현·검증 증적을 관리합니다.',
+      'SOURCE에 저장된 설계를 Resonance 생성 계약에 즉시 동기화하고 구현·검증 증적을 관리합니다.',
     tabs: [
       tab(
         'development-plan',
@@ -513,8 +513,8 @@ export const ACTOR_PROCESS_WORKSPACES: ActorProcessWorkspace[] = [
       ),
       tab(
         'promotion',
-        '통합·승격',
-        '모든 게이트 통과 후 Resonance 배포 대상으로 승격합니다.',
+        'SOURCE 즉시 동기화',
+        '설계 저장 즉시 생성 코드, 화면 권한과 엔드포인트를 같은 SOURCE 기준으로 동기화합니다.',
         'PROMOTION',
       ),
       tab(

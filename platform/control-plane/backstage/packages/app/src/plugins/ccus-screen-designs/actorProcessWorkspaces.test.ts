@@ -21,7 +21,7 @@ describe('actorProcessWorkspaces', () => {
     ).toBe(true);
   });
 
-  it('tracks source parity without promoting partial UI restoration', () => {
+  it('tracks source parity without overstating partial UI restoration', () => {
     expect(ACTOR_PROCESS_SOURCE_TAB_COUNT).toBe(32);
     expect(ACTOR_PROCESS_FULL_UI_COUNT).toBe(10);
     expect(ACTOR_PROCESS_PARTIAL_UI_COUNT).toBe(15);
@@ -57,6 +57,23 @@ describe('actorProcessWorkspaces', () => {
     expect(labels).not.toMatch(/[?][^\s]|�/);
     expect(labels).toContain('액터·권한');
     expect(labels).toContain('장애·자가복구');
+  });
+
+  it('describes design save as SOURCE immediate without approval promotion gates', () => {
+    const sourceImmediateText = ACTOR_PROCESS_WORKSPACES.filter(workspace =>
+      ['design', 'delivery'].includes(workspace.id),
+    )
+      .flatMap(workspace => [
+        workspace.description,
+        ...workspace.tabs
+          .filter(tab => ['design-release', 'promotion'].includes(tab.id))
+          .flatMap(tab => [tab.label, tab.description]),
+      ])
+      .join(' ');
+
+    expect(sourceImmediateText).toContain('SOURCE');
+    expect(sourceImmediateText).toContain('즉시');
+    expect(sourceImmediateText).not.toMatch(/승인|승격|게이트 통과 후/);
   });
 
   it('resolves the emission workflow by state instead of array position', () => {

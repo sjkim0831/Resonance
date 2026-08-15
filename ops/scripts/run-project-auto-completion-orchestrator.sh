@@ -350,16 +350,10 @@ x=json.loads(sys.argv[1]);sys.exit(0 if isinstance(x,list) and len(x)<=16 and al
           "phase=$phase result=INVALID_COMPILER_RESPONSE attempts=$attempts"
         return 70
       fi
-      reason_meta="$(python3 -c 'import json,sys
-x=json.loads(sys.argv[1]);print(len(x),int("ACTIVE_RELEASE_BINDING_SOURCE_ONLY" in x),sep="|")' \
-        "$codegen_readiness_reasons")"
-      IFS='|' read -r reason_count reason_has_active <<<"$reason_meta"
+      reason_count="$(python3 -c 'import json,sys
+print(len(json.loads(sys.argv[1])))' "$codegen_readiness_reasons")"
       if [[ "$codegen_readiness" == READY && "$reason_count" != 0 ]] ||
-         [[ "$codegen_readiness" == BLOCKED && "$reason_count" == 0 ]] ||
-         { [[ "$active_binding_count" != null && "$active_binding_count" != 0 ]] &&
-           [[ "$reason_has_active" != 1 ]]; } ||
-         { [[ "$active_binding_count" == 0 ]] &&
-           [[ "$reason_has_active" == 1 ]]; }; then
+         [[ "$codegen_readiness" == BLOCKED && "$reason_count" == 0 ]]; then
         design_causality_compiler_log \
           "phase=$phase result=CONTRADICTORY_READINESS attempts=$attempts"
         return 70

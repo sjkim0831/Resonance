@@ -1187,9 +1187,12 @@ BEGIN
     OR framework_design_causality_account_component()::text ~ pii_pattern THEN
   RAISE EXCEPTION 'raw PII leaked into ledger/status/fingerprint projection';
  END IF;
- IF framework_design_causality_status()#>>'{producerCoverage,postCommitCompiler}'<>'0'
-    OR framework_design_causality_status()#>>'{producerCoverage,deployment}'<>'0' THEN
-  RAISE EXCEPTION 'persistent producer coverage is overstated';
+ IF framework_design_causality_status()#>>'{producerCoverage,postCommitCompiler}'<>'1'
+    OR framework_design_causality_status()#>>'{producerCoverage,generator}'<>'1'
+    OR framework_design_causality_status()#>>'{producerCoverage,deployment}'<>'1'
+    OR framework_design_causality_status()#>>'{producerCoverage,runtimeProbe}'<>'1'
+    OR framework_design_causality_status()#>>'{producerCoverage,relayE2e}'<>'1' THEN
+  RAISE EXCEPTION 'SOURCE immediate producer coverage is incomplete';
  END IF;
 END $$;
 SQL
@@ -1533,7 +1536,7 @@ SQL
   echo 'DESIGN_CAUSALITY_POSTGRES_FAIL permission cache rollback leaked' >&2; exit 1;
 }
 
-# Orphan ACTIVE scopes are authoritative even without process/source rows.
+# Orphan legacy ACTIVE scopes remain telemetry even without process/source rows.
 db -qAtc "insert into framework_canonical_endpoint_upgrade_activation_event(scope_process,action) values('ORPHAN_ACTIVE','ACTIVATE')" >/dev/null
 active_head="$(scalar "select revision||'|'||canonical_hash||'|'||current_event_id from framework_design_causality_head where scope_key='GLOBAL'")"
 set +e
@@ -1548,7 +1551,7 @@ import json, os
 d=json.loads(os.environ['ACTIVE_OUTPUT'])
 assert d['result']=='NO_WORK' and d['codegenReadiness']=='BLOCKED'
 assert d['activeBindingCount']==1
-assert 'ACTIVE_RELEASE_BINDING_SOURCE_ONLY' in d['codegenReadinessReasons']
+assert 'ACTIVE_RELEASE_BINDING_SOURCE_ONLY' not in d['codegenReadinessReasons']
 PY
 db -qAtc "delete from framework_canonical_endpoint_upgrade_activation_event where scope_process='ORPHAN_ACTIVE'" >/dev/null
 source_ready="$(DESIGN_CAUSALITY_COMPILER_MAX_ATTEMPTS=2 DESIGN_CAUSALITY_COMPILER_RETRY_DELAY_SECONDS=0 run_design_causality_post_commit_compiler PRE_WORK)"
@@ -1771,4 +1774,4 @@ done
   echo 'DESIGN_CAUSALITY_POSTGRES_FAIL committed truncate left cache rows' >&2; exit 1;
 }
 
-echo "DESIGN_CAUSALITY_POSTGRES_PASS mutants=112 schemaV2=1 codegenInput=6-components legacyComponents=leaf-v2 permissionRequirement=leaf-v2 selectiveReuse=6 rawCsvHashes=2 canonicalJsonContracts=2 generationStatusNoop=1 activeBindingTelemetry=1 sourceMask=43 exactTriggerReadiness=26 truncateCommit=16 truncateRollback=16 cacheRollback=6 cacheTruncate=6 compilerInvocation=pre-post-wired generationEnforcement=false persistentProducerCoverage=dirty-signal-only deploymentWiring=0"
+echo "DESIGN_CAUSALITY_POSTGRES_PASS mutants=112 schemaV2=1 codegenInput=6-components legacyComponents=leaf-v2 permissionRequirement=leaf-v2 selectiveReuse=6 rawCsvHashes=2 canonicalJsonContracts=2 generationStatusNoop=1 activeBindingTelemetry=1 sourceMask=43 exactTriggerReadiness=26 truncateCommit=16 truncateRollback=16 cacheRollback=6 cacheTruncate=6 compilerInvocation=pre-post-wired activationPolicy=SOURCE_IMMEDIATE_V1 generationEnforcement=true deploymentWiring=1"

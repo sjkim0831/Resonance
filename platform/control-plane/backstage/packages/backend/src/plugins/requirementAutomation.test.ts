@@ -60,6 +60,101 @@ const crossLanguageFixture = JSON.parse(
   contractSha256: string;
 };
 
+const structuredDesign = {
+  schemaVersion: '3.0.0',
+  process: {
+    processCode: 'APPLICATION_REVIEW',
+    startState: 'DRAFT',
+    endState: 'COMPLETED',
+    steps: [
+      {
+        requirementId: 'REQ_APPLICATION_REVIEW',
+        title: '신청 검토',
+        description: '검토자가 신청 자료를 확인하고 결과를 저장한다.',
+        actorCode: 'APPLICATION_REVIEWER',
+        processCode: 'APPLICATION_REVIEW',
+        stepCode: 'REVIEW_APPLICATION',
+        stepOrder: 10,
+        screenName: '신청 검토 화면',
+        routePath: '/generated/application/review',
+        layoutCode: 'KRDS_REVIEW_WORKSPACE',
+        themeCode: 'KRDS_REVIEW_THEME',
+        sections: [
+          {
+            sectionCode: 'REVIEW_FORM',
+            order: 10,
+            componentType: 'JSON_FORM',
+          },
+        ],
+        permissionCodes: ['APPLICATION_REVIEW:EXECUTE'],
+        commandCode: 'SUBMIT_APPLICATION_REVIEW',
+        fromState: 'DRAFT',
+        toState: 'COMPLETED',
+        endpoint: {
+          method: 'POST',
+          path: '/api/application-reviews/{applicationId}/commands',
+        },
+        apiContract: {
+          method: 'POST',
+          path: '/api/application-reviews/{applicationId}/commands',
+        },
+        fields: [
+          {
+            fieldCode: 'REVIEW_NOTE',
+            label: '검토 의견',
+            type: 'string',
+            required: true,
+            order: 10,
+          },
+        ],
+        acceptanceCriteria: ['저장 후 검토 결과를 다시 조회할 수 있다.'],
+      },
+    ],
+  },
+  actorDefinitions: [
+    {
+      actorCode: 'APPLICATION_REVIEWER',
+      actorName: '신청 검토자',
+      description: '신청 자료와 결과를 검토한다.',
+      permissionCodes: ['APPLICATION_REVIEW:EXECUTE'],
+    },
+  ],
+  generation: {
+    commonLayout: 'KRDS_REVIEW_WORKSPACE',
+    commonTheme: 'KRDS_REVIEW_THEME',
+  },
+  workspaces: prepare().analysis.workspaces,
+};
+
+const cloneJson = <T>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
+
+const prepareStructured = (
+  input: unknown = structuredDesign,
+  identity: { explicitProcessCode?: string } = {},
+) => {
+  const document = decodeRequirementDocument({
+    fileName: 'structured-design.json',
+    extractedText: JSON.stringify(input),
+    documentSlot: 'structured-main',
+    ...identity,
+  });
+  const analysis = analyzeRequirementText(
+    'CCUS-PLATFORM',
+    document.fileName,
+    document.text,
+    document.identity,
+  );
+  return {
+    analysis,
+    contract: buildRequirementDesignContract({
+      projectId: 'CCUS-PLATFORM',
+      designVersion: 3,
+      document,
+      analysis,
+    }),
+  };
+};
+
 describe('requirement automation', () => {
   it('matches the Java bridge golden contract and canonical SHA bytes', () => {
     const input = crossLanguageFixture.input;
@@ -101,6 +196,273 @@ describe('requirement automation', () => {
         ),
       ),
     ).toBe(true);
+  });
+
+  it('maps a structured JSON design exactly into the v3 contract', () => {
+    const { analysis, contract } = prepareStructured();
+
+    expect(analysis.identity).toEqual({
+      strategy: 'EXPLICIT_PROCESS_CODE',
+      stableKey: 'process:application_review',
+      processCode: 'APPLICATION_REVIEW',
+    });
+    expect(contract.process).toEqual(structuredDesign.process);
+    expect(contract.actorDefinitions).toEqual(
+      structuredDesign.actorDefinitions,
+    );
+    expect(contract.generation).toEqual(
+      expect.objectContaining(structuredDesign.generation),
+    );
+    expect(contract.workspaces).toEqual(structuredDesign.workspaces);
+    expect(contract.reconciliation.endpointIdentities).toEqual([
+      'POST /api/application-reviews/{applicationId}/commands',
+    ]);
+  });
+
+  it('uses the RequirementAutomationPanel extractedText request path for structured JSON', () => {
+    const panelRequest = {
+      fileName: 'structured-design.json',
+      mimeType: 'application/json',
+      contentBase64: Buffer.from(
+        'file bytes are not the mapped source',
+      ).toString('base64'),
+      extractedText: JSON.stringify(structuredDesign),
+      documentSlot: 'structured-main',
+      autoPromote: true,
+    };
+    const document = decodeRequirementDocument(panelRequest);
+    const analysis = analyzeRequirementText(
+      'CCUS-PLATFORM',
+      document.fileName,
+      document.text,
+      document.identity,
+    );
+    const contract = buildRequirementDesignContract({
+      projectId: 'CCUS-PLATFORM',
+      designVersion: 3,
+      document,
+      analysis,
+    });
+
+    expect(document.text).toBe(panelRequest.extractedText);
+    expect(contract.process).toEqual(structuredDesign.process);
+    expect(contract.workspaces).toEqual(structuredDesign.workspaces);
+  });
+
+  it.each([
+    [
+      'process identity',
+      (input: typeof structuredDesign) => {
+        input.process.processCode = 'APPLICATION_REVIEW_V2';
+        input.process.steps[0].processCode = 'APPLICATION_REVIEW_V2';
+      },
+    ],
+    [
+      'layout',
+      (input: typeof structuredDesign) => {
+        input.process.steps[0].layoutCode = 'KRDS_REVIEW_WORKSPACE_V2';
+      },
+    ],
+    [
+      'theme',
+      (input: typeof structuredDesign) => {
+        input.process.steps[0].themeCode = 'KRDS_REVIEW_THEME_V2';
+      },
+    ],
+    [
+      'section',
+      (input: typeof structuredDesign) => {
+        input.process.steps[0].sections[0].componentType = 'JSON_FORM_V2';
+      },
+    ],
+    [
+      'field',
+      (input: typeof structuredDesign) => {
+        input.process.steps[0].fields[0].label = '검토 의견 V2';
+      },
+    ],
+    [
+      'permission',
+      (input: typeof structuredDesign) => {
+        input.process.steps[0].permissionCodes = [
+          'APPLICATION_REVIEW:EXECUTE_V2',
+        ];
+        input.actorDefinitions[0].permissionCodes = [
+          'APPLICATION_REVIEW:EXECUTE_V2',
+        ];
+      },
+    ],
+    [
+      'command',
+      (input: typeof structuredDesign) => {
+        input.process.steps[0].commandCode = 'SUBMIT_APPLICATION_REVIEW_V2';
+      },
+    ],
+    [
+      'API',
+      (input: typeof structuredDesign) => {
+        const endpoint = {
+          method: 'PUT',
+          path: '/api/v2/application-reviews/{applicationId}/commands',
+        };
+        input.process.steps[0].endpoint = endpoint;
+        input.process.steps[0].apiContract = cloneJson(endpoint);
+      },
+    ],
+    [
+      'actor',
+      (input: typeof structuredDesign) => {
+        input.process.steps[0].actorCode = 'SENIOR_REVIEWER';
+        input.actorDefinitions[0].actorCode = 'SENIOR_REVIEWER';
+        input.actorDefinitions[0].actorName = '책임 검토자';
+      },
+    ],
+    [
+      'state',
+      (input: typeof structuredDesign) => {
+        input.process.endState = 'ARCHIVED';
+        input.process.steps[0].toState = 'ARCHIVED';
+      },
+    ],
+    [
+      'acceptance',
+      (input: typeof structuredDesign) => {
+        input.process.steps[0].acceptanceCriteria = [
+          '저장 후 변경된 검토 결과와 감사 증적을 다시 조회할 수 있다.',
+        ];
+      },
+    ],
+  ])('binds a structured %s mutation into the content hash', (name, mutate) => {
+    const baseline = prepareStructured().contract;
+    const changedInput = cloneJson(structuredDesign);
+    mutate(changedInput);
+    const changed = prepareStructured(changedInput).contract;
+
+    expect(changed.contentSha256).not.toBe(baseline.contentSha256);
+    if (name === 'API') {
+      expect(changed.reconciliation.endpointIdentities).not.toEqual(
+        baseline.reconciliation.endpointIdentities,
+      );
+    }
+  });
+
+  it('fails closed for unknown, incomplete, invalid, and ambiguous JSON designs', () => {
+    const unknown = cloneJson(structuredDesign) as typeof structuredDesign & {
+      approvalGate?: string;
+    };
+    unknown.approvalGate = 'BYPASS';
+    expect(() => prepareStructured(unknown)).toThrow('unknown fields');
+
+    const incomplete = cloneJson(structuredDesign);
+    delete (
+      incomplete.process.steps[0] as Partial<
+        (typeof incomplete.process.steps)[number]
+      >
+    ).apiContract;
+    expect(() => prepareStructured(incomplete)).toThrow(
+      'apiContract must be an object',
+    );
+
+    const missingWorkspaces = cloneJson(structuredDesign) as Partial<
+      typeof structuredDesign
+    >;
+    delete missingWorkspaces.workspaces;
+    expect(() => prepareStructured(missingWorkspaces)).toThrow(
+      'workspaces must contain 1-200 items',
+    );
+
+    expect(() =>
+      analyzeRequirementText('CCUS-PLATFORM', 'invalid.json', '{"process":', {
+        documentSlot: 'invalid',
+      }),
+    ).toThrow('structured design JSON is invalid');
+
+    expect(() =>
+      prepareStructured(structuredDesign, {
+        explicitProcessCode: 'DIFFERENT_PROCESS',
+      }),
+    ).toThrow('ambiguous structured process identity');
+
+    const duplicate = cloneJson(structuredDesign);
+    const duplicateStep = cloneJson(duplicate.process.steps[0]);
+    duplicateStep.requirementId = 'REQ_APPLICATION_REVIEW_V2';
+    duplicate.process.steps.push(duplicateStep);
+    expect(() => prepareStructured(duplicate)).toThrow(
+      'stepCode must be unique',
+    );
+  });
+
+  it('rejects duplicate requirement identities before persistence', () => {
+    const duplicate = cloneJson(structuredDesign);
+    const first = duplicate.process.steps[0];
+    first.toState = 'REVIEWED';
+    const second = cloneJson(first);
+    second.stepCode = 'ARCHIVE_APPLICATION';
+    second.stepOrder = 20;
+    second.screenName = '신청 보관 화면';
+    second.routePath = '/generated/application/archive';
+    second.commandCode = 'ARCHIVE_APPLICATION';
+    second.fromState = 'REVIEWED';
+    second.toState = 'COMPLETED';
+    duplicate.process.steps.push(second);
+
+    expect(() => prepareStructured(duplicate)).toThrow(
+      'requirementId must be unique',
+    );
+  });
+
+  it('matches Java bridge collection and integer bounds', () => {
+    const permissions = cloneJson(structuredDesign);
+    permissions.process.steps[0].permissionCodes = Array.from(
+      { length: 201 },
+      (_, index) => `PERMISSION_${index}`,
+    );
+    expect(() => prepareStructured(permissions)).toThrow(
+      'permissionCodes must contain 1-200 items',
+    );
+
+    const sections = cloneJson(structuredDesign);
+    sections.process.steps[0].sections = Array.from(
+      { length: 201 },
+      (_, index) => ({
+        sectionCode: `SECTION_${index}`,
+        order: index + 1,
+        componentType: 'JSON_FORM',
+      }),
+    );
+    expect(() => prepareStructured(sections)).toThrow(
+      'sections must contain 1-200 items',
+    );
+
+    const fields = cloneJson(structuredDesign);
+    fields.process.steps[0].fields = Array.from(
+      { length: 501 },
+      (_, index) => ({
+        fieldCode: `FIELD_${index}`,
+        label: `필드 ${index}`,
+        type: 'string',
+        required: false,
+        order: index + 1,
+      }),
+    );
+    expect(() => prepareStructured(fields)).toThrow(
+      'fields must contain 1-500 items',
+    );
+
+    const acceptance = cloneJson(structuredDesign);
+    acceptance.process.steps[0].acceptanceCriteria = Array.from(
+      { length: 101 },
+      (_, index) => `인수 조건 ${index}`,
+    );
+    expect(() => prepareStructured(acceptance)).toThrow(
+      'acceptanceCriteria must contain 1-100 items',
+    );
+
+    const order = cloneJson(structuredDesign);
+    order.process.steps[0].stepOrder = 2_147_483_648;
+    expect(() => prepareStructured(order)).toThrow(
+      'stepOrder must be a positive Java integer',
+    );
   });
   it('keeps logical process identity stable across content and file changes', () => {
     const first = prepare();

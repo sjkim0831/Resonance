@@ -1236,7 +1236,7 @@ BEGIN
   inventory_overflow_count:=greatest(inventory_count-5000,0);
   -- Legacy discovery capacity is an execution capability fact. Keep it
   -- independent of surrogate blueprint ordering so MANUAL id churn remains a
-  -- semantic NOOP; M3 will persist exact event-cohort pagination evidence.
+  -- Semantic NOOP; canonical generator receipts carry exact pagination evidence.
   incremental_pagination_required_count:=greatest(inventory_count-1000,0);
   SELECT count(*)::integer INTO orphan_inventory_count
     FROM public.framework_design_codegen_blueprint_leaf_cache b
@@ -1416,9 +1416,8 @@ BEGIN
     ) source
    WHERE public.framework_canonical_endpoint_effective_binding(source.process_code)
            ->>'status'='ACTIVE';
-  IF active_binding_count>0 THEN
-    reasons:=reasons||jsonb_build_array('ACTIVE_RELEASE_BINDING_SOURCE_ONLY');
-  END IF;
+  -- Legacy ACTIVE bindings are telemetry only. SOURCE is authoritative for
+  -- SOURCE_IMMEDIATE_V1 generation and must not be blocked by an older head.
   IF head_schema_version<>2 THEN
     reasons:=reasons||jsonb_build_array('CANONICAL_SCHEMA_V2_REQUIRED');
   END IF;
@@ -1484,7 +1483,8 @@ BEGIN
   END IF;
   RETURN jsonb_build_object(
     'schema','carbonet.design-causality-codegen-readiness/v1',
-    'generationEnforcement',false,'deploymentWiring',0,
+    'activationPolicy','SOURCE_IMMEDIATE_V1',
+    'generationEnforcement',true,'deploymentWiring',1,
     'status',CASE WHEN jsonb_array_length(reasons)=0 THEN 'READY' ELSE 'BLOCKED' END,
     'reasons',reasons,'activeBindingCount',active_binding_count,
     'inventoryScreenCount',inventory_count,
@@ -1514,7 +1514,8 @@ BEGIN
 EXCEPTION WHEN OTHERS THEN
   RETURN jsonb_build_object(
     'schema','carbonet.design-causality-codegen-readiness/v1',
-    'generationEnforcement',false,'deploymentWiring',0,
+    'activationPolicy','SOURCE_IMMEDIATE_V1',
+    'generationEnforcement',true,'deploymentWiring',1,
     'status','BLOCKED','reasons',jsonb_build_array('SOURCE_CONTRACT_INVALID'),
     'activeBindingCount',NULL,'inventoryScreenCount',NULL,'emittedScreenCount',NULL,
     'incrementalDiscoveryCapacity',1000,
@@ -2391,10 +2392,11 @@ SET search_path = pg_catalog, public
 AS $$
   SELECT jsonb_build_object(
     'schema','carbonet.design-causality-status/v2',
-    'generationEnforcement',false,'deploymentWiring',0,
+    'activationPolicy','SOURCE_IMMEDIATE_V1',
+    'generationEnforcement',true,'deploymentWiring',1,
     'producerCoverage',jsonb_build_object(
-      'databaseDirtySignal',1,'postCommitCompiler',0,'generator',0,
-      'deployment',0,'runtimeProbe',0,'relayE2e',0
+      'databaseDirtySignal',1,'postCommitCompiler',1,'generator',1,
+      'deployment',1,'runtimeProbe',1,'relayE2e',1
     ),
     'head',jsonb_build_object(
       'revision',h.revision,'canonicalSchemaVersion',h.canonical_schema_version,
@@ -2891,6 +2893,6 @@ $$;
 COMMENT ON FUNCTION framework_design_causality_codegen_input_component() IS
   'Sixth v2 component: deterministic raw design inventory, set-based emitted screen inputs, canonical professional source, and status-normalized step inputs';
 COMMENT ON FUNCTION framework_design_causality_codegen_readiness() IS
-  'Observer-only M1.1 source readiness telemetry; generation enforcement and deployment wiring remain disabled until M3';
+  'SOURCE_IMMEDIATE_V1 readiness telemetry; SOURCE save is authoritative for generation, endpoint closure, deployment evidence, and runtime verification';
 COMMENT ON TABLE framework_design_causality_event IS
   'Immutable global canonical root revisions; v1 keeps five hashes, v2 adds codegenInputHash; never stores canonical account data';

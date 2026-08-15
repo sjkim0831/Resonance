@@ -268,12 +268,402 @@ const workspaces = ['design', 'develop', 'operate'].map(id => ({
   })),
 }));
 
+type StructuredObject = Record<string, unknown>;
+
+const structuredObject = (
+  value: unknown,
+  path: string,
+  allowedKeys: readonly string[],
+): StructuredObject => {
+  if (!value || Array.isArray(value) || typeof value !== 'object') {
+    throw new Error(`${path} must be an object`);
+  }
+  const object = value as StructuredObject;
+  const unknownKeys = Object.keys(object).filter(
+    key => !allowedKeys.includes(key),
+  );
+  if (unknownKeys.length) {
+    throw new Error(
+      `${path} contains unknown fields: ${unknownKeys.sort().join(',')}`,
+    );
+  }
+  return object;
+};
+
+const structuredArray = (value: unknown, path: string, maximum: number) => {
+  if (!Array.isArray(value) || !value.length || value.length > maximum) {
+    throw new Error(`${path} must contain 1-${maximum} items`);
+  }
+  return value;
+};
+
+const structuredString = (
+  object: StructuredObject,
+  key: string,
+  path: string,
+) => {
+  if (
+    typeof object[key] !== 'string' ||
+    !object[key] ||
+    object[key] !== String(object[key]).trim()
+  ) {
+    throw new Error(`${path}.${key} must be a canonical non-empty string`);
+  }
+  return String(object[key]);
+};
+
+const structuredCode = (
+  object: StructuredObject,
+  key: string,
+  path: string,
+  pattern = /^[A-Z][A-Z0-9_:-]{1,79}$/,
+) => {
+  const value = structuredString(object, key, path);
+  if (!pattern.test(value)) {
+    throw new Error(`${path}.${key} must be a canonical code`);
+  }
+  return value;
+};
+
+const structuredOrder = (
+  object: StructuredObject,
+  key: string,
+  path: string,
+) => {
+  const value = object[key];
+  if (
+    !Number.isSafeInteger(value) ||
+    Number(value) <= 0 ||
+    Number(value) > 2_147_483_647
+  ) {
+    throw new Error(`${path}.${key} must be a positive Java integer`);
+  }
+  return Number(value);
+};
+
+const structuredStringList = (
+  object: StructuredObject,
+  key: string,
+  path: string,
+  maximum: number,
+  pattern?: RegExp,
+) => {
+  const values = structuredArray(object[key], `${path}.${key}`, maximum).map(
+    (value, index) => {
+      if (
+        typeof value !== 'string' ||
+        !value ||
+        value !== value.trim() ||
+        (pattern && !pattern.test(value))
+      ) {
+        throw new Error(`${path}.${key}[${index}] is not canonical`);
+      }
+      return value;
+    },
+  );
+  if (new Set(values).size !== values.length) {
+    throw new Error(`${path}.${key} contains duplicates`);
+  }
+  return values;
+};
+
+const parseStructuredSection = (
+  value: unknown,
+  path: string,
+): RequirementSection => {
+  const section = structuredObject(value, path, [
+    'sectionCode',
+    'order',
+    'componentType',
+  ]);
+  return {
+    sectionCode: structuredCode(section, 'sectionCode', path),
+    order: structuredOrder(section, 'order', path),
+    componentType: structuredCode(section, 'componentType', path),
+  };
+};
+
+const parseStructuredEndpoint = (value: unknown, path: string) => {
+  const endpoint = structuredObject(value, path, ['method', 'path']);
+  const method = structuredString(endpoint, 'method', path);
+  const endpointPath = structuredString(endpoint, 'path', path);
+  if (
+    !['DELETE', 'GET', 'PATCH', 'POST', 'PUT'].includes(method) ||
+    !/^\/[A-Za-z0-9/_{}:.~-]{1,399}$/.test(endpointPath) ||
+    endpointPath.includes('//')
+  ) {
+    throw new Error(`${path} is not a canonical endpoint`);
+  }
+  return { method, path: endpointPath };
+};
+
+const parseStructuredField = (value: unknown, path: string) => {
+  const field = structuredObject(value, path, [
+    'fieldCode',
+    'label',
+    'type',
+    'required',
+    'order',
+  ]);
+  if (typeof field.required !== 'boolean') {
+    throw new Error(`${path}.required must be boolean`);
+  }
+  return {
+    fieldCode: structuredCode(field, 'fieldCode', path),
+    label: structuredString(field, 'label', path),
+    type: structuredString(field, 'type', path),
+    required: field.required,
+    order: structuredOrder(field, 'order', path),
+  };
+};
+
+const parseStructuredStep = (
+  value: unknown,
+  index: number,
+): RequirementItem => {
+  const path = `process.steps[${index}]`;
+  const step = structuredObject(value, path, [
+    'requirementId',
+    'title',
+    'description',
+    'actorCode',
+    'processCode',
+    'stepCode',
+    'stepOrder',
+    'screenName',
+    'routePath',
+    'layoutCode',
+    'themeCode',
+    'sections',
+    'permissionCodes',
+    'commandCode',
+    'fromState',
+    'toState',
+    'endpoint',
+    'apiContract',
+    'fields',
+    'acceptanceCriteria',
+  ]);
+  const routePath = structuredString(step, 'routePath', path);
+  if (
+    !/^\/[A-Za-z0-9/_{}:.~-]{1,399}$/.test(routePath) ||
+    routePath.includes('//')
+  ) {
+    throw new Error(`${path}.routePath is not canonical`);
+  }
+  return {
+    requirementId: structuredString(step, 'requirementId', path),
+    title: structuredString(step, 'title', path),
+    description: structuredString(step, 'description', path),
+    actorCode: structuredCode(
+      step,
+      'actorCode',
+      path,
+      /^[A-Z][A-Z0-9_]{1,59}$/,
+    ),
+    processCode: structuredCode(step, 'processCode', path),
+    stepCode: structuredCode(step, 'stepCode', path),
+    stepOrder: structuredOrder(step, 'stepOrder', path),
+    screenName: structuredString(step, 'screenName', path),
+    routePath,
+    layoutCode: structuredCode(
+      step,
+      'layoutCode',
+      path,
+      /^[A-Z][A-Z0-9_]{1,79}$/,
+    ),
+    themeCode: structuredCode(
+      step,
+      'themeCode',
+      path,
+      /^[A-Z][A-Z0-9_]{1,79}$/,
+    ),
+    sections: structuredArray(step.sections, `${path}.sections`, 200).map(
+      (section, sectionIndex) =>
+        parseStructuredSection(section, `${path}.sections[${sectionIndex}]`),
+    ),
+    permissionCodes: structuredStringList(
+      step,
+      'permissionCodes',
+      path,
+      200,
+      /^[A-Z][A-Z0-9_:-]{1,79}$/,
+    ),
+    commandCode: structuredCode(step, 'commandCode', path),
+    fromState: structuredCode(step, 'fromState', path),
+    toState: structuredCode(step, 'toState', path),
+    endpoint: parseStructuredEndpoint(step.endpoint, `${path}.endpoint`),
+    apiContract: parseStructuredEndpoint(
+      step.apiContract,
+      `${path}.apiContract`,
+    ),
+    fields: structuredArray(step.fields, `${path}.fields`, 500).map(
+      (field, fieldIndex) =>
+        parseStructuredField(field, `${path}.fields[${fieldIndex}]`),
+    ),
+    acceptanceCriteria: structuredStringList(
+      step,
+      'acceptanceCriteria',
+      path,
+      100,
+    ),
+  };
+};
+
+const parseStructuredActor = (value: unknown, index: number) => {
+  const path = `actorDefinitions[${index}]`;
+  const actor = structuredObject(value, path, [
+    'actorCode',
+    'actorName',
+    'description',
+    'permissionCodes',
+  ]);
+  return {
+    actorCode: structuredCode(
+      actor,
+      'actorCode',
+      path,
+      /^[A-Z][A-Z0-9_]{1,59}$/,
+    ),
+    actorName: structuredString(actor, 'actorName', path),
+    description: structuredString(actor, 'description', path),
+    permissionCodes: structuredStringList(
+      actor,
+      'permissionCodes',
+      path,
+      200,
+      /^[A-Z][A-Z0-9_:-]{1,79}$/,
+    ),
+  };
+};
+
+const parseStructuredWorkspaces = (value: unknown) =>
+  structuredArray(value, 'workspaces', 200).map(
+    (workspaceValue, workspaceIndex) => {
+      const path = `workspaces[${workspaceIndex}]`;
+      const workspace = structuredObject(workspaceValue, path, ['id', 'tabs']);
+      return {
+        id: structuredString(workspace, 'id', path),
+        tabs: structuredArray(workspace.tabs, `${path}.tabs`, 100).map(
+          (tabValue, tabIndex) => {
+            const tabPath = `${path}.tabs[${tabIndex}]`;
+            const tab = structuredObject(tabValue, tabPath, [
+              'id',
+              'label',
+              'order',
+              'sections',
+            ]);
+            return {
+              id: structuredString(tab, 'id', tabPath),
+              label: structuredString(tab, 'label', tabPath),
+              order: structuredOrder(tab, 'order', tabPath),
+              sections: structuredArray(
+                tab.sections,
+                `${tabPath}.sections`,
+                200,
+              ).map((section, sectionIndex) =>
+                parseStructuredSection(
+                  section,
+                  `${tabPath}.sections[${sectionIndex}]`,
+                ),
+              ),
+            };
+          },
+        ),
+      };
+    },
+  );
+
+const parseStructuredRequirementText = (
+  projectId: string,
+  fileName: string,
+  text: string,
+  identityInput?: RequirementDocumentIdentityInput,
+): RequirementAnalysis | undefined => {
+  const source = text.trim();
+  if (!fileName.toLowerCase().endsWith('.json') && !/^(?:\{|\[)/.test(source)) {
+    return undefined;
+  }
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(source);
+  } catch {
+    throw new Error('structured design JSON is invalid');
+  }
+  const root = structuredObject(parsed, 'structuredDesign', [
+    'schemaVersion',
+    'process',
+    'actorDefinitions',
+    'generation',
+    'workspaces',
+  ]);
+  if (structuredString(root, 'schemaVersion', 'structuredDesign') !== '3.0.0') {
+    throw new Error('structuredDesign.schemaVersion must be 3.0.0');
+  }
+  const process = structuredObject(root.process, 'process', [
+    'processCode',
+    'startState',
+    'endState',
+    'steps',
+  ]);
+  const generation = structuredObject(root.generation, 'generation', [
+    'commonLayout',
+    'commonTheme',
+  ]);
+  const processCode = structuredCode(process, 'processCode', 'process');
+  const normalizedIdentity = normalizedIdentityInput(identityInput);
+  if (
+    normalizedIdentity.explicitProcessCode &&
+    normalizedIdentity.explicitProcessCode !== processCode
+  ) {
+    throw new Error('ambiguous structured process identity');
+  }
+  const analysis: RequirementAnalysis = {
+    identity: resolveIdentity(projectId, fileName, {
+      ...normalizedIdentity,
+      explicitProcessCode: processCode,
+    }),
+    processCode,
+    requirements: structuredArray(process.steps, 'process.steps', 1000).map(
+      parseStructuredStep,
+    ),
+    actorDefinitions: structuredArray(
+      root.actorDefinitions,
+      'actorDefinitions',
+      1000,
+    ).map(parseStructuredActor),
+    commonLayout: structuredCode(
+      generation,
+      'commonLayout',
+      'generation',
+      /^[A-Z][A-Z0-9_]{1,79}$/,
+    ),
+    commonTheme: structuredCode(
+      generation,
+      'commonTheme',
+      'generation',
+      /^[A-Z][A-Z0-9_]{1,79}$/,
+    ),
+    workspaces: parseStructuredWorkspaces(root.workspaces),
+    startState: structuredCode(process, 'startState', 'process'),
+    endState: structuredCode(process, 'endState', 'process'),
+  };
+  return analysis;
+};
+
 export const analyzeRequirementText = (
   projectId: string,
   fileName: string,
   text: string,
   identityInput?: RequirementDocumentIdentityInput,
 ): RequirementAnalysis => {
+  const structured = parseStructuredRequirementText(
+    projectId,
+    fileName,
+    text,
+    identityInput,
+  );
+  if (structured) return structured;
   const lines = text
     .split(/\r?\n/)
     .map(line =>
@@ -457,6 +847,7 @@ const validateAnalysis = (analysis: RequirementAnalysis) => {
   const unique = (values: unknown[], field: string) =>
     fail(new Set(values).size !== values.length, `${field} must be unique`);
   for (const field of [
+    'requirementId',
     'stepCode',
     'stepOrder',
     'routePath',
