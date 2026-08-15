@@ -2,6 +2,11 @@ import { ChangeEvent, useCallback, useEffect, useState } from 'react';
 import { fetchApiRef, useApi } from '@backstage/core-plugin-api';
 import { Box, Button, Checkbox, Chip, FormControlLabel, LinearProgress, Paper, TextField, Typography } from '@material-ui/core';
 import CloudUploadIcon from '@material-ui/icons/CloudUpload';
+import {
+  persistRequirementDocumentSlot,
+  readRequirementDocumentSlot,
+  withRequirementDocumentSlot,
+} from './requirementDocumentSlot';
 
 type RequirementDocument = {
   documentId: string; fileName: string; status: string; requirementCount: number;
@@ -20,6 +25,10 @@ export function RequirementAutomationPanel({ projectId }: { projectId: string })
   const [file, setFile] = useState<File | null>(null);
   const [extractedText, setExtractedText] = useState('');
   const [autoPromote, setAutoPromote] = useState(true);
+  const [documentSlot, setDocumentSlot] = useState(() => readRequirementDocumentSlot(
+    projectId,
+    typeof window === 'undefined' ? undefined : window.localStorage,
+  ));
   const [documents, setDocuments] = useState<RequirementDocument[]>([]);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
@@ -33,6 +42,12 @@ export function RequirementAutomationPanel({ projectId }: { projectId: string })
   }, [fetchApi, projectId]);
 
   useEffect(() => { void refresh().catch(error => setMessage(String(error))); }, [refresh]);
+  useEffect(() => {
+    setDocumentSlot(readRequirementDocumentSlot(
+      projectId,
+      typeof window === 'undefined' ? undefined : window.localStorage,
+    ));
+  }, [projectId]);
 
   const selectFile = async (event: ChangeEvent<HTMLInputElement>) => {
     const selected = event.target.files?.[0] ?? null;
@@ -46,7 +61,7 @@ export function RequirementAutomationPanel({ projectId }: { projectId: string })
     try {
       const response = await fetchApi.fetch(`/api/resonance-projects/${encodeURIComponent(projectId)}/requirements/automate`, {
         method: 'POST', headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ fileName: file.name, mimeType: file.type, contentBase64: await toBase64(file), extractedText, autoPromote }),
+        body: JSON.stringify(withRequirementDocumentSlot({ fileName: file.name, mimeType: file.type, contentBase64: await toBase64(file), extractedText, autoPromote }, documentSlot)),
       });
       const payload = (await response.json()) as { message?: string; requirementCount?: number; designVersion?: number; status?: string };
       if (!response.ok) throw new Error(payload.message ?? `자동화 실패 (${response.status})`);
@@ -66,6 +81,7 @@ export function RequirementAutomationPanel({ projectId }: { projectId: string })
         <Typography variant="body2" style={{ alignSelf: 'center' }}>{file?.name ?? '선택된 파일 없음'}</Typography>
       </Box>
       <Box mt={2}><TextField fullWidth multiline minRows={8} variant="outlined" label="추출된 요구사항 텍스트" helperText="TXT·MD·CSV·JSON은 자동 추출됩니다. PDF·DOCX·XLSX는 추출 텍스트를 확인하거나 붙여 넣으세요." value={extractedText} onChange={event => setExtractedText(event.target.value)} /></Box>
+      <Box mt={2}><TextField fullWidth variant="outlined" label="프로젝트 문서 슬롯" helperText="파일명이 바뀌어도 같은 업무로 갱신하려면 이 프로젝트에서 동일한 슬롯을 유지하세요." value={documentSlot} onChange={event => setDocumentSlot(persistRequirementDocumentSlot(projectId, event.target.value, typeof window === 'undefined' ? undefined : window.localStorage))} /></Box>
       <Box mt={1} display="flex" alignItems="center" flexWrap="wrap" style={{ gap: 12 }}>
         <FormControlLabel control={<Checkbox checked={autoPromote} onChange={event => setAutoPromote(event.target.checked)} color="primary" />} label="검증 통과 시 설계 승격 및 생성 큐 자동 실행" />
         <Button color="primary" variant="contained" disabled={busy || !file || !extractedText.trim()} onClick={automate}>설계부터 엔드포인트까지 실행</Button>

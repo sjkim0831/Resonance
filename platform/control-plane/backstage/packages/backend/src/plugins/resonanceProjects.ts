@@ -12,6 +12,14 @@ import {
   requirementContractSha256,
   type RequirementDocumentInput,
 } from './requirementAutomation';
+import {
+  RequirementPublicationError,
+  ensureRequirementPublication,
+  nextRequirementDesignVersion,
+  requirementDocumentId,
+  requirementItemId,
+  requirementPublicationComplete,
+} from './requirementIngestionLifecycle';
 import { registerProjectLifecycleRoutes } from './projectLifecycleRoutes';
 
 type ProjectInput = {
@@ -2468,61 +2476,85 @@ export default createBackendPlugin({
               });
               return;
             }
-            const existing = await knex(
-              'resonance_projects__requirement_document',
-            )
-              .where({
-                project_id: projectId,
-                document_sha256: document.documentSha256,
-              })
-              .first();
-            if (existing) {
-              response.status(200).json({
-                success: true,
-                idempotent: true,
+            const persistence = await knex.transaction(async transaction => {
+              const lockedProject = await transaction(
+                'resonance_projects__project',
+              )
+                .where({ project_id: projectId })
+                .forUpdate()
+                .first();
+              if (!lockedProject) {
+                return { kind: 'PROJECT_MISSING' as const };
+              }
+              const existing = await transaction(
+                'resonance_projects__requirement_document',
+              )
+                .where({
+                  project_id: projectId,
+                  document_sha256: document.documentSha256,
+                })
+                .first();
+              if (existing) {
+                const release = await transaction(
+                  'resonance_projects__design_release',
+                )
+                  .where({
+                    project_id: projectId,
+                    design_version: existing.design_version,
+                  })
+                  .first();
+                if (!release) {
+                  throw new Error(
+                    'Requirement document has no matching design release',
+                  );
+                }
+                const storedContract =
+                  typeof release.contract_payload === 'string'
+                    ? JSON.parse(release.contract_payload)
+                    : release.contract_payload;
+                return {
+                  kind: 'EXISTING' as const,
+                  documentId: String(existing.document_id),
+                  designVersion: Number(existing.design_version),
+                  processCode: String(existing.process_code),
+                  requirementCount: Number(existing.requirement_count),
+                  analysisStatus: String(existing.analysis_status),
+                  releaseStatus: String(release.release_status),
+                  contractSha256: String(release.contract_sha256),
+                  contract: storedContract as Record<string, unknown>,
+                };
+              }
+              const analysis = analyzeRequirementText(
                 projectId,
-                documentId: existing.document_id,
-                designVersion: existing.design_version,
-                processCode: existing.process_code,
-                requirementCount: existing.requirement_count,
-                status: existing.analysis_status,
+                document.fileName,
+                document.text,
+                document.identity,
+              );
+              const [{ max }] = await transaction(
+                'resonance_projects__design_release',
+              )
+                .where({ project_id: projectId })
+                .max({ max: 'design_version' });
+              const designVersion = nextRequirementDesignVersion(
+                lockedProject.design_version,
+                max,
+              );
+              const contract = buildRequirementDesignContract({
+                projectId,
+                designVersion,
+                document,
+                analysis,
               });
-              return;
-            }
-            const analysis = analyzeRequirementText(
-              projectId,
-              document.fileName,
-              document.text,
-              document.identity,
-            );
-            const [{ max }] = await knex(
-              'resonance_projects__design_release',
-            )
-              .where({ project_id: projectId })
-              .max({ max: 'design_version' });
-            const designVersion = Math.max(
-              Number(project.design_version ?? 1),
-              Number(max ?? 0),
-            ) + 1;
-            const contract = buildRequirementDesignContract({
-              projectId,
-              designVersion,
-              document,
-              analysis,
-            });
-            const validation = validateDesignContract(projectId, contract);
-            if (validation.status !== 'VERIFIED') {
-              response.status(422).json({
-                success: false,
-                message: 'Generated design contract failed validation',
-                validation,
-              });
-              return;
-            }
-            const contractSha256 = requirementContractSha256(contract);
-            const documentId = document.documentSha256;
-            const now = new Date();
-            await knex.transaction(async transaction => {
+              const validation = validateDesignContract(projectId, contract);
+              if (validation.status !== 'VERIFIED') {
+                return { kind: 'INVALID' as const, validation };
+              }
+              const contractSha256 = requirementContractSha256(contract);
+              const documentId = requirementDocumentId(
+                projectId,
+                document.documentSha256,
+              );
+              const now = new Date();
               await transaction(
                 'resonance_projects__requirement_document',
               ).insert({
@@ -2543,7 +2575,11 @@ export default createBackendPlugin({
               });
               await transaction('resonance_projects__requirement_item').insert(
                 analysis.requirements.map((item, index) => ({
-                  requirement_id: item.requirementId,
+                  requirement_id: requirementItemId(
+                    projectId,
+                    documentId,
+                    item.requirementId,
+                  ),
                   document_id: documentId,
                   project_id: projectId,
                   sort_order: index + 1,
@@ -2594,95 +2630,146 @@ export default createBackendPlugin({
                   finished_at: status === 'COMPLETED' ? now : null,
                 })),
               );
+              return {
+                kind: 'CREATED' as const,
+                documentId,
+                designVersion,
+                processCode: analysis.processCode,
+                requirementCount: analysis.requirements.length,
+                analysisStatus: 'DESIGN_VALIDATED',
+                releaseStatus: 'VALIDATED',
+                contractSha256,
+                contract,
+              };
             });
-            let publication: Record<string, unknown> = {
-              success: false,
-              status: 'AWAITING_PROMOTION',
-            };
-            if (request.body?.autoPromote === true) {
-              const runtimeBaseUrl = String(
-                process.env.CARBONET_RUNTIME_BASE_URL ??
-                  'http://carbonet-api.carbonet-prod.svc.cluster.local:8080',
-              ).replace(/\/+$/, '');
-              const bridgeToken = String(process.env.RESONANCE_OPS_TOKEN ?? '');
-              if (!bridgeToken) {
-                response.status(503).json({
-                  success: false,
-                  projectId,
-                  documentId,
-                  designVersion,
-                  message: 'Design is stored, but the runtime bridge token is missing',
-                });
-                return;
-              }
-              const publicationResponse = await fetch(
-                `${runtimeBaseUrl}/api/internal/actor-process/design-releases`,
-                {
-                  method: 'POST',
-                  headers: {
-                    accept: 'application/json',
-                    'content-type': 'application/json',
-                    'x-resonance-token': bridgeToken,
-                  },
-                  body: JSON.stringify({
-                    projectId,
-                    designVersion,
-                    contractSha256,
-                    contract,
-                  }),
+            if (persistence.kind === 'PROJECT_MISSING') {
+              response.status(404).json({ message: 'Project not found' });
+              return;
+            }
+            if (persistence.kind === 'INVALID') {
+              response.status(422).json({
+                success: false,
+                message: 'Generated design contract failed validation',
+                validation: persistence.validation,
+              });
+              return;
+            }
+            const autoPromote = request.body?.autoPromote === true;
+            const bridgeToken = String(process.env.RESONANCE_OPS_TOKEN ?? '');
+            const publicationComplete = requirementPublicationComplete({
+              analysisStatus: persistence.analysisStatus,
+              releaseStatus: persistence.releaseStatus,
+            });
+            if (autoPromote && !publicationComplete && !bridgeToken) {
+              response.status(503).json({
+                success: false,
+                projectId,
+                documentId: persistence.documentId,
+                designVersion: persistence.designVersion,
+                message:
+                  'Design is stored, but the runtime bridge token is missing',
+              });
+              return;
+            }
+            let publicationResult;
+            try {
+              publicationResult = await ensureRequirementPublication({
+                autoPromote,
+                state: {
+                  analysisStatus: persistence.analysisStatus,
+                  releaseStatus: persistence.releaseStatus,
                 },
-              );
-              publication = (await publicationResponse.json()) as Record<
-                string,
-                unknown
-              >;
-              if (!publicationResponse.ok || publication.success !== true) {
+                publish: async () => {
+                  const runtimeBaseUrl = String(
+                    process.env.CARBONET_RUNTIME_BASE_URL ??
+                      'http://carbonet-api.carbonet-prod.svc.cluster.local:8080',
+                  ).replace(/\/+$/, '');
+                  const publicationResponse = await fetch(
+                    `${runtimeBaseUrl}/api/internal/actor-process/design-releases`,
+                    {
+                      method: 'POST',
+                      headers: {
+                        accept: 'application/json',
+                        'content-type': 'application/json',
+                        'x-resonance-token': bridgeToken,
+                      },
+                      body: JSON.stringify({
+                        projectId,
+                        designVersion: persistence.designVersion,
+                        contractSha256: persistence.contractSha256,
+                        contract: persistence.contract,
+                      }),
+                    },
+                  );
+                  const publication =
+                    (await publicationResponse.json()) as Record<
+                      string,
+                      unknown
+                    >;
+                  return { ok: publicationResponse.ok, payload: publication };
+                },
+                markQueued: async () => {
+                  const promotedAt = new Date();
+                  await knex.transaction(async transaction => {
+                    await transaction('resonance_projects__design_release')
+                      .where({
+                        project_id: projectId,
+                        design_version: persistence.designVersion,
+                      })
+                      .update({
+                        release_status: 'PROMOTED',
+                        promoted_at: promotedAt,
+                        updated_at: promotedAt,
+                      });
+                    await transaction('resonance_projects__project')
+                      .where({ project_id: projectId })
+                      .update({
+                        design_version: persistence.designVersion,
+                        status: 'GENERATION_QUEUED',
+                        updated_at: promotedAt,
+                      });
+                    await transaction(
+                      'resonance_projects__requirement_document',
+                    )
+                      .where({
+                        project_id: projectId,
+                        document_id: persistence.documentId,
+                      })
+                      .update({ analysis_status: 'GENERATION_QUEUED' });
+                  });
+                },
+              });
+            } catch (error) {
+              if (error instanceof RequirementPublicationError) {
                 response.status(502).json({
                   success: false,
                   projectId,
-                  documentId,
-                  designVersion,
-                  message: 'Runtime rejected the generated design contract',
-                  publication,
+                  documentId: persistence.documentId,
+                  designVersion: persistence.designVersion,
+                  message: error.message,
+                  publication: error.publication,
                 });
                 return;
               }
-              await knex.transaction(async transaction => {
-                await transaction('resonance_projects__design_release')
-                  .where({ project_id: projectId, design_version: designVersion })
-                  .update({
-                    release_status: 'PROMOTED',
-                    promoted_at: new Date(),
-                    updated_at: new Date(),
-                  });
-                await transaction('resonance_projects__project')
-                  .where({ project_id: projectId })
-                  .update({
-                    design_version: designVersion,
-                    status: 'GENERATION_QUEUED',
-                    updated_at: new Date(),
-                  });
-                await transaction('resonance_projects__requirement_document')
-                  .where({ project_id: projectId, document_id: documentId })
-                  .update({ analysis_status: 'GENERATION_QUEUED' });
-              });
+              throw error;
             }
-            response.status(201).json({
+            response.status(persistence.kind === 'CREATED' ? 201 : 200).json({
               success: true,
-              idempotent: false,
+              idempotent: persistence.kind === 'EXISTING',
+              publicationRetried:
+                persistence.kind === 'EXISTING' && publicationResult.attempted,
               projectId,
-              documentId,
-              designVersion,
-              processCode: analysis.processCode,
-              requirementCount: analysis.requirements.length,
-              screenCount: analysis.requirements.length,
-              endpointCount: analysis.requirements.length,
-              contractSha256,
-              status:
-                request.body?.autoPromote === true
-                  ? 'GENERATION_QUEUED'
-                  : 'DESIGN_VALIDATED',
-              publication,
+              documentId: persistence.documentId,
+              designVersion: persistence.designVersion,
+              processCode: persistence.processCode,
+              requirementCount: persistence.requirementCount,
+              screenCount: persistence.requirementCount,
+              endpointCount: persistence.requirementCount,
+              contractSha256: persistence.contractSha256,
+              status: publicationResult.completed
+                ? 'GENERATION_QUEUED'
+                : persistence.analysisStatus,
+              publication: publicationResult.publication,
             });
           },
         );
