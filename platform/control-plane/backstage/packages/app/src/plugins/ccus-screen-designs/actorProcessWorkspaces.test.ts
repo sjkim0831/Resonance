@@ -61,14 +61,16 @@ describe('actorProcessWorkspaces', () => {
     expect(labels).toContain('장애·자가복구');
   });
 
-  it('describes design save as SOURCE immediate without approval promotion gates', () => {
+  it('describes design save as SOURCE immediate without staged gates', () => {
     const sourceImmediateText = ACTOR_PROCESS_WORKSPACES.filter(workspace =>
       ['design', 'delivery'].includes(workspace.id),
     )
       .flatMap(workspace => [
         workspace.description,
         ...workspace.tabs
-          .filter(tab => ['design-release', 'promotion'].includes(tab.id))
+          .filter(tab =>
+            ['design-release', 'source-immediate'].includes(tab.id),
+          )
           .flatMap(tab => [tab.label, tab.description]),
       ])
       .join(' ');
@@ -76,6 +78,17 @@ describe('actorProcessWorkspaces', () => {
     expect(sourceImmediateText).toContain('SOURCE');
     expect(sourceImmediateText).toContain('즉시');
     expect(sourceImmediateText).not.toMatch(/승인|승격|게이트 통과 후/);
+    const tabs = ACTOR_PROCESS_WORKSPACES.flatMap(workspace => workspace.tabs);
+    expect(tabs.some(tab => tab.id === 'promotion')).toBe(false);
+    expect(tabs.some(tab => tab.capability === 'PROMOTION')).toBe(false);
+    expect(tabs).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: 'source-immediate',
+          capability: 'SOURCE_IMMEDIATE',
+        }),
+      ]),
+    );
   });
 
   it('round-trips the canonical dashboard permission, layout and theme unchanged', () => {

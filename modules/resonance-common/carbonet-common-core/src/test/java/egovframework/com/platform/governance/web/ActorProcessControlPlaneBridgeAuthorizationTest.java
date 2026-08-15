@@ -185,6 +185,11 @@ class ActorProcessControlPlaneBridgeAuthorizationTest {
             contract->requirementSteps(contract).get(0).put("title"," Trimmed title"),
             contract->requirementSteps(contract).get(0).put("requirementId","R".repeat(121)),
             contract->requirementSteps(contract).get(0).put("title","T".repeat(241)),
+            contract->requiredTestObject(contract,"identity").put("stableKey","slot:other"),
+            contract->requiredTestObject(contract,"generation").put("strategy","MANUAL"),
+            contract->requiredTestObject(contract,"generation").put("maxScreens",999),
+            contract->((List<?>)requiredTestObject(contract,"generation")
+                .get("genericEndpoints")).remove(0),
             contract->requirementSteps(contract).get(0).put("screenName","S".repeat(161)),
             contract->requirementActors(contract).get(0).put("actorName","A".repeat(121)),
             contract->requirementSteps(contract).get(0).put("routePath","/"+"r".repeat(300)),
@@ -243,6 +248,83 @@ class ActorProcessControlPlaneBridgeAuthorizationTest {
         assertEquals(true,payload.get("idempotent"));
         verifyNoInteractions(governance);
         verify(jdbc,never()).update(anyString(),any(Object[].class));
+    }
+
+    @Test
+    void exactFailedReleaseReplayReopensTheSameReceiptOnceWithoutReimport()
+            throws Exception {
+        Map<String,Object> contract=requirementContract("PROCESS_A",4,Map.ofEntries(
+            Map.entry("stepCode","STEP_ONE"),Map.entry("actorCode","WORKER_ACTOR"),
+            Map.entry("routePath","/work/one"),Map.entry("screenName","Step one"),
+            Map.entry("description","Complete step one"),
+            Map.entry("endpoint",Map.of("method","POST","path","/api/work/one"))));
+        String checksum=canonicalChecksum(contract);
+        when(jdbc.queryForObject(org.mockito.ArgumentMatchers.argThat(sql->sql!=null
+            &&sql.contains("'designVersion',design_version")),eq(String.class),
+            any(Object[].class))).thenReturn(mapper.writeValueAsString(Map.of(
+                "designVersion",4,"contractSha256",checksum,
+                "releaseStatus","FAILED","generationResult",Map.of(
+                    "status","FAILED","retryAttempt",0,
+                    "expectedProcessReceipts",Map.of("PROCESS_A",Map.of(
+                        "processInputHash","a".repeat(64),"jobId",7))))));
+        when(jdbc.update(org.mockito.ArgumentMatchers.argThat(sql->sql!=null
+            &&sql.contains("release_status='QUEUED'")
+            &&sql.contains("retryAttempt")),any(Object[].class))).thenReturn(1);
+        TransactionSynchronizationManager.initSynchronization();
+
+        var response=controller.applyDesignRelease("secret-token",Map.of(
+            "projectId","PROJECT_A","designVersion",4,
+            "contractSha256",checksum,"contract",contract));
+
+        assertEquals(200,response.getStatusCode().value());
+        @SuppressWarnings("unchecked")
+        Map<String,Object> payload=(Map<String,Object>)response.getBody();
+        assertEquals("QUEUED",payload.get("releaseStatus"));
+        assertEquals(true,payload.get("publicationRetried"));
+        @SuppressWarnings("unchecked")
+        Map<String,Object> generation=(Map<String,Object>)payload.get("generation");
+        assertEquals(1,generation.get("retryAttempt"));
+        assertEquals(1,TransactionSynchronizationManager.getSynchronizations().size());
+        verifyNoInteractions(governance);
+    }
+
+    @Test
+    void exhaustedFailedReplayStaysTerminalAndAppliedReplayIsWriteZero()
+            throws Exception {
+        Map<String,Object> contract=requirementContract("PROCESS_A",4,Map.ofEntries(
+            Map.entry("stepCode","STEP_ONE"),Map.entry("actorCode","WORKER_ACTOR"),
+            Map.entry("routePath","/work/one"),Map.entry("screenName","Step one"),
+            Map.entry("description","Complete step one"),
+            Map.entry("endpoint",Map.of("method","POST","path","/api/work/one"))));
+        String checksum=canonicalChecksum(contract);
+        when(jdbc.queryForObject(org.mockito.ArgumentMatchers.argThat(sql->sql!=null
+            &&sql.contains("'designVersion',design_version")),eq(String.class),
+            any(Object[].class)))
+            .thenReturn(mapper.writeValueAsString(Map.of(
+                "designVersion",4,"contractSha256",checksum,
+                "releaseStatus","FAILED","generationResult",Map.of(
+                    "status","FAILED","retryAttempt",3))))
+            .thenReturn(mapper.writeValueAsString(Map.of(
+                "designVersion",4,"contractSha256",checksum,
+                "releaseStatus","APPLIED","generationResult",Map.of(
+                    "status","APPLIED","retryAttempt",1))));
+
+        var failed=controller.applyDesignRelease("secret-token",Map.of(
+            "projectId","PROJECT_A","designVersion",4,
+            "contractSha256",checksum,"contract",contract));
+        var applied=controller.applyDesignRelease("secret-token",Map.of(
+            "projectId","PROJECT_A","designVersion",4,
+            "contractSha256",checksum,"contract",contract));
+
+        @SuppressWarnings("unchecked")
+        Map<String,Object> failedBody=(Map<String,Object>)failed.getBody();
+        @SuppressWarnings("unchecked")
+        Map<String,Object> appliedBody=(Map<String,Object>)applied.getBody();
+        assertEquals("FAILED",failedBody.get("releaseStatus"));
+        assertEquals(true,failedBody.get("retryExhausted"));
+        assertEquals("APPLIED",appliedBody.get("releaseStatus"));
+        verify(jdbc,never()).update(anyString(),any(Object[].class));
+        verifyNoInteractions(governance);
     }
 
     @Test
@@ -626,6 +708,41 @@ class ActorProcessControlPlaneBridgeAuthorizationTest {
     }
 
     @Test
+    void exactRetriedReceiptCanReconcileFromRunningToApplied(){
+        String hash="a".repeat(64),checksum="d".repeat(64);
+        String receipts="{\"PROCESS_A\":{\"processInputHash\":\""+hash+
+            "\",\"jobId\":7}}";
+        String captured="{\"status\":\"PENDING\",\"retryAttempt\":1,"+
+            "\"expectedProcessReceipts\":"+receipts+"}";
+        when(jdbc.queryForList(anyString(),any(Object[].class)))
+            .thenReturn(List.of(Map.of(
+                "contract_sha256",checksum,"release_status","RUNNING",
+                "generation_result_json",captured,
+                "expected_receipts_json",receipts)))
+            .thenReturn(List.of(Map.ofEntries(
+                Map.entry("expected_process_code","PROCESS_A"),
+                Map.entry("expected_input_hash",hash),Map.entry("expected_job_id",7L),
+                Map.entry("current_input_hash",hash),Map.entry("job_id",7L),
+                Map.entry("job_status","VERIFIED"),Map.entry("quality_status","PASSED"),
+                Map.entry("evidence_ref","receipt://retry-1"),
+                Map.entry("target_path","canonical://PROCESS_A/"+hash),
+                Map.entry("job_input_hash",hash))));
+
+        controller.reconcileRequirementRelease("PROJECT_A",4,"PROCESS_A");
+
+        verify(jdbc).update(org.mockito.ArgumentMatchers.argThat(sql->sql!=null
+                &&sql.contains("set release_status=?")
+                &&sql.contains("generation_result=cast(? as jsonb)")),
+            eq("APPLIED"),eq(true),
+            org.mockito.ArgumentMatchers.argThat(value->{
+                String json=String.valueOf(value);
+                return json.contains("\"status\":\"APPLIED\"")
+                    &&json.contains("\"retryAttempt\":1")
+                    &&json.contains("\"evidencePresent\":true");
+            }),eq("PROJECT_A"),eq(4),eq(checksum),eq("RUNNING"),eq(captured));
+    }
+
+    @Test
     void unchangedExistingActorDoesNotPublishAnUnrelatedIncompleteProcess()
             throws Exception {
         Map<String,Object> step=Map.ofEntries(
@@ -710,6 +827,32 @@ class ActorProcessControlPlaneBridgeAuthorizationTest {
     }
 
     @Test
+    void generationClaimFencesEveryStaleWorkerTerminalWrite() throws Exception {
+        String source=Files.readString(findRepositoryFile(
+            "modules/resonance-common/carbonet-common-core/src/main/java/"+
+            "egovframework/com/platform/governance/web/"+
+            "ActorProcessControlPlaneBridgeController.java"));
+        String compile=source.substring(source.indexOf("private void compilePromotedRelease"),
+            source.indexOf("void reconcileRequirementRelease("));
+        String failure=source.substring(source.indexOf("private void recordGenerationFailure"),
+            source.indexOf("private long nextRetryEpoch"));
+        String reconciliation=source.substring(source.indexOf(
+            "private void reconcileRequirementRelease("),source.indexOf(
+            "private Map<String,Object> importRequirementProcessContract"));
+
+        org.junit.jupiter.api.Assertions.assertTrue(compile.contains(
+            "claimedReceipt.put(\"claimToken\",claimToken)"));
+        org.junit.jupiter.api.Assertions.assertTrue(compile.contains(
+            "generation_result->>'claimToken'=?"));
+        org.junit.jupiter.api.Assertions.assertTrue(failure.contains(
+            "generation_result->>'claimToken'=?"));
+        org.junit.jupiter.api.Assertions.assertTrue(reconciliation.contains(
+            "expectedClaimToken.equals("));
+        org.junit.jupiter.api.Assertions.assertTrue(reconciliation.contains(
+            "generation_result=cast(? as jsonb)"));
+    }
+
+    @Test
     void recoverySchedulesReleaseReconciliationOnlyAfterItsTransactionCommits(){
         when(jdbc.queryForObject(org.mockito.ArgumentMatchers.argThat(sql->sql!=null
             &&sql.contains("resonance:requirement-design-self-healer")),eq(Boolean.class)))
@@ -736,6 +879,36 @@ class ActorProcessControlPlaneBridgeAuthorizationTest {
             org.springframework.transaction.support.TransactionSynchronization::afterCommit);
         verify(jdbc,timeout(1000)).queryForMap(org.mockito.ArgumentMatchers.argThat(sql->sql!=null
             &&sql.contains("contract_payload")),eq("PROJECT_A"),eq(1));
+    }
+
+    @Test
+    void recoveryReopensOnlyDueTerminalReceiptsWithABoundedAttempt(){
+        when(jdbc.queryForObject(org.mockito.ArgumentMatchers.argThat(sql->sql!=null
+            &&sql.contains("resonance:requirement-design-self-healer")),eq(Boolean.class)))
+            .thenReturn(true);
+        when(jdbc.queryForList(org.mockito.ArgumentMatchers.argThat(sql->sql!=null
+            &&sql.contains("for update skip locked")
+            &&sql.contains("retryNotBeforeEpoch")
+            &&sql.contains("'^[0-2]$'"))))
+            .thenReturn(List.of(Map.of(
+                "project_id","PROJECT_A","design_version",4,
+                "contract_sha256","d".repeat(64),"release_status","FAILED",
+                "generation_result_json","{\"status\":\"FAILED\","+
+                    "\"retryAttempt\":0,\"retryNotBeforeEpoch\":0}")));
+        when(jdbc.update(org.mockito.ArgumentMatchers.argThat(sql->sql!=null
+            &&sql.contains("release_status='QUEUED'")
+            &&sql.contains("retryAttempt")),any(Object[].class))).thenReturn(1);
+        TransactionSynchronizationManager.initSynchronization();
+
+        controller.recoverQueuedDesignGeneration();
+
+        verify(jdbc).update(org.mockito.ArgumentMatchers.argThat(sql->sql!=null
+                &&sql.contains("release_status='QUEUED'")),
+            org.mockito.ArgumentMatchers.argThat(json->String.valueOf(json)
+                .contains("\"retryAttempt\":1")),
+            eq("PROJECT_A"),eq(4),eq("d".repeat(64)),eq("FAILED"),eq("0"));
+        assertEquals(1,TransactionSynchronizationManager.getSynchronizations().size());
+        verifyNoInteractions(governance);
     }
 
     private Map<String,Object> goldenRequirementContract() throws Exception {
@@ -822,8 +995,14 @@ class ActorProcessControlPlaneBridgeAuthorizationTest {
             "permissionCodes",List.of(command))));
         hashBound.put("process",Map.of("processCode",processCode,"startState","DRAFT",
             "endState","COMPLETED","steps",List.of(step)));
-        hashBound.put("generation",Map.of("commonLayout","RESPONSIVE_WORKSPACE",
-            "commonTheme","KRDS_GOV_DEFAULT"));
+        hashBound.put("generation",Map.of(
+            "strategy","METADATA_FIRST_INCREMENTAL","maxScreens",1000,
+            "commonLayout","RESPONSIVE_WORKSPACE","commonTheme","KRDS_GOV_DEFAULT",
+            "genericEndpoints",List.of(
+                "/admin/api/system/actor-process/executions/start",
+                "/admin/api/system/actor-process/executions/{executionId}/commands",
+                "/admin/api/system/actor-process/process-design",
+                "/admin/api/system/actor-process/backend/verify")));
         String audience=actorCode.contains("ADMIN")?"ADMIN":"USER";
         hashBound.put("reconciliation",Map.ofEntries(
             Map.entry("mode","EXACT_SET"),

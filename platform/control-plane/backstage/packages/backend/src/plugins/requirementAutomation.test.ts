@@ -287,6 +287,7 @@ describe('requirement automation', () => {
     expect(panelSource).toContain('SOURCE 설계·엔드포인트 즉시 반영');
     expect(panelSource).not.toContain('설계 승격');
     expect(panelSource).not.toContain('autoPromote');
+    expect(panelSource).toContain("payload.status ?? 'FAILED'");
   });
 
   it.each([

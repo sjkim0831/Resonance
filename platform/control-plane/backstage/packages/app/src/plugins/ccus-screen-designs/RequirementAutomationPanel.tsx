@@ -63,7 +63,7 @@ export function RequirementAutomationPanel({ projectId }: { projectId: string })
         body: JSON.stringify(withRequirementDocumentSlot({ fileName: file.name, mimeType: file.type, contentBase64: await toBase64(file), extractedText, sourceImmediate: true }, documentSlot)),
       });
       const payload = (await response.json()) as { message?: string; requirementCount?: number; designVersion?: number; status?: string };
-      if (!response.ok) throw new Error(payload.message ?? `자동화 실패 (${response.status})`);
+      if (!response.ok) throw new Error(`${payload.status ?? 'FAILED'}: ${payload.message ?? `자동화 실패 (${response.status})`}`);
       setMessage(`완료: 요구사항 ${payload.requirementCount ?? 0}건 · 설계 v${payload.designVersion ?? '-'} · ${payload.status}`);
       await refresh();
     } catch (error) { setMessage(error instanceof Error ? error.message : String(error)); }

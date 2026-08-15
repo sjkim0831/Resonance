@@ -3633,7 +3633,10 @@ function ProcessDefinitionWorkspace({
       slaHours: String(row.slaHours ?? '0'),
       reviewCycleDays: String(row.reviewCycleDays ?? '365'),
       regulationRefs: String(row.regulationRefs ?? ''),
-      lifecycleStatus: String(row.lifecycleStatus ?? 'DRAFT'),
+      lifecycleStatus:
+        String(row.lifecycleStatus ?? 'DRAFT') === 'PROMOTED'
+          ? 'VALIDATED'
+          : String(row.lifecycleStatus ?? 'DRAFT'),
       effectiveFrom: String(row.effectiveFrom ?? '').slice(0, 10),
       effectiveUntil: String(row.effectiveUntil ?? '').slice(0, 10),
     });
@@ -4100,7 +4103,6 @@ function ProcessDefinitionWorkspace({
                       'DRAFT',
                       'DESIGN',
                       'VALIDATED',
-                      'PROMOTED',
                       'ACTIVE',
                       'DEPRECATED',
                       'RETIRED',

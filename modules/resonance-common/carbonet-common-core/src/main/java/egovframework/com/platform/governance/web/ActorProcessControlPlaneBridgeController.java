@@ -40,6 +40,8 @@ public class ActorProcessControlPlaneBridgeController {
     private static final Map<String, String> DESIGN_DOCUMENT_TYPES = new LinkedHashMap<>();
     private static final Set<String> DESIGN_DOCUMENT_STATUSES =
             Set.of("DRAFT", "READY", "IN_REVIEW", "APPROVED", "VERIFIED");
+    private static final int MAX_GENERATION_RETRIES = 3;
+    private static final long RETRY_BACKOFF_SECONDS = 60L;
     static {
         DESIGN_DOCUMENT_TYPES.put("REQUIREMENT", "업무·요구사항");
         DESIGN_DOCUMENT_TYPES.put("ACTOR_RACI", "액터·RACI");
@@ -148,13 +150,38 @@ public class ActorProcessControlPlaneBridgeController {
                             "message","Design release version is stale or conflicts with the immutable project head."));
                 }
                 if(designVersion==latestVersion){
+                    String releaseStatus=String.valueOf(latest.get("releaseStatus"))
+                            .trim().toUpperCase();
+                    Map<String,Object> generationResult=generationResult(
+                            latest.get("generationResult"));
+                    if(Set.of("FAILED","REVIEW_REQUIRED").contains(releaseStatus)){
+                        Map<String,Object> pending=reopenTerminalRelease(projectId,
+                                designVersion,checksum,releaseStatus,generationResult,"EXPLICIT");
+                        if(pending!=null){
+                            scheduleGeneration(projectId,designVersion);
+                            Map<String,Object> response=new LinkedHashMap<>();
+                            response.put("success",true);response.put("idempotent",true);
+                            response.put("publicationRetried",true);
+                            response.put("projectId",projectId);
+                            response.put("designVersion",designVersion);
+                            response.put("sourceOfTruth","BACKSTAGE");
+                            response.put("releaseStatus","QUEUED");
+                            response.put("applicationStatus","PENDING");
+                            response.put("generation",pending);
+                            response.put("importedRequirementSteps",0);
+                            return ResponseEntity.ok(response);
+                        }
+                    }
                     Map<String,Object> response=new LinkedHashMap<>();
                     response.put("success",true);response.put("idempotent",true);
                     response.put("projectId",projectId);response.put("designVersion",designVersion);
                     response.put("sourceOfTruth","BACKSTAGE");
-                    response.put("releaseStatus",String.valueOf(latest.get("releaseStatus")));
-                    response.put("applicationStatus",String.valueOf(latest.get("releaseStatus")));
-                    response.put("generation",latest.get("generationResult"));
+                    response.put("releaseStatus",releaseStatus);
+                    response.put("applicationStatus",releaseStatus);
+                    response.put("generation",generationResult);
+                    if(Set.of("FAILED","REVIEW_REQUIRED").contains(releaseStatus))
+                        response.put("retryExhausted",
+                                retryAttempt(generationResult)>=MAX_GENERATION_RETRIES);
                     response.put("importedRequirementSteps",0);
                     return ResponseEntity.ok(response);
                 }
@@ -185,6 +212,8 @@ public class ActorProcessControlPlaneBridgeController {
 
             Map<String,Object> pendingResult=new LinkedHashMap<>();
             pendingResult.put("status","PENDING");
+            pendingResult.put("retryAttempt",0);
+            pendingResult.put("retryLimit",MAX_GENERATION_RETRIES);
             pendingResult.put("publication",publication);
             if(requirementRelease){
                 pendingResult.put("expectedProcessHeads",expectedProcessHeads);
@@ -197,12 +226,7 @@ public class ActorProcessControlPlaneBridgeController {
                      where project_id=? and design_version=?
                     """, mapper.writeValueAsString(pendingResult), projectId, designVersion);
 
-            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-                @Override
-                public void afterCommit() {
-                    generationExecutor.execute(() -> compilePromotedRelease(projectId, designVersion));
-                }
-            });
+            scheduleGeneration(projectId,designVersion);
 
             Map<String, Object> response = new LinkedHashMap<>();
             response.put("success", true);
@@ -698,21 +722,141 @@ public class ActorProcessControlPlaneBridgeController {
         }
     }
 
+    private void scheduleGeneration(String projectId,int designVersion){
+        Runnable generation=()->generationExecutor.execute(
+                ()->compilePromotedRelease(projectId,designVersion));
+        if(TransactionSynchronizationManager.isSynchronizationActive()){
+            TransactionSynchronizationManager.registerSynchronization(
+                    new TransactionSynchronization(){
+                        @Override public void afterCommit(){generation.run();}
+                    });
+        }else generation.run();
+    }
+
+    private Map<String,Object> reopenTerminalRelease(String projectId,int designVersion,
+            String checksum,String releaseStatus,Map<String,Object> previous,String retryMode){
+        int attempt=retryAttempt(previous);
+        if(attempt>=MAX_GENERATION_RETRIES)return null;
+        Map<String,Object> pending=new LinkedHashMap<>(previous);
+        pending.put("status","PENDING");
+        pending.put("retryAttempt",attempt+1);
+        pending.put("retryLimit",MAX_GENERATION_RETRIES);
+        pending.put("retryMode",retryMode);
+        pending.put("retryReason",releaseStatus);
+        pending.put("retryRequestedAt",java.time.Instant.now().toString());
+        pending.remove("retryNotBeforeEpoch");
+        int reopened=jdbc.update("""
+                update framework_actor_process_design_release
+                   set release_status='QUEUED',received_at=null,applied_at=null,
+                       generation_result=cast(? as jsonb)
+                 where project_id=? and design_version=? and contract_sha256=?
+                   and release_status=?
+                   and coalesce(generation_result->>'retryAttempt','0')=?
+                """,writeJson(pending),projectId,designVersion,checksum,releaseStatus,
+                String.valueOf(attempt));
+        if(reopened!=1)throw new IllegalStateException(
+                "DESIGN_RELEASE_RETRY_CAS_NOT_EXACT: "+projectId+" / "+designVersion);
+        return pending;
+    }
+
+    private void prepareRequirementRetry(Map<String,Object> generation,String processCode){
+        java.util.SortedSet<String> processes=new java.util.TreeSet<>();
+        Object receipts=generation.get("expectedProcessReceipts");
+        if(receipts instanceof Map<?,?> receiptMap){
+            for(Object key:receiptMap.keySet()){
+                String candidate=String.valueOf(key).trim().toUpperCase();
+                if(candidate.matches("^[A-Z][A-Z0-9_:-]{1,79}$"))processes.add(candidate);
+            }
+        }
+        processes.add(processCode);
+        for(String retryProcess:processes){
+            governance.ensureGeneratedProcessSafetyCases(retryProcess);
+            governance.ensureGeneratedProcessDesignContracts(
+                    retryProcess,"REQUIREMENT_SELF_HEALER");
+            governance.ensureGeneratedProcessPageDesigns(
+                    retryProcess,"REQUIREMENT_SELF_HEALER");
+            Map<String,Object> publication=governance.finalizeAndQueueProcessDesign(
+                    retryProcess,"REQUIREMENT_SELF_HEALER",
+                    "REQUIREMENT_PROCESS_RECOVERY");
+            if(!Boolean.TRUE.equals(publication.get("success"))
+                    ||Set.of("FAILED","BLOCKED","SKIPPED").contains(
+                        String.valueOf(publication.get("status"))))
+                throw new IllegalStateException(
+                        "REQUIREMENT_RETRY_NOT_QUEUED: "+retryProcess);
+        }
+    }
+
+    private void recordGenerationFailure(String projectId,int designVersion,
+            Map<String,Object> previous,String claimToken,Exception exception){
+        int attempt=retryAttempt(previous);
+        Map<String,Object> failed=new LinkedHashMap<>(previous);
+        failed.put("status","FAILED");
+        failed.put("message",exception.getMessage()==null
+                ?"Design generation failed.":exception.getMessage());
+        failed.put("retryAttempt",attempt);
+        failed.put("retryLimit",MAX_GENERATION_RETRIES);
+        failed.put("retryNotBeforeEpoch",nextRetryEpoch(attempt));
+        jdbc.update("""
+                update framework_actor_process_design_release
+                   set release_status='FAILED',applied_at=null,
+                       generation_result=cast(? as jsonb)
+                 where project_id=? and design_version=? and release_status='RUNNING'
+                   and generation_result->>'claimToken'=?
+                """,writeJson(failed),projectId,designVersion,claimToken);
+    }
+
+    private long nextRetryEpoch(int attempt){
+        long multiplier=1L<<Math.min(Math.max(attempt,0),2);
+        return System.currentTimeMillis()/1000L+RETRY_BACKOFF_SECONDS*multiplier;
+    }
+
+    private int retryAttempt(Map<String,Object> generation){
+        Object raw=generation.get("retryAttempt");
+        if(raw==null)return 0;
+        if(raw instanceof Number number&&number.longValue()>=0L
+                &&number.longValue()<=MAX_GENERATION_RETRIES
+                &&number.doubleValue()==number.longValue())return number.intValue();
+        return MAX_GENERATION_RETRIES;
+    }
+
+    private Map<String,Object> generationResult(Object raw){
+        if(raw instanceof Map<?,?> map){
+            Map<String,Object> result=new LinkedHashMap<>();
+            map.forEach((key,value)->result.put(String.valueOf(key),value));
+            return result;
+        }
+        if(raw instanceof String json&&!json.isBlank()){
+            try{
+                return mapper.readValue(json,
+                        new com.fasterxml.jackson.core.type.TypeReference<
+                                LinkedHashMap<String,Object>>(){});
+            }catch(Exception invalid){
+                return new LinkedHashMap<>(Map.of("status","FAILED",
+                        "retryAttempt",MAX_GENERATION_RETRIES,
+                        "message","Generation receipt is invalid."));
+            }
+        }
+        return new LinkedHashMap<>();
+    }
+
     private void compilePromotedRelease(String projectId, int designVersion) {
         Map<String,Object> release = jdbc.queryForMap("""
                 select contract_payload->'source'->>'type' as source_type,
-                       upper(contract_payload->'process'->>'processCode') as process_code
+                       upper(contract_payload->'process'->>'processCode') as process_code,
+                       generation_result::text as generation_result_json
                   from framework_actor_process_design_release
                  where project_id=? and design_version=?
                 """, projectId, designVersion);
-        if ("REQUIREMENT_DOCUMENT".equals(String.valueOf(release.get("source_type")))) {
-            reconcileRequirementRelease(projectId,designVersion,
-                    String.valueOf(release.get("process_code")));
-            return;
-        }
+        Map<String,Object> previous=generationResult(
+                release.get("generation_result_json"));
+        String claimToken=java.util.UUID.randomUUID().toString();
+        Map<String,Object> claimedReceipt=new LinkedHashMap<>(previous);
+        claimedReceipt.put("claimToken",claimToken);
+        claimedReceipt.put("claimStartedAt",java.time.Instant.now().toString());
         int claimed = jdbc.update("""
                 update framework_actor_process_design_release
-                   set release_status='RUNNING',received_at=current_timestamp
+                   set release_status='RUNNING',received_at=current_timestamp,
+                       generation_result=cast(? as jsonb)
                  where project_id=? and design_version=?
                    and (
                      release_status='QUEUED'
@@ -721,38 +865,48 @@ public class ActorProcessControlPlaneBridgeController {
                        and received_at < current_timestamp - interval '15 minutes'
                      )
                    )
-                """, projectId, designVersion);
-        if (claimed != 1) {
-            return;
-        }
+                """,writeJson(claimedReceipt),projectId,designVersion);
+        if (claimed != 1) return;
         try {
+            if ("REQUIREMENT_DOCUMENT".equals(String.valueOf(release.get("source_type")))) {
+                String processCode=String.valueOf(release.get("process_code"));
+                if(retryAttempt(claimedReceipt)>0)
+                    prepareRequirementRetry(claimedReceipt,processCode);
+                reconcileRequirementRelease(projectId,designVersion,processCode,claimToken);
+                return;
+            }
             Map<String, Object> generation = governance.compileAndQueueScreens(
                     Map.of("processCode", "", "maxScreens", 1000),
                     "BACKSTAGE_CONTROL_PLANE");
             String releaseStatus = "REVIEW_REQUIRED".equals(generation.get("status"))
                     ? "REVIEW_REQUIRED" : "APPLIED";
+            Map<String,Object> terminal=new LinkedHashMap<>(generation);
+            terminal.put("retryAttempt",retryAttempt(previous));
+            terminal.put("retryLimit",MAX_GENERATION_RETRIES);
+            if("REVIEW_REQUIRED".equals(releaseStatus))
+                terminal.put("retryNotBeforeEpoch",nextRetryEpoch(retryAttempt(previous)));
             jdbc.update("""
                     update framework_actor_process_design_release
-                       set release_status=?,applied_at=current_timestamp,
+                       set release_status=?,
+                           applied_at=case when ? then current_timestamp else null end,
                            generation_result=cast(? as jsonb)
-                     where project_id=? and design_version=?
-                    """, releaseStatus, writeJson(generation), projectId, designVersion);
+                     where project_id=? and design_version=? and release_status='RUNNING'
+                       and generation_result->>'claimToken'=?
+                    """, releaseStatus,"APPLIED".equals(releaseStatus),
+                    writeJson(terminal),projectId,designVersion,claimToken);
         } catch (Exception exception) {
-            jdbc.update("""
-                    update framework_actor_process_design_release
-                       set release_status='FAILED',
-                           generation_result=cast(? as jsonb)
-                     where project_id=? and design_version=?
-                    """, writeJson(Map.of(
-                    "status", "FAILED",
-                    "message", exception.getMessage() == null
-                            ? "Design generation failed." : exception.getMessage()
-            )), projectId, designVersion);
+            recordGenerationFailure(projectId,designVersion,claimedReceipt,
+                    claimToken,exception);
         }
     }
 
     void reconcileRequirementRelease(
             String projectId,int designVersion,String processCode){
+        reconcileRequirementRelease(projectId,designVersion,processCode,null);
+    }
+
+    private void reconcileRequirementRelease(
+            String projectId,int designVersion,String processCode,String expectedClaimToken){
         List<Map<String,Object>> releaseRows=jdbc.queryForList("""
                 select contract_sha256,release_status,
                        generation_result::text generation_result_json,
@@ -769,6 +923,11 @@ public class ActorProcessControlPlaneBridgeController {
         String capturedReleaseStatus=String.valueOf(releaseRows.get(0).get("release_status"));
         String capturedGenerationResultJson=String.valueOf(
                 releaseRows.get(0).get("generation_result_json"));
+        Map<String,Object> capturedGenerationResult=generationResult(
+                capturedGenerationResultJson);
+        if(expectedClaimToken!=null&&!expectedClaimToken.equals(
+                String.valueOf(capturedGenerationResult.get("claimToken"))))return;
+        int capturedRetryAttempt=retryAttempt(capturedGenerationResult);
         // APPLIED binds a verified immutable receipt set.  A later head is a
         // new design revision; recovery must never downgrade or rewrite the
         // already-applied release while reconciling that newer head.
@@ -902,6 +1061,10 @@ public class ActorProcessControlPlaneBridgeController {
         result.put("processResults",processResults);
         result.put("expectedProcessCount",expectedHeads.size());
         result.put("headExact",!invalid&&!superseded);
+        result.put("retryAttempt",capturedRetryAttempt);
+        result.put("retryLimit",MAX_GENERATION_RETRIES);
+        if(reviewRequired)
+            result.put("retryNotBeforeEpoch",nextRetryEpoch(capturedRetryAttempt));
         int reconciled=jdbc.update("""
                 update framework_actor_process_design_release
                    set release_status=?,applied_at=case when ? then current_timestamp else null end,
@@ -1128,12 +1291,22 @@ public class ActorProcessControlPlaneBridgeController {
             throw new IllegalArgumentException("REQUIREMENT_PROCESS_IDENTITY_DIVERGED");
         if(!Set.of("EXPLICIT_PROCESS_CODE","STABLE_DOCUMENT_KEY").contains(requiredRaw(identity,"strategy")))
             throw new IllegalArgumentException("REQUIREMENT_IDENTITY_STRATEGY_UNSUPPORTED");
-        requiredRaw(identity,"stableKey");
+        if(!requiredRaw(identity,"stableKey",240).equals(
+                requiredRaw(source,"stableKey",240)))
+            throw new IllegalArgumentException("REQUIREMENT_STABLE_IDENTITY_DIVERGED");
         Map<String,java.util.SortedSet<String>> actorPermissions=validateRequirementActors(
             requiredObjectList(contract,"actorDefinitions",1,1000));
         Map<String,Object> generation=requiredObject(contract,"generation");
         requireOnlyKeys(generation,"generation","strategy","maxScreens","commonTheme",
             "commonLayout","genericEndpoints");
+        if(!"METADATA_FIRST_INCREMENTAL".equals(requiredRaw(generation,"strategy"))
+                ||requiredPositiveJavaInteger(generation,"maxScreens","generation")!=1000)
+            throw new IllegalArgumentException("REQUIREMENT_GENERATION_STRATEGY_UNSUPPORTED");
+        requireExactList(generation,"genericEndpoints",List.of(
+            "/admin/api/system/actor-process/executions/start",
+            "/admin/api/system/actor-process/executions/{executionId}/commands",
+            "/admin/api/system/actor-process/process-design",
+            "/admin/api/system/actor-process/backend/verify"));
         RequirementSets sets=validateRequirementSteps(process,processCode,actorPermissions,
             governedCode(generation,"commonLayout"),governedCode(generation,"commonTheme"));
         if(!actorPermissions.keySet().equals(sets.actors()))
@@ -1520,31 +1693,44 @@ public class ActorProcessControlPlaneBridgeController {
         if (!Boolean.TRUE.equals(elected)) {
             return;
         }
-        List<String> requirementProcesses = jdbc.queryForList("""
-                select process_code from framework_process_definition
-                 where left(process_code,4)='REQ_'
-                 order by process_code
-                """, String.class);
-        for (String processCode : requirementProcesses) {
-            governance.ensureGeneratedProcessSafetyCases(processCode);
-            governance.ensureGeneratedProcessDesignContracts(processCode, "REQUIREMENT_SELF_HEALER");
-            governance.ensureGeneratedProcessPageDesigns(processCode, "REQUIREMENT_SELF_HEALER");
-            governance.finalizeAndQueueProcessDesign(processCode,"REQUIREMENT_SELF_HEALER",
-                    "REQUIREMENT_PROCESS_RECOVERY");
-        }
         List<Map<String, Object>> releases = jdbc.queryForList("""
-                select project_id,design_version
+                select project_id,design_version,contract_sha256,release_status,
+                       generation_result::text generation_result_json
                   from framework_actor_process_design_release
                  where release_status='QUEUED'
                     or (
                       release_status='RUNNING'
                       and received_at < current_timestamp - interval '15 minutes'
                     )
-                 order by received_at
+                    or (
+                      release_status in ('FAILED','REVIEW_REQUIRED')
+                      and coalesce(generation_result->>'retryAttempt','0')~'^[0-2]$'
+                      and coalesce(generation_result->>'retryNotBeforeEpoch','0')
+                            ~'^[0-9]{1,12}$'
+                      and (generation_result->>'retryNotBeforeEpoch')::bigint
+                            <=extract(epoch from current_timestamp)::bigint
+                    )
+                 order by coalesce(received_at,current_timestamp),project_id,design_version
+                 for update skip locked
                  limit 10
                 """);
+        List<Map<String,Object>> scheduled=new java.util.ArrayList<>();
+        for(Map<String,Object> release:releases){
+            String releaseStatus=String.valueOf(release.get("release_status"));
+            if(Set.of("FAILED","REVIEW_REQUIRED").contains(releaseStatus)){
+                Map<String,Object> previous=generationResult(
+                        release.get("generation_result_json"));
+                Map<String,Object> pending=reopenTerminalRelease(
+                        String.valueOf(release.get("project_id")),
+                        ((Number)release.get("design_version")).intValue(),
+                        String.valueOf(release.get("contract_sha256")),
+                        releaseStatus,previous,"AUTO");
+                if(pending==null)continue;
+            }
+            scheduled.add(release);
+        }
         Runnable reconcile=()->{
-            for (Map<String, Object> release : releases) {
+            for (Map<String, Object> release : scheduled) {
                 String projectId = String.valueOf(release.get("project_id"));
                 int designVersion = ((Number) release.get("design_version")).intValue();
                 generationExecutor.execute(() -> compilePromotedRelease(projectId, designVersion));

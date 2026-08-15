@@ -9,7 +9,9 @@ import {
   requirementDocumentId,
   requirementItemId,
   requirementPublicationPersistence,
+  requirementReceiptTransitionAllowed,
   sameRequirementRevision,
+  type RequirementPublicationDisposition,
 } from './requirementIngestionLifecycle';
 
 describe('requirement ingestion lifecycle', () => {
@@ -125,9 +127,33 @@ describe('requirement ingestion lifecycle', () => {
       'requirementPublicationPersistence(disposition)',
     );
     expect(lifecycle).toContain("evidenceType: 'RUNTIME_PUBLICATION_RECEIPT'");
+    expect(lifecycle).toContain('status: target.taskStatus');
+    expect(lifecycle).toContain('error_message: terminalError');
+    expect(lifecycle).toContain('attempt_count: retryAttempt');
+    expect(lifecycle).toContain("target.taskStatus !== 'COMPLETED'");
+    expect(lifecycle).toContain("taskUpdates.whereNot('status', 'COMPLETED')");
+    expect(lifecycle).toContain(
+      'finished_at: target.completeTasks ? recordedAt : null',
+    );
+    expect(lifecycle).toContain(
+      "const terminalFailure = ['FAILED', 'REVIEW_REQUIRED']",
+    );
+    expect(lifecycle).toContain(
+      ".where('design_version', '<=', persistence.designVersion)",
+    );
+    expect(lifecycle).toContain('message: terminalMessage');
+    expect(lifecycle).toContain('requirementReceiptTransitionAllowed({');
+    expect(lifecycle).toContain(
+      'return knex.transaction(async transaction => {',
+    );
+    expect(lifecycle).toContain('.forUpdate()');
+    expect(lifecycle).toContain('response.status(error.statusCode)');
     const developmentContract = routeSource.slice(
       routeSource.indexOf("'/:projectId/development-contract'"),
-      routeSource.indexOf("router.post('/',", routeSource.indexOf("'/:projectId/development-contract'")),
+      routeSource.indexOf(
+        "router.post('/',",
+        routeSource.indexOf("'/:projectId/development-contract'"),
+      ),
     );
     expect(developmentContract).toContain(
       "query.whereIn('release_status', ['PROMOTED', 'APPLIED'])",
@@ -146,7 +172,7 @@ describe('requirement ingestion lifecycle', () => {
         ? { ok: false, payload: { success: false, status: 'REJECTED' } }
         : { ok: true, payload: { success: true, status: 'QUEUED' } };
     };
-    const recordPublication = async (disposition: 'QUEUED' | 'APPLIED') => {
+    const recordPublication = async (disposition: string) => {
       state.analysisStatus =
         disposition === 'APPLIED' ? 'GENERATION_APPLIED' : 'GENERATION_QUEUED';
       state.releaseStatus = disposition === 'APPLIED' ? 'APPLIED' : 'PROMOTED';
@@ -196,7 +222,7 @@ describe('requirement ingestion lifecycle', () => {
 
     const result = await ensureRequirementPublication({
       sourceImmediate: true,
-      refreshQueued: true,
+      refreshExisting: true,
       state: {
         analysisStatus: 'GENERATION_QUEUED',
         releaseStatus: 'PROMOTED',
@@ -222,15 +248,147 @@ describe('requirement ingestion lifecycle', () => {
       analysisStatus: 'GENERATION_APPLIED',
       itemStatus: 'GENERATION_APPLIED',
       completeTasks: true,
+      taskStatus: 'COMPLETED',
+      successful: true,
     });
     expect(requirementPublicationPersistence('QUEUED')).toEqual(
       expect.objectContaining({
         releaseStatus: 'PROMOTED',
         projectStatus: 'GENERATION_QUEUED',
         completeTasks: false,
+        taskStatus: 'PLANNED',
       }),
     );
   });
+
+  it('persists terminal receipts and retries the exact failed head to queued then applied', async () => {
+    const state = {
+      analysisStatus: 'GENERATION_FAILED',
+      releaseStatus: 'FAILED',
+    };
+    const publications = [
+      {
+        success: true,
+        releaseStatus: 'QUEUED',
+        applicationStatus: 'PENDING',
+        generation: { status: 'PENDING', retryAttempt: 1 },
+      },
+      {
+        success: true,
+        releaseStatus: 'APPLIED',
+        applicationStatus: 'APPLIED',
+        generation: { status: 'APPLIED', retryAttempt: 1 },
+      },
+    ];
+    const recorded: string[] = [];
+    const recordPublication = async (disposition: string) => {
+      recorded.push(disposition);
+      const target = requirementPublicationPersistence(
+        disposition as RequirementPublicationDisposition,
+      );
+      state.analysisStatus = target.analysisStatus;
+      state.releaseStatus = target.releaseStatus;
+    };
+
+    const queued = await ensureRequirementPublication({
+      sourceImmediate: true,
+      refreshExisting: true,
+      state,
+      publish: async () => ({ ok: true, payload: publications.shift()! }),
+      recordPublication,
+    });
+    const applied = await ensureRequirementPublication({
+      sourceImmediate: true,
+      refreshExisting: true,
+      state,
+      publish: async () => ({ ok: true, payload: publications.shift()! }),
+      recordPublication,
+    });
+
+    expect(queued).toEqual(
+      expect.objectContaining({ disposition: 'QUEUED', successful: true }),
+    );
+    expect(applied).toEqual(
+      expect.objectContaining({ disposition: 'APPLIED', successful: true }),
+    );
+    expect(recorded).toEqual(['QUEUED', 'APPLIED']);
+    expect(state).toEqual({
+      analysisStatus: 'GENERATION_APPLIED',
+      releaseStatus: 'APPLIED',
+    });
+  });
+
+  it.each([
+    [
+      'FAILED',
+      {
+        success: true,
+        releaseStatus: 'FAILED',
+        generation: {
+          status: 'FAILED',
+          message: 'worker failed',
+          retryAttempt: 3,
+        },
+      },
+      {
+        releaseStatus: 'FAILED',
+        projectStatus: 'GENERATION_FAILED',
+        analysisStatus: 'GENERATION_FAILED',
+        itemStatus: 'GENERATION_FAILED',
+        completeTasks: true,
+        taskStatus: 'FAILED',
+        successful: false,
+      },
+    ],
+    [
+      'REVIEW_REQUIRED',
+      {
+        success: true,
+        releaseStatus: 'REVIEW_REQUIRED',
+        generation: {
+          status: 'REVIEW_REQUIRED',
+          message: 'design review required',
+          retryAttempt: 2,
+        },
+      },
+      {
+        releaseStatus: 'REVIEW_REQUIRED',
+        projectStatus: 'REVIEW_REQUIRED',
+        analysisStatus: 'REVIEW_REQUIRED',
+        itemStatus: 'REVIEW_REQUIRED',
+        completeTasks: true,
+        taskStatus: 'FAILED',
+        successful: false,
+      },
+    ],
+  ])(
+    'records a truthful %s terminal receipt instead of throwing 502',
+    async (disposition, publication, persistence) => {
+      const recorded: string[] = [];
+      const result = await ensureRequirementPublication({
+        sourceImmediate: true,
+        state: {
+          analysisStatus: 'DESIGN_VALIDATED',
+          releaseStatus: 'VALIDATED',
+        },
+        publish: async () => ({ ok: true, payload: publication }),
+        recordPublication: async status => {
+          recorded.push(status);
+        },
+      });
+
+      expect(bridgePublicationDisposition(publication)).toBe(disposition);
+      expect(result).toEqual(
+        expect.objectContaining({ disposition, successful: false }),
+      );
+      expect(recorded).toEqual([disposition]);
+      expect(
+        requirementPublicationPersistence(
+          disposition as RequirementPublicationDisposition,
+        ),
+      ).toEqual(persistence);
+    },
+  );
 
   it('rejects a successful bridge response without an exact queued or applied state', async () => {
     let recorded = false;
@@ -255,6 +413,83 @@ describe('requirement ingestion lifecycle', () => {
       }),
     });
     expect(recorded).toBe(false);
+  });
+
+  it('preserves the runtime stale-head conflict status instead of translating it to 502', async () => {
+    await expect(
+      ensureRequirementPublication({
+        sourceImmediate: true,
+        state: {
+          analysisStatus: 'DESIGN_VALIDATED',
+          releaseStatus: 'VALIDATED',
+        },
+        publish: async () => ({
+          ok: false,
+          status: 409,
+          payload: {
+            success: false,
+            message: 'Design release version is stale',
+          },
+        }),
+        recordPublication: async () => undefined,
+      }),
+    ).rejects.toMatchObject({
+      statusCode: 409,
+      message: 'Design release version is stale',
+    });
+  });
+
+  it('reports APPLIED when its delayed queued receipt loses the absorbing release CAS', async () => {
+    const delayedQueued = { success: true, status: 'QUEUED' };
+    const result = await ensureRequirementPublication({
+      sourceImmediate: true,
+      refreshExisting: true,
+      state: {
+        analysisStatus: 'GENERATION_QUEUED',
+        releaseStatus: 'PROMOTED',
+      },
+      publish: async () => ({ ok: true, payload: delayedQueued }),
+      recordPublication: async () => 'APPLIED',
+    });
+
+    expect(result).toEqual(
+      expect.objectContaining({
+        disposition: 'APPLIED',
+        successful: true,
+        publication: {
+          success: true,
+          status: 'ALREADY_APPLIED',
+          ignoredPublication: delayedQueued,
+        },
+      }),
+    );
+  });
+
+  it('absorbs stale queued and terminal receipts unless a newer exact retry advances the attempt', () => {
+    const allowed = (
+      currentReleaseStatus: string,
+      currentAttempt: number,
+      incomingDisposition: RequirementPublicationDisposition,
+      incomingAttempt: number,
+      existingRevision = true,
+    ) =>
+      requirementReceiptTransitionAllowed({
+        currentReleaseStatus,
+        currentAttempt,
+        incomingDisposition,
+        incomingAttempt,
+        existingRevision,
+      });
+
+    expect(allowed('APPLIED', 1, 'QUEUED', 2)).toBe(false);
+    expect(allowed('FAILED', 1, 'QUEUED', 1)).toBe(false);
+    expect(allowed('REVIEW_REQUIRED', 1, 'QUEUED', 2, false)).toBe(false);
+    expect(allowed('FAILED', 1, 'QUEUED', 2)).toBe(true);
+    expect(allowed('PROMOTED', 2, 'QUEUED', 2)).toBe(false);
+    expect(allowed('PROMOTED', 2, 'QUEUED', 3)).toBe(true);
+    expect(allowed('PROMOTED', 2, 'FAILED', 1)).toBe(false);
+    expect(allowed('PROMOTED', 2, 'FAILED', 2)).toBe(true);
+    expect(allowed('FAILED', 2, 'APPLIED', 2)).toBe(true);
   });
 
   it('keeps an already applied local head terminal without another bridge call', async () => {

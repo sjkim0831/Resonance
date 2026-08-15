@@ -20,7 +20,9 @@ import {
   requirementDocumentId,
   requirementItemId,
   requirementPublicationComplete,
+  requirementPublicationDisposition,
   requirementPublicationPersistence,
+  requirementReceiptTransitionAllowed,
   sameRequirementRevision,
 } from './requirementIngestionLifecycle';
 import { registerProjectLifecycleRoutes } from './projectLifecycleRoutes';
@@ -2733,7 +2735,7 @@ export default createBackendPlugin({
             try {
               publicationResult = await ensureRequirementPublication({
                 sourceImmediate,
-                refreshQueued:
+                refreshExisting:
                   persistence.kind === 'EXISTING' && Boolean(bridgeToken),
                 state: {
                   analysisStatus: persistence.analysisStatus,
@@ -2766,7 +2768,11 @@ export default createBackendPlugin({
                       string,
                       unknown
                     >;
-                  return { ok: publicationResponse.ok, payload: publication };
+                  return {
+                    ok: publicationResponse.ok,
+                    status: publicationResponse.status,
+                    payload: publication,
+                  };
                 },
                 recordPublication: async (disposition, publication) => {
                   const recordedAt = new Date();
@@ -2776,19 +2782,96 @@ export default createBackendPlugin({
                     disposition,
                     publication,
                   });
-                  await knex.transaction(async transaction => {
-                    await transaction('resonance_projects__design_release')
+                  const generation =
+                    publication.generation &&
+                    typeof publication.generation === 'object'
+                      ? (publication.generation as Record<string, unknown>)
+                      : {};
+                  const terminalError = target.successful
+                    ? null
+                    : String(
+                        generation.message ??
+                          publication.message ??
+                          disposition,
+                      );
+                  const rawAttempt = Number(
+                    generation.retryAttempt ?? publication.retryAttempt ?? 0,
+                  );
+                  const retryAttempt =
+                    Number.isInteger(rawAttempt) && rawAttempt >= 0
+                      ? rawAttempt
+                      : 0;
+                  return knex.transaction(async transaction => {
+                    const currentRelease = await transaction(
+                      'resonance_projects__design_release',
+                    )
+                      .select('release_status')
                       .where({
                         project_id: projectId,
                         design_version: persistence.designVersion,
+                      })
+                      .forUpdate()
+                      .first();
+                    if (!currentRelease) {
+                      throw new Error(
+                        'REQUIREMENT_RELEASE_RECEIPT_CAS_NOT_EXACT',
+                      );
+                    }
+                    const currentReleaseStatus = String(
+                      currentRelease.release_status,
+                    ).toUpperCase();
+                    const currentTask = await transaction(
+                      'resonance_projects__task',
+                    )
+                      .select('attempt_count')
+                      .where({ project_id: projectId })
+                      .whereRaw("payload->>'documentId' = ?", [
+                        persistence.documentId,
+                      ])
+                      .whereNotNull('attempt_count')
+                      .orderBy('attempt_count', 'desc')
+                      .first();
+                    const currentAttempt = Math.max(
+                      0,
+                      Number(currentTask?.attempt_count ?? 0),
+                    );
+                    const currentDisposition = requirementPublicationDisposition(
+                      { releaseStatus: currentReleaseStatus },
+                    );
+                    const transitionAllowed = requirementReceiptTransitionAllowed({
+                      currentReleaseStatus,
+                      currentAttempt,
+                      incomingDisposition: disposition,
+                      incomingAttempt: retryAttempt,
+                      existingRevision: persistence.kind === 'EXISTING',
+                    });
+                    if (!transitionAllowed) {
+                      if (currentDisposition) return currentDisposition;
+                      throw new Error(
+                        'REQUIREMENT_RELEASE_RECEIPT_CAS_NOT_EXACT',
+                      );
+                    }
+                    const releaseUpdates = await transaction(
+                      'resonance_projects__design_release',
+                    )
+                      .where({
+                        project_id: projectId,
+                        design_version: persistence.designVersion,
+                        release_status: currentReleaseStatus,
                       })
                       .update({
                         release_status: target.releaseStatus,
                         promoted_at: recordedAt,
                         updated_at: recordedAt,
                       });
+                    if (releaseUpdates !== 1) {
+                      throw new Error(
+                        'REQUIREMENT_RELEASE_RECEIPT_CAS_NOT_EXACT',
+                      );
+                    }
                     await transaction('resonance_projects__project')
                       .where({ project_id: projectId })
+                      .where('design_version', '<=', persistence.designVersion)
                       .update({
                         design_version: persistence.designVersion,
                         status: target.projectStatus,
@@ -2812,26 +2895,31 @@ export default createBackendPlugin({
                       .update({
                         implementation_status: target.itemStatus,
                       });
-                    if (target.completeTasks) {
-                      await transaction('resonance_projects__task')
-                        .where({ project_id: projectId })
-                        .whereRaw("payload->>'documentId' = ?", [
-                          persistence.documentId,
-                        ])
-                        .update({
-                          status: 'COMPLETED',
-                          result: publicationEvidence,
-                          error_message: null,
-                          finished_at: recordedAt,
-                          updated_at: recordedAt,
-                        });
+                    const taskUpdates = transaction(
+                      'resonance_projects__task',
+                    )
+                      .where({ project_id: projectId })
+                      .whereRaw("payload->>'documentId' = ?", [
+                        persistence.documentId,
+                      ]);
+                    if (target.taskStatus !== 'COMPLETED') {
+                      taskUpdates.whereNot('status', 'COMPLETED');
                     }
+                    await taskUpdates.update({
+                      status: target.taskStatus,
+                      result: publicationEvidence,
+                      error_message: terminalError,
+                      attempt_count: retryAttempt,
+                      finished_at: target.completeTasks ? recordedAt : null,
+                      updated_at: recordedAt,
+                    });
+                    return disposition;
                   });
                 },
               });
             } catch (error) {
               if (error instanceof RequirementPublicationError) {
-                response.status(502).json({
+                response.status(error.statusCode).json({
                   success: false,
                   projectId,
                   documentId: persistence.documentId,
@@ -2843,31 +2931,70 @@ export default createBackendPlugin({
               }
               throw error;
             }
-            response.status(persistence.kind === 'CREATED' ? 201 : 200).json({
-              success: true,
-              idempotent: persistence.kind === 'EXISTING',
-              publicationRetried:
-                persistence.kind === 'EXISTING' && publicationResult.attempted,
-              projectId,
-              documentId: persistence.documentId,
-              designVersion: persistence.designVersion,
-              processCode: persistence.processCode,
-              requirementCount: persistence.requirementCount,
-              screenCount: persistence.requirementCount,
-              endpointCount: persistence.requirementCount,
-              contractSha256: persistence.contractSha256,
-              status:
-                publicationResult.disposition === 'APPLIED' ||
-                ['APPLIED', 'GENERATION_APPLIED'].includes(
-                  String(persistence.analysisStatus).toUpperCase(),
-                ) ||
-                String(persistence.releaseStatus).toUpperCase() === 'APPLIED'
-                  ? 'APPLIED'
-                  : publicationResult.completed
-                    ? 'GENERATION_QUEUED'
-                    : persistence.analysisStatus,
-              publication: publicationResult.publication,
-            });
+            const finalDisposition =
+              publicationResult.disposition ??
+              requirementPublicationDisposition({
+                analysisStatus: persistence.analysisStatus,
+                releaseStatus: persistence.releaseStatus,
+              });
+            const terminalFailure = ['FAILED', 'REVIEW_REQUIRED'].includes(
+              String(finalDisposition),
+            );
+            const responsePublication = publicationResult.publication as Record<
+              string,
+              unknown
+            >;
+            const responseGeneration =
+              responsePublication.generation &&
+              typeof responsePublication.generation === 'object'
+                ? (responsePublication.generation as Record<string, unknown>)
+                : {};
+            const terminalMessage = terminalFailure
+              ? String(
+                  responseGeneration.message ??
+                    responsePublication.message ??
+                    finalDisposition,
+                )
+              : undefined;
+            response
+              .status(
+                terminalFailure
+                  ? 409
+                  : persistence.kind === 'CREATED'
+                    ? 201
+                    : 200,
+              )
+              .json({
+                success: !terminalFailure,
+                message: terminalMessage,
+                idempotent: persistence.kind === 'EXISTING',
+                publicationRetried:
+                  persistence.kind === 'EXISTING' &&
+                  publicationResult.attempted,
+                projectId,
+                documentId: persistence.documentId,
+                designVersion: persistence.designVersion,
+                processCode: persistence.processCode,
+                requirementCount: persistence.requirementCount,
+                screenCount: persistence.requirementCount,
+                endpointCount: persistence.requirementCount,
+                contractSha256: persistence.contractSha256,
+                status:
+                  finalDisposition === 'APPLIED' ||
+                  ['APPLIED', 'GENERATION_APPLIED'].includes(
+                    String(persistence.analysisStatus).toUpperCase(),
+                  ) ||
+                  String(persistence.releaseStatus).toUpperCase() === 'APPLIED'
+                    ? 'APPLIED'
+                    : finalDisposition === 'FAILED'
+                      ? 'FAILED'
+                      : finalDisposition === 'REVIEW_REQUIRED'
+                        ? 'REVIEW_REQUIRED'
+                        : publicationResult.completed
+                          ? 'GENERATION_QUEUED'
+                          : persistence.analysisStatus,
+                publication: publicationResult.publication,
+              });
           },
         );
         router.post(

@@ -340,7 +340,7 @@ export const ACTOR_PROCESS_DATASET_BY_TAB: Record<string, string> = {
   'automated-tests': 'qualityGateResults',
   'screen-workflow-tests': 'processes',
   artifacts: 'artifacts',
-  promotion: 'deliveryQueue',
+  'source-immediate': 'deliveryQueue',
   'work-dashboard': 'processExecutions',
   execution: 'processExecutionEvents',
   assignments: 'assignments',
@@ -541,10 +541,10 @@ export const ACTOR_PROCESS_WORKSPACES: ActorProcessWorkspace[] = [
         'EVIDENCE',
       ),
       tab(
-        'promotion',
+        'source-immediate',
         'SOURCE 즉시 동기화',
         '설계 저장 즉시 생성 코드, 화면 권한과 엔드포인트를 같은 SOURCE 기준으로 동기화합니다.',
-        'PROMOTION',
+        'SOURCE_IMMEDIATE',
       ),
       tab(
         'runtime',

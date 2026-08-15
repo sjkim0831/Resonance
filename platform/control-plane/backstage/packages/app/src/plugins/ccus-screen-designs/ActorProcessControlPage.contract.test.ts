@@ -33,5 +33,13 @@ describe('ActorProcessControlPage SOURCE immediate contract', () => {
     expect(source).not.toContain('schemaVersion: 2');
     expect(source).not.toContain('promoteDesignRelease');
     expect(source).not.toContain('/design-releases/${designVersion}/promote');
+    const lifecycleStart = source.indexOf('label="수명주기"');
+    const lifecycleOptions = source.slice(
+      lifecycleStart,
+      source.indexOf('</TextField>', lifecycleStart),
+    );
+    expect(lifecycleOptions).not.toContain("'PROMOTED'");
+    expect(source).toContain("=== 'PROMOTED'");
+    expect(source).toContain("? 'VALIDATED'");
   });
 });

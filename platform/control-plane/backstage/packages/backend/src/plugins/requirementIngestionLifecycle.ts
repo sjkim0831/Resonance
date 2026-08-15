@@ -7,14 +7,38 @@ export type RequirementPublicationState = {
 
 export type RequirementBridgeResponse = {
   ok: boolean;
+  status?: number;
   payload: Record<string, unknown>;
 };
 
-export type RequirementPublicationDisposition = 'QUEUED' | 'APPLIED';
+export type RequirementPublicationDisposition =
+  | 'QUEUED'
+  | 'APPLIED'
+  | 'FAILED'
+  | 'REVIEW_REQUIRED';
+
+export type RequirementPublicationPersistence = {
+  releaseStatus: string;
+  projectStatus: string;
+  analysisStatus: string;
+  itemStatus: string;
+  completeTasks: boolean;
+  taskStatus: 'PLANNED' | 'COMPLETED' | 'FAILED';
+  successful: boolean;
+};
 
 export class RequirementPublicationError extends Error {
-  constructor(readonly publication: Record<string, unknown>) {
-    super('Runtime rejected the generated design contract');
+  constructor(
+    readonly publication: Record<string, unknown>,
+    readonly statusCode = 502,
+  ) {
+    super(
+      String(
+        publication.message ??
+          publication.error ??
+          'Runtime rejected the generated design contract',
+      ),
+    );
   }
 }
 
@@ -102,6 +126,9 @@ export const requirementPublicationDisposition = ({
   ) {
     return 'APPLIED';
   }
+  if (statuses.includes('REVIEW_REQUIRED')) return 'REVIEW_REQUIRED';
+  if (statuses.some(status => ['GENERATION_FAILED', 'FAILED'].includes(status)))
+    return 'FAILED';
   if (
     statuses.some(status => ['GENERATION_QUEUED', 'PROMOTED'].includes(status))
   ) {
@@ -123,6 +150,9 @@ export const bridgePublicationDisposition = (
   ) {
     return 'APPLIED';
   }
+  if (statuses.includes('REVIEW_REQUIRED')) return 'REVIEW_REQUIRED';
+  if (statuses.some(status => ['GENERATION_FAILED', 'FAILED'].includes(status)))
+    return 'FAILED';
   if (
     statuses.some(status =>
       [
@@ -142,51 +172,107 @@ export const bridgePublicationDisposition = (
 
 export const requirementPublicationPersistence = (
   disposition: RequirementPublicationDisposition,
-) =>
-  disposition === 'APPLIED'
-    ? {
-        releaseStatus: 'APPLIED',
-        projectStatus: 'GENERATION_APPLIED',
-        analysisStatus: 'GENERATION_APPLIED',
-        itemStatus: 'GENERATION_APPLIED',
-        completeTasks: true,
-      }
-    : {
-        releaseStatus: 'PROMOTED',
-        projectStatus: 'GENERATION_QUEUED',
-        analysisStatus: 'GENERATION_QUEUED',
-        itemStatus: 'GENERATION_QUEUED',
-        completeTasks: false,
-      };
+): RequirementPublicationPersistence => {
+  if (disposition === 'APPLIED') {
+    return {
+      releaseStatus: 'APPLIED',
+      projectStatus: 'GENERATION_APPLIED',
+      analysisStatus: 'GENERATION_APPLIED',
+      itemStatus: 'GENERATION_APPLIED',
+      completeTasks: true,
+      taskStatus: 'COMPLETED',
+      successful: true,
+    };
+  }
+  if (disposition === 'FAILED') {
+    return {
+      releaseStatus: 'FAILED',
+      projectStatus: 'GENERATION_FAILED',
+      analysisStatus: 'GENERATION_FAILED',
+      itemStatus: 'GENERATION_FAILED',
+      completeTasks: true,
+      taskStatus: 'FAILED',
+      successful: false,
+    };
+  }
+  if (disposition === 'REVIEW_REQUIRED') {
+    return {
+      releaseStatus: 'REVIEW_REQUIRED',
+      projectStatus: 'REVIEW_REQUIRED',
+      analysisStatus: 'REVIEW_REQUIRED',
+      itemStatus: 'REVIEW_REQUIRED',
+      completeTasks: true,
+      taskStatus: 'FAILED',
+      successful: false,
+    };
+  }
+  return {
+    releaseStatus: 'PROMOTED',
+    projectStatus: 'GENERATION_QUEUED',
+    analysisStatus: 'GENERATION_QUEUED',
+    itemStatus: 'GENERATION_QUEUED',
+    completeTasks: false,
+    taskStatus: 'PLANNED',
+    successful: true,
+  };
+};
+
+export const requirementReceiptTransitionAllowed = ({
+  currentReleaseStatus,
+  currentAttempt,
+  incomingDisposition,
+  incomingAttempt,
+  existingRevision,
+}: {
+  currentReleaseStatus: unknown;
+  currentAttempt: number;
+  incomingDisposition: RequirementPublicationDisposition;
+  incomingAttempt: number;
+  existingRevision: boolean;
+}) => {
+  const current = normalizedStatus(currentReleaseStatus);
+  if (current === 'APPLIED') return false;
+  if (incomingDisposition === 'APPLIED') return true;
+  const currentTerminal = ['FAILED', 'REVIEW_REQUIRED'].includes(current);
+  if (incomingDisposition === 'QUEUED' && currentTerminal) {
+    return existingRevision && incomingAttempt > currentAttempt;
+  }
+  if (incomingDisposition === 'QUEUED' && current === 'PROMOTED') {
+    return incomingAttempt > currentAttempt;
+  }
+  if (currentTerminal) return incomingAttempt > currentAttempt;
+  return incomingAttempt >= currentAttempt;
+};
 
 export const ensureRequirementPublication = async ({
   sourceImmediate,
-  refreshQueued = false,
+  refreshExisting = false,
   state,
   publish,
   recordPublication,
 }: {
   sourceImmediate: boolean;
-  refreshQueued?: boolean;
+  refreshExisting?: boolean;
   state: RequirementPublicationState;
   publish: () => Promise<RequirementBridgeResponse>;
   recordPublication: (
     disposition: RequirementPublicationDisposition,
     publication: Record<string, unknown>,
-  ) => Promise<void>;
+  ) => Promise<RequirementPublicationDisposition | void>;
 }) => {
   const currentDisposition = requirementPublicationDisposition(state);
-  if (currentDisposition && !(currentDisposition === 'QUEUED' && refreshQueued)) {
+  if (
+    currentDisposition &&
+    (currentDisposition === 'APPLIED' || !refreshExisting)
+  ) {
     return {
       attempted: false,
       completed: true,
+      successful: ['APPLIED', 'QUEUED'].includes(currentDisposition),
       disposition: currentDisposition,
       publication: {
-        success: true,
-        status:
-          currentDisposition === 'APPLIED'
-            ? 'ALREADY_APPLIED'
-            : 'ALREADY_QUEUED',
+        success: ['APPLIED', 'QUEUED'].includes(currentDisposition),
+        status: `ALREADY_${currentDisposition}`,
       },
     };
   }
@@ -194,6 +280,7 @@ export const ensureRequirementPublication = async ({
     return {
       attempted: false,
       completed: false,
+      successful: false,
       disposition: undefined,
       publication: { success: false, status: 'AWAITING_SOURCE_APPLY' },
     };
@@ -208,7 +295,10 @@ export const ensureRequirementPublication = async ({
     });
   }
   if (!result.ok || result.payload.success !== true) {
-    throw new RequirementPublicationError(result.payload);
+    throw new RequirementPublicationError(
+      result.payload,
+      result.status === 409 ? 409 : 502,
+    );
   }
   const disposition = bridgePublicationDisposition(result.payload);
   if (!disposition) {
@@ -217,11 +307,24 @@ export const ensureRequirementPublication = async ({
       error: 'UNRECOGNIZED_RUNTIME_PUBLICATION_STATE',
     });
   }
-  await recordPublication(disposition, result.payload);
+  const recordedDisposition = await recordPublication(
+    disposition,
+    result.payload,
+  );
+  const effectiveDisposition = recordedDisposition ?? disposition;
+  const effectivePublication =
+    effectiveDisposition === disposition
+      ? result.payload
+      : {
+          success: true,
+          status: `ALREADY_${effectiveDisposition}`,
+          ignoredPublication: result.payload,
+        };
   return {
     attempted: true,
     completed: true,
-    disposition,
-    publication: result.payload,
+    successful: ['APPLIED', 'QUEUED'].includes(effectiveDisposition),
+    disposition: effectiveDisposition,
+    publication: effectivePublication,
   };
 };
