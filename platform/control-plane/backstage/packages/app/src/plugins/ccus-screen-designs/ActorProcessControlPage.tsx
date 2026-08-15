@@ -3633,10 +3633,7 @@ function ProcessDefinitionWorkspace({
       slaHours: String(row.slaHours ?? '0'),
       reviewCycleDays: String(row.reviewCycleDays ?? '365'),
       regulationRefs: String(row.regulationRefs ?? ''),
-      lifecycleStatus:
-        String(row.lifecycleStatus ?? 'DRAFT') === 'PROMOTED'
-          ? 'VALIDATED'
-          : String(row.lifecycleStatus ?? 'DRAFT'),
+      lifecycleStatus: String(row.lifecycleStatus ?? 'DRAFT'),
       effectiveFrom: String(row.effectiveFrom ?? '').slice(0, 10),
       effectiveUntil: String(row.effectiveUntil ?? '').slice(0, 10),
     });
@@ -5197,7 +5194,7 @@ function CompletionDevelopmentWorkspace({
         artifact.required !== false,
     );
     const verifiedArtifacts = requiredArtifacts.filter(artifact =>
-      ['VERIFIED', 'PROMOTED', 'COMPLETED'].includes(
+      ['APPLIED', 'COMPLETED', 'VERIFIED'].includes(
         String(artifact.deliveryStatus ?? artifact.status ?? ''),
       ),
     ).length;
@@ -5815,7 +5812,7 @@ export function ActorProcessControlPage(props: {
   ].slice(0, 7);
   const tasks = selectedProject?.tasks ?? [];
   const completedTasks = tasks.filter(task =>
-    ['COMPLETED', 'VERIFIED', 'PROMOTED'].includes(task.status),
+    ['APPLIED', 'COMPLETED', 'VERIFIED'].includes(task.status),
   ).length;
   const taskProgress =
     tasks.length === 0 ? 0 : Math.round((completedTasks / tasks.length) * 100);

@@ -152,7 +152,7 @@ export const buildCustomerJourneySimulation = <
     const developmentReady =
       stepJobs.length > 0 &&
       stepJobs.every(row =>
-        ['COMPLETED', 'VERIFIED', 'PROMOTED'].includes(
+        ['APPLIED', 'COMPLETED', 'VERIFIED'].includes(
           String(rowValue(row, 'jobStatus', 'job_status') ?? ''),
         ),
       );

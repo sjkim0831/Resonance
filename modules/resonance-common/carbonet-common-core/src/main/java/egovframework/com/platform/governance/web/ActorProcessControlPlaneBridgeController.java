@@ -42,6 +42,14 @@ public class ActorProcessControlPlaneBridgeController {
             Set.of("DRAFT", "READY", "IN_REVIEW", "APPROVED", "VERIFIED");
     private static final int MAX_GENERATION_RETRIES = 3;
     private static final long RETRY_BACKOFF_SECONDS = 60L;
+    private static final Set<String> SYSTEM_ADMIN_MUTATION_COMMANDS = Set.of(
+            "actor.save", "process.save", "step.save",
+            "screen.bind-archetype", "screen.contract.save", "screen.design.generate",
+            "assignment.save", "assignment.deactivate", "case.save", "artifact.save",
+            "design.graph", "development.plan", "development.preflight",
+            "development.execute", "development.retry", "development.rollback.request",
+            "development.rollback.approve", "backend.verify", "project-delivery.e2e",
+            "standard.install");
     static {
         DESIGN_DOCUMENT_TYPES.put("REQUIREMENT", "업무·요구사항");
         DESIGN_DOCUMENT_TYPES.put("ACTOR_RACI", "액터·RACI");
@@ -204,7 +212,7 @@ public class ActorProcessControlPlaneBridgeController {
             int insertedRelease=jdbc.update("""
                     insert into framework_actor_process_design_release(
                       project_id,design_version,contract_sha256,contract_payload,release_status
-                    ) values(?,?,?,cast(? as jsonb),'PROMOTED')
+                    ) values(?,?,?,cast(? as jsonb),'QUEUED')
                     on conflict(project_id,design_version) do nothing
                     """, projectId, designVersion, checksum, contractJson);
             if(insertedRelease!=1)throw new IllegalStateException(
@@ -348,6 +356,12 @@ public class ActorProcessControlPlaneBridgeController {
             body = new LinkedHashMap<>(body);
             body.put("requestingAccount", account);
             String command = required(body, "command").toLowerCase();
+            if (SYSTEM_ADMIN_MUTATION_COMMANDS.contains(command)
+                    && !governance.isControlPlaneAdministrator(account)) {
+                throw new SecurityException(
+                        "System administrator authority is required for control-plane mutation: "
+                                + command);
+            }
             Object result;
             switch (command) {
                 case "actor.save" -> {
@@ -590,11 +604,16 @@ public class ActorProcessControlPlaneBridgeController {
     @Transactional
     public ResponseEntity<?> saveDesignDocument(
             @RequestHeader(value = "X-Resonance-Token", defaultValue = "") String suppliedToken,
-            @RequestHeader(value = "X-Resonance-Actor", defaultValue = "BACKSTAGE_CONTROL_PLANE") String actor,
+            @RequestHeader(value = "X-Resonance-Account", defaultValue = "") String account,
             @RequestBody Map<String, Object> body) {
         if (!authorized(suppliedToken)) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(Map.of("success", false, "message", "Invalid control-plane bridge token."));
+        }
+        if (account.isBlank() || !governance.isControlPlaneAdministrator(account)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of(
+                    "success", false,
+                    "message", "System administrator authority is required to save a design document."));
         }
         String processCode = required(body, "processCode");
         String stepCode = String.valueOf(body.getOrDefault("stepCode", "")).trim();
@@ -618,7 +637,7 @@ public class ActorProcessControlPlaneBridgeController {
                   title=excluded.title,content=excluded.content,status=excluded.status,
                   active_yn='Y',updated_by=excluded.updated_by
                 """, processCode, stepCode, routePath, documentType, title,
-                String.valueOf(body.getOrDefault("content", "")), status, actor);
+                String.valueOf(body.getOrDefault("content", "")), status, account);
         Long revision = jdbc.queryForObject("""
                 select revision from integrated_design_document
                  where process_code=? and step_code=? and route_path=? and document_type=?
@@ -859,7 +878,18 @@ public class ActorProcessControlPlaneBridgeController {
         return pending;
     }
 
-    private void prepareRequirementRetry(Map<String,Object> generation,String processCode){
+    private boolean refreshGenerationClaim(
+            String projectId,int designVersion,String claimToken){
+        return jdbc.update("""
+                update framework_actor_process_design_release
+                   set received_at=current_timestamp
+                 where project_id=? and design_version=? and release_status='RUNNING'
+                   and generation_result->>'claimToken'=?
+                """,projectId,designVersion,claimToken)==1;
+    }
+
+    private boolean prepareRequirementRetry(Map<String,Object> generation,String processCode,
+            String projectId,int designVersion,String claimToken){
         java.util.SortedSet<String> processes=new java.util.TreeSet<>();
         Object receipts=generation.get("expectedProcessReceipts");
         if(receipts instanceof Map<?,?> receiptMap){
@@ -870,11 +900,15 @@ public class ActorProcessControlPlaneBridgeController {
         }
         processes.add(processCode);
         for(String retryProcess:processes){
+            if(!refreshGenerationClaim(projectId,designVersion,claimToken))return false;
             governance.ensureGeneratedProcessSafetyCases(retryProcess);
+            if(!refreshGenerationClaim(projectId,designVersion,claimToken))return false;
             governance.ensureGeneratedProcessDesignContracts(
                     retryProcess,"REQUIREMENT_SELF_HEALER");
+            if(!refreshGenerationClaim(projectId,designVersion,claimToken))return false;
             governance.ensureGeneratedProcessPageDesigns(
                     retryProcess,"REQUIREMENT_SELF_HEALER");
+            if(!refreshGenerationClaim(projectId,designVersion,claimToken))return false;
             Map<String,Object> publication=governance.finalizeAndQueueProcessDesign(
                     retryProcess,"REQUIREMENT_SELF_HEALER",
                     "REQUIREMENT_PROCESS_RECOVERY");
@@ -884,6 +918,7 @@ public class ActorProcessControlPlaneBridgeController {
                 throw new IllegalStateException(
                         "REQUIREMENT_RETRY_NOT_QUEUED: "+retryProcess);
         }
+        return true;
     }
 
     private void recordGenerationFailure(String projectId,int designVersion,
@@ -939,7 +974,7 @@ public class ActorProcessControlPlaneBridgeController {
         return new LinkedHashMap<>();
     }
 
-    private void compilePromotedRelease(String projectId, int designVersion) {
+    void compilePromotedRelease(String projectId, int designVersion) {
         Map<String,Object> release = jdbc.queryForMap("""
                 select contract_payload->'source'->>'type' as source_type,
                        upper(contract_payload->'process'->>'processCode') as process_code,
@@ -970,11 +1005,16 @@ public class ActorProcessControlPlaneBridgeController {
         try {
             if ("REQUIREMENT_DOCUMENT".equals(String.valueOf(release.get("source_type")))) {
                 String processCode=String.valueOf(release.get("process_code"));
-                if(retryAttempt(claimedReceipt)>0)
-                    prepareRequirementRetry(claimedReceipt,processCode);
+                if(retryAttempt(claimedReceipt)>0){
+                    if(!refreshGenerationClaim(projectId,designVersion,claimToken))return;
+                    if(!prepareRequirementRetry(claimedReceipt,processCode,
+                            projectId,designVersion,claimToken))return;
+                }
+                if(!refreshGenerationClaim(projectId,designVersion,claimToken))return;
                 reconcileRequirementRelease(projectId,designVersion,processCode,claimToken);
                 return;
             }
+            if(!refreshGenerationClaim(projectId,designVersion,claimToken))return;
             Map<String, Object> generation = governance.compileAndQueueScreens(
                     Map.of("processCode", "", "maxScreens", 1000),
                     "BACKSTAGE_CONTROL_PLANE");
@@ -1793,7 +1833,8 @@ public class ActorProcessControlPlaneBridgeController {
         if (!Boolean.TRUE.equals(elected)) {
             return;
         }
-        List<Map<String, Object>> releases = jdbc.queryForList("""
+        List<Map<String, Object>> releases = new java.util.ArrayList<>(
+                jdbc.queryForList("""
                 select project_id,design_version,contract_sha256,release_status,
                        generation_result::text generation_result_json
                   from framework_actor_process_design_release
@@ -1802,18 +1843,26 @@ public class ActorProcessControlPlaneBridgeController {
                       release_status='RUNNING'
                       and received_at < current_timestamp - interval '15 minutes'
                     )
-                    or (
-                      release_status in ('FAILED','REVIEW_REQUIRED')
-                      and coalesce(generation_result->>'retryAttempt','0')~'^[0-2]$'
-                      and coalesce(generation_result->>'retryNotBeforeEpoch','0')
-                            ~'^[0-9]{1,12}$'
-                      and (generation_result->>'retryNotBeforeEpoch')::bigint
-                            <=extract(epoch from current_timestamp)::bigint
-                    )
-                 order by coalesce(received_at,current_timestamp),project_id,design_version
+                 order by received_at nulls first,project_id,design_version
                  for update skip locked
                  limit 10
-                """);
+                """));
+        if(releases.size()<10){
+            releases.addAll(jdbc.queryForList("""
+                select project_id,design_version,contract_sha256,release_status,
+                       generation_result::text generation_result_json
+                  from framework_actor_process_design_release
+                 where (
+                      release_status in ('FAILED','REVIEW_REQUIRED')
+                      and generation_retry_attempt < 3
+                      and generation_retry_not_before_epoch
+                            <=extract(epoch from current_timestamp)::bigint
+                    )
+                 order by generation_retry_not_before_epoch,project_id,design_version
+                 for update skip locked
+                 limit ?
+                """,10-releases.size()));
+        }
         List<Map<String,Object>> scheduled=new java.util.ArrayList<>();
         for(Map<String,Object> release:releases){
             String releaseStatus=String.valueOf(release.get("release_status"));

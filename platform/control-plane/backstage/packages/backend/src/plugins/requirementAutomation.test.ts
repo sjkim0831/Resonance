@@ -576,6 +576,20 @@ describe('requirement automation', () => {
     ).toBe('APPLICATION_REVIEW');
   });
 
+  it.each(['A.B', 'A'])(
+    'rejects producer process code %s outside the Java 2-80 uppercase domain',
+    explicitProcessCode => {
+      expect(() =>
+        analyzeRequirementText(
+          'P1',
+          'requirements.md',
+          '사용자는 목록을 조회한다.',
+          { explicitProcessCode },
+        ),
+      ).toThrow('explicitProcessCode has an unsupported code format');
+    },
+  );
+
   it('emits the complete hash-bound design and exact reconciliation sets', () => {
     const { contract } = prepare();
     expect(contract.process.steps[0]).toEqual(

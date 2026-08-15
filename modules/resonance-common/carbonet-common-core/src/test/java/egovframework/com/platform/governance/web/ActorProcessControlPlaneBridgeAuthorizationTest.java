@@ -122,6 +122,96 @@ class ActorProcessControlPlaneBridgeAuthorizationTest {
     }
 
     @Test
+    void everyControlPlaneSystemMutationUsesOneCentralAdministratorGuard(){
+        when(governance.isControlPlaneAdministrator("designer")).thenReturn(false);
+        List<String> guarded=List.of("case.save","artifact.save","design.graph",
+                "development.plan","development.preflight","backend.verify",
+                "standard.install");
+
+        for(String commandName:guarded){
+            var response=controller.executeGovernanceCommand(
+                    "secret-token","user:default/designer","designer",
+                    Map.of("command",commandName));
+            assertEquals(403,response.getStatusCode().value(),commandName);
+        }
+
+        verify(governance,times(guarded.size()))
+                .isControlPlaneAdministrator("designer");
+        org.mockito.Mockito.verifyNoMoreInteractions(governance);
+        verifyNoInteractions(jdbc);
+    }
+
+    @Test
+    void authenticatedAdministratorCanRunEveryCentrallyGuardedMutation(){
+        when(governance.isControlPlaneAdministrator("system-admin")).thenReturn(true);
+        when(governance.generateProfessionalDesignGraph("PROCESS_A","user:default/admin"))
+                .thenReturn(Map.of("success",true));
+        when(governance.generateDevelopmentPlan(
+                "PROCESS_A","STEP_A","user:default/admin"))
+                .thenReturn(Map.of("success",true));
+        when(governance.runScreenDevelopmentPreflight(
+                "PROCESS_A","STEP_A","user:default/admin"))
+                .thenReturn(Map.of("success",true));
+        when(governance.verifyBackendProcessContracts("abc123","user:default/admin"))
+                .thenReturn(Map.of("success",true));
+        when(governance.installStandardPack()).thenReturn(Map.of("success",true));
+        List<Map<String,Object>> commands=List.of(
+                Map.of("command","case.save","caseCode","CASE_A"),
+                Map.of("command","artifact.save","artifactCode","ARTIFACT_A"),
+                Map.of("command","design.graph","processCode","PROCESS_A"),
+                Map.of("command","development.plan","processCode","PROCESS_A",
+                        "stepCode","STEP_A"),
+                Map.of("command","development.preflight","processCode","PROCESS_A",
+                        "stepCode","STEP_A"),
+                Map.of("command","backend.verify","sourceCommit","abc123"),
+                Map.of("command","standard.install"));
+
+        for(Map<String,Object> body:commands){
+            var response=controller.executeGovernanceCommand(
+                    "secret-token","user:default/admin","system-admin",body);
+            assertEquals(200,response.getStatusCode().value(),String.valueOf(body.get("command")));
+        }
+
+        verify(governance).createCase(any());
+        verify(governance).saveArtifact(any());
+        verify(governance).generateProfessionalDesignGraph(
+                "PROCESS_A","user:default/admin");
+        verify(governance).generateDevelopmentPlan(
+                "PROCESS_A","STEP_A","user:default/admin");
+        verify(governance).runScreenDevelopmentPreflight(
+                "PROCESS_A","STEP_A","user:default/admin");
+        verify(governance).verifyBackendProcessContracts(
+                "abc123","user:default/admin");
+        verify(governance).installStandardPack();
+    }
+
+    @Test
+    void designDocumentMutationUsesAuthenticatedAdministratorAccount(){
+        Map<String,Object> body=Map.of(
+                "processCode","PROCESS_A","documentType","API",
+                "title","API contract","content","POST /api/items",
+                "status","READY");
+        when(governance.isControlPlaneAdministrator("designer")).thenReturn(false);
+
+        var denied=controller.saveDesignDocument("secret-token","designer",body);
+
+        assertEquals(403,denied.getStatusCode().value());
+        verifyNoInteractions(jdbc);
+
+        when(governance.isControlPlaneAdministrator("system-admin")).thenReturn(true);
+        when(jdbc.queryForObject(anyString(),eq(Long.class),any(Object[].class)))
+                .thenReturn(1L);
+        var allowed=controller.saveDesignDocument(
+                "secret-token","system-admin",body);
+
+        assertEquals(200,allowed.getStatusCode().value());
+        verify(jdbc).update(org.mockito.ArgumentMatchers.argThat(sql->sql!=null
+                        &&sql.contains("insert into integrated_design_document")),
+                eq("PROCESS_A"),eq(""),eq(""),eq("API"),eq("API contract"),
+                eq("POST /api/items"),eq("READY"),eq("system-admin"));
+    }
+
+    @Test
     void authenticatedAdministratorCanRunExactDesignMutation(){
         when(governance.isControlPlaneAdministrator("system-admin")).thenReturn(true);
         when(governance.saveDesignAndGenerate(any(),eq("system-admin")))
@@ -939,7 +1029,7 @@ class ActorProcessControlPlaneBridgeAuthorizationTest {
             "modules/resonance-common/carbonet-common-core/src/main/java/"+
             "egovframework/com/platform/governance/web/"+
             "ActorProcessControlPlaneBridgeController.java"));
-        String compile=source.substring(source.indexOf("private void compilePromotedRelease"),
+        String compile=source.substring(source.indexOf("void compilePromotedRelease"),
             source.indexOf("void reconcileRequirementRelease("));
         String failure=source.substring(source.indexOf("private void recordGenerationFailure"),
             source.indexOf("private long nextRetryEpoch"));
@@ -957,6 +1047,49 @@ class ActorProcessControlPlaneBridgeAuthorizationTest {
             "expectedClaimToken.equals("));
         org.junit.jupiter.api.Assertions.assertTrue(reconciliation.contains(
             "generation_result=cast(? as jsonb)"));
+        org.junit.jupiter.api.Assertions.assertTrue(compile.contains(
+            "if(!refreshGenerationClaim(projectId,designVersion,claimToken))return;"));
+        String retry=source.substring(source.indexOf(
+            "private boolean prepareRequirementRetry"),source.indexOf(
+            "private void recordGenerationFailure"));
+        assertEquals(4,retry.split(
+            "refreshGenerationClaim\\(projectId,designVersion,claimToken\\)",-1).length-1);
+    }
+
+    @Test
+    void staleNonRequirementWorkerHasZeroCompileOrQueueSideEffects(){
+        when(jdbc.queryForMap(anyString(),any(Object[].class))).thenReturn(Map.of(
+            "source_type","DESIGN_DOCUMENT","process_code","PROCESS_A",
+            "generation_result_json","{\"retryAttempt\":0}"));
+        when(jdbc.update(org.mockito.ArgumentMatchers.argThat(sql->sql!=null
+                &&sql.contains("set release_status='RUNNING'")),any(Object[].class)))
+            .thenReturn(1);
+        when(jdbc.update(org.mockito.ArgumentMatchers.argThat(sql->sql!=null
+                &&sql.contains("set received_at=current_timestamp")
+                &&sql.contains("claimToken")),any(Object[].class))).thenReturn(0);
+
+        controller.compilePromotedRelease("PROJECT_A",1);
+
+        verifyNoInteractions(governance);
+        verify(jdbc,never()).update(org.mockito.ArgumentMatchers.argThat(sql->sql!=null
+                &&sql.contains("set release_status=?")),any(Object[].class));
+    }
+
+    @Test
+    void staleRetryWorkerHasZeroContractPageOrQueueSideEffects(){
+        when(jdbc.queryForMap(anyString(),any(Object[].class))).thenReturn(Map.of(
+            "source_type","REQUIREMENT_DOCUMENT","process_code","PROCESS_A",
+            "generation_result_json","{\"retryAttempt\":1}"));
+        when(jdbc.update(org.mockito.ArgumentMatchers.argThat(sql->sql!=null
+                &&sql.contains("set release_status='RUNNING'")),any(Object[].class)))
+            .thenReturn(1);
+        when(jdbc.update(org.mockito.ArgumentMatchers.argThat(sql->sql!=null
+                &&sql.contains("set received_at=current_timestamp")
+                &&sql.contains("claimToken")),any(Object[].class))).thenReturn(0);
+
+        controller.compilePromotedRelease("PROJECT_A",1);
+
+        verifyNoInteractions(governance);
     }
 
     @Test
@@ -995,8 +1128,8 @@ class ActorProcessControlPlaneBridgeAuthorizationTest {
             .thenReturn(true);
         when(jdbc.queryForList(org.mockito.ArgumentMatchers.argThat(sql->sql!=null
             &&sql.contains("for update skip locked")
-            &&sql.contains("retryNotBeforeEpoch")
-            &&sql.contains("'^[0-2]$'"))))
+            &&sql.contains("generation_retry_not_before_epoch")
+            &&sql.contains("generation_retry_attempt < 3")),eq(10)))
             .thenReturn(List.of(Map.of(
                 "project_id","PROJECT_A","design_version",4,
                 "contract_sha256","d".repeat(64),"release_status","FAILED",
@@ -1016,6 +1149,43 @@ class ActorProcessControlPlaneBridgeAuthorizationTest {
             eq("PROJECT_A"),eq(4),eq("d".repeat(64)),eq("FAILED"),eq("0"));
         assertEquals(1,TransactionSynchronizationManager.getSynchronizations().size());
         verifyNoInteractions(governance);
+    }
+
+    @Test
+    void terminalRecoveryUsesIndexedScalarsAndExcludesExhaustedReceipts()
+            throws Exception {
+        String source=Files.readString(findRepositoryFile(
+            "modules/resonance-common/carbonet-common-core/src/main/java/"+
+            "egovframework/com/platform/governance/web/"+
+            "ActorProcessControlPlaneBridgeController.java"));
+        String recovery=source.substring(source.indexOf(
+            "public void recoverQueuedDesignGeneration()"),source.indexOf(
+            "@PreDestroy",source.indexOf("public void recoverQueuedDesignGeneration()")));
+        assertFalse(source.contains("'PROMOTED'"));
+        assertFalse(recovery.contains("generation_result->>'retryAttempt'"));
+        assertFalse(recovery.contains("generation_result->>'retryNotBeforeEpoch'"));
+        org.junit.jupiter.api.Assertions.assertTrue(recovery.contains(
+            "generation_retry_attempt < 3"));
+        org.junit.jupiter.api.Assertions.assertTrue(recovery.contains(
+            "generation_retry_not_before_epoch"));
+        org.junit.jupiter.api.Assertions.assertTrue(recovery.contains(
+            "order by generation_retry_not_before_epoch,project_id,design_version"));
+
+        String migration=Files.readString(findRepositoryFile(
+            "apps/carbonet-api/src/main/resources/db/migration/postgresql/"+
+            "V20260816131500__bound_design_release_terminal_recovery.sql"));
+        org.junit.jupiter.api.Assertions.assertTrue(migration.contains(
+            "generation_retry_attempt smallint"));
+        org.junit.jupiter.api.Assertions.assertTrue(migration.contains(
+            "generation_retry_not_before_epoch bigint"));
+        org.junit.jupiter.api.Assertions.assertTrue(migration.contains(
+            "GENERATED ALWAYS AS"));
+        org.junit.jupiter.api.Assertions.assertTrue(migration.contains(
+            "idx_actor_process_design_release_terminal_due"));
+        org.junit.jupiter.api.Assertions.assertTrue(migration.contains(
+            "generation_retry_attempt < 3"));
+        org.junit.jupiter.api.Assertions.assertTrue(migration.contains(
+            "EXPLAIN (ANALYZE, BUFFERS)"));
     }
 
     private Map<String,Object> goldenRequirementContract() throws Exception {

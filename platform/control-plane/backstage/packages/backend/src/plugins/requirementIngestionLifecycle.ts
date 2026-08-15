@@ -130,7 +130,7 @@ export const requirementPublicationDisposition = ({
   if (statuses.some(status => ['GENERATION_FAILED', 'FAILED'].includes(status)))
     return 'FAILED';
   if (
-    statuses.some(status => ['GENERATION_QUEUED', 'PROMOTED'].includes(status))
+    statuses.some(status => ['GENERATION_QUEUED', 'QUEUED'].includes(status))
   ) {
     return 'QUEUED';
   }
@@ -155,14 +155,9 @@ export const bridgePublicationDisposition = (
     return 'FAILED';
   if (
     statuses.some(status =>
-      [
-        'GENERATION_QUEUED',
-        'QUEUED',
-        'PROMOTED',
-        'PENDING',
-        'PLANNED',
-        'RUNNING',
-      ].includes(status),
+      ['GENERATION_QUEUED', 'QUEUED', 'PENDING', 'PLANNED', 'RUNNING'].includes(
+        status,
+      ),
     )
   ) {
     return 'QUEUED';
@@ -207,13 +202,13 @@ export const requirementPublicationPersistence = (
     };
   }
   return {
-    releaseStatus: 'PROMOTED',
+    releaseStatus: 'QUEUED',
     projectStatus: 'GENERATION_QUEUED',
     analysisStatus: 'GENERATION_QUEUED',
     itemStatus: 'GENERATION_QUEUED',
     completeTasks: false,
     taskStatus: 'PLANNED',
-    successful: true,
+    successful: false,
   };
 };
 
@@ -237,7 +232,7 @@ export const requirementReceiptTransitionAllowed = ({
   if (incomingDisposition === 'QUEUED' && currentTerminal) {
     return existingRevision && incomingAttempt > currentAttempt;
   }
-  if (incomingDisposition === 'QUEUED' && current === 'PROMOTED') {
+  if (incomingDisposition === 'QUEUED' && current === 'QUEUED') {
     return incomingAttempt > currentAttempt;
   }
   if (currentTerminal) return incomingAttempt > currentAttempt;
@@ -294,13 +289,13 @@ export const reconcileRequirementPublicationReceipt = async ({
 };
 
 export const ensureRequirementPublication = async ({
-  sourceImmediate,
+  sourceImmediate: _requestedSourceImmediate = true,
   refreshExisting = false,
   state,
   publish,
   recordPublication,
 }: {
-  sourceImmediate: boolean;
+  sourceImmediate?: boolean;
   refreshExisting?: boolean;
   state: RequirementPublicationState;
   publish: () => Promise<RequirementBridgeResponse>;
@@ -309,6 +304,9 @@ export const ensureRequirementPublication = async ({
     publication: Record<string, unknown>,
   ) => Promise<RequirementPublicationDisposition | void>;
 }) => {
+  // SOURCE_IMMEDIATE_V1 is an invariant. The compatibility flag is accepted
+  // only so old callers cannot turn generation off by sending false.
+  void _requestedSourceImmediate;
   const currentDisposition = requirementPublicationDisposition(state);
   if (
     currentDisposition &&
@@ -316,22 +314,13 @@ export const ensureRequirementPublication = async ({
   ) {
     return {
       attempted: false,
-      completed: true,
-      successful: ['APPLIED', 'QUEUED'].includes(currentDisposition),
+      completed: currentDisposition === 'APPLIED',
+      successful: currentDisposition === 'APPLIED',
       disposition: currentDisposition,
       publication: {
-        success: ['APPLIED', 'QUEUED'].includes(currentDisposition),
+        success: currentDisposition === 'APPLIED',
         status: `ALREADY_${currentDisposition}`,
       },
-    };
-  }
-  if (!sourceImmediate) {
-    return {
-      attempted: false,
-      completed: false,
-      successful: false,
-      disposition: undefined,
-      publication: { success: false, status: 'AWAITING_SOURCE_APPLY' },
     };
   }
   let result: RequirementBridgeResponse;
@@ -371,8 +360,8 @@ export const ensureRequirementPublication = async ({
         };
   return {
     attempted: true,
-    completed: true,
-    successful: ['APPLIED', 'QUEUED'].includes(effectiveDisposition),
+    completed: effectiveDisposition === 'APPLIED',
+    successful: effectiveDisposition === 'APPLIED',
     disposition: effectiveDisposition,
     publication: effectivePublication,
   };

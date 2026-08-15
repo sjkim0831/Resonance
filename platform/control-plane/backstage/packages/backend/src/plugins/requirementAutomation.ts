@@ -18,8 +18,6 @@ export type RequirementDocumentInput = RequirementDocumentIdentityInput & {
   contentBase64?: string;
   extractedText?: string;
   sourceImmediate?: boolean;
-  /** Compatibility input for older clients; new UI uses sourceImmediate. */
-  autoPromote?: boolean;
 };
 
 export type RequirementItem = {
@@ -120,7 +118,11 @@ const normalizedCode = (value: unknown, field: string, maxLength = 160) => {
     .normalize('NFKC')
     .trim()
     .toUpperCase();
-  if (!code || code.length > maxLength || !/^[A-Z][A-Z0-9_.:-]*$/.test(code)) {
+  if (
+    code.length < 2 ||
+    code.length > Math.min(maxLength, 80) ||
+    !/^[A-Z][A-Z0-9_:-]{1,79}$/.test(code)
+  ) {
     throw new Error(`${field} has an unsupported code format`);
   }
   return code;

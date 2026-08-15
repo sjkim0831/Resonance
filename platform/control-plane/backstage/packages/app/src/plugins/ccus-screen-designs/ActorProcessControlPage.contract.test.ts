@@ -39,7 +39,6 @@ describe('ActorProcessControlPage SOURCE immediate contract', () => {
       source.indexOf('</TextField>', lifecycleStart),
     );
     expect(lifecycleOptions).not.toContain("'PROMOTED'");
-    expect(source).toContain("=== 'PROMOTED'");
-    expect(source).toContain("? 'VALIDATED'");
+    expect(source).not.toContain('PROMOTED');
   });
 });

@@ -115,10 +115,12 @@ describe('requirement ingestion lifecycle', () => {
     expect(routeSource).toContain(
       'drop constraint if exists resonance_requirement_document_project_hash_uq',
     );
-    expect(routeSource.match(/response\.status\(410\)/g)).toHaveLength(2);
     const retiredMutationRoutes = routeSource.slice(
       routeSource.indexOf("'/:projectId/design-releases'", lifecycleStart),
       routeSource.indexOf("'/:projectId/development-contract'", lifecycleStart),
+    );
+    expect(retiredMutationRoutes.match(/response\.status\(410\)/g)).toHaveLength(
+      2,
     );
     expect(retiredMutationRoutes).not.toContain('RESONANCE_OPS_TOKEN');
     expect(retiredMutationRoutes).not.toContain('contract_payload');
@@ -162,8 +164,20 @@ describe('requirement ingestion lifecycle', () => {
       ),
     );
     expect(developmentContract).toContain(
-      "query.whereIn('release_status', ['PROMOTED', 'APPLIED'])",
+      "query.where('release_status', 'APPLIED')",
     );
+    expect(lifecycle).toContain('const sourceImmediate = true');
+    expect(lifecycle).toContain(
+      "hasOwnProperty.call(request.body, 'autoPromote')",
+    );
+    expect(lifecycle).not.toContain('request.body?.sourceImmediate === true');
+    const legacyGuard = lifecycle.indexOf(
+      "hasOwnProperty.call(request.body, 'autoPromote')",
+    );
+    expect(
+      lifecycle.slice(legacyGuard, lifecycle.indexOf('const project =')),
+    ).toContain('response.status(422)');
+    expect(legacyGuard).toBeLessThan(lifecycle.indexOf('knex.transaction'));
   });
 
   it('reconciles queued runtime receipts without exposing the ops token or reuploading', () => {
@@ -220,7 +234,7 @@ describe('requirement ingestion lifecycle', () => {
     const recordPublication = async (disposition: string) => {
       state.analysisStatus =
         disposition === 'APPLIED' ? 'GENERATION_APPLIED' : 'GENERATION_QUEUED';
-      state.releaseStatus = disposition === 'APPLIED' ? 'APPLIED' : 'PROMOTED';
+      state.releaseStatus = disposition === 'APPLIED' ? 'APPLIED' : 'QUEUED';
     };
 
     await expect(
@@ -240,7 +254,11 @@ describe('requirement ingestion lifecycle', () => {
       recordPublication,
     });
     expect(retry).toEqual(
-      expect.objectContaining({ attempted: true, completed: true }),
+      expect.objectContaining({
+        attempted: true,
+        completed: false,
+        successful: false,
+      }),
     );
 
     const replay = await ensureRequirementPublication({
@@ -250,7 +268,11 @@ describe('requirement ingestion lifecycle', () => {
       recordPublication,
     });
     expect(replay).toEqual(
-      expect.objectContaining({ attempted: false, completed: true }),
+      expect.objectContaining({
+        attempted: false,
+        completed: false,
+        successful: false,
+      }),
     );
     expect(attempts).toBe(2);
   });
@@ -270,7 +292,7 @@ describe('requirement ingestion lifecycle', () => {
       refreshExisting: true,
       state: {
         analysisStatus: 'GENERATION_QUEUED',
-        releaseStatus: 'PROMOTED',
+        releaseStatus: 'QUEUED',
       },
       publish: async () => ({ ok: true, payload: publication }),
       recordPublication: async (disposition, receipt) => {
@@ -298,7 +320,7 @@ describe('requirement ingestion lifecycle', () => {
     });
     expect(requirementPublicationPersistence('QUEUED')).toEqual(
       expect.objectContaining({
-        releaseStatus: 'PROMOTED',
+        releaseStatus: 'QUEUED',
         projectStatus: 'GENERATION_QUEUED',
         completeTasks: false,
         taskStatus: 'PLANNED',
@@ -351,7 +373,7 @@ describe('requirement ingestion lifecycle', () => {
     });
 
     expect(queued).toEqual(
-      expect.objectContaining({ disposition: 'QUEUED', successful: true }),
+      expect.objectContaining({ disposition: 'QUEUED', successful: false }),
     );
     expect(applied).toEqual(
       expect.objectContaining({ disposition: 'APPLIED', successful: true }),
@@ -491,7 +513,7 @@ describe('requirement ingestion lifecycle', () => {
       refreshExisting: true,
       state: {
         analysisStatus: 'GENERATION_QUEUED',
-        releaseStatus: 'PROMOTED',
+        releaseStatus: 'QUEUED',
       },
       publish: async () => ({ ok: true, payload: delayedQueued }),
       recordPublication: async () => 'APPLIED',
@@ -530,10 +552,10 @@ describe('requirement ingestion lifecycle', () => {
     expect(allowed('FAILED', 1, 'QUEUED', 1)).toBe(false);
     expect(allowed('REVIEW_REQUIRED', 1, 'QUEUED', 2, false)).toBe(false);
     expect(allowed('FAILED', 1, 'QUEUED', 2)).toBe(true);
-    expect(allowed('PROMOTED', 2, 'QUEUED', 2)).toBe(false);
-    expect(allowed('PROMOTED', 2, 'QUEUED', 3)).toBe(true);
-    expect(allowed('PROMOTED', 2, 'FAILED', 1)).toBe(false);
-    expect(allowed('PROMOTED', 2, 'FAILED', 2)).toBe(true);
+    expect(allowed('QUEUED', 2, 'QUEUED', 2)).toBe(false);
+    expect(allowed('QUEUED', 2, 'QUEUED', 3)).toBe(true);
+    expect(allowed('QUEUED', 2, 'FAILED', 1)).toBe(false);
+    expect(allowed('QUEUED', 2, 'FAILED', 2)).toBe(true);
     expect(allowed('FAILED', 2, 'APPLIED', 2)).toBe(true);
   });
 
@@ -582,7 +604,7 @@ describe('requirement ingestion lifecycle', () => {
         reconcileRequirementPublicationReceipt({
           state: {
             analysisStatus: 'GENERATION_QUEUED',
-            releaseStatus: 'PROMOTED',
+            releaseStatus: 'QUEUED',
           },
           readReceipt,
           persistReceipt,
@@ -617,7 +639,7 @@ describe('requirement ingestion lifecycle', () => {
     expect(persistReceipt).not.toHaveBeenCalled();
   });
 
-  it('does not downgrade a completed publication when auto promotion is off', async () => {
+  it('does not republish an already applied revision', async () => {
     let attempts = 0;
     const result = await ensureRequirementPublication({
       sourceImmediate: false,
@@ -628,10 +650,45 @@ describe('requirement ingestion lifecycle', () => {
       },
       recordPublication: async () => undefined,
     });
-
     expect(result).toEqual(
       expect.objectContaining({ attempted: false, completed: true }),
     );
     expect(attempts).toBe(0);
   });
+
+  it.each([false, undefined])(
+    'forces SOURCE immediate publication when sourceImmediate is %s',
+    async sourceImmediate => {
+      let attempts = 0;
+      const result = await ensureRequirementPublication({
+        sourceImmediate,
+        state: {
+          analysisStatus: 'DESIGN_VALIDATED',
+          releaseStatus: 'VALIDATED',
+        },
+        publish: async () => {
+          attempts += 1;
+          return {
+            ok: true,
+            payload: {
+              success: true,
+              releaseStatus: 'APPLIED',
+              applicationStatus: 'APPLIED',
+            },
+          };
+        },
+        recordPublication: async disposition => disposition,
+      });
+
+      expect(result).toEqual(
+        expect.objectContaining({
+          attempted: true,
+          completed: true,
+          successful: true,
+          disposition: 'APPLIED',
+        }),
+      );
+      expect(attempts).toBe(1);
+    },
+  );
 });

@@ -259,4 +259,33 @@ describe('actorProcessWorkspaces', () => {
     ]);
     expect(simulation.readinessPercent).toBe(100);
   });
+
+  it('does not count a staged job status as development readiness', () => {
+    const simulation = buildCustomerJourneySimulation(
+      [
+        {
+          processCode: 'PROCESS_A',
+          stepCode: 'STEP_A',
+          actorCode: 'ACTOR_A',
+          fromState: 'READY',
+          toState: 'DONE',
+          inputContract: '{}',
+          outputContract: '{}',
+          userPath: '/process/a',
+        },
+      ],
+      [{ processCode: 'PROCESS_A', caseType: 'HAPPY_PATH' }],
+      [{ processCode: 'PROCESS_A', stepCode: 'STEP_A' }],
+      [
+        {
+          processCode: 'PROCESS_A',
+          stepCode: 'STEP_A',
+          jobStatus: 'PROMOTED',
+        },
+      ],
+      [],
+    );
+
+    expect(simulation.journeySteps[0].developmentReady).toBe(false);
+  });
 });

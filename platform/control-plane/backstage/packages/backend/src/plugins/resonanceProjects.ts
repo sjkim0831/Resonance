@@ -32,6 +32,10 @@ import {
   buildSourceDesignAssetMutation,
   type DesignAssetSnapshot,
 } from './designAssetSourceImmediate';
+import {
+  bootstrapProjectDesignRoles,
+  validateProjectDesignRoleAssignments,
+} from './projectDesignRoles';
 
 type ProjectInput = {
   projectId?: string;
@@ -644,24 +648,45 @@ export default createBackendPlugin({
           );
         }
 
-        const resolveDesignAssetAccess = async (
+        const resolveAuthenticatedProjectIdentity = async (
           request: Request,
-          projectId: string,
         ) => {
           const credentials = await httpAuth.credentials(request, {
             allow: ['user'],
           });
           const user = await userInfo.getUserInfo(credentials);
-          const principals = [user.userEntityRef, ...user.ownershipEntityRefs];
+          const assignments = bootstrapProjectDesignRoles([
+            user.userEntityRef,
+            ...user.ownershipEntityRefs,
+          ]);
+          const principals = [
+            ...new Set(assignments.map(item => item.principalRef)),
+          ];
+          if (!principals.length) {
+            const error = new Error(
+              'authenticated project owner principal is invalid',
+            ) as Error & { statusCode?: number };
+            error.statusCode = 403;
+            throw error;
+          }
+          return {
+            actorRef: String(user.userEntityRef).trim().toLowerCase(),
+            principals,
+          };
+        };
+        const resolveDesignAssetAccess = async (
+          request: Request,
+          projectId: string,
+        ) => {
+          const identity = await resolveAuthenticatedProjectIdentity(request);
           const assignments = await knex(
             'resonance_projects__design_asset_role_assignment',
           )
             .where({ project_id: projectId, active: true })
-            .whereIn('principal_ref', principals)
+            .whereIn('principal_ref', identity.principals)
             .select('role_code');
           return {
-            actorRef: user.userEntityRef,
-            principals,
+            ...identity,
             roles: assignments.map(row => String(row.role_code)),
           };
         };
@@ -1189,6 +1214,7 @@ export default createBackendPlugin({
                 .json({ message: 'control-plane bridge token is missing' });
               return;
             }
+            const runtimeIdentity = await resolveRuntimeAccount(request);
             const runtimeResponse = await fetch(
               `${runtimeBaseUrl}/api/internal/actor-process/design-documents`,
               {
@@ -1197,7 +1223,8 @@ export default createBackendPlugin({
                   accept: 'application/json',
                   'content-type': 'application/json',
                   'x-resonance-token': bridgeToken,
-                  'x-resonance-actor': 'BACKSTAGE_CONTROL_PLANE',
+                  'x-resonance-actor': runtimeIdentity.userEntityRef,
+                  'x-resonance-account': runtimeIdentity.accountId,
                 },
                 body: JSON.stringify(request.body ?? {}),
               },
@@ -1511,6 +1538,111 @@ export default createBackendPlugin({
                 details: row.details,
                 createdAt: row.created_at,
               })),
+            });
+          },
+        );
+        router.get(
+          '/:projectId/design-role-assignments',
+          async (request, response) => {
+            const projectId = normalizeProjectId(request.params.projectId);
+            await requireDesignAssetRole(request, projectId, 'DESIGN_AUDITOR');
+            const assignments = await knex(
+              'resonance_projects__design_asset_role_assignment',
+            )
+              .where({ project_id: projectId, active: true })
+              .select('principal_ref', 'role_code', 'created_at')
+              .orderBy(['principal_ref', 'role_code']);
+            response.json({
+              projectId,
+              assignments: assignments.map(row => ({
+                principalRef: row.principal_ref,
+                roleCode: row.role_code,
+                createdAt: row.created_at,
+              })),
+            });
+          },
+        );
+        router.put(
+          '/:projectId/design-role-assignments',
+          async (request, response) => {
+            const projectId = normalizeProjectId(request.params.projectId);
+            const access = await requireDesignAssetRole(
+              request,
+              projectId,
+              'DESIGN_APPROVER',
+            );
+            let assignments: ReturnType<
+              typeof validateProjectDesignRoleAssignments
+            >;
+            try {
+              assignments = validateProjectDesignRoleAssignments(
+                request.body?.assignments,
+              );
+            } catch (error) {
+              response.status(422).json({
+                success: false,
+                message: error instanceof Error ? error.message : String(error),
+              });
+              return;
+            }
+            const now = new Date();
+            const replaced = await knex.transaction(async transaction => {
+              const authority = await transaction(
+                'resonance_projects__design_asset_role_assignment',
+              )
+                .where({
+                  project_id: projectId,
+                  role_code: 'DESIGN_APPROVER',
+                  active: true,
+                })
+                .whereIn('principal_ref', access.principals)
+                .forUpdate()
+                .first();
+              if (!authority) return false;
+              await transaction(
+                'resonance_projects__design_asset_role_assignment',
+              )
+                .where({ project_id: projectId, active: true })
+                .update({ active: false });
+              for (const assignment of assignments) {
+                await transaction(
+                  'resonance_projects__design_asset_role_assignment',
+                )
+                  .insert({
+                    project_id: projectId,
+                    principal_ref: assignment.principalRef,
+                    role_code: assignment.roleCode,
+                    active: true,
+                    created_at: now,
+                  })
+                  .onConflict(['project_id', 'principal_ref', 'role_code'])
+                  .merge({ active: true });
+              }
+              await transaction(
+                'resonance_projects__design_asset_audit',
+              ).insert({
+                project_id: projectId,
+                draft_id: null,
+                action_code: 'DESIGN_ROLE_ASSIGNMENTS_REPLACED',
+                actor_ref: access.actorRef,
+                details: JSON.stringify({
+                  assignmentCount: assignments.length,
+                }),
+                created_at: now,
+              });
+              return true;
+            });
+            if (!replaced) {
+              response.status(403).json({
+                success: false,
+                message: 'DESIGN_APPROVER authority changed; retry is denied',
+              });
+              return;
+            }
+            response.json({
+              success: true,
+              projectId,
+              assignmentCount: assignments.length,
             });
           },
         );
@@ -2686,6 +2818,17 @@ export default createBackendPlugin({
           '/:projectId/requirements/automate',
           async (request, response) => {
             const projectId = normalizeProjectId(request.params.projectId);
+            if (
+              request.body &&
+              Object.prototype.hasOwnProperty.call(request.body, 'autoPromote')
+            ) {
+              response.status(422).json({
+                success: false,
+                message:
+                  'autoPromote is retired; SOURCE_IMMEDIATE_V1 is always active',
+              });
+              return;
+            }
             const project = await knex('resonance_projects__project')
               .where({ project_id: projectId })
               .first();
@@ -2913,15 +3056,13 @@ export default createBackendPlugin({
               });
               return;
             }
-            const sourceImmediate =
-              request.body?.sourceImmediate === true ||
-              request.body?.autoPromote === true;
+            const sourceImmediate = true;
             const bridgeToken = String(process.env.RESONANCE_OPS_TOKEN ?? '');
             const publicationComplete = requirementPublicationComplete({
               analysisStatus: persistence.analysisStatus,
               releaseStatus: persistence.releaseStatus,
             });
-            if (sourceImmediate && !publicationComplete && !bridgeToken) {
+            if (!publicationComplete && !bridgeToken) {
               response.status(503).json({
                 success: false,
                 projectId,
@@ -3024,16 +3165,14 @@ export default createBackendPlugin({
                     finalDisposition,
                 )
               : undefined;
+            let responseStatus = 200;
+            if (terminalFailure) responseStatus = 409;
+            else if (finalDisposition !== 'APPLIED') responseStatus = 202;
+            else if (persistence.kind === 'CREATED') responseStatus = 201;
             response
-              .status(
-                terminalFailure
-                  ? 409
-                  : persistence.kind === 'CREATED'
-                  ? 201
-                  : 200,
-              )
+              .status(responseStatus)
               .json({
-                success: !terminalFailure,
+                success: finalDisposition === 'APPLIED',
                 message: terminalMessage,
                 idempotent: persistence.kind === 'EXISTING',
                 publicationRetried:
@@ -3093,8 +3232,7 @@ export default createBackendPlugin({
             const query = knex('resonance_projects__design_release').where({
               project_id: projectId,
             });
-            if (!preview)
-              query.whereIn('release_status', ['PROMOTED', 'APPLIED']);
+            if (!preview) query.where('release_status', 'APPLIED');
             const release = await query
               .orderBy('design_version', 'desc')
               .first();
@@ -3159,6 +3297,12 @@ export default createBackendPlugin({
             });
             return;
           }
+          const ownerIdentity = await resolveAuthenticatedProjectIdentity(
+            request,
+          );
+          const ownerAssignments = bootstrapProjectDesignRoles(
+            ownerIdentity.principals,
+          );
           const exists = await knex('resonance_projects__project')
             .where({ project_id: projectId })
             .first();
@@ -3198,6 +3342,28 @@ export default createBackendPlugin({
               created_at: now,
               updated_at: now,
             });
+            await transaction(
+              'resonance_projects__design_asset_role_assignment',
+            ).insert(
+              ownerAssignments.map(assignment => ({
+                project_id: projectId,
+                principal_ref: assignment.principalRef,
+                role_code: assignment.roleCode,
+                active: true,
+                created_at: now,
+              })),
+            );
+            await transaction('resonance_projects__design_asset_audit').insert({
+              project_id: projectId,
+              draft_id: null,
+              action_code: 'PROJECT_DESIGN_ROLES_BOOTSTRAPPED',
+              actor_ref: ownerIdentity.actorRef,
+              details: JSON.stringify({
+                principalCount: ownerIdentity.principals.length,
+                assignmentCount: ownerAssignments.length,
+              }),
+              created_at: now,
+            });
           });
           logger.info(`Registered project ${projectId}`);
           const saved = await knex('resonance_projects__project')
@@ -3207,6 +3373,7 @@ export default createBackendPlugin({
             success: true,
             project: saved,
             taskStatus: 'PLANNED',
+            designRoleAssignmentCount: ownerAssignments.length,
           });
         });
 
