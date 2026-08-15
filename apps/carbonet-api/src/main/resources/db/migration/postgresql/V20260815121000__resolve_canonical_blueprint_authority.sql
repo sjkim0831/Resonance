@@ -912,7 +912,13 @@ BEGIN
     FROM scoped;
 
   BEGIN
-    design_catalog:=public.framework_canonical_design_catalog(5000);
+    IF requested_process IS NULL THEN
+      design_catalog:=public.framework_canonical_design_catalog(5000);
+    ELSE
+      design_catalog:=public.framework_source_canonical_design_catalog(
+        5000,requested_process
+      );
+    END IF;
   EXCEPTION WHEN SQLSTATE 'P0002' OR SQLSTATE 'P0003' THEN
     design_catalog:=jsonb_build_object(
       'schema','carbonet.canonical-design/v1','catalogHash',NULL,
@@ -1054,7 +1060,98 @@ $$;
 
 COMMENT ON FUNCTION public.framework_source_canonical_endpoint_readiness(
   integer,varchar
-) IS 'Endpoint gate over logical screen identities with exact professional-contract duplicate authority';
+) IS 'Endpoint gate over logical screen identities; process scope compiles and collision-checks only that process while global scope remains fail-closed';
+
+-- Keep the generator catalog on the same scope used by readiness.  Otherwise
+-- a process can pass its scoped gate and then be blocked while the catalog
+-- recompiles an unrelated ambiguous process through the global overload.
+CREATE OR REPLACE FUNCTION public.framework_source_canonical_endpoint_catalog(
+  requested_limit integer, requested_process varchar
+) RETURNS jsonb
+LANGUAGE plpgsql
+STABLE
+SECURITY INVOKER
+SET search_path = pg_catalog, public
+AS $$
+DECLARE
+  readiness jsonb;
+  design_catalog jsonb;
+  compiled_count integer;
+  endpoints jsonb;
+  catalog_hash text;
+BEGIN
+  readiness:=public.framework_canonical_endpoint_readiness(
+    requested_limit,requested_process
+  );
+  IF readiness->>'status'<>'COMPLETE' THEN
+    RAISE EXCEPTION 'canonical endpoint readiness is % (total=%, ready=%, blockers=%)',
+      readiness->>'status',readiness->>'totalCount',
+      readiness->>'sourceReadyCount',readiness->>'blockerCount'
+      USING ERRCODE='P0002',DETAIL=readiness::text;
+  END IF;
+  IF requested_process IS NULL THEN
+    design_catalog:=public.framework_canonical_design_catalog(5000);
+  ELSE
+    design_catalog:=public.framework_source_canonical_design_catalog(
+      5000,requested_process
+    );
+  END IF;
+  WITH source AS MATERIALIZED (
+    SELECT ordinal,screen,
+           public.framework_canonical_endpoint_diagnostic(screen) diagnostic
+      FROM jsonb_array_elements(design_catalog->'screens')
+           WITH ORDINALITY source(screen,ordinal)
+     WHERE requested_process IS NULL
+        OR screen->>'processCode'=requested_process
+  ), contract_rows AS MATERIALIZED (
+    SELECT ordinal,screen,
+           jsonb_build_object(
+             'screenKey',screen->>'screenKey',
+             'routePath',screen->>'routePath',
+             'audience',screen->>'audience',
+             'source',jsonb_build_object(
+               'schema','carbonet.canonical-design/v1',
+               'designHash',screen->>'designHash'),
+             'operations',jsonb_build_array(diagnostic->'operation')
+           ) endpoint_contract
+      FROM source
+  ), text_rows AS MATERIALIZED (
+    SELECT *,endpoint_contract::text endpoint_text FROM contract_rows
+  ), endpoint_rows AS MATERIALIZED (
+    SELECT *,encode(sha256(convert_to(endpoint_text,'UTF8')),'hex') endpoint_hash
+      FROM text_rows
+  )
+  SELECT count(*)::integer,
+         jsonb_agg(jsonb_build_object(
+           'screenKey',screen->>'screenKey',
+           'routePath',screen->>'routePath',
+           'audience',screen->>'audience',
+           'designHash',screen->>'designHash',
+           'canonicalText',screen->>'canonicalText',
+           'endpointHash',endpoint_hash,
+           'endpointText',endpoint_text,
+           'endpointContract',endpoint_contract
+         ) ORDER BY ordinal),
+         encode(sha256(convert_to(string_agg(
+           (screen->>'screenKey')||E'\\x1f'||endpoint_hash,E'\\n'
+           ORDER BY ordinal
+         ),'UTF8')),'hex')
+    INTO compiled_count,endpoints,catalog_hash
+    FROM endpoint_rows;
+  IF compiled_count<>(readiness->>'totalCount')::integer THEN
+    RAISE EXCEPTION 'endpoint compiler produced % of % ready screens',
+      compiled_count,readiness->>'totalCount' USING ERRCODE='55000';
+  END IF;
+  RETURN jsonb_build_object(
+    'schema','carbonet.canonical-endpoint-catalog/v1',
+    'catalogHash',catalog_hash,'endpoints',endpoints
+  );
+END
+$$;
+
+COMMENT ON FUNCTION public.framework_source_canonical_endpoint_catalog(
+  integer,varchar
+) IS 'SOURCE endpoint generator catalog uses process-local logical authority when a process is requested and global fail-closed authority otherwise';
 
 REVOKE ALL ON FUNCTION public.framework_canonical_blueprint_authority(
   varchar,varchar,varchar,varchar,bigint

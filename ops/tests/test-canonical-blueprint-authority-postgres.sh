@@ -21,6 +21,26 @@ fail() { printf 'CANONICAL_BLUEPRINT_AUTHORITY_FAIL %s\n' "$*" >&2; exit 1; }
 for file in "$BASE" "$ENDPOINT" "$PROJECTION" "$AUTHORITY"; do
   [[ -f "$file" ]] || fail "missing $file"
 done
+python3 - "$AUTHORITY" <<'PY'
+import re
+import sys
+
+source = open(sys.argv[1], encoding="utf-8").read()
+public_two_arg = re.compile(
+    r"CREATE\s+OR\s+REPLACE\s+FUNCTION\s+public\.framework_canonical_endpoint_catalog"
+    r"\s*\(\s*requested_limit\s+integer\s*,\s*requested_process\s+varchar",
+    re.IGNORECASE,
+)
+source_two_arg = re.compile(
+    r"CREATE\s+OR\s+REPLACE\s+FUNCTION\s+public\.framework_source_canonical_endpoint_catalog"
+    r"\s*\(\s*requested_limit\s+integer\s*,\s*requested_process\s+varchar",
+    re.IGNORECASE,
+)
+if public_two_arg.search(source):
+    raise SystemExit("authority migration replaced ACTIVE-aware public endpoint wrapper")
+if not source_two_arg.search(source):
+    raise SystemExit("authority migration omitted process-aware SOURCE endpoint catalog")
+PY
 
 # Start an unprivileged, disposable PostgreSQL 16 cluster.  This keeps the
 # authority mutant hermetic and avoids depending on Docker, sudo or a shared DB.
@@ -276,6 +296,38 @@ RESET ROLE;
 -- A process-local SOURCE compile must not inspect an unrelated ambiguous
 -- process. A remains exact while B and the intentionally global catalog fail.
 SELECT test_add_screens(1001,1001);
+-- Java operation/artifact/route identities are collision-safe within one
+-- generated process tree. Deliberately reuse A's Java names in B: each process
+-- must remain independently publishable while the global catalog stays closed.
+UPDATE framework_professional_screen_contract
+   SET api_contract=test_endpoint_api(
+         1,process_code,step_code,actor_code,'SUBMIT_B')
+ WHERE process_code='PROC_B' AND route_path='/screen/1001';
+DO $$
+DECLARE readiness_a jsonb:=framework_canonical_endpoint_readiness(10,'PROC_A');
+DECLARE readiness_b jsonb:=framework_canonical_endpoint_readiness(10,'PROC_B');
+DECLARE readiness_global jsonb:=framework_canonical_endpoint_readiness(
+  10,NULL::varchar);
+DECLARE endpoint_a jsonb:=framework_canonical_endpoint_catalog(10,'PROC_A');
+DECLARE endpoint_b jsonb:=framework_canonical_endpoint_catalog(10,'PROC_B');
+DECLARE denied_global boolean:=false;
+BEGIN
+ BEGIN PERFORM framework_canonical_endpoint_catalog(10,NULL::varchar);
+ EXCEPTION WHEN SQLSTATE 'P0002' THEN denied_global:=true; END;
+ IF readiness_a->>'status'<>'COMPLETE'
+    OR readiness_b->>'status'<>'COMPLETE'
+    OR readiness_global->>'status'<>'PARTIAL'
+    OR (readiness_global->>'globalCollisionCount')::integer<2
+    OR jsonb_array_length(endpoint_a->'endpoints')<>1
+    OR jsonb_array_length(endpoint_b->'endpoints')<>1
+    OR NOT denied_global
+ THEN
+   RAISE EXCEPTION
+     'process-local Java collision scope mismatch: A=% B=% global=% denied=%',
+     readiness_a,readiness_b,readiness_global,denied_global;
+ END IF;
+END
+$$;
 INSERT INTO framework_screen_blueprint(
  blueprint_code,process_code,step_code,actor_code,audience,page_id,page_name,
  route_path,screen_type,template_code,specification_json,traceability_json,
@@ -288,25 +340,51 @@ SELECT 'SCREEN_B_AMBIGUOUS',process_code,step_code,actor_code,audience,
  WHERE blueprint_code='SCREEN_1001';
 DO $$
 DECLARE process_a jsonb;
+DECLARE readiness_a jsonb;
+DECLARE endpoint_a jsonb;
+DECLARE readiness_b jsonb;
+DECLARE readiness_global jsonb;
 DECLARE denied_b boolean:=false;
 DECLARE denied_global boolean:=false;
+DECLARE denied_endpoint_b boolean:=false;
+DECLARE denied_endpoint_global boolean:=false;
 DECLARE source_definition text;
 BEGIN
  process_a:=framework_canonical_design_catalog(10,'PROC_A');
+ readiness_a:=framework_canonical_endpoint_readiness(10,'PROC_A');
+ endpoint_a:=framework_canonical_endpoint_catalog(10,'PROC_A');
+ readiness_b:=framework_canonical_endpoint_readiness(10,'PROC_B');
+ readiness_global:=framework_canonical_endpoint_readiness(10,NULL::varchar);
  BEGIN PERFORM framework_canonical_design_catalog(10,'PROC_B');
  EXCEPTION WHEN SQLSTATE 'P0003' THEN denied_b:=true; END;
  BEGIN PERFORM framework_canonical_design_catalog(10);
  EXCEPTION WHEN SQLSTATE 'P0003' THEN denied_global:=true; END;
+ BEGIN PERFORM framework_canonical_endpoint_catalog(10,'PROC_B');
+ EXCEPTION WHEN SQLSTATE 'P0002' OR SQLSTATE 'P0003'
+   THEN denied_endpoint_b:=true; END;
+ BEGIN PERFORM framework_canonical_endpoint_catalog(10,NULL::varchar);
+ EXCEPTION WHEN SQLSTATE 'P0002' OR SQLSTATE 'P0003'
+   THEN denied_endpoint_global:=true; END;
  SELECT pg_get_functiondef(
           'public.framework_source_canonical_design_catalog(integer,character varying)'::regprocedure
         ) INTO source_definition;
  IF process_a->>'screenCount'<>'1'
     OR process_a#>>'{screens,0,screenKey}'<>'PROC_A|STEP_A|USER|/screen/1'
+    OR readiness_a->>'status'<>'COMPLETE'
+    OR readiness_a->>'sourceReadyCount'<>'1'
+    OR jsonb_array_length(endpoint_a->'endpoints')<>1
+    OR endpoint_a#>>'{endpoints,0,screenKey}'<>'PROC_A|STEP_A|USER|/screen/1'
+    OR readiness_b->>'status'<>'PARTIAL'
+    OR readiness_b#>>'{reasonCounts,DESIGN_BLUEPRINT_DUPLICATE}'<>'1'
+    OR readiness_global->>'status'<>'PARTIAL'
     OR NOT denied_b OR NOT denied_global
+    OR NOT denied_endpoint_b OR NOT denied_endpoint_global
     OR strpos(source_definition,'framework_canonical_design_catalog(5000)')>0
  THEN
-   RAISE EXCEPTION 'process isolation mismatch: A=% Bdenied=% globalDenied=%',
-     process_a,denied_b,denied_global;
+   RAISE EXCEPTION
+     'process isolation mismatch: designA=% readyA=% endpointA=% readyB=% readyGlobal=% Bdenied=% globalDenied=% endpointB=% endpointGlobal=%',
+     process_a,readiness_a,endpoint_a,readiness_b,readiness_global,
+     denied_b,denied_global,denied_endpoint_b,denied_endpoint_global;
  END IF;
 END
 $$;
@@ -465,4 +543,4 @@ $$;
 SQL
 
 elapsed_ms=$(( ($(date +%s%N)-started_ns)/1000000 ))
-printf 'CANONICAL_BLUEPRINT_AUTHORITY_OK cases=7 physical=1430 logical=1396 elapsedMs=%s\n' "$elapsed_ms"
+printf 'CANONICAL_BLUEPRINT_AUTHORITY_OK cases=8 physical=1430 logical=1396 elapsedMs=%s\n' "$elapsed_ms"
