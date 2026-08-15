@@ -572,7 +572,7 @@ finalize_canonical_generation() {
 -- CANONICAL_FINALIZE_AFTER_PUSH_DEPLOY_HEALTH
 begin;
 do \$finalize\$
-declare changed integer; current_source text;
+declare changed integer; current_source text; current_design text; current_design_set text; job_spec jsonb;
 begin
   select source_hash into current_source
   from framework_step_execution_spec
@@ -582,6 +582,55 @@ begin
   for update;
   if current_source is distinct from \$source\$${source_hash}\$source\$ then
     raise exception 'STALE_CANONICAL_SOURCE_HASH';
+  end if;
+  select framework_try_jsonb(specification_json) into job_spec
+  from framework_development_job where job_id=${job_id} for update;
+  if job_spec ? 'designHash' then
+    if job_spec->>'sourceHash' is distinct from \$source\$${source_hash}\$source\$ then
+      raise exception 'STALE_CANONICAL_JOB_SOURCE_HASH';
+    end if;
+    select framework_canonical_screen_bundle(
+      \$process\$${process_code}\$process\$,\$step\$${step_code}\$step\$,
+      job_spec->>'audience',job_spec->>'routePath')->>'designHash'
+      into current_design;
+    if current_design is distinct from job_spec->>'designHash' then
+      raise exception 'STALE_CANONICAL_DESIGN_HASH';
+    end if;
+    with blueprint_candidates as materialized (
+      select b.process_code,b.step_code,upper(b.audience) audience,
+             lower(split_part(b.route_path,'?',1)) route_path,b.blueprint_id,c.contract_id,
+             (b.transition_status='CONTRACT_LINKED' and lower(b.source_reference) in(
+               'framework_professional_screen_contract:'||c.contract_id,
+               'professional_screen_contract:'||c.contract_id)) explicit_link,
+             count(*) over(partition by c.contract_id) candidate_count,
+             count(*) filter(where b.transition_status='CONTRACT_LINKED'
+               and lower(b.source_reference) in(
+                 'framework_professional_screen_contract:'||c.contract_id,
+                 'professional_screen_contract:'||c.contract_id))
+               over(partition by c.contract_id) explicit_count
+      from framework_screen_blueprint b
+      join framework_professional_screen_contract c
+        on c.process_code=b.process_code and c.step_code=b.step_code
+       and upper(c.audience)=upper(b.audience)
+       and lower(split_part(c.route_path,'?',1))=lower(split_part(b.route_path,'?',1))
+      where b.process_code=\$process\$${process_code}\$process\$
+        and b.step_code=\$step\$${step_code}\$step\$ and b.validation_status='VALID'
+    ), exact_identity as (
+      select process_code,step_code,audience,route_path,
+             upper(process_code)||'|'||upper(step_code)||'|'||audience||'|'||route_path screen_key
+        from blueprint_candidates
+       where (explicit_count=1 and explicit_link)
+          or (explicit_count=0 and candidate_count=1)
+       group by process_code,step_code,audience,route_path
+      having count(distinct blueprint_id)=1 and count(distinct contract_id)=1
+    )
+    select encode(sha256(convert_to(string_agg(screen_key||E'\\x1f'||
+      (framework_canonical_screen_bundle(process_code,step_code,audience,route_path)->>'designHash'),
+      E'\\n' order by screen_key),'UTF8')),'hex') into current_design_set
+    from exact_identity;
+    if current_design_set is distinct from job_spec->>'designSetHash' then
+      raise exception 'STALE_CANONICAL_DESIGN_SET_HASH';
+    end if;
   end if;
 
   if exists (select 1 from framework_development_job where job_id=${job_id} and job_status in ('VERIFIED','COMPLETED')) then
@@ -910,6 +959,64 @@ if [[ -d "$frontend_root/node_modules" && -d "$frontend_worktree" && ! -e "$fron
 fi
 
 SPEC="$(printf '%s' "$SPEC_B64" | base64 -d)"
+
+canonical_job_head_is_current() {
+  jq -e '
+    (.sourceHash|type=="string" and test("^(?:[0-9a-f]{32}|[0-9a-f]{64})$")) and
+    (.designHash|type=="string" and test("^[0-9a-f]{64}$")) and
+    (.routePath|type=="string" and startswith("/")) and
+    (.audience=="USER" or .audience=="ADMIN")
+  ' <<<"$SPEC" >/dev/null 2>&1 || return 1
+  [[ "$(psqlq -c "
+    with job as materialized (
+      select j.*,framework_try_jsonb(j.specification_json) spec
+      from framework_development_job j where j.job_id=${JOB_ID}
+    ), blueprint_candidates as materialized (
+      select b.process_code,b.step_code,upper(b.audience) audience,
+             lower(split_part(b.route_path,'?',1)) route_path,b.blueprint_id,c.contract_id,
+             (b.transition_status='CONTRACT_LINKED' and lower(b.source_reference) in(
+               'framework_professional_screen_contract:'||c.contract_id,
+               'professional_screen_contract:'||c.contract_id)) explicit_link,
+             count(*) over(partition by c.contract_id) candidate_count,
+             count(*) filter(where b.transition_status='CONTRACT_LINKED'
+               and lower(b.source_reference) in(
+                 'framework_professional_screen_contract:'||c.contract_id,
+                 'professional_screen_contract:'||c.contract_id))
+               over(partition by c.contract_id) explicit_count
+      from framework_screen_blueprint b join framework_professional_screen_contract c
+        on c.process_code=b.process_code and c.step_code=b.step_code
+       and upper(c.audience)=upper(b.audience)
+       and lower(split_part(c.route_path,'?',1))=lower(split_part(b.route_path,'?',1))
+      join job j on j.process_code=b.process_code and j.step_code=b.step_code
+      where b.validation_status='VALID'
+    ), exact_identity as (
+      select process_code,step_code,audience,route_path,
+             upper(process_code)||'|'||upper(step_code)||'|'||audience||'|'||route_path screen_key
+        from blueprint_candidates
+       where (explicit_count=1 and explicit_link)
+          or (explicit_count=0 and candidate_count=1)
+       group by process_code,step_code,audience,route_path
+      having count(distinct blueprint_id)=1 and count(distinct contract_id)=1
+    ), digest as (
+      select encode(sha256(convert_to(string_agg(screen_key||E'\\x1f'||
+        (framework_canonical_screen_bundle(process_code,step_code,audience,route_path)->>'designHash'),
+        E'\\n' order by screen_key),'UTF8')),'hex') design_set_hash from exact_identity
+    )
+    select count(*) from job j
+    join framework_step_execution_spec s using(process_code,step_code),digest
+    where j.job_id=${JOB_ID}
+      and s.source_hash=j.spec->>'sourceHash'
+      and framework_canonical_screen_bundle(
+        j.process_code,j.step_code,j.spec->>'audience',j.spec->>'routePath')->>'designHash'
+          =j.spec->>'designHash'
+      and digest.design_set_hash=j.spec->>'designSetHash';")" == "1" ]]
+}
+
+if [[ "$JOB_TYPE" =~ ^FULL_STACK(_GENERATION)?$ ]] && jq -e 'has("designHash")' <<<"$SPEC" >/dev/null 2>&1; then
+  canonical_job_head_is_current || fail_job "STALE_CANONICAL_JOB_HEAD"
+  gate_result "CANONICAL_JOB_HEAD" "PASSED" \
+    "{\"sourceHash\":\"$(jq -r '.sourceHash' <<<"$SPEC")\",\"designHash\":\"$(jq -r '.designHash' <<<"$SPEC")\"}"
+fi
 
 # Jobs created before requirement_text became part of every generated
 # specification can still be valid approved work. Resolve the missing value
@@ -1504,6 +1611,9 @@ RESULT_COMMIT="$(git -C "$WT" rev-parse HEAD)"
 publish_succeeded=0
 CANONICAL_DEPLOY_STARTED_EPOCH_SECONDS=""
 if [[ "$CANONICAL_PUBLICATION_ACTIVE" = 1 ]]; then
+  if jq -e 'has("designHash")' <<<"$SPEC" >/dev/null 2>&1; then
+    canonical_job_head_is_current || fail_job "STALE_CANONICAL_JOB_HEAD_BEFORE_PUBLISH"
+  fi
   CANONICAL_DEPLOY_STARTED_EPOCH_SECONDS="$(date +%s)"
 fi
 for publish_attempt in 1 2 3; do

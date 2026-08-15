@@ -211,6 +211,7 @@ dependencies {
     // that hierarchy, so the repository API must also exist on the isolated
     // test runtime classpath even though production wiring remains compileOnly.
     testImplementation("org.springframework.data:spring-data-jpa")
+    testRuntimeOnly("org.postgresql:postgresql:42.7.3")
 }
 
 // Keep isolated contract tests on the application's Logback bridge. Some

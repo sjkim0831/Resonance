@@ -558,11 +558,54 @@ public class ActorProcessGovernanceService {
         List<Map<String,Object>> tests=jdbc.queryForList("select distinct b.process_code as \"processCode\",b.step_code as \"stepCode\",t.case_code as \"caseCode\",t.case_name as \"caseName\",t.case_type as \"caseType\",t.case_status as \"caseStatus\" from framework_process_step_screen_binding b join framework_step_test_binding x on x.process_code=b.process_code and x.step_code=b.step_code join framework_simulation_case t on t.case_code=x.case_code where b.screen_resource_id=? and b.binding_status='ACTIVE' order by b.process_code,b.step_code,t.case_type,t.case_code",screenId);
         List<Map<String,Object>> contracts=jdbc.queryForList("select contract_id as \"contractId\",process_code as \"processCode\",step_code as \"stepCode\",audience,route_path as \"routePath\",screen_name as \"screenName\",actor_code as \"actorCode\",business_purpose as \"businessPurpose\",entry_condition as \"entryCondition\",exit_condition as \"exitCondition\",kpi_contract as \"kpiContract\",section_contract as \"sectionContract\",field_contract as \"fieldContract\",command_contract as \"commandContract\",state_contract as \"stateContract\",api_contract as \"apiContract\",data_contract as \"dataContract\",evidence_contract as \"evidenceContract\",responsive_contract as \"responsiveContract\",accessibility_contract as \"accessibilityContract\",security_contract as \"securityContract\",api_verified as \"apiVerified\",database_verified as \"databaseVerified\",authority_verified as \"authorityVerified\",responsive_verified as \"responsiveVerified\",accessibility_verified as \"accessibilityVerified\",exception_states_verified as \"exceptionStatesVerified\",audit_evidence_ref as \"auditEvidenceRef\",contract_status as \"contractStatus\" from framework_professional_screen_contract where lower(split_part(route_path,'?',1))=(select route_key from framework_screen_resource where screen_resource_id=?) order by process_code,step_code,audience,contract_id",screenId);
         List<Map<String,Object>> assets=jdbc.queryForList("select a.asset_layer as \"assetLayer\",a.asset_ref as \"assetRef\",a.management_route as \"managementRoute\",a.decision,a.evidence_ref as \"evidenceRef\",a.protected as \"protected\" from framework_screen_asset_assembly a join framework_professional_screen_contract c using(contract_id) where lower(split_part(c.route_path,'?',1))=(select route_key from framework_screen_resource where screen_resource_id=?) order by a.asset_layer,a.asset_ref",screenId);
-        List<Map<String,Object>> blueprints=jdbc.queryForList("select blueprint_id as \"blueprintId\",blueprint_code as \"blueprintCode\",process_code as \"processCode\",step_code as \"stepCode\",audience,screen_type as \"screenType\",template_code as \"templateCode\",validation_status as \"validationStatus\",validation_message as \"validationMessage\" from framework_screen_blueprint where lower(split_part(route_path,'?',1))=(select route_key from framework_screen_resource where screen_resource_id=?) order by process_code,step_code,audience,blueprint_id",screenId);
+        List<Map<String,Object>> blueprints=jdbc.queryForList("""
+            with candidates as materialized (
+              select b.blueprint_id,c.contract_id,
+                     (b.transition_status='CONTRACT_LINKED' and lower(b.source_reference) in(
+                       'framework_professional_screen_contract:'||c.contract_id,
+                       'professional_screen_contract:'||c.contract_id)) explicit_link,
+                     count(*) over(partition by c.contract_id) candidate_count,
+                     count(*) filter(where b.transition_status='CONTRACT_LINKED'
+                       and lower(b.source_reference) in(
+                         'framework_professional_screen_contract:'||c.contract_id,
+                         'professional_screen_contract:'||c.contract_id))
+                       over(partition by c.contract_id) explicit_count
+                from framework_professional_screen_contract c
+                join framework_screen_blueprint b
+                  on b.process_code=c.process_code and b.step_code=c.step_code
+                 and upper(b.audience)=upper(c.audience)
+                 and lower(split_part(b.route_path,'?',1))=lower(split_part(c.route_path,'?',1))
+               where b.validation_status='VALID'
+                 and lower(split_part(b.route_path,'?',1))=
+                   (select route_key from framework_screen_resource where screen_resource_id=?)
+            ), authority as materialized (
+              select blueprint_id,contract_id from candidates
+               where (explicit_count=1 and explicit_link)
+                  or (explicit_count=0 and candidate_count=1)
+            )
+            select b.blueprint_id as "blueprintId",b.blueprint_code as "blueprintCode",
+                   c.contract_id as "contractId",b.process_code as "processCode",
+                   b.step_code as "stepCode",b.audience,b.screen_type as "screenType",
+                   b.template_code as "templateCode",b.specification_json as "specificationJson",
+                   coalesce(nullif(framework_try_jsonb(b.specification_json)->>'layout',''),
+                     (select min(r.layout_type) from framework_screen_resource r
+                       where r.route_key=lower(split_part(b.route_path,'?',1)) having count(*)=1)) as "layout",
+                   coalesce(nullif(framework_try_jsonb(b.specification_json)->>'theme',''),
+                     'KRDS_GOV_DEFAULT') as "theme",
+                   b.validation_status as "validationStatus",b.validation_message as "validationMessage"
+              from authority selected
+              join framework_screen_blueprint b using(blueprint_id)
+              join framework_professional_screen_contract c using(contract_id)
+             order by b.process_code,b.step_code,b.audience,b.blueprint_id
+            """,screenId);
+        List<Map<String,Object>> registeredLayouts=jdbc.queryForList(
+            "select distinct layout_type as code from framework_screen_resource where nullif(btrim(layout_type),'') is not null order by layout_type");
+        List<Map<String,Object>> registeredThemes=jdbc.queryForList(
+            "select theme_id as code from comtnthemedefinition where use_at='Y' and is_active='Y' order by theme_id");
         Map<String,Object> designGate=jdbc.queryForMap("select design_gate_status as \"status\",design_gate_score as \"score\",design_gate_issues as \"issues\",actor_passed as \"actorPassed\",process_passed as \"processPassed\",contract_passed as \"contractPassed\",lineage_passed as \"lineagePassed\",transition_passed as \"transitionPassed\",authority_passed as \"authorityPassed\",version_passed as \"versionPassed\",exception_passed as \"exceptionPassed\",admin_counterpart_passed as \"adminCounterpartPassed\",test_passed as \"testPassed\" from framework_page_design_assurance where screen_resource_id=?",screenId);
         designGate.put("issues",sqlArrayText(designGate.get("issues")));
         Map<String,Object> detail=new LinkedHashMap<>();
-        detail.put("success",true);detail.put("item",item);detail.put("designGate",designGate);detail.put("bindings",bindings);detail.put("contracts",contracts);detail.put("capabilities",capabilities);detail.put("fields",fields);detail.put("stepFields",stepFields);detail.put("tests",tests);detail.put("assets",assets);detail.put("blueprints",blueprints);
+        detail.put("success",true);detail.put("item",item);detail.put("designGate",designGate);detail.put("bindings",bindings);detail.put("contracts",contracts);detail.put("capabilities",capabilities);detail.put("fields",fields);detail.put("stepFields",stepFields);detail.put("tests",tests);detail.put("assets",assets);detail.put("blueprints",blueprints);detail.put("registeredLayouts",registeredLayouts);detail.put("registeredThemes",registeredThemes);
         return detail;
     }
 
@@ -2219,6 +2262,7 @@ public class ActorProcessGovernanceService {
      */
     @Transactional public Map<String,Object> executeDesignDirectDevelopment(Map<String,Object>b,String actor){
         String process=req(b,"processCode");
+        if(!str(b,"stepCode").isBlank())return enqueueCanonicalFullStackGeneration(b,actor);
         boolean force=bool(b,"force");
         String processHash=jdbc.queryForObject("select md5(concat_ws('|',p.process_code,p.process_version,p.domain_code,p.goal,p.start_condition,p.completion_condition,p.automation_mode,coalesce(string_agg(concat_ws('~',s.step_order,s.step_code,s.step_name,s.actor_code,s.from_state,s.command_code,s.to_state,s.completion_rule,s.requirement_text,s.input_contract,s.output_contract,s.requires_user_page,s.requires_admin_page,s.requires_api,s.requires_database,s.requires_notification,s.user_path,s.admin_path,s.api_contract),'|' order by s.step_order,s.step_code),''))) from framework_process_definition p left join framework_process_step s on s.process_code=p.process_code where p.process_code=? group by p.process_code,p.process_version,p.domain_code,p.goal,p.start_condition,p.completion_condition,p.automation_mode",String.class,process);
         if(processHash==null)throw new IllegalArgumentException("프로세스를 찾을 수 없습니다: "+process);
@@ -2237,6 +2281,355 @@ public class ActorProcessGovernanceService {
         String resultJson="{\"factoryStatus\":\""+status+"\",\"stepCount\":"+steps+",\"developmentJobCount\":"+jobs+",\"blockedStepCount\":"+result.getOrDefault("blockedStepCount",0)+"}";
         jdbc.update("insert into framework_design_delivery_revision(process_code,design_hash,delivery_status,step_count,development_job_count,generation_batch_id,result_json,executed_by) values(?,?,?,?,?,?,?,?) on conflict(process_code) do update set design_hash=excluded.design_hash,delivery_status=excluded.delivery_status,step_count=excluded.step_count,development_job_count=excluded.development_job_count,generation_batch_id=excluded.generation_batch_id,result_json=excluded.result_json,executed_by=excluded.executed_by,executed_at=current_timestamp",process,designHash,status,steps,jobs,batch==null?null:batch.longValue(),resultJson,actor);
         Map<String,Object> out=new LinkedHashMap<>();out.put("success",true);out.put("processCode",process);out.put("designHash",designHash);out.put("changed",true);out.put("status",status);out.put("bootstrap",result);out.put("nextAction","READY_TO_EXECUTE".equals(status)?"승인 개발 작업을 즉시 실행합니다.":"차단된 화면 설계 게이트를 보완한 뒤 동일 API를 다시 실행합니다.");return out;
+    }
+
+    /**
+     * Reprojects the authoritative structured screen contract into the existing
+     * step execution specification and queues the existing deterministic full
+     * stack worker.  The queue identity contains both immutable design heads;
+     * account assignments and permission grants remain runtime-only, while
+     * permission requirements are copied into the generated authority contract.
+     */
+    private Map<String,Object> enqueueCanonicalFullStackGeneration(Map<String,Object> body,String actor){
+        String process=req(body,"processCode");
+        String step=req(body,"stepCode");
+        String route=ScreenDevelopmentNoteService.cleanRoute(req(body,"routePath"));
+        String audience=req(body,"audience").toUpperCase(Locale.ROOT);
+        String designHash=req(body,"designHash").toLowerCase(Locale.ROOT);
+        if(!Set.of("USER","ADMIN").contains(audience))
+            throw new IllegalArgumentException("audience must be USER or ADMIN");
+        if(!designHash.matches("[0-9a-f]{64}"))
+            throw new IllegalArgumentException("designHash must be a SHA-256 value");
+
+        jdbc.query("select pg_advisory_xact_lock(hashtext(?))",rs->{},process+":"+step);
+        String currentDesignHash=jdbc.queryForObject(
+            "select framework_canonical_screen_bundle(?,?,?,?)->>'designHash'",String.class,
+            process,step,audience,route);
+        if(!designHash.equals(currentDesignHash))
+            throw new IllegalStateException("STALE_CANONICAL_DESIGN_HASH");
+
+        List<Map<String,Object>> refreshed=jdbc.queryForList("""
+            with blueprint_candidates as materialized (
+              select c.contract_id,c.process_code,c.step_code,upper(c.audience) audience,
+                     lower(split_part(c.route_path,'?',1)) route_path,c.screen_name,
+                     c.business_purpose,c.entry_condition,c.exit_condition,
+                     framework_strict_jsonb_array(c.section_contract) sections,
+                     framework_strict_jsonb_array(c.field_contract) fields,
+                     framework_strict_jsonb_array(c.command_contract) commands,
+                     framework_strict_jsonb_array(c.state_contract) states,
+                     framework_strict_jsonb_array(c.api_contract) apis,
+                     framework_strict_jsonb_array(c.data_contract) data_contract,
+                     framework_strict_jsonb_array(c.evidence_contract) evidence,
+                     c.responsive_contract,c.accessibility_contract,c.security_contract,
+                     b.page_id,b.page_name,b.screen_type,b.template_code,
+                     framework_try_jsonb(b.specification_json) blueprint_spec,
+                     (b.transition_status='CONTRACT_LINKED' and lower(b.source_reference) in(
+                       'framework_professional_screen_contract:'||c.contract_id,
+                       'professional_screen_contract:'||c.contract_id)) explicit_link,
+                     count(*) over(partition by c.contract_id) candidate_count,
+                     count(*) filter(where b.transition_status='CONTRACT_LINKED'
+                       and lower(b.source_reference) in(
+                         'framework_professional_screen_contract:'||c.contract_id,
+                         'professional_screen_contract:'||c.contract_id))
+                       over(partition by c.contract_id) explicit_count
+                from framework_professional_screen_contract c
+                join framework_screen_blueprint b
+                  on b.process_code=c.process_code and b.step_code=c.step_code
+                 and upper(b.audience)=upper(c.audience)
+                 and lower(split_part(b.route_path,'?',1))=lower(split_part(c.route_path,'?',1))
+                 and b.validation_status='VALID'
+               where c.process_code=? and c.step_code=?
+            ), contract_source as materialized (
+              select candidate.*,
+                     case
+                       when nullif(btrim(blueprint_spec->>'layout'),'') is not null then
+                         case when (select count(distinct resource.layout_type)
+                             from framework_screen_resource resource
+                             where resource.layout_type=blueprint_spec->>'layout')=1
+                           then blueprint_spec->>'layout' end
+                       else (select min(resource.layout_type)
+                               from framework_screen_resource resource
+                              where resource.route_key=route_path
+                             having count(*)=1)
+                     end layout_code,
+                     case
+                       when nullif(btrim(blueprint_spec->>'theme'),'') is not null then
+                         case when (select count(*) from comtnthemedefinition theme
+                             where theme.theme_id=blueprint_spec->>'theme'
+                               and theme.use_at='Y' and theme.is_active='Y')=1
+                           then blueprint_spec->>'theme' end
+                       when (select count(*) from comtnthemedefinition theme
+                         where theme.theme_id='KRDS_GOV_DEFAULT'
+                           and theme.use_at='Y' and theme.is_active='Y')=1
+                         then 'KRDS_GOV_DEFAULT'
+                     end theme_code
+                from blueprint_candidates candidate
+               where jsonb_typeof(blueprint_spec)='object'
+                 and ((explicit_count=1 and explicit_link)
+                   or (explicit_count=0 and candidate_count=1))
+            ), exact_identity as (
+              select (select count(*) from framework_professional_screen_contract c
+                       where c.process_code=? and c.step_code=?) contract_count,
+                     count(*) valid_identity_count,
+                     count(*) filter(where jsonb_array_length(sections)>0
+                       and jsonb_array_length(fields)>0 and jsonb_array_length(commands)>0
+                       and jsonb_array_length(states)>0 and jsonb_array_length(apis)>0
+                       and jsonb_array_length(data_contract)>0
+                       and not exists(select 1 from jsonb_array_elements(sections) item
+                         where jsonb_typeof(item)<>'object')
+                       and not exists(select 1 from jsonb_array_elements(fields) item
+                         where jsonb_typeof(item)<>'object')
+                       and not exists(select 1 from jsonb_array_elements(commands) item
+                         where jsonb_typeof(item)<>'object')
+                       and not exists(select 1 from jsonb_array_elements(states) item
+                         where jsonb_typeof(item)<>'object')
+                       and not exists(select 1 from jsonb_array_elements(apis) item
+                         where jsonb_typeof(item)<>'object')
+                       and not exists(select 1 from jsonb_array_elements(data_contract) item
+                         where jsonb_typeof(item)<>'object')
+                       and layout_code is not null and theme_code is not null
+                       and template_code~'^[A-Z][A-Z0-9_:-]{1,119}$') complete_count
+                from contract_source
+            ), screens as (
+              select jsonb_agg(jsonb_build_object(
+                       'pageCode',coalesce(nullif(page_id,''),process_code||'_'||step_code||'_'||audience),
+                       'plannedRoute',route_path,'actualRoute',route_path,'routeStatus','IMPLEMENTED',
+                       'audience',audience,'screenType',coalesce(nullif(screen_type,''),'WORKSPACE'),
+                       'templateCode',template_code,'layout',layout_code,'theme',theme_code,
+                       'title',coalesce(nullif(page_name,''),screen_name),'purpose',business_purpose,
+                       'entryCondition',entry_condition,'exitCondition',exit_condition,
+                       'sections',sections,'fields',fields,'commands',commands,'states',states,
+                       'apis',apis,'data',data_contract,'evidence',evidence,
+                       'responsiveContract',responsive_contract,
+                       'accessibilityContract',accessibility_contract,
+                       'securityContract',security_contract,'exceptions',states)
+                     order by audience,route_path,contract_id) value
+                from contract_source
+            ), fields as (
+              select coalesce(jsonb_agg(field.value||jsonb_build_object(
+                       'audience',source.audience,'route',source.route_path)
+                     order by source.audience,source.route_path,source.contract_id,field.ordinality),'[]'::jsonb) value,
+                     count(*) filter(where jsonb_typeof(field.value)<>'object') invalid_count
+                from contract_source source
+                cross join lateral jsonb_array_elements(source.fields)
+                  with ordinality field(value,ordinality)
+            ), commands as (
+              select coalesce(jsonb_agg(command.value||jsonb_build_object(
+                       'audience',source.audience,'routePath',source.route_path)
+                     order by source.audience,source.route_path,source.contract_id,command.ordinality),'[]'::jsonb) value,
+                     count(*) filter(where jsonb_typeof(command.value)<>'object') invalid_count
+                from contract_source source
+                cross join lateral jsonb_array_elements(source.commands)
+                  with ordinality command(value,ordinality)
+            ), apis as (
+              select coalesce(jsonb_agg(api.value||jsonb_build_object(
+                       'audience',source.audience,'routePath',source.route_path)
+                     order by source.audience,source.route_path,source.contract_id,api.ordinality),'[]'::jsonb) value,
+                     count(*) filter(where jsonb_typeof(api.value)<>'object') invalid_count
+                from contract_source source
+                cross join lateral jsonb_array_elements(source.apis)
+                  with ordinality api(value,ordinality)
+            ), permissions as (
+              select framework_step_permission_requirements(?,?) value
+            ), refreshed as (
+              update framework_step_execution_spec spec
+                 set screen_contract=screens.value,
+                     field_contract=jsonb_build_object('schemaVersion',1,
+                       'contractType','STEP_FIELDS','fields',fields.value),
+                     command_contract=commands.value,api_contract=apis.value,
+                     actor_contract=jsonb_set(spec.actor_contract,'{permissions}',permissions.value,true),
+                     design_status='DESIGN_COMPLETE',
+                     approval_status='APPROVED',generation_status='READY',blocker_codes='[]'::jsonb,
+                     approved_by=?,approved_at=current_timestamp,updated_at=current_timestamp
+                from screens,fields,commands,apis,permissions,exact_identity identity
+               where spec.process_code=? and spec.step_code=?
+                 and identity.contract_count>0
+                 and identity.valid_identity_count=identity.contract_count
+                 and identity.complete_count=identity.contract_count
+                 and fields.invalid_count=0 and commands.invalid_count=0 and apis.invalid_count=0
+                 and (spec.screen_contract is distinct from screens.value
+                   or spec.field_contract is distinct from jsonb_build_object(
+                     'schemaVersion',1,'contractType','STEP_FIELDS','fields',fields.value)
+                   or spec.command_contract is distinct from commands.value
+                   or spec.api_contract is distinct from apis.value
+                   or spec.actor_contract->'permissions' is distinct from permissions.value
+                   or spec.design_status<>'DESIGN_COMPLETE' or spec.approval_status<>'APPROVED')
+              returning jsonb_array_length(spec.api_contract) endpoint_expected
+            )
+            select endpoint_expected as "endpointExpected" from refreshed
+            union all
+            select jsonb_array_length(spec.api_contract) as "endpointExpected"
+              from framework_step_execution_spec spec,exact_identity identity,fields,commands,apis
+             where spec.process_code=? and spec.step_code=?
+               and identity.contract_count>0
+               and identity.valid_identity_count=identity.contract_count
+               and identity.complete_count=identity.contract_count
+               and fields.invalid_count=0 and commands.invalid_count=0 and apis.invalid_count=0
+               and not exists(select 1 from refreshed)
+            """,process,step,process,step,process,step,actor,process,step,process,step);
+        if(refreshed.size()!=1)throw new IllegalStateException(
+            "STRUCTURED_GENERATION_SPEC_NOT_EXACT: "+process+" / "+step);
+        List<Map<String,Object>> headed=jdbc.queryForList("""
+            with blueprint_candidates as materialized (
+              select b.process_code,b.step_code,upper(b.audience) audience,
+                     lower(split_part(b.route_path,'?',1)) route_path,b.blueprint_id,c.contract_id,
+                     (b.transition_status='CONTRACT_LINKED' and lower(b.source_reference) in(
+                       'framework_professional_screen_contract:'||c.contract_id,
+                       'professional_screen_contract:'||c.contract_id)) explicit_link,
+                     count(*) over(partition by c.contract_id) candidate_count,
+                     count(*) filter(where b.transition_status='CONTRACT_LINKED'
+                       and lower(b.source_reference) in(
+                         'framework_professional_screen_contract:'||c.contract_id,
+                         'professional_screen_contract:'||c.contract_id))
+                       over(partition by c.contract_id) explicit_count
+                from framework_screen_blueprint b
+                join framework_professional_screen_contract c
+                  on c.process_code=b.process_code and c.step_code=b.step_code
+                 and upper(c.audience)=upper(b.audience)
+                 and lower(split_part(c.route_path,'?',1))=lower(split_part(b.route_path,'?',1))
+               where b.process_code=? and b.step_code=? and b.validation_status='VALID'
+            ), exact_identity as materialized (
+              select process_code,step_code,audience,route_path,
+                     upper(process_code)||'|'||upper(step_code)||'|'||audience||'|'||route_path screen_key,
+                     min(blueprint_id) blueprint_id,min(contract_id) contract_id
+                from blueprint_candidates
+               where (explicit_count=1 and explicit_link)
+                  or (explicit_count=0 and candidate_count=1)
+               group by process_code,step_code,audience,route_path
+              having count(distinct blueprint_id)=1 and count(distinct contract_id)=1
+            ), digest as (
+              select encode(sha256(convert_to(string_agg(
+                       identity.screen_key||E'\\x1f'||
+                       (framework_canonical_screen_bundle(identity.process_code,identity.step_code,
+                         identity.audience,identity.route_path)->>'designHash'),E'\\n'
+                       order by identity.screen_key),'UTF8')),'hex') step_design_hash,
+                     count(*) design_count
+                from exact_identity identity
+            ), candidate as (
+              select spec.process_code,spec.step_code,digest.step_design_hash,digest.design_count,
+                     encode(sha256(convert_to(
+                       spec.actor_contract::text||spec.business_contract::text||
+                       spec.transition_contract::text||spec.input_contract::text||
+                       spec.output_contract::text||spec.screen_contract::text||
+                       spec.field_contract::text||spec.command_contract::text||
+                       spec.api_contract::text||spec.persistence_contract::text||
+                       spec.handoff_contract::text||spec.test_contract::text||
+                       spec.guide_contract::text||spec.nonfunctional_contract::text||
+                       digest.step_design_hash,'UTF8')),'hex') source_hash
+                from framework_step_execution_spec spec,digest
+               where spec.process_code=? and spec.step_code=?
+                 and spec.design_status='DESIGN_COMPLETE' and spec.approval_status='APPROVED'
+                 and digest.design_count>0
+            ), updated as (
+              update framework_step_execution_spec spec
+                 set source_hash=candidate.source_hash,
+                     spec_version=case when spec.source_hash is distinct from candidate.source_hash
+                       then spec.spec_version+1 else spec.spec_version end,
+                     generation_status=case when spec.source_hash is distinct from candidate.source_hash
+                       then 'READY' else spec.generation_status end,
+                     updated_at=current_timestamp
+                from candidate
+               where spec.process_code=candidate.process_code and spec.step_code=candidate.step_code
+              returning spec.source_hash,candidate.step_design_hash,candidate.design_count
+            )
+            select source_hash as "sourceHash",step_design_hash as "stepDesignHash",
+                   design_count as "designCount" from updated
+            """,process,step,process,step);
+        if(headed.size()!=1)throw new IllegalStateException(
+            "CANONICAL_GENERATION_HEAD_NOT_EXACT: "+process+" / "+step);
+        String sourceHash=String.valueOf(headed.get(0).get("sourceHash"));
+        String stepDesignHash=String.valueOf(headed.get(0).get("stepDesignHash"));
+        if(!sourceHash.matches("[0-9a-f]{32}|[0-9a-f]{64}"))
+            throw new IllegalStateException("CANONICAL_SOURCE_HASH_INVALID");
+        if(!stepDesignHash.matches("[0-9a-f]{64}"))
+            throw new IllegalStateException("CANONICAL_DESIGN_SET_HASH_INVALID");
+        int endpointExpected=((Number)refreshed.get(0).getOrDefault("endpointExpected",0)).intValue();
+        if(endpointExpected<1)throw new IllegalStateException("CANONICAL_ENDPOINT_OUTPUT_REQUIRED");
+
+        String target="canonical://"+process+"/"+sourceHash+"/"+designHash;
+        Map<String,Object> generationSpec=new LinkedHashMap<>();
+        generationSpec.put("algorithm","CANONICAL_EVIDENCE_PUBLICATION_V1");
+        generationSpec.put("generatorRequired",true);generationSpec.put("reuseCommonAssets",true);
+        generationSpec.put("processCode",process);generationSpec.put("stepCode",step);
+        generationSpec.put("routePath",route);generationSpec.put("audience",audience);
+        generationSpec.put("designHash",designHash);generationSpec.put("sourceHash",sourceHash);
+        generationSpec.put("designSetHash",stepDesignHash);
+        generationSpec.put("endpointExpected",endpointExpected);
+        generationSpec.put("requiredGates",List.of(
+            "DESIGN","FRONTEND","API","DATABASE","HELP","CARDS","BUILD","PUBLISH"));
+        generationSpec.put("verifiedEvidenceRequired",true);generationSpec.put("autoDeploy",false);
+        generationSpec.put("requirement","구조화 화면·기능·권한·엔드포인트 계약을 기존 결정적 제너레이터로 생성한다.");
+        String specification=toJson(generationSpec);
+        List<Map<String,Object>> existing=jdbc.queryForList(
+            "select job_id as \"jobId\",job_status as \"jobStatus\" from framework_development_job where process_code=? and step_code=? and job_type='FULL_STACK_GENERATION' and target_path=? for update",
+            process,step,target);
+        long jobId;
+        boolean queued;
+        boolean resetArtifact;
+        if(existing.isEmpty()){
+            jobId=jdbc.queryForObject("""
+                insert into framework_development_job(
+                  process_code,step_code,job_type,job_name,target_path,specification_json,
+                  job_status,approval_status,execution_mode,job_group_code,required,
+                  progress_weight,max_attempts,quality_status,created_by)
+                values(?,?,'FULL_STACK_GENERATION','구조화 설계 전체 스택 자동 생성',?, ?,
+                  'PLANNED','APPROVED','SEQUENTIAL',?,true,10,3,'PENDING',?) returning job_id
+                """,Long.class,process,step,target,specification,
+                process+"_CANONICAL_PUBLICATION",actor);
+            queued=true;
+            resetArtifact=true;
+        }else{
+            if(existing.size()!=1)throw new IllegalStateException("CANONICAL_GENERATION_JOB_NOT_EXACT");
+            jobId=((Number)existing.get(0).get("jobId")).longValue();
+            String status=String.valueOf(existing.get(0).get("jobStatus"));
+            if(Set.of("VERIFIED","COMPLETED").contains(status)){
+                queued=false;resetArtifact=false;
+            }else if(Set.of("PLANNED","CLAIMED","RUNNING").contains(status)){
+                queued=true;resetArtifact=false;
+            }
+            else if(Set.of("FAILED","BLOCKED").contains(status)){
+                queued=true;resetArtifact=true;
+                jdbc.update("""
+                update framework_development_job
+                   set specification_json=?,job_status='PLANNED',approval_status='APPROVED',
+                       quality_status='PENDING',worker_id=null,lease_token=null,lease_until=null,
+                       last_error=null,completed_at=null,updated_at=current_timestamp
+                 where job_id=?
+                """,specification,jobId);
+            }else throw new IllegalStateException("CANONICAL_GENERATION_JOB_STATUS_INVALID: "+status);
+        }
+        Integer artifactCount=jdbc.queryForObject(
+            "select count(*) from framework_process_artifact where process_code=? and step_code=? and contract_ref='AUTO:FULL_STACK_GENERATION'",
+            Integer.class,process,step);
+        if(artifactCount==null||artifactCount>1)
+            throw new IllegalStateException("CANONICAL_GENERATION_ARTIFACT_NOT_EXACT");
+        if(artifactCount==0)jdbc.update("""
+            insert into framework_process_artifact(
+              process_code,step_code,artifact_code,artifact_type,artifact_name,target_path,
+              contract_ref,required,delivery_status,owner_actor_code,acceptance_criteria,notes)
+            values(?,?,?,'FULL_STACK','구조화 설계 전체 스택 산출물',?,
+              'AUTO:FULL_STACK_GENERATION',true,'PLANNED',
+              (select actor_code from framework_process_step where process_code=? and step_code=?),
+              '동일 designHash/sourceHash의 결정적 산출물과 자동 테스트가 통과해야 한다.',
+              'save-and-generate direct path')
+            """,process,step,(process+"_"+step+"_FULL_STACK_GENERATION").replaceAll("[^A-Za-z0-9_]","_"),
+            target,process,step);
+        else jdbc.update("""
+            update framework_process_artifact
+               set target_path=?,delivery_status=case when ? then 'PLANNED' else delivery_status end,
+                   evidence_ref=case when ? then null else evidence_ref end,
+                   updated_at=current_timestamp
+             where process_code=? and step_code=? and contract_ref='AUTO:FULL_STACK_GENERATION'
+            """,target,resetArtifact,resetArtifact,process,step);
+
+        Map<String,Object> result=new LinkedHashMap<>();
+        result.put("success",true);result.put("status",queued?"QUEUED":"UNCHANGED");
+        result.put("generationQueued",queued);result.put("jobCount",1);result.put("jobId",jobId);
+        result.put("processCode",process);result.put("stepCode",step);result.put("routePath",route);
+        result.put("designHash",designHash);result.put("sourceHash",sourceHash);
+        result.put("designSetHash",stepDesignHash);
+        result.put("endpointExpected",endpointExpected);result.put("publishCount",0);
+        return result;
     }
 
     /**
@@ -2283,6 +2676,30 @@ public class ActorProcessGovernanceService {
         String functionNote=req(body,"functionNote");
         String acceptanceNote=req(body,"acceptanceNote");
         List<Map<String,Object>> identities=jdbc.queryForList("""
+            with blueprint_candidates as materialized (
+              select b.blueprint_id,c.contract_id,
+                     (b.transition_status='CONTRACT_LINKED' and lower(b.source_reference) in(
+                       'framework_professional_screen_contract:'||c.contract_id,
+                       'professional_screen_contract:'||c.contract_id)) explicit_link,
+                     count(*) over(partition by c.contract_id) candidate_count,
+                     count(*) filter(where b.transition_status='CONTRACT_LINKED'
+                       and lower(b.source_reference) in(
+                         'framework_professional_screen_contract:'||c.contract_id,
+                         'professional_screen_contract:'||c.contract_id))
+                       over(partition by c.contract_id) explicit_count
+                from framework_screen_blueprint b
+                join framework_professional_screen_contract c
+                  on c.process_code=b.process_code and c.step_code=b.step_code
+                 and upper(c.audience)=upper(b.audience)
+                 and lower(split_part(c.route_path,'?',1))=
+                     lower(split_part(b.route_path,'?',1))
+               where b.validation_status='VALID'
+                 and lower(split_part(b.route_path,'?',1))=lower(?)
+            ), authority as materialized (
+              select blueprint_id,contract_id from blueprint_candidates
+               where (explicit_count=1 and explicit_link)
+                  or (explicit_count=0 and candidate_count=1)
+            )
             select b.blueprint_id as "blueprintId",c.contract_id as "contractId",
                    b.process_code as "processCode",b.step_code as "stepCode",b.audience,
                    lower(split_part(b.route_path,'?',1)) as "routePath",
@@ -2292,14 +2709,9 @@ public class ActorProcessGovernanceService {
                    c.evidence_contract as "evidenceContract",
                    b.specification_json as "specificationJson",
                    b.traceability_json as "traceabilityJson"
-              from framework_screen_blueprint b
-              join framework_professional_screen_contract c
-                on c.process_code=b.process_code and c.step_code=b.step_code
-               and c.audience=b.audience
-               and lower(split_part(c.route_path,'?',1))=
-                   lower(split_part(b.route_path,'?',1))
-             where b.validation_status='VALID'
-               and lower(split_part(b.route_path,'?',1))=lower(?)
+              from authority selected
+              join framework_screen_blueprint b using(blueprint_id)
+              join framework_professional_screen_contract c using(contract_id)
              order by b.blueprint_id,c.contract_id
              for update of b,c
             """,route);
@@ -2320,11 +2732,20 @@ public class ActorProcessGovernanceService {
         if(noteUnchanged&&sourceAlreadyCompiled){
             requireCanonicalCompiledNote(before,compiledNote);
             List<Map<String,Object>> outputs=designCodeOutputs(route);
+            String currentSourceHash=jdbc.queryForObject(
+                "select source_hash from framework_step_execution_spec where process_code=? and step_code=?",
+                String.class,identity.get("processCode"),identity.get("stepCode"));
+            Map<String,Object> currentDesign=canonicalObject(before.get("canonicalDesign"),"canonicalDesign");
+            Map<String,Object> currentLanes=canonicalObject(currentDesign.get("lanes"),"canonicalDesign.lanes");
+            int endpointExpected=currentLanes.get("API") instanceof List<?> apis?apis.size():0;
             Map<String,Object> result=new LinkedHashMap<>();
             result.put("success",true);result.put("changed",false);result.put("note",currentNote);
             result.put("routePath",route);result.put("processCodes",processes);
             result.put("deliveries",List.of());result.put("codeOutputs",outputs);
             result.put("generationStatus","UNCHANGED");result.put("selfHealingRunId",null);
+            result.put("generationQueued",false);result.put("jobCount",0);
+            result.put("sourceHash",currentSourceHash==null?"":currentSourceHash);
+            result.put("endpointExpected",endpointExpected);result.put("publishCount",0);
             result.put("designHash",canonicalHash(before,"designHash"));
             result.put("catalogHash",before.get("catalogHash"));
             result.put("support",canonicalSupport(before));
@@ -2365,11 +2786,6 @@ public class ActorProcessGovernanceService {
              where c.contract_id=next_contract.contract_id
                and c.evidence_contract::jsonb is distinct from next_contract.next_evidence
             """,DESIGN_AUTOMATION_NAMESPACE,compiledJson,contractId,actor);
-        List<Map<String,Object>> deliveries=new java.util.ArrayList<>();
-        for(String process:processes){
-            deliveries.add(autoImplementCompletedDesign(process,actor));
-            generateProfessionalDesignGraph(process,actor);
-        }
         int blueprintWrites=jdbc.update("""
             with next_blueprint as (
               select b.blueprint_id,
@@ -2395,18 +2811,31 @@ public class ActorProcessGovernanceService {
             "DESIGN_SOURCE_WRITE_INVARIANT: changed request produced no canonical source write");
         if(canonicalContentChanged&&canonicalHash(before,"designHash").equals(canonicalHash(after,"designHash")))
             throw new IllegalStateException("CANONICAL_DESIGN_HASH_INVARIANT: changed content retained designHash");
+        List<Map<String,Object>> deliveries=new java.util.ArrayList<>();
+        for(String process:processes){
+            generateProfessionalDesignGraph(process,actor);
+            deliveries.add(executeDesignDirectDevelopment(Map.of(
+                "processCode",process,"stepCode",String.valueOf(identity.get("stepCode")),
+                "routePath",route,"audience",String.valueOf(identity.get("audience")),
+                "designHash",canonicalHash(after,"designHash")),actor));
+        }
         Map<String,Object> runtimePublication=screenContractRuntimeService.publishProfessionalContract(contractId,actor);
         if(!canonicalHash(after,"designHash").equals(runtimePublication.get("designHash")))
             throw new IllegalStateException("RUNTIME_PUBLICATION_CANONICAL_HASH_MISMATCH");
         List<Map<String,Object>> outputs=designCodeOutputs(route);
         long invalidScreens=outputs.stream().filter(row->!"VALID".equals(String.valueOf(row.get("validationStatus")))).count();
-        String generationStatus=deliveries.stream().anyMatch(row->"DESIGN_INCOMPLETE".equals(row.get("status")))||invalidScreens>0?"DESIGN_INCOMPLETE":
-            deliveries.stream().allMatch(row->"UNCHANGED".equals(row.get("status")))?"UNCHANGED":"GENERATED";
+        boolean generationQueued=deliveries.stream().anyMatch(row->Boolean.TRUE.equals(row.get("generationQueued")));
+        int jobCount=deliveries.stream().mapToInt(row->((Number)row.getOrDefault("jobCount",0)).intValue()).sum();
+        int endpointExpected=deliveries.stream().mapToInt(row->((Number)row.getOrDefault("endpointExpected",0)).intValue()).sum();
+        String sourceHash=deliveries.isEmpty()?"":String.valueOf(deliveries.get(0).getOrDefault("sourceHash",""));
+        String generationStatus=invalidScreens>0?"DESIGN_INCOMPLETE":generationQueued?"QUEUED":"UNCHANGED";
         Map<String,Object> recoveryResult=new LinkedHashMap<>();
         recoveryResult.put("routePath",route);recoveryResult.put("processCodes",processes);
         recoveryResult.put("deliveries",deliveries);recoveryResult.put("generatedScreens",outputs.size());
         recoveryResult.put("invalidScreens",invalidScreens);
         recoveryResult.put("designHash",canonicalHash(after,"designHash"));
+        recoveryResult.put("sourceHash",sourceHash);recoveryResult.put("jobCount",jobCount);
+        recoveryResult.put("endpointExpected",endpointExpected);recoveryResult.put("generationQueued",generationQueued);
         recoveryResult.put("catalogHash",after.get("catalogHash"));
         recoveryResult.put("buildRequired",false);
         jdbc.update("update framework_design_self_healing_run set run_status=?,regenerated_process_count=?,generated_screen_count=?,invalid_screen_count=?,result_json=cast(? as jsonb),completed_at=current_timestamp where run_id=?",
@@ -2416,6 +2845,8 @@ public class ActorProcessGovernanceService {
         result.put("processCodes",processes);result.put("deliveries",deliveries);result.put("codeOutputs",outputs);
         result.put("generationStatus",generationStatus);result.put("selfHealingRunId",recoveryRun);
         result.put("designHash",canonicalHash(after,"designHash"));
+        result.put("sourceHash",sourceHash);result.put("jobCount",jobCount);
+        result.put("endpointExpected",endpointExpected);result.put("generationQueued",generationQueued);
         result.put("catalogHash",after.get("catalogHash"));
         result.put("support",canonicalSupport(after));
         result.put("hashTransition",hashTransition(before,after));
@@ -2494,6 +2925,206 @@ public class ActorProcessGovernanceService {
         return design.equals(String.valueOf(current.getOrDefault("designNote","")))
             &&functions.equals(String.valueOf(current.getOrDefault("functionNote","")))
             &&acceptance.equals(String.valueOf(current.getOrDefault("acceptanceNote","")));
+    }
+
+    private Map<String,Object> canonicalGenerationIdentity(long contractId){
+        List<Map<String,Object>> rows=jdbc.queryForList("""
+            with blueprint_candidates as materialized (
+              select b.blueprint_id,c.contract_id,
+                     (b.transition_status='CONTRACT_LINKED' and lower(b.source_reference) in(
+                       'framework_professional_screen_contract:'||c.contract_id,
+                       'professional_screen_contract:'||c.contract_id)) explicit_link,
+                     count(*) over(partition by c.contract_id) candidate_count,
+                     count(*) filter(where b.transition_status='CONTRACT_LINKED'
+                       and lower(b.source_reference) in(
+                         'framework_professional_screen_contract:'||c.contract_id,
+                         'professional_screen_contract:'||c.contract_id))
+                       over(partition by c.contract_id) explicit_count
+                from framework_professional_screen_contract c
+                join framework_screen_blueprint b
+                  on b.process_code=c.process_code and b.step_code=c.step_code
+                 and upper(b.audience)=upper(c.audience)
+                 and lower(split_part(b.route_path,'?',1))=lower(split_part(c.route_path,'?',1))
+               where c.contract_id=? and b.validation_status='VALID'
+            ), authority as materialized (
+              select blueprint_id,contract_id from blueprint_candidates
+               where (explicit_count=1 and explicit_link)
+                  or (explicit_count=0 and candidate_count=1)
+            )
+            select b.blueprint_id as "blueprintId",c.contract_id as "contractId",
+                   b.process_code as "processCode",b.step_code as "stepCode",b.audience,
+                   lower(split_part(b.route_path,'?',1)) as "routePath",
+                   c.section_contract as "sectionContract",c.field_contract as "fieldContract",
+                   c.command_contract as "commandContract",c.state_contract as "stateContract",
+                   c.api_contract as "apiContract",c.data_contract as "dataContract",
+                   c.evidence_contract as "evidenceContract",
+                   b.specification_json as "specificationJson",b.traceability_json as "traceabilityJson"
+              from authority selected
+              join framework_professional_screen_contract c using(contract_id)
+              join framework_screen_blueprint b using(blueprint_id)
+             order by b.blueprint_id
+             for update of b,c
+            """,contractId);
+        if(rows.size()!=1)throw new IllegalStateException(
+            "CANONICAL_SCREEN_IDENTITY_NOT_EXACT: contractId="+contractId+", count="+rows.size());
+        Map<String,Object> identity=new LinkedHashMap<>(rows.get(0));
+        validateDesignCompilationSource(identity);
+        return identity;
+    }
+
+    Map<String,Object> updateProfessionalBlueprintDesign(long contractId,Map<String,Object> body){
+        if(!body.containsKey("layout")&&!body.containsKey("theme"))
+            return Map.of("changed",false,"layout","","theme","");
+        List<Map<String,Object>> rows=jdbc.queryForList("""
+            with candidates as materialized (
+              select b.blueprint_id,c.contract_id,
+                     (b.transition_status='CONTRACT_LINKED' and lower(b.source_reference) in(
+                       'framework_professional_screen_contract:'||c.contract_id,
+                       'professional_screen_contract:'||c.contract_id)) explicit_link,
+                     count(*) over(partition by c.contract_id) candidate_count,
+                     count(*) filter(where b.transition_status='CONTRACT_LINKED'
+                       and lower(b.source_reference) in(
+                         'framework_professional_screen_contract:'||c.contract_id,
+                         'professional_screen_contract:'||c.contract_id))
+                       over(partition by c.contract_id) explicit_count
+                from framework_professional_screen_contract c
+                join framework_screen_blueprint b
+                  on b.process_code=c.process_code and b.step_code=c.step_code
+                 and upper(b.audience)=upper(c.audience)
+                 and lower(split_part(b.route_path,'?',1))=lower(split_part(c.route_path,'?',1))
+               where c.contract_id=? and b.validation_status='VALID'
+            ), authority as materialized (
+              select blueprint_id,contract_id from candidates
+               where (explicit_count=1 and explicit_link)
+                  or (explicit_count=0 and candidate_count=1)
+            )
+            select b.blueprint_id as "blueprintId",
+                   lower(split_part(b.route_path,'?',1)) as "routePath",
+                   b.specification_json as "specificationJson"
+              from authority selected join framework_screen_blueprint b using(blueprint_id)
+             order by b.blueprint_id for update of b
+            """,contractId);
+        if(rows.size()!=1)throw new IllegalStateException(
+            "CANONICAL_SCREEN_IDENTITY_NOT_EXACT: contractId="+contractId+", count="+rows.size());
+        Map<String,Object> authority=rows.get(0);
+        String route=String.valueOf(authority.get("routePath"));
+        String specification=String.valueOf(authority.get("specificationJson"));
+        validateJsonObject(specification,"specificationJson");
+        Map<String,Object> current=jsonMap(specification);
+
+        String layout=(body.containsKey("layout")
+            ?str(body,"layout"):String.valueOf(current.getOrDefault("layout",""))).trim();
+        if(layout.isBlank()){
+            List<String> defaults=jdbc.queryForList(
+                "select distinct layout_type from framework_screen_resource where route_key=? and nullif(btrim(layout_type),'') is not null",
+                String.class,route);
+            if(defaults.size()!=1)throw new IllegalStateException(
+                "REGISTERED_ROUTE_LAYOUT_NOT_EXACT: "+route+", count="+defaults.size());
+            layout=defaults.get(0);
+        }else{
+            Integer registered=jdbc.queryForObject(
+                "select count(distinct layout_type) from framework_screen_resource where layout_type=?",
+                Integer.class,layout);
+            if(registered==null||registered!=1)
+                throw new IllegalArgumentException("REGISTERED_LAYOUT_REQUIRED: "+layout);
+        }
+        String theme=(body.containsKey("theme")
+            ?str(body,"theme"):String.valueOf(current.getOrDefault("theme",""))).trim();
+        if(theme.isBlank())theme="KRDS_GOV_DEFAULT";
+        Integer registeredTheme=jdbc.queryForObject(
+            "select count(*) from comtnthemedefinition where theme_id=? and use_at='Y' and is_active='Y'",
+            Integer.class,theme);
+        if(registeredTheme==null||registeredTheme!=1)
+            throw new IllegalArgumentException("ACTIVE_REGISTERED_THEME_REQUIRED: "+theme);
+
+        boolean changed=!layout.equals(String.valueOf(current.getOrDefault("layout","")))
+            ||!theme.equals(String.valueOf(current.getOrDefault("theme","")));
+        if(changed){
+            int updated=jdbc.update("""
+                update framework_screen_blueprint
+                   set specification_json=(framework_try_jsonb(specification_json)||
+                         jsonb_build_object('layout',?,'theme',?))::text,
+                       updated_at=current_timestamp
+                 where blueprint_id=? and validation_status='VALID'
+                   and jsonb_typeof(framework_try_jsonb(specification_json))='object'
+                """,layout,theme,authority.get("blueprintId"));
+            if(updated!=1)throw new IllegalStateException("CANONICAL_BLUEPRINT_DESIGN_WRITE_FAILED");
+        }
+        Map<String,Object> result=new LinkedHashMap<>();
+        result.put("changed",changed);result.put("blueprintId",authority.get("blueprintId"));
+        result.put("layout",layout);result.put("theme",theme);return result;
+    }
+
+    private Map<String,Object> structuredGenerationReadiness(long contractId){
+        return jdbc.queryForMap("""
+            with target as (
+              select process_code,step_code from framework_professional_screen_contract where contract_id=?
+            ), blueprint_candidates as materialized (
+              select c.contract_id,b.blueprint_id,
+                     (b.transition_status='CONTRACT_LINKED' and lower(b.source_reference) in(
+                       'framework_professional_screen_contract:'||c.contract_id,
+                       'professional_screen_contract:'||c.contract_id)) explicit_link,
+                     count(*) over(partition by c.contract_id) candidate_count,
+                     count(*) filter(where b.transition_status='CONTRACT_LINKED'
+                       and lower(b.source_reference) in(
+                         'framework_professional_screen_contract:'||c.contract_id,
+                         'professional_screen_contract:'||c.contract_id))
+                       over(partition by c.contract_id) explicit_count
+                from framework_professional_screen_contract c
+                join target using(process_code,step_code)
+                join framework_screen_blueprint b
+                  on b.process_code=c.process_code and b.step_code=c.step_code
+                 and upper(b.audience)=upper(c.audience)
+                 and lower(split_part(b.route_path,'?',1))=lower(split_part(c.route_path,'?',1))
+                 and b.validation_status='VALID'
+            ), authority as materialized (
+              select blueprint_id,contract_id from blueprint_candidates
+               where (explicit_count=1 and explicit_link)
+                  or (explicit_count=0 and candidate_count=1)
+            ), contracts as (
+              select c.*,
+                     (select count(*) from authority selected
+                       where selected.contract_id=c.contract_id) blueprint_count,
+                     framework_try_jsonb(c.section_contract) sections,
+                     framework_try_jsonb(c.field_contract) fields,
+                     framework_try_jsonb(c.command_contract) commands,
+                     framework_try_jsonb(c.state_contract) states,
+                     framework_try_jsonb(c.api_contract) apis,
+                     framework_try_jsonb(c.data_contract) data_contract
+                from framework_professional_screen_contract c join target using(process_code,step_code)
+            ), checked as (
+              select *,blueprint_count=1
+                     and case when jsonb_typeof(sections)='array' then jsonb_array_length(sections)>0 else false end
+                     and case when jsonb_typeof(fields)='array' then jsonb_array_length(fields)>0 else false end
+                     and case when jsonb_typeof(commands)='array' then jsonb_array_length(commands)>0 else false end
+                     and case when jsonb_typeof(states)='array' then jsonb_array_length(states)>0 else false end
+                     and case when jsonb_typeof(apis)='array' then jsonb_array_length(apis)>0 else false end
+                     and case when jsonb_typeof(data_contract)='array' then jsonb_array_length(data_contract)>0 else false end
+                     and not exists(select 1 from jsonb_array_elements(
+                       case when jsonb_typeof(sections)='array' then sections else '[]'::jsonb end) value
+                       where jsonb_typeof(value)<>'object')
+                     and not exists(select 1 from jsonb_array_elements(
+                       case when jsonb_typeof(fields)='array' then fields else '[]'::jsonb end) value
+                       where jsonb_typeof(value)<>'object')
+                     and not exists(select 1 from jsonb_array_elements(
+                       case when jsonb_typeof(commands)='array' then commands else '[]'::jsonb end) value
+                       where jsonb_typeof(value)<>'object')
+                     and not exists(select 1 from jsonb_array_elements(
+                       case when jsonb_typeof(apis)='array' then apis else '[]'::jsonb end) value
+                       where jsonb_typeof(value)<>'object')
+                     and not exists(select 1 from jsonb_array_elements(
+                       case when jsonb_typeof(states)='array' then states else '[]'::jsonb end) value
+                       where jsonb_typeof(value)<>'object')
+                     and not exists(select 1 from jsonb_array_elements(
+                       case when jsonb_typeof(data_contract)='array' then data_contract else '[]'::jsonb end) value
+                       where jsonb_typeof(value)<>'object') valid
+                from contracts
+            )
+            select count(*) as "contractCount",count(*) filter(where valid) as "validContractCount",
+                   count(*)-count(*) filter(where valid) as "blockerCount",
+                   count(*)>0 and bool_and(valid) as "generationEligible"
+              from checked
+            """,contractId);
     }
 
     private Map<String,Object> canonicalScreenBundle(Map<String,Object> identity){
@@ -2600,17 +3231,49 @@ public class ActorProcessGovernanceService {
             values.get("contractStatus"),actor,id);
         if(updated==0)throw new IllegalArgumentException("화면 완성 계약을 찾을 수 없습니다: "+id);
         if(((Number)readiness.get("readinessScore")).intValue()==100){jdbc.update("update framework_professional_screen_contract set contract_status='VERIFIED',updated_at=current_timestamp where contract_id=?",id);}
-        Map<String,Object> runtimePublication=screenContractRuntimeService.publishProfessionalContract(id,actor);
+        Map<String,Object> blueprintDesign=updateProfessionalBlueprintDesign(id,b);
         String process=jdbc.queryForObject("select process_code from framework_professional_screen_contract where contract_id=?",String.class,id);
-        Map<String,Object> automation=Map.of(
-            "status","RUNTIME_CONTRACT_APPLIED",
-            "processCode",process,
-            "buildRequired",false,
-            "fullGenerationDeferred",true,
-            "fullGenerationEndpoint","/admin/api/system/actor-process/development/direct"
-        );
-        jdbc.update("update framework_page_development_item i set design_status=case when g.design_gate_status='PASSED' then 'VERIFIED' else 'REVIEW_REQUIRED' end,blocker_reason=case when g.design_gate_status='PASSED' then null else array_to_string(g.design_gate_issues,', ') end,next_action=case when g.design_gate_status='PASSED' then 'Design verified; generation may proceed.' else 'Resolve design gate issues before generation: '||array_to_string(g.design_gate_issues,', ') end,updated_by=?,updated_at=current_timestamp from framework_page_design_assurance g join framework_screen_resource r using(screen_resource_id) join framework_professional_screen_contract c on lower(split_part(c.route_path,'?',1))=r.route_key where c.contract_id=? and i.screen_resource_id=g.screen_resource_id",actor,id);
-        return Map.of("success",true,"contract",readiness,"designGate",gate,"autoImplementation",automation,"runtimePublication",runtimePublication);
+        generateProfessionalDesignGraph(process,actor);
+        Map<String,Object> generationReadiness=structuredGenerationReadiness(id);
+        boolean structuredApproved=Boolean.TRUE.equals(generationReadiness.get("generationEligible"));
+        Map<String,Object> generation=new LinkedHashMap<>();
+        if(structuredApproved){
+            Map<String,Object> identity=canonicalGenerationIdentity(id);
+            Map<String,Object> bundle=canonicalScreenBundle(identity);
+            generation.putAll(executeDesignDirectDevelopment(Map.of(
+                "processCode",process,"stepCode",String.valueOf(identity.get("stepCode")),
+                "routePath",String.valueOf(identity.get("routePath")),
+                "audience",String.valueOf(identity.get("audience")),
+                "designHash",canonicalHash(bundle,"designHash")),actor));
+        }else{
+            generation.put("status","DESIGN_INCOMPLETE");generation.put("generationQueued",false);
+            generation.put("jobCount",0);generation.put("endpointExpected",0);
+            generation.put("designHash","");generation.put("sourceHash","");generation.put("publishCount",0);
+        }
+        Map<String,Object> runtimePublication=screenContractRuntimeService.publishProfessionalContract(id,actor);
+        int blockerCount=((Number)generationReadiness.getOrDefault("blockerCount",1)).intValue();
+        Map<String,Object> automation=new LinkedHashMap<>();
+        automation.put("status",structuredApproved?generation.get("status"):"RUNTIME_DRAFT_APPLIED");
+        automation.put("processCode",process);automation.put("buildRequired",false);
+        automation.put("fullGenerationDeferred",!structuredApproved);
+        automation.put("generationQueued",generation.get("generationQueued"));
+        automation.put("jobCount",generation.get("jobCount"));
+        automation.put("designHash",generation.get("designHash"));
+        automation.put("sourceHash",generation.get("sourceHash"));
+        automation.put("endpointExpected",generation.get("endpointExpected"));
+        automation.put("blockerCount",blockerCount);
+        jdbc.update("update framework_page_development_item i set design_status=case when g.design_gate_status='PASSED' then 'VERIFIED' else 'REVIEW_REQUIRED' end,blocker_reason=case when g.design_gate_status='PASSED' then null else array_to_string(g.design_gate_issues,', ') end,next_action=case when g.design_gate_status='PASSED' then 'Post-generation QA passed; publication validation may proceed.' else 'Resolve QA issues before publish or deploy: '||array_to_string(g.design_gate_issues,', ') end,updated_by=?,updated_at=current_timestamp from framework_page_design_assurance g join framework_screen_resource r using(screen_resource_id) join framework_professional_screen_contract c on lower(split_part(c.route_path,'?',1))=r.route_key where c.contract_id=? and i.screen_resource_id=g.screen_resource_id",actor,id);
+        Map<String,Object> result=new LinkedHashMap<>();
+        result.put("success",true);result.put("contract",readiness);result.put("designGate",gate);
+        result.put("blueprintDesign",blueprintDesign);
+        result.put("generationReadiness",generationReadiness);
+        result.put("autoImplementation",automation);result.put("runtimePublication",runtimePublication);
+        result.put("generationQueued",generation.get("generationQueued"));
+        result.put("jobCount",generation.get("jobCount"));result.put("designHash",generation.get("designHash"));
+        result.put("sourceHash",generation.get("sourceHash"));
+        result.put("endpointExpected",generation.get("endpointExpected"));result.put("blockerCount",blockerCount);
+        result.put("publishCount",generation.get("publishCount"));result.put("status",automation.get("status"));
+        return result;
     }
 
     /**
@@ -3404,10 +4067,12 @@ public class ActorProcessGovernanceService {
         if(steps.isEmpty())throw new IllegalArgumentException("프로세스 단계가 없습니다: "+process);
         Map<String,Object> first=steps.get(0);String requiredActor=String.valueOf(first.get("actor_code"));
         if(!requiredActor.equals(actor))throw new SecurityException("첫 단계 수행 액터는 "+requiredActor+"입니다.");
+        String step=String.valueOf(first.get("step_code"));
         requireActorAssignment(tenant,project,actor,user);
+        requireStepPermissionGrants(process,step,actor);
         List<Map<String,Object>> running=jdbc.queryForList("select execution_id as \"executionId\",current_step_code as \"currentStepCode\",current_state as \"currentState\",cycle_type as \"cycleType\",period_start as \"periodStart\",period_end as \"periodEnd\",execution_version as \"executionVersion\",handoff_status as \"handoffStatus\" from framework_process_execution where tenant_id=? and project_id=? and process_code=? and cycle_type=? and period_start is not distinct from nullif(?,'')::date and period_end is not distinct from nullif(?,'')::date and boundary_version=? and methodology_version=? and execution_version=? and execution_status='RUNNING'",tenant,project,process,cycleType,periodStart,periodEnd,boundaryVersion,methodologyVersion,executionVersion);
         if(!running.isEmpty())return Map.of("success",true,"created",false,"execution",running.get(0));
-        UUID id=UUID.randomUUID();String step=String.valueOf(first.get("step_code")),state=String.valueOf(first.get("from_state"));
+        UUID id=UUID.randomUUID();String state=String.valueOf(first.get("from_state"));
         assertRelayPrerequisitesReady(tenant,project,process,step);
         jdbc.update("insert into framework_process_execution(execution_id,tenant_id,project_id,process_code,current_step_code,current_state,initiated_by_actor,initiated_by,cycle_type,period_start,period_end,site_scope,boundary_version,methodology_version,data_cutoff_at,execution_version) values(?,?,?,?,?,?,?,?,?,nullif(?,'')::date,nullif(?,'')::date,cast(? as jsonb),?,?,nullif(?,'')::timestamp,?)",id,tenant,project,process,step,state,actor,user,cycleType,periodStart,periodEnd,siteScopeJson,boundaryVersion,methodologyVersion,dataCutoffAt,executionVersion);
         Map<String,Object> result=new LinkedHashMap<>();
@@ -3438,6 +4103,7 @@ public class ActorProcessGovernanceService {
         Map<String,Object> execution=executions.get(0);
         if(!tenant.equals(String.valueOf(execution.get("tenant_id")))||!project.equals(String.valueOf(execution.get("project_id")))||!process.equals(String.valueOf(execution.get("process_code"))))throw new SecurityException("테넌트·프로젝트·프로세스 실행 문맥이 일치하지 않습니다.");
         requireActorAssignment(tenant,project,actor,user);
+        requireStepPermissionGrants(process,step,actor);
         List<Map<String,Object>> existing=jdbc.queryForList("select event_id as \"eventId\",to_state as \"toState\" from framework_process_execution_event where execution_id=? and idempotency_key=?",executionId,key);
         if(!existing.isEmpty()){
             Map<String,Object> event=existing.get(0);
@@ -4059,6 +4725,14 @@ public class ActorProcessGovernanceService {
     private void requireActorAssignment(String tenant,String project,String actor,String user){
         Integer count=jdbc.queryForObject("select count(*) from framework_account_actor_assignment where tenant_id=? and (project_id=? or project_id='*') and actor_code=? and lower(account_id)=lower(?) and assignment_status='ACTIVE' and (valid_from is null or valid_from<=current_date) and (valid_until is null or valid_until>=current_date)",Integer.class,tenant,project,actor,user);
         if(count==null||count==0)throw new SecurityException("프로젝트에 활성 액터 배정이 없습니다: "+actor);
+    }
+
+    void requireStepPermissionGrants(String process,String step,String actor){
+        Boolean allowed=jdbc.queryForObject(
+            "select framework_authorize_step_permissions(?,?,?)",Boolean.class,
+            process,step,actor);
+        if(!Boolean.TRUE.equals(allowed))throw new SecurityException(
+            "STEP_PERMISSION_DENIED: "+process+" / "+step+" / "+actor);
     }
 
     @Transactional public Map<String,Object> manageQaProcessExecution(Map<String,Object>b,String user){

@@ -33,6 +33,12 @@ class ActorProcessGovernanceServiceSecurityTest {
     private final ActorProcessGovernanceService service = spy(new ActorProcessGovernanceService(
             jdbc, mock(ScreenDevelopmentNoteService.class), mock(CodexProvisioningService.class), runtimeService));
 
+    ActorProcessGovernanceServiceSecurityTest() {
+        when(jdbc.queryForObject(argThat(sql -> sql != null
+                        && sql.contains("framework_authorize_step_permissions")),
+                eq(Boolean.class), any(Object[].class))).thenReturn(true);
+    }
+
     @Test
     void persistedDesignCompleteStatusCanBeSavedAgain() {
         assertTrue(ActorProcessGovernanceService.isSupportedProfessionalContractStatus("DESIGN_COMPLETE"));
@@ -812,6 +818,28 @@ class ActorProcessGovernanceServiceSecurityTest {
         assertTrue(sql.getValue().contains("j.lease_until<=current_timestamp"));
         assertFalse("expired-token".equals(result.get("leaseToken")));
         UUID.fromString(String.valueOf(result.get("leaseToken")));
+    @Test
+    void startPermissionDenialHappensBeforeExecutionMutation() {
+        when(jdbc.queryForList(argThat(sql -> sql != null
+                        && sql.contains("from framework_process_step where process_code=?")
+                        && sql.contains("order by step_order limit 1")), any(Object[].class)))
+                .thenReturn(List.of(Map.of(
+                        "step_code", "STEP_1", "actor_code", "COMPANY_MANAGER", "from_state", "READY")));
+        when(jdbc.queryForObject(argThat(sql -> sql != null
+                        && sql.contains("framework_account_actor_assignment")),
+                eq(Integer.class), any(Object[].class))).thenReturn(1);
+        when(jdbc.queryForObject(argThat(sql -> sql != null
+                        && sql.contains("framework_authorize_step_permissions")),
+                eq(Boolean.class), any(Object[].class))).thenReturn(false);
+
+        SecurityException denial=assertThrows(SecurityException.class,
+                () -> service.startProcessExecution(Map.of(
+                        "tenantId", "TENANT_A", "projectId", "PROJECT_A", "processCode", "PROCESS_A",
+                        "actorCode", "COMPANY_MANAGER"), "user-a"));
+
+        assertTrue(denial.getMessage().contains("STEP_PERMISSION_DENIED"));
+        verify(jdbc, never()).update(argThat(sql -> sql != null
+                && sql.startsWith("insert into framework_process_execution")), any(Object[].class));
     }
 
     @Test
@@ -851,6 +879,34 @@ class ActorProcessGovernanceServiceSecurityTest {
         verify(jdbc, never()).queryForList(argThat(sql -> sql != null
                 && sql.contains("framework_process_execution_event")
                 && sql.contains("idempotency_key")), any(Object[].class));
+    }
+
+    @Test
+    void commandPermissionDenialHappensBeforeReplayReadOrTransitionMutation() {
+        UUID executionId = UUID.randomUUID();
+        when(jdbc.queryForList(argThat(sql -> sql != null
+                        && sql.contains("from framework_process_execution where execution_id=? for update")),
+                any(Object[].class))).thenReturn(List.of(Map.of(
+                "execution_status", "RUNNING", "tenant_id", "TENANT_A", "project_id", "PROJECT_A",
+                "process_code", "PROCESS_A", "current_step_code", "STEP_1", "current_state", "READY")));
+        when(jdbc.queryForObject(argThat(sql -> sql != null
+                        && sql.contains("framework_account_actor_assignment")),
+                eq(Integer.class), any(Object[].class))).thenReturn(1);
+        when(jdbc.queryForObject(argThat(sql -> sql != null
+                        && sql.contains("framework_authorize_step_permissions")),
+                eq(Boolean.class), any(Object[].class))).thenReturn(false);
+
+        SecurityException denial=assertThrows(SecurityException.class,
+                () -> service.executeProcessCommand(executionId, Map.of(
+                        "tenantId", "TENANT_A", "projectId", "PROJECT_A", "processCode", "PROCESS_A",
+                        "stepCode", "STEP_1", "actorCode", "COMPANY_MANAGER", "commandCode", "RUN",
+                        "idempotencyKey", "denied-key"), "user-a"));
+
+        assertTrue(denial.getMessage().contains("STEP_PERMISSION_DENIED"));
+        verify(jdbc, never()).queryForList(argThat(sql -> sql != null
+                && sql.contains("framework_process_execution_event")
+                && sql.contains("idempotency_key")), any(Object[].class));
+        verify(jdbc, never()).update(anyString(), any(Object[].class));
     }
 
     @Test

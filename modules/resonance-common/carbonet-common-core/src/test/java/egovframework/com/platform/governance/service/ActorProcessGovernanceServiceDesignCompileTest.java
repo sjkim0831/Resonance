@@ -26,6 +26,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -61,6 +62,10 @@ class ActorProcessGovernanceServiceDesignCompileTest {
         assertEquals(true,result.get("changed"));
         assertEquals(after.get("designHash"),result.get("designHash"));
         assertEquals(after.get("catalogHash"),result.get("catalogHash"));
+        assertEquals(true,result.get("generationQueued"));
+        assertEquals(1,result.get("jobCount"));
+        assertEquals(2,result.get("endpointExpected"));
+        assertEquals("c".repeat(64),result.get("sourceHash"));
         assertEquals(false,result.get("buildRequired"));
         assertEquals(ROUTE,result.get("routePath"));
         assertEquals(after.get("designHash"),
@@ -81,10 +86,11 @@ class ActorProcessGovernanceServiceDesignCompileTest {
         ordered.verify(fixture.notes).find(ROUTE);
         ordered.verify(fixture.notes).save(any(),eq("designer"));
         ordered.verify(fixture.jdbc).update(argThat(sql->sql!=null&&sql.contains("next_contract")),any(Object[].class));
-        ordered.verify(fixture.jdbc).queryForMap(
-            argThat(sql->sql!=null&&sql.contains("count(*) as step_count")),any(Object[].class));
-        ordered.verify(fixture.service).generateProfessionalDesignGraph("PROCESS_A","designer");
         ordered.verify(fixture.jdbc).update(argThat(sql->sql!=null&&sql.contains("next_blueprint")),any(Object[].class));
+        ordered.verify(fixture.service).generateProfessionalDesignGraph("PROCESS_A","designer");
+        ordered.verify(fixture.service).executeDesignDirectDevelopment(
+            argThat(body->"STEP_A".equals(body.get("stepCode"))
+                &&after.get("designHash").equals(body.get("designHash"))),eq("designer"));
         ordered.verify(fixture.runtime).publishProfessionalContract(31L,"designer");
     }
 
@@ -252,6 +258,31 @@ class ActorProcessGovernanceServiceDesignCompileTest {
         assertNotNull(method.getAnnotation(Transactional.class));
     }
 
+    @Test
+    void queueFailureHappensBeforeRuntimePublicationForTransactionRollback() throws Exception {
+        Fixture fixture=fixture();
+        Map<String,Object> compiled=compiled(NEW_DESIGN,"");
+        Map<String,Object> before=bundle(null,"1".repeat(64));
+        Map<String,Object> after=bundle(compiled,"2".repeat(64));
+        fixture.canonical(before,after);
+        fixture.identity(identity("[{\"stale\":true}]","{}"));
+        fixture.currentNote(note(OLD_DESIGN,""));
+        fixture.writes(1,1);
+        doThrow(new IllegalStateException("STRUCTURED_GENERATION_SPEC_NOT_EXACT"))
+            .when(fixture.service).executeDesignDirectDevelopment(
+                argThat(body->"STEP_A".equals(body.get("stepCode"))),eq("designer"));
+
+        IllegalStateException error=assertThrows(IllegalStateException.class,
+            ()->fixture.service.saveDesignAndGenerate(
+                request(ROUTE,NEW_DESIGN,""),"designer"));
+
+        assertTrue(error.getMessage().contains("STRUCTURED_GENERATION_SPEC_NOT_EXACT"));
+        verify(fixture.runtime,never()).publishProfessionalContract(any(Long.class),anyString());
+        Method method=ActorProcessGovernanceService.class.getMethod(
+            "saveDesignAndGenerate",Map.class,String.class);
+        assertNotNull(method.getAnnotation(Transactional.class));
+    }
+
     private static Fixture fixture(){
         JdbcTemplate jdbc=mock(JdbcTemplate.class);
         ScreenDevelopmentNoteService notes=mock(ScreenDevelopmentNoteService.class);
@@ -260,6 +291,12 @@ class ActorProcessGovernanceServiceDesignCompileTest {
             jdbc,notes,mock(CodexProvisioningService.class),runtime));
         doReturn(Map.of("success",true)).when(service)
             .generateProfessionalDesignGraph(eq("PROCESS_A"),anyString());
+        doReturn(Map.of(
+            "success",true,"status","QUEUED","generationQueued",true,"jobCount",1,
+            "jobId",91L,"designHash","d".repeat(64),"sourceHash","c".repeat(64),
+            "endpointExpected",2,"publishCount",0)).when(service)
+            .executeDesignDirectDevelopment(
+                argThat(body->body!=null&&"STEP_A".equals(body.get("stepCode"))),anyString());
         when(jdbc.queryForMap(argThat(sql->sql!=null&&sql.contains("count(*) as step_count")),any(Object[].class)))
             .thenReturn(Map.of("step_count",0,"incomplete_step_count",0,
                 "missing_user_contract_count",0,"missing_admin_contract_count",0));
