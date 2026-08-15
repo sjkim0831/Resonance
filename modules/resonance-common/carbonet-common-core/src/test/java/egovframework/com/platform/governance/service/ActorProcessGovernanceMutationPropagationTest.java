@@ -116,6 +116,19 @@ class ActorProcessGovernanceMutationPropagationTest {
 
     private static void stubSkippedRefresh(JdbcTemplate jdbc,int defined,int specs,int ready){
         when(jdbc.queryForObject(argThat(sql->sql!=null&&sql.contains(
+                "framework_begin_process_design_revision(?,?)")),eq(String.class),
+            any(Object[].class))).thenReturn("{\"exists\":false,\"revisionOpened\":false}");
+        when(jdbc.queryForObject(argThat(sql->sql!=null&&sql.contains(
+                "select definition_locked from framework_process_definition")),eq(Boolean.class),
+            any(Object[].class))).thenReturn(false);
+        when(jdbc.queryForMap(argThat(sql->sql!=null&&sql.contains("completeStepCount")
+                &&sql.contains("definitionLocked")),any(Object[].class)))
+            .thenReturn(Map.of("definitionLocked",false,"definedStepCount",defined,
+                "specStepCount",specs,"completeStepCount",ready));
+        when(jdbc.queryForObject(argThat(sql->sql!=null&&sql.contains(
+                "framework_close_process_design_revision(?,?)")),eq(Boolean.class),
+            any(Object[].class))).thenReturn(true);
+        when(jdbc.queryForObject(argThat(sql->sql!=null&&sql.contains(
                 "framework_refresh_process_execution_specs(?,?)")),eq(String.class),
             any(Object[].class))).thenReturn("{\"refreshedStepCount\":"+specs+"}");
         when(jdbc.queryForMap(argThat(sql->sql!=null&&sql.contains("definedStepCount")

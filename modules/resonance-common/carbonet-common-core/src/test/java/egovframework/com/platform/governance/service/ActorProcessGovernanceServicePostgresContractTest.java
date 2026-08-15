@@ -772,12 +772,15 @@ class ActorProcessGovernanceServicePostgresContractTest {
         jdbc.execute("""
             create table framework_process_definition(
               process_code text primary key,process_name text not null,goal text not null,
+              definition_locked boolean not null default true,
               created_at timestamp default current_timestamp,updated_at timestamp default current_timestamp)
             """);
         jdbc.update("insert into framework_process_definition(process_code,process_name,goal) values('PROC','Process','goal')");
         jdbc.execute("""
             create table framework_process_step(
               process_code text,step_code text,step_order integer not null,actor_code text,
+              requires_user_page boolean not null default true,
+              requires_admin_page boolean not null default false,
               primary key(process_code,step_code))
             """);
         jdbc.execute("""

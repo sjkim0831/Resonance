@@ -157,11 +157,13 @@ public class ActorProcessGovernanceService {
         List<Map<String,Object>> rows=dashboardDataset(dataset);
         if(isControlPlaneAdministrator(account))return rows;
         List<Map<String,Object>> assignments=jdbc.queryForList("""
-            select actor_code as "actorCode",project_id as "projectId"
-              from framework_account_actor_assignment
-             where lower(account_id)=lower(?) and assignment_status='ACTIVE'
-               and (valid_from is null or valid_from<=current_date)
-               and (valid_until is null or valid_until>=current_date)
+            select assignment.actor_code as "actorCode",assignment.project_id as "projectId"
+              from framework_account_actor_assignment assignment
+              join framework_actor_definition actor
+                on actor.actor_code=assignment.actor_code and actor.use_at='Y'
+             where lower(assignment.account_id)=lower(?) and assignment.assignment_status='ACTIVE'
+               and (assignment.valid_from is null or assignment.valid_from<=current_date)
+               and (assignment.valid_until is null or assignment.valid_until>=current_date)
             """,account);
         Set<String> actors=assignments.stream()
                 .map(row->String.valueOf(row.get("actorCode"))).collect(java.util.stream.Collectors.toSet());
@@ -1087,6 +1089,8 @@ public class ActorProcessGovernanceService {
                        string_agg(distinct assignment.account_id,', ' order by assignment.account_id) assigned_account_ids,
                        md5(coalesce(string_agg(to_jsonb(assignment)::text,'|' order by assignment.account_id,assignment.tenant_id,assignment.project_id,assignment.assignment_id),'')) assignment_fingerprint
                   from framework_account_actor_assignment assignment
+                  join framework_actor_definition assigned_actor
+                    on assigned_actor.actor_code=assignment.actor_code and assigned_actor.use_at='Y'
                  where assignment.actor_code=p.actor_code and assignment.assignment_status='ACTIVE'
                    and (assignment.valid_from is null or assignment.valid_from<=current_date)
                    and (assignment.valid_until is null or assignment.valid_until>=current_date)
@@ -2368,7 +2372,13 @@ public class ActorProcessGovernanceService {
             ), exact_identity as (
               select (select count(*) from framework_professional_screen_contract c
                        where c.process_code=? and c.step_code=?) contract_count,
+                     (select requires_user_page from framework_process_step step
+                       where step.process_code=? and step.step_code=?) requires_user_page,
+                     (select requires_admin_page from framework_process_step step
+                       where step.process_code=? and step.step_code=?) requires_admin_page,
                      count(*) valid_identity_count,
+                     count(*) filter(where audience='USER') user_audience_count,
+                     count(*) filter(where audience='ADMIN') admin_audience_count,
                      count(*) filter(where jsonb_array_length(sections)>0
                        and jsonb_array_length(fields)>0 and jsonb_array_length(commands)>0
                        and jsonb_array_length(states)>0 and jsonb_array_length(apis)>0
@@ -2431,15 +2441,49 @@ public class ActorProcessGovernanceService {
             ), permissions as (
               select framework_step_permission_requirements(?,?) value
             ), refreshed as (
-              update framework_step_execution_spec spec
-                 set screen_contract=screens.value,
+               update framework_step_execution_spec spec
+                  set spec_version=spec.spec_version+1,
+                      screen_contract=screens.value,
                      field_contract=jsonb_build_object('schemaVersion',1,
                        'contractType','STEP_FIELDS','fields',fields.value),
                      command_contract=commands.value,api_contract=apis.value,
-                     actor_contract=jsonb_set(spec.actor_contract,'{permissions}',permissions.value,true),
-                     design_status='DESIGN_COMPLETE',
-                     approval_status='APPROVED',generation_status='READY',blocker_codes='[]'::jsonb,
-                     approved_by=?,approved_at=current_timestamp,updated_at=current_timestamp
+                      actor_contract=jsonb_set(spec.actor_contract,'{permissions}',permissions.value,true),
+                      design_status=case when
+                        (not coalesce(identity.requires_user_page,false)
+                          or identity.user_audience_count>0)
+                        and (not coalesce(identity.requires_admin_page,false)
+                          or identity.admin_audience_count>0)
+                        then 'DESIGN_COMPLETE' else 'DESIGN_BLOCKED' end,
+                      approval_status=case when
+                        (not coalesce(identity.requires_user_page,false)
+                          or identity.user_audience_count>0)
+                        and (not coalesce(identity.requires_admin_page,false)
+                          or identity.admin_audience_count>0)
+                        then 'APPROVED' else 'REVIEW_REQUIRED' end,
+                      generation_status=case when
+                        (not coalesce(identity.requires_user_page,false)
+                          or identity.user_audience_count>0)
+                        and (not coalesce(identity.requires_admin_page,false)
+                          or identity.admin_audience_count>0)
+                        then 'READY' else 'BLOCKED' end,
+                      blocker_codes=case when
+                        (not coalesce(identity.requires_user_page,false)
+                          or identity.user_audience_count>0)
+                        and (not coalesce(identity.requires_admin_page,false)
+                          or identity.admin_audience_count>0)
+                        then '[]'::jsonb else '["PAGE_DESIGN_MISSING"]'::jsonb end,
+                      approved_by=case when
+                        (not coalesce(identity.requires_user_page,false)
+                          or identity.user_audience_count>0)
+                        and (not coalesce(identity.requires_admin_page,false)
+                          or identity.admin_audience_count>0)
+                        then ? end,
+                      approved_at=case when
+                        (not coalesce(identity.requires_user_page,false)
+                          or identity.user_audience_count>0)
+                        and (not coalesce(identity.requires_admin_page,false)
+                          or identity.admin_audience_count>0)
+                        then current_timestamp end,updated_at=current_timestamp
                 from screens,fields,commands,apis,permissions,exact_identity identity
                where spec.process_code=? and spec.step_code=?
                  and identity.contract_count>0
@@ -2451,8 +2495,19 @@ public class ActorProcessGovernanceService {
                      'schemaVersion',1,'contractType','STEP_FIELDS','fields',fields.value)
                    or spec.command_contract is distinct from commands.value
                    or spec.api_contract is distinct from apis.value
-                   or spec.actor_contract->'permissions' is distinct from permissions.value
-                   or spec.design_status<>'DESIGN_COMPLETE' or spec.approval_status<>'APPROVED')
+                    or spec.actor_contract->'permissions' is distinct from permissions.value
+                    or spec.design_status is distinct from case when
+                      (not coalesce(identity.requires_user_page,false)
+                        or identity.user_audience_count>0)
+                      and (not coalesce(identity.requires_admin_page,false)
+                        or identity.admin_audience_count>0)
+                      then 'DESIGN_COMPLETE' else 'DESIGN_BLOCKED' end
+                    or spec.approval_status is distinct from case when
+                      (not coalesce(identity.requires_user_page,false)
+                        or identity.user_audience_count>0)
+                      and (not coalesce(identity.requires_admin_page,false)
+                        or identity.admin_audience_count>0)
+                      then 'APPROVED' else 'REVIEW_REQUIRED' end)
               returning jsonb_array_length(spec.api_contract) endpoint_expected
             )
             select endpoint_expected as "endpointExpected" from refreshed
@@ -2465,7 +2520,8 @@ public class ActorProcessGovernanceService {
                and identity.complete_count=identity.contract_count
                and fields.invalid_count=0 and commands.invalid_count=0 and apis.invalid_count=0
                and not exists(select 1 from refreshed)
-            """,process,step,process,step,process,step,actor,process,step,process,step);
+            """,process,step,process,step,process,step,process,step,process,step,
+            actor,process,step,process,step);
           if(refreshed.size()!=1)throw new IllegalStateException(
               "STRUCTURED_GENERATION_SPEC_NOT_EXACT: "+process+" / "+step);
           return new LinkedHashMap<>(refreshed.get(0));
@@ -2485,10 +2541,35 @@ public class ActorProcessGovernanceService {
         return jsonMap(refreshed);
     }
 
+    private Map<String,Object> beginProcessDesignRevision(String process,String actor){
+        String revision=jdbc.queryForObject(
+            "select framework_begin_process_design_revision(?,?)::text",
+            String.class,process,actor);
+        if(revision==null)throw new IllegalStateException("PROCESS_DESIGN_REVISION_REQUIRED");
+        return jsonMap(revision);
+    }
+
+    private Map<String,Object> finalizeProcessDesignRevision(String process,String actor){
+        String revision=jdbc.queryForObject(
+            "select framework_finalize_process_design_revision(?,?)::text",
+            String.class,process,actor);
+        if(revision==null)throw new IllegalStateException("PROCESS_DESIGN_FINALIZATION_REQUIRED");
+        return jsonMap(revision);
+    }
+
+    private void closeProcessDesignRevision(String process,String actor){
+        jdbc.queryForObject("select framework_close_process_design_revision(?,?)",
+            Boolean.class,process,actor);
+    }
+
     private Map<String,Object> refreshAndQueueCanonicalProcess(
             String process,String actor,Map<String,Object> trigger,
             java.util.function.Supplier<Map<String,Object>> exactProjection){
         lockCanonicalProcessPublication(process);
+        Boolean initiallyLocked=jdbc.queryForObject(
+            "select definition_locked from framework_process_definition where process_code=?",
+            Boolean.class,process);
+        if(!Boolean.TRUE.equals(initiallyLocked))beginProcessDesignRevision(process,actor);
         String expectedDesignHash=str(trigger,"designHash");
         if(!expectedDesignHash.isBlank()){
             String currentDesignHash=jdbc.queryForObject(
@@ -2499,17 +2580,56 @@ public class ActorProcessGovernanceService {
         }
         Map<String,Object> refresh=refreshProcessExecutionSpecs(process,actor);
         Map<String,Object> projection=exactProjection==null?Map.of():exactProjection.get();
+        Map<String,Object> revision=Map.of();
+        Map<String,Object> finalizationCoverage=jdbc.queryForMap("""
+            select process.definition_locked as "definitionLocked",
+                   (select count(*) from framework_process_step
+                     where process_code=process.process_code)::integer as "definedStepCount",
+                   (select count(*) from framework_step_execution_spec spec
+                     where spec.process_code=process.process_code)::integer as "specStepCount",
+                   (select count(*) from framework_step_execution_spec spec
+                     where spec.process_code=process.process_code
+                       and spec.design_status='DESIGN_COMPLETE'
+                       and spec.blocker_codes='[]'::jsonb)::integer as "completeStepCount"
+              from framework_process_definition process where process.process_code=?
+            """,process);
+        int defined=((Number)finalizationCoverage.getOrDefault("definedStepCount",0)).intValue();
+        int specs=((Number)finalizationCoverage.getOrDefault("specStepCount",0)).intValue();
+        int complete=((Number)finalizationCoverage.getOrDefault("completeStepCount",0)).intValue();
+        boolean locked=Boolean.TRUE.equals(finalizationCoverage.get("definitionLocked"));
+        if(!locked&&defined>0&&specs==defined&&complete==defined){
+            revision=finalizeProcessDesignRevision(process,actor);
+            refresh=refreshProcessExecutionSpecs(process,actor);
+        }else if(!locked){
+            closeProcessDesignRevision(process,actor);
+        }
         Map<String,Object> effectiveTrigger=new LinkedHashMap<>(trigger);
         if(projection.containsKey("endpointExpected"))
             effectiveTrigger.put("triggerEndpointExpected",projection.get("endpointExpected"));
         Map<String,Object> result=queueCanonicalProcessGeneration(process,actor,effectiveTrigger);
         result.put("specRefresh",refresh);result.put("exactProjection",projection);
+        result.put("designRevision",revision);
         return result;
     }
 
     private Map<String,Object> refreshAndQueueCanonicalProcess(
             String process,String actor,Map<String,Object> trigger){
         return refreshAndQueueCanonicalProcess(process,actor,trigger,null);
+    }
+
+    @Transactional public Map<String,Object> finalizeAndQueueProcessDesign(
+            String process,String actor,String triggerType){
+        if(actor==null||actor.isBlank()||!actor.equals(actor.trim())||actor.length()>100)
+            throw new SecurityException("AUTHENTICATED_ACTOR_REQUIRED");
+        String canonicalProcess=process==null?"":process.trim().toUpperCase(Locale.ROOT);
+        if(!canonicalProcess.matches("^[A-Z][A-Z0-9_:-]{1,79}$"))
+            throw new IllegalArgumentException("INVALID_PROCESS_CODE");
+        lockCanonicalProcessPublication(canonicalProcess);
+        beginProcessDesignRevision(canonicalProcess,actor);
+        Map<String,Object> trigger=new LinkedHashMap<>();
+        trigger.put("triggerType",triggerType==null||triggerType.isBlank()
+            ?"PROCESS_DESIGN_FINALIZATION":triggerType);
+        return refreshAndQueueCanonicalProcess(canonicalProcess,actor,trigger);
     }
 
     private Map<String,Object> queueCanonicalProcessGeneration(
@@ -2553,13 +2673,9 @@ public class ActorProcessGovernanceService {
             with generation_head as materialized (
               select framework_process_generation_input(?::text) head
             ), updated as (
-              update framework_step_execution_spec spec
-                 set source_hash=head->>'processInputHash',
-                     spec_version=case when spec.source_hash is distinct from head->>'processInputHash'
-                       then spec.spec_version+1 else spec.spec_version end,
-                     generation_status=case when spec.source_hash is distinct from head->>'processInputHash'
-                       then 'READY' else spec.generation_status end,
-                     updated_at=current_timestamp
+               update framework_step_execution_spec spec
+                  set source_hash=head->>'processInputHash',
+                      updated_at=current_timestamp
                 from generation_head
                where spec.process_code=?
                  and spec.design_status='DESIGN_COMPLETE'
@@ -3782,7 +3898,30 @@ public class ActorProcessGovernanceService {
         return "KRDS_CONTENT_CARD";
     }
 
+    private java.util.SortedSet<String> canonicalCodeSet(
+            String raw,String codePattern,String fieldName){
+        java.util.SortedSet<String> values=new java.util.TreeSet<>();
+        for(String value:raw.split(",")){
+            String code=value.trim().toUpperCase(Locale.ROOT);
+            if(code.isEmpty())continue;
+            if(!code.matches(codePattern))
+                throw new IllegalArgumentException("INVALID_"+fieldName+": "+code);
+            values.add(code);
+        }
+        return values;
+    }
+
     @Transactional public Map<String,Object> createActor(Map<String,Object>b,String authenticatedActor){
+        return createActorInternal(b,authenticatedActor,true);
+    }
+
+    @Transactional public Map<String,Object> createActorForRequirementImport(
+            Map<String,Object>b,String authenticatedActor){
+        return createActorInternal(b,authenticatedActor,false);
+    }
+
+    private Map<String,Object> createActorInternal(
+            Map<String,Object>b,String authenticatedActor,boolean propagate){
         if(authenticatedActor==null||authenticatedActor.isBlank()
                 ||!authenticatedActor.equals(authenticatedActor.trim())
                 ||authenticatedActor.length()>100)
@@ -3790,13 +3929,37 @@ public class ActorProcessGovernanceService {
         String actorCode=req(b,"actorCode").trim().toUpperCase(Locale.ROOT);
         String purpose=req(b,"purpose");
         if(!actorCode.matches("^[A-Z][A-Z0-9_]{1,59}$"))throw new IllegalArgumentException("actorCode must use uppercase letters, numbers, and underscores");
+        // Serialize assignment and deactivation on the same actor row.  A concurrent
+        // assignment must either observe this actor as active or complete before the
+        // active-assignment check below; it may never survive an actor deactivation.
+        jdbc.queryForList("select actor_code from framework_actor_definition where actor_code=? for update",
+            String.class,actorCode);
+        java.util.SortedSet<String> capabilities=canonicalCodeSet(
+            str(b,"capabilityCodes"),"^[A-Z][A-Z0-9_:-]{0,79}$","CAPABILITY_CODE");
+        java.util.SortedSet<String> conflicts=canonicalCodeSet(
+            str(b,"conflictActorCodes"),"^[A-Z][A-Z0-9_]{1,59}$","CONFLICT_ACTOR_CODE");
+        if(conflicts.contains(actorCode))
+            throw new IllegalArgumentException("CONFLICT_ACTOR_MUST_DIFFER_FROM_SELF: "+actorCode);
+        if(!conflicts.isEmpty()){
+            String conflictCodes=String.join(",",conflicts);
+            List<String> activeConflicts=jdbc.queryForList("""
+                select actor_code from framework_actor_definition
+                 where use_at='Y' and actor_code=any(string_to_array(?,','))
+                 order by actor_code
+                """,String.class,conflictCodes);
+            if(!new java.util.TreeSet<>(activeConflicts).equals(conflicts)){
+                java.util.SortedSet<String> missing=new java.util.TreeSet<>(conflicts);
+                missing.removeAll(activeConflicts);
+                throw new IllegalArgumentException("ACTIVE_CONFLICT_ACTOR_NOT_FOUND: "+missing);
+            }
+        }
         String useAt=def(b,"useAt","Y").trim().toUpperCase(Locale.ROOT);
         if(!useAt.matches("^[YN]$"))throw new IllegalArgumentException("useAt must be Y or N");
         if("N".equals(useAt)){
             Integer activeAssignments=jdbc.queryForObject("select count(*) from framework_account_actor_assignment where actor_code=? and assignment_status='ACTIVE' and (valid_until is null or valid_until>=current_date)",Integer.class,actorCode);
             if(activeAssignments!=null&&activeAssignments>0)throw new IllegalArgumentException("ACTIVE_ACTOR_ASSIGNMENTS_EXIST");
         }
-        jdbc.update("insert into framework_actor_definition(actor_code,actor_name,actor_name_en,actor_type,purpose,capability_codes,delegation_allowed,use_at,responsibility_text,accountability_text,competency_requirements,conflict_actor_codes,max_concurrent_assignments,review_cycle_days) values(?,?,?,?,?,?,?,?,?,?,?,?,?,?) on conflict(actor_code) do update set actor_name=excluded.actor_name,actor_name_en=excluded.actor_name_en,actor_type=excluded.actor_type,purpose=excluded.purpose,capability_codes=excluded.capability_codes,delegation_allowed=excluded.delegation_allowed,use_at=excluded.use_at,responsibility_text=excluded.responsibility_text,accountability_text=excluded.accountability_text,competency_requirements=excluded.competency_requirements,conflict_actor_codes=excluded.conflict_actor_codes,max_concurrent_assignments=excluded.max_concurrent_assignments,review_cycle_days=excluded.review_cycle_days,updated_at=current_timestamp",actorCode,req(b,"actorName"),str(b,"actorNameEn"),def(b,"actorType","BUSINESS"),purpose,str(b,"capabilityCodes"),bool(b,"delegationAllowed"),useAt,def(b,"responsibility",purpose),def(b,"accountability",purpose),def(b,"competency",purpose),str(b,"conflictActorCodes"),integerOr(b,"maxConcurrentAssignments",0),integerOr(b,"reviewCycleDays",365));
+        jdbc.update("insert into framework_actor_definition(actor_code,actor_name,actor_name_en,actor_type,purpose,capability_codes,delegation_allowed,use_at,responsibility_text,accountability_text,competency_requirements,conflict_actor_codes,max_concurrent_assignments,review_cycle_days) values(?,?,?,?,?,?,?,?,?,?,?,?,?,?) on conflict(actor_code) do update set actor_name=excluded.actor_name,actor_name_en=excluded.actor_name_en,actor_type=excluded.actor_type,purpose=excluded.purpose,capability_codes=excluded.capability_codes,delegation_allowed=excluded.delegation_allowed,use_at=excluded.use_at,responsibility_text=excluded.responsibility_text,accountability_text=excluded.accountability_text,competency_requirements=excluded.competency_requirements,conflict_actor_codes=excluded.conflict_actor_codes,max_concurrent_assignments=excluded.max_concurrent_assignments,review_cycle_days=excluded.review_cycle_days,updated_at=current_timestamp",actorCode,req(b,"actorName"),str(b,"actorNameEn"),def(b,"actorType","BUSINESS"),purpose,String.join(",",capabilities),bool(b,"delegationAllowed"),useAt,def(b,"responsibility",purpose),def(b,"accountability",purpose),def(b,"competency",purpose),String.join(",",conflicts),integerOr(b,"maxConcurrentAssignments",0),integerOr(b,"reviewCycleDays",365));
         List<String> affected=jdbc.queryForList("""
             select affected.process_code from (
               select step.process_code from framework_process_step step
@@ -3817,6 +3980,7 @@ public class ActorProcessGovernanceService {
         List<Map<String,Object>> processResults=new java.util.ArrayList<>();
         int queuedCount=0;
         for(String process:affected){
+            if(!propagate)continue;
             Map<String,Object> trigger=new LinkedHashMap<>();
             trigger.put("triggerType","ACTOR_DEFINITION");trigger.put("actorCode",actorCode);
             Map<String,Object> result=refreshAndQueueCanonicalProcess(
@@ -3827,6 +3991,8 @@ public class ActorProcessGovernanceService {
         Map<String,Object> response=new LinkedHashMap<>();
         response.put("success",true);response.put("actorCode",actorCode);
         response.put("affectedProcessCount",affected.size());
+        response.put("affectedProcessCodes",affected);
+        response.put("propagationDeferred",!propagate);
         response.put("generationQueued",queuedCount>0);
         response.put("queuedProcessCount",queuedCount);response.put("processResults",processResults);
         return response;
@@ -3837,7 +4003,16 @@ public class ActorProcessGovernanceService {
         jdbc.update("insert into framework_business_work_type(work_type_code,work_type_name,work_type_name_en,description,sort_order,use_at) values(?,?,?,?,?,?) on conflict(work_type_code) do update set work_type_name=excluded.work_type_name,work_type_name_en=excluded.work_type_name_en,description=excluded.description,sort_order=excluded.sort_order,use_at=excluded.use_at,updated_at=current_timestamp",code,req(b,"workTypeName"),str(b,"workTypeNameEn"),str(b,"description"),integerOr(b,"sortOrder",100),def(b,"useAt","Y"));
     }
     @Transactional public void assignActor(Map<String,Object>b){
-        String accountId=req(b,"accountId"), tenantId=def(b,"tenantId","DEFAULT"), projectId=def(b,"projectId","*"), actorCode=req(b,"actorCode");
+        String accountId=req(b,"accountId"), tenantId=def(b,"tenantId","DEFAULT"), projectId=def(b,"projectId","*");
+        String actorCode=req(b,"actorCode").trim().toUpperCase(Locale.ROOT);
+        if(!actorCode.matches("^[A-Z][A-Z0-9_]{1,59}$"))
+            throw new SecurityException("ACTIVE_ACTOR_NOT_FOUND");
+        List<String> activeActor=jdbc.queryForList("""
+            select actor_code from framework_actor_definition
+             where actor_code=? and use_at='Y'
+             for update
+            """,String.class,actorCode);
+        if(activeActor.size()!=1)throw new SecurityException("ACTIVE_ACTOR_NOT_FOUND");
         jdbc.update("insert into framework_account_actor_assignment(account_id,tenant_id,project_id,actor_code,data_scope,valid_until) values(?,?,?,?,?,nullif(?,'')::date) on conflict(account_id,tenant_id,project_id,actor_code) do update set data_scope=excluded.data_scope,valid_until=excluded.valid_until,assignment_status='ACTIVE'",accountId,tenantId,projectId,actorCode,def(b,"dataScope","*"),str(b,"validUntil"));
         if(!"*".equals(projectId)){
             Integer projectCount=jdbc.queryForObject("select count(*) from emission_project_registry where project_id=? and tenant_id=?",Integer.class,projectId,tenantId);
@@ -3867,7 +4042,7 @@ public class ActorProcessGovernanceService {
             // bounded capability without promoting that account to a platform role.
             boolean companyAdministrator="ROLE_ADMIN".equals(authority);
             if(!companyAdministrator){
-                Integer managerCount=jdbc.queryForObject("select count(*) from framework_account_actor_assignment where tenant_id=? and lower(account_id)=lower(?) and actor_code='COMPANY_MANAGER' and assignment_status='ACTIVE' and (valid_from is null or valid_from<=current_date) and (valid_until is null or valid_until>=current_date) and (project_id='*' or project_id=?) and (data_scope='*' or ?=any(string_to_array(replace(data_scope,' ',''),',')))",Integer.class,tenantId,requester,projectId,projectId);
+                Integer managerCount=jdbc.queryForObject("select count(*) from framework_account_actor_assignment assignment join framework_actor_definition actor on actor.actor_code=assignment.actor_code and actor.use_at='Y' where assignment.tenant_id=? and lower(assignment.account_id)=lower(?) and assignment.actor_code='COMPANY_MANAGER' and assignment.assignment_status='ACTIVE' and (assignment.valid_from is null or assignment.valid_from<=current_date) and (assignment.valid_until is null or assignment.valid_until>=current_date) and (assignment.project_id='*' or assignment.project_id=?) and (assignment.data_scope='*' or ?=any(string_to_array(replace(assignment.data_scope,' ',''),',')))",Integer.class,tenantId,requester,projectId,projectId);
                 if(managerCount==null||managerCount==0)throw new SecurityException("ACTOR_ASSIGNMENT_COMPANY_MANAGER_REQUIRED");
             }
             Integer targetCount=jdbc.queryForObject("select count(*) from (select emplyr_id as account_id from comtnemplyrinfo where lower(emplyr_id)=lower(?) and trim(instt_id)=trim(?) and emplyr_sttus_code in ('P','A') union all select entrprs_mber_id from comtnentrprsmber where lower(entrprs_mber_id)=lower(?) and trim(instt_id)=trim(?) and entrprs_mber_sttus in ('P','A')) tenant_account",Integer.class,accountId,tenantId,accountId,tenantId);
@@ -3970,6 +4145,16 @@ public class ActorProcessGovernanceService {
         return Map.of("success",true,"assignmentId",assignmentId,"accountId",accountId,"projectId",projectId,"actorCode",actorCode,"status","INACTIVE");
     }
     @Transactional public Map<String,Object> createProcess(Map<String,Object>b,String authenticatedActor){
+        return createProcessInternal(b,authenticatedActor,true);
+    }
+
+    @Transactional public Map<String,Object> createProcessForRequirementImport(
+            Map<String,Object>b,String authenticatedActor){
+        return createProcessInternal(b,authenticatedActor,false);
+    }
+
+    private Map<String,Object> createProcessInternal(
+            Map<String,Object>b,String authenticatedActor,boolean propagate){
         if(authenticatedActor==null||authenticatedActor.isBlank()
                 ||!authenticatedActor.equals(authenticatedActor.trim())
                 ||authenticatedActor.length()>100)
@@ -3999,6 +4184,9 @@ public class ActorProcessGovernanceService {
         String effectiveFrom=str(b,"effectiveFrom"),effectiveUntil=str(b,"effectiveUntil");
         if(!effectiveFrom.isEmpty()&&!effectiveUntil.isEmpty()&&effectiveFrom.compareTo(effectiveUntil)>0)throw new IllegalArgumentException("INVALID_EFFECTIVE_DATE_RANGE");
         lockCanonicalProcessPublication(processCode);
+        Map<String,Object> revision=beginProcessDesignRevision(processCode,authenticatedActor);
+        String processVersion=Boolean.TRUE.equals(revision.get("exists"))
+            ?String.valueOf(revision.get("processVersion")):def(b,"version","1.0.0");
         jdbc.update("""
             insert into framework_process_definition(
               process_code,process_name,domain_code,process_version,goal,start_condition,completion_condition,
@@ -4016,7 +4204,7 @@ public class ActorProcessGovernanceService {
               review_cycle_days=excluded.review_cycle_days,regulation_refs=excluded.regulation_refs,
               lifecycle_status=excluded.lifecycle_status,effective_from=excluded.effective_from,
               effective_until=excluded.effective_until,updated_at=current_timestamp
-            """,processCode,req(b,"processName"),domainCode,def(b,"version","1.0.0"),req(b,"goal"),
+            """,processCode,req(b,"processName"),domainCode,processVersion,req(b,"goal"),
             req(b,"startCondition"),req(b,"completionCondition"),parentProcessCode,
             integerOr(b,"processLevel",parentProcessCode.isEmpty()?1:2),automationMode,
             integerOr(b,"developmentOrder",0),str(b,"prerequisiteCodes"),processStatus,ownerActorCode,riskLevel,
@@ -4024,12 +4212,24 @@ public class ActorProcessGovernanceService {
             lifecycleStatus,effectiveFrom,effectiveUntil);
         Map<String,Object> trigger=new LinkedHashMap<>();
         trigger.put("triggerType","PROCESS_DEFINITION");
-        Map<String,Object> result=refreshAndQueueCanonicalProcess(
-            processCode,authenticatedActor,trigger);
+        Map<String,Object> result=propagate
+            ?refreshAndQueueCanonicalProcess(processCode,authenticatedActor,trigger)
+            :new LinkedHashMap<>(Map.of("success",true,"status","DEFERRED",
+                "generationQueued",false,"jobCount",0,"propagationDeferred",true));
         result.put("processCode",processCode);
         return result;
     }
     @Transactional public Map<String,Object> addStep(Map<String,Object>b,String actor){
+        return addStepInternal(b,actor,true);
+    }
+
+    @Transactional public Map<String,Object> addStepForRequirementImport(
+            Map<String,Object>b,String actor){
+        return addStepInternal(b,actor,false);
+    }
+
+    private Map<String,Object> addStepInternal(
+            Map<String,Object>b,String actor,boolean propagate){
         if(actor==null||actor.isBlank()||!actor.equals(actor.trim())||actor.length()>100)
             throw new SecurityException("AUTHENTICATED_ACTOR_REQUIRED");
         String process=req(b,"processCode").trim().toUpperCase(Locale.ROOT),
@@ -4044,16 +4244,12 @@ public class ActorProcessGovernanceService {
             Integer escalationCount=jdbc.queryForObject("select count(*) from framework_actor_definition where actor_code=? and use_at='Y'",Integer.class,escalationActorCode);
             if(escalationCount==null||escalationCount==0)throw new IllegalArgumentException("ACTIVE_ESCALATION_ACTOR_NOT_FOUND: "+escalationActorCode);
         }
-        java.util.SortedSet<String> segregationActors=new java.util.TreeSet<>();
-        for(String value:str(b,"segregationActorCodes").split(",")){
-            String code=value.trim().toUpperCase(Locale.ROOT);
-            if(code.isEmpty())continue;
-            if(!code.matches("^[A-Z][A-Z0-9_]{1,59}$"))
-                throw new IllegalArgumentException("INVALID_SEGREGATION_ACTOR_CODE: "+code);
-            if(code.equals(actorCode))
-                throw new IllegalArgumentException("SEGREGATION_ACTOR_MUST_DIFFER_FROM_PRIMARY: "+code);
-            segregationActors.add(code);
-        }
+        java.util.SortedSet<String> segregationActors=canonicalCodeSet(
+            str(b,"segregationActorCodes"),"^[A-Z][A-Z0-9_]{1,59}$",
+            "SEGREGATION_ACTOR_CODE");
+        if(segregationActors.contains(actorCode))
+            throw new IllegalArgumentException(
+                "SEGREGATION_ACTOR_MUST_DIFFER_FROM_PRIMARY: "+actorCode);
         String segregationActorCodes=String.join(",",segregationActors);
         if(!segregationActors.isEmpty()){
             List<String> activeSegregationActors=jdbc.queryForList("""
@@ -4070,6 +4266,7 @@ public class ActorProcessGovernanceService {
         validateJsonObject(def(b,"inputContract","{}"),"inputContract");
         validateJsonObject(def(b,"outputContract","{}"),"outputContract");
         lockCanonicalProcessPublication(process);
+        beginProcessDesignRevision(process,actor);
         List<Map<String,Object>> currentSteps=jdbc.queryForList("select step_order from framework_process_step where process_code=? and step_code=? for update",process,step);
         if(currentSteps.isEmpty()){
             jdbc.update("update framework_process_step set step_order=step_order+10000 where process_code=? and step_order>=?",process,order);
@@ -4085,10 +4282,55 @@ public class ActorProcessGovernanceService {
         jdbc.update("insert into framework_process_step(process_code,step_order,step_code,step_name,parent_step_code,step_type,actor_code,from_state,command_code,to_state,completion_rule,requirement_text,input_contract,output_contract,requires_user_page,requires_admin_page,requires_api,requires_database,requires_notification,user_path,admin_path,api_contract,automation_status,sla_hours,escalation_actor_code,evidence_required,evidence_types,segregation_actor_codes,rollback_command_code,decision_rule) values(?,?,?,?,nullif(?,''),?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'PLANNED',?,nullif(?,''),?,?,?,?,?) on conflict(process_code,step_code) do update set step_order=excluded.step_order,step_name=excluded.step_name,parent_step_code=excluded.parent_step_code,step_type=excluded.step_type,actor_code=excluded.actor_code,from_state=excluded.from_state,command_code=excluded.command_code,to_state=excluded.to_state,completion_rule=excluded.completion_rule,requirement_text=excluded.requirement_text,input_contract=excluded.input_contract,output_contract=excluded.output_contract,requires_user_page=excluded.requires_user_page,requires_admin_page=excluded.requires_admin_page,requires_api=excluded.requires_api,requires_database=excluded.requires_database,requires_notification=excluded.requires_notification,user_path=excluded.user_path,admin_path=excluded.admin_path,api_contract=excluded.api_contract,automation_status='PLANNED',sla_hours=excluded.sla_hours,escalation_actor_code=excluded.escalation_actor_code,evidence_required=excluded.evidence_required,evidence_types=excluded.evidence_types,segregation_actor_codes=excluded.segregation_actor_codes,rollback_command_code=excluded.rollback_command_code,decision_rule=excluded.decision_rule",process,order,step,req(b,"stepName"),str(b,"parentStepCode"),def(b,"stepType","TASK"),actorCode,req(b,"fromState"),req(b,"commandCode"),req(b,"toState"),req(b,"completionRule"),def(b,"requirementText",req(b,"completionRule")),def(b,"inputContract","{}"),def(b,"outputContract","{}"),bool(b,"requiresUserPage"),bool(b,"requiresAdminPage"),bool(b,"requiresApi"),bool(b,"requiresDatabase"),bool(b,"requiresNotification"),str(b,"userPath"),str(b,"adminPath"),str(b,"apiContract"),integerOr(b,"slaHours",0),escalationActorCode,Boolean.parseBoolean(def(b,"evidenceRequired","true")),str(b,"evidenceTypes"),segregationActorCodes,str(b,"rollbackCommandCode"),str(b,"decisionRule"));
         Map<String,Object> trigger=new LinkedHashMap<>();
         trigger.put("triggerType","PROCESS_STEP");trigger.put("stepCode",step);
-        Map<String,Object> result=refreshAndQueueCanonicalProcess(process,actor,trigger);
+        Map<String,Object> result=propagate
+            ?refreshAndQueueCanonicalProcess(process,actor,trigger)
+            :new LinkedHashMap<>(Map.of("success",true,"status","DEFERRED",
+                "generationQueued",false,"jobCount",0,"propagationDeferred",true));
         result.put("success",true);result.put("processCode",process);result.put("stepCode",step);
         result.put("generatedJobs",result.getOrDefault("jobCount",0));
         return result;
+    }
+
+    @Transactional public Map<String,Object> reconcileRequirementImportSteps(
+            String processCode,java.util.Collection<String> requestedStepCodes,String actor){
+        String process=req(Map.of("processCode",processCode),"processCode")
+            .trim().toUpperCase(Locale.ROOT);
+        if(actor==null||actor.isBlank()||!actor.equals(actor.trim())||actor.length()>100)
+            throw new SecurityException("AUTHENTICATED_ACTOR_REQUIRED");
+        if(requestedStepCodes==null||requestedStepCodes.isEmpty())
+            throw new IllegalArgumentException("REQUIREMENT_STEP_SET_REQUIRED");
+        java.util.SortedSet<String> requested=new java.util.TreeSet<>();
+        for(String raw:requestedStepCodes){
+            String step=raw==null?"":raw.trim().toUpperCase(Locale.ROOT);
+            if(!step.matches("^[A-Z][A-Z0-9_]{1,79}$"))
+                throw new IllegalArgumentException("INVALID_REQUIREMENT_STEP_CODE: "+step);
+            if(!requested.add(step))
+                throw new IllegalArgumentException("DUPLICATE_REQUIREMENT_STEP_CODE: "+step);
+        }
+        lockCanonicalProcessPublication(process);
+        String exactSet=String.join(",",requested);
+        List<Map<String,Object>> obsolete=jdbc.queryForList("""
+            select step_code,coalesce(decision_rule,'') decision_rule
+              from framework_process_step
+             where process_code=?
+               and not(step_code=any(string_to_array(?,',')))
+             order by step_code
+             for update
+            """,process,exactSet);
+        for(Map<String,Object> row:obsolete){
+            String step=String.valueOf(row.get("step_code"));
+            if(!"SOURCE:REQUIREMENT_DOCUMENT".equals(row.get("decision_rule")))
+                throw new IllegalStateException(
+                    "MANUAL_PROCESS_STEP_OMISSION_FORBIDDEN: "+process+" / "+step);
+        }
+        int removed=0;
+        for(Map<String,Object> row:obsolete){
+            removed+=jdbc.update("delete from framework_process_step "+
+                "where process_code=? and step_code=? and decision_rule='SOURCE:REQUIREMENT_DOCUMENT'",
+                process,row.get("step_code"));
+        }
+        return Map.of("success",true,"processCode",process,"removedStepCount",removed,
+            "requestedStepCount",requested.size());
     }
 
     @Transactional public Map<String,Object> generateDevelopmentPlan(String process,String step,String actor){
@@ -4550,25 +4792,29 @@ public class ActorProcessGovernanceService {
         boolean administrator=isControlPlaneAdministrator(requestingAccount);
         List<Map<String,Object>> accounts=administrator
                 ? jdbc.queryForList("""
-                    select account_id as "accountId"
-                      from framework_account_actor_assignment
-                     where tenant_id=? and (project_id=? or project_id='*') and actor_code=?
-                       and assignment_status='ACTIVE'
-                       and (valid_from is null or valid_from<=current_date)
-                       and (valid_until is null or valid_until>=current_date)
-                     order by case when project_id=? then 0 else 1 end,account_id
+                    select assignment.account_id as "accountId"
+                      from framework_account_actor_assignment assignment
+                      join framework_actor_definition actor
+                        on actor.actor_code=assignment.actor_code and actor.use_at='Y'
+                     where assignment.tenant_id=? and (assignment.project_id=? or assignment.project_id='*') and assignment.actor_code=?
+                       and assignment.assignment_status='ACTIVE'
+                       and (assignment.valid_from is null or assignment.valid_from<=current_date)
+                       and (assignment.valid_until is null or assignment.valid_until>=current_date)
+                     order by case when assignment.project_id=? then 0 else 1 end,assignment.account_id
                      limit 1
                     """,execution.get("tenantId"),execution.get("projectId"),execution.get("actorCode"),
                         execution.get("projectId"))
                 : jdbc.queryForList("""
-                    select account_id as "accountId"
-                      from framework_account_actor_assignment
-                     where tenant_id=? and (project_id=? or project_id='*') and actor_code=?
-                       and lower(account_id)=lower(?)
-                       and assignment_status='ACTIVE'
-                       and (valid_from is null or valid_from<=current_date)
-                       and (valid_until is null or valid_until>=current_date)
-                     order by case when project_id=? then 0 else 1 end
+                    select assignment.account_id as "accountId"
+                      from framework_account_actor_assignment assignment
+                      join framework_actor_definition actor
+                        on actor.actor_code=assignment.actor_code and actor.use_at='Y'
+                     where assignment.tenant_id=? and (assignment.project_id=? or assignment.project_id='*') and assignment.actor_code=?
+                       and lower(assignment.account_id)=lower(?)
+                       and assignment.assignment_status='ACTIVE'
+                       and (assignment.valid_from is null or assignment.valid_from<=current_date)
+                       and (assignment.valid_until is null or assignment.valid_until>=current_date)
+                     order by case when assignment.project_id=? then 0 else 1 end
                      limit 1
                     """,execution.get("tenantId"),execution.get("projectId"),execution.get("actorCode"),
                         requestingAccount,execution.get("projectId"));
@@ -4672,7 +4918,7 @@ public class ActorProcessGovernanceService {
      */
     @Transactional public Map<String,Object> runProcessRuntimeSmoke(String requestedProcess,String executedBy){
         String processFilter=requestedProcess==null?"":requestedProcess.trim();
-        List<Map<String,Object>> fixtures=jdbc.queryForList("select a.tenant_id as \"tenantId\",a.project_id as \"projectId\",a.account_id as \"accountId\",s.process_code as \"processCode\",s.step_code as \"stepCode\",s.actor_code as \"actorCode\",s.command_code as \"commandCode\",s.from_state as \"fromState\",s.to_state as \"toState\" from framework_account_actor_assignment a join framework_process_step s on s.actor_code=a.actor_code and s.step_order=(select min(first_step.step_order) from framework_process_step first_step where first_step.process_code=s.process_code) where a.assignment_status='ACTIVE' and a.project_id<>'*' and (?='' or s.process_code=?) and not exists(select 1 from framework_process_execution e where e.tenant_id=a.tenant_id and e.project_id=a.project_id and e.process_code=s.process_code and e.execution_status='RUNNING') order by a.project_id,s.process_code limit 1",processFilter,processFilter);
+        List<Map<String,Object>> fixtures=jdbc.queryForList("select a.tenant_id as \"tenantId\",a.project_id as \"projectId\",a.account_id as \"accountId\",s.process_code as \"processCode\",s.step_code as \"stepCode\",s.actor_code as \"actorCode\",s.command_code as \"commandCode\",s.from_state as \"fromState\",s.to_state as \"toState\" from framework_account_actor_assignment a join framework_actor_definition actor on actor.actor_code=a.actor_code and actor.use_at='Y' join framework_process_step s on s.actor_code=a.actor_code and s.step_order=(select min(first_step.step_order) from framework_process_step first_step where first_step.process_code=s.process_code) where a.assignment_status='ACTIVE' and a.project_id<>'*' and (?='' or s.process_code=?) and not exists(select 1 from framework_process_execution e where e.tenant_id=a.tenant_id and e.project_id=a.project_id and e.process_code=s.process_code and e.execution_status='RUNNING') order by a.project_id,s.process_code limit 1",processFilter,processFilter);
         if(fixtures.isEmpty())throw new IllegalStateException("No isolated actor/process fixture is available for runtime smoke testing.");
         Map<String,Object> fixture=fixtures.get(0);
         String tenant=String.valueOf(fixture.get("tenantId")),project=String.valueOf(fixture.get("projectId"));
@@ -4771,7 +5017,7 @@ public class ActorProcessGovernanceService {
         try{
             String exceptionStep=String.valueOf(first.getOrDefault("nextStepCode",step));
             String exceptionActor=String.valueOf(first.getOrDefault("nextActorCode",actor));
-            List<Map<String,Object>> exceptionAccounts=jdbc.queryForList("select account_id as \"accountId\" from framework_account_actor_assignment where tenant_id=? and project_id=? and actor_code=? and assignment_status='ACTIVE' order by account_id limit 1",tenant,project,exceptionActor);
+            List<Map<String,Object>> exceptionAccounts=jdbc.queryForList("select assignment.account_id as \"accountId\" from framework_account_actor_assignment assignment join framework_actor_definition actor on actor.actor_code=assignment.actor_code and actor.use_at='Y' where assignment.tenant_id=? and assignment.project_id=? and assignment.actor_code=? and assignment.assignment_status='ACTIVE' order by assignment.account_id limit 1",tenant,project,exceptionActor);
             if(exceptionAccounts.isEmpty())throw new IllegalStateException("No active account is assigned for exception-path actor: "+exceptionActor);
             Map<String,Object> invalidCommand=new LinkedHashMap<>(request);invalidCommand.put("stepCode",exceptionStep);invalidCommand.put("actorCode",exceptionActor);invalidCommand.put("commandCode","INVALID_COMMAND");invalidCommand.put("idempotencyKey",key+"-exception");
             executeProcessCommand(executionId,invalidCommand,String.valueOf(exceptionAccounts.get(0).get("accountId")));
@@ -4790,7 +5036,7 @@ public class ActorProcessGovernanceService {
             if(nextSteps.isEmpty())throw new IllegalStateException("The next process step contract does not exist: "+nextStepCode);
             Map<String,Object> nextStep=nextSteps.get(0);
             String nextActor=String.valueOf(nextStep.get("actorCode"));
-            List<Map<String,Object>> accounts=jdbc.queryForList("select account_id as \"accountId\" from framework_account_actor_assignment where tenant_id=? and project_id=? and actor_code=? and assignment_status='ACTIVE' and (valid_from is null or valid_from<=current_date) and (valid_until is null or valid_until>=current_date) order by account_id limit 1",tenant,project,nextActor);
+            List<Map<String,Object>> accounts=jdbc.queryForList("select assignment.account_id as \"accountId\" from framework_account_actor_assignment assignment join framework_actor_definition actor on actor.actor_code=assignment.actor_code and actor.use_at='Y' where assignment.tenant_id=? and assignment.project_id=? and assignment.actor_code=? and assignment.assignment_status='ACTIVE' and (assignment.valid_from is null or assignment.valid_from<=current_date) and (assignment.valid_until is null or assignment.valid_until>=current_date) order by assignment.account_id limit 1",tenant,project,nextActor);
             if(accounts.isEmpty())throw new IllegalStateException("No active account is assigned for process actor: "+nextActor);
             String nextAccount=String.valueOf(accounts.get(0).get("accountId")),nextKey=key+"-step-"+(++sequence);
             Map<String,Object> nextRequest=new LinkedHashMap<>();nextRequest.put("tenantId",tenant);nextRequest.put("projectId",project);nextRequest.put("processCode",process);nextRequest.put("stepCode",String.valueOf(nextStep.get("stepCode")));nextRequest.put("actorCode",nextActor);nextRequest.put("commandCode",String.valueOf(nextStep.get("commandCode")));nextRequest.put("idempotencyKey",nextKey);nextRequest.put("requestJson","{\"smoke\":true,\"sequence\":"+sequence+"}");nextRequest.put("resultJson","{\"rolledBack\":true}");
@@ -4928,7 +5174,7 @@ public class ActorProcessGovernanceService {
     }
 
     private void requireActorAssignment(String tenant,String project,String actor,String user){
-        Integer count=jdbc.queryForObject("select count(*) from framework_account_actor_assignment where tenant_id=? and (project_id=? or project_id='*') and actor_code=? and lower(account_id)=lower(?) and assignment_status='ACTIVE' and (valid_from is null or valid_from<=current_date) and (valid_until is null or valid_until>=current_date)",Integer.class,tenant,project,actor,user);
+        Integer count=jdbc.queryForObject("select count(*) from framework_account_actor_assignment assignment join framework_actor_definition actor_definition on actor_definition.actor_code=assignment.actor_code and actor_definition.use_at='Y' where assignment.tenant_id=? and (assignment.project_id=? or assignment.project_id='*') and assignment.actor_code=? and lower(assignment.account_id)=lower(?) and assignment.assignment_status='ACTIVE' and (assignment.valid_from is null or assignment.valid_from<=current_date) and (assignment.valid_until is null or assignment.valid_until>=current_date)",Integer.class,tenant,project,actor,user);
         if(count==null||count==0)throw new SecurityException("프로젝트에 활성 액터 배정이 없습니다: "+actor);
     }
 
@@ -4954,7 +5200,7 @@ public class ActorProcessGovernanceService {
         List<Map<String,Object>> projects=jdbc.queryForList("select tenant_id,project_name from emission_project_registry where project_id=?",project);
         if(projects.isEmpty())throw new IllegalArgumentException("프로젝트를 찾을 수 없습니다: "+project);
         String tenant=String.valueOf(projects.get(0).get("tenant_id"));
-        Integer qaAssignment=jdbc.queryForObject("select count(*) from framework_account_actor_assignment where tenant_id=? and (project_id=? or project_id='*') and lower(account_id)=lower(?) and assignment_status='ACTIVE'",Integer.class,tenant,project,user);
+        Integer qaAssignment=jdbc.queryForObject("select count(*) from framework_account_actor_assignment assignment join framework_actor_definition actor on actor.actor_code=assignment.actor_code and actor.use_at='Y' where assignment.tenant_id=? and (assignment.project_id=? or assignment.project_id='*') and lower(assignment.account_id)=lower(?) and assignment.assignment_status='ACTIVE'",Integer.class,tenant,project,user);
         if((qaAssignment==null||qaAssignment==0)&&!"qaassign26".equals(normalizedUser)&&!"webmaster".equals(normalizedUser))throw new SecurityException("이 프로젝트의 QA 액터 배정이 없습니다.");
         List<Map<String,Object>> firstSteps=jdbc.queryForList("select step_code,from_state,actor_code from framework_process_step where process_code=? order by step_order limit 1",process);
         if(firstSteps.isEmpty())throw new IllegalArgumentException("프로세스 절차가 없습니다: "+process);
@@ -5092,7 +5338,7 @@ public class ActorProcessGovernanceService {
     }
 
     public Map<String,Object> findProcessExecution(String tenant,String project,String process,String user){
-        Integer assignmentCount=jdbc.queryForObject("select count(*) from framework_account_actor_assignment a where a.tenant_id=? and a.project_id=? and lower(a.account_id)=lower(?) and a.assignment_status='ACTIVE' and (a.valid_from is null or a.valid_from<=current_date) and (a.valid_until is null or a.valid_until>=current_date) and exists(select 1 from framework_process_step s where s.process_code=? and s.actor_code=a.actor_code)",Integer.class,tenant,project,user,process);
+        Integer assignmentCount=jdbc.queryForObject("select count(*) from framework_account_actor_assignment a join framework_actor_definition actor on actor.actor_code=a.actor_code and actor.use_at='Y' where a.tenant_id=? and a.project_id=? and lower(a.account_id)=lower(?) and a.assignment_status='ACTIVE' and (a.valid_from is null or a.valid_from<=current_date) and (a.valid_until is null or a.valid_until>=current_date) and exists(select 1 from framework_process_step s where s.process_code=? and s.actor_code=a.actor_code)",Integer.class,tenant,project,user,process);
         if(assignmentCount==null||assignmentCount==0)throw new SecurityException("No active actor assignment exists for this project process.");
         List<Map<String,Object>> rows=jdbc.queryForList("select execution_id as \"executionId\",tenant_id as \"tenantId\",project_id as \"projectId\",process_code as \"processCode\",current_step_code as \"currentStepCode\",execution_status as \"executionStatus\",current_state as \"currentState\",initiated_by_actor as \"initiatedByActor\",cycle_type as \"cycleType\",period_start as \"periodStart\",period_end as \"periodEnd\",site_scope as \"siteScope\",boundary_version as \"boundaryVersion\",methodology_version as \"methodologyVersion\",data_cutoff_at as \"dataCutoffAt\",execution_version as \"executionVersion\",handoff_status as \"handoffStatus\",snapshot_ref as \"snapshotRef\",started_at as \"startedAt\",completed_at as \"completedAt\" from framework_process_execution where tenant_id=? and project_id=? and process_code=? order by started_at desc limit 1",tenant,project,process);
         if(rows.isEmpty())return Map.of("found",false);
@@ -5123,7 +5369,7 @@ public class ActorProcessGovernanceService {
             List<Map<String,Object>> options;
             switch(control){
                 case "PROJECT_SELECT" -> options=jdbc.queryForList("select project_id::text as value,project_name as label from emission_project_registry where project_id=? and tenant_id=? order by project_name limit 50",project,tenant);
-                case "ACTOR_SELECT" -> options=jdbc.queryForList("select distinct actor_code as value,actor_code as label from framework_account_actor_assignment where tenant_id=? and project_id=? and assignment_status='ACTIVE' order by actor_code limit 50",tenant,project);
+                case "ACTOR_SELECT" -> options=jdbc.queryForList("select distinct assignment.actor_code as value,assignment.actor_code as label from framework_account_actor_assignment assignment join framework_actor_definition actor on actor.actor_code=assignment.actor_code and actor.use_at='Y' where assignment.tenant_id=? and assignment.project_id=? and assignment.assignment_status='ACTIVE' order by assignment.actor_code limit 50",tenant,project);
                 case "ORGANIZATION_SELECT" -> options=jdbc.queryForList("select distinct coalesce(nullif(instt_id,''),entrprs_mber_id) as value,coalesce(nullif(cmpny_nm,''),entrprs_mber_id) as label from comtnentrprsmber where entrprs_mber_sttus in ('P','A') and (lower(coalesce(cmpny_nm,'')) like ? or lower(coalesce(instt_id,'')) like ?) order by label limit 50",like,like);
                 case "SITE_SELECT" -> options=jdbc.queryForList("select site_code as value,site_name as label from emission_site_registry where tenant_id=? and site_status='ACTIVE' and (lower(site_name) like ? or lower(site_code) like ?) order by site_name limit 50",tenant,like,like);
                 case "SCOPE_SELECT" -> options=List.of(option("SCOPE1","Scope 1"),option("SCOPE2","Scope 2"),option("SCOPE3","Scope 3"));
@@ -5175,7 +5421,7 @@ public class ActorProcessGovernanceService {
         Integer count=switch(type){
             case "ORGANIZATION_REGISTRY" -> jdbc.queryForObject("select count(*) from emission_project_registry where tenant_id=? and project_id=?",Integer.class,tenant,project);
             case "SITE_REGISTRY" -> jdbc.queryForObject("select count(*) from emission_site_registry where tenant_id=? and site_status='ACTIVE' and (effective_until is null or effective_until>=current_date)",Integer.class,tenant);
-            case "ACTOR_ASSIGNMENT" -> jdbc.queryForObject("select count(*) from framework_account_actor_assignment where tenant_id=? and project_id=? and assignment_status='ACTIVE' and (valid_from is null or valid_from<=current_date) and (valid_until is null or valid_until>=current_date)",Integer.class,tenant,project);
+            case "ACTOR_ASSIGNMENT" -> jdbc.queryForObject("select count(*) from framework_account_actor_assignment assignment join framework_actor_definition actor on actor.actor_code=assignment.actor_code and actor.use_at='Y' where assignment.tenant_id=? and assignment.project_id=? and assignment.assignment_status='ACTIVE' and (assignment.valid_from is null or assignment.valid_from<=current_date) and (assignment.valid_until is null or assignment.valid_until>=current_date)",Integer.class,tenant,project);
             case "EMISSION_FACTOR_REFERENCE" -> jdbc.queryForObject("select count(*) from emission_factor_reference",Integer.class);
             case "UNIT_REFERENCE" -> jdbc.queryForObject("select count(distinct unit) from emission_factor_reference where nullif(trim(unit),'') is not null",Integer.class);
             case "REPORT_REGISTRY" -> jdbc.queryForObject("select count(*) from emission_project_report where project_id=? or exists(select 1 from framework_process_work_draft where tenant_id=? and project_id=? and process_code='EMISSION_CALCULATION' and draft_status='SUBMITTED')",Integer.class,project,tenant,project);
@@ -5405,17 +5651,20 @@ public class ActorProcessGovernanceService {
         String tenant=tenantId==null?"":tenantId.trim();
         String assignmentProject="*".equals(project)?"":project;
         Set<String> actorScope=unrestrictedActors?Set.of():jdbc.queryForList("""
-            select distinct upper(actor_code) as "actorCode"
-              from framework_account_actor_assignment
-             where tenant_id=?
-               and lower(account_id)=lower(?)
-               and assignment_status='ACTIVE'
-               and (valid_from is null or valid_from<=current_date)
-               and (valid_until is null or valid_until>=current_date)
-               and (project_id='*' or (?<>'' and project_id=?))
-               and (coalesce(nullif(data_scope,''),'*')='*'
-                    or (?<>'' and ?=any(string_to_array(replace(data_scope,' ',''),','))))
-             order by upper(actor_code)
+            select distinct upper(assignment.actor_code) as "actorCode"
+              from framework_account_actor_assignment assignment
+              join framework_actor_definition actor_definition
+                on actor_definition.actor_code=assignment.actor_code
+               and actor_definition.use_at='Y'
+             where assignment.tenant_id=?
+               and lower(assignment.account_id)=lower(?)
+               and assignment.assignment_status='ACTIVE'
+               and (assignment.valid_from is null or assignment.valid_from<=current_date)
+               and (assignment.valid_until is null or assignment.valid_until>=current_date)
+               and (assignment.project_id='*' or (?<>'' and assignment.project_id=?))
+               and (coalesce(nullif(assignment.data_scope,''),'*')='*'
+                    or (?<>'' and ?=any(string_to_array(replace(assignment.data_scope,' ',''),','))))
+             order by upper(assignment.actor_code)
             """,tenant,account,assignmentProject,assignmentProject,assignmentProject,assignmentProject).stream()
             .map(row->String.valueOf(row.get("actorCode")).trim().toUpperCase(Locale.ROOT))
             .filter(value->!value.isBlank())

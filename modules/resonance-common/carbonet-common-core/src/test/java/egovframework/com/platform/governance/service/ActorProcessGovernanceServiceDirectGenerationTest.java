@@ -100,9 +100,15 @@ class ActorProcessGovernanceServiceDirectGenerationTest {
             "ops/scripts/run-process-development-worker.sh"));
 
         assertTrue(worker.contains("(.designSetHash|type==\"string\""));
-        assertTrue(worker.contains("j.spec->>'sourceHash'='${receipt_source_hash}'"));
-        assertTrue(worker.contains("j.spec->>'designHash'='${receipt_design_hash}'"));
-        assertTrue(worker.contains("j.spec->>'designSetHash'='${receipt_design_set_hash}'"));
+        assertTrue(worker.contains("j.lease_token=\\$lease\\$${LEASE_TOKEN}\\$lease\\$"));
+        assertTrue(worker.contains(
+            "j.spec=convert_from(decode('${SPEC_B64}','base64'),'UTF8')::jsonb"));
+        assertTrue(worker.contains(
+            "j.spec->>'sourceHash'=generation.head->>'processInputHash'"));
+        assertTrue(worker.contains(
+            "j.spec->>'processInputHash'=generation.head->>'processInputHash'"));
+        assertTrue(worker.contains(
+            "j.spec->>'designSetHash'=generation.head->>'designSetHash'"));
     }
 
     @Test
@@ -161,6 +167,13 @@ class ActorProcessGovernanceServiceDirectGenerationTest {
     }
 
     private static ActorProcessGovernanceService service(JdbcTemplate jdbc){
+        when(jdbc.queryForObject(argThat(sql->sql!=null
+                &&sql.contains("select definition_locked from framework_process_definition")),
+                eq(Boolean.class),any(Object[].class))).thenReturn(true);
+        when(jdbc.queryForMap(argThat(sql->sql!=null&&sql.contains("completeStepCount")
+                &&sql.contains("definitionLocked")),any(Object[].class)))
+            .thenReturn(Map.of("definitionLocked",true,"definedStepCount",1,
+                "specStepCount",1,"completeStepCount",1));
         return new ActorProcessGovernanceService(jdbc,mock(ScreenDevelopmentNoteService.class),
             mock(CodexProvisioningService.class),mock(ScreenContractRuntimeService.class));
     }

@@ -1,6 +1,7 @@
 package egovframework.com.platform.governance.web;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
 import egovframework.com.platform.governance.service.ActorProcessGovernanceService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
@@ -21,6 +22,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.HexFormat;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -92,14 +95,29 @@ public class ActorProcessControlPlaneBridgeController {
             int designVersion = Integer.parseInt(required(body, "designVersion"));
             String checksum = required(body, "contractSha256");
             Object contract = body.get("contract");
-            if (designVersion < 1 || checksum.length() != 64 || !(contract instanceof Map<?, ?>)) {
+            if (designVersion < 1 || !checksum.matches("^[0-9a-f]{64}$")
+                    || !(contract instanceof Map<?, ?>)) {
                 return ResponseEntity.unprocessableEntity().body(Map.of(
                         "success", false,
                         "message", "A versioned, hashed Backstage contract is required."));
             }
 
-            String contractJson = mapper.writeValueAsString(contract);
-            int importedSteps = importRequirementProcessContract((Map<?, ?>) contract);
+            String contractJson = mapper.writer()
+                    .with(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS)
+                    .writeValueAsString(contract);
+            String actualChecksum = sha256(contractJson);
+            if (!MessageDigest.isEqual(checksum.getBytes(StandardCharsets.US_ASCII),
+                    actualChecksum.getBytes(StandardCharsets.US_ASCII))) {
+                return ResponseEntity.unprocessableEntity().body(Map.of(
+                        "success", false,
+                        "message", "contractSha256 does not match the canonical contract payload."));
+            }
+            Map<String,Object> requirementImport =
+                    importRequirementProcessContract((Map<?, ?>) contract);
+            int importedSteps = ((Number) requirementImport.getOrDefault(
+                    "importedSteps", 0)).intValue();
+            Object publication = requirementImport.getOrDefault(
+                    "publication", Map.of("status", "QUEUED"));
             jdbc.update("""
                     insert into framework_actor_process_design_release(
                       project_id,design_version,contract_sha256,contract_payload,release_status
@@ -120,8 +138,8 @@ public class ActorProcessControlPlaneBridgeController {
                            generation_result=cast(? as jsonb)
                      where project_id=? and design_version=?
                     """, mapper.writeValueAsString(Map.of(
-                    "status", "QUEUED",
-                    "maxScreens", 1000
+                    "status", "PENDING",
+                    "publication", publication
             )), projectId, designVersion);
 
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
@@ -137,10 +155,15 @@ public class ActorProcessControlPlaneBridgeController {
             response.put("designVersion", designVersion);
             response.put("sourceOfTruth", "BACKSTAGE");
             response.put("releaseStatus", "QUEUED");
-            response.put("generation", Map.of("status", "QUEUED", "maxScreens", 1000));
+            response.put("applicationStatus", "PENDING");
+            response.put("generation", publication);
             response.put("importedRequirementSteps", importedSteps);
             return ResponseEntity.ok(response);
         } catch (Exception exception) {
+            if (TransactionSynchronizationManager.isActualTransactionActive()) {
+                org.springframework.transaction.interceptor.TransactionAspectSupport
+                        .currentTransactionStatus().setRollbackOnly();
+            }
             return ResponseEntity.badRequest().body(Map.of(
                     "success", false,
                     "message", exception.getMessage() == null ? "Design release application failed." : exception.getMessage()));
@@ -608,6 +631,17 @@ public class ActorProcessControlPlaneBridgeController {
     }
 
     private void compilePromotedRelease(String projectId, int designVersion) {
+        Map<String,Object> release = jdbc.queryForMap("""
+                select contract_payload->'source'->>'type' as source_type,
+                       upper(contract_payload->'process'->>'processCode') as process_code
+                  from framework_actor_process_design_release
+                 where project_id=? and design_version=?
+                """, projectId, designVersion);
+        if ("REQUIREMENT_DOCUMENT".equals(String.valueOf(release.get("source_type")))) {
+            reconcileRequirementRelease(projectId,designVersion,
+                    String.valueOf(release.get("process_code")));
+            return;
+        }
         int claimed = jdbc.update("""
                 update framework_actor_process_design_release
                    set release_status='RUNNING',received_at=current_timestamp
@@ -649,11 +683,58 @@ public class ActorProcessControlPlaneBridgeController {
         }
     }
 
-    private int importRequirementProcessContract(Map<?, ?> contract) {
+    private void reconcileRequirementRelease(
+            String projectId,int designVersion,String processCode){
+        List<Map<String,Object>> jobs=jdbc.queryForList("""
+                with head as (
+                  select framework_process_generation_input(?) value
+                )
+                select job.job_id,job.job_status,job.quality_status,job.evidence_ref,
+                       job.target_path,framework_try_jsonb(job.specification_json)->>'processInputHash'
+                         as job_input_hash,head.value->>'processInputHash' as current_input_hash
+                  from framework_development_job job cross join head
+                 where job.process_code=? and job.job_type='FULL_STACK_GENERATION'
+                   and job.job_group_code=?||'_CANONICAL_PUBLICATION'
+                """,processCode,processCode,processCode);
+        if(jobs.size()!=1){
+            jdbc.update("""
+                    update framework_actor_process_design_release
+                       set release_status='REVIEW_REQUIRED',applied_at=null,
+                           generation_result=cast(? as jsonb)
+                     where project_id=? and design_version=?
+                    """,writeJson(Map.of("status","REVIEW_REQUIRED",
+                    "processCode",processCode,"jobCount",jobs.size())),projectId,designVersion);
+            return;
+        }
+        Map<String,Object> job=jobs.get(0);
+        String status=String.valueOf(job.get("job_status"));
+        String quality=String.valueOf(job.get("quality_status"));
+        String evidence=job.get("evidence_ref")==null?"":String.valueOf(job.get("evidence_ref")).trim();
+        String head=String.valueOf(job.get("current_input_hash"));
+        boolean exactHead=head.matches("[0-9a-f]{64}")
+                &&head.equals(String.valueOf(job.get("job_input_hash")))
+                &&("canonical://"+processCode+"/"+head).equals(job.get("target_path"));
+        boolean applied=exactHead&&Set.of("VERIFIED","COMPLETED").contains(status)
+                &&Set.of("VERIFIED","PASSED").contains(quality)&&!evidence.isBlank();
+        boolean failed=Set.of("FAILED","BLOCKED").contains(status);
+        String releaseStatus=applied?"APPLIED":failed?"REVIEW_REQUIRED":"QUEUED";
+        jdbc.update("""
+                update framework_actor_process_design_release
+                   set release_status=?,applied_at=case when ? then current_timestamp else null end,
+                       generation_result=cast(? as jsonb)
+                 where project_id=? and design_version=?
+                """,releaseStatus,applied,writeJson(Map.of(
+                "status",applied?"APPLIED":failed?"REVIEW_REQUIRED":"PENDING",
+                "processCode",processCode,"jobId",job.get("job_id"),
+                "jobStatus",status,"qualityStatus",quality,
+                "headExact",exactHead,"evidencePresent",!evidence.isBlank())),projectId,designVersion);
+    }
+
+    private Map<String,Object> importRequirementProcessContract(Map<?, ?> contract) {
         Object sourceValue = contract.get("source");
         if (!(sourceValue instanceof Map<?, ?> source)
                 || !"REQUIREMENT_DOCUMENT".equals(String.valueOf(source.get("type")))) {
-            return 0;
+            return Map.of("requirementRelease",false,"importedSteps",0);
         }
         Object processValue = contract.get("process");
         if (!(processValue instanceof Map<?, ?> process)) {
@@ -678,8 +759,10 @@ public class ActorProcessControlPlaneBridgeController {
             }
             actorCodes.add(requiredRaw(step, "actorCode").toUpperCase());
         }
+        LinkedHashSet<String> affectedProcesses = new LinkedHashSet<>();
         for (String actorCode : actorCodes) {
-            governance.createActor(new LinkedHashMap<>(Map.of(
+            Map<String,Object> actorMutation=governance.createActorForRequirementImport(
+                    new LinkedHashMap<>(Map.of(
                     "actorCode", actorCode,
                     "actorName", actorCode,
                     "actorNameEn", actorCode,
@@ -688,9 +771,12 @@ public class ActorProcessControlPlaneBridgeController {
                     "capabilityCodes", "REQUIREMENT_AUTOMATION",
                     "delegationAllowed", false,
                     "useAt", "Y")),"BACKSTAGE_REQUIREMENT_AUTOMATION");
+            Object rawAffected=actorMutation.get("affectedProcessCodes");
+            if(rawAffected instanceof List<?> list)for(Object value:list)
+                affectedProcesses.add(String.valueOf(value));
         }
         String ownerActor = actorCodes.iterator().next();
-        governance.createProcess(new LinkedHashMap<>(Map.ofEntries(
+        governance.createProcessForRequirementImport(new LinkedHashMap<>(Map.ofEntries(
                 Map.entry("processCode", processCode),
                 Map.entry("processName", processCode + " 요구분석 실행"),
                 Map.entry("domainCode", "DATA_GOVERNANCE"),
@@ -705,10 +791,14 @@ public class ActorProcessControlPlaneBridgeController {
                 Map.entry("riskLevel", "MEDIUM"),
                 Map.entry("developmentOrder", 1))),"BACKSTAGE_REQUIREMENT_AUTOMATION");
         int order = 0;
+        LinkedHashSet<String> requestedStepCodes = new LinkedHashSet<>();
         for (Object stepValue : steps) {
             Map<?, ?> step = (Map<?, ?>) stepValue;
             order++;
             String stepCode = requiredRaw(step, "stepCode").toUpperCase();
+            if (!requestedStepCodes.add(stepCode)) {
+                throw new IllegalArgumentException("Duplicate requirement step: " + stepCode);
+            }
             String actorCode = requiredRaw(step, "actorCode").toUpperCase();
             String fromState = order == 1 ? "DRAFT" : "STEP_" + (order - 1) + "_COMPLETED";
             String toState = order == steps.size() ? "COMPLETED" : "STEP_" + order + "_COMPLETED";
@@ -747,7 +837,24 @@ public class ActorProcessControlPlaneBridgeController {
             stepRequest.put("evidenceRequired", true);
             stepRequest.put("evidenceTypes", "REQUEST,RESPONSE,DB_REREAD,E2E,ROLLBACK");
             stepRequest.put("rollbackCommandCode", "ROLLBACK_" + stepCode);
-            governance.addStep(stepRequest, "BACKSTAGE_REQUIREMENT_AUTOMATION");
+            stepRequest.put("decisionRule", "SOURCE:REQUIREMENT_DOCUMENT");
+            governance.addStepForRequirementImport(
+                    stepRequest, "BACKSTAGE_REQUIREMENT_AUTOMATION");
+        }
+        governance.reconcileRequirementImportSteps(processCode,requestedStepCodes,
+                "BACKSTAGE_REQUIREMENT_AUTOMATION");
+        Integer exactStepCount = jdbc.queryForObject("""
+                select count(*) from framework_process_step
+                 where process_code=? and step_code=any(string_to_array(?,','))
+                """, Integer.class, processCode, String.join(",", requestedStepCodes));
+        Integer totalStepCount = jdbc.queryForObject(
+                "select count(*) from framework_process_step where process_code=?",
+                Integer.class, processCode);
+        if (exactStepCount == null || totalStepCount == null
+                || exactStepCount != requestedStepCodes.size()
+                || totalStepCount != requestedStepCodes.size()) {
+            throw new IllegalStateException(
+                    "Requirement process step set is not exact: " + processCode);
         }
         int safetyScenarioTypes = governance.ensureGeneratedProcessSafetyCases(processCode);
         if (safetyScenarioTypes < 5) {
@@ -763,7 +870,25 @@ public class ActorProcessControlPlaneBridgeController {
         if (pageDesigns < steps.size()) {
             throw new IllegalStateException("Requirement page and field designs are incomplete: " + processCode);
         }
-        return order;
+        Map<String,Object> publication = governance.finalizeAndQueueProcessDesign(
+                processCode,"BACKSTAGE_REQUIREMENT_AUTOMATION",
+                "REQUIREMENT_PROCESS_CONTRACT");
+        if ("SKIPPED".equals(publication.get("status"))
+                || !Boolean.TRUE.equals(publication.get("success"))) {
+            throw new IllegalStateException(
+                    "Requirement process canonical publication is incomplete: " + publication);
+        }
+        List<Map<String,Object>> relatedPublications=new java.util.ArrayList<>();
+        for(String affectedProcess:affectedProcesses){
+            if(processCode.equals(affectedProcess))continue;
+            relatedPublications.add(governance.finalizeAndQueueProcessDesign(
+                    affectedProcess,"BACKSTAGE_REQUIREMENT_AUTOMATION",
+                    "REQUIREMENT_ACTOR_DEFINITION"));
+        }
+        publication=new LinkedHashMap<>(publication);
+        publication.put("relatedProcessPublications",relatedPublications);
+        return Map.of("requirementRelease",true,"importedSteps",order,
+                "processCode",processCode,"publication",publication);
     }
 
     private static String requiredRaw(Map<?, ?> body, String key) {
@@ -771,6 +896,15 @@ public class ActorProcessControlPlaneBridgeController {
         String text = value == null ? "" : String.valueOf(value).trim();
         if (text.isEmpty()) throw new IllegalArgumentException(key + " is required");
         return text;
+    }
+
+    private static String sha256(String value){
+        try {
+            return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256")
+                    .digest(value.getBytes(StandardCharsets.UTF_8)));
+        } catch (NoSuchAlgorithmException impossible) {
+            throw new IllegalStateException("SHA-256 is unavailable",impossible);
+        }
     }
 
     @Scheduled(
@@ -794,6 +928,8 @@ public class ActorProcessControlPlaneBridgeController {
             governance.ensureGeneratedProcessSafetyCases(processCode);
             governance.ensureGeneratedProcessDesignContracts(processCode, "REQUIREMENT_SELF_HEALER");
             governance.ensureGeneratedProcessPageDesigns(processCode, "REQUIREMENT_SELF_HEALER");
+            governance.finalizeAndQueueProcessDesign(processCode,"REQUIREMENT_SELF_HEALER",
+                    "REQUIREMENT_PROCESS_RECOVERY");
         }
         List<Map<String, Object>> releases = jdbc.queryForList("""
                 select project_id,design_version

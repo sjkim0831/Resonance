@@ -28,6 +28,8 @@ BEGIN
     RAISE EXCEPTION 'authenticated refresh actor is required'
       USING ERRCODE='22023';
   END IF;
+  PERFORM pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended(
+    'CANONICAL_PROCESS_PUBLICATION_V1:'||upper(btrim(requested_process)),0));
   IF NOT EXISTS(
     SELECT 1 FROM public.framework_process_definition process
      WHERE process.process_code=requested_process
@@ -95,6 +97,8 @@ BEGIN
                THEN simulation.case_type END)::integer safety_family_count
       FROM public.framework_simulation_case simulation
      WHERE simulation.process_code=requested_process
+       AND simulation.case_status IN(
+         'READY','ACTIVE','AUTOMATED','APPROVED','VERIFIED')
      GROUP BY simulation.process_code
   ), pages AS MATERIALIZED (
     SELECT page.process_code,page.step_code,
@@ -106,33 +110,38 @@ BEGIN
              'primaryEntity',page.primary_entity,'responsive',page.responsive_contract,
              'accessibility',page.accessibility_contract,'security',page.security_contract,
              'exceptions',page.exception_contract)
-             ORDER BY page.audience,page.page_code) screen_contract
+             ORDER BY page.audience,page.page_code) screen_contract,
+           bool_or(upper(page.audience)='USER') has_user,
+           bool_or(upper(page.audience)='ADMIN') has_admin
       FROM public.framework_page_design page
      WHERE page.process_code=requested_process
      GROUP BY page.process_code,page.step_code
   ), professional_steps AS MATERIALIZED (
-    SELECT DISTINCT contract.process_code,contract.step_code
+    SELECT contract.process_code,contract.step_code,
+           bool_or(upper(contract.audience)='USER') has_user,
+           bool_or(upper(contract.audience)='ADMIN') has_admin
       FROM public.framework_professional_screen_contract contract
      WHERE contract.process_code=requested_process
+     GROUP BY contract.process_code,contract.step_code
   ), compiled AS MATERIALIZED (
     SELECT process.process_code,step.step_code,process.definition_locked,
       jsonb_build_object(
         'actorCode',step.actor_code,'actorName',actor.actor_name,
         'actorType',actor.actor_type,'purpose',actor.purpose,
-        'capabilityCodes',coalesce(to_jsonb(regexp_split_to_array(
-          nullif(btrim(actor.capability_codes),''),'[[:space:]]*,[[:space:]]*')),'[]'::jsonb),
+        'capabilityCodes',public.framework_design_causality_csv_set(
+          actor.capability_codes),
         'delegationAllowed',actor.delegation_allowed,'useAt',actor.use_at,
         'responsibility',actor.responsibility_text,
         'accountability',actor.accountability_text,
         'competency',actor.competency_requirements,
-        'conflictActorCodes',coalesce(to_jsonb(regexp_split_to_array(
-          nullif(btrim(actor.conflict_actor_codes),''),'[[:space:]]*,[[:space:]]*')),'[]'::jsonb),
+        'conflictActorCodes',public.framework_design_causality_csv_set(
+          actor.conflict_actor_codes),
         'maxConcurrentAssignments',actor.max_concurrent_assignments,
         'reviewCycleDays',actor.review_cycle_days,
         'ownerActorCode',process.owner_actor_code,
         'escalationActorCode',step.escalation_actor_code,
-        'segregationActorCodes',coalesce(to_jsonb(regexp_split_to_array(
-          nullif(btrim(step.segregation_actor_codes),''),'[[:space:]]*,[[:space:]]*')),'[]'::jsonb),
+        'segregationActorCodes',public.framework_design_causality_csv_set(
+          step.segregation_actor_codes),
         'tenantIsolation',true,'projectIsolation',true,'delegationChecked',true,
         'segregationOfDuties',true,
         'relatedActors',(
@@ -140,14 +149,14 @@ BEGIN
             'actorCode',related.actor_code,'actorName',related.actor_name,
             'actorNameEn',related.actor_name_en,'actorType',related.actor_type,
             'purpose',related.purpose,
-            'capabilityCodes',coalesce(to_jsonb(regexp_split_to_array(
-              nullif(btrim(related.capability_codes),''),'[[:space:]]*,[[:space:]]*')),'[]'::jsonb),
+            'capabilityCodes',public.framework_design_causality_csv_set(
+              related.capability_codes),
             'delegationAllowed',related.delegation_allowed,'useAt',related.use_at,
             'responsibility',related.responsibility_text,
             'accountability',related.accountability_text,
             'competency',related.competency_requirements,
-            'conflictActorCodes',coalesce(to_jsonb(regexp_split_to_array(
-              nullif(btrim(related.conflict_actor_codes),''),'[[:space:]]*,[[:space:]]*')),'[]'::jsonb),
+            'conflictActorCodes',public.framework_design_causality_csv_set(
+              related.conflict_actor_codes),
             'maxConcurrentAssignments',related.max_concurrent_assignments,
             'reviewCycleDays',related.review_cycle_days)
             ORDER BY related.actor_code COLLATE "C"),'[]'::jsonb)
@@ -235,9 +244,14 @@ BEGIN
           'resumeFromLastVerifiedState',true)) nonfunctional_contract,
       array_remove(ARRAY[
         CASE WHEN schema_set.completeness_status<>'COMPLETE' THEN 'STEP_SCHEMA_INCOMPLETE' END,
-        CASE WHEN professional.process_code IS NULL
-          AND coalesce(jsonb_array_length(page.screen_contract),0)=0
-          AND (step.requires_user_page OR step.requires_admin_page)
+        CASE WHEN (step.requires_user_page AND NOT CASE
+                    WHEN professional.process_code IS NOT NULL
+                      THEN coalesce(professional.has_user,false)
+                    ELSE coalesce(page.has_user,false) END)
+               OR (step.requires_admin_page AND NOT CASE
+                    WHEN professional.process_code IS NOT NULL
+                      THEN coalesce(professional.has_admin,false)
+                    ELSE coalesce(page.has_admin,false) END)
           THEN 'PAGE_DESIGN_MISSING' END,
         CASE WHEN coalesce(test.safety_family_count,0)<5
           THEN 'TEST_FAMILY_MISSING' END],NULL) blockers
@@ -331,7 +345,8 @@ BEGIN
             AND public.framework_step_execution_spec.nonfunctional_contract IS NOT DISTINCT FROM excluded.nonfunctional_contract
             THEN 'GENERATED' ELSE 'READY' END
         ELSE excluded.generation_status END,
-      blocker_codes=excluded.blocker_codes,source_hash=excluded.source_hash,
+      blocker_codes=excluded.blocker_codes,
+      source_hash=public.framework_step_execution_spec.source_hash,
       approved_by=CASE
         WHEN excluded.design_status='DESIGN_COMPLETE'
           AND public.framework_step_execution_spec.approval_status='APPROVED'

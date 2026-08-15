@@ -773,7 +773,7 @@ class ActorProcessGovernanceServiceSecurityTest {
     void startRequiresCurrentAccountsActorAssignment() {
         when(jdbc.queryForList(anyString(), any(Object[].class))).thenReturn(List.of(Map.of(
                 "step_code", "STEP_1", "actor_code", "COMPANY_MANAGER", "from_state", "READY")));
-        when(jdbc.queryForObject(argThat(sql -> sql.contains("lower(account_id)=lower(?)")),
+        when(jdbc.queryForObject(argThat(sql -> sql.contains("lower(assignment.account_id)=lower(?)")),
                 org.mockito.ArgumentMatchers.eq(Integer.class), any(Object[].class))).thenReturn(0);
 
         assertThrows(SecurityException.class, () -> service.startProcessExecution(Map.of(
@@ -781,8 +781,10 @@ class ActorProcessGovernanceServiceSecurityTest {
                 "actorCode", "COMPANY_MANAGER"), "user-a"));
 
         verify(jdbc).queryForObject(argThat(sql ->
-                        sql.contains("(project_id=? or project_id='*')")
-                                && sql.contains("lower(account_id)=lower(?)")),
+                        sql.contains("(assignment.project_id=? or assignment.project_id='*')")
+                                && sql.contains("lower(assignment.account_id)=lower(?)")
+                                && sql.contains("join framework_actor_definition")
+                                && sql.contains("use_at='Y'")),
                 org.mockito.ArgumentMatchers.eq(Integer.class), any(Object[].class));
     }
 
@@ -1108,7 +1110,7 @@ class ActorProcessGovernanceServiceSecurityTest {
     void workDraftRejectsAStaleOptimisticVersion() {
         when(jdbc.queryForList(argThat(sql -> sql != null && sql.contains("select actor_code from framework_process_step")), any(Object[].class)))
                 .thenReturn(List.of(Map.of("actor_code", "SITE_DATA_OWNER")));
-        when(jdbc.queryForObject(argThat(sql -> sql != null && sql.contains("lower(account_id)=lower(?)")),
+        when(jdbc.queryForObject(argThat(sql -> sql != null && sql.contains("lower(assignment.account_id)=lower(?)")),
                 org.mockito.ArgumentMatchers.eq(Integer.class), any(Object[].class))).thenReturn(1);
         when(jdbc.queryForList(argThat(sql -> sql != null && sql.contains("from framework_process_work_draft") && sql.contains("for update")), any(Object[].class)))
                 .thenReturn(List.of(Map.of("draft_id", UUID.randomUUID(), "draft_version", 2, "draft_status", "DRAFT")));
@@ -1256,6 +1258,7 @@ class ActorProcessGovernanceServiceSecurityTest {
 
     @Test
     void sameTenantCompanyManagerCanAssignAnExistingTenantAccount() {
+        stubActiveAssignmentActor("SITE_DATA_OWNER");
         when(jdbc.queryForObject(argThat(sql -> sql.contains("from comtnemplyrinfo")&&sql.contains("comtnentrprsmber")),
                 org.mockito.ArgumentMatchers.eq(Integer.class),any(Object[].class))).thenReturn(1);
 
@@ -1268,6 +1271,7 @@ class ActorProcessGovernanceServiceSecurityTest {
 
     @Test
     void activeCompanyManagerActorCanAssignWithoutAPlatformOrBootstrapAdminRole() {
+        stubActiveAssignmentActor("SITE_DATA_OWNER");
         when(jdbc.queryForObject(argThat(sql -> sql!=null&&sql.contains("actor_code='COMPANY_MANAGER'")&&sql.contains("data_scope='*'")),
                 org.mockito.ArgumentMatchers.eq(Integer.class),any(Object[].class))).thenReturn(1);
         when(jdbc.queryForObject(argThat(sql -> sql!=null&&sql.contains("from comtnemplyrinfo")&&sql.contains("comtnentrprsmber")),
@@ -1278,10 +1282,14 @@ class ActorProcessGovernanceServiceSecurityTest {
                 "company-manager","TENANT_A","ROLE_USER",false);
 
         verify(jdbc).update(argThat(sql -> sql.contains("insert into framework_account_actor_assignment")),any(Object[].class));
+        verify(jdbc).queryForObject(argThat(sql -> sql.contains("join framework_actor_definition actor")
+                &&sql.contains("actor.use_at='Y'")&&sql.contains("actor_code='COMPANY_MANAGER'")),
+            org.mockito.ArgumentMatchers.eq(Integer.class),any(Object[].class));
     }
 
     @Test
     void sameTenantCompanyManagerRetainsAValidProjectSpecificAssignmentPath() {
+        stubActiveAssignmentActor("SITE_DATA_OWNER");
         when(jdbc.queryForObject(argThat(sql -> sql!=null&&sql.contains("from emission_project_registry")&&sql.contains("project_id=?")&&sql.contains("tenant_id=?")),
                 org.mockito.ArgumentMatchers.eq(Integer.class),any(Object[].class))).thenReturn(1);
         when(jdbc.queryForObject(argThat(sql -> sql!=null&&sql.contains("from comtnemplyrinfo")&&sql.contains("comtnentrprsmber")),
@@ -1297,12 +1305,34 @@ class ActorProcessGovernanceServiceSecurityTest {
 
     @Test
     void platformAdministratorRetainsTheControlPlaneAssignmentPath() {
+        stubActiveAssignmentActor("SITE_DATA_OWNER");
         service.assignActorAuthorized(Map.of(
                 "accountId","bootstrap-user","tenantId","TENANT_A","projectId","*","actorCode","SITE_DATA_OWNER"),
                 "platform-admin","DEFAULT","ROLE_SYSTEM_MASTER",true);
 
         verify(jdbc).update(argThat(sql -> sql.contains("insert into framework_account_actor_assignment")),any(Object[].class));
         verify(jdbc,never()).queryForObject(anyString(),org.mockito.ArgumentMatchers.eq(Integer.class),any(Object[].class));
+    }
+
+    @Test
+    void inactiveTargetActorIsRejectedBeforeAnyAssignmentMutation() {
+        SecurityException failure=assertThrows(SecurityException.class,()->
+            service.assignActorAuthorized(Map.of(
+                "accountId","bootstrap-user","tenantId","TENANT_A","projectId","*",
+                "actorCode","INACTIVE_ACTOR"),
+                "platform-admin","DEFAULT","ROLE_SYSTEM_MASTER",true));
+
+        assertEquals("ACTIVE_ACTOR_NOT_FOUND",failure.getMessage());
+        verify(jdbc,never()).update(argThat(sql -> sql.contains(
+            "insert into framework_account_actor_assignment")),any(Object[].class));
+    }
+
+    private void stubActiveAssignmentActor(String actorCode){
+        when(jdbc.queryForList(argThat(sql -> sql!=null
+                    &&sql.contains("from framework_actor_definition")
+                    &&sql.contains("use_at='Y'")&&sql.contains("for update")),
+                org.mockito.ArgumentMatchers.eq(String.class),any(Object[].class)))
+            .thenReturn(List.of(actorCode));
     }
 
     private void stubStepReviewContract(String sourceCommit,String contractFingerprint){
