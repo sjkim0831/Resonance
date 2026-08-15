@@ -149,15 +149,13 @@ EOF
         bash "$WT/ops/scripts/generate-full-stack-design-packages.sh" "$WT" "$PROCESS" >/dev/null
     fi
     [[ -s "$generated_step_package" ]] || exit 3
-    jq -e '
-      (.frontend.pages | length) > 0
-      and all(.frontend.pages[];
-        .layout == "COMMON_KRDS_TASK_LAYOUT"
-        and .theme == "COMMON_KRDS_GOV"
-        and (.sections | length) >= 5
-        and (.fields | length) >= 8
-        and all(.fields[]; (.code | type == "string" and length > 0)))
-    ' "$generated_step_package" >/dev/null
+    adoption_json="$(bash "$generated_dimension_validator" "$WT" "$PROCESS" "$STEP" "$JOB_TYPE")" || exit $?
+    design_summary="$(jq -c '
+      [.frontend.pages[] | {
+        layout,theme,source:.designAuthority.source,
+        defaulted:.designAuthority.defaulted
+      }] | unique
+    ' "$generated_step_package")"
     artifact="docs/ai/85-adopted-quality/$slug_process/$slug_step-$JOB_TYPE-job-$JOB_ID.md"
     mkdir -p "$WT/$(dirname "$artifact")"
     cat >"$WT/$artifact" <<EOF
@@ -166,12 +164,13 @@ EOF
 - Job: $JOB_ID
 - Job type: $JOB_TYPE
 - Package: $generated_step_package
-- Shared layout: COMMON_KRDS_TASK_LAYOUT
-- Shared theme: COMMON_KRDS_GOV
+- Snapshot design authority: $design_summary
+- Validation result: $adoption_json
 
-The approved package uses the registered common layout, theme, five task
-sections, responsive contract, and canonical runtime field codes. No
-page-specific component or CSS duplicate was introduced.
+The approved package exactly preserves the route-registered layout and theme
+projected by the step execution snapshot. Legacy omissions use only the live
+registered defaults. Five task sections, responsive behavior, and canonical
+runtime field codes remain required without page-specific CSS duplication.
 EOF
     ;;
   API|API_QUALITY|BACKEND|BACKEND_QUALITY)

@@ -7,11 +7,22 @@ import argparse
 import hashlib
 import json
 import os
+import re
 import time
 from pathlib import Path
 from typing import Any
 
 REQUIRED_SCENARIOS = {"HAPPY_PATH", "EXCEPTION", "AUTHORITY", "ISOLATION", "RECOVERY"}
+VALIDATOR_CONTRACT = "FAST_PROCESS_PACKAGE_V2_DESIGN_AUTHORITY"
+DESIGN_AUTHORITY_SOURCES = {
+    "STEP_EXECUTION_SPEC_SCREEN_CONTRACT",
+    "LEGACY_REGISTERED_DEFAULT",
+}
+GOVERNED_DESIGN_CODE_SHAPE = re.compile(r"^[A-Z][A-Z0-9_]{1,79}$")
+REGISTERED_LEGACY_DEFAULTS = {
+    "layout": "RESPONSIVE_WORKSPACE",
+    "theme": "KRDS_GOV_DEFAULT",
+}
 SERVER_CONTEXT_FIELDS = {
     "tenantId", "projectId", "processCode", "stepCode", "actorCode", "fromState",
     "stepOrder", "idempotencyKey", "commandCode", "businessPayload",
@@ -71,6 +82,44 @@ def require(condition: bool, message: str, failures: list[str]) -> None:
         failures.append(message)
 
 
+def validate_page_design_authority(page: dict[str, Any], failures: list[str]) -> None:
+    authority = page.get("designAuthority")
+    require(isinstance(authority, dict), "design authority", failures)
+    if not isinstance(authority, dict):
+        return
+    source = authority.get("source")
+    defaulted = authority.get("defaulted")
+    require(source in DESIGN_AUTHORITY_SOURCES, "design authority source", failures)
+    valid_defaulted = (
+        isinstance(defaulted, list)
+        and all(isinstance(key, str) for key in defaulted)
+    )
+    require(
+        valid_defaulted
+        and len(defaulted) == len(set(defaulted))
+        and set(defaulted) <= set(REGISTERED_LEGACY_DEFAULTS),
+        "design authority defaulted keys",
+        failures,
+    )
+    if not valid_defaulted:
+        defaulted = []
+    require(
+        (source == "LEGACY_REGISTERED_DEFAULT") == bool(defaulted),
+        "design authority fallback provenance",
+        failures,
+    )
+    for key, legacy_default in REGISTERED_LEGACY_DEFAULTS.items():
+        value = page.get(key)
+        require(authority.get(key) == value, f"{key} snapshot projection", failures)
+        require(
+            isinstance(value, str) and bool(GOVERNED_DESIGN_CODE_SHAPE.fullmatch(value)),
+            f"{key} governed code syntax",
+            failures,
+        )
+        if key in defaulted:
+            require(value == legacy_default, f"{key} registered legacy default", failures)
+
+
 def test_package(path: Path) -> dict[str, Any]:
     started = time.perf_counter()
     package = load(path)
@@ -120,8 +169,7 @@ def test_package(path: Path) -> dict[str, Any]:
         require(audience not in page_audiences, "duplicate audience page", failures)
         page_audiences.add(audience)
         require(str(page.get("route", "")).startswith("/"), "route", failures)
-        require(page.get("layout") == "COMMON_KRDS_TASK_LAYOUT", "common layout", failures)
-        require(page.get("theme") == "COMMON_KRDS_GOV", "common theme", failures)
+        validate_page_design_authority(page, failures)
         # Professional completeness is semantic, not an arbitrary field count:
         # a four-field approval form can be complete while a 40-field form can
         # still omit a required command input. Required-field checks below are
@@ -167,6 +215,7 @@ def test_package(path: Path) -> dict[str, Any]:
     actual_hash = hashlib.sha256(stable(unhashed).encode()).hexdigest()
     require(expected_hash == actual_hash, "package hash", failures)
     return {
+        "validatorContract": VALIDATOR_CONTRACT,
         "identity": identity,
         "package": str(path),
         "packageHash": expected_hash,
@@ -190,10 +239,22 @@ def main() -> None:
     for path in package_paths(args.target):
         package = load(path)
         package_hash = package.get("packageHash", "missing")
-        cache = args.cache_dir / f"{package_hash}.pass.json" if args.cache_dir else None
+        cache = (
+            args.cache_dir / f"{VALIDATOR_CONTRACT}-{package_hash}.pass.json"
+            if args.cache_dir else None
+        )
         if cache and cache.is_file() and not args.force:
             result = load(cache)
-            result["cached"] = True
+            if result.get("validatorContract") == VALIDATOR_CONTRACT:
+                result["cached"] = True
+            else:
+                result = test_package(path)
+                result["cached"] = False
+                if result["status"] == "PASSED":
+                    cache.write_text(
+                        json.dumps(result, ensure_ascii=False, indent=2) + "\n",
+                        encoding="utf-8",
+                    )
         else:
             result = test_package(path)
             result["cached"] = False

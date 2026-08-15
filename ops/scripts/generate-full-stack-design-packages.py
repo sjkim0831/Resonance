@@ -32,9 +32,11 @@ DEFAULT_SCREEN_SECTIONS = [
     "TASK_EVIDENCE",
     "TASK_HANDOFF",
 ]
-GOVERNED_DESIGN_CODE = re.compile(
-    r"^(?:RESPONSIVE_WORKSPACE|(?:COMMON|KRDS)_[A-Z0-9_]{2,78})$"
-)
+GOVERNED_DESIGN_CODE_SHAPE = re.compile(r"^[A-Z][A-Z0-9_]{1,79}$")
+DESIGN_AUTHORITY_SCREEN_CONTRACT = "STEP_EXECUTION_SPEC_SCREEN_CONTRACT"
+DESIGN_AUTHORITY_LEGACY_DEFAULT = "LEGACY_REGISTERED_DEFAULT"
+DEFAULT_LAYOUT = "RESPONSIVE_WORKSPACE"
+DEFAULT_THEME = "KRDS_GOV_DEFAULT"
 
 
 def fail(message: str) -> None:
@@ -49,12 +51,38 @@ def governed_design_code(
     page: dict[str, Any], key: str, default: str, identity: str
 ) -> str:
     value = page.get(key, default)
-    if not isinstance(value, str) or not GOVERNED_DESIGN_CODE.fullmatch(value):
+    if not isinstance(value, str) or not GOVERNED_DESIGN_CODE_SHAPE.fullmatch(value):
         fail(
-            f"{identity}: screen_contract {key} must be a registered "
-            "governed design code"
+            f"{identity}: screen_contract {key} must use governed design code syntax"
         )
     return value
+
+
+def page_design_authority(
+    page: dict[str, Any], identity: str
+) -> tuple[str, str, dict[str, Any]]:
+    """Bind rendered design values to the authoritative snapshot projection.
+
+    Registration is checked by the direct-save service before it projects the
+    exact route layout and theme into ``framework_step_execution_spec``.  This
+    renderer therefore verifies a safe canonical code shape and preserves that
+    projection as hash-bound evidence; it never treats a permissive regex as a
+    substitute for the database registry check.  Older snapshots may omit one
+    or both keys and use only the two registered live defaults.
+    """
+    layout = governed_design_code(page, "layout", DEFAULT_LAYOUT, identity)
+    theme = governed_design_code(page, "theme", DEFAULT_THEME, identity)
+    defaulted = [key for key in ("layout", "theme") if key not in page]
+    authority = {
+        "source": (
+            DESIGN_AUTHORITY_LEGACY_DEFAULT
+            if defaulted else DESIGN_AUTHORITY_SCREEN_CONTRACT
+        ),
+        "layout": layout,
+        "theme": theme,
+        "defaulted": defaulted,
+    }
+    return layout, theme, authority
 
 
 def fsync_directory(path: Path) -> None:
@@ -1162,13 +1190,8 @@ def render_step(
             page_sections = copy.deepcopy(page["sections"])
         else:
             page_sections = copy.deepcopy(DEFAULT_SCREEN_SECTIONS)
-        page_layout = governed_design_code(
-            page, "layout", "RESPONSIVE_WORKSPACE",
-            f"{process['processCode']}/{step['step_code']}",
-        )
-        page_theme = governed_design_code(
-            page, "theme", "KRDS_GOV_DEFAULT",
-            f"{process['processCode']}/{step['step_code']}",
+        page_layout, page_theme, design_authority = page_design_authority(
+            page, f"{process['processCode']}/{step['step_code']}"
         )
         pages.append({
             "pageCode": page["pageCode"],
@@ -1180,6 +1203,7 @@ def render_step(
             "purpose": page["purpose"],
             "layout": page_layout,
             "theme": page_theme,
+            "designAuthority": design_authority,
             "sections": page_sections,
             "fields": page_fields,
             "commands": executable_commands,

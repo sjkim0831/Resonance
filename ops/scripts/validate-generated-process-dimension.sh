@@ -40,16 +40,20 @@ case "$DIMENSION" in
         .audience == $audience
         and (.route | type == "string" and startswith("/"))
         and (.fields | length) >= 8
-        and .layout == "COMMON_KRDS_TASK_LAYOUT"
-        and .theme == "COMMON_KRDS_GOV")
+        and (.designAuthority.source == "STEP_EXECUTION_SPEC_SCREEN_CONTRACT"
+          or .designAuthority.source == "LEGACY_REGISTERED_DEFAULT")
+        and .designAuthority.layout == .layout
+        and .designAuthority.theme == .theme)
     ' "$PACKAGE" >/dev/null
     ;;
   UI_QUALITY|COMPONENT_COMMON|CLASS_PROPERTY_COMMON)
     jq -e '
       (.frontend.pages | length) > 0
       and all(.frontend.pages[];
-        .layout == "COMMON_KRDS_TASK_LAYOUT"
-        and .theme == "COMMON_KRDS_GOV"
+        (.designAuthority.source == "STEP_EXECUTION_SPEC_SCREEN_CONTRACT"
+          or .designAuthority.source == "LEGACY_REGISTERED_DEFAULT")
+        and .designAuthority.layout == .layout
+        and .designAuthority.theme == .theme
         and (.sections | length) >= 5
         and (.fields | length) >= 8
         and all(.fields[]; (.code | type == "string" and length > 0))

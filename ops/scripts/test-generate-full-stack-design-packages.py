@@ -213,21 +213,39 @@ class GroupFieldsByAudienceTest(unittest.TestCase):
             ["TASK_CONTEXT", "TASK_CONTENT", "TASK_HANDOFF"],
             baseline["frontend"]["pages"][0]["sections"],
         )
+        self.assertEqual(
+            {
+                "source": "STEP_EXECUTION_SPEC_SCREEN_CONTRACT",
+                "layout": "RESPONSIVE_WORKSPACE",
+                "theme": "KRDS_GOV_DEFAULT",
+                "defaulted": [],
+            },
+            baseline["frontend"]["pages"][0]["designAuthority"],
+        )
         legacy = copy.deepcopy(step)
         legacy["screen_contract"][0].pop("layout")
         legacy["screen_contract"][0].pop("theme")
         self.assertEqual(
-            baseline,
-            render(legacy),
-            "legacy omission must resolve to the registered live defaults",
+            {
+                "source": "LEGACY_REGISTERED_DEFAULT",
+                "layout": "RESPONSIVE_WORKSPACE",
+                "theme": "KRDS_GOV_DEFAULT",
+                "defaulted": ["layout", "theme"],
+            },
+            render(legacy)["frontend"]["pages"][0]["designAuthority"],
+        )
+        self.assertNotEqual(
+            baseline["packageHash"], render(legacy)["packageHash"],
+            "legacy fallback provenance must remain hash-bound",
         )
         mutations = {
             "layout": (
                 lambda value: value["screen_contract"][0].update(
-                    layout="KRDS_REVIEW_GRID"
+                    layout="REVIEW_DECISION"
                 ),
                 {
                     ("frontend", "pages", 0, "layout"),
+                    ("frontend", "pages", 0, "designAuthority", "layout"),
                     ("packageHash",),
                 },
             ),
@@ -237,6 +255,7 @@ class GroupFieldsByAudienceTest(unittest.TestCase):
                 ),
                 {
                     ("frontend", "pages", 0, "theme"),
+                    ("frontend", "pages", 0, "designAuthority", "theme"),
                     ("packageHash",),
                 },
             ),
@@ -309,7 +328,7 @@ class GroupFieldsByAudienceTest(unittest.TestCase):
             render(invalid)
         invalid = copy.deepcopy(step)
         invalid["screen_contract"][0]["layout"] = "display:grid; color:red"
-        with self.assertRaisesRegex(SystemExit, "registered governed design code"):
+        with self.assertRaisesRegex(SystemExit, "governed design code syntax"):
             render(invalid)
 
     def test_atomic_publish_is_zero_rewrite_and_rolls_back_all_directories(self) -> None:
