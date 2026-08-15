@@ -24,6 +24,454 @@ canonical_generation_decision() {
   fi
 }
 
+# This compiler adapter intentionally lives in the installed orchestrator.  It
+# reuses the already-selected Patroni leader and psqlq() instead of loading code
+# or credentials from a mutable checkout during a rolling deployment.
+design_causality_compiler_result() {
+  local phase="$1" result="$2" stage="$3" migration_ready="$4"
+  local authorized="$5" attempts="$6" compiled="$7" semantic_noops="$8"
+  local busy_retries="$9" database_retries="${10}" dirty_at_linearization="${11}"
+  local revision_before="${12}" revision_after="${13}" current_event_id="${14}"
+  local canonical_hash="${15}" elapsed_millis="${16}"
+  printf '{"schema":"carbonet.design-causality-compiler-invocation/v1","phase":"%s","result":"%s","currentStage":"%s","migrationReady":%s,"authorized":%s,"attempts":%s,"compiledEvents":%s,"semanticNoops":%s,"busyRetries":%s,"databaseRetries":%s,"dirtyAtLinearization":%s,"revisionBefore":%s,"revisionAfter":%s,"currentEventId":%s,"canonicalHash":"%s","elapsedMillis":%s}\n' \
+    "$phase" "$result" "$stage" "$migration_ready" "$authorized" \
+    "$attempts" "$compiled" "$semantic_noops" "$busy_retries" \
+    "$database_retries" "$dirty_at_linearization" "$revision_before" \
+    "$revision_after" "$current_event_id" "$canonical_hash" "$elapsed_millis"
+}
+
+design_causality_compiler_log() {
+  printf '[design-causality-compiler] %s\n' "$*" >&2
+}
+
+run_design_causality_post_commit_compiler() {
+  local phase="${1:-UNSPECIFIED}"
+  local max_attempts="${DESIGN_CAUSALITY_COMPILER_MAX_ATTEMPTS:-4}"
+  local retry_delay="${DESIGN_CAUSALITY_COMPILER_RETRY_DELAY_SECONDS:-1}"
+  local wall_timeout="${DESIGN_CAUSALITY_COMPILER_WALL_TIMEOUT_SECONDS:-2}"
+  local readiness stage compile_status compiler_response compiler_error compiler_rc extra
+  local before_revision head_revision current_event_id dirty_signal_count canonical_hash
+  local revision_before=''
+  local attempts=0 compiled=0 semantic_noops=0 busy_retries=0 database_retries=0
+  local started_millis elapsed_millis
+  started_millis="$(date +%s%3N)"
+
+  if [[ ! "$phase" =~ ^[A-Z][A-Z0-9_]{0,31}$ ]] ||
+     [[ ! "$max_attempts" =~ ^[1-4]$ ]] ||
+     [[ ! "$retry_delay" =~ ^[0-1]$ ]] ||
+     [[ "$wall_timeout" != 2 ]]; then
+    design_causality_compiler_log \
+      "phase=CONFIGURATION_ERROR result=REJECTED"
+    return 64
+  fi
+  if ! declare -F psqlq >/dev/null 2>&1; then
+    design_causality_compiler_log \
+      "phase=$phase result=PSQLQ_ADAPTER_MISSING"
+    return 69
+  fi
+
+  if ! readiness="$(PSQLQ_WALL_TIMEOUT_SECONDS="$wall_timeout" \
+    psqlq -v VERBOSITY=terse -c "
+    with objects as (
+      select
+        to_regrole('carbonet_design_compiler') role_oid,
+        to_regprocedure(
+          'public.framework_run_design_causality_compiler_worker()'
+        ) worker_oid,
+        to_regprocedure(
+          'public.framework_compile_design_changes(character varying,bigint,character varying)'
+        ) compiler_oid
+    )
+    select case
+      when role_oid is null or worker_oid is null or compiler_oid is null
+        then 'MIGRATION_NOT_READY'
+      when exists(
+        select 1 from pg_roles where oid=role_oid and (
+          rolsuper or rolinherit or rolcreaterole or rolcreatedb or rolcanlogin
+          or rolreplication or rolbypassrls or rolconnlimit<>-1
+          or rolvaliduntil is not null or rolconfig is not null
+        )
+      ) or exists(
+        select 1 from pg_authid
+        where oid=role_oid and rolpassword is not null
+      ) or exists(select 1 from pg_auth_members where member=role_oid)
+        then 'CONTRACT_INVALID'
+      when (select count(*) from pg_auth_members where roleid=role_oid)<>1
+        or not exists(
+          select 1 from pg_auth_members
+          where roleid=role_oid and member=(session_user::regrole)::oid
+            and not admin_option and not inherit_option and set_option
+        ) then 'NOT_AUTHORIZED'
+      when not has_function_privilege(role_oid,worker_oid,'EXECUTE')
+        or exists(
+          select 1 from unnest(ARRAY[
+            to_regprocedure('public.framework_mark_design_causality_dirty(integer)'),
+            to_regprocedure('public.framework_capture_design_causality_dirty()'),
+            to_regprocedure('public.framework_design_causality_snapshot()'),
+            to_regprocedure('public.framework_design_causality_process_component()'),
+            to_regprocedure('public.framework_design_causality_actor_component()'),
+            to_regprocedure('public.framework_design_causality_account_component()'),
+            to_regprocedure('public.framework_design_causality_permission_requirement_component()'),
+            to_regprocedure('public.framework_design_causality_permission_grant_component()'),
+            to_regprocedure('public.framework_compile_design_changes(character varying,bigint,character varying)'),
+            to_regprocedure('public.framework_cas_design_causality_stage(bigint,character varying,bigint,character varying,character varying,jsonb)'),
+            to_regprocedure('public.framework_design_causality_status()')
+          ]) protected_oid
+          where protected_oid is null or
+            has_function_privilege(role_oid,protected_oid,'EXECUTE')
+        )
+        then 'CONTRACT_INVALID'
+      when exists(
+        select 1 from unnest(ARRAY[
+          to_regclass('public.framework_permission_requirement_v1'),
+          to_regclass('public.framework_permission_grant_v1'),
+          to_regclass('public.framework_permission_mapping_control_v1'),
+          to_regclass('public.framework_design_change_signal'),
+          to_regclass('public.framework_design_causality_head'),
+          to_regclass('public.framework_design_causality_event'),
+          to_regclass('public.framework_design_causality_event_signal'),
+          to_regclass('public.framework_design_causality_stage'),
+          to_regclass('public.framework_design_causality_stage_transition'),
+          to_regclass('public.framework_process_definition'),
+          to_regclass('public.framework_process_step'),
+          to_regclass('public.framework_actor_definition'),
+          to_regclass('public.framework_account_actor_assignment'),
+          to_regclass('public.framework_page_design'),
+          to_regclass('public.framework_page_field_definition'),
+          to_regclass('public.framework_professional_screen_contract'),
+          to_regclass('public.comtnmenufunctioninfo'),
+          to_regclass('public.comtnauthorfunctionrelate'),
+          to_regclass('public.comtnuserfeatureoverride'),
+          to_regclass('public.comtnemplyrscrtyestbs')
+        ]) relation_oid
+        where relation_oid is null or has_table_privilege(
+          role_oid,relation_oid,
+          'SELECT,INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER'
+        )
+      ) then 'CONTRACT_INVALID'
+      when exists(
+        select 1 from unnest(ARRAY[
+          to_regclass('public.framework_design_change_signal_signal_id_seq'),
+          to_regclass('public.framework_design_causality_event_event_id_seq')
+        ]) sequence_oid
+        where sequence_oid is null or has_sequence_privilege(
+          role_oid,sequence_oid,'USAGE,SELECT,UPDATE'
+        )
+      ) or not has_schema_privilege(role_oid,'public','USAGE')
+        or has_schema_privilege(role_oid,'public','CREATE')
+        then 'CONTRACT_INVALID'
+      when exists(
+        select 1 from pg_proc worker join pg_proc compiler on compiler.oid=compiler_oid
+        where worker.oid=worker_oid and (
+          not worker.prosecdef or worker.proowner<>compiler.proowner or
+          not coalesce(worker.proconfig,'{}'::text[]) @>
+            ARRAY['search_path=pg_catalog, public']::text[]
+        )
+      ) then 'CONTRACT_INVALID'
+      when exists(
+        select 1 from pg_proc p
+        cross join lateral aclexplode(
+          coalesce(p.proacl,acldefault('f',p.proowner))
+        ) acl
+        where p.oid=worker_oid and acl.grantee=0
+          and acl.privilege_type='EXECUTE'
+      ) then 'CONTRACT_INVALID'
+      when exists(select 1 from pg_class where relowner=role_oid)
+        or exists(select 1 from pg_proc where proowner=role_oid)
+        or exists(select 1 from pg_namespace where nspowner=role_oid)
+        or exists(select 1 from pg_type where typowner=role_oid)
+        then 'CONTRACT_INVALID'
+      when to_regrole('carbonet_app') is not null and
+        has_function_privilege(to_regrole('carbonet_app'),worker_oid,'EXECUTE')
+        then 'CONTRACT_INVALID'
+      else 'READY'
+    end from objects;" 2>/dev/null)"; then
+    design_causality_compiler_log \
+      "phase=$phase result=READINESS_QUERY_FAILED"
+    return 75
+  fi
+  readiness="${readiness//$'\r'/}"
+
+  case "$readiness" in
+    MIGRATION_NOT_READY)
+      design_causality_compiler_log \
+        "phase=$phase result=MIGRATION_NOT_READY"
+      return 75
+      ;;
+    NOT_AUTHORIZED)
+      design_causality_compiler_log \
+        "phase=$phase result=NOT_AUTHORIZED"
+      return 77
+      ;;
+    CONTRACT_INVALID)
+      design_causality_compiler_log \
+        "phase=$phase result=CONTRACT_INVALID"
+      return 78
+      ;;
+    READY) ;;
+    *)
+      design_causality_compiler_log \
+        "phase=$phase result=INVALID_READINESS_RESPONSE"
+      return 70
+      ;;
+  esac
+
+  while (( attempts < max_attempts )); do
+    attempts=$((attempts+1))
+    compiler_error=''
+    if compiler_response="$(PSQLQ_WALL_TIMEOUT_SECONDS="$wall_timeout" \
+      psqlq -v VERBOSITY=verbose -c "
+      begin isolation level repeatable read;
+      set local statement_timeout='2s';
+      set local lock_timeout='1s';
+      set local role carbonet_design_compiler;
+      with invoked as materialized (
+        select framework_run_design_causality_compiler_worker() result
+      )
+      select coalesce(result->>'status','INVALID')||'|'||
+             coalesce(result->>'currentStage','INVALID')||'|'||
+             coalesce(result->>'beforeRevision','INVALID')||'|'||
+             coalesce(result->>'headRevision','INVALID')||'|'||
+             coalesce(result->>'currentEventId','null')||'|'||
+             coalesce(result->>'dirtySignalCount','INVALID')||'|'||
+             coalesce(result->>'canonicalHash','INVALID')
+      from invoked;
+      commit;" 2>&1)"; then
+      compiler_response="${compiler_response//$'\r'/}"
+      IFS='|' read -r compile_status stage before_revision head_revision \
+        current_event_id dirty_signal_count canonical_hash extra <<<"$compiler_response"
+      if [[ -n "${extra:-}" ]] || [[ ! "$stage" =~ ^[A-Z][A-Z_]{0,31}$ ]] ||
+         [[ ! "$before_revision" =~ ^[0-9]+$ ]] ||
+         [[ ! "$head_revision" =~ ^[0-9]+$ ]] ||
+         [[ ! "$current_event_id" =~ ^(null|[1-9][0-9]*)$ ]] ||
+         [[ ! "$dirty_signal_count" =~ ^[0-9]+$ ]] ||
+         [[ ! "$canonical_hash" =~ ^[0-9a-f]{64}$ ]]; then
+        design_causality_compiler_log \
+          "phase=$phase result=INVALID_COMPILER_RESPONSE attempts=$attempts"
+        return 70
+      fi
+      [[ -n "$revision_before" ]] || revision_before="$before_revision"
+      case "$compile_status" in
+        COMPILED)
+          (( head_revision == before_revision + 1 )) || {
+            design_causality_compiler_log \
+              "phase=$phase result=INVALID_HEAD_ADVANCE attempts=$attempts"
+            return 70
+          }
+          compiled=$((compiled+1))
+          ;;
+        NO_SEMANTIC_CHANGE)
+          (( head_revision == before_revision )) || {
+            design_causality_compiler_log \
+              "phase=$phase result=INVALID_NOOP_HEAD attempts=$attempts"
+            return 70
+          }
+          semantic_noops=$((semantic_noops+1))
+          ;;
+        NO_WORK)
+          if (( head_revision != before_revision || dirty_signal_count != 0 )); then
+            design_causality_compiler_log \
+              "phase=$phase result=INVALID_NO_WORK_PROOF attempts=$attempts"
+            return 70
+          fi
+          elapsed_millis="$(( $(date +%s%3N) - started_millis ))"
+          if (( attempts == 1 && compiled == 0 && semantic_noops == 0 )); then
+            compile_status='NO_WORK'
+          else
+            compile_status='DRAINED'
+          fi
+          design_causality_compiler_log \
+            "phase=$phase result=$compile_status currentStage=$stage attempts=$attempts dirtyAtLinearization=0 elapsedMillis=$elapsed_millis"
+          design_causality_compiler_result \
+            "$phase" "$compile_status" "$stage" true true "$attempts" \
+            "$compiled" "$semantic_noops" "$busy_retries" "$database_retries" 0 \
+            "$revision_before" "$head_revision" "$current_event_id" \
+            "$canonical_hash" "$elapsed_millis"
+          return 0
+          ;;
+        BUSY) busy_retries=$((busy_retries+1)) ;;
+        *)
+          design_causality_compiler_log \
+            "phase=$phase result=INVALID_COMPILER_RESPONSE attempts=$attempts"
+          return 70
+          ;;
+      esac
+    else
+      compiler_rc=$?
+      compiler_error="$compiler_response"
+      if (( compiler_rc == 2 || compiler_rc == 124 || compiler_rc == 137 || compiler_rc == 143 )) ||
+         [[ "$compiler_error" =~ ERROR:[[:space:]]+(40001|40P01): ]]; then
+        compile_status='DATABASE_RETRY'
+        database_retries=$((database_retries+1))
+      else
+        # Never print the captured driver/function diagnostic. Contract/ACL
+        # errors are fatal; only transport, serialization, and deadlock retry.
+        : "$compiler_error"
+        design_causality_compiler_log \
+          "phase=$phase result=DATABASE_FATAL attempts=$attempts rc=$compiler_rc"
+        return 70
+      fi
+    fi
+
+    if (( attempts < max_attempts )); then
+      design_causality_compiler_log \
+        "phase=$phase result=$compile_status attempt=$attempts retrying=true"
+      (( retry_delay == 0 )) || sleep "$retry_delay"
+    fi
+  done
+
+  design_causality_compiler_log \
+    "phase=$phase result=RETRY_BUDGET_EXHAUSTED attempts=$attempts"
+  return 75
+}
+
+# Drain and persist the post-work compiler result exactly once for every path
+# that can exit after project mutations.  The failure record is deliberately
+# enum/count-only; captured database diagnostics never enter the run ledger.
+finalize_design_causality_post_work() {
+  local completion_run_id="${1:-}"
+  local invocation='' persisted='' failure_invocation='' failure_reason='' compiler_rc=70
+  if [[ ! "$completion_run_id" =~ ^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$ ]]; then
+    design_causality_compiler_log \
+      'phase=POST_WORK result=INVALID_COMPLETION_RUN_ID'
+    return 64
+  fi
+
+  if invocation="$(run_design_causality_post_commit_compiler POST_WORK)"; then
+    if persisted="$(psqlq -c "update framework_project_completion_run
+      set result_json=jsonb_set(
+        coalesce(framework_try_jsonb(result_json),'{}'::jsonb),
+        '{designCausality,compilerInvocation,postWork}',
+        \$design_causality\$$invocation\$design_causality\$::jsonb,
+        true
+      )::text
+      where run_id='$completion_run_id' and run_status='RUNNING'
+      returning 1;" 2>/dev/null)" && [[ "$persisted" == 1 ]]; then
+      printf '%s\n' "$invocation"
+      return 0
+    fi
+    compiler_rc=70
+    failure_reason='EVIDENCE_PERSIST_FAILED'
+  else
+    compiler_rc=$?
+    failure_reason='COMPILER_FAILED'
+  fi
+
+  failure_invocation="$(printf \
+    '{"schema":"carbonet.design-causality-compiler-invocation/v1","phase":"POST_WORK","result":"FAILED","reason":"%s","exitCode":%s}' \
+    "$failure_reason" "$compiler_rc")"
+  psqlq -c "update framework_project_completion_run
+    set run_status='FAILED',completed_at=current_timestamp,
+        result_json=jsonb_set(
+          coalesce(framework_try_jsonb(result_json),'{}'::jsonb),
+          '{designCausality,compilerInvocation,postWork}',
+          \$design_causality\$$failure_invocation\$design_causality\$::jsonb,
+          true
+        )::text
+    where run_id='$completion_run_id' and run_status='RUNNING';" >/dev/null 2>&1 || true
+  printf '%s\n' "$failure_invocation"
+  return "$compiler_rc"
+}
+
+finalize_hermes_policy_invalid_run() {
+  local completion_run_id="${1:-}" selected_count="${2:-}"
+  local executable_count="${3:-}" retried_count="${4:-}"
+  local invocation='' persisted='' compiler_rc=70
+  if [[ ! "$completion_run_id" =~ ^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$ ]] ||
+     [[ ! "$selected_count" =~ ^[0-9]+$ ]] ||
+     [[ ! "$executable_count" =~ ^[0-9]+$ ]] ||
+     [[ ! "$retried_count" =~ ^[0-9]+$ ]]; then
+    return 64
+  fi
+  if invocation="$(finalize_design_causality_post_work "$completion_run_id")"; then
+    :
+  else
+    compiler_rc=$?
+    return "$compiler_rc"
+  fi
+  if persisted="$(psqlq -c "update framework_project_completion_run
+    set run_status='ATTENTION_REQUIRED',selected_process_count=$selected_count,
+        executable_job_count=$executable_count,retried_job_count=$retried_count,
+        blocked_process_count=1,
+        result_json=(coalesce(framework_try_jsonb(result_json),'{}'::jsonb)||
+          jsonb_build_object('reason','HERMES_PROJECT_WORK_POLICY_INVALID'))::text,
+        completed_at=current_timestamp
+    where run_id='$completion_run_id' and run_status='RUNNING'
+    returning 1;" 2>/dev/null)" && [[ "$persisted" == 1 ]]; then
+    printf '%s\n' "$invocation"
+    return 0
+  fi
+  psqlq -c "update framework_project_completion_run
+    set run_status='FAILED',completed_at=current_timestamp,
+        result_json=(coalesce(framework_try_jsonb(result_json),'{}'::jsonb)||
+          jsonb_build_object('reason','HERMES_RESULT_PERSIST_FAILED'))::text
+    where run_id='$completion_run_id';" >/dev/null 2>&1 || true
+  return 70
+}
+
+# Signal/ERR handlers must not publish a partial snapshot or wait behind a
+# compiler lock.  They preserve dirty signals for the next PRE_WORK gate and
+# record that recovery obligation without overwriting an existing POST result.
+record_design_causality_deferred_recovery() {
+  local completion_run_id="${1:-}" reason="${2:-}" signal="${3:-null}"
+  local exit_code="${4:-}" failed_line="${5:-null}" deferred_json='' persisted=''
+  if [[ ! "$completion_run_id" =~ ^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$ ]] ||
+     [[ ! "$reason" =~ ^(ORCHESTRATOR_SIGNALLED|ORCHESTRATOR_ERROR)$ ]] ||
+     [[ ! "$exit_code" =~ ^[1-9][0-9]{0,2}$ ]] || (( exit_code > 255 )) ||
+     [[ ! "$failed_line" =~ ^(null|[1-9][0-9]*)$ ]]; then
+    return 64
+  fi
+  if [[ "$reason" == ORCHESTRATOR_SIGNALLED ]]; then
+    [[ "$signal" =~ ^(INT|TERM|HUP)$ && "$failed_line" == null ]] || return 64
+  else
+    [[ "$signal" == null && "$failed_line" =~ ^[1-9][0-9]*$ ]] || return 64
+  fi
+  deferred_json="$(printf \
+    '{"schema":"carbonet.design-causality-compiler-invocation/v1","phase":"POST_WORK","result":"DEFERRED_RECOVERY_REQUIRED","invoked":false,"recoveryPhase":"NEXT_PRE_WORK","dirtyState":"PRESERVED_UNOBSERVED","reason":"%s","signal":%s,"exitCode":%s,"failedLine":%s}' \
+    "$reason" "$(if [[ "$signal" == null ]]; then printf null; else printf '"%s"' "$signal"; fi)" \
+    "$exit_code" "$failed_line")"
+  persisted="$(psqlq -c "with current_run as materialized (
+    select coalesce(framework_try_jsonb(result_json),'{}'::jsonb) result
+    from framework_project_completion_run
+    where run_id='$completion_run_id'
+  ), updated as (
+    update framework_project_completion_run r
+    set run_status='FAILED',completed_at=current_timestamp,
+        result_json=jsonb_set(
+          c.result||jsonb_build_object(
+            'failureReason','$reason','signal',
+            $(if [[ "$signal" == null ]]; then printf null; else printf "'%s'" "$signal"; fi),
+            'exitCode',$exit_code,'failedLine',$failed_line
+          ),
+          '{designCausality,compilerInvocation,postWork}',
+          coalesce(
+            c.result#>'{designCausality,compilerInvocation,postWork}',
+            \$design_causality\$$deferred_json\$design_causality\$::jsonb
+          ),true
+        )::text
+    from current_run c
+    where r.run_id='$completion_run_id'
+    returning 1
+  ) select count(*) from updated;" 2>/dev/null)" || return 70
+  [[ "$persisted" == 1 ]] || return 70
+}
+
+fail_design_causality_run_deferred() {
+  local completion_run_id="${1:-}" failed_line="${2:-}" failed_rc="${3:-}"
+  if [[ ! "$failed_line" =~ ^[1-9][0-9]*$ ]] ||
+     [[ ! "$failed_rc" =~ ^[1-9][0-9]{0,2}$ ]] || (( failed_rc > 255 )); then
+    return 64
+  fi
+  record_design_causality_deferred_recovery \
+    "$completion_run_id" ORCHESTRATOR_ERROR null "$failed_rc" "$failed_line" \
+    >/dev/null 2>&1 || true
+  return "$failed_rc"
+}
+
+if [[ "${PROJECT_AUTO_COMPLETION_LIBRARY_ONLY:-false}" == "true" ]]; then
+  return 0 2>/dev/null || exit 0
+fi
+
 if [[ "${1:-}" == "--canonical-generation-decision-contract" ]]; then
   canonical_generation_decision \
     "${CANONICAL_READY_BEFORE:?}" "${CANONICAL_READY_AFTER:?}" "${CANONICAL_READY_COUNT:?}" \
@@ -66,10 +514,55 @@ while IFS= read -r pod; do
 done < <(kubectl -n "$NAMESPACE" get pods -l app=postgres-patroni -o name | sed 's#^pod/##')
 [[ -n "$leader" ]] || { echo "[project-auto-completion] writable PostgreSQL leader not found" >&2; exit 1; }
 psqlq(){
-  kubectl -n "$NAMESPACE" exec "$leader" -c patroni -- \
-    env PGOPTIONS="$AUTOMATION_PGOPTIONS" \
-    psql -h 127.0.0.1 -U "$DB_USER" -d "$DB" -X -q -v ON_ERROR_STOP=1 -At "$@"
+  local wall_timeout="${PSQLQ_WALL_TIMEOUT_SECONDS:-0}"
+  if [[ "$wall_timeout" =~ ^[1-9][0-9]*$ ]]; then
+    timeout --signal=TERM --kill-after=1s "${wall_timeout}s" \
+      kubectl -n "$NAMESPACE" exec "$leader" -c patroni -- \
+        env PGOPTIONS="$AUTOMATION_PGOPTIONS" \
+        psql -h 127.0.0.1 -U "$DB_USER" -d "$DB" -X -q -v ON_ERROR_STOP=1 -At "$@"
+  else
+    kubectl -n "$NAMESPACE" exec "$leader" -c patroni -- \
+      env PGOPTIONS="$AUTOMATION_PGOPTIONS" \
+      psql -h 127.0.0.1 -U "$DB_USER" -d "$DB" -X -q -v ON_ERROR_STOP=1 -At "$@"
+  fi
 }
+design_causality_pre_invocation=''
+if design_causality_pre_invocation="$(
+  run_design_causality_post_commit_compiler PRE_WORK
+)"; then
+  jq -e '
+    .schema=="carbonet.design-causality-compiler-invocation/v1" and
+    .phase=="PRE_WORK" and .migrationReady and .authorized and
+    .dirtyAtLinearization==0
+  ' <<<"$design_causality_pre_invocation" >/dev/null
+else
+  compiler_rc=$?
+  echo "[project-auto-completion] design causality pre-work compiler failed: rc=$compiler_rc" >&2
+  exit "$compiler_rc"
+fi
+run_id="$(cat /proc/sys/kernel/random/uuid)"
+design_causality_initial_result="$(jq -cn \
+  --argjson invocation "$design_causality_pre_invocation" \
+  '{designCausality:{compilerInvocation:{preWork:$invocation}}}')"
+psqlq -c "insert into framework_project_completion_run(run_id,result_json)
+  values('$run_id',\$design_causality\$$design_causality_initial_result\$design_causality\$);" >/dev/null
+mark_interrupted(){
+  local signal="$1" exit_code="$2"
+  trap - ERR INT TERM HUP
+  record_design_causality_deferred_recovery \
+    "$run_id" ORCHESTRATOR_SIGNALLED "$signal" "$exit_code" null >/dev/null 2>&1 || true
+  exit "$exit_code"
+}
+mark_failed(){
+  local failed_line="$1" failed_rc="$2"
+  trap - ERR INT TERM HUP
+  echo "[project-auto-completion] ERROR line=$failed_line" >&2
+  fail_design_causality_run_deferred "$run_id" "$failed_line" "$failed_rc"
+}
+trap 'mark_interrupted INT 130' INT
+trap 'mark_interrupted TERM 143' TERM
+trap 'mark_interrupted HUP 129' HUP
+trap 'failed_rc=$?; failed_line=$LINENO; mark_failed "$failed_line" "$failed_rc"' ERR
 # A host reboot, operator stop, or OOM can terminate the shell without firing
 # ERR. Reconcile only genuinely stale orchestration records; contract runs and
 # development-job leases have their own lifecycles and are intentionally not
@@ -116,22 +609,6 @@ done < <(psqlq -c "
   select job_id,worker_id from framework_development_job
   where job_status='RUNNING' and worker_id like '${host_worker_prefix}%'
     and updated_at < current_timestamp - interval '${ORPHAN_WORKER_GRACE_MINUTES:-5} minutes';")
-run_id="$(cat /proc/sys/kernel/random/uuid)"
-psqlq -c "insert into framework_project_completion_run(run_id) values('$run_id');" >/dev/null
-mark_interrupted(){
-  local signal="$1" exit_code="$2"
-  trap - INT TERM HUP
-  psqlq -c "update framework_project_completion_run
-    set run_status='FAILED',
-        result_json=jsonb_build_object('reason','ORCHESTRATOR_SIGNALLED','signal','$signal','exitCode',$exit_code),
-        completed_at=current_timestamp
-    where run_id='$run_id' and run_status='RUNNING';" >/dev/null 2>&1 || true
-  exit "$exit_code"
-}
-trap 'mark_interrupted INT 130' INT
-trap 'mark_interrupted TERM 143' TERM
-trap 'mark_interrupted HUP 129' HUP
-trap 'failed_line=$LINENO; echo "[project-auto-completion] ERROR line=$failed_line" >&2; psqlq -c "update framework_project_completion_run set run_status='"'"'FAILED'"'"',result_json=jsonb_build_object('"'"'failedLine'"'"',$failed_line),completed_at=current_timestamp where run_id='"'"'$run_id'"'"';" >/dev/null 2>&1 || true' ERR
 selected="$(psqlq -c "select count(*) from framework_process_delivery_priority_queue where next_action<>'COMPLETE';")"
 design_evidence_adopted="$(psqlq -c "
 with candidate as (
@@ -1434,9 +1911,19 @@ where j.approval_status='APPROVED' and (j.job_status='PLANNED' or (j.job_status=
       and required_job.job_status not in ('VERIFIED','COMPLETED')
   );")"
 if [[ "$executable" -gt 0 ]] && ! bash "$ROOT_DIR/ops/scripts/verify-hermes-project-work-policy.sh" >/dev/null 2>&1; then
-  psqlq -c "update framework_project_completion_run set run_status='ATTENTION_REQUIRED',selected_process_count=$selected,executable_job_count=$executable,retried_job_count=$retried,blocked_process_count=1,result_json='{\"reason\":\"HERMES_PROJECT_WORK_POLICY_INVALID\"}',completed_at=current_timestamp where run_id='$run_id';" >/dev/null
+  design_causality_post_invocation=''
+  if design_causality_post_invocation="$(
+    finalize_hermes_policy_invalid_run "$run_id" "$selected" "$executable" "$retried"
+  )"; then
+    :
+  else
+    compiler_rc=$?
+    echo "[project-auto-completion] design causality post-work compiler failed: rc=$compiler_rc" >&2
+    exit "$compiler_rc"
+  fi
   trap - ERR
-  echo "[project-auto-completion] ATTENTION_REQUIRED reason=HERMES_PROJECT_WORK_POLICY_INVALID executable=$executable"
+  design_causality_post_log="$(jq -c 'del(.canonicalHash)' <<<"$design_causality_post_invocation")"
+  echo "[project-auto-completion] ATTENTION_REQUIRED reason=HERMES_PROJECT_WORK_POLICY_INVALID executable=$executable designCausalityPost=$design_causality_post_log"
   exit 0
 fi
 dispatcher_failed=0
@@ -1549,6 +2036,16 @@ if [[ -x "$BUSINESS_E2E_RUNNER" && -s "$BUSINESS_E2E_REGISTRY" ]]; then
   fi
 fi
 completed="$(psqlq -c "with done as (update framework_process_definition p set process_status='DEVELOPMENT_READY',updated_at=current_timestamp from framework_process_delivery_priority_queue q where q.process_code=p.process_code and q.next_action='COMPLETE' and p.process_status<>'DEVELOPMENT_READY' returning 1) select count(*) from done;")"
+design_causality_post_invocation=''
+if design_causality_post_invocation="$(
+  finalize_design_causality_post_work "$run_id"
+)"; then
+  :
+else
+  compiler_rc=$?
+  echo "[project-auto-completion] design causality post-work compiler failed: rc=$compiler_rc" >&2
+  exit "$compiler_rc"
+fi
 blocked="$(psqlq -c "select count(*) from framework_process_delivery_priority_queue where delivery_priority='BLOCKER';")"
 remaining="$(psqlq -c "select count(*) from framework_process_delivery_priority_queue where next_action<>'COMPLETE';")"
 full_stack_deferred=0
@@ -1557,5 +2054,7 @@ status="PROGRESSING"; [[ "$remaining" == "0" ]] && status="COMPLETED"; [[ "$bloc
 completion_result_json="$(jq -cn --argjson remaining "$remaining" --argjson dispatcherFailed "$dispatcher_failed" \
   --argjson fullStackGeneration "$full_stack_generation_result" \
   '{remainingProcesses:$remaining,dispatcherFailed:$dispatcherFailed,fullStackGeneration:$fullStackGeneration}')"
-psqlq -c "update framework_project_completion_run set run_status='$status',selected_process_count=$selected,executable_job_count=$executable,retried_job_count=$retried,completed_process_count=$completed,blocked_process_count=$blocked,result_json=\$result\$${completion_result_json}\$result\$,completed_at=current_timestamp where run_id='$run_id';" >/dev/null
-echo "[project-auto-completion] $status selected=$selected executable=$executable retried=$retried deterministicSafetyCasesApproved=$deterministic_safety_cases_approved embeddedTestsSynced=$embedded_tests_synced deterministicSpecsApproved=$deterministic_specs_approved staticContractGate=$(jq -c . <<<"$static_contract_gate_result") incompleteSpecDemoted=$incomplete_spec_demoted specApprovalWaiting=$spec_approval_waiting approvedGeneratorRetried=$approved_generator_retried frontendPackageRetried=$frontend_package_retried groupedFieldGeneratorRetried=$grouped_field_generator_retried packageContractGeneratorRetried=$package_contract_generator_retried generatedDimensionRetried=$generated_dimension_retried commonContractRetried=$common_contract_retried databaseConstraintRetried=$database_constraint_retried deliveryInfrastructureRetried=$delivery_infrastructure_retried deterministicDiffScopeRetried=$deterministic_diff_scope_retried designEvidenceAdopted=$design_evidence_adopted notApplicableCompleted=$not_applicable_completed contractJobsApproved=$contract_jobs_approved exhaustedPlannedRetried=$exhausted_planned_retried adopted=$server_adopted completed=$completed blocked=$blocked remaining=$remaining dispatcherFailed=$dispatcher_failed contractCompletion=$contract_completion_result fullStackGeneration=$(jq -c . <<<"$full_stack_generation_result") screenGeneration=$(jq -c '{status:(.status//"GENERATED"),requested:(.requested//0),generated:(.generated//0),unchanged:(.unchanged//0),elapsedMillis:(.elapsedMillis//0)}' <<<"$screen_generation_result") businessE2E=$(jq -c . <<<"$business_e2e_result")"
+psqlq -c "update framework_project_completion_run set run_status='$status',selected_process_count=$selected,executable_job_count=$executable,retried_job_count=$retried,completed_process_count=$completed,blocked_process_count=$blocked,result_json=(coalesce(framework_try_jsonb(result_json),'{}'::jsonb)||\$result\$${completion_result_json}\$result\$::jsonb)::text,completed_at=current_timestamp where run_id='$run_id';" >/dev/null
+design_causality_pre_log="$(jq -c 'del(.canonicalHash)' <<<"$design_causality_pre_invocation")"
+design_causality_post_log="$(jq -c 'del(.canonicalHash)' <<<"$design_causality_post_invocation")"
+echo "[project-auto-completion] $status selected=$selected executable=$executable retried=$retried deterministicSafetyCasesApproved=$deterministic_safety_cases_approved embeddedTestsSynced=$embedded_tests_synced deterministicSpecsApproved=$deterministic_specs_approved staticContractGate=$(jq -c . <<<"$static_contract_gate_result") incompleteSpecDemoted=$incomplete_spec_demoted specApprovalWaiting=$spec_approval_waiting approvedGeneratorRetried=$approved_generator_retried frontendPackageRetried=$frontend_package_retried groupedFieldGeneratorRetried=$grouped_field_generator_retried packageContractGeneratorRetried=$package_contract_generator_retried generatedDimensionRetried=$generated_dimension_retried commonContractRetried=$common_contract_retried databaseConstraintRetried=$database_constraint_retried deliveryInfrastructureRetried=$delivery_infrastructure_retried deterministicDiffScopeRetried=$deterministic_diff_scope_retried designEvidenceAdopted=$design_evidence_adopted notApplicableCompleted=$not_applicable_completed contractJobsApproved=$contract_jobs_approved exhaustedPlannedRetried=$exhausted_planned_retried adopted=$server_adopted completed=$completed blocked=$blocked remaining=$remaining dispatcherFailed=$dispatcher_failed contractCompletion=$contract_completion_result designCausalityPre=$design_causality_pre_log designCausalityPost=$design_causality_post_log fullStackGeneration=$(jq -c . <<<"$full_stack_generation_result") screenGeneration=$(jq -c '{status:(.status//"GENERATED"),requested:(.requested//0),generated:(.generated//0),unchanged:(.unchanged//0),elapsedMillis:(.elapsedMillis//0)}' <<<"$screen_generation_result") businessE2E=$(jq -c . <<<"$business_e2e_result")"

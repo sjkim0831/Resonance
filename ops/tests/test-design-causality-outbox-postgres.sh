@@ -4,6 +4,8 @@ umask 077
 
 ROOT="${1:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
 MIGRATION="$ROOT/apps/carbonet-api/src/main/resources/db/migration/postgresql/V20260815110000__create_design_causality_outbox.sql"
+WORKER_MIGRATION="$ROOT/apps/carbonet-api/src/main/resources/db/migration/postgresql/V20260815113000__install_design_causality_compiler_worker_api.sql"
+ORCHESTRATOR="$ROOT/ops/scripts/run-project-auto-completion-orchestrator.sh"
 PG_BINDIR="${DESIGN_CAUSALITY_PG_BINDIR:-$(pg_config --bindir 2>/dev/null || true)}"
 [[ -x "$PG_BINDIR/initdb" && -x "$PG_BINDIR/pg_ctl" ]] || {
   echo "DESIGN_CAUSALITY_POSTGRES_FAIL PostgreSQL server binaries missing" >&2
@@ -11,6 +13,14 @@ PG_BINDIR="${DESIGN_CAUSALITY_PG_BINDIR:-$(pg_config --bindir 2>/dev/null || tru
 }
 [[ -f "$MIGRATION" ]] || {
   echo "DESIGN_CAUSALITY_POSTGRES_FAIL migration missing" >&2
+  exit 1
+}
+[[ -f "$ORCHESTRATOR" ]] || {
+  echo "DESIGN_CAUSALITY_POSTGRES_FAIL orchestrator missing" >&2
+  exit 1
+}
+[[ -f "$WORKER_MIGRATION" ]] || {
+  echo "DESIGN_CAUSALITY_POSTGRES_FAIL worker migration missing" >&2
   exit 1
 }
 
@@ -140,6 +150,16 @@ CREATE TABLE comtnuserfeatureoverride(
 CREATE TABLE comtnemplyrscrtyestbs(
  scrty_dtrmn_trget_id varchar(100) PRIMARY KEY,mber_ty_code char(1),author_code varchar(50)
 );
+CREATE OR REPLACE FUNCTION framework_try_jsonb(value text)
+RETURNS jsonb LANGUAGE plpgsql IMMUTABLE SET search_path=pg_catalog,public AS $$
+BEGIN RETURN value::jsonb; EXCEPTION WHEN OTHERS THEN RETURN '{}'::jsonb; END
+$$;
+CREATE TABLE framework_project_completion_run(
+ run_id varchar(36) PRIMARY KEY,run_status varchar(30) NOT NULL DEFAULT 'RUNNING',
+ result_json text,completed_at timestamp,
+ selected_process_count integer,executable_job_count integer,
+ retried_job_count integer,blocked_process_count integer
+);
 SQL
 
 # A drifted live permission column must abort and roll the whole Flyway unit
@@ -161,6 +181,18 @@ fi
 # Flyway applies this PostgreSQL migration transactionally.  Exercise the same
 # boundary so the source locks cover baseline creation through trigger install.
 db --single-transaction -f "$MIGRATION" >/dev/null
+# Mutant: a preexisting cluster role may carry old M1 grants.  M2 must remove
+# them rather than merely granting its new narrow wrapper.
+db >/dev/null <<'SQL'
+CREATE ROLE carbonet_design_compiler
+  NOSUPERUSER NOINHERIT NOCREATEDB NOCREATEROLE NOLOGIN
+  NOREPLICATION NOBYPASSRLS;
+GRANT EXECUTE ON FUNCTION framework_mark_design_causality_dirty(integer),
+  framework_cas_design_causality_stage(
+    bigint,varchar,bigint,varchar,varchar,jsonb
+  ) TO carbonet_design_compiler;
+SQL
+db --single-transaction -f "$WORKER_MIGRATION" >/dev/null
 
 db >/dev/null <<'SQL'
 -- Three source tables and both source/runtime-only classes coalesce to one signal.
@@ -262,6 +294,9 @@ BEGIN
  IF (SELECT count(*) FROM framework_design_change_signal)<>3 THEN
    RAISE EXCEPTION 'visible transaction attribution setup failed';
  END IF;
+ IF EXISTS(SELECT 1 FROM framework_design_causality_event) THEN
+   RAISE EXCEPTION 'new DB/old script window consumed signals without worker';
+ END IF;
 END $$;
 SQL
 
@@ -320,6 +355,17 @@ CREATE ROLE public_caller LOGIN;
 SQL
 APP_PSQL=("$PG_BINDIR/psql" -h "$SOCKET" -p "$PORT" -U app_caller -d postgres -X -v ON_ERROR_STOP=1)
 PUBLIC_PSQL=("$PG_BINDIR/psql" -h "$SOCKET" -p "$PORT" -U public_caller -d postgres -X -v ON_ERROR_STOP=1)
+expect_sqlstate() {
+  local expected="$1" label="$2" output rc
+  shift 2
+  set +e
+  output="$("$@" 2>&1)"; rc=$?
+  set -e
+  if (( rc == 0 )) || ! grep -Eq "(ERROR|FATAL):[[:space:]]+$expected:" <<<"$output"; then
+    echo "DESIGN_CAUSALITY_POSTGRES_FAIL $label expected=$expected rc=$rc" >&2
+    exit 1
+  fi
+}
 "${APP_PSQL[@]}" -qAtc "select framework_design_causality_status()->>'schema'" \
   | grep -Fxq 'carbonet.design-causality-status/v1'
 if "${APP_PSQL[@]}" -qAtc \
@@ -345,6 +391,24 @@ if "${PUBLIC_PSQL[@]}" -qAtc "select framework_design_causality_status()" \
   >/dev/null 2>&1; then
   echo 'DESIGN_CAUSALITY_POSTGRES_FAIL PUBLIC status ACL' >&2; exit 1
 fi
+expect_sqlstate 42501 'owner bypassed SET LOCAL ROLE guard' \
+  "${PSQL[@]}" -v VERBOSITY=verbose -qAtc \
+  'select framework_run_design_causality_compiler_worker()'
+expect_sqlstate 25001 'READ COMMITTED bypassed isolation guard' \
+  "${PSQL[@]}" -v VERBOSITY=verbose -qAtc \
+  'begin; set local role carbonet_design_compiler; select framework_run_design_causality_compiler_worker(); commit'
+expect_sqlstate 42501 'compiler role read causality table directly' \
+  "${PSQL[@]}" -v VERBOSITY=verbose -qAtc \
+  'begin isolation level repeatable read; set local role carbonet_design_compiler; select count(*) from framework_design_causality_head; commit'
+expect_sqlstate 42501 'compiler role invoked owner compiler directly' \
+  "${PSQL[@]}" -v VERBOSITY=verbose -qAtc \
+  "begin isolation level repeatable read; set local role carbonet_design_compiler; select framework_compile_design_changes('forged',0,repeat('0',64)); commit"
+expect_sqlstate 42501 'application invoked compiler worker API' \
+  "${APP_PSQL[@]}" -v VERBOSITY=verbose -qAtc \
+  'select framework_run_design_causality_compiler_worker()'
+expect_sqlstate 42501 'PUBLIC invoked compiler worker API' \
+  "${PUBLIC_PSQL[@]}" -v VERBOSITY=verbose -qAtc \
+  'select framework_run_design_causality_compiler_worker()'
 
 event_id="$(scalar "select current_event_id from framework_design_causality_head")"
 event_hash="$(scalar "select canonical_hash from framework_design_causality_event where event_id=$event_id")"
@@ -661,6 +725,9 @@ END $$;
 SQL
 
 # ENABLE ALWAYS is tested under replica mode for source capture and audit rejection.
+# This head snapshot models a signal/ERR exit: source DIRTY may commit, while no
+# causality head/event bytes are published until the next PRE_WORK recovery.
+deferred_head_before="$(scalar "select revision||'|'||canonical_hash||'|'||current_event_id||'|'||extract(epoch from updated_at) from framework_design_causality_head where scope_key='GLOBAL'")"
 db >/dev/null <<'SQL'
 BEGIN;
 SET LOCAL session_replication_role=replica;
@@ -713,9 +780,82 @@ SQL
 [[ "$(scalar "select count(*) from framework_design_change_signal where signal_status='DIRTY' and change_mask=2")" == 1 ]] || {
   echo 'DESIGN_CAUSALITY_POSTGRES_FAIL replica-mode source trigger bypassed' >&2; exit 1;
 }
-replica_compile="$(compile_current replica-source-worker)"
-[[ "$replica_compile" == *'"status": "COMPILED"'* ]] || {
-  echo "DESIGN_CAUSALITY_POSTGRES_FAIL replica compile: $replica_compile" >&2; exit 1;
+deferred_head_after="$(scalar "select revision||'|'||canonical_hash||'|'||current_event_id||'|'||extract(epoch from updated_at) from framework_design_causality_head where scope_key='GLOBAL'")"
+[[ "$deferred_head_before" == "$deferred_head_after" ]] || {
+  echo 'DESIGN_CAUSALITY_POSTGRES_FAIL deferred recovery published partial head' >&2; exit 1;
+}
+
+# The next run's PRE_WORK gate must compile the preserved signal and reach a
+# fresh NO_WORK linearization point before any project DML.  A second dirty=0
+# invocation must not change ledger or head timestamps.
+PROJECT_AUTO_COMPLETION_LIBRARY_ONLY=true source "$ORCHESTRATOR"
+unset PROJECT_AUTO_COMPLETION_LIBRARY_ONLY
+psqlq(){ "${PSQL[@]}" -qAt "$@"; }
+recovery_run_id='00000000-0000-0000-0000-000000000001'
+db -qAtc "insert into framework_project_completion_run(run_id,result_json) values('$recovery_run_id','{\"designCausality\":{\"compilerInvocation\":{\"preWork\":{\"result\":\"NO_WORK\"}}}}')" >/dev/null
+record_design_causality_deferred_recovery \
+  "$recovery_run_id" ORCHESTRATOR_ERROR null 75 777
+[[ "$(scalar "select run_status||'|'||(result_json::jsonb#>>'{designCausality,compilerInvocation,preWork,result}')||'|'||(result_json::jsonb#>>'{designCausality,compilerInvocation,postWork,result}')||'|'||(result_json::jsonb#>>'{designCausality,compilerInvocation,postWork,invoked}') from framework_project_completion_run where run_id='$recovery_run_id'")" == 'FAILED|NO_WORK|DEFERRED_RECOVERY_REQUIRED|false' ]] || {
+  echo 'DESIGN_CAUSALITY_POSTGRES_FAIL deferred recovery evidence did not preserve PRE' >&2; exit 1;
+}
+[[ "$deferred_head_after" == "$(scalar "select revision||'|'||canonical_hash||'|'||current_event_id||'|'||extract(epoch from updated_at) from framework_design_causality_head where scope_key='GLOBAL'")" &&
+   "$(scalar "select count(*) from framework_design_change_signal where signal_status='DIRTY' and change_mask=2")" == 1 ]] || {
+  echo 'DESIGN_CAUSALITY_POSTGRES_FAIL deferred handler consumed or published dirty state' >&2; exit 1;
+}
+# Runtime drift mutant: an owner grant after migration must make readiness fail
+# closed until the protected-function ACL is repaired.
+db -qAtc "grant execute on function framework_cas_design_causality_stage(bigint,varchar,bigint,varchar,varchar,jsonb) to carbonet_design_compiler" >/dev/null
+set +e
+forged_acl_output="$(DESIGN_CAUSALITY_COMPILER_MAX_ATTEMPTS=3 \
+  DESIGN_CAUSALITY_COMPILER_RETRY_DELAY_SECONDS=0 \
+  run_design_causality_post_commit_compiler PRE_WORK 2>/dev/null)"
+forged_acl_rc=$?
+set -e
+[[ "$forged_acl_rc" -eq 78 && -z "$forged_acl_output" ]] || {
+  echo 'DESIGN_CAUSALITY_POSTGRES_FAIL runtime protected-function grant was accepted' >&2; exit 1;
+}
+db -qAtc "revoke all on function framework_cas_design_causality_stage(bigint,varchar,bigint,varchar,varchar,jsonb) from carbonet_design_compiler" >/dev/null
+worker_result="$(DESIGN_CAUSALITY_COMPILER_MAX_ATTEMPTS=3 \
+  DESIGN_CAUSALITY_COMPILER_RETRY_DELAY_SECONDS=0 \
+  run_design_causality_post_commit_compiler PRE_WORK)"
+WORKER_RESULT="$worker_result" python3 - <<'PY'
+import json, os
+d=json.loads(os.environ['WORKER_RESULT'])
+assert d['result']=='DRAINED' and d['compiledEvents']==1
+assert d['phase']=='PRE_WORK'
+assert d['attempts']==2 and d['dirtyAtLinearization']==0
+assert d['revisionAfter']==d['revisionBefore']+1
+assert isinstance(d['currentEventId'],int) and d['currentEventId']>0
+assert len(d['canonicalHash'])==64
+assert d['currentStage']=='CANONICAL_COMPILED'
+PY
+before_no_work="$(scalar "
+  select revision||'|'||current_event_id||'|'||extract(epoch from updated_at)||'|'||
+    (select count(*) from framework_design_causality_event)||'|'||
+    (select count(*) from framework_design_change_signal)||'|'||
+    (select count(*) from framework_design_causality_stage_transition)
+  from framework_design_causality_head where scope_key='GLOBAL'
+")"
+no_work_result="$(DESIGN_CAUSALITY_COMPILER_MAX_ATTEMPTS=3 \
+  DESIGN_CAUSALITY_COMPILER_RETRY_DELAY_SECONDS=0 \
+  run_design_causality_post_commit_compiler PRE_WORK)"
+after_no_work="$(scalar "
+  select revision||'|'||current_event_id||'|'||extract(epoch from updated_at)||'|'||
+    (select count(*) from framework_design_causality_event)||'|'||
+    (select count(*) from framework_design_change_signal)||'|'||
+    (select count(*) from framework_design_causality_stage_transition)
+  from framework_design_causality_head where scope_key='GLOBAL'
+")"
+NO_WORK_RESULT="$no_work_result" python3 - <<'PY'
+import json, os
+d=json.loads(os.environ['NO_WORK_RESULT'])
+assert d['result']=='NO_WORK' and d['attempts']==1 and d['dirtyAtLinearization']==0
+assert d['revisionAfter']==d['revisionBefore']
+assert isinstance(d['currentEventId'],int) and d['currentEventId']>0
+assert len(d['canonicalHash'])==64
+PY
+[[ "$before_no_work" == "$after_no_work" ]] || {
+  echo 'DESIGN_CAUSALITY_POSTGRES_FAIL dirty=0 worker changed ledger' >&2; exit 1;
 }
 
 db >/dev/null <<'SQL'
@@ -753,7 +893,8 @@ BEGIN
  SELECT count(*) INTO public_privileges
    FROM unnest(ARRAY[
      'framework_compile_design_changes(character varying,bigint,character varying)'::regprocedure,
-     'framework_cas_design_causality_stage(bigint,character varying,bigint,character varying,character varying,jsonb)'::regprocedure
+     'framework_cas_design_causality_stage(bigint,character varying,bigint,character varying,character varying,jsonb)'::regprocedure,
+     'framework_run_design_causality_compiler_worker()'::regprocedure
    ]) function_oid
    JOIN pg_proc p ON p.oid=function_oid
    CROSS JOIN LATERAL aclexplode(coalesce(p.proacl,acldefault('f',p.proowner))) acl
@@ -764,7 +905,21 @@ BEGIN
     'carbonet_app',
     'framework_cas_design_causality_stage(bigint,character varying,bigint,character varying,character varying,jsonb)',
     'EXECUTE'
+  ) OR has_function_privilege(
+    'carbonet_app','framework_run_design_causality_compiler_worker()','EXECUTE'
   ) THEN RAISE EXCEPTION 'privileged function ACL mismatch'; END IF;
+ IF EXISTS(
+   SELECT 1 FROM pg_roles r JOIN pg_authid a USING(oid)
+    WHERE r.rolname='carbonet_design_compiler' AND (
+      r.rolsuper OR r.rolinherit OR r.rolcreaterole OR r.rolcreatedb OR
+      r.rolcanlogin OR r.rolreplication OR r.rolbypassrls OR
+      r.rolconnlimit<>-1 OR r.rolvaliduntil IS NOT NULL OR
+      r.rolconfig IS NOT NULL OR a.rolpassword IS NOT NULL
+    )
+ ) OR (SELECT count(*) FROM pg_auth_members
+        WHERE roleid='carbonet_design_compiler'::regrole)<>1 THEN
+  RAISE EXCEPTION 'compiler worker role catalog contract drifted';
+ END IF;
  IF EXISTS(SELECT 1 FROM framework_design_change_signal WHERE signal_status='DIRTY') THEN
   RAISE EXCEPTION 'final dirty signals remain';
  END IF;
@@ -787,9 +942,9 @@ BEGIN
  END IF;
  IF framework_design_causality_status()#>>'{producerCoverage,postCommitCompiler}'<>'0'
     OR framework_design_causality_status()#>>'{producerCoverage,deployment}'<>'0' THEN
-  RAISE EXCEPTION 'milestone producer coverage is overstated';
+  RAISE EXCEPTION 'persistent producer coverage is overstated';
  END IF;
 END $$;
 SQL
 
-echo "DESIGN_CAUSALITY_POSTGRES_PASS mutants=33 producerCoverage=dirty-signal-only deploymentWiring=0"
+echo "DESIGN_CAUSALITY_POSTGRES_PASS mutants=46 compilerInvocation=pre-post-wired abnormalCompilerCalls=0 nextPreRecovery=1 persistentProducerCoverage=dirty-signal-only deploymentWiring=0"
