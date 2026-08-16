@@ -232,29 +232,44 @@ final class CompositePhysicalEvidenceService {
                        and assignment.valid_from<=current_date
                        and (assignment.valid_until is null or assignment.valid_until>=current_date)
                    )::integer as "assignmentCount"
-              from integrated_design_live_smoke_evidence evidence
-              join framework_development_job job on job.job_id=evidence.job_id
-             where evidence.job_id=? and evidence.process_code=?
+               from integrated_design_live_smoke_evidence evidence
+               join framework_development_job job on job.job_id=evidence.job_id
+               join integrated_design_authority authority
+                 on authority.authority_id=evidence.authority_id
+                and authority.authority_revision=evidence.authority_revision
+                and authority.job_id=evidence.job_id
+                and authority.source_hash=evidence.source_hash
+                and authority.authority_hash=evidence.authority_hash
+              where evidence.job_id=? and evidence.process_code=?
              order by evidence.authority_id,evidence.status_case collate "C",evidence.lane collate "C"
             """,jobId,process);
         if(actual.size()!=expected.size())return false;
         Set<SmokeKey> seen=new TreeSet<>();
+        Map<SmokeKey,Map<String,Object>> actualByKey=new HashMap<>();
+        for(Map<String,Object> row:actual){
+            SmokeKey key=new SmokeKey(longValue(row,"authorityId"),String.valueOf(row.get("statusCase")),
+                String.valueOf(row.get("commandCode")),String.valueOf(row.get("scenarioCode")),
+                String.valueOf(row.get("lane")));
+            if(actualByKey.putIfAbsent(key,row)!=null)return false;
+        }
         Map<SmokeCaseKey,SmokeHashes> caseHashes=new HashMap<>();
         for(Map<String,Object> row:actual){
             SmokeKey key=new SmokeKey(longValue(row,"authorityId"),String.valueOf(row.get("statusCase")),
                 String.valueOf(row.get("commandCode")),String.valueOf(row.get("scenarioCode")),
                 String.valueOf(row.get("lane")));
             ExpectedSmoke declaration=expected.get(key);
-            if(declaration==null||!seen.add(key)||!actualExact(row,declaration))return false;
+            if(declaration==null||!seen.add(key)||!actualExact(row,declaration,actualByKey))return false;
+            Map<String,Object> proof=jsonMap(row.get("laneEvidence"));
             SmokeCaseKey caseKey=new SmokeCaseKey(key.authorityId(),key.status(),key.command(),key.scenario());
             SmokeHashes hashes=new SmokeHashes(String.valueOf(row.get("accountHash")),
                 String.valueOf(row.get("commandHash")),String.valueOf(row.get("inputHash")),
                 String.valueOf(row.get("outputHash")),String.valueOf(row.get("stateHash")),
-                String.valueOf(row.get("statusHash")));
+                String.valueOf(row.get("statusHash")),String.valueOf(proof.get("executionId")),
+                String.valueOf(proof.get("idempotencyKeyHash")),String.valueOf(proof.get("observedHttpStatus")));
             SmokeHashes prior=caseHashes.putIfAbsent(caseKey,hashes);
             if(prior!=null&&!prior.equals(hashes))return false;
         }
-        return seen.equals(expected.keySet());
+        return seen.equals(expected.keySet())&&referenceExecutionsExact(expected,actualByKey);
     }
 
     private boolean declareExpected(Map<String,Object> authority,Map<SmokeKey,ExpectedSmoke> expected){
@@ -278,11 +293,10 @@ final class CompositePhysicalEvidenceService {
         Map<String,Object> raci=map(design.get("ACTOR_RACI"));
         Map<String,Object> state=map(design.get("STATE"));
         Map<String,Object> api=map(design.get("API"));
-        Map<String,Object> database=map(design.get("DATABASE"));
         String primaryActor=String.valueOf(raci.get("actorCode"));
         long authorityId=longValue(authority,"authorityId");
         String scopeType=String.valueOf(authority.get("scopeType"));
-        String project="GLOBAL".equals(scopeType)?"*":String.valueOf(authority.get("boundProjectId"));
+        String project="GLOBAL".equals(scopeType)?"":String.valueOf(authority.get("boundProjectId"));
         String artifact=String.valueOf(authority.get("artifactHash"));
         if(!Set.of("GLOBAL","PROJECT").contains(scopeType)
                 ||("PROJECT".equals(scopeType)&&!project.matches("^[A-Z][A-Z0-9_-]{2,63}$"))
@@ -300,23 +314,28 @@ final class CompositePhysicalEvidenceService {
             Map<String,Object> transition=transitions.get(0),operation=operations.get(0);
             String from=String.valueOf(transition.get("fromState"));
             String to=String.valueOf(transition.get("toState"));
-            String databaseTarget="entities:"+String.join(",",maps(database.get("entities")).stream()
-                .map(row->String.valueOf(row.get("entity"))).sorted().toList());
             for(Map.Entry<String,Map<String,Object>> entry:byCommand.get(command).entrySet()){
                 Map<String,Object> scenario=entry.getValue();String status=entry.getKey();
                 Map<String,Object> input=map(scenario.get("inputValues"));
                 Set<String> outputFields=new TreeSet<>(strings(scenario.get("expectedOutputFields")));
-                String observed="SUCCESS".equals(status)?to:from;
+                Map<String,Object> expectedOutputValues=map(scenario.get("expectedOutputValues"));
+                int expectedHttpStatus=scenario.get("expectedHttpStatus") instanceof Number number
+                    ?number.intValue():-1;
+                Map<String,Object> trigger=map(scenario.get("trigger"));
+                if(!expectedOutputValues.keySet().equals(outputFields)||expectedHttpStatus<100
+                        ||expectedHttpStatus>599||trigger.isEmpty())return false;
+                String observed=Set.of("SUCCESS","CONFLICT","RECOVERY").contains(status)?to:from;
                 for(String lane:LIVE_LANES){
                     String target=switch(lane){
                         case "API" -> operation.get("method")+" "+operation.get("path");
-                        case "DATABASE" -> databaseTarget;
+                        case "DATABASE" -> "entity:framework_process_execution";
                         default -> String.valueOf(authority.get("routePath"));
                     };
                     String scenarioCode=String.valueOf(scenario.get("scenarioCode"));
                     SmokeKey key=new SmokeKey(authorityId,status,command,scenarioCode,lane);
-                    ExpectedSmoke value=new ExpectedSmoke(authority,input,outputFields,actor,command,
-                        scenarioCode,from,to,observed,status,target,project,artifact);
+                    ExpectedSmoke value=new ExpectedSmoke(authority,input,outputFields,
+                        expectedOutputValues,expectedHttpStatus,trigger,actor,command,
+                        scenarioCode,from,to,observed,status,target,scopeType,project,artifact);
                     if(expected.putIfAbsent(key,value)!=null)return false;
                 }
             }
@@ -324,7 +343,8 @@ final class CompositePhysicalEvidenceService {
         return true;
     }
 
-    private boolean actualExact(Map<String,Object> row,ExpectedSmoke declaration){
+    private boolean actualExact(Map<String,Object> row,ExpectedSmoke declaration,
+            Map<SmokeKey,Map<String,Object>> actualByKey){
         Map<String,Object> authority=declaration.authority();
         Map<String,Object> input=jsonMap(row.get("input")),output=jsonMap(row.get("output"));
         Map<String,Object> laneEvidence=jsonMap(row.get("laneEvidence"));
@@ -339,7 +359,9 @@ final class CompositePhysicalEvidenceService {
                 ||!declaration.scenario().equals(row.get("scenarioCode"))
                 ||!declaration.actor().equals(row.get("actorCode"))
                 ||!declaration.command().equals(row.get("commandCode"))
-                ||!declaration.project().equals(row.get("projectId"))
+                ||("PROJECT".equals(declaration.scopeType())
+                    ?!declaration.project().equals(row.get("projectId"))
+                    :!String.valueOf(row.get("projectId")).matches("^[A-Z][A-Z0-9_-]{2,63}$"))
                 ||!CompositeExecutableDesignAuthorityCompiler.stable(input).equals(
                     CompositeExecutableDesignAuthorityCompiler.stable(declaration.input()))
                 ||!output.keySet().equals(declaration.outputFields())
@@ -349,21 +371,118 @@ final class CompositePhysicalEvidenceService {
                 ||!status.equals(row.get("expectedStatus"))||!status.equals(row.get("observedStatus"))
                 ||!declaration.target().equals(row.get("targetRef"))
                 ||!laneProofExact(row,laneEvidence,lane,declaration.target(),
-                    declaration.artifact()))return false;
+                    declaration.artifact(),declaration.expectedHttpStatus(),status)
+                ||!executionContextExact(row,laneEvidence,declaration)
+                ||!outputValuesExact(output,input,declaration,laneEvidence,actualByKey))return false;
         String run=String.valueOf(laneEvidence.get("runId"));
         String artifact=String.valueOf(laneEvidence.get("artifactHash"));
         return String.valueOf(row.get("evidenceRef")).equals(
             "live:"+run+";lane:"+lane+";artifact:"+artifact);
     }
 
+    private boolean executionContextExact(Map<String,Object> row,Map<String,Object> proof,
+            ExpectedSmoke declaration){
+        String executionId=String.valueOf(proof.get("executionId"));
+        if(!executionId.matches("[0-9a-fA-F-]{36}"))return false;
+        Integer count=jdbc.queryForObject("""
+            select count(*) from framework_process_execution execution
+             where execution.execution_id=?::uuid and execution.tenant_id=?
+               and execution.project_id=? and execution.process_code=?
+               and execution.current_state=?
+            """,Integer.class,executionId,row.get("tenantId"),row.get("projectId"),
+            row.get("processCode"),declaration.observed());
+        return count!=null&&count==1;
+    }
+
+    private boolean outputValuesExact(Map<String,Object> output,Map<String,Object> input,
+            ExpectedSmoke declaration,Map<String,Object> proof,
+            Map<SmokeKey,Map<String,Object>> actualByKey){
+        Map<String,Object> event=Map.of();
+        if(declaration.expectedOutputValues().values().stream().filter(Map.class::isInstance)
+                .map(Map.class::cast).anyMatch(row->"DATABASE_EVENT".equals(row.get("source")))){
+            List<Map<String,Object>> events=jdbc.queryForList("""
+                select event_id as "eventId",to_state as "toState"
+                  from framework_process_execution_event
+                 where execution_id=?::uuid and command_code=?
+                """,proof.get("executionId"),declaration.command());
+            if(events.size()!=1)return false;event=events.get(0);
+        }
+        Map<String,Object> reference=Map.of();
+        Object referenceCode=declaration.trigger().get("referenceScenarioCode");
+        if(referenceCode!=null){
+            SmokeKey key=new SmokeKey(longValue(declaration.authority(),"authorityId"),
+                "SUCCESS",declaration.command(),String.valueOf(referenceCode),"API");
+            Map<String,Object> row=actualByKey.get(key);if(row==null)return false;
+            reference=jsonMap(row.get("output"));
+        }
+        Map<String,Object> expected=new LinkedHashMap<>();
+        for(String field:declaration.outputFields()){
+            Map<String,Object> descriptor=map(declaration.expectedOutputValues().get(field));
+            String source=String.valueOf(descriptor.get("source"));Object value;
+            if("LITERAL".equals(source)){
+                if(!descriptor.keySet().equals(Set.of("source","value"))
+                        ||descriptor.get("value")==null)return false;
+                value=descriptor.get("value");
+            }else{
+                if(!descriptor.keySet().equals(Set.of("source","path")))return false;
+                String path=String.valueOf(descriptor.get("path"));
+                Map<String,Object> origin=switch(source){
+                    case "REQUEST" -> input;
+                    case "DATABASE_EVENT" -> event;
+                    case "DECLARED_STATE" -> Map.of("fromState",declaration.from(),
+                        "toState",declaration.to());
+                    case "REFERENCE_SCENARIO" -> reference;
+                    default -> Map.of();
+                };
+                if(!origin.containsKey(path)||origin.get(path)==null)return false;value=origin.get(path);
+            }
+            expected.put(field,value);
+        }
+        return CompositeExecutableDesignAuthorityCompiler.stable(expected).equals(
+            CompositeExecutableDesignAuthorityCompiler.stable(output));
+    }
+
+    private boolean referenceExecutionsExact(Map<SmokeKey,ExpectedSmoke> expected,
+            Map<SmokeKey,Map<String,Object>> actual){
+        for(Map.Entry<SmokeKey,ExpectedSmoke> entry:expected.entrySet()){
+            SmokeKey key=entry.getKey();if(!"API".equals(key.lane()))continue;
+            ExpectedSmoke declaration=entry.getValue();
+            String status=declaration.status();
+            Map<String,Object> proof=jsonMap(actual.get(key).get("laneEvidence"));
+            if(Set.of("CONFLICT","RECOVERY").contains(status)){
+                String reference=String.valueOf(declaration.trigger().get("referenceScenarioCode"));
+                Map<String,Object> success=actual.get(new SmokeKey(key.authorityId(),"SUCCESS",
+                    key.command(),reference,"API"));
+                if(success==null)return false;Map<String,Object> successProof=jsonMap(success.get("laneEvidence"));
+                boolean sameExecution=proof.get("executionId").equals(successProof.get("executionId"));
+                boolean sameKey=proof.get("idempotencyKeyHash").equals(successProof.get("idempotencyKeyHash"));
+                if(!sameExecution||("RECOVERY".equals(status)?!sameKey:sameKey))return false;
+            }
+            if("SUCCESS".equals(status)){
+                Set<String> isolated=new TreeSet<>();isolated.add(String.valueOf(proof.get("executionId")));
+                for(String otherStatus:List.of("VALIDATION_ERROR","FORBIDDEN")){
+                    Map<String,Object> other=actual.entrySet().stream().filter(row->
+                        row.getKey().authorityId()==key.authorityId()&&row.getKey().command().equals(key.command())
+                        &&row.getKey().status().equals(otherStatus)&&row.getKey().lane().equals("API"))
+                        .map(Map.Entry::getValue).findFirst().orElse(null);
+                    if(other==null||!isolated.add(String.valueOf(
+                            jsonMap(other.get("laneEvidence")).get("executionId"))))return false;
+                }
+            }
+        }
+        return true;
+    }
+
     private static boolean laneProofExact(Map<String,Object> row,Map<String,Object> proof,
-            String lane,String target,String artifact){
+            String lane,String target,String artifact,int expectedHttpStatus,String status){
         Set<String> common=Set.of("schema","source","runId","targetRef","observed",
-            "requestHash","responseHash","artifactHash");
+            "requestHash","responseHash","artifactHash","executionId","idempotencyKeyHash",
+            "observedHttpStatus");
         Set<String> keys=new TreeSet<>(common);
-        if("API".equals(lane))keys.add("transportHash");
+        if("API".equals(lane))keys.addAll(Set.of("transportHash","httpStatus"));
         if("DATABASE".equals(lane))keys.addAll(Set.of("rereadHash","transactionHash"));
-        if("BROWSER".equals(lane))keys.addAll(Set.of("domHash","screenshotHash","rendered"));
+        if("BROWSER".equals(lane))keys.addAll(Set.of("domHash","screenshotHash","rendered",
+            "runtimeObserved","accessDenied"));
         String source=switch(lane){case "API"->"API_HTTP";
             case "DATABASE"->"POSTGRES_REREAD";default->"BROWSER_DOM";};
         if(!proof.keySet().equals(keys)||!"carbonet.composite-live-smoke-lane/v1".equals(proof.get("schema"))
@@ -371,12 +490,19 @@ final class CompositePhysicalEvidenceService {
                 ||!Boolean.TRUE.equals(proof.get("observed"))
                 ||!String.valueOf(proof.get("runId")).matches("[0-9a-f]{8}-[0-9a-f-]{27}")
                 ||!artifact.equals(proof.get("artifactHash"))
+                ||!String.valueOf(proof.get("executionId")).matches("[0-9a-fA-F-]{36}")
+                ||!hashValue(proof.get("idempotencyKeyHash"))
+                ||!(proof.get("observedHttpStatus") instanceof Number observed)
+                ||observed.intValue()!=expectedHttpStatus
                 ||!row.get("inputHash").equals(proof.get("requestHash"))
                 ||!row.get("outputHash").equals(proof.get("responseHash")))return false;
         return switch(lane){
-            case "API" -> hashValue(proof.get("transportHash"));
+            case "API" -> hashValue(proof.get("transportHash"))
+                &&proof.get("httpStatus") instanceof Number http&&http.intValue()==expectedHttpStatus;
             case "DATABASE" -> hashValue(proof.get("rereadHash"))&&hashValue(proof.get("transactionHash"));
             case "BROWSER" -> Boolean.TRUE.equals(proof.get("rendered"))
+                &&Boolean.TRUE.equals(proof.get("accessDenied"))=="FORBIDDEN".equals(status)
+                &&Boolean.TRUE.equals(proof.get("runtimeObserved"))!="FORBIDDEN".equals(status)
                 &&hashValue(proof.get("domHash"))&&hashValue(proof.get("screenshotHash"));
             default -> true;
         };
@@ -394,10 +520,11 @@ final class CompositePhysicalEvidenceService {
     }
     private record SmokeCaseKey(long authorityId,String status,String command,String scenario) {}
     private record SmokeHashes(String account,String command,String input,String output,
-        String state,String status) {}
+        String state,String status,String executionId,String idempotencyKeyHash,String httpStatus) {}
     private record ExpectedSmoke(Map<String,Object> authority,Map<String,Object> input,
-        Set<String> outputFields,String actor,String command,String scenario,String from,String to,
-        String observed,String status,String target,String project,String artifact) {}
+        Set<String> outputFields,Map<String,Object> expectedOutputValues,int expectedHttpStatus,
+        Map<String,Object> trigger,String actor,String command,String scenario,String from,String to,
+        String observed,String status,String target,String scopeType,String project,String artifact) {}
 
     private static boolean same(Map<String,Object> left,Map<String,Object> right,String key){
         return left.get(key)!=null&&left.get(key).equals(right.get(key));

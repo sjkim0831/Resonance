@@ -24,6 +24,10 @@ def operation(operation_id: str, command: str, path: str) -> dict:
         "tenantId": {"type": "string"}, "projectId": {"type": "string"},
         "actorCode": {"type": "string"}, "idempotencyKey": {"type": "string"},
     }
+    success = {**GEN.RUNTIME_RESPONSE_SCHEMA, "amount": {"type": "number"}}
+    error = GEN.ERROR_RESPONSE_SCHEMA
+    def schema(properties):
+        return {"type": "object", "properties": properties, "required": list(properties)}
     return {
         "operationId": operation_id,
         "implementationKind": "PROCESS_COMMAND_ADAPTER",
@@ -36,15 +40,21 @@ def operation(operation_id: str, command: str, path: str) -> dict:
             "type": "object", "properties": {**runtime, "amount": {"type": "number"}},
             "required": [*runtime, "amount"],
         }},
-        "response": {"successStatus": 200, "schema": {"type": "object", "properties": {
-            "success": {"type": "boolean"}, "idempotent": {"type": "boolean"},
-            "eventId": {"type": "integer"}, "toState": {"type": "string"},
-        }, "required": ["success", "idempotent", "eventId", "toState"]}, "errors": [
+        "response": {"statusResponses": [
+            {"statusCase": "SUCCESS", "httpStatus": 200, "schema": schema(success)},
+            {"statusCase": "VALIDATION_ERROR", "httpStatus": 400, "schema": schema(error)},
+            {"statusCase": "FORBIDDEN", "httpStatus": 403, "schema": schema(error)},
+            {"statusCase": "CONFLICT", "httpStatus": 409, "schema": schema(error)},
+            {"statusCase": "RECOVERY", "httpStatus": 200,
+             "schema": schema({**success, "recovered": {"type": "boolean"}})},
+        ], "errors": [
             {"status": 400, "code": "INVALID_REQUEST"},
-            {"status": 401, "code": "AUTHENTICATION_REQUIRED"},
             {"status": 403, "code": "ACCESS_DENIED"},
+            {"status": 409, "code": "CONFLICT"},
             {"status": 500, "code": "INTERNAL_ERROR"},
         ]},
+        "responseProjection": [{"fieldCode": "amount", "source": "REQUEST",
+                                "sourcePath": "amount"}],
         "persistence": copy.deepcopy(GEN.RUNTIME_PERSISTENCE),
         "transactionPolicy": "REQUIRED", "idempotencyRequired": True,
         "rollback": {"strategy": "TRANSACTION", "commandCode": command},
@@ -106,7 +116,7 @@ class MultiOperationSpringGeneratorTest(unittest.TestCase):
             source = root / "catalog.json"
             source.write_text(json.dumps(catalog()), encoding="utf-8")
             artifacts, manifest = GEN.render(source, 4)
-            self.assertEqual(6, manifest["artifactCount"])
+            self.assertEqual(10, manifest["artifactCount"])
             self.assertEqual(2, len(manifest["operations"]))
             self.assertEqual({"CompleteActivityPlan", "CancelActivityPlan"},
                              {row["operationKey"] for row in manifest["operations"]})
@@ -122,8 +132,8 @@ class MultiOperationSpringGeneratorTest(unittest.TestCase):
             self.assertEqual(1, len(catalog()["endpoints"]))
             out = root / "generated"
             changed, total = GEN.publish(out, artifacts)
-            self.assertEqual(7, total)
-            self.assertEqual(7, changed)
+            self.assertEqual(11, total)
+            self.assertEqual(11, changed)
             for row in manifest["operations"]:
                 controller = out / ("src/main/java/" + row["handlerClass"].replace(".", "/") + ".java")
                 self.assertTrue(controller.is_file())

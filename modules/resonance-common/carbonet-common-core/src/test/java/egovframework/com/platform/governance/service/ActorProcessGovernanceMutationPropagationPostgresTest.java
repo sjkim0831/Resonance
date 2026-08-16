@@ -20,6 +20,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
@@ -111,6 +112,7 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
             "where emplyr_id='system-admin'");
         jdbc.execute("truncate integrated_design_notification_inbox,integrated_design_notification_outbox,"+
             "integrated_design_notification_template,integrated_design_autocompletion_receipt,"+
+            "integrated_design_live_smoke_dispatch,"+
             "framework_process_execution_event,framework_process_execution,"+
             "framework_actor_process_design_release,framework_process_step_screen_binding,"+
             "framework_page_design_assurance,framework_screen_blueprint,framework_screen_resource,"+
@@ -1720,6 +1722,111 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
     }
 
     @Test
+    void durableLiveSmokeDispatchSurvivesCrashPartialResumeDeadLetterAndRevisionSupersede(){
+        seedCompositeThreeScreens();
+        Map<String,Object> compiled=compileComposite(
+            Map.of("processCode","PROC","previewOnly",false,"scopeType","GLOBAL"));
+        long jobId=((Number)((Map<?,?>)((List<?>)compiled.get("receipts")).get(0)).get("jobId")).longValue();
+        String revisionHash=jdbc.queryForObject(
+            "select framework_composite_authority_revision_set_hash(?)",String.class,jobId);
+        String processSource=jdbc.queryForObject("select framework_try_jsonb(specification_json)->>'sourceHash' "+
+            "from framework_development_job where job_id=?",String.class,jobId);
+        int expected=jdbc.queryForObject("""
+            select sum(jsonb_array_length(composite_json#>'{executableDesign,TEST,scenarios}')*3)::integer
+              from integrated_design_authority where job_id=?
+            """,Integer.class,jobId);
+        long dispatchId=jdbc.queryForObject("""
+            insert into integrated_design_live_smoke_dispatch(job_id,process_code,project_id,
+              authority_revision_set_hash,artifact_manifest_hash,process_source_hash,
+              expected_evidence_count,status)
+            values(?,'PROC','*',?,repeat('a',64),?,?,'QUEUED') returning dispatch_id
+            """,Long.class,jobId,revisionHash,processSource,expected);
+        UUID firstToken=UUID.randomUUID(),staleToken=UUID.randomUUID();
+        assertEquals(1,jdbc.update("""
+            with candidate as (select dispatch_id from integrated_design_live_smoke_dispatch
+              where dispatch_id=? and status='QUEUED' for update skip locked)
+            update integrated_design_live_smoke_dispatch dispatch
+               set status='RUNNING',attempt_count=attempt_count+1,lease_token=?,
+                   lease_until=clock_timestamp()+interval '10 milliseconds',started_at=clock_timestamp()
+              from candidate where dispatch.dispatch_id=candidate.dispatch_id
+            """,dispatchId,firstToken));
+        assertEquals(0,jdbc.update("""
+            update integrated_design_live_smoke_dispatch set status='RETRY_WAIT',lease_token=null,
+              lease_until=null,next_attempt_at=clock_timestamp()
+             where dispatch_id=? and status='RUNNING' and lease_token=?
+            """,dispatchId,staleToken));
+        jdbc.queryForObject("select pg_sleep(0.03)::text",String.class);
+        assertEquals(1,jdbc.update("""
+            update integrated_design_live_smoke_dispatch set status='RETRY_WAIT',lease_token=null,
+              lease_until=null,next_attempt_at=clock_timestamp(),last_error_code='STALE_LEASE_EXPIRED',
+              last_error_hash=repeat('b',64)
+             where dispatch_id=? and status='RUNNING' and lease_token=? and lease_until<clock_timestamp()
+            """,dispatchId,firstToken));
+        assertEquals(1,insertPartialLiveSmokeEvidence(jobId));
+        UUID secondToken=UUID.randomUUID();
+        assertEquals(1,jdbc.update("""
+            update integrated_design_live_smoke_dispatch set status='RUNNING',
+              attempt_count=attempt_count+1,lease_token=?,lease_until=clock_timestamp()+interval '1 minute'
+             where dispatch_id=? and status='RETRY_WAIT'
+            """,secondToken,dispatchId));
+        assertEquals(1,jdbc.queryForObject(
+            "select count(*) from integrated_design_live_smoke_evidence where job_id=?",Integer.class,jobId));
+        assertEquals(1,jdbc.update("""
+            update integrated_design_live_smoke_dispatch set status='RETRY_WAIT',lease_token=null,
+              lease_until=null,next_attempt_at=clock_timestamp(),last_error_code='TRANSIENT_HTTP_FAILURE',
+              last_error_hash=repeat('c',64) where dispatch_id=? and lease_token=?
+            """,dispatchId,secondToken));
+        UUID thirdToken=UUID.randomUUID();
+        assertEquals(1,jdbc.update("""
+            update integrated_design_live_smoke_dispatch set status='RUNNING',
+              attempt_count=attempt_count+1,lease_token=?,lease_until=clock_timestamp()+interval '1 minute'
+             where dispatch_id=? and status='RETRY_WAIT'
+            """,thirdToken,dispatchId));
+        assertEquals(1,jdbc.update("""
+            update integrated_design_live_smoke_dispatch set status='DEAD_LETTER',lease_token=null,
+              lease_until=null,next_attempt_at=clock_timestamp(),completed_at=clock_timestamp(),
+              last_error_code='RETRY_EXHAUSTED',last_error_hash=repeat('d',64)
+             where dispatch_id=? and status='RUNNING' and lease_token=? and attempt_count=3
+            """,dispatchId,thirdToken));
+        assertEquals(Map.of("status","DEAD_LETTER","attemptCount",3,"evidenceCount",1),
+            jdbc.queryForMap("""
+                select status,attempt_count as "attemptCount",
+                  (select count(*)::integer from integrated_design_live_smoke_evidence
+                    where job_id=dispatch.job_id) as "evidenceCount"
+                  from integrated_design_live_smoke_dispatch dispatch where dispatch_id=?
+                """,dispatchId));
+        assertThrows(RuntimeException.class,()->jdbc.update(
+            "delete from integrated_design_live_smoke_dispatch where dispatch_id=?",dispatchId));
+        jdbc.update("""
+            update integrated_design_authority set authority_revision=authority_revision+1,
+              source_hash=repeat('e',64),authority_hash=repeat('f',64)
+             where authority_id=(select min(authority_id) from integrated_design_authority where job_id=?)
+            """,jobId);
+        String nextRevisionHash=jdbc.queryForObject(
+            "select framework_composite_authority_revision_set_hash(?)",String.class,jobId);
+        assertNotEquals(revisionHash,nextRevisionHash);
+        assertEquals(1,jdbc.update("""
+            update integrated_design_live_smoke_dispatch set status='SUPERSEDED',
+              completed_at=coalesce(completed_at,clock_timestamp()),
+              last_error_code='AUTHORITY_REVISION_SUPERSEDED',last_error_hash=repeat('1',64)
+             where dispatch_id=? and authority_revision_set_hash<>?
+            """,dispatchId,nextRevisionHash));
+        long nextDispatch=jdbc.queryForObject("""
+            insert into integrated_design_live_smoke_dispatch(job_id,process_code,project_id,
+              authority_revision_set_hash,artifact_manifest_hash,process_source_hash,
+              expected_evidence_count,status)
+            values(?,'PROC','*',?,repeat('a',64),?,?,'QUEUED') returning dispatch_id
+            """,Long.class,jobId,nextRevisionHash,processSource,expected);
+        assertTrue(nextDispatch>dispatchId);
+        assertEquals(List.of("QUEUED","SUPERSEDED"),jdbc.queryForList(
+            "select status from integrated_design_live_smoke_dispatch where job_id=? order by status",String.class,jobId));
+        assertEquals(0,jdbc.update("""
+            update integrated_design_live_smoke_dispatch set status='EVIDENCE_SUBMITTED',
+              lease_token=null,lease_until=null where dispatch_id=? and lease_token=?
+            """,dispatchId,firstToken));
+    }
+
+    @Test
     void rawBackfillTestsRemainInReviewAndCannotPublishWithoutDeclaredCases(){
         seedCompositeThreeScreens();
         transaction.executeWithoutResult(status->
@@ -2015,6 +2122,15 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
                    from integrated_design_live_smoke_evidence)
                 """));
             assertEquals(1,installExactLiveSmokeEvidence(jobId,false));
+            markDispatchEvidenceSubmitted(jobId);
+            assertEquals(CompositePhysicalEvidenceService.Verdict.EXACT,
+                new CompositePhysicalEvidenceService(jdbc).assess(jobId,"PROC"),
+                ()->String.valueOf(jdbc.queryForMap("""
+                    select status,expected_evidence_count,submitted_evidence_count,
+                           authority_revision_set_hash,
+                           framework_composite_authority_revision_set_hash(job_id) current_hash
+                      from integrated_design_live_smoke_dispatch where job_id=?
+                    """,jobId)));
             worker.runScheduledBatch();
             assertEquals("PHYSICAL_GENERATED_VERIFIED",jdbc.queryForObject(
                 "select completion_status from integrated_design_autocompletion_receipt where process_code='PROC'",
@@ -2056,13 +2172,18 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
     @Test
     void twoCommandAuthorityRequiresThirtyExactLaneCaseRowsBeforePhysicalPromotion(){
         seedCompositeThreeScreens();
+        String apiContract=json(List.of(
+            executableApiOperation("POST","/api/items/{executionId}","SAVE",
+                "name","id","PERM_SAVE"),
+            executableApiOperation("POST","/api/items/{executionId}/submit","SUBMIT",
+                "name","id","PERM_SAVE")));
         jdbc.update("""
             update framework_professional_screen_contract
                set command_contract='[{"commandCode":"SAVE","actorCode":"PRIMARY_ACTOR","primary":true},{"commandCode":"SUBMIT","actorCode":"PRIMARY_ACTOR","primary":false}]',
                    state_contract='[{"fromState":"DRAFT","commandCode":"SAVE","toState":"DONE"},{"fromState":"DRAFT","commandCode":"SUBMIT","toState":"DONE"}]',
-                   api_contract='[{"method":"POST","path":"/api/items/{executionId}","commandCode":"SAVE","requestFields":["name"],"responseFields":["id"],"permissionCodes":["PERM_SAVE"]},{"method":"POST","path":"/api/items/{executionId}/submit","commandCode":"SUBMIT","requestFields":["name"],"responseFields":["id"],"permissionCodes":["PERM_SAVE"]}]'
+                   api_contract=?
              where process_code='PROC' and route_path='/work-a'
-            """);
+            """,apiContract);
         Map<String,Object> compiled=compileComposite(
             Map.of("processCode","PROC","previewOnly",false,"scopeType","GLOBAL"));
         long jobId=((Number)((Map<?,?>)((List<?>)compiled.get("receipts")).get(0)).get("jobId")).longValue();
@@ -2087,6 +2208,7 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
                 "select blocker_code from integrated_design_autocompletion_receipt where process_code='PROC'",
                 String.class));
             assertEquals(60,installExactLiveSmokeEvidence(jobId,false));
+            markDispatchEvidenceSubmitted(jobId);
             worker.reconcilePhysicalCompletion();
             assertEquals("PHYSICAL_GENERATED_VERIFIED",jdbc.queryForObject(
                 "select completion_status from integrated_design_autocompletion_receipt where process_code='PROC'",
@@ -2111,16 +2233,20 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
             values('PROC','SOURCE_APPLIED_PHYSICAL_QUEUED',?,?,current_timestamp)
             """,fingerprint,jobId);
         installExactCanonicalPhysicalEvidence(jobId);
-        assertEquals(45,installExactLiveSmokeEvidence(jobId,false,true,true));
+        int before=count("integrated_design_live_smoke_evidence");
+        IllegalArgumentException rejected=assertThrows(IllegalArgumentException.class,
+            ()->installExactLiveSmokeEvidence(jobId,false,true,true));
+        assertTrue(rejected.getMessage().contains("LIVE_SMOKE_OUTPUT_VALUES_NOT_DECLARED"));
+        assertEquals(before,count("integrated_design_live_smoke_evidence"));
         assertEquals(CompositePhysicalEvidenceService.Verdict.LIVE_SMOKE_TEST_PENDING,
             new CompositePhysicalEvidenceService(jdbc).assess(jobId,"PROC"));
-        assertEquals(45,jdbc.queryForObject(
+        assertEquals(0,jdbc.queryForObject(
             "select count(*) from integrated_design_live_smoke_evidence where job_id=?",
             Integer.class,jobId));
     }
 
     @Test
-    void retainedLiveEvidenceAllowsNextAuthorityRevisionButCannotVerifyIt(){
+    void currentRevisionEvidenceAppendsOnReusedJobAndIgnoresRetainedPriorRevision(){
         seedCompositeThreeScreens();
         Map<String,Object> first=compileComposite(
             Map.of("processCode","PROC","previewOnly",false,"scopeType","GLOBAL"));
@@ -2185,7 +2311,57 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
             Integer.class,jobId));
         installExactCanonicalPhysicalEvidence(jobId);
         assertEquals(CompositePhysicalEvidenceService.Verdict.LIVE_SMOKE_TEST_PENDING,
+            new CompositePhysicalEvidenceService(jdbc).assess(jobId,"PROC"),
+            "retained rows from the wrong authority revision must not verify the new revision");
+        int retainedPriorRevision=jdbc.queryForObject("""
+            select count(*) from integrated_design_live_smoke_evidence evidence
+             where evidence.job_id=? and not exists(
+               select 1 from integrated_design_authority authority
+                where authority.authority_id=evidence.authority_id
+                  and authority.authority_revision=evidence.authority_revision
+                  and authority.job_id=evidence.job_id
+                  and authority.source_hash=evidence.source_hash
+                  and authority.authority_hash=evidence.authority_hash)
+            """,Integer.class,jobId);
+        assertTrue(retainedPriorRevision>0);
+
+        int appended=installExactLiveSmokeEvidence(jobId,false);
+        assertTrue(appended>0);
+        assertEquals(45+appended,jdbc.queryForObject(
+            "select count(*) from integrated_design_live_smoke_evidence where job_id=?",
+            Integer.class,jobId));
+        assertEquals(retainedPriorRevision,jdbc.queryForObject("""
+            select count(*) from integrated_design_live_smoke_evidence evidence
+             where evidence.job_id=? and not exists(
+               select 1 from integrated_design_authority authority
+                where authority.authority_id=evidence.authority_id
+                  and authority.authority_revision=evidence.authority_revision
+                  and authority.job_id=evidence.job_id
+                  and authority.source_hash=evidence.source_hash
+                  and authority.authority_hash=evidence.authority_hash)
+            """,Integer.class,jobId));
+        assertEquals(45,jdbc.queryForObject("""
+            select count(*) from integrated_design_live_smoke_evidence evidence
+              join integrated_design_authority authority
+                on authority.authority_id=evidence.authority_id
+               and authority.authority_revision=evidence.authority_revision
+               and authority.job_id=evidence.job_id
+               and authority.source_hash=evidence.source_hash
+               and authority.authority_hash=evidence.authority_hash
+             where evidence.job_id=? and evidence.process_code='PROC'
+            """,Integer.class,jobId));
+        assertEquals(CompositePhysicalEvidenceService.Verdict.EXACT,
             new CompositePhysicalEvidenceService(jdbc).assess(jobId,"PROC"));
+
+        String beforeReplay=jdbc.queryForObject("""
+            select string_agg(live_evidence_id||':'||xmin::text,',' order by live_evidence_id)
+              from integrated_design_live_smoke_evidence where job_id=?
+            """,String.class,jobId);
+        assertEquals(0,installExactLiveSmokeEvidence(jobId,false));
+        assertEquals(beforeReplay,jdbc.queryForObject("""
+            select string_agg(live_evidence_id||':'||xmin::text,',' order by live_evidence_id)
+              from integrated_design_live_smoke_evidence where job_id=?
+            """,String.class,jobId));
     }
 
     @Test
@@ -2327,41 +2503,136 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
     private Map<String,Object> compileComposite(Map<String,Object> request){
         return transaction.execute(status->{
             jdbc.queryForMap("select * from refresh_integrated_design_axis_documents('PROC',true)");
-            jdbc.update("""
-                with declared as (
-                  select contract.process_code,contract.step_code,lower(contract.route_path) route_path,
-                         upper(contract.audience) audience,jsonb_agg(jsonb_build_object(
-                           'scenarioCode',operation->>'commandCode'||'_'||status_case,
-                           'commandCode',operation->>'commandCode',
-                           'inputValues',coalesce((select jsonb_object_agg(field_code,
-                             to_jsonb('fixture-'||lower(field_code)) order by field_code)
-                             from jsonb_array_elements_text(operation->'requestFields') field_code),'{}'::jsonb),
-                           'expectedOutputFields',operation->'responseFields',
-                           'expectedStatus',status_case,
-                           'assertionCodes',jsonb_build_array('STATUS_MATCH','OUTPUT_FIELDS_MATCH'))
-                           order by operation->>'commandCode' collate "C",status_order) scenarios
-                    from framework_professional_screen_contract contract
-                    cross join lateral jsonb_array_elements(
-                      framework_try_jsonb(contract.api_contract)) operation
-                    cross join (values(1,'SUCCESS'),(2,'VALIDATION_ERROR'),(3,'FORBIDDEN'),
-                      (4,'CONFLICT'),(5,'RECOVERY')) status(status_order,status_case)
-                   where contract.process_code='PROC'
-                   group by contract.process_code,contract.step_code,lower(contract.route_path),
-                            upper(contract.audience)
-                )
-                update integrated_design_document document
-                   set content=jsonb_set(framework_try_jsonb(document.content),'{payload,scenarios}',
-                         declared.scenarios,true)::text,
-                       status='READY',updated_by='MANUAL_LIVE_SMOKE_FIXTURE'
-                  from declared
-                 where document.process_code=declared.process_code
-                   and document.step_code=declared.step_code
-                   and document.route_path=declared.route_path and document.audience=declared.audience
-                   and document.document_type='TEST' and document.updated_by='LIVE_CONTRACT_BACKFILL'
-                   and framework_try_jsonb(document.content)#>'{payload,scenarios}'='[]'::jsonb
-                """);
+            for(Map<String,Object> row:jdbc.queryForList("""
+                select test.document_id as "documentId",test.content as "testContent",
+                       api.content as "apiContent",state.content as "stateContent",
+                       validation.content as "validationContent"
+                  from integrated_design_document test
+                  join integrated_design_document api using(process_code,step_code,route_path,audience)
+                  join integrated_design_document state using(process_code,step_code,route_path,audience)
+                  join integrated_design_document validation using(process_code,step_code,route_path,audience)
+                 where test.process_code='PROC' and test.document_type='TEST'
+                   and api.document_type='API' and state.document_type='STATE'
+                   and validation.document_type='VALIDATION'
+                   and framework_try_jsonb(test.content)#>'{payload,scenarios}'='[]'::jsonb
+                """)){
+                Map<String,Object> test=readMap(String.valueOf(row.get("testContent")));
+                Map<String,Object> api=readMap(String.valueOf(row.get("apiContent")));
+                Map<String,Object> state=readMap(String.valueOf(row.get("stateContent")));
+                Map<String,Object> validation=readMap(String.valueOf(row.get("validationContent")));
+                ((Map<String,Object>)test.get("payload")).put("scenarios",
+                    derivedLiveSmokeScenarios(api,state,validation));
+                jdbc.update("update integrated_design_document set content=?,status='READY',"+
+                    "updated_by='MANUAL_LIVE_SMOKE_FIXTURE' where document_id=?",
+                    json(test),row.get("documentId"));
+            }
             return service.compileIntegratedDesignProcess(request,"system-admin");
         });
+    }
+
+    @SuppressWarnings("unchecked")
+    private static List<Map<String,Object>> derivedLiveSmokeScenarios(
+            Map<String,Object> api,Map<String,Object> state,Map<String,Object> validation){
+        List<Map<String,Object>> operations=(List<Map<String,Object>>)
+            ((Map<String,Object>)api.get("payload")).get("operations");
+        List<Map<String,Object>> transitions=(List<Map<String,Object>>)
+            ((Map<String,Object>)state.get("payload")).get("states");
+        List<Map<String,Object>> rules=(List<Map<String,Object>>)
+            ((Map<String,Object>)validation.get("payload")).get("rules");
+        List<Map<String,Object>> scenarios=new ArrayList<>();
+        for(Map<String,Object> operation:operations){
+            String command=String.valueOf(operation.get("commandCode"));
+            Map<String,Object> transition=transitions.stream().filter(row->
+                command.equals(row.get("commandCode"))).findFirst().orElseThrow();
+            Map<String,Object> rule=rules.stream().filter(row->
+                command.equals(row.get("commandCode"))).findFirst().orElseThrow();
+            List<Map<String,Object>> responses=(List<Map<String,Object>>)operation.get("statusResponses");
+            for(Map<String,Object> response:responses){
+                String status=String.valueOf(response.get("statusCase"));
+                Map<String,Object> input=new LinkedHashMap<>();
+                for(Object field:(List<?>)operation.get("requestFields"))
+                    input.put(String.valueOf(field),"fixture-"+String.valueOf(field).toLowerCase());
+                if("VALIDATION_ERROR".equals(status))input.put(
+                    String.valueOf(rule.get("fieldCode")),"");
+                String successScenario=command+"_SUCCESS";
+                Map<String,Object> trigger=switch(status){
+                    case "SUCCESS"->Map.of("kind","NEW_COMMAND");
+                    case "VALIDATION_ERROR"->Map.of("kind","DECLARED_VALIDATION_FAILURE",
+                        "fieldCode",rule.get("fieldCode"),"errorCode",rule.get("errorCode"));
+                    case "FORBIDDEN"->Map.of("kind","UNASSIGNED_ACTOR");
+                    case "CONFLICT"->Map.of("kind","STALE_STATE","state",transition.get("toState"),
+                        "referenceScenarioCode",successScenario);
+                    case "RECOVERY"->Map.of("kind","IDEMPOTENT_REPLAY",
+                        "referenceScenarioCode",successScenario);
+                    default->throw new IllegalStateException(status);
+                };
+                scenarios.add(Map.of("scenarioCode",command+"_"+status,"commandCode",command,
+                    "inputValues",input,"expectedOutputFields",response.get("bodyFields"),
+                    "expectedOutputValues",derivedLiveSmokeOutput(operation,status),
+                    "expectedStatus",status,"expectedHttpStatus",response.get("httpStatus"),
+                    "trigger",trigger,"assertionCodes",List.of("STATUS_MATCH","OUTPUT_FIELDS_MATCH")));
+            }
+        }
+        return scenarios;
+    }
+
+    private static Map<String,Object> executableApiOperation(String method,String path,
+            String command,String input,String output,String permission){
+        List<String> runtime=List.of("success","idempotent","eventId","toState");
+        List<String> success=new ArrayList<>(runtime);success.add(output);
+        List<String> recovery=new ArrayList<>(runtime);recovery.add("recovered");recovery.add(output);
+        List<String> errors=List.of("success","code","message");
+        Map<String,Object> operation=new LinkedHashMap<>();
+        operation.put("method",method);operation.put("path",path);
+        operation.put("commandCode",command);operation.put("requestFields",List.of(input));
+        operation.put("responseFields",List.of(output));operation.put("permissionCodes",List.of(permission));
+        operation.put("responseProjection",List.of(Map.of(
+            "fieldCode",output,"source","RUNTIME_RESULT","sourcePath","eventId")));
+        operation.put("statusResponses",List.of(
+            Map.of("statusCase","SUCCESS","httpStatus",200,"bodyFields",success),
+            Map.of("statusCase","VALIDATION_ERROR","httpStatus",400,"bodyFields",errors),
+            Map.of("statusCase","FORBIDDEN","httpStatus",403,"bodyFields",errors),
+            Map.of("statusCase","CONFLICT","httpStatus",409,"bodyFields",errors),
+            Map.of("statusCase","RECOVERY","httpStatus",200,"bodyFields",recovery)));
+        return operation;
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Map<String,Object> derivedLiveSmokeOutput(Map<String,Object> operation,String status){
+        Map<String,Object> result=new LinkedHashMap<>();
+        if(List.of("VALIDATION_ERROR","FORBIDDEN","CONFLICT").contains(status)){
+            List<Object> values=switch(status){
+                case "VALIDATION_ERROR"->List.of(false,"INVALID_REQUEST","Request failed");
+                case "FORBIDDEN"->List.of(false,"ACCESS_DENIED","Access denied");
+                default->List.of(false,"CONFLICT","Request conflicts with the current state");
+            };
+            for(int index=0;index<3;index++)result.put(List.of("success","code","message").get(index),
+                Map.of("source","LITERAL","value",values.get(index)));
+            return result;
+        }
+        boolean recovery="RECOVERY".equals(status);
+        result.put("success",Map.of("source","LITERAL","value",true));
+        result.put("idempotent",Map.of("source","LITERAL","value",recovery));
+        result.put("eventId",Map.of("source",recovery?"REFERENCE_SCENARIO":"DATABASE_EVENT","path","eventId"));
+        result.put("toState",Map.of("source",recovery?"REFERENCE_SCENARIO":"DECLARED_STATE","path","toState"));
+        if(recovery)result.put("recovered",Map.of("source","LITERAL","value",true));
+        for(Map<String,Object> projection:(List<Map<String,Object>>)operation.get("responseProjection")){
+            String field=String.valueOf(projection.get("fieldCode"));
+            String source=String.valueOf(projection.get("source"));
+            String path=String.valueOf(projection.get("sourcePath"));
+            if(recovery)result.put(field,Map.of("source","REFERENCE_SCENARIO","path",field));
+            else if("REQUEST".equals(source))result.put(field,Map.of("source","REQUEST","path",path));
+            else if("eventId".equals(path))result.put(field,Map.of("source","DATABASE_EVENT","path","eventId"));
+            else if("toState".equals(path))result.put(field,Map.of("source","DECLARED_STATE","path","toState"));
+            else result.put(field,Map.of("source","LITERAL","value",!"idempotent".equals(path)));
+        }
+        return result;
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Map<String,Object> readMap(String value){
+        try{return new ObjectMapper().readValue(value,Map.class);}
+        catch(Exception error){throw new IllegalStateException(error);}
     }
 
     @SuppressWarnings("unchecked")
@@ -2458,8 +2729,37 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
                 design.get("API")).get("operations");
             List<Map<String,Object>> entities=(List<Map<String,Object>>)((Map<String,Object>)
                 design.get("DATABASE")).get("entities");
-            String entityTarget="entities:"+String.join(",",entities.stream()
-                .map(row->String.valueOf(row.get("entity"))).sorted().toList());
+            Map<String,UUID> successExecutions=new LinkedHashMap<>();
+            Map<String,String> successKeys=new LinkedHashMap<>();
+            Map<String,Long> successEvents=new LinkedHashMap<>();
+            Map<String,Map<String,Object>> successOutputs=new LinkedHashMap<>();
+            for(Map<String,Object> operation:operations){
+                String command=String.valueOf(operation.get("commandCode"));
+                Map<String,Object> transition=transitions.stream().filter(row->
+                    command.equals(row.get("commandCode"))).findFirst().orElseThrow();
+                Map<String,Object> scenario=scenarios.stream().filter(row->command.equals(
+                    row.get("commandCode"))&&"SUCCESS".equals(row.get("expectedStatus")))
+                    .findFirst().orElseThrow();
+                String identity=jobId+"|"+authority.get("authorityId")+"|"+command;
+                UUID executionId=UUID.nameUUIDFromBytes((identity+"|execution")
+                    .getBytes(StandardCharsets.UTF_8));
+                String idempotencyKey="live-"+CompositeExecutableDesignAuthorityCompiler.hash(
+                    identity+"|success");
+                installLiveSmokeExecution(executionId,String.valueOf(authority.get("authorityId")),
+                    command,transition,idempotencyKey,String.valueOf(
+                        ((List<Map<String,Object>>)((Map<String,Object>)design.get("PROCESS"))
+                            .get("commands")).stream().filter(row->command.equals(
+                                row.get("commandCode"))).findFirst().orElseThrow().get("actorCode")));
+                long eventId=jdbc.queryForObject("""
+                    select event_id from framework_process_execution_event
+                     where execution_id=? and idempotency_key=?
+                    """,Long.class,executionId,idempotencyKey);
+                Map<String,Object> output=materializeLiveSmokeOutput(scenario,
+                    (Map<String,Object>)scenario.get("inputValues"),transition,
+                    Map.of("eventId",eventId,"toState",transition.get("toState")),Map.of());
+                successExecutions.put(command,executionId);successKeys.put(command,idempotencyKey);
+                successEvents.put(command,eventId);successOutputs.put(command,output);
+            }
             for(Map<String,Object> scenario:scenarios){
                 String command=String.valueOf(scenario.get("commandCode"));
                 String status=String.valueOf(scenario.get("expectedStatus"));
@@ -2467,27 +2767,50 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
                     command.equals(row.get("commandCode"))).findFirst().orElseThrow();
                 Map<String,Object> operation=operations.stream().filter(row->
                     command.equals(row.get("commandCode"))).findFirst().orElseThrow();
-                Map<String,Object> output=new LinkedHashMap<>();
-                for(Object field:(List<?>)scenario.get("expectedOutputFields"))output.put(String.valueOf(field),1);
+                UUID executionId=successExecutions.get(command);
+                String idempotencyKey=successKeys.get(command);
+                if(!Set.of("SUCCESS","CONFLICT","RECOVERY").contains(status)){
+                    String identity=jobId+"|"+authority.get("authorityId")+"|"+command+"|"+status;
+                    executionId=UUID.nameUUIDFromBytes((identity+"|execution")
+                        .getBytes(StandardCharsets.UTF_8));
+                    idempotencyKey="live-"+CompositeExecutableDesignAuthorityCompiler.hash(identity);
+                    installLiveSmokeExecution(executionId,String.valueOf(authority.get("authorityId")),
+                        command,transition,null,String.valueOf(
+                            ((List<Map<String,Object>>)((Map<String,Object>)design.get("PROCESS"))
+                                .get("commands")).stream().filter(row->command.equals(
+                                    row.get("commandCode"))).findFirst().orElseThrow().get("actorCode")));
+                }else if("CONFLICT".equals(status)){
+                    idempotencyKey="live-"+CompositeExecutableDesignAuthorityCompiler.hash(
+                        jobId+"|"+authority.get("authorityId")+"|"+command+"|conflict");
+                }
+                Map<String,Object> output=materializeLiveSmokeOutput(scenario,
+                    (Map<String,Object>)scenario.get("inputValues"),transition,
+                    "SUCCESS".equals(status)?Map.of("eventId",successEvents.get(command),
+                        "toState",transition.get("toState")):Map.of(),
+                    successOutputs.get(command));
                 for(String lane:List.of("API","DATABASE","BROWSER")){
                     if(omitOne&&!omitted&&"RECOVERY".equals(status)&&"BROWSER".equals(lane)){
                         omitted=true;continue;
                     }
                     String target=switch(lane){case "API"->operation.get("method")+" "+operation.get("path");
-                        case "DATABASE"->entityTarget;default->String.valueOf(authority.get("routePath"));};
+                        case "DATABASE"->"entity:framework_process_execution";
+                        default->String.valueOf(authority.get("routePath"));};
                     String identity=jobId+"|"+authority.get("authorityId")+"|"+command+"|"+
                         scenario.get("scenarioCode")+"|"+lane;
                     String proofHash=CompositeExecutableDesignAuthorityCompiler.hash(identity);
                     Map<String,Object> details=switch(lane){
-                        case "API"->Map.of("transportHash",proofHash);
+                        case "API"->Map.of("transportHash",proofHash,"httpStatus",
+                            ((Number)scenario.get("expectedHttpStatus")).intValue());
                         case "DATABASE"->Map.of("rereadHash",proofHash,"transactionHash",
                             CompositeExecutableDesignAuthorityCompiler.hash(identity+"|tx"));
                         default->Map.of("domHash",proofHash,"screenshotHash",
-                            CompositeExecutableDesignAuthorityCompiler.hash(identity+"|screen"),"rendered",true);
+                            CompositeExecutableDesignAuthorityCompiler.hash(identity+"|screen"),"rendered",true,
+                            "runtimeObserved",!"FORBIDDEN".equals(status),
+                            "accessDenied","FORBIDDEN".equals(status));
                     };
                     Map<String,Object> laneOutput=output;
                     if(forgeOneLaneOutput&&!forgedOutput&&"SUCCESS".equals(status)
-                            &&"BROWSER".equals(lane)){
+                            &&"API".equals(lane)){
                         laneOutput=new LinkedHashMap<>(output);
                         String firstField=laneOutput.keySet().stream().findFirst().orElseThrow();
                         laneOutput.put(firstField,999999);forgedOutput=true;
@@ -2496,11 +2819,14 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
                     body.put("jobId",jobId);body.put("authorityId",authority.get("authorityId"));
                     body.put("lane",lane);body.put("statusCase",status);
                     body.put("scenarioCode",scenario.get("scenarioCode"));body.put("tenantId","TENANT");
-                    body.put("projectId","*");body.put("input",scenario.get("inputValues"));
-                    body.put("output",laneOutput);body.put("observedState","SUCCESS".equals(status)
-                        ?transition.get("toState"):transition.get("fromState"));
+                    body.put("projectId","PROJECT");body.put("input",scenario.get("inputValues"));
+                    body.put("output",laneOutput);body.put("observedState",
+                        Set.of("SUCCESS","CONFLICT","RECOVERY").contains(status)
+                            ?transition.get("toState"):transition.get("fromState"));
                     body.put("targetRef",target);body.put("laneDetails",details);
                     body.put("runId",UUID.nameUUIDFromBytes(identity.getBytes(StandardCharsets.UTF_8)).toString());
+                    body.put("executionId",executionId.toString());body.put("idempotencyKey",idempotencyKey);
+                    body.put("observedHttpStatus",scenario.get("expectedHttpStatus"));
                     body.put("artifactHash",canonicalArtifact);
                     body.put("observedAt",jdbc.queryForObject(
                         "select clock_timestamp()::text",
@@ -2528,6 +2854,174 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
             }
         }
         return writes;
+    }
+
+    private void installLiveSmokeExecution(UUID executionId,String authorityId,String command,
+            Map<String,Object> transition,String idempotencyKey,String actor){
+        String state=idempotencyKey==null?String.valueOf(transition.get("fromState")):
+            String.valueOf(transition.get("toState"));
+        jdbc.update("""
+            insert into framework_process_execution(
+              execution_id,tenant_id,project_id,process_code,current_step_code,execution_status,
+              current_state,initiated_by_actor,initiated_by,completed_at)
+            values(?,'TENANT','PROJECT','PROC','STEP','COMPLETED',?,?,?,clock_timestamp())
+            on conflict(execution_id) do update set current_state=excluded.current_state
+            """,executionId,state,actor,"live-smoke-"+authorityId);
+        if(idempotencyKey!=null)jdbc.update("""
+            insert into framework_process_execution_event(
+              execution_id,step_code,actor_code,command_code,from_state,to_state,
+              idempotency_key,request_json,result_json,executed_by)
+            values(?,'STEP',?,?,?,?,?,'{}','{}','system-admin')
+            on conflict(execution_id,idempotency_key) do nothing
+            """,executionId,actor,command,transition.get("fromState"),transition.get("toState"),
+            idempotencyKey);
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Map<String,Object> materializeLiveSmokeOutput(Map<String,Object> scenario,
+            Map<String,Object> input,Map<String,Object> transition,Map<String,Object> event,
+            Map<String,Object> reference){
+        Map<String,Object> descriptors=(Map<String,Object>)scenario.get("expectedOutputValues");
+        Map<String,Object> result=new LinkedHashMap<>();
+        for(Object rawField:(List<?>)scenario.get("expectedOutputFields")){
+            String field=String.valueOf(rawField);
+            Map<String,Object> descriptor=(Map<String,Object>)descriptors.get(field);
+            String source=String.valueOf(descriptor.get("source"));Object value;
+            if("LITERAL".equals(source))value=descriptor.get("value");
+            else{
+                String path=String.valueOf(descriptor.get("path"));
+                Map<String,Object> origin=switch(source){
+                    case "REQUEST"->input;case "DATABASE_EVENT"->event;
+                    case "DECLARED_STATE"->transition;case "REFERENCE_SCENARIO"->reference;
+                    default->throw new IllegalStateException("TEST_OUTPUT_SOURCE_UNSUPPORTED: "+source);
+                };
+                value=origin.get(path);
+            }
+            if(value==null)throw new IllegalStateException("TEST_OUTPUT_VALUE_UNRESOLVED: "+field);
+            result.put(field,value);
+        }
+        return result;
+    }
+
+    @SuppressWarnings("unchecked")
+    private int insertPartialLiveSmokeEvidence(long jobId){
+        Map<String,Object> authority=jdbc.queryForMap("""
+            select authority_id as "authorityId",authority_revision as "authorityRevision",
+                   process_code as "processCode",step_code as "stepCode",route_path as "routePath",
+                   audience,source_hash as "sourceHash",authority_hash as "authorityHash",
+                   composite_json::text as composite
+              from integrated_design_authority where job_id=? order by authority_id limit 1
+            """,jobId);
+        Map<String,Object> composite=readMap(String.valueOf(authority.get("composite")));
+        Map<String,Object> design=(Map<String,Object>)composite.get("executableDesign");
+        List<Map<String,Object>> scenarios=(List<Map<String,Object>>)((Map<String,Object>)
+            design.get("TEST")).get("scenarios");
+        Map<String,Object> scenario=scenarios.stream().filter(row->
+            "SUCCESS".equals(row.get("expectedStatus"))).findFirst().orElseThrow();
+        String command=String.valueOf(scenario.get("commandCode"));
+        Map<String,Object> transition=((List<Map<String,Object>>)((Map<String,Object>)
+            design.get("STATE")).get("states")).stream().filter(row->
+                command.equals(row.get("commandCode"))).findFirst().orElseThrow();
+        Map<String,Object> operation=((List<Map<String,Object>>)((Map<String,Object>)
+            design.get("API")).get("operations")).stream().filter(row->
+                command.equals(row.get("commandCode"))).findFirst().orElseThrow();
+        Map<String,Object> commandRow=((List<Map<String,Object>>)((Map<String,Object>)
+            design.get("PROCESS")).get("commands")).stream().filter(row->
+                command.equals(row.get("commandCode"))).findFirst().orElseThrow();
+        String account="system-admin",tenant="TENANT",project="PROJECT",actor=String.valueOf(commandRow.get("actorCode"));
+        Map<String,Object> input=(Map<String,Object>)scenario.get("inputValues");
+        Map<String,Object> output=Map.of("success",true);
+        Map<String,Object> laneEvidence=Map.of("transportHash","2".repeat(64),"httpStatus",200,
+            "executionId",UUID.randomUUID().toString(),"idempotencyKey",UUID.randomUUID().toString(),
+            "observedHttpStatus",200);
+        String accountHash=liveSmokeHash(Map.of("accountId",account,"tenantId",tenant,
+            "projectId",project,"actorCode",actor));
+        String commandHash=liveSmokeHash(Map.of("commandCode",command));
+        String inputHash=liveSmokeHash(input),outputHash=liveSmokeHash(output);
+        String stateHash=liveSmokeHash(Map.of("fromState",transition.get("fromState"),
+            "toState",transition.get("toState"),"observedState",transition.get("toState")));
+        String statusHash=liveSmokeHash(Map.of("expectedStatus","SUCCESS","observedStatus","SUCCESS"));
+        String laneHash=liveSmokeHash(laneEvidence),evidenceRef="inline://dispatch-partial-resume";
+        Map<String,Object> identity=new LinkedHashMap<>();
+        identity.put("schema","carbonet.composite-live-smoke-evidence/v1");identity.put("jobId",jobId);
+        identity.put("authorityId",authority.get("authorityId"));identity.put("authorityRevision",authority.get("authorityRevision"));
+        identity.put("processCode",authority.get("processCode"));identity.put("stepCode",authority.get("stepCode"));
+        identity.put("routePath",authority.get("routePath"));identity.put("audience",authority.get("audience"));
+        identity.put("lane","API");identity.put("statusCase","SUCCESS");
+        identity.put("scenarioCode",scenario.get("scenarioCode"));identity.put("accountHash",accountHash);
+        identity.put("commandHash",commandHash);identity.put("inputHash",inputHash);identity.put("outputHash",outputHash);
+        identity.put("stateHash",stateHash);identity.put("statusHash",statusHash);
+        identity.put("sourceHash",authority.get("sourceHash"));identity.put("authorityHash",authority.get("authorityHash"));
+        identity.put("targetRef",operation.get("method")+" "+operation.get("path"));identity.put("laneEvidenceHash",laneHash);
+        identity.put("evidenceRef",evidenceRef);
+        String evidenceHash=liveSmokeHash(identity);
+        return jdbc.update("""
+            insert into integrated_design_live_smoke_evidence(job_id,authority_id,authority_revision,
+              process_code,step_code,route_path,audience,lane,status_case,scenario_code,account_id,
+              tenant_id,project_id,actor_code,command_code,input_json,output_json,from_state,to_state,
+              observed_state,expected_status,observed_status,source_hash,authority_hash,target_ref,
+              lane_evidence,account_hash,command_hash,input_hash,output_hash,state_hash,status_hash,
+              lane_evidence_hash,evidence_hash,evidence_ref,recorded_by,observed_at)
+            values(?,?,?,?,?,?,?,'API','SUCCESS',?,?,?,?,?,?,?::jsonb,?::jsonb,?,?,?,
+              'SUCCESS','SUCCESS',?,?,?,?::jsonb,?,?,?,?,?,?,?,?,?,'dispatch-test',clock_timestamp())
+            """,jobId,authority.get("authorityId"),authority.get("authorityRevision"),authority.get("processCode"),
+            authority.get("stepCode"),authority.get("routePath"),authority.get("audience"),scenario.get("scenarioCode"),
+            account,tenant,project,actor,command,json(input),json(output),transition.get("fromState"),transition.get("toState"),
+            transition.get("toState"),authority.get("sourceHash"),authority.get("authorityHash"),
+            operation.get("method")+" "+operation.get("path"),json(laneEvidence),accountHash,commandHash,inputHash,
+            outputHash,stateHash,statusHash,laneHash,evidenceHash,evidenceRef);
+    }
+
+    private String liveSmokeHash(Object value){
+        return jdbc.queryForObject("select framework_composite_live_smoke_hash(?::jsonb)",
+            String.class,json(value));
+    }
+
+    private void markDispatchEvidenceSubmitted(long jobId){
+        UUID leaseToken=UUID.randomUUID();
+        assertEquals(1,jdbc.update("""
+            update integrated_design_live_smoke_dispatch dispatch
+               set status='RUNNING',attempt_count=attempt_count+1,
+                   lease_token=?,lease_until=clock_timestamp()+interval '5 minutes',
+                   started_at=coalesce(started_at,clock_timestamp())
+             where dispatch.job_id=?
+               and dispatch.authority_revision_set_hash=
+                   framework_composite_authority_revision_set_hash(dispatch.job_id)
+               and dispatch.status in('QUEUED','RETRY_WAIT')
+            """,leaseToken,jobId));
+        assertEquals(1,jdbc.update("""
+            with current_evidence as materialized (
+              select count(*)::integer evidence_count,
+                     framework_composite_live_smoke_hash(coalesce(jsonb_agg(
+                       evidence.evidence_hash order by evidence.authority_id,
+                       evidence.authority_revision,evidence.command_code collate "C",
+                       evidence.scenario_code collate "C",evidence.status_case collate "C",
+                       evidence.lane collate "C"),'[]'::jsonb)) evidence_set_hash
+                from integrated_design_live_smoke_evidence evidence
+                join integrated_design_authority authority
+                  on authority.authority_id=evidence.authority_id
+                 and authority.authority_revision=evidence.authority_revision
+                 and authority.job_id=evidence.job_id
+                 and authority.source_hash=evidence.source_hash
+                 and authority.authority_hash=evidence.authority_hash
+               where evidence.job_id=?
+            )
+            update integrated_design_live_smoke_dispatch dispatch
+               set status='EVIDENCE_SUBMITTED',lease_token=null,lease_until=null,
+                   submitted_evidence_count=summary.evidence_count,
+                   evidence_summary=jsonb_build_object(
+                     'runnerSchema','carbonet.composite-live-smoke-runner/v1',
+                     'evidenceSetHash',summary.evidence_set_hash,
+                     'evidenceDirectoryHash',framework_composite_live_smoke_hash(
+                       jsonb_build_object('evidenceSetHash',summary.evidence_set_hash,
+                         'evidenceCount',summary.evidence_count)))
+              from current_evidence summary
+             where dispatch.job_id=? and dispatch.status='RUNNING'
+               and dispatch.lease_token=?
+               and dispatch.authority_revision_set_hash=
+                   framework_composite_authority_revision_set_hash(dispatch.job_id)
+               and summary.evidence_count=dispatch.expected_evidence_count
+            """,jobId,jobId,leaseToken));
     }
 
     @Test
@@ -3871,7 +4365,14 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
                 "\",\"toState\":\"DONE\"}]";
             String api="[{\"method\":\"POST\",\"path\":\""+apiPath+"\",\"commandCode\":\""+
                 commandCode+"\",\"requestFields\":[\""+inputField+"\"],\"responseFields\":[\""+
-                outputField+"\"],\"permissionCodes\":[\""+permissionCode+"\"]}]";
+                outputField+"\"],\"permissionCodes\":[\""+permissionCode+"\"],"+
+                "\"responseProjection\":[{\"fieldCode\":\""+outputField+"\",\"source\":"+
+                "\"RUNTIME_RESULT\",\"sourcePath\":\"eventId\"}],\"statusResponses\":["+
+                "{\"statusCase\":\"SUCCESS\",\"httpStatus\":200,\"bodyFields\":[\"success\",\"idempotent\",\"eventId\",\"toState\",\""+outputField+"\"]},"+
+                "{\"statusCase\":\"VALIDATION_ERROR\",\"httpStatus\":400,\"bodyFields\":[\"success\",\"code\",\"message\"]},"+
+                "{\"statusCase\":\"FORBIDDEN\",\"httpStatus\":403,\"bodyFields\":[\"success\",\"code\",\"message\"]},"+
+                "{\"statusCase\":\"CONFLICT\",\"httpStatus\":409,\"bodyFields\":[\"success\",\"code\",\"message\"]},"+
+                "{\"statusCase\":\"RECOVERY\",\"httpStatus\":200,\"bodyFields\":[\"success\",\"idempotent\",\"eventId\",\"toState\",\"recovered\",\""+outputField+"\"]}]}]";
             List<Map<String,Object>> schemaChanges=List.of(Map.of(
                 "operation","CREATE_TABLE","tableName",entity.toLowerCase(),"columns",List.of(
                     Map.of("name",inputField,"type","text","primaryKey",false,"nullable",false),
@@ -4171,8 +4672,29 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
               decision_rule text default '',created_at timestamp default current_timestamp,
               updated_at timestamp default current_timestamp,primary key(process_code,step_code))
             """);
-        jdbc.execute("create table framework_process_execution(execution_id uuid primary key)");
-        jdbc.execute("create table framework_process_execution_event(event_id bigint primary key)");
+        jdbc.execute("""
+            create table framework_process_execution(
+              execution_id uuid primary key,tenant_id varchar(80) not null,
+              project_id varchar(100) not null,process_code varchar(80) not null
+                references framework_process_definition(process_code),
+              current_step_code varchar(80) not null,execution_status varchar(30) not null default 'RUNNING',
+              current_state varchar(80) not null,initiated_by_actor varchar(60) not null
+                references framework_actor_definition(actor_code),
+              initiated_by varchar(100) not null,started_at timestamp not null default current_timestamp,
+              completed_at timestamp,updated_at timestamp not null default current_timestamp)
+            """);
+        jdbc.execute("""
+            create table framework_process_execution_event(
+              event_id bigserial primary key,execution_id uuid not null
+                references framework_process_execution(execution_id) on delete cascade,
+              step_code varchar(80) not null,actor_code varchar(60) not null
+                references framework_actor_definition(actor_code),
+              command_code varchar(100) not null,from_state varchar(80) not null,to_state varchar(80) not null,
+              idempotency_key varchar(160) not null,request_json text not null default '{}',
+              result_json text not null default '{}',executed_by varchar(100) not null,
+              executed_at timestamp not null default current_timestamp,
+              unique(execution_id,idempotency_key))
+            """);
         jdbc.execute("""
             create table framework_step_schema_set(
               process_code text,step_code text,schema_hash text,input_schema jsonb,output_schema jsonb,

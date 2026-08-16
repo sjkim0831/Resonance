@@ -294,7 +294,7 @@ CREATE TABLE integrated_design_live_smoke_evidence (
   -- design publication.
   FOREIGN KEY(authority_id)
     REFERENCES integrated_design_authority(authority_id) ON DELETE RESTRICT,
-  UNIQUE(job_id,authority_id,command_code,scenario_code,lane,status_case),
+  UNIQUE(job_id,authority_id,authority_revision,command_code,scenario_code,lane,status_case),
   CHECK(route_path=lower(split_part(route_path,'?',1)) AND route_path~'^/'),
   CHECK(status_case=expected_status AND expected_status=observed_status),
   CHECK(account_hash=framework_composite_live_smoke_hash(jsonb_build_object(
@@ -322,7 +322,7 @@ CREATE TABLE integrated_design_live_smoke_evidence (
 );
 CREATE INDEX ix_integrated_design_live_smoke_job
   ON integrated_design_live_smoke_evidence(
-    job_id,authority_id,command_code,scenario_code,status_case,lane);
+    job_id,authority_id,authority_revision,command_code,scenario_code,status_case,lane);
 
 CREATE OR REPLACE FUNCTION reject_integrated_design_live_smoke_evidence_mutation()
 RETURNS trigger LANGUAGE plpgsql AS $$
@@ -334,6 +334,118 @@ $$;
 CREATE TRIGGER trg_integrated_design_live_smoke_evidence_immutable
 BEFORE UPDATE OR DELETE ON integrated_design_live_smoke_evidence
 FOR EACH ROW EXECUTE FUNCTION reject_integrated_design_live_smoke_evidence_mutation();
+
+CREATE OR REPLACE FUNCTION framework_composite_authority_revision_set_hash(p_job_id bigint)
+RETURNS text LANGUAGE sql STABLE STRICT AS $$
+  SELECT framework_composite_live_smoke_hash(coalesce(jsonb_agg(jsonb_build_object(
+    'authorityId',authority.authority_id,
+    'authorityRevision',authority.authority_revision,
+    'sourceHash',authority.source_hash,
+    'authorityHash',authority.authority_hash)
+    ORDER BY authority.step_code COLLATE "C",authority.route_path COLLATE "C",
+             authority.audience COLLATE "C"),'[]'::jsonb))
+    FROM integrated_design_authority authority WHERE authority.job_id=p_job_id
+$$;
+
+CREATE OR REPLACE FUNCTION framework_composite_live_smoke_dispatch_summary_exact(value jsonb)
+RETURNS boolean LANGUAGE sql IMMUTABLE STRICT AS $$
+  SELECT value='{}'::jsonb OR (
+    jsonb_typeof(value)='object'
+    AND (SELECT array_agg(key ORDER BY key) FROM jsonb_object_keys(value) key)=
+      ARRAY['evidenceDirectoryHash','evidenceSetHash','runnerSchema']::text[]
+    AND value->>'evidenceDirectoryHash'~'^[0-9a-f]{64}$'
+    AND value->>'evidenceSetHash'~'^[0-9a-f]{64}$'
+    AND value->>'runnerSchema'='carbonet.composite-live-smoke-runner/v1')
+$$;
+
+-- Durable postdeploy work is separate from the autocompletion receipt.  A
+-- lease transaction commits before any network/browser work starts and a
+-- stale worker can never complete a newer authority revision set.
+CREATE TABLE integrated_design_live_smoke_dispatch (
+  dispatch_id bigserial PRIMARY KEY,
+  job_id bigint NOT NULL REFERENCES framework_development_job(job_id) ON DELETE RESTRICT,
+  process_code varchar(100) NOT NULL,
+  project_id varchar(100) NOT NULL,
+  authority_revision_set_hash varchar(64) NOT NULL
+    CHECK(authority_revision_set_hash~'^[0-9a-f]{64}$'),
+  artifact_manifest_hash varchar(64) NOT NULL
+    CHECK(artifact_manifest_hash~'^[0-9a-f]{64}$'),
+  process_source_hash varchar(64) NOT NULL CHECK(process_source_hash~'^[0-9a-f]{64}$'),
+  expected_evidence_count integer NOT NULL CHECK(expected_evidence_count>0),
+  submitted_evidence_count integer NOT NULL DEFAULT 0
+    CHECK(submitted_evidence_count BETWEEN 0 AND expected_evidence_count),
+  status varchar(30) NOT NULL DEFAULT 'QUEUED' CHECK(status IN(
+    'QUEUED','RUNNING','RETRY_WAIT','EVIDENCE_SUBMITTED','COMPLETED',
+    'DEAD_LETTER','SUPERSEDED')),
+  attempt_count integer NOT NULL DEFAULT 0 CHECK(attempt_count BETWEEN 0 AND 3),
+  next_attempt_at timestamptz NOT NULL DEFAULT clock_timestamp(),
+  lease_token uuid,
+  lease_until timestamptz,
+  last_error_code varchar(100)
+    CHECK(last_error_code IS NULL OR last_error_code~'^[A-Z][A-Z0-9_]{2,99}$'),
+  last_error_hash varchar(64) CHECK(last_error_hash IS NULL OR last_error_hash~'^[0-9a-f]{64}$'),
+  evidence_summary jsonb NOT NULL DEFAULT '{}'::jsonb
+    CHECK(framework_composite_live_smoke_dispatch_summary_exact(evidence_summary)),
+  created_at timestamptz NOT NULL DEFAULT clock_timestamp(),
+  started_at timestamptz,
+  completed_at timestamptz,
+  updated_at timestamptz NOT NULL DEFAULT clock_timestamp(),
+  UNIQUE(job_id,authority_revision_set_hash),
+  CHECK((status='RUNNING' AND lease_token IS NOT NULL AND lease_until IS NOT NULL)
+     OR (status<>'RUNNING' AND lease_token IS NULL AND lease_until IS NULL)),
+  CHECK((status IN('COMPLETED','DEAD_LETTER','SUPERSEDED') AND completed_at IS NOT NULL)
+     OR (status NOT IN('COMPLETED','DEAD_LETTER','SUPERSEDED') AND completed_at IS NULL))
+);
+CREATE INDEX ix_integrated_design_live_smoke_dispatch_due
+  ON integrated_design_live_smoke_dispatch(next_attempt_at,dispatch_id)
+  WHERE status IN('QUEUED','RETRY_WAIT','RUNNING');
+CREATE INDEX ix_integrated_design_live_smoke_dispatch_process
+  ON integrated_design_live_smoke_dispatch(process_code,project_id,job_id);
+
+CREATE OR REPLACE FUNCTION guard_integrated_design_live_smoke_dispatch()
+RETURNS trigger LANGUAGE plpgsql AS $$
+DECLARE allowed boolean;
+BEGIN
+  IF TG_OP='DELETE' THEN
+    RAISE EXCEPTION 'COMPOSITE_LIVE_SMOKE_DISPATCH_DELETE_FORBIDDEN' USING ERRCODE='55000';
+  END IF;
+  IF ROW(NEW.job_id,NEW.process_code,NEW.project_id,NEW.authority_revision_set_hash,
+         NEW.artifact_manifest_hash,NEW.process_source_hash,NEW.expected_evidence_count,
+         NEW.created_at)
+     IS DISTINCT FROM
+     ROW(OLD.job_id,OLD.process_code,OLD.project_id,OLD.authority_revision_set_hash,
+         OLD.artifact_manifest_hash,OLD.process_source_hash,OLD.expected_evidence_count,
+         OLD.created_at) THEN
+    RAISE EXCEPTION 'COMPOSITE_LIVE_SMOKE_DISPATCH_IDENTITY_IMMUTABLE' USING ERRCODE='55000';
+  END IF;
+  allowed:=CASE OLD.status
+    WHEN 'QUEUED' THEN NEW.status IN('RUNNING','SUPERSEDED')
+    WHEN 'RETRY_WAIT' THEN NEW.status IN('RUNNING','SUPERSEDED')
+    WHEN 'RUNNING' THEN NEW.status IN(
+      'RETRY_WAIT','EVIDENCE_SUBMITTED','DEAD_LETTER','SUPERSEDED')
+    WHEN 'EVIDENCE_SUBMITTED' THEN NEW.status IN('COMPLETED','SUPERSEDED')
+    WHEN 'COMPLETED' THEN NEW.status='SUPERSEDED'
+    WHEN 'DEAD_LETTER' THEN NEW.status='SUPERSEDED'
+    ELSE false END;
+  IF NOT allowed THEN
+    RAISE EXCEPTION 'COMPOSITE_LIVE_SMOKE_DISPATCH_TRANSITION_INVALID: % -> %',
+      OLD.status,NEW.status USING ERRCODE='55000';
+  END IF;
+  IF NEW.status='RUNNING' AND (NEW.attempt_count<>OLD.attempt_count+1
+      OR NEW.attempt_count>3 OR NEW.lease_token IS NULL OR NEW.lease_until<=clock_timestamp()) THEN
+    RAISE EXCEPTION 'COMPOSITE_LIVE_SMOKE_DISPATCH_LEASE_INVALID' USING ERRCODE='55000';
+  END IF;
+  IF NEW.status<>'RUNNING' AND (NEW.attempt_count<>OLD.attempt_count
+      OR NEW.lease_token IS NOT NULL OR NEW.lease_until IS NOT NULL) THEN
+    RAISE EXCEPTION 'COMPOSITE_LIVE_SMOKE_DISPATCH_FINAL_CAS_INVALID' USING ERRCODE='55000';
+  END IF;
+  NEW.updated_at:=clock_timestamp();
+  RETURN NEW;
+END
+$$;
+CREATE TRIGGER trg_integrated_design_live_smoke_dispatch_state
+BEFORE UPDATE OR DELETE ON integrated_design_live_smoke_dispatch
+FOR EACH ROW EXECUTE FUNCTION guard_integrated_design_live_smoke_dispatch();
 
 CREATE TABLE integrated_design_notification_template (
   template_code varchar(120) PRIMARY KEY,
@@ -1010,7 +1122,13 @@ DECLARE
   actions jsonb;
   fields jsonb;
   properties jsonb;
+  business_properties jsonb;
   required_fields jsonb;
+  business_fields jsonb;
+  success_fields jsonb;
+  success_properties jsonb;
+  error_properties jsonb;
+  expected_status_responses jsonb;
   operation_id text;
   path_value text;
   matched_request_count integer;
@@ -1067,13 +1185,16 @@ BEGIN
           WHERE action->'primary'='true'::jsonb)<>1
      OR (SELECT action->>'commandCode' FROM jsonb_array_elements(actions) action
           WHERE action->'primary'='true'::jsonb) IS DISTINCT FROM step_contract->>'commandCode'
-     OR (SELECT array_agg(key ORDER BY key) FROM jsonb_object_keys(api) key)
-          <>ARRAY['commandCode','method','path','permissionCodes','requestFields','responseFields']
+      OR (SELECT array_agg(key ORDER BY key) FROM jsonb_object_keys(api) key)
+           <>ARRAY['commandCode','method','path','permissionCodes','requestFields','responseFields',
+             'responseProjection','statusResponses']
      OR api->>'method'<>'POST'
      OR api->>'commandCode'!~'^[A-Z][A-Z0-9_]{1,79}$'
-     OR jsonb_typeof(api->'requestFields')<>'array'
-     OR jsonb_typeof(api->'responseFields')<>'array'
-     OR jsonb_typeof(api->'permissionCodes')<>'array' THEN
+      OR jsonb_typeof(api->'requestFields')<>'array'
+      OR jsonb_typeof(api->'responseFields')<>'array'
+      OR jsonb_typeof(api->'responseProjection')<>'array'
+      OR jsonb_typeof(api->'statusResponses')<>'array'
+      OR jsonb_typeof(api->'permissionCodes')<>'array' THEN
     RETURN jsonb_build_object('reason','COMPOSITE_API_SHAPE_INVALID');
   END IF;
   IF EXISTS(SELECT 1 FROM jsonb_array_elements(fields) field
@@ -1115,6 +1236,36 @@ BEGIN
      OR matched_response_count<>jsonb_array_length(api->'responseFields') THEN
     RETURN jsonb_build_object('reason','COMPOSITE_API_FIELD_NOT_EXACT');
   END IF;
+  IF jsonb_array_length(api->'responseProjection')<>jsonb_array_length(api->'responseFields')
+     OR EXISTS(
+       SELECT 1 FROM jsonb_array_elements(api->'responseProjection') WITH ORDINALITY projection(row,ordinality)
+        LEFT JOIN jsonb_array_elements(fields) field
+          ON field->>'fieldCode'=projection.row->>'fieldCode'
+       WHERE jsonb_typeof(projection.row) IS DISTINCT FROM 'object'
+          OR (SELECT array_agg(key ORDER BY key) FROM jsonb_object_keys(projection.row) key)
+               <>ARRAY['fieldCode','source','sourcePath']
+          OR field IS NULL OR NOT (api->'responseFields' ? (projection.row->>'fieldCode'))
+          OR projection.row->>'source' NOT IN('REQUEST','RUNTIME_RESULT')
+          OR (projection.row->>'source'='REQUEST' AND (
+                projection.row->>'sourcePath' IS DISTINCT FROM projection.row->>'fieldCode'
+                OR NOT (api->'requestFields' ? (projection.row->>'fieldCode'))
+                OR field->>'direction'<>'BOTH'))
+          OR (projection.row->>'source'='RUNTIME_RESULT' AND (
+                projection.row->>'sourcePath' NOT IN('eventId','toState','success','idempotent')
+                OR CASE projection.row->>'sourcePath'
+                     WHEN 'eventId' THEN field->>'dataType'<>'INTEGER'
+                     WHEN 'success' THEN field->>'dataType'<>'BOOLEAN'
+                     WHEN 'idempotent' THEN field->>'dataType'<>'BOOLEAN'
+                     ELSE field->>'dataType'<>'STRING' END)))
+     OR (SELECT jsonb_agg(to_jsonb(projection.row->>'fieldCode') ORDER BY projection.ordinality)
+           FROM jsonb_array_elements(api->'responseProjection') WITH ORDINALITY projection(row,ordinality))
+          IS DISTINCT FROM
+        (SELECT coalesce(jsonb_agg(to_jsonb(value#>>'{}') ORDER BY value#>>'{}'),'[]'::jsonb)
+           FROM jsonb_array_elements(api->'responseFields') value)
+     OR (SELECT count(distinct row->>'fieldCode') FROM jsonb_array_elements(api->'responseProjection') row)
+          <>jsonb_array_length(api->'responseProjection') THEN
+    RETURN jsonb_build_object('reason','COMPOSITE_API_RESPONSE_PROJECTION_INVALID');
+  END IF;
   SELECT jsonb_build_object(
            'actorCode',jsonb_build_object('type','string'),
            'idempotencyKey',jsonb_build_object('type','string'),
@@ -1131,6 +1282,41 @@ BEGIN
     INTO properties,required_fields
     FROM jsonb_array_elements(fields) field
    WHERE api->'requestFields' ? (field->>'fieldCode');
+  SELECT coalesce(jsonb_object_agg(
+           field->>'fieldCode',jsonb_build_object('type',CASE field->>'dataType'
+             WHEN 'INTEGER' THEN 'integer' WHEN 'NUMBER' THEN 'number'
+             WHEN 'BOOLEAN' THEN 'boolean' WHEN 'OBJECT' THEN 'object'
+             WHEN 'ARRAY' THEN 'array' ELSE 'string' END)
+           ORDER BY field->>'fieldCode'),'{}'::jsonb)
+    INTO business_properties
+    FROM jsonb_array_elements(fields) field
+   WHERE api->'responseFields' ? (field->>'fieldCode');
+  success_properties:=jsonb_build_object(
+    'success',jsonb_build_object('type','boolean'),
+    'idempotent',jsonb_build_object('type','boolean'),
+    'eventId',jsonb_build_object('type','integer'),
+    'toState',jsonb_build_object('type','string'))||business_properties;
+  error_properties:=jsonb_build_object(
+    'success',jsonb_build_object('type','boolean'),
+    'code',jsonb_build_object('type','string'),
+    'message',jsonb_build_object('type','string'));
+  SELECT coalesce(jsonb_agg(to_jsonb(value#>>'{}') ORDER BY value#>>'{}'),'[]'::jsonb)
+    INTO business_fields FROM jsonb_array_elements(api->'responseFields') value;
+  success_fields:=jsonb_build_array('success','idempotent','eventId','toState')||business_fields;
+  expected_status_responses:=jsonb_build_array(
+    jsonb_build_object('statusCase','SUCCESS','httpStatus',200,'bodyFields',success_fields),
+    jsonb_build_object('statusCase','VALIDATION_ERROR','httpStatus',400,
+      'bodyFields',jsonb_build_array('success','code','message')),
+    jsonb_build_object('statusCase','FORBIDDEN','httpStatus',403,
+      'bodyFields',jsonb_build_array('success','code','message')),
+    jsonb_build_object('statusCase','CONFLICT','httpStatus',409,
+      'bodyFields',jsonb_build_array('success','code','message')),
+    jsonb_build_object('statusCase','RECOVERY','httpStatus',200,
+      'bodyFields',jsonb_build_array('success','idempotent','eventId','toState','recovered')||
+        business_fields));
+  IF api->'statusResponses' IS DISTINCT FROM expected_status_responses THEN
+    RETURN jsonb_build_object('reason','COMPOSITE_API_STATUS_RESPONSES_NOT_EXACT');
+  END IF;
   operation_id:='op'||substr(encode(sha256(convert_to(
     (identity->>'screenKey')||E'\x1f'||(api->>'commandCode')||E'\x1f'||path_value,
     'UTF8')),'hex'),1,40);
@@ -1147,18 +1333,29 @@ BEGIN
         'tenantScoped',true,'projectScoped',true),
       'request',jsonb_build_object('contentType','application/json','schema',
         jsonb_build_object('type','object','properties',properties,'required',required_fields)),
-      'response',jsonb_build_object('successStatus',200,'schema',jsonb_build_object(
-        'type','object','properties',jsonb_build_object(
-          'success',jsonb_build_object('type','boolean'),
-          'idempotent',jsonb_build_object('type','boolean'),
-          'eventId',jsonb_build_object('type','integer'),
-          'toState',jsonb_build_object('type','string')),
-        'required',jsonb_build_array('success','idempotent','eventId','toState')),
+      'response',jsonb_build_object('statusResponses',jsonb_build_array(
+          jsonb_build_object('statusCase','SUCCESS','httpStatus',200,'schema',
+            jsonb_build_object('type','object','properties',success_properties,'required',success_fields)),
+          jsonb_build_object('statusCase','VALIDATION_ERROR','httpStatus',400,'schema',
+            jsonb_build_object('type','object','properties',error_properties,
+              'required',jsonb_build_array('success','code','message'))),
+          jsonb_build_object('statusCase','FORBIDDEN','httpStatus',403,'schema',
+            jsonb_build_object('type','object','properties',error_properties,
+              'required',jsonb_build_array('success','code','message'))),
+          jsonb_build_object('statusCase','CONFLICT','httpStatus',409,'schema',
+            jsonb_build_object('type','object','properties',error_properties,
+              'required',jsonb_build_array('success','code','message'))),
+          jsonb_build_object('statusCase','RECOVERY','httpStatus',200,'schema',
+            jsonb_build_object('type','object','properties',success_properties||
+              jsonb_build_object('recovered',jsonb_build_object('type','boolean')),
+              'required',jsonb_build_array('success','idempotent','eventId','toState','recovered')||
+                business_fields))),
         'errors',jsonb_build_array(
           jsonb_build_object('status',400,'code','INVALID_REQUEST'),
-          jsonb_build_object('status',401,'code','AUTHENTICATION_REQUIRED'),
           jsonb_build_object('status',403,'code','ACCESS_DENIED'),
+          jsonb_build_object('status',409,'code','CONFLICT'),
           jsonb_build_object('status',500,'code','INTERNAL_ERROR'))),
+      'responseProjection',api->'responseProjection',
       'persistence',jsonb_build_object('persistenceId','PROCESS_EXECUTION_AGGREGATE',
         'entity','framework_process_execution','operation','UPDATE',
         'primaryKey',jsonb_build_array('execution_id'),'tenantColumn','tenant_id',

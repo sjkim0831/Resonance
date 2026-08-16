@@ -235,6 +235,17 @@ public class CompositeDesignOperationalWorker {
     }
 
     private static final String PROMOTE_EXACT_PHYSICAL_SQL="""
+                with completed_dispatch as (
+                  update integrated_design_live_smoke_dispatch dispatch
+                     set status='COMPLETED',lease_token=null,lease_until=null,
+                         completed_at=clock_timestamp()
+                   where dispatch.process_code=? and dispatch.job_id=?
+                     and dispatch.status='EVIDENCE_SUBMITTED'
+                     and dispatch.submitted_evidence_count=dispatch.expected_evidence_count
+                     and dispatch.authority_revision_set_hash=
+                       framework_composite_authority_revision_set_hash(dispatch.job_id)
+                  returning dispatch.*
+                )
                 update integrated_design_autocompletion_receipt receipt
                    set completion_status='PHYSICAL_GENERATED_VERIFIED',completed_at=current_timestamp,
                        duration_ms=greatest(0,(extract(epoch from
@@ -242,22 +253,38 @@ public class CompositeDesignOperationalWorker {
                        receipt_json=receipt.receipt_json||jsonb_build_object(
                          'generationStatus','PHYSICAL_GENERATED_VERIFIED','physicalVerified',true,
                          'testStatus','VERIFIED','liveSmokeVerified',true,
+                         'liveSmokeDispatchId',dispatch.dispatch_id,
+                         'liveSmokeDispatchStatus','COMPLETED',
                          'liveSmokeEvidenceCount',(select count(*)
                            from integrated_design_live_smoke_evidence smoke
+                           join integrated_design_authority current_authority
+                             on current_authority.authority_id=smoke.authority_id
+                            and current_authority.job_id=smoke.job_id
+                            and current_authority.authority_revision=smoke.authority_revision
+                            and current_authority.source_hash=smoke.source_hash
+                            and current_authority.authority_hash=smoke.authority_hash
                           where smoke.job_id=job.job_id
                             and smoke.process_code=receipt.process_code),
                          'liveSmokeEvidenceSetHash',(select framework_composite_live_smoke_hash(
                            coalesce(jsonb_agg(smoke.evidence_hash order by smoke.authority_id,
-                             smoke.status_case collate "C",smoke.lane collate "C"),'[]'::jsonb))
+                             smoke.authority_revision,smoke.command_code collate "C",
+                             smoke.scenario_code collate "C",smoke.status_case collate "C",
+                             smoke.lane collate "C"),'[]'::jsonb))
                            from integrated_design_live_smoke_evidence smoke
+                           join integrated_design_authority current_authority
+                             on current_authority.authority_id=smoke.authority_id
+                            and current_authority.job_id=smoke.job_id
+                            and current_authority.authority_revision=smoke.authority_revision
+                            and current_authority.source_hash=smoke.source_hash
+                            and current_authority.authority_hash=smoke.authority_hash
                           where smoke.job_id=job.job_id
                             and smoke.process_code=receipt.process_code),
                          'canonicalGeneration',
                            framework_try_jsonb(job.result_json)->'canonicalGeneration',
                          'jobEvidenceRef',job.evidence_ref),
                        blocker_code=null,updated_at=current_timestamp
-                  from framework_development_job job
-                 where receipt.process_code=? and receipt.job_id=?
+                  from framework_development_job job,completed_dispatch dispatch
+                 where receipt.process_code=dispatch.process_code and receipt.job_id=dispatch.job_id
                     and receipt.completion_status='SOURCE_APPLIED_PHYSICAL_QUEUED'
                     and receipt.job_id=job.job_id and job.process_code=receipt.process_code
                     and job.job_type='FULL_STACK_GENERATION'
@@ -383,14 +410,81 @@ public class CompositeDesignOperationalWorker {
                     )
                 """;
     private static final String MARK_LIVE_SMOKE_TEST_PENDING_SQL="""
+                with dispatch_contract as materialized (
+                  select job.job_id,job.process_code,
+                         framework_composite_authority_revision_set_hash(job.job_id) revision_set_hash,
+                         framework_try_jsonb(job.result_json)#>>
+                           '{canonicalGeneration,compositeArtifactManifestHash}' artifact_hash,
+                         framework_try_jsonb(job.specification_json)->>'sourceHash' process_source_hash,
+                         sum(jsonb_array_length(authority.composite_json#>
+                           '{executableDesign,TEST,scenarios}')*3)::integer expected_count,
+                         case when count(distinct binding.scope_type)=1
+                                   and min(binding.scope_type)='GLOBAL'
+                                   and bool_and(binding.project_id is null) then '*'
+                              when count(distinct binding.scope_type)=1
+                                   and min(binding.scope_type)='PROJECT'
+                                   and count(distinct binding.project_id)=1
+                                then min(binding.project_id)
+                              else null end project_id
+                    from framework_development_job job
+                    join integrated_design_authority authority on authority.job_id=job.job_id
+                    join lateral(select candidate.* from integrated_design_scope_binding candidate
+                      where candidate.authority_id=authority.authority_id
+                        and candidate.authority_revision=authority.authority_revision
+                        and candidate.process_code=authority.process_code
+                        and candidate.step_code=authority.step_code
+                        and candidate.route_path=authority.route_path
+                        and candidate.audience=authority.audience
+                        and candidate.document_set_hash=authority.document_set_hash
+                        and candidate.authority_hash=authority.authority_hash
+                      order by candidate.bound_at desc,candidate.design_version desc nulls last
+                      limit 1) binding on true
+                   where job.process_code=? and job.job_id=?
+                   group by job.job_id,job.process_code,job.result_json,job.specification_json
+                ), superseded as (
+                  update integrated_design_live_smoke_dispatch dispatch
+                     set status='SUPERSEDED',lease_token=null,lease_until=null,
+                         completed_at=coalesce(completed_at,clock_timestamp()),
+                         last_error_code='AUTHORITY_REVISION_SUPERSEDED',
+                         last_error_hash=framework_composite_live_smoke_hash(jsonb_build_object(
+                           'oldRevisionSetHash',dispatch.authority_revision_set_hash,
+                           'newRevisionSetHash',contract.revision_set_hash))
+                    from dispatch_contract contract
+                   where dispatch.job_id=contract.job_id
+                     and dispatch.authority_revision_set_hash<>contract.revision_set_hash
+                     and dispatch.status<>'SUPERSEDED'
+                  returning dispatch.dispatch_id
+                ), inserted as (
+                  insert into integrated_design_live_smoke_dispatch(
+                    job_id,process_code,project_id,authority_revision_set_hash,
+                    artifact_manifest_hash,process_source_hash,expected_evidence_count,status)
+                  select job_id,process_code,project_id,revision_set_hash,artifact_hash,
+                         process_source_hash,expected_count,'QUEUED'
+                    from dispatch_contract
+                   where project_id is not null and expected_count>0
+                     and revision_set_hash~'^[0-9a-f]{64}$'
+                     and artifact_hash~'^[0-9a-f]{64}$'
+                     and process_source_hash~'^[0-9a-f]{64}$'
+                  on conflict(job_id,authority_revision_set_hash) do nothing
+                  returning *
+                ), ensured as (
+                  select * from inserted union all
+                  select dispatch.* from integrated_design_live_smoke_dispatch dispatch
+                  join dispatch_contract contract on contract.job_id=dispatch.job_id
+                    and contract.revision_set_hash=dispatch.authority_revision_set_hash
+                   where not exists(select 1 from inserted)
+                )
                 update integrated_design_autocompletion_receipt receipt
                    set receipt_json=receipt.receipt_json||jsonb_build_object(
                          'generationStatus','PHYSICAL_QUEUED','testStatus','TEST_PENDING',
-                         'physicalVerified',false,'liveSmokeVerified',false),
+                         'physicalVerified',false,'liveSmokeVerified',false,
+                         'liveSmokeDispatchId',dispatch.dispatch_id,
+                         'liveSmokeDispatchStatus',dispatch.status,
+                         'liveSmokeExpectedEvidenceCount',dispatch.expected_evidence_count),
                        blocker_code='TEST_PENDING',completed_at=null,duration_ms=null,
                        updated_at=current_timestamp
-                  from framework_development_job job
-                 where receipt.process_code=? and receipt.job_id=?
+                  from framework_development_job job,ensured dispatch
+                 where receipt.process_code=dispatch.process_code and receipt.job_id=dispatch.job_id
                    and receipt.completion_status='SOURCE_APPLIED_PHYSICAL_QUEUED'
                    and receipt.job_id=job.job_id and job.process_code=receipt.process_code
                    and job.job_type='FULL_STACK_GENERATION'
@@ -401,7 +495,15 @@ public class CompositeDesignOperationalWorker {
                      or receipt.receipt_json->>'generationStatus' is distinct from 'PHYSICAL_QUEUED'
                      or receipt.receipt_json->>'testStatus' is distinct from 'TEST_PENDING'
                      or receipt.receipt_json->'physicalVerified' is distinct from 'false'::jsonb
-                     or receipt.receipt_json->'liveSmokeVerified' is distinct from 'false'::jsonb)
+                     or receipt.receipt_json->'liveSmokeVerified' is distinct from 'false'::jsonb
+                     or receipt.receipt_json->>'liveSmokeDispatchId' is distinct from
+                          dispatch.dispatch_id::text
+                     or receipt.receipt_json->>'liveSmokeExpectedEvidenceCount' is distinct from
+                          dispatch.expected_evidence_count::text
+                     or not exists(select 1 from integrated_design_live_smoke_dispatch current_dispatch
+                       where current_dispatch.job_id=job.job_id
+                         and current_dispatch.authority_revision_set_hash=
+                           framework_composite_authority_revision_set_hash(job.job_id)))
                 """;
     private static final String REQUEUE_INCOMPLETE_PHYSICAL_SQL="""
                 update integrated_design_autocompletion_receipt receipt

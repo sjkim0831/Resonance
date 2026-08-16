@@ -1,12 +1,10 @@
 #!/usr/bin/env node
-import { createRequire } from "node:module";
 import { randomUUID } from "node:crypto";
 import { readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
+import { openDeclaredProcessRelayRuntime } from "./lib/declared-process-relay-runtime.mjs";
 
 const root = path.resolve(process.env.RESONANCE_ROOT || path.join(import.meta.dirname, "../.."));
-const require = createRequire(path.join(root, "projects/carbonet-frontend/source/package.json"));
-const { chromium, request } = require("@playwright/test");
 const baseURL = String(process.env.CARBONET_RUNTIME_BASE_URL || "http://127.0.0.1").replace(/\/$/, "");
 const password = String(process.env.CARBONET_ACTOR_TEST_PASSWORD || "");
 const projectId = String(process.env.CARBONET_RELAY_QA_PROJECT_ID || process.env.CARBONET_FOM_QA_PROJECT_ID || "");
@@ -21,18 +19,11 @@ const routeBase = String(process.env.CARBONET_RELAY_ROUTE || "/ccus/facility/fac
 const routeBases = String(process.env.CARBONET_RELAY_ROUTES || routeBase).split(",").map(value => value.trim()).filter(Boolean);
 const evidenceFile = String(process.env.CARBONET_RELAY_EVIDENCE_FILE || process.env.CARBONET_FOM_EVIDENCE_FILE || "");
 if (expectedSteps.length !== stepActors.length || !evidenceFile) throw new Error("relay step, actor, and evidence contracts are required");
-const clients = new Map();
 const samples = [];
 const transitions = [];
 const routeEvidence = [];
 let authority = 0, exceptions = 0, database = 0, audit = 0, recovery = 0;
 
-async function login(user) {
-  const api = await request.newContext({ baseURL, ignoreHTTPSErrors: true });
-  const response = await api.post("/signin/actionLogin", { data: { userId: user, userPw: password, userSe: "USR" }, failOnStatusCode: false });
-  if (response.status() !== 200) throw new Error(`login failed ${user} ${response.status()}`);
-  return api;
-}
 async function call(api, method, url, data, expected = [200]) {
   const started = Date.now();
   const response = await api[method](url, { ...(data === undefined ? {} : { data }), failOnStatusCode: false });
@@ -66,11 +57,12 @@ function routeFor(stepCode, pattern = routeBase) {
   return pattern.includes("{step}") ? pattern.replace("{step}", normalizedStep) : `${pattern}?step=${stepCode.toLowerCase()}`;
 }
 
-for (const [actor, user] of Object.entries(accounts)) clients.set(actor, await login(user));
-const operator = clients.get(stepActors[0]);
-if (!operator) throw new Error(`process starter missing actor=${stepActors[0]}`);
+const relayRuntime = await openDeclaredProcessRelayRuntime({ root, baseURL, password, accounts });
+const clients = new Map(Object.entries(accounts).map(([actor, user]) => [actor, relayRuntime.apiFor(user)]));
 let executionId = "";
 try {
+  const operator = clients.get(stepActors[0]);
+  if (!operator) throw new Error(`process starter missing actor=${stepActors[0]}`);
   const started = await call(operator, "post", "/home/api/process-executions/start", { tenantId, projectId, processCode: PROCESS, actorCode: stepActors[0], cycleType: "AD_HOC", periodStart: new Date().toISOString().slice(0, 10), periodEnd: new Date().toISOString().slice(0, 10), executionVersion: 1 });
   executionId = String(started.body.executionId || started.body.execution?.executionId || "");
   let stepCode = String(started.body.currentStepCode || started.body.execution?.currentStepCode || "");
@@ -110,16 +102,15 @@ try {
     stepCode = String(command.nextStepCode || "");
   }
 
-  const browser = await chromium.launch({ headless: true });
   const browserContexts = new Map();
   const browserPages = new Map();
   try {
     for (const transition of transitions) {
       if (browserContexts.has(transition.actorCode)) continue;
       const actorApi = clients.get(transition.actorCode);
-      const context = await browser.newContext({ storageState: await actorApi.storageState(), viewport: { width: 1440, height: 1000 } });
+      const accountId = accounts[transition.actorCode];
+      const { context, page: warmup } = await relayRuntime.pageFor(accountId, { width: 1440, height: 1000 });
       browserContexts.set(transition.actorCode, context);
-      const warmup = await context.newPage();
       const initialRoute = routeFor(transition.stepCode, routeBases[0]);
       const warmRoute = `${initialRoute}${initialRoute.includes("?") ? "&" : "?"}projectId=${encodeURIComponent(projectId)}`;
       await warmup.goto(`${baseURL}${warmRoute}`, { waitUntil: "domcontentloaded", timeout: 20_000 });
@@ -150,12 +141,18 @@ try {
           durations[viewportName] = Date.now() - startedAt;
           states[viewportName] = await page.evaluate(() => ({ overflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 2, controls: document.querySelectorAll("input,select,textarea,button").length, headings: document.querySelectorAll("h1,h2").length }));
         }
-        if (states.desktop.overflow || states.mobile.overflow || states.desktop.controls < 4 || states.desktop.headings < 1) throw new Error(`responsive screen failed ${transition.stepCode}`);
-        routeEvidence.push({ stepCode: transition.stepCode, actorCode: transition.actorCode, routePath: screenRoute, desktop: 1, mobile: 1, controls: states.desktop.controls, desktopDurationMs: durations.desktop, mobileDurationMs: durations.mobile, durationMs: Math.max(durations.desktop, durations.mobile) });
-        samples.push(durations.desktop, durations.mobile);
+        const mobileOverflow = states.mobile.overflow;
+        const desktopOverflow = states.desktop.overflow;
+        const desktopDurationMs = durations.desktop;
+        const mobileDurationMs = durations.mobile;
+        if (desktopOverflow || mobileOverflow || states.desktop.controls < 4 || states.desktop.headings < 1) throw new Error(`responsive screen failed ${transition.stepCode}`);
+        routeEvidence.push({ stepCode: transition.stepCode, actorCode: transition.actorCode, routePath: screenRoute, desktop: 1, mobile: 1, controls: states.desktop.controls, desktopDurationMs, mobileDurationMs, durationMs: Math.max(desktopDurationMs, mobileDurationMs) });
+        samples.push(desktopDurationMs, mobileDurationMs);
       }
     }
-  } finally { await browser.close(); }
+  } finally {
+    for (const context of browserContexts.values()) await context.close().catch(() => {});
+  }
 
   while (samples.length < 20) {
     await call(operator, "get", `/home/api/process-executions?${new URLSearchParams({ tenantId, projectId, processCode: PROCESS })}`);
@@ -166,5 +163,5 @@ try {
   writeFileSync(evidenceFile, `${JSON.stringify(evidence, null, 2)}\n`);
   console.log(`PROCESS_RELAY_E2E_PASS process=${PROCESS} steps=${transitions.length} routes=${routeEvidence.length} authority=${authority} database=${database}`);
 } finally {
-  for (const api of clients.values()) await api.dispose();
+  await relayRuntime.close();
 }

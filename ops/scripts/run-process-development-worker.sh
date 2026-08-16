@@ -1289,6 +1289,15 @@ event() {
   local type="$1" from="$2" to="$3" detail="${4:-{}}"
   psqlq -c "insert into framework_development_job_event(job_id,event_type,from_status,to_status,worker_id,detail_json) values(${JOB_ID},'${type}','${from}','${to}','${WORKER_ID}',\$json\$${detail}\$json\$);" >/dev/null
 }
+
+wake_composite_live_smoke_postdeploy() {
+  [[ "${JOB_TYPE:-}" =~ ^FULL_STACK(_GENERATION)?$ ]] || return 0
+  # This hook is called only after the canonical deploy marker was rechecked
+  # and the generation finalization committed. The durable timer remains the
+  # authoritative fallback when this unprivileged best-effort wake is denied.
+  systemctl --no-block start resonance-composite-live-smoke.service >/dev/null 2>&1 \
+    || printf 'composite live smoke wake deferred to durable timer\n' >>"$LOG_FILE"
+}
 gate_result() {
   local gate="$1" result="$2" summary="${3:-}"
   summary="${summary//$'\n'/ }"
@@ -1812,6 +1821,7 @@ if [ -z "$CHANGED" ] && [ "$DETERMINISTIC_HANDLED" = 1 ] && [[ "$JOB_TYPE" =~ ^F
     finalize_canonical_generation "$JOB_ID" "$LEASE_TOKEN" "$WORKER_ID" \
       "$BASE_COMMIT" "$adopted_rollback" "$PROCESS_CODE" "$STEP_CODE" "$LOG_FILE" "$canonical_evidence" \
       || fail_job "adopted canonical generation evidence finalization failed"
+    wake_composite_live_smoke_postdeploy
     cleanup_canonical_temp_paths
     git -C "$ROOT_DIR" worktree remove --force "$WT" >/dev/null 2>&1 || true
     printf 'VERIFIED adopted canonical package job=%s commit=%s\n' "$JOB_ID" "$BASE_COMMIT"
@@ -2132,6 +2142,7 @@ if [[ "$CANONICAL_PUBLICATION_ACTIVE" = 1 \
   finalize_canonical_generation "$JOB_ID" "$LEASE_TOKEN" "$WORKER_ID" \
     "$RESULT_COMMIT" "$CANONICAL_ROLLBACK_COMMIT" "$PROCESS_CODE" "$STEP_CODE" "$LOG_FILE" "$CANONICAL_EVIDENCE_JSON" \
     || fail_job "canonical generation evidence finalization failed"
+  wake_composite_live_smoke_postdeploy
   canonical_publication_end \
     || printf 'canonical process publication lock cleanup required forced session close\n' >>"$LOG_FILE"
   cleanup_canonical_temp_paths

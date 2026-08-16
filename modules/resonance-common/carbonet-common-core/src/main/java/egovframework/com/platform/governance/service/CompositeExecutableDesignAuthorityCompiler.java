@@ -35,6 +35,15 @@ final class CompositeExecutableDesignAuthorityCompiler {
     static final Set<String> READY_STATUSES=Set.of("READY","APPROVED","VERIFIED");
     static final Set<String> EXPECTED_TEST_STATUSES=Set.of(
         "SUCCESS","VALIDATION_ERROR","FORBIDDEN","CONFLICT","RECOVERY");
+    static final List<String> EXPECTED_TEST_STATUS_ORDER=List.of(
+        "SUCCESS","VALIDATION_ERROR","FORBIDDEN","CONFLICT","RECOVERY");
+    private static final Map<String,Integer> EXPECTED_HTTP_STATUS=Map.of(
+        "SUCCESS",200,"VALIDATION_ERROR",400,"FORBIDDEN",403,"CONFLICT",409,"RECOVERY",200);
+    private static final List<String> RUNTIME_SUCCESS_FIELDS=List.of(
+        "success","idempotent","eventId","toState");
+    private static final List<String> ERROR_RESPONSE_FIELDS=List.of("success","code","message");
+    private static final Map<String,String> RUNTIME_RESULT_TYPES=Map.of(
+        "success","BOOLEAN","idempotent","BOOLEAN","eventId","INTEGER","toState","STRING");
     static final Set<String> STEP_SHARED_TYPES=Set.of(
         "REQUIREMENT","PROCESS","STATE","API","BUSINESS_RULE",
         "VALIDATION","NOTIFICATION","TEST");
@@ -76,11 +85,13 @@ final class CompositeExecutableDesignAuthorityCompiler {
         Map.entry("DATA_HANDOFF.inputs",Set.of("fieldCode","contractPath")),
         Map.entry("DATA_HANDOFF.outputs",Set.of("fieldCode","contractPath")),
         Map.entry("DATABASE.entities",Set.of("entity","fields")),
-        Map.entry("API.operations",Set.of("method","path","commandCode","requestFields","responseFields","permissionCodes")),
+        Map.entry("API.operations",Set.of("method","path","commandCode","requestFields","responseFields",
+            "permissionCodes","responseProjection","statusResponses")),
         Map.entry("BUSINESS_RULE.rules",Set.of("ruleCode","commandCode","fieldCode","operator","expectedValue","errorCode")),
         Map.entry("VALIDATION.rules",Set.of("ruleCode","commandCode","fieldCode","operator","expectedValue","errorCode")),
         Map.entry("NOTIFICATION.events",Set.of("eventCode","commandCode","channel","recipientActorCode","templateCode")),
-        Map.entry("TEST.scenarios",Set.of("scenarioCode","commandCode","inputValues","expectedOutputFields","expectedStatus","assertionCodes")),
+        Map.entry("TEST.scenarios",Set.of("scenarioCode","commandCode","inputValues","expectedOutputFields",
+            "expectedOutputValues","expectedStatus","expectedHttpStatus","trigger","assertionCodes")),
         Map.entry("TASK_EVIDENCE.evidence",Set.of("evidenceType","reference")));
     private static final Map<String,Set<String>> ROW_LIST_FIELDS=Map.ofEntries(
         Map.entry("DESIGN_ASSET.sections",Set.of("componentCodes")),
@@ -94,6 +105,9 @@ final class CompositeExecutableDesignAuthorityCompiler {
         "PROCESS.commands",Set.of("primary"),"FIELD_DICTIONARY.fields",Set.of("required"));
     private static final Map<String,Set<String>> ROW_OBJECT_FIELDS=Map.of(
         "TEST.scenarios",Set.of("inputValues"));
+    private static final Map<String,Set<String>> ROW_RAW_FIELDS=Map.of(
+        "API.operations",Set.of("responseProjection","statusResponses"),
+        "TEST.scenarios",Set.of("expectedOutputValues","expectedHttpStatus","trigger"));
 
     record Compilation(long contractId,long selectedBlueprintId,String ownershipStrategy,
         boolean selectedAdopt,String documentSetHash,String authorityHash,
@@ -646,6 +660,10 @@ final class CompositeExecutableDesignAuthorityCompiler {
         Set<String> apiInputs=new HashSet<>(),apiOutputs=new HashSet<>(),apiPermissions=new HashSet<>();
         Set<String> authorityPermissions=new HashSet<>(permissions);
         Map<String,Set<String>> commandInputs=new LinkedHashMap<>(),commandOutputs=new LinkedHashMap<>();
+        Map<String,Map<String,Object>> operationsByCommand=new LinkedHashMap<>();
+        Map<String,Map<String,Object>> fieldsByCode=rows(axis(axes,"FIELD_DICTIONARY"),
+            "fields","FIELD_DICTIONARY.fields").stream().collect(Collectors.toMap(
+                row->text(row,"fieldCode"),row->row,(left,right)->left,LinkedHashMap::new));
         for(Map<String,Object> operation:operations){
             if(!"POST".equals(text(operation,"method"))
                     ||!physicalCommandPath(text(operation,"path")))throw fail(
@@ -660,7 +678,9 @@ final class CompositeExecutableDesignAuthorityCompiler {
                 throw new IllegalStateException("API_COMMAND_INPUT_OUTPUT_PERMISSION_NOT_EXACT: "+command);
             if(commandInputs.putIfAbsent(command,request)!=null)
                 throw new IllegalStateException("API_COMMAND_DUPLICATE: "+command);
-            commandOutputs.put(command,response);apiInputs.addAll(request);apiOutputs.addAll(response);
+            commandOutputs.put(command,response);operationsByCommand.put(command,operation);
+            validateStatusResponseContract(operation,request,response,fieldsByCode);
+            apiInputs.addAll(request);apiOutputs.addAll(response);
             apiPermissions.addAll(operationPermissions);
         }
         if(!commandInputs.keySet().equals(commands)||!apiInputs.equals(data.inputs())
@@ -689,6 +709,15 @@ final class CompositeExecutableDesignAuthorityCompiler {
         List<Map<String,Object>> scenarios=rows(axis(axes,"TEST"),"scenarios","TEST.scenarios");
         references(scenarios,"commandCode",commands,"TEST_COMMAND_CONTRADICTION");
         codes(scenarios,"scenarioCode","TEST.scenarios");
+        Map<String,Map<String,Object>> transitionsByCommand=rows(axis(axes,"STATE"),
+            "states","STATE.states").stream().collect(Collectors.toMap(
+                row->text(row,"commandCode"),row->row));
+        Map<String,Map<String,Object>> successByCommand=scenarios.stream()
+            .filter(row->"SUCCESS".equals(row.get("expectedStatus")))
+            .collect(Collectors.toMap(row->text(row,"commandCode"),row->row,
+                (left,right)->left));
+        List<Map<String,Object>> validationRules=rows(axis(axes,"VALIDATION"),
+            "rules","VALIDATION.rules");
         Set<String> testedCommands=scenarios.stream().map(row->text(row,"commandCode"))
             .collect(Collectors.toSet());
         Map<String,Set<String>> statusesByCommand=new TreeMap<>();
@@ -697,8 +726,7 @@ final class CompositeExecutableDesignAuthorityCompiler {
         for(Map<String,Object> scenario:scenarios){
             String command=text(scenario,"commandCode");
             Map<String,Object> inputValues=object(scenario.get("inputValues"),"TEST.inputValues");
-            if(!inputValues.keySet().equals(commandInputs.get(command))
-                    ||!new HashSet<>(strings(scenario,"expectedOutputFields")).equals(commandOutputs.get(command)))
+            if(!inputValues.keySet().equals(commandInputs.get(command)))
                 throw new IllegalStateException("TEST_COMMAND_INPUT_OUTPUT_NOT_EXACT: "+command);
             for(Map.Entry<String,Object> input:inputValues.entrySet())if(input.getKey().isBlank()
                     ||!input.getKey().equals(input.getKey().trim())||input.getValue()==null
@@ -707,6 +735,19 @@ final class CompositeExecutableDesignAuthorityCompiler {
             String expectedStatus=text(scenario,"expectedStatus");
             if(!EXPECTED_TEST_STATUSES.contains(expectedStatus))
                 throw fail("TEST_EXPECTED_STATUS_INVALID");
+            Map<String,Object> operation=operationsByCommand.get(command);
+            List<String> expectedBodyFields=expectedStatusBodyFields(
+                expectedStatus,strings(operation,"responseFields"));
+            if(!strings(scenario,"expectedOutputFields").equals(expectedBodyFields))
+                throw new IllegalStateException("TEST_STATUS_OUTPUT_FIELDS_NOT_EXACT: "+command+"/"+expectedStatus);
+            if(integer(scenario,"expectedHttpStatus")!=EXPECTED_HTTP_STATUS.get(expectedStatus))
+                throw new IllegalStateException("TEST_HTTP_STATUS_NOT_EXACT: "+command+"/"+expectedStatus);
+            Map<String,Object> expectedValues=expectedStatusOutputValues(operation,expectedStatus);
+            if(!stable(object(scenario.get("expectedOutputValues"),"TEST.expectedOutputValues"))
+                    .equals(stable(expectedValues)))
+                throw new IllegalStateException("TEST_EXPECTED_OUTPUT_VALUES_NOT_EXACT: "+command+"/"+expectedStatus);
+            validateScenarioTrigger(scenario,expectedStatus,inputValues,
+                successByCommand.get(command),transitionsByCommand.get(command),validationRules);
             if(!statusesByCommand.computeIfAbsent(command,ignored->new HashSet<>()).add(expectedStatus))
                 throw new IllegalStateException("TEST_EXPECTED_STATUS_DUPLICATE: "+command+"/"+expectedStatus);
             List<String> assertions=strings(scenario,"assertionCodes");
@@ -718,6 +759,172 @@ final class CompositeExecutableDesignAuthorityCompiler {
         for(String command:commands)if(!EXPECTED_TEST_STATUSES.equals(statusesByCommand.get(command)))
             throw new IllegalStateException("TEST_EXPECTED_STATUS_COVERAGE_NOT_EXACT: "+command);
         rows(axis(axes,"TASK_EVIDENCE"),"evidence","TASK_EVIDENCE.evidence");
+    }
+
+    private static void validateStatusResponseContract(Map<String,Object> operation,
+            Set<String> requestFields,Set<String> responseFields,
+            Map<String,Map<String,Object>> fieldsByCode){
+        Set<String> reserved=new HashSet<>(RUNTIME_SUCCESS_FIELDS);
+        reserved.addAll(ERROR_RESPONSE_FIELDS);reserved.add("recovered");
+        if(responseFields.stream().anyMatch(reserved::contains))throw fail(
+            "API_BUSINESS_RESPONSE_FIELD_RESERVED");
+        List<Map<String,Object>> projections=rawRows(operation.get("responseProjection"),
+            Set.of("fieldCode","source","sourcePath"),"API.responseProjection");
+        List<String> projectionFields=new ArrayList<>();
+        for(Map<String,Object> projection:projections){
+            String field=text(projection,"fieldCode"),source=text(projection,"source");
+            String sourcePath=text(projection,"sourcePath");
+            if(!projectionFields.add(field)||!responseFields.contains(field))throw fail(
+                "API_RESPONSE_PROJECTION_COVERAGE_NOT_EXACT");
+            Map<String,Object> definition=fieldsByCode.get(field);
+            if("REQUEST".equals(source)){
+                if(!field.equals(sourcePath)||!requestFields.contains(field)
+                        ||definition==null||!"BOTH".equals(text(definition,"direction")))throw fail(
+                    "API_REQUEST_RESPONSE_PROJECTION_INVALID");
+            }else if("RUNTIME_RESULT".equals(source)){
+                if(definition==null||!RUNTIME_RESULT_TYPES.containsKey(sourcePath)
+                        ||!RUNTIME_RESULT_TYPES.get(sourcePath).equals(text(definition,"dataType")))throw fail(
+                    "API_RUNTIME_RESPONSE_PROJECTION_INVALID");
+            }else throw fail("API_RESPONSE_PROJECTION_SOURCE_INVALID");
+        }
+        List<String> sortedResponse=responseFields.stream().sorted().toList();
+        if(!projectionFields.equals(sortedResponse))throw fail(
+            "API_RESPONSE_PROJECTION_ORDER_NOT_EXACT");
+        List<Map<String,Object>> statuses=rawRows(operation.get("statusResponses"),
+            Set.of("statusCase","httpStatus","bodyFields"),"API.statusResponses");
+        if(statuses.size()!=EXPECTED_TEST_STATUS_ORDER.size())throw fail(
+            "API_STATUS_RESPONSE_COVERAGE_NOT_EXACT");
+        for(int index=0;index<statuses.size();index++){
+            Map<String,Object> status=statuses.get(index);
+            String statusCase=text(status,"statusCase");
+            if(!EXPECTED_TEST_STATUS_ORDER.get(index).equals(statusCase)
+                    ||exactInteger(status,"httpStatus")!=EXPECTED_HTTP_STATUS.get(statusCase)
+                    ||!strings(status,"bodyFields").equals(
+                        expectedStatusBodyFields(statusCase,sortedResponse)))throw fail(
+                "API_STATUS_RESPONSE_NOT_EXACT: "+statusCase);
+        }
+    }
+
+    private static List<String> expectedStatusBodyFields(String status,List<String> responseFields){
+        if(Set.of("VALIDATION_ERROR","FORBIDDEN","CONFLICT").contains(status))
+            return ERROR_RESPONSE_FIELDS;
+        List<String> fields=new ArrayList<>(RUNTIME_SUCCESS_FIELDS);
+        if("RECOVERY".equals(status))fields.add("recovered");
+        fields.addAll(responseFields.stream().sorted().toList());
+        return List.copyOf(fields);
+    }
+
+    private static Map<String,Object> expectedStatusOutputValues(
+            Map<String,Object> operation,String status){
+        Map<String,Object> result=new LinkedHashMap<>();
+        if(Set.of("VALIDATION_ERROR","FORBIDDEN","CONFLICT").contains(status)){
+            Map<String,List<Object>> values=Map.of(
+                "VALIDATION_ERROR",List.of(false,"INVALID_REQUEST","Request failed"),
+                "FORBIDDEN",List.of(false,"ACCESS_DENIED","Access denied"),
+                "CONFLICT",List.of(false,"CONFLICT","Request conflicts with the current state"));
+            List<Object> row=values.get(status);
+            for(int index=0;index<ERROR_RESPONSE_FIELDS.size();index++)
+                result.put(ERROR_RESPONSE_FIELDS.get(index),literalOutput(row.get(index)));
+            return result;
+        }
+        boolean recovery="RECOVERY".equals(status);
+        result.put("success",literalOutput(true));
+        result.put("idempotent",literalOutput(recovery));
+        result.put("eventId",pathOutput(recovery?"REFERENCE_SCENARIO":"DATABASE_EVENT","eventId"));
+        result.put("toState",pathOutput(recovery?"REFERENCE_SCENARIO":"DECLARED_STATE","toState"));
+        if(recovery)result.put("recovered",literalOutput(true));
+        for(Map<String,Object> projection:rawRows(operation.get("responseProjection"),
+                Set.of("fieldCode","source","sourcePath"),"API.responseProjection")){
+            String field=text(projection,"fieldCode"),source=text(projection,"source");
+            String path=text(projection,"sourcePath");
+            if("REQUEST".equals(source))result.put(field,pathOutput("REQUEST",path));
+            else if(recovery)result.put(field,pathOutput("REFERENCE_SCENARIO",field));
+            else result.put(field,switch(path){
+                case "eventId" -> pathOutput("DATABASE_EVENT","eventId");
+                case "toState" -> pathOutput("DECLARED_STATE","toState");
+                case "success" -> literalOutput(true);
+                case "idempotent" -> literalOutput(false);
+                default -> throw fail("API_RUNTIME_RESPONSE_PROJECTION_INVALID");
+            });
+        }
+        return result;
+    }
+
+    private static Map<String,Object> literalOutput(Object value){
+        return linked("source","LITERAL","value",value);
+    }
+
+    private static Map<String,Object> pathOutput(String source,String path){
+        return linked("source",source,"path",path);
+    }
+
+    private static void validateScenarioTrigger(Map<String,Object> scenario,String status,
+            Map<String,Object> inputValues,Map<String,Object> success,
+            Map<String,Object> transition,List<Map<String,Object>> validationRules){
+        if(success==null||transition==null)throw fail("TEST_SUCCESS_OR_TRANSITION_REFERENCE_MISSING");
+        String command=text(scenario,"commandCode");
+        Map<String,Object> trigger=object(scenario.get("trigger"),"TEST.trigger");
+        if("SUCCESS".equals(status)){
+            exactKeys(trigger,Set.of("kind"),"TEST.trigger.SUCCESS");
+            if(!"NEW_COMMAND".equals(text(trigger,"kind")))throw fail("TEST_SUCCESS_TRIGGER_INVALID");
+        }else if("VALIDATION_ERROR".equals(status)){
+            exactKeys(trigger,Set.of("kind","fieldCode","errorCode"),"TEST.trigger.VALIDATION_ERROR");
+            List<Map<String,Object>> matches=validationRules.stream().filter(rule->
+                command.equals(rule.get("commandCode"))
+                &&String.valueOf(trigger.get("fieldCode")).equals(rule.get("fieldCode"))
+                &&String.valueOf(trigger.get("errorCode")).equals(rule.get("errorCode"))).toList();
+            List<Map<String,Object>> failed=validationRules.stream().filter(rule->
+                command.equals(rule.get("commandCode"))&&!predicatePasses(rule,inputValues)).toList();
+            if(!"DECLARED_VALIDATION_FAILURE".equals(text(trigger,"kind"))
+                    ||matches.size()!=1||failed.size()!=1
+                    ||!stable(matches.get(0)).equals(stable(failed.get(0))))throw fail(
+                "TEST_VALIDATION_TRIGGER_NOT_EXACT");
+        }else if("FORBIDDEN".equals(status)){
+            exactKeys(trigger,Set.of("kind"),"TEST.trigger.FORBIDDEN");
+            if(!"UNASSIGNED_ACTOR".equals(text(trigger,"kind")))throw fail(
+                "TEST_FORBIDDEN_TRIGGER_INVALID");
+        }else if("CONFLICT".equals(status)){
+            exactKeys(trigger,Set.of("kind","state","referenceScenarioCode"),"TEST.trigger.CONFLICT");
+            if(!"STALE_STATE".equals(text(trigger,"kind"))
+                    ||!text(transition,"toState").equals(text(trigger,"state"))
+                    ||text(transition,"fromState").equals(text(trigger,"state"))
+                    ||!text(success,"scenarioCode").equals(text(trigger,"referenceScenarioCode")))
+                throw fail("TEST_CONFLICT_TRIGGER_INVALID");
+        }else{
+            exactKeys(trigger,Set.of("kind","referenceScenarioCode"),"TEST.trigger.RECOVERY");
+            if(!"IDEMPOTENT_REPLAY".equals(text(trigger,"kind"))
+                    ||!text(success,"scenarioCode").equals(text(trigger,"referenceScenarioCode")))
+                throw fail("TEST_RECOVERY_TRIGGER_INVALID");
+        }
+        if(Set.of("FORBIDDEN","CONFLICT","RECOVERY").contains(status)
+                &&!stable(inputValues).equals(stable(object(success.get("inputValues"),
+                    "TEST.SUCCESS.inputValues"))))throw fail("TEST_TRIGGER_INPUT_NOT_ISOLATED");
+        if(Set.of("SUCCESS","FORBIDDEN","CONFLICT","RECOVERY").contains(status)
+                &&validationRules.stream().anyMatch(rule->command.equals(rule.get("commandCode"))
+                    &&!predicatePasses(rule,inputValues)))throw fail("TEST_TRIGGER_INPUT_VALIDATION_FAILED");
+    }
+
+    private static boolean predicatePasses(Map<String,Object> rule,Map<String,Object> values){
+        Object actual=values.get(text(rule,"fieldCode"));
+        String expected=text(rule,"expectedValue"),operator=text(rule,"operator");
+        if("REQUIRED".equals(operator))return actual!=null&&!String.valueOf(actual).trim().isEmpty();
+        if(Set.of("EQ","NE").contains(operator)){
+            boolean equal=actual!=null&&String.valueOf(actual).equals(expected);
+            return "EQ".equals(operator)?equal:actual!=null&&!equal;
+        }
+        try{
+            double left=Double.parseDouble(String.valueOf(actual));
+            double right=Double.parseDouble(expected);
+            return switch(operator){case "GT"->left>right;case "GTE"->left>=right;
+                case "LT"->left<right;case "LTE"->left<=right;default->false;};
+        }catch(Exception ignored){return false;}
+    }
+
+    private static List<Map<String,Object>> rawRows(Object value,Set<String> keys,String owner){
+        List<?> raw=list(value,owner);List<Map<String,Object>> result=new ArrayList<>();
+        for(Object item:raw){Map<String,Object> row=object(item,owner+"[]");
+            exactKeys(row,keys,owner+" row keys invalid");canonicalTree(row,owner+"[]");result.add(row);}
+        return result;
     }
 
     private static boolean physicalCommandPath(String path){
@@ -770,10 +977,12 @@ final class CompositeExecutableDesignAuthorityCompiler {
             Set<String> lists=ROW_LIST_FIELDS.getOrDefault(owner,Set.of());
             Set<String> booleans=ROW_BOOLEAN_FIELDS.getOrDefault(owner,Set.of());
             Set<String> objects=ROW_OBJECT_FIELDS.getOrDefault(owner,Set.of());
+            Set<String> rawFields=ROW_RAW_FIELDS.getOrDefault(owner,Set.of());
             for(String key:keys){
                 if(lists.contains(key))strings(row,key);
                 else if(booleans.contains(key))bool(row,key);
                 else if(objects.contains(key))object(row.get(key),owner+"."+key);
+                else if(rawFields.contains(key))canonicalTree(row.get(key),owner+"."+key);
                 else{
                     String value=text(row,key);
                     if(value.length()>4096)throw fail(owner+"."+key+" is too long");
@@ -829,7 +1038,10 @@ final class CompositeExecutableDesignAuthorityCompiler {
     private static void canonicalTree(Object value,String owner){
         if(value instanceof Map<?,?> map){for(Map.Entry<?,?> entry:map.entrySet()){String key=String.valueOf(entry.getKey());if(key.isBlank()||!key.equals(key.trim())||containsSurrogate(key))throw fail(owner+" contains a non-canonical key");canonicalTree(entry.getValue(),owner+"."+key);}}
         else if(value instanceof List<?> list)for(Object item:list)canonicalTree(item,owner+"[]");
-        else if(value instanceof String text&&(text.isBlank()||!text.equals(text.trim())||containsSurrogate(text)))throw fail(owner+" contains a non-canonical string");
+        else if(value instanceof String text&&((text.isBlank()
+                &&!(text.isEmpty()&&owner.contains(".inputValues.")))
+                ||!text.equals(text.trim())||containsSurrogate(text)))throw fail(
+            owner+" contains a non-canonical string");
         else if(!(value==null||value instanceof String||value instanceof Number||value instanceof Boolean))throw fail(owner+" contains a non-JSON value");
     }
     @SuppressWarnings("unchecked") private static Map<String,Object> object(Object value,String field){
@@ -849,6 +1061,11 @@ final class CompositeExecutableDesignAuthorityCompiler {
         }catch(Exception error){throw fail(field+" must be an exact finite integer",error);}
     }
     private static int integer(Map<String,Object> source,String field){long value=longValue(source,field);if(value<Integer.MIN_VALUE||value>Integer.MAX_VALUE)throw fail(field+" is outside integer range");return (int)value;}
+    private static int exactInteger(Map<String,Object> source,String field){
+        Object raw=source.get(field);if(!(raw instanceof Number)||raw instanceof Double number&&!Double.isFinite(number)
+                ||raw instanceof Float number&&!Float.isFinite(number))throw fail(field+" must be an exact integer");
+        return integer(source,field);
+    }
     private static Map<String,Object> linked(Object... values){Map<String,Object> result=new LinkedHashMap<>();for(int i=0;i<values.length;i+=2)result.put(String.valueOf(values[i]),values[i+1]);return result;}
     static String json(Object value){try{return JSON.writeValueAsString(value);}catch(Exception error){throw fail("value must be JSON serializable",error);}}
     static String hash(String value){try{return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(value.getBytes(StandardCharsets.UTF_8)));}catch(NoSuchAlgorithmException impossible){throw new IllegalStateException(impossible);}}

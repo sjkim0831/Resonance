@@ -2947,8 +2947,18 @@ process_development_control_plane_in_sync() {
       /opt/resonance-data/control-plane/bin/run-project-auto-completion-orchestrator.sh &&
     cmp -s ops/scripts/run-next-current-business-e2e.sh \
       /opt/resonance-data/control-plane/bin/run-next-current-business-e2e.sh &&
+    cmp -s ops/scripts/run-composite-live-smoke.sh \
+      /opt/resonance-data/control-plane/bin/run-composite-live-smoke.sh &&
+    cmp -s ops/scripts/resonance-composite-live-smoke-e2e.mjs \
+      /opt/resonance-data/control-plane/bin/resonance-composite-live-smoke-e2e.mjs &&
+    cmp -s ops/scripts/composite-live-smoke-db-probe.sh \
+      /opt/resonance-data/control-plane/bin/composite-live-smoke-db-probe.sh &&
+    cmp -s ops/scripts/lib/declared-process-relay-runtime.mjs \
+      /opt/resonance-data/control-plane/bin/lib/declared-process-relay-runtime.mjs &&
     cmp -s ops/runtime-metadata/business-e2e-runner-registry.json \
       /opt/resonance-data/control-plane/runtime-metadata/business-e2e-runner-registry.json &&
+    cmp -s ops/runtime-metadata/composite-live-smoke-runner.json \
+      /opt/resonance-data/control-plane/runtime-metadata/composite-live-smoke-runner.json &&
     cmp -s ops/systemd/resonance-process-development-worker.service \
       /etc/systemd/system/resonance-process-development-worker.service &&
     cmp -s ops/systemd/resonance-process-development-worker.timer \
@@ -2957,6 +2967,10 @@ process_development_control_plane_in_sync() {
       /etc/systemd/system/resonance-project-auto-completion.service &&
     cmp -s ops/systemd/resonance-project-auto-completion.timer \
       /etc/systemd/system/resonance-project-auto-completion.timer &&
+    cmp -s ops/systemd/resonance-composite-live-smoke.service \
+      /etc/systemd/system/resonance-composite-live-smoke.service &&
+    cmp -s ops/systemd/resonance-composite-live-smoke.timer \
+      /etc/systemd/system/resonance-composite-live-smoke.timer &&
     cmp -s ops/systemd/resonance-incremental-screen-generation.service \
       /etc/systemd/system/resonance-incremental-screen-generation.service &&
     cmp -s ops/systemd/resonance-incremental-screen-generation.timer \
@@ -2970,11 +2984,18 @@ sync_process_development_worker_if_required() {
       ops/scripts/test-process-worker-deploy-marker.sh \
       ops/scripts/run-project-auto-completion-orchestrator.sh \
       ops/scripts/run-next-current-business-e2e.sh \
+      ops/scripts/run-composite-live-smoke.sh \
+      ops/scripts/resonance-composite-live-smoke-e2e.mjs \
+      ops/scripts/composite-live-smoke-db-probe.sh \
+      ops/scripts/lib/declared-process-relay-runtime.mjs \
       ops/runtime-metadata/business-e2e-runner-registry.json \
+      ops/runtime-metadata/composite-live-smoke-runner.json \
       ops/systemd/resonance-process-development-worker.service \
       ops/systemd/resonance-process-development-worker.timer \
       ops/systemd/resonance-project-auto-completion.service \
       ops/systemd/resonance-project-auto-completion.timer \
+      ops/systemd/resonance-composite-live-smoke.service \
+      ops/systemd/resonance-composite-live-smoke.timer \
       ops/systemd/resonance-incremental-screen-generation.service \
       ops/systemd/resonance-incremental-screen-generation.timer &&
     [[ "$control_plane_drift_check_due" != "true" ]] &&
@@ -2987,11 +3008,18 @@ sync_process_development_worker_if_required() {
       ops/scripts/test-process-worker-deploy-marker.sh \
       ops/scripts/run-project-auto-completion-orchestrator.sh \
       ops/scripts/run-next-current-business-e2e.sh \
+      ops/scripts/run-composite-live-smoke.sh \
+      ops/scripts/resonance-composite-live-smoke-e2e.mjs \
+      ops/scripts/composite-live-smoke-db-probe.sh \
+      ops/scripts/lib/declared-process-relay-runtime.mjs \
       ops/runtime-metadata/business-e2e-runner-registry.json \
+      ops/runtime-metadata/composite-live-smoke-runner.json \
       ops/systemd/resonance-process-development-worker.service \
       ops/systemd/resonance-process-development-worker.timer \
       ops/systemd/resonance-project-auto-completion.service \
       ops/systemd/resonance-project-auto-completion.timer \
+      ops/systemd/resonance-composite-live-smoke.service \
+      ops/systemd/resonance-composite-live-smoke.timer \
       ops/systemd/resonance-incremental-screen-generation.service \
       ops/systemd/resonance-incremental-screen-generation.timer || \
     ! process_development_control_plane_in_sync || \
@@ -3000,6 +3028,7 @@ sync_process_development_worker_if_required() {
     bash ops/scripts/test-process-worker-deploy-marker.sh
     sudo -n install -d -m 0755 -o root -g root \
       /opt/resonance-data/control-plane/bin \
+      /opt/resonance-data/control-plane/bin/lib \
       /opt/resonance-data/control-plane/runtime-metadata
     sudo -n install -m 0750 -o sjkim -g sjkim \
       ops/scripts/run-process-development-dispatcher.sh \
@@ -3013,9 +3042,24 @@ sync_process_development_worker_if_required() {
     sudo -n install -m 0750 -o sjkim -g sjkim \
       ops/scripts/run-next-current-business-e2e.sh \
       /opt/resonance-data/control-plane/bin/run-next-current-business-e2e.sh
+    sudo -n install -m 0750 -o sjkim -g sjkim \
+      ops/scripts/run-composite-live-smoke.sh \
+      /opt/resonance-data/control-plane/bin/run-composite-live-smoke.sh
+    sudo -n install -m 0750 -o sjkim -g sjkim \
+      ops/scripts/composite-live-smoke-db-probe.sh \
+      /opt/resonance-data/control-plane/bin/composite-live-smoke-db-probe.sh
+    sudo -n install -m 0750 -o sjkim -g sjkim \
+      ops/scripts/resonance-composite-live-smoke-e2e.mjs \
+      /opt/resonance-data/control-plane/bin/resonance-composite-live-smoke-e2e.mjs
+    sudo -n install -m 0640 -o sjkim -g sjkim \
+      ops/scripts/lib/declared-process-relay-runtime.mjs \
+      /opt/resonance-data/control-plane/bin/lib/declared-process-relay-runtime.mjs
     sudo -n install -m 0644 -o sjkim -g sjkim \
       ops/runtime-metadata/business-e2e-runner-registry.json \
       /opt/resonance-data/control-plane/runtime-metadata/business-e2e-runner-registry.json
+    sudo -n install -m 0644 -o sjkim -g sjkim \
+      ops/runtime-metadata/composite-live-smoke-runner.json \
+      /opt/resonance-data/control-plane/runtime-metadata/composite-live-smoke-runner.json
     sudo -n install -m 0644 \
       ops/systemd/resonance-process-development-worker.service \
       /etc/systemd/system/resonance-process-development-worker.service
@@ -3029,6 +3073,12 @@ sync_process_development_worker_if_required() {
       ops/systemd/resonance-project-auto-completion.timer \
       /etc/systemd/system/resonance-project-auto-completion.timer
     sudo -n install -m 0644 \
+      ops/systemd/resonance-composite-live-smoke.service \
+      /etc/systemd/system/resonance-composite-live-smoke.service
+    sudo -n install -m 0644 \
+      ops/systemd/resonance-composite-live-smoke.timer \
+      /etc/systemd/system/resonance-composite-live-smoke.timer
+    sudo -n install -m 0644 \
       ops/systemd/resonance-incremental-screen-generation.service \
       /etc/systemd/system/resonance-incremental-screen-generation.service
     sudo -n install -m 0644 \
@@ -3038,6 +3088,7 @@ sync_process_development_worker_if_required() {
     sudo -n systemctl enable --now \
       resonance-process-development-worker.timer \
       resonance-project-auto-completion.timer \
+      resonance-composite-live-smoke.timer \
       resonance-incremental-screen-generation.timer >/dev/null
     echo "[auto-deploy] process development worker control plane synchronized"
   fi

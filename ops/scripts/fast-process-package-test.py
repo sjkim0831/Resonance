@@ -15,11 +15,28 @@ from typing import Any
 
 REQUIRED_SCENARIOS = {"HAPPY_PATH", "EXCEPTION", "AUTHORITY", "ISOLATION", "RECOVERY"}
 VALIDATOR_CONTRACT = "FAST_PROCESS_PACKAGE_V3_COMPOSITE_TEST_AUTHORITY"
-COMPOSITE_TEST_CASE_SCHEMA = "carbonet.composite-test-case/v1"
-COMPOSITE_TEST_EXECUTION_SCHEMA = "carbonet.composite-test-execution/v2"
-COMPOSITE_TEST_RUNNER = "DETERMINISTIC_COMPOSITE_CONTRACT_RUNNER_V1"
+COMPOSITE_TEST_CASE_SCHEMA = "carbonet.composite-test-case/v2"
+COMPOSITE_TEST_EXECUTION_SCHEMA = "carbonet.composite-test-execution/v3"
+COMPOSITE_TEST_RUNNER = "DETERMINISTIC_COMPOSITE_CONTRACT_RUNNER_V2"
 COMPOSITE_EXPECTED_STATUSES = {
     "SUCCESS", "VALIDATION_ERROR", "FORBIDDEN", "CONFLICT", "RECOVERY",
+}
+COMPOSITE_STATUS_HTTP = {
+    "SUCCESS": 200, "VALIDATION_ERROR": 400, "FORBIDDEN": 403,
+    "CONFLICT": 409, "RECOVERY": 200,
+}
+COMPOSITE_STATUS_ORDER = [
+    "SUCCESS", "VALIDATION_ERROR", "FORBIDDEN", "CONFLICT", "RECOVERY",
+]
+RUNTIME_SUCCESS_FIELDS = ["success", "idempotent", "eventId", "toState"]
+ERROR_RESPONSE_FIELDS = ["success", "code", "message"]
+RUNTIME_RESULT_TYPES = {
+    "success": "BOOLEAN", "idempotent": "BOOLEAN", "eventId": "INTEGER", "toState": "STRING",
+}
+ERROR_RESPONSE_VALUES = {
+    "VALIDATION_ERROR": {"success": False, "code": "INVALID_REQUEST", "message": "Request failed"},
+    "FORBIDDEN": {"success": False, "code": "ACCESS_DENIED", "message": "Access denied"},
+    "CONFLICT": {"success": False, "code": "CONFLICT", "message": "Request conflicts with the current state"},
 }
 COMPOSITE_STATUS_SCENARIO_TYPES = {
     "SUCCESS": "HAPPY_PATH", "VALIDATION_ERROR": "EXCEPTION",
@@ -87,6 +104,86 @@ def input_field_names(schema: dict[str, Any]) -> set[str]:
 
 def stable(value: Any) -> str:
     return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+
+
+def literal_output(value: Any) -> dict[str, Any]:
+    return {"source": "LITERAL", "value": value}
+
+
+def path_output(source: str, path: str) -> dict[str, Any]:
+    return {"source": source, "path": path}
+
+
+def expected_status_output(operation: dict[str, Any], status: str) -> dict[str, Any]:
+    if status in ERROR_RESPONSE_VALUES:
+        return {field: literal_output(value)
+                for field, value in ERROR_RESPONSE_VALUES[status].items()}
+    projection = operation.get("responseProjection", [])
+    if not isinstance(projection, list) or any(not isinstance(row, dict) for row in projection):
+        return {}
+    if status == "SUCCESS":
+        expected: dict[str, Any] = {
+            "success": literal_output(True), "idempotent": literal_output(False),
+            "eventId": path_output("DATABASE_EVENT", "eventId"),
+            "toState": path_output("DECLARED_STATE", "toState"),
+        }
+        for row in projection:
+            field = row.get("fieldCode")
+            source_path = row.get("sourcePath")
+            if row.get("source") == "REQUEST":
+                expected[field] = path_output("REQUEST", source_path)
+            elif source_path == "eventId":
+                expected[field] = path_output("DATABASE_EVENT", "eventId")
+            elif source_path == "toState":
+                expected[field] = path_output("DECLARED_STATE", "toState")
+            elif source_path == "success":
+                expected[field] = literal_output(True)
+            elif source_path == "idempotent":
+                expected[field] = literal_output(False)
+        return expected
+    expected = {
+        "success": literal_output(True), "idempotent": literal_output(True),
+        "eventId": path_output("REFERENCE_SCENARIO", "eventId"),
+        "toState": path_output("REFERENCE_SCENARIO", "toState"),
+        "recovered": literal_output(True),
+    }
+    for row in projection:
+        field = row.get("fieldCode")
+        expected[field] = (path_output("REQUEST", row.get("sourcePath"))
+                           if row.get("source") == "REQUEST"
+                           else path_output("REFERENCE_SCENARIO", field))
+    return expected
+
+
+def predicate_passes(rule: dict[str, Any], values: dict[str, Any]) -> bool:
+    """Execute the same allow-listed predicate semantics as the generator.
+
+    The fast gate must recompute validation evidence from inputs.  Trusting a
+    projected ``staticPredicateFailures`` array would let a forged package claim
+    that a perfectly valid value triggers VALIDATION_ERROR.
+    """
+    actual = values.get(rule.get("fieldCode"))
+    expected = rule.get("expectedValue")
+    operator = rule.get("operator")
+    if operator == "REQUIRED":
+        return actual is not None and str(actual).strip() != ""
+    if operator in {"EQ", "NE"}:
+        equal = actual is not None and str(actual) == expected
+        return equal if operator == "EQ" else actual is not None and not equal
+    if operator not in {"GT", "GTE", "LT", "LTE"}:
+        return False
+    try:
+        actual_number, expected_number = float(actual), float(expected)
+    except (TypeError, ValueError):
+        return False
+    return {"GT": actual_number > expected_number, "GTE": actual_number >= expected_number,
+            "LT": actual_number < expected_number, "LTE": actual_number <= expected_number}[operator]
+
+
+def composite_case_group(case: dict[str, Any]) -> tuple[Any, Any, Any, Any, Any]:
+    identity = case.get("identity") if isinstance(case.get("identity"), dict) else {}
+    return (identity.get("processCode"), identity.get("stepCode"),
+            identity.get("routePath"), identity.get("audience"), case.get("commandCode"))
 
 
 def java_stable(value: Any) -> str:
@@ -294,12 +391,39 @@ def validate_composite_tests(package: dict[str, Any], tests: list[Any],
     case_keys = {
         "schema", "caseCode", "name", "type", "status", "sourceRequirement",
         "identity", "scenarioCode", "commandCode", "inputValues", "expectedStatus",
-        "fromState", "toState", "expectedOutputFields", "assertionCodes", "evidence",
+        "expectedHttpStatus", "fromState", "toState", "trigger", "expectedOutputFields",
+        "expectedOutputValues", "assertionCodes", "evidence",
         "evidenceHash", "staticPredicateFailures", "steps", "assertions",
     }
     process = package.get("process", {})
     step = package.get("step", {})
     pages = package.get("frontend", {}).get("pages", [])
+    grouped_cases: dict[tuple[Any, Any, Any, Any, Any], list[dict[str, Any]]] = {}
+    for case in cases:
+        grouped_cases.setdefault(composite_case_group(case), []).append(case)
+    expected_groups: set[tuple[Any, Any, Any, Any, Any]] = set()
+    for authority in authorities if isinstance(authorities, list) else []:
+        if not isinstance(authority, dict):
+            continue
+        identity = authority.get("identity") if isinstance(authority.get("identity"), dict) else {}
+        operations = authority.get("api", {}).get("operations", [])
+        for operation in operations if isinstance(operations, list) else []:
+            if isinstance(operation, dict):
+                expected_groups.add((process.get("code"), identity.get("stepCode"),
+                    identity.get("routePath"), identity.get("audience"),
+                    operation.get("commandCode")))
+    require(bool(expected_groups) and set(grouped_cases) == expected_groups,
+            "composite command scenario coverage", failures)
+    for group, command_cases in grouped_cases.items():
+        statuses_for_group = [case.get("expectedStatus") for case in command_cases]
+        require(len(statuses_for_group) == len(COMPOSITE_STATUS_ORDER)
+                and set(statuses_for_group) == COMPOSITE_EXPECTED_STATUSES
+                and len(statuses_for_group) == len(set(statuses_for_group)),
+                f"composite command five-status coverage: {group}", failures)
+    success_by_group: dict[tuple[Any, Any, Any, Any, Any], dict[str, Any]] = {}
+    for case in cases:
+        if case.get("expectedStatus") == "SUCCESS":
+            success_by_group.setdefault(composite_case_group(case), case)
     for case in cases:
         prefix = f"composite {case.get('caseCode', '?')}"
         require(set(case) == case_keys, f"{prefix} exact keys", failures)
@@ -350,6 +474,71 @@ def validate_composite_tests(package: dict[str, Any], tests: list[Any],
         if len(command_operations) != 1:
             continue
         operation = command_operations[0]
+        operation_keys = {"method", "path", "commandCode", "requestFields", "responseFields",
+                          "permissionCodes", "responseProjection", "statusResponses"}
+        page_fields = page.get("fields") if isinstance(page.get("fields"), list) else []
+        fields_by_code = {row.get("fieldCode"): row for row in page_fields
+                          if isinstance(row, dict) and isinstance(row.get("fieldCode"), str)}
+        require(set(operation) == operation_keys and operation.get("method") == "POST"
+                and isinstance(operation.get("path"), str)
+                and operation.get("path", "").startswith("/")
+                and operation.get("commandCode") == command
+                and isinstance(operation.get("requestFields"), list)
+                and isinstance(operation.get("responseFields"), list)
+                and isinstance(operation.get("permissionCodes"), list),
+                f"{prefix} API physical contract", failures)
+        raw_request_fields = operation.get("requestFields", [])
+        raw_response_fields = operation.get("responseFields", [])
+        request_fields = raw_request_fields if isinstance(raw_request_fields, list) else []
+        response_fields = raw_response_fields if isinstance(raw_response_fields, list) else []
+        permissions = operation.get("permissionCodes") \
+            if isinstance(operation.get("permissionCodes"), list) else []
+        require(all(isinstance(value, str) and value for value in request_fields
+                    + response_fields + permissions)
+                and len(request_fields) == len(set(request_fields))
+                and len(response_fields) == len(set(response_fields))
+                and len(permissions) == len(set(permissions))
+                and set(request_fields + response_fields).issubset(fields_by_code)
+                and all(fields_by_code[field].get("direction") in {"INPUT", "BOTH"}
+                        for field in request_fields if field in fields_by_code)
+                and all(fields_by_code[field].get("direction") in {"OUTPUT", "BOTH"}
+                        for field in response_fields if field in fields_by_code)
+                and not set(response_fields) &
+                    (set(RUNTIME_SUCCESS_FIELDS) | set(ERROR_RESPONSE_FIELDS) | {"recovered"}),
+                f"{prefix} API field closure", failures)
+        projection = operation.get("responseProjection")
+        require(isinstance(projection, list)
+                and [row.get("fieldCode") for row in projection if isinstance(row, dict)]
+                    == sorted(response_fields)
+                and all(isinstance(row, dict)
+                        and set(row) == {"fieldCode", "source", "sourcePath"}
+                        and ((row.get("source") == "RUNTIME_RESULT"
+                              and row.get("sourcePath") in RUNTIME_RESULT_TYPES
+                              and fields_by_code.get(row.get("fieldCode"), {}).get("dataType")
+                                  == RUNTIME_RESULT_TYPES.get(row.get("sourcePath")))
+                             or (row.get("source") == "REQUEST"
+                                 and row.get("sourcePath") == row.get("fieldCode")
+                                 and row.get("sourcePath") in request_fields
+                                 and fields_by_code.get(row.get("fieldCode"), {}).get("direction") == "BOTH"))
+                        for row in projection or []),
+                f"{prefix} response projection", failures)
+        expected_bodies = {
+            "SUCCESS": RUNTIME_SUCCESS_FIELDS + sorted(response_fields),
+            "VALIDATION_ERROR": ERROR_RESPONSE_FIELDS,
+            "FORBIDDEN": ERROR_RESPONSE_FIELDS,
+            "CONFLICT": ERROR_RESPONSE_FIELDS,
+            "RECOVERY": RUNTIME_SUCCESS_FIELDS + ["recovered"] + sorted(response_fields),
+        }
+        status_responses = operation.get("statusResponses")
+        require(isinstance(status_responses, list)
+                and [row.get("statusCase") for row in status_responses if isinstance(row, dict)]
+                    == COMPOSITE_STATUS_ORDER
+                and all(isinstance(row, dict)
+                        and set(row) == {"statusCase", "httpStatus", "bodyFields"}
+                        and row.get("httpStatus") == COMPOSITE_STATUS_HTTP.get(row.get("statusCase"))
+                        and row.get("bodyFields") == expected_bodies.get(row.get("statusCase"))
+                        for row in status_responses or []),
+                f"{prefix} status response contract", failures)
         inputs = case.get("inputValues")
         require(isinstance(inputs, dict)
                 and set(inputs) == set(operation.get("requestFields", []))
@@ -357,15 +546,73 @@ def validate_composite_tests(package: dict[str, Any], tests: list[Any],
                         for value in inputs.values()),
                 f"{prefix} input values", failures)
         outputs = case.get("expectedOutputFields")
-        require(isinstance(outputs, list) and len(outputs) == len(set(outputs))
-                and set(outputs) == set(operation.get("responseFields", [])),
-                f"{prefix} output fields", failures)
+        expected_body = expected_bodies.get(expected_status)
+        require(outputs == expected_body, f"{prefix} status output fields", failures)
+        require(case.get("expectedHttpStatus") == COMPOSITE_STATUS_HTTP.get(expected_status),
+                f"{prefix} HTTP status", failures)
+        require(case.get("expectedOutputValues") == expected_status_output(operation, expected_status),
+                f"{prefix} physical output values", failures)
         transitions = [row for row in page.get("states", []) if isinstance(row, dict)
                        and row.get("commandCode") == command]
         require(len(transitions) == 1
                 and transitions[0].get("fromState") == case.get("fromState")
                 and transitions[0].get("toState") == case.get("toState"),
                 f"{prefix} state transition", failures)
+        trigger = case.get("trigger")
+        success_case = success_by_group.get(composite_case_group(case))
+        if expected_status == "SUCCESS":
+            require(trigger == {"kind": "NEW_COMMAND"}, f"{prefix} new command trigger", failures)
+        elif expected_status == "VALIDATION_ERROR":
+            validation_rules = authority.get("validation", {}).get("rules", [])
+            values = {**inputs, "CURRENT_STATE": case.get("fromState")} \
+                if isinstance(inputs, dict) else {"CURRENT_STATE": case.get("fromState")}
+            failed_validation_rules = [row for row in validation_rules
+                if isinstance(row, dict) and row.get("commandCode") == command
+                and not predicate_passes(row, values)] \
+                if isinstance(validation_rules, list) else []
+            matching_validation_rules = [row for row in validation_rules
+                if isinstance(row, dict) and row.get("commandCode") == command
+                and isinstance(trigger, dict)
+                and row.get("fieldCode") == trigger.get("fieldCode")
+                and row.get("errorCode") == trigger.get("errorCode")] \
+                if isinstance(validation_rules, list) else []
+            require(isinstance(trigger, dict)
+                    and set(trigger) == {"kind", "fieldCode", "errorCode"}
+                    and trigger.get("kind") == "DECLARED_VALIDATION_FAILURE"
+                    and len(matching_validation_rules) == 1
+                    and failed_validation_rules == matching_validation_rules
+                    and case.get("staticPredicateFailures") == [trigger.get("errorCode")],
+                    f"{prefix} validation trigger", failures)
+        elif expected_status == "FORBIDDEN":
+            require(trigger == {"kind": "UNASSIGNED_ACTOR"},
+                    f"{prefix} unassigned actor trigger", failures)
+        elif expected_status == "CONFLICT":
+            require(isinstance(trigger, dict)
+                    and set(trigger) == {"kind", "state", "referenceScenarioCode"}
+                    and trigger.get("kind") == "STALE_STATE"
+                    and trigger.get("state") == case.get("toState")
+                    and isinstance(success_case, dict)
+                    and trigger.get("referenceScenarioCode") == success_case.get("scenarioCode"),
+                    f"{prefix} stale state trigger", failures)
+        else:
+            require(isinstance(trigger, dict)
+                    and set(trigger) == {"kind", "referenceScenarioCode"}
+                    and trigger.get("kind") == "IDEMPOTENT_REPLAY"
+                    and isinstance(success_case, dict)
+                    and trigger.get("referenceScenarioCode") == success_case.get("scenarioCode"),
+                    f"{prefix} replay trigger", failures)
+        if expected_status in {"FORBIDDEN", "CONFLICT", "RECOVERY"}:
+            require(isinstance(success_case, dict)
+                    and stable(inputs) == stable(success_case.get("inputValues")),
+                    f"{prefix} isolated trigger input", failures)
+        if expected_status in {"SUCCESS", "FORBIDDEN", "CONFLICT", "RECOVERY"}:
+            validation_rules = authority.get("validation", {}).get("rules", [])
+            values = {**inputs, "CURRENT_STATE": case.get("fromState")} \
+                if isinstance(inputs, dict) else {"CURRENT_STATE": case.get("fromState")}
+            require(isinstance(validation_rules, list)
+                    and all(predicate_passes(row, values) for row in validation_rules
+                            if isinstance(row, dict) and row.get("commandCode") == command),
+                    f"{prefix} input passes declared validation", failures)
         assertions = case.get("assertionCodes")
         require(isinstance(assertions, list) and len(assertions) == len(set(assertions))
                 and {"STATUS_MATCH", "OUTPUT_FIELDS_MATCH"}.issubset(assertions)
@@ -386,6 +633,9 @@ def validate_composite_tests(package: dict[str, Any], tests: list[Any],
             "commandCode": command,
             "inputValues": inputs,
             "expectedStatus": expected_status,
+            "expectedHttpStatus": case.get("expectedHttpStatus"),
+            "expectedOutputValues": case.get("expectedOutputValues"),
+            "trigger": trigger,
             "fromState": case.get("fromState"),
             "toState": case.get("toState"),
         }]

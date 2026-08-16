@@ -33,12 +33,46 @@ def design() -> dict:
         "uniqueConstraints": [],
         "indexes": [],
     }]
-    test_scenarios = [{
-        "scenarioCode": f"SAVE_{status}", "commandCode": "SAVE",
-        "inputValues": {"name": "Alice"}, "expectedOutputFields": ["id"],
-        "expectedStatus": status,
-        "assertionCodes": ["STATUS_MATCH", "OUTPUT_FIELDS_MATCH", "NOTIFICATION_QUEUED"],
-    } for status in ("SUCCESS", "VALIDATION_ERROR", "FORBIDDEN", "CONFLICT", "RECOVERY")]
+    operation = {"method": "POST", "path": "/api/items", "commandCode": "SAVE",
+        "requestFields": ["name"], "responseFields": ["id"],
+        "permissionCodes": ["PERM_SAVE"],
+        "responseProjection": [{"fieldCode": "id", "source": "RUNTIME_RESULT",
+            "sourcePath": "eventId"}],
+        "statusResponses": [
+            {"statusCase": "SUCCESS", "httpStatus": 200,
+                "bodyFields": ["success", "idempotent", "eventId", "toState", "id"]},
+            {"statusCase": "VALIDATION_ERROR", "httpStatus": 400,
+                "bodyFields": ["success", "code", "message"]},
+            {"statusCase": "FORBIDDEN", "httpStatus": 403,
+                "bodyFields": ["success", "code", "message"]},
+            {"statusCase": "CONFLICT", "httpStatus": 409,
+                "bodyFields": ["success", "code", "message"]},
+            {"statusCase": "RECOVERY", "httpStatus": 200,
+                "bodyFields": ["success", "idempotent", "eventId", "toState", "recovered", "id"]},
+        ]}
+    triggers = {
+        "SUCCESS": {"kind": "NEW_COMMAND"},
+        "VALIDATION_ERROR": {"kind": "DECLARED_VALIDATION_FAILURE",
+            "fieldCode": "name", "errorCode": "NAME_REQUIRED"},
+        "FORBIDDEN": {"kind": "UNASSIGNED_ACTOR"},
+        "CONFLICT": {"kind": "STALE_STATE", "state": "DONE",
+            "referenceScenarioCode": "SAVE_SUCCESS"},
+        "RECOVERY": {"kind": "IDEMPOTENT_REPLAY",
+            "referenceScenarioCode": "SAVE_SUCCESS"},
+    }
+    test_scenarios = []
+    for status in GEN.COMPOSITE_STATUS_ORDER:
+        status_response = next(row for row in operation["statusResponses"]
+                               if row["statusCase"] == status)
+        test_scenarios.append({
+            "scenarioCode": f"SAVE_{status}", "commandCode": "SAVE",
+            "inputValues": {"name": "" if status == "VALIDATION_ERROR" else "Alice"},
+            "expectedOutputFields": status_response["bodyFields"],
+            "expectedOutputValues": GEN.expected_status_output(operation, status),
+            "expectedStatus": status, "expectedHttpStatus": status_response["httpStatus"],
+            "trigger": triggers[status],
+            "assertionCodes": ["STATUS_MATCH", "OUTPUT_FIELDS_MATCH", "NOTIFICATION_QUEUED"],
+        })
     return {
         "REQUIREMENT": {"workTypeCode": "WORK", "businessPurpose": "Save work",
             "entryCondition": "Draft exists", "exitCondition": "Record saved",
@@ -72,9 +106,7 @@ def design() -> dict:
         "DATABASE": {"entities": [{"entity": "ITEM", "fields": ["name", "id"]}],
             "verified": True, "migrationMode": "REGISTERED_EXISTING",
             "schemaFingerprint": GEN.java_hash(schema_changes), "schemaChanges": schema_changes},
-        "API": {"operations": [{"method": "POST", "path": "/api/items", "commandCode": "SAVE",
-            "requestFields": ["name"], "responseFields": ["id"],
-            "permissionCodes": ["PERM_SAVE"]}], "verified": True},
+        "API": {"operations": [operation], "verified": True},
         "BUSINESS_RULE": {"rules": [{"ruleCode": "STATE_GUARD", "commandCode": "SAVE",
             "fieldCode": "CURRENT_STATE", "operator": "EQ", "expectedValue": "DRAFT",
             "errorCode": "INVALID_STATE"}]},
@@ -172,15 +204,7 @@ def runtime_package() -> dict:
 
 
 def all_status_design() -> dict:
-    value = design()
-    base = value["TEST"]["scenarios"][0]
-    value["TEST"]["scenarios"] = [
-        {**copy.deepcopy(base), "scenarioCode": f"CASE_{status}",
-         "expectedStatus": status,
-         "assertionCodes": ["STATUS_MATCH", "OUTPUT_FIELDS_MATCH"]}
-        for status in ("SUCCESS", "VALIDATION_ERROR", "FORBIDDEN", "CONFLICT", "RECOVERY")
-    ]
-    return value
+    return design()
 
 
 def safe_create_all_status_design() -> dict:
@@ -198,7 +222,11 @@ def mutate(axis: str, value: dict) -> None:
     elif axis == "ACTOR_RACI": row["ownerActorCode"] = "OWNER_2"
     elif axis == "AUTHORITY": row["securityContract"] += "/mfa"
     elif axis == "PROCESS": row["completionRule"] += " durably"
-    elif axis == "STATE": row["states"][0]["toState"] = "ARCHIVED"
+    elif axis == "STATE":
+        row["states"][0]["toState"] = "ARCHIVED"
+        for scenario in value["TEST"]["scenarios"]:
+            if scenario["expectedStatus"] == "CONFLICT":
+                scenario["trigger"]["state"] = "ARCHIVED"
     elif axis == "NAVIGATION": row["nextRoutes"] = ["/done", "/audit"]
     elif axis == "ACTIVE_UI": row["responsiveContract"] += " 1920"
     elif axis == "DESIGN_ASSET": row["layout"] = "KRDS_TASK_WORKSPACE"
@@ -210,9 +238,18 @@ def mutate(axis: str, value: dict) -> None:
         row["schemaFingerprint"] = GEN.java_hash(row["schemaChanges"])
     elif axis == "API": row["operations"][0]["path"] = "/api/items/v2"
     elif axis == "BUSINESS_RULE": row["rules"][0]["errorCode"] = "STATE_CHANGED"
-    elif axis == "VALIDATION": row["rules"][0]["errorCode"] = "NAME_EMPTY"
+    elif axis == "VALIDATION":
+        row["rules"][0]["errorCode"] = "NAME_EMPTY"
+        for scenario in value["TEST"]["scenarios"]:
+            if scenario["expectedStatus"] == "VALIDATION_ERROR":
+                scenario["trigger"]["errorCode"] = "NAME_EMPTY"
     elif axis == "NOTIFICATION": row["events"][0]["eventCode"] = "WORK_SAVED"
-    elif axis == "TEST": row["scenarios"][0]["scenarioCode"] = "HAPPY_V2"
+    elif axis == "TEST":
+        old = row["scenarios"][0]["scenarioCode"]
+        row["scenarios"][0]["scenarioCode"] = "HAPPY_V2"
+        for scenario in row["scenarios"]:
+            if scenario.get("trigger", {}).get("referenceScenarioCode") == old:
+                scenario["trigger"]["referenceScenarioCode"] = "HAPPY_V2"
     elif axis == "TASK_EVIDENCE": row["evidence"][0]["reference"] = "evidence://save/v2"
     elif axis == "RELEASE_AUDIT": row["auditEvidenceRef"] = "audit://save/v2"
 
@@ -242,6 +279,43 @@ class CompositeGeneratorTest(unittest.TestCase):
         duplicate["TEST"]["scenarios"].append(repeated)
         with self.assertRaisesRegex(GEN.ContractError, "expectedStatus is duplicated for command"):
             GEN.validate_executable_payload(duplicate)
+
+    def test_physical_status_projection_and_trigger_mutations_fail_closed(self) -> None:
+        def scenario(value: dict, status: str) -> dict:
+            return next(row for row in value["TEST"]["scenarios"]
+                        if row["expectedStatus"] == status)
+
+        mutations = [
+            ("responseProjection", lambda value:
+                value["API"]["operations"][0].update(responseProjection=[])),
+            ("RUNTIME_RESULT response projection", lambda value:
+                value["API"]["operations"][0]["responseProjection"][0].update(
+                    sourcePath="success")),
+            ("requestFields", lambda value:
+                value["FIELD_DICTIONARY"]["fields"][0].update(direction="OUTPUT")),
+            ("responseFields", lambda value:
+                value["FIELD_DICTIONARY"]["fields"][1].update(direction="INPUT")),
+            ("statusResponses httpStatus", lambda value:
+                value["API"]["operations"][0]["statusResponses"][3].update(httpStatus=400)),
+            ("expectedHttpStatus", lambda value:
+                scenario(value, "CONFLICT").update(expectedHttpStatus=400)),
+            ("expectedOutputValues", lambda value:
+                scenario(value, "SUCCESS")["expectedOutputValues"].update(
+                    eventId=GEN.literal_output(7))),
+            ("validation trigger", lambda value:
+                scenario(value, "VALIDATION_ERROR")["inputValues"].update(name="valid")),
+            ("CONFLICT must isolate", lambda value:
+                scenario(value, "CONFLICT")["inputValues"].update(name="different")),
+            ("RECOVERY trigger", lambda value:
+                scenario(value, "RECOVERY")["trigger"].update(
+                    referenceScenarioCode="MISSING_SUCCESS")),
+        ]
+        for expected, mutation in mutations:
+            with self.subTest(expected=expected):
+                value = design()
+                mutation(value)
+                with self.assertRaisesRegex(GEN.ContractError, expected):
+                    GEN.validate_executable_payload(value)
 
     def test_screen_database_plans_merge_by_table_and_reject_conflicts(self) -> None:
         item = safe_create_all_status_design()["DATABASE"]
@@ -343,6 +417,18 @@ class CompositeGeneratorTest(unittest.TestCase):
                              {case["expectedStatus"] for case in composite})
             self.assertEqual(set(GEN.COMPOSITE_STATUS_SCENARIO_TYPES.values()),
                              {case["type"] for case in composite})
+            by_status = {case["expectedStatus"]: case for case in composite}
+            self.assertEqual(200, by_status["SUCCESS"]["expectedHttpStatus"])
+            self.assertEqual(400, by_status["VALIDATION_ERROR"]["expectedHttpStatus"])
+            self.assertEqual(403, by_status["FORBIDDEN"]["expectedHttpStatus"])
+            self.assertEqual(409, by_status["CONFLICT"]["expectedHttpStatus"])
+            self.assertEqual(200, by_status["RECOVERY"]["expectedHttpStatus"])
+            self.assertEqual({"source": "LITERAL", "value": True},
+                             by_status["RECOVERY"]["expectedOutputValues"]["recovered"])
+            self.assertEqual("REFERENCE_SCENARIO",
+                             by_status["RECOVERY"]["expectedOutputValues"]["eventId"]["source"])
+            self.assertEqual("SAVE_SUCCESS",
+                             by_status["RECOVERY"]["trigger"]["referenceScenarioCode"])
             metadata = projected["testExecution"]["composite"]
             self.assertEqual(5, metadata["projectedCaseCount"])
             self.assertEqual("QUEUED", metadata["liveSmokeStatus"])
@@ -393,6 +479,48 @@ class CompositeGeneratorTest(unittest.TestCase):
             self.assertNotEqual(0, stripped_db.returncode)
             self.assertIn("composite database migration mode",
                           stripped_db_evidence["results"][0]["failures"])
+
+            def projected_case(value: dict, status: str) -> dict:
+                return next(case for case in value["tests"]
+                    if case.get("schema") == GEN.COMPOSITE_TEST_CASE_SCHEMA
+                    and case.get("expectedStatus") == status)
+
+            mutant = copy.deepcopy(baseline)
+            projected_case(mutant, "CONFLICT")["expectedHttpStatus"] = 400
+            wrong_http, wrong_http_evidence = run_mutant(mutant)
+            self.assertNotEqual(0, wrong_http.returncode)
+            self.assertTrue(any("HTTP status" in failure
+                for failure in wrong_http_evidence["results"][0]["failures"]))
+
+            mutant = copy.deepcopy(baseline)
+            projected_case(mutant, "SUCCESS")["expectedOutputValues"]["eventId"] = {
+                "source": "LITERAL", "value": 7}
+            forged_output, forged_output_evidence = run_mutant(mutant)
+            self.assertNotEqual(0, forged_output.returncode)
+            self.assertTrue(any("physical output values" in failure
+                for failure in forged_output_evidence["results"][0]["failures"]))
+
+            mutant = copy.deepcopy(baseline)
+            projected_case(mutant, "RECOVERY")["trigger"]["referenceScenarioCode"] = "FORGED"
+            forged_replay, forged_replay_evidence = run_mutant(mutant)
+            self.assertNotEqual(0, forged_replay.returncode)
+            self.assertTrue(any("replay trigger" in failure
+                for failure in forged_replay_evidence["results"][0]["failures"]))
+
+            mutant = copy.deepcopy(baseline)
+            projected_case(mutant, "VALIDATION_ERROR")["inputValues"]["name"] = "valid"
+            fake_validation, fake_validation_evidence = run_mutant(mutant)
+            self.assertNotEqual(0, fake_validation.returncode)
+            self.assertTrue(any("validation trigger" in failure
+                for failure in fake_validation_evidence["results"][0]["failures"]))
+
+            mutant = copy.deepcopy(baseline)
+            mutant["backend"]["compositeAuthorities"][0]["api"]["operations"][0] \
+                ["responseProjection"][0]["sourcePath"] = "synthetic"
+            forged_projection, forged_projection_evidence = run_mutant(mutant)
+            self.assertNotEqual(0, forged_projection.returncode)
+            self.assertTrue(any("response projection" in failure
+                for failure in forged_projection_evidence["results"][0]["failures"]))
 
             mutant = copy.deepcopy(baseline)
             for key in ("compositeMappings", "migrationMode", "schemaFingerprint",

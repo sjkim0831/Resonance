@@ -34,21 +34,36 @@ def catalog():
         "tenantId": {"type": "string"}, "projectId": {"type": "string"},
         "actorCode": {"type": "string"}, "idempotencyKey": {"type": "string"},
     }
+    runtime_response = {
+        "success": {"type": "boolean"}, "idempotent": {"type": "boolean"},
+        "eventId": {"type": "integer"}, "toState": {"type": "string"},
+        "amount": {"type": "number"},
+    }
+    error_response = {"success": {"type": "boolean"}, "code": {"type": "string"},
+                      "message": {"type": "string"}}
+    def schema(properties):
+        return {"type": "object", "properties": properties, "required": list(properties)}
     operation = {
         "operationId": "CompleteActivityPlan", "implementationKind": "PROCESS_COMMAND_ADAPTER",
         "method": "POST", "path": "/api/generated/activity/{executionId}/complete",
         "processCode": "ACTIVITY_DATA", "stepCode": "ACTIVITY_DATA_01_PLAN", "commandCode": "COMPLETE",
         "authority": {"audience": "USER", "actorCodes": ["ACTIVITY_MANAGER"], "authenticated": True, "tenantScoped": True, "projectScoped": True},
         "request": {"contentType": "application/json", "schema": {"type": "object", "properties": {**runtime, "amount": {"type": "number"}, "note": {"type": "string"}}, "required": [*runtime, "amount"]}},
-        "response": {"successStatus": 200, "schema": {"type": "object", "properties": {
-            "success": {"type": "boolean"}, "idempotent": {"type": "boolean"},
-            "eventId": {"type": "integer"}, "toState": {"type": "string"},
-        }, "required": ["success", "idempotent", "eventId", "toState"]}, "errors": [
+        "response": {"statusResponses": [
+            {"statusCase": "SUCCESS", "httpStatus": 200, "schema": schema(runtime_response)},
+            {"statusCase": "VALIDATION_ERROR", "httpStatus": 400, "schema": schema(error_response)},
+            {"statusCase": "FORBIDDEN", "httpStatus": 403, "schema": schema(error_response)},
+            {"statusCase": "CONFLICT", "httpStatus": 409, "schema": schema(error_response)},
+            {"statusCase": "RECOVERY", "httpStatus": 200,
+             "schema": schema({**runtime_response, "recovered": {"type": "boolean"}})},
+        ], "errors": [
             {"status": 400, "code": "INVALID_REQUEST"},
-            {"status": 401, "code": "AUTHENTICATION_REQUIRED"},
             {"status": 403, "code": "ACCESS_DENIED"},
+            {"status": 409, "code": "CONFLICT"},
             {"status": 500, "code": "INTERNAL_ERROR"},
         ]},
+        "responseProjection": [{"fieldCode": "amount", "source": "REQUEST",
+                                "sourcePath": "amount"}],
         "persistence": {"persistenceId": "PROCESS_EXECUTION_AGGREGATE",
             "entity": "framework_process_execution", "operation": "UPDATE",
             "primaryKey": ["execution_id"], "tenantColumn": "tenant_id",
@@ -111,7 +126,7 @@ class GeneratorTest(unittest.TestCase):
             for token in ("executeProcessCommand", "CurrentUserContextService", "Authentication is required", "processCode", "ACTIVITY_DATA_01_PLAN"):
                 self.assertIn(token, controller)
             manifest = json.loads((out / "manifest.json").read_text())
-            self.assertEqual(3, manifest["artifactCount"])
+            self.assertEqual(5, manifest["artifactCount"])
             self.assertEqual("EXISTING_PROCESS_COMMAND_RUNTIME", manifest["adapter"])
             self.assertRegex(manifest["artifactHash"], r"^[0-9a-f]{64}$")
             self.assertEqual(catalog()["endpoints"][0]["designHash"], manifest["artifacts"][0]["designHash"])
@@ -140,18 +155,29 @@ class GeneratorTest(unittest.TestCase):
                 self.assertIn(token, controller)
             for token in ('@org.springframework.web.bind.annotation.PathVariable("executionId")',
                           "request.amount()==null", "request.tenantId().isBlank()",
-                          "Required request field is missing.", "convertValue",
-                          "CompleteActivityPlanResponse.class", "responsePayload",
+                          "Request failed", "convertValue",
+                          "CompleteActivityPlanSuccessResponse.class", "responsePayload",
+                          "CompleteActivityPlanRecoveryResponse.class", 'responsePayload.put("recovered",true)',
                           '"AUTHENTICATION_REQUIRED"', '"INVALID_REQUEST"',
                           '"ACCESS_DENIED"', '"INTERNAL_ERROR"',
                           "Response contract mismatch",
                           'payload.put("requireDraft",true)',
                           'payload.put("routePath","/activity/plan")',
                           'payload.put("audience","USER")',
-                          "catch(IllegalArgumentException | IllegalStateException invalid)",
+                          "catch(IllegalArgumentException invalid)",
+                          "catch(IllegalStateException conflict)",
                           "catch(Exception unexpected)",
                           "Request serialization failed"):
                 self.assertIn(token, controller)
+            self.assertIn('if(Boolean.TRUE.equals(result.get("idempotent")))', controller)
+            self.assertNotIn("request.recovered()", controller)
+            self.assertIn('responsePayload.put("amount",request.amount())', controller)
+            success = (out / "src/main/java/egovframework/com/generated/canonical/CompleteActivityPlanSuccessResponse.java").read_text()
+            recovery = (out / "src/main/java/egovframework/com/generated/canonical/CompleteActivityPlanRecoveryResponse.java").read_text()
+            error = (out / "src/main/java/egovframework/com/generated/canonical/CompleteActivityPlanErrorResponse.java").read_text()
+            self.assertIn("java.math.BigDecimal amount, Long eventId, Boolean idempotent, Boolean success, String toState", success)
+            self.assertIn("java.math.BigDecimal amount, Long eventId, Boolean idempotent, Boolean recovered, Boolean success, String toState", recovery)
+            self.assertIn("String code, String message, Boolean success", error)
 
     def test_one_byte_design_change_propagates_without_stale_files(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -213,7 +239,9 @@ class GeneratorTest(unittest.TestCase):
         expected_files = {
             "manifest.json",
             "src/main/java/egovframework/com/generated/canonical/CompleteActivityPlanRequest.java",
-            "src/main/java/egovframework/com/generated/canonical/CompleteActivityPlanResponse.java",
+            "src/main/java/egovframework/com/generated/canonical/CompleteActivityPlanSuccessResponse.java",
+            "src/main/java/egovframework/com/generated/canonical/CompleteActivityPlanRecoveryResponse.java",
+            "src/main/java/egovframework/com/generated/canonical/CompleteActivityPlanErrorResponse.java",
             "src/main/java/egovframework/com/generated/canonical/CompleteActivityPlanController.java",
         }
 
@@ -222,7 +250,7 @@ class GeneratorTest(unittest.TestCase):
             baseline_out = root / "baseline"
             self.assertEqual(0, self.run_generator(catalog(), baseline_out).returncode)
             baseline_files = {
-                str(path.relative_to(baseline_out)): path.read_bytes()
+                path.relative_to(baseline_out).as_posix(): path.read_bytes()
                 for path in baseline_out.rglob("*") if path.is_file()
             }
             baseline_manifest = json.loads(baseline_files["manifest.json"])
@@ -243,7 +271,7 @@ class GeneratorTest(unittest.TestCase):
                     result = self.run_generator(value, out)
                     self.assertEqual(0, result.returncode, result.stderr)
                     generated_files = {
-                        str(path.relative_to(out)): path.read_bytes()
+                        path.relative_to(out).as_posix(): path.read_bytes()
                         for path in out.rglob("*") if path.is_file()
                     }
                     self.assertEqual(expected_files, set(generated_files))
@@ -405,9 +433,17 @@ class GeneratorTest(unittest.TestCase):
             lambda v: v["endpoints"][0]["endpointContract"]["operations"][0]["response"].update(errors=[{"status": "403", "code": "ACCESS_DENIED"}]),
             lambda v: v["endpoints"][0]["endpointContract"]["operations"][0]["response"].update(errors=[{"status": 403, "code": "ACCESS_DENIED", "detail": "leak"}]),
             lambda v: v["endpoints"][0].update(canonicalText={}),
-            lambda v: v["endpoints"][0]["endpointContract"]["operations"][0]["response"]["schema"]["properties"].update({"extra": {"type": "string"}}),
-            lambda v: v["endpoints"][0]["endpointContract"]["operations"][0]["response"]["schema"].update(required=["success", "eventId", "toState"]),
+            lambda v: v["endpoints"][0]["endpointContract"]["operations"][0]["response"]["statusResponses"][0]["schema"]["properties"].update({"extra": {"type": "string"}}),
+            lambda v: v["endpoints"][0]["endpointContract"]["operations"][0]["response"]["statusResponses"][4]["schema"].update(required=["success", "eventId", "toState"]),
+            lambda v: v["endpoints"][0]["endpointContract"]["operations"][0]["response"]["statusResponses"][3].update(httpStatus=400),
+            lambda v: v["endpoints"][0]["endpointContract"]["operations"][0]["response"]["statusResponses"].pop(),
+            lambda v: v["endpoints"][0]["endpointContract"]["operations"][0]["responseProjection"][0].update(source="CONSTANT"),
+            lambda v: v["endpoints"][0]["endpointContract"]["operations"][0]["responseProjection"][0].update(sourcePath="other"),
+            lambda v: v["endpoints"][0]["endpointContract"]["operations"][0]["responseProjection"][0].update(source="RUNTIME_RESULT", sourcePath="eventId"),
+            lambda v: v["endpoints"][0]["endpointContract"]["operations"][0].update(responseProjection=[]),
+            lambda v: v["endpoints"][0]["endpointContract"]["operations"][0]["request"]["schema"]["required"].remove("amount"),
             lambda v: v["endpoints"][0]["endpointContract"]["operations"][0]["response"].update(errors=[{"status": 403, "code": "ACCESS_DENIED"}]),
+            lambda v: v["endpoints"][0]["endpointContract"]["operations"][0]["response"]["errors"].reverse(),
             lambda v: v["endpoints"][0]["endpointContract"]["operations"][0]["persistence"].update(entity="activity_plan"),
             lambda v: v["endpoints"][0]["endpointContract"]["operations"][0]["rollback"].update(strategy="COMPENSATING"),
             lambda v: v["endpoints"][0]["endpointContract"]["operations"][0]["rollback"].update(commandCode="ROLLBACK"),
@@ -477,9 +513,16 @@ class GeneratorTest(unittest.TestCase):
             self.assertFalse(any("previous" in path.name for path in out.parent.iterdir()))
 
             link = Path(temporary) / "linked-output"
-            link.symlink_to(out, target_is_directory=True)
-            with self.assertRaises(MODULE.ContractError):
-                MODULE.publish(link, {"next.txt": b"next"})
+            try:
+                link.symlink_to(out, target_is_directory=True)
+            except OSError as error:
+                # Unprivileged Windows sessions cannot create symlinks.  The
+                # atomic rollback assertions above remain valid; exercise the
+                # symlink guard wherever the host permits creating one.
+                self.assertEqual(1314, getattr(error, "winerror", None))
+            else:
+                with self.assertRaises(MODULE.ContractError):
+                    MODULE.publish(link, {"next.txt": b"next"})
 
     def test_generated_java_compiles_against_runtime_contract_stubs(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -552,7 +595,7 @@ class GeneratorTest(unittest.TestCase):
 
     def test_generated_java_compiles_in_actual_gradle_project(self):
         root = GENERATOR.parents[2]
-        gradlew = root / "gradlew"
+        gradlew = root / ("gradlew.bat" if os.name == "nt" else "gradlew")
         self.assertTrue(gradlew.is_file(), "project Gradle wrapper is required")
         with tempfile.TemporaryDirectory() as temporary:
             folder = Path(temporary)
@@ -572,9 +615,10 @@ gradle.beforeProject { project ->
 """, encoding="utf-8")
             environment = os.environ.copy()
             environment["CANONICAL_GENERATED_SOURCE"] = str(out / "src/main/java")
+            command = [str(gradlew), "-I", str(init_script), ":apps:carbonet-api:compileJava",
+                       "--offline", "--no-daemon", "--console=plain"]
             compiled = subprocess.run(
-                ["bash", str(gradlew), "-I", str(init_script), ":apps:carbonet-api:compileJava",
-                 "--offline", "--no-daemon", "--console=plain"],
+                command,
                 cwd=root, env=environment, text=True, capture_output=True, timeout=180,
             )
             self.assertEqual(0, compiled.returncode, compiled.stdout + compiled.stderr)

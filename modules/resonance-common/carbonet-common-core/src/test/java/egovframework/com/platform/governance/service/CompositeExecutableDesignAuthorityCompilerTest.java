@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -192,7 +193,7 @@ class CompositeExecutableDesignAuthorityCompilerTest {
         map(operations.get(1)).put("requestFields",List.of("name"));
         map(operations.get(1)).put("responseFields",List.of("id"));
         replaceAxis(swapped,"API",api);swapped.values().forEach(row->row.put("updatedBy","MANUAL"));
-        assertThrows(IllegalStateException.class,()->compile(swapped,twoCommandSource(swapped)));
+        assertThrows(RuntimeException.class,()->compile(swapped,twoCommandSource(swapped)));
 
         Map<String,Map<String,Object>> duplicate=twoCommandDocuments();
         Map<String,Object> duplicateApi=axis(duplicate,"API");
@@ -249,17 +250,15 @@ class CompositeExecutableDesignAuthorityCompilerTest {
         replacePayload(zero,"BUSINESS_RULE","rules",List.of());
         replacePayload(zero,"VALIDATION","rules",List.of());
         Map<String,Object> api=axis(zero,"API");
-        Map<String,Object> operation=map(((List<?>)map(api.get("payload")).get("operations")).get(0));
-        operation.put("requestFields",List.of());operation.put("responseFields",List.of());replaceAxis(zero,"API",api);
-        Map<String,Object> test=axis(zero,"TEST");
-        for(Object value:(List<?>)map(test.get("payload")).get("scenarios")){
-            Map<String,Object> scenario=map(value);
-            scenario.put("inputValues",Map.of());scenario.put("expectedOutputFields",List.of());
-        }
-        replaceAxis(zero,"TEST",test);
+        map(api.get("payload")).put("operations",List.of(apiOperation(
+            "/api/work/{executionId}/a","SAVE",List.of(),List.of(),List.of("PERM_SAVE"))));
+        replaceAxis(zero,"API",api);
+        replacePayload(zero,"TEST","scenarios",testScenarios("SAVE",Map.of(),List.of()));
         zero.values().forEach(row->row.put("updatedBy","MANUAL"));
         Map<String,Object> source=source();source.put("stepInputContract","{}");source.put("stepOutputContract","{}");
-        assertEquals(0,((List<?>)compile(zero,source).resolvedClosure().get("inputs")).size());
+        RuntimeException zeroFailure=assertThrows(RuntimeException.class,
+            ()->compile(zero,source));
+        assertTrue(zeroFailure.getMessage().contains("TEST_VALIDATION_TRIGGER_NOT_EXACT"));
 
         Map<String,Map<String,Object>> nullable=documents();Map<String,Object> validation=axis(nullable,"VALIDATION");
         map(((List<?>)map(validation.get("payload")).get("rules")).get(0)).put("fieldCode",null);
@@ -368,9 +367,8 @@ class CompositeExecutableDesignAuthorityCompilerTest {
         payloads.put("DATABASE",linked("entities",entities,"verified",true,
             "migrationMode","SAFE_CREATE_TABLE","schemaFingerprint",schemaHash(schemaChanges),
             "schemaChanges",schemaChanges));
-        List<Map<String,Object>> operations=List.of(linked("method","POST","path","/api/work/{executionId}/a",
-            "commandCode","SAVE","requestFields",List.of("name"),"responseFields",List.of("id"),
-            "permissionCodes",List.of("PERM_SAVE")));
+        List<Map<String,Object>> operations=List.of(apiOperation(
+            "/api/work/{executionId}/a","SAVE",List.of("name"),List.of("id"),List.of("PERM_SAVE")));
         payloads.put("API",linked("operations",operations,"verified",true));
         payloads.put("BUSINESS_RULE",linked("rules",List.of(linked(
             "ruleCode","SAVE_RULE","commandCode","SAVE","fieldCode","name","operator","NE",
@@ -457,17 +455,20 @@ class CompositeExecutableDesignAuthorityCompilerTest {
         map(database.get("payload")).put("schemaFingerprint",schemaHash(changes));
         replaceAxis(documents,"DATABASE",database);
         replacePayload(documents,"API","operations",List.of(
-            linked("method","POST","path","/api/work/{executionId}/save","commandCode","SAVE",
-                "requestFields",List.of("name"),"responseFields",List.of("id"),
-                "permissionCodes",List.of("PERM_SAVE")),
-            linked("method","POST","path","/api/work/{executionId}/approve","commandCode","APPROVE",
-                "requestFields",List.of("amount"),"responseFields",List.of("status"),
-                "permissionCodes",List.of("PERM_APPROVE"))));
+            apiOperation("/api/work/{executionId}/save","SAVE",List.of("name"),
+                List.of("id"),List.of("PERM_SAVE")),
+            apiOperation("/api/work/{executionId}/approve","APPROVE",List.of("amount"),
+                List.of("status"),List.of("PERM_APPROVE"))));
         replacePayload(documents,"BUSINESS_RULE","rules",List.of(
             linked("ruleCode","SAVE_RULE","commandCode","SAVE","fieldCode","name","operator","NE",
                 "expectedValue","blocked","errorCode","SAVE_RULE_FAILED"),
             linked("ruleCode","APPROVE_RULE","commandCode","APPROVE","fieldCode","amount","operator","GT",
                 "expectedValue","0","errorCode","APPROVE_RULE_FAILED")));
+        replacePayload(documents,"VALIDATION","rules",List.of(
+            linked("ruleCode","NAME_REQUIRED","commandCode","SAVE","fieldCode","name",
+                "operator","REQUIRED","expectedValue","PRESENT","errorCode","NAME_REQUIRED"),
+            linked("ruleCode","AMOUNT_REQUIRED","commandCode","APPROVE","fieldCode","amount",
+                "operator","REQUIRED","expectedValue","PRESENT","errorCode","AMOUNT_REQUIRED")));
         replacePayload(documents,"NOTIFICATION","events",List.of(
             linked("eventCode","SAVED","commandCode","SAVE","channel","IN_APP",
                 "recipientActorCode","ACTOR","templateCode","SAVED_TEMPLATE"),
@@ -502,10 +503,97 @@ class CompositeExecutableDesignAuthorityCompilerTest {
     }
 
     private static Map<String,Object> testScenario(String command,String status,
-            Map<String,Object> inputValues,List<String> expectedOutputFields){
+            Map<String,Object> successInput,List<String> businessOutputFields){
+        Map<String,Object> inputValues=new LinkedHashMap<>(successInput);
+        String inputField=inputValues.keySet().stream().findFirst().orElse("");
+        String validationField=inputField.isEmpty()?"UNDECLARED":inputField;
+        String successScenario=command+"_SUCCESS";
+        if("VALIDATION_ERROR".equals(status)&&!inputField.isEmpty())inputValues.put(inputField,"");
+        List<String> outputFields=new ArrayList<>();
+        if(Set.of("VALIDATION_ERROR","FORBIDDEN","CONFLICT").contains(status))
+            outputFields.addAll(List.of("success","code","message"));
+        else{
+            outputFields.addAll(List.of("success","idempotent","eventId","toState"));
+            if("RECOVERY".equals(status))outputFields.add("recovered");
+            outputFields.addAll(businessOutputFields.stream().sorted().toList());
+        }
+        Map<String,Object> outputValues=expectedOutputValues(status,businessOutputFields);
+        Map<String,Object> trigger=switch(status){
+            case "SUCCESS" -> linked("kind","NEW_COMMAND");
+            case "VALIDATION_ERROR" -> linked("kind","DECLARED_VALIDATION_FAILURE",
+                "fieldCode",validationField,"errorCode",validationError(command,validationField));
+            case "FORBIDDEN" -> linked("kind","UNASSIGNED_ACTOR");
+            case "CONFLICT" -> linked("kind","STALE_STATE","state",
+                "APPROVE".equals(command)?"APPROVED":"DONE",
+                "referenceScenarioCode",successScenario);
+            case "RECOVERY" -> linked("kind","IDEMPOTENT_REPLAY",
+                "referenceScenarioCode",successScenario);
+            default -> throw new AssertionError(status);
+        };
         return linked("scenarioCode",command+"_"+status,"commandCode",command,
-            "inputValues",inputValues,"expectedOutputFields",expectedOutputFields,
-            "expectedStatus",status,"assertionCodes",List.of("STATUS_MATCH","OUTPUT_FIELDS_MATCH"));
+            "inputValues",inputValues,"expectedOutputFields",outputFields,
+            "expectedOutputValues",outputValues,"expectedStatus",status,
+            "expectedHttpStatus",Map.of("SUCCESS",200,"VALIDATION_ERROR",400,
+                "FORBIDDEN",403,"CONFLICT",409,"RECOVERY",200).get(status),
+            "trigger",trigger,"assertionCodes",List.of("STATUS_MATCH","OUTPUT_FIELDS_MATCH"));
+    }
+
+    private static Map<String,Object> apiOperation(String path,String command,
+            List<String> requestFields,List<String> responseFields,List<String> permissions){
+        List<Map<String,Object>> projection=responseFields.stream().sorted().map(field->
+            requestFields.contains(field)
+                ?linked("fieldCode",field,"source","REQUEST","sourcePath",field)
+                :linked("fieldCode",field,"source","RUNTIME_RESULT","sourcePath",
+                    field.toLowerCase().contains("id")?"eventId":"toState")).toList();
+        List<Map<String,Object>> statusResponses=new ArrayList<>();
+        for(String status:TEST_STATUSES){
+            List<String> body=new ArrayList<>();
+            if(Set.of("VALIDATION_ERROR","FORBIDDEN","CONFLICT").contains(status))
+                body.addAll(List.of("success","code","message"));
+            else{body.addAll(List.of("success","idempotent","eventId","toState"));
+                if("RECOVERY".equals(status))body.add("recovered");
+                body.addAll(responseFields.stream().sorted().toList());}
+            statusResponses.add(linked("statusCase",status,"httpStatus",Map.of(
+                "SUCCESS",200,"VALIDATION_ERROR",400,"FORBIDDEN",403,
+                "CONFLICT",409,"RECOVERY",200).get(status),"bodyFields",body));
+        }
+        return linked("method","POST","path",path,"commandCode",command,
+            "requestFields",requestFields,"responseFields",responseFields,
+            "permissionCodes",permissions,"responseProjection",projection,
+            "statusResponses",statusResponses);
+    }
+
+    private static Map<String,Object> expectedOutputValues(
+            String status,List<String> businessOutputFields){
+        Map<String,Object> result=new LinkedHashMap<>();
+        if(Set.of("VALIDATION_ERROR","FORBIDDEN","CONFLICT").contains(status)){
+            Map<String,List<Object>> error=Map.of(
+                "VALIDATION_ERROR",List.of(false,"INVALID_REQUEST","Request failed"),
+                "FORBIDDEN",List.of(false,"ACCESS_DENIED","Access denied"),
+                "CONFLICT",List.of(false,"CONFLICT","Request conflicts with the current state"));
+            List<Object> values=error.get(status);
+            for(int index=0;index<3;index++)result.put(List.of("success","code","message").get(index),
+                linked("source","LITERAL","value",values.get(index)));
+            return result;
+        }
+        boolean recovery="RECOVERY".equals(status);
+        result.put("success",linked("source","LITERAL","value",true));
+        result.put("idempotent",linked("source","LITERAL","value",recovery));
+        result.put("eventId",linked("source",recovery?"REFERENCE_SCENARIO":"DATABASE_EVENT",
+            "path","eventId"));
+        result.put("toState",linked("source",recovery?"REFERENCE_SCENARIO":"DECLARED_STATE",
+            "path","toState"));
+        if(recovery)result.put("recovered",linked("source","LITERAL","value",true));
+        for(String field:businessOutputFields.stream().sorted().toList())result.put(field,
+            linked("source",recovery?"REFERENCE_SCENARIO":
+                    (field.toLowerCase().contains("id")?"DATABASE_EVENT":"DECLARED_STATE"),
+                "path",recovery?field:(field.toLowerCase().contains("id")?"eventId":"toState")));
+        return result;
+    }
+
+    private static String validationError(String command,String field){
+        if("SAVE".equals(command)&&"name".equals(field))return "NAME_REQUIRED";
+        return field.toUpperCase()+"_REQUIRED";
     }
 
     private static void replacePayload(Map<String,Map<String,Object>> documents,String type,String key,Object value){

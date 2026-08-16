@@ -1,0 +1,40 @@
+{
+  "schema": "carbonet.composite-live-smoke-runner/v1",
+  "trigger": "POSTDEPLOY_FULL_STACK_VERIFIED",
+  "predeployPolicy": "TEST_PENDING",
+  "statusCases": [
+    "SUCCESS",
+    "VALIDATION_ERROR",
+    "FORBIDDEN",
+    "CONFLICT",
+    "RECOVERY"
+  ],
+  "lanes": [
+    "API",
+    "DATABASE",
+    "BROWSER"
+  ],
+  "observationPolicy": {
+    "SUCCESS": { "http": 200, "state": "TO_STATE", "idempotent": false },
+    "VALIDATION_ERROR": { "http": 400, "state": "FROM_STATE" },
+    "FORBIDDEN": { "http": 403, "state": "FROM_STATE", "assignmentCount": 0 },
+    "CONFLICT": { "http": 409, "state": "TO_STATE", "reference": "SUCCESS" },
+    "RECOVERY": { "http": 200, "state": "TO_STATE", "idempotent": true, "recovered": true, "reference": "SUCCESS" }
+  },
+  "timeouts": {
+    "claimSeconds": 5,
+    "requestSeconds": 15,
+    "databaseSeconds": 10,
+    "browserSeconds": 20,
+    "jobSeconds": 480
+  },
+  "retry": {
+    "maxAttempts": 3,
+    "backoffSeconds": [15, 30],
+    "leaseSeconds": 540
+  },
+  "parallelism": 1,
+  "evidenceEndpoint": "/home/api/composite-live-smoke-evidence",
+  "evidenceDirectory": "var/test-evidence/composite-live-smoke",
+  "secretPolicy": "ENVIRONMENT_ONLY_NO_LOGGING"
+}

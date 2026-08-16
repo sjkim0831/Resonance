@@ -1,0 +1,23 @@
+[Unit]
+Description=Resonance generated-design postdeploy live smoke producer
+After=network-online.target containerd.service kubelet.service carbonet-auto-deploy.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=sjkim
+WorkingDirectory=/opt/Resonance
+EnvironmentFile=/etc/resonance/process-development-worker.env
+EnvironmentFile=-/opt/carbonet-data/config/actor-test.env
+EnvironmentFile=-/etc/resonance/secrets/composite-live-smoke.env
+Environment=HOME=/home/sjkim
+Environment=RESONANCE_ROOT=/opt/Resonance
+Environment=PATH=/home/sjkim/.local/bin:/usr/local/bin:/usr/bin:/bin
+ExecStart=/usr/bin/timeout --signal=TERM --kill-after=15s 9m /usr/bin/bash /opt/resonance-data/control-plane/bin/run-composite-live-smoke.sh
+Nice=10
+CPUQuota=200%
+MemoryMax=3G
+TimeoutStartSec=10min
+
+[Install]
+WantedBy=multi-user.target

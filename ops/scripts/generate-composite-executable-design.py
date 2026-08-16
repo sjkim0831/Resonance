@@ -56,13 +56,36 @@ ROW_KEYS = {
     "BUSINESS_RULE": {"ruleCode", "commandCode", "fieldCode", "operator", "expectedValue", "errorCode"},
     "VALIDATION": {"ruleCode", "commandCode", "fieldCode", "operator", "expectedValue", "errorCode"},
     "NOTIFICATION": {"eventCode", "commandCode", "channel", "recipientActorCode", "templateCode"},
-    "TEST": {"scenarioCode", "commandCode", "inputValues", "expectedOutputFields", "expectedStatus", "assertionCodes"},
+    "TEST": {"scenarioCode", "commandCode", "inputValues", "expectedOutputFields",
+             "expectedOutputValues", "expectedStatus", "expectedHttpStatus", "trigger",
+             "assertionCodes"},
 }
-COMPOSITE_TEST_CASE_SCHEMA = "carbonet.composite-test-case/v1"
-COMPOSITE_TEST_EXECUTION_SCHEMA = "carbonet.composite-test-execution/v2"
-COMPOSITE_TEST_RUNNER = "DETERMINISTIC_COMPOSITE_CONTRACT_RUNNER_V1"
+API_OPERATION_KEYS = {
+    "method", "path", "commandCode", "requestFields", "responseFields",
+    "permissionCodes", "responseProjection", "statusResponses",
+}
+COMPOSITE_TEST_CASE_SCHEMA = "carbonet.composite-test-case/v2"
+COMPOSITE_TEST_EXECUTION_SCHEMA = "carbonet.composite-test-execution/v3"
+COMPOSITE_TEST_RUNNER = "DETERMINISTIC_COMPOSITE_CONTRACT_RUNNER_V2"
 COMPOSITE_EXPECTED_STATUSES = {
     "SUCCESS", "VALIDATION_ERROR", "FORBIDDEN", "CONFLICT", "RECOVERY",
+}
+COMPOSITE_STATUS_ORDER = (
+    "SUCCESS", "VALIDATION_ERROR", "FORBIDDEN", "CONFLICT", "RECOVERY",
+)
+COMPOSITE_STATUS_HTTP = {
+    "SUCCESS": 200, "VALIDATION_ERROR": 400, "FORBIDDEN": 403,
+    "CONFLICT": 409, "RECOVERY": 200,
+}
+RUNTIME_SUCCESS_FIELDS = ["success", "idempotent", "eventId", "toState"]
+ERROR_RESPONSE_FIELDS = ["success", "code", "message"]
+RUNTIME_RESULT_TYPES = {
+    "success": "BOOLEAN", "idempotent": "BOOLEAN", "eventId": "INTEGER", "toState": "STRING",
+}
+ERROR_RESPONSE_VALUES = {
+    "VALIDATION_ERROR": {"success": False, "code": "INVALID_REQUEST", "message": "Request failed"},
+    "FORBIDDEN": {"success": False, "code": "ACCESS_DENIED", "message": "Access denied"},
+    "CONFLICT": {"success": False, "code": "CONFLICT", "message": "Request conflicts with the current state"},
 }
 COMPOSITE_STATUS_SCENARIO_TYPES = {
     "SUCCESS": "HAPPY_PATH",
@@ -318,6 +341,132 @@ def merge_database_plans(plans: list[dict[str, Any]]) -> dict[str, Any]:
     return merged
 
 
+def literal_output(value: Any) -> dict[str, Any]:
+    return {"source": "LITERAL", "value": value}
+
+
+def path_output(source: str, path: str) -> dict[str, Any]:
+    return {"source": source, "path": path}
+
+
+def expected_status_output(operation: dict[str, Any], status: str) -> dict[str, Any]:
+    if status in ERROR_RESPONSE_VALUES:
+        return {field: literal_output(value)
+                for field, value in ERROR_RESPONSE_VALUES[status].items()}
+    if status == "SUCCESS":
+        expected: dict[str, Any] = {
+            "success": literal_output(True),
+            "idempotent": literal_output(False),
+            "eventId": path_output("DATABASE_EVENT", "eventId"),
+            "toState": path_output("DECLARED_STATE", "toState"),
+        }
+        for projection in operation["responseProjection"]:
+            field = projection["fieldCode"]
+            source_path = projection["sourcePath"]
+            if projection["source"] == "REQUEST":
+                expected[field] = path_output("REQUEST", source_path)
+            elif source_path == "eventId":
+                expected[field] = path_output("DATABASE_EVENT", "eventId")
+            elif source_path == "toState":
+                expected[field] = path_output("DECLARED_STATE", "toState")
+            elif source_path == "success":
+                expected[field] = literal_output(True)
+            elif source_path == "idempotent":
+                expected[field] = literal_output(False)
+            else:
+                raise ContractError("SUCCESS response projection source is not executable")
+        return expected
+    expected = {
+        "success": literal_output(True),
+        "idempotent": literal_output(True),
+        "eventId": path_output("REFERENCE_SCENARIO", "eventId"),
+        "toState": path_output("REFERENCE_SCENARIO", "toState"),
+        "recovered": literal_output(True),
+    }
+    for projection in operation["responseProjection"]:
+        field = projection["fieldCode"]
+        expected[field] = (path_output("REQUEST", projection["sourcePath"])
+                           if projection["source"] == "REQUEST"
+                           else path_output("REFERENCE_SCENARIO", field))
+    return expected
+
+
+def validate_api_operation(raw: Any, fields_by_code: dict[str, dict[str, Any]]) -> dict[str, Any]:
+    operation = exact_object(raw, API_OPERATION_KEYS, "API.operations[]")
+    command = text(operation["commandCode"], "API.commandCode", CODE)
+    request_fields = operation["requestFields"]
+    response_fields = operation["responseFields"]
+    permissions = operation["permissionCodes"]
+    if (operation["method"] != "POST" or not isinstance(operation["path"], str)
+            or not operation["path"].startswith("/") or not isinstance(request_fields, list)
+            or not isinstance(response_fields, list) or not isinstance(permissions, list)
+            or any(not isinstance(value, str) or not value
+                   for value in request_fields + response_fields + permissions)
+            or len(set(request_fields)) != len(request_fields)
+            or len(set(response_fields)) != len(response_fields)
+            or len(set(permissions)) != len(permissions)):
+        raise ContractError("API command input/output/permission fields are invalid")
+    if not set(request_fields + response_fields).issubset(fields_by_code):
+        raise ContractError("API fields are not declared in FIELD_DICTIONARY")
+    if any(fields_by_code[field]["direction"] not in {"INPUT", "BOTH"}
+           for field in request_fields):
+        raise ContractError("API requestFields must use INPUT or BOTH fields")
+    if any(fields_by_code[field]["direction"] not in {"OUTPUT", "BOTH"}
+           for field in response_fields):
+        raise ContractError("API responseFields must use OUTPUT or BOTH fields")
+    if set(response_fields) & (set(RUNTIME_SUCCESS_FIELDS) | set(ERROR_RESPONSE_FIELDS) | {"recovered"}):
+        raise ContractError("API business response fields collide with physical response fields")
+    raw_projection = operation["responseProjection"]
+    if not isinstance(raw_projection, list):
+        raise ContractError("API responseProjection must be an array")
+    projection: list[dict[str, Any]] = []
+    for index, value in enumerate(raw_projection):
+        row = exact_object(value, {"fieldCode", "source", "sourcePath"},
+                           f"API.responseProjection[{index}]")
+        field = text(row["fieldCode"], "API.responseProjection.fieldCode")
+        source = text(row["source"], "API.responseProjection.source")
+        source_path = text(row["sourcePath"], "API.responseProjection.sourcePath")
+        if source == "REQUEST":
+            if (source_path != field or field not in request_fields
+                    or fields_by_code[field]["direction"] != "BOTH"):
+                raise ContractError("REQUEST response projection requires one BOTH field echo")
+        elif source == "RUNTIME_RESULT":
+            if (source_path not in RUNTIME_RESULT_TYPES
+                    or fields_by_code[field]["dataType"] != RUNTIME_RESULT_TYPES[source_path]):
+                raise ContractError("RUNTIME_RESULT response projection is unresolved or type-incompatible")
+        else:
+            raise ContractError("API responseProjection source is unsupported")
+        projection.append(row)
+    if ([row["fieldCode"] for row in projection] != sorted(response_fields)
+            or {row["fieldCode"] for row in projection} != set(response_fields)):
+        raise ContractError("API responseProjection must exactly cover responseFields in canonical order")
+    raw_statuses = operation["statusResponses"]
+    if not isinstance(raw_statuses, list):
+        raise ContractError("API statusResponses must be an array")
+    expected_bodies = {
+        "SUCCESS": RUNTIME_SUCCESS_FIELDS + sorted(response_fields),
+        "VALIDATION_ERROR": ERROR_RESPONSE_FIELDS,
+        "FORBIDDEN": ERROR_RESPONSE_FIELDS,
+        "CONFLICT": ERROR_RESPONSE_FIELDS,
+        "RECOVERY": RUNTIME_SUCCESS_FIELDS + ["recovered"] + sorted(response_fields),
+    }
+    seen_statuses: list[str] = []
+    for index, value in enumerate(raw_statuses):
+        row = exact_object(value, {"statusCase", "httpStatus", "bodyFields"},
+                           f"API.statusResponses[{index}]")
+        status = text(row["statusCase"], "API.statusResponses.statusCase", CODE)
+        if status not in COMPOSITE_STATUS_HTTP or status in seen_statuses:
+            raise ContractError("API statusResponses coverage is not exact")
+        if type(row["httpStatus"]) is not int or row["httpStatus"] != COMPOSITE_STATUS_HTTP[status]:
+            raise ContractError(f"API statusResponses httpStatus is not exact: {status}")
+        if row["bodyFields"] != expected_bodies[status]:
+            raise ContractError(f"API statusResponses bodyFields are not exact: {status}")
+        seen_statuses.append(status)
+    if seen_statuses != list(COMPOSITE_STATUS_ORDER):
+        raise ContractError("API statusResponses must use canonical five-status order")
+    return operation
+
+
 def validate_executable_payload(design: dict[str, Any]) -> None:
     for axis in AXES:
         exact_object(design[axis], PAYLOAD_KEYS[axis], f"executableDesign.{axis}")
@@ -335,6 +484,7 @@ def validate_executable_payload(design: dict[str, Any]) -> None:
     fields = design["FIELD_DICTIONARY"]["fields"]
     if not isinstance(fields, list):
         raise ContractError("FIELD_DICTIONARY.fields is invalid")
+    fields_by_code: dict[str, dict[str, Any]] = {}
     for raw in fields:
         row = exact_object(raw, ROW_KEYS["FIELD_DICTIONARY"], "FIELD_DICTIONARY.fields[]")
         for key in ("fieldCode", "label", "dataSource", "componentCode"):
@@ -345,6 +495,9 @@ def validate_executable_payload(design: dict[str, Any]) -> None:
             raise ContractError("FIELD_DICTIONARY.dataType is invalid")
         if not isinstance(row["required"], bool) or row["componentCode"] not in component_codes:
             raise ContractError("FIELD_DICTIONARY JSON Form component binding is invalid")
+        if row["fieldCode"] in fields_by_code:
+            raise ContractError("FIELD_DICTIONARY fieldCode is duplicated")
+        fields_by_code[row["fieldCode"]] = row
     validate_database_plan(design["DATABASE"])
     operations = design["API"]["operations"]
     if design["API"]["verified"] is not True:
@@ -353,10 +506,10 @@ def validate_executable_payload(design: dict[str, Any]) -> None:
         raise ContractError("API.operations are required")
     command_inputs: dict[str, set[str]] = {}
     command_outputs: dict[str, set[str]] = {}
-    for row in operations:
-        if not isinstance(row, dict):
-            raise ContractError("API.operations[] is invalid")
-        command = text(row.get("commandCode"), "API.commandCode", CODE)
+    operations_by_command: dict[str, dict[str, Any]] = {}
+    for raw in operations:
+        row = validate_api_operation(raw, fields_by_code)
+        command = row["commandCode"]
         request_fields = row.get("requestFields")
         response_fields = row.get("responseFields")
         if (not isinstance(request_fields, list) or not isinstance(response_fields, list)
@@ -368,11 +521,23 @@ def validate_executable_payload(design: dict[str, Any]) -> None:
             raise ContractError(f"API command is duplicated: {command}")
         command_inputs[command] = set(request_fields)
         command_outputs[command] = set(response_fields)
+        operations_by_command[command] = row
     if set(command_inputs) != command_codes:
         raise ContractError("API command coverage is not exact")
     tested_commands: set[str] = set()
     statuses_by_command: dict[str, set[str]] = {}
     scenario_codes: set[str] = set()
+    raw_test_scenarios = design["TEST"]["scenarios"]
+    if not isinstance(raw_test_scenarios, list):
+        raise ContractError("TEST.scenarios is invalid")
+    # Preserve the first SUCCESS row so a duplicate SUCCESS is diagnosed as the
+    # duplicate that it is.  A dict comprehension would silently select the
+    # last duplicate and make otherwise-valid CONFLICT/RECOVERY references look
+    # broken before the duplicate-status guard can run.
+    success_by_command: dict[str, dict[str, Any]] = {}
+    for candidate in raw_test_scenarios:
+        if isinstance(candidate, dict) and candidate.get("expectedStatus") == "SUCCESS":
+            success_by_command.setdefault(candidate.get("commandCode"), candidate)
     for axis, field in (("BUSINESS_RULE", "rules"), ("VALIDATION", "rules"),
                         ("NOTIFICATION", "events"), ("TEST", "scenarios")):
         rows = design[axis][field]
@@ -404,16 +569,82 @@ def validate_executable_payload(design: dict[str, Any]) -> None:
                         or set(row["inputValues"]) != command_inputs.get(row["commandCode"], set())
                         or any(value is None or isinstance(value, (dict, list)) for value in row["inputValues"].values())):
                     raise ContractError("TEST inputValues are not executable")
-                outputs = row["expectedOutputFields"]
-                if (not isinstance(outputs, list) or len(set(outputs)) != len(outputs)
-                        or set(outputs) != command_outputs.get(row["commandCode"], set())):
-                    raise ContractError("TEST expectedOutputFields are not exact")
-                if row["expectedStatus"] not in COMPOSITE_EXPECTED_STATUSES:
+                status = row["expectedStatus"]
+                if status not in COMPOSITE_EXPECTED_STATUSES:
                     raise ContractError("TEST expectedStatus is invalid")
+                operation = operations_by_command[row["commandCode"]]
+                status_response = next((value for value in operation["statusResponses"]
+                                        if value["statusCase"] == status), None)
+                outputs = row["expectedOutputFields"]
+                if (not isinstance(outputs, list) or status_response is None
+                        or outputs != status_response["bodyFields"]):
+                    raise ContractError("TEST expectedOutputFields are not status-specific exact")
+                if type(row["expectedHttpStatus"]) is not int \
+                        or row["expectedHttpStatus"] != COMPOSITE_STATUS_HTTP[status]:
+                    raise ContractError("TEST expectedHttpStatus is not exact")
+                expected_values = expected_status_output(operation, status)
+                if row["expectedOutputValues"] != expected_values:
+                    raise ContractError("TEST expectedOutputValues are not derived from physical sources")
+                transitions = [value for value in design["STATE"]["states"]
+                               if isinstance(value, dict)
+                               and value.get("commandCode") == row["commandCode"]]
+                if len(transitions) != 1:
+                    raise ContractError("TEST state transition is not exact")
+                transition = transitions[0]
+                success_case = success_by_command.get(row["commandCode"])
+                if not isinstance(success_case, dict):
+                    raise ContractError("TEST SUCCESS reference is missing")
+                trigger = row["trigger"]
+                if status == "SUCCESS":
+                    exact_object(trigger, {"kind"}, "TEST.trigger.SUCCESS")
+                    if trigger["kind"] != "NEW_COMMAND":
+                        raise ContractError("TEST SUCCESS trigger is not executable")
+                elif status == "VALIDATION_ERROR":
+                    exact_object(trigger, {"kind", "fieldCode", "errorCode"},
+                                 "TEST.trigger.VALIDATION_ERROR")
+                    matches = [rule for rule in design["VALIDATION"]["rules"]
+                               if isinstance(rule, dict)
+                               and rule.get("commandCode") == row["commandCode"]
+                               and rule.get("fieldCode") == trigger["fieldCode"]
+                               and rule.get("errorCode") == trigger["errorCode"]]
+                    values = {**row["inputValues"], "CURRENT_STATE": transition["fromState"]}
+                    failed = [rule for rule in design["VALIDATION"]["rules"]
+                              if isinstance(rule, dict)
+                              and rule.get("commandCode") == row["commandCode"]
+                              and not predicate_passes(rule, values)]
+                    if (trigger["kind"] != "DECLARED_VALIDATION_FAILURE"
+                            or len(matches) != 1 or failed != matches):
+                        raise ContractError("TEST validation trigger does not fail one declared rule")
+                elif status == "FORBIDDEN":
+                    exact_object(trigger, {"kind"}, "TEST.trigger.FORBIDDEN")
+                    if trigger["kind"] != "UNASSIGNED_ACTOR":
+                        raise ContractError("TEST FORBIDDEN trigger is not executable")
+                elif status == "CONFLICT":
+                    exact_object(trigger, {"kind", "state", "referenceScenarioCode"},
+                                 "TEST.trigger.CONFLICT")
+                    if (trigger["kind"] != "STALE_STATE"
+                            or trigger["state"] != transition["toState"]
+                            or trigger["state"] == transition["fromState"]
+                            or trigger["referenceScenarioCode"] != success_case.get("scenarioCode")):
+                        raise ContractError("TEST CONFLICT trigger is not an exact stale state")
+                else:
+                    exact_object(trigger, {"kind", "referenceScenarioCode"},
+                                 "TEST.trigger.RECOVERY")
+                    if (trigger["kind"] != "IDEMPOTENT_REPLAY"
+                            or trigger["referenceScenarioCode"] != success_case.get("scenarioCode")):
+                        raise ContractError("TEST RECOVERY trigger is not bound to SUCCESS replay")
+                if status in {"FORBIDDEN", "CONFLICT", "RECOVERY"} \
+                        and canonical(row["inputValues"]) != canonical(success_case.get("inputValues")):
+                    raise ContractError(f"TEST {status} must isolate its trigger from input changes")
+                if status in {"SUCCESS", "FORBIDDEN", "CONFLICT", "RECOVERY"}:
+                    values = {**row["inputValues"], "CURRENT_STATE": transition["fromState"]}
+                    if any(not predicate_passes(rule, values) for rule in design["VALIDATION"]["rules"]
+                           if isinstance(rule, dict) and rule.get("commandCode") == row["commandCode"]):
+                        raise ContractError(f"TEST {status} input violates validation before its trigger")
                 command_statuses = statuses_by_command.setdefault(row["commandCode"], set())
-                if row["expectedStatus"] in command_statuses:
+                if status in command_statuses:
                     raise ContractError("TEST expectedStatus is duplicated for command")
-                command_statuses.add(row["expectedStatus"])
+                command_statuses.add(status)
                 assertions = row["assertionCodes"]
                 if (not isinstance(assertions, list) or len(set(assertions)) != len(assertions)
                         or not {"STATUS_MATCH", "OUTPUT_FIELDS_MATCH"}.issubset(assertions)
@@ -557,7 +788,9 @@ def execute_test_contract(design: dict[str, Any], binding: dict[str, Any]) -> di
         if len(transitions) != 1:
             raise ContractError("test scenario transition is not exact")
         values = dict(scenario["inputValues"])
-        values["CURRENT_STATE"] = transitions[0]["fromState"]
+        values["CURRENT_STATE"] = (scenario["trigger"]["state"]
+                                   if scenario["expectedStatus"] == "CONFLICT"
+                                   else transitions[0]["fromState"])
         failed_rules = [row["errorCode"] for row in rules + validations
                         if row["commandCode"] == scenario["commandCode"]
                         and not predicate_passes(row, values)]
@@ -575,9 +808,12 @@ def execute_test_contract(design: dict[str, Any], binding: dict[str, Any]) -> di
             "commandCode": scenario["commandCode"],
             "inputValues": scenario["inputValues"],
             "expectedStatus": scenario["expectedStatus"],
+            "expectedHttpStatus": scenario["expectedHttpStatus"],
             "fromState": transitions[0]["fromState"],
             "toState": transitions[0]["toState"],
+            "trigger": scenario["trigger"],
             "expectedOutputFields": scenario["expectedOutputFields"],
+            "expectedOutputValues": scenario["expectedOutputValues"],
             "assertionCodes": scenario["assertionCodes"],
             "evidence": evidence,
             "evidenceHash": digest(canonical(evidence)),
@@ -588,6 +824,9 @@ def execute_test_contract(design: dict[str, Any], binding: dict[str, Any]) -> di
                 "commandCode": scenario["commandCode"],
                 "inputValues": scenario["inputValues"],
                 "expectedStatus": scenario["expectedStatus"],
+                "expectedHttpStatus": scenario["expectedHttpStatus"],
+                "expectedOutputValues": scenario["expectedOutputValues"],
+                "trigger": scenario["trigger"],
                 "fromState": transitions[0]["fromState"],
                 "toState": transitions[0]["toState"],
             }],

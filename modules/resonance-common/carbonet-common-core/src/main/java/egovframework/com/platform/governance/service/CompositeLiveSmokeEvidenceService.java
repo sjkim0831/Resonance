@@ -39,6 +39,10 @@ public class CompositeLiveSmokeEvidenceService {
         String tenantId=required(request,"tenantId",100),projectId=required(request,"projectId",100);
         String observedState=required(request,"observedState",120);
         String targetRef=required(request,"targetRef",1000);
+        UUID executionId=UUID.fromString(required(request,"executionId",36));
+        String idempotencyKey=required(request,"idempotencyKey",200);
+        String idempotencyKeyHash=hash(Map.of("idempotencyKey",idempotencyKey));
+        int observedHttpStatus=exactInteger(request,"observedHttpStatus",100,599);
         Map<String,Object> input=object(request.get("input"),"input");
         Map<String,Object> output=object(request.get("output"),"output");
         Map<String,Object> laneDetails=object(request.get("laneDetails"),"laneDetails");
@@ -48,9 +52,10 @@ public class CompositeLiveSmokeEvidenceService {
         Map<String,Object> authority=currentAuthority(jobId,authorityId,observedAt);
         if(!Boolean.TRUE.equals(authority.get("temporalExact")))
             throw new IllegalArgumentException("LIVE_SMOKE_OBSERVED_AFTER_DEPLOY_REQUIRED");
-        String boundProject="GLOBAL".equals(authority.get("scopeType"))?"*":
-            String.valueOf(authority.get("boundProjectId"));
-        if(!projectId.equals(boundProject))
+        String scopeType=String.valueOf(authority.get("scopeType"));
+        String boundProject=String.valueOf(authority.get("boundProjectId"));
+        if(("PROJECT".equals(scopeType)&&!projectId.equals(boundProject))
+                ||!projectId.matches("^[A-Z][A-Z0-9_-]{2,63}$"))
             throw new SecurityException("LIVE_SMOKE_PROJECT_SCOPE_NOT_EXACT");
         if(!artifactHash.equals(authority.get("artifactHash")))
             throw new IllegalArgumentException("LIVE_SMOKE_ARTIFACT_NOT_CURRENT_JOB");
@@ -68,12 +73,22 @@ public class CompositeLiveSmokeEvidenceService {
                 CompositeExecutableDesignAuthorityCompiler.stable(object(
                     scenario.get("inputValues"),"scenario.inputValues"))))
             throw new IllegalArgumentException("LIVE_SMOKE_INPUT_NOT_DECLARED");
-        if(!output.keySet().equals(new TreeSet<>(strings(scenario.get("expectedOutputFields")))))
-            throw new IllegalArgumentException("LIVE_SMOKE_OUTPUT_FIELDS_NOT_DECLARED");
         String from=required(transition,"fromState",120),to=required(transition,"toState",120);
-        String expectedState="SUCCESS".equals(status)?to:from;
+        String expectedState=Set.of("SUCCESS","CONFLICT","RECOVERY").contains(status)?to:from;
         if(!expectedState.equals(observedState))
             throw new IllegalArgumentException("LIVE_SMOKE_STATE_NOT_DECLARED");
+        if(observedHttpStatus!=exactInteger(scenario,"expectedHttpStatus",100,599))
+            throw new IllegalArgumentException("LIVE_SMOKE_HTTP_STATUS_NOT_DECLARED");
+        ReferenceObservation reference=referenceOutput(jobId,authorityId,
+            ((Number)authority.get("authorityRevision")).longValue(),scenario,status);
+        validateExecutionObservation(executionId,idempotencyKey,idempotencyKeyHash,tenantId,
+            projectId,String.valueOf(authority.get("processCode")),String.valueOf(authority.get("stepCode")),
+            command,status,expectedState,scenario,reference);
+        Map<String,Object> expectedOutput=expectedOutput(scenario,input,transition,executionId,
+            idempotencyKey,command,reference.output());
+        if(!CompositeExecutableDesignAuthorityCompiler.stable(output).equals(
+                CompositeExecutableDesignAuthorityCompiler.stable(expectedOutput)))
+            throw new IllegalArgumentException("LIVE_SMOKE_OUTPUT_VALUES_NOT_DECLARED");
         String expectedTarget=target(lane,authority,design,operation);
         if(!expectedTarget.equals(targetRef))
             throw new IllegalArgumentException("LIVE_SMOKE_TARGET_NOT_DECLARED");
@@ -86,7 +101,7 @@ public class CompositeLiveSmokeEvidenceService {
         String stateHash=hash(Map.of("fromState",from,"toState",to,"observedState",observedState));
         String statusHash=hash(Map.of("expectedStatus",status,"observedStatus",status));
         Map<String,Object> laneEvidence=laneEvidence(lane,laneDetails,runId,targetRef,
-            inputHash,outputHash,artifactHash);
+            inputHash,outputHash,artifactHash,executionId,idempotencyKeyHash,observedHttpStatus,status);
         String laneEvidenceHash=hash(laneEvidence);
         String evidenceRef="live:"+runId+";lane:"+lane+";artifact:"+artifactHash;
         Map<String,Object> envelope=new LinkedHashMap<>();
@@ -119,7 +134,8 @@ public class CompositeLiveSmokeEvidenceService {
               ?,?,?,?::jsonb,?,?,?,
               ?,?,?,?,?,?,?,
               ?::timestamptz)
-            on conflict(job_id,authority_id,command_code,scenario_code,lane,status_case) do nothing
+            on conflict(job_id,authority_id,authority_revision,command_code,scenario_code,lane,status_case)
+            do nothing
             """,jobId,authorityId,authority.get("authorityRevision"),authority.get("processCode"),
             authority.get("stepCode"),authority.get("routePath"),authority.get("audience"),lane,status,
             scenarioCode,authenticatedAccount,tenantId,projectId,actor,command,json(input),json(output),
@@ -129,9 +145,10 @@ public class CompositeLiveSmokeEvidenceService {
         if(writes==0){
             String existing=jdbc.queryForObject("""
                 select evidence_hash from integrated_design_live_smoke_evidence
-                 where job_id=? and authority_id=? and command_code=? and scenario_code=?
-                   and lane=? and status_case=?
-                """,String.class,jobId,authorityId,command,scenarioCode,lane,status);
+                 where job_id=? and authority_id=? and authority_revision=?
+                   and command_code=? and scenario_code=? and lane=? and status_case=?
+                """,String.class,jobId,authorityId,authority.get("authorityRevision"),command,
+                scenarioCode,lane,status);
             if(!evidenceHash.equals(existing))throw new IllegalStateException(
                 "LIVE_SMOKE_EVIDENCE_CONFLICT_REQUIRES_NEW_JOB");
         }
@@ -237,38 +254,141 @@ public class CompositeLiveSmokeEvidenceService {
             throw new SecurityException("LIVE_SMOKE_ACCOUNT_ACTOR_SCOPE_NOT_EXACT");
     }
 
+    private ReferenceObservation referenceOutput(long jobId,long authorityId,long revision,
+            Map<String,Object> scenario,String status){
+        if(!Set.of("CONFLICT","RECOVERY").contains(status))return ReferenceObservation.EMPTY;
+        Map<String,Object> trigger=object(scenario.get("trigger"),"scenario.trigger");
+        String reference=required(trigger,"referenceScenarioCode",120);
+        List<Map<String,Object>> rows=jdbc.queryForList("""
+            select output_json::text as "output",lane_evidence::text as "laneEvidence"
+              from integrated_design_live_smoke_evidence
+             where job_id=? and authority_id=? and authority_revision=?
+               and scenario_code=? and status_case='SUCCESS' and lane='API'
+            """,jobId,authorityId,revision,reference);
+        if(rows.size()!=1)throw new IllegalStateException("LIVE_SMOKE_REFERENCE_SCENARIO_REQUIRED");
+        Map<String,Object> proof=jsonObject(rows.get(0).get("laneEvidence"),"reference.laneEvidence");
+        return new ReferenceObservation(jsonObject(rows.get(0).get("output"),"reference.output"),
+            required(proof,"executionId",36),hashText(proof.get("idempotencyKeyHash"),
+                "reference.idempotencyKeyHash"));
+    }
+
+    private void validateExecutionObservation(UUID executionId,String idempotencyKey,
+            String idempotencyKeyHash,String tenant,String project,String process,String step,
+            String command,String status,String expectedState,Map<String,Object> scenario,
+            ReferenceObservation reference){
+        List<Map<String,Object>> executions=jdbc.queryForList("""
+            select current_state as "currentState" from framework_process_execution
+             where execution_id=? and tenant_id=? and project_id=? and process_code=?
+            """,executionId,tenant,project,process);
+        if(executions.size()!=1||!expectedState.equals(executions.get(0).get("currentState")))
+            throw new IllegalArgumentException("LIVE_SMOKE_EXECUTION_STATE_NOT_EXACT");
+        Integer events=jdbc.queryForObject("""
+            select count(*) from framework_process_execution_event
+             where execution_id=? and step_code=? and command_code=? and idempotency_key=?
+            """,Integer.class,executionId,step,command,idempotencyKey);
+        int expectedEvents=Set.of("SUCCESS","RECOVERY").contains(status)?1:0;
+        if(events==null||events!=expectedEvents)
+            throw new IllegalArgumentException("LIVE_SMOKE_DATABASE_EVENT_CARDINALITY_NOT_EXACT");
+        if(Set.of("CONFLICT","RECOVERY").contains(status)){
+            if(!executionId.toString().equalsIgnoreCase(reference.executionId()))
+                throw new IllegalArgumentException("LIVE_SMOKE_REFERENCE_EXECUTION_NOT_EXACT");
+            boolean sameKey=idempotencyKeyHash.equals(reference.idempotencyKeyHash());
+            if(("RECOVERY".equals(status)&&!sameKey)||("CONFLICT".equals(status)&&sameKey))
+                throw new IllegalArgumentException("LIVE_SMOKE_REFERENCE_IDEMPOTENCY_NOT_EXACT");
+        }
+    }
+
+    private Map<String,Object> expectedOutput(Map<String,Object> scenario,Map<String,Object> input,
+            Map<String,Object> transition,UUID executionId,String idempotencyKey,String command,
+            Map<String,Object> reference){
+        Map<String,Object> descriptors=object(scenario.get("expectedOutputValues"),
+            "scenario.expectedOutputValues");
+        List<String> fields=strings(scenario.get("expectedOutputFields"));
+        if(!descriptors.keySet().equals(new TreeSet<>(fields)))
+            throw new IllegalArgumentException("LIVE_SMOKE_EXPECTED_OUTPUT_DESCRIPTOR_NOT_EXACT");
+        List<Map<String,Object>> events=jdbc.queryForList("""
+            select event_id as "eventId",to_state as "toState"
+              from framework_process_execution_event
+             where execution_id=? and command_code=? and idempotency_key=?
+            """,executionId,command,idempotencyKey);
+        Map<String,Object> event=events.size()==1?events.get(0):Map.of();
+        Map<String,Object> output=new LinkedHashMap<>();
+        for(String field:fields){
+            Map<String,Object> descriptor=object(descriptors.get(field),"expectedOutputValues."+field);
+            String source=required(descriptor,"source",40);Object value;
+            if("LITERAL".equals(source)){
+                if(!descriptor.keySet().equals(Set.of("source","value"))||descriptor.get("value")==null)
+                    throw new IllegalArgumentException("LIVE_SMOKE_LITERAL_OUTPUT_NOT_EXACT");
+                value=descriptor.get("value");
+            }else{
+                if(!descriptor.keySet().equals(Set.of("source","path")))
+                    throw new IllegalArgumentException("LIVE_SMOKE_PATH_OUTPUT_NOT_EXACT");
+                String path=required(descriptor,"path",120);
+                Map<String,Object> origin=switch(source){
+                    case "REQUEST" -> input;
+                    case "DATABASE_EVENT" -> event;
+                    case "DECLARED_STATE" -> transition;
+                    case "REFERENCE_SCENARIO" -> reference;
+                    default -> throw new IllegalArgumentException("LIVE_SMOKE_OUTPUT_SOURCE_UNSUPPORTED");
+                };
+                if(!origin.containsKey(path)||origin.get(path)==null)
+                    throw new IllegalArgumentException("LIVE_SMOKE_OUTPUT_SOURCE_UNRESOLVED");
+                value=origin.get(path);
+            }
+            output.put(field,value);
+        }
+        return output;
+    }
+
     private Map<String,Object> laneEvidence(String lane,Map<String,Object> details,String runId,
-            String target,String inputHash,String outputHash,String artifactHash){
+            String target,String inputHash,String outputHash,String artifactHash,UUID executionId,
+            String idempotencyKeyHash,int observedHttpStatus,String status){
         Set<String> expected=switch(lane){
             case "DATABASE" -> Set.of("rereadHash","transactionHash");
-            case "BROWSER" -> Set.of("domHash","screenshotHash","rendered");
-            default -> Set.of("transportHash");
+            case "BROWSER" -> Set.of("domHash","screenshotHash","rendered",
+                "runtimeObserved","accessDenied");
+            default -> Set.of("transportHash","httpStatus");
         };
         if(!details.keySet().equals(expected))throw new IllegalArgumentException("LIVE_SMOKE_LANE_DETAILS_NOT_EXACT");
-        if("BROWSER".equals(lane)&&!Boolean.TRUE.equals(details.get("rendered")))
-            throw new IllegalArgumentException("LIVE_SMOKE_BROWSER_NOT_RENDERED");
-        for(Map.Entry<String,Object> entry:details.entrySet())if(!"rendered".equals(entry.getKey()))
+        if("API".equals(lane)&&(!(details.get("httpStatus") instanceof Number number)
+                ||number.intValue()!=observedHttpStatus))
+            throw new IllegalArgumentException("LIVE_SMOKE_API_HTTP_STATUS_NOT_EXACT");
+        if("BROWSER".equals(lane)&&(!Boolean.TRUE.equals(details.get("rendered"))
+                ||Boolean.TRUE.equals(details.get("accessDenied"))!="FORBIDDEN".equals(status)
+                ||Boolean.TRUE.equals(details.get("runtimeObserved"))=="FORBIDDEN".equals(status)))
+            throw new IllegalArgumentException("LIVE_SMOKE_BROWSER_OBSERVATION_NOT_EXACT");
+        for(Map.Entry<String,Object> entry:details.entrySet())if(!Set.of(
+                "rendered","runtimeObserved","accessDenied","httpStatus").contains(entry.getKey()))
             hashText(entry.getValue(),"laneDetails."+entry.getKey());
         Map<String,Object> proof=new LinkedHashMap<>();
         proof.put("schema",SCHEMA);proof.put("source",switch(lane){
             case "API"->"API_HTTP";case "DATABASE"->"POSTGRES_REREAD";default->"BROWSER_DOM";});
         proof.put("runId",runId);proof.put("targetRef",target);proof.put("observed",true);
         proof.put("requestHash",inputHash);proof.put("responseHash",outputHash);
-        proof.put("artifactHash",artifactHash);proof.putAll(details);return proof;
+        proof.put("artifactHash",artifactHash);proof.put("executionId",executionId.toString());
+        proof.put("idempotencyKeyHash",idempotencyKeyHash);proof.put("observedHttpStatus",observedHttpStatus);
+        proof.putAll(details);return proof;
     }
 
     private String target(String lane,Map<String,Object> authority,Map<String,Object> design,
             Map<String,Object> operation){
         if("API".equals(lane))return operation.get("method")+" "+operation.get("path");
         if("BROWSER".equals(lane))return String.valueOf(authority.get("routePath"));
-        return "entities:"+String.join(",",maps(object(design.get("DATABASE"),"DATABASE")
-            .get("entities")).stream().map(row->String.valueOf(row.get("entity"))).sorted().toList());
+        return "entity:framework_process_execution";
+    }
+
+    private record ReferenceObservation(Map<String,Object> output,String executionId,
+        String idempotencyKeyHash){
+        private static final ReferenceObservation EMPTY=new ReferenceObservation(Map.of(),"","");
     }
 
     private String hash(Object value){return jdbc.queryForObject(
         "select framework_composite_live_smoke_hash(?::jsonb)",String.class,json(value));}
     private String json(Object value){try{return mapper.writeValueAsString(value);}
         catch(Exception error){throw new IllegalArgumentException("LIVE_SMOKE_JSON_INVALID",error);}}
+    @SuppressWarnings("unchecked") private Map<String,Object> jsonObject(Object raw,String key){
+        try{return mapper.readValue(String.valueOf(raw),LinkedHashMap.class);}
+        catch(Exception error){throw new IllegalArgumentException("LIVE_SMOKE_"+key+"_INVALID",error);}}
     private static String required(Map<String,Object> value,String key,int max){
         String text=String.valueOf(value.getOrDefault(key,"")).trim();
         if(text.isEmpty()||text.length()>max)throw new IllegalArgumentException("LIVE_SMOKE_"+key+"_INVALID");
@@ -283,6 +403,15 @@ public class CompositeLiveSmokeEvidenceService {
             throw new IllegalArgumentException("LIVE_SMOKE_"+key+"_INVALID");
         try{long exact=new BigDecimal(String.valueOf(raw)).longValueExact();
             if(exact<1)throw new ArithmeticException();return exact;
+        }catch(ArithmeticException invalid){
+            throw new IllegalArgumentException("LIVE_SMOKE_"+key+"_INVALID");
+        }
+    }
+    private static int exactInteger(Map<String,Object> value,String key,int min,int max){
+        Object raw=value.get(key);if(!(raw instanceof Number))
+            throw new IllegalArgumentException("LIVE_SMOKE_"+key+"_INVALID");
+        try{int exact=new BigDecimal(String.valueOf(raw)).intValueExact();
+            if(exact<min||exact>max)throw new ArithmeticException();return exact;
         }catch(ArithmeticException invalid){
             throw new IllegalArgumentException("LIVE_SMOKE_"+key+"_INVALID");
         }

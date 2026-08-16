@@ -30,11 +30,31 @@ RUNTIME_RESPONSE_SCHEMA = {
     "eventId": {"type": "integer"},
     "toState": {"type": "string"},
 }
-RUNTIME_ERRORS = {
+ERROR_RESPONSE_SCHEMA = {
+    "success": {"type": "boolean"},
+    "code": {"type": "string"},
+    "message": {"type": "string"},
+}
+RECOVERY_FIELD_SCHEMA = {"type": "boolean"}
+STATUS_CASES = ("SUCCESS", "VALIDATION_ERROR", "FORBIDDEN", "CONFLICT", "RECOVERY")
+STATUS_HTTP = {
+    "SUCCESS": 200,
+    "VALIDATION_ERROR": 400,
+    "FORBIDDEN": 403,
+    "CONFLICT": 409,
+    "RECOVERY": 200,
+}
+RUNTIME_ERRORS = (
     (400, "INVALID_REQUEST"),
-    (401, "AUTHENTICATION_REQUIRED"),
     (403, "ACCESS_DENIED"),
+    (409, "CONFLICT"),
     (500, "INTERNAL_ERROR"),
+)
+RUNTIME_RESULT_PROJECTION_TYPES = {
+    "success": "boolean",
+    "idempotent": "boolean",
+    "eventId": "integer",
+    "toState": "string",
 }
 RUNTIME_PERSISTENCE = {
     "persistenceId": "PROCESS_EXECUTION_AGGREGATE",
@@ -163,10 +183,106 @@ def schema_fields(schema: Any, label: str, request: bool = False) -> list[tuple[
     return fields
 
 
+def validate_status_responses(response: Any) -> tuple[dict[str, Any], list[str]]:
+    response = exact_keys(response, {"statusResponses", "errors"}, "response")
+    if not isinstance(response["statusResponses"], list):
+        raise ContractError("response.statusResponses must be an array")
+    cases: dict[str, Any] = {}
+    success_business_fields: list[str] | None = None
+    success_properties: dict[str, Any] | None = None
+    for index, raw_case in enumerate(response["statusResponses"]):
+        case = exact_keys(raw_case, {"statusCase", "httpStatus", "schema"},
+                          f"response.statusResponses[{index}]")
+        status_case = required_text(case, "statusCase", CODE)
+        if status_case not in STATUS_HTTP or status_case in cases:
+            raise ContractError("response.statusResponses status coverage is not exact")
+        if type(case["httpStatus"]) is not int or case["httpStatus"] != STATUS_HTTP[status_case]:
+            raise ContractError(f"response status is not exact for {status_case}")
+        fields = schema_fields(case["schema"], f"response.statusResponses[{index}].schema")
+        properties = case["schema"]["properties"]
+        if set(case["schema"]["required"]) != set(properties):
+            raise ContractError(f"response {status_case} fields must all be required")
+        if status_case in {"VALIDATION_ERROR", "FORBIDDEN", "CONFLICT"}:
+            if properties != ERROR_RESPONSE_SCHEMA:
+                raise ContractError(f"response {status_case} must use the exact error body")
+        elif status_case == "SUCCESS":
+            if not set(RUNTIME_RESPONSE_SCHEMA).issubset(properties):
+                raise ContractError("response SUCCESS omits runtime result fields")
+            if any(properties[field] != schema for field, schema in RUNTIME_RESPONSE_SCHEMA.items()):
+                raise ContractError("response SUCCESS runtime result types are not exact")
+            business = sorted(set(properties) - set(RUNTIME_RESPONSE_SCHEMA))
+            if set(business) & {"recovered", *ERROR_RESPONSE_SCHEMA}:
+                raise ContractError("response SUCCESS business fields collide with reserved fields")
+            success_business_fields = business
+            success_properties = properties
+        else:
+            if success_properties is None:
+                raise ContractError("response SUCCESS must precede RECOVERY")
+            expected = {**success_properties, "recovered": RECOVERY_FIELD_SCHEMA}
+            if properties != expected:
+                raise ContractError("response RECOVERY must add only recovered=true")
+        cases[status_case] = {**case, "fields": fields}
+    if list(cases) != list(STATUS_CASES):
+        raise ContractError("response.statusResponses must declare the five statuses in canonical order")
+    if success_business_fields is None:
+        raise ContractError("response SUCCESS contract is missing")
+    if not isinstance(response["errors"], list):
+        raise ContractError("response.errors must be an array")
+    errors: list[tuple[int, str]] = []
+    for index, raw_error in enumerate(response["errors"]):
+        error = exact_keys(raw_error, {"status", "code"}, f"response.errors[{index}]")
+        if type(error["status"]) is not int or not 400 <= error["status"] <= 599:
+            raise ContractError(f"response.errors[{index}].status is invalid")
+        signature = (error["status"], required_text(error, "code", CODE))
+        if signature in errors:
+            raise ContractError("response.errors contains a duplicate")
+        errors.append(signature)
+    if tuple(errors) != RUNTIME_ERRORS:
+        raise ContractError(
+            "response.errors must exactly declare runtime 400/403/409/500 errors in canonical order")
+    return cases, success_business_fields
+
+
+def validate_response_projection(operation: dict[str, Any], cases: dict[str, Any],
+                                 business_fields: list[str]) -> list[dict[str, str]]:
+    raw_projection = operation["responseProjection"]
+    if not isinstance(raw_projection, list):
+        raise ContractError("responseProjection must be an array")
+    request_schema = operation["request"]["schema"]
+    request_properties = request_schema["properties"]
+    request_required = set(request_schema["required"])
+    success_properties = cases["SUCCESS"]["schema"]["properties"]
+    projection: list[dict[str, str]] = []
+    seen: set[str] = set()
+    for index, raw in enumerate(raw_projection):
+        row = exact_keys(raw, {"fieldCode", "source", "sourcePath"},
+                         f"responseProjection[{index}]")
+        field = required_text(row, "fieldCode", JAVA_ID)
+        source = required_text(row, "source")
+        source_path = required_text(row, "sourcePath", JAVA_ID)
+        if field in seen or field not in business_fields:
+            raise ContractError("responseProjection field coverage is not exact")
+        seen.add(field)
+        if source == "REQUEST":
+            if (source_path != field or source_path not in request_required
+                    or success_properties[field] != request_properties.get(source_path)):
+                raise ContractError("REQUEST response projection must be a required same-field echo")
+        elif source == "RUNTIME_RESULT":
+            expected_type = RUNTIME_RESULT_PROJECTION_TYPES.get(source_path)
+            if expected_type is None or success_properties[field].get("type") != expected_type:
+                raise ContractError("RUNTIME_RESULT response projection is unresolved or type-incompatible")
+        else:
+            raise ContractError("responseProjection source is unsupported")
+        projection.append({"fieldCode": field, "source": source, "sourcePath": source_path})
+    if seen != set(business_fields) or [row["fieldCode"] for row in projection] != sorted(seen):
+        raise ContractError("responseProjection must exactly cover business fields in canonical order")
+    return projection
+
+
 def validate_operation(operation: Any, screen: dict[str, Any]) -> dict[str, Any]:
     keys = {"operationId", "implementationKind", "method", "path", "processCode", "stepCode", "commandCode",
             "authority", "request", "response", "persistence", "transactionPolicy",
-            "idempotencyRequired", "rollback"}
+            "idempotencyRequired", "rollback", "responseProjection"}
     operation = exact_keys(operation, keys, "operation")
     required_text(operation, "operationId", OP_ID)
     if operation["implementationKind"] != "PROCESS_COMMAND_ADAPTER" or operation["method"] != "POST":
@@ -190,25 +306,10 @@ def validate_operation(operation: Any, screen: dict[str, Any]) -> dict[str, Any]
     if request["contentType"] != "application/json":
         raise ContractError("request.contentType must be application/json")
     schema_fields(request["schema"], "request.schema", request=True)
-    response = exact_keys(operation["response"], {"successStatus", "schema", "errors"}, "response")
-    if type(response["successStatus"]) is not int or response["successStatus"] != 200 or not isinstance(response["errors"], list):
-        raise ContractError("response contract is invalid")
-    schema_fields(response["schema"], "response.schema")
-    if (response["schema"]["properties"] != RUNTIME_RESPONSE_SCHEMA
-            or set(response["schema"]["required"]) != set(RUNTIME_RESPONSE_SCHEMA)):
-        raise ContractError("response.schema must exactly match the process-command runtime response")
-    errors: set[tuple[int, str]] = set()
-    for index, raw_error in enumerate(response["errors"]):
-        error = exact_keys(raw_error, {"status", "code"}, f"response.errors[{index}]")
-        if type(error["status"]) is not int or not 400 <= error["status"] <= 599:
-            raise ContractError(f"response.errors[{index}].status is invalid")
-        code = required_text(error, "code", CODE)
-        signature = (error["status"], code)
-        if signature in errors:
-            raise ContractError("response.errors contains a duplicate")
-        errors.add(signature)
-    if errors != RUNTIME_ERRORS:
-        raise ContractError("response.errors must exactly declare runtime 400/401/403/500 errors")
+    cases, business_fields = validate_status_responses(operation["response"])
+    operation["responseCases"] = cases
+    operation["businessResponseFields"] = business_fields
+    operation["responseProjection"] = validate_response_projection(operation, cases, business_fields)
     persistence = operation["persistence"]
     persistence = exact_keys(persistence, {"persistenceId", "entity", "operation", "primaryKey", "tenantColumn", "projectColumn", "versionColumn", "transactional"}, "persistence")
     required_text(persistence, "persistenceId", CODE)
@@ -249,9 +350,14 @@ public record {name}{suffix}({components}) {{}}
 def operation_sources(screen: dict[str, Any], operation: dict[str, Any], endpoint_hash: str) -> list[tuple[str, bytes]]:
     name = java_name(operation["operationId"])
     request_fields = schema_fields(operation["request"]["schema"], "request.schema", request=True)
-    response_fields = schema_fields(operation["response"]["schema"], "response.schema")
+    response_cases = operation["responseCases"]
+    success_fields = response_cases["SUCCESS"]["fields"]
+    recovery_fields = response_cases["RECOVERY"]["fields"]
+    error_fields = response_cases["VALIDATION_ERROR"]["fields"]
     request_path, request_source = record_source(name, request_fields, "Request", screen["designHash"], endpoint_hash)
-    response_path, response_source = record_source(name, response_fields, "Response", screen["designHash"], endpoint_hash)
+    success_path, success_source = record_source(name, success_fields, "SuccessResponse", screen["designHash"], endpoint_hash)
+    recovery_path, recovery_source = record_source(name, recovery_fields, "RecoveryResponse", screen["designHash"], endpoint_hash)
+    error_path, error_source = record_source(name, error_fields, "ErrorResponse", screen["designHash"], endpoint_hash)
     context_lines = "\n".join(
         f'        payload.put("{field}", request.{field}());'
         for _, field in request_fields if field in RUNTIME_FIELDS
@@ -265,6 +371,20 @@ def operation_sources(screen: dict[str, Any], operation: dict[str, Any], endpoin
         + (f" || request.{field}().isBlank()" if operation["request"]["schema"]["properties"][field]["type"] == "string" else "")
         for field in sorted(operation["request"]["schema"]["required"])
     )
+    projection_lines = "\n".join(
+        (f'            responsePayload.put("{row["fieldCode"]}",request.{row["sourcePath"]}());'
+         if row["source"] == "REQUEST" else
+         f'            responsePayload.put("{row["fieldCode"]}",result.get("{row["sourcePath"]}"));')
+        for row in operation["responseProjection"]
+    )
+    runtime_projection_paths = sorted({row["sourcePath"] for row in operation["responseProjection"]
+                                       if row["source"] == "RUNTIME_RESULT"})
+    runtime_projection_guard = "\n".join(
+        f'                    || result.get("{field}")==null'
+        for field in runtime_projection_paths
+        if field not in RUNTIME_RESPONSE_SCHEMA
+    )
+    error_type = f"{name}ErrorResponse"
     source = f"""package {PACKAGE};
 
 @org.springframework.web.bind.annotation.RestController
@@ -290,11 +410,11 @@ public final class {name}Controller {{
             jakarta.servlet.http.HttpServletRequest servletRequest) {{
         var context=currentUserContextService.resolve(servletRequest);
         if(context==null || !context.isAuthenticated() || context.getUserId()==null || context.getUserId().isBlank())
-            return org.springframework.http.ResponseEntity.status(401).body(java.util.Map.of("success",false,"code","AUTHENTICATION_REQUIRED","message","Authentication is required."));
+            return org.springframework.http.ResponseEntity.status(401).body(new {error_type}("AUTHENTICATION_REQUIRED","Authentication is required.",false));
         if(request==null || {required_guard})
-            return org.springframework.http.ResponseEntity.badRequest().body(java.util.Map.of("success",false,"code","INVALID_REQUEST","message","Required request field is missing."));
+            return org.springframework.http.ResponseEntity.badRequest().body(new {error_type}("INVALID_REQUEST","Request failed",false));
         if(!{json.dumps(screen['actorCode'])}.equals(request.actorCode()))
-            return org.springframework.http.ResponseEntity.status(403).body(java.util.Map.of("success",false,"code","ACCESS_DENIED","message","Access denied"));
+            return org.springframework.http.ResponseEntity.status(403).body(new {error_type}("ACCESS_DENIED","Access denied",false));
         var payload=new java.util.LinkedHashMap<String,Object>();
 {context_lines}
         payload.put("processCode",{json.dumps(operation['processCode'])});
@@ -308,34 +428,49 @@ public final class {name}Controller {{
         try {{
             try {{ payload.put("requestJson",objectMapper.writeValueAsString(business)); }}
             catch(Exception invalidJson) {{
-                return org.springframework.http.ResponseEntity.badRequest().body(java.util.Map.of("success",false,"code","INVALID_REQUEST","message","Request serialization failed"));
+                return org.springframework.http.ResponseEntity.badRequest().body(new {error_type}("INVALID_REQUEST","Request serialization failed",false));
             }}
             var result=service.executeProcessCommand(executionId,payload,context.getUserId());
-            if(!(result.get("success") instanceof Boolean)
+            if(!Boolean.TRUE.equals(result.get("success"))
                     || !(result.get("idempotent") instanceof Boolean)
                     || !(result.get("eventId") instanceof Number)
-                    || !(result.get("toState") instanceof String))
-                return org.springframework.http.ResponseEntity.status(500).body(java.util.Map.of("success",false,"code","INTERNAL_ERROR","message","Response contract mismatch"));
+                    || !(result.get("toState") instanceof String)
+                    || ((String)result.get("toState")).isBlank()
+{runtime_projection_guard})
+                return org.springframework.http.ResponseEntity.status(500).body(new {error_type}("INTERNAL_ERROR","Response contract mismatch",false));
             var responsePayload=new java.util.LinkedHashMap<String,Object>();
             responsePayload.put("success",result.get("success"));
             responsePayload.put("idempotent",result.get("idempotent"));
             responsePayload.put("eventId",((Number)result.get("eventId")).longValue());
             responsePayload.put("toState",result.get("toState"));
-            {name}Response response;
-            try {{ response=objectMapper.convertValue(responsePayload,{name}Response.class); }}
-            catch(IllegalArgumentException mismatch) {{
-                return org.springframework.http.ResponseEntity.status(500).body(java.util.Map.of("success",false,"code","INTERNAL_ERROR","message","Response contract mismatch"));
+{projection_lines}
+            if(Boolean.TRUE.equals(result.get("idempotent"))) {{
+                responsePayload.put("recovered",true);
+                {name}RecoveryResponse response;
+                try {{ response=objectMapper.convertValue(responsePayload,{name}RecoveryResponse.class); }}
+                catch(IllegalArgumentException mismatch) {{
+                    return org.springframework.http.ResponseEntity.status(500).body(new {error_type}("INTERNAL_ERROR","Response contract mismatch",false));
+                }}
+                return org.springframework.http.ResponseEntity.status(200).body(response);
             }}
-            return org.springframework.http.ResponseEntity.status({operation['response']['successStatus']}).body(response);
+            {name}SuccessResponse response;
+            try {{ response=objectMapper.convertValue(responsePayload,{name}SuccessResponse.class); }}
+            catch(IllegalArgumentException mismatch) {{
+                return org.springframework.http.ResponseEntity.status(500).body(new {error_type}("INTERNAL_ERROR","Response contract mismatch",false));
+            }}
+            return org.springframework.http.ResponseEntity.status(200).body(response);
         }}
-        catch(SecurityException denied) {{ return org.springframework.http.ResponseEntity.status(403).body(java.util.Map.of("success",false,"code","ACCESS_DENIED","message","Access denied")); }}
-        catch(IllegalArgumentException | IllegalStateException invalid) {{ return org.springframework.http.ResponseEntity.badRequest().body(java.util.Map.of("success",false,"code","INVALID_REQUEST","message","Request failed")); }}
-        catch(Exception unexpected) {{ return org.springframework.http.ResponseEntity.status(500).body(java.util.Map.of("success",false,"code","INTERNAL_ERROR","message","Internal processing failed")); }}
+        catch(SecurityException denied) {{ return org.springframework.http.ResponseEntity.status(403).body(new {error_type}("ACCESS_DENIED","Access denied",false)); }}
+        catch(IllegalArgumentException invalid) {{ return org.springframework.http.ResponseEntity.badRequest().body(new {error_type}("INVALID_REQUEST","Request failed",false)); }}
+        catch(IllegalStateException conflict) {{ return org.springframework.http.ResponseEntity.status(409).body(new {error_type}("CONFLICT","Request conflicts with the current state",false)); }}
+        catch(Exception unexpected) {{ return org.springframework.http.ResponseEntity.status(500).body(new {error_type}("INTERNAL_ERROR","Internal processing failed",false)); }}
     }}
 }}
 """
     controller_path = f"src/main/java/{PACKAGE.replace('.', '/')}/{name}Controller.java"
-    return [(request_path, request_source), (response_path, response_source), (controller_path, source.encode())]
+    return [(request_path, request_source), (success_path, success_source),
+            (recovery_path, recovery_source), (error_path, error_source),
+            (controller_path, source.encode())]
 
 
 def load_contract(path: Path) -> tuple[str, list[dict[str, Any]]]:

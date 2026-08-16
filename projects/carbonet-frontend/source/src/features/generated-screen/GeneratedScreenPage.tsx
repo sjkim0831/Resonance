@@ -39,10 +39,13 @@ function GeneratedContent({ screen, runtimeWarning = "" }: { screen: GeneratedSc
   const scenarios = list(screen.traceability.requiredScenarioTypes);
   const kpis = items(spec.kpis,"KPI"), sections = materialized.sections as ContractItem[], fields = materialized.fields as ContractItem[], actions = materialized.actions as ContractItem[], states = list(spec.states);
   const commandCode = text(spec.commandCode) || actions[0]?.code || "COMPLETE";
-  const initialProjectId = useMemo(() => new URLSearchParams(location.search).get("projectId") || "", []);
-  const [tenantId, setTenantId] = useState("DEFAULT"), [projectId, setProjectId] = useState(initialProjectId), [executionId, setExecutionId] = useState("");
+  const initialContext = useMemo(() => { const query=new URLSearchParams(location.search); return {
+    tenantId:query.get("tenantId")||"DEFAULT",projectId:query.get("projectId")||"",
+    executionId:query.get("executionId")||""}; }, []);
+  const [tenantId, setTenantId] = useState(initialContext.tenantId), [projectId, setProjectId] = useState(initialContext.projectId), [executionId, setExecutionId] = useState(initialContext.executionId);
   const [values, setValues] = useState<Record<string, string>>({}), [draftVersion, setDraftVersion] = useState(0), [draftStatus, setDraftStatus] = useState("NOT_SAVED"), [busy, setBusy] = useState(false), [message, setMessage] = useState(""), [error, setError] = useState("");
-  const [currentState,setCurrentState]=useState(text(spec.fromState)),[nextTask,setNextTask]=useState<NextTask|null>(null);
+  const [currentState,setCurrentState]=useState(""),[runtimeObserved,setRuntimeObserved]=useState(false),
+    [accessDenied,setAccessDenied]=useState(false),[nextTask,setNextTask]=useState<NextTask|null>(null);
   const [optionSets,setOptionSets]=useState<Record<string,Array<{value:string;label:string}>>>({});
   const apiBase = en ? "/en/home/api/process-executions" : "/home/api/process-executions";
   const fieldEntries = useMemo<ContractItem[]>(() => fields.length ? fields : [{code:"WORK_NOTE",label:en ? "Work note" : "업무 메모"}], [en, fields]);
@@ -71,27 +74,35 @@ function GeneratedContent({ screen, runtimeWarning = "" }: { screen: GeneratedSc
       const execution=(result.execution||result) as Record<string,unknown>;
       if (execution.executionId) setExecutionId(String(execution.executionId));
       if (execution.currentState) setCurrentState(String(execution.currentState));
+      if (execution.executionId && execution.currentState) setRuntimeObserved(true);
       setMessage(en ? "The process state was saved successfully." : "프로세스 상태와 업무 증적을 저장했습니다.");
       return result as Record<string,unknown>;
     } catch (reason) { setError(reason instanceof Error ? reason.message : String(reason)); }
     finally { setBusy(false); }
   }
   async function start(event: FormEvent) { event.preventDefault(); await request(`${apiBase}/start`, { tenantId, projectId, processCode: screen.processCode, actorCode: screen.actorCode, routePath: screen.routePath, audience: screen.audience }); }
-  async function loadExecution() {
+  async function loadExecution(expectedExecutionId = "") {
     if (!requireDraftContext()) return;
-    setBusy(true); setError(""); setMessage("");
+    setBusy(true); setError(""); setMessage(""); setAccessDenied(false); setRuntimeObserved(false);
     try {
       const query=new URLSearchParams({tenantId,projectId,processCode:screen.processCode});
       const response=await fetch(`${apiBase}?${query}`,{credentials:"include"});
       const result=await response.json() as Record<string,unknown>;
-      if(!response.ok) throw new Error(String(result.message||(en?"Failed to load the process.":"프로세스 실행 정보를 불러오지 못했습니다.")));
+      if(!response.ok){setAccessDenied(response.status===403);throw new Error(String(result.message||
+        (response.status===403?(en?"Access denied.":"접근 권한이 없습니다."):
+          (en?"Failed to load the process.":"프로세스 실행 정보를 불러오지 못했습니다.")));}
       const execution=((result.execution||result) as Record<string,unknown>);
       if(!execution.executionId) throw new Error(en?"No running process exists.":"진행 중인 프로세스가 없습니다.");
+      if(expectedExecutionId&&String(execution.executionId).toLowerCase()!==expectedExecutionId.toLowerCase())
+        throw new Error(en?"The requested execution is not the current running process.":"요청한 실행과 현재 진행 중 실행이 일치하지 않습니다.");
       setExecutionId(String(execution.executionId)); setCurrentState(String(execution.currentState||""));
+      setRuntimeObserved(Boolean(execution.currentState));
       setMessage(en?"The running process was loaded.":"진행 중인 프로세스를 불러왔습니다.");
     } catch(reason){setError(reason instanceof Error?reason.message:String(reason));}
     finally{setBusy(false);}
   }
+  useEffect(()=>{if(initialContext.executionId&&initialContext.projectId&&initialContext.tenantId)
+    void loadExecution(initialContext.executionId);},[]);
   async function execute(command: string) {
     if (!executionId) { setError(en ? "Start or load a process first." : "먼저 프로세스를 시작하거나 실행 ID를 입력하세요."); return; }
     const action=actions.find(candidate=>candidate.code===command);
@@ -149,7 +160,12 @@ function GeneratedContent({ screen, runtimeWarning = "" }: { screen: GeneratedSc
     finally{setBusy(false);}
   }
 
-  return <main className="mx-auto max-w-7xl px-4 py-8 lg:px-8">
+  return <main className="mx-auto max-w-7xl px-4 py-8 lg:px-8"
+    data-access-denied={accessDenied?"true":"false"} data-audience={screen.audience}
+    data-current-state={runtimeObserved?currentState:""}
+    data-execution-id={runtimeObserved?executionId:""} data-process-code={screen.processCode}
+    data-project-id={runtimeObserved?projectId:""} data-runtime-observed={runtimeObserved?"true":"false"}
+    data-step-code={screen.stepCode} data-tenant-id={runtimeObserved?tenantId:""}>
     <header className="flex flex-col gap-4 border-b border-slate-200 pb-6 lg:flex-row lg:items-end lg:justify-between"><div><p className="gov-text-label font-black text-[#246beb]">{screen.processCode} · {screen.stepCode}</p><h1 className="gov-text-heading-lg mt-2 font-black text-[#052b57]">{screen.pageName}</h1><p className="gov-text-body mt-2 max-w-3xl text-slate-600">{text(spec.businessPurpose) || `${screen.actorCode} · ${screen.screenType}`}</p></div><a className="krds-control inline-flex items-center justify-center rounded-lg border border-[#246beb] bg-white px-4 font-bold text-[#246beb]" href={en ? "/en/emission/my-tasks" : "/emission/my-tasks"}>{en ? "Back to my tasks" : "내 업무로 돌아가기"}</a></header>
     {runtimeWarning && <p className="mt-5 rounded-xl border border-amber-300 bg-amber-50 p-4 font-bold text-amber-900" role="alert">{runtimeWarning}</p>}
     <section className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{([

@@ -1,0 +1,12 @@
+[Unit]
+Description=Poll durable generated-design live smoke dispatches
+
+[Timer]
+OnBootSec=45s
+OnUnitInactiveSec=15s
+RandomizedDelaySec=5s
+Persistent=true
+Unit=resonance-composite-live-smoke.service
+
+[Install]
+WantedBy=timers.target
