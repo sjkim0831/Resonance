@@ -1,0 +1,183 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://carbonet.local/schemas/design-to-code-page-impact-ledger.schema.json",
+  "title": "Carbonet design-to-code page impact ledger",
+  "type": "object",
+  "required": [
+    "schema",
+    "generatedAt",
+    "status",
+    "readOnly",
+    "sources",
+    "routeTotals",
+    "exactIdentities",
+    "endpoint",
+    "frontend",
+    "designSystem",
+    "designMutationImpact",
+    "probes",
+    "blockers",
+    "reviewBudget"
+  ],
+  "properties": {
+    "schema": {
+      "const": "carbonet.design-to-code-page-impact-ledger/v1"
+    },
+    "generatedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "status": {
+      "enum": ["COMPLETE", "INCOMPLETE"]
+    },
+    "readOnly": {
+      "type": "object",
+      "required": [
+        "databaseTransaction",
+        "repository",
+        "databaseWrites",
+        "liveFileWrites",
+        "databaseStatementTimeoutMs",
+        "databaseLockTimeoutMs"
+      ],
+      "properties": {
+        "databaseTransaction": { "const": true },
+        "repository": { "const": true },
+        "databaseWrites": { "const": 0 },
+        "liveFileWrites": { "const": 0 },
+        "databaseStatementTimeoutMs": {
+          "type": "integer",
+          "minimum": 1000,
+          "maximum": 540000
+        },
+        "databaseLockTimeoutMs": { "const": 5000 }
+      }
+    },
+    "sources": {
+      "type": "object",
+      "required": ["database", "repository"]
+    },
+    "routeTotals": {
+      "type": "object"
+    },
+    "exactIdentities": {
+      "type": "object",
+      "required": [
+        "identityContract",
+        "stepScreens",
+        "screenResource",
+        "professionalContract",
+        "blueprint",
+        "strategy",
+        "source",
+        "quality"
+      ]
+    },
+    "endpoint": {
+      "type": "object",
+      "required": [
+        "expectedScreenIdentities",
+        "expectedOperationCount",
+        "sourceReadiness",
+        "globalReadiness",
+        "catalog",
+        "codeGenerated"
+      ],
+      "properties": {
+        "expectedScreenIdentities": { "$ref": "#/$defs/nonNegativeInteger" },
+        "expectedOperationCount": { "$ref": "#/$defs/nonNegativeInteger" },
+        "sourceReadiness": { "type": ["object", "null"] },
+        "globalReadiness": { "type": ["object", "null"] },
+        "catalog": { "type": ["object", "null"] },
+        "codeGenerated": { "type": "object" }
+      }
+    },
+    "frontend": {
+      "type": "object",
+      "required": [
+        "canonicalKoRouteCount",
+        "routeSourceFileCount",
+        "pageManifestCount",
+        "routeBoundPageManifestCount",
+        "generatedCatalogImportCount",
+        "declaredGeneratedDefinitionCount",
+        "trackedGeneratedDefinitionCount",
+        "materializedGeneratedDefinitionCount",
+        "generatedSupportEntryCount"
+      ],
+      "additionalProperties": { "$ref": "#/$defs/nonNegativeInteger" }
+    },
+    "designSystem": {
+      "type": "object",
+      "required": ["databaseIdentityCoverage", "commonAssetCoverage", "repository"]
+    },
+    "designMutationImpact": {
+      "type": "object",
+      "required": ["authoritativeAffectedExactIdentityCount"],
+      "properties": {
+        "authoritativeAffectedExactIdentityCount": {
+          "type": ["integer", "null"],
+          "minimum": 0
+        },
+        "pendingDirtySignalCount": {
+          "type": ["integer", "null"],
+          "minimum": 0
+        }
+      }
+    },
+    "probes": {
+      "type": "object",
+      "additionalProperties": { "$ref": "#/$defs/probe" }
+    },
+    "blockers": {
+      "type": "object",
+      "required": ["kindCount", "affectedExactIdentityCount", "items"],
+      "properties": {
+        "kindCount": { "$ref": "#/$defs/nonNegativeInteger" },
+        "affectedExactIdentityCount": { "$ref": "#/$defs/nonNegativeInteger" },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["code", "count", "source", "detail"],
+            "properties": {
+              "code": { "type": "string", "pattern": "^[A-Z0-9_]+$" },
+              "count": {
+                "type": ["integer", "null"],
+                "minimum": 0
+              },
+              "source": { "type": "string", "minLength": 1 },
+              "detail": { "type": "string", "minLength": 1 }
+            }
+          }
+        }
+      }
+    },
+    "reviewBudget": {
+      "type": "object",
+      "required": ["targetMs", "actualMs", "withinTenMinutes"],
+      "properties": {
+        "targetMs": { "const": 600000 },
+        "actualMs": { "$ref": "#/$defs/nonNegativeInteger" },
+        "withinTenMinutes": { "type": "boolean" }
+      }
+    }
+  },
+  "$defs": {
+    "nonNegativeInteger": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "probe": {
+      "type": "object",
+      "required": ["name", "status", "durationMs"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "status": { "enum": ["OK", "ERROR"] },
+        "durationMs": { "$ref": "#/$defs/nonNegativeInteger" },
+        "value": {},
+        "error": { "type": "string" }
+      }
+    }
+  }
+}

@@ -1,0 +1,384 @@
+{
+  "blockers": {
+    "affectedExactIdentityCount": 156,
+    "items": [
+      {
+        "code": "PROFESSIONAL_CONTRACT_MISSING",
+        "count": 1,
+        "detail": "required exact identities with no professional contract",
+        "source": "database"
+      },
+      {
+        "code": "PROFESSIONAL_CONTRACT_DUPLICATE",
+        "count": 14,
+        "detail": "required exact identities with multiple professional contracts",
+        "source": "database"
+      },
+      {
+        "code": "BLUEPRINT_MISSING",
+        "count": 142,
+        "detail": "required exact identities with no VALID blueprint",
+        "source": "database"
+      },
+      {
+        "code": "SCREEN_CONTRACT_INCOMPLETE",
+        "count": 156,
+        "detail": "exact identities not closed across contract lanes and blueprint authority",
+        "source": "database"
+      },
+      {
+        "code": "CANONICALBLUEPRINTAUTHORITY_ERROR",
+        "count": null,
+        "detail": "ERROR: function public.framework_canonical_blueprint_authority(character varying, character varying, character varying, character varying, bigint) does not exist LINE 4: 'blueprintId',public.framework_canonical_blu... ^ HINT: No function matches the given name and argument types. You might need to add explicit type casts. command terminated with exit code 3",
+        "source": "database-probe"
+      },
+      {
+        "code": "SOURCEDESIGNCATALOG_ERROR",
+        "count": null,
+        "detail": "ERROR: function public.framework_source_canonical_design_catalog(integer, character varying) does not exist LINE 13: CROSS JOIN LATERAL public.framework_source_can... ^ HINT: No function matches the given name and argument types. You might need to add explicit type casts. command terminated with exit code 3",
+        "source": "database-probe"
+      },
+      {
+        "code": "SOURCEENDPOINTREADINESS_ERROR",
+        "count": null,
+        "detail": "ERROR: function public.framework_source_canonical_endpoint_readiness(integer, character varying) does not exist LINE 8: public.framework_source_canonical_endpo... ^ HINT: No function matches the given name and argument types. You might need to add explicit type casts. command terminated with exit code 3",
+        "source": "database-probe"
+      },
+      {
+        "code": "GLOBALENDPOINTREADINESS_ERROR",
+        "count": null,
+        "detail": "ERROR: function public.framework_canonical_endpoint_readiness(integer, character varying) does not exist LINE 1: SELECT public.framework_canonical_endpoint_readiness(5000,NU... ^ HINT: No function matches the given name and argument types. You might need to add explicit type casts. command terminated with exit code 3",
+        "source": "database-probe"
+      },
+      {
+        "code": "SOURCEENDPOINTCATALOG_ERROR",
+        "count": null,
+        "detail": "ERROR: function public.framework_source_canonical_endpoint_catalog(integer, character varying) does not exist LINE 7: SELECT public.framework_source_canonical_endpo... ^ HINT: No function matches the given name and argument types. You might need to add explicit type casts. command terminated with exit code 3",
+        "source": "database-probe"
+      },
+      {
+        "code": "DESIGNCAUSALITYSTATUS_ERROR",
+        "count": null,
+        "detail": "ERROR: function public.framework_design_causality_status() does not exist LINE 1: SELECT public.framework_design_causality_status(); ^ HINT: No function matches the given name and argument types. You might need to add explicit type casts. command terminated with exit code 3",
+        "source": "database-probe"
+      },
+      {
+        "code": "GENERATED_SCREEN_DEFINITION_CLOSURE_GAP",
+        "count": 1378,
+        "detail": "closure declaration is larger than tracked generated definitions",
+        "source": "repository"
+      },
+      {
+        "code": "GENERATED_ENDPOINT_CODE_GAP",
+        "count": 1028,
+        "detail": "expected endpoint screen identities exceed tracked generated endpoint artifacts",
+        "source": "database+repository"
+      },
+      {
+        "code": "COMMON_COMPONENT_CATALOG_EMPTY",
+        "count": 1,
+        "detail": "tracked system component catalog has no reusable components",
+        "source": "repository"
+      }
+    ],
+    "kindCount": 13
+  },
+  "designMutationImpact": {
+    "authoritativeAffectedExactIdentityCount": 887,
+    "compilerAffectedExactIdentityCount": 887,
+    "pendingDirtySignalCount": null,
+    "scope": "ALL_COMPILER_READY_MAXIMUM",
+    "selector": {},
+    "selectorMatchedExactIdentityCount": 1043,
+    "sourceGenerationAffectedExactIdentityCount": 887
+  },
+  "designSystem": {
+    "commonAssetCoverage": {
+      "activePageCount": 565,
+      "missingPageCount": 0,
+      "readyPageCount": 565
+    },
+    "databaseIdentityCoverage": {
+      "krdsExactIdentities": 901,
+      "sduiOrJsonFormExactIdentities": 0
+    },
+    "repository": {
+      "krdsCssTokenCount": 22,
+      "sduiReferenceFileCount": 9,
+      "systemComponentCatalogCount": 0
+    }
+  },
+  "endpoint": {
+    "catalog": null,
+    "codeGenerated": {
+      "artifactCount": 0,
+      "javaSourceCount": 0,
+      "manifestCount": 0,
+      "manifestErrorCount": 0,
+      "manifestErrors": [],
+      "processDirectoryCount": 0
+    },
+    "expectedOperationCount": 4547,
+    "expectedScreenIdentities": 1028,
+    "globalReadiness": null,
+    "sourceReadiness": null
+  },
+  "exactIdentities": {
+    "blueprint": {
+      "duplicateAmbiguous": 0,
+      "duplicateAuthorityResolved": 35,
+      "duplicateRequiredIdentityGroups": 35,
+      "exactRequiredIdentities": 866,
+      "globalDuplicateGroups": 51,
+      "missingRequiredIdentities": 142,
+      "physicalRows": 1728,
+      "validLogicalIdentities": 1590,
+      "validPhysicalRows": 1728
+    },
+    "identityContract": {
+      "fields": [
+        "processCode",
+        "stepCode",
+        "audience",
+        "normalizedRoute"
+      ],
+      "normalization": "upper(process,step,audience)+lower(path-before-query)"
+    },
+    "professionalContract": {
+      "duplicateRequiredIdentityGroups": 14,
+      "exactRequiredIdentities": 1028,
+      "globalDuplicateGroups": 35,
+      "logicalExactGroups": 1968,
+      "missingRequiredIdentities": 1,
+      "physicalRows": 2003
+    },
+    "quality": {
+      "ambiguousExactIdentities": 14,
+      "exactResourceContractBlueprintIdentities": 853,
+      "incompleteExactIdentities": 156,
+      "physicalSingleClosureExactIdentities": 853
+    },
+    "screenResource": {
+      "duplicateRequiredIdentityGroups": 0,
+      "exactRequiredIdentities": 1037,
+      "missingRequiredIdentities": 6
+    },
+    "source": {
+      "compilerReadyExactIdentities": 887,
+      "emittedReadyExactIdentities": 887,
+      "generatedSourcePathReadyExactIdentities": 1,
+      "sourceCatalogEligibleExactIdentities": 887
+    },
+    "stepScreens": {
+      "activeBindingExactIdentities": 1215,
+      "requiredExactIdentities": 1043,
+      "stepsWithScreenRequirement": 539,
+      "stepsWithoutScreenRequirement": 33,
+      "totalSteps": 572
+    },
+    "strategy": {
+      "adoptExistingPhysicalRows": 868,
+      "generatedRuntimePhysicalRows": 859,
+      "manualStrategyPhysicalRows": 1,
+      "ownershipAmbiguousExactIdentities": 0,
+      "ownershipGeneratedExactIdentities": 819,
+      "ownershipHybridExactIdentities": 82,
+      "ownershipManualExactIdentities": 0,
+      "ownershipUnclassifiedExactIdentities": 142
+    }
+  },
+  "frontend": {
+    "canonicalKoRouteCount": 308,
+    "declaredGeneratedDefinitionCount": 1378,
+    "generatedCatalogImportCount": 1378,
+    "generatedSupportEntryCount": 0,
+    "materializedGeneratedDefinitionCount": 0,
+    "pageManifestCount": 231,
+    "routeBoundPageManifestCount": 231,
+    "routeSourceFileCount": 15,
+    "trackedGeneratedDefinitionCount": 0
+  },
+  "generatedAt": "2026-08-16T08:40:40Z",
+  "probes": {
+    "canonicalBlueprintAuthority": {
+      "durationMs": 613,
+      "error": "ERROR: function public.framework_canonical_blueprint_authority(character varying, character varying, character varying, character varying, bigint) does not exist LINE 4: 'blueprintId',public.framework_canonical_blu... ^ HINT: No function matches the given name and argument types. You might need to add explicit type casts. command terminated with exit code 3",
+      "name": "canonicalBlueprintAuthority",
+      "status": "ERROR"
+    },
+    "commonAssetCoverage": {
+      "durationMs": 794,
+      "name": "commonAssetCoverage",
+      "status": "OK",
+      "value": {
+        "activePageCount": 565,
+        "missingPageCount": 0,
+        "readyPageCount": 565
+      }
+    },
+    "designCausalityStatus": {
+      "durationMs": 690,
+      "error": "ERROR: function public.framework_design_causality_status() does not exist LINE 1: SELECT public.framework_design_causality_status(); ^ HINT: No function matches the given name and argument types. You might need to add explicit type casts. command terminated with exit code 3",
+      "name": "designCausalityStatus",
+      "status": "ERROR"
+    },
+    "endpointFunctionInventory": {
+      "durationMs": 587,
+      "name": "endpointFunctionInventory",
+      "status": "OK",
+      "value": {
+        "globalReadinessOneArg": false,
+        "globalReadinessTwoArg": false,
+        "sourceCatalog": false,
+        "sourceReadiness": false
+      }
+    },
+    "globalEndpointReadiness": {
+      "durationMs": 607,
+      "error": "ERROR: function public.framework_canonical_endpoint_readiness(integer, character varying) does not exist LINE 1: SELECT public.framework_canonical_endpoint_readiness(5000,NU... ^ HINT: No function matches the given name and argument types. You might need to add explicit type casts. command terminated with exit code 3",
+      "name": "globalEndpointReadiness",
+      "status": "ERROR"
+    },
+    "sourceDesignCatalog": {
+      "durationMs": 502,
+      "error": "ERROR: function public.framework_source_canonical_design_catalog(integer, character varying) does not exist LINE 13: CROSS JOIN LATERAL public.framework_source_can... ^ HINT: No function matches the given name and argument types. You might need to add explicit type casts. command terminated with exit code 3",
+      "name": "sourceDesignCatalog",
+      "status": "ERROR"
+    },
+    "sourceEndpointCatalog": {
+      "durationMs": 701,
+      "error": "ERROR: function public.framework_source_canonical_endpoint_catalog(integer, character varying) does not exist LINE 7: SELECT public.framework_source_canonical_endpo... ^ HINT: No function matches the given name and argument types. You might need to add explicit type casts. command terminated with exit code 3",
+      "name": "sourceEndpointCatalog",
+      "status": "ERROR"
+    },
+    "sourceEndpointReadiness": {
+      "durationMs": 609,
+      "error": "ERROR: function public.framework_source_canonical_endpoint_readiness(integer, character varying) does not exist LINE 8: public.framework_source_canonical_endpo... ^ HINT: No function matches the given name and argument types. You might need to add explicit type casts. command terminated with exit code 3",
+      "name": "sourceEndpointReadiness",
+      "status": "ERROR"
+    }
+  },
+  "readOnly": {
+    "databaseLockTimeoutMs": 5000,
+    "databaseStatementTimeoutMs": 300000,
+    "databaseTransaction": true,
+    "databaseWrites": 0,
+    "liveFileWrites": 0,
+    "repository": true
+  },
+  "reviewBudget": {
+    "actualMs": 16973,
+    "targetMs": 600000,
+    "withinTenMinutes": true
+  },
+  "routeTotals": {
+    "designOnlyRows": 846,
+    "implementedRows": 1064,
+    "normalizedRouteCount": 1951,
+    "screenResourcePhysicalRows": 1951,
+    "verifiedRows": 41
+  },
+  "schema": "carbonet.design-to-code-page-impact-ledger/v1",
+  "sources": {
+    "database": {
+      "core": {
+        "durationMs": 10850,
+        "name": "dbCore",
+        "status": "OK",
+        "value": {
+          "blueprint": {
+            "duplicateAmbiguous": 0,
+            "duplicateAuthorityResolved": 35,
+            "duplicateRequiredIdentityGroups": 35,
+            "exactRequiredIdentities": 866,
+            "globalDuplicateGroups": 51,
+            "missingRequiredIdentities": 142,
+            "physicalRows": 1728,
+            "validLogicalIdentities": 1590,
+            "validPhysicalRows": 1728
+          },
+          "designMutationImpact": {
+            "compilerAffectedExactIdentityCount": 887,
+            "scope": "ALL_COMPILER_READY_MAXIMUM",
+            "selector": {},
+            "selectorMatchedExactIdentityCount": 1043,
+            "sourceGenerationAffectedExactIdentityCount": 887
+          },
+          "designSystem": {
+            "krdsExactIdentities": 901,
+            "sduiOrJsonFormExactIdentities": 0
+          },
+          "endpoint": {
+            "expectedOperationCount": 4547,
+            "expectedScreenIdentities": 1028
+          },
+          "identityContract": {
+            "fields": [
+              "processCode",
+              "stepCode",
+              "audience",
+              "normalizedRoute"
+            ],
+            "normalization": "upper(process,step,audience)+lower(path-before-query)"
+          },
+          "professionalContract": {
+            "duplicateRequiredIdentityGroups": 14,
+            "exactRequiredIdentities": 1028,
+            "globalDuplicateGroups": 35,
+            "logicalExactGroups": 1968,
+            "missingRequiredIdentities": 1,
+            "physicalRows": 2003
+          },
+          "quality": {
+            "ambiguousExactIdentities": 14,
+            "exactResourceContractBlueprintIdentities": 853,
+            "incompleteExactIdentities": 156,
+            "physicalSingleClosureExactIdentities": 853
+          },
+          "routeTotals": {
+            "designOnlyRows": 846,
+            "implementedRows": 1064,
+            "normalizedRouteCount": 1951,
+            "screenResourcePhysicalRows": 1951,
+            "verifiedRows": 41
+          },
+          "schema": "carbonet.design-to-code-page-impact-db-core/v1",
+          "screenResource": {
+            "duplicateRequiredIdentityGroups": 0,
+            "exactRequiredIdentities": 1037,
+            "missingRequiredIdentities": 6
+          },
+          "source": {
+            "compilerReadyExactIdentities": 887,
+            "emittedReadyExactIdentities": 887,
+            "generatedSourcePathReadyExactIdentities": 1,
+            "sourceCatalogEligibleExactIdentities": 887
+          },
+          "stepScreens": {
+            "activeBindingExactIdentities": 1215,
+            "requiredExactIdentities": 1043,
+            "stepsWithScreenRequirement": 539,
+            "stepsWithoutScreenRequirement": 33,
+            "totalSteps": 572
+          },
+          "strategy": {
+            "adoptExistingPhysicalRows": 868,
+            "generatedRuntimePhysicalRows": 859,
+            "manualStrategyPhysicalRows": 1,
+            "ownershipAmbiguousExactIdentities": 0,
+            "ownershipGeneratedExactIdentities": 819,
+            "ownershipHybridExactIdentities": 82,
+            "ownershipManualExactIdentities": 0,
+            "ownershipUnclassifiedExactIdentities": 142
+          }
+        }
+      },
+      "label": "carbonet-production-key-only-read-only"
+    },
+    "repository": {
+      "commit": "0595c64293825e36f67a312f5173ca7a5058af5b",
+      "root": "."
+    }
+  },
+  "status": "INCOMPLETE"
+}

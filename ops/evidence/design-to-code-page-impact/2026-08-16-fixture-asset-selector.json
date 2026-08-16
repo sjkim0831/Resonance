@@ -1,0 +1,499 @@
+{
+  "blockers": {
+    "affectedExactIdentityCount": 2,
+    "items": [
+      {
+        "code": "PROFESSIONAL_CONTRACT_MISSING",
+        "count": 1,
+        "detail": "required exact identities with no professional contract",
+        "source": "database"
+      },
+      {
+        "code": "PROFESSIONAL_CONTRACT_DUPLICATE",
+        "count": 1,
+        "detail": "required exact identities with multiple professional contracts",
+        "source": "database"
+      },
+      {
+        "code": "BLUEPRINT_MISSING",
+        "count": 2,
+        "detail": "required exact identities with no VALID blueprint",
+        "source": "database"
+      },
+      {
+        "code": "SCREEN_CONTRACT_INCOMPLETE",
+        "count": 2,
+        "detail": "exact identities not closed across contract lanes and blueprint authority",
+        "source": "database"
+      },
+      {
+        "code": "GENERATED_SCREEN_DEFINITION_CLOSURE_GAP",
+        "count": 1378,
+        "detail": "closure declaration is larger than tracked generated definitions",
+        "source": "repository"
+      },
+      {
+        "code": "GENERATED_ENDPOINT_CODE_GAP",
+        "count": 2,
+        "detail": "expected endpoint screen identities exceed tracked generated endpoint artifacts",
+        "source": "database+repository"
+      },
+      {
+        "code": "COMMON_COMPONENT_CATALOG_EMPTY",
+        "count": 1,
+        "detail": "tracked system component catalog has no reusable components",
+        "source": "repository"
+      },
+      {
+        "code": "COMMON_ASSET_CLOSURE_GAP",
+        "count": 1,
+        "detail": "active manifest pages without exact common theme/section/component/class closure",
+        "source": "database"
+      }
+    ],
+    "kindCount": 8
+  },
+  "designMutationImpact": {
+    "assetFanout": {
+      "affectedExactIdentityCount": 2,
+      "affectedNormalizedRouteCount": 2,
+      "assetId": "C1",
+      "assetType": "COMPONENT",
+      "blueprintAssetBindingFanoutCount": 2,
+      "directAssetFound": true,
+      "reachableAssetCount": 3,
+      "reachableScreenAssetCount": 2,
+      "schema": "carbonet.common-design-asset-page-impact/v1",
+      "scope": "ASSET_DEPENDENCY_DAG",
+      "uiPageFanoutCount": 2
+    },
+    "assetSelector": {
+      "assetId": "C1",
+      "assetType": "COMPONENT"
+    },
+    "authoritativeAffectedExactIdentityCount": 2,
+    "compilerAffectedExactIdentityCount": 2,
+    "pendingDirtySignalCount": 1,
+    "scope": "ASSET_DEPENDENCY_DAG",
+    "selector": {},
+    "selectorMatchedExactIdentityCount": 4,
+    "sourceGenerationAffectedExactIdentityCount": 2
+  },
+  "designSystem": {
+    "commonAssetCoverage": {
+      "activePageCount": 4,
+      "missingPageCount": 1,
+      "readyPageCount": 3
+    },
+    "databaseIdentityCoverage": {
+      "krdsExactIdentities": 2,
+      "sduiOrJsonFormExactIdentities": 2
+    },
+    "repository": {
+      "krdsCssTokenCount": 22,
+      "sduiReferenceFileCount": 10,
+      "systemComponentCatalogCount": 0
+    }
+  },
+  "endpoint": {
+    "catalog": {
+      "catalogHash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "endpointCount": 2,
+      "schema": "carbonet.canonical-endpoint-catalog/v1"
+    },
+    "codeGenerated": {
+      "artifactCount": 0,
+      "javaSourceCount": 0,
+      "manifestCount": 0,
+      "manifestErrorCount": 0,
+      "manifestErrors": [],
+      "processDirectoryCount": 0
+    },
+    "expectedOperationCount": 2,
+    "expectedScreenIdentities": 2,
+    "globalReadiness": {
+      "blockerCount": 2,
+      "schema": "carbonet.canonical-endpoint-readiness/v1",
+      "sourceReadyCount": 2,
+      "status": "PARTIAL",
+      "totalCount": 4
+    },
+    "sourceReadiness": {
+      "blockerCount": 4,
+      "completeProcessCount": 0,
+      "mode": "DISTINCT_NON_NULL_PROCESS_AGGREGATE",
+      "otherStatusProcessCount": 0,
+      "partialProcessCount": 2,
+      "processCount": 2,
+      "processes": [
+        {
+          "blockerCount": 2,
+          "processCode": "P1",
+          "reasonCounts": {
+            "DESIGN_CONTRACT_DUPLICATE": 1,
+            "DESIGN_CONTRACT_MISSING": 1
+          },
+          "sourceReadyCount": 2,
+          "status": "PARTIAL",
+          "totalCount": 2
+        },
+        {
+          "blockerCount": 2,
+          "processCode": "P2",
+          "reasonCounts": {
+            "DESIGN_CONTRACT_DUPLICATE": 1,
+            "DESIGN_CONTRACT_MISSING": 1
+          },
+          "sourceReadyCount": 2,
+          "status": "PARTIAL",
+          "totalCount": 2
+        }
+      ],
+      "schema": "carbonet.source-endpoint-readiness-by-process/v1",
+      "sourceReadyCount": 4,
+      "totalCount": 4
+    }
+  },
+  "exactIdentities": {
+    "blueprint": {
+      "duplicateAmbiguous": 0,
+      "duplicateAuthorityResolved": 1,
+      "duplicateRequiredIdentityGroups": 1,
+      "exactRequiredIdentities": 1,
+      "globalDuplicateGroups": 1,
+      "missingRequiredIdentities": 2,
+      "physicalRows": 4,
+      "validLogicalIdentities": 2,
+      "validPhysicalRows": 3
+    },
+    "identityContract": {
+      "fields": [
+        "processCode",
+        "stepCode",
+        "audience",
+        "normalizedRoute"
+      ],
+      "normalization": "upper(process,step,audience)+lower(path-before-query)"
+    },
+    "professionalContract": {
+      "duplicateRequiredIdentityGroups": 1,
+      "exactRequiredIdentities": 2,
+      "globalDuplicateGroups": 1,
+      "logicalExactGroups": 2,
+      "missingRequiredIdentities": 1,
+      "physicalRows": 3
+    },
+    "quality": {
+      "ambiguousExactIdentities": 1,
+      "exactResourceContractBlueprintIdentities": 1,
+      "incompleteExactIdentities": 2,
+      "physicalSingleClosureExactIdentities": 1
+    },
+    "screenResource": {
+      "duplicateRequiredIdentityGroups": 0,
+      "exactRequiredIdentities": 4,
+      "missingRequiredIdentities": 0
+    },
+    "source": {
+      "compilerReadyExactIdentities": 2,
+      "emittedReadyExactIdentities": 2,
+      "generatedSourcePathReadyExactIdentities": 1,
+      "sourceCatalogEligibleExactIdentities": 2
+    },
+    "stepScreens": {
+      "activeBindingExactIdentities": 1,
+      "requiredExactIdentities": 4,
+      "stepsWithScreenRequirement": 3,
+      "stepsWithoutScreenRequirement": 0,
+      "totalSteps": 3
+    },
+    "strategy": {
+      "adoptExistingPhysicalRows": 2,
+      "generatedRuntimePhysicalRows": 1,
+      "manualStrategyPhysicalRows": 0,
+      "ownershipAmbiguousExactIdentities": 0,
+      "ownershipGeneratedExactIdentities": 1,
+      "ownershipHybridExactIdentities": 1,
+      "ownershipManualExactIdentities": 0,
+      "ownershipUnclassifiedExactIdentities": 2
+    }
+  },
+  "frontend": {
+    "canonicalKoRouteCount": 308,
+    "declaredGeneratedDefinitionCount": 1378,
+    "generatedCatalogImportCount": 1378,
+    "generatedSupportEntryCount": 0,
+    "materializedGeneratedDefinitionCount": 0,
+    "pageManifestCount": 231,
+    "routeBoundPageManifestCount": 231,
+    "routeSourceFileCount": 15,
+    "trackedGeneratedDefinitionCount": 0
+  },
+  "generatedAt": "2026-08-16T08:40:04Z",
+  "probes": {
+    "assetImpact": {
+      "durationMs": 30,
+      "name": "assetImpact",
+      "status": "OK",
+      "value": {
+        "affectedExactIdentityCount": 2,
+        "affectedNormalizedRouteCount": 2,
+        "assetId": "C1",
+        "assetType": "COMPONENT",
+        "blueprintAssetBindingFanoutCount": 2,
+        "directAssetFound": true,
+        "reachableAssetCount": 3,
+        "reachableScreenAssetCount": 2,
+        "schema": "carbonet.common-design-asset-page-impact/v1",
+        "scope": "ASSET_DEPENDENCY_DAG",
+        "uiPageFanoutCount": 2
+      }
+    },
+    "canonicalBlueprintAuthority": {
+      "durationMs": 36,
+      "name": "canonicalBlueprintAuthority",
+      "status": "OK",
+      "value": {
+        "blueprintId": 1,
+        "contractId": 1,
+        "status": "RESOLVED"
+      }
+    },
+    "commonAssetCoverage": {
+      "durationMs": 27,
+      "name": "commonAssetCoverage",
+      "status": "OK",
+      "value": {
+        "activePageCount": 4,
+        "missingPageCount": 1,
+        "readyPageCount": 3
+      }
+    },
+    "designCausalityStatus": {
+      "durationMs": 25,
+      "name": "designCausalityStatus",
+      "status": "OK",
+      "value": {
+        "codegenReadiness": {
+          "emittedScreenCount": 2,
+          "inventoryScreenCount": 4,
+          "ownership": {
+            "generated": 1,
+            "hybrid": 1,
+            "manual": 1
+          },
+          "status": "BLOCKED"
+        },
+        "dirtySignalCount": 1,
+        "schema": "carbonet.design-causality-status/v2"
+      }
+    },
+    "endpointFunctionInventory": {
+      "durationMs": 34,
+      "name": "endpointFunctionInventory",
+      "status": "OK",
+      "value": {
+        "globalReadinessOneArg": false,
+        "globalReadinessTwoArg": true,
+        "sourceCatalog": true,
+        "sourceReadiness": true
+      }
+    },
+    "globalEndpointReadiness": {
+      "durationMs": 30,
+      "name": "globalEndpointReadiness",
+      "status": "OK",
+      "value": {
+        "blockerCount": 2,
+        "schema": "carbonet.canonical-endpoint-readiness/v1",
+        "sourceReadyCount": 2,
+        "status": "PARTIAL",
+        "totalCount": 4
+      }
+    },
+    "sourceDesignCatalog": {
+      "durationMs": 34,
+      "name": "sourceDesignCatalog",
+      "status": "OK",
+      "value": {
+        "catalogHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "processCode": "P1",
+        "schema": "carbonet.canonical-design/v1",
+        "screenCount": 1
+      }
+    },
+    "sourceEndpointCatalog": {
+      "durationMs": 28,
+      "name": "sourceEndpointCatalog",
+      "status": "OK",
+      "value": {
+        "catalogHash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "endpointCount": 2,
+        "schema": "carbonet.canonical-endpoint-catalog/v1"
+      }
+    },
+    "sourceEndpointReadiness": {
+      "durationMs": 35,
+      "name": "sourceEndpointReadiness",
+      "status": "OK",
+      "value": {
+        "blockerCount": 4,
+        "completeProcessCount": 0,
+        "mode": "DISTINCT_NON_NULL_PROCESS_AGGREGATE",
+        "otherStatusProcessCount": 0,
+        "partialProcessCount": 2,
+        "processCount": 2,
+        "processes": [
+          {
+            "blockerCount": 2,
+            "processCode": "P1",
+            "reasonCounts": {
+              "DESIGN_CONTRACT_DUPLICATE": 1,
+              "DESIGN_CONTRACT_MISSING": 1
+            },
+            "sourceReadyCount": 2,
+            "status": "PARTIAL",
+            "totalCount": 2
+          },
+          {
+            "blockerCount": 2,
+            "processCode": "P2",
+            "reasonCounts": {
+              "DESIGN_CONTRACT_DUPLICATE": 1,
+              "DESIGN_CONTRACT_MISSING": 1
+            },
+            "sourceReadyCount": 2,
+            "status": "PARTIAL",
+            "totalCount": 2
+          }
+        ],
+        "schema": "carbonet.source-endpoint-readiness-by-process/v1",
+        "sourceReadyCount": 4,
+        "totalCount": 4
+      }
+    }
+  },
+  "readOnly": {
+    "databaseLockTimeoutMs": 5000,
+    "databaseStatementTimeoutMs": 300000,
+    "databaseTransaction": true,
+    "databaseWrites": 0,
+    "liveFileWrites": 0,
+    "repository": true
+  },
+  "reviewBudget": {
+    "actualMs": 4492,
+    "targetMs": 600000,
+    "withinTenMinutes": true
+  },
+  "routeTotals": {
+    "designOnlyRows": 1,
+    "implementedRows": 1,
+    "normalizedRouteCount": 4,
+    "screenResourcePhysicalRows": 4,
+    "verifiedRows": 2
+  },
+  "schema": "carbonet.design-to-code-page-impact-ledger/v1",
+  "sources": {
+    "database": {
+      "core": {
+        "durationMs": 41,
+        "name": "dbCore",
+        "status": "OK",
+        "value": {
+          "blueprint": {
+            "duplicateAmbiguous": 0,
+            "duplicateAuthorityResolved": 1,
+            "duplicateRequiredIdentityGroups": 1,
+            "exactRequiredIdentities": 1,
+            "globalDuplicateGroups": 1,
+            "missingRequiredIdentities": 2,
+            "physicalRows": 4,
+            "validLogicalIdentities": 2,
+            "validPhysicalRows": 3
+          },
+          "designMutationImpact": {
+            "compilerAffectedExactIdentityCount": 2,
+            "scope": "ALL_COMPILER_READY_MAXIMUM",
+            "selector": {},
+            "selectorMatchedExactIdentityCount": 4,
+            "sourceGenerationAffectedExactIdentityCount": 2
+          },
+          "designSystem": {
+            "krdsExactIdentities": 2,
+            "sduiOrJsonFormExactIdentities": 2
+          },
+          "endpoint": {
+            "expectedOperationCount": 2,
+            "expectedScreenIdentities": 2
+          },
+          "identityContract": {
+            "fields": [
+              "processCode",
+              "stepCode",
+              "audience",
+              "normalizedRoute"
+            ],
+            "normalization": "upper(process,step,audience)+lower(path-before-query)"
+          },
+          "professionalContract": {
+            "duplicateRequiredIdentityGroups": 1,
+            "exactRequiredIdentities": 2,
+            "globalDuplicateGroups": 1,
+            "logicalExactGroups": 2,
+            "missingRequiredIdentities": 1,
+            "physicalRows": 3
+          },
+          "quality": {
+            "ambiguousExactIdentities": 1,
+            "exactResourceContractBlueprintIdentities": 1,
+            "incompleteExactIdentities": 2,
+            "physicalSingleClosureExactIdentities": 1
+          },
+          "routeTotals": {
+            "designOnlyRows": 1,
+            "implementedRows": 1,
+            "normalizedRouteCount": 4,
+            "screenResourcePhysicalRows": 4,
+            "verifiedRows": 2
+          },
+          "schema": "carbonet.design-to-code-page-impact-db-core/v1",
+          "screenResource": {
+            "duplicateRequiredIdentityGroups": 0,
+            "exactRequiredIdentities": 4,
+            "missingRequiredIdentities": 0
+          },
+          "source": {
+            "compilerReadyExactIdentities": 2,
+            "emittedReadyExactIdentities": 2,
+            "generatedSourcePathReadyExactIdentities": 1,
+            "sourceCatalogEligibleExactIdentities": 2
+          },
+          "stepScreens": {
+            "activeBindingExactIdentities": 1,
+            "requiredExactIdentities": 4,
+            "stepsWithScreenRequirement": 3,
+            "stepsWithoutScreenRequirement": 0,
+            "totalSteps": 3
+          },
+          "strategy": {
+            "adoptExistingPhysicalRows": 2,
+            "generatedRuntimePhysicalRows": 1,
+            "manualStrategyPhysicalRows": 0,
+            "ownershipAmbiguousExactIdentities": 0,
+            "ownershipGeneratedExactIdentities": 1,
+            "ownershipHybridExactIdentities": 1,
+            "ownershipManualExactIdentities": 0,
+            "ownershipUnclassifiedExactIdentities": 2
+          }
+        }
+      },
+      "label": "fixture-asset-selector"
+    },
+    "repository": {
+      "commit": "0595c64293825e36f67a312f5173ca7a5058af5b",
+      "root": "."
+    }
+  },
+  "status": "INCOMPLETE"
+}
