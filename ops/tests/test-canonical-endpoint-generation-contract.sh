@@ -15,6 +15,7 @@ gradle_text=Path(sys.argv[2]).read_text(encoding="utf-8")
 def require_contract(value: str) -> None:
     required=(
         'CANONICAL_ENDPOINT_CATALOG',
+        'COMPOSITE_AUTHORITY_SPEC_FILE',
         'CANONICAL_ENDPOINT_AUTODETECT',
         'LIMIT_VALIDATED=1',
         'LINKED_WORKTREE_VALIDATED=1',
@@ -38,6 +39,10 @@ def require_contract(value: str) -> None:
         '.generated==0',
         '(.legacySkipped+.unchanged)==.packages',
         '([.endpoints[].endpointContract.operations[]|[.processCode,.stepCode]]|unique|sort)',
+        '[.processCode,.stepCode,.commandCode,.method,.path]] | sort)',
+        '$authority.executableDesign.API.operations[]',
+        '[$authority.resolvedClosure.processCode,$authority.stepCode,',
+        'composite API and endpoint operation multisets diverged',
         '--canonical-catalog "$DESIGN_CATALOG_TMP"',
         'five-lane canonical design hashes diverged',
         'designCatalogHash:$designCatalogHash',
@@ -61,6 +66,11 @@ def require_contract(value: str) -> None:
             raise AssertionError(f"orchestration token missing: {token}")
     if value.count('--canonical-catalog "$DESIGN_CATALOG_TMP"') < 3:
         raise AssertionError("runtime/preview canonical design binding is incomplete")
+    multiset_start=value.index('# Preserve multiplicity:')
+    multiset_end=value.index('# Preflight every contract', multiset_start)
+    compact_multiset=''.join(value[multiset_start:multiset_end].split())
+    if '|unique|' in compact_multiset or '|unique)' in compact_multiset:
+        raise AssertionError("composite endpoint comparison discarded operation multiplicity")
     endpoint_check=value.index('"$ENDPOINT_STAGE" --workers "$WORKERS" --check')
     endpoint_generate=value.index('"$ENDPOINT_STAGE" --workers "$WORKERS"\n', endpoint_check)
     migration_check=value.index('generate-safe-migrations-from-design.py" "$RUNTIME_STAGE" --root "$ROOT" --check')
@@ -95,6 +105,12 @@ mutants=(
     source.replace('.generated==0', '.generated>=0', 1),
     source.replace('(.legacySkipped+.unchanged)==.packages', '(.legacySkipped+.unchanged)<=.packages', 1),
     source.replace('([.endpoints[].endpointContract.operations[]|[.processCode,.stepCode]]|unique|sort)', '([])', 1),
+    source.replace('[.processCode,.stepCode,.commandCode,.method,.path]] | sort)',
+                   '[.processCode,.stepCode,.commandCode,.method] | sort)', 1),
+    source.replace('$authority.executableDesign.API.operations[]',
+                   '$authority.executableDesign.API.operations[0]', 1),
+    source.replace('[.processCode,.stepCode,.commandCode,.method,.path]] | sort)',
+                   '[.processCode,.stepCode,.commandCode,.method,.path]] | unique | sort)', 1),
     source.replace('--canonical-catalog "$DESIGN_CATALOG_TMP"', '', 1),
     source.replace('$(design_catalog_expression) design', 'null design', 1),
     source.replace('bash "$ROOT/gradlew" "$GRADLE_TASK"', 'true "$GRADLE_TASK"', 1),
@@ -400,4 +416,4 @@ with tempfile.TemporaryDirectory() as folder:
         raise AssertionError("duplicate executionId placeholder escaped")
 PY
 
-echo 'CANONICAL_ENDPOINT_ORCHESTRATION_PASS autodetect=complete-only linkedWorktree=canonical-complete-only primaryPartialLegacy=1 gitCommitBoundary=1 processScoped=1 sourceSet=gradle endpoints=2 snapshotBound=1 processStepBound=1 fiveLaneHashBound=1 oneBytePropagation=1 preflightRuntimeLayout=exact strictProcessDirs=1 crashTempExcluded=1 mixedLayoutRejected=1 artifactBytesVerified=1 symlinkRejected=1 releaseMarkerLast=1 preflight=1 staged=1 migrationCheck=zero build=1 crashConsistentStaging=1 postPublishWrites=0 crashCuts=8 shellCases=14 limitInjection=1 workers=16 zeroRewrite=1 mutations=14 liveDb=0'
+echo 'CANONICAL_ENDPOINT_ORCHESTRATION_PASS autodetect=complete-only linkedWorktree=canonical-complete-only primaryPartialLegacy=1 gitCommitBoundary=1 processScoped=1 sourceSet=gradle endpoints=2 snapshotBound=1 processStepBound=1 fiveLaneHashBound=1 oneBytePropagation=1 preflightRuntimeLayout=exact strictProcessDirs=1 crashTempExcluded=1 mixedLayoutRejected=1 artifactBytesVerified=1 symlinkRejected=1 releaseMarkerLast=1 preflight=1 staged=1 migrationCheck=zero build=1 crashConsistentStaging=1 postPublishWrites=0 crashCuts=8 shellCases=14 limitInjection=1 workers=16 zeroRewrite=1 mutations=16 liveDb=0'

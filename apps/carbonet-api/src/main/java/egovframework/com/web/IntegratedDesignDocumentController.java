@@ -1,6 +1,7 @@
 package egovframework.com.web;
 
 import egovframework.com.platform.governance.service.ActorProcessGovernanceService;
+import egovframework.com.platform.governance.service.CompositeDesignOperationalWorker;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -45,25 +46,53 @@ public class IntegratedDesignDocumentController {
 
     private final JdbcTemplate jdbc;
     private final ActorProcessGovernanceService governance;
+    private final CompositeDesignOperationalWorker operationalWorker;
     public IntegratedDesignDocumentController(
-            JdbcTemplate jdbc,ActorProcessGovernanceService governance) {
+            JdbcTemplate jdbc,ActorProcessGovernanceService governance,
+            CompositeDesignOperationalWorker operationalWorker) {
         this.jdbc = jdbc;
         this.governance = governance;
+        this.operationalWorker=operationalWorker;
     }
 
     @GetMapping
     public Map<String,Object> list(
             @RequestParam String processCode,
             @RequestParam(defaultValue = "") String stepCode,
-            @RequestParam(defaultValue = "") String routePath) {
+            @RequestParam(defaultValue = "") String routePath,
+            @RequestParam(defaultValue = "") String audience) {
+        String canonicalAudience=audience.trim().toUpperCase();
+        if(canonicalAudience.isBlank()){
+            List<String> matches=jdbc.queryForList("""
+              SELECT DISTINCT upper(audience) FROM framework_professional_screen_contract
+               WHERE process_code=? AND step_code=?
+                 AND lower(split_part(route_path,'?',1))=lower(?)
+              """,String.class,processCode,stepCode,routePath);
+            if(matches.size()!=1)throw new IllegalArgumentException(
+                    "A single USER or ADMIN audience is required.");
+            canonicalAudience=matches.get(0);
+        }
+        final String resolvedAudience=canonicalAudience;
         List<Map<String,Object>> saved = jdbc.queryForList("""
           SELECT document_id AS "documentId", document_type AS "documentType",
                  title,content,status,revision,updated_by AS "updatedBy",updated_at AS "updatedAt"
             FROM integrated_design_document
-           WHERE process_code=? AND step_code=? AND route_path=? AND active_yn='Y'
-          """, processCode, stepCode, routePath);
+           WHERE process_code=? AND step_code=? AND route_path=? AND audience=? AND active_yn='Y'
+          """, processCode, stepCode, routePath,resolvedAudience);
         Map<String,Map<String,Object>> byType = new LinkedHashMap<>();
         saved.forEach(row -> byType.put(String.valueOf(row.get("documentType")), row));
+        List<Map<String,Object>> authorityHeads=jdbc.queryForList("""
+          SELECT authority_revision AS "authorityRevision",authority_hash AS "authorityHash",
+                 document_set_hash AS "documentSetHash",package_binding_hash AS "packageBindingHash",
+                 selected_blueprint_id AS "selectedBlueprintId",ownership_strategy AS "ownershipStrategy"
+            FROM integrated_design_authority
+           WHERE process_code=? AND step_code=? AND route_path=? AND audience=?
+          """,processCode,stepCode,routePath,resolvedAudience);
+        if(authorityHeads.size()>1)throw new IllegalStateException(
+                "COMPOSITE_DESIGN_AUTHORITY_HEAD_NOT_EXACT");
+        Map<String,Object> authority=authorityHeads.isEmpty()?Map.of(
+                "authorityRevision",0,"authorityHash",""):
+                new LinkedHashMap<>(authorityHeads.get(0));
         List<Map<String,Object>> documents = TYPES.entrySet().stream().map(entry -> {
             Map<String,Object> row = new LinkedHashMap<>();
             row.put("documentType", entry.getKey());
@@ -72,11 +101,16 @@ public class IntegratedDesignDocumentController {
             row.put("status", "DRAFT");
             row.put("revision", 0);
             row.putAll(byType.getOrDefault(entry.getKey(), Map.of()));
+            row.put("authorityRevision",authority.get("authorityRevision"));
+            row.put("baseAuthorityHash",authority.get("authorityHash"));
+            row.put("audience",resolvedAudience);
             return row;
         }).toList();
         long ready = documents.stream().filter(row -> Set.of("READY","APPROVED","VERIFIED").contains(row.get("status"))).count();
         return Map.of("processCode", processCode, "stepCode", stepCode, "routePath", routePath,
-                "documents", documents, "total", TYPES.size(), "ready", ready);
+                "audience",resolvedAudience,
+                "documents", documents, "total", TYPES.size(), "ready", ready,
+                "authority",authority);
     }
 
     @PostMapping
@@ -92,6 +126,31 @@ public class IntegratedDesignDocumentController {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of(
                     "success",false,
                     "message","System administrator authority is required."));
+        try{
+        if("AUTO_COMPLETE_ELIGIBLE".equals(text(body,"action"))){
+            if(Boolean.TRUE.equals(body.get("dryRun")))return ResponseEntity.ok(
+                operationalWorker.inspect());
+            Object raw=body.getOrDefault("limit",4);int limit;
+            try{limit=Integer.parseInt(String.valueOf(raw));}
+            catch(NumberFormatException error){throw new IllegalArgumentException(
+                "limit must be an integer",error);}
+            if(limit<1||limit>25)throw new IllegalArgumentException(
+                "limit must be between 1 and 25");
+            return ResponseEntity.accepted().body(operationalWorker.dispatch(limit));
+        }
+        if("GENERATE_AXIS_TEMPLATES".equals(text(body,"action"))){
+            String processCode=required(body,"processCode").trim().toUpperCase();
+            if(!processCode.matches("^[A-Z][A-Z0-9_:-]{1,79}$"))
+                return ResponseEntity.unprocessableEntity().body(Map.of(
+                    "success",false,"message","Invalid processCode."));
+            Map<String,Object> request=new LinkedHashMap<>(body);request.put("previewOnly",true);
+            return ResponseEntity.ok(governance.compileIntegratedDesignProcess(request,actor));
+        }
+        if(Set.of("GENERATE_VALIDATE_COMPILE","PROCESS_GENERATE_VALIDATE_COMPILE")
+                .contains(text(body,"action"))){
+            Map<String,Object> request=new LinkedHashMap<>(body);request.put("previewOnly",false);
+            return ResponseEntity.ok(governance.compileIntegratedDesignProcess(request,actor));
+        }
         String documentType=required(body,"documentType").toUpperCase();
         if(!TYPES.containsKey(documentType))return ResponseEntity.unprocessableEntity()
                 .body(Map.of("success",false,"message","Unsupported design document type."));
@@ -99,8 +158,7 @@ public class IntegratedDesignDocumentController {
         canonicalBody.put("documentType",documentType);
         if(text(canonicalBody,"title").isBlank())
             canonicalBody.put("title",TYPES.get(documentType));
-        try{return ResponseEntity.ok(
-                governance.saveIntegratedDesignDocument(canonicalBody,actor));}
+        return ResponseEntity.ok(governance.saveIntegratedDesignDocument(canonicalBody,actor));}
         catch(SecurityException exception){
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of(
                     "success",false,"sourceCommitted",false,"jobCount",0,

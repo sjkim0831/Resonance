@@ -40,6 +40,8 @@ generated="$(find "$MIGRATIONS" -maxdepth 1 -name '*__design_design_pipeline_cre
 [[ -n "$generated" ]]
 grep -q '^-- resonance-deploy-profile: safe-additive-schema$' "$generated"
 grep -q '^-- design-schema-hash: ' "$generated"
+schema_hash="$(sed -n 's/^-- design-schema-hash: //p' "$generated")"
+grep -q "^COMMENT ON TABLE framework_design_pipeline_fixture IS 'design-schema-hash:${schema_hash}';$" "$generated"
 python3 "$CLASSIFIER" "$generated" | grep -q '^safe-additive '
 
 unchanged="$(python3 "$COMPILER" "$tmp" --root "$ROOT")"
@@ -54,4 +56,4 @@ set -e
 [[ "$status" -eq 2 ]]
 jq -e '.success==false and .reviewRequired==1 and .plans[0].status=="REVIEW_REQUIRED"' <<<"$review" >/dev/null
 
-echo '[design-migration-pipeline] PASS check=1 generated=1 classifier=1 idempotent=1 unsafeReview=1'
+echo '[design-migration-pipeline] PASS check=1 generated=1 marker=1 classifier=1 idempotent=1 unsafeReview=1'

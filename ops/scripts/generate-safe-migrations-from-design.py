@@ -182,7 +182,12 @@ def main() -> int:
             continue
         process = name_part(package["process"]["code"])
         step = name_part(package["step"]["code"])
-        body = f"-- design-schema-hash: {digest}\n-- design-package: {path.name}\n\n{rendered}\n"
+        markers = "\n".join(
+            f"COMMENT ON TABLE {identifier(table, 'table name')} IS 'design-schema-hash:{digest}';"
+            for table in sorted(requested_tables)
+        )
+        body = (f"-- design-schema-hash: {digest}\n-- design-package: {path.name}\n\n"
+                f"{rendered}\n\n{markers}\n")
         plans.append({"package": path.name, "status": "VALIDATED" if args.check else "GENERATED", "hash": digest})
         if not args.check:
             with tempfile.NamedTemporaryFile("w", suffix=".sql", encoding="utf-8", delete=False) as handle:

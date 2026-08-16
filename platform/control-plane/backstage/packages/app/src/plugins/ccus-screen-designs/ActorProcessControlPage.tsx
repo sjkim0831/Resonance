@@ -10,6 +10,7 @@ import {
   DialogContent,
   DialogTitle,
   FormControl,
+  FormHelperText,
   Grid,
   InputLabel,
   LinearProgress,
@@ -83,26 +84,44 @@ type DesignDocument = {
   revision: number;
   updatedBy?: string;
   updatedAt?: string;
+  audience?: 'USER' | 'ADMIN';
+  authorityRevision?: number;
+  baseAuthorityHash?: string;
 };
 type DesignDocumentSaveReceipt = {
-  mutationKind?: 'SOURCE_IMMEDIATE' | 'NOTE_ONLY';
+  mutationKind?: 'COMPOSITE_SOURCE_IMMEDIATE' | 'COMPOSITE_PENDING';
   activationPolicy?: string;
   sourceCommitted?: boolean;
   generationQueued?: boolean;
   jobCount?: number;
   endpointExpected?: number;
+  readyAxisCount?: number;
+  requiredAxisCount?: number;
+  authorityRevision?: number;
+  authorityHash?: string;
+  packageBindingHash?: string;
+  generationStatus?: string;
   status?: string;
   message?: string;
 };
-const INTEGRATED_DESIGN_SOURCE_TYPES = new Set([
-  'AUTHORITY',
-  'PROCESS',
-  'ACTIVE_UI',
-  'DESIGN_ASSET',
-  'DATABASE',
-  'API',
-]);
-
+type CompositeBatchReceipt = {
+  status?: string;
+  screenCount?: number;
+  documentCount?: number;
+  documentWriteCount?: number;
+  authorityCount?: number;
+  jobCount?: number;
+  endpointExpected?: number;
+  generationStatus?: string;
+  message?: string;
+};
+const compositeDeliveryLabel = (status?: string) => {
+  if (status === 'PHYSICAL_GENERATED_VERIFIED')
+    return '물리 생성·테스트 검증 완료';
+  if (status === 'PHYSICAL_FAILED' || status?.includes('FAILED'))
+    return '물리 생성 실패';
+  return 'SOURCE 적용·물리 생성 대기';
+};
 const TAB_COMMANDS: Record<string, TabCommand> = {
   actors: {
     command: 'actor.save',
@@ -422,6 +441,8 @@ function WorkOperationsMap({
   approveDevelopmentRollback,
   loadDesignDocuments,
   saveDesignDocument,
+  generateDesignAxisTemplates,
+  compileCompositeDesign,
 }: {
   dashboard: RuntimeDashboard;
   projectId: string;
@@ -448,14 +469,24 @@ function WorkOperationsMap({
     processCode: string,
     stepCode: string,
     routePath: string,
+    audience: 'USER' | 'ADMIN',
   ) => Promise<DesignDocument[]>;
   saveDesignDocument: (
     document: DesignDocument & {
       processCode: string;
       stepCode: string;
       routePath: string;
+      audience: 'USER' | 'ADMIN';
     },
   ) => Promise<DesignDocumentSaveReceipt>;
+  generateDesignAxisTemplates: (processCode: string) => Promise<string>;
+  compileCompositeDesign: (input: {
+    processCode: string;
+    stepCode?: string;
+    routePath?: string;
+    audience?: 'USER' | 'ADMIN';
+    processBatch: boolean;
+  }) => Promise<CompositeBatchReceipt>;
 }) {
   const [detailTab, setDetailTab] = useState<
     'design' | 'data' | 'screen' | 'test' | 'task'
@@ -478,6 +509,8 @@ function WorkOperationsMap({
   const workTypes = (dashboard.workTypes ?? []) as RuntimeRow[];
   const steps = (dashboard.steps ?? []) as RuntimeRow[];
   const actors = (dashboard.actors ?? []) as RuntimeRow[];
+  const professionalScreenContracts = (dashboard.professionalScreenContracts ??
+    []) as RuntimeRow[];
   const executions = (dashboard.processExecutions ?? []) as RuntimeRow[];
   const emissionProjectTasks = (dashboard.emissionProjectTasks ??
     []) as RuntimeRow[];
@@ -2113,8 +2146,11 @@ function WorkOperationsMap({
           process={selectedProcess}
           step={activeStep}
           routePath={route}
+          screenIdentities={professionalScreenContracts}
           loadDocuments={loadDesignDocuments}
           saveDocument={saveDesignDocument}
+          generateTemplates={generateDesignAxisTemplates}
+          compileComposite={compileCompositeDesign}
           onOpenTab={onOpenTab}
         />
       )}
@@ -2164,8 +2200,11 @@ function DesignWorkbenchDialog({
   process,
   step,
   routePath,
+  screenIdentities,
   loadDocuments,
   saveDocument,
+  generateTemplates,
+  compileComposite,
   onOpenTab,
 }: {
   open: boolean;
@@ -2173,22 +2212,56 @@ function DesignWorkbenchDialog({
   process: RuntimeRow;
   step: RuntimeRow;
   routePath: string;
+  screenIdentities: RuntimeRow[];
   loadDocuments: (
     processCode: string,
     stepCode: string,
     routePath: string,
+    audience: 'USER' | 'ADMIN',
   ) => Promise<DesignDocument[]>;
   saveDocument: (
     document: DesignDocument & {
       processCode: string;
       stepCode: string;
       routePath: string;
+      audience: 'USER' | 'ADMIN';
     },
   ) => Promise<DesignDocumentSaveReceipt>;
+  generateTemplates: (processCode: string) => Promise<string>;
+  compileComposite: (input: {
+    processCode: string;
+    stepCode?: string;
+    routePath?: string;
+    audience?: 'USER' | 'ADMIN';
+    processBatch: boolean;
+  }) => Promise<CompositeBatchReceipt>;
   onOpenTab: (tabId: string) => void;
 }) {
   const processCode = String(process?.processCode ?? '');
   const stepCode = String(step?.stepCode ?? '');
+  const normalizedRoute = routePath.split('?')[0].toLowerCase();
+  const matchingIdentities = screenIdentities.filter(
+    identity =>
+      String(identity.processCode ?? '') === processCode &&
+      String(identity.stepCode ?? '') === stepCode &&
+      String(identity.routePath ?? '')
+        .split('?')[0]
+        .toLowerCase() === normalizedRoute &&
+      ['USER', 'ADMIN'].includes(
+        String(identity.audience ?? '').toUpperCase(),
+      ),
+  );
+  const identityAudiences = [
+    ...new Set(
+      matchingIdentities.map(identity =>
+        String(identity.audience).toUpperCase(),
+      ),
+    ),
+  ] as Array<'USER' | 'ADMIN'>;
+  const [selectedAudience, setSelectedAudience] = useState<
+    '' | 'USER' | 'ADMIN'
+  >('');
+  const audience = selectedAudience;
   const [documents, setDocuments] = useState<DesignDocument[]>([]);
   const [selectedType, setSelectedType] = useState('REQUIREMENT');
   const [busy, setBusy] = useState(false);
@@ -2199,16 +2272,30 @@ function DesignWorkbenchDialog({
   ).length;
 
   useEffect(() => {
-    if (!open || !processCode) return;
+    setSelectedAudience(current =>
+      identityAudiences.length === 1
+        ? identityAudiences[0]
+        : identityAudiences.includes(current as 'USER' | 'ADMIN')
+        ? current
+        : '',
+    );
+  }, [processCode, stepCode, normalizedRoute, identityAudiences.join('|')]);
+
+  useEffect(() => {
+    if (!open || !processCode || !audience) {
+      if (open && processCode)
+        setMessage('정확한 canonical 화면 audience(USER/ADMIN)를 선택하세요.');
+      return;
+    }
     setBusy(true);
     setMessage('');
-    void loadDocuments(processCode, stepCode, routePath)
+    void loadDocuments(processCode, stepCode, routePath, audience)
       .then(setDocuments)
       .catch(error =>
         setMessage(error instanceof Error ? error.message : String(error)),
       )
       .finally(() => setBusy(false));
-  }, [loadDocuments, open, processCode, routePath, stepCode]);
+  }, [audience, loadDocuments, open, processCode, routePath, stepCode]);
 
   const updateCurrent = (patch: Partial<DesignDocument>) => {
     setDocuments(rows =>
@@ -2218,7 +2305,7 @@ function DesignWorkbenchDialog({
     );
   };
   const save = async () => {
-    if (!current) return;
+    if (!current || !audience) return;
     setBusy(true);
     setMessage('');
     try {
@@ -2227,13 +2314,63 @@ function DesignWorkbenchDialog({
         processCode,
         stepCode,
         routePath,
+        audience,
       });
-      const refreshed = await loadDocuments(processCode, stepCode, routePath);
+      const refreshed = await loadDocuments(
+        processCode,
+        stepCode,
+        routePath,
+        audience,
+      );
       setDocuments(refreshed);
       setMessage(
-        receipt.mutationKind === 'SOURCE_IMMEDIATE'
-          ? `${current.title} SOURCE 즉시 반영 완료 · 정본 작업 ${receipt.jobCount ?? 0}개 · 엔드포인트 ${receipt.endpointExpected ?? 0}개 · ${receipt.status ?? 'QUEUED'}`
-          : `${current.title} 메모 버전을 저장했습니다. SOURCE·코드·엔드포인트는 변경하지 않았습니다.`,
+        receipt.mutationKind === 'COMPOSITE_SOURCE_IMMEDIATE'
+          ? `${current.title} · 18축 composite SOURCE 적용 · ${compositeDeliveryLabel(receipt.generationStatus ?? receipt.status)} · authority v${receipt.authorityRevision ?? 0} · 정본 작업 ${receipt.jobCount ?? 0}개 · 엔드포인트 ${receipt.endpointExpected ?? 0}개`
+          : `${current.title} 축 저장 완료 · 준비 ${receipt.readyAxisCount ?? 0}/${receipt.requiredAxisCount ?? 18} · 18축 완성 전 SOURCE write 0`,
+      );
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : String(error));
+    } finally {
+      setBusy(false);
+    }
+  };
+  const generate = async () => {
+    setBusy(true);
+    setMessage('');
+    try {
+      const generatedMessage = await generateTemplates(processCode);
+      if (audience)
+        setDocuments(
+          await loadDocuments(processCode, stepCode, routePath, audience),
+        );
+      setMessage(generatedMessage);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : String(error));
+    } finally {
+      setBusy(false);
+    }
+  };
+  const compile = async (processBatch: boolean) => {
+    if (!processBatch && !audience) {
+      setMessage('선택 화면 자동 반영에는 canonical audience 선택이 필요합니다.');
+      return;
+    }
+    setBusy(true);
+    setMessage('');
+    try {
+      const receipt = await compileComposite({
+        processCode,
+        processBatch,
+        ...(processBatch
+          ? {}
+          : { stepCode, routePath, audience: audience || undefined }),
+      });
+      if (audience)
+        setDocuments(
+          await loadDocuments(processCode, stepCode, routePath, audience),
+        );
+      setMessage(
+        `${processBatch ? '프로세스 전체' : '선택 화면'} SOURCE 적용 · ${compositeDeliveryLabel(receipt.generationStatus ?? receipt.status)} · 화면 ${receipt.screenCount ?? 0}개 · 설계 ${receipt.documentCount ?? 0}개 · authority ${receipt.authorityCount ?? 0}개 · 정본 작업 ${receipt.jobCount ?? 0}개 · 엔드포인트 ${receipt.endpointExpected ?? 0}개`,
       );
     } catch (error) {
       setMessage(error instanceof Error ? error.message : String(error));
@@ -2336,11 +2473,11 @@ function DesignWorkbenchDialog({
                   minRows={16}
                   variant="outlined"
                   label="설계 내용"
-                  placeholder={
-                    INTEGRATED_DESIGN_SOURCE_TYPES.has(current.documentType)
-                      ? '{\n  "schemaVersion": "carbonet.integrated-design-source/v1",\n  "contractId": 123,\n  "...": "선택 유형에 허용된 구조화 필드"\n}'
-                      : '검토 근거와 설계 메모를 기록합니다. 이 12종 메모는 SOURCE·코드·엔드포인트를 변경하지 않습니다.'
-                  }
+                  placeholder={'{\n  "schemaVersion": "carbonet.integrated-design-axis/v1",\n  "documentType": "' +
+                    current.documentType +
+                    '",\n  "axisVersion": "1.0.0",\n  "identity": { "contractId": 123, "processCode": "...", "stepCode": "...", "routePath": "/...", "audience": "' +
+                    audience +
+                    '", "selectedBlueprintId": 456, "ownershipStrategy": "EXACT_SINGLE", "ownershipJustification": "exact canonical owner" },\n  "payload": {}\n}'}
                   value={current.content}
                   onChange={event =>
                     updateCurrent({ content: event.target.value })
@@ -2354,16 +2491,8 @@ function DesignWorkbenchDialog({
                 <Box mt={1}>
                   <Chip
                     size="small"
-                    color={
-                      INTEGRATED_DESIGN_SOURCE_TYPES.has(current.documentType)
-                        ? 'primary'
-                        : 'default'
-                    }
-                    label={
-                      INTEGRATED_DESIGN_SOURCE_TYPES.has(current.documentType)
-                        ? '구조화 JSON → SOURCE 즉시 반영·정본 작업 1개'
-                        : 'NOTE_ONLY → 문서 버전만 저장'
-                    }
+                    color="primary"
+                    label="18축 실행 계약 → composite hash → SOURCE 정본 작업 1개"
                   />
                 </Box>
               </>
@@ -2394,6 +2523,36 @@ function DesignWorkbenchDialog({
             <Typography variant="body2" style={{ marginTop: 8 }}>
               화면: {routePath || '연결 필요'}
             </Typography>
+            <FormControl
+              variant="outlined"
+              size="small"
+              fullWidth
+              style={{ marginTop: 12 }}
+              error={!audience}
+            >
+              <InputLabel>Canonical audience</InputLabel>
+              <Select
+                value={audience}
+                label="Canonical audience"
+                onChange={event =>
+                  setSelectedAudience(
+                    String(event.target.value) as 'USER' | 'ADMIN',
+                  )
+                }
+              >
+                {identityAudiences.map(value => (
+                  <MenuItem key={value} value={value}>
+                    {value} · {normalizedRoute}
+                  </MenuItem>
+                ))}
+              </Select>
+              {!audience && (
+                <FormHelperText>
+                  같은 route의 USER·ADMIN authority를 추정하지 않습니다. 정확한 화면
+                  identity를 선택하세요.
+                </FormHelperText>
+              )}
+            </FormControl>
             <Box mt={3} display="grid" gridGap={8}>
               <Button
                 variant="outlined"
@@ -2441,18 +2600,33 @@ function DesignWorkbenchDialog({
         >
           {message || '설계 변경은 버전으로 보존됩니다.'}
         </Typography>
+        <Button disabled={busy || !processCode} onClick={() => void generate()}>
+          18축 미리보기(IN_REVIEW)
+        </Button>
+        <Button
+          disabled={busy || !processCode || !stepCode || !routePath || !audience}
+          onClick={() => void compile(false)}
+        >
+          선택 화면 설계 생성·검증·코드 자동 반영
+        </Button>
+        <Button
+          variant="contained"
+          color="secondary"
+          disabled={busy || !processCode}
+          onClick={() => void compile(true)}
+        >
+          프로세스 전체 설계·코드 1-click 반영
+        </Button>
         <Button onClick={onClose}>닫기</Button>
         <Button
           variant="contained"
           color="primary"
-          disabled={busy || !current}
+          disabled={busy || !current || !audience}
           onClick={() => void save()}
         >
           {busy
             ? '처리 중…'
-            : current && INTEGRATED_DESIGN_SOURCE_TYPES.has(current.documentType)
-            ? '저장·SOURCE 반영'
-            : '메모 버전 저장'}
+            : '축 저장·18/18 자동 컴파일'}
         </Button>
       </DialogActions>
     </Dialog>
@@ -5882,11 +6056,17 @@ export function ActorProcessControlPage(props: {
     [fetchApi],
   );
   const loadDesignDocuments = useCallback(
-    async (processCode: string, stepCode: string, routePath: string) => {
+    async (
+      processCode: string,
+      stepCode: string,
+      routePath: string,
+      audience: 'USER' | 'ADMIN',
+    ) => {
       const parameters = new URLSearchParams({
         processCode,
         stepCode,
         routePath,
+        audience,
       });
       const response = await fetchApi.fetch(
         `/api/resonance-projects/actor-process/design-documents?${parameters}`,
@@ -5909,6 +6089,7 @@ export function ActorProcessControlPage(props: {
         processCode: string;
         stepCode: string;
         routePath: string;
+        audience: 'USER' | 'ADMIN';
       },
     ) => {
       const response = await fetchApi.fetch(
@@ -5922,6 +6103,66 @@ export function ActorProcessControlPage(props: {
       const payload = (await response.json()) as DesignDocumentSaveReceipt;
       if (!response.ok) {
         throw new Error(payload.message ?? '설계 문서 저장에 실패했습니다.');
+      }
+      return payload;
+    },
+    [fetchApi],
+  );
+  const generateDesignAxisTemplates = useCallback(
+    async (processCode: string) => {
+      const response = await fetchApi.fetch(
+        '/api/resonance-projects/actor-process/design-documents',
+        {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            action: 'GENERATE_AXIS_TEMPLATES',
+            processCode,
+          }),
+        },
+      );
+      const payload = (await response.json()) as {
+        message?: string;
+        generation?: { updated_count?: number };
+      };
+      if (!response.ok) {
+        throw new Error(payload.message ?? '18축 템플릿 생성에 실패했습니다.');
+      }
+      return `${payload.message ?? '18축 IN_REVIEW 미리보기 완료'} · 변경 ${payload.generation?.updated_count ?? 0}개 · SOURCE write 0`;
+    },
+    [fetchApi],
+  );
+  const compileCompositeDesign = useCallback(
+    async (input: {
+      processCode: string;
+      stepCode?: string;
+      routePath?: string;
+      audience?: 'USER' | 'ADMIN';
+      processBatch: boolean;
+    }) => {
+      const response = await fetchApi.fetch(
+        '/api/resonance-projects/actor-process/design-documents',
+        {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            action: input.processBatch
+              ? 'PROCESS_GENERATE_VALIDATE_COMPILE'
+              : 'GENERATE_VALIDATE_COMPILE',
+            processCode: input.processCode,
+            ...(input.processBatch
+              ? {}
+              : {
+                  stepCode: input.stepCode,
+                  routePath: input.routePath,
+                  audience: input.audience,
+                }),
+          }),
+        },
+      );
+      const payload = (await response.json()) as CompositeBatchReceipt;
+      if (!response.ok) {
+        throw new Error(payload.message ?? 'Composite 설계 자동 반영에 실패했습니다.');
       }
       return payload;
     },
@@ -6138,6 +6379,7 @@ export function ActorProcessControlPage(props: {
       'customerJourneyGaps',
       'processExecutions',
       'emissionProjectTasks',
+      'professionalScreenContracts',
     ];
     required
       .filter(key => runtimeDashboard[key] === undefined)
@@ -6708,6 +6950,8 @@ export function ActorProcessControlPage(props: {
                 approveDevelopmentRollback={approveDevelopmentRollback}
                 loadDesignDocuments={loadDesignDocuments}
                 saveDesignDocument={saveDesignDocument}
+                generateDesignAxisTemplates={generateDesignAxisTemplates}
+                compileCompositeDesign={compileCompositeDesign}
               />
             )}
             {selectedTab.id === 'execution' && (
@@ -6724,6 +6968,8 @@ export function ActorProcessControlPage(props: {
                 approveDevelopmentRollback={approveDevelopmentRollback}
                 loadDesignDocuments={loadDesignDocuments}
                 saveDesignDocument={saveDesignDocument}
+                generateDesignAxisTemplates={generateDesignAxisTemplates}
+                compileCompositeDesign={compileCompositeDesign}
               />
             )}
             {selectedTab.id === 'actors' && (

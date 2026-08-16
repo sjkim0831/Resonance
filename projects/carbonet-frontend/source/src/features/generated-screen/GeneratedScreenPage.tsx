@@ -76,7 +76,7 @@ function GeneratedContent({ screen, runtimeWarning = "" }: { screen: GeneratedSc
     } catch (reason) { setError(reason instanceof Error ? reason.message : String(reason)); }
     finally { setBusy(false); }
   }
-  async function start(event: FormEvent) { event.preventDefault(); await request(`${apiBase}/start`, { tenantId, projectId, processCode: screen.processCode, actorCode: screen.actorCode }); }
+  async function start(event: FormEvent) { event.preventDefault(); await request(`${apiBase}/start`, { tenantId, projectId, processCode: screen.processCode, actorCode: screen.actorCode, routePath: screen.routePath, audience: screen.audience }); }
   async function loadExecution() {
     if (!requireDraftContext()) return;
     setBusy(true); setError(""); setMessage("");
@@ -94,10 +94,13 @@ function GeneratedContent({ screen, runtimeWarning = "" }: { screen: GeneratedSc
   }
   async function execute(command: string) {
     if (!executionId) { setError(en ? "Start or load a process first." : "먼저 프로세스를 시작하거나 실행 ID를 입력하세요."); return; }
-    const missing=fieldEntries.filter(field=>field.required===true&&!String(values[field.code]||"").trim());
+    const action=actions.find(candidate=>candidate.code===command);
+    const requestFields=Array.isArray(action?.requestFields)?action.requestFields.map(String):null;
+    const missing=fieldEntries.filter(field=>field.required===true
+      &&(requestFields===null||requestFields.includes(field.code))&&!String(values[field.code]||"").trim());
     if(missing.length){setError(`${en?"Complete required fields":"필수 항목을 입력하세요"}: ${missing.map(field=>field.label).join(", ")}`);return;}
     if(draftStatus!=="DRAFT"){setError(en?"Save the work draft before completing this step.":"단계를 완료하기 전에 업무 데이터를 임시저장하세요.");return;}
-    const result=await request(`${apiBase}/${executionId}/commands`, { tenantId, projectId, processCode: screen.processCode, stepCode: screen.stepCode, actorCode: screen.actorCode, commandCode: command, idempotencyKey: runtimeUuid(), requestJson: JSON.stringify(values), requireDraft:true });
+    const result=await request(`${apiBase}/${executionId}/commands`, { tenantId, projectId, processCode: screen.processCode, stepCode: screen.stepCode, actorCode: screen.actorCode, routePath: screen.routePath, audience: screen.audience, commandCode: command, idempotencyKey: runtimeUuid(), requestJson: JSON.stringify(values), requireDraft:true });
     if(!result)return;
     setDraftStatus("SUBMITTED"); setCurrentState(String(result.toState||currentState));
     const nextStepCode=String(result.nextStepCode||"");
@@ -174,7 +177,7 @@ function GeneratedContent({ screen, runtimeWarning = "" }: { screen: GeneratedSc
         <button className="krds-control mt-4 w-full rounded-lg border border-[#052b57] bg-white font-black text-[#052b57] disabled:opacity-50" disabled={busy} onClick={()=>void loadExecution()} type="button">{en ? "Load running process" : "진행 중 프로세스 불러오기"}</button>
       </section>
       <form className="krds-component rounded-xl border bg-white" onSubmit={start}><h2 className="gov-text-heading-sm font-black text-[#052b57]">{en ? "Process context" : "프로세스 실행 문맥"}</h2><div className="mt-4 space-y-3"><label className="gov-text-label font-bold">Tenant<input className={`${inputClass} mt-2`} value={tenantId} onChange={event=>setTenantId(event.target.value)} required/></label><label className="gov-text-label font-bold">{en ? "Project ID" : "프로젝트 ID"}<input className={`${inputClass} mt-2`} value={projectId} onChange={event=>setProjectId(event.target.value)} required/></label><label className="gov-text-label font-bold">{en ? "Execution ID" : "실행 ID"}<input className={`${inputClass} mt-2`} value={executionId} onChange={event=>setExecutionId(event.target.value)}/></label></div><button className="krds-control mt-4 w-full rounded-lg bg-[#052b57] font-black text-white disabled:opacity-50" disabled={busy} type="submit">{en ? "Start process" : "프로세스 시작"}</button></form>
-      <section className="krds-component rounded-xl border bg-white"><h2 className="gov-text-heading-sm font-black text-[#052b57]">{en ? "Complete step" : "단계 완료"}</h2><p className="gov-text-body-sm mt-2 text-slate-600">{en ? "Required fields and a saved draft are validated before transition." : "필수 항목과 임시저장을 검증한 뒤 다음 상태로 전환합니다."}</p><div className="mt-4 grid gap-2">{(actions.length ? actions : [{code:commandCode,label:commandCode}]).slice(0,1).map(action=><button className="krds-control rounded-lg bg-[#246beb] font-black text-white disabled:opacity-50" disabled={busy||draftStatus!=="DRAFT"} key={action.code} onClick={()=>void execute(commandCode)} type="button">{en ? "Complete and continue" : `${action.label} 완료`}</button>)}</div></section>
+      <section className="krds-component rounded-xl border bg-white"><h2 className="gov-text-heading-sm font-black text-[#052b57]">{en ? "Complete step" : "단계 완료"}</h2><p className="gov-text-body-sm mt-2 text-slate-600">{en ? "Required fields and a saved draft are validated before transition." : "필수 항목과 임시저장을 검증한 뒤 다음 상태로 전환합니다."}</p><div className="mt-4 grid gap-2">{(actions.length ? actions : [{code:commandCode,label:commandCode}]).map(action=><button className="krds-control rounded-lg bg-[#246beb] font-black text-white disabled:opacity-50" disabled={busy||draftStatus!=="DRAFT"} key={action.code} onClick={()=>void execute(action.code)} type="button">{en ? action.label : `${action.label} 완료`}</button>)}</div></section>
       {Object.keys(support).length > 0 && <ExecutableScreenSupportCards
         actorCode={screen.actorCode}
         audience={screen.audience}
@@ -281,6 +284,10 @@ function applyVersionedContract(base: GeneratedScreenDefinition, envelope: Versi
   const rawCommands = contractArray(actionLayer.commands, "commands").length
     ? contractArray(actionLayer.commands, "commands")
     : contractArray(actionLayer.commands);
+  const rawApis = contractArray(actionLayer.apis, "apis").length
+    ? contractArray(actionLayer.apis, "apis")
+    : contractArray(actionLayer.apis);
+  const apiByCommand = new Map(rawApis.map(api => [String(api.commandCode || ""), api]));
   const fields = rawFields.map((field, index) => ({
     code: String(field.fieldCode || field.code || `FIELD_${index + 1}`),
     label: String(field.fieldName || field.label || field.name || field.fieldCode || field.code || `Field ${index + 1}`),
@@ -294,10 +301,15 @@ function applyVersionedContract(base: GeneratedScreenDefinition, envelope: Versi
     code: String(section.sectionCode || section.code || `SECTION_${index + 1}`),
     label: String(section.sectionName || section.label || section.name || section.sectionCode || section.code || `Section ${index + 1}`),
   }));
-  const commands = rawCommands.map((command, index) => ({
-    code: String(command.commandCode || command.code || `COMMAND_${index + 1}`),
-    label: String(command.commandName || command.label || command.name || command.commandCode || command.code || `Command ${index + 1}`),
-  }));
+  const commands = rawCommands.map((command, index) => {
+    const code = String(command.commandCode || command.code || `COMMAND_${index + 1}`);
+    const api = apiByCommand.get(code);
+    return {
+      code,
+      label: String(command.commandName || command.label || command.name || command.commandCode || command.code || `Command ${index + 1}`),
+      requestFields: Array.isArray(api?.requestFields) ? api.requestFields.map(String) : undefined,
+    };
+  });
   const specification = {
     ...base.specification,
     businessPurpose: String(screenLayer.purpose || screenLayer.description || base.specification.businessPurpose || ""),

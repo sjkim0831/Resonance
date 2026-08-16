@@ -751,7 +751,7 @@ if len(matching_packages) != 1 or matching_packages[0].get("packageHash") != pac
 if (endpoint_manifest.get("catalogHash") != release["endpointCatalogHash"]
         or endpoint_manifest.get("bundleHash") != release.get("endpointBundleHash")):
     raise SystemExit("canonical endpoint manifest is not bound to the release")
-print(stable({
+evidence = {
     "schema": "carbonet.canonical-generation-evidence/v1",
     "activationPolicy": release["activationPolicy"],
     "processCode": process_code,
@@ -761,7 +761,28 @@ print(stable({
     "designCatalogHash": release["designCatalogHash"],
     "endpointCatalogHash": release["endpointCatalogHash"],
     "releaseHash": release["releaseHash"],
-}))
+}
+composite_keys = {"compositeAuthoritySetHash", "compositeArtifactManifestHash"}
+if composite_keys & set(release):
+    if not composite_keys.issubset(release):
+        raise SystemExit("canonical composite release binding is partial")
+    composite_path = package_path.parent / "composite" / "manifest.json"
+    composite_bytes = composite_path.read_bytes()
+    composite = json.loads(composite_bytes.decode("utf-8"))
+    if (package_index.get("compositeAuthoritySetHash") != release["compositeAuthoritySetHash"]
+            or package_index.get("compositeArtifactManifest", {}).get("sha256") != release["compositeArtifactManifestHash"]
+            or hashlib.sha256(composite_bytes).hexdigest() != release["compositeArtifactManifestHash"]
+            or composite.get("compositeAuthoritySetHash") != release["compositeAuthoritySetHash"]):
+        raise SystemExit("canonical composite artifact is not bound to the release")
+    expected_manifest = composite.get("manifestHash")
+    unsigned = dict(composite); unsigned.pop("manifestHash", None)
+    if hashlib.sha256(stable(unsigned).encode()).hexdigest() != expected_manifest:
+        raise SystemExit("canonical composite manifestHash mismatch")
+    evidence.update({
+        "compositeAuthoritySetHash": release["compositeAuthoritySetHash"],
+        "compositeArtifactManifestHash": release["compositeArtifactManifestHash"],
+    })
+print(stable(evidence))
 PY
 }
 
@@ -785,6 +806,15 @@ canonical_commit_evidence_files() {
     git -C "$worktree" show "${result_commit}:${relative}" >"$destination" || return 1
     [[ -f "$destination" && ! -L "$destination" ]] || return 1
   done
+  if git -C "$worktree" show "${result_commit}:${runtime_base}/index.json" |
+      jq -e 'has("compositeArtifactManifest")' >/dev/null 2>&1; then
+    relative="$runtime_base/composite/manifest.json"
+    destination="$output_dir/composite/manifest.json"
+    mkdir -p "$output_dir/composite" || return 1
+    git -C "$worktree" cat-file -e "${result_commit}:${relative}" 2>/dev/null || return 1
+    git -C "$worktree" show "${result_commit}:${relative}" >"$destination" || return 1
+    [[ -f "$destination" && ! -L "$destination" ]] || return 1
+  fi
 }
 
 canonical_worktree_paths_clean() {
@@ -834,12 +864,21 @@ finalize_canonical_generation() {
   local job_id="$1" lease_token="$2" worker_id="$3" result_commit="$4"
   local rollback_commit="$5" process_code="$6" step_code="$7" log_file="$8" evidence_json="$9"
   local activation_policy source_hash package_hash design_hash endpoint_hash release_hash evidence_ref readback
+  local composite_set_hash composite_manifest_hash composite_sql_guard
   activation_policy="$(jq -er '.activationPolicy' <<<"$evidence_json")"
   source_hash="$(jq -er '.sourceHash' <<<"$evidence_json")"
   package_hash="$(jq -er '.packageHash' <<<"$evidence_json")"
   design_hash="$(jq -er '.designCatalogHash' <<<"$evidence_json")"
   endpoint_hash="$(jq -er '.endpointCatalogHash' <<<"$evidence_json")"
   release_hash="$(jq -er '.releaseHash' <<<"$evidence_json")"
+  composite_set_hash="$(jq -r '.compositeAuthoritySetHash // ""' <<<"$evidence_json")"
+  composite_manifest_hash="$(jq -r '.compositeArtifactManifestHash // ""' <<<"$evidence_json")"
+  [[ -z "$composite_set_hash$composite_manifest_hash" \
+      || "$composite_set_hash$composite_manifest_hash" =~ ^[0-9a-f]{128}$ ]] || return 1
+  composite_sql_guard=""
+  if [[ -n "$composite_set_hash" ]]; then
+    composite_sql_guard="or job_spec->>'compositeAuthoritySetHash' is distinct from \$composite\$${composite_set_hash}\$composite\$"
+  fi
   [[ "$activation_policy" == "SOURCE_IMMEDIATE_V1" \
       && "$job_id" =~ ^[0-9]+$ && "$lease_token" =~ ^[0-9a-fA-F-]{36}$ \
       && "$result_commit" =~ ^[0-9a-f]{40}$ && "$rollback_commit" =~ ^[0-9a-f]{40}$ \
@@ -872,7 +911,8 @@ begin
      or job_spec->>'sourceHash' is distinct from \$source\$${source_hash}\$source\$
      or job_spec->>'processInputHash' is distinct from \$source\$${source_hash}\$source\$
      or job_spec->>'designCatalogHash' is distinct from \$hash\$${design_hash}\$hash\$
-     or job_spec->>'endpointCatalogHash' is distinct from \$hash\$${endpoint_hash}\$hash\$ then
+     or job_spec->>'endpointCatalogHash' is distinct from \$hash\$${endpoint_hash}\$hash\$
+     ${composite_sql_guard} then
     raise exception 'CANONICAL_SOURCE_IMMEDIATE_RECEIPT_MISMATCH';
   end if;
   if job_spec ? 'designHash' then
@@ -1393,6 +1433,15 @@ if [[ "$JOB_TYPE" == "DESIGN" ]] && ! jq -e '.designContracts | type == "array" 
 fi
 SPEC_FILE="$WT/.automation-spec.json"
 printf '%s' "$SPEC" >"$SPEC_FILE"
+if jq -e 'has("compositeAuthoritySchema") or has("compositeAuthorities") or
+    has("compositeAuthoritySetHash") or has("compositeArtifactOutputMode")' "$SPEC_FILE" >/dev/null; then
+  if ! COMPOSITE_PREFLIGHT="$(python3 "$WT/ops/scripts/generate-composite-executable-design.py" \
+      "$SPEC_FILE" --process "$PROCESS_CODE" --validate-only 2>>"$LOG_FILE")"; then
+    fail_job "composite executable design authority preflight failed"
+  fi
+  gate_result "COMPOSITE_EXECUTABLE_DESIGN" "PASSED" "$COMPOSITE_PREFLIGHT"
+  event "COMPOSITE_AUTHORITY_VALIDATED" "RUNNING" "RUNNING" "$COMPOSITE_PREFLIGHT"
+fi
 GOVERNANCE_FILE="$WT/.automation-governance.json"
 psqlq -c "
   select json_build_object(

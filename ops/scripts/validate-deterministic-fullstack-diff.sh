@@ -233,6 +233,67 @@ def validate_screen(value: Any, label: str) -> dict[str, str]:
     }
 
 
+def validate_composite_manifest(reader: CurrentReader | GitReader, prefix: str,
+                                index: dict[str, Any], state: str) -> set[str]:
+    if index.get("compositeAuthoritySchema") != "carbonet.composite-executable-design-authority/v1":
+        raise ValueError(f"{state} composite authority schema mismatch")
+    set_hash = exact_hash(index.get("compositeAuthoritySetHash"), "compositeAuthoritySetHash")
+    binding = exact_keys(index.get("compositeArtifactManifest"),
+                         {"path", "sha256", "artifactCount"}, "compositeArtifactManifest")
+    if binding["path"] != "composite/manifest.json":
+        raise ValueError("composite artifact manifest path mismatch")
+    relative = f"{prefix}/{binding['path']}"
+    raw = reader.read_many([relative])[relative]
+    if digest(raw) != exact_hash(binding["sha256"], "compositeArtifactManifest.sha256"):
+        raise ValueError("composite artifact manifest byte hash mismatch")
+    try:
+        manifest = json.loads(raw.decode("utf-8"))
+    except (UnicodeError, json.JSONDecodeError) as exc:
+        raise ValueError("composite artifact manifest is invalid JSON") from exc
+    keys = {"schema", "authoritySchema", "outputMode", "compositeAuthoritySetHash",
+            "authorityCount", "authorities", "artifactCount", "artifactSetHash", "manifestHash"}
+    exact_keys(manifest, keys, "composite artifact manifest")
+    if (manifest["schema"] != "carbonet.generated-composite-executable-design/v1"
+            or manifest["authoritySchema"] != index["compositeAuthoritySchema"]
+            or manifest["outputMode"] != "SDUI_API_DB_TEST_SUPPORT_SURFACES_V1"
+            or manifest["compositeAuthoritySetHash"] != set_hash):
+        raise ValueError("composite artifact manifest provenance mismatch")
+    unsigned = dict(manifest); unsigned.pop("manifestHash")
+    if digest(stable(unsigned)) != exact_hash(manifest["manifestHash"], "composite.manifestHash"):
+        raise ValueError("composite artifact manifestHash mismatch")
+    authorities = manifest["authorities"]
+    if (not isinstance(authorities, list)
+            or exact_int(manifest["authorityCount"], "authorityCount", minimum=1) != len(authorities)):
+        raise ValueError("composite authority count mismatch")
+    paths = {relative}; artifact_rows = []
+    for authority in authorities:
+        authority = exact_keys(authority, {"identity", "authorityHash", "documentSetHash",
+            "executableDesignHash", "packageBindingHash", "artifacts"}, "composite authority")
+        for key in ("authorityHash", "documentSetHash", "executableDesignHash", "packageBindingHash"):
+            exact_hash(authority[key], f"composite.{key}")
+        if not isinstance(authority["identity"], dict) or not isinstance(authority["artifacts"], list):
+            raise ValueError("composite authority identity/artifacts invalid")
+        for artifact in authority["artifacts"]:
+            artifact = exact_keys(artifact, {"lane", "path", "sha256"}, "composite artifact")
+            path = safe_relative(artifact["path"])
+            if not path.startswith("composite/") or path == "composite/manifest.json":
+                raise ValueError("composite artifact path escaped lane")
+            full = f"{prefix}/{path}"
+            if full in paths:
+                raise ValueError("duplicate composite artifact path")
+            content = reader.read_many([full])[full]
+            sha = exact_hash(artifact["sha256"], "composite artifact sha256")
+            if digest(content) != sha:
+                raise ValueError("composite artifact byte hash mismatch")
+            paths.add(full); artifact_rows.append({"path": path, "sha256": sha})
+    if (exact_int(manifest["artifactCount"], "artifactCount") != len(artifact_rows)
+            or exact_int(binding["artifactCount"], "compositeArtifactManifest.artifactCount", minimum=2) != len(paths)
+            or digest(stable(sorted(artifact_rows, key=lambda row: row["path"])))
+                != exact_hash(manifest["artifactSetHash"], "artifactSetHash")):
+        raise ValueError("composite artifact exact set/hash mismatch")
+    return paths
+
+
 def validate_package_manifest(reader: CurrentReader | GitReader, prefix: str, state: str):
     actual = paths_under(reader, prefix)
     if not actual:
@@ -244,9 +305,13 @@ def validate_package_manifest(reader: CurrentReader | GitReader, prefix: str, st
     if not isinstance(value, dict):
         raise ValueError(f"invalid package manifest: {relative}")
     canonical = "canonicalCatalogHash" in value or "canonicalScreens" in value
+    composite = any(key in value for key in (
+        "compositeAuthoritySchema", "compositeAuthoritySetHash", "compositeArtifactManifest"))
     keys = {"schemaVersion", "packageCount", "skippedReviewRequired", "packages", "manifestHash"}
     if canonical:
         keys |= {"canonicalCatalogHash", "canonicalScreens"}
+    if composite:
+        keys |= {"compositeAuthoritySchema", "compositeAuthoritySetHash", "compositeArtifactManifest"}
     exact_keys(value, keys, f"{state} package manifest")
     if value["schemaVersion"] != "2.0.0":
         raise ValueError(f"invalid package manifest schema: {relative}")
@@ -271,6 +336,8 @@ def validate_package_manifest(reader: CurrentReader | GitReader, prefix: str, st
             raise ValueError(f"canonicalScreens order mismatch: {relative}")
 
     expected = {relative}
+    if composite:
+        expected |= validate_composite_manifest(reader, prefix, value, state)
     entries: list[dict[str, Any]] = []
     identities: set[tuple[str, str]] = set()
     for raw in packages:
@@ -339,6 +406,9 @@ def validate_package_manifest(reader: CurrentReader | GitReader, prefix: str, st
         "manifestHash": manifest_hash,
         "canonicalCatalogHash": canonical_hash,
         "canonicalScreens": manifest_screens,
+        "compositeAuthoritySetHash": value.get("compositeAuthoritySetHash"),
+        "compositeArtifactManifestHash": (
+            value.get("compositeArtifactManifest", {}).get("sha256") if composite else None),
     }
 
 
@@ -465,10 +535,17 @@ def validate_release(value: Any, runtime: dict[str, Any] | None, preview: dict[s
                      endpoint: dict[str, Any], state: str) -> None:
     keys = {"schema", "lanes", "designCatalogHash", "endpointCatalogHash", "designHashes",
             "packageManifestHash", "endpointBundleHash", "releaseHash"}
+    composite = any(key in value for key in (
+        "compositeAuthoritySetHash", "compositeArtifactManifestHash")) if isinstance(value, dict) else False
+    if composite:
+        keys |= {"compositeAuthoritySetHash", "compositeArtifactManifestHash"}
     release = exact_keys(value, keys, f"{state} full-stack release")
     if release["schema"] != "carbonet.canonical-full-stack-release/v1":
         raise ValueError(f"invalid {state} full-stack release schema")
-    if release["lanes"] != ["FRONTEND", "API", "DATABASE", "HELP", "CARDS"]:
+    expected_lanes = ["FRONTEND", "API", "DATABASE", "HELP", "CARDS"]
+    if composite:
+        expected_lanes.append("COMPOSITE_EXECUTABLE_DESIGN")
+    if release["lanes"] != expected_lanes:
         raise ValueError(f"invalid {state} full-stack release lanes")
     design_catalog = exact_hash(release["designCatalogHash"], "release.designCatalogHash")
     endpoint_catalog = exact_hash(release["endpointCatalogHash"], "release.endpointCatalogHash")
@@ -492,6 +569,14 @@ def validate_release(value: Any, runtime: dict[str, Any] | None, preview: dict[s
             or design_catalog != runtime["canonicalCatalogHash"]
             or design_hashes != endpoint["designHashes"]):
         raise ValueError(f"{state} full-stack release cross-hash mismatch")
+    if composite:
+        set_hash = exact_hash(release["compositeAuthoritySetHash"], "release.compositeAuthoritySetHash")
+        manifest_hash = exact_hash(release["compositeArtifactManifestHash"], "release.compositeArtifactManifestHash")
+        if (runtime["compositeAuthoritySetHash"] != set_hash
+                or runtime["compositeArtifactManifestHash"] != manifest_hash
+                or preview is None or preview["compositeAuthoritySetHash"] != set_hash
+                or preview["compositeArtifactManifestHash"] != manifest_hash):
+            raise ValueError(f"{state} composite release cross-hash mismatch")
     runtime_design_hashes = sorted({screen["designHash"] for screen in runtime["canonicalScreens"]})
     if runtime_design_hashes != design_hashes:
         raise ValueError(f"{state} runtime/release design hash set mismatch")

@@ -195,7 +195,7 @@ public class ActorProcessControlPlaneBridgeController {
                 }
             }
             Map<String,Object> requirementImport =
-                    importRequirementProcessContract(validatedContract,projectId,designVersion);
+                    importRequirementProcessContract(validatedContract,projectId,designVersion,checksum);
             int importedSteps = ((Number) requirementImport.getOrDefault(
                     "importedSteps", 0)).intValue();
             Object publication = requirementImport.getOrDefault(
@@ -850,20 +850,48 @@ public class ActorProcessControlPlaneBridgeController {
             @RequestHeader(value = "X-Resonance-Token", defaultValue = "") String suppliedToken,
             @RequestParam String processCode,
             @RequestParam(defaultValue = "") String stepCode,
-            @RequestParam(defaultValue = "") String routePath) {
+            @RequestParam(defaultValue = "") String routePath,
+            @RequestParam(defaultValue = "") String audience) {
         if (!authorized(suppliedToken)) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(Map.of("success", false, "message", "Invalid control-plane bridge token."));
         }
+        String canonicalAudience=audience.trim().toUpperCase();
+        if(canonicalAudience.isBlank()){
+            List<String> matches=jdbc.queryForList("""
+                    select distinct upper(audience)
+                      from framework_professional_screen_contract
+                     where process_code=? and step_code=?
+                       and lower(split_part(route_path,'?',1))=lower(?)
+                    """,String.class,processCode,stepCode,routePath);
+            if(matches.size()!=1)return ResponseEntity.unprocessableEntity().body(Map.of(
+                    "success",false,"message","A single USER or ADMIN audience is required."));
+            canonicalAudience=matches.get(0);
+        }
+        final String resolvedAudience=canonicalAudience;
         List<Map<String, Object>> saved = jdbc.queryForList("""
                 select document_id as "documentId",document_type as "documentType",
                        title,content,status,revision,updated_by as "updatedBy",
                        updated_at as "updatedAt"
                   from integrated_design_document
-                 where process_code=? and step_code=? and route_path=? and active_yn='Y'
-                """, processCode, stepCode, routePath);
+                 where process_code=? and step_code=? and route_path=? and audience=? and active_yn='Y'
+                """, processCode, stepCode, routePath,resolvedAudience);
         Map<String, Map<String, Object>> byType = new LinkedHashMap<>();
         saved.forEach(row -> byType.put(String.valueOf(row.get("documentType")), row));
+        List<Map<String,Object>> authorityHeads=jdbc.queryForList("""
+                select authority_revision as "authorityRevision",authority_hash as "authorityHash",
+                       document_set_hash as "documentSetHash",
+                       package_binding_hash as "packageBindingHash",
+                       selected_blueprint_id as "selectedBlueprintId",
+                       ownership_strategy as "ownershipStrategy"
+                  from integrated_design_authority
+                 where process_code=? and step_code=? and route_path=? and audience=?
+                """,processCode,stepCode,routePath,resolvedAudience);
+        if(authorityHeads.size()>1)throw new IllegalStateException(
+                "COMPOSITE_DESIGN_AUTHORITY_HEAD_NOT_EXACT");
+        Map<String,Object> authority=authorityHeads.isEmpty()?Map.of(
+                "authorityRevision",0,"authorityHash",""):
+                new LinkedHashMap<>(authorityHeads.get(0));
         List<Map<String, Object>> documents = DESIGN_DOCUMENT_TYPES.entrySet().stream().map(entry -> {
             Map<String, Object> row = new LinkedHashMap<>();
             row.put("documentType", entry.getKey());
@@ -872,6 +900,9 @@ public class ActorProcessControlPlaneBridgeController {
             row.put("status", "DRAFT");
             row.put("revision", 0);
             row.putAll(byType.getOrDefault(entry.getKey(), Map.of()));
+            row.put("authorityRevision",authority.get("authorityRevision"));
+            row.put("baseAuthorityHash",authority.get("authorityHash"));
+            row.put("audience",resolvedAudience);
             return row;
         }).toList();
         long ready = documents.stream()
@@ -881,9 +912,11 @@ public class ActorProcessControlPlaneBridgeController {
                 "processCode", processCode,
                 "stepCode", stepCode,
                 "routePath", routePath,
+                "audience",resolvedAudience,
                 "documents", documents,
                 "total", DESIGN_DOCUMENT_TYPES.size(),
-                "ready", ready));
+                "ready", ready,
+                "authority",authority));
     }
 
     @PostMapping("/design-documents")
@@ -906,6 +939,20 @@ public class ActorProcessControlPlaneBridgeController {
                     "success",false,"message","Authenticated control-plane actor is required."));
         }
         try{
+            if("GENERATE_AXIS_TEMPLATES".equals(String.valueOf(
+                    body.getOrDefault("action","")).trim())){
+                String processCode=String.valueOf(body.getOrDefault("processCode", ""))
+                        .trim().toUpperCase();
+                if(!processCode.matches("^[A-Z][A-Z0-9_:-]{1,79}$"))
+                    throw new IllegalArgumentException("Invalid processCode.");
+                Map<String,Object> request=new LinkedHashMap<>(body);request.put("previewOnly",true);
+                return ResponseEntity.ok(governance.compileIntegratedDesignProcess(request,actor));
+            }
+            if(Set.of("GENERATE_VALIDATE_COMPILE","PROCESS_GENERATE_VALIDATE_COMPILE").contains(
+                    String.valueOf(body.getOrDefault("action","")).trim())){
+                Map<String,Object> request=new LinkedHashMap<>(body);request.put("previewOnly",false);
+                return ResponseEntity.ok(governance.compileIntegratedDesignProcess(request,actor));
+            }
             return ResponseEntity.ok(governance.saveIntegratedDesignDocument(body,actor));
         }catch(SecurityException exception){
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of(
@@ -1492,7 +1539,8 @@ public class ActorProcessControlPlaneBridgeController {
     }
 
     private Map<String,Object> importRequirementProcessContract(
-            Map<?, ?> rawContract,String releaseProjectId,int releaseDesignVersion) {
+            Map<?, ?> rawContract,String releaseProjectId,int releaseDesignVersion,
+            String releaseContractSha256) {
         Map<String,Object> contract=validateRequirementProcessContract(
                 rawContract,releaseProjectId,releaseDesignVersion);
         Object processValue = contract.get("process");
@@ -1661,10 +1709,13 @@ public class ActorProcessControlPlaneBridgeController {
             throw new IllegalStateException(
                     "Requirement process structured design projection is incomplete: "+designProjection);
         }
-        Map<String,Object> publication = governance.finalizeAndQueueProcessDesign(
-                processCode,"BACKSTAGE_REQUIREMENT_AUTOMATION",
-                "REQUIREMENT_PROCESS_CONTRACT");
-        if ("SKIPPED".equals(publication.get("status"))
+        Map<String,Object> publication = governance.compileIntegratedDesignProcess(
+                Map.of("processCode",processCode,"previewOnly",false,"scopeType","PROJECT",
+                    "projectId",releaseProjectId,"designVersion",releaseDesignVersion,
+                    "contractSha256",releaseContractSha256),
+                "BACKSTAGE_REQUIREMENT_AUTOMATION");
+        if (!Set.of("SOURCE_APPLIED_PHYSICAL_QUEUED","PHYSICAL_GENERATED_VERIFIED")
+                .contains(String.valueOf(publication.get("status")))
                 || !Boolean.TRUE.equals(publication.get("success"))) {
             throw new IllegalStateException(
                     "Requirement process canonical publication is incomplete: " + publication);

@@ -51,6 +51,12 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
     private static final String COMMON_DESIGN_STATE_MIGRATION=
         "apps/carbonet-api/src/main/resources/db/migration/postgresql/"+
         "V20260816133000__create_global_common_design_source_state.sql";
+    private static final String INTEGRATED_DESIGN_REGISTRY_MIGRATION=
+        "apps/carbonet-api/src/main/resources/db/migration/postgresql/"+
+        "V20260728170000__create_integrated_design_document_registry.sql";
+    private static final String COMPOSITE_DESIGN_MIGRATION=
+        "apps/carbonet-api/src/main/resources/db/migration/postgresql/"+
+        "V20260816154000__compile_composite_executable_design_authority.sql";
     private JdbcTemplate admin;
     private JdbcTemplate jdbc;
     private DriverManagerDataSource dataSource;
@@ -84,6 +90,9 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
         applyMigration(LEGACY_SOURCE_HASH_MIGRATION,false);
         applyMigration(MIGRATION,true);
         applyMigration(REVISION_MIGRATION,true);
+        applyMigration(INTEGRATED_DESIGN_REGISTRY_MIGRATION,false);
+        installProjectRuntimeWriteFenceFixture();
+        applyMigration(COMPOSITE_DESIGN_MIGRATION,false);
     }
 
     @AfterAll
@@ -94,16 +103,23 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
     @BeforeEach
     void seed(){
         jdbc.execute("drop trigger if exists reject_direct_job on framework_development_job");
+        jdbc.execute("drop table if exists item,approval,ticket cascade");
         jdbc.update("update comtnemplyrinfo set emplyr_sttus_code='P' "+
             "where emplyr_id='system-admin'");
-        jdbc.execute("truncate framework_actor_process_design_release,framework_process_step_screen_binding,"+
-            "framework_screen_blueprint,framework_screen_resource,"+
+        jdbc.execute("truncate integrated_design_notification_inbox,integrated_design_notification_outbox,"+
+            "integrated_design_notification_template,integrated_design_autocompletion_receipt,"+
+            "framework_process_execution_event,framework_process_execution,"+
+            "framework_actor_process_design_release,framework_process_step_screen_binding,"+
+            "framework_page_design_assurance,framework_screen_blueprint,framework_screen_resource,"+
             "framework_common_design_write_probe,framework_common_design_source_receipt,"+
             "framework_common_design_asset_source_state,"+
             "ui_page_component_map,ui_component_registry,ui_section_registry,ui_page_manifest,"+
             "comtnthemedefinition,"+
-            "framework_account_actor_assignment,"+
-            "framework_development_job_gate_result,framework_development_job,"+
+            "framework_project_actor_assignment,framework_account_actor_assignment,"+
+            "integrated_design_scope_binding,integrated_design_authority_version,"+
+            "integrated_design_authority,integrated_design_document_version,integrated_design_document,"+
+            "framework_permission_grant_v1,framework_permission_requirement_v1,"+
+            "framework_development_job_event,framework_development_job_gate_result,framework_development_job,"+
             "framework_process_artifact,framework_step_execution_spec,framework_professional_screen_contract,"+
             "framework_page_design,framework_simulation_case,framework_step_schema_set,"+
             "framework_process_step,framework_process_definition,framework_actor_definition cascade");
@@ -905,8 +921,9 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
 
     @Test
     void realIncompleteAddStepCreatesNoJobThenCompleteRetryCreatesExactlyOne(){
-        jdbc.execute("truncate framework_development_job_gate_result,"+
-            "framework_development_job,framework_process_artifact restart identity");
+        jdbc.execute("truncate integrated_design_scope_binding,integrated_design_authority_version,"+
+            "integrated_design_authority,framework_development_job_gate_result,"+
+            "framework_development_job,framework_process_artifact restart identity cascade");
         Map<String,Object> body=stepBody("STEP_TWO",2);
 
         Map<String,Object> skipped=transaction.execute(status->
@@ -943,8 +960,9 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
 
     @Test
     void rejectedCanonicalJobRollsBackProcessAndSpecMutation(){
-        jdbc.execute("truncate framework_development_job_gate_result,"+
-            "framework_development_job,framework_process_artifact restart identity");
+        jdbc.execute("truncate integrated_design_scope_binding,integrated_design_authority_version,"+
+            "integrated_design_authority,framework_development_job_gate_result,"+
+            "framework_development_job,framework_process_artifact restart identity cascade");
         jdbc.execute("""
             create or replace function reject_direct_job() returns trigger language plpgsql as $$
             begin raise exception 'REJECT_DIRECT_JOB'; end $$
@@ -1603,6 +1621,589 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
             allowProcessLock.countDown();
             executor.shutdownNow();
         }
+    }
+
+    @Test
+    void compositeRelayReadinessShareLocksSerializeEveryRevocationAxis() throws Exception {
+        jdbc.update("insert into comtnemplyrinfo values('relay-user','RELAY_ESNTL','P')");
+        jdbc.update("insert into comtnemplyrscrtyestbs values('RELAY_ESNTL','ROLE_RELAY')");
+        jdbc.update("""
+            insert into framework_account_actor_assignment(
+              account_id,tenant_id,project_id,actor_code,data_scope)
+            values('relay-user','TENANT','PROJECT_A','PRIMARY_ACTOR','*')
+            """);
+        jdbc.update("""
+            insert into framework_project_actor_assignment(project_id,actor_code,user_id,active_yn)
+            values('PROJECT_A','PRIMARY_ACTOR','relay-user','Y')
+            """);
+        for(String mutation:List.of(
+                "update framework_account_actor_assignment set assignment_status='INACTIVE' where account_id='relay-user'",
+                "update comtnemplyrinfo set emplyr_sttus_code='D' where emplyr_id='relay-user'",
+                "update comtnemplyrscrtyestbs set author_code='' where scrty_dtrmn_trget_id='RELAY_ESNTL'",
+                "update framework_project_actor_assignment set active_yn='N' where project_id='PROJECT_A'")){
+            jdbc.update("update framework_account_actor_assignment set assignment_status='ACTIVE' where account_id='relay-user'");
+            jdbc.update("update comtnemplyrinfo set emplyr_sttus_code='P' where emplyr_id='relay-user'");
+            jdbc.update("update comtnemplyrscrtyestbs set author_code='ROLE_RELAY' where scrty_dtrmn_trget_id='RELAY_ESNTL'");
+            jdbc.update("update framework_project_actor_assignment set active_yn='Y' where project_id='PROJECT_A'");
+            assertRelayRevocationWaits(mutation);
+        }
+    }
+
+    @Test
+    void compositeThreeScreensCompileToOneFinalJobAndReplayWritesZero(){
+        seedCompositeThreeScreens();
+        Map<String,Object> first=transaction.execute(status->service.compileIntegratedDesignProcess(
+            Map.of("processCode","PROC","previewOnly",false,"scopeType","GLOBAL"),"system-admin"));
+        assertEquals("SOURCE_APPLIED_PHYSICAL_QUEUED",first.get("status"));
+        assertEquals(3,number(first,"screenCount"));assertEquals(54,number(first,"documentCount"));
+        assertEquals(3,number(first,"authorityCount"));assertEquals(1,number(first,"jobCount"));
+        assertEquals(3,number(first,"endpointExpected"));
+        assertEquals(1,number(first,"refreshInvocationCount"));
+        assertEquals(3,jdbc.queryForObject("select count(*) from integrated_design_authority",
+            Integer.class));
+        assertEquals(1,jdbc.queryForObject("select count(distinct job_id) from integrated_design_authority",
+            Integer.class));
+        assertEquals(3,jdbc.queryForObject("select count(*) from framework_composite_design_target_identity "+
+            "where process_code='PROC' and step_code='STEP'",Integer.class));
+        assertEquals(3,jdbc.queryForObject("""
+            select count(*) from integrated_design_authority authority
+             join framework_professional_screen_contract contract
+               on contract.contract_id=authority.contract_id
+             join framework_process_step_screen_binding binding
+               on binding.process_code=authority.process_code and binding.step_code=authority.step_code
+              and binding.audience=authority.audience
+             join framework_screen_resource resource
+               on resource.screen_resource_id=binding.screen_resource_id
+              and resource.route_key=authority.route_path
+            where authority.process_code='PROC' and contract.actor_code=binding.actor_code
+              and authority.composite_json#>>'{generatedSurfaceOutputs,WORK_GUIDE,actorCode}'=
+                  contract.actor_code
+              and authority.composite_json#>>'{generatedSurfaceOutputs,NEXT_TASK,commandCode}'=
+                  framework_try_jsonb(contract.command_contract)->0->>'commandCode'
+            """,Integer.class));
+        assertEquals("PRIMARY_ACTOR",jdbc.queryForObject("select actor_code from framework_process_step "+
+            "where process_code='PROC' and step_code='STEP'",String.class));
+        assertEquals(1,jdbc.queryForObject("select count(*) from framework_permission_requirement_v1 "+
+            "where process_code='PROC' and step_code='STEP' and permission_code='PERM_SAVE'",Integer.class));
+        assertEquals(3,jdbc.queryForObject("""
+            select jsonb_array_length(framework_try_jsonb(specification_json)->'compositeAuthorities')
+              from framework_development_job where process_code='PROC'
+               and job_group_code='PROC_CANONICAL_PUBLICATION'
+            """,Integer.class));
+        installCompositeGeneratedTables();
+        Map<String,Object> before=jdbc.queryForMap("""
+            select string_agg(authority_id||':'||authority_revision||':'||xmin::text,','
+                     order by authority_id) as authorities,
+                   (select string_agg(document_id||':'||revision||':'||xmin::text,','
+                     order by document_id) from integrated_design_document) as documents,
+                   (select string_agg(job_id||':'||xmin::text,',' order by job_id)
+                     from framework_development_job) as jobs
+              from integrated_design_authority
+            """);
+        Map<String,Object> replay=transaction.execute(status->service.compileIntegratedDesignProcess(
+            Map.of("processCode","PROC","previewOnly",false,"scopeType","GLOBAL"),"system-admin"));
+        assertEquals("SOURCE_APPLIED_PHYSICAL_QUEUED",replay.get("status"));
+        assertEquals(0,number(replay,"refreshInvocationCount"));
+        assertEquals(before,jdbc.queryForMap("""
+            select string_agg(authority_id||':'||authority_revision||':'||xmin::text,','
+                     order by authority_id) as authorities,
+                   (select string_agg(document_id||':'||revision||':'||xmin::text,','
+                     order by document_id) from integrated_design_document) as documents,
+                   (select string_agg(job_id||':'||xmin::text,',' order by job_id)
+                     from framework_development_job) as jobs
+              from integrated_design_authority
+            """));
+    }
+
+    @Test
+    void safeCreateExistingSchemaRequiresExactMarkerAndReplaysWithoutSourceWrites(){
+        seedCompositeThreeScreens();
+        jdbc.execute("create table item(name text not null,id integer primary key)");
+        jdbc.execute("comment on table item is 'design-schema-hash:"+schemaFingerprint("/work-a")+"'");
+        jdbc.execute("create table approval(reason text not null,approval_id bigint primary key)");
+        IllegalStateException mismatch=assertThrows(IllegalStateException.class,()->
+            transaction.execute(status->service.compileIntegratedDesignProcess(
+                Map.of("processCode","PROC","previewOnly",false,"scopeType","GLOBAL"),"system-admin")));
+        assertTrue(mismatch.getMessage().contains("DATABASE_REGISTERED_COLUMN_NOT_EXACT"));
+        assertEquals(0,count("integrated_design_document"));assertEquals(0,count("integrated_design_authority"));
+        assertEquals(0,count("framework_development_job"));
+    }
+
+    @Test
+    void identicalCrossScreenDatabasePlanDeduplicatesAndConflictingPlanRollsBack(){
+        seedCompositeThreeScreens();
+        String itemData=jdbc.queryForObject("select data_contract from framework_professional_screen_contract "+
+            "where process_code='PROC' and route_path='/work-a'",String.class);
+        jdbc.update("""
+            update framework_professional_screen_contract set
+              field_contract='[{"fieldCode":"name","label":"Input","direction":"INPUT","dataSource":"ITEM","dataType":"STRING","required":true,"componentCode":"JSON_FORM"},{"fieldCode":"id","label":"Output","direction":"OUTPUT","dataSource":"ITEM","dataType":"INTEGER","required":false,"componentCode":"JSON_FORM"}]',
+              api_contract='[{"method":"POST","path":"/api/items/{executionId}/escalate","commandCode":"ESCALATE","requestFields":["name"],"responseFields":["id"],"permissionCodes":["PERM_ESCALATE"]}]',
+              data_contract=? where process_code='PROC' and route_path='/work-b'
+            """,itemData);
+        Map<String,Object> compiled=transaction.execute(status->service.compileIntegratedDesignProcess(
+            Map.of("processCode","PROC","previewOnly",false,"scopeType","GLOBAL"),"system-admin"));
+        assertEquals("SOURCE_APPLIED_PHYSICAL_QUEUED",compiled.get("status"));
+        assertEquals(3,number(compiled,"authorityCount"));
+        assertEquals(2,jdbc.queryForObject("""
+            select count(distinct change->>'tableName') from framework_development_job job
+              cross join lateral jsonb_array_elements(
+                framework_try_jsonb(job.specification_json)->'compositeAuthorities') authority
+              cross join lateral jsonb_array_elements(
+                authority->'executableDesign'->'DATABASE'->'schemaChanges') change
+             where job.process_code='PROC'
+            """,Integer.class));
+
+        seed();seedCompositeThreeScreens();
+        Map<String,Object> conflictPlan=new LinkedHashMap<>();
+        List<Map<String,Object>> changes=List.of(Map.of(
+            "operation","CREATE_TABLE","tableName","item","columns",List.of(
+                Map.of("name","note","type","text","primaryKey",false,"nullable",false),
+                Map.of("name","ticket_id","type","bigint","primaryKey",true,"nullable",false)),
+            "uniqueConstraints",List.of(),"indexes",List.of()));
+        conflictPlan.put("entities",List.of(Map.of("entity","ITEM","fields",List.of("note","ticket_id"))));
+        conflictPlan.put("migrationMode","SAFE_CREATE_TABLE");
+        conflictPlan.put("schemaFingerprint",CompositeExecutableDesignAuthorityCompiler.hash(
+            CompositeExecutableDesignAuthorityCompiler.stable(changes)));
+        conflictPlan.put("schemaChanges",changes);
+        jdbc.update("update framework_professional_screen_contract set data_contract=?, "+
+            "field_contract=replace(field_contract,'TICKET','ITEM') where "+
+            "process_code='PROC' and route_path='/work-b'",json(conflictPlan));
+        IllegalStateException conflict=assertThrows(IllegalStateException.class,()->
+            transaction.execute(status->service.compileIntegratedDesignProcess(
+                Map.of("processCode","PROC","previewOnly",false,"scopeType","GLOBAL"),"system-admin")));
+        assertTrue(conflict.getMessage().contains("COMPOSITE_CROSS_SCREEN_DATABASE_CONTRADICTION"),
+            conflict.getMessage());
+        assertEquals(0,count("integrated_design_document"));assertEquals(0,count("integrated_design_authority"));
+        assertEquals(0,count("framework_development_job"));
+    }
+
+    @Test
+    void sameStepRouteTransitionOrEndpointConflictRollsBackAllCompositeWrites(){
+        seedCompositeThreeScreens();
+        jdbc.update("""
+            update framework_professional_screen_contract
+               set command_contract='[{"commandCode":"SAVE","actorCode":"OWNER_ACTOR","primary":true}]',
+                   state_contract='[{"fromState":"DRAFT","commandCode":"SAVE","toState":"BLOCKED"}]',
+                   api_contract='[{"method":"POST","path":"/api/admin/items/{executionId}/approve","commandCode":"SAVE","requestFields":["reason"],"responseFields":["approval_id"],"permissionCodes":["PERM_APPROVE"]}]'
+             where process_code='PROC' and route_path='/work-admin'
+            """);
+        IllegalStateException transition=assertThrows(IllegalStateException.class,()->
+            transaction.execute(status->service.compileIntegratedDesignProcess(
+                Map.of("processCode","PROC","previewOnly",false,"scopeType","GLOBAL"),"system-admin")));
+        assertTrue(transition.getMessage().contains("COMPOSITE_CROSS_SCREEN_STATE_CONTRADICTION"));
+        assertEquals(0,count("integrated_design_document"));assertEquals(0,count("integrated_design_authority"));
+        assertEquals(0,count("framework_development_job"));
+
+        jdbc.update("""
+            update framework_professional_screen_contract
+               set command_contract='[{"commandCode":"APPROVE","actorCode":"OWNER_ACTOR","primary":true}]',
+                   state_contract='[{"fromState":"DRAFT","commandCode":"APPROVE","toState":"DONE"}]',
+                   api_contract='[{"method":"POST","path":"/api/items/{executionId}","commandCode":"APPROVE","requestFields":["reason"],"responseFields":["approval_id"],"permissionCodes":["PERM_APPROVE"]}]'
+             where process_code='PROC' and route_path='/work-admin'
+            """);
+        IllegalStateException endpoint=assertThrows(IllegalStateException.class,()->
+            transaction.execute(status->service.compileIntegratedDesignProcess(
+                Map.of("processCode","PROC","previewOnly",false,"scopeType","GLOBAL"),"system-admin")));
+        assertTrue(endpoint.getMessage().contains("COMPOSITE_CROSS_SCREEN_API_CONTRADICTION"));
+        assertEquals(0,count("integrated_design_document"));assertEquals(0,count("integrated_design_authority"));
+        assertEquals(0,count("framework_development_job"));
+    }
+
+    @Test
+    void compositeAutocompletionInspectIsSelectOnlyAndReportsTargetProcessesAndScreens(){
+        seedCompositeThreeScreens();
+        CompositeDesignOperationalWorker worker=new CompositeDesignOperationalWorker(
+            jdbc,new ObjectMapper(),service,new DataSourceTransactionManager(dataSource),
+            false,8,25,false);
+        try{
+            Map<String,Object> report=worker.inspect();
+            assertEquals(true,report.get("dryRun"));assertEquals(1,number(report,"totalProcessCount"));
+            assertEquals(3,number(report,"screenIdentityCount"));
+            assertEquals(0,count("integrated_design_autocompletion_receipt"));
+            assertEquals(0,count("integrated_design_document"));assertEquals(0,count("framework_development_job"));
+        }finally{worker.close();}
+    }
+
+    @Test
+    void disabledBulkWorkerRejectsForgedCompletionThenAcceptsExactCanonicalEvidence(){
+        seedCompositeThreeScreens();
+        Map<String,Object> compiled=transaction.execute(status->service.compileIntegratedDesignProcess(
+            Map.of("processCode","PROC","previewOnly",false,"scopeType","GLOBAL"),"system-admin"));
+        long jobId=((Number)((Map<?,?>)((List<?>)compiled.get("receipts")).get(0)).get("jobId")).longValue();
+        String fingerprint=jdbc.queryForObject(
+            "select framework_composite_dependency_fingerprint('PROC')",String.class);
+        jdbc.update("""
+            insert into integrated_design_autocompletion_receipt(
+              process_code,completion_status,dependency_fingerprint,job_id,started_at)
+            values('PROC','SOURCE_APPLIED_PHYSICAL_QUEUED',?,?,current_timestamp)
+            """,fingerprint,jobId);
+        jdbc.update("update framework_development_job set job_status='VERIFIED',quality_status='VERIFIED',"+
+            "evidence_ref='evidence://forged',result_json='{}' where job_id=?",jobId);
+        jdbc.update("update framework_process_artifact set delivery_status='VERIFIED',"+
+            "evidence_ref='evidence://forged' where process_code='PROC' "+
+            "and contract_ref='AUTO:FULL_STACK_GENERATION'");
+        CompositeDesignOperationalWorker worker=new CompositeDesignOperationalWorker(
+            jdbc,new ObjectMapper(),service,new DataSourceTransactionManager(dataSource),
+            false,8,25,false);
+        try{worker.runScheduledBatch();
+            assertEquals("PENDING",jdbc.queryForObject(
+                "select completion_status from integrated_design_autocompletion_receipt where process_code='PROC'",
+                String.class));
+            assertEquals("CANONICAL_PHYSICAL_EVIDENCE_INVALID",jdbc.queryForObject(
+                "select blocker_code from integrated_design_autocompletion_receipt where process_code='PROC'",
+                String.class));
+            jdbc.update("""
+                update integrated_design_autocompletion_receipt
+                   set completion_status='SOURCE_APPLIED_PHYSICAL_QUEUED',attempt_count=1,
+                       job_id=?,dependency_fingerprint=framework_composite_dependency_fingerprint('PROC'),
+                       started_at=current_timestamp-interval '2 seconds',blocker_code=null
+                 where process_code='PROC'
+                """,jobId);
+            installExactCanonicalPhysicalEvidence(jobId);
+            String canonicalSetHash=jdbc.queryForObject("""
+                select framework_try_jsonb(specification_json)->>'compositeAuthoritySetHash'
+                  from framework_development_job where job_id=?
+                """,String.class,jobId);
+            String forgedSetHash="f".repeat(64);
+            assertNotEquals(canonicalSetHash,forgedSetHash);
+            jdbc.update("""
+                update framework_development_job
+                   set specification_json=jsonb_set(framework_try_jsonb(specification_json),
+                         '{compositeAuthoritySetHash}',to_jsonb(?::text))::text,
+                       result_json=jsonb_set(framework_try_jsonb(result_json),
+                         '{canonicalGeneration,compositeAuthoritySetHash}',to_jsonb(?::text))::text
+                 where job_id=?
+                """,forgedSetHash,forgedSetHash,jobId);
+            jdbc.update("""
+                update framework_development_job_event
+                   set detail_json=jsonb_set(framework_try_jsonb(detail_json),
+                         '{compositeAuthoritySetHash}',to_jsonb(?::text))::text
+                 where job_id=? and event_type='CANONICAL_RELEASE_FINALIZED'
+                """,forgedSetHash,jobId);
+            worker.runScheduledBatch();
+            assertEquals("PENDING",jdbc.queryForObject(
+                "select completion_status from integrated_design_autocompletion_receipt where process_code='PROC'",
+                String.class));
+            assertEquals("CANONICAL_PHYSICAL_EVIDENCE_INVALID",jdbc.queryForObject(
+                "select blocker_code from integrated_design_autocompletion_receipt where process_code='PROC'",
+                String.class));
+            jdbc.update("""
+                update integrated_design_autocompletion_receipt
+                   set completion_status='SOURCE_APPLIED_PHYSICAL_QUEUED',attempt_count=2,
+                       job_id=?,dependency_fingerprint=framework_composite_dependency_fingerprint('PROC'),
+                       started_at=current_timestamp-interval '2 seconds',blocker_code=null
+                 where process_code='PROC'
+                """,jobId);
+            jdbc.update("""
+                update framework_development_job
+                   set specification_json=jsonb_set(framework_try_jsonb(specification_json),
+                         '{compositeAuthoritySetHash}',to_jsonb(?::text))::text
+                 where job_id=?
+                """,canonicalSetHash,jobId);
+            installExactCanonicalPhysicalEvidence(jobId);
+            worker.runScheduledBatch();
+            assertEquals("PHYSICAL_GENERATED_VERIFIED",jdbc.queryForObject(
+                "select completion_status from integrated_design_autocompletion_receipt where process_code='PROC'",
+                String.class));
+            assertEquals(true,jdbc.queryForObject("""
+                select receipt.receipt_json->'canonicalGeneration'=
+                         framework_try_jsonb(job.result_json)->'canonicalGeneration'
+                       and receipt.receipt_json->>'jobEvidenceRef'=job.evidence_ref
+                  from integrated_design_autocompletion_receipt receipt
+                  join framework_development_job job on job.job_id=receipt.job_id
+                 where receipt.process_code='PROC'
+                """,Boolean.class));
+            String verifiedXmin=jdbc.queryForObject(
+                "select xmin::text from integrated_design_autocompletion_receipt where process_code='PROC'",
+                String.class);
+            worker.runScheduledBatch();
+            assertEquals(verifiedXmin,jdbc.queryForObject(
+                "select xmin::text from integrated_design_autocompletion_receipt where process_code='PROC'",
+                String.class));
+            assertEquals(1,count("integrated_design_autocompletion_receipt"));
+            jdbc.update("update framework_permission_grant_v1 set use_at='N' "+
+                "where actor_code='PRIMARY_ACTOR'");
+            assertNotEquals(fingerprint,jdbc.queryForObject(
+                "select framework_composite_dependency_fingerprint('PROC')",String.class));
+            worker.runScheduledBatch();
+            assertEquals(Map.of("completionStatus","PENDING","attemptCount",0,"jobCount",0),
+                jdbc.queryForMap("""
+                    select completion_status as "completionStatus",attempt_count as "attemptCount",
+                           count(job_id)::integer as "jobCount"
+                      from integrated_design_autocompletion_receipt where process_code='PROC'
+                     group by completion_status,attempt_count
+                    """));
+        }finally{worker.close();}
+    }
+
+    @Test
+    void dependencyDriftRequeuesEveryTerminalOrPhysicalStateAndDiscardsStaleJobs(){
+        for(String status:List.of("SOURCE_APPLIED_GENERATION_QUEUED","SOURCE_APPLIED_UNCHANGED",
+                "SOURCE_APPLIED_PHYSICAL_QUEUED",
+                "PHYSICAL_GENERATED_VERIFIED","PHYSICAL_FAILED","BLOCKED")){
+            String process="DRIFT_"+status;
+            jdbc.update("""
+                insert into integrated_design_autocompletion_receipt(
+                  process_code,completion_status,attempt_count,dependency_fingerprint,job_id,
+                  started_at,completed_at,duration_ms)
+                values(?,?,4,repeat('f',64),900,current_timestamp-interval '1 minute',
+                  current_timestamp,60000)
+                """,process,status);
+        }
+        CompositeDesignOperationalWorker worker=new CompositeDesignOperationalWorker(
+            jdbc,new ObjectMapper(),service,new DataSourceTransactionManager(dataSource),
+            false,2,25,false);
+        try{worker.reconcilePhysicalCompletion();
+            assertEquals(6,jdbc.queryForObject("""
+                select count(*) from integrated_design_autocompletion_receipt
+                 where process_code like 'DRIFT_%' and completion_status='PENDING'
+                   and attempt_count=0 and job_id is null
+                   and started_at<current_timestamp-interval '30 seconds'
+                   and completed_at is null and duration_ms is null
+                   and receipt_json->>'generationStatus'='DEPENDENCY_CHANGED_REQUEUE'
+                """,Integer.class));
+        }finally{worker.close();}
+    }
+
+    @Test
+    void dependencyFingerprintTracksLayoutDatabaseCatalogAndRelayValidity(){
+        seedCompositeThreeScreens();
+        transaction.execute(status->service.compileIntegratedDesignProcess(Map.of(
+            "processCode","PROC","previewOnly",false,"scopeType","GLOBAL"),"system-admin"));
+        String original=jdbc.queryForObject(
+            "select framework_composite_dependency_fingerprint('PROC')",String.class);
+        jdbc.update("update framework_screen_resource set layout_type='KRDS_ALTERNATE' "+
+            "where route_key='/work-a'");
+        String layoutChanged=jdbc.queryForObject(
+            "select framework_composite_dependency_fingerprint('PROC')",String.class);
+        assertNotEquals(original,layoutChanged);
+        jdbc.execute("create table item(name text not null,id integer primary key)");
+        String catalogChanged=jdbc.queryForObject(
+            "select framework_composite_dependency_fingerprint('PROC')",String.class);
+        assertNotEquals(layoutChanged,catalogChanged);
+        jdbc.execute("comment on table item is 'design-schema-hash:forged'");
+        String commentChanged=jdbc.queryForObject(
+            "select framework_composite_dependency_fingerprint('PROC')",String.class);
+        assertNotEquals(catalogChanged,commentChanged);
+        jdbc.update("update framework_account_actor_assignment set valid_until=current_date-1 "+
+            "where actor_code='PRIMARY_ACTOR'");
+        assertNotEquals(commentChanged,jdbc.queryForObject(
+            "select framework_composite_dependency_fingerprint('PROC')",String.class));
+    }
+
+    @Test
+    void physicalP95RequiresVerifiedSamplesAndExcludesFastBlockers(){
+        jdbc.update("""
+            insert into integrated_design_autocompletion_receipt(
+              process_code,completion_status,dependency_fingerprint,duration_ms)
+            values('SLA_BLOCKED','BLOCKED',
+              framework_composite_dependency_fingerprint('SLA_BLOCKED'),1)
+            """);
+        CompositeDesignOperationalWorker worker=new CompositeDesignOperationalWorker(
+            jdbc,new ObjectMapper(),service,new DataSourceTransactionManager(dataSource),
+            false,2,25,false);
+        try{Map<String,Object> empty=worker.inspect();
+            assertEquals("MEASUREMENT_REQUIRED",empty.get("tenMinuteTarget"));
+            assertEquals(0,number(empty,"physicalSampleCount"));
+            assertEquals(0L,((Number)empty.get("p95CompileMs")).longValue());
+            jdbc.update("""
+                insert into integrated_design_autocompletion_receipt(
+                  process_code,completion_status,dependency_fingerprint,duration_ms)
+                values('SLA_VERIFIED','PHYSICAL_GENERATED_VERIFIED',
+                  framework_composite_dependency_fingerprint('SLA_VERIFIED'),1234)
+                """);
+            Map<String,Object> measured=worker.inspect();
+            assertEquals(1,number(measured,"physicalSampleCount"));
+            assertEquals(1234L,((Number)measured.get("p95CompileMs")).longValue());
+        }finally{worker.close();}
+    }
+
+    @Test
+    void disabledManualDispatchDrainsRequestedBatchAndPreservesFirstStart() throws Exception {
+        for(int index=1;index<=7;index++)jdbc.update("""
+            insert into integrated_design_autocompletion_receipt(
+              process_code,completion_status,dependency_fingerprint,started_at)
+            values(?,'PENDING',framework_composite_dependency_fingerprint(?),
+              current_timestamp-interval '2 minutes')
+            ""","MANUAL_"+index,"MANUAL_"+index);
+        ActorProcessGovernanceService fake=org.mockito.Mockito.mock(
+            ActorProcessGovernanceService.class);
+        org.mockito.Mockito.when(fake.compileIntegratedDesignProcess(
+            org.mockito.ArgumentMatchers.anyMap(),org.mockito.ArgumentMatchers.anyString()))
+            .thenAnswer(invocation->{
+                @SuppressWarnings("unchecked") Map<String,Object> request=invocation.getArgument(0);
+                String process=String.valueOf(request.get("processCode"));
+                return Map.ofEntries(Map.entry("status","SOURCE_APPLIED_PHYSICAL_QUEUED"),
+                    Map.entry("screenCount",1),Map.entry("documentCount",18),
+                    Map.entry("authorityCount",1),Map.entry("receipts",
+                        List.of(Map.of("jobId",Math.abs((long)process.hashCode())+1L))));
+            });
+        CompositeDesignOperationalWorker worker=new CompositeDesignOperationalWorker(
+            jdbc,new ObjectMapper(),fake,new DataSourceTransactionManager(dataSource),
+            false,2,25,false){
+                @Override Map<String,Object> scopeForProcess(String ignored){
+                    return Map.of("scopeType","GLOBAL");
+                }
+            };
+        try{Map<String,Object> accepted=worker.dispatch(5);
+            assertEquals(true,accepted.get("manualDrain"));
+            assertTrue(String.valueOf(accepted.get("manualRunToken"))
+                .matches("[0-9a-f-]{36}"));
+            long deadline=System.nanoTime()+TimeUnit.SECONDS.toNanos(5);
+            int completed;
+            do{completed=jdbc.queryForObject("""
+                    select count(*) from integrated_design_autocompletion_receipt
+                     where process_code like 'MANUAL_%'
+                       and completion_status='SOURCE_APPLIED_PHYSICAL_QUEUED'
+                    """,Integer.class);
+                if(completed<5)Thread.sleep(20);
+            }while(completed<5&&System.nanoTime()<deadline);
+            assertEquals(5,completed);
+            assertEquals(2,jdbc.queryForObject("""
+                select count(*) from integrated_design_autocompletion_receipt
+                 where process_code like 'MANUAL_%' and completion_status='PENDING'
+                """,Integer.class));
+            assertEquals(5,jdbc.queryForObject("""
+                select count(*) from integrated_design_autocompletion_receipt
+                 where process_code like 'MANUAL_%'
+                   and completion_status='SOURCE_APPLIED_PHYSICAL_QUEUED'
+                   and started_at<current_timestamp-interval '90 seconds'
+                """,Integer.class));
+        }finally{worker.close();}
+    }
+
+    @SuppressWarnings("unchecked")
+    private void installExactCanonicalPhysicalEvidence(long jobId){
+        Map<String,Object> job=jdbc.queryForMap("""
+            select process_code as "processCode",step_code as "stepCode",target_path as "targetPath",
+                   specification_json as "specificationJson"
+              from framework_development_job where job_id=?
+            """,jobId);
+        Map<String,Object> specification;
+        try{specification=new ObjectMapper().readValue(
+            String.valueOf(job.get("specificationJson")),Map.class);}
+        catch(Exception error){throw new IllegalStateException(error);}
+        String releaseHash="c".repeat(64),commit="d".repeat(40),rollback="e".repeat(40);
+        Map<String,Object> evidence=new LinkedHashMap<>();
+        evidence.put("schema","carbonet.canonical-generation-evidence/v1");
+        evidence.put("activationPolicy","SOURCE_IMMEDIATE_V1");
+        evidence.put("processCode",job.get("processCode"));
+        evidence.put("stepCode",job.get("stepCode"));
+        evidence.put("sourceHash",specification.get("sourceHash"));
+        evidence.put("packageHash","b".repeat(64));
+        evidence.put("designCatalogHash",specification.get("designCatalogHash"));
+        evidence.put("endpointCatalogHash",specification.get("endpointCatalogHash"));
+        evidence.put("releaseHash",releaseHash);
+        evidence.put("compositeAuthoritySetHash",specification.get("compositeAuthoritySetHash"));
+        evidence.put("compositeArtifactManifestHash","a".repeat(64));
+        String evidenceRef="git:"+commit+";release:"+releaseHash+";log:/tmp/canonical.log";
+        jdbc.update("""
+            update framework_development_job
+               set job_status='VERIFIED',quality_status='VERIFIED',
+                   result_json=?,evidence_ref=?,rollback_ref=?,completed_at=current_timestamp,
+                   lease_token=null,lease_until=null
+             where job_id=?
+            """,json(Map.of("commit",commit,"canonicalGeneration",evidence)),
+            evidenceRef,rollback,jobId);
+        jdbc.update("""
+            update framework_step_execution_spec set generation_status='GENERATED'
+             where process_code=? and step_code=? and source_hash=?
+            """,job.get("processCode"),job.get("stepCode"),specification.get("sourceHash"));
+        jdbc.update("""
+            update framework_process_artifact
+               set step_code=?,target_path=?,delivery_status='VERIFIED',evidence_ref=?
+             where process_code=? and contract_ref='AUTO:FULL_STACK_GENERATION'
+            """,job.get("stepCode"),job.get("targetPath"),evidenceRef,job.get("processCode"));
+        jdbc.update("delete from framework_development_job_event where job_id=? "+
+            "and event_type='CANONICAL_RELEASE_FINALIZED'",jobId);
+        jdbc.update("""
+            insert into framework_development_job_event(
+              job_id,event_type,from_status,to_status,worker_id,detail_json)
+            values(?,'CANONICAL_RELEASE_FINALIZED','RUNNING','VERIFIED','test-worker',?)
+            """,jobId,json(evidence));
+    }
+
+    @Test
+    void workerLocksAndReusesExactCurrentProjectScope(){
+        seedCompositeThreeScreens();String sha="f".repeat(64),nextSha="e".repeat(64);
+        transaction.execute(status->service.compileIntegratedDesignProcess(Map.of(
+            "processCode","PROC","previewOnly",false,"scopeType","PROJECT",
+            "projectId","PROJECT_A","designVersion",7,"contractSha256",sha),"system-admin"));
+        transaction.execute(status->service.compileIntegratedDesignProcess(Map.of(
+            "processCode","PROC","previewOnly",false,"scopeType","PROJECT",
+            "projectId","PROJECT_A","designVersion",8,"contractSha256",nextSha),"system-admin"));
+        CompositeDesignOperationalWorker worker=new CompositeDesignOperationalWorker(
+            jdbc,new ObjectMapper(),service,new DataSourceTransactionManager(dataSource),
+            false,8,25,false);
+        try{Map<String,Object> scope=transaction.execute(status->worker.scopeForProcess("PROC"));
+            assertEquals(Map.of("scopeType","PROJECT","projectId","PROJECT_A",
+                "designVersion",8,"contractSha256",nextSha),scope);
+            jdbc.update("""
+                insert into integrated_design_scope_binding(
+                  authority_id,authority_revision,scope_type,project_id,design_version,
+                  contract_sha256,process_code,step_code,route_path,audience,
+                  document_set_hash,authority_hash,provenance_hash,bound_by)
+                select authority_id,authority_revision,'PROJECT','PROJECT_A',9,repeat('d',64),
+                       'FORGED_SCOPE',step_code,route_path,audience,document_set_hash,
+                       authority_hash,repeat('c',64),'forged-test'
+                  from integrated_design_authority where process_code='PROC'
+                 order by authority_id limit 1
+                """);
+            assertThrows(IllegalStateException.class,()->worker.scopeForProcess("PROC"));
+        }finally{worker.close();}
+    }
+
+    @Test
+    void runtimeUsesExactProjectIdentityAndRejectsForgedCurrentBinding(){
+        seedCompositeThreeScreens();String sha="f".repeat(64);
+        transaction.execute(status->service.compileIntegratedDesignProcess(Map.of(
+            "processCode","PROC","previewOnly",false,"scopeType","PROJECT",
+            "projectId","PROJECT_A","designVersion",7,"contractSha256",sha),"system-admin"));
+        CompositeRuntimePolicyService runtime=new CompositeRuntimePolicyService(jdbc);
+        assertEquals("PRIMARY_ACTOR",runtime.resolveActor(
+            "PROJECT_A","PROC","STEP","/work-a","USER"));
+        assertEquals("OWNER_ACTOR",runtime.resolveActor(
+            "PROJECT_A","PROC","STEP","/work-admin","ADMIN"));
+        assertThrows(SecurityException.class,()->runtime.resolveActor(
+            "PROJECT_B","PROC","STEP","/work-a","USER"));
+        jdbc.update("""
+            update integrated_design_scope_binding binding set provenance_hash=repeat('0',64)
+              from integrated_design_authority authority
+             where authority.authority_id=binding.authority_id
+               and authority.authority_revision=binding.authority_revision
+               and authority.process_code='PROC' and authority.route_path='/work-a'
+            """);
+        assertThrows(SecurityException.class,()->runtime.resolveActor(
+            "PROJECT_A","PROC","STEP","/work-a","USER"));
+    }
+
+    @Test
+    void workerZeroAuthorityRequiresExactMigrationGlobalScopeMarker(){
+        jdbc.update("""
+            insert into integrated_design_autocompletion_receipt(
+              process_code,completion_status,dependency_fingerprint)
+            values('UNBOUND_SCOPE','PENDING',
+              framework_composite_dependency_fingerprint('UNBOUND_SCOPE'))
+            """);
+        CompositeDesignOperationalWorker worker=new CompositeDesignOperationalWorker(
+            jdbc,new ObjectMapper(),service,new DataSourceTransactionManager(dataSource),
+            false,8,25,false);
+        try{
+            assertThrows(IllegalStateException.class,()->worker.scopeForProcess("UNBOUND_SCOPE"));
+            jdbc.update("""
+                update integrated_design_autocompletion_receipt
+                   set receipt_json=jsonb_build_object('requestedScope',jsonb_build_object(
+                     'scopeType','GLOBAL','source','MIGRATION_GLOBAL_TARGET'))
+                 where process_code='UNBOUND_SCOPE'
+                """);
+            assertEquals(Map.of("scopeType","GLOBAL"),worker.scopeForProcess("UNBOUND_SCOPE"));
+            jdbc.update("""
+                update integrated_design_autocompletion_receipt
+                   set receipt_json=jsonb_set(receipt_json,'{requestedScope,source}',
+                     to_jsonb('UNTRUSTED'::text)) where process_code='UNBOUND_SCOPE'
+                """);
+            assertThrows(IllegalStateException.class,()->worker.scopeForProcess("UNBOUND_SCOPE"));
+        }finally{worker.close();}
     }
 
     @Test
@@ -2763,6 +3364,213 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
             """,Integer.class));
     }
 
+    private void installCompositeGeneratedTables(){
+        jdbc.execute("create table item(name text not null,id integer primary key)");
+        jdbc.execute("comment on table item is 'design-schema-hash:"+schemaFingerprint("/work-a")+"'");
+        jdbc.execute("create table approval(reason text not null,approval_id integer primary key)");
+        jdbc.execute("comment on table approval is 'design-schema-hash:"+schemaFingerprint("/work-admin")+"'");
+        jdbc.execute("create table ticket(note text not null,ticket_id integer primary key)");
+        jdbc.execute("comment on table ticket is 'design-schema-hash:"+schemaFingerprint("/work-b")+"'");
+    }
+
+    private String schemaFingerprint(String route){
+        return jdbc.queryForObject("""
+            select coalesce(authority.composite_json#>>'{executableDesign,DATABASE,schemaFingerprint}',
+                            framework_try_jsonb(contract.data_contract)->>'schemaFingerprint')
+              from framework_professional_screen_contract contract
+              left join integrated_design_authority authority on authority.contract_id=contract.contract_id
+             where contract.process_code='PROC' and contract.route_path=?
+            """,
+            String.class,route);
+    }
+
+    private void seedCompositeThreeScreens(){
+        jdbc.update("delete from framework_professional_screen_contract where process_code='PROC'");
+        jdbc.update("""
+            update framework_process_step set actor_code='PRIMARY_ACTOR',command_code='SAVE',
+              from_state='DRAFT',to_state='DONE',completion_rule='record saved',
+              input_contract='{"name":"string"}',output_contract='{"id":"integer"}',
+              api_contract='/api/items',requires_notification=false,requires_api=true,
+              requires_user_page=true,requires_admin_page=true,
+              user_path='/work-a',admin_path='/work-admin'
+              where process_code='PROC' and step_code='STEP'
+            """);
+        jdbc.update("""
+            update framework_step_schema_set set input_schema='{"name":"string"}',
+              output_schema='{"id":"integer"}',field_schema='[]',
+              persistence_schema='{"entity":"ITEM"}',handoff_schema='[]',
+              context_keys='[]',completeness_status='COMPLETE',blocker_codes='[]'
+             where process_code='PROC'
+            """);
+        jdbc.update("""
+            insert into framework_account_actor_assignment(
+              account_id,tenant_id,project_id,actor_code,data_scope)
+            values('system-admin','TENANT','*','PRIMARY_ACTOR','*'),
+                  ('system-admin','TENANT','*','OWNER_ACTOR','*'),
+                  ('system-admin','TENANT','*','ESCALATION_ACTOR','*')
+            """);
+        jdbc.update("""
+            insert into framework_permission_grant_v1(
+              actor_code,permission_code,scope_type,effect,use_at)
+            values('PRIMARY_ACTOR','PERM_SAVE','PROCESS','ALLOW','Y'),
+                  ('OWNER_ACTOR','PERM_APPROVE','PROCESS','ALLOW','Y'),
+                  ('ESCALATION_ACTOR','PERM_ESCALATE','PROCESS','ALLOW','Y')
+            """);
+        jdbc.update("""
+            insert into framework_permission_requirement_v1(
+              process_code,step_code,permission_code,scope_type)
+            values('PROC','STEP','PERM_SAVE','PROCESS')
+            """);
+        jdbc.update("""
+            insert into comtnthemedefinition(theme_id,theme_nm,use_at,is_active)
+            values('KRDS_GOV_DEFAULT','KRDS','Y','Y')
+            """);
+        jdbc.update("""
+            insert into ui_section_registry(section_id,section_name,section_type,
+              layout_contract,responsive_contract,accessibility_contract,active_yn)
+            values('MAIN','Main','FORM','{}','{}','{}','Y')
+            """);
+        jdbc.update("""
+            insert into ui_component_registry(component_id,component_name,component_type,
+              owner_domain,active_yn) values('JSON_FORM','JSON Form','JSON_FORM','DOMAIN','Y')
+            """);
+        String sections="[{\"sectionId\":\"MAIN\",\"componentCodes\":[\"JSON_FORM\"]}]";
+        String blueprintSpec="{\"layout\":\"KRDS_WORKSPACE\",\"theme\":\"KRDS_GOV_DEFAULT\","+
+            "\"assetBindings\":[{\"assetType\":\"THEME\",\"assetCode\":\"KRDS_GOV_DEFAULT\"},"+
+            "{\"assetType\":\"SECTION\",\"assetCode\":\"MAIN\"},"+
+            "{\"assetType\":\"COMPONENT\",\"assetCode\":\"JSON_FORM\"}]}";
+        List<String[]> identities=List.of(
+            new String[]{"STEP","USER","/work-a","PRIMARY_ACTOR","SAVE","PERM_SAVE",
+                "name","id","ITEM","/api/items/{executionId}"},
+            new String[]{"STEP","ADMIN","/work-admin","OWNER_ACTOR","APPROVE","PERM_APPROVE",
+                "reason","approval_id","APPROVAL","/api/admin/items/{executionId}/approve"},
+            new String[]{"STEP","USER","/work-b","ESCALATION_ACTOR","ESCALATE","PERM_ESCALATE",
+                "note","ticket_id","TICKET","/api/items/{executionId}/escalate"});
+        int index=0;for(String[] identity:identities){index++;
+            String actorCode=identity[3],commandCode=identity[4],permissionCode=identity[5];
+            String inputField=identity[6],outputField=identity[7],entity=identity[8],apiPath=identity[9];
+            String fields="[{\"fieldCode\":\""+inputField+"\",\"label\":\"Input\",\"direction\":\"INPUT\","+
+                "\"dataSource\":\""+entity+"\",\"dataType\":\"STRING\",\"required\":true,"+
+                "\"componentCode\":\"JSON_FORM\"},{\"fieldCode\":\""+outputField+"\",\"label\":\"Output\","+
+                "\"direction\":\"OUTPUT\",\"dataSource\":\""+entity+"\",\"dataType\":\"INTEGER\","+
+                "\"required\":false,\"componentCode\":\"JSON_FORM\"}]";
+            String commands="[{\"commandCode\":\""+commandCode+"\",\"actorCode\":\""+actorCode+
+                "\",\"primary\":true}]";
+            String states="[{\"fromState\":\"DRAFT\",\"commandCode\":\""+commandCode+
+                "\",\"toState\":\"DONE\"}]";
+            String api="[{\"method\":\"POST\",\"path\":\""+apiPath+"\",\"commandCode\":\""+
+                commandCode+"\",\"requestFields\":[\""+inputField+"\"],\"responseFields\":[\""+
+                outputField+"\"],\"permissionCodes\":[\""+permissionCode+"\"]}]";
+            List<Map<String,Object>> schemaChanges=List.of(Map.of(
+                "operation","CREATE_TABLE","tableName",entity.toLowerCase(),"columns",List.of(
+                    Map.of("name",inputField,"type","text","primaryKey",false,"nullable",false),
+                    Map.of("name",outputField,"type","integer","primaryKey",true,"nullable",false)),
+                "uniqueConstraints",List.of(),"indexes",List.of()));
+            String data=json(Map.of("entities",List.of(Map.of("entity",entity,
+                    "fields",List.of(inputField,outputField))),"migrationMode","SAFE_CREATE_TABLE",
+                "schemaFingerprint",CompositeExecutableDesignAuthorityCompiler.hash(
+                    CompositeExecutableDesignAuthorityCompiler.stable(schemaChanges)),
+                "schemaChanges",schemaChanges));
+            jdbc.update("""
+                insert into framework_professional_screen_contract(
+                  process_code,step_code,audience,route_path,screen_name,actor_code,
+                  business_purpose,entry_condition,exit_condition,kpi_contract,section_contract,
+                  field_contract,command_contract,state_contract,api_contract,data_contract,
+                  evidence_contract,responsive_contract,accessibility_contract,security_contract,
+                  permission_codes,api_verified,database_verified,authority_verified,
+                  responsive_verified,accessibility_verified,exception_states_verified,
+                  audit_evidence_ref,contract_status,updated_by)
+                values('PROC',?,?,?,?,?,'Complete work','Draft exists',
+                  'Saved record returned','[{"kpiCode":"DONE","description":"Completed"}]',
+                  ?,?,?,?,?,?,'[{"evidenceType":"E2E","reference":"evidence://save"}]',
+                  '360 768 1280','KRDS WCAG AA','Server actor scope',?::jsonb,
+                  true,true,true,true,true,true,'audit://save','DESIGN_COMPLETE','LIVE_CONTRACT_BACKFILL')
+                """,identity[0],identity[1],identity[2],"Screen "+index,actorCode,
+                sections,fields,commands,states,api,data,"[\""+permissionCode+"\"]");
+            jdbc.update("""
+                insert into framework_screen_resource(route_key,layout_type,source_kind)
+                values(?,'KRDS_WORKSPACE','GENERATED') on conflict(route_key) do nothing
+                """,identity[2]);
+            jdbc.update("""
+                insert into framework_screen_blueprint(blueprint_code,process_code,step_code,
+                  actor_code,audience,page_id,page_name,route_path,screen_type,template_code,
+                  specification_json,traceability_json,validation_status,validation_message,
+                  implementation_strategy,source_reference,transition_status,created_by)
+                values(?,'PROC',?,?,?,?,?,?,'FORM','KRDS_FORM',?,'{}',
+                  'VALID','ready','GENERATED_RUNTIME','','GENERATED','test')
+                ""","BP_"+index,identity[0],actorCode,identity[1],"PAGE_"+index,
+                "Screen "+index,identity[2],blueprintSpec);
+        }
+        jdbc.update("""
+            insert into framework_page_design_assurance(screen_resource_id,actor_passed,
+              process_passed,lineage_passed,transition_passed,admin_counterpart_passed,test_passed)
+            select screen_resource_id,true,true,true,true,true,true from framework_screen_resource
+            """);
+        jdbc.update("""
+            insert into framework_process_step_screen_binding(process_code,step_code,
+              screen_resource_id,actor_code,audience,binding_status)
+            select blueprint.process_code,blueprint.step_code,resource.screen_resource_id,
+                   blueprint.actor_code,blueprint.audience,'ACTIVE'
+              from framework_screen_blueprint blueprint join framework_screen_resource resource
+                on resource.route_key=blueprint.route_path
+            """);
+        jdbc.execute("""
+            create or replace function framework_canonical_screen_bundle(
+              requested_process varchar,requested_step varchar,
+              requested_audience varchar,requested_route varchar)
+            returns jsonb language sql stable as $$
+              with source as (
+                select contract.*,step.command_code,blueprint.specification_json
+                  from framework_professional_screen_contract contract
+                  join framework_process_step step using(process_code,step_code)
+                  join framework_screen_blueprint blueprint
+                    on blueprint.process_code=contract.process_code
+                   and blueprint.step_code=contract.step_code
+                   and upper(blueprint.audience)=upper(contract.audience)
+                   and lower(blueprint.route_path)=lower(contract.route_path)
+                 where contract.process_code=requested_process and contract.step_code=requested_step
+                   and upper(contract.audience)=upper(requested_audience)
+                   and lower(contract.route_path)=lower(requested_route)
+              ), canonical as (
+                select jsonb_build_object('processCode',requested_process,'stepCode',requested_step,
+                  'audience',upper(requested_audience),'routePath',lower(requested_route),
+                  'process',jsonb_build_object('processCode',requested_process),
+                  'lanes',jsonb_build_object(
+                    'HELP',jsonb_build_object('summary',business_purpose,
+                      'evidence',framework_try_jsonb(evidence_contract)),
+                    'WORK_GUIDE',jsonb_build_object('processCode',requested_process,
+                      'stepCode',requested_step,'actorCode',actor_code,
+                      'nextAction',jsonb_build_object('routePath',lower(route_path),
+                        'commandCode',command_code)),
+                    'QA',jsonb_build_object('evidence',framework_try_jsonb(evidence_contract)),
+                    'DESIGN_CARD',jsonb_build_object('sections',framework_try_jsonb(section_contract),
+                      'specification',framework_try_jsonb(specification_json)),
+                    'FRONTEND',jsonb_build_object('routePath',lower(route_path),
+                      'fields',framework_try_jsonb(field_contract),
+                      'actions',framework_try_jsonb(command_contract)))) design from source
+              ), encoded as (select design,design::text canonical_text from canonical)
+              select jsonb_build_object('schema','carbonet.canonical-design/v1','catalogHash',null,
+                'designHash',encode(sha256(convert_to(canonical_text,'UTF8')),'hex'),
+                'canonicalText',canonical_text,'canonicalDesign',design) from encoded
+            $$
+            """);
+        jdbc.execute("""
+            create or replace function framework_generate_professional_design_graph(
+              requested_process varchar,requested_actor varchar)
+            returns jsonb language plpgsql as $$
+            begin
+              update framework_step_execution_spec
+                 set design_status='DESIGN_COMPLETE',approval_status='APPROVED',
+                     generation_status='READY',blocker_codes='[]'::jsonb,
+                     approved_by=requested_actor,approved_at=current_timestamp,
+                     updated_at=current_timestamp
+               where process_code=requested_process;
+              return jsonb_build_object('processCode',requested_process,'ready',true);
+            end
+            $$
+            """);
+    }
+
     private void seedStep(String step,int order,String completeness,boolean professional){
         jdbc.update("""
             insert into framework_process_step(
@@ -2822,6 +3630,36 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
         }
     }
 
+    private void lockCompositeRelayAccounts(String actor){
+        try{
+            var method=ActorProcessGovernanceService.class.getDeclaredMethod(
+                "lockActiveRelayAccounts",List.class);
+            method.setAccessible(true);method.invoke(service,List.of(actor));
+        }catch(java.lang.reflect.InvocationTargetException error){
+            if(error.getCause() instanceof RuntimeException runtime)throw runtime;
+            throw new IllegalStateException(error.getCause());
+        }catch(ReflectiveOperationException error){throw new IllegalStateException(error);}
+    }
+
+    private void assertRelayRevocationWaits(String mutation) throws Exception {
+        CountDownLatch locked=new CountDownLatch(1),release=new CountDownLatch(1);
+        var executor=Executors.newFixedThreadPool(2);
+        try{
+            var compiler=executor.submit(()->transaction.execute(status->{
+                jdbc.execute("set local lock_timeout='3s'");lockCompositeRelayAccounts("PRIMARY_ACTOR");
+                locked.countDown();try{assertTrue(release.await(5,TimeUnit.SECONDS));}
+                catch(InterruptedException error){Thread.currentThread().interrupt();throw new IllegalStateException(error);}
+                return true;
+            }));
+            assertTrue(locked.await(3,TimeUnit.SECONDS));
+            var revoker=executor.submit(()->transaction.execute(status->{
+                jdbc.execute("set local lock_timeout='3s'");return jdbc.update(mutation);
+            }));
+            Thread.sleep(250);assertEquals(false,revoker.isDone());release.countDown();
+            assertEquals(true,compiler.get(3,TimeUnit.SECONDS));assertEquals(1,revoker.get(3,TimeUnit.SECONDS));
+        }finally{release.countDown();executor.shutdownNow();}
+    }
+
     private void invokeRequirementReleaseReconciler(
             ActorProcessControlPlaneBridgeController bridge,
             String projectId,int version,String process){
@@ -2874,6 +3712,11 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
               unique(account_id,tenant_id,project_id,actor_code))
             """);
         jdbc.execute("""
+            create table framework_project_actor_assignment(
+              project_id text not null,actor_code text not null,user_id text not null,
+              active_yn char(1) not null default 'Y',primary key(project_id,actor_code,user_id))
+            """);
+        jdbc.execute("""
             create table framework_process_definition(
               process_code text primary key,process_name text not null,domain_code text not null,
               process_version text not null default '1.0.0',goal text not null,start_condition text not null,
@@ -2917,6 +3760,8 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
               decision_rule text default '',created_at timestamp default current_timestamp,
               updated_at timestamp default current_timestamp,primary key(process_code,step_code))
             """);
+        jdbc.execute("create table framework_process_execution(execution_id uuid primary key)");
+        jdbc.execute("create table framework_process_execution_event(event_id bigint primary key)");
         jdbc.execute("""
             create table framework_step_schema_set(
               process_code text,step_code text,schema_hash text,input_schema jsonb,output_schema jsonb,
@@ -2957,6 +3802,14 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
               layout_type text,source_kind text)
             """);
         jdbc.execute("""
+            create table framework_page_design_assurance(
+              screen_resource_id bigint primary key,actor_passed boolean not null,
+              process_passed boolean not null,lineage_passed boolean not null,
+              transition_passed boolean not null,admin_counterpart_passed boolean not null,
+              test_passed boolean not null,design_gate_status text default 'PASSED',
+              design_gate_issues text[] default '{}')
+            """);
+        jdbc.execute("""
             create table framework_screen_blueprint(
               blueprint_id bigserial primary key,blueprint_code text unique,
               process_code text,step_code text,
@@ -2986,9 +3839,28 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
               data_contract text not null default '[]',evidence_contract text not null default '[]',
               responsive_contract text not null default '',accessibility_contract text not null default '',
               security_contract text not null default '',permission_codes jsonb not null default '[]'::jsonb,
+              api_verified boolean not null default false,database_verified boolean not null default false,
+              authority_verified boolean not null default false,responsive_verified boolean not null default false,
+              accessibility_verified boolean not null default false,
+              exception_states_verified boolean not null default false,
+              audit_evidence_ref text not null default '',contract_status text not null default 'REVIEW_REQUIRED',
+              menu_verified boolean not null default true,
               updated_by text not null default 'SYSTEM',
               updated_at timestamp default current_timestamp,
               unique(process_code,step_code,audience,route_path))
+            """);
+        jdbc.execute("""
+            create table framework_permission_requirement_v1(
+              process_code text not null,step_code text not null,permission_code text not null,
+              scope_type text not null,resource_contract jsonb not null default '{}'::jsonb,
+              guard_contract jsonb not null default '{}'::jsonb,use_at char(1) not null default 'Y',
+              updated_at timestamp default current_timestamp,
+              unique(process_code,step_code,permission_code,scope_type))
+            """);
+        jdbc.execute("""
+            create table framework_permission_grant_v1(
+              actor_code text not null,permission_code text not null,scope_type text not null,
+              effect text not null,use_at char(1) not null default 'Y')
             """);
         jdbc.execute("""
             create view framework_professional_screen_design_readiness as
@@ -3088,6 +3960,12 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
               last_error text,quality_report text default '{}',updated_at timestamp default current_timestamp)
             """);
         jdbc.execute("""
+            create table framework_development_job_event(
+              event_id bigserial primary key,job_id bigint not null,event_type text not null,
+              from_status text,to_status text,worker_id text,detail_json text,
+              created_at timestamp default current_timestamp)
+            """);
+        jdbc.execute("""
             create table framework_actor_process_design_release(
               release_id bigserial primary key,project_id text not null,
               design_version integer not null,contract_sha256 text not null,
@@ -3110,6 +3988,11 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
         jdbc.execute("""
             create function framework_try_jsonb(value text) returns jsonb language plpgsql immutable as $$
             begin return value::jsonb; exception when others then return null; end $$
+            """);
+        jdbc.execute("""
+            create function framework_try_jsonb(value text,fallback jsonb)
+            returns jsonb language plpgsql immutable as $$
+            begin return value::jsonb; exception when others then return fallback; end $$
             """);
         jdbc.execute("""
             create function framework_canonical_screen_bundle(
@@ -3247,6 +4130,45 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
             .replace("public.",schema+".")
             .replace("search_path = pg_catalog, public","search_path = pg_catalog, "+schema);
         jdbc.execute(migration);
+    }
+
+    private void installProjectRuntimeWriteFenceFixture(){
+        jdbc.execute("""
+            create function framework_guard_project_runtime_write_fence()
+            returns trigger language plpgsql as $$ begin return new; end $$
+            """);
+        jdbc.execute("""
+            create function framework_install_project_runtime_write_fences()
+            returns integer language plpgsql as $$
+            declare table_row record; installed integer:=0;
+            begin
+              for table_row in
+                select relation.oid,namespace.nspname,relation.relname
+                  from pg_class relation join pg_namespace namespace
+                    on namespace.oid=relation.relnamespace
+                 where namespace.nspname=current_schema()
+                   and relation.relkind in('r','p') and not relation.relispartition
+                   and relation.relname like 'integrated_design\\_%' escape '\\'
+                   and exists(select 1 from pg_attribute attribute
+                     where attribute.attrelid=relation.oid
+                       and attribute.attname in('project_id','process_code')
+                       and attribute.attnum>0 and not attribute.attisdropped)
+                 order by relation.relname collate "C",relation.oid
+              loop
+                if not exists(select 1 from pg_trigger trigger_row
+                  where trigger_row.tgrelid=table_row.oid
+                    and trigger_row.tgname='trg_project_runtime_write_fence'
+                    and not trigger_row.tgisinternal) then
+                  execute format('create trigger trg_project_runtime_write_fence '
+                    'before insert or update on %I.%I for each row '
+                    'execute function framework_guard_project_runtime_write_fence()',
+                    table_row.nspname,table_row.relname);
+                  installed:=installed+1;
+                end if;
+              end loop;
+              return installed;
+            end $$
+            """);
     }
 
     private static final class PausingJdbcTemplate extends JdbcTemplate {

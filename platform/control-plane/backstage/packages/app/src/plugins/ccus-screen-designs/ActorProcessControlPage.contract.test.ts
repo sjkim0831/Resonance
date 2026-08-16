@@ -42,22 +42,53 @@ describe('ActorProcessControlPage SOURCE immediate contract', () => {
     expect(source).not.toContain('PROMOTED');
   });
 
-  it('labels the six projected document kinds and twelve note-only kinds truthfully', () => {
+  it('binds all eighteen axes to one versioned composite SOURCE authority', () => {
     for (const type of [
+      'REQUIREMENT',
+      'ACTOR_RACI',
       'AUTHORITY',
       'PROCESS',
+      'STATE',
+      'NAVIGATION',
       'ACTIVE_UI',
       'DESIGN_ASSET',
+      'FIELD_DICTIONARY',
+      'DATA_HANDOFF',
       'DATABASE',
       'API',
+      'BUSINESS_RULE',
+      'VALIDATION',
+      'NOTIFICATION',
+      'TEST',
+      'TASK_EVIDENCE',
+      'RELEASE_AUDIT',
     ]) {
       expect(source).toContain(`'${type}'`);
     }
-    expect(source).toContain('carbonet.integrated-design-source/v1');
-    expect(source).toContain('저장·SOURCE 반영');
-    expect(source).toContain('NOTE_ONLY → 문서 버전만 저장');
-    expect(source).toContain(
-      'SOURCE·코드·엔드포인트는 변경하지 않았습니다.',
+    expect(source).toContain('carbonet.integrated-design-axis/v1');
+    expect(source).toContain('COMPOSITE_SOURCE_IMMEDIATE');
+    expect(source).toContain('COMPOSITE_PENDING');
+    expect(source).toContain('18축 미리보기(IN_REVIEW)');
+    expect(source).toContain("'GENERATE_VALIDATE_COMPILE'");
+    expect(source).toContain("'PROCESS_GENERATE_VALIDATE_COMPILE'");
+    expect(source).toContain('선택 화면 설계 생성·검증·코드 자동 반영');
+    expect(source).toContain('프로세스 전체 설계·코드 1-click 반영');
+    expect(source).toContain('authority ${receipt.authorityCount ?? 0}개');
+    expect(source).toContain('축 저장·18/18 자동 컴파일');
+    expect(source).toContain('SOURCE 적용·물리 생성 대기');
+    expect(source).toContain('물리 생성·테스트 검증 완료');
+    expect(source).toContain('물리 생성 실패');
+    expect(source).not.toContain('자동 반영 완료');
+    expect(source).not.toContain('NOTE_ONLY');
+  });
+
+  it('selects USER and ADMIN authority explicitly even when routes are identical', () => {
+    expect(source).toContain('professionalScreenContracts');
+    expect(source).toContain('matchingIdentities');
+    expect(source).toContain('Canonical audience');
+    expect(source).toContain('같은 route의 USER·ADMIN authority를 추정하지 않습니다.');
+    expect(source).not.toContain(
+      "routePath === String(step?.adminPath ?? '') ? 'ADMIN' : 'USER'",
     );
   });
 });

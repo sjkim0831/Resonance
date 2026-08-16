@@ -2668,6 +2668,7 @@ export default createBackendPlugin({
               processCode: String(request.query.processCode ?? ''),
               stepCode: String(request.query.stepCode ?? ''),
               routePath: String(request.query.routePath ?? ''),
+              audience: String(request.query.audience ?? ''),
             });
             const runtimeResponse = await fetch(
               `${runtimeBaseUrl}/api/internal/actor-process/design-documents?${parameters}`,

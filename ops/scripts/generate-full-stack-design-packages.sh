@@ -16,6 +16,7 @@ ENDPOINT_LIMIT="${CANONICAL_ENDPOINT_LIMIT:-5000}"
 readonly ACTIVATION_POLICY="SOURCE_IMMEDIATE_V1"
 GRADLE_TASK="${CANONICAL_ENDPOINT_GRADLE_TASK:-:modules:resonance-common:carbonet-common-core:compileJava}"
 WORKERS="${CANONICAL_GENERATOR_WORKERS:-${FULL_STACK_GENERATOR_WORKERS:-4}}"
+COMPOSITE_SPEC="${COMPOSITE_AUTHORITY_SPEC_FILE:-}"
 TMP="$(mktemp)"
 STAGE_ROOT=""
 ENDPOINT_TMP=""
@@ -33,6 +34,16 @@ leader=""
 [[ "$ENDPOINT_LIMIT" =~ ^[0-9]+$ ]] && (( ENDPOINT_LIMIT >= 1 && ENDPOINT_LIMIT <= 5000 )) || {
   echo '[full-stack-generator] canonical endpoint limit must be between 1 and 5000' >&2; exit 1;
 }
+if [[ -n "$COMPOSITE_SPEC" ]]; then
+  [[ -n "$PROCESS_CODE" ]] || {
+    echo '[full-stack-generator] composite authority generation requires one process' >&2; exit 1;
+  }
+  [[ -f "$COMPOSITE_SPEC" && ! -L "$COMPOSITE_SPEC" ]] || {
+    echo '[full-stack-generator] composite authority specification is not a regular file' >&2; exit 1;
+  }
+  python3 "$ROOT/ops/scripts/generate-composite-executable-design.py" "$COMPOSITE_SPEC" \
+    --process "$PROCESS_CODE" --validate-only >/dev/null
+fi
 LIMIT_VALIDATED=1
 
 require_linked_worktree() {
@@ -229,6 +240,9 @@ if [[ -n "$ENDPOINT_CATALOG" ]]; then
     fi
   fi
   if [[ -z "$ENDPOINT_CATALOG" ]]; then
+    [[ -z "$COMPOSITE_SPEC" ]] || {
+      echo '[full-stack-generator] composite authority requires staged canonical endpoint publication' >&2; exit 1;
+    }
     jq -e '.runtime' "$DB_BUNDLE_TMP" >"$REBOUND_TMP"
     mv "$REBOUND_TMP" "$TMP"
     REBOUND_TMP=""
@@ -268,10 +282,34 @@ if [[ -n "$ENDPOINT_CATALOG" ]]; then
     echo '[full-stack-generator] process execution aggregate preflight failed' >&2; exit 1;
   }
 
+  if [[ -n "$COMPOSITE_SPEC" ]]; then
+    # Preserve multiplicity: one missing, duplicate, undeclared, method-drifted,
+    # or path-drifted operation must fail before staged code generation starts.
+    jq -e --slurpfile specification "$COMPOSITE_SPEC" '
+      ([.endpoints[] | .endpointContract.operations[] |
+          [.processCode,.stepCode,.commandCode,.method,.path]] | sort) ==
+      ([$specification[0].compositeAuthorities[] as $authority |
+          $authority.executableDesign.API.operations[] |
+          [$authority.resolvedClosure.processCode,$authority.stepCode,
+           .commandCode,.method,.path]] | sort)
+    ' "$ENDPOINT_CATALOG" >/dev/null || {
+      echo '[full-stack-generator] composite API and endpoint operation multisets diverged' >&2
+      exit 1
+    }
+  fi
+
   # Preflight every contract before any live output or Flyway path is touched.
   python3 "$ENDPOINT_GENERATOR" "$ENDPOINT_CATALOG" --out "$ENDPOINT_STAGE" --workers "$WORKERS" --check
   python3 "$ROOT/ops/scripts/generate-full-stack-design-packages.py" "$TMP" --out "$RUNTIME_STAGE" --workers "$WORKERS" --canonical-catalog "$DESIGN_CATALOG_TMP"
+  if [[ -n "$COMPOSITE_SPEC" ]]; then
+    python3 "$ROOT/ops/scripts/generate-composite-executable-design.py" "$COMPOSITE_SPEC" \
+      --process "$PROCESS_CODE" --out "$RUNTIME_STAGE" --staged-output
+  fi
   python3 "$ROOT/ops/scripts/generate-full-stack-design-packages.py" "$TMP" --out "$RUNTIME_STAGE" --workers "$WORKERS" --canonical-catalog "$DESIGN_CATALOG_TMP" --check
+  if [[ -n "$COMPOSITE_SPEC" ]]; then
+    python3 "$ROOT/ops/scripts/generate-composite-executable-design.py" "$COMPOSITE_SPEC" \
+      --process "$PROCESS_CODE" --out "$RUNTIME_STAGE" --staged-output --check
+  fi
   jq -e '.packageCount>0' "$RUNTIME_STAGE/index.json" >/dev/null || {
     echo "[full-stack-generator] no approved generation-ready package for ${PROCESS_CODE:-all processes}" >&2
     exit 1
@@ -303,6 +341,12 @@ if [[ -n "$ENDPOINT_CATALOG" ]]; then
     }
   python3 "$ROOT/ops/scripts/generate-full-stack-design-packages.py" "$TMP" \
     --out "$PREVIEW_STAGE" --workers "$WORKERS" --allow-review-required --canonical-catalog "$DESIGN_CATALOG_TMP"
+  if [[ -n "$COMPOSITE_SPEC" ]]; then
+    python3 "$ROOT/ops/scripts/generate-composite-executable-design.py" "$COMPOSITE_SPEC" \
+      --process "$PROCESS_CODE" --out "$PREVIEW_STAGE" --staged-output
+    python3 "$ROOT/ops/scripts/generate-composite-executable-design.py" "$COMPOSITE_SPEC" \
+      --process "$PROCESS_CODE" --out "$PREVIEW_STAGE" --staged-output --check
+  fi
   jq -n --arg designCatalogHash "$(jq -r '.catalogHash' "$DESIGN_CATALOG_TMP")" \
     --arg endpointCatalogHash "$(jq -r '.catalogHash' "$ENDPOINT_CATALOG")" \
     --arg activationPolicy "$ACTIVATION_POLICY" \
@@ -311,6 +355,14 @@ if [[ -n "$ENDPOINT_CATALOG" ]]; then
     --argjson designHashes "$(jq -c '[.endpoints[].designHash]|unique|sort' "$ENDPOINT_CATALOG")" \
     '{schema:"carbonet.canonical-full-stack-release/v1",activationPolicy:$activationPolicy,lanes:["FRONTEND","API","DATABASE","HELP","CARDS"],designCatalogHash:$designCatalogHash,endpointCatalogHash:$endpointCatalogHash,designHashes:$designHashes,packageManifestHash:$packageManifestHash,endpointBundleHash:$endpointBundleHash}' \
     >"$ENDPOINT_STAGE/full-stack-release.json"
+  if [[ -n "$COMPOSITE_SPEC" ]]; then
+    jq --arg setHash "$(jq -r '.compositeAuthoritySetHash' "$RUNTIME_STAGE/index.json")" \
+      --arg manifestHash "$(jq -r '.compositeArtifactManifest.sha256' "$RUNTIME_STAGE/index.json")" \
+      '.lanes += ["COMPOSITE_EXECUTABLE_DESIGN"] |
+       .compositeAuthoritySetHash=$setHash | .compositeArtifactManifestHash=$manifestHash' \
+      "$ENDPOINT_STAGE/full-stack-release.json" >"$ENDPOINT_STAGE/full-stack-release.json.tmp"
+    mv "$ENDPOINT_STAGE/full-stack-release.json.tmp" "$ENDPOINT_STAGE/full-stack-release.json"
+  fi
   release_hash="$(python3 - "$ENDPOINT_STAGE/full-stack-release.json" <<'PY'
 import hashlib,json,sys
 value=json.load(open(sys.argv[1],encoding="utf-8"))

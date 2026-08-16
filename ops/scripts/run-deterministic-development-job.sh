@@ -25,11 +25,25 @@ generated_step_package="$WT/projects/carbonet-backend-metadata/process-runtime/g
 case "$JOB_TYPE" in
   FULL_STACK|FULL_STACK_GENERATION)
     artifact="projects/carbonet-backend-metadata/process-runtime/generated/$PROCESS/index.json"
-    FULL_STACK_PACKAGE_OUT="$WT/projects/carbonet-backend-metadata/process-runtime/generated" \
-      bash "$WT/ops/scripts/generate-full-stack-design-packages.sh" "$WT" "$PROCESS" >/dev/null
+    if jq -e 'has("compositeAuthoritySchema")' "$SPEC_FILE" >/dev/null; then
+      COMPOSITE_AUTHORITY_SPEC_FILE="$SPEC_FILE" \
+        FULL_STACK_PACKAGE_OUT="$WT/projects/carbonet-backend-metadata/process-runtime/generated" \
+        bash "$WT/ops/scripts/generate-full-stack-design-packages.sh" "$WT" "$PROCESS" >/dev/null
+    else
+      FULL_STACK_PACKAGE_OUT="$WT/projects/carbonet-backend-metadata/process-runtime/generated" \
+        bash "$WT/ops/scripts/generate-full-stack-design-packages.sh" "$WT" "$PROCESS" >/dev/null
+    fi
     jq -e --arg process "$PROCESS" '
       .packageCount>0 and ([.packages[].processCode]|all(.==$process))
     ' "$WT/$artifact" >/dev/null
+    if jq -e 'has("compositeAuthoritySchema")' "$SPEC_FILE" >/dev/null; then
+      jq -e --arg setHash "$(jq -r '.compositeAuthoritySetHash' "$SPEC_FILE")" '
+        .compositeAuthoritySchema=="carbonet.composite-executable-design-authority/v1" and
+        .compositeAuthoritySetHash==$setHash and
+        (.compositeArtifactManifest.artifactCount|type=="number" and .>1) and
+        (.compositeArtifactManifest.sha256|test("^[0-9a-f]{64}$"))
+      ' "$WT/$artifact" >/dev/null
+    fi
     # Process-level output cannot prove a different step is implemented.
     # The exact step package is the deterministic completion boundary.
     [[ -s "$generated_step_package" ]] || {

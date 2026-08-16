@@ -243,7 +243,7 @@ class ActorProcessGovernanceMutationPropagationTest {
     }
 
     @Test
-    void integratedNoteOnlySaveIsTruthfulAndDoesNotTouchCanonicalSource(){
+    void integratedDraftSaveIsPendingAndDoesNotTouchCanonicalSource(){
         JdbcTemplate jdbc=mock(JdbcTemplate.class);
         ActorProcessGovernanceService service=service(jdbc);
         when(jdbc.queryForList(argThat(sql->sql!=null
@@ -256,18 +256,19 @@ class ActorProcessGovernanceMutationPropagationTest {
 
         Map<String,Object> result=service.saveIntegratedDesignDocument(Map.ofEntries(
             Map.entry("processCode","PROCESS_A"),Map.entry("stepCode","STEP_A"),
-            Map.entry("routePath","/screen-a"),Map.entry("documentType","REQUIREMENT"),
+            Map.entry("routePath","/screen-a"),Map.entry("audience","USER"),
+            Map.entry("documentType","REQUIREMENT"),
             Map.entry("title","Requirement note"),Map.entry("content","review note"),
             Map.entry("status","DRAFT"),Map.entry("revision",0)),
             "user:default/system-admin");
 
-        assertEquals("NOTE_ONLY",result.get("mutationKind"));
+        assertEquals("COMPOSITE_PENDING",result.get("mutationKind"));
         assertEquals(false,result.get("sourceCommitted"));
         assertEquals(0,result.get("jobCount"));
         assertEquals(0,result.get("endpointExpected"));
         assertFalse(mockingDetails(jdbc).getInvocations().stream().anyMatch(call->
             String.valueOf(call.getArguments()[0]).contains(
-                "framework_professional_screen_contract")));
+                "for update of contract,blueprint")));
     }
 
     @Test
@@ -286,7 +287,8 @@ class ActorProcessGovernanceMutationPropagationTest {
         assertThrows(IllegalArgumentException.class,()->
             service.saveIntegratedDesignDocument(Map.ofEntries(
                 Map.entry("processCode","PROCESS_A"),Map.entry("stepCode","STEP_A"),
-                Map.entry("routePath","/screen-a"),Map.entry("documentType","API"),
+                Map.entry("routePath","/screen-a"),Map.entry("audience","USER"),
+                Map.entry("documentType","API"),
                 Map.entry("title","API source"),Map.entry("content",content),
                 Map.entry("status","READY"),Map.entry("revision",0)),
                 "user:default/system-admin"));
@@ -301,68 +303,39 @@ class ActorProcessGovernanceMutationPropagationTest {
     }
 
     @Test
-    void integratedApiDesignProjectsCanonicalSourceAndReturnsExactJobEndpoint(){
+    void singleStrictReadyAxisStaysPendingUntilAllEighteenAreReady(){
         JdbcTemplate jdbc=mock(JdbcTemplate.class);
-        ActorProcessGovernanceService service=spy(service(jdbc));
+        ActorProcessGovernanceService service=service(jdbc);
         when(jdbc.queryForList(argThat(sql->sql!=null
                 &&sql.contains("from integrated_design_document")
-                &&sql.contains("for update")),any(Object[].class)))
-            .thenReturn(List.of());
-        when(jdbc.queryForList(argThat(sql->sql!=null
-                &&sql.contains("from framework_professional_screen_contract")
-                &&sql.contains("permission_codes::text")
-                &&sql.contains("for update")),any(Object[].class)))
-            .thenReturn(List.of(Map.ofEntries(
-                Map.entry("contractId",7L),Map.entry("businessPurpose","Existing purpose"),
-                Map.entry("entryCondition","Existing entry"),
-                Map.entry("exitCondition","Existing exit condition"),
-                Map.entry("kpiContract","[]"),Map.entry("sectionContract","[]"),
-                Map.entry("fieldContract","[]"),Map.entry("commandContract","[]"),
-                Map.entry("stateContract","[\"READY\"]"),Map.entry("apiContract","[]"),
-                Map.entry("dataContract","[]"),Map.entry("evidenceContract","[]"),
-                Map.entry("responsiveContract","responsive"),
-                Map.entry("accessibilityContract","accessible"),
-                Map.entry("securityContract","secure"),Map.entry("permissionCodes","[]"),
-                Map.entry("apiVerified",false),Map.entry("databaseVerified",false),
-                Map.entry("authorityVerified",false),Map.entry("responsiveVerified",false),
-                Map.entry("accessibilityVerified",false),
-                Map.entry("exceptionStatesVerified",false),
-                Map.entry("auditEvidenceRef",""),
-                Map.entry("contractStatus","REVIEW_REQUIRED"))));
-        doReturn(new java.util.LinkedHashMap<>(Map.ofEntries(
-            Map.entry("jobCount",1),Map.entry("endpointExpected",1),
-            Map.entry("sourceHash","a".repeat(64)),Map.entry("designHash","b".repeat(64)),
-            Map.entry("generationQueued",true),Map.entry("status","QUEUED"))))
-            .when(service).saveProfessionalScreenContract(anyMap(),
-                eq("user:default/system-admin"));
+                &&sql.contains("for update")),any(Object[].class))).thenReturn(List.of());
         when(jdbc.queryForObject(argThat(sql->sql!=null
                 &&sql.contains("insert into integrated_design_document")),
             eq(Long.class),any(Object[].class))).thenReturn(1L);
         String content="""
-            {"schemaVersion":"carbonet.integrated-design-source/v1",
-             "contractId":7,"apiContract":[{"method":"POST","path":"/api/items"}],
-             "apiVerified":true}
+            {"schemaVersion":"carbonet.integrated-design-axis/v1","documentType":"API",
+             "axisVersion":"1.0.0","identity":{"contractId":7,"processCode":"PROCESS_A",
+             "stepCode":"STEP_A","routePath":"/screen-a","audience":"USER",
+             "selectedBlueprintId":9,"ownershipStrategy":"EXACT_SINGLE",
+             "ownershipJustification":"one exact generated blueprint"},
+             "payload":{"operations":[{"method":"POST","path":"/api/items",
+             "commandCode":"SAVE","requestFields":["name"],"responseFields":["id"],
+             "permissionCodes":["PERM_SAVE"]}],"verified":true}}
             """;
 
         Map<String,Object> result=service.saveIntegratedDesignDocument(Map.ofEntries(
             Map.entry("processCode","PROCESS_A"),Map.entry("stepCode","STEP_A"),
-            Map.entry("routePath","/screen-a"),Map.entry("documentType","API"),
-            Map.entry("title","API source"),Map.entry("content",content),
-            Map.entry("status","READY"),Map.entry("revision",0)),
+            Map.entry("routePath","/screen-a"),Map.entry("audience","USER"),
+            Map.entry("documentType","API"),Map.entry("title","API source"),
+            Map.entry("content",content),Map.entry("status","READY"),Map.entry("revision",0)),
             "user:default/system-admin");
 
-        assertEquals("SOURCE_IMMEDIATE",result.get("mutationKind"));
-        assertEquals(true,result.get("sourceCommitted"));
-        assertEquals(1,result.get("jobCount"));
-        assertEquals(1,result.get("endpointExpected"));
-        assertEquals("a".repeat(64),result.get("sourceHash"));
-        verify(service).saveProfessionalScreenContract(argThat(mutation->
-                String.valueOf(mutation.get("apiContract")).contains("/api/items")
-                    &&Boolean.TRUE.equals(mutation.get("apiVerified"))),
-            eq("user:default/system-admin"));
-        verify(jdbc).queryForObject(argThat(sql->sql!=null
-                &&sql.contains("insert into integrated_design_document")),
-            eq(Long.class),any(Object[].class));
+        assertEquals("COMPOSITE_PENDING",result.get("mutationKind"));
+        assertEquals(false,result.get("sourceCommitted"));
+        assertEquals(0,result.get("jobCount"));
+        assertFalse(mockingDetails(jdbc).getInvocations().stream().anyMatch(call->
+            String.valueOf(call.getArguments()[0]).contains(
+                "update framework_professional_screen_contract")));
     }
 
     @Test
@@ -371,24 +344,96 @@ class ActorProcessGovernanceMutationPropagationTest {
         String source=Files.readString(findRepositoryFile(
             "modules/resonance-common/carbonet-common-core/src/main/java/"+
             "egovframework/com/platform/governance/service/ActorProcessGovernanceService.java"));
-        String integrated=source.substring(source.indexOf(
-            "Map<String,Object> saveIntegratedDesignDocument("),source.indexOf(
-            "Map<String,Object> saveProfessionalScreenContract("));
+        String compiler=Files.readString(findRepositoryFile(
+            "modules/resonance-common/carbonet-common-core/src/main/java/"+
+            "egovframework/com/platform/governance/service/CompositeExecutableDesignAuthorityCompiler.java"));
+        String application=Files.readString(findRepositoryFile(
+            "modules/resonance-common/carbonet-common-core/src/main/java/"+
+            "egovframework/com/platform/governance/service/CompositeExecutableDesignApplicationService.java"));
+        String store=Files.readString(findRepositoryFile(
+            "modules/resonance-common/carbonet-common-core/src/main/java/"+
+            "egovframework/com/platform/governance/service/CompositeExecutableDesignAuthorityStore.java"));
+        String integrated=application+"\n"+store;
         String binding=source.substring(source.indexOf(
             "Map<String,Object> bindScreenProcessArchetype("),source.indexOf(
             "Map<String,Object> executableScreens("));
 
         for(String type:List.of("AUTHORITY","PROCESS","ACTIVE_UI","DESIGN_ASSET",
-                "DATABASE","API"))assertTrue(source.contains("\""+type+"\""));
-        assertTrue(integrated.contains("saveProfessionalScreenContract(mutation,actor)"));
-        assertTrue(integrated.contains("jobCount!=1||endpointExpected<1"));
-        assertTrue(integrated.contains("UNSUPPORTED_STRUCTURED_DESIGN_FIELDS"));
+                "DATABASE","API"))assertTrue(compiler.contains("\""+type+"\""));
+        assertFalse(integrated.contains("compilation.selectedAdopt(),false"));
+        assertTrue(integrated.contains("compilation.selectedAdopt(),true"));
+        assertTrue(source.contains("preserveBlueprint")&&source.contains("PRESERVE_ADOPT"));
+        assertTrue(integrated.contains("COMPOSITE_BATCH_FINAL_PUBLICATION_NOT_GENERATABLE"));
+        assertTrue(integrated.contains("CompositeExecutableDesignAuthorityCompiler.compile"));
+        assertTrue(integrated.contains("compileIntegratedDesignProcess(compileRequest,actor)")
+            &&integrated.contains("selectedCompositeBatchReceipt"));
         assertTrue(integrated.contains("STALE_DESIGN_DOCUMENT_REVISION"));
-        assertTrue(integrated.contains("\"NOTE_ONLY\""));
+        assertTrue(integrated.contains("\"COMPOSITE_PENDING\""));
         assertTrue(binding.contains("'{processArchetype}'"));
         assertTrue(binding.contains("refreshAndQueueCanonicalProcess("));
         assertTrue(binding.contains("jobCount!=1||endpointExpected<1"));
         assertFalse(binding.contains("DESIGN_ASSET_PROMOTION"));
+    }
+
+    @Test
+    void compositeBatchUsesOneFinalRefreshAndRfpBindsProjectProvenance() throws Exception {
+        String source=Files.readString(findRepositoryFile(
+            "modules/resonance-common/carbonet-common-core/src/main/java/"+
+            "egovframework/com/platform/governance/service/ActorProcessGovernanceService.java"));
+        String application=Files.readString(findRepositoryFile(
+            "modules/resonance-common/carbonet-common-core/src/main/java/"+
+            "egovframework/com/platform/governance/service/CompositeExecutableDesignApplicationService.java"));
+        String store=Files.readString(findRepositoryFile(
+            "modules/resonance-common/carbonet-common-core/src/main/java/"+
+            "egovframework/com/platform/governance/service/CompositeExecutableDesignAuthorityStore.java"));
+        String bridge=Files.readString(findRepositoryFile(
+            "modules/resonance-common/carbonet-common-core/src/main/java/"+
+            "egovframework/com/platform/governance/web/ActorProcessControlPlaneBridgeController.java"));
+        String migration=Files.readString(findRepositoryFile(
+            "apps/carbonet-api/src/main/resources/db/migration/postgresql/"+
+            "V20260816154000__compile_composite_executable_design_authority.sql"));
+        String batch=application.substring(application.indexOf(
+            "Map<String,Object> compileIntegratedDesignProcess("),application.indexOf(
+            "private Map<String,Object> compositeBatchReceipt("));
+        assertEquals(1,countOccurrences(batch,"refreshAndQueueCanonicalProcess("));
+        assertEquals(1,countOccurrences(batch,"refresh_integrated_design_axis_documents"));
+        assertTrue(batch.contains("stageCompositeSource")
+            &&batch.contains("finalHeadMismatchCount")
+            &&batch.contains("reboundAuthorityCount"));
+        String singleSave=application.substring(application.indexOf(
+            "Map<String,Object> saveIntegratedDesignDocument("),application.indexOf(
+            "/** Atomically previews or compiles every screen identity"));
+        assertTrue(singleSave.indexOf("lockCompositeProcessAuthority(process,request.requestedActors())")
+            <singleSave.indexOf("COMPOSITE_EXECUTABLE_DESIGN_AUTHORITY_V1:"));
+        assertTrue(singleSave.indexOf("COMPOSITE_EXECUTABLE_DESIGN_AUTHORITY_V1:")
+            <singleSave.indexOf("INTEGRATED_DESIGN_DOCUMENT_V1:"));
+        String compositeLock=source.substring(source.indexOf(
+            "void lockCompositeProcessAuthority("),source.indexOf(
+            "SortedSet<String> compositeProcessActorSet("));
+        assertTrue(compositeLock.indexOf("lockActorDefinitions(before)")
+            <compositeLock.indexOf("lockCanonicalProcessPublication(process)"));
+        assertTrue(compositeLock.contains("COMPOSITE_PROCESS_ACTOR_SET_CHANGED_RETRY"));
+        assertTrue(store.contains("for share of assignment,account,security")
+            &&store.contains("for share of assignment,project_assignment")
+            &&store.contains("account.emplyr_sttus_code in('P','A')")
+            &&store.contains("account.entrprs_mber_sttus in('P','A')")
+            &&store.contains("comtnemplyrscrtyestbs")
+            &&store.contains("framework_project_actor_assignment"));
+        assertTrue(store.contains("integrated_design_scope_binding")
+            &&store.contains("PROJECT_COMPOSITE_PROCESS_SHARED")
+            &&store.contains("authorityRevision"));
+        assertTrue(bridge.contains("\"scopeType\",\"PROJECT\"")
+            &&bridge.contains("releaseContractSha256")
+            &&bridge.contains("\"SOURCE_APPLIED_PHYSICAL_QUEUED\",\"PHYSICAL_GENERATED_VERIFIED\""));
+        assertTrue(migration.contains("integrated_design_scope_binding")
+            &&migration.contains("authority_revision bigint NOT NULL")
+            &&migration.contains("contract_sha256"));
+    }
+
+    private static int countOccurrences(String value,String needle){
+        int count=0,offset=0;
+        while((offset=value.indexOf(needle,offset))>=0){count++;offset+=needle.length();}
+        return count;
     }
 
     private static void stubSkippedRefresh(JdbcTemplate jdbc,int defined,int specs,int ready){

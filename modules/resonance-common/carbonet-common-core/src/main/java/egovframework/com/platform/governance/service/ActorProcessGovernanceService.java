@@ -46,22 +46,112 @@ public class ActorProcessGovernanceService {
     private static final Set<String> SOURCE_IMMEDIATE_DESIGN_ASSET_TYPES = Set.of(
         "THEME", "SECTION", "COMPONENT", "SCREEN"
     );
-    private static final String INTEGRATED_DESIGN_SOURCE_SCHEMA =
-        "carbonet.integrated-design-source/v1";
-    private static final Set<String> INTEGRATED_DESIGN_SOURCE_TYPES = Set.of(
-        "AUTHORITY", "PROCESS", "ACTIVE_UI", "DESIGN_ASSET", "DATABASE", "API"
-    );
-    private static final Map<String,Set<String>> INTEGRATED_DESIGN_SOURCE_FIELDS = Map.of(
-        "AUTHORITY",Set.of("permissionCodes","securityContract","authorityVerified"),
-        "PROCESS",Set.of("businessPurpose","entryCondition","exitCondition",
-            "commandContract","stateContract","evidenceContract",
-            "exceptionStatesVerified","auditEvidenceRef"),
-        "ACTIVE_UI",Set.of("sectionContract","fieldContract","responsiveContract",
-            "accessibilityContract","responsiveVerified","accessibilityVerified","layout"),
-        "DESIGN_ASSET",Set.of("sectionContract","layout","theme"),
-        "DATABASE",Set.of("dataContract","databaseVerified"),
-        "API",Set.of("apiContract","apiVerified")
-    );
+    static final String COMPOSITE_DESIGN_SOURCE_SQL="""
+        select contract.contract_id as "contractId",contract.audience,
+               target.direct_identity as "directIdentity",
+               target.active_binding as "activeBinding",
+               target.binding_count as "bindingCount",
+               target.binding_actor_count as "bindingActorCount",
+               coalesce(target.binding_actor_code,'') as "bindingActorCode",
+               contract.actor_code as "contractActorCode",
+               contract.business_purpose as "businessPurpose",
+               contract.entry_condition as "entryCondition",contract.exit_condition as "exitCondition",
+               contract.kpi_contract as "kpiContract",contract.section_contract as "sectionContract",
+               contract.field_contract as "fieldContract",contract.command_contract as "commandContract",
+               contract.state_contract as "stateContract",contract.api_contract as "apiContract",
+               contract.data_contract as "dataContract",contract.evidence_contract as "evidenceContract",
+               contract.permission_codes as "permissionCodes",
+               contract.responsive_contract as "responsiveContract",
+               contract.accessibility_contract as "accessibilityContract",
+               contract.security_contract as "securityContract",
+               process.domain_code as "workTypeCode",
+               coalesce(process.owner_actor_code,'') as "ownerActorCode",
+               process.process_version as "processVersion",
+               step.step_order as "stepOrder",step.actor_code as "stepActorCode",
+               step.command_code as "stepCommandCode",step.from_state as "stepFromState",
+               step.to_state as "stepToState",step.completion_rule as "stepCompletionRule",
+               step.input_contract as "stepInputContract",step.output_contract as "stepOutputContract",
+               step.api_contract as "stepApiContract",
+               step.requires_notification as "requiresNotification",
+               blueprint.blueprint_id as "blueprintId",blueprint.actor_code as "blueprintActorCode",
+               blueprint.implementation_strategy as "implementationStrategy",
+               blueprint.transition_status as "transitionStatus",
+               blueprint.source_reference as "sourceReference",
+               blueprint.specification_json as "specificationJson",
+               coalesce(nullif(framework_try_jsonb(blueprint.specification_json)->>'layout',''),
+                 (select min(resource.layout_type) from framework_screen_resource resource
+                   where resource.route_key=lower(split_part(contract.route_path,'?',1))
+                   having count(distinct resource.layout_type)=1)) as "currentLayout",
+               nullif(framework_try_jsonb(blueprint.specification_json)->>'theme','') as "currentTheme",
+               coalesce(framework_try_jsonb(blueprint.specification_json)->'assetBindings','[]'::jsonb)::text
+                 as "currentAssetBindings",
+               (select count(*) from framework_screen_blueprint candidate
+                 where candidate.validation_status='VALID'
+                   and upper(candidate.process_code)=upper(contract.process_code)
+                   and upper(candidate.step_code)=upper(contract.step_code)
+                   and upper(candidate.audience)=upper(contract.audience)
+                   and lower(split_part(candidate.route_path,'?',1))=
+                       lower(split_part(contract.route_path,'?',1)))::integer as "candidateCount",
+               (select count(*) from framework_screen_blueprint candidate
+                 where candidate.validation_status='VALID'
+                   and upper(candidate.process_code)=upper(contract.process_code)
+                   and upper(candidate.step_code)=upper(contract.step_code)
+                   and upper(candidate.audience)=upper(contract.audience)
+                   and lower(split_part(candidate.route_path,'?',1))=
+                       lower(split_part(contract.route_path,'?',1))
+                   and candidate.transition_status='CONTRACT_LINKED'
+                   and lower(btrim(coalesce(candidate.source_reference,''))) in(
+                     'professional_screen_contract:'||contract.contract_id,
+                     'framework_professional_screen_contract:'||contract.contract_id))::integer
+                 as "explicitCount",
+               (select count(*) from framework_screen_blueprint candidate
+                 where candidate.validation_status='VALID'
+                   and upper(candidate.process_code)=upper(contract.process_code)
+                   and upper(candidate.step_code)=upper(contract.step_code)
+                   and upper(candidate.audience)=upper(contract.audience)
+                   and lower(split_part(candidate.route_path,'?',1))=
+                       lower(split_part(contract.route_path,'?',1))
+                   and candidate.implementation_strategy='ADOPT_EXISTING')::integer as "adoptCount",
+               (select count(distinct assignment.assignment_id)
+                  from framework_account_actor_assignment assignment
+                  join framework_actor_definition actor on actor.actor_code=assignment.actor_code
+                   and actor.use_at='Y'
+                  left join comtnemplyrinfo employee
+                    on lower(employee.emplyr_id)=lower(assignment.account_id)
+                  left join comtnentrprsmber member
+                    on lower(member.entrprs_mber_id)=lower(assignment.account_id)
+                 where assignment.actor_code=? and assignment.assignment_status='ACTIVE'
+                   and (assignment.valid_from is null or assignment.valid_from<=current_date)
+                   and (assignment.valid_until is null or assignment.valid_until>=current_date)
+                   and coalesce(employee.emplyr_sttus_code,member.entrprs_mber_sttus,'') in('P','A')
+                   and exists(select 1 from comtnemplyrscrtyestbs security
+                     where security.scrty_dtrmn_trget_id=coalesce(employee.esntl_id,member.esntl_id)
+                       and nullif(btrim(security.author_code),'') is not null)
+                   and (assignment.project_id='*' or exists(
+                     select 1 from framework_project_actor_assignment project_assignment
+                      where project_assignment.project_id=assignment.project_id
+                        and project_assignment.actor_code=assignment.actor_code
+                        and lower(project_assignment.user_id)=lower(assignment.account_id)
+                        and project_assignment.active_yn='Y')))::integer
+                 as "activeAccountCount"
+          from framework_professional_screen_contract contract
+          join framework_composite_design_target_identity target
+            on target.contract_id=contract.contract_id and target.contract_count=1
+          join framework_process_definition process
+            on process.process_code=contract.process_code
+          join framework_process_step step
+            on step.process_code=contract.process_code
+           and step.step_code=contract.step_code
+          join framework_screen_blueprint blueprint
+            on blueprint.blueprint_id=? and blueprint.validation_status='VALID'
+           and upper(blueprint.process_code)=upper(contract.process_code)
+           and upper(blueprint.step_code)=upper(contract.step_code)
+           and upper(blueprint.audience)=upper(contract.audience)
+           and lower(split_part(blueprint.route_path,'?',1))=lower(split_part(contract.route_path,'?',1))
+         where contract.contract_id=? and contract.process_code=? and contract.step_code=?
+           and upper(contract.audience)=? and lower(split_part(contract.route_path,'?',1))=lower(?)
+         for update of contract,blueprint
+        """;
     private final JdbcTemplate jdbc;
     private final ScreenDevelopmentNoteService screenDevelopmentNoteService;
     private final CodexProvisioningService codexProvisioningService;
@@ -2819,6 +2909,68 @@ public class ActorProcessGovernanceService {
             "'CANONICAL_PROCESS_PUBLICATION_V1:'||upper(btrim(?)),0))",rs->{},process);
     }
 
+    void lockCompositeProcessAuthority(String process){
+        lockCompositeProcessAuthority(process,Set.of());
+    }
+
+    void lockCompositeProcessAuthority(String process,Collection<String> requestedActors){
+        java.util.SortedSet<String> before=compositeProcessActorSet(process);
+        before.addAll(compositeDocumentActorSet(process));before.addAll(requestedActors);
+        Map<String,String> locked=lockActorDefinitions(before);
+        if(!locked.keySet().equals(before))throw new IllegalStateException(
+            "COMPOSITE_PROCESS_ACTOR_DEFINITION_NOT_EXACT");
+        lockCanonicalProcessPublication(process);
+        java.util.SortedSet<String> after=compositeProcessActorSet(process);
+        after.addAll(compositeDocumentActorSet(process));after.addAll(requestedActors);
+        if(!before.equals(after))throw new IllegalStateException(
+            "COMPOSITE_PROCESS_ACTOR_SET_CHANGED_RETRY");
+    }
+
+    private java.util.SortedSet<String> compositeDocumentActorSet(String process){
+        return new java.util.TreeSet<>(jdbc.queryForList("""
+            with documents as materialized (
+              select framework_try_jsonb(content) axis
+                from integrated_design_document where process_code=? and active_yn='Y'
+                 and document_type='ACTOR_RACI'
+            )
+            select actor_code from (
+              select axis#>>'{payload,actorCode}' actor_code from documents
+              union select axis#>>'{payload,ownerActorCode}' from documents
+              union select jsonb_array_elements_text(case when jsonb_typeof(
+                axis#>'{payload,responsibleActorCodes}')='array'
+                then axis#>'{payload,responsibleActorCodes}' else '[]'::jsonb end) from documents
+            ) actors where actor_code~'^[A-Z][A-Z0-9_:-]{1,59}$'
+             order by actor_code collate "C"
+            """,String.class,process));
+    }
+
+    private java.util.SortedSet<String> compositeProcessActorSet(String process){
+        List<String> rows=jdbc.queryForList("""
+            select actor_code from (
+              select process.owner_actor_code actor_code
+                from framework_process_definition process where process.process_code=?
+              union
+              select step.actor_code from framework_process_step step where step.process_code=?
+              union
+              select step.escalation_actor_code from framework_process_step step
+               where step.process_code=?
+              union
+              select actor.actor_code
+                from framework_process_step step
+                cross join lateral unnest(regexp_split_to_array(
+                  coalesce(nullif(btrim(step.segregation_actor_codes),''),'__NONE__'),
+                  '[[:space:]]*,[[:space:]]*')) actor(actor_code)
+               where step.process_code=? and actor.actor_code<>'__NONE__'
+              union
+              select contract.actor_code from framework_professional_screen_contract contract
+               where contract.process_code=?
+            ) referenced
+             where nullif(btrim(actor_code),'') is not null
+             order by actor_code collate "C"
+            """,String.class,process,process,process,process,process);
+        return new java.util.TreeSet<>(rows);
+    }
+
     /**
      * Requirement imports can mutate global actor definitions shared by several
      * processes.  Resolve that complete committed impact set before the first
@@ -2911,7 +3063,7 @@ public class ActorProcessGovernanceService {
             Boolean.class,process,actor);
     }
 
-    private Map<String,Object> refreshAndQueueCanonicalProcess(
+    Map<String,Object> refreshAndQueueCanonicalProcess(
             String process,String actor,Map<String,Object> trigger,
             java.util.function.Supplier<Map<String,Object>> exactProjection){
         lockCanonicalProcessPublication(process);
@@ -2951,6 +3103,9 @@ public class ActorProcessGovernanceService {
         if(!locked&&defined>0&&specs==defined&&complete==defined){
             revision=finalizeProcessDesignRevision(process,actor);
             refresh=refreshProcessExecutionSpecs(process,actor);
+            if("COMPOSITE_EXECUTABLE_DESIGN_AUTHORITY_BATCH".equals(
+                    str(trigger,"triggerType"))&&exactProjection!=null)
+                projection=exactProjection.get();
         }else if(!locked){
             closeProcessDesignRevision(process,actor);
         }
@@ -3184,7 +3339,8 @@ public class ActorProcessGovernanceService {
             throw new IllegalStateException("CANONICAL_PROCESS_GENERATION_COVERAGE_NOT_EXACT");
         int triggerEndpointExpected=trigger.get("triggerEndpointExpected") instanceof Number value
             ?value.intValue():0;
-        if("PROFESSIONAL_SCREEN_CONTRACT".equals(str(trigger,"triggerType"))
+        if(Set.of("PROFESSIONAL_SCREEN_CONTRACT",
+                "COMPOSITE_EXECUTABLE_DESIGN_AUTHORITY_BATCH").contains(str(trigger,"triggerType"))
                 &&triggerEndpointExpected<1)
             throw new IllegalStateException("CANONICAL_ENDPOINT_OUTPUT_REQUIRED");
 
@@ -3223,10 +3379,16 @@ public class ActorProcessGovernanceService {
         String canonicalGroup=process+"_CANONICAL_PUBLICATION";
         List<Map<String,Object>> existing=jdbc.queryForList(
             "select job_id as \"jobId\",job_status as \"jobStatus\","+
+            "quality_status as \"qualityStatus\",evidence_ref as \"evidenceRef\","+
             "target_path as \"targetPath\",attempt_count as \"attemptCount\","+
             "max_attempts as \"maxAttempts\",(lease_until is not null and "+
             "lease_until>current_timestamp) as \"leaseActive\","+
-            "(lease_until is not null) as \"leasePresent\" "+
+            "(lease_until is not null) as \"leasePresent\","+
+            "(select count(*) from framework_process_artifact artifact where "+
+            "artifact.process_code=framework_development_job.process_code and "+
+            "artifact.contract_ref='AUTO:FULL_STACK_GENERATION' and artifact.required "+
+            "and artifact.delivery_status='VERIFIED' and nullif(artifact.evidence_ref,'') "+
+            "is not null)::integer as \"verifiedArtifactCount\" "+
             "from framework_development_job where process_code=? and "+
             "job_type='FULL_STACK_GENERATION' and job_group_code=? for update",
             process,canonicalGroup);
@@ -3238,6 +3400,10 @@ public class ActorProcessGovernanceService {
         int executableAttempt;
         int executableMaximum;
         boolean executableLeasePresent;
+        String executableQuality;
+        int executableVerifiedArtifacts;
+        boolean executableEvidencePresent;
+        boolean executableEvidenceExact;
         if(existing.isEmpty()){
             jobId=jdbc.queryForObject("""
                 insert into framework_development_job(
@@ -3254,6 +3420,8 @@ public class ActorProcessGovernanceService {
             executableAttempt=0;
             executableMaximum=3;
             executableLeasePresent=false;
+            executableQuality="PENDING";executableVerifiedArtifacts=0;executableEvidencePresent=false;
+            executableEvidenceExact=false;
         }else{
             if(existing.size()!=1)throw new IllegalStateException("CANONICAL_GENERATION_JOB_NOT_EXACT");
             jobId=((Number)existing.get(0).get("jobId")).longValue();
@@ -3268,6 +3436,13 @@ public class ActorProcessGovernanceService {
             executableAttempt=attemptCount;
             executableMaximum=maxAttempts;
             executableLeasePresent=leasePresent;
+            executableQuality=String.valueOf(existing.get(0).getOrDefault("qualityStatus","PENDING"));
+            executableVerifiedArtifacts=((Number)existing.get(0).getOrDefault(
+                "verifiedArtifactCount",0)).intValue();
+            executableEvidencePresent=!String.valueOf(existing.get(0).getOrDefault(
+                "evidenceRef","")).isBlank();
+            executableEvidenceExact=Set.of("VERIFIED","COMPLETED").contains(status)
+                &&new CompositePhysicalEvidenceService(jdbc).isExact(jobId,process);
             boolean exhaustedInactive=attemptCount>=maxAttempts
                 &&!("RUNNING".equals(status)&&leaseActive);
             boolean orphanedState="CLAIMED".equals(status)
@@ -3289,9 +3464,14 @@ public class ActorProcessGovernanceService {
                 jdbc.update("delete from framework_development_job_gate_result where job_id=?",jobId);
                 executableStatus="PLANNED";executableAttempt=0;
                 executableLeasePresent=false;
-            }else if(Set.of("VERIFIED","COMPLETED").contains(status)){
+                executableQuality="PENDING";executableVerifiedArtifacts=0;executableEvidencePresent=false;
+                executableEvidenceExact=false;
+            }else if(Set.of("VERIFIED","COMPLETED").contains(status)
+                    &&"VERIFIED".equals(executableQuality)&&executableVerifiedArtifacts==1
+                    &&executableEvidencePresent&&executableEvidenceExact){
                 queued=false;resetArtifact=false;
             }else if(Set.of("FAILED","BLOCKED").contains(status)
+                    ||Set.of("VERIFIED","COMPLETED").contains(status)
                     ||exhaustedInactive||orphanedState){
                 queued=true;resetArtifact=true;recoveryReset=true;
                 int retryReset=jdbc.update("""
@@ -3309,6 +3489,8 @@ public class ActorProcessGovernanceService {
                 jdbc.update("delete from framework_development_job_gate_result where job_id=?",jobId);
                 executableStatus="PLANNED";executableAttempt=0;
                 executableLeasePresent=false;
+                executableQuality="PENDING";executableVerifiedArtifacts=0;executableEvidencePresent=false;
+                executableEvidenceExact=false;
             }else if(Set.of("PLANNED","RETRY","RUNNING").contains(status)){
                 queued=true;resetArtifact=false;
             }else throw new IllegalStateException("CANONICAL_GENERATION_JOB_STATUS_INVALID: "+status);
@@ -3353,6 +3535,11 @@ public class ActorProcessGovernanceService {
         Map<String,Object> result=new LinkedHashMap<>();
         result.put("success",true);result.put("status",queued?"QUEUED":"UNCHANGED");
         result.put("generationQueued",queued);result.put("jobCount",canonicalJobCount);result.put("jobId",jobId);
+        boolean physicalVerified=!queued&&Set.of("VERIFIED","COMPLETED").contains(executableStatus)
+            &&"VERIFIED".equals(executableQuality)&&executableVerifiedArtifacts==1
+            &&executableEvidencePresent&&executableEvidenceExact;
+        result.put("jobStatus",executableStatus);result.put("physicalVerified",physicalVerified);
+        result.put("generationStatus",physicalVerified?"PHYSICAL_GENERATED_VERIFIED":"PHYSICAL_QUEUED");
         result.put("processCode",process);
         result.put("stepCode",str(trigger,"stepCode").isBlank()
             ?coordinatorStep:str(trigger,"stepCode"));
@@ -3715,7 +3902,9 @@ public class ActorProcessGovernanceService {
     }
 
     Map<String,Object> updateProfessionalBlueprintDesign(long contractId,Map<String,Object> body){
-        if(!body.containsKey("layout")&&!body.containsKey("theme"))
+        if(!body.containsKey("layout")&&!body.containsKey("theme")
+                &&!body.containsKey("assetBindings")
+                &&!body.containsKey("compositeAuthorityMarker"))
             return Map.of("changed",false,"layout","","theme","");
         List<Map<String,Object>> rows=jdbc.queryForList("""
             with candidates as materialized (
@@ -3783,17 +3972,43 @@ public class ActorProcessGovernanceService {
         if(!theme.matches("[A-Z][A-Z0-9_]{1,79}"))
             throw new IllegalArgumentException("GOVERNED_THEME_CODE_REQUIRED: "+theme);
 
-        boolean changed=!layout.equals(String.valueOf(current.getOrDefault("layout","")))
-            ||!theme.equals(String.valueOf(current.getOrDefault("theme","")));
+        Map<String,Object> nextSpecification=new LinkedHashMap<>(current);
+        nextSpecification.put("layout",layout);nextSpecification.put("theme",theme);
+        if(body.containsKey("assetBindings")){
+            Object raw=jsonValue(req(body,"assetBindings"));
+            if(!(raw instanceof List<?> bindings)||bindings.isEmpty()
+                    ||bindings.stream().anyMatch(item->!(item instanceof Map<?,?>)))
+                throw new IllegalArgumentException("assetBindings must be a non-empty object array");
+            nextSpecification.put("assetBindings",bindings);
+        }
+        if(body.containsKey("compositeAuthorityMarker")){
+            Map<String,Object> marker=jsonMap(req(body,"compositeAuthorityMarker"));
+            if(!marker.keySet().equals(Set.of("authorityHash","documentSetHash","activationPolicy",
+                    "executableDesignHash","executableDesign","artifactManifest"))
+                    ||!str(marker,"authorityHash").matches("[0-9a-f]{64}")
+                    ||!str(marker,"documentSetHash").matches("[0-9a-f]{64}")
+                    ||!str(marker,"executableDesignHash").matches("[0-9a-f]{64}")
+                    ||!(marker.get("executableDesign") instanceof Map<?,?>)
+                    ||!(marker.get("artifactManifest") instanceof Map<?,?>)
+                    ||!CompositeExecutableDesignAuthorityCompiler.ACTIVATION_POLICY.equals(
+                        str(marker,"activationPolicy")))
+                throw new IllegalArgumentException("COMPOSITE_BLUEPRINT_MARKER_INVALID");
+            Map<String,Object> extensions=current.get("extensions") instanceof Map<?,?>
+                ?requireMap(current.get("extensions"),"specificationJson.extensions")
+                :new LinkedHashMap<>();
+            extensions.put("compositeAuthority",marker);nextSpecification.put("extensions",extensions);
+        }
+        boolean changed=!CompositeExecutableDesignAuthorityCompiler.stable(current).equals(
+            CompositeExecutableDesignAuthorityCompiler.stable(nextSpecification));
         if(changed){
             int updated=jdbc.update("""
                 update framework_screen_blueprint
-                   set specification_json=(framework_try_jsonb(specification_json)||
-                         jsonb_build_object('layout',?,'theme',?))::text,
+                   set specification_json=?::jsonb::text,
                        updated_at=current_timestamp
                  where blueprint_id=? and validation_status='VALID'
                    and jsonb_typeof(framework_try_jsonb(specification_json))='object'
-                """,layout,theme,authority.get("blueprintId"));
+                   and framework_try_jsonb(specification_json) is distinct from ?::jsonb
+                """,toJson(nextSpecification),authority.get("blueprintId"),toJson(nextSpecification));
             if(updated!=1)throw new IllegalStateException("CANONICAL_BLUEPRINT_DESIGN_WRITE_FAILED");
         }
         Map<String,Object> result=new LinkedHashMap<>();
@@ -3984,215 +4199,34 @@ public class ActorProcessGovernanceService {
             route);
     }
 
-    /**
-     * Persists one workbench document with an exact revision CAS. Six executable
-     * document kinds are strict JSON projections into the canonical screen
-     * contract and may commit only when the existing deterministic generator
-     * exposes one process job and at least one endpoint. The remaining kinds are
-     * explicitly NOTE_ONLY and never claim a SOURCE or code mutation.
-     */
+    /** Composite-design transaction facade; orchestration lives in its bounded service. */
     @Transactional public Map<String,Object> saveIntegratedDesignDocument(
             Map<String,Object> body,String actor){
-        if(actor==null||actor.isBlank()||!actor.equals(actor.trim())||actor.length()>100)
-            throw new SecurityException("AUTHENTICATED_ACTOR_REQUIRED");
-        String process=req(body,"processCode").trim().toUpperCase(Locale.ROOT);
-        if(!process.matches("^[A-Z][A-Z0-9_:-]{1,79}$"))
-            throw new IllegalArgumentException("INVALID_PROCESS_CODE");
-        String step=str(body,"stepCode").trim().toUpperCase(Locale.ROOT);
-        if(!step.isEmpty()&&!step.matches("^[A-Z][A-Z0-9_:-]{1,99}$"))
-            throw new IllegalArgumentException("INVALID_STEP_CODE");
-        String route=str(body,"routePath");
-        if(!route.isEmpty())route=ScreenDevelopmentNoteService.cleanRoute(route);
-        String type=req(body,"documentType").trim().toUpperCase(Locale.ROOT);
-        Set<String> allTypes=Set.of("REQUIREMENT","ACTOR_RACI","AUTHORITY","PROCESS",
-            "STATE","NAVIGATION","ACTIVE_UI","DESIGN_ASSET","FIELD_DICTIONARY",
-            "DATA_HANDOFF","DATABASE","API","BUSINESS_RULE","VALIDATION",
-            "NOTIFICATION","TEST","TASK_EVIDENCE","RELEASE_AUDIT");
-        if(!allTypes.contains(type))throw new IllegalArgumentException(
-            "UNSUPPORTED_DESIGN_DOCUMENT_TYPE: "+type);
-        String title=req(body,"title");
-        if(title.length()>300)throw new IllegalArgumentException("DESIGN_DOCUMENT_TITLE_TOO_LONG");
-        String content=body.get("content")==null?"":String.valueOf(body.get("content"));
-        if(content.length()>1_048_576)
-            throw new IllegalArgumentException("DESIGN_DOCUMENT_CONTENT_TOO_LARGE");
-        String status=def(body,"status","DRAFT").toUpperCase(Locale.ROOT);
-        if(!Set.of("DRAFT","READY","IN_REVIEW","APPROVED","VERIFIED").contains(status))
-            throw new IllegalArgumentException("UNSUPPORTED_DESIGN_DOCUMENT_STATUS: "+status);
-        long expectedRevision;
-        try{expectedRevision=Long.parseLong(String.valueOf(
-            body.getOrDefault("revision",0)).trim());}
-        catch(NumberFormatException exception){throw new IllegalArgumentException(
-            "revision must be a non-negative integer",exception);}
-        if(expectedRevision<0)throw new IllegalArgumentException(
-            "revision must be a non-negative integer");
-
-        String documentLock=String.join("\u001f",process,step,route,type);
-        jdbc.query("select pg_advisory_xact_lock(hashtextextended(?,0))",
-            resultSet->{},"INTEGRATED_DESIGN_DOCUMENT_V1:"+documentLock);
-        List<Map<String,Object>> documentHeads=jdbc.queryForList("""
-            select document_id as "documentId",revision,title,content,status,
-                   updated_by as "updatedBy"
-              from integrated_design_document
-             where process_code=? and step_code=? and route_path=? and document_type=?
-             for update
-            """,process,step,route,type);
-        if(documentHeads.size()>1)throw new IllegalStateException(
-            "INTEGRATED_DESIGN_DOCUMENT_HEAD_NOT_EXACT");
-        long currentRevision=documentHeads.isEmpty()?0L:
-            ((Number)documentHeads.get(0).get("revision")).longValue();
-        if(currentRevision!=expectedRevision)throw new IllegalStateException(
-            "STALE_DESIGN_DOCUMENT_REVISION: expected="+expectedRevision+
-                ", current="+currentRevision);
-
-        boolean sourceType=INTEGRATED_DESIGN_SOURCE_TYPES.contains(type);
-        Map<String,Object> sourceReceipt=sourceType
-            ?applyIntegratedDesignSource(process,step,route,type,content,actor)
-            :Map.of();
-        boolean changed=documentHeads.isEmpty()
-            ||!title.equals(String.valueOf(documentHeads.get(0).get("title")))
-            ||!content.equals(String.valueOf(documentHeads.get(0).get("content")))
-            ||!status.equals(String.valueOf(documentHeads.get(0).get("status")));
-        long revision=currentRevision;
-        if(documentHeads.isEmpty()){
-            Long inserted=jdbc.queryForObject("""
-                insert into integrated_design_document(
-                  process_code,step_code,route_path,document_type,title,content,status,updated_by)
-                values(?,?,?,?,?,?,?,?) returning revision
-                """,Long.class,process,step,route,type,title,content,status,actor);
-            if(inserted==null)throw new IllegalStateException(
-                "INTEGRATED_DESIGN_DOCUMENT_INSERT_NOT_EXACT");
-            revision=inserted;
-        }else if(changed){
-            Long updated=jdbc.queryForObject("""
-                update integrated_design_document set
-                       title=?,content=?,status=?,active_yn='Y',updated_by=?
-                 where document_id=? and revision=? returning revision
-                """,Long.class,title,content,status,actor,
-                documentHeads.get(0).get("documentId"),expectedRevision);
-            if(updated==null)throw new IllegalStateException(
-                "INTEGRATED_DESIGN_DOCUMENT_CAS_NOT_EXACT");
-            revision=updated;
-        }
-
-        Map<String,Object> result=new LinkedHashMap<>();
-        result.put("success",true);result.put("documentType",type);
-        result.put("revision",revision);result.put("documentChanged",changed);
-        result.put("updatedBy",changed?actor:documentHeads.get(0).get("updatedBy"));
-        result.put("mutationKind",sourceType?"SOURCE_IMMEDIATE":"NOTE_ONLY");
-        result.put("sourceCommitted",sourceType);
-        result.put("activationPolicy",sourceType?SOURCE_IMMEDIATE_ACTIVATION_POLICY:"NONE");
-        result.put("generationQueued",sourceType&&Boolean.TRUE.equals(
-            sourceReceipt.get("generationQueued")));
-        result.put("jobCount",sourceType?sourceReceipt.get("jobCount"):0);
-        result.put("endpointExpected",sourceType?sourceReceipt.get("endpointExpected"):0);
-        result.put("sourceHash",sourceType?sourceReceipt.get("sourceHash"):"");
-        result.put("designHash",sourceType?sourceReceipt.get("designHash"):"");
-        result.put("sourceReceipt",sourceReceipt);
-        result.put("message",sourceType
-            ?"Structured design was committed to SOURCE and the canonical job was queued or reused."
-            :"Document note saved. SOURCE, generated code and endpoints were not changed.");
-        return result;
+        return compositeDesignApplication().saveIntegratedDesignDocument(body,actor);
     }
 
-    private Map<String,Object> applyIntegratedDesignSource(
-            String process,String step,String route,String type,String content,String actor){
-        if(step.isBlank()||route.isBlank())throw new IllegalArgumentException(
-            "STRUCTURED_DESIGN_REQUIRES_STEP_AND_ROUTE");
-        Map<String,Object> payload;
-        try{
-            @SuppressWarnings("unchecked")
-            Map<String,Object> parsed=new com.fasterxml.jackson.databind.ObjectMapper()
-                .readValue(content,LinkedHashMap.class);
-            payload=parsed;
-        }catch(Exception exception){throw new IllegalArgumentException(
-            "STRUCTURED_DESIGN_CONTENT_MUST_BE_A_JSON_OBJECT",exception);}
-        if(!INTEGRATED_DESIGN_SOURCE_SCHEMA.equals(str(payload,"schemaVersion")))
-            throw new IllegalArgumentException("STRUCTURED_DESIGN_SCHEMA_REQUIRED: "+
-                INTEGRATED_DESIGN_SOURCE_SCHEMA);
-        long contractId;
-        try{contractId=Long.parseLong(req(payload,"contractId"));}
-        catch(NumberFormatException exception){throw new IllegalArgumentException(
-            "contractId must be a positive integer",exception);}
-        if(contractId<1)throw new IllegalArgumentException(
-            "contractId must be a positive integer");
-        Set<String> allowed=new HashSet<>(INTEGRATED_DESIGN_SOURCE_FIELDS.get(type));
-        allowed.add("schemaVersion");allowed.add("contractId");
-        List<String> unsupported=payload.keySet().stream()
-            .filter(key->!allowed.contains(key)).sorted().toList();
-        if(!unsupported.isEmpty())throw new IllegalArgumentException(
-            "UNSUPPORTED_STRUCTURED_DESIGN_FIELDS: "+String.join(",",unsupported));
-        if(payload.keySet().stream().noneMatch(
-                INTEGRATED_DESIGN_SOURCE_FIELDS.get(type)::contains))
-            throw new IllegalArgumentException("STRUCTURED_DESIGN_CHANGE_REQUIRED");
+    /** Compiles all direct and ACTIVE-bound identities and queues exactly one process job. */
+    @Transactional public Map<String,Object> compileIntegratedDesignProcess(
+            Map<String,Object> body,String actor){
+        return compositeDesignApplication().compileIntegratedDesignProcess(body,actor);
+    }
 
-        lockCanonicalProcessPublication(process);
-        List<Map<String,Object>> contracts=jdbc.queryForList("""
-            select contract_id as "contractId",business_purpose as "businessPurpose",
-                   entry_condition as "entryCondition",exit_condition as "exitCondition",
-                   kpi_contract as "kpiContract",section_contract as "sectionContract",
-                   field_contract as "fieldContract",command_contract as "commandContract",
-                   state_contract as "stateContract",api_contract as "apiContract",
-                   data_contract as "dataContract",evidence_contract as "evidenceContract",
-                   responsive_contract as "responsiveContract",
-                   accessibility_contract as "accessibilityContract",
-                   security_contract as "securityContract",
-                   permission_codes::text as "permissionCodes",
-                   api_verified as "apiVerified",database_verified as "databaseVerified",
-                   authority_verified as "authorityVerified",
-                   responsive_verified as "responsiveVerified",
-                   accessibility_verified as "accessibilityVerified",
-                   exception_states_verified as "exceptionStatesVerified",
-                   audit_evidence_ref as "auditEvidenceRef",
-                   contract_status as "contractStatus"
-              from framework_professional_screen_contract
-             where contract_id=? and process_code=? and step_code=?
-               and lower(split_part(route_path,'?',1))=lower(?)
-             for update
-            """,contractId,process,step,route);
-        if(contracts.size()!=1)throw new IllegalStateException(
-            "STRUCTURED_DESIGN_CANONICAL_CONTRACT_NOT_EXACT: "+contractId);
-        Map<String,Object> mutation=new LinkedHashMap<>(contracts.get(0));
-        for(String field:INTEGRATED_DESIGN_SOURCE_FIELDS.get(type)){
-            if(!payload.containsKey(field))continue;
-            Object value=payload.get(field);
-            if(Set.of("sectionContract","fieldContract","commandContract",
-                    "stateContract","apiContract","dataContract","evidenceContract",
-                    "permissionCodes").contains(field)){
-                if(!(value instanceof List<?>))throw new IllegalArgumentException(
-                    field+" must be a JSON array");
-                mutation.put(field,toJson(value));
-            }else if(Set.of("apiVerified","databaseVerified","authorityVerified",
-                    "responsiveVerified","accessibilityVerified",
-                    "exceptionStatesVerified").contains(field)){
-                if(!(value instanceof Boolean))throw new IllegalArgumentException(
-                    field+" must be a boolean");
-                mutation.put(field,value);
-            }else{
-                if(!(value instanceof String text)||text.trim().isEmpty())
-                    throw new IllegalArgumentException(field+" must be a non-empty string");
-                mutation.put(field,text.trim());
-            }
-        }
-        Map<String,Object> receipt=saveProfessionalScreenContract(mutation,actor);
-        int jobCount=receipt.get("jobCount") instanceof Number number
-            ?number.intValue():0;
-        int endpointExpected=receipt.get("endpointExpected") instanceof Number number
-            ?number.intValue():0;
-        String sourceHash=str(receipt,"sourceHash");
-        String designHash=str(receipt,"designHash");
-        if(jobCount!=1||endpointExpected<1||!sourceHash.matches("[0-9a-f]{64}")
-                ||!designHash.matches("[0-9a-f]{64}"))
-            throw new IllegalStateException(
-                "INTEGRATED_DESIGN_SOURCE_NOT_GENERATABLE: jobCount="+jobCount+
-                    ", endpointExpected="+endpointExpected);
-        receipt.put("mutationKind","SOURCE_IMMEDIATE");
-        receipt.put("activationPolicy",SOURCE_IMMEDIATE_ACTIVATION_POLICY);
-        receipt.put("sourceCommitted",true);
-        receipt.put("documentType",type);
-        return receipt;
+    private CompositeExecutableDesignApplicationService compositeDesignApplication(){
+        return new CompositeExecutableDesignApplicationService(
+            jdbc,screenDevelopmentNoteService,screenContractRuntimeService,this);
     }
 
     @Transactional public Map<String,Object> saveProfessionalScreenContract(Map<String,Object>b,String actor){
+        return saveProfessionalScreenContract(b,actor,false,false);
+    }
+
+    private Map<String,Object> saveProfessionalScreenContract(
+            Map<String,Object>b,String actor,boolean preserveBlueprint){
+        return saveProfessionalScreenContract(b,actor,preserveBlueprint,false);
+    }
+
+    Map<String,Object> saveProfessionalScreenContract(
+            Map<String,Object>b,String actor,boolean preserveBlueprint,boolean deferPublication){
         Map<String,Object> values=professionalScreenContractInput(b);
         long id=((Number)values.get("contractId")).longValue();
         Map<String,Object> readiness=professionalContractReadiness(id,values);
@@ -4208,8 +4242,18 @@ public class ActorProcessGovernanceService {
             values.get("contractStatus"),actor,id);
         if(updated==0)throw new IllegalArgumentException("화면 완성 계약을 찾을 수 없습니다: "+id);
         if(((Number)readiness.get("readinessScore")).intValue()==100){jdbc.update("update framework_professional_screen_contract set contract_status='VERIFIED',updated_at=current_timestamp where contract_id=?",id);}
-        Map<String,Object> blueprintDesign=updateProfessionalBlueprintDesign(id,b);
+        Map<String,Object> blueprintDesign=preserveBlueprint
+            ?Map.of("changed",false,"preserved",true,"policy","PRESERVE_ADOPT")
+            :updateProfessionalBlueprintDesign(id,b);
         String process=jdbc.queryForObject("select process_code from framework_professional_screen_contract where contract_id=?",String.class,id);
+        if(deferPublication){
+            Map<String,Object> staged=new LinkedHashMap<>();staged.put("success",true);
+            staged.put("status","STAGED");staged.put("processCode",process);
+            staged.put("contract",readiness);staged.put("designGate",gate);
+            staged.put("blueprintDesign",blueprintDesign);staged.put("generationQueued",false);
+            staged.put("jobCount",0);staged.put("endpointExpected",0);staged.put("publishCount",0);
+            return staged;
+        }
         generateProfessionalDesignGraph(process,actor);
         Map<String,Object> generationReadiness=structuredGenerationReadiness(id);
         boolean structuredApproved=Boolean.TRUE.equals(generationReadiness.get("generationEligible"));
@@ -4307,9 +4351,11 @@ public class ActorProcessGovernanceService {
         arrays.put("commandContract",def(b,"commandContract","[]"));
         arrays.put("stateContract",def(b,"stateContract","[\"LOADING\",\"EMPTY\",\"ERROR\",\"FORBIDDEN\",\"READY\"]"));
         arrays.put("apiContract",def(b,"apiContract","[]"));
-        arrays.put("dataContract",def(b,"dataContract","[]"));
         arrays.put("evidenceContract",def(b,"evidenceContract","[]"));
         arrays.forEach((field,value)->{validateJsonArray(value,field);values.put(field,value);});
+        String dataContract=def(b,"dataContract","[]");
+        validateJsonObjectOrArray(dataContract,"dataContract");
+        values.put("dataContract",dataContract);
         values.put("permissionCodes",normalizePermissionCodes(def(b,"permissionCodes","[]")));
         values.put("responsiveContract",def(b,"responsiveContract","360px, 768px, 1280px 검증"));
         values.put("accessibilityContract",def(b,"accessibilityContract","KRDS 및 WCAG 2.1 AA"));
@@ -6842,10 +6888,13 @@ public class ActorProcessGovernanceService {
         List<Map<String,Object>> steps=jdbc.queryForList("select step_code,actor_code,from_state from framework_process_step where process_code=? order by step_order limit 1",process);
         if(steps.isEmpty())throw new IllegalArgumentException("프로세스 단계가 없습니다: "+process);
         Map<String,Object> first=steps.get(0);String requiredActor=String.valueOf(first.get("actor_code"));
+        String compositeActor=new CompositeRuntimePolicyService(jdbc).resolveActor(project,process,
+            String.valueOf(first.get("step_code")),str(b,"routePath"),str(b,"audience"));
+        if(!compositeActor.isBlank())requiredActor=compositeActor;
         if(!requiredActor.equals(actor))throw new SecurityException("첫 단계 수행 액터는 "+requiredActor+"입니다.");
         String step=String.valueOf(first.get("step_code"));
         requireActorAssignment(tenant,project,actor,user);
-        requireStepPermissionGrants(process,step,actor,str(b,"routePath"),str(b,"audience"));
+        requireStepPermissionGrants(process,step,actor,str(b,"routePath"),str(b,"audience"),project);
         List<Map<String,Object>> running=jdbc.queryForList("select execution_id as \"executionId\",current_step_code as \"currentStepCode\",current_state as \"currentState\",cycle_type as \"cycleType\",period_start as \"periodStart\",period_end as \"periodEnd\",execution_version as \"executionVersion\",handoff_status as \"handoffStatus\" from framework_process_execution where tenant_id=? and project_id=? and process_code=? and cycle_type=? and period_start is not distinct from nullif(?,'')::date and period_end is not distinct from nullif(?,'')::date and boundary_version=? and methodology_version=? and execution_version=? and execution_status='RUNNING'",tenant,project,process,cycleType,periodStart,periodEnd,boundaryVersion,methodologyVersion,executionVersion);
         if(!running.isEmpty())return Map.of("success",true,"created",false,"execution",running.get(0));
         UUID id=UUID.randomUUID();String state=String.valueOf(first.get("from_state"));
@@ -6879,7 +6928,7 @@ public class ActorProcessGovernanceService {
         Map<String,Object> execution=executions.get(0);
         if(!tenant.equals(String.valueOf(execution.get("tenant_id")))||!project.equals(String.valueOf(execution.get("project_id")))||!process.equals(String.valueOf(execution.get("process_code"))))throw new SecurityException("테넌트·프로젝트·프로세스 실행 문맥이 일치하지 않습니다.");
         requireActorAssignment(tenant,project,actor,user);
-        requireStepPermissionGrants(process,step,actor,str(b,"routePath"),str(b,"audience"));
+        requireStepPermissionGrants(process,step,actor,str(b,"routePath"),str(b,"audience"),project);
         List<Map<String,Object>> existing=jdbc.queryForList("select event_id as \"eventId\",to_state as \"toState\" from framework_process_execution_event where execution_id=? and idempotency_key=?",executionId,key);
         if(!existing.isEmpty()){
             Map<String,Object> event=existing.get(0);
@@ -6892,6 +6941,19 @@ public class ActorProcessGovernanceService {
         List<Map<String,Object>> contracts=jdbc.queryForList("select step_order,actor_code,command_code,from_state,to_state from framework_process_step where process_code=? and step_code=?",process,step);
         if(contracts.isEmpty())throw new IllegalArgumentException("단계 계약이 없습니다.");
         Map<String,Object> contract=contracts.get(0);String requiredActor=String.valueOf(contract.get("actor_code")),requiredCommand=String.valueOf(contract.get("command_code")),from=String.valueOf(contract.get("from_state")),to=String.valueOf(contract.get("to_state"));
+        if(!"RUNNING".equals(String.valueOf(execution.get("execution_status"))))throw new IllegalStateException("실행 중인 프로세스가 아닙니다.");
+        String currentState=String.valueOf(execution.get("current_state"));
+        Map<String,Object> compositeAuthority=enforceCompositeRuntimePredicates(
+            tenant,project,process,step,command,currentState,str(b,"routePath"),
+            str(b,"audience"),def(b,"requestJson","{}"));
+        if(compositeAuthority.isEmpty()){
+            if(!requiredCommand.equals(command))throw new IllegalArgumentException("이 단계의 명령은 "+requiredCommand+"입니다.");
+            if(!from.equals(currentState))throw new IllegalStateException("현재 상태가 단계 시작 조건과 다릅니다.");
+        }else{
+            requiredActor=String.valueOf(compositeAuthority.get("actorCode"));
+            from=String.valueOf(compositeAuthority.get("fromState"));
+            to=String.valueOf(compositeAuthority.get("toState"));
+        }
         String requestedToState=str(b,"requestedToState");
         if(!requestedToState.isBlank()){
             boolean correctionDecision=("EMISSION_PROJECT_VALIDATE".equals(step)||"EMISSION_PROJECT_APPROVE".equals(step))&&"CORRECTION_REQUIRED".equals(requestedToState);
@@ -6899,9 +6961,6 @@ public class ActorProcessGovernanceService {
             to=requestedToState;
         }
         if(!requiredActor.equals(actor))throw new SecurityException("이 단계의 수행 액터는 "+requiredActor+"입니다.");
-        if(!requiredCommand.equals(command))throw new IllegalArgumentException("이 단계의 명령은 "+requiredCommand+"입니다.");
-        if(!"RUNNING".equals(String.valueOf(execution.get("execution_status"))))throw new IllegalStateException("실행 중인 프로세스가 아닙니다.");
-        if(!from.equals(String.valueOf(execution.get("current_state"))))throw new IllegalStateException("현재 상태가 단계 시작 조건과 다릅니다.");
         if(Boolean.parseBoolean(def(b,"requireDraft","false"))){
             List<Map<String,Object>> drafts=jdbc.queryForList("select draft_status,payload_json from framework_process_work_draft where tenant_id=? and project_id=? and process_code=? and step_code=? and lower(account_id)=lower(?) for update",tenant,project,process,step,user);
             if(drafts.isEmpty())throw new IllegalStateException("Save the work data before completing this step.");
@@ -6933,7 +6992,15 @@ public class ActorProcessGovernanceService {
         resolved.put("step",step);resolved.put("actor",actor);resolved.put("command",command);resolved.put("key",key);
         resolved.put("from",from);resolved.put("to",to);resolved.put("execution",execution);
         resolved.put("next",next);resolved.put("snapshotRequired",!policies.isEmpty()&&Boolean.TRUE.equals(policies.get(0).get("snapshot_required")));
+        resolved.put("compositeAuthority",compositeAuthority);
         return resolved;
+    }
+
+    private Map<String,Object> enforceCompositeRuntimePredicates(String tenant,String project,
+            String process,String step,String command,String currentState,String route,String audience,
+            String requestJson){
+        return new CompositeRuntimePolicyService(jdbc).enforcePredicates(project,process,step,
+            command,currentState,route,audience,requestJson);
     }
 
     @SuppressWarnings("unchecked")
@@ -6946,6 +7013,8 @@ public class ActorProcessGovernanceService {
         Map<String,Object> execution=(Map<String,Object>)preconditions.get("execution");
         List<Map<String,Object>> next=(List<Map<String,Object>>)preconditions.get("next");
         Long eventId=jdbc.queryForObject("insert into framework_process_execution_event(execution_id,step_code,actor_code,command_code,from_state,to_state,idempotency_key,request_json,result_json,executed_by) values(?,?,?,?,?,?,?,?,?,?) returning event_id",Long.class,executionId,step,actor,command,from,to,key,def(b,"requestJson","{}"),def(b,"resultJson","{}"),user);
+        queueCompositeRuntimeNotifications((Map<String,Object>)preconditions.get("compositeAuthority"),
+            executionId,eventId,tenant,project,process,step,command);
         String snapshotRef=def(b,"snapshotRef","");
         if(Boolean.TRUE.equals(preconditions.get("snapshotRequired"))&&snapshotRef.isBlank())
             snapshotRef=executionId+":"+step+":"+eventId;
@@ -6959,6 +7028,12 @@ public class ActorProcessGovernanceService {
         result.put("nextActorCode",next.isEmpty()?"":String.valueOf(next.get(0).get("actor_code")));result.put("nextUserPath",next.isEmpty()?"":String.valueOf(next.get(0).get("user_path")));
         result.put("nextAdminPath",next.isEmpty()?"":String.valueOf(next.get(0).get("admin_path")));result.put("handoffStatus","HANDED_OFF");result.put("snapshotRef",snapshotRef);
         result.putAll(nextProcess);return result;
+    }
+
+    private void queueCompositeRuntimeNotifications(Map<String,Object> authority,UUID executionId,
+            Long eventId,String tenant,String project,String process,String step,String command){
+        new CompositeRuntimePolicyService(jdbc).queueNotifications(authority,executionId,eventId,
+            tenant,project,process,step,command);
     }
 
     @SuppressWarnings("unchecked")
@@ -7508,17 +7583,18 @@ public class ActorProcessGovernanceService {
     }
 
     void requireStepPermissionGrants(String process,String step,String actor){
-        requireStepPermissionGrants(process,step,actor,"","");
+        requireStepPermissionGrants(process,step,actor,"","","");
     }
 
     void requireStepPermissionGrants(
             String process,String step,String actor,String routePath,String audience){
-        Boolean allowed=jdbc.queryForObject(
-            "select framework_authorize_step_permissions(?,?,?,?,?)",Boolean.class,
-            process,step,actor,routePath==null?"":routePath,audience==null?"":audience);
-        if(!Boolean.TRUE.equals(allowed))throw new SecurityException(
-            "STEP_PERMISSION_DENIED: "+process+" / "+step+" / "+actor+
-                " / "+(routePath==null?"":routePath)+" / "+(audience==null?"":audience));
+        requireStepPermissionGrants(process,step,actor,routePath,audience,"");
+    }
+
+    void requireStepPermissionGrants(String process,String step,String actor,
+            String routePath,String audience,String project){
+        new CompositeRuntimePolicyService(jdbc).requirePermissions(process,step,actor,
+            routePath,audience,project);
     }
 
     @Transactional public Map<String,Object> manageQaProcessExecution(Map<String,Object>b,String user){
@@ -9627,6 +9703,7 @@ public class ActorProcessGovernanceService {
     }
     private static void validateJsonObject(String value,String field){try{if(!new com.fasterxml.jackson.databind.ObjectMapper().readTree(value).isObject())throw new IllegalArgumentException(field+" must be a JSON object");}catch(com.fasterxml.jackson.core.JsonProcessingException e){throw new IllegalArgumentException(field+" must be valid JSON",e);}}
     private static void validateJsonArray(String value,String field){try{if(!new com.fasterxml.jackson.databind.ObjectMapper().readTree(value).isArray())throw new IllegalArgumentException(field+" must be a JSON array");}catch(com.fasterxml.jackson.core.JsonProcessingException e){throw new IllegalArgumentException(field+" must be valid JSON",e);}}
+    private static void validateJsonObjectOrArray(String value,String field){try{com.fasterxml.jackson.databind.JsonNode node=new com.fasterxml.jackson.databind.ObjectMapper().readTree(value);if(!node.isObject()&&!node.isArray())throw new IllegalArgumentException(field+" must be a JSON object or array");}catch(com.fasterxml.jackson.core.JsonProcessingException e){throw new IllegalArgumentException(field+" must be valid JSON",e);}}
     private static String toJson(Object value){try{return new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(value==null?Map.of():value);}catch(Exception e){throw new IllegalArgumentException("configuration must be JSON serializable",e);}}
     private static Object jsonValue(String value){try{return new com.fasterxml.jackson.databind.ObjectMapper().readValue(value,Object.class);}catch(Exception e){throw new IllegalArgumentException("database returned invalid JSON value",e);}}
     @SuppressWarnings("unchecked") private static Map<String,Object> jsonMap(String value){try{return new com.fasterxml.jackson.databind.ObjectMapper().readValue(value,LinkedHashMap.class);}catch(Exception e){throw new IllegalArgumentException("database returned invalid JSON",e);}}

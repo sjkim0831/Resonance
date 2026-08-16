@@ -172,10 +172,13 @@ def validate_operation(operation: Any, screen: dict[str, Any]) -> dict[str, Any]
     if operation["implementationKind"] != "PROCESS_COMMAND_ADAPTER" or operation["method"] != "POST":
         raise ContractError("only POST PROCESS_COMMAND_ADAPTER is supported")
     safe_path(operation)
-    for key in ("processCode", "stepCode", "commandCode"):
+    for key in ("processCode", "stepCode"):
         required_text(operation, key, CODE)
         if operation[key] != screen[key]:
             raise ContractError(f"operation {key} does not match canonical design")
+    command_code = required_text(operation, "commandCode", CODE)
+    if command_code not in screen["commandCodes"]:
+        raise ContractError("operation commandCode is not declared by the canonical step")
     authority = exact_keys(operation["authority"], {"audience", "actorCodes", "authenticated", "tenantScoped", "projectScoped"}, "authority")
     if authority["audience"] != screen["audience"] or authority["authenticated"] is not True:
         raise ContractError("authority must be authenticated and match the screen audience")
@@ -379,6 +382,46 @@ def load_contract(path: Path) -> tuple[str, list[dict[str, Any]]]:
         endpoint["stepCode"] = required_text(identity, "stepCode", CODE)
         endpoint["actorCode"] = required_text(identity, "actorCode", CODE)
         endpoint["commandCode"] = required_text(step, "commandCode", CODE)
+        declared_commands = step.get("commands")
+        declared_command_codes = step.get("commandCodes")
+        if declared_commands is not None and declared_command_codes is not None:
+            raise ContractError("canonical step command set is ambiguous")
+        if declared_commands is not None:
+            if not isinstance(declared_commands, list) or not declared_commands:
+                raise ContractError("canonical step.commands must be a non-empty array")
+            command_codes = [
+                required_text(row, "commandCode", CODE)
+                if isinstance(row, dict) else None
+                for row in declared_commands
+            ]
+            if any(code is None for code in command_codes):
+                raise ContractError("canonical step.commands entry is invalid")
+        elif declared_command_codes is not None:
+            if (not isinstance(declared_command_codes, list) or not declared_command_codes
+                    or any(not isinstance(code, str) or not CODE.fullmatch(code)
+                           for code in declared_command_codes)):
+                raise ContractError("canonical step.commandCodes is invalid")
+            command_codes = declared_command_codes
+        else:
+            lanes = canonical.get("lanes")
+            frontend = lanes.get("FRONTEND") if isinstance(lanes, dict) else None
+            if isinstance(frontend, dict) and "actions" in frontend:
+                actions = frontend["actions"]
+                if not isinstance(actions, list) or not actions:
+                    raise ContractError("canonical FRONTEND.actions must be a non-empty array")
+                command_codes = [
+                    required_text(action, "commandCode", CODE)
+                    if isinstance(action, dict) else None
+                    for action in actions
+                ]
+                if any(code is None for code in command_codes):
+                    raise ContractError("canonical FRONTEND.actions entry is invalid")
+            else:
+                command_codes = [endpoint["commandCode"]]
+        if (endpoint["commandCode"] not in command_codes
+                or len(command_codes) != len(set(command_codes))):
+            raise ContractError("canonical step command set is not exact")
+        endpoint["commandCodes"] = frozenset(command_codes)
         try:
             parsed = json.loads(endpoint["endpointText"])
         except json.JSONDecodeError as exc:
@@ -396,16 +439,20 @@ def load_contract(path: Path) -> tuple[str, list[dict[str, Any]]]:
         screen_keys.add(endpoint["screenKey"].casefold())
         if not isinstance(contract["operations"], list) or not contract["operations"]:
             raise ContractError("endpoint operations are required")
-        if len(contract["operations"]) != 1:
-            raise ContractError("v1 requires exactly one API operation per screen")
+        screen_operation_commands: set[str] = set()
         for raw in contract["operations"]:
             operation = validate_operation(raw, endpoint)
+            if operation["commandCode"] in screen_operation_commands:
+                raise ContractError("duplicate endpoint commandCode for canonical screen")
+            screen_operation_commands.add(operation["commandCode"])
             signature = f"{operation['method']} {operation['path']}".casefold()
             if signature in route_signatures or operation["operationId"].casefold() in operation_ids:
                 raise ContractError(f"duplicate endpoint identity: {signature}")
             route_signatures.add(signature)
             operation_ids.add(operation["operationId"].casefold())
             operations.append({"screen": endpoint, "operation": operation})
+        if screen_operation_commands != endpoint["commandCodes"]:
+            raise ContractError("endpoint operations do not exactly cover canonical step commands")
         lines.append(f"{endpoint['screenKey']}\u001f{endpoint['endpointHash']}")
     if digest("\n".join(lines)) != catalog["catalogHash"]:
         raise ContractError("catalogHash mismatch")
