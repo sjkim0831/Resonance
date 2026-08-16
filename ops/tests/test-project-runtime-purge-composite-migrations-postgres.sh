@@ -430,6 +430,10 @@ preview_rows="$(json_field '["impact"]["totalRows"]' <<<"$preview")"
    and table_name in('integrated_design_notification_outbox',
                      'integrated_design_notification_inbox')")" == 2 ]] ||
   fail 'exact PROJECT notification parent/child graph was not captured'
+[[ "$(scalar "select count(*) from framework_project_runtime_purge_snapshot_row
+ where receipt_id='30000000-0000-0000-0000-000000000001'
+   and table_name='integrated_design_autocompletion_receipt'")" == 1 ]] ||
+  fail 'exact process-owned autocompletion receipt was not captured'
 state_hash_before="$(scalar "select test_composite_purge_live_set_hash(
  '30000000-0000-0000-0000-000000000001')")"
 sequence_hash_before="$(scalar 'select test_composite_purge_sequence_hash()')"
@@ -454,6 +458,9 @@ purged="$(db -Atqc "select framework_apply_project_runtime_purge(
 [[ "$(scalar "select count(*) from integrated_design_notification_inbox
  where project_id='RFP-COMPOSITE-001'")" == 0 ]] ||
   fail 'owned notification inbox survived purge'
+[[ "$(scalar "select count(*) from integrated_design_autocompletion_receipt
+ where process_code='RFP_COMPOSITE'")" == 0 ]] ||
+  fail 'owned autocompletion receipt survived purge'
 
 # Two writers race concurrently against the already committed PURGED receipt;
 # both must be denied before either row reaches a table or FK check.
@@ -534,6 +541,9 @@ sequence_hash_after="$(scalar 'select test_composite_purge_sequence_hash()')"
  join integrated_design_notification_inbox inbox using(notification_id)
  where outbox.project_id='RFP-COMPOSITE-001'")" == 1 ]] ||
   fail 'restore did not recover exact notification parent/child set'
+[[ "$(scalar "select count(*) from integrated_design_autocompletion_receipt
+ where process_code='RFP_COMPOSITE'")" == 1 ]] ||
+  fail 'restore did not recover exact autocompletion receipt'
 
 set +e
 append_only_error="$(db -Atqc "delete from integrated_design_live_smoke_evidence
@@ -553,5 +563,5 @@ audit_chain="$(scalar "select string_agg(event_type,',' order by audit_id)
  where receipt_id='30000000-0000-0000-0000-000000000001'")"
 [[ "$audit_chain" == PREVIEWED,PURGED,RESTORED ]] || fail "audit chain drifted: $audit_chain"
 
-printf 'PROJECT_RUNTIME_PURGE_COMPOSITE_POSTGRES_PASS migrationOrder=4 migrationMs=%s integratedFences=%s missingFences=0 previewRows=%s projectBindings=1 liveEvidence=1 liveDispatch=1 notificationGraph=2 absenceRows=7 negativeBindings=3 purgeResidue=0 concurrentWriters=2/write0 restoreFailure=atomic restoredHash=exact sequenceHash=exact userTriggers=4/enabled audit=%s\n' \
+printf 'PROJECT_RUNTIME_PURGE_COMPOSITE_POSTGRES_PASS migrationOrder=4 migrationMs=%s integratedFences=%s missingFences=0 previewRows=%s projectBindings=1 liveEvidence=1 liveDispatch=1 notificationGraph=2 autocompletion=1 absenceRows=7 negativeBindings=3 purgeResidue=0 concurrentWriters=2/write0 restoreFailure=atomic restoredHash=exact sequenceHash=exact userTriggers=4/enabled audit=%s\n' \
   "$migration_ms" "$integrated_fence_count" "$preview_rows" "$audit_chain"
