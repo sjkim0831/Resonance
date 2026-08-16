@@ -1,7 +1,9 @@
 import {
   copyProjectLifecycle,
   deleteProjectLifecycle,
+  lockProjectLifecyclePublicationMutation,
   projectLifecycleMutationLockKey,
+  ProjectLifecyclePublicationFenceError,
   recoverProjectRuntimePurgeSagas,
   registerProjectLifecycleRoutes,
   type ProjectLifecycleIdentity,
@@ -462,7 +464,108 @@ const approvedDeleteDatabase = (
   };
 };
 
+const lifecyclePublicationFenceDatabase = (
+  sagaStatus?: string,
+  projectExists = true,
+) => {
+  const events: string[] = [];
+  const writes: string[] = [];
+  const transaction = Object.assign(
+    (table: string) => {
+      const state: { statuses?: unknown[]; locked?: boolean } = {};
+      const builder: any = {
+        select: () => builder,
+        where: () => builder,
+        whereIn: (_column: string, values: unknown[]) => {
+          state.statuses = values;
+          return builder;
+        },
+        orderBy: () => builder,
+        forUpdate: () => {
+          state.locked = true;
+          return builder;
+        },
+        first: async () => {
+          events.push(`${table}:${state.locked ? 'for-update' : 'read'}`);
+          if (table === 'resonance_projects__project') {
+            return projectExists ? { project_id: 'TARGET' } : undefined;
+          }
+          if (
+            table === 'resonance_projects__runtime_purge_saga' &&
+            sagaStatus &&
+            state.statuses?.includes(sagaStatus)
+          ) {
+            return { saga_id: 'saga-1', saga_status: sagaStatus };
+          }
+          return undefined;
+        },
+        insert: async () => {
+          writes.push(`${table}:insert`);
+          return 1;
+        },
+        update: async () => {
+          writes.push(`${table}:update`);
+          return 1;
+        },
+        delete: async () => {
+          writes.push(`${table}:delete`);
+          return 1;
+        },
+      };
+      return builder;
+    },
+    {
+      raw: async (_sql: string, bindings: unknown[]) => {
+        events.push(`advisory:${String(bindings[0])}`);
+      },
+    },
+  );
+  return { transaction, events, writes };
+};
+
 describe('project lifecycle mutation authority', () => {
+  it.each(['PREPARED', 'PURGED', 'RESTORE_REQUIRED'])(
+    'fences every project writer after the lifecycle lock when saga is %s',
+    async sagaStatus => {
+      const database = lifecyclePublicationFenceDatabase(sagaStatus);
+      await expect(
+        lockProjectLifecyclePublicationMutation(database.transaction, 'TARGET'),
+      ).rejects.toMatchObject({
+        statusCode: 409,
+        code: 'PROJECT_DELETE_IN_PROGRESS',
+      } satisfies Partial<ProjectLifecyclePublicationFenceError>);
+      expect(database.events).toEqual([
+        `advisory:${projectLifecycleMutationLockKey('TARGET')}`,
+        'resonance_projects__project:for-update',
+        'resonance_projects__runtime_purge_saga:for-update',
+      ]);
+      expect(database.writes).toHaveLength(0);
+    },
+  );
+
+  it.each(['LOCAL_APPLIED', 'RESTORED'])(
+    'allows project writers after terminal saga %s',
+    async sagaStatus => {
+      const database = lifecyclePublicationFenceDatabase(sagaStatus);
+      await expect(
+        lockProjectLifecyclePublicationMutation(database.transaction, 'TARGET'),
+      ).resolves.toEqual({ project_id: 'TARGET' });
+      expect(database.writes).toHaveLength(0);
+    },
+  );
+
+  it('returns exact PROJECT_MISSING before touching a saga or writer row', async () => {
+    const database = lifecyclePublicationFenceDatabase(undefined, false);
+    await expect(
+      lockProjectLifecyclePublicationMutation(database.transaction, 'TARGET'),
+    ).rejects.toMatchObject({ statusCode: 404, code: 'PROJECT_MISSING' });
+    expect(database.events).toEqual([
+      `advisory:${projectLifecycleMutationLockKey('TARGET')}`,
+      'resonance_projects__project:for-update',
+    ]);
+    expect(database.writes).toHaveLength(0);
+  });
+
   it('returns 401 for both routes before opening a write transaction', async () => {
     const handlers: Record<
       string,
@@ -1626,16 +1729,20 @@ describe('project lifecycle mutation authority', () => {
     );
   });
 
-  it('serializes source receipt queue/retry against deletion with the same project lock', () => {
+  it('fences requirement and source writers with the shared lifecycle lock', () => {
     const source = readFileSync(
       join(__dirname, 'resonanceProjects.ts'),
       'utf8',
     );
-    expect(source).toContain('projectLifecycleMutationLockKey(projectId)');
-    expect(
-      source.match(/projectLifecycleMutationLockKey\(projectId\)/g),
-    ).toHaveLength(2);
-    expect(source).toContain('DESIGN_SOURCE_SYNC_PROJECT_NOT_FOUND');
+    const throwingFenceCalls =
+      source.match(/lockProjectLifecyclePublicationMutation\(/g)?.length ?? 0;
+    const inspectedFenceCalls =
+      source.match(/inspectProjectLifecyclePublicationMutation\(/g)?.length ??
+      0;
+    expect(throwingFenceCalls + inspectedFenceCalls).toBe(5);
+    expect(source).toContain('REQUIREMENT_REPUBLICATION_ARM_CAS_NOT_EXACT');
+    expect(source).toContain("publication_reconcile_status: 'PENDING'");
+    expect(source).toContain("['PENDING', 'RUNNING']");
   });
 
   it('wires a mandatory recovery principal and surfaces scheduler readiness failures', () => {
@@ -1663,11 +1770,21 @@ describe('project lifecycle mutation authority', () => {
     );
     expect(projectSource).toContain('RECOVERY_AUTHORITY_NOT_READY');
     expect(projectSource).toContain('logger.error(');
+    expect(projectSource).toContain("'/health/project-runtime-purge-recovery'");
+    expect(projectSource).toContain('response.status(ready ? 200 : 503)');
     expect(manifest).toContain('name: resonance-runtime-purge-recovery');
     expect(manifest).not.toContain(
       'name: resonance-runtime-purge-recovery\n                optional: true',
     );
     expect(deploy).toContain('ensure_runtime_purge_recovery_secret');
     expect(deploy).toContain('RESONANCE_RUNTIME_PURGE_RECOVERY_ACCOUNT_ID');
+    const readinessPath =
+      '/api/resonance-projects/health/project-runtime-purge-recovery';
+    expect(manifest).toContain(`path: ${readinessPath}`);
+    expect(deploy).toContain(
+      `RUNTIME_PURGE_READINESS_URL="$BACKSTAGE_URL${readinessPath}"`,
+    );
+    expect(deploy.match(/RUNTIME_PURGE_READINESS_URL/g)).toHaveLength(3);
+    expect(manifest).not.toContain('path: /.backstage/health/v1/readiness');
   });
 });

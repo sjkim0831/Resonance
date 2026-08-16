@@ -101,6 +101,24 @@ class ActorProcessControlPlaneBridgeProjectPurgeTest {
     }
 
     @Test
+    void recoveryPreflightFailsReadinessWhenTheDatabaseRoleWasRevoked(){
+        when(governance.isControlPlaneAdministrator("runtime.recovery")).thenReturn(true);
+        when(jdbc.queryForObject(
+                org.mockito.ArgumentMatchers.argThat(sql->sql!=null
+                        &&sql.contains("framework_project_runtime_purge_require_admin")),
+                eq(Boolean.class),any(Object[].class))).thenReturn(false);
+
+        var notReady=controller.preflightProjectRuntimePurgeRecoveryAuthority(
+                "bridge-token","service:default/runtime-purge-recovery",
+                "runtime.recovery");
+
+        assertEquals(503,notReady.getStatusCode().value());
+        assertEquals("NOT_READY",((Map<?,?>)notReady.getBody()).get("status"));
+        assertEquals(false,
+                ((Map<?,?>)notReady.getBody()).get("authorityValidated"));
+    }
+
+    @Test
     void noReleaseProjectRequiresExactRuntimeAbsenceProof(){
         when(governance.isControlPlaneAdministrator("runtime.admin")).thenReturn(true);
         when(jdbc.queryForObject(

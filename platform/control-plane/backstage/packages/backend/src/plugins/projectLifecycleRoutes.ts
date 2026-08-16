@@ -67,6 +67,72 @@ const updateOwnedRuntimePurgeSaga = async (options: {
 export const projectLifecycleMutationLockKey = (projectId: string) =>
   `BACKSTAGE_PROJECT_LIFECYCLE_V1:${projectId}`;
 
+export class ProjectLifecyclePublicationFenceError extends Error {
+  constructor(
+    readonly statusCode: 404 | 409,
+    readonly code: 'PROJECT_MISSING' | 'PROJECT_DELETE_IN_PROGRESS',
+    message: string,
+  ) {
+    super(message);
+  }
+}
+
+export const inspectProjectLifecyclePublicationMutation = async (
+  transaction: any,
+  projectId: string,
+) => {
+  await transaction.raw(
+    'select pg_advisory_xact_lock(hashtextextended(?, 0))',
+    [projectLifecycleMutationLockKey(projectId)],
+  );
+  const project = await transaction('resonance_projects__project')
+    .where({ project_id: projectId })
+    .forUpdate()
+    .first();
+  if (!project) {
+    return {
+      allowed: false as const,
+      error: new ProjectLifecyclePublicationFenceError(
+        404,
+        'PROJECT_MISSING',
+        'Project not found',
+      ),
+    };
+  }
+  const activeSaga = await transaction(projectRuntimeSagaTable)
+    .select('saga_id', 'saga_status')
+    .where({ project_id: projectId })
+    .whereIn('saga_status', ['PREPARED', 'PURGED', 'RESTORE_REQUIRED'])
+    .orderBy('created_at', 'desc')
+    .forUpdate()
+    .first();
+  if (activeSaga) {
+    return {
+      allowed: false as const,
+      error: new ProjectLifecyclePublicationFenceError(
+        409,
+        'PROJECT_DELETE_IN_PROGRESS',
+        `Project deletion is ${String(
+          activeSaga.saga_status,
+        )}; project mutation is fenced`,
+      ),
+    };
+  }
+  return { allowed: true as const, project };
+};
+
+export const lockProjectLifecyclePublicationMutation = async (
+  transaction: any,
+  projectId: string,
+) => {
+  const fence = await inspectProjectLifecyclePublicationMutation(
+    transaction,
+    projectId,
+  );
+  if (!fence.allowed) throw fence.error;
+  return fence.project;
+};
+
 export type ProjectLifecycleIdentity = {
   actorRef: string;
   principals: string[];

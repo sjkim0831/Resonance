@@ -180,6 +180,7 @@ docker buildx version >/dev/null 2>&1 || {
 
 BACKSTAGE_HOST="${BACKSTAGE_HOST:-backstage.172.16.1.232.nip.io}"
 BACKSTAGE_URL="${BACKSTAGE_URL:-https://$BACKSTAGE_HOST}"
+RUNTIME_PURGE_READINESS_URL="$BACKSTAGE_URL/api/resonance-projects/health/project-runtime-purge-recovery"
 BACKSTAGE_MIN_CATALOG_ENTITIES="${BACKSTAGE_MIN_CATALOG_ENTITIES:-22}"
 BACKSTAGE_TLS_DIR="${BACKSTAGE_TLS_DIR:-/opt/resonance-data/pki/resonance-internal-ca}"
 CURL_TLS_ARGS=()
@@ -406,7 +407,7 @@ wait_for_runtime() {
   local attempt
   for attempt in $(seq 1 30); do
     if curl "${CURL_TLS_ARGS[@]}" -fsS --max-time 10 \
-      "$BACKSTAGE_URL/.backstage/health/v1/readiness" >/dev/null; then
+      "$RUNTIME_PURGE_READINESS_URL" >/dev/null; then
       return 0
     fi
     sleep 0.5
@@ -659,7 +660,7 @@ case "$mode" in
     ensure_tls
     ensure_auth_secret
     kubectl -n "$NAMESPACE" get deployment,pod,service -l app.kubernetes.io/name=resonance-backstage -o wide
-    curl "${CURL_TLS_ARGS[@]}" -fsS --max-time 10 "$BACKSTAGE_URL/.backstage/health/v1/readiness"
+    curl "${CURL_TLS_ARGS[@]}" -fsS --max-time 10 "$RUNTIME_PURGE_READINESS_URL"
     echo
     if [[ "$OIDC_READY" == "true" ]]; then
       find_patroni_leader

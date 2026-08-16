@@ -29,7 +29,9 @@ import {
   type RequirementPublicationDisposition,
 } from './requirementIngestionLifecycle';
 import {
-  projectLifecycleMutationLockKey,
+  inspectProjectLifecyclePublicationMutation,
+  lockProjectLifecyclePublicationMutation,
+  ProjectLifecyclePublicationFenceError,
   recoverProjectRuntimePurgeSagas,
   registerProjectLifecycleRoutes,
   type ProjectRuntimePurgeCommand,
@@ -105,6 +107,16 @@ type ScreenCoordinateInput = {
 
 const RUNTIME_DESIGN_SOURCE_TIMEOUT_MS = 10_000;
 const DESIGN_SNAPSHOT_SYNC_MAX_ATTEMPTS = 5;
+
+const respondProjectLifecycleFence = (response: Response, error: unknown) => {
+  if (!(error instanceof ProjectLifecyclePublicationFenceError)) return false;
+  response.status(error.statusCode).json({
+    success: false,
+    code: error.code,
+    message: error.message,
+  });
+  return true;
+};
 
 const SCREEN_DIMENSIONS = [
   'projectId',
@@ -1090,6 +1102,10 @@ export default createBackendPlugin({
               ? parsedRetryNotBefore
               : undefined;
           return knex.transaction(async transaction => {
+            await lockProjectLifecyclePublicationMutation(
+              transaction,
+              projectId,
+            );
             const currentRelease = await transaction(
               'resonance_projects__design_release',
             )
@@ -1949,18 +1965,10 @@ export default createBackendPlugin({
             now.getTime() + RECEIPT_RECONCILIATION_LEASE_MS,
           );
           await knex.transaction(async transaction => {
-            await transaction.raw(
-              'select pg_advisory_xact_lock(hashtextextended(?, 0))',
-              [projectLifecycleMutationLockKey(projectId)],
+            await lockProjectLifecyclePublicationMutation(
+              transaction,
+              projectId,
             );
-            const project = await transaction('resonance_projects__project')
-              .select('project_id')
-              .where('project_id', projectId)
-              .forUpdate()
-              .first();
-            if (!project) {
-              throw new Error('DESIGN_SOURCE_SYNC_PROJECT_NOT_FOUND');
-            }
             const row = {
               project_id: projectId,
               asset_type: String(mutation.assetType),
@@ -2497,6 +2505,20 @@ export default createBackendPlugin({
             runtimePurgeRecovery: runtimePurgeRecoveryReadiness,
           });
         });
+        router.get(
+          '/health/project-runtime-purge-recovery',
+          async (_request, response) => {
+            const recoveryIdentity =
+              await refreshRuntimePurgeRecoveryReadiness();
+            const ready =
+              recoveryIdentity !== undefined &&
+              runtimePurgeRecoveryReadiness.status === 'READY';
+            response.status(ready ? 200 : 503).json({
+              status: ready ? 'READY' : 'NOT_READY',
+              runtimePurgeRecovery: runtimePurgeRecoveryReadiness,
+            });
+          },
+        );
         router.get('/operations/summary', async (_request, response) => {
           const countRows = async (tableName: string) => {
             if (!(await knex.schema.hasTable(tableName))) return 0;
@@ -3833,6 +3855,7 @@ export default createBackendPlugin({
               });
               response.status(result.status).json(result.body);
             } catch (error) {
+              if (respondProjectLifecycleFence(response, error)) return;
               if (preparedSync && committedMutation) {
                 response.status(202).json({
                   ...(committedReceipt ?? {}),
@@ -3970,23 +3993,10 @@ export default createBackendPlugin({
                       'CCUS-PLATFORM DESIGN_APPROVER authority is required for global common design retry',
                   };
                 }
-                await transaction.raw(
-                  'select pg_advisory_xact_lock(hashtextextended(?, 0))',
-                  [projectLifecycleMutationLockKey(projectId)],
+                await lockProjectLifecyclePublicationMutation(
+                  transaction,
+                  projectId,
                 );
-                const project = await transaction('resonance_projects__project')
-                  .select('project_id')
-                  .where('project_id', projectId)
-                  .forUpdate()
-                  .first();
-                if (!project) {
-                  return {
-                    status: 404,
-                    syncStatus: 'SYNC_TRACKING_FAILED',
-                    retryable: false,
-                    message: 'project not found',
-                  };
-                }
                 await transaction.raw(
                   'select pg_advisory_xact_lock(hashtextextended(?,0))',
                   [`BACKSTAGE_COMMON_DESIGN_SYNC_RETRY_V1:${syncId}`],
@@ -4101,6 +4111,7 @@ export default createBackendPlugin({
                 message: result.message,
               });
             } catch (error) {
+              if (respondProjectLifecycleFence(response, error)) return;
               response.status(409).json({
                 success: false,
                 status: 'SYNC_TRACKING_FAILED',
@@ -4810,6 +4821,7 @@ export default createBackendPlugin({
                 publication: result.receipt,
               });
             } catch (error) {
+              if (respondProjectLifecycleFence(response, error)) return;
               if (error instanceof RequirementPublicationError) {
                 response.status(error.statusCode).json({
                   success: false,
@@ -4833,6 +4845,21 @@ export default createBackendPlugin({
               'DESIGN_APPROVER',
             );
             const result = await knex.transaction(async transaction => {
+              const lifecycleFence =
+                await inspectProjectLifecyclePublicationMutation(
+                  transaction,
+                  projectId,
+                );
+              if (!lifecycleFence.allowed) {
+                return {
+                  status: lifecycleFence.error.statusCode,
+                  body: {
+                    success: false,
+                    code: lifecycleFence.error.code,
+                    message: lifecycleFence.error.message,
+                  },
+                };
+              }
               const document = await transaction(
                 'resonance_projects__requirement_document',
               )
@@ -5033,15 +5060,18 @@ export default createBackendPlugin({
               return;
             }
             const persistence = await knex.transaction(async transaction => {
-              const lockedProject = await transaction(
-                'resonance_projects__project',
-              )
-                .where({ project_id: projectId })
-                .forUpdate()
-                .first();
-              if (!lockedProject) {
-                return { kind: 'PROJECT_MISSING' as const };
+              const lifecycleFence =
+                await inspectProjectLifecyclePublicationMutation(
+                  transaction,
+                  projectId,
+                );
+              if (!lifecycleFence.allowed) {
+                return {
+                  kind: 'LIFECYCLE_FENCED' as const,
+                  error: lifecycleFence.error,
+                };
               }
+              const lockedProject = lifecycleFence.project;
               const analysis = analyzeRequirementText(
                 projectId,
                 document.fileName,
@@ -5058,6 +5088,7 @@ export default createBackendPlugin({
               )
                 .where({ project_id: projectId, identity_key: identityKey })
                 .orderBy('design_version', 'desc')
+                .forUpdate()
                 .first();
               if (
                 sameRequirementRevision(
@@ -5078,6 +5109,7 @@ export default createBackendPlugin({
                     project_id: projectId,
                     design_version: existing.design_version,
                   })
+                  .forUpdate()
                   .first();
                 if (!release) {
                   throw new Error(
@@ -5088,6 +5120,48 @@ export default createBackendPlugin({
                   typeof release.contract_payload === 'string'
                     ? JSON.parse(release.contract_payload)
                     : release.contract_payload;
+                const existingDisposition = requirementPublicationDisposition({
+                  analysisStatus: existing.analysis_status,
+                  releaseStatus: release.release_status,
+                });
+                const existingReconciliationStatus = String(
+                  existing.publication_reconcile_status ?? '',
+                );
+                const shouldArmPublication =
+                  !Boolean(existing.publication_retry_exhausted) &&
+                  existingReconciliationStatus !== 'DEAD_LETTERED' &&
+                  !['PENDING', 'RUNNING'].includes(
+                    existingReconciliationStatus,
+                  ) &&
+                  !['APPLIED', 'CANCELLED'].includes(
+                    String(existingDisposition ?? ''),
+                  );
+                if (shouldArmPublication) {
+                  const armed = await transaction(
+                    'resonance_projects__requirement_document',
+                  )
+                    .where({
+                      project_id: projectId,
+                      document_id: existing.document_id,
+                      publication_reconcile_status:
+                        existing.publication_reconcile_status,
+                    })
+                    .update({
+                      publication_reconcile_status: 'PENDING',
+                      publication_poll_attempt_count: 0,
+                      publication_next_attempt_at: new Date(),
+                      publication_claim_token: null,
+                      publication_lease_expires_at: null,
+                      publication_last_error: null,
+                      publication_reconciled_at: null,
+                      publication_retry_exhausted: false,
+                    });
+                  if (armed !== 1) {
+                    throw new Error(
+                      'REQUIREMENT_REPUBLICATION_ARM_CAS_NOT_EXACT',
+                    );
+                  }
+                }
                 return {
                   kind: 'EXISTING' as const,
                   documentId: String(existing.document_id),
@@ -5098,9 +5172,9 @@ export default createBackendPlugin({
                   releaseStatus: String(release.release_status),
                   contractSha256: String(release.contract_sha256),
                   contract: storedContract as Record<string, unknown>,
-                  reconciliationStatus: String(
-                    existing.publication_reconcile_status ?? '',
-                  ),
+                  reconciliationStatus: shouldArmPublication
+                    ? 'PENDING'
+                    : existingReconciliationStatus,
                   retryExhausted: Boolean(existing.publication_retry_exhausted),
                 };
               }
@@ -5229,8 +5303,8 @@ export default createBackendPlugin({
                 retryExhausted: false,
               };
             });
-            if (persistence.kind === 'PROJECT_MISSING') {
-              response.status(404).json({ message: 'Project not found' });
+            if (persistence.kind === 'LIFECYCLE_FENCED') {
+              respondProjectLifecycleFence(response, persistence.error);
               return;
             }
             if (persistence.kind === 'INVALID') {
@@ -5334,6 +5408,7 @@ export default createBackendPlugin({
                   }),
               });
             } catch (error) {
+              if (respondProjectLifecycleFence(response, error)) return;
               if (error instanceof RequirementPublicationError) {
                 response.status(202).json({
                   success: false,
@@ -5685,6 +5760,10 @@ export default createBackendPlugin({
 
         httpRouter.addAuthPolicy({
           path: '/health',
+          allow: 'unauthenticated',
+        });
+        httpRouter.addAuthPolicy({
+          path: '/health/project-runtime-purge-recovery',
           allow: 'unauthenticated',
         });
         httpRouter.use(router);
