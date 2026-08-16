@@ -249,22 +249,6 @@ CREATE TABLE framework_project_actor_assignment(
   active_yn char(1) NOT NULL DEFAULT 'Y',
   PRIMARY KEY(project_id,actor_code,user_id)
 );
-CREATE TABLE framework_development_job(
-  job_id bigserial PRIMARY KEY,
-  process_code varchar(80) NOT NULL
-    REFERENCES framework_process_definition(process_code) ON DELETE CASCADE,
-  step_code varchar(80),
-  created_by varchar(100) NOT NULL,
-  job_status varchar(30) NOT NULL DEFAULT 'PLANNED',
-  FOREIGN KEY(process_code,step_code)
-    REFERENCES framework_process_step(process_code,step_code) ON DELETE CASCADE
-);
-CREATE TABLE framework_development_job_event(
-  event_id bigserial PRIMARY KEY,
-  job_id bigint NOT NULL
-    REFERENCES framework_development_job(job_id) ON DELETE CASCADE
-);
-
 CREATE TABLE framework_source_artifact(
   source_artifact_id bigserial PRIMARY KEY,
   source_path text NOT NULL UNIQUE,

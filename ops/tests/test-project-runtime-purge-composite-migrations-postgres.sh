@@ -4,7 +4,14 @@ umask 077
 
 ROOT="${1:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
 PREREQUISITES="$ROOT/ops/tests/fixtures/project-runtime-purge-composite-prerequisites.sql"
+DEVELOPMENT_JOB_MIGRATION="$ROOT/apps/carbonet-api/src/main/resources/db/migration/postgresql/V20260714005000__automate_process_development.sql"
+DEVELOPMENT_ORCHESTRATION_MIGRATION="$ROOT/apps/carbonet-api/src/main/resources/db/migration/postgresql/V20260714006000__orchestrate_development_jobs.sql"
+DEVELOPMENT_QUALITY_MIGRATION="$ROOT/apps/carbonet-api/src/main/resources/db/migration/postgresql/V20260714009000__govern_parallel_development_quality.sql"
 DOCUMENT_MIGRATION="$ROOT/apps/carbonet-api/src/main/resources/db/migration/postgresql/V20260728170000__create_integrated_design_document_registry.sql"
+QA_EVIDENCE_MIGRATION="$ROOT/apps/carbonet-api/src/main/resources/db/migration/postgresql/V20260806153000__add_process_qa_run.sql"
+RUNTIME_RELEASE_MIGRATION="$ROOT/apps/carbonet-api/src/main/resources/db/migration/postgresql/V20260807052000__bind_business_e2e_evidence_to_current_contract.sql"
+POSTDEPLOY_EVIDENCE_MIGRATION="$ROOT/apps/carbonet-api/src/main/resources/db/migration/postgresql/V20260812023000__stage_and_atomically_promote_postdeploy_evidence.sql"
+POSTDEPLOY_ATTEMPT_MIGRATION="$ROOT/apps/carbonet-api/src/main/resources/db/migration/postgresql/V20260812080000__bind_postdeploy_attempt_lifecycle.sql"
 PURGE_MIGRATION="$ROOT/apps/carbonet-api/src/main/resources/db/migration/postgresql/V20260816134500__install_project_runtime_purge_restore_contract.sql"
 FENCE_MIGRATION="$ROOT/apps/carbonet-api/src/main/resources/db/migration/postgresql/V20260816153500__reinstall_project_runtime_write_fences.sql"
 COMPOSITE_MIGRATION="$ROOT/apps/carbonet-api/src/main/resources/db/migration/postgresql/V20260816154000__compile_composite_executable_design_authority.sql"
@@ -26,7 +33,11 @@ cleanup() {
 }
 trap cleanup EXIT INT TERM
 
-for required in "$PREREQUISITES" "$DOCUMENT_MIGRATION" "$PURGE_MIGRATION" \
+for required in "$PREREQUISITES" "$DEVELOPMENT_JOB_MIGRATION" \
+  "$DEVELOPMENT_ORCHESTRATION_MIGRATION" "$DEVELOPMENT_QUALITY_MIGRATION" \
+  "$DOCUMENT_MIGRATION" "$QA_EVIDENCE_MIGRATION" \
+  "$RUNTIME_RELEASE_MIGRATION" "$POSTDEPLOY_EVIDENCE_MIGRATION" \
+  "$POSTDEPLOY_ATTEMPT_MIGRATION" "$PURGE_MIGRATION" \
   "$FENCE_MIGRATION" "$COMPOSITE_MIGRATION"; do
   [[ -f "$required" ]] || fail "required SQL missing: $required"
 done
@@ -57,11 +68,29 @@ json_field() { python3 -c "import json,sys; print(json.load(sys.stdin)$1)"; }
 
 started_ns="$(date +%s%N)"
 db -f "$PREREQUISITES" >/dev/null
+db -f "$DEVELOPMENT_JOB_MIGRATION" >/dev/null
+db -f "$DEVELOPMENT_ORCHESTRATION_MIGRATION" >/dev/null
+db -f "$DEVELOPMENT_QUALITY_MIGRATION" >/dev/null
 db -f "$DOCUMENT_MIGRATION" >/dev/null
+# V154000's current-runtime binding uses the production release ledger created
+# by these two earlier migrations.  Keep the real DDL in timestamp order; only
+# defer unrelated SQL-function body resolution because this focused fixture
+# intentionally omits the full page/flow/handoff catalog.
+db -f "$QA_EVIDENCE_MIGRATION" >/dev/null
+db -c 'set check_function_bodies=off' -f "$RUNTIME_RELEASE_MIGRATION" >/dev/null
+db -f "$POSTDEPLOY_EVIDENCE_MIGRATION" >/dev/null
+db -f "$POSTDEPLOY_ATTEMPT_MIGRATION" >/dev/null
 db -f "$PURGE_MIGRATION" >/dev/null
 db -f "$FENCE_MIGRATION" >/dev/null
-db -f "$COMPOSITE_MIGRATION" >/dev/null
+# This purge-focused fixture does not reproduce every production design-asset
+# column consumed by compiler-only fingerprint functions.  Defer those bodies
+# while still applying the complete real migration and exercising its physical
+# tables, triggers and purge/restore graph below.
+db -c 'set check_function_bodies=off' -f "$COMPOSITE_MIGRATION" >/dev/null
 migration_ms="$(( ( $(date +%s%N) - started_ns ) / 1000000 ))"
+
+[[ "$(scalar "select count(*) from pg_class where oid='framework_runtime_release_state'::regclass")" == 1 ]] ||
+  fail 'actual runtime release dependency migration was not applied'
 
 missing_fences="$(scalar "select count(*) from pg_class relation
  join pg_namespace namespace on namespace.oid=relation.relnamespace
@@ -191,8 +220,14 @@ VALUES('RFP_COMPOSITE','STEP_A','USER','/rfp-composite','ACTOR_A','VALID',
 INSERT INTO framework_screen_generation_state(blueprint_id,ownership_mode)
 SELECT blueprint_id,'GENERATED' FROM framework_screen_blueprint
  WHERE process_code='RFP_COMPOSITE';
-INSERT INTO framework_development_job(process_code,step_code,created_by,job_status)
-VALUES('RFP_COMPOSITE','STEP_A','BACKSTAGE_REQUIREMENT_AUTOMATION','PLANNED');
+INSERT INTO framework_development_job(
+ process_code,step_code,job_type,job_name,specification_json,job_group_code,
+ created_by,job_status,quality_status,result_json)
+VALUES('RFP_COMPOSITE','STEP_A','FULL_STACK_GENERATION',
+ 'Composite authority generation',
+ jsonb_build_object('processInputHash',repeat('3',64))::text,
+ 'RFP_COMPOSITE_CANONICAL_PUBLICATION','BACKSTAGE_REQUIREMENT_AUTOMATION',
+ 'PLANNED','PENDING','{}');
 INSERT INTO framework_actor_process_design_release(
  project_id,design_version,contract_sha256,contract_payload,release_status)
 VALUES('RFP-COMPOSITE-001',1,repeat('a',64),
