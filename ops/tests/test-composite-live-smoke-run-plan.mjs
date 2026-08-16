@@ -225,6 +225,7 @@ try{
   const {fake,result}=await execute(91);
   assert.equal(result.expectedEvidenceCount,15);assert.equal(result.submittedEvidenceCount,15);
   assert.equal(fake.submissions.length,15);
+  assert.deepEqual([...new Set(fake.submissions.map(row=>row.dispatchId))],[91]);
   assert.deepEqual([...new Set(fake.submissions.map(row=>row.statusCase))].sort(),[...STATUSES].sort());
   assert.deepEqual(Object.fromEntries(STATUSES.map(status=>[status,[...new Set(fake.submissions
     .filter(row=>row.statusCase===status).map(row=>row.observedHttpStatus))]])),
@@ -244,6 +245,8 @@ try{
   assert.equal(fake.uiActions.filter(value=>value==="save-draft:positive").length,3);
   assert.ok(fake.uiActions.some(value=>value==="command:denied:SAVE"));
   for(const row of fake.submissions.filter(value=>value.lane==="BROWSER")){
+    assert.deepEqual(row.laneDetails.domArtifactRef.split("/").slice(0,2),["91",row.runId]);
+    assert.deepEqual(row.laneDetails.screenshotArtifactRef.split("/").slice(0,2),["91",row.runId]);
     await verifyArtifact(root,row.laneDetails.domArtifactRef,row.laneDetails.domHash,"dom.html");
     await verifyArtifact(root,row.laneDetails.screenshotArtifactRef,row.laneDetails.screenshotHash,"screenshot.png");
   }

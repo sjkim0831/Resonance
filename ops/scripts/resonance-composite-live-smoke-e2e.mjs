@@ -540,7 +540,8 @@ export async function runPlan({ root, plan, manifest, credentials, password, ops
               "SCREENSHOT", browser.screenshot);
             browserArtifacts = { domArtifact, screenshotArtifact };
           }
-          const common = { jobId: Number(plan.jobId), authorityId: Number(authority.authorityId),
+          const common = { dispatchId: Number(plan.dispatchId), jobId: Number(plan.jobId),
+            authorityId: Number(authority.authorityId),
             scenarioCode: scenario.scenarioCode, statusCase, tenantId: authority.tenantId,
             projectId: authority.projectId, executionId: execution.executionId, idempotencyKey,
             observedHttpStatus: response.status(), input, output, observedState: expectedState,

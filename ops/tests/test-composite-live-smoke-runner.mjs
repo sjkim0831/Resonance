@@ -98,7 +98,7 @@ assert.ok(queue.includes("'directIdentity',direct_identity"));
 assert.ok(queue.includes("'stepOrder',step_order"));
 assert.ok(runner.includes("EXECUTION_ORDER"));
 assert.ok(runner.includes('targetRef: "entity:framework_process_execution"'));
-for(const token of ["executionId: execution.executionId", "idempotencyKey,",
+for(const token of ["dispatchId: Number(plan.dispatchId)", "executionId: execution.executionId", "idempotencyKey,",
   "observedHttpStatus: response.status()", "runtimeObserved: browser.state.runtimeObserved",
   "accessDenied: browser.state.accessDenied", "page.waitForResponse", "fillScenarioInputs",
   "domArtifactRef", "screenshotArtifactRef", "writeImmutableArtifact"])
@@ -116,6 +116,8 @@ for(const attribute of ["data-last-command-code","data-last-http-status","data-l
   assert.ok(page.includes(attribute),`browser command observation missing ${attribute}`);
 for(const token of ["LinkOption.NOFOLLOW_LINKS","LIVE_SMOKE_ARTIFACT_SYMLINK_FORBIDDEN",
   "LIVE_SMOKE_ARTIFACT_HASH_MISMATCH","LIVE_SMOKE_ARTIFACT_WRITABLE_FORBIDDEN",
+  "LIVE_SMOKE_RUN_DISPATCH_BINDING_NOT_EXACT","verifyDomArtifact","verifyPngArtifact",
+  "SecureDirectoryStream","LIVE_SMOKE_SCREENSHOT_PNG_SIGNATURE_INVALID",
   "domArtifactRef","screenshotArtifactRef",
   "MessageDigest.getInstance(\"SHA-256\")"])
   assert.ok(evidenceService.includes(token),`server artifact verifier missing ${token}`);

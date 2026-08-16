@@ -7,10 +7,17 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.io.InputStream;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayInputStream;
+import java.io.StringReader;
+import java.nio.ByteBuffer;
+import java.nio.channels.SeekableByteChannel;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
+import java.nio.file.SecureDirectoryStream;
 import java.nio.file.StandardOpenOption;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.PosixFileAttributeView;
@@ -19,6 +26,8 @@ import java.security.MessageDigest;
 import java.time.OffsetDateTime;
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Enumeration;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -27,6 +36,15 @@ import java.util.TreeSet;
 import java.util.UUID;
 import java.util.HexFormat;
 import java.util.Objects;
+import java.util.HashSet;
+
+import javax.imageio.ImageIO;
+import javax.imageio.ImageReader;
+import javax.imageio.stream.ImageInputStream;
+import javax.swing.text.MutableAttributeSet;
+import javax.swing.text.html.HTML;
+import javax.swing.text.html.HTMLEditorKit;
+import javax.swing.text.html.parser.ParserDelegator;
 
 /** Authenticated append-only ingestion for real API, database and browser smoke observations. */
 @Service
@@ -62,7 +80,8 @@ public class CompositeLiveSmokeEvidenceService {
     public Map<String,Object> record(Map<String,Object> request,String authenticatedAccount){
         if(authenticatedAccount==null||authenticatedAccount.isBlank())
             throw new SecurityException("AUTHENTICATED_LIVE_SMOKE_ACCOUNT_REQUIRED");
-        long jobId=positiveLong(request,"jobId"),authorityId=positiveLong(request,"authorityId");
+        long dispatchId=positiveLong(request,"dispatchId"),jobId=positiveLong(request,"jobId");
+        long authorityId=positiveLong(request,"authorityId");
         String lane=code(request,"lane",LANES),status=code(request,"statusCase",STATUSES);
         String scenarioCode=required(request,"scenarioCode",120);
         String tenantId=required(request,"tenantId",100),projectId=required(request,"projectId",100);
@@ -78,12 +97,14 @@ public class CompositeLiveSmokeEvidenceService {
         String runId=UUID.fromString(required(request,"runId",36)).toString();
         String artifactHash=hashText(request.get("artifactHash"),"artifactHash");
         String observedAt=OffsetDateTime.parse(required(request,"observedAt",60)).toString();
-        Map<String,Object> authority=currentAuthority(jobId,authorityId,observedAt);
+        Map<String,Object> authority=currentAuthority(dispatchId,jobId,authorityId,observedAt);
         if(!Boolean.TRUE.equals(authority.get("temporalExact")))
             throw new IllegalArgumentException("LIVE_SMOKE_OBSERVED_AFTER_DEPLOY_REQUIRED");
         String scopeType=String.valueOf(authority.get("scopeType"));
         String boundProject=String.valueOf(authority.get("boundProjectId"));
+        String dispatchProject=String.valueOf(authority.get("dispatchProjectId"));
         if(("PROJECT".equals(scopeType)&&!projectId.equals(boundProject))
+                ||!("*".equals(dispatchProject)||projectId.equals(dispatchProject))
                 ||!projectId.matches("^[A-Z][A-Z0-9_-]{2,63}$"))
             throw new SecurityException("LIVE_SMOKE_PROJECT_SCOPE_NOT_EXACT");
         if(!artifactHash.equals(authority.get("artifactHash")))
@@ -98,6 +119,11 @@ public class CompositeLiveSmokeEvidenceService {
             "commandCode",command,"STATE_TRANSITION_NOT_EXACT");
         Map<String,Object> operation=one(maps(object(design.get("API"),"API").get("operations")),
             "commandCode",command,"API_OPERATION_NOT_EXACT");
+        long authorityRevision=((Number)authority.get("authorityRevision")).longValue();
+        String expectedRunId=deterministicRunId(dispatchId,authorityId,authorityRevision,command,
+            scenarioCode,status);
+        if(!expectedRunId.equals(runId))
+            throw new IllegalArgumentException("LIVE_SMOKE_RUN_DISPATCH_BINDING_NOT_EXACT");
         if(!CompositeExecutableDesignAuthorityCompiler.stable(input).equals(
                 CompositeExecutableDesignAuthorityCompiler.stable(object(
                     scenario.get("inputValues"),"scenario.inputValues"))))
@@ -129,8 +155,9 @@ public class CompositeLiveSmokeEvidenceService {
         String inputHash=hash(input),outputHash=hash(output);
         String stateHash=hash(Map.of("fromState",from,"toState",to,"observedState",observedState));
         String statusHash=hash(Map.of("expectedStatus",status,"observedStatus",status));
-        Map<String,Object> laneEvidence=laneEvidence(lane,laneDetails,runId,targetRef,
-            inputHash,outputHash,artifactHash,executionId,idempotencyKeyHash,observedHttpStatus,status);
+        Map<String,Object> laneEvidence=laneEvidence(lane,laneDetails,dispatchId,runId,targetRef,
+            inputHash,outputHash,artifactHash,executionId,idempotencyKey,idempotencyKeyHash,
+            observedHttpStatus,status,command,output);
         String laneEvidenceHash=hash(laneEvidence);
         String evidenceRef="live:"+runId+";lane:"+lane+";artifact:"+artifactHash;
         Map<String,Object> envelope=new LinkedHashMap<>();
@@ -186,7 +213,8 @@ public class CompositeLiveSmokeEvidenceService {
             "scenarioCode",scenarioCode,"evidenceHash",evidenceHash);
     }
 
-    private Map<String,Object> currentAuthority(long jobId,long authorityId,String observedAt){
+    private Map<String,Object> currentAuthority(long dispatchId,long jobId,long authorityId,
+            String observedAt){
         List<Map<String,Object>> rows=jdbc.queryForList("""
             select authority.authority_revision as "authorityRevision",
                    authority.process_code as "processCode",authority.step_code as "stepCode",
@@ -196,10 +224,20 @@ public class CompositeLiveSmokeEvidenceService {
                    binding.scope_type as "scopeType",binding.project_id as "boundProjectId",
                    framework_try_jsonb(job.result_json)#>>
                      '{canonicalGeneration,compositeArtifactManifestHash}' as "artifactHash",
+                   dispatch.dispatch_id as "dispatchId",dispatch.project_id as "dispatchProjectId",
                    (?::timestamptz>=job.completed_at and
                     ?::timestamptz<=clock_timestamp()) as "temporalExact"
               from integrated_design_authority authority
               join framework_development_job job on job.job_id=authority.job_id
+              join integrated_design_live_smoke_dispatch dispatch
+                on dispatch.dispatch_id=? and dispatch.job_id=job.job_id
+               and dispatch.process_code=authority.process_code
+               and dispatch.process_source_hash=authority.source_hash
+               and dispatch.authority_revision_set_hash=
+                   framework_composite_authority_revision_set_hash(job.job_id)
+               and dispatch.artifact_manifest_hash=framework_try_jsonb(job.result_json)#>>
+                   '{canonicalGeneration,compositeArtifactManifestHash}'
+               and dispatch.status='RUNNING' and dispatch.lease_until>=clock_timestamp()
               join integrated_design_autocompletion_receipt receipt
                 on receipt.process_code=authority.process_code and receipt.job_id=job.job_id
               join lateral(select candidate.* from integrated_design_scope_binding candidate
@@ -215,6 +253,7 @@ public class CompositeLiveSmokeEvidenceService {
                 limit 1) binding on true
              where authority.authority_id=? and authority.job_id=?
                and receipt.completion_status='SOURCE_APPLIED_PHYSICAL_QUEUED'
+               and receipt.receipt_json->>'liveSmokeDispatchId'=dispatch.dispatch_id::text
                and job.job_type='FULL_STACK_GENERATION'
                and job.job_group_code=authority.process_code||'_CANONICAL_PUBLICATION'
                and job.job_status in('VERIFIED','COMPLETED') and job.quality_status='VERIFIED'
@@ -230,13 +269,15 @@ public class CompositeLiveSmokeEvidenceService {
                    and conflicting.authority_hash=authority.authority_hash
                    and (conflicting.scope_type<>binding.scope_type
                      or coalesce(conflicting.project_id,'')<>coalesce(binding.project_id,'')))
-            """,observedAt,observedAt,authorityId,jobId);
+            """,observedAt,observedAt,dispatchId,authorityId,jobId);
         if(rows.size()!=1)throw new IllegalStateException("LIVE_SMOKE_CURRENT_JOB_AUTHORITY_REQUIRED");
         Map<String,Object> row=new LinkedHashMap<>(rows.get(0));
         if(!Set.of("GLOBAL","PROJECT").contains(String.valueOf(row.get("scopeType")))
                 ||("PROJECT".equals(row.get("scopeType"))
                     &&!String.valueOf(row.get("boundProjectId"))
                         .matches("^[A-Z][A-Z0-9_-]{2,63}$"))
+                ||((Number)row.get("dispatchId")).longValue()!=dispatchId
+                ||!String.valueOf(row.get("dispatchProjectId")).matches("^[A-Z*][A-Z0-9_*\\-]{0,99}$")
                 ||!String.valueOf(row.get("artifactHash")).matches("[0-9a-f]{64}"))
             throw new IllegalStateException("LIVE_SMOKE_CURRENT_SCOPE_OR_ARTIFACT_NOT_EXACT");
         Object raw=row.get("executableDesign");
@@ -369,9 +410,10 @@ public class CompositeLiveSmokeEvidenceService {
         return output;
     }
 
-    private Map<String,Object> laneEvidence(String lane,Map<String,Object> details,String runId,
-            String target,String inputHash,String outputHash,String artifactHash,UUID executionId,
-            String idempotencyKeyHash,int observedHttpStatus,String status){
+    private Map<String,Object> laneEvidence(String lane,Map<String,Object> details,long dispatchId,
+            String runId,String target,String inputHash,String outputHash,String artifactHash,
+            UUID executionId,String idempotencyKey,String idempotencyKeyHash,int observedHttpStatus,
+            String status,String command,Map<String,Object> output){
         Set<String> expected=switch(lane){
             case "DATABASE" -> Set.of("rereadHash","transactionHash");
             case "BROWSER" -> Set.of("domHash","screenshotHash","rendered",
@@ -390,11 +432,13 @@ public class CompositeLiveSmokeEvidenceService {
         if("BROWSER".equals(lane)){
             ArtifactObservation dom=verifyArtifact(evidenceRoot,
                 required(details,"domArtifactRef",1000),hashText(details.get("domHash"),"laneDetails.domHash"),
-                "dom.html",MAX_DOM_BYTES);
+                "dom.html",MAX_DOM_BYTES,dispatchId,runId);
             ArtifactObservation screenshot=verifyArtifact(evidenceRoot,
                 required(details,"screenshotArtifactRef",1000),
                 hashText(details.get("screenshotHash"),"laneDetails.screenshotHash"),
-                "screenshot.png",MAX_SCREENSHOT_BYTES);
+                "screenshot.png",MAX_SCREENSHOT_BYTES,dispatchId,runId);
+            verifyDomArtifact(dom,command,status,output,idempotencyKey,observedHttpStatus);
+            verifyPngArtifact(screenshot);
             verifiedDetails.put("domHash",dom.hash());verifiedDetails.put("screenshotHash",screenshot.hash());
             verifiedDetails.put("domArtifactRef",dom.reference());
             verifiedDetails.put("screenshotArtifactRef",screenshot.reference());
@@ -414,14 +458,24 @@ public class CompositeLiveSmokeEvidenceService {
     }
 
     static ArtifactObservation verifyArtifact(Path configuredRoot,String reference,String submittedHash,
-            String suffix,long maximumBytes){
+            String suffix,long maximumBytes,long expectedDispatchId,String expectedRunId){
+        return verifyArtifact(configuredRoot,reference,submittedHash,suffix,maximumBytes,
+            expectedDispatchId,expectedRunId,null);
+    }
+
+    static ArtifactObservation verifyArtifact(Path configuredRoot,String reference,String submittedHash,
+            String suffix,long maximumBytes,long expectedDispatchId,String expectedRunId,
+            ArtifactReadMutation mutation){
         if(configuredRoot==null||reference==null||submittedHash==null
                 ||!("dom.html".equals(suffix)||"screenshot.png".equals(suffix))
-                ||maximumBytes<1)throw new IllegalArgumentException("LIVE_SMOKE_ARTIFACT_ARGUMENT_INVALID");
+                ||maximumBytes<1||expectedDispatchId<1||expectedRunId==null)
+            throw new IllegalArgumentException("LIVE_SMOKE_ARTIFACT_ARGUMENT_INVALID");
         String uuid="[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}";
-        String pattern="^[1-9][0-9]{0,18}/"+uuid+"/[0-9a-f]{64}\\."+
+        String pattern="^"+expectedDispatchId+"/"+uuid+"/[0-9a-f]{64}\\."+
             suffix.replace(".","\\.")+"$";
-        if(!reference.matches(pattern)||!submittedHash.matches("[0-9a-f]{64}"))
+        if(!reference.matches(pattern)||!submittedHash.matches("[0-9a-f]{64}")
+                ||!reference.split("/",-1)[1].equals(expectedRunId)
+                ||!expectedRunId.matches(uuid))
             throw new IllegalArgumentException("LIVE_SMOKE_ARTIFACT_REFERENCE_INVALID");
         Path root=configuredRoot.toAbsolutePath().normalize();
         if(!Files.isDirectory(root,LinkOption.NOFOLLOW_LINKS)||Files.isSymbolicLink(root))
@@ -456,8 +510,16 @@ public class CompositeLiveSmokeEvidenceService {
                     throw new IllegalArgumentException("LIVE_SMOKE_ARTIFACT_WRITABLE_FORBIDDEN");
             }
             byte[] bytes;
-            try(InputStream input=Files.newInputStream(candidate,StandardOpenOption.READ,LinkOption.NOFOLLOW_LINKS)){
-                bytes=input.readNBytes(Math.toIntExact(maximumBytes+1));
+            try(SeekableByteChannel channel=openPinnedArtifact(root,relative)){
+                long openedSize=channel.size();
+                if(openedSize<1||openedSize>maximumBytes)
+                    throw new IllegalArgumentException("LIVE_SMOKE_ARTIFACT_FILE_INVALID");
+                if(mutation!=null)mutation.run();
+                ByteBuffer content=ByteBuffer.allocate(Math.toIntExact(openedSize));
+                while(content.hasRemaining()&&channel.read(content)>=0){}
+                if(content.hasRemaining()||channel.size()!=openedSize)
+                    throw new IllegalArgumentException("LIVE_SMOKE_ARTIFACT_CHANGED_DURING_READ");
+                bytes=content.array();
             }
             BasicFileAttributes after=Files.readAttributes(candidate,BasicFileAttributes.class,
                 LinkOption.NOFOLLOW_LINKS);
@@ -469,7 +531,10 @@ public class CompositeLiveSmokeEvidenceService {
             String filename=candidate.getFileName().toString();
             if(!observed.equals(submittedHash)||!filename.equals(observed+"."+suffix))
                 throw new IllegalArgumentException("LIVE_SMOKE_ARTIFACT_HASH_MISMATCH");
-            return new ArtifactObservation(reference,observed,bytes.length);
+            Path finalRealCandidate=candidate.toRealPath();
+            if(!finalRealCandidate.equals(realCandidate)||Files.isSymbolicLink(candidate))
+                throw new IllegalArgumentException("LIVE_SMOKE_ARTIFACT_CHANGED_DURING_READ");
+            return new ArtifactObservation(reference,observed,bytes.length,bytes);
         }catch(IllegalArgumentException error){throw error;}
         catch(java.nio.file.NoSuchFileException error){
             throw new IllegalArgumentException("LIVE_SMOKE_ARTIFACT_MISSING");
@@ -478,7 +543,146 @@ public class CompositeLiveSmokeEvidenceService {
         }
     }
 
-    record ArtifactObservation(String reference,String hash,long byteCount){}
+    @FunctionalInterface
+    interface ArtifactReadMutation{void run()throws Exception;}
+
+    private static SeekableByteChannel openPinnedArtifact(Path root,Path relative)throws Exception{
+        DirectoryStream<Path> rootStream=Files.newDirectoryStream(root);
+        if(!(rootStream instanceof SecureDirectoryStream<Path> secureRoot)){
+            rootStream.close();
+            return Files.newByteChannel(root.resolve(relative),
+                Set.of(StandardOpenOption.READ,LinkOption.NOFOLLOW_LINKS));
+        }
+        SecureDirectoryStream<Path> current=secureRoot;
+        List<SecureDirectoryStream<Path>> opened=new ArrayList<>();opened.add(secureRoot);
+        try{
+            for(int index=0;index<relative.getNameCount()-1;index++){
+                SecureDirectoryStream<Path> next=current.newDirectoryStream(relative.getName(index),
+                    LinkOption.NOFOLLOW_LINKS);
+                opened.add(next);current=next;
+            }
+            SeekableByteChannel channel=current.newByteChannel(
+                relative.getName(relative.getNameCount()-1),
+                Set.of(StandardOpenOption.READ,LinkOption.NOFOLLOW_LINKS));
+            return new ClosingChannel(channel,opened);
+        }catch(Exception error){
+            for(int index=opened.size()-1;index>=0;index--)try{opened.get(index).close();}
+            catch(Exception ignored){}
+            throw error;
+        }
+    }
+
+    private static final class ClosingChannel implements SeekableByteChannel{
+        private final SeekableByteChannel delegate;
+        private final List<SecureDirectoryStream<Path>> directories;
+        private ClosingChannel(SeekableByteChannel delegate,List<SecureDirectoryStream<Path>> directories){
+            this.delegate=delegate;this.directories=directories;
+        }
+        @Override public int read(ByteBuffer target)throws java.io.IOException{return delegate.read(target);}
+        @Override public int write(ByteBuffer source)throws java.io.IOException{return delegate.write(source);}
+        @Override public long position()throws java.io.IOException{return delegate.position();}
+        @Override public SeekableByteChannel position(long value)throws java.io.IOException{delegate.position(value);return this;}
+        @Override public long size()throws java.io.IOException{return delegate.size();}
+        @Override public SeekableByteChannel truncate(long value)throws java.io.IOException{delegate.truncate(value);return this;}
+        @Override public boolean isOpen(){return delegate.isOpen();}
+        @Override public void close()throws java.io.IOException{
+            java.io.IOException failure=null;
+            try{delegate.close();}catch(java.io.IOException error){failure=error;}
+            for(int index=directories.size()-1;index>=0;index--)try{directories.get(index).close();}
+            catch(java.io.IOException error){if(failure==null)failure=error;else failure.addSuppressed(error);}
+            if(failure!=null)throw failure;
+        }
+    }
+
+    static void verifyDomArtifact(ArtifactObservation artifact,String command,String status,
+            Map<String,Object> output,String idempotencyKey,int observedHttpStatus){
+        String html=new String(artifact.bytes(),StandardCharsets.UTF_8);
+        List<Map<String,String>> observations=new ArrayList<>();int[] resultMarkers={0};
+        int[] commandMarkers={0};
+        try{
+            new ParserDelegator().parse(new StringReader(html),new HTMLEditorKit.ParserCallback(){
+                private void inspect(MutableAttributeSet attributes){
+                    Map<String,String> values=new LinkedHashMap<>();
+                    Enumeration<?> names=attributes.getAttributeNames();
+                    while(names.hasMoreElements()){
+                        Object name=names.nextElement();Object value=attributes.getAttribute(name);
+                        values.put(String.valueOf(name).toLowerCase(),String.valueOf(value));
+                    }
+                    if(values.containsKey("data-last-command-code"))observations.add(values);
+                    if("true".equals(values.get("data-live-smoke-result")))resultMarkers[0]++;
+                    if(command.equals(values.get("data-command-code")))commandMarkers[0]++;
+                }
+                @Override public void handleStartTag(HTML.Tag tag,MutableAttributeSet attributes,int position){inspect(attributes);}
+                @Override public void handleSimpleTag(HTML.Tag tag,MutableAttributeSet attributes,int position){inspect(attributes);}
+            },true);
+        }catch(Exception error){throw new IllegalArgumentException("LIVE_SMOKE_DOM_PARSE_FAILED");}
+        if(observations.size()!=1||resultMarkers[0]!=1||commandMarkers[0]!=1)
+            throw new IllegalArgumentException("LIVE_SMOKE_DOM_MARKER_CARDINALITY_NOT_EXACT");
+        Map<String,String> marker=observations.get(0);
+        boolean denied="FORBIDDEN".equals(status);
+        if(!command.equals(marker.get("data-last-command-code"))
+                ||!status.equals(marker.get("data-last-status-case"))
+                ||!String.valueOf(observedHttpStatus).equals(marker.get("data-last-http-status"))
+                ||!idempotencyKey.equals(marker.get("data-last-idempotency-key"))
+                ||!String.valueOf(!denied).equals(marker.get("data-runtime-observed"))
+                ||!String.valueOf(denied).equals(marker.get("data-access-denied")))
+            throw new IllegalArgumentException("LIVE_SMOKE_DOM_RUNTIME_MARKER_NOT_EXACT");
+        try{
+            String outputJson=marker.get("data-last-output-json");
+            if(outputJson==null||outputJson.isBlank()||outputJson.length()>MAX_DOM_BYTES)
+                throw new IllegalArgumentException("LIVE_SMOKE_DOM_OUTPUT_INVALID");
+            Map<String,Object> domOutput=object(new ObjectMapper().readValue(outputJson,Map.class),
+                "dom.output");
+            if(!CompositeExecutableDesignAuthorityCompiler.stable(domOutput).equals(
+                    CompositeExecutableDesignAuthorityCompiler.stable(output)))
+                throw new IllegalArgumentException("LIVE_SMOKE_DOM_OUTPUT_NOT_EXACT");
+        }catch(IllegalArgumentException error){throw error;}
+        catch(Exception error){throw new IllegalArgumentException("LIVE_SMOKE_DOM_OUTPUT_INVALID");}
+    }
+
+    static void verifyPngArtifact(ArtifactObservation artifact){
+        byte[] bytes=artifact.bytes();byte[] signature={(byte)0x89,0x50,0x4e,0x47,0x0d,0x0a,0x1a,0x0a};
+        if(bytes.length<256||!Arrays.equals(signature,Arrays.copyOf(bytes,signature.length)))
+            throw new IllegalArgumentException("LIVE_SMOKE_SCREENSHOT_PNG_SIGNATURE_INVALID");
+        try(ImageInputStream input=ImageIO.createImageInputStream(new ByteArrayInputStream(bytes))){
+            if(input==null)throw new IllegalArgumentException("LIVE_SMOKE_SCREENSHOT_PNG_DECODE_INVALID");
+            var readers=ImageIO.getImageReaders(input);
+            if(!readers.hasNext())throw new IllegalArgumentException("LIVE_SMOKE_SCREENSHOT_PNG_DECODE_INVALID");
+            ImageReader reader=readers.next();
+            try{
+                if(!"png".equalsIgnoreCase(reader.getFormatName()))
+                    throw new IllegalArgumentException("LIVE_SMOKE_SCREENSHOT_PNG_FORMAT_INVALID");
+                reader.setInput(input,true,true);int width=reader.getWidth(0),height=reader.getHeight(0);
+                long pixels=(long)width*height;
+                if(width<64||height<64||width>20_000||height>20_000||pixels>50_000_000L)
+                    throw new IllegalArgumentException("LIVE_SMOKE_SCREENSHOT_DIMENSIONS_INVALID");
+                BufferedImage image=reader.read(0);Set<Integer> colors=new HashSet<>();
+                int xStep=Math.max(1,width/32),yStep=Math.max(1,height/32);
+                for(int y=0;y<height&&colors.size()<2;y+=yStep)
+                    for(int x=0;x<width&&colors.size()<2;x+=xStep)colors.add(image.getRGB(x,y));
+                if(colors.size()<2)throw new IllegalArgumentException("LIVE_SMOKE_SCREENSHOT_CONTENT_TRIVIAL");
+            }finally{reader.dispose();}
+        }catch(IllegalArgumentException error){throw error;}
+        catch(Exception error){throw new IllegalArgumentException("LIVE_SMOKE_SCREENSHOT_PNG_DECODE_INVALID");}
+    }
+
+    static String deterministicRunId(long dispatchId,long authorityId,long revision,
+            String command,String scenario,String status){
+        String seed=dispatchId+"|"+authorityId+"|"+revision+"|"+command+"|"+scenario+"|"+status+"|RUN";
+        try{
+            byte[] bytes=Arrays.copyOf(MessageDigest.getInstance("SHA-256").digest(
+                seed.getBytes(StandardCharsets.UTF_8)),16);
+            bytes[6]=(byte)((bytes[6]&0x0f)|0x40);bytes[8]=(byte)((bytes[8]&0x3f)|0x80);
+            String hex=HexFormat.of().formatHex(bytes);
+            return hex.substring(0,8)+"-"+hex.substring(8,12)+"-"+hex.substring(12,16)+"-"+
+                hex.substring(16,20)+"-"+hex.substring(20);
+        }catch(Exception error){throw new IllegalStateException("LIVE_SMOKE_RUN_ID_HASH_FAILED",error);}
+    }
+
+    record ArtifactObservation(String reference,String hash,long byteCount,byte[] bytes){
+        ArtifactObservation{bytes=bytes.clone();}
+        @Override public byte[] bytes(){return bytes.clone();}
+    }
 
     private String target(String lane,Map<String,Object> authority,Map<String,Object> design,
             Map<String,Object> operation){

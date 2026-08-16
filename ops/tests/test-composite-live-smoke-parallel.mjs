@@ -31,6 +31,15 @@ assert.match(runner,/dispatch-\$\{dispatch_id\}\.lock/);
 assert.match(runner,/returning \*\), receipt_update as \(update integrated_design_autocompletion_receipt/i);
 assert.match(unit,/run-composite-live-smoke-slots\.sh/);
 assert.match(unit,/CPUQuota=800%/);
+const execDeadline=unit.match(/^ExecStart=.*--kill-after=([0-9]+)s ([0-9]+)m \/usr\/bin\/bash \/opt\/resonance-data\/control-plane\/bin\/run-composite-live-smoke-slots\.sh$/m);
+const systemdDeadline=unit.match(/^TimeoutStartSec=([0-9]+)min$/m);
+assert.ok(execDeadline,"launcher hard deadline is missing");
+assert.ok(systemdDeadline,"systemd start deadline is missing");
+const cleanupGraceSeconds=Number(execDeadline[1]);
+const launcherHardDeadlineSeconds=Number(execDeadline[2])*60;
+const systemdStartDeadlineSeconds=Number(systemdDeadline[1])*60;
+assert.ok(launcherHardDeadlineSeconds>600);
+assert.ok(systemdStartDeadlineSeconds>launcherHardDeadlineSeconds+cleanupGraceSeconds);
 assert.match(deploy,/run-composite-live-smoke-slots\.sh/);
 assert.match(deploy,/generate-composite-relay-account-map\.py/);
 assert.match(deploy,/composite-relay-account-map\.json/);
@@ -67,9 +76,10 @@ const p95PhysicalMs=190_000;
 const estimatedPhysicalTotalSeconds=Math.ceil(17/manifest.parallelism)*p95PhysicalMs/1000;
 assert.equal(estimatedPhysicalTotalSeconds,570);
 assert.ok(estimatedPhysicalTotalSeconds<600);
+assert.ok(estimatedPhysicalTotalSeconds<launcherHardDeadlineSeconds);
 const tenMinuteTarget=sampleCount=>sampleCount===0?"MEASUREMENT_REQUIRED":
   estimatedPhysicalTotalSeconds<600?"PASS":"FAIL";
 assert.equal(tenMinuteTarget(0),"MEASUREMENT_REQUIRED");
 assert.equal(tenMinuteTarget(17),"PASS");
 
-console.log(`COMPOSITE_LIVE_SMOKE_PARALLEL_PASS dispatches=${claimed.size} slots=${maxActive} duplicate=0 estimateSeconds=${estimatedPhysicalTotalSeconds}`);
+console.log(`COMPOSITE_LIVE_SMOKE_PARALLEL_PASS dispatches=${claimed.size} slots=${maxActive} duplicate=0 estimateSeconds=${estimatedPhysicalTotalSeconds} launcherDeadlineSeconds=${launcherHardDeadlineSeconds} systemdDeadlineSeconds=${systemdStartDeadlineSeconds}`);

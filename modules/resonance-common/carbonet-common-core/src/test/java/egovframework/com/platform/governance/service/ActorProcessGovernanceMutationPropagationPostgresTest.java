@@ -20,6 +20,8 @@ import java.nio.file.attribute.PosixFileAttributeView;
 import java.nio.file.attribute.PosixFilePermission;
 import java.security.MessageDigest;
 import java.time.OffsetDateTime;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayOutputStream;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -30,6 +32,8 @@ import java.util.HexFormat;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+
+import javax.imageio.ImageIO;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
@@ -2718,6 +2722,81 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
         catch(Exception error){throw new IllegalStateException("TEST_LIVE_SMOKE_ARTIFACT_HASH_FAILED",error);}
     }
 
+    private static byte[] liveSmokePng(String identity){
+        try{
+            BufferedImage image=new BufferedImage(128,96,BufferedImage.TYPE_INT_ARGB);
+            int accent=0xff000000|Integer.parseInt(liveSmokeBytesHash(
+                identity.getBytes(StandardCharsets.UTF_8)).substring(0,6),16);
+            for(int y=0;y<image.getHeight();y++)for(int x=0;x<image.getWidth();x++)
+                image.setRGB(x,y,x<64?0xff052b57:accent);
+            ByteArrayOutputStream bytes=new ByteArrayOutputStream();
+            if(!ImageIO.write(image,"png",bytes))throw new IllegalStateException("PNG_WRITER_MISSING");
+            return bytes.toByteArray();
+        }catch(Exception error){throw new IllegalStateException("TEST_LIVE_SMOKE_PNG_FAILED",error);}
+    }
+
+    private static byte[] liveSmokeDom(String command,String status,int http,
+            Map<String,Object> output,String idempotencyKey){
+        String outputJson=json(output).replace("&","&amp;").replace("\"","&quot;")
+            .replace("<","&lt;").replace(">","&gt;");
+        boolean denied="FORBIDDEN".equals(status);
+        return ("<html><body><main data-last-command-code=\""+command+
+            "\" data-last-http-status=\""+http+"\" data-last-status-case=\""+status+
+            "\" data-last-output-json=\""+outputJson+"\" data-last-idempotency-key=\""+
+            idempotencyKey+"\" data-runtime-observed=\""+(!denied)+
+            "\" data-access-denied=\""+denied+"\"></main><button data-command-code=\""+
+            command+"\">run</button><section data-live-smoke-result=\"true\">result</section>"+
+            "</body></html>").getBytes(StandardCharsets.UTF_8);
+    }
+
+    private long ensureRunningLiveSmokeDispatch(long jobId,String canonicalArtifact){
+        String revisionHash=jdbc.queryForObject(
+            "select framework_composite_authority_revision_set_hash(?)",String.class,jobId);
+        String processSource=jdbc.queryForObject(
+            "select framework_try_jsonb(specification_json)->>'sourceHash' from framework_development_job where job_id=?",
+            String.class,jobId);
+        int expected=jdbc.queryForObject("""
+            select sum(jsonb_array_length(composite_json#>'{executableDesign,TEST,scenarios}')*3)::integer
+              from integrated_design_authority where job_id=?
+            """,Integer.class,jobId);
+        jdbc.update("""
+            update integrated_design_live_smoke_dispatch dispatch
+               set status='SUPERSEDED',lease_token=null,lease_until=null,
+                   completed_at=coalesce(completed_at,clock_timestamp()),
+                   last_error_code='AUTHORITY_REVISION_SUPERSEDED',last_error_hash=repeat('e',64)
+             where dispatch.job_id=? and dispatch.authority_revision_set_hash<>?
+               and dispatch.status<>'SUPERSEDED'
+            """,jobId,revisionHash);
+        jdbc.update("""
+            insert into integrated_design_live_smoke_dispatch(job_id,process_code,project_id,
+              authority_revision_set_hash,artifact_manifest_hash,process_source_hash,
+              expected_evidence_count,status)
+            values(?,'PROC','*',?,?,?,?,'QUEUED')
+            on conflict(job_id,authority_revision_set_hash) do nothing
+            """,jobId,revisionHash,canonicalArtifact,processSource,expected);
+        long dispatchId=jdbc.queryForObject("""
+            select dispatch_id from integrated_design_live_smoke_dispatch
+             where job_id=? and authority_revision_set_hash=?
+            """,Long.class,jobId,revisionHash);
+        jdbc.update("""
+            update integrated_design_live_smoke_dispatch
+               set status='RUNNING',attempt_count=attempt_count+1,lease_token=gen_random_uuid(),
+                   lease_until=clock_timestamp()+interval '5 minutes',
+                   started_at=coalesce(started_at,clock_timestamp())
+             where dispatch_id=? and status in('QUEUED','RETRY_WAIT')
+            """,dispatchId);
+        String status=jdbc.queryForObject(
+            "select status from integrated_design_live_smoke_dispatch where dispatch_id=?",
+            String.class,dispatchId);
+        if(!"RUNNING".equals(status))throw new IllegalStateException("TEST_LIVE_SMOKE_DISPATCH_NOT_RUNNING");
+        jdbc.update("""
+            update integrated_design_autocompletion_receipt
+               set receipt_json=receipt_json||jsonb_build_object('liveSmokeDispatchId',?::bigint)
+             where process_code='PROC' and job_id=?
+            """,dispatchId,jobId);
+        return dispatchId;
+    }
+
     @SuppressWarnings("unchecked")
     private void installExactCanonicalPhysicalEvidence(long jobId){
         Map<String,Object> job=jdbc.queryForMap("""
@@ -2797,9 +2876,12 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
                      '{canonicalGeneration,compositeArtifactManifestHash}'
               from framework_development_job where job_id=?
             """,String.class,jobId);
+        long dispatchId=ensureRunningLiveSmokeDispatch(jobId,canonicalArtifact);
         int writes=0;boolean omitted=false,forgedOutput=false,mutantsExercised=false;
+        boolean browserMutantsExercised=false;
         for(Map<String,Object> authority:jdbc.queryForList("""
-            select authority_id as "authorityId",route_path as "routePath",
+            select authority_id as "authorityId",authority_revision as "authorityRevision",
+                   route_path as "routePath",
                    composite_json::text as "composite"
               from integrated_design_authority where job_id=? order by authority_id
             """,jobId)){
@@ -2884,15 +2966,18 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
                     String identity=jobId+"|"+authority.get("authorityId")+"|"+command+"|"+
                         scenario.get("scenarioCode")+"|"+lane;
                     String proofHash=CompositeExecutableDesignAuthorityCompiler.hash(identity);
-                    String runId=UUID.nameUUIDFromBytes(identity.getBytes(StandardCharsets.UTF_8)).toString();
+                    String runId=CompositeLiveSmokeEvidenceService.deterministicRunId(dispatchId,
+                        ((Number)authority.get("authorityId")).longValue(),
+                        ((Number)authority.get("authorityRevision")).longValue(),command,
+                        String.valueOf(scenario.get("scenarioCode")),status);
                     String domHash="",screenshotHash="",domRef="",screenshotRef="";
                     if("BROWSER".equals(lane)){
-                        byte[] dom=("<html><main data-command-code=\""+command+"\" data-status=\""+
-                            status+"\"></main></html>").getBytes(StandardCharsets.UTF_8);
-                        byte[] screenshot=("PNG|"+identity).getBytes(StandardCharsets.UTF_8);
+                        byte[] dom=liveSmokeDom(command,status,
+                            ((Number)scenario.get("expectedHttpStatus")).intValue(),output,idempotencyKey);
+                        byte[] screenshot=liveSmokePng(identity);
                         domHash=liveSmokeBytesHash(dom);screenshotHash=liveSmokeBytesHash(screenshot);
-                        domRef=jobId+"/"+runId+"/"+domHash+".dom.html";
-                        screenshotRef=jobId+"/"+runId+"/"+screenshotHash+".screenshot.png";
+                        domRef=dispatchId+"/"+runId+"/"+domHash+".dom.html";
+                        screenshotRef=dispatchId+"/"+runId+"/"+screenshotHash+".screenshot.png";
                         writeLiveSmokeArtifact(liveSmokeRoot,domRef,dom);
                         writeLiveSmokeArtifact(liveSmokeRoot,screenshotRef,screenshot);
                     }
@@ -2914,7 +2999,8 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
                         laneOutput.put(firstField,999999);forgedOutput=true;
                     }
                     Map<String,Object> body=new LinkedHashMap<>();
-                    body.put("jobId",jobId);body.put("authorityId",authority.get("authorityId"));
+                    body.put("dispatchId",dispatchId);body.put("jobId",jobId);
+                    body.put("authorityId",authority.get("authorityId"));
                     body.put("lane",lane);body.put("statusCase",status);
                     body.put("scenarioCode",scenario.get("scenarioCode"));body.put("tenantId","TENANT");
                     body.put("projectId","PROJECT");body.put("input",scenario.get("inputValues"));
@@ -2930,6 +3016,40 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
                         "select clock_timestamp()::text",
                         String.class).replace(' ','T'));
                     String account="FORBIDDEN".equals(status)?"denied-live-user":"system-admin";
+                    if(!browserMutantsExercised&&"BROWSER".equals(lane)){
+                        int before=count("integrated_design_live_smoke_evidence");
+                        Map<String,Object> wrongDispatch=new LinkedHashMap<>(body);
+                        wrongDispatch.put("dispatchId",dispatchId+999_999);
+                        assertThrows(RuntimeException.class,()->writer.record(wrongDispatch,account));
+                        Map<String,Object> wrongRun=new LinkedHashMap<>(body);
+                        wrongRun.put("runId","22222222-2222-4222-8222-222222222222");
+                        assertThrows(IllegalArgumentException.class,()->writer.record(wrongRun,account));
+
+                        byte[] fakeDom="<html><body>synthetic</body></html>"
+                            .getBytes(StandardCharsets.UTF_8);
+                        String fakeDomHash=liveSmokeBytesHash(fakeDom);
+                        String fakeDomRef=dispatchId+"/"+runId+"/"+fakeDomHash+".dom.html";
+                        writeLiveSmokeArtifact(liveSmokeRoot,fakeDomRef,fakeDom);
+                        Map<String,Object> fakeDomDetails=new LinkedHashMap<>(details);
+                        fakeDomDetails.put("domHash",fakeDomHash);
+                        fakeDomDetails.put("domArtifactRef",fakeDomRef);
+                        Map<String,Object> fakeDomBody=new LinkedHashMap<>(body);
+                        fakeDomBody.put("laneDetails",fakeDomDetails);
+                        assertThrows(IllegalArgumentException.class,()->writer.record(fakeDomBody,account));
+
+                        byte[] fakePng="PNG_BYTES".getBytes(StandardCharsets.UTF_8);
+                        String fakePngHash=liveSmokeBytesHash(fakePng);
+                        String fakePngRef=dispatchId+"/"+runId+"/"+fakePngHash+".screenshot.png";
+                        writeLiveSmokeArtifact(liveSmokeRoot,fakePngRef,fakePng);
+                        Map<String,Object> fakePngDetails=new LinkedHashMap<>(details);
+                        fakePngDetails.put("screenshotHash",fakePngHash);
+                        fakePngDetails.put("screenshotArtifactRef",fakePngRef);
+                        Map<String,Object> fakePngBody=new LinkedHashMap<>(body);
+                        fakePngBody.put("laneDetails",fakePngDetails);
+                        assertThrows(IllegalArgumentException.class,()->writer.record(fakePngBody,account));
+                        assertEquals(before,count("integrated_design_live_smoke_evidence"));
+                        browserMutantsExercised=true;
+                    }
                     if(exerciseWriterMutants&&!mutantsExercised){
                         int before=count("integrated_design_live_smoke_evidence");
                         Map<String,Object> fractional=new LinkedHashMap<>(body);
@@ -3076,8 +3196,15 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
     }
 
     private void markDispatchEvidenceSubmitted(long jobId){
-        UUID leaseToken=UUID.randomUUID();
-        assertEquals(1,jdbc.update("""
+        UUID leaseToken=jdbc.query("""
+            select lease_token from integrated_design_live_smoke_dispatch
+             where job_id=? and authority_revision_set_hash=
+                   framework_composite_authority_revision_set_hash(job_id)
+               and status='RUNNING'
+            """,result->result.next()?(UUID)result.getObject(1):null,jobId);
+        if(leaseToken==null){
+            leaseToken=UUID.randomUUID();
+            assertEquals(1,jdbc.update("""
             update integrated_design_live_smoke_dispatch dispatch
                set status='RUNNING',attempt_count=attempt_count+1,
                    lease_token=?,lease_until=clock_timestamp()+interval '5 minutes',
@@ -3087,6 +3214,7 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
                    framework_composite_authority_revision_set_hash(dispatch.job_id)
                and dispatch.status in('QUEUED','RETRY_WAIT')
             """,leaseToken,jobId));
+        }
         assertEquals(1,jdbc.update("""
             with current_evidence as materialized (
               select count(*)::integer evidence_count,
