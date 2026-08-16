@@ -8,14 +8,14 @@
 -- and lookup indexes cover route_key, process/step/audience, and professional
 -- contract identity joins. It never creates a temp object or mutates a row.
 WITH
-audit_parameter AS MATERIALIZED (
+audit_parameter AS NOT MATERIALIZED (
   SELECT /*__PROCESS_CODE__*/NULL::text AS process_code,
          /*__STEP_CODE__*/NULL::text AS step_code,
          /*__AUDIENCE__*/NULL::text AS audience,
          /*__ROUTE_PATH__*/NULL::text AS route_path
 ),
 required_direct AS MATERIALIZED (
-  SELECT upper(step.process_code) AS process_code,
+  SELECT DISTINCT upper(step.process_code) AS process_code,
          upper(step.step_code) AS step_code,
          lane.audience,
          lower(split_part(btrim(lane.route_path),'?',1)) AS route_path
@@ -29,7 +29,7 @@ required_direct AS MATERIALIZED (
      AND lane.route_path ~ '^/'
 ),
 required_bound AS MATERIALIZED (
-  SELECT upper(binding.process_code) AS process_code,
+  SELECT DISTINCT upper(binding.process_code) AS process_code,
          upper(binding.step_code) AS step_code,
          upper(binding.audience) AS audience,
          lower(split_part(btrim(resource.route_key),'?',1)) AS route_path
@@ -37,14 +37,22 @@ required_bound AS MATERIALIZED (
     JOIN public.framework_screen_resource resource
       ON resource.screen_resource_id=binding.screen_resource_id
    WHERE binding.binding_status='ACTIVE'
-     AND upper(binding.audience) IN ('USER','ADMIN')
+     AND nullif(btrim(binding.audience),'') IS NOT NULL
      AND btrim(resource.route_key) ~ '^/'
 ),
 required_identity_all AS MATERIALIZED (
-  SELECT process_code,step_code,audience,route_path FROM required_direct
+  SELECT process_code,step_code,audience,route_path,
+         true AS from_direct,false AS from_active_binding
+    FROM required_direct
+  UNION ALL
+  SELECT process_code,step_code,audience,route_path,
+         false AS from_direct,true AS from_active_binding
+    FROM required_bound
 ),
 required_identity AS MATERIALIZED (
-  SELECT required.*
+  SELECT required.process_code,required.step_code,required.audience,
+         required.route_path,bool_or(required.from_direct) AS from_direct,
+         bool_or(required.from_active_binding) AS from_active_binding
     FROM required_identity_all required
    CROSS JOIN audit_parameter parameter
    WHERE (parameter.process_code IS NULL
@@ -55,6 +63,8 @@ required_identity AS MATERIALIZED (
           OR required.audience=parameter.audience)
      AND (parameter.route_path IS NULL
           OR required.route_path=parameter.route_path)
+   GROUP BY required.process_code,required.step_code,required.audience,
+            required.route_path
 ),
 resource_row AS MATERIALIZED (
   SELECT resource.screen_resource_id,
@@ -97,7 +107,16 @@ contract_rollup AS MATERIALIZED (
     FROM contract_row
    GROUP BY process_code,step_code,audience,route_path
 ),
-blueprint_row AS MATERIALIZED (
+contract_authority_reference AS MATERIALIZED (
+  SELECT contract_id,process_code,step_code,audience,route_path,
+         'professional_screen_contract:'||contract_id::text AS source_reference
+    FROM contract_row
+  UNION ALL
+  SELECT contract_id,process_code,step_code,audience,route_path,
+         'framework_professional_screen_contract:'||contract_id::text
+    FROM contract_row
+),
+blueprint_source AS MATERIALIZED (
   SELECT blueprint.blueprint_id,
          upper(blueprint.process_code) AS process_code,
          upper(blueprint.step_code) AS step_code,
@@ -108,23 +127,21 @@ blueprint_row AS MATERIALIZED (
          blueprint.template_code,
          blueprint.specification_json,
          blueprint.transition_status,
-         lower(btrim(coalesce(blueprint.source_reference,''))) AS source_reference,
-         EXISTS (
-           SELECT 1
-             FROM contract_row contract
-            WHERE contract.process_code=upper(blueprint.process_code)
-              AND contract.step_code=upper(blueprint.step_code)
-              AND contract.audience=upper(blueprint.audience)
-              AND contract.route_path=
-                    lower(split_part(btrim(blueprint.route_path),'?',1))
-              AND blueprint.transition_status='CONTRACT_LINKED'
-              AND lower(btrim(coalesce(blueprint.source_reference,'')))=ANY(ARRAY[
-                'professional_screen_contract:'||contract.contract_id::text,
-                'framework_professional_screen_contract:'||contract.contract_id::text
-              ])
-         ) AS explicit_contract_authority
+         lower(btrim(coalesce(blueprint.source_reference,''))) AS source_reference
     FROM public.framework_screen_blueprint blueprint
    WHERE blueprint.validation_status='VALID'
+),
+blueprint_row AS MATERIALIZED (
+  SELECT blueprint.*,
+         authority.contract_id IS NOT NULL AS explicit_contract_authority
+    FROM blueprint_source blueprint
+    LEFT JOIN contract_authority_reference authority
+      ON blueprint.transition_status='CONTRACT_LINKED'
+     AND authority.process_code=blueprint.process_code
+     AND authority.step_code=blueprint.step_code
+     AND authority.audience=blueprint.audience
+     AND authority.route_path=blueprint.route_path
+     AND authority.source_reference=blueprint.source_reference
 ),
 blueprint_rollup AS MATERIALIZED (
   SELECT blueprint.process_code,blueprint.step_code,blueprint.audience,
@@ -197,6 +214,7 @@ blueprint_rollup AS MATERIALIZED (
 identity_status AS MATERIALIZED (
   SELECT required.process_code,required.step_code,required.audience,
          required.route_path,
+         required.from_direct,required.from_active_binding,
          coalesce(resource.physical_count,0) AS resource_count,
          coalesce(contract.physical_count,0) AS contract_count,
          coalesce(contract.complete_lane_count,0) AS complete_lane_count,
@@ -290,6 +308,11 @@ step_rollup AS MATERIALIZED (
      AND (parameter.step_code IS NULL
           OR upper(step.step_code)=parameter.step_code)
 ),
+step_audience_route_rollup AS MATERIALIZED (
+  SELECT process_code,step_code,audience,count(*)::integer AS route_count
+    FROM required_identity
+   GROUP BY process_code,step_code,audience
+),
 route_rollup AS MATERIALIZED (
   SELECT count(*)::integer AS physical_resource_rows,
          count(DISTINCT route_path)::integer AS normalized_route_count,
@@ -316,10 +339,22 @@ blueprint_global AS MATERIALIZED (
 ),
 identity_rollup AS MATERIALIZED (
   SELECT count(*)::integer AS required_exact_identities,
+         count(*) FILTER(WHERE from_direct)::integer AS direct_required_identities,
+         count(*) FILTER(WHERE from_active_binding)::integer AS active_binding_identities,
+         count(*) FILTER(
+           WHERE from_direct AND from_active_binding
+         )::integer AS direct_active_overlap_identities,
+         count(*) FILTER(
+           WHERE from_direct AND NOT from_active_binding
+         )::integer AS direct_only_identities,
+         count(*) FILTER(
+           WHERE from_active_binding AND NOT from_direct
+         )::integer AS active_binding_only_identities,
          count(*) FILTER(WHERE resource_count=1)::integer AS resource_exact,
          count(*) FILTER(WHERE resource_count=0)::integer AS resource_missing,
          count(*) FILTER(WHERE resource_count>1)::integer AS resource_duplicate_groups,
          count(*) FILTER(WHERE contract_count=1)::integer AS contract_exact,
+         count(*) FILTER(WHERE contract_count>0)::integer AS contract_matched,
          count(*) FILTER(WHERE contract_count=0)::integer AS contract_missing,
          count(*) FILTER(WHERE contract_count>1)::integer AS contract_duplicate_groups,
          count(*) FILTER(WHERE blueprint_count=1)::integer AS blueprint_exact,
@@ -379,7 +414,9 @@ SELECT jsonb_build_object(
   'schema','carbonet.design-to-code-page-impact-db-core/v1',
   'identityContract',jsonb_build_object(
     'fields',jsonb_build_array('processCode','stepCode','audience','normalizedRoute'),
-    'normalization','upper(process,step,audience)+lower(path-before-query)'
+    'normalization','upper(process,step,audience)+lower(path-before-query)',
+    'authoritativeSelection',
+      'DIRECT_REQUIRED_USER_ADMIN_UNION_ACTIVE_SCREEN_BINDING'
   ),
   'routeTotals',jsonb_build_object(
     'screenResourcePhysicalRows',route.physical_resource_rows,
@@ -393,9 +430,25 @@ SELECT jsonb_build_object(
     'stepsWithScreenRequirement',step.screen_required_step_count,
     'stepsWithoutScreenRequirement',step.steps_without_screen_requirement,
     'requiredExactIdentities',identity.required_exact_identities,
-    'activeBindingExactIdentities',(
-      SELECT count(*)::integer FROM required_bound
-    )
+    'directRequiredExactIdentities',identity.direct_required_identities,
+    'activeBindingExactIdentities',identity.active_binding_identities,
+    'authoritativeUnionExactIdentities',identity.required_exact_identities,
+    'directAndActiveOverlapExactIdentities',
+      identity.direct_active_overlap_identities,
+    'directOnlyExactIdentities',identity.direct_only_identities,
+    'activeBindingOnlyExactIdentities',identity.active_binding_only_identities,
+    'multiRouteStepAudienceGroups',(
+      SELECT count(*)::integer FROM step_audience_route_rollup
+       WHERE route_count>1
+    ),
+    'multiRouteStepAudienceExactIdentities',coalesce((
+      SELECT sum(route_count)::integer FROM step_audience_route_rollup
+       WHERE route_count>1
+    ),0),
+    'multiRouteAdditionalExactIdentities',coalesce((
+      SELECT sum(route_count-1)::integer FROM step_audience_route_rollup
+       WHERE route_count>1
+    ),0)
   ),
   'screenResource',jsonb_build_object(
     'exactRequiredIdentities',identity.resource_exact,
@@ -406,6 +459,9 @@ SELECT jsonb_build_object(
     'physicalRows',contract.physical_rows,
     'logicalExactGroups',contract.logical_exact_groups,
     'globalDuplicateGroups',contract.duplicate_groups,
+    'targetExactIdentities',identity.required_exact_identities,
+    'targetContractMatchedExactIdentities',identity.contract_matched,
+    'targetContractMissingExactIdentities',identity.contract_missing,
     'exactRequiredIdentities',identity.contract_exact,
     'missingRequiredIdentities',identity.contract_missing,
     'duplicateRequiredIdentityGroups',identity.contract_duplicate_groups

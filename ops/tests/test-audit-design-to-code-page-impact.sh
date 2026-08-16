@@ -137,12 +137,18 @@ INSERT INTO framework_process_step VALUES
   ('P2','S3','/gamma',NULL,true,false);
 INSERT INTO framework_screen_resource(route_key,implementation_status) VALUES
   ('/alpha','VERIFIED'),('/admin/alpha','IMPLEMENTED'),
-  ('/beta','DESIGN_ONLY'),('/gamma?tab=one','VERIFIED');
+  ('/beta','DESIGN_ONLY'),('/gamma?tab=one','VERIFIED'),
+  ('/alpha-aux','VERIFIED');
 INSERT INTO framework_process_step_screen_binding(
   process_code,step_code,screen_resource_id,audience,binding_status
 )
 SELECT 'P1','S1',screen_resource_id,'USER','ACTIVE'
   FROM framework_screen_resource WHERE route_key='/alpha';
+INSERT INTO framework_process_step_screen_binding(
+  process_code,step_code,screen_resource_id,audience,binding_status
+)
+SELECT 'P1','S1',screen_resource_id,'USER','ACTIVE'
+  FROM framework_screen_resource WHERE route_key='/alpha-aux';
 
 INSERT INTO framework_professional_screen_contract(
   process_code,step_code,audience,route_path,
@@ -151,7 +157,8 @@ INSERT INTO framework_professional_screen_contract(
   ('P1','S1','USER','/alpha','[{"method":"POST"}]','[{"entity":"A"}]','[{"id":"main"}]','[{"name":"a"}]'),
   ('P1','S2','USER','/beta','[{"method":"POST"}]','[{"entity":"B"}]','[{"id":"main"}]','[{"name":"b"}]'),
   ('P1','S2','USER','/beta?variant=2','[]','[]','[{"id":"other"}]','[{"name":"b2"}]'),
-  ('P2','S3','USER','/gamma','[{"method":"PUT"}]','[{"entity":"C"}]','[{"id":"main"}]','[{"name":"c"}]');
+  ('P2','S3','USER','/gamma','[{"method":"PUT"}]','[{"entity":"C"}]','[{"id":"main"}]','[{"name":"c"}]'),
+  ('P1','S1','USER','/alpha-aux','[{"method":"GET"}]','[{"entity":"AUX"}]','[{"id":"aux"}]','[{"name":"aux"}]');
 
 INSERT INTO framework_screen_blueprint(
   page_id,process_code,step_code,audience,route_path,implementation_strategy,
@@ -167,17 +174,22 @@ INSERT INTO framework_screen_blueprint(
    'KRDS_SDUI','{"renderer":"SDUI","assetBindings":[{"type":"COMPONENT","registryKey":"C1"}]}','CONTRACT_LINKED',
    'professional_screen_contract:4','VALID'),
   ('PAGE_GAMMA','P2','S3','USER','/gamma?variant=two','ADOPT_EXISTING',NULL,
-   'KRDS_SDUI','{"renderer":"SDUI"}','PLANNED',NULL,'VALID');
+   'KRDS_SDUI','{"renderer":"SDUI"}','PLANNED',NULL,'VALID'),
+  ('PAGE_ALPHA_AUX','P1','S1','USER','/alpha-aux','GENERATED_RUNTIME','generated/p1/s1-aux.ts',
+   'KRDS_FORM','{"renderer":"JSON_FORM","assetBindings":[{"assetType":"COMPONENT","assetCode":"C1"}]}','CONTRACT_LINKED',
+   'framework_professional_screen_contract:5','VALID');
 
 INSERT INTO framework_common_design_asset_source_state VALUES
   ('THEME','T1','{"assetType":"THEME","assetId":"T1","payload":{"dependencies":[]}}'),
   ('COMPONENT','C1','{"assetType":"COMPONENT","assetId":"C1","payload":{"dependencies":[]}}'),
   ('SCREEN','PAGE_ALPHA','{"assetType":"SCREEN","assetId":"PAGE_ALPHA","routePath":"/alpha","payload":{"dependencies":[{"assetType":"THEME","assetId":"T1"},{"assetType":"COMPONENT","assetId":"C1"}]}}'),
-  ('SCREEN','PAGE_GAMMA','{"assetType":"SCREEN","assetId":"PAGE_GAMMA","routePath":"/gamma","payload":{"dependencies":[{"assetType":"COMPONENT","assetId":"C1"}]}}');
+  ('SCREEN','PAGE_GAMMA','{"assetType":"SCREEN","assetId":"PAGE_GAMMA","routePath":"/gamma","payload":{"dependencies":[{"assetType":"COMPONENT","assetId":"C1"}]}}'),
+  ('SCREEN','PAGE_ALPHA_AUX','{"assetType":"SCREEN","assetId":"PAGE_ALPHA_AUX","routePath":"/alpha-aux","payload":{"dependencies":[{"assetType":"COMPONENT","assetId":"C1"}]}}');
 INSERT INTO ui_page_manifest VALUES
-  ('PAGE_ALPHA','/alpha','T1'),('PAGE_GAMMA','/gamma','T1');
+  ('PAGE_ALPHA','/alpha','T1'),('PAGE_GAMMA','/gamma','T1'),
+  ('PAGE_ALPHA_AUX','/alpha-aux','T1');
 INSERT INTO ui_page_component_map VALUES
-  ('PAGE_ALPHA','C1'),('PAGE_GAMMA','C1');
+  ('PAGE_ALPHA','C1'),('PAGE_GAMMA','C1'),('PAGE_ALPHA_AUX','C1');
 
 CREATE FUNCTION framework_canonical_blueprint_authority(
   requested_process_code varchar,requested_step_code varchar,
@@ -252,7 +264,8 @@ RETURNS jsonb LANGUAGE sql STABLE AS $$
 $$;
 CREATE VIEW framework_common_design_asset_coverage AS
 SELECT * FROM (VALUES
-  ('alpha',true),('admin-alpha',true),('beta',false),('gamma',true)
+  ('alpha',true),('admin-alpha',true),('beta',false),('gamma',true),
+  ('alpha-aux',true)
 ) source(page_id,common_assets_ready);
 SQL
 
@@ -261,8 +274,10 @@ python3 "$RUNNER" --repo-root "$ROOT" --dsn "$DSN" \
 
 python3 - "$WORK/ledger.json" "$SCHEMA" <<'PY'
 import json, pathlib, sys
+from jsonschema import Draft202012Validator
 ledger=json.loads(pathlib.Path(sys.argv[1]).read_text(encoding='utf-8'))
 schema=json.loads(pathlib.Path(sys.argv[2]).read_text(encoding='utf-8'))
+Draft202012Validator(schema).validate(ledger)
 assert ledger['schema']==schema['properties']['schema']['const']
 assert ledger['readOnly']['databaseTransaction'] is True
 assert ledger['readOnly']['repository'] is True
@@ -270,42 +285,53 @@ assert ledger['readOnly']['databaseWrites']==0
 assert ledger['readOnly']['liveFileWrites']==0
 assert ledger['readOnly']['databaseStatementTimeoutMs']==300000
 assert ledger['readOnly']['databaseLockTimeoutMs']==5000
-assert ledger['routeTotals']['screenResourcePhysicalRows']==4
-assert ledger['routeTotals']['normalizedRouteCount']==4
+assert ledger['routeTotals']['screenResourcePhysicalRows']==5
+assert ledger['routeTotals']['normalizedRouteCount']==5
 exact=ledger['exactIdentities']
-assert exact['stepScreens']['requiredExactIdentities']==4
-assert exact['stepScreens']['activeBindingExactIdentities']==1
-assert exact['quality']['exactResourceContractBlueprintIdentities']==1
-assert exact['quality']['physicalSingleClosureExactIdentities']==1
-assert exact['professionalContract']['exactRequiredIdentities']==2
+assert exact['stepScreens']['requiredExactIdentities']==5
+assert exact['stepScreens']['directRequiredExactIdentities']==4
+assert exact['stepScreens']['activeBindingExactIdentities']==2
+assert exact['stepScreens']['authoritativeUnionExactIdentities']==5
+assert exact['stepScreens']['directAndActiveOverlapExactIdentities']==1
+assert exact['stepScreens']['directOnlyExactIdentities']==3
+assert exact['stepScreens']['activeBindingOnlyExactIdentities']==1
+assert exact['stepScreens']['multiRouteStepAudienceGroups']==1
+assert exact['stepScreens']['multiRouteStepAudienceExactIdentities']==2
+assert exact['stepScreens']['multiRouteAdditionalExactIdentities']==1
+assert exact['quality']['exactResourceContractBlueprintIdentities']==2
+assert exact['quality']['physicalSingleClosureExactIdentities']==2
+assert exact['professionalContract']['targetExactIdentities']==5
+assert exact['professionalContract']['targetContractMatchedExactIdentities']==4
+assert exact['professionalContract']['targetContractMissingExactIdentities']==1
+assert exact['professionalContract']['exactRequiredIdentities']==3
 assert exact['professionalContract']['missingRequiredIdentities']==1
 assert exact['professionalContract']['duplicateRequiredIdentityGroups']==1
-assert exact['blueprint']['exactRequiredIdentities']==1
+assert exact['blueprint']['exactRequiredIdentities']==2
 assert exact['blueprint']['missingRequiredIdentities']==2
 assert exact['blueprint']['duplicateRequiredIdentityGroups']==1
 assert exact['blueprint']['duplicateAuthorityResolved']==1
 assert exact['blueprint']['duplicateAmbiguous']==0
-assert exact['strategy']['generatedRuntimePhysicalRows']==1
+assert exact['strategy']['generatedRuntimePhysicalRows']==2
 assert exact['strategy']['adoptExistingPhysicalRows']==2
-assert exact['strategy']['ownershipGeneratedExactIdentities']==1
+assert exact['strategy']['ownershipGeneratedExactIdentities']==2
 assert exact['strategy']['ownershipHybridExactIdentities']==1
 assert exact['strategy']['ownershipAmbiguousExactIdentities']==0
 assert exact['quality']['ambiguousExactIdentities']==1
-assert exact['source']['compilerReadyExactIdentities']==2
-assert exact['source']['emittedReadyExactIdentities']==2
-assert exact['source']['sourceCatalogEligibleExactIdentities']==2
-assert ledger['endpoint']['expectedScreenIdentities']==2
-assert ledger['endpoint']['expectedOperationCount']==2
+assert exact['source']['compilerReadyExactIdentities']==3
+assert exact['source']['emittedReadyExactIdentities']==3
+assert exact['source']['sourceCatalogEligibleExactIdentities']==3
+assert ledger['endpoint']['expectedScreenIdentities']==3
+assert ledger['endpoint']['expectedOperationCount']==3
 assert ledger['endpoint']['catalog']['endpointCount']==2
 assert ledger['designSystem']['commonAssetCoverage']['missingPageCount']==1
-assert ledger['designMutationImpact']['authoritativeAffectedExactIdentityCount']==2
+assert ledger['designMutationImpact']['authoritativeAffectedExactIdentityCount']==3
 assert ledger['designMutationImpact']['pendingDirtySignalCount']==1
 assert ledger['frontend']['canonicalKoRouteCount']>0
 assert ledger['reviewBudget']['withinTenMinutes'] is True
 assert ledger['reviewBudget']['actualMs']<600000
 assert all(item['status']=='OK' for item in ledger['probes'].values())
 assert 'SECRET_VALUE' not in json.dumps(ledger)
-print('PAGE_IMPACT_FIXTURE_COUNTS_OK required=4 compilerReady=2 emitted=2 endpoints=2')
+print('PAGE_IMPACT_FIXTURE_COUNTS_OK direct=4 active=2 union=5 compilerReady=3 endpoints=3 multiRouteGroups=1')
 PY
 
 python3 "$RUNNER" --repo-root "$ROOT" --dsn "$DSN" \
@@ -316,28 +342,44 @@ python3 "$RUNNER" --repo-root "$ROOT" --dsn "$DSN" \
   --audience user --route-path '/ALPHA?ignored=1' \
   --output "$WORK/exact-selector.json"
 python3 "$RUNNER" --repo-root "$ROOT" --dsn "$DSN" \
+  --db-label fixture-active-only-selector --process-code p1 --step-code s1 \
+  --audience user --route-path '/ALPHA-AUX?ignored=1' \
+  --output "$WORK/active-only-selector.json"
+python3 "$RUNNER" --repo-root "$ROOT" --dsn "$DSN" \
   --db-label fixture-asset-selector --asset-type component --asset-id C1 \
   --output "$WORK/asset-selector.json"
 python3 - "$WORK/process-selector.json" "$WORK/exact-selector.json" \
-  "$WORK/asset-selector.json" <<'PY'
+  "$WORK/active-only-selector.json" "$WORK/asset-selector.json" <<'PY'
 import json, pathlib, sys
 process=json.loads(pathlib.Path(sys.argv[1]).read_text(encoding='utf-8'))
 exact=json.loads(pathlib.Path(sys.argv[2]).read_text(encoding='utf-8'))
-asset=json.loads(pathlib.Path(sys.argv[3]).read_text(encoding='utf-8'))
+active_only=json.loads(pathlib.Path(sys.argv[3]).read_text(encoding='utf-8'))
+asset=json.loads(pathlib.Path(sys.argv[4]).read_text(encoding='utf-8'))
 assert process['designMutationImpact']['scope']=='PROCESS_AXIS'
-assert process['designMutationImpact']['selectorMatchedExactIdentityCount']==3
-assert process['designMutationImpact']['authoritativeAffectedExactIdentityCount']==3
+assert process['designMutationImpact']['selectorMatchedExactIdentityCount']==4
+assert process['designMutationImpact']['authoritativeAffectedExactIdentityCount']==4
+assert process['exactIdentities']['stepScreens']['directRequiredExactIdentities']==3
+assert process['exactIdentities']['stepScreens']['activeBindingExactIdentities']==2
+assert process['exactIdentities']['stepScreens']['authoritativeUnionExactIdentities']==4
 assert exact['designMutationImpact']['scope']=='SCREEN_IDENTITY_EXACT'
 assert exact['designMutationImpact']['selectorMatchedExactIdentityCount']==1
 assert exact['designMutationImpact']['authoritativeAffectedExactIdentityCount']==1
+assert exact['exactIdentities']['stepScreens']['directRequiredExactIdentities']==1
+assert exact['exactIdentities']['stepScreens']['activeBindingExactIdentities']==1
+assert active_only['designMutationImpact']['scope']=='SCREEN_IDENTITY_EXACT'
+assert active_only['designMutationImpact']['selectorMatchedExactIdentityCount']==1
+assert active_only['designMutationImpact']['authoritativeAffectedExactIdentityCount']==1
+assert active_only['exactIdentities']['stepScreens']['directRequiredExactIdentities']==0
+assert active_only['exactIdentities']['stepScreens']['activeBindingExactIdentities']==1
+assert active_only['exactIdentities']['stepScreens']['activeBindingOnlyExactIdentities']==1
 impact=asset['designMutationImpact']
 assert impact['scope']=='ASSET_DEPENDENCY_DAG'
-assert impact['authoritativeAffectedExactIdentityCount']==2
+assert impact['authoritativeAffectedExactIdentityCount']==3
 assert impact['assetFanout']['directAssetFound'] is True
-assert impact['assetFanout']['reachableScreenAssetCount']==2
-assert impact['assetFanout']['uiPageFanoutCount']==2
-assert impact['assetFanout']['affectedNormalizedRouteCount']==2
-print('PAGE_IMPACT_SELECTOR_COUNTS_OK process=3 exact=1 componentC1=2')
+assert impact['assetFanout']['reachableScreenAssetCount']==3
+assert impact['assetFanout']['uiPageFanoutCount']==3
+assert impact['assetFanout']['affectedNormalizedRouteCount']==3
+print('PAGE_IMPACT_SELECTOR_COUNTS_OK process=4 directExact=1 activeOnlyExact=1 componentC1=3')
 PY
 
 if [[ -n "${PAGE_IMPACT_EVIDENCE_DIR:-}" ]]; then
@@ -404,4 +446,4 @@ PY
 
 elapsed_ms=$(( ($(date +%s%N)-started_ns)/1000000 ))
 (( elapsed_ms < 600000 )) || fail "elapsedMs=$elapsed_ms exceeds ten-minute budget"
-printf 'PAGE_IMPACT_AUDIT_OK cases=6 writes=0 elapsedMs=%s\n' "$elapsed_ms"
+printf 'PAGE_IMPACT_AUDIT_OK cases=7 writes=0 elapsedMs=%s\n' "$elapsed_ms"

@@ -71,7 +71,53 @@
         "strategy",
         "source",
         "quality"
-      ]
+      ],
+      "properties": {
+        "identityContract": { "type": "object" },
+        "stepScreens": {
+          "type": "object",
+          "required": [
+            "totalSteps",
+            "stepsWithScreenRequirement",
+            "stepsWithoutScreenRequirement",
+            "requiredExactIdentities",
+            "directRequiredExactIdentities",
+            "activeBindingExactIdentities",
+            "authoritativeUnionExactIdentities",
+            "directAndActiveOverlapExactIdentities",
+            "directOnlyExactIdentities",
+            "activeBindingOnlyExactIdentities",
+            "multiRouteStepAudienceGroups",
+            "multiRouteStepAudienceExactIdentities",
+            "multiRouteAdditionalExactIdentities"
+          ],
+          "additionalProperties": { "$ref": "#/$defs/nonNegativeInteger" }
+        },
+        "screenResource": { "type": "object" },
+        "professionalContract": {
+          "type": "object",
+          "required": [
+            "targetExactIdentities",
+            "targetContractMatchedExactIdentities",
+            "targetContractMissingExactIdentities",
+            "exactRequiredIdentities",
+            "missingRequiredIdentities",
+            "duplicateRequiredIdentityGroups"
+          ],
+          "properties": {
+            "targetExactIdentities": { "$ref": "#/$defs/nonNegativeInteger" },
+            "targetContractMatchedExactIdentities": { "$ref": "#/$defs/nonNegativeInteger" },
+            "targetContractMissingExactIdentities": { "$ref": "#/$defs/nonNegativeInteger" },
+            "exactRequiredIdentities": { "$ref": "#/$defs/nonNegativeInteger" },
+            "missingRequiredIdentities": { "$ref": "#/$defs/nonNegativeInteger" },
+            "duplicateRequiredIdentityGroups": { "$ref": "#/$defs/nonNegativeInteger" }
+          }
+        },
+        "blueprint": { "type": "object" },
+        "strategy": { "type": "object" },
+        "source": { "type": "object" },
+        "quality": { "type": "object" }
+      }
     },
     "endpoint": {
       "type": "object",

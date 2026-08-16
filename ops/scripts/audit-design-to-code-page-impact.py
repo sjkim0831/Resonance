@@ -194,8 +194,9 @@ def asset_impact_sql(args: argparse.Namespace) -> str:
         ON reachable.asset_type='SCREEN' AND reachable.asset_id=blueprint.page_id
       WHERE blueprint.validation_status='VALID'
     ),
-    required_identity AS MATERIALIZED (
-      SELECT upper(step.process_code) AS process_code,upper(step.step_code) AS step_code,
+    required_direct AS MATERIALIZED (
+      SELECT DISTINCT upper(step.process_code) AS process_code,
+             upper(step.step_code) AS step_code,
              lane.audience,lower(split_part(lane.route_path,'?',1)) AS route_path
       FROM public.framework_process_step step
       CROSS JOIN LATERAL (VALUES
@@ -203,6 +204,23 @@ def asset_impact_sql(args: argparse.Namespace) -> str:
         ('ADMIN'::text,nullif(btrim(step.admin_path),''),step.requires_admin_page)
       ) lane(audience,route_path,screen_required)
       WHERE lane.route_path~'^/' AND coalesce(lane.screen_required,false)
+    ),
+    required_bound AS MATERIALIZED (
+      SELECT DISTINCT upper(binding.process_code) AS process_code,
+             upper(binding.step_code) AS step_code,
+             upper(binding.audience) AS audience,
+             lower(split_part(btrim(resource.route_key),'?',1)) AS route_path
+      FROM public.framework_process_step_screen_binding binding
+      JOIN public.framework_screen_resource resource
+        ON resource.screen_resource_id=binding.screen_resource_id
+      WHERE binding.binding_status='ACTIVE'
+        AND nullif(btrim(binding.audience),'') IS NOT NULL
+        AND btrim(resource.route_key)~'^/'
+    ),
+    required_identity AS MATERIALIZED (
+      SELECT process_code,step_code,audience,route_path FROM required_direct
+      UNION
+      SELECT process_code,step_code,audience,route_path FROM required_bound
     ),
     affected_identity AS MATERIALIZED (
       SELECT required.* FROM required_identity required
@@ -836,8 +854,18 @@ def run_audit(args: argparse.Namespace) -> dict[str, Any]:
             """,
         )
         endpoint_inventory = probe_value(probes, "endpointFunctionInventory") or {}
+        # The aggregate function may execute one compiler probe per process.
+        # Bound that convenience view independently so a large catalog cannot
+        # consume the whole ten-minute ledger budget before the already-bounded
+        # per-process isolation path reports every sampled outcome.
+        source_readiness_reader = PsqlReader(
+            root=root,
+            dsn=args.dsn,
+            command=command,
+            timeout_ms=min(args.statement_timeout_ms, 30_000),
+        )
         probes["sourceEndpointReadiness"] = probe(
-            reader,
+            source_readiness_reader,
             "sourceEndpointReadiness",
             """
             WITH process_source AS MATERIALIZED (
@@ -1089,7 +1117,7 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     parser.add_argument("--statement-timeout-ms", type=int, default=DEFAULT_TIMEOUT_MS)
     parser.add_argument("--process-code")
     parser.add_argument("--step-code")
-    parser.add_argument("--audience", choices=("USER", "ADMIN", "user", "admin"))
+    parser.add_argument("--audience")
     parser.add_argument("--route-path")
     parser.add_argument(
         "--asset-type",
@@ -1104,6 +1132,8 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     for name in ("process_code", "step_code", "audience"):
         value = getattr(args, name)
         setattr(args, name, value.strip().upper() if value and value.strip() else None)
+    if args.audience and not re.fullmatch(r"[A-Z][A-Z0-9_]{0,31}", args.audience):
+        parser.error("--audience must be an uppercase identifier after normalization")
     if args.route_path:
         args.route_path = args.route_path.strip().split("?", 1)[0].lower()
         if not args.route_path.startswith("/"):

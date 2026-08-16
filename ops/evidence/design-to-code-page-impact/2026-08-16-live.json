@@ -1,28 +1,34 @@
 {
   "blockers": {
-    "affectedExactIdentityCount": 156,
+    "affectedExactIdentityCount": 335,
     "items": [
       {
         "code": "PROFESSIONAL_CONTRACT_MISSING",
-        "count": 1,
+        "count": 57,
         "detail": "required exact identities with no professional contract",
         "source": "database"
       },
       {
         "code": "PROFESSIONAL_CONTRACT_DUPLICATE",
-        "count": 14,
+        "count": 35,
         "detail": "required exact identities with multiple professional contracts",
         "source": "database"
       },
       {
         "code": "BLUEPRINT_MISSING",
-        "count": 142,
+        "count": 207,
         "detail": "required exact identities with no VALID blueprint",
         "source": "database"
       },
       {
+        "code": "BLUEPRINT_AUTHORITY_AMBIGUOUS",
+        "count": 8,
+        "detail": "duplicate VALID blueprint identities without one exact authority",
+        "source": "database"
+      },
+      {
         "code": "SCREEN_CONTRACT_INCOMPLETE",
-        "count": 156,
+        "count": 335,
         "detail": "exact identities not closed across contract lanes and blueprint authority",
         "source": "database"
       },
@@ -35,25 +41,19 @@
       {
         "code": "SOURCEDESIGNCATALOG_ERROR",
         "count": null,
-        "detail": "ERROR: function public.framework_source_canonical_design_catalog(integer, character varying) does not exist LINE 13: CROSS JOIN LATERAL public.framework_source_can... ^ HINT: No function matches the given name and argument types. You might need to add explicit type casts. command terminated with exit code 3",
+        "detail": "ERROR: query returned more than one row HINT: Make sure the query returns a single row, or use LIMIT 1. CONTEXT: PL/pgSQL function framework_canonical_screen_design(character varying,character varying,character varying,character varying,jsonb) line 27 at SQL statement SQL function \"framework_canonical_screen_design\" statement 1 SQL statement \"WITH compiled AS MATERIALIZED ( SELECT p.development_order,b.process_code,s.step_order,b.audience, lower(split_part(b.route_path,'?',1)) route_path,b.blueprint_code, b.step_code, upper(b.process_code)||'|'||upper(b.step_code)||'|'|| upper(b.audience)||'|'||lower(split_part(b.route_path,'?',1)) screen_key, public.framework_canonical_screen_design( b.process_code,b.step_code,b.audience,b.route_path ) canonical_design FROM public.framework_screen_blueprint b JOIN public.framework_process_definition p USING(process_code) JOIN public.framework_process_step s ON s.process_code=b.process_code AND s.step_code=b.step_code WHERE b.validation_status='VALID'",
         "source": "database-probe"
       },
       {
         "code": "SOURCEENDPOINTREADINESS_ERROR",
         "count": null,
-        "detail": "ERROR: function public.framework_source_canonical_endpoint_readiness(integer, character varying) does not exist LINE 8: public.framework_source_canonical_endpo... ^ HINT: No function matches the given name and argument types. You might need to add explicit type casts. command terminated with exit code 3",
-        "source": "database-probe"
-      },
-      {
-        "code": "GLOBALENDPOINTREADINESS_ERROR",
-        "count": null,
-        "detail": "ERROR: function public.framework_canonical_endpoint_readiness(integer, character varying) does not exist LINE 1: SELECT public.framework_canonical_endpoint_readiness(5000,NU... ^ HINT: No function matches the given name and argument types. You might need to add explicit type casts. command terminated with exit code 3",
+        "detail": "ERROR: canceling statement due to statement timeout CONTEXT: PL/pgSQL assignment \"parsed:=source::jsonb\" PL/pgSQL function framework_strict_jsonb_array(text) line 5 at assignment SQL statement \"SELECT count(*)::integer FROM public.framework_screen_blueprint b WHERE b.validation_status='VALID' AND ( SELECT count(*) FROM public.framework_professional_screen_contract c WHERE c.process_code=b.process_code AND c.step_code=b.step_code AND c.audience=b.audience AND lower(split_part(c.route_path,'?',1))= lower(split_part(b.route_path,'?',1)) )=1 AND ( SELECT count(*) FROM public.framework_professional_screen_contract c WHERE c.process_code=b.process_code AND c.step_code=b.step_code AND c.audience=b.audience AND lower(split_part(c.route_path,'?',1))= lower(split_part(b.route_path,'?',1)) AND jsonb_array_length( public.framework_strict_jsonb_array(c.api_contract))>0 AND jsonb_array_length( public.framework_strict_jsonb_array(c.data_contract))>0 AND jsonb_array_length( public.framework_strict_jso",
         "source": "database-probe"
       },
       {
         "code": "SOURCEENDPOINTCATALOG_ERROR",
         "count": null,
-        "detail": "ERROR: function public.framework_source_canonical_endpoint_catalog(integer, character varying) does not exist LINE 7: SELECT public.framework_source_canonical_endpo... ^ HINT: No function matches the given name and argument types. You might need to add explicit type casts. command terminated with exit code 3",
+        "detail": "ERROR: canonical endpoint readiness is PARTIAL (total=0, ready=0, blockers=1732) DETAIL: {\"schema\": \"carbonet.canonical-endpoint-readiness/v1\", \"status\": \"PARTIAL\", \"authority\": \"canonical-design-source-screens\", \"totalCount\": 0, \"blockerCount\": 1732, \"reasonCounts\": {\"DESIGN_CONTRACT_MISSING\": 101, \"DESIGN_LANES_INCOMPLETE\": 67, \"DESIGN_COMPILER_MISMATCH\": 1362, \"DESIGN_CONTRACT_DUPLICATE\": 13, \"DESIGN_BLUEPRINT_DUPLICATE\": 189}, \"requestedProcess\": null, \"sourceReadyCount\": 0, \"sourceDesignCount\": 1732, \"designBlockerCount\": 1732, \"canonicalScreenCount\": 0, \"globalCollisionCount\": 0} CONTEXT: PL/pgSQL function framework_source_canonical_endpoint_catalog(integer,character varying) line 11 at RAISE command terminated with exit code 3",
         "source": "database-probe"
       },
       {
@@ -70,7 +70,7 @@
       },
       {
         "code": "GENERATED_ENDPOINT_CODE_GAP",
-        "count": 1028,
+        "count": 1140,
         "detail": "expected endpoint screen identities exceed tracked generated endpoint artifacts",
         "source": "database+repository"
       },
@@ -79,18 +79,24 @@
         "count": 1,
         "detail": "tracked system component catalog has no reusable components",
         "source": "repository"
+      },
+      {
+        "code": "SOURCE_ENDPOINT_PROCESS_PROBE_FAILURE",
+        "count": 97,
+        "detail": "SOURCE readiness processes that failed or exceeded the isolation budget",
+        "source": "database-probe"
       }
     ],
-    "kindCount": 13
+    "kindCount": 14
   },
   "designMutationImpact": {
-    "authoritativeAffectedExactIdentityCount": 887,
-    "compilerAffectedExactIdentityCount": 887,
+    "authoritativeAffectedExactIdentityCount": 901,
+    "compilerAffectedExactIdentityCount": 901,
     "pendingDirtySignalCount": null,
     "scope": "ALL_COMPILER_READY_MAXIMUM",
     "selector": {},
-    "selectorMatchedExactIdentityCount": 1043,
-    "sourceGenerationAffectedExactIdentityCount": 887
+    "selectorMatchedExactIdentityCount": 1236,
+    "sourceGenerationAffectedExactIdentityCount": 901
   },
   "designSystem": {
     "commonAssetCoverage": {
@@ -99,7 +105,7 @@
       "readyPageCount": 565
     },
     "databaseIdentityCoverage": {
-      "krdsExactIdentities": 901,
+      "krdsExactIdentities": 1021,
       "sduiOrJsonFormExactIdentities": 0
     },
     "repository": {
@@ -118,24 +124,709 @@
       "manifestErrors": [],
       "processDirectoryCount": 0
     },
-    "expectedOperationCount": 4547,
-    "expectedScreenIdentities": 1028,
-    "globalReadiness": null,
-    "sourceReadiness": null
+    "expectedOperationCount": 4788,
+    "expectedScreenIdentities": 1140,
+    "globalReadiness": {
+      "authority": "canonical-design-source-screens",
+      "blockerCount": 1732,
+      "canonicalScreenCount": 0,
+      "designBlockerCount": 1732,
+      "globalCollisionCount": 0,
+      "reasonCounts": {
+        "DESIGN_BLUEPRINT_DUPLICATE": 189,
+        "DESIGN_COMPILER_MISMATCH": 1362,
+        "DESIGN_CONTRACT_DUPLICATE": 13,
+        "DESIGN_CONTRACT_MISSING": 101,
+        "DESIGN_LANES_INCOMPLETE": 67
+      },
+      "requestedProcess": null,
+      "schema": "carbonet.canonical-endpoint-readiness/v1",
+      "sourceDesignCount": 1732,
+      "sourceReadyCount": 0,
+      "status": "PARTIAL",
+      "totalCount": 0
+    },
+    "sourceReadiness": {
+      "blockerCount": 448,
+      "failedProbeCount": 22,
+      "isolationProcessLimit": 64,
+      "mode": "INDEPENDENT_PROCESS_PROBES",
+      "omittedProcessCount": 75,
+      "processCount": 64,
+      "processes": [
+        {
+          "blockerCount": 12,
+          "durationMs": 5750,
+          "probeStatus": "OK",
+          "processCode": "ACCOUNT_LOCK_RECOVERY",
+          "readinessStatus": "PARTIAL",
+          "reasonCounts": {
+            "DESIGN_BLUEPRINT_DUPLICATE": 2,
+            "DESIGN_COMPILER_MISMATCH": 9,
+            "DESIGN_CONTRACT_MISSING": 1
+          },
+          "sourceReadyCount": 0,
+          "totalCount": 0
+        },
+        {
+          "durationMs": 5828,
+          "error": "ERROR: canceling statement due to statement timeout CONTEXT: PL/pgSQL function framework_project_professional_screen_contract(framework_professional_screen_contract,jsonb) line 93 at RETURN SQL statement \"SELECT (public.framework_project_professional_screen_contract( persisted,proposed_values )).* FROM public.framework_professional_screen_contract persisted WHERE upper(persisted.process_code)=normalized_process AND upper(persisted.step_code)=normalized_step AND upper(persisted.audience)=normalized_audience AND lower(split_part(persisted.route_path,'?',1))=normalized_route\" PL/pgSQL function framework_canonical_screen_design(character varying,character varying,character varying,character varying,jsonb) line 17 at SQL statement SQL function \"framework_canonical_screen_design\" statement 1 SQL statement \"WITH compiled AS MATERIALIZED ( SELECT p.development_order,b.process_code,s.step_order,b.audience, lower(split_part(b.route_path,'?',1)) route_path,b.blueprint_code, b.step_code, upper(b.p",
+          "probeStatus": "ERROR",
+          "processCode": "ACCOUNT_WITHDRAWAL"
+        },
+        {
+          "durationMs": 5860,
+          "error": "ERROR: canceling statement due to statement timeout CONTEXT: SQL expression \"source::jsonb\" PL/pgSQL function framework_try_jsonb(text,jsonb) line 4 at RETURN SQL statement \"SELECT jsonb_build_object( 'identity',jsonb_build_object( 'screenKey',upper(b.process_code)||'|'||upper(b.step_code)||'|'|| upper(b.audience)||'|'||lower(split_part(b.route_path,'?',1)), 'blueprintCode',b.blueprint_code, 'processCode',upper(b.process_code), 'stepCode',upper(b.step_code), 'audience',upper(b.audience), 'routePath',lower(split_part(b.route_path,'?',1)), 'pageId',b.page_id, 'actorCode',upper(b.actor_code) ), 'process',jsonb_build_object( 'processName',p.process_name, 'domainCode',p.domain_code, 'processVersion',p.process_version, 'goal',p.goal, 'startCondition',p.start_condition, 'completionCondition',p.completion_condition, 'ownerActorCode',coalesce(p.owner_actor_code,''), 'riskLevel',p.risk_level, 'slaHours',p.sla_hours, 'lifecycleStatus',p.lifecycle_status ), 'step',jsonb_build_object( 'stepName',s.",
+          "probeStatus": "ERROR",
+          "processCode": "ACTIVITY_DATA"
+        },
+        {
+          "blockerCount": 16,
+          "durationMs": 5532,
+          "probeStatus": "OK",
+          "processCode": "ANALYSIS_EXPORT",
+          "readinessStatus": "PARTIAL",
+          "reasonCounts": {
+            "DESIGN_COMPILER_MISMATCH": 16
+          },
+          "sourceReadyCount": 0,
+          "totalCount": 0
+        },
+        {
+          "durationMs": 5813,
+          "error": "ERROR: canceling statement due to statement timeout CONTEXT: SQL statement \"SELECT coalesce(jsonb_object_agg( CASE entry.key WHEN 'businessPurpose' THEN 'business_purpose' WHEN 'entryCondition' THEN 'entry_condition' WHEN 'exitCondition' THEN 'exit_condition' WHEN 'sectionContract' THEN 'section_contract' WHEN 'fieldContract' THEN 'field_contract' WHEN 'commandContract' THEN 'command_contract' WHEN 'stateContract' THEN 'state_contract' WHEN 'apiContract' THEN 'api_contract' WHEN 'dataContract' THEN 'data_contract' WHEN 'evidenceContract' THEN 'evidence_contract' WHEN 'responsiveContract' THEN 'responsive_contract' WHEN 'accessibilityContract' THEN 'accessibility_contract' WHEN 'securityContract' THEN 'security_contract' WHEN 'apiVerified' THEN 'api_verified' WHEN 'databaseVerified' THEN 'database_verified' WHEN 'authorityVerified' THEN 'authority_verified' WHEN 'responsiveVerified' THEN 'responsive_verified' WHEN 'accessibilityVerified' THEN 'accessibility_verified' WHEN 'exceptionStat",
+          "probeStatus": "ERROR",
+          "processCode": "ANOMALY_ALERT_MANAGEMENT"
+        },
+        {
+          "durationMs": 5907,
+          "error": "ERROR: canceling statement due to statement timeout CONTEXT: SQL statement \"SELECT jsonb_build_object( 'identity',jsonb_build_object( 'screenKey',upper(b.process_code)||'|'||upper(b.step_code)||'|'|| upper(b.audience)||'|'||lower(split_part(b.route_path,'?',1)), 'blueprintCode',b.blueprint_code, 'processCode',upper(b.process_code), 'stepCode',upper(b.step_code), 'audience',upper(b.audience), 'routePath',lower(split_part(b.route_path,'?',1)), 'pageId',b.page_id, 'actorCode',upper(b.actor_code) ), 'process',jsonb_build_object( 'processName',p.process_name, 'domainCode',p.domain_code, 'processVersion',p.process_version, 'goal',p.goal, 'startCondition',p.start_condition, 'completionCondition',p.completion_condition, 'ownerActorCode',coalesce(p.owner_actor_code,''), 'riskLevel',p.risk_level, 'slaHours',p.sla_hours, 'lifecycleStatus',p.lifecycle_status ), 'step',jsonb_build_object( 'stepName',s.step_name, 'stepOrder',s.step_order, 'stepType',s.step_type, 'actorCode',s.actor_code, 'fromState'",
+          "probeStatus": "ERROR",
+          "processCode": "API_CONNECTION_MANAGEMENT"
+        },
+        {
+          "blockerCount": 8,
+          "durationMs": 5813,
+          "probeStatus": "OK",
+          "processCode": "API_KEY_LIFECYCLE",
+          "readinessStatus": "PARTIAL",
+          "reasonCounts": {
+            "DESIGN_COMPILER_MISMATCH": 8
+          },
+          "sourceReadyCount": 0,
+          "totalCount": 0
+        },
+        {
+          "blockerCount": 8,
+          "durationMs": 5687,
+          "probeStatus": "OK",
+          "processCode": "API_USAGE_MONITORING",
+          "readinessStatus": "PARTIAL",
+          "reasonCounts": {
+            "DESIGN_COMPILER_MISMATCH": 8
+          },
+          "sourceReadyCount": 0,
+          "totalCount": 0
+        },
+        {
+          "blockerCount": 16,
+          "durationMs": 4375,
+          "probeStatus": "OK",
+          "processCode": "APPEAL_DISPUTE_AUDIT",
+          "readinessStatus": "PARTIAL",
+          "reasonCounts": {
+            "DESIGN_COMPILER_MISMATCH": 16
+          },
+          "sourceReadyCount": 0,
+          "totalCount": 0
+        },
+        {
+          "blockerCount": 16,
+          "durationMs": 4406,
+          "probeStatus": "OK",
+          "processCode": "APPROVAL_AUTHORITY",
+          "readinessStatus": "PARTIAL",
+          "reasonCounts": {
+            "DESIGN_COMPILER_MISMATCH": 16
+          },
+          "sourceReadyCount": 0,
+          "totalCount": 0
+        },
+        {
+          "blockerCount": 8,
+          "durationMs": 3875,
+          "probeStatus": "OK",
+          "processCode": "APPROVAL_LINE_MANAGEMENT",
+          "readinessStatus": "PARTIAL",
+          "reasonCounts": {
+            "DESIGN_COMPILER_MISMATCH": 8
+          },
+          "sourceReadyCount": 0,
+          "totalCount": 0
+        },
+        {
+          "blockerCount": 8,
+          "durationMs": 4296,
+          "probeStatus": "OK",
+          "processCode": "APPROVAL_WORKFLOW_MANAGEMENT",
+          "readinessStatus": "PARTIAL",
+          "reasonCounts": {
+            "DESIGN_COMPILER_MISMATCH": 8
+          },
+          "sourceReadyCount": 0,
+          "totalCount": 0
+        },
+        {
+          "blockerCount": 16,
+          "durationMs": 4093,
+          "probeStatus": "OK",
+          "processCode": "ATTENDANCE_PROGRESS",
+          "readinessStatus": "PARTIAL",
+          "reasonCounts": {
+            "DESIGN_COMPILER_MISMATCH": 16
+          },
+          "sourceReadyCount": 0,
+          "totalCount": 0
+        },
+        {
+          "blockerCount": 8,
+          "durationMs": 4031,
+          "probeStatus": "OK",
+          "processCode": "AUDIT_LOG_OPERATION",
+          "readinessStatus": "PARTIAL",
+          "reasonCounts": {
+            "DESIGN_COMPILER_MISMATCH": 8
+          },
+          "sourceReadyCount": 0,
+          "totalCount": 0
+        },
+        {
+          "blockerCount": 8,
+          "durationMs": 4204,
+          "probeStatus": "OK",
+          "processCode": "AUTOMATION_RULE_MANAGEMENT",
+          "readinessStatus": "PARTIAL",
+          "reasonCounts": {
+            "DESIGN_COMPILER_MISMATCH": 8
+          },
+          "sourceReadyCount": 0,
+          "totalCount": 0
+        },
+        {
+          "blockerCount": 16,
+          "durationMs": 4391,
+          "probeStatus": "OK",
+          "processCode": "BACKGROUND_DB_VERSION_IMPACT",
+          "readinessStatus": "PARTIAL",
+          "reasonCounts": {
+            "DESIGN_COMPILER_MISMATCH": 16
+          },
+          "sourceReadyCount": 0,
+          "totalCount": 0
+        },
+        {
+          "blockerCount": 8,
+          "durationMs": 4735,
+          "probeStatus": "OK",
+          "processCode": "BATCH_SCHEDULE_OPERATION",
+          "readinessStatus": "PARTIAL",
+          "reasonCounts": {
+            "DESIGN_COMPILER_MISMATCH": 8
+          },
+          "sourceReadyCount": 0,
+          "totalCount": 0
+        },
+        {
+          "blockerCount": 8,
+          "durationMs": 4594,
+          "probeStatus": "OK",
+          "processCode": "BUILDER_GENERATOR_OPERATION",
+          "readinessStatus": "PARTIAL",
+          "reasonCounts": {
+            "DESIGN_COMPILER_MISMATCH": 8
+          },
+          "sourceReadyCount": 0,
+          "totalCount": 0
+        },
+        {
+          "blockerCount": 11,
+          "durationMs": 4781,
+          "probeStatus": "OK",
+          "processCode": "BUSINESS_SITE_ADMINISTRATION",
+          "readinessStatus": "PARTIAL",
+          "reasonCounts": {
+            "DESIGN_COMPILER_MISMATCH": 11
+          },
+          "sourceReadyCount": 0,
+          "totalCount": 0
+        },
+        {
+          "blockerCount": 8,
+          "durationMs": 4813,
+          "probeStatus": "OK",
+          "processCode": "CALCULATION_ENGINE_PARITY",
+          "readinessStatus": "PARTIAL",
+          "reasonCounts": {
+            "DESIGN_BLUEPRINT_DUPLICATE": 4,
+            "DESIGN_COMPILER_MISMATCH": 4
+          },
+          "sourceReadyCount": 0,
+          "totalCount": 0
+        },
+        {
+          "blockerCount": 16,
+          "durationMs": 5109,
+          "probeStatus": "OK",
+          "processCode": "CARBON_CREDIT_MANAGEMENT",
+          "readinessStatus": "PARTIAL",
+          "reasonCounts": {
+            "DESIGN_COMPILER_MISMATCH": 16
+          },
+          "sourceReadyCount": 0,
+          "totalCount": 0
+        },
+        {
+          "blockerCount": 16,
+          "durationMs": 5484,
+          "probeStatus": "OK",
+          "processCode": "CCUS_LIFECYCLE_MRV",
+          "readinessStatus": "PARTIAL",
+          "reasonCounts": {
+            "DESIGN_COMPILER_MISMATCH": 16
+          },
+          "sourceReadyCount": 0,
+          "totalCount": 0
+        },
+        {
+          "blockerCount": 8,
+          "durationMs": 4828,
+          "probeStatus": "OK",
+          "processCode": "CERTIFICATE_FEE_TAX_REFUND",
+          "readinessStatus": "PARTIAL",
+          "reasonCounts": {
+            "DESIGN_BLUEPRINT_DUPLICATE": 4,
+            "DESIGN_COMPILER_MISMATCH": 4
+          },
+          "sourceReadyCount": 0,
+          "totalCount": 0
+        },
+        {
+          "blockerCount": 9,
+          "durationMs": 4796,
+          "probeStatus": "OK",
+          "processCode": "CERTIFICATE_ISSUANCE",
+          "readinessStatus": "PARTIAL",
+          "reasonCounts": {
+            "DESIGN_BLUEPRINT_DUPLICATE": 2,
+            "DESIGN_COMPILER_MISMATCH": 2,
+            "DESIGN_CONTRACT_MISSING": 2,
+            "DESIGN_LANES_INCOMPLETE": 3
+          },
+          "sourceReadyCount": 0,
+          "totalCount": 0
+        },
+        {
+          "durationMs": 6078,
+          "error": "ERROR: canceling statement due to statement timeout CONTEXT: SQL statement \"SELECT jsonb_build_object( 'identity',jsonb_build_object( 'screenKey',upper(b.process_code)||'|'||upper(b.step_code)||'|'|| upper(b.audience)||'|'||lower(split_part(b.route_path,'?',1)), 'blueprintCode',b.blueprint_code, 'processCode',upper(b.process_code), 'stepCode',upper(b.step_code), 'audience',upper(b.audience), 'routePath',lower(split_part(b.route_path,'?',1)), 'pageId',b.page_id, 'actorCode',upper(b.actor_code) ), 'process',jsonb_build_object( 'processName',p.process_name, 'domainCode',p.domain_code, 'processVersion',p.process_version, 'goal',p.goal, 'startCondition',p.start_condition, 'completionCondition',p.completion_condition, 'ownerActorCode',coalesce(p.owner_actor_code,''), 'riskLevel',p.risk_level, 'slaHours',p.sla_hours, 'lifecycleStatus',p.lifecycle_status ), 'step',jsonb_build_object( 'stepName',s.step_name, 'stepOrder',s.step_order, 'stepType',s.step_type, 'actorCode',s.actor_code, 'fromState'",
+          "probeStatus": "ERROR",
+          "processCode": "CERTIFICATE_OBJECTION"
+        },
+        {
+          "durationMs": 5984,
+          "error": "ERROR: canceling statement due to statement timeout CONTEXT: SQL statement \"SELECT jsonb_build_object( 'identity',jsonb_build_object( 'screenKey',upper(b.process_code)||'|'||upper(b.step_code)||'|'|| upper(b.audience)||'|'||lower(split_part(b.route_path,'?',1)), 'blueprintCode',b.blueprint_code, 'processCode',upper(b.process_code), 'stepCode',upper(b.step_code), 'audience',upper(b.audience), 'routePath',lower(split_part(b.route_path,'?',1)), 'pageId',b.page_id, 'actorCode',upper(b.actor_code) ), 'process',jsonb_build_object( 'processName',p.process_name, 'domainCode',p.domain_code, 'processVersion',p.process_version, 'goal',p.goal, 'startCondition',p.start_condition, 'completionCondition',p.completion_condition, 'ownerActorCode',coalesce(p.owner_actor_code,''), 'riskLevel',p.risk_level, 'slaHours',p.sla_hours, 'lifecycleStatus',p.lifecycle_status ), 'step',jsonb_build_object( 'stepName',s.step_name, 'stepOrder',s.step_order, 'stepType',s.step_type, 'actorCode',s.actor_code, 'fromState'",
+          "probeStatus": "ERROR",
+          "processCode": "CERTIFICATE_REVIEW_ISSUANCE"
+        },
+        {
+          "durationMs": 5906,
+          "error": "ERROR: canceling statement due to statement timeout CONTEXT: PL/pgSQL function framework_project_professional_screen_contract(framework_professional_screen_contract,jsonb) line 26 at statement block SQL statement \"SELECT (public.framework_project_professional_screen_contract( persisted,proposed_values )).* FROM public.framework_professional_screen_contract persisted WHERE upper(persisted.process_code)=normalized_process AND upper(persisted.step_code)=normalized_step AND upper(persisted.audience)=normalized_audience AND lower(split_part(persisted.route_path,'?',1))=normalized_route\" PL/pgSQL function framework_canonical_screen_design(character varying,character varying,character varying,character varying,jsonb) line 17 at SQL statement SQL function \"framework_canonical_screen_design\" statement 1 SQL statement \"WITH compiled AS MATERIALIZED ( SELECT p.development_order,b.process_code,s.step_order,b.audience, lower(split_part(b.route_path,'?',1)) route_path,b.blueprint_code, b.step_code,",
+          "probeStatus": "ERROR",
+          "processCode": "CERTIFICATE_VERIFICATION"
+        },
+        {
+          "blockerCount": 8,
+          "durationMs": 5782,
+          "probeStatus": "OK",
+          "processCode": "CERTIFICATION_ELIGIBILITY_CHECK",
+          "readinessStatus": "PARTIAL",
+          "reasonCounts": {
+            "DESIGN_BLUEPRINT_DUPLICATE": 4,
+            "DESIGN_COMPILER_MISMATCH": 4
+          },
+          "sourceReadyCount": 0,
+          "totalCount": 0
+        },
+        {
+          "durationMs": 5610,
+          "error": "ERROR: canceling statement due to statement timeout CONTEXT: PL/pgSQL function framework_canonical_screen_design(character varying,character varying,character varying,character varying,jsonb) line 10 at IF SQL function \"framework_canonical_screen_design\" statement 1 SQL statement \"WITH compiled AS MATERIALIZED ( SELECT p.development_order,b.process_code,s.step_order,b.audience, lower(split_part(b.route_path,'?',1)) route_path,b.blueprint_code, b.step_code, upper(b.process_code)||'|'||upper(b.step_code)||'|'|| upper(b.audience)||'|'||lower(split_part(b.route_path,'?',1)) screen_key, public.framework_canonical_screen_design( b.process_code,b.step_code,b.audience,b.route_path ) canonical_design FROM public.framework_screen_blueprint b JOIN public.framework_process_definition p USING(process_code) JOIN public.framework_process_step s ON s.process_code=b.process_code AND s.step_code=b.step_code WHERE b.validation_status='VALID' AND ( SELECT count(*) FROM public.framework_professional_screen",
+          "probeStatus": "ERROR",
+          "processCode": "CHAIN_OF_CUSTODY"
+        },
+        {
+          "durationMs": 5718,
+          "error": "ERROR: canceling statement due to statement timeout CONTEXT: PL/pgSQL function framework_try_jsonb(text,jsonb) line 2 at statement block SQL statement \"SELECT jsonb_build_object( 'identity',jsonb_build_object( 'screenKey',upper(b.process_code)||'|'||upper(b.step_code)||'|'|| upper(b.audience)||'|'||lower(split_part(b.route_path,'?',1)), 'blueprintCode',b.blueprint_code, 'processCode',upper(b.process_code), 'stepCode',upper(b.step_code), 'audience',upper(b.audience), 'routePath',lower(split_part(b.route_path,'?',1)), 'pageId',b.page_id, 'actorCode',upper(b.actor_code) ), 'process',jsonb_build_object( 'processName',p.process_name, 'domainCode',p.domain_code, 'processVersion',p.process_version, 'goal',p.goal, 'startCondition',p.start_condition, 'completionCondition',p.completion_condition, 'ownerActorCode',coalesce(p.owner_actor_code,''), 'riskLevel',p.risk_level, 'slaHours',p.sla_hours, 'lifecycleStatus',p.lifecycle_status ), 'step',jsonb_build_object( 'stepName',s.step_name, 'stepOrder'",
+          "probeStatus": "ERROR",
+          "processCode": "CO2_DEMAND_REGISTRATION"
+        },
+        {
+          "durationMs": 5797,
+          "error": "ERROR: canceling statement due to statement timeout CONTEXT: PL/pgSQL function framework_try_jsonb(text,jsonb) line 3 at IF SQL statement \"SELECT jsonb_build_object( 'identity',jsonb_build_object( 'screenKey',upper(b.process_code)||'|'||upper(b.step_code)||'|'|| upper(b.audience)||'|'||lower(split_part(b.route_path,'?',1)), 'blueprintCode',b.blueprint_code, 'processCode',upper(b.process_code), 'stepCode',upper(b.step_code), 'audience',upper(b.audience), 'routePath',lower(split_part(b.route_path,'?',1)), 'pageId',b.page_id, 'actorCode',upper(b.actor_code) ), 'process',jsonb_build_object( 'processName',p.process_name, 'domainCode',p.domain_code, 'processVersion',p.process_version, 'goal',p.goal, 'startCondition',p.start_condition, 'completionCondition',p.completion_condition, 'ownerActorCode',coalesce(p.owner_actor_code,''), 'riskLevel',p.risk_level, 'slaHours',p.sla_hours, 'lifecycleStatus',p.lifecycle_status ), 'step',jsonb_build_object( 'stepName',s.step_name, 'stepOrder',s.step_order",
+          "probeStatus": "ERROR",
+          "processCode": "CO2_INJECTION_STORAGE_OPERATION"
+        },
+        {
+          "blockerCount": 8,
+          "durationMs": 5703,
+          "probeStatus": "OK",
+          "processCode": "CO2_LOT_TAG_MANAGEMENT",
+          "readinessStatus": "PARTIAL",
+          "reasonCounts": {
+            "DESIGN_BLUEPRINT_DUPLICATE": 4,
+            "DESIGN_COMPILER_MISMATCH": 4
+          },
+          "sourceReadyCount": 0,
+          "totalCount": 0
+        },
+        {
+          "blockerCount": 8,
+          "durationMs": 5109,
+          "probeStatus": "OK",
+          "processCode": "CO2_QUALITY_ANALYSIS",
+          "readinessStatus": "PARTIAL",
+          "reasonCounts": {
+            "DESIGN_BLUEPRINT_DUPLICATE": 4,
+            "DESIGN_COMPILER_MISMATCH": 4
+          },
+          "sourceReadyCount": 0,
+          "totalCount": 0
+        },
+        {
+          "blockerCount": 16,
+          "durationMs": 5110,
+          "probeStatus": "OK",
+          "processCode": "CO2_SUPPLY_REGISTRATION",
+          "readinessStatus": "PARTIAL",
+          "reasonCounts": {
+            "DESIGN_COMPILER_MISMATCH": 16
+          },
+          "sourceReadyCount": 0,
+          "totalCount": 0
+        },
+        {
+          "blockerCount": 8,
+          "durationMs": 5313,
+          "probeStatus": "OK",
+          "processCode": "COMPANY_MANAGER_DELEGATION",
+          "readinessStatus": "PARTIAL",
+          "reasonCounts": {
+            "DESIGN_BLUEPRINT_DUPLICATE": 4,
+            "DESIGN_COMPILER_MISMATCH": 4
+          },
+          "sourceReadyCount": 0,
+          "totalCount": 0
+        },
+        {
+          "blockerCount": 15,
+          "durationMs": 5016,
+          "probeStatus": "OK",
+          "processCode": "COMPANY_REGISTRATION_APPROVAL",
+          "readinessStatus": "PARTIAL",
+          "reasonCounts": {
+            "DESIGN_BLUEPRINT_DUPLICATE": 4,
+            "DESIGN_COMPILER_MISMATCH": 11
+          },
+          "sourceReadyCount": 0,
+          "totalCount": 0
+        },
+        {
+          "durationMs": 5797,
+          "error": "ERROR: canceling statement due to statement timeout CONTEXT: SQL statement \"SELECT jsonb_build_object( 'identity',jsonb_build_object( 'screenKey',upper(b.process_code)||'|'||upper(b.step_code)||'|'|| upper(b.audience)||'|'||lower(split_part(b.route_path,'?',1)), 'blueprintCode',b.blueprint_code, 'processCode',upper(b.process_code), 'stepCode',upper(b.step_code), 'audience',upper(b.audience), 'routePath',lower(split_part(b.route_path,'?',1)), 'pageId',b.page_id, 'actorCode',upper(b.actor_code) ), 'process',jsonb_build_object( 'processName',p.process_name, 'domainCode',p.domain_code, 'processVersion',p.process_version, 'goal',p.goal, 'startCondition',p.start_condition, 'completionCondition',p.completion_condition, 'ownerActorCode',coalesce(p.owner_actor_code,''), 'riskLevel',p.risk_level, 'slaHours',p.sla_hours, 'lifecycleStatus',p.lifecycle_status ), 'step',jsonb_build_object( 'stepName',s.step_name, 'stepOrder',s.step_order, 'stepType',s.step_type, 'actorCode',s.actor_code, 'fromState'",
+          "probeStatus": "ERROR",
+          "processCode": "COMPARATIVE_ASSERTION_REVIEW"
+        },
+        {
+          "durationMs": 6094,
+          "error": "ERROR: canceling statement due to statement timeout CONTEXT: SQL expression \"(SELECT array_agg(key ORDER BY key) FROM jsonb_object_keys(canonical_design) key) <>ARRAY['identity','lanes','process','step'] OR jsonb_typeof(canonical_design->'identity')<>'object' OR jsonb_typeof(canonical_design->'process')<>'object' OR jsonb_typeof(canonical_design->'step')<>'object' OR jsonb_typeof(canonical_design->'lanes')<>'object' OR (SELECT array_agg(key ORDER BY key) FROM jsonb_object_keys(canonical_design->'lanes') key) <>ARRAY['API','DATABASE','DESIGN_CARD','FRONTEND','HELP','QA','WORK_GUIDE'] OR jsonb_typeof(canonical_design#>'{lanes,HELP}')<>'object' OR jsonb_typeof(canonical_design#>'{lanes,WORK_GUIDE}')<>'object' OR jsonb_typeof(canonical_design#>'{lanes,QA}')<>'object' OR jsonb_typeof(canonical_design#>'{lanes,DESIGN_CARD}')<>'object' OR jsonb_typeof(canonical_design#>'{lanes,FRONTEND}')<>'object' OR jsonb_typeof(canonical_design#>'{lanes,API}')<>'array' OR jsonb_array_length(canonical_desig",
+          "probeStatus": "ERROR",
+          "processCode": "CONTENT_OPERATION"
+        },
+        {
+          "durationMs": 5797,
+          "error": "ERROR: canceling statement due to statement timeout CONTEXT: SQL statement \"SELECT jsonb_build_object( 'identity',jsonb_build_object( 'screenKey',upper(b.process_code)||'|'||upper(b.step_code)||'|'|| upper(b.audience)||'|'||lower(split_part(b.route_path,'?',1)), 'blueprintCode',b.blueprint_code, 'processCode',upper(b.process_code), 'stepCode',upper(b.step_code), 'audience',upper(b.audience), 'routePath',lower(split_part(b.route_path,'?',1)), 'pageId',b.page_id, 'actorCode',upper(b.actor_code) ), 'process',jsonb_build_object( 'processName',p.process_name, 'domainCode',p.domain_code, 'processVersion',p.process_version, 'goal',p.goal, 'startCondition',p.start_condition, 'completionCondition',p.completion_condition, 'ownerActorCode',coalesce(p.owner_actor_code,''), 'riskLevel',p.risk_level, 'slaHours',p.sla_hours, 'lifecycleStatus',p.lifecycle_status ), 'step',jsonb_build_object( 'stepName',s.step_name, 'stepOrder',s.step_order, 'stepType',s.step_type, 'actorCode',s.actor_code, 'fromState'",
+          "probeStatus": "ERROR",
+          "processCode": "COURSE_MANAGEMENT"
+        },
+        {
+          "blockerCount": 8,
+          "durationMs": 5984,
+          "probeStatus": "OK",
+          "processCode": "CUSTOMER_INQUIRY",
+          "readinessStatus": "PARTIAL",
+          "reasonCounts": {
+            "DESIGN_COMPILER_MISMATCH": 8
+          },
+          "sourceReadyCount": 0,
+          "totalCount": 0
+        },
+        {
+          "durationMs": 6281,
+          "error": "ERROR: canceling statement due to statement timeout CONTEXT: SQL statement \"SELECT jsonb_build_object( 'identity',jsonb_build_object( 'screenKey',upper(b.process_code)||'|'||upper(b.step_code)||'|'|| upper(b.audience)||'|'||lower(split_part(b.route_path,'?',1)), 'blueprintCode',b.blueprint_code, 'processCode',upper(b.process_code), 'stepCode',upper(b.step_code), 'audience',upper(b.audience), 'routePath',lower(split_part(b.route_path,'?',1)), 'pageId',b.page_id, 'actorCode',upper(b.actor_code) ), 'process',jsonb_build_object( 'processName',p.process_name, 'domainCode',p.domain_code, 'processVersion',p.process_version, 'goal',p.goal, 'startCondition',p.start_condition, 'completionCondition',p.completion_condition, 'ownerActorCode',coalesce(p.owner_actor_code,''), 'riskLevel',p.risk_level, 'slaHours',p.sla_hours, 'lifecycleStatus',p.lifecycle_status ), 'step',jsonb_build_object( 'stepName',s.step_name, 'stepOrder',s.step_order, 'stepType',s.step_type, 'actorCode',s.actor_code, 'fromState'",
+          "probeStatus": "ERROR",
+          "processCode": "CUSTOMER_WORK_COORDINATION"
+        },
+        {
+          "durationMs": 5797,
+          "error": "ERROR: canceling statement due to statement timeout CONTEXT: PL/pgSQL function framework_project_professional_screen_contract(framework_professional_screen_contract,jsonb) line 26 at statement block SQL statement \"SELECT (public.framework_project_professional_screen_contract( persisted,proposed_values )).* FROM public.framework_professional_screen_contract persisted WHERE upper(persisted.process_code)=normalized_process AND upper(persisted.step_code)=normalized_step AND upper(persisted.audience)=normalized_audience AND lower(split_part(persisted.route_path,'?',1))=normalized_route\" PL/pgSQL function framework_canonical_screen_design(character varying,character varying,character varying,character varying,jsonb) line 17 at SQL statement SQL function \"framework_canonical_screen_design\" statement 1 SQL statement \"WITH compiled AS MATERIALIZED ( SELECT p.development_order,b.process_code,s.step_order,b.audience, lower(split_part(b.route_path,'?',1)) route_path,b.blueprint_code, b.step_code,",
+          "probeStatus": "ERROR",
+          "processCode": "DATA_INTEGRATION"
+        },
+        {
+          "durationMs": 5890,
+          "error": "ERROR: canceling statement due to statement timeout CONTEXT: SQL expression \"source::jsonb\" PL/pgSQL function framework_try_jsonb(text,jsonb) line 4 at RETURN SQL statement \"SELECT jsonb_build_object( 'identity',jsonb_build_object( 'screenKey',upper(b.process_code)||'|'||upper(b.step_code)||'|'|| upper(b.audience)||'|'||lower(split_part(b.route_path,'?',1)), 'blueprintCode',b.blueprint_code, 'processCode',upper(b.process_code), 'stepCode',upper(b.step_code), 'audience',upper(b.audience), 'routePath',lower(split_part(b.route_path,'?',1)), 'pageId',b.page_id, 'actorCode',upper(b.actor_code) ), 'process',jsonb_build_object( 'processName',p.process_name, 'domainCode',p.domain_code, 'processVersion',p.process_version, 'goal',p.goal, 'startCondition',p.start_condition, 'completionCondition',p.completion_condition, 'ownerActorCode',coalesce(p.owner_actor_code,''), 'riskLevel',p.risk_level, 'slaHours',p.sla_hours, 'lifecycleStatus',p.lifecycle_status ), 'step',jsonb_build_object( 'stepName',s.",
+          "probeStatus": "ERROR",
+          "processCode": "DATA_QUALITY_MONITORING"
+        },
+        {
+          "blockerCount": 8,
+          "durationMs": 5891,
+          "probeStatus": "OK",
+          "processCode": "DATA_SCHEMA_CONTRACT",
+          "readinessStatus": "PARTIAL",
+          "reasonCounts": {
+            "DESIGN_COMPILER_MISMATCH": 8
+          },
+          "sourceReadyCount": 0,
+          "totalCount": 0
+        },
+        {
+          "blockerCount": 16,
+          "durationMs": 5390,
+          "probeStatus": "OK",
+          "processCode": "DATA_SCOPE_AUTHORITY",
+          "readinessStatus": "PARTIAL",
+          "reasonCounts": {
+            "DESIGN_COMPILER_MISMATCH": 16
+          },
+          "sourceReadyCount": 0,
+          "totalCount": 0
+        },
+        {
+          "durationMs": 5797,
+          "error": "ERROR: canceling statement due to statement timeout CONTEXT: SQL statement \"WITH compiled AS MATERIALIZED ( SELECT p.development_order,b.process_code,s.step_order,b.audience, lower(split_part(b.route_path,'?',1)) route_path,b.blueprint_code, b.step_code, upper(b.process_code)||'|'||upper(b.step_code)||'|'|| upper(b.audience)||'|'||lower(split_part(b.route_path,'?',1)) screen_key, public.framework_canonical_screen_design( b.process_code,b.step_code,b.audience,b.route_path ) canonical_design FROM public.framework_screen_blueprint b JOIN public.framework_process_definition p USING(process_code) JOIN public.framework_process_step s ON s.process_code=b.process_code AND s.step_code=b.step_code WHERE b.validation_status='VALID' AND ( SELECT count(*) FROM public.framework_professional_screen_contract c WHERE c.process_code=b.process_code AND c.step_code=b.step_code AND c.audience=b.audience AND lower(split_part(c.route_path,'?',1))= lower(split_part(b.route_path,'?',1)) )=1 AND ( SELECT count(",
+          "probeStatus": "ERROR",
+          "processCode": "DEADLINE_NOTIFICATION_POLICY"
+        },
+        {
+          "blockerCount": 8,
+          "durationMs": 5797,
+          "probeStatus": "OK",
+          "processCode": "DESIGN_ASSET_GOVERNANCE",
+          "readinessStatus": "PARTIAL",
+          "reasonCounts": {
+            "DESIGN_COMPILER_MISMATCH": 8
+          },
+          "sourceReadyCount": 0,
+          "totalCount": 0
+        },
+        {
+          "blockerCount": 16,
+          "durationMs": 5609,
+          "probeStatus": "OK",
+          "processCode": "DISCLOSURE_CORRECTION",
+          "readinessStatus": "PARTIAL",
+          "reasonCounts": {
+            "DESIGN_COMPILER_MISMATCH": 16
+          },
+          "sourceReadyCount": 0,
+          "totalCount": 0
+        },
+        {
+          "blockerCount": 16,
+          "durationMs": 5406,
+          "probeStatus": "OK",
+          "processCode": "DOUBLE_USE_PREVENTION",
+          "readinessStatus": "PARTIAL",
+          "reasonCounts": {
+            "DESIGN_COMPILER_MISMATCH": 16
+          },
+          "sourceReadyCount": 0,
+          "totalCount": 0
+        },
+        {
+          "blockerCount": 16,
+          "durationMs": 5703,
+          "probeStatus": "OK",
+          "processCode": "EDUCATION_APPLICATION",
+          "readinessStatus": "PARTIAL",
+          "reasonCounts": {
+            "DESIGN_COMPILER_MISMATCH": 16
+          },
+          "sourceReadyCount": 0,
+          "totalCount": 0
+        },
+        {
+          "durationMs": 5703,
+          "error": "ERROR: canceling statement due to statement timeout CONTEXT: SQL expression \"source::jsonb\" PL/pgSQL function framework_try_jsonb(text,jsonb) line 4 at RETURN SQL statement \"SELECT jsonb_build_object( 'identity',jsonb_build_object( 'screenKey',upper(b.process_code)||'|'||upper(b.step_code)||'|'|| upper(b.audience)||'|'||lower(split_part(b.route_path,'?',1)), 'blueprintCode',b.blueprint_code, 'processCode',upper(b.process_code), 'stepCode',upper(b.step_code), 'audience',upper(b.audience), 'routePath',lower(split_part(b.route_path,'?',1)), 'pageId',b.page_id, 'actorCode',upper(b.actor_code) ), 'process',jsonb_build_object( 'processName',p.process_name, 'domainCode',p.domain_code, 'processVersion',p.process_version, 'goal',p.goal, 'startCondition',p.start_condition, 'completionCondition',p.completion_condition, 'ownerActorCode',coalesce(p.owner_actor_code,''), 'riskLevel',p.risk_level, 'slaHours',p.sla_hours, 'lifecycleStatus',p.lifecycle_status ), 'step',jsonb_build_object( 'stepName',s.",
+          "probeStatus": "ERROR",
+          "processCode": "EDUCATION_ASSESSMENT"
+        },
+        {
+          "durationMs": 5922,
+          "error": "ERROR: canceling statement due to statement timeout CONTEXT: SQL statement \"SELECT jsonb_build_object( 'identity',jsonb_build_object( 'screenKey',upper(b.process_code)||'|'||upper(b.step_code)||'|'|| upper(b.audience)||'|'||lower(split_part(b.route_path,'?',1)), 'blueprintCode',b.blueprint_code, 'processCode',upper(b.process_code), 'stepCode',upper(b.step_code), 'audience',upper(b.audience), 'routePath',lower(split_part(b.route_path,'?',1)), 'pageId',b.page_id, 'actorCode',upper(b.actor_code) ), 'process',jsonb_build_object( 'processName',p.process_name, 'domainCode',p.domain_code, 'processVersion',p.process_version, 'goal',p.goal, 'startCondition',p.start_condition, 'completionCondition',p.completion_condition, 'ownerActorCode',coalesce(p.owner_actor_code,''), 'riskLevel',p.risk_level, 'slaHours',p.sla_hours, 'lifecycleStatus',p.lifecycle_status ), 'step',jsonb_build_object( 'stepName',s.step_name, 'stepOrder',s.step_order, 'stepType',s.step_type, 'actorCode',s.actor_code, 'fromState'",
+          "probeStatus": "ERROR",
+          "processCode": "EDUCATION_SCHEDULE"
+        },
+        {
+          "durationMs": 6000,
+          "error": "ERROR: canceling statement due to statement timeout CONTEXT: SQL statement \"SELECT jsonb_build_object( 'identity',jsonb_build_object( 'screenKey',upper(b.process_code)||'|'||upper(b.step_code)||'|'|| upper(b.audience)||'|'||lower(split_part(b.route_path,'?',1)), 'blueprintCode',b.blueprint_code, 'processCode',upper(b.process_code), 'stepCode',upper(b.step_code), 'audience',upper(b.audience), 'routePath',lower(split_part(b.route_path,'?',1)), 'pageId',b.page_id, 'actorCode',upper(b.actor_code) ), 'process',jsonb_build_object( 'processName',p.process_name, 'domainCode',p.domain_code, 'processVersion',p.process_version, 'goal',p.goal, 'startCondition',p.start_condition, 'completionCondition',p.completion_condition, 'ownerActorCode',coalesce(p.owner_actor_code,''), 'riskLevel',p.risk_level, 'slaHours',p.sla_hours, 'lifecycleStatus',p.lifecycle_status ), 'step',jsonb_build_object( 'stepName',s.step_name, 'stepOrder',s.step_order, 'stepType',s.step_type, 'actorCode',s.actor_code, 'fromState'",
+          "probeStatus": "ERROR",
+          "processCode": "EMISSION_CALCULATION"
+        },
+        {
+          "durationMs": 6109,
+          "error": "ERROR: canceling statement due to statement timeout CONTEXT: SQL expression \"source::jsonb\" PL/pgSQL function framework_try_jsonb(text,jsonb) line 4 at RETURN SQL statement \"SELECT jsonb_build_object( 'identity',jsonb_build_object( 'screenKey',upper(b.process_code)||'|'||upper(b.step_code)||'|'|| upper(b.audience)||'|'||lower(split_part(b.route_path,'?',1)), 'blueprintCode',b.blueprint_code, 'processCode',upper(b.process_code), 'stepCode',upper(b.step_code), 'audience',upper(b.audience), 'routePath',lower(split_part(b.route_path,'?',1)), 'pageId',b.page_id, 'actorCode',upper(b.actor_code) ), 'process',jsonb_build_object( 'processName',p.process_name, 'domainCode',p.domain_code, 'processVersion',p.process_version, 'goal',p.goal, 'startCondition',p.start_condition, 'completionCondition',p.completion_condition, 'ownerActorCode',coalesce(p.owner_actor_code,''), 'riskLevel',p.risk_level, 'slaHours',p.sla_hours, 'lifecycleStatus',p.lifecycle_status ), 'step',jsonb_build_object( 'stepName',s.",
+          "probeStatus": "ERROR",
+          "processCode": "EMISSION_PROJECT"
+        },
+        {
+          "blockerCount": 1,
+          "durationMs": 5891,
+          "probeStatus": "OK",
+          "processCode": "EMISSION_PROJECT_PORTFOLIO",
+          "readinessStatus": "PARTIAL",
+          "reasonCounts": {
+            "DESIGN_COMPILER_MISMATCH": 1
+          },
+          "sourceReadyCount": 0,
+          "totalCount": 0
+        },
+        {
+          "durationMs": 6375,
+          "error": "ERROR: canceling statement due to statement timeout CONTEXT: PL/pgSQL function framework_project_professional_screen_contract(framework_professional_screen_contract,jsonb) line 27 at IF SQL statement \"SELECT (public.framework_project_professional_screen_contract( persisted,proposed_values )).* FROM public.framework_professional_screen_contract persisted WHERE upper(persisted.process_code)=normalized_process AND upper(persisted.step_code)=normalized_step AND upper(persisted.audience)=normalized_audience AND lower(split_part(persisted.route_path,'?',1))=normalized_route\" PL/pgSQL function framework_canonical_screen_design(character varying,character varying,character varying,character varying,jsonb) line 17 at SQL statement SQL function \"framework_canonical_screen_design\" statement 1 SQL statement \"WITH compiled AS MATERIALIZED ( SELECT p.development_order,b.process_code,s.step_order,b.audience, lower(split_part(b.route_path,'?',1)) route_path,b.blueprint_code, b.step_code, upper(b.proce",
+          "probeStatus": "ERROR",
+          "processCode": "EXTERNAL_SERVICE_STATUS"
+        },
+        {
+          "blockerCount": 8,
+          "durationMs": 5688,
+          "probeStatus": "OK",
+          "processCode": "EXTERNAL_SYSTEM_REGISTRY",
+          "readinessStatus": "PARTIAL",
+          "reasonCounts": {
+            "DESIGN_COMPILER_MISMATCH": 8
+          },
+          "sourceReadyCount": 0,
+          "totalCount": 0
+        },
+        {
+          "blockerCount": 16,
+          "durationMs": 5219,
+          "probeStatus": "OK",
+          "processCode": "EXTERNAL_VERIFICATION_ENGAGEMENT",
+          "readinessStatus": "PARTIAL",
+          "reasonCounts": {
+            "DESIGN_COMPILER_MISMATCH": 16
+          },
+          "sourceReadyCount": 0,
+          "totalCount": 0
+        },
+        {
+          "blockerCount": 8,
+          "durationMs": 5704,
+          "probeStatus": "OK",
+          "processCode": "FACILITY_ASSET_REGISTRY",
+          "readinessStatus": "PARTIAL",
+          "reasonCounts": {
+            "DESIGN_BLUEPRINT_DUPLICATE": 4,
+            "DESIGN_COMPILER_MISMATCH": 4
+          },
+          "sourceReadyCount": 0,
+          "totalCount": 0
+        },
+        {
+          "blockerCount": 8,
+          "durationMs": 5422,
+          "probeStatus": "OK",
+          "processCode": "FACILITY_EMERGENCY_RESPONSE",
+          "readinessStatus": "PARTIAL",
+          "reasonCounts": {
+            "DESIGN_BLUEPRINT_DUPLICATE": 4,
+            "DESIGN_COMPILER_MISMATCH": 4
+          },
+          "sourceReadyCount": 0,
+          "totalCount": 0
+        },
+        {
+          "blockerCount": 8,
+          "durationMs": 4609,
+          "probeStatus": "OK",
+          "processCode": "FACILITY_OPERATION_MONITORING",
+          "readinessStatus": "PARTIAL",
+          "reasonCounts": {
+            "DESIGN_BLUEPRINT_DUPLICATE": 4,
+            "DESIGN_COMPILER_MISMATCH": 4
+          },
+          "sourceReadyCount": 0,
+          "totalCount": 0
+        },
+        {
+          "blockerCount": 8,
+          "durationMs": 4594,
+          "probeStatus": "OK",
+          "processCode": "FAQ_MANAGEMENT",
+          "readinessStatus": "PARTIAL",
+          "reasonCounts": {
+            "DESIGN_COMPILER_MISMATCH": 8
+          },
+          "sourceReadyCount": 0,
+          "totalCount": 0
+        },
+        {
+          "blockerCount": 8,
+          "durationMs": 3703,
+          "probeStatus": "OK",
+          "processCode": "FEATURE_API_GOVERNANCE",
+          "readinessStatus": "PARTIAL",
+          "reasonCounts": {
+            "DESIGN_COMPILER_MISMATCH": 8
+          },
+          "sourceReadyCount": 0,
+          "totalCount": 0
+        },
+        {
+          "blockerCount": 8,
+          "durationMs": 4078,
+          "probeStatus": "OK",
+          "processCode": "GIT_BUILD_DEPLOYMENT",
+          "readinessStatus": "PARTIAL",
+          "reasonCounts": {
+            "DESIGN_COMPILER_MISMATCH": 8
+          },
+          "sourceReadyCount": 0,
+          "totalCount": 0
+        }
+      ],
+      "schema": "carbonet.source-endpoint-readiness-isolation/v1",
+      "sourceReadyCount": 0,
+      "successfulProbeCount": 42,
+      "totalCount": 0,
+      "totalProcessCount": 139
+    }
   },
   "exactIdentities": {
     "blueprint": {
-      "duplicateAmbiguous": 0,
+      "duplicateAmbiguous": 8,
       "duplicateAuthorityResolved": 35,
-      "duplicateRequiredIdentityGroups": 35,
-      "exactRequiredIdentities": 866,
+      "duplicateRequiredIdentityGroups": 43,
+      "exactRequiredIdentities": 986,
       "globalDuplicateGroups": 51,
-      "missingRequiredIdentities": 142,
-      "physicalRows": 1728,
-      "validLogicalIdentities": 1590,
-      "validPhysicalRows": 1728
+      "missingRequiredIdentities": 207,
+      "physicalRows": 1732,
+      "validLogicalIdentities": 1594,
+      "validPhysicalRows": 1732
     },
     "identityContract": {
+      "authoritativeSelection": "DIRECT_REQUIRED_USER_ADMIN_UNION_ACTIVE_SCREEN_BINDING",
       "fields": [
         "processCode",
         "stepCode",
@@ -145,46 +836,57 @@
       "normalization": "upper(process,step,audience)+lower(path-before-query)"
     },
     "professionalContract": {
-      "duplicateRequiredIdentityGroups": 14,
-      "exactRequiredIdentities": 1028,
+      "duplicateRequiredIdentityGroups": 35,
+      "exactRequiredIdentities": 1144,
       "globalDuplicateGroups": 35,
       "logicalExactGroups": 1968,
-      "missingRequiredIdentities": 1,
-      "physicalRows": 2003
+      "missingRequiredIdentities": 57,
+      "physicalRows": 2003,
+      "targetContractMatchedExactIdentities": 1179,
+      "targetContractMissingExactIdentities": 57,
+      "targetExactIdentities": 1236
     },
     "quality": {
-      "ambiguousExactIdentities": 14,
-      "exactResourceContractBlueprintIdentities": 853,
-      "incompleteExactIdentities": 156,
-      "physicalSingleClosureExactIdentities": 853
+      "ambiguousExactIdentities": 43,
+      "exactResourceContractBlueprintIdentities": 934,
+      "incompleteExactIdentities": 335,
+      "physicalSingleClosureExactIdentities": 934
     },
     "screenResource": {
       "duplicateRequiredIdentityGroups": 0,
-      "exactRequiredIdentities": 1037,
+      "exactRequiredIdentities": 1230,
       "missingRequiredIdentities": 6
     },
     "source": {
-      "compilerReadyExactIdentities": 887,
-      "emittedReadyExactIdentities": 887,
-      "generatedSourcePathReadyExactIdentities": 1,
-      "sourceCatalogEligibleExactIdentities": 887
+      "compilerReadyExactIdentities": 901,
+      "emittedReadyExactIdentities": 901,
+      "generatedSourcePathReadyExactIdentities": 5,
+      "sourceCatalogEligibleExactIdentities": 901
     },
     "stepScreens": {
-      "activeBindingExactIdentities": 1215,
-      "requiredExactIdentities": 1043,
-      "stepsWithScreenRequirement": 539,
-      "stepsWithoutScreenRequirement": 33,
+      "activeBindingExactIdentities": 1222,
+      "activeBindingOnlyExactIdentities": 193,
+      "authoritativeUnionExactIdentities": 1236,
+      "directAndActiveOverlapExactIdentities": 1029,
+      "directOnlyExactIdentities": 14,
+      "directRequiredExactIdentities": 1043,
+      "multiRouteAdditionalExactIdentities": 143,
+      "multiRouteStepAudienceExactIdentities": 182,
+      "multiRouteStepAudienceGroups": 39,
+      "requiredExactIdentities": 1236,
+      "stepsWithScreenRequirement": 572,
+      "stepsWithoutScreenRequirement": 0,
       "totalSteps": 572
     },
     "strategy": {
-      "adoptExistingPhysicalRows": 868,
+      "adoptExistingPhysicalRows": 872,
       "generatedRuntimePhysicalRows": 859,
       "manualStrategyPhysicalRows": 1,
-      "ownershipAmbiguousExactIdentities": 0,
-      "ownershipGeneratedExactIdentities": 819,
-      "ownershipHybridExactIdentities": 82,
-      "ownershipManualExactIdentities": 0,
-      "ownershipUnclassifiedExactIdentities": 142
+      "ownershipAmbiguousExactIdentities": 8,
+      "ownershipGeneratedExactIdentities": 823,
+      "ownershipHybridExactIdentities": 163,
+      "ownershipManualExactIdentities": 35,
+      "ownershipUnclassifiedExactIdentities": 207
     }
   },
   "frontend": {
@@ -198,16 +900,16 @@
     "routeSourceFileCount": 15,
     "trackedGeneratedDefinitionCount": 0
   },
-  "generatedAt": "2026-08-16T08:40:40Z",
+  "generatedAt": "2026-08-16T11:12:37Z",
   "probes": {
     "canonicalBlueprintAuthority": {
-      "durationMs": 613,
+      "durationMs": 313,
       "error": "ERROR: function public.framework_canonical_blueprint_authority(character varying, character varying, character varying, character varying, bigint) does not exist LINE 4: 'blueprintId',public.framework_canonical_blu... ^ HINT: No function matches the given name and argument types. You might need to add explicit type casts. command terminated with exit code 3",
       "name": "canonicalBlueprintAuthority",
       "status": "ERROR"
     },
     "commonAssetCoverage": {
-      "durationMs": 794,
+      "durationMs": 484,
       "name": "commonAssetCoverage",
       "status": "OK",
       "value": {
@@ -217,45 +919,881 @@
       }
     },
     "designCausalityStatus": {
-      "durationMs": 690,
+      "durationMs": 313,
       "error": "ERROR: function public.framework_design_causality_status() does not exist LINE 1: SELECT public.framework_design_causality_status(); ^ HINT: No function matches the given name and argument types. You might need to add explicit type casts. command terminated with exit code 3",
       "name": "designCausalityStatus",
       "status": "ERROR"
     },
     "endpointFunctionInventory": {
-      "durationMs": 587,
+      "durationMs": 484,
       "name": "endpointFunctionInventory",
       "status": "OK",
       "value": {
-        "globalReadinessOneArg": false,
-        "globalReadinessTwoArg": false,
-        "sourceCatalog": false,
-        "sourceReadiness": false
+        "globalReadinessOneArg": true,
+        "globalReadinessTwoArg": true,
+        "sourceCatalog": true,
+        "sourceReadiness": true
       }
     },
     "globalEndpointReadiness": {
-      "durationMs": 607,
-      "error": "ERROR: function public.framework_canonical_endpoint_readiness(integer, character varying) does not exist LINE 1: SELECT public.framework_canonical_endpoint_readiness(5000,NU... ^ HINT: No function matches the given name and argument types. You might need to add explicit type casts. command terminated with exit code 3",
+      "durationMs": 3328,
       "name": "globalEndpointReadiness",
-      "status": "ERROR"
+      "status": "OK",
+      "value": {
+        "authority": "canonical-design-source-screens",
+        "blockerCount": 1732,
+        "canonicalScreenCount": 0,
+        "designBlockerCount": 1732,
+        "globalCollisionCount": 0,
+        "reasonCounts": {
+          "DESIGN_BLUEPRINT_DUPLICATE": 189,
+          "DESIGN_COMPILER_MISMATCH": 1362,
+          "DESIGN_CONTRACT_DUPLICATE": 13,
+          "DESIGN_CONTRACT_MISSING": 101,
+          "DESIGN_LANES_INCOMPLETE": 67
+        },
+        "requestedProcess": null,
+        "schema": "carbonet.canonical-endpoint-readiness/v1",
+        "sourceDesignCount": 1732,
+        "sourceReadyCount": 0,
+        "status": "PARTIAL",
+        "totalCount": 0
+      }
     },
     "sourceDesignCatalog": {
-      "durationMs": 502,
-      "error": "ERROR: function public.framework_source_canonical_design_catalog(integer, character varying) does not exist LINE 13: CROSS JOIN LATERAL public.framework_source_can... ^ HINT: No function matches the given name and argument types. You might need to add explicit type casts. command terminated with exit code 3",
+      "durationMs": 1703,
+      "error": "ERROR: query returned more than one row HINT: Make sure the query returns a single row, or use LIMIT 1. CONTEXT: PL/pgSQL function framework_canonical_screen_design(character varying,character varying,character varying,character varying,jsonb) line 27 at SQL statement SQL function \"framework_canonical_screen_design\" statement 1 SQL statement \"WITH compiled AS MATERIALIZED ( SELECT p.development_order,b.process_code,s.step_order,b.audience, lower(split_part(b.route_path,'?',1)) route_path,b.blueprint_code, b.step_code, upper(b.process_code)||'|'||upper(b.step_code)||'|'|| upper(b.audience)||'|'||lower(split_part(b.route_path,'?',1)) screen_key, public.framework_canonical_screen_design( b.process_code,b.step_code,b.audience,b.route_path ) canonical_design FROM public.framework_screen_blueprint b JOIN public.framework_process_definition p USING(process_code) JOIN public.framework_process_step s ON s.process_code=b.process_code AND s.step_code=b.step_code WHERE b.validation_status='VALID'",
       "name": "sourceDesignCatalog",
       "status": "ERROR"
     },
     "sourceEndpointCatalog": {
-      "durationMs": 701,
-      "error": "ERROR: function public.framework_source_canonical_endpoint_catalog(integer, character varying) does not exist LINE 7: SELECT public.framework_source_canonical_endpo... ^ HINT: No function matches the given name and argument types. You might need to add explicit type casts. command terminated with exit code 3",
+      "durationMs": 3484,
+      "error": "ERROR: canonical endpoint readiness is PARTIAL (total=0, ready=0, blockers=1732) DETAIL: {\"schema\": \"carbonet.canonical-endpoint-readiness/v1\", \"status\": \"PARTIAL\", \"authority\": \"canonical-design-source-screens\", \"totalCount\": 0, \"blockerCount\": 1732, \"reasonCounts\": {\"DESIGN_CONTRACT_MISSING\": 101, \"DESIGN_LANES_INCOMPLETE\": 67, \"DESIGN_COMPILER_MISMATCH\": 1362, \"DESIGN_CONTRACT_DUPLICATE\": 13, \"DESIGN_BLUEPRINT_DUPLICATE\": 189}, \"requestedProcess\": null, \"sourceReadyCount\": 0, \"sourceDesignCount\": 1732, \"designBlockerCount\": 1732, \"canonicalScreenCount\": 0, \"globalCollisionCount\": 0} CONTEXT: PL/pgSQL function framework_source_canonical_endpoint_catalog(integer,character varying) line 11 at RAISE command terminated with exit code 3",
       "name": "sourceEndpointCatalog",
       "status": "ERROR"
     },
+    "sourceEndpointProcessList": {
+      "durationMs": 610,
+      "name": "sourceEndpointProcessList",
+      "status": "OK",
+      "value": [
+        "ACCOUNT_LOCK_RECOVERY",
+        "ACCOUNT_WITHDRAWAL",
+        "ACTIVITY_DATA",
+        "ANALYSIS_EXPORT",
+        "ANOMALY_ALERT_MANAGEMENT",
+        "API_CONNECTION_MANAGEMENT",
+        "API_KEY_LIFECYCLE",
+        "API_USAGE_MONITORING",
+        "APPEAL_DISPUTE_AUDIT",
+        "APPROVAL_AUTHORITY",
+        "APPROVAL_LINE_MANAGEMENT",
+        "APPROVAL_WORKFLOW_MANAGEMENT",
+        "ATTENDANCE_PROGRESS",
+        "AUDIT_LOG_OPERATION",
+        "AUTOMATION_RULE_MANAGEMENT",
+        "BACKGROUND_DB_VERSION_IMPACT",
+        "BATCH_SCHEDULE_OPERATION",
+        "BUILDER_GENERATOR_OPERATION",
+        "BUSINESS_SITE_ADMINISTRATION",
+        "CALCULATION_ENGINE_PARITY",
+        "CARBON_CREDIT_MANAGEMENT",
+        "CCUS_LIFECYCLE_MRV",
+        "CERTIFICATE_FEE_TAX_REFUND",
+        "CERTIFICATE_ISSUANCE",
+        "CERTIFICATE_OBJECTION",
+        "CERTIFICATE_REVIEW_ISSUANCE",
+        "CERTIFICATE_VERIFICATION",
+        "CERTIFICATION_ELIGIBILITY_CHECK",
+        "CHAIN_OF_CUSTODY",
+        "CO2_DEMAND_REGISTRATION",
+        "CO2_INJECTION_STORAGE_OPERATION",
+        "CO2_LOT_TAG_MANAGEMENT",
+        "CO2_QUALITY_ANALYSIS",
+        "CO2_SUPPLY_REGISTRATION",
+        "COMPANY_MANAGER_DELEGATION",
+        "COMPANY_REGISTRATION_APPROVAL",
+        "COMPARATIVE_ASSERTION_REVIEW",
+        "CONTENT_OPERATION",
+        "COURSE_MANAGEMENT",
+        "CUSTOMER_INQUIRY",
+        "CUSTOMER_WORK_COORDINATION",
+        "DATA_INTEGRATION",
+        "DATA_QUALITY_MONITORING",
+        "DATA_SCHEMA_CONTRACT",
+        "DATA_SCOPE_AUTHORITY",
+        "DEADLINE_NOTIFICATION_POLICY",
+        "DESIGN_ASSET_GOVERNANCE",
+        "DISCLOSURE_CORRECTION",
+        "DOUBLE_USE_PREVENTION",
+        "EDUCATION_APPLICATION",
+        "EDUCATION_ASSESSMENT",
+        "EDUCATION_SCHEDULE",
+        "EMISSION_CALCULATION",
+        "EMISSION_PROJECT",
+        "EMISSION_PROJECT_PORTFOLIO",
+        "EXTERNAL_SERVICE_STATUS",
+        "EXTERNAL_SYSTEM_REGISTRY",
+        "EXTERNAL_VERIFICATION_ENGAGEMENT",
+        "FACILITY_ASSET_REGISTRY",
+        "FACILITY_EMERGENCY_RESPONSE",
+        "FACILITY_OPERATION_MONITORING",
+        "FAQ_MANAGEMENT",
+        "FEATURE_API_GOVERNANCE",
+        "GIT_BUILD_DEPLOYMENT",
+        "GOVERNANCE_CHANGE",
+        "IDENTITY_VERIFICATION",
+        "INCIDENT_IMPROVEMENT_REQUEST",
+        "INTEGRATED_MONITORING",
+        "INTEGRATION_FAILURE_RETRY",
+        "INTEGRATION_LOG_AUDIT",
+        "LCA_ALLOCATION_SENSITIVITY",
+        "LCA_DATA_QUALITY_UNCERTAINTY",
+        "LCA_EXECUTION",
+        "LEAKAGE_INCIDENT_RESPONSE",
+        "LEGAL_NOTIFICATION_DELIVERY",
+        "LOGIN_AUTHENTICATION",
+        "MACC_PORTFOLIO",
+        "MEASUREMENT_DATA_QUALITY",
+        "MEMBER_ADMINISTRATION",
+        "MEMBER_APPROVAL",
+        "MEMBER_LIFECYCLE",
+        "MEMBER_REGISTRATION",
+        "MENU_ACCESS_CONTROL",
+        "MENU_SCREEN_GOVERNANCE",
+        "METER_CALIBRATION_MANAGEMENT",
+        "MFA_MANAGEMENT",
+        "MRV_TRACEABILITY",
+        "NEWSLETTER_OPERATION",
+        "NOTICE_PUBLICATION",
+        "NOTIFICATION_CENTER_OPERATION",
+        "ORGANIZATIONAL_BOUNDARY",
+        "ORGANIZATION_DEPARTMENT",
+        "OUTLIER_RULE_MANAGEMENT",
+        "PASSWORD_RECOVERY",
+        "PAYMENT_SETTLEMENT",
+        "PCR_EPD_VERIFICATION",
+        "PREVENTIVE_MAINTENANCE",
+        "PRIVACY_RETENTION_DESTRUCTION",
+        "PROCESS_COMPLETION_POLICY",
+        "PROFILE_MANAGEMENT",
+        "PROJECT_LIFECYCLE_CONTROL",
+        "QUALITY_SCORING_POLICY",
+        "REDUCTION_EXECUTION",
+        "REDUCTION_PERFORMANCE",
+        "REDUCTION_PROJECT_APPROVAL",
+        "REDUCTION_PROJECT_REGISTRATION",
+        "REDUCTION_REPORTING",
+        "REDUCTION_ROADMAP",
+        "REDUCTION_SCENARIO",
+        "REDUCTION_TARGET_PLANNING",
+        "REFUND_MANAGEMENT",
+        "REGULATORY_STATUS_MONITORING",
+        "REGULATORY_SUBMISSION",
+        "REPORT_CERTIFICATION",
+        "REPORT_GENERATION",
+        "REPORT_SUBMISSION",
+        "REPORT_TEMPLATE_MANAGEMENT",
+        "REQ_43BDB0EC53F8",
+        "REQ_922B221066F1",
+        "RESOURCE_PUBLICATION",
+        "ROLE_AUTHORITY_MANAGEMENT",
+        "SCHEDULED_STATISTICS_REPORTING",
+        "SECURITY_POLICY_OPERATION",
+        "STAKEHOLDER_SHARING",
+        "SUPPLY_DEMAND_MATCHING",
+        "SYNC_EXECUTION",
+        "SYSTEM_MONITORING_RECOVERY",
+        "TASK_TEMPLATE_MANAGEMENT",
+        "TERMS_CONSENT",
+        "TRADE_CONTRACT",
+        "TRADE_EXECUTION",
+        "TRADE_EXECUTION_TRACKING",
+        "TRADE_PROPOSAL",
+        "TRADE_SETTLEMENT",
+        "TRAINING_CERTIFICATE",
+        "USER_AUTHORITY_ASSIGNMENT",
+        "VALIDATION_RULE_MANAGEMENT",
+        "VERSION_BACKUP_RECOVERY",
+        "WEBHOOK_MANAGEMENT"
+      ]
+    },
     "sourceEndpointReadiness": {
-      "durationMs": 609,
-      "error": "ERROR: function public.framework_source_canonical_endpoint_readiness(integer, character varying) does not exist LINE 8: public.framework_source_canonical_endpo... ^ HINT: No function matches the given name and argument types. You might need to add explicit type casts. command terminated with exit code 3",
+      "durationMs": 30500,
+      "error": "ERROR: canceling statement due to statement timeout CONTEXT: PL/pgSQL assignment \"parsed:=source::jsonb\" PL/pgSQL function framework_strict_jsonb_array(text) line 5 at assignment SQL statement \"SELECT count(*)::integer FROM public.framework_screen_blueprint b WHERE b.validation_status='VALID' AND ( SELECT count(*) FROM public.framework_professional_screen_contract c WHERE c.process_code=b.process_code AND c.step_code=b.step_code AND c.audience=b.audience AND lower(split_part(c.route_path,'?',1))= lower(split_part(b.route_path,'?',1)) )=1 AND ( SELECT count(*) FROM public.framework_professional_screen_contract c WHERE c.process_code=b.process_code AND c.step_code=b.step_code AND c.audience=b.audience AND lower(split_part(c.route_path,'?',1))= lower(split_part(b.route_path,'?',1)) AND jsonb_array_length( public.framework_strict_jsonb_array(c.api_contract))>0 AND jsonb_array_length( public.framework_strict_jsonb_array(c.data_contract))>0 AND jsonb_array_length( public.framework_strict_jso",
       "name": "sourceEndpointReadiness",
       "status": "ERROR"
+    },
+    "sourceEndpointReadinessIsolation": {
+      "durationMs": 86281,
+      "name": "sourceEndpointReadinessIsolation",
+      "status": "OK",
+      "value": {
+        "blockerCount": 448,
+        "failedProbeCount": 22,
+        "isolationProcessLimit": 64,
+        "mode": "INDEPENDENT_PROCESS_PROBES",
+        "omittedProcessCount": 75,
+        "processCount": 64,
+        "processes": [
+          {
+            "blockerCount": 12,
+            "durationMs": 5750,
+            "probeStatus": "OK",
+            "processCode": "ACCOUNT_LOCK_RECOVERY",
+            "readinessStatus": "PARTIAL",
+            "reasonCounts": {
+              "DESIGN_BLUEPRINT_DUPLICATE": 2,
+              "DESIGN_COMPILER_MISMATCH": 9,
+              "DESIGN_CONTRACT_MISSING": 1
+            },
+            "sourceReadyCount": 0,
+            "totalCount": 0
+          },
+          {
+            "durationMs": 5828,
+            "error": "ERROR: canceling statement due to statement timeout CONTEXT: PL/pgSQL function framework_project_professional_screen_contract(framework_professional_screen_contract,jsonb) line 93 at RETURN SQL statement \"SELECT (public.framework_project_professional_screen_contract( persisted,proposed_values )).* FROM public.framework_professional_screen_contract persisted WHERE upper(persisted.process_code)=normalized_process AND upper(persisted.step_code)=normalized_step AND upper(persisted.audience)=normalized_audience AND lower(split_part(persisted.route_path,'?',1))=normalized_route\" PL/pgSQL function framework_canonical_screen_design(character varying,character varying,character varying,character varying,jsonb) line 17 at SQL statement SQL function \"framework_canonical_screen_design\" statement 1 SQL statement \"WITH compiled AS MATERIALIZED ( SELECT p.development_order,b.process_code,s.step_order,b.audience, lower(split_part(b.route_path,'?',1)) route_path,b.blueprint_code, b.step_code, upper(b.p",
+            "probeStatus": "ERROR",
+            "processCode": "ACCOUNT_WITHDRAWAL"
+          },
+          {
+            "durationMs": 5860,
+            "error": "ERROR: canceling statement due to statement timeout CONTEXT: SQL expression \"source::jsonb\" PL/pgSQL function framework_try_jsonb(text,jsonb) line 4 at RETURN SQL statement \"SELECT jsonb_build_object( 'identity',jsonb_build_object( 'screenKey',upper(b.process_code)||'|'||upper(b.step_code)||'|'|| upper(b.audience)||'|'||lower(split_part(b.route_path,'?',1)), 'blueprintCode',b.blueprint_code, 'processCode',upper(b.process_code), 'stepCode',upper(b.step_code), 'audience',upper(b.audience), 'routePath',lower(split_part(b.route_path,'?',1)), 'pageId',b.page_id, 'actorCode',upper(b.actor_code) ), 'process',jsonb_build_object( 'processName',p.process_name, 'domainCode',p.domain_code, 'processVersion',p.process_version, 'goal',p.goal, 'startCondition',p.start_condition, 'completionCondition',p.completion_condition, 'ownerActorCode',coalesce(p.owner_actor_code,''), 'riskLevel',p.risk_level, 'slaHours',p.sla_hours, 'lifecycleStatus',p.lifecycle_status ), 'step',jsonb_build_object( 'stepName',s.",
+            "probeStatus": "ERROR",
+            "processCode": "ACTIVITY_DATA"
+          },
+          {
+            "blockerCount": 16,
+            "durationMs": 5532,
+            "probeStatus": "OK",
+            "processCode": "ANALYSIS_EXPORT",
+            "readinessStatus": "PARTIAL",
+            "reasonCounts": {
+              "DESIGN_COMPILER_MISMATCH": 16
+            },
+            "sourceReadyCount": 0,
+            "totalCount": 0
+          },
+          {
+            "durationMs": 5813,
+            "error": "ERROR: canceling statement due to statement timeout CONTEXT: SQL statement \"SELECT coalesce(jsonb_object_agg( CASE entry.key WHEN 'businessPurpose' THEN 'business_purpose' WHEN 'entryCondition' THEN 'entry_condition' WHEN 'exitCondition' THEN 'exit_condition' WHEN 'sectionContract' THEN 'section_contract' WHEN 'fieldContract' THEN 'field_contract' WHEN 'commandContract' THEN 'command_contract' WHEN 'stateContract' THEN 'state_contract' WHEN 'apiContract' THEN 'api_contract' WHEN 'dataContract' THEN 'data_contract' WHEN 'evidenceContract' THEN 'evidence_contract' WHEN 'responsiveContract' THEN 'responsive_contract' WHEN 'accessibilityContract' THEN 'accessibility_contract' WHEN 'securityContract' THEN 'security_contract' WHEN 'apiVerified' THEN 'api_verified' WHEN 'databaseVerified' THEN 'database_verified' WHEN 'authorityVerified' THEN 'authority_verified' WHEN 'responsiveVerified' THEN 'responsive_verified' WHEN 'accessibilityVerified' THEN 'accessibility_verified' WHEN 'exceptionStat",
+            "probeStatus": "ERROR",
+            "processCode": "ANOMALY_ALERT_MANAGEMENT"
+          },
+          {
+            "durationMs": 5907,
+            "error": "ERROR: canceling statement due to statement timeout CONTEXT: SQL statement \"SELECT jsonb_build_object( 'identity',jsonb_build_object( 'screenKey',upper(b.process_code)||'|'||upper(b.step_code)||'|'|| upper(b.audience)||'|'||lower(split_part(b.route_path,'?',1)), 'blueprintCode',b.blueprint_code, 'processCode',upper(b.process_code), 'stepCode',upper(b.step_code), 'audience',upper(b.audience), 'routePath',lower(split_part(b.route_path,'?',1)), 'pageId',b.page_id, 'actorCode',upper(b.actor_code) ), 'process',jsonb_build_object( 'processName',p.process_name, 'domainCode',p.domain_code, 'processVersion',p.process_version, 'goal',p.goal, 'startCondition',p.start_condition, 'completionCondition',p.completion_condition, 'ownerActorCode',coalesce(p.owner_actor_code,''), 'riskLevel',p.risk_level, 'slaHours',p.sla_hours, 'lifecycleStatus',p.lifecycle_status ), 'step',jsonb_build_object( 'stepName',s.step_name, 'stepOrder',s.step_order, 'stepType',s.step_type, 'actorCode',s.actor_code, 'fromState'",
+            "probeStatus": "ERROR",
+            "processCode": "API_CONNECTION_MANAGEMENT"
+          },
+          {
+            "blockerCount": 8,
+            "durationMs": 5813,
+            "probeStatus": "OK",
+            "processCode": "API_KEY_LIFECYCLE",
+            "readinessStatus": "PARTIAL",
+            "reasonCounts": {
+              "DESIGN_COMPILER_MISMATCH": 8
+            },
+            "sourceReadyCount": 0,
+            "totalCount": 0
+          },
+          {
+            "blockerCount": 8,
+            "durationMs": 5687,
+            "probeStatus": "OK",
+            "processCode": "API_USAGE_MONITORING",
+            "readinessStatus": "PARTIAL",
+            "reasonCounts": {
+              "DESIGN_COMPILER_MISMATCH": 8
+            },
+            "sourceReadyCount": 0,
+            "totalCount": 0
+          },
+          {
+            "blockerCount": 16,
+            "durationMs": 4375,
+            "probeStatus": "OK",
+            "processCode": "APPEAL_DISPUTE_AUDIT",
+            "readinessStatus": "PARTIAL",
+            "reasonCounts": {
+              "DESIGN_COMPILER_MISMATCH": 16
+            },
+            "sourceReadyCount": 0,
+            "totalCount": 0
+          },
+          {
+            "blockerCount": 16,
+            "durationMs": 4406,
+            "probeStatus": "OK",
+            "processCode": "APPROVAL_AUTHORITY",
+            "readinessStatus": "PARTIAL",
+            "reasonCounts": {
+              "DESIGN_COMPILER_MISMATCH": 16
+            },
+            "sourceReadyCount": 0,
+            "totalCount": 0
+          },
+          {
+            "blockerCount": 8,
+            "durationMs": 3875,
+            "probeStatus": "OK",
+            "processCode": "APPROVAL_LINE_MANAGEMENT",
+            "readinessStatus": "PARTIAL",
+            "reasonCounts": {
+              "DESIGN_COMPILER_MISMATCH": 8
+            },
+            "sourceReadyCount": 0,
+            "totalCount": 0
+          },
+          {
+            "blockerCount": 8,
+            "durationMs": 4296,
+            "probeStatus": "OK",
+            "processCode": "APPROVAL_WORKFLOW_MANAGEMENT",
+            "readinessStatus": "PARTIAL",
+            "reasonCounts": {
+              "DESIGN_COMPILER_MISMATCH": 8
+            },
+            "sourceReadyCount": 0,
+            "totalCount": 0
+          },
+          {
+            "blockerCount": 16,
+            "durationMs": 4093,
+            "probeStatus": "OK",
+            "processCode": "ATTENDANCE_PROGRESS",
+            "readinessStatus": "PARTIAL",
+            "reasonCounts": {
+              "DESIGN_COMPILER_MISMATCH": 16
+            },
+            "sourceReadyCount": 0,
+            "totalCount": 0
+          },
+          {
+            "blockerCount": 8,
+            "durationMs": 4031,
+            "probeStatus": "OK",
+            "processCode": "AUDIT_LOG_OPERATION",
+            "readinessStatus": "PARTIAL",
+            "reasonCounts": {
+              "DESIGN_COMPILER_MISMATCH": 8
+            },
+            "sourceReadyCount": 0,
+            "totalCount": 0
+          },
+          {
+            "blockerCount": 8,
+            "durationMs": 4204,
+            "probeStatus": "OK",
+            "processCode": "AUTOMATION_RULE_MANAGEMENT",
+            "readinessStatus": "PARTIAL",
+            "reasonCounts": {
+              "DESIGN_COMPILER_MISMATCH": 8
+            },
+            "sourceReadyCount": 0,
+            "totalCount": 0
+          },
+          {
+            "blockerCount": 16,
+            "durationMs": 4391,
+            "probeStatus": "OK",
+            "processCode": "BACKGROUND_DB_VERSION_IMPACT",
+            "readinessStatus": "PARTIAL",
+            "reasonCounts": {
+              "DESIGN_COMPILER_MISMATCH": 16
+            },
+            "sourceReadyCount": 0,
+            "totalCount": 0
+          },
+          {
+            "blockerCount": 8,
+            "durationMs": 4735,
+            "probeStatus": "OK",
+            "processCode": "BATCH_SCHEDULE_OPERATION",
+            "readinessStatus": "PARTIAL",
+            "reasonCounts": {
+              "DESIGN_COMPILER_MISMATCH": 8
+            },
+            "sourceReadyCount": 0,
+            "totalCount": 0
+          },
+          {
+            "blockerCount": 8,
+            "durationMs": 4594,
+            "probeStatus": "OK",
+            "processCode": "BUILDER_GENERATOR_OPERATION",
+            "readinessStatus": "PARTIAL",
+            "reasonCounts": {
+              "DESIGN_COMPILER_MISMATCH": 8
+            },
+            "sourceReadyCount": 0,
+            "totalCount": 0
+          },
+          {
+            "blockerCount": 11,
+            "durationMs": 4781,
+            "probeStatus": "OK",
+            "processCode": "BUSINESS_SITE_ADMINISTRATION",
+            "readinessStatus": "PARTIAL",
+            "reasonCounts": {
+              "DESIGN_COMPILER_MISMATCH": 11
+            },
+            "sourceReadyCount": 0,
+            "totalCount": 0
+          },
+          {
+            "blockerCount": 8,
+            "durationMs": 4813,
+            "probeStatus": "OK",
+            "processCode": "CALCULATION_ENGINE_PARITY",
+            "readinessStatus": "PARTIAL",
+            "reasonCounts": {
+              "DESIGN_BLUEPRINT_DUPLICATE": 4,
+              "DESIGN_COMPILER_MISMATCH": 4
+            },
+            "sourceReadyCount": 0,
+            "totalCount": 0
+          },
+          {
+            "blockerCount": 16,
+            "durationMs": 5109,
+            "probeStatus": "OK",
+            "processCode": "CARBON_CREDIT_MANAGEMENT",
+            "readinessStatus": "PARTIAL",
+            "reasonCounts": {
+              "DESIGN_COMPILER_MISMATCH": 16
+            },
+            "sourceReadyCount": 0,
+            "totalCount": 0
+          },
+          {
+            "blockerCount": 16,
+            "durationMs": 5484,
+            "probeStatus": "OK",
+            "processCode": "CCUS_LIFECYCLE_MRV",
+            "readinessStatus": "PARTIAL",
+            "reasonCounts": {
+              "DESIGN_COMPILER_MISMATCH": 16
+            },
+            "sourceReadyCount": 0,
+            "totalCount": 0
+          },
+          {
+            "blockerCount": 8,
+            "durationMs": 4828,
+            "probeStatus": "OK",
+            "processCode": "CERTIFICATE_FEE_TAX_REFUND",
+            "readinessStatus": "PARTIAL",
+            "reasonCounts": {
+              "DESIGN_BLUEPRINT_DUPLICATE": 4,
+              "DESIGN_COMPILER_MISMATCH": 4
+            },
+            "sourceReadyCount": 0,
+            "totalCount": 0
+          },
+          {
+            "blockerCount": 9,
+            "durationMs": 4796,
+            "probeStatus": "OK",
+            "processCode": "CERTIFICATE_ISSUANCE",
+            "readinessStatus": "PARTIAL",
+            "reasonCounts": {
+              "DESIGN_BLUEPRINT_DUPLICATE": 2,
+              "DESIGN_COMPILER_MISMATCH": 2,
+              "DESIGN_CONTRACT_MISSING": 2,
+              "DESIGN_LANES_INCOMPLETE": 3
+            },
+            "sourceReadyCount": 0,
+            "totalCount": 0
+          },
+          {
+            "durationMs": 6078,
+            "error": "ERROR: canceling statement due to statement timeout CONTEXT: SQL statement \"SELECT jsonb_build_object( 'identity',jsonb_build_object( 'screenKey',upper(b.process_code)||'|'||upper(b.step_code)||'|'|| upper(b.audience)||'|'||lower(split_part(b.route_path,'?',1)), 'blueprintCode',b.blueprint_code, 'processCode',upper(b.process_code), 'stepCode',upper(b.step_code), 'audience',upper(b.audience), 'routePath',lower(split_part(b.route_path,'?',1)), 'pageId',b.page_id, 'actorCode',upper(b.actor_code) ), 'process',jsonb_build_object( 'processName',p.process_name, 'domainCode',p.domain_code, 'processVersion',p.process_version, 'goal',p.goal, 'startCondition',p.start_condition, 'completionCondition',p.completion_condition, 'ownerActorCode',coalesce(p.owner_actor_code,''), 'riskLevel',p.risk_level, 'slaHours',p.sla_hours, 'lifecycleStatus',p.lifecycle_status ), 'step',jsonb_build_object( 'stepName',s.step_name, 'stepOrder',s.step_order, 'stepType',s.step_type, 'actorCode',s.actor_code, 'fromState'",
+            "probeStatus": "ERROR",
+            "processCode": "CERTIFICATE_OBJECTION"
+          },
+          {
+            "durationMs": 5984,
+            "error": "ERROR: canceling statement due to statement timeout CONTEXT: SQL statement \"SELECT jsonb_build_object( 'identity',jsonb_build_object( 'screenKey',upper(b.process_code)||'|'||upper(b.step_code)||'|'|| upper(b.audience)||'|'||lower(split_part(b.route_path,'?',1)), 'blueprintCode',b.blueprint_code, 'processCode',upper(b.process_code), 'stepCode',upper(b.step_code), 'audience',upper(b.audience), 'routePath',lower(split_part(b.route_path,'?',1)), 'pageId',b.page_id, 'actorCode',upper(b.actor_code) ), 'process',jsonb_build_object( 'processName',p.process_name, 'domainCode',p.domain_code, 'processVersion',p.process_version, 'goal',p.goal, 'startCondition',p.start_condition, 'completionCondition',p.completion_condition, 'ownerActorCode',coalesce(p.owner_actor_code,''), 'riskLevel',p.risk_level, 'slaHours',p.sla_hours, 'lifecycleStatus',p.lifecycle_status ), 'step',jsonb_build_object( 'stepName',s.step_name, 'stepOrder',s.step_order, 'stepType',s.step_type, 'actorCode',s.actor_code, 'fromState'",
+            "probeStatus": "ERROR",
+            "processCode": "CERTIFICATE_REVIEW_ISSUANCE"
+          },
+          {
+            "durationMs": 5906,
+            "error": "ERROR: canceling statement due to statement timeout CONTEXT: PL/pgSQL function framework_project_professional_screen_contract(framework_professional_screen_contract,jsonb) line 26 at statement block SQL statement \"SELECT (public.framework_project_professional_screen_contract( persisted,proposed_values )).* FROM public.framework_professional_screen_contract persisted WHERE upper(persisted.process_code)=normalized_process AND upper(persisted.step_code)=normalized_step AND upper(persisted.audience)=normalized_audience AND lower(split_part(persisted.route_path,'?',1))=normalized_route\" PL/pgSQL function framework_canonical_screen_design(character varying,character varying,character varying,character varying,jsonb) line 17 at SQL statement SQL function \"framework_canonical_screen_design\" statement 1 SQL statement \"WITH compiled AS MATERIALIZED ( SELECT p.development_order,b.process_code,s.step_order,b.audience, lower(split_part(b.route_path,'?',1)) route_path,b.blueprint_code, b.step_code,",
+            "probeStatus": "ERROR",
+            "processCode": "CERTIFICATE_VERIFICATION"
+          },
+          {
+            "blockerCount": 8,
+            "durationMs": 5782,
+            "probeStatus": "OK",
+            "processCode": "CERTIFICATION_ELIGIBILITY_CHECK",
+            "readinessStatus": "PARTIAL",
+            "reasonCounts": {
+              "DESIGN_BLUEPRINT_DUPLICATE": 4,
+              "DESIGN_COMPILER_MISMATCH": 4
+            },
+            "sourceReadyCount": 0,
+            "totalCount": 0
+          },
+          {
+            "durationMs": 5610,
+            "error": "ERROR: canceling statement due to statement timeout CONTEXT: PL/pgSQL function framework_canonical_screen_design(character varying,character varying,character varying,character varying,jsonb) line 10 at IF SQL function \"framework_canonical_screen_design\" statement 1 SQL statement \"WITH compiled AS MATERIALIZED ( SELECT p.development_order,b.process_code,s.step_order,b.audience, lower(split_part(b.route_path,'?',1)) route_path,b.blueprint_code, b.step_code, upper(b.process_code)||'|'||upper(b.step_code)||'|'|| upper(b.audience)||'|'||lower(split_part(b.route_path,'?',1)) screen_key, public.framework_canonical_screen_design( b.process_code,b.step_code,b.audience,b.route_path ) canonical_design FROM public.framework_screen_blueprint b JOIN public.framework_process_definition p USING(process_code) JOIN public.framework_process_step s ON s.process_code=b.process_code AND s.step_code=b.step_code WHERE b.validation_status='VALID' AND ( SELECT count(*) FROM public.framework_professional_screen",
+            "probeStatus": "ERROR",
+            "processCode": "CHAIN_OF_CUSTODY"
+          },
+          {
+            "durationMs": 5718,
+            "error": "ERROR: canceling statement due to statement timeout CONTEXT: PL/pgSQL function framework_try_jsonb(text,jsonb) line 2 at statement block SQL statement \"SELECT jsonb_build_object( 'identity',jsonb_build_object( 'screenKey',upper(b.process_code)||'|'||upper(b.step_code)||'|'|| upper(b.audience)||'|'||lower(split_part(b.route_path,'?',1)), 'blueprintCode',b.blueprint_code, 'processCode',upper(b.process_code), 'stepCode',upper(b.step_code), 'audience',upper(b.audience), 'routePath',lower(split_part(b.route_path,'?',1)), 'pageId',b.page_id, 'actorCode',upper(b.actor_code) ), 'process',jsonb_build_object( 'processName',p.process_name, 'domainCode',p.domain_code, 'processVersion',p.process_version, 'goal',p.goal, 'startCondition',p.start_condition, 'completionCondition',p.completion_condition, 'ownerActorCode',coalesce(p.owner_actor_code,''), 'riskLevel',p.risk_level, 'slaHours',p.sla_hours, 'lifecycleStatus',p.lifecycle_status ), 'step',jsonb_build_object( 'stepName',s.step_name, 'stepOrder'",
+            "probeStatus": "ERROR",
+            "processCode": "CO2_DEMAND_REGISTRATION"
+          },
+          {
+            "durationMs": 5797,
+            "error": "ERROR: canceling statement due to statement timeout CONTEXT: PL/pgSQL function framework_try_jsonb(text,jsonb) line 3 at IF SQL statement \"SELECT jsonb_build_object( 'identity',jsonb_build_object( 'screenKey',upper(b.process_code)||'|'||upper(b.step_code)||'|'|| upper(b.audience)||'|'||lower(split_part(b.route_path,'?',1)), 'blueprintCode',b.blueprint_code, 'processCode',upper(b.process_code), 'stepCode',upper(b.step_code), 'audience',upper(b.audience), 'routePath',lower(split_part(b.route_path,'?',1)), 'pageId',b.page_id, 'actorCode',upper(b.actor_code) ), 'process',jsonb_build_object( 'processName',p.process_name, 'domainCode',p.domain_code, 'processVersion',p.process_version, 'goal',p.goal, 'startCondition',p.start_condition, 'completionCondition',p.completion_condition, 'ownerActorCode',coalesce(p.owner_actor_code,''), 'riskLevel',p.risk_level, 'slaHours',p.sla_hours, 'lifecycleStatus',p.lifecycle_status ), 'step',jsonb_build_object( 'stepName',s.step_name, 'stepOrder',s.step_order",
+            "probeStatus": "ERROR",
+            "processCode": "CO2_INJECTION_STORAGE_OPERATION"
+          },
+          {
+            "blockerCount": 8,
+            "durationMs": 5703,
+            "probeStatus": "OK",
+            "processCode": "CO2_LOT_TAG_MANAGEMENT",
+            "readinessStatus": "PARTIAL",
+            "reasonCounts": {
+              "DESIGN_BLUEPRINT_DUPLICATE": 4,
+              "DESIGN_COMPILER_MISMATCH": 4
+            },
+            "sourceReadyCount": 0,
+            "totalCount": 0
+          },
+          {
+            "blockerCount": 8,
+            "durationMs": 5109,
+            "probeStatus": "OK",
+            "processCode": "CO2_QUALITY_ANALYSIS",
+            "readinessStatus": "PARTIAL",
+            "reasonCounts": {
+              "DESIGN_BLUEPRINT_DUPLICATE": 4,
+              "DESIGN_COMPILER_MISMATCH": 4
+            },
+            "sourceReadyCount": 0,
+            "totalCount": 0
+          },
+          {
+            "blockerCount": 16,
+            "durationMs": 5110,
+            "probeStatus": "OK",
+            "processCode": "CO2_SUPPLY_REGISTRATION",
+            "readinessStatus": "PARTIAL",
+            "reasonCounts": {
+              "DESIGN_COMPILER_MISMATCH": 16
+            },
+            "sourceReadyCount": 0,
+            "totalCount": 0
+          },
+          {
+            "blockerCount": 8,
+            "durationMs": 5313,
+            "probeStatus": "OK",
+            "processCode": "COMPANY_MANAGER_DELEGATION",
+            "readinessStatus": "PARTIAL",
+            "reasonCounts": {
+              "DESIGN_BLUEPRINT_DUPLICATE": 4,
+              "DESIGN_COMPILER_MISMATCH": 4
+            },
+            "sourceReadyCount": 0,
+            "totalCount": 0
+          },
+          {
+            "blockerCount": 15,
+            "durationMs": 5016,
+            "probeStatus": "OK",
+            "processCode": "COMPANY_REGISTRATION_APPROVAL",
+            "readinessStatus": "PARTIAL",
+            "reasonCounts": {
+              "DESIGN_BLUEPRINT_DUPLICATE": 4,
+              "DESIGN_COMPILER_MISMATCH": 11
+            },
+            "sourceReadyCount": 0,
+            "totalCount": 0
+          },
+          {
+            "durationMs": 5797,
+            "error": "ERROR: canceling statement due to statement timeout CONTEXT: SQL statement \"SELECT jsonb_build_object( 'identity',jsonb_build_object( 'screenKey',upper(b.process_code)||'|'||upper(b.step_code)||'|'|| upper(b.audience)||'|'||lower(split_part(b.route_path,'?',1)), 'blueprintCode',b.blueprint_code, 'processCode',upper(b.process_code), 'stepCode',upper(b.step_code), 'audience',upper(b.audience), 'routePath',lower(split_part(b.route_path,'?',1)), 'pageId',b.page_id, 'actorCode',upper(b.actor_code) ), 'process',jsonb_build_object( 'processName',p.process_name, 'domainCode',p.domain_code, 'processVersion',p.process_version, 'goal',p.goal, 'startCondition',p.start_condition, 'completionCondition',p.completion_condition, 'ownerActorCode',coalesce(p.owner_actor_code,''), 'riskLevel',p.risk_level, 'slaHours',p.sla_hours, 'lifecycleStatus',p.lifecycle_status ), 'step',jsonb_build_object( 'stepName',s.step_name, 'stepOrder',s.step_order, 'stepType',s.step_type, 'actorCode',s.actor_code, 'fromState'",
+            "probeStatus": "ERROR",
+            "processCode": "COMPARATIVE_ASSERTION_REVIEW"
+          },
+          {
+            "durationMs": 6094,
+            "error": "ERROR: canceling statement due to statement timeout CONTEXT: SQL expression \"(SELECT array_agg(key ORDER BY key) FROM jsonb_object_keys(canonical_design) key) <>ARRAY['identity','lanes','process','step'] OR jsonb_typeof(canonical_design->'identity')<>'object' OR jsonb_typeof(canonical_design->'process')<>'object' OR jsonb_typeof(canonical_design->'step')<>'object' OR jsonb_typeof(canonical_design->'lanes')<>'object' OR (SELECT array_agg(key ORDER BY key) FROM jsonb_object_keys(canonical_design->'lanes') key) <>ARRAY['API','DATABASE','DESIGN_CARD','FRONTEND','HELP','QA','WORK_GUIDE'] OR jsonb_typeof(canonical_design#>'{lanes,HELP}')<>'object' OR jsonb_typeof(canonical_design#>'{lanes,WORK_GUIDE}')<>'object' OR jsonb_typeof(canonical_design#>'{lanes,QA}')<>'object' OR jsonb_typeof(canonical_design#>'{lanes,DESIGN_CARD}')<>'object' OR jsonb_typeof(canonical_design#>'{lanes,FRONTEND}')<>'object' OR jsonb_typeof(canonical_design#>'{lanes,API}')<>'array' OR jsonb_array_length(canonical_desig",
+            "probeStatus": "ERROR",
+            "processCode": "CONTENT_OPERATION"
+          },
+          {
+            "durationMs": 5797,
+            "error": "ERROR: canceling statement due to statement timeout CONTEXT: SQL statement \"SELECT jsonb_build_object( 'identity',jsonb_build_object( 'screenKey',upper(b.process_code)||'|'||upper(b.step_code)||'|'|| upper(b.audience)||'|'||lower(split_part(b.route_path,'?',1)), 'blueprintCode',b.blueprint_code, 'processCode',upper(b.process_code), 'stepCode',upper(b.step_code), 'audience',upper(b.audience), 'routePath',lower(split_part(b.route_path,'?',1)), 'pageId',b.page_id, 'actorCode',upper(b.actor_code) ), 'process',jsonb_build_object( 'processName',p.process_name, 'domainCode',p.domain_code, 'processVersion',p.process_version, 'goal',p.goal, 'startCondition',p.start_condition, 'completionCondition',p.completion_condition, 'ownerActorCode',coalesce(p.owner_actor_code,''), 'riskLevel',p.risk_level, 'slaHours',p.sla_hours, 'lifecycleStatus',p.lifecycle_status ), 'step',jsonb_build_object( 'stepName',s.step_name, 'stepOrder',s.step_order, 'stepType',s.step_type, 'actorCode',s.actor_code, 'fromState'",
+            "probeStatus": "ERROR",
+            "processCode": "COURSE_MANAGEMENT"
+          },
+          {
+            "blockerCount": 8,
+            "durationMs": 5984,
+            "probeStatus": "OK",
+            "processCode": "CUSTOMER_INQUIRY",
+            "readinessStatus": "PARTIAL",
+            "reasonCounts": {
+              "DESIGN_COMPILER_MISMATCH": 8
+            },
+            "sourceReadyCount": 0,
+            "totalCount": 0
+          },
+          {
+            "durationMs": 6281,
+            "error": "ERROR: canceling statement due to statement timeout CONTEXT: SQL statement \"SELECT jsonb_build_object( 'identity',jsonb_build_object( 'screenKey',upper(b.process_code)||'|'||upper(b.step_code)||'|'|| upper(b.audience)||'|'||lower(split_part(b.route_path,'?',1)), 'blueprintCode',b.blueprint_code, 'processCode',upper(b.process_code), 'stepCode',upper(b.step_code), 'audience',upper(b.audience), 'routePath',lower(split_part(b.route_path,'?',1)), 'pageId',b.page_id, 'actorCode',upper(b.actor_code) ), 'process',jsonb_build_object( 'processName',p.process_name, 'domainCode',p.domain_code, 'processVersion',p.process_version, 'goal',p.goal, 'startCondition',p.start_condition, 'completionCondition',p.completion_condition, 'ownerActorCode',coalesce(p.owner_actor_code,''), 'riskLevel',p.risk_level, 'slaHours',p.sla_hours, 'lifecycleStatus',p.lifecycle_status ), 'step',jsonb_build_object( 'stepName',s.step_name, 'stepOrder',s.step_order, 'stepType',s.step_type, 'actorCode',s.actor_code, 'fromState'",
+            "probeStatus": "ERROR",
+            "processCode": "CUSTOMER_WORK_COORDINATION"
+          },
+          {
+            "durationMs": 5797,
+            "error": "ERROR: canceling statement due to statement timeout CONTEXT: PL/pgSQL function framework_project_professional_screen_contract(framework_professional_screen_contract,jsonb) line 26 at statement block SQL statement \"SELECT (public.framework_project_professional_screen_contract( persisted,proposed_values )).* FROM public.framework_professional_screen_contract persisted WHERE upper(persisted.process_code)=normalized_process AND upper(persisted.step_code)=normalized_step AND upper(persisted.audience)=normalized_audience AND lower(split_part(persisted.route_path,'?',1))=normalized_route\" PL/pgSQL function framework_canonical_screen_design(character varying,character varying,character varying,character varying,jsonb) line 17 at SQL statement SQL function \"framework_canonical_screen_design\" statement 1 SQL statement \"WITH compiled AS MATERIALIZED ( SELECT p.development_order,b.process_code,s.step_order,b.audience, lower(split_part(b.route_path,'?',1)) route_path,b.blueprint_code, b.step_code,",
+            "probeStatus": "ERROR",
+            "processCode": "DATA_INTEGRATION"
+          },
+          {
+            "durationMs": 5890,
+            "error": "ERROR: canceling statement due to statement timeout CONTEXT: SQL expression \"source::jsonb\" PL/pgSQL function framework_try_jsonb(text,jsonb) line 4 at RETURN SQL statement \"SELECT jsonb_build_object( 'identity',jsonb_build_object( 'screenKey',upper(b.process_code)||'|'||upper(b.step_code)||'|'|| upper(b.audience)||'|'||lower(split_part(b.route_path,'?',1)), 'blueprintCode',b.blueprint_code, 'processCode',upper(b.process_code), 'stepCode',upper(b.step_code), 'audience',upper(b.audience), 'routePath',lower(split_part(b.route_path,'?',1)), 'pageId',b.page_id, 'actorCode',upper(b.actor_code) ), 'process',jsonb_build_object( 'processName',p.process_name, 'domainCode',p.domain_code, 'processVersion',p.process_version, 'goal',p.goal, 'startCondition',p.start_condition, 'completionCondition',p.completion_condition, 'ownerActorCode',coalesce(p.owner_actor_code,''), 'riskLevel',p.risk_level, 'slaHours',p.sla_hours, 'lifecycleStatus',p.lifecycle_status ), 'step',jsonb_build_object( 'stepName',s.",
+            "probeStatus": "ERROR",
+            "processCode": "DATA_QUALITY_MONITORING"
+          },
+          {
+            "blockerCount": 8,
+            "durationMs": 5891,
+            "probeStatus": "OK",
+            "processCode": "DATA_SCHEMA_CONTRACT",
+            "readinessStatus": "PARTIAL",
+            "reasonCounts": {
+              "DESIGN_COMPILER_MISMATCH": 8
+            },
+            "sourceReadyCount": 0,
+            "totalCount": 0
+          },
+          {
+            "blockerCount": 16,
+            "durationMs": 5390,
+            "probeStatus": "OK",
+            "processCode": "DATA_SCOPE_AUTHORITY",
+            "readinessStatus": "PARTIAL",
+            "reasonCounts": {
+              "DESIGN_COMPILER_MISMATCH": 16
+            },
+            "sourceReadyCount": 0,
+            "totalCount": 0
+          },
+          {
+            "durationMs": 5797,
+            "error": "ERROR: canceling statement due to statement timeout CONTEXT: SQL statement \"WITH compiled AS MATERIALIZED ( SELECT p.development_order,b.process_code,s.step_order,b.audience, lower(split_part(b.route_path,'?',1)) route_path,b.blueprint_code, b.step_code, upper(b.process_code)||'|'||upper(b.step_code)||'|'|| upper(b.audience)||'|'||lower(split_part(b.route_path,'?',1)) screen_key, public.framework_canonical_screen_design( b.process_code,b.step_code,b.audience,b.route_path ) canonical_design FROM public.framework_screen_blueprint b JOIN public.framework_process_definition p USING(process_code) JOIN public.framework_process_step s ON s.process_code=b.process_code AND s.step_code=b.step_code WHERE b.validation_status='VALID' AND ( SELECT count(*) FROM public.framework_professional_screen_contract c WHERE c.process_code=b.process_code AND c.step_code=b.step_code AND c.audience=b.audience AND lower(split_part(c.route_path,'?',1))= lower(split_part(b.route_path,'?',1)) )=1 AND ( SELECT count(",
+            "probeStatus": "ERROR",
+            "processCode": "DEADLINE_NOTIFICATION_POLICY"
+          },
+          {
+            "blockerCount": 8,
+            "durationMs": 5797,
+            "probeStatus": "OK",
+            "processCode": "DESIGN_ASSET_GOVERNANCE",
+            "readinessStatus": "PARTIAL",
+            "reasonCounts": {
+              "DESIGN_COMPILER_MISMATCH": 8
+            },
+            "sourceReadyCount": 0,
+            "totalCount": 0
+          },
+          {
+            "blockerCount": 16,
+            "durationMs": 5609,
+            "probeStatus": "OK",
+            "processCode": "DISCLOSURE_CORRECTION",
+            "readinessStatus": "PARTIAL",
+            "reasonCounts": {
+              "DESIGN_COMPILER_MISMATCH": 16
+            },
+            "sourceReadyCount": 0,
+            "totalCount": 0
+          },
+          {
+            "blockerCount": 16,
+            "durationMs": 5406,
+            "probeStatus": "OK",
+            "processCode": "DOUBLE_USE_PREVENTION",
+            "readinessStatus": "PARTIAL",
+            "reasonCounts": {
+              "DESIGN_COMPILER_MISMATCH": 16
+            },
+            "sourceReadyCount": 0,
+            "totalCount": 0
+          },
+          {
+            "blockerCount": 16,
+            "durationMs": 5703,
+            "probeStatus": "OK",
+            "processCode": "EDUCATION_APPLICATION",
+            "readinessStatus": "PARTIAL",
+            "reasonCounts": {
+              "DESIGN_COMPILER_MISMATCH": 16
+            },
+            "sourceReadyCount": 0,
+            "totalCount": 0
+          },
+          {
+            "durationMs": 5703,
+            "error": "ERROR: canceling statement due to statement timeout CONTEXT: SQL expression \"source::jsonb\" PL/pgSQL function framework_try_jsonb(text,jsonb) line 4 at RETURN SQL statement \"SELECT jsonb_build_object( 'identity',jsonb_build_object( 'screenKey',upper(b.process_code)||'|'||upper(b.step_code)||'|'|| upper(b.audience)||'|'||lower(split_part(b.route_path,'?',1)), 'blueprintCode',b.blueprint_code, 'processCode',upper(b.process_code), 'stepCode',upper(b.step_code), 'audience',upper(b.audience), 'routePath',lower(split_part(b.route_path,'?',1)), 'pageId',b.page_id, 'actorCode',upper(b.actor_code) ), 'process',jsonb_build_object( 'processName',p.process_name, 'domainCode',p.domain_code, 'processVersion',p.process_version, 'goal',p.goal, 'startCondition',p.start_condition, 'completionCondition',p.completion_condition, 'ownerActorCode',coalesce(p.owner_actor_code,''), 'riskLevel',p.risk_level, 'slaHours',p.sla_hours, 'lifecycleStatus',p.lifecycle_status ), 'step',jsonb_build_object( 'stepName',s.",
+            "probeStatus": "ERROR",
+            "processCode": "EDUCATION_ASSESSMENT"
+          },
+          {
+            "durationMs": 5922,
+            "error": "ERROR: canceling statement due to statement timeout CONTEXT: SQL statement \"SELECT jsonb_build_object( 'identity',jsonb_build_object( 'screenKey',upper(b.process_code)||'|'||upper(b.step_code)||'|'|| upper(b.audience)||'|'||lower(split_part(b.route_path,'?',1)), 'blueprintCode',b.blueprint_code, 'processCode',upper(b.process_code), 'stepCode',upper(b.step_code), 'audience',upper(b.audience), 'routePath',lower(split_part(b.route_path,'?',1)), 'pageId',b.page_id, 'actorCode',upper(b.actor_code) ), 'process',jsonb_build_object( 'processName',p.process_name, 'domainCode',p.domain_code, 'processVersion',p.process_version, 'goal',p.goal, 'startCondition',p.start_condition, 'completionCondition',p.completion_condition, 'ownerActorCode',coalesce(p.owner_actor_code,''), 'riskLevel',p.risk_level, 'slaHours',p.sla_hours, 'lifecycleStatus',p.lifecycle_status ), 'step',jsonb_build_object( 'stepName',s.step_name, 'stepOrder',s.step_order, 'stepType',s.step_type, 'actorCode',s.actor_code, 'fromState'",
+            "probeStatus": "ERROR",
+            "processCode": "EDUCATION_SCHEDULE"
+          },
+          {
+            "durationMs": 6000,
+            "error": "ERROR: canceling statement due to statement timeout CONTEXT: SQL statement \"SELECT jsonb_build_object( 'identity',jsonb_build_object( 'screenKey',upper(b.process_code)||'|'||upper(b.step_code)||'|'|| upper(b.audience)||'|'||lower(split_part(b.route_path,'?',1)), 'blueprintCode',b.blueprint_code, 'processCode',upper(b.process_code), 'stepCode',upper(b.step_code), 'audience',upper(b.audience), 'routePath',lower(split_part(b.route_path,'?',1)), 'pageId',b.page_id, 'actorCode',upper(b.actor_code) ), 'process',jsonb_build_object( 'processName',p.process_name, 'domainCode',p.domain_code, 'processVersion',p.process_version, 'goal',p.goal, 'startCondition',p.start_condition, 'completionCondition',p.completion_condition, 'ownerActorCode',coalesce(p.owner_actor_code,''), 'riskLevel',p.risk_level, 'slaHours',p.sla_hours, 'lifecycleStatus',p.lifecycle_status ), 'step',jsonb_build_object( 'stepName',s.step_name, 'stepOrder',s.step_order, 'stepType',s.step_type, 'actorCode',s.actor_code, 'fromState'",
+            "probeStatus": "ERROR",
+            "processCode": "EMISSION_CALCULATION"
+          },
+          {
+            "durationMs": 6109,
+            "error": "ERROR: canceling statement due to statement timeout CONTEXT: SQL expression \"source::jsonb\" PL/pgSQL function framework_try_jsonb(text,jsonb) line 4 at RETURN SQL statement \"SELECT jsonb_build_object( 'identity',jsonb_build_object( 'screenKey',upper(b.process_code)||'|'||upper(b.step_code)||'|'|| upper(b.audience)||'|'||lower(split_part(b.route_path,'?',1)), 'blueprintCode',b.blueprint_code, 'processCode',upper(b.process_code), 'stepCode',upper(b.step_code), 'audience',upper(b.audience), 'routePath',lower(split_part(b.route_path,'?',1)), 'pageId',b.page_id, 'actorCode',upper(b.actor_code) ), 'process',jsonb_build_object( 'processName',p.process_name, 'domainCode',p.domain_code, 'processVersion',p.process_version, 'goal',p.goal, 'startCondition',p.start_condition, 'completionCondition',p.completion_condition, 'ownerActorCode',coalesce(p.owner_actor_code,''), 'riskLevel',p.risk_level, 'slaHours',p.sla_hours, 'lifecycleStatus',p.lifecycle_status ), 'step',jsonb_build_object( 'stepName',s.",
+            "probeStatus": "ERROR",
+            "processCode": "EMISSION_PROJECT"
+          },
+          {
+            "blockerCount": 1,
+            "durationMs": 5891,
+            "probeStatus": "OK",
+            "processCode": "EMISSION_PROJECT_PORTFOLIO",
+            "readinessStatus": "PARTIAL",
+            "reasonCounts": {
+              "DESIGN_COMPILER_MISMATCH": 1
+            },
+            "sourceReadyCount": 0,
+            "totalCount": 0
+          },
+          {
+            "durationMs": 6375,
+            "error": "ERROR: canceling statement due to statement timeout CONTEXT: PL/pgSQL function framework_project_professional_screen_contract(framework_professional_screen_contract,jsonb) line 27 at IF SQL statement \"SELECT (public.framework_project_professional_screen_contract( persisted,proposed_values )).* FROM public.framework_professional_screen_contract persisted WHERE upper(persisted.process_code)=normalized_process AND upper(persisted.step_code)=normalized_step AND upper(persisted.audience)=normalized_audience AND lower(split_part(persisted.route_path,'?',1))=normalized_route\" PL/pgSQL function framework_canonical_screen_design(character varying,character varying,character varying,character varying,jsonb) line 17 at SQL statement SQL function \"framework_canonical_screen_design\" statement 1 SQL statement \"WITH compiled AS MATERIALIZED ( SELECT p.development_order,b.process_code,s.step_order,b.audience, lower(split_part(b.route_path,'?',1)) route_path,b.blueprint_code, b.step_code, upper(b.proce",
+            "probeStatus": "ERROR",
+            "processCode": "EXTERNAL_SERVICE_STATUS"
+          },
+          {
+            "blockerCount": 8,
+            "durationMs": 5688,
+            "probeStatus": "OK",
+            "processCode": "EXTERNAL_SYSTEM_REGISTRY",
+            "readinessStatus": "PARTIAL",
+            "reasonCounts": {
+              "DESIGN_COMPILER_MISMATCH": 8
+            },
+            "sourceReadyCount": 0,
+            "totalCount": 0
+          },
+          {
+            "blockerCount": 16,
+            "durationMs": 5219,
+            "probeStatus": "OK",
+            "processCode": "EXTERNAL_VERIFICATION_ENGAGEMENT",
+            "readinessStatus": "PARTIAL",
+            "reasonCounts": {
+              "DESIGN_COMPILER_MISMATCH": 16
+            },
+            "sourceReadyCount": 0,
+            "totalCount": 0
+          },
+          {
+            "blockerCount": 8,
+            "durationMs": 5704,
+            "probeStatus": "OK",
+            "processCode": "FACILITY_ASSET_REGISTRY",
+            "readinessStatus": "PARTIAL",
+            "reasonCounts": {
+              "DESIGN_BLUEPRINT_DUPLICATE": 4,
+              "DESIGN_COMPILER_MISMATCH": 4
+            },
+            "sourceReadyCount": 0,
+            "totalCount": 0
+          },
+          {
+            "blockerCount": 8,
+            "durationMs": 5422,
+            "probeStatus": "OK",
+            "processCode": "FACILITY_EMERGENCY_RESPONSE",
+            "readinessStatus": "PARTIAL",
+            "reasonCounts": {
+              "DESIGN_BLUEPRINT_DUPLICATE": 4,
+              "DESIGN_COMPILER_MISMATCH": 4
+            },
+            "sourceReadyCount": 0,
+            "totalCount": 0
+          },
+          {
+            "blockerCount": 8,
+            "durationMs": 4609,
+            "probeStatus": "OK",
+            "processCode": "FACILITY_OPERATION_MONITORING",
+            "readinessStatus": "PARTIAL",
+            "reasonCounts": {
+              "DESIGN_BLUEPRINT_DUPLICATE": 4,
+              "DESIGN_COMPILER_MISMATCH": 4
+            },
+            "sourceReadyCount": 0,
+            "totalCount": 0
+          },
+          {
+            "blockerCount": 8,
+            "durationMs": 4594,
+            "probeStatus": "OK",
+            "processCode": "FAQ_MANAGEMENT",
+            "readinessStatus": "PARTIAL",
+            "reasonCounts": {
+              "DESIGN_COMPILER_MISMATCH": 8
+            },
+            "sourceReadyCount": 0,
+            "totalCount": 0
+          },
+          {
+            "blockerCount": 8,
+            "durationMs": 3703,
+            "probeStatus": "OK",
+            "processCode": "FEATURE_API_GOVERNANCE",
+            "readinessStatus": "PARTIAL",
+            "reasonCounts": {
+              "DESIGN_COMPILER_MISMATCH": 8
+            },
+            "sourceReadyCount": 0,
+            "totalCount": 0
+          },
+          {
+            "blockerCount": 8,
+            "durationMs": 4078,
+            "probeStatus": "OK",
+            "processCode": "GIT_BUILD_DEPLOYMENT",
+            "readinessStatus": "PARTIAL",
+            "reasonCounts": {
+              "DESIGN_COMPILER_MISMATCH": 8
+            },
+            "sourceReadyCount": 0,
+            "totalCount": 0
+          }
+        ],
+        "schema": "carbonet.source-endpoint-readiness-isolation/v1",
+        "sourceReadyCount": 0,
+        "successfulProbeCount": 42,
+        "totalCount": 0,
+        "totalProcessCount": 139
+      }
     }
   },
   "readOnly": {
@@ -267,7 +1805,7 @@
     "repository": true
   },
   "reviewBudget": {
-    "actualMs": 16973,
+    "actualMs": 131828,
     "targetMs": 600000,
     "withinTenMinutes": true
   },
@@ -282,37 +1820,38 @@
   "sources": {
     "database": {
       "core": {
-        "durationMs": 10850,
+        "durationMs": 3468,
         "name": "dbCore",
         "status": "OK",
         "value": {
           "blueprint": {
-            "duplicateAmbiguous": 0,
+            "duplicateAmbiguous": 8,
             "duplicateAuthorityResolved": 35,
-            "duplicateRequiredIdentityGroups": 35,
-            "exactRequiredIdentities": 866,
+            "duplicateRequiredIdentityGroups": 43,
+            "exactRequiredIdentities": 986,
             "globalDuplicateGroups": 51,
-            "missingRequiredIdentities": 142,
-            "physicalRows": 1728,
-            "validLogicalIdentities": 1590,
-            "validPhysicalRows": 1728
+            "missingRequiredIdentities": 207,
+            "physicalRows": 1732,
+            "validLogicalIdentities": 1594,
+            "validPhysicalRows": 1732
           },
           "designMutationImpact": {
-            "compilerAffectedExactIdentityCount": 887,
+            "compilerAffectedExactIdentityCount": 901,
             "scope": "ALL_COMPILER_READY_MAXIMUM",
             "selector": {},
-            "selectorMatchedExactIdentityCount": 1043,
-            "sourceGenerationAffectedExactIdentityCount": 887
+            "selectorMatchedExactIdentityCount": 1236,
+            "sourceGenerationAffectedExactIdentityCount": 901
           },
           "designSystem": {
-            "krdsExactIdentities": 901,
+            "krdsExactIdentities": 1021,
             "sduiOrJsonFormExactIdentities": 0
           },
           "endpoint": {
-            "expectedOperationCount": 4547,
-            "expectedScreenIdentities": 1028
+            "expectedOperationCount": 4788,
+            "expectedScreenIdentities": 1140
           },
           "identityContract": {
+            "authoritativeSelection": "DIRECT_REQUIRED_USER_ADMIN_UNION_ACTIVE_SCREEN_BINDING",
             "fields": [
               "processCode",
               "stepCode",
@@ -322,18 +1861,21 @@
             "normalization": "upper(process,step,audience)+lower(path-before-query)"
           },
           "professionalContract": {
-            "duplicateRequiredIdentityGroups": 14,
-            "exactRequiredIdentities": 1028,
+            "duplicateRequiredIdentityGroups": 35,
+            "exactRequiredIdentities": 1144,
             "globalDuplicateGroups": 35,
             "logicalExactGroups": 1968,
-            "missingRequiredIdentities": 1,
-            "physicalRows": 2003
+            "missingRequiredIdentities": 57,
+            "physicalRows": 2003,
+            "targetContractMatchedExactIdentities": 1179,
+            "targetContractMissingExactIdentities": 57,
+            "targetExactIdentities": 1236
           },
           "quality": {
-            "ambiguousExactIdentities": 14,
-            "exactResourceContractBlueprintIdentities": 853,
-            "incompleteExactIdentities": 156,
-            "physicalSingleClosureExactIdentities": 853
+            "ambiguousExactIdentities": 43,
+            "exactResourceContractBlueprintIdentities": 934,
+            "incompleteExactIdentities": 335,
+            "physicalSingleClosureExactIdentities": 934
           },
           "routeTotals": {
             "designOnlyRows": 846,
@@ -345,38 +1887,46 @@
           "schema": "carbonet.design-to-code-page-impact-db-core/v1",
           "screenResource": {
             "duplicateRequiredIdentityGroups": 0,
-            "exactRequiredIdentities": 1037,
+            "exactRequiredIdentities": 1230,
             "missingRequiredIdentities": 6
           },
           "source": {
-            "compilerReadyExactIdentities": 887,
-            "emittedReadyExactIdentities": 887,
-            "generatedSourcePathReadyExactIdentities": 1,
-            "sourceCatalogEligibleExactIdentities": 887
+            "compilerReadyExactIdentities": 901,
+            "emittedReadyExactIdentities": 901,
+            "generatedSourcePathReadyExactIdentities": 5,
+            "sourceCatalogEligibleExactIdentities": 901
           },
           "stepScreens": {
-            "activeBindingExactIdentities": 1215,
-            "requiredExactIdentities": 1043,
-            "stepsWithScreenRequirement": 539,
-            "stepsWithoutScreenRequirement": 33,
+            "activeBindingExactIdentities": 1222,
+            "activeBindingOnlyExactIdentities": 193,
+            "authoritativeUnionExactIdentities": 1236,
+            "directAndActiveOverlapExactIdentities": 1029,
+            "directOnlyExactIdentities": 14,
+            "directRequiredExactIdentities": 1043,
+            "multiRouteAdditionalExactIdentities": 143,
+            "multiRouteStepAudienceExactIdentities": 182,
+            "multiRouteStepAudienceGroups": 39,
+            "requiredExactIdentities": 1236,
+            "stepsWithScreenRequirement": 572,
+            "stepsWithoutScreenRequirement": 0,
             "totalSteps": 572
           },
           "strategy": {
-            "adoptExistingPhysicalRows": 868,
+            "adoptExistingPhysicalRows": 872,
             "generatedRuntimePhysicalRows": 859,
             "manualStrategyPhysicalRows": 1,
-            "ownershipAmbiguousExactIdentities": 0,
-            "ownershipGeneratedExactIdentities": 819,
-            "ownershipHybridExactIdentities": 82,
-            "ownershipManualExactIdentities": 0,
-            "ownershipUnclassifiedExactIdentities": 142
+            "ownershipAmbiguousExactIdentities": 8,
+            "ownershipGeneratedExactIdentities": 823,
+            "ownershipHybridExactIdentities": 163,
+            "ownershipManualExactIdentities": 35,
+            "ownershipUnclassifiedExactIdentities": 207
           }
         }
       },
-      "label": "carbonet-production-key-only-read-only"
+      "label": "carbonet-production-key-only-read-only-union-v1"
     },
     "repository": {
-      "commit": "0595c64293825e36f67a312f5173ca7a5058af5b",
+      "commit": "873d28a62c36e2a5e97183178d7aa6d18019577c",
       "root": "."
     }
   },
