@@ -8,8 +8,17 @@ export const RECEIPT_RECONCILIATION_CONCURRENCY = 4;
 export const RECEIPT_RECONCILIATION_LEASE_MS = 30_000;
 export const REQUIREMENT_RECEIPT_MAX_ATTEMPTS = 5;
 
-export const receiptRetryDelayMs = (attempt: number) =>
+const boundedReceiptDelayMs = (attempt: number) =>
   Math.min(60_000, 5_000 * 2 ** Math.max(0, Math.min(8, attempt - 1)));
+
+// Successful PENDING/RUNNING receipts and failed reads have independent
+// clocks. Keeping the functions separate prevents a normal runtime wait from
+// consuming the finite transport/parse error budget.
+export const receiptPollDelayMs = (pollAttempt: number) =>
+  boundedReceiptDelayMs(pollAttempt);
+
+export const receiptRetryDelayMs = (errorAttempt: number) =>
+  boundedReceiptDelayMs(errorAttempt);
 
 export type RequirementReceiptClaim = {
   documentId: string;
@@ -18,6 +27,7 @@ export type RequirementReceiptClaim = {
   contractSha256: string;
   claimToken: string;
   pollAttempt: number;
+  errorAttempt: number;
   publicationMode: 'PUBLISH' | 'RECEIPT';
   contract?: Record<string, unknown>;
 };
@@ -179,7 +189,7 @@ export const reconcileRequirementReceiptBatch = async ({
       else summary.pending += 1;
     } catch (error) {
       const nextAttemptAt = new Date(
-        now().getTime() + receiptRetryDelayMs(claim.pollAttempt),
+        now().getTime() + receiptRetryDelayMs(claim.errorAttempt + 1),
       );
       const retryOutcome = await retryClaim(
         claim,

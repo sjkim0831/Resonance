@@ -52,7 +52,7 @@ import {
   RECEIPT_RECONCILIATION_LEASE_MS,
   reconcileDesignSnapshotSyncBatch,
   reconcileRequirementReceiptBatch,
-  receiptRetryDelayMs,
+  receiptPollDelayMs,
   selectFairRequirementClaims,
   type DesignSnapshotRetryOutcome,
   type DesignSnapshotSyncClaim,
@@ -748,6 +748,14 @@ export default createBackendPlugin({
                 .defaultTo(0),
           ],
           [
+            'publication_error_attempt_count',
+            (table: any) =>
+              table
+                .integer('publication_error_attempt_count')
+                .notNullable()
+                .defaultTo(0),
+          ],
+          [
             'publication_next_attempt_at',
             (table: any) =>
               table
@@ -1095,11 +1103,18 @@ export default createBackendPlugin({
                       publication_next_attempt_at: terminal
                         ? null
                         : new Date(
-                            recordedAt.getTime() +
-                              receiptRetryDelayMs(claimedPollAttempt),
+                            Math.max(
+                              recordedAt.getTime() +
+                                receiptPollDelayMs(claimedPollAttempt),
+                              runtimeRetryNotBefore?.getTime() ?? 0,
+                            ),
                           ),
                       publication_claim_token: null,
                       publication_lease_expires_at: null,
+                      publication_error_attempt_count: 0,
+                      ...(retryExhausted === undefined
+                        ? {}
+                        : { publication_retry_exhausted: retryExhausted }),
                       publication_reconciled_at: terminal ? recordedAt : null,
                     });
                   if (settled !== 1) {
@@ -1137,6 +1152,7 @@ export default createBackendPlugin({
             const documentReceiptUpdate: Record<string, unknown> = {
               analysis_status: target.analysisStatus,
               publication_last_error: terminalError,
+              publication_error_attempt_count: 0,
             };
             if (reconciliationClaimToken) {
               Object.assign(documentReceiptUpdate, {
@@ -1148,7 +1164,7 @@ export default createBackendPlugin({
                   : new Date(
                       Math.max(
                         recordedAt.getTime() +
-                          receiptRetryDelayMs(claimedPollAttempt),
+                          receiptPollDelayMs(claimedPollAttempt),
                         runtimeRetryNotBefore?.getTime() ?? 0,
                       ),
                     ),
@@ -1284,7 +1300,7 @@ export default createBackendPlugin({
             )
               .whereIn('publication_reconcile_status', ['PENDING', 'RUNNING'])
               .andWhere(
-                'publication_poll_attempt_count',
+                'publication_error_attempt_count',
                 '>=',
                 REQUIREMENT_RECEIPT_MAX_ATTEMPTS,
               )
@@ -1309,7 +1325,7 @@ export default createBackendPlugin({
                     exhausted.publication_reconcile_status,
                 })
                 .andWhere(
-                  'publication_poll_attempt_count',
+                  'publication_error_attempt_count',
                   '>=',
                   REQUIREMENT_RECEIPT_MAX_ATTEMPTS,
                 )
@@ -1339,7 +1355,7 @@ export default createBackendPlugin({
                   documentId: exhausted.document_id,
                   designVersion: Number(exhausted.design_version),
                   retryAttempt: Number(
-                    exhausted.publication_poll_attempt_count,
+                    exhausted.publication_error_attempt_count,
                   ),
                   retryLimit: REQUIREMENT_RECEIPT_MAX_ATTEMPTS,
                   reason: 'MAX_ATTEMPT_LEASE_EXPIRED',
@@ -1381,7 +1397,7 @@ export default createBackendPlugin({
                 'RUNNING',
               ])
               .andWhere(
-                'document.publication_poll_attempt_count',
+                'document.publication_error_attempt_count',
                 '<',
                 REQUIREMENT_RECEIPT_MAX_ATTEMPTS,
               )
@@ -1465,7 +1481,7 @@ export default createBackendPlugin({
                 'RUNNING',
               ])
               .andWhere(
-                'document.publication_poll_attempt_count',
+                'document.publication_error_attempt_count',
                 '<',
                 REQUIREMENT_RECEIPT_MAX_ATTEMPTS,
               )
@@ -1490,6 +1506,7 @@ export default createBackendPlugin({
                 'document.project_id as projectId',
                 'document.design_version as designVersion',
                 'document.publication_poll_attempt_count as pollAttempt',
+                'document.publication_error_attempt_count as errorAttempt',
                 'release.contract_sha256 as contractSha256',
                 'release.release_status as releaseStatus',
                 'release.contract_payload as contractPayload',
@@ -1516,6 +1533,7 @@ export default createBackendPlugin({
               contractSha256: String(row.contractSha256),
               claimToken,
               pollAttempt: Number(row.pollAttempt ?? 0) + 1,
+              errorAttempt: Number(row.errorAttempt ?? 0),
               publicationMode:
                 String(row.releaseStatus).toUpperCase() === 'VALIDATED'
                   ? ('PUBLISH' as const)
@@ -1583,6 +1601,7 @@ export default createBackendPlugin({
             const active = await transaction(
               'resonance_projects__requirement_document',
             )
+              .select('publication_error_attempt_count')
               .where({
                 document_id: claim.documentId,
                 publication_claim_token: claim.claimToken,
@@ -1591,8 +1610,9 @@ export default createBackendPlugin({
               .forUpdate()
               .first();
             if (!active) return 'STALE';
-            const exhausted =
-              claim.pollAttempt >= REQUIREMENT_RECEIPT_MAX_ATTEMPTS;
+            const errorAttempt =
+              Number(active.publication_error_attempt_count ?? 0) + 1;
+            const exhausted = errorAttempt >= REQUIREMENT_RECEIPT_MAX_ATTEMPTS;
             const now = new Date();
             const updated = await transaction(
               'resonance_projects__requirement_document',
@@ -1610,6 +1630,7 @@ export default createBackendPlugin({
                 publication_claim_token: null,
                 publication_lease_expires_at: null,
                 publication_last_error: message,
+                publication_error_attempt_count: errorAttempt,
                 publication_retry_exhausted: exhausted,
                 publication_reconciled_at: exhausted ? now : null,
               });
@@ -1624,7 +1645,8 @@ export default createBackendPlugin({
                 designVersion: claim.designVersion,
                 contractSha256: claim.contractSha256,
                 publicationMode: claim.publicationMode,
-                retryAttempt: claim.pollAttempt,
+                retryAttempt: errorAttempt,
+                pollAttempt: claim.pollAttempt,
                 retryLimit: REQUIREMENT_RECEIPT_MAX_ATTEMPTS,
                 message: message.slice(0, 2_000),
               }),
@@ -4320,6 +4342,7 @@ export default createBackendPlugin({
               'created_at',
               'publication_reconcile_status',
               'publication_poll_attempt_count',
+              'publication_error_attempt_count',
               'publication_next_attempt_at',
               'publication_last_error',
               'publication_retry_exhausted',
@@ -4346,6 +4369,9 @@ export default createBackendPlugin({
               createdAt: document.created_at,
               reconciliationStatus: document.publication_reconcile_status,
               pollAttempt: Number(document.publication_poll_attempt_count ?? 0),
+              errorAttempt: Number(
+                document.publication_error_attempt_count ?? 0,
+              ),
               retryNotBefore: document.publication_next_attempt_at,
               retryExhausted:
                 document.publication_retry_exhausted === null ||
@@ -4609,6 +4635,7 @@ export default createBackendPlugin({
                 .update({
                   publication_reconcile_status: 'PENDING',
                   publication_poll_attempt_count: 0,
+                  publication_error_attempt_count: 0,
                   publication_next_attempt_at: now,
                   publication_claim_token: null,
                   publication_lease_expires_at: null,
@@ -4629,6 +4656,12 @@ export default createBackendPlugin({
                   documentId,
                   designVersion: Number(document.design_version),
                   previousAttemptCount: Number(
+                    document.publication_error_attempt_count ?? 0,
+                  ),
+                  previousErrorAttemptCount: Number(
+                    document.publication_error_attempt_count ?? 0,
+                  ),
+                  previousPollAttemptCount: Number(
                     document.publication_poll_attempt_count ?? 0,
                   ),
                   retryLimit: REQUIREMENT_RECEIPT_MAX_ATTEMPTS,
@@ -4841,6 +4874,7 @@ export default createBackendPlugin({
                 created_at: now,
                 publication_reconcile_status: 'PENDING',
                 publication_poll_attempt_count: 0,
+                publication_error_attempt_count: 0,
                 publication_next_attempt_at: new Date(
                   now.getTime() + RUNTIME_DESIGN_SOURCE_TIMEOUT_MS + 5_000,
                 ),

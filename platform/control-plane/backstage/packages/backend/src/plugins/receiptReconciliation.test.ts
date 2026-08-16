@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import {
   reconcileDesignSnapshotSyncBatch,
   reconcileRequirementReceiptBatch,
+  receiptPollDelayMs,
   receiptRetryDelayMs,
   selectFairRequirementClaims,
   type DesignSnapshotSyncClaim,
@@ -19,6 +20,7 @@ const requirementClaim = (
   contractSha256: documentId.padEnd(64, 'a').slice(0, 64),
   claimToken: `claim-${documentId}`,
   pollAttempt: 1,
+  errorAttempt: 0,
   publicationMode: 'RECEIPT',
 });
 
@@ -32,7 +34,11 @@ describe('headless receipt reconciliation', () => {
     expect(route).toContain('publication_claim_token');
     expect(route).toContain('publication_lease_expires_at');
     expect(route).toContain('const commitDesignSnapshotSync');
-    expect(route).toContain('receiptRetryDelayMs(claimedPollAttempt)');
+    expect(route).toContain('receiptPollDelayMs(claimedPollAttempt)');
+    expect(route).toContain('publication_error_attempt_count');
+    expect(route).toContain(
+      "'document.publication_error_attempt_count as errorAttempt'",
+    );
     expect(route).not.toContain('settleRequirementReceiptClaim');
     expect(route).not.toContain('settleDesignSnapshotSyncClaim');
     expect(route).toContain('scheduler.scheduleTask({');
@@ -42,6 +48,8 @@ describe('headless receipt reconciliation', () => {
   });
 
   it('bounds retry backoff and round-robins projects before their second document', () => {
+    const boundedDelays = [5_000, 10_000, 20_000, 40_000, 60_000, 60_000];
+    expect([1, 2, 3, 4, 5, 20].map(receiptPollDelayMs)).toEqual(boundedDelays);
     expect([1, 2, 3, 4, 5, 20].map(receiptRetryDelayMs)).toEqual([
       5_000, 10_000, 20_000, 40_000, 60_000, 60_000,
     ]);
@@ -168,10 +176,148 @@ describe('headless receipt reconciliation', () => {
     expect(writes).toBe(1);
   });
 
+  it('keeps more than fifteen minutes of normal queued/running polls outside the error budget and then applies', async () => {
+    const retryClaim = jest.fn(async () => 'RETRIED' as const);
+    const dispositions: string[] = [];
+    const pendingPolls = 18;
+
+    expect(
+      Array.from({ length: pendingPolls }, (_, index) =>
+        receiptPollDelayMs(index + 1),
+      ).reduce((total, delay) => total + delay, 0),
+    ).toBeGreaterThanOrEqual(15 * 60 * 1_000);
+
+    for (
+      let pollAttempt = 1;
+      pollAttempt <= pendingPolls + 1;
+      pollAttempt += 1
+    ) {
+      const claim = {
+        ...requirementClaim('doc-long-running', 'A'),
+        pollAttempt,
+        errorAttempt: 0,
+      };
+      const expected = pollAttempt === pendingPolls + 1 ? 'APPLIED' : 'QUEUED';
+      let runtimeStatus = pollAttempt % 2 ? 'RUNNING' : 'QUEUED';
+      if (expected === 'APPLIED') runtimeStatus = 'APPLIED';
+      const summary = await reconcileRequirementReceiptBatch({
+        claimDue: async () => [claim],
+        readReceipt: async () => ({
+          status: runtimeStatus,
+          terminal: expected === 'APPLIED',
+          retryAttempt: 0,
+          retryExhausted: false,
+        }),
+        persistReceipt: async (_claim, disposition) => {
+          dispositions.push(disposition);
+          return disposition;
+        },
+        retryClaim,
+      });
+      expect(summary.deadLettered).toBe(0);
+      expect(summary.retried).toBe(0);
+      expect(summary[expected === 'APPLIED' ? 'terminal' : 'pending']).toBe(1);
+    }
+
+    expect(dispositions).toEqual([
+      ...Array.from({ length: pendingPolls }, () => 'QUEUED'),
+      'APPLIED',
+    ]);
+    expect(retryClaim).not.toHaveBeenCalled();
+  });
+
+  it('persists transport, parse, and 5xx failures in an independent five-error budget across restart', async () => {
+    let clock = new Date('2026-08-16T00:00:00Z');
+    const failures = [
+      'RUNTIME_RECEIPT_REQUEST_FAILED',
+      'RUNTIME_RECEIPT_RESPONSE_NOT_JSON',
+      'RUNTIME_RECEIPT_HTTP_503',
+      'RUNTIME_RECEIPT_REQUEST_FAILED',
+      'RUNTIME_RECEIPT_HTTP_500',
+    ];
+    let failureIndex = 0;
+    let durable = {
+      status: 'PENDING',
+      pollAttempt: 12,
+      errorAttempt: 0,
+      nextAttemptAt: new Date(clock),
+    };
+    const scheduledDelays: number[] = [];
+    const claimDue = async () => {
+      if (
+        durable.status !== 'PENDING' ||
+        durable.nextAttemptAt.getTime() > clock.getTime()
+      ) {
+        return [];
+      }
+      durable.status = 'RUNNING';
+      durable.pollAttempt += 1;
+      return [
+        {
+          ...requirementClaim('doc-transport-poison', 'A'),
+          pollAttempt: durable.pollAttempt,
+          errorAttempt: durable.errorAttempt,
+        },
+      ];
+    };
+    const retryClaim = async (
+      claim: RequirementReceiptClaim,
+      _message: string,
+      nextAttemptAt: Date,
+    ) => {
+      expect(claim.errorAttempt).toBe(durable.errorAttempt);
+      scheduledDelays.push(nextAttemptAt.getTime() - clock.getTime());
+      durable.errorAttempt += 1;
+      durable.status = durable.errorAttempt >= 5 ? 'DEAD_LETTERED' : 'PENDING';
+      durable.nextAttemptAt = nextAttemptAt;
+      return durable.status === 'DEAD_LETTERED'
+        ? ('DEAD_LETTERED' as const)
+        : ('RETRIED' as const);
+    };
+    const run = () =>
+      reconcileRequirementReceiptBatch({
+        claimDue,
+        readReceipt: async () => {
+          const failure = failures[failureIndex];
+          failureIndex += 1;
+          throw new Error(failure);
+        },
+        persistReceipt: async (_claim, disposition) => disposition,
+        retryClaim,
+        now: () => clock,
+      });
+
+    for (let errorAttempt = 1; errorAttempt <= 5; errorAttempt += 1) {
+      const summary = await run();
+      expect(summary[errorAttempt === 5 ? 'deadLettered' : 'retried']).toBe(1);
+      if (errorAttempt === 5) break;
+
+      // A scheduler tick before the persisted due time cannot reclaim the row.
+      await expect(run()).resolves.toMatchObject({ claimed: 0 });
+      if (errorAttempt === 2) {
+        // Serialize/restore the durable state to model a process restart.
+        durable = {
+          ...JSON.parse(JSON.stringify(durable)),
+          nextAttemptAt: new Date(durable.nextAttemptAt),
+        };
+      }
+      clock = new Date(durable.nextAttemptAt);
+    }
+
+    expect(durable).toMatchObject({
+      status: 'DEAD_LETTERED',
+      pollAttempt: 17,
+      errorAttempt: 5,
+    });
+    expect(failureIndex).toBe(5);
+    expect(scheduledDelays).toEqual([5_000, 10_000, 20_000, 40_000, 60_000]);
+  });
+
   it('dead-letters a poison requirement receipt at the finite fifth attempt', async () => {
     const claim = {
       ...requirementClaim('doc-poison', 'A'),
       pollAttempt: 5,
+      errorAttempt: 4,
       publicationMode: 'PUBLISH' as const,
       contract: { schemaVersion: '3.0.0' },
     };
@@ -247,6 +393,8 @@ describe('headless receipt reconciliation', () => {
     expect(retry).toContain(
       "action_code: 'REQUIREMENT_PUBLICATION_RETRY_REQUESTED'",
     );
+    expect(retry).toContain('previousErrorAttemptCount: Number(');
+    expect(retry).toContain('previousPollAttemptCount: Number(');
     expect(retry).toContain("disposition === 'APPLIED'");
     expect(retry).toContain('writeCount: 0');
     expect(retry).toContain("publication_reconcile_status: 'PENDING'");
