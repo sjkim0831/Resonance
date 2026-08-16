@@ -3092,10 +3092,18 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
 
     private static String writeLiveSmokeArtifact(Path root,String reference,byte[] bytes){
         try{
-            Path target=root.resolve(reference);Files.createDirectories(target.getParent());Files.write(target,bytes);
-            if(Files.getFileAttributeView(target,PosixFileAttributeView.class,LinkOption.NOFOLLOW_LINKS)!=null)
-                Files.setPosixFilePermissions(target,Set.of(PosixFilePermission.OWNER_READ,
-                    PosixFilePermission.GROUP_READ));
+            Path target=root.resolve(reference);Files.createDirectories(target.getParent());
+            if(Files.exists(target,LinkOption.NOFOLLOW_LINKS)){
+                if(!Files.isRegularFile(target,LinkOption.NOFOLLOW_LINKS)
+                        ||!MessageDigest.isEqual(Files.readAllBytes(target),bytes))
+                    throw new IllegalStateException("TEST_LIVE_SMOKE_ARTIFACT_REPLAY_NOT_EXACT");
+            }else{
+                Files.write(target,bytes);
+                if(Files.getFileAttributeView(target,PosixFileAttributeView.class,
+                        LinkOption.NOFOLLOW_LINKS)!=null)
+                    Files.setPosixFilePermissions(target,Set.of(PosixFilePermission.OWNER_READ,
+                        PosixFilePermission.GROUP_READ));
+            }
             return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(bytes));
         }catch(Exception error){throw new IllegalStateException("TEST_LIVE_SMOKE_ARTIFACT_WRITE_FAILED",error);}
     }
