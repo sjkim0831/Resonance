@@ -9,6 +9,9 @@ const STATUSES=["SUCCESS","VALIDATION_ERROR","FORBIDDEN","CONFLICT","RECOVERY"];
 const HTTP={SUCCESS:200,VALIDATION_ERROR:400,FORBIDDEN:403,CONFLICT:409,RECOVERY:200};
 const literal=value=>({source:"LITERAL",value});
 const from=(source,path)=>({source,path});
+const watermarkCells=runId=>Array.from(String(runId).replaceAll("-","")).flatMap(value=>{
+  const nibble=Number.parseInt(value,16);return [3,2,1,0].map(shift=>(nibble>>shift)&1);
+}).map(bit=>`<span data-watermark-bit="${bit}"></span>`).join("");
 const statusBodies={
   SUCCESS:["success","idempotent","eventId","toState","name"],
   VALIDATION_ERROR:["success","code","message"],
@@ -48,6 +51,7 @@ const authority={authorityId:11,authorityRevision:1,processCode:"PROC",stepCode:
     TEST:{scenarios},
   }}};
 const plan={schema:"carbonet.composite-live-smoke-plan/v1",dispatchId:91,jobId:55,processCode:"PROC",
+  leaseToken:"99999999-9999-4999-8999-999999999999",
   authorityRevisionSetHash:"3".repeat(64),artifactManifestHash:"4".repeat(64),expectedEvidenceCount:15,
   observedAt:new Date().toISOString(),authorities:[authority],existingEvidenceKeys:[],existingScenarioContexts:[],
   eligibleAssignments:[
@@ -149,10 +153,11 @@ function fixture(root,{mutantHttp=false,artifactMutant="",wrongCommand=false}={}
       const waiters=[];
       const emit=value=>{const index=waiters.findIndex(waiter=>waiter.predicate(value));
         if(index>=0)waiters.splice(index,1)[0].resolve(value);};
-      const render=()=>`<html><body><main data-process-code="PROC" data-step-code="STEP_A" data-audience="USER" data-tenant-id="${runtimeObserved?"TENANT":""}" data-project-id="${runtimeObserved?"PROJECT":""}" data-execution-id="${runtimeObserved?execution.executionId:""}" data-current-state="${runtimeObserved?currentState:""}" data-runtime-observed="${runtimeObserved}" data-access-denied="${accessDenied}" data-last-command-code="${observation?.commandCode||""}" data-last-http-status="${observation?.httpStatus||""}" data-last-status-case="${observation?.statusCase||""}" data-last-idempotency-key="${observation?.idempotencyKey||""}" data-last-output-json='${JSON.stringify(observation?.output||{}).replaceAll("'","&#39;")}'><input name="name" value="${values.name||""}"><button data-command-code="SAVE">SAVE</button></main></body></html>`;
+      const render=()=>`<html><body><main data-process-code="PROC" data-step-code="STEP_A" data-route-path="/work" data-audience="USER" data-live-smoke-run-id="${current.searchParams.get("liveSmokeRunId")}" data-tenant-id="TENANT" data-project-id="PROJECT" data-execution-id="${execution.executionId}" data-current-state="${currentState}" data-runtime-observed="${runtimeObserved}" data-access-denied="${accessDenied}" data-last-command-code="${observation?.commandCode||""}" data-last-http-status="${observation?.httpStatus||""}" data-last-status-case="${observation?.statusCase||""}" data-last-idempotency-key="${observation?.idempotencyKey||""}" data-last-output-json='${JSON.stringify(observation?.output||{}).replaceAll("'","&#39;")}'><input name="name" value="${values.name||""}"><button data-command-code="SAVE">SAVE</button></main>${observation?'<section data-live-smoke-result="true">result</section>':""}<div data-live-smoke-watermark="${current.searchParams.get("liveSmokeRunId")}">${watermarkCells(current.searchParams.get("liveSmokeRunId"))}</div></body></html>`;
       const page={
         async goto(url){current=new URL(url);execution=executions.get(current.searchParams.get("executionId"));
-          runtimeObserved=account!=="denied";accessDenied=account==="denied";currentState=execution?.currentState||"";},
+          runtimeObserved=account!=="denied";accessDenied=account==="denied";
+          currentState=execution?.currentState||current.searchParams.get("currentState")||"";},
         async waitForFunction(){},
         waitForResponse(predicate){return new Promise(resolve=>waiters.push({predicate,resolve}));},
         locator(selector){
@@ -187,8 +192,8 @@ function fixture(root,{mutantHttp=false,artifactMutant="",wrongCommand=false}={}
           };
         },
         async evaluate(){return {path:current.pathname,processCode:"PROC",stepCode:"STEP_A",audience:"USER",
-          tenantId:runtimeObserved?"TENANT":"",projectId:runtimeObserved?"PROJECT":"",
-          executionId:runtimeObserved?execution.executionId:"",currentState:runtimeObserved?currentState:"",
+          routePath:"/work",runId:current.searchParams.get("liveSmokeRunId"),tenantId:"TENANT",projectId:"PROJECT",
+          executionId:execution.executionId,currentState,
           runtimeObserved,accessDenied,commandCode:observation?.commandCode||"",httpStatus:observation?.httpStatus||0,
           statusCase:observation?.statusCase||"",outputJson:JSON.stringify(observation?.output||{}),
           idempotencyKey:observation?.idempotencyKey||"",fatal:false};},
@@ -224,8 +229,10 @@ async function execute(dispatchId,options={}){
 try{
   const {fake,result}=await execute(91);
   assert.equal(result.expectedEvidenceCount,15);assert.equal(result.submittedEvidenceCount,15);
+  assert.ok(!JSON.stringify(result).includes(plan.leaseToken),"runner summary must not retain raw lease token");
   assert.equal(fake.submissions.length,15);
   assert.deepEqual([...new Set(fake.submissions.map(row=>row.dispatchId))],[91]);
+  assert.deepEqual([...new Set(fake.submissions.map(row=>row.leaseToken))],[plan.leaseToken]);
   assert.deepEqual([...new Set(fake.submissions.map(row=>row.statusCase))].sort(),[...STATUSES].sort());
   assert.deepEqual(Object.fromEntries(STATUSES.map(status=>[status,[...new Set(fake.submissions
     .filter(row=>row.statusCase===status).map(row=>row.observedHttpStatus))]])),
@@ -256,5 +263,8 @@ try{
   await assert.rejects(()=>execute(95,{artifactMutant:"missing"}),/EVIDENCE_SUBMISSION_REJECTED/);
   await assert.rejects(()=>execute(96,{artifactMutant:"symlink"}),/EVIDENCE_SUBMISSION_REJECTED/);
   await assert.rejects(()=>execute(97,{wrongCommand:true}),/BROWSER_CONTEXT_OBSERVATION_MISMATCH/);
+  await assert.rejects(()=>runPlan({root,plan:{...plan,leaseToken:"not-a-uuid"},manifest,credentials,
+    password:"fixture-secret",opsToken:"fixture-token",baseURL:"http://fixture.invalid",
+    runtimeFactory:fixture(root).runtimeFactory,dbProbe:fixture(root).dbProbe}),/LIVE_SMOKE_LEASE_TOKEN_INVALID/);
   console.log("COMPOSITE_LIVE_SMOKE_RUN_PLAN_PASS commands=1 statuses=5 lanes=3 submissions=15 browserFill>=8 draftLoadSave=3/3 commandClicks=5 artifactRehash=10 mutants=http,tamper,traversal,missing,symlink,wrong-command");
 }finally{await rm(root,{recursive:true,force:true});}

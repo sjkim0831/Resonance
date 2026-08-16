@@ -125,7 +125,8 @@ dispatch as (
  from positive_scope scope cross join credential
 )
 select jsonb_build_object('schema','carbonet.composite-live-smoke-plan/v1',
- 'dispatchId',dispatch.dispatch_id,'jobId',dispatch.job_id,'processCode',dispatch.process_code,
+ 'dispatchId',dispatch.dispatch_id,'leaseToken',dispatch.lease_token::text,
+ 'jobId',dispatch.job_id,'processCode',dispatch.process_code,
  'projectId',dispatch.project_id,'authorityRevisionSetHash',dispatch.authority_revision_set_hash,
  'artifactManifestHash',dispatch.artifact_manifest_hash,
  'expectedEvidenceCount',dispatch.expected_evidence_count,'observedAt',dispatch.started_at,

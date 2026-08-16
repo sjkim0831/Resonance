@@ -19,6 +19,7 @@ import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.nio.file.SecureDirectoryStream;
 import java.nio.file.StandardOpenOption;
+import java.nio.file.attribute.BasicFileAttributeView;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.PosixFileAttributeView;
 import java.nio.file.attribute.PosixFilePermission;
@@ -35,7 +36,6 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.UUID;
 import java.util.HexFormat;
-import java.util.Objects;
 import java.util.HashSet;
 
 import javax.imageio.ImageIO;
@@ -53,10 +53,12 @@ public class CompositeLiveSmokeEvidenceService {
     private static final Set<String> LANES=Set.of("API","DATABASE","BROWSER");
     private static final Set<String> STATUSES=Set.of(
         "SUCCESS","VALIDATION_ERROR","FORBIDDEN","CONFLICT","RECOVERY");
-    private static final String DEFAULT_EVIDENCE_ROOT=
+    static final String DEFAULT_EVIDENCE_ROOT=
         "/opt/resonance-data/control-plane/var/test-evidence/composite-live-smoke";
-    private static final long MAX_DOM_BYTES=4L*1024*1024;
-    private static final long MAX_SCREENSHOT_BYTES=20L*1024*1024;
+    static final long MAX_DOM_BYTES=4L*1024*1024;
+    static final long MAX_SCREENSHOT_BYTES=20L*1024*1024;
+    private static final int WATERMARK_COLUMNS=32,WATERMARK_CELL=4;
+    private static final int WATERMARK_ZERO=0x052b57,WATERMARK_ONE=0x246beb;
     private final JdbcTemplate jdbc;
     private final ObjectMapper mapper;
     private final Path evidenceRoot;
@@ -81,6 +83,7 @@ public class CompositeLiveSmokeEvidenceService {
         if(authenticatedAccount==null||authenticatedAccount.isBlank())
             throw new SecurityException("AUTHENTICATED_LIVE_SMOKE_ACCOUNT_REQUIRED");
         long dispatchId=positiveLong(request,"dispatchId"),jobId=positiveLong(request,"jobId");
+        UUID leaseToken=exactUuid(request,"leaseToken");
         long authorityId=positiveLong(request,"authorityId");
         String lane=code(request,"lane",LANES),status=code(request,"statusCase",STATUSES);
         String scenarioCode=required(request,"scenarioCode",120);
@@ -94,10 +97,10 @@ public class CompositeLiveSmokeEvidenceService {
         Map<String,Object> input=object(request.get("input"),"input");
         Map<String,Object> output=object(request.get("output"),"output");
         Map<String,Object> laneDetails=object(request.get("laneDetails"),"laneDetails");
-        String runId=UUID.fromString(required(request,"runId",36)).toString();
+        String runId=exactUuid(request,"runId").toString();
         String artifactHash=hashText(request.get("artifactHash"),"artifactHash");
         String observedAt=OffsetDateTime.parse(required(request,"observedAt",60)).toString();
-        Map<String,Object> authority=currentAuthority(dispatchId,jobId,authorityId,observedAt);
+        Map<String,Object> authority=currentAuthority(dispatchId,jobId,authorityId,leaseToken,observedAt);
         if(!Boolean.TRUE.equals(authority.get("temporalExact")))
             throw new IllegalArgumentException("LIVE_SMOKE_OBSERVED_AFTER_DEPLOY_REQUIRED");
         String scopeType=String.valueOf(authority.get("scopeType"));
@@ -155,9 +158,13 @@ public class CompositeLiveSmokeEvidenceService {
         String inputHash=hash(input),outputHash=hash(output);
         String stateHash=hash(Map.of("fromState",from,"toState",to,"observedState",observedState));
         String statusHash=hash(Map.of("expectedStatus",status,"observedStatus",status));
+        BrowserArtifactContext browserContext=new BrowserArtifactContext(runId,
+            String.valueOf(authority.get("processCode")),String.valueOf(authority.get("stepCode")),
+            String.valueOf(authority.get("routePath")),String.valueOf(authority.get("audience")),
+            tenantId,projectId,executionId.toString(),observedState);
         Map<String,Object> laneEvidence=laneEvidence(lane,laneDetails,dispatchId,runId,targetRef,
             inputHash,outputHash,artifactHash,executionId,idempotencyKey,idempotencyKeyHash,
-            observedHttpStatus,status,command,output);
+            observedHttpStatus,status,command,output,browserContext);
         String laneEvidenceHash=hash(laneEvidence);
         String evidenceRef="live:"+runId+";lane:"+lane+";artifact:"+artifactHash;
         Map<String,Object> envelope=new LinkedHashMap<>();
@@ -215,7 +222,7 @@ public class CompositeLiveSmokeEvidenceService {
     }
 
     private Map<String,Object> currentAuthority(long dispatchId,long jobId,long authorityId,
-            String observedAt){
+            UUID leaseToken,String observedAt){
         List<Map<String,Object>> rows=jdbc.queryForList("""
             select authority.authority_revision as "authorityRevision",
                    authority.process_code as "processCode",authority.step_code as "stepCode",
@@ -238,7 +245,8 @@ public class CompositeLiveSmokeEvidenceService {
                    framework_composite_authority_revision_set_hash(job.job_id)
                and dispatch.artifact_manifest_hash=framework_try_jsonb(job.result_json)#>>
                    '{canonicalGeneration,compositeArtifactManifestHash}'
-               and dispatch.status='RUNNING' and dispatch.lease_until>=clock_timestamp()
+               and dispatch.status='RUNNING' and dispatch.lease_token=?
+               and dispatch.lease_until>=clock_timestamp()
               join framework_runtime_release_state runtime
                 on runtime.release_key='CARBONET_RUNTIME' and runtime.health_status='UP'
                and runtime.source_commit=dispatch.runtime_commit
@@ -282,7 +290,7 @@ public class CompositeLiveSmokeEvidenceService {
                    and (conflicting.scope_type<>binding.scope_type
                      or coalesce(conflicting.project_id,'')<>coalesce(binding.project_id,'')))
              for share of runtime,dispatch,receipt,job,authority
-            """,observedAt,observedAt,dispatchId,authorityId,jobId);
+            """,observedAt,observedAt,dispatchId,leaseToken,authorityId,jobId);
         if(rows.size()!=1)throw new IllegalStateException("LIVE_SMOKE_CURRENT_JOB_AUTHORITY_REQUIRED");
         Map<String,Object> row=new LinkedHashMap<>(rows.get(0));
         if(!Set.of("GLOBAL","PROJECT").contains(String.valueOf(row.get("scopeType")))
@@ -426,7 +434,7 @@ public class CompositeLiveSmokeEvidenceService {
     private Map<String,Object> laneEvidence(String lane,Map<String,Object> details,long dispatchId,
             String runId,String target,String inputHash,String outputHash,String artifactHash,
             UUID executionId,String idempotencyKey,String idempotencyKeyHash,int observedHttpStatus,
-            String status,String command,Map<String,Object> output){
+            String status,String command,Map<String,Object> output,BrowserArtifactContext browserContext){
         Set<String> expected=switch(lane){
             case "DATABASE" -> Set.of("rereadHash","transactionHash");
             case "BROWSER" -> Set.of("domHash","screenshotHash","rendered",
@@ -450,8 +458,8 @@ public class CompositeLiveSmokeEvidenceService {
                 required(details,"screenshotArtifactRef",1000),
                 hashText(details.get("screenshotHash"),"laneDetails.screenshotHash"),
                 "screenshot.png",MAX_SCREENSHOT_BYTES,dispatchId,runId);
-            verifyDomArtifact(dom,command,status,output,idempotencyKey,observedHttpStatus);
-            verifyPngArtifact(screenshot);
+            verifyDomArtifact(dom,command,status,output,idempotencyKey,observedHttpStatus,browserContext);
+            verifyPngArtifact(screenshot,runId);
             verifiedDetails.put("domHash",dom.hash());verifiedDetails.put("screenshotHash",screenshot.hash());
             verifiedDetails.put("domArtifactRef",dom.reference());
             verifiedDetails.put("screenshotArtifactRef",screenshot.reference());
@@ -513,32 +521,37 @@ public class CompositeLiveSmokeEvidenceService {
                 LinkOption.NOFOLLOW_LINKS);
             if(!before.isRegularFile()||before.size()<1||before.size()>maximumBytes)
                 throw new IllegalArgumentException("LIVE_SMOKE_ARTIFACT_FILE_INVALID");
-            if(Files.getFileAttributeView(candidate,PosixFileAttributeView.class,
-                    LinkOption.NOFOLLOW_LINKS)!=null){
-                Set<PosixFilePermission> permissions=Files.getPosixFilePermissions(candidate,
-                    LinkOption.NOFOLLOW_LINKS);
+            byte[] bytes;
+            try(PinnedArtifact pinned=openPinnedArtifact(root,relative)){
+                BasicFileAttributes secureBefore=pinned.attributes();
+                if(!sameFileAttributes(before,secureBefore)||secureBefore.fileKey()==null)
+                    throw new IllegalArgumentException("LIVE_SMOKE_ARTIFACT_CHANGED_DURING_OPEN");
+                Set<PosixFilePermission> permissions=pinned.permissions();
                 if(permissions.contains(PosixFilePermission.OWNER_WRITE)
                         ||permissions.contains(PosixFilePermission.GROUP_WRITE)
                         ||permissions.contains(PosixFilePermission.OTHERS_WRITE))
                     throw new IllegalArgumentException("LIVE_SMOKE_ARTIFACT_WRITABLE_FORBIDDEN");
-            }
-            byte[] bytes;
-            try(SeekableByteChannel channel=openPinnedArtifact(root,relative)){
+                SeekableByteChannel channel=pinned.channel();
                 long openedSize=channel.size();
                 if(openedSize<1||openedSize>maximumBytes)
                     throw new IllegalArgumentException("LIVE_SMOKE_ARTIFACT_FILE_INVALID");
                 if(mutation!=null)mutation.run();
+                BasicFileAttributes openedPath=pinned.attributes();
+                if(!sameFileAttributes(secureBefore,openedPath))
+                    throw new IllegalArgumentException("LIVE_SMOKE_ARTIFACT_CHANGED_DURING_OPEN");
                 ByteBuffer content=ByteBuffer.allocate(Math.toIntExact(openedSize));
                 while(content.hasRemaining()&&channel.read(content)>=0){}
                 if(content.hasRemaining()||channel.size()!=openedSize)
                     throw new IllegalArgumentException("LIVE_SMOKE_ARTIFACT_CHANGED_DURING_READ");
                 bytes=content.array();
+                BasicFileAttributes secureAfter=pinned.attributes();
+                if(!sameFileAttributes(secureBefore,secureAfter))
+                    throw new IllegalArgumentException("LIVE_SMOKE_ARTIFACT_CHANGED_DURING_READ");
             }
             BasicFileAttributes after=Files.readAttributes(candidate,BasicFileAttributes.class,
                 LinkOption.NOFOLLOW_LINKS);
-            if(bytes.length!=before.size()||bytes.length>maximumBytes||before.size()!=after.size()
-                    ||!before.lastModifiedTime().equals(after.lastModifiedTime())
-                    ||!Objects.equals(before.fileKey(),after.fileKey()))
+            if(bytes.length!=before.size()||bytes.length>maximumBytes
+                    ||!sameFileAttributes(before,after))
                 throw new IllegalArgumentException("LIVE_SMOKE_ARTIFACT_CHANGED_DURING_READ");
             String observed=HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(bytes));
             String filename=candidate.getFileName().toString();
@@ -559,12 +572,17 @@ public class CompositeLiveSmokeEvidenceService {
     @FunctionalInterface
     interface ArtifactReadMutation{void run()throws Exception;}
 
-    private static SeekableByteChannel openPinnedArtifact(Path root,Path relative)throws Exception{
+    static boolean secureArtifactReadsAvailable(Path root)throws Exception{
+        try(DirectoryStream<Path> stream=Files.newDirectoryStream(root)){
+            return stream instanceof SecureDirectoryStream<?>;
+        }
+    }
+
+    private static PinnedArtifact openPinnedArtifact(Path root,Path relative)throws Exception{
         DirectoryStream<Path> rootStream=Files.newDirectoryStream(root);
         if(!(rootStream instanceof SecureDirectoryStream<Path> secureRoot)){
             rootStream.close();
-            return Files.newByteChannel(root.resolve(relative),
-                Set.of(StandardOpenOption.READ,LinkOption.NOFOLLOW_LINKS));
+            throw new IllegalArgumentException("LIVE_SMOKE_SECURE_DIRECTORY_STREAM_REQUIRED");
         }
         SecureDirectoryStream<Path> current=secureRoot;
         List<SecureDirectoryStream<Path>> opened=new ArrayList<>();opened.add(secureRoot);
@@ -577,7 +595,7 @@ public class CompositeLiveSmokeEvidenceService {
             SeekableByteChannel channel=current.newByteChannel(
                 relative.getName(relative.getNameCount()-1),
                 Set.of(StandardOpenOption.READ,LinkOption.NOFOLLOW_LINKS));
-            return new ClosingChannel(channel,opened);
+            return new PinnedArtifact(channel,current,relative.getFileName(),opened);
         }catch(Exception error){
             for(int index=opened.size()-1;index>=0;index--)try{opened.get(index).close();}
             catch(Exception ignored){}
@@ -585,33 +603,50 @@ public class CompositeLiveSmokeEvidenceService {
         }
     }
 
-    private static final class ClosingChannel implements SeekableByteChannel{
-        private final SeekableByteChannel delegate;
+    private static boolean sameFileAttributes(BasicFileAttributes left,BasicFileAttributes right){
+        return left.isRegularFile()==right.isRegularFile()&&left.size()==right.size()
+            &&left.lastModifiedTime().equals(right.lastModifiedTime())
+            &&left.fileKey()!=null&&left.fileKey().equals(right.fileKey());
+    }
+
+    private static final class PinnedArtifact implements AutoCloseable{
+        private final SeekableByteChannel channel;
+        private final SecureDirectoryStream<Path> parent;
+        private final Path name;
         private final List<SecureDirectoryStream<Path>> directories;
-        private ClosingChannel(SeekableByteChannel delegate,List<SecureDirectoryStream<Path>> directories){
-            this.delegate=delegate;this.directories=directories;
+        private PinnedArtifact(SeekableByteChannel channel,SecureDirectoryStream<Path> parent,Path name,
+                List<SecureDirectoryStream<Path>> directories){
+            this.channel=channel;this.parent=parent;this.name=name;this.directories=directories;
         }
-        @Override public int read(ByteBuffer target)throws java.io.IOException{return delegate.read(target);}
-        @Override public int write(ByteBuffer source)throws java.io.IOException{return delegate.write(source);}
-        @Override public long position()throws java.io.IOException{return delegate.position();}
-        @Override public SeekableByteChannel position(long value)throws java.io.IOException{delegate.position(value);return this;}
-        @Override public long size()throws java.io.IOException{return delegate.size();}
-        @Override public SeekableByteChannel truncate(long value)throws java.io.IOException{delegate.truncate(value);return this;}
-        @Override public boolean isOpen(){return delegate.isOpen();}
+        private SeekableByteChannel channel(){return channel;}
+        private BasicFileAttributes attributes()throws java.io.IOException{
+            BasicFileAttributeView view=parent.getFileAttributeView(name,BasicFileAttributeView.class,
+                LinkOption.NOFOLLOW_LINKS);
+            if(view==null)throw new java.io.IOException("secure basic attributes unavailable");
+            return view.readAttributes();
+        }
+        private Set<PosixFilePermission> permissions()throws java.io.IOException{
+            PosixFileAttributeView view=parent.getFileAttributeView(name,PosixFileAttributeView.class,
+                LinkOption.NOFOLLOW_LINKS);
+            if(view==null)throw new java.io.IOException("secure posix attributes unavailable");
+            return view.readAttributes().permissions();
+        }
         @Override public void close()throws java.io.IOException{
             java.io.IOException failure=null;
-            try{delegate.close();}catch(java.io.IOException error){failure=error;}
+            try{channel.close();}catch(java.io.IOException error){failure=error;}
             for(int index=directories.size()-1;index>=0;index--)try{directories.get(index).close();}
             catch(java.io.IOException error){if(failure==null)failure=error;else failure.addSuppressed(error);}
             if(failure!=null)throw failure;
         }
     }
 
-    static void verifyDomArtifact(ArtifactObservation artifact,String command,String status,
-            Map<String,Object> output,String idempotencyKey,int observedHttpStatus){
+    static DomObservation verifyDomArtifact(ArtifactObservation artifact,String command,String status,
+            Map<String,Object> output,String idempotencyKey,int observedHttpStatus,
+            BrowserArtifactContext context){
         String html=new String(artifact.bytes(),StandardCharsets.UTF_8);
         List<Map<String,String>> observations=new ArrayList<>();int[] resultMarkers={0};
-        int[] commandMarkers={0};
+        List<String> watermarkCells=new ArrayList<>();
+        int[] commandMarkers={0},watermarkMarkers={0};
         try{
             new ParserDelegator().parse(new StringReader(html),new HTMLEditorKit.ParserCallback(){
                 private void inspect(MutableAttributeSet attributes){
@@ -624,21 +659,42 @@ public class CompositeLiveSmokeEvidenceService {
                     if(values.containsKey("data-last-command-code"))observations.add(values);
                     if("true".equals(values.get("data-live-smoke-result")))resultMarkers[0]++;
                     if(command.equals(values.get("data-command-code")))commandMarkers[0]++;
+                    if(values.containsKey("data-live-smoke-watermark")){
+                        watermarkMarkers[0]++;
+                        if(!context.runId().equals(values.get("data-live-smoke-watermark")))
+                            throw new IllegalArgumentException("LIVE_SMOKE_DOM_WATERMARK_NOT_EXACT");
+                    }
+                    if(values.containsKey("data-watermark-bit"))
+                        watermarkCells.add(values.get("data-watermark-bit"));
                 }
                 @Override public void handleStartTag(HTML.Tag tag,MutableAttributeSet attributes,int position){inspect(attributes);}
                 @Override public void handleSimpleTag(HTML.Tag tag,MutableAttributeSet attributes,int position){inspect(attributes);}
             },true);
         }catch(Exception error){throw new IllegalArgumentException("LIVE_SMOKE_DOM_PARSE_FAILED");}
-        if(observations.size()!=1||resultMarkers[0]!=1||commandMarkers[0]!=1)
+        if(observations.size()!=1||resultMarkers[0]!=1||commandMarkers[0]!=1
+                ||watermarkMarkers[0]!=1||watermarkCells.size()!=128)
             throw new IllegalArgumentException("LIVE_SMOKE_DOM_MARKER_CARDINALITY_NOT_EXACT");
+        int[] expectedWatermark=watermarkBits(context.runId());
+        for(int index=0;index<expectedWatermark.length;index++)
+            if(!String.valueOf(expectedWatermark[index]).equals(watermarkCells.get(index)))
+                throw new IllegalArgumentException("LIVE_SMOKE_DOM_WATERMARK_NOT_EXACT");
         Map<String,String> marker=observations.get(0);
         boolean denied="FORBIDDEN".equals(status);
         if(!command.equals(marker.get("data-last-command-code"))
                 ||!status.equals(marker.get("data-last-status-case"))
                 ||!String.valueOf(observedHttpStatus).equals(marker.get("data-last-http-status"))
-                ||!idempotencyKey.equals(marker.get("data-last-idempotency-key"))
+                ||(idempotencyKey!=null&&!idempotencyKey.equals(marker.get("data-last-idempotency-key")))
                 ||!String.valueOf(!denied).equals(marker.get("data-runtime-observed"))
-                ||!String.valueOf(denied).equals(marker.get("data-access-denied")))
+                ||!String.valueOf(denied).equals(marker.get("data-access-denied"))
+                ||!context.runId().equals(marker.get("data-live-smoke-run-id"))
+                ||!context.processCode().equals(marker.get("data-process-code"))
+                ||!context.stepCode().equals(marker.get("data-step-code"))
+                ||!context.routePath().equals(marker.get("data-route-path"))
+                ||!context.audience().equals(marker.get("data-audience"))
+                ||!context.tenantId().equals(marker.get("data-tenant-id"))
+                ||!context.projectId().equals(marker.get("data-project-id"))
+                ||!context.executionId().equalsIgnoreCase(marker.get("data-execution-id"))
+                ||!context.currentState().equals(marker.get("data-current-state")))
             throw new IllegalArgumentException("LIVE_SMOKE_DOM_RUNTIME_MARKER_NOT_EXACT");
         try{
             String outputJson=marker.get("data-last-output-json");
@@ -649,11 +705,15 @@ public class CompositeLiveSmokeEvidenceService {
             if(!CompositeExecutableDesignAuthorityCompiler.stable(domOutput).equals(
                     CompositeExecutableDesignAuthorityCompiler.stable(output)))
                 throw new IllegalArgumentException("LIVE_SMOKE_DOM_OUTPUT_NOT_EXACT");
+            String observedIdempotency=marker.get("data-last-idempotency-key");
+            if(observedIdempotency==null||observedIdempotency.isBlank()||observedIdempotency.length()>200)
+                throw new IllegalArgumentException("LIVE_SMOKE_DOM_IDEMPOTENCY_INVALID");
+            return new DomObservation(observedIdempotency,domOutput);
         }catch(IllegalArgumentException error){throw error;}
         catch(Exception error){throw new IllegalArgumentException("LIVE_SMOKE_DOM_OUTPUT_INVALID");}
     }
 
-    static void verifyPngArtifact(ArtifactObservation artifact){
+    static void verifyPngArtifact(ArtifactObservation artifact,String expectedRunId){
         byte[] bytes=artifact.bytes();byte[] signature={(byte)0x89,0x50,0x4e,0x47,0x0d,0x0a,0x1a,0x0a};
         if(bytes.length<256||!Arrays.equals(signature,Arrays.copyOf(bytes,signature.length)))
             throw new IllegalArgumentException("LIVE_SMOKE_SCREENSHOT_PNG_SIGNATURE_INVALID");
@@ -674,9 +734,46 @@ public class CompositeLiveSmokeEvidenceService {
                 for(int y=0;y<height&&colors.size()<2;y+=yStep)
                     for(int x=0;x<width&&colors.size()<2;x+=xStep)colors.add(image.getRGB(x,y));
                 if(colors.size()<2)throw new IllegalArgumentException("LIVE_SMOKE_SCREENSHOT_CONTENT_TRIVIAL");
+                if(!watermarkMatches(image,expectedRunId))
+                    throw new IllegalArgumentException("LIVE_SMOKE_SCREENSHOT_WATERMARK_NOT_EXACT");
             }finally{reader.dispose();}
         }catch(IllegalArgumentException error){throw error;}
         catch(Exception error){throw new IllegalArgumentException("LIVE_SMOKE_SCREENSHOT_PNG_DECODE_INVALID");}
+    }
+
+    private static boolean watermarkMatches(BufferedImage image,String runId){
+        int[] bits=watermarkBits(runId);
+        for(int scale=1;scale<=4;scale++){
+            if(image.getWidth()<WATERMARK_COLUMNS*WATERMARK_CELL*scale
+                    ||image.getHeight()<4*WATERMARK_CELL*scale)continue;
+            boolean exact=true;
+            for(int index=0;index<bits.length&&exact;index++){
+                int x=(index%WATERMARK_COLUMNS)*WATERMARK_CELL*scale+2*scale;
+                int y=(index/WATERMARK_COLUMNS)*WATERMARK_CELL*scale+2*scale;
+                int expected=bits[index]==1?WATERMARK_ONE:WATERMARK_ZERO;
+                exact=colorNear(image.getRGB(x,y)&0x00ffffff,expected);
+            }
+            if(exact)return true;
+        }
+        return false;
+    }
+
+    private static boolean colorNear(int observed,int expected){
+        return Math.abs(((observed>>16)&255)-((expected>>16)&255))<=6
+            &&Math.abs(((observed>>8)&255)-((expected>>8)&255))<=6
+            &&Math.abs((observed&255)-(expected&255))<=6;
+    }
+
+    static int[] watermarkBits(String runId){
+        String hex=runId==null?"":runId.replace("-","").toLowerCase();
+        if(!hex.matches("[0-9a-f]{32}"))
+            throw new IllegalArgumentException("LIVE_SMOKE_WATERMARK_RUN_ID_INVALID");
+        int[] bits=new int[128];int index=0;
+        for(char value:hex.toCharArray()){
+            int nibble=Character.digit(value,16);
+            for(int shift=3;shift>=0;shift--)bits[index++]=(nibble>>shift)&1;
+        }
+        return bits;
     }
 
     static String deterministicRunId(long dispatchId,long authorityId,long revision,
@@ -696,6 +793,9 @@ public class CompositeLiveSmokeEvidenceService {
         ArtifactObservation{bytes=bytes.clone();}
         @Override public byte[] bytes(){return bytes.clone();}
     }
+    record BrowserArtifactContext(String runId,String processCode,String stepCode,String routePath,
+            String audience,String tenantId,String projectId,String executionId,String currentState){}
+    record DomObservation(String idempotencyKey,Map<String,Object> output){}
 
     private String target(String lane,Map<String,Object> authority,Map<String,Object> design,
             Map<String,Object> operation){
@@ -720,6 +820,14 @@ public class CompositeLiveSmokeEvidenceService {
         String text=String.valueOf(value.getOrDefault(key,"")).trim();
         if(text.isEmpty()||text.length()>max)throw new IllegalArgumentException("LIVE_SMOKE_"+key+"_INVALID");
         return text;
+    }
+    private static UUID exactUuid(Map<String,Object> value,String key){
+        String text=required(value,key,36);
+        if(!text.matches("[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}"))
+            throw new IllegalArgumentException("LIVE_SMOKE_"+key+"_INVALID");
+        UUID parsed=UUID.fromString(text);
+        if(!parsed.toString().equals(text))throw new IllegalArgumentException("LIVE_SMOKE_"+key+"_INVALID");
+        return parsed;
     }
     private static String code(Map<String,Object> value,String key,Set<String> allowed){
         String text=required(value,key,30).toUpperCase();

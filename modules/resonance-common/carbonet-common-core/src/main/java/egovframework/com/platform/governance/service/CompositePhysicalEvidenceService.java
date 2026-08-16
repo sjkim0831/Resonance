@@ -3,6 +3,7 @@ package egovframework.com.platform.governance.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.jdbc.core.JdbcTemplate;
 
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -18,8 +19,18 @@ final class CompositePhysicalEvidenceService {
         "SUCCESS","VALIDATION_ERROR","FORBIDDEN","CONFLICT","RECOVERY");
     private static final List<String> LIVE_LANES=List.of("API","DATABASE","BROWSER");
     private final JdbcTemplate jdbc;
+    private final Path evidenceRoot;
 
-    CompositePhysicalEvidenceService(JdbcTemplate jdbc){this.jdbc=jdbc;}
+    CompositePhysicalEvidenceService(JdbcTemplate jdbc){this(jdbc,configuredEvidenceRoot());}
+    CompositePhysicalEvidenceService(JdbcTemplate jdbc,Path evidenceRoot){
+        this.jdbc=jdbc;this.evidenceRoot=evidenceRoot.toAbsolutePath().normalize();
+    }
+    private static Path configuredEvidenceRoot(){
+        String configured=System.getProperty("resonance.composite-live-smoke.evidence-root","").trim();
+        if(configured.isEmpty())configured=System.getenv().getOrDefault(
+            "CARBONET_COMPOSITE_LIVE_SMOKE_EVIDENCE_ROOT","").trim();
+        return Path.of(configured.isEmpty()?CompositeLiveSmokeEvidenceService.DEFAULT_EVIDENCE_ROOT:configured);
+    }
 
     enum Verdict { EXACT, LIVE_SMOKE_TEST_PENDING, CANONICAL_INVALID }
 
@@ -202,6 +213,7 @@ final class CompositePhysicalEvidenceService {
                    evidence.state_hash as "stateHash",evidence.status_hash as "statusHash",
                    evidence.lane_evidence_hash as "laneEvidenceHash",
                    evidence.evidence_hash as "evidenceHash",evidence.evidence_ref as "evidenceRef",
+                   dispatch.dispatch_id as "dispatchId",
                    (dispatch.started_at is not null and evidence.observed_at>=dispatch.started_at
                     and evidence.observed_at<=evidence.recorded_at
                     and evidence.observed_at<=clock_timestamp()) as "temporalExact",
@@ -241,9 +253,14 @@ final class CompositePhysicalEvidenceService {
                join integrated_design_live_smoke_dispatch dispatch
                  on dispatch.dispatch_id=(receipt.receipt_json->>'liveSmokeDispatchId')::bigint
                 and dispatch.dispatch_id=evidence.dispatch_id and dispatch.job_id=evidence.job_id
+                and dispatch.process_code=evidence.process_code
                 and (nullif(receipt.receipt_json#>>'{canary,runtimeCommit}','') is null
                   or dispatch.runtime_commit=receipt.receipt_json#>>'{canary,runtimeCommit}')
-                 and dispatch.status in('EVIDENCE_SUBMITTED','COMPLETED')
+                and (dispatch.status='EVIDENCE_SUBMITTED' or dispatch.status='COMPLETED')
+                and dispatch.authority_revision_set_hash=
+                    framework_composite_authority_revision_set_hash(evidence.job_id)
+                and dispatch.artifact_manifest_hash=framework_try_jsonb(job.result_json)#>>
+                    '{canonicalGeneration,compositeArtifactManifestHash}'
                join framework_runtime_release_state runtime
                  on runtime.release_key='CARBONET_RUNTIME' and runtime.health_status='UP'
                 and runtime.source_commit=dispatch.runtime_commit
@@ -256,7 +273,7 @@ final class CompositePhysicalEvidenceService {
                join integrated_design_authority authority
                  on authority.authority_id=evidence.authority_id
                 and authority.authority_revision=evidence.authority_revision
-                and authority.job_id=evidence.job_id
+               and authority.job_id=evidence.job_id
                 and authority.source_hash=evidence.source_hash
                 and authority.authority_hash=evidence.authority_hash
               where evidence.job_id=? and evidence.process_code=?
@@ -393,10 +410,43 @@ final class CompositePhysicalEvidenceService {
                     declaration.artifact(),declaration.expectedHttpStatus(),status)
                 ||!executionContextExact(row,laneEvidence,declaration)
                 ||!outputValuesExact(output,input,declaration,laneEvidence,actualByKey))return false;
+        if("BROWSER".equals(lane)&&!browserArtifactsExact(row,laneEvidence,declaration,output))return false;
         String run=String.valueOf(laneEvidence.get("runId"));
         String artifact=String.valueOf(laneEvidence.get("artifactHash"));
         return String.valueOf(row.get("evidenceRef")).equals(
             "live:"+run+";lane:"+lane+";artifact:"+artifact);
+    }
+
+    private boolean browserArtifactsExact(Map<String,Object> row,Map<String,Object> proof,
+            ExpectedSmoke declaration,Map<String,Object> output){
+        try{
+            long dispatchId=longValue(row,"dispatchId");
+            String runId=String.valueOf(proof.get("runId"));
+            String expectedRun=CompositeLiveSmokeEvidenceService.deterministicRunId(dispatchId,
+                longValue(row,"authorityId"),longValue(row,"authorityRevision"),declaration.command(),
+                declaration.scenario(),declaration.status());
+            if(!expectedRun.equals(runId))return false;
+            var dom=CompositeLiveSmokeEvidenceService.verifyArtifact(evidenceRoot,
+                String.valueOf(proof.get("domArtifactRef")),String.valueOf(proof.get("domHash")),
+                "dom.html",CompositeLiveSmokeEvidenceService.MAX_DOM_BYTES,dispatchId,runId);
+            var screenshot=CompositeLiveSmokeEvidenceService.verifyArtifact(evidenceRoot,
+                String.valueOf(proof.get("screenshotArtifactRef")),String.valueOf(proof.get("screenshotHash")),
+                "screenshot.png",CompositeLiveSmokeEvidenceService.MAX_SCREENSHOT_BYTES,dispatchId,runId);
+            var context=new CompositeLiveSmokeEvidenceService.BrowserArtifactContext(runId,
+                String.valueOf(row.get("processCode")),String.valueOf(row.get("stepCode")),
+                String.valueOf(row.get("routePath")),String.valueOf(row.get("audience")),
+                String.valueOf(row.get("tenantId")),String.valueOf(row.get("projectId")),
+                String.valueOf(proof.get("executionId")),declaration.observed());
+            var observation=CompositeLiveSmokeEvidenceService.verifyDomArtifact(dom,declaration.command(),
+                declaration.status(),output,null,declaration.expectedHttpStatus(),context);
+            String observedIdempotencyHash=jdbc.queryForObject("""
+                select framework_composite_live_smoke_hash(
+                  jsonb_build_object('idempotencyKey',?::text))
+                """,String.class,observation.idempotencyKey());
+            if(!String.valueOf(proof.get("idempotencyKeyHash")).equals(observedIdempotencyHash))return false;
+            CompositeLiveSmokeEvidenceService.verifyPngArtifact(screenshot,runId);
+            return true;
+        }catch(Exception invalid){return false;}
     }
 
     private boolean executionContextExact(Map<String,Object> row,Map<String,Object> proof,

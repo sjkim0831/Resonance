@@ -16,6 +16,14 @@ const list = (value: unknown) => Array.isArray(value) ? value.map(item=>typeof i
 const items = (value: unknown, prefix: string): ContractItem[] => Array.isArray(value) ? value.map((item,index)=>typeof item === "string" ? {code:item||`${prefix}_${index+1}`,label:item} : {...(item as Record<string,unknown>),code:String((item as Record<string,unknown>)?.code||`${prefix}_${index+1}`),label:String((item as Record<string,unknown>)?.label||(item as Record<string,unknown>)?.name||(item as Record<string,unknown>)?.code||`${prefix} ${index+1}`)}).filter(item=>item.label) : [];
 const text = (value: unknown) => typeof value === "string" ? value : "";
 const liveSmokeStatuses = new Set(["SUCCESS","VALIDATION_ERROR","FORBIDDEN","CONFLICT","RECOVERY"]);
+const liveSmokeWatermarkBits = (runId: string) => {
+  const hex=runId.toLowerCase().replaceAll("-","");
+  if(!/^[0-9a-f]{32}$/.test(hex))return [];
+  return Array.from(hex).flatMap(value=>{
+    const nibble=Number.parseInt(value,16);
+    return [3,2,1,0].map(shift=>(nibble>>shift)&1);
+  });
+};
 const observedStatusCase = (status: number, body: Record<string, unknown>) => {
   if(status===200&&body.success===true&&body.recovered===true&&body.idempotent===true)return "RECOVERY";
   if(status===200&&body.success===true&&body.idempotent===false)return "SUCCESS";
@@ -54,19 +62,21 @@ function GeneratedContent({ screen, runtimeWarning = "" }: { screen: GeneratedSc
     tenantId:query.get("tenantId")||"DEFAULT",projectId:query.get("projectId")||"",
     executionId:query.get("executionId")||"",liveSmokeRunId:query.get("liveSmokeRunId")||"",
     commandCode:query.get("commandCode")||"",statusCase:query.get("statusCase")||"",
-    idempotencyKey:query.get("idempotencyKey")||""}; }, []);
+    idempotencyKey:query.get("idempotencyKey")||"",currentState:query.get("currentState")||""}; }, []);
   const liveSmokeMode=/^[0-9a-f-]{36}$/i.test(initialContext.liveSmokeRunId)
     &&/^[0-9a-f-]{36}$/i.test(initialContext.idempotencyKey)
     &&liveSmokeStatuses.has(initialContext.statusCase)&&Boolean(initialContext.commandCode);
   const [tenantId, setTenantId] = useState(initialContext.tenantId), [projectId, setProjectId] = useState(initialContext.projectId), [executionId, setExecutionId] = useState(initialContext.executionId);
   const [values, setValues] = useState<Record<string, string>>({}), [draftVersion, setDraftVersion] = useState(0), [draftStatus, setDraftStatus] = useState("NOT_SAVED"), [busy, setBusy] = useState(false), [message, setMessage] = useState(""), [error, setError] = useState("");
-  const [currentState,setCurrentState]=useState(""),[runtimeObserved,setRuntimeObserved]=useState(false),
+  const [currentState,setCurrentState]=useState(initialContext.currentState),[runtimeObserved,setRuntimeObserved]=useState(false),
     [accessDenied,setAccessDenied]=useState(false),[nextTask,setNextTask]=useState<NextTask|null>(null);
   const [lastObservation,setLastObservation]=useState<CommandObservation|null>(null);
   const [optionSets,setOptionSets]=useState<Record<string,Array<{value:string;label:string}>>>({});
   const apiBase = en ? "/en/home/api/process-executions" : "/home/api/process-executions";
   const fieldEntries = useMemo<ContractItem[]>(() => fields.length ? fields : [{code:"WORK_NOTE",label:en ? "Work note" : "업무 메모"}], [en, fields]);
   const resolvedFieldEntries=useMemo(()=>fieldEntries.map(field=>({...field,options:optionSets[field.code]||field.options})),[fieldEntries,optionSets]);
+  const watermarkBits=useMemo(()=>liveSmokeMode?liveSmokeWatermarkBits(initialContext.liveSmokeRunId):[],
+    [initialContext.liveSmokeRunId,liveSmokeMode]);
 
   useEffect(()=>{
     if(!tenantId.trim()||!projectId.trim())return;
@@ -204,16 +214,23 @@ function GeneratedContent({ screen, runtimeWarning = "" }: { screen: GeneratedSc
 
   return <main className="mx-auto max-w-7xl px-4 py-8 lg:px-8"
     data-access-denied={accessDenied?"true":"false"} data-audience={screen.audience}
-    data-current-state={runtimeObserved?currentState:""}
+    data-current-state={currentState}
     data-draft-status={draftStatus} data-draft-version={draftVersion}
-    data-execution-id={runtimeObserved?executionId:""} data-process-code={screen.processCode}
+    data-execution-id={executionId} data-live-smoke-run-id={liveSmokeMode?initialContext.liveSmokeRunId:""}
+    data-process-code={screen.processCode} data-route-path={screen.routePath}
     data-last-command-code={lastObservation?.commandCode||""}
     data-last-http-status={lastObservation?.httpStatus||""}
     data-last-idempotency-key={lastObservation?.idempotencyKey||""}
     data-last-output-json={lastObservation?JSON.stringify(lastObservation.output):""}
     data-last-status-case={lastObservation?.statusCase||""}
-    data-project-id={runtimeObserved?projectId:""} data-runtime-observed={runtimeObserved?"true":"false"}
-    data-step-code={screen.stepCode} data-tenant-id={runtimeObserved?tenantId:""}>
+    data-project-id={projectId} data-runtime-observed={runtimeObserved?"true":"false"}
+    data-step-code={screen.stepCode} data-tenant-id={tenantId}>
+    {watermarkBits.length===128&&<div aria-label={`Live smoke binary watermark ${initialContext.liveSmokeRunId}`}
+      data-live-smoke-watermark={initialContext.liveSmokeRunId} style={{display:"grid",gridAutoRows:"4px",
+        gridTemplateColumns:"repeat(32, 4px)",height:"16px",left:0,pointerEvents:"none",position:"fixed",
+        top:0,width:"128px",zIndex:2147483647}}>{watermarkBits.map((bit,index)=><span aria-hidden="true"
+          data-watermark-bit={bit} key={index} style={{backgroundColor:bit?"#246beb":"#052b57",
+            display:"block",height:"4px",width:"4px"}} />)}</div>}
     <header className="flex flex-col gap-4 border-b border-slate-200 pb-6 lg:flex-row lg:items-end lg:justify-between"><div><p className="gov-text-label font-black text-[#246beb]">{screen.processCode} · {screen.stepCode}</p><h1 className="gov-text-heading-lg mt-2 font-black text-[#052b57]">{screen.pageName}</h1><p className="gov-text-body mt-2 max-w-3xl text-slate-600">{text(spec.businessPurpose) || `${screen.actorCode} · ${screen.screenType}`}</p></div><a className="krds-control inline-flex items-center justify-center rounded-lg border border-[#246beb] bg-white px-4 font-bold text-[#246beb]" href={en ? "/en/emission/my-tasks" : "/emission/my-tasks"}>{en ? "Back to my tasks" : "내 업무로 돌아가기"}</a></header>
     {runtimeWarning && <p className="mt-5 rounded-xl border border-amber-300 bg-amber-50 p-4 font-bold text-amber-900" role="alert">{runtimeWarning}</p>}
     <section className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{([

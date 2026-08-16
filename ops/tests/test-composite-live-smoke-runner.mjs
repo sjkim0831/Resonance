@@ -83,6 +83,7 @@ for(const token of ["integrated_design_live_smoke_dispatch","authority_revision_
   "COMPOSITE_LIVE_SMOKE_DISPATCH_DELETE_FORBIDDEN","ix_integrated_design_live_smoke_dispatch_due"])
   assert.ok(migration.includes(token),`migration token missing ${token}`);
 for(const token of ["for update skip locked","lease_token='$lease_token'::uuid",
+  "'leaseToken',dispatch.lease_token::text",
   "status='EVIDENCE_SUBMITTED'","status='RETRY_WAIT'","DEAD_LETTER",
   "framework_composite_authority_revision_set_hash(job_id)"])
   assert.ok(queue.toLowerCase().includes(token.toLowerCase()),`queue token missing ${token}`);
@@ -100,7 +101,7 @@ assert.ok(queue.includes("'directIdentity',direct_identity"));
 assert.ok(queue.includes("'stepOrder',step_order"));
 assert.ok(runner.includes("EXECUTION_ORDER"));
 assert.ok(runner.includes('targetRef: "entity:framework_process_execution"'));
-for(const token of ["dispatchId: Number(plan.dispatchId)", "executionId: execution.executionId", "idempotencyKey,",
+for(const token of ["dispatchId: Number(plan.dispatchId)", "leaseToken, jobId", "executionId: execution.executionId", "idempotencyKey,",
   "observedHttpStatus: response.status()", "runtimeObserved: browser.state.runtimeObserved",
   "accessDenied: browser.state.accessDenied", "page.waitForResponse", "fillScenarioInputs",
   "domArtifactRef", "screenshotArtifactRef", "writeImmutableArtifact"])
@@ -110,7 +111,8 @@ assert.ok(runner.includes("page.screenshot({ fullPage: true })"));
 assert.ok(runner.includes('headers: { "X-Resonance-Token": opsToken }'));
 assert.ok(page.includes("data-runtime-observed={runtimeObserved?\"true\":\"false\"}"));
 assert.ok(page.includes("data-access-denied={accessDenied?\"true\":\"false\"}"));
-for(const attribute of ["data-execution-id","data-current-state","data-tenant-id","data-project-id"])
+for(const attribute of ["data-execution-id","data-current-state","data-tenant-id","data-project-id",
+  "data-live-smoke-run-id","data-route-path","data-live-smoke-watermark","data-watermark-bit"])
   assert.ok(page.includes(attribute),`browser authority attribute missing ${attribute}`);
 for(const attribute of ["data-last-command-code","data-last-http-status","data-last-status-case",
   "data-last-output-json","data-last-idempotency-key","data-live-smoke-action","data-command-code",
@@ -119,10 +121,15 @@ for(const attribute of ["data-last-command-code","data-last-http-status","data-l
 for(const token of ["LinkOption.NOFOLLOW_LINKS","LIVE_SMOKE_ARTIFACT_SYMLINK_FORBIDDEN",
   "LIVE_SMOKE_ARTIFACT_HASH_MISMATCH","LIVE_SMOKE_ARTIFACT_WRITABLE_FORBIDDEN",
   "LIVE_SMOKE_RUN_DISPATCH_BINDING_NOT_EXACT","verifyDomArtifact","verifyPngArtifact",
-  "SecureDirectoryStream","LIVE_SMOKE_SCREENSHOT_PNG_SIGNATURE_INVALID",
+  "SecureDirectoryStream","LIVE_SMOKE_SECURE_DIRECTORY_STREAM_REQUIRED",
+  "sameFileAttributes","pinned.attributes()",
+  "LIVE_SMOKE_SCREENSHOT_PNG_SIGNATURE_INVALID","LIVE_SMOKE_SCREENSHOT_WATERMARK_NOT_EXACT",
   "domArtifactRef","screenshotArtifactRef",
   "MessageDigest.getInstance(\"SHA-256\")"])
   assert.ok(evidenceService.includes(token),`server artifact verifier missing ${token}`);
+for(const token of ["verifyArtifact(evidenceRoot","verifyDomArtifact(dom","verifyPngArtifact(screenshot",
+  "dispatch.status='EVIDENCE_SUBMITTED'","LIVE_SMOKE_TEST_PENDING"])
+  assert.ok(physicalEvidence.includes(token),`finalizer browser reverify missing ${token}`);
 const exactEvidenceRoot=`/opt/resonance-data/control-plane/${runnerManifest.evidenceDirectory}`;
 assert.ok(evidenceService.includes(exactEvidenceRoot),"server/runner evidence root diverges");
 assert.ok(runnerService.includes("Environment=RESONANCE_ROOT=/opt/Resonance"),"systemd runner root diverges");

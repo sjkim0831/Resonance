@@ -25,6 +25,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class CompositeLiveSmokeArtifactVerifierTest {
     private static final String RUN_ID="11111111-1111-4111-8111-111111111111";
+    private static final String EXECUTION_ID="aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+    private static final CompositeLiveSmokeEvidenceService.BrowserArtifactContext CONTEXT=
+        new CompositeLiveSmokeEvidenceService.BrowserArtifactContext(RUN_ID,"PROC","STEP_A","/work-a",
+            "USER","TENANT","PROJECT",EXECUTION_ID,"DONE");
 
     @Test
     void rehashesControlledArtifactBytesAndRejectsSubmittedHashMutation(@TempDir Path root)throws Exception{
@@ -32,6 +36,12 @@ class CompositeLiveSmokeArtifactVerifierTest {
             .getBytes(StandardCharsets.UTF_8);
         String hash=sha256(bytes),reference=reference(hash,"dom.html");
         write(root,reference,bytes);
+        if(!CompositeLiveSmokeEvidenceService.secureArtifactReadsAvailable(root)){
+            assertEquals("LIVE_SMOKE_SECURE_DIRECTORY_STREAM_REQUIRED",assertThrows(
+                IllegalArgumentException.class,()->CompositeLiveSmokeEvidenceService.verifyArtifact(
+                    root,reference,hash,"dom.html",4096,91,RUN_ID)).getMessage());
+            return;
+        }
         var observed=CompositeLiveSmokeEvidenceService.verifyArtifact(root,reference,hash,
             "dom.html",4096,91,RUN_ID);
         assertEquals(hash,observed.hash());assertEquals(bytes.length,observed.byteCount());
@@ -121,44 +131,65 @@ class CompositeLiveSmokeArtifactVerifierTest {
     void parsesExactBrowserDomMarkersAndRejectsSyntheticDom(){
         Map<String,Object> output=Map.of("success",true,"resultId",17);
         String idempotency="11111111-2222-4333-8444-555555555555";
-        byte[] valid=dom("SAVE","SUCCESS",200,output,idempotency,true,false)
+        byte[] valid=dom("SAVE","SUCCESS",200,output,idempotency,true,false,CONTEXT)
             .getBytes(StandardCharsets.UTF_8);
         CompositeLiveSmokeEvidenceService.verifyDomArtifact(artifact(valid,"dom.html"),
-            "SAVE","SUCCESS",output,idempotency,200);
+            "SAVE","SUCCESS",output,idempotency,200,CONTEXT);
 
-        byte[] forged=dom("DELETE","SUCCESS",200,output,idempotency,true,false)
+        byte[] forged=dom("DELETE","SUCCESS",200,output,idempotency,true,false,CONTEXT)
             .getBytes(StandardCharsets.UTF_8);
         assertEquals("LIVE_SMOKE_DOM_MARKER_CARDINALITY_NOT_EXACT",assertThrows(
             IllegalArgumentException.class,()->CompositeLiveSmokeEvidenceService.verifyDomArtifact(
-                artifact(forged,"dom.html"),"SAVE","SUCCESS",output,idempotency,200)).getMessage());
+                artifact(forged,"dom.html"),"SAVE","SUCCESS",output,idempotency,200,CONTEXT)).getMessage());
 
         byte[] synthetic="<html><body><main data-last-command-code=\"SAVE\"></main></body></html>"
             .getBytes(StandardCharsets.UTF_8);
         assertEquals("LIVE_SMOKE_DOM_MARKER_CARDINALITY_NOT_EXACT",assertThrows(
             IllegalArgumentException.class,()->CompositeLiveSmokeEvidenceService.verifyDomArtifact(
-                artifact(synthetic,"dom.html"),"SAVE","SUCCESS",output,idempotency,200)).getMessage());
+                artifact(synthetic,"dom.html"),"SAVE","SUCCESS",output,idempotency,200,CONTEXT)).getMessage());
+
+        byte[] wrongContext=new String(valid,StandardCharsets.UTF_8)
+            .replace("data-route-path=\"/work-a\"","data-route-path=\"/forged\"")
+            .getBytes(StandardCharsets.UTF_8);
+        assertEquals("LIVE_SMOKE_DOM_RUNTIME_MARKER_NOT_EXACT",assertThrows(
+            IllegalArgumentException.class,()->CompositeLiveSmokeEvidenceService.verifyDomArtifact(
+                artifact(wrongContext,"dom.html"),"SAVE","SUCCESS",output,idempotency,200,CONTEXT)).getMessage());
     }
 
     @Test
     void decodesRealNontrivialPngAndRejectsFakeOrBlankPng()throws Exception{
-        byte[] png=png(false);
-        CompositeLiveSmokeEvidenceService.verifyPngArtifact(artifact(png,"screenshot.png"));
+        byte[] png=png(RUN_ID,true,false);
+        CompositeLiveSmokeEvidenceService.verifyPngArtifact(artifact(png,"screenshot.png"),RUN_ID);
 
         byte[] fake="PNG_BYTES".getBytes(StandardCharsets.UTF_8);
         assertEquals("LIVE_SMOKE_SCREENSHOT_PNG_SIGNATURE_INVALID",assertThrows(
             IllegalArgumentException.class,()->CompositeLiveSmokeEvidenceService.verifyPngArtifact(
-                artifact(fake,"screenshot.png"))).getMessage());
+                artifact(fake,"screenshot.png"),RUN_ID)).getMessage());
 
-        byte[] blank=png(true);
+        byte[] blank=png(RUN_ID,false,true);
         assertEquals("LIVE_SMOKE_SCREENSHOT_CONTENT_TRIVIAL",assertThrows(
             IllegalArgumentException.class,()->CompositeLiveSmokeEvidenceService.verifyPngArtifact(
-                artifact(blank,"screenshot.png"))).getMessage());
+                artifact(blank,"screenshot.png"),RUN_ID)).getMessage());
+
+        byte[] oldTwoColor=png(RUN_ID,false,false);
+        assertEquals("LIVE_SMOKE_SCREENSHOT_WATERMARK_NOT_EXACT",assertThrows(
+            IllegalArgumentException.class,()->CompositeLiveSmokeEvidenceService.verifyPngArtifact(
+                artifact(oldTwoColor,"screenshot.png"),RUN_ID)).getMessage());
+        assertEquals("LIVE_SMOKE_SCREENSHOT_WATERMARK_NOT_EXACT",assertThrows(
+            IllegalArgumentException.class,()->CompositeLiveSmokeEvidenceService.verifyPngArtifact(
+                artifact(png,"screenshot.png"),"22222222-2222-4222-8222-222222222222")).getMessage());
     }
 
     @Test
     void rejectsArtifactMutatedAfterPinnedOpen(@TempDir Path root)throws Exception{
         byte[] original="A".repeat(8192).getBytes(StandardCharsets.UTF_8);
         String hash=sha256(original),reference=reference(hash,"dom.html");write(root,reference,original);
+        if(!CompositeLiveSmokeEvidenceService.secureArtifactReadsAvailable(root)){
+            assertEquals("LIVE_SMOKE_SECURE_DIRECTORY_STREAM_REQUIRED",assertThrows(
+                IllegalArgumentException.class,()->CompositeLiveSmokeEvidenceService.verifyArtifact(
+                    root,reference,hash,"dom.html",16384,91,RUN_ID)).getMessage());
+            return;
+        }
         Path target=root.resolve(reference);
         IllegalArgumentException error=assertThrows(IllegalArgumentException.class,()->
             CompositeLiveSmokeEvidenceService.verifyArtifact(root,reference,hash,"dom.html",16384,
@@ -170,7 +201,7 @@ class CompositeLiveSmokeArtifactVerifierTest {
                     Files.write(target,"B".repeat(8192).getBytes(StandardCharsets.UTF_8),
                         StandardOpenOption.TRUNCATE_EXISTING);
                 }));
-        assertTrue(Set.of("LIVE_SMOKE_ARTIFACT_CHANGED_DURING_READ",
+        assertTrue(Set.of("LIVE_SMOKE_ARTIFACT_CHANGED_DURING_OPEN","LIVE_SMOKE_ARTIFACT_CHANGED_DURING_READ",
             "LIVE_SMOKE_ARTIFACT_HASH_MISMATCH","LIVE_SMOKE_ARTIFACT_READ_FAILED")
             .contains(error.getMessage()),error.getMessage());
     }
@@ -183,19 +214,36 @@ class CompositeLiveSmokeArtifactVerifierTest {
     }
     private static String reference(String hash,String suffix){return "91/"+RUN_ID+"/"+hash+"."+suffix;}
     private static String dom(String command,String status,int http,Map<String,Object> output,
-            String idempotency,boolean runtime,boolean denied){
+            String idempotency,boolean runtime,boolean denied,
+            CompositeLiveSmokeEvidenceService.BrowserArtifactContext context){
         String json=("{\"resultId\":"+output.get("resultId")+",\"success\":"+output.get("success")+"}")
             .replace("&","&amp;").replace("\"","&quot;");
-        return "<html><body><main data-last-command-code=\""+command+"\" data-last-http-status=\""+
+        StringBuilder cells=new StringBuilder();
+        for(int bit:CompositeLiveSmokeEvidenceService.watermarkBits(context.runId()))
+            cells.append("<span data-watermark-bit=\"").append(bit).append("\"></span>");
+        return "<html><body><main data-process-code=\""+context.processCode()+
+            "\" data-step-code=\""+context.stepCode()+"\" data-route-path=\""+context.routePath()+
+            "\" data-audience=\""+context.audience()+"\" data-tenant-id=\""+context.tenantId()+
+            "\" data-project-id=\""+context.projectId()+"\" data-execution-id=\""+context.executionId()+
+            "\" data-current-state=\""+context.currentState()+"\" data-live-smoke-run-id=\""+context.runId()+
+            "\" data-last-command-code=\""+command+"\" data-last-http-status=\""+
             http+"\" data-last-status-case=\""+status+"\" data-last-output-json=\""+json+
             "\" data-last-idempotency-key=\""+idempotency+"\" data-runtime-observed=\""+runtime+
             "\" data-access-denied=\""+denied+"\"></main><button data-command-code=\""+command+
-            "\">run</button><section data-live-smoke-result=\"true\">result</section></body></html>";
+            "\">run</button><section data-live-smoke-result=\"true\">result</section>"+
+            "<div data-live-smoke-watermark=\""+context.runId()+"\">"+cells+
+            "</div></body></html>";
     }
-    private static byte[] png(boolean blank)throws Exception{
-        BufferedImage image=new BufferedImage(128,96,BufferedImage.TYPE_INT_ARGB);
+    private static byte[] png(String runId,boolean watermark,boolean blank)throws Exception{
+        BufferedImage image=new BufferedImage(256,128,BufferedImage.TYPE_INT_ARGB);
         for(int y=0;y<image.getHeight();y++)for(int x=0;x<image.getWidth();x++)
-            image.setRGB(x,y,blank?0xfff8fafc:(x<64?0xff052b57:0xff246beb));
+            image.setRGB(x,y,blank?0xfff8fafc:(x<128?0xff64748b:0xffe2e8f0));
+        if(watermark){
+            int[] bits=CompositeLiveSmokeEvidenceService.watermarkBits(runId);
+            for(int index=0;index<bits.length;index++)for(int y=0;y<4;y++)for(int x=0;x<4;x++)
+                image.setRGB((index%32)*4+x,(index/32)*4+y,
+                    bits[index]==1?0xff246beb:0xff052b57);
+        }
         ByteArrayOutputStream bytes=new ByteArrayOutputStream();
         assertTrue(ImageIO.write(image,"png",bytes));return bytes.toByteArray();
     }
