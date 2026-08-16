@@ -4,7 +4,9 @@ import { createHash } from 'node:crypto';
 import {
   buildSourceDesignAssetMutation,
   designAssetFingerprint,
+  exactReadOnlySourceHeadSnapshotBatch,
   exactSourceDesignAssetSnapshotBatch,
+  reconcileReadOnlySourceHeadSnapshotReceipt,
   stableJson,
   synchronizeGlobalDesignAssetSnapshots,
   type DesignAssetSnapshot,
@@ -386,15 +388,142 @@ describe('source-immediate common design mutation', () => {
         mutation,
       ),
     ).toEqual([transition]);
-    expect(() =>
-      exactSourceDesignAssetSnapshotBatch({}, mutation),
-    ).toThrow('sourceSnapshots must be an array');
+    expect(() => exactSourceDesignAssetSnapshotBatch({}, mutation)).toThrow(
+      'sourceSnapshots must be an array',
+    );
     expect(() =>
       exactSourceDesignAssetSnapshotBatch(
         { sourceSnapshots: [transition, transition] },
         mutation,
       ),
     ).toThrow('duplicates COMPONENT:COMPONENT_ASSET');
+  });
+
+  it('reconstructs an exact target and dependent closure but terminalizes an unprovable base mutant', () => {
+    const targetBeforeAsset = {
+      assetType: 'COMPONENT',
+      assetId: 'APPLICATION_FORM',
+      assetName: 'Application form',
+      routePath: '',
+      version: '1.0.0',
+      active: true,
+      payload: payloads.COMPONENT,
+    } as const;
+    const targetBefore = {
+      ...targetBeforeAsset,
+      fingerprint: designAssetFingerprint(targetBeforeAsset),
+    };
+    const mutation = buildSourceDesignAssetMutation(targetBefore, {
+      activationPolicy: 'SOURCE_IMMEDIATE_V1',
+      authorityMode: 'SOURCE',
+      assetType: 'COMPONENT',
+      assetId: 'APPLICATION_FORM',
+      baseFingerprint: targetBefore.fingerprint,
+      assetName: 'Application form v2',
+      routePath: '',
+      version: '1.0.1',
+      active: true,
+      payload: payloads.COMPONENT,
+    });
+    const screenBeforePayload = {
+      ...payloads.SCREEN,
+      dependencies: (
+        payloads.SCREEN.dependencies as Record<string, unknown>[]
+      ).map(dependency =>
+        dependency.assetType === 'COMPONENT'
+          ? {
+              ...dependency,
+              assetId: mutation.assetId,
+              fingerprint: mutation.baseFingerprint,
+            }
+          : dependency,
+      ),
+    };
+    const screenBeforeAsset = {
+      assetType: 'SCREEN',
+      assetId: 'APPLICATION_SCREEN',
+      assetName: 'Application workspace',
+      routePath: '/applications/workspace',
+      version: '1.0.0',
+      active: true,
+      payload: screenBeforePayload,
+    };
+    const screenBeforeFingerprint = designAssetFingerprint(screenBeforeAsset);
+    const screenAfterAsset = {
+      ...screenBeforeAsset,
+      payload: {
+        ...screenBeforePayload,
+        dependencies: (
+          screenBeforePayload.dependencies as Record<string, unknown>[]
+        ).map(dependency =>
+          dependency.assetType === 'COMPONENT'
+            ? { ...dependency, fingerprint: mutation.assetFingerprint }
+            : dependency,
+        ),
+      },
+    };
+    const screenAfterFingerprint = designAssetFingerprint(screenAfterAsset);
+    const runtimeHeads = [
+      {
+        assetType: mutation.assetType,
+        assetId: mutation.assetId,
+        assetName: mutation.assetName,
+        routePath: mutation.routePath,
+        version: mutation.version,
+        active: mutation.active,
+        payload: mutation.payload,
+        fingerprint: mutation.assetFingerprint,
+        syncedAt: '2026-08-16T00:00:00.000Z',
+      },
+      {
+        ...screenAfterAsset,
+        fingerprint: screenAfterFingerprint,
+        syncedAt: '2026-08-16T00:00:00.000Z',
+      },
+    ];
+    const projectionFingerprints = [
+      {
+        assetType: mutation.assetType,
+        assetId: mutation.assetId,
+        fingerprint: mutation.baseFingerprint,
+      },
+      {
+        assetType: 'SCREEN',
+        assetId: 'APPLICATION_SCREEN',
+        fingerprint: screenBeforeFingerprint,
+      },
+    ];
+
+    const batch = exactReadOnlySourceHeadSnapshotBatch(
+      runtimeHeads,
+      projectionFingerprints,
+      mutation,
+    );
+    expect(batch).toHaveLength(2);
+    expect(batch.map(item => `${item.assetType}:${item.assetId}`)).toEqual([
+      'COMPONENT:APPLICATION_FORM',
+      'SCREEN:APPLICATION_SCREEN',
+    ]);
+    expect(batch[1]).toMatchObject({
+      baseFingerprint: screenBeforeFingerprint,
+      fingerprint: screenAfterFingerprint,
+    });
+
+    const mutant = reconcileReadOnlySourceHeadSnapshotReceipt({
+      runtimeHeads,
+      projectionFingerprints: projectionFingerprints.slice(0, 1),
+      target: mutation,
+      reason: 'durable receipt missing',
+    });
+    expect(mutant).toMatchObject({
+      success: false,
+      status: 'REVIEW_REQUIRED',
+      sourceCommitted: false,
+      reconciliationMode: 'READ_ONLY_SOURCE_HEAD_CONFLICT',
+    });
+    expect(mutant.message).toContain(
+      'dependent projection base is unavailable: SCREEN:APPLICATION_SCREEN',
+    );
   });
 
   it('connects the active API to runtime canonical generation and retires old mutation bodies', () => {
@@ -452,7 +581,8 @@ describe('source-immediate common design mutation', () => {
     expect(replay).toContain('GLOBAL_DESIGN_SOURCE_AUTHORITY_REVOKED');
     expect(replay).toContain('reconcileReadOnly');
     expect(replay).toContain('/design-assets/source-heads?');
-    expect(replay).toContain("reconciliationMode: 'READ_ONLY_SOURCE_HEAD'");
+    expect(replay).toContain("includeDependents: 'true'");
+    expect(replay).toContain('reconcileReadOnlySourceHeadSnapshotReceipt');
     expect(replay).toContain('const accountId = claim.accountId');
     expect(replay).toContain("'x-resonance-account': accountId");
 

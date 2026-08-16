@@ -1,6 +1,7 @@
 import {
   copyProjectLifecycle,
   deleteProjectLifecycle,
+  projectLifecycleMutationLockKey,
   registerProjectLifecycleRoutes,
   type ProjectLifecycleIdentity,
 } from './projectLifecycleRoutes';
@@ -91,10 +92,7 @@ const approvedCopyDatabase = () => {
               updated_at: sourceUpdatedAt,
             };
           }
-          if (
-            table ===
-            'resonance_projects__design_asset_role_assignment'
-          ) {
+          if (table === 'resonance_projects__design_asset_role_assignment') {
             return { assignment_id: 9 };
           }
           return undefined;
@@ -117,20 +115,37 @@ const approvedCopyDatabase = () => {
   };
 };
 
-const approvedDeleteDatabase = (projectCasCount = 1) => {
+const approvedDeleteDatabase = (
+  projectCasCount = 1,
+  syncStatus?:
+    | 'PREPARED'
+    | 'PENDING'
+    | 'RUNNING'
+    | 'SYNCHRONIZED'
+    | 'CANCELLED'
+    | 'SYNC_TRACKING_FAILED',
+) => {
   const inserts: Array<{ table: string; value: unknown }> = [];
   const deletes: Array<{ table: string; where: Record<string, unknown> }> = [];
+  const rawBindings: unknown[][] = [];
   const updatedAt = new Date('2026-08-16T00:00:00Z');
   const transaction = Object.assign(
     (table: string) => {
-      const state: { where?: Record<string, unknown> } = {};
+      const state: {
+        where?: Record<string, unknown>;
+        whereIn?: { column: string; values: unknown[] };
+      } = {};
       const builder: any = {
         select: () => builder,
         where: (value: Record<string, unknown>) => {
           state.where = { ...(state.where ?? {}), ...value };
           return builder;
         },
-        whereIn: () => builder,
+        whereIn: (column: string, values: unknown[]) => {
+          state.whereIn = { column, values };
+          return builder;
+        },
+        orderBy: () => builder,
         forUpdate: () => builder,
         first: async () => {
           if (table === 'resonance_projects__project') {
@@ -141,19 +156,22 @@ const approvedDeleteDatabase = (projectCasCount = 1) => {
               updated_at: updatedAt,
             };
           }
-          if (
-            table ===
-            'resonance_projects__design_asset_role_assignment'
-          ) {
+          if (table === 'resonance_projects__design_asset_role_assignment') {
             return { assignment_id: 9 };
+          }
+          if (
+            table === 'resonance_projects__design_asset_source_sync' &&
+            syncStatus &&
+            state.whereIn?.column === 'sync_status' &&
+            state.whereIn.values.includes(syncStatus)
+          ) {
+            return { sync_id: 'sync-1', sync_status: syncStatus };
           }
           return undefined;
         },
         delete: async () => {
           deletes.push({ table, where: state.where ?? {} });
-          return table === 'resonance_projects__project'
-            ? projectCasCount
-            : 1;
+          return table === 'resonance_projects__project' ? projectCasCount : 1;
         },
         insert: async (value: unknown) => {
           inserts.push({ table, value });
@@ -162,11 +180,16 @@ const approvedDeleteDatabase = (projectCasCount = 1) => {
       };
       return builder;
     },
-    { raw: async () => undefined },
+    {
+      raw: async (_sql: string, bindings: unknown[]) => {
+        rawBindings.push(bindings);
+      },
+    },
   );
   return {
     inserts,
     deletes,
+    rawBindings,
     knex: {
       transaction: async (callback: (tx: any) => unknown) =>
         callback(transaction),
@@ -280,10 +303,7 @@ describe('project lifecycle mutation authority', () => {
       knex: database.knex,
       identity: {
         ...identity,
-        principals: [
-          identity.actorRef,
-          'group:default/platform-engineering',
-        ],
+        principals: [identity.actorRef, 'group:default/platform-engineering'],
       },
       sourceProjectId: 'SOURCE',
       projectId: 'TARGET',
@@ -303,9 +323,7 @@ describe('project lifecycle mutation authority', () => {
     )?.value as Record<string, unknown>;
     expect(projectInsert.owner).toBe(identity.actorRef);
     const roleInsert = database.inserts.find(
-      row =>
-        row.table ===
-        'resonance_projects__design_asset_role_assignment',
+      row => row.table === 'resonance_projects__design_asset_role_assignment',
     )?.value as Array<Record<string, unknown>>;
     expect(roleInsert).toHaveLength(4);
     expect(new Set(roleInsert.map(row => row.principal_ref))).toEqual(
@@ -363,7 +381,55 @@ describe('project lifecycle mutation authority', () => {
         }),
       }),
     );
+    expect(database.rawBindings).toContainEqual([
+      projectLifecycleMutationLockKey('TARGET'),
+    ]);
+    expect(database.deletes).not.toContainEqual(
+      expect.objectContaining({
+        table: 'resonance_projects__design_asset_source_sync',
+      }),
+    );
+    expect(result.body).toMatchObject({ sourceSyncHistoryPreserved: true });
   });
+
+  it.each(['PREPARED', 'PENDING', 'RUNNING'] as const)(
+    'blocks deletion with zero writes while a %s source receipt is active',
+    async syncStatus => {
+      const database = approvedDeleteDatabase(1, syncStatus);
+
+      const result = await deleteProjectLifecycle({
+        knex: database.knex,
+        identity,
+        projectId: 'TARGET',
+        confirmProjectId: 'TARGET',
+      });
+
+      expect(result.status).toBe(409);
+      expect(result.body.message).toContain(syncStatus);
+      expect(database.deletes).toHaveLength(0);
+      expect(database.inserts).toHaveLength(0);
+    },
+  );
+
+  it.each(['SYNCHRONIZED', 'CANCELLED', 'SYNC_TRACKING_FAILED'] as const)(
+    'preserves terminal %s source receipt history while deleting the project',
+    async syncStatus => {
+      const database = approvedDeleteDatabase(1, syncStatus);
+
+      const result = await deleteProjectLifecycle({
+        knex: database.knex,
+        identity,
+        projectId: 'TARGET',
+        confirmProjectId: 'TARGET',
+      });
+
+      expect(result.status).toBe(200);
+      expect(
+        database.deletes.some(row => row.table.includes('source_sync')),
+      ).toBe(false);
+      expect(result.body).toMatchObject({ sourceSyncHistoryPreserved: true });
+    },
+  );
 
   it('fails closed when the exact project CAS deletes zero rows', async () => {
     const database = approvedDeleteDatabase(0);
@@ -389,11 +455,23 @@ describe('project lifecycle mutation authority', () => {
     );
     expect(source).toContain('copiedRoleAssignmentCount: 0');
     expect(source).toContain(
-      ".where({ project_id: projectId, updated_at: project.updated_at })",
+      '.where({ project_id: projectId, updated_at: project.updated_at })',
     );
     expect(source).toContain('PROJECT_DELETE_CAS_NOT_EXACT');
     expect(source).not.toContain(
       '.where({ project_id: sourceProjectId });\n      if (roles.length)',
     );
+  });
+
+  it('serializes source receipt queue/retry against deletion with the same project lock', () => {
+    const source = readFileSync(
+      join(__dirname, 'resonanceProjects.ts'),
+      'utf8',
+    );
+    expect(source).toContain('projectLifecycleMutationLockKey(projectId)');
+    expect(
+      source.match(/projectLifecycleMutationLockKey\(projectId\)/g),
+    ).toHaveLength(2);
+    expect(source).toContain('DESIGN_SOURCE_SYNC_PROJECT_NOT_FOUND');
   });
 });

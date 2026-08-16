@@ -9,6 +9,9 @@ const normalizeProjectId = (value: unknown) =>
 
 const projectIdPattern = /^[A-Z][A-Z0-9_-]{2,63}$/;
 
+export const projectLifecycleMutationLockKey = (projectId: string) =>
+  `BACKSTAGE_PROJECT_LIFECYCLE_V1:${projectId}`;
+
 export type ProjectLifecycleIdentity = {
   actorRef: string;
   principals: string[];
@@ -242,7 +245,7 @@ export async function deleteProjectLifecycle(options: {
   return knex.transaction(async (transaction: any) => {
     await transaction.raw(
       'select pg_advisory_xact_lock(hashtextextended(?, 0))',
-      [`PROJECT_DELETE:${projectId}`],
+      [projectLifecycleMutationLockKey(projectId)],
     );
     const project = await transaction('resonance_projects__project')
       .where({ project_id: projectId })
@@ -257,11 +260,30 @@ export async function deleteProjectLifecycle(options: {
       );
     }
 
+    const activeSourceSync = await transaction(
+      'resonance_projects__design_asset_source_sync',
+    )
+      .select('sync_id', 'sync_status')
+      .where({ project_id: projectId })
+      .whereIn('sync_status', ['PREPARED', 'PENDING', 'RUNNING'])
+      .orderBy('created_at', 'asc')
+      .forUpdate()
+      .first();
+    if (activeSourceSync) {
+      return lifecycleError(
+        409,
+        `Project source synchronization ${String(
+          activeSourceSync.sync_id,
+        )} is ${String(
+          activeSourceSync.sync_status,
+        )}; retry deletion after it reaches a terminal state`,
+      );
+    }
+
     const tables = [
       'resonance_projects__requirement_item',
       'resonance_projects__requirement_document',
       'resonance_projects__screen_space_spec',
-      'resonance_projects__design_asset_source_sync',
       'resonance_projects__design_asset_role_assignment',
       'resonance_projects__design_asset_draft',
       'resonance_projects__design_asset_snapshot',
@@ -290,6 +312,7 @@ export async function deleteProjectLifecycle(options: {
         designVersion: project.design_version,
         deleted: counts,
         auditHistoryPreserved: true,
+        sourceSyncHistoryPreserved: true,
       }),
       created_at: new Date(),
     });
@@ -300,6 +323,7 @@ export async function deleteProjectLifecycle(options: {
         projectId,
         deleted: counts,
         auditHistoryPreserved: true,
+        sourceSyncHistoryPreserved: true,
       },
     };
   });

@@ -227,8 +227,8 @@ describe('requirement automation', () => {
     const { analysis, contract } = prepareStructured();
 
     expect(analysis.identity).toEqual({
-      strategy: 'EXPLICIT_PROCESS_CODE',
-      stableKey: 'process:application_review',
+      strategy: 'STABLE_DOCUMENT_KEY',
+      stableKey: 'slot:structured-main',
       processCode: 'APPLICATION_REVIEW',
     });
     expect(contract.process).toEqual(structuredDesign.process);
@@ -274,6 +274,21 @@ describe('requirement automation', () => {
     expect(contract.workspaces).toEqual(structuredDesign.workspaces);
   });
 
+  it('keeps a structured document slot stable while process content changes A to B to A', () => {
+    const firstA = prepareStructured().analysis;
+    const inputB = cloneJson(structuredDesign);
+    inputB.process.processCode = 'APPLICATION_REVIEW_V2';
+    inputB.process.steps[0].processCode = 'APPLICATION_REVIEW_V2';
+    const changedB = prepareStructured(inputB).analysis;
+    const returningA = prepareStructured().analysis;
+
+    expect(firstA.identity.stableKey).toBe('slot:structured-main');
+    expect(changedB.identity.stableKey).toBe(firstA.identity.stableKey);
+    expect(returningA.identity.stableKey).toBe(firstA.identity.stableKey);
+    expect(changedB.processCode).toBe('APPLICATION_REVIEW_V2');
+    expect(returningA.processCode).toBe('APPLICATION_REVIEW');
+  });
+
   it('presents requirement automation as SOURCE immediate without promotion staging', () => {
     const panelSource = readFileSync(
       resolve(
@@ -290,6 +305,9 @@ describe('requirement automation', () => {
     expect(panelSource).toContain("payload.status ?? 'FAILED'");
     expect(panelSource).toContain('pollRequirementDocumentSet');
     expect(panelSource).not.toContain('/publication/reconcile');
+    expect(panelSource).toContain('/publication/retry`');
+    expect(panelSource).toContain('document.retryExhausted');
+    expect(panelSource).toContain('승인자 게시 복구 재시도');
     expect(panelSource).toContain('publicationPollRef.current?.abort()');
     expect(panelSource).not.toContain('setInterval(');
   });

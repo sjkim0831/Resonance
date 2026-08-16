@@ -31,6 +31,12 @@ export type SourceDesignAssetSnapshotTransition = DesignAssetSnapshot & {
   baseFingerprint: string;
 };
 
+export type DesignAssetProjectionFingerprint = {
+  assetType: string;
+  assetId: string;
+  fingerprint: string;
+};
+
 export type ScreenDesignSection = {
   sectionId: string;
   zone: string;
@@ -782,7 +788,11 @@ export const exactSourceDesignAssetSnapshotBatch = (
       throw new Error(`sourceSnapshots[${index}] has an incomplete schema`);
     }
     const assetType = String(transition.assetType).toUpperCase();
-    const assetId = nonEmpty(transition.assetId, `sourceSnapshots[${index}].assetId`, 200);
+    const assetId = nonEmpty(
+      transition.assetId,
+      `sourceSnapshots[${index}].assetId`,
+      200,
+    );
     if (
       !SOURCE_DESIGN_ASSET_TYPES.includes(assetType as SourceDesignAssetType) ||
       !IDENTIFIER.test(assetId)
@@ -804,7 +814,9 @@ export const exactSourceDesignAssetSnapshotBatch = (
       80,
     );
     if (!VERSION.test(version) || typeof transition.active !== 'boolean') {
-      throw new Error(`sourceSnapshots[${index}] has invalid version or active state`);
+      throw new Error(
+        `sourceSnapshots[${index}] has invalid version or active state`,
+      );
     }
     const payload = validatePayload(
       assetType as SourceDesignAssetType,
@@ -819,7 +831,9 @@ export const exactSourceDesignAssetSnapshotBatch = (
     const baseFingerprint = String(transition.baseFingerprint).toLowerCase();
     const fingerprint = String(transition.fingerprint).toLowerCase();
     if (!HASH.test(baseFingerprint) || !HASH.test(fingerprint)) {
-      throw new Error(`sourceSnapshots[${index}] requires exact SHA-256 values`);
+      throw new Error(
+        `sourceSnapshots[${index}] requires exact SHA-256 values`,
+      );
     }
     const snapshot: DesignAssetSnapshot = {
       assetType,
@@ -852,13 +866,181 @@ export const exactSourceDesignAssetSnapshotBatch = (
     return { ...snapshot, baseFingerprint };
   });
   if (targetCount !== 1) {
-    throw new Error('runtime source snapshot batch must contain the target exactly once');
+    throw new Error(
+      'runtime source snapshot batch must contain the target exactly once',
+    );
   }
   return snapshots.sort((left, right) => {
     const leftIdentity = `${left.assetType}:${left.assetId}`;
     const rightIdentity = `${right.assetType}:${right.assetId}`;
-    return leftIdentity < rightIdentity ? -1 : leftIdentity > rightIdentity ? 1 : 0;
+    return leftIdentity < rightIdentity
+      ? -1
+      : leftIdentity > rightIdentity
+      ? 1
+      : 0;
   });
+};
+
+const readOnlySourceHeadConflict = (message: string): never => {
+  throw new Error(`READ_ONLY_SOURCE_HEAD_SNAPSHOT_CONFLICT: ${message}`);
+};
+
+/**
+ * Reconstructs the exact runtime cascade receipt when the durable receipt was
+ * lost after the runtime transaction committed. Runtime supplies the current
+ * target + transitive dependent closure; the control-plane projection supplies
+ * the only admissible pre-transition fingerprint for each dependent. A row
+ * already at the runtime fingerprint is accepted for idempotent recovery, but
+ * two different older projection heads are an explicit conflict.
+ */
+export const exactReadOnlySourceHeadSnapshotBatch = (
+  runtimeHeads: readonly unknown[],
+  projectionFingerprints: readonly DesignAssetProjectionFingerprint[],
+  target: Pick<
+    SourceDesignAssetMutation,
+    'assetType' | 'assetId' | 'baseFingerprint' | 'assetFingerprint'
+  >,
+): SourceDesignAssetSnapshotTransition[] => {
+  if (
+    !Array.isArray(runtimeHeads) ||
+    runtimeHeads.length < 1 ||
+    runtimeHeads.length > 2_000
+  ) {
+    return readOnlySourceHeadConflict(
+      'runtime dependent closure must contain 1..2000 heads',
+    );
+  }
+  const runtimeIdentities = new Set<string>();
+  for (const raw of runtimeHeads) {
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
+      return readOnlySourceHeadConflict('runtime head must be an object');
+    }
+    const head = raw as Record<string, unknown>;
+    runtimeIdentities.add(
+      `${String(head.assetType ?? '').toUpperCase()}:${String(
+        head.assetId ?? '',
+      )}`,
+    );
+  }
+  const projected = new Map<string, Set<string>>();
+  for (const row of projectionFingerprints) {
+    const assetType = String(row.assetType ?? '').toUpperCase();
+    const assetId = String(row.assetId ?? '');
+    const fingerprint = String(row.fingerprint ?? '').toLowerCase();
+    const identity = `${assetType}:${assetId}`;
+    if (!runtimeIdentities.has(identity)) {
+      return readOnlySourceHeadConflict(
+        `projection identity is outside runtime closure: ${identity}`,
+      );
+    }
+    if (!HASH.test(fingerprint)) {
+      return readOnlySourceHeadConflict(
+        `projection fingerprint is invalid: ${identity}`,
+      );
+    }
+    const fingerprints = projected.get(identity) ?? new Set<string>();
+    fingerprints.add(fingerprint);
+    projected.set(identity, fingerprints);
+  }
+
+  const targetIdentity = `${target.assetType}:${target.assetId}`;
+  const sourceSnapshots = runtimeHeads.map(raw => {
+    const head = raw as Record<string, unknown>;
+    const assetType = String(head.assetType ?? '').toUpperCase();
+    const assetId = String(head.assetId ?? '');
+    const identity = `${assetType}:${assetId}`;
+    const fingerprint = String(head.fingerprint ?? '').toLowerCase();
+    const existing = [...(projected.get(identity) ?? new Set<string>())];
+    let baseFingerprint: string;
+    if (identity === targetIdentity) {
+      baseFingerprint = String(target.baseFingerprint).toLowerCase();
+      const incompatible = existing.filter(
+        value => value !== baseFingerprint && value !== fingerprint,
+      );
+      if (incompatible.length) {
+        return readOnlySourceHeadConflict(
+          `target projection diverged: ${identity}`,
+        );
+      }
+    } else {
+      if (!existing.length) {
+        return readOnlySourceHeadConflict(
+          `dependent projection base is unavailable: ${identity}`,
+        );
+      }
+      const older = existing.filter(value => value !== fingerprint);
+      if (older.length > 1) {
+        return readOnlySourceHeadConflict(
+          `dependent projection has multiple older heads: ${identity}`,
+        );
+      }
+      baseFingerprint = older[0] ?? fingerprint;
+    }
+    return {
+      assetType,
+      assetId,
+      assetName: head.assetName,
+      routePath: head.routePath,
+      version: head.version,
+      active: head.active,
+      payload: head.payload,
+      baseFingerprint,
+      fingerprint,
+    };
+  });
+  try {
+    return exactSourceDesignAssetSnapshotBatch({ sourceSnapshots }, target);
+  } catch (error) {
+    return readOnlySourceHeadConflict(
+      error instanceof Error ? error.message : String(error),
+    );
+  }
+};
+
+export const reconcileReadOnlySourceHeadSnapshotReceipt = ({
+  runtimeHeads,
+  projectionFingerprints,
+  target,
+  reason,
+}: {
+  runtimeHeads: readonly unknown[];
+  projectionFingerprints: readonly DesignAssetProjectionFingerprint[];
+  target: Pick<
+    SourceDesignAssetMutation,
+    'assetType' | 'assetId' | 'baseFingerprint' | 'assetFingerprint'
+  >;
+  reason: string;
+}): Record<string, unknown> => {
+  try {
+    const sourceSnapshots = exactReadOnlySourceHeadSnapshotBatch(
+      runtimeHeads,
+      projectionFingerprints,
+      target,
+    );
+    return {
+      success: true,
+      status: 'APPLIED',
+      sourceCommitted: true,
+      assetFingerprint: target.assetFingerprint,
+      sourceSnapshots,
+      jobCount: 0,
+      reconciliationMode: 'READ_ONLY_SOURCE_HEAD_EXACT_BATCH',
+      message: reason,
+    };
+  } catch (error) {
+    return {
+      success: false,
+      status: 'REVIEW_REQUIRED',
+      sourceCommitted: false,
+      assetFingerprint: target.assetFingerprint,
+      jobCount: 0,
+      reconciliationMode: 'READ_ONLY_SOURCE_HEAD_CONFLICT',
+      message:
+        error instanceof Error
+          ? error.message
+          : `READ_ONLY_SOURCE_HEAD_SNAPSHOT_CONFLICT: ${String(error)}`,
+    };
+  }
 };
 
 export const synchronizeGlobalDesignAssetSnapshotBatch = async (
@@ -870,18 +1052,22 @@ export const synchronizeGlobalDesignAssetSnapshotBatch = async (
   snapshotCount: number;
   synchronizedProjectionCount: number;
 }> => {
-  if (!snapshots.length) throw new Error('global source snapshot batch is empty');
+  if (!snapshots.length)
+    throw new Error('global source snapshot batch is empty');
   await transaction.raw('lock table resonance_projects__project in share mode');
   const projectResult = await transaction.raw(
     'select count(*)::integer as count from resonance_projects__project',
   );
   const projectCount = Number(projectResult.rows?.[0]?.count ?? 0);
-  if (projectCount < 1) throw new Error('global design snapshot has no projects');
+  if (projectCount < 1)
+    throw new Error('global design snapshot has no projects');
   let synchronizedProjectionCount = 0;
   for (const snapshot of snapshots) {
     await transaction.raw(
       'select pg_advisory_xact_lock(hashtextextended(?,0))',
-      [`BACKSTAGE_COMMON_DESIGN_SNAPSHOT_V1:${snapshot.assetType}:${snapshot.assetId}`],
+      [
+        `BACKSTAGE_COMMON_DESIGN_SNAPSHOT_V1:${snapshot.assetType}:${snapshot.assetId}`,
+      ],
     );
     const synchronized = await transaction.raw(
       `insert into resonance_projects__design_asset_snapshot (

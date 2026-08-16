@@ -59,4 +59,16 @@ describe('DesignAssetControlPage SOURCE immediate contract', () => {
     expect(source).toContain('/retry`');
     expect(source).toContain('동기화 재시도');
   });
+
+  it('uses the platform-global authority project instead of the selected project for mutation access', () => {
+    expect(source).toContain(
+      "const globalDesignAuthorityProjectId = 'CCUS-PLATFORM'",
+    );
+    expect(source).toContain(
+      'encodeURIComponent(\n          globalDesignAuthorityProjectId,\n        )}/access`',
+    );
+    expect(source).not.toContain(
+      'encodeURIComponent(\n          projectId,\n        )}/access`',
+    );
+  });
 });

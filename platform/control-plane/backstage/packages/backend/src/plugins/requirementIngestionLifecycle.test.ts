@@ -154,7 +154,16 @@ describe('requirement ingestion lifecycle', () => {
     );
     expect(routeSource).toContain('.forUpdate()');
     expect(lifecycle).toContain('persistRequirementPublicationReceipt({');
-    expect(lifecycle).toContain('response.status(error.statusCode)');
+    expect(lifecycle).toContain('response.status(202).json({');
+    expect(lifecycle).toContain('recoveryQueued: true');
+    expect(routeSource).toContain("? ('PUBLISH' as const)");
+    expect(routeSource).toContain('REQUIREMENT_RECEIPT_MAX_ATTEMPTS');
+    expect(routeSource).toContain(
+      "action_code: 'REQUIREMENT_PUBLICATION_DEAD_LETTERED'",
+    );
+    expect(routeSource).toContain(
+      "'/:projectId/requirements/:documentId/publication/retry'",
+    );
     const developmentContract = routeSource.slice(
       routeSource.indexOf("'/:projectId/development-contract'"),
       routeSource.indexOf(

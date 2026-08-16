@@ -130,6 +130,62 @@ export function RequirementAutomationPanel({
     );
   };
 
+  const retryPublication = async (document: RequirementDocument) => {
+    publicationPollRef.current?.abort();
+    const controller = new AbortController();
+    publicationPollRef.current = controller;
+    setBusy(true);
+    setMessage('');
+    try {
+      const response = await fetchApi.fetch(
+        `/api/resonance-projects/${encodeURIComponent(
+          projectId,
+        )}/requirements/${encodeURIComponent(
+          document.documentId,
+        )}/publication/retry`,
+        { method: 'POST', signal: controller.signal },
+      );
+      const payload = (await response.json()) as {
+        message?: string;
+        status?: string;
+      };
+      if (!response.ok) {
+        throw new Error(
+          payload.message ?? `게시 복구 재시도 실패 (${response.status})`,
+        );
+      }
+      if (payload.status === 'APPLIED') {
+        setMessage(`완료: 설계 v${document.designVersion} · APPLIED`);
+        await refresh();
+        return;
+      }
+      setMessage(
+        `진행 중: 설계 v${document.designVersion} 게시 복구를 승인자가 다시 등록했습니다.`,
+      );
+      const result = await pollDocuments(controller.signal, [
+        document.documentId,
+      ]);
+      if (result.outcome === 'CANCELLED') return;
+      if (result.outcome === 'TIMEOUT') {
+        setMessage(
+          `진행 중: 설계 v${document.designVersion} 자동 복구가 계속되며 이력에서 다시 확인합니다.`,
+        );
+        return;
+      }
+      await refresh();
+      setMessage(
+        `완료: 설계 v${document.designVersion} 게시 상태가 수렴했습니다.`,
+      );
+    } catch (error) {
+      if (!controller.signal.aborted) {
+        await refresh().catch(() => undefined);
+        setMessage(error instanceof Error ? error.message : String(error));
+      }
+    } finally {
+      if (!controller.signal.aborted) setBusy(false);
+    }
+  };
+
   const automate = async () => {
     if (!file) return;
     publicationPollRef.current?.abort();
@@ -364,6 +420,18 @@ export function RequirementAutomationPanel({
               >
                 {document.lastError}
               </Typography>
+            )}
+            {document.retryExhausted && (
+              <Box mt={1}>
+                <Button
+                  size="small"
+                  variant="outlined"
+                  disabled={busy}
+                  onClick={() => void retryPublication(document)}
+                >
+                  승인자 게시 복구 재시도
+                </Button>
+              </Box>
             )}
           </Box>
         ))}

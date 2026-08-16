@@ -1,6 +1,9 @@
 import { randomBytes, randomUUID } from 'node:crypto';
 import {
+  designAssetFingerprint,
+  exactSourceDesignAssetSnapshotBatch,
   lockGlobalDesignSourceAuthority,
+  reconcileReadOnlySourceHeadSnapshotReceipt,
   synchronizeGlobalDesignAssetSnapshotBatch,
   synchronizeGlobalDesignAssetSnapshots,
   type SourceDesignAssetSnapshotTransition,
@@ -328,7 +331,9 @@ describePostgres(
           batch,
           new Date('2026-08-16T12:00:00.000Z'),
         ),
-      ).rejects.toThrow('global design snapshot CAS diverged for SCREEN:DEPENDENT_SCREEN');
+      ).rejects.toThrow(
+        'global design snapshot CAS diverged for SCREEN:DEPENDENT_SCREEN',
+      );
       await client.query('rollback');
 
       expect(
@@ -489,12 +494,14 @@ describePostgres(
             const batch = receipt.sourceSnapshots as
               | SourceDesignAssetSnapshotTransition[]
               | undefined;
-            if (!batch) throw new Error('missing runtime source snapshot batch');
-            const synchronized = await synchronizeGlobalDesignAssetSnapshotBatch(
-              transaction,
-              batch,
-              new Date('2026-08-16T12:00:00.000Z'),
-            );
+            if (!batch)
+              throw new Error('missing runtime source snapshot batch');
+            const synchronized =
+              await synchronizeGlobalDesignAssetSnapshotBatch(
+                transaction,
+                batch,
+                new Date('2026-08-16T12:00:00.000Z'),
+              );
             const committed = await client.query(
               `update resonance_projects__design_asset_source_sync
                   set status='SYNCHRONIZED',runtime_receipt=$3::jsonb,
@@ -548,6 +555,240 @@ describePostgres(
           status: 'SYNCHRONIZED',
           claim_token: null,
           lease_expires_at: null,
+        },
+      ]);
+    });
+
+    it('reconstructs a missing durable receipt from the exact runtime dependent closure and commits once', async () => {
+      const targetBeforeAsset = {
+        assetType: 'COMPONENT',
+        assetId: 'TARGET_COMPONENT',
+        assetName: 'Target component',
+        routePath: '',
+        version: '1.0.0',
+        active: true,
+        payload: {
+          schemaVersion: '1.0.0',
+          componentName: 'Target component',
+          componentType: 'JSON_FORM',
+          ownerDomain: 'APPLICATION',
+          propsSchema: { type: 'object' },
+          designReference: 'KRDS_GOV_DEFAULT',
+          defaultProps: {},
+          category: 'COMMON',
+          dependencies: [],
+        },
+      };
+      const targetBase = designAssetFingerprint(targetBeforeAsset);
+      const targetAfterAsset = {
+        ...targetBeforeAsset,
+        assetName: 'Target component v2',
+        version: '1.0.1',
+      };
+      const targetAfter = designAssetFingerprint(targetAfterAsset);
+      const dependentBeforeAsset = {
+        assetType: 'COMPONENT',
+        assetId: 'DEPENDENT_COMPONENT',
+        assetName: 'Dependent component',
+        routePath: '',
+        version: '1.0.0',
+        active: true,
+        payload: {
+          schemaVersion: '1.0.0',
+          componentName: 'Dependent component',
+          componentType: 'SUMMARY_CARD',
+          ownerDomain: 'APPLICATION',
+          propsSchema: { type: 'object' },
+          designReference: 'KRDS_GOV_DEFAULT',
+          defaultProps: {},
+          category: 'COMMON',
+          dependencies: [
+            {
+              assetType: 'COMPONENT',
+              assetId: 'TARGET_COMPONENT',
+              fingerprint: targetBase,
+            },
+          ],
+        },
+      };
+      const dependentBase = designAssetFingerprint(dependentBeforeAsset);
+      const dependentAfterAsset = {
+        ...dependentBeforeAsset,
+        payload: {
+          ...dependentBeforeAsset.payload,
+          dependencies: [
+            {
+              assetType: 'COMPONENT',
+              assetId: 'TARGET_COMPONENT',
+              fingerprint: targetAfter,
+            },
+          ],
+        },
+      };
+      const dependentAfter = designAssetFingerprint(dependentAfterAsset);
+      const mutation: SourceDesignAssetMutation = {
+        activationPolicy: 'SOURCE_IMMEDIATE_V1',
+        authorityMode: 'SOURCE',
+        ...targetAfterAsset,
+        assetType: 'COMPONENT',
+        dependencies: [],
+        baseAsset: targetBeforeAsset,
+        baseFingerprint: targetBase,
+        assetFingerprint: targetAfter,
+      };
+      const syncId = randomBytes(32).toString('hex');
+      const claimToken = randomUUID();
+      await client.query(
+        `insert into resonance_projects__project(project_id)
+         values('PROJECT_A'),('PROJECT_B')`,
+      );
+      for (const projectId of ['PROJECT_A', 'PROJECT_B']) {
+        for (const snapshot of [
+          { ...targetBeforeAsset, fingerprint: targetBase },
+          { ...dependentBeforeAsset, fingerprint: dependentBase },
+        ]) {
+          await client.query(
+            `insert into resonance_projects__design_asset_snapshot(
+               project_id,asset_type,asset_id,asset_name,route_path,
+               asset_version,active,asset_payload,asset_sha256,synced_at)
+             values($1,$2,$3,$4,$5,$6,$7,$8::jsonb,$9,current_timestamp)`,
+            [
+              projectId,
+              snapshot.assetType,
+              snapshot.assetId,
+              snapshot.assetName,
+              snapshot.routePath,
+              snapshot.version,
+              snapshot.active,
+              JSON.stringify(snapshot.payload),
+              snapshot.fingerprint,
+            ],
+          );
+        }
+      }
+      await client.query(
+        `insert into resonance_projects__design_asset_source_sync(
+           sync_id,project_id,asset_type,asset_id,snapshot_base_fingerprint,
+           asset_fingerprint,mutation_payload,actor_ref,status,claim_token,
+           lease_expires_at,next_attempt_at)
+         values($1,'PROJECT_A','COMPONENT','TARGET_COMPONENT',$2,$3,$4::jsonb,
+                'user:default/approver','RUNNING',$5,
+                current_timestamp + interval '30 seconds',current_timestamp)`,
+        [syncId, targetBase, targetAfter, JSON.stringify(mutation), claimToken],
+      );
+      const runtimeHeads = [
+        {
+          ...targetAfterAsset,
+          fingerprint: targetAfter,
+          syncedAt: '2026-08-16T12:00:00.000Z',
+        },
+        {
+          ...dependentAfterAsset,
+          fingerprint: dependentAfter,
+          syncedAt: '2026-08-16T12:00:00.000Z',
+        },
+      ];
+      const retryClaim = jest.fn(async () => 'DEAD_LETTERED' as const);
+      const summary = await reconcileDesignSnapshotSyncBatch({
+        concurrency: 1,
+        claimDue: async () => [
+          {
+            syncId,
+            projectId: 'PROJECT_A',
+            assetType: 'COMPONENT',
+            assetId: 'TARGET_COMPONENT',
+            snapshotBaseFingerprint: targetBase,
+            assetFingerprint: targetAfter,
+            mutation,
+            actorRef: 'user:default/approver',
+            claimToken,
+            retryAttempt: 1,
+          },
+        ],
+        replaySource: async () => {
+          const projections = await client.query(
+            `select asset_type as "assetType",asset_id as "assetId",
+                    asset_sha256 as fingerprint
+               from resonance_projects__design_asset_snapshot
+              where (asset_type,asset_id) in (
+                ('COMPONENT','TARGET_COMPONENT'),
+                ('COMPONENT','DEPENDENT_COMPONENT'))`,
+          );
+          return reconcileReadOnlySourceHeadSnapshotReceipt({
+            runtimeHeads,
+            projectionFingerprints: projections.rows.map(row => ({
+              assetType: String(row.assetType),
+              assetId: String(row.assetId),
+              fingerprint: String(row.fingerprint),
+            })),
+            target: mutation,
+            reason: 'durable receipt missing after runtime commit',
+          });
+        },
+        commitSnapshot: async (claim, receipt) => {
+          await client.query('begin');
+          try {
+            const batch = exactSourceDesignAssetSnapshotBatch(
+              receipt,
+              mutation,
+            );
+            const synchronized =
+              await synchronizeGlobalDesignAssetSnapshotBatch(
+                transaction,
+                batch,
+                new Date('2026-08-16T12:00:00.000Z'),
+              );
+            const committed = await client.query(
+              `update resonance_projects__design_asset_source_sync
+                  set status='SYNCHRONIZED',runtime_receipt=$3::jsonb,
+                      claim_token=null,lease_expires_at=null,
+                      synchronized_at=current_timestamp,updated_at=current_timestamp
+                where sync_id=$1 and status='RUNNING' and claim_token=$2
+            returning sync_id`,
+              [claim.syncId, claim.claimToken, JSON.stringify(receipt)],
+            );
+            expect(synchronized).toEqual({
+              projectCount: 2,
+              snapshotCount: 2,
+              synchronizedProjectionCount: 4,
+            });
+            await client.query('commit');
+            return committed.rows.length === 1;
+          } catch (error) {
+            await client.query('rollback');
+            throw error;
+          }
+        },
+        cancelClaim: async () => false,
+        retryClaim,
+      });
+
+      expect(summary).toMatchObject({
+        claimed: 1,
+        terminal: 1,
+        retried: 0,
+        deadLettered: 0,
+      });
+      expect(retryClaim).not.toHaveBeenCalled();
+      expect(
+        (
+          await client.query(
+            `select asset_id,asset_sha256,count(*)::integer as project_count
+               from resonance_projects__design_asset_snapshot
+              group by asset_id,asset_sha256
+              order by asset_id`,
+          )
+        ).rows,
+      ).toEqual([
+        {
+          asset_id: 'DEPENDENT_COMPONENT',
+          asset_sha256: dependentAfter,
+          project_count: 2,
+        },
+        {
+          asset_id: 'TARGET_COMPONENT',
+          asset_sha256: targetAfter,
+          project_count: 2,
         },
       ]);
     });

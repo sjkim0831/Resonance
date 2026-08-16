@@ -28,11 +28,15 @@ import {
   sameRequirementRevision,
   type RequirementPublicationDisposition,
 } from './requirementIngestionLifecycle';
-import { registerProjectLifecycleRoutes } from './projectLifecycleRoutes';
+import {
+  projectLifecycleMutationLockKey,
+  registerProjectLifecycleRoutes,
+} from './projectLifecycleRoutes';
 import {
   buildSourceDesignAssetMutation,
   exactSourceDesignAssetSnapshotBatch,
   lockGlobalDesignSourceAuthority,
+  reconcileReadOnlySourceHeadSnapshotReceipt,
   synchronizeGlobalDesignAssetSnapshotBatch,
   type DesignAssetSnapshot,
   type SourceDesignAssetMutation,
@@ -43,6 +47,7 @@ import {
   validateProjectDesignRoleAssignments,
 } from './projectDesignRoles';
 import {
+  REQUIREMENT_RECEIPT_MAX_ATTEMPTS,
   RECEIPT_RECONCILIATION_BATCH_SIZE,
   RECEIPT_RECONCILIATION_LEASE_MS,
   reconcileDesignSnapshotSyncBatch,
@@ -52,6 +57,7 @@ import {
   type DesignSnapshotRetryOutcome,
   type DesignSnapshotSyncClaim,
   type RequirementReceiptClaim,
+  type RequirementReceiptRetryOutcome,
 } from './receiptReconciliation';
 
 type ProjectInput = {
@@ -791,10 +797,29 @@ export default createBackendPlugin({
           }
         }
         await knex.raw(`
-          create index if not exists resonance_requirement_document_receipt_due_idx
+          update resonance_projects__requirement_document as document
+             set publication_reconcile_status='PENDING',
+                 publication_next_attempt_at=coalesce(
+                   document.publication_next_attempt_at,now()
+                 ),
+                 publication_retry_exhausted=false
+            from resonance_projects__design_release as release
+           where release.project_id=document.project_id
+             and release.design_version=document.design_version
+             and document.publication_reconcile_status is null
+             and document.analysis_status in (
+               'DESIGN_VALIDATED','GENERATION_QUEUED','GENERATION_RUNNING',
+               'QUEUED','RUNNING'
+             )
+             and release.release_status in ('VALIDATED','QUEUED','RUNNING')
+        `);
+        await knex.raw(`
+          create index if not exists resonance_requirement_document_finite_due_idx
           on resonance_projects__requirement_document(
-            analysis_status,publication_next_attempt_at,project_id,created_at
+            publication_next_attempt_at,project_id,created_at
           )
+          where publication_reconcile_status in ('PENDING','RUNNING')
+            and coalesce(publication_retry_exhausted,false)=false
         `);
         if (
           !(await knex.schema.hasTable('resonance_projects__requirement_item'))
@@ -1254,6 +1279,74 @@ export default createBackendPlugin({
           );
           const claimToken = randomUUID();
           return knex.transaction(async transaction => {
+            const exhaustedRows = await transaction(
+              'resonance_projects__requirement_document',
+            )
+              .whereIn('publication_reconcile_status', ['PENDING', 'RUNNING'])
+              .andWhere(
+                'publication_poll_attempt_count',
+                '>=',
+                REQUIREMENT_RECEIPT_MAX_ATTEMPTS,
+              )
+              .andWhere(builder =>
+                builder
+                  .whereNot('publication_reconcile_status', 'RUNNING')
+                  .orWhereNull('publication_lease_expires_at')
+                  .orWhere('publication_lease_expires_at', '<=', now),
+              )
+              .orderBy('publication_lease_expires_at', 'asc')
+              .orderBy('document_id', 'asc')
+              .limit(limit)
+              .forUpdate()
+              .skipLocked();
+            for (const exhausted of exhaustedRows) {
+              const deadLettered = await transaction(
+                'resonance_projects__requirement_document',
+              )
+                .where({
+                  document_id: exhausted.document_id,
+                  publication_reconcile_status:
+                    exhausted.publication_reconcile_status,
+                })
+                .andWhere(
+                  'publication_poll_attempt_count',
+                  '>=',
+                  REQUIREMENT_RECEIPT_MAX_ATTEMPTS,
+                )
+                .update({
+                  publication_reconcile_status: 'DEAD_LETTERED',
+                  publication_next_attempt_at: null,
+                  publication_claim_token: null,
+                  publication_lease_expires_at: null,
+                  publication_retry_exhausted: true,
+                  publication_reconciled_at: now,
+                  publication_last_error:
+                    exhausted.publication_last_error ||
+                    'maximum publication reconciliation lease expired',
+                });
+              if (deadLettered !== 1) {
+                throw new Error(
+                  'REQUIREMENT_RECEIPT_DEAD_LETTER_CAS_NOT_EXACT',
+                );
+              }
+              await transaction(
+                'resonance_projects__design_asset_audit',
+              ).insert({
+                project_id: exhausted.project_id,
+                action_code: 'REQUIREMENT_PUBLICATION_DEAD_LETTERED',
+                actor_ref: 'system:receipt-reconciler',
+                details: JSON.stringify({
+                  documentId: exhausted.document_id,
+                  designVersion: Number(exhausted.design_version),
+                  retryAttempt: Number(
+                    exhausted.publication_poll_attempt_count,
+                  ),
+                  retryLimit: REQUIREMENT_RECEIPT_MAX_ATTEMPTS,
+                  reason: 'MAX_ATTEMPT_LEASE_EXPIRED',
+                }),
+                created_at: now,
+              });
+            }
             const dueRows = await transaction(
               'resonance_projects__requirement_document as document',
             )
@@ -1272,12 +1365,31 @@ export default createBackendPlugin({
                 },
               )
               .whereIn('document.analysis_status', [
+                'DESIGN_VALIDATED',
                 'GENERATION_QUEUED',
                 'GENERATION_RUNNING',
                 'QUEUED',
                 'RUNNING',
               ])
-              .whereIn('release.release_status', ['QUEUED', 'RUNNING'])
+              .whereIn('release.release_status', [
+                'VALIDATED',
+                'QUEUED',
+                'RUNNING',
+              ])
+              .whereIn('document.publication_reconcile_status', [
+                'PENDING',
+                'RUNNING',
+              ])
+              .andWhere(
+                'document.publication_poll_attempt_count',
+                '<',
+                REQUIREMENT_RECEIPT_MAX_ATTEMPTS,
+              )
+              .andWhere(builder =>
+                builder
+                  .whereNull('document.publication_retry_exhausted')
+                  .orWhere('document.publication_retry_exhausted', false),
+              )
               .andWhere(builder =>
                 builder
                   .whereNull('document.publication_next_attempt_at')
@@ -1337,12 +1449,31 @@ export default createBackendPlugin({
                 fair.map(candidate => candidate.documentId),
               )
               .whereIn('document.analysis_status', [
+                'DESIGN_VALIDATED',
                 'GENERATION_QUEUED',
                 'GENERATION_RUNNING',
                 'QUEUED',
                 'RUNNING',
               ])
-              .whereIn('release.release_status', ['QUEUED', 'RUNNING'])
+              .whereIn('release.release_status', [
+                'VALIDATED',
+                'QUEUED',
+                'RUNNING',
+              ])
+              .whereIn('document.publication_reconcile_status', [
+                'PENDING',
+                'RUNNING',
+              ])
+              .andWhere(
+                'document.publication_poll_attempt_count',
+                '<',
+                REQUIREMENT_RECEIPT_MAX_ATTEMPTS,
+              )
+              .andWhere(builder =>
+                builder
+                  .whereNull('document.publication_retry_exhausted')
+                  .orWhere('document.publication_retry_exhausted', false),
+              )
               .andWhere(builder =>
                 builder
                   .whereNull('document.publication_next_attempt_at')
@@ -1360,6 +1491,8 @@ export default createBackendPlugin({
                 'document.design_version as designVersion',
                 'document.publication_poll_attempt_count as pollAttempt',
                 'release.contract_sha256 as contractSha256',
+                'release.release_status as releaseStatus',
+                'release.contract_payload as contractPayload',
               )
               .forUpdate()
               .skipLocked();
@@ -1383,12 +1516,47 @@ export default createBackendPlugin({
               contractSha256: String(row.contractSha256),
               claimToken,
               pollAttempt: Number(row.pollAttempt ?? 0) + 1,
+              publicationMode:
+                String(row.releaseStatus).toUpperCase() === 'VALIDATED'
+                  ? ('PUBLISH' as const)
+                  : ('RECEIPT' as const),
+              contract:
+                String(row.releaseStatus).toUpperCase() === 'VALIDATED'
+                  ? parseJsonRecord(row.contractPayload)
+                  : undefined,
             }));
           });
         };
         const readRequirementRuntimeReceipt = async (
           claim: RequirementReceiptClaim,
         ) => {
+          if (claim.publicationMode === 'PUBLISH') {
+            if (!claim.contract) {
+              throw new Error('REQUIREMENT_PUBLICATION_CONTRACT_REQUIRED');
+            }
+            const publication = await readRuntimeJson(
+              `${runtimeBridgeBaseUrl()}/api/internal/actor-process/design-releases`,
+              {
+                method: 'POST',
+                headers: { 'content-type': 'application/json' },
+                body: JSON.stringify({
+                  projectId: claim.projectId,
+                  designVersion: claim.designVersion,
+                  contractSha256: claim.contractSha256,
+                  contract: claim.contract,
+                }),
+              },
+            );
+            if (!publication.ok || publication.body.success !== true) {
+              throw new Error(
+                String(
+                  publication.body.message ??
+                    `RUNTIME_PUBLICATION_HTTP_${publication.status}`,
+                ),
+              );
+            }
+            return publication.body;
+          }
           const result = await readRuntimeJson(
             `${runtimeBridgeBaseUrl()}/api/internal/actor-process/design-releases/${encodeURIComponent(
               claim.projectId,
@@ -1410,20 +1578,60 @@ export default createBackendPlugin({
           claim: RequirementReceiptClaim,
           message: string,
           nextAttemptAt: Date,
-        ) =>
-          (await knex('resonance_projects__requirement_document')
-            .where({
-              document_id: claim.documentId,
-              publication_claim_token: claim.claimToken,
-              publication_reconcile_status: 'RUNNING',
-            })
-            .update({
-              publication_reconcile_status: 'PENDING',
-              publication_next_attempt_at: nextAttemptAt,
-              publication_claim_token: null,
-              publication_lease_expires_at: null,
-              publication_last_error: message,
-            })) === 1;
+        ): Promise<RequirementReceiptRetryOutcome> =>
+          knex.transaction(async transaction => {
+            const active = await transaction(
+              'resonance_projects__requirement_document',
+            )
+              .where({
+                document_id: claim.documentId,
+                publication_claim_token: claim.claimToken,
+                publication_reconcile_status: 'RUNNING',
+              })
+              .forUpdate()
+              .first();
+            if (!active) return 'STALE';
+            const exhausted =
+              claim.pollAttempt >= REQUIREMENT_RECEIPT_MAX_ATTEMPTS;
+            const now = new Date();
+            const updated = await transaction(
+              'resonance_projects__requirement_document',
+            )
+              .where({
+                document_id: claim.documentId,
+                publication_claim_token: claim.claimToken,
+                publication_reconcile_status: 'RUNNING',
+              })
+              .update({
+                publication_reconcile_status: exhausted
+                  ? 'DEAD_LETTERED'
+                  : 'PENDING',
+                publication_next_attempt_at: exhausted ? null : nextAttemptAt,
+                publication_claim_token: null,
+                publication_lease_expires_at: null,
+                publication_last_error: message,
+                publication_retry_exhausted: exhausted,
+                publication_reconciled_at: exhausted ? now : null,
+              });
+            if (updated !== 1) return 'STALE';
+            if (!exhausted) return 'RETRIED';
+            await transaction('resonance_projects__design_asset_audit').insert({
+              project_id: claim.projectId,
+              action_code: 'REQUIREMENT_PUBLICATION_DEAD_LETTERED',
+              actor_ref: 'system:receipt-reconciler',
+              details: JSON.stringify({
+                documentId: claim.documentId,
+                designVersion: claim.designVersion,
+                contractSha256: claim.contractSha256,
+                publicationMode: claim.publicationMode,
+                retryAttempt: claim.pollAttempt,
+                retryLimit: REQUIREMENT_RECEIPT_MAX_ATTEMPTS,
+                message: message.slice(0, 2_000),
+              }),
+              created_at: now,
+            });
+            return 'DEAD_LETTERED';
+          });
 
         const designSnapshotSyncId = () => randomBytes(32).toString('hex');
         const queueDesignSnapshotSync = async ({
@@ -1448,6 +1656,18 @@ export default createBackendPlugin({
             now.getTime() + RECEIPT_RECONCILIATION_LEASE_MS,
           );
           await knex.transaction(async transaction => {
+            await transaction.raw(
+              'select pg_advisory_xact_lock(hashtextextended(?, 0))',
+              [projectLifecycleMutationLockKey(projectId)],
+            );
+            const project = await transaction('resonance_projects__project')
+              .select('project_id')
+              .where('project_id', projectId)
+              .forUpdate()
+              .first();
+            if (!project) {
+              throw new Error('DESIGN_SOURCE_SYNC_PROJECT_NOT_FOUND');
+            }
             const row = {
               project_id: projectId,
               asset_type: String(mutation.assetType),
@@ -1641,7 +1861,8 @@ export default createBackendPlugin({
             const parameters = new URLSearchParams({
               assetType: claim.assetType,
               assetId: claim.assetId,
-              limit: '2',
+              includeDependents: 'true',
+              limit: '2000',
             });
             const head = await readRuntimeJson(
               `${runtimeBridgeBaseUrl()}/api/internal/actor-process/design-assets/source-heads?${parameters}`,
@@ -1655,23 +1876,83 @@ export default createBackendPlugin({
                 ),
               );
             }
+            if (head.body.scope !== 'TARGET_AND_TRANSITIVE_DEPENDENTS') {
+              return {
+                success: false,
+                status: 'REVIEW_REQUIRED',
+                sourceCommitted: false,
+                assetFingerprint: '',
+                jobCount: 0,
+                reconciliationMode: 'READ_ONLY_SOURCE_HEAD_CONFLICT',
+                message:
+                  'READ_ONLY_SOURCE_HEAD_SNAPSHOT_CONFLICT: runtime dependent closure proof is unavailable',
+              };
+            }
             const assets = Array.isArray(head.body.assets)
               ? (head.body.assets as Record<string, unknown>[])
               : [];
+            const targetHeads = assets.filter(
+              asset =>
+                String(asset.assetType ?? '').toUpperCase() ===
+                  claim.assetType.toUpperCase() &&
+                String(asset.assetId ?? '') === claim.assetId,
+            );
             const fingerprint =
-              assets.length === 1
-                ? String(assets[0].fingerprint ?? '').toLowerCase()
+              targetHeads.length === 1
+                ? String(targetHeads[0].fingerprint ?? '').toLowerCase()
                 : '';
             if (fingerprint === claim.assetFingerprint.toLowerCase()) {
-              return {
-                success: true,
-                status: 'APPLIED',
-                sourceCommitted: true,
-                assetFingerprint: claim.assetFingerprint,
-                jobCount: 0,
-                reconciliationMode: 'READ_ONLY_SOURCE_HEAD',
-                message: reason,
-              };
+              const mutation = claim.mutation as SourceDesignAssetMutation;
+              const projectionIdentities = assets.map(asset => ({
+                assetType: String(asset.assetType ?? '').toUpperCase(),
+                assetId: String(asset.assetId ?? ''),
+              }));
+              let projectionFingerprints: {
+                assetType: string;
+                assetId: string;
+                fingerprint: string;
+              }[] = [];
+              if (
+                projectionIdentities.length > 0 &&
+                projectionIdentities.length <= 2_000
+              ) {
+                const projectionResult = await knex.raw(
+                  `with identities as (
+                     select distinct upper(item->>'assetType') as asset_type,
+                                     item->>'assetId' as asset_id
+                       from jsonb_array_elements(cast(? as jsonb)) item
+                   )
+                   select snapshot.asset_type as "assetType",
+                          snapshot.asset_id as "assetId",
+                          lower(snapshot.asset_sha256) as fingerprint
+                     from resonance_projects__design_asset_snapshot snapshot
+                     join identities using(asset_type,asset_id)
+                    order by snapshot.asset_type collate "C",
+                             snapshot.asset_id collate "C",
+                             snapshot.asset_sha256 collate "C"`,
+                  [JSON.stringify(projectionIdentities)],
+                );
+                projectionFingerprints = Array.isArray(projectionResult.rows)
+                  ? projectionResult.rows.map(
+                      (row: Record<string, unknown>) => ({
+                        assetType: String(row.assetType ?? ''),
+                        assetId: String(row.assetId ?? ''),
+                        fingerprint: String(row.fingerprint ?? ''),
+                      }),
+                    )
+                  : [];
+              }
+              return reconcileReadOnlySourceHeadSnapshotReceipt({
+                runtimeHeads: assets,
+                projectionFingerprints,
+                target: {
+                  assetType: mutation.assetType,
+                  assetId: mutation.assetId,
+                  baseFingerprint: mutation.baseFingerprint,
+                  assetFingerprint: mutation.assetFingerprint,
+                },
+                reason,
+              });
             }
             const baseFingerprint = String(
               claim.mutation.baseFingerprint ?? '',
@@ -3286,7 +3567,10 @@ export default createBackendPlugin({
           '/design-assets/:projectId/source-sync/:syncId',
           async (request, response) => {
             const projectId = normalizeProjectId(request.params.projectId);
-            const access = await resolveDesignAssetAccess(request, projectId);
+            const access = await resolveDesignAssetAccess(
+              request,
+              'CCUS-PLATFORM',
+            );
             if (
               !access.roles.some(role =>
                 ['DESIGN_APPROVER', 'DESIGN_AUDITOR'].includes(role),
@@ -3384,6 +3668,23 @@ export default createBackendPlugin({
                     retryable: true,
                     message:
                       'CCUS-PLATFORM DESIGN_APPROVER authority is required for global common design retry',
+                  };
+                }
+                await transaction.raw(
+                  'select pg_advisory_xact_lock(hashtextextended(?, 0))',
+                  [projectLifecycleMutationLockKey(projectId)],
+                );
+                const project = await transaction('resonance_projects__project')
+                  .select('project_id')
+                  .where('project_id', projectId)
+                  .forUpdate()
+                  .first();
+                if (!project) {
+                  return {
+                    status: 404,
+                    syncStatus: 'SYNC_TRACKING_FAILED',
+                    retryable: false,
+                    message: 'project not found',
                   };
                 }
                 await transaction.raw(
@@ -4034,7 +4335,10 @@ export default createBackendPlugin({
               documentSha256: document.document_sha256,
               identityKey: document.identity_key,
               contentFingerprint: document.content_fingerprint,
-              status: document.analysis_status,
+              status:
+                document.publication_reconcile_status === 'DEAD_LETTERED'
+                  ? 'GENERATION_FAILED'
+                  : document.analysis_status,
               requirementCount: document.requirement_count,
               designVersion: document.design_version,
               processCode: document.process_code,
@@ -4214,6 +4518,139 @@ export default createBackendPlugin({
             }
           },
         );
+        router.post(
+          '/:projectId/requirements/:documentId/publication/retry',
+          async (request, response) => {
+            const projectId = normalizeProjectId(request.params.projectId);
+            const documentId = String(request.params.documentId ?? '').trim();
+            const access = await requireDesignAssetRole(
+              request,
+              projectId,
+              'DESIGN_APPROVER',
+            );
+            const result = await knex.transaction(async transaction => {
+              const document = await transaction(
+                'resonance_projects__requirement_document',
+              )
+                .where({ project_id: projectId, document_id: documentId })
+                .forUpdate()
+                .first();
+              if (!document) {
+                return {
+                  status: 404,
+                  body: {
+                    success: false,
+                    message: 'Requirement document not found',
+                  },
+                };
+              }
+              const release = await transaction(
+                'resonance_projects__design_release',
+              )
+                .where({
+                  project_id: projectId,
+                  design_version: Number(document.design_version),
+                })
+                .forUpdate()
+                .first();
+              if (!release) {
+                return {
+                  status: 409,
+                  body: {
+                    success: false,
+                    message:
+                      'Requirement document has no matching design release',
+                  },
+                };
+              }
+              const disposition = requirementPublicationDisposition({
+                analysisStatus: document.analysis_status,
+                releaseStatus: release.release_status,
+              });
+              if (disposition === 'APPLIED') {
+                return {
+                  status: 200,
+                  body: {
+                    success: true,
+                    idempotent: true,
+                    writeCount: 0,
+                    status: 'APPLIED',
+                    documentId,
+                    designVersion: Number(document.design_version),
+                  },
+                };
+              }
+              if (
+                document.publication_reconcile_status !== 'DEAD_LETTERED' ||
+                document.publication_retry_exhausted !== true ||
+                !['VALIDATED', 'QUEUED', 'RUNNING'].includes(
+                  String(release.release_status).toUpperCase(),
+                )
+              ) {
+                return {
+                  status: 409,
+                  body: {
+                    success: false,
+                    message:
+                      'Only a dead-lettered non-terminal publication can be retried',
+                  },
+                };
+              }
+              const now = new Date();
+              const updated = await transaction(
+                'resonance_projects__requirement_document',
+              )
+                .where({
+                  project_id: projectId,
+                  document_id: documentId,
+                  publication_reconcile_status: 'DEAD_LETTERED',
+                  publication_retry_exhausted: true,
+                })
+                .update({
+                  publication_reconcile_status: 'PENDING',
+                  publication_poll_attempt_count: 0,
+                  publication_next_attempt_at: now,
+                  publication_claim_token: null,
+                  publication_lease_expires_at: null,
+                  publication_last_error: null,
+                  publication_reconciled_at: null,
+                  publication_retry_exhausted: false,
+                });
+              if (updated !== 1) {
+                throw new Error('REQUIREMENT_RETRY_CAS_NOT_EXACT');
+              }
+              await transaction(
+                'resonance_projects__design_asset_audit',
+              ).insert({
+                project_id: projectId,
+                action_code: 'REQUIREMENT_PUBLICATION_RETRY_REQUESTED',
+                actor_ref: access.actorRef,
+                details: JSON.stringify({
+                  documentId,
+                  designVersion: Number(document.design_version),
+                  previousAttemptCount: Number(
+                    document.publication_poll_attempt_count ?? 0,
+                  ),
+                  retryLimit: REQUIREMENT_RECEIPT_MAX_ATTEMPTS,
+                }),
+                created_at: now,
+              });
+              return {
+                status: 202,
+                body: {
+                  success: true,
+                  status: 'GENERATION_QUEUED',
+                  recoveryQueued: true,
+                  documentId,
+                  designVersion: Number(document.design_version),
+                  retryAttempt: 0,
+                  retryLimit: REQUIREMENT_RECEIPT_MAX_ATTEMPTS,
+                },
+              };
+            });
+            response.status(result.status).json(result.body);
+          },
+        );
         router.get(
           '/:projectId/requirements/:documentId',
           async (request, response) => {
@@ -4350,6 +4787,10 @@ export default createBackendPlugin({
                   releaseStatus: String(release.release_status),
                   contractSha256: String(release.contract_sha256),
                   contract: storedContract as Record<string, unknown>,
+                  reconciliationStatus: String(
+                    existing.publication_reconcile_status ?? '',
+                  ),
+                  retryExhausted: Boolean(existing.publication_retry_exhausted),
                 };
               }
               const [{ max }] = await transaction(
@@ -4398,6 +4839,12 @@ export default createBackendPlugin({
                 process_code: analysis.processCode,
                 created_by: account.userEntityRef,
                 created_at: now,
+                publication_reconcile_status: 'PENDING',
+                publication_poll_attempt_count: 0,
+                publication_next_attempt_at: new Date(
+                  now.getTime() + RUNTIME_DESIGN_SOURCE_TIMEOUT_MS + 5_000,
+                ),
+                publication_retry_exhausted: false,
               });
               await transaction('resonance_projects__requirement_item').insert(
                 analysis.requirements.map((item, index) => ({
@@ -4466,6 +4913,8 @@ export default createBackendPlugin({
                 releaseStatus: 'VALIDATED',
                 contractSha256,
                 contract,
+                reconciliationStatus: 'PENDING',
+                retryExhausted: false,
               };
             });
             if (persistence.kind === 'PROJECT_MISSING') {
@@ -4480,6 +4929,23 @@ export default createBackendPlugin({
               });
               return;
             }
+            if (
+              persistence.kind === 'EXISTING' &&
+              (persistence.retryExhausted ||
+                persistence.reconciliationStatus === 'DEAD_LETTERED')
+            ) {
+              response.status(409).json({
+                success: false,
+                projectId,
+                documentId: persistence.documentId,
+                designVersion: persistence.designVersion,
+                status: 'PUBLICATION_DEAD_LETTERED',
+                retryExhausted: true,
+                message:
+                  'Publication retry budget is exhausted; an authorized operator must request retry',
+              });
+              return;
+            }
             const sourceImmediate = true;
             const bridgeToken = String(process.env.RESONANCE_OPS_TOKEN ?? '');
             const publicationComplete = requirementPublicationComplete({
@@ -4487,13 +4953,15 @@ export default createBackendPlugin({
               releaseStatus: persistence.releaseStatus,
             });
             if (!publicationComplete && !bridgeToken) {
-              response.status(503).json({
+              response.status(202).json({
                 success: false,
                 projectId,
                 documentId: persistence.documentId,
                 designVersion: persistence.designVersion,
+                status: 'GENERATION_QUEUED',
+                recoveryQueued: true,
                 message:
-                  'Design is stored, but the runtime bridge token is missing',
+                  'Design is stored durably; publication is queued until the runtime bridge token is available',
               });
               return;
             }
@@ -4516,6 +4984,9 @@ export default createBackendPlugin({
                     `${runtimeBaseUrl}/api/internal/actor-process/design-releases`,
                     {
                       method: 'POST',
+                      signal: AbortSignal.timeout(
+                        RUNTIME_DESIGN_SOURCE_TIMEOUT_MS,
+                      ),
                       headers: {
                         accept: 'application/json',
                         'content-type': 'application/json',
@@ -4552,11 +5023,13 @@ export default createBackendPlugin({
               });
             } catch (error) {
               if (error instanceof RequirementPublicationError) {
-                response.status(error.statusCode).json({
+                response.status(202).json({
                   success: false,
                   projectId,
                   documentId: persistence.documentId,
                   designVersion: persistence.designVersion,
+                  status: 'GENERATION_QUEUED',
+                  recoveryQueued: true,
                   message: error.message,
                   publication: error.publication,
                 });

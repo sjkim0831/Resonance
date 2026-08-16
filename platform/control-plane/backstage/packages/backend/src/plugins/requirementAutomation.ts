@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 
 export const REQUIREMENT_CONTRACT_SCHEMA = {
   version: '3.0.0',
-  identity: 'STABLE_DOCUMENT_KEY_OR_EXPLICIT_PROCESS_CODE',
+  identity: 'STABLE_DOCUMENT_KEY_THEN_EXPLICIT_PROCESS_CODE',
   reconciliation: 'EXACT_SET',
 } as const;
 
@@ -174,6 +174,30 @@ const resolveIdentity = (
   ) {
     throw new Error('ambiguous requirement identity: choose one stable key');
   }
+  // A document slot (or producer supplied stable file key) is the logical
+  // document identity.  The process code describes the current contents and
+  // may legitimately change when the same slot is redesigned.  Keeping those
+  // concerns separate is what makes A -> B -> A allocate three exact design
+  // revisions instead of incorrectly reusing the historical A release.
+  if (normalized.documentSlot || normalized.stableFileKey) {
+    const stableKey = normalized.documentSlot
+      ? `slot:${normalized.documentSlot}`
+      : `file:${normalized.stableFileKey}`;
+    return {
+      strategy: 'STABLE_DOCUMENT_KEY' as const,
+      stableKey,
+      processCode:
+        normalized.explicitProcessCode ??
+        `REQ_${digest(
+          canonicalRequirementJson({
+            projectId: normalizedCode(projectId, 'projectId', 64),
+            stableKey,
+          }),
+        )
+          .slice(0, 12)
+          .toUpperCase()}`,
+    };
+  }
   if (normalized.explicitProcessCode) {
     return {
       strategy: 'EXPLICIT_PROCESS_CODE' as const,
@@ -181,12 +205,9 @@ const resolveIdentity = (
       processCode: normalized.explicitProcessCode,
     };
   }
-  const stableKey = normalized.documentSlot
-    ? `slot:${normalized.documentSlot}`
-    : `file:${
-        normalized.stableFileKey ??
-        `name-${digest(fileName.normalize('NFKC').toLowerCase()).slice(0, 24)}`
-      }`;
+  const stableKey = `file:name-${digest(
+    fileName.normalize('NFKC').toLowerCase(),
+  ).slice(0, 24)}`;
   return {
     strategy: 'STABLE_DOCUMENT_KEY' as const,
     stableKey,

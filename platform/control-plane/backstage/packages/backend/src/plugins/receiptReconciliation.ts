@@ -6,6 +6,7 @@ import {
 export const RECEIPT_RECONCILIATION_BATCH_SIZE = 10;
 export const RECEIPT_RECONCILIATION_CONCURRENCY = 4;
 export const RECEIPT_RECONCILIATION_LEASE_MS = 30_000;
+export const REQUIREMENT_RECEIPT_MAX_ATTEMPTS = 5;
 
 export const receiptRetryDelayMs = (attempt: number) =>
   Math.min(60_000, 5_000 * 2 ** Math.max(0, Math.min(8, attempt - 1)));
@@ -17,6 +18,8 @@ export type RequirementReceiptClaim = {
   contractSha256: string;
   claimToken: string;
   pollAttempt: number;
+  publicationMode: 'PUBLISH' | 'RECEIPT';
+  contract?: Record<string, unknown>;
 };
 
 export type DesignSnapshotSyncClaim = {
@@ -44,6 +47,10 @@ export type ReceiptReconciliationSummary = {
 };
 
 export type DesignSnapshotRetryOutcome = 'RETRIED' | 'DEAD_LETTERED' | 'STALE';
+export type RequirementReceiptRetryOutcome =
+  | 'RETRIED'
+  | 'DEAD_LETTERED'
+  | 'STALE';
 
 const emptySummary = (): ReceiptReconciliationSummary => ({
   claimed: 0,
@@ -142,7 +149,7 @@ export const reconcileRequirementReceiptBatch = async ({
     claim: RequirementReceiptClaim,
     message: string,
     nextAttemptAt: Date,
-  ) => Promise<boolean>;
+  ) => Promise<RequirementReceiptRetryOutcome>;
   batchSize?: number;
   concurrency?: number;
   now?: () => Date;
@@ -174,8 +181,16 @@ export const reconcileRequirementReceiptBatch = async ({
       const nextAttemptAt = new Date(
         now().getTime() + receiptRetryDelayMs(claim.pollAttempt),
       );
-      if (await retryClaim(claim, errorMessage(error), nextAttemptAt)) {
+      const retryOutcome = await retryClaim(
+        claim,
+        errorMessage(error),
+        nextAttemptAt,
+      );
+      if (retryOutcome === 'RETRIED') {
         summary.retried += 1;
+      } else if (retryOutcome === 'DEAD_LETTERED') {
+        summary.deadLettered += 1;
+        summary.terminal += 1;
       } else {
         summary.stale += 1;
       }

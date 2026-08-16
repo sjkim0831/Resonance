@@ -19,12 +19,13 @@ const requirementClaim = (
   contractSha256: documentId.padEnd(64, 'a').slice(0, 64),
   claimToken: `claim-${documentId}`,
   pollAttempt: 1,
+  publicationMode: 'RECEIPT',
 });
 
 describe('headless receipt reconciliation', () => {
   it('wires an indexed leased scheduler instead of depending on an open browser', () => {
     const route = readFileSync(join(__dirname, 'resonanceProjects.ts'), 'utf8');
-    expect(route).toContain('resonance_requirement_document_receipt_due_idx');
+    expect(route).toContain('resonance_requirement_document_finite_due_idx');
     expect(route).toContain('resonance_design_asset_source_sync_due_idx');
     expect(route).toContain('.forUpdate()');
     expect(route).toContain('.skipLocked()');
@@ -75,7 +76,7 @@ describe('headless receipt reconciliation', () => {
         settled.push(claim.documentId);
         return disposition;
       },
-      retryClaim: async () => false,
+      retryClaim: async () => 'STALE',
     });
 
     expect(settled.sort()).toEqual(['doc-1', 'doc-2', 'doc-3']);
@@ -104,7 +105,7 @@ describe('headless receipt reconciliation', () => {
     ) => {
       dueAt = nextAttemptAt;
       failed = true;
-      return true;
+      return 'RETRIED' as const;
     };
     const first = await reconcileRequirementReceiptBatch({
       claimDue,
@@ -159,12 +160,96 @@ describe('headless receipt reconciliation', () => {
           writes += 1;
           return disposition;
         },
-        retryClaim: async () => true,
+        retryClaim: async () => 'RETRIED',
       });
 
     const summaries = await Promise.all([run(), run()]);
     expect(summaries.map(item => item.claimed).sort()).toEqual([0, 1]);
     expect(writes).toBe(1);
+  });
+
+  it('dead-letters a poison requirement receipt at the finite fifth attempt', async () => {
+    const claim = {
+      ...requirementClaim('doc-poison', 'A'),
+      pollAttempt: 5,
+      publicationMode: 'PUBLISH' as const,
+      contract: { schemaVersion: '3.0.0' },
+    };
+    const retryClaim = jest.fn(async () => 'DEAD_LETTERED' as const);
+    const summary = await reconcileRequirementReceiptBatch({
+      claimDue: async () => [claim],
+      readReceipt: async () => {
+        throw new Error('poison runtime response');
+      },
+      persistReceipt: async (_claim, disposition) => disposition,
+      retryClaim,
+    });
+
+    expect(summary).toEqual({
+      claimed: 1,
+      terminal: 1,
+      pending: 0,
+      retried: 0,
+      deadLettered: 1,
+      stale: 0,
+    });
+    expect(retryClaim).toHaveBeenCalledWith(
+      claim,
+      'poison runtime response',
+      expect.any(Date),
+    );
+  });
+
+  it('publishes a durable VALIDATED claim and converges it to APPLIED', async () => {
+    const claim = {
+      ...requirementClaim('doc-validated', 'A'),
+      publicationMode: 'PUBLISH' as const,
+      contract: { schemaVersion: '3.0.0', projectId: 'A' },
+    };
+    const readReceipt = jest.fn(async () => ({
+      success: true,
+      status: 'APPLIED',
+    }));
+    const persistReceipt = jest.fn(async (_claim, disposition) => disposition);
+    const summary = await reconcileRequirementReceiptBatch({
+      claimDue: async () => [claim],
+      readReceipt,
+      persistReceipt,
+      retryClaim: async () => 'STALE',
+    });
+
+    expect(summary).toMatchObject({ claimed: 1, terminal: 1, retried: 0 });
+    expect(readReceipt).toHaveBeenCalledWith(claim);
+    expect(persistReceipt).toHaveBeenCalledWith(
+      claim,
+      'APPLIED',
+      expect.objectContaining({ status: 'APPLIED' }),
+    );
+  });
+
+  it('uses a finite audited requirement queue and an authorized exact retry endpoint', () => {
+    const route = readFileSync(join(__dirname, 'resonanceProjects.ts'), 'utf8');
+    const retryStart = route.indexOf(
+      "'/:projectId/requirements/:documentId/publication/retry'",
+    );
+    const retryEnd = route.indexOf(
+      "router.get(\n          '/:projectId/requirements/:documentId'",
+      retryStart,
+    );
+    const retry = route.slice(retryStart, retryEnd);
+
+    expect(route).toContain('REQUIREMENT_RECEIPT_MAX_ATTEMPTS');
+    expect(route).toContain("publication_reconcile_status: 'DEAD_LETTERED'");
+    expect(route).toContain(
+      "action_code: 'REQUIREMENT_PUBLICATION_DEAD_LETTERED'",
+    );
+    expect(retry).toContain("'DESIGN_APPROVER'");
+    expect(retry).toContain(
+      "action_code: 'REQUIREMENT_PUBLICATION_RETRY_REQUESTED'",
+    );
+    expect(retry).toContain("disposition === 'APPLIED'");
+    expect(retry).toContain('writeCount: 0');
+    expect(retry).toContain("publication_reconcile_status: 'PENDING'");
   });
 
   it('keeps a split 202 design receipt pending and converges on automatic retry', async () => {
@@ -479,6 +564,11 @@ describe('headless receipt reconciliation', () => {
       "'/design-assets/:projectId/source-sync/:syncId/retry'",
       routerStart,
     );
+    const receiptReadStart = route.indexOf(
+      "'/design-assets/:projectId/source-sync/:syncId'",
+      routerStart,
+    );
+    const receiptRead = route.slice(receiptReadStart, manualRetryStart);
     const manualRetryEnd = route.indexOf(
       "'/design-assets/:projectId/drafts'",
       manualRetryStart,
@@ -503,6 +593,12 @@ describe('headless receipt reconciliation', () => {
     expect(retry).toContain("return 'DEAD_LETTERED'");
     expect(route).toContain(
       "'/design-assets/:projectId/source-sync/:syncId/retry'",
+    );
+    expect(receiptRead).toContain(
+      "resolveDesignAssetAccess(\n              request,\n              'CCUS-PLATFORM'",
+    );
+    expect(receiptRead).not.toContain(
+      'resolveDesignAssetAccess(request, projectId)',
     );
     expect(route).toContain("action_code: 'SOURCE_SYNC_RETRY_REQUESTED'");
     expect(manualRetry).toContain('resolveAuthenticatedProjectIdentity(');

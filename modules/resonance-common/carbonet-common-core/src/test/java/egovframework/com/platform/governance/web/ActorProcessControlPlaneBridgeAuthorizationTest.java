@@ -81,23 +81,27 @@ class ActorProcessControlPlaneBridgeAuthorizationTest {
     @Test
     void designSourceHeadsRequireBridgeTokenAndReturnRuntimeAuthority(){
         var unauthorized=controller.commonDesignAssetSourceHeads(
-            "wrong-token","SCREEN","SCREEN_A","",100);
+            "wrong-token","SCREEN","SCREEN_A","",100,true);
         assertEquals(401,unauthorized.getStatusCode().value());
         verify(governance,never()).commonDesignAssetSourceHeads(
-            anyString(),anyString(),anyString(),org.mockito.ArgumentMatchers.anyInt());
+            anyString(),anyString(),anyString(),org.mockito.ArgumentMatchers.anyInt(),
+            org.mockito.ArgumentMatchers.anyBoolean());
 
         when(governance.commonDesignAssetSourceHeads(
-            "SCREEN","SCREEN_A","",1)).thenReturn(List.of(Map.of(
+            "SCREEN","SCREEN_A","",1,true)).thenReturn(List.of(Map.of(
                 "assetType","SCREEN","assetId","SCREEN_A",
                 "fingerprint","a".repeat(64))));
         var accepted=controller.commonDesignAssetSourceHeads(
-            "secret-token","SCREEN","SCREEN_A","",1);
+            "secret-token","SCREEN","SCREEN_A","",1,true);
 
         assertEquals(200,accepted.getStatusCode().value());
         @SuppressWarnings("unchecked")
         Map<String,Object> body=(Map<String,Object>)accepted.getBody();
         assertEquals("RUNTIME_GLOBAL_SOURCE_HEAD",body.get("authority"));
+        assertEquals("TARGET_AND_TRANSITIVE_DEPENDENTS",body.get("scope"));
         assertEquals(1,body.get("count"));
+        verify(governance).commonDesignAssetSourceHeads(
+            "SCREEN","SCREEN_A","",1,true);
     }
 
     @Test

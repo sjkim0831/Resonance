@@ -540,16 +540,19 @@ public class ActorProcessControlPlaneBridgeController {
             @RequestParam(defaultValue = "") String assetType,
             @RequestParam(defaultValue = "") String assetId,
             @RequestParam(defaultValue = "") String search,
-            @RequestParam(defaultValue = "100") int limit) {
+            @RequestParam(defaultValue = "100") int limit,
+            @RequestParam(defaultValue = "false") boolean includeDependents) {
         if (!authorized(suppliedToken)) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(Map.of("success", false, "message", "Invalid control-plane bridge token."));
         }
         try {
             List<Map<String,Object>> assets=governance.commonDesignAssetSourceHeads(
-                    assetType,assetId,search,limit);
+                    assetType,assetId,search,limit,includeDependents);
             return ResponseEntity.ok(Map.of(
                     "success",true,"authority","RUNTIME_GLOBAL_SOURCE_HEAD",
+                    "scope",includeDependents
+                            ?"TARGET_AND_TRANSITIVE_DEPENDENTS":"FILTERED_HEADS",
                     "assets",assets,"count",assets.size()));
         } catch (IllegalArgumentException exception) {
             return ResponseEntity.unprocessableEntity().body(Map.of(

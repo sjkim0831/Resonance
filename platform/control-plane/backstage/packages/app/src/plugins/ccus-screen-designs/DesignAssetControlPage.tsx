@@ -82,6 +82,7 @@ const sourceMutableTypes = new Set<AssetType>([
   'COMPONENT',
   'SCREEN',
 ]);
+const globalDesignAuthorityProjectId = 'CCUS-PLATFORM';
 
 const useStyles = makeStyles(theme => ({
   hero: {
@@ -166,7 +167,7 @@ export function DesignAssetControlPage() {
       ),
       fetchApi.fetch(
         `/api/resonance-projects/design-assets/${encodeURIComponent(
-          projectId,
+          globalDesignAuthorityProjectId,
         )}/access`,
       ),
     ]);
