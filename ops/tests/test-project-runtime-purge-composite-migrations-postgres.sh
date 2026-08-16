@@ -247,8 +247,17 @@ SELECT authority_id,authority_revision,'PROJECT','RFP-COMPOSITE-001',1,repeat('a
    route_path,audience,authority_id,authority_revision,document_set_hash,authority_hash),
  'TEST' FROM integrated_design_authority WHERE process_code='RFP_COMPOSITE';
 
+INSERT INTO integrated_design_live_smoke_dispatch(
+ job_id,process_code,project_id,runtime_commit,runtime_identity_hash,canary_attempt,
+ authority_revision_set_hash,artifact_manifest_hash,process_source_hash,expected_evidence_count)
+SELECT job_id,process_code,'RFP-COMPOSITE-001',repeat('a',40),repeat('b',64),0,
+ framework_composite_authority_revision_set_hash(job_id),repeat('8',64),source_hash,15
+ FROM integrated_design_authority WHERE process_code='RFP_COMPOSITE';
+
 WITH base AS (
- SELECT job_id,authority_id,authority_revision,process_code,step_code,route_path,audience,
+ SELECT dispatch.dispatch_id,authority.job_id,authority.authority_id,
+   authority.authority_revision,authority.process_code,authority.step_code,
+   authority.route_path,authority.audience,
    'API'::text lane,'SUCCESS'::text status_case,'SAVE_SUCCESS'::text scenario_code,
    'actor.account'::text account_id,'TENANT_TEST'::text tenant_id,
    'RFP-COMPOSITE-001'::text project_id,'ACTOR_A'::text actor_code,
@@ -258,7 +267,9 @@ WITH base AS (
    'SUCCESS'::text observed_status,source_hash,authority_hash,
    'http://runtime/api/actual/items'::text target_ref,
    '{"httpStatus":200}'::jsonb lane_evidence,'evidence://api/save'::text evidence_ref
- FROM integrated_design_authority WHERE process_code='RFP_COMPOSITE'
+ FROM integrated_design_authority authority
+ JOIN integrated_design_live_smoke_dispatch dispatch USING(job_id,process_code)
+ WHERE authority.process_code='RFP_COMPOSITE'
 ), hashed AS (
  SELECT *,
    framework_composite_live_smoke_hash(jsonb_build_object('accountId',account_id,
@@ -274,7 +285,7 @@ WITH base AS (
  FROM base
 ), complete AS (
  SELECT *,framework_composite_live_smoke_hash(jsonb_build_object(
-   'schema','carbonet.composite-live-smoke-evidence/v1','jobId',job_id,
+   'schema','carbonet.composite-live-smoke-evidence/v1','dispatchId',dispatch_id,'jobId',job_id,
    'authorityId',authority_id,'authorityRevision',authority_revision,
    'processCode',process_code,'stepCode',step_code,'routePath',route_path,
    'audience',audience,'lane',lane,'statusCase',status_case,
@@ -285,25 +296,18 @@ WITH base AS (
  )) evidence_hash FROM hashed
 )
 INSERT INTO integrated_design_live_smoke_evidence(
- job_id,authority_id,authority_revision,process_code,step_code,route_path,audience,lane,
+ dispatch_id,job_id,authority_id,authority_revision,process_code,step_code,route_path,audience,lane,
  status_case,scenario_code,account_id,tenant_id,project_id,actor_code,command_code,
  input_json,output_json,from_state,to_state,observed_state,expected_status,observed_status,
  source_hash,authority_hash,target_ref,lane_evidence,account_hash,command_hash,input_hash,
  output_hash,state_hash,status_hash,lane_evidence_hash,evidence_hash,evidence_ref,
  recorded_by,observed_at)
-SELECT job_id,authority_id,authority_revision,process_code,step_code,route_path,audience,lane,
+SELECT dispatch_id,job_id,authority_id,authority_revision,process_code,step_code,route_path,audience,lane,
  status_case,scenario_code,account_id,tenant_id,project_id,actor_code,command_code,
  input_json,output_json,from_state,to_state,observed_state,expected_status,observed_status,
  source_hash,authority_hash,target_ref,lane_evidence,account_hash,command_hash,input_hash,
  output_hash,state_hash,status_hash,lane_evidence_hash,evidence_hash,evidence_ref,
  'TEST',clock_timestamp() FROM complete;
-
-INSERT INTO integrated_design_live_smoke_dispatch(
- job_id,process_code,project_id,authority_revision_set_hash,artifact_manifest_hash,
- process_source_hash,expected_evidence_count)
-SELECT job_id,process_code,'RFP-COMPOSITE-001',
- framework_composite_authority_revision_set_hash(job_id),repeat('8',64),source_hash,15
- FROM integrated_design_authority WHERE process_code='RFP_COMPOSITE';
 INSERT INTO integrated_design_autocompletion_receipt(
  process_code,completion_status,job_id,dependency_fingerprint,receipt_json)
 SELECT 'RFP_COMPOSITE','SOURCE_APPLIED_PHYSICAL_QUEUED',job_id,repeat('9',64),
@@ -470,10 +474,10 @@ writer_one="$(mktemp)"; writer_two="$(mktemp)"
  values(9000001,'RFP_COMPOSITE','STEP_A','/rfp-composite','USER','LATE','late','late')" \
     >"$writer_one" 2>&1; echo $? >>"$writer_one" ) & writer_one_pid=$!
 ( db -Atqc "insert into integrated_design_live_smoke_dispatch(
- dispatch_id,job_id,process_code,project_id,authority_revision_set_hash,artifact_manifest_hash,
- process_source_hash,expected_evidence_count)
- values(9000002,$job_id,'RFP_COMPOSITE','RFP-COMPOSITE-001',repeat('1',64),repeat('2',64),
- repeat('3',64),15)" >"$writer_two" 2>&1; echo $? >>"$writer_two" ) & writer_two_pid=$!
+ dispatch_id,job_id,process_code,project_id,runtime_commit,runtime_identity_hash,canary_attempt,
+ authority_revision_set_hash,artifact_manifest_hash,process_source_hash,expected_evidence_count)
+ values(9000002,$job_id,'RFP_COMPOSITE','RFP-COMPOSITE-001',repeat('a',40),repeat('b',64),0,
+ repeat('1',64),repeat('2',64),repeat('3',64),15)" >"$writer_two" 2>&1; echo $? >>"$writer_two" ) & writer_two_pid=$!
 set +e
 wait "$writer_one_pid"; writer_one_status=$?
 wait "$writer_two_pid"; writer_two_status=$?

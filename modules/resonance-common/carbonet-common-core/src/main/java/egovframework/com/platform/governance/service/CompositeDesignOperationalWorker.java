@@ -3,6 +3,7 @@ package egovframework.com.platform.governance.service;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.PreDestroy;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -14,9 +15,13 @@ import org.springframework.transaction.support.TransactionTemplate;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.ArrayList;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -27,42 +32,90 @@ import java.util.concurrent.atomic.AtomicInteger;
 @Service
 public class CompositeDesignOperationalWorker {
     private static final String SYSTEM_ACTOR="COMPOSITE_AUTOCOMPLETION";
+    private static final long GLOBAL_DISPATCH_ADVISORY_KEY=0x434f4d504155544fL;
+    private static final long GLOBAL_SOURCE_SLOT_BASE=0x434f4d50534c4f50L;
     private final JdbcTemplate jdbc;
     private final ObjectMapper mapper;
     private final ActorProcessGovernanceService governance;
+    private final CompositeAutocompletionReadinessService readiness;
     private final TransactionTemplate requiresNew;
     private final ExecutorService workers;
+    private final ScheduledExecutorService leaseHeartbeats;
     private final AtomicInteger running=new AtomicInteger();
     private final Object dispatchMonitor=new Object();
     private int manualDrainRemaining;
     private String manualRunToken="";
-    private final boolean enabled;
+    private final boolean capabilityEnabled;
     private final int parallelism;
     private final int defaultLimit;
     private final boolean notificationEnabled;
+    private final int leaseSeconds;
+    private final int heartbeatSeconds;
 
+    @Autowired
     public CompositeDesignOperationalWorker(JdbcTemplate jdbc,ObjectMapper mapper,
-            ActorProcessGovernanceService governance,PlatformTransactionManager transactionManager,
-            @Value("${resonance.composite-autocompletion.enabled:false}") boolean enabled,
+            ActorProcessGovernanceService governance,
+            CompositeAutocompletionReadinessService readiness,
+            PlatformTransactionManager transactionManager,
+            @Value("${resonance.composite-autocompletion.capability-enabled:${resonance.composite-autocompletion.enabled:false}}")
+                boolean capabilityEnabled,
             @Value("${resonance.composite-autocompletion.parallelism:8}") int parallelism,
             @Value("${resonance.composite-autocompletion.batch-limit:25}") int defaultLimit,
-            @Value("${resonance.composite-notification.enabled:true}") boolean notificationEnabled){
-        this.jdbc=jdbc;this.mapper=mapper;this.governance=governance;this.enabled=enabled;
+            @Value("${resonance.composite-notification.enabled:true}") boolean notificationEnabled,
+            @Value("${resonance.composite-autocompletion.lease-seconds:600}") int leaseSeconds,
+            @Value("${resonance.composite-autocompletion.heartbeat-seconds:30}") int heartbeatSeconds){
+        this.jdbc=jdbc;this.mapper=mapper;this.governance=governance;this.readiness=readiness;
+        this.capabilityEnabled=capabilityEnabled;
         this.notificationEnabled=notificationEnabled;
         this.parallelism=Math.max(1,Math.min(parallelism,8));
+        this.leaseSeconds=Math.max(30,Math.min(leaseSeconds,3600));
+        this.heartbeatSeconds=Math.max(5,Math.min(heartbeatSeconds,
+            Math.max(5,this.leaseSeconds/3)));
         this.defaultLimit=Math.max(1,Math.min(defaultLimit,25));
         this.workers=Executors.newFixedThreadPool(this.parallelism,runnable->{
             Thread thread=new Thread(runnable,"composite-design-autocompletion");
             thread.setDaemon(true);return thread;});
+        this.leaseHeartbeats=Executors.newSingleThreadScheduledExecutor(runnable->{
+            Thread thread=new Thread(runnable,"composite-design-lease-heartbeat");
+            thread.setDaemon(true);return thread;});
         this.requiresNew=new TransactionTemplate(transactionManager);
         this.requiresNew.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+    }
+
+    public CompositeDesignOperationalWorker(JdbcTemplate jdbc,ObjectMapper mapper,
+            ActorProcessGovernanceService governance,PlatformTransactionManager transactionManager,
+            boolean enabled,int parallelism,int defaultLimit,boolean notificationEnabled){
+        this(jdbc,mapper,governance,new CompositeAutocompletionReadinessService(jdbc,governance,
+            transactionManager,parallelism,parallelism,1,"","",""),transactionManager,enabled,
+            parallelism,defaultLimit,notificationEnabled,600,30);
+    }
+
+    public CompositeDesignOperationalWorker(JdbcTemplate jdbc,ObjectMapper mapper,
+            ActorProcessGovernanceService governance,PlatformTransactionManager transactionManager,
+            boolean enabled,int parallelism,int defaultLimit,boolean notificationEnabled,
+            int physicalParallelism,int configuredReplicas){
+        this(jdbc,mapper,governance,new CompositeAutocompletionReadinessService(jdbc,governance,
+            transactionManager,parallelism,physicalParallelism,configuredReplicas,"","",""),
+            transactionManager,enabled,parallelism,defaultLimit,notificationEnabled,600,30);
     }
 
     @Scheduled(fixedDelayString="${resonance.composite-autocompletion.delay-ms:1000}",
         initialDelayString="${resonance.composite-autocompletion.initial-delay-ms:30000}")
     public void runScheduledBatch(){
         reconcilePhysicalCompletion();
-        if(enabled)dispatch(defaultLimit);
+        if(capabilityEnabled){
+            CompositeAutocompletionReadinessService.Snapshot snapshot=readiness.snapshot(true,running.get());
+            Map<String,Object> report=snapshot.report();
+            if("ACTIVE".equals(report.get("gateStatus"))
+                    &&!String.valueOf(report.get("gateSourceInputAuthorityHash"))
+                        .equals(String.valueOf(report.get("currentAuthoritySetHash")))){
+                // Enter the same serialized claim transaction with budget zero.
+                // Only the exact H0 drift CAS inside that transaction may revoke.
+                dispatchAvailable(0,false,"",null,snapshot);return;
+            }
+            if(Boolean.TRUE.equals(report.get("automaticEnablementAllowed")))
+                dispatchAvailable(defaultLimit,false,"",null,snapshot);
+        }
     }
 
     @Scheduled(fixedDelayString="${resonance.composite-notification.delay-ms:1000}",
@@ -73,134 +126,210 @@ public class CompositeDesignOperationalWorker {
     }
 
     public Map<String,Object> inspect(){
-        return requiresNew.execute(status->{Map<String,Object> counts=jdbc.queryForMap("""
-            select (select count(distinct process_code)
-                      from framework_composite_design_target_identity)::integer as "totalProcessCount",
-                   (select count(*) from framework_composite_design_target_identity)::integer
-                     as "screenIdentityCount",
-                   count(*) filter(where completion_status='PENDING')::integer as "pendingCount",
-                   count(*) filter(where completion_status='RUNNING')::integer as "runningCount",
-                   count(*) filter(where completion_status in('SOURCE_APPLIED_PHYSICAL_QUEUED',
-                     'PHYSICAL_GENERATED_VERIFIED'))::integer as "appliedCount",
-                   count(*) filter(where completion_status='PHYSICAL_GENERATED_VERIFIED')::integer
-                     as "physicalVerifiedCount",
-                   count(*) filter(where completion_status='BLOCKED')::integer as "blockedCount",
-                   count(*) filter(where completion_status='PHYSICAL_GENERATED_VERIFIED'
-                     and duration_ms is not null)::integer as "physicalSampleCount",
-                   coalesce(percentile_disc(0.95) within group(order by duration_ms)
-                     filter(where completion_status='PHYSICAL_GENERATED_VERIFIED'
-                       and duration_ms is not null),0)::bigint as "p95CompileMs"
-              from integrated_design_autocompletion_receipt
-            """);
-            Map<String,Object> result=new LinkedHashMap<>(counts);result.put("success",true);
-            result.put("dryRun",true);result.put("parallelism",parallelism);
-            result.put("liveSmokeParallelism",parallelism);
-            result.put("enabled",enabled);result.put("activeWorkerCount",running.get());
-            long processes=((Number)counts.get("totalProcessCount")).longValue();
-            long p95=((Number)counts.get("p95CompileMs")).longValue();
-            long samples=((Number)counts.get("physicalSampleCount")).longValue();
-            result.put("estimatedTotalSeconds",samples==0?null:
-                (((long)Math.ceil((double)processes/parallelism)*p95)+999L)/1000L);
-            result.put("estimatedPhysicalTotalSeconds",result.get("estimatedTotalSeconds"));
-            result.put("p95PhysicalMs",p95);
-            result.put("tenMinuteTarget",samples==0?"MEASUREMENT_REQUIRED":
-                (((Number)result.get("estimatedTotalSeconds")).longValue()<600?"PASS":"FAIL"));
-            return result;});
+        return readiness.inspect(capabilityEnabled,running.get());
     }
 
-    public Map<String,Object> dispatch(int requestedLimit){
+    public Map<String,Object> approve(long expectedRevision,String expectedRuntimeCommit,
+            String expectedFinalAuthorityHash,String expectedPostdeployCandidateId,String actor){
+        return readiness.prepare(expectedRevision,expectedRuntimeCommit,
+            expectedFinalAuthorityHash,expectedPostdeployCandidateId,actor,
+            capabilityEnabled,running.get());
+    }
+
+    public Map<String,Object> prepare(long expectedRevision,String expectedRuntimeCommit,
+            String expectedFinalAuthorityHash,String expectedPostdeployCandidateId,String actor){
+        return readiness.prepare(expectedRevision,expectedRuntimeCommit,
+            expectedFinalAuthorityHash,expectedPostdeployCandidateId,actor,
+            capabilityEnabled,running.get());
+    }
+
+    public Map<String,Object> activate(long expectedRevision,String expectedRuntimeCommit,
+            String expectedSourceInputAuthorityHash,String expectedPostdeployCandidateId,
+            String actor){
+        return readiness.activate(expectedRevision,expectedRuntimeCommit,
+            expectedSourceInputAuthorityHash,expectedPostdeployCandidateId,actor,
+            capabilityEnabled,running.get());
+    }
+
+    public Map<String,Object> revoke(long expectedRevision,String actor,String reason){
+        return readiness.revoke(expectedRevision,actor,reason);
+    }
+
+    public Map<String,Object> revokePrepared(long expectedRevision,
+            String expectedPostdeployCandidateId,String actor,String reason){
+        return readiness.revokePrepared(expectedRevision,expectedPostdeployCandidateId,
+            actor,reason);
+    }
+
+    Map<String,Object> dispatch(int requestedLimit){
         int requested=Math.max(1,Math.min(requestedLimit,25));
         String runToken="";
-        if(!enabled)synchronized(dispatchMonitor){
+        if(!capabilityEnabled)synchronized(dispatchMonitor){
             if(manualDrainRemaining==0)manualRunToken=UUID.randomUUID().toString();
             manualDrainRemaining=Math.min(25,manualDrainRemaining+requested);
             runToken=manualRunToken;
         }
-        return dispatchAvailable(requested,!enabled,runToken);
+        CompositeAutocompletionReadinessService.Snapshot snapshot=readiness.snapshot(capabilityEnabled,running.get());
+        return dispatchAvailable(requested,!capabilityEnabled,runToken,null,snapshot);
     }
 
-    private Map<String,Object> dispatchAvailable(int requestedLimit,boolean manual,String runToken){
+    public Map<String,Object> dispatchCanary(){
+        if(!capabilityEnabled)throw new IllegalStateException("AUTOCOMPLETION_CAPABILITY_DISABLED");
+        CompositeAutocompletionReadinessService.Snapshot snapshot=readiness.snapshot(capabilityEnabled,running.get());
+        Map<String,Object> inspection=snapshot.report();
+        String currentCommit=String.valueOf(inspection.get("runtimeCommit"));
+        String authorityHash=String.valueOf(inspection.get("currentAuthoritySetHash"));
+        String runtimeIdentity=String.valueOf(inspection.get("currentRuntimeIdentityHash"));
+        if(!Boolean.TRUE.equals(inspection.get("preflightComplete"))
+                ||!currentCommit.matches("[0-9a-f]{40}")
+                ||!authorityHash.matches("[0-9a-f]{64}")
+                ||!runtimeIdentity.matches("[0-9a-f]{64}"))
+            throw new IllegalStateException("CANARY_RUNTIME_BINDING_NOT_READY");
+        return dispatchAvailable(1,false,"",new CanaryContext(UUID.randomUUID().toString(),
+            currentCommit,authorityHash,runtimeIdentity),snapshot);
+    }
+
+    public Map<String,Object> dispatchApproved(int requestedLimit){
+        if(requestedLimit<1||requestedLimit>25)
+            throw new IllegalArgumentException("AUTOCOMPLETION_LIMIT_INVALID");
+        CompositeAutocompletionReadinessService.Snapshot snapshot=readiness.snapshot(capabilityEnabled,running.get());
+        if(!Boolean.TRUE.equals(snapshot.report().get("automaticEnablementAllowed")))
+            throw new IllegalStateException("AUTOCOMPLETION_APPROVAL_NOT_CURRENT");
+        return dispatchAvailable(requestedLimit,false,"",null,snapshot);
+    }
+
+    private Map<String,Object> dispatchAvailable(int requestedLimit,boolean manual,String runToken,
+            CanaryContext canary,CompositeAutocompletionReadinessService.Snapshot snapshot){
+        Map<String,CompositeAutocompletionReadinessService.Candidate> compilerReady=
+            snapshot.readyProcesses();
+        AtomicInteger canaryAttempt=new AtomicInteger();
         List<Map<String,Object>> claimed;
         synchronized(dispatchMonitor){
-            int available=Math.max(0,parallelism-running.get());
+            int localAvailable=Math.max(0,parallelism-running.get());
             int budget=manual?Math.min(requestedLimit,manualDrainRemaining):requestedLimit;
-            int limit=Math.min(Math.max(0,budget),available);
-            if(limit==0)return dispatchReceipt(List.of(),manual,runToken);
             claimed=requiresNew.execute(status->{
-                discover();requeueDependencyDrift();String token=UUID.randomUUID().toString();
-                return jdbc.queryForList("""
-                with candidates as (
-                  select receipt.process_code
-                    from integrated_design_autocompletion_receipt receipt
-                   where receipt.completion_status='PENDING'
-                      or (receipt.completion_status='RUNNING' and
-                        (receipt.lease_until is null or receipt.lease_until<current_timestamp))
-                   order by receipt.process_code collate "C"
-                   for update skip locked limit ?
-                )
-                update integrated_design_autocompletion_receipt receipt
-                   set completion_status='RUNNING',lease_token=?::uuid,
-                       lease_until=current_timestamp+interval '10 minutes',
-                       attempt_count=attempt_count+1,blocker_code=null,
-                       dependency_fingerprint=framework_composite_dependency_fingerprint(
-                          receipt.process_code),started_at=coalesce(started_at,current_timestamp),
-                       completed_at=null,duration_ms=null,
-                       updated_at=current_timestamp
-                  from candidates where receipt.process_code=candidates.process_code
-                returning receipt.process_code as "processCode",receipt.lease_token as "leaseToken"
-                """,limit,token);
+                readiness.acquireGlobalDispatchLock(GLOBAL_DISPATCH_ADVISORY_KEY);
+                GateContext gateContext=null;
+                if(canary==null&&!manual){
+                    gateContext=new GateContext(((Number)snapshot.report().get("gateRevision")).longValue(),
+                        String.valueOf(snapshot.report().get("runtimeCommit")),
+                        String.valueOf(snapshot.report().get("gateSourceInputAuthorityHash")),"","","",0,false);
+                    if(!readiness.retainActiveGateOrRevokeOnSourceDrift(gateContext.revision(),
+                            gateContext.runtimeCommit(),gateContext.sourceInputHash(),SYSTEM_ACTOR))
+                        return List.<Map<String,Object>>of();
+                }else readiness.assertAuthoritySetCurrent(String.valueOf(
+                    snapshot.report().get("currentAuthoritySetHash")));
+                readiness.discover();requeueDependencyDrift();
+                String token=UUID.randomUUID().toString();
+                if(canary!=null){
+                    canaryAttempt.set(readiness.nextCanaryAttempt(
+                        canary.runtimeCommit(),canary.authoritySetHash()));
+                    List<Map<String,Object>> physical=readiness.rearmPhysicalCanary(canary.canaryId(),
+                        canary.runtimeCommit(),canary.authoritySetHash(),canaryAttempt.get());
+                    if(!physical.isEmpty())return physical;
+                    readiness.prepareCanaryRetry(
+                        canary.runtimeCommit(),canary.authoritySetHash());
+                }
+                int globalAvailable=Math.max(0,parallelism-readiness.globallyRunning());
+                int limit=Math.min(Math.max(0,budget),Math.min(localAvailable,globalAvailable));
+                if(canary!=null)limit=Math.min(limit,1);
+                if(limit==0)return List.<Map<String,Object>>of();
+                List<Map<String,Object>> rows=new ArrayList<>();
+                for(CompositeAutocompletionReadinessService.Candidate candidate:
+                        compilerReady.values()){
+                    if(rows.size()>=limit)break;
+                    List<Map<String,Object>> one=claimOne(candidate,token,canary,
+                        canaryAttempt.get());
+                    GateContext claimedGate=null;
+                    if(gateContext!=null)claimedGate=new GateContext(gateContext.revision(),
+                        gateContext.runtimeCommit(),gateContext.sourceInputHash(),
+                        candidate.dependencyFingerprint(),"","",0,false);
+                    else if(canary!=null)claimedGate=new GateContext(0,canary.runtimeCommit(),
+                        canary.authoritySetHash(),candidate.dependencyFingerprint(),
+                        canary.runtimeIdentityHash(),canary.canaryId(),canaryAttempt.get(),true);
+                    if(claimedGate!=null)for(Map<String,Object> row:one)
+                        row.put("gateContext",claimedGate);
+                    rows.addAll(one);
+                }
+                return rows;
             });
             if(claimed==null)claimed=List.of();
             if(manual){
                 manualDrainRemaining=Math.max(0,manualDrainRemaining-claimed.size());
-                if(claimed.isEmpty())manualDrainRemaining=0;
             }
-            for(int index=0;index<claimed.size();index++)running.incrementAndGet();
+            for(Map<String,Object> claim:claimed)if(!Boolean.TRUE.equals(
+                    claim.get("physicalRevalidation")))running.incrementAndGet();
         }
-        for(Map<String,Object> claim:claimed)workers.submit(()->{
-            try{complete(String.valueOf(claim.get("processCode")),
-                    String.valueOf(claim.get("leaseToken")));}
+        for(Map<String,Object> claim:claimed){
+            if(Boolean.TRUE.equals(claim.get("physicalRevalidation"))){
+                reconcilePhysicalCompletion();continue;}
+            workers.submit(()->{
+            String process=String.valueOf(claim.get("processCode"));
+            String leaseToken=String.valueOf(claim.get("leaseToken"));
+            GateContext gateContext=claim.get("gateContext") instanceof GateContext context
+                ?context:null;
+            ScheduledFuture<?> heartbeat=leaseHeartbeats.scheduleAtFixedRate(()->{
+                if(heartbeatLease(process,leaseToken)!=1)
+                    throw new IllegalStateException("AUTOCOMPLETION_LEASE_HEARTBEAT_CAS_LOST");
+            },heartbeatSeconds,heartbeatSeconds,TimeUnit.SECONDS);
+            try{complete(process,leaseToken,gateContext);}
             finally{
+                heartbeat.cancel(false);
                 running.decrementAndGet();
-                if(enabled)dispatchAvailable(defaultLimit,false,"");
+                if(canary==null&&capabilityEnabled)try{dispatchApproved(defaultLimit);}
+                    catch(RuntimeException ignored){/* current approval gate closes the drain */}
                 else{
                     int budget;String token;
                     synchronized(dispatchMonitor){budget=manualDrainRemaining;token=manualRunToken;}
-                    if(budget>0)dispatchAvailable(budget,true,token);
+                    if(canary==null&&manual&&budget>0)
+                        dispatchAvailable(budget,true,token,null,
+                            readiness.snapshot(false,running.get()));
                 }
             }});
-        return dispatchReceipt(claimed,manual,runToken);
+        }
+        return dispatchReceipt(claimed,manual,runToken,canary,canaryAttempt.get());
     }
 
     private Map<String,Object> dispatchReceipt(List<Map<String,Object>> claimed,
-            boolean manual,String runToken){
+            boolean manual,String runToken,CanaryContext canary,int canaryAttempt){
         int remaining;
         synchronized(dispatchMonitor){remaining=manual?manualDrainRemaining:0;}
         Map<String,Object> receipt=new LinkedHashMap<>();receipt.put("success",true);
         receipt.put("claimedCount",claimed.size());receipt.put("activeWorkerCount",running.get());
         receipt.put("processCodes",claimed.stream().map(row->row.get("processCode")).toList());
         receipt.put("manualDrain",manual);receipt.put("manualRunToken",manual?runToken:"");
+        receipt.put("canary",canary!=null);
+        receipt.put("canaryId",canary==null?"":canary.canaryId());
+        receipt.put("canaryAttempt",canary==null?0:canaryAttempt);
         receipt.put("remainingRequestedCount",remaining);return receipt;
     }
 
-    private void discover(){
-        jdbc.update("""
-            insert into integrated_design_autocompletion_receipt(
-              process_code,completion_status,dependency_fingerprint,receipt_json)
-            select distinct contract.process_code,'PENDING',
-                   framework_composite_dependency_fingerprint(contract.process_code),
-                   case when not exists(select 1 from integrated_design_authority authority
-                          where authority.process_code=contract.process_code)
-                     then jsonb_build_object('requestedScope',jsonb_build_object(
-                       'scopeType','GLOBAL','source','MIGRATION_GLOBAL_TARGET'))
-                     else '{}'::jsonb end
-              from framework_composite_design_target_identity contract
-            on conflict(process_code) do nothing
-            """);
+    private List<Map<String,Object>> claimOne(
+            CompositeAutocompletionReadinessService.Candidate candidate,String token,
+            CanaryContext canary,int canaryAttempt){
+        String canaryJson=canary==null?"{}":json(Map.of(
+            "sourceInputDependencyHash",candidate.dependencyFingerprint(),
+            "canary",Map.of("canaryId",canary.canaryId(),"status","ACTIVE",
+                "attemptNumber",canaryAttempt,"runtimeCommit",canary.runtimeCommit(),
+                "requestedRuntimeIdentityHash",canary.runtimeIdentityHash(),
+                "requestedSourceAuthorityHash",canary.authoritySetHash(),
+                "requestedSourceDependencyHash",candidate.dependencyFingerprint())));
+        List<Map<String,Object>> claimed=readiness.claimOne(candidate,token,leaseSeconds,canaryJson);
+        if(canary!=null)claimed.forEach(row->{row.put("canary",true);
+            row.put("canaryId",canary.canaryId());});
+        return claimed;
     }
+
+    int heartbeatLease(String process,String token){
+        return readiness.heartbeatLease(requiresNew,process,token,leaseSeconds);
+    }
+
+    private record CanaryContext(String canaryId,String runtimeCommit,String authoritySetHash,String runtimeIdentityHash){}
+    private record GateContext(long revision,String runtimeCommit,String sourceInputHash,String processInputHash,String runtimeIdentityHash,String canaryId,int canaryAttempt,boolean canary){}
 
     void reconcilePhysicalCompletion(){
         requiresNew.executeWithoutResult(status->{
+            readiness.invalidateStalePhysicalRevalidations();
             requeueDependencyDrift();
             List<Map<String,Object>> terminal=jdbc.queryForList("""
                 select receipt.process_code as "processCode",receipt.job_id as "jobId",
@@ -229,7 +358,9 @@ public class CompositeDesignOperationalWorker {
                     case LIVE_SMOKE_TEST_PENDING -> MARK_LIVE_SMOKE_TEST_PENDING_SQL;
                     case CANONICAL_INVALID -> REQUEUE_INCOMPLETE_PHYSICAL_SQL;
                 };
-                int updated=jdbc.update(finalizationSql,process,jobId);
+                int updated=verdict==CompositePhysicalEvidenceService.Verdict.LIVE_SMOKE_TEST_PENDING
+                    ?jdbc.update(finalizationSql,readiness.runtimeCommit(),process,jobId)
+                    :jdbc.update(finalizationSql,process,jobId);
                 if(updated==0)requeueDependencyDrift();
                 else if(updated!=1)throw new IllegalStateException(
                     "COMPOSITE_PHYSICAL_RECEIPT_CAS_NOT_EXACT: "+process);
@@ -238,12 +369,33 @@ public class CompositeDesignOperationalWorker {
     }
 
     private static final String PROMOTE_EXACT_PHYSICAL_SQL="""
-                with completed_dispatch as (
+                with current_runtime as materialized (
+                  select runtime.source_commit,
+                         encode(sha256(convert_to(concat_ws('|',runtime.source_commit,
+                           runtime.deployment_namespace,runtime.deployment_name,
+                           runtime.deployment_uid,runtime.deployment_generation,
+                           runtime.observed_generation,runtime.desired_replicas,
+                           runtime.image_ref,runtime.image_id,runtime.health_status
+                         ),'UTF8')),'hex') runtime_identity_hash
+                    from framework_runtime_release_state runtime
+                   where runtime.release_key='CARBONET_RUNTIME'
+                     and runtime.health_status='UP'
+                ), completed_dispatch as (
                   update integrated_design_live_smoke_dispatch dispatch
                      set status='COMPLETED',lease_token=null,lease_until=null,
-                         completed_at=clock_timestamp()
-                   where dispatch.process_code=? and dispatch.job_id=?
+                          completed_at=clock_timestamp()
+                    from integrated_design_autocompletion_receipt current_receipt,
+                         current_runtime runtime
+                   where current_receipt.process_code=? and current_receipt.job_id=?
+                     and current_receipt.receipt_json->>'liveSmokeDispatchId'~'^[0-9]+$'
+                     and dispatch.dispatch_id=
+                       (current_receipt.receipt_json->>'liveSmokeDispatchId')::bigint
                      and dispatch.status='EVIDENCE_SUBMITTED'
+                     and dispatch.runtime_commit=runtime.source_commit
+                     and dispatch.runtime_identity_hash=runtime.runtime_identity_hash
+                     and (nullif(current_receipt.receipt_json#>>'{canary,runtimeCommit}','')
+                          is null or current_receipt.receipt_json#>>'{canary,runtimeCommit}'=
+                          dispatch.runtime_commit)
                      and dispatch.submitted_evidence_count=dispatch.expected_evidence_count
                      and dispatch.authority_revision_set_hash=
                        framework_composite_authority_revision_set_hash(dispatch.job_id)
@@ -266,8 +418,9 @@ public class CompositeDesignOperationalWorker {
                             and current_authority.authority_revision=smoke.authority_revision
                             and current_authority.source_hash=smoke.source_hash
                             and current_authority.authority_hash=smoke.authority_hash
-                          where smoke.job_id=job.job_id
-                            and smoke.process_code=receipt.process_code),
+                           where smoke.job_id=job.job_id
+                             and smoke.dispatch_id=dispatch.dispatch_id
+                             and smoke.process_code=receipt.process_code),
                          'liveSmokeEvidenceSetHash',(select framework_composite_live_smoke_hash(
                            coalesce(jsonb_agg(smoke.evidence_hash order by smoke.authority_id,
                              smoke.authority_revision,smoke.command_code collate "C",
@@ -280,11 +433,26 @@ public class CompositeDesignOperationalWorker {
                             and current_authority.authority_revision=smoke.authority_revision
                             and current_authority.source_hash=smoke.source_hash
                             and current_authority.authority_hash=smoke.authority_hash
-                          where smoke.job_id=job.job_id
-                            and smoke.process_code=receipt.process_code),
+                           where smoke.job_id=job.job_id
+                             and smoke.dispatch_id=dispatch.dispatch_id
+                             and smoke.process_code=receipt.process_code),
                          'canonicalGeneration',
                            framework_try_jsonb(job.result_json)->'canonicalGeneration',
-                         'jobEvidenceRef',job.evidence_ref),
+                         'jobEvidenceRef',job.evidence_ref)||case
+                         when receipt.receipt_json#>>'{canary,status}'='ACTIVE' then
+                           jsonb_build_object('canary',(receipt.receipt_json->'canary')||
+                             jsonb_build_object('status','VERIFIED',
+                               'physicalVerifiedAt',clock_timestamp(),
+                               'verifiedFinalAuthorityHash',(select
+                                 framework_composite_live_smoke_hash(coalesce(jsonb_agg(
+                                    jsonb_build_object('processCode',target.process_code,
+                                      'finalAuthorityFingerprint',
+                                      framework_composite_final_authority_fingerprint(
+                                        target.process_code))
+                                   order by target.process_code collate "C"),'[]'::jsonb))
+                                 from (select distinct upper(process_code) process_code
+                                   from framework_composite_design_target_identity) target)))
+                         else '{}'::jsonb end,
                        blocker_code=null,updated_at=current_timestamp
                   from framework_development_job job,completed_dispatch dispatch
                  where receipt.process_code=dispatch.process_code and receipt.job_id=dispatch.job_id
@@ -413,8 +581,22 @@ public class CompositeDesignOperationalWorker {
                     )
                 """;
     private static final String MARK_LIVE_SMOKE_TEST_PENDING_SQL="""
-                with dispatch_contract as materialized (
-                  select job.job_id,job.process_code,
+                with current_runtime as materialized (
+                  select runtime.source_commit,
+                         encode(sha256(convert_to(concat_ws('|',runtime.source_commit,
+                           runtime.deployment_namespace,runtime.deployment_name,
+                           runtime.deployment_uid,runtime.deployment_generation,
+                           runtime.observed_generation,runtime.desired_replicas,
+                           runtime.image_ref,runtime.image_id,runtime.health_status
+                         ),'UTF8')),'hex') runtime_identity_hash
+                    from framework_runtime_release_state runtime
+                   where runtime.release_key='CARBONET_RUNTIME' and runtime.health_status='UP' for share of runtime
+                ), dispatch_contract as materialized (
+                  select job.job_id,job.process_code,runtime.source_commit runtime_commit,
+                         runtime.runtime_identity_hash,
+                         case when receipt.receipt_json#>>'{canary,attemptNumber}'~'^[0-9]+$'
+                           then (receipt.receipt_json#>>'{canary,attemptNumber}')::integer else 0 end
+                           canary_attempt,
                          framework_composite_authority_revision_set_hash(job.job_id) revision_set_hash,
                          framework_try_jsonb(job.result_json)#>>
                            '{canonicalGeneration,compositeArtifactManifestHash}' artifact_hash,
@@ -430,6 +612,12 @@ public class CompositeDesignOperationalWorker {
                                 then min(binding.project_id)
                               else null end project_id
                     from framework_development_job job
+                    join integrated_design_autocompletion_receipt receipt on
+                      receipt.process_code=job.process_code and receipt.job_id=job.job_id
+                    join current_runtime runtime on runtime.source_commit=coalesce(
+                      nullif(receipt.receipt_json#>>'{canary,runtimeCommit}',''),nullif(?,''),
+                      framework_try_jsonb(job.result_json)->>'commit') and (
+                      coalesce(receipt.receipt_json#>>'{canary,physicalRevalidation}','false')<>'true' or runtime.runtime_identity_hash=receipt.receipt_json#>>'{canary,requestedRuntimeIdentityHash}')
                     join integrated_design_authority authority on authority.job_id=job.job_id
                     join lateral(select candidate.* from integrated_design_scope_binding candidate
                       where candidate.authority_id=authority.authority_id
@@ -443,7 +631,8 @@ public class CompositeDesignOperationalWorker {
                       order by candidate.bound_at desc,candidate.design_version desc nulls last
                       limit 1) binding on true
                    where job.process_code=? and job.job_id=?
-                   group by job.job_id,job.process_code,job.result_json,job.specification_json
+                   group by job.job_id,job.process_code,job.result_json,job.specification_json,
+                            receipt.receipt_json,runtime.source_commit,runtime.runtime_identity_hash
                 ), superseded as (
                   update integrated_design_live_smoke_dispatch dispatch
                      set status='SUPERSEDED',lease_token=null,lease_until=null,
@@ -454,27 +643,34 @@ public class CompositeDesignOperationalWorker {
                            'newRevisionSetHash',contract.revision_set_hash))
                     from dispatch_contract contract
                    where dispatch.job_id=contract.job_id
-                     and dispatch.authority_revision_set_hash<>contract.revision_set_hash
+                     and (dispatch.authority_revision_set_hash<>contract.revision_set_hash
+                       or dispatch.runtime_identity_hash<>contract.runtime_identity_hash)
                      and dispatch.status<>'SUPERSEDED'
                   returning dispatch.dispatch_id
                 ), inserted as (
-                  insert into integrated_design_live_smoke_dispatch(
-                    job_id,process_code,project_id,authority_revision_set_hash,
-                    artifact_manifest_hash,process_source_hash,expected_evidence_count,status)
-                  select job_id,process_code,project_id,revision_set_hash,artifact_hash,
-                         process_source_hash,expected_count,'QUEUED'
+                   insert into integrated_design_live_smoke_dispatch(
+                    job_id,process_code,project_id,runtime_commit,runtime_identity_hash,
+                    canary_attempt,authority_revision_set_hash,artifact_manifest_hash,
+                    process_source_hash,expected_evidence_count,status)
+                  select job_id,process_code,project_id,runtime_commit,runtime_identity_hash,canary_attempt,
+                         revision_set_hash,artifact_hash,process_source_hash,expected_count,'QUEUED'
                     from dispatch_contract
                    where project_id is not null and expected_count>0
+                     and runtime_commit~'^[0-9a-f]{40}$' and canary_attempt between 0 and 3
                      and revision_set_hash~'^[0-9a-f]{64}$'
                      and artifact_hash~'^[0-9a-f]{64}$'
                      and process_source_hash~'^[0-9a-f]{64}$'
-                  on conflict(job_id,authority_revision_set_hash) do nothing
+                  on conflict(job_id,authority_revision_set_hash,runtime_identity_hash,canary_attempt)
+                    do nothing
                   returning *
                 ), ensured as (
                   select * from inserted union all
                   select dispatch.* from integrated_design_live_smoke_dispatch dispatch
                   join dispatch_contract contract on contract.job_id=dispatch.job_id
                     and contract.revision_set_hash=dispatch.authority_revision_set_hash
+                    and contract.runtime_commit=dispatch.runtime_commit
+                    and contract.runtime_identity_hash=dispatch.runtime_identity_hash
+                    and contract.canary_attempt=dispatch.canary_attempt
                    where not exists(select 1 from inserted)
                 )
                 update integrated_design_autocompletion_receipt receipt
@@ -506,11 +702,16 @@ public class CompositeDesignOperationalWorker {
                      or not exists(select 1 from integrated_design_live_smoke_dispatch current_dispatch
                        where current_dispatch.job_id=job.job_id
                          and current_dispatch.authority_revision_set_hash=
-                           framework_composite_authority_revision_set_hash(job.job_id)))
+                           framework_composite_authority_revision_set_hash(job.job_id)
+                         and current_dispatch.runtime_commit=dispatch.runtime_commit
+                         and current_dispatch.runtime_identity_hash=dispatch.runtime_identity_hash))
                 """;
     private static final String REQUEUE_INCOMPLETE_PHYSICAL_SQL="""
                 update integrated_design_autocompletion_receipt receipt
-                   set completion_status=case when receipt.attempt_count<5 then 'PENDING'
+                   set completion_status=case
+                          when receipt.receipt_json#>>'{canary,physicalRevalidation}'='true'
+                            then 'PHYSICAL_GENERATED_VERIFIED'
+                          when receipt.attempt_count<5 then 'PENDING'
                           else 'PHYSICAL_FAILED' end,
                         blocker_code=left(case when job.job_status in('VERIFIED','COMPLETED')
                           then 'CANONICAL_PHYSICAL_EVIDENCE_INVALID'
@@ -519,11 +720,23 @@ public class CompositeDesignOperationalWorker {
                           'generationStatus',case when receipt.attempt_count<5
                             then 'PHYSICAL_RETRY_QUEUED' else 'PHYSICAL_FAILED' end,
                           'physicalVerified',false,
-                          'jobStatus',job.job_status),updated_at=current_timestamp
-                        ,completed_at=case when receipt.attempt_count<5 then null
-                          else current_timestamp end,
-                        duration_ms=case when receipt.attempt_count<5 then null else greatest(0,
-                          (extract(epoch from(current_timestamp-receipt.started_at))*1000)::bigint) end
+                          'jobStatus',job.job_status)||case
+                          when receipt.receipt_json#>>'{canary,status}'='ACTIVE' then
+                            jsonb_build_object('canary',(receipt.receipt_json->'canary')||
+                              jsonb_build_object('status','FAILED',
+                                'failedAt',clock_timestamp()))
+                          else '{}'::jsonb end,updated_at=current_timestamp
+                        ,completed_at=case
+                          when receipt.receipt_json#>>'{canary,physicalRevalidation}'='true'
+                            then current_timestamp
+                          when receipt.attempt_count<5 then null else current_timestamp end,
+                        duration_ms=case
+                          when receipt.receipt_json#>>'{canary,physicalRevalidation}'='true'
+                            then greatest(0,(extract(epoch from
+                              (current_timestamp-receipt.started_at))*1000)::bigint)
+                          when receipt.attempt_count<5 then null else greatest(0,
+                            (extract(epoch from(current_timestamp-receipt.started_at))*1000)::bigint)
+                          end
                    from framework_development_job job
                   where receipt.process_code=? and receipt.job_id=?
                     and receipt.completion_status='SOURCE_APPLIED_PHYSICAL_QUEUED'
@@ -538,7 +751,12 @@ public class CompositeDesignOperationalWorker {
                    lease_token=null,lease_until=null,blocker_code=null,
                    receipt_json=receipt.receipt_json||jsonb_build_object(
                      'generationStatus','DEPENDENCY_CHANGED_REQUEUE',
-                     'physicalVerified',false,'staleJobDiscarded',receipt.job_id is not null),
+                     'physicalVerified',false,'staleJobDiscarded',receipt.job_id is not null)||case
+                     when receipt.receipt_json#>>'{canary,status}'='ACTIVE' then
+                       jsonb_build_object('canary',(receipt.receipt_json->'canary')||
+                         jsonb_build_object('status','INVALIDATED',
+                           'invalidatedAt',clock_timestamp()))
+                     else '{}'::jsonb end,
                    dependency_fingerprint=framework_composite_dependency_fingerprint(
                      receipt.process_code),completed_at=null,duration_ms=null,
                    updated_at=current_timestamp
@@ -550,10 +768,23 @@ public class CompositeDesignOperationalWorker {
             """);
     }
 
-    private void complete(String process,String token){
+    private void complete(String process,String token,GateContext gateContext){
         try{
             requiresNew.executeWithoutResult(status->{
+                readiness.acquireSourceExecutionSlot(GLOBAL_SOURCE_SLOT_BASE,parallelism,process);
+                readiness.lockCompilerSourceRegistries();
                 governance.lockCompositeProcessAuthority(process);
+                if(gateContext!=null){
+                    if(gateContext.canary()){
+                        if(!readiness.retainCanaryClaimOrInvalidate(process,token,gateContext.sourceInputHash(),
+                            gateContext.processInputHash(),gateContext.runtimeCommit(),gateContext.runtimeIdentityHash(),
+                            gateContext.canaryId(),gateContext.canaryAttempt()))return;
+                    }else{
+                        readiness.assertActiveGate(gateContext.revision(),
+                            gateContext.runtimeCommit(),gateContext.sourceInputHash());
+                        readiness.assertProcessSourceCurrent(process,gateContext.processInputHash());
+                    }
+                }
                 Map<String,Object> request=new LinkedHashMap<>(scopeForProcess(process));
                 request.put("processCode",process);request.put("previewOnly",false);
                 Map<String,Object> result=governance.compileIntegratedDesignProcess(request,SYSTEM_ACTOR);
@@ -568,7 +799,17 @@ public class CompositeDesignOperationalWorker {
                 long jobId=firstJobId(result);int updated=jdbc.update("""
                     update integrated_design_autocompletion_receipt set completion_status=?,
                            screen_count=?,document_count=?,authority_count=?,job_id=?,
-                           receipt_json=?::jsonb,lease_token=null,lease_until=null,
+                           receipt_json=receipt_json||?::jsonb||jsonb_build_object(
+                             'sourceAppliedFinalAuthorityHash',(select
+                               framework_composite_live_smoke_hash(coalesce(jsonb_agg(
+                                 jsonb_build_object('processCode',target.process_code,
+                                   'finalAuthorityFingerprint',
+                                     framework_composite_final_authority_fingerprint(
+                                       target.process_code))
+                                 order by target.process_code collate "C"),'[]'::jsonb))
+                               from (select distinct upper(process_code) process_code
+                                 from framework_composite_design_target_identity) target)),
+                           lease_token=null,lease_until=null,
                            blocker_code=null,
                            completed_at=case when ?='PHYSICAL_GENERATED_VERIFIED'
                              then current_timestamp else null end,
@@ -587,7 +828,11 @@ public class CompositeDesignOperationalWorker {
             requiresNew.executeWithoutResult(status->jdbc.update("""
                 update integrated_design_autocompletion_receipt set completion_status='BLOCKED',
                        blocker_code=?,receipt_json=receipt_json||jsonb_build_object('sourceCommitted',false,
-                         'jobCount',0,'blocker',?),lease_token=null,lease_until=null,
+                         'jobCount',0,'blocker',?)||case
+                         when receipt_json#>>'{canary,status}'='ACTIVE' then jsonb_build_object(
+                           'canary',(receipt_json->'canary')||jsonb_build_object(
+                             'status','FAILED','failedAt',clock_timestamp()))
+                         else '{}'::jsonb end,lease_token=null,lease_until=null,
                        dependency_fingerprint=framework_composite_dependency_fingerprint(?),
                        completed_at=current_timestamp,
                        duration_ms=greatest(0,(extract(epoch from
@@ -703,9 +948,14 @@ public class CompositeDesignOperationalWorker {
         if(!(row.get(key) instanceof Number value))throw new IllegalStateException(
             "AUTOCOMPLETION_COUNT_REQUIRED: "+key);return value.intValue();
     }
+    static long estimateSeconds(long processCount,long p95Millis,int slots){return
+        CompositeAutocompletionReadinessService.estimateSeconds(processCount,p95Millis,slots);}
+    static long requiredParallelismFor(long processCount,long p95Millis){return
+        CompositeAutocompletionReadinessService.requiredParallelismFor(processCount,p95Millis);}
     private String json(Object value){try{return mapper.writeValueAsString(value);}
         catch(JsonProcessingException error){throw new IllegalStateException("AUTOCOMPLETION_RECEIPT_INVALID",error);}}
     private static String left(String value,int limit){return value.length()<=limit?value:value.substring(0,limit);}
 
-    @PreDestroy public void close(){workers.shutdownNow();}
+    @PreDestroy public void close(){workers.shutdownNow();leaseHeartbeats.shutdownNow();
+        readiness.close();}
 }

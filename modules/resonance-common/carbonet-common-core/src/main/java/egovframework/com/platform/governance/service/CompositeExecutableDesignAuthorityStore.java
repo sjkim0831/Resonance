@@ -28,6 +28,11 @@ final class CompositeExecutableDesignAuthorityStore {
 
     Map<String,Object> loadCompositeAuthorityHead(String process,String step,String route,
             String audience){
+        return loadCompositeAuthorityHead(process,step,route,audience,true);
+    }
+
+    Map<String,Object> loadCompositeAuthorityHead(String process,String step,String route,
+            String audience,boolean lockRows){
         List<Map<String,Object>> heads=jdbc.queryForList("""
             select authority_id as "authorityId",authority_revision as "authorityRevision",
                    step_code as "stepCode",route_path as "routePath",audience,
@@ -39,8 +44,8 @@ final class CompositeExecutableDesignAuthorityStore {
                    package_binding_hash as "packageBindingHash",job_id as "jobId",
                    composite_json::text as "compositeJson"
               from integrated_design_authority where process_code=? and step_code=?
-               and route_path=? and audience=? for update
-            """,process,step,route,audience);
+               and route_path=? and audience=?
+            """+(lockRows?" for update":""),process,step,route,audience);
         if(heads.size()>1)throw new IllegalStateException("COMPOSITE_DESIGN_AUTHORITY_HEAD_NOT_EXACT");
         return heads.isEmpty()?Map.of():new LinkedHashMap<>(heads.get(0));
     }
@@ -207,9 +212,17 @@ final class CompositeExecutableDesignAuthorityStore {
 
     Map<String,Object> loadCompositeDesignSource(String process,String step,String route,
             CompositeExecutableDesignAuthorityCompiler.Selection selection){
-        lockActiveRelayAccounts(selection.responsibleActors());
+        return loadCompositeDesignSource(process,step,route,selection,true);
+    }
+
+    Map<String,Object> loadCompositeDesignSource(String process,String step,String route,
+            CompositeExecutableDesignAuthorityCompiler.Selection selection,boolean lockRows){
+        requireActiveRelayAccounts(selection.responsibleActors(),lockRows);
+        String sourceSql=lockRows?ActorProcessGovernanceService.COMPOSITE_DESIGN_SOURCE_SQL:
+            ActorProcessGovernanceService.COMPOSITE_DESIGN_SOURCE_SQL.replace(
+                "for update of contract,blueprint","");
         List<Map<String,Object>> rows=jdbc.queryForList(
-            ActorProcessGovernanceService.COMPOSITE_DESIGN_SOURCE_SQL,
+            sourceSql,
             selection.actor(),selection.blueprintId(),selection.contractId(),process,step,
             selection.audience(),route);
         if(rows.size()!=1)throw new IllegalStateException(
@@ -271,10 +284,15 @@ final class CompositeExecutableDesignAuthorityStore {
     }
 
     private void lockActiveRelayAccounts(List<String> actors){
-        actors.stream().distinct().sorted().forEach(this::lockActiveRelayAccount);
+        requireActiveRelayAccounts(actors,true);
     }
 
-    private void lockActiveRelayAccount(String actor){
+    private void requireActiveRelayAccounts(List<String> actors,boolean lockRows){
+        actors.stream().distinct().sorted().forEach(actor->
+            requireActiveRelayAccount(actor,lockRows));
+    }
+
+    private void requireActiveRelayAccount(String actor,boolean lockRows){
         Set<Long> readyAssignments=new HashSet<>();
         String assignmentPredicate="""
              assignment.actor_code=? and assignment.assignment_status='ACTIVE'
@@ -299,8 +317,9 @@ final class CompositeExecutableDesignAuthorityStore {
              where %s
              order by lower(assignment.account_id),assignment.tenant_id,
                       assignment.project_id,assignment.assignment_id
-             for share of assignment,account,security
-            """.formatted(assignmentPredicate),
+            %s
+            """.formatted(assignmentPredicate,
+                lockRows?"for share of assignment,account,security":""),
             (org.springframework.jdbc.core.RowCallbackHandler)
                 resultSet->readyAssignments.add(resultSet.getLong(1)),actor);
         jdbc.query("""
@@ -315,8 +334,9 @@ final class CompositeExecutableDesignAuthorityStore {
              where %s
              order by lower(assignment.account_id),assignment.tenant_id,
                       assignment.project_id,assignment.assignment_id
-             for share of assignment,account,security
-            """.formatted(assignmentPredicate),
+            %s
+            """.formatted(assignmentPredicate,
+                lockRows?"for share of assignment,account,security":""),
             (org.springframework.jdbc.core.RowCallbackHandler)
                 resultSet->readyAssignments.add(resultSet.getLong(1)),actor);
         jdbc.query("""
@@ -329,8 +349,9 @@ final class CompositeExecutableDesignAuthorityStore {
                 and project_assignment.active_yn='Y'
              where %s and assignment.project_id<>'*'
              order by assignment.project_id,lower(assignment.account_id),assignment.assignment_id
-             for share of assignment,project_assignment
-            """.formatted(assignmentPredicate),
+            %s
+            """.formatted(assignmentPredicate,
+                lockRows?"for share of assignment,project_assignment":""),
             resultSet->{},actor);
         if(readyAssignments.isEmpty())throw new IllegalStateException(
             "ACTIVE_RELAY_ACCOUNT_REQUIRED: "+actor);

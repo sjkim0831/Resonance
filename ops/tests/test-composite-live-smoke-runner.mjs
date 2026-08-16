@@ -77,7 +77,9 @@ for(const [status,http,body,expected] of [
 ]) assert.equal(httpObservationExact(status,http,body),expected,`${status}/${http}`);
 
 for(const token of ["integrated_design_live_smoke_dispatch","authority_revision_set_hash",
-  "UNIQUE(job_id,authority_revision_set_hash)","BEFORE UPDATE OR DELETE",
+  "runtime_commit","runtime_identity_hash",
+  "UNIQUE(job_id,authority_revision_set_hash,runtime_identity_hash,canary_attempt)",
+  "BEFORE UPDATE OR DELETE",
   "COMPOSITE_LIVE_SMOKE_DISPATCH_DELETE_FORBIDDEN","ix_integrated_design_live_smoke_dispatch_due"])
   assert.ok(migration.includes(token),`migration token missing ${token}`);
 for(const token of ["for update skip locked","lease_token='$lease_token'::uuid",

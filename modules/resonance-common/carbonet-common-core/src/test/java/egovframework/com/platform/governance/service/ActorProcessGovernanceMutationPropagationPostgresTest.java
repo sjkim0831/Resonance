@@ -19,7 +19,6 @@ import java.nio.file.LinkOption;
 import java.nio.file.attribute.PosixFileAttributeView;
 import java.nio.file.attribute.PosixFilePermission;
 import java.security.MessageDigest;
-import java.time.OffsetDateTime;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.util.ArrayList;
@@ -120,6 +119,23 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
         jdbc.execute("drop table if exists item,approval,ticket cascade");
         jdbc.update("update comtnemplyrinfo set emplyr_sttus_code='P' "+
             "where emplyr_id='system-admin'");
+        jdbc.update("""
+            insert into framework_runtime_release_state(
+              release_key,source_commit,deployment_namespace,deployment_name,deployment_uid,
+              deployment_generation,observed_generation,desired_replicas,image_ref,image_id,
+              health_status,recorded_by)
+            values('CARBONET_RUNTIME',repeat('a',40),'carbonet-production','carbonet-runtime',
+              'runtime-test-uid',1,1,2,'carbonet-runtime:test','sha256:'||repeat('b',64),
+              'UP','POSTGRES_TEST')
+            on conflict(release_key) do update set source_commit=excluded.source_commit,
+              deployment_namespace=excluded.deployment_namespace,
+              deployment_name=excluded.deployment_name,deployment_uid=excluded.deployment_uid,
+              deployment_generation=excluded.deployment_generation,
+              observed_generation=excluded.observed_generation,
+              desired_replicas=excluded.desired_replicas,image_ref=excluded.image_ref,
+              image_id=excluded.image_id,health_status=excluded.health_status,
+              recorded_by=excluded.recorded_by,recorded_at=clock_timestamp()
+            """);
         jdbc.execute("truncate integrated_design_notification_inbox,integrated_design_notification_outbox,"+
             "integrated_design_notification_template,integrated_design_autocompletion_receipt,"+
             "integrated_design_live_smoke_dispatch,"+
@@ -1747,10 +1763,12 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
             """,Integer.class,jobId);
         long dispatchId=jdbc.queryForObject("""
             insert into integrated_design_live_smoke_dispatch(job_id,process_code,project_id,
+              runtime_commit,runtime_identity_hash,canary_attempt,
               authority_revision_set_hash,artifact_manifest_hash,process_source_hash,
               expected_evidence_count,status)
-            values(?,'PROC','*',?,repeat('a',64),?,?,'QUEUED') returning dispatch_id
-            """,Long.class,jobId,revisionHash,processSource,expected);
+            values(?,'PROC','*',repeat('a',40),?,0,?,repeat('a',64),?,?,'QUEUED')
+            returning dispatch_id
+            """,Long.class,jobId,currentRuntimeIdentityHash(),revisionHash,processSource,expected);
         jdbc.update("""
             insert into integrated_design_autocompletion_receipt(process_code,completion_status,
               job_id,dependency_fingerprint,receipt_json,started_at)
@@ -1882,10 +1900,12 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
             """,dispatchId,nextRevisionHash));
         long nextDispatch=jdbc.queryForObject("""
             insert into integrated_design_live_smoke_dispatch(job_id,process_code,project_id,
+              runtime_commit,runtime_identity_hash,canary_attempt,
               authority_revision_set_hash,artifact_manifest_hash,process_source_hash,
               expected_evidence_count,status)
-            values(?,'PROC','*',?,repeat('a',64),?,?,'QUEUED') returning dispatch_id
-            """,Long.class,jobId,nextRevisionHash,processSource,expected);
+            values(?,'PROC','*',repeat('a',40),?,0,?,repeat('a',64),?,?,'QUEUED')
+            returning dispatch_id
+            """,Long.class,jobId,currentRuntimeIdentityHash(),nextRevisionHash,processSource,expected);
         assertTrue(nextDispatch>dispatchId);
         assertEquals(List.of("QUEUED","SUPERSEDED"),jdbc.queryForList(
             "select status from integrated_design_live_smoke_dispatch where job_id=? order by status",String.class,jobId));
@@ -2081,6 +2101,132 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
     }
 
     @Test
+    void compositeCompilerReadinessChecksOneHundredEightProcessesReadOnlyWithinFifteenSeconds(){
+        seedCompositeThreeScreens();
+        cloneCompositeBenchmarkProcesses(2,108);
+        prepareCompositeReadinessBenchmarkDocuments();
+        assertEquals(108,jdbc.queryForObject(
+            "select count(distinct process_code) from framework_composite_design_target_identity",
+            Integer.class));
+        assertEquals(324,jdbc.queryForObject(
+            "select count(*) from framework_composite_design_target_identity",Integer.class));
+        assertEquals(5832,jdbc.queryForObject(
+            "select count(*) from integrated_design_document where active_yn='Y'",Integer.class));
+        assertEquals(108,jdbc.queryForObject("select count(*) from ("+
+            CompositeAutocompletionReadinessService.COMPILER_READY_PROCESS_SQL+") ready",
+            Integer.class));
+
+        installCompositeReadinessWriteProbe();
+        CompositeAutocompletionReadinessService readiness=null;
+        try{
+            TransactionTemplate rollbackOnly=new TransactionTemplate(
+                new DataSourceTransactionManager(dataSource));
+            rollbackOnly.setTimeout(15);
+            rollbackOnly.setReadOnly(true);
+            ActorProcessGovernanceService rollbackGovernance=org.mockito.Mockito.mock(
+                ActorProcessGovernanceService.class);
+            org.mockito.Mockito.when(rollbackGovernance.inspectCompositeCompilerReadiness(
+                org.mockito.ArgumentMatchers.anyString())).thenAnswer(invocation->
+                    rollbackOnly.execute(status->{
+                        int writesBefore=count("framework_readiness_benchmark_write_probe");
+                        try{
+                            Map<String,Object> result=service.inspectCompositeCompilerReadiness(
+                                invocation.getArgument(0));
+                            int writesAfter=count("framework_readiness_benchmark_write_probe");
+                            if(writesAfter!=writesBefore)throw new IllegalStateException(
+                                "COMPILER_READINESS_WROTE_ROWS: "+(writesAfter-writesBefore));
+                            return result;
+                        }
+                        finally{status.setRollbackOnly();}
+                    }));
+            long threeStarted=System.nanoTime();
+            for(String process:List.of("PROC","BENCH_002","BENCH_003")){
+                Map<String,Object> report=rollbackGovernance.inspectCompositeCompilerReadiness(process);
+                assertEquals(true,report.get("success"));
+                assertEquals("PASS",report.get("compilerClosure"));
+                assertEquals(3,number(report,"identityCount"));
+                assertEquals(54,number(report,"documentCount"));
+                assertEquals(54,number(report,"requiredDocumentCount"));
+            }
+            long threeMillis=TimeUnit.NANOSECONDS.toMillis(System.nanoTime()-threeStarted);
+            assertTrue(threeMillis<15_000,"three-process compiler readiness took "+threeMillis+"ms");
+            assertEquals(0,count("framework_readiness_benchmark_write_probe"));
+
+            readiness=new CompositeAutocompletionReadinessService(
+                jdbc,rollbackGovernance,new DataSourceTransactionManager(dataSource),8,8,1,
+                "","","",8,14_000,0);
+            long bulkStarted=System.nanoTime();
+            Map<String,Object> report=readiness.inspect(false,0);
+            long bulkMillis=TimeUnit.NANOSECONDS.toMillis(System.nanoTime()-bulkStarted);
+
+            assertTrue(bulkMillis<15_000,"108-process readiness took "+bulkMillis+"ms");
+            assertTrue(((Number)report.get("preflightLatencyMs")).longValue()<15_000,
+                "compiler preflight exceeded 15 seconds: "+report.get("preflightLatencyMs"));
+            assertEquals(108,number(report,"preflightCandidateCount"));
+            assertEquals(108,number(report,"preflightCheckedCount"));
+            assertEquals(0,number(report,"preflightFailureCount"));
+            assertEquals(0,number(report,"preflightTimedOutCount"));
+            assertEquals(true,report.get("preflightComplete"));
+            assertEquals(108,number(report,"readyProcessCount"));
+            assertEquals(324,number(report,"readyIdentityCount"));
+            assertEquals(0,count("framework_readiness_benchmark_write_probe"));
+        }finally{
+            if(readiness!=null)readiness.close();
+            removeCompositeReadinessWriteProbe();
+        }
+    }
+
+    @Test
+    void compilerOutputAdvancesFinalH1WithoutChangingPreparedSourceH0(){
+        seedCompositeThreeScreens();
+        prepareMachineOwnedCompositeReadinessDocuments();
+        assertEquals(51,jdbc.queryForObject("select count(*) from integrated_design_document "+
+            "where process_code='PROC' and updated_by='LIVE_CONTRACT_BACKFILL'",Integer.class));
+        assertEquals(3,jdbc.queryForObject("select count(*) from integrated_design_document "+
+            "where process_code='PROC' and document_type='TEST' "+
+            "and updated_by='MANUAL_LIVE_SMOKE_FIXTURE'",Integer.class));
+        jdbc.update("update framework_professional_screen_contract set "+
+            "business_purpose='STALE_COMPATIBILITY_ROW_MUST_NOT_REGENERATE_H0' "+
+            "where process_code='PROC'");
+        String sourceH0=jdbc.queryForObject(
+            "select framework_composite_dependency_fingerprint('PROC')",String.class);
+        List<Map<String,Object>> sourceMaterial=jdbc.queryForList(
+            "select * from framework_composite_dependency_material('PROC') "+
+                "order by kind collate \"C\",identity collate \"C\",payload collate \"C\"");
+        String beforeFinalH1=jdbc.queryForObject(
+            "select framework_composite_final_authority_fingerprint('PROC')",String.class);
+
+        Map<String,Object> compiled=transaction.execute(status->
+            service.compileIntegratedDesignProcess(
+                Map.of("processCode","PROC","previewOnly",false,"scopeType","GLOBAL"),
+                "system-admin"));
+        assertEquals("SOURCE_APPLIED_PHYSICAL_QUEUED",compiled.get("status"));
+        List<Map<String,Object>> afterMaterial=jdbc.queryForList(
+            "select * from framework_composite_dependency_material('PROC') "+
+                "order by kind collate \"C\",identity collate \"C\",payload collate \"C\"");
+        assertEquals(sourceMaterial,afterMaterial,()->"self-drift kinds: before="+
+            sourceMaterial.stream().collect(java.util.stream.Collectors.groupingBy(
+                row->String.valueOf(row.get("kind")),java.util.stream.Collectors.counting()))+
+            ", after="+afterMaterial.stream().collect(java.util.stream.Collectors.groupingBy(
+                row->String.valueOf(row.get("kind")),java.util.stream.Collectors.counting()))+
+            ", documentOwners="+jdbc.queryForList("select updated_by,count(*) from "+
+                "integrated_design_document where process_code='PROC' group by updated_by"));
+        assertEquals(sourceH0,jdbc.queryForObject(
+            "select framework_composite_dependency_fingerprint('PROC')",String.class));
+        String afterFinalH1=jdbc.queryForObject(
+            "select framework_composite_final_authority_fingerprint('PROC')",String.class);
+        assertNotEquals(beforeFinalH1,afterFinalH1);
+        assertEquals(3,jdbc.queryForObject("select count(*) from framework_screen_blueprint "+
+            "where process_code='PROC' and framework_try_jsonb(specification_json) "+
+            "#> '{extensions,compositeAuthority}' is not null",Integer.class));
+        jdbc.update("update integrated_design_document set content=jsonb_set("+
+            "content::jsonb,'{payload,businessPurpose}',to_jsonb('externally changed'::text))::text "+
+            "where process_code='PROC' and document_type='REQUIREMENT'");
+        assertNotEquals(sourceH0,jdbc.queryForObject(
+            "select framework_composite_dependency_fingerprint('PROC')",String.class));
+    }
+
+    @Test
     void disabledBulkWorkerRejectsForgedCompletionThenAcceptsExactCanonicalEvidence(){
         seedCompositeThreeScreens();
         Map<String,Object> compiled=compileComposite(
@@ -2199,6 +2345,19 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
                            authority_revision_set_hash,
                            framework_composite_authority_revision_set_hash(job_id) current_hash
                       from integrated_design_live_smoke_dispatch where job_id=?
+                    """,jobId))+" evidence="+String.valueOf(jdbc.queryForMap("""
+                    select count(*)::integer as "evidenceCount",
+                           count(*) filter(where evidence.observed_at<job.completed_at)::integer
+                             as "beforeCompletion",
+                           count(*) filter(where evidence.observed_at>evidence.recorded_at)::integer
+                             as "afterRecording",
+                           min(extract(epoch from(evidence.observed_at-job.completed_at)))
+                             as "minAfterCompletionSeconds",
+                           min(extract(epoch from(evidence.recorded_at-evidence.observed_at)))
+                             as "minBeforeRecordingSeconds"
+                      from integrated_design_live_smoke_evidence evidence
+                      join framework_development_job job on job.job_id=evidence.job_id
+                     where evidence.job_id=? group by job.completed_at
                     """,jobId)));
             worker.runScheduledBatch();
             assertEquals("PHYSICAL_GENERATED_VERIFIED",jdbc.queryForObject(
@@ -2281,7 +2440,21 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
             worker.reconcilePhysicalCompletion();
             assertEquals("PHYSICAL_GENERATED_VERIFIED",jdbc.queryForObject(
                 "select completion_status from integrated_design_autocompletion_receipt where process_code='PROC'",
-                String.class));
+                String.class),()->String.valueOf(jdbc.queryForMap("""
+                    select receipt.completion_status as "completionStatus",
+                           receipt.blocker_code as "blockerCode",
+                           receipt.dependency_fingerprint as "receiptFingerprint",
+                           framework_composite_dependency_fingerprint('PROC') as "currentFingerprint",
+                           dispatch.status as "dispatchStatus",
+                           dispatch.expected_evidence_count as "expectedEvidenceCount",
+                           dispatch.submitted_evidence_count as "submittedEvidenceCount"
+                      from integrated_design_autocompletion_receipt receipt
+                      left join integrated_design_live_smoke_dispatch dispatch
+                        on dispatch.job_id=receipt.job_id
+                       and dispatch.authority_revision_set_hash=
+                           framework_composite_authority_revision_set_hash(dispatch.job_id)
+                     where receipt.process_code='PROC'
+                    """)));
             assertEquals(60,jdbc.queryForObject(
                 "select count(*) from integrated_design_live_smoke_evidence where job_id=?",
                 Integer.class,jobId));
@@ -2329,6 +2502,7 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
             """,fingerprint,jobId);
         installExactCanonicalPhysicalEvidence(jobId);
         assertEquals(45,installExactLiveSmokeEvidence(jobId,false));
+        markDispatchEvidenceSubmitted(jobId);
         assertEquals(CompositePhysicalEvidenceService.Verdict.EXACT,
             new CompositePhysicalEvidenceService(jdbc).assess(jobId,"PROC"),
             ()->String.valueOf(jdbc.queryForMap("""
@@ -2373,6 +2547,14 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
             Map.of("processCode","PROC","previewOnly",false,"scopeType","GLOBAL"));
         long reusedJobId=((Number)((Map<?,?>)((List<?>)next.get("receipts")).get(0)).get("jobId")).longValue();
         assertEquals(jobId,reusedJobId);
+        jdbc.update("""
+            update integrated_design_autocompletion_receipt
+               set dependency_fingerprint=framework_composite_dependency_fingerprint('PROC'),
+                   receipt_json=receipt_json||jsonb_build_object(
+                     'sourceInputDependencyHash',
+                       framework_composite_dependency_fingerprint('PROC'))
+             where process_code='PROC' and job_id=?
+            """,jobId);
         assertTrue(jdbc.queryForObject(
             "select max(authority_revision) from integrated_design_authority",Long.class)>priorRevision);
         assertEquals(45,jdbc.queryForObject(
@@ -2396,6 +2578,16 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
 
         int appended=installExactLiveSmokeEvidence(jobId,false);
         assertTrue(appended>0);
+        String beforeReplay=jdbc.queryForObject("""
+            select string_agg(live_evidence_id||':'||xmin::text,',' order by live_evidence_id)
+              from integrated_design_live_smoke_evidence where job_id=?
+            """,String.class,jobId);
+        assertEquals(0,installExactLiveSmokeEvidence(jobId,false));
+        assertEquals(beforeReplay,jdbc.queryForObject("""
+            select string_agg(live_evidence_id||':'||xmin::text,',' order by live_evidence_id)
+              from integrated_design_live_smoke_evidence where job_id=?
+            """,String.class,jobId));
+        markDispatchEvidenceSubmitted(jobId);
         assertEquals(45+appended,jdbc.queryForObject(
             "select count(*) from integrated_design_live_smoke_evidence where job_id=?",
             Integer.class,jobId));
@@ -2420,17 +2612,27 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
              where evidence.job_id=? and evidence.process_code='PROC'
             """,Integer.class,jobId));
         assertEquals(CompositePhysicalEvidenceService.Verdict.EXACT,
-            new CompositePhysicalEvidenceService(jdbc).assess(jobId,"PROC"));
+            new CompositePhysicalEvidenceService(jdbc).assess(jobId,"PROC"),
+            ()->String.valueOf(jdbc.queryForMap("""
+                select count(*)::integer as "evidenceCount",
+                       count(*) filter(where evidence.observed_at<job.completed_at)::integer
+                         as "beforeCompletion",
+                       count(*) filter(where evidence.observed_at>evidence.recorded_at)::integer
+                         as "afterRecording",
+                       min(extract(epoch from(evidence.observed_at-job.completed_at)))
+                         as "minAfterCompletionSeconds",
+                       min(extract(epoch from(evidence.recorded_at-evidence.observed_at)))
+                         as "minBeforeRecordingSeconds",
+                       count(*) filter(where evidence.authority_revision<>
+                         authority.authority_revision)::integer as "revisionInvalid"
+                  from integrated_design_live_smoke_evidence evidence
+                  join framework_development_job job on job.job_id=evidence.job_id
+                  join integrated_design_authority authority
+                    on authority.authority_id=evidence.authority_id
+                   and authority.authority_revision=evidence.authority_revision
+                 where evidence.job_id=? group by job.completed_at
+                """,jobId)));
 
-        String beforeReplay=jdbc.queryForObject("""
-            select string_agg(live_evidence_id||':'||xmin::text,',' order by live_evidence_id)
-              from integrated_design_live_smoke_evidence where job_id=?
-            """,String.class,jobId);
-        assertEquals(0,installExactLiveSmokeEvidence(jobId,false));
-        assertEquals(beforeReplay,jdbc.queryForObject("""
-            select string_agg(live_evidence_id||':'||xmin::text,',' order by live_evidence_id)
-              from integrated_design_live_smoke_evidence where job_id=?
-            """,String.class,jobId));
     }
 
     @Test
@@ -2463,7 +2665,7 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
     }
 
     @Test
-    void dependencyFingerprintTracksLayoutDatabaseCatalogAndRelayValidity(){
+    void dependencyFingerprintUsesDesignDocumentsAndRelayReadinessOnly(){
         seedCompositeThreeScreens();
         compileComposite(Map.of(
             "processCode","PROC","previewOnly",false,"scopeType","GLOBAL"));
@@ -2473,15 +2675,15 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
             "where route_key='/work-a'");
         String layoutChanged=jdbc.queryForObject(
             "select framework_composite_dependency_fingerprint('PROC')",String.class);
-        assertNotEquals(original,layoutChanged);
+        assertEquals(original,layoutChanged);
         jdbc.execute("create table item(name text not null,id integer primary key)");
         String catalogChanged=jdbc.queryForObject(
             "select framework_composite_dependency_fingerprint('PROC')",String.class);
-        assertNotEquals(layoutChanged,catalogChanged);
+        assertEquals(layoutChanged,catalogChanged);
         jdbc.execute("comment on table item is 'design-schema-hash:forged'");
         String commentChanged=jdbc.queryForObject(
             "select framework_composite_dependency_fingerprint('PROC')",String.class);
-        assertNotEquals(catalogChanged,commentChanged);
+        assertEquals(catalogChanged,commentChanged);
         jdbc.update("update framework_account_actor_assignment set valid_until=current_date-1 "+
             "where actor_code='PRIMARY_ACTOR'");
         assertNotEquals(commentChanged,jdbc.queryForObject(
@@ -2489,46 +2691,208 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
     }
 
     @Test
+    void dependencyFingerprintIncludesExplicitProcessVersion(){
+        seedCompositeThreeScreens();
+        prepareMachineOwnedCompositeReadinessDocuments();
+        String original=jdbc.queryForObject(
+            "select framework_composite_dependency_fingerprint('PROC')",String.class);
+
+        jdbc.update("update framework_process_definition set process_version='2.0.0' "+
+            "where process_code='PROC'");
+        String changed=jdbc.queryForObject(
+            "select framework_composite_dependency_fingerprint('PROC')",String.class);
+        assertNotEquals(original,changed);
+
+        jdbc.update("update framework_process_definition set process_version='1.0.0' "+
+            "where process_code='PROC'");
+        assertEquals(original,jdbc.queryForObject(
+            "select framework_composite_dependency_fingerprint('PROC')",String.class));
+    }
+
+    @Test
+    void dependencyFingerprintUsesExactTargetIdentityAndTracksDocumentlessLifecycle(){
+        seedCompositeThreeScreens();
+        prepareMachineOwnedCompositeReadinessDocuments();
+        assertEquals(54,jdbc.queryForObject("select count(*) from integrated_design_document "+
+            "where process_code='PROC' and active_yn='Y'",Integer.class));
+        String original=jdbc.queryForObject(
+            "select framework_composite_dependency_fingerprint('PROC')",String.class);
+        assertEquals(List.of("audience","contractId","processCode","routePath","stepCode"),
+            jdbc.queryForList("""
+                select distinct key collate "C" as key
+                  from framework_composite_dependency_material('PROC') material
+                  cross join lateral jsonb_object_keys(material.payload::jsonb) keys(key)
+                 where material.kind='TARGET_IDENTITY'
+                 order by key
+                """,String.class));
+
+        long workResource=jdbc.queryForObject(
+            "select screen_resource_id from framework_screen_resource where route_key='/work-a'",
+            Long.class);
+        jdbc.update("""
+            insert into framework_process_step_screen_binding(
+              process_code,step_code,screen_resource_id,actor_code,audience,binding_status)
+            values('PROC','STEP',?,'ESCALATION_ACTOR','USER','ACTIVE')
+            """,workResource);
+        assertEquals(2,jdbc.queryForObject("""
+            select binding_count from framework_composite_design_target_identity
+             where process_code='PROC' and step_code='STEP'
+               and route_path='/work-a' and audience='USER'
+            """,Integer.class));
+        assertEquals(original,jdbc.queryForObject(
+            "select framework_composite_dependency_fingerprint('PROC')",String.class),
+            "binding diagnostics are mutable target projections, not source identity");
+
+        seedStep("NO_DOC_STEP",2,"COMPLETE",true);
+        assertEquals(0,jdbc.queryForObject("""
+            select count(*) from integrated_design_document
+             where process_code='PROC' and step_code='NO_DOC_STEP'
+            """,Integer.class));
+        assertEquals(1,jdbc.queryForObject("""
+            select count(*) from framework_composite_design_target_identity
+             where process_code='PROC' and step_code='NO_DOC_STEP'
+            """,Integer.class));
+        String added=jdbc.queryForObject(
+            "select framework_composite_dependency_fingerprint('PROC')",String.class);
+        assertNotEquals(original,added,
+            "a target must enter H0 immediately, before its eighteen documents exist");
+
+        jdbc.update("update framework_process_step set user_path='/documentless-v2' "+
+            "where process_code='PROC' and step_code='NO_DOC_STEP'");
+        String routeChanged=jdbc.queryForObject(
+            "select framework_composite_dependency_fingerprint('PROC')",String.class);
+        assertNotEquals(added,routeChanged);
+        jdbc.update("update framework_process_step set user_path='/no_doc_step' "+
+            "where process_code='PROC' and step_code='NO_DOC_STEP'");
+        assertEquals(added,jdbc.queryForObject(
+            "select framework_composite_dependency_fingerprint('PROC')",String.class));
+
+        jdbc.update("update framework_process_step set step_code='NO_DOC_RENAMED' "+
+            "where process_code='PROC' and step_code='NO_DOC_STEP'");
+        assertNotEquals(added,jdbc.queryForObject(
+            "select framework_composite_dependency_fingerprint('PROC')",String.class));
+        jdbc.update("update framework_process_step set step_code='NO_DOC_STEP' "+
+            "where process_code='PROC' and step_code='NO_DOC_RENAMED'");
+        assertEquals(added,jdbc.queryForObject(
+            "select framework_composite_dependency_fingerprint('PROC')",String.class));
+
+        jdbc.update("""
+            update framework_process_step
+               set requires_user_page=false,requires_admin_page=true,admin_path=user_path
+             where process_code='PROC' and step_code='NO_DOC_STEP'
+            """);
+        String audienceChanged=jdbc.queryForObject(
+            "select framework_composite_dependency_fingerprint('PROC')",String.class);
+        assertNotEquals(added,audienceChanged);
+        jdbc.update("""
+            update framework_process_step
+               set requires_user_page=true,requires_admin_page=false,admin_path=null
+             where process_code='PROC' and step_code='NO_DOC_STEP'
+            """);
+        assertEquals(added,jdbc.queryForObject(
+            "select framework_composite_dependency_fingerprint('PROC')",String.class));
+
+        jdbc.update("""
+            insert into framework_professional_screen_contract(
+              process_code,step_code,audience,route_path,actor_code,updated_by)
+            values('PROC','NO_DOC_STEP','USER','/no_doc_step','PRIMARY_ACTOR','HUMAN_DESIGNER')
+            """);
+        assertTrue(jdbc.queryForObject("""
+            select contract_id is not null from framework_composite_design_target_identity
+             where process_code='PROC' and step_code='NO_DOC_STEP'
+               and route_path='/no_doc_step' and audience='USER'
+            """,Boolean.class));
+        assertNotEquals(added,jdbc.queryForObject(
+            "select framework_composite_dependency_fingerprint('PROC')",String.class));
+        jdbc.update("delete from framework_professional_screen_contract "+
+            "where process_code='PROC' and step_code='NO_DOC_STEP'");
+        assertEquals(added,jdbc.queryForObject(
+            "select framework_composite_dependency_fingerprint('PROC')",String.class));
+
+        jdbc.update("update framework_process_step set requires_user_page=false "+
+            "where process_code='PROC' and step_code='NO_DOC_STEP'");
+        assertEquals(0,jdbc.queryForObject("""
+            select count(*) from framework_composite_design_target_identity
+             where process_code='PROC' and step_code='NO_DOC_STEP'
+            """,Integer.class));
+        assertEquals(original,jdbc.queryForObject(
+            "select framework_composite_dependency_fingerprint('PROC')",String.class),
+            "removing the documentless target must restore the exact prior H0");
+    }
+
+    @Test
     void physicalP95RequiresVerifiedSamplesAndExcludesFastBlockers(){
+        seedCompositeThreeScreens();
+        PhysicalRearmCampaign campaign=installDispatchablePhysicalRearmCampaign();
         jdbc.update("""
             insert into integrated_design_autocompletion_receipt(
               process_code,completion_status,dependency_fingerprint,duration_ms)
             values('SLA_BLOCKED','BLOCKED',
               framework_composite_dependency_fingerprint('SLA_BLOCKED'),1)
             """);
+        CompositeAutocompletionReadinessService readiness=
+            new CompositeAutocompletionReadinessService(jdbc,service,
+                new DataSourceTransactionManager(dataSource),2,2,1,
+                campaign.newCommit(),"","");
         CompositeDesignOperationalWorker worker=new CompositeDesignOperationalWorker(
-            jdbc,new ObjectMapper(),service,new DataSourceTransactionManager(dataSource),
-            false,2,25,false);
+            jdbc,new ObjectMapper(),service,readiness,new DataSourceTransactionManager(dataSource),
+            false,2,25,false,600,30);
         try{Map<String,Object> empty=worker.inspect();
             assertEquals("MEASUREMENT_REQUIRED",empty.get("tenMinuteTarget"));
             assertEquals(0,number(empty,"physicalSampleCount"));
             assertEquals(0L,((Number)empty.get("p95CompileMs")).longValue());
             assertEquals(2,number(empty,"liveSmokeParallelism"));
             assertNull(empty.get("estimatedPhysicalTotalSeconds"));
-            jdbc.update("""
-                insert into integrated_design_autocompletion_receipt(
-                  process_code,completion_status,dependency_fingerprint,duration_ms)
-                values('SLA_VERIFIED','PHYSICAL_GENERATED_VERIFIED',
-                  framework_composite_dependency_fingerprint('SLA_VERIFIED'),1234)
-                """);
+            int rearmed=transaction.execute(status->{
+                readiness.acquireGlobalDispatchLock(910_881_003L);
+                return readiness.rearmPhysicalCanary(UUID.randomUUID().toString(),
+                    campaign.newCommit(),campaign.sourceHash(),1).size();
+            });
+            assertEquals(1,rearmed);
+            worker.reconcilePhysicalCompletion();
+            assertEquals(45,installExactLiveSmokeEvidence(campaign.jobId(),false));
+            markDispatchEvidenceSubmitted(campaign.jobId());
+            worker.reconcilePhysicalCompletion();
+            assertEquals(1,jdbc.update("""
+                update integrated_design_autocompletion_receipt set duration_ms=1234
+                 where process_code='PROC'
+                   and receipt_json#>>'{canary,status}'='VERIFIED'
+                """));
             Map<String,Object> measured=worker.inspect();
             assertEquals(1,number(measured,"physicalSampleCount"));
             assertEquals(1234L,((Number)measured.get("p95CompileMs")).longValue());
             assertEquals(1234L,((Number)measured.get("p95PhysicalMs")).longValue());
             assertEquals(2,number(measured,"liveSmokeParallelism"));
-        }finally{worker.close();}
+        }finally{
+            worker.close();resetAutocompletionGate();
+            jdbc.update("delete from framework_postdeploy_release_attempt where candidate_id=?",
+                campaign.candidateId());
+        }
     }
 
     @Test
     void disabledManualDispatchDrainsRequestedBatchAndPreservesFirstStart() throws Exception {
-        for(int index=1;index<=7;index++)jdbc.update("""
+        seedCompositeThreeScreens();
+        cloneCompositeBenchmarkProcesses(2,7);
+        prepareCompositeReadinessBenchmarkDocuments();
+        List<String> processes=jdbc.queryForList("""
+            select process_code from (
+              select distinct process_code from framework_composite_design_target_identity
+            ) target
+             order by process_code collate "C"
+            """,String.class);
+        assertEquals(7,processes.size());
+        for(String process:processes)jdbc.update("""
             insert into integrated_design_autocompletion_receipt(
               process_code,completion_status,dependency_fingerprint,started_at)
             values(?,'PENDING',framework_composite_dependency_fingerprint(?),
               current_timestamp-interval '2 minutes')
-            ""","MANUAL_"+index,"MANUAL_"+index);
+            """,process,process);
         ActorProcessGovernanceService fake=org.mockito.Mockito.mock(
             ActorProcessGovernanceService.class);
+        org.mockito.Mockito.when(fake.inspectCompositeCompilerReadiness(
+            org.mockito.ArgumentMatchers.anyString())).thenReturn(Map.of(
+                "success",true,"compilerClosure","PASS","identityCount",3,"documentCount",54));
         org.mockito.Mockito.when(fake.compileIntegratedDesignProcess(
             org.mockito.ArgumentMatchers.anyMap(),org.mockito.ArgumentMatchers.anyString()))
             .thenAnswer(invocation->{
@@ -2554,20 +2918,18 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
             int completed;
             do{completed=jdbc.queryForObject("""
                     select count(*) from integrated_design_autocompletion_receipt
-                     where process_code like 'MANUAL_%'
-                       and completion_status='SOURCE_APPLIED_PHYSICAL_QUEUED'
+                     where completion_status='SOURCE_APPLIED_PHYSICAL_QUEUED'
                     """,Integer.class);
                 if(completed<5)Thread.sleep(20);
             }while(completed<5&&System.nanoTime()<deadline);
             assertEquals(5,completed);
             assertEquals(2,jdbc.queryForObject("""
                 select count(*) from integrated_design_autocompletion_receipt
-                 where process_code like 'MANUAL_%' and completion_status='PENDING'
+                 where completion_status='PENDING'
                 """,Integer.class));
             assertEquals(5,jdbc.queryForObject("""
                 select count(*) from integrated_design_autocompletion_receipt
-                 where process_code like 'MANUAL_%'
-                   and completion_status='SOURCE_APPLIED_PHYSICAL_QUEUED'
+                 where completion_status='SOURCE_APPLIED_PHYSICAL_QUEUED'
                    and started_at<current_timestamp-interval '90 seconds'
                 """,Integer.class));
         }finally{worker.close();}
@@ -2577,8 +2939,9 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
         return transaction.execute(status->{
             jdbc.queryForMap("select * from refresh_integrated_design_axis_documents('PROC',true)");
             for(Map<String,Object> row:jdbc.queryForList("""
-                select test.document_id as "documentId",test.content as "testContent",
-                       api.content as "apiContent",state.content as "stateContent",
+                select test.document_id as "documentId",api.document_id as "apiDocumentId",
+                       test.content as "testContent",api.content as "apiContent",
+                       state.content as "stateContent",
                        validation.content as "validationContent"
                   from integrated_design_document test
                   join integrated_design_document api using(process_code,step_code,route_path,audience)
@@ -2597,6 +2960,9 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
                     derivedLiveSmokeScenarios(api,state,validation));
                 jdbc.update("update integrated_design_document set content=?,status='READY',"+
                     "updated_by='MANUAL_LIVE_SMOKE_FIXTURE' where document_id=?",
+                    json(api),row.get("apiDocumentId"));
+                jdbc.update("update integrated_design_document set content=?,status='READY',"+
+                    "updated_by='MANUAL_LIVE_SMOKE_FIXTURE' where document_id=?",
                     json(test),row.get("documentId"));
             }
             return service.compileIntegratedDesignProcess(request,"system-admin");
@@ -2613,8 +2979,20 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
         List<Map<String,Object>> rules=(List<Map<String,Object>>)
             ((Map<String,Object>)validation.get("payload")).get("rules");
         List<Map<String,Object>> scenarios=new ArrayList<>();
-        for(Map<String,Object> operation:operations){
+        for(Map<String,Object> rawOperation:operations){
+            Map<String,Object> operation=rawOperation;
             String command=String.valueOf(operation.get("commandCode"));
+            if(!(operation.get("statusResponses") instanceof List<?>)){
+                List<?> requestFields=(List<?>)operation.get("requestFields");
+                List<?> responseFields=(List<?>)operation.get("responseFields");
+                List<?> permissions=(List<?>)operation.get("permissionCodes");
+                Map<String,Object> normalized=executableApiOperation(
+                    String.valueOf(operation.get("method")),
+                    String.valueOf(operation.get("path")),command,
+                    String.valueOf(requestFields.get(0)),String.valueOf(responseFields.get(0)),
+                    String.valueOf(permissions.get(0)));
+                rawOperation.clear();rawOperation.putAll(normalized);operation=rawOperation;
+            }
             Map<String,Object> transition=transitions.stream().filter(row->
                 command.equals(row.get("commandCode"))).findFirst().orElseThrow();
             Map<String,Object> rule=rules.stream().filter(row->
@@ -2752,6 +3130,12 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
     private long ensureRunningLiveSmokeDispatch(long jobId,String canonicalArtifact){
         String revisionHash=jdbc.queryForObject(
             "select framework_composite_authority_revision_set_hash(?)",String.class,jobId);
+        String runtimeIdentity=currentRuntimeIdentityHash();
+        int canaryAttempt=jdbc.queryForObject("""
+            select coalesce(nullif(receipt_json#>>'{canary,attemptNumber}','')::integer,0)
+              from integrated_design_autocompletion_receipt
+             where process_code='PROC' and job_id=?
+            """,Integer.class,jobId);
         String processSource=jdbc.queryForObject(
             "select framework_try_jsonb(specification_json)->>'sourceHash' from framework_development_job where job_id=?",
             String.class,jobId);
@@ -2769,15 +3153,22 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
             """,jobId,revisionHash);
         jdbc.update("""
             insert into integrated_design_live_smoke_dispatch(job_id,process_code,project_id,
+              runtime_commit,runtime_identity_hash,canary_attempt,
               authority_revision_set_hash,artifact_manifest_hash,process_source_hash,
               expected_evidence_count,status)
-            values(?,'PROC','*',?,?,?,?,'QUEUED')
-            on conflict(job_id,authority_revision_set_hash) do nothing
-            """,jobId,revisionHash,canonicalArtifact,processSource,expected);
+            values(?,'PROC','*',?, ?,?, ?,?,?,?,'QUEUED')
+            on conflict(job_id,authority_revision_set_hash,runtime_identity_hash,canary_attempt)
+              do nothing
+            """,jobId,jdbc.queryForObject("""
+                select source_commit from framework_runtime_release_state
+                 where release_key='CARBONET_RUNTIME'
+                """,String.class),runtimeIdentity,canaryAttempt,revisionHash,canonicalArtifact,
+            processSource,expected);
         long dispatchId=jdbc.queryForObject("""
             select dispatch_id from integrated_design_live_smoke_dispatch
-             where job_id=? and authority_revision_set_hash=?
-            """,Long.class,jobId,revisionHash);
+             where job_id=? and authority_revision_set_hash=? and runtime_identity_hash=?
+               and canary_attempt=?
+            """,Long.class,jobId,revisionHash,runtimeIdentity,canaryAttempt);
         jdbc.update("""
             update integrated_design_live_smoke_dispatch
                set status='RUNNING',attempt_count=attempt_count+1,lease_token=gen_random_uuid(),
@@ -2799,6 +3190,15 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
 
     @SuppressWarnings("unchecked")
     private void installExactCanonicalPhysicalEvidence(long jobId){
+        installExactCanonicalPhysicalEvidence(jobId,true);
+    }
+
+    private void installExactCanonicalPhysicalEvidenceAtCurrentRuntime(long jobId){
+        installExactCanonicalPhysicalEvidence(jobId,false);
+    }
+
+    @SuppressWarnings("unchecked")
+    private void installExactCanonicalPhysicalEvidence(long jobId,boolean replaceRuntime){
         Map<String,Object> job=jdbc.queryForMap("""
             select process_code as "processCode",step_code as "stepCode",target_path as "targetPath",
                    specification_json as "specificationJson"
@@ -2808,7 +3208,11 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
         try{specification=new ObjectMapper().readValue(
             String.valueOf(job.get("specificationJson")),Map.class);}
         catch(Exception error){throw new IllegalStateException(error);}
-        String releaseHash="c".repeat(64),commit="d".repeat(40),rollback="e".repeat(40);
+        String releaseHash="c".repeat(64),commit=replaceRuntime?"d".repeat(40):
+            jdbc.queryForObject("""
+                select source_commit from framework_runtime_release_state
+                 where release_key='CARBONET_RUNTIME'
+                """,String.class),rollback="e".repeat(40);
         Map<String,Object> evidence=new LinkedHashMap<>();
         evidence.put("schema","carbonet.canonical-generation-evidence/v1");
         evidence.put("activationPolicy","SOURCE_IMMEDIATE_V1");
@@ -2822,11 +3226,19 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
         evidence.put("compositeAuthoritySetHash",specification.get("compositeAuthoritySetHash"));
         evidence.put("compositeArtifactManifestHash","a".repeat(64));
         String evidenceRef="git:"+commit+";release:"+releaseHash+";log:/tmp/canonical.log";
+        if(replaceRuntime)jdbc.update("""
+                update framework_runtime_release_state
+                   set source_commit=?,image_ref='carbonet-runtime:'||?,
+                       deployment_generation=deployment_generation+1,
+                       observed_generation=observed_generation+1,health_status='UP',
+                       recorded_at=clock_timestamp()
+                 where release_key='CARBONET_RUNTIME'
+                """,commit,commit.substring(0,12));
         jdbc.update("""
             update framework_development_job
                set job_status='VERIFIED',quality_status='VERIFIED',
                    result_json=?,evidence_ref=?,rollback_ref=?,
-                   completed_at=clock_timestamp(),
+                    completed_at=clock_timestamp()-interval '10 seconds',
                    lease_token=null,lease_until=null
              where job_id=?
             """,json(Map.of("commit",commit,"canonicalGeneration",evidence)),
@@ -2877,6 +3289,7 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
               from framework_development_job where job_id=?
             """,String.class,jobId);
         long dispatchId=ensureRunningLiveSmokeDispatch(jobId,canonicalArtifact);
+        awaitDispatchEvidenceClockWindow(dispatchId);
         int writes=0;boolean omitted=false,forgedOutput=false,mutantsExercised=false;
         boolean browserMutantsExercised=false;
         for(Map<String,Object> authority:jdbc.queryForList("""
@@ -3012,9 +3425,11 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
                     body.put("executionId",executionId.toString());body.put("idempotencyKey",idempotencyKey);
                     body.put("observedHttpStatus",scenario.get("expectedHttpStatus"));
                     body.put("artifactHash",canonicalArtifact);
-                    body.put("observedAt",jdbc.queryForObject(
-                        "select clock_timestamp()::text",
-                        String.class).replace(' ','T'));
+                    String observedAt=jdbc.queryForObject("""
+                        select (started_at+interval '1 millisecond')::timestamptz::text
+                          from integrated_design_live_smoke_dispatch where dispatch_id=?
+                        """,String.class,dispatchId).replace(' ','T');
+                    body.put("observedAt",observedAt);
                     String account="FORBIDDEN".equals(status)?"denied-live-user":"system-admin";
                     if(!browserMutantsExercised&&"BROWSER".equals(lane)){
                         int before=count("integrated_design_live_smoke_evidence");
@@ -3055,23 +3470,64 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
                         Map<String,Object> fractional=new LinkedHashMap<>(body);
                         fractional.put("jobId",1.5d);
                         assertThrows(IllegalArgumentException.class,()->writer.record(fractional,account));
-                        Map<String,Object> beforeDeploy=new LinkedHashMap<>(body);
-                        beforeDeploy.put("observedAt",OffsetDateTime.now().minusYears(1).toString());
-                        assertThrows(IllegalArgumentException.class,()->writer.record(beforeDeploy,account));
+                        Map<String,Object> beforeDispatch=new LinkedHashMap<>(body);
+                        beforeDispatch.put("observedAt",jdbc.queryForObject("""
+                            select (started_at-interval '1 millisecond')::timestamptz::text
+                              from integrated_design_live_smoke_dispatch where dispatch_id=?
+                            """,String.class,dispatchId).replace(' ','T'));
+                        IllegalArgumentException beforeDispatchRejected=assertThrows(
+                            IllegalArgumentException.class,
+                            ()->writer.record(beforeDispatch,account));
+                        assertEquals("LIVE_SMOKE_OBSERVED_AFTER_DEPLOY_REQUIRED",
+                            beforeDispatchRejected.getMessage());
+                        assertEquals(before,count("integrated_design_live_smoke_evidence"));
                         Map<String,Object> future=new LinkedHashMap<>(body);
-                        future.put("observedAt",OffsetDateTime.now().plusYears(1).toString());
-                        assertThrows(IllegalArgumentException.class,()->writer.record(future,account));
+                        future.put("observedAt",jdbc.queryForObject("""
+                            select (clock_timestamp()+interval '1 minute')::timestamptz::text
+                            """,String.class).replace(' ','T'));
+                        IllegalArgumentException futureRejected=assertThrows(
+                            IllegalArgumentException.class,()->writer.record(future,account));
+                        assertEquals("LIVE_SMOKE_OBSERVED_AFTER_DEPLOY_REQUIRED",
+                            futureRejected.getMessage());
+                        assertEquals(before,count("integrated_design_live_smoke_evidence"));
                         Map<String,Object> wrongArtifact=new LinkedHashMap<>(body);
                         wrongArtifact.put("artifactHash","f".repeat(64));
                         assertThrows(IllegalArgumentException.class,()->writer.record(wrongArtifact,account));
                         assertEquals(before,count("integrated_design_live_smoke_evidence"));
                         mutantsExercised=true;
                     }
-                    writes+=((Number)writer.record(body,account).get("writeCount")).intValue();
+                    try{
+                        writes+=((Number)writer.record(body,account).get("writeCount")).intValue();
+                    }catch(IllegalArgumentException error){
+                        if(!"LIVE_SMOKE_OBSERVED_AFTER_DEPLOY_REQUIRED".equals(error.getMessage()))throw error;
+                        throw new IllegalArgumentException(error.getMessage()+" "+jdbc.queryForMap("""
+                            select ?::timestamptz as "observedAt",completed_at as "completedAt",
+                                   clock_timestamp() as "databaseNow",
+                                   ?::timestamptz>=completed_at as "afterCompletion",
+                                   ?::timestamptz<=clock_timestamp() as "beforeNow"
+                              from framework_development_job where job_id=?
+                            """,observedAt,observedAt,observedAt,jobId),error);
+                    }
                 }
             }
         }
         return writes;
+    }
+
+    private void awaitDispatchEvidenceClockWindow(long dispatchId){
+        long deadline=System.nanoTime()+TimeUnit.SECONDS.toNanos(5);
+        boolean ready;
+        do{
+            ready=Boolean.TRUE.equals(jdbc.queryForObject("""
+                select clock_timestamp()>=started_at+interval '2 seconds'
+                  from integrated_design_live_smoke_dispatch where dispatch_id=?
+                """,Boolean.class,dispatchId));
+            if(!ready)try{Thread.sleep(20);}
+            catch(InterruptedException error){
+                Thread.currentThread().interrupt();throw new IllegalStateException(error);
+            }
+        }while(!ready&&System.nanoTime()<deadline);
+        assertTrue(ready,"database clock must advance beyond authoritative dispatch start");
     }
 
     private void installLiveSmokeExecution(UUID executionId,String authorityId,String command,
@@ -3123,6 +3579,11 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
 
     @SuppressWarnings("unchecked")
     private int insertPartialLiveSmokeEvidence(long jobId){
+        long dispatchId=jdbc.queryForObject("""
+            select dispatch_id from integrated_design_live_smoke_dispatch
+             where job_id=? and status in('QUEUED','RUNNING','RETRY_WAIT')
+             order by dispatch_id desc limit 1
+            """,Long.class,jobId);
         Map<String,Object> authority=jdbc.queryForMap("""
             select authority_id as "authorityId",authority_revision as "authorityRevision",
                    process_code as "processCode",step_code as "stepCode",route_path as "routePath",
@@ -3161,7 +3622,8 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
         String statusHash=liveSmokeHash(Map.of("expectedStatus","SUCCESS","observedStatus","SUCCESS"));
         String laneHash=liveSmokeHash(laneEvidence),evidenceRef="inline://dispatch-partial-resume";
         Map<String,Object> identity=new LinkedHashMap<>();
-        identity.put("schema","carbonet.composite-live-smoke-evidence/v1");identity.put("jobId",jobId);
+        identity.put("schema","carbonet.composite-live-smoke-evidence/v1");
+        identity.put("dispatchId",dispatchId);identity.put("jobId",jobId);
         identity.put("authorityId",authority.get("authorityId"));identity.put("authorityRevision",authority.get("authorityRevision"));
         identity.put("processCode",authority.get("processCode"));identity.put("stepCode",authority.get("stepCode"));
         identity.put("routePath",authority.get("routePath"));identity.put("audience",authority.get("audience"));
@@ -3174,15 +3636,15 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
         identity.put("evidenceRef",evidenceRef);
         String evidenceHash=liveSmokeHash(identity);
         return jdbc.update("""
-            insert into integrated_design_live_smoke_evidence(job_id,authority_id,authority_revision,
+            insert into integrated_design_live_smoke_evidence(dispatch_id,job_id,authority_id,authority_revision,
               process_code,step_code,route_path,audience,lane,status_case,scenario_code,account_id,
               tenant_id,project_id,actor_code,command_code,input_json,output_json,from_state,to_state,
               observed_state,expected_status,observed_status,source_hash,authority_hash,target_ref,
               lane_evidence,account_hash,command_hash,input_hash,output_hash,state_hash,status_hash,
               lane_evidence_hash,evidence_hash,evidence_ref,recorded_by,observed_at)
-            values(?,?,?,?,?,?,?,'API','SUCCESS',?,?,?,?,?,?,?::jsonb,?::jsonb,?,?,?,
+            values(?,?,?,?,?,?,?,?,'API','SUCCESS',?,?,?,?,?,?,?::jsonb,?::jsonb,?,?,?,
               'SUCCESS','SUCCESS',?,?,?,?::jsonb,?,?,?,?,?,?,?,?,?,'dispatch-test',clock_timestamp())
-            """,jobId,authority.get("authorityId"),authority.get("authorityRevision"),authority.get("processCode"),
+            """,dispatchId,jobId,authority.get("authorityId"),authority.get("authorityRevision"),authority.get("processCode"),
             authority.get("stepCode"),authority.get("routePath"),authority.get("audience"),scenario.get("scenarioCode"),
             account,tenant,project,actor,command,json(input),json(output),transition.get("fromState"),transition.get("toState"),
             transition.get("toState"),authority.get("sourceHash"),authority.get("authorityHash"),
@@ -3196,12 +3658,18 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
     }
 
     private void markDispatchEvidenceSubmitted(long jobId){
+        long dispatchId=jdbc.queryForObject("""
+            select (receipt_json->>'liveSmokeDispatchId')::bigint
+              from integrated_design_autocompletion_receipt
+             where process_code='PROC' and job_id=?
+               and receipt_json->>'liveSmokeDispatchId'~'^[0-9]+$'
+            """,Long.class,jobId);
         UUID leaseToken=jdbc.query("""
             select lease_token from integrated_design_live_smoke_dispatch
-             where job_id=? and authority_revision_set_hash=
+             where dispatch_id=? and job_id=? and authority_revision_set_hash=
                    framework_composite_authority_revision_set_hash(job_id)
                and status='RUNNING'
-            """,result->result.next()?(UUID)result.getObject(1):null,jobId);
+            """,result->result.next()?(UUID)result.getObject(1):null,dispatchId,jobId);
         if(leaseToken==null){
             leaseToken=UUID.randomUUID();
             assertEquals(1,jdbc.update("""
@@ -3209,11 +3677,11 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
                set status='RUNNING',attempt_count=attempt_count+1,
                    lease_token=?,lease_until=clock_timestamp()+interval '5 minutes',
                    started_at=coalesce(started_at,clock_timestamp())
-             where dispatch.job_id=?
+             where dispatch.dispatch_id=? and dispatch.job_id=?
                and dispatch.authority_revision_set_hash=
                    framework_composite_authority_revision_set_hash(dispatch.job_id)
                and dispatch.status in('QUEUED','RETRY_WAIT')
-            """,leaseToken,jobId));
+            """,leaseToken,dispatchId,jobId));
         }
         assertEquals(1,jdbc.update("""
             with current_evidence as materialized (
@@ -3230,7 +3698,7 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
                  and authority.job_id=evidence.job_id
                  and authority.source_hash=evidence.source_hash
                  and authority.authority_hash=evidence.authority_hash
-               where evidence.job_id=?
+               where evidence.dispatch_id=? and evidence.job_id=?
             )
             update integrated_design_live_smoke_dispatch dispatch
                set status='EVIDENCE_SUBMITTED',lease_token=null,lease_until=null,
@@ -3242,12 +3710,98 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
                        jsonb_build_object('evidenceSetHash',summary.evidence_set_hash,
                          'evidenceCount',summary.evidence_count)))
               from current_evidence summary
-             where dispatch.job_id=? and dispatch.status='RUNNING'
+             where dispatch.dispatch_id=? and dispatch.job_id=? and dispatch.status='RUNNING'
                and dispatch.lease_token=?
                and dispatch.authority_revision_set_hash=
                    framework_composite_authority_revision_set_hash(dispatch.job_id)
                and summary.evidence_count=dispatch.expected_evidence_count
-            """,jobId,jobId,leaseToken));
+            """,dispatchId,jobId,dispatchId,jobId,leaseToken));
+    }
+
+    private long replaceDispatchWithAdversarialOldEvidence(long jobId){
+        long priorDispatchId=jdbc.queryForObject("""
+            select (receipt_json->>'liveSmokeDispatchId')::bigint
+              from integrated_design_autocompletion_receipt
+             where process_code='PROC' and job_id=?
+            """,Long.class,jobId);
+        assertEquals(1,jdbc.update("""
+            update integrated_design_live_smoke_dispatch
+               set status='SUPERSEDED',completed_at=clock_timestamp(),
+                   last_error_code='TEMPORAL_FIXTURE_SUPERSEDED',
+                   last_error_hash=framework_composite_live_smoke_hash(
+                     jsonb_build_object('dispatchId',dispatch_id,'fixture','TEMPORAL'))
+             where dispatch_id=? and status='EVIDENCE_SUBMITTED'
+            """,priorDispatchId));
+        long dispatchId=jdbc.queryForObject("""
+            insert into integrated_design_live_smoke_dispatch(
+              job_id,process_code,project_id,runtime_commit,runtime_identity_hash,
+              canary_attempt,authority_revision_set_hash,artifact_manifest_hash,
+              process_source_hash,expected_evidence_count,status)
+            select job_id,process_code,project_id,runtime_commit,runtime_identity_hash,
+                   3,authority_revision_set_hash,artifact_manifest_hash,
+                   process_source_hash,expected_evidence_count,'QUEUED'
+              from integrated_design_live_smoke_dispatch where dispatch_id=?
+            returning dispatch_id
+            """,Long.class,priorDispatchId);
+        UUID leaseToken=UUID.randomUUID();
+        assertEquals(1,jdbc.update("""
+            update integrated_design_live_smoke_dispatch
+               set status='RUNNING',attempt_count=attempt_count+1,lease_token=?,
+                   lease_until=clock_timestamp()+interval '5 minutes'
+             where dispatch_id=? and status='QUEUED'
+            """,leaseToken,dispatchId));
+        int copied=jdbc.update("""
+            insert into integrated_design_live_smoke_evidence(
+              dispatch_id,job_id,authority_id,authority_revision,process_code,step_code,
+              route_path,audience,lane,status_case,scenario_code,account_id,tenant_id,
+              project_id,actor_code,command_code,input_json,output_json,from_state,to_state,
+              observed_state,expected_status,observed_status,source_hash,authority_hash,
+              target_ref,lane_evidence,account_hash,command_hash,input_hash,output_hash,
+              state_hash,status_hash,lane_evidence_hash,evidence_hash,evidence_ref,
+              recorded_by,observed_at,recorded_at)
+            select target.dispatch_id,evidence.job_id,evidence.authority_id,
+                   evidence.authority_revision,evidence.process_code,evidence.step_code,
+                   evidence.route_path,evidence.audience,evidence.lane,evidence.status_case,
+                   evidence.scenario_code,evidence.account_id,evidence.tenant_id,
+                   evidence.project_id,evidence.actor_code,evidence.command_code,
+                   evidence.input_json,evidence.output_json,evidence.from_state,evidence.to_state,
+                   evidence.observed_state,evidence.expected_status,evidence.observed_status,
+                   evidence.source_hash,evidence.authority_hash,evidence.target_ref,
+                   evidence.lane_evidence,evidence.account_hash,evidence.command_hash,
+                   evidence.input_hash,evidence.output_hash,evidence.state_hash,
+                   evidence.status_hash,evidence.lane_evidence_hash,
+                   framework_composite_live_smoke_hash(jsonb_build_object(
+                     'schema','carbonet.composite-live-smoke-evidence/v1',
+                     'dispatchId',target.dispatch_id,'jobId',evidence.job_id,
+                     'authorityId',evidence.authority_id,
+                     'authorityRevision',evidence.authority_revision,
+                     'processCode',evidence.process_code,'stepCode',evidence.step_code,
+                     'routePath',evidence.route_path,'audience',evidence.audience,
+                     'lane',evidence.lane,'statusCase',evidence.status_case,
+                     'scenarioCode',evidence.scenario_code,
+                     'accountHash',evidence.account_hash,'commandHash',evidence.command_hash,
+                     'inputHash',evidence.input_hash,'outputHash',evidence.output_hash,
+                     'stateHash',evidence.state_hash,'statusHash',evidence.status_hash,
+                     'sourceHash',evidence.source_hash,'authorityHash',evidence.authority_hash,
+                     'targetRef',evidence.target_ref,
+                     'laneEvidenceHash',evidence.lane_evidence_hash,
+                     'evidenceRef',evidence.evidence_ref)),evidence.evidence_ref,
+                   'adversarial-temporal-fixture',dispatch.started_at-interval '1 millisecond',
+                   clock_timestamp()
+              from integrated_design_live_smoke_evidence evidence
+              cross join (select ?::bigint dispatch_id) target
+              join integrated_design_live_smoke_dispatch dispatch
+                on dispatch.dispatch_id=target.dispatch_id
+             where evidence.dispatch_id=?
+            """,dispatchId,priorDispatchId);
+        assertEquals(45,copied);
+        assertEquals(1,jdbc.update("""
+            update integrated_design_autocompletion_receipt
+               set receipt_json=receipt_json||jsonb_build_object(
+                 'liveSmokeDispatchId',?::bigint,'liveSmokeDispatchStatus','RUNNING')
+             where process_code='PROC' and job_id=?
+            """,dispatchId,jobId));
+        return dispatchId;
     }
 
     @Test
@@ -3716,7 +4270,7 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
     }
 
     @Test
-    void completedSameHeadReplayKeepsGeneratedSpecVersionAndProcessHeadStable(){
+    void completedSameHeadWithoutExactEvidenceRequeuesAndKeepsProcessHeadStable(){
         Map<String,Object> first=transaction.execute(status->
             service.createProcess(processBody("stable goal"),"authenticated-admin"));
         assertEquals("QUEUED",first.get("status"));
@@ -3735,8 +4289,8 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
         Map<String,Object> replay=transaction.execute(status->
             service.createProcess(processBody("stable goal"),"authenticated-admin"));
 
-        assertEquals("UNCHANGED",replay.get("status"));
-        assertEquals(false,replay.get("generationQueued"));
+        assertEquals("QUEUED",replay.get("status"));
+        assertEquals(true,replay.get("generationQueued"));
         assertEquals(source,text("source_hash"));
         assertEquals(specVersion,jdbc.queryForObject(
             "select spec_version from framework_step_execution_spec",Integer.class));
@@ -3746,6 +4300,11 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
             String.class));
         assertEquals(target,jdbc.queryForObject(
             "select target_path from framework_development_job",String.class));
+        assertEquals(Map.of("jobStatus","PLANNED","qualityStatus","PENDING"),
+            jdbc.queryForMap("""
+                select job_status as "jobStatus",quality_status as "qualityStatus"
+                  from framework_development_job
+                """));
         assertTrue(source.matches("[0-9a-f]{64}"));
     }
 
@@ -4162,6 +4721,1917 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
             "select process_version from framework_process_definition where process_code='PROC'",
             String.class));
     }
+
+    @Test
+    void physicalOnlyCanaryRearmOnNewRuntimePreservesJobAndWritesNoSource(){
+        seedCompositeThreeScreens();
+        PhysicalRearmCampaign campaign=installPhysicalRearmCampaign(
+            "a".repeat(40),"c".repeat(40),"PHYSICAL_GENERATED_VERIFIED");
+        CompositeAutocompletionReadinessService readiness=
+            new CompositeAutocompletionReadinessService(jdbc,service,
+                new DataSourceTransactionManager(dataSource),8,8,2,campaign.newCommit(),"","");
+        String jobXmin=jdbc.queryForObject(
+            "select xmin::text from framework_development_job where job_id=?",
+            String.class,campaign.jobId());
+        int jobCount=count("framework_development_job");
+        int eventCount=count("framework_development_job_event");
+        int sourceDocumentVersionCount=count("integrated_design_document_version");
+        try{
+            List<Map<String,Object>> rearmed=transaction.execute(status->{
+                readiness.acquireGlobalDispatchLock(910_881_003L);
+                return readiness.rearmPhysicalCanary(UUID.randomUUID().toString(),
+                    campaign.newCommit(),campaign.sourceHash(),1);
+            });
+            assertEquals(1,rearmed.size());
+            assertEquals("PROC",rearmed.get(0).get("processCode"));
+            assertEquals(campaign.jobId(),((Number)rearmed.get(0).get("jobId")).longValue());
+            assertEquals(true,rearmed.get(0).get("physicalRevalidation"));
+            assertEquals(true,rearmed.get(0).get("sourceReused"));
+            assertEquals("SOURCE_APPLIED_PHYSICAL_QUEUED",jdbc.queryForObject("""
+                select completion_status from integrated_design_autocompletion_receipt
+                 where process_code='PROC'
+                """,String.class));
+            assertEquals(campaign.jobId(),jdbc.queryForObject("""
+                select job_id from integrated_design_autocompletion_receipt
+                 where process_code='PROC'
+                """,Long.class));
+            assertEquals(7,jdbc.queryForObject("""
+                select attempt_count from integrated_design_autocompletion_receipt
+                 where process_code='PROC'
+                """,Integer.class));
+            assertEquals("true",jdbc.queryForObject("""
+                select receipt_json->>'sourceReused'
+                  from integrated_design_autocompletion_receipt where process_code='PROC'
+                """,String.class));
+            assertEquals("0",jdbc.queryForObject("""
+                select receipt_json->>'sourceWriteCount'
+                  from integrated_design_autocompletion_receipt where process_code='PROC'
+                """,String.class));
+            assertEquals(campaign.newCommit(),jdbc.queryForObject("""
+                select receipt_json#>>'{canary,runtimeCommit}'
+                  from integrated_design_autocompletion_receipt where process_code='PROC'
+                """,String.class));
+            assertEquals("1",jdbc.queryForObject("""
+                select receipt_json#>>'{canary,attemptNumber}'
+                  from integrated_design_autocompletion_receipt where process_code='PROC'
+                """,String.class));
+            assertEquals(jobXmin,jdbc.queryForObject(
+                "select xmin::text from framework_development_job where job_id=?",
+                String.class,campaign.jobId()));
+            assertEquals(jobCount,count("framework_development_job"));
+            assertEquals(eventCount,count("framework_development_job_event"));
+            assertEquals(sourceDocumentVersionCount,count("integrated_design_document_version"));
+            assertEquals(campaign.sourceHash(),currentCompositeSourceAuthorityHash());
+        }finally{
+            readiness.close();clearPhysicalRearmCampaign(campaign);
+        }
+    }
+
+    @Test
+    void physicalOnlyCanaryInvalidatesBeforeDispatchWhenRuntimeIdentityChangesAtSameCommit(){
+        seedCompositeThreeScreens();
+        PhysicalRearmCampaign campaign=installPhysicalRearmCampaign(
+            "a".repeat(40),"c".repeat(40),"PHYSICAL_GENERATED_VERIFIED");
+        CompositeAutocompletionReadinessService readiness=readinessFor(campaign);
+        CompositeDesignOperationalWorker worker=new CompositeDesignOperationalWorker(
+            jdbc,new ObjectMapper(),service,readiness,new DataSourceTransactionManager(dataSource),
+            false,2,25,false,600,30);
+        String sourceXmin=jdbc.queryForObject(
+            "select xmin::text from framework_process_definition where process_code='PROC'",
+            String.class);
+        String jobXmin=jdbc.queryForObject(
+            "select xmin::text from framework_development_job where job_id=?",
+            String.class,campaign.jobId());
+        int jobCount=count("framework_development_job");
+        int eventCount=count("framework_development_job_event");
+        int documentVersionCount=count("integrated_design_document_version");
+        try{
+            String requestedIdentity=currentRuntimeIdentityHash();
+            List<Map<String,Object>> rearmed=transaction.execute(status->{
+                readiness.acquireGlobalDispatchLock(910_881_003L);
+                return readiness.rearmPhysicalCanary(UUID.randomUUID().toString(),
+                    campaign.newCommit(),campaign.sourceHash(),1);
+            });
+            assertEquals(1,rearmed.size());
+            assertEquals(requestedIdentity,jdbc.queryForObject("""
+                select receipt_json#>>'{canary,requestedRuntimeIdentityHash}'
+                  from integrated_design_autocompletion_receipt where process_code='PROC'
+                """,String.class));
+            assertEquals(0,jdbc.queryForObject("""
+                select count(*) from integrated_design_live_smoke_dispatch where job_id=?
+                """,Integer.class,campaign.jobId()));
+            assertNull(jdbc.queryForObject("""
+                select receipt_json->>'liveSmokeDispatchId'
+                  from integrated_design_autocompletion_receipt where process_code='PROC'
+                """,String.class));
+            String previousCanary=jdbc.queryForObject("""
+                select (receipt_json->'previousCanary')::text
+                  from integrated_design_autocompletion_receipt where process_code='PROC'
+                """,String.class);
+            String attempt=jdbc.queryForObject("""
+                select receipt_json#>>'{canary,attemptNumber}'
+                  from integrated_design_autocompletion_receipt where process_code='PROC'
+                """,String.class);
+            assertEquals("VERIFIED",jdbc.queryForObject("""
+                select receipt_json#>>'{previousCanary,status}'
+                  from integrated_design_autocompletion_receipt where process_code='PROC'
+                """,String.class));
+            assertEquals("1",jdbc.queryForObject("""
+                select receipt_json#>>'{previousCanary,attemptNumber}'
+                  from integrated_design_autocompletion_receipt where process_code='PROC'
+                """,String.class));
+
+            String changedIdentity=transaction.execute(status->{
+                assertEquals(1,jdbc.update("""
+                    update framework_runtime_release_state
+                       set deployment_uid=?,deployment_generation=deployment_generation+1,
+                           observed_generation=observed_generation+1,
+                           recorded_at=clock_timestamp()
+                     where release_key='CARBONET_RUNTIME' and source_commit=?
+                    ""","runtime-i2-"+UUID.randomUUID(),campaign.newCommit()));
+                return currentRuntimeIdentityHash();
+            });
+            assertNotEquals(requestedIdentity,changedIdentity);
+            assertEquals(campaign.newCommit(),jdbc.queryForObject("""
+                select source_commit from framework_runtime_release_state
+                 where release_key='CARBONET_RUNTIME'
+                """,String.class));
+
+            worker.reconcilePhysicalCompletion();
+            assertEquals("INVALIDATED",jdbc.queryForObject("""
+                select receipt_json#>>'{canary,status}'
+                  from integrated_design_autocompletion_receipt where process_code='PROC'
+                """,String.class));
+            assertEquals("PHYSICAL_GENERATED_VERIFIED",jdbc.queryForObject("""
+                select completion_status from integrated_design_autocompletion_receipt
+                 where process_code='PROC'
+                """,String.class));
+            assertEquals("RUNTIME_OR_SOURCE_SUPERSEDED",jdbc.queryForObject("""
+                select receipt_json#>>'{canary,failureCode}'
+                  from integrated_design_autocompletion_receipt where process_code='PROC'
+                """,String.class));
+            assertEquals(0,jdbc.queryForObject("""
+                select count(*) from integrated_design_live_smoke_dispatch where job_id=?
+                """,Integer.class,campaign.jobId()));
+            assertEquals(previousCanary,jdbc.queryForObject("""
+                select (receipt_json->'previousCanary')::text
+                  from integrated_design_autocompletion_receipt where process_code='PROC'
+                """,String.class));
+            assertEquals(attempt,jdbc.queryForObject("""
+                select receipt_json#>>'{canary,attemptNumber}'
+                  from integrated_design_autocompletion_receipt where process_code='PROC'
+                """,String.class));
+            assertEquals("0",jdbc.queryForObject("""
+                select receipt_json->>'sourceWriteCount'
+                  from integrated_design_autocompletion_receipt where process_code='PROC'
+                """,String.class));
+            assertEquals(campaign.jobId(),jdbc.queryForObject("""
+                select job_id from integrated_design_autocompletion_receipt
+                 where process_code='PROC'
+                """,Long.class));
+            assertEquals(sourceXmin,jdbc.queryForObject(
+                "select xmin::text from framework_process_definition where process_code='PROC'",
+                String.class));
+            assertEquals(jobXmin,jdbc.queryForObject(
+                "select xmin::text from framework_development_job where job_id=?",
+                String.class,campaign.jobId()));
+            assertEquals(jobCount,count("framework_development_job"));
+            assertEquals(eventCount,count("framework_development_job_event"));
+            assertEquals(documentVersionCount,count("integrated_design_document_version"));
+        }finally{
+            worker.close();clearPhysicalRearmCampaign(campaign);
+        }
+    }
+
+    @Test
+    void physicalOnlyCanarySameRuntimeIdentityCreatesExactlyOneBoundDispatch(){
+        seedCompositeThreeScreens();
+        PhysicalRearmCampaign campaign=installDispatchablePhysicalRearmCampaign();
+        DataSourceTransactionManager manager=new DataSourceTransactionManager(dataSource);
+        CompositeAutocompletionReadinessService readiness=
+            new CompositeAutocompletionReadinessService(jdbc,service,manager,
+                8,8,2,campaign.newCommit(),"","");
+        CompositeDesignOperationalWorker worker=new CompositeDesignOperationalWorker(
+            jdbc,new ObjectMapper(),service,readiness,manager,false,2,25,false,600,30);
+        try{
+            String requestedIdentity=currentRuntimeIdentityHash();
+            List<Map<String,Object>> rearmed=transaction.execute(status->{
+                readiness.acquireGlobalDispatchLock(910_881_003L);
+                return readiness.rearmPhysicalCanary(UUID.randomUUID().toString(),
+                    campaign.newCommit(),campaign.sourceHash(),1);
+            });
+            assertEquals(1,rearmed.size());
+            assertEquals(requestedIdentity,jdbc.queryForObject("""
+                select receipt_json#>>'{canary,requestedRuntimeIdentityHash}'
+                  from integrated_design_autocompletion_receipt where process_code='PROC'
+                """,String.class));
+            assertEquals(0,jdbc.queryForObject("""
+                select count(*) from integrated_design_live_smoke_dispatch where job_id=?
+                """,Integer.class,campaign.jobId()));
+
+            int invalidated=transaction.execute(
+                status->readiness.invalidateStalePhysicalRevalidations());
+            assertEquals(0,invalidated);
+            assertEquals("ACTIVE",jdbc.queryForObject("""
+                select receipt_json#>>'{canary,status}'
+                  from integrated_design_autocompletion_receipt where process_code='PROC'
+                """,String.class));
+            worker.reconcilePhysicalCompletion();
+
+            Map<String,Object> dispatch=jdbc.queryForMap("""
+                select dispatch_id as "dispatchId",runtime_commit as "runtimeCommit",
+                       runtime_identity_hash as "runtimeIdentityHash",
+                       canary_attempt as "canaryAttempt",status
+                  from integrated_design_live_smoke_dispatch where job_id=?
+                """,campaign.jobId());
+            assertEquals(1,jdbc.queryForObject("""
+                select count(*) from integrated_design_live_smoke_dispatch where job_id=?
+                """,Integer.class,campaign.jobId()));
+            assertEquals(campaign.newCommit(),dispatch.get("runtimeCommit"));
+            assertEquals(requestedIdentity,dispatch.get("runtimeIdentityHash"));
+            assertEquals(1,((Number)dispatch.get("canaryAttempt")).intValue());
+            assertEquals("QUEUED",dispatch.get("status"));
+            assertEquals("ACTIVE",jdbc.queryForObject("""
+                select receipt_json#>>'{canary,status}'
+                  from integrated_design_autocompletion_receipt where process_code='PROC'
+                """,String.class));
+            assertEquals(requestedIdentity,jdbc.queryForObject("""
+                select receipt_json#>>'{canary,requestedRuntimeIdentityHash}'
+                  from integrated_design_autocompletion_receipt where process_code='PROC'
+                """,String.class));
+            assertEquals(String.valueOf(dispatch.get("dispatchId")),jdbc.queryForObject("""
+                select receipt_json->>'liveSmokeDispatchId'
+                  from integrated_design_autocompletion_receipt where process_code='PROC'
+                """,String.class));
+        }finally{
+            worker.close();resetAutocompletionGate();
+            jdbc.update("delete from framework_postdeploy_release_attempt where candidate_id=?",
+                campaign.candidateId());
+        }
+    }
+
+    @Test
+    void verifiedPhysicalCanaryRequiresCurrentRuntimeIdentityForGateAndFreshAcceptance(){
+        seedCompositeThreeScreens();
+        PhysicalRearmCampaign campaign=installDispatchablePhysicalRearmCampaign();
+        String staleCandidate="postdeploy:verified-h1:"+
+            UUID.randomUUID().toString().replace("-","");
+        String freshCandidate="postdeploy:verified-h2:"+
+            UUID.randomUUID().toString().replace("-","");
+        DataSourceTransactionManager manager=new DataSourceTransactionManager(dataSource);
+        CompositeAutocompletionReadinessService readiness=
+            new CompositeAutocompletionReadinessService(jdbc,service,manager,
+                8,8,2,campaign.newCommit(),"","");
+        CompositeDesignOperationalWorker worker=new CompositeDesignOperationalWorker(
+            jdbc,new ObjectMapper(),service,readiness,manager,false,2,25,false,600,30);
+        try{
+            String identityH1=currentRuntimeIdentityHash();
+            List<Map<String,Object>> first=transaction.execute(status->{
+                readiness.acquireGlobalDispatchLock(910_881_003L);
+                return readiness.rearmPhysicalCanary(UUID.randomUUID().toString(),
+                    campaign.newCommit(),campaign.sourceHash(),1);
+            });
+            assertEquals(1,first.size());
+            worker.reconcilePhysicalCompletion();
+            assertEquals(45,installExactLiveSmokeEvidence(campaign.jobId(),false));
+            markDispatchEvidenceSubmitted(campaign.jobId());
+            worker.reconcilePhysicalCompletion();
+            assertEquals("VERIFIED",jdbc.queryForObject("""
+                select receipt_json#>>'{canary,status}'
+                  from integrated_design_autocompletion_receipt where process_code='PROC'
+                """,String.class));
+            assertEquals(identityH1,jdbc.queryForObject("""
+                select receipt_json#>>'{canary,requestedRuntimeIdentityHash}'
+                  from integrated_design_autocompletion_receipt where process_code='PROC'
+                """,String.class));
+            assertEquals(1,jdbc.queryForObject("""
+                select count(*) from integrated_design_live_smoke_dispatch
+                 where job_id=? and runtime_identity_hash=? and status='COMPLETED'
+                """,Integer.class,campaign.jobId(),identityH1));
+
+            Map<String,Object> h1Report=readiness.inspect(true,0);
+            assertEquals(1,number(h1Report,"currentVerifiedCanaryCount"));
+            assertEquals(true,h1Report.get("enablementPrerequisitesMet"));
+            stagePostdeployCandidate(staleCandidate,campaign.newCommit());
+            Map<String,Object> h1Prepared=readiness.prepare(
+                ((Number)h1Report.get("gateRevision")).longValue(),campaign.newCommit(),
+                String.valueOf(h1Report.get("currentFinalAuthoritySetHash")),staleCandidate,
+                "postgres-test",true,0);
+            assertEquals("PREPARED",h1Prepared.get("approvalStatus"));
+            promotePostdeployCandidate(staleCandidate,campaign.newCommit(),identityH1);
+
+            String identityH2=transaction.execute(status->{
+                assertEquals(1,jdbc.update("""
+                    update framework_runtime_release_state
+                       set deployment_uid=?,deployment_generation=deployment_generation+1,
+                           observed_generation=observed_generation+1,
+                           recorded_at=clock_timestamp()
+                     where release_key='CARBONET_RUNTIME' and source_commit=?
+                    ""","runtime-h2-"+UUID.randomUUID(),campaign.newCommit()));
+                return currentRuntimeIdentityHash();
+            });
+            assertNotEquals(identityH1,identityH2);
+            Map<String,Object> staleReport=readiness.inspect(true,0);
+            assertEquals(0,number(staleReport,"currentVerifiedCanaryCount"));
+            assertEquals(false,staleReport.get("enablementPrerequisitesMet"));
+            assertEquals(false,staleReport.get("preparedBindingCurrent"));
+
+            Map<String,Object> gateBeforeReject=jdbc.queryForMap("""
+                select revision,approval_status as "approvalStatus",xmin::text as xmin
+                  from integrated_design_autocompletion_gate where gate_key='GLOBAL'
+                """);
+            String receiptBeforeReject=jdbc.queryForObject("""
+                select xmin::text from integrated_design_autocompletion_receipt
+                 where process_code='PROC'
+                """,String.class);
+            int jobCount=count("framework_development_job");
+            int eventCount=count("framework_development_job_event");
+            int documentVersionCount=count("integrated_design_document_version");
+            int dispatchCount=count("integrated_design_live_smoke_dispatch");
+            int evidenceCount=count("integrated_design_live_smoke_evidence");
+            int postdeployCount=count("framework_postdeploy_release_attempt");
+            IllegalStateException activateRejected=assertThrows(IllegalStateException.class,()->
+                readiness.activate(((Number)h1Prepared.get("revision")).longValue(),
+                    campaign.newCommit(),campaign.sourceHash(),staleCandidate,
+                    "postgres-test",true,0));
+            assertEquals("AUTOCOMPLETION_ACTIVATION_PREFLIGHT_STALE",
+                activateRejected.getMessage());
+            IllegalStateException prepareRejected=assertThrows(IllegalStateException.class,()->
+                readiness.prepare(((Number)h1Prepared.get("revision")).longValue(),
+                    campaign.newCommit(),
+                    String.valueOf(staleReport.get("currentFinalAuthoritySetHash")),
+                    staleCandidate,"postgres-test",true,0));
+            assertEquals("AUTOCOMPLETION_APPROVAL_PREFLIGHT_STALE",
+                prepareRejected.getMessage());
+            assertEquals(gateBeforeReject,jdbc.queryForMap("""
+                select revision,approval_status as "approvalStatus",xmin::text as xmin
+                  from integrated_design_autocompletion_gate where gate_key='GLOBAL'
+                """));
+            assertEquals(receiptBeforeReject,jdbc.queryForObject("""
+                select xmin::text from integrated_design_autocompletion_receipt
+                 where process_code='PROC'
+                """,String.class));
+            assertEquals(jobCount,count("framework_development_job"));
+            assertEquals(eventCount,count("framework_development_job_event"));
+            assertEquals(documentVersionCount,count("integrated_design_document_version"));
+            assertEquals(dispatchCount,count("integrated_design_live_smoke_dispatch"));
+            assertEquals(evidenceCount,count("integrated_design_live_smoke_evidence"));
+            assertEquals(postdeployCount,count("framework_postdeploy_release_attempt"));
+
+            worker.reconcilePhysicalCompletion();
+            assertEquals("INVALIDATED",jdbc.queryForObject("""
+                select receipt_json#>>'{canary,status}'
+                  from integrated_design_autocompletion_receipt where process_code='PROC'
+                """,String.class));
+            assertEquals(1,jdbc.queryForObject("""
+                select count(*) from integrated_design_live_smoke_dispatch
+                 where job_id=? and runtime_identity_hash=? and status='SUPERSEDED'
+                """,Integer.class,campaign.jobId(),identityH1));
+
+            restorePhysicalRearmGate(campaign);
+            int secondAttempt=transaction.execute(status->{
+                readiness.acquireGlobalDispatchLock(910_881_003L);
+                return readiness.nextCanaryAttempt(campaign.newCommit(),campaign.sourceHash());
+            });
+            assertEquals(2,secondAttempt);
+            List<Map<String,Object>> second=transaction.execute(status->{
+                readiness.acquireGlobalDispatchLock(910_881_003L);
+                return readiness.rearmPhysicalCanary(UUID.randomUUID().toString(),
+                    campaign.newCommit(),campaign.sourceHash(),secondAttempt);
+            });
+            assertEquals(1,second.size());
+            assertEquals(identityH2,jdbc.queryForObject("""
+                select receipt_json#>>'{canary,requestedRuntimeIdentityHash}'
+                  from integrated_design_autocompletion_receipt where process_code='PROC'
+                """,String.class));
+            assertEquals(0,jdbc.queryForObject("""
+                select count(*) from integrated_design_live_smoke_dispatch
+                 where job_id=? and runtime_identity_hash=?
+                """,Integer.class,campaign.jobId(),identityH2));
+            worker.reconcilePhysicalCompletion();
+            assertEquals(45,installExactLiveSmokeEvidence(campaign.jobId(),false));
+            markDispatchEvidenceSubmitted(campaign.jobId());
+            worker.reconcilePhysicalCompletion();
+            assertEquals(1,jdbc.queryForObject("""
+                select count(*) from integrated_design_live_smoke_dispatch
+                 where job_id=? and runtime_identity_hash=? and canary_attempt=2
+                   and status='COMPLETED'
+                """,Integer.class,campaign.jobId(),identityH2));
+            assertEquals("VERIFIED",jdbc.queryForObject("""
+                select receipt_json#>>'{canary,status}'
+                  from integrated_design_autocompletion_receipt where process_code='PROC'
+                """,String.class));
+            assertEquals("2",jdbc.queryForObject("""
+                select receipt_json#>>'{canary,attemptNumber}'
+                  from integrated_design_autocompletion_receipt where process_code='PROC'
+                """,String.class));
+
+            Map<String,Object> h2Report=readiness.inspect(true,0);
+            assertEquals(1,number(h2Report,"currentVerifiedCanaryCount"));
+            assertEquals(true,h2Report.get("enablementPrerequisitesMet"));
+            stagePostdeployCandidate(freshCandidate,campaign.newCommit());
+            Map<String,Object> h2Prepared=readiness.prepare(
+                ((Number)h2Report.get("gateRevision")).longValue(),campaign.newCommit(),
+                String.valueOf(h2Report.get("currentFinalAuthoritySetHash")),freshCandidate,
+                "postgres-test",true,0);
+            promotePostdeployCandidate(freshCandidate,campaign.newCommit(),identityH2);
+            Map<String,Object> activated=readiness.activate(
+                ((Number)h2Prepared.get("revision")).longValue(),campaign.newCommit(),
+                campaign.sourceHash(),freshCandidate,"postgres-test",true,0);
+            assertEquals("ACTIVE",activated.get("approvalStatus"));
+            Map<String,Object> accepted=readiness.inspect(true,0);
+            assertEquals(1,number(accepted,"currentVerifiedCanaryCount"));
+            assertEquals(true,accepted.get("approvalBindingCurrent"));
+            assertEquals(true,accepted.get("automaticEnablementAllowed"));
+        }finally{
+            worker.close();resetAutocompletionGate();
+            jdbc.update("delete from framework_postdeploy_evidence_promotion where candidate_id in(?,?)",
+                staleCandidate,freshCandidate);
+            jdbc.update("delete from framework_postdeploy_release_attempt where candidate_id in(?,?,?)",
+                campaign.candidateId(),staleCandidate,freshCandidate);
+        }
+    }
+
+    @Test
+    void liveSmokeEvidenceRequiresDispatchTemporalWindowForWriterAssessorAndFinalizer(){
+        seedCompositeThreeScreens();
+        PhysicalRearmCampaign campaign=installDispatchablePhysicalRearmCampaign();
+        DataSourceTransactionManager manager=new DataSourceTransactionManager(dataSource);
+        CompositeAutocompletionReadinessService readiness=
+            new CompositeAutocompletionReadinessService(jdbc,service,manager,
+                8,8,2,campaign.newCommit(),"","");
+        CompositeDesignOperationalWorker worker=new CompositeDesignOperationalWorker(
+            jdbc,new ObjectMapper(),service,readiness,manager,false,2,25,false,600,30);
+        try{
+            List<Map<String,Object>> rearmed=transaction.execute(status->{
+                readiness.acquireGlobalDispatchLock(910_881_003L);
+                return readiness.rearmPhysicalCanary(UUID.randomUUID().toString(),
+                    campaign.newCommit(),campaign.sourceHash(),1);
+            });
+            assertEquals(1,rearmed.size());
+            worker.reconcilePhysicalCompletion();
+            assertEquals(45,installExactLiveSmokeEvidence(
+                campaign.jobId(),false,false,true));
+            long dispatchId=jdbc.queryForObject("""
+                select dispatch_id from integrated_design_live_smoke_dispatch
+                 where job_id=? and runtime_identity_hash=?
+                """,Long.class,campaign.jobId(),currentRuntimeIdentityHash());
+            assertEquals(45,jdbc.queryForObject("""
+                select count(*) from integrated_design_live_smoke_evidence
+                 where dispatch_id=? and observed_at>=
+                   (select started_at from integrated_design_live_smoke_dispatch where dispatch_id=?)
+                   and observed_at<=recorded_at
+                """,Integer.class,dispatchId,dispatchId));
+            markDispatchEvidenceSubmitted(campaign.jobId());
+            CompositePhysicalEvidenceService physical=new CompositePhysicalEvidenceService(jdbc);
+            assertEquals(CompositePhysicalEvidenceService.Verdict.EXACT,
+                physical.assess(campaign.jobId(),"PROC"));
+
+            dispatchId=replaceDispatchWithAdversarialOldEvidence(campaign.jobId());
+            assertEquals(45,jdbc.queryForObject("""
+                select count(*) from integrated_design_live_smoke_evidence evidence
+                  join integrated_design_live_smoke_dispatch dispatch
+                    on dispatch.dispatch_id=evidence.dispatch_id
+                 where evidence.dispatch_id=? and evidence.observed_at<dispatch.started_at
+                """,Integer.class,dispatchId));
+            markDispatchEvidenceSubmitted(campaign.jobId());
+            assertEquals(CompositePhysicalEvidenceService.Verdict.LIVE_SMOKE_TEST_PENDING,
+                physical.assess(campaign.jobId(),"PROC"));
+            worker.reconcilePhysicalCompletion();
+            assertEquals("SOURCE_APPLIED_PHYSICAL_QUEUED",jdbc.queryForObject("""
+                select completion_status from integrated_design_autocompletion_receipt
+                 where process_code='PROC'
+                """,String.class));
+            assertEquals("ACTIVE",jdbc.queryForObject("""
+                select receipt_json#>>'{canary,status}'
+                  from integrated_design_autocompletion_receipt where process_code='PROC'
+                """,String.class));
+            assertEquals("EVIDENCE_SUBMITTED",jdbc.queryForObject("""
+                select status from integrated_design_live_smoke_dispatch where dispatch_id=?
+                """,String.class,dispatchId));
+            assertEquals(0,jdbc.queryForObject("""
+                select count(*) from integrated_design_live_smoke_dispatch
+                 where dispatch_id=? and status='COMPLETED'
+                """,Integer.class,dispatchId));
+        }finally{
+            worker.close();resetAutocompletionGate();
+            jdbc.update("delete from framework_postdeploy_release_attempt where candidate_id=?",
+                campaign.candidateId());
+        }
+    }
+
+    @Test
+    void verifiedSourceCanaryRuntimeIdentityDriftRearmsPhysicalAttemptTwoWithoutSourceWrites(){
+        seedCompositeThreeScreens();
+        prepareCompositeReadinessBenchmarkDocuments();
+        String commit="c".repeat(40);
+        assertEquals(1,jdbc.update("""
+            update framework_runtime_release_state
+               set source_commit=?,deployment_uid=?,deployment_generation=2,
+                   observed_generation=2,image_ref='carbonet-runtime:source-h1',
+                   health_status='UP',recorded_at=clock_timestamp()
+             where release_key='CARBONET_RUNTIME'
+            """,commit,"runtime-source-h1-"+UUID.randomUUID()));
+        DataSourceTransactionManager manager=new DataSourceTransactionManager(dataSource);
+        CompositeAutocompletionReadinessService readiness=
+            new CompositeAutocompletionReadinessService(jdbc,service,manager,
+                8,8,2,commit,"","");
+        CompositeDesignOperationalWorker worker=new CompositeDesignOperationalWorker(
+            jdbc,new ObjectMapper(),service,readiness,manager,true,2,25,false,600,30);
+        String retryCandidate="postdeploy:source-runtime-retry:"+
+            UUID.randomUUID().toString().replace("-","");
+        try{
+            String identityH1=currentRuntimeIdentityHash();
+            Map<String,Object> first=worker.dispatchCanary();
+            assertEquals(1,number(first,"claimedCount"));
+            assertEquals(1,number(first,"canaryAttempt"));
+            assertEquals(1,number(first,"activeWorkerCount"));
+            awaitReceiptCompletion("SOURCE_APPLIED_PHYSICAL_QUEUED",30);
+            awaitWorkerIdle(worker,5);
+            long jobId=jdbc.queryForObject("""
+                select job_id from integrated_design_autocompletion_receipt
+                 where process_code='PROC'
+                """,Long.class);
+            installExactCanonicalPhysicalEvidenceAtCurrentRuntime(jobId);
+            assertEquals("false",jdbc.queryForObject("""
+                select coalesce(receipt_json#>>'{canary,physicalRevalidation}','false')
+                  from integrated_design_autocompletion_receipt where process_code='PROC'
+                """,String.class));
+            assertEquals(identityH1,jdbc.queryForObject("""
+                select receipt_json#>>'{canary,requestedRuntimeIdentityHash}'
+                  from integrated_design_autocompletion_receipt where process_code='PROC'
+                """,String.class));
+            assertEquals(45,installExactLiveSmokeEvidence(jobId,false));
+            markDispatchEvidenceSubmitted(jobId);
+            worker.reconcilePhysicalCompletion();
+            assertEquals("VERIFIED",jdbc.queryForObject("""
+                select receipt_json#>>'{canary,status}'
+                  from integrated_design_autocompletion_receipt where process_code='PROC'
+                """,String.class));
+            assertEquals(1,jdbc.queryForObject("""
+                select count(*) from integrated_design_live_smoke_dispatch
+                 where job_id=? and runtime_identity_hash=? and canary_attempt=1
+                   and status='COMPLETED'
+                """,Integer.class,jobId,identityH1));
+            activateLegacyGateForPhysicalRetry("b".repeat(40),
+                currentCompositeSourceAuthorityHash(),jobId,retryCandidate);
+
+            String identityH2=transaction.execute(status->{
+                assertEquals(1,jdbc.update("""
+                    update framework_runtime_release_state
+                       set deployment_uid=?,deployment_generation=deployment_generation+1,
+                           observed_generation=observed_generation+1,
+                           image_ref='carbonet-runtime:source-h2',recorded_at=clock_timestamp()
+                     where release_key='CARBONET_RUNTIME' and source_commit=?
+                    ""","runtime-source-h2-"+UUID.randomUUID(),commit));
+                return currentRuntimeIdentityHash();
+            });
+            assertNotEquals(identityH1,identityH2);
+            worker.reconcilePhysicalCompletion();
+            assertEquals("INVALIDATED",jdbc.queryForObject("""
+                select receipt_json#>>'{canary,status}'
+                  from integrated_design_autocompletion_receipt where process_code='PROC'
+                """,String.class));
+            assertEquals(1,jdbc.queryForObject("""
+                select count(*) from integrated_design_live_smoke_dispatch
+                 where job_id=? and runtime_identity_hash=? and status='SUPERSEDED'
+                """,Integer.class,jobId,identityH1));
+            String invalidatedCanary=jdbc.queryForObject("""
+                select receipt_json->'canary' from integrated_design_autocompletion_receipt
+                 where process_code='PROC'
+                """,String.class);
+
+            Map<String,Object> publicationBefore=compositePublicationXmins();
+            Map<String,Object> sourceBefore=sourceWitnessXmins();
+            int jobCount=count("framework_development_job");
+            int eventCount=count("framework_development_job_event");
+            int documentCount=count("integrated_design_document");
+            int versionCount=count("integrated_design_document_version");
+            int authorityCount=count("integrated_design_authority");
+            Map<String,Object> second=worker.dispatchCanary();
+            assertEquals(1,number(second,"claimedCount"));
+            assertEquals(2,number(second,"canaryAttempt"));
+            assertEquals(0,number(second,"activeWorkerCount"));
+            Map<String,Object> rearmed=jdbc.queryForMap("""
+                select job_id as "jobId",receipt_json#>>'{canary,status}' as "canaryStatus",
+                       receipt_json#>>'{canary,attemptNumber}' as "canaryAttempt",
+                       receipt_json#>>'{canary,physicalRevalidation}' as "physicalRevalidation",
+                       receipt_json#>>'{canary,sourceWriteCount}' as "sourceWriteCount",
+                       receipt_json#>>'{canary,requestedRuntimeIdentityHash}' as "runtimeIdentity",
+                       receipt_json->'previousCanary' as "previousCanary"
+                  from integrated_design_autocompletion_receipt where process_code='PROC'
+                """);
+            assertEquals(jobId,((Number)rearmed.get("jobId")).longValue());
+            assertEquals("ACTIVE",rearmed.get("canaryStatus"));
+            assertEquals("2",rearmed.get("canaryAttempt"));
+            assertEquals("true",rearmed.get("physicalRevalidation"));
+            assertEquals("0",rearmed.get("sourceWriteCount"));
+            assertEquals(identityH2,rearmed.get("runtimeIdentity"));
+            assertEquals(invalidatedCanary,String.valueOf(rearmed.get("previousCanary")));
+            assertEquals(publicationBefore,compositePublicationXmins());
+            assertEquals(sourceBefore,sourceWitnessXmins());
+            assertEquals(jobCount,count("framework_development_job"));
+            assertEquals(eventCount,count("framework_development_job_event"));
+            assertEquals(documentCount,count("integrated_design_document"));
+            assertEquals(versionCount,count("integrated_design_document_version"));
+            assertEquals(authorityCount,count("integrated_design_authority"));
+            assertEquals(1,jdbc.queryForObject("""
+                select count(*) from integrated_design_live_smoke_dispatch
+                 where job_id=? and runtime_identity_hash=? and canary_attempt=2
+                   and status='QUEUED'
+                """,Integer.class,jobId,identityH2));
+
+            assertEquals(45,installExactLiveSmokeEvidence(jobId,false));
+            markDispatchEvidenceSubmitted(jobId);
+            worker.reconcilePhysicalCompletion();
+            assertEquals("VERIFIED",jdbc.queryForObject("""
+                select receipt_json#>>'{canary,status}'
+                  from integrated_design_autocompletion_receipt where process_code='PROC'
+                """,String.class));
+            assertEquals("2",jdbc.queryForObject("""
+                select receipt_json#>>'{canary,attemptNumber}'
+                  from integrated_design_autocompletion_receipt where process_code='PROC'
+                """,String.class));
+        }finally{
+            worker.close();resetAutocompletionGate();
+            jdbc.update("delete from framework_postdeploy_release_attempt where candidate_id=?",
+                retryCandidate);
+        }
+    }
+
+    @Test
+    void verifiedCanariesWithMissingOrMismatchedDispatchBindingsInvalidateAndRetry(){
+        seedCompositeThreeScreens();
+        cloneCompositeBenchmarkProcesses(2,12);
+        prepareCompositeReadinessBenchmarkDocuments();
+        String oldCommit="b".repeat(40),commit="c".repeat(40);
+        assertEquals(1,jdbc.update("""
+            update framework_runtime_release_state
+               set source_commit=?,deployment_uid=?,deployment_generation=2,
+                   observed_generation=2,image_ref='carbonet-runtime:binding-h1',
+                   health_status='UP',recorded_at=clock_timestamp()
+             where release_key='CARBONET_RUNTIME'
+            """,commit,"runtime-binding-h1-"+UUID.randomUUID()));
+        String runtimeIdentity=currentRuntimeIdentityHash();
+        String globalHash=currentCompositeSourceAuthorityHash();
+        List<String> processes=jdbc.queryForList("""
+            select process_code from (
+              select distinct upper(process_code) process_code
+                from framework_composite_design_target_identity) target
+             order by process_code collate "C"
+            """,String.class);
+        assertEquals(12,processes.size());
+        Map<String,Long> jobs=new LinkedHashMap<>();
+        for(String process:processes)jobs.put(process,insertVerifiedCanaryBindingJob(process));
+        long wrongJob=insertVerifiedCanaryBindingJob("WRONG_JOB_OWNER");
+        List<String> variants=List.of(
+            "MISSING","STATUS","JOB","PROCESS","COMMIT","IDENTITY","ATTEMPT",
+            "REVISION","ARTIFACT","SOURCE","TEMPORAL","SET_HASH");
+        for(int index=0;index<processes.size();index++){
+            String process=processes.get(index),variant=variants.get(index);
+            long jobId=jobs.get(process),dispatchId=900_000_000_000L+index;
+            if(!"MISSING".equals(variant))dispatchId=insertMismatchedVerifiedDispatch(
+                jobId,wrongJob,process,variant,commit,oldCommit,runtimeIdentity);
+            String processHash=jdbc.queryForObject(
+                "select framework_composite_dependency_fingerprint(?)",String.class,process);
+            assertEquals(1,jdbc.update("""
+                insert into integrated_design_autocompletion_receipt(
+                  process_code,completion_status,dependency_fingerprint,job_id,duration_ms,
+                  receipt_json,started_at,completed_at)
+                values(?,'PHYSICAL_GENERATED_VERIFIED',?,?,1000,jsonb_build_object(
+                  'sourceInputDependencyHash',?,'liveSmokeDispatchId',?::bigint,
+                  'liveSmokeEvidenceCount',1,'liveSmokeEvidenceSetHash',repeat('d',64),
+                  'generationStatus','PHYSICAL_GENERATED_VERIFIED','physicalVerified',true,
+                  'canary',jsonb_build_object('canaryId',?,'status','VERIFIED',
+                    'attemptNumber',1,'runtimeCommit',?,
+                    'requestedRuntimeIdentityHash',?,
+                    'requestedSourceAuthorityHash',?,
+                    'requestedSourceDependencyHash',?,'physicalRevalidation',false,
+                    'verifiedFinalAuthorityHash',repeat('f',64),
+                    'physicalVerifiedAt',clock_timestamp())),
+                  clock_timestamp()-interval '1 second',clock_timestamp())
+                """,process,processHash,jobId,processHash,dispatchId,
+                UUID.randomUUID().toString(),commit,runtimeIdentity,globalHash,processHash));
+        }
+        String retryCandidate="postdeploy:binding-retry:"+
+            UUID.randomUUID().toString().replace("-","");
+        activateLegacyGateForPhysicalRetry(
+            oldCommit,globalHash,jobs.get("PROC"),retryCandidate);
+        DataSourceTransactionManager manager=new DataSourceTransactionManager(dataSource);
+        CompositeAutocompletionReadinessService readiness=
+            new CompositeAutocompletionReadinessService(jdbc,service,manager,
+                8,8,2,commit,"","");
+        CompositeDesignOperationalWorker worker=new CompositeDesignOperationalWorker(
+            jdbc,new ObjectMapper(),service,readiness,manager,true,8,25,false,600,30);
+        try{
+            Map<String,Object> rejected=readiness.inspect(true,0);
+            assertEquals(0,number(rejected,"currentVerifiedCanaryCount"));
+            assertEquals(false,rejected.get("enablementPrerequisitesMet"));
+            Map<String,Object> publicationBefore=compositePublicationXmins();
+            int jobCount=count("framework_development_job");
+            worker.reconcilePhysicalCompletion();
+            assertEquals(12,jdbc.queryForObject("""
+                select count(*) from integrated_design_autocompletion_receipt
+                 where receipt_json#>>'{canary,status}'='INVALIDATED'
+                   and receipt_json#>>'{canary,attemptNumber}'='1'
+                """,Integer.class));
+            assertEquals(12,jdbc.queryForObject("""
+                select count(*) from integrated_design_autocompletion_receipt
+                 where completion_status='PHYSICAL_GENERATED_VERIFIED'
+                   and job_id is not null and lease_token is null and lease_until is null
+                """,Integer.class));
+            assertEquals(publicationBefore,compositePublicationXmins());
+            assertEquals(jobCount,count("framework_development_job"));
+
+            Map<String,Object> retry=worker.dispatchCanary();
+            assertEquals(1,number(retry,"claimedCount"));
+            assertEquals(2,number(retry,"canaryAttempt"));
+            assertEquals(0,number(retry,"activeWorkerCount"));
+            assertEquals(jobCount,count("framework_development_job"));
+            assertEquals(1,jdbc.queryForObject("""
+                select count(*) from integrated_design_autocompletion_receipt
+                 where receipt_json#>>'{canary,status}'='FAILED'
+                   and receipt_json#>>'{canary,attemptNumber}'='2'
+                   and receipt_json#>>'{canary,physicalRevalidation}'='true'
+                   and receipt_json#>>'{canary,sourceWriteCount}'='0'
+                   and completion_status='PHYSICAL_GENERATED_VERIFIED'
+                   and job_id is not null
+                """,Integer.class));
+        }finally{
+            worker.close();resetAutocompletionGate();
+            jdbc.update("delete from framework_postdeploy_release_attempt where candidate_id=?",
+                retryCandidate);
+        }
+    }
+
+    @Test
+    void queuedDispatchSpoofedStartIsReplacedAtClaimBeforeAnyEvidenceWrite(){
+        seedCompositeThreeScreens();
+        PhysicalRearmCampaign campaign=installDispatchablePhysicalRearmCampaign();
+        CompositeAutocompletionReadinessService readiness=readinessFor(campaign);
+        try{
+            List<Map<String,Object>> rearmed=transaction.execute(status->{
+                readiness.acquireGlobalDispatchLock(910_881_003L);
+                return readiness.rearmPhysicalCanary(UUID.randomUUID().toString(),
+                    campaign.newCommit(),campaign.sourceHash(),1);
+            });
+            assertEquals(1,rearmed.size());
+            String canonicalArtifact=jdbc.queryForObject("""
+                select framework_try_jsonb(result_json)#>>
+                         '{canonicalGeneration,compositeArtifactManifestHash}'
+                  from framework_development_job where job_id=?
+                """,String.class,campaign.jobId());
+            String revisionHash=jdbc.queryForObject(
+                "select framework_composite_authority_revision_set_hash(?)",String.class,
+                campaign.jobId());
+            String processSource=jdbc.queryForObject("""
+                select framework_try_jsonb(specification_json)->>'sourceHash'
+                  from framework_development_job where job_id=?
+                """,String.class,campaign.jobId());
+            int expected=jdbc.queryForObject("""
+                select sum(jsonb_array_length(
+                  composite_json#>'{executableDesign,TEST,scenarios}')*3)::integer
+                  from integrated_design_authority where job_id=?
+                """,Integer.class,campaign.jobId());
+            String spoofed=jdbc.queryForObject("""
+                select (clock_timestamp()-interval '1 day')::timestamptz::text
+                """,String.class);
+            long dispatchId=jdbc.queryForObject("""
+                insert into integrated_design_live_smoke_dispatch(
+                  job_id,process_code,project_id,runtime_commit,runtime_identity_hash,
+                  canary_attempt,authority_revision_set_hash,artifact_manifest_hash,
+                  process_source_hash,expected_evidence_count,status,started_at)
+                values(?,'PROC','*',?,?,1,?,?,?,?, 'QUEUED',?::timestamptz)
+                returning dispatch_id
+                """,Long.class,campaign.jobId(),campaign.newCommit(),
+                currentRuntimeIdentityHash(),revisionHash,canonicalArtifact,processSource,
+                expected,spoofed);
+            assertEquals(0,jdbc.queryForObject("""
+                select count(*) from integrated_design_live_smoke_evidence
+                 where dispatch_id=?
+                """,Integer.class,dispatchId));
+            assertEquals(dispatchId,ensureRunningLiveSmokeDispatch(
+                campaign.jobId(),canonicalArtifact));
+            assertEquals("RUNNING",jdbc.queryForObject("""
+                select status from integrated_design_live_smoke_dispatch where dispatch_id=?
+                """,String.class,dispatchId));
+            assertEquals(true,jdbc.queryForObject("""
+                select started_at>?::timestamptz+interval '23 hours'
+                  from integrated_design_live_smoke_dispatch where dispatch_id=?
+                """,Boolean.class,spoofed,dispatchId));
+            assertEquals(0,jdbc.queryForObject("""
+                select count(*) from integrated_design_live_smoke_evidence
+                 where dispatch_id=?
+                """,Integer.class,dispatchId));
+            assertEquals(45,installExactLiveSmokeEvidence(
+                campaign.jobId(),false,false,true));
+            assertEquals(45,jdbc.queryForObject("""
+                select count(*) from integrated_design_live_smoke_evidence evidence
+                  join integrated_design_live_smoke_dispatch dispatch
+                    on dispatch.dispatch_id=evidence.dispatch_id
+                 where evidence.dispatch_id=? and evidence.observed_at>=dispatch.started_at
+                   and evidence.observed_at<=evidence.recorded_at
+                """,Integer.class,dispatchId));
+        }finally{
+            readiness.close();resetAutocompletionGate();
+        }
+    }
+
+    @Test
+    void claimedSourceCanaryBindingTamperInvalidatesBeforeCompilerWrites() throws Exception {
+        int index=0;
+        for(String variant:List.of(
+                "EXPIRED_LEASE","ROOT_HASH","DEPENDENCY","ATTEMPT","JOB_ID")){
+            if(index++>0)seed();
+            seedCompositeThreeScreens();prepareCompositeReadinessBenchmarkDocuments();
+            assertClaimedCanaryBindingTamperInvalidatesBeforeCompilerWrites(variant);
+        }
+    }
+
+    private void assertClaimedCanaryBindingTamperInvalidatesBeforeCompilerWrites(
+            String variant) throws Exception {
+        String commit="c".repeat(40);
+        assertEquals(1,jdbc.update("""
+            update framework_runtime_release_state
+               set source_commit=?,deployment_uid=?,deployment_generation=2,
+                   observed_generation=2,image_ref='carbonet-runtime:expired-claim',
+                   health_status='UP',recorded_at=clock_timestamp()
+             where release_key='CARBONET_RUNTIME'
+            """,commit,"runtime-expired-claim-"+UUID.randomUUID()));
+        DataSourceTransactionManager manager=new DataSourceTransactionManager(dataSource);
+        CompositeAutocompletionReadinessService readiness=
+            new CompositeAutocompletionReadinessService(jdbc,service,manager,
+                8,8,2,commit,"","");
+        CompositeDesignOperationalWorker worker=new CompositeDesignOperationalWorker(
+            jdbc,new ObjectMapper(),service,readiness,manager,true,2,25,false,600,30);
+        JdbcTemplate lockJdbc=new JdbcTemplate(dataSource);
+        TransactionTemplate lockTransaction=
+            new TransactionTemplate(new DataSourceTransactionManager(dataSource));
+        CountDownLatch locksHeld=new CountDownLatch(1),releaseLocks=new CountDownLatch(1);
+        var executor=Executors.newSingleThreadExecutor();
+        var lockFuture=executor.submit(()->lockTransaction.executeWithoutResult(status->{
+            lockJdbc.queryForList("select pg_advisory_xact_lock(?)",0x434f4d50534c4f50L);
+            lockJdbc.queryForList("select pg_advisory_xact_lock(?)",0x434f4d50534c4f51L);
+            locksHeld.countDown();
+            try{
+                if(!releaseLocks.await(20,TimeUnit.SECONDS))
+                    throw new IllegalStateException("CANARY_EXPIRED_LEASE_RELEASE_TIMEOUT");
+            }catch(InterruptedException error){
+                Thread.currentThread().interrupt();throw new IllegalStateException(error);
+            }
+        }));
+        try{
+            assertTrue(locksHeld.await(5,TimeUnit.SECONDS));
+            Map<String,Object> first=worker.dispatchCanary();
+            assertEquals(1,number(first,"claimedCount"));
+            assertEquals(1,number(first,"activeWorkerCount"));
+            Map<String,Object> claimed=jdbc.queryForMap("""
+                select lease_token::text as "leaseToken",
+                       receipt_json#>>'{canary,canaryId}' as "canaryId"
+                  from integrated_design_autocompletion_receipt
+                 where process_code='PROC' and completion_status='RUNNING'
+                """);
+            assertNotEquals(null,claimed.get("leaseToken"));
+            int mutated=switch(variant){
+                case "EXPIRED_LEASE"->jdbc.update("""
+                    update integrated_design_autocompletion_receipt
+                       set lease_until=clock_timestamp()-interval '1 second'
+                     where process_code='PROC' and lease_token=?::uuid
+                    """,claimed.get("leaseToken"));
+                case "ROOT_HASH"->jdbc.update("""
+                    update integrated_design_autocompletion_receipt
+                       set receipt_json=jsonb_set(receipt_json,
+                         '{sourceInputDependencyHash}',to_jsonb(repeat('e',64)))
+                     where process_code='PROC' and lease_token=?::uuid
+                    """,claimed.get("leaseToken"));
+                case "DEPENDENCY"->jdbc.update("""
+                    update integrated_design_autocompletion_receipt
+                       set dependency_fingerprint=repeat('e',64)
+                     where process_code='PROC' and lease_token=?::uuid
+                    """,claimed.get("leaseToken"));
+                case "ATTEMPT"->jdbc.update("""
+                    update integrated_design_autocompletion_receipt
+                       set receipt_json=jsonb_set(receipt_json,
+                         '{canary,attemptNumber}','2'::jsonb)
+                     where process_code='PROC' and lease_token=?::uuid
+                    """,claimed.get("leaseToken"));
+                case "JOB_ID"->jdbc.update("""
+                    update integrated_design_autocompletion_receipt set job_id=?
+                     where process_code='PROC' and lease_token=?::uuid
+                    """,insertVerifiedCanaryBindingJob("PROC"),claimed.get("leaseToken"));
+                default->throw new IllegalArgumentException(variant);
+            };
+            assertEquals(1,mutated,variant);
+            Map<String,Object> sourceBefore=sourceWitnessXmins();
+            Map<String,Object> publicationBefore=compositePublicationXmins();
+            int jobsBefore=count("framework_development_job");
+            int eventsBefore=count("framework_development_job_event");
+            int documentsBefore=count("integrated_design_document");
+            int versionsBefore=count("integrated_design_document_version");
+
+            releaseLocks.countDown();lockFuture.get(5,TimeUnit.SECONDS);
+            awaitReceiptCompletion("PENDING",10);awaitWorkerIdle(worker,5);
+            Map<String,Object> invalidated=jdbc.queryForMap("""
+                select job_id as "jobId",lease_token::text as "leaseToken",
+                       lease_until as "leaseUntil",
+                       receipt_json->>'generationStatus' as "generationStatus",
+                       receipt_json->>'sourceCommitted' as "sourceCommitted",
+                       receipt_json->>'jobCount' as "jobCount",
+                       receipt_json#>>'{canary,canaryId}' as "canaryId",
+                       receipt_json#>>'{canary,status}' as "canaryStatus",
+                       receipt_json#>>'{canary,failureCode}' as "failureCode"
+                  from integrated_design_autocompletion_receipt where process_code='PROC'
+                """);
+            assertNull(invalidated.get("jobId"));
+            assertNull(invalidated.get("leaseToken"));
+            assertNull(invalidated.get("leaseUntil"));
+            assertEquals("CANARY_SOURCE_BINDING_CHANGED_REQUEUE",
+                invalidated.get("generationStatus"));
+            assertEquals("false",invalidated.get("sourceCommitted"));
+            assertEquals("0",invalidated.get("jobCount"));
+            assertEquals(claimed.get("canaryId"),invalidated.get("canaryId"));
+            assertEquals("INVALIDATED",invalidated.get("canaryStatus"));
+            assertEquals("SOURCE_OR_RUNTIME_BINDING_CHANGED",invalidated.get("failureCode"));
+            assertEquals(sourceBefore,sourceWitnessXmins(),variant);
+            assertEquals(publicationBefore,compositePublicationXmins(),variant);
+            assertEquals(jobsBefore,count("framework_development_job"),variant);
+            assertEquals(eventsBefore,count("framework_development_job_event"),variant);
+            assertEquals(documentsBefore,count("integrated_design_document"),variant);
+            assertEquals(versionsBefore,count("integrated_design_document_version"),variant);
+        }finally{
+            releaseLocks.countDown();
+            if(!lockFuture.isDone())lockFuture.cancel(true);
+            executor.shutdownNow();worker.close();resetAutocompletionGate();
+        }
+    }
+
+    @Test
+    void workerCompletionRegistryShareLockBlocksDirectDmlUntilSourceCommit()
+            throws Exception {
+        seedCompositeThreeScreens();
+        prepareCompositeReadinessBenchmarkDocuments();
+        String commit="c".repeat(40);
+        assertEquals(1,jdbc.update("""
+            update framework_runtime_release_state
+               set source_commit=?,deployment_uid=?,deployment_generation=2,
+                   observed_generation=2,image_ref='carbonet-runtime:registry-lock',
+                   health_status='UP',recorded_at=clock_timestamp()
+             where release_key='CARBONET_RUNTIME'
+            """,commit,"runtime-registry-lock-"+UUID.randomUUID()));
+        String baselineProcess=jdbc.queryForObject(
+            "select framework_composite_dependency_fingerprint('PROC')",String.class);
+        String baselineGlobal=currentCompositeSourceAuthorityHash();
+        CountDownLatch registryLocksHeld=new CountDownLatch(1),releaseWorker=new CountDownLatch(1);
+        JdbcTemplate pausingJdbc=new RegistryLockPausingJdbcTemplate(
+            dataSource,registryLocksHeld,releaseWorker);
+        DataSourceTransactionManager manager=new DataSourceTransactionManager(dataSource);
+        CompositeAutocompletionReadinessService readiness=
+            new CompositeAutocompletionReadinessService(pausingJdbc,service,manager,
+                8,8,2,commit,"","");
+        CompositeDesignOperationalWorker worker=new CompositeDesignOperationalWorker(
+            pausingJdbc,new ObjectMapper(),service,readiness,manager,true,2,25,false,600,30);
+        JdbcTemplate updateJdbc=new JdbcTemplate(dataSource),insertJdbc=new JdbcTemplate(dataSource);
+        TransactionTemplate updateTx=new TransactionTemplate(
+            new DataSourceTransactionManager(dataSource));
+        TransactionTemplate insertTx=new TransactionTemplate(
+            new DataSourceTransactionManager(dataSource));
+        CountDownLatch mutationsStarted=new CountDownLatch(2);
+        var executor=Executors.newFixedThreadPool(2);
+        java.util.concurrent.Future<Integer> updateFuture=null,insertFuture=null;
+        try{
+            Map<String,Object> claimed=worker.dispatchCanary();
+            assertEquals(1,number(claimed,"claimedCount"));
+            assertTrue(registryLocksHeld.await(10,TimeUnit.SECONDS));
+            updateFuture=executor.submit(()->updateTx.execute(status->{
+                updateJdbc.execute("set local application_name='registry_lock_update'");
+                mutationsStarted.countDown();
+                return updateJdbc.update("""
+                    update ui_component_registry set active_yn='N',updated_at=clock_timestamp()
+                     where component_id='JSON_FORM' and active_yn='Y'
+                    """);
+            }));
+            insertFuture=executor.submit(()->insertTx.execute(status->{
+                insertJdbc.execute("set local application_name='registry_lock_insert'");
+                mutationsStarted.countDown();
+                return insertJdbc.update("""
+                    insert into ui_component_registry(
+                      component_id,component_name,component_type,owner_domain,
+                      props_schema_json,default_props,category,active_yn)
+                    values('UNRELATED_LOCK_WITNESS','Unrelated lock witness','DISPLAY',
+                      'TEST','{}','{}','COMMON','Y')
+                    """);
+            }));
+            assertTrue(mutationsStarted.await(5,TimeUnit.SECONDS));
+            long waitDeadline=System.nanoTime()+TimeUnit.SECONDS.toNanos(5);
+            int blocked;
+            do{
+                blocked=jdbc.queryForObject("""
+                    select count(*)::integer from pg_stat_activity
+                     where application_name in('registry_lock_update','registry_lock_insert')
+                       and wait_event_type='Lock'
+                    """,Integer.class);
+                if(blocked!=2)Thread.sleep(20);
+            }while(blocked!=2&&System.nanoTime()<waitDeadline);
+            assertEquals(2,blocked,"both direct registry DML transactions wait on worker SHARE locks");
+
+            releaseWorker.countDown();
+            assertEquals(1,updateFuture.get(20,TimeUnit.SECONDS));
+            assertEquals(1,insertFuture.get(20,TimeUnit.SECONDS));
+            awaitReceiptCompletion("SOURCE_APPLIED_PHYSICAL_QUEUED",30);
+            awaitWorkerIdle(worker,5);
+            long jobId=jdbc.queryForObject("""
+                select job_id from integrated_design_autocompletion_receipt
+                 where process_code='PROC'
+                """,Long.class);
+            assertEquals(baselineProcess,jdbc.queryForObject("""
+                select dependency_fingerprint from integrated_design_autocompletion_receipt
+                 where process_code='PROC' and job_id=?
+                """,String.class,jobId));
+            assertNotEquals(baselineProcess,jdbc.queryForObject(
+                "select framework_composite_dependency_fingerprint('PROC')",String.class));
+            assertNotEquals(baselineGlobal,currentCompositeSourceAuthorityHash());
+            assertEquals(1,jdbc.update("""
+                update ui_component_registry set active_yn='Y',updated_at=clock_timestamp()
+                 where component_id='JSON_FORM' and active_yn='N'
+                """));
+            assertEquals(jdbc.queryForObject(
+                "select framework_process_generation_input('PROC')->>'processInputHash'",
+                String.class),jdbc.queryForObject("""
+                select framework_try_jsonb(specification_json)->>'sourceHash'
+                  from framework_development_job where job_id=?
+                """,String.class,jobId));
+            assertEquals(baselineProcess,jdbc.queryForObject(
+                "select framework_composite_dependency_fingerprint('PROC')",String.class));
+            assertEquals(baselineGlobal,currentCompositeSourceAuthorityHash(),
+                "unreferenced concurrent insert does not change H0");
+        }finally{
+            releaseWorker.countDown();
+            if(updateFuture!=null&&!updateFuture.isDone())updateFuture.cancel(true);
+            if(insertFuture!=null&&!insertFuture.isDone())insertFuture.cancel(true);
+            executor.shutdownNow();worker.close();resetAutocompletionGate();
+        }
+    }
+
+    @Test
+    void claimedSourceCanaryInvalidatesBeforeCompileOnProcessVersionH0Drift() throws Exception {
+        seedCompositeThreeScreens();
+        prepareCompositeReadinessBenchmarkDocuments();
+        String originalVersion=jdbc.queryForObject("""
+            select process_version from framework_process_definition where process_code='PROC'
+            """,String.class);
+        assertClaimedCanaryH0DriftInvalidatesWithoutCompilerWrites("PROCESS_VERSION",
+            ()->assertEquals(1,jdbc.update("""
+                update framework_process_definition set process_version='1.0.1'
+                 where process_code='PROC'
+                """)),
+            ()->assertEquals(1,jdbc.update("""
+                update framework_process_definition set process_version=?
+                 where process_code='PROC'
+                """,originalVersion)));
+    }
+
+    @Test
+    void claimedSourceCanaryInvalidatesBeforeCompileOnReferencedRegistryH0Drift()
+            throws Exception {
+        seedCompositeThreeScreens();
+        prepareCompositeReadinessBenchmarkDocuments();
+        assertClaimedCanaryH0DriftInvalidatesWithoutCompilerWrites("JSON_FORM_REGISTRY",
+            ()->assertEquals(1,jdbc.update("""
+                update ui_component_registry set active_yn='N'
+                 where component_id='JSON_FORM' and active_yn='Y'
+                """)),
+            ()->assertEquals(1,jdbc.update("""
+                update ui_component_registry set active_yn='Y'
+                 where component_id='JSON_FORM' and active_yn='N'
+                """)));
+    }
+
+    @Test
+    void compositeH0TracksOnlyReferencedRegistrySemanticAndActiveState(){
+        seedCompositeThreeScreens();
+        prepareMachineOwnedCompositeReadinessDocuments();
+        assertEquals(1,jdbc.update("""
+            insert into integrated_design_notification_template(
+              template_code,title_template,message_template,active_yn,updated_by)
+            values('PROC_NOTICE','Process notice','Process notice body','Y','POSTGRES_TEST')
+            """));
+        assertEquals(1,jdbc.update("""
+            update integrated_design_document
+               set content=jsonb_set(content::jsonb,'{payload,events}',
+                 '[{"eventCode":"PROC_NOTICE","templateCode":"PROC_NOTICE"}]'::jsonb)::text
+             where document_id=(select document_id from integrated_design_document
+               where process_code='PROC' and document_type='NOTIFICATION'
+               order by document_id limit 1)
+            """));
+        String baseline=jdbc.queryForObject(
+            "select framework_composite_dependency_fingerprint('PROC')",String.class);
+        assertEquals(1,jdbc.update("""
+            update comtnthemedefinition
+               set updt_pnttm=clock_timestamp(),updt_user_id='AUDIT_ONLY'
+             where theme_id='KRDS_GOV_DEFAULT'
+            """));
+        assertEquals(1,jdbc.update("""
+            update ui_section_registry set updated_at=clock_timestamp()
+             where section_id='MAIN'
+            """));
+        assertEquals(1,jdbc.update("""
+            update ui_component_registry set updated_at=clock_timestamp()
+             where component_id='JSON_FORM'
+            """));
+        assertEquals(1,jdbc.update("""
+            update integrated_design_notification_template
+               set updated_at=clock_timestamp(),updated_by='AUDIT_ONLY'
+             where template_code='PROC_NOTICE'
+            """));
+        assertEquals(baseline,jdbc.queryForObject(
+            "select framework_composite_dependency_fingerprint('PROC')",String.class),
+            "referenced registry audit metadata is outside H0 semantics");
+        assertEquals(1,jdbc.update("""
+            insert into comtnthemedefinition(theme_id,theme_nm,use_at,is_active)
+            values('UNUSED_THEME','Unused theme','Y','Y')
+            """));
+        assertEquals(1,jdbc.update("""
+            insert into ui_section_registry(section_id,section_name,section_type,
+              layout_contract,responsive_contract,accessibility_contract,active_yn)
+            values('UNUSED_SECTION','Unused section','FORM','{}','{}','{}','Y')
+            """));
+        assertEquals(1,jdbc.update("""
+            insert into ui_component_registry(
+              component_id,component_name,component_type,owner_domain,active_yn)
+            values('UNUSED_COMPONENT','Unused component','BUTTON','UNRELATED','Y')
+            """));
+        assertEquals(1,jdbc.update("""
+            insert into integrated_design_notification_template(
+              template_code,title_template,message_template,active_yn,updated_by)
+            values('UNUSED_NOTICE','Unused notice','Unused body','Y','POSTGRES_TEST')
+            """));
+        assertEquals(baseline,jdbc.queryForObject(
+            "select framework_composite_dependency_fingerprint('PROC')",String.class));
+        assertEquals(1,jdbc.update("""
+            update comtnthemedefinition
+               set theme_nm='Unused theme changed',is_active='N'
+             where theme_id='UNUSED_THEME'
+            """));
+        assertEquals(1,jdbc.update("""
+            update ui_section_registry
+               set section_name='Unused section changed',active_yn='N'
+             where section_id='UNUSED_SECTION'
+            """));
+        assertEquals(1,jdbc.update("""
+            update ui_component_registry
+               set component_name='Unused component changed',active_yn='N'
+             where component_id='UNUSED_COMPONENT'
+            """));
+        assertEquals(1,jdbc.update("""
+            update integrated_design_notification_template
+               set title_template='Unused notice changed',active_yn='N'
+             where template_code='UNUSED_NOTICE'
+            """));
+        assertEquals(baseline,jdbc.queryForObject(
+            "select framework_composite_dependency_fingerprint('PROC')",String.class));
+
+        assertEquals(1,jdbc.update("""
+            update comtnthemedefinition set theme_nm='KRDS semantic revision'
+             where theme_id='KRDS_GOV_DEFAULT'
+            """));
+        assertNotEquals(baseline,jdbc.queryForObject(
+            "select framework_composite_dependency_fingerprint('PROC')",String.class));
+        assertEquals(1,jdbc.update("""
+            update comtnthemedefinition set theme_nm='KRDS'
+             where theme_id='KRDS_GOV_DEFAULT'
+            """));
+        assertEquals(baseline,jdbc.queryForObject(
+            "select framework_composite_dependency_fingerprint('PROC')",String.class));
+        assertEquals(1,jdbc.update("""
+            update comtnthemedefinition set is_active='N'
+             where theme_id='KRDS_GOV_DEFAULT'
+            """));
+        assertNotEquals(baseline,jdbc.queryForObject(
+            "select framework_composite_dependency_fingerprint('PROC')",String.class));
+        assertEquals(1,jdbc.update("""
+            update comtnthemedefinition set is_active='Y'
+             where theme_id='KRDS_GOV_DEFAULT'
+            """));
+        assertEquals(baseline,jdbc.queryForObject(
+            "select framework_composite_dependency_fingerprint('PROC')",String.class));
+
+        assertEquals(1,jdbc.update("""
+            update ui_section_registry set section_name='Main semantic revision'
+             where section_id='MAIN'
+            """));
+        assertNotEquals(baseline,jdbc.queryForObject(
+            "select framework_composite_dependency_fingerprint('PROC')",String.class));
+        assertEquals(1,jdbc.update("""
+            update ui_section_registry set section_name='Main' where section_id='MAIN'
+            """));
+        assertEquals(baseline,jdbc.queryForObject(
+            "select framework_composite_dependency_fingerprint('PROC')",String.class));
+        assertEquals(1,jdbc.update("""
+            update ui_section_registry set active_yn='N' where section_id='MAIN'
+            """));
+        assertNotEquals(baseline,jdbc.queryForObject(
+            "select framework_composite_dependency_fingerprint('PROC')",String.class));
+        assertEquals(1,jdbc.update("""
+            update ui_section_registry set active_yn='Y' where section_id='MAIN'
+            """));
+        assertEquals(baseline,jdbc.queryForObject(
+            "select framework_composite_dependency_fingerprint('PROC')",String.class));
+
+        assertEquals(1,jdbc.update("""
+            update ui_component_registry set component_name='JSON Form semantic revision'
+             where component_id='JSON_FORM'
+            """));
+        assertNotEquals(baseline,jdbc.queryForObject(
+            "select framework_composite_dependency_fingerprint('PROC')",String.class));
+        assertEquals(1,jdbc.update("""
+            update ui_component_registry set component_name='JSON Form'
+             where component_id='JSON_FORM'
+            """));
+        assertEquals(baseline,jdbc.queryForObject(
+            "select framework_composite_dependency_fingerprint('PROC')",String.class));
+        assertEquals(1,jdbc.update("""
+            update ui_component_registry set active_yn='N' where component_id='JSON_FORM'
+            """));
+        assertNotEquals(baseline,jdbc.queryForObject(
+            "select framework_composite_dependency_fingerprint('PROC')",String.class));
+        assertEquals(1,jdbc.update("""
+            update ui_component_registry set active_yn='Y' where component_id='JSON_FORM'
+            """));
+        assertEquals(baseline,jdbc.queryForObject(
+            "select framework_composite_dependency_fingerprint('PROC')",String.class));
+
+        assertEquals(1,jdbc.update("""
+            update integrated_design_notification_template
+               set title_template='Process notice semantic revision'
+             where template_code='PROC_NOTICE'
+            """));
+        assertNotEquals(baseline,jdbc.queryForObject(
+            "select framework_composite_dependency_fingerprint('PROC')",String.class));
+        assertEquals(1,jdbc.update("""
+            update integrated_design_notification_template
+               set title_template='Process notice'
+             where template_code='PROC_NOTICE'
+            """));
+        assertEquals(baseline,jdbc.queryForObject(
+            "select framework_composite_dependency_fingerprint('PROC')",String.class));
+        assertEquals(1,jdbc.update("""
+            update integrated_design_notification_template set active_yn='N'
+             where template_code='PROC_NOTICE'
+            """));
+        assertNotEquals(baseline,jdbc.queryForObject(
+            "select framework_composite_dependency_fingerprint('PROC')",String.class));
+        assertEquals(1,jdbc.update("""
+            update integrated_design_notification_template set active_yn='Y'
+             where template_code='PROC_NOTICE'
+            """));
+        assertEquals(baseline,jdbc.queryForObject(
+            "select framework_composite_dependency_fingerprint('PROC')",String.class));
+    }
+
+    @Test
+    void physicalOnlyCanaryRearmRejectsSameCommitPartialTerminalAndH0Drift(){
+        seedCompositeThreeScreens();
+        try{
+            PhysicalRearmCampaign sameCommit=installPhysicalRearmCampaign(
+                "a".repeat(40),"a".repeat(40),"PHYSICAL_GENERATED_VERIFIED");
+            assertEquals(0,rearmPhysicalCampaign(sameCommit).size(),"same runtime commit");
+            assertEquals("PHYSICAL_GENERATED_VERIFIED",jdbc.queryForObject("""
+                select completion_status from integrated_design_autocompletion_receipt
+                 where process_code='PROC'
+                """,String.class));
+            clearPhysicalRearmCampaign(sameCommit);
+
+            PhysicalRearmCampaign partial=installPhysicalRearmCampaign(
+                "a".repeat(40),"c".repeat(40),"BLOCKED");
+            assertEquals(0,rearmPhysicalCampaign(partial).size(),"partial terminal campaign");
+            assertEquals("BLOCKED",jdbc.queryForObject("""
+                select completion_status from integrated_design_autocompletion_receipt
+                 where process_code='PROC'
+                """,String.class));
+            clearPhysicalRearmCampaign(partial);
+
+            PhysicalRearmCampaign drifted=installPhysicalRearmCampaign(
+                "a".repeat(40),"c".repeat(40),"PHYSICAL_GENERATED_VERIFIED");
+            jdbc.update("update framework_process_definition set process_version='1.0.1' "+
+                "where process_code='PROC'");
+            String changed=currentCompositeSourceAuthorityHash();
+            assertNotEquals(drifted.sourceHash(),changed);
+            CompositeAutocompletionReadinessService readiness=readinessFor(drifted);
+            try{
+                assertEquals(0,transaction.execute(status->readiness.rearmPhysicalCanary(
+                    UUID.randomUUID().toString(),drifted.newCommit(),changed,1)).size(),"H0 drift");
+            }finally{readiness.close();}
+            assertEquals("PHYSICAL_GENERATED_VERIFIED",jdbc.queryForObject("""
+                select completion_status from integrated_design_autocompletion_receipt
+                 where process_code='PROC'
+                """,String.class));
+            clearPhysicalRearmCampaign(drifted);
+        }finally{resetAutocompletionGate();}
+    }
+
+    @Test
+    void physicalOnlyCanaryActualPostgresRetriesExactlyThreeTimesWithOneJob(){
+        seedCompositeThreeScreens();
+        PhysicalRearmCampaign campaign=installPhysicalRearmCampaign(
+            "a".repeat(40),"c".repeat(40),"PHYSICAL_GENERATED_VERIFIED");
+        CompositeAutocompletionReadinessService readiness=readinessFor(campaign);
+        String jobXmin=jdbc.queryForObject(
+            "select xmin::text from framework_development_job where job_id=?",
+            String.class,campaign.jobId());
+        try{
+            for(int expectedAttempt=1;expectedAttempt<=3;expectedAttempt++){
+                int attempt=transaction.execute(status->{
+                    readiness.acquireGlobalDispatchLock(910_881_003L);
+                    return readiness.nextCanaryAttempt(
+                        campaign.newCommit(),campaign.sourceHash());
+                });
+                assertEquals(expectedAttempt,attempt);
+                List<Map<String,Object>> rearmed=transaction.execute(status->{
+                    readiness.acquireGlobalDispatchLock(910_881_003L);
+                    return readiness.rearmPhysicalCanary(UUID.randomUUID().toString(),
+                        campaign.newCommit(),campaign.sourceHash(),attempt);
+                });
+                assertEquals(1,rearmed.size());
+                assertEquals(campaign.jobId(),((Number)rearmed.get(0).get("jobId")).longValue());
+                assertEquals("0",jdbc.queryForObject("""
+                    select receipt_json#>>'{canary,sourceWriteCount}'
+                      from integrated_design_autocompletion_receipt where process_code='PROC'
+                    """,String.class));
+                if(expectedAttempt<3)jdbc.update("""
+                    update integrated_design_autocompletion_receipt
+                       set started_at=current_timestamp-interval '1 day'
+                     where process_code='PROC'
+                    """);
+            }
+            jdbc.update("""
+                update integrated_design_autocompletion_receipt
+                   set started_at=current_timestamp-interval '1 day'
+                 where process_code='PROC'
+                """);
+            assertThrows(IllegalStateException.class,()->transaction.execute(status->{
+                readiness.acquireGlobalDispatchLock(910_881_003L);
+                return readiness.nextCanaryAttempt(
+                    campaign.newCommit(),campaign.sourceHash());
+            }));
+            assertEquals("3",jdbc.queryForObject("""
+                select receipt_json#>>'{canary,attemptNumber}'
+                  from integrated_design_autocompletion_receipt where process_code='PROC'
+                """,String.class));
+            assertEquals(campaign.jobId(),jdbc.queryForObject("""
+                select job_id from integrated_design_autocompletion_receipt
+                 where process_code='PROC'
+                """,Long.class));
+            assertEquals(7,jdbc.queryForObject("""
+                select attempt_count from integrated_design_autocompletion_receipt
+                 where process_code='PROC'
+                """,Integer.class));
+            assertEquals(jobXmin,jdbc.queryForObject(
+                "select xmin::text from framework_development_job where job_id=?",
+                String.class,campaign.jobId()));
+        }finally{
+            readiness.close();clearPhysicalRearmCampaign(campaign);
+        }
+    }
+
+    @Test
+    void twoPostgresTransactionsRearmExactlyOnePhysicalCanary() throws Exception {
+        seedCompositeThreeScreens();
+        PhysicalRearmCampaign campaign=installPhysicalRearmCampaign(
+            "a".repeat(40),"c".repeat(40),"PHYSICAL_GENERATED_VERIFIED");
+        JdbcTemplate leftJdbc=new JdbcTemplate(dataSource);
+        JdbcTemplate rightJdbc=new JdbcTemplate(dataSource);
+        DataSourceTransactionManager leftManager=new DataSourceTransactionManager(dataSource);
+        DataSourceTransactionManager rightManager=new DataSourceTransactionManager(dataSource);
+        TransactionTemplate leftTransaction=new TransactionTemplate(leftManager);
+        TransactionTemplate rightTransaction=new TransactionTemplate(rightManager);
+        CompositeAutocompletionReadinessService left=
+            new CompositeAutocompletionReadinessService(leftJdbc,service,leftManager,
+                8,8,2,campaign.newCommit(),"","");
+        CompositeAutocompletionReadinessService right=
+            new CompositeAutocompletionReadinessService(rightJdbc,service,rightManager,
+                8,8,2,campaign.newCommit(),"","");
+        CountDownLatch ready=new CountDownLatch(2),start=new CountDownLatch(1);
+        var callers=Executors.newFixedThreadPool(2);
+        try{
+            var first=callers.submit(()->{
+                ready.countDown();start.await(5,TimeUnit.SECONDS);
+                try{return leftTransaction.execute(status->{
+                    left.acquireGlobalDispatchLock(0x434f4d504155544fL);
+                    int attempt=left.nextCanaryAttempt(
+                        campaign.newCommit(),campaign.sourceHash());
+                    return left.rearmPhysicalCanary(UUID.randomUUID().toString(),
+                        campaign.newCommit(),campaign.sourceHash(),attempt).size();
+                });}catch(IllegalStateException duplicate){return 0;}
+            });
+            var second=callers.submit(()->{
+                ready.countDown();start.await(5,TimeUnit.SECONDS);
+                try{return rightTransaction.execute(status->{
+                    right.acquireGlobalDispatchLock(0x434f4d504155544fL);
+                    int attempt=right.nextCanaryAttempt(
+                        campaign.newCommit(),campaign.sourceHash());
+                    return right.rearmPhysicalCanary(UUID.randomUUID().toString(),
+                        campaign.newCommit(),campaign.sourceHash(),attempt).size();
+                });}catch(IllegalStateException duplicate){return 0;}
+            });
+            assertTrue(ready.await(5,TimeUnit.SECONDS));start.countDown();
+            assertEquals(1,first.get(20,TimeUnit.SECONDS)+second.get(20,TimeUnit.SECONDS));
+            assertEquals(1,jdbc.queryForObject("""
+                select count(*) from integrated_design_autocompletion_receipt
+                 where receipt_json#>>'{canary,status}'='ACTIVE'
+                   and receipt_json#>>'{canary,runtimeCommit}'=?
+                """,Integer.class,campaign.newCommit()));
+            assertEquals("0",jdbc.queryForObject("""
+                select receipt_json->>'sourceWriteCount'
+                  from integrated_design_autocompletion_receipt where process_code='PROC'
+                """,String.class));
+            assertEquals(campaign.jobId(),jdbc.queryForObject("""
+                select job_id from integrated_design_autocompletion_receipt
+                 where process_code='PROC'
+                """,Long.class));
+        }finally{
+            callers.shutdownNow();left.close();right.close();
+            clearPhysicalRearmCampaign(campaign);
+        }
+    }
+
+    private List<Map<String,Object>> rearmPhysicalCampaign(PhysicalRearmCampaign campaign){
+        CompositeAutocompletionReadinessService readiness=readinessFor(campaign);
+        try{return transaction.execute(status->{
+            readiness.acquireGlobalDispatchLock(910_881_003L);
+            return readiness.rearmPhysicalCanary(UUID.randomUUID().toString(),
+                campaign.newCommit(),campaign.sourceHash(),1);
+        });}finally{readiness.close();}
+    }
+
+    private void awaitReceiptCompletion(String expected,int seconds){
+        long deadline=System.nanoTime()+TimeUnit.SECONDS.toNanos(seconds);
+        String completion;
+        do{
+            completion=jdbc.queryForObject("""
+                select completion_status from integrated_design_autocompletion_receipt
+                 where process_code='PROC'
+                """,String.class);
+            if(!expected.equals(completion))try{Thread.sleep(25);}
+            catch(InterruptedException error){
+                Thread.currentThread().interrupt();throw new IllegalStateException(error);
+            }
+        }while(!expected.equals(completion)&&System.nanoTime()<deadline);
+        assertEquals(expected,completion);
+    }
+
+    private void awaitWorkerIdle(CompositeDesignOperationalWorker worker,int seconds){
+        long deadline=System.nanoTime()+TimeUnit.SECONDS.toNanos(seconds);
+        int active;
+        do{
+            active=number(worker.inspect(),"activeWorkerCount");
+            if(active!=0)try{Thread.sleep(25);}
+            catch(InterruptedException error){
+                Thread.currentThread().interrupt();throw new IllegalStateException(error);
+            }
+        }while(active!=0&&System.nanoTime()<deadline);
+        assertEquals(0,active);
+    }
+
+    private long insertVerifiedCanaryBindingJob(String process){
+        return jdbc.queryForObject("""
+            insert into framework_development_job(
+              process_code,step_code,job_type,job_name,target_path,specification_json,
+              job_status,approval_status,execution_mode,job_group_code,required,
+              progress_weight,max_attempts,quality_status,created_by,result_json,
+              completed_at)
+            values(?,'STEP','FULL_STACK_GENERATION','Verified dispatch binding fixture',
+              '/tmp/verified-dispatch-binding',jsonb_build_object('processInputHash',
+                framework_composite_dependency_fingerprint(?))::text,
+              'VERIFIED','APPROVED','AUTOMATED',
+              ?||'_CANONICAL_PUBLICATION',true,1,3,'VERIFIED','POSTGRES_TEST','{}',
+              clock_timestamp())
+            returning job_id
+            """,Long.class,process,process,process);
+    }
+
+    private void activateLegacyGateForPhysicalRetry(String commit,String sourceHash,
+            long jobId,String candidate){
+        resetAutocompletionGate();
+        jdbc.update("""
+            insert into framework_postdeploy_release_attempt(
+              candidate_id,source_commit,attempt_status,terminal_reason,terminal_at)
+            values(?,?,'PROMOTED','PROMOTION_COMMITTED',clock_timestamp())
+            """,candidate,commit);
+        assertEquals(1,jdbc.update("""
+            update integrated_design_autocompletion_gate
+               set approval_status='ACTIVE',runtime_commit=?,postdeploy_candidate_id=?,
+                   source_input_authority_hash=?,final_authority_hash=repeat('f',64),
+                   canary_process_code='PROC',canary_job_id=?,revision=revision+1,
+                   approved_by='POSTGRES_TEST',
+                   approved_at=clock_timestamp()-interval '1 second',
+                   activated_by='POSTGRES_TEST',activated_at=clock_timestamp(),
+                   revoked_by=null,revoked_at=null,revoke_reason=null,
+                   updated_at=clock_timestamp()
+             where gate_key='GLOBAL'
+            """,commit,candidate,sourceHash,jobId));
+    }
+
+    private long insertMismatchedVerifiedDispatch(long correctJob,long wrongJob,
+            String process,String variant,String commit,String oldCommit,
+            String runtimeIdentity){
+        long dispatchJob="JOB".equals(variant)?wrongJob:correctJob;
+        String dispatchProcess="PROCESS".equals(variant)?"WRONG_PROCESS":process;
+        String dispatchCommit="COMMIT".equals(variant)?oldCommit:commit;
+        String identity="IDENTITY".equals(variant)?"e".repeat(64):runtimeIdentity;
+        String status="STATUS".equals(variant)?"SUPERSEDED":"COMPLETED";
+        int attempt="ATTEMPT".equals(variant)?2:1;
+        String revision="REVISION".equals(variant)?"e".repeat(64):
+            jdbc.queryForObject("select framework_composite_authority_revision_set_hash(?)",
+                String.class,dispatchJob);
+        String artifact="ARTIFACT".equals(variant)?"e".repeat(64):"d".repeat(64);
+        String source="SOURCE".equals(variant)?"e".repeat(64):
+            jdbc.queryForObject("select framework_composite_dependency_fingerprint(?)",
+                String.class,process);
+        jdbc.update("""
+            update framework_development_job
+               set result_json=jsonb_build_object('canonicalGeneration',jsonb_build_object(
+                 'compositeArtifactManifestHash',repeat('d',64)))::text
+             where job_id=?
+            """,dispatchJob);
+        return jdbc.queryForObject("""
+            insert into integrated_design_live_smoke_dispatch(
+              job_id,process_code,project_id,runtime_commit,runtime_identity_hash,
+              canary_attempt,authority_revision_set_hash,artifact_manifest_hash,
+              process_source_hash,expected_evidence_count,submitted_evidence_count,
+              status,attempt_count,completed_at)
+            values(?,?,'*',?,?,?,?,
+              ?,?,1,1,?,0,
+              clock_timestamp())
+            returning dispatch_id
+            """,Long.class,dispatchJob,dispatchProcess,dispatchCommit,identity,attempt,
+            revision,artifact,source,status);
+    }
+
+    private void assertClaimedCanaryH0DriftInvalidatesWithoutCompilerWrites(
+            String witness,Runnable drift,Runnable restore) throws Exception {
+        String commit="c".repeat(40);
+        assertEquals(1,jdbc.update("""
+            update framework_runtime_release_state
+               set source_commit=?,deployment_uid=?,deployment_generation=2,
+                   observed_generation=2,image_ref='carbonet-runtime:canary-race',
+                   health_status='UP',recorded_at=clock_timestamp()
+             where release_key='CARBONET_RUNTIME'
+            """,commit,"runtime-canary-race-"+UUID.randomUUID()));
+        String baselineProcessHash=jdbc.queryForObject(
+            "select framework_composite_dependency_fingerprint('PROC')",String.class);
+        String baselineGlobalHash=currentCompositeSourceAuthorityHash();
+        DataSourceTransactionManager manager=new DataSourceTransactionManager(dataSource);
+        CompositeAutocompletionReadinessService readiness=
+            new CompositeAutocompletionReadinessService(jdbc,service,manager,
+                8,8,2,commit,"","");
+        CompositeDesignOperationalWorker worker=new CompositeDesignOperationalWorker(
+            jdbc,new ObjectMapper(),service,readiness,manager,true,2,25,false,600,30);
+        JdbcTemplate lockJdbc=new JdbcTemplate(dataSource);
+        TransactionTemplate lockTransaction=
+            new TransactionTemplate(new DataSourceTransactionManager(dataSource));
+        CountDownLatch locksHeld=new CountDownLatch(1),releaseLocks=new CountDownLatch(1);
+        var executor=Executors.newSingleThreadExecutor();
+        var lockFuture=executor.submit(()->lockTransaction.executeWithoutResult(status->{
+            lockJdbc.queryForList("select pg_advisory_xact_lock(?)",0x434f4d50534c4f50L);
+            lockJdbc.queryForList("select pg_advisory_xact_lock(?)",0x434f4d50534c4f51L);
+            locksHeld.countDown();
+            try{
+                if(!releaseLocks.await(20,TimeUnit.SECONDS))
+                    throw new IllegalStateException("CANARY_SOURCE_SLOT_RELEASE_TIMEOUT");
+            }catch(InterruptedException error){
+                Thread.currentThread().interrupt();
+                throw new IllegalStateException(error);
+            }
+        }));
+        try{
+            assertTrue(locksHeld.await(5,TimeUnit.SECONDS),witness+" source slots held");
+            CompositeAutocompletionReadinessService.Snapshot initial=
+                readiness.snapshot(true,0);
+            assertEquals(Set.of("PROC"),initial.readyProcesses().keySet(),
+                witness+" compiler-ready candidates: "+initial.report());
+            Map<String,Object> first=worker.dispatchCanary();
+            assertEquals(1,number(first,"claimedCount"),witness+" first claim");
+            assertEquals(1,number(first,"activeWorkerCount"),witness+" worker paused");
+            assertEquals(1,number(first,"canaryAttempt"),witness+" first attempt");
+            Map<String,Object> claimed=jdbc.queryForMap("""
+                select completion_status as "completionStatus",attempt_count as "attemptCount",
+                       lease_token::text as "leaseToken",
+                       receipt_json#>>'{canary,canaryId}' as "canaryId",
+                       receipt_json#>>'{canary,attemptNumber}' as "canaryAttempt",
+                       receipt_json#>>'{canary,requestedSourceAuthorityHash}' as "globalHash",
+                       receipt_json#>>'{canary,requestedSourceDependencyHash}' as "processHash"
+                  from integrated_design_autocompletion_receipt where process_code='PROC'
+                """);
+            assertEquals("RUNNING",claimed.get("completionStatus"));
+            assertNotEquals(null,claimed.get("leaseToken"));
+            assertEquals("1",claimed.get("canaryAttempt"));
+            assertEquals(baselineGlobalHash,claimed.get("globalHash"));
+            assertEquals(baselineProcessHash,claimed.get("processHash"));
+
+            transaction.executeWithoutResult(status->drift.run());
+            String driftedHash=jdbc.queryForObject(
+                "select framework_composite_dependency_fingerprint('PROC')",String.class);
+            assertNotEquals(baselineProcessHash,driftedHash,witness+" changes H0");
+            Map<String,Object> sourceAfterDrift=sourceWitnessXmins();
+            Map<String,Object> publicationAfterDrift=compositePublicationXmins();
+            int jobsAfterDrift=count("framework_development_job");
+            int eventsAfterDrift=count("framework_development_job_event");
+            int documentsAfterDrift=count("integrated_design_document");
+            int versionsAfterDrift=count("integrated_design_document_version");
+            int artifactsAfterDrift=count("framework_process_artifact");
+
+            releaseLocks.countDown();
+            lockFuture.get(5,TimeUnit.SECONDS);
+            long invalidationDeadline=System.nanoTime()+TimeUnit.SECONDS.toNanos(10);
+            String completion;
+            do{
+                completion=jdbc.queryForObject("""
+                    select completion_status from integrated_design_autocompletion_receipt
+                     where process_code='PROC'
+                    """,String.class);
+                if(!"PENDING".equals(completion))Thread.sleep(20);
+            }while(!"PENDING".equals(completion)&&System.nanoTime()<invalidationDeadline);
+            assertEquals("PENDING",completion,witness+" requeued before compiler");
+            Map<String,Object> invalidated=jdbc.queryForMap("""
+                select completion_status as "completionStatus",job_id as "jobId",
+                       lease_token::text as "leaseToken",lease_until as "leaseUntil",
+                       receipt_json->>'generationStatus' as "generationStatus",
+                       receipt_json->>'sourceCommitted' as "sourceCommitted",
+                       receipt_json->>'jobCount' as "jobCount",
+                       receipt_json#>>'{canary,canaryId}' as "canaryId",
+                       receipt_json#>>'{canary,status}' as "canaryStatus",
+                       receipt_json#>>'{canary,attemptNumber}' as "canaryAttempt",
+                       receipt_json#>>'{canary,failureCode}' as "failureCode"
+                  from integrated_design_autocompletion_receipt where process_code='PROC'
+                """);
+            assertNull(invalidated.get("jobId"));
+            assertNull(invalidated.get("leaseToken"));
+            assertNull(invalidated.get("leaseUntil"));
+            assertEquals("CANARY_SOURCE_BINDING_CHANGED_REQUEUE",
+                invalidated.get("generationStatus"));
+            assertEquals("false",invalidated.get("sourceCommitted"));
+            assertEquals("0",invalidated.get("jobCount"));
+            assertEquals(claimed.get("canaryId"),invalidated.get("canaryId"));
+            assertEquals("INVALIDATED",invalidated.get("canaryStatus"));
+            assertEquals("1",invalidated.get("canaryAttempt"));
+            assertEquals("SOURCE_OR_RUNTIME_BINDING_CHANGED",invalidated.get("failureCode"));
+            assertEquals(sourceAfterDrift,sourceWitnessXmins(),witness+" source xmin write zero");
+            assertEquals(publicationAfterDrift,compositePublicationXmins(),
+                witness+" compiler publication xmin write zero");
+            assertEquals(jobsAfterDrift,count("framework_development_job"));
+            assertEquals(eventsAfterDrift,count("framework_development_job_event"));
+            assertEquals(documentsAfterDrift,count("integrated_design_document"));
+            assertEquals(versionsAfterDrift,count("integrated_design_document_version"));
+            assertEquals(artifactsAfterDrift,count("framework_process_artifact"));
+
+            long idleDeadline=System.nanoTime()+TimeUnit.SECONDS.toNanos(5);
+            while(number(worker.inspect(),"activeWorkerCount")!=0
+                    &&System.nanoTime()<idleDeadline)Thread.sleep(20);
+            assertEquals(0,number(worker.inspect(),"activeWorkerCount"));
+            transaction.executeWithoutResult(status->restore.run());
+            assertEquals(baselineProcessHash,jdbc.queryForObject(
+                "select framework_composite_dependency_fingerprint('PROC')",String.class));
+            assertEquals(baselineGlobalHash,currentCompositeSourceAuthorityHash());
+
+            Map<String,Object> retried=worker.dispatchCanary();
+            assertEquals(1,number(retried,"claimedCount"),witness+" retry claim");
+            assertEquals(2,number(retried,"canaryAttempt"),witness+" retry attempt");
+            long compileDeadline=System.nanoTime()+TimeUnit.SECONDS.toNanos(30);
+            do{
+                completion=jdbc.queryForObject("""
+                    select completion_status from integrated_design_autocompletion_receipt
+                     where process_code='PROC'
+                    """,String.class);
+                if(!"SOURCE_APPLIED_PHYSICAL_QUEUED".equals(completion))Thread.sleep(25);
+            }while(!"SOURCE_APPLIED_PHYSICAL_QUEUED".equals(completion)
+                &&System.nanoTime()<compileDeadline);
+            assertEquals("SOURCE_APPLIED_PHYSICAL_QUEUED",completion,
+                witness+" restored H0 compiles on next attempt");
+            Map<String,Object> compiled=jdbc.queryForMap("""
+                select job_id as "jobId",lease_token::text as "leaseToken",
+                       lease_until as "leaseUntil",
+                       receipt_json#>>'{canary,status}' as "canaryStatus",
+                       receipt_json#>>'{canary,attemptNumber}' as "canaryAttempt"
+                  from integrated_design_autocompletion_receipt where process_code='PROC'
+                """);
+            assertNotEquals(null,compiled.get("jobId"));
+            assertNull(compiled.get("leaseToken"));
+            assertNull(compiled.get("leaseUntil"));
+            assertEquals("ACTIVE",compiled.get("canaryStatus"));
+            assertEquals("2",compiled.get("canaryAttempt"));
+            assertEquals(jobsAfterDrift+1,count("framework_development_job"));
+        }finally{
+            releaseLocks.countDown();
+            if(!lockFuture.isDone())lockFuture.cancel(true);
+            executor.shutdownNow();
+            worker.close();
+        }
+    }
+
+    private Map<String,Object> sourceWitnessXmins(){
+        return jdbc.queryForMap("""
+            select (select xmin::text from framework_process_definition
+                     where process_code='PROC') as process,
+                   (select xmin::text from ui_component_registry
+                     where component_id='JSON_FORM') as component,
+                   (select xmin::text from framework_step_execution_spec
+                     where process_code='PROC' and step_code='STEP') as execution_spec
+            """);
+    }
+
+    private CompositeAutocompletionReadinessService readinessFor(
+            PhysicalRearmCampaign campaign){
+        return new CompositeAutocompletionReadinessService(jdbc,service,
+            new DataSourceTransactionManager(dataSource),8,8,2,campaign.newCommit(),"","");
+    }
+
+    private PhysicalRearmCampaign installPhysicalRearmCampaign(
+            String oldCommit,String newCommit,String receiptStatus){
+        resetAutocompletionGate();
+        String sourceHash=currentCompositeSourceAuthorityHash();
+        String processHash=jdbc.queryForObject(
+            "select framework_composite_dependency_fingerprint('PROC')",String.class);
+        long jobId=jdbc.queryForObject("""
+            insert into framework_development_job(
+              process_code,step_code,job_type,job_name,target_path,specification_json,
+              job_status,approval_status,execution_mode,job_group_code,required,
+              progress_weight,max_attempts,quality_status,created_by,result_json)
+            values('PROC','STEP','FULL_STACK_GENERATION','Physical revalidation fixture',
+              '/tmp/physical-revalidation','{}','VERIFIED','APPROVED','AUTOMATED',
+              'PROC_CANONICAL_PUBLICATION',true,1,3,'VERIFIED','POSTGRES_TEST','{}')
+            returning job_id
+            """,Long.class);
+        String candidate="postdeploy:physical:"+
+            UUID.randomUUID().toString().replace("-","");
+        jdbc.update("""
+            insert into framework_postdeploy_release_attempt(
+              candidate_id,source_commit,attempt_status,terminal_reason,terminal_at)
+            values(?,?,'PROMOTED','PROMOTION_COMMITTED',clock_timestamp())
+            """,candidate,oldCommit);
+        jdbc.update("""
+            update framework_runtime_release_state
+               set source_commit=?,deployment_generation=deployment_generation+1,
+                   observed_generation=observed_generation+1,
+                   image_ref='carbonet-runtime:'||?,image_id='sha256:'||repeat('c',64),
+                   health_status='UP',recorded_at=clock_timestamp()
+             where release_key='CARBONET_RUNTIME'
+            """,newCommit,newCommit.substring(0,12));
+        jdbc.update("""
+            insert into integrated_design_autocompletion_receipt(
+              process_code,completion_status,attempt_count,job_id,receipt_json,
+              dependency_fingerprint,started_at,completed_at,duration_ms)
+            values('PROC',?,7,?,jsonb_build_object(
+              'sourceInputDependencyHash',?,'generationStatus','PHYSICAL_GENERATED_VERIFIED',
+              'physicalVerified',true,'sourceWriteCount',1,
+              'canary',jsonb_build_object('canaryId',?,'status','VERIFIED',
+                'attemptNumber',1,'runtimeCommit',?,
+                'requestedSourceAuthorityHash',?,
+                'requestedSourceDependencyHash',?,
+                'verifiedFinalAuthorityHash',repeat('f',64),
+                'physicalVerifiedAt',clock_timestamp())),?,
+              current_timestamp-interval '1 minute',current_timestamp,60000)
+            """,receiptStatus,jobId,processHash,UUID.randomUUID().toString(),oldCommit,
+            sourceHash,processHash,processHash);
+        jdbc.update("""
+            update integrated_design_autocompletion_gate
+               set approval_status='ACTIVE',runtime_commit=?,postdeploy_candidate_id=?,
+                   source_input_authority_hash=?,final_authority_hash=repeat('f',64),
+                   canary_process_code='PROC',canary_job_id=?,revision=revision+1,
+                   approved_by='POSTGRES_TEST',approved_at=current_timestamp-interval '1 minute',
+                   activated_by='POSTGRES_TEST',activated_at=current_timestamp,
+                   revoked_by=null,revoked_at=null,revoke_reason=null,updated_at=current_timestamp
+             where gate_key='GLOBAL'
+            """,oldCommit,candidate,sourceHash,jobId);
+        return new PhysicalRearmCampaign(jobId,sourceHash,oldCommit,newCommit,candidate);
+    }
+
+    private PhysicalRearmCampaign installDispatchablePhysicalRearmCampaign(){
+        resetAutocompletionGate();
+        Map<String,Object> compiled=compileComposite(
+            Map.of("processCode","PROC","previewOnly",false,"scopeType","GLOBAL"));
+        long jobId=((Number)((Map<?,?>)((List<?>)compiled.get("receipts")).get(0))
+            .get("jobId")).longValue();
+        installExactCanonicalPhysicalEvidence(jobId);
+        String oldCommit="d".repeat(40),newCommit="c".repeat(40);
+        String sourceHash=currentCompositeSourceAuthorityHash();
+        String processHash=jdbc.queryForObject(
+            "select framework_composite_dependency_fingerprint('PROC')",String.class);
+        String candidate="postdeploy:physical-dispatch:"+
+            UUID.randomUUID().toString().replace("-","");
+        jdbc.update("""
+            insert into framework_postdeploy_release_attempt(
+              candidate_id,source_commit,attempt_status,terminal_reason,terminal_at)
+            values(?,?,'PROMOTED','PROMOTION_COMMITTED',clock_timestamp())
+            """,candidate,oldCommit);
+        jdbc.update("""
+            insert into integrated_design_autocompletion_receipt(
+              process_code,completion_status,attempt_count,job_id,receipt_json,
+              dependency_fingerprint,started_at,completed_at,duration_ms)
+            values('PROC','PHYSICAL_GENERATED_VERIFIED',7,?,jsonb_build_object(
+              'sourceInputDependencyHash',?,'generationStatus','PHYSICAL_GENERATED_VERIFIED',
+              'physicalVerified',true,'sourceWriteCount',1,
+              'canary',jsonb_build_object('canaryId',?,'status','VERIFIED',
+                'attemptNumber',1,'runtimeCommit',?,
+                'requestedSourceAuthorityHash',?,
+                'requestedSourceDependencyHash',?,
+                'verifiedFinalAuthorityHash',repeat('f',64),
+                'physicalVerifiedAt',clock_timestamp())),?,
+              current_timestamp-interval '1 minute',current_timestamp,60000)
+            """,jobId,processHash,UUID.randomUUID().toString(),oldCommit,
+            sourceHash,processHash,processHash);
+        jdbc.update("""
+            update integrated_design_autocompletion_gate
+               set approval_status='ACTIVE',runtime_commit=?,postdeploy_candidate_id=?,
+                   source_input_authority_hash=?,final_authority_hash=repeat('f',64),
+                   canary_process_code='PROC',canary_job_id=?,revision=revision+1,
+                   approved_by='POSTGRES_TEST',approved_at=current_timestamp-interval '1 minute',
+                   activated_by='POSTGRES_TEST',activated_at=current_timestamp,
+                   revoked_by=null,revoked_at=null,revoke_reason=null,updated_at=current_timestamp
+             where gate_key='GLOBAL'
+            """,oldCommit,candidate,sourceHash,jobId);
+        jdbc.update("""
+            update framework_runtime_release_state
+               set source_commit=?,deployment_uid=?,
+                   deployment_generation=deployment_generation+1,
+                   observed_generation=observed_generation+1,
+                   image_ref='carbonet-runtime:'||?,health_status='UP',
+                   recorded_at=clock_timestamp()
+             where release_key='CARBONET_RUNTIME'
+            """,newCommit,"runtime-i1-"+UUID.randomUUID(),newCommit.substring(0,12));
+        return new PhysicalRearmCampaign(jobId,sourceHash,oldCommit,newCommit,candidate);
+    }
+
+    private void stagePostdeployCandidate(String candidate,String commit){
+        jdbc.update("""
+            insert into framework_postdeploy_release_attempt(
+              candidate_id,source_commit,attempt_status,staged_at)
+            values(?,?,'STAGED',clock_timestamp())
+            """,candidate,commit);
+    }
+
+    private void promotePostdeployCandidate(String candidate,String commit,String runtimeIdentity){
+        long promotionId=jdbc.queryForObject(
+            "select coalesce(max(promotion_id),0)+1 from framework_postdeploy_evidence_promotion",
+            Long.class);
+        jdbc.update("""
+            insert into framework_postdeploy_evidence_promotion(
+              promotion_id,candidate_id,source_commit,runtime_identity_hash)
+            values(?,?,?,?)
+            """,promotionId,candidate,commit,runtimeIdentity);
+        assertEquals(1,jdbc.update("""
+            update framework_postdeploy_release_attempt
+               set attempt_status='PROMOTED',terminal_reason='PROMOTION_COMMITTED',
+                   runtime_identity_hash=?,promotion_id=?,terminal_at=clock_timestamp()
+             where candidate_id=? and source_commit=? and attempt_status='STAGED'
+            """,runtimeIdentity,promotionId,candidate,commit));
+    }
+
+    private void restorePhysicalRearmGate(PhysicalRearmCampaign campaign){
+        assertEquals(1,jdbc.update("""
+            update integrated_design_autocompletion_gate
+               set approval_status='ACTIVE',runtime_commit=?,postdeploy_candidate_id=?,
+                   source_input_authority_hash=?,final_authority_hash=repeat('f',64),
+                   canary_process_code='PROC',canary_job_id=?,revision=revision+1,
+                   approved_by='POSTGRES_TEST',approved_at=current_timestamp-interval '1 minute',
+                   activated_by='POSTGRES_TEST',activated_at=current_timestamp,
+                   revoked_by=null,revoked_at=null,revoke_reason=null,updated_at=current_timestamp
+             where gate_key='GLOBAL'
+            """,campaign.oldCommit(),campaign.candidateId(),campaign.sourceHash(),campaign.jobId()));
+    }
+
+    private void clearPhysicalRearmCampaign(PhysicalRearmCampaign campaign){
+        resetAutocompletionGate();
+        jdbc.update("delete from integrated_design_autocompletion_receipt where process_code='PROC'");
+        jdbc.update("delete from framework_development_job where job_id=?",campaign.jobId());
+        jdbc.update("delete from framework_postdeploy_release_attempt where candidate_id=?",
+            campaign.candidateId());
+    }
+
+    private void resetAutocompletionGate(){
+        jdbc.update("""
+            update integrated_design_autocompletion_gate
+               set approval_status='DISABLED',runtime_commit=null,postdeploy_candidate_id=null,
+                   source_input_authority_hash=null,final_authority_hash=null,
+                   canary_process_code=null,canary_job_id=null,revision=revision+1,
+                   approved_by=null,approved_at=null,activated_by=null,activated_at=null,
+                   revoked_by=null,revoked_at=null,revoke_reason=null,updated_at=current_timestamp
+             where gate_key='GLOBAL'
+            """);
+    }
+
+    private String currentCompositeSourceAuthorityHash(){
+        return jdbc.queryForObject("""
+            select framework_composite_live_smoke_hash(coalesce(jsonb_agg(
+                     jsonb_build_object('processCode',process_code,
+                       'dependencyFingerprint',framework_composite_dependency_fingerprint(process_code))
+                     order by process_code collate "C"),'[]'::jsonb))
+              from (select distinct upper(process_code) process_code
+                      from framework_composite_design_target_identity) target
+            """,String.class);
+    }
+
+    private record PhysicalRearmCampaign(long jobId,String sourceHash,String oldCommit,
+        String newCommit,String candidateId){}
 
     private static Map<String,Object> processBody(String goal){
         return Map.ofEntries(
@@ -4685,7 +7155,10 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
                       'specification',framework_try_jsonb(specification_json)),
                     'FRONTEND',jsonb_build_object('routePath',lower(route_path),
                       'fields',framework_try_jsonb(field_contract),
-                      'actions',framework_try_jsonb(command_contract)))) design from source
+                      'actions',framework_try_jsonb(command_contract)),
+                    'API',coalesce(framework_try_jsonb(api_contract),'[]'::jsonb),
+                    'DATABASE',coalesce(framework_try_jsonb(data_contract)->'schemaChanges',
+                      '[]'::jsonb))) design from source
               ), encoded as (select design,design::text canonical_text from canonical)
               select jsonb_build_object('schema','carbonet.canonical-design/v1','catalogHash',null,
                 'designHash',encode(sha256(convert_to(canonical_text,'UTF8')),'hex'),
@@ -4707,6 +7180,261 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
             end
             $$
             """);
+    }
+
+    private void cloneCompositeBenchmarkProcesses(int first,int last){
+        jdbc.update("""
+            insert into framework_process_definition
+            select (jsonb_populate_record(null::framework_process_definition,
+              to_jsonb(source)||jsonb_build_object(
+                'process_code',format('BENCH_%s',lpad(series.value::text,3,'0')),
+                'process_name',format('Readiness benchmark %s',series.value)))).*
+              from generate_series(?,?) series(value)
+              cross join lateral (select * from framework_process_definition
+                 where process_code='PROC') source
+            """,first,last);
+        jdbc.update("""
+            insert into framework_process_step
+            select (jsonb_populate_record(null::framework_process_step,
+              to_jsonb(source)||jsonb_build_object(
+                'process_code',format('BENCH_%s',lpad(series.value::text,3,'0')),
+                'user_path',format('/benchmark/%s/a',lpad(series.value::text,3,'0')),
+                'admin_path',format('/benchmark/%s/admin',lpad(series.value::text,3,'0'))))).*
+              from generate_series(?,?) series(value)
+              cross join lateral (select * from framework_process_step
+                 where process_code='PROC') source
+            """,first,last);
+        jdbc.update("""
+            insert into framework_step_schema_set
+            select (jsonb_populate_record(null::framework_step_schema_set,
+              to_jsonb(source)||jsonb_build_object(
+                'process_code',format('BENCH_%s',lpad(series.value::text,3,'0'))))).*
+              from generate_series(?,?) series(value)
+              cross join lateral (select * from framework_step_schema_set
+                 where process_code='PROC') source
+            """,first,last);
+        jdbc.update("""
+            insert into framework_step_execution_spec
+            select (jsonb_populate_record(null::framework_step_execution_spec,
+              to_jsonb(source)||jsonb_build_object(
+                'process_code',format('BENCH_%s',lpad(series.value::text,3,'0'))))).*
+              from generate_series(?,?) series(value)
+              cross join lateral (select * from framework_step_execution_spec
+                 where process_code='PROC') source
+            """,first,last);
+        jdbc.update("""
+            insert into framework_permission_requirement_v1
+            select (jsonb_populate_record(null::framework_permission_requirement_v1,
+              to_jsonb(source)||jsonb_build_object(
+                'process_code',format('BENCH_%s',lpad(series.value::text,3,'0'))))).*
+              from generate_series(?,?) series(value)
+              cross join lateral (select * from framework_permission_requirement_v1
+                 where process_code='PROC') source
+            """,first,last);
+        jdbc.update("""
+            insert into framework_simulation_case
+            select (jsonb_populate_record(null::framework_simulation_case,
+              to_jsonb(source)||jsonb_build_object(
+                'case_code',format('BENCH_%s_%s',lpad(series.value::text,3,'0'),source.case_code),
+                'process_code',format('BENCH_%s',lpad(series.value::text,3,'0'))))).*
+              from generate_series(?,?) series(value)
+              cross join lateral (select * from framework_simulation_case
+                 where process_code='PROC') source
+            """,first,last);
+        jdbc.update("""
+            insert into framework_screen_resource(route_key,layout_type,source_kind)
+            select format('/benchmark/%s%s',lpad(series.value::text,3,'0'),route.suffix),
+                   source.layout_type,source.source_kind
+              from generate_series(?,?) series(value)
+              cross join (values('/a','/work-a'),('/admin','/work-admin'),('/b','/work-b'))
+                route(suffix,source_route)
+              join framework_screen_resource source on source.route_key=route.source_route
+            """,first,last);
+        jdbc.update("""
+            insert into framework_page_design_assurance(screen_resource_id,actor_passed,
+              process_passed,lineage_passed,transition_passed,admin_counterpart_passed,test_passed)
+            select target.screen_resource_id,assurance.actor_passed,assurance.process_passed,
+                   assurance.lineage_passed,assurance.transition_passed,
+                   assurance.admin_counterpart_passed,assurance.test_passed
+              from generate_series(?,?) series(value)
+              cross join (values('/a','/work-a'),('/admin','/work-admin'),('/b','/work-b'))
+                route(suffix,source_route)
+              join framework_screen_resource source on source.route_key=route.source_route
+              join framework_page_design_assurance assurance
+                on assurance.screen_resource_id=source.screen_resource_id
+              join framework_screen_resource target on target.route_key=
+                format('/benchmark/%s%s',lpad(series.value::text,3,'0'),route.suffix)
+            """,first,last);
+        jdbc.update("""
+            insert into framework_professional_screen_contract(
+              process_code,step_code,audience,route_path,screen_name,actor_code,
+              business_purpose,entry_condition,exit_condition,kpi_contract,section_contract,
+              field_contract,command_contract,state_contract,api_contract,data_contract,
+              evidence_contract,responsive_contract,accessibility_contract,security_contract,
+              permission_codes,api_verified,database_verified,authority_verified,
+              responsive_verified,accessibility_verified,exception_states_verified,
+              audit_evidence_ref,contract_status,menu_verified,updated_by)
+            select format('BENCH_%s',lpad(series.value::text,3,'0')),source.step_code,
+                   source.audience,
+                   format('/benchmark/%s%s',lpad(series.value::text,3,'0'),
+                     case source.route_path when '/work-a' then '/a'
+                       when '/work-admin' then '/admin' when '/work-b' then '/b' end),
+                   source.screen_name,source.actor_code,source.business_purpose,
+                   source.entry_condition,source.exit_condition,source.kpi_contract,
+                   source.section_contract,source.field_contract,source.command_contract,
+                   source.state_contract,source.api_contract,source.data_contract,
+                   source.evidence_contract,source.responsive_contract,
+                   source.accessibility_contract,source.security_contract,
+                   source.permission_codes,source.api_verified,source.database_verified,
+                   source.authority_verified,source.responsive_verified,
+                   source.accessibility_verified,source.exception_states_verified,
+                   source.audit_evidence_ref,source.contract_status,source.menu_verified,
+                   source.updated_by
+              from generate_series(?,?) series(value)
+              cross join lateral (select * from framework_professional_screen_contract
+                 where process_code='PROC') source
+            """,first,last);
+        jdbc.update("""
+            insert into framework_screen_blueprint(
+              blueprint_code,process_code,step_code,actor_code,audience,page_id,page_name,
+              route_path,screen_type,template_code,specification_json,traceability_json,
+              validation_status,validation_message,implementation_strategy,source_reference,
+              transition_status,created_by)
+            select format('BENCH_%s_%s',lpad(series.value::text,3,'0'),source.blueprint_code),
+                   format('BENCH_%s',lpad(series.value::text,3,'0')),source.step_code,
+                   source.actor_code,source.audience,
+                   format('BENCH_%s_%s',lpad(series.value::text,3,'0'),source.page_id),
+                   source.page_name,
+                   format('/benchmark/%s%s',lpad(series.value::text,3,'0'),
+                     case source.route_path when '/work-a' then '/a'
+                       when '/work-admin' then '/admin' when '/work-b' then '/b' end),
+                   source.screen_type,source.template_code,source.specification_json,
+                   source.traceability_json,source.validation_status,source.validation_message,
+                   source.implementation_strategy,source.source_reference,
+                   source.transition_status,source.created_by
+              from generate_series(?,?) series(value)
+              cross join lateral (select * from framework_screen_blueprint
+                 where process_code='PROC') source
+            """,first,last);
+        jdbc.update("""
+            insert into framework_process_step_screen_binding(process_code,step_code,
+              screen_resource_id,actor_code,audience,binding_status)
+            select format('BENCH_%s',lpad(series.value::text,3,'0')),binding.step_code,
+                   target.screen_resource_id,binding.actor_code,binding.audience,
+                   binding.binding_status
+              from generate_series(?,?) series(value)
+              join framework_process_step_screen_binding binding
+                on binding.process_code='PROC'
+              join framework_screen_resource source
+                on source.screen_resource_id=binding.screen_resource_id
+              join framework_screen_resource target on target.route_key=
+                format('/benchmark/%s%s',lpad(series.value::text,3,'0'),
+                  case source.route_key when '/work-a' then '/a'
+                    when '/work-admin' then '/admin' when '/work-b' then '/b' end)
+            """,first,last);
+    }
+
+    private void prepareCompositeReadinessBenchmarkDocuments(){
+        prepareCompositeReadinessDocuments(true);
+    }
+
+    private void prepareMachineOwnedCompositeReadinessDocuments(){
+        prepareCompositeReadinessDocuments(false);
+    }
+
+    private void prepareCompositeReadinessDocuments(boolean manualBenchmark){
+        Map<String,Object> generated=jdbc.queryForMap(
+            "select * from refresh_integrated_design_axis_documents(null,true)");
+        assertEquals(0,number(generated,"ambiguous_count"));
+        for(Map<String,Object> row:jdbc.queryForList("""
+            select test.document_id as "documentId",test.content as "testContent",
+                   api.content as "apiContent",state.content as "stateContent",
+                   validation.content as "validationContent"
+              from integrated_design_document test
+              join integrated_design_document api using(process_code,step_code,route_path,audience)
+              join integrated_design_document state using(process_code,step_code,route_path,audience)
+              join integrated_design_document validation using(process_code,step_code,route_path,audience)
+             where test.document_type='TEST' and api.document_type='API'
+               and state.document_type='STATE' and validation.document_type='VALIDATION'
+            """)){
+            Map<String,Object> test=readMap(String.valueOf(row.get("testContent")));
+            Map<String,Object> api=readMap(String.valueOf(row.get("apiContent")));
+            Map<String,Object> state=readMap(String.valueOf(row.get("stateContent")));
+            Map<String,Object> validation=readMap(String.valueOf(row.get("validationContent")));
+            ((Map<String,Object>)test.get("payload")).put("scenarios",
+                derivedLiveSmokeScenarios(api,state,validation));
+            jdbc.update("update integrated_design_document set content=? where document_id=?",
+                json(test),row.get("documentId"));
+        }
+        jdbc.update("""
+            update integrated_design_document
+               set status='READY',updated_by=case when ? then 'MANUAL_READINESS_BENCHMARK'
+                 else 'LIVE_CONTRACT_BACKFILL' end
+             where active_yn='Y'
+            """,manualBenchmark);
+        if(!manualBenchmark)jdbc.update("""
+            update integrated_design_document set updated_by='MANUAL_LIVE_SMOKE_FIXTURE'
+             where active_yn='Y' and document_type='TEST'
+            """);
+        if(manualBenchmark)jdbc.update("""
+            update framework_professional_screen_contract
+               set data_contract=(framework_try_jsonb(data_contract)->'entities')::text
+             where process_code='PROC' or process_code like 'BENCH\\_%' escape '\\'
+            """);
+    }
+
+    private void installCompositeReadinessWriteProbe(){
+        jdbc.execute("""
+            create table framework_readiness_benchmark_write_probe(
+              table_name text not null,operation text not null,
+              observed_at timestamp not null default current_timestamp)
+            """);
+        jdbc.execute("""
+            create function framework_capture_readiness_benchmark_write()
+            returns trigger language plpgsql as $$
+            begin
+              insert into framework_readiness_benchmark_write_probe(table_name,operation)
+              values(TG_TABLE_NAME,TG_OP);
+              return null;
+            end
+            $$
+            """);
+        jdbc.execute("""
+            do $$
+            declare target record;
+            begin
+              for target in
+                select namespace.nspname,relation.relname
+                  from pg_class relation join pg_namespace namespace
+                    on namespace.oid=relation.relnamespace
+                 where namespace.nspname=current_schema() and relation.relkind='r'
+                   and relation.relname<>'framework_readiness_benchmark_write_probe'
+                 order by relation.relname collate "C"
+              loop
+                execute format('create trigger trg_readiness_benchmark_write_probe '
+                  'after insert or update or delete or truncate on %I.%I '
+                  'for each statement execute function '
+                  'framework_capture_readiness_benchmark_write()',
+                  target.nspname,target.relname);
+              end loop;
+            end
+            $$
+            """);
+    }
+
+    private void removeCompositeReadinessWriteProbe(){
+        jdbc.execute("drop function if exists framework_capture_readiness_benchmark_write() cascade");
+        jdbc.execute("drop table if exists framework_readiness_benchmark_write_probe");
+    }
+
+    private String currentRuntimeIdentityHash(){
+        return jdbc.queryForObject("""
+            select encode(sha256(convert_to(concat_ws('|',source_commit,
+              deployment_namespace,deployment_name,deployment_uid,deployment_generation,
+              observed_generation,desired_replicas,image_ref,image_id,health_status
+            ),'UTF8')),'hex')
+              from framework_runtime_release_state where release_key='CARBONET_RUNTIME'
+            """,String.class);
     }
 
     private void seedStep(String step,int order,String completeness,boolean professional){
@@ -4770,9 +7498,12 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
 
     private void lockCompositeRelayAccounts(String actor){
         try{
-            var method=ActorProcessGovernanceService.class.getDeclaredMethod(
+            var method=CompositeExecutableDesignAuthorityStore.class.getDeclaredMethod(
                 "lockActiveRelayAccounts",List.class);
-            method.setAccessible(true);method.invoke(service,List.of(actor));
+            method.setAccessible(true);
+            var store=new CompositeExecutableDesignAuthorityStore(jdbc,service,
+                new CompositeExecutableDesignProjectionService(jdbc));
+            method.invoke(store,List.of(actor));
         }catch(java.lang.reflect.InvocationTargetException error){
             if(error.getCause() instanceof RuntimeException runtime)throw runtime;
             throw new IllegalStateException(error.getCause());
@@ -4824,6 +7555,27 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
     }
 
     private void createSchema(){
+        jdbc.execute("""
+            create table framework_runtime_release_state(
+              release_key text primary key,source_commit text not null,
+              deployment_namespace text not null,deployment_name text not null,
+              deployment_uid text not null,deployment_generation bigint not null,
+              observed_generation bigint not null,desired_replicas integer not null,
+              image_ref text not null,image_id text not null,health_status text not null,
+              recorded_by text not null,recorded_at timestamptz default current_timestamp)
+            """);
+        jdbc.execute("""
+            create table framework_postdeploy_release_attempt(
+              candidate_id text primary key,source_commit text not null,attempt_status text not null,
+              terminal_reason text,runtime_identity_hash text,promotion_id bigint unique,
+              staged_at timestamptz default current_timestamp,terminal_at timestamptz,
+              unique(candidate_id,source_commit))
+            """);
+        jdbc.execute("""
+            create table framework_postdeploy_evidence_promotion(
+              promotion_id bigint primary key,candidate_id text not null,source_commit text not null,
+              runtime_identity_hash text not null)
+            """);
         jdbc.execute("create table comtnemplyrinfo(emplyr_id text primary key,esntl_id text unique,"+
             "emplyr_sttus_code text not null default 'P')");
         jdbc.execute("create table comtnentrprsmber(entrprs_mber_id text primary key,esntl_id text unique,"+
@@ -5357,6 +8109,30 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
         }
     }
 
+    private static final class RegistryLockPausingJdbcTemplate extends JdbcTemplate {
+        private final CountDownLatch locksHeld;
+        private final CountDownLatch continueWorker;
+
+        private RegistryLockPausingJdbcTemplate(DriverManagerDataSource source,
+                CountDownLatch locksHeld,CountDownLatch continueWorker){
+            super(source);this.locksHeld=locksHeld;this.continueWorker=continueWorker;
+        }
+
+        @Override public void execute(String sql){
+            super.execute(sql);
+            if(sql.contains("lock table comtnthemedefinition")
+                    &&sql.contains("ui_section_registry in share mode")){
+                locksHeld.countDown();
+                try{
+                    if(!continueWorker.await(20,TimeUnit.SECONDS))
+                        throw new IllegalStateException("REGISTRY_LOCK_WORKER_RELEASE_TIMEOUT");
+                }catch(InterruptedException error){
+                    Thread.currentThread().interrupt();throw new IllegalStateException(error);
+                }
+            }
+        }
+    }
+
     private static Path findRepositoryFile(String relative){
         Path cursor=Path.of("").toAbsolutePath();
         for(int depth=0;cursor!=null&&depth<8;depth++,cursor=cursor.getParent()){
@@ -5396,6 +8172,12 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
                      order by authority_id) as authorities,
                    (select string_agg(document_id||':'||revision||':'||xmin::text,','
                      order by document_id) from integrated_design_document) as documents,
+                   (select string_agg(document_id||':'||revision||':'||xmin::text,','
+                     order by document_id,revision)
+                      from integrated_design_document_version) as document_versions,
+                   (select string_agg(process_code||':'||step_code||':'||xmin::text,','
+                     order by process_code,step_code)
+                      from framework_step_execution_spec) as execution_specs,
                    (select string_agg(job_id||':'||xmin::text,',' order by job_id)
                      from framework_development_job) as jobs
               from integrated_design_authority

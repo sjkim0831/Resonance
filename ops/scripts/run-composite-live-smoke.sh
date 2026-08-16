@@ -152,7 +152,7 @@ select jsonb_build_object('schema','carbonet.composite-live-smoke-plan/v1',
    from integrated_design_live_smoke_evidence evidence join authorities authority
      on authority.authority_id=evidence.authority_id and authority.authority_revision=evidence.authority_revision
     and authority.source_hash=evidence.source_hash and authority.authority_hash=evidence.authority_hash
-   where evidence.job_id=dispatch.job_id),
+   where evidence.dispatch_id=dispatch.dispatch_id),
  'existingScenarioContexts',(select coalesce(jsonb_agg(jsonb_build_object(
     'authorityId',evidence.authority_id,'scenarioCode',evidence.scenario_code,
     'statusCase',evidence.status_case,'executionId',evidence.lane_evidence->>'executionId',
@@ -163,7 +163,7 @@ select jsonb_build_object('schema','carbonet.composite-live-smoke-plan/v1',
      on authority.authority_id=evidence.authority_id
     and authority.authority_revision=evidence.authority_revision
     and authority.source_hash=evidence.source_hash and authority.authority_hash=evidence.authority_hash
-   where evidence.job_id=dispatch.job_id and evidence.lane='API')) from dispatch;")"
+   where evidence.dispatch_id=dispatch.dispatch_id and evidence.lane='API')) from dispatch;")"
 jq -e '.schema=="carbonet.composite-live-smoke-plan/v1"' <<<"$plan" >/dev/null || {
   runner_code=LIVE_SMOKE_PLAN_INVALID; runner_hash="$(hash_text "$dispatch_id|plan")"; result='';
 }
@@ -199,7 +199,7 @@ with counted as (select count(*)::integer evidence_count from integrated_design_
  join integrated_design_authority authority on authority.authority_id=evidence.authority_id
   and authority.job_id=evidence.job_id and authority.authority_revision=evidence.authority_revision
   and authority.source_hash=evidence.source_hash and authority.authority_hash=evidence.authority_hash
- where evidence.job_id=(select job_id from integrated_design_live_smoke_dispatch where dispatch_id=$dispatch_id)),
+  where evidence.dispatch_id=$dispatch_id),
 finished as (update integrated_design_live_smoke_dispatch dispatch
  set status='EVIDENCE_SUBMITTED',submitted_evidence_count=counted.evidence_count,
      lease_token=null,lease_until=null,evidence_summary=jsonb_build_object(

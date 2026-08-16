@@ -4211,6 +4211,12 @@ public class ActorProcessGovernanceService {
         return compositeDesignApplication().compileIntegratedDesignProcess(body,actor);
     }
 
+    @Transactional(readOnly=true,timeout=10)
+    public Map<String,Object> inspectCompositeCompilerReadiness(String process){
+        jdbc.execute("set local statement_timeout='10s'");
+        return compositeDesignApplication().inspectCompilerReadiness(process);
+    }
+
     private CompositeExecutableDesignApplicationService compositeDesignApplication(){
         return new CompositeExecutableDesignApplicationService(
             jdbc,screenDevelopmentNoteService,screenContractRuntimeService,this);

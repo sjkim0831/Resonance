@@ -246,6 +246,7 @@ $$;
 
 CREATE TABLE integrated_design_live_smoke_evidence (
   live_evidence_id bigserial PRIMARY KEY,
+  dispatch_id bigint NOT NULL,
   job_id bigint NOT NULL REFERENCES framework_development_job(job_id) ON DELETE RESTRICT,
   authority_id bigint NOT NULL,
   authority_revision bigint NOT NULL CHECK(authority_revision>0),
@@ -294,7 +295,7 @@ CREATE TABLE integrated_design_live_smoke_evidence (
   -- design publication.
   FOREIGN KEY(authority_id)
     REFERENCES integrated_design_authority(authority_id) ON DELETE RESTRICT,
-  UNIQUE(job_id,authority_id,authority_revision,command_code,scenario_code,lane,status_case),
+  UNIQUE(dispatch_id,authority_id,authority_revision,command_code,scenario_code,lane,status_case),
   CHECK(route_path=lower(split_part(route_path,'?',1)) AND route_path~'^/'),
   CHECK(status_case=expected_status AND expected_status=observed_status),
   CHECK(account_hash=framework_composite_live_smoke_hash(jsonb_build_object(
@@ -310,7 +311,7 @@ CREATE TABLE integrated_design_live_smoke_evidence (
     'expectedStatus',expected_status,'observedStatus',observed_status))),
   CHECK(lane_evidence_hash=framework_composite_live_smoke_hash(lane_evidence)),
   CHECK(evidence_hash=framework_composite_live_smoke_hash(jsonb_build_object(
-    'schema','carbonet.composite-live-smoke-evidence/v1','jobId',job_id,
+    'schema','carbonet.composite-live-smoke-evidence/v1','dispatchId',dispatch_id,'jobId',job_id,
     'authorityId',authority_id,'authorityRevision',authority_revision,
     'processCode',process_code,'stepCode',step_code,'routePath',route_path,
     'audience',audience,'lane',lane,'statusCase',status_case,
@@ -366,6 +367,9 @@ CREATE TABLE integrated_design_live_smoke_dispatch (
   job_id bigint NOT NULL REFERENCES framework_development_job(job_id) ON DELETE RESTRICT,
   process_code varchar(100) NOT NULL,
   project_id varchar(100) NOT NULL,
+  runtime_commit varchar(40) NOT NULL CHECK(runtime_commit~'^[0-9a-f]{40}$'),
+  runtime_identity_hash varchar(64) NOT NULL CHECK(runtime_identity_hash~'^[0-9a-f]{64}$'),
+  canary_attempt integer NOT NULL DEFAULT 0 CHECK(canary_attempt BETWEEN 0 AND 3),
   authority_revision_set_hash varchar(64) NOT NULL
     CHECK(authority_revision_set_hash~'^[0-9a-f]{64}$'),
   artifact_manifest_hash varchar(64) NOT NULL
@@ -390,12 +394,16 @@ CREATE TABLE integrated_design_live_smoke_dispatch (
   started_at timestamptz,
   completed_at timestamptz,
   updated_at timestamptz NOT NULL DEFAULT clock_timestamp(),
-  UNIQUE(job_id,authority_revision_set_hash),
+  UNIQUE(job_id,authority_revision_set_hash,runtime_identity_hash,canary_attempt),
   CHECK((status='RUNNING' AND lease_token IS NOT NULL AND lease_until IS NOT NULL)
      OR (status<>'RUNNING' AND lease_token IS NULL AND lease_until IS NULL)),
   CHECK((status IN('COMPLETED','DEAD_LETTER','SUPERSEDED') AND completed_at IS NOT NULL)
      OR (status NOT IN('COMPLETED','DEAD_LETTER','SUPERSEDED') AND completed_at IS NULL))
 );
+ALTER TABLE integrated_design_live_smoke_evidence
+  ADD CONSTRAINT fk_integrated_design_live_smoke_dispatch
+  FOREIGN KEY(dispatch_id) REFERENCES integrated_design_live_smoke_dispatch(dispatch_id)
+  ON DELETE RESTRICT;
 CREATE INDEX ix_integrated_design_live_smoke_dispatch_due
   ON integrated_design_live_smoke_dispatch(next_attempt_at,dispatch_id)
   WHERE status IN('QUEUED','RETRY_WAIT','RUNNING');
@@ -409,11 +417,22 @@ BEGIN
   IF TG_OP='DELETE' THEN
     RAISE EXCEPTION 'COMPOSITE_LIVE_SMOKE_DISPATCH_DELETE_FORBIDDEN' USING ERRCODE='55000';
   END IF;
-  IF ROW(NEW.job_id,NEW.process_code,NEW.project_id,NEW.authority_revision_set_hash,
+  IF TG_OP='INSERT' THEN
+    NEW.created_at:=clock_timestamp();
+    NEW.started_at:=CASE WHEN NEW.status IN('QUEUED','RETRY_WAIT')
+      THEN NULL ELSE clock_timestamp() END;
+    NEW.updated_at:=clock_timestamp();
+    RETURN NEW;
+  END IF;
+  IF ROW(NEW.job_id,NEW.process_code,NEW.project_id,NEW.runtime_commit,
+         NEW.runtime_identity_hash,NEW.canary_attempt,
+         NEW.authority_revision_set_hash,
          NEW.artifact_manifest_hash,NEW.process_source_hash,NEW.expected_evidence_count,
          NEW.created_at)
      IS DISTINCT FROM
-     ROW(OLD.job_id,OLD.process_code,OLD.project_id,OLD.authority_revision_set_hash,
+     ROW(OLD.job_id,OLD.process_code,OLD.project_id,OLD.runtime_commit,
+         OLD.runtime_identity_hash,OLD.canary_attempt,
+         OLD.authority_revision_set_hash,
          OLD.artifact_manifest_hash,OLD.process_source_hash,OLD.expected_evidence_count,
          OLD.created_at) THEN
     RAISE EXCEPTION 'COMPOSITE_LIVE_SMOKE_DISPATCH_IDENTITY_IMMUTABLE' USING ERRCODE='55000';
@@ -435,6 +454,11 @@ BEGIN
       OR NEW.attempt_count>3 OR NEW.lease_token IS NULL OR NEW.lease_until<=clock_timestamp()) THEN
     RAISE EXCEPTION 'COMPOSITE_LIVE_SMOKE_DISPATCH_LEASE_INVALID' USING ERRCODE='55000';
   END IF;
+  IF OLD.started_at IS NULL AND NEW.status='RUNNING' THEN
+    NEW.started_at:=clock_timestamp();
+  ELSIF NEW.started_at IS DISTINCT FROM OLD.started_at THEN
+    RAISE EXCEPTION 'COMPOSITE_LIVE_SMOKE_DISPATCH_START_IMMUTABLE' USING ERRCODE='55000';
+  END IF;
   IF NEW.status<>'RUNNING' AND (NEW.attempt_count<>OLD.attempt_count
       OR NEW.lease_token IS NOT NULL OR NEW.lease_until IS NOT NULL) THEN
     RAISE EXCEPTION 'COMPOSITE_LIVE_SMOKE_DISPATCH_FINAL_CAS_INVALID' USING ERRCODE='55000';
@@ -444,8 +468,61 @@ BEGIN
 END
 $$;
 CREATE TRIGGER trg_integrated_design_live_smoke_dispatch_state
-BEFORE UPDATE OR DELETE ON integrated_design_live_smoke_dispatch
+BEFORE INSERT OR UPDATE OR DELETE ON integrated_design_live_smoke_dispatch
 FOR EACH ROW EXECUTE FUNCTION guard_integrated_design_live_smoke_dispatch();
+
+CREATE OR REPLACE FUNCTION framework_composite_verified_canary_dispatch_exact(
+  p_process_code varchar,p_job_id bigint,p_receipt jsonb)
+RETURNS boolean LANGUAGE sql STABLE AS $$
+  SELECT EXISTS(
+    SELECT 1
+      FROM integrated_design_live_smoke_dispatch dispatch
+      JOIN framework_development_job job ON job.job_id=dispatch.job_id
+       AND job.process_code=dispatch.process_code
+      JOIN framework_runtime_release_state runtime
+        ON runtime.release_key='CARBONET_RUNTIME' AND runtime.health_status='UP'
+       AND runtime.source_commit=dispatch.runtime_commit
+       AND dispatch.runtime_identity_hash=encode(sha256(convert_to(concat_ws('|',
+         runtime.source_commit,runtime.deployment_namespace,runtime.deployment_name,
+         runtime.deployment_uid,runtime.deployment_generation,runtime.observed_generation,
+         runtime.desired_replicas,runtime.image_ref,runtime.image_id,runtime.health_status
+       ),'UTF8')),'hex')
+     WHERE dispatch.dispatch_id=CASE WHEN p_receipt->>'liveSmokeDispatchId'~'^[0-9]+$'
+       THEN (p_receipt->>'liveSmokeDispatchId')::bigint END
+       AND dispatch.job_id=p_job_id AND dispatch.process_code=p_process_code
+       AND dispatch.status='COMPLETED'
+       AND dispatch.runtime_commit=p_receipt#>>'{canary,runtimeCommit}'
+       AND dispatch.runtime_identity_hash=p_receipt#>>'{canary,requestedRuntimeIdentityHash}'
+       AND dispatch.canary_attempt=CASE WHEN p_receipt#>>'{canary,attemptNumber}'~'^[1-3]$'
+         THEN (p_receipt#>>'{canary,attemptNumber}')::integer END
+       AND dispatch.authority_revision_set_hash=
+         framework_composite_authority_revision_set_hash(dispatch.job_id)
+       AND dispatch.artifact_manifest_hash=framework_try_jsonb(job.result_json)#>>
+         '{canonicalGeneration,compositeArtifactManifestHash}'
+       AND dispatch.process_source_hash=framework_try_jsonb(job.specification_json)->>
+         'processInputHash'
+       AND job.job_type='FULL_STACK_GENERATION'
+       AND job.job_group_code=p_process_code||'_CANONICAL_PUBLICATION'
+       AND job.job_status IN('VERIFIED','COMPLETED') AND job.quality_status='VERIFIED'
+       AND dispatch.submitted_evidence_count=dispatch.expected_evidence_count
+       AND (SELECT count(*) FROM integrated_design_live_smoke_evidence evidence
+             WHERE evidence.dispatch_id=dispatch.dispatch_id)=dispatch.expected_evidence_count
+       AND p_receipt->>'liveSmokeEvidenceCount'~'^[0-9]+$'
+       AND (p_receipt->>'liveSmokeEvidenceCount')::integer=dispatch.expected_evidence_count
+       AND NOT EXISTS(SELECT 1 FROM integrated_design_live_smoke_evidence evidence
+         WHERE evidence.dispatch_id=dispatch.dispatch_id AND(
+           dispatch.started_at IS NULL OR evidence.observed_at<dispatch.started_at
+           OR evidence.observed_at>evidence.recorded_at
+           OR evidence.recorded_at>dispatch.completed_at))
+       AND p_receipt->>'liveSmokeEvidenceSetHash'=(SELECT
+         framework_composite_live_smoke_hash(coalesce(jsonb_agg(evidence.evidence_hash
+           ORDER BY evidence.authority_id,evidence.authority_revision,
+             evidence.command_code COLLATE "C",evidence.scenario_code COLLATE "C",
+             evidence.status_case COLLATE "C",evidence.lane COLLATE "C"),'[]'::jsonb))
+         FROM integrated_design_live_smoke_evidence evidence
+        WHERE evidence.dispatch_id=dispatch.dispatch_id)
+  )
+$$;
 
 CREATE TABLE integrated_design_notification_template (
   template_code varchar(120) PRIMARY KEY,
@@ -645,77 +722,128 @@ BEGIN
 END
 $$;
 
-CREATE OR REPLACE FUNCTION framework_composite_dependency_fingerprint(
+CREATE OR REPLACE FUNCTION framework_composite_dependency_material(
   p_process_code varchar)
-RETURNS varchar
+RETURNS TABLE(kind text,identity text,payload text)
 LANGUAGE sql STABLE AS $$
-WITH actor_codes(actor_code) AS (
+WITH source_documents(document_type,axis) AS MATERIALIZED (
+  SELECT document.document_type,framework_try_jsonb(document.content)
+    FROM integrated_design_document document
+   WHERE document.process_code=p_process_code AND document.active_yn='Y'
+), notification_refs(template_code) AS (
+  SELECT DISTINCT event->>'templateCode'
+    FROM source_documents document
+    CROSS JOIN LATERAL jsonb_array_elements(CASE WHEN jsonb_typeof(
+      document.axis#>'{payload,events}')='array' THEN document.axis#>'{payload,events}'
+      ELSE '[]'::jsonb END) event
+   WHERE document.document_type='NOTIFICATION'
+     AND nullif(event->>'templateCode','') IS NOT NULL
+), asset_refs(asset_type,asset_code) AS (
+  SELECT 'THEME',document.axis#>>'{payload,theme}' FROM source_documents document
+   WHERE document.document_type='DESIGN_ASSET'
+     AND nullif(document.axis#>>'{payload,theme}','') IS NOT NULL
+  UNION SELECT 'SECTION',section->>'sectionId'
+    FROM source_documents document CROSS JOIN LATERAL jsonb_array_elements(CASE WHEN jsonb_typeof(
+      document.axis#>'{payload,sections}')='array' THEN document.axis#>'{payload,sections}'
+      ELSE '[]'::jsonb END) section
+   WHERE document.document_type='DESIGN_ASSET' AND nullif(section->>'sectionId','') IS NOT NULL
+  UNION SELECT 'COMPONENT',component#>>'{}'
+    FROM source_documents document CROSS JOIN LATERAL jsonb_array_elements(CASE WHEN jsonb_typeof(
+      document.axis#>'{payload,sections}')='array' THEN document.axis#>'{payload,sections}'
+      ELSE '[]'::jsonb END) section CROSS JOIN LATERAL jsonb_array_elements(CASE WHEN jsonb_typeof(
+      section->'componentCodes')='array' THEN section->'componentCodes' ELSE '[]'::jsonb END) component
+   WHERE document.document_type='DESIGN_ASSET' AND nullif(component#>>'{}','') IS NOT NULL
+  UNION SELECT upper(binding->>'assetType'),binding->>'assetCode'
+    FROM source_documents document CROSS JOIN LATERAL jsonb_array_elements(CASE WHEN jsonb_typeof(
+      document.axis#>'{payload,assetBindings}')='array'
+      THEN document.axis#>'{payload,assetBindings}' ELSE '[]'::jsonb END) binding
+   WHERE document.document_type='DESIGN_ASSET'
+     AND upper(coalesce(binding->>'assetType','')) IN('THEME','SECTION','COMPONENT')
+     AND nullif(binding->>'assetCode','') IS NOT NULL
+), actor_codes(actor_code) AS (
   SELECT owner_actor_code FROM framework_process_definition WHERE process_code=p_process_code
-  UNION SELECT actor_code FROM framework_process_step WHERE process_code=p_process_code
-  UNION SELECT escalation_actor_code FROM framework_process_step
-    WHERE process_code=p_process_code AND nullif(btrim(escalation_actor_code),'') IS NOT NULL
-  UNION SELECT btrim(value) FROM framework_process_step step
-    CROSS JOIN LATERAL regexp_split_to_table(
-      coalesce(step.segregation_actor_codes,''),E'\\s*,\\s*') value
-    WHERE step.process_code=p_process_code AND nullif(btrim(value),'') IS NOT NULL
-  UNION SELECT actor_code FROM framework_professional_screen_contract
-    WHERE process_code=p_process_code
-  UNION SELECT actor_code FROM framework_process_step_screen_binding
-    WHERE process_code=p_process_code AND binding_status='ACTIVE'
-), database_tables(table_name) AS (
-  SELECT change->>'tableName'
+  UNION SELECT upper(framework_try_jsonb(document.content)#>>'{payload,actorCode}')
+    FROM integrated_design_document document
+   WHERE document.process_code=p_process_code AND document.active_yn='Y'
+     AND document.document_type='ACTOR_RACI'
+     AND nullif(framework_try_jsonb(document.content)#>>'{payload,actorCode}','') IS NOT NULL
+  UNION SELECT upper(value#>>'{}')
     FROM integrated_design_document document
     CROSS JOIN LATERAL jsonb_array_elements(CASE WHEN jsonb_typeof(
-      framework_try_jsonb(document.content)#>'{payload,schemaChanges}')='array'
-      THEN framework_try_jsonb(document.content)#>'{payload,schemaChanges}'
-      ELSE '[]'::jsonb END) change
-   WHERE document.process_code=p_process_code AND document.document_type='DATABASE'
-     AND change->>'tableName' IS NOT NULL
-  UNION
-  SELECT column_value#>>'{references,table}'
+      framework_try_jsonb(document.content)#>'{payload,responsibleActorCodes}')='array'
+      THEN framework_try_jsonb(document.content)#>'{payload,responsibleActorCodes}'
+      ELSE '[]'::jsonb END) value
+   WHERE document.process_code=p_process_code AND document.active_yn='Y'
+     AND document.document_type='ACTOR_RACI'
+  UNION SELECT upper(command->>'actorCode')
     FROM integrated_design_document document
     CROSS JOIN LATERAL jsonb_array_elements(CASE WHEN jsonb_typeof(
-      framework_try_jsonb(document.content)#>'{payload,schemaChanges}')='array'
-      THEN framework_try_jsonb(document.content)#>'{payload,schemaChanges}'
-      ELSE '[]'::jsonb END) change
-    CROSS JOIN LATERAL jsonb_array_elements(CASE WHEN jsonb_typeof(change->'columns')='array'
-      THEN change->'columns' ELSE '[]'::jsonb END) column_value
-   WHERE document.process_code=p_process_code AND document.document_type='DATABASE'
-     AND column_value#>>'{references,table}' IS NOT NULL
+      framework_try_jsonb(document.content)#>'{payload,commands}')='array'
+      THEN framework_try_jsonb(document.content)#>'{payload,commands}'
+      ELSE '[]'::jsonb END) command
+   WHERE document.process_code=p_process_code AND document.active_yn='Y'
+     AND document.document_type='PROCESS' AND nullif(command->>'actorCode','') IS NOT NULL
 ), material(kind,identity,payload) AS (
-  SELECT 'CLOCK_DATE','CURRENT_DATE',to_jsonb(current_date)::text
-  UNION ALL SELECT 'PROCESS',process.process_code,to_jsonb(process)::text
-    FROM framework_process_definition process WHERE process.process_code=p_process_code
-  UNION ALL SELECT 'STEP',step.step_code,to_jsonb(step)::text
-    FROM framework_process_step step WHERE step.process_code=p_process_code
-  UNION ALL SELECT 'TARGET',target.step_code||E'\x1f'||target.route_path||E'\x1f'||target.audience,
-    to_jsonb(target)::text FROM framework_composite_design_target_identity target
-    WHERE target.process_code=p_process_code
-  UNION ALL SELECT 'CONTRACT',contract.contract_id::text,to_jsonb(contract)::text
-    FROM framework_professional_screen_contract contract WHERE contract.process_code=p_process_code
-  UNION ALL SELECT 'BLUEPRINT',blueprint.blueprint_id::text,to_jsonb(blueprint)::text
-    FROM framework_screen_blueprint blueprint WHERE blueprint.process_code=p_process_code
-  UNION ALL SELECT 'SCREEN_RESOURCE',resource.screen_resource_id::text,to_jsonb(resource)::text
-    FROM framework_screen_resource resource WHERE EXISTS(
-      SELECT 1 FROM framework_composite_design_target_identity target
-       WHERE target.process_code=p_process_code
-         AND target.route_path=lower(split_part(resource.route_key,'?',1)))
-  UNION ALL SELECT 'DOCUMENT',document.document_id::text,to_jsonb(document)::text
-    FROM integrated_design_document document WHERE document.process_code=p_process_code
-  -- Physical generation changes these two fields after SOURCE compilation. They are
-  -- evidence outputs, not source dependencies, and must not invalidate their own receipt.
-  UNION ALL SELECT 'EXECUTION_SPEC',spec.step_code,
-    (to_jsonb(spec)-'generation_status'-'updated_at')::text
-    FROM framework_step_execution_spec spec WHERE spec.process_code=p_process_code
-  UNION ALL SELECT 'STEP_SCHEMA',schema.step_code,to_jsonb(schema)::text
-    FROM framework_step_schema_set schema WHERE schema.process_code=p_process_code
-  UNION ALL SELECT 'AUTHORITY',authority.authority_id::text,to_jsonb(authority)::text
-    FROM integrated_design_authority authority WHERE authority.process_code=p_process_code
-  UNION ALL SELECT 'SCOPE',binding.binding_id::text,to_jsonb(binding)::text
-    FROM integrated_design_scope_binding binding WHERE binding.process_code=p_process_code
-  UNION ALL SELECT 'REQUIREMENT',requirement.step_code||E'\x1f'||
-    requirement.permission_code||E'\x1f'||requirement.scope_type,to_jsonb(requirement)::text
-    FROM framework_permission_requirement_v1 requirement WHERE requirement.process_code=p_process_code
+  SELECT 'PROCESS_VERSION',definition.process_code,
+    jsonb_build_object('processCode',definition.process_code,
+      'processVersion',definition.process_version)::text
+    FROM framework_process_definition definition
+   WHERE definition.process_code=p_process_code
+  UNION ALL SELECT 'TARGET_IDENTITY',target.process_code||E'\x1f'||target.step_code||
+      E'\x1f'||target.route_path||E'\x1f'||target.audience||E'\x1f'||
+      coalesce(target.contract_id::text,''),
+    jsonb_build_object('processCode',target.process_code,'stepCode',target.step_code,
+      'routePath',target.route_path,'audience',target.audience,
+      'contractId',target.contract_id)::text
+    FROM framework_composite_design_target_identity target
+   WHERE target.process_code=p_process_code
+  UNION ALL SELECT 'DOCUMENT',document.step_code||E'\x1f'||document.route_path||E'\x1f'||
+      document.audience||E'\x1f'||document.document_type,
+    jsonb_build_object('content',framework_try_jsonb(document.content))::text
+    FROM integrated_design_document document
+   WHERE document.process_code=p_process_code AND document.active_yn='Y'
+  UNION ALL SELECT 'NOTIFICATION_TEMPLATE_REGISTRY',reference.template_code,
+    jsonb_build_object('templateCode',reference.template_code,'registry',CASE
+      WHEN registry.template_code IS NULL THEN 'null'::jsonb ELSE jsonb_build_object(
+        'titleTemplate',registry.title_template,'messageTemplate',registry.message_template,
+        'activeYn',registry.active_yn) END)::text
+    FROM notification_refs reference LEFT JOIN integrated_design_notification_template registry
+      ON registry.template_code=reference.template_code
+  UNION ALL SELECT 'THEME_REGISTRY',reference.asset_code,
+    jsonb_build_object('assetType',reference.asset_type,'assetCode',reference.asset_code,
+      'registry',CASE WHEN registry.theme_id IS NULL THEN 'null'::jsonb ELSE jsonb_build_object(
+        'themeName',registry.theme_nm,'themeDescription',registry.theme_dc,
+        'themeType',registry.theme_type,'colorConfig',registry.color_config,
+        'typographyConfig',registry.typography_config,'spacingConfig',registry.spacing_config,
+        'borderConfig',registry.border_config,'shadowConfig',registry.shadow_config,
+        'classPrefix',registry.class_prefix,'isDefault',registry.is_default,
+        'isActive',registry.is_active,'useAt',registry.use_at) END)::text
+    FROM asset_refs reference LEFT JOIN comtnthemedefinition registry
+      ON reference.asset_type='THEME' AND registry.theme_id=reference.asset_code
+   WHERE reference.asset_type='THEME'
+  UNION ALL SELECT 'SECTION_REGISTRY',reference.asset_code,
+    jsonb_build_object('assetType',reference.asset_type,'assetCode',reference.asset_code,
+      'registry',CASE WHEN registry.section_id IS NULL THEN 'null'::jsonb ELSE jsonb_build_object(
+        'sectionName',registry.section_name,'sectionType',registry.section_type,
+        'layoutContract',registry.layout_contract,'responsiveContract',registry.responsive_contract,
+        'accessibilityContract',registry.accessibility_contract,
+        'designReference',registry.design_reference,'assetFingerprint',registry.asset_fingerprint,
+        'activeYn',registry.active_yn) END)::text
+    FROM asset_refs reference LEFT JOIN ui_section_registry registry
+      ON reference.asset_type='SECTION' AND registry.section_id=reference.asset_code
+   WHERE reference.asset_type='SECTION'
+  UNION ALL SELECT CASE WHEN upper(coalesce(registry.component_type,''))='JSON_FORM'
+      THEN 'JSON_FORM_REGISTRY' ELSE 'COMPONENT_REGISTRY' END,reference.asset_code,
+    jsonb_build_object('assetType',reference.asset_type,'assetCode',reference.asset_code,
+      'registry',CASE WHEN registry.component_id IS NULL THEN 'null'::jsonb ELSE jsonb_build_object(
+        'componentName',registry.component_name,'componentType',registry.component_type,
+        'ownerDomain',registry.owner_domain,'propsSchema',registry.props_schema_json,
+        'designReference',registry.design_reference,'defaultProps',registry.default_props,
+        'category',registry.category,'assetFingerprint',registry.asset_fingerprint,
+        'activeYn',registry.active_yn) END)::text
+    FROM asset_refs reference LEFT JOIN ui_component_registry registry
+      ON reference.asset_type='COMPONENT' AND registry.component_id=reference.asset_code
+   WHERE reference.asset_type='COMPONENT'
   UNION ALL SELECT 'ACTOR',actor.actor_code,to_jsonb(actor)::text
     FROM framework_actor_definition actor JOIN actor_codes USING(actor_code)
   UNION ALL SELECT 'ASSIGNMENT',assignment.assignment_id::text,to_jsonb(assignment)::text
@@ -742,49 +870,42 @@ WITH actor_codes(actor_code) AS (
       LEFT JOIN comtnentrprsmber member
         ON lower(member.entrprs_mber_id)=lower(assignment.account_id)
        WHERE security.scrty_dtrmn_trget_id=coalesce(employee.esntl_id,member.esntl_id))
-  UNION ALL SELECT 'NOTIFICATION_TEMPLATE',template.template_code,to_jsonb(template)::text
-    FROM integrated_design_notification_template template
-  UNION ALL SELECT 'THEME',theme.theme_id,to_jsonb(theme)::text FROM comtnthemedefinition theme
-  UNION ALL SELECT 'SECTION',section.section_id,to_jsonb(section)::text FROM ui_section_registry section
-  UNION ALL SELECT 'COMPONENT',component.component_id,to_jsonb(component)::text
-    FROM ui_component_registry component
-  UNION ALL SELECT 'DB_RELATION',relation.relname,
-    jsonb_build_object('relkind',relation.relkind,'comment',obj_description(relation.oid,'pg_class'))::text
-    FROM pg_class relation JOIN pg_namespace namespace ON namespace.oid=relation.relnamespace
-    JOIN database_tables target ON target.table_name=relation.relname
-   WHERE namespace.nspname=current_schema()
-  UNION ALL SELECT 'DB_COLUMN',relation.relname||E'\x1f'||attribute.attnum,
-    jsonb_build_object('name',attribute.attname,
-      'type',format_type(attribute.atttypid,attribute.atttypmod),
-      'notNull',attribute.attnotnull,
-      'default',pg_get_expr(default_value.adbin,default_value.adrelid))::text
-    FROM pg_class relation JOIN pg_namespace namespace ON namespace.oid=relation.relnamespace
-    JOIN database_tables target ON target.table_name=relation.relname
-    JOIN pg_attribute attribute ON attribute.attrelid=relation.oid
-      AND attribute.attnum>0 AND NOT attribute.attisdropped
-    LEFT JOIN pg_attrdef default_value ON default_value.adrelid=relation.oid
-      AND default_value.adnum=attribute.attnum
-   WHERE namespace.nspname=current_schema()
-  UNION ALL SELECT 'DB_INDEX',relation.relname||E'\x1f'||index_class.relname,
-    jsonb_build_object('definition',pg_get_indexdef(index.indexrelid),
-      'primary',index.indisprimary,'unique',index.indisunique)::text
-    FROM pg_class relation JOIN pg_namespace namespace ON namespace.oid=relation.relnamespace
-    JOIN database_tables target ON target.table_name=relation.relname
-    JOIN pg_index index ON index.indrelid=relation.oid
-    JOIN pg_class index_class ON index_class.oid=index.indexrelid
-   WHERE namespace.nspname=current_schema()
-  UNION ALL SELECT 'DB_CONSTRAINT',relation.relname||E'\x1f'||constraint_row.conname,
-    jsonb_build_object('type',constraint_row.contype,
-      'definition',pg_get_constraintdef(constraint_row.oid,true))::text
-    FROM pg_class relation JOIN pg_namespace namespace ON namespace.oid=relation.relnamespace
-    JOIN database_tables target ON target.table_name=relation.relname
-    JOIN pg_constraint constraint_row ON constraint_row.conrelid=relation.oid
-   WHERE namespace.nspname=current_schema()
+)
+SELECT material.kind::text,material.identity::text,material.payload::text FROM material
+$$;
+
+CREATE OR REPLACE FUNCTION framework_composite_dependency_fingerprint(
+  p_process_code varchar)
+RETURNS varchar
+LANGUAGE sql STABLE AS $$
+SELECT encode(sha256(convert_to(coalesce(string_agg(
+  kind||E'\x1f'||identity||E'\x1f'||payload,E'\n'
+  ORDER BY kind COLLATE "C",identity COLLATE "C",payload COLLATE "C"),''),'UTF8')),'hex')
+  FROM framework_composite_dependency_material(p_process_code)
+$$;
+
+-- The dependency fingerprint above is deliberately an invariant source-input
+-- fingerprint. Compiler-owned authority, scope and execution projection rows are
+-- excluded so a 108-process campaign does not revoke itself after its first wave.
+-- This second fingerprint is output evidence: it may advance after each expected
+-- compile and is retained on the verified canary, but never authorizes later claims.
+CREATE OR REPLACE FUNCTION framework_composite_final_authority_fingerprint(
+  p_process_code varchar)
+RETURNS varchar
+LANGUAGE sql STABLE AS $$
+WITH output_material(kind,identity,payload) AS (
+  SELECT 'SOURCE_INPUT','GLOBAL',framework_composite_dependency_fingerprint(p_process_code)
+  UNION ALL SELECT 'EXECUTION_SPEC',spec.step_code,to_jsonb(spec)::text
+    FROM framework_step_execution_spec spec WHERE spec.process_code=p_process_code
+  UNION ALL SELECT 'AUTHORITY',authority.authority_id::text,to_jsonb(authority)::text
+    FROM integrated_design_authority authority WHERE authority.process_code=p_process_code
+  UNION ALL SELECT 'SCOPE',binding.binding_id::text,to_jsonb(binding)::text
+    FROM integrated_design_scope_binding binding WHERE binding.process_code=p_process_code
 )
 SELECT encode(sha256(convert_to(coalesce(string_agg(
   kind||E'\x1f'||identity||E'\x1f'||payload,E'\n'
   ORDER BY kind COLLATE "C",identity COLLATE "C",payload COLLATE "C"),''),'UTF8')),'hex')
-  FROM material
+  FROM output_material
 $$;
 
 CREATE TABLE integrated_design_autocompletion_receipt (
@@ -811,6 +932,49 @@ CREATE TABLE integrated_design_autocompletion_receipt (
 );
 CREATE INDEX ix_integrated_design_autocompletion_work
   ON integrated_design_autocompletion_receipt(completion_status,lease_until,process_code);
+
+-- Approval is durable database state, not Deployment environment state.  The
+-- candidate pod may expose the capability while this one-row CAS gate keeps
+-- scheduled writes disabled through the complete postdeploy validation.
+CREATE TABLE integrated_design_autocompletion_gate (
+  gate_key varchar(40) PRIMARY KEY CHECK(gate_key='GLOBAL'),
+  approval_status varchar(20) NOT NULL DEFAULT 'DISABLED'
+    CHECK(approval_status IN('DISABLED','PREPARED','ACTIVE','REVOKED')),
+  runtime_commit varchar(40),
+  postdeploy_candidate_id varchar(160),
+  source_input_authority_hash varchar(64),
+  final_authority_hash varchar(64),
+  canary_process_code varchar(100),
+  canary_job_id bigint,
+  revision bigint NOT NULL DEFAULT 0 CHECK(revision>=0),
+  approved_by varchar(100),
+  approved_at timestamp,
+  activated_by varchar(100),
+  activated_at timestamp,
+  revoked_by varchar(100),
+  revoked_at timestamp,
+  revoke_reason varchar(300),
+  updated_at timestamp NOT NULL DEFAULT current_timestamp,
+  CONSTRAINT fk_autocompletion_gate_postdeploy_attempt
+    FOREIGN KEY(postdeploy_candidate_id,runtime_commit)
+    REFERENCES framework_postdeploy_release_attempt(candidate_id,source_commit),
+  CHECK(runtime_commit IS NULL OR runtime_commit~'^[0-9a-f]{40}$'),
+  CHECK(postdeploy_candidate_id IS NULL OR
+    postdeploy_candidate_id~'^[A-Za-z0-9._:-]{12,160}$'),
+  CHECK(source_input_authority_hash IS NULL OR
+    source_input_authority_hash~'^[0-9a-f]{64}$'),
+  CHECK(final_authority_hash IS NULL OR final_authority_hash~'^[0-9a-f]{64}$'),
+  CHECK(approval_status NOT IN('PREPARED','ACTIVE') OR (
+    runtime_commit IS NOT NULL AND postdeploy_candidate_id IS NOT NULL
+    AND source_input_authority_hash IS NOT NULL
+    AND final_authority_hash IS NOT NULL AND canary_process_code IS NOT NULL
+    AND canary_job_id IS NOT NULL AND approved_by IS NOT NULL AND approved_at IS NOT NULL
+    AND (approval_status<>'ACTIVE' OR
+      (activated_by IS NOT NULL AND activated_at IS NOT NULL))))
+);
+INSERT INTO integrated_design_autocompletion_gate(gate_key,approval_status)
+VALUES ('GLOBAL','DISABLED');
+
 INSERT INTO integrated_design_autocompletion_receipt(
   process_code,completion_status,dependency_fingerprint,receipt_json)
 SELECT DISTINCT contract.process_code,'PENDING',

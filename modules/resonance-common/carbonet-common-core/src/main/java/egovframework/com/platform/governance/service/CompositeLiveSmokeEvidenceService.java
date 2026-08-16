@@ -134,7 +134,7 @@ public class CompositeLiveSmokeEvidenceService {
             throw new IllegalArgumentException("LIVE_SMOKE_STATE_NOT_DECLARED");
         if(observedHttpStatus!=exactInteger(scenario,"expectedHttpStatus",100,599))
             throw new IllegalArgumentException("LIVE_SMOKE_HTTP_STATUS_NOT_DECLARED");
-        ReferenceObservation reference=referenceOutput(jobId,authorityId,
+        ReferenceObservation reference=referenceOutput(dispatchId,jobId,authorityId,
             ((Number)authority.get("authorityRevision")).longValue(),scenario,status);
         validateExecutionObservation(executionId,idempotencyKey,idempotencyKeyHash,tenantId,
             projectId,String.valueOf(authority.get("processCode")),String.valueOf(authority.get("stepCode")),
@@ -162,7 +162,8 @@ public class CompositeLiveSmokeEvidenceService {
         String evidenceRef="live:"+runId+";lane:"+lane+";artifact:"+artifactHash;
         Map<String,Object> envelope=new LinkedHashMap<>();
         envelope.put("schema","carbonet.composite-live-smoke-evidence/v1");
-        envelope.put("jobId",jobId);envelope.put("authorityId",authorityId);
+        envelope.put("dispatchId",dispatchId);envelope.put("jobId",jobId);
+        envelope.put("authorityId",authorityId);
         envelope.put("authorityRevision",authority.get("authorityRevision"));
         envelope.put("processCode",authority.get("processCode"));
         envelope.put("stepCode",authority.get("stepCode"));
@@ -177,22 +178,22 @@ public class CompositeLiveSmokeEvidenceService {
         String evidenceHash=hash(envelope);
         int writes=jdbc.update("""
             insert into integrated_design_live_smoke_evidence(
-              job_id,authority_id,authority_revision,process_code,step_code,route_path,audience,
+              dispatch_id,job_id,authority_id,authority_revision,process_code,step_code,route_path,audience,
               lane,status_case,scenario_code,account_id,tenant_id,project_id,actor_code,command_code,
               input_json,output_json,from_state,to_state,observed_state,expected_status,observed_status,
               source_hash,authority_hash,target_ref,lane_evidence,account_hash,command_hash,input_hash,
               output_hash,state_hash,status_hash,lane_evidence_hash,evidence_hash,evidence_ref,
               recorded_by,observed_at)
             values(
-              ?,?,?,?,?,?,?,
+              ?,?,?,?,?,?,?,?,
               ?,?,?,?,?,?,?,?,
               ?::jsonb,?::jsonb,?,?,?,?,?,
               ?,?,?,?::jsonb,?,?,?,
               ?,?,?,?,?,?,?,
               ?::timestamptz)
-            on conflict(job_id,authority_id,authority_revision,command_code,scenario_code,lane,status_case)
+            on conflict(dispatch_id,authority_id,authority_revision,command_code,scenario_code,lane,status_case)
             do nothing
-            """,jobId,authorityId,authority.get("authorityRevision"),authority.get("processCode"),
+            """,dispatchId,jobId,authorityId,authority.get("authorityRevision"),authority.get("processCode"),
             authority.get("stepCode"),authority.get("routePath"),authority.get("audience"),lane,status,
             scenarioCode,authenticatedAccount,tenantId,projectId,actor,command,json(input),json(output),
             from,to,observedState,status,status,authority.get("sourceHash"),authority.get("authorityHash"),
@@ -201,9 +202,9 @@ public class CompositeLiveSmokeEvidenceService {
         if(writes==0){
             String existing=jdbc.queryForObject("""
                 select evidence_hash from integrated_design_live_smoke_evidence
-                 where job_id=? and authority_id=? and authority_revision=?
+                 where dispatch_id=? and authority_id=? and authority_revision=?
                    and command_code=? and scenario_code=? and lane=? and status_case=?
-                """,String.class,jobId,authorityId,authority.get("authorityRevision"),command,
+                """,String.class,dispatchId,authorityId,authority.get("authorityRevision"),command,
                 scenarioCode,lane,status);
             if(!evidenceHash.equals(existing))throw new IllegalStateException(
                 "LIVE_SMOKE_EVIDENCE_CONFLICT_REQUIRES_NEW_JOB");
@@ -225,8 +226,8 @@ public class CompositeLiveSmokeEvidenceService {
                    framework_try_jsonb(job.result_json)#>>
                      '{canonicalGeneration,compositeArtifactManifestHash}' as "artifactHash",
                    dispatch.dispatch_id as "dispatchId",dispatch.project_id as "dispatchProjectId",
-                   (?::timestamptz>=job.completed_at and
-                    ?::timestamptz<=clock_timestamp()) as "temporalExact"
+                   (?::timestamptz>=dispatch.started_at and
+                     ?::timestamptz<=clock_timestamp()) as "temporalExact"
               from integrated_design_authority authority
               join framework_development_job job on job.job_id=authority.job_id
               join integrated_design_live_smoke_dispatch dispatch
@@ -238,6 +239,15 @@ public class CompositeLiveSmokeEvidenceService {
                and dispatch.artifact_manifest_hash=framework_try_jsonb(job.result_json)#>>
                    '{canonicalGeneration,compositeArtifactManifestHash}'
                and dispatch.status='RUNNING' and dispatch.lease_until>=clock_timestamp()
+              join framework_runtime_release_state runtime
+                on runtime.release_key='CARBONET_RUNTIME' and runtime.health_status='UP'
+               and runtime.source_commit=dispatch.runtime_commit
+               and dispatch.runtime_identity_hash=encode(sha256(convert_to(concat_ws('|',
+                 runtime.source_commit,runtime.deployment_namespace,runtime.deployment_name,
+                 runtime.deployment_uid,runtime.deployment_generation,
+                 runtime.observed_generation,runtime.desired_replicas,
+                 runtime.image_ref,runtime.image_id,runtime.health_status
+               ),'UTF8')),'hex')
               join integrated_design_autocompletion_receipt receipt
                 on receipt.process_code=authority.process_code and receipt.job_id=job.job_id
               join lateral(select candidate.* from integrated_design_scope_binding candidate
@@ -253,11 +263,13 @@ public class CompositeLiveSmokeEvidenceService {
                 limit 1) binding on true
              where authority.authority_id=? and authority.job_id=?
                and receipt.completion_status='SOURCE_APPLIED_PHYSICAL_QUEUED'
+               and receipt.dependency_fingerprint=
+                   framework_composite_dependency_fingerprint(receipt.process_code)
                and receipt.receipt_json->>'liveSmokeDispatchId'=dispatch.dispatch_id::text
                and job.job_type='FULL_STACK_GENERATION'
                and job.job_group_code=authority.process_code||'_CANONICAL_PUBLICATION'
                and job.job_status in('VERIFIED','COMPLETED') and job.quality_status='VERIFIED'
-               and job.completed_at is not null
+               and dispatch.started_at is not null and job.completed_at is not null
                and not exists(select 1 from integrated_design_scope_binding conflicting
                  where conflicting.authority_id=authority.authority_id
                    and conflicting.authority_revision=authority.authority_revision
@@ -269,6 +281,7 @@ public class CompositeLiveSmokeEvidenceService {
                    and conflicting.authority_hash=authority.authority_hash
                    and (conflicting.scope_type<>binding.scope_type
                      or coalesce(conflicting.project_id,'')<>coalesce(binding.project_id,'')))
+             for share of runtime,dispatch,receipt,job,authority
             """,observedAt,observedAt,dispatchId,authorityId,jobId);
         if(rows.size()!=1)throw new IllegalStateException("LIVE_SMOKE_CURRENT_JOB_AUTHORITY_REQUIRED");
         Map<String,Object> row=new LinkedHashMap<>(rows.get(0));
@@ -324,7 +337,7 @@ public class CompositeLiveSmokeEvidenceService {
             throw new SecurityException("LIVE_SMOKE_ACCOUNT_ACTOR_SCOPE_NOT_EXACT");
     }
 
-    private ReferenceObservation referenceOutput(long jobId,long authorityId,long revision,
+    private ReferenceObservation referenceOutput(long dispatchId,long jobId,long authorityId,long revision,
             Map<String,Object> scenario,String status){
         if(!Set.of("CONFLICT","RECOVERY").contains(status))return ReferenceObservation.EMPTY;
         Map<String,Object> trigger=object(scenario.get("trigger"),"scenario.trigger");
@@ -332,9 +345,9 @@ public class CompositeLiveSmokeEvidenceService {
         List<Map<String,Object>> rows=jdbc.queryForList("""
             select output_json::text as "output",lane_evidence::text as "laneEvidence"
               from integrated_design_live_smoke_evidence
-             where job_id=? and authority_id=? and authority_revision=?
+             where dispatch_id=? and job_id=? and authority_id=? and authority_revision=?
                and scenario_code=? and status_case='SUCCESS' and lane='API'
-            """,jobId,authorityId,revision,reference);
+            """,dispatchId,jobId,authorityId,revision,reference);
         if(rows.size()!=1)throw new IllegalStateException("LIVE_SMOKE_REFERENCE_SCENARIO_REQUIRED");
         Map<String,Object> proof=jsonObject(rows.get(0).get("laneEvidence"),"reference.laneEvidence");
         return new ReferenceObservation(jsonObject(rows.get(0).get("output"),"reference.output"),

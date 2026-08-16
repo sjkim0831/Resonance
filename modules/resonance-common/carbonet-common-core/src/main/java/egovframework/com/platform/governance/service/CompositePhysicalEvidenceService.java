@@ -202,8 +202,9 @@ final class CompositePhysicalEvidenceService {
                    evidence.state_hash as "stateHash",evidence.status_hash as "statusHash",
                    evidence.lane_evidence_hash as "laneEvidenceHash",
                    evidence.evidence_hash as "evidenceHash",evidence.evidence_ref as "evidenceRef",
-                   (job.completed_at is not null and evidence.observed_at>=job.completed_at
-                    and evidence.observed_at<=evidence.recorded_at) as "temporalExact",
+                   (dispatch.started_at is not null and evidence.observed_at>=dispatch.started_at
+                    and evidence.observed_at<=evidence.recorded_at
+                    and evidence.observed_at<=clock_timestamp()) as "temporalExact",
                    (exists(select 1 from comtnemplyrinfo account
                       join comtnemplyrscrtyestbs security
                         on security.scrty_dtrmn_trget_id=account.esntl_id
@@ -234,6 +235,24 @@ final class CompositePhysicalEvidenceService {
                    )::integer as "assignmentCount"
                from integrated_design_live_smoke_evidence evidence
                join framework_development_job job on job.job_id=evidence.job_id
+               join integrated_design_autocompletion_receipt receipt
+                 on receipt.process_code=evidence.process_code and receipt.job_id=evidence.job_id
+                and receipt.receipt_json->>'liveSmokeDispatchId'~'^[0-9]+$'
+               join integrated_design_live_smoke_dispatch dispatch
+                 on dispatch.dispatch_id=(receipt.receipt_json->>'liveSmokeDispatchId')::bigint
+                and dispatch.dispatch_id=evidence.dispatch_id and dispatch.job_id=evidence.job_id
+                and (nullif(receipt.receipt_json#>>'{canary,runtimeCommit}','') is null
+                  or dispatch.runtime_commit=receipt.receipt_json#>>'{canary,runtimeCommit}')
+                 and dispatch.status in('EVIDENCE_SUBMITTED','COMPLETED')
+               join framework_runtime_release_state runtime
+                 on runtime.release_key='CARBONET_RUNTIME' and runtime.health_status='UP'
+                and runtime.source_commit=dispatch.runtime_commit
+                and dispatch.runtime_identity_hash=encode(sha256(convert_to(concat_ws('|',
+                  runtime.source_commit,runtime.deployment_namespace,runtime.deployment_name,
+                  runtime.deployment_uid,runtime.deployment_generation,
+                  runtime.observed_generation,runtime.desired_replicas,
+                  runtime.image_ref,runtime.image_id,runtime.health_status
+                ),'UTF8')),'hex')
                join integrated_design_authority authority
                  on authority.authority_id=evidence.authority_id
                 and authority.authority_revision=evidence.authority_revision

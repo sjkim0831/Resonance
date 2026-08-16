@@ -159,6 +159,7 @@ POSTDEPLOY_STAGE_SCRIPT="${CARBONET_POSTDEPLOY_STAGE_SCRIPT:-$ROOT_DIR/ops/scrip
 POSTDEPLOY_ABORT_SCRIPT="${CARBONET_POSTDEPLOY_ABORT_SCRIPT:-$ROOT_DIR/ops/scripts/abort-postdeploy-release-attempt.sh}"
 POSTDEPLOY_AUTHORITY_SCRIPT="${CARBONET_POSTDEPLOY_AUTHORITY_SCRIPT:-$ROOT_DIR/ops/scripts/check-postdeploy-authoritative-promotion.sh}"
 POSTDEPLOY_LEADER_RESOLVER="${CARBONET_POSTDEPLOY_LEADER_RESOLVER:-$ROOT_DIR/ops/scripts/resolve-patroni-primary-pod.sh}"
+composite_autocompletion_gate_prepared=false
 
 rebind_default_postdeploy_helpers() {
   [[ "$POSTDEPLOY_JOURNAL_HELPER_EXPLICIT" == true ]] || POSTDEPLOY_JOURNAL_HELPER="/opt/resonance-data/control-plane/bin/postdeploy-attempt-journal.py"
@@ -729,6 +730,37 @@ if [[ "$deployed_commit" == "$target_commit" ]]; then
   if [[ -e "$POSTDEPLOY_MARKER_PENDING_FILE" || -L "$POSTDEPLOY_MARKER_PENDING_FILE" \
      || -s "$POSTDEPLOY_ATTEMPT_JOURNAL_FILE" \
      || -s "$early_persistent_gate_active" ]]; then
+    no_change_recovery_hint=true
+  fi
+  # A power loss after finalizer promotion but before ACTIVATE can leave the
+  # DB gate safely PREPARED with no attempt journal. Read the authoritative
+  # state before taking the no-change exit; a PREPARED or unreadable installed
+  # gate forces the normal recovery path, while ACTIVE adds no recurring work.
+  early_composite_gate_table="UNKNOWN"
+  early_composite_gate_status="UNKNOWN"
+  early_composite_gate_candidate=""
+  if resolve_postdeploy_postgres_pod; then
+    early_composite_gate_table="$(printf '%s\n' \
+      "select coalesce(to_regclass('public.integrated_design_autocompletion_gate')::text,'ABSENT');" | \
+      timeout 4s kubectl -n "$NAMESPACE" exec -i "$POSTGRES_POD" -c "$POSTGRES_CONTAINER" -- \
+        psql -h 127.0.0.1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" -X -qAt \
+          -v ON_ERROR_STOP=1 2>/dev/null || true)"
+    early_composite_gate_table="$(tr -d '[:space:]' <<<"$early_composite_gate_table")"
+    if [[ "$early_composite_gate_table" == *integrated_design_autocompletion_gate ]]; then
+      early_composite_gate_record="$(printf '%s\n' \
+        "select approval_status||E'\\t'||coalesce(postdeploy_candidate_id,'') from integrated_design_autocompletion_gate where gate_key='GLOBAL';" | \
+        timeout 4s kubectl -n "$NAMESPACE" exec -i "$POSTGRES_POD" -c "$POSTGRES_CONTAINER" -- \
+          psql -h 127.0.0.1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" -X -qAt \
+            -v ON_ERROR_STOP=1 2>/dev/null || true)"
+      early_composite_gate_record="$(tr -d '\r\n' <<<"$early_composite_gate_record")"
+      IFS=$'\t' read -r early_composite_gate_status early_composite_gate_candidate \
+        <<<"$early_composite_gate_record"
+    elif [[ "$early_composite_gate_table" == ABSENT ]]; then
+      early_composite_gate_status="ABSENT"
+    fi
+  fi
+  if [[ "$early_composite_gate_status" == PREPARED \
+     || "$early_composite_gate_status" == UNKNOWN || -z "$early_composite_gate_status" ]]; then
     no_change_recovery_hint=true
   fi
   early_deployment_json=""
@@ -1717,6 +1749,13 @@ cleanup_deploy() {
   local original_status=$? recovery_status=0
   trap - EXIT INT TERM
   set +e
+  if [[ "${composite_autocompletion_gate_prepared:-false}" == true ]]; then
+    CARBONET_POSTDEPLOY_CANDIDATE_ID="$postdeploy_candidate_id" RESONANCE_ROOT="$ROOT_DIR" \
+      bash "$ROOT_DIR/ops/scripts/prepare-composite-autocompletion-postdeploy.sh" \
+        revoke-prepared >/dev/null 2>&1 || true
+    sudo -n systemctl disable --now resonance-composite-live-smoke.timer \
+      >/dev/null 2>&1 || true
+  fi
   if [[ -n "$runtime_asset_sync_pid" ]] && kill -0 "$runtime_asset_sync_pid" 2>/dev/null; then
     kill "$runtime_asset_sync_pid" 2>/dev/null || true
     wait "$runtime_asset_sync_pid" 2>/dev/null || true
@@ -2957,6 +2996,8 @@ process_development_control_plane_in_sync() {
       /opt/resonance-data/control-plane/bin/resonance-composite-live-smoke-e2e.mjs &&
     cmp -s ops/scripts/composite-live-smoke-db-probe.sh \
       /opt/resonance-data/control-plane/bin/composite-live-smoke-db-probe.sh &&
+    cmp -s ops/scripts/prepare-composite-autocompletion-postdeploy.sh \
+      /opt/resonance-data/control-plane/bin/prepare-composite-autocompletion-postdeploy.sh &&
     cmp -s ops/scripts/lib/declared-process-relay-runtime.mjs \
       /opt/resonance-data/control-plane/bin/lib/declared-process-relay-runtime.mjs &&
     cmp -s ops/runtime-metadata/business-e2e-runner-registry.json \
@@ -2995,11 +3036,13 @@ sync_process_development_worker_if_required() {
       ops/scripts/generate-composite-relay-account-map.py \
       ops/scripts/resonance-composite-live-smoke-e2e.mjs \
       ops/scripts/composite-live-smoke-db-probe.sh \
+      ops/scripts/prepare-composite-autocompletion-postdeploy.sh \
       ops/scripts/lib/declared-process-relay-runtime.mjs \
       ops/runtime-metadata/business-e2e-runner-registry.json \
       ops/runtime-metadata/composite-live-smoke-runner.json \
       ops/runtime-metadata/composite-relay-account-map.json \
       ops/tests/test-generate-composite-relay-account-map.py \
+      ops/tests/test-prepare-composite-autocompletion-postdeploy.sh \
       ops/systemd/resonance-process-development-worker.service \
       ops/systemd/resonance-process-development-worker.timer \
       ops/systemd/resonance-project-auto-completion.service \
@@ -3023,11 +3066,13 @@ sync_process_development_worker_if_required() {
       ops/scripts/generate-composite-relay-account-map.py \
       ops/scripts/resonance-composite-live-smoke-e2e.mjs \
       ops/scripts/composite-live-smoke-db-probe.sh \
+      ops/scripts/prepare-composite-autocompletion-postdeploy.sh \
       ops/scripts/lib/declared-process-relay-runtime.mjs \
       ops/runtime-metadata/business-e2e-runner-registry.json \
       ops/runtime-metadata/composite-live-smoke-runner.json \
       ops/runtime-metadata/composite-relay-account-map.json \
       ops/tests/test-generate-composite-relay-account-map.py \
+      ops/tests/test-prepare-composite-autocompletion-postdeploy.sh \
       ops/systemd/resonance-process-development-worker.service \
       ops/systemd/resonance-process-development-worker.timer \
       ops/systemd/resonance-project-auto-completion.service \
@@ -3041,6 +3086,7 @@ sync_process_development_worker_if_required() {
       grep -Fq '/opt/resonance-data/control-plane/bin/run-process-development-dispatcher.sh'; then
     bash ops/scripts/test-process-worker-deploy-marker.sh
     python3 ops/tests/test-generate-composite-relay-account-map.py
+    bash ops/tests/test-prepare-composite-autocompletion-postdeploy.sh
     sudo -n install -d -m 0755 -o root -g root \
       /opt/resonance-data/control-plane/bin \
       /opt/resonance-data/control-plane/bin/lib \
@@ -3073,6 +3119,9 @@ sync_process_development_worker_if_required() {
     sudo -n install -m 0750 -o sjkim -g sjkim \
       ops/scripts/composite-live-smoke-db-probe.sh \
       /opt/resonance-data/control-plane/bin/composite-live-smoke-db-probe.sh
+    sudo -n install -m 0750 -o sjkim -g sjkim \
+      ops/scripts/prepare-composite-autocompletion-postdeploy.sh \
+      /opt/resonance-data/control-plane/bin/prepare-composite-autocompletion-postdeploy.sh
     sudo -n install -m 0750 -o sjkim -g sjkim \
       ops/scripts/resonance-composite-live-smoke-e2e.mjs \
       /opt/resonance-data/control-plane/bin/resonance-composite-live-smoke-e2e.mjs
@@ -3116,9 +3165,35 @@ sync_process_development_worker_if_required() {
     sudo -n systemctl enable --now \
       resonance-process-development-worker.timer \
       resonance-project-auto-completion.timer \
-      resonance-composite-live-smoke.timer \
       resonance-incremental-screen-generation.timer >/dev/null
     echo "[auto-deploy] process development worker control plane synchronized"
+  fi
+}
+
+reconcile_composite_autocompletion_postdeploy(){
+  # Call only after Flyway, runtime readiness, authenticated validation lanes,
+  # and every other failure-capable pre-finalize task. This creates only a
+  # PREPARED database CAS; workers require ACTIVE and therefore remain write-zero.
+  # The guarded finalizer activates the exact revision only after all finalization passes.
+  if CARBONET_POSTDEPLOY_CANDIDATE_ID="$postdeploy_candidate_id" RESONANCE_ROOT="$ROOT_DIR" \
+      bash ops/scripts/prepare-composite-autocompletion-postdeploy.sh reconcile; then
+    if ! sudo -n systemctl enable --now resonance-composite-live-smoke.timer >/dev/null; then
+      CARBONET_POSTDEPLOY_CANDIDATE_ID="$postdeploy_candidate_id" RESONANCE_ROOT="$ROOT_DIR" \
+        bash ops/scripts/prepare-composite-autocompletion-postdeploy.sh revoke-prepared \
+          >/dev/null 2>&1 || true
+      sudo -n systemctl disable --now resonance-composite-live-smoke.timer >/dev/null 2>&1 || true
+      echo '[auto-deploy] composite autocompletion gate revoked: smoke timer enable failed' >&2
+      return 1
+    fi
+    composite_autocompletion_gate_prepared=true
+    echo '[auto-deploy] composite autocompletion postdeploy state reconciled'
+  else
+    CARBONET_POSTDEPLOY_CANDIDATE_ID="$postdeploy_candidate_id" RESONANCE_ROOT="$ROOT_DIR" \
+      bash ops/scripts/prepare-composite-autocompletion-postdeploy.sh revoke-prepared \
+        >/dev/null 2>&1 || true
+    sudo -n systemctl disable --now resonance-composite-live-smoke.timer >/dev/null
+    echo '[auto-deploy] composite autocompletion durable gate remains disabled: readiness pending'
+    return 1
   fi
 }
 
@@ -4291,6 +4366,27 @@ finalize_postdeploy_candidate_release() {
   }
 }
 
+finalize_postdeploy_candidate_release_with_composite_gate_cleanup() {
+  local finalize_status=0
+  if finalize_postdeploy_candidate_release; then
+    if CARBONET_POSTDEPLOY_CANDIDATE_ID="$postdeploy_candidate_id" RESONANCE_ROOT="$ROOT_DIR" \
+        bash ops/scripts/prepare-composite-autocompletion-postdeploy.sh activate; then
+      composite_autocompletion_gate_prepared=false
+      return 0
+    fi
+    finalize_status=79
+  else
+    finalize_status=$?
+  fi
+  # PREPARED is never executable. Any finalizer or activation failure revokes
+  # the independent DB gate, so the failed release starts zero bulk work.
+  CARBONET_POSTDEPLOY_CANDIDATE_ID="$postdeploy_candidate_id" RESONANCE_ROOT="$ROOT_DIR" \
+    bash ops/scripts/prepare-composite-autocompletion-postdeploy.sh revoke-prepared \
+      >/dev/null 2>&1 || true
+  sudo -n systemctl disable --now resonance-composite-live-smoke.timer >/dev/null 2>&1 || true
+  return "$finalize_status"
+}
+
 # Recovery executes immediately after the required functions and DB leader are
 # available, before catalog branching, pg_dump, checkpoint work or builds.
 persistent_attempt_recovery_status=1
@@ -4378,8 +4474,19 @@ case "$postdeploy_pending_recovery_status" in
     }
     if [[ "$postdeploy_recovered_commit" == "$target_commit" ]]; then
       record_deploy_performance recovery || echo '[auto-deploy] WARN recovery performance telemetry failed' >&2
-      rm -f -- "$DEPLOY_PHASE_FILE" "${CARBONET_DEPLOY_SNAPSHOT_PATH:-}"
-      echo "[auto-deploy] recovered already promoted runtime without rebuild: $target_commit"
+      rm -f -- "$DEPLOY_PHASE_FILE" "${CARBONET_DEPLOY_SNAPSHOT_PATH:-}" || true
+      if [[ "$early_composite_gate_status" == PREPARED ]]; then
+        [[ "$early_composite_gate_candidate" =~ ^[A-Za-z0-9._:-]{12,160}$ ]] || {
+          echo '[auto-deploy] BLOCKED recovered runtime has an invalid PREPARED composite candidate' >&2
+          exit 79
+        }
+        echo "[auto-deploy] recovered promoted runtime; activating exact PREPARED composite gate: $target_commit" || true
+        CARBONET_POSTDEPLOY_CANDIDATE_ID="$early_composite_gate_candidate" \
+          RESONANCE_ROOT="$ROOT_DIR" \
+          bash "$ROOT_DIR/ops/scripts/prepare-composite-autocompletion-postdeploy.sh" activate
+        exit 0
+      fi
+      echo "[auto-deploy] recovered already promoted runtime without rebuild: $target_commit" || true
       exit 0
     fi
     # Remote B may arrive after promoted A committed but before its derived
@@ -4391,6 +4498,17 @@ case "$postdeploy_pending_recovery_status" in
     ;;
   1)
     if [[ "$no_change_candidate" == true ]]; then
+      if [[ "$early_composite_gate_status" == PREPARED \
+         && "$early_composite_gate_candidate" =~ ^[A-Za-z0-9._:-]{12,160}$ ]] \
+         && CARBONET_POSTDEPLOY_CANDIDATE_ID="$early_composite_gate_candidate" \
+              RESONANCE_ROOT="$ROOT_DIR" \
+              bash "$ROOT_DIR/ops/scripts/prepare-composite-autocompletion-postdeploy.sh" \
+                activate; then
+        record_deploy_performance recovery || true
+        rm -f -- "$DEPLOY_PHASE_FILE" "${CARBONET_DEPLOY_SNAPSHOT_PATH:-}" || true
+        echo "[auto-deploy] recovered exact PREPARED composite gate without rollout: $target_commit" || true
+        exit 0
+      fi
       write_postdeploy_promotion_quarantine 'NO_CHANGE_RUNTIME_AUTHORITY_UNPROVEN' || true
       echo '[auto-deploy] BLOCKED no-change runtime identity could not be proven or recovered' >&2
       exit 79
@@ -5112,7 +5230,8 @@ if [[ "$PLAN_RUNTIME_REQUIRED" == "true" \
   run_screen_contract_runtime_save_gate_if_required
   run_actor_process_role_e2e_if_required
   record_deploy_phase "runtime_profile_and_verify"
-  finalize_postdeploy_candidate_release
+  reconcile_composite_autocompletion_postdeploy
+  finalize_postdeploy_candidate_release_with_composite_gate_cleanup
   record_deploy_performance runtime || echo '[auto-deploy] WARN runtime-profile performance telemetry failed' >&2
   echo "[auto-deploy] JVM profile promoted without Java/frontend rebuild: $target_commit"
   exit 0
@@ -5327,6 +5446,7 @@ sync_react_asset_prune_worker_if_required
 bash ops/scripts/normalize-deploy-generated-assets.sh "$ROOT_DIR"
 record_deploy_phase "postdeploy_validation"
 sudo docker image prune -a -f >/dev/null || true
-finalize_postdeploy_candidate_release
+reconcile_composite_autocompletion_postdeploy
+finalize_postdeploy_candidate_release_with_composite_gate_cleanup
 record_deploy_performance runtime || echo '[auto-deploy] WARN runtime performance telemetry failed' >&2
 echo "[auto-deploy] deployed $target_commit after one-shot Flyway verification; runtime migration disabled"

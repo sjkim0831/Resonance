@@ -3,6 +3,8 @@ package egovframework.com.platform.governance.web;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import egovframework.com.platform.governance.service.ActorProcessGovernanceService;
+import egovframework.com.platform.governance.service.CompositeDesignOperationalWorker;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -73,6 +75,7 @@ public class ActorProcessControlPlaneBridgeController {
     private final JdbcTemplate jdbc;
     private final ObjectMapper mapper;
     private final ActorProcessGovernanceService governance;
+    private final CompositeDesignOperationalWorker compositeAutocompletion;
     private final ExecutorService generationExecutor = Executors.newSingleThreadExecutor(runnable -> {
         Thread thread = new Thread(runnable, "actor-process-generation");
         thread.setDaemon(true);
@@ -80,15 +83,24 @@ public class ActorProcessControlPlaneBridgeController {
     });
     private final String bridgeToken;
 
+    @Autowired
     public ActorProcessControlPlaneBridgeController(
             JdbcTemplate jdbc,
             ObjectMapper mapper,
             ActorProcessGovernanceService governance,
-            @Value("${resonance.ops.token:}") String bridgeToken) {
+            @Value("${resonance.ops.token:}") String bridgeToken,
+            CompositeDesignOperationalWorker compositeAutocompletion) {
         this.jdbc = jdbc;
         this.mapper = mapper;
         this.governance = governance;
         this.bridgeToken = bridgeToken;
+        this.compositeAutocompletion = compositeAutocompletion;
+    }
+
+    public ActorProcessControlPlaneBridgeController(
+            JdbcTemplate jdbc,ObjectMapper mapper,ActorProcessGovernanceService governance,
+            String bridgeToken) {
+        this(jdbc,mapper,governance,bridgeToken,null);
     }
 
     @PostMapping("/design-releases")
@@ -527,6 +539,107 @@ public class ActorProcessControlPlaneBridgeController {
                     "message",safeMessage(exception,
                             "Project runtime restore rolled back.")));
         }
+    }
+
+    @GetMapping("/composite-autocompletion/inspect")
+    @Transactional(readOnly = true)
+    public ResponseEntity<?> inspectCompositeAutocompletion(
+            @RequestHeader(value = "X-Resonance-Token", defaultValue = "") String suppliedToken,
+            @RequestHeader(value = "X-Resonance-Actor", defaultValue = "") String actor,
+            @RequestHeader(value = "X-Resonance-Account", defaultValue = "") String account) {
+        ResponseEntity<?> denied=projectRuntimePurgeAccessFailure(suppliedToken,actor,account);
+        if(denied!=null)return denied;
+        if(compositeAutocompletion==null)return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+            .body(Map.of("success",false,"dryRun",true,"status","NOT_READY",
+                "message","Composite autocompletion worker is unavailable."));
+        try{return ResponseEntity.ok().header("Cache-Control","no-store")
+            .body(compositeAutocompletion.inspect());}
+        catch(Exception exception){return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+            .body(Map.of("success",false,"dryRun",true,"status","NOT_READY",
+                "message",safeMessage(exception,"Composite autocompletion inspection failed closed.")));}
+    }
+
+    @PostMapping("/composite-autocompletion/approval")
+    public ResponseEntity<?> changeCompositeAutocompletionApproval(
+            @RequestHeader(value = "X-Resonance-Token", defaultValue = "") String suppliedToken,
+            @RequestHeader(value = "X-Resonance-Actor", defaultValue = "") String actor,
+            @RequestHeader(value = "X-Resonance-Account", defaultValue = "") String account,
+            @RequestBody Map<String,Object> body){
+        ResponseEntity<?> denied=projectRuntimePurgeAccessFailure(suppliedToken,actor,account);
+        if(denied!=null)return denied;
+        if(compositeAutocompletion==null)return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+            .body(Map.of("success",false,"status","NOT_READY",
+                "message","Composite autocompletion worker is unavailable."));
+        Object rawRevision=body.get("expectedRevision");
+        if(!(rawRevision instanceof Number revision)
+                ||revision.doubleValue()!=revision.longValue()||revision.longValue()<0)
+            return ResponseEntity.unprocessableEntity().body(Map.of("success",false,
+                "status","REJECTED","message","expectedRevision must be a non-negative integer."));
+        String action=String.valueOf(body.getOrDefault("action","")).trim()
+            .toUpperCase(java.util.Locale.ROOT);
+        try{
+            Map<String,Object> result=switch(action){
+                case "PREPARE","APPROVE" -> compositeAutocompletion.prepare(revision.longValue(),
+                    String.valueOf(body.getOrDefault("expectedRuntimeCommit","")),
+                    String.valueOf(body.getOrDefault("expectedFinalAuthorityHash","")),
+                    String.valueOf(body.getOrDefault("expectedPostdeployCandidateId","")),actor);
+                case "ACTIVATE" -> compositeAutocompletion.activate(revision.longValue(),
+                    String.valueOf(body.getOrDefault("expectedRuntimeCommit","")),
+                    String.valueOf(body.getOrDefault("expectedSourceInputAuthorityHash","")),
+                    String.valueOf(body.getOrDefault("expectedPostdeployCandidateId","")),actor);
+                case "REVOKE" -> compositeAutocompletion.revoke(revision.longValue(),actor,
+                    String.valueOf(body.getOrDefault("reason","OPERATOR_REVOKED")));
+                case "REVOKE_PREPARED" -> compositeAutocompletion.revokePrepared(
+                    revision.longValue(),
+                    String.valueOf(body.getOrDefault("expectedPostdeployCandidateId","")),actor,
+                    String.valueOf(body.getOrDefault("reason","POSTDEPLOY_PREPARED_ABORTED")));
+                default -> throw new IllegalArgumentException(
+                    "action must be PREPARE, ACTIVATE, REVOKE_PREPARED, or REVOKE.");
+            };
+            return ResponseEntity.ok().header("Cache-Control","no-store").body(result);
+        }catch(IllegalArgumentException exception){
+            return ResponseEntity.unprocessableEntity().body(Map.of("success",false,
+                "status","REJECTED","message",safeMessage(exception,
+                    "Composite autocompletion approval request is invalid.")));
+        }catch(Exception exception){
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("success",false,
+                "status","APPROVAL_REJECTED","message",safeMessage(exception,
+                    "Composite autocompletion approval failed closed.")));
+        }
+    }
+
+    @PostMapping("/composite-autocompletion/dispatch")
+    public ResponseEntity<?> dispatchCompositeAutocompletion(
+            @RequestHeader(value = "X-Resonance-Token", defaultValue = "") String suppliedToken,
+            @RequestHeader(value = "X-Resonance-Actor", defaultValue = "") String actor,
+            @RequestHeader(value = "X-Resonance-Account", defaultValue = "") String account,
+            @RequestBody Map<String,Object> body) {
+        ResponseEntity<?> denied=projectRuntimePurgeAccessFailure(suppliedToken,actor,account);
+        if(denied!=null)return denied;
+        if(compositeAutocompletion==null)return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+            .body(Map.of("success",false,"status","NOT_READY",
+                "message","Composite autocompletion worker is unavailable."));
+        Object raw=body.get("limit");
+        if(!(raw instanceof Number number)||number.doubleValue()!=number.intValue()
+                ||number.intValue()<1||number.intValue()>25)
+            return ResponseEntity.unprocessableEntity().body(Map.of("success",false,
+                "status","REJECTED","message","limit must be an integer from 1 through 25."));
+        int limit=number.intValue();
+        try{
+            boolean canary=limit==1;
+            Map<String,Object> result=new LinkedHashMap<>(canary
+                ?compositeAutocompletion.dispatchCanary()
+                :compositeAutocompletion.dispatchApproved(limit));
+            if(canary&&(!(result.get("claimedCount") instanceof Number claimed)
+                    ||claimed.intValue()!=1))
+                return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of(
+                    "success",false,"status","CANARY_NOT_CLAIMED",
+                    "message","The one globally bound canary was not claimed."));
+            result.put("canary",canary);result.put("requestedLimit",limit);
+            return ResponseEntity.accepted().body(result);
+        }catch(Exception exception){return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of(
+            "success",false,"status","DISPATCH_REJECTED",
+            "message",safeMessage(exception,"Composite autocompletion dispatch failed closed.")));}
     }
 
     @GetMapping("/dashboard")

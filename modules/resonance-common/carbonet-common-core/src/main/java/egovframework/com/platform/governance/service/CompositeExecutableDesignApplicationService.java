@@ -274,12 +274,19 @@ final class CompositeExecutableDesignApplicationService {
         Map<String,Object> scope=request.scope();
         host.lockCompositeProcessAuthority(process);
         store.validateCompositeDesignScope(process,scope);
-        Map<String,Object> generated=jdbc.queryForMap(
-            "select * from refresh_integrated_design_axis_documents(?,?)",process,!previewOnly);
+        // The 18-axis documents are the source authority. Runtime compilation
+        // must never regenerate them from compiler-owned compatibility rows:
+        // doing so changes H0 after a claim and makes a bulk campaign revoke
+        // itself. The migration function refresh_integrated_design_axis_documents
+        // performs the one-time legacy backfill; every later design change
+        // enters through the document save authority.
+        Map<String,Object> generated=Map.of("updated_count",0L,
+            "protected_count",jdbc.queryForObject("""
+                select count(*)::bigint from integrated_design_document
+                 where process_code=? and active_yn='Y'
+                """,Long.class,process),"ambiguous_count",0L);
         if(previewOnly)return Map.of("success",true,"status","IN_REVIEW","processCode",process,
             "sourceCommitted",false,"generation",generated,"activationPolicy","NONE");
-        if(((Number)generated.getOrDefault("ambiguous_count",0)).longValue()!=0)
-            throw new IllegalStateException("COMPOSITE_BATCH_BLUEPRINT_AUTHORITY_AMBIGUOUS");
         CompileRows compileRows=loadCompileRows(request);
         int contracts=compileRows.contracts();List<Map<String,Object>> rows=compileRows.rows();
         List<Map<String,Object>> plans=buildCompositePlans(process,rows,true);
@@ -381,6 +388,22 @@ final class CompositeExecutableDesignApplicationService {
         return result;
     }
 
+    /** Pure/read-only use of the exact production compiler and cross-screen closure. */
+    Map<String,Object> inspectCompilerReadiness(String process){
+        CompileRequest request=parseCompileRequest(Map.of(
+            "processCode",process,"previewOnly",true,"scopeType","GLOBAL"));
+        CompileRows compileRows=loadCompileRows(request);
+        List<Map<String,Object>> rows=compileRows.rows();
+        if(!rows.stream().allMatch(row->CompositeExecutableDesignAuthorityCompiler.READY_STATUSES
+                .contains(String.valueOf(row.get("status")))))
+            throw new IllegalStateException("COMPOSITE_BATCH_AXIS_STATUS_NOT_READY");
+        List<Map<String,Object>> plans=buildCompositePlans(process,rows,false);
+        validateCompositeScreenCompatibility(plans);
+        return Map.of("success",true,"processCode",process,
+            "identityCount",compileRows.contracts(),"documentCount",rows.size(),
+            "requiredDocumentCount",compileRows.contracts()*18,"compilerClosure","PASS");
+    }
+
     private CompileRequest parseCompileRequest(Map<String,Object> body){
         String process=req(body,"processCode").toUpperCase(Locale.ROOT);
         if(!process.matches("^[A-Z][A-Z0-9_:-]{1,79}$"))throw new IllegalArgumentException(
@@ -440,13 +463,15 @@ final class CompositeExecutableDesignApplicationService {
             String route=String.valueOf(first.get("routePath")),audience=String.valueOf(first.get("audience"));
             CompositeExecutableDesignAuthorityCompiler.Selection selection=
                 CompositeExecutableDesignAuthorityCompiler.selection(process,step,route,heads);
-            Map<String,Object> source=store.loadCompositeDesignSource(process,step,route,selection);
+            Map<String,Object> source=store.loadCompositeDesignSource(
+                process,step,route,selection,stageSource);
             CompositeExecutableDesignAuthorityCompiler.Compilation compilation=
                 CompositeExecutableDesignAuthorityCompiler.compile(process,step,route,audience,heads,source);
             databasePlans.validate(compilation);
             Map<String,Object> plan=new LinkedHashMap<>();plan.put("rows",identityRows);
             plan.put("source",source);plan.put("compilation",compilation);plan.put("stageSource",stageSource);
-            plan.put("authorityHead",store.loadCompositeAuthorityHead(process,step,route,audience));plans.add(plan);
+            plan.put("authorityHead",store.loadCompositeAuthorityHead(
+                process,step,route,audience,stageSource));plans.add(plan);
         }
         return plans;
     }
