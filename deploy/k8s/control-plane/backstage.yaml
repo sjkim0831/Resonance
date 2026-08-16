@@ -91,6 +91,8 @@ spec:
                 optional: true
             - secretRef:
                 name: resonance-ops-bridge
+            - secretRef:
+                name: resonance-runtime-purge-recovery
           env:
             - name: NODE_EXTRA_CA_CERTS
               value: /app/internal-ca/ca.crt

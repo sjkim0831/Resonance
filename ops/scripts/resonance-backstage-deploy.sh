@@ -264,6 +264,31 @@ ensure_auth_secret() {
   fi
 }
 
+ensure_runtime_purge_recovery_secret() {
+  local secret_name="resonance-runtime-purge-recovery" account_id actor_ref
+  if kubectl -n "$NAMESPACE" get secret "$secret_name" >/dev/null 2>&1; then
+    account_id="$(kubectl -n "$NAMESPACE" get secret "$secret_name" \
+      -o jsonpath='{.data.RESONANCE_RUNTIME_PURGE_RECOVERY_ACCOUNT_ID}' | base64 -d)"
+    actor_ref="$(kubectl -n "$NAMESPACE" get secret "$secret_name" \
+      -o jsonpath='{.data.RESONANCE_RUNTIME_PURGE_RECOVERY_ACTOR_REF}' | base64 -d)"
+  else
+    account_id="${RESONANCE_RUNTIME_PURGE_RECOVERY_ACCOUNT_ID:-}"
+    actor_ref="${RESONANCE_RUNTIME_PURGE_RECOVERY_ACTOR_REF:-service:default/project-runtime-purge-recovery}"
+  fi
+  [[ "$account_id" =~ ^[A-Za-z0-9._@-]{2,120}$ ]] || {
+    echo "[backstage] runtime purge recovery account secret is required" >&2
+    return 1
+  }
+  [[ "$actor_ref" =~ ^[a-z][a-z0-9._-]*:[a-z0-9._-]+/[a-z0-9._-]+$ ]] || {
+    echo "[backstage] runtime purge recovery actor ref is invalid" >&2
+    return 1
+  }
+  kubectl -n "$NAMESPACE" create secret generic "$secret_name" \
+    --from-literal=RESONANCE_RUNTIME_PURGE_RECOVERY_ACCOUNT_ID="$account_id" \
+    --from-literal=RESONANCE_RUNTIME_PURGE_RECOVERY_ACTOR_REF="$actor_ref" \
+    --dry-run=client -o yaml | kubectl apply -f - >/dev/null
+}
+
 configure_auth_mode() {
   local args guest_rbac
   if [[ "$OIDC_READY" == "true" ]]; then
@@ -477,6 +502,7 @@ case "$mode" in
     bash "$ROOT/ops/scripts/resonance-kubernetes-admission-preflight.sh" "$NAMESPACE"
     ensure_tls
     ensure_auth_secret
+    ensure_runtime_purge_recovery_secret
     ensure_ingress_https_port
     ensure_runtime_preview_https
     finish_phase preflight

@@ -406,7 +406,13 @@ SELECT authority_id,revision,'PROJECT','RFP-PURGE-001',revision,
        'RFP_TEST','STEP_A','/rfp-test','USER',
        repeat(CASE revision WHEN 2 THEN '7' ELSE '5' END,64),
        repeat(CASE revision WHEN 2 THEN '8' ELSE '4' END,64),
-       repeat(CASE revision WHEN 2 THEN '7' ELSE '6' END,64),'RFP_IMPORT'
+       framework_project_runtime_purge_integrated_provenance_hash(
+         'PROJECT','RFP-PURGE-001',revision::bigint,
+         repeat(CASE revision WHEN 2 THEN 'b' ELSE 'a' END,64),
+         'RFP_TEST','STEP_A','/rfp-test','USER',authority_id,revision::bigint,
+         repeat(CASE revision WHEN 2 THEN '7' ELSE '5' END,64),
+         repeat(CASE revision WHEN 2 THEN '8' ELSE '4' END,64)),
+       'RFP_IMPORT'
   FROM integrated_design_authority CROSS JOIN generate_series(1,3) revision;
 SQL
 
@@ -661,6 +667,72 @@ forged_binding_preview="$(db -Atqc "select framework_preview_project_runtime_pur
 [[ "$(scalar "select xmin::text from integrated_design_authority where process_code='RFP_TEST'")" == "$integrated_xmin_before" ]] ||
   fail 'forged integrated binding preview changed authority xmin'
 db -qc "delete from integrated_design_scope_binding where bound_by='FORGED_FIXTURE'"
+
+# Authority hashes alone are insufficient ownership proof.  A copied binding
+# must also name an existing immutable runtime release and carry the exact
+# Java-stable provenance hash for that project/version/checksum tuple.
+db -qc "insert into integrated_design_scope_binding(
+ authority_id,authority_revision,scope_type,project_id,design_version,
+ contract_sha256,process_code,step_code,route_path,audience,
+ document_set_hash,authority_hash,provenance_hash,bound_by)
+select authority_id,3,'PROJECT','RFP-PURGE-001',4,repeat('c',64),
+ process_code,step_code,route_path,audience,document_set_hash,authority_hash,
+ framework_project_runtime_purge_integrated_provenance_hash(
+   'PROJECT','RFP-PURGE-001',4::bigint,repeat('c',64),process_code,step_code,
+   route_path,audience,authority_id,3::bigint,document_set_hash,authority_hash),
+ 'FORGED_VERSION_FIXTURE' from integrated_design_authority
+ where process_code='RFP_TEST'"
+forged_version_preview="$(db -Atqc "select framework_preview_project_runtime_purge(
+ '81818181-0000-0000-0000-000000000001','81818181-0000-0000-0000-000000000002',
+ 'RFP-PURGE-001','RFP_TEST',3,repeat('a',64),'EXACT_PROJECT','runtime.admin')" | tail -1)"
+[[ "$(python3 -c 'import json,sys; print(json.load(sys.stdin)["status"])' <<<"$forged_version_preview")" == BLOCKED ]] ||
+  fail 'forged integrated design version was not blocked'
+[[ "$(python3 -c 'import json,sys; print(json.load(sys.stdin)["blockers"]["forgedIntegratedBindingCount"])' <<<"$forged_version_preview")" == 1 ]] ||
+  fail 'forged integrated design version count drifted'
+[[ "$(scalar "select xmin::text from integrated_design_authority where process_code='RFP_TEST'")" == "$integrated_xmin_before" ]] ||
+  fail 'forged design version preview changed authority xmin'
+db -qc "delete from integrated_design_scope_binding where bound_by='FORGED_VERSION_FIXTURE'"
+
+db -qc "insert into integrated_design_scope_binding(
+ authority_id,authority_revision,scope_type,project_id,design_version,
+ contract_sha256,process_code,step_code,route_path,audience,
+ document_set_hash,authority_hash,provenance_hash,bound_by)
+select authority_id,3,'PROJECT','RFP-PURGE-001',1,repeat('c',64),
+ process_code,step_code,route_path,audience,document_set_hash,authority_hash,
+ framework_project_runtime_purge_integrated_provenance_hash(
+   'PROJECT','RFP-PURGE-001',1::bigint,repeat('c',64),process_code,step_code,
+   route_path,audience,authority_id,3::bigint,document_set_hash,authority_hash),
+ 'FORGED_CHECKSUM_FIXTURE' from integrated_design_authority
+ where process_code='RFP_TEST'"
+forged_checksum_preview="$(db -Atqc "select framework_preview_project_runtime_purge(
+ '82828282-0000-0000-0000-000000000001','82828282-0000-0000-0000-000000000002',
+ 'RFP-PURGE-001','RFP_TEST',3,repeat('a',64),'EXACT_PROJECT','runtime.admin')" | tail -1)"
+[[ "$(python3 -c 'import json,sys; print(json.load(sys.stdin)["status"])' <<<"$forged_checksum_preview")" == BLOCKED ]] ||
+  fail 'forged integrated contract checksum was not blocked'
+[[ "$(python3 -c 'import json,sys; print(json.load(sys.stdin)["blockers"]["forgedIntegratedBindingCount"])' <<<"$forged_checksum_preview")" == 1 ]] ||
+  fail 'forged integrated checksum count drifted'
+[[ "$(scalar "select xmin::text from integrated_design_authority where process_code='RFP_TEST'")" == "$integrated_xmin_before" ]] ||
+  fail 'forged checksum preview changed authority xmin'
+db -qc "delete from integrated_design_scope_binding where bound_by='FORGED_CHECKSUM_FIXTURE'"
+
+db -qc "insert into integrated_design_scope_binding(
+ authority_id,authority_revision,scope_type,project_id,design_version,
+ contract_sha256,process_code,step_code,route_path,audience,
+ document_set_hash,authority_hash,provenance_hash,bound_by)
+select authority_id,3,'PROJECT','RFP-PURGE-001',1,repeat('a',64),
+ process_code,step_code,route_path,audience,document_set_hash,authority_hash,
+ repeat('0',64),'FORGED_PROVENANCE_FIXTURE' from integrated_design_authority
+ where process_code='RFP_TEST'"
+forged_provenance_preview="$(db -Atqc "select framework_preview_project_runtime_purge(
+ '83838383-0000-0000-0000-000000000001','83838383-0000-0000-0000-000000000002',
+ 'RFP-PURGE-001','RFP_TEST',3,repeat('a',64),'EXACT_PROJECT','runtime.admin')" | tail -1)"
+[[ "$(python3 -c 'import json,sys; print(json.load(sys.stdin)["status"])' <<<"$forged_provenance_preview")" == BLOCKED ]] ||
+  fail 'forged integrated provenance hash was not blocked'
+[[ "$(python3 -c 'import json,sys; print(json.load(sys.stdin)["blockers"]["forgedIntegratedBindingCount"])' <<<"$forged_provenance_preview")" == 1 ]] ||
+  fail 'forged integrated provenance count drifted'
+[[ "$(scalar "select xmin::text from integrated_design_authority where process_code='RFP_TEST'")" == "$integrated_xmin_before" ]] ||
+  fail 'forged provenance preview changed authority xmin'
+db -qc "delete from integrated_design_scope_binding where bound_by='FORGED_PROVENANCE_FIXTURE'"
 
 preview="$(db -Atqc "select framework_preview_project_runtime_purge(
  'aaaaaaaa-0000-0000-0000-000000000001','bbbbbbbb-0000-0000-0000-000000000001',

@@ -18,6 +18,12 @@ class ProjectRuntimeSagaLeaseLostError extends Error {
   }
 }
 
+class ProjectLocalDeleteOutcomeIndeterminateError extends Error {
+  constructor(cause?: unknown) {
+    super('PROJECT_LOCAL_DELETE_OUTCOME_INDETERMINATE', { cause });
+  }
+}
+
 const sagaLeaseExpiresAt = () =>
   new Date(Date.now() + projectRuntimeSagaLeaseMs);
 
@@ -89,6 +95,10 @@ export type ProjectRuntimeAbsenceCommand = {
 };
 
 export type ProjectRuntimePurgeGateway = {
+  preflightRecovery: (identity: {
+    accountId: string;
+    actorRef: string;
+  }) => Promise<Record<string, unknown>>;
   proveAbsent: (
     command: ProjectRuntimeAbsenceCommand,
   ) => Promise<Record<string, unknown>>;
@@ -310,7 +320,16 @@ const exactRuntimeAbsenceRelease = (
   release.fenceStatus === 'RELEASED' &&
   typeof release.idempotent === 'boolean';
 
-const deleteLocalProjectWithSagaLease = async (options: {
+const exactRuntimeRecoveryAuthority = (
+  receipt: Record<string, unknown>,
+  accountId: string,
+) =>
+  receipt.success === true &&
+  receipt.status === 'READY' &&
+  receipt.accountId === accountId &&
+  receipt.authorityValidated === true;
+
+type LocalProjectDeleteOptions = {
   knex: any;
   projectId: string;
   sagaId: string;
@@ -320,7 +339,134 @@ const deleteLocalProjectWithSagaLease = async (options: {
   projectName: string;
   identity: ProjectLifecycleIdentity;
   auditDetails: Record<string, unknown>;
-}) => {
+};
+
+const sameDatabaseTimestamp = (left: unknown, right: unknown) => {
+  const leftTime = new Date(String(left)).getTime();
+  const rightTime = new Date(String(right)).getTime();
+  return Number.isFinite(leftTime) && leftTime === rightTime;
+};
+
+const exactDeleteCountsFromAudit = (
+  rows: Array<Record<string, unknown>>,
+  sagaId: string,
+) => {
+  const exact = rows
+    .map(row => parseContract(row.details))
+    .filter(row => row.runtimePurgeSagaId === sagaId);
+  if (exact.length !== 1) {
+    throw new ProjectLocalDeleteOutcomeIndeterminateError();
+  }
+  const deleted = exact[0].deleted;
+  if (
+    !deleted ||
+    typeof deleted !== 'object' ||
+    Array.isArray(deleted) ||
+    Object.keys(deleted).length === 0 ||
+    Object.values(deleted).some(
+      value =>
+        typeof value !== 'number' || !Number.isInteger(value) || value < 0,
+    ) ||
+    deleted.project !== 1
+  ) {
+    throw new ProjectLocalDeleteOutcomeIndeterminateError();
+  }
+  return deleted as Record<string, number>;
+};
+
+const reconcileLocalProjectDeleteCommit = async (
+  options: LocalProjectDeleteOptions,
+): Promise<
+  | { status: 'LOCAL_APPLIED'; counts: Record<string, number> }
+  | { status: 'NOT_APPLIED' }
+> => {
+  const {
+    knex,
+    projectId,
+    sagaId,
+    claimToken,
+    projectIncarnation,
+    projectUpdatedAt,
+  } = options;
+  try {
+    return await knex.transaction(async (transaction: any) => {
+      await transaction.raw(
+        'select pg_advisory_xact_lock(hashtextextended(?, 0))',
+        [projectLifecycleMutationLockKey(projectId)],
+      );
+      const saga = await transaction(projectRuntimeSagaTable)
+        .where({ saga_id: sagaId })
+        .forUpdate()
+        .first();
+      const project = await transaction('resonance_projects__project')
+        .where({ project_id: projectId })
+        .forUpdate()
+        .first();
+      const status = String(saga?.saga_status ?? '');
+      const auditRows = project
+        ? []
+        : ((await transaction('resonance_projects__design_asset_audit')
+            .select('details')
+            .where({
+              project_id: projectId,
+              action_code: 'PROJECT_DELETED',
+            })
+            .orderBy('created_at', 'desc')) as Array<Record<string, unknown>>);
+      const recoveredCounts = project
+        ? undefined
+        : exactDeleteCountsFromAudit(auditRows, sagaId);
+      if (!project && status === 'LOCAL_APPLIED') {
+        return { status: 'LOCAL_APPLIED', counts: recoveredCounts! };
+      }
+      if (
+        !project &&
+        status === 'PURGED' &&
+        String(saga?.claim_token ?? '') === claimToken
+      ) {
+        const completedAt = new Date();
+        const finalized = await transaction(projectRuntimeSagaTable)
+          .where({
+            saga_id: sagaId,
+            saga_status: 'PURGED',
+            claim_token: claimToken,
+          })
+          .update({
+            saga_status: 'LOCAL_APPLIED',
+            claim_token: null,
+            lease_expires_at: null,
+            completed_at: completedAt,
+            updated_at: completedAt,
+            last_error: null,
+          });
+        if (finalized !== 1) {
+          throw new ProjectLocalDeleteOutcomeIndeterminateError();
+        }
+        return { status: 'LOCAL_APPLIED', counts: recoveredCounts! };
+      }
+      const exactProjectStillPresent =
+        project &&
+        new Date(String(project.created_at)).toISOString() ===
+          projectIncarnation &&
+        sameDatabaseTimestamp(project.updated_at, projectUpdatedAt);
+      if (
+        exactProjectStillPresent &&
+        status === 'PURGED' &&
+        String(saga?.claim_token ?? '') === claimToken &&
+        activeSagaLease(saga)
+      ) {
+        return { status: 'NOT_APPLIED' };
+      }
+      throw new ProjectLocalDeleteOutcomeIndeterminateError();
+    });
+  } catch (error) {
+    if (error instanceof ProjectLocalDeleteOutcomeIndeterminateError) {
+      throw error;
+    }
+    throw new ProjectLocalDeleteOutcomeIndeterminateError(error);
+  }
+};
+
+const commitLocalProjectDelete = async (options: LocalProjectDeleteOptions) => {
   const {
     knex,
     projectId,
@@ -413,6 +559,26 @@ const deleteLocalProjectWithSagaLease = async (options: {
     });
     return counts;
   });
+};
+
+const deleteLocalProjectWithSagaLease = async (
+  options: LocalProjectDeleteOptions,
+) => {
+  try {
+    return {
+      counts: await commitLocalProjectDelete(options),
+      recoveredAfterAmbiguousCommit: false,
+    };
+  } catch (error) {
+    const resolution = await reconcileLocalProjectDeleteCommit(options);
+    if (resolution.status === 'LOCAL_APPLIED') {
+      return {
+        counts: resolution.counts,
+        recoveredAfterAmbiguousCommit: true,
+      };
+    }
+    throw error;
+  }
 };
 
 const recordDenied = async (
@@ -971,6 +1137,27 @@ const prepareProjectDelete = async (options: {
         ),
       };
     }
+    const activeRequirementPublication = await transaction(
+      'resonance_projects__requirement_document',
+    )
+      .select('document_id', 'publication_reconcile_status')
+      .where({ project_id: projectId })
+      .whereIn('publication_reconcile_status', ['PENDING', 'RUNNING'])
+      .orderBy('created_at', 'asc')
+      .forUpdate()
+      .first();
+    if (activeRequirementPublication) {
+      return {
+        result: lifecycleError(
+          409,
+          `Requirement publication ${String(
+            activeRequirementPublication.document_id,
+          )} is ${String(
+            activeRequirementPublication.publication_reconcile_status,
+          )}; retry deletion after it reaches a terminal state`,
+        ),
+      };
+    }
     const releases = (await transaction('resonance_projects__design_release')
       .select(
         'design_version',
@@ -1143,7 +1330,7 @@ const runAbsenceProjectDelete = async (options: {
       preview_receipt: JSON.stringify(proof),
       last_error: null,
     });
-    const counts = await deleteLocalProjectWithSagaLease({
+    const localDelete = await deleteLocalProjectWithSagaLease({
       knex,
       projectId,
       sagaId: prepared.sagaId,
@@ -1162,7 +1349,9 @@ const runAbsenceProjectDelete = async (options: {
       body: {
         success: true,
         projectId,
-        deleted: counts,
+        deleted: localDelete.counts,
+        recoveredAfterAmbiguousCommit:
+          localDelete.recoveredAfterAmbiguousCommit,
         runtimeAbsenceProof: proof,
         runtimePurgeSagaId: prepared.sagaId,
         auditHistoryPreserved: true,
@@ -1170,6 +1359,9 @@ const runAbsenceProjectDelete = async (options: {
       },
     };
   } catch (error) {
+    if (error instanceof ProjectLocalDeleteOutcomeIndeterminateError) {
+      throw error;
+    }
     return releaseAbsenceFenceAfterFailure({
       runtimePurge,
       prepared,
@@ -1189,6 +1381,9 @@ const restoreRuntimeAfterDeleteFailure = async (options: {
 }): Promise<never> => {
   const { runtimePurge, prepared, persistSaga, exactCommand, purged, error } =
     options;
+  if (error instanceof ProjectLocalDeleteOutcomeIndeterminateError) {
+    throw error;
+  }
   if (error instanceof ProjectRuntimeSagaLeaseLostError) {
     try {
       await reconcileRuntimeAfterSagaLeaseLoss(
@@ -1326,7 +1521,7 @@ const finishReleasedLocalProjectDelete = async (options: {
     postcondition,
     purged,
   } = options;
-  const counts = await deleteLocalProjectWithSagaLease({
+  const localDelete = await deleteLocalProjectWithSagaLease({
     knex,
     projectId,
     sagaId: prepared.sagaId,
@@ -1350,13 +1545,31 @@ const finishReleasedLocalProjectDelete = async (options: {
     body: {
       success: true,
       projectId,
-      deleted: counts,
+      deleted: localDelete.counts,
+      recoveredAfterAmbiguousCommit: localDelete.recoveredAfterAmbiguousCommit,
       runtimePurge: purged,
       runtimePurgeSagaId: prepared.sagaId,
       auditHistoryPreserved: true,
       sourceSyncHistoryPreserved: true,
     },
   };
+};
+
+const exactRuntimeSnapshotCommand = (
+  receipt: Record<string, unknown>,
+  prepared: PreparedRuntimeDelete,
+  receiptStatus: 'PREVIEWED' | 'PURGED' | 'RESTORED',
+): ProjectRuntimePurgeCommand & { snapshotSha256: string } => {
+  exactRuntimeReceipt(receipt, prepared.command, receiptStatus);
+  const snapshotSha256 = String(
+    prepared.snapshotSha256 || receipt.snapshotSha256,
+  );
+  if (!/^[0-9a-f]{64}$/.test(snapshotSha256)) {
+    throw new Error('PROJECT_RUNTIME_PURGE_SNAPSHOT_INVALID');
+  }
+  const command = { ...prepared.command, snapshotSha256 };
+  exactRuntimeReceipt(receipt, command, receiptStatus);
+  return command;
 };
 
 const runReleasedProjectDelete = async (options: {
@@ -1414,18 +1627,12 @@ const runReleasedProjectDelete = async (options: {
         `PROJECT_RUNTIME_PURGE_RESUME_STATUS_INVALID:${receiptStatus}`,
       );
     }
-    exactRuntimeReceipt(
+    exactCommand = exactRuntimeSnapshotCommand(
       receipt,
-      prepared.command,
+      prepared,
       receiptStatus as 'PREVIEWED' | 'PURGED' | 'RESTORED',
     );
-    const snapshotSha256 = String(
-      receipt.snapshotSha256 ?? prepared.snapshotSha256,
-    );
-    if (!/^[0-9a-f]{64}$/.test(snapshotSha256)) {
-      throw new Error('PROJECT_RUNTIME_PURGE_SNAPSHOT_INVALID');
-    }
-    exactCommand = { ...prepared.command, snapshotSha256 };
+    const { snapshotSha256 } = exactCommand;
     if (receiptStatus === 'PURGED') purged = receipt;
     if (dryRun) {
       return finishRuntimeDeleteDryRun({
@@ -1445,7 +1652,7 @@ const runReleasedProjectDelete = async (options: {
         preview_receipt: JSON.stringify(receipt),
       });
       purged = await runtimePurge.apply(exactCommand);
-      exactRuntimeReceipt(purged, prepared.command, 'PURGED');
+      exactRuntimeReceipt(purged, exactCommand, 'PURGED');
     }
     const postcondition = exactPurgePostcondition(purged);
     await persistSaga([prepared.sagaStatus], {
@@ -1660,18 +1867,16 @@ const recoverClaimedRuntimePurgeSaga = async (options: {
       );
       return 'restored';
     }
-    exactRuntimeReceipt(receipt, command, 'PURGED');
     const snapshotSha256 = String(
-      receipt.snapshotSha256 ?? row.snapshot_sha256 ?? '',
+      row.snapshot_sha256 ?? receipt.snapshotSha256 ?? '',
     );
     if (!/^[0-9a-f]{64}$/.test(snapshotSha256)) {
       throw new Error('PROJECT_RUNTIME_PURGE_RECOVERY_SNAPSHOT_INVALID');
     }
-    const restored = await runtimePurge.restore({
-      ...command,
-      snapshotSha256,
-    });
-    exactRuntimeReceipt(restored, command, 'RESTORED');
+    const exactCommand = { ...command, snapshotSha256 };
+    exactRuntimeReceipt(receipt, exactCommand, 'PURGED');
+    const restored = await runtimePurge.restore(exactCommand);
+    exactRuntimeReceipt(restored, exactCommand, 'RESTORED');
     if (restored.aToBToA !== true) {
       throw new Error('PROJECT_RUNTIME_PURGE_RECOVERY_RESTORE_INVALID');
     }
@@ -1728,6 +1933,25 @@ export async function recoverProjectRuntimePurgeSagas(options: {
       blocked: 0,
       failed: 0,
       skipped: 'RECOVERY_IDENTITY_REQUIRED',
+    };
+  }
+  try {
+    const authority = await runtimePurge.preflightRecovery({
+      accountId,
+      actorRef,
+    });
+    if (!exactRuntimeRecoveryAuthority(authority, accountId)) {
+      throw new Error('PROJECT_RUNTIME_PURGE_RECOVERY_AUTHORITY_INVALID');
+    }
+  } catch (error) {
+    return {
+      claimed: 0,
+      restored: 0,
+      noMutation: 0,
+      blocked: 0,
+      failed: 0,
+      skipped: 'RECOVERY_AUTHORITY_NOT_READY',
+      error: String(error),
     };
   }
   const claimed = await claimStaleRuntimePurgeSagas({

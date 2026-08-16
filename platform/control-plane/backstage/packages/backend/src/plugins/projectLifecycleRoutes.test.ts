@@ -26,6 +26,12 @@ const recoveryIdentity = {
 };
 const runtimeSnapshot = 'd'.repeat(64);
 const runtimePurgeGateway = () => {
+  const preflightRecovery = jest.fn(async (recovery: any) => ({
+    success: true,
+    status: 'READY',
+    accountId: recovery.accountId,
+    authorityValidated: true,
+  }));
   const proveAbsent = jest.fn(async (command: any) => ({
     success: true,
     status: 'PROVEN_ABSENT',
@@ -117,6 +123,7 @@ const runtimePurgeGateway = () => {
     aToBToA: true,
   }));
   return {
+    preflightRecovery,
     proveAbsent,
     activateAbsent,
     releaseAbsent,
@@ -239,6 +246,11 @@ const approvedDeleteDatabase = (
   releaseStatus = 'APPLIED',
   legacyProcessCode?: string,
   noReleases = false,
+  options: {
+    publicationStatus?: 'PENDING' | 'RUNNING';
+    failAfterLocalCommit?: boolean;
+    leaveSagaPurgedAfterLocalCommit?: boolean;
+  } = {},
 ) => {
   const inserts: Array<{ table: string; value: unknown }> = [];
   const deletes: Array<{ table: string; where: Record<string, unknown> }> = [];
@@ -246,6 +258,9 @@ const approvedDeleteDatabase = (
   const updatedAt = new Date('2026-08-16T00:00:00Z');
   const createdAt = new Date('2026-08-15T00:00:00Z');
   const sagas: Array<Record<string, any>> = [];
+  let projectExists = true;
+  let lostCommitResponse = false;
+  let suppressedLocalApplied = false;
   const releases = noReleases
     ? []
     : [
@@ -330,6 +345,7 @@ const approvedDeleteDatabase = (
         skipLocked: () => builder,
         first: async () => {
           if (table === 'resonance_projects__project') {
+            if (!projectExists) return undefined;
             return {
               project_id: 'TARGET',
               project_name: 'Target',
@@ -345,6 +361,17 @@ const approvedDeleteDatabase = (
             return [...sagas].reverse().find(matches);
           }
           if (
+            table === 'resonance_projects__requirement_document' &&
+            options.publicationStatus &&
+            state.whereIn?.column === 'publication_reconcile_status' &&
+            state.whereIn.values.includes(options.publicationStatus)
+          ) {
+            return {
+              document_id: 'requirement-active-1',
+              publication_reconcile_status: options.publicationStatus,
+            };
+          }
+          if (
             table === 'resonance_projects__design_asset_source_sync' &&
             syncStatus &&
             state.whereIn?.column === 'sync_status' &&
@@ -356,7 +383,11 @@ const approvedDeleteDatabase = (
         },
         delete: async () => {
           deletes.push({ table, where: state.where ?? {} });
-          return table === 'resonance_projects__project' ? projectCasCount : 1;
+          if (table === 'resonance_projects__project') {
+            if (projectCasCount === 1) projectExists = false;
+            return projectCasCount;
+          }
+          return 1;
         },
         insert: async (value: unknown) => {
           inserts.push({ table, value });
@@ -369,6 +400,14 @@ const approvedDeleteDatabase = (
           if (table !== 'resonance_projects__runtime_purge_saga') return 1;
           const row = sagas.find(matches);
           if (!row) return 0;
+          if (
+            options.leaveSagaPurgedAfterLocalCommit &&
+            !suppressedLocalApplied &&
+            value.saga_status === 'LOCAL_APPLIED'
+          ) {
+            suppressedLocalApplied = true;
+            return 1;
+          }
           Object.assign(row, value);
           return 1;
         },
@@ -381,6 +420,11 @@ const approvedDeleteDatabase = (
               ? releases
               : table === 'resonance_projects__runtime_purge_saga'
               ? sagas.filter(matches)
+              : table === 'resonance_projects__design_asset_audit'
+              ? inserts
+                  .filter(row => row.table === table)
+                  .map(row => row.value as Record<string, any>)
+                  .filter(matches)
               : [],
           ).then(resolve, reject),
       };
@@ -398,8 +442,22 @@ const approvedDeleteDatabase = (
     rawBindings,
     sagas,
     knex: {
-      transaction: async (callback: (tx: any) => unknown) =>
-        callback(transaction),
+      transaction: async (callback: (tx: any) => unknown) => {
+        const priorDeleteCount = deletes.length;
+        const result = await callback(transaction);
+        const deletedProject = deletes
+          .slice(priorDeleteCount)
+          .some(row => row.table === 'resonance_projects__project');
+        if (
+          options.failAfterLocalCommit &&
+          !lostCommitResponse &&
+          deletedProject
+        ) {
+          lostCommitResponse = true;
+          throw new Error('LOCAL_COMMIT_RESPONSE_LOST');
+        }
+        return result;
+      },
     },
   };
 };
@@ -730,6 +788,27 @@ describe('project lifecycle mutation authority', () => {
     },
   );
 
+  it('rejects a different valid PURGED snapshot hash before local writes', async () => {
+    const database = approvedDeleteDatabase();
+    const runtimePurge = runtimePurgeGateway();
+    runtimePurge.apply.mockImplementationOnce(async command => ({
+      ...(await runtimePurgeGateway().apply(command)),
+      snapshotSha256: 'e'.repeat(64),
+    }));
+
+    await expect(
+      deleteProjectLifecycle({
+        knex: database.knex,
+        identity: deleteIdentity,
+        projectId: 'TARGET',
+        confirmProjectId: 'TARGET',
+        runtimePurge,
+      }),
+    ).rejects.toThrow('PROJECT_RUNTIME_PURGE_RECEIPT_CAS_INVALID');
+    expect(database.deletes).toHaveLength(0);
+    expect(runtimePurge.restore).toHaveBeenCalledTimes(1);
+  });
+
   it.each([
     'residual',
     'capturedDeletedMismatch',
@@ -824,6 +903,101 @@ describe('project lifecycle mutation authority', () => {
       expect(result.body).toMatchObject({ sourceSyncHistoryPreserved: true });
     },
   );
+
+  it.each(['PENDING', 'RUNNING'] as const)(
+    'blocks deletion while requirement publication is %s',
+    async publicationStatus => {
+      const database = approvedDeleteDatabase(
+        1,
+        undefined,
+        'APPLIED',
+        undefined,
+        false,
+        { publicationStatus },
+      );
+      const runtimePurge = runtimePurgeGateway();
+
+      const result = await deleteProjectLifecycle({
+        knex: database.knex,
+        identity: deleteIdentity,
+        projectId: 'TARGET',
+        confirmProjectId: 'TARGET',
+        runtimePurge,
+      });
+
+      expect(result.status).toBe(409);
+      expect(result.body.message).toContain(publicationStatus);
+      expect(database.deletes).toHaveLength(0);
+      expect(runtimePurge.preview).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each([false, true])(
+    'reconciles a lost local COMMIT response without restoring runtime (finalizePurged=%s)',
+    async leaveSagaPurgedAfterLocalCommit => {
+      const database = approvedDeleteDatabase(
+        1,
+        undefined,
+        'APPLIED',
+        undefined,
+        false,
+        {
+          failAfterLocalCommit: true,
+          leaveSagaPurgedAfterLocalCommit,
+        },
+      );
+      const runtimePurge = runtimePurgeGateway();
+
+      const result = await deleteProjectLifecycle({
+        knex: database.knex,
+        identity: deleteIdentity,
+        projectId: 'TARGET',
+        confirmProjectId: 'TARGET',
+        runtimePurge,
+      });
+
+      expect(result).toMatchObject({
+        status: 200,
+        body: {
+          success: true,
+          recoveredAfterAmbiguousCommit: true,
+          deleted: { project: 1 },
+        },
+      });
+      expect(runtimePurge.restore).not.toHaveBeenCalled();
+      expect(database.sagas[0]?.saga_status).toBe('LOCAL_APPLIED');
+    },
+  );
+
+  it('reconciles a lost no-release local COMMIT response without releasing the fence', async () => {
+    const database = approvedDeleteDatabase(
+      1,
+      undefined,
+      'APPLIED',
+      undefined,
+      true,
+      { failAfterLocalCommit: true },
+    );
+    const runtimePurge = runtimePurgeGateway();
+
+    const result = await deleteProjectLifecycle({
+      knex: database.knex,
+      identity: deleteIdentity,
+      projectId: 'TARGET',
+      confirmProjectId: 'TARGET',
+      runtimePurge,
+    });
+
+    expect(result).toMatchObject({
+      status: 200,
+      body: {
+        recoveredAfterAmbiguousCommit: true,
+        deleted: { project: 1 },
+      },
+    });
+    expect(runtimePurge.releaseAbsent).not.toHaveBeenCalled();
+    expect(database.sagas[0]?.saga_status).toBe('LOCAL_APPLIED');
+  });
 
   it('fails closed when the exact project CAS deletes zero rows', async () => {
     const database = approvedDeleteDatabase(0);
@@ -1171,6 +1345,44 @@ describe('project lifecycle mutation authority', () => {
     );
   });
 
+  it('recovery rejects a different valid snapshot hash with write0', async () => {
+    const database = approvedDeleteDatabase();
+    const runtimePurge = runtimePurgeGateway();
+    const command = {
+      receiptId: 'aaaaaaaa-0000-4000-a000-000000000011',
+      operationKey: 'bbbbbbbb-0000-4000-a000-000000000011',
+      projectId: 'TARGET',
+      processCode: 'RFP_TARGET',
+      designVersion: 3,
+      contractSha256: 'c'.repeat(64),
+      scopeMode: 'EXACT_PROJECT' as const,
+      actorRef: identity.actorRef,
+      accountId: 'revoked.runtime.account',
+    };
+    database.sagas.push({
+      saga_id: 'cccccccc-0000-4000-a000-000000000011',
+      saga_status: 'PURGED',
+      command_json: JSON.stringify(command),
+      snapshot_sha256: runtimeSnapshot,
+      updated_at: new Date(0),
+    });
+    runtimePurge.preview.mockImplementationOnce(async () => ({
+      ...command,
+      status: 'PURGED',
+      snapshotSha256: 'e'.repeat(64),
+    }));
+
+    const result = await recoverProjectRuntimePurgeSagas({
+      knex: database.knex,
+      runtimePurge,
+      recoveryIdentity,
+      staleBefore: new Date(),
+    });
+
+    expect(result).toMatchObject({ claimed: 1, restored: 0, failed: 1 });
+    expect(runtimePurge.restore).not.toHaveBeenCalled();
+  });
+
   it('makes zero saga writes when the recovery service principal is missing', async () => {
     const database = approvedDeleteDatabase();
     const runtimePurge = runtimePurgeGateway();
@@ -1191,6 +1403,37 @@ describe('project lifecycle mutation authority', () => {
     expect(result).toMatchObject({
       claimed: 0,
       skipped: 'RECOVERY_IDENTITY_REQUIRED',
+    });
+    expect(database.sagas[0]?.saga_status).toBe('PURGED');
+    expect(database.sagas[0]?.claim_token).toBeUndefined();
+    expect(runtimePurge.preview).not.toHaveBeenCalled();
+    expect(runtimePurge.restore).not.toHaveBeenCalled();
+  });
+
+  it('claims zero sagas when database recovery authority preflight fails', async () => {
+    const database = approvedDeleteDatabase();
+    const runtimePurge = runtimePurgeGateway();
+    database.sagas.push({
+      saga_id: 'cccccccc-0000-4000-a000-000000000012',
+      saga_status: 'PURGED',
+      command_json: JSON.stringify({ projectId: 'TARGET' }),
+      snapshot_sha256: runtimeSnapshot,
+      updated_at: new Date(0),
+    });
+    runtimePurge.preflightRecovery.mockRejectedValueOnce(
+      new Error('ROLE_REVOKED'),
+    );
+
+    const result = await recoverProjectRuntimePurgeSagas({
+      knex: database.knex,
+      runtimePurge,
+      recoveryIdentity,
+      staleBefore: new Date(),
+    });
+
+    expect(result).toMatchObject({
+      claimed: 0,
+      skipped: 'RECOVERY_AUTHORITY_NOT_READY',
     });
     expect(database.sagas[0]?.saga_status).toBe('PURGED');
     expect(database.sagas[0]?.claim_token).toBeUndefined();
@@ -1393,5 +1636,38 @@ describe('project lifecycle mutation authority', () => {
       source.match(/projectLifecycleMutationLockKey\(projectId\)/g),
     ).toHaveLength(2);
     expect(source).toContain('DESIGN_SOURCE_SYNC_PROJECT_NOT_FOUND');
+  });
+
+  it('wires a mandatory recovery principal and surfaces scheduler readiness failures', () => {
+    const projectSource = readFileSync(
+      join(__dirname, 'resonanceProjects.ts'),
+      'utf8',
+    );
+    const manifest = readFileSync(
+      join(
+        __dirname,
+        '../../../../../../../deploy/k8s/control-plane/backstage.yaml',
+      ),
+      'utf8',
+    );
+    const deploy = readFileSync(
+      join(
+        __dirname,
+        '../../../../../../../ops/scripts/resonance-backstage-deploy.sh',
+      ),
+      'utf8',
+    );
+
+    expect(projectSource).toContain(
+      '/project-runtime-purge/recovery-authority/preflight',
+    );
+    expect(projectSource).toContain('RECOVERY_AUTHORITY_NOT_READY');
+    expect(projectSource).toContain('logger.error(');
+    expect(manifest).toContain('name: resonance-runtime-purge-recovery');
+    expect(manifest).not.toContain(
+      'name: resonance-runtime-purge-recovery\n                optional: true',
+    );
+    expect(deploy).toContain('ensure_runtime_purge_recovery_secret');
+    expect(deploy).toContain('RESONANCE_RUNTIME_PURGE_RECOVERY_ACCOUNT_ID');
   });
 });

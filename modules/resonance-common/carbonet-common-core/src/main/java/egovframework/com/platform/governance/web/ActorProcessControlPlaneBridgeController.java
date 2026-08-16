@@ -361,6 +361,33 @@ public class ActorProcessControlPlaneBridgeController {
         }
     }
 
+    @PostMapping("/project-runtime-purge/recovery-authority/preflight")
+    @Transactional
+    public ResponseEntity<?> preflightProjectRuntimePurgeRecoveryAuthority(
+            @RequestHeader(value = "X-Resonance-Token", defaultValue = "") String suppliedToken,
+            @RequestHeader(value = "X-Resonance-Actor", defaultValue = "") String actor,
+            @RequestHeader(value = "X-Resonance-Account", defaultValue = "") String account) {
+        ResponseEntity<?> denied=projectRuntimePurgeAccessFailure(
+                suppliedToken,actor,account);
+        if(denied!=null)return denied;
+        try{
+            Boolean authorized=jdbc.queryForObject(
+                    "select framework_project_runtime_purge_require_admin(?) is null",
+                    Boolean.class,account);
+            if(!Boolean.TRUE.equals(authorized))throw new IllegalStateException(
+                    "Runtime purge recovery authority preflight returned no proof.");
+            return ResponseEntity.ok(Map.of(
+                    "success",true,"status","READY","accountId",account,
+                    "authorityValidated",true));
+        }catch(Exception exception){
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(Map.of(
+                    "success",false,"status","NOT_READY","accountId",account,
+                    "authorityValidated",false,
+                    "message",safeMessage(exception,
+                            "Runtime purge recovery authority preflight failed.")));
+        }
+    }
+
     @PostMapping("/project-runtime-purge/prove-absent")
     // The proof performs no data writes, but its authority and project rows are
     // locked to make the zero observation race-free.  A JDBC read-only

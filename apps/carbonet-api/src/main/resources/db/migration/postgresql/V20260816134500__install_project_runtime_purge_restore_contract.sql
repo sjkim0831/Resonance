@@ -148,6 +148,85 @@ AS $$
   SELECT encode(pg_catalog.sha256(convert_to(value::text,'UTF8')),'hex')::varchar(64)
 $$;
 
+-- Composite scope provenance is produced by Java's stable(Map): map keys are
+-- sorted, text is quoted as lowercase UTF-8 hex and integral values use the
+-- IEEE-754 double bit pattern.  Reproducing it here prevents a valid authority
+-- hash from being copied into a forged project/release binding.
+CREATE OR REPLACE FUNCTION framework_project_runtime_purge_stable_text(value text)
+RETURNS text
+LANGUAGE sql IMMUTABLE STRICT PARALLEL SAFE
+SET search_path=pg_catalog,public
+AS $$
+  SELECT '"'||encode(convert_to(value,'UTF8'),'hex')||'"'
+$$;
+
+CREATE OR REPLACE FUNCTION framework_project_runtime_purge_stable_integer(value bigint)
+RETURNS text
+LANGUAGE sql IMMUTABLE STRICT PARALLEL SAFE
+SET search_path=pg_catalog,public
+AS $$
+  SELECT '@'||encode(pg_catalog.float8send(value::double precision),'hex')
+$$;
+
+CREATE OR REPLACE FUNCTION framework_project_runtime_purge_integrated_provenance_hash(
+  requested_scope text,requested_project text,requested_design_version bigint,
+  requested_contract_sha256 text,requested_process text,requested_step text,
+  requested_route text,requested_audience text,requested_authority_id bigint,
+  requested_authority_revision bigint,requested_document_set_hash text,
+  requested_authority_hash text
+) RETURNS varchar(64)
+LANGUAGE plpgsql IMMUTABLE STRICT PARALLEL SAFE
+SET search_path=pg_catalog,public
+AS $$
+DECLARE material text; pairs text[]:=ARRAY[]::text[];
+BEGIN
+  IF requested_scope<>'PROJECT' OR requested_project IS NULL
+     OR requested_design_version<1 OR requested_contract_sha256 IS NULL
+     OR requested_authority_id<1 OR requested_authority_revision<1 THEN
+    RAISE EXCEPTION 'exact PROJECT composite provenance is required'
+      USING ERRCODE='22023';
+  END IF;
+  pairs:=pairs||(
+    framework_project_runtime_purge_stable_text('audience')||':'||
+    framework_project_runtime_purge_stable_text(requested_audience));
+  pairs:=pairs||(
+    framework_project_runtime_purge_stable_text('authorityHash')||':'||
+    framework_project_runtime_purge_stable_text(requested_authority_hash));
+  pairs:=pairs||(
+    framework_project_runtime_purge_stable_text('authorityId')||':'||
+    framework_project_runtime_purge_stable_integer(requested_authority_id));
+  pairs:=pairs||(
+    framework_project_runtime_purge_stable_text('authorityRevision')||':'||
+    framework_project_runtime_purge_stable_integer(requested_authority_revision));
+  pairs:=pairs||(
+    framework_project_runtime_purge_stable_text('contractSha256')||':'||
+    framework_project_runtime_purge_stable_text(requested_contract_sha256));
+  pairs:=pairs||(
+    framework_project_runtime_purge_stable_text('designVersion')||':'||
+    framework_project_runtime_purge_stable_integer(requested_design_version));
+  pairs:=pairs||(
+    framework_project_runtime_purge_stable_text('documentSetHash')||':'||
+    framework_project_runtime_purge_stable_text(requested_document_set_hash));
+  pairs:=pairs||(
+    framework_project_runtime_purge_stable_text('processCode')||':'||
+    framework_project_runtime_purge_stable_text(requested_process));
+  pairs:=pairs||(
+    framework_project_runtime_purge_stable_text('projectId')||':'||
+    framework_project_runtime_purge_stable_text(requested_project));
+  pairs:=pairs||(
+    framework_project_runtime_purge_stable_text('routePath')||':'||
+    framework_project_runtime_purge_stable_text(requested_route));
+  pairs:=pairs||(
+    framework_project_runtime_purge_stable_text('scopeType')||':'||
+    framework_project_runtime_purge_stable_text(requested_scope));
+  pairs:=pairs||(
+    framework_project_runtime_purge_stable_text('stepCode')||':'||
+    framework_project_runtime_purge_stable_text(requested_step));
+  material:='{'||array_to_string(pairs,',')||'}';
+  RETURN encode(pg_catalog.sha256(convert_to(material,'UTF8')),'hex')::varchar(64);
+END
+$$;
+
 CREATE OR REPLACE FUNCTION framework_project_runtime_purge_append_audit(
   requested_receipt uuid,requested_event text,requested_actor text,
   requested_payload jsonb
@@ -1549,7 +1628,21 @@ BEGIN
       '         WHERE version.authority_id=binding.authority_id '
       '           AND version.authority_revision=binding.authority_revision '
       '           AND version.document_set_hash=binding.document_set_hash '
-      '           AND version.authority_hash=binding.authority_hash)))'
+      '           AND version.authority_hash=binding.authority_hash)) '
+      '    OR NOT EXISTS('
+      '        SELECT 1 FROM public.framework_actor_process_design_release release '
+      '         WHERE release.project_id=binding.project_id '
+      '           AND release.design_version=binding.design_version '
+      '           AND lower(release.contract_sha256)=binding.contract_sha256 '
+      '           AND upper(coalesce(release.contract_payload#>>''{process,processCode}'',''''))='
+      '               binding.process_code) '
+      '    OR binding.provenance_hash<>'
+      '       framework_project_runtime_purge_integrated_provenance_hash('
+      '         binding.scope_type,binding.project_id,binding.design_version::bigint,'
+      '         binding.contract_sha256,binding.process_code,binding.step_code,'
+      '         binding.route_path,binding.audience,binding.authority_id,'
+      '         binding.authority_revision,binding.document_set_hash,'
+      '         binding.authority_hash))'
       INTO forged_integrated_binding_count
       USING requested_project,requested_design_version,
             requested_contract_sha256,requested_process;

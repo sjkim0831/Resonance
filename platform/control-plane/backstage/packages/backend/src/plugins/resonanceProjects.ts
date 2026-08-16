@@ -1458,7 +1458,32 @@ export default createBackendPlugin({
           }
           return result.body;
         };
+        const callProjectRuntimeRecoveryPreflight = async (identity: {
+          accountId: string;
+          actorRef: string;
+        }) => {
+          const result = await readRuntimeJson(
+            `${runtimeBridgeBaseUrl()}/api/internal/actor-process/project-runtime-purge/recovery-authority/preflight`,
+            {
+              method: 'POST',
+              headers: {
+                'x-resonance-actor': identity.actorRef,
+                'x-resonance-account': identity.accountId,
+              },
+            },
+          );
+          if (!result.ok) {
+            throw new Error(
+              String(
+                result.body.message ??
+                  'Project runtime purge recovery authority is not ready',
+              ),
+            );
+          }
+          return result.body;
+        };
         const projectRuntimePurge: ProjectRuntimePurgeGateway = {
+          preflightRecovery: callProjectRuntimeRecoveryPreflight,
           proveAbsent: command =>
             callProjectRuntimeAbsence('prove-absent', command),
           activateAbsent: command =>
@@ -1469,6 +1494,68 @@ export default createBackendPlugin({
           apply: command => callProjectRuntimePurge('apply', command),
           restore: command => callProjectRuntimePurge('restore', command),
         };
+        const configuredRuntimePurgeRecoveryIdentity = () => {
+          const accountId = String(
+            process.env.RESONANCE_RUNTIME_PURGE_RECOVERY_ACCOUNT_ID ?? '',
+          ).trim();
+          if (!accountId) return undefined;
+          return {
+            accountId,
+            actorRef: String(
+              process.env.RESONANCE_RUNTIME_PURGE_RECOVERY_ACTOR_REF ??
+                'service:default/project-runtime-purge-recovery',
+            ).trim(),
+          };
+        };
+        let runtimePurgeRecoveryReadiness: Record<string, unknown> = {
+          status: 'NOT_READY',
+          reason: 'RECOVERY_IDENTITY_REQUIRED',
+          checkedAt: new Date().toISOString(),
+        };
+        const refreshRuntimePurgeRecoveryReadiness = async () => {
+          const recoveryIdentity = configuredRuntimePurgeRecoveryIdentity();
+          if (!recoveryIdentity) {
+            runtimePurgeRecoveryReadiness = {
+              status: 'NOT_READY',
+              reason: 'RECOVERY_IDENTITY_REQUIRED',
+              checkedAt: new Date().toISOString(),
+            };
+            logger.error(
+              'Project runtime purge recovery is NOT_READY: RESONANCE_RUNTIME_PURGE_RECOVERY_ACCOUNT_ID is required',
+            );
+            return undefined;
+          }
+          try {
+            const receipt = await projectRuntimePurge.preflightRecovery(
+              recoveryIdentity,
+            );
+            if (
+              receipt.success !== true ||
+              receipt.status !== 'READY' ||
+              receipt.accountId !== recoveryIdentity.accountId ||
+              receipt.authorityValidated !== true
+            ) {
+              throw new Error('RECOVERY_AUTHORITY_RECEIPT_INVALID');
+            }
+            runtimePurgeRecoveryReadiness = {
+              status: 'READY',
+              accountId: recoveryIdentity.accountId,
+              checkedAt: new Date().toISOString(),
+            };
+            return recoveryIdentity;
+          } catch (error) {
+            runtimePurgeRecoveryReadiness = {
+              status: 'NOT_READY',
+              reason: 'RECOVERY_AUTHORITY_NOT_READY',
+              checkedAt: new Date().toISOString(),
+            };
+            logger.error(
+              `Project runtime purge recovery is NOT_READY: ${String(error)}`,
+            );
+            return undefined;
+          }
+        };
+        await refreshRuntimePurgeRecoveryReadiness();
 
         const claimRequirementReceipts = async (
           limit: number,
@@ -2401,7 +2488,14 @@ export default createBackendPlugin({
           const [{ count }] = await knex('resonance_projects__project').count({
             count: '*',
           });
-          response.json({ status: 'UP', projectCount: Number(count) });
+          response.json({
+            status:
+              runtimePurgeRecoveryReadiness.status === 'READY'
+                ? 'UP'
+                : 'DEGRADED',
+            projectCount: Number(count),
+            runtimePurgeRecovery: runtimePurgeRecoveryReadiness,
+          });
         });
         router.get('/operations/summary', async (_request, response) => {
           const countRows = async (tableName: string) => {
@@ -5513,20 +5607,30 @@ export default createBackendPlugin({
           timeout: { seconds: 50 },
           initialDelay: { seconds: 10 },
           fn: async () => {
+            const recoveryIdentity = configuredRuntimePurgeRecoveryIdentity();
             const result = await recoverProjectRuntimePurgeSagas({
               knex,
               runtimePurge: projectRuntimePurge,
-              recoveryIdentity: process.env
-                .RESONANCE_RUNTIME_PURGE_RECOVERY_ACCOUNT_ID
-                ? {
-                    accountId: String(
-                      process.env.RESONANCE_RUNTIME_PURGE_RECOVERY_ACCOUNT_ID,
-                    ),
-                    actorRef:
-                      process.env.RESONANCE_RUNTIME_PURGE_RECOVERY_ACTOR_REF,
-                  }
-                : undefined,
+              recoveryIdentity,
             });
+            if (result.skipped) {
+              runtimePurgeRecoveryReadiness = {
+                status: 'NOT_READY',
+                reason: result.skipped,
+                checkedAt: new Date().toISOString(),
+              };
+              logger.error(
+                `Project runtime purge recovery skipped: ${String(
+                  result.skipped,
+                )}`,
+              );
+            } else if (recoveryIdentity) {
+              runtimePurgeRecoveryReadiness = {
+                status: 'READY',
+                accountId: recoveryIdentity.accountId,
+                checkedAt: new Date().toISOString(),
+              };
+            }
             if (result.claimed > 0) {
               logger.info(
                 `Recovered project runtime purge sagas: ${JSON.stringify(
