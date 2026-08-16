@@ -213,10 +213,14 @@ public class CompositeDesignOperationalWorker {
                 if(canary==null&&!manual){
                     gateContext=new GateContext(((Number)snapshot.report().get("gateRevision")).longValue(),
                         String.valueOf(snapshot.report().get("runtimeCommit")),
-                        String.valueOf(snapshot.report().get("gateSourceInputAuthorityHash")),"","","",0,false);
+                        String.valueOf(snapshot.report().get("gateSourceInputAuthorityHash")),"",
+                        String.valueOf(snapshot.report().get("currentRuntimeIdentityHash")),"",0,false);
                     if(!readiness.retainActiveGateOrRevokeOnSourceDrift(gateContext.revision(),
                             gateContext.runtimeCommit(),gateContext.sourceInputHash(),SYSTEM_ACTOR))
                         return List.<Map<String,Object>>of();
+                    readiness.assertActiveExecutionBinding(gateContext.revision(),
+                        gateContext.runtimeCommit(),gateContext.sourceInputHash(),
+                        gateContext.runtimeIdentityHash());
                 }else readiness.assertAuthoritySetCurrent(String.valueOf(
                     snapshot.report().get("currentAuthoritySetHash")));
                 readiness.discover();requeueDependencyDrift();
@@ -243,7 +247,7 @@ public class CompositeDesignOperationalWorker {
                     GateContext claimedGate=null;
                     if(gateContext!=null)claimedGate=new GateContext(gateContext.revision(),
                         gateContext.runtimeCommit(),gateContext.sourceInputHash(),
-                        candidate.dependencyFingerprint(),"","",0,false);
+                        candidate.dependencyFingerprint(),gateContext.runtimeIdentityHash(),"",0,false);
                     else if(canary!=null)claimedGate=new GateContext(0,canary.runtimeCommit(),
                         canary.authoritySetHash(),candidate.dependencyFingerprint(),
                         canary.runtimeIdentityHash(),canary.canaryId(),canaryAttempt.get(),true);
@@ -771,6 +775,10 @@ public class CompositeDesignOperationalWorker {
     private void complete(String process,String token,GateContext gateContext){
         try{
             requiresNew.executeWithoutResult(status->{
+                if(gateContext!=null&&!gateContext.canary())
+                    readiness.assertActiveExecutionBinding(gateContext.revision(),
+                        gateContext.runtimeCommit(),gateContext.sourceInputHash(),
+                        gateContext.runtimeIdentityHash());
                 readiness.acquireSourceExecutionSlot(GLOBAL_SOURCE_SLOT_BASE,parallelism,process);
                 readiness.lockCompilerSourceRegistries();
                 governance.lockCompositeProcessAuthority(process);
@@ -780,8 +788,6 @@ public class CompositeDesignOperationalWorker {
                             gateContext.processInputHash(),gateContext.runtimeCommit(),gateContext.runtimeIdentityHash(),
                             gateContext.canaryId(),gateContext.canaryAttempt()))return;
                     }else{
-                        readiness.assertActiveGate(gateContext.revision(),
-                            gateContext.runtimeCommit(),gateContext.sourceInputHash());
                         readiness.assertProcessSourceCurrent(process,gateContext.processInputHash());
                     }
                 }

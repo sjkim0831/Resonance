@@ -549,19 +549,44 @@ public class CompositeAutocompletionReadinessService {
         jdbc.queryForList("select pg_advisory_xact_lock(?)",key);
     }
 
-    void assertActiveGate(long expectedRevision,String expectedCommit,String expectedSourceHash){
+    void assertActiveExecutionBinding(long expectedRevision,String expectedCommit,
+            String expectedSourceHash,String expectedRuntimeIdentity){
+        String commit=normalizeCommit(expectedCommit);
+        String sourceHash=normalizeHash(expectedSourceHash);
+        String runtimeIdentity=normalizeHash(expectedRuntimeIdentity);
         Map<String,Object> gate=jdbc.queryForMap("""
             select approval_status as "approvalStatus",revision,
                    coalesce(runtime_commit,'') as "runtimeCommit",
-                   coalesce(source_input_authority_hash,'') as "sourceInputAuthorityHash"
+                   coalesce(postdeploy_candidate_id,'') as "postdeployCandidateId",
+                   coalesce(source_input_authority_hash,'') as "sourceInputAuthorityHash",
+                   coalesce(final_authority_hash,'') as "finalAuthorityHash",
+                   coalesce(canary_process_code,'') as "canaryProcessCode",
+                   coalesce(canary_job_id,0)::bigint as "canaryJobId"
               from integrated_design_autocompletion_gate
              where gate_key='GLOBAL' for share
             """);
         if(!"ACTIVE".equals(gate.get("approvalStatus"))
                 ||number(gate.get("revision"))!=expectedRevision
-                ||!normalizeCommit(expectedCommit).equals(gate.get("runtimeCommit"))
-                ||!normalizeHash(expectedSourceHash).equals(gate.get("sourceInputAuthorityHash")))
+                ||commit.isEmpty()||sourceHash.isEmpty()||runtimeIdentity.isEmpty()
+                ||!runtimeCommit.equals(commit)
+                ||!commit.equals(gate.get("runtimeCommit"))
+                ||!sourceHash.equals(gate.get("sourceInputAuthorityHash")))
             throw new IllegalStateException("AUTOCOMPLETION_ACTIVE_GATE_STALE");
+        String currentSourceHash=currentAuthoritySetHash();
+        String currentRuntimeIdentity=currentRuntimeIdentityHash(commit,true);
+        List<Map<String,Object>> canaries=currentVerifiedCanaries(sourceHash);
+        boolean exact=sourceHash.equals(currentSourceHash)
+            &&runtimeIdentity.equals(currentRuntimeIdentity)
+            &&canaries.size()==1
+            &&sourceHash.equals(String.valueOf(canaries.get(0).get("sourceInputAuthorityHash")))
+            &&String.valueOf(gate.get("finalAuthorityHash")).equals(
+                String.valueOf(canaries.get(0).get("finalAuthorityHash")))
+            &&String.valueOf(gate.get("canaryProcessCode")).equals(
+                String.valueOf(canaries.get(0).get("processCode")))
+            &&number(gate.get("canaryJobId"))==number(canaries.get(0).get("jobId"))
+            &&finalizerPromoted(commit,String.valueOf(gate.get("postdeployCandidateId")));
+        if(!exact)throw new IllegalStateException(
+            "AUTOCOMPLETION_RUNTIME_CANARY_BINDING_STALE");
     }
 
     boolean retainActiveGateOrRevokeOnSourceDrift(long expectedRevision,String expectedCommit,

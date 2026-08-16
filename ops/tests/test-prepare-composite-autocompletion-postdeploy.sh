@@ -18,6 +18,25 @@ for invalid in 0 2 '' text; do
     echo "denied account count accepted: $invalid" >&2; exit 1
   fi
 done
+campaign_runtime_superseded campaign \
+  cccccccccccccccccccccccccccccccccccccccc \
+  aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+superseded_status=0
+( if skip_superseded_campaign campaign \
+      cccccccccccccccccccccccccccccccccccccccc \
+      aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa >/dev/null; then
+    exit 0
+  fi
+  exit 2
+) || superseded_status=$?
+[[ "$superseded_status" == 0 ]] || {
+  echo "superseded campaign did not terminate successfully: $superseded_status" >&2; exit 1
+}
+if campaign_runtime_superseded campaign \
+    aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa \
+    aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa; then
+  echo 'current campaign was classified as superseded' >&2; exit 1
+fi
 runtime_commit='aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
 stale_runtime_commit='cccccccccccccccccccccccccccccccccccccccc'
 authority_hash='bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb'
@@ -117,6 +136,16 @@ grep -Fq 'configured and actual runtime replica counts differ' \
 grep -Fq "return 1" "$ROOT/ops/scripts/auto-deploy-main.sh"
 grep -Fq 'measured capacity is insufficient' \
   "$ROOT/ops/scripts/prepare-composite-autocompletion-postdeploy.sh"
+grep -Fq '"$mode" == campaign' \
+  "$ROOT/ops/scripts/prepare-composite-autocompletion-postdeploy.sh"
+grep -Fq 'CAMPAIGN_TIMEOUT_SECONDS="${CARBONET_COMPOSITE_CAMPAIGN_TIMEOUT_SECONDS:-720}"' \
+  "$ROOT/ops/scripts/prepare-composite-autocompletion-postdeploy.sh"
+grep -Fq 'while ((SECONDS<campaign_deadline)); do' \
+  "$ROOT/ops/scripts/prepare-composite-autocompletion-postdeploy.sh"
+grep -Fq 'dispatch_current_canary' \
+  "$ROOT/ops/scripts/prepare-composite-autocompletion-postdeploy.sh"
+grep -Fq 'CARBONET_COMPOSITE_EXPECTED_RUNTIME_COMMIT' \
+  "$ROOT/ops/scripts/prepare-composite-autocompletion-postdeploy.sh"
 grep -Fq 'RESONANCE_COMPOSITE_AUTOCOMPLETION_CAPABILITY_ENABLED=true' \
   "$ROOT/ops/scripts/resonance-k8s-build-deploy-80-v2.sh"
 grep -Fq 'RESONANCE_COMPOSITE_AUTOCOMPLETION_CAPABILITY_ENABLED: "true"' \
@@ -171,6 +200,25 @@ for mode,next_mode in (('enable','activate'),('activate','revoke')):
     block=source.split(f'if [[ "$mode" == {mode} ]]; then',1)[1]
     block=block.split(f'if [[ "$mode" == {next_mode} ]]; then',1)[0]
     assert re.search(r'activate_current_gate\s*\n\s*exit 0',block)
+campaign=source.split('if [[ "$mode" == campaign ]]; then',2)[-1]
+campaign=campaign.split("fail 'asynchronous canary campaign exceeded its bounded deadline'",1)[0]
+assert 'systemctl enable --now resonance-composite-live-smoke.timer' in campaign
+assert 'while ((SECONDS<campaign_deadline)); do' in campaign
+assert campaign.index('dispatch_current_canary') < campaign.rindex('sleep "$CAMPAIGN_POLL_SECONDS"')
+assert campaign.index('prepare_current_gate') < campaign.index('activate_current_gate')
+assert re.search(r'activate_current_gate\s*\n\s*campaign_prepared=false\s*\n\s*exit 0',campaign)
+early=source.index('early_runtime_commit=')
+token=source.index('token_tmp=')
+denied=source.index('denied_count=')
+account_map=source.index('generate-composite-relay-account-map.py')
+assert early < token < denied < account_map
+early_block=source[early:token]
+assert 'skip_superseded_campaign' in early_block and 'exit 0' in early_block
+fail_closed=function('best_effort_revoke_preflight_gate')
+assert '.gatePostdeployCandidateId' in fail_closed
+assert 'change_approval REVOKE_PREPARED' in fail_closed
+assert 'change_approval REVOKE ' in fail_closed
+assert '"$POSTDEPLOY_CANDIDATE_ID"' in fail_closed
 PY
   echo 'exact-candidate PREPARED cleanup or last-fallible ACTIVATE contract is missing' >&2; exit 1
 }
@@ -194,12 +242,13 @@ assert 'globallyInFlight()!=0' in prepare
 lock=service.split('private Map<String,Object> lockGate()',1)[1].split(
     'Snapshot snapshot(',1)[0]
 assert 'integrated_design_autocompletion_gate' in lock and 'for update' in lock.lower()
-active=service.split('void assertActiveGate(',1)[1].split(
-    'void assertAuthoritySetCurrent(',1)[0]
+active=service.split('void assertActiveExecutionBinding(',1)[1].split(
+    'boolean retainActiveGateOrRevokeOnSourceDrift(',1)[0]
 assert 'integrated_design_autocompletion_gate' in active
 assert 'for share' in active.lower()
 assert '"ACTIVE".equals(gate.get("approvalStatus"))' in active
-for binding in ('revision','runtimeCommit','sourceInputAuthorityHash'):
+for binding in ('revision','runtimeCommit','sourceInputAuthorityHash',
+                'expectedRuntimeIdentity','currentVerifiedCanaries','finalizerPromoted'):
     assert binding in active
 dispatch=worker.split('private Map<String,Object> dispatchAvailable(',1)[1].split(
     'private Map<String,Object> dispatchReceipt(',1)[0]
@@ -210,7 +259,7 @@ assert lock_index < guard_index < claim_index
 assert 'new GateContext(' in dispatch and 'row.put("gateContext",claimedGate)' in dispatch
 complete=worker.split('private void complete(',1)[1].split(
     'private void recordFailure(',1)[0]
-complete_guard=complete.index('readiness.assertActiveGate(')
+complete_guard=complete.index('readiness.assertActiveExecutionBinding(')
 compile_index=complete.index('governance.compileIntegratedDesignProcess(')
 assert complete_guard < compile_index
 assert 'Boolean.TRUE.equals(report.get("automaticEnablementAllowed"))' in worker
@@ -234,11 +283,34 @@ source="\n".join(lines)
 wrapper=source.split("finalize_postdeploy_candidate_release_with_composite_gate_cleanup() {",1)[1]
 wrapper=wrapper.split("\n}",1)[0]
 finalize=wrapper.index("if finalize_postdeploy_candidate_release; then")
+deferred=wrapper.index('if [[ "${composite_autocompletion_gate_prepared:-false}" != true ]]')
+launch=wrapper.index("launch_composite_autocompletion_postdeploy_campaign")
 activate=wrapper.index("prepare-composite-autocompletion-postdeploy.sh activate")
 revoke_prepared=wrapper.index("prepare-composite-autocompletion-postdeploy.sh revoke-prepared")
-assert finalize < activate < revoke_prepared
+assert finalize < deferred < launch < activate < revoke_prepared
 assert "composite_autocompletion_gate_prepared=false" in wrapper
 assert not re.search(r'prepare-composite-autocompletion-postdeploy\.sh\s+revoke(?!-)',wrapper)
+launcher=source.split("launch_composite_autocompletion_postdeploy_campaign() {",1)[1]
+launcher=launcher.split("\n}",1)[0]
+assert "systemd-run" in launcher and "--collect" in launcher
+assert "--wait" not in launcher
+assert launcher.index("CARBONET_COMPOSITE_EXPECTED_RUNTIME_COMMIT") < launcher.index("campaign;")
+assert "CARBONET_COMPOSITE_CAMPAIGN_TIMEOUT_SECONDS=720" in launcher
+assert "--property=Restart=on-failure" in launcher
+assert "--property=RestartSec=15s" in launcher
+assert "--property=StartLimitIntervalSec=1800" in launcher
+burst=re.search(r'--property=StartLimitBurst=(\d+)',launcher)
+assert burst and int(burst.group(1))>=3
+reconcile=source.split("reconcile_composite_autocompletion_postdeploy(){",1)[1]
+reconcile=reconcile.split("\n}",1)[0]
+assert "gate=PREPARED prepared=true" in reconcile
+flag=reconcile.index("composite_autocompletion_gate_prepared=true")
+proof=reconcile.index("gate=PREPARED prepared=true")
+assert proof < flag
+failure=reconcile.split('else',1)[-1]
+assert 'prepare-composite-autocompletion-postdeploy.sh revoke-candidate' in failure
+assert 'disable --now resonance-composite-live-smoke.timer' in failure
+assert 'return 0' in failure
 cleanup=source.split("cleanup_deploy() {",1)[1].split("\n}",1)[0]
 prepared_guard=cleanup.index('if [[ "${composite_autocompletion_gate_prepared:-false}" == true ]]')
 cleanup_revoke=cleanup.index("revoke-prepared")
@@ -268,14 +340,20 @@ gate_state=PREPARED
 finalizer_observed_gate=''
 helper_actions=()
 helper_candidates=()
+campaign_launch_count=0
+finalizer_count=0
 finalizer_status=37
 helper_activate_status=0
 bulk_claim_count(){
   [[ "$gate_state" == ACTIVE ]] && printf '1\n' || printf '0\n'
 }
 finalize_postdeploy_candidate_release(){
+  finalizer_count=$((finalizer_count+1))
   finalizer_observed_gate="$gate_state"
   return "$finalizer_status"
+}
+launch_composite_autocompletion_postdeploy_campaign(){
+  campaign_launch_count=$((campaign_launch_count+1))
 }
 bash(){
   local helper_mode="${*: -1}"
@@ -319,6 +397,9 @@ finalize_postdeploy_candidate_release_with_composite_gate_cleanup ||
 [[ "${helper_candidates[*]}" == "$candidate_id" ]] || {
   echo "finalizer cleanup lost exact candidate identity: ${helper_candidates[*]}" >&2; exit 1
 }
+[[ "$campaign_launch_count" == 0 ]] || {
+  echo 'failed finalizer launched an asynchronous campaign' >&2; exit 1
+}
 [[ "$(bulk_claim_count)" == 0 ]] || {
   echo 'REVOKED gate allowed a bulk claim after finalizer failure' >&2; exit 1
 }
@@ -337,6 +418,9 @@ finalize_postdeploy_candidate_release_with_composite_gate_cleanup
 [[ "${helper_candidates[*]}" == "$candidate_id" &&
    "$composite_autocompletion_gate_prepared" == false ]] || {
   echo 'successful activation did not consume the exact prepared candidate' >&2; exit 1
+}
+[[ "$campaign_launch_count" == 0 ]] || {
+  echo 'PREPARED success launched a duplicate asynchronous campaign' >&2; exit 1
 }
 
 # If the ACTIVATE HTTP CAS fails, the wrapper must return its deployment-level
@@ -358,8 +442,130 @@ finalize_postdeploy_candidate_release_with_composite_gate_cleanup ||
 [[ "$(bulk_claim_count)" == 0 ]] || {
   echo 'failed activation allowed a bulk claim' >&2; exit 1
 }
+
+# A fresh, unmeasured runtime finalizes with its durable gate disabled. It
+# queues exactly one non-blocking campaign only after the release finalizer and
+# performs no synchronous PREPARE or ACTIVATE on the critical path.
+gate_state=DISABLED; finalizer_observed_gate=''; helper_actions=(); helper_candidates=()
+campaign_launch_count=0; finalizer_count=0; finalizer_status=0; helper_activate_status=0
+composite_autocompletion_gate_prepared=false
+finalize_postdeploy_candidate_release_with_composite_gate_cleanup
+[[ "$finalizer_observed_gate" == DISABLED && "$gate_state" == DISABLED ]] || {
+  echo 'fresh release changed the gate before asynchronous evidence' >&2; exit 1
+}
+[[ "${#helper_actions[@]}" == 0 && "$campaign_launch_count" == 1 \
+   && "$finalizer_count" == 1 ]] || {
+  echo "fresh/denied0 release counts differ from finalizer1 async1 source0: ${helper_actions[*]} $campaign_launch_count $finalizer_count" >&2
+  exit 1
+}
 unset -f bash sudo bulk_claim_count finalize_postdeploy_candidate_release \
+  launch_composite_autocompletion_postdeploy_campaign \
   finalize_postdeploy_candidate_release_with_composite_gate_cleanup
+
+# The exact commit+candidate transient unit is delivered once while active and
+# carries a restart window long enough for delayed account provisioning.
+eval "$(sed -n '/^launch_composite_autocompletion_postdeploy_campaign() {/,/^}/p' \
+  "$ROOT/ops/scripts/auto-deploy-main.sh")"
+launcher_active=false; launcher_calls=()
+target_commit="$runtime_commit"; postdeploy_candidate_id="$candidate_id"; ROOT_DIR="$ROOT"
+systemctl(){ [[ "$launcher_active" == true ]]; }
+sudo(){ launcher_calls+=("$*"); launcher_active=true; return 0; }
+launch_composite_autocompletion_postdeploy_campaign
+launch_composite_autocompletion_postdeploy_campaign
+[[ "${#launcher_calls[@]}" == 1 \
+   && "${launcher_calls[0]}" == *'--property=Restart=on-failure'* \
+   && "${launcher_calls[0]}" == *'--property=RestartSec=15s'* \
+   && "${launcher_calls[0]}" == *'--property=StartLimitBurst=120'* ]] || {
+  echo "campaign duplicate/retry contract invalid: ${launcher_calls[*]}" >&2; exit 1
+}
+unset -f sudo systemctl launch_composite_autocompletion_postdeploy_campaign
+
+# Reconcile may return successfully for a fresh disabled gate, but the outer
+# PREPARED flag follows the exact helper proof rather than the exit status.
+eval "$(sed -n '/^reconcile_composite_autocompletion_postdeploy(){/,/^}/p' \
+  "$ROOT/ops/scripts/auto-deploy-main.sh")"
+reconcile_payload='[composite-autocompletion-postdeploy] READY mode=reconcile gate=DISABLED prepared=false target=MEASUREMENT_REQUIRED scheduler=false processes=108 identities=324 samples=0 estimateSeconds=NA requiredParallelism=NA slots=8 replicas=2'
+sudo_actions=(); reconcile_status=0; reconcile_calls="$tmp/reconcile-calls"
+: >"$reconcile_calls"
+bash(){
+  local helper_mode="${*: -1}"
+  printf '%s\n' "$helper_mode" >>"$reconcile_calls"
+  if [[ "$helper_mode" == reconcile ]]; then
+    ((reconcile_status==0)) || return "$reconcile_status"
+    printf '%s\n' "$reconcile_payload"
+    return 0
+  fi
+  [[ "$helper_mode" == revoke-candidate ]]
+}
+sudo(){ sudo_actions+=("$*"); return 0; }
+composite_autocompletion_gate_prepared=true
+reconcile_composite_autocompletion_postdeploy
+[[ "$composite_autocompletion_gate_prepared" == false \
+   && "${sudo_actions[*]}" == *'disable --now resonance-composite-live-smoke.timer'* ]] || {
+  echo 'fresh DISABLED reconcile forged a PREPARED outer flag' >&2; exit 1
+}
+reconcile_payload='[composite-autocompletion-postdeploy] READY mode=reconcile gate=PREPARED prepared=true target=PASS scheduler=false processes=108 identities=324 samples=1 estimateSeconds=590 requiredParallelism=8 slots=8 replicas=2'
+sudo_actions=(); composite_autocompletion_gate_prepared=false
+reconcile_composite_autocompletion_postdeploy
+[[ "$composite_autocompletion_gate_prepared" == true \
+   && "${sudo_actions[*]}" == *'enable --now resonance-composite-live-smoke.timer'* ]] || {
+  echo 'exact PREPARED reconcile failed to set its outer flag' >&2; exit 1
+}
+
+# Any denied/account-map/migration-style helper failure is fail-closed but does
+# not block the authoritative finalizer: one general exact-candidate revoke is
+# attempted and the timer is disabled before returning success.
+reconcile_status=2; sudo_actions=(); : >"$reconcile_calls"
+composite_autocompletion_gate_prepared=true
+reconcile_composite_autocompletion_postdeploy
+[[ "$composite_autocompletion_gate_prepared" == false \
+   && "$(paste -sd' ' "$reconcile_calls")" == 'reconcile revoke-candidate' \
+   && "${sudo_actions[*]}" == *'disable --now resonance-composite-live-smoke.timer'* ]] || {
+  echo "failed reconcile did not degrade safely: $(paste -sd' ' "$reconcile_calls") ${sudo_actions[*]}" >&2
+  exit 1
+}
+unset -f bash sudo reconcile_composite_autocompletion_postdeploy
+
+# denied-role count 0 never invokes account-map generation. With an exact
+# candidate already ACTIVE/PREPARED, the helper uses the matching durable CAS
+# and verifies the timer is inactive while keeping reconcile non-blocking.
+eval "$(sed -n '/^best_effort_revoke_preflight_gate(){/,/^}/p' \
+  "$ROOT/ops/scripts/prepare-composite-autocompletion-postdeploy.sh")"
+eval "$(sed -n '/^fail_closed_preflight_state(){/,/^}/p' \
+  "$ROOT/ops/scripts/prepare-composite-autocompletion-postdeploy.sh")"
+POSTDEPLOY_CANDIDATE_ID="$candidate_id"
+inspection="{\"gateStatus\":\"ACTIVE\",\"gateRevision\":7,\"gatePostdeployCandidateId\":\"$candidate_id\",\"enabled\":true}"
+revoked_inspection="{\"gateStatus\":\"REVOKED\",\"gateRevision\":8,\"gatePostdeployCandidateId\":\"$candidate_id\",\"enabled\":false}"
+preflight_calls="$tmp/preflight-calls"
+: >"$preflight_calls"
+change_approval(){
+  printf '%s\n' "$1" >>"$preflight_calls"
+  printf '{"success":true,"action":"REVOKE","approvalStatus":"REVOKED"}\n'
+}
+inspect(){ printf '%s\n' "$revoked_inspection"; }
+sudo(){ printf '%s\n' "$*" >>"$preflight_calls"; return 0; }
+systemctl(){ return 1; }
+fail_closed_preflight_state DENIED_ROLE_ACCOUNT_COUNT_INVALID
+[[ "$preflight_revoke" == true && "$preflight_timer_off" == true \
+   && "$(jq -r .gateStatus <<<"$inspection")" == REVOKED \
+   && "$(grep -c '^REVOKE$' "$preflight_calls")" == 1 \
+   && "$(grep -c 'generate-composite-relay-account-map' "$preflight_calls" || true)" == 0 ]] || {
+  echo 'denied0 ACTIVE gate did not fail closed without account generation' >&2; exit 1
+}
+
+inspection="{\"gateStatus\":\"PREPARED\",\"gateRevision\":9,\"gatePostdeployCandidateId\":\"$candidate_id\",\"enabled\":false}"
+: >"$preflight_calls"
+change_approval(){
+  printf '%s\n' "$1" >>"$preflight_calls"
+  printf '{"success":true,"action":"REVOKE_PREPARED","approvalStatus":"REVOKED","postdeployCandidateId":"%s"}\n' "$candidate_id"
+}
+fail_closed_preflight_state DENIED_ROLE_ACCOUNT_COUNT_INVALID
+[[ "$preflight_revoke" == true \
+   && "$(grep -c '^REVOKE_PREPARED$' "$preflight_calls")" == 1 ]] || {
+  echo 'denied0 PREPARED gate bypassed exact-candidate revoke' >&2; exit 1
+}
+unset -f change_approval inspect sudo systemctl best_effort_revoke_preflight_gate \
+  fail_closed_preflight_state
 # Audit publication happens before ACTIVATE and remains detectably fallible; the
 # caller can warn without putting any fallible work after the activation CAS.
 eval "$(sed -n '/^write_audit_marker(){/,/^}/p' \

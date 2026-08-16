@@ -256,7 +256,7 @@ class CompositeDesignOperationalWorkerReplicaCapacityTest {
             }
             assertEquals(108,drained);assertEquals(0,store.pending.size());
             assertEquals("ACTIVE",store.gateStatus);assertEquals(0,store.revokeCount);
-        }finally{worker.close();}
+        }finally{worker.close();readiness.close();}
     }
 
     @Test
@@ -282,7 +282,50 @@ class CompositeDesignOperationalWorkerReplicaCapacityTest {
             assertEquals("PREPARED",store.gateStatus);assertEquals(0,store.revokeCount);
             assertThrows(IllegalStateException.class,()->worker.dispatchApproved(8));
             assertEquals(0,store.running);assertEquals(8,store.pending.size());
-        }finally{worker.close();}
+        }finally{worker.close();readiness.close();}
+    }
+
+    @Test
+    void runtimeIdentityDriftBetweenApprovalSnapshotAndClaimKeepsClaimsAndSourceAtZero(){
+        SharedReceiptStore store=activeApprovalStore(4);
+        store.runtimeIdentityDriftAfterRead=1;
+        ActorProcessGovernanceService governance=readyGovernance();
+        ReplicaJdbcTemplate jdbc=new ReplicaJdbcTemplate(store);
+        NoOpTransactions transactions=new NoOpTransactions(store);
+        CompositeAutocompletionReadinessService readiness=
+            new CompositeAutocompletionReadinessService(jdbc,governance,transactions,
+                8,8,2,store.runtimeCommit,"","");
+        CompositeDesignOperationalWorker worker=new CompositeDesignOperationalWorker(jdbc,
+            new ObjectMapper(),governance,readiness,transactions,true,8,25,false,600,30);
+        try{
+            assertThrows(IllegalStateException.class,()->worker.dispatchApproved(4));
+            assertEquals(0,store.running);assertEquals(4,store.pending.size());
+            assertEquals(0,store.sourceWriteCount);
+        }finally{worker.close();readiness.close();}
+    }
+
+    @Test
+    void runtimeIdentityDriftAfterClaimIsRejectedBeforeCompilerSourceLock()throws Exception{
+        SharedReceiptStore store=activeApprovalStore(1);
+        store.runtimeIdentityDriftAfterRead=2;
+        CountDownLatch sourceExecutorEntered=new CountDownLatch(1);
+        ActorProcessGovernanceService governance=readyGovernance();
+        doAnswer(call->{sourceExecutorEntered.countDown();
+            throw new IllegalStateException("STALE_RUNTIME_MUST_NOT_ENTER_SOURCE");})
+            .when(governance).lockCompositeProcessAuthority(anyString());
+        ReplicaJdbcTemplate jdbc=new ReplicaJdbcTemplate(store);
+        NoOpTransactions transactions=new NoOpTransactions(store);
+        CompositeAutocompletionReadinessService readiness=
+            new CompositeAutocompletionReadinessService(jdbc,governance,transactions,
+                8,8,2,store.runtimeCommit,"","");
+        CompositeDesignOperationalWorker worker=new CompositeDesignOperationalWorker(jdbc,
+            new ObjectMapper(),governance,readiness,transactions,true,8,25,false,600,30);
+        try{
+            Map<String,Object> receipt=worker.dispatchApproved(1);
+            assertEquals(1,receipt.get("claimedCount"));
+            assertTrue(store.runtimeIdentityDriftObserved.await(1,TimeUnit.SECONDS));
+            assertFalse(sourceExecutorEntered.await(250,TimeUnit.MILLISECONDS));
+        }finally{worker.close();readiness.close();}
     }
 
     @Test
@@ -464,6 +507,17 @@ class CompositeDesignOperationalWorkerReplicaCapacityTest {
         return store;
     }
 
+    private static SharedReceiptStore activeApprovalStore(int count){
+        SharedReceiptStore store=new SharedReceiptStore(count);
+        store.runtimeCommit="c".repeat(40);
+        store.sourceAuthorityHash="0".repeat(64);
+        store.sourceInputAuthorityHash=store.sourceAuthorityHash;
+        store.finalAuthorityHash="1".repeat(64);
+        store.gateFinalAuthorityHash=store.finalAuthorityHash;
+        store.gateStatus="ACTIVE";store.currentVerifiedCanary=true;
+        return store;
+    }
+
     private static List<Map<String,Object>> rearmPhysical(SharedReceiptStore store){
         CompositeAutocompletionReadinessService readiness=
             new CompositeAutocompletionReadinessService(new ReplicaJdbcTemplate(store),
@@ -496,6 +550,9 @@ class CompositeDesignOperationalWorkerReplicaCapacityTest {
         private boolean currentVerifiedCanary;
         private String runtimeCommit="";
         private String runtimeIdentityHash="9".repeat(64);
+        private int runtimeIdentityReadCount;
+        private int runtimeIdentityDriftAfterRead=Integer.MAX_VALUE;
+        private final CountDownLatch runtimeIdentityDriftObserved=new CountDownLatch(1);
         private String sourceAuthorityHash="a".repeat(64);
         private String finalAuthorityHash="f".repeat(64);
         private String sourceInputAuthorityHash="0".repeat(64);
@@ -658,8 +715,16 @@ class CompositeDesignOperationalWorkerReplicaCapacityTest {
             if(sql.contains("from framework_runtime_release_state runtime")
                     &&sql.contains("runtime.source_commit=?")){
                 String commit=arguments.length==0?"":String.valueOf(arguments[0]);
-                return store.runtimeCommit.equals(commit)
-                    ?List.of(type.cast(store.runtimeIdentityHash)):List.of();
+                if(!store.runtimeCommit.equals(commit))return List.of();
+                String identity;
+                synchronized(store){
+                    store.runtimeIdentityReadCount++;
+                    boolean drifted=store.runtimeIdentityReadCount>
+                        store.runtimeIdentityDriftAfterRead;
+                    identity=drifted?"8".repeat(64):store.runtimeIdentityHash;
+                    if(drifted)store.runtimeIdentityDriftObserved.countDown();
+                }
+                return List.of(type.cast(identity));
             }
             throw new IllegalStateException("UNEXPECTED_FAKE_JDBC_TYPED_LIST: "+sql);
         }

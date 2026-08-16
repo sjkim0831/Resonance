@@ -3175,25 +3175,52 @@ reconcile_composite_autocompletion_postdeploy(){
   # and every other failure-capable pre-finalize task. This creates only a
   # PREPARED database CAS; workers require ACTIVE and therefore remain write-zero.
   # The guarded finalizer activates the exact revision only after all finalization passes.
-  if CARBONET_POSTDEPLOY_CANDIDATE_ID="$postdeploy_candidate_id" RESONANCE_ROOT="$ROOT_DIR" \
-      bash ops/scripts/prepare-composite-autocompletion-postdeploy.sh reconcile; then
-    if ! sudo -n systemctl enable --now resonance-composite-live-smoke.timer >/dev/null; then
-      CARBONET_POSTDEPLOY_CANDIDATE_ID="$postdeploy_candidate_id" RESONANCE_ROOT="$ROOT_DIR" \
-        bash ops/scripts/prepare-composite-autocompletion-postdeploy.sh revoke-prepared \
+  local reconcile_output
+  if reconcile_output="$(CARBONET_POSTDEPLOY_CANDIDATE_ID="$postdeploy_candidate_id" \
+      RESONANCE_ROOT="$ROOT_DIR" \
+      bash ops/scripts/prepare-composite-autocompletion-postdeploy.sh reconcile)"; then
+    printf '%s\n' "$reconcile_output"
+    composite_autocompletion_gate_prepared=false
+    if [[ "$reconcile_output" == *' gate=PREPARED prepared=true '* ]]; then
+      if ! sudo -n systemctl enable --now resonance-composite-live-smoke.timer >/dev/null; then
+        CARBONET_POSTDEPLOY_CANDIDATE_ID="$postdeploy_candidate_id" RESONANCE_ROOT="$ROOT_DIR" \
+          bash ops/scripts/prepare-composite-autocompletion-postdeploy.sh revoke-prepared \
+            >/dev/null 2>&1 || true
+        sudo -n systemctl disable --now resonance-composite-live-smoke.timer >/dev/null 2>&1 || true
+        composite_autocompletion_gate_prepared=false
+        echo '[auto-deploy] WARN composite autocompletion gate disabled: smoke timer enable failed' >&2
+        return 0
+      fi
+      composite_autocompletion_gate_prepared=true
+      echo '[auto-deploy] composite autocompletion PREPARED gate confirmed'
+    elif [[ "$reconcile_output" == *' gate=ACTIVE prepared=false '* \
+         && "$reconcile_output" == *' scheduler=true '* ]]; then
+      if ! sudo -n systemctl enable --now resonance-composite-live-smoke.timer >/dev/null; then
+        CARBONET_POSTDEPLOY_CANDIDATE_ID="$postdeploy_candidate_id" RESONANCE_ROOT="$ROOT_DIR" \
+          bash ops/scripts/prepare-composite-autocompletion-postdeploy.sh revoke-candidate \
+            >/dev/null 2>&1 || true
+        sudo -n systemctl disable --now resonance-composite-live-smoke.timer \
           >/dev/null 2>&1 || true
+        echo '[auto-deploy] WARN composite autocompletion ACTIVE gate revoke attempted: smoke timer enable failed' >&2
+        return 0
+      fi
+      echo '[auto-deploy] composite autocompletion ACTIVE gate remains current'
+    else
+      # Missing measurement is a safe, normal state for a fresh runtime. The
+      # release finalizer must not wait for a potentially ten-minute campaign.
       sudo -n systemctl disable --now resonance-composite-live-smoke.timer >/dev/null 2>&1 || true
-      echo '[auto-deploy] composite autocompletion gate revoked: smoke timer enable failed' >&2
-      return 1
+      echo '[auto-deploy] composite autocompletion remains gate-disabled; asynchronous canary will follow finalization'
     fi
-    composite_autocompletion_gate_prepared=true
     echo '[auto-deploy] composite autocompletion postdeploy state reconciled'
   else
+    composite_autocompletion_gate_prepared=false
     CARBONET_POSTDEPLOY_CANDIDATE_ID="$postdeploy_candidate_id" RESONANCE_ROOT="$ROOT_DIR" \
-      bash ops/scripts/prepare-composite-autocompletion-postdeploy.sh revoke-prepared \
+      bash ops/scripts/prepare-composite-autocompletion-postdeploy.sh revoke-candidate \
         >/dev/null 2>&1 || true
-    sudo -n systemctl disable --now resonance-composite-live-smoke.timer >/dev/null
-    echo '[auto-deploy] composite autocompletion durable gate remains disabled: readiness pending'
-    return 1
+    sudo -n systemctl disable --now resonance-composite-live-smoke.timer \
+      >/dev/null 2>&1 || true
+    echo '[auto-deploy] WARN composite autocompletion reconcile failed; revoke attempted and timer disabled; release continues gate-disabled' >&2
+    return 0
   fi
 }
 
@@ -4366,10 +4393,49 @@ finalize_postdeploy_candidate_release() {
   }
 }
 
+launch_composite_autocompletion_postdeploy_campaign() {
+  local candidate_hash unit_name
+  [[ "$target_commit" =~ ^[0-9a-f]{40}$ \
+     && "$postdeploy_candidate_id" =~ ^[A-Za-z0-9._:-]{12,160}$ ]] || {
+    echo '[auto-deploy] WARN asynchronous composite campaign identity is invalid' >&2
+    return 0
+  }
+  candidate_hash="$(printf '%s' "$postdeploy_candidate_id" | sha256sum | awk '{print $1}')" || {
+    echo '[auto-deploy] WARN asynchronous composite campaign hash unavailable' >&2
+    return 0
+  }
+  unit_name="resonance-composite-autocompletion-${target_commit:0:12}-${candidate_hash:0:12}"
+  if systemctl is-active --quiet "$unit_name.service"; then
+    echo "[auto-deploy] asynchronous composite campaign already active: $unit_name"
+    return 0
+  fi
+  if ! sudo -n systemd-run --quiet --collect --unit "$unit_name" \
+      --uid=sjkim --gid=sjkim --property=Type=oneshot --property=TimeoutStartSec=930 \
+      --property=Restart=on-failure --property=RestartSec=15s \
+      --property=StartLimitIntervalSec=1800 --property=StartLimitBurst=120 \
+      /usr/bin/env RESONANCE_ROOT="$ROOT_DIR" \
+        CARBONET_POSTDEPLOY_CANDIDATE_ID="$postdeploy_candidate_id" \
+        CARBONET_COMPOSITE_EXPECTED_RUNTIME_COMMIT="$target_commit" \
+        CARBONET_COMPOSITE_CAMPAIGN_TIMEOUT_SECONDS=720 \
+        CARBONET_COMPOSITE_CAMPAIGN_POLL_SECONDS=5 \
+        /usr/bin/bash "$ROOT_DIR/ops/scripts/prepare-composite-autocompletion-postdeploy.sh" \
+          campaign; then
+    # The release is already authoritative and the database gate remains
+    # disabled. Surface delivery failure without turning an optional campaign
+    # into a second deployment critical path.
+    echo "[auto-deploy] WARN asynchronous composite campaign launch failed: $unit_name" >&2
+    return 0
+  fi
+  echo "[auto-deploy] asynchronous composite campaign queued: $unit_name timeout=720s"
+}
+
 finalize_postdeploy_candidate_release_with_composite_gate_cleanup() {
   local finalize_status=0
   if finalize_postdeploy_candidate_release; then
-    if CARBONET_POSTDEPLOY_CANDIDATE_ID="$postdeploy_candidate_id" RESONANCE_ROOT="$ROOT_DIR" \
+    if [[ "${composite_autocompletion_gate_prepared:-false}" != true ]]; then
+      launch_composite_autocompletion_postdeploy_campaign
+      return 0
+    elif CARBONET_POSTDEPLOY_CANDIDATE_ID="$postdeploy_candidate_id" RESONANCE_ROOT="$ROOT_DIR" \
         bash ops/scripts/prepare-composite-autocompletion-postdeploy.sh activate; then
       composite_autocompletion_gate_prepared=false
       return 0

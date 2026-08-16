@@ -12,7 +12,11 @@ ENABLE_MARKER="${CARBONET_COMPOSITE_ENABLE_MARKER:-/etc/resonance/state/composit
 ACTOR_ENV_FILE="${CARBONET_ACTOR_TEST_ENV_FILE:-/opt/carbonet-data/config/actor-test.env}"
 RUNTIME_BASE_URL="${CARBONET_RUNTIME_BASE_URL:-http://127.0.0.1}"
 POSTDEPLOY_CANDIDATE_ID="${CARBONET_POSTDEPLOY_CANDIDATE_ID:-}"
+EXPECTED_RUNTIME_COMMIT="${CARBONET_COMPOSITE_EXPECTED_RUNTIME_COMMIT:-}"
+CAMPAIGN_TIMEOUT_SECONDS="${CARBONET_COMPOSITE_CAMPAIGN_TIMEOUT_SECONDS:-720}"
+CAMPAIGN_POLL_SECONDS="${CARBONET_COMPOSITE_CAMPAIGN_POLL_SECONDS:-5}"
 ACTOR_CODE="COMPOSITE_AUTOCOMPLETION_POSTDEPLOY"
+campaign_prepared=false
 
 fail(){ printf '[composite-autocompletion-postdeploy] FAIL %s\n' "$1" >&2; exit 2; }
 
@@ -28,6 +32,18 @@ secret_value_from_file(){
 
 require_exact_denied_account_count(){
   [[ "${1:-}" =~ ^[0-9]+$ && "$1" == 1 ]]
+}
+
+campaign_runtime_superseded(){
+  [[ "${1:-}" == campaign && "${2:-}" =~ ^[0-9a-f]{40}$ \
+     && "${2:-}" != "${3:-}" ]]
+}
+
+skip_superseded_campaign(){
+  local mode="${1:-}" observed="${2:-}" expected="${3:-}"
+  campaign_runtime_superseded "$mode" "$observed" "$expected" || return 1
+  printf '[composite-autocompletion-postdeploy] SKIP superseded campaign expected=%s observed=%s\n' \
+    "$expected" "$observed"
 }
 
 inspection_allows_enable(){
@@ -105,16 +121,37 @@ fi
 mode="${1:-preflight}"
 [[ "$mode" == preflight || "$mode" == canary || "$mode" == enable ||
    "$mode" == activate || "$mode" == revoke || "$mode" == revoke-prepared ||
-   "$mode" == reconcile ]] ||
-  fail 'mode must be preflight, canary, enable, activate, revoke-prepared, revoke, or reconcile'
+   "$mode" == revoke-candidate || "$mode" == reconcile || "$mode" == campaign ]] ||
+  fail 'mode must be preflight, canary, enable, activate, revoke-prepared, revoke-candidate, revoke, reconcile, or campaign'
 if [[ "$mode" == enable || "$mode" == activate || "$mode" == reconcile ||
-      "$mode" == revoke-prepared ]]; then
+      "$mode" == revoke-prepared || "$mode" == revoke-candidate ||
+      "$mode" == campaign ]]; then
   [[ "$POSTDEPLOY_CANDIDATE_ID" =~ ^[A-Za-z0-9._:-]{12,160}$ ]] ||
     fail 'exact postdeploy candidate identity is required'
+fi
+if [[ "$mode" == campaign ]]; then
+  [[ "$EXPECTED_RUNTIME_COMMIT" =~ ^[0-9a-f]{40}$ ]] ||
+    fail 'exact expected runtime commit is required for the asynchronous campaign'
+  [[ "$CAMPAIGN_TIMEOUT_SECONDS" =~ ^[0-9]+$ \
+     && "$CAMPAIGN_TIMEOUT_SECONDS" -ge 30 \
+     && "$CAMPAIGN_TIMEOUT_SECONDS" -le 900 ]] ||
+    fail 'campaign timeout must be an integer from 30 through 900 seconds'
+  [[ "$CAMPAIGN_POLL_SECONDS" =~ ^[0-9]+$ \
+     && "$CAMPAIGN_POLL_SECONDS" -ge 1 \
+     && "$CAMPAIGN_POLL_SECONDS" -le 30 ]] ||
+    fail 'campaign poll interval must be an integer from 1 through 30 seconds'
 fi
 for command in kubectl base64 curl jq python3; do
   command -v "$command" >/dev/null 2>&1 || fail "required command unavailable: $command"
 done
+if [[ "$mode" == campaign ]]; then
+  early_runtime_commit="$(kubectl -n "$NAMESPACE" get deployment/carbonet-runtime \
+    -o 'jsonpath={.metadata.annotations.resonance\.ai/target-commit}' 2>/dev/null || true)"
+  if skip_superseded_campaign "$mode" "$early_runtime_commit" \
+      "$EXPECTED_RUNTIME_COMMIT"; then
+    exit 0
+  fi
+fi
 [[ -r "$ROOT/ops/scripts/lib/carbonet-postgres-query.sh" ]] ||
   fail 'PostgreSQL read-only adapter unavailable'
 
@@ -125,8 +162,19 @@ token_tmp="$(mktemp)"
 next_file="${TOKEN_FILE}.next.$$"
 marker_tmp=""
 cleanup(){
+  local original_status=$?
+  trap - EXIT
+  set +e
   rm -f "$token_tmp" ${marker_tmp:+"$marker_tmp"}
   sudo -n rm -f "$next_file" "${ENABLE_MARKER}.next.$$" >/dev/null 2>&1 || true
+  if ((original_status!=0)) && [[ "${campaign_prepared:-false}" == true ]] \
+      && declare -F inspect >/dev/null 2>&1 \
+      && declare -F revoke_prepared_gate >/dev/null 2>&1; then
+    inspection="$(inspect 2>/dev/null || true)"
+    [[ -z "$inspection" ]] || revoke_prepared_gate CAMPAIGN_ACTIVATION_FAILED \
+      >/dev/null 2>&1 || true
+  fi
+  return "$original_status"
 }
 trap cleanup EXIT
 if ! kubectl -n "$NAMESPACE" get secret "$BRIDGE_SECRET" \
@@ -144,9 +192,6 @@ sudo -n test -f "$TOKEN_FILE" && ! sudo -n test -L "$TOKEN_FILE" ||
   fail 'host bridge token publication failed'
 [[ "$(sudo -n stat -c '%a:%U:%G' "$TOKEN_FILE")" == 600:sjkim:sjkim ]] ||
   fail 'host bridge token ownership or mode is not sjkim:0600'
-
-actor_password="$(secret_value_from_file "$ACTOR_ENV_FILE" CARBONET_ACTOR_TEST_PASSWORD || true)"
-[[ -n "$actor_password" ]] || fail 'actor test password unavailable'
 
 # shellcheck source=ops/scripts/lib/carbonet-postgres-query.sh
 source "$ROOT/ops/scripts/lib/carbonet-postgres-query.sh"
@@ -173,8 +218,15 @@ with active_identity_row as (
        'ROLE_LIVE_SMOKE_DENIED','ROLE_COMPOSITE_LIVE_SMOKE_DENIED'))
 )
 select count(*)::integer from active_identity;")"
-require_exact_denied_account_count "$denied_count" ||
-  fail 'exactly one active denied-role account is required'
+preflight_failure_reason=""
+actor_password=""
+if require_exact_denied_account_count "$denied_count"; then
+  actor_password="$(secret_value_from_file "$ACTOR_ENV_FILE" \
+    CARBONET_ACTOR_TEST_PASSWORD || true)"
+  [[ -n "$actor_password" ]] || preflight_failure_reason=ACTOR_PASSWORD_UNAVAILABLE
+else
+  preflight_failure_reason=DENIED_ROLE_ACCOUNT_COUNT_INVALID
+fi
 
 tables_ready="$(carbonet_postgres_query "select count(*)::integer from (values
  ('framework_composite_design_target_identity'),
@@ -228,6 +280,8 @@ jq -e '.success==true and .dryRun==true and
   (.preflightStable|booleans) and (.preflightBusy|booleans) and
   (.capabilityEnabled|booleans) and (.enabled|booleans) and
   (.releaseFinalized|booleans) and
+  (.activeCanaryCount|numbers) and (.currentVerifiedCanaryCount|numbers) and
+  (.runtimeCommit|strings) and
   (.gateStatus=="DISABLED" or .gateStatus=="PREPARED" or
    .gateStatus=="ACTIVE" or .gateStatus=="REVOKED") and
   (.gateRevision|numbers) and
@@ -242,21 +296,31 @@ runtime_replicas="$(kubectl -n "$NAMESPACE" get deployment/carbonet-runtime \
 [[ "$(jq -r .configuredReplicas <<<"$inspection")" == "$runtime_replicas" ]] ||
   fail 'configured and actual runtime replica counts differ'
 
-export CARBONET_ACTOR_TEST_PASSWORD="$actor_password" RESONANCE_OPS_TOKEN="$token"
-set +e
-python3 "$ROOT/ops/scripts/generate-composite-relay-account-map.py" \
-  --manifest "$ROOT/ops/runtime-metadata/composite-relay-account-map.json" \
-  --output-env /opt/resonance-data/control-plane/run/composite-relay-accounts.env \
-  --state /opt/resonance-data/control-plane/run/composite-relay-accounts.state.json >/dev/null
-map_status=$?
-set -e
-((map_status==0 || map_status==10)) || fail 'relay account map preflight failed'
-
-runtime_commit="$(kubectl -n "$NAMESPACE" get deployment/carbonet-runtime \
-  -o 'jsonpath={.metadata.annotations.resonance\.ai/target-commit}' 2>/dev/null || true)"
+deployment_runtime_commit(){
+  kubectl -n "$NAMESPACE" get deployment/carbonet-runtime \
+    -o 'jsonpath={.metadata.annotations.resonance\.ai/target-commit}' 2>/dev/null || true
+}
+runtime_commit="$(deployment_runtime_commit)"
 [[ "$runtime_commit" =~ ^[0-9a-f]{40}$ ]] || fail 'runtime commit annotation unavailable'
+if skip_superseded_campaign "$mode" "$runtime_commit" "$EXPECTED_RUNTIME_COMMIT"; then
+  exit 0
+fi
 authority_hash="$(jq -r .currentAuthoritySetHash <<<"$inspection")"
 final_authority_hash="$(jq -r .currentFinalAuthoritySetHash <<<"$inspection")"
+
+refresh_campaign_inspection(){
+  local observed_commit
+  observed_commit="$(deployment_runtime_commit)"
+  if skip_superseded_campaign campaign "$observed_commit" \
+      "$EXPECTED_RUNTIME_COMMIT"; then
+    exit 0
+  fi
+  [[ "$observed_commit" == "$EXPECTED_RUNTIME_COMMIT" ]] ||
+    fail 'asynchronous campaign runtime commit unavailable while polling'
+  inspection="$(inspect)" || fail 'asynchronous campaign inspection unavailable'
+  authority_hash="$(jq -r .currentAuthoritySetHash <<<"$inspection")"
+  final_authority_hash="$(jq -r .currentFinalAuthoritySetHash <<<"$inspection")"
+}
 
 change_approval(){
   local action="$1" revision="$2" reason="${3:-}" payload
@@ -358,6 +422,75 @@ revoke_prepared_gate(){
   inspection="$post"
 }
 
+best_effort_revoke_preflight_gate(){
+  local reason="${1:-POSTDEPLOY_PREFLIGHT_FAILED}" status revision response post
+  status="$(jq -r .gateStatus <<<"$inspection")"
+  [[ "$status" == PREPARED || "$status" == ACTIVE ]] || return 0
+  # The inspected candidate plus monotonic expectedRevision fence both paths.
+  # PREPARED additionally uses the server's candidate-bearing narrow CAS.
+  [[ "$(jq -r .gatePostdeployCandidateId <<<"$inspection")" == \
+     "$POSTDEPLOY_CANDIDATE_ID" ]] || return 1
+  revision="$(jq -r .gateRevision <<<"$inspection")"
+  if [[ "$status" == PREPARED ]]; then
+    response="$(change_approval REVOKE_PREPARED "$revision" "$reason" \
+      2>/dev/null)" || return 1
+    jq -e --arg candidate "$POSTDEPLOY_CANDIDATE_ID" \
+      '.success==true and .action=="REVOKE_PREPARED" and
+       .approvalStatus=="REVOKED" and .postdeployCandidateId==$candidate' \
+      <<<"$response" >/dev/null || return 1
+  else
+    response="$(change_approval REVOKE "$revision" "$reason" 2>/dev/null)" || return 1
+    jq -e '.success==true and .action=="REVOKE" and .approvalStatus=="REVOKED"' \
+      <<<"$response" >/dev/null || return 1
+  fi
+  post="$(inspect 2>/dev/null)" || return 1
+  jq -e '.enabled==false and (.gateStatus=="REVOKED" or .gateStatus=="DISABLED")' \
+    <<<"$post" >/dev/null || return 1
+  inspection="$post"
+}
+
+fail_closed_preflight_state(){
+  local reason="$1"
+  preflight_revoke=false
+  preflight_timer_off=false
+  if best_effort_revoke_preflight_gate "$reason"; then
+    preflight_revoke=true
+  fi
+  sudo -n systemctl disable --now resonance-composite-live-smoke.timer \
+    >/dev/null 2>&1 || true
+  if ! systemctl is-active --quiet resonance-composite-live-smoke.timer; then
+    preflight_timer_off=true
+  fi
+  return 0
+}
+
+if [[ -z "$preflight_failure_reason" ]]; then
+  export CARBONET_ACTOR_TEST_PASSWORD="$actor_password" RESONANCE_OPS_TOKEN="$token"
+  set +e
+  python3 "$ROOT/ops/scripts/generate-composite-relay-account-map.py" \
+    --manifest "$ROOT/ops/runtime-metadata/composite-relay-account-map.json" \
+    --output-env /opt/resonance-data/control-plane/run/composite-relay-accounts.env \
+    --state /opt/resonance-data/control-plane/run/composite-relay-accounts.state.json \
+    >/dev/null
+  map_status=$?
+  set -e
+  ((map_status==0 || map_status==10)) || preflight_failure_reason=RELAY_ACCOUNT_MAP_FAILED
+fi
+if [[ -n "$preflight_failure_reason" ]]; then
+  fail_closed_preflight_state "$preflight_failure_reason"
+  printf '[composite-autocompletion-postdeploy] WARN preflight=%s deniedRoleCount=%s revoke=%s timerOff=%s\n' \
+    "$preflight_failure_reason" "$denied_count" "$preflight_revoke" \
+    "$preflight_timer_off" >&2
+  if [[ "$mode" == reconcile ]]; then
+    printf '[composite-autocompletion-postdeploy] READY mode=reconcile gate=%s prepared=false target=%s scheduler=false deniedRoleCount=%s deniedRoleReady=false revoke=%s timerOff=%s\n' \
+      "$(jq -r .gateStatus <<<"$inspection")" \
+      "$(jq -r .tenMinuteTarget <<<"$inspection")" "$denied_count" \
+      "$preflight_revoke" "$preflight_timer_off"
+    exit 0
+  fi
+  fail "preflight unavailable: $preflight_failure_reason"
+fi
+
 write_audit_marker(){
   marker_tmp="$(mktemp)"
   jq -n --arg commit "$runtime_commit" --arg authority "$authority_hash" \
@@ -383,13 +516,17 @@ write_audit_marker(){
   rm -f "$marker_tmp" || return 1;marker_tmp=""
 }
 
-if [[ "$mode" == canary ]]; then
+dispatch_current_canary(){
   curl -fsS --max-time 20 -X POST -H 'Content-Type: application/json' \
     -H "X-Resonance-Token: $token" -H "X-Resonance-Actor: $ACTOR_CODE" \
     -H "X-Resonance-Account: $admin_account" --data '{"limit":1}' \
     "$RUNTIME_BASE_URL/api/internal/actor-process/composite-autocompletion/dispatch" |
     jq -e '.success==true and .canary==true and .requestedLimit==1 and
-      .claimedCount==1 and (.canaryId|strings|test("^[0-9a-f-]{36}$"))' >/dev/null ||
+      .claimedCount==1 and (.canaryId|strings|test("^[0-9a-f-]{36}$"))' >/dev/null
+}
+
+if [[ "$mode" == canary ]]; then
+  dispatch_current_canary ||
     fail 'bounded canary dispatch rejected'
 fi
 
@@ -435,6 +572,12 @@ if [[ "$mode" == revoke-prepared ]]; then
   scheduler_state=false
 fi
 
+if [[ "$mode" == revoke-candidate ]]; then
+  best_effort_revoke_preflight_gate POSTDEPLOY_CANDIDATE_FAIL_CLOSED ||
+    fail 'exact-candidate durable gate revoke CAS rejected'
+  scheduler_state=false
+fi
+
 if [[ "$mode" == reconcile ]]; then
   runtime_revision_ready || fail 'validated runtime revision is not fully ready'
   # The root-owned marker is audit output only. This reconcile entrypoint is
@@ -455,8 +598,74 @@ if [[ "$mode" == reconcile ]]; then
   fi
 fi
 
-printf '[composite-autocompletion-postdeploy] READY mode=%s target=%s scheduler=%s processes=%s identities=%s samples=%s estimateSeconds=%s requiredParallelism=%s slots=%s replicas=%s\n' \
-  "$mode" "$(jq -r .tenMinuteTarget <<<"$inspection")" \
+if [[ "$mode" == campaign ]]; then
+  runtime_revision_ready || fail 'asynchronous campaign runtime revision is not fully ready'
+  sudo -n systemctl enable --now resonance-composite-live-smoke.timer >/dev/null ||
+    fail 'asynchronous campaign could not start the live-smoke timer'
+  campaign_deadline=$((SECONDS+CAMPAIGN_TIMEOUT_SECONDS))
+  next_dispatch_second=$SECONDS
+  while ((SECONDS<campaign_deadline)); do
+    refresh_campaign_inspection
+    if [[ "$(jq -r .runtimeCommit <<<"$inspection")" != "$runtime_commit" ]]; then
+      sleep "$CAMPAIGN_POLL_SECONDS"
+      continue
+    fi
+    if inspection_confirms_enabled "$inspection" "$runtime_commit" "$authority_hash" \
+        "$POSTDEPLOY_CANDIDATE_ID"; then
+      campaign_prepared=false
+      exit 0
+    fi
+    if inspection_allows_enable "$inspection" "$runtime_commit" "$authority_hash"; then
+      if inspection_confirms_prepared "$inspection" "$runtime_commit" "$authority_hash" \
+          "$POSTDEPLOY_CANDIDATE_ID"; then
+        campaign_prepared=true
+      else
+        prepare_current_gate
+        campaign_prepared=true
+      fi
+      write_audit_marker ||
+        printf '[composite-autocompletion-postdeploy] WARN audit marker publication failed\n' >&2
+      activate_current_gate
+      campaign_prepared=false
+      exit 0
+    fi
+    if [[ "$(jq -r .gateStatus <<<"$inspection")" == PREPARED \
+       && "$(jq -r .gatePostdeployCandidateId <<<"$inspection")" == \
+          "$POSTDEPLOY_CANDIDATE_ID" ]]; then
+      campaign_prepared=true
+      revoke_prepared_gate CAMPAIGN_PREPARED_BINDING_STALE
+      campaign_prepared=false
+      fail 'asynchronous campaign prepared binding became stale'
+    fi
+    active_canaries="$(jq -r .activeCanaryCount <<<"$inspection")"
+    verified_canaries="$(jq -r .currentVerifiedCanaryCount <<<"$inspection")"
+    preflight_complete="$(jq -r .preflightComplete <<<"$inspection")"
+    if [[ "$active_canaries" == 0 && "$verified_canaries" == 0 \
+       && "$preflight_complete" == true && SECONDS -ge next_dispatch_second ]]; then
+      if dispatch_current_canary; then
+        printf '[composite-autocompletion-postdeploy] canary dispatched commit=%s\n' \
+          "$runtime_commit"
+        next_dispatch_second=$((SECONDS+30))
+      else
+        # A concurrent exact campaign or a transaction still becoming visible
+        # is harmless; re-read durable state instead of consuming retries.
+        next_dispatch_second=$((SECONDS+15))
+      fi
+    fi
+    sleep "$CAMPAIGN_POLL_SECONDS"
+  done
+  fail 'asynchronous canary campaign exceeded its bounded deadline'
+fi
+
+prepared_state=false
+if inspection_confirms_prepared "$inspection" "$runtime_commit" "$authority_hash" \
+    "$POSTDEPLOY_CANDIDATE_ID"; then
+  prepared_state=true
+fi
+printf '[composite-autocompletion-postdeploy] READY mode=%s gate=%s prepared=%s target=%s scheduler=%s processes=%s identities=%s samples=%s estimateSeconds=%s requiredParallelism=%s slots=%s replicas=%s\n' \
+  "$mode" "$(jq -r .gateStatus <<<"$inspection")" \
+  "$prepared_state" \
+  "$(jq -r .tenMinuteTarget <<<"$inspection")" \
   "${scheduler_state:-unchanged}" \
   "$(jq -r .readyProcessCount <<<"$inspection")" \
   "$(jq -r .readyIdentityCount <<<"$inspection")" \
