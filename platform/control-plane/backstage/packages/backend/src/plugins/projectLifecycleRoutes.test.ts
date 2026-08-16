@@ -33,7 +33,7 @@ const runtimePurgeGateway = () => {
     status: 'READY',
     accountId: recovery.accountId,
     authorityValidated: true,
-  }));
+  })) as jest.MockedFunction<ProjectRuntimePurgeGateway['preflightRecovery']>;
   const proveAbsent = jest.fn(async (command: any) => ({
     success: true,
     status: 'PROVEN_ABSENT',
@@ -46,7 +46,7 @@ const runtimePurgeGateway = () => {
     residualRows: 0,
     exactZero: true,
     proofSha256: 'e'.repeat(64),
-  }));
+  })) as jest.MockedFunction<ProjectRuntimePurgeGateway['proveAbsent']>;
   const activateAbsent = jest.fn(async (command: any) => ({
     success: true,
     status: 'PROVEN_ABSENT',
@@ -62,14 +62,14 @@ const runtimePurgeGateway = () => {
     fenceStatus: 'ACTIVE',
     activated: true,
     idempotent: false,
-  }));
+  })) as jest.MockedFunction<ProjectRuntimePurgeGateway['activateAbsent']>;
   const releaseAbsent = jest.fn(async (command: any) => ({
     success: true,
     proofId: command.proofId,
     projectId: command.projectId,
     fenceStatus: 'RELEASED',
     idempotent: false,
-  }));
+  })) as jest.MockedFunction<ProjectRuntimePurgeGateway['releaseAbsent']>;
   const preview = jest.fn(async (command: any) => ({
     success: true,
     status: 'PREVIEWED',
@@ -83,7 +83,7 @@ const runtimePurgeGateway = () => {
     snapshotSha256: runtimeSnapshot,
     impact: { totalRows: 12 },
     blockers: { blocked: false },
-  }));
+  })) as jest.MockedFunction<ProjectRuntimePurgeGateway['preview']>;
   const apply = jest.fn(async (command: any) => ({
     success: true,
     status: 'PURGED',
@@ -110,7 +110,7 @@ const runtimePurgeGateway = () => {
         exactZero: true,
       },
     },
-  }));
+  })) as jest.MockedFunction<ProjectRuntimePurgeGateway['apply']>;
   const restore = jest.fn(async (command: any) => ({
     success: true,
     status: 'RESTORED',
@@ -123,7 +123,7 @@ const runtimePurgeGateway = () => {
     scopeMode: command.scopeMode,
     snapshotSha256: command.snapshotSha256,
     aToBToA: true,
-  }));
+  })) as jest.MockedFunction<ProjectRuntimePurgeGateway['restore']>;
   return {
     preflightRecovery,
     proveAbsent,
