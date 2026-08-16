@@ -27,6 +27,26 @@ export type DesignAssetDependency = {
   fingerprint: string;
 };
 
+export type SourceDesignAssetSnapshotTransition = DesignAssetSnapshot & {
+  baseFingerprint: string;
+};
+
+export type ScreenDesignSection = {
+  sectionId: string;
+  zone: string;
+  displayOrder: number;
+  props: Record<string, unknown>;
+};
+
+export type ScreenDesignComponent = {
+  componentId: string;
+  sectionId: string;
+  instanceKey: string;
+  displayOrder: number;
+  props: Record<string, unknown>;
+  condition: string;
+};
+
 export type SourceDesignAssetMutation = {
   activationPolicy: typeof DESIGN_ASSET_ACTIVATION_POLICY;
   authorityMode: 'SOURCE';
@@ -237,11 +257,44 @@ export const designAssetFingerprint = (
     )
     .digest('hex');
 
-type ProjectionDatabase = {
+export type ProjectionDatabase = {
   raw: (
     sql: string,
     bindings?: unknown[],
   ) => Promise<{ rows?: Record<string, unknown>[] }>;
+};
+
+/**
+ * Common design is a platform-global source.  A role copied to, or created in,
+ * an ordinary project is deliberately irrelevant.  Call this inside the same
+ * transaction that commits the source mutation so a concurrent revocation is
+ * serialized by the locked CCUS-PLATFORM assignment row.
+ */
+export const lockGlobalDesignSourceAuthority = async (
+  transaction: ProjectionDatabase,
+  principals: string[],
+): Promise<string | undefined> => {
+  const normalized = [
+    ...new Set(principals.map(value => value.trim().toLowerCase())),
+  ]
+    .filter(Boolean)
+    .sort();
+  if (!normalized.length) return undefined;
+  const placeholders = normalized.map(() => '?').join(',');
+  const authority = await transaction.raw(
+    `select assignment_id,lower(principal_ref) as principal_ref
+       from resonance_projects__design_asset_role_assignment
+      where project_id='CCUS-PLATFORM'
+        and role_code='DESIGN_APPROVER'
+        and active=true
+        and lower(principal_ref) in (${placeholders})
+      order by assignment_id
+      for update`,
+    normalized,
+  );
+  return Array.isArray(authority.rows) && authority.rows.length > 0
+    ? String(authority.rows[0].principal_ref)
+    : undefined;
 };
 
 export const synchronizeGlobalDesignAssetSnapshots = async (
@@ -313,7 +366,7 @@ export const synchronizeGlobalDesignAssetSnapshots = async (
 };
 
 const validatePayload = (assetType: SourceDesignAssetType, raw: unknown) => {
-  const payload = object(raw, 'payload');
+  const payload = { ...object(raw, 'payload') };
   if (!Object.keys(payload).length)
     throw new Error('payload must not be empty');
   exactKeys(payload, payloadFields[assetType], 'payload');
@@ -361,8 +414,124 @@ const validatePayload = (assetType: SourceDesignAssetType, raw: unknown) => {
         'payload.layout and payload.theme must be governed codes',
       );
     }
-    array(payload.sections, 'payload.sections');
-    array(payload.components, 'payload.components');
+    const sectionIds = new Set<string>();
+    const sectionOrders = new Set<number>();
+    let previousSectionOrder = -1;
+    payload.sections = array(payload.sections, 'payload.sections').map(
+      (rawSection, index) => {
+        const section = object(rawSection, `payload.sections[${index}]`);
+        exactKeys(
+          section,
+          new Set(['sectionId', 'zone', 'displayOrder', 'props']),
+          `payload.sections[${index}]`,
+        );
+        const sectionId = nonEmpty(
+          section.sectionId,
+          `payload.sections[${index}].sectionId`,
+          200,
+        );
+        const zone = nonEmpty(
+          section.zone,
+          `payload.sections[${index}].zone`,
+          120,
+        );
+        const displayOrder = section.displayOrder;
+        if (
+          !IDENTIFIER.test(sectionId) ||
+          !IDENTIFIER.test(zone) ||
+          typeof displayOrder !== 'number' ||
+          !Number.isSafeInteger(displayOrder) ||
+          displayOrder < 0 ||
+          displayOrder <= previousSectionOrder ||
+          sectionOrders.has(displayOrder) ||
+          sectionIds.has(sectionId)
+        ) {
+          throw new Error(
+            `payload.sections[${index}] must have a unique governed identity and strictly increasing displayOrder`,
+          );
+        }
+        const props = object(section.props, `payload.sections[${index}].props`);
+        assertJsonShape(props, `payload.sections[${index}].props`);
+        sectionIds.add(sectionId);
+        sectionOrders.add(displayOrder);
+        previousSectionOrder = displayOrder;
+        return { sectionId, zone, displayOrder, props };
+      },
+    );
+    const componentIds = new Set<string>();
+    const instanceKeys = new Set<string>();
+    const componentOrders = new Set<number>();
+    let previousComponentOrder = -1;
+    payload.components = array(payload.components, 'payload.components').map(
+      (rawComponent, index) => {
+        const component = object(rawComponent, `payload.components[${index}]`);
+        exactKeys(
+          component,
+          new Set([
+            'componentId',
+            'sectionId',
+            'instanceKey',
+            'displayOrder',
+            'props',
+            'condition',
+          ]),
+          `payload.components[${index}]`,
+        );
+        const componentId = nonEmpty(
+          component.componentId,
+          `payload.components[${index}].componentId`,
+          200,
+        );
+        const sectionId = nonEmpty(
+          component.sectionId,
+          `payload.components[${index}].sectionId`,
+          200,
+        );
+        const instanceKey = nonEmpty(
+          component.instanceKey,
+          `payload.components[${index}].instanceKey`,
+          200,
+        );
+        const condition = nonEmpty(
+          component.condition,
+          `payload.components[${index}].condition`,
+          1000,
+        );
+        const displayOrder = component.displayOrder;
+        if (
+          !IDENTIFIER.test(componentId) ||
+          !sectionIds.has(sectionId) ||
+          !IDENTIFIER.test(instanceKey) ||
+          typeof displayOrder !== 'number' ||
+          !Number.isSafeInteger(displayOrder) ||
+          displayOrder < 0 ||
+          displayOrder <= previousComponentOrder ||
+          componentOrders.has(displayOrder) ||
+          instanceKeys.has(instanceKey)
+        ) {
+          throw new Error(
+            `payload.components[${index}] must reference a section and have unique stable order and instanceKey`,
+          );
+        }
+        const props = object(
+          component.props,
+          `payload.components[${index}].props`,
+        );
+        assertJsonShape(props, `payload.components[${index}].props`);
+        componentIds.add(componentId);
+        instanceKeys.add(instanceKey);
+        componentOrders.add(displayOrder);
+        previousComponentOrder = displayOrder;
+        return {
+          componentId,
+          sectionId,
+          instanceKey,
+          displayOrder,
+          props,
+          condition,
+        };
+      },
+    );
   }
   return payload;
 };
@@ -370,7 +539,10 @@ const validatePayload = (assetType: SourceDesignAssetType, raw: unknown) => {
 const dependencies = (
   payload: Record<string, unknown>,
 ): DesignAssetDependency[] => {
-  const raw = payload.dependencies ?? [];
+  if (!Object.prototype.hasOwnProperty.call(payload, 'dependencies')) {
+    throw new Error('payload.dependencies is required');
+  }
+  const raw = payload.dependencies;
   if (!Array.isArray(raw) || raw.length > 200) {
     throw new Error(
       'payload.dependencies must be an array with at most 200 items',
@@ -422,6 +594,36 @@ const dependencies = (
         ? 1
         : 0,
     );
+};
+
+const assertScreenDependencyCompleteness = (
+  assetType: SourceDesignAssetType,
+  payload: Record<string, unknown>,
+  declared: DesignAssetDependency[],
+) => {
+  if (assetType !== 'SCREEN') return;
+  const required = new Set<string>([
+    `THEME:${String(payload.theme)}`,
+    ...(payload.sections as ScreenDesignSection[]).map(
+      section => `SECTION:${section.sectionId}`,
+    ),
+    ...(payload.components as ScreenDesignComponent[]).map(
+      component => `COMPONENT:${component.componentId}`,
+    ),
+  ]);
+  const actual = new Set(
+    declared.map(item => `${item.assetType}:${item.assetId}`),
+  );
+  const missing = [...required]
+    .filter(identity => !actual.has(identity))
+    .sort();
+  if (missing.length) {
+    throw new Error(
+      `SCREEN dependencies must fingerprint every referenced theme, section and component: ${missing.join(
+        ', ',
+      )}`,
+    );
+  }
 };
 
 export const buildSourceDesignAssetMutation = (
@@ -502,6 +704,12 @@ export const buildSourceDesignAssetMutation = (
     assetType as SourceDesignAssetType,
     input.payload,
   );
+  const declaredDependencies = dependencies(payload);
+  assertScreenDependencyCompleteness(
+    assetType as SourceDesignAssetType,
+    payload,
+    declaredDependencies,
+  );
   const assetName = nonEmpty(
     input.assetName ?? current.assetName,
     'assetName',
@@ -533,9 +741,202 @@ export const buildSourceDesignAssetMutation = (
     authorityMode: 'SOURCE',
     ...snapshot,
     assetType: assetType as SourceDesignAssetType,
-    dependencies: dependencies(payload),
+    dependencies: declaredDependencies,
     baseAsset,
     baseFingerprint,
     assetFingerprint: designAssetFingerprint(snapshot),
+  };
+};
+
+export const exactSourceDesignAssetSnapshotBatch = (
+  receipt: Record<string, unknown>,
+  target: Pick<
+    SourceDesignAssetMutation,
+    'assetType' | 'assetId' | 'baseFingerprint' | 'assetFingerprint'
+  >,
+): SourceDesignAssetSnapshotTransition[] => {
+  const rawSnapshots = array(receipt.sourceSnapshots, 'sourceSnapshots');
+  if (!rawSnapshots.length || rawSnapshots.length > 2_000) {
+    throw new Error('runtime source snapshot batch must contain 1..2000 items');
+  }
+  const identities = new Set<string>();
+  let targetCount = 0;
+  const snapshots = rawSnapshots.map((raw, index) => {
+    const transition = object(raw, `sourceSnapshots[${index}]`);
+    exactKeys(
+      transition,
+      new Set([
+        'assetType',
+        'assetId',
+        'assetName',
+        'routePath',
+        'version',
+        'active',
+        'payload',
+        'baseFingerprint',
+        'fingerprint',
+      ]),
+      `sourceSnapshots[${index}]`,
+    );
+    if (Object.keys(transition).length !== 9) {
+      throw new Error(`sourceSnapshots[${index}] has an incomplete schema`);
+    }
+    const assetType = String(transition.assetType).toUpperCase();
+    const assetId = nonEmpty(transition.assetId, `sourceSnapshots[${index}].assetId`, 200);
+    if (
+      !SOURCE_DESIGN_ASSET_TYPES.includes(assetType as SourceDesignAssetType) ||
+      !IDENTIFIER.test(assetId)
+    ) {
+      throw new Error(`sourceSnapshots[${index}] has an invalid identity`);
+    }
+    const assetName = nonEmpty(
+      transition.assetName,
+      `sourceSnapshots[${index}].assetName`,
+      300,
+    );
+    const routePath = canonicalDesignAssetRoute(transition.routePath);
+    if (routePath !== transition.routePath) {
+      throw new Error(`sourceSnapshots[${index}].routePath is not canonical`);
+    }
+    const version = nonEmpty(
+      transition.version,
+      `sourceSnapshots[${index}].version`,
+      80,
+    );
+    if (!VERSION.test(version) || typeof transition.active !== 'boolean') {
+      throw new Error(`sourceSnapshots[${index}] has invalid version or active state`);
+    }
+    const payload = validatePayload(
+      assetType as SourceDesignAssetType,
+      transition.payload,
+    );
+    const declared = dependencies(payload);
+    assertScreenDependencyCompleteness(
+      assetType as SourceDesignAssetType,
+      payload,
+      declared,
+    );
+    const baseFingerprint = String(transition.baseFingerprint).toLowerCase();
+    const fingerprint = String(transition.fingerprint).toLowerCase();
+    if (!HASH.test(baseFingerprint) || !HASH.test(fingerprint)) {
+      throw new Error(`sourceSnapshots[${index}] requires exact SHA-256 values`);
+    }
+    const snapshot: DesignAssetSnapshot = {
+      assetType,
+      assetId,
+      assetName,
+      routePath,
+      version,
+      active: transition.active,
+      payload,
+      fingerprint,
+    };
+    const { fingerprint: _fingerprint, ...canonicalSnapshot } = snapshot;
+    if (designAssetFingerprint(canonicalSnapshot) !== fingerprint) {
+      throw new Error(`sourceSnapshots[${index}] fingerprint is not canonical`);
+    }
+    const identity = `${assetType}:${assetId}`;
+    if (identities.has(identity)) {
+      throw new Error(`runtime source snapshot batch duplicates ${identity}`);
+    }
+    identities.add(identity);
+    if (assetType === target.assetType && assetId === target.assetId) {
+      targetCount += 1;
+      if (
+        baseFingerprint !== target.baseFingerprint ||
+        fingerprint !== target.assetFingerprint
+      ) {
+        throw new Error('runtime source snapshot target fingerprint mismatch');
+      }
+    }
+    return { ...snapshot, baseFingerprint };
+  });
+  if (targetCount !== 1) {
+    throw new Error('runtime source snapshot batch must contain the target exactly once');
+  }
+  return snapshots.sort((left, right) => {
+    const leftIdentity = `${left.assetType}:${left.assetId}`;
+    const rightIdentity = `${right.assetType}:${right.assetId}`;
+    return leftIdentity < rightIdentity ? -1 : leftIdentity > rightIdentity ? 1 : 0;
+  });
+};
+
+export const synchronizeGlobalDesignAssetSnapshotBatch = async (
+  transaction: ProjectionDatabase,
+  snapshots: SourceDesignAssetSnapshotTransition[],
+  now: Date,
+): Promise<{
+  projectCount: number;
+  snapshotCount: number;
+  synchronizedProjectionCount: number;
+}> => {
+  if (!snapshots.length) throw new Error('global source snapshot batch is empty');
+  await transaction.raw('lock table resonance_projects__project in share mode');
+  const projectResult = await transaction.raw(
+    'select count(*)::integer as count from resonance_projects__project',
+  );
+  const projectCount = Number(projectResult.rows?.[0]?.count ?? 0);
+  if (projectCount < 1) throw new Error('global design snapshot has no projects');
+  let synchronizedProjectionCount = 0;
+  for (const snapshot of snapshots) {
+    await transaction.raw(
+      'select pg_advisory_xact_lock(hashtextextended(?,0))',
+      [`BACKSTAGE_COMMON_DESIGN_SNAPSHOT_V1:${snapshot.assetType}:${snapshot.assetId}`],
+    );
+    const synchronized = await transaction.raw(
+      `insert into resonance_projects__design_asset_snapshot (
+         project_id,asset_type,asset_id,asset_name,route_path,
+         asset_version,active,asset_payload,asset_sha256,synced_at)
+       select project_id,?,?,?,?,?,?,cast(? as jsonb),?,?
+         from resonance_projects__project
+       on conflict (project_id,asset_type,asset_id) do update set
+         asset_name=excluded.asset_name,
+         route_path=excluded.route_path,
+         asset_version=excluded.asset_version,
+         active=excluded.active,
+         asset_payload=excluded.asset_payload,
+         asset_sha256=excluded.asset_sha256,
+         synced_at=excluded.synced_at
+       where resonance_projects__design_asset_snapshot.asset_sha256 in (?,?)
+       returning project_id`,
+      [
+        snapshot.assetType,
+        snapshot.assetId,
+        snapshot.assetName,
+        snapshot.routePath,
+        snapshot.version,
+        snapshot.active,
+        JSON.stringify(snapshot.payload),
+        snapshot.fingerprint,
+        now,
+        snapshot.baseFingerprint,
+        snapshot.fingerprint,
+      ],
+    );
+    const synchronizedCount = Array.isArray(synchronized.rows)
+      ? synchronized.rows.length
+      : 0;
+    if (synchronizedCount !== projectCount) {
+      throw new Error(
+        `global design snapshot CAS diverged for ${snapshot.assetType}:${snapshot.assetId}`,
+      );
+    }
+    const exact = await transaction.raw(
+      `select count(*)::integer as count
+         from resonance_projects__design_asset_snapshot
+        where asset_type=? and asset_id=? and asset_sha256=?`,
+      [snapshot.assetType, snapshot.assetId, snapshot.fingerprint],
+    );
+    if (Number(exact.rows?.[0]?.count ?? 0) !== projectCount) {
+      throw new Error(
+        `global design snapshot projection is not exact for ${snapshot.assetType}:${snapshot.assetId}`,
+      );
+    }
+    synchronizedProjectionCount += synchronizedCount;
+  }
+  return {
+    projectCount,
+    snapshotCount: snapshots.length,
+    synchronizedProjectionCount,
   };
 };

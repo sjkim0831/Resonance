@@ -94,9 +94,12 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
     @BeforeEach
     void seed(){
         jdbc.execute("drop trigger if exists reject_direct_job on framework_development_job");
+        jdbc.update("update comtnemplyrinfo set emplyr_sttus_code='P' "+
+            "where emplyr_id='system-admin'");
         jdbc.execute("truncate framework_actor_process_design_release,framework_process_step_screen_binding,"+
             "framework_screen_blueprint,framework_screen_resource,"+
-            "framework_common_design_write_probe,framework_common_design_asset_source_state,"+
+            "framework_common_design_write_probe,framework_common_design_source_receipt,"+
+            "framework_common_design_asset_source_state,"+
             "ui_page_component_map,ui_component_registry,ui_section_registry,ui_page_manifest,"+
             "comtnthemedefinition,"+
             "framework_account_actor_assignment,"+
@@ -167,13 +170,13 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
         java.util.concurrent.Callable<Object> left=()->{
             ready.countDown();start.await(5,TimeUnit.SECONDS);
             try{return transaction.execute(status->service.applyCommonDesignAssetSource(
-                commonDesignSourceBody("PROJECT_A",base,proposalA),"approver-a"));}
+                commonDesignSourceBody("PROJECT_A",base,proposalA),"system-admin"));}
             catch(RuntimeException error){return error;}
         };
         java.util.concurrent.Callable<Object> right=()->{
             ready.countDown();start.await(5,TimeUnit.SECONDS);
             try{return transaction.execute(status->service.applyCommonDesignAssetSource(
-                commonDesignSourceBody("PROJECT_B",base,proposalB),"approver-b"));}
+                commonDesignSourceBody("PROJECT_B",base,proposalB),"system-admin"));}
             catch(RuntimeException error){return error;}
         };
         var leftResult=executor.submit(left);var rightResult=executor.submit(right);
@@ -242,7 +245,7 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
             IllegalStateException rejected=assertThrows(IllegalStateException.class,()->
                 transaction.execute(status->service.applyCommonDesignAssetSource(
                     commonDesignSourceBody("PROJECT_A",base,forgedProposal),
-                    "design-approver")));
+                    "system-admin")));
             assertTrue(rejected.getMessage().contains(
                 "DESIGN_ASSET_DEPENDENCY_FINGERPRINT_CHANGED"));
             assertEquals(0,count("framework_common_design_write_probe"));
@@ -259,7 +262,7 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
 
         Map<String,Object> result=transaction.execute(status->
             service.applyCommonDesignAssetSource(
-                commonDesignSourceBody("PROJECT_A",base,proposed),"design-approver"));
+                commonDesignSourceBody("PROJECT_A",base,proposed),"system-admin"));
 
         assertEquals("APPLIED",result.get("status"));
         assertEquals(1,result.get("registryWrites"));
@@ -273,6 +276,534 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
                 """,String.class,dependency.get("assetType"),dependency.get("assetId"));
             return dependency.get("fingerprint").equals(actual);
         }).count());
+    }
+
+    @Test
+    void screenSourceMaterializesExactCompositionFansOutAndRestoresRemovedEntries(){
+        Map<String,Object> theme=themeAsset("DEP_THEME","Theme dependency","#246beb",List.of());
+        Map<String,Object> primarySection=sectionAsset("DEP_SECTION","Primary section");
+        Map<String,Object> secondarySection=sectionAsset("ALT_SECTION","Secondary section");
+        Map<String,Object> primaryComponent=componentAsset("DEP_COMPONENT","Primary component");
+        Map<String,Object> secondaryComponent=componentAsset("ALT_COMPONENT","Secondary component");
+        for(Map<String,Object> dependency:List.of(theme,primarySection,secondarySection,
+                primaryComponent,secondaryComponent))seedCommonDesignAsset(dependency);
+        List<Map<String,Object>> dependencies=List.of(theme,primarySection,secondarySection,
+                primaryComponent,secondaryComponent).stream().map(asset->Map.<String,Object>of(
+                    "assetType",asset.get("assetType"),"assetId",asset.get("assetId"),
+                    "fingerprint",ActorProcessGovernanceService.commonDesignAssetFingerprint(asset)))
+            .toList();
+        List<Map<String,Object>> baseSections=List.of(
+            Map.of("sectionId","DEP_SECTION","zone","main-zone","displayOrder",10,
+                "props",Map.of("width","wide")),
+            Map.of("sectionId","ALT_SECTION","zone","aside-zone","displayOrder",20,
+                "props",Map.of("width","narrow")));
+        List<Map<String,Object>> baseComponents=List.of(
+            Map.of("componentId","DEP_COMPONENT","sectionId","DEP_SECTION",
+                "instanceKey","primary-form","displayOrder",10,
+                "props",Map.of("dense",false),"condition","always"),
+            Map.of("componentId","ALT_COMPONENT","sectionId","ALT_SECTION",
+                "instanceKey","secondary-card","displayOrder",20,
+                "props",Map.of("tone","quiet"),"condition","actor == 'PRIMARY_ACTOR'"));
+        Map<String,Object> base=composedScreenAsset("PROC_STEP_USER","Step","/step",
+            "v1","KRDS_WORKSPACE","DEP_THEME",baseSections,baseComponents,dependencies);
+        seedCommonDesignAsset(base);
+        seedGeneratedScreenIdentity("/step","PRIMARY_ACTOR");
+        String baselineManifest=jdbc.queryForObject(
+            "select component_schema from ui_page_manifest where page_id='PROC_STEP_USER'",
+            String.class);
+        Map<String,Object> proposed=composedScreenAsset("PROC_STEP_USER","Step revised","/step",
+            "v2","KRDS_DETAIL_WORKSPACE","DEP_THEME",
+            List.of(Map.of("sectionId","DEP_SECTION","zone","workspace-zone",
+                "displayOrder",10,"props",Map.of("width","fluid","gap",24))),
+            List.of(Map.of("componentId","DEP_COMPONENT","sectionId","DEP_SECTION",
+                "instanceKey","primary-form","displayOrder",10,
+                "props",Map.of("dense",true,"mode","edit"),
+                "condition","permission == 'STEP_EDIT'")),dependencies);
+
+        Map<String,Object> changed=transaction.execute(status->
+            service.applyCommonDesignAssetSource(
+                commonDesignSourceBody("PROJECT_A",base,proposed),"system-admin"));
+
+        assertEquals(true,changed.get("sourceCommitted"));
+        assertEquals(1,changed.get("affectedScreenCount"));
+        assertEquals(1,changed.get("affectedProcessCount"));
+        assertEquals(1,changed.get("canonicalWrites"));
+        assertTrue(((Number)changed.get("compositionWrites")).intValue()>=3);
+        assertEquals(1,changed.get("jobCount"));
+        assertEquals(1,changed.get("endpointExpected"));
+        assertEquals(1,jdbc.queryForObject(
+            "select count(*) from ui_page_component_map where page_id='PROC_STEP_USER'",
+            Integer.class));
+        assertEquals(0,jdbc.queryForObject(
+            "select count(*) from ui_page_component_map where page_id='PROC_STEP_USER' "+
+                "and (component_id='ALT_COMPONENT' or instance_key='secondary-card')",
+            Integer.class));
+        assertEquals("workspace-zone",jdbc.queryForObject(
+            "select layout_zone from ui_page_component_map where page_id='PROC_STEP_USER'",
+            String.class));
+        assertEquals(true,jdbc.queryForObject(
+            "select instance_props::jsonb=cast(? as jsonb) from ui_page_component_map "+
+                "where page_id='PROC_STEP_USER'",Boolean.class,
+            json(Map.of("dense",true,"mode","edit"))));
+        assertEquals("KRDS_DETAIL_WORKSPACE",jdbc.queryForObject(
+            "select layout_version from ui_page_manifest where page_id='PROC_STEP_USER'",
+            String.class));
+        assertEquals(true,jdbc.queryForObject(
+            "select component_schema::jsonb->'sections'=cast(? as jsonb) "+
+                "from ui_page_manifest where page_id='PROC_STEP_USER'",Boolean.class,
+            json(((Map<?,?>)proposed.get("payload")).get("sections"))));
+        assertEquals(true,jdbc.queryForObject(
+            "select specification_json::jsonb->'components'=cast(? as jsonb) "+
+                "from framework_screen_blueprint where page_id='PROC_STEP_USER'",Boolean.class,
+            json(((Map<?,?>)proposed.get("payload")).get("components"))));
+        assertEquals(ActorProcessGovernanceService.commonDesignAssetFingerprint(proposed),
+            jdbc.queryForObject("select trim(asset_fingerprint) "+
+                "from framework_common_design_asset_source_state "+
+                "where asset_type='SCREEN' and asset_id='PROC_STEP_USER'",String.class));
+
+        Map<String,Object> changedDependency=componentAsset(
+            "DEP_COMPONENT","Dependency changed after commit");
+        jdbc.update("update ui_component_registry set component_name=? where component_id=?",
+            changedDependency.get("assetName"),changedDependency.get("assetId"));
+        jdbc.update("""
+            update framework_common_design_asset_source_state
+               set canonical_asset=cast(? as jsonb),asset_fingerprint=?
+             where asset_type='COMPONENT' and asset_id='DEP_COMPONENT'
+            """,json(changedDependency),
+            ActorProcessGovernanceService.commonDesignAssetFingerprint(changedDependency));
+        Map<String,Object> replay=transaction.execute(status->
+            service.applyCommonDesignAssetSource(
+                commonDesignSourceBody("PROJECT_A",base,proposed),"system-admin"));
+        assertEquals(true,replay.get("idempotent"));
+        assertEquals(true,replay.get("sourceCommitted"));
+        assertEquals(0,replay.get("sourceStateWrites"));
+        jdbc.update("update ui_component_registry set component_name=? where component_id=?",
+            primaryComponent.get("assetName"),primaryComponent.get("assetId"));
+        jdbc.update("""
+            update framework_common_design_asset_source_state
+               set canonical_asset=cast(? as jsonb),asset_fingerprint=?
+             where asset_type='COMPONENT' and asset_id='DEP_COMPONENT'
+            """,json(primaryComponent),
+            ActorProcessGovernanceService.commonDesignAssetFingerprint(primaryComponent));
+
+        Map<String,Object> restored=transaction.execute(status->
+            service.applyCommonDesignAssetSource(
+                commonDesignSourceBody("PROJECT_A",proposed,base),"system-admin"));
+
+        assertEquals(true,restored.get("sourceCommitted"));
+        assertEquals(2,jdbc.queryForObject(
+            "select count(*) from ui_page_component_map where page_id='PROC_STEP_USER'",
+            Integer.class));
+        assertEquals(1,jdbc.queryForObject(
+            "select count(*) from ui_page_component_map where page_id='PROC_STEP_USER' "+
+                "and component_id='ALT_COMPONENT' and instance_key='secondary-card'",
+            Integer.class));
+        assertEquals(true,jdbc.queryForObject(
+            "select component_schema::jsonb=cast(? as jsonb) from ui_page_manifest "+
+                "where page_id='PROC_STEP_USER'",Boolean.class,baselineManifest));
+        assertEquals(1,count("framework_development_job"));
+    }
+
+    @Test
+    void declaredDependencyFansOutWhenItsComponentIsNotMaterializedOnTheScreen(){
+        Map<String,Object> theme=themeAsset("DEP_THEME","Theme dependency","#246beb",List.of());
+        Map<String,Object> section=sectionAsset("DEP_SECTION","Primary section");
+        Map<String,Object> target=componentAsset("DEP_COMPONENT","Declared only component");
+        Map<String,Object> visible=componentAsset("ALT_COMPONENT","Visible component");
+        for(Map<String,Object> dependency:List.of(theme,section,target,visible))
+            seedCommonDesignAsset(dependency);
+        List<Map<String,Object>> dependencies=List.of(theme,section,target,visible).stream()
+            .map(asset->Map.<String,Object>of(
+                "assetType",asset.get("assetType"),"assetId",asset.get("assetId"),
+                "fingerprint",ActorProcessGovernanceService.commonDesignAssetFingerprint(asset)))
+            .toList();
+        Map<String,Object> screen=composedScreenAsset("PROC_STEP_USER","Step","/step",
+            "v1","KRDS_WORKSPACE","DEP_THEME",
+            List.of(Map.of("sectionId","DEP_SECTION","zone","main-zone",
+                "displayOrder",10,"props",Map.of())),
+            List.of(Map.of("componentId","ALT_COMPONENT","sectionId","DEP_SECTION",
+                "instanceKey","visible-card","displayOrder",10,"props",Map.of(),
+                "condition","always")),dependencies);
+        seedCommonDesignAsset(screen);
+        seedGeneratedScreenIdentity("/step","PRIMARY_ACTOR");
+        assertEquals(0,jdbc.queryForObject(
+            "select count(*) from ui_page_component_map where component_id='DEP_COMPONENT'",
+            Integer.class));
+        Map<String,Object> proposal=componentAsset("DEP_COMPONENT","Declared component revised");
+        @SuppressWarnings("unchecked")
+        Map<String,Object> proposalPayload=new LinkedHashMap<>(
+            (Map<String,Object>)proposal.get("payload"));
+        proposalPayload.put("defaultProps",Map.of("dense",true,"revision",2));
+        Map<String,Object> revisedProposal=new LinkedHashMap<>(proposal);
+        revisedProposal.put("version","v2");
+        revisedProposal.put("payload",proposalPayload);
+        String screenFingerprintBefore=jdbc.queryForObject("""
+            select trim(asset_fingerprint) from framework_common_design_asset_source_state
+             where asset_type='SCREEN' and asset_id='PROC_STEP_USER'
+            """,String.class);
+
+        Map<String,Object> result=transaction.execute(status->
+            service.applyCommonDesignAssetSource(
+                commonDesignSourceBody("PROJECT_A",target,revisedProposal),"system-admin"));
+
+        assertEquals(true,result.get("sourceCommitted"));
+        assertEquals(1,result.get("affectedScreenCount"));
+        assertEquals(1,result.get("affectedProcessCount"));
+        assertEquals(1,result.get("canonicalWrites"));
+        assertEquals(1,result.get("jobCount"));
+        assertEquals(1,result.get("endpointExpected"));
+        assertEquals(2,result.get("sourceStateWrites"));
+        @SuppressWarnings("unchecked")
+        List<Map<String,Object>> sourceSnapshots=
+            (List<Map<String,Object>>)result.get("sourceSnapshots");
+        assertEquals(2,sourceSnapshots.size());
+        assertEquals(0,jdbc.queryForObject(
+            "select count(*) from ui_page_component_map where component_id='DEP_COMPONENT'",
+            Integer.class));
+        assertEquals(1,jdbc.queryForObject(
+            "select count(*) from framework_screen_blueprint "+
+            "where specification_json::jsonb#>>'{sourceImmediateAssets,COMPONENT:DEP_COMPONENT,assetFingerprint}'=?",
+            Integer.class,result.get("assetFingerprint")));
+        Map<String,Object> screenHead=transaction.execute(status->
+            service.commonDesignAssetSourceHeads("SCREEN","PROC_STEP_USER","",2).get(0));
+        String screenFingerprintAfter=String.valueOf(screenHead.remove("fingerprint"));
+        screenHead.remove("syncedAt");
+        assertNotEquals(screenFingerprintBefore,screenFingerprintAfter);
+        assertEquals(result.get("assetFingerprint"),jdbc.queryForObject("""
+            select dependency->>'fingerprint'
+              from framework_common_design_asset_source_state source
+              cross join lateral jsonb_array_elements(
+                source.canonical_asset#>'{payload,dependencies}') dependency
+             where source.asset_type='SCREEN' and source.asset_id='PROC_STEP_USER'
+               and dependency->>'assetType'='COMPONENT'
+               and dependency->>'assetId'='DEP_COMPONENT'
+            """,String.class));
+        @SuppressWarnings("unchecked")
+        Map<String,Object> editablePayload=new LinkedHashMap<>(
+            (Map<String,Object>)screenHead.get("payload"));
+        editablePayload.put("pageName","Step after dependency cascade");
+        Map<String,Object> editableScreen=new LinkedHashMap<>(screenHead);
+        editableScreen.put("assetName","Step after dependency cascade");
+        editableScreen.put("version","v2");editableScreen.put("payload",editablePayload);
+        Map<String,Object> edited=transaction.execute(status->
+            service.applyCommonDesignAssetSource(commonDesignSourceBody(
+                "PROJECT_A",screenHead,editableScreen),"system-admin"));
+        assertEquals(true,edited.get("sourceCommitted"));
+        assertEquals(1,edited.get("sourceStateWrites"));
+    }
+
+    @Test
+    void retiredAlternateWritersReturn410AndPerformZeroRegistryOrPageWrites(){
+        Map<String,Object> preflight=transaction.execute(status->
+            service.runDesignPreflight(Map.of(
+                "pageId","FORBIDDEN_PAGE","routePath","/forbidden",
+                "pageName","Forbidden","sectionId","FORBIDDEN_SECTION",
+                "componentName","Forbidden","componentType","FORM"),
+                "project-approver"));
+        DynamicPageRuntimeService dynamicPages=new DynamicPageRuntimeService(jdbc);
+        Map<String,Object> compile=transaction.execute(status->dynamicPages.compile(
+            List.of(Map.of("pageId","FORBIDDEN_PAGE","title","Forbidden",
+                "components",List.of(Map.of("type","FORM")))),"project-approver"));
+
+        assertEquals(410,preflight.get("httpStatus"));
+        assertEquals(410,compile.get("httpStatus"));
+        assertEquals("RETIRED",preflight.get("status"));
+        assertEquals("RETIRED",compile.get("status"));
+        assertEquals(0,count("ui_page_manifest"));
+        assertEquals(0,count("ui_page_component_map"));
+        assertEquals(0,count("ui_component_registry"));
+        assertEquals(0,count("ui_section_registry"));
+        assertEquals(0,count("framework_common_design_asset_source_state"));
+        assertEquals(0,count("framework_development_job"));
+    }
+
+    @Test
+    void runtimeAccountWithoutLockedSystemMasterAuthorityPerformsZeroWrites(){
+        Map<String,Object> base=themeAsset("GLOBAL_THEME","Global theme","#005ea8",List.of());
+        seedCommonDesignAsset(base);
+        Map<String,Object> proposed=themeAsset(
+            "GLOBAL_THEME","Unauthorized revision","#d50136",List.of());
+
+        SecurityException rejected=assertThrows(SecurityException.class,()->
+            transaction.execute(status->service.applyCommonDesignAssetSource(
+                commonDesignSourceBody("PROJECT_ATTACKER",base,proposed),
+                "project-owner")));
+
+        assertTrue(rejected.getMessage().contains(
+            "SYSTEM_ADMIN_ACCOUNT_AUTHORITY_REQUIRED"));
+        assertEquals(0,count("framework_common_design_write_probe"));
+        assertEquals("Global theme",jdbc.queryForObject(
+            "select theme_nm from comtnthemedefinition where theme_id='GLOBAL_THEME'",
+            String.class));
+        assertEquals(ActorProcessGovernanceService.commonDesignAssetFingerprint(base),
+            jdbc.queryForObject("select trim(asset_fingerprint) "+
+                "from framework_common_design_asset_source_state "+
+                "where asset_type='THEME' and asset_id='GLOBAL_THEME'",String.class));
+        assertEquals(0,count("framework_development_job"));
+    }
+
+    @Test
+    void runtimeAccountDeactivationRaceIsLockedAndPerformsZeroWrites() throws Exception {
+        Map<String,Object> base=themeAsset("GLOBAL_THEME","Global theme","#005ea8",List.of());
+        seedCommonDesignAsset(base);
+        Map<String,Object> proposed=themeAsset(
+            "GLOBAL_THEME","Forbidden inactive revision","#d50136",List.of());
+        var deactivator=dataSource.getConnection();
+        var executor=Executors.newSingleThreadExecutor();
+        try {
+            deactivator.setAutoCommit(false);
+            try(var statement=deactivator.prepareStatement(
+                    "update comtnemplyrinfo set emplyr_sttus_code='D' where emplyr_id=?")){
+                statement.setString(1,"system-admin");
+                assertEquals(1,statement.executeUpdate());
+            }
+            var attempted=executor.submit(()->{
+                try {
+                    return transaction.execute(status->service.applyCommonDesignAssetSource(
+                        commonDesignSourceBody("PROJECT_A",base,proposed),"system-admin"));
+                } catch(RuntimeException error){
+                    return error;
+                }
+            });
+            Thread.sleep(250);
+            assertEquals(false,attempted.isDone());
+            deactivator.commit();
+            Object result=attempted.get(5,TimeUnit.SECONDS);
+            assertTrue(result instanceof SecurityException);
+            assertTrue(String.valueOf(((Throwable)result).getMessage()).contains(
+                "SYSTEM_ADMIN_ACCOUNT_AUTHORITY_REQUIRED"));
+        } finally {
+            deactivator.rollback();
+            deactivator.close();
+            executor.shutdownNow();
+        }
+        assertEquals(0,count("framework_common_design_write_probe"));
+        assertEquals("Global theme",jdbc.queryForObject(
+            "select theme_nm from comtnthemedefinition where theme_id='GLOBAL_THEME'",
+            String.class));
+        assertEquals(0,count("framework_development_job"));
+    }
+
+    @Test
+    void canonicalRouteContractAmbiguityRollsBackBeforeBlueprintFanout(){
+        Map<String,Object> base=themeAsset("GLOBAL_THEME","Global theme","#005ea8",List.of());
+        seedCommonDesignAsset(base);
+        seedGeneratedScreenIdentity("/step","PRIMARY_ACTOR");
+        jdbc.update("""
+            update framework_screen_blueprint
+               set specification_json=jsonb_set(specification_json::jsonb,
+                   '{theme}',to_jsonb('GLOBAL_THEME'::text))::text
+             where blueprint_code='REQ_BP_DIRECT'
+            """);
+        jdbc.update("""
+            insert into framework_professional_screen_contract(
+              process_code,step_code,audience,route_path,actor_code,
+              command_contract,api_contract,updated_by)
+            values('PROC','STEP','USER','/step?variant=secondary','PRIMARY_ACTOR',
+              '[{"commandCode":"SAVE"}]','[{"path":"/api/items"}]',
+              'BACKSTAGE_REQUIREMENT_AUTOMATION')
+            """);
+        Map<String,Object> proposed=themeAsset(
+            "GLOBAL_THEME","Ambiguous revision","#d50136",List.of());
+
+        IllegalStateException rejected=assertThrows(IllegalStateException.class,()->
+            transaction.execute(status->service.applyCommonDesignAssetSource(
+                commonDesignSourceBody("PROJECT_A",base,proposed),"system-admin")));
+
+        assertTrue(rejected.getMessage().contains(
+            "COMMON_DESIGN_SCREEN_AUTHORITY_NOT_EXACT"));
+        assertEquals(0,count("framework_common_design_write_probe"));
+        assertEquals("Global theme",jdbc.queryForObject(
+            "select theme_nm from comtnthemedefinition where theme_id='GLOBAL_THEME'",
+            String.class));
+        assertEquals(0,count("framework_development_job"));
+    }
+
+    @Test
+    void migrationBackfillPreservesRealScreenLayoutThemeCompositionAndFingerprints()
+            throws Exception {
+        jdbc.update("""
+            insert into comtnthemedefinition(
+              theme_id,theme_nm,theme_dc,theme_type,color_config,typography_config,
+              spacing_config,border_config,shadow_config,class_prefix,is_default,use_at,is_active)
+            values('MIG_THEME',' Migration theme ',null,'SYSTEM','{}','{}',
+              '{}','{}','{}',null,'N','Y','Y')
+            """);
+        jdbc.update("""
+            insert into ui_section_registry(
+              section_id,section_name,section_type,layout_contract,responsive_contract,
+              accessibility_contract,design_reference,active_yn)
+            values('MIG_SECTION','Migration section','WORKSPACE','KRDS_GRID',
+              'MOBILE_FIRST','KRDS_A11Y',null,'Y')
+            """);
+        jdbc.update("""
+            insert into ui_component_registry(
+              component_id,component_name,component_type,owner_domain,props_schema_json,
+              design_reference,default_props,category,active_yn)
+            values('MIG_COMPONENT','Migration component','JSON_FORM','COMMON',
+              '{"type":"object"}'::jsonb,null,'{"dense":false}'::jsonb,
+              'COMMON','Y')
+            """);
+        List<Map<String,Object>> sections=List.of(Map.of(
+            "sectionId","MIG_SECTION","zone","real-zone","displayOrder",17,
+            "props",Map.of("columns",12,"title","실제 구성")));
+        List<Map<String,Object>> components=List.of(Map.of(
+            "componentId","MIG_COMPONENT","sectionId","MIG_SECTION",
+            "instanceKey","migration-form","displayOrder",29,
+            "props",Map.of("dense",false,"mode","review"),
+            "condition","permission == 'MIG_VIEW'"));
+        Map<String,Object> composition=Map.ofEntries(
+            Map.entry("schema","carbonet.screen-composition/v1"),
+            Map.entry("layout","KRDS_REAL_LAYOUT"),Map.entry("theme","MIG_THEME"),
+            Map.entry("sections",sections),Map.entry("components",components));
+        jdbc.update("""
+            insert into ui_page_manifest(
+              page_id,page_name,route_path,layout_version,design_token_version,
+              component_schema,version_id,active_yn)
+            values('MIG_SCREEN','Migration screen','/migration-screen',
+              'KRDS_REAL_LAYOUT','MIG_THEME',?,'v9','Y')
+            """,json(composition));
+        jdbc.update("""
+            insert into ui_page_component_map(
+              map_id,page_id,layout_zone,component_id,instance_key,display_order,
+              conditional_rule_summary,instance_props)
+            values('MIG_MAP','MIG_SCREEN','drift-zone','MIG_COMPONENT',
+              'migration-form',99,'never',?)
+            """,json(Map.of("drift",true)));
+        jdbc.update("""
+            insert into ui_page_manifest(
+              page_id,page_name,route_path,layout_version,design_token_version,
+              component_schema,version_id,active_yn)
+            values('LEGACY_SCREEN','Legacy screen',
+              '/runtime/page?pageId=LEGACY_SCREEN','KRDS_LEGACY_LAYOUT','MIG_THEME',
+              '{"layout":"OLD_LAYOUT","theme":"OLD_THEME","sections":[],"components":["bad"]}',
+              'v3','Y')
+            """);
+        jdbc.update("""
+            insert into ui_page_component_map(
+              map_id,page_id,layout_zone,component_id,instance_key,display_order,
+              conditional_rule_summary,instance_props)
+            values('LEGACY_MAP','LEGACY_SCREEN','header','MIG_COMPONENT',
+              'legacy-form',10,'always','{"mode":"legacy"}')
+            """);
+        Map<String,Object> incompleteComposition=Map.ofEntries(
+            Map.entry("schema","carbonet.screen-composition/v1"),
+            Map.entry("layout","KRDS_MISSING_DEP_LAYOUT"),
+            Map.entry("theme","MISSING_THEME"),
+            Map.entry("sections",sections),Map.entry("components",components));
+        jdbc.update("""
+            insert into ui_page_manifest(
+              page_id,page_name,route_path,layout_version,design_token_version,
+              component_schema,version_id,active_yn)
+            values('INCOMPLETE_SCREEN','Incomplete screen','/incomplete-screen',
+              'UNCHANGED_LAYOUT','UNCHANGED_THEME',?,'v1','Y')
+            """,json(incompleteComposition));
+        jdbc.update("""
+            insert into ui_page_component_map(
+              map_id,page_id,layout_zone,component_id,instance_key,display_order,
+              conditional_rule_summary,instance_props)
+            values('INCOMPLETE_MAP','INCOMPLETE_SCREEN','unchanged-zone','MIG_COMPONENT',
+              'migration-form',88,'always','{"untouched":true}')
+            """);
+
+        applyMigration(COMMON_DESIGN_STATE_MIGRATION,false);
+
+        @SuppressWarnings("unchecked")
+        Map<String,Object> whitespaceComposition=new LinkedHashMap<>(composition);
+        whitespaceComposition.put("components",List.of(Map.of(
+            "componentId","MIG_COMPONENT","sectionId","MIG_SECTION",
+            "instanceKey","migration-form","displayOrder",29,
+            "props",Map.of("dense",false,"mode","review"),
+            "condition"," permission == 'MIG_VIEW' ")));
+        assertEquals(false,jdbc.queryForObject(
+            "select framework_common_design_screen_composition_exact(cast(? as jsonb))",
+            Boolean.class,json(whitespaceComposition)));
+        assertEquals(1,transaction.execute(status->service.commonDesignAssetSourceHeads(
+            "THEME","MIG_THEME","",2)).size());
+        assertEquals(1,transaction.execute(status->service.commonDesignAssetSourceHeads(
+            "SECTION","MIG_SECTION","",2)).size());
+        assertEquals(1,transaction.execute(status->service.commonDesignAssetSourceHeads(
+            "COMPONENT","MIG_COMPONENT","",2)).size());
+
+        String canonicalText=jdbc.queryForObject("""
+            select canonical_asset::text
+              from framework_common_design_asset_source_state
+             where asset_type='SCREEN' and asset_id='MIG_SCREEN'
+            """,String.class);
+        @SuppressWarnings("unchecked")
+        Map<String,Object> canonical;
+        try{canonical=new ObjectMapper().readValue(canonicalText,Map.class);}
+        catch(Exception error){throw new IllegalStateException(error);}
+        @SuppressWarnings("unchecked")
+        Map<String,Object> payload=(Map<String,Object>)canonical.get("payload");
+        assertEquals("v9",canonical.get("version"));
+        assertEquals("KRDS_REAL_LAYOUT",payload.get("layout"));
+        assertEquals("MIG_THEME",payload.get("theme"));
+        assertEquals(sections,payload.get("sections"));
+        assertEquals(components,payload.get("components"));
+        assertEquals("real-zone",jdbc.queryForObject(
+            "select layout_zone from ui_page_component_map where page_id='MIG_SCREEN'",
+            String.class));
+        assertEquals(29,jdbc.queryForObject(
+            "select display_order from ui_page_component_map where page_id='MIG_SCREEN'",
+            Integer.class));
+        assertEquals(true,jdbc.queryForObject(
+            "select instance_props::jsonb=cast(? as jsonb) from ui_page_component_map "+
+                "where page_id='MIG_SCREEN'",Boolean.class,
+            json(Map.of("dense",false,"mode","review"))));
+        assertEquals(3,((List<?>)payload.get("dependencies")).size());
+        assertTrue(((List<?>)payload.get("dependencies")).stream().allMatch(item->
+            String.valueOf(((Map<?,?>)item).get("fingerprint")).matches("[0-9a-f]{64}")));
+        assertEquals(ActorProcessGovernanceService.commonDesignAssetFingerprint(canonical),
+            jdbc.queryForObject("""
+                select trim(asset_fingerprint)
+                  from framework_common_design_asset_source_state
+                 where asset_type='SCREEN' and asset_id='MIG_SCREEN'
+                """,String.class));
+        String legacyText=jdbc.queryForObject("""
+            select canonical_asset::text from framework_common_design_asset_source_state
+             where asset_type='SCREEN' and asset_id='LEGACY_SCREEN'
+            """,String.class);
+        @SuppressWarnings("unchecked")
+        Map<String,Object> legacy;
+        try{legacy=new ObjectMapper().readValue(legacyText,Map.class);}
+        catch(Exception error){throw new IllegalStateException(error);}
+        @SuppressWarnings("unchecked")
+        Map<String,Object> legacyPayload=(Map<String,Object>)legacy.get("payload");
+        @SuppressWarnings("unchecked")
+        List<Map<String,Object>> legacySections=
+            (List<Map<String,Object>>)legacyPayload.get("sections");
+        @SuppressWarnings("unchecked")
+        List<Map<String,Object>> legacyComponents=
+            (List<Map<String,Object>>)legacyPayload.get("components");
+        assertEquals("/runtime/page",legacy.get("routePath"));
+        assertEquals("KRDS_LEGACY_LAYOUT",legacyPayload.get("layout"));
+        assertEquals("MIG_THEME",legacyPayload.get("theme"));
+        assertEquals("header",legacySections.get(0).get("zone"));
+        assertTrue(String.valueOf(legacySections.get(0).get("sectionId"))
+            .matches("MIG_ZONE_[0-9A-F]{32}"));
+        assertEquals(legacySections.get(0).get("sectionId"),
+            legacyComponents.get(0).get("sectionId"));
+        assertEquals(3,((List<?>)legacyPayload.get("dependencies")).size());
+        assertEquals(1,transaction.execute(status->service.commonDesignAssetSourceHeads(
+            "SCREEN","LEGACY_SCREEN","",2)).size());
+        assertEquals("/runtime/page?pageId=LEGACY_SCREEN",jdbc.queryForObject(
+            "select route_path from ui_page_manifest where page_id='LEGACY_SCREEN'",
+            String.class));
+        assertEquals("UNCHANGED_LAYOUT",jdbc.queryForObject(
+            "select layout_version from ui_page_manifest where page_id='INCOMPLETE_SCREEN'",
+            String.class));
+        assertEquals("UNCHANGED_THEME",jdbc.queryForObject(
+            "select design_token_version from ui_page_manifest where page_id='INCOMPLETE_SCREEN'",
+            String.class));
+        assertEquals("unchanged-zone",jdbc.queryForObject(
+            "select layout_zone from ui_page_component_map where page_id='INCOMPLETE_SCREEN'",
+            String.class));
+        assertEquals(0,jdbc.queryForObject("""
+            select count(*) from framework_common_design_asset_source_state
+             where asset_type='SCREEN' and asset_id='INCOMPLETE_SCREEN'
+            """,Integer.class));
+        assertEquals(6,count("framework_common_design_asset_source_state"));
     }
 
     @Test
@@ -2006,6 +2537,10 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
             ActorProcessGovernanceService.commonDesignAssetFingerprint(base));
         body.put("assetFingerprint",
             ActorProcessGovernanceService.commonDesignAssetFingerprint(proposed));
+        body.put("sourceReceiptId",ActorProcessGovernanceService.commonDesignAssetFingerprint(
+            Map.of("projectId",projectId,"assetType",proposed.get("assetType"),
+                "assetId",proposed.get("assetId"),"base",body.get("baseFingerprint"),
+                "after",body.get("assetFingerprint"))));
         return body;
     }
 
@@ -2057,16 +2592,36 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
     }
 
     private static Map<String,Object> screenAsset(String id,String name,String route){
+        Map<String,Object> theme=themeAsset("DEP_THEME","Theme dependency","#246beb",List.of());
+        Map<String,Object> section=sectionAsset("DEP_SECTION","Section dependency");
+        Map<String,Object> component=componentAsset("DEP_COMPONENT","Component dependency");
+        List<Map<String,Object>> dependencies=List.of(theme,section,component).stream()
+            .map(asset->Map.<String,Object>of(
+                "assetType",asset.get("assetType"),"assetId",asset.get("assetId"),
+                "fingerprint",ActorProcessGovernanceService.commonDesignAssetFingerprint(asset)))
+            .toList();
+        return composedScreenAsset(id,name,route,"v1","KRDS_WORKSPACE","DEP_THEME",
+            List.of(Map.of("sectionId","DEP_SECTION",
+                "zone","main-zone","displayOrder",10,"props",Map.of())),
+            List.of(Map.of("componentId","DEP_COMPONENT",
+                "sectionId","DEP_SECTION","instanceKey","primary-form",
+                "displayOrder",10,"props",Map.of("dense",false),
+                "condition","always")),dependencies);
+    }
+
+    private static Map<String,Object> composedScreenAsset(
+            String id,String name,String route,String version,String layout,String theme,
+            List<Map<String,Object>> sections,List<Map<String,Object>> components,
+            List<Map<String,Object>> dependencies){
         return Map.ofEntries(
             Map.entry("assetType","SCREEN"),Map.entry("assetId",id),
             Map.entry("assetName",name),Map.entry("routePath",route),
-            Map.entry("version","v1"),Map.entry("active",true),
+            Map.entry("version",version),Map.entry("active",true),
             Map.entry("payload",Map.ofEntries(
                 Map.entry("schemaVersion","1.0.0"),Map.entry("pageName",name),
-                Map.entry("layout","KRDS_WORKSPACE"),Map.entry("theme","DEP_THEME"),
-                Map.entry("sections",List.of("DEP_SECTION")),
-                Map.entry("components",List.of("DEP_COMPONENT")),
-                Map.entry("dependencies",List.of()))));
+                Map.entry("layout",layout),Map.entry("theme",theme),
+                Map.entry("sections",sections),Map.entry("components",components),
+                Map.entry("dependencies",dependencies))));
     }
 
     @SuppressWarnings("unchecked")
@@ -2103,11 +2658,39 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
             """,id,name,payload.get("componentType"),payload.get("ownerDomain"),
             json(payload.get("propsSchema")),payload.get("designReference"),
             json(payload.get("defaultProps")),payload.get("category"));
-        else jdbc.update("""
+        else {
+            Map<String,Object> composition=Map.ofEntries(
+                Map.entry("schema","carbonet.screen-composition/v1"),
+                Map.entry("layout",payload.get("layout")),
+                Map.entry("theme",payload.get("theme")),
+                Map.entry("sections",payload.get("sections")),
+                Map.entry("components",payload.get("components")));
+            jdbc.update("""
             insert into ui_page_manifest(
-              page_id,page_name,route_path,layout_version,design_token_version,active_yn)
-            values(?,?,?,?,?,'Y')
-            """,id,name,route,version,payload.get("theme"));
+              page_id,page_name,route_path,layout_version,design_token_version,
+              component_schema,version_id,active_yn)
+            values(?,?,?,?,?,?,?,'Y')
+            """,id,name,route,payload.get("layout"),payload.get("theme"),
+                json(composition),version);
+            @SuppressWarnings("unchecked")
+            List<Map<String,Object>> sections=(List<Map<String,Object>>)payload.get("sections");
+            @SuppressWarnings("unchecked")
+            List<Map<String,Object>> components=(List<Map<String,Object>>)payload.get("components");
+            for(Map<String,Object> component:components){
+                Map<String,Object> section=sections.stream().filter(item->
+                    item.get("sectionId").equals(component.get("sectionId")))
+                    .findFirst().orElseThrow();
+                jdbc.update("""
+                    insert into ui_page_component_map(
+                      map_id,page_id,layout_zone,component_id,instance_key,
+                      display_order,conditional_rule_summary,instance_props)
+                    values(?,?,?,?,?,?,?,?)
+                    ""","MAP_"+component.get("instanceKey"),id,section.get("zone"),
+                    component.get("componentId"),component.get("instanceKey"),
+                    component.get("displayOrder"),component.get("condition"),
+                    json(component.get("props")));
+            }
+        }
         jdbc.update("""
             insert into framework_common_design_asset_source_state(
               asset_type,asset_id,canonical_asset,asset_fingerprint,updated_by)
@@ -2265,6 +2848,13 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
     }
 
     private void createSchema(){
+        jdbc.execute("create table comtnemplyrinfo(emplyr_id text primary key,esntl_id text unique,"+
+            "emplyr_sttus_code text not null default 'P')");
+        jdbc.execute("create table comtnentrprsmber(entrprs_mber_id text primary key,esntl_id text unique,"+
+            "entrprs_mber_sttus text not null default 'A')");
+        jdbc.execute("create table comtnemplyrscrtyestbs(scrty_dtrmn_trget_id text primary key,author_code text not null)");
+        jdbc.update("insert into comtnemplyrinfo(emplyr_id,esntl_id) values('system-admin','SYSTEM_ADMIN_ESNTL')");
+        jdbc.update("insert into comtnemplyrscrtyestbs(scrty_dtrmn_trget_id,author_code) values('SYSTEM_ADMIN_ESNTL','ROLE_SYSTEM_MASTER')");
         jdbc.execute("""
             create table framework_actor_definition(
               actor_code text primary key,actor_name text not null,actor_name_en text,
@@ -2427,12 +3017,18 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
               page_id text primary key,page_name text not null default '',route_path text not null,
               layout_version text not null default 'v1',
               design_token_version text not null default 'KRDS_GOV_DEFAULT',
+              component_schema text not null default '{}',version_id text,
               active_yn char(1) not null,updated_at timestamp default current_timestamp)
             """);
         jdbc.execute("""
             create table ui_page_component_map(
               map_id text primary key,page_id text not null,layout_zone text not null,
-              component_id text not null,display_order integer not null default 0)
+              component_id text not null,instance_key text not null,
+              display_order integer not null default 0,
+              conditional_rule_summary text not null default 'always',
+              instance_props text not null default '{}',
+              created_at timestamp default current_timestamp,
+              updated_at timestamp default current_timestamp)
             """);
         jdbc.execute("""
             create table framework_common_design_asset_source_state(
@@ -2514,6 +3110,74 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
         jdbc.execute("""
             create function framework_try_jsonb(value text) returns jsonb language plpgsql immutable as $$
             begin return value::jsonb; exception when others then return null; end $$
+            """);
+        jdbc.execute("""
+            create function framework_canonical_screen_bundle(
+              requested_process varchar,requested_step varchar,
+              requested_audience varchar,requested_route varchar)
+            returns jsonb language sql stable as $$
+              with canonical as (
+                select jsonb_build_object(
+                  'processCode',requested_process,
+                  'stepCode',requested_step,
+                  'audience',upper(requested_audience),
+                  'routePath',lower(split_part(requested_route,'?',1)),
+                  'lanes',jsonb_build_object(
+                    'HELP','{}'::jsonb,
+                    'WORK_GUIDE','{}'::jsonb,
+                    'QA','{}'::jsonb,
+                    'DESIGN_CARD',jsonb_build_object(
+                      'specification',coalesce((select framework_try_jsonb(specification_json)
+                        from framework_screen_blueprint
+                       where process_code=requested_process and step_code=requested_step
+                         and upper(audience)=upper(requested_audience)
+                         and lower(split_part(route_path,'?',1))=
+                             lower(split_part(requested_route,'?',1)) limit 1),'{}'::jsonb)),
+                    'FRONTEND',jsonb_build_object(
+                      'manifest',coalesce((select to_jsonb(page)
+                        from ui_page_manifest page
+                       where page.page_id=(select page_id from framework_screen_blueprint
+                         where process_code=requested_process and step_code=requested_step
+                           and upper(audience)=upper(requested_audience)
+                           and lower(split_part(route_path,'?',1))=
+                               lower(split_part(requested_route,'?',1)) limit 1)),'{}'::jsonb),
+                      'components',coalesce((select jsonb_agg(to_jsonb(mapping)
+                          order by mapping.display_order,mapping.map_id)
+                        from ui_page_component_map mapping
+                       where mapping.page_id=(select page_id from framework_screen_blueprint
+                         where process_code=requested_process and step_code=requested_step
+                           and upper(audience)=upper(requested_audience)
+                           and lower(split_part(route_path,'?',1))=
+                               lower(split_part(requested_route,'?',1)) limit 1)),'[]'::jsonb)),
+                    'API','[]'::jsonb,
+                    'DATABASE','[]'::jsonb)) design
+              ), encoded as (
+                select design,design::text canonical_text from canonical
+              )
+              select jsonb_build_object(
+                'schema','carbonet.canonical-design/v1',
+                'catalogHash',null,
+                'designHash',encode(sha256(convert_to(canonical_text,'UTF8')),'hex'),
+                'canonicalText',canonical_text,
+                'canonicalDesign',design)
+                from encoded
+            $$
+            """);
+        jdbc.execute("""
+            create function framework_generate_professional_design_graph(
+              requested_process varchar,requested_actor varchar)
+            returns jsonb language sql as $$ select '{}'::jsonb $$
+            """);
+        jdbc.execute("""
+            create function framework_refresh_process_flow_edges(requested_process varchar)
+            returns jsonb language sql as $$ select '{}'::jsonb $$
+            """);
+        jdbc.execute("""
+            create view framework_professional_design_graph_summary as
+            select 1::bigint process_count,1::bigint step_count,
+                   1::bigint ready_step_count,0::bigint blocked_step_count,
+                   1::bigint screen_binding_count,0::bigint capability_binding_count,
+                   0::bigint test_binding_count
             """);
         jdbc.execute("""
             create function framework_design_causality_csv_set(value text)

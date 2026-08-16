@@ -3,7 +3,7 @@ import {
   createBackendPlugin,
 } from '@backstage/backend-plugin-api';
 import { Router, json, type Request, type Response } from 'express';
-import { createHash, randomUUID } from 'node:crypto';
+import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import {
   analyzeRequirementText,
@@ -30,7 +30,9 @@ import {
 import { registerProjectLifecycleRoutes } from './projectLifecycleRoutes';
 import {
   buildSourceDesignAssetMutation,
-  synchronizeGlobalDesignAssetSnapshots,
+  exactSourceDesignAssetSnapshotBatch,
+  lockGlobalDesignSourceAuthority,
+  synchronizeGlobalDesignAssetSnapshotBatch,
   type DesignAssetSnapshot,
   type SourceDesignAssetMutation,
 } from './designAssetSourceImmediate';
@@ -426,13 +428,11 @@ export default createBackendPlugin({
               table.timestamp('lease_expires_at', { useTz: true }).nullable();
               table.text('last_error').nullable();
               table.string('created_by', 300).notNullable();
+              table.string('account_id', 120).notNullable();
+              table.string('authority_principal', 300).notNullable();
               table.timestamp('created_at', { useTz: true }).notNullable();
               table.timestamp('updated_at', { useTz: true }).notNullable();
               table.timestamp('synchronized_at', { useTz: true }).nullable();
-              table.unique(
-                ['project_id', 'asset_type', 'asset_id', 'asset_fingerprint'],
-                'resonance_design_asset_source_sync_identity_uq',
-              );
               table.index(
                 ['sync_status', 'next_attempt_at', 'project_id'],
                 'resonance_design_asset_source_sync_due_idx',
@@ -455,7 +455,26 @@ export default createBackendPlugin({
                 .defaultTo(''),
           );
         }
+        for (const [column, size] of [
+          ['account_id', 120],
+          ['authority_principal', 300],
+        ] as const) {
+          if (
+            !(await knex.schema.hasColumn(
+              'resonance_projects__design_asset_source_sync',
+              column,
+            ))
+          ) {
+            await knex.schema.alterTable(
+              'resonance_projects__design_asset_source_sync',
+              table => table.string(column, size).nullable(),
+            );
+          }
+        }
         await knex.raw(`
+          alter table resonance_projects__design_asset_source_sync
+            drop constraint if exists resonance_design_asset_source_sync_identity_uq;
+          drop index if exists resonance_design_asset_source_sync_identity_uq;
           create unique index if not exists resonance_design_asset_source_sync_active_uq
               on resonance_projects__design_asset_source_sync(asset_type,asset_id)
            where sync_status in ('PREPARED','PENDING','RUNNING')
@@ -797,6 +816,7 @@ export default createBackendPlugin({
           const principals = [
             ...new Set(assignments.map(item => item.principalRef)),
           ];
+          const accountId = user.userEntityRef.split('/').at(-1)?.trim() ?? '';
           if (!principals.length) {
             const error = new Error(
               'authenticated project owner principal is invalid',
@@ -812,9 +832,17 @@ export default createBackendPlugin({
               ).split(','),
             ]),
           );
+          if (!accountId || !/^[A-Za-z0-9._@-]{2,120}$/.test(accountId)) {
+            const error = new Error(
+              'authenticated runtime account is invalid',
+            ) as Error & { statusCode?: number };
+            error.statusCode = 403;
+            throw error;
+          }
           return {
             actorRef: String(user.userEntityRef).trim().toLowerCase(),
             principals,
+            accountId,
             systemAdministrator: principals.some(principal =>
               systemAdministratorPrincipals.has(principal),
             ),
@@ -1338,43 +1366,29 @@ export default createBackendPlugin({
               publication_last_error: message,
             })) === 1;
 
-        const designSnapshotSyncId = (
-          projectId: string,
-          mutation: Record<string, unknown>,
-        ) =>
-          createHash('sha256')
-            .update(
-              `${projectId}\0${String(mutation.assetType)}\0${String(
-                mutation.assetId,
-              )}\0${String(mutation.baseFingerprint)}\0${String(
-                mutation.assetFingerprint,
-              )}`,
-            )
-            .digest('hex');
+        const designSnapshotSyncId = () => randomBytes(32).toString('hex');
         const queueDesignSnapshotSync = async ({
           projectId,
           mutation,
           actorRef,
+          accountId,
+          authorityPrincipal,
           snapshotBaseFingerprint,
         }: {
           projectId: string;
           mutation: Record<string, unknown>;
           actorRef: string;
+          accountId: string;
+          authorityPrincipal: string;
           snapshotBaseFingerprint: string;
         }) => {
-          const syncId = designSnapshotSyncId(projectId, mutation);
+          const syncId = designSnapshotSyncId();
           const now = new Date();
           const claimToken = randomUUID();
           const leaseExpiresAt = new Date(
             now.getTime() + RECEIPT_RECONCILIATION_LEASE_MS,
           );
           await knex.transaction(async transaction => {
-            const existing = await transaction(
-              'resonance_projects__design_asset_source_sync',
-            )
-              .where({ sync_id: syncId })
-              .forUpdate()
-              .first();
             const row = {
               project_id: projectId,
               asset_type: String(mutation.assetType),
@@ -1385,25 +1399,21 @@ export default createBackendPlugin({
               mutation_payload: JSON.stringify(mutation),
               runtime_receipt: JSON.stringify({}),
               sync_status: 'PREPARED',
-              retry_attempt: Number(existing?.retry_attempt ?? 0),
+              retry_attempt: 0,
               next_attempt_at: now,
               claim_token: claimToken,
               lease_expires_at: leaseExpiresAt,
               last_error: null,
               created_by: actorRef,
-              created_at: existing?.created_at ?? now,
+              account_id: accountId,
+              authority_principal: authorityPrincipal,
+              created_at: now,
               updated_at: now,
               synchronized_at: null,
             };
-            if (existing) {
-              await transaction('resonance_projects__design_asset_source_sync')
-                .where({ sync_id: syncId })
-                .update(row);
-            } else {
-              await transaction(
-                'resonance_projects__design_asset_source_sync',
-              ).insert({ sync_id: syncId, ...row });
-            }
+            await transaction(
+              'resonance_projects__design_asset_source_sync',
+            ).insert({ sync_id: syncId, ...row });
           });
           return { syncId, claimToken, retryNotBefore: leaseExpiresAt };
         };
@@ -1469,7 +1479,12 @@ export default createBackendPlugin({
               snapshotBaseFingerprint: String(row.snapshot_base_fingerprint),
               assetFingerprint: String(row.asset_fingerprint),
               mutation: parseJsonRecord(row.mutation_payload),
-              actorRef: String(row.created_by),
+              actorRef: String(row.created_by ?? ''),
+              accountId: String(row.account_id ?? ''),
+              authorityPrincipal:
+                typeof row.authority_principal === 'string'
+                  ? row.authority_principal
+                  : undefined,
               claimToken,
               retryAttempt: Number(row.retry_attempt ?? 0) + 1,
             }));
@@ -1478,33 +1493,128 @@ export default createBackendPlugin({
         const replayDesignAssetSource = async (
           claim: DesignSnapshotSyncClaim,
         ) => {
-          const result = await readRuntimeJson(
-            `${runtimeBridgeBaseUrl()}/api/internal/actor-process/design-assets/source`,
-            {
-              method: 'POST',
-              headers: {
-                'content-type': 'application/json',
-                'x-resonance-actor': claim.actorRef,
-              },
-              body: JSON.stringify({
-                projectId: claim.projectId,
-                ...claim.mutation,
-              }),
-            },
-          );
-          if (
-            !result.ok &&
-            result.body.sourceCommitted !== true &&
-            result.body.sourceCommitted !== false
-          ) {
-            throw new Error(
-              String(
-                result.body.message ??
-                  `RUNTIME_SOURCE_REPLAY_HTTP_${result.status}`,
-              ),
+          const reconcileReadOnly = async (reason: string) => {
+            const token = String(process.env.RESONANCE_OPS_TOKEN ?? '');
+            if (!token) throw new Error('RESONANCE_OPS_TOKEN_REQUIRED');
+            const receiptParameters = new URLSearchParams({
+              assetType: claim.assetType,
+              assetId: claim.assetId,
+              baseFingerprint: String(claim.mutation.baseFingerprint ?? ''),
+              assetFingerprint: claim.assetFingerprint,
+            });
+            const durableReceipt = await readRuntimeJson(
+              `${runtimeBridgeBaseUrl()}/api/internal/actor-process/design-assets/source-receipts/${encodeURIComponent(
+                claim.syncId,
+              )}?${receiptParameters}`,
+              { headers: { 'x-resonance-token': token } },
+            );
+            if (durableReceipt.ok) {
+              return {
+                ...durableReceipt.body,
+                reconciliationMode: 'READ_ONLY_DURABLE_SOURCE_RECEIPT',
+                message: reason,
+              };
+            }
+            const parameters = new URLSearchParams({
+              assetType: claim.assetType,
+              assetId: claim.assetId,
+              limit: '2',
+            });
+            const head = await readRuntimeJson(
+              `${runtimeBridgeBaseUrl()}/api/internal/actor-process/design-assets/source-heads?${parameters}`,
+              { headers: { 'x-resonance-token': token } },
+            );
+            if (!head.ok) {
+              throw new Error(
+                String(
+                  head.body.message ??
+                    `RUNTIME_SOURCE_HEAD_HTTP_${head.status}`,
+                ),
+              );
+            }
+            const assets = Array.isArray(head.body.assets)
+              ? (head.body.assets as Record<string, unknown>[])
+              : [];
+            const fingerprint =
+              assets.length === 1
+                ? String(assets[0].fingerprint ?? '').toLowerCase()
+                : '';
+            if (fingerprint === claim.assetFingerprint.toLowerCase()) {
+              return {
+                success: true,
+                status: 'APPLIED',
+                sourceCommitted: true,
+                assetFingerprint: claim.assetFingerprint,
+                jobCount: 0,
+                reconciliationMode: 'READ_ONLY_SOURCE_HEAD',
+                message: reason,
+              };
+            }
+            const baseFingerprint = String(
+              claim.mutation.baseFingerprint ?? '',
+            ).toLowerCase();
+            return {
+              success: false,
+              status:
+                fingerprint === baseFingerprint
+                  ? 'CANCELLED'
+                  : 'REVIEW_REQUIRED',
+              sourceCommitted: false,
+              assetFingerprint: fingerprint,
+              jobCount: 0,
+              reconciliationMode: 'READ_ONLY_SOURCE_HEAD',
+              message:
+                fingerprint === baseFingerprint
+                  ? reason
+                  : `${reason}: runtime source head diverged`,
+            };
+          };
+          if (!claim.authorityPrincipal || !claim.accountId) {
+            return reconcileReadOnly(
+              'GLOBAL_DESIGN_SOURCE_AUTHORITY_RECEIPT_REQUIRED',
             );
           }
-          return result.body;
+          const accountId = claim.accountId;
+          return knex.transaction(async transaction => {
+            const stillAuthorized = await lockGlobalDesignSourceAuthority(
+              transaction,
+              [claim.authorityPrincipal!],
+            );
+            if (!stillAuthorized) {
+              return reconcileReadOnly(
+                'GLOBAL_DESIGN_SOURCE_AUTHORITY_REVOKED',
+              );
+            }
+            const result = await readRuntimeJson(
+              `${runtimeBridgeBaseUrl()}/api/internal/actor-process/design-assets/source`,
+              {
+                method: 'POST',
+                headers: {
+                  'content-type': 'application/json',
+                  'x-resonance-actor': claim.actorRef,
+                  'x-resonance-account': accountId,
+                },
+                body: JSON.stringify({
+                  projectId: claim.projectId,
+                  ...claim.mutation,
+                  sourceReceiptId: claim.syncId,
+                }),
+              },
+            );
+            if (
+              !result.ok &&
+              result.body.sourceCommitted !== true &&
+              result.body.sourceCommitted !== false
+            ) {
+              throw new Error(
+                String(
+                  result.body.message ??
+                    `RUNTIME_SOURCE_REPLAY_HTTP_${result.status}`,
+                ),
+              );
+            }
+            return result.body;
+          });
         };
         const cancelDesignSnapshotSyncClaim = async (
           claim: DesignSnapshotSyncClaim,
@@ -1558,12 +1668,17 @@ export default createBackendPlugin({
               .first();
             if (!activeClaim) return false;
             const now = new Date();
-            const synchronizedProjectCount =
-              await synchronizeGlobalDesignAssetSnapshots(
+            const sourceSnapshots = exactSourceDesignAssetSnapshotBatch(
+              receipt,
+              mutation as SourceDesignAssetMutation,
+            );
+            const synchronizedBatch =
+              await synchronizeGlobalDesignAssetSnapshotBatch(
                 transaction,
-                mutation as SourceDesignAssetMutation,
+                sourceSnapshots,
                 now,
               );
+            const synchronizedProjectCount = synchronizedBatch.projectCount;
             const updated = await transaction(
               'resonance_projects__design_asset_source_sync',
             )
@@ -2657,10 +2772,11 @@ export default createBackendPlugin({
           '/design-assets/:projectId/source',
           async (request, response) => {
             const projectId = normalizeProjectId(request.params.projectId);
-            const access = await requireDesignAssetRole(
+            // The path project remains the audit/snapshot context.  Mutation
+            // authority is deliberately global and cannot be self-granted in
+            // that project.
+            const sourceIdentity = await resolveAuthenticatedProjectIdentity(
               request,
-              projectId,
-              'DESIGN_APPROVER',
             );
             const bridgeToken = String(process.env.RESONANCE_OPS_TOKEN ?? '');
             if (!bridgeToken) {
@@ -2677,26 +2793,6 @@ export default createBackendPlugin({
               .trim()
               .toUpperCase();
             const requestedId = String(request.body?.assetId ?? '').trim();
-            const pendingSnapshotSync = await knex(
-              'resonance_projects__design_asset_source_sync',
-            )
-              .where({ asset_type: requestedType, asset_id: requestedId })
-              .whereIn('sync_status', ['PREPARED', 'PENDING', 'RUNNING'])
-              .orderBy('created_at', 'asc')
-              .first();
-            if (pendingSnapshotSync) {
-              response.status(409).json({
-                success: false,
-                sourceCommitted: false,
-                controlPlaneSnapshot: 'SYNC_REQUIRED',
-                syncReceiptId: String(pendingSnapshotSync.sync_id),
-                retryAttempt: Number(pendingSnapshotSync.retry_attempt ?? 0),
-                retryNotBefore: pendingSnapshotSync.next_attempt_at,
-                message:
-                  'an earlier runtime source commit is still synchronizing this global design asset',
-              });
-              return;
-            }
             let committedReceipt: Record<string, unknown> | undefined;
             let committedMutation: Record<string, unknown> | undefined;
             let committedSnapshotBaseFingerprint: string | undefined;
@@ -2709,6 +2805,23 @@ export default createBackendPlugin({
               | undefined;
             try {
               const result = await knex.transaction(async transaction => {
+                const globalAuthorityPrincipal =
+                  await lockGlobalDesignSourceAuthority(
+                    transaction,
+                    sourceIdentity.principals,
+                  );
+                if (!globalAuthorityPrincipal) {
+                  return {
+                    status: 403,
+                    body: {
+                      success: false,
+                      sourceCommitted: false,
+                      jobCount: 0,
+                      message:
+                        'CCUS-PLATFORM DESIGN_APPROVER authority is required for global common design',
+                    },
+                  };
+                }
                 await transaction.raw(
                   'select pg_advisory_xact_lock(hashtextextended(?,0))',
                   [
@@ -2719,11 +2832,7 @@ export default createBackendPlugin({
                   'resonance_projects__design_asset_source_sync',
                 )
                   .where({ asset_type: requestedType, asset_id: requestedId })
-                  .whereIn('sync_status', [
-                    'PREPARED',
-                    'PENDING',
-                    'RUNNING',
-                  ])
+                  .whereIn('sync_status', ['PREPARED', 'PENDING', 'RUNNING'])
                   .orderBy('created_at', 'asc')
                   .first();
                 if (activeSync) {
@@ -2836,9 +2945,10 @@ export default createBackendPlugin({
                 preparedSync = await queueDesignSnapshotSync({
                   projectId,
                   mutation: committedMutation,
-                  actorRef: access.actorRef,
-                  snapshotBaseFingerprint:
-                    committedSnapshotBaseFingerprint,
+                  actorRef: sourceIdentity.actorRef,
+                  accountId: sourceIdentity.accountId,
+                  authorityPrincipal: globalAuthorityPrincipal,
+                  snapshotBaseFingerprint: committedSnapshotBaseFingerprint,
                 });
                 let runtimeResponse: globalThis.Response;
                 try {
@@ -2853,9 +2963,14 @@ export default createBackendPlugin({
                         accept: 'application/json',
                         'content-type': 'application/json',
                         'x-resonance-token': bridgeToken,
-                        'x-resonance-actor': access.actorRef,
+                        'x-resonance-actor': sourceIdentity.actorRef,
+                        'x-resonance-account': sourceIdentity.accountId,
                       },
-                      body: JSON.stringify({ projectId, ...mutation }),
+                      body: JSON.stringify({
+                        projectId,
+                        ...mutation,
+                        sourceReceiptId: preparedSync.syncId,
+                      }),
                     },
                   );
                 } catch (error) {
@@ -2906,12 +3021,17 @@ export default createBackendPlugin({
                 }
                 committedReceipt = receipt;
                 const now = new Date();
-                const synchronizedProjectCount =
-                  await synchronizeGlobalDesignAssetSnapshots(
+                const sourceSnapshots = exactSourceDesignAssetSnapshotBatch(
+                  receipt,
+                  mutation,
+                );
+                const synchronizedBatch =
+                  await synchronizeGlobalDesignAssetSnapshotBatch(
                     transaction,
-                    mutation,
+                    sourceSnapshots,
                     now,
                   );
+                const synchronizedProjectCount = synchronizedBatch.projectCount;
                 await transaction(
                   'resonance_projects__design_asset_audit',
                 ).insert({
@@ -2920,7 +3040,7 @@ export default createBackendPlugin({
                     receipt.status === 'REVIEW_REQUIRED'
                       ? 'SOURCE_IMMEDIATE_REVIEW_REQUIRED'
                       : 'SOURCE_IMMEDIATE_APPLIED',
-                  actor_ref: access.actorRef,
+                  actor_ref: sourceIdentity.actorRef,
                   details: JSON.stringify(receipt),
                   created_at: now,
                 });
@@ -2957,6 +3077,7 @@ export default createBackendPlugin({
                     controlPlaneSnapshot: 'SYNCHRONIZED',
                     snapshotFingerprint: mutation.assetFingerprint,
                     synchronizedProjectCount,
+                    synchronizedAssetCount: synchronizedBatch.snapshotCount,
                     syncReceiptId: preparedSync.syncId,
                   },
                 };

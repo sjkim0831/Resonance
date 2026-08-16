@@ -4,6 +4,7 @@ import { createHash } from 'node:crypto';
 import {
   buildSourceDesignAssetMutation,
   designAssetFingerprint,
+  exactSourceDesignAssetSnapshotBatch,
   stableJson,
   synchronizeGlobalDesignAssetSnapshots,
   type DesignAssetSnapshot,
@@ -51,9 +52,41 @@ const payloads: Record<SourceDesignAssetType, Record<string, unknown>> = {
     pageName: 'Application workspace',
     layout: 'KRDS_RESPONSIVE_WORKSPACE',
     theme: 'KRDS_GOV_DEFAULT',
-    sections: ['APPLICATION_SUMMARY'],
-    components: ['APPLICATION_FORM'],
-    dependencies: [],
+    sections: [
+      {
+        sectionId: 'APPLICATION_SUMMARY',
+        zone: 'main-zone',
+        displayOrder: 10,
+        props: { dense: false },
+      },
+    ],
+    components: [
+      {
+        componentId: 'APPLICATION_FORM',
+        sectionId: 'APPLICATION_SUMMARY',
+        instanceKey: 'application-form',
+        displayOrder: 10,
+        props: { dense: false },
+        condition: 'always',
+      },
+    ],
+    dependencies: [
+      {
+        assetType: 'THEME',
+        assetId: 'KRDS_GOV_DEFAULT',
+        fingerprint: 'a'.repeat(64),
+      },
+      {
+        assetType: 'SECTION',
+        assetId: 'APPLICATION_SUMMARY',
+        fingerprint: 'b'.repeat(64),
+      },
+      {
+        assetType: 'COMPONENT',
+        assetId: 'APPLICATION_FORM',
+        fingerprint: 'c'.repeat(64),
+      },
+    ],
   },
 };
 
@@ -165,12 +198,34 @@ describe('source-immediate common design mutation', () => {
           pageName: '전역 화면',
           layout: 'KRDS_WORKSPACE',
           theme: 'KRDS_GOV_DEFAULT',
-          sections: ['SUMMARY', 'FORM'],
-          components: ['JSON_FORM'],
+          sections: [
+            {
+              sectionId: 'SUMMARY',
+              zone: 'summary-zone',
+              displayOrder: 10,
+              props: {},
+            },
+            {
+              sectionId: 'FORM',
+              zone: 'form-zone',
+              displayOrder: 20,
+              props: {},
+            },
+          ],
+          components: [
+            {
+              componentId: 'JSON_FORM',
+              sectionId: 'FORM',
+              instanceKey: 'json-form',
+              displayOrder: 10,
+              props: {},
+              condition: 'always',
+            },
+          ],
           dependencies: [],
         },
       }),
-    ).toBe('8e54f5c6185545bc94fea05909ce1b4ef9f8f0520566bbccd695f3cd19f4f2a7');
+    ).toBe('91d88a9e7f2ba5e48bf8bcac96ed63f7df7beb480f60d935aa74b73cb17f1480');
     expect(
       createHash('sha256')
         .update(
@@ -208,6 +263,28 @@ describe('source-immediate common design mutation', () => {
   );
 
   it('rejects invalid schema, dependency duplication and stale source before mutation', () => {
+    const { dependencies: _missingDependencies, ...withoutDependencies } =
+      payloads.SCREEN;
+    expect(() =>
+      buildSourceDesignAssetMutation(
+        current('SCREEN'),
+        request('SCREEN', { payload: withoutDependencies }),
+      ),
+    ).toThrow('payload.dependencies is required');
+    expect(() =>
+      buildSourceDesignAssetMutation(
+        current('SCREEN'),
+        request('SCREEN', {
+          payload: {
+            ...payloads.SCREEN,
+            dependencies: (payloads.SCREEN.dependencies as unknown[]).slice(
+              0,
+              1,
+            ),
+          },
+        }),
+      ),
+    ).toThrow('fingerprint every referenced theme, section and component');
     expect(() =>
       buildSourceDesignAssetMutation(
         current('SCREEN'),
@@ -258,9 +335,66 @@ describe('source-immediate common design mutation', () => {
     expect(() =>
       buildSourceDesignAssetMutation(
         current('SCREEN'),
+        request('SCREEN', {
+          payload: { ...payloads.SCREEN, sections: ['APPLICATION_SUMMARY'] },
+        }),
+      ),
+    ).toThrow('must be an object');
+    expect(() =>
+      buildSourceDesignAssetMutation(
+        current('SCREEN'),
+        request('SCREEN', {
+          payload: {
+            ...payloads.SCREEN,
+            components: [
+              {
+                ...(payloads.SCREEN.components as Record<string, unknown>[])[0],
+                sectionId: 'MISSING_SECTION',
+              },
+            ],
+          },
+        }),
+      ),
+    ).toThrow('must reference a section');
+    expect(() =>
+      buildSourceDesignAssetMutation(
+        current('SCREEN'),
         request('SCREEN', { baseFingerprint: 'c'.repeat(64) }),
       ),
     ).toThrow('source fingerprint changed');
+  });
+
+  it('requires an exact canonical target transition in the runtime cascade receipt', () => {
+    const mutation = buildSourceDesignAssetMutation(
+      current('COMPONENT'),
+      request('COMPONENT', { assetName: 'Changed component' }),
+    );
+    const transition = {
+      assetType: mutation.assetType,
+      assetId: mutation.assetId,
+      assetName: mutation.assetName,
+      routePath: mutation.routePath,
+      version: mutation.version,
+      active: mutation.active,
+      payload: mutation.payload,
+      baseFingerprint: mutation.baseFingerprint,
+      fingerprint: mutation.assetFingerprint,
+    };
+    expect(
+      exactSourceDesignAssetSnapshotBatch(
+        { sourceSnapshots: [transition] },
+        mutation,
+      ),
+    ).toEqual([transition]);
+    expect(() =>
+      exactSourceDesignAssetSnapshotBatch({}, mutation),
+    ).toThrow('sourceSnapshots must be an array');
+    expect(() =>
+      exactSourceDesignAssetSnapshotBatch(
+        { sourceSnapshots: [transition, transition] },
+        mutation,
+      ),
+    ).toThrow('duplicates COMPONENT:COMPONENT_ASSET');
   });
 
   it('connects the active API to runtime canonical generation and retires old mutation bodies', () => {
@@ -278,11 +412,22 @@ describe('source-immediate common design mutation', () => {
     const route = routeSource.slice(routeStart, routeEnd);
 
     expect(routeStart).toBeGreaterThan(0);
-    expect(route).toContain("'DESIGN_APPROVER'");
+    expect(route).toContain('lockGlobalDesignSourceAuthority');
+    expect(route).toContain(
+      'CCUS-PLATFORM DESIGN_APPROVER authority is required',
+    );
+    expect(route).not.toContain('requireDesignAssetRole(');
     expect(route).toContain('BACKSTAGE_COMMON_DESIGN_SOURCE_V1:');
     expect(route).toContain('/design-assets/source-heads?');
     expect(route).toContain('/api/internal/actor-process/design-assets/source');
-    expect(route).toContain('synchronizeGlobalDesignAssetSnapshots');
+    expect(route).toContain("'x-resonance-account': sourceIdentity.accountId");
+    expect(route).toContain('authorityPrincipal: globalAuthorityPrincipal');
+    expect(route).toContain('synchronizeGlobalDesignAssetSnapshotBatch');
+    expect(route).toContain('exactSourceDesignAssetSnapshotBatch');
+    expect(route).toContain('sourceReceiptId: preparedSync.syncId');
+    expect(route.indexOf('lockGlobalDesignSourceAuthority')).toBeLessThan(
+      route.indexOf('BACKSTAGE_COMMON_DESIGN_SOURCE_V1:'),
+    );
     const projection = synchronizeGlobalDesignAssetSnapshots.toString();
     expect(projection).toContain(
       'insert into resonance_projects__design_asset_snapshot',
@@ -297,6 +442,19 @@ describe('source-immediate common design mutation', () => {
     expect(route).not.toContain('dependencyRows');
     expect(route).not.toContain("'resonance_projects__task'");
     expect(routeSource).not.toContain('DESIGN_ASSET_PROMOTION');
+    const replayStart = routeSource.indexOf('const replayDesignAssetSource');
+    const replayEnd = routeSource.indexOf(
+      'const cancelDesignSnapshotSyncClaim',
+      replayStart,
+    );
+    const replay = routeSource.slice(replayStart, replayEnd);
+    expect(replay).toContain('lockGlobalDesignSourceAuthority');
+    expect(replay).toContain('GLOBAL_DESIGN_SOURCE_AUTHORITY_REVOKED');
+    expect(replay).toContain('reconcileReadOnly');
+    expect(replay).toContain('/design-assets/source-heads?');
+    expect(replay).toContain("reconciliationMode: 'READ_ONLY_SOURCE_HEAD'");
+    expect(replay).toContain('const accountId = claim.accountId');
+    expect(replay).toContain("'x-resonance-account': accountId");
 
     const retiredStart = routeSource.indexOf(
       'const retiredDesignAssetMutation',

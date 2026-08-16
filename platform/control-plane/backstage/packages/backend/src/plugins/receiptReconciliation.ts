@@ -28,6 +28,8 @@ export type DesignSnapshotSyncClaim = {
   assetFingerprint: string;
   mutation: Record<string, unknown>;
   actorRef: string;
+  accountId?: string;
+  authorityPrincipal?: string;
   claimToken: string;
   retryAttempt: number;
 };

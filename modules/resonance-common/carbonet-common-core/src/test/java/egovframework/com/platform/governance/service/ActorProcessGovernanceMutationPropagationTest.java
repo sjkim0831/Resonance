@@ -21,9 +21,9 @@ import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockingDetails;
 import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 class ActorProcessGovernanceMutationPropagationTest {
@@ -37,11 +37,18 @@ class ActorProcessGovernanceMutationPropagationTest {
             Map.entry("payload",Map.ofEntries(
                 Map.entry("schemaVersion","1.0.0"),Map.entry("pageName","전역 화면"),
                 Map.entry("layout","KRDS_WORKSPACE"),Map.entry("theme","KRDS_GOV_DEFAULT"),
-                Map.entry("sections",List.of("SUMMARY","FORM")),
-                Map.entry("components",List.of("JSON_FORM")),
+                Map.entry("sections",List.of(
+                    Map.of("sectionId","SUMMARY","zone","summary-zone",
+                        "displayOrder",10,"props",Map.of()),
+                    Map.of("sectionId","FORM","zone","form-zone",
+                        "displayOrder",20,"props",Map.of()))),
+                Map.entry("components",List.of(Map.of(
+                    "componentId","JSON_FORM","sectionId","FORM",
+                    "instanceKey","json-form","displayOrder",10,
+                    "props",Map.of(),"condition","always"))),
                 Map.entry("dependencies",List.of()))));
 
-        assertEquals("8e54f5c6185545bc94fea05909ce1b4ef9f8f0520566bbccd695f3cd19f4f2a7",
+        assertEquals("91d88a9e7f2ba5e48bf8bcac96ed63f7df7beb480f60d935aa74b73cb17f1480",
             ActorProcessGovernanceService.commonDesignAssetFingerprint(canonical));
         assertEquals("ab37e189a99684ecd2cbad7cb21874b42402f460b7143c932e2c70ef151ff4ad",
             ActorProcessGovernanceService.commonDesignAssetFingerprint(Map.of(
@@ -58,6 +65,16 @@ class ActorProcessGovernanceMutationPropagationTest {
     void commonDesignSourceFailsClosedBeforeAnyRuntimeWriteOrGenerationJob(){
         JdbcTemplate jdbc=mock(JdbcTemplate.class);
         ActorProcessGovernanceService service=service(jdbc);
+        when(jdbc.queryForList(argThat(sql->sql!=null&&sql.contains(
+                "employee_account as materialized")),
+            any(Object[].class))).thenReturn(List.of(Map.of(
+                "esntl_id","ADMIN_ESSENTIAL","account_type","EMPLOYEE",
+                "account_status","P")));
+        when(jdbc.queryForList(argThat(sql->sql!=null&&sql.contains(
+                "from comtnemplyrscrtyestbs")&&sql.contains("for update")),
+            any(Object[].class))).thenReturn(List.of(Map.of(
+                "scrty_dtrmn_trget_id","ADMIN_ESSENTIAL",
+                "author_code","ROLE_SYSTEM_MASTER")));
         Map<String,Object> forbidden=new java.util.LinkedHashMap<>();
         forbidden.put("activationPolicy","SOURCE_IMMEDIATE_V1");
         forbidden.put("authorityMode","MANUAL");
@@ -79,7 +96,7 @@ class ActorProcessGovernanceMutationPropagationTest {
 
         assertThrows(IllegalArgumentException.class,()->
             service.applyCommonDesignAssetSource(invalid,"design-approver"));
-        verifyNoInteractions(jdbc);
+        verify(jdbc,never()).update(any(String.class),any(Object[].class));
     }
 
     @Test

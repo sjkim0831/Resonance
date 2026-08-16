@@ -63,12 +63,18 @@ class ActorProcessControlPlaneBridgeAuthorizationTest {
     @Test
     void designSourceRequiresBridgeTokenAndAuthenticatedApproverIdentity(){
         var unauthorized=controller.applyCommonDesignAssetSource(
-            "wrong-token","user:default/approver",Map.of());
+            "wrong-token","user:default/approver","system-admin",Map.of());
         var missingActor=controller.applyCommonDesignAssetSource(
-            "secret-token","",Map.of());
+            "secret-token","","system-admin",Map.of());
+        var nonAdministrator=controller.applyCommonDesignAssetSource(
+            "secret-token","user:default/project-approver","project-owner",Map.of());
 
         assertEquals(401,unauthorized.getStatusCode().value());
         assertEquals(403,missingActor.getStatusCode().value());
+        assertEquals(403,nonAdministrator.getStatusCode().value());
+        assertEquals(false,((Map<?,?>)unauthorized.getBody()).get("sourceCommitted"));
+        assertEquals(0,((Map<?,?>)missingActor.getBody()).get("jobCount"));
+        assertEquals(false,((Map<?,?>)nonAdministrator.getBody()).get("sourceCommitted"));
         verify(governance,never()).applyCommonDesignAssetSource(any(),anyString());
     }
 
@@ -96,7 +102,8 @@ class ActorProcessControlPlaneBridgeAuthorizationTest {
 
     @Test
     void designSourceReturnsAcceptedOnlyForACommittedQueuedReceipt(){
-        when(governance.applyCommonDesignAssetSource(any(),eq("user:default/approver")))
+        when(governance.isControlPlaneAdministrator("system-admin")).thenReturn(true);
+        when(governance.applyCommonDesignAssetSource(any(),eq("system-admin")))
             .thenReturn(Map.ofEntries(
                 Map.entry("success",true),Map.entry("status","QUEUED"),
                 Map.entry("sourceCommitted",true),Map.entry("jobCount",2),
@@ -107,24 +114,25 @@ class ActorProcessControlPlaneBridgeAuthorizationTest {
             "authorityMode","SOURCE");
 
         var response=controller.applyCommonDesignAssetSource(
-            "secret-token","user:default/approver",body);
+            "secret-token","user:default/approver","system-admin",body);
 
         assertEquals(202,response.getStatusCode().value());
         @SuppressWarnings("unchecked")
         Map<String,Object> receipt=(Map<String,Object>)response.getBody();
         assertEquals(true,receipt.get("sourceCommitted"));
         assertEquals(2,receipt.get("jobCount"));
-        verify(governance).applyCommonDesignAssetSource(body,"user:default/approver");
+        verify(governance).applyCommonDesignAssetSource(body,"system-admin");
     }
 
     @Test
     void designSourcePreservesCommittedReviewReceiptAsConflict(){
+        when(governance.isControlPlaneAdministrator("system-admin")).thenReturn(true);
         when(governance.applyCommonDesignAssetSource(any(),anyString()))
             .thenReturn(Map.of("success",false,"status","REVIEW_REQUIRED",
                 "sourceCommitted",true,"jobCount",0));
 
         var response=controller.applyCommonDesignAssetSource(
-            "secret-token","user:default/approver",Map.of());
+            "secret-token","user:default/approver","system-admin",Map.of());
 
         assertEquals(409,response.getStatusCode().value());
         @SuppressWarnings("unchecked")
@@ -135,12 +143,13 @@ class ActorProcessControlPlaneBridgeAuthorizationTest {
 
     @Test
     void staleGlobalDesignSourceReturns409WithNoCommittedWriteOrJob(){
+        when(governance.isControlPlaneAdministrator("system-admin")).thenReturn(true);
         when(governance.applyCommonDesignAssetSource(any(),anyString()))
             .thenThrow(new IllegalStateException(
                 "DESIGN_ASSET_GLOBAL_FINGERPRINT_CHANGED"));
 
         var response=controller.applyCommonDesignAssetSource(
-            "secret-token","user:default/approver",Map.of());
+            "secret-token","user:default/approver","system-admin",Map.of());
 
         assertEquals(409,response.getStatusCode().value());
         @SuppressWarnings("unchecked")

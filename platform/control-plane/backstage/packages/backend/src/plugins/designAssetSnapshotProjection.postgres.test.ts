@@ -1,6 +1,9 @@
-import { randomUUID } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
 import {
+  lockGlobalDesignSourceAuthority,
+  synchronizeGlobalDesignAssetSnapshotBatch,
   synchronizeGlobalDesignAssetSnapshots,
+  type SourceDesignAssetSnapshotTransition,
   type SourceDesignAssetMutation,
 } from './designAssetSourceImmediate';
 import {
@@ -87,11 +90,25 @@ describePostgres(
         synchronized_at timestamptz,
         updated_at timestamptz not null default current_timestamp
       );
+      create unique index resonance_design_asset_source_sync_active_uq
+        on resonance_projects__design_asset_source_sync(asset_type,asset_id)
+        where status in ('PREPARED','PENDING','RUNNING');
       create table test_runtime_design_head(
         asset_type varchar(32) not null,
         asset_id varchar(200) not null,
         asset_fingerprint varchar(64) not null,
         primary key(asset_type,asset_id)
+      );
+      create table resonance_projects__design_asset_role_assignment(
+        assignment_id bigserial primary key,
+        project_id varchar(64) not null,
+        principal_ref varchar(300) not null,
+        role_code varchar(32) not null,
+        active boolean not null default true
+      );
+      create table test_global_design_write_probe(
+        write_id bigserial primary key,
+        principal_ref varchar(300) not null
       )
     `);
     });
@@ -106,11 +123,113 @@ describePostgres(
 
     beforeEach(async () => {
       await client.query(
-        `truncate resonance_projects__design_asset_source_sync,
+        `truncate test_global_design_write_probe,
+                  resonance_projects__design_asset_role_assignment,
+                  resonance_projects__design_asset_source_sync,
                   resonance_projects__design_asset_snapshot,
                   resonance_projects__project,
                   test_runtime_design_head cascade`,
       );
+    });
+
+    it('rejects a self-created project approver with 403 semantics and zero global writes', async () => {
+      const attacker = 'user:default/project-owner';
+      await client.query(
+        `insert into resonance_projects__design_asset_role_assignment(
+           project_id,principal_ref,role_code,active)
+         values('PROJECT_ATTACKER',$1,'DESIGN_APPROVER',true)`,
+        [attacker],
+      );
+
+      await client.query('begin');
+      const authority = await lockGlobalDesignSourceAuthority(transaction, [
+        attacker,
+      ]);
+      if (authority) {
+        await client.query(
+          `insert into test_global_design_write_probe(principal_ref) values($1)`,
+          [authority],
+        );
+      }
+      await client.query('commit');
+
+      expect(authority).toBeUndefined();
+      expect(authority ? 200 : 403).toBe(403);
+      expect(
+        Number(
+          (
+            await client.query(
+              `select count(*) count from test_global_design_write_probe`,
+            )
+          ).rows[0].count,
+        ),
+      ).toBe(0);
+    });
+
+    it('serializes a revocation ahead of source mutation and fences the write to zero', async () => {
+      const approver = 'user:default/platform-approver';
+      await client.query(
+        `insert into resonance_projects__design_asset_role_assignment(
+           project_id,principal_ref,role_code,active)
+         values('CCUS-PLATFORM',$1,'DESIGN_APPROVER',true)`,
+        [approver],
+      );
+      expect(
+        Number(
+          (
+            await client.query(
+              `select count(*) count
+                 from resonance_projects__design_asset_role_assignment
+                where active and principal_ref=$1`,
+              [approver],
+            )
+          ).rows[0].count,
+        ),
+      ).toBe(1);
+
+      const revoker = new Client(connection);
+      await revoker.connect();
+      await revoker.query(`set search_path to "${schema}"`);
+      try {
+        await revoker.query('begin');
+        await revoker.query(
+          `update resonance_projects__design_asset_role_assignment
+              set active=false
+            where project_id='CCUS-PLATFORM' and principal_ref=$1
+              and role_code='DESIGN_APPROVER'`,
+          [approver],
+        );
+
+        await client.query('begin');
+        const lockedAuthority = lockGlobalDesignSourceAuthority(transaction, [
+          approver,
+        ]);
+        await new Promise(resolve => setTimeout(resolve, 75));
+        await revoker.query('commit');
+        const authority = await lockedAuthority;
+        if (authority) {
+          await client.query(
+            `insert into test_global_design_write_probe(principal_ref) values($1)`,
+            [authority],
+          );
+        }
+        await client.query('commit');
+
+        expect(authority).toBeUndefined();
+        expect(authority ? 200 : 403).toBe(403);
+        expect(
+          Number(
+            (
+              await client.query(
+                `select count(*) count from test_global_design_write_probe`,
+              )
+            ).rows[0].count,
+          ),
+        ).toBe(0);
+      } finally {
+        await revoker.query('rollback').catch(() => undefined);
+        await revoker.end();
+      }
     });
 
     it('upserts the winner into every existing and missing project projection', async () => {
@@ -161,10 +280,83 @@ describePostgres(
       );
     });
 
+    it('rolls back the whole cascade batch instead of overwriting a newer dependent snapshot', async () => {
+      const componentBase = '0'.repeat(64);
+      const componentAfter = '1'.repeat(64);
+      const screenBase = 'a'.repeat(64);
+      const screenCascade = 'b'.repeat(64);
+      const screenNewer = 'c'.repeat(64);
+      await client.query(`
+        insert into resonance_projects__project(project_id)
+        values('PROJECT_A'),('PROJECT_B');
+        insert into resonance_projects__design_asset_snapshot(
+          project_id,asset_type,asset_id,asset_name,asset_payload,
+          asset_sha256,synced_at)
+        values
+          ('PROJECT_A','SCREEN','DEPENDENT_SCREEN','Newer','{}',repeat('c',64),current_timestamp),
+          ('PROJECT_B','SCREEN','DEPENDENT_SCREEN','Newer','{}',repeat('c',64),current_timestamp)
+      `);
+      const batch: SourceDesignAssetSnapshotTransition[] = [
+        {
+          assetType: 'COMPONENT',
+          assetId: 'TARGET_COMPONENT',
+          assetName: 'Component after',
+          routePath: '',
+          version: 'v2',
+          active: true,
+          payload: {},
+          baseFingerprint: componentBase,
+          fingerprint: componentAfter,
+        },
+        {
+          assetType: 'SCREEN',
+          assetId: 'DEPENDENT_SCREEN',
+          assetName: 'Cascade screen',
+          routePath: '/dependent',
+          version: 'v1',
+          active: true,
+          payload: {},
+          baseFingerprint: screenBase,
+          fingerprint: screenCascade,
+        },
+      ];
+
+      await client.query('begin');
+      await expect(
+        synchronizeGlobalDesignAssetSnapshotBatch(
+          transaction,
+          batch,
+          new Date('2026-08-16T12:00:00.000Z'),
+        ),
+      ).rejects.toThrow('global design snapshot CAS diverged for SCREEN:DEPENDENT_SCREEN');
+      await client.query('rollback');
+
+      expect(
+        Number(
+          (
+            await client.query(
+              `select count(*) count from resonance_projects__design_asset_snapshot
+                where asset_type='COMPONENT' and asset_id='TARGET_COMPONENT'`,
+            )
+          ).rows[0].count,
+        ),
+      ).toBe(0);
+      expect(
+        new Set(
+          (
+            await client.query(
+              `select asset_sha256 from resonance_projects__design_asset_snapshot
+                where asset_type='SCREEN' and asset_id='DEPENDENT_SCREEN'`,
+            )
+          ).rows.map(row => row.asset_sha256),
+        ),
+      ).toEqual(new Set([screenNewer]));
+    });
+
     it('recovers a PREPARED receipt after a runtime commit and projects it to every project', async () => {
       const before = '0'.repeat(64);
       const after = 'a'.repeat(64);
-      const syncId = randomUUID();
+      const syncId = randomBytes(32).toString('hex');
       const mutation: SourceDesignAssetMutation = {
         activationPolicy: 'SOURCE_IMMEDIATE_V1',
         authorityMode: 'SOURCE',
@@ -265,6 +457,19 @@ describePostgres(
               String(runtime.rows[0]?.asset_fingerprint) ===
               claim.assetFingerprint,
             assetFingerprint: runtime.rows[0]?.asset_fingerprint,
+            sourceSnapshots: [
+              {
+                assetType: mutation.assetType,
+                assetId: mutation.assetId,
+                assetName: mutation.assetName,
+                routePath: mutation.routePath,
+                version: mutation.version,
+                active: mutation.active,
+                payload: mutation.payload,
+                baseFingerprint: before,
+                fingerprint: after,
+              },
+            ],
           };
         },
         commitSnapshot: async (claim, receipt) => {
@@ -281,12 +486,15 @@ describePostgres(
               await client.query('rollback');
               return false;
             }
-            const synchronizedProjectCount =
-              await synchronizeGlobalDesignAssetSnapshots(
-                transaction,
-                claim.mutation as SourceDesignAssetMutation,
-                new Date('2026-08-16T12:00:00.000Z'),
-              );
+            const batch = receipt.sourceSnapshots as
+              | SourceDesignAssetSnapshotTransition[]
+              | undefined;
+            if (!batch) throw new Error('missing runtime source snapshot batch');
+            const synchronized = await synchronizeGlobalDesignAssetSnapshotBatch(
+              transaction,
+              batch,
+              new Date('2026-08-16T12:00:00.000Z'),
+            );
             const committed = await client.query(
               `update resonance_projects__design_asset_source_sync
                   set status='SYNCHRONIZED',runtime_receipt=$3::jsonb,
@@ -296,7 +504,11 @@ describePostgres(
             returning sync_id`,
               [claim.syncId, claim.claimToken, JSON.stringify(receipt)],
             );
-            expect(synchronizedProjectCount).toBe(2);
+            expect(synchronized).toEqual({
+              projectCount: 2,
+              snapshotCount: 1,
+              synchronizedProjectionCount: 2,
+            });
             await client.query('commit');
             return committed.rows.length === 1;
           } catch (error) {
@@ -337,6 +549,44 @@ describePostgres(
           lease_expires_at: null,
         },
       ]);
+    });
+
+    it('allows a fresh A-to-B receipt after terminal A-to-B-to-A history but only one active transition', async () => {
+      const a = 'a'.repeat(64);
+      const b = 'b'.repeat(64);
+      const insert = (
+        syncId: string,
+        baseFingerprint: string,
+        assetFingerprint: string,
+        status: string,
+      ) =>
+        client.query(
+          `insert into resonance_projects__design_asset_source_sync(
+             sync_id,project_id,asset_type,asset_id,snapshot_base_fingerprint,
+             asset_fingerprint,mutation_payload,actor_ref,status,next_attempt_at)
+           values($1,'PROJECT_A','THEME','REPEAT_THEME',$2,$3,'{}'::jsonb,
+                  'user:default/approver',$4,current_timestamp)`,
+          [syncId, baseFingerprint, assetFingerprint, status],
+        );
+
+      await insert(randomBytes(32).toString('hex'), a, b, 'SYNCHRONIZED');
+      await insert(randomBytes(32).toString('hex'), b, a, 'SYNCHRONIZED');
+      await insert(randomBytes(32).toString('hex'), a, b, 'PREPARED');
+
+      expect(
+        Number(
+          (
+            await client.query(
+              `select count(*) count
+                 from resonance_projects__design_asset_source_sync
+                where asset_type='THEME' and asset_id='REPEAT_THEME'`,
+            )
+          ).rows[0].count,
+        ),
+      ).toBe(3);
+      await expect(
+        insert(randomBytes(32).toString('hex'), a, b, 'PENDING'),
+      ).rejects.toMatchObject({ code: '23505' });
     });
   },
 );

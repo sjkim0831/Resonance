@@ -19,5 +19,5 @@ public class DynamicPageRuntimeApiController {
     public ResponseEntity<?> page(@PathVariable String pageId){try{return ResponseEntity.ok(service.load(pageId));}catch(Exception e){return ResponseEntity.status(404).body(Map.of("success",false,"message",e.getMessage()));}}
 
     @PostMapping({"/admin/api/system/dynamic-pages/compile","/en/admin/api/system/dynamic-pages/compile"})
-    public ResponseEntity<?> compile(@RequestBody Map<String,Object> body,HttpServletRequest request){try{Principal p=request.getUserPrincipal();@SuppressWarnings("unchecked") List<Map<String,Object>> pages=(List<Map<String,Object>>)body.getOrDefault("pages",List.of());return ResponseEntity.ok(service.compile(pages,p==null?"SYSTEM":p.getName()));}catch(Exception e){return ResponseEntity.badRequest().body(Map.of("success",false,"message",e.getMessage()));}}
+    public ResponseEntity<?> compile(@RequestBody(required=false) Map<String,Object> body,HttpServletRequest request){return ResponseEntity.status(410).body(Map.of("success",false,"status","RETIRED","activationPolicy","SOURCE_IMMEDIATE_V1","replacement","/api/resonance-projects/design-assets/CCUS-PLATFORM/source"));}
 }

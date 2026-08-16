@@ -308,12 +308,33 @@ describe('headless receipt reconciliation', () => {
     expect(responseStart).toBeGreaterThan(catchStart);
     expect(route).toContain("sync_status: 'PREPARED'");
     expect(route).toContain('resonance_design_asset_source_sync_active_uq');
-    expect(route).toContain('synchronizeGlobalDesignAssetSnapshots(');
+    expect(route).toContain('synchronizeGlobalDesignAssetSnapshotBatch(');
+    expect(route).toContain('exactSourceDesignAssetSnapshotBatch(');
+    expect(route).toContain('sourceReceiptId: claim.syncId');
     expect(route).not.toContain('CONTROL_PLANE_DESIGN_SNAPSHOT_NOT_FOUND');
     expect(splitReceipt).toContain("controlPlaneSnapshot: 'SYNC_REQUIRED'");
     expect(splitReceipt).toContain('syncReceiptId');
     expect(splitReceipt).toContain('sourceCommitState:');
     expect(splitReceipt).not.toContain('snapshotFingerprint');
+  });
+
+  it('creates a fresh 256-bit receipt for every prepared transition and reuses it only for replay', () => {
+    const route = readFileSync(join(__dirname, 'resonanceProjects.ts'), 'utf8');
+    const queueStart = route.indexOf('const queueDesignSnapshotSync = async');
+    const cancelStart = route.indexOf(
+      'const cancelPreparedDesignSnapshotSync = async',
+      queueStart,
+    );
+    const queue = route.slice(queueStart, cancelStart);
+
+    expect(route).toContain(
+      "const designSnapshotSyncId = () => randomBytes(32).toString('hex');",
+    );
+    expect(queue).toContain('const syncId = designSnapshotSyncId();');
+    expect(queue).toContain('.insert({ sync_id: syncId, ...row });');
+    expect(queue).not.toContain('existing');
+    expect(route).toContain('sourceReceiptId: preparedSync.syncId');
+    expect(route).toContain('sourceReceiptId: claim.syncId');
   });
 
   it('bounds both source calls and preserves timeout truthfulness', () => {
@@ -385,6 +406,12 @@ describe('headless receipt reconciliation', () => {
       "where sync_status in ('PREPARED','PENDING','RUNNING')",
     );
     expect(activeIndex).not.toContain('CANCELLED');
+    expect(route).toContain(
+      'drop constraint if exists resonance_design_asset_source_sync_identity_uq',
+    );
+    expect(route).not.toContain(
+      "['project_id', 'asset_type', 'asset_id', 'asset_fingerprint']",
+    );
     expect(route).toContain('cancelClaim: cancelDesignSnapshotSyncClaim');
   });
 });

@@ -34,7 +34,7 @@ public class ActorProcessGovernanceApiController {
     @GetMapping("/assets/impact") public ResponseEntity<?> assetImpact(@RequestParam String assetId,@RequestParam(defaultValue="2") int depth){try{return ResponseEntity.ok(service.assetImpact(assetId,depth));}catch(Exception e){return bad(e);}}
     @PostMapping("/assets/refresh") public ResponseEntity<?> refreshAssets(HttpServletRequest request){return guardedDesignMutation(request,service::refreshAssetCatalog);}
     @PostMapping("/process-archetypes/bind-screen") public ResponseEntity<?> bindScreenArchetype(@RequestBody Map<String,Object>b,HttpServletRequest request){return guardedDesignMutation(request,actor->service.bindScreenProcessArchetype(b,actor));}
-    @PostMapping("/design-assets/preflight") public ResponseEntity<?> designPreflight(@RequestBody Map<String,Object>b,HttpServletRequest request){return guardedDesignMutation(request,actor->service.runDesignPreflight(b,actor));}
+    @PostMapping("/design-assets/preflight") public ResponseEntity<?> designPreflight(@RequestBody(required=false) Map<String,Object>b,HttpServletRequest request){return ResponseEntity.status(410).body(Map.of("success",false,"status","RETIRED","activationPolicy","SOURCE_IMMEDIATE_V1","replacement","/api/resonance-projects/design-assets/CCUS-PLATFORM/source"));}
     @PostMapping("/actors") public ResponseEntity<?> actor(@RequestBody Map<String,Object>b,HttpServletRequest request){return guardedDesignMutation(request,actor->service.createActor(b,actor));}
     @PostMapping("/work-types") public ResponseEntity<?> workType(@RequestBody Map<String,Object>b,HttpServletRequest request){return guardedDesignMutation(request,actor->{service.saveWorkType(b);return Map.of("success",true);});}
     @PostMapping("/assignments")

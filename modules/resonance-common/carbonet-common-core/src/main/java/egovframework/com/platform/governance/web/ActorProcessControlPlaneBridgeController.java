@@ -536,22 +536,54 @@ public class ActorProcessControlPlaneBridgeController {
         }
     }
 
+    @GetMapping("/design-assets/source-receipts/{receiptId}")
+    public ResponseEntity<?> commonDesignAssetSourceReceipt(
+            @RequestHeader(value = "X-Resonance-Token", defaultValue = "") String suppliedToken,
+            @PathVariable String receiptId,
+            @RequestParam String assetType,@RequestParam String assetId,
+            @RequestParam String baseFingerprint,@RequestParam String assetFingerprint) {
+        if (!authorized(suppliedToken)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of(
+                "success",false,"sourceCommitted",false,"jobCount",0,
+                "message","Invalid control-plane bridge token."));
+        }
+        try {
+            return ResponseEntity.ok(governance.commonDesignAssetSourceReceipt(
+                receiptId,assetType,assetId,baseFingerprint,assetFingerprint));
+        } catch (IllegalArgumentException exception) {
+            return ResponseEntity.unprocessableEntity().body(Map.of(
+                "success",false,"sourceCommitted",false,"jobCount",0,
+                "message",exception.getMessage()));
+        } catch (IllegalStateException exception) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of(
+                "success",false,"sourceCommitted",false,"jobCount",0,
+                "message",exception.getMessage()));
+        }
+    }
+
     @PostMapping("/design-assets/source")
     public ResponseEntity<?> applyCommonDesignAssetSource(
             @RequestHeader(value = "X-Resonance-Token", defaultValue = "") String suppliedToken,
             @RequestHeader(value = "X-Resonance-Actor", defaultValue = "") String actor,
+            @RequestHeader(value = "X-Resonance-Account", defaultValue = "") String account,
             @RequestBody Map<String, Object> body) {
         if (!authorized(suppliedToken)) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(Map.of("success", false, "message", "Invalid control-plane bridge token."));
+                    .body(Map.of("success", false, "sourceCommitted", false,
+                            "jobCount", 0, "message", "Invalid control-plane bridge token."));
         }
-        if (actor.isBlank() || actor.length() > 300) {
+        if (actor.isBlank() || actor.length() > 300
+                ||account.isBlank()||account.length()>120
+                ||!account.matches("[A-Za-z0-9._@-]{2,120}")
+                ||!governance.isControlPlaneAdministrator(account)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of(
                     "success", false,
-                    "message", "Authenticated DESIGN_APPROVER identity is required."));
+                    "sourceCommitted", false,
+                    "jobCount", 0,
+                    "message", "Authenticated platform account and DESIGN_APPROVER identity are required."));
         }
         try {
-            Map<String,Object> result=governance.applyCommonDesignAssetSource(body,actor);
+            Map<String,Object> result=governance.applyCommonDesignAssetSource(body,account);
             String status=String.valueOf(result.getOrDefault("status","REVIEW_REQUIRED"));
             if(Set.of("FAILED","REVIEW_REQUIRED").contains(status))
                 return ResponseEntity.status(HttpStatus.CONFLICT).body(result);
@@ -561,11 +593,15 @@ public class ActorProcessControlPlaneBridgeController {
         } catch (SecurityException exception) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of(
                     "success", false,
+                    "sourceCommitted", false,
+                    "jobCount", 0,
                     "message", exception.getMessage() == null
                             ? "Common design source authority is required." : exception.getMessage()));
         } catch (IllegalArgumentException exception) {
             return ResponseEntity.unprocessableEntity().body(Map.of(
                     "success", false,
+                    "sourceCommitted", false,
+                    "jobCount", 0,
                     "message", exception.getMessage() == null
                             ? "Common design source contract is invalid." : exception.getMessage()));
         } catch (IllegalStateException exception) {
