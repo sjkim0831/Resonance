@@ -598,6 +598,10 @@ BEGIN
        AND process_column.attnum>0 AND NOT process_column.attisdropped
      WHERE namespace.nspname='public' AND relation.relkind IN ('r','p')
        AND (relation.relname LIKE 'framework\_%' ESCAPE '\'
+            OR (relation.relname LIKE 'integrated_design\_%' ESCAPE '\'
+                AND relation.relname NOT IN(
+                  'integrated_design_document','integrated_design_authority',
+                  'integrated_design_scope_binding'))
             OR (to_regclass('public.integrated_design_scope_binding') IS NULL
                 AND relation.relname IN(
                   'integrated_design_document','integrated_design_authority')))
@@ -719,10 +723,7 @@ BEGIN
          AND child_namespace.nspname='public'
          AND child.relkind IN ('r','p')
          AND (child.relname LIKE 'framework\_%' ESCAPE '\'
-              OR child.relname IN(
-                'integrated_design_document','integrated_design_document_version',
-                'integrated_design_authority','integrated_design_authority_version',
-                'integrated_design_scope_binding'))
+              OR child.relname LIKE 'integrated_design\_%' ESCAPE '\')
          AND child.relname NOT LIKE 'framework_project_runtime_purge_%'
          AND EXISTS(
            SELECT 1 FROM framework_project_runtime_purge_snapshot_row scoped
@@ -887,6 +888,10 @@ BEGIN
        AND process_column.attnum>0 AND NOT process_column.attisdropped
      WHERE namespace.nspname='public' AND relation.relkind IN ('r','p')
        AND (relation.relname LIKE 'framework\_%' ESCAPE '\'
+            OR (relation.relname LIKE 'integrated_design\_%' ESCAPE '\'
+                AND relation.relname NOT IN(
+                  'integrated_design_document','integrated_design_authority',
+                  'integrated_design_scope_binding'))
             OR (to_regclass('public.integrated_design_scope_binding') IS NULL
                 AND relation.relname IN(
                   'integrated_design_document','integrated_design_authority')))
@@ -1041,7 +1046,7 @@ BEGIN
        AND project_column.attnum>0 AND NOT project_column.attisdropped
      WHERE namespace.nspname='public' AND relation.relkind IN ('r','p')
        AND (relation.relname LIKE 'framework\_%' ESCAPE '\'
-            OR relation.relname='integrated_design_scope_binding')
+            OR relation.relname LIKE 'integrated_design\_%' ESCAPE '\')
        AND relation.relname NOT LIKE 'framework_project_runtime_purge_%'
        AND relation.relname<>'framework_project_runtime_absence_fence'
      ORDER BY relation.relname COLLATE "C"
