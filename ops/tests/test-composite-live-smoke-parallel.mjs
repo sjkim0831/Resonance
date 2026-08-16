@@ -12,6 +12,8 @@ const unit=read("ops/systemd/resonance-composite-live-smoke.service");
 const deploy=read("ops/scripts/auto-deploy-main.sh");
 const runtimeDeploy=read("ops/scripts/resonance-k8s-build-deploy-80-v2.sh");
 const worker=read("modules/resonance-common/carbonet-common-core/src/main/java/egovframework/com/platform/governance/service/CompositeDesignOperationalWorker.java");
+const readiness=read("modules/resonance-common/carbonet-common-core/src/main/java/egovframework/com/platform/governance/service/CompositeAutocompletionReadinessService.java");
+const workerInspection=`${worker}\n${readiness}`;
 
 assert.equal(manifest.parallelism,8);
 assert.equal(manifest.maxClaimsPerSlot,25);
@@ -48,7 +50,7 @@ for(const token of ["composite-live-smoke-evidence","RESONANCE_COMPOSITE_LIVE_SM
   assert.ok(runtimeDeploy.includes(token),`runtime evidence mount missing: ${token}`);
 for(const token of ["liveSmokeParallelism","estimatedPhysicalTotalSeconds",
   "p95PhysicalMs","MEASUREMENT_REQUIRED"])
-  assert.ok(worker.includes(token),`worker inspection token missing: ${token}`);
+  assert.ok(workerInspection.includes(token),`worker inspection token missing: ${token}`);
 
 // Model the same one-row SKIP LOCKED claim contract with more work than slots.
 // The test proves the bounded scheduler drains all work once, never exceeds 8,
