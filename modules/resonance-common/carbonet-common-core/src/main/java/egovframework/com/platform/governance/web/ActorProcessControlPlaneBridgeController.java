@@ -332,6 +332,176 @@ public class ActorProcessControlPlaneBridgeController {
         return ResponseEntity.ok().header("Cache-Control","no-store").body(response);
     }
 
+    @PostMapping("/project-runtime-purge/preview")
+    @Transactional
+    public ResponseEntity<?> previewProjectRuntimePurge(
+            @RequestHeader(value = "X-Resonance-Token", defaultValue = "") String suppliedToken,
+            @RequestHeader(value = "X-Resonance-Actor", defaultValue = "") String actor,
+            @RequestHeader(value = "X-Resonance-Account", defaultValue = "") String account,
+            @RequestBody Map<String,Object> body) {
+        ResponseEntity<?> denied=projectRuntimePurgeAccessFailure(
+                suppliedToken,actor,account);
+        if(denied!=null)return denied;
+        try{
+            Map<String,Object> result=projectRuntimePurgeDatabaseCall(
+                    "PREVIEW",null,body,account);
+            return "BLOCKED".equals(result.get("status"))
+                    ?ResponseEntity.status(HttpStatus.CONFLICT).body(result)
+                    :ResponseEntity.ok(result);
+        }catch(IllegalArgumentException exception){
+            return ResponseEntity.unprocessableEntity().body(Map.of(
+                    "success",false,"status","REJECTED",
+                    "message",safeMessage(exception,
+                            "Project runtime purge preview is invalid.")));
+        }catch(Exception exception){
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of(
+                    "success",false,"status","REVIEW_REQUIRED",
+                    "message",safeMessage(exception,
+                            "Project runtime purge preview failed closed.")));
+        }
+    }
+
+    @PostMapping("/project-runtime-purge/prove-absent")
+    // The proof performs no data writes, but its authority and project rows are
+    // locked to make the zero observation race-free.  A JDBC read-only
+    // transaction would reject SELECT ... FOR UPDATE in PostgreSQL.
+    @Transactional
+    public ResponseEntity<?> proveProjectRuntimeAbsent(
+            @RequestHeader(value = "X-Resonance-Token", defaultValue = "") String suppliedToken,
+            @RequestHeader(value = "X-Resonance-Actor", defaultValue = "") String actor,
+            @RequestHeader(value = "X-Resonance-Account", defaultValue = "") String account,
+            @RequestBody Map<String,Object> body) {
+        ResponseEntity<?> denied=projectRuntimePurgeAccessFailure(
+                suppliedToken,actor,account);
+        if(denied!=null)return denied;
+        try{
+            Map<String,Object> result=projectRuntimeAbsenceDatabaseCall(
+                    "PROVE",body,account);
+            return Boolean.TRUE.equals(result.get("exactZero"))
+                    ?ResponseEntity.ok(result)
+                    :ResponseEntity.status(HttpStatus.CONFLICT).body(result);
+        }catch(IllegalArgumentException exception){
+            return ResponseEntity.unprocessableEntity().body(Map.of(
+                    "success",false,"status","REJECTED",
+                    "message",safeMessage(exception,
+                            "Project runtime absence proof is invalid.")));
+        }catch(Exception exception){
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of(
+                    "success",false,"status","REVIEW_REQUIRED",
+                    "message",safeMessage(exception,
+                            "Project runtime absence proof failed closed.")));
+        }
+    }
+
+    @PostMapping("/project-runtime-purge/activate-absence-fence")
+    @Transactional
+    public ResponseEntity<?> activateProjectRuntimeAbsenceFence(
+            @RequestHeader(value = "X-Resonance-Token", defaultValue = "") String suppliedToken,
+            @RequestHeader(value = "X-Resonance-Actor", defaultValue = "") String actor,
+            @RequestHeader(value = "X-Resonance-Account", defaultValue = "") String account,
+            @RequestBody Map<String,Object> body) {
+        ResponseEntity<?> denied=projectRuntimePurgeAccessFailure(
+                suppliedToken,actor,account);
+        if(denied!=null)return denied;
+        try{
+            Map<String,Object> result=projectRuntimeAbsenceDatabaseCall(
+                    "ACTIVATE",body,account);
+            return Boolean.TRUE.equals(result.get("exactZero"))
+                    &&Boolean.TRUE.equals(result.get("activated"))
+                    &&"ACTIVE".equals(result.get("fenceStatus"))
+                    ?ResponseEntity.ok(result)
+                    :ResponseEntity.status(HttpStatus.CONFLICT).body(result);
+        }catch(IllegalArgumentException exception){
+            return ResponseEntity.unprocessableEntity().body(Map.of(
+                    "success",false,"status","REJECTED",
+                    "message",safeMessage(exception,
+                            "Project runtime absence fence is invalid.")));
+        }catch(Exception exception){
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of(
+                    "success",false,"status","REVIEW_REQUIRED",
+                    "message",safeMessage(exception,
+                            "Project runtime absence fence failed closed.")));
+        }
+    }
+
+    @PostMapping("/project-runtime-purge/release-absence-fence")
+    @Transactional
+    public ResponseEntity<?> releaseProjectRuntimeAbsenceFence(
+            @RequestHeader(value = "X-Resonance-Token", defaultValue = "") String suppliedToken,
+            @RequestHeader(value = "X-Resonance-Actor", defaultValue = "") String actor,
+            @RequestHeader(value = "X-Resonance-Account", defaultValue = "") String account,
+            @RequestBody Map<String,Object> body) {
+        ResponseEntity<?> denied=projectRuntimePurgeAccessFailure(
+                suppliedToken,actor,account);
+        if(denied!=null)return denied;
+        try{
+            return ResponseEntity.ok(projectRuntimeAbsenceDatabaseCall(
+                    "RELEASE",body,account));
+        }catch(IllegalArgumentException exception){
+            return ResponseEntity.unprocessableEntity().body(Map.of(
+                    "success",false,"status","REJECTED",
+                    "message",safeMessage(exception,
+                            "Project runtime absence fence release is invalid.")));
+        }catch(Exception exception){
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of(
+                    "success",false,"status","REVIEW_REQUIRED",
+                    "message",safeMessage(exception,
+                            "Project runtime absence fence release failed closed.")));
+        }
+    }
+
+    @PostMapping("/project-runtime-purge/{receiptId}/apply")
+    @Transactional
+    public ResponseEntity<?> applyProjectRuntimePurge(
+            @RequestHeader(value = "X-Resonance-Token", defaultValue = "") String suppliedToken,
+            @RequestHeader(value = "X-Resonance-Actor", defaultValue = "") String actor,
+            @RequestHeader(value = "X-Resonance-Account", defaultValue = "") String account,
+            @PathVariable String receiptId,@RequestBody Map<String,Object> body) {
+        ResponseEntity<?> denied=projectRuntimePurgeAccessFailure(
+                suppliedToken,actor,account);
+        if(denied!=null)return denied;
+        try{
+            return ResponseEntity.ok(projectRuntimePurgeDatabaseCall(
+                    "APPLY",receiptId,body,account));
+        }catch(IllegalArgumentException exception){
+            return ResponseEntity.unprocessableEntity().body(Map.of(
+                    "success",false,"status","REJECTED",
+                    "message",safeMessage(exception,
+                            "Project runtime purge request is invalid.")));
+        }catch(Exception exception){
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of(
+                    "success",false,"status","REVIEW_REQUIRED",
+                    "message",safeMessage(exception,
+                            "Project runtime purge rolled back.")));
+        }
+    }
+
+    @PostMapping("/project-runtime-purge/{receiptId}/restore")
+    @Transactional
+    public ResponseEntity<?> restoreProjectRuntimePurge(
+            @RequestHeader(value = "X-Resonance-Token", defaultValue = "") String suppliedToken,
+            @RequestHeader(value = "X-Resonance-Actor", defaultValue = "") String actor,
+            @RequestHeader(value = "X-Resonance-Account", defaultValue = "") String account,
+            @PathVariable String receiptId,@RequestBody Map<String,Object> body) {
+        ResponseEntity<?> denied=projectRuntimePurgeAccessFailure(
+                suppliedToken,actor,account);
+        if(denied!=null)return denied;
+        try{
+            return ResponseEntity.ok(projectRuntimePurgeDatabaseCall(
+                    "RESTORE",receiptId,body,account));
+        }catch(IllegalArgumentException exception){
+            return ResponseEntity.unprocessableEntity().body(Map.of(
+                    "success",false,"status","REJECTED",
+                    "message",safeMessage(exception,
+                            "Project runtime restore request is invalid.")));
+        }catch(Exception exception){
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of(
+                    "success",false,"status","REVIEW_REQUIRED",
+                    "message",safeMessage(exception,
+                            "Project runtime restore rolled back.")));
+        }
+    }
+
     @GetMapping("/dashboard")
     public ResponseEntity<?> dashboard(
             @RequestHeader(value = "X-Resonance-Token", defaultValue = "") String suppliedToken,
@@ -1978,6 +2148,112 @@ public class ActorProcessControlPlaneBridgeController {
         } catch (Exception exception) {
             return "{\"status\":\"FAILED\",\"message\":\"Result serialization failed.\"}";
         }
+    }
+
+    private ResponseEntity<?> projectRuntimePurgeAccessFailure(
+            String suppliedToken,String actor,String account){
+        if(!authorized(suppliedToken))return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(Map.of("success",false,"status","REJECTED",
+                        "message","Invalid control-plane bridge token."));
+        if(actor==null||actor.isBlank()||!actor.equals(actor.trim())
+                ||actor.length()>300||account==null
+                ||!account.matches("[A-Za-z0-9._@-]{2,120}")
+                ||!governance.isControlPlaneAdministrator(account)){
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of(
+                    "success",false,"status","REJECTED",
+                    "message","Runtime system administrator and authenticated control-plane actor are required."));
+        }
+        return null;
+    }
+
+    private Map<String,Object> projectRuntimePurgeDatabaseCall(
+            String operation,String pathReceiptId,Map<String,Object> body,
+            String account) throws Exception{
+        String project=required(body,"projectId").toUpperCase();
+        String process=required(body,"processCode").toUpperCase();
+        String checksum=required(body,"contractSha256").toLowerCase();
+        if(!project.matches("^[A-Z][A-Z0-9_-]{2,63}$")
+                ||!process.matches("^[A-Z][A-Z0-9_:-]{1,79}$")
+                ||!checksum.matches("^[0-9a-f]{64}$")){
+            throw new IllegalArgumentException(
+                    "Canonical project, process and release checksum are required.");
+        }
+        int version;
+        try{version=Integer.parseInt(required(body,"designVersion"));}
+        catch(NumberFormatException exception){throw new IllegalArgumentException(
+                "designVersion must be a positive integer.",exception);}
+        if(version<1)throw new IllegalArgumentException(
+                "designVersion must be a positive integer.");
+        java.util.UUID receipt;
+        try{receipt=java.util.UUID.fromString(pathReceiptId==null
+                ?required(body,"receiptId"):pathReceiptId);}
+        catch(IllegalArgumentException exception){throw new IllegalArgumentException(
+                "receiptId must be a canonical UUID.",exception);}
+        String resultJson;
+        if("PREVIEW".equals(operation)){
+            java.util.UUID operationKey;
+            try{operationKey=java.util.UUID.fromString(required(body,"operationKey"));}
+            catch(IllegalArgumentException exception){throw new IllegalArgumentException(
+                    "operationKey must be a canonical UUID.",exception);}
+            String scopeMode=String.valueOf(body.getOrDefault(
+                    "scopeMode","EXACT_PROJECT")).trim().toUpperCase();
+            if(!Set.of("AUTO","EXACT_PROJECT").contains(scopeMode))
+                throw new IllegalArgumentException(
+                        "scopeMode must be AUTO or EXACT_PROJECT.");
+            resultJson=jdbc.queryForObject("""
+                    select framework_preview_project_runtime_purge(
+                      ?,?,?,?,?,?,?,?)::text
+                    """,String.class,receipt,operationKey,project,process,version,
+                    checksum,scopeMode,account);
+        }else{
+            String snapshot=required(body,"snapshotSha256").toLowerCase();
+            if(!snapshot.matches("^[0-9a-f]{64}$"))
+                throw new IllegalArgumentException(
+                        "snapshotSha256 must be an exact SHA-256 value.");
+            String function="APPLY".equals(operation)
+                    ?"framework_apply_project_runtime_purge"
+                    :"RESTORE".equals(operation)
+                        ?"framework_restore_project_runtime_purge":null;
+            if(function==null)throw new IllegalArgumentException(
+                    "Unsupported project runtime purge operation.");
+            resultJson=jdbc.queryForObject("select "+function+
+                    "(?,?,?,?,?,?,?)::text",String.class,receipt,project,process,
+                    version,checksum,snapshot,account);
+        }
+        if(resultJson==null||resultJson.isBlank())throw new IllegalStateException(
+                "Project runtime purge database receipt is empty.");
+        return mapper.readValue(resultJson,
+                new com.fasterxml.jackson.core.type.TypeReference<LinkedHashMap<String,Object>>(){});
+    }
+
+    private Map<String,Object> projectRuntimeAbsenceDatabaseCall(
+            String operation,Map<String,Object> body,String account) throws Exception{
+        String project=required(body,"projectId").toUpperCase();
+        if(!project.matches("^[A-Z][A-Z0-9_-]{2,63}$"))
+            throw new IllegalArgumentException(
+                    "Canonical project identity is required.");
+        java.util.UUID proofId;
+        try{proofId=java.util.UUID.fromString(required(body,"proofId"));}
+        catch(IllegalArgumentException exception){throw new IllegalArgumentException(
+                "proofId must be a canonical UUID.",exception);}
+        String function=switch(operation){
+            case "PROVE" -> "framework_prove_project_runtime_absent";
+            case "ACTIVATE" -> "framework_activate_project_runtime_absence_fence";
+            case "RELEASE" -> "framework_release_project_runtime_absence_fence";
+            default -> throw new IllegalArgumentException(
+                    "Unsupported project runtime absence operation.");
+        };
+        String resultJson=jdbc.queryForObject("select "+function+
+                "(?,?,?)::text",String.class,proofId,project,account);
+        if(resultJson==null||resultJson.isBlank())throw new IllegalStateException(
+                "Project runtime absence database receipt is empty.");
+        return mapper.readValue(resultJson,
+                new com.fasterxml.jackson.core.type.TypeReference<LinkedHashMap<String,Object>>(){});
+    }
+
+    private static String safeMessage(Exception exception,String fallback){
+        String message=exception.getMessage();
+        return message==null||message.isBlank()?fallback:message;
     }
 
     private ResponseEntity<?> controlPlaneMutationAccessFailure(

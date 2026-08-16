@@ -30,7 +30,10 @@ import {
 } from './requirementIngestionLifecycle';
 import {
   projectLifecycleMutationLockKey,
+  recoverProjectRuntimePurgeSagas,
   registerProjectLifecycleRoutes,
+  type ProjectRuntimePurgeCommand,
+  type ProjectRuntimePurgeGateway,
 } from './projectLifecycleRoutes';
 import {
   buildSourceDesignAssetMutation,
@@ -357,6 +360,76 @@ export default createBackendPlugin({
             },
           );
         }
+        if (
+          !(await knex.schema.hasTable(
+            'resonance_projects__runtime_purge_saga',
+          ))
+        ) {
+          await knex.schema.createTable(
+            'resonance_projects__runtime_purge_saga',
+            table => {
+              table.uuid('saga_id').primary();
+              table.uuid('receipt_id').notNullable().unique();
+              table.uuid('operation_key').notNullable().unique();
+              table.string('project_id', 64).notNullable();
+              table.string('project_incarnation', 80).notNullable();
+              table.string('process_code', 80).notNullable();
+              table.integer('design_version').notNullable();
+              table.string('contract_sha256', 64).notNullable();
+              table.string('snapshot_sha256', 64).nullable();
+              table.string('saga_status', 32).notNullable();
+              table.uuid('claim_token').nullable();
+              table.timestamp('lease_expires_at', { useTz: true }).nullable();
+              table.jsonb('command_json').notNullable();
+              table.jsonb('preview_receipt').nullable();
+              table.jsonb('purge_receipt').nullable();
+              table.jsonb('restore_receipt').nullable();
+              table.string('actor_ref', 300).notNullable();
+              table.string('account_id', 120).notNullable();
+              table.text('last_error').nullable();
+              table.timestamp('created_at', { useTz: true }).notNullable();
+              table.timestamp('updated_at', { useTz: true }).notNullable();
+              table.timestamp('completed_at', { useTz: true }).nullable();
+              table.index(
+                ['project_id', 'project_incarnation', 'saga_status'],
+                'resonance_runtime_purge_saga_incarnation_idx',
+              );
+              table.index(
+                ['saga_status', 'updated_at'],
+                'resonance_runtime_purge_saga_recovery_idx',
+              );
+            },
+          );
+        }
+        if (
+          !(await knex.schema.hasColumn(
+            'resonance_projects__runtime_purge_saga',
+            'claim_token',
+          ))
+        ) {
+          await knex.schema.alterTable(
+            'resonance_projects__runtime_purge_saga',
+            table => table.uuid('claim_token').nullable(),
+          );
+        }
+        if (
+          !(await knex.schema.hasColumn(
+            'resonance_projects__runtime_purge_saga',
+            'lease_expires_at',
+          ))
+        ) {
+          await knex.schema.alterTable(
+            'resonance_projects__runtime_purge_saga',
+            table =>
+              table.timestamp('lease_expires_at', { useTz: true }).nullable(),
+          );
+        }
+        await knex.raw(`
+          create index if not exists resonance_runtime_purge_saga_lease_idx
+          on resonance_projects__runtime_purge_saga(
+            saga_status,lease_expires_at,updated_at
+          )
+        `);
         if (
           !(await knex.schema.hasTable(
             'resonance_projects__design_asset_snapshot',
@@ -1284,6 +1357,117 @@ export default createBackendPlugin({
             throw new Error('RUNTIME_RECEIPT_RESPONSE_NOT_JSON');
           }
           return { ok: result.ok, status: result.status, body };
+        };
+        const callProjectRuntimePurge = async (
+          operation: 'preview' | 'apply' | 'restore',
+          command: ProjectRuntimePurgeCommand & { snapshotSha256?: string },
+        ) => {
+          const suffix =
+            operation === 'preview'
+              ? 'preview'
+              : `${encodeURIComponent(command.receiptId)}/${operation}`;
+          const result = await readRuntimeJson(
+            `${runtimeBridgeBaseUrl()}/api/internal/actor-process/project-runtime-purge/${suffix}`,
+            {
+              method: 'POST',
+              headers: {
+                'content-type': 'application/json',
+                'x-resonance-actor': command.actorRef,
+                'x-resonance-account': command.accountId,
+              },
+              body: JSON.stringify({
+                receiptId: command.receiptId,
+                operationKey: command.operationKey,
+                projectId: command.projectId,
+                processCode: command.processCode,
+                designVersion: command.designVersion,
+                contractSha256: command.contractSha256,
+                scopeMode: command.scopeMode,
+                snapshotSha256: command.snapshotSha256,
+              }),
+            },
+          );
+          if (
+            !result.ok &&
+            !(
+              operation === 'preview' &&
+              result.status === 409 &&
+              result.body.status === 'BLOCKED'
+            )
+          ) {
+            const error = new Error(
+              String(
+                result.body.message ??
+                  `Project runtime purge ${operation} failed`,
+              ),
+            ) as Error & { statusCode?: number };
+            error.statusCode =
+              result.status >= 400 && result.status <= 499
+                ? result.status
+                : 502;
+            throw error;
+          }
+          return result.body;
+        };
+        const callProjectRuntimeAbsence = async (
+          operation:
+            | 'prove-absent'
+            | 'activate-absence-fence'
+            | 'release-absence-fence',
+          command: {
+            proofId: string;
+            projectId: string;
+            actorRef: string;
+            accountId: string;
+          },
+        ) => {
+          const result = await readRuntimeJson(
+            `${runtimeBridgeBaseUrl()}/api/internal/actor-process/project-runtime-purge/${operation}`,
+            {
+              method: 'POST',
+              headers: {
+                'content-type': 'application/json',
+                'x-resonance-actor': command.actorRef,
+                'x-resonance-account': command.accountId,
+              },
+              body: JSON.stringify({
+                proofId: command.proofId,
+                projectId: command.projectId,
+              }),
+            },
+          );
+          const acceptedBlockedActivation =
+            operation === 'activate-absence-fence' &&
+            result.status === 409 &&
+            ['NOT_ACTIVE', 'RELEASED'].includes(
+              String(result.body.fenceStatus ?? ''),
+            ) &&
+            result.body.activated === false;
+          if (!result.ok && !acceptedBlockedActivation) {
+            const error = new Error(
+              String(
+                result.body.message ??
+                  `Project runtime absence ${operation} failed`,
+              ),
+            ) as Error & { statusCode?: number };
+            error.statusCode =
+              result.status >= 400 && result.status <= 499
+                ? result.status
+                : 502;
+            throw error;
+          }
+          return result.body;
+        };
+        const projectRuntimePurge: ProjectRuntimePurgeGateway = {
+          proveAbsent: command =>
+            callProjectRuntimeAbsence('prove-absent', command),
+          activateAbsent: command =>
+            callProjectRuntimeAbsence('activate-absence-fence', command),
+          releaseAbsent: command =>
+            callProjectRuntimeAbsence('release-absence-fence', command),
+          preview: command => callProjectRuntimePurge('preview', command),
+          apply: command => callProjectRuntimePurge('apply', command),
+          restore: command => callProjectRuntimePurge('restore', command),
         };
 
         const claimRequirementReceipts = async (
@@ -5320,6 +5504,37 @@ export default createBackendPlugin({
           knex,
           logger,
           resolveIdentity: resolveAuthenticatedProjectIdentity,
+          runtimePurge: projectRuntimePurge,
+        });
+
+        await scheduler.scheduleTask({
+          id: 'resonance-project-runtime-purge-recovery-v1',
+          frequency: { seconds: 30 },
+          timeout: { seconds: 50 },
+          initialDelay: { seconds: 10 },
+          fn: async () => {
+            const result = await recoverProjectRuntimePurgeSagas({
+              knex,
+              runtimePurge: projectRuntimePurge,
+              recoveryIdentity: process.env
+                .RESONANCE_RUNTIME_PURGE_RECOVERY_ACCOUNT_ID
+                ? {
+                    accountId: String(
+                      process.env.RESONANCE_RUNTIME_PURGE_RECOVERY_ACCOUNT_ID,
+                    ),
+                    actorRef:
+                      process.env.RESONANCE_RUNTIME_PURGE_RECOVERY_ACTOR_REF,
+                  }
+                : undefined,
+            });
+            if (result.claimed > 0) {
+              logger.info(
+                `Recovered project runtime purge sagas: ${JSON.stringify(
+                  result,
+                )}`,
+              );
+            }
+          },
         });
 
         await scheduler.scheduleTask({
