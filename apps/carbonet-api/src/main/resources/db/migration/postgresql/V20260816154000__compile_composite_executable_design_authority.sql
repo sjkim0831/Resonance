@@ -233,6 +233,108 @@ CREATE INDEX ix_integrated_design_scope_binding_project
 CREATE INDEX ix_integrated_design_scope_binding_identity
   ON integrated_design_scope_binding(process_code,step_code,route_path,audience,bound_at);
 
+-- Physical generation is not completion.  These append-only rows are emitted
+-- by the live API, PostgreSQL reread, and browser-DOM smoke runners after the
+-- generated package is running.  Every value is retained beside its digest so
+-- finalization can compare it with the immutable TEST/API/DATABASE/UI design.
+CREATE OR REPLACE FUNCTION framework_composite_live_smoke_hash(value jsonb)
+RETURNS varchar
+LANGUAGE sql IMMUTABLE STRICT PARALLEL SAFE
+SET search_path=pg_catalog,public AS $$
+  SELECT encode(sha256(convert_to(value::text,'UTF8')),'hex')
+$$;
+
+CREATE TABLE integrated_design_live_smoke_evidence (
+  live_evidence_id bigserial PRIMARY KEY,
+  job_id bigint NOT NULL REFERENCES framework_development_job(job_id) ON DELETE RESTRICT,
+  authority_id bigint NOT NULL,
+  authority_revision bigint NOT NULL CHECK(authority_revision>0),
+  process_code varchar(100) NOT NULL,
+  step_code varchar(100) NOT NULL,
+  route_path varchar(500) NOT NULL,
+  audience varchar(20) NOT NULL CHECK(audience IN('USER','ADMIN')),
+  lane varchar(20) NOT NULL CHECK(lane IN('API','DATABASE','BROWSER')),
+  status_case varchar(30) NOT NULL CHECK(status_case IN(
+    'SUCCESS','VALIDATION_ERROR','FORBIDDEN','CONFLICT','RECOVERY')),
+  scenario_code varchar(120) NOT NULL,
+  account_id varchar(100) NOT NULL,
+  tenant_id varchar(100) NOT NULL,
+  project_id varchar(100) NOT NULL,
+  actor_code varchar(120) NOT NULL,
+  command_code varchar(120) NOT NULL,
+  input_json jsonb NOT NULL CHECK(jsonb_typeof(input_json)='object'),
+  output_json jsonb NOT NULL CHECK(jsonb_typeof(output_json)='object'),
+  from_state varchar(120) NOT NULL,
+  to_state varchar(120) NOT NULL,
+  observed_state varchar(120) NOT NULL,
+  expected_status varchar(30) NOT NULL,
+  observed_status varchar(30) NOT NULL,
+  source_hash varchar(64) NOT NULL CHECK(source_hash~'^[0-9a-f]{64}$'),
+  authority_hash varchar(64) NOT NULL CHECK(authority_hash~'^[0-9a-f]{64}$'),
+  target_ref varchar(1000) NOT NULL CHECK(btrim(target_ref)<>''),
+  lane_evidence jsonb NOT NULL CHECK(jsonb_typeof(lane_evidence)='object'),
+  account_hash varchar(64) NOT NULL CHECK(account_hash~'^[0-9a-f]{64}$'),
+  command_hash varchar(64) NOT NULL CHECK(command_hash~'^[0-9a-f]{64}$'),
+  input_hash varchar(64) NOT NULL CHECK(input_hash~'^[0-9a-f]{64}$'),
+  output_hash varchar(64) NOT NULL CHECK(output_hash~'^[0-9a-f]{64}$'),
+  state_hash varchar(64) NOT NULL CHECK(state_hash~'^[0-9a-f]{64}$'),
+  status_hash varchar(64) NOT NULL CHECK(status_hash~'^[0-9a-f]{64}$'),
+  lane_evidence_hash varchar(64) NOT NULL CHECK(lane_evidence_hash~'^[0-9a-f]{64}$'),
+  evidence_hash varchar(64) NOT NULL CHECK(evidence_hash~'^[0-9a-f]{64}$'),
+  evidence_ref varchar(2000) NOT NULL CHECK(btrim(evidence_ref)<>''),
+  recorded_by varchar(100) NOT NULL CHECK(btrim(recorded_by)<>''),
+  observed_at timestamptz NOT NULL,
+  -- Smoke observations can be appended inside a transaction that began before
+  -- the browser/API harness completed.  Use wall-clock time, not PostgreSQL's
+  -- transaction-start timestamp, so the durable ordering remains truthful.
+  recorded_at timestamptz NOT NULL DEFAULT clock_timestamp(),
+  -- The revision is immutable evidence, but the authority head must remain
+  -- updateable.  Finalization compares the retained revision with the current
+  -- job; pinning the FK to the mutable head revision would block every later
+  -- design publication.
+  FOREIGN KEY(authority_id)
+    REFERENCES integrated_design_authority(authority_id) ON DELETE RESTRICT,
+  UNIQUE(job_id,authority_id,command_code,scenario_code,lane,status_case),
+  CHECK(route_path=lower(split_part(route_path,'?',1)) AND route_path~'^/'),
+  CHECK(status_case=expected_status AND expected_status=observed_status),
+  CHECK(account_hash=framework_composite_live_smoke_hash(jsonb_build_object(
+    'accountId',account_id,'tenantId',tenant_id,'projectId',project_id,
+    'actorCode',actor_code))),
+  CHECK(command_hash=framework_composite_live_smoke_hash(jsonb_build_object(
+    'commandCode',command_code))),
+  CHECK(input_hash=framework_composite_live_smoke_hash(input_json)),
+  CHECK(output_hash=framework_composite_live_smoke_hash(output_json)),
+  CHECK(state_hash=framework_composite_live_smoke_hash(jsonb_build_object(
+    'fromState',from_state,'toState',to_state,'observedState',observed_state))),
+  CHECK(status_hash=framework_composite_live_smoke_hash(jsonb_build_object(
+    'expectedStatus',expected_status,'observedStatus',observed_status))),
+  CHECK(lane_evidence_hash=framework_composite_live_smoke_hash(lane_evidence)),
+  CHECK(evidence_hash=framework_composite_live_smoke_hash(jsonb_build_object(
+    'schema','carbonet.composite-live-smoke-evidence/v1','jobId',job_id,
+    'authorityId',authority_id,'authorityRevision',authority_revision,
+    'processCode',process_code,'stepCode',step_code,'routePath',route_path,
+    'audience',audience,'lane',lane,'statusCase',status_case,
+    'scenarioCode',scenario_code,'accountHash',account_hash,
+    'commandHash',command_hash,'inputHash',input_hash,'outputHash',output_hash,
+    'stateHash',state_hash,'statusHash',status_hash,'sourceHash',source_hash,
+    'authorityHash',authority_hash,'targetRef',target_ref,
+    'laneEvidenceHash',lane_evidence_hash,'evidenceRef',evidence_ref)))
+);
+CREATE INDEX ix_integrated_design_live_smoke_job
+  ON integrated_design_live_smoke_evidence(
+    job_id,authority_id,command_code,scenario_code,status_case,lane);
+
+CREATE OR REPLACE FUNCTION reject_integrated_design_live_smoke_evidence_mutation()
+RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+  RAISE EXCEPTION 'COMPOSITE_LIVE_SMOKE_EVIDENCE_IS_APPEND_ONLY'
+    USING ERRCODE='55000';
+END
+$$;
+CREATE TRIGGER trg_integrated_design_live_smoke_evidence_immutable
+BEFORE UPDATE OR DELETE ON integrated_design_live_smoke_evidence
+FOR EACH ROW EXECUTE FUNCTION reject_integrated_design_live_smoke_evidence_mutation();
+
 CREATE TABLE integrated_design_notification_template (
   template_code varchar(120) PRIMARY KEY,
   title_template varchar(300) NOT NULL CHECK(btrim(title_template)<>''),
@@ -832,21 +934,10 @@ BEGIN
               then operation->'requestFields' else '[]'::jsonb end) field_code),'[]'::jsonb),
             'exceptionStatesVerified',exception_states_verified)
           WHEN 'NOTIFICATION' THEN jsonb_build_object('events','[]'::jsonb)
-          WHEN 'TEST' THEN jsonb_build_object('scenarios',coalesce((select jsonb_agg(
-            jsonb_build_object('scenarioCode','HAPPY_PATH_'||upper(regexp_replace(
-                operation->>'commandCode','[^A-Za-z0-9]+','_','g')),
-              'commandCode',operation->>'commandCode',
-              'inputValues',coalesce((select jsonb_object_agg(field_code,
-                  '__DESIGN_REQUIRED__' order by field_code)
-                from jsonb_array_elements_text(case when
-                  jsonb_typeof(operation->'requestFields')='array'
-                  then operation->'requestFields' else '[]'::jsonb end) field_code),'{}'::jsonb),
-              'expectedOutputFields',case when jsonb_typeof(operation->'responseFields')='array'
-                then operation->'responseFields' else '[]'::jsonb end,
-              'expectedStatus','SUCCESS','assertionCodes',jsonb_build_array(
-                'STATUS_MATCH','OUTPUT_FIELDS_MATCH')) order by operation->>'commandCode')
-            from jsonb_array_elements(case when jsonb_typeof(operations)='array'
-              then operations else '[]'::jsonb end) operation),'[]'::jsonb))
+          -- A live endpoint contract cannot prove validation, authority,
+          -- conflict, and recovery outcomes. Keep TEST empty so this generated
+          -- document remains the explicit IN_REVIEW blocker below.
+          WHEN 'TEST' THEN jsonb_build_object('scenarios','[]'::jsonb)
           WHEN 'TASK_EVIDENCE' THEN jsonb_build_object('evidence',evidence)
           WHEN 'RELEASE_AUDIT' THEN jsonb_build_object(
             'auditEvidenceRef',nullif(audit_evidence_ref,''),

@@ -16,7 +16,6 @@ final class CompositeDatabasePlanService {
     void validate(CompositeExecutableDesignAuthorityCompiler.Compilation compilation){
         Map<String,Object> database=map(compilation.executableDesign().get("DATABASE"),"DATABASE");
         String mode=String.valueOf(database.get("migrationMode"));
-        String fingerprint=String.valueOf(database.get("schemaFingerprint"));
         for(Object raw:list(database.get("schemaChanges"),"DATABASE.schemaChanges")){
             Map<String,Object> change=map(raw,"DATABASE.schemaChanges[]");
             String table=String.valueOf(change.get("tableName"));
@@ -28,11 +27,16 @@ final class CompositeDatabasePlanService {
                     String comment=jdbc.queryForObject(
                         "select obj_description(to_regclass(format('%I.%I',current_schema(),?)),'pg_class')",
                         String.class,table);
-                    if(!(SCHEMA_MARKER+fingerprint).equals(comment))throw new IllegalStateException(
+                    if(!(SCHEMA_MARKER+tableSchemaFingerprint(change)).equals(comment))throw new IllegalStateException(
                         "DATABASE_SAFE_CREATE_SCHEMA_MARKER_NOT_EXACT: "+table);
                 }
             }else validateRegisteredTable(table,change);
         }
+    }
+
+    static String tableSchemaFingerprint(Map<String,Object> change){
+        return CompositeExecutableDesignAuthorityCompiler.hash(
+            CompositeExecutableDesignAuthorityCompiler.stable(List.of(change)));
     }
 
     private void validateRegisteredTable(String table,Map<String,Object> change){

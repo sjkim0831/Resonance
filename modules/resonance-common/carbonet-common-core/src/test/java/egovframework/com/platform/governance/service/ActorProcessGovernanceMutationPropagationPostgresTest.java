@@ -14,6 +14,9 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.charset.StandardCharsets;
+import java.time.OffsetDateTime;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -116,7 +119,8 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
             "ui_page_component_map,ui_component_registry,ui_section_registry,ui_page_manifest,"+
             "comtnthemedefinition,"+
             "framework_project_actor_assignment,framework_account_actor_assignment,"+
-            "integrated_design_scope_binding,integrated_design_authority_version,"+
+            "integrated_design_live_smoke_evidence,integrated_design_scope_binding,"+
+            "integrated_design_authority_version,"+
             "integrated_design_authority,integrated_design_document_version,integrated_design_document,"+
             "framework_permission_grant_v1,framework_permission_requirement_v1,"+
             "framework_development_job_event,framework_development_job_gate_result,framework_development_job,"+
@@ -1652,8 +1656,8 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
     @Test
     void compositeThreeScreensCompileToOneFinalJobAndReplayWritesZero(){
         seedCompositeThreeScreens();
-        Map<String,Object> first=transaction.execute(status->service.compileIntegratedDesignProcess(
-            Map.of("processCode","PROC","previewOnly",false,"scopeType","GLOBAL"),"system-admin"));
+        Map<String,Object> first=compileComposite(
+            Map.of("processCode","PROC","previewOnly",false,"scopeType","GLOBAL"));
         assertEquals("SOURCE_APPLIED_PHYSICAL_QUEUED",first.get("status"));
         assertEquals(3,number(first,"screenCount"));assertEquals(54,number(first,"documentCount"));
         assertEquals(3,number(first,"authorityCount"));assertEquals(1,number(first,"jobCount"));
@@ -1700,8 +1704,8 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
                      from framework_development_job) as jobs
               from integrated_design_authority
             """);
-        Map<String,Object> replay=transaction.execute(status->service.compileIntegratedDesignProcess(
-            Map.of("processCode","PROC","previewOnly",false,"scopeType","GLOBAL"),"system-admin"));
+        Map<String,Object> replay=compileComposite(
+            Map.of("processCode","PROC","previewOnly",false,"scopeType","GLOBAL"));
         assertEquals("SOURCE_APPLIED_PHYSICAL_QUEUED",replay.get("status"));
         assertEquals(0,number(replay,"refreshInvocationCount"));
         assertEquals(before,jdbc.queryForMap("""
@@ -1716,14 +1720,52 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
     }
 
     @Test
+    void rawBackfillTestsRemainInReviewAndCannotPublishWithoutDeclaredCases(){
+        seedCompositeThreeScreens();
+        transaction.executeWithoutResult(status->
+            jdbc.queryForMap("select * from refresh_integrated_design_axis_documents('PROC',true)"));
+        assertEquals(Map.of("testCount",3,"inReviewCount",3,"emptyScenarioCount",3),
+            jdbc.queryForMap("""
+                select count(*)::integer as "testCount",
+                       count(*) filter(where status='IN_REVIEW')::integer as "inReviewCount",
+                       count(*) filter(where framework_try_jsonb(content)#>'{payload,scenarios}'=
+                         '[]'::jsonb)::integer as "emptyScenarioCount"
+                  from integrated_design_document
+                 where process_code='PROC' and document_type='TEST'
+                """));
+        assertEquals(0,count("integrated_design_authority"));
+        assertEquals(0,count("framework_development_job"));
+
+        Object attempt;
+        try{
+            attempt=transaction.execute(status->{
+                try{return service.compileIntegratedDesignProcess(Map.of(
+                    "processCode","PROC","previewOnly",false,"scopeType","GLOBAL"),"system-admin");}
+                finally{status.setRollbackOnly();}
+            });
+        }catch(RuntimeException blocked){attempt=blocked;}
+        assertTrue(attempt instanceof RuntimeException
+            ||attempt instanceof Map<?,?> result&&"BLOCKED".equals(result.get("status")),
+            "raw TEST backfill must be blocked, actual="+attempt);
+        assertEquals(0,count("integrated_design_authority"));
+        assertEquals(0,count("framework_development_job"));
+        assertEquals(Map.of("inReviewCount",3,"emptyScenarioCount",3),jdbc.queryForMap("""
+            select count(*) filter(where status='IN_REVIEW')::integer as "inReviewCount",
+                   count(*) filter(where framework_try_jsonb(content)#>'{payload,scenarios}'=
+                     '[]'::jsonb)::integer as "emptyScenarioCount"
+              from integrated_design_document
+             where process_code='PROC' and document_type='TEST'
+            """));
+    }
+
+    @Test
     void safeCreateExistingSchemaRequiresExactMarkerAndReplaysWithoutSourceWrites(){
         seedCompositeThreeScreens();
         jdbc.execute("create table item(name text not null,id integer primary key)");
         jdbc.execute("comment on table item is 'design-schema-hash:"+schemaFingerprint("/work-a")+"'");
         jdbc.execute("create table approval(reason text not null,approval_id bigint primary key)");
-        IllegalStateException mismatch=assertThrows(IllegalStateException.class,()->
-            transaction.execute(status->service.compileIntegratedDesignProcess(
-                Map.of("processCode","PROC","previewOnly",false,"scopeType","GLOBAL"),"system-admin")));
+        IllegalStateException mismatch=assertThrows(IllegalStateException.class,()->compileComposite(
+            Map.of("processCode","PROC","previewOnly",false,"scopeType","GLOBAL")));
         assertTrue(mismatch.getMessage().contains("DATABASE_REGISTERED_COLUMN_NOT_EXACT"));
         assertEquals(0,count("integrated_design_document"));assertEquals(0,count("integrated_design_authority"));
         assertEquals(0,count("framework_development_job"));
@@ -1740,8 +1782,8 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
               api_contract='[{"method":"POST","path":"/api/items/{executionId}/escalate","commandCode":"ESCALATE","requestFields":["name"],"responseFields":["id"],"permissionCodes":["PERM_ESCALATE"]}]',
               data_contract=? where process_code='PROC' and route_path='/work-b'
             """,itemData);
-        Map<String,Object> compiled=transaction.execute(status->service.compileIntegratedDesignProcess(
-            Map.of("processCode","PROC","previewOnly",false,"scopeType","GLOBAL"),"system-admin"));
+        Map<String,Object> compiled=compileComposite(
+            Map.of("processCode","PROC","previewOnly",false,"scopeType","GLOBAL"));
         assertEquals("SOURCE_APPLIED_PHYSICAL_QUEUED",compiled.get("status"));
         assertEquals(3,number(compiled,"authorityCount"));
         assertEquals(2,jdbc.queryForObject("""
@@ -1768,13 +1810,53 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
         jdbc.update("update framework_professional_screen_contract set data_contract=?, "+
             "field_contract=replace(field_contract,'TICKET','ITEM') where "+
             "process_code='PROC' and route_path='/work-b'",json(conflictPlan));
-        IllegalStateException conflict=assertThrows(IllegalStateException.class,()->
-            transaction.execute(status->service.compileIntegratedDesignProcess(
-                Map.of("processCode","PROC","previewOnly",false,"scopeType","GLOBAL"),"system-admin")));
+        IllegalStateException conflict=assertThrows(IllegalStateException.class,()->compileComposite(
+            Map.of("processCode","PROC","previewOnly",false,"scopeType","GLOBAL")));
         assertTrue(conflict.getMessage().contains("COMPOSITE_CROSS_SCREEN_DATABASE_CONTRADICTION"),
             conflict.getMessage());
         assertEquals(0,count("integrated_design_document"));assertEquals(0,count("integrated_design_authority"));
         assertEquals(0,count("framework_development_job"));
+    }
+
+    @Test
+    void generatedTwoTableMigrationUsesLocalMarkersAndReplayWritesZero() throws Exception{
+        seedCompositeThreeScreens();
+        jdbc.update("""
+            delete from framework_process_step_screen_binding binding
+             using framework_screen_resource resource
+             where binding.screen_resource_id=resource.screen_resource_id
+               and resource.route_key='/work-b'
+            """);
+        Map<String,Object> compiled=compileComposite(
+            Map.of("processCode","PROC","previewOnly",false,"scopeType","GLOBAL"));
+        assertEquals(2,number(compiled,"authorityCount"));
+        List<Map<String,Object>> changes=new ArrayList<>();
+        for(String encoded:jdbc.queryForList("""
+            select (authority.composite_json#>'{executableDesign,DATABASE,schemaChanges}')::text
+              from integrated_design_authority authority
+             where authority.process_code='PROC'
+             order by authority.composite_json#>>'{executableDesign,DATABASE,schemaChanges,0,tableName}' collate "C"
+            """,String.class))
+            changes.addAll(new ObjectMapper().readValue(encoded,List.class));
+        String sql=renderSafeMigrationSql(changes);
+        for(Map<String,Object> change:changes){String expected=
+            "COMMENT ON TABLE "+change.get("tableName")+" IS 'design-schema-hash:"+
+                CompositeDatabasePlanService.tableSchemaFingerprint(change)+"';";
+            assertTrue(sql.contains(expected),"expected="+expected+"\nSQL="+sql);}
+        jdbc.execute(sql);
+        Map<String,Object> before=compositePublicationXmins();
+        Map<String,Object> replay=compileComposite(
+            Map.of("processCode","PROC","previewOnly",false,"scopeType","GLOBAL"));
+        assertEquals("SOURCE_APPLIED_PHYSICAL_QUEUED",replay.get("status"));
+        assertEquals(0,number(replay,"refreshInvocationCount"));
+        assertEquals(before,compositePublicationXmins());
+
+        jdbc.execute("comment on table approval is 'design-schema-hash:"+"f".repeat(64)+"'");
+        IllegalStateException forged=assertThrows(IllegalStateException.class,()->compileComposite(
+            Map.of("processCode","PROC","previewOnly",false,"scopeType","GLOBAL")));
+        assertTrue(forged.getMessage().contains("DATABASE_SAFE_CREATE_SCHEMA_MARKER_NOT_EXACT"),
+            forged.getMessage());
+        assertEquals(before,compositePublicationXmins());
     }
 
     @Test
@@ -1787,9 +1869,8 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
                    api_contract='[{"method":"POST","path":"/api/admin/items/{executionId}/approve","commandCode":"SAVE","requestFields":["reason"],"responseFields":["approval_id"],"permissionCodes":["PERM_APPROVE"]}]'
              where process_code='PROC' and route_path='/work-admin'
             """);
-        IllegalStateException transition=assertThrows(IllegalStateException.class,()->
-            transaction.execute(status->service.compileIntegratedDesignProcess(
-                Map.of("processCode","PROC","previewOnly",false,"scopeType","GLOBAL"),"system-admin")));
+        IllegalStateException transition=assertThrows(IllegalStateException.class,()->compileComposite(
+            Map.of("processCode","PROC","previewOnly",false,"scopeType","GLOBAL")));
         assertTrue(transition.getMessage().contains("COMPOSITE_CROSS_SCREEN_STATE_CONTRADICTION"));
         assertEquals(0,count("integrated_design_document"));assertEquals(0,count("integrated_design_authority"));
         assertEquals(0,count("framework_development_job"));
@@ -1801,9 +1882,8 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
                    api_contract='[{"method":"POST","path":"/api/items/{executionId}","commandCode":"APPROVE","requestFields":["reason"],"responseFields":["approval_id"],"permissionCodes":["PERM_APPROVE"]}]'
              where process_code='PROC' and route_path='/work-admin'
             """);
-        IllegalStateException endpoint=assertThrows(IllegalStateException.class,()->
-            transaction.execute(status->service.compileIntegratedDesignProcess(
-                Map.of("processCode","PROC","previewOnly",false,"scopeType","GLOBAL"),"system-admin")));
+        IllegalStateException endpoint=assertThrows(IllegalStateException.class,()->compileComposite(
+            Map.of("processCode","PROC","previewOnly",false,"scopeType","GLOBAL")));
         assertTrue(endpoint.getMessage().contains("COMPOSITE_CROSS_SCREEN_API_CONTRADICTION"));
         assertEquals(0,count("integrated_design_document"));assertEquals(0,count("integrated_design_authority"));
         assertEquals(0,count("framework_development_job"));
@@ -1827,8 +1907,8 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
     @Test
     void disabledBulkWorkerRejectsForgedCompletionThenAcceptsExactCanonicalEvidence(){
         seedCompositeThreeScreens();
-        Map<String,Object> compiled=transaction.execute(status->service.compileIntegratedDesignProcess(
-            Map.of("processCode","PROC","previewOnly",false,"scopeType","GLOBAL"),"system-admin"));
+        Map<String,Object> compiled=compileComposite(
+            Map.of("processCode","PROC","previewOnly",false,"scopeType","GLOBAL"));
         long jobId=((Number)((Map<?,?>)((List<?>)compiled.get("receipts")).get(0)).get("jobId")).longValue();
         String fingerprint=jdbc.queryForObject(
             "select framework_composite_dependency_fingerprint('PROC')",String.class);
@@ -1899,8 +1979,42 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
                    set specification_json=jsonb_set(framework_try_jsonb(specification_json),
                          '{compositeAuthoritySetHash}',to_jsonb(?::text))::text
                  where job_id=?
-                """,canonicalSetHash,jobId);
+            """,canonicalSetHash,jobId);
             installExactCanonicalPhysicalEvidence(jobId);
+            worker.runScheduledBatch();
+            assertEquals("SOURCE_APPLIED_PHYSICAL_QUEUED",jdbc.queryForObject(
+                "select completion_status from integrated_design_autocompletion_receipt where process_code='PROC'",
+                String.class));
+            assertEquals("TEST_PENDING",jdbc.queryForObject(
+                "select blocker_code from integrated_design_autocompletion_receipt where process_code='PROC'",
+                String.class));
+            assertEquals(true,jdbc.queryForObject("""
+                select receipt_json->>'generationStatus'='PHYSICAL_QUEUED'
+                   and receipt_json->>'testStatus'='TEST_PENDING'
+                   and receipt_json->'liveSmokeVerified'='false'::jsonb
+                  from integrated_design_autocompletion_receipt where process_code='PROC'
+                """,Boolean.class));
+            String pendingXmin=jdbc.queryForObject(
+                "select xmin::text from integrated_design_autocompletion_receipt where process_code='PROC'",
+                String.class);
+            worker.runScheduledBatch();
+            assertEquals(pendingXmin,jdbc.queryForObject(
+                "select xmin::text from integrated_design_autocompletion_receipt where process_code='PROC'",
+                String.class));
+            assertEquals(44,installExactLiveSmokeEvidence(jobId,true));
+            worker.runScheduledBatch();
+            assertEquals("SOURCE_APPLIED_PHYSICAL_QUEUED",jdbc.queryForObject(
+                "select completion_status from integrated_design_autocompletion_receipt where process_code='PROC'",
+                String.class));
+            assertEquals("TEST_PENDING",jdbc.queryForObject(
+                "select blocker_code from integrated_design_autocompletion_receipt where process_code='PROC'",
+                String.class));
+            assertThrows(RuntimeException.class,()->jdbc.update("""
+                update integrated_design_live_smoke_evidence set status_hash=repeat('f',64)
+                 where live_evidence_id=(select min(live_evidence_id)
+                   from integrated_design_live_smoke_evidence)
+                """));
+            assertEquals(1,installExactLiveSmokeEvidence(jobId,false));
             worker.runScheduledBatch();
             assertEquals("PHYSICAL_GENERATED_VERIFIED",jdbc.queryForObject(
                 "select completion_status from integrated_design_autocompletion_receipt where process_code='PROC'",
@@ -1908,7 +2022,10 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
             assertEquals(true,jdbc.queryForObject("""
                 select receipt.receipt_json->'canonicalGeneration'=
                          framework_try_jsonb(job.result_json)->'canonicalGeneration'
-                       and receipt.receipt_json->>'jobEvidenceRef'=job.evidence_ref
+                        and receipt.receipt_json->>'jobEvidenceRef'=job.evidence_ref
+                       and receipt.receipt_json->'liveSmokeVerified'='true'::jsonb
+                       and receipt.receipt_json->>'testStatus'='VERIFIED'
+                       and (receipt.receipt_json->>'liveSmokeEvidenceCount')::integer=45
                   from integrated_design_autocompletion_receipt receipt
                   join framework_development_job job on job.job_id=receipt.job_id
                  where receipt.process_code='PROC'
@@ -1934,6 +2051,141 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
                      group by completion_status,attempt_count
                     """));
         }finally{worker.close();}
+    }
+
+    @Test
+    void twoCommandAuthorityRequiresThirtyExactLaneCaseRowsBeforePhysicalPromotion(){
+        seedCompositeThreeScreens();
+        jdbc.update("""
+            update framework_professional_screen_contract
+               set command_contract='[{"commandCode":"SAVE","actorCode":"PRIMARY_ACTOR","primary":true},{"commandCode":"SUBMIT","actorCode":"PRIMARY_ACTOR","primary":false}]',
+                   state_contract='[{"fromState":"DRAFT","commandCode":"SAVE","toState":"DONE"},{"fromState":"DRAFT","commandCode":"SUBMIT","toState":"DONE"}]',
+                   api_contract='[{"method":"POST","path":"/api/items/{executionId}","commandCode":"SAVE","requestFields":["name"],"responseFields":["id"],"permissionCodes":["PERM_SAVE"]},{"method":"POST","path":"/api/items/{executionId}/submit","commandCode":"SUBMIT","requestFields":["name"],"responseFields":["id"],"permissionCodes":["PERM_SAVE"]}]'
+             where process_code='PROC' and route_path='/work-a'
+            """);
+        Map<String,Object> compiled=compileComposite(
+            Map.of("processCode","PROC","previewOnly",false,"scopeType","GLOBAL"));
+        long jobId=((Number)((Map<?,?>)((List<?>)compiled.get("receipts")).get(0)).get("jobId")).longValue();
+        String fingerprint=jdbc.queryForObject(
+            "select framework_composite_dependency_fingerprint('PROC')",String.class);
+        jdbc.update("""
+            insert into integrated_design_autocompletion_receipt(
+              process_code,completion_status,dependency_fingerprint,job_id,started_at)
+            values('PROC','SOURCE_APPLIED_PHYSICAL_QUEUED',?,?,current_timestamp)
+            """,fingerprint,jobId);
+        installExactCanonicalPhysicalEvidence(jobId);
+        assertEquals(10,jdbc.queryForObject("""
+            select jsonb_array_length(composite_json#>'{executableDesign,TEST,scenarios}')
+              from integrated_design_authority where route_path='/work-a'
+            """,Integer.class));
+        CompositeDesignOperationalWorker worker=new CompositeDesignOperationalWorker(
+            jdbc,new ObjectMapper(),service,new DataSourceTransactionManager(dataSource),
+            false,2,25,false);
+        try{
+            worker.reconcilePhysicalCompletion();
+            assertEquals("TEST_PENDING",jdbc.queryForObject(
+                "select blocker_code from integrated_design_autocompletion_receipt where process_code='PROC'",
+                String.class));
+            assertEquals(60,installExactLiveSmokeEvidence(jobId,false));
+            worker.reconcilePhysicalCompletion();
+            assertEquals("PHYSICAL_GENERATED_VERIFIED",jdbc.queryForObject(
+                "select completion_status from integrated_design_autocompletion_receipt where process_code='PROC'",
+                String.class));
+            assertEquals(60,jdbc.queryForObject(
+                "select count(*) from integrated_design_live_smoke_evidence where job_id=?",
+                Integer.class,jobId));
+        }finally{worker.close();}
+    }
+
+    @Test
+    void oneLaneOutputHashDriftCannotPromotePhysicalCompletion(){
+        seedCompositeThreeScreens();
+        Map<String,Object> compiled=compileComposite(
+            Map.of("processCode","PROC","previewOnly",false,"scopeType","GLOBAL"));
+        long jobId=((Number)((Map<?,?>)((List<?>)compiled.get("receipts")).get(0)).get("jobId")).longValue();
+        String fingerprint=jdbc.queryForObject(
+            "select framework_composite_dependency_fingerprint('PROC')",String.class);
+        jdbc.update("""
+            insert into integrated_design_autocompletion_receipt(
+              process_code,completion_status,dependency_fingerprint,job_id,started_at)
+            values('PROC','SOURCE_APPLIED_PHYSICAL_QUEUED',?,?,current_timestamp)
+            """,fingerprint,jobId);
+        installExactCanonicalPhysicalEvidence(jobId);
+        assertEquals(45,installExactLiveSmokeEvidence(jobId,false,true,true));
+        assertEquals(CompositePhysicalEvidenceService.Verdict.LIVE_SMOKE_TEST_PENDING,
+            new CompositePhysicalEvidenceService(jdbc).assess(jobId,"PROC"));
+        assertEquals(45,jdbc.queryForObject(
+            "select count(*) from integrated_design_live_smoke_evidence where job_id=?",
+            Integer.class,jobId));
+    }
+
+    @Test
+    void retainedLiveEvidenceAllowsNextAuthorityRevisionButCannotVerifyIt(){
+        seedCompositeThreeScreens();
+        Map<String,Object> first=compileComposite(
+            Map.of("processCode","PROC","previewOnly",false,"scopeType","GLOBAL"));
+        long jobId=((Number)((Map<?,?>)((List<?>)first.get("receipts")).get(0)).get("jobId")).longValue();
+        String fingerprint=jdbc.queryForObject(
+            "select framework_composite_dependency_fingerprint('PROC')",String.class);
+        jdbc.update("""
+            insert into integrated_design_autocompletion_receipt(
+              process_code,completion_status,dependency_fingerprint,job_id,started_at)
+            values('PROC','SOURCE_APPLIED_PHYSICAL_QUEUED',?,?,current_timestamp)
+            """,fingerprint,jobId);
+        installExactCanonicalPhysicalEvidence(jobId);
+        assertEquals(45,installExactLiveSmokeEvidence(jobId,false));
+        assertEquals(CompositePhysicalEvidenceService.Verdict.EXACT,
+            new CompositePhysicalEvidenceService(jdbc).assess(jobId,"PROC"),
+            ()->String.valueOf(jdbc.queryForMap("""
+                select count(*)::integer as "evidenceCount",
+                       count(*) filter(where evidence.observed_at<job.completed_at)::integer
+                         as "beforeCompletion",
+                       count(*) filter(where evidence.observed_at>evidence.recorded_at)::integer
+                         as "afterRecording",
+                       min(extract(epoch from(evidence.observed_at-job.completed_at)))
+                         as "minAfterCompletionSeconds",
+                       min(extract(epoch from(evidence.recorded_at-evidence.observed_at)))
+                         as "minBeforeRecordingSeconds",
+                       count(*) filter(where evidence.authority_revision<>
+                         authority.authority_revision)::integer as "revisionInvalid",
+                       count(*) filter(where evidence.project_id<>'*')::integer as "projectInvalid",
+                       count(*) filter(where evidence.lane_evidence->>'artifactHash'<>
+                         framework_try_jsonb(job.result_json)#>>
+                           '{canonicalGeneration,compositeArtifactManifestHash}')::integer
+                         as "artifactInvalid",
+                       (select count(*)::integer from(select authority_id,command_code,scenario_code,
+                              status_case from integrated_design_live_smoke_evidence where job_id=?
+                              group by authority_id,command_code,scenario_code,status_case
+                             having count(distinct account_hash)>1 or count(distinct command_hash)>1
+                                 or count(distinct input_hash)>1 or count(distinct output_hash)>1
+                                 or count(distinct state_hash)>1 or count(distinct status_hash)>1) drift)
+                         as "crossLaneDrift"
+                  from integrated_design_live_smoke_evidence evidence
+                  join framework_development_job job on job.job_id=evidence.job_id
+                  join integrated_design_authority authority
+                    on authority.authority_id=evidence.authority_id
+                 where evidence.job_id=? group by job.result_json
+                """,jobId,jobId)));
+        long priorRevision=jdbc.queryForObject(
+            "select min(authority_revision) from integrated_design_authority",Long.class);
+
+        jdbc.update("""
+            update framework_professional_screen_contract
+               set business_purpose=business_purpose||' revision two'
+             where process_code='PROC' and route_path='/work-a'
+            """);
+        Map<String,Object> next=compileComposite(
+            Map.of("processCode","PROC","previewOnly",false,"scopeType","GLOBAL"));
+        long reusedJobId=((Number)((Map<?,?>)((List<?>)next.get("receipts")).get(0)).get("jobId")).longValue();
+        assertEquals(jobId,reusedJobId);
+        assertTrue(jdbc.queryForObject(
+            "select max(authority_revision) from integrated_design_authority",Long.class)>priorRevision);
+        assertEquals(45,jdbc.queryForObject(
+            "select count(*) from integrated_design_live_smoke_evidence where job_id=?",
+            Integer.class,jobId));
+        installExactCanonicalPhysicalEvidence(jobId);
+        assertEquals(CompositePhysicalEvidenceService.Verdict.LIVE_SMOKE_TEST_PENDING,
+            new CompositePhysicalEvidenceService(jdbc).assess(jobId,"PROC"));
     }
 
     @Test
@@ -1968,8 +2220,8 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
     @Test
     void dependencyFingerprintTracksLayoutDatabaseCatalogAndRelayValidity(){
         seedCompositeThreeScreens();
-        transaction.execute(status->service.compileIntegratedDesignProcess(Map.of(
-            "processCode","PROC","previewOnly",false,"scopeType","GLOBAL"),"system-admin"));
+        compileComposite(Map.of(
+            "processCode","PROC","previewOnly",false,"scopeType","GLOBAL"));
         String original=jdbc.queryForObject(
             "select framework_composite_dependency_fingerprint('PROC')",String.class);
         jdbc.update("update framework_screen_resource set layout_type='KRDS_ALTERNATE' "+
@@ -2072,6 +2324,46 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
         }finally{worker.close();}
     }
 
+    private Map<String,Object> compileComposite(Map<String,Object> request){
+        return transaction.execute(status->{
+            jdbc.queryForMap("select * from refresh_integrated_design_axis_documents('PROC',true)");
+            jdbc.update("""
+                with declared as (
+                  select contract.process_code,contract.step_code,lower(contract.route_path) route_path,
+                         upper(contract.audience) audience,jsonb_agg(jsonb_build_object(
+                           'scenarioCode',operation->>'commandCode'||'_'||status_case,
+                           'commandCode',operation->>'commandCode',
+                           'inputValues',coalesce((select jsonb_object_agg(field_code,
+                             to_jsonb('fixture-'||lower(field_code)) order by field_code)
+                             from jsonb_array_elements_text(operation->'requestFields') field_code),'{}'::jsonb),
+                           'expectedOutputFields',operation->'responseFields',
+                           'expectedStatus',status_case,
+                           'assertionCodes',jsonb_build_array('STATUS_MATCH','OUTPUT_FIELDS_MATCH'))
+                           order by operation->>'commandCode' collate "C",status_order) scenarios
+                    from framework_professional_screen_contract contract
+                    cross join lateral jsonb_array_elements(
+                      framework_try_jsonb(contract.api_contract)) operation
+                    cross join (values(1,'SUCCESS'),(2,'VALIDATION_ERROR'),(3,'FORBIDDEN'),
+                      (4,'CONFLICT'),(5,'RECOVERY')) status(status_order,status_case)
+                   where contract.process_code='PROC'
+                   group by contract.process_code,contract.step_code,lower(contract.route_path),
+                            upper(contract.audience)
+                )
+                update integrated_design_document document
+                   set content=jsonb_set(framework_try_jsonb(document.content),'{payload,scenarios}',
+                         declared.scenarios,true)::text,
+                       status='READY',updated_by='MANUAL_LIVE_SMOKE_FIXTURE'
+                  from declared
+                 where document.process_code=declared.process_code
+                   and document.step_code=declared.step_code
+                   and document.route_path=declared.route_path and document.audience=declared.audience
+                   and document.document_type='TEST' and document.updated_by='LIVE_CONTRACT_BACKFILL'
+                   and framework_try_jsonb(document.content)#>'{payload,scenarios}'='[]'::jsonb
+                """);
+            return service.compileIntegratedDesignProcess(request,"system-admin");
+        });
+    }
+
     @SuppressWarnings("unchecked")
     private void installExactCanonicalPhysicalEvidence(long jobId){
         Map<String,Object> job=jdbc.queryForMap("""
@@ -2100,7 +2392,8 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
         jdbc.update("""
             update framework_development_job
                set job_status='VERIFIED',quality_status='VERIFIED',
-                   result_json=?,evidence_ref=?,rollback_ref=?,completed_at=current_timestamp,
+                   result_json=?,evidence_ref=?,rollback_ref=?,
+                   completed_at=clock_timestamp(),
                    lease_token=null,lease_until=null
              where job_id=?
             """,json(Map.of("commit",commit,"canonicalGeneration",evidence)),
@@ -2123,15 +2416,129 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
             """,jobId,json(evidence));
     }
 
+    @SuppressWarnings("unchecked")
+    private int installExactLiveSmokeEvidence(long jobId,boolean omitOne){
+        return installExactLiveSmokeEvidence(jobId,omitOne,false,false);
+    }
+
+    private int installExactLiveSmokeEvidence(long jobId,boolean omitOne,
+            boolean forgeOneLaneOutput,boolean exerciseWriterMutants){
+        jdbc.update("""
+            insert into comtnemplyrinfo(emplyr_id,esntl_id,emplyr_sttus_code)
+            values('denied-live-user','DENIED_LIVE_ESNTL','P')
+            on conflict(emplyr_id) do update set emplyr_sttus_code='P'
+            """);
+        jdbc.update("""
+            insert into comtnemplyrscrtyestbs(scrty_dtrmn_trget_id,author_code)
+            values('DENIED_LIVE_ESNTL','ROLE_LIVE_SMOKE_DENIED')
+            on conflict(scrty_dtrmn_trget_id) do update set author_code=excluded.author_code
+            """);
+        CompositeLiveSmokeEvidenceService writer=new CompositeLiveSmokeEvidenceService(
+            jdbc,new ObjectMapper());
+        String canonicalArtifact=jdbc.queryForObject("""
+            select framework_try_jsonb(result_json)#>>
+                     '{canonicalGeneration,compositeArtifactManifestHash}'
+              from framework_development_job where job_id=?
+            """,String.class,jobId);
+        int writes=0;boolean omitted=false,forgedOutput=false,mutantsExercised=false;
+        for(Map<String,Object> authority:jdbc.queryForList("""
+            select authority_id as "authorityId",route_path as "routePath",
+                   composite_json::text as "composite"
+              from integrated_design_authority where job_id=? order by authority_id
+            """,jobId)){
+            Map<String,Object> composite;
+            try{composite=new ObjectMapper().readValue(String.valueOf(authority.get("composite")),Map.class);}
+            catch(Exception error){throw new IllegalStateException(error);}
+            Map<String,Object> design=(Map<String,Object>)composite.get("executableDesign");
+            List<Map<String,Object>> scenarios=(List<Map<String,Object>>)((Map<String,Object>)
+                design.get("TEST")).get("scenarios");
+            List<Map<String,Object>> transitions=(List<Map<String,Object>>)((Map<String,Object>)
+                design.get("STATE")).get("states");
+            List<Map<String,Object>> operations=(List<Map<String,Object>>)((Map<String,Object>)
+                design.get("API")).get("operations");
+            List<Map<String,Object>> entities=(List<Map<String,Object>>)((Map<String,Object>)
+                design.get("DATABASE")).get("entities");
+            String entityTarget="entities:"+String.join(",",entities.stream()
+                .map(row->String.valueOf(row.get("entity"))).sorted().toList());
+            for(Map<String,Object> scenario:scenarios){
+                String command=String.valueOf(scenario.get("commandCode"));
+                String status=String.valueOf(scenario.get("expectedStatus"));
+                Map<String,Object> transition=transitions.stream().filter(row->
+                    command.equals(row.get("commandCode"))).findFirst().orElseThrow();
+                Map<String,Object> operation=operations.stream().filter(row->
+                    command.equals(row.get("commandCode"))).findFirst().orElseThrow();
+                Map<String,Object> output=new LinkedHashMap<>();
+                for(Object field:(List<?>)scenario.get("expectedOutputFields"))output.put(String.valueOf(field),1);
+                for(String lane:List.of("API","DATABASE","BROWSER")){
+                    if(omitOne&&!omitted&&"RECOVERY".equals(status)&&"BROWSER".equals(lane)){
+                        omitted=true;continue;
+                    }
+                    String target=switch(lane){case "API"->operation.get("method")+" "+operation.get("path");
+                        case "DATABASE"->entityTarget;default->String.valueOf(authority.get("routePath"));};
+                    String identity=jobId+"|"+authority.get("authorityId")+"|"+command+"|"+
+                        scenario.get("scenarioCode")+"|"+lane;
+                    String proofHash=CompositeExecutableDesignAuthorityCompiler.hash(identity);
+                    Map<String,Object> details=switch(lane){
+                        case "API"->Map.of("transportHash",proofHash);
+                        case "DATABASE"->Map.of("rereadHash",proofHash,"transactionHash",
+                            CompositeExecutableDesignAuthorityCompiler.hash(identity+"|tx"));
+                        default->Map.of("domHash",proofHash,"screenshotHash",
+                            CompositeExecutableDesignAuthorityCompiler.hash(identity+"|screen"),"rendered",true);
+                    };
+                    Map<String,Object> laneOutput=output;
+                    if(forgeOneLaneOutput&&!forgedOutput&&"SUCCESS".equals(status)
+                            &&"BROWSER".equals(lane)){
+                        laneOutput=new LinkedHashMap<>(output);
+                        String firstField=laneOutput.keySet().stream().findFirst().orElseThrow();
+                        laneOutput.put(firstField,999999);forgedOutput=true;
+                    }
+                    Map<String,Object> body=new LinkedHashMap<>();
+                    body.put("jobId",jobId);body.put("authorityId",authority.get("authorityId"));
+                    body.put("lane",lane);body.put("statusCase",status);
+                    body.put("scenarioCode",scenario.get("scenarioCode"));body.put("tenantId","TENANT");
+                    body.put("projectId","*");body.put("input",scenario.get("inputValues"));
+                    body.put("output",laneOutput);body.put("observedState","SUCCESS".equals(status)
+                        ?transition.get("toState"):transition.get("fromState"));
+                    body.put("targetRef",target);body.put("laneDetails",details);
+                    body.put("runId",UUID.nameUUIDFromBytes(identity.getBytes(StandardCharsets.UTF_8)).toString());
+                    body.put("artifactHash",canonicalArtifact);
+                    body.put("observedAt",jdbc.queryForObject(
+                        "select clock_timestamp()::text",
+                        String.class).replace(' ','T'));
+                    String account="FORBIDDEN".equals(status)?"denied-live-user":"system-admin";
+                    if(exerciseWriterMutants&&!mutantsExercised){
+                        int before=count("integrated_design_live_smoke_evidence");
+                        Map<String,Object> fractional=new LinkedHashMap<>(body);
+                        fractional.put("jobId",1.5d);
+                        assertThrows(IllegalArgumentException.class,()->writer.record(fractional,account));
+                        Map<String,Object> beforeDeploy=new LinkedHashMap<>(body);
+                        beforeDeploy.put("observedAt",OffsetDateTime.now().minusYears(1).toString());
+                        assertThrows(IllegalArgumentException.class,()->writer.record(beforeDeploy,account));
+                        Map<String,Object> future=new LinkedHashMap<>(body);
+                        future.put("observedAt",OffsetDateTime.now().plusYears(1).toString());
+                        assertThrows(IllegalArgumentException.class,()->writer.record(future,account));
+                        Map<String,Object> wrongArtifact=new LinkedHashMap<>(body);
+                        wrongArtifact.put("artifactHash","f".repeat(64));
+                        assertThrows(IllegalArgumentException.class,()->writer.record(wrongArtifact,account));
+                        assertEquals(before,count("integrated_design_live_smoke_evidence"));
+                        mutantsExercised=true;
+                    }
+                    writes+=((Number)writer.record(body,account).get("writeCount")).intValue();
+                }
+            }
+        }
+        return writes;
+    }
+
     @Test
     void workerLocksAndReusesExactCurrentProjectScope(){
         seedCompositeThreeScreens();String sha="f".repeat(64),nextSha="e".repeat(64);
-        transaction.execute(status->service.compileIntegratedDesignProcess(Map.of(
+        compileComposite(Map.of(
             "processCode","PROC","previewOnly",false,"scopeType","PROJECT",
-            "projectId","PROJECT_A","designVersion",7,"contractSha256",sha),"system-admin"));
-        transaction.execute(status->service.compileIntegratedDesignProcess(Map.of(
+            "projectId","PROJECT_A","designVersion",7,"contractSha256",sha));
+        compileComposite(Map.of(
             "processCode","PROC","previewOnly",false,"scopeType","PROJECT",
-            "projectId","PROJECT_A","designVersion",8,"contractSha256",nextSha),"system-admin"));
+            "projectId","PROJECT_A","designVersion",8,"contractSha256",nextSha));
         CompositeDesignOperationalWorker worker=new CompositeDesignOperationalWorker(
             jdbc,new ObjectMapper(),service,new DataSourceTransactionManager(dataSource),
             false,8,25,false);
@@ -2156,9 +2563,9 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
     @Test
     void runtimeUsesExactProjectIdentityAndRejectsForgedCurrentBinding(){
         seedCompositeThreeScreens();String sha="f".repeat(64);
-        transaction.execute(status->service.compileIntegratedDesignProcess(Map.of(
+        compileComposite(Map.of(
             "processCode","PROC","previewOnly",false,"scopeType","PROJECT",
-            "projectId","PROJECT_A","designVersion",7,"contractSha256",sha),"system-admin"));
+            "projectId","PROJECT_A","designVersion",7,"contractSha256",sha));
         CompositeRuntimePolicyService runtime=new CompositeRuntimePolicyService(jdbc);
         assertEquals("PRIMARY_ACTOR",runtime.resolveActor(
             "PROJECT_A","PROC","STEP","/work-a","USER"));
@@ -3374,14 +3781,18 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
     }
 
     private String schemaFingerprint(String route){
-        return jdbc.queryForObject("""
-            select coalesce(authority.composite_json#>>'{executableDesign,DATABASE,schemaFingerprint}',
-                            framework_try_jsonb(contract.data_contract)->>'schemaFingerprint')
+        String encoded=jdbc.queryForObject("""
+            select coalesce((authority.composite_json#>'{executableDesign,DATABASE,schemaChanges}'
+                              ->0)::text,
+                            (framework_try_jsonb(contract.data_contract)->'schemaChanges'->0)::text)
               from framework_professional_screen_contract contract
               left join integrated_design_authority authority on authority.contract_id=contract.contract_id
              where contract.process_code='PROC' and contract.route_path=?
             """,
             String.class,route);
+        try{return CompositeDatabasePlanService.tableSchemaFingerprint(
+            new ObjectMapper().readValue(encoded,Map.class));}
+        catch(Exception error){throw new IllegalStateException(error);}
     }
 
     private void seedCompositeThreeScreens(){
@@ -4205,5 +4616,41 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
             if(Files.isRegularFile(candidate))return candidate;
         }
         throw new IllegalStateException("repository file not found: "+relative);
+    }
+
+    private String renderSafeMigrationSql(List<Map<String,Object>> changes) throws Exception{
+        Path script=findRepositoryFile("ops/scripts/generate-safe-migrations-from-design.py");
+        Path root=script.getParent().getParent().getParent();
+        Path directory=Files.createTempDirectory("composite-marker-generator-");
+        Path input=directory.resolve("PROC--STEP.json"),output=directory.resolve("migration.sql");
+        try{
+            Files.writeString(input,json(Map.of("process",Map.of("code","PROC"),
+                "step",Map.of("code","STEP"),"database",Map.of(
+                    "autoGenerateMigration",true,"schemaChanges",changes))),StandardCharsets.UTF_8);
+            String python=System.getenv().getOrDefault("DIRECT_CODEGEN_PYTHON","python3");
+            Process process=new ProcessBuilder(python,script.toString(),input.toString(),
+                "--root",root.toString(),"--render-sql",output.toString())
+                .redirectErrorStream(true).start();
+            String log=new String(process.getInputStream().readAllBytes(),StandardCharsets.UTF_8);
+            if(!process.waitFor(30,TimeUnit.SECONDS)){process.destroyForcibly();throw new IllegalStateException(
+                "safe migration generator timed out");}
+            if(process.exitValue()!=0)throw new IllegalStateException(
+                "safe migration generator failed: "+log);
+            return Files.readString(output,StandardCharsets.UTF_8);
+        }finally{
+            Files.deleteIfExists(output);Files.deleteIfExists(input);Files.deleteIfExists(directory);
+        }
+    }
+
+    private Map<String,Object> compositePublicationXmins(){
+        return jdbc.queryForMap("""
+            select string_agg(authority_id||':'||authority_revision||':'||xmin::text,','
+                     order by authority_id) as authorities,
+                   (select string_agg(document_id||':'||revision||':'||xmin::text,','
+                     order by document_id) from integrated_design_document) as documents,
+                   (select string_agg(job_id||':'||xmin::text,',' order by job_id)
+                     from framework_development_job) as jobs
+              from integrated_design_authority
+            """);
     }
 }

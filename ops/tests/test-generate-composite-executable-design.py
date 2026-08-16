@@ -33,6 +33,12 @@ def design() -> dict:
         "uniqueConstraints": [],
         "indexes": [],
     }]
+    test_scenarios = [{
+        "scenarioCode": f"SAVE_{status}", "commandCode": "SAVE",
+        "inputValues": {"name": "Alice"}, "expectedOutputFields": ["id"],
+        "expectedStatus": status,
+        "assertionCodes": ["STATUS_MATCH", "OUTPUT_FIELDS_MATCH", "NOTIFICATION_QUEUED"],
+    } for status in ("SUCCESS", "VALIDATION_ERROR", "FORBIDDEN", "CONFLICT", "RECOVERY")]
     return {
         "REQUIREMENT": {"workTypeCode": "WORK", "businessPurpose": "Save work",
             "entryCondition": "Draft exists", "exitCondition": "Record saved",
@@ -77,10 +83,7 @@ def design() -> dict:
             "errorCode": "NAME_REQUIRED"}], "exceptionStatesVerified": True},
         "NOTIFICATION": {"events": [{"eventCode": "SAVED", "commandCode": "SAVE",
             "channel": "IN_APP", "recipientActorCode": "ACTOR", "templateCode": "WORK_SAVED"}]},
-        "TEST": {"scenarios": [{"scenarioCode": "HAPPY", "commandCode": "SAVE",
-            "inputValues": {"name": "Alice"}, "expectedOutputFields": ["id"],
-            "expectedStatus": "SUCCESS",
-            "assertionCodes": ["STATUS_MATCH", "OUTPUT_FIELDS_MATCH", "NOTIFICATION_QUEUED"]}]},
+        "TEST": {"scenarios": test_scenarios},
         "TASK_EVIDENCE": {"evidence": [{"evidenceType": "E2E", "reference": "evidence://save"}]},
         "RELEASE_AUDIT": {"auditEvidenceRef": "audit://save",
             "rollbackPolicy": {"mode": "TRANSACTION_ROLLBACK", "preserveManual": True,
@@ -215,6 +218,31 @@ def mutate(axis: str, value: dict) -> None:
 
 
 class CompositeGeneratorTest(unittest.TestCase):
+    def test_each_command_requires_every_expected_status_exactly_once(self) -> None:
+        positive = design()
+        self.assertEqual(GEN.COMPOSITE_EXPECTED_STATUSES,
+                         {row["expectedStatus"] for row in positive["TEST"]["scenarios"]})
+        GEN.validate_executable_payload(positive)
+
+        success_only = design()
+        success_only["TEST"]["scenarios"] = [row for row in success_only["TEST"]["scenarios"]
+                                               if row["expectedStatus"] == "SUCCESS"]
+        with self.assertRaisesRegex(GEN.ContractError, "expectedStatus coverage is not exact"):
+            GEN.validate_executable_payload(success_only)
+
+        missing = design()
+        missing["TEST"]["scenarios"] = [row for row in missing["TEST"]["scenarios"]
+                                        if row["expectedStatus"] != "RECOVERY"]
+        with self.assertRaisesRegex(GEN.ContractError, "expectedStatus coverage is not exact"):
+            GEN.validate_executable_payload(missing)
+
+        duplicate = design()
+        repeated = copy.deepcopy(duplicate["TEST"]["scenarios"][0])
+        repeated["scenarioCode"] = "SAVE_SUCCESS_DUPLICATE"
+        duplicate["TEST"]["scenarios"].append(repeated)
+        with self.assertRaisesRegex(GEN.ContractError, "expectedStatus is duplicated for command"):
+            GEN.validate_executable_payload(duplicate)
+
     def test_screen_database_plans_merge_by_table_and_reject_conflicts(self) -> None:
         item = safe_create_all_status_design()["DATABASE"]
         approval = copy.deepcopy(item)
@@ -280,8 +308,9 @@ class CompositeGeneratorTest(unittest.TestCase):
                 ["api"]["operations"][0]["path"])
             composite = [case for case in projected["tests"]
                          if case.get("schema") == GEN.COMPOSITE_TEST_CASE_SCHEMA]
-            self.assertEqual(1, len(composite))
-            self.assertEqual("SUCCESS", composite[0]["expectedStatus"])
+            self.assertEqual(5, len(composite))
+            self.assertEqual(GEN.COMPOSITE_EXPECTED_STATUSES,
+                             {case["expectedStatus"] for case in composite})
             self.assertNotIn("compositeTests", projected)
             self.assertTrue(projected["testExecution"]["liveSmokeRequired"])
             self.assertEqual("QUEUED", projected["testExecution"]["liveSmokeStatus"])

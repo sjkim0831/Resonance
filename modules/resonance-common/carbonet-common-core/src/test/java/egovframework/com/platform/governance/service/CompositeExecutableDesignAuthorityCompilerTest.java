@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -15,6 +16,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class CompositeExecutableDesignAuthorityCompilerTest {
     private static final ObjectMapper JSON=new ObjectMapper();
     private static final String PROCESS="PROCESS_A",STEP="STEP_A",ROUTE="/work/a",AUDIENCE="USER";
+    private static final List<String> TEST_STATUSES=List.of(
+        "SUCCESS","VALIDATION_ERROR","FORBIDDEN","CONFLICT","RECOVERY");
 
     @Test
     void compilesAllEighteenAxesIntoOneReviewableHashAuthority(){
@@ -179,6 +182,7 @@ class CompositeExecutableDesignAuthorityCompilerTest {
         Map<String,Object> source=twoCommandSource(documents);
         var compiled=compile(documents,source);
         assertEquals(2,((List<?>)compiled.resolvedClosure().get("functions")).size());
+        assertEquals(10,((List<?>)map(axis(documents,"TEST").get("payload")).get("scenarios")).size());
 
         Map<String,Map<String,Object>> swapped=twoCommandDocuments();
         Map<String,Object> api=axis(swapped,"API");
@@ -195,6 +199,39 @@ class CompositeExecutableDesignAuthorityCompilerTest {
         map(((List<?>)map(duplicateApi.get("payload")).get("operations")).get(1)).put("commandCode","SAVE");
         replaceAxis(duplicate,"API",duplicateApi);duplicate.values().forEach(row->row.put("updatedBy","MANUAL"));
         assertThrows(IllegalStateException.class,()->compile(duplicate,twoCommandSource(duplicate)));
+    }
+
+    @Test
+    void everyCommandRequiresEachExpectedTestStatusExactlyOnce(){
+        Map<String,Map<String,Object>> positive=documents();
+        assertEquals(5,((List<?>)map(axis(positive,"TEST").get("payload")).get("scenarios")).size());
+        compile(positive,source());
+
+        Map<String,Map<String,Object>> successOnly=documents();
+        replacePayload(successOnly,"TEST","scenarios",List.of(
+            testScenario("SAVE","SUCCESS",Map.of("name","sample"),List.of("id"))));
+        IllegalStateException successFailure=assertThrows(IllegalStateException.class,
+            ()->compile(successOnly,source()));
+        assertTrue(successFailure.getMessage().contains("TEST_EXPECTED_STATUS_COVERAGE_NOT_EXACT"));
+
+        Map<String,Map<String,Object>> missing=documents();
+        List<Map<String,Object>> missingScenarios=new ArrayList<>(
+            testScenarios("SAVE",Map.of("name","sample"),List.of("id")));
+        missingScenarios.removeIf(row->"RECOVERY".equals(row.get("expectedStatus")));
+        replacePayload(missing,"TEST","scenarios",missingScenarios);
+        IllegalStateException missingFailure=assertThrows(IllegalStateException.class,
+            ()->compile(missing,source()));
+        assertTrue(missingFailure.getMessage().contains("TEST_EXPECTED_STATUS_COVERAGE_NOT_EXACT"));
+
+        Map<String,Map<String,Object>> duplicate=documents();
+        List<Map<String,Object>> duplicatedScenarios=new ArrayList<>(
+            testScenarios("SAVE",Map.of("name","sample"),List.of("id")));
+        Map<String,Object> duplicated=new LinkedHashMap<>(duplicatedScenarios.get(0));
+        duplicated.put("scenarioCode","SAVE_SUCCESS_DUPLICATE");duplicatedScenarios.add(duplicated);
+        replacePayload(duplicate,"TEST","scenarios",duplicatedScenarios);
+        IllegalStateException duplicateFailure=assertThrows(IllegalStateException.class,
+            ()->compile(duplicate,source()));
+        assertTrue(duplicateFailure.getMessage().contains("TEST_EXPECTED_STATUS_DUPLICATE"));
     }
 
     @Test
@@ -215,8 +252,11 @@ class CompositeExecutableDesignAuthorityCompilerTest {
         Map<String,Object> operation=map(((List<?>)map(api.get("payload")).get("operations")).get(0));
         operation.put("requestFields",List.of());operation.put("responseFields",List.of());replaceAxis(zero,"API",api);
         Map<String,Object> test=axis(zero,"TEST");
-        Map<String,Object> scenario=map(((List<?>)map(test.get("payload")).get("scenarios")).get(0));
-        scenario.put("inputValues",Map.of());scenario.put("expectedOutputFields",List.of());replaceAxis(zero,"TEST",test);
+        for(Object value:(List<?>)map(test.get("payload")).get("scenarios")){
+            Map<String,Object> scenario=map(value);
+            scenario.put("inputValues",Map.of());scenario.put("expectedOutputFields",List.of());
+        }
+        replaceAxis(zero,"TEST",test);
         zero.values().forEach(row->row.put("updatedBy","MANUAL"));
         Map<String,Object> source=source();source.put("stepInputContract","{}");source.put("stepOutputContract","{}");
         assertEquals(0,((List<?>)compile(zero,source).resolvedClosure().get("inputs")).size());
@@ -225,6 +265,21 @@ class CompositeExecutableDesignAuthorityCompilerTest {
         map(((List<?>)map(validation.get("payload")).get("rules")).get(0)).put("fieldCode",null);
         replaceAxis(nullable,"VALIDATION",validation);
         assertThrows(IllegalArgumentException.class,()->compile(nullable,source()));
+    }
+
+    @Test
+    void duplicateDatabaseTableIsRejectedBeforeSourceProjection(){
+        Map<String,Map<String,Object>> duplicate=documents();
+        Map<String,Object> database=axis(duplicate,"DATABASE");
+        Map<String,Object> payload=map(database.get("payload"));
+        Map<String,Object> change=map(((List<?>)payload.get("schemaChanges")).get(0));
+        List<Map<String,Object>> changes=List.of(change,new LinkedHashMap<>(change));
+        payload.put("schemaChanges",changes);payload.put("schemaFingerprint",schemaHash(changes));
+        replaceAxis(duplicate,"DATABASE",database);
+        duplicate.values().forEach(row->row.put("updatedBy","MANUAL"));
+        IllegalArgumentException failure=assertThrows(IllegalArgumentException.class,
+            ()->compile(duplicate,source()));
+        assertTrue(failure.getMessage().contains("DATABASE_TABLE_DUPLICATE"),failure.getMessage());
     }
 
     @Test
@@ -327,10 +382,8 @@ class CompositeExecutableDesignAuthorityCompilerTest {
         payloads.put("NOTIFICATION",linked("events",List.of(linked(
             "eventCode","SAVED","commandCode","SAVE","channel","IN_APP",
             "recipientActorCode","ACTOR","templateCode","SAVED_TEMPLATE"))));
-        payloads.put("TEST",linked("scenarios",List.of(linked("scenarioCode","SAVE_HAPPY",
-            "commandCode","SAVE","inputValues",Map.of("name","sample"),"expectedOutputFields",List.of("id"),
-            "expectedStatus","SUCCESS","assertionCodes",List.of("STATUS_MATCH","OUTPUT_FIELDS_MATCH",
-                "RULES_PASS","VALIDATION_PASS","NOTIFICATION_QUEUED","RELAY_READY")))));
+        payloads.put("TEST",linked("scenarios",
+            testScenarios("SAVE",Map.of("name","sample"),List.of("id"))));
         List<Map<String,Object>> evidence=List.of(linked("evidenceType","E2E","reference","evidence://save"));
         payloads.put("TASK_EVIDENCE",linked("evidence",evidence));
         payloads.put("RELEASE_AUDIT",linked("auditEvidenceRef","audit://save","rollbackPolicy",
@@ -420,16 +473,10 @@ class CompositeExecutableDesignAuthorityCompilerTest {
                 "recipientActorCode","ACTOR","templateCode","SAVED_TEMPLATE"),
             linked("eventCode","APPROVED","commandCode","APPROVE","channel","IN_APP",
                 "recipientActorCode","ACTOR","templateCode","APPROVED_TEMPLATE")));
-        replacePayload(documents,"TEST","scenarios",List.of(
-            linked("scenarioCode","SAVE_HAPPY","commandCode","SAVE","inputValues",Map.of("name","sample"),
-                "expectedOutputFields",List.of("id"),"expectedStatus","SUCCESS",
-                "assertionCodes",List.of("STATUS_MATCH","OUTPUT_FIELDS_MATCH","RULES_PASS","VALIDATION_PASS")),
-            linked("scenarioCode","SAVE_RETRY","commandCode","SAVE","inputValues",Map.of("name","sample"),
-                "expectedOutputFields",List.of("id"),"expectedStatus","RECOVERY",
-                "assertionCodes",List.of("STATUS_MATCH","OUTPUT_FIELDS_MATCH")),
-            linked("scenarioCode","APPROVE_HAPPY","commandCode","APPROVE","inputValues",Map.of("amount",1),
-                "expectedOutputFields",List.of("status"),"expectedStatus","SUCCESS",
-                "assertionCodes",List.of("STATUS_MATCH","OUTPUT_FIELDS_MATCH","RULES_PASS"))));
+        List<Map<String,Object>> scenarios=new ArrayList<>(
+            testScenarios("SAVE",Map.of("name","sample"),List.of("id")));
+        scenarios.addAll(testScenarios("APPROVE",Map.of("amount",1),List.of("status")));
+        replacePayload(documents,"TEST","scenarios",scenarios);
         documents.values().forEach(row->row.put("updatedBy","MANUAL"));return documents;
     }
 
@@ -444,6 +491,21 @@ class CompositeExecutableDesignAuthorityCompilerTest {
                 new String[]{"API","apiContract","operations"},new String[]{"DATABASE","dataContract","entities"}))
             source.put(mapping[1],write(map(axis(documents,mapping[0]).get("payload")).get(mapping[2])));
         return source;
+    }
+
+    private static List<Map<String,Object>> testScenarios(String command,
+            Map<String,Object> inputValues,List<String> expectedOutputFields){
+        List<Map<String,Object>> scenarios=new ArrayList<>();
+        for(String status:TEST_STATUSES)
+            scenarios.add(testScenario(command,status,inputValues,expectedOutputFields));
+        return scenarios;
+    }
+
+    private static Map<String,Object> testScenario(String command,String status,
+            Map<String,Object> inputValues,List<String> expectedOutputFields){
+        return linked("scenarioCode",command+"_"+status,"commandCode",command,
+            "inputValues",inputValues,"expectedOutputFields",expectedOutputFields,
+            "expectedStatus",status,"assertionCodes",List.of("STATUS_MATCH","OUTPUT_FIELDS_MATCH"));
     }
 
     private static void replacePayload(Map<String,Map<String,Object>> documents,String type,String key,Object value){

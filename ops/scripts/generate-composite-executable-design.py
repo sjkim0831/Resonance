@@ -371,7 +371,7 @@ def validate_executable_payload(design: dict[str, Any]) -> None:
     if set(command_inputs) != command_codes:
         raise ContractError("API command coverage is not exact")
     tested_commands: set[str] = set()
-    successful_commands: set[str] = set()
+    statuses_by_command: dict[str, set[str]] = {}
     scenario_codes: set[str] = set()
     for axis, field in (("BUSINESS_RULE", "rules"), ("VALIDATION", "rules"),
                         ("NOTIFICATION", "events"), ("TEST", "scenarios")):
@@ -410,18 +410,21 @@ def validate_executable_payload(design: dict[str, Any]) -> None:
                     raise ContractError("TEST expectedOutputFields are not exact")
                 if row["expectedStatus"] not in COMPOSITE_EXPECTED_STATUSES:
                     raise ContractError("TEST expectedStatus is invalid")
+                command_statuses = statuses_by_command.setdefault(row["commandCode"], set())
+                if row["expectedStatus"] in command_statuses:
+                    raise ContractError("TEST expectedStatus is duplicated for command")
+                command_statuses.add(row["expectedStatus"])
                 assertions = row["assertionCodes"]
                 if (not isinstance(assertions, list) or len(set(assertions)) != len(assertions)
                         or not {"STATUS_MATCH", "OUTPUT_FIELDS_MATCH"}.issubset(assertions)
                         or not set(assertions).issubset(COMPOSITE_ASSERTION_CODES)):
                     raise ContractError("TEST assertions are incomplete")
                 tested_commands.add(row["commandCode"])
-                if row["expectedStatus"] == "SUCCESS":
-                    successful_commands.add(row["commandCode"])
     if tested_commands != command_codes:
         raise ContractError("TEST command coverage is not exact")
-    if successful_commands != command_codes:
-        raise ContractError("TEST SUCCESS scenario coverage is not exact")
+    for command in command_codes:
+        if statuses_by_command.get(command) != COMPOSITE_EXPECTED_STATUSES:
+            raise ContractError(f"TEST expectedStatus coverage is not exact: {command}")
 
 
 def validate_binding(raw: Any, specification: dict[str, Any]) -> dict[str, Any]:

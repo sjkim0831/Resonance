@@ -33,6 +33,8 @@ final class CompositeExecutableDesignAuthorityCompiler {
         "ACTIVE_UI","DESIGN_ASSET","FIELD_DICTIONARY","DATA_HANDOFF","DATABASE","API",
         "BUSINESS_RULE","VALIDATION","NOTIFICATION","TEST","TASK_EVIDENCE","RELEASE_AUDIT");
     static final Set<String> READY_STATUSES=Set.of("READY","APPROVED","VERIFIED");
+    static final Set<String> EXPECTED_TEST_STATUSES=Set.of(
+        "SUCCESS","VALIDATION_ERROR","FORBIDDEN","CONFLICT","RECOVERY");
     static final Set<String> STEP_SHARED_TYPES=Set.of(
         "REQUIREMENT","PROCESS","STATE","API","BUSINESS_RULE",
         "VALIDATION","NOTIFICATION","TEST");
@@ -554,9 +556,12 @@ final class CompositeExecutableDesignAuthorityCompiler {
             return;
         }
         if(raw.isEmpty())throw fail("DATABASE_SCHEMA_CHANGES_REQUIRED");
-        List<Map<String,Object>> changes=new ArrayList<>();
+        List<Map<String,Object>> changes=new ArrayList<>();Set<String> tableNames=new HashSet<>();
         for(Object value:raw){Map<String,Object> change=object(value,"DATABASE.schemaChanges[]");
-            validateSchemaChange(change,mode);changes.add(change);}
+            validateSchemaChange(change,mode);
+            if(!tableNames.add(text(change,"tableName").toLowerCase(Locale.ROOT)))throw fail(
+                "DATABASE_TABLE_DUPLICATE");
+            changes.add(change);}
         if(!fingerprint.matches("^[0-9a-f]{64}$")||!fingerprint.equals(hash(stable(changes))))
             throw fail("DATABASE_SCHEMA_FINGERPRINT_NOT_EXACT");
         Map<String,Set<String>> entities=new TreeMap<>();
@@ -685,7 +690,8 @@ final class CompositeExecutableDesignAuthorityCompiler {
         references(scenarios,"commandCode",commands,"TEST_COMMAND_CONTRADICTION");
         codes(scenarios,"scenarioCode","TEST.scenarios");
         Set<String> testedCommands=scenarios.stream().map(row->text(row,"commandCode"))
-            .collect(Collectors.toSet()),successfulCommands=new HashSet<>();
+            .collect(Collectors.toSet());
+        Map<String,Set<String>> statusesByCommand=new TreeMap<>();
         if(!testedCommands.equals(commands))
             throw new IllegalStateException("TEST_COMMAND_COVERAGE_NOT_EXACT");
         for(Map<String,Object> scenario:scenarios){
@@ -699,17 +705,18 @@ final class CompositeExecutableDesignAuthorityCompiler {
                     ||!(input.getValue() instanceof String||input.getValue() instanceof Number
                         ||input.getValue() instanceof Boolean))throw fail("TEST_INPUT_VALUE_NOT_EXECUTABLE");
             String expectedStatus=text(scenario,"expectedStatus");
-            if(!Set.of("SUCCESS","VALIDATION_ERROR","FORBIDDEN","CONFLICT","RECOVERY").contains(expectedStatus))
+            if(!EXPECTED_TEST_STATUSES.contains(expectedStatus))
                 throw fail("TEST_EXPECTED_STATUS_INVALID");
+            if(!statusesByCommand.computeIfAbsent(command,ignored->new HashSet<>()).add(expectedStatus))
+                throw new IllegalStateException("TEST_EXPECTED_STATUS_DUPLICATE: "+command+"/"+expectedStatus);
             List<String> assertions=strings(scenario,"assertionCodes");
             if(!new HashSet<>(assertions).containsAll(Set.of("STATUS_MATCH","OUTPUT_FIELDS_MATCH"))
                     ||assertions.stream().anyMatch(code->!Set.of("STATUS_MATCH","OUTPUT_FIELDS_MATCH",
                         "RULES_PASS","VALIDATION_PASS","NOTIFICATION_QUEUED","RELAY_READY").contains(code)))
                 throw fail("TEST_ASSERTION_CONTRACT_NOT_EXECUTABLE");
-            if("SUCCESS".equals(expectedStatus))successfulCommands.add(command);
         }
-        if(!successfulCommands.equals(commands))throw new IllegalStateException(
-            "TEST_SUCCESS_SCENARIO_COVERAGE_NOT_EXACT");
+        for(String command:commands)if(!EXPECTED_TEST_STATUSES.equals(statusesByCommand.get(command)))
+            throw new IllegalStateException("TEST_EXPECTED_STATUS_COVERAGE_NOT_EXACT: "+command);
         rows(axis(axes,"TASK_EVIDENCE"),"evidence","TASK_EVIDENCE.evidence");
     }
 

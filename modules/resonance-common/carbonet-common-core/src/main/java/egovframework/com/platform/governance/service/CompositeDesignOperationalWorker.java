@@ -217,10 +217,16 @@ public class CompositeDesignOperationalWorker {
                 String process=String.valueOf(candidate.get("processCode"));
                 long jobId=((Number)candidate.get("jobId")).longValue();
                 String jobStatus=String.valueOf(candidate.get("jobStatus"));
-                boolean exact=List.of("VERIFIED","COMPLETED").contains(jobStatus)
-                    &&evidence.isExact(jobId,process);
-                int updated=jdbc.update(exact?PROMOTE_EXACT_PHYSICAL_SQL:
-                    REQUEUE_INCOMPLETE_PHYSICAL_SQL,process,jobId);
+                CompositePhysicalEvidenceService.Verdict verdict=
+                    List.of("VERIFIED","COMPLETED").contains(jobStatus)
+                        ?evidence.assess(jobId,process)
+                        :CompositePhysicalEvidenceService.Verdict.CANONICAL_INVALID;
+                String finalizationSql=switch(verdict){
+                    case EXACT -> PROMOTE_EXACT_PHYSICAL_SQL;
+                    case LIVE_SMOKE_TEST_PENDING -> MARK_LIVE_SMOKE_TEST_PENDING_SQL;
+                    case CANONICAL_INVALID -> REQUEUE_INCOMPLETE_PHYSICAL_SQL;
+                };
+                int updated=jdbc.update(finalizationSql,process,jobId);
                 if(updated==0)requeueDependencyDrift();
                 else if(updated!=1)throw new IllegalStateException(
                     "COMPOSITE_PHYSICAL_RECEIPT_CAS_NOT_EXACT: "+process);
@@ -235,6 +241,17 @@ public class CompositeDesignOperationalWorker {
                          (current_timestamp-receipt.started_at))*1000)::bigint),
                        receipt_json=receipt.receipt_json||jsonb_build_object(
                          'generationStatus','PHYSICAL_GENERATED_VERIFIED','physicalVerified',true,
+                         'testStatus','VERIFIED','liveSmokeVerified',true,
+                         'liveSmokeEvidenceCount',(select count(*)
+                           from integrated_design_live_smoke_evidence smoke
+                          where smoke.job_id=job.job_id
+                            and smoke.process_code=receipt.process_code),
+                         'liveSmokeEvidenceSetHash',(select framework_composite_live_smoke_hash(
+                           coalesce(jsonb_agg(smoke.evidence_hash order by smoke.authority_id,
+                             smoke.status_case collate "C",smoke.lane collate "C"),'[]'::jsonb))
+                           from integrated_design_live_smoke_evidence smoke
+                          where smoke.job_id=job.job_id
+                            and smoke.process_code=receipt.process_code),
                          'canonicalGeneration',
                            framework_try_jsonb(job.result_json)->'canonicalGeneration',
                          'jobEvidenceRef',job.evidence_ref),
@@ -364,6 +381,27 @@ public class CompositeDesignOperationalWorker {
                             and event.event_type='CANONICAL_RELEASE_FINALIZED'
                             and framework_try_jsonb(event.detail_json)=proof.evidence)
                     )
+                """;
+    private static final String MARK_LIVE_SMOKE_TEST_PENDING_SQL="""
+                update integrated_design_autocompletion_receipt receipt
+                   set receipt_json=receipt.receipt_json||jsonb_build_object(
+                         'generationStatus','PHYSICAL_QUEUED','testStatus','TEST_PENDING',
+                         'physicalVerified',false,'liveSmokeVerified',false),
+                       blocker_code='TEST_PENDING',completed_at=null,duration_ms=null,
+                       updated_at=current_timestamp
+                  from framework_development_job job
+                 where receipt.process_code=? and receipt.job_id=?
+                   and receipt.completion_status='SOURCE_APPLIED_PHYSICAL_QUEUED'
+                   and receipt.job_id=job.job_id and job.process_code=receipt.process_code
+                   and job.job_type='FULL_STACK_GENERATION'
+                   and job.job_group_code=receipt.process_code||'_CANONICAL_PUBLICATION'
+                   and job.job_status in('VERIFIED','COMPLETED')
+                   and job.quality_status='VERIFIED'
+                   and (receipt.blocker_code is distinct from 'TEST_PENDING'
+                     or receipt.receipt_json->>'generationStatus' is distinct from 'PHYSICAL_QUEUED'
+                     or receipt.receipt_json->>'testStatus' is distinct from 'TEST_PENDING'
+                     or receipt.receipt_json->'physicalVerified' is distinct from 'false'::jsonb
+                     or receipt.receipt_json->'liveSmokeVerified' is distinct from 'false'::jsonb)
                 """;
     private static final String REQUEUE_INCOMPLETE_PHYSICAL_SQL="""
                 update integrated_design_autocompletion_receipt receipt
