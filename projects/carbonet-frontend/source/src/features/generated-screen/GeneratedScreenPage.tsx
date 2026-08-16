@@ -10,9 +10,20 @@ import { materializeScreen, resolveScreenCoordinate } from "./screenSpaceRuntime
 
 type ContractItem = { code: string; label: string; [key: string]: unknown };
 type NextTask = { stepCode: string; actorCode: string; path: string };
+type CommandObservation = { commandCode: string; httpStatus: number; statusCase: string;
+  output: Record<string, unknown>; idempotencyKey: string };
 const list = (value: unknown) => Array.isArray(value) ? value.map(item=>typeof item === "string" ? item : String((item as Record<string,unknown>)?.label || (item as Record<string,unknown>)?.name || (item as Record<string,unknown>)?.code || "")).filter(Boolean) : [];
 const items = (value: unknown, prefix: string): ContractItem[] => Array.isArray(value) ? value.map((item,index)=>typeof item === "string" ? {code:item||`${prefix}_${index+1}`,label:item} : {...(item as Record<string,unknown>),code:String((item as Record<string,unknown>)?.code||`${prefix}_${index+1}`),label:String((item as Record<string,unknown>)?.label||(item as Record<string,unknown>)?.name||(item as Record<string,unknown>)?.code||`${prefix} ${index+1}`)}).filter(item=>item.label) : [];
 const text = (value: unknown) => typeof value === "string" ? value : "";
+const liveSmokeStatuses = new Set(["SUCCESS","VALIDATION_ERROR","FORBIDDEN","CONFLICT","RECOVERY"]);
+const observedStatusCase = (status: number, body: Record<string, unknown>) => {
+  if(status===200&&body.success===true&&body.recovered===true&&body.idempotent===true)return "RECOVERY";
+  if(status===200&&body.success===true&&body.idempotent===false)return "SUCCESS";
+  if(status===400&&body.success===false)return "VALIDATION_ERROR";
+  if(status===403&&body.success===false)return "FORBIDDEN";
+  if(status===409&&body.success===false)return "CONFLICT";
+  return "UNKNOWN";
+};
 const inputClass = "krds-control h-11 w-full rounded-lg border border-slate-300 bg-white px-3 focus:border-[#246beb] focus:outline-none focus:ring-2 focus:ring-blue-100";
 const contractLookupPath = () => {
   const step = new URLSearchParams(location.search).get("step")?.trim() || "";
@@ -41,11 +52,17 @@ function GeneratedContent({ screen, runtimeWarning = "" }: { screen: GeneratedSc
   const commandCode = text(spec.commandCode) || actions[0]?.code || "COMPLETE";
   const initialContext = useMemo(() => { const query=new URLSearchParams(location.search); return {
     tenantId:query.get("tenantId")||"DEFAULT",projectId:query.get("projectId")||"",
-    executionId:query.get("executionId")||""}; }, []);
+    executionId:query.get("executionId")||"",liveSmokeRunId:query.get("liveSmokeRunId")||"",
+    commandCode:query.get("commandCode")||"",statusCase:query.get("statusCase")||"",
+    idempotencyKey:query.get("idempotencyKey")||""}; }, []);
+  const liveSmokeMode=/^[0-9a-f-]{36}$/i.test(initialContext.liveSmokeRunId)
+    &&/^[0-9a-f-]{36}$/i.test(initialContext.idempotencyKey)
+    &&liveSmokeStatuses.has(initialContext.statusCase)&&Boolean(initialContext.commandCode);
   const [tenantId, setTenantId] = useState(initialContext.tenantId), [projectId, setProjectId] = useState(initialContext.projectId), [executionId, setExecutionId] = useState(initialContext.executionId);
   const [values, setValues] = useState<Record<string, string>>({}), [draftVersion, setDraftVersion] = useState(0), [draftStatus, setDraftStatus] = useState("NOT_SAVED"), [busy, setBusy] = useState(false), [message, setMessage] = useState(""), [error, setError] = useState("");
   const [currentState,setCurrentState]=useState(""),[runtimeObserved,setRuntimeObserved]=useState(false),
     [accessDenied,setAccessDenied]=useState(false),[nextTask,setNextTask]=useState<NextTask|null>(null);
+  const [lastObservation,setLastObservation]=useState<CommandObservation|null>(null);
   const [optionSets,setOptionSets]=useState<Record<string,Array<{value:string;label:string}>>>({});
   const apiBase = en ? "/en/home/api/process-executions" : "/home/api/process-executions";
   const fieldEntries = useMemo<ContractItem[]>(() => fields.length ? fields : [{code:"WORK_NOTE",label:en ? "Work note" : "업무 메모"}], [en, fields]);
@@ -90,7 +107,7 @@ function GeneratedContent({ screen, runtimeWarning = "" }: { screen: GeneratedSc
       const result=await response.json() as Record<string,unknown>;
       if(!response.ok){setAccessDenied(response.status===403);throw new Error(String(result.message||
         (response.status===403?(en?"Access denied.":"접근 권한이 없습니다."):
-          (en?"Failed to load the process.":"프로세스 실행 정보를 불러오지 못했습니다.")));}
+          (en?"Failed to load the process.":"프로세스 실행 정보를 불러오지 못했습니다."))));}
       const execution=((result.execution||result) as Record<string,unknown>);
       if(!execution.executionId) throw new Error(en?"No running process exists.":"진행 중인 프로세스가 없습니다.");
       if(expectedExecutionId&&String(execution.executionId).toLowerCase()!==expectedExecutionId.toLowerCase())
@@ -109,10 +126,35 @@ function GeneratedContent({ screen, runtimeWarning = "" }: { screen: GeneratedSc
     const requestFields=Array.isArray(action?.requestFields)?action.requestFields.map(String):null;
     const missing=fieldEntries.filter(field=>field.required===true
       &&(requestFields===null||requestFields.includes(field.code))&&!String(values[field.code]||"").trim());
-    if(missing.length){setError(`${en?"Complete required fields":"필수 항목을 입력하세요"}: ${missing.map(field=>field.label).join(", ")}`);return;}
-    if(draftStatus!=="DRAFT"){setError(en?"Save the work draft before completing this step.":"단계를 완료하기 전에 업무 데이터를 임시저장하세요.");return;}
-    const result=await request(`${apiBase}/${executionId}/commands`, { tenantId, projectId, processCode: screen.processCode, stepCode: screen.stepCode, actorCode: screen.actorCode, routePath: screen.routePath, audience: screen.audience, commandCode: command, idempotencyKey: runtimeUuid(), requestJson: JSON.stringify(values), requireDraft:true });
-    if(!result)return;
+    if(missing.length&&!liveSmokeMode){setError(`${en?"Complete required fields":"필수 항목을 입력하세요"}: ${missing.map(field=>field.label).join(", ")}`);return;}
+    if(draftStatus!=="DRAFT"&&!liveSmokeMode){setError(en?"Save the work draft before completing this step.":"단계를 완료하기 전에 업무 데이터를 임시저장하세요.");return;}
+    if(liveSmokeMode&&command!==initialContext.commandCode){setError("LIVE_SMOKE_COMMAND_NOT_EXACT");return;}
+    const idempotencyKey=liveSmokeMode?initialContext.idempotencyKey:runtimeUuid();
+    const apiPath=text(action?.apiPath).replace("{executionId}",encodeURIComponent(executionId));
+    const apiMethod=text(action?.apiMethod).toUpperCase();
+    setBusy(true);setError("");setMessage("");
+    let result:Record<string,unknown>;
+    try{
+      let response:Response;
+      if(apiPath.startsWith("/")&&!apiPath.includes("{")&&["POST","PUT","PATCH","DELETE"].includes(apiMethod)){
+        const requestInput=Object.fromEntries((requestFields||fieldEntries.map(field=>field.code)).map(fieldCode=>{
+          const field=fieldEntries.find(candidate=>candidate.code===fieldCode),kind=String(field?.dataType||field?.control||"STRING").toUpperCase();
+          const raw=values[fieldCode]??"";
+          return [fieldCode,kind.includes("BOOLEAN")||kind.includes("CHECKBOX")?raw==="true":
+            kind.includes("NUMBER")||kind.includes("DECIMAL")||kind.includes("INTEGER")?Number(raw):raw];
+        }));
+        response=await fetch(apiPath,{method:apiMethod,credentials:"include",headers:{"Content-Type":"application/json"},
+          body:JSON.stringify({...requestInput,tenantId,projectId,actorCode:screen.actorCode,idempotencyKey})});
+      }else{
+        response=await fetch(`${apiBase}/${executionId}/commands`,{method:"POST",credentials:"include",headers:{"Content-Type":"application/json"},body:JSON.stringify({tenantId,projectId,processCode:screen.processCode,stepCode:screen.stepCode,actorCode:screen.actorCode,routePath:screen.routePath,audience:screen.audience,commandCode:command,idempotencyKey,requestJson:JSON.stringify(values),requireDraft:true})});
+      }
+      result=await response.json() as Record<string,unknown>;
+      const statusCase=observedStatusCase(response.status,result);
+      setLastObservation({commandCode:command,httpStatus:response.status,statusCase,output:result,idempotencyKey});
+      if(response.status===403)setAccessDenied(true);
+      if(!response.ok){setError(String(result.message||(en?"The request failed.":"업무 요청에 실패했습니다.")));return;}
+    }catch(reason){setError(reason instanceof Error?reason.message:String(reason));return;}
+    finally{setBusy(false);}
     setDraftStatus("SUBMITTED"); setCurrentState(String(result.toState||currentState));
     const nextStepCode=String(result.nextStepCode||"");
     if(nextStepCode){
@@ -163,7 +205,13 @@ function GeneratedContent({ screen, runtimeWarning = "" }: { screen: GeneratedSc
   return <main className="mx-auto max-w-7xl px-4 py-8 lg:px-8"
     data-access-denied={accessDenied?"true":"false"} data-audience={screen.audience}
     data-current-state={runtimeObserved?currentState:""}
+    data-draft-status={draftStatus} data-draft-version={draftVersion}
     data-execution-id={runtimeObserved?executionId:""} data-process-code={screen.processCode}
+    data-last-command-code={lastObservation?.commandCode||""}
+    data-last-http-status={lastObservation?.httpStatus||""}
+    data-last-idempotency-key={lastObservation?.idempotencyKey||""}
+    data-last-output-json={lastObservation?JSON.stringify(lastObservation.output):""}
+    data-last-status-case={lastObservation?.statusCase||""}
     data-project-id={runtimeObserved?projectId:""} data-runtime-observed={runtimeObserved?"true":"false"}
     data-step-code={screen.stepCode} data-tenant-id={runtimeObserved?tenantId:""}>
     <header className="flex flex-col gap-4 border-b border-slate-200 pb-6 lg:flex-row lg:items-end lg:justify-between"><div><p className="gov-text-label font-black text-[#246beb]">{screen.processCode} · {screen.stepCode}</p><h1 className="gov-text-heading-lg mt-2 font-black text-[#052b57]">{screen.pageName}</h1><p className="gov-text-body mt-2 max-w-3xl text-slate-600">{text(spec.businessPurpose) || `${screen.actorCode} · ${screen.screenType}`}</p></div><a className="krds-control inline-flex items-center justify-center rounded-lg border border-[#246beb] bg-white px-4 font-bold text-[#246beb]" href={en ? "/en/emission/my-tasks" : "/emission/my-tasks"}>{en ? "Back to my tasks" : "내 업무로 돌아가기"}</a></header>
@@ -180,10 +228,11 @@ function GeneratedContent({ screen, runtimeWarning = "" }: { screen: GeneratedSc
         <span className={`rounded-full px-3 py-2 text-sm font-black ${materialized.valid ? "bg-emerald-100 text-emerald-800" : "bg-red-100 text-red-800"}`}>{materialized.valid ? (en ? "Contract valid" : "계약 정상") : (en ? "Contract incomplete" : "계약 보완 필요")}</span>
       </div>
     </section>
-    {(message || error) && <p className={`mt-5 rounded-xl border p-4 font-bold ${error ? "border-red-200 bg-red-50 text-red-700" : "border-emerald-200 bg-emerald-50 text-emerald-800"}`}>{error || message}</p>}
+    {(message || error) && <p className={`mt-5 rounded-xl border p-4 font-bold ${error ? "border-red-200 bg-red-50 text-red-700" : "border-emerald-200 bg-emerald-50 text-emerald-800"}`} data-live-smoke-message={error?"error":"success"} role={error?"alert":"status"}>{error || message}</p>}
+    {lastObservation&&<section className="krds-component mt-5 rounded-xl border bg-white" data-live-smoke-result="true"><h2 className="gov-text-heading-sm font-black text-[#052b57]">{en?"Command result":"명령 실행 결과"}</h2><p className="gov-text-body-sm mt-2">{lastObservation.commandCode} · HTTP {lastObservation.httpStatus} · {lastObservation.statusCase}</p><pre className="mt-3 overflow-auto rounded-lg bg-slate-950 p-3 text-xs text-white">{JSON.stringify(lastObservation.output,null,2)}</pre></section>}
     <section className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(20rem,1fr)]"><div className="space-y-6">
       {kpis.length > 0 && <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{kpis.map(item=><article className="krds-component rounded-xl border bg-white" key={item.code}><span className="gov-text-label font-bold text-slate-500">{item.label}</span><strong className="gov-text-heading-md mt-2 block text-[#052b57]">-</strong></article>)}</section>}
-      <section className="krds-component rounded-xl border bg-white"><div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"><div><h2 className="gov-text-heading-md font-black text-[#052b57]">{en ? "Work data" : "업무 데이터"}</h2><p className="gov-text-body-sm mt-2 text-slate-600">{text(spec.completionRule)}</p></div><span className="gov-text-label rounded-full bg-slate-100 px-3 py-2 font-bold text-slate-700">{draftStatus} · v{draftVersion}</span></div><div className="mt-5 grid gap-4 md:grid-cols-2">{resolvedFieldEntries.map((field,index)=><div {...helpAnchorAttributes(helpItems[sections.length+index])} key={field.code}><ContractFieldControl field={field} value={values[field.code] || ""} onChange={value=>setValues(current=>({...current,[field.code]:value}))}/></div>)}</div><div className="mt-5 flex flex-wrap justify-end gap-2"><button className="krds-control rounded-lg border border-[#246beb] bg-white px-4 font-black text-[#246beb] disabled:opacity-50" disabled={busy} onClick={()=>void loadDraft()} type="button">{en ? "Load draft" : "임시저장 불러오기"}</button><button className="krds-control rounded-lg bg-[#246beb] px-4 font-black text-white disabled:opacity-50" disabled={busy} onClick={()=>void saveDraft()} type="button">{en ? "Save draft" : "임시저장"}</button></div></section>
+      <section className="krds-component rounded-xl border bg-white"><div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"><div><h2 className="gov-text-heading-md font-black text-[#052b57]">{en ? "Work data" : "업무 데이터"}</h2><p className="gov-text-body-sm mt-2 text-slate-600">{text(spec.completionRule)}</p></div><span className="gov-text-label rounded-full bg-slate-100 px-3 py-2 font-bold text-slate-700">{draftStatus} · v{draftVersion}</span></div><div className="mt-5 grid gap-4 md:grid-cols-2">{resolvedFieldEntries.map((field,index)=><div {...helpAnchorAttributes(helpItems[sections.length+index])} key={field.code}><ContractFieldControl field={field} value={values[field.code] || ""} onChange={value=>setValues(current=>({...current,[field.code]:value}))}/></div>)}</div><div className="mt-5 flex flex-wrap justify-end gap-2"><button className="krds-control rounded-lg border border-[#246beb] bg-white px-4 font-black text-[#246beb] disabled:opacity-50" data-live-smoke-action="load-draft" disabled={busy} onClick={()=>void loadDraft()} type="button">{en ? "Load draft" : "임시저장 불러오기"}</button><button className="krds-control rounded-lg bg-[#246beb] px-4 font-black text-white disabled:opacity-50" data-live-smoke-action="save-draft" disabled={busy} onClick={()=>void saveDraft()} type="button">{en ? "Save draft" : "임시저장"}</button></div></section>
       {sections.length > 0 && <section className="grid gap-4 md:grid-cols-2">{sections.map((section,index)=><CommonContentCard {...helpAnchorAttributes(helpItems[index])} className="krds-component min-h-36 p-5" key={section.code}><h2 className="gov-text-heading-sm font-black text-[#052b57]">{section.label}</h2><p className="gov-text-body-sm mt-3 text-slate-600">{en ? "This section uses the registered shared component and data contract." : "등록된 공통 컴포넌트와 데이터 계약을 사용하는 영역입니다."}</p></CommonContentCard>)}</section>}
       {helpItems.length > sections.length+resolvedFieldEntries.length && <section aria-label={en ? "Additional screen guide anchors" : "추가 화면 도움말"} className="grid gap-3 md:grid-cols-2">{helpItems.slice(sections.length+resolvedFieldEntries.length).map((entry,index)=>{const item=record(entry);return <CommonContentCard {...helpAnchorAttributes(item)} className="p-5" key={text(item.id)||`help-${index}`}><h2 className="gov-text-heading-sm font-black text-[#052b57]">{text(item.title)}</h2><p className="gov-text-body-sm mt-2 text-slate-600">{text(item.body)}</p></CommonContentCard>;})}</section>}
     </div><aside className="space-y-5">
@@ -193,7 +242,7 @@ function GeneratedContent({ screen, runtimeWarning = "" }: { screen: GeneratedSc
         <button className="krds-control mt-4 w-full rounded-lg border border-[#052b57] bg-white font-black text-[#052b57] disabled:opacity-50" disabled={busy} onClick={()=>void loadExecution()} type="button">{en ? "Load running process" : "진행 중 프로세스 불러오기"}</button>
       </section>
       <form className="krds-component rounded-xl border bg-white" onSubmit={start}><h2 className="gov-text-heading-sm font-black text-[#052b57]">{en ? "Process context" : "프로세스 실행 문맥"}</h2><div className="mt-4 space-y-3"><label className="gov-text-label font-bold">Tenant<input className={`${inputClass} mt-2`} value={tenantId} onChange={event=>setTenantId(event.target.value)} required/></label><label className="gov-text-label font-bold">{en ? "Project ID" : "프로젝트 ID"}<input className={`${inputClass} mt-2`} value={projectId} onChange={event=>setProjectId(event.target.value)} required/></label><label className="gov-text-label font-bold">{en ? "Execution ID" : "실행 ID"}<input className={`${inputClass} mt-2`} value={executionId} onChange={event=>setExecutionId(event.target.value)}/></label></div><button className="krds-control mt-4 w-full rounded-lg bg-[#052b57] font-black text-white disabled:opacity-50" disabled={busy} type="submit">{en ? "Start process" : "프로세스 시작"}</button></form>
-      <section className="krds-component rounded-xl border bg-white"><h2 className="gov-text-heading-sm font-black text-[#052b57]">{en ? "Complete step" : "단계 완료"}</h2><p className="gov-text-body-sm mt-2 text-slate-600">{en ? "Required fields and a saved draft are validated before transition." : "필수 항목과 임시저장을 검증한 뒤 다음 상태로 전환합니다."}</p><div className="mt-4 grid gap-2">{(actions.length ? actions : [{code:commandCode,label:commandCode}]).map(action=><button className="krds-control rounded-lg bg-[#246beb] font-black text-white disabled:opacity-50" disabled={busy||draftStatus!=="DRAFT"} key={action.code} onClick={()=>void execute(action.code)} type="button">{en ? action.label : `${action.label} 완료`}</button>)}</div></section>
+      <section className="krds-component rounded-xl border bg-white"><h2 className="gov-text-heading-sm font-black text-[#052b57]">{en ? "Complete step" : "단계 완료"}</h2><p className="gov-text-body-sm mt-2 text-slate-600">{en ? "Required fields and a saved draft are validated before transition." : "필수 항목과 임시저장을 검증한 뒤 다음 상태로 전환합니다."}</p><div className="mt-4 grid gap-2">{(actions.length ? actions : [{code:commandCode,label:commandCode}]).map(action=><button className="krds-control rounded-lg bg-[#246beb] font-black text-white disabled:opacity-50" data-command-code={action.code} data-operation-method={text(action.apiMethod)} data-operation-path={text(action.apiPath)} disabled={busy||(!liveSmokeMode&&draftStatus!=="DRAFT")} key={action.code} onClick={()=>void execute(action.code)} type="button">{en ? action.label : `${action.label} 완료`}</button>)}</div></section>
       {Object.keys(support).length > 0 && <ExecutableScreenSupportCards
         actorCode={screen.actorCode}
         audience={screen.audience}
@@ -324,6 +373,8 @@ function applyVersionedContract(base: GeneratedScreenDefinition, envelope: Versi
       code,
       label: String(command.commandName || command.label || command.name || command.commandCode || command.code || `Command ${index + 1}`),
       requestFields: Array.isArray(api?.requestFields) ? api.requestFields.map(String) : undefined,
+      apiMethod: String(api?.method || ""),
+      apiPath: String(api?.path || ""),
     };
   });
   const specification = {

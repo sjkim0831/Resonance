@@ -1,10 +1,21 @@
 package egovframework.com.platform.governance.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.LinkOption;
+import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
+import java.nio.file.attribute.BasicFileAttributes;
+import java.nio.file.attribute.PosixFileAttributeView;
+import java.nio.file.attribute.PosixFilePermission;
+import java.security.MessageDigest;
 import java.time.OffsetDateTime;
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -14,6 +25,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.UUID;
+import java.util.HexFormat;
+import java.util.Objects;
 
 /** Authenticated append-only ingestion for real API, database and browser smoke observations. */
 @Service
@@ -22,11 +35,27 @@ public class CompositeLiveSmokeEvidenceService {
     private static final Set<String> LANES=Set.of("API","DATABASE","BROWSER");
     private static final Set<String> STATUSES=Set.of(
         "SUCCESS","VALIDATION_ERROR","FORBIDDEN","CONFLICT","RECOVERY");
+    private static final String DEFAULT_EVIDENCE_ROOT=
+        "/opt/resonance-data/control-plane/var/test-evidence/composite-live-smoke";
+    private static final long MAX_DOM_BYTES=4L*1024*1024;
+    private static final long MAX_SCREENSHOT_BYTES=20L*1024*1024;
     private final JdbcTemplate jdbc;
     private final ObjectMapper mapper;
+    private final Path evidenceRoot;
 
+    @Autowired
+    public CompositeLiveSmokeEvidenceService(JdbcTemplate jdbc,ObjectMapper mapper,
+            @Value("${resonance.composite-live-smoke.evidence-root:"+DEFAULT_EVIDENCE_ROOT+"}")
+            String evidenceRoot){
+        this(jdbc,mapper,Path.of(evidenceRoot));
+    }
     public CompositeLiveSmokeEvidenceService(JdbcTemplate jdbc,ObjectMapper mapper){
+        this(jdbc,mapper,Path.of(DEFAULT_EVIDENCE_ROOT).toAbsolutePath());
+    }
+    CompositeLiveSmokeEvidenceService(JdbcTemplate jdbc,ObjectMapper mapper,Path evidenceRoot){
         this.jdbc=jdbc;this.mapper=mapper;
+        if(evidenceRoot==null)throw new IllegalArgumentException("LIVE_SMOKE_EVIDENCE_ROOT_REQUIRED");
+        this.evidenceRoot=evidenceRoot.toAbsolutePath().normalize();
     }
 
     @Transactional
@@ -346,7 +375,7 @@ public class CompositeLiveSmokeEvidenceService {
         Set<String> expected=switch(lane){
             case "DATABASE" -> Set.of("rereadHash","transactionHash");
             case "BROWSER" -> Set.of("domHash","screenshotHash","rendered",
-                "runtimeObserved","accessDenied");
+                "runtimeObserved","accessDenied","domArtifactRef","screenshotArtifactRef");
             default -> Set.of("transportHash","httpStatus");
         };
         if(!details.keySet().equals(expected))throw new IllegalArgumentException("LIVE_SMOKE_LANE_DETAILS_NOT_EXACT");
@@ -357,8 +386,22 @@ public class CompositeLiveSmokeEvidenceService {
                 ||Boolean.TRUE.equals(details.get("accessDenied"))!="FORBIDDEN".equals(status)
                 ||Boolean.TRUE.equals(details.get("runtimeObserved"))=="FORBIDDEN".equals(status)))
             throw new IllegalArgumentException("LIVE_SMOKE_BROWSER_OBSERVATION_NOT_EXACT");
-        for(Map.Entry<String,Object> entry:details.entrySet())if(!Set.of(
-                "rendered","runtimeObserved","accessDenied","httpStatus").contains(entry.getKey()))
+        Map<String,Object> verifiedDetails=new LinkedHashMap<>(details);
+        if("BROWSER".equals(lane)){
+            ArtifactObservation dom=verifyArtifact(evidenceRoot,
+                required(details,"domArtifactRef",1000),hashText(details.get("domHash"),"laneDetails.domHash"),
+                "dom.html",MAX_DOM_BYTES);
+            ArtifactObservation screenshot=verifyArtifact(evidenceRoot,
+                required(details,"screenshotArtifactRef",1000),
+                hashText(details.get("screenshotHash"),"laneDetails.screenshotHash"),
+                "screenshot.png",MAX_SCREENSHOT_BYTES);
+            verifiedDetails.put("domHash",dom.hash());verifiedDetails.put("screenshotHash",screenshot.hash());
+            verifiedDetails.put("domArtifactRef",dom.reference());
+            verifiedDetails.put("screenshotArtifactRef",screenshot.reference());
+        }
+        for(Map.Entry<String,Object> entry:verifiedDetails.entrySet())if(!Set.of(
+                "rendered","runtimeObserved","accessDenied","httpStatus",
+                "domArtifactRef","screenshotArtifactRef").contains(entry.getKey()))
             hashText(entry.getValue(),"laneDetails."+entry.getKey());
         Map<String,Object> proof=new LinkedHashMap<>();
         proof.put("schema",SCHEMA);proof.put("source",switch(lane){
@@ -367,8 +410,75 @@ public class CompositeLiveSmokeEvidenceService {
         proof.put("requestHash",inputHash);proof.put("responseHash",outputHash);
         proof.put("artifactHash",artifactHash);proof.put("executionId",executionId.toString());
         proof.put("idempotencyKeyHash",idempotencyKeyHash);proof.put("observedHttpStatus",observedHttpStatus);
-        proof.putAll(details);return proof;
+        proof.putAll(verifiedDetails);return proof;
     }
+
+    static ArtifactObservation verifyArtifact(Path configuredRoot,String reference,String submittedHash,
+            String suffix,long maximumBytes){
+        if(configuredRoot==null||reference==null||submittedHash==null
+                ||!("dom.html".equals(suffix)||"screenshot.png".equals(suffix))
+                ||maximumBytes<1)throw new IllegalArgumentException("LIVE_SMOKE_ARTIFACT_ARGUMENT_INVALID");
+        String uuid="[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}";
+        String pattern="^[1-9][0-9]{0,18}/"+uuid+"/[0-9a-f]{64}\\."+
+            suffix.replace(".","\\.")+"$";
+        if(!reference.matches(pattern)||!submittedHash.matches("[0-9a-f]{64}"))
+            throw new IllegalArgumentException("LIVE_SMOKE_ARTIFACT_REFERENCE_INVALID");
+        Path root=configuredRoot.toAbsolutePath().normalize();
+        if(!Files.isDirectory(root,LinkOption.NOFOLLOW_LINKS)||Files.isSymbolicLink(root))
+            throw new IllegalStateException("LIVE_SMOKE_EVIDENCE_ROOT_NOT_IMMUTABLE");
+        Path relative=Path.of(reference);
+        if(relative.isAbsolute()||relative.getNameCount()!=3)
+            throw new IllegalArgumentException("LIVE_SMOKE_ARTIFACT_REFERENCE_INVALID");
+        Path candidate=root.resolve(relative).normalize();
+        if(!candidate.startsWith(root)||candidate.equals(root))
+            throw new IllegalArgumentException("LIVE_SMOKE_ARTIFACT_OUTSIDE_ALLOWLIST");
+        Path cursor=root;
+        for(Path component:relative){
+            cursor=cursor.resolve(component);
+            if(Files.isSymbolicLink(cursor))
+                throw new IllegalArgumentException("LIVE_SMOKE_ARTIFACT_SYMLINK_FORBIDDEN");
+        }
+        try{
+            Path realRoot=root.toRealPath(),realCandidate=candidate.toRealPath();
+            if(!realCandidate.startsWith(realRoot)||!realCandidate.equals(candidate.toAbsolutePath().normalize()))
+                throw new IllegalArgumentException("LIVE_SMOKE_ARTIFACT_SYMLINK_FORBIDDEN");
+            BasicFileAttributes before=Files.readAttributes(candidate,BasicFileAttributes.class,
+                LinkOption.NOFOLLOW_LINKS);
+            if(!before.isRegularFile()||before.size()<1||before.size()>maximumBytes)
+                throw new IllegalArgumentException("LIVE_SMOKE_ARTIFACT_FILE_INVALID");
+            if(Files.getFileAttributeView(candidate,PosixFileAttributeView.class,
+                    LinkOption.NOFOLLOW_LINKS)!=null){
+                Set<PosixFilePermission> permissions=Files.getPosixFilePermissions(candidate,
+                    LinkOption.NOFOLLOW_LINKS);
+                if(permissions.contains(PosixFilePermission.OWNER_WRITE)
+                        ||permissions.contains(PosixFilePermission.GROUP_WRITE)
+                        ||permissions.contains(PosixFilePermission.OTHERS_WRITE))
+                    throw new IllegalArgumentException("LIVE_SMOKE_ARTIFACT_WRITABLE_FORBIDDEN");
+            }
+            byte[] bytes;
+            try(InputStream input=Files.newInputStream(candidate,StandardOpenOption.READ,LinkOption.NOFOLLOW_LINKS)){
+                bytes=input.readNBytes(Math.toIntExact(maximumBytes+1));
+            }
+            BasicFileAttributes after=Files.readAttributes(candidate,BasicFileAttributes.class,
+                LinkOption.NOFOLLOW_LINKS);
+            if(bytes.length!=before.size()||bytes.length>maximumBytes||before.size()!=after.size()
+                    ||!before.lastModifiedTime().equals(after.lastModifiedTime())
+                    ||!Objects.equals(before.fileKey(),after.fileKey()))
+                throw new IllegalArgumentException("LIVE_SMOKE_ARTIFACT_CHANGED_DURING_READ");
+            String observed=HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(bytes));
+            String filename=candidate.getFileName().toString();
+            if(!observed.equals(submittedHash)||!filename.equals(observed+"."+suffix))
+                throw new IllegalArgumentException("LIVE_SMOKE_ARTIFACT_HASH_MISMATCH");
+            return new ArtifactObservation(reference,observed,bytes.length);
+        }catch(IllegalArgumentException error){throw error;}
+        catch(java.nio.file.NoSuchFileException error){
+            throw new IllegalArgumentException("LIVE_SMOKE_ARTIFACT_MISSING");
+        }catch(Exception error){
+            throw new IllegalArgumentException("LIVE_SMOKE_ARTIFACT_READ_FAILED");
+        }
+    }
+
+    record ArtifactObservation(String reference,String hash,long byteCount){}
 
     private String target(String lane,Map<String,Object> authority,Map<String,Object> design,
             Map<String,Object> operation){

@@ -1031,6 +1031,20 @@ rollout_image() {
       "Failed to mount persistent membership evidence storage" \
       "kubectl -n $NAMESPACE describe deployment/$DEPLOYMENT"
 
+  # The host runner writes immutable DOM/PNG observations.  The application
+  # receives only this exact allowlisted directory, mounted read-only, and
+  # independently reopens and hashes every submitted artifact.
+  local composite_smoke_evidence_dir="/opt/resonance-data/control-plane/var/test-evidence/composite-live-smoke"
+  root_cmd install -d -m 0750 -o 1000 -g 1000 "$composite_smoke_evidence_dir" ||
+    rollback_and_fail "COMPOSITE_SMOKE_EVIDENCE_DIRECTORY_FAILED" \
+      "Failed to prepare composite live-smoke evidence storage" \
+      "install -d -m 0750 -o 1000 -g 1000 $composite_smoke_evidence_dir"
+  kubectl -n "$NAMESPACE" patch "deployment/$DEPLOYMENT" --type='strategic' \
+    -p="{\"spec\":{\"template\":{\"spec\":{\"volumes\":[{\"name\":\"composite-live-smoke-evidence\",\"hostPath\":{\"path\":\"$composite_smoke_evidence_dir\",\"type\":\"Directory\"}}],\"containers\":[{\"name\":\"$CONTAINER\",\"env\":[{\"name\":\"RESONANCE_COMPOSITE_LIVE_SMOKE_EVIDENCE_ROOT\",\"value\":\"$composite_smoke_evidence_dir\"}],\"volumeMounts\":[{\"name\":\"composite-live-smoke-evidence\",\"mountPath\":\"$composite_smoke_evidence_dir\",\"readOnly\":true}]}]}}}}" \
+    >/dev/null || rollback_and_fail "COMPOSITE_SMOKE_EVIDENCE_MOUNT_FAILED" \
+      "Failed to mount composite live-smoke evidence read-only" \
+      "kubectl -n $NAMESPACE describe deployment/$DEPLOYMENT"
+
   # Preserve zero downtime while removing fixed rollout delays. The startup
   # probe remains the safety gate; two-second polling detects readiness without
   # adding ten-second quantisation, and old pods still drain before SIGTERM.

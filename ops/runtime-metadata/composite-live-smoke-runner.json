@@ -33,7 +33,8 @@
     "backoffSeconds": [15, 30],
     "leaseSeconds": 540
   },
-  "parallelism": 1,
+  "parallelism": 8,
+  "maxClaimsPerSlot": 25,
   "evidenceEndpoint": "/home/api/composite-live-smoke-evidence",
   "evidenceDirectory": "var/test-evidence/composite-live-smoke",
   "secretPolicy": "ENVIRONMENT_ONLY_NO_LOGGING"

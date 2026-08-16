@@ -3,8 +3,12 @@ set -Eeuo pipefail
 ROOT="${RESONANCE_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
 MANIFEST="$ROOT/ops/runtime-metadata/composite-live-smoke-runner.json"
 RUNNER="$ROOT/ops/scripts/resonance-composite-live-smoke-e2e.mjs"
-STATE_ROOT="${CARBONET_COMPOSITE_LIVE_SMOKE_STATE_ROOT:-$ROOT/var/test-evidence/composite-live-smoke}"
-LOCK_FILE="${CARBONET_COMPOSITE_LIVE_SMOKE_LOCK:-/tmp/resonance-composite-live-smoke.lock}"
+STATE_ROOT="${CARBONET_COMPOSITE_LIVE_SMOKE_STATE_ROOT:-/opt/resonance-data/control-plane/var/test-evidence/composite-live-smoke}"
+SLOT="${CARBONET_COMPOSITE_LIVE_SMOKE_SLOT:-0}"
+[[ "$SLOT" =~ ^[0-7]$ ]] || { echo '[composite-live-smoke] slot must be 0..7' >&2; exit 2; }
+SLOT_STATE_ROOT="$STATE_ROOT/.slots/$SLOT"
+LOCK_BASE="${CARBONET_COMPOSITE_LIVE_SMOKE_LOCK:-/tmp/resonance-composite-live-smoke}"
+LOCK_FILE="${LOCK_BASE}-${SLOT}.lock"
 source "$ROOT/ops/scripts/lib/carbonet-postgres-query.sh"
 
 safe_error(){ printf '%s' "$1" | tr '[:lower:]' '[:upper:]' | tr -cd 'A-Z0-9_' | cut -c1-100; }
@@ -17,7 +21,7 @@ jq -e 'type=="object" and length>0 and all(to_entries[];
 [[ -n "${CARBONET_ACTOR_TEST_PASSWORD:-}" && -n "${RESONANCE_OPS_TOKEN:-}" ]] || {
   echo '[composite-live-smoke] secret environment unavailable' >&2; exit 2;
 }
-mkdir -p "$STATE_ROOT"
+mkdir -p "$STATE_ROOT/.locks" "$SLOT_STATE_ROOT"
 exec 9>"$LOCK_FILE"; flock -n 9 || { echo '[composite-live-smoke] another runner owns the lease'; exit 0; }
 carbonet_postgres_query_init
 
@@ -54,17 +58,19 @@ with candidate as (
   returning dispatch.dispatch_id
 )
 select coalesce(max(dispatch_id),0) from claimed;
-commit;" >"$STATE_ROOT/.claim"
-dispatch_id="$(grep -E '^[0-9]+$' "$STATE_ROOT/.claim" | tail -n1 || true)"
-rm -f "$STATE_ROOT/.claim"
+commit;" >"$SLOT_STATE_ROOT/.claim"
+dispatch_id="$(grep -E '^[0-9]+$' "$SLOT_STATE_ROOT/.claim" | tail -n1 || true)"
+rm -f "$SLOT_STATE_ROOT/.claim"
 [[ "$dispatch_id" =~ ^[1-9][0-9]*$ ]] || { echo '[composite-live-smoke] due=0'; exit 0; }
+exec 8>"$STATE_ROOT/.locks/dispatch-${dispatch_id}.lock"
+flock -n 8 || { echo "[composite-live-smoke] dispatch lease already owned id=$dispatch_id"; exit 0; }
 
 credential_values=""
 while IFS= read -r account; do
   [[ -z "$credential_values" ]] || credential_values+=","
   credential_values+="('$account')"
 done < <(jq -r '[.[]]|unique|sort[]' <<<"$credentials")
-plan_file="$(mktemp "$STATE_ROOT/.plan-${dispatch_id}.XXXXXX.json")"
+plan_file="$(mktemp "$SLOT_STATE_ROOT/.plan-${dispatch_id}.XXXXXX.json")"
 cleanup(){ rm -f "$plan_file"; }
 trap cleanup EXIT
 plan="$(carbonet_postgres_query "with credential(account_id) as (values $credential_values),
@@ -171,11 +177,12 @@ if [[ -z "${runner_code:-}" ]]; then
   else
     set +e
     result="$(CARBONET_COMPOSITE_LIVE_SMOKE_PLAN="$plan_file" RESONANCE_ROOT="$ROOT" \
-      timeout --signal=TERM --kill-after=10s "$(jq -r .timeouts.jobSeconds "$MANIFEST")s" node "$RUNNER" 2>"$STATE_ROOT/.error-$dispatch_id")"
+      CARBONET_COMPOSITE_LIVE_SMOKE_EVIDENCE_ROOT="$STATE_ROOT" \
+      timeout --signal=TERM --kill-after=10s "$(jq -r .timeouts.jobSeconds "$MANIFEST")s" node "$RUNNER" 2>"$SLOT_STATE_ROOT/.error-$dispatch_id")"
     runner_status=$?
     set -e
     if (( runner_status != 0 )); then
-      error_json="$(tail -n1 "$STATE_ROOT/.error-$dispatch_id" 2>/dev/null || true)"; rm -f "$STATE_ROOT/.error-$dispatch_id"
+      error_json="$(tail -n1 "$SLOT_STATE_ROOT/.error-$dispatch_id" 2>/dev/null || true)"; rm -f "$SLOT_STATE_ROOT/.error-$dispatch_id"
       runner_code="$(safe_error "$(jq -r '.code // "LIVE_SMOKE_RUNNER_FAILED"' <<<"$error_json" 2>/dev/null || echo LIVE_SMOKE_RUNNER_FAILED)")"
       runner_hash="$(jq -r '.errorHash // empty' <<<"$error_json" 2>/dev/null || true)"
       [[ "$runner_hash" =~ ^[0-9a-f]{64}$ ]] || runner_hash="$(hash_text "$runner_status|$runner_code")"
@@ -224,7 +231,7 @@ failure="$(carbonet_postgres_query "begin; with failed as (update integrated_des
    completed_at=$completed_sql,last_error_code='$runner_code',last_error_hash='$runner_hash'
  where dispatch_id=$dispatch_id and status='RUNNING' and lease_token='$lease_token'::uuid
   and authority_revision_set_hash=framework_composite_authority_revision_set_hash(job_id)
- returning *) update integrated_design_autocompletion_receipt receipt
+ returning *), receipt_update as (update integrated_design_autocompletion_receipt receipt
  set receipt_json=receipt.receipt_json||jsonb_build_object('liveSmokeDispatchId',failed.dispatch_id,
    'liveSmokeDispatchStatus',failed.status,'liveSmokeLastErrorCode',failed.last_error_code,
    'liveSmokeLastErrorHash',failed.last_error_hash),updated_at=clock_timestamp()

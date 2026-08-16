@@ -1,0 +1,28 @@
+{
+  "schema": "carbonet.composite-relay-account-map-policy/v1",
+  "environmentVariable": "CARBONET_COMPOSITE_RELAY_ACCOUNTS_JSON",
+  "defaultEnvironmentFile": "/opt/resonance-data/control-plane/run/composite-relay-accounts.env",
+  "defaultStateFile": "/opt/resonance-data/control-plane/run/composite-relay-accounts.state.json",
+  "fileMode": "0600",
+  "refreshPolicy": "EVERY_LAUNCH_AND_AUTHORITY_REVISION",
+  "selectionPolicy": {
+    "dispatchStatuses": [
+      "QUEUED",
+      "RETRY_WAIT",
+      "RUNNING"
+    ],
+    "identity": "EXACT_ONE_ACTIVE_AUTHENTICATED_IDENTITY",
+    "positive": "EXACT_ONE_ACTIVE_ACCOUNT_ACTOR_PROJECT_ASSIGNMENT",
+    "positiveDeniedRole": "EXCLUDED",
+    "forbidden": "EXACT_ONE_ACTIVE_AUTHENTICATED_UNASSIGNED_ACCOUNT",
+    "accountIdPattern": "^[A-Za-z0-9_-]{2,100}$"
+  },
+  "secretPolicy": {
+    "requiredExternalEnvironment": [
+      "CARBONET_ACTOR_TEST_PASSWORD",
+      "RESONANCE_OPS_TOKEN"
+    ],
+    "persistSecrets": false,
+    "logSecrets": false
+  }
+}

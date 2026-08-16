@@ -18,6 +18,11 @@ const processWorker=read("ops/scripts/run-process-development-worker.sh");
 const page=read("projects/carbonet-frontend/source/src/features/generated-screen/GeneratedScreenPage.tsx");
 const shared=read("ops/scripts/lib/declared-process-relay-runtime.mjs");
 const generator=read("ops/scripts/generate-spring-api-from-design.py");
+const evidenceService=read("modules/resonance-common/carbonet-common-core/src/main/java/egovframework/com/platform/governance/service/CompositeLiveSmokeEvidenceService.java");
+const physicalEvidence=read("modules/resonance-common/carbonet-common-core/src/main/java/egovframework/com/platform/governance/service/CompositePhysicalEvidenceService.java");
+const runnerManifest=JSON.parse(read("ops/runtime-metadata/composite-live-smoke-runner.json"));
+const runnerService=read("ops/systemd/resonance-composite-live-smoke.service");
+const runtimeDeploy=read("ops/scripts/resonance-k8s-build-deploy-80-v2.sh");
 
 assert.notEqual(sha256(Buffer.from("HTTP 200\nactual-body")),sha256(Buffer.from("HTTP 200\nsynthetic-body")));
 assert.notEqual(sha256(Buffer.from("postgres-reread-a")),sha256(Buffer.from("postgres-reread-b")));
@@ -94,8 +99,9 @@ assert.ok(queue.includes("'stepOrder',step_order"));
 assert.ok(runner.includes("EXECUTION_ORDER"));
 assert.ok(runner.includes('targetRef: "entity:framework_process_execution"'));
 for(const token of ["executionId: execution.executionId", "idempotencyKey,",
-  "observedHttpStatus: response.status()", "runtimeObserved: browserState.runtimeObserved",
-  "accessDenied: browserState.accessDenied"])
+  "observedHttpStatus: response.status()", "runtimeObserved: browser.state.runtimeObserved",
+  "accessDenied: browser.state.accessDenied", "page.waitForResponse", "fillScenarioInputs",
+  "domArtifactRef", "screenshotArtifactRef", "writeImmutableArtifact"])
   assert.ok(runner.includes(token),`runner observation missing ${token}`);
 assert.ok(runner.includes("BROWSER_CONTEXT_OBSERVATION_MISMATCH"));
 assert.ok(runner.includes("page.screenshot({ fullPage: true })"));
@@ -104,6 +110,30 @@ assert.ok(page.includes("data-runtime-observed={runtimeObserved?\"true\":\"false
 assert.ok(page.includes("data-access-denied={accessDenied?\"true\":\"false\"}"));
 for(const attribute of ["data-execution-id","data-current-state","data-tenant-id","data-project-id"])
   assert.ok(page.includes(attribute),`browser authority attribute missing ${attribute}`);
+for(const attribute of ["data-last-command-code","data-last-http-status","data-last-status-case",
+  "data-last-output-json","data-last-idempotency-key","data-live-smoke-action","data-command-code",
+  "apiMethod","apiPath"])
+  assert.ok(page.includes(attribute),`browser command observation missing ${attribute}`);
+for(const token of ["LinkOption.NOFOLLOW_LINKS","LIVE_SMOKE_ARTIFACT_SYMLINK_FORBIDDEN",
+  "LIVE_SMOKE_ARTIFACT_HASH_MISMATCH","LIVE_SMOKE_ARTIFACT_WRITABLE_FORBIDDEN",
+  "domArtifactRef","screenshotArtifactRef",
+  "MessageDigest.getInstance(\"SHA-256\")"])
+  assert.ok(evidenceService.includes(token),`server artifact verifier missing ${token}`);
+const exactEvidenceRoot=`/opt/resonance-data/control-plane/${runnerManifest.evidenceDirectory}`;
+assert.ok(evidenceService.includes(exactEvidenceRoot),"server/runner evidence root diverges");
+assert.ok(runnerService.includes("Environment=RESONANCE_ROOT=/opt/Resonance"),"systemd runner root diverges");
+assert.ok(runner.includes("CARBONET_COMPOSITE_LIVE_SMOKE_EVIDENCE_ROOT"),
+  "runner controlled evidence-root override missing");
+assert.ok(queue.includes(`STATE_ROOT="\${CARBONET_COMPOSITE_LIVE_SMOKE_STATE_ROOT:-${exactEvidenceRoot}}"`),
+  "queue state root diverges");
+assert.ok(queue.includes('CARBONET_COMPOSITE_LIVE_SMOKE_EVIDENCE_ROOT="$STATE_ROOT"'),
+  "queue does not bind runner artifact root");
+for(const token of [exactEvidenceRoot,'composite-live-smoke-evidence',
+  'RESONANCE_COMPOSITE_LIVE_SMOKE_EVIDENCE_ROOT','readOnly\\":true',
+  'install -d -m 0750 -o 1000 -g 1000'])
+  assert.ok(runtimeDeploy.includes(token),`runtime evidence mount missing ${token}`);
+for(const token of ["domArtifactRef","screenshotArtifactRef","artifactReferenceExact"])
+  assert.ok(physicalEvidence.includes(token),`physical artifact reconciliation missing ${token}`);
 assert.ok(shared.includes('body?.status !== "loginSuccess"'));
 assert.ok(shared.includes("body?.userId"));
 assert.ok(generator.includes("catch(IllegalStateException conflict)"));
@@ -115,4 +145,4 @@ for(const token of ["run-composite-live-smoke.sh","resonance-composite-live-smok
   "resonance-composite-live-smoke.timer","systemctl enable --now"])
   assert.ok(deploy.includes(token),`deploy hook missing ${token}`);
 
-console.log("COMPOSITE_LIVE_SMOKE_RUNNER_PASS statuses=5 lanes=3 prerequisiteSteps=2 explicitAccounts=2 durableQueue=1 byteHashMutants=3 browserContextAxes=6 deployHook=1");
+console.log("COMPOSITE_LIVE_SMOKE_RUNNER_PASS statuses=5 lanes=3 prerequisiteSteps=2 explicitAccounts=2 durableQueue=1 browserCommand=1 artifactServerRehash=1 browserContextAxes=11 deployHook=1");

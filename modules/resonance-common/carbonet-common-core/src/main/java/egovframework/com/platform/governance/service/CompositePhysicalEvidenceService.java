@@ -482,7 +482,7 @@ final class CompositePhysicalEvidenceService {
         if("API".equals(lane))keys.addAll(Set.of("transportHash","httpStatus"));
         if("DATABASE".equals(lane))keys.addAll(Set.of("rereadHash","transactionHash"));
         if("BROWSER".equals(lane))keys.addAll(Set.of("domHash","screenshotHash","rendered",
-            "runtimeObserved","accessDenied"));
+            "runtimeObserved","accessDenied","domArtifactRef","screenshotArtifactRef"));
         String source=switch(lane){case "API"->"API_HTTP";
             case "DATABASE"->"POSTGRES_REREAD";default->"BROWSER_DOM";};
         if(!proof.keySet().equals(keys)||!"carbonet.composite-live-smoke-lane/v1".equals(proof.get("schema"))
@@ -503,9 +503,20 @@ final class CompositePhysicalEvidenceService {
             case "BROWSER" -> Boolean.TRUE.equals(proof.get("rendered"))
                 &&Boolean.TRUE.equals(proof.get("accessDenied"))=="FORBIDDEN".equals(status)
                 &&Boolean.TRUE.equals(proof.get("runtimeObserved"))!="FORBIDDEN".equals(status)
-                &&hashValue(proof.get("domHash"))&&hashValue(proof.get("screenshotHash"));
+                &&hashValue(proof.get("domHash"))&&hashValue(proof.get("screenshotHash"))
+                &&artifactReferenceExact(proof.get("domArtifactRef"),proof.get("domHash"),"dom.html")
+                &&artifactReferenceExact(proof.get("screenshotArtifactRef"),
+                    proof.get("screenshotHash"),"screenshot.png");
             default -> true;
         };
+    }
+
+    private static boolean artifactReferenceExact(Object reference,Object hash,String suffix){
+        if(!hashValue(hash))return false;
+        String value=String.valueOf(reference),digest=String.valueOf(hash);
+        return value.matches("^[1-9][0-9]{0,18}/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-"+
+                "[0-9a-f]{4}-[0-9a-f]{12}/[0-9a-f]{64}\\."+suffix.replace(".","\\.")+"$")
+            &&value.endsWith("/"+digest+"."+suffix);
     }
 
     private record SmokeKey(long authorityId,String status,String command,String scenario,String lane)

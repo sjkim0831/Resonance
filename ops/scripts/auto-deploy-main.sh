@@ -2949,6 +2949,10 @@ process_development_control_plane_in_sync() {
       /opt/resonance-data/control-plane/bin/run-next-current-business-e2e.sh &&
     cmp -s ops/scripts/run-composite-live-smoke.sh \
       /opt/resonance-data/control-plane/bin/run-composite-live-smoke.sh &&
+    cmp -s ops/scripts/run-composite-live-smoke-slots.sh \
+      /opt/resonance-data/control-plane/bin/run-composite-live-smoke-slots.sh &&
+    cmp -s ops/scripts/generate-composite-relay-account-map.py \
+      /opt/resonance-data/control-plane/bin/generate-composite-relay-account-map.py &&
     cmp -s ops/scripts/resonance-composite-live-smoke-e2e.mjs \
       /opt/resonance-data/control-plane/bin/resonance-composite-live-smoke-e2e.mjs &&
     cmp -s ops/scripts/composite-live-smoke-db-probe.sh \
@@ -2959,6 +2963,8 @@ process_development_control_plane_in_sync() {
       /opt/resonance-data/control-plane/runtime-metadata/business-e2e-runner-registry.json &&
     cmp -s ops/runtime-metadata/composite-live-smoke-runner.json \
       /opt/resonance-data/control-plane/runtime-metadata/composite-live-smoke-runner.json &&
+    cmp -s ops/runtime-metadata/composite-relay-account-map.json \
+      /opt/resonance-data/control-plane/runtime-metadata/composite-relay-account-map.json &&
     cmp -s ops/systemd/resonance-process-development-worker.service \
       /etc/systemd/system/resonance-process-development-worker.service &&
     cmp -s ops/systemd/resonance-process-development-worker.timer \
@@ -2985,11 +2991,15 @@ sync_process_development_worker_if_required() {
       ops/scripts/run-project-auto-completion-orchestrator.sh \
       ops/scripts/run-next-current-business-e2e.sh \
       ops/scripts/run-composite-live-smoke.sh \
+      ops/scripts/run-composite-live-smoke-slots.sh \
+      ops/scripts/generate-composite-relay-account-map.py \
       ops/scripts/resonance-composite-live-smoke-e2e.mjs \
       ops/scripts/composite-live-smoke-db-probe.sh \
       ops/scripts/lib/declared-process-relay-runtime.mjs \
       ops/runtime-metadata/business-e2e-runner-registry.json \
       ops/runtime-metadata/composite-live-smoke-runner.json \
+      ops/runtime-metadata/composite-relay-account-map.json \
+      ops/tests/test-generate-composite-relay-account-map.py \
       ops/systemd/resonance-process-development-worker.service \
       ops/systemd/resonance-process-development-worker.timer \
       ops/systemd/resonance-project-auto-completion.service \
@@ -3009,11 +3019,15 @@ sync_process_development_worker_if_required() {
       ops/scripts/run-project-auto-completion-orchestrator.sh \
       ops/scripts/run-next-current-business-e2e.sh \
       ops/scripts/run-composite-live-smoke.sh \
+      ops/scripts/run-composite-live-smoke-slots.sh \
+      ops/scripts/generate-composite-relay-account-map.py \
       ops/scripts/resonance-composite-live-smoke-e2e.mjs \
       ops/scripts/composite-live-smoke-db-probe.sh \
       ops/scripts/lib/declared-process-relay-runtime.mjs \
       ops/runtime-metadata/business-e2e-runner-registry.json \
       ops/runtime-metadata/composite-live-smoke-runner.json \
+      ops/runtime-metadata/composite-relay-account-map.json \
+      ops/tests/test-generate-composite-relay-account-map.py \
       ops/systemd/resonance-process-development-worker.service \
       ops/systemd/resonance-process-development-worker.timer \
       ops/systemd/resonance-project-auto-completion.service \
@@ -3026,10 +3040,15 @@ sync_process_development_worker_if_required() {
     ! systemctl cat resonance-process-development-worker.service 2>/dev/null | \
       grep -Fq '/opt/resonance-data/control-plane/bin/run-process-development-dispatcher.sh'; then
     bash ops/scripts/test-process-worker-deploy-marker.sh
+    python3 ops/tests/test-generate-composite-relay-account-map.py
     sudo -n install -d -m 0755 -o root -g root \
       /opt/resonance-data/control-plane/bin \
       /opt/resonance-data/control-plane/bin/lib \
       /opt/resonance-data/control-plane/runtime-metadata
+    sudo -n install -d -m 0700 -o sjkim -g sjkim \
+      /opt/resonance-data/control-plane/run
+    sudo -n install -d -m 0750 -o 1000 -g 1000 \
+      /opt/resonance-data/control-plane/var/test-evidence/composite-live-smoke
     sudo -n install -m 0750 -o sjkim -g sjkim \
       ops/scripts/run-process-development-dispatcher.sh \
       /opt/resonance-data/control-plane/bin/run-process-development-dispatcher.sh
@@ -3046,6 +3065,12 @@ sync_process_development_worker_if_required() {
       ops/scripts/run-composite-live-smoke.sh \
       /opt/resonance-data/control-plane/bin/run-composite-live-smoke.sh
     sudo -n install -m 0750 -o sjkim -g sjkim \
+      ops/scripts/run-composite-live-smoke-slots.sh \
+      /opt/resonance-data/control-plane/bin/run-composite-live-smoke-slots.sh
+    sudo -n install -m 0750 -o sjkim -g sjkim \
+      ops/scripts/generate-composite-relay-account-map.py \
+      /opt/resonance-data/control-plane/bin/generate-composite-relay-account-map.py
+    sudo -n install -m 0750 -o sjkim -g sjkim \
       ops/scripts/composite-live-smoke-db-probe.sh \
       /opt/resonance-data/control-plane/bin/composite-live-smoke-db-probe.sh
     sudo -n install -m 0750 -o sjkim -g sjkim \
@@ -3060,6 +3085,9 @@ sync_process_development_worker_if_required() {
     sudo -n install -m 0644 -o sjkim -g sjkim \
       ops/runtime-metadata/composite-live-smoke-runner.json \
       /opt/resonance-data/control-plane/runtime-metadata/composite-live-smoke-runner.json
+    sudo -n install -m 0644 -o sjkim -g sjkim \
+      ops/runtime-metadata/composite-relay-account-map.json \
+      /opt/resonance-data/control-plane/runtime-metadata/composite-relay-account-map.json
     sudo -n install -m 0644 \
       ops/systemd/resonance-process-development-worker.service \
       /etc/systemd/system/resonance-process-development-worker.service

@@ -15,6 +15,10 @@ import org.springframework.transaction.support.TransactionTemplate;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.LinkOption;
+import java.nio.file.attribute.PosixFileAttributeView;
+import java.nio.file.attribute.PosixFilePermission;
+import java.security.MessageDigest;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -22,12 +26,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.HexFormat;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
@@ -1741,6 +1747,16 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
               expected_evidence_count,status)
             values(?,'PROC','*',?,repeat('a',64),?,?,'QUEUED') returning dispatch_id
             """,Long.class,jobId,revisionHash,processSource,expected);
+        jdbc.update("""
+            insert into integrated_design_autocompletion_receipt(process_code,completion_status,
+              job_id,dependency_fingerprint,receipt_json,started_at)
+            values('PROC','SOURCE_APPLIED_PHYSICAL_QUEUED',?,
+              framework_composite_dependency_fingerprint('PROC'),'{}'::jsonb,clock_timestamp())
+            on conflict(process_code) do update set
+              completion_status=excluded.completion_status,job_id=excluded.job_id,
+              dependency_fingerprint=excluded.dependency_fingerprint,
+              receipt_json=excluded.receipt_json,started_at=excluded.started_at
+            """,jobId);
         UUID firstToken=UUID.randomUUID(),staleToken=UUID.randomUUID();
         assertEquals(1,jdbc.update("""
             with candidate as (select dispatch_id from integrated_design_live_smoke_dispatch
@@ -1771,23 +1787,72 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
             """,secondToken,dispatchId));
         assertEquals(1,jdbc.queryForObject(
             "select count(*) from integrated_design_live_smoke_evidence where job_id=?",Integer.class,jobId));
-        assertEquals(1,jdbc.update("""
-            update integrated_design_live_smoke_dispatch set status='RETRY_WAIT',lease_token=null,
-              lease_until=null,next_attempt_at=clock_timestamp(),last_error_code='TRANSIENT_HTTP_FAILURE',
-              last_error_hash=repeat('c',64) where dispatch_id=? and lease_token=?
-            """,dispatchId,secondToken));
+        assertEquals(Map.of("dispatchWrites",1,"receiptWrites",1,"status","RETRY_WAIT"),
+            jdbc.queryForMap("""
+                with failed as (
+                  update integrated_design_live_smoke_dispatch dispatch
+                     set status='RETRY_WAIT',lease_token=null,lease_until=null,
+                         next_attempt_at=clock_timestamp(),completed_at=null,
+                         last_error_code='TRANSIENT_HTTP_FAILURE',last_error_hash=repeat('c',64)
+                   where dispatch_id=? and status='RUNNING' and lease_token=?
+                     and authority_revision_set_hash=
+                         framework_composite_authority_revision_set_hash(job_id)
+                  returning *
+                ), receipt_update as (
+                  update integrated_design_autocompletion_receipt receipt
+                     set receipt_json=receipt.receipt_json||jsonb_build_object(
+                           'liveSmokeDispatchId',failed.dispatch_id,
+                           'liveSmokeDispatchStatus',failed.status,
+                           'liveSmokeLastErrorCode',failed.last_error_code,
+                           'liveSmokeLastErrorHash',failed.last_error_hash),
+                         updated_at=clock_timestamp()
+                    from failed where receipt.job_id=failed.job_id
+                     and receipt.process_code=failed.process_code
+                  returning receipt.process_code
+                )
+                select (select count(*)::integer from failed) as "dispatchWrites",
+                       (select count(*)::integer from receipt_update) as "receiptWrites",
+                       (select status from failed) as status
+                """,dispatchId,secondToken));
         UUID thirdToken=UUID.randomUUID();
         assertEquals(1,jdbc.update("""
             update integrated_design_live_smoke_dispatch set status='RUNNING',
               attempt_count=attempt_count+1,lease_token=?,lease_until=clock_timestamp()+interval '1 minute'
              where dispatch_id=? and status='RETRY_WAIT'
             """,thirdToken,dispatchId));
-        assertEquals(1,jdbc.update("""
-            update integrated_design_live_smoke_dispatch set status='DEAD_LETTER',lease_token=null,
-              lease_until=null,next_attempt_at=clock_timestamp(),completed_at=clock_timestamp(),
-              last_error_code='RETRY_EXHAUSTED',last_error_hash=repeat('d',64)
-             where dispatch_id=? and status='RUNNING' and lease_token=? and attempt_count=3
-            """,dispatchId,thirdToken));
+        assertEquals(Map.of("dispatchWrites",1,"receiptWrites",1,"status","DEAD_LETTER"),
+            jdbc.queryForMap("""
+                with failed as (
+                  update integrated_design_live_smoke_dispatch dispatch
+                     set status='DEAD_LETTER',lease_token=null,lease_until=null,
+                         next_attempt_at=clock_timestamp(),completed_at=clock_timestamp(),
+                         last_error_code='RETRY_EXHAUSTED',last_error_hash=repeat('d',64)
+                   where dispatch_id=? and status='RUNNING' and lease_token=? and attempt_count=3
+                     and authority_revision_set_hash=
+                         framework_composite_authority_revision_set_hash(job_id)
+                  returning *
+                ), receipt_update as (
+                  update integrated_design_autocompletion_receipt receipt
+                     set receipt_json=receipt.receipt_json||jsonb_build_object(
+                           'liveSmokeDispatchId',failed.dispatch_id,
+                           'liveSmokeDispatchStatus',failed.status,
+                           'liveSmokeLastErrorCode',failed.last_error_code,
+                           'liveSmokeLastErrorHash',failed.last_error_hash),
+                         updated_at=clock_timestamp()
+                    from failed where receipt.job_id=failed.job_id
+                     and receipt.process_code=failed.process_code
+                  returning receipt.process_code
+                )
+                select (select count(*)::integer from failed) as "dispatchWrites",
+                       (select count(*)::integer from receipt_update) as "receiptWrites",
+                       (select status from failed) as status
+                """,dispatchId,thirdToken));
+        assertEquals(Map.of("status","DEAD_LETTER","code","RETRY_EXHAUSTED"),
+            jdbc.queryForMap("""
+                select receipt_json->>'liveSmokeDispatchStatus' status,
+                       receipt_json->>'liveSmokeLastErrorCode' code
+                  from integrated_design_autocompletion_receipt where process_code='PROC'
+                """));
         assertEquals(Map.of("status","DEAD_LETTER","attemptCount",3,"evidenceCount",1),
             jdbc.queryForMap("""
                 select status,attempt_count as "attemptCount",
@@ -2434,6 +2499,8 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
             assertEquals("MEASUREMENT_REQUIRED",empty.get("tenMinuteTarget"));
             assertEquals(0,number(empty,"physicalSampleCount"));
             assertEquals(0L,((Number)empty.get("p95CompileMs")).longValue());
+            assertEquals(2,number(empty,"liveSmokeParallelism"));
+            assertNull(empty.get("estimatedPhysicalTotalSeconds"));
             jdbc.update("""
                 insert into integrated_design_autocompletion_receipt(
                   process_code,completion_status,dependency_fingerprint,duration_ms)
@@ -2443,6 +2510,8 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
             Map<String,Object> measured=worker.inspect();
             assertEquals(1,number(measured,"physicalSampleCount"));
             assertEquals(1234L,((Number)measured.get("p95CompileMs")).longValue());
+            assertEquals(1234L,((Number)measured.get("p95PhysicalMs")).longValue());
+            assertEquals(2,number(measured,"liveSmokeParallelism"));
         }finally{worker.close();}
     }
 
@@ -2635,6 +2704,20 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
         catch(Exception error){throw new IllegalStateException(error);}
     }
 
+    private static String writeLiveSmokeArtifact(Path root,String reference,byte[] bytes){
+        try{
+            Path target=root.resolve(reference);Files.createDirectories(target.getParent());Files.write(target,bytes);
+            if(Files.getFileAttributeView(target,PosixFileAttributeView.class,LinkOption.NOFOLLOW_LINKS)!=null)
+                Files.setPosixFilePermissions(target,Set.of(PosixFilePermission.OWNER_READ,
+                    PosixFilePermission.GROUP_READ));
+            return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(bytes));
+        }catch(Exception error){throw new IllegalStateException("TEST_LIVE_SMOKE_ARTIFACT_WRITE_FAILED",error);}
+    }
+    private static String liveSmokeBytesHash(byte[] bytes){
+        try{return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(bytes));}
+        catch(Exception error){throw new IllegalStateException("TEST_LIVE_SMOKE_ARTIFACT_HASH_FAILED",error);}
+    }
+
     @SuppressWarnings("unchecked")
     private void installExactCanonicalPhysicalEvidence(long jobId){
         Map<String,Object> job=jdbc.queryForMap("""
@@ -2704,8 +2787,11 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
             values('DENIED_LIVE_ESNTL','ROLE_LIVE_SMOKE_DENIED')
             on conflict(scrty_dtrmn_trget_id) do update set author_code=excluded.author_code
             """);
+        Path liveSmokeRoot=Path.of("build","test-live-smoke-evidence",schema,String.valueOf(jobId))
+            .toAbsolutePath().normalize();
+        try{Files.createDirectories(liveSmokeRoot);}catch(Exception error){throw new IllegalStateException(error);}
         CompositeLiveSmokeEvidenceService writer=new CompositeLiveSmokeEvidenceService(
-            jdbc,new ObjectMapper());
+            jdbc,new ObjectMapper(),liveSmokeRoot);
         String canonicalArtifact=jdbc.queryForObject("""
             select framework_try_jsonb(result_json)#>>
                      '{canonicalGeneration,compositeArtifactManifestHash}'
@@ -2798,13 +2884,25 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
                     String identity=jobId+"|"+authority.get("authorityId")+"|"+command+"|"+
                         scenario.get("scenarioCode")+"|"+lane;
                     String proofHash=CompositeExecutableDesignAuthorityCompiler.hash(identity);
+                    String runId=UUID.nameUUIDFromBytes(identity.getBytes(StandardCharsets.UTF_8)).toString();
+                    String domHash="",screenshotHash="",domRef="",screenshotRef="";
+                    if("BROWSER".equals(lane)){
+                        byte[] dom=("<html><main data-command-code=\""+command+"\" data-status=\""+
+                            status+"\"></main></html>").getBytes(StandardCharsets.UTF_8);
+                        byte[] screenshot=("PNG|"+identity).getBytes(StandardCharsets.UTF_8);
+                        domHash=liveSmokeBytesHash(dom);screenshotHash=liveSmokeBytesHash(screenshot);
+                        domRef=jobId+"/"+runId+"/"+domHash+".dom.html";
+                        screenshotRef=jobId+"/"+runId+"/"+screenshotHash+".screenshot.png";
+                        writeLiveSmokeArtifact(liveSmokeRoot,domRef,dom);
+                        writeLiveSmokeArtifact(liveSmokeRoot,screenshotRef,screenshot);
+                    }
                     Map<String,Object> details=switch(lane){
                         case "API"->Map.of("transportHash",proofHash,"httpStatus",
                             ((Number)scenario.get("expectedHttpStatus")).intValue());
                         case "DATABASE"->Map.of("rereadHash",proofHash,"transactionHash",
                             CompositeExecutableDesignAuthorityCompiler.hash(identity+"|tx"));
-                        default->Map.of("domHash",proofHash,"screenshotHash",
-                            CompositeExecutableDesignAuthorityCompiler.hash(identity+"|screen"),"rendered",true,
+                        default->Map.of("domHash",domHash,"screenshotHash",screenshotHash,
+                            "domArtifactRef",domRef,"screenshotArtifactRef",screenshotRef,"rendered",true,
                             "runtimeObserved",!"FORBIDDEN".equals(status),
                             "accessDenied","FORBIDDEN".equals(status));
                     };
@@ -2824,7 +2922,7 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
                         Set.of("SUCCESS","CONFLICT","RECOVERY").contains(status)
                             ?transition.get("toState"):transition.get("fromState"));
                     body.put("targetRef",target);body.put("laneDetails",details);
-                    body.put("runId",UUID.nameUUIDFromBytes(identity.getBytes(StandardCharsets.UTF_8)).toString());
+                    body.put("runId",runId);
                     body.put("executionId",executionId.toString());body.put("idempotencyKey",idempotencyKey);
                     body.put("observedHttpStatus",scenario.get("expectedHttpStatus"));
                     body.put("artifactHash",canonicalArtifact);

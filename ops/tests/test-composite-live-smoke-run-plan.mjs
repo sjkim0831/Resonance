@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp, rm } from "node:fs/promises";
+import { chmod, lstat, mkdir, mkdtemp, readFile, rm, symlink, unlink, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { deterministicUuid, runPlan, sha256 }
@@ -57,62 +57,144 @@ const plan={schema:"carbonet.composite-live-smoke-plan/v1",dispatchId:91,jobId:5
 const manifest={schema:"carbonet.composite-live-smoke-runner/v1",evidenceDirectory:"evidence",
   evidenceEndpoint:"/ops/api/composite-live-smoke/evidence",timeouts:{requestSeconds:2,databaseSeconds:2,browserSeconds:2}};
 
-function response(status,body){const raw=Buffer.from(JSON.stringify(body));return {
-  status:()=>status,body:async()=>raw,headers:()=>({"content-type":"application/json"}),
-};}
-function fixture({mutantHttp=false}={}){
-  let sequence=0,latestExecution="";
-  const executions=new Map(),submissions=[];
+function response(status,body,route="/",method="GET"){
+  const raw=Buffer.from(JSON.stringify(body));return {
+    status:()=>status,body:async()=>raw,headers:()=>({"content-type":"application/json"}),
+    url:()=>new URL(route,"http://fixture.invalid").toString(),request:()=>({method:()=>method}),
+  };
+}
+async function verifyArtifact(root,reference,expectedHash,suffix){
+  if(!new RegExp(`^[1-9][0-9]*/[0-9a-f-]{36}/[0-9a-f]{64}\\.${suffix.replaceAll(".","\\.")}$`).test(reference))
+    throw new Error("ARTIFACT_REFERENCE_INVALID");
+  const evidenceRoot=path.resolve(root,manifest.evidenceDirectory),relative=reference.split("/");
+  const candidate=path.resolve(evidenceRoot,...relative);
+  if(!candidate.startsWith(`${evidenceRoot}${path.sep}`))throw new Error("ARTIFACT_OUTSIDE_ALLOWLIST");
+  let cursor=evidenceRoot;
+  for(const part of relative){cursor=path.join(cursor,part);const stat=await lstat(cursor);
+    if(stat.isSymbolicLink())throw new Error("ARTIFACT_SYMLINK_FORBIDDEN");}
+  const bytes=await readFile(candidate),observed=sha256(bytes);
+  if(observed!==expectedHash||path.basename(candidate)!==`${observed}.${suffix}`)
+    throw new Error("ARTIFACT_HASH_MISMATCH");
+}
+async function mutateArtifact(root,data,kind){
+  if(kind==="traversal")data.laneDetails.domArtifactRef="91/../outside";
+  else if(kind==="missing")await unlink(path.resolve(root,manifest.evidenceDirectory,
+    ...data.laneDetails.screenshotArtifactRef.split("/")));
+  else if(kind==="tamper"){
+    const target=path.resolve(root,manifest.evidenceDirectory,...data.laneDetails.domArtifactRef.split("/"));
+    await chmod(target,0o600).catch(()=>{});await writeFile(target,"tampered");
+  }else if(kind==="symlink"){
+    const source=path.resolve(root,"outside-artifacts"),runId="22222222-2222-4222-8222-222222222222";
+    await mkdir(source,{recursive:true});
+    const original=await readFile(path.resolve(root,manifest.evidenceDirectory,
+      ...data.laneDetails.domArtifactRef.split("/")));
+    await writeFile(path.join(source,`${data.laneDetails.domHash}.dom.html`),original);
+    const dispatch=path.resolve(root,manifest.evidenceDirectory,"91");await mkdir(dispatch,{recursive:true});
+    await symlink(source,path.join(dispatch,runId),process.platform==="win32"?"junction":"dir");
+    data.laneDetails.domArtifactRef=`91/${runId}/${data.laneDetails.domHash}.dom.html`;
+  }
+}
+function fixture(root,{mutantHttp=false,artifactMutant="",wrongCommand=false}={}){
+  let sequence=0,mutated=false;
+  const executions=new Map(),drafts=new Map(),submissions=[],uiActions=[];
   const apiFor=account=>({
     async fetch(route,{method,data}){
       if(route==="/home/api/process-executions/start"&&method==="POST"){
-        latestExecution=deterministicUuid(`fixture-execution-${++sequence}`);
-        executions.set(latestExecution,{executionId:latestExecution,currentStepCode:"STEP_A",currentState:"DRAFT",events:[]});
-        return response(200,{execution:{executionId:latestExecution,currentStepCode:"STEP_A"}});
+        const executionId=deterministicUuid(`fixture-execution-${++sequence}`);
+        executions.set(executionId,{executionId,currentStepCode:"STEP_A",currentState:"DRAFT",events:[]});
+        return response(200,{execution:{executionId,currentStepCode:"STEP_A"}},route,method);
       }
-      if(route.startsWith("/home/api/process-executions/draft?")&&method==="GET")
-        return response(200,{draft:{draftVersion:0}});
-      if(route==="/home/api/process-executions/draft"&&method==="PUT")
-        return response(200,{draft:{draftStatus:"DRAFT",draftVersion:1}});
+      if(route.startsWith("/home/api/process-executions/draft?")&&method==="GET"){
+        const draft=drafts.get(account)||{draftVersion:0,draftStatus:"NOT_SAVED",payloadJson:"{}"};
+        return response(200,{found:Boolean(drafts.get(account)),draft},route,method);
+      }
+      if(route==="/home/api/process-executions/draft"&&method==="PUT"){
+        const draft={draftStatus:"DRAFT",draftVersion:Number(drafts.get(account)?.draftVersion||0)+1,
+          payloadJson:data.payloadJson||JSON.stringify(data.values||{})};drafts.set(account,draft);
+        return response(200,{draft},route,method);
+      }
       const match=route.match(/^\/api\/work\/([0-9a-f-]{36})\/save$/);
       if(!match)throw new Error(`UNEXPECTED_FIXTURE_ROUTE:${method}:${route}`);
-      const execution=executions.get(match[1]);
-      if(!execution)throw new Error("FIXTURE_EXECUTION_MISSING");
-      if(account==="denied")return response(403,{success:false,code:"ACCESS_DENIED",message:"Access denied"});
-      if(data.name==="")return response(mutantHttp?422:400,{success:false,code:"INVALID_REQUEST",message:"Request failed"});
+      const execution=executions.get(match[1]);if(!execution)throw new Error("FIXTURE_EXECUTION_MISSING");
+      if(account==="denied")return response(403,{success:false,code:"ACCESS_DENIED",message:"Access denied"},route,method);
+      if(data.name==="")return response(mutantHttp?422:400,{success:false,code:"INVALID_REQUEST",message:"Request failed"},route,method);
       const existing=execution.events.find(row=>row.idempotency_key===data.idempotencyKey);
       if(existing)return response(200,{success:true,idempotent:true,eventId:existing.event_id,
-        toState:"DONE",recovered:true,name:data.name});
+        toState:"DONE",recovered:true,name:data.name},route,method);
       if(execution.currentState!=="DRAFT")return response(409,{success:false,code:"CONFLICT",
-        message:"Request conflicts with the current state"});
+        message:"Request conflicts with the current state"},route,method);
       const event={event_id:101,execution_id:execution.executionId,step_code:"STEP_A",actor_code:"ACTOR",
         command_code:"SAVE",from_state:"DRAFT",to_state:"DONE",idempotency_key:data.idempotencyKey,
         request_json:data,result_json:{name:data.name},executed_by:account};
       execution.events.push(event);execution.currentState="DONE";
-      return response(200,{success:true,idempotent:false,eventId:101,toState:"DONE",name:data.name});
+      return response(200,{success:true,idempotent:false,eventId:101,toState:"DONE",name:data.name},route,method);
     },
     async post(route,{data}){
-      assert.equal(route,manifest.evidenceEndpoint);submissions.push(structuredClone(data));
-      return response(200,{evidenceHash:sha256(JSON.stringify(data))});
+      assert.equal(route,manifest.evidenceEndpoint);const submitted=structuredClone(data);
+      if(submitted.lane==="BROWSER"){
+        if(artifactMutant&&!mutated){mutated=true;await mutateArtifact(root,submitted,artifactMutant);}
+        try{
+          await verifyArtifact(root,submitted.laneDetails.domArtifactRef,submitted.laneDetails.domHash,"dom.html");
+          await verifyArtifact(root,submitted.laneDetails.screenshotArtifactRef,
+            submitted.laneDetails.screenshotHash,"screenshot.png");
+        }catch(error){return response(422,{message:error.message},route,"POST");}
+      }
+      submissions.push(submitted);return response(200,{evidenceHash:sha256(JSON.stringify(submitted))},route,"POST");
     },
   });
   const runtimeFactory=async()=>({
     apiFor,
-    async pageFor(account){let current;
-      const context={close:async()=>{}};
+    async pageFor(account){
+      let current,values={},observation=null,runtimeObserved=false,accessDenied=false,currentState="",execution;
+      const waiters=[];
+      const emit=value=>{const index=waiters.findIndex(waiter=>waiter.predicate(value));
+        if(index>=0)waiters.splice(index,1)[0].resolve(value);};
+      const render=()=>`<html><body><main data-process-code="PROC" data-step-code="STEP_A" data-audience="USER" data-tenant-id="${runtimeObserved?"TENANT":""}" data-project-id="${runtimeObserved?"PROJECT":""}" data-execution-id="${runtimeObserved?execution.executionId:""}" data-current-state="${runtimeObserved?currentState:""}" data-runtime-observed="${runtimeObserved}" data-access-denied="${accessDenied}" data-last-command-code="${observation?.commandCode||""}" data-last-http-status="${observation?.httpStatus||""}" data-last-status-case="${observation?.statusCase||""}" data-last-idempotency-key="${observation?.idempotencyKey||""}" data-last-output-json='${JSON.stringify(observation?.output||{}).replaceAll("'","&#39;")}'><input name="name" value="${values.name||""}"><button data-command-code="SAVE">SAVE</button></main></body></html>`;
       const page={
-        async goto(url){current=new URL(url);},
+        async goto(url){current=new URL(url);execution=executions.get(current.searchParams.get("executionId"));
+          runtimeObserved=account!=="denied";accessDenied=account==="denied";currentState=execution?.currentState||"";},
         async waitForFunction(){},
-        locator(){return {evaluate:async()=>`<html><main data-execution-id="${current.searchParams.get("executionId")}"></main></html>`};},
-        async evaluate(){
-          const denied=account==="denied",execution=executions.get(current.searchParams.get("executionId"));
-          return {path:current.pathname,processCode:"PROC",stepCode:"STEP_A",audience:"USER",
-            tenantId:denied?"":"TENANT",projectId:denied?"":"PROJECT",executionId:denied?"":execution.executionId,
-            currentState:denied?"":execution.currentState,runtimeObserved:!denied,accessDenied:denied,fatal:false};
+        waitForResponse(predicate){return new Promise(resolve=>waiters.push({predicate,resolve}));},
+        locator(selector){
+          const field=selector.match(/^\[name="([A-Za-z][A-Za-z0-9_]*)"\]$/)?.[1];
+          const command=selector.match(/^\[data-command-code="([A-Z][A-Z0-9_]*)"\]$/)?.[1];
+          return {
+            async count(){return field==="name"||command==="SAVE"||selector.startsWith("[data-live-smoke-action=")?1:0;},
+            async evaluate(){return selector==="html"?render():{tag:"INPUT",type:"text"};},
+            async fill(value){values[field]=value;uiActions.push(`fill:${account}:${field}:${value}`);},
+            async selectOption(value){values[field]=value;},async check(){values[field]="true";},async uncheck(){values[field]="false";},
+            async click(){
+              if(selector==='[data-live-smoke-action="load-draft"]'){
+                uiActions.push(`load-draft:${account}`);const value=await apiFor(account).fetch(
+                  "/home/api/process-executions/draft?tenantId=TENANT",{method:"GET"});emit(value);return;
+              }
+              if(selector==='[data-live-smoke-action="save-draft"]'){
+                uiActions.push(`save-draft:${account}`);const value=await apiFor(account).fetch(
+                  "/home/api/process-executions/draft",{method:"PUT",data:{values,payloadJson:JSON.stringify(values)}});emit(value);return;
+              }
+              if(command){
+                uiActions.push(`command:${account}:${command}`);const route=`/api/work/${execution.executionId}/save`;
+                const value=await apiFor(account).fetch(route,{method:"POST",data:{...values,tenantId:"TENANT",
+                  projectId:"PROJECT",actorCode:"ACTOR",idempotencyKey:current.searchParams.get("idempotencyKey")}});
+                const output=JSON.parse((await value.body()).toString("utf8"));
+                const statusCase=value.status()===200?(output.recovered?"RECOVERY":"SUCCESS"):
+                  value.status()===400?"VALIDATION_ERROR":value.status()===403?"FORBIDDEN":value.status()===409?"CONFLICT":"UNKNOWN";
+                observation={commandCode:wrongCommand?"WRONG":command,httpStatus:value.status(),statusCase,output,
+                  idempotencyKey:current.searchParams.get("idempotencyKey")};
+                if(output.toState)currentState=output.toState;if(value.status()===403)accessDenied=true;emit(value);
+              }
+            },
+          };
         },
-        async screenshot(){return Buffer.from(`PNG:${account}:${current.searchParams.get("statusCase")}`);},
+        async evaluate(){return {path:current.pathname,processCode:"PROC",stepCode:"STEP_A",audience:"USER",
+          tenantId:runtimeObserved?"TENANT":"",projectId:runtimeObserved?"PROJECT":"",
+          executionId:runtimeObserved?execution.executionId:"",currentState:runtimeObserved?currentState:"",
+          runtimeObserved,accessDenied,commandCode:observation?.commandCode||"",httpStatus:observation?.httpStatus||0,
+          statusCase:observation?.statusCase||"",outputJson:JSON.stringify(observation?.output||{}),
+          idempotencyKey:observation?.idempotencyKey||"",fatal:false};},
+        async screenshot(){return Buffer.from(`PNG:${account}:${current.searchParams.get("statusCase")}:${observation?.commandCode}`);},
       };
-      return {context,page};
+      return {context:{close:async()=>{}},page};
     },
     async close(){},
   });
@@ -127,15 +209,20 @@ function fixture({mutantHttp=false}={}){
         draft_version:1,draft_status:"DRAFT",payload_json:{},evidence_json:{}}:null};
     const raw=Buffer.from(JSON.stringify(body));return {body,raw,hash:sha256(raw)};
   };
-  return {runtimeFactory,dbProbe,submissions};
+  return {runtimeFactory,dbProbe,submissions,uiActions};
 }
 
 const root=await mkdtemp(path.join(os.tmpdir(),"composite-live-smoke-plan-"));
-try{
-  const fake=fixture();
-  const result=await runPlan({root,plan,manifest,credentials:{ACTOR:"positive","FORBIDDEN:ACTOR":"denied"},
+const credentials={ACTOR:"positive","FORBIDDEN:ACTOR":"denied"};
+async function execute(dispatchId,options={}){
+  const fake=fixture(root,options);
+  const result=await runPlan({root,plan:{...plan,dispatchId},manifest,credentials,
     password:"fixture-secret",opsToken:"fixture-token",baseURL:"http://fixture.invalid",
     runtimeFactory:fake.runtimeFactory,dbProbe:fake.dbProbe});
+  return {fake,result};
+}
+try{
+  const {fake,result}=await execute(91);
   assert.equal(result.expectedEvidenceCount,15);assert.equal(result.submittedEvidenceCount,15);
   assert.equal(fake.submissions.length,15);
   assert.deepEqual([...new Set(fake.submissions.map(row=>row.statusCase))].sort(),[...STATUSES].sort());
@@ -151,11 +238,20 @@ try{
   assert.equal(one("SUCCESS").idempotencyKey,one("RECOVERY").idempotencyKey);
   assert.notEqual(one("VALIDATION_ERROR").executionId,one("FORBIDDEN").executionId);
   assert.equal(one("RECOVERY").output.recovered,true);
-  const mutant=fixture({mutantHttp:true});
-  await assert.rejects(()=>runPlan({root,plan:{...plan,dispatchId:92},manifest,
-    credentials:{ACTOR:"positive","FORBIDDEN:ACTOR":"denied"},password:"fixture-secret",
-    opsToken:"fixture-token",baseURL:"http://fixture.invalid",runtimeFactory:mutant.runtimeFactory,
-    dbProbe:mutant.dbProbe}),/FIXTURE_API_STATUS_INVALID/);
-  assert.equal(mutant.submissions.length,0);
-  console.log("COMPOSITE_LIVE_SMOKE_RUN_PLAN_PASS commands=1 statuses=5 lanes=3 submissions=15 http=200,400,403,409,200 recoveryReplay=1 mutantHttp=1");
+  assert.equal(fake.uiActions.filter(value=>value.startsWith("command:")).length,5);
+  assert.ok(fake.uiActions.filter(value=>value.startsWith("fill:")).length>=8);
+  assert.equal(fake.uiActions.filter(value=>value==="load-draft:positive").length,3);
+  assert.equal(fake.uiActions.filter(value=>value==="save-draft:positive").length,3);
+  assert.ok(fake.uiActions.some(value=>value==="command:denied:SAVE"));
+  for(const row of fake.submissions.filter(value=>value.lane==="BROWSER")){
+    await verifyArtifact(root,row.laneDetails.domArtifactRef,row.laneDetails.domHash,"dom.html");
+    await verifyArtifact(root,row.laneDetails.screenshotArtifactRef,row.laneDetails.screenshotHash,"screenshot.png");
+  }
+  await assert.rejects(()=>execute(92,{mutantHttp:true}),/API_STATUS_OBSERVATION_MISMATCH/);
+  await assert.rejects(()=>execute(93,{artifactMutant:"tamper"}),/EVIDENCE_SUBMISSION_REJECTED/);
+  await assert.rejects(()=>execute(94,{artifactMutant:"traversal"}),/EVIDENCE_SUBMISSION_REJECTED/);
+  await assert.rejects(()=>execute(95,{artifactMutant:"missing"}),/EVIDENCE_SUBMISSION_REJECTED/);
+  await assert.rejects(()=>execute(96,{artifactMutant:"symlink"}),/EVIDENCE_SUBMISSION_REJECTED/);
+  await assert.rejects(()=>execute(97,{wrongCommand:true}),/BROWSER_CONTEXT_OBSERVATION_MISMATCH/);
+  console.log("COMPOSITE_LIVE_SMOKE_RUN_PLAN_PASS commands=1 statuses=5 lanes=3 submissions=15 browserFill>=8 draftLoadSave=3/3 commandClicks=5 artifactRehash=10 mutants=http,tamper,traversal,missing,symlink,wrong-command");
 }finally{await rm(root,{recursive:true,force:true});}

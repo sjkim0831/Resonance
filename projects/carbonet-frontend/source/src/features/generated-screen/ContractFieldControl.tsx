@@ -28,5 +28,5 @@ export function ContractFieldControl({field,value,onChange}:Props) {
     const type=kind.includes("NUMBER")||kind.includes("DECIMAL")||kind.includes("INTEGER")?"number":kind.includes("DATE")?"date":kind.includes("EMAIL")?"email":kind.includes("URL")?"url":kind.includes("TEL")||kind.includes("PHONE")?"tel":"text";
     control=<input {...common} className={controlClass} max={number(field.max)} maxLength={number(field.maxLength)} min={number(field.min)} placeholder={String(field.placeholder||"")} type={type} value={value} onChange={event=>onChange(event.target.value)}/>;
   }
-  return <label className="gov-text-label font-bold text-slate-700" htmlFor={common.id}><span>{field.label}{required&&<span aria-label="필수 입력" className="ml-1 text-red-600">*</span>}</span>{control}{description&&<span className="gov-text-body-sm mt-1 block font-normal text-slate-500" id={`contract-field-help-${field.code}`}>{description}</span>}</label>;
+  return <label className="gov-text-label font-bold text-slate-700" data-field-code={field.code} htmlFor={common.id}><span>{field.label}{required&&<span aria-label="필수 입력" className="ml-1 text-red-600">*</span>}</span>{control}{description&&<span className="gov-text-body-sm mt-1 block font-normal text-slate-500" id={`contract-field-help-${field.code}`}>{description}</span>}</label>;
 }

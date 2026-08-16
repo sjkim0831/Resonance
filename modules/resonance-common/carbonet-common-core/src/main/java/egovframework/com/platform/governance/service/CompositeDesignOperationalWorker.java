@@ -94,12 +94,15 @@ public class CompositeDesignOperationalWorker {
             """);
             Map<String,Object> result=new LinkedHashMap<>(counts);result.put("success",true);
             result.put("dryRun",true);result.put("parallelism",parallelism);
+            result.put("liveSmokeParallelism",parallelism);
             result.put("enabled",enabled);result.put("activeWorkerCount",running.get());
             long processes=((Number)counts.get("totalProcessCount")).longValue();
             long p95=((Number)counts.get("p95CompileMs")).longValue();
             long samples=((Number)counts.get("physicalSampleCount")).longValue();
             result.put("estimatedTotalSeconds",samples==0?null:
                 (((long)Math.ceil((double)processes/parallelism)*p95)+999L)/1000L);
+            result.put("estimatedPhysicalTotalSeconds",result.get("estimatedTotalSeconds"));
+            result.put("p95PhysicalMs",p95);
             result.put("tenMinuteTarget",samples==0?"MEASUREMENT_REQUIRED":
                 (((Number)result.get("estimatedTotalSeconds")).longValue()<600?"PASS":"FAIL"));
             return result;});

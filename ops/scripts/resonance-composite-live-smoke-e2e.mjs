@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { createHash } from "node:crypto";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { chmod, lstat, mkdir, readFile, writeFile } from "node:fs/promises";
 import { spawnSync } from "node:child_process";
 import path from "node:path";
 import process from "node:process";
@@ -63,6 +63,153 @@ function requestPath(operation, executionId) {
   const route = String(operation.path || "").replace("{executionId}", encodeURIComponent(executionId));
   if (!route.startsWith("/") || route.includes("{") || route.includes("}")) fail("API_PATH_NOT_EXECUTABLE", route);
   return route;
+}
+function artifactRoot(root, manifest) {
+  const override = String(process.env.CARBONET_COMPOSITE_LIVE_SMOKE_EVIDENCE_ROOT || "").trim();
+  if (override) {
+    const resolvedOverride = path.resolve(override);
+    if (!path.isAbsolute(override) || resolvedOverride === path.parse(resolvedOverride).root
+        || path.basename(resolvedOverride) !== "composite-live-smoke")
+      fail("LIVE_SMOKE_EVIDENCE_ROOT_OVERRIDE_INVALID");
+    return resolvedOverride;
+  }
+  const repositoryRoot = path.resolve(root), configured = String(manifest.evidenceDirectory || "");
+  if (!configured || path.isAbsolute(configured)) fail("LIVE_SMOKE_EVIDENCE_DIRECTORY_INVALID");
+  const resolved = path.resolve(repositoryRoot, configured);
+  const relative = path.relative(repositoryRoot, resolved);
+  if (!relative || relative.startsWith("..") || path.isAbsolute(relative))
+    fail("LIVE_SMOKE_EVIDENCE_DIRECTORY_INVALID");
+  return resolved;
+}
+async function writeImmutableArtifact(evidenceRoot, dispatchId, runId, kind, bytes) {
+  const value = Buffer.from(bytes), digest = sha256(value);
+  const extension = kind === "DOM" ? "dom.html" : "screenshot.png";
+  const reference = path.posix.join(String(dispatchId), runId, `${digest}.${extension}`);
+  const destination = path.resolve(evidenceRoot, ...reference.split("/"));
+  if (!destination.startsWith(`${path.resolve(evidenceRoot)}${path.sep}`)) fail("EVIDENCE_ARTIFACT_PATH_INVALID");
+  await mkdir(path.dirname(destination), { recursive: true, mode: 0o700 });
+  let cursor=path.resolve(evidenceRoot);
+  const rootStat=await lstat(cursor);
+  if(rootStat.isSymbolicLink()||!rootStat.isDirectory())fail("EVIDENCE_ARTIFACT_ROOT_NOT_CONTROLLED");
+  for(const component of path.relative(cursor,path.dirname(destination)).split(path.sep).filter(Boolean)){
+    cursor=path.join(cursor,component);const stat=await lstat(cursor);
+    if(stat.isSymbolicLink()||!stat.isDirectory())fail("EVIDENCE_ARTIFACT_DIRECTORY_NOT_CONTROLLED");
+  }
+  try { await writeFile(destination, value, { flag: "wx", mode: 0o440 }); }
+  catch (error) {
+    if (error?.code !== "EEXIST") throw error;
+    const stat = await lstat(destination);
+    if (!stat.isFile() || stat.isSymbolicLink() || sha256(await readFile(destination)) !== digest)
+      fail("EVIDENCE_ARTIFACT_IMMUTABILITY_CONFLICT");
+  }
+  await chmod(destination, 0o440).catch(() => {});
+  return { reference, hash: digest };
+}
+function responseMatches(response, method, expectedPath) {
+  try { return response.request().method().toUpperCase() === method.toUpperCase()
+    && new URL(response.url()).pathname === expectedPath; }
+  catch { return false; }
+}
+async function fillScenarioInputs(page, input) {
+  for (const [fieldCode, raw] of Object.entries(input)) {
+    if (!/^[A-Za-z][A-Za-z0-9_]{0,119}$/.test(fieldCode)) fail("BROWSER_INPUT_FIELD_CODE_INVALID", fieldCode);
+    const control = page.locator(`[name="${fieldCode}"]`);
+    if (await control.count() !== 1) fail("BROWSER_INPUT_CONTROL_NOT_EXACT", fieldCode);
+    const shape = await control.evaluate(node => ({ tag: node.tagName, type: node.getAttribute("type") || "" }));
+    if (shape.tag === "SELECT") await control.selectOption(String(raw));
+    else if (shape.type === "checkbox") {
+      if (raw === true || raw === "true") await control.check(); else await control.uncheck();
+    } else await control.fill(raw == null ? "" : String(raw));
+  }
+}
+async function openScenarioPage({ runtime, accountId, baseURL, authority, command, scenario,
+  execution, idempotencyKey, runId, browserTimeout, openPages, denied }) {
+  const { context, page } = await runtime.pageFor(accountId); openPages.push(context);
+  const browserQuery = new URLSearchParams({ tenantId: authority.tenantId, projectId: authority.projectId,
+    processCode: authority.processCode, stepCode: authority.stepCode, executionId: execution.executionId,
+    commandCode: command.commandCode, scenarioCode: String(scenario.scenarioCode),
+    statusCase: String(scenario.expectedStatus), idempotencyKey, liveSmokeRunId: runId });
+  const browserPath = String(authority.routePath).split("?")[0];
+  await page.goto(`${baseURL}${browserPath}?${browserQuery}`, { waitUntil: "domcontentloaded", timeout: browserTimeout });
+  await page.waitForFunction(() => (document.querySelector("#root")?.children.length || 0) > 0,
+    undefined, { timeout: browserTimeout });
+  await page.waitForFunction(expectedDenied => document.querySelector("main")?.getAttribute("data-access-denied") ===
+    (expectedDenied ? "true" : "false") && (expectedDenied ||
+      document.querySelector("main")?.getAttribute("data-runtime-observed") === "true"),
+    denied, { timeout: browserTimeout });
+  await fillScenarioInputs(page, object(scenario.inputValues, "TEST_INPUT_INVALID"));
+  return { context, page, browserPath };
+}
+async function browserCommand({ runtime, baseURL, authority, command, operation, scenario, execution,
+  idempotencyKey, runId, selection, statusCase, browserTimeout, requestTimeout, openPages }) {
+  const needsDraftSave = !["CONFLICT", "RECOVERY"].includes(statusCase);
+  let prepared;
+  if (needsDraftSave) {
+    prepared = await openScenarioPage({ runtime, accountId: selection.preparation.accountId, baseURL,
+      authority, command, scenario, execution, idempotencyKey, runId, browserTimeout, openPages, denied: false });
+    const loadPromise = prepared.page.waitForResponse(response => {
+      try { return response.request().method() === "GET"
+        && new URL(response.url()).pathname.endsWith("/home/api/process-executions/draft"); }
+      catch { return false; }
+    }, { timeout: requestTimeout });
+    await prepared.page.locator('[data-live-smoke-action="load-draft"]').click();
+    const loaded = await loadPromise;
+    if (loaded.status() !== 200) fail("BROWSER_DRAFT_LOAD_FAILED", loaded.status());
+    let loadedDraft;try{loadedDraft=JSON.parse(Buffer.from(await loaded.body()).toString("utf8"));}
+    catch{fail("BROWSER_DRAFT_LOAD_RESPONSE_INVALID");}
+    const loadedVersion=Number(loadedDraft?.draft?.draftVersion);
+    if(!Number.isSafeInteger(loadedVersion)||loadedVersion<1)fail("BROWSER_DRAFT_LOAD_VERSION_INVALID");
+    await prepared.page.waitForFunction(expected => document.querySelector("main")?.getAttribute(
+      "data-draft-version") === String(expected), loadedVersion, { timeout: browserTimeout });
+    await fillScenarioInputs(prepared.page, object(scenario.inputValues, "TEST_INPUT_INVALID"));
+    const savePromise = prepared.page.waitForResponse(response => {
+      try { return response.request().method() === "PUT"
+        && new URL(response.url()).pathname.endsWith("/home/api/process-executions/draft"); }
+      catch { return false; }
+    }, { timeout: requestTimeout });
+    await prepared.page.locator('[data-live-smoke-action="save-draft"]').click();
+    const saved = await savePromise;
+    if (saved.status() !== 200) fail("BROWSER_DRAFT_SAVE_FAILED", saved.status());
+    await prepared.page.waitForFunction(() => document.querySelector("main")?.getAttribute(
+      "data-draft-status") === "DRAFT", undefined, { timeout: browserTimeout });
+  }
+  const denied = statusCase === "FORBIDDEN";
+  const active = prepared && String(selection.command.accountId).toLowerCase() ===
+    String(selection.preparation.accountId).toLowerCase() ? prepared : await openScenarioPage({
+      runtime, accountId: selection.command.accountId, baseURL, authority, command, scenario, execution,
+      idempotencyKey, runId, browserTimeout, openPages, denied });
+  const expectedPath = requestPath(operation, execution.executionId);
+  const method = String(operation.method).toUpperCase();
+  const responsePromise = active.page.waitForResponse(response => responseMatches(response, method, expectedPath),
+    { timeout: requestTimeout });
+  const button = active.page.locator(`[data-command-code="${command.commandCode}"]`);
+  if (await button.count() !== 1) fail("BROWSER_COMMAND_BUTTON_NOT_EXACT", command.commandCode);
+  await button.click();
+  const response = await responsePromise, raw = Buffer.from(await response.body());
+  let body; try { body = raw.length ? JSON.parse(raw.toString("utf8")) : {}; }
+  catch { fail("API_RESPONSE_NON_JSON", raw); }
+  await active.page.waitForFunction(expected => { const main=document.querySelector("main"); return (
+    main?.getAttribute("data-last-command-code") === expected.command
+      && main?.getAttribute("data-last-http-status") === String(expected.http)
+      && main?.getAttribute("data-last-status-case") === expected.status); },
+    { command: command.commandCode, http: Number(scenario.expectedHttpStatus), status: statusCase },
+    { timeout: browserTimeout });
+  const dom = await active.page.locator("html").evaluate(node => node.outerHTML);
+  const state = await active.page.evaluate(() => { const main=document.querySelector("main"); return {
+    path:location.pathname,processCode:main?.getAttribute("data-process-code")||"",
+    stepCode:main?.getAttribute("data-step-code")||"",audience:main?.getAttribute("data-audience")||"",
+    tenantId:main?.getAttribute("data-tenant-id")||"",projectId:main?.getAttribute("data-project-id")||"",
+    executionId:main?.getAttribute("data-execution-id")||"",currentState:main?.getAttribute("data-current-state")||"",
+    runtimeObserved:main?.getAttribute("data-runtime-observed")==="true",
+    accessDenied:main?.getAttribute("data-access-denied")==="true",
+    commandCode:main?.getAttribute("data-last-command-code")||"",
+    httpStatus:Number(main?.getAttribute("data-last-http-status")||0),
+    statusCase:main?.getAttribute("data-last-status-case")||"",
+    outputJson:main?.getAttribute("data-last-output-json")||"",
+    idempotencyKey:main?.getAttribute("data-last-idempotency-key")||"",
+    fatal:/react app did not mount|page error|페이지 처리 중 오류/i.test(document.body?.innerText||"") }; });
+  const screenshot = await active.page.screenshot({ fullPage: true });
+  return { response, raw, body, dom, state, screenshot, browserPath: active.browserPath };
 }
 export function selectAccounts(plan, credentials, authority, actor, statusCase, requiredScope) {
   const positiveId = String(credentials[actor] || "");
@@ -297,8 +444,9 @@ export async function runPlan({ root, plan, manifest, credentials, password, ops
         loginPath: "/admin/login/actionLogin", requestTimeoutMs: Number(manifest.timeouts.requestSeconds) * 1000 }))
     : (userRuntime ||= await runtimeFactory({ root, baseURL, password, accounts: runtimeAccounts,
         requestTimeoutMs: Number(manifest.timeouts.requestSeconds) * 1000 }));
-  const outputDirectory = path.join(root, manifest.evidenceDirectory, String(plan.dispatchId));
-  await mkdir(outputDirectory, { recursive: true });
+  const evidenceRoot = artifactRoot(root, manifest);
+  const outputDirectory = path.join(evidenceRoot, String(plan.dispatchId));
+  await mkdir(outputDirectory, { recursive: true, mode: 0o700 });
   const produced = []; const openPages = [];
   try {
     for (const authorityRow of authorities) {
@@ -321,7 +469,8 @@ export async function runPlan({ root, plan, manifest, credentials, password, ops
           const referenceCode = String(scenario.trigger?.referenceScenarioCode || "");
           const successReference = successReferences.get(referenceCode) || contexts.get(
             `${authority.authorityId}|${referenceCode}|SUCCESS`);
-          let execution, idempotencyKey, before, response, raw, body;
+          const runId = deterministicUuid(`${plan.dispatchId}|${evidenceKey(authorityRow, scenario, "RUN")}`);
+          let execution, idempotencyKey, before, response, raw, body, browser;
           if (resumed) {
             execution = { executionId: resumed.executionId, tenantId: authority.tenantId, projectId: authority.projectId };
             idempotencyKey = String(resumed.idempotencyKey || "");
@@ -330,6 +479,8 @@ export async function runPlan({ root, plan, manifest, credentials, password, ops
             before = dbProbe(root, selector, Number(manifest.timeouts.databaseSeconds) * 1000);
             response = { status: () => Number(resumed.observedHttpStatus), headers: () => ({ resumed: "true" }) };
             body = object(resumed.output, "PARTIAL_EVIDENCE_OUTPUT_INVALID"); raw = Buffer.from(stable(body));
+            if (!existing.has(evidenceKey(authority, scenario, "BROWSER")))
+              fail("PARTIAL_BROWSER_ARTIFACT_CONTEXT_REQUIRED", contextKey);
           } else {
             if (existing.has(evidenceKey(authority, scenario, "DATABASE"))
                 || existing.has(evidenceKey(authority, scenario, "BROWSER")))
@@ -347,12 +498,11 @@ export async function runPlan({ root, plan, manifest, credentials, password, ops
               : deterministicUuid(`${plan.dispatchId}|${authority.authorityId}|${scenario.scenarioCode}|idempotency`);
             const selector = exactExecutionSelector(execution, authority, command.commandCode, selection.command.accountId);
             before = dbProbe(root, selector, Number(manifest.timeouts.databaseSeconds) * 1000);
-            const request = { ...input, tenantId: authority.tenantId, projectId: authority.projectId,
-              actorCode: String(command.actorCode), idempotencyKey };
-            const observed = await jsonCall(runtime.apiFor(selection.command.accountId), String(operation.method).toUpperCase(),
-              requestPath(operation, execution.executionId), request, [Number(scenario.expectedHttpStatus)],
-              Number(manifest.timeouts.requestSeconds) * 1000);
-            response = observed.response; raw = observed.raw; body = observed.body;
+            browser = await browserCommand({ runtime, baseURL, authority, command, operation, scenario,
+              execution, idempotencyKey, runId, selection, statusCase,
+              browserTimeout: Number(manifest.timeouts.browserSeconds) * 1000,
+              requestTimeout: Number(manifest.timeouts.requestSeconds) * 1000, openPages });
+            response = browser.response; raw = browser.raw; body = browser.body;
           }
           if (!httpObservationExact(statusCase, response.status(), body, Number(scenario.expectedHttpStatus)))
             fail("API_STATUS_OBSERVATION_MISMATCH", `${statusCase}|${response.status()}|${sha256(raw)}`);
@@ -368,41 +518,28 @@ export async function runPlan({ root, plan, manifest, credentials, password, ops
           if (statusCase === "SUCCESS") successReferences.set(String(scenario.scenarioCode), {
             executionId: execution.executionId, idempotencyKey, output, observedHttpStatus: response.status() });
 
-          const { context, page } = await runtime.pageFor(selection.command.accountId); openPages.push(context);
-          const browserQuery = new URLSearchParams({ tenantId: authority.tenantId, projectId: authority.projectId,
-            processCode: authority.processCode, stepCode: authority.stepCode, executionId: execution.executionId,
-            commandCode: command.commandCode, scenarioCode: String(scenario.scenarioCode), statusCase });
-          const browserPath = String(authority.routePath).split("?")[0];
-          await page.goto(`${baseURL}${browserPath}?${browserQuery}`, { waitUntil: "domcontentloaded",
-            timeout: Number(manifest.timeouts.browserSeconds) * 1000 });
-          await page.waitForFunction(() => (document.querySelector("#root")?.children.length || 0) > 0,
-            undefined, { timeout: Number(manifest.timeouts.browserSeconds) * 1000 });
-          await page.waitForFunction(expectedDenied => document.querySelector("main")?.getAttribute("data-access-denied") ===
-            (expectedDenied ? "true" : "false") && (expectedDenied ||
-              document.querySelector("main")?.getAttribute("data-runtime-observed") === "true"),
-            statusCase === "FORBIDDEN", { timeout: Number(manifest.timeouts.browserSeconds) * 1000 });
-          const dom = await page.locator("html").evaluate(node => node.outerHTML);
-          const browserState = await page.evaluate(() => { const main=document.querySelector("main"); return {
-            path:location.pathname,processCode:main?.getAttribute("data-process-code")||"",
-            stepCode:main?.getAttribute("data-step-code")||"",audience:main?.getAttribute("data-audience")||"",
-            tenantId:main?.getAttribute("data-tenant-id")||"",projectId:main?.getAttribute("data-project-id")||"",
-            executionId:main?.getAttribute("data-execution-id")||"",currentState:main?.getAttribute("data-current-state")||"",
-            runtimeObserved:main?.getAttribute("data-runtime-observed")==="true",
-            accessDenied:main?.getAttribute("data-access-denied")==="true",
-            fatal:/react app did not mount|page error|페이지 처리 중 오류/i.test(document.body?.innerText||"") }; });
-          const denied = statusCase === "FORBIDDEN";
-          if (browserState.path !== browserPath || browserState.fatal
-              || browserState.processCode !== authority.processCode || browserState.stepCode !== authority.stepCode
-              || browserState.audience !== authority.audience || browserState.runtimeObserved === denied
-              || browserState.accessDenied !== denied || (!denied && (browserState.tenantId !== authority.tenantId
-                || browserState.projectId !== authority.projectId
-                || browserState.executionId.toLowerCase() !== execution.executionId.toLowerCase()
-                || browserState.currentState !== expectedState)))
-            fail("BROWSER_CONTEXT_OBSERVATION_MISMATCH", stable(browserState));
-          const screenshot = await page.screenshot({ fullPage: true });
-          const screenshotName = `${authority.authorityId}-${scenario.scenarioCode}-${statusCase}.png`;
-          await writeFile(path.join(outputDirectory, screenshotName), screenshot);
-          const runId = deterministicUuid(`${plan.dispatchId}|${evidenceKey(authority, scenario, "RUN")}`);
+          let browserArtifacts;
+          if (browser) {
+            const browserState = browser.state, denied = statusCase === "FORBIDDEN";
+            let uiOutput; try { uiOutput = JSON.parse(browserState.outputJson); }
+            catch { fail("BROWSER_OUTPUT_JSON_INVALID", browserState.outputJson); }
+            if (browserState.path !== browser.browserPath || browserState.fatal
+                || browserState.processCode !== authority.processCode || browserState.stepCode !== authority.stepCode
+                || browserState.audience !== authority.audience || browserState.runtimeObserved === denied
+                || browserState.accessDenied !== denied || browserState.commandCode !== command.commandCode
+                || browserState.httpStatus !== response.status() || browserState.statusCase !== statusCase
+                || browserState.idempotencyKey !== idempotencyKey || stable(uiOutput) !== stable(body)
+                || (!denied && (browserState.tenantId !== authority.tenantId
+                  || browserState.projectId !== authority.projectId
+                  || browserState.executionId.toLowerCase() !== execution.executionId.toLowerCase()
+                  || browserState.currentState !== expectedState)))
+              fail("BROWSER_CONTEXT_OBSERVATION_MISMATCH", stable(browserState));
+            const domArtifact = await writeImmutableArtifact(evidenceRoot, plan.dispatchId, runId, "DOM",
+              Buffer.from(browser.dom));
+            const screenshotArtifact = await writeImmutableArtifact(evidenceRoot, plan.dispatchId, runId,
+              "SCREENSHOT", browser.screenshot);
+            browserArtifacts = { domArtifact, screenshotArtifact };
+          }
           const common = { jobId: Number(plan.jobId), authorityId: Number(authority.authorityId),
             scenarioCode: scenario.scenarioCode, statusCase, tenantId: authority.tenantId,
             projectId: authority.projectId, executionId: execution.executionId, idempotencyKey,
@@ -416,11 +553,15 @@ export async function runPlan({ root, plan, manifest, credentials, password, ops
               laneDetails: { rereadHash: after.hash,
                 transactionHash: sha256(Buffer.from(`${before.hash}|${after.hash}|READ_ONLY_REPEATABLE_READ`)) } },
             BROWSER: { ...common, lane: "BROWSER", targetRef: authority.routePath,
-              laneDetails: { domHash: sha256(Buffer.from(dom)), screenshotHash: sha256(screenshot), rendered: true,
-                runtimeObserved: browserState.runtimeObserved, accessDenied: browserState.accessDenied } },
+              laneDetails: browserArtifacts ? { domHash: browserArtifacts.domArtifact.hash,
+                screenshotHash: browserArtifacts.screenshotArtifact.hash,
+                domArtifactRef: browserArtifacts.domArtifact.reference,
+                screenshotArtifactRef: browserArtifacts.screenshotArtifact.reference, rendered: true,
+                runtimeObserved: browser.state.runtimeObserved, accessDenied: browser.state.accessDenied } : null },
           };
           for (const lane of LANES) {
             const key = evidenceKey(authority, scenario, lane); if (existing.has(key)) continue;
+            if (!laneRequests[lane].laneDetails) fail("BROWSER_ARTIFACT_EVIDENCE_REQUIRED", key);
             const submitted = await runtime.apiFor(selection.command.accountId).post(manifest.evidenceEndpoint, {
               data: laneRequests[lane], headers: { "X-Resonance-Token": opsToken }, failOnStatusCode: false,
               timeout: Number(manifest.timeouts.requestSeconds) * 1000 });
@@ -430,7 +571,8 @@ export async function runPlan({ root, plan, manifest, credentials, password, ops
             let accepted; try { accepted = JSON.parse(submittedRaw.toString("utf8")); }
             catch { fail("EVIDENCE_RESPONSE_INVALID", submittedRaw); }
             produced.push({ key, evidenceHash: accepted.evidenceHash,
-              screenshotRef: lane === "BROWSER" ? screenshotName : null });
+              screenshotRef: lane === "BROWSER" ? browserArtifacts.screenshotArtifact.reference : null,
+              domRef: lane === "BROWSER" ? browserArtifacts.domArtifact.reference : null });
           }
         }
       }
@@ -445,7 +587,7 @@ export async function runPlan({ root, plan, manifest, credentials, password, ops
     evidenceSetHash: sha256(Buffer.from(stable([...existing, ...produced.map(row => row.key)].sort()))), produced };
   await writeFile(path.join(outputDirectory, "summary.json"), `${JSON.stringify(summary, null, 2)}\n`, { mode: 0o600 });
   return { ...summary, evidenceDirectoryHash: sha256(Buffer.from(stable(
-    produced.map(row => row.screenshotRef).filter(Boolean).sort()))) };
+    produced.flatMap(row => [row.domRef, row.screenshotRef]).filter(Boolean).sort()))) };
 }
 
 async function main() {
