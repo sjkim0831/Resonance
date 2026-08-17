@@ -147,6 +147,11 @@ elif grep -Eqi 'SQL State[[:space:]]*:[[:space:]]*P0001|SQLSTATE[[:space:]]*[:=]
   # kubectl wait emits a generic timeout. Never let that wrapper timeout turn
   # an already rolled-back migration into an automatic deployment retry.
   category=DATABASE_DETERMINISTIC
+elif grep -Eqi '\[backstage\][[:space:]]+runtime purge recovery (account secret is required|actor ref is invalid)' "$evidence"; then
+  # Missing or malformed recovery authority is deployment configuration, not a
+  # transport outage. Incidental timeout text from sibling cleanup must never
+  # schedule an identical full-backup/build retry.
+  category=BACKSTAGE_CONFIGURATION_DETERMINISTIC
 elif grep -Eqi 'STATIC_ONLY_BLOCKED_RUNTIME_IDENTITY_MISMATCH reason=(AUTHORITY_MISMATCH|IMMUTABLE_MISMATCH|COORDINATE_CONTRADICTION|TEMPLATE_MISMATCH)' "$evidence"; then
   # Durable authority, immutable image/template and monotonic-coordinate
   # contradictions require reconciliation; an identical retry cannot repair

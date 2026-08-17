@@ -56,6 +56,7 @@ policy_contract_files=(
   modules/hermes-core/cli.py
   ops/scripts/test-backstage-fast-deploy-policy.sh
   ops/scripts/test-backstage-runtime-fingerprint.sh
+  ops/scripts/test-backstage-runtime-purge-recovery-secret.sh
   ops/scripts/resonance-backstage-deploy.sh
   ops/scripts/auto-deploy-main.sh
   ops/scripts/reconcile-exact-legacy-orphan-runtime-quarantine.sh
@@ -2602,6 +2603,7 @@ derive_backstage_e2e_routes() {
       ops/scripts/resonance-backstage-runtime-fingerprint.sh|\
       ops/scripts/resonance-backstage-full-e2e.sh|\
       ops/scripts/test-backstage-runtime-fingerprint.sh|\
+      ops/scripts/test-backstage-runtime-purge-recovery-secret.sh|\
       ops/scripts/test-backstage-fast-deploy-policy.sh|\
       ops/scripts/test-catalog-identity-parallel-deploy.sh|\
       ops/systemd/resonance-backstage-full-e2e.service|\

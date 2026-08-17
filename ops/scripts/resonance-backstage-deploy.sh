@@ -266,15 +266,46 @@ ensure_auth_secret() {
 }
 
 ensure_runtime_purge_recovery_secret() {
-  local secret_name="resonance-runtime-purge-recovery" account_id actor_ref
-  if kubectl -n "$NAMESPACE" get secret "$secret_name" >/dev/null 2>&1; then
-    account_id="$(kubectl -n "$NAMESPACE" get secret "$secret_name" \
-      -o jsonpath='{.data.RESONANCE_RUNTIME_PURGE_RECOVERY_ACCOUNT_ID}' | base64 -d)"
-    actor_ref="$(kubectl -n "$NAMESPACE" get secret "$secret_name" \
-      -o jsonpath='{.data.RESONANCE_RUNTIME_PURGE_RECOVERY_ACTOR_REF}' | base64 -d)"
+  local secret_name="resonance-runtime-purge-recovery"
+  local bootstrap_secret_name="resonance-keycloak-integrated-admin"
+  local default_actor_ref="service:default/project-runtime-purge-recovery"
+  local account_id="" actor_ref="" secret_snapshot="" object_name=""
+  local account_base64="" actor_base64="" bootstrap_snapshot=""
+  if ! secret_snapshot="$(kubectl -n "$NAMESPACE" get secret "$secret_name" \
+      --ignore-not-found -o jsonpath='{.metadata.name}{"|"}{.data.RESONANCE_RUNTIME_PURGE_RECOVERY_ACCOUNT_ID}{"|"}{.data.RESONANCE_RUNTIME_PURGE_RECOVERY_ACTOR_REF}')"; then
+    echo "[backstage] runtime purge recovery secret lookup failed" >&2
+    return 1
+  fi
+  if [[ -n "$secret_snapshot" ]]; then
+    IFS='|' read -r object_name account_base64 actor_base64 <<<"$secret_snapshot"
+    [[ "$object_name" == "$secret_name" ]] || {
+      echo "[backstage] runtime purge recovery secret lookup failed" >&2
+      return 1
+    }
+    account_id="$(printf '%s' "$account_base64" | base64 -d 2>/dev/null || true)"
+    actor_ref="$(printf '%s' "$actor_base64" | base64 -d 2>/dev/null || true)"
+  elif [[ -v RESONANCE_RUNTIME_PURGE_RECOVERY_ACCOUNT_ID ]]; then
+    # An explicit operator binding outranks bootstrap discovery, including an
+    # explicitly empty value, which must fail closed instead of escalating to
+    # another account implicitly.
+    account_id="$RESONANCE_RUNTIME_PURGE_RECOVERY_ACCOUNT_ID"
+    actor_ref="${RESONANCE_RUNTIME_PURGE_RECOVERY_ACTOR_REF:-$default_actor_ref}"
   else
-    account_id="${RESONANCE_RUNTIME_PURGE_RECOVERY_ACCOUNT_ID:-}"
-    actor_ref="${RESONANCE_RUNTIME_PURGE_RECOVERY_ACTOR_REF:-service:default/project-runtime-purge-recovery}"
+    if ! bootstrap_snapshot="$(kubectl -n "$NAMESPACE" get secret "$bootstrap_secret_name" \
+        --ignore-not-found -o jsonpath='{.metadata.name}{"|"}{.data.USERNAME}')"; then
+      echo "[backstage] runtime purge recovery bootstrap lookup failed" >&2
+      return 1
+    fi
+    IFS='|' read -r object_name account_base64 <<<"$bootstrap_snapshot"
+    if [[ -n "$object_name" && "$object_name" != "$bootstrap_secret_name" ]]; then
+      echo "[backstage] runtime purge recovery bootstrap lookup failed" >&2
+      return 1
+    fi
+    # The account identifier is not a credential. Bootstrap it only from the
+    # already integrated administrator's USERNAME key; password material is
+    # neither read nor copied into the recovery identity Secret.
+    account_id="$(printf '%s' "$account_base64" | base64 -d 2>/dev/null || true)"
+    actor_ref="$default_actor_ref"
   fi
   [[ "$account_id" =~ ^[A-Za-z0-9._@-]{2,120}$ ]] || {
     echo "[backstage] runtime purge recovery account secret is required" >&2

@@ -45,6 +45,7 @@ grep -q 'retry_allowed=true' "$handler"
 grep -q 'category=DATABASE' "$handler"
 grep -q 'category=DATABASE_DETERMINISTIC' "$handler"
 grep -q 'category=POSTDEPLOY_VALIDATION_DETERMINISTIC' "$handler"
+grep -q 'category=BACKSTAGE_CONFIGURATION_DETERMINISTIC' "$handler"
 grep -q 'category=RUNTIME_IDENTITY_DETERMINISTIC' "$handler"
 grep -q 'category=DEPLOY_TERMINATED' "$handler"
 grep -q 'category=FLYWAY_CLEANUP_HOLD' "$handler"
@@ -293,9 +294,18 @@ SH
   run_classifier_mutant network_503 1 \
     'readiness returned 503 while probing the candidate' \
     NETWORK_TRANSIENT RETRY_SCHEDULED true true 1
+  run_classifier_mutant backstage_secret_lookup_transient 1 \
+    $'[backstage] runtime purge recovery secret lookup failed\nUnable to connect to the server: i/o timeout' \
+    NETWORK_TRANSIENT RETRY_SCHEDULED true true 1
   run_classifier_mutant emission_workflow_invalid 1 \
     $'[validation-groups] FAIL name=emission-workflow\n[emission-workflow] invalid projects: 35\ntimed out waiting for sibling validation group' \
     POSTDEPLOY_VALIDATION_DETERMINISTIC FAILED false false 0
+  run_classifier_mutant backstage_recovery_account_missing 1 \
+    $'[backstage] runtime purge recovery account secret is required\ntimed out waiting for sibling cleanup' \
+    BACKSTAGE_CONFIGURATION_DETERMINISTIC FAILED false false 0
+  run_classifier_mutant backstage_recovery_actor_invalid 1 \
+    $'[backstage] runtime purge recovery actor ref is invalid\ntimeout while collecting unrelated diagnostics' \
+    BACKSTAGE_CONFIGURATION_DETERMINISTIC FAILED false false 0
   run_classifier_mutant runtime_identity_mismatch 1 \
     $'[prebuild] timed out waiting for sibling test\n[auto-deploy] STATIC_ONLY_BLOCKED_RUNTIME_IDENTITY_MISMATCH reason=TEMPLATE_MISMATCH' \
     RUNTIME_IDENTITY_DETERMINISTIC FAILED false false 0
@@ -708,6 +718,7 @@ fi
 
 deterministic_database_line="$(grep -n 'category=DATABASE_DETERMINISTIC' "$handler" | head -1 | cut -d: -f1)"
 deterministic_postdeploy_line="$(grep -n 'category=POSTDEPLOY_VALIDATION_DETERMINISTIC' "$handler" | head -1 | cut -d: -f1)"
+deterministic_backstage_line="$(grep -n 'category=BACKSTAGE_CONFIGURATION_DETERMINISTIC' "$handler" | head -1 | cut -d: -f1)"
 deterministic_runtime_identity_line="$(grep -n 'category=RUNTIME_IDENTITY_DETERMINISTIC' "$handler" | head -1 | cut -d: -f1)"
 attempt_recovery_line="$(grep -n 'category=ATTEMPT_RECOVERY_PENDING' "$handler" | head -1 | cut -d: -f1)"
 promotion_pending_line="$(grep -n 'category=PROMOTION_MARKER_PENDING' "$handler" | head -1 | cut -d: -f1)"
@@ -720,6 +731,9 @@ database_line="$(grep -n '^[[:space:]]*category=DATABASE$' "$handler" | head -1 
 [[ "$deterministic_database_line" -lt "$terminated_line" ]]
 [[ "$terminated_line" -lt "$deterministic_postdeploy_line" ]]
 [[ "$deterministic_postdeploy_line" -lt "$network_line" ]]
+[[ "$attempt_recovery_line" -lt "$deterministic_backstage_line" ]]
+[[ "$promotion_pending_line" -lt "$deterministic_backstage_line" ]]
+[[ "$deterministic_backstage_line" -lt "$network_line" ]]
 [[ "$attempt_recovery_line" -lt "$deterministic_runtime_identity_line" ]]
 [[ "$promotion_pending_line" -lt "$deterministic_runtime_identity_line" ]]
 [[ "$deterministic_runtime_identity_line" -lt "$network_line" ]]
@@ -727,4 +741,4 @@ database_line="$(grep -n '^[[:space:]]*category=DATABASE$' "$handler" | head -1 
 [[ "$network_line" -lt "$e2e_line" ]]
 [[ "$e2e_line" -lt "$database_line" ]]
 
-echo "AUTO_DEPLOY_FAILURE_HANDLER_PASS promotionPending=DB-authoritative attemptRecovery=deploy-owner+hold-bypass+fetch0+candidateBound3x+promotedFinalLive identityPrecedence=attempt+promotion classifier=staleSuccess-write0+network503-retry1+emissionWorkflowInvalid-retry0+runtimeIdentityMismatch-retry0+runtimeIdentityReadiness-retry1+flywayP0001-retry0+term79-retry0+flywayCleanupHold-retry1+leaseBound+remote0+hangBound4s"
+echo "AUTO_DEPLOY_FAILURE_HANDLER_PASS promotionPending=DB-authoritative attemptRecovery=deploy-owner+hold-bypass+fetch0+candidateBound3x+promotedFinalLive identityPrecedence=attempt+promotion classifier=staleSuccess-write0+network503-retry1+backstageLookup-retry1+emissionWorkflowInvalid-retry0+backstageConfig2-retry0+runtimeIdentityMismatch-retry0+runtimeIdentityReadiness-retry1+flywayP0001-retry0+term79-retry0+flywayCleanupHold-retry1+leaseBound+remote0+hangBound4s"
