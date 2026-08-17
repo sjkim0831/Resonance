@@ -43,11 +43,21 @@ for token in (
     'RECOVERY_HOLD_CLEARED',
     'CLEANUP_BUDGET_EXHAUSTED',
     'JOB_APPLY_ARMED',
+    'manifest=""',
+    'if [[ -n "${manifest:-}" ]]',
 ):
     if token not in job:
         raise SystemExit(f"Flyway Job timeout contract missing: {token}")
 if "carbonet_flyway_schema_history" in job:
     raise SystemExit("cleanup must not use a global failed-history invariant")
+manifest_init = job.index('manifest=""')
+cleanup_trap_arm = job.index("trap cleanup EXIT")
+manifest_allocate = job.index('manifest="$(mktemp)"', cleanup_trap_arm)
+deployment_read = job.index('get deployment "$deployment" -o json', manifest_allocate)
+if not manifest_init < cleanup_trap_arm < manifest_allocate < deployment_read:
+    raise SystemExit("Flyway manifest must be allocated only after validation and cleanup arming")
+if job.count('manifest="$(mktemp)"') != 1:
+    raise SystemExit("Flyway manifest must have one late allocation site")
 arm = job.index("write_cleanup_hold_evidence JOB_APPLY_ARMED")
 ownership = job.index("job_applied=true", arm)
 apply = job.index('bounded_kubectl_for 30 -n "$namespace" apply -f "$manifest"', ownership)
@@ -83,6 +93,15 @@ hold_fixed = cleanup_trap.index("flyway_hold_active=true")
 backup_cleanup = cleanup_trap.index("cleanup_remote_backup", hold_fixed)
 if not hold_fixed < backup_cleanup:
     raise SystemExit("cleanup hold status 79 must be fixed before remote backup cleanup")
+for token in (
+    'cleanup_backup_dir="${BACKUP_DIR:-}"',
+    '"${backup_partial_file:-}"',
+    '"${roles_backup_partial_file:-}"',
+    '[[ -z "$cleanup_backup_dir" ]]',
+    '"$cleanup_backup_dir"/*.partial."$$"',
+):
+    if token not in cleanup_trap:
+        raise SystemExit(f"nounset-safe partial backup cleanup missing: {token}")
 runner_gate = auto_source.split("run_flyway_job_timeout_contract_if_required() {", 1)[1].split("\n}", 1)[0]
 for token in (
     "ops/scripts/auto-deploy-main.sh",
@@ -143,7 +162,7 @@ for token in (
         raise SystemExit(f"target-bound cleanup runner snapshot missing: {token}")
 PY
 
-mkdir -p "$tmp/bin" "$tmp/captures" "$tmp/logs"
+mkdir -p "$tmp/bin" "$tmp/captures" "$tmp/logs" "$tmp/manifest-tmp"
 cat >"$tmp/deployment.json" <<'JSON'
 {
   "spec": {
@@ -173,6 +192,7 @@ if [[ "$joined" == *" get secret "* ]]; then
   exit 0
 fi
 if [[ "$joined" == *" get deployment "* ]]; then
+  [[ "${MOCK_DEPLOYMENT_FAILURE:-false}" != true ]] || exit 43
   cat "$MOCK_DEPLOYMENT"
   exit 0
 fi
@@ -335,7 +355,18 @@ common_env=(
   CARBONET_FLYWAY_LOG_DIR="$tmp/logs"
   CARBONET_FLYWAY_CLEANUP_HOLD_FILE="$tmp/cleanup-hold.json"
   CARBONET_TARGET_COMMIT=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+  TMPDIR="$tmp/manifest-tmp"
 )
+
+assert_manifest_residue_zero() {
+  local context="$1" residue_count
+  residue_count="$(find "$tmp/manifest-tmp" -mindepth 1 -maxdepth 1 -print | wc -l)"
+  if [[ "$residue_count" != 0 ]]; then
+    echo "Flyway manifest residue after $context: $residue_count" >&2
+    find "$tmp/manifest-tmp" -mindepth 1 -maxdepth 1 -printf '%f\n' >&2
+    exit 1
+  fi
+}
 
 run_job() {
   env -u CARBONET_FLYWAY_JOB_TIMEOUT -u CARBONET_FLYWAY_JOB_TIMEOUT_SECONDS \
@@ -346,6 +377,13 @@ run_job() {
     "${common_env[@]}" "$@" bash "$JOB_SCRIPT" 'localhost:5000/carbonet-runtime:test'
 }
 
+reset_mock() {
+  : >"$tmp/events"
+  : >"$tmp/sql"
+  rm -f "$tmp/job-counter" "$tmp/date-counter" "$tmp/session-counter" \
+    "$tmp/delete-counter" "$tmp/resolver-counter" "$tmp/observer-seen"
+}
+
 : >"$tmp/events"
 run_job CARBONET_FLYWAY_JOB_DRY_RUN=client >/dev/null
 run_job CARBONET_FLYWAY_JOB_DRY_RUN=server \
@@ -353,6 +391,7 @@ run_job CARBONET_FLYWAY_JOB_DRY_RUN=server \
   CARBONET_FLYWAY_SETTLE_TIMEOUT_SECONDS=90 \
   CARBONET_FLYWAY_STATEMENT_TIMEOUT_SECONDS=480 \
   CARBONET_FLYWAY_LOCK_TIMEOUT_SECONDS=45 >/dev/null
+assert_manifest_residue_zero 'client/server success'
 
 python3 - "$tmp/captures/client.json" "$tmp/captures/server.json" <<'PY'
 import json
@@ -402,14 +441,29 @@ invalid_cases=(
   'CARBONET_FLYWAY_JOB_TIMEOUT=900s CARBONET_FLYWAY_JOB_TIMEOUT_SECONDS=900'
   'CARBONET_FLYWAY_JOB_TIMEOUT=15m'
 )
+invalid_early_exit_count=0
 for invalid in "${invalid_cases[@]}"; do
+  invalid_early_exit_count=$((invalid_early_exit_count + 1))
   # The fixture contains only variable assignments controlled by this test.
   read -r -a assignments <<<"$invalid"
   if run_job "${assignments[@]}" CARBONET_FLYWAY_JOB_DRY_RUN=client >/dev/null 2>&1; then
     printf 'invalid timeout contract passed: %s\n' "$invalid" >&2
     exit 1
   fi
+  assert_manifest_residue_zero "invalid early exit $invalid_early_exit_count"
 done
+[[ "$invalid_early_exit_count" == 12 ]]
+
+reset_mock
+if run_job MOCK_DEPLOYMENT_FAILURE=true CARBONET_FLYWAY_JOB_DRY_RUN=client \
+    >/dev/null 2>"$tmp/deployment-get.err"; then
+  echo 'deployment read failure unexpectedly passed' >&2
+  exit 1
+fi
+assert_manifest_residue_zero 'deployment read failure'
+! grep -Fq ' apply ' "$tmp/events"
+! grep -Fq ' delete job ' "$tmp/events"
+[[ ! -e "$tmp/cleanup-hold.json" && ! -L "$tmp/cleanup-hold.json" ]]
 
 # Execute the real backup cleanup function with a mocked kubectl boundary. psql
 # only expands :'app_name' for stdin scripts, so the invocation must use exec -i
@@ -447,9 +501,14 @@ grep -Fq 'exec -i postgres-patroni-0' "$tmp/events"
 # A half-open API during backup-session cleanup must not delay the durable
 # Flyway recovery handoff. Exercise the real cleanup trap with a kubectl mock
 # that would sleep for 30 seconds: the outer 2-second cap wins and status 79 is
-# preserved without entering either rollback helper.
+# preserved without entering either rollback helper. BACKUP_DIR and the main
+# partial variable are intentionally absent, while the roles partial points at
+# a sentinel: the extracted trap must remain nounset-safe and refuse deletion
+# when backup initialization has not established its exact directory boundary.
 : >"$tmp/events"; : >"$tmp/sql"; : >"$tmp/hold-cleanup-events"
 printf '%s\n' ARMED >"$tmp/cleanup-hold.json"
+guarded_partial="$tmp/guarded-roles.sql.gz.partial.$$"
+printf '%s\n' GUARDED >"$guarded_partial"
 mkdir -p "$tmp/hold-root"
 hold_cleanup_started="$(/usr/bin/date +%s)"
 set +e
@@ -484,6 +543,8 @@ set +e
   backstage_visual_e2e_pid=""
   schema_restore_database=""
   schema_backup_dir=""
+  unset BACKUP_DIR backup_partial_file
+  roles_backup_partial_file="$guarded_partial"
   ROOT_DIR="$tmp/hold-root"
   persistent_build_worktree="$tmp/other-root"
   CARBONET_DEPLOY_SNAPSHOT_PATH=""
@@ -502,6 +563,8 @@ hold_cleanup_status=$?
 set -e
 hold_cleanup_elapsed=$(( $(/usr/bin/date +%s) - hold_cleanup_started ))
 [[ "$hold_cleanup_status" == 79 && "$hold_cleanup_elapsed" -le 5 ]]
+! grep -Fq 'unbound variable' "$tmp/hold-cleanup.err"
+[[ -f "$guarded_partial" && "$(cat "$guarded_partial")" == GUARDED ]]
 grep -Fq -- '--request-timeout=1s' "$tmp/events"
 grep -Fq 'RECOVERY_HOLD preserved attempt/checkpoint state' "$tmp/hold-cleanup.err"
 [[ ! -s "$tmp/hold-cleanup-events" ]]
@@ -537,13 +600,6 @@ exec 8>&-
 [[ "$contender_status" == 0 && ! -s "$tmp/lock-events" ]]
 [[ -f "$tmp/active-marker" \
    && "$(sha256sum "$tmp/active-marker" | awk '{print $1}')" == "$active_marker_hash" ]]
-
-reset_mock() {
-  : >"$tmp/events"
-  : >"$tmp/sql"
-  rm -f "$tmp/job-counter" "$tmp/date-counter" "$tmp/session-counter" \
-    "$tmp/delete-counter" "$tmp/resolver-counter" "$tmp/observer-seen"
-}
 
 # A successful terminal Job is logged before its owned resource is terminated.
 # Foreground deletion and Pod zero must precede the first DB query, and every
@@ -738,4 +794,5 @@ reset_mock
 run_job MOCK_JOB_STATE=COMPLETE >/dev/null
 [[ ! -e "$tmp/cleanup-hold.json" && ! -L "$tmp/cleanup-hold.json" ]]
 
-printf '%s\n' 'FLYWAY_JOB_TIMEOUT_CONTRACT_PASS defaultJob=900s defaultStatement=780s settle=120s lock=10s observer=930s cleanupHold=120s bounds=12 terminalCleanup=6 prematureDelete=0 controlledAbort=1 dbSessionExact=1 failoverGuard=1 cancelTerminate=2 historyGlobal=0 podResidue=0 applyAmbiguity=owned holdExit=79 holdValidation=source+namespace+path holdRecovery=cleared lockRace=cleanup0+markerIntact parentHandoff=79 backupCleanupPsql=stdin backupCleanupHang=bounded2s+status79'
+assert_manifest_residue_zero 'full timeout contract'
+printf '%s\n' 'FLYWAY_JOB_TIMEOUT_CONTRACT_PASS defaultJob=900s defaultStatement=780s settle=120s lock=10s observer=930s cleanupHold=120s bounds=12 terminalCleanup=6 prematureDelete=0 controlledAbort=1 dbSessionExact=1 failoverGuard=1 cancelTerminate=2 historyGlobal=0 podResidue=0 applyAmbiguity=owned holdExit=79 holdValidation=source+namespace+path holdRecovery=cleared lockRace=cleanup0+markerIntact parentHandoff=79 backupCleanupPsql=stdin backupCleanupHang=bounded2s+status79 manifestResidue=success0+invalid12x0+deploymentReadFailure0'

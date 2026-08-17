@@ -32,7 +32,7 @@ dry_run_mode="${CARBONET_FLYWAY_JOB_DRY_RUN:-none}"
 job="carbonet-flyway-$(date +%Y%m%d%H%M%S)-$(printf '%s' "$image" | sha256sum | cut -c1-6)"
 application_name="$job"
 started_epoch="$(date +%s)"
-manifest="$(mktemp)"
+manifest=""
 log_dir="${CARBONET_FLYWAY_LOG_DIR:-/opt/Resonance/var/logs/flyway-jobs}"
 root_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 postgres_container="${CARBONET_POSTGRES_CONTAINER:-patroni}"
@@ -288,7 +288,9 @@ clear_current_cleanup_hold_evidence() {
 cleanup() {
   local original_status="$?" cleanup_deadline cleanup_started cleanup_attempts=0 cleanup_proven=false
   trap - EXIT
-  rm -f "$manifest"
+  if [[ -n "${manifest:-}" ]]; then
+    rm -f -- "$manifest"
+  fi
   if [[ "$job_applied" == true ]]; then
     if [[ "$job_terminal" != true ]]; then
       echo "[flyway-job] controlled abort: quiescing the owned DB session before Job cleanup: $job" >&2
@@ -416,13 +418,11 @@ PY
 
 if [[ "$operation" == recover-cleanup-hold ]]; then
   trap - EXIT
-  rm -f "$manifest"
   recover_cleanup_hold
   exit $?
 fi
 if [[ -e "$cleanup_hold_file" || -L "$cleanup_hold_file" ]]; then
   echo "[flyway-job] RECOVERY_HOLD blocks a new migration until reconciled: $cleanup_hold_file" >&2
-  rm -f "$manifest"
   exit 79
 fi
 trap cleanup EXIT
@@ -452,6 +452,7 @@ raise SystemExit(0 if isinstance(value, str) and value else 1)
   fi
 fi
 
+manifest="$(mktemp)"
 bounded_kubectl_for 15 -n "$namespace" get deployment "$deployment" -o json |
   JOB_NAME="$job" CONTAINER_NAME="$container" CANDIDATE_IMAGE="$image" \
   APPLICATION_NAME="$application_name" \

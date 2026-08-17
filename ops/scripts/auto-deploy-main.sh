@@ -1856,6 +1856,7 @@ recover_staged_postdeploy_attempt_after_failure() {
 
 cleanup_deploy() {
   local original_status=$? recovery_status=0 flyway_hold_active=false
+  local cleanup_backup_dir="${BACKUP_DIR:-}" partial_backup
   trap - EXIT INT TERM
   set +e
   if [[ "$flyway_cleanup_recovery_hold" == true \
@@ -1897,10 +1898,14 @@ cleanup_deploy() {
   if [[ -n "$schema_backup_dir" ]]; then
     rm -rf -- "$schema_backup_dir"
   fi
-  for partial_backup in "$backup_partial_file" "$roles_backup_partial_file"; do
+  for partial_backup in "${backup_partial_file:-}" "${roles_backup_partial_file:-}"; do
     [[ -z "$partial_backup" ]] && continue
+    if [[ -z "$cleanup_backup_dir" ]]; then
+      original_status=79
+      continue
+    fi
     case "$partial_backup" in
-      "$BACKUP_DIR"/*.partial."$$") rm -f -- "$partial_backup" ;;
+      "$cleanup_backup_dir"/*.partial."$$") rm -f -- "$partial_backup" ;;
       *) original_status=79 ;;
     esac
   done
