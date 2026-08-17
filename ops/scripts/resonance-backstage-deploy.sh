@@ -6,26 +6,31 @@ APP="$ROOT/platform/control-plane/backstage"
 BUILD_TMP_ROOT="${BACKSTAGE_BUILD_TMP_ROOT:-/opt/resonance-data/control-plane/build-tmp/backstage}"
 DEPENDENCY_CACHE_ROOT="${BACKSTAGE_DEPENDENCY_CACHE_ROOT:-/opt/resonance-data/control-plane/dependency-cache/backstage}"
 BUILDKIT_CACHE_ROOT="${BACKSTAGE_BUILDKIT_CACHE_ROOT:-/opt/resonance-data/control-plane/build-cache/backstage-buildkit}"
-mkdir -p "$BUILD_TMP_ROOT"
-TMPDIR="$(mktemp -d "$BUILD_TMP_ROOT/run.XXXXXXXX")"
-case "$(readlink -f "$TMPDIR")" in
-  "$(readlink -f "$BUILD_TMP_ROOT")"/*) ;;
-  *) echo "[backstage] unsafe build temp path: $TMPDIR" >&2; exit 2 ;;
-esac
-export TMPDIR
+BACKSTAGE_BUILD_RUN_TMP=""
 WORKTREE_LOCKED=false
-if [[ -f "$ROOT/.git" ]]; then
-  git -C "$ROOT" worktree lock --reason "resonance-backstage-deploy" "$ROOT"
-  WORKTREE_LOCKED=true
-fi
 cleanup_build_tmp() {
   local resolved
-  resolved="$(readlink -f "$TMPDIR" 2>/dev/null || true)"
-  case "$resolved" in
-    "$(readlink -f "$BUILD_TMP_ROOT")"/*) rm -rf -- "$resolved" ;;
-  esac
+  if [[ -n "$BACKSTAGE_BUILD_RUN_TMP" ]]; then
+    resolved="$(readlink -f "$BACKSTAGE_BUILD_RUN_TMP" 2>/dev/null || true)"
+    case "$resolved" in
+      "$(readlink -f "$BUILD_TMP_ROOT")"/*) rm -rf -- "$resolved" ;;
+    esac
+  fi
   if [[ "$WORKTREE_LOCKED" == "true" ]]; then
     git -C "$ROOT" worktree unlock "$ROOT" >/dev/null 2>&1 || true
+  fi
+}
+initialize_backstage_build_workspace() {
+  mkdir -p "$BUILD_TMP_ROOT"
+  BACKSTAGE_BUILD_RUN_TMP="$(mktemp -d "$BUILD_TMP_ROOT/run.XXXXXXXX")"
+  case "$(readlink -f "$BACKSTAGE_BUILD_RUN_TMP")" in
+    "$(readlink -f "$BUILD_TMP_ROOT")"/*) ;;
+    *) echo "[backstage] unsafe build temp path: $BACKSTAGE_BUILD_RUN_TMP" >&2; return 2 ;;
+  esac
+  export TMPDIR="$BACKSTAGE_BUILD_RUN_TMP"
+  if [[ -f "$ROOT/.git" ]]; then
+    git -C "$ROOT" worktree lock --reason "resonance-backstage-deploy" "$ROOT"
+    WORKTREE_LOCKED=true
   fi
 }
 trap cleanup_build_tmp EXIT
@@ -36,12 +41,398 @@ IMAGE_REPOSITORY="$REGISTRY/resonance-backstage"
 KUBECONFIG="${KUBECONFIG:-/home/sjkim/.kube/config}"
 export KUBECONFIG
 
+BACKSTAGE_DEPLOYMENT_ROLLBACK_STATE_DIR="${BACKSTAGE_DEPLOYMENT_ROLLBACK_STATE_DIR:-/opt/resonance-data/control-plane/deploy-state/backstage}"
+BACKSTAGE_DEPLOYMENT_ROLLBACK_PENDING_FILE="${BACKSTAGE_DEPLOYMENT_ROLLBACK_PENDING_FILE:-$BACKSTAGE_DEPLOYMENT_ROLLBACK_STATE_DIR/deployment-rollback.pending.json}"
+BACKSTAGE_DEPLOYMENT_ROLLBACK_TIMEOUT_SECONDS="${BACKSTAGE_DEPLOYMENT_ROLLBACK_TIMEOUT_SECONDS:-600}"
+BACKSTAGE_DEPLOYMENT_ROLLBACK_POLL_SECONDS="${BACKSTAGE_DEPLOYMENT_ROLLBACK_POLL_SECONDS:-0.5}"
+BACKSTAGE_DEPLOYMENT_NAME="resonance-backstage"
+BACKSTAGE_DEPLOYMENT_LOCK_FD=""
+BACKSTAGE_DEPLOYMENT_LOCK_HELD=false
+BACKSTAGE_DEPLOY_ROLLBACK_ARMED=false
+BACKSTAGE_DEPLOY_COMPLETED=false
+BACKSTAGE_PENDING_STATE_JSON=""
+BACKSTAGE_BASELINE_UID=""
+BACKSTAGE_BASELINE_RESOURCE_VERSION=""
+BACKSTAGE_BASELINE_SPEC=""
+
+backstage_rollback_fail() {
+  echo "[backstage] deployment rollback state failure: $1" >&2
+  return 1
+}
+
+prepare_backstage_rollback_state_directory() {
+  local state_dir logical_dir physical_dir expected_owner
+  state_dir="$(dirname -- "$BACKSTAGE_DEPLOYMENT_ROLLBACK_PENDING_FILE")"
+  expected_owner="$(id -u)"
+  if [[ -L "$state_dir" ]]; then
+    backstage_rollback_fail "state directory is a symlink"
+    return 1
+  fi
+  if [[ ! -e "$state_dir" ]]; then
+    (umask 077 && mkdir -p -- "$state_dir") || {
+      backstage_rollback_fail "cannot create state directory"
+      return 1
+    }
+  fi
+  [[ -d "$state_dir" && ! -L "$state_dir" ]] || {
+    backstage_rollback_fail "state directory is not a directory"
+    return 1
+  }
+  logical_dir="$(readlink -m -- "$state_dir" 2>/dev/null || true)"
+  physical_dir="$(readlink -f -- "$state_dir" 2>/dev/null || true)"
+  [[ -n "$logical_dir" && "$logical_dir" == "$physical_dir" ]] || {
+    backstage_rollback_fail "state directory contains a symlink"
+    return 1
+  }
+  [[ "$(stat -c '%a:%u' -- "$state_dir" 2>/dev/null || true)" == "700:$expected_owner" ]] || {
+    backstage_rollback_fail "state directory owner or mode is invalid"
+    return 1
+  }
+}
+
+acquire_backstage_deployment_lock() {
+  local state_dir expected_identity identity_before identity_after fd_identity
+  local fd_resolved state_resolved lock_fd shell_pid
+  prepare_backstage_rollback_state_directory || return 79
+  if [[ "$BACKSTAGE_DEPLOYMENT_LOCK_HELD" == "true" ]]; then
+    return 0
+  fi
+  # The verified 0700 state directory inode is the lock object. No separately
+  # named lock file can be replaced with a symlink between validation and use.
+  state_dir="$(dirname -- "$BACKSTAGE_DEPLOYMENT_ROLLBACK_PENDING_FILE")"
+  expected_identity="700:$(id -u)"
+  identity_before="$(stat -c '%d:%i:%a:%u' -- "$state_dir" 2>/dev/null || true)"
+  [[ "$identity_before" == *":$expected_identity" ]] || {
+    backstage_rollback_fail "deployment lock directory identity is invalid" || true
+    return 79
+  }
+  if ! exec {lock_fd}<"$state_dir"; then
+    backstage_rollback_fail "deployment lock directory cannot be opened" || true
+    return 79
+  fi
+  shell_pid="$BASHPID"
+  fd_identity="$(stat -Lc '%d:%i:%a:%u' -- "/proc/$shell_pid/fd/$lock_fd" 2>/dev/null || true)"
+  identity_after="$(stat -c '%d:%i:%a:%u' -- "$state_dir" 2>/dev/null || true)"
+  fd_resolved="$(readlink -f -- "/proc/$shell_pid/fd/$lock_fd" 2>/dev/null || true)"
+  state_resolved="$(readlink -f -- "$state_dir" 2>/dev/null || true)"
+  if [[ "$fd_identity" != "$identity_before" || "$identity_after" != "$identity_before" ||
+        "$fd_resolved" != "$state_resolved" ]]; then
+    exec {lock_fd}<&-
+    backstage_rollback_fail "deployment lock directory changed while being opened" || true
+    return 79
+  fi
+  if ! flock -n "$lock_fd"; then
+    exec {lock_fd}<&-
+    backstage_rollback_fail "another Backstage deploy holds the state-directory lock" || true
+    return 79
+  fi
+  BACKSTAGE_DEPLOYMENT_LOCK_FD="$lock_fd"
+  BACKSTAGE_DEPLOYMENT_LOCK_HELD=true
+  echo "[backstage] exclusive state-directory deploy lock acquired"
+}
+
+backstage_pending_state_exists() {
+  [[ -e "$BACKSTAGE_DEPLOYMENT_ROLLBACK_PENDING_FILE" ||
+     -L "$BACKSTAGE_DEPLOYMENT_ROLLBACK_PENDING_FILE" ]]
+}
+
+verify_backstage_pending_state_file_security() {
+  local expected_owner
+  expected_owner="$(id -u)"
+  [[ -f "$BACKSTAGE_DEPLOYMENT_ROLLBACK_PENDING_FILE" &&
+     ! -L "$BACKSTAGE_DEPLOYMENT_ROLLBACK_PENDING_FILE" ]] || {
+    backstage_rollback_fail "pending state is not a regular non-symlink file"
+    return 1
+  }
+  [[ "$(stat -c '%a:%u:%h' -- "$BACKSTAGE_DEPLOYMENT_ROLLBACK_PENDING_FILE" 2>/dev/null || true)" == "600:$expected_owner:1" ]] || {
+    backstage_rollback_fail "pending state owner, mode, or link count is invalid"
+    return 1
+  }
+}
+
+load_backstage_pending_state() {
+  local state_before state_after state_payload expected_integrity actual_integrity
+  prepare_backstage_rollback_state_directory || return 1
+  verify_backstage_pending_state_file_security || return 1
+  state_before="$(stat -c '%d:%i:%s:%Y' -- "$BACKSTAGE_DEPLOYMENT_ROLLBACK_PENDING_FILE" 2>/dev/null || true)"
+  BACKSTAGE_PENDING_STATE_JSON="$(<"$BACKSTAGE_DEPLOYMENT_ROLLBACK_PENDING_FILE")" || {
+    backstage_rollback_fail "pending state cannot be read"
+    return 1
+  }
+  state_after="$(stat -c '%d:%i:%s:%Y' -- "$BACKSTAGE_DEPLOYMENT_ROLLBACK_PENDING_FILE" 2>/dev/null || true)"
+  [[ -n "$state_before" && "$state_before" == "$state_after" ]] || {
+    backstage_rollback_fail "pending state changed while being read"
+    return 1
+  }
+  if ! jq -e \
+      --arg namespace "$NAMESPACE" \
+      --arg deployment "$BACKSTAGE_DEPLOYMENT_NAME" '
+        type == "object" and
+        (keys | sort) == ["baseline","deploymentName","integritySha256","kind","namespace","schemaVersion"] and
+        .schemaVersion == 1 and
+        .kind == "BackstageDeploymentRollbackPending" and
+        .namespace == $namespace and
+        .deploymentName == $deployment and
+        (.integritySha256 | type == "string" and test("^[0-9a-f]{64}$")) and
+        (.baseline | type == "object") and
+        (.baseline | keys | sort) == ["resourceVersion","spec","uid"] and
+        (.baseline.uid | type == "string" and length > 0 and length <= 253) and
+        (.baseline.resourceVersion | type == "string" and length > 0 and length <= 253) and
+        (.baseline.spec | type == "object")
+      ' <<<"$BACKSTAGE_PENDING_STATE_JSON" >/dev/null; then
+    backstage_rollback_fail "pending state schema is invalid"
+    return 1
+  fi
+  state_payload="$(jq -cS 'del(.integritySha256)' <<<"$BACKSTAGE_PENDING_STATE_JSON")" || return 1
+  expected_integrity="$(jq -r '.integritySha256' <<<"$BACKSTAGE_PENDING_STATE_JSON")" || return 1
+  actual_integrity="$(printf '%s' "$state_payload" | sha256sum | awk '{print $1}')" || return 1
+  [[ "$actual_integrity" == "$expected_integrity" ]] || {
+    backstage_rollback_fail "pending state integrity check failed"
+    return 1
+  }
+  BACKSTAGE_BASELINE_UID="$(jq -r '.baseline.uid' <<<"$BACKSTAGE_PENDING_STATE_JSON")" || return 1
+  BACKSTAGE_BASELINE_RESOURCE_VERSION="$(jq -r '.baseline.resourceVersion' <<<"$BACKSTAGE_PENDING_STATE_JSON")" || return 1
+  BACKSTAGE_BASELINE_SPEC="$(jq -cS '.baseline.spec' <<<"$BACKSTAGE_PENDING_STATE_JSON")" || return 1
+}
+
+capture_backstage_deployment_baseline() {
+  local deployment_json state_payload state_json integrity state_dir state_tmp=""
+  prepare_backstage_rollback_state_directory || return 1
+  if backstage_pending_state_exists; then
+    backstage_rollback_fail "pending state already exists"
+    return 1
+  fi
+  deployment_json="$(kubectl -n "$NAMESPACE" get deployment "$BACKSTAGE_DEPLOYMENT_NAME" -o json)" || {
+    backstage_rollback_fail "baseline Deployment lookup failed"
+    return 1
+  }
+  if ! jq -e \
+      --arg namespace "$NAMESPACE" \
+      --arg deployment "$BACKSTAGE_DEPLOYMENT_NAME" '
+        .apiVersion == "apps/v1" and
+        .kind == "Deployment" and
+        .metadata.namespace == $namespace and
+        .metadata.name == $deployment and
+        (.metadata.uid | type == "string" and length > 0) and
+        (.metadata.resourceVersion | type == "string" and length > 0) and
+        (.spec | type == "object")
+      ' <<<"$deployment_json" >/dev/null; then
+    backstage_rollback_fail "baseline Deployment identity or spec is invalid"
+    return 1
+  fi
+  state_payload="$(jq -cS \
+    --arg namespace "$NAMESPACE" \
+    --arg deployment "$BACKSTAGE_DEPLOYMENT_NAME" '
+      {
+        schemaVersion: 1,
+        kind: "BackstageDeploymentRollbackPending",
+        namespace: $namespace,
+        deploymentName: $deployment,
+        baseline: {
+          uid: .metadata.uid,
+          resourceVersion: .metadata.resourceVersion,
+          spec: .spec
+        }
+      }
+    ' <<<"$deployment_json")" || return 1
+  integrity="$(printf '%s' "$state_payload" | sha256sum | awk '{print $1}')" || return 1
+  state_json="$(jq -cS --arg integrity "$integrity" '. + {integritySha256: $integrity}' <<<"$state_payload")" || return 1
+  state_dir="$(dirname -- "$BACKSTAGE_DEPLOYMENT_ROLLBACK_PENDING_FILE")"
+  state_tmp="$(umask 077 && mktemp "$state_dir/.deployment-rollback.pending.XXXXXXXX")" || {
+    backstage_rollback_fail "pending state temporary file creation failed"
+    return 1
+  }
+  if ! printf '%s\n' "$state_json" >"$state_tmp" ||
+     ! chmod 0600 -- "$state_tmp" ||
+     [[ "$(stat -c '%a:%u:%h' -- "$state_tmp" 2>/dev/null || true)" != "600:$(id -u):1" ]] ||
+     ! sync -f "$state_tmp" ||
+     ! mv -T -- "$state_tmp" "$BACKSTAGE_DEPLOYMENT_ROLLBACK_PENDING_FILE" ||
+     ! sync -f "$state_dir"; then
+    rm -f -- "$state_tmp"
+    backstage_rollback_fail "pending state atomic publication failed"
+    return 1
+  fi
+  load_backstage_pending_state || return 1
+  BACKSTAGE_DEPLOY_ROLLBACK_ARMED=true
+  echo "[backstage] deployment rollback baseline captured uid=$BACKSTAGE_BASELINE_UID integrity=$integrity"
+}
+
+wait_for_backstage_deployment_readiness() {
+  local expected_uid="$1" expected_spec="${2:-}" deadline live_json desired
+  deadline="$(( $(date +%s) + BACKSTAGE_DEPLOYMENT_ROLLBACK_TIMEOUT_SECONDS ))"
+  while (( $(date +%s) <= deadline )); do
+    live_json="$(kubectl -n "$NAMESPACE" get deployment "$BACKSTAGE_DEPLOYMENT_NAME" -o json 2>/dev/null || true)"
+    if jq -e --arg uid "$expected_uid" '
+        .apiVersion == "apps/v1" and
+        .kind == "Deployment" and
+        .metadata.uid == $uid and
+        ((.spec.replicas // 1) as $desired |
+          (.status.observedGeneration // -1) >= (.metadata.generation // 0) and
+          (.status.updatedReplicas // 0) == $desired and
+          (.status.readyReplicas // 0) == $desired and
+          (.status.availableReplicas // 0) == $desired and
+          (.status.unavailableReplicas // 0) == 0)
+      ' <<<"$live_json" >/dev/null 2>&1; then
+      if [[ -z "$expected_spec" ]] ||
+         jq -e --argjson expectedSpec "$expected_spec" '.spec == $expectedSpec' \
+           <<<"$live_json" >/dev/null 2>&1; then
+        desired="$(jq -r '.spec.replicas // 1' <<<"$live_json")"
+        echo "[backstage] Deployment readiness proved desired=$desired updated=$desired ready=$desired available=$desired unavailable=0"
+        return 0
+      fi
+    fi
+    sleep "$BACKSTAGE_DEPLOYMENT_ROLLBACK_POLL_SECONDS"
+  done
+  backstage_rollback_fail "Deployment readiness proof timed out"
+  return 1
+}
+
+clear_backstage_pending_state() {
+  local state_dir
+  load_backstage_pending_state || return 1
+  state_dir="$(dirname -- "$BACKSTAGE_DEPLOYMENT_ROLLBACK_PENDING_FILE")"
+  rm -f -- "$BACKSTAGE_DEPLOYMENT_ROLLBACK_PENDING_FILE" || {
+    backstage_rollback_fail "pending state removal failed"
+    return 1
+  }
+  sync -f "$state_dir" || {
+    backstage_rollback_fail "pending state directory sync failed"
+    return 1
+  }
+  backstage_pending_state_exists && {
+    backstage_rollback_fail "pending state remains after removal"
+    return 1
+  }
+  BACKSTAGE_PENDING_STATE_JSON=""
+  BACKSTAGE_DEPLOY_ROLLBACK_ARMED=false
+}
+
+rollback_pending_backstage_deployment() {
+  local current_json current_uid current_resource_version current_spec patch_json
+  load_backstage_pending_state || return 1
+  current_json="$(kubectl -n "$NAMESPACE" get deployment "$BACKSTAGE_DEPLOYMENT_NAME" -o json)" || {
+    backstage_rollback_fail "current Deployment lookup failed"
+    return 1
+  }
+  if ! jq -e \
+      --arg namespace "$NAMESPACE" \
+      --arg deployment "$BACKSTAGE_DEPLOYMENT_NAME" '
+        .apiVersion == "apps/v1" and
+        .kind == "Deployment" and
+        .metadata.namespace == $namespace and
+        .metadata.name == $deployment and
+        (.metadata.uid | type == "string" and length > 0) and
+        (.metadata.resourceVersion | type == "string" and length > 0) and
+        (.spec | type == "object")
+      ' <<<"$current_json" >/dev/null; then
+    backstage_rollback_fail "current Deployment identity or spec is invalid"
+    return 1
+  fi
+  current_uid="$(jq -r '.metadata.uid' <<<"$current_json")" || return 1
+  current_resource_version="$(jq -r '.metadata.resourceVersion' <<<"$current_json")" || return 1
+  current_spec="$(jq -cS '.spec' <<<"$current_json")" || return 1
+  [[ "$current_uid" == "$BACKSTAGE_BASELINE_UID" ]] || {
+    backstage_rollback_fail "Deployment UID changed; rollback mutation=0"
+    return 1
+  }
+  patch_json="$(jq -cn \
+    --arg uid "$current_uid" \
+    --arg resourceVersion "$current_resource_version" \
+    --argjson currentSpec "$current_spec" \
+    --argjson baselineSpec "$BACKSTAGE_BASELINE_SPEC" '
+      [
+        {op:"test", path:"/metadata/uid", value:$uid},
+        {op:"test", path:"/metadata/resourceVersion", value:$resourceVersion},
+        {op:"test", path:"/spec", value:$currentSpec},
+        {op:"replace", path:"/spec", value:$baselineSpec}
+      ]
+    ')" || return 1
+  if ! printf '%s' "$patch_json" | kubectl -n "$NAMESPACE" patch deployment "$BACKSTAGE_DEPLOYMENT_NAME" \
+      --type=json --patch-file=/dev/stdin >/dev/null; then
+    backstage_rollback_fail "Deployment JSON-Patch CAS failed; rollback mutation not authorized"
+    return 1
+  fi
+  kubectl -n "$NAMESPACE" rollout status "deployment/$BACKSTAGE_DEPLOYMENT_NAME" \
+    --timeout="${BACKSTAGE_DEPLOYMENT_ROLLBACK_TIMEOUT_SECONDS}s" || {
+    backstage_rollback_fail "baseline rollout wait failed"
+    return 1
+  }
+  wait_for_backstage_deployment_readiness "$BACKSTAGE_BASELINE_UID" "$BACKSTAGE_BASELINE_SPEC" || return 1
+  clear_backstage_pending_state || return 1
+  echo "[backstage] deployment rollback verified and pending state cleared"
+}
+
+resume_pending_backstage_deployment_rollback() {
+  prepare_backstage_rollback_state_directory || return 79
+  if backstage_pending_state_exists; then
+    echo "[backstage] pending Deployment rollback detected; recovery precedes build and mutation"
+    rollback_pending_backstage_deployment || {
+      echo "[backstage] pending Deployment rollback recovery failed" >&2
+      return 79
+    }
+    echo "[backstage] pending Deployment rollback recovery PASS"
+  fi
+}
+
+finalize_successful_backstage_deployment() {
+  load_backstage_pending_state || return 1
+  wait_for_backstage_deployment_readiness "$BACKSTAGE_BASELINE_UID" || return 1
+  clear_backstage_pending_state || return 1
+  BACKSTAGE_DEPLOY_COMPLETED=true
+  echo "[backstage] deployment rollback state finalized pending=0"
+}
+
+deployment_exit_handler() {
+  local original_status="$?" final_status rollback_status=0
+  trap - EXIT
+  set +e
+  final_status="$original_status"
+  if [[ "$BACKSTAGE_DEPLOY_ROLLBACK_ARMED" == "true" &&
+        "$BACKSTAGE_DEPLOY_COMPLETED" != "true" ]]; then
+    echo "[backstage] deploy exited status=$original_status; restoring exact baseline Deployment" >&2
+    rollback_pending_backstage_deployment
+    rollback_status="$?"
+    if (( rollback_status != 0 )); then
+      final_status=79
+      echo "[backstage] automatic Deployment rollback failed; pending state retained status=79" >&2
+    elif (( original_status == 0 )); then
+      final_status=79
+      echo "[backstage] deploy ended before readiness finalization; baseline restored status=79" >&2
+    fi
+  fi
+  cleanup_build_tmp
+  exit "$final_status"
+}
+
+trap deployment_exit_handler EXIT
+
 require() {
   command -v "$1" >/dev/null 2>&1 || {
     echo "[backstage] missing command: $1" >&2
     exit 1
   }
 }
+
+mode="${1:-deploy}"
+if [[ "$mode" == "recover-pending" ]]; then
+  # This operator-safe path intentionally precedes Node, Docker, buildx and all
+  # Secret/configuration prerequisites. It serializes on the exact same state
+  # directory inode as deploy and performs no work when no pending state exists.
+  for command in dirname id mkdir readlink stat flock; do
+    require "$command"
+  done
+  acquire_backstage_deployment_lock || exit 79
+  if backstage_pending_state_exists; then
+    for command in kubectl jq sha256sum awk date sleep rm sync; do
+      require "$command"
+    done
+    resume_pending_backstage_deployment_rollback || exit 79
+    echo '[backstage] BACKSTAGE_PENDING_RECOVERY_PASS pending=1 recovered=1 mutation=rollback-only'
+  else
+    echo '[backstage] BACKSTAGE_PENDING_RECOVERY_PASS pending=0 recovered=0 mutation=0'
+  fi
+  exit 0
+fi
 
 phase_started_at=0
 deploy_started_at="$(date +%s)"
@@ -166,7 +557,7 @@ install_backstage_dependencies() {
   flock -u 8
 }
 
-for command in git node corepack docker kubectl openssl curl flock sha256sum; do
+for command in git node corepack docker kubectl openssl curl flock sha256sum jq sync; do
   require "$command"
 done
 docker buildx version >/dev/null 2>&1 || {
@@ -491,7 +882,6 @@ wait_for_catalog_database() {
   return 1
 }
 
-mode="${1:-deploy}"
 case "$mode" in
   configure-oidc)
     : "${AUTH_OIDC_METADATA_URL:?set AUTH_OIDC_METADATA_URL}"
@@ -526,6 +916,11 @@ case "$mode" in
     echo "[backstage] PASS configuration and TypeScript contracts are valid"
     ;;
   deploy)
+    # A SIGKILL can bypass EXIT traps. Reconcile its authenticated pending
+    # baseline before preflight secret/config mutation or any application build.
+    acquire_backstage_deployment_lock || exit 79
+    resume_pending_backstage_deployment_rollback || exit 79
+    initialize_backstage_build_workspace
     start_phase preflight
     bash "$ROOT/ops/scripts/resonance-control-plane.sh" validate
     # Exercise the complete API admission chain before dependency installation,
@@ -656,6 +1051,10 @@ case "$mode" in
       --from-file="$ROOT/platform/control-plane/catalog/resources.yaml" \
       --from-file="$ROOT/platform/control-plane/catalog/environments.yaml" \
       --dry-run=client -o yaml | kubectl apply -f -
+    # Publish the exact pre-mutation Deployment spec/UID durably and atomically.
+    # The following manifest apply is the first resonance-backstage Deployment
+    # mutation in this deploy path.
+    capture_backstage_deployment_baseline || exit 79
     kubectl apply -f "$MANIFEST"
     kubectl -n "$NAMESPACE" set image deployment/resonance-backstage backstage="$image"
     configure_auth_mode
@@ -683,6 +1082,7 @@ case "$mode" in
     else
       wait_for_catalog
     fi
+    finalize_successful_backstage_deployment || exit 79
     finish_phase rollout-readiness
     echo "[backstage][timing] total seconds=$(( $(date +%s) - deploy_started_at )) target=60"
     echo "[backstage] PASS deployed $image at $BACKSTAGE_URL"
@@ -701,7 +1101,7 @@ case "$mode" in
     fi
     ;;
   *)
-    echo "usage: $0 {configure-oidc|validate|deploy|status}" >&2
+    echo "usage: $0 {configure-oidc|validate|deploy|status|recover-pending}" >&2
     exit 64
     ;;
 esac

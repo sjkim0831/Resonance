@@ -57,7 +57,10 @@ policy_contract_files=(
   ops/scripts/test-backstage-fast-deploy-policy.sh
   ops/scripts/test-backstage-runtime-fingerprint.sh
   ops/scripts/test-backstage-runtime-purge-recovery-secret.sh
+  ops/scripts/test-backstage-deployment-rollback.sh
   ops/scripts/resonance-backstage-deploy.sh
+  modules/resonance-common/carbonet-common-core/src/main/java/egovframework/com/platform/governance/web/ActorProcessControlPlaneBridgeController.java
+  modules/resonance-common/carbonet-common-core/src/test/java/egovframework/com/platform/governance/web/ActorProcessControlPlaneBridgeProjectPurgeTest.java
   ops/scripts/auto-deploy-main.sh
   ops/scripts/reconcile-exact-legacy-orphan-runtime-quarantine.sh
   ops/scripts/resonance-backstage-visual-e2e.sh
@@ -120,10 +123,88 @@ DEPLOY_STATE_FILE="${CARBONET_DEPLOY_STATE_FILE:-/opt/resonance-data/deploy/carb
 RUNTIME_DEPLOY_STATE_FILE="${CARBONET_RUNTIME_DEPLOY_STATE_FILE:-/opt/resonance-data/deploy/carbonet-runtime-identity-success.commit}"
 DESIRED_REVISION_FILE="${CARBONET_DESIRED_REVISION_FILE:-/opt/resonance-data/deploy/github-webhook/desired-revision}"
 BACKSTAGE_DEPLOY_STATE_FILE="${BACKSTAGE_DEPLOY_STATE_FILE:-/opt/resonance-data/deploy/backstage-runtime-success.commit}"
+BACKSTAGE_DEPLOYMENT_ROLLBACK_STATE_DIR="${BACKSTAGE_DEPLOYMENT_ROLLBACK_STATE_DIR:-/opt/resonance-data/control-plane/deploy-state/backstage}"
+BACKSTAGE_DEPLOYMENT_ROLLBACK_PENDING_FILE="${BACKSTAGE_DEPLOYMENT_ROLLBACK_PENDING_FILE:-$BACKSTAGE_DEPLOYMENT_ROLLBACK_STATE_DIR/deployment-rollback.pending.json}"
+BACKSTAGE_DEPLOYMENT_MUTATION_LOCK_WAIT_SECONDS="${BACKSTAGE_DEPLOYMENT_MUTATION_LOCK_WAIT_SECONDS:-5}"
+BACKSTAGE_DEPLOYMENT_MUTATION_LOCK_FD=""
+BACKSTAGE_DEPLOYMENT_MUTATION_LOCK_HELD=false
 RUNTIME_CANDIDATE_CHECKPOINT_FILE="${CARBONET_RUNTIME_CANDIDATE_CHECKPOINT_FILE:-/opt/resonance-data/deploy/carbonet-runtime-candidate.json}"
 POSTDEPLOY_ATTEMPT_JOURNAL_FILE="${CARBONET_POSTDEPLOY_ATTEMPT_JOURNAL_FILE:-/opt/resonance-data/deploy/carbonet-postdeploy-attempt.json}"
 FLYWAY_CLEANUP_HOLD_ROOT="${CARBONET_DEPLOY_STATE_DIR:-/opt/resonance-data/deploy}"
 FLYWAY_CLEANUP_HOLD_FILE="${CARBONET_FLYWAY_CLEANUP_HOLD_FILE:-$FLYWAY_CLEANUP_HOLD_ROOT/flyway-cleanup-hold.json}"
+
+acquire_backstage_deployment_mutation_lock() {
+  local state_dir expected_identity identity_before identity_after fd_identity
+  local fd_resolved state_resolved lock_fd shell_pid
+  if [[ "$BACKSTAGE_DEPLOYMENT_MUTATION_LOCK_HELD" == true ]]; then
+    return 0
+  fi
+  [[ "$BACKSTAGE_DEPLOYMENT_MUTATION_LOCK_WAIT_SECONDS" =~ ^([1-9]|[1-5][0-9]|60)$ ]] || {
+    echo '[auto-deploy] invalid Backstage Deployment mutation lock wait' >&2
+    return 79
+  }
+  state_dir="$(dirname -- "$BACKSTAGE_DEPLOYMENT_ROLLBACK_PENDING_FILE")"
+  if [[ -L "$state_dir" ]]; then
+    echo '[auto-deploy] Backstage Deployment mutation lock directory is a symlink' >&2
+    return 79
+  fi
+  if [[ ! -e "$state_dir" ]]; then
+    (umask 077 && mkdir -p -- "$state_dir") || return 79
+  fi
+  [[ -d "$state_dir" && ! -L "$state_dir" ]] || return 79
+  [[ "$(readlink -m -- "$state_dir" 2>/dev/null || true)" == \
+     "$(readlink -f -- "$state_dir" 2>/dev/null || true)" ]] || return 79
+  expected_identity="700:$(id -u)"
+  identity_before="$(stat -c '%d:%i:%a:%u' -- "$state_dir" 2>/dev/null || true)"
+  [[ "$identity_before" == *":$expected_identity" ]] || return 79
+  exec {lock_fd}<"$state_dir" || return 79
+  shell_pid="$BASHPID"
+  fd_identity="$(stat -Lc '%d:%i:%a:%u' -- "/proc/$shell_pid/fd/$lock_fd" 2>/dev/null || true)"
+  identity_after="$(stat -c '%d:%i:%a:%u' -- "$state_dir" 2>/dev/null || true)"
+  fd_resolved="$(readlink -f -- "/proc/$shell_pid/fd/$lock_fd" 2>/dev/null || true)"
+  state_resolved="$(readlink -f -- "$state_dir" 2>/dev/null || true)"
+  if [[ "$fd_identity" != "$identity_before" || "$identity_after" != "$identity_before" ||
+        "$fd_resolved" != "$state_resolved" ]]; then
+    exec {lock_fd}<&-
+    return 79
+  fi
+  if ! flock -w "$BACKSTAGE_DEPLOYMENT_MUTATION_LOCK_WAIT_SECONDS" "$lock_fd"; then
+    exec {lock_fd}<&-
+    echo '[auto-deploy] Backstage Deployment mutation lock timed out' >&2
+    return 79
+  fi
+  BACKSTAGE_DEPLOYMENT_MUTATION_LOCK_FD="$lock_fd"
+  BACKSTAGE_DEPLOYMENT_MUTATION_LOCK_HELD=true
+}
+
+release_backstage_deployment_mutation_lock() {
+  if [[ "$BACKSTAGE_DEPLOYMENT_MUTATION_LOCK_HELD" == true ]]; then
+    flock -u "$BACKSTAGE_DEPLOYMENT_MUTATION_LOCK_FD" 2>/dev/null || true
+    exec {BACKSTAGE_DEPLOYMENT_MUTATION_LOCK_FD}<&-
+    BACKSTAGE_DEPLOYMENT_MUTATION_LOCK_HELD=false
+  fi
+}
+
+acquire_clean_backstage_deployment_mutation_lock() {
+  local lock_status=0
+  acquire_backstage_deployment_mutation_lock || lock_status=$?
+  (( lock_status == 0 )) || return "$lock_status"
+  # A crashed full Backstage deploy leaves this authenticated baseline until
+  # its exact Deployment spec has been restored.  Raw catalog/self-heal
+  # writers may serialize after that crash, but they must never mutate over
+  # the pending recovery obligation.
+  if [[ -e "$BACKSTAGE_DEPLOYMENT_ROLLBACK_PENDING_FILE" ||
+        -L "$BACKSTAGE_DEPLOYMENT_ROLLBACK_PENDING_FILE" ]]; then
+    release_backstage_deployment_mutation_lock
+    echo '[auto-deploy] BLOCKED Backstage Deployment mutation: pending rollback must recover first' >&2
+    return 79
+  fi
+}
+
+recover_pending_backstage_deployment_after_target_merge() {
+  RESONANCE_ROOT="$ROOT_DIR" \
+    bash "$ROOT_DIR/ops/scripts/resonance-backstage-deploy.sh" recover-pending
+}
 POSTDEPLOY_LEGACY_RETIRE_DIR="${CARBONET_POSTDEPLOY_LEGACY_RETIRE_DIR:-/opt/resonance-data/deploy/retired-attempts}"
 FULL_SCREEN_GATE_STATE_DIR="${CARBONET_FULL_SCREEN_GATE_STATE_DIR:-${FULL_SCREEN_GATE_STATE_DIR:-/opt/resonance-data/deploy/full-screen-deploy-gate}}"
 LEGACY_FULL_SCREEN_GATE_STATE_DIR="${CARBONET_LEGACY_FULL_SCREEN_GATE_STATE_DIR:-$ROOT_DIR/var/run/full-screen-deploy-gate}"
@@ -2700,7 +2781,8 @@ ensure_backstage_actor_process_e2e_ready() {
      && "$precheck_attempts" =~ ^[1-9]$ \
      && "$readiness_attempts" =~ ^[1-9]$ \
      && "$http_timeout_seconds" =~ ^[1-5]$ \
-     && "$retry_delay_seconds" =~ ^[0-5]$ ]] || {
+     && "$retry_delay_seconds" =~ ^[0-5]$ \
+     && "$BACKSTAGE_DEPLOYMENT_MUTATION_LOCK_WAIT_SECONDS" =~ ^([1-9]|[1-5][0-9]|60)$ ]] || {
     echo '[auto-deploy] invalid Backstage self-heal bound' >&2
     return 2
   }
@@ -2708,6 +2790,7 @@ ensure_backstage_actor_process_e2e_ready() {
     rollout_timeout_seconds
     + (precheck_attempts + readiness_attempts) * http_timeout_seconds
     + (precheck_attempts + readiness_attempts - 2) * retry_delay_seconds
+    + BACKSTAGE_DEPLOYMENT_MUTATION_LOCK_WAIT_SECONDS
   ))
   ((self_heal_budget_seconds < 60)) || {
     echo "[auto-deploy] Backstage self-heal budget exceeds 59s: ${self_heal_budget_seconds}s" >&2
@@ -2723,32 +2806,48 @@ ensure_backstage_actor_process_e2e_ready() {
     ((attempt == precheck_attempts)) || sleep "$retry_delay_seconds"
   done
 
+  acquire_clean_backstage_deployment_mutation_lock || return 79
+  # Another supported writer may have repaired readiness while this caller
+  # waited for the shared state-directory lock. Re-probe under the lock before
+  # authorizing the single PodTemplate restart.
+  final_status="$(backstage_actor_process_readiness_status)"
+  if [[ "$final_status" == 200 ]]; then
+    release_backstage_deployment_mutation_lock
+    echo '[auto-deploy] Backstage actor/process readiness PASS selfHealRestarts=0 postLockRecheck=1'
+    return 0
+  fi
   echo "[auto-deploy] Backstage actor/process readiness remained HTTP $final_status after $precheck_attempts checks; starting one bounded self-heal restart" >&2
   observed_deployment="$(kubectl -n "$namespace" get "deployment/$deployment" -o name)" || {
+    release_backstage_deployment_mutation_lock
     echo '[auto-deploy] Backstage self-heal target lookup failed' >&2
     return 1
   }
   [[ "$observed_deployment" == "deployment.apps/$deployment" ]] || {
+    release_backstage_deployment_mutation_lock
     echo "[auto-deploy] Backstage self-heal target mismatch: $observed_deployment" >&2
     return 1
   }
   kubectl -n "$namespace" rollout restart "deployment/$deployment" >/dev/null || {
+    release_backstage_deployment_mutation_lock
     echo '[auto-deploy] Backstage self-heal restart failed' >&2
     return 1
   }
   kubectl -n "$namespace" rollout status "deployment/$deployment" \
     --timeout="${rollout_timeout_seconds}s" >/dev/null || {
+    release_backstage_deployment_mutation_lock
     echo "[auto-deploy] Backstage self-heal rollout failed timeout=${rollout_timeout_seconds}s" >&2
     return 1
   }
   for attempt in $(seq 1 "$readiness_attempts"); do
     final_status="$(backstage_actor_process_readiness_status)"
     if [[ "$final_status" == 200 ]]; then
+      release_backstage_deployment_mutation_lock
       echo "[auto-deploy] Backstage actor/process readiness PASS selfHealRestarts=1 attempts=$attempt"
       return 0
     fi
     ((attempt == readiness_attempts)) || sleep "$retry_delay_seconds"
   done
+  release_backstage_deployment_mutation_lock
   echo "[auto-deploy] Backstage self-heal failed HTTP $final_status restarts=1 attempts=$readiness_attempts" >&2
   return 1
 }
@@ -2892,17 +2991,28 @@ sync_backstage_catalog_if_required() {
      || "$PLAN_BACKSTAGE_REQUIRED" == "true" ]]; then
     return
   fi
-  kubectl -n resonance-ops create configmap resonance-backstage-catalog \
+  acquire_clean_backstage_deployment_mutation_lock || return 79
+  if ! kubectl -n resonance-ops create configmap resonance-backstage-catalog \
     --from-file="$ROOT_DIR/platform/control-plane/catalog/organization.yaml" \
     --from-file="$ROOT_DIR/platform/control-plane/catalog/systems.yaml" \
     --from-file="$ROOT_DIR/platform/control-plane/catalog/components.yaml" \
     --from-file="$ROOT_DIR/platform/control-plane/catalog/apis.yaml" \
     --from-file="$ROOT_DIR/platform/control-plane/catalog/resources.yaml" \
     --from-file="$ROOT_DIR/platform/control-plane/catalog/environments.yaml" \
-    --dry-run=client -o yaml | kubectl apply -f -
-  kubectl -n resonance-ops rollout restart deployment/resonance-backstage
-  kubectl -n resonance-ops rollout status deployment/resonance-backstage \
-    --timeout=180s
+    --dry-run=client -o yaml | kubectl apply -f -; then
+    release_backstage_deployment_mutation_lock
+    return 1
+  fi
+  if ! kubectl -n resonance-ops rollout restart deployment/resonance-backstage; then
+    release_backstage_deployment_mutation_lock
+    return 1
+  fi
+  if ! kubectl -n resonance-ops rollout status deployment/resonance-backstage \
+    --timeout=180s; then
+    release_backstage_deployment_mutation_lock
+    return 1
+  fi
+  release_backstage_deployment_mutation_lock
 }
 
 # The standard build updates tracked generated bundles and Gradle state. They are
@@ -3698,6 +3808,8 @@ run_runtime_template_identity_migration_contract_if_required() {
       ops/scripts/promote-postdeploy-candidate-evidence.sh \
       ops/scripts/check-postdeploy-authoritative-promotion.sh \
       ops/scripts/runtime-candidate-checkpoint.sh \
+      ops/scripts/resonance-full-screen-deploy-gate.sh \
+      ops/scripts/test-fast-overlay-snapshot.sh \
       ops/scripts/resonance-k8s-build-deploy-80-v2.sh \
       ops/scripts/resonance-v3-deploy.sh \
       ops/scripts/resonance-command-index.sh \
@@ -3755,6 +3867,7 @@ run_runtime_template_identity_migration_contract_if_required() {
       ops/tests/test-reconcile-deployed-retry-jobs-contract.sh \
       ops/tests/test-runtime-identity-authority-consumers-contract.sh; then
     run_parallel_contract_tests \
+      ops/scripts/test-fast-overlay-snapshot.sh \
       ops/scripts/test-runtime-candidate-checkpoint.sh \
       ops/tests/test-runtime-release-state.sh \
       ops/tests/test-postdeploy-candidate-evidence-contract.sh \
@@ -5537,6 +5650,10 @@ if [[ "$PLAN_RUNTIME_REQUIRED" != "true" ]]; then
   git merge --ff-only "$target_commit"
   run_postdeploy_candidate_static_contract_if_required
   run_operational_usage_ledger_static_contract_if_required
+  # The target revision owns the recovery implementation.  Run it only after
+  # that revision and its static contracts are present, and before any
+  # supported Backstage writer can mutate the Deployment.
+  recover_pending_backstage_deployment_after_target_merge || exit $?
   mapfile -t deploy_changed_paths < <(
     git diff --name-only --diff-filter=ACMRD "$deployed_commit" "$target_commit"
   )
@@ -6177,6 +6294,7 @@ sync_auto_deploy_failure_runtime_if_required
 restore_live_frontend_overlay
 run_postdeploy_candidate_static_contract_if_required
 run_operational_usage_ledger_static_contract_if_required
+recover_pending_backstage_deployment_after_target_merge || exit $?
 if [[ "$PLAN_BACKEND_REQUIRED" == "true" ]]; then
   # Run guards introduced by the pending commit only after that exact revision
   # is present in the selected deployment worktree.

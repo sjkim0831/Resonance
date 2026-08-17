@@ -93,6 +93,12 @@ if [[ -e "$flyway_cleanup_hold_file" || -L "$flyway_cleanup_hold_file" ]]; then
 elif [[ "$deploy_exit_status" == 79 ]] \
    && grep -Eqi 'SQL State[[:space:]]*:[[:space:]]*P0001|SQLSTATE[[:space:]]*[:=]?[[:space:]]*P0001|precondition failed|FLYWAY_JOB_FAILED' "$evidence"; then
   category=DATABASE_DETERMINISTIC
+elif [[ "$deploy_exit_status" == 79 ]] \
+   && grep -Eqi '\[backstage\][[:space:]]+runtime purge recovery (account secret is required|actor ref is invalid)|Runtime purge recovery authority preflight returned no proof|RECOVERY_AUTHORITY_NOT_READY' "$evidence"; then
+  # A rollback safety hold may promote the outer deploy status to 79 after a
+  # deterministic Backstage authority failure. Preserve the root cause before
+  # the generic exit-79 terminal branch so it can never schedule a retry.
+  category=BACKSTAGE_CONFIGURATION_DETERMINISTIC
 elif [[ "$deploy_exit_status" == 79 ]]; then
   # Exit 79 is fail-closed. In particular, never let an older durable attempt
   # journal schedule rollback while the child is handing off cleanup evidence.
@@ -147,10 +153,11 @@ elif grep -Eqi 'SQL State[[:space:]]*:[[:space:]]*P0001|SQLSTATE[[:space:]]*[:=]
   # kubectl wait emits a generic timeout. Never let that wrapper timeout turn
   # an already rolled-back migration into an automatic deployment retry.
   category=DATABASE_DETERMINISTIC
-elif grep -Eqi '\[backstage\][[:space:]]+runtime purge recovery (account secret is required|actor ref is invalid)' "$evidence"; then
-  # Missing or malformed recovery authority is deployment configuration, not a
-  # transport outage. Incidental timeout text from sibling cleanup must never
-  # schedule an identical full-backup/build retry.
+elif grep -Eqi '\[backstage\][[:space:]]+runtime purge recovery (account secret is required|actor ref is invalid)|Runtime purge recovery authority preflight returned no proof|RECOVERY_AUTHORITY_NOT_READY' "$evidence"; then
+  # Missing, malformed, or deterministically unprovable recovery authority is
+  # deployment configuration/code, not a transport outage. Incidental timeout
+  # text from rollout or sibling cleanup must never schedule an identical
+  # full-backup/build retry.
   category=BACKSTAGE_CONFIGURATION_DETERMINISTIC
 elif grep -Eqi 'STATIC_ONLY_BLOCKED_RUNTIME_IDENTITY_MISMATCH reason=(AUTHORITY_MISMATCH|IMMUTABLE_MISMATCH|COORDINATE_CONTRADICTION|TEMPLATE_MISMATCH)' "$evidence"; then
   # Durable authority, immutable image/template and monotonic-coordinate

@@ -5,12 +5,25 @@ root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 selector="$root/ops/scripts/select-catalog-contract-tests.sh"
 
 mapfile -t all < <(printf '%s\n' ops/scripts/auto-deploy-main.sh | bash "$selector" --paths-stdin)
-[[ "${#all[@]}" == 34 ]]
+[[ "${#all[@]}" == 35 ]]
 for selector_path in \
     ops/scripts/select-catalog-contract-tests.sh \
     ops/scripts/test-select-catalog-contract-tests.sh; do
   mapfile -t selector_self < <(printf '%s\n' "$selector_path" | bash "$selector" --paths-stdin)
-  [[ "${#selector_self[@]}" == 34 ]]
+  [[ "${#selector_self[@]}" == 35 ]]
+done
+
+for backstage_contract_path in \
+    ops/scripts/resonance-backstage-deploy.sh \
+    ops/scripts/test-backstage-runtime-fingerprint.sh \
+    ops/scripts/test-backstage-runtime-purge-recovery-secret.sh \
+    ops/scripts/test-backstage-deployment-rollback.sh \
+    ops/scripts/test-backstage-fast-deploy-policy.sh \
+    modules/resonance-common/carbonet-common-core/src/main/java/egovframework/com/platform/governance/web/ActorProcessControlPlaneBridgeController.java \
+    modules/resonance-common/carbonet-common-core/src/test/java/egovframework/com/platform/governance/web/ActorProcessControlPlaneBridgeProjectPurgeTest.java; do
+  mapfile -t backstage_contract_tests < <(printf '%s\n' "$backstage_contract_path" | bash "$selector" --paths-stdin)
+  [[ "${#backstage_contract_tests[@]}" == 1 ]]
+  [[ "${backstage_contract_tests[0]}" == ops/scripts/test-backstage-fast-deploy-policy.sh ]]
 done
 
 mapfile -t asset < <(printf '%s\n' ops/scripts/sync-unified-asset-catalog.sh | bash "$selector" --paths-stdin)
@@ -54,6 +67,15 @@ mapfile -t composite_migration < <(
 )
 [[ "${#composite_migration[@]}" == 1 ]]
 [[ "${composite_migration[0]}" == ops/tests/test-composite-axis-migration-performance-postgres.sh ]]
+
+for rollback_gate_path in \
+    ops/scripts/resonance-full-screen-deploy-gate.sh \
+    ops/scripts/test-fast-overlay-snapshot.sh; do
+  mapfile -t rollback_gate_tests < <(printf '%s\n' "$rollback_gate_path" | bash "$selector" --paths-stdin)
+  [[ "${#rollback_gate_tests[@]}" == 2 ]]
+  [[ "${rollback_gate_tests[0]}" == ops/scripts/test-fast-overlay-snapshot.sh ]]
+  [[ "${rollback_gate_tests[1]}" == ops/tests/test-durable-postdeploy-rollback-reconciler.sh ]]
+done
 
 mapfile -t emission_workflow < <(
   printf '%s\n' \
@@ -320,6 +342,8 @@ for path in (
     "stage-postdeploy-evidence-candidate.sh",
     "promote-postdeploy-candidate-evidence.sh",
     "runtime-candidate-checkpoint.sh",
+    "resonance-full-screen-deploy-gate.sh",
+    "test-fast-overlay-snapshot.sh",
     "resonance-k8s-build-deploy-80-v2.sh",
     "resonance-v3-deploy.sh",
     "resonance-command-index.sh",
@@ -367,6 +391,7 @@ for path in (
     "test-startup-watchdog-runtime-mutation-guard.sh",
     "test-runtime-systemd-contracts.sh",
     "test-postdeploy-candidate-evidence-contract.sh",
+    "test-fast-overlay-snapshot.sh",
     "test-durable-postdeploy-rollback-reconciler.sh",
     "test-postdeploy-promotion-recovery.sh",
 ):
@@ -436,4 +461,4 @@ mapfile -t deduplicated < <(
 )
 [[ "${#deduplicated[@]}" == 2 ]]
 
-echo "[catalog-contract-selector-test] PASS all=34 asset=1 performance=2 webhook=1 runtimeCheckpoint=15 flywayTimeout=1 compositeMigration=1 emissionWorkflow=1 runtimeTemplateIdentity=15 retirementIdentity=15 postRebootIdentity=1 startupProfileIdentity=14 watchdogIdentity=14 legacyBootIdentity=14 retiredEntrypointIdentity=14 buildDeployIdentity=17 backupPrune=1 handoff=20"
+echo "[catalog-contract-selector-test] PASS all=35 asset=1 performance=2 webhook=1 backstageContract=1 runtimeCheckpoint=15 flywayTimeout=1 compositeMigration=1 rollbackGate=2 emissionWorkflow=1 runtimeTemplateIdentity=15 retirementIdentity=15 postRebootIdentity=1 startupProfileIdentity=14 watchdogIdentity=14 legacyBootIdentity=14 retiredEntrypointIdentity=14 buildDeployIdentity=17 backupPrune=1 handoff=20"

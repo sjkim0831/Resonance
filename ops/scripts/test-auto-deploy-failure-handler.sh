@@ -306,6 +306,9 @@ SH
   run_classifier_mutant backstage_recovery_actor_invalid 1 \
     $'[backstage] runtime purge recovery actor ref is invalid\ntimeout while collecting unrelated diagnostics' \
     BACKSTAGE_CONFIGURATION_DETERMINISTIC FAILED false false 0
+  run_classifier_mutant backstage_recovery_authority_unprovable 79 \
+    $'RECOVERY_AUTHORITY_NOT_READY\nRuntime purge recovery authority preflight returned no proof.\ntimed out waiting for deployment rollout' \
+    BACKSTAGE_CONFIGURATION_DETERMINISTIC FAILED false false 0
   run_classifier_mutant runtime_identity_mismatch 1 \
     $'[prebuild] timed out waiting for sibling test\n[auto-deploy] STATIC_ONLY_BLOCKED_RUNTIME_IDENTITY_MISMATCH reason=TEMPLATE_MISMATCH' \
     RUNTIME_IDENTITY_DETERMINISTIC FAILED false false 0
@@ -718,7 +721,12 @@ fi
 
 deterministic_database_line="$(grep -n 'category=DATABASE_DETERMINISTIC' "$handler" | head -1 | cut -d: -f1)"
 deterministic_postdeploy_line="$(grep -n 'category=POSTDEPLOY_VALIDATION_DETERMINISTIC' "$handler" | head -1 | cut -d: -f1)"
-deterministic_backstage_line="$(grep -n 'category=BACKSTAGE_CONFIGURATION_DETERMINISTIC' "$handler" | head -1 | cut -d: -f1)"
+mapfile -t deterministic_backstage_lines < <(
+  grep -n 'category=BACKSTAGE_CONFIGURATION_DETERMINISTIC' "$handler" | cut -d: -f1
+)
+[[ "${#deterministic_backstage_lines[@]}" == 2 ]]
+deterministic_backstage_exit79_line="${deterministic_backstage_lines[0]}"
+deterministic_backstage_general_line="${deterministic_backstage_lines[1]}"
 deterministic_runtime_identity_line="$(grep -n 'category=RUNTIME_IDENTITY_DETERMINISTIC' "$handler" | head -1 | cut -d: -f1)"
 attempt_recovery_line="$(grep -n 'category=ATTEMPT_RECOVERY_PENDING' "$handler" | head -1 | cut -d: -f1)"
 promotion_pending_line="$(grep -n 'category=PROMOTION_MARKER_PENDING' "$handler" | head -1 | cut -d: -f1)"
@@ -728,12 +736,14 @@ network_line="$(grep -n "category=NETWORK_TRANSIENT" "$handler" | head -1 | cut 
 e2e_line="$(grep -n "category=E2E" "$handler" | head -1 | cut -d: -f1)"
 database_line="$(grep -n '^[[:space:]]*category=DATABASE$' "$handler" | head -1 | cut -d: -f1)"
 [[ "$cleanup_hold_line" -lt "$deterministic_database_line" ]]
-[[ "$deterministic_database_line" -lt "$terminated_line" ]]
+[[ "$deterministic_database_line" -lt "$deterministic_backstage_exit79_line" ]]
+[[ "$deterministic_backstage_exit79_line" -lt "$terminated_line" ]]
 [[ "$terminated_line" -lt "$deterministic_postdeploy_line" ]]
 [[ "$deterministic_postdeploy_line" -lt "$network_line" ]]
-[[ "$attempt_recovery_line" -lt "$deterministic_backstage_line" ]]
-[[ "$promotion_pending_line" -lt "$deterministic_backstage_line" ]]
-[[ "$deterministic_backstage_line" -lt "$network_line" ]]
+[[ "$deterministic_backstage_exit79_line" -lt "$attempt_recovery_line" ]]
+[[ "$attempt_recovery_line" -lt "$deterministic_backstage_general_line" ]]
+[[ "$promotion_pending_line" -lt "$deterministic_backstage_general_line" ]]
+[[ "$deterministic_backstage_general_line" -lt "$network_line" ]]
 [[ "$attempt_recovery_line" -lt "$deterministic_runtime_identity_line" ]]
 [[ "$promotion_pending_line" -lt "$deterministic_runtime_identity_line" ]]
 [[ "$deterministic_runtime_identity_line" -lt "$network_line" ]]
@@ -741,4 +751,4 @@ database_line="$(grep -n '^[[:space:]]*category=DATABASE$' "$handler" | head -1 
 [[ "$network_line" -lt "$e2e_line" ]]
 [[ "$e2e_line" -lt "$database_line" ]]
 
-echo "AUTO_DEPLOY_FAILURE_HANDLER_PASS promotionPending=DB-authoritative attemptRecovery=deploy-owner+hold-bypass+fetch0+candidateBound3x+promotedFinalLive identityPrecedence=attempt+promotion classifier=staleSuccess-write0+network503-retry1+backstageLookup-retry1+emissionWorkflowInvalid-retry0+backstageConfig2-retry0+runtimeIdentityMismatch-retry0+runtimeIdentityReadiness-retry1+flywayP0001-retry0+term79-retry0+flywayCleanupHold-retry1+leaseBound+remote0+hangBound4s"
+echo "AUTO_DEPLOY_FAILURE_HANDLER_PASS promotionPending=DB-authoritative attemptRecovery=deploy-owner+hold-bypass+fetch0+candidateBound3x+promotedFinalLive identityPrecedence=attempt+promotion classifier=staleSuccess-write0+network503-retry1+backstageLookup-retry1+emissionWorkflowInvalid-retry0+backstageConfig3-retry0+runtimeIdentityMismatch-retry0+runtimeIdentityReadiness-retry1+flywayP0001-retry0+term79-retry0+flywayCleanupHold-retry1+leaseBound+remote0+hangBound4s"

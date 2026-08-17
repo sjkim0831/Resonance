@@ -41,6 +41,7 @@ all_tests=(
   ops/scripts/test-runtime-systemd-contracts.sh
   ops/scripts/test-retire-legacy-runtime-mutation-automation.sh
   ops/scripts/test-prune-predeploy-backups.sh
+  ops/scripts/test-backstage-fast-deploy-policy.sh
 )
 
 add_test() {
@@ -102,6 +103,17 @@ select_for_path() {
       add_test ops/tests/test-flyway-job-timeout-contract.sh ;;
     apps/carbonet-api/src/main/resources/db/migration/postgresql/V20260816154000__compile_composite_executable_design_authority.sql|ops/tests/test-composite-axis-migration-performance-postgres.sh|ops/tests/fixtures/composite-axis-migration-performance-prerequisites.sql|ops/tests/test-composite-executable-design-authority-postgres.sql|ops/tests/test-project-runtime-purge-composite-migrations-postgres.sh)
       add_test ops/tests/test-composite-axis-migration-performance-postgres.sh ;;
+    ops/scripts/resonance-full-screen-deploy-gate.sh|ops/scripts/test-fast-overlay-snapshot.sh)
+      add_test ops/scripts/test-fast-overlay-snapshot.sh
+      add_test ops/tests/test-durable-postdeploy-rollback-reconciler.sh ;;
+    ops/scripts/resonance-backstage-deploy.sh|\
+    ops/scripts/test-backstage-runtime-fingerprint.sh|\
+    ops/scripts/test-backstage-runtime-purge-recovery-secret.sh|\
+    ops/scripts/test-backstage-deployment-rollback.sh|\
+    ops/scripts/test-backstage-fast-deploy-policy.sh|\
+    modules/resonance-common/carbonet-common-core/src/main/java/egovframework/com/platform/governance/web/ActorProcessControlPlaneBridgeController.java|\
+    modules/resonance-common/carbonet-common-core/src/test/java/egovframework/com/platform/governance/web/ActorProcessControlPlaneBridgeProjectPurgeTest.java)
+      add_test ops/scripts/test-backstage-fast-deploy-policy.sh ;;
     apps/carbonet-api/src/main/resources/db/migration/postgresql/V20260817210500__align_emission_workflow_entry_predecessor_health.sql|ops/tests/test-emission-workflow-health-postgres.sh)
       add_test ops/tests/test-emission-workflow-health-postgres.sh ;;
     apps/carbonet-api/src/main/resources/db/migration/postgresql/V20260817235000__bind_runtime_identity_to_pod_template.sql|\

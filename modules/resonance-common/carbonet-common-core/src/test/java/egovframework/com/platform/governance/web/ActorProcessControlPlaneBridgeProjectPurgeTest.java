@@ -89,8 +89,10 @@ class ActorProcessControlPlaneBridgeProjectPurgeTest {
         when(governance.isControlPlaneAdministrator("runtime.recovery")).thenReturn(true);
         when(jdbc.queryForObject(
                 org.mockito.ArgumentMatchers.argThat(sql->sql!=null
-                        &&sql.contains("framework_project_runtime_purge_require_admin")),
-                eq(Boolean.class),any(Object[].class))).thenReturn(true);
+                        &&sql.contains("select 1 from")
+                        &&sql.contains("framework_project_runtime_purge_require_admin")
+                        &&!sql.contains("is null")),
+                eq(Integer.class),any(Object[].class))).thenReturn(1);
 
         var ready=controller.preflightProjectRuntimePurgeRecoveryAuthority(
                 "bridge-token","service:default/runtime-purge-recovery",
@@ -104,8 +106,28 @@ class ActorProcessControlPlaneBridgeProjectPurgeTest {
         assertEquals(403,denied.getStatusCode().value());
         verify(jdbc).queryForObject(
                 org.mockito.ArgumentMatchers.argThat(sql->sql!=null
+                        &&sql.contains("select 1 from")
+                        &&sql.contains("framework_project_runtime_purge_require_admin")
+                        &&!sql.contains("is null")),
+                eq(Integer.class),any(Object[].class));
+    }
+
+    @Test
+    void recoveryPreflightFailsReadinessWhenProofRowIsNotOne(){
+        when(governance.isControlPlaneAdministrator("runtime.recovery")).thenReturn(true);
+        when(jdbc.queryForObject(
+                org.mockito.ArgumentMatchers.argThat(sql->sql!=null
                         &&sql.contains("framework_project_runtime_purge_require_admin")),
-                eq(Boolean.class),any(Object[].class));
+                eq(Integer.class),any(Object[].class))).thenReturn(0);
+
+        var notReady=controller.preflightProjectRuntimePurgeRecoveryAuthority(
+                "bridge-token","service:default/runtime-purge-recovery",
+                "runtime.recovery");
+
+        assertEquals(503,notReady.getStatusCode().value());
+        assertEquals("NOT_READY",((Map<?,?>)notReady.getBody()).get("status"));
+        assertEquals(false,
+                ((Map<?,?>)notReady.getBody()).get("authorityValidated"));
     }
 
     @Test
@@ -114,7 +136,9 @@ class ActorProcessControlPlaneBridgeProjectPurgeTest {
         when(jdbc.queryForObject(
                 org.mockito.ArgumentMatchers.argThat(sql->sql!=null
                         &&sql.contains("framework_project_runtime_purge_require_admin")),
-                eq(Boolean.class),any(Object[].class))).thenReturn(false);
+                eq(Integer.class),any(Object[].class))).thenThrow(
+                        new IllegalStateException(
+                                "active runtime system administrator account is required"));
 
         var notReady=controller.preflightProjectRuntimePurgeRecoveryAuthority(
                 "bridge-token","service:default/runtime-purge-recovery",

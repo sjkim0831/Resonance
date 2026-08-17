@@ -108,6 +108,7 @@ while IFS= read -r path; do
     ops/scripts/resonance-backstage-runtime-fingerprint.sh|\
     ops/scripts/test-backstage-runtime-fingerprint.sh|\
     ops/scripts/test-backstage-runtime-purge-recovery-secret.sh|\
+    ops/scripts/test-backstage-deployment-rollback.sh|\
     ops/scripts/test-backstage-fast-deploy-policy.sh)
       infrastructure_required=true; backstage_required=true
       add_test "control-plane:validate"

@@ -26,6 +26,10 @@ grep -Fq 'web-deployment-state.json' "$gate"
 grep -Fq 'web-service.json' "$gate"
 grep -Fq 'patch "service/$WEB_SERVICE" --type=json' "$gate"
 grep -Fq 'RUNTIME_IMAGE_ID=' "$gate"
+grep -Fq 'runtime_image_ids_equivalent "$RUNTIME_IMAGE_ID" "$image_id" "$RUNTIME_IMAGE"' "$gate"
+grep -Fq '"$manifest_digest" == "$actual_digest"' "$gate"
+grep -Fq '"$tag_manifest_digest" == "$actual_digest"' "$gate"
+grep -Fq '"$config_digest" == "$expected_digest"' "$gate"
 grep -Fq 'rsync -a --exclude=' "$gate"
 grep -Fq 'rsync -a --delete-after' "$gate"
 copy_line="$(grep -n 'rsync -a --exclude=' "$gate" | head -1 | cut -d: -f1)"
@@ -114,9 +118,12 @@ JSON
     [[ "${FAULT_CAPTURE_PHASE:-none}" == nginx-empty ]] || printf 'server { listen 8080; }\n'
     ;;
   *"exec runtime-0"*) printf '{"status":"UP"}\n' ;;
-  *"get pods -l app=carbonet-runtime"*) cat <<'JSON'
-{"items":[{"metadata":{"name":"runtime-0"},"spec":{"containers":[{"name":"carbonet-runtime","image":"registry.invalid/carbonet-runtime:baseline"}]},"status":{"phase":"Running","conditions":[{"type":"Ready","status":"True"}],"containerStatuses":[{"name":"carbonet-runtime","ready":true,"imageID":"docker-pullable://registry.invalid/carbonet-runtime@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}]}}]}
-JSON
+  *"get pods -l app=carbonet-runtime"*)
+    jq -cn --arg imageId "${FAKE_RUNTIME_IMAGE_ID:-docker-pullable://registry.invalid/carbonet-runtime@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa}" '
+      {items:[{metadata:{name:"runtime-0"},
+        spec:{containers:[{name:"carbonet-runtime",image:"registry.invalid/carbonet-runtime:baseline"}]},
+        status:{phase:"Running",conditions:[{type:"Ready",status:"True"}],
+          containerStatuses:[{name:"carbonet-runtime",ready:true,imageID:$imageId}]}}]}'
     ;;
   *) printf 'unexpected fake kubectl call: %s\n' "$*" >&2; exit 91 ;;
 esac
@@ -147,6 +154,22 @@ fi
 exec /usr/bin/mktemp "$@"
 SH
 chmod 700 "$tmp/bin/mktemp"
+cat > "$tmp/bin/curl" <<'SH'
+#!/usr/bin/env bash
+if [[ "$*" == *'/v2/carbonet-runtime/manifests/sha256:'* \
+   && -n "${FAKE_REGISTRY_MANIFEST:-}" ]]; then
+  cat -- "$FAKE_REGISTRY_MANIFEST"
+  exit 0
+fi
+if [[ "$*" == *'/v2/carbonet-runtime/manifests/baseline'* \
+   && -n "${FAKE_REGISTRY_TAG_MANIFEST:-${FAKE_REGISTRY_MANIFEST:-}}" ]]; then
+  cat -- "${FAKE_REGISTRY_TAG_MANIFEST:-$FAKE_REGISTRY_MANIFEST}"
+  exit 0
+fi
+printf 'unexpected fake curl call: %s\n' "$*" >&2
+exit 90
+SH
+chmod 700 "$tmp/bin/curl"
 cat > "$tmp/bin/mv" <<'SH'
 #!/usr/bin/env bash
 last="${!#}"
@@ -213,6 +236,62 @@ OVERLAY_DIR="$capture_overlay" FULL_SCREEN_GATE_STATE_DIR="$omitted_state" \
 FULL_SCREEN_GATE_REPORT_DIR="$capture_report" CARBONET_DEPLOY_STATE_FILE="$tmp/applied.commit" \
 CARBONET_RUNTIME_DEPLOY_STATE_FILE="$tmp/runtime.commit" \
   bash "$gate" verify-restored-physical >"$tmp/verify-omitted-min-ready.log"
+
+# A kubelet/containerd transition can expose the registry manifest digest in
+# Pod imageID even though the immutable snapshot captured the config digest.
+# Accept only a byte-addressed manifest whose config digest binds that exact
+# baseline; a wrong config or body/digest mismatch remains fail-closed.
+manifest_expected_config='sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
+jq -cn --arg config "$manifest_expected_config" '
+  {schemaVersion:2,mediaType:"application/vnd.docker.distribution.manifest.v2+json",
+   config:{mediaType:"application/vnd.docker.container.image.v1+json",size:1,digest:$config},layers:[]}' \
+  >"$tmp/registry-manifest.json"
+manifest_digest="sha256:$(sha256sum "$tmp/registry-manifest.json" | awk '{print $1}')"
+FAKE_RUNTIME_IMAGE_ID="registry.invalid/carbonet-runtime@$manifest_digest" \
+FAKE_REGISTRY_MANIFEST="$tmp/registry-manifest.json" \
+PATH="$tmp/bin:$PATH" ROOT_DIR="$ROOT_DIR" OVERLAY_DIR="$capture_overlay" \
+FULL_SCREEN_GATE_STATE_DIR="$capture_state" FULL_SCREEN_GATE_REPORT_DIR="$capture_report" \
+CARBONET_DEPLOY_STATE_FILE="$tmp/applied.commit" CARBONET_RUNTIME_DEPLOY_STATE_FILE="$tmp/runtime.commit" \
+  bash "$gate" verify-restored-physical >"$tmp/verify-manifest-config-bridge.log"
+
+jq -cn --arg config 'sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc' '
+  {schemaVersion:2,mediaType:"application/vnd.docker.distribution.manifest.v2+json",
+   config:{mediaType:"application/vnd.docker.container.image.v1+json",size:1,digest:$config},layers:[]}' \
+  >"$tmp/registry-wrong-config.json"
+wrong_manifest_digest="sha256:$(sha256sum "$tmp/registry-wrong-config.json" | awk '{print $1}')"
+if FAKE_RUNTIME_IMAGE_ID="registry.invalid/carbonet-runtime@$wrong_manifest_digest" \
+   FAKE_REGISTRY_MANIFEST="$tmp/registry-wrong-config.json" \
+   PATH="$tmp/bin:$PATH" ROOT_DIR="$ROOT_DIR" OVERLAY_DIR="$capture_overlay" \
+   FULL_SCREEN_GATE_STATE_DIR="$capture_state" FULL_SCREEN_GATE_REPORT_DIR="$capture_report" \
+   CARBONET_DEPLOY_STATE_FILE="$tmp/applied.commit" CARBONET_RUNTIME_DEPLOY_STATE_FILE="$tmp/runtime.commit" \
+     bash "$gate" verify-restored-physical >"$tmp/verify-wrong-config.log" 2>&1; then
+  echo 'wrong registry config digest was accepted as the rollback image' >&2
+  exit 1
+fi
+grep -Fq 'restored Ready pod imageID differs from immutable baseline' "$tmp/verify-wrong-config.log"
+
+if FAKE_RUNTIME_IMAGE_ID="registry.invalid/carbonet-runtime@$manifest_digest" \
+   FAKE_REGISTRY_MANIFEST="$tmp/registry-wrong-config.json" \
+   PATH="$tmp/bin:$PATH" ROOT_DIR="$ROOT_DIR" OVERLAY_DIR="$capture_overlay" \
+   FULL_SCREEN_GATE_STATE_DIR="$capture_state" FULL_SCREEN_GATE_REPORT_DIR="$capture_report" \
+   CARBONET_DEPLOY_STATE_FILE="$tmp/applied.commit" CARBONET_RUNTIME_DEPLOY_STATE_FILE="$tmp/runtime.commit" \
+     bash "$gate" verify-restored-physical >"$tmp/verify-manifest-body-tamper.log" 2>&1; then
+  echo 'registry manifest body/digest mismatch was accepted as rollback proof' >&2
+  exit 1
+fi
+grep -Fq 'restored Ready pod imageID differs from immutable baseline' "$tmp/verify-manifest-body-tamper.log"
+
+if FAKE_RUNTIME_IMAGE_ID="registry.invalid/carbonet-runtime@$manifest_digest" \
+   FAKE_REGISTRY_MANIFEST="$tmp/registry-manifest.json" \
+   FAKE_REGISTRY_TAG_MANIFEST="$tmp/registry-wrong-config.json" \
+   PATH="$tmp/bin:$PATH" ROOT_DIR="$ROOT_DIR" OVERLAY_DIR="$capture_overlay" \
+   FULL_SCREEN_GATE_STATE_DIR="$capture_state" FULL_SCREEN_GATE_REPORT_DIR="$capture_report" \
+   CARBONET_DEPLOY_STATE_FILE="$tmp/applied.commit" CARBONET_RUNTIME_DEPLOY_STATE_FILE="$tmp/runtime.commit" \
+     bash "$gate" verify-restored-physical >"$tmp/verify-tag-retarget.log" 2>&1; then
+  echo 'retargeted mutable baseline tag was accepted as rollback proof' >&2
+  exit 1
+fi
+grep -Fq 'restored Ready pod imageID differs from immutable baseline' "$tmp/verify-tag-retarget.log"
 
 policy_active_hash="$(sha256sum "$active_file" | awk '{print $1}')"
 policy_snapshot_count="$(find "$capture_state/snapshots" -mindepth 1 -maxdepth 1 -type d | wc -l | tr -d ' ')"
@@ -446,4 +525,4 @@ if FULL_SCREEN_GATE_EXPECTED_SNAPSHOT_ID="$retired_snapshot_id" \
   exit 1
 fi
 
-echo "[fast-overlay-snapshot-test] PASS persistentState=0700 immutableArchive=0400 manifest=imageID+ownedAnnotations+runtimePolicy+webTemplate+service+readiness+markers minReadySeconds=runtime+web-missing-default0+restore-verified+null-rejected prePublishCleanup=6faults+activeHashExact+snapshotCountExact postMvTerm=active+snapshot+manifest-coherent serviceLateFailure=restored overlayOrder=copy-index-delete retiredResume=exact controllerRevision=excluded currentNginx=temp sourceClosure=verified copiedClosure=verified activeParser=strict duplicateUnknownModeOwner=rejected symlinkLoad=rejected"
+echo "[fast-overlay-snapshot-test] PASS persistentState=0700 immutableArchive=0400 manifest=imageID+ownedAnnotations+runtimePolicy+webTemplate+service+readiness+markers imageIdDomain=config-manifest-byte-bound minReadySeconds=runtime+web-missing-default0+restore-verified+null-rejected prePublishCleanup=6faults+activeHashExact+snapshotCountExact postMvTerm=active+snapshot+manifest-coherent serviceLateFailure=restored overlayOrder=copy-index-delete retiredResume=exact controllerRevision=excluded currentNginx=temp sourceClosure=verified copiedClosure=verified activeParser=strict duplicateUnknownModeOwner=rejected symlinkLoad=rejected"

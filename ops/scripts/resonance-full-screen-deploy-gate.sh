@@ -550,6 +550,75 @@ verify_snapshot_manifest_files() {
   ' "$SNAPSHOT_DIR/manifest.json" >/dev/null || fail "snapshot manifest file binding mismatch"
 }
 
+# CRI implementations may expose either the registry manifest digest or the
+# image-config digest in Pod.status.containerStatuses[].imageID.  They identify
+# the same immutable image only when the content-addressed registry manifest is
+# byte-exact and binds the expected config digest.  Never accept tag equality
+# alone, and never weaken a mismatch when the registry proof is unavailable.
+runtime_image_ids_equivalent() {
+  local expected_id="$1" actual_id="$2" image_ref="$3"
+  local expected_digest actual_digest registry repository prefix leaf reference scheme
+  local manifest_tmp tag_manifest_tmp manifest_digest tag_manifest_digest config_digest
+  expected_digest="${expected_id##*@}"
+  actual_digest="${actual_id##*@}"
+  [[ "$expected_digest" =~ ^sha256:[0-9a-f]{64}$ \
+     && "$actual_digest" =~ ^sha256:[0-9a-f]{64}$ ]] || return 1
+  [[ "$expected_digest" != "$actual_digest" ]] || return 0
+  [[ "$image_ref" == */* ]] || return 1
+  registry="${image_ref%%/*}"
+  repository="${image_ref#*/}"
+  if [[ "$repository" == *@* ]]; then
+    reference="${repository##*@}"
+  else
+    leaf="${repository##*/}"
+    if [[ "$leaf" == *:* ]]; then reference="${leaf##*:}"; else reference=latest; fi
+  fi
+  repository="${repository%@*}"
+  prefix="${repository%/*}"
+  leaf="${repository##*/}"
+  leaf="${leaf%%:*}"
+  if [[ "$prefix" == "$repository" ]]; then
+    repository="$leaf"
+  else
+    repository="$prefix/$leaf"
+  fi
+  [[ "$registry" =~ ^[A-Za-z0-9.-]+(:[0-9]{1,5})?$ \
+     && "$repository" =~ ^[A-Za-z0-9._-]+(/[A-Za-z0-9._-]+)*$ \
+     && "$reference" =~ ^([A-Za-z0-9_][A-Za-z0-9._-]{0,127}|sha256:[0-9a-f]{64})$ ]] || return 1
+  case "$registry" in
+    localhost|localhost:*|127.0.0.1|127.0.0.1:*) scheme=http ;;
+    *) scheme=https ;;
+  esac
+  manifest_tmp="$(mktemp "$STATE_DIR/runtime-manifest.XXXXXX")" || return 1
+  tag_manifest_tmp="$(mktemp "$STATE_DIR/runtime-tag-manifest.XXXXXX")" || {
+    rm -f -- "$manifest_tmp"
+    return 1
+  }
+  chmod 0600 "$manifest_tmp"
+  chmod 0600 "$tag_manifest_tmp"
+  if ! curl -fsS --max-time 15 \
+      -H 'Accept: application/vnd.docker.distribution.manifest.v2+json, application/vnd.oci.image.manifest.v1+json' \
+      "$scheme://$registry/v2/$repository/manifests/$actual_digest" \
+      >"$manifest_tmp"; then
+    rm -f -- "$manifest_tmp" "$tag_manifest_tmp"
+    return 1
+  fi
+  if ! curl -fsS --max-time 15 \
+      -H 'Accept: application/vnd.docker.distribution.manifest.v2+json, application/vnd.oci.image.manifest.v1+json' \
+      "$scheme://$registry/v2/$repository/manifests/$reference" \
+      >"$tag_manifest_tmp"; then
+    rm -f -- "$manifest_tmp" "$tag_manifest_tmp"
+    return 1
+  fi
+  manifest_digest="sha256:$(sha256sum "$manifest_tmp" | awk '{print $1}')"
+  tag_manifest_digest="sha256:$(sha256sum "$tag_manifest_tmp" | awk '{print $1}')"
+  config_digest="$(jq -r '.config.digest // empty' "$manifest_tmp" 2>/dev/null || true)"
+  rm -f -- "$manifest_tmp" "$tag_manifest_tmp"
+  [[ "$manifest_digest" == "$actual_digest" \
+     && "$tag_manifest_digest" == "$actual_digest" \
+     && "$config_digest" == "$expected_digest" ]]
+}
+
 verify_restored_physical_loaded() {
   verify_snapshot_manifest_files
   local overlay_hash runtime_json web_json service_json selector pods_json image_id desired ready_count current_nginx nginx_hash owned_annotations owned_service_annotations web_owned_annotations web_desired pod health_json
@@ -613,8 +682,10 @@ verify_restored_physical_loaded() {
       | .imageID]
     | unique | if length==1 then .[0] else empty end
   ' <<<"$pods_json")"
-  [[ "$ready_count" == "$desired" && "$image_id" == "$RUNTIME_IMAGE_ID" ]] \
-    || fail "restored Ready pod count/imageID differs from immutable baseline"
+  [[ "$ready_count" == "$desired" ]] \
+    || fail "restored Ready pod count differs from immutable baseline"
+  runtime_image_ids_equivalent "$RUNTIME_IMAGE_ID" "$image_id" "$RUNTIME_IMAGE" \
+    || fail "restored Ready pod imageID differs from immutable baseline"
   mapfile -t ready_pods < <(jq -r --arg container "$RUNTIME_CONTAINER" --arg image "$RUNTIME_IMAGE" '
     .items[]
     | select(.metadata.deletionTimestamp==null)

@@ -405,10 +405,12 @@ public class ActorProcessControlPlaneBridgeController {
                 suppliedToken,actor,account);
         if(denied!=null)return denied;
         try{
-            Boolean authorized=jdbc.queryForObject(
-                    "select framework_project_runtime_purge_require_admin(?) is null",
-                    Boolean.class,account);
-            if(!Boolean.TRUE.equals(authorized))throw new IllegalStateException(
+            Integer authorityProof=jdbc.queryForObject(
+                    "select 1 from (select "
+                            +"framework_project_runtime_purge_require_admin(?)) "
+                            +"runtime_purge_authority_check",
+                    Integer.class,account);
+            if(!Integer.valueOf(1).equals(authorityProof))throw new IllegalStateException(
                     "Runtime purge recovery authority preflight returned no proof.");
             return ResponseEntity.ok(Map.of(
                     "success",true,"status","READY","accountId",account,
