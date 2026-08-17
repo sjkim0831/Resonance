@@ -5,16 +5,24 @@ import egovframework.com.platform.governance.service.ActorProcessGovernanceServi
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.AbstractPlatformTransactionManager;
+import org.springframework.transaction.support.DefaultTransactionStatus;
 
+import java.sql.SQLException;
+import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -244,6 +252,152 @@ class ActorProcessControlPlaneBridgeProjectPurgeTest {
                 eq(String.class),any(Object[].class));
     }
 
+    @Test
+    void previewRetriesTwoSerializationFailuresAsThreeWholeTransactions(){
+        when(governance.isControlPlaneAdministrator("runtime.admin")).thenReturn(true);
+        CountingTransactionManager transactions=new CountingTransactionManager();
+        ActorProcessControlPlaneBridgeController retrying=
+                new ActorProcessControlPlaneBridgeController(
+                        jdbc,new ObjectMapper(),governance,"bridge-token",transactions);
+        when(jdbc.queryForObject(
+                org.mockito.ArgumentMatchers.argThat(sql->sql!=null
+                        &&sql.contains("framework_preview_project_runtime_purge")),
+                eq(String.class),any(Object[].class)))
+                .thenThrow(serializationFailure())
+                .thenThrow(serializationFailure())
+                .thenReturn("""
+                    {"success":true,"status":"PREVIEWED","receiptId":"%s",
+                     "snapshotSha256":"%s","impact":{"totalRows":20},
+                     "blockers":{"blocked":false}}
+                    """.formatted(RECEIPT,SNAPSHOT));
+
+        try{
+            var response=retrying.previewProjectRuntimePurge(
+                    "bridge-token","user:default/designer","runtime.admin",previewBody());
+
+            assertEquals(200,response.getStatusCode().value());
+            assertEquals(3,transactions.begins.get());
+            assertEquals(2,transactions.rollbacks.get());
+            assertEquals(1,transactions.commits.get());
+            assertEquals(List.of(
+                    TransactionDefinition.PROPAGATION_REQUIRES_NEW,
+                    TransactionDefinition.PROPAGATION_REQUIRES_NEW,
+                    TransactionDefinition.PROPAGATION_REQUIRES_NEW),
+                    transactions.propagationBehaviors());
+            verify(jdbc,times(3)).queryForObject(
+                    org.mockito.ArgumentMatchers.argThat(sql->sql!=null
+                            &&sql.contains("framework_preview_project_runtime_purge")),
+                    eq(String.class),any(Object[].class));
+        }finally{retrying.shutdownGenerationExecutor();}
+    }
+
+    @Test
+    void applyFailsClosedAfterThreeSerializationFailuresWithoutWrites(){
+        when(governance.isControlPlaneAdministrator("runtime.admin")).thenReturn(true);
+        CountingTransactionManager transactions=new CountingTransactionManager();
+        ActorProcessControlPlaneBridgeController retrying=
+                new ActorProcessControlPlaneBridgeController(
+                        jdbc,new ObjectMapper(),governance,"bridge-token",transactions);
+        when(jdbc.queryForObject(
+                org.mockito.ArgumentMatchers.argThat(sql->sql!=null
+                        &&sql.contains("framework_apply_project_runtime_purge")),
+                eq(String.class),any(Object[].class)))
+                .thenAnswer(invocation->{
+                    transactions.stageWrite();
+                    throw serializationFailure();
+                });
+
+        try{
+            var response=retrying.applyProjectRuntimePurge(
+                    "bridge-token","user:default/designer","runtime.admin",
+                    RECEIPT,mutationBody());
+
+            assertEquals(409,response.getStatusCode().value());
+            assertEquals(3,transactions.begins.get());
+            assertEquals(3,transactions.rollbacks.get());
+            assertEquals(0,transactions.commits.get());
+            assertEquals(List.of(
+                    TransactionDefinition.PROPAGATION_REQUIRES_NEW,
+                    TransactionDefinition.PROPAGATION_REQUIRES_NEW,
+                    TransactionDefinition.PROPAGATION_REQUIRES_NEW),
+                    transactions.propagationBehaviors());
+            assertEquals(0,transactions.committedWrites.get());
+            assertEquals(3,transactions.rolledBackWrites.get());
+            assertEquals(0,transactions.stagedWrites.get());
+            verify(jdbc,times(3)).queryForObject(
+                    org.mockito.ArgumentMatchers.argThat(sql->sql!=null
+                            &&sql.contains("framework_apply_project_runtime_purge")),
+                    eq(String.class),any(Object[].class));
+            verify(jdbc,never()).update(any(String.class),any(Object[].class));
+        }finally{retrying.shutdownGenerationExecutor();}
+    }
+
+    @Test
+    void restoreDoesNotRetryANonSerializationSqlState(){
+        when(governance.isControlPlaneAdministrator("runtime.admin")).thenReturn(true);
+        CountingTransactionManager transactions=new CountingTransactionManager();
+        ActorProcessControlPlaneBridgeController retrying=
+                new ActorProcessControlPlaneBridgeController(
+                        jdbc,new ObjectMapper(),governance,"bridge-token",transactions);
+        when(jdbc.queryForObject(
+                org.mockito.ArgumentMatchers.argThat(sql->sql!=null
+                        &&sql.contains("framework_restore_project_runtime_purge")),
+                eq(String.class),any(Object[].class)))
+                .thenThrow(new RuntimeException(new SQLException("constraint","23503")));
+
+        try{
+            var response=retrying.restoreProjectRuntimePurge(
+                    "bridge-token","user:default/designer","runtime.admin",
+                    RECEIPT,mutationBody());
+
+            assertEquals(409,response.getStatusCode().value());
+            assertEquals(1,transactions.begins.get());
+            assertEquals(1,transactions.rollbacks.get());
+            assertEquals(0,transactions.commits.get());
+            assertEquals(List.of(TransactionDefinition.PROPAGATION_REQUIRES_NEW),
+                    transactions.propagationBehaviors());
+            verify(jdbc,times(1)).queryForObject(
+                    org.mockito.ArgumentMatchers.argThat(sql->sql!=null
+                            &&sql.contains("framework_restore_project_runtime_purge")),
+                    eq(String.class),any(Object[].class));
+        }finally{retrying.shutdownGenerationExecutor();}
+    }
+
+    @Test
+    void serializationBackoffInterruptStopsRetryAndRestoresInterruptFlag(){
+        when(governance.isControlPlaneAdministrator("runtime.admin")).thenReturn(true);
+        CountingTransactionManager transactions=new CountingTransactionManager();
+        ActorProcessControlPlaneBridgeController retrying=
+                new ActorProcessControlPlaneBridgeController(
+                        jdbc,new ObjectMapper(),governance,"bridge-token",transactions);
+        when(jdbc.queryForObject(
+                org.mockito.ArgumentMatchers.argThat(sql->sql!=null
+                        &&sql.contains("framework_preview_project_runtime_purge")),
+                eq(String.class),any(Object[].class)))
+                .thenThrow(serializationFailure());
+
+        try{
+            Thread.currentThread().interrupt();
+            var response=retrying.previewProjectRuntimePurge(
+                    "bridge-token","user:default/designer","runtime.admin",previewBody());
+
+            assertEquals(409,response.getStatusCode().value());
+            assertTrue(Thread.currentThread().isInterrupted());
+            assertEquals(1,transactions.begins.get());
+            assertEquals(1,transactions.rollbacks.get());
+            assertEquals(0,transactions.commits.get());
+            assertEquals(List.of(TransactionDefinition.PROPAGATION_REQUIRES_NEW),
+                    transactions.propagationBehaviors());
+            verify(jdbc,times(1)).queryForObject(
+                    org.mockito.ArgumentMatchers.argThat(sql->sql!=null
+                            &&sql.contains("framework_preview_project_runtime_purge")),
+                    eq(String.class),any(Object[].class));
+        }finally{
+            Thread.interrupted();
+            retrying.shutdownGenerationExecutor();
+        }
+    }
+
     private static Map<String,Object> previewBody(){
         return Map.ofEntries(
                 Map.entry("receiptId",RECEIPT),Map.entry("operationKey",OPERATION),
@@ -257,5 +411,38 @@ class ActorProcessControlPlaneBridgeProjectPurgeTest {
         return Map.of("projectId","RFP-PURGE-001","processCode","RFP_TEST",
                 "designVersion",1,"contractSha256",CHECKSUM,
                 "snapshotSha256",SNAPSHOT);
+    }
+
+    private static RuntimeException serializationFailure(){
+        return new RuntimeException(new SQLException("serialization retry","40001"));
+    }
+
+    private static final class CountingTransactionManager
+            extends AbstractPlatformTransactionManager {
+        private final AtomicInteger begins=new AtomicInteger();
+        private final AtomicInteger commits=new AtomicInteger();
+        private final AtomicInteger rollbacks=new AtomicInteger();
+        private final AtomicInteger stagedWrites=new AtomicInteger();
+        private final AtomicInteger committedWrites=new AtomicInteger();
+        private final AtomicInteger rolledBackWrites=new AtomicInteger();
+        private final List<Integer> propagationBehaviors=new java.util.ArrayList<>();
+
+        @Override protected Object doGetTransaction(){return new Object();}
+        @Override protected void doBegin(Object transaction,TransactionDefinition definition){
+            assertEquals(TransactionDefinition.PROPAGATION_REQUIRES_NEW,
+                    definition.getPropagationBehavior());
+            propagationBehaviors.add(definition.getPropagationBehavior());
+            begins.incrementAndGet();
+        }
+        @Override protected void doCommit(DefaultTransactionStatus status){
+            committedWrites.addAndGet(stagedWrites.getAndSet(0));
+            commits.incrementAndGet();
+        }
+        @Override protected void doRollback(DefaultTransactionStatus status){
+            rolledBackWrites.addAndGet(stagedWrites.getAndSet(0));
+            rollbacks.incrementAndGet();
+        }
+        private void stageWrite(){stagedWrites.incrementAndGet();}
+        private List<Integer> propagationBehaviors(){return List.copyOf(propagationBehaviors);}
     }
 }

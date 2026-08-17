@@ -465,7 +465,24 @@ BEGIN
 END
 $$;
 
-CREATE OR REPLACE FUNCTION framework_project_runtime_purge_lock_keys(
+-- This mutex is private to purge/restore.  Runtime writers never request it,
+-- so it can serialize one exact identity without participating in a
+-- table/advisory lock cycle.
+CREATE OR REPLACE FUNCTION framework_project_runtime_purge_lock_coordination(
+  requested_project text,requested_process text
+) RETURNS void
+LANGUAGE sql
+SET search_path=pg_catalog,public
+AS $$
+  SELECT pg_advisory_xact_lock(hashtextextended(
+    'PROJECT_RUNTIME_PURGE_COORDINATION_V2:'||requested_project||':'||
+      requested_process,0))
+$$;
+
+-- Writer-visible keys are never waited on by purge/restore.  A failed try
+-- raises 40001 and releases every key/table lock with the transaction, letting
+-- the caller retry from a fresh receipt/snapshot CAS boundary.
+CREATE OR REPLACE FUNCTION framework_project_runtime_purge_try_writer_keys(
   requested_project text,requested_process text
 ) RETURNS void
 LANGUAGE plpgsql
@@ -480,7 +497,10 @@ BEGIN
       'PROJECT_RUNTIME_PURGE_V1:'||requested_project
     ]) key_value ORDER BY key_value COLLATE "C"
   LOOP
-    PERFORM pg_advisory_xact_lock(hashtextextended(lock_key,0));
+    IF NOT pg_try_advisory_xact_lock(hashtextextended(lock_key,0)) THEN
+      RAISE EXCEPTION 'project runtime writer is active; retry required: %',
+        lock_key USING ERRCODE='40001';
+    END IF;
   END LOOP;
 END
 $$;
@@ -511,11 +531,78 @@ BEGIN
 END
 $$;
 
+-- Lock the immutable snapshot tables, every table carrying the persistent
+-- writer fence, and their complete current FK descendant graph.  NOWAIT turns
+-- an in-flight DML table lock into retryable 40001 before any advisory key is
+-- requested, including for descendants that had zero rows during preview.
+CREATE OR REPLACE FUNCTION framework_project_runtime_purge_lock_inventory_tables(
+  requested_receipt uuid
+) RETURNS void
+LANGUAGE plpgsql SECURITY DEFINER
+SET search_path=pg_catalog,public
+AS $$
+DECLARE table_row record;
+BEGIN
+  FOR table_row IN
+    WITH RECURSIVE seed(table_oid) AS (
+      SELECT DISTINCT snapshot.table_oid
+        FROM framework_project_runtime_purge_snapshot_row snapshot
+       WHERE snapshot.receipt_id=requested_receipt
+      UNION
+      SELECT DISTINCT trigger_row.tgrelid
+        FROM pg_trigger trigger_row
+        JOIN pg_class relation ON relation.oid=trigger_row.tgrelid
+        JOIN pg_namespace namespace ON namespace.oid=relation.relnamespace
+       WHERE trigger_row.tgname='trg_project_runtime_write_fence'
+         AND NOT trigger_row.tgisinternal
+         AND namespace.nspname='public' AND relation.relkind IN ('r','p')
+    ), inventory(table_oid) AS (
+      SELECT seed.table_oid FROM seed
+      UNION
+      SELECT foreign_key.conrelid
+        FROM inventory parent
+        JOIN pg_constraint foreign_key
+          ON foreign_key.confrelid=parent.table_oid
+         AND foreign_key.contype='f'
+        JOIN pg_class child ON child.oid=foreign_key.conrelid
+        JOIN pg_namespace child_namespace
+          ON child_namespace.oid=child.relnamespace
+       WHERE child_namespace.nspname!~'^pg_'
+         AND child_namespace.nspname<>'information_schema'
+         AND child.relkind IN ('r','p')
+         AND NOT (child_namespace.nspname='public'
+           AND (child.relname LIKE 'framework_project_runtime_purge_%'
+                OR child.relname='framework_project_runtime_absence_fence'))
+    )
+    SELECT relation.oid table_oid,
+           format('%I.%I',namespace.nspname,relation.relname) table_name
+      FROM (SELECT DISTINCT table_oid FROM inventory) locked
+      JOIN pg_class relation ON relation.oid=locked.table_oid
+      JOIN pg_namespace namespace ON namespace.oid=relation.relnamespace
+     WHERE namespace.nspname!~'^pg_' AND namespace.nspname<>'information_schema'
+       AND relation.relkind IN ('r','p')
+       AND NOT (namespace.nspname='public'
+         AND (relation.relname LIKE 'framework_project_runtime_purge_%'
+              OR relation.relname='framework_project_runtime_absence_fence'))
+     ORDER BY namespace.nspname COLLATE "C",relation.relname COLLATE "C",
+              relation.oid
+  LOOP
+    BEGIN
+      EXECUTE format('lock table %s in access exclusive mode nowait',
+        table_row.table_oid::regclass);
+    EXCEPTION WHEN lock_not_available THEN
+      RAISE EXCEPTION 'runtime table is active; purge retry required: %',
+        table_row.table_name USING ERRCODE='40001';
+    END;
+  END LOOP;
+END
+$$;
+
 -- Runtime tables have INSERT/UPDATE projection triggers (screen generation
 -- state, endpoint runtime resources, applicability history). A restore must
 -- reproduce captured rows without executing those projections a second time.
--- PostgreSQL constraint triggers stay enabled; ALTER TABLE and all row changes
--- roll back together on any failure.
+-- Inventory locks are already held; only exact captured tables are altered and
+-- PostgreSQL constraint triggers stay enabled. All DDL rolls back on failure.
 CREATE OR REPLACE FUNCTION framework_project_runtime_purge_set_user_triggers(
   requested_receipt uuid,requested_enabled boolean
 ) RETURNS void
@@ -532,8 +619,6 @@ BEGIN
      ORDER BY captured.table_name COLLATE "C",captured.table_oid
   LOOP
     IF NOT requested_enabled THEN
-      EXECUTE format('lock table %s in access exclusive mode',
-        table_row.table_oid::regclass);
       IF EXISTS(
         SELECT 1 FROM pg_trigger trigger_row
          WHERE trigger_row.tgrelid=table_row.table_oid
@@ -550,6 +635,161 @@ BEGIN
         table_row.table_oid::regclass);
     END IF;
   END LOOP;
+END
+$$;
+
+-- After the full table inventory is locked, reject any current FK descendant
+-- that refers to a captured parent but has no exact immutable snapshot row.
+-- This closes the preview/apply window even for a descendant table that held
+-- zero rows during preview.
+CREATE OR REPLACE FUNCTION framework_project_runtime_purge_assert_fk_closure(
+  requested_receipt uuid
+) RETURNS void
+LANGUAGE plpgsql SECURITY DEFINER
+SET search_path=pg_catalog,public
+AS $$
+DECLARE constraint_row record; join_contract text; late_count integer;
+BEGIN
+  FOR constraint_row IN
+    SELECT foreign_key.oid,foreign_key.conrelid child_oid,
+           foreign_key.confrelid parent_oid,
+           format('%I.%I',child_namespace.nspname,child.relname) child_name
+      FROM pg_constraint foreign_key
+      JOIN pg_class child ON child.oid=foreign_key.conrelid
+      JOIN pg_namespace child_namespace ON child_namespace.oid=child.relnamespace
+     WHERE foreign_key.contype='f'
+       AND child_namespace.nspname!~'^pg_'
+       AND child_namespace.nspname<>'information_schema'
+       AND child.relkind IN ('r','p')
+       AND NOT (child_namespace.nspname='public'
+         AND (child.relname LIKE 'framework_project_runtime_purge_%'
+              OR child.relname='framework_project_runtime_absence_fence'))
+       AND EXISTS(
+         SELECT 1 FROM framework_project_runtime_purge_snapshot_row parent
+          WHERE parent.receipt_id=requested_receipt
+            AND parent.table_oid=foreign_key.confrelid)
+     ORDER BY child_namespace.nspname COLLATE "C",child.relname COLLATE "C",
+              foreign_key.conname COLLATE "C",foreign_key.oid
+  LOOP
+    SELECT string_agg(format(
+             '(to_jsonb(row_value)->%L)=(parent.row_payload->%L)',
+             child_attribute.attname,parent_attribute.attname),
+             ' AND ' ORDER BY key_position)
+      INTO join_contract
+      FROM generate_subscripts(
+             (SELECT conkey FROM pg_constraint WHERE oid=constraint_row.oid),1
+           ) key_position
+      JOIN pg_attribute child_attribute
+        ON child_attribute.attrelid=constraint_row.child_oid
+       AND child_attribute.attnum=(SELECT conkey[key_position]
+             FROM pg_constraint WHERE oid=constraint_row.oid)
+      JOIN pg_attribute parent_attribute
+        ON parent_attribute.attrelid=constraint_row.parent_oid
+       AND parent_attribute.attnum=(SELECT confkey[key_position]
+             FROM pg_constraint WHERE oid=constraint_row.oid);
+    IF join_contract IS NULL THEN CONTINUE; END IF;
+    EXECUTE format(
+      'select count(*)::integer from %s row_value '
+      'where exists(select 1 '
+      '  from public.framework_project_runtime_purge_snapshot_row parent '
+      ' where parent.receipt_id=$1 and parent.table_oid=%s and %s) '
+      'and not exists(select 1 '
+      '  from public.framework_project_runtime_purge_snapshot_row captured '
+      ' where captured.receipt_id=$1 and captured.table_oid=%s '
+      '   and captured.row_payload=to_jsonb(row_value))',
+      constraint_row.child_oid::regclass,constraint_row.parent_oid,
+      join_contract,constraint_row.child_oid)
+      INTO late_count USING requested_receipt;
+    IF late_count<>0 THEN
+      RAISE EXCEPTION 'project runtime purge FK closure changed: % / %',
+        constraint_row.child_name,late_count USING ERRCODE='40001';
+    END IF;
+  END LOOP;
+END
+$$;
+
+-- Non-platform FK descendants are owned outside the generated runtime.  They
+-- are never admitted to the immutable purge snapshot: an existing reference is
+-- a preview blocker, while a reference created after preview is rejected by
+-- assert_fk_closure after the complete user-table inventory has been locked.
+CREATE OR REPLACE FUNCTION framework_project_runtime_purge_external_fk_descendant_rows(
+  requested_receipt uuid
+) RETURNS integer
+LANGUAGE plpgsql SECURITY DEFINER
+SET search_path=pg_catalog,public
+AS $$
+DECLARE child_row record; foreign_key_row record; join_contract text;
+DECLARE reference_predicate text; child_count integer; external_count integer:=0;
+BEGIN
+  FOR child_row IN
+    SELECT DISTINCT child.oid child_oid,
+           child_namespace.nspname COLLATE "C" child_schema_name,
+           child.relname COLLATE "C" child_table_name,
+           format('%I.%I',child_namespace.nspname,child.relname) child_name
+      FROM pg_constraint foreign_key
+      JOIN pg_class child ON child.oid=foreign_key.conrelid
+      JOIN pg_namespace child_namespace ON child_namespace.oid=child.relnamespace
+     WHERE foreign_key.contype='f'
+       AND child_namespace.nspname!~'^pg_'
+       AND child_namespace.nspname<>'information_schema'
+       AND child.relkind IN ('r','p')
+       AND NOT (
+         child_namespace.nspname='public'
+         AND (child.relname LIKE 'framework\_%' ESCAPE '\'
+              OR child.relname LIKE 'integrated_design\_%' ESCAPE '\')
+         AND child.relname NOT LIKE 'framework_project_runtime_purge_%'
+         AND child.relname<>'framework_project_runtime_absence_fence')
+       AND EXISTS(
+         SELECT 1 FROM framework_project_runtime_purge_snapshot_row parent
+          WHERE parent.receipt_id=requested_receipt
+            AND parent.table_oid=foreign_key.confrelid)
+     ORDER BY child_schema_name,child_table_name,child.oid
+  LOOP
+    reference_predicate:='';
+    FOR foreign_key_row IN
+      SELECT foreign_key.oid,foreign_key.confrelid parent_oid
+        FROM pg_constraint foreign_key
+       WHERE foreign_key.contype='f'
+         AND foreign_key.conrelid=child_row.child_oid
+         AND EXISTS(
+           SELECT 1 FROM framework_project_runtime_purge_snapshot_row parent
+            WHERE parent.receipt_id=requested_receipt
+              AND parent.table_oid=foreign_key.confrelid)
+       ORDER BY foreign_key.conname COLLATE "C",foreign_key.oid
+    LOOP
+      SELECT string_agg(format(
+               '(to_jsonb(row_value)->%L)=(parent.row_payload->%L)',
+               child_attribute.attname,parent_attribute.attname),
+               ' AND ' ORDER BY key_position)
+        INTO join_contract
+        FROM generate_subscripts(
+               (SELECT conkey FROM pg_constraint WHERE oid=foreign_key_row.oid),1
+             ) key_position
+        JOIN pg_attribute child_attribute
+          ON child_attribute.attrelid=child_row.child_oid
+         AND child_attribute.attnum=(SELECT conkey[key_position]
+               FROM pg_constraint WHERE oid=foreign_key_row.oid)
+        JOIN pg_attribute parent_attribute
+          ON parent_attribute.attrelid=foreign_key_row.parent_oid
+         AND parent_attribute.attnum=(SELECT confkey[key_position]
+               FROM pg_constraint WHERE oid=foreign_key_row.oid);
+      IF join_contract IS NOT NULL THEN
+        reference_predicate:=reference_predicate||
+          CASE WHEN reference_predicate='' THEN '' ELSE ' OR ' END||format(
+            'exists(select 1 '
+            'from public.framework_project_runtime_purge_snapshot_row parent '
+            'where parent.receipt_id=$1 and parent.table_oid=%s and %s)',
+            foreign_key_row.parent_oid,join_contract);
+      END IF;
+    END LOOP;
+    IF reference_predicate<>'' THEN
+      EXECUTE format('select count(*)::integer from %s row_value where %s',
+        child_row.child_oid::regclass,reference_predicate)
+        INTO child_count USING requested_receipt;
+      external_count:=external_count+coalesce(child_count,0);
+    END IF;
+  END LOOP;
+  RETURN external_count;
 END
 $$;
 
@@ -1251,9 +1491,10 @@ BEGIN
 END
 $$;
 
--- Persistent cross-database write fence.  Every relevant writer takes the
+-- Persistent cross-database write fence.  Every relevant writer tries the
 -- same C-ordered advisory keys as purge/absence activation, then checks the
--- committed PURGED tombstone or ACTIVE no-release fence.  There is no
+-- committed PURGED tombstone or ACTIVE no-release fence.  It never waits while
+-- already owning a DML table lock: contention fails with retryable 40001. No
 -- caller-controlled bypass; restore changes the receipt to RESTORING before
 -- re-inserting its exact snapshot.
 CREATE OR REPLACE FUNCTION framework_guard_project_runtime_write_fence()
@@ -1332,7 +1573,10 @@ BEGIN
        WHERE candidate IS NOT NULL
     ) unique_key ORDER BY unique_key.candidate
   LOOP
-    PERFORM pg_advisory_xact_lock(hashtextextended(lock_key,0));
+    IF NOT pg_try_advisory_xact_lock(hashtextextended(lock_key,0)) THEN
+      RAISE EXCEPTION 'project runtime writer fence retry required: %',lock_key
+        USING ERRCODE='40001';
+    END IF;
   END LOOP;
   FOREACH identity IN ARRAY identities LOOP
     resolved_project:=nullif(identity->>'projectId','');
@@ -1424,6 +1668,7 @@ DECLARE captured_scope_counts jsonb;
 DECLARE shared_release_count integer:=0; external_project_count integer:=0;
 DECLARE project_process_identity_count integer:=0;
 DECLARE external_handoff_count integer:=0; manual_count integer:=0;
+DECLARE external_fk_descendant_count integer:=0;
 DECLARE unsafe_endpoint_count integer:=0; snapshot_count integer:=0;
 DECLARE materialized_artifact_count integer:=0;
 DECLARE shared_integrated_scope_count integer:=0;
@@ -1447,7 +1692,9 @@ BEGIN
     RAISE EXCEPTION 'canonical project runtime purge identity is required'
       USING ERRCODE='22023';
   END IF;
-  PERFORM framework_project_runtime_purge_lock_keys(
+  PERFORM framework_project_runtime_purge_lock_coordination(
+    requested_project,requested_process);
+  PERFORM framework_project_runtime_purge_try_writer_keys(
     requested_project,requested_process);
 
   SELECT * INTO existing
@@ -1666,6 +1913,8 @@ BEGIN
   );
   PERFORM framework_project_runtime_purge_build_snapshot(
     requested_receipt,requested_project,requested_process);
+  external_fk_descendant_count:=
+    framework_project_runtime_purge_external_fk_descendant_rows(requested_receipt);
 
   SELECT count(*)::integer,
          count(*) FILTER(WHERE upper(coalesce(
@@ -1754,6 +2003,7 @@ BEGIN
     'multiProcessProjectCount',greatest(project_process_identity_count-1,0),
     'externalProjectRowCount',external_project_count,
     'externalProcessReferenceCount',external_handoff_count,
+    'externalFkDescendantRowCount',external_fk_descendant_count,
     'manualOrAdoptRowCount',manual_count,
     'materializedArtifactBlockerCount',materialized_artifact_count,
     'unsafeEndpointCount',unsafe_endpoint_count,
@@ -1761,7 +2011,8 @@ BEGIN
     'forgedIntegratedBindingCount',forged_integrated_binding_count,
     'blocked',shared_release_count+greatest(project_process_identity_count-1,0)+
       external_project_count+
-      external_handoff_count+manual_count+materialized_artifact_count+
+      external_handoff_count+external_fk_descendant_count+
+      manual_count+materialized_artifact_count+
       unsafe_endpoint_count+shared_integrated_scope_count+
       forged_integrated_binding_count>0
   );
@@ -1824,7 +2075,7 @@ BEGIN
   requested_contract_sha256:=lower(btrim(coalesce(requested_contract_sha256,'')));
   requested_snapshot_sha256:=lower(btrim(coalesce(requested_snapshot_sha256,'')));
   requested_actor:=btrim(coalesce(requested_actor,''));
-  PERFORM framework_project_runtime_purge_lock_keys(
+  PERFORM framework_project_runtime_purge_lock_coordination(
     requested_project,requested_process);
   SELECT * INTO receipt FROM framework_project_runtime_purge_receipt
    WHERE receipt_id=requested_receipt FOR UPDATE;
@@ -1839,6 +2090,10 @@ BEGIN
       USING ERRCODE='40001';
   END IF;
   IF receipt.receipt_status='PURGED' THEN
+    PERFORM framework_project_runtime_purge_lock_inventory_tables(
+      requested_receipt);
+    PERFORM framework_project_runtime_purge_try_writer_keys(
+      requested_project,requested_process);
     residual_scope_counts:=framework_project_runtime_purge_scope_counts(
       requested_project,requested_process);
     IF coalesce((residual_scope_counts->>'exactZero')::boolean,false) IS NOT TRUE
@@ -1846,6 +2101,20 @@ BEGIN
       RAISE EXCEPTION 'idempotent purge retry found runtime residuals: %',
         residual_scope_counts USING ERRCODE='55000';
     END IF;
+    FOR snapshot_row IN
+      SELECT * FROM framework_project_runtime_purge_snapshot_row
+       WHERE receipt_id=requested_receipt
+       ORDER BY table_name COLLATE "C",row_hash COLLATE "C"
+    LOOP
+      EXECUTE format(
+        'select count(*)::integer from %s row_value where to_jsonb(row_value)=$1',
+        snapshot_row.table_oid::regclass)
+        INTO exact_count USING snapshot_row.row_payload;
+      IF exact_count<>0 THEN
+        RAISE EXCEPTION 'idempotent purge retry found snapshot residual: % / %',
+          snapshot_row.table_name,snapshot_row.row_hash USING ERRCODE='40001';
+      END IF;
+    END LOOP;
     RETURN jsonb_build_object('success',true,'idempotent',true,
       'status','PURGED','receiptId',receipt.receipt_id,
       'operationKey',receipt.operation_key,'projectId',receipt.project_id,
@@ -1860,6 +2129,13 @@ BEGIN
       receipt.receipt_status USING ERRCODE='55000';
   END IF;
 
+  PERFORM framework_project_runtime_purge_lock_inventory_tables(
+    requested_receipt);
+  PERFORM framework_project_runtime_purge_try_writer_keys(
+    requested_project,requested_process);
+
+  -- Revalidate only after both the complete table set and exact canonical
+  -- publication identity are fenced.
   pre_scope_counts:=framework_project_runtime_purge_scope_counts(
     requested_project,requested_process);
   IF pre_scope_counts IS DISTINCT FROM
@@ -1868,9 +2144,7 @@ BEGIN
       receipt.impact_json->'capturedScopeCounts',pre_scope_counts
       USING ERRCODE='40001';
   END IF;
-
-  PERFORM framework_project_runtime_purge_set_user_triggers(
-    requested_receipt,false);
+  PERFORM framework_project_runtime_purge_assert_fk_closure(requested_receipt);
 
   -- Lock and verify every exact preimage before the first runtime mutation.
   FOR snapshot_row IN
@@ -1888,6 +2162,8 @@ BEGIN
         snapshot_row.table_name,snapshot_row.row_hash USING ERRCODE='40001';
     END IF;
   END LOOP;
+  PERFORM framework_project_runtime_purge_set_user_triggers(
+    requested_receipt,false);
   UPDATE framework_project_runtime_purge_receipt
      SET receipt_status='PURGING',updated_at=clock_timestamp()
    WHERE receipt_id=requested_receipt;
@@ -1989,7 +2265,7 @@ BEGIN
   requested_contract_sha256:=lower(btrim(coalesce(requested_contract_sha256,'')));
   requested_snapshot_sha256:=lower(btrim(coalesce(requested_snapshot_sha256,'')));
   requested_actor:=btrim(coalesce(requested_actor,''));
-  PERFORM framework_project_runtime_purge_lock_keys(
+  PERFORM framework_project_runtime_purge_lock_coordination(
     requested_project,requested_process);
   SELECT * INTO receipt FROM framework_project_runtime_purge_receipt
    WHERE receipt_id=requested_receipt FOR UPDATE;
@@ -2004,6 +2280,11 @@ BEGIN
       USING ERRCODE='40001';
   END IF;
   IF receipt.receipt_status='RESTORED' THEN
+    PERFORM framework_project_runtime_purge_lock_inventory_tables(
+      requested_receipt);
+    PERFORM framework_project_runtime_purge_try_writer_keys(
+      requested_project,requested_process);
+    PERFORM framework_project_runtime_purge_assert_fk_closure(requested_receipt);
     IF framework_project_runtime_purge_scope_counts(
          requested_project,requested_process) IS DISTINCT FROM
          receipt.impact_json->'capturedScopeCounts' THEN
@@ -2037,19 +2318,38 @@ BEGIN
     RAISE EXCEPTION 'only a PURGED runtime receipt can be restored: %',
       receipt.receipt_status USING ERRCODE='55000';
   END IF;
+  PERFORM framework_project_runtime_purge_lock_inventory_tables(
+    requested_receipt);
+  PERFORM framework_project_runtime_purge_try_writer_keys(
+    requested_project,requested_process);
   IF coalesce((framework_project_runtime_purge_scope_counts(
        requested_project,requested_process)->>'exactZero')::boolean,false)
        IS NOT TRUE THEN
     RAISE EXCEPTION 'project runtime restore requires an exact-zero purged scope'
       USING ERRCODE='40001';
   END IF;
+  PERFORM framework_project_runtime_purge_assert_fk_closure(requested_receipt);
+  FOR snapshot_row IN
+    SELECT * FROM framework_project_runtime_purge_snapshot_row
+     WHERE receipt_id=requested_receipt
+     ORDER BY table_name COLLATE "C",row_hash COLLATE "C"
+  LOOP
+    EXECUTE format(
+      'select count(*)::integer from %s row_value where to_jsonb(row_value)=$1',
+      snapshot_row.table_oid::regclass)
+      INTO exact_count USING snapshot_row.row_payload;
+    IF exact_count<>0 THEN
+      RAISE EXCEPTION 'project runtime restore found snapshot residual: % / %',
+        snapshot_row.table_name,snapshot_row.row_hash USING ERRCODE='40001';
+    END IF;
+  END LOOP;
+  PERFORM framework_project_runtime_purge_set_user_triggers(
+    requested_receipt,false);
   UPDATE framework_project_runtime_purge_receipt
      SET receipt_status='RESTORING',updated_at=clock_timestamp()
    WHERE receipt_id=requested_receipt;
   PERFORM set_config('carbonet.project_runtime_purge_receipt',
     requested_receipt::text,true);
-  PERFORM framework_project_runtime_purge_set_user_triggers(
-    requested_receipt,false);
 
   -- Parent first, then each FK descendant.  Any unique/FK conflict aborts the
   -- whole transaction, returning the database to PURGED rather than half A.
@@ -2134,8 +2434,12 @@ REVOKE ALL ON FUNCTION
   framework_project_runtime_purge_append_audit(uuid,text,text,jsonb),
   framework_project_runtime_purge_require_admin(text),
   framework_project_runtime_purge_guard_allows(text),
-  framework_project_runtime_purge_lock_keys(text,text),
+  framework_project_runtime_purge_lock_coordination(text,text),
+  framework_project_runtime_purge_try_writer_keys(text,text),
+  framework_project_runtime_purge_lock_inventory_tables(uuid),
   framework_project_runtime_purge_set_user_triggers(uuid,boolean),
+  framework_project_runtime_purge_assert_fk_closure(uuid),
+  framework_project_runtime_purge_external_fk_descendant_rows(uuid),
   framework_project_runtime_purge_snapshot_insert(uuid,oid,integer,text,text,text),
   framework_project_runtime_purge_build_snapshot(uuid,text,text),
   framework_project_runtime_purge_scope_counts(text,text),

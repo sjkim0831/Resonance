@@ -12,16 +12,20 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.support.TransactionTemplate;
 
+import java.sql.SQLException;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.ArrayList;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -34,11 +38,15 @@ public class CompositeDesignOperationalWorker {
     private static final String SYSTEM_ACTOR="COMPOSITE_AUTOCOMPLETION";
     private static final long GLOBAL_DISPATCH_ADVISORY_KEY=0x434f4d504155544fL;
     private static final long GLOBAL_SOURCE_SLOT_BASE=0x434f4d50534c4f50L;
+    private static final long FIRST_SERIALIZATION_RETRY_DELAY_MS=50L;
+    private static final long SECOND_SERIALIZATION_RETRY_DELAY_MS=100L;
+    private static final int SERIALIZATION_RECLAIM_SCHEDULE_LIMIT=3;
     private final JdbcTemplate jdbc;
     private final ObjectMapper mapper;
     private final ActorProcessGovernanceService governance;
     private final CompositeAutocompletionReadinessService readiness;
     private final TransactionTemplate requiresNew;
+    private final CompositeSerializationRetryStore serializationRetries;
     private final ExecutorService workers;
     private final ScheduledExecutorService leaseHeartbeats;
     private final AtomicInteger running=new AtomicInteger();
@@ -80,6 +88,7 @@ public class CompositeDesignOperationalWorker {
             thread.setDaemon(true);return thread;});
         this.requiresNew=new TransactionTemplate(transactionManager);
         this.requiresNew.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+        this.serializationRetries=new CompositeSerializationRetryStore(jdbc,this.requiresNew);
     }
 
     public CompositeDesignOperationalWorker(JdbcTemplate jdbc,ObjectMapper mapper,
@@ -103,6 +112,7 @@ public class CompositeDesignOperationalWorker {
         initialDelayString="${resonance.composite-autocompletion.initial-delay-ms:30000}")
     public void runScheduledBatch(){
         reconcilePhysicalCompletion();
+        resumeDueSerializationRetries();
         if(capabilityEnabled){
             CompositeAutocompletionReadinessService.Snapshot snapshot=readiness.snapshot(true,running.get());
             Map<String,Object> report=snapshot.report();
@@ -215,14 +225,21 @@ public class CompositeDesignOperationalWorker {
                         String.valueOf(snapshot.report().get("runtimeCommit")),
                         String.valueOf(snapshot.report().get("gateSourceInputAuthorityHash")),"",
                         String.valueOf(snapshot.report().get("currentRuntimeIdentityHash")),"",0,false);
+                    readiness.clearSupersededSerializationRetries("AUTOMATIC",
+                        gateContext.revision(),gateContext.runtimeCommit(),
+                        gateContext.sourceInputHash(),gateContext.runtimeIdentityHash());
                     if(!readiness.retainActiveGateOrRevokeOnSourceDrift(gateContext.revision(),
                             gateContext.runtimeCommit(),gateContext.sourceInputHash(),SYSTEM_ACTOR))
                         return List.<Map<String,Object>>of();
                     readiness.assertActiveExecutionBinding(gateContext.revision(),
                         gateContext.runtimeCommit(),gateContext.sourceInputHash(),
                         gateContext.runtimeIdentityHash());
-                }else readiness.assertAuthoritySetCurrent(String.valueOf(
-                    snapshot.report().get("currentAuthoritySetHash")));
+                }else{
+                    if(canary!=null)readiness.clearSupersededSerializationRetries("CANARY",0,
+                        canary.runtimeCommit(),canary.authoritySetHash(),canary.runtimeIdentityHash());
+                    readiness.assertAuthoritySetCurrent(String.valueOf(
+                        snapshot.report().get("currentAuthoritySetHash")));
+                }
                 readiness.discover();requeueDependencyDrift();
                 String token=UUID.randomUUID().toString();
                 if(canary!=null){
@@ -264,34 +281,81 @@ public class CompositeDesignOperationalWorker {
             for(Map<String,Object> claim:claimed)if(!Boolean.TRUE.equals(
                     claim.get("physicalRevalidation")))running.incrementAndGet();
         }
-        for(Map<String,Object> claim:claimed){
-            if(Boolean.TRUE.equals(claim.get("physicalRevalidation"))){
-                reconcilePhysicalCompletion();continue;}
-            workers.submit(()->{
-            String process=String.valueOf(claim.get("processCode"));
-            String leaseToken=String.valueOf(claim.get("leaseToken"));
-            GateContext gateContext=claim.get("gateContext") instanceof GateContext context
-                ?context:null;
-            ScheduledFuture<?> heartbeat=leaseHeartbeats.scheduleAtFixedRate(()->{
-                if(heartbeatLease(process,leaseToken)!=1)
-                    throw new IllegalStateException("AUTOCOMPLETION_LEASE_HEARTBEAT_CAS_LOST");
-            },heartbeatSeconds,heartbeatSeconds,TimeUnit.SECONDS);
-            try{complete(process,leaseToken,gateContext);}
+        for(Map<String,Object> claim:claimed)
+            submitClaim(claim,manual,canary!=null);
+        return dispatchReceipt(claimed,manual,runToken,canary,canaryAttempt.get());
+    }
+
+    private void submitClaim(Map<String,Object> claim,boolean manual,boolean canary){
+        if(Boolean.TRUE.equals(claim.get("physicalRevalidation"))){
+            reconcilePhysicalCompletion();return;}
+        String process=String.valueOf(claim.get("processCode"));
+        String leaseToken=String.valueOf(claim.get("leaseToken"));
+        GateContext gateContext=claim.get("gateContext") instanceof GateContext context
+            ?context:null;
+        ClaimExecution execution=new ClaimExecution(
+            process,leaseToken,gateContext,manual,canary);
+        try{workers.execute(execution);}
+        catch(RejectedExecutionException rejected){
+            execution.releaseBeforeStart("WORKER_EXECUTOR_REJECTED",true);
+        }
+    }
+
+    private final class ClaimExecution implements Runnable {
+        private final String process;
+        private final String leaseToken;
+        private final GateContext gateContext;
+        private final boolean manual;
+        private final boolean canary;
+        private final AtomicBoolean startedOrReleased=new AtomicBoolean();
+
+        private ClaimExecution(String process,String leaseToken,GateContext gateContext,
+                boolean manual,boolean canary){
+            this.process=process;this.leaseToken=leaseToken;this.gateContext=gateContext;
+            this.manual=manual;this.canary=canary;
+        }
+
+        @Override public void run(){
+            if(!startedOrReleased.compareAndSet(false,true))return;
+            ScheduledFuture<?> heartbeat=null;
+            try{
+                heartbeat=leaseHeartbeats.scheduleAtFixedRate(()->{
+                    if(heartbeatLease(process,leaseToken)!=1)
+                        throw new IllegalStateException("AUTOCOMPLETION_LEASE_HEARTBEAT_CAS_LOST");
+                },heartbeatSeconds,heartbeatSeconds,TimeUnit.SECONDS);
+                complete(process,leaseToken,gateContext);
+            }catch(RejectedExecutionException rejected){
+                RetryOutcome retry=requeueExecutorRejection(process,leaseToken,gateContext,
+                    "HEARTBEAT_EXECUTOR_REJECTED");
+                if(retry.requeued())scheduleSerializationRetry(process,retry.delayMs(),
+                    gateContext,retry.contextJson(),0);
+            }
             finally{
-                heartbeat.cancel(false);
+                if(heartbeat!=null)heartbeat.cancel(false);
                 running.decrementAndGet();
-                if(canary==null&&capabilityEnabled)try{dispatchApproved(defaultLimit);}
+                if(!workers.isShutdown()&&!leaseHeartbeats.isShutdown()
+                        &&!canary&&capabilityEnabled)try{dispatchApproved(defaultLimit);}
                     catch(RuntimeException ignored){/* current approval gate closes the drain */}
                 else{
                     int budget;String token;
                     synchronized(dispatchMonitor){budget=manualDrainRemaining;token=manualRunToken;}
-                    if(canary==null&&manual&&budget>0)
+                    if(!workers.isShutdown()&&!leaseHeartbeats.isShutdown()
+                            &&!canary&&manual&&budget>0)
                         dispatchAvailable(budget,true,token,null,
                             readiness.snapshot(false,running.get()));
                 }
-            }});
+            }
         }
-        return dispatchReceipt(claimed,manual,runToken,canary,canaryAttempt.get());
+
+        private void releaseBeforeStart(String code,boolean schedule){
+            if(!startedOrReleased.compareAndSet(false,true))return;
+            try{
+                RetryOutcome retry=requeueExecutorRejection(
+                    process,leaseToken,gateContext,code);
+                if(schedule&&retry.requeued())scheduleSerializationRetry(process,retry.delayMs(),
+                    gateContext,retry.contextJson(),0);
+            }finally{running.decrementAndGet();}
+        }
     }
 
     private Map<String,Object> dispatchReceipt(List<Map<String,Object>> claimed,
@@ -753,13 +817,17 @@ public class CompositeDesignOperationalWorker {
             update integrated_design_autocompletion_receipt receipt
                set completion_status='PENDING',attempt_count=0,job_id=null,
                    lease_token=null,lease_until=null,blocker_code=null,
-                   receipt_json=receipt.receipt_json||jsonb_build_object(
+                    receipt_json=(receipt.receipt_json-'serializationRetryAttempt'
+                     -'serializationRetryLimit'-'serializationRetryContext'
+                     -'retryNotBeforeEpochMs'-'retryDelayMs'-'blocker')
+                     ||jsonb_build_object(
                      'generationStatus','DEPENDENCY_CHANGED_REQUEUE',
                      'physicalVerified',false,'staleJobDiscarded',receipt.job_id is not null)||case
-                     when receipt.receipt_json#>>'{canary,status}'='ACTIVE' then
-                       jsonb_build_object('canary',(receipt.receipt_json->'canary')||
+                     when receipt.receipt_json#>>'{canary,status}' in('ACTIVE','RETRY_WAIT') then
+                       jsonb_build_object('canary',((receipt.receipt_json->'canary')
+                         -'retryAt'-'failureCode')||
                          jsonb_build_object('status','INVALIDATED',
-                           'invalidatedAt',clock_timestamp()))
+                            'invalidatedAt',clock_timestamp()))
                      else '{}'::jsonb end,
                    dependency_fingerprint=framework_composite_dependency_fingerprint(
                      receipt.process_code),completed_at=null,duration_ms=null,
@@ -775,13 +843,13 @@ public class CompositeDesignOperationalWorker {
     private void complete(String process,String token,GateContext gateContext){
         try{
             requiresNew.executeWithoutResult(status->{
+                governance.lockCompositeProcessAuthority(process);
                 if(gateContext!=null&&!gateContext.canary())
                     readiness.assertActiveExecutionBinding(gateContext.revision(),
                         gateContext.runtimeCommit(),gateContext.sourceInputHash(),
                         gateContext.runtimeIdentityHash());
                 readiness.acquireSourceExecutionSlot(GLOBAL_SOURCE_SLOT_BASE,parallelism,process);
                 readiness.lockCompilerSourceRegistries();
-                governance.lockCompositeProcessAuthority(process);
                 if(gateContext!=null){
                     if(gateContext.canary()){
                         if(!readiness.retainCanaryClaimOrInvalidate(process,token,gateContext.sourceInputHash(),
@@ -805,7 +873,9 @@ public class CompositeDesignOperationalWorker {
                 long jobId=firstJobId(result);int updated=jdbc.update("""
                     update integrated_design_autocompletion_receipt set completion_status=?,
                            screen_count=?,document_count=?,authority_count=?,job_id=?,
-                           receipt_json=receipt_json||?::jsonb||jsonb_build_object(
+                           receipt_json=(receipt_json-'serializationRetryAttempt'
+                             -'serializationRetryLimit'-'serializationRetryContext'-'retryNotBeforeEpochMs'
+                             -'retryDelayMs'-'blocker')||?::jsonb||jsonb_build_object(
                              'sourceAppliedFinalAuthorityHash',(select
                                framework_composite_live_smoke_hash(coalesce(jsonb_agg(
                                  jsonb_build_object('processCode',target.process_code,
@@ -830,10 +900,19 @@ public class CompositeDesignOperationalWorker {
                 if(updated!=1)throw new IllegalStateException("AUTOCOMPLETION_LEASE_CAS_LOST");
             });
         }catch(RuntimeException error){
+            if(isSqlState(error,"40001")){
+                RetryOutcome retry=requeueSerializationFailure(process,token,gateContext);
+                if(retry.requeued())scheduleSerializationRetry(
+                    process,retry.delayMs(),gateContext,retry.contextJson(),0);
+                return;
+            }
             String blocker=error.getMessage()==null?error.getClass().getSimpleName():error.getMessage();
             requiresNew.executeWithoutResult(status->jdbc.update("""
                 update integrated_design_autocompletion_receipt set completion_status='BLOCKED',
-                       blocker_code=?,receipt_json=receipt_json||jsonb_build_object('sourceCommitted',false,
+                       blocker_code=?,receipt_json=(receipt_json-'serializationRetryAttempt'
+                         -'serializationRetryLimit'-'serializationRetryContext'
+                         -'retryNotBeforeEpochMs'-'retryDelayMs'-'blocker')
+                         ||jsonb_build_object('sourceCommitted',false,
                          'jobCount',0,'blocker',?)||case
                          when receipt_json#>>'{canary,status}'='ACTIVE' then jsonb_build_object(
                            'canary',(receipt_json->'canary')||jsonb_build_object(
@@ -847,6 +926,160 @@ public class CompositeDesignOperationalWorker {
                 """,left(blocker,1000),left(blocker,1000),process,process,token));
         }
     }
+
+    private RetryOutcome requeueExecutorRejection(String process,String token,
+            GateContext gateContext,String rejectionCode){
+        String contextJson=json(serializationRetryContext(gateContext));
+        CompositeSerializationRetryStore.RetryState persisted=
+            serializationRetries.requeueExecutorRejection(
+                process,token,contextJson,rejectionCode);
+        return new RetryOutcome(persisted.requeued(),persisted.delayMs(),contextJson);
+    }
+
+    private RetryOutcome requeueSerializationFailure(
+            String process,String token,GateContext gateContext){
+        String contextJson=json(serializationRetryContext(gateContext));
+        CompositeSerializationRetryStore.RetryState persisted=
+            serializationRetries.requeueSerializationFailure(process,token,contextJson);
+        return new RetryOutcome(persisted.requeued(),persisted.delayMs(),contextJson);
+    }
+
+    private void scheduleSerializationRetry(String process,long delayMs,GateContext gateContext,
+            String contextJson,int scheduleAttempt){
+        if(scheduleAttempt>=SERIALIZATION_RECLAIM_SCHEDULE_LIMIT
+                ||leaseHeartbeats.isShutdown())return;
+        try{
+            leaseHeartbeats.schedule(()->{
+                boolean reclaimed=false;
+                try{reclaimed=reclaimSerializationRetry(process,gateContext,contextJson);}
+                catch(RuntimeException ignored){/* bounded retry, then the durable sweep resumes it */}
+                if(!reclaimed)scheduleSerializationRetry(process,
+                    SECOND_SERIALIZATION_RETRY_DELAY_MS,gateContext,contextJson,scheduleAttempt+1);
+            },Math.max(FIRST_SERIALIZATION_RETRY_DELAY_MS,delayMs),TimeUnit.MILLISECONDS);
+        }catch(RejectedExecutionException ignored){
+            /* The receipt is durable RETRY_WAIT and a healthy replica/scheduled sweep reclaims it. */
+        }
+    }
+
+    private void resumeDueSerializationRetries(){
+        int available=Math.max(0,parallelism-running.get());
+        if(available==0)return;
+        List<Map<String,Object>> due=serializationRetries.resumeDue(available);
+        if(due==null)return;
+        for(Map<String,Object> row:due){
+            String process=String.valueOf(row.get("processCode"));
+            String contextJson=String.valueOf(row.get("retryContext"));
+            RetryBinding binding=parseRetryBinding(contextJson);
+            if(binding==null)continue;
+            boolean reclaimed=false;
+            try{reclaimed=reclaimSerializationRetry(process,binding.gateContext(),contextJson);}
+            catch(RuntimeException ignored){/* current exact gate may be changing */}
+            if(!reclaimed)scheduleSerializationRetry(process,
+                FIRST_SERIALIZATION_RETRY_DELAY_MS,binding.gateContext(),contextJson,0);
+        }
+    }
+
+    private boolean reclaimSerializationRetry(
+            String process,GateContext gateContext,String contextJson){
+        boolean manual=gateContext==null;
+        CompositeAutocompletionReadinessService.Snapshot snapshot=
+            readiness.snapshot(!manual&&capabilityEnabled,running.get());
+        CompositeAutocompletionReadinessService.Candidate candidate=
+            snapshot.readyProcesses().get(process);
+        if(candidate==null)return false;
+        List<Map<String,Object>> claimed;
+        synchronized(dispatchMonitor){
+            if(running.get()>=parallelism)return false;
+            claimed=requiresNew.execute(status->{
+                readiness.acquireGlobalDispatchLock(GLOBAL_DISPATCH_ADVISORY_KEY);
+                if(readiness.globallyRunning()>=parallelism)return List.<Map<String,Object>>of();
+                if(gateContext==null)readiness.assertAuthoritySetCurrent(String.valueOf(
+                    snapshot.report().get("currentAuthoritySetHash")));
+                else if(gateContext.canary())readiness.assertAuthoritySetCurrent(
+                    gateContext.sourceInputHash());
+                else{
+                    if(!readiness.retainActiveGateOrRevokeOnSourceDrift(gateContext.revision(),
+                            gateContext.runtimeCommit(),gateContext.sourceInputHash(),SYSTEM_ACTOR))
+                        return List.<Map<String,Object>>of();
+                    readiness.assertActiveExecutionBinding(gateContext.revision(),
+                        gateContext.runtimeCommit(),gateContext.sourceInputHash(),
+                        gateContext.runtimeIdentityHash());
+                }
+                readiness.discover();
+                String token=UUID.randomUUID().toString();
+                String retryJson=gateContext==null||!gateContext.canary()?"{}":json(Map.of(
+                    "sourceInputDependencyHash",gateContext.processInputHash(),
+                    "canary",Map.of("canaryId",gateContext.canaryId(),"status","ACTIVE",
+                        "attemptNumber",gateContext.canaryAttempt(),
+                        "runtimeCommit",gateContext.runtimeCommit(),
+                        "requestedRuntimeIdentityHash",gateContext.runtimeIdentityHash(),
+                        "requestedSourceAuthorityHash",gateContext.sourceInputHash(),
+                        "requestedSourceDependencyHash",gateContext.processInputHash())));
+                List<Map<String,Object>> one=readiness.claimSerializationRetry(
+                    candidate,token,leaseSeconds,retryJson,contextJson);
+                GateContext rebound=gateContext==null?null:new GateContext(
+                    gateContext.revision(),gateContext.runtimeCommit(),
+                    gateContext.sourceInputHash(),gateContext.processInputHash(),
+                    gateContext.runtimeIdentityHash(),gateContext.canaryId(),
+                    gateContext.canaryAttempt(),gateContext.canary());
+                if(rebound!=null)one.forEach(row->row.put("gateContext",rebound));
+                return one;
+            });
+            if(claimed==null)claimed=List.of();
+            for(Map<String,Object> claim:claimed)running.incrementAndGet();
+        }
+        for(Map<String,Object> claim:claimed)
+            submitClaim(claim,manual,gateContext!=null&&gateContext.canary());
+        return !claimed.isEmpty();
+    }
+
+    private Map<String,Object> serializationRetryContext(GateContext gateContext){
+        Map<String,Object> context=new LinkedHashMap<>();
+        context.put("mode",gateContext==null?"MANUAL":gateContext.canary()?"CANARY":"AUTOMATIC");
+        if(gateContext!=null){
+            context.put("gateRevision",gateContext.revision());
+            context.put("runtimeCommit",gateContext.runtimeCommit());
+            context.put("sourceInputHash",gateContext.sourceInputHash());
+            context.put("processInputHash",gateContext.processInputHash());
+            context.put("runtimeIdentityHash",gateContext.runtimeIdentityHash());
+            context.put("canaryId",gateContext.canaryId());
+            context.put("canaryAttempt",gateContext.canaryAttempt());
+        }
+        return context;
+    }
+
+    @SuppressWarnings("unchecked")
+    private RetryBinding parseRetryBinding(String contextJson){
+        try{
+            Map<String,Object> context=mapper.readValue(contextJson,Map.class);
+            String mode=String.valueOf(context.get("mode"));
+            if("MANUAL".equals(mode))return new RetryBinding(null);
+            if(!Set.of("AUTOMATIC","CANARY").contains(mode))return null;
+            long revision=((Number)context.get("gateRevision")).longValue();
+            int attempt=((Number)context.get("canaryAttempt")).intValue();
+            GateContext gate=new GateContext(revision,
+                String.valueOf(context.get("runtimeCommit")),
+                String.valueOf(context.get("sourceInputHash")),
+                String.valueOf(context.get("processInputHash")),
+                String.valueOf(context.get("runtimeIdentityHash")),
+                String.valueOf(context.get("canaryId")),attempt,"CANARY".equals(mode));
+            return new RetryBinding(gate);
+        }catch(Exception invalid){return null;}
+    }
+
+    private static boolean isSqlState(Throwable error,String expected){
+        Throwable current=error;
+        for(int depth=0;current!=null&&depth<32;depth++){
+            if(current instanceof SQLException sql&&expected.equals(sql.getSQLState()))return true;
+            Throwable cause=current.getCause();
+            if(cause==current)return false;
+            current=cause;
+        }
+        return false;
+    }
+
+    private record RetryOutcome(boolean requeued,long delayMs,String contextJson){}
+    private record RetryBinding(GateContext gateContext){}
 
     Map<String,Object> scopeForProcess(String process){
         List<Map<String,Object>> scopes=jdbc.queryForList("""
@@ -962,6 +1195,10 @@ public class CompositeDesignOperationalWorker {
         catch(JsonProcessingException error){throw new IllegalStateException("AUTOCOMPLETION_RECEIPT_INVALID",error);}}
     private static String left(String value,int limit){return value.length()<=limit?value:value.substring(0,limit);}
 
-    @PreDestroy public void close(){workers.shutdownNow();leaseHeartbeats.shutdownNow();
-        readiness.close();}
+    @PreDestroy public void close(){
+        List<Runnable> abandoned=workers.shutdownNow();leaseHeartbeats.shutdownNow();
+        for(Runnable task:abandoned)if(task instanceof ClaimExecution execution)
+            execution.releaseBeforeStart("WORKER_SHUTDOWN_BEFORE_START",false);
+        readiness.close();
+    }
 }

@@ -31,6 +31,7 @@ import java.util.HexFormat;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import javax.imageio.ImageIO;
 
@@ -2937,6 +2938,149 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
                    and started_at<current_timestamp-interval '90 seconds'
                 """,Integer.class));
         }finally{worker.close();}
+    }
+
+    @Test
+    void workerSerializationRetryRollsBackWholePostgresTransactionTwiceThenPublishesOnce()
+            throws Exception {
+        seedCompositeThreeScreens();
+        prepareCompositeReadinessBenchmarkDocuments();
+        jdbc.update("delete from framework_design_asset_registry "+
+            "where design_asset_id='SERIALIZATION_RETRY_REGISTRY'");
+        String baselineFingerprint=jdbc.queryForObject(
+            "select framework_composite_dependency_fingerprint('PROC')",String.class);
+        assertEquals(1,jdbc.update("""
+            insert into integrated_design_autocompletion_receipt(
+              process_code,completion_status,dependency_fingerprint,receipt_json)
+            values('PROC','PENDING',?,jsonb_build_object('requestedScope',
+              jsonb_build_object('scopeType','GLOBAL','source','MIGRATION_GLOBAL_TARGET')))
+            """,baselineFingerprint));
+
+        AtomicInteger attempts=new AtomicInteger();
+        List<String> claimedProcesses=java.util.Collections.synchronizedList(new ArrayList<>());
+        CountDownLatch[] entered={new CountDownLatch(1),new CountDownLatch(1)};
+        CountDownLatch[] releaseFailure={new CountDownLatch(1),new CountDownLatch(1)};
+        ActorProcessGovernanceService faulting=org.mockito.Mockito.spy(service);
+        org.mockito.Mockito.doAnswer(invocation->{
+            @SuppressWarnings("unchecked") Map<String,Object> request=invocation.getArgument(0);
+            String process=String.valueOf(request.get("processCode"));
+            claimedProcesses.add(process);
+            if(!"PROC".equals(process)||!Boolean.FALSE.equals(request.get("previewOnly"))
+                    ||!"GLOBAL".equals(request.get("scopeType")))
+                throw new IllegalStateException("SERIALIZATION_RETRY_SOURCE_CLAIM_INVALID: "+request);
+            int attempt=attempts.incrementAndGet();
+            if(attempt>3)throw new IllegalStateException(
+                "SERIALIZATION_RETRY_SOURCE_CLAIM_DUPLICATED: "+attempt);
+            if(jdbc.update("""
+                insert into framework_process_artifact(
+                  process_code,step_code,artifact_code,artifact_type,artifact_name,target_path,
+                  contract_ref,required,delivery_status,owner_actor_code)
+                values('PROC','STEP','SERIALIZATION_RETRY_SOURCE','SOURCE',
+                  'Serialization retry source','/generated/serialization-retry-source',
+                  'AUTO:SERIALIZATION_RETRY',true,'PLANNED','OWNER_ACTOR')
+                """)!=1)throw new IllegalStateException("SERIALIZATION_RETRY_SOURCE_WRITE_NOT_EXACT");
+            if(jdbc.update("""
+                insert into framework_design_asset_registry(
+                  design_asset_id,route_path,source_path,active_yn)
+                values('SERIALIZATION_RETRY_REGISTRY','/serialization-retry-source',
+                  '/generated/serialization-retry-source','Y')
+                """)!=1)throw new IllegalStateException("SERIALIZATION_RETRY_REGISTRY_WRITE_NOT_EXACT");
+            long jobId=jdbc.queryForObject("""
+                insert into framework_development_job(
+                  process_code,step_code,job_type,job_name,target_path,specification_json,
+                  job_status,approval_status,execution_mode,job_group_code,required,
+                  progress_weight,max_attempts,quality_status,created_by,result_json)
+                values('PROC','STEP','FULL_STACK_GENERATION','Serialization retry job',
+                  '/generated/serialization-retry-source','{}','PLANNED','APPROVED','AUTOMATED',
+                  'PROC_CANONICAL_PUBLICATION',true,1,3,'PENDING','POSTGRES_TEST','{}')
+                returning job_id
+                """,Long.class);
+            if(attempt<=2){
+                entered[attempt-1].countDown();
+                try{
+                    if(!releaseFailure[attempt-1].await(15,TimeUnit.SECONDS))
+                        throw new IllegalStateException(
+                            "SERIALIZATION_RETRY_FAILURE_RELEASE_TIMEOUT: "+attempt);
+                }catch(InterruptedException error){
+                    Thread.currentThread().interrupt();throw new IllegalStateException(error);
+                }
+                throw new IllegalStateException("SERIALIZATION_RETRY_FIXTURE_"+attempt,
+                    new java.sql.SQLException("serialization retry fixture","40001"));
+            }
+            return Map.ofEntries(
+                Map.entry("status","SOURCE_APPLIED_PHYSICAL_QUEUED"),
+                Map.entry("screenCount",3),Map.entry("documentCount",54),
+                Map.entry("authorityCount",3),
+                Map.entry("receipts",List.of(Map.of("jobId",jobId))));
+        }).when(faulting).compileIntegratedDesignProcess(
+            org.mockito.ArgumentMatchers.anyMap(),org.mockito.ArgumentMatchers.anyString());
+
+        CompositeDesignOperationalWorker worker=new CompositeDesignOperationalWorker(
+            jdbc,new ObjectMapper(),faulting,new DataSourceTransactionManager(dataSource),
+            false,1,1,false);
+        PostgresAdvisoryTransaction firstHolder=null,secondHolder=null;
+        try{
+            Map<String,Object> accepted=worker.dispatch(1);
+            assertEquals(1,number(accepted,"claimedCount"));
+            assertEquals(List.of("PROC"),accepted.get("processCodes"));
+            assertTrue(entered[0].await(10,TimeUnit.SECONDS),"first compile attempt entered");
+            firstHolder=holdPostgresAdvisoryTransaction(0x434f4d504155544fL);
+            releaseFailure[0].countDown();
+            assertSerializationRetryWait(1,1,50,baselineFingerprint,10);
+            awaitWorkerIdle(worker,5);
+            firstHolder.close();firstHolder=null;
+
+            assertTrue(entered[1].await(10,TimeUnit.SECONDS),"second compile attempt entered");
+            secondHolder=holdPostgresAdvisoryTransaction(0x434f4d504155544fL);
+            releaseFailure[1].countDown();
+            assertSerializationRetryWait(2,2,100,baselineFingerprint,10);
+            awaitWorkerIdle(worker,5);
+            secondHolder.close();secondHolder=null;
+
+            awaitReceiptCompletion("SOURCE_APPLIED_PHYSICAL_QUEUED",20);
+            awaitWorkerIdle(worker,5);
+            assertEquals(3,attempts.get());
+            assertEquals(List.of("PROC","PROC","PROC"),claimedProcesses);
+            Map<String,Object> completed=jdbc.queryForMap("""
+                select completion_status as "completionStatus",attempt_count as "attemptCount",
+                       blocker_code as "blockerCode",lease_token::text as "leaseToken",
+                       lease_until as "leaseUntil",job_id as "jobId",
+                       receipt_json?'serializationRetryAttempt' as "hasRetryAttempt",
+                       receipt_json?'serializationRetryContext' as "hasRetryContext",
+                       receipt_json->>'generationStatus' as "generationStatus",
+                       dependency_fingerprint as "dependencyFingerprint",
+                       framework_composite_dependency_fingerprint('PROC') as "currentFingerprint"
+                  from integrated_design_autocompletion_receipt where process_code='PROC'
+                """);
+            assertEquals("SOURCE_APPLIED_PHYSICAL_QUEUED",completed.get("completionStatus"));
+            assertEquals(3,((Number)completed.get("attemptCount")).intValue());
+            assertNull(completed.get("blockerCode"));assertNull(completed.get("leaseToken"));
+            assertNull(completed.get("leaseUntil"));
+            assertEquals(false,completed.get("hasRetryAttempt"));
+            assertEquals(false,completed.get("hasRetryContext"));
+            assertEquals("PHYSICAL_EVIDENCE_RECHECK_QUEUED",completed.get("generationStatus"));
+            assertEquals(completed.get("currentFingerprint"),completed.get("dependencyFingerprint"));
+            assertEquals(1,serializationRetrySourceCount());
+            assertEquals(1,serializationRetryRegistryCount());
+            assertEquals(1,serializationRetryJobCount());
+            assertEquals(1,jdbc.queryForObject("""
+                select count(*) from integrated_design_autocompletion_receipt receipt
+                  join framework_development_job job on job.job_id=receipt.job_id
+                 where receipt.process_code='PROC'
+                   and job.job_name='Serialization retry job'
+                """,Integer.class));
+        }finally{
+            releaseFailure[0].countDown();releaseFailure[1].countDown();
+            if(firstHolder!=null)firstHolder.close();
+            if(secondHolder!=null)secondHolder.close();
+            worker.close();
+            jdbc.update("delete from framework_design_asset_registry "+
+                "where design_asset_id='SERIALIZATION_RETRY_REGISTRY'");
+            jdbc.update("delete from framework_process_artifact "+
+                "where artifact_code='SERIALIZATION_RETRY_SOURCE'");
+            jdbc.update("delete from framework_development_job "+
+                "where job_name='Serialization retry job'");
+        }
     }
 
     private Map<String,Object> compileComposite(Map<String,Object> request){
@@ -6298,6 +6442,126 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
             }
         }while(!expected.equals(completion)&&System.nanoTime()<deadline);
         assertEquals(expected,completion);
+    }
+
+    private void assertSerializationRetryWait(int expectedRetryAttempt,int expectedClaimAttempt,
+            int expectedDelayMs,String expectedFingerprint,int seconds){
+        long deadline=System.nanoTime()+TimeUnit.SECONDS.toNanos(seconds);
+        Map<String,Object> receipt;
+        do{
+            receipt=jdbc.queryForMap("""
+                select completion_status as "completionStatus",attempt_count as "attemptCount",
+                       blocker_code as "blockerCode",lease_token::text as "leaseToken",
+                       lease_until as "leaseUntil",job_id as "jobId",
+                       receipt_json->>'sourceCommitted' as "sourceCommitted",
+                       receipt_json->>'jobCount' as "jobCount",
+                       receipt_json->>'blocker' as "jsonBlocker",
+                       receipt_json->>'generationStatus' as "generationStatus",
+                       receipt_json->>'serializationRetryAttempt' as "retryAttempt",
+                       receipt_json->>'serializationRetryLimit' as "retryLimit",
+                       receipt_json#>>'{serializationRetryContext,mode}' as "retryMode",
+                       receipt_json->>'retryDelayMs' as "retryDelayMs",
+                       receipt_json->>'retryNotBeforeEpochMs' as "retryNotBeforeEpochMs",
+                       dependency_fingerprint as "dependencyFingerprint"
+                  from integrated_design_autocompletion_receipt where process_code='PROC'
+                """);
+            if(!("PENDING".equals(receipt.get("completionStatus"))
+                    &&Integer.toString(expectedRetryAttempt).equals(receipt.get("retryAttempt"))))
+                try{Thread.sleep(20);}
+                catch(InterruptedException error){
+                    Thread.currentThread().interrupt();throw new IllegalStateException(error);
+                }
+        }while(!("PENDING".equals(receipt.get("completionStatus"))
+                &&Integer.toString(expectedRetryAttempt).equals(receipt.get("retryAttempt")))
+                &&System.nanoTime()<deadline);
+        assertEquals("PENDING",receipt.get("completionStatus"));
+        assertEquals(expectedClaimAttempt,((Number)receipt.get("attemptCount")).intValue());
+        assertEquals("RETRY_WAIT",receipt.get("blockerCode"));
+        assertNull(receipt.get("leaseToken"));assertNull(receipt.get("leaseUntil"));
+        assertNull(receipt.get("jobId"));
+        assertEquals("false",receipt.get("sourceCommitted"));
+        assertEquals("0",receipt.get("jobCount"));
+        assertEquals("SERIALIZATION_RETRY",receipt.get("jsonBlocker"));
+        assertEquals("SERIALIZATION_RETRY_WAIT",receipt.get("generationStatus"));
+        assertEquals(Integer.toString(expectedRetryAttempt),receipt.get("retryAttempt"));
+        assertEquals("3",receipt.get("retryLimit"));
+        assertEquals("MANUAL",receipt.get("retryMode"));
+        assertEquals(Integer.toString(expectedDelayMs),receipt.get("retryDelayMs"));
+        assertTrue(String.valueOf(receipt.get("retryNotBeforeEpochMs")).matches("[0-9]{10,20}"));
+        assertEquals(expectedFingerprint,receipt.get("dependencyFingerprint"));
+        assertEquals(expectedFingerprint,jdbc.queryForObject(
+            "select framework_composite_dependency_fingerprint('PROC')",String.class));
+        assertEquals(0,serializationRetrySourceCount());
+        assertEquals(0,serializationRetryRegistryCount());
+        assertEquals(0,serializationRetryJobCount());
+    }
+
+    private int serializationRetrySourceCount(){
+        return jdbc.queryForObject("""
+            select count(*) from framework_process_artifact
+             where process_code='PROC' and artifact_code='SERIALIZATION_RETRY_SOURCE'
+            """,Integer.class);
+    }
+
+    private int serializationRetryRegistryCount(){
+        return jdbc.queryForObject("""
+            select count(*) from framework_design_asset_registry
+             where design_asset_id='SERIALIZATION_RETRY_REGISTRY'
+            """,Integer.class);
+    }
+
+    private int serializationRetryJobCount(){
+        return jdbc.queryForObject("""
+            select count(*) from framework_development_job
+             where process_code='PROC' and job_name='Serialization retry job'
+            """,Integer.class);
+    }
+
+    private PostgresAdvisoryTransaction holdPostgresAdvisoryTransaction(long key)
+            throws Exception {
+        java.sql.Connection connection=dataSource.getConnection();
+        try{
+            connection.setAutoCommit(false);
+            int backendPid;
+            try(java.sql.PreparedStatement statement=connection.prepareStatement(
+                    "select pg_backend_pid()")){
+                try(java.sql.ResultSet rows=statement.executeQuery()){
+                    if(!rows.next())throw new IllegalStateException("POSTGRES_BACKEND_PID_MISSING");
+                    backendPid=rows.getInt(1);
+                }
+            }
+            try(java.sql.PreparedStatement statement=connection.prepareStatement(
+                    "select pg_advisory_xact_lock(?)")){
+                statement.setLong(1,key);statement.execute();
+            }
+            return new PostgresAdvisoryTransaction(connection,backendPid);
+        }catch(Exception error){
+            try{connection.rollback();}finally{connection.close();}
+            throw error;
+        }
+    }
+
+    private final class PostgresAdvisoryTransaction implements AutoCloseable {
+        private java.sql.Connection connection;
+        private final int backendPid;
+
+        private PostgresAdvisoryTransaction(java.sql.Connection connection,int backendPid){
+            this.connection=connection;this.backendPid=backendPid;
+        }
+
+        @Override public void close() throws Exception {
+            if(connection==null)return;
+            java.sql.Connection open=connection;connection=null;
+            try{open.rollback();}finally{open.close();}
+            long deadline=System.nanoTime()+TimeUnit.SECONDS.toNanos(2);
+            int sessions;
+            do{
+                sessions=admin.queryForObject(
+                    "select count(*) from pg_stat_activity where pid=?",Integer.class,backendPid);
+                if(sessions!=0)Thread.sleep(10);
+            }while(sessions!=0&&System.nanoTime()<deadline);
+            assertEquals(0,sessions,"advisory holder backend residue: "+backendPid);
+        }
     }
 
     private void awaitWorkerIdle(CompositeDesignOperationalWorker worker,int seconds){

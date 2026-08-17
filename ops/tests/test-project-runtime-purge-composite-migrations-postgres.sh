@@ -519,8 +519,12 @@ wait "$writer_two_pid"; writer_two_status=$?
 set -e
 (( writer_one_status != 0 && writer_two_status != 0 )) ||
   fail 'concurrent PURGED writer was admitted'
-grep -Fq 'durably purged' "$writer_one" || fail 'document writer fence reason drifted'
-grep -Fq 'durably purged' "$writer_two" || fail 'dispatch writer fence reason drifted'
+grep -Eq 'durably purged|project runtime writer fence retry required' "$writer_one" ||
+  fail 'document writer fence reason drifted'
+grep -Eq 'durably purged|project runtime writer fence retry required' "$writer_two" ||
+  fail 'dispatch writer fence reason drifted'
+grep -Fq 'durably purged' <(cat "$writer_one" "$writer_two") ||
+  fail 'concurrent PURGED writers did not observe the durable tombstone'
 rm -f "$writer_one" "$writer_two"
 [[ "$(scalar "select count(*) from integrated_design_document where process_code='RFP_COMPOSITE'")" == 0 ]] ||
   fail 'concurrent PURGED document writer wrote a row'

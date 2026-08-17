@@ -7,21 +7,27 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.support.AbstractPlatformTransactionManager;
+import org.springframework.transaction.support.DefaultTransactionStatus;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.MessageDigest;
+import java.sql.SQLException;
 import java.util.HexFormat;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.after;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.inOrder;
@@ -599,6 +605,155 @@ class ActorProcessControlPlaneBridgeAuthorizationTest {
     }
 
     @Test
+    void designReleaseRetriesTwoSerializationFailuresAndSchedulesOnceAfterThirdCommit()
+            throws Exception {
+        Map<String,Object> contract=requirementContract("PROCESS_A",4,Map.ofEntries(
+            Map.entry("stepCode","STEP_ONE"),Map.entry("actorCode","WORKER_ACTOR"),
+            Map.entry("routePath","/work/one"),Map.entry("screenName","Step one"),
+            Map.entry("description","Complete step one"),
+            Map.entry("endpoint",Map.of("method","POST","path","/api/work/one"))));
+        String checksum=canonicalChecksum(contract);
+        CountingTransactionManager transactions=new CountingTransactionManager(2);
+        ActorProcessControlPlaneBridgeController retrying=
+            new ActorProcessControlPlaneBridgeController(
+                jdbc,mapper,governance,"secret-token",transactions);
+        when(jdbc.queryForObject(org.mockito.ArgumentMatchers.argThat(sql->sql!=null
+                &&sql.contains("'designVersion',design_version")),eq(String.class),
+                any(Object[].class)))
+            .thenReturn(mapper.writeValueAsString(Map.of(
+                "designVersion",4,"contractSha256",checksum,
+                "releaseStatus","FAILED","generationResult",Map.of(
+                    "status","FAILED","retryAttempt",0))));
+        when(jdbc.update(org.mockito.ArgumentMatchers.argThat(sql->sql!=null
+                &&sql.contains("release_status='QUEUED'")
+                &&sql.contains("retryAttempt")),any(Object[].class)))
+            .thenAnswer(invocation->{transactions.stageWrite();return 1;});
+
+        try{
+            var response=retrying.applyDesignRelease("secret-token",Map.of(
+                "projectId","PROJECT_A","designVersion",4,
+                "contractSha256",checksum,"contract",contract));
+
+            assertEquals(200,response.getStatusCode().value());
+            assertEquals(3,transactions.begins.get());
+            assertEquals(2,transactions.rollbacks.get());
+            assertEquals(1,transactions.commits.get());
+            assertEquals(3,transactions.commitAttempts.get());
+            assertEquals(List.of(
+                    TransactionDefinition.PROPAGATION_REQUIRES_NEW,
+                    TransactionDefinition.PROPAGATION_REQUIRES_NEW,
+                    TransactionDefinition.PROPAGATION_REQUIRES_NEW),
+                    transactions.propagationBehaviors());
+            assertEquals(1,transactions.committedWrites.get());
+            assertEquals(2,transactions.rolledBackWrites.get());
+            assertEquals(0,transactions.stagedWrites.get());
+            verify(jdbc,times(3)).queryForObject(
+                org.mockito.ArgumentMatchers.argThat(sql->sql!=null
+                    &&sql.contains("'designVersion',design_version")),
+                eq(String.class),any(Object[].class));
+            verify(jdbc,after(1000).times(1)).queryForMap(
+                org.mockito.ArgumentMatchers.argThat(sql->sql!=null
+                    &&sql.contains("contract_payload->'source'")),
+                eq("PROJECT_A"),eq(4));
+            verifyNoInteractions(governance);
+        }finally{retrying.shutdownGenerationExecutor();}
+    }
+
+    @Test
+    void designReleaseFailsClosedAfterThreeSerializationFailuresWithoutWriteOrSchedule()
+            throws Exception {
+        Map<String,Object> contract=requirementContract("PROCESS_A",4,Map.ofEntries(
+            Map.entry("stepCode","STEP_ONE"),Map.entry("actorCode","WORKER_ACTOR"),
+            Map.entry("routePath","/work/one"),Map.entry("screenName","Step one"),
+            Map.entry("description","Complete step one"),
+            Map.entry("endpoint",Map.of("method","POST","path","/api/work/one"))));
+        String checksum=canonicalChecksum(contract);
+        CountingTransactionManager transactions=new CountingTransactionManager();
+        ActorProcessControlPlaneBridgeController retrying=
+            new ActorProcessControlPlaneBridgeController(
+                jdbc,mapper,governance,"secret-token",transactions);
+        when(jdbc.queryForObject(org.mockito.ArgumentMatchers.argThat(sql->sql!=null
+                &&sql.contains("'designVersion',design_version")),eq(String.class),
+                any(Object[].class)))
+            .thenReturn(mapper.writeValueAsString(Map.of(
+                "designVersion",4,"contractSha256",checksum,
+                "releaseStatus","FAILED","generationResult",Map.of(
+                    "status","FAILED","retryAttempt",0))));
+        when(jdbc.update(org.mockito.ArgumentMatchers.argThat(sql->sql!=null
+                &&sql.contains("release_status='QUEUED'")
+                &&sql.contains("retryAttempt")),any(Object[].class)))
+            .thenAnswer(invocation->{
+                transactions.stageWrite();
+                throw serializationFailure();
+            });
+
+        try{
+            var response=retrying.applyDesignRelease("secret-token",Map.of(
+                "projectId","PROJECT_A","designVersion",4,
+                "contractSha256",checksum,"contract",contract));
+
+            assertEquals(400,response.getStatusCode().value());
+            assertEquals(3,transactions.begins.get());
+            assertEquals(3,transactions.rollbacks.get());
+            assertEquals(0,transactions.commits.get());
+            assertEquals(List.of(
+                    TransactionDefinition.PROPAGATION_REQUIRES_NEW,
+                    TransactionDefinition.PROPAGATION_REQUIRES_NEW,
+                    TransactionDefinition.PROPAGATION_REQUIRES_NEW),
+                    transactions.propagationBehaviors());
+            assertEquals(0,transactions.committedWrites.get());
+            assertEquals(3,transactions.rolledBackWrites.get());
+            assertEquals(0,transactions.stagedWrites.get());
+            verify(jdbc,times(3)).queryForObject(
+                org.mockito.ArgumentMatchers.argThat(sql->sql!=null
+                    &&sql.contains("'designVersion',design_version")),
+                eq(String.class),any(Object[].class));
+            verify(jdbc,times(3)).update(
+                org.mockito.ArgumentMatchers.argThat(sql->sql!=null
+                    &&sql.contains("release_status='QUEUED'")
+                    &&sql.contains("retryAttempt")),any(Object[].class));
+            verify(jdbc,never()).queryForMap(anyString(),any(Object[].class));
+            verifyNoInteractions(governance);
+        }finally{retrying.shutdownGenerationExecutor();}
+    }
+
+    @Test
+    void designReleaseDoesNotRetryANonSerializationSqlState() throws Exception {
+        Map<String,Object> contract=requirementContract("PROCESS_A",4,Map.ofEntries(
+            Map.entry("stepCode","STEP_ONE"),Map.entry("actorCode","WORKER_ACTOR"),
+            Map.entry("routePath","/work/one"),Map.entry("screenName","Step one"),
+            Map.entry("description","Complete step one"),
+            Map.entry("endpoint",Map.of("method","POST","path","/api/work/one"))));
+        String checksum=canonicalChecksum(contract);
+        CountingTransactionManager transactions=new CountingTransactionManager();
+        ActorProcessControlPlaneBridgeController retrying=
+            new ActorProcessControlPlaneBridgeController(
+                jdbc,mapper,governance,"secret-token",transactions);
+        when(jdbc.queryForObject(org.mockito.ArgumentMatchers.argThat(sql->sql!=null
+                &&sql.contains("'designVersion',design_version")),eq(String.class),
+                any(Object[].class)))
+            .thenThrow(new RuntimeException(new SQLException("duplicate","23505")));
+
+        try{
+            var response=retrying.applyDesignRelease("secret-token",Map.of(
+                "projectId","PROJECT_A","designVersion",4,
+                "contractSha256",checksum,"contract",contract));
+
+            assertEquals(400,response.getStatusCode().value());
+            assertEquals(1,transactions.begins.get());
+            assertEquals(1,transactions.rollbacks.get());
+            assertEquals(0,transactions.commits.get());
+            assertEquals(List.of(TransactionDefinition.PROPAGATION_REQUIRES_NEW),
+                    transactions.propagationBehaviors());
+            verify(jdbc,times(1)).queryForObject(
+                org.mockito.ArgumentMatchers.argThat(sql->sql!=null
+                    &&sql.contains("'designVersion',design_version")),
+                eq(String.class),any(Object[].class));
+            verify(jdbc,never()).queryForMap(anyString(),any(Object[].class));
+        }finally{retrying.shutdownGenerationExecutor();}
+    }
+
+    @Test
     void exactReceiptReadConvergesAllTerminalStatesWithoutMutation(){
         String checksum="a".repeat(64);
         when(jdbc.queryForList(org.mockito.ArgumentMatchers.argThat(sql->sql!=null
@@ -764,9 +919,14 @@ class ActorProcessControlPlaneBridgeAuthorizationTest {
         when(governance.applyRequirementProcessDesignProjection(eq(processCode),any(),
             eq("BACKSTAGE_REQUIREMENT_AUTOMATION"))).thenReturn(Map.of(
                 "success",true,"screenCount",2));
-        when(governance.finalizeAndQueueProcessDesign(processCode,
-            "BACKSTAGE_REQUIREMENT_AUTOMATION","REQUIREMENT_PROCESS_CONTRACT"))
-            .thenReturn(new LinkedHashMap<>(Map.of("success",true,"status","QUEUED",
+        when(governance.compileIntegratedDesignProcess(
+            org.mockito.ArgumentMatchers.<Map<String,Object>>argThat(request->
+                processCode.equals(request.get("processCode"))
+                    &&Boolean.FALSE.equals(request.get("previewOnly"))
+                    &&"PROJECT".equals(request.get("scopeType"))),
+            eq("BACKSTAGE_REQUIREMENT_AUTOMATION")))
+            .thenReturn(new LinkedHashMap<>(Map.of("success",true,
+                "status","SOURCE_APPLIED_PHYSICAL_QUEUED",
                 "jobCount",1,"generationQueued",true,"processCode",processCode,
                 "processInputHash","a".repeat(64),"jobId",17L)));
         TransactionSynchronizationManager.initSynchronization();
@@ -845,9 +1005,18 @@ class ActorProcessControlPlaneBridgeAuthorizationTest {
         when(governance.applyRequirementProcessDesignProjection(eq("PROCESS_A"),any(),
             eq("BACKSTAGE_REQUIREMENT_AUTOMATION"))).thenReturn(Map.of(
                 "success",true,"screenCount",1));
-        when(governance.finalizeAndQueueProcessDesign("PROCESS_A",
-            "BACKSTAGE_REQUIREMENT_AUTOMATION","REQUIREMENT_PROCESS_CONTRACT"))
-            .thenReturn(new LinkedHashMap<>(Map.of("success",true,"status","QUEUED",
+        String checksum=canonicalChecksum(contract);
+        when(governance.compileIntegratedDesignProcess(
+            org.mockito.ArgumentMatchers.<Map<String,Object>>argThat(request->
+                "PROCESS_A".equals(request.get("processCode"))
+                    &&Boolean.FALSE.equals(request.get("previewOnly"))
+                    &&"PROJECT".equals(request.get("scopeType"))
+                    &&"PROJECT_A".equals(request.get("projectId"))
+                    &&Integer.valueOf(1).equals(request.get("designVersion"))
+                    &&checksum.equals(request.get("contractSha256"))),
+            eq("BACKSTAGE_REQUIREMENT_AUTOMATION")))
+            .thenReturn(new LinkedHashMap<>(Map.of("success",true,
+                "status","SOURCE_APPLIED_PHYSICAL_QUEUED",
                 "jobCount",1,"generationQueued",true,"processCode","PROCESS_A",
                 "processInputHash","a".repeat(64),"jobId",7L)));
         when(governance.finalizeAndQueueProcessDesign("PROCESS_B",
@@ -855,7 +1024,6 @@ class ActorProcessControlPlaneBridgeAuthorizationTest {
             .thenReturn(new LinkedHashMap<>(Map.of("success",true,"status","UNCHANGED",
                 "jobCount",1,"generationQueued",false,"processCode","PROCESS_B",
                 "processInputHash","b".repeat(64),"jobId",8L)));
-        String checksum=canonicalChecksum(contract);
         TransactionSynchronizationManager.initSynchronization();
 
         var response=controller.applyDesignRelease("secret-token",Map.of(
@@ -894,8 +1062,15 @@ class ActorProcessControlPlaneBridgeAuthorizationTest {
                     &&"MAIN_TASK".equals(((Map<?,?>)((List<?>)
                         projectedStep.get("sections")).get(0)).get("sectionCode"));
             }),eq("BACKSTAGE_REQUIREMENT_AUTOMATION"));
-        order.verify(governance).finalizeAndQueueProcessDesign("PROCESS_A",
-            "BACKSTAGE_REQUIREMENT_AUTOMATION","REQUIREMENT_PROCESS_CONTRACT");
+        order.verify(governance).compileIntegratedDesignProcess(
+            org.mockito.ArgumentMatchers.<Map<String,Object>>argThat(request->
+                "PROCESS_A".equals(request.get("processCode"))
+                    &&Boolean.FALSE.equals(request.get("previewOnly"))
+                    &&"PROJECT".equals(request.get("scopeType"))
+                    &&"PROJECT_A".equals(request.get("projectId"))
+                    &&Integer.valueOf(1).equals(request.get("designVersion"))
+                    &&checksum.equals(request.get("contractSha256"))),
+            eq("BACKSTAGE_REQUIREMENT_AUTOMATION"));
         order.verify(governance).finalizeAndQueueProcessDesign("PROCESS_B",
             "BACKSTAGE_REQUIREMENT_AUTOMATION","REQUIREMENT_ACTOR_DEFINITION");
         verify(governance,never()).createProcess(any(),anyString());
@@ -1135,9 +1310,18 @@ class ActorProcessControlPlaneBridgeAuthorizationTest {
         when(governance.applyRequirementProcessDesignProjection(eq("PROCESS_A"),any(),
             eq("BACKSTAGE_REQUIREMENT_AUTOMATION"))).thenReturn(Map.of(
                 "success",true,"screenCount",1));
-        when(governance.finalizeAndQueueProcessDesign("PROCESS_A",
-            "BACKSTAGE_REQUIREMENT_AUTOMATION","REQUIREMENT_PROCESS_CONTRACT"))
-            .thenReturn(new LinkedHashMap<>(Map.of("success",true,"status","QUEUED",
+        String checksum=canonicalChecksum(contract);
+        when(governance.compileIntegratedDesignProcess(
+            org.mockito.ArgumentMatchers.<Map<String,Object>>argThat(request->
+                "PROCESS_A".equals(request.get("processCode"))
+                    &&Boolean.FALSE.equals(request.get("previewOnly"))
+                    &&"PROJECT".equals(request.get("scopeType"))
+                    &&"PROJECT_A".equals(request.get("projectId"))
+                    &&Integer.valueOf(2).equals(request.get("designVersion"))
+                    &&checksum.equals(request.get("contractSha256"))),
+            eq("BACKSTAGE_REQUIREMENT_AUTOMATION")))
+            .thenReturn(new LinkedHashMap<>(Map.of("success",true,
+                "status","SOURCE_APPLIED_PHYSICAL_QUEUED",
                 "jobCount",1,"generationQueued",true,"processCode","PROCESS_A",
                 "processInputHash","a".repeat(64),"jobId",7L)));
         when(governance.finalizeAndQueueProcessDesign("PROCESS_B",
@@ -1148,7 +1332,7 @@ class ActorProcessControlPlaneBridgeAuthorizationTest {
 
         var response=controller.applyDesignRelease("secret-token",Map.of(
             "projectId","PROJECT_A","designVersion",2,
-            "contractSha256",canonicalChecksum(contract),"contract",contract));
+            "contractSha256",checksum,"contract",contract));
 
         assertEquals(200,response.getStatusCode().value());
         verify(governance,never()).finalizeAndQueueProcessDesign("PROCESS_B",
@@ -1517,6 +1701,49 @@ class ActorProcessControlPlaneBridgeAuthorizationTest {
             .writeValueAsString(contract);
         return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256")
             .digest(canonical.getBytes(StandardCharsets.UTF_8)));
+    }
+
+    private static RuntimeException serializationFailure(){
+        return new RuntimeException(new SQLException("serialization retry","40001"));
+    }
+
+    private static final class CountingTransactionManager
+            extends AbstractPlatformTransactionManager {
+        private final AtomicInteger begins=new AtomicInteger();
+        private final AtomicInteger commitAttempts=new AtomicInteger();
+        private final AtomicInteger commits=new AtomicInteger();
+        private final AtomicInteger rollbacks=new AtomicInteger();
+        private final AtomicInteger stagedWrites=new AtomicInteger();
+        private final AtomicInteger committedWrites=new AtomicInteger();
+        private final AtomicInteger rolledBackWrites=new AtomicInteger();
+        private final List<Integer> propagationBehaviors=new java.util.ArrayList<>();
+        private final int serializationCommitFailures;
+
+        private CountingTransactionManager(){this(0);}
+        private CountingTransactionManager(int serializationCommitFailures){
+            this.serializationCommitFailures=serializationCommitFailures;
+            setRollbackOnCommitFailure(true);
+        }
+
+        @Override protected Object doGetTransaction(){return new Object();}
+        @Override protected void doBegin(Object transaction,TransactionDefinition definition){
+            assertEquals(TransactionDefinition.PROPAGATION_REQUIRES_NEW,
+                    definition.getPropagationBehavior());
+            propagationBehaviors.add(definition.getPropagationBehavior());
+            begins.incrementAndGet();
+        }
+        @Override protected void doCommit(DefaultTransactionStatus status){
+            if(commitAttempts.incrementAndGet()<=serializationCommitFailures)
+                throw serializationFailure();
+            committedWrites.addAndGet(stagedWrites.getAndSet(0));
+            commits.incrementAndGet();
+        }
+        @Override protected void doRollback(DefaultTransactionStatus status){
+            rolledBackWrites.addAndGet(stagedWrites.getAndSet(0));
+            rollbacks.incrementAndGet();
+        }
+        private void stageWrite(){stagedWrites.incrementAndGet();}
+        private List<Integer> propagationBehaviors(){return List.copyOf(propagationBehaviors);}
     }
 
     private static Path findRepositoryFile(String relative){

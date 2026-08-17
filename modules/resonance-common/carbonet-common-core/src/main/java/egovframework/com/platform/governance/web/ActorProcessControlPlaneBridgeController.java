@@ -10,9 +10,12 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -25,6 +28,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.sql.SQLException;
 import java.util.HexFormat;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -44,6 +48,8 @@ public class ActorProcessControlPlaneBridgeController {
             Set.of("DRAFT", "READY", "IN_REVIEW", "APPROVED", "VERIFIED");
     private static final int MAX_GENERATION_RETRIES = 3;
     private static final long RETRY_BACKOFF_SECONDS = 60L;
+    private static final int SERIALIZATION_RETRY_LIMIT = 3;
+    private static final long[] SERIALIZATION_RETRY_DELAYS_MS = {50L, 100L};
     private static final Set<String> SYSTEM_ADMIN_MUTATION_COMMANDS = Set.of(
             "actor.save", "process.save", "step.save",
             "screen.bind-archetype", "screen.contract.save", "screen.design.generate",
@@ -76,6 +82,7 @@ public class ActorProcessControlPlaneBridgeController {
     private final ObjectMapper mapper;
     private final ActorProcessGovernanceService governance;
     private final CompositeDesignOperationalWorker compositeAutocompletion;
+    private final PlatformTransactionManager transactionManager;
     private final ExecutorService generationExecutor = Executors.newSingleThreadExecutor(runnable -> {
         Thread thread = new Thread(runnable, "actor-process-generation");
         thread.setDaemon(true);
@@ -89,22 +96,35 @@ public class ActorProcessControlPlaneBridgeController {
             ObjectMapper mapper,
             ActorProcessGovernanceService governance,
             @Value("${resonance.ops.token:}") String bridgeToken,
-            CompositeDesignOperationalWorker compositeAutocompletion) {
+            CompositeDesignOperationalWorker compositeAutocompletion,
+            PlatformTransactionManager transactionManager) {
         this.jdbc = jdbc;
         this.mapper = mapper;
         this.governance = governance;
         this.bridgeToken = bridgeToken;
         this.compositeAutocompletion = compositeAutocompletion;
+        this.transactionManager = transactionManager;
+    }
+
+    public ActorProcessControlPlaneBridgeController(
+            JdbcTemplate jdbc,ObjectMapper mapper,ActorProcessGovernanceService governance,
+            String bridgeToken,CompositeDesignOperationalWorker compositeAutocompletion) {
+        this(jdbc,mapper,governance,bridgeToken,compositeAutocompletion,null);
+    }
+
+    ActorProcessControlPlaneBridgeController(
+            JdbcTemplate jdbc,ObjectMapper mapper,ActorProcessGovernanceService governance,
+            String bridgeToken,PlatformTransactionManager transactionManager) {
+        this(jdbc,mapper,governance,bridgeToken,null,transactionManager);
     }
 
     public ActorProcessControlPlaneBridgeController(
             JdbcTemplate jdbc,ObjectMapper mapper,ActorProcessGovernanceService governance,
             String bridgeToken) {
-        this(jdbc,mapper,governance,bridgeToken,null);
+        this(jdbc,mapper,governance,bridgeToken,null,null);
     }
 
     @PostMapping("/design-releases")
-    @Transactional
     public ResponseEntity<?> applyDesignRelease(
             @RequestHeader(value = "X-Resonance-Token", defaultValue = "") String suppliedToken,
             @RequestBody Map<String, Object> body) {
@@ -145,8 +165,20 @@ public class ActorProcessControlPlaneBridgeController {
             }
             Map<String,Object> validatedContract=validateRequirementProcessContract(
                     (Map<?,?>)contract,projectId,designVersion);
-            jdbc.query("select pg_advisory_xact_lock(hashtextextended('BACKSTAGE_DESIGN_RELEASE_V1:'||?,0))",
-                    row->{},projectId);
+            return executeSerializationRetryTransaction(()->applyDesignReleaseMutation(
+                    projectId,designVersion,checksum,contractJson,validatedContract));
+        } catch (Exception exception) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "success", false,
+                    "message", exception.getMessage() == null ? "Design release application failed." : exception.getMessage()));
+        }
+    }
+
+    private ResponseEntity<?> applyDesignReleaseMutation(
+            String projectId,int designVersion,String checksum,String contractJson,
+            Map<String,Object> validatedContract) throws Exception {
+        jdbc.query("select pg_advisory_xact_lock(hashtextextended('BACKSTAGE_DESIGN_RELEASE_V1:'||?,0))",
+                row->{},projectId);
             String latestReleaseJson=jdbc.queryForObject("""
                     select coalesce((
                       select jsonb_build_object(
@@ -257,16 +289,7 @@ public class ActorProcessControlPlaneBridgeController {
             response.put("applicationStatus", "PENDING");
             response.put("generation", publication);
             response.put("importedRequirementSteps", importedSteps);
-            return ResponseEntity.ok(response);
-        } catch (Exception exception) {
-            if (TransactionSynchronizationManager.isActualTransactionActive()) {
-                org.springframework.transaction.interceptor.TransactionAspectSupport
-                        .currentTransactionStatus().setRollbackOnly();
-            }
-            return ResponseEntity.badRequest().body(Map.of(
-                    "success", false,
-                    "message", exception.getMessage() == null ? "Design release application failed." : exception.getMessage()));
-        }
+        return ResponseEntity.ok(response);
     }
 
     @GetMapping("/design-releases/{projectId}/{designVersion}")
@@ -345,7 +368,6 @@ public class ActorProcessControlPlaneBridgeController {
     }
 
     @PostMapping("/project-runtime-purge/preview")
-    @Transactional
     public ResponseEntity<?> previewProjectRuntimePurge(
             @RequestHeader(value = "X-Resonance-Token", defaultValue = "") String suppliedToken,
             @RequestHeader(value = "X-Resonance-Actor", defaultValue = "") String actor,
@@ -355,8 +377,8 @@ public class ActorProcessControlPlaneBridgeController {
                 suppliedToken,actor,account);
         if(denied!=null)return denied;
         try{
-            Map<String,Object> result=projectRuntimePurgeDatabaseCall(
-                    "PREVIEW",null,body,account);
+            Map<String,Object> result=executeSerializationRetryTransaction(
+                    ()->projectRuntimePurgeDatabaseCall("PREVIEW",null,body,account));
             return "BLOCKED".equals(result.get("status"))
                     ?ResponseEntity.status(HttpStatus.CONFLICT).body(result)
                     :ResponseEntity.ok(result);
@@ -490,7 +512,6 @@ public class ActorProcessControlPlaneBridgeController {
     }
 
     @PostMapping("/project-runtime-purge/{receiptId}/apply")
-    @Transactional
     public ResponseEntity<?> applyProjectRuntimePurge(
             @RequestHeader(value = "X-Resonance-Token", defaultValue = "") String suppliedToken,
             @RequestHeader(value = "X-Resonance-Actor", defaultValue = "") String actor,
@@ -500,8 +521,8 @@ public class ActorProcessControlPlaneBridgeController {
                 suppliedToken,actor,account);
         if(denied!=null)return denied;
         try{
-            return ResponseEntity.ok(projectRuntimePurgeDatabaseCall(
-                    "APPLY",receiptId,body,account));
+            return ResponseEntity.ok(executeSerializationRetryTransaction(
+                    ()->projectRuntimePurgeDatabaseCall("APPLY",receiptId,body,account)));
         }catch(IllegalArgumentException exception){
             return ResponseEntity.unprocessableEntity().body(Map.of(
                     "success",false,"status","REJECTED",
@@ -516,7 +537,6 @@ public class ActorProcessControlPlaneBridgeController {
     }
 
     @PostMapping("/project-runtime-purge/{receiptId}/restore")
-    @Transactional
     public ResponseEntity<?> restoreProjectRuntimePurge(
             @RequestHeader(value = "X-Resonance-Token", defaultValue = "") String suppliedToken,
             @RequestHeader(value = "X-Resonance-Actor", defaultValue = "") String actor,
@@ -526,8 +546,8 @@ public class ActorProcessControlPlaneBridgeController {
                 suppliedToken,actor,account);
         if(denied!=null)return denied;
         try{
-            return ResponseEntity.ok(projectRuntimePurgeDatabaseCall(
-                    "RESTORE",receiptId,body,account));
+            return ResponseEntity.ok(executeSerializationRetryTransaction(
+                    ()->projectRuntimePurgeDatabaseCall("RESTORE",receiptId,body,account)));
         }catch(IllegalArgumentException exception){
             return ResponseEntity.unprocessableEntity().body(Map.of(
                     "success",false,"status","REJECTED",
@@ -2440,6 +2460,58 @@ public class ActorProcessControlPlaneBridgeController {
                 "Project runtime absence database receipt is empty.");
         return mapper.readValue(resultJson,
                 new com.fasterxml.jackson.core.type.TypeReference<LinkedHashMap<String,Object>>(){});
+    }
+
+    private <T> T executeSerializationRetryTransaction(
+            CheckedTransactionWork<T> work) throws Exception {
+        for(int attempt=1;attempt<=SERIALIZATION_RETRY_LIMIT;attempt++){
+            try{
+                return executeRequiresNewTransaction(work);
+            }catch(Exception exception){
+                if(!hasSqlState(exception,"40001")||attempt==SERIALIZATION_RETRY_LIMIT)
+                    throw exception;
+                try{
+                    Thread.sleep(SERIALIZATION_RETRY_DELAYS_MS[attempt-1]);
+                }catch(InterruptedException interrupted){
+                    Thread.currentThread().interrupt();
+                    throw new IllegalStateException(
+                            "Serialization retry interrupted.",interrupted);
+                }
+            }
+        }
+        throw new IllegalStateException("Serialization retry limit was not enforced.");
+    }
+
+    private <T> T executeRequiresNewTransaction(
+            CheckedTransactionWork<T> work) throws Exception {
+        if(transactionManager==null)return work.execute();
+        TransactionTemplate transaction=new TransactionTemplate(transactionManager);
+        transaction.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+        try{
+            return transaction.execute(status->{
+                try{return work.execute();}
+                catch(Exception exception){throw new TransactionAttemptFailure(exception);}
+            });
+        }catch(TransactionAttemptFailure failure){
+            Throwable cause=failure.getCause();
+            if(cause instanceof Exception exception)throw exception;
+            throw failure;
+        }
+    }
+
+    private static boolean hasSqlState(Throwable failure,String expected){
+        Set<Throwable> visited=java.util.Collections.newSetFromMap(
+                new java.util.IdentityHashMap<>());
+        for(Throwable cursor=failure;cursor!=null&&visited.add(cursor);cursor=cursor.getCause())
+            if(cursor instanceof SQLException sql&&expected.equals(sql.getSQLState()))return true;
+        return false;
+    }
+
+    @FunctionalInterface
+    private interface CheckedTransactionWork<T>{T execute() throws Exception;}
+
+    private static final class TransactionAttemptFailure extends RuntimeException{
+        private TransactionAttemptFailure(Exception cause){super(cause);}
     }
 
     private static String safeMessage(Exception exception,String fallback){

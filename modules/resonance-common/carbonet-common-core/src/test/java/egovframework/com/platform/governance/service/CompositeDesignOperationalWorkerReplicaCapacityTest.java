@@ -8,24 +8,29 @@ import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.TransactionStatus;
 import org.springframework.transaction.support.SimpleTransactionStatus;
 
+import java.sql.SQLException;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.AbstractExecutorService;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.BooleanSupplier;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
@@ -33,6 +38,236 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 class CompositeDesignOperationalWorkerReplicaCapacityTest {
+    @Test
+    void automaticSerializationFailuresRequeueTwiceThenCommitSourceExactlyOnce() throws Exception {
+        SharedReceiptStore store=activeApprovalStore(1);
+        AtomicInteger compilerAttempts=new AtomicInteger();
+        ActorProcessGovernanceService governance=serializationRetryGovernance(
+            compilerAttempts,2,"40001");
+        ReplicaJdbcTemplate jdbc=new ReplicaJdbcTemplate(store);
+        NoOpTransactions transactions=new NoOpTransactions(store);
+        CompositeAutocompletionReadinessService readiness=
+            new CompositeAutocompletionReadinessService(jdbc,governance,transactions,
+                1,1,1,store.runtimeCommit,"","");
+        CompositeDesignOperationalWorker worker=new CompositeDesignOperationalWorker(jdbc,
+            new ObjectMapper(),governance,readiness,transactions,true,1,1,false,600,30);
+        try{
+            assertEquals(1,worker.dispatchApproved(1).get("claimedCount"));
+            long deadline=System.nanoTime()+TimeUnit.SECONDS.toNanos(2);
+            while((store.sourceWriteCount!=1||store.running!=0)&&System.nanoTime()<deadline)
+                Thread.sleep(10L);
+            assertTrue(store.sourceWriteCount==1&&store.running==0,
+                "attempts="+compilerAttempts.get()+", claims="+store.claimCount+
+                    ", running="+store.running+", pending="+store.pending.size()+
+                    ", retries="+store.serializationRetryAttempt+", blocker="+store.lastBlocker);
+            assertEquals(3,compilerAttempts.get());
+            assertEquals(3,store.claimCount);
+            assertEquals(1,store.sourceWriteCount);
+            assertEquals(0,store.blockedCount);
+            assertEquals(0,store.serializationRetryAttempt);
+            assertEquals(0,store.pending.size());
+        }finally{worker.close();readiness.close();}
+    }
+
+    @Test
+    void manualSerializationFailuresRequeueTwiceThenCommitSourceExactlyOnce() throws Exception {
+        SharedReceiptStore store=new SharedReceiptStore(1);
+        AtomicInteger compilerAttempts=new AtomicInteger();
+        ActorProcessGovernanceService governance=serializationRetryGovernance(
+            compilerAttempts,2,"40001");
+        ReplicaJdbcTemplate jdbc=new ReplicaJdbcTemplate(store);
+        NoOpTransactions transactions=new NoOpTransactions(store);
+        CompositeDesignOperationalWorker worker=new CompositeDesignOperationalWorker(
+            jdbc,new ObjectMapper(),governance,transactions,false,1,1,false);
+        try{
+            assertEquals(1,worker.dispatch(1).get("claimedCount"));
+            await(()->store.sourceWriteCount==1&&store.running==0,2_000);
+            assertEquals(3,compilerAttempts.get());
+            assertEquals(3,store.claimCount);
+            assertEquals(1,store.sourceWriteCount);
+            assertEquals(0,store.blockedCount);
+            assertEquals(0,store.serializationRetryAttempt);
+            assertEquals(0,store.pending.size());
+        }finally{worker.close();}
+    }
+
+    @Test
+    void canarySerializationRetryReclaimsTheSameCanaryAttemptAndCommitsOnce()
+            throws Exception {
+        SharedReceiptStore store=new SharedReceiptStore(1);
+        store.runtimeCommit="c".repeat(40);
+        store.sourceAuthorityHash="a".repeat(64);
+        AtomicInteger compilerAttempts=new AtomicInteger();
+        ActorProcessGovernanceService governance=serializationRetryGovernance(
+            compilerAttempts,2,"40001");
+        ReplicaJdbcTemplate jdbc=new ReplicaJdbcTemplate(store);
+        NoOpTransactions transactions=new NoOpTransactions(store);
+        CompositeAutocompletionReadinessService readiness=
+            new CompositeAutocompletionReadinessService(jdbc,governance,transactions,
+                1,1,1,store.runtimeCommit,"","");
+        CompositeDesignOperationalWorker worker=new CompositeDesignOperationalWorker(jdbc,
+            new ObjectMapper(),governance,readiness,transactions,true,1,1,false,600,30);
+        try{
+            Map<String,Object> dispatch=worker.dispatchCanary();
+            assertEquals(1,dispatch.get("canaryAttempt"));
+            await(()->store.sourceWriteCount==1&&store.running==0,2_000);
+            assertEquals(3,compilerAttempts.get());
+            assertEquals(3,store.claimCount);
+            assertEquals(1,store.nextCanaryAttemptQueryCount);
+            assertEquals(1,store.persistedCanaryAttempt);
+            assertEquals(String.valueOf(dispatch.get("canaryId")),store.persistedCanaryId);
+            assertEquals(1,store.sourceWriteCount);
+        }finally{worker.close();readiness.close();}
+    }
+
+    @Test
+    void thirdSerializationFailureBlocksWithoutSourceWriteAndDeadlockIsNotRetried()
+            throws Exception {
+        SharedReceiptStore exhaustedStore=new SharedReceiptStore(1);
+        AtomicInteger serializationAttempts=new AtomicInteger();
+        ActorProcessGovernanceService serializationGovernance=serializationRetryGovernance(
+            serializationAttempts,Integer.MAX_VALUE,"40001");
+        CompositeDesignOperationalWorker exhausted=new CompositeDesignOperationalWorker(
+            new ReplicaJdbcTemplate(exhaustedStore),new ObjectMapper(),serializationGovernance,
+            new NoOpTransactions(exhaustedStore),false,1,1,false);
+        SharedReceiptStore deadlockStore=new SharedReceiptStore(1);
+        AtomicInteger deadlockAttempts=new AtomicInteger();
+        CompositeDesignOperationalWorker deadlock=new CompositeDesignOperationalWorker(
+            new ReplicaJdbcTemplate(deadlockStore),new ObjectMapper(),
+            serializationRetryGovernance(deadlockAttempts,Integer.MAX_VALUE,"40P01"),
+            new NoOpTransactions(deadlockStore),false,1,1,false);
+        try{
+            exhausted.dispatch(1);
+            await(()->exhaustedStore.blockedCount==1&&exhaustedStore.running==0,2_000);
+            assertEquals(3,serializationAttempts.get(),exhaustedStore.lastBlocker);
+            assertEquals(3,exhaustedStore.claimCount);
+            assertEquals(0,exhaustedStore.sourceWriteCount);
+            assertEquals(3,exhaustedStore.serializationRetryAttempt);
+            assertEquals(0,exhaustedStore.pending.size());
+
+            deadlock.dispatch(1);
+            await(()->deadlockStore.blockedCount==1&&deadlockStore.running==0,1_000);
+            assertEquals(1,deadlockAttempts.get());
+            assertEquals(1,deadlockStore.claimCount);
+            assertEquals(0,deadlockStore.sourceWriteCount);
+            assertEquals(0,deadlockStore.pending.size());
+        }finally{exhausted.close();deadlock.close();}
+    }
+
+    @Test
+    void retryWaitCannotBeStolenAndDurableSweepResumesAfterBoundedCapacityDeferral()
+            throws Exception {
+        SharedReceiptStore store=new SharedReceiptStore(1);
+        AtomicInteger compilerAttempts=new AtomicInteger();
+        ActorProcessGovernanceService governance=serializationRetryGovernance(
+            compilerAttempts,1,"40001");
+        ReplicaJdbcTemplate jdbc=new ReplicaJdbcTemplate(store);
+        NoOpTransactions transactions=new NoOpTransactions(store);
+        CompositeDesignOperationalWorker worker=new CompositeDesignOperationalWorker(
+            jdbc,new ObjectMapper(),governance,transactions,false,1,1,false);
+        try{
+            worker.dispatch(1);
+            await(()->store.retryWait&&store.running==0,1_000);
+            store.globalRunningOverride=1;
+            Thread.sleep(450L);
+            assertEquals(1,compilerAttempts.get());
+            assertEquals(1,store.claimCount);
+            assertEquals(0,worker.dispatch(1).get("claimedCount"),
+                "ordinary/manual claim must not steal a RETRY_WAIT receipt");
+            assertEquals(1,store.claimCount);
+
+            store.globalRunningOverride=-1;
+            worker.runScheduledBatch();
+            await(()->store.sourceWriteCount==1&&store.running==0,1_000);
+            assertEquals(2,compilerAttempts.get());
+            assertEquals(2,store.claimCount);
+            assertEquals(1,store.sourceWriteCount);
+        }finally{worker.close();}
+    }
+
+    @Test
+    void rejectedHeartbeatSchedulerReturnsRunningLeaseToDurableRetryWait() throws Exception {
+        SharedReceiptStore store=new SharedReceiptStore(1);
+        ActorProcessGovernanceService governance=serializationRetryGovernance(
+            new AtomicInteger(),0,"40001");
+        ReplicaJdbcTemplate jdbc=new ReplicaJdbcTemplate(store);
+        NoOpTransactions transactions=new NoOpTransactions(store);
+        CompositeDesignOperationalWorker worker=new CompositeDesignOperationalWorker(
+            jdbc,new ObjectMapper(),governance,transactions,false,1,1,false);
+        try{
+            var field=CompositeDesignOperationalWorker.class.getDeclaredField("leaseHeartbeats");
+            field.setAccessible(true);
+            ((ScheduledExecutorService)field.get(worker)).shutdownNow();
+            assertEquals(1,worker.dispatch(1).get("claimedCount"));
+            await(()->store.retryWait&&store.running==0,1_000);
+            assertEquals(0,store.sourceWriteCount);
+            assertEquals(1,store.claimCount);
+            assertEquals(1,store.pending.size());
+        }finally{worker.close();}
+    }
+
+    @Test
+    void rejectedWorkerExecutorReturnsRunningLeaseWithoutLocalCapacityLeak() throws Exception {
+        SharedReceiptStore store=new SharedReceiptStore(1);
+        ActorProcessGovernanceService governance=serializationRetryGovernance(
+            new AtomicInteger(),0,"40001");
+        ReplicaJdbcTemplate jdbc=new ReplicaJdbcTemplate(store);
+        NoOpTransactions transactions=new NoOpTransactions(store);
+        CompositeDesignOperationalWorker worker=new CompositeDesignOperationalWorker(
+            jdbc,new ObjectMapper(),governance,transactions,false,1,1,false);
+        try{
+            var workersField=CompositeDesignOperationalWorker.class.getDeclaredField("workers");
+            workersField.setAccessible(true);
+            ((ExecutorService)workersField.get(worker)).shutdownNow();
+            var heartbeatField=
+                CompositeDesignOperationalWorker.class.getDeclaredField("leaseHeartbeats");
+            heartbeatField.setAccessible(true);
+            ((ScheduledExecutorService)heartbeatField.get(worker)).shutdownNow();
+            Map<String,Object> dispatch=worker.dispatch(1);
+            assertEquals(1,dispatch.get("claimedCount"));
+            assertEquals(0,dispatch.get("activeWorkerCount"));
+            assertTrue(store.retryWait);
+            assertEquals(0,store.running);
+            assertEquals(0,store.sourceWriteCount);
+            assertEquals(1,store.claimCount);
+            assertEquals(1,store.pending.size());
+        }finally{worker.close();}
+    }
+
+    @Test
+    void closeRequeuesAcceptedButNotStartedClaimWithoutWaitingForLeaseExpiry() throws Exception {
+        SharedReceiptStore store=new SharedReceiptStore(1);
+        ActorProcessGovernanceService governance=serializationRetryGovernance(
+            new AtomicInteger(),0,"40001");
+        ReplicaJdbcTemplate jdbc=new ReplicaJdbcTemplate(store);
+        NoOpTransactions transactions=new NoOpTransactions(store);
+        CompositeDesignOperationalWorker worker=new CompositeDesignOperationalWorker(
+            jdbc,new ObjectMapper(),governance,transactions,false,1,1,false);
+        try{
+            var workersField=CompositeDesignOperationalWorker.class.getDeclaredField("workers");
+            workersField.setAccessible(true);
+            ((ExecutorService)workersField.get(worker)).shutdownNow();
+            HoldingExecutor holding=new HoldingExecutor();
+            workersField.set(worker,holding);
+            Map<String,Object> dispatch=worker.dispatch(1);
+            assertEquals(1,dispatch.get("claimedCount"));
+            assertEquals(1,dispatch.get("activeWorkerCount"));
+            assertEquals(1,holding.queuedCount());
+            assertEquals(1,store.running);
+
+            worker.close();
+            var runningField=CompositeDesignOperationalWorker.class.getDeclaredField("running");
+            runningField.setAccessible(true);
+            assertEquals(0,((AtomicInteger)runningField.get(worker)).get());
+            assertTrue(store.retryWait);
+            assertEquals(0,store.running);
+            assertEquals(0,store.sourceWriteCount);
+            assertEquals(1,store.claimCount);
+            assertEquals(1,store.pending.size());
+            assertEquals(0,holding.queuedCount());
+        }finally{worker.close();}
+    }
+
     @Test
     void twoRuntimeReplicasShareOneGlobalEightWorkerCapacity() throws Exception {
         SharedReceiptStore store=new SharedReceiptStore(20);
@@ -308,11 +543,13 @@ class CompositeDesignOperationalWorkerReplicaCapacityTest {
     void runtimeIdentityDriftAfterClaimIsRejectedBeforeCompilerSourceLock()throws Exception{
         SharedReceiptStore store=activeApprovalStore(1);
         store.runtimeIdentityDriftAfterRead=2;
-        CountDownLatch sourceExecutorEntered=new CountDownLatch(1);
+        CountDownLatch canonicalLockEntered=new CountDownLatch(1);
+        AtomicInteger sourceCompilerInvocations=new AtomicInteger();
         ActorProcessGovernanceService governance=readyGovernance();
-        doAnswer(call->{sourceExecutorEntered.countDown();
-            throw new IllegalStateException("STALE_RUNTIME_MUST_NOT_ENTER_SOURCE");})
+        doAnswer(call->{canonicalLockEntered.countDown();return null;})
             .when(governance).lockCompositeProcessAuthority(anyString());
+        doAnswer(call->{sourceCompilerInvocations.incrementAndGet();return Map.of();})
+            .when(governance).compileIntegratedDesignProcess(anyMap(),anyString());
         ReplicaJdbcTemplate jdbc=new ReplicaJdbcTemplate(store);
         NoOpTransactions transactions=new NoOpTransactions(store);
         CompositeAutocompletionReadinessService readiness=
@@ -323,8 +560,9 @@ class CompositeDesignOperationalWorkerReplicaCapacityTest {
         try{
             Map<String,Object> receipt=worker.dispatchApproved(1);
             assertEquals(1,receipt.get("claimedCount"));
+            assertTrue(canonicalLockEntered.await(1,TimeUnit.SECONDS));
             assertTrue(store.runtimeIdentityDriftObserved.await(1,TimeUnit.SECONDS));
-            assertFalse(sourceExecutorEntered.await(250,TimeUnit.MILLISECONDS));
+            assertEquals(0,sourceCompilerInvocations.get());
         }finally{worker.close();readiness.close();}
     }
 
@@ -537,6 +775,27 @@ class CompositeDesignOperationalWorkerReplicaCapacityTest {
         return governance;
     }
 
+    private static ActorProcessGovernanceService serializationRetryGovernance(
+            AtomicInteger attempts,int failures,String sqlState){
+        ActorProcessGovernanceService governance=readyGovernance();
+        doAnswer(call->null).when(governance).lockCompositeProcessAuthority(anyString());
+        doAnswer(call->{
+            int attempt=attempts.incrementAndGet();
+            if(attempt<=failures)throw new IllegalStateException(
+                "TRANSIENT_DATABASE_CONFLICT",new SQLException("retry",sqlState));
+            return Map.of("status","SOURCE_APPLIED_PHYSICAL_QUEUED",
+                "screenCount",1,"documentCount",18,"authorityCount",1,
+                "receipts",List.of(Map.of("jobId",9001L)));
+        }).when(governance).compileIntegratedDesignProcess(anyMap(),anyString());
+        return governance;
+    }
+
+    private static void await(BooleanSupplier completed,long timeoutMs)throws Exception{
+        long deadline=System.nanoTime()+TimeUnit.MILLISECONDS.toNanos(timeoutMs);
+        while(!completed.getAsBoolean()&&System.nanoTime()<deadline)Thread.sleep(10L);
+        assertTrue(completed.getAsBoolean(),"condition was not met within "+timeoutMs+"ms");
+    }
+
     private static final class SharedReceiptStore {
         private final ArrayDeque<String> pending=new ArrayDeque<>();
         private final ReentrantLock transactionLeader=new ReentrantLock();
@@ -571,6 +830,23 @@ class CompositeDesignOperationalWorkerReplicaCapacityTest {
         private String physicalRevalidationStatus="";
         private int physicalRearmCount;
         private int sourceWriteCount;
+        private int claimCount;
+        private int blockedCount;
+        private int serializationRetryAttempt;
+        private long retryNotBeforeEpochMs;
+        private String currentLeaseToken="";
+        private String lastBlocker="";
+        private boolean retryWait;
+        private int globalRunningOverride=-1;
+        private String retryContextJson="";
+        private int nextCanaryAttemptQueryCount;
+        private int persistedCanaryAttempt;
+        private String persistedCanaryId="";
+        private String persistedCanaryStatus="";
+        private String persistedCanaryRuntimeCommit="";
+        private String persistedCanaryRuntimeIdentity="";
+        private String persistedCanaryAuthorityHash="";
+        private String persistedCanaryDependencyHash="";
         private long preservedPhysicalJobId=42L;
         private SharedReceiptStore(int count){
             total=count;
@@ -579,6 +855,24 @@ class CompositeDesignOperationalWorkerReplicaCapacityTest {
         private void failPhysicalRevalidation(){
             activeCanaries=0;physicalRevalidationStatus="FAILED";
         }
+    }
+
+    private static final class HoldingExecutor extends AbstractExecutorService {
+        private final List<Runnable> queued=new ArrayList<>();
+        private boolean shutdown;
+        @Override public synchronized void execute(Runnable command){
+            if(shutdown)throw new java.util.concurrent.RejectedExecutionException();
+            queued.add(command);
+        }
+        @Override public synchronized void shutdown(){shutdown=true;}
+        @Override public synchronized List<Runnable> shutdownNow(){
+            shutdown=true;List<Runnable> abandoned=List.copyOf(queued);queued.clear();
+            return abandoned;
+        }
+        @Override public synchronized boolean isShutdown(){return shutdown;}
+        @Override public synchronized boolean isTerminated(){return shutdown&&queued.isEmpty();}
+        @Override public boolean awaitTermination(long timeout,TimeUnit unit){return isTerminated();}
+        private synchronized int queuedCount(){return queued.size();}
     }
 
     private static final class ReplicaJdbcTemplate extends JdbcTemplate {
@@ -669,12 +963,40 @@ class CompositeDesignOperationalWorkerReplicaCapacityTest {
             }
             if(sql.contains("and lease_until>=current_timestamp"))
                 return store.leaseHeartbeatValid?1:0;
+            if(sql.contains("EXECUTOR_RETRY_WAIT"))synchronized(store){
+                String process=String.valueOf(arguments[arguments.length-2]);
+                store.retryContextJson=jsonArgument(arguments);
+                store.running=Math.max(0,store.running-1);
+                store.currentLeaseToken="";store.retryWait=true;
+                store.retryNotBeforeEpochMs=System.currentTimeMillis()+50L;
+                if(!store.pending.contains(process))store.pending.addFirst(process);
+                return 1;
+            }
+            if(sql.contains("sourceAppliedFinalAuthorityHash")
+                    &&sql.contains("where process_code=? and lease_token=?::uuid"))
+                synchronized(store){
+                    store.running=Math.max(0,store.running-1);
+                    store.sourceWriteCount++;
+                    store.serializationRetryAttempt=0;
+                    store.retryNotBeforeEpochMs=0L;
+                    store.currentLeaseToken="";
+                    return 1;
+                }
+            if(sql.contains("set completion_status='BLOCKED'")
+                    &&sql.contains("lease_token=?::uuid"))synchronized(store){
+                store.running=Math.max(0,store.running-1);
+                store.blockedCount++;
+                store.lastBlocker=String.valueOf(arguments[0]);
+                store.currentLeaseToken="";
+                return 1;
+            }
             return 1;
         }
 
         @Override public <T> T queryForObject(String sql,Class<T> type){
-            if(sql.contains("completion_status='RUNNING'"))return type.cast(Integer.valueOf(store.running));
-            if(sql.contains("'{canary,status}'='ACTIVE'"))
+            if(sql.contains("completion_status='RUNNING'"))return type.cast(Integer.valueOf(
+                store.globalRunningOverride>=0?store.globalRunningOverride:store.running));
+            if(sql.contains("'{canary,status}'"))
                 return type.cast(Integer.valueOf(store.activeCanaries));
             if(type==String.class)return type.cast(sql.contains(
                 "framework_composite_final_authority_fingerprint")
@@ -684,16 +1006,23 @@ class CompositeDesignOperationalWorkerReplicaCapacityTest {
 
         @Override public <T> T queryForObject(String sql,Class<T> type,Object... arguments){
             if(sql.contains("pg_try_advisory_xact_lock"))return type.cast(Boolean.TRUE);
+            if(sql.contains("receipt_json->'requestedScope'"))return type.cast(
+                "{\"scopeType\":\"GLOBAL\",\"source\":\"MIGRATION_GLOBAL_TARGET\"}");
+            if(sql.trim().equals("select framework_composite_dependency_fingerprint(?)"))
+                return type.cast("b".repeat(64));
             if(sql.contains("framework_runtime_release_state")
                     &&sql.contains("framework_postdeploy_release_attempt"))
                 return type.cast(Boolean.TRUE);
-            if(sql.contains("completion_status='RUNNING'"))return type.cast(Integer.valueOf(store.running));
+            if(sql.contains("completion_status='RUNNING'"))return type.cast(Integer.valueOf(
+                store.globalRunningOverride>=0?store.globalRunningOverride:store.running));
             if(sql.contains("coalesce(max(case when receipt_json#>>'{canary,attemptNumber}'"))
+                synchronized(store){
+                store.nextCanaryAttemptQueryCount++;
                 return type.cast(Integer.valueOf(store.runtimeCommit.equals(String.valueOf(arguments[0]))
                     &&store.sourceAuthorityHash.equals(String.valueOf(arguments[1]))
                     &&sql.contains("requestedSourceDependencyHash")
                     &&sql.contains("framework_composite_dependency_fingerprint(process_code)")
-                    ?store.maxCanaryAttempt:0));
+                    ?store.maxCanaryAttempt:0));}
             if(sql.contains("'{canary,status}'='VERIFIED'"))
                 return type.cast(Integer.valueOf(store.verifiedCanaries));
             if(sql.contains("'{canary,status}'")||sql.contains("'{canary,runtimeCommit}'"))
@@ -731,6 +1060,55 @@ class CompositeDesignOperationalWorkerReplicaCapacityTest {
 
         private List<Map<String,Object>> rows(String sql,Object... arguments){
             if(sql.contains("pg_advisory_xact_lock"))return List.of();
+            if(sql.contains("as \"retryContext\"")&&sql.contains("blocker_code='RETRY_WAIT'"))
+                synchronized(store){
+                    if(!store.retryWait||store.retryNotBeforeEpochMs>System.currentTimeMillis()
+                            ||store.pending.isEmpty())return List.of();
+                    return List.of(Map.of("processCode",store.pending.peekFirst(),
+                        "retryContext",store.retryContextJson));
+                }
+            if(sql.contains("as \"canaryId\"")&&sql.contains("as \"leaseCurrent\""))
+                synchronized(store){
+                    if(store.running==0)return List.of();
+                    return List.of(Map.ofEntries(
+                        Map.entry("canaryId",store.persistedCanaryId),
+                        Map.entry("canaryStatus",store.persistedCanaryStatus),
+                        Map.entry("sourceAuthorityHash",store.persistedCanaryAuthorityHash),
+                        Map.entry("sourceDependencyHash",store.persistedCanaryDependencyHash),
+                        Map.entry("runtimeCommit",store.persistedCanaryRuntimeCommit),
+                        Map.entry("runtimeIdentityHash",store.persistedCanaryRuntimeIdentity),
+                        Map.entry("attemptNumber",Integer.toString(store.persistedCanaryAttempt)),
+                        Map.entry("rootDependencyHash",store.persistedCanaryDependencyHash),
+                        Map.entry("dependencyFingerprint",store.persistedCanaryDependencyHash),
+                        Map.entry("leaseCurrent",true),Map.entry("jobUnassigned",true)));
+                }
+            if(sql.contains("with locked as (")
+                    &&sql.contains("SERIALIZATION_RETRY_EXHAUSTED"))synchronized(store){
+                String process=String.valueOf(arguments[1]);
+                String token=String.valueOf(arguments[2]);
+                if(store.running==0||!store.currentLeaseToken.equals(token))return List.of();
+                store.serializationRetryAttempt=Math.min(3,store.serializationRetryAttempt+1);
+                store.retryContextJson=jsonArgument(arguments);
+                int attempt=store.serializationRetryAttempt;
+                long delay=attempt==1?50L:100L;
+                store.running--;
+                store.currentLeaseToken="";
+                if(attempt<3){
+                    store.retryWait=true;
+                    if(!store.persistedCanaryId.isEmpty()){
+                        store.persistedCanaryStatus="RETRY_WAIT";store.activeCanaries=0;}
+                    store.pending.addFirst(process);
+                    store.retryNotBeforeEpochMs=System.currentTimeMillis()+delay;
+                    return List.of(Map.of("retryAttempt",attempt,
+                        "completionStatus","PENDING","retryDelayMs",delay));
+                }
+                store.blockedCount++;
+                store.retryWait=false;
+                if(!store.persistedCanaryId.isEmpty()){
+                    store.persistedCanaryStatus="FAILED";store.activeCanaries=0;}
+                return List.of(Map.of("retryAttempt",attempt,
+                    "completionStatus","BLOCKED","retryDelayMs",delay));
+            }
             if(sql.contains("SOURCE_APPLIED_PHYSICAL_QUEUED")
                     &&(sql.contains("physicalRevalidation")
                         ||sql.contains("revalidationOnly")||sql.contains("sourceReused")))
@@ -790,12 +1168,34 @@ class CompositeDesignOperationalWorkerReplicaCapacityTest {
             }
             if(sql.contains("with candidate as ("))synchronized(store){
                 String process=String.valueOf(arguments[0]);
-                String token=String.valueOf(arguments[3]);
+                boolean serializationRetry=sql.contains(
+                    "receipt.receipt_json->'serializationRetryContext'=?::jsonb");
+                String token=String.valueOf(arguments[serializationRetry?4:3]);
+                if(store.retryNotBeforeEpochMs>System.currentTimeMillis())return List.of();
+                if(serializationRetry!=store.retryWait)return List.of();
                 if(store.pending.remove(process)){
                     Map<String,Object> row=new LinkedHashMap<>();
                     row.put("processCode",process);row.put("leaseToken",token);
-                    store.running++;store.sourceWriteCount++;
-                    if(!"{}".equals(String.valueOf(arguments[5])))store.activeCanaries++;
+                    store.running++;store.claimCount++;store.currentLeaseToken=token;
+                    store.retryWait=false;
+                    String receiptJson=String.valueOf(arguments[serializationRetry?6:5]);
+                    if(!"{}".equals(receiptJson)){
+                        try{
+                            var payload=new ObjectMapper().readTree(receiptJson);
+                            var canary=payload.path("canary");
+                            store.persistedCanaryId=canary.path("canaryId").asText();
+                            store.persistedCanaryStatus=canary.path("status").asText();
+                            store.persistedCanaryAttempt=canary.path("attemptNumber").asInt();
+                            store.persistedCanaryRuntimeCommit=canary.path("runtimeCommit").asText();
+                            store.persistedCanaryRuntimeIdentity=
+                                canary.path("requestedRuntimeIdentityHash").asText();
+                            store.persistedCanaryAuthorityHash=
+                                canary.path("requestedSourceAuthorityHash").asText();
+                            store.persistedCanaryDependencyHash=
+                                canary.path("requestedSourceDependencyHash").asText();
+                            store.activeCanaries=1;
+                        }catch(Exception error){throw new IllegalStateException(error);}
+                    }
                     return List.of(row);
                 }
                 return List.of();
@@ -815,6 +1215,14 @@ class CompositeDesignOperationalWorkerReplicaCapacityTest {
             for(int index=arguments.length-1;index>=0;index--)
                 if(arguments[index] instanceof Integer value)return value;
             return 0;
+        }
+
+        private static String jsonArgument(Object[] arguments){
+            for(Object argument:arguments){
+                String value=String.valueOf(argument);
+                if(value.startsWith("{")&&value.contains("\"mode\""))return value;
+            }
+            return "{}";
         }
     }
 

@@ -389,6 +389,9 @@ class ActorProcessGovernanceMutationPropagationTest {
         String bridge=Files.readString(findRepositoryFile(
             "modules/resonance-common/carbonet-common-core/src/main/java/"+
             "egovframework/com/platform/governance/web/ActorProcessControlPlaneBridgeController.java"));
+        String worker=Files.readString(findRepositoryFile(
+            "modules/resonance-common/carbonet-common-core/src/main/java/"+
+            "egovframework/com/platform/governance/service/CompositeDesignOperationalWorker.java"));
         String migration=Files.readString(findRepositoryFile(
             "apps/carbonet-api/src/main/resources/db/migration/postgresql/"+
             "V20260816154000__compile_composite_executable_design_authority.sql"));
@@ -413,6 +416,19 @@ class ActorProcessGovernanceMutationPropagationTest {
         assertTrue(compositeLock.indexOf("lockActorDefinitions(before)")
             <compositeLock.indexOf("lockCanonicalProcessPublication(process)"));
         assertTrue(compositeLock.contains("COMPOSITE_PROCESS_ACTOR_SET_CHANGED_RETRY"));
+        String completion=worker.substring(worker.indexOf("private void complete("),
+            worker.indexOf("Map<String,Object> scopeForProcess("));
+        int workerCanonical=completion.indexOf("governance.lockCompositeProcessAuthority(process)");
+        int executionBinding=completion.indexOf("readiness.assertActiveExecutionBinding(");
+        int sourceSlot=completion.indexOf("readiness.acquireSourceExecutionSlot(");
+        int sourceRegistry=completion.indexOf("readiness.lockCompilerSourceRegistries()");
+        int compiler=completion.indexOf("governance.compileIntegratedDesignProcess(");
+        assertTrue(workerCanonical>=0&&executionBinding>=0&&sourceSlot>=0
+            &&sourceRegistry>=0&&compiler>=0&&workerCanonical<executionBinding
+            &&executionBinding<sourceSlot
+            &&sourceSlot<sourceRegistry&&sourceRegistry<compiler);
+        assertEquals(1,countOccurrences(completion,
+            "governance.lockCompositeProcessAuthority(process)"));
         assertTrue(store.contains("for share of assignment,account,security")
             &&store.contains("for share of assignment,project_assignment")
             &&store.contains("account.emplyr_sttus_code in('P','A')")
@@ -428,6 +444,215 @@ class ActorProcessGovernanceMutationPropagationTest {
         assertTrue(migration.contains("integrated_design_scope_binding")
             &&migration.contains("authority_revision bigint NOT NULL")
             &&migration.contains("contract_sha256"));
+    }
+
+    @Test
+    void serializationRetryKeepsExactClaimContextCapacityAndShutdownSafety() throws Exception {
+        String worker=Files.readString(findRepositoryFile(
+            "modules/resonance-common/carbonet-common-core/src/main/java/"+
+            "egovframework/com/platform/governance/service/CompositeDesignOperationalWorker.java"));
+        String readiness=Files.readString(findRepositoryFile(
+            "modules/resonance-common/carbonet-common-core/src/main/java/"+
+            "egovframework/com/platform/governance/service/CompositeAutocompletionReadinessService.java"));
+        String retryStore=Files.readString(findRepositoryFile(
+            "modules/resonance-common/carbonet-common-core/src/main/java/"+
+            "egovframework/com/platform/governance/service/CompositeSerializationRetryStore.java"));
+
+        String ordinaryClaim=readiness.substring(readiness.indexOf(
+            "List<Map<String,Object>> claimOne("),readiness.indexOf(
+            "List<Map<String,Object>> claimSerializationRetry("));
+        assertTrue(ordinaryClaim.contains("blocker_code is distinct from 'RETRY_WAIT'")
+            &&ordinaryClaim.contains(
+                "not jsonb_exists(receipt.receipt_json,'serializationRetryContext')"));
+
+        String retryClaim=readiness.substring(readiness.indexOf(
+            "List<Map<String,Object>> claimSerializationRetry("),readiness.indexOf(
+            "int clearSupersededSerializationRetries("));
+        assertTrue(retryClaim.contains("completion_status='PENDING'")
+            &&retryClaim.contains("blocker_code='RETRY_WAIT'")
+            &&retryClaim.contains("serializationRetryContext'=?::jsonb")
+            &&retryClaim.contains("retryNotBeforeEpochMs")
+            &&retryClaim.contains("framework_composite_dependency_fingerprint"));
+
+        String reclaim=worker.substring(worker.indexOf(
+            "private boolean reclaimSerializationRetry("),worker.indexOf(
+            "private Map<String,Object> serializationRetryContext("));
+        int globalLock=reclaim.indexOf("acquireGlobalDispatchLock(");
+        int globalCap=reclaim.indexOf("globallyRunning()>=parallelism");
+        int exactClaim=reclaim.indexOf("readiness.claimSerializationRetry(");
+        assertTrue(globalLock>=0&&globalLock<globalCap&&globalCap<exactClaim);
+        assertFalse(reclaim.contains("claimOne("));
+
+        String scheduled=worker.substring(worker.indexOf(
+            "public void runScheduledBatch("),worker.indexOf(
+            "public Map<String,Object> inspect("));
+        assertTrue(scheduled.indexOf("resumeDueSerializationRetries()")
+            <scheduled.indexOf("if(capabilityEnabled)"));
+        assertTrue(worker.contains("SERIALIZATION_RECLAIM_SCHEDULE_LIMIT=3")
+            &&worker.contains("durable RETRY_WAIT and a healthy replica/scheduled sweep"));
+
+        String submit=worker.substring(worker.indexOf(
+            "private void submitClaim("),worker.indexOf(
+            "private Map<String,Object> dispatchReceipt("));
+        assertTrue(submit.contains("catch(RejectedExecutionException rejected)")
+            &&submit.contains("HEARTBEAT_EXECUTOR_REJECTED")
+            &&submit.contains("WORKER_EXECUTOR_REJECTED")
+            &&submit.contains("requeueExecutorRejection(")
+            &&submit.contains("running.decrementAndGet()"));
+        assertTrue(worker.contains("List<Runnable> abandoned=workers.shutdownNow()")
+            &&worker.contains("task instanceof ClaimExecution execution")
+            &&worker.contains("WORKER_SHUTDOWN_BEFORE_START")
+            &&worker.contains("execution.releaseBeforeStart("));
+
+        String completion=worker.substring(worker.indexOf("private void complete("),
+            worker.indexOf("private RetryOutcome requeueExecutorRejection("));
+        assertTrue(completion.contains("isSqlState(error,\"40001\")")
+            &&completion.contains("requeueSerializationFailure(")
+            &&completion.contains("-'serializationRetryContext'"));
+        assertTrue(worker.contains("serializationRetries.requeueExecutorRejection(")
+            &&worker.contains("serializationRetries.requeueSerializationFailure(")
+            &&worker.contains("serializationRetries.resumeDue(available)"));
+        assertTrue(retryStore.contains("SERIALIZATION_RETRY_EXHAUSTED")
+            &&retryStore.contains("jsonb_exists(receipt.receipt_json,"+
+                "'serializationRetryContext')")
+            &&retryStore.contains("RETRY_LIMIT,process,token,RETRY_LIMIT,RETRY_LIMIT")
+            &&retryStore.contains("FIRST_RETRY_DELAY_MS,SECOND_RETRY_DELAY_MS"));
+        String retryPersistence=worker.substring(worker.indexOf(
+            "private RetryOutcome requeueExecutorRejection("),worker.indexOf(
+            "private void scheduleSerializationRetry("));
+        String retrySchedule=worker.substring(worker.indexOf(
+            "private void scheduleSerializationRetry("),worker.indexOf(
+            "private void resumeDueSerializationRetries("));
+        String retryResume=worker.substring(worker.indexOf(
+            "private void resumeDueSerializationRetries("),worker.indexOf(
+            "private boolean reclaimSerializationRetry("));
+        String retryReclaim=worker.substring(worker.indexOf(
+            "private boolean reclaimSerializationRetry("),worker.indexOf(
+            "private Map<String,Object> serializationRetryContext("));
+        for(String method:List.of(retryPersistence,retrySchedule,retryResume,retryReclaim))
+            assertTrue(method.split("\\R").length<120);
+        assertTrue(worker.contains("clearSupersededSerializationRetries(\"AUTOMATIC\"")
+            &&worker.contains("clearSupersededSerializationRetries(\"CANARY\""));
+        assertTrue(readiness.contains("receipt_json#>>'{canary,status}' in('ACTIVE','RETRY_WAIT')"));
+    }
+
+    @Test
+    void projectRuntimePurgeUsesFailFastWriterKeysAfterCompleteInventoryLock() throws Exception {
+        String migration=Files.readString(findRepositoryFile(
+            "apps/carbonet-api/src/main/resources/db/migration/postgresql/"+
+            "V20260816134500__install_project_runtime_purge_restore_contract.sql"));
+        String coordination=migration.substring(migration.indexOf(
+            "CREATE OR REPLACE FUNCTION framework_project_runtime_purge_lock_coordination("),
+            migration.indexOf(
+            "CREATE OR REPLACE FUNCTION framework_project_runtime_purge_try_writer_keys("));
+        assertTrue(coordination.contains("PROJECT_RUNTIME_PURGE_COORDINATION_V2:"));
+        assertFalse(coordination.contains("BACKSTAGE_DESIGN_RELEASE_V1:")
+            ||coordination.contains("CANONICAL_PROCESS_PUBLICATION_V1:"));
+
+        String writerKeys=migration.substring(migration.indexOf(
+            "CREATE OR REPLACE FUNCTION framework_project_runtime_purge_try_writer_keys("),
+            migration.indexOf(
+            "CREATE OR REPLACE FUNCTION framework_project_runtime_purge_snapshot_insert("));
+        assertTrue(writerKeys.contains("BACKSTAGE_DESIGN_RELEASE_V1:")
+            &&writerKeys.contains("CANONICAL_PROCESS_PUBLICATION_V1:")
+            &&writerKeys.contains("PROJECT_RUNTIME_PURGE_V1:")
+            &&writerKeys.contains("ORDER BY key_value COLLATE \"C\"")
+            &&writerKeys.contains("pg_try_advisory_xact_lock")
+            &&writerKeys.contains("ERRCODE='40001'"));
+
+        String inventory=migration.substring(migration.indexOf(
+            "CREATE OR REPLACE FUNCTION framework_project_runtime_purge_lock_inventory_tables("),
+            migration.indexOf(
+            "CREATE OR REPLACE FUNCTION framework_project_runtime_purge_set_user_triggers("));
+        assertTrue(inventory.contains("framework_project_runtime_purge_snapshot_row")
+            &&inventory.contains("trg_project_runtime_write_fence")
+            &&inventory.contains("JOIN pg_constraint foreign_key")
+            &&inventory.contains("child_namespace.nspname!~'^pg_'")
+            &&inventory.contains("child_namespace.nspname<>'information_schema'")
+            &&inventory.contains("access exclusive mode nowait")
+            &&inventory.contains("ERRCODE='40001'"));
+
+        String closure=migration.substring(migration.indexOf(
+            "CREATE OR REPLACE FUNCTION framework_project_runtime_purge_assert_fk_closure("),
+            migration.indexOf(
+            "CREATE OR REPLACE FUNCTION framework_project_runtime_purge_external_fk_descendant_rows("));
+        assertTrue(closure.contains("child_namespace.nspname!~'^pg_'")
+            &&closure.contains("child_namespace.nspname<>'information_schema'")
+            &&closure.contains("captured.row_payload=to_jsonb(row_value)")
+            &&closure.contains("ERRCODE='40001'"));
+
+        String external=migration.substring(migration.indexOf(
+            "CREATE OR REPLACE FUNCTION framework_project_runtime_purge_external_fk_descendant_rows("),
+            migration.indexOf(
+            "CREATE OR REPLACE FUNCTION framework_project_runtime_purge_build_snapshot("));
+        assertTrue(external.contains("child_namespace.nspname!~'^pg_'")
+            &&external.contains("child_namespace.nspname<>'information_schema'")
+            &&external.contains("child.relname LIKE 'framework\\_%' ESCAPE '\\'")
+            &&external.contains("child.relname LIKE 'integrated_design\\_%' ESCAPE '\\'"));
+
+        String apply=migration.substring(migration.indexOf(
+            "CREATE OR REPLACE FUNCTION framework_apply_project_runtime_purge("),
+            migration.indexOf(
+            "CREATE OR REPLACE FUNCTION framework_restore_project_runtime_purge("));
+        int applyNonIdempotent=apply.indexOf("receipt.receipt_status NOT IN");
+        int applyInventory=apply.indexOf("lock_inventory_tables(",applyNonIdempotent);
+        int applyTry=apply.indexOf("try_writer_keys(",applyInventory);
+        int applyScope=apply.indexOf("pre_scope_counts:=",applyTry);
+        int applyClosure=apply.indexOf("assert_fk_closure(",applyScope);
+        int applyExact=apply.indexOf("-- Lock and verify every exact preimage",applyClosure);
+        int applyTriggers=apply.indexOf("set_user_triggers(",applyExact);
+        int applyMutation=apply.indexOf("receipt_status='PURGING'",applyTriggers);
+        assertTrue(applyNonIdempotent>=0&&applyNonIdempotent<applyInventory
+            &&applyInventory<applyTry&&applyTry<applyScope&&applyScope<applyClosure
+            &&applyClosure<applyExact&&applyExact<applyTriggers
+            &&applyTriggers<applyMutation);
+
+        String restore=migration.substring(migration.indexOf(
+            "CREATE OR REPLACE FUNCTION framework_restore_project_runtime_purge("),
+            migration.indexOf("-- Install fences for every table"));
+        int restoreNonIdempotent=restore.indexOf("receipt.receipt_status<>'PURGED'");
+        int restoreInventory=restore.indexOf("lock_inventory_tables(",restoreNonIdempotent);
+        int restoreTry=restore.indexOf("try_writer_keys(",restoreInventory);
+        int restoreScope=restore.indexOf("framework_project_runtime_purge_scope_counts(",restoreTry);
+        int restoreClosure=restore.indexOf("assert_fk_closure(",restoreScope);
+        int restoreExact=restore.indexOf("project runtime restore found snapshot residual",restoreClosure);
+        int restoreTriggers=restore.indexOf("set_user_triggers(",restoreExact);
+        int restoreMutation=restore.indexOf("receipt_status='RESTORING'",restoreTriggers);
+        assertTrue(restoreNonIdempotent>=0&&restoreNonIdempotent<restoreInventory
+            &&restoreInventory<restoreTry&&restoreTry<restoreScope
+            &&restoreScope<restoreClosure&&restoreClosure<restoreExact
+            &&restoreExact<restoreTriggers&&restoreTriggers<restoreMutation);
+
+        int restored=restore.indexOf("receipt.receipt_status='RESTORED'");
+        int restoredEnd=restore.indexOf("receipt.receipt_status<>'PURGED'",restored);
+        String restoredReplay=restore.substring(restored,restoredEnd);
+        int restoredInventory=restoredReplay.indexOf("lock_inventory_tables(");
+        int restoredTry=restoredReplay.indexOf("try_writer_keys(");
+        int restoredClosure=restoredReplay.indexOf("assert_fk_closure(");
+        int restoredScope=restoredReplay.indexOf("scope_counts(");
+        int restoredRows=restoredReplay.indexOf("FOR snapshot_row IN");
+        assertTrue(restoredInventory>=0&&restoredInventory<restoredTry
+            &&restoredTry<restoredClosure&&restoredClosure<restoredScope
+            &&restoredScope<restoredRows);
+
+        String guard=migration.substring(migration.indexOf(
+            "CREATE OR REPLACE FUNCTION framework_guard_project_runtime_write_fence("),
+            migration.indexOf(
+            "CREATE OR REPLACE FUNCTION framework_install_project_runtime_write_fences("));
+        assertTrue(guard.contains("pg_try_advisory_xact_lock")
+            &&guard.contains("ERRCODE='40001'"));
+        assertFalse(guard.contains("PERFORM pg_advisory_xact_lock(hashtextextended(lock_key"));
+        assertTrue(migration.contains(
+            "framework_project_runtime_purge_lock_coordination(text,text)")
+            &&migration.contains(
+            "framework_project_runtime_purge_try_writer_keys(text,text)")
+            &&migration.contains(
+                "framework_project_runtime_purge_lock_inventory_tables(uuid)")
+            &&migration.contains(
+                "framework_project_runtime_purge_assert_fk_closure(uuid)")
+            &&migration.contains(
+                "framework_project_runtime_purge_external_fk_descendant_rows(uuid)")
+            &&migration.contains("'externalFkDescendantRowCount',external_fk_descendant_count"));
     }
 
     private static int countOccurrences(String value,String needle){

@@ -798,7 +798,7 @@ public class CompositeAutocompletionReadinessService {
                          when completion_status='RUNNING' then 'LEASE_EXPIRED'
                          else 'PHYSICAL_VERIFICATION_TIMEOUT' end)),
                    updated_at=current_timestamp
-             where receipt_json#>>'{canary,status}'='ACTIVE'
+             where receipt_json#>>'{canary,status}' in('ACTIVE','RETRY_WAIT')
                and ((completion_status='RUNNING'
                      and (lease_until is null or lease_until<current_timestamp))
                  or (completion_status='SOURCE_APPLIED_PHYSICAL_QUEUED'
@@ -807,7 +807,7 @@ public class CompositeAutocompletionReadinessService {
             """,CANARY_ATTEMPT_TIMEOUT_SECONDS);
         Integer active=jdbc.queryForObject("""
             select count(*)::integer from integrated_design_autocompletion_receipt
-             where receipt_json#>>'{canary,status}'='ACTIVE'
+             where receipt_json#>>'{canary,status}' in('ACTIVE','RETRY_WAIT')
             """,Integer.class);
         int verified=currentVerifiedCanaries(authoritySetHash).size();
         Integer attempts=jdbc.queryForObject("""
@@ -1046,8 +1046,10 @@ public class CompositeAutocompletionReadinessService {
             """+COMPILER_READY_PROCESS_SQL+"""
                    ) eligible where eligible.process_code=receipt.process_code
                      and eligible.dependency_fingerprint=?)
-                 and (receipt.completion_status='PENDING' or
-                   (receipt.completion_status='RUNNING' and
+                 and ((receipt.completion_status='PENDING'
+                       and receipt.blocker_code is distinct from 'RETRY_WAIT') or
+                   (receipt.completion_status='RUNNING'
+                    and not jsonb_exists(receipt.receipt_json,'serializationRetryContext') and
                     (receipt.lease_until is null or receipt.lease_until<current_timestamp)))
                for update skip locked
             )
@@ -1055,7 +1057,12 @@ public class CompositeAutocompletionReadinessService {
                set completion_status='RUNNING',lease_token=?::uuid,
                    lease_until=current_timestamp+(? * interval '1 second'),
                    attempt_count=attempt_count+1,blocker_code=null,
-                   receipt_json=receipt.receipt_json||?::jsonb,
+                   receipt_json=(case when receipt.blocker_code='RETRY_WAIT'
+                       then receipt.receipt_json-'retryNotBeforeEpochMs'-'retryDelayMs'-'blocker'
+                       else receipt.receipt_json-'serializationRetryAttempt'
+                         -'serializationRetryLimit'-'serializationRetryContext'
+                         -'retryNotBeforeEpochMs'-'retryDelayMs'-'blocker'
+                     end)||?::jsonb,
                    dependency_fingerprint=?,started_at=coalesce(started_at,current_timestamp),
                    completed_at=null,duration_ms=null,updated_at=current_timestamp
               from candidate where receipt.process_code=candidate.process_code
@@ -1063,6 +1070,72 @@ public class CompositeAutocompletionReadinessService {
             """,candidate.process(),candidate.dependencyFingerprint(),
             candidate.dependencyFingerprint(),token,leaseSeconds,receiptJson,
             candidate.dependencyFingerprint());
+    }
+
+    List<Map<String,Object>> claimSerializationRetry(Candidate candidate,String token,
+            int leaseSeconds,String receiptJson,String retryContextJson){
+        return jdbc.queryForList("""
+            with candidate as (
+              select receipt.process_code
+                from integrated_design_autocompletion_receipt receipt
+               where receipt.process_code=?
+                 and receipt.completion_status='PENDING'
+                 and receipt.blocker_code='RETRY_WAIT'
+                 and receipt.receipt_json->'serializationRetryContext'=?::jsonb
+                 and receipt.receipt_json->>'retryNotBeforeEpochMs'~'^[0-9]{1,20}$'
+                 and (receipt.receipt_json->>'retryNotBeforeEpochMs')::numeric<=
+                     extract(epoch from clock_timestamp())*1000
+                 and framework_composite_dependency_fingerprint(receipt.process_code)=?
+                 and exists(select 1 from (
+            """+COMPILER_READY_PROCESS_SQL+"""
+                   ) eligible where eligible.process_code=receipt.process_code
+                     and eligible.dependency_fingerprint=?)
+               for update skip locked
+            )
+            update integrated_design_autocompletion_receipt receipt
+               set completion_status='RUNNING',lease_token=?::uuid,
+                   lease_until=current_timestamp+(? * interval '1 second'),
+                   attempt_count=attempt_count+1,blocker_code=null,
+                   receipt_json=(receipt.receipt_json-'retryNotBeforeEpochMs'
+                     -'retryDelayMs'-'blocker')||?::jsonb,
+                   dependency_fingerprint=?,started_at=coalesce(started_at,current_timestamp),
+                   completed_at=null,duration_ms=null,updated_at=current_timestamp
+              from candidate where receipt.process_code=candidate.process_code
+            returning receipt.process_code as "processCode",receipt.lease_token as "leaseToken"
+            """,candidate.process(),retryContextJson,candidate.dependencyFingerprint(),
+            candidate.dependencyFingerprint(),token,leaseSeconds,receiptJson,
+            candidate.dependencyFingerprint());
+    }
+
+    int clearSupersededSerializationRetries(String mode,long revision,String runtimeCommit,
+            String sourceInputHash,String runtimeIdentityHash){
+        return jdbc.update("""
+            update integrated_design_autocompletion_receipt receipt
+               set completion_status='PENDING',blocker_code=null,job_id=null,
+                   lease_token=null,lease_until=null,started_at=null,completed_at=null,
+                   duration_ms=null,attempt_count=0,
+                   receipt_json=(receipt.receipt_json-'serializationRetryAttempt'
+                     -'serializationRetryLimit'-'serializationRetryContext'
+                     -'retryNotBeforeEpochMs'-'retryDelayMs'-'blocker')||case
+                       when receipt.receipt_json#>>'{canary,status}'='RETRY_WAIT' then
+                         jsonb_build_object('canary',((receipt.receipt_json->'canary')
+                           -'retryAt'-'failureCode')||jsonb_build_object(
+                             'status','INVALIDATED','invalidatedAt',clock_timestamp(),
+                             'failureCode','SERIALIZATION_RETRY_SUPERSEDED'))
+                       else '{}'::jsonb end,
+                   dependency_fingerprint=framework_composite_dependency_fingerprint(
+                     receipt.process_code),updated_at=current_timestamp
+             where receipt.completion_status='PENDING' and receipt.blocker_code='RETRY_WAIT'
+               and receipt.receipt_json#>>'{serializationRetryContext,mode}'=?
+               and (coalesce(receipt.receipt_json#>>'{serializationRetryContext,gateRevision}','')
+                       is distinct from ?::text
+                 or coalesce(receipt.receipt_json#>>'{serializationRetryContext,runtimeCommit}','')
+                       is distinct from ?
+                 or coalesce(receipt.receipt_json#>>'{serializationRetryContext,sourceInputHash}','')
+                       is distinct from ?
+                 or coalesce(receipt.receipt_json#>>'{serializationRetryContext,runtimeIdentityHash}','')
+                       is distinct from ?)
+            """,mode,Long.toString(revision),runtimeCommit,sourceInputHash,runtimeIdentityHash);
     }
 
     int heartbeatLease(TransactionTemplate requiresNew,String process,String token,int leaseSeconds){
