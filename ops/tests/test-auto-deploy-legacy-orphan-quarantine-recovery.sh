@@ -113,13 +113,14 @@ APPLIED="$STATE/applied.commit"
 RUNTIME="$STATE/runtime.commit"
 JOURNAL="$STATE/attempt.json"
 PENDING="$STATE/pending.state"
+CHECKPOINT="$STATE/runtime-candidate.json"
 RETIRED="$STATE/retired"
 LOCK="$TMP/deploy.lock"
 
 write_case() {
   local reason="${1:-MARKER_PENDING_RUNTIME_PROOF_FAILED}"
   rm -rf -- "$RETIRED"
-  rm -f -- "$QUARANTINE" "$JOURNAL" "$PENDING" "$LOCK" "$TMP/db-counter"
+  rm -f -- "$QUARANTINE" "$JOURNAL" "$PENDING" "$CHECKPOINT" "$LOCK" "$TMP/db-counter"
   printf '%s\n' "$BASELINE" >"$APPLIED"
   printf '%s\n' "$BASELINE" >"$RUNTIME"
   chmod 0644 "$APPLIED" "$RUNTIME"
@@ -137,6 +138,7 @@ run_helper() {
   CARBONET_RUNTIME_DEPLOY_STATE_FILE="$RUNTIME" \
   CARBONET_POSTDEPLOY_ATTEMPT_JOURNAL_FILE="$JOURNAL" \
   CARBONET_POSTDEPLOY_MARKER_PENDING_FILE="$PENDING" \
+  CARBONET_RUNTIME_CANDIDATE_CHECKPOINT_FILE="$CHECKPOINT" \
   CARBONET_POSTDEPLOY_LEGACY_RETIRE_DIR="$RETIRED" \
   CARBONET_ORPHAN_RECOVERY_TARGET_COMMIT="$NEXT_TARGET" \
   CARBONET_POSTGRES_POD=postgres-0 CARBONET_K8S_NAMESPACE=test-ns \
@@ -157,11 +159,31 @@ grep -Fq 'targetRows=0/0/0 liveLedger=1 health=UP' "$TMP/happy.log"
 run_helper >"$TMP/no-quarantine.log"
 [[ ! -s "$TMP/no-quarantine.log" && "$(sha256sum "$ARCHIVE" | awk '{print $1}')" == "$SOURCE_HASH" ]]
 
+# A quarantine left by a failed recovered-checkpoint disarm is eligible only
+# after the runtime candidate checkpoint itself is proven absent.
+write_case RECOVERED_CHECKPOINT_DISARM_FAILED
+run_helper >"$TMP/recovered-checkpoint.log"
+[[ ! -e "$QUARANTINE" && ! -L "$QUARANTINE" ]]
+grep -Fq 'targetRows=0/0/0 liveLedger=1 health=UP' "$TMP/recovered-checkpoint.log"
+for checkpoint_kind in file symlink; do
+  write_case RECOVERED_CHECKPOINT_DISARM_FAILED
+  if [[ "$checkpoint_kind" == file ]]; then
+    printf '{"stage":"PREPARED"}\n' >"$CHECKPOINT"
+  else
+    ln -s "$TMP/missing-checkpoint-target" "$CHECKPOINT"
+  fi
+  status=0; run_helper >"$TMP/checkpoint-${checkpoint_kind}.log" 2>&1 || status=$?
+  [[ "$status" == 79 && -f "$QUARANTINE" && ! -e "$RETIRED" ]]
+  grep -Fq 'runtime candidate checkpoint' "$TMP/checkpoint-${checkpoint_kind}.log"
+done
+
 # Non-exact legacy evidence is a no-op here and remains for auto-deploy's
 # ordinary quarantine gate to block.
-write_case PROMOTION_DB_CHECK_UNAVAILABLE
-run_helper >/dev/null
-[[ -f "$QUARANTINE" && ! -e "$RETIRED" ]]
+for nonmatching_reason in PROMOTION_DB_CHECK_UNAVAILABLE RECOVERED_CHECKPOINT_DISARM_FAILED_EXTRA; do
+  write_case "$nonmatching_reason"
+  run_helper >/dev/null
+  [[ -f "$QUARANTINE" && ! -e "$RETIRED" ]]
+done
 write_case
 chmod 0644 "$QUARANTINE"
 run_helper >/dev/null
@@ -267,4 +289,4 @@ drop_before="$(grep -c '^drop$' "$FAKE_CALL_LOG")"
 [[ "$(grep -c '^drop$' "$FAKE_CALL_LOG")" == "$((drop_before + 1))" ]]
 
 grep -Fq 'reconcile-exact-legacy-orphan-runtime-quarantine.sh' "$AUTO"
-printf '[legacy-orphan-quarantine-test] PASS exact6+mode600+owner hashPinned markers=stable+equal ancestry=baseline-orphan-next DB=attempt0+promotion0+runtime0 baseline=ledger1+healthUP archive=0400+samefs+fsync+sourceAbsent failClosed=rows+unknown+health+obligation+ancestry+postArchiveDrift concurrent=2 schemaRestore=full+flywayRows+objectParity+objectMismatch+failureCleanup elapsedMs=%s\n' "$elapsed_ms"
+printf '[legacy-orphan-quarantine-test] PASS exact6+mode600+owner reasons=markerPending+recoveredCheckpointDisarm checkpoint=absent+fileBlocked+symlinkBlocked hashPinned markers=stable+equal ancestry=baseline-orphan-next DB=attempt0+promotion0+runtime0 baseline=ledger1+healthUP archive=0400+samefs+fsync+sourceAbsent failClosed=rows+unknown+health+obligation+ancestry+postArchiveDrift concurrent=2 schemaRestore=full+flywayRows+objectParity+objectMismatch+failureCleanup elapsedMs=%s\n' "$elapsed_ms"

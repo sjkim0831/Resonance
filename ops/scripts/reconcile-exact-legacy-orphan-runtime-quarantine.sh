@@ -9,6 +9,7 @@ APPLIED_MARKER="${CARBONET_DEPLOY_STATE_FILE:-$STATE_DIR/carbonet-main-success.c
 RUNTIME_MARKER="${CARBONET_RUNTIME_DEPLOY_STATE_FILE:-$STATE_DIR/carbonet-runtime-identity-success.commit}"
 ATTEMPT_JOURNAL="${CARBONET_POSTDEPLOY_ATTEMPT_JOURNAL_FILE:-$STATE_DIR/carbonet-postdeploy-attempt.json}"
 MARKER_PENDING="${CARBONET_POSTDEPLOY_MARKER_PENDING_FILE:-$STATE_DIR/postdeploy-marker-pending.state}"
+RUNTIME_CANDIDATE_CHECKPOINT="${CARBONET_RUNTIME_CANDIDATE_CHECKPOINT_FILE:-$STATE_DIR/carbonet-runtime-candidate.json}"
 RETIRED_DIR="${CARBONET_POSTDEPLOY_LEGACY_RETIRE_DIR:-$STATE_DIR/retired-attempts}"
 NAMESPACE="${CARBONET_K8S_NAMESPACE:-carbonet-prod}"
 DEPLOYMENT="${CARBONET_K8S_DEPLOYMENT:-carbonet-runtime}"
@@ -21,7 +22,8 @@ LEADER_RESOLVER="${CARBONET_POSTDEPLOY_LEADER_RESOLVER:-$ROOT_DIR/ops/scripts/re
 REMOTE="${CARBONET_DEPLOY_REMOTE:-origin}"
 BRANCH="${CARBONET_DEPLOY_BRANCH:-main}"
 
-EXPECTED_REASON=MARKER_PENDING_RUNTIME_PROOF_FAILED
+MARKER_PENDING_REASON=MARKER_PENDING_RUNTIME_PROOF_FAILED
+RECOVERED_CHECKPOINT_DISARM_REASON=RECOVERED_CHECKPOINT_DISARM_FAILED
 quarantine_hash=""
 orphan_target=""
 candidate_id=""
@@ -49,7 +51,8 @@ read_exact_contract() {
   observed_runtime="$(sed -n 's/^observedRuntimeMarker=//p' "$QUARANTINE_FILE")"
   [[ "$orphan_target" =~ ^[0-9a-f]{40}$ \
      && "$candidate_id" =~ ^postdeploy:${orphan_target:0:12}:[A-Za-z0-9._:-]{12,140}$ \
-     && "$reason" == "$EXPECTED_REASON" \
+     && ( "$reason" == "$MARKER_PENDING_REASON" \
+          || "$reason" == "$RECOVERED_CHECKPOINT_DISARM_REASON" ) \
      && "$observed_applied" =~ ^[0-9a-f]{40}$ \
      && "$observed_runtime" == "$observed_applied" ]] || return 1
   baseline="$observed_applied"
@@ -59,7 +62,8 @@ read_exact_contract() {
 
 pin_markers_and_obligations() {
   [[ ! -e "$ATTEMPT_JOURNAL" && ! -L "$ATTEMPT_JOURNAL" \
-     && ! -e "$MARKER_PENDING" && ! -L "$MARKER_PENDING" ]] || return 1
+     && ! -e "$MARKER_PENDING" && ! -L "$MARKER_PENDING" \
+     && ! -e "$RUNTIME_CANDIDATE_CHECKPOINT" && ! -L "$RUNTIME_CANDIDATE_CHECKPOINT" ]] || return 1
   [[ -f "$APPLIED_MARKER" && ! -L "$APPLIED_MARKER" \
      && "$(stat -c '%a:%u:%g' "$APPLIED_MARKER" 2>/dev/null)" == "644:$(id -u):$(id -g)" \
      && "$(awk 'END{print NR}' "$APPLIED_MARKER")" == 1 \
@@ -80,7 +84,8 @@ pinned_files_unchanged() {
   [[ "$orphan_target" == "$saved_target" && "$candidate_id" == "$saved_candidate" \
      && "$baseline" == "$saved_baseline" && "$quarantine_hash" == "$saved_quarantine_hash" ]] || return 1
   [[ ! -e "$ATTEMPT_JOURNAL" && ! -L "$ATTEMPT_JOURNAL" \
-     && ! -e "$MARKER_PENDING" && ! -L "$MARKER_PENDING" ]] || return 1
+     && ! -e "$MARKER_PENDING" && ! -L "$MARKER_PENDING" \
+     && ! -e "$RUNTIME_CANDIDATE_CHECKPOINT" && ! -L "$RUNTIME_CANDIDATE_CHECKPOINT" ]] || return 1
   [[ -f "$APPLIED_MARKER" && ! -L "$APPLIED_MARKER" \
      && "$(stat -c '%a:%u:%g' "$APPLIED_MARKER" 2>/dev/null)" == "644:$(id -u):$(id -g)" \
      && "$(sha256sum "$APPLIED_MARKER" 2>/dev/null | awk '{print $1}')" == "$applied_hash" \
@@ -187,7 +192,7 @@ exec 9>"$LOCK_FILE"
 flock -n 9 || { log 'RETRY deployment lock is held; evidence unchanged' >&2; exit 75; }
 
 read_exact_contract || fail 'exact quarantine contract drifted while acquiring lock'
-pin_markers_and_obligations || fail 'markers, ownership, or pending obligations are not the pinned baseline'
+pin_markers_and_obligations || fail 'markers, ownership, runtime candidate checkpoint, or pending obligations are not the pinned baseline'
 deployment_target="${CARBONET_ORPHAN_RECOVERY_TARGET_COMMIT:-$(git -C "$ROOT_DIR" rev-parse "$REMOTE/$BRANCH" 2>/dev/null || true)}"
 [[ "$deployment_target" =~ ^[0-9a-f]{40}$ \
    && "$(git -C "$ROOT_DIR" cat-file -t "$baseline" 2>/dev/null || true)" == commit \
