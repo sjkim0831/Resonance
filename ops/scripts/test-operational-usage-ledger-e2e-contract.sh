@@ -227,8 +227,11 @@ printf '%s\n' "$finalizer_body" | awk '
   /promote-postdeploy-candidate-evidence\.sh/ { promoter=NR }
   END { exit !(ledger>0 && usage>ledger && staged>usage && promoter>staged) }
 ' || fail "candidate finalizer must publish ledger, run usage, precheck 12 units, then promote marker"
-[[ "$(grep -Ec '^[[:space:]]*finalize_postdeploy_candidate_release$' "$DEPLOY")" == 3 ]] \
-  || fail "each of the three runtime release paths must use the candidate finalizer"
+wrapper_body="$(sed -n '/^finalize_postdeploy_candidate_release_with_composite_gate_cleanup() {/,/^}/p' "$DEPLOY")"
+[[ "$(grep -Ec '^[[:space:]]*finalize_postdeploy_candidate_release$' "$DEPLOY")" == 1 \
+   && "$(grep -Ec '^[[:space:]]*finalize_postdeploy_candidate_release_with_composite_gate_cleanup$' "$DEPLOY")" == 2 \
+   && "$(grep -Ec '^[[:space:]]*if finalize_postdeploy_candidate_release; then$' <<<"$wrapper_body")" == 1 ]] \
+  || fail "each of the three runtime release paths must use the candidate finalizer directly or through exact composite cleanup"
 merge_line="$(rg -n '^git merge --ff-only "\$target_commit"$' "$DEPLOY" | cut -d: -f1)"
 static_line="$(rg -n '^run_operational_usage_ledger_static_contract_if_required$' "$DEPLOY" | cut -d: -f1)"
 flyway_line="$(rg -n 'verify-flyway-migration-immutability\.sh' "$DEPLOY" | tail -1 | cut -d: -f1)"
