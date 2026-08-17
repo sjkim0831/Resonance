@@ -189,7 +189,7 @@ rollback_evidence_json() {
 }
 
 deployment_evidence_json() (
-  local deployment_json pods_json target image release uid generation observed desired updated ready available unavailable image_id pod_count
+  local deployment_json pods_json target image release uid generation observed desired updated ready available unavailable image_id pod_count pod_template_sha256
   deployment_json="$(mktemp)"
   pods_json="$(mktemp)"
   trap 'rm -f "${deployment_json:-}" "${pods_json:-}"' EXIT
@@ -206,8 +206,10 @@ deployment_evidence_json() (
   ready="$(jq -r '.status.readyReplicas // 0' "$deployment_json")"
   available="$(jq -r '.status.availableReplicas // 0' "$deployment_json")"
   unavailable="$(jq -r '.status.unavailableReplicas // 0' "$deployment_json")"
+  pod_template_sha256="$(jq -cS '.spec.template' "$deployment_json" | sha256_stdin)"
   [[ "$target" == "$target_commit" ]] || fail "deployment target annotation mismatch"
-  [[ -n "$image" && -n "$release" && -n "$uid" ]] || fail "deployment identity evidence is incomplete"
+  [[ -n "$image" && -n "$release" && -n "$uid" \
+     && "$pod_template_sha256" =~ ^[0-9a-f]{64}$ ]] || fail "deployment identity evidence is incomplete"
   [[ "$generation" =~ ^[0-9]+$ && "$observed" == "$generation" ]] || fail "deployment generation is not observed"
   [[ "$desired" =~ ^[1-9][0-9]*$ ]] || fail "deployment desired replicas are invalid"
   [[ "$updated" == "$desired" && "$ready" == "$desired" && "$available" == "$desired" && "$unavailable" == "0" ]] ||
@@ -232,9 +234,9 @@ deployment_evidence_json() (
 
   jq -cn \
     --arg target "$target" --arg image "$image" --arg release "$release" \
-    --arg uid "$uid" --arg imageId "$image_id" \
+    --arg uid "$uid" --arg imageId "$image_id" --arg podTemplateSha256 "$pod_template_sha256" \
     --argjson generation "$generation" --argjson desired "$desired" \
-    '{targetCommit:$target,imageRef:$image,releaseId:$release,deploymentUid:$uid,deploymentGeneration:$generation,desiredReplicas:$desired,imageIdDigest:$imageId}'
+    '{targetCommit:$target,imageRef:$image,releaseId:$release,deploymentUid:$uid,deploymentGeneration:$generation,desiredReplicas:$desired,imageIdDigest:$imageId,podTemplateSha256:$podTemplateSha256}'
 )
 
 verify_http_health() {
@@ -329,6 +331,7 @@ verify_resume() {
       .deploymentGeneration == $live.deploymentGeneration and
       .desiredReplicas == $live.desiredReplicas and
       .imageIdDigest == $live.imageIdDigest and
+      .podTemplateSha256 == $live.podTemplateSha256 and
       .snapshotId == $rollback.snapshotId and
       .snapshotDir == $rollback.snapshotDir and
       .activeFileSha256 == $rollback.activeFileSha256 and

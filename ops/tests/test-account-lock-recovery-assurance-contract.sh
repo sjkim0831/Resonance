@@ -8,11 +8,13 @@ STATUS_MIGRATION="$ROOT/apps/carbonet-api/src/main/resources/db/migration/postgr
 STATUS_POSTGRES_TEST="$ROOT/ops/tests/test-account-lock-recovery-process-status-gate-postgres.sh"
 CASE_MIGRATION="$ROOT/apps/carbonet-api/src/main/resources/db/migration/postgresql/V20260811201000__canonicalize_account_recovery_self_service_cases.sql"
 CASE_POSTGRES_TEST="$ROOT/ops/tests/test-account-lock-recovery-self-service-cases-postgres.sh"
+RELAY_POSTGRES_TEST="$ROOT/ops/tests/test-account-lock-recovery-self-service-relay-postgres.sh"
 
 bash -n "$AUDIT"
 bash -n "$PROMOTER"
 bash -n "$STATUS_POSTGRES_TEST"
 bash -n "$CASE_POSTGRES_TEST"
+bash -n "$RELAY_POSTGRES_TEST"
 [[ -f "$STATUS_MIGRATION" ]]
 [[ -f "$CASE_MIGRATION" ]]
 
@@ -50,6 +52,10 @@ for token in \
   "'aligned',a.aligned" \
   'passedCases==.partialEvidence.tests.approvedCases' \
   'runtimeIdentityCurrent' \
+  'framework_runtime_release_identity_hash(runtime) AS runtime_identity_hash' \
+  "r.evidence_json::jsonb->>'runtimeIdentityHash'=" \
+  "r.evidence_json::jsonb->>'podTemplateSha256'=" \
+  'runtimeIdentityHash:$runtimeIdentityHash' \
   'sourceCheckoutCurrent' \
   'PROCESS_ASSURANCE_STATUS_INVALID' \
   'processStatus:["IN_DEVELOPMENT","ACTIVE"]' \
@@ -71,6 +77,13 @@ for token in \
   'FOR SHARE OF r' \
   'FOR SHARE OF g' \
   'runtime_source_commit' \
+  '.runtimeIdentityHash|select(test("^[0-9a-f]{64}$"))' \
+  'framework_runtime_release_identity_hash(runtime)' \
+  'runtime_pod_template_sha256' \
+  "r.evidence_json::jsonb->>'runtimeIdentityHash'=runtime_identity_hash_value" \
+  "r.evidence_json::jsonb->>'podTemplateSha256'=runtime_pod_template_sha256" \
+  "runtime_identity_hash_value IS DISTINCT FROM '\$runtime_identity_hash'" \
+  'and .runtimeIdentityHash==$runtimeIdentityHash' \
   '.partialEvidence.process.processStatus=="IN_DEVELOPMENT"' \
   "process_status_value<>'IN_DEVELOPMENT'" \
   "process_status='ACTIVE' AND definition_locked" \
@@ -91,6 +104,15 @@ for token in \
   '.partialEvidence.artifacts.verified==4' \
   'post_report'; do
   grep -Fq "$token" "$PROMOTER" || { echo "[account-lock-recovery-assurance-contract] FAIL promoter missing=$token" >&2; exit 1; }
+done
+
+for token in \
+  'runtime_identity_hash_value' 'pod_template_sha256_value' \
+  "'runtimeIdentityHash',runtime_identity_hash_value" \
+  "'podTemplateSha256',pod_template_sha256_value" \
+  "r.evidence_json::jsonb->>'runtimeIdentityHash'=runtime_identity_hash_value" \
+  "r.evidence_json::jsonb->>'podTemplateSha256'=pod_template_sha256_value"; do
+  grep -Fq "$token" "$RELAY_POSTGRES_TEST" || { echo "[account-lock-recovery-assurance-contract] FAIL relay test missing=$token" >&2; exit 1; }
 done
 
 for token in \
@@ -159,4 +181,31 @@ if grep -Fq '*delivery*url*' "$AUDIT"; then
   exit 1
 fi
 
-echo '[account-lock-recovery-assurance-contract] PASS failClosed=true steps=4 canonicalScreens=4 artifacts=4 cases=all types=all jobs=43 deployLock=shared evidenceLocks=serializable providerUrl=exact manufacturedEvidence=0'
+python3 - "$AUDIT" "$PROMOTER" <<'PY'
+from pathlib import Path
+import sys
+
+audit=Path(sys.argv[1]).read_text(encoding="utf-8")
+source=Path(sys.argv[2]).read_text(encoding="utf-8")
+transaction=source[source.index("BEGIN ISOLATION LEVEL SERIALIZABLE;"):source.index('COMMIT;" >/dev/null')]
+identity_lock=transaction.index("framework_runtime_release_identity_hash(runtime)")
+identity_compare=transaction.index("runtime_identity_hash_value IS DISTINCT FROM")
+first_promotion=transaction.index("INSERT INTO framework_development_job_event")
+assert identity_lock < identity_compare < first_promotion
+assert "FOR SHARE" in transaction[identity_lock:first_promotion]
+for consumer in (audit, transaction):
+    assert "r.evidence_json::jsonb->>'runtimeIdentityHash'" in consumer
+    assert "r.evidence_json::jsonb->>'podTemplateSha256'" in consumer
+mutant=transaction.replace(
+    " OR runtime_identity_hash_value IS DISTINCT FROM '$runtime_identity_hash'","",1
+)
+assert "runtime_identity_hash_value IS DISTINCT FROM" not in mutant
+assert "runtime_identity_hash_value IS DISTINCT FROM" in transaction
+template_mutant=transaction.replace(
+    "AND r.evidence_json::jsonb->>'podTemplateSha256'=runtime_pod_template_sha256", "", 1
+)
+assert "r.evidence_json::jsonb->>'podTemplateSha256'=runtime_pod_template_sha256" in transaction
+assert template_mutant != transaction
+PY
+
+echo '[account-lock-recovery-assurance-contract] PASS failClosed=true steps=4 canonicalScreens=4 artifacts=4 cases=all types=all jobs=43 deployLock=shared evidenceLocks=serializable runtimeIdentity=source+V2hash+podTemplate simulations=identity-bound providerUrl=exact manufacturedEvidence=0'

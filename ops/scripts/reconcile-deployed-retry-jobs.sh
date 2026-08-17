@@ -6,8 +6,16 @@ DEPLOY_STATE_FILE="${CARBONET_DEPLOY_STATE_FILE:-/opt/resonance-data/deploy/carb
 K8S_NAMESPACE="${K8S_NAMESPACE:-carbonet-prod}"
 POSTGRES_POD="${POSTGRES_POD:-postgres-patroni-0}"
 PGHOST="${PGHOST:-postgres-haproxy}"
-APPLY=false
-[[ "${1:-}" == "--apply" ]] && APPLY=true
+
+# This legacy one-off path inferred deployment authority from a source marker
+# and readiness alone. It cannot prove the PodTemplate-bound runtime identity,
+# so mutating reconciliation is permanently retired in favour of the governed
+# development orchestrator. Keep the read-only report for diagnostics.
+if [[ "${1:-}" == "--apply" ]]; then
+  echo 'RECONCILE_DEPLOYED_RETRY_APPLY_RETIRED: use the governed development orchestrator' >&2
+  exit 78
+fi
+[[ $# -eq 0 ]] || { echo "usage: $0 [--apply]" >&2; exit 2; }
 
 : "${PGDATABASE:?PGDATABASE is required}"
 : "${PGUSER:?PGUSER is required}"
@@ -45,31 +53,9 @@ for job_id in "${job_ids[@]}"; do
     continue
   fi
 
-  printf '%s job=%s commit=%s\n' "$([[ "$APPLY" == true ]] && echo VERIFY || echo DRY_RUN)" "$job_id" "$result_commit"
-  if [[ "$APPLY" == true ]]; then
-    psqlq -c "
-      update framework_development_job
-         set job_status='VERIFIED', quality_status='VERIFIED',
-             result_json=jsonb_build_object('commit','${result_commit}','strategy','RECONCILE_DEPLOYED_ANCESTOR'),
-             evidence_ref='git:${result_commit};deploy:${deployed};health:UP',
-             last_error=null, completed_at=current_timestamp, lease_token=null, lease_until=null,
-             updated_at=current_timestamp
-       where job_id=${job_id} and job_status='RETRY'
-         and last_error='result commit was not deployed';
-      update framework_process_artifact a
-         set delivery_status='VERIFIED', evidence_ref='git:${result_commit};deploy:${deployed};health:UP',
-             updated_at=current_timestamp
-        from framework_development_job j
-       where j.job_id=${job_id} and a.process_code=j.process_code and a.step_code=j.step_code
-         and a.contract_ref='AUTO:' || j.job_type;
-      insert into framework_development_job_gate_result(job_id,gate_code,result,summary,evidence_ref)
-      values (${job_id},'DEPLOY_HEALTH','PASSED',
-              'Result commit is contained in the canonical deployed commit and runtime is healthy.',
-              'git:${result_commit};deploy:${deployed};health:UP');
-    " >/dev/null
-  fi
+  printf 'DRY_RUN job=%s commit=%s\n' "$job_id" "$result_commit"
   verified=$((verified + 1))
 done
 
 printf 'SUMMARY mode=%s candidates=%d verified=%d skipped=%d deployed=%s replicas=%s/%s\n' \
-  "$([[ "$APPLY" == true ]] && echo apply || echo dry-run)" "${#job_ids[@]}" "$verified" "$skipped" "$deployed" "$ready" "$desired"
+  'dry-run' "${#job_ids[@]}" "$verified" "$skipped" "$deployed" "$ready" "$desired"

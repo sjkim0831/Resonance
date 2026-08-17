@@ -1,14 +1,9 @@
 [Unit]
-Description=Resonance Kubernetes Recovery Service
-After=network-online.target kubelet.service
-Wants=network-online.target
-Requires=kubelet.service
+Description=Retired duplicate Resonance Kubernetes recovery entrypoint
 
 [Service]
 Type=oneshot
-Environment=ROOT_DIR=/opt/Resonance
-WorkingDirectory=/opt/Resonance/var/deploy-worktrees/runtime-build
-ExecStart=/bin/bash -c 'sleep 30 && exec /bin/bash /opt/Resonance/var/deploy-worktrees/runtime-build/ops/scripts/resonance-up.sh'
+ExecStart=/bin/bash -c 'printf "%s\n" "resonance-recovery retired; carbonet-post-reboot-recovery.service owns recovery (mutation=0)"'
 RemainAfterExit=yes
 StandardOutput=append:/opt/Resonance/var/log/resonance-recovery.log
 StandardError=append:/opt/Resonance/var/log/resonance-recovery.log

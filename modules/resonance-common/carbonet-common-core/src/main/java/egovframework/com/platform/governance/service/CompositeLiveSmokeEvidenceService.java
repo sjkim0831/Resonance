@@ -250,12 +250,7 @@ public class CompositeLiveSmokeEvidenceService {
               join framework_runtime_release_state runtime
                 on runtime.release_key='CARBONET_RUNTIME' and runtime.health_status='UP'
                and runtime.source_commit=dispatch.runtime_commit
-               and dispatch.runtime_identity_hash=encode(sha256(convert_to(concat_ws('|',
-                 runtime.source_commit,runtime.deployment_namespace,runtime.deployment_name,
-                 runtime.deployment_uid,runtime.deployment_generation,
-                 runtime.observed_generation,runtime.desired_replicas,
-                 runtime.image_ref,runtime.image_id,runtime.health_status
-               ),'UTF8')),'hex')
+               and dispatch.runtime_identity_hash=framework_runtime_release_identity_hash(runtime)
               join integrated_design_autocompletion_receipt receipt
                 on receipt.process_code=authority.process_code and receipt.job_id=job.job_id
               join lateral(select candidate.* from integrated_design_scope_binding candidate

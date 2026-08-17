@@ -109,6 +109,26 @@ broker_ready() {
   grep -q "JDBC_OK" "$LOG_DIR/resonance-start-best-effort-broker.log"
 }
 
+# The legacy local-Kubernetes restart path rebuilds and changes a Deployment
+# image without a durable release attempt. Never let its historical production
+# defaults reach Docker, build tools, or Kubernetes. Auto mode retains the
+# independent HTTPS maintenance/JVM fallback; an explicit K8s-only request is
+# rejected with the retired-entrypoint status.
+startup_namespace="${NAMESPACE:-carbonet-prod}"
+startup_deployment="${DEPLOYMENT:-carbonet-runtime}"
+if [[ "$startup_namespace" == carbonet-prod \
+   && "$startup_deployment" == carbonet-runtime \
+   && ( "$MODE" == auto || "$MODE" == k8s ) ]]; then
+  event "WARN" "production-k8s-retired" \
+    "direct production image/template mutation requires durable auto-deploy"
+  if [[ "$MODE" == k8s ]]; then
+    echo "[start-best-effort] production K8s restart retired; use durable auto-deploy" >&2
+    exit 78
+  fi
+  MODE=https-jvm
+  REQUIRE_K8S=false
+fi
+
 echo "[start-best-effort] mode=$MODE"
 
 if ! preflight; then

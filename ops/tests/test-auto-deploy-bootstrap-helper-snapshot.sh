@@ -14,6 +14,8 @@ FLYWAY_RUNNER="$ROOT/ops/scripts/run-flyway-migration-job.sh"
 bash -n "$LAUNCHER" "$AUTO" "$HANDLER" "$RUNNER" "$FLYWAY_RUNNER"
 for token in \
   'snapshot_orphan_recovery_helper=' \
+  'snapshot_legacy_automation_retirement_helper=' \
+  'snapshot_legacy_automation_retirement_helper_sha256=' \
   'snapshot_postdeploy_leader_resolver=' \
   'snapshot_postdeploy_leader_resolver_sha256=' \
   'snapshot_flyway_job_runner=' \
@@ -21,6 +23,8 @@ for token in \
   'CARBONET_DEPLOY_SNAPSHOT_TARGET_COMMIT="$target_commit"' \
   'CARBONET_DEPLOY_ORPHAN_RECOVERY_HELPER="$snapshot_orphan_recovery_helper"' \
   'CARBONET_DEPLOY_ORPHAN_RECOVERY_HELPER_SHA256="$snapshot_orphan_recovery_helper_sha256"' \
+  'CARBONET_LEGACY_AUTOMATION_RETIRE_HELPER="$snapshot_legacy_automation_retirement_helper"' \
+  'CARBONET_LEGACY_AUTOMATION_RETIRE_HELPER_SHA256="$snapshot_legacy_automation_retirement_helper_sha256"' \
   'CARBONET_POSTDEPLOY_LEADER_RESOLVER="$snapshot_postdeploy_leader_resolver"' \
   'CARBONET_FLYWAY_JOB_RUNNER="$snapshot_flyway_job_runner"'; do
   grep -Fq "$token" "$LAUNCHER"
@@ -82,6 +86,10 @@ cat >"$PUBLISHER/ops/scripts/reconcile-exact-legacy-orphan-runtime-quarantine.sh
 #!/usr/bin/env bash
 printf 'STALE_ROOT_HELPER:%s\n' "$1"
 SH
+cat >"$PUBLISHER/ops/scripts/retire-legacy-runtime-mutation-automation.sh" <<'SH'
+#!/usr/bin/env bash
+printf 'STALE_RETIREMENT_HELPER\n'
+SH
 cat >"$PUBLISHER/ops/scripts/run-flyway-migration-job.sh" <<'SH'
 #!/usr/bin/env bash
 printf 'STALE_FLYWAY_RUNNER:%s\n' "$1"
@@ -117,6 +125,21 @@ target_sha="$(git -C "$CARBONET_DEPLOY_ORIGINAL_ROOT" show --format= --no-textco
 [[ "$CARBONET_DEPLOY_ORPHAN_RECOVERY_HELPER" \
    != "$CARBONET_DEPLOY_ORIGINAL_ROOT/ops/scripts/reconcile-exact-legacy-orphan-runtime-quarantine.sh" ]] \
   || fail stale-root-path
+[[ -s "${CARBONET_LEGACY_AUTOMATION_RETIRE_HELPER:-}" \
+   && ! -L "$CARBONET_LEGACY_AUTOMATION_RETIRE_HELPER" ]] || fail missing-retirement-helper
+[[ "$(dirname "$(readlink -f "$CARBONET_LEGACY_AUTOMATION_RETIRE_HELPER")")" \
+   == "$(dirname "$(readlink -f "$CARBONET_DEPLOY_SNAPSHOT_PATH")")" ]] \
+  || fail retirement-helper-outside-snapshot
+[[ "$(stat -c '%a:%u' "$CARBONET_LEGACY_AUTOMATION_RETIRE_HELPER")" == "700:$(id -u)" ]] \
+  || fail retirement-helper-non-private
+retirement_helper_sha="$(sha256sum "$CARBONET_LEGACY_AUTOMATION_RETIRE_HELPER" | awk '{print $1}')"
+[[ "$retirement_helper_sha" == "${CARBONET_LEGACY_AUTOMATION_RETIRE_HELPER_SHA256:-}" ]] \
+  || fail retirement-helper-snapshot-hash-mismatch
+target_retirement_helper_sha="$(git -C "$CARBONET_DEPLOY_ORIGINAL_ROOT" show --format= --no-textconv \
+  "$CARBONET_DEPLOY_SNAPSHOT_TARGET_COMMIT:ops/scripts/retire-legacy-runtime-mutation-automation.sh" \
+  | sha256sum | awk '{print $1}')"
+[[ "$retirement_helper_sha" == "$target_retirement_helper_sha" ]] \
+  || fail retirement-helper-target-hash-mismatch
 [[ -s "${CARBONET_POSTDEPLOY_LEADER_RESOLVER:-}" \
    && ! -L "$CARBONET_POSTDEPLOY_LEADER_RESOLVER" ]] || fail missing-leader-resolver
 [[ "$(dirname "$(readlink -f "$CARBONET_POSTDEPLOY_LEADER_RESOLVER")")" \
@@ -166,6 +189,10 @@ SH
 cat >"$PUBLISHER/ops/scripts/reconcile-exact-legacy-orphan-runtime-quarantine.sh" <<'SH'
 #!/usr/bin/env bash
 printf 'TARGET_HELPER:%s\n' "$1"
+SH
+cat >"$PUBLISHER/ops/scripts/retire-legacy-runtime-mutation-automation.sh" <<'SH'
+#!/usr/bin/env bash
+printf 'TARGET_RETIREMENT_HELPER\n'
 SH
 cat >"$PUBLISHER/ops/scripts/resolve-patroni-primary-pod.sh" <<'SH'
 #!/usr/bin/env bash

@@ -177,10 +177,13 @@ if compgen -G "${checkpoint}.tmp.*" >/dev/null; then
   exit 1
 fi
 run_checkpoint mark-ready
+pod_template_sha256="$(jq -cS '.spec.template' "$fixtures/deployment.good.json" | sha256sum | awk '{print $1}')"
 jq -e \
-  --arg target "$target_commit" --arg image "$image" --arg release "$release" --arg imageId "$image_id" '
+  --arg target "$target_commit" --arg image "$image" --arg release "$release" --arg imageId "$image_id" \
+  --arg podTemplateSha256 "$pod_template_sha256" '
   .stage=="RUNTIME_CANDIDATE_READY" and .targetCommit==$target and .imageRef==$image and .releaseId==$release and
   .deploymentGeneration==7 and .desiredReplicas==2 and .imageIdDigest==$imageId and
+  .podTemplateSha256==$podTemplateSha256 and
   (.assetManifestSha256|length)==64 and (.migrationEvidenceSha256|length)==64 and (.activeFileSha256|length)==64' \
   "$checkpoint" >/dev/null
 run_checkpoint verify
@@ -192,6 +195,11 @@ export CARBONET_CHECKPOINT_TARGET_COMMIT="$target_commit"
 
 jq '.spec.template.spec.containers[0].image="localhost:5000/carbonet-runtime:other"' "$fixtures/deployment.good.json" >"$fixtures/deployment.json"
 expect_failure image-mismatch run_checkpoint verify
+restore_live_fixtures
+
+jq '.spec.template.spec.containers[0].env=[{"name":"COUPLED_TEMPLATE_DRIFT","value":"1"}]' \
+  "$fixtures/deployment.good.json" >"$fixtures/deployment.json"
+expect_failure pod-template-mismatch run_checkpoint verify
 restore_live_fixtures
 
 jq '.spec.template.metadata.labels["resonance.ai/release-id"]="other-release"' "$fixtures/deployment.good.json" >"$fixtures/deployment.json"
@@ -272,4 +280,74 @@ if [[ "${CHECKPOINT_TEST_SKIP_STATIC_SOURCE_ASSERTIONS:-false}" != "true" ]]; th
   grep -Fq 'resonance.ai/target-commit=$target_commit_annotation' "$BUILD_DEPLOY"
 fi
 
-echo '[runtime-checkpoint-test] PASS exact target/image/release/generation/replicas/health/assets/migrations are fail-closed; atomic lifecycle preserves failures and clears verified success/failure'
+# Execute the child handoff guard itself. A staged durable attempt is the sole
+# authority to invalidate the old release ledger, and a missing/count-unknown
+# invalidation must enter ordinary durable-journal recovery before any modeled
+# live mutation; status 79 remains reserved for an unknown Flyway session.
+fake_recorder="$work/fake-record-runtime-release-state.sh"
+cat >"$fake_recorder" <<'SH'
+#!/usr/bin/env bash
+set -euo pipefail
+[[ "$*" == "--invalidate" ]]
+printf '%s\n' "${POSTGRES_POD:-}|${CARBONET_K8S_NAMESPACE:-}|$*" >>"$FAKE_LEDGER_TRACE"
+exit "${FAKE_LEDGER_STATUS:-0}"
+SH
+chmod +x "$fake_recorder"
+eval "$(sed -n '/^invalidate_runtime_release_state_before_live_mutation() {$/,/^}$/p' "$BUILD_DEPLOY")"
+log_error() { :; }
+log_success() { :; }
+ROOT_DIR="$repo"; NAMESPACE=carbonet-test; DEPLOYMENT=carbonet-runtime; CONTAINER=carbonet-runtime
+RUNTIME_RELEASE_STATE_RECORDER="$fake_recorder"
+RESONANCE_POSTGRES_LEADER_POD=postgres-0
+FAKE_LEDGER_TRACE="$work/ledger-invalidation.trace"; export FAKE_LEDGER_TRACE
+modeled_mutation="$work/live-mutation"
+run_pre_mutation_handoff() {
+  local status=0
+  invalidate_runtime_release_state_before_live_mutation || status=$?
+  (( status == 0 )) || return "$status"
+  printf 'mutated\n' >"$modeled_mutation"
+}
+
+CARBONET_DURABLE_ATTEMPT_REQUIRED=true
+POSTDEPLOY_DB_ATTEMPT_STAGED=false
+status=0; run_pre_mutation_handoff || status=$?
+[[ "$status" == 1 && ! -e "$modeled_mutation" && ! -e "$FAKE_LEDGER_TRACE" ]]
+
+POSTDEPLOY_DB_ATTEMPT_STAGED=true
+FAKE_LEDGER_STATUS=1; export FAKE_LEDGER_STATUS
+status=0; run_pre_mutation_handoff || status=$?
+[[ "$status" == 1 && ! -e "$modeled_mutation" ]]
+grep -Fxq 'postgres-0|carbonet-test|--invalidate' "$FAKE_LEDGER_TRACE"
+
+: >"$FAKE_LEDGER_TRACE"
+FAKE_LEDGER_STATUS=0; export FAKE_LEDGER_STATUS
+run_pre_mutation_handoff
+[[ -s "$modeled_mutation" ]]
+grep -Fxq 'postgres-0|carbonet-test|--invalidate' "$FAKE_LEDGER_TRACE"
+
+python3 - "$BUILD_DEPLOY" <<'PY'
+from pathlib import Path
+import sys
+
+source=Path(sys.argv[1]).read_text(encoding="utf-8")
+rollout=source[source.index("rollout_image() {"):source.index("verify_runtime() {")]
+flyway=rollout.index("run-flyway-migration-job.sh")
+stage=rollout.index("stage-postdeploy-release-attempt.sh",flyway)
+invalidate=rollout.index("require_runtime_release_state_invalidation_before_live_mutation",stage)
+mutations=[
+    rollout.index("publish_pending_frontend_staging",invalidate),
+    rollout.index('kubectl -n "$NAMESPACE" set env',invalidate),
+    rollout.index("kubectl apply -f -",invalidate),
+    rollout.index('kubectl -n "$NAMESPACE" patch',invalidate),
+]
+assert flyway < stage < invalidate < min(mutations)
+guard_start=source.index("invalidate_runtime_release_state_before_live_mutation() {")
+guard=source[guard_start:source.index("\n}\n",guard_start)+3]
+assert "return 79" not in guard
+require_start=source.index("require_runtime_release_state_invalidation_before_live_mutation() {")
+require_guard=source[require_start:source.index("\n}\n",require_start)+3]
+assert "invalidate_runtime_release_state_before_live_mutation" in require_guard
+assert 'rollback_and_fail "RUNTIME_LEDGER_INVALIDATION_FAILED"' in require_guard
+PY
+
+echo '[runtime-checkpoint-test] PASS exact target/image/release/generation/replicas/pod-template/health/assets/migrations are fail-closed; atomic lifecycle preserves failures and clears verified success/failure; Flyway<attempt-stage<ledger-count0<live-mutation and invalidation failure uses ordinary journal recovery+mutation0'

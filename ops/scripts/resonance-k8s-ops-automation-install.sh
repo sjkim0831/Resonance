@@ -121,33 +121,6 @@ Unit=resonance-k8s-housekeeper.service
 WantedBy=timers.target
 EOF
 
-cat >"$tmp_dir/resonance-startup-watchdog.service" <<EOF
-[Unit]
-Description=Resonance startup watchdog for 17890 and fallback runtime recovery
-After=network-online.target docker.service containerd.service kubelet.service
-
-[Service]
-Type=oneshot
-User=sjkim
-WorkingDirectory=$ROOT_DIR
-ExecStart=$ROOT_DIR/ops/scripts/resonance-startup-watchdog.sh
-EOF
-
-cat >"$tmp_dir/resonance-startup-watchdog.timer" <<'EOF'
-[Unit]
-Description=Run Resonance startup watchdog every 2 minutes
-
-[Timer]
-OnBootSec=90s
-OnUnitActiveSec=2min
-AccuracySec=20s
-Persistent=true
-Unit=resonance-startup-watchdog.service
-
-[Install]
-WantedBy=timers.target
-EOF
-
 cat >"$tmp_dir/resonance-ownership-normalize.service" <<EOF
 [Unit]
 Description=Normalize Resonance generated file ownership
@@ -203,22 +176,27 @@ Unit=resonance-k8s-boot-stabilize.service
 WantedBy=timers.target
 EOF
 
-install_unit resonance-frontend-auto-build.service "$tmp_dir/resonance-frontend-auto-build.service"
-install_unit resonance-frontend-auto-build.timer "$tmp_dir/resonance-frontend-auto-build.timer"
 install_unit resonance-k8s-ops-doctor.service "$tmp_dir/resonance-k8s-ops-doctor.service"
 install_unit resonance-k8s-ops-doctor.timer "$tmp_dir/resonance-k8s-ops-doctor.timer"
 install_unit resonance-k8s-housekeeper.service "$tmp_dir/resonance-k8s-housekeeper.service"
 install_unit resonance-k8s-housekeeper.timer "$tmp_dir/resonance-k8s-housekeeper.timer"
-install_unit resonance-startup-watchdog.service "$tmp_dir/resonance-startup-watchdog.service"
-install_unit resonance-startup-watchdog.timer "$tmp_dir/resonance-startup-watchdog.timer"
 install_unit resonance-ownership-normalize.service "$tmp_dir/resonance-ownership-normalize.service"
 install_unit resonance-ownership-normalize.timer "$tmp_dir/resonance-ownership-normalize.timer"
 
 systemctl daemon-reload
-systemctl enable --now resonance-frontend-auto-build.timer
 systemctl enable --now resonance-k8s-ops-doctor.timer
 systemctl enable --now resonance-k8s-housekeeper.timer
-systemctl enable --now resonance-startup-watchdog.timer
 systemctl enable --now resonance-ownership-normalize.timer
+# The legacy startup watchdog and duplicate reboot recovery were capable of
+# changing carbonet-prod without the durable release pipeline. Never recreate
+# or enable them from this installer. The predeploy retirement gate owns the
+# stronger verified one-way disable; these calls prevent standalone installer
+# use from reactivating an already-installed legacy unit.
+systemctl disable --now \
+  resonance-startup-watchdog.timer resonance-recovery.service \
+  resonance-frontend-auto-build.timer resonance-react-route-self-heal.timer 2>/dev/null || true
+systemctl stop \
+  resonance-startup-watchdog.service resonance-frontend-auto-build.service \
+  resonance-react-route-self-heal.service 2>/dev/null || true
 systemctl disable --now resonance-backend-auto-redeploy.timer resonance-k8s-boot-stabilize.timer 2>/dev/null || true
 systemctl list-timers --all | grep -E 'resonance-(frontend|backend|k8s-ops|k8s-housekeeper)' || true

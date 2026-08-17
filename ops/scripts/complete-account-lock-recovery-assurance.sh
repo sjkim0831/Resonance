@@ -45,6 +45,7 @@ jq -e '.assuranceReady==true
   <<<"$audit_report" >/dev/null
 
 source_commit="$(jq -er '.deployedCommit|select(test("^[0-9a-f]{40}$"))' <<<"$audit_report")"
+runtime_identity_hash="$(jq -er '.runtimeIdentityHash|select(test("^[0-9a-f]{64}$"))' <<<"$audit_report")"
 evidence_sha="$(printf '%s' "$audit_report" | sha256sum | awk '{print $1}')"
 source "$ROOT/ops/scripts/lib/carbonet-postgres-query.sh"
 carbonet_postgres_query_init
@@ -57,6 +58,7 @@ DO \$\$
 DECLARE
   process_version_value text; process_status_value text; definition_locked_value boolean;
   definition_count integer; version_count integer; runtime_source_commit text;
+  runtime_identity_hash_value text; runtime_pod_template_sha256 text;
   step_count integer; aligned_steps integer; contract_count integer; implementation_contracts integer;
   actual_steps integer; approved_cases integer; passed_cases integer;
   approved_types integer; passed_types integer;
@@ -78,10 +80,12 @@ BEGIN
   IF process_status_value<>'IN_DEVELOPMENT' OR NOT definition_locked_value THEN
     RAISE EXCEPTION 'account recovery pre-promotion status mismatch status=% locked=%',process_status_value,definition_locked_value;
   END IF;
-  SELECT source_commit INTO STRICT runtime_source_commit
-  FROM framework_runtime_release_state WHERE release_key='$RUNTIME_RELEASE_KEY' FOR SHARE;
-  IF runtime_source_commit<>'$source_commit' THEN
-    RAISE EXCEPTION 'account recovery runtime identity changed expected=% actual=%','$source_commit',runtime_source_commit;
+  SELECT source_commit,framework_runtime_release_identity_hash(runtime),pod_template_sha256
+  INTO STRICT runtime_source_commit,runtime_identity_hash_value,runtime_pod_template_sha256
+  FROM framework_runtime_release_state runtime WHERE release_key='$RUNTIME_RELEASE_KEY' FOR SHARE;
+  IF runtime_source_commit<>'$source_commit' OR runtime_identity_hash_value IS DISTINCT FROM '$runtime_identity_hash' THEN
+    RAISE EXCEPTION 'account recovery runtime identity changed expected=%/% actual=%/%',
+      '$source_commit','$runtime_identity_hash',runtime_source_commit,runtime_identity_hash_value;
   END IF;
 
   PERFORM 1 FROM framework_development_job WHERE process_code='$PROCESS' AND required FOR UPDATE;
@@ -101,6 +105,8 @@ BEGIN
   JOIN framework_simulation_case c ON c.case_code=r.case_code
   WHERE c.process_code='$PROCESS' AND r.process_version=process_version_value
     AND r.source_commit='$source_commit'
+    AND r.evidence_json::jsonb->>'runtimeIdentityHash'=runtime_identity_hash_value
+    AND r.evidence_json::jsonb->>'podTemplateSha256'=runtime_pod_template_sha256
   FOR SHARE OF r;
   PERFORM g.result_id FROM framework_development_job_gate_result g
   JOIN framework_development_job j ON j.job_id=g.job_id
@@ -148,12 +154,18 @@ BEGIN
     count(*) FILTER (WHERE case_status='APPROVED' AND automated
       AND EXISTS (SELECT 1 FROM framework_simulation_run r WHERE r.case_code=c.case_code
         AND r.result='PASSED' AND r.source_commit='$source_commit'
-        AND r.process_version=process_version_value AND coalesce(r.evidence_hash,'')<>'')),
+        AND r.process_version=process_version_value
+        AND r.evidence_json::jsonb->>'runtimeIdentityHash'=runtime_identity_hash_value
+        AND r.evidence_json::jsonb->>'podTemplateSha256'=runtime_pod_template_sha256
+        AND coalesce(r.evidence_hash,'')<>'')),
     count(DISTINCT case_type) FILTER (WHERE case_status='APPROVED'),
     count(DISTINCT case_type) FILTER (WHERE case_status='APPROVED' AND automated
       AND EXISTS (SELECT 1 FROM framework_simulation_run r WHERE r.case_code=c.case_code
         AND r.result='PASSED' AND r.source_commit='$source_commit'
-        AND r.process_version=process_version_value AND coalesce(r.evidence_hash,'')<>''))
+        AND r.process_version=process_version_value
+        AND r.evidence_json::jsonb->>'runtimeIdentityHash'=runtime_identity_hash_value
+        AND r.evidence_json::jsonb->>'podTemplateSha256'=runtime_pod_template_sha256
+        AND coalesce(r.evidence_hash,'')<>''))
   INTO approved_cases,passed_cases,approved_types,passed_types
   FROM framework_simulation_case c WHERE process_code='$PROCESS';
 
@@ -315,7 +327,8 @@ COMMIT;" >/dev/null
 # The deploy lock is still held. A second full audit proves provider, release
 # identity, case evidence, and persistent promotion state did not drift.
 post_report="$(bash "$AUDIT_SCRIPT")"
-jq -e '.assuranceReady==true
+jq -e --arg runtimeIdentityHash "$runtime_identity_hash" '.assuranceReady==true
+  and .runtimeIdentityHash==$runtimeIdentityHash
   and .partialEvidence.jobs.verified==43
   and .partialEvidence.artifacts.verified==4
   and .partialEvidence.process.definitionCount==1
@@ -324,5 +337,6 @@ jq -e '.assuranceReady==true
   and .partialEvidence.process.processStatus=="ACTIVE"
   and .partialEvidence.process.definitionLocked==true' <<<"$post_report" >/dev/null
 
-jq -cn --arg processCode "$PROCESS" --arg sourceCommit "$source_commit" --arg evidenceHash "$evidence_sha" \
-  '{status:"PROMOTED",processCode:$processCode,jobs:"43/43",steps:"4/4",sourceCommit:$sourceCommit,evidenceHash:$evidenceHash}'
+jq -cn --arg processCode "$PROCESS" --arg sourceCommit "$source_commit" \
+  --arg runtimeIdentityHash "$runtime_identity_hash" --arg evidenceHash "$evidence_sha" \
+  '{status:"PROMOTED",processCode:$processCode,jobs:"43/43",steps:"4/4",sourceCommit:$sourceCommit,runtimeIdentityHash:$runtimeIdentityHash,evidenceHash:$evidenceHash}'

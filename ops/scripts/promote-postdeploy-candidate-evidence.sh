@@ -12,11 +12,14 @@ DB_CONTAINER="${CARBONET_POSTGRES_CONTAINER:-patroni}"
 DATABASE="${POSTGRES_DB:-carbonet}"
 DATABASE_USER="${POSTGRES_ADMIN_USER:-postgres}"
 KUBECTL_BIN="${CARBONET_RUNTIME_LEDGER_KUBECTL_BIN:-kubectl}"
+DEFER_MARKER_UNTIL_FINAL_VERIFY="${CARBONET_POSTDEPLOY_DEFER_MARKER_UNTIL_FINAL_VERIFY:-false}"
 
 fail() { printf '[postdeploy-promoter] FAIL: %s\n' "$*" >&2; exit 1; }
 [[ "$CANDIDATE_ID" =~ ^[A-Za-z0-9._:-]{12,160}$ ]] || fail 'candidate id is missing or invalid'
 [[ "$SOURCE_COMMIT" =~ ^[0-9a-f]{40}$ ]] || fail 'source commit is blank or invalid'
 [[ -n "$MARKER_FILE" ]] || fail 'deployment marker path is required'
+[[ "$DEFER_MARKER_UNTIL_FINAL_VERIFY" == true || "$DEFER_MARKER_UNTIL_FINAL_VERIFY" == false ]] \
+  || fail 'deferred marker mode must be true or false'
 
 marker_dir="$(dirname "$MARKER_FILE")"
 marker_name="$(basename "$MARKER_FILE")"
@@ -118,6 +121,11 @@ ready="$(jq -r '.status.readyReplicas' <<<"$deployment_json")"
 available="$(jq -r '.status.availableReplicas' <<<"$deployment_json")"
 image_ref="$(jq -r --arg container "$RUNTIME_CONTAINER" \
   '.spec.template.spec.containers[] | select(.name==$container) | .image' <<<"$deployment_json")"
+pod_template_sha256="$(jq -cS '.spec.template' <<<"$deployment_json" | sha256sum | awk '{print $1}')"
+template_annotation_sha256="$(jq -r '.metadata.annotations["resonance.ai/runtime-template-sha256"] // empty' <<<"$deployment_json")"
+[[ "$pod_template_sha256" =~ ^[0-9a-f]{64}$ \
+   && "$template_annotation_sha256" == "$pod_template_sha256" ]] \
+  || fail 'runtime PodTemplate annotation does not match the live template'
 selector="$(jq -r '.spec.selector.matchLabels // {} | to_entries | map("\(.key)=\(.value)") | join(",")' \
   <<<"$deployment_json")"
 [[ -n "$selector" ]] || fail 'runtime deployment pod selector is unavailable'
@@ -155,19 +163,17 @@ SELECT jsonb_build_object(
   'deploymentUid',deployment_uid,'deploymentGeneration',deployment_generation,
   'observedGeneration',observed_generation,'desiredReplicas',desired_replicas,
   'imageRef',image_ref,'imageId',image_id,'healthStatus',health_status,
-  'runtimeIdentityHash',encode(sha256(convert_to(concat_ws('|',
-    source_commit,deployment_namespace,deployment_name,deployment_uid,
-    deployment_generation,observed_generation,desired_replicas,
-    image_ref,image_id,health_status
-  ),'UTF8')),'hex')
+  'podTemplateSha256',pod_template_sha256,
+  'runtimeIdentityHash',framework_runtime_release_identity_hash(runtime)
 )::text
-FROM framework_runtime_release_state
+FROM framework_runtime_release_state runtime
 WHERE release_key='CARBONET_RUNTIME';
 SQL
 )" || fail 'runtime release ledger lookup failed'
 jq -e --arg commit "$SOURCE_COMMIT" --arg namespace "$NAMESPACE" \
   --arg deployment "$DEPLOYMENT" --arg uid "$deployment_uid" \
   --arg image "$image_ref" --arg imageId "$runtime_image_id" \
+  --arg podTemplateSha256 "$pod_template_sha256" \
   --argjson generation "$deployment_generation" --argjson observed "$observed_generation" \
   --argjson desired "$desired" --argjson updated "$updated" \
   --argjson ready "$ready" --argjson available "$available" '
@@ -177,6 +183,7 @@ jq -e --arg commit "$SOURCE_COMMIT" --arg namespace "$NAMESPACE" \
   and .observedGeneration==$observed and .desiredReplicas==$desired
   and $updated==$desired and $ready==$desired and $available==$desired
   and .imageRef==$image and .imageId==$imageId and .healthStatus=="UP"
+  and .podTemplateSha256==$podTemplateSha256
   and (.runtimeIdentityHash | test("^[0-9a-f]{64}$"))
 ' <<<"$runtime_ledger" >/dev/null || fail 'runtime ledger and Kubernetes identity mismatch'
 runtime_identity_hash="$(jq -r '.runtimeIdentityHash' <<<"$runtime_ledger")"
@@ -212,12 +219,16 @@ SQL
        end)
 ' <<<"$promotion" >/dev/null || fail 'promotion result contract mismatch'
 
-# Do not add fallible gates after this point.  A failed mv leaves the exact DB
-# promotion truthfully bound to the healthy commit.  A retry may reconcile this
-# marker only after repeating the exact K8s/pod/health/locked-ledger identity
-# checks above; it must never resurrect a marker for a rolled-back runtime.
-mv -fT -- "$MARKER_TMP" "$MARKER_FILE" || fail 'atomic deployment marker exact-target rename failed'
-trap - EXIT
-# Marker rename is the last fallible operation. A closed log pipe must never
-# turn a fully promoted runtime into a reported deployment failure.
-printf '[postdeploy-promoter] %s marker=%s\n' "$promotion" "$MARKER_FILE" || true
+# The governed auto-deploy finalizer defers this derived marker until its
+# mandatory post-COMMIT full live verifier completes. Standalone recovery keeps
+# the original atomic rename behavior after performing the same pre-COMMIT
+# identity proof above.
+if [[ "$DEFER_MARKER_UNTIL_FINAL_VERIFY" == true ]]; then
+  printf '[postdeploy-promoter] %s marker=DEFERRED_UNTIL_FINAL_LIVE_VERIFY\n' "$promotion" || true
+else
+  mv -fT -- "$MARKER_TMP" "$MARKER_FILE" || fail 'atomic deployment marker exact-target rename failed'
+  trap - EXIT
+  # Marker rename is the last fallible operation. A closed log pipe must never
+  # turn a fully promoted runtime into a reported deployment failure.
+  printf '[postdeploy-promoter] %s marker=%s\n' "$promotion" "$MARKER_FILE" || true
+fi

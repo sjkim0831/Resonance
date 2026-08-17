@@ -18,6 +18,18 @@ log() { echo -e "${BLUE}[$(date +%H:%M:%S)]${NC} $*" | tee -a "$LOG_FILE"; }
 log_ok() { echo -e "${GREEN}[OK]${NC} $*" | tee -a "$LOG_FILE"; }
 log_warn() { echo -e "${YELLOW}[WARN]${NC} $*" | tee -a "$LOG_FILE"; }
 
+trigger_deploy() {
+    local status=0
+    bash "$ROOT_DIR/ops/scripts/resonance-v3-deploy.sh" >> "$LOG_FILE" 2>&1 || status=$?
+    if (( status == 78 )); then
+        log_warn "Legacy file-watch deployment is retired; use the official durable auto-deploy pipeline"
+        return 78
+    elif (( status != 0 )); then
+        log_warn "Deploy failed, will retry on next change"
+    fi
+    return 0
+}
+
 WATCH_PATHS=(
     "$ROOT_DIR/projects/carbonet-frontend/source"
     "$ROOT_DIR/projects/carbonet-frontend/src"
@@ -85,9 +97,7 @@ start_daemon() {
                 if [ $((CURRENT_TIME - LAST_TRIGGER)) -ge $DEBOUNCE_SECONDS ]; then
                     log "Change detected, triggering deploy..."
                     LAST_TRIGGER=$CURRENT_TIME
-                    bash "$ROOT_DIR/ops/scripts/resonance-v3-deploy.sh" >> "$LOG_FILE" 2>&1 || {
-                        log_warn "Deploy failed, will retry on next change"
-                    }
+                    trigger_deploy || exit $?
                 fi
             fi
         done
@@ -111,9 +121,7 @@ start_polling_daemon() {
             if [ -n "$CURRENT_MD5" ] && [ "$CURRENT_MD5" != "$LAST_MD5" ]; then
                 LAST_MD5="$CURRENT_MD5"
                 log "Change detected, triggering deploy..."
-                bash "$ROOT_DIR/ops/scripts/resonance-v3-deploy.sh" >> "$LOG_FILE" 2>&1 || {
-                    log_warn "Deploy failed, will retry on next change"
-                }
+                trigger_deploy || exit $?
             fi
         done
     ) &

@@ -148,6 +148,10 @@ ORPHAN_RECOVERY_HELPER_EXPLICIT=false
 [[ -v CARBONET_DEPLOY_ORPHAN_RECOVERY_HELPER ]] && ORPHAN_RECOVERY_HELPER_EXPLICIT=true
 ORPHAN_RECOVERY_HELPER="${CARBONET_DEPLOY_ORPHAN_RECOVERY_HELPER:-$ROOT_DIR/ops/scripts/reconcile-exact-legacy-orphan-runtime-quarantine.sh}"
 ORPHAN_RECOVERY_HELPER_SHA256="${CARBONET_DEPLOY_ORPHAN_RECOVERY_HELPER_SHA256:-}"
+LEGACY_AUTOMATION_RETIRE_HELPER_EXPLICIT=false
+[[ -v CARBONET_LEGACY_AUTOMATION_RETIRE_HELPER ]] && LEGACY_AUTOMATION_RETIRE_HELPER_EXPLICIT=true
+LEGACY_AUTOMATION_RETIRE_HELPER="${CARBONET_LEGACY_AUTOMATION_RETIRE_HELPER:-$ROOT_DIR/ops/scripts/retire-legacy-runtime-mutation-automation.sh}"
+LEGACY_AUTOMATION_RETIRE_HELPER_SHA256="${CARBONET_LEGACY_AUTOMATION_RETIRE_HELPER_SHA256:-}"
 [[ -v CARBONET_POSTDEPLOY_ATTEMPT_JOURNAL_HELPER ]] && POSTDEPLOY_JOURNAL_HELPER_EXPLICIT=true || POSTDEPLOY_JOURNAL_HELPER_EXPLICIT=false
 [[ -v CARBONET_POSTDEPLOY_GATE_SCRIPT ]] && POSTDEPLOY_GATE_SCRIPT_EXPLICIT=true || POSTDEPLOY_GATE_SCRIPT_EXPLICIT=false
 [[ -v CARBONET_POSTDEPLOY_RECORD_RUNTIME_SCRIPT ]] && POSTDEPLOY_RECORD_RUNTIME_SCRIPT_EXPLICIT=true || POSTDEPLOY_RECORD_RUNTIME_SCRIPT_EXPLICIT=false
@@ -286,6 +290,95 @@ verify_bootstrap_orphan_recovery_helper() {
   fi
 }
 
+fail_bootstrap_legacy_automation_retirement_helper() {
+  echo "[auto-deploy] BLOCKED invalid target legacy-automation retirement helper: $1" >&2
+  return 79
+}
+
+# The already-installed launcher may predate this helper while still loading
+# the target auto-deploy script. Bridge exactly that first rollout by extracting
+# the helper blob from the authenticated target commit into the launcher's
+# existing private snapshot directory. Updated launchers pass an explicit,
+# pre-hashed snapshot and bypass this one-time path.
+bootstrap_target_legacy_automation_retirement_helper_if_required() {
+  local target_commit="${CARBONET_DEPLOY_SNAPSHOT_TARGET_COMMIT:-}"
+  local snapshot_path="${CARBONET_DEPLOY_SNAPSHOT_PATH:-}"
+  local snapshot_dir snapshot_tmp snapshot_metadata
+  [[ -n "$target_commit" && "$LEGACY_AUTOMATION_RETIRE_HELPER_EXPLICIT" != true ]] || return 0
+  if [[ ! "$target_commit" =~ ^[0-9a-f]{40}$ \
+     || ! -f "$snapshot_path" || -L "$snapshot_path" \
+     || "$(stat -c '%a:%u' "$snapshot_path" 2>/dev/null || true)" != "700:$(id -u)" ]]; then
+    fail_bootstrap_legacy_automation_retirement_helper invalid-stale-launcher-snapshot
+    return $?
+  fi
+  snapshot_dir="$(dirname "$(readlink -f "$snapshot_path" 2>/dev/null || true)")"
+  snapshot_metadata="$(stat -c '%a:%u' "$snapshot_dir" 2>/dev/null || true)"
+  if [[ "$snapshot_dir" != /tmp/carbonet-auto-deploy-main.* \
+     || "$snapshot_metadata" != "700:$(id -u)" ]]; then
+    fail_bootstrap_legacy_automation_retirement_helper unsafe-stale-launcher-directory
+    return $?
+  fi
+  snapshot_tmp="$(mktemp "$snapshot_dir/.retire-legacy-runtime-mutation-automation.XXXXXX")" || return 79
+  if ! git -C "$POLICY_ROOT" show --format= --no-textconv \
+      "$target_commit:ops/scripts/retire-legacy-runtime-mutation-automation.sh" >"$snapshot_tmp" \
+     || [[ ! -s "$snapshot_tmp" ]]; then
+    rm -f -- "$snapshot_tmp"
+    fail_bootstrap_legacy_automation_retirement_helper target-blob-unavailable
+    return $?
+  fi
+  chmod 0700 "$snapshot_tmp"
+  LEGACY_AUTOMATION_RETIRE_HELPER="$snapshot_tmp"
+  LEGACY_AUTOMATION_RETIRE_HELPER_SHA256="$(sha256sum "$snapshot_tmp" | awk '{print $1}')"
+  LEGACY_AUTOMATION_RETIRE_HELPER_EXPLICIT=true
+  [[ "$LEGACY_AUTOMATION_RETIRE_HELPER_SHA256" =~ ^[0-9a-f]{64}$ ]] || return 79
+  echo '[auto-deploy] target legacy-automation retirement helper bootstrapped from authenticated commit'
+}
+
+verify_bootstrap_legacy_automation_retirement_helper() {
+  local target_commit="${CARBONET_DEPLOY_SNAPSHOT_TARGET_COMMIT:-}"
+  local helper_real snapshot_dir_real actual_sha target_sha helper_mode_owner
+  if [[ ! -s "$LEGACY_AUTOMATION_RETIRE_HELPER" || -L "$LEGACY_AUTOMATION_RETIRE_HELPER" ]]; then
+    fail_bootstrap_legacy_automation_retirement_helper missing-or-symlink
+    return $?
+  fi
+  actual_sha="$(sha256sum "$LEGACY_AUTOMATION_RETIRE_HELPER" | awk '{print $1}')"
+  if [[ -n "$target_commit" ]]; then
+    if [[ ! "$target_commit" =~ ^[0-9a-f]{40}$ \
+       || "$LEGACY_AUTOMATION_RETIRE_HELPER_EXPLICIT" != true \
+       || ! "$LEGACY_AUTOMATION_RETIRE_HELPER_SHA256" =~ ^[0-9a-f]{64}$ ]]; then
+      fail_bootstrap_legacy_automation_retirement_helper incomplete-target-binding
+      return $?
+    fi
+    helper_mode_owner="$(stat -c '%a:%u' "$LEGACY_AUTOMATION_RETIRE_HELPER" 2>/dev/null || true)"
+    helper_real="$(readlink -f "$LEGACY_AUTOMATION_RETIRE_HELPER" 2>/dev/null || true)"
+    snapshot_dir_real="$(dirname "$(readlink -f "${CARBONET_DEPLOY_SNAPSHOT_PATH:-}" 2>/dev/null || true)")"
+    if [[ "$helper_mode_owner" != "700:$(id -u)" \
+       || -z "$helper_real" || "$(dirname "$helper_real")" != "$snapshot_dir_real" ]]; then
+      fail_bootstrap_legacy_automation_retirement_helper outside-private-target-snapshot
+      return $?
+    fi
+    if ! target_sha="$(git -C "$POLICY_ROOT" show --format= --no-textconv \
+      "$target_commit:ops/scripts/retire-legacy-runtime-mutation-automation.sh" 2>/dev/null \
+      | sha256sum | awk '{print $1}')"; then
+      fail_bootstrap_legacy_automation_retirement_helper target-blob-unavailable
+      return $?
+    fi
+    if [[ "$target_sha" != "$LEGACY_AUTOMATION_RETIRE_HELPER_SHA256" ]]; then
+      fail_bootstrap_legacy_automation_retirement_helper target-hash-mismatch
+      return $?
+    fi
+  elif [[ -n "$LEGACY_AUTOMATION_RETIRE_HELPER_SHA256" \
+       && ! "$LEGACY_AUTOMATION_RETIRE_HELPER_SHA256" =~ ^[0-9a-f]{64}$ ]]; then
+    fail_bootstrap_legacy_automation_retirement_helper invalid-hash
+    return $?
+  fi
+  if [[ -n "$LEGACY_AUTOMATION_RETIRE_HELPER_SHA256" \
+     && "$actual_sha" != "$LEGACY_AUTOMATION_RETIRE_HELPER_SHA256" ]]; then
+    fail_bootstrap_legacy_automation_retirement_helper snapshot-hash-mismatch
+    return $?
+  fi
+}
+
 # The applied-source marker drives incremental planning and is advanced for
 # catalog/automation-only commits.  The runtime marker is a separate serving
 # identity and advances only after a DB-authoritative runtime promotion.  All
@@ -329,8 +422,25 @@ write_runtime_deploy_state() {
 # rereads the committed ledger.  A failure leaves evidence fail-closed and the
 # success marker untouched.
 record_runtime_release_state() {
-  local commit="$1" mode="${2:-mutate}" observe_only=false
+  local commit="$1" mode="${2:-mutate}" externally_verified_template_sha256="${3:-}"
+  local observe_only=false expected_template_sha256=""
   [[ "$mode" != observe-only ]] || observe_only=true
+  if [[ -n "$externally_verified_template_sha256" ]]; then
+    [[ "$mode" == recovery-promoted \
+       && "$externally_verified_template_sha256" =~ ^[0-9a-f]{64}$ ]] || return 1
+    expected_template_sha256="$externally_verified_template_sha256"
+  elif [[ "$observe_only" == true ]]; then
+    [[ -f "$POSTDEPLOY_ATTEMPT_JOURNAL_FILE" && ! -L "$POSTDEPLOY_ATTEMPT_JOURNAL_FILE" ]] || return 1
+    expected_template_sha256="$(python3 "$POSTDEPLOY_JOURNAL_HELPER" \
+      --file "$POSTDEPLOY_ATTEMPT_JOURNAL_FILE" read | jq -r \
+      --arg commit "$commit" 'select(.baseCommit==$commit)|.rollback.podTemplateSha256 // empty')" || return 1
+  else
+    [[ -f "$RUNTIME_CANDIDATE_CHECKPOINT_FILE" && ! -L "$RUNTIME_CANDIDATE_CHECKPOINT_FILE" ]] || return 1
+    expected_template_sha256="$(jq -r --arg commit "$commit" \
+      'select(.schemaVersion==1 and .stage=="RUNTIME_CANDIDATE_READY" and .targetCommit==$commit) | .podTemplateSha256 // empty' \
+      "$RUNTIME_CANDIDATE_CHECKPOINT_FILE")" || return 1
+  fi
+  [[ "$expected_template_sha256" =~ ^[0-9a-f]{64}$ ]] || return 1
   CARBONET_DEPLOY_ROOT="$ROOT_DIR" \
   CARBONET_K8S_NAMESPACE="$NAMESPACE" \
   CARBONET_K8S_DEPLOYMENT="$DEPLOYMENT" \
@@ -338,6 +448,7 @@ record_runtime_release_state() {
   POSTGRES_DB="$POSTGRES_DB" \
   POSTGRES_ADMIN_USER="$POSTGRES_USER" \
   CARBONET_RUNTIME_LEDGER_OBSERVE_ONLY="$observe_only" \
+  CARBONET_RUNTIME_EXPECTED_TEMPLATE_SHA256="$expected_template_sha256" \
     bash "$POSTDEPLOY_RECORD_RUNTIME_SCRIPT" "$commit"
 }
 
@@ -616,6 +727,17 @@ if [[ "${CARBONET_RECOVERY_ONLY:-false}" == true ]]; then
 else
   flock -n 9 || { echo "[auto-deploy] another deployment is running"; exit 0; }
 fi
+# Retire historical cron/systemd mutation paths from the exact target snapshot
+# before any cleanup recovery, checkpoint, backup, Flyway, build, or Kubernetes
+# access. Retirement is intentionally one-way: a later deploy failure must
+# never restore an unsafe scheduler or re-enable a duplicate recovery unit.
+bootstrap_target_legacy_automation_retirement_helper_if_required || exit $?
+verify_bootstrap_legacy_automation_retirement_helper || exit $?
+if ! bash "$LEGACY_AUTOMATION_RETIRE_HELPER"; then
+  echo '[auto-deploy] BLOCKED legacy runtime mutation automation retirement failed before platform work' >&2
+  exit 79
+fi
+record_deploy_phase "legacy_automation_retirement"
 # A cleanup-unproven Flyway backend is mutually exclusive with every durable
 # attempt/checkpoint recovery writer. The same deploy flock that serializes Job
 # creation must be held before reconciling its exact Job/application; otherwise
@@ -2064,12 +2186,35 @@ current_runtime_identity_hash() {
   cat <<'SQL' | kubectl -n "$NAMESPACE" exec -i "$POSTGRES_POD" -c "$POSTGRES_CONTAINER" -- \
     psql -h 127.0.0.1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" -X -qAt -v ON_ERROR_STOP=1 \
       -v source_commit="$1"
-SELECT encode(sha256(convert_to(concat_ws('|',
-  source_commit,deployment_namespace,deployment_name,deployment_uid,
-  deployment_generation,observed_generation,desired_replicas,
-  image_ref,image_id,health_status
-),'UTF8')),'hex')
-FROM framework_runtime_release_state
+SELECT CASE
+  WHEN NOT (to_jsonb(runtime) ? 'pod_template_sha256') THEN
+    encode(sha256(convert_to(concat_ws('|',
+      source_commit,deployment_namespace,deployment_name,deployment_uid,
+      deployment_generation,observed_generation,desired_replicas,
+      image_ref,image_id,health_status
+    ),'UTF8')),'hex')
+  WHEN release_key='CARBONET_RUNTIME'
+   AND source_commit='76a08e672ab7054914ec3b5aecb57bc8e7a298fa'
+   AND deployment_namespace='carbonet-prod' AND deployment_name='carbonet-runtime'
+   AND deployment_uid='5a9323d6-446c-49d2-ad3e-c300c18f5803'
+   AND image_ref='localhost:5000/carbonet-runtime:2026.08.14-202346-gradle'
+   AND image_id='sha256:48311ffbb0396684021efc84811c73432263850ce18c4d4412eb81151749e160'
+   AND health_status='UP'
+   AND to_jsonb(runtime)->>'pod_template_sha256'='3714b172fe60eed5d07658103aa5f51d6f9ef765f2cee2bd0ba304e71bfd9c1a' THEN
+    encode(sha256(convert_to(concat_ws('|',
+      source_commit,deployment_namespace,deployment_name,deployment_uid,
+      deployment_generation,observed_generation,desired_replicas,
+      image_ref,image_id,health_status
+    ),'UTF8')),'hex')
+  WHEN to_jsonb(runtime)->>'pod_template_sha256' ~ '^[0-9a-f]{64}$' THEN
+    encode(sha256(convert_to(jsonb_build_array(
+      'CARBONET_RUNTIME_IDENTITY_V2',source_commit,deployment_namespace,deployment_name,deployment_uid,
+      deployment_generation,observed_generation,desired_replicas,
+      image_ref,image_id,health_status,to_jsonb(runtime)->>'pod_template_sha256'
+    )::text,'UTF8')),'hex')
+  ELSE NULL
+END
+FROM framework_runtime_release_state runtime
 WHERE release_key='CARBONET_RUNTIME' AND source_commit=:'source_commit' AND health_status='UP';
 SQL
 }
@@ -3537,6 +3682,98 @@ run_composite_axis_migration_performance_if_required() {
   fi
 }
 
+run_runtime_template_identity_migration_contract_if_required() {
+  local timeout_seconds="${RUNTIME_TEMPLATE_IDENTITY_AUTO_DEPLOY_TEST_TIMEOUT_SECONDS:-180}"
+  [[ "$timeout_seconds" =~ ^[1-9][0-9]*$ \
+     && "$timeout_seconds" -ge 60 && "$timeout_seconds" -le 600 ]] || {
+    echo '[auto-deploy] invalid runtime template identity PostgreSQL timeout (expected 60..600 seconds)' >&2
+    return 2
+  }
+  if deploy_path_changed \
+      apps/carbonet-api/src/main/resources/db/migration/postgresql/V20260817235000__bind_runtime_identity_to_pod_template.sql \
+      ops/scripts/record-runtime-release-state.sh \
+      ops/scripts/stage-postdeploy-evidence-candidate.sh \
+      ops/scripts/promote-postdeploy-candidate-evidence.sh \
+      ops/scripts/check-postdeploy-authoritative-promotion.sh \
+      ops/scripts/runtime-candidate-checkpoint.sh \
+      ops/scripts/resonance-k8s-build-deploy-80-v2.sh \
+      ops/scripts/resonance-v3-deploy.sh \
+      ops/scripts/resonance-command-index.sh \
+      ops/scripts/resonance-file-watch.sh \
+      ops/scripts/resonance-project-core-deploy.sh \
+      ops/scripts/resonance-ai-fast-dev.sh \
+      ops/scripts/resonance-startup-watchdog.sh \
+      ops/scripts/resonance-start-best-effort.sh \
+      ops/scripts/restart-local-carbonet-k8s.sh \
+      ops/scripts/test-startup-watchdog-runtime-mutation-guard.sh \
+      ops/scripts/retire-legacy-runtime-mutation-automation.sh \
+      ops/scripts/test-retire-legacy-runtime-mutation-automation.sh \
+      ops/scripts/autorecovery/check-and-recover.sh \
+      ops/scripts/autorecovery/watchdog-daemon.sh \
+      ops/scripts/resonance-k8s-ops-automation-install.sh \
+      ops/scripts/resonance-react-route-self-heal.sh \
+      ops/systemd/resonance-react-route-self-heal.service \
+      ops/systemd/resonance-react-route-self-heal.timer \
+      ops/scripts/auto-deploy-main-launcher.sh \
+      ops/tests/test-auto-deploy-bootstrap-helper-snapshot.sh \
+      ops/scripts/resonance-up.sh \
+      ops/systemd/resonance-recovery.service \
+      ops/scripts/test-runtime-systemd-contracts.sh \
+      ops/scripts/audit-account-lock-recovery-assurance.sh \
+      ops/scripts/complete-account-lock-recovery-assurance.sh \
+      ops/scripts/reconcile-exact-legacy-orphan-runtime-quarantine.sh \
+      ops/scripts/capture-business-e2e-contract.sh \
+      ops/scripts/validate-operational-usage-ledger-e2e.sh \
+      ops/scripts/test-operational-usage-ledger-e2e-contract.sh \
+      ops/scripts/reconcile-deployed-retry-jobs.sh \
+      ops/scripts/promote-company-manager-delegation-after-e2e.sh \
+      ops/tests/run-company-manager-delegation-business-e2e.sh \
+      ops/tests/test-promote-company-manager-delegation-after-e2e.sh \
+      ops/scripts/promote-runtime-startup-profile.sh \
+      ops/scripts/test-runtime-startup-profile.sh \
+      ops/scripts/complete-regulatory-submission-assurance.sh \
+      ops/tests/test-regulatory-submission-assurance-contract.sh \
+      ops/runtime-metadata/business-e2e-runner-registry.json \
+      modules/resonance-common/carbonet-common-core/src/main/java/egovframework/com/platform/governance/service/CompositeAutocompletionReadinessService.java \
+      modules/resonance-common/carbonet-common-core/src/main/java/egovframework/com/platform/governance/service/CompositeDesignOperationalWorker.java \
+      modules/resonance-common/carbonet-common-core/src/main/java/egovframework/com/platform/governance/service/CompositeLiveSmokeEvidenceService.java \
+      modules/resonance-common/carbonet-common-core/src/main/java/egovframework/com/platform/governance/service/CompositePhysicalEvidenceService.java \
+      modules/resonance-common/carbonet-common-core/src/test/java/egovframework/com/platform/governance/service/ActorProcessGovernanceMutationPropagationPostgresTest.java \
+      modules/resonance-common/carbonet-common-core/src/main/java/egovframework/com/platform/governance/service/ActorProcessGovernanceService.java \
+      modules/resonance-common/carbonet-common-core/src/test/java/egovframework/com/platform/governance/service/ActorProcessGovernanceServiceSecurityTest.java \
+      ops/scripts/test-runtime-candidate-checkpoint.sh \
+      ops/tests/test-runtime-release-state.sh \
+      ops/tests/test-postdeploy-candidate-evidence-contract.sh \
+      ops/tests/test-postdeploy-candidate-evidence-postgres.sh \
+      ops/tests/test-durable-postdeploy-rollback-reconciler.sh \
+      ops/tests/test-postdeploy-promotion-recovery.sh \
+      ops/tests/test-account-lock-recovery-assurance-contract.sh \
+      ops/tests/test-auto-deploy-legacy-orphan-quarantine-recovery.sh \
+      ops/tests/test-current-business-e2e-evidence.sh \
+      ops/tests/test-reconcile-deployed-retry-jobs-contract.sh \
+      ops/tests/test-runtime-identity-authority-consumers-contract.sh; then
+    run_parallel_contract_tests \
+      ops/scripts/test-runtime-candidate-checkpoint.sh \
+      ops/tests/test-runtime-release-state.sh \
+      ops/tests/test-postdeploy-candidate-evidence-contract.sh \
+      ops/tests/test-durable-postdeploy-rollback-reconciler.sh \
+      ops/tests/test-postdeploy-promotion-recovery.sh \
+      ops/tests/test-account-lock-recovery-assurance-contract.sh \
+      ops/tests/test-auto-deploy-legacy-orphan-quarantine-recovery.sh \
+      ops/tests/test-current-business-e2e-evidence.sh \
+      ops/tests/test-reconcile-deployed-retry-jobs-contract.sh \
+      ops/tests/test-runtime-identity-authority-consumers-contract.sh \
+      ops/scripts/test-operational-usage-ledger-e2e-contract.sh \
+      ops/scripts/test-runtime-startup-profile.sh \
+      ops/scripts/test-startup-watchdog-runtime-mutation-guard.sh \
+      ops/scripts/test-runtime-systemd-contracts.sh \
+      ops/scripts/test-retire-legacy-runtime-mutation-automation.sh
+    timeout --signal=TERM --kill-after=10s "${timeout_seconds}s" \
+      bash ops/tests/test-postdeploy-candidate-evidence-postgres.sh "$ROOT_DIR"
+    echo '[auto-deploy] runtime PodTemplate identity PostgreSQL contract PASS'
+  fi
+}
+
 run_operational_usage_ledger_live_e2e_if_required() {
   local expected_commit="${1:-$target_commit}"
   local timeout_seconds="${CARBONET_USAGE_LEDGER_E2E_TIMEOUT_SECONDS:-120}"
@@ -3560,15 +3797,25 @@ run_operational_usage_ledger_live_e2e_if_required() {
 verify_operational_usage_ledger_current_runtime_identity() {
   local expected_commit="${1:-}"
   local marker_recovery_mode="${2:-strict}"
+  local template_bootstrap_attempted="${3:-false}"
+  local legacy_template_bootstrap_commit='76a08e672ab7054914ec3b5aecb57bc8e7a298fa'
+  local legacy_template_bootstrap_hash='3714b172fe60eed5d07658103aa5f51d6f9ef765f2cee2bd0ba304e71bfd9c1a'
   local marker_commit annotation_commit ledger_commit deployment_json ledger_json
   local marker_matches=false annotation_matches=false ledger_matches=false image_matches=false
+  local immutable_deployment_matches=false template_matches=false readiness_exact=false
+  local ledger_coordinates_valid=false
   local image_ref ledger_image_ref ledger_image_id selector pods_json pod_image_ids
-  local ledger_namespace ledger_deployment ledger_uid ledger_generation ledger_observed ledger_desired
+  local ledger_namespace ledger_deployment ledger_uid ledger_generation ledger_observed ledger_desired ledger_template_hash
   local deployment_uid generation observed desired ready_count pod pod_health
+  local template_annotation_hash live_template_hash annotated_json annotated_live_template_hash
+  local deployment_identity_token final_deployment_json final_deployment_identity_token
+  local bootstrap_deadline bootstrap_attempt=0 bootstrap_ready=false bootstrap_deployment_json
+  local bootstrap_uid bootstrap_template_hash bootstrap_commit bootstrap_attestation
+  local bootstrap_image_ref bootstrap_desired
   local -a ready_pods=()
 
   resolve_postdeploy_postgres_pod || {
-    echo '[auto-deploy] runtime identity proof has no writable PostgreSQL leader' >&2
+    echo '[auto-deploy] STATIC_ONLY_BLOCKED_RUNTIME_IDENTITY_MISMATCH reason=DATA_UNAVAILABLE source=postgres-leader' >&2
     return 1
   }
   if [[ -f "$RUNTIME_DEPLOY_STATE_FILE" && ! -L "$RUNTIME_DEPLOY_STATE_FILE" ]]; then
@@ -3576,14 +3823,34 @@ verify_operational_usage_ledger_current_runtime_identity() {
   else
     marker_commit=""
   fi
-  deployment_json="$(kubectl -n "$NAMESPACE" get "deployment/$DEPLOYMENT" -o json 2>/dev/null || true)"
+  if ! deployment_json="$(kubectl -n "$NAMESPACE" get "deployment/$DEPLOYMENT" -o json 2>/dev/null)" \
+     || ! jq -e '.metadata.uid and .spec.template and .status' <<<"$deployment_json" >/dev/null 2>&1; then
+    echo '[auto-deploy] STATIC_ONLY_BLOCKED_RUNTIME_IDENTITY_MISMATCH reason=DATA_UNAVAILABLE source=deployment' >&2
+    return 1
+  fi
   annotation_commit="$(jq -r '.metadata.annotations["resonance.ai/target-commit"] // empty' <<<"$deployment_json" 2>/dev/null || true)"
-  ledger_json="$(
-    printf '%s\n' "select jsonb_build_object('sourceCommit',source_commit,'deploymentNamespace',deployment_namespace,'deploymentName',deployment_name,'deploymentUid',deployment_uid,'deploymentGeneration',deployment_generation,'observedGeneration',observed_generation,'desiredReplicas',desired_replicas,'imageRef',image_ref,'imageId',image_id,'healthStatus',health_status)::text from framework_runtime_release_state where release_key='CARBONET_RUNTIME' and health_status='UP';" |
+  template_annotation_hash="$(jq -r '.metadata.annotations["resonance.ai/runtime-template-sha256"] // empty' <<<"$deployment_json" 2>/dev/null || true)"
+  live_template_hash="$(jq -cS '.spec.template' <<<"$deployment_json" | sha256sum | awk '{print $1}')"
+  if ! ledger_json="$(
+    printf '%s\n' "select jsonb_build_object('sourceCommit',runtime.source_commit,'deploymentNamespace',runtime.deployment_namespace,'deploymentName',runtime.deployment_name,'deploymentUid',runtime.deployment_uid,'deploymentGeneration',runtime.deployment_generation,'observedGeneration',runtime.observed_generation,'desiredReplicas',runtime.desired_replicas,'imageRef',runtime.image_ref,'imageId',runtime.image_id,'podTemplateSha256',to_jsonb(runtime)->>'pod_template_sha256','healthStatus',runtime.health_status)::text from framework_runtime_release_state runtime where runtime.release_key='CARBONET_RUNTIME' and runtime.health_status='UP';" |
       kubectl -n "$NAMESPACE" exec -i "$POSTGRES_POD" -c "$POSTGRES_CONTAINER" -- \
         psql -h 127.0.0.1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" -X -q -At -v ON_ERROR_STOP=1 \
-        2>/dev/null || true
-  )"
+        2>/dev/null
+  )" || ! jq -e '
+      (.sourceCommit|test("^[0-9a-f]{40}$"))
+      and (.deploymentNamespace|type=="string" and length>0)
+      and (.deploymentName|type=="string" and length>0)
+      and (.deploymentUid|type=="string" and length>0)
+      and (.deploymentGeneration|type=="number")
+      and (.observedGeneration|type=="number")
+      and (.desiredReplicas|type=="number")
+      and (.imageRef|type=="string" and length>0)
+      and (.imageId|test("sha256:[0-9a-f]{64}$"))
+      and (.podTemplateSha256==null or (.podTemplateSha256|test("^[0-9a-f]{64}$")))
+    ' <<<"$ledger_json" >/dev/null 2>&1; then
+    echo '[auto-deploy] STATIC_ONLY_BLOCKED_RUNTIME_IDENTITY_MISMATCH reason=DATA_UNAVAILABLE source=runtime-ledger' >&2
+    return 1
+  fi
   ledger_commit="$(jq -r '.sourceCommit // empty' <<<"$ledger_json" 2>/dev/null || true)"
   ledger_image_ref="$(jq -r '.imageRef // empty' <<<"$ledger_json" 2>/dev/null || true)"
   ledger_image_id="$(jq -r '.imageId // empty' <<<"$ledger_json" 2>/dev/null || true)"
@@ -3593,9 +3860,15 @@ verify_operational_usage_ledger_current_runtime_identity() {
   ledger_generation="$(jq -r '.deploymentGeneration // empty' <<<"$ledger_json" 2>/dev/null || true)"
   ledger_observed="$(jq -r '.observedGeneration // empty' <<<"$ledger_json" 2>/dev/null || true)"
   ledger_desired="$(jq -r '.desiredReplicas // empty' <<<"$ledger_json" 2>/dev/null || true)"
+  ledger_template_hash="$(jq -r '.podTemplateSha256 // empty' <<<"$ledger_json" 2>/dev/null || true)"
   image_ref="$(jq -r --arg container "${CARBONET_K8S_CONTAINER:-carbonet-runtime}" '.spec.template.spec.containers[]|select(.name==$container)|.image' <<<"$deployment_json" 2>/dev/null || true)"
   selector="$(jq -r '.spec.selector.matchLabels//{}|to_entries|map("\(.key)=\(.value)")|join(",")' <<<"$deployment_json" 2>/dev/null || true)"
-  pods_json="$(kubectl -n "$NAMESPACE" get pods -l "$selector" -o json 2>/dev/null || true)"
+  if [[ -z "$selector" ]] \
+     || ! pods_json="$(kubectl -n "$NAMESPACE" get pods -l "$selector" -o json 2>/dev/null)" \
+     || ! jq -e '.items|type=="array"' <<<"$pods_json" >/dev/null 2>&1; then
+    echo '[auto-deploy] STATIC_ONLY_BLOCKED_RUNTIME_IDENTITY_MISMATCH reason=DATA_UNAVAILABLE source=runtime-pods' >&2
+    return 1
+  fi
   pod_image_ids="$(jq -c --arg container "${CARBONET_K8S_CONTAINER:-carbonet-runtime}" '[.items[]|select(any(.status.conditions[]?;.type=="Ready" and .status=="True"))|.status.containerStatuses[]?|select(.name==$container and .ready==true)|.imageID]|unique' <<<"$pods_json" 2>/dev/null || true)"
   desired="$(jq -r '.spec.replicas // 0' <<<"$deployment_json" 2>/dev/null || true)"
   deployment_uid="$(jq -r '.metadata.uid // empty' <<<"$deployment_json" 2>/dev/null || true)"
@@ -3609,7 +3882,6 @@ verify_operational_usage_ledger_current_runtime_identity() {
       | select(any(.status.containerStatuses[]?;.name==$container and .ready==true))]
     | length
   ' <<<"$pods_json" 2>/dev/null || true)"
-  readiness_exact=false
   if [[ "$desired" =~ ^[1-9][0-9]*$ && "$ready_count" == "$desired" ]] \
      && jq -e --argjson desired "$desired" '
        (.status.observedGeneration // -1) >= (.metadata.generation // 0)
@@ -3639,20 +3911,173 @@ verify_operational_usage_ledger_current_runtime_identity() {
   marker_commit="$(printf '%s' "$marker_commit" | tr -d '[:space:]')"
   annotation_commit="$(printf '%s' "$annotation_commit" | tr -d '[:space:]')"
   ledger_commit="$(printf '%s' "$ledger_commit" | tr -d '[:space:]')"
-  if [[ "$image_ref" == "$ledger_image_ref" && "$ledger_image_id" =~ sha256:[0-9a-f]{64}$ \
+  [[ -n "$expected_commit" ]] || expected_commit="$marker_commit"
+  [[ "$marker_commit" == "$expected_commit" ]] && marker_matches=true
+  [[ "$annotation_commit" == "$expected_commit" ]] && annotation_matches=true
+  [[ "$ledger_commit" == "$expected_commit" ]] && ledger_matches=true
+  # Generation and desired replicas are point-in-time rollout coordinates.
+  # HPA may advance them, but a recorded row may never describe a future
+  # generation. Pod-template identity is protected separately by its digest.
+  if [[ "$ledger_generation" =~ ^[0-9]+$ && "$ledger_observed" =~ ^[0-9]+$ \
+     && "$ledger_desired" =~ ^[1-9][0-9]*$ && "$generation" =~ ^[0-9]+$ \
+     && "$observed" =~ ^[0-9]+$ ]] \
+     && (( ledger_generation <= ledger_observed \
+           && ledger_generation <= generation \
+           && ledger_observed <= observed )); then
+    ledger_coordinates_valid=true
+  fi
+  if [[ "$image_ref" == "$ledger_image_ref" \
      && "$ledger_namespace" == "$NAMESPACE" && "$ledger_deployment" == "$DEPLOYMENT" \
-     && -n "$deployment_uid" && "$ledger_uid" == "$deployment_uid" \
-     && "$ledger_generation" == "$generation" && "$ledger_observed" == "$observed" \
-     && "$ledger_desired" == "$desired" \
-     && "$(jq -r 'length' <<<"$pod_image_ids" 2>/dev/null || true)" == 1 \
-     && "$(jq -r '.[0] // empty' <<<"$pod_image_ids" 2>/dev/null || true)" == "$ledger_image_id" \
-     && "$readiness_exact" == true ]]; then
+     && -n "$deployment_uid" && "$ledger_uid" == "$deployment_uid" ]]; then
+    immutable_deployment_matches=true
+  fi
+  if [[ "$immutable_deployment_matches" != true ]]; then
+    echo '[auto-deploy] STATIC_ONLY_BLOCKED_RUNTIME_IDENTITY_MISMATCH reason=IMMUTABLE_MISMATCH source=deployment-ledger' >&2
+    return 1
+  fi
+  if [[ "$ledger_coordinates_valid" != true ]]; then
+    echo '[auto-deploy] STATIC_ONLY_BLOCKED_RUNTIME_IDENTITY_MISMATCH reason=COORDINATE_CONTRADICTION' >&2
+    return 1
+  fi
+  if [[ "$readiness_exact" != true ]]; then
+    echo '[auto-deploy] STATIC_ONLY_BLOCKED_RUNTIME_IDENTITY_MISMATCH reason=READINESS_TRANSIENT' >&2
+    return 1
+  fi
+  if [[ "$(jq -r 'length' <<<"$pod_image_ids" 2>/dev/null || true)" == 1 \
+     && "$(jq -r '.[0] // empty' <<<"$pod_image_ids" 2>/dev/null || true)" == "$ledger_image_id" ]]; then
     image_matches=true
+  fi
+  if [[ "$image_matches" != true ]]; then
+    echo '[auto-deploy] STATIC_ONLY_BLOCKED_RUNTIME_IDENTITY_MISMATCH reason=IMMUTABLE_MISMATCH source=pod-image-digest' >&2
+    return 1
+  fi
+  # The only pre-migration compatibility exception is the independently
+  # audited 76a template. A present annotation or DB value for that release
+  # must still equal the pin; coupled template+annotation drift cannot self-sign.
+  if [[ "$ledger_commit" == "$legacy_template_bootstrap_commit" ]] \
+     && { [[ "$live_template_hash" != "$legacy_template_bootstrap_hash" ]] \
+       || [[ -n "$template_annotation_hash" && "$template_annotation_hash" != "$legacy_template_bootstrap_hash" ]] \
+       || [[ -n "$ledger_template_hash" && "$ledger_template_hash" != "$legacy_template_bootstrap_hash" ]]; }; then
+    echo '[auto-deploy] STATIC_ONLY_BLOCKED_RUNTIME_IDENTITY_MISMATCH reason=TEMPLATE_MISMATCH source=legacy-audited-pin' >&2
+    return 1
+  fi
+  if [[ -z "$ledger_template_hash" \
+     && "$ledger_commit" != "$legacy_template_bootstrap_commit" ]]; then
+    echo '[auto-deploy] STATIC_ONLY_BLOCKED_RUNTIME_IDENTITY_MISMATCH reason=TEMPLATE_MISMATCH source=runtime-ledger-template-unbound' >&2
+    return 1
+  fi
+  # Existing installations predate the template annotation. Bootstrap it once
+  # only on the ordinary strict preflight after commit, UID, immutable image,
+  # Ready replica health and monotonic ledger coordinates all agree. Recovery
+  # proof modes remain read-only and require an already-bound annotation.
+  if [[ -z "$template_annotation_hash" && "$marker_recovery_mode" == strict \
+     && "$template_bootstrap_attempted" != true \
+     && "$annotation_commit" == "$legacy_template_bootstrap_commit" \
+     && "$live_template_hash" == "$legacy_template_bootstrap_hash" \
+     && ( -z "$ledger_template_hash" || "$ledger_template_hash" == "$legacy_template_bootstrap_hash" ) \
+     && "$ledger_commit" == "$annotation_commit" \
+     && ( -z "$expected_commit" || "$annotation_commit" == "$expected_commit" ) ]]; then
+    if ! annotated_json="$(kubectl -n "$NAMESPACE" annotate "deployment/$DEPLOYMENT" \
+        "resonance.ai/runtime-template-sha256=$live_template_hash" --overwrite -o json 2>/dev/null)"; then
+      echo '[auto-deploy] STATIC_ONLY_BLOCKED_RUNTIME_IDENTITY_MISMATCH reason=DATA_UNAVAILABLE source=template-bootstrap' >&2
+      return 1
+    fi
+    template_annotation_hash="$(jq -r '.metadata.annotations["resonance.ai/runtime-template-sha256"] // empty' <<<"$annotated_json" 2>/dev/null || true)"
+    annotated_live_template_hash="$(jq -cS '.spec.template' <<<"$annotated_json" 2>/dev/null | sha256sum | awk '{print $1}')"
+    if [[ "$template_annotation_hash" != "$live_template_hash" \
+       || "$annotated_live_template_hash" != "$live_template_hash" ]]; then
+      echo '[auto-deploy] STATIC_ONLY_BLOCKED_RUNTIME_IDENTITY_MISMATCH reason=TEMPLATE_MISMATCH source=bootstrap-race' >&2
+      return 1
+    fi
+    bootstrap_deadline=$((SECONDS + 45))
+    while (( SECONDS < bootstrap_deadline )); do
+      bootstrap_attempt=$((bootstrap_attempt + 1))
+      if bootstrap_deployment_json="$(kubectl -n "$NAMESPACE" get "deployment/$DEPLOYMENT" -o json 2>/dev/null)"; then
+        bootstrap_uid="$(jq -r '.metadata.uid // empty' <<<"$bootstrap_deployment_json" 2>/dev/null || true)"
+        bootstrap_template_hash="$(jq -cS '.spec.template' <<<"$bootstrap_deployment_json" 2>/dev/null | sha256sum | awk '{print $1}')"
+        bootstrap_commit="$(jq -r '.metadata.annotations["resonance.ai/target-commit"] // empty' <<<"$bootstrap_deployment_json" 2>/dev/null || true)"
+        bootstrap_attestation="$(jq -r '.metadata.annotations["resonance.ai/runtime-template-sha256"] // empty' <<<"$bootstrap_deployment_json" 2>/dev/null || true)"
+        bootstrap_image_ref="$(jq -r --arg container "${CARBONET_K8S_CONTAINER:-carbonet-runtime}" '.spec.template.spec.containers[]|select(.name==$container)|.image' <<<"$bootstrap_deployment_json" 2>/dev/null || true)"
+        if [[ "$bootstrap_uid" != "$deployment_uid" || "$bootstrap_image_ref" != "$ledger_image_ref" ]]; then
+          echo '[auto-deploy] STATIC_ONLY_BLOCKED_RUNTIME_IDENTITY_MISMATCH reason=IMMUTABLE_MISMATCH source=template-bootstrap-race' >&2
+          return 1
+        fi
+        if [[ "$bootstrap_template_hash" != "$legacy_template_bootstrap_hash" \
+           || "$bootstrap_attestation" != "$legacy_template_bootstrap_hash" ]]; then
+          echo '[auto-deploy] STATIC_ONLY_BLOCKED_RUNTIME_IDENTITY_MISMATCH reason=TEMPLATE_MISMATCH source=template-bootstrap-race' >&2
+          return 1
+        fi
+        if [[ "$bootstrap_commit" != "$legacy_template_bootstrap_commit" ]]; then
+          echo '[auto-deploy] STATIC_ONLY_BLOCKED_RUNTIME_IDENTITY_MISMATCH reason=AUTHORITY_MISMATCH source=template-bootstrap-race' >&2
+          return 1
+        fi
+        bootstrap_desired="$(jq -r '.spec.replicas // 0' <<<"$bootstrap_deployment_json" 2>/dev/null || true)"
+        if [[ "$bootstrap_desired" =~ ^[1-9][0-9]*$ ]] \
+           && jq -e --argjson desired "$bootstrap_desired" '
+             (.status.observedGeneration // -1) >= (.metadata.generation // 0)
+             and (.status.updatedReplicas // 0)==$desired
+             and (.status.readyReplicas // 0)==$desired
+             and (.status.availableReplicas // 0)==$desired
+             and (.status.unavailableReplicas // 0)==0
+           ' <<<"$bootstrap_deployment_json" >/dev/null 2>&1; then
+          bootstrap_ready=true
+          break
+        fi
+      fi
+      echo "[auto-deploy] WAIT runtime template bootstrap convergence attempt=$bootstrap_attempt remaining=$((bootstrap_deadline - SECONDS))s"
+      sleep 1
+    done
+    if [[ "$bootstrap_ready" != true ]]; then
+      echo '[auto-deploy] STATIC_ONLY_BLOCKED_RUNTIME_IDENTITY_MISMATCH reason=READINESS_TRANSIENT source=template-bootstrap-timeout' >&2
+      return 1
+    fi
+    echo "[auto-deploy] runtime template identity bootstrapped sha256=$live_template_hash"
+    # Re-enter exactly once to prove post-write pod digest, per-pod health and
+    # the final resourceVersion/template reread against the converged rollout.
+    verify_operational_usage_ledger_current_runtime_identity \
+      "$expected_commit" "$marker_recovery_mode" true
+    return
+  fi
+  if [[ "$template_annotation_hash" =~ ^[0-9a-f]{64}$ \
+     && "$template_annotation_hash" == "$live_template_hash" ]] \
+     && { [[ "$ledger_template_hash" == "$live_template_hash" ]] \
+       || [[ -z "$ledger_template_hash" \
+          && "$ledger_commit" == "$legacy_template_bootstrap_commit" \
+          && "$live_template_hash" == "$legacy_template_bootstrap_hash" ]]; }; then
+    template_matches=true
+  fi
+  if [[ "$template_matches" != true ]]; then
+    echo '[auto-deploy] STATIC_ONLY_BLOCKED_RUNTIME_IDENTITY_MISMATCH reason=TEMPLATE_MISMATCH' >&2
+    return 1
+  fi
+  deployment_identity_token="$(jq -cS --arg container "${CARBONET_K8S_CONTAINER:-carbonet-runtime}" '
+    {resourceVersion:.metadata.resourceVersion,uid:.metadata.uid,generation:.metadata.generation,
+     observedGeneration:.status.observedGeneration,replicas:.spec.replicas,
+     targetCommit:(.metadata.annotations["resonance.ai/target-commit"]//""),
+     runtimeTemplateSha256:(.metadata.annotations["resonance.ai/runtime-template-sha256"]//""),
+     image:(.spec.template.spec.containers[]|select(.name==$container)|.image),
+     template:.spec.template}
+  ' <<<"$deployment_json")"
+  if ! final_deployment_json="$(kubectl -n "$NAMESPACE" get "deployment/$DEPLOYMENT" -o json 2>/dev/null)"; then
+    echo '[auto-deploy] STATIC_ONLY_BLOCKED_RUNTIME_IDENTITY_MISMATCH reason=DATA_UNAVAILABLE source=deployment-final-reread' >&2
+    return 1
+  fi
+  final_deployment_identity_token="$(jq -cS --arg container "${CARBONET_K8S_CONTAINER:-carbonet-runtime}" '
+    {resourceVersion:.metadata.resourceVersion,uid:.metadata.uid,generation:.metadata.generation,
+     observedGeneration:.status.observedGeneration,replicas:.spec.replicas,
+     targetCommit:(.metadata.annotations["resonance.ai/target-commit"]//""),
+     runtimeTemplateSha256:(.metadata.annotations["resonance.ai/runtime-template-sha256"]//""),
+     image:(.spec.template.spec.containers[]|select(.name==$container)|.image),
+     template:.spec.template}
+  ' <<<"$final_deployment_json" 2>/dev/null || true)"
+  if [[ -z "$deployment_identity_token" \
+     || "$final_deployment_identity_token" != "$deployment_identity_token" ]]; then
+    echo '[auto-deploy] STATIC_ONLY_BLOCKED_RUNTIME_IDENTITY_MISMATCH reason=READINESS_TRANSIENT source=deployment-final-race' >&2
+    return 1
   fi
   # One-time legacy bootstrap is permitted only when the dedicated runtime
   # marker is absent and the live K8s annotation, DB ledger and immutable pod
   # image already agree. The overall applied marker is intentionally ignored.
-  [[ -n "$expected_commit" ]] || expected_commit="$marker_commit"
   if [[ "$marker_recovery_mode" == proof-only ]]; then
     if [[ "$expected_commit" =~ ^[0-9a-f]{40}$ \
        && "$annotation_commit" == "$expected_commit" \
@@ -3661,7 +4086,7 @@ verify_operational_usage_ledger_current_runtime_identity() {
       echo "[auto-deploy] current runtime authority proof PASS annotation=ledger=immutable-image commit=$expected_commit"
       return 0
     fi
-    echo '[auto-deploy] STATIC_ONLY_BLOCKED_RUNTIME_IDENTITY_MISMATCH proof-only runtime authority is incomplete' >&2
+    echo '[auto-deploy] STATIC_ONLY_BLOCKED_RUNTIME_IDENTITY_MISMATCH reason=AUTHORITY_MISMATCH mode=proof-only' >&2
     return 1
   fi
   if [[ "$runtime_marker_bootstrap_allowed" == true \
@@ -3675,13 +4100,13 @@ verify_operational_usage_ledger_current_runtime_identity() {
       runtime_marker_bootstrap_allowed=false
       echo "[auto-deploy] runtime identity marker bootstrapped from DB+K8s commit=$annotation_commit"
     else
-      echo '[auto-deploy] STATIC_ONLY_BLOCKED_RUNTIME_IDENTITY_MISMATCH runtime marker bootstrap proof is incomplete' >&2
+      echo '[auto-deploy] STATIC_ONLY_BLOCKED_RUNTIME_IDENTITY_MISMATCH reason=AUTHORITY_MISMATCH mode=marker-bootstrap' >&2
       return 1
     fi
   fi
   [[ -n "$expected_commit" ]] || expected_commit="$marker_commit"
   [[ "$expected_commit" =~ ^[0-9a-f]{40}$ ]] || {
-    echo "[auto-deploy] STATIC_ONLY_BLOCKED_RUNTIME_IDENTITY_MISMATCH expected runtime commit is invalid" >&2
+    echo "[auto-deploy] STATIC_ONLY_BLOCKED_RUNTIME_IDENTITY_MISMATCH reason=AUTHORITY_MISMATCH source=expected-commit" >&2
     return 1
   }
   if [[ "$marker_recovery_mode" == reconcile && "$marker_commit" != "$expected_commit" ]]; then
@@ -3690,18 +4115,245 @@ verify_operational_usage_ledger_current_runtime_identity() {
       marker_commit="$expected_commit"
       runtime_deployed_commit="$expected_commit"
     else
-      echo '[auto-deploy] STATIC_ONLY_BLOCKED_RUNTIME_IDENTITY_MISMATCH authoritative marker reconciliation failed' >&2
+      echo '[auto-deploy] STATIC_ONLY_BLOCKED_RUNTIME_IDENTITY_MISMATCH reason=AUTHORITY_MISMATCH mode=reconcile' >&2
       return 1
     fi
   fi
-  [[ "$marker_commit" == "$expected_commit" ]] && marker_matches=true
-  [[ "$annotation_commit" == "$expected_commit" ]] && annotation_matches=true
-  [[ "$ledger_commit" == "$expected_commit" ]] && ledger_matches=true
+  [[ "$marker_commit" == "$expected_commit" ]] && marker_matches=true || marker_matches=false
+  [[ "$annotation_commit" == "$expected_commit" ]] && annotation_matches=true || annotation_matches=false
+  [[ "$ledger_commit" == "$expected_commit" ]] && ledger_matches=true || ledger_matches=false
   if [[ "$marker_matches" != "true" || "$annotation_matches" != "true" || "$ledger_matches" != "true" || "$image_matches" != true ]]; then
-    echo "[auto-deploy] STATIC_ONLY_BLOCKED_RUNTIME_IDENTITY_MISMATCH markerMatch=$marker_matches annotationMatch=$annotation_matches ledgerMatch=$ledger_matches imageMatch=$image_matches" >&2
+    echo "[auto-deploy] STATIC_ONLY_BLOCKED_RUNTIME_IDENTITY_MISMATCH reason=AUTHORITY_MISMATCH markerMatch=$marker_matches annotationMatch=$annotation_matches ledgerMatch=$ledger_matches imageMatch=$image_matches" >&2
     return 1
   fi
   echo "[auto-deploy] current runtime identity PASS marker=annotation=ledger=immutable-image"
+}
+
+promoted_candidate_identity_with_ledger_absent() {
+  local source="$1" candidate="$2" result
+  resolve_postdeploy_postgres_pod || return 2
+  result="$(cat <<'SQL' | kubectl -n "$NAMESPACE" exec -i "$POSTGRES_POD" -c "$POSTGRES_CONTAINER" -- \
+    psql -h 127.0.0.1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" -X -qAt -v ON_ERROR_STOP=1 \
+      -v source_commit="$source" -v candidate_id="$candidate"
+WITH promotion AS (
+  SELECT * FROM framework_postdeploy_evidence_promotion
+   WHERE source_commit=:'source_commit' AND candidate_id=:'candidate_id'
+), attempt AS (
+  SELECT * FROM framework_postdeploy_release_attempt
+   WHERE source_commit=:'source_commit' AND candidate_id=:'candidate_id'
+), exact AS (
+  SELECT promotion.runtime_identity_hash
+    FROM promotion JOIN attempt USING(candidate_id,source_commit)
+   WHERE attempt.attempt_status='PROMOTED'
+     AND attempt.runtime_identity_hash=promotion.runtime_identity_hash
+     AND attempt.candidate_runtime_identity_hash=promotion.runtime_identity_hash
+     AND attempt.promotion_id=promotion.promotion_id
+     AND attempt.terminal_reason='PROMOTION_COMMITTED'
+     AND promotion.process_count=6 AND promotion.unit_count=12
+     AND promotion.promoted_definition_count=2
+     AND promotion.appended_validation_count=3
+     AND promotion.appended_simulation_count=0
+     AND promotion.marker_contract='DB_AUTHORITATIVE_FILESYSTEM_DERIVED'
+     AND (SELECT count(*) FROM framework_runtime_release_state
+           WHERE release_key='CARBONET_RUNTIME')=0
+     AND (SELECT count(*) FROM framework_postdeploy_evidence_candidate evidence
+           WHERE evidence.candidate_id=:'candidate_id')=12
+     AND NOT EXISTS (
+       SELECT 1 FROM framework_postdeploy_evidence_candidate evidence
+        WHERE evidence.candidate_id=:'candidate_id' AND (
+          evidence.source_commit<>:'source_commit'
+          OR evidence.candidate_runtime_identity_hash IS DISTINCT FROM promotion.runtime_identity_hash
+          OR evidence.evidence_json->>'runtimeIdentityHash' IS DISTINCT FROM promotion.runtime_identity_hash
+          OR evidence.evidence_hash!~'^[0-9a-f]{64}$'
+        )
+     )
+)
+SELECT runtime_identity_hash FROM exact;
+SQL
+  )" || return 2
+  result="$(printf '%s' "$result" | tr -d '[:space:]')"
+  [[ "$result" =~ ^[0-9a-f]{64}$ ]] || return 1
+  printf '%s\n' "$result"
+}
+
+POSTDEPLOY_RECOVERY_VERIFIED_TEMPLATE_SHA256=""
+verify_promoted_live_identity_without_runtime_ledger() {
+  local source="$1" expected_hash="$2"
+  local deployment_json final_deployment_json deployment_token final_deployment_token
+  local deployment_uid generation observed desired image_ref template_hash template_annotation selector
+  local pods_json ready_pods image_id runtime_pod health calculated_hash
+  [[ "$source" =~ ^[0-9a-f]{40}$ && "$expected_hash" =~ ^[0-9a-f]{64}$ ]] || return 1
+  POSTDEPLOY_RECOVERY_VERIFIED_TEMPLATE_SHA256=""
+  deployment_json="$(kubectl -n "$NAMESPACE" get "deployment/$DEPLOYMENT" -o json)" || return 2
+  jq -e --arg namespace "$NAMESPACE" --arg deployment "$DEPLOYMENT" \
+    --arg container "${CARBONET_K8S_CONTAINER:-carbonet-runtime}" --arg source "$source" '
+    .metadata.namespace==$namespace and .metadata.name==$deployment
+    and .metadata.annotations["resonance.ai/target-commit"]==$source
+    and (.metadata.annotations["resonance.ai/runtime-template-sha256"]|test("^[0-9a-f]{64}$"))
+    and (.metadata.resourceVersion|type=="string" and length>0)
+    and (.metadata.uid|type=="string" and length>0)
+    and ((.metadata.generation//0)>0)
+    and ((.status.observedGeneration//-1)>=(.metadata.generation//0))
+    and ((.spec.replicas//0)>0)
+    and ((.status.updatedReplicas//0)==(.spec.replicas//0))
+    and ((.status.readyReplicas//0)==(.spec.replicas//0))
+    and ((.status.availableReplicas//0)==(.spec.replicas//0))
+    and ((.status.unavailableReplicas//0)==0)
+    and ([.spec.template.spec.containers[]|select(.name==$container)]|length)==1
+  ' <<<"$deployment_json" >/dev/null || return 1
+  deployment_uid="$(jq -r '.metadata.uid' <<<"$deployment_json")"
+  generation="$(jq -r '.metadata.generation' <<<"$deployment_json")"
+  observed="$(jq -r '.status.observedGeneration' <<<"$deployment_json")"
+  desired="$(jq -r '.spec.replicas' <<<"$deployment_json")"
+  image_ref="$(jq -r --arg container "${CARBONET_K8S_CONTAINER:-carbonet-runtime}" \
+    '.spec.template.spec.containers[]|select(.name==$container)|.image' <<<"$deployment_json")"
+  template_hash="$(jq -cS '.spec.template' <<<"$deployment_json" | sha256sum | awk '{print $1}')"
+  template_annotation="$(jq -r '.metadata.annotations["resonance.ai/runtime-template-sha256"]' <<<"$deployment_json")"
+  [[ "$template_hash" =~ ^[0-9a-f]{64}$ && "$template_annotation" == "$template_hash" ]] || return 1
+  selector="$(jq -r '.spec.selector.matchLabels//{}|to_entries|map("\(.key)=\(.value)")|join(",")' \
+    <<<"$deployment_json")"
+  [[ -n "$selector" ]] || return 1
+  pods_json="$(kubectl -n "$NAMESPACE" get pods -l "$selector" -o json)" || return 2
+  ready_pods="$(jq -c --arg container "${CARBONET_K8S_CONTAINER:-carbonet-runtime}" --arg image "$image_ref" '
+    [.items[]|select(.status.phase=="Running")
+     |select(any(.spec.containers[]?;.name==$container and .image==$image))
+     |select(any(.status.conditions[]?;.type=="Ready" and .status=="True"))
+     |select(any(.status.containerStatuses[]?;.name==$container and .ready==true))
+     |{name:.metadata.name,imageId:([.status.containerStatuses[]?
+       |select(.name==$container)|.imageID][0]//"")}]
+  ' <<<"$pods_json")" || return 2
+  [[ "$(jq -r 'length' <<<"$ready_pods")" == "$desired" ]] || return 1
+  image_id="$(jq -r '[.[].imageId|select(test("sha256:[0-9a-f]{64}$"))]|unique
+    |if length==1 then .[0] else empty end' <<<"$ready_pods")"
+  [[ "$image_id" =~ sha256:[0-9a-f]{64}$ ]] || return 1
+  while IFS= read -r runtime_pod; do
+    health="$(kubectl -n "$NAMESPACE" exec "$runtime_pod" \
+      -c "${CARBONET_K8S_CONTAINER:-carbonet-runtime}" -- \
+      curl -fsS --max-time 15 http://127.0.0.1:8080/actuator/health)" || return 2
+    jq -e '.status=="UP"' <<<"$health" >/dev/null || return 1
+  done < <(jq -r '.[].name' <<<"$ready_pods")
+  resolve_postdeploy_postgres_pod || return 2
+  calculated_hash="$(printf '%s\n' "select framework_candidate_runtime_identity_hash_v2(:'source_commit',:'deployment_namespace',:'deployment_name',:'deployment_uid',:'deployment_generation'::bigint,:'observed_generation'::bigint,:'desired_replicas'::integer,:'image_ref',:'image_id',:'pod_template_sha256');" | \
+    kubectl -n "$NAMESPACE" exec -i "$POSTGRES_POD" -c "$POSTGRES_CONTAINER" -- \
+      psql -h 127.0.0.1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" -X -qAt -v ON_ERROR_STOP=1 \
+        -v source_commit="$source" -v deployment_namespace="$NAMESPACE" \
+        -v deployment_name="$DEPLOYMENT" -v deployment_uid="$deployment_uid" \
+        -v deployment_generation="$generation" -v observed_generation="$observed" \
+        -v desired_replicas="$desired" -v image_ref="$image_ref" -v image_id="$image_id" \
+        -v pod_template_sha256="$template_hash")" || return 2
+  calculated_hash="$(printf '%s' "$calculated_hash" | tr -d '[:space:]')"
+  [[ "$calculated_hash" == "$expected_hash" ]] || return 1
+  deployment_token="$(jq -cS --arg container "${CARBONET_K8S_CONTAINER:-carbonet-runtime}" '
+    {resourceVersion:.metadata.resourceVersion,uid:.metadata.uid,generation:.metadata.generation,
+     observedGeneration:.status.observedGeneration,replicas:.spec.replicas,status:.status,
+     targetCommit:(.metadata.annotations["resonance.ai/target-commit"]//""),
+     runtimeTemplateSha256:(.metadata.annotations["resonance.ai/runtime-template-sha256"]//""),
+     image:(.spec.template.spec.containers[]|select(.name==$container)|.image),template:.spec.template}
+  ' <<<"$deployment_json")"
+  final_deployment_json="$(kubectl -n "$NAMESPACE" get "deployment/$DEPLOYMENT" -o json)" || return 2
+  final_deployment_token="$(jq -cS --arg container "${CARBONET_K8S_CONTAINER:-carbonet-runtime}" '
+    {resourceVersion:.metadata.resourceVersion,uid:.metadata.uid,generation:.metadata.generation,
+     observedGeneration:.status.observedGeneration,replicas:.spec.replicas,status:.status,
+     targetCommit:(.metadata.annotations["resonance.ai/target-commit"]//""),
+     runtimeTemplateSha256:(.metadata.annotations["resonance.ai/runtime-template-sha256"]//""),
+     image:(.spec.template.spec.containers[]|select(.name==$container)|.image),template:.spec.template}
+  ' <<<"$final_deployment_json")"
+  [[ -n "$deployment_token" && "$final_deployment_token" == "$deployment_token" ]] || return 1
+  POSTDEPLOY_RECOVERY_VERIFIED_TEMPLATE_SHA256="$template_hash"
+}
+
+recover_promoted_final_live_verify_pending() {
+  local journal="$1" source="$2" candidate="$3" expected_hash db_hash verify_status=0
+  local pending_present=false quarantine_present=false
+  local pending_reason="" quarantine_reason=""
+  [[ "$(jq -r '.lifecycleStatus' <<<"$journal")" == PROMOTED \
+     && "$(jq -r '.terminalReason' <<<"$journal")" == PROMOTION_COMMITTED \
+     && "$(jq -r '.sourceCommit' <<<"$journal")" == "$source" \
+     && "$(jq -r '.candidateId' <<<"$journal")" == "$candidate" ]] || return 1
+  expected_hash="$(jq -r '.runtimeIdentityHash//empty' <<<"$journal")"
+  [[ "$expected_hash" =~ ^[0-9a-f]{64}$ ]] || return 79
+
+  # The immutable PROMOTED journal and promotion/attempt/candidate rows are
+  # the crash-consistent recovery anchor.  The ledger DELETE and the two
+  # derived recovery-state renames cannot be one filesystem/DB transaction,
+  # so SIGKILL can legitimately leave either file absent.  Validate any file
+  # that exists before trusting it; missing files are recreated only after the
+  # exact DB promotion plus ledger-count-zero proof below.
+  if [[ -e "$POSTDEPLOY_MARKER_PENDING_FILE" || -L "$POSTDEPLOY_MARKER_PENDING_FILE" ]]; then
+    pending_present=true
+    [[ -f "$POSTDEPLOY_MARKER_PENDING_FILE" && ! -L "$POSTDEPLOY_MARKER_PENDING_FILE" \
+       && "$(stat -c '%a:%u' "$POSTDEPLOY_MARKER_PENDING_FILE" 2>/dev/null)" == "600:$(id -u)" \
+       && "$(sed -n '1p' "$POSTDEPLOY_MARKER_PENDING_FILE")" == schemaVersion=1 \
+       && "$(sed -n 's/^targetCommit=//p' "$POSTDEPLOY_MARKER_PENDING_FILE")" == "$source" \
+       && "$(sed -n 's/^candidateId=//p' "$POSTDEPLOY_MARKER_PENDING_FILE")" == "$candidate" ]] \
+      || return 79
+    pending_reason="$(sed -n 's/^reason=//p' "$POSTDEPLOY_MARKER_PENDING_FILE")"
+  fi
+  if [[ -e "$RUNTIME_LEDGER_QUARANTINE_FILE" || -L "$RUNTIME_LEDGER_QUARANTINE_FILE" ]]; then
+    quarantine_present=true
+    [[ -f "$RUNTIME_LEDGER_QUARANTINE_FILE" && ! -L "$RUNTIME_LEDGER_QUARANTINE_FILE" \
+       && "$(stat -c '%a:%u' "$RUNTIME_LEDGER_QUARANTINE_FILE" 2>/dev/null)" == "600:$(id -u)" \
+       && "$(sed -n '1p' "$RUNTIME_LEDGER_QUARANTINE_FILE")" == schemaVersion=1 \
+       && "$(sed -n 's/^targetCommit=//p' "$RUNTIME_LEDGER_QUARANTINE_FILE")" == "$source" \
+       && "$(sed -n 's/^candidateId=//p' "$RUNTIME_LEDGER_QUARANTINE_FILE")" == "$candidate" ]] \
+      || return 79
+    quarantine_reason="$(sed -n 's/^reason=//p' "$RUNTIME_LEDGER_QUARANTINE_FILE")"
+  fi
+  if [[ "$pending_reason" == DB_PROMOTED_FINAL_LIVE_VERIFY_PENDING \
+     || "$quarantine_reason" == PROMOTED_FINAL_LIVE_IDENTITY_DRIFT ]]; then
+    # Once either half identifies this compensation path, any existing peer
+    # must be the exact matching half. Mixed ordinary/special state is unsafe.
+    [[ "$pending_present" != true \
+       || "$pending_reason" == DB_PROMOTED_FINAL_LIVE_VERIFY_PENDING ]] || return 79
+    [[ "$quarantine_present" != true \
+       || "$quarantine_reason" == PROMOTED_FINAL_LIVE_IDENTITY_DRIFT ]] || return 79
+  elif [[ "$pending_present" == true || "$quarantine_present" == true ]]; then
+    # Ordinary runtime/applied-marker recovery is owned by the existing
+    # authoritative reconciler and must never be captured by this special path.
+    return 1
+  fi
+  db_hash="$(promoted_candidate_identity_with_ledger_absent "$source" "$candidate")" || verify_status=$?
+  if (( verify_status == 1 )) \
+     && [[ "$pending_present" != true && "$quarantine_present" != true ]]; then
+    # Normal COMMIT->SIGKILL and marker-rename faults retain the exact current
+    # ledger and have no final-live-drift files. Hand those states back to the
+    # established authoritative promotion/marker reconciler below.
+    return 1
+  fi
+  if (( verify_status != 0 )) || [[ "$db_hash" != "$expected_hash" ]]; then
+    echo '[auto-deploy] RECOVERY_PENDING promoted candidate DB identity/ledger-zero proof is unavailable' >&2
+    return 75
+  fi
+  if [[ "$pending_present" != true ]] \
+     && ! write_postdeploy_marker_pending 'DB_PROMOTED_FINAL_LIVE_VERIFY_PENDING'; then
+    echo '[auto-deploy] RECOVERY_PENDING promoted final-live pending state could not be reconstructed' >&2
+    return 75
+  fi
+  if [[ "$quarantine_present" != true ]] \
+     && ! write_postdeploy_promotion_quarantine 'PROMOTED_FINAL_LIVE_IDENTITY_DRIFT'; then
+    echo '[auto-deploy] RECOVERY_PENDING promoted final-live quarantine could not be reconstructed' >&2
+    return 75
+  fi
+  verify_status=0
+  verify_promoted_live_identity_without_runtime_ledger "$source" "$expected_hash" || verify_status=$?
+  if (( verify_status != 0 )); then
+    echo "[auto-deploy] RECOVERY_PENDING promoted live identity remains divergent status=$verify_status mutation=0" >&2
+    return 75
+  fi
+  if ! record_runtime_release_state "$source" recovery-promoted \
+      "$POSTDEPLOY_RECOVERY_VERIFIED_TEMPLATE_SHA256"; then
+    invalidate_runtime_release_state || true
+    echo '[auto-deploy] RECOVERY_PENDING exact promoted ledger republish failed' >&2
+    return 75
+  fi
+  if ! postdeploy_authoritative_promotion_status "$source" "$candidate" \
+     || ! verify_operational_usage_ledger_current_runtime_identity "$source" proof-only; then
+    invalidate_runtime_release_state || true
+    echo '[auto-deploy] RECOVERY_PENDING republished ledger did not restore exact authority' >&2
+    return 75
+  fi
+  echo "[auto-deploy] promoted final-live identity self-heal PASS source=$source candidate=$candidate"
+  return 0
 }
 
 # A DB COMMIT can outlive the promoter process or its marker rename. Recover
@@ -4062,13 +4714,20 @@ retire_legacy_partial_runtime_attempt() {
     return 79
   }
   jq -e '
-    keys==["activeFileSha256","assetManifestSha256","baseCommit","deploymentGeneration",
-           "deploymentUid","desiredReplicas","imageIdDigest","imageRef","migrationEvidenceSha256",
-           "migrationFingerprint","migrationRequired","planFingerprint","preparedAt","releaseId",
-           "schemaVersion","snapshotDir","snapshotId","stage","targetCommit","verifiedAt"]
+    (keys==["activeFileSha256","assetManifestSha256","baseCommit","deploymentGeneration",
+            "deploymentUid","desiredReplicas","imageIdDigest","imageRef","migrationEvidenceSha256",
+            "migrationFingerprint","migrationRequired","planFingerprint","preparedAt","releaseId",
+            "schemaVersion","snapshotDir","snapshotId","stage","targetCommit","verifiedAt"]
+     or
+     keys==["activeFileSha256","assetManifestSha256","baseCommit","deploymentGeneration",
+            "deploymentUid","desiredReplicas","imageIdDigest","imageRef","migrationEvidenceSha256",
+            "migrationFingerprint","migrationRequired","planFingerprint","podTemplateSha256","preparedAt","releaseId",
+            "schemaVersion","snapshotDir","snapshotId","stage","targetCommit","verifiedAt"])
     and .schemaVersion==1 and .stage=="RUNTIME_CANDIDATE_READY"
     and (.migrationRequired|type)=="boolean" and (.deploymentGeneration|type)=="number"
     and (.desiredReplicas|type)=="number" and .desiredReplicas>0
+    and ((has("podTemplateSha256")|not)
+         or (.podTemplateSha256|type=="string" and test("^[0-9a-f]{64}$")))
   ' "$checkpoint" >/dev/null || {
     write_postdeploy_promotion_quarantine 'LEGACY_CHECKPOINT_CONTRACT_INVALID' || true
     return 79
@@ -4268,6 +4927,7 @@ retire_legacy_partial_runtime_attempt() {
 recover_persistent_postdeploy_attempt() {
   [[ -e "$POSTDEPLOY_ATTEMPT_JOURNAL_FILE" || -L "$POSTDEPLOY_ATTEMPT_JOURNAL_FILE" ]] || return 1
   local journal status candidate source baseline recovered_status snapshot_id snapshot_manifest
+  local final_live_recovery_status=1
   local saved_candidate="$postdeploy_candidate_id" saved_target="$target_commit" saved_deployed="$deployed_commit"
   journal="$(python3 "$POSTDEPLOY_JOURNAL_HELPER" \
     --file "$POSTDEPLOY_ATTEMPT_JOURNAL_FILE" read)" || return 79
@@ -4321,6 +4981,16 @@ recover_persistent_postdeploy_attempt() {
     return 79
   fi
   if [[ "$status" == PROMOTED ]]; then
+    if recover_promoted_final_live_verify_pending "$journal" "$source" "$candidate"; then
+      final_live_recovery_status=0
+    else
+      final_live_recovery_status=$?
+    fi
+    case "$final_live_recovery_status" in
+      0) ;;
+      1) ;;
+      *) return "$final_live_recovery_status" ;;
+    esac
     if ! postdeploy_authoritative_promotion_status "$source" "$candidate" \
        || ! verify_operational_usage_ledger_current_runtime_identity "$source" proof-only; then
       write_postdeploy_promotion_quarantine 'PERSISTENT_PROMOTED_ATTEMPT_DIVERGED' || true
@@ -4370,6 +5040,37 @@ run_postdeploy_candidate_static_contract_if_required() {
   echo "[auto-deploy] postdeploy candidate static contract PASS"
 }
 
+bind_postdeploy_candidate_live_source() {
+  local before after final resource_version before_immutable after_immutable
+  before="$(kubectl -n "$NAMESPACE" get "deployment/$DEPLOYMENT" -o json)" || return 1
+  jq -e --arg namespace "$NAMESPACE" --arg deployment "$DEPLOYMENT" '
+    .metadata.namespace==$namespace and .metadata.name==$deployment
+    and (.metadata.resourceVersion|type=="string" and length>0)
+    and (.metadata.uid|type=="string" and length>0) and .spec.template
+  ' <<<"$before" >/dev/null || return 1
+  before_immutable="$(jq -cS '{uid:.metadata.uid,generation:.metadata.generation,
+    replicas:.spec.replicas,selector:.spec.selector,template:.spec.template}' <<<"$before")" || return 1
+  if [[ "$(jq -r '.metadata.annotations["resonance.ai/target-commit"]//empty' <<<"$before")" != "$target_commit" ]]; then
+    resource_version="$(jq -r '.metadata.resourceVersion' <<<"$before")"
+    after="$(kubectl -n "$NAMESPACE" annotate "deployment/$DEPLOYMENT" \
+      --resource-version="$resource_version" \
+      "resonance.ai/target-commit=$target_commit" --overwrite -o json)" || return 1
+  else
+    after="$before"
+  fi
+  after_immutable="$(jq -cS '{uid:.metadata.uid,generation:.metadata.generation,
+    replicas:.spec.replicas,selector:.spec.selector,template:.spec.template}' <<<"$after")" || return 1
+  [[ "$after_immutable" == "$before_immutable" ]] || return 1
+  final="$(kubectl -n "$NAMESPACE" get "deployment/$DEPLOYMENT" -o json)" || return 1
+  jq -e --arg source "$target_commit" \
+    --argjson expected "$(jq -cS '{uid:.metadata.uid,generation:.metadata.generation,
+      replicas:.spec.replicas,selector:.spec.selector,template:.spec.template}' <<<"$after")" '
+    .metadata.annotations["resonance.ai/target-commit"]==$source
+    and {uid:.metadata.uid,generation:.metadata.generation,replicas:.spec.replicas,
+         selector:.spec.selector,template:.spec.template}==$expected
+  ' <<<"$final" >/dev/null
+}
+
 enable_postdeploy_candidate_mode() {
   [[ "$postdeploy_candidate_initialized" != true ]] || return 0
   [[ "$postdeploy_attempt_journal_initialized" == true ]] \
@@ -4383,9 +5084,18 @@ enable_postdeploy_candidate_mode() {
   verify_postdeploy_release_attempt_db_staged \
     || { echo '[auto-deploy] candidate DB attempt identity is not exact STAGED' >&2; return 1; }
   postdeploy_db_attempt_staged=true
+  # Hide the old singleton first, then bind the rollback-protected Deployment
+  # annotation to this attempt with a resourceVersion CAS. Candidate unit
+  # stagers refuse a wrong source annotation and independently reread it.
+  invalidate_runtime_release_state \
+    || { echo '[auto-deploy] candidate runtime ledger invalidation failed' >&2; return 1; }
+  bind_postdeploy_candidate_live_source \
+    || { echo '[auto-deploy] candidate live source annotation CAS failed' >&2; return 1; }
   export CARBONET_POSTDEPLOY_EVIDENCE_MODE=candidate
   export CARBONET_POSTDEPLOY_CANDIDATE_ID="$postdeploy_candidate_id"
   export CARBONET_POSTDEPLOY_SOURCE_COMMIT="$target_commit"
+  export CARBONET_RUNTIME_CANDIDATE_CHECKPOINT_FILE="$RUNTIME_CANDIDATE_CHECKPOINT_FILE"
+  export CARBONET_POSTDEPLOY_ATTEMPT_JOURNAL_FILE="$POSTDEPLOY_ATTEMPT_JOURNAL_FILE"
   postdeploy_candidate_initialized=true
   echo "[auto-deploy] postdeploy candidate enabled id=$postdeploy_candidate_id sourceCommit=$target_commit"
 }
@@ -4399,7 +5109,6 @@ run_postdeploy_candidate_validation_groups() {
     echo '[auto-deploy] BLOCKED identity design changed without a staged reconcile and rollback contract' >&2
     return 78
   fi
-  invalidate_runtime_release_state
   UNIFIED_ASSET_SYNC_PRECOMPLETED="$asset_sync_precompleted" \
     bash ops/scripts/run-post-deploy-validation-groups.sh "$ROOT_DIR" "$target_commit" "$deployed_commit"
 }
@@ -4422,10 +5131,17 @@ WITH expected(unit_code,process_code,evidence_kind) AS (VALUES
   ('REPORT_CERTIFICATION_STATIC','REPORT_CERTIFICATION','STATIC'),
   ('SCREEN_CONTRACT_RUNTIME_SAVE_PREVIEW','__RELEASE__','RELEASE_GATE')
 ), actual AS (
-  SELECT unit_code,process_code,evidence_kind,source_commit,evidence_status,evidence_json,evidence_hash
+  SELECT unit_code,process_code,evidence_kind,source_commit,evidence_status,evidence_json,evidence_hash,
+         candidate_runtime_identity_hash
   FROM framework_postdeploy_evidence_candidate WHERE candidate_id=:'candidate_id'
 ), matching AS (
   SELECT a.unit_code FROM actual a JOIN expected e USING(unit_code,process_code,evidence_kind)
+), attempt AS (
+  SELECT source_commit,attempt_status,candidate_runtime_identity_hash
+    FROM framework_postdeploy_release_attempt WHERE candidate_id=:'candidate_id'
+), runtime AS (
+  SELECT source_commit,framework_runtime_release_identity_hash(runtime) runtime_identity_hash
+    FROM framework_runtime_release_state runtime WHERE release_key='CARBONET_RUNTIME'
 )
 SELECT jsonb_build_object(
   'unitCount',(SELECT count(*) FROM actual),
@@ -4433,7 +5149,14 @@ SELECT jsonb_build_object(
   'processCount',(SELECT count(DISTINCT process_code) FROM actual WHERE process_code<>'__RELEASE__'),
   'bound',coalesce((SELECT bool_and(source_commit=:'source_commit' AND evidence_status='CANDIDATE_VERIFIED'
     AND evidence_hash ~ '^[0-9a-f]{64}$' AND evidence_json->>'status'='PASS'
-    AND evidence_json->>'sourceCommit'=:'source_commit') FROM actual),false)
+    AND evidence_json->>'sourceCommit'=:'source_commit'
+    AND candidate_runtime_identity_hash=(SELECT attempt.candidate_runtime_identity_hash FROM attempt)
+    AND evidence_json->>'runtimeIdentityHash'=(SELECT attempt.candidate_runtime_identity_hash FROM attempt))
+      FROM actual),false)
+    AND coalesce((SELECT attempt_status='STAGED' AND source_commit=:'source_commit'
+      AND candidate_runtime_identity_hash~'^[0-9a-f]{64}$'
+      AND candidate_runtime_identity_hash=(SELECT runtime_identity_hash FROM runtime)
+      AND source_commit=(SELECT runtime.source_commit FROM runtime) FROM attempt),false)
 )::text;
 SQL
   } | kubectl -n "$NAMESPACE" exec -i "$POSTGRES_POD" -c "$POSTGRES_CONTAINER" -- \
@@ -4457,6 +5180,7 @@ finalize_postdeploy_candidate_release() {
      CARBONET_K8S_DEPLOYMENT="$DEPLOYMENT" \
      CARBONET_POSTGRES_CONTAINER="$POSTGRES_CONTAINER" \
      POSTGRES_DB="$POSTGRES_DB" POSTGRES_ADMIN_USER="$POSTGRES_USER" \
+     CARBONET_POSTDEPLOY_DEFER_MARKER_UNTIL_FINAL_VERIFY=true \
        bash ops/scripts/promote-postdeploy-candidate-evidence.sh \
          "$ROOT_DIR" "$postdeploy_candidate_id" "$target_commit" "$RUNTIME_DEPLOY_STATE_FILE"; then
     promoter_status=0
@@ -4482,6 +5206,29 @@ finalize_postdeploy_candidate_release() {
         write_postdeploy_promotion_quarantine 'PROMOTED_ATTEMPT_JOURNAL_TRANSITION_FAILED' || true
         echo '[auto-deploy] FAIL DB promotion committed but durable journal transition failed' >&2
         return 79
+      fi
+      # Promotion commits current evidence, but it cannot disarm rollback or
+      # publish either derived marker until one complete live proof remains
+      # stable across its final resourceVersion/PodTemplate reread.
+      if ! verify_operational_usage_ledger_current_runtime_identity "$target_commit" proof-only; then
+        if ! invalidate_runtime_release_state; then
+          write_postdeploy_promotion_quarantine 'PROMOTED_FINAL_LIVE_IDENTITY_INVALIDATION_UNVERIFIED' || true
+          echo '[auto-deploy] FAIL promoted final-live drift and runtime-ledger count=0 compensation is unverified' >&2
+          return 79
+        fi
+        if ! write_postdeploy_marker_pending 'DB_PROMOTED_FINAL_LIVE_VERIFY_PENDING'; then
+          write_postdeploy_promotion_quarantine 'PROMOTED_FINAL_LIVE_PENDING_WRITE_FAILED' || true
+          return 79
+        fi
+        if ! write_postdeploy_promotion_quarantine 'PROMOTED_FINAL_LIVE_IDENTITY_DRIFT'; then
+          echo '[auto-deploy] FAIL promoted final-live drift quarantine could not be persisted' >&2
+          return 79
+        fi
+        echo '[auto-deploy] RECOVERY_PENDING DB promotion committed but final live identity drifted; ledger invalidated, rollback snapshot and markers retained' >&2
+        # Exit 75 follows the existing DB-promoted marker-recovery contract.
+        # Exit 79 is reserved here for unverified compensation/persistence so
+        # the failure handler does not suppress the durable recovery schedule.
+        return 75
       fi
       journal="$(python3 "$POSTDEPLOY_JOURNAL_HELPER" \
         --file "$POSTDEPLOY_ATTEMPT_JOURNAL_FILE" read)" || return 79
@@ -4809,6 +5556,26 @@ if [[ "$PLAN_RUNTIME_REQUIRED" != "true" ]]; then
     [[ "$changed_script" == *.sh && -f "$changed_script" ]] && bash -n "$changed_script"
   done < <(printf '%s\n' "${deploy_changed_paths[@]}")
   if deploy_path_changed \
+      ops/scripts/select-catalog-contract-tests.sh \
+      ops/scripts/test-select-catalog-contract-tests.sh; then
+    bash ops/scripts/test-select-catalog-contract-tests.sh
+  else
+    echo "[auto-deploy] catalog contract selector self-test skipped: selector unchanged"
+  fi
+  # Selection is intentionally unconditional and cheap. Keeping it outside the
+  # control-plane synchronization allowlist prevents a newly mapped identity
+  # producer or test from silently selecting zero contracts on a static-only
+  # plan; only a nonempty selection launches parallel work.
+  mapfile -t catalog_contract_tests < <(
+    printf '%s\n' "${deploy_changed_paths[@]}" |
+      bash ops/scripts/select-catalog-contract-tests.sh --paths-stdin
+  )
+  if (( ${#catalog_contract_tests[@]} > 0 )); then
+    run_parallel_contract_tests "${catalog_contract_tests[@]}"
+  else
+    echo "[auto-deploy] catalog contract tests skipped: no mapped contract impact"
+  fi
+  if deploy_path_changed \
       ops/scripts/auto-deploy-main.sh \
       ops/scripts/auto-deploy-main-launcher.sh \
       ops/tests/test-auto-deploy-bootstrap-helper-snapshot.sh \
@@ -4886,22 +5653,6 @@ if [[ "$PLAN_RUNTIME_REQUIRED" != "true" ]]; then
       ops/systemd/resonance-backstage-full-e2e.timer \
       ops/kubernetes/postgres-haproxy-config.yaml \
       .github/workflows/carbonet-push-deploy.yml; then
-    if deploy_path_changed \
-        ops/scripts/select-catalog-contract-tests.sh \
-        ops/scripts/test-select-catalog-contract-tests.sh; then
-      bash ops/scripts/test-select-catalog-contract-tests.sh
-    else
-      echo "[auto-deploy] catalog contract selector self-test skipped: selector unchanged"
-    fi
-    mapfile -t catalog_contract_tests < <(
-      printf '%s\n' "${deploy_changed_paths[@]}" |
-        bash ops/scripts/select-catalog-contract-tests.sh --paths-stdin
-    )
-    if (( ${#catalog_contract_tests[@]} > 0 )); then
-      run_parallel_contract_tests "${catalog_contract_tests[@]}"
-    else
-      echo "[auto-deploy] catalog contract tests skipped: no mapped contract impact"
-    fi
     if deploy_path_changed \
         ops/scripts/resonance-github-deploy-webhook.py \
         ops/scripts/sync-github-deploy-webhook-url.py \
@@ -5419,6 +6170,7 @@ echo "[auto-deploy] frontend build required: $([[ "$skip_frontend" == "true" ]] 
 git merge --ff-only "$target_commit"
 run_flyway_job_timeout_contract_if_required
 run_composite_axis_migration_performance_if_required
+run_runtime_template_identity_migration_contract_if_required
 sync_auto_deploy_failure_runtime_if_required
 restore_live_frontend_overlay
 run_postdeploy_candidate_static_contract_if_required
@@ -5509,10 +6261,14 @@ if [[ "$PLAN_RUNTIME_REQUIRED" == "true" \
    && "$PLAN_BACKEND_REQUIRED" != "true" \
    && "$PLAN_DATABASE_REQUIRED" != "true" \
    && ",$PLAN_TESTS," == *",runtime:startup-profile,"* ]]; then
+  # JAVA_OPTS is a Deployment PodTemplate mutation. Arm the durable candidate,
+  # remove the old runtime singleton with count=0 proof, and bind the candidate
+  # source before the promoter changes the live template. Cleanup then owns an
+  # exact baseline restore if the guarded rollout or validation fails.
+  enable_postdeploy_candidate_mode
   CARBONET_DEPLOY_ROOT="$ROOT_DIR" DEFER_ROLLBACK_TO_ATTEMPT_RECONCILER=true \
     bash ops/scripts/promote-runtime-startup-profile.sh
   bash ops/scripts/sync-unified-asset-catalog.sh "$deployed_commit" "$target_commit"
-  enable_postdeploy_candidate_mode
   run_postdeploy_candidate_validation_groups true
   run_screen_contract_runtime_save_gate_if_required
   run_actor_process_role_e2e_if_required

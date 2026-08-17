@@ -48,6 +48,10 @@ contains "$HARNESS" 'PAGE_FETCH_CONCURRENCY="${CARBONET_USAGE_LEDGER_PAGE_CONCUR
 contains "$HARNESS" '[[ "$PAGE_FETCH_CONCURRENCY" == "1" ]]'
 contains "$HARNESS" 'system-test-report/step-detail'
 contains "$HARNESS" 'reviewStatus:"APPROVED"'
+contains "$HARNESS" 'framework_runtime_release_identity_hash(runtime)'
+contains "$HARNESS" '.review.reviewRuntimeIdentityHash==$runtimeHash'
+contains "$HARNESS" "runtime_identity_hash='\${RUNTIME_IDENTITY_HASH}'"
+contains "$HARNESS" 'healthy runtime release has no bound PodTemplate identity'
 contains "$HARNESS" 'IDEMPOTENCY_KEY_REUSE_MISMATCH'
 contains "$HARNESS" 'mismatch409=1'
 contains "$HARNESS" 'redaction mutation survived'
@@ -256,4 +260,4 @@ grep -Fq 'runtime identity marker bootstrapped from DB+K8s' "$DEPLOY" \
 ! sed -n '/^verify_operational_usage_ledger_current_runtime_identity() {/,/^}/p' "$DEPLOY" | grep -Fq '$DEPLOY_STATE_FILE' \
   || fail "runtime identity verifier references the overall applied marker"
 
-printf '[operational-usage-ledger-e2e-contract] PASS auth=allowed+anonymous2+denied7+logoutLeaderExact1 pagination=dynamic+pageSize200+sequential1+requestReduction75pct orderContract=5keys+stepCodeTieMutation detail=full redactionMutations=7 branchTruth=actors+dualRoutes review=create-reload-idempotent-mismatch409-cleanup pipeline=planner+frontend-pipeline+package+static+identity3+healthy-release-live pipelineRemovalMutations=4 paginationMutations=3 browser=desktop+390 helpAnchors=5 forbiddenChangeRequest=1\n'
+printf '[operational-usage-ledger-e2e-contract] PASS auth=allowed+anonymous2+denied7+logoutLeaderExact1 pagination=dynamic+pageSize200+sequential1+requestReduction75pct orderContract=5keys+stepCodeTieMutation detail=full redactionMutations=7 branchTruth=actors+dualRoutes review=create-reload-idempotent-mismatch409-runtimeIdentity-cleanup pipeline=planner+frontend-pipeline+package+static+identity3+healthy-release-live pipelineRemovalMutations=4 paginationMutations=3 browser=desktop+390 helpAnchors=5 forbiddenChangeRequest=1\n'

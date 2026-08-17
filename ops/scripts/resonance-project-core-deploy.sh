@@ -67,4 +67,4 @@ SKIP_FRONTEND=true \
 SKIP_OVERLAY_SYNC=true \
 SKIP_NOTIFY="${SKIP_NOTIFY:-true}" \
 IMAGE_NAME="$IMAGE_NAME" \
-  bash ops/scripts/resonance-k8s-build-deploy-80-v2.sh
+  exec /usr/bin/bash "$ROOT_DIR/ops/scripts/resonance-k8s-build-deploy-80-v2.sh"

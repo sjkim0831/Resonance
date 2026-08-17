@@ -12,12 +12,16 @@ target_commit='2222222222222222222222222222222222222222'
 image_id='docker-pullable://registry/carbonet@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
 
 write_deployment() {
-  local ready="${1:-2}" annotation="${2:-$old_commit}"
+  local ready="${1:-2}" annotation="${2:-$old_commit}" template_hash
   jq -n --arg annotation "$annotation" --argjson ready "$ready" '{
     metadata:{resourceVersion:"rv-7",uid:"deployment-uid-1",generation:7,annotations:{"resonance.ai/target-commit":$annotation}},
     spec:{replicas:2,selector:{matchLabels:{app:"carbonet-runtime"}},template:{spec:{containers:[{name:"carbonet-runtime",image:"registry/carbonet:test"}]}}},
     status:{observedGeneration:7,updatedReplicas:2,readyReplicas:$ready,availableReplicas:$ready,unavailableReplicas:(2-$ready)}
   }' >"$TMP/fixtures/deployment.json"
+  template_hash="$(jq -cS '.spec.template' "$TMP/fixtures/deployment.json" | sha256sum | awk '{print $1}')"
+  jq --arg hash "$template_hash" '.metadata.annotations["resonance.ai/runtime-template-sha256"]=$hash' \
+    "$TMP/fixtures/deployment.json" >"$TMP/fixtures/deployment.tmp"
+  mv "$TMP/fixtures/deployment.tmp" "$TMP/fixtures/deployment.json"
 }
 
 write_old_ledger() {
@@ -35,6 +39,7 @@ write_pods() {
 write_deployment
 write_old_ledger
 write_pods
+export CARBONET_RUNTIME_EXPECTED_TEMPLATE_SHA256="$(jq -cS '.spec.template' "$TMP/fixtures/deployment.json" | sha256sum | awk '{print $1}')"
 
 cat >"$TMP/bin/kubectl" <<'SH'
 #!/usr/bin/env bash
@@ -45,6 +50,8 @@ if [[ "$args" == *" exec -i $POSTGRES_POD "* ]]; then
   printf '%s\n--CALL--\n' "$sql" >>"$FIXTURE_DIR/sql.calls"
   if [[ "$sql" == *"to_regclass('public.framework_runtime_release_state')"* ]]; then
     printf 'framework_runtime_release_state\n'
+  elif [[ "$sql" == *"information_schema.columns"* && "$sql" == *"pod_template_sha256"* ]]; then
+    [[ "${MISSING_TEMPLATE_COLUMN:-false}" != true ]] && printf '1\n' || printf '0\n'
   elif [[ "$sql" == *"delete from framework_runtime_release_state"* ]]; then
     [[ "${FAIL_DELETE:-false}" != true ]] || exit 51
     : >"$FIXTURE_DIR/ledger.json"
@@ -57,10 +64,11 @@ if [[ "$args" == *" exec -i $POSTGRES_POD "* ]]; then
       --arg uid "$(jq -r .metadata.uid <<<"$deployment")" \
       --arg image "$(jq -r '.spec.template.spec.containers[0].image' <<<"$deployment")" \
       --arg imageId "$(jq -r '.items[0].status.containerStatuses[0].imageID' "$FIXTURE_DIR/pods.json")" \
+      --arg podTemplateSha256 "$CARBONET_RUNTIME_EXPECTED_TEMPLATE_SHA256" \
       --argjson generation "$(jq -r .metadata.generation <<<"$deployment")" \
       --argjson observed "$(jq -r .status.observedGeneration <<<"$deployment")" \
       --argjson desired "$(jq -r .spec.replicas <<<"$deployment")" \
-      '{releaseKey:"CARBONET_RUNTIME",sourceCommit:$commit,deploymentNamespace:$namespace,deploymentName:$deployment,deploymentUid:$uid,deploymentGeneration:$generation,observedGeneration:$observed,desiredReplicas:$desired,imageRef:$image,imageId:$imageId,healthStatus:"UP"}' \
+      '{releaseKey:"CARBONET_RUNTIME",sourceCommit:$commit,deploymentNamespace:$namespace,deploymentName:$deployment,deploymentUid:$uid,deploymentGeneration:$generation,observedGeneration:$observed,desiredReplicas:$desired,imageRef:$image,imageId:$imageId,podTemplateSha256:$podTemplateSha256,healthStatus:"UP"}' \
       >"$FIXTURE_DIR/ledger.json"
     [[ "${COMMIT_OUTPUT_ILLUSION:-false}" != true ]] || printf '{"sourceCommit":"forged-pre-commit"}\n'
     [[ "${COMMIT_OUTPUT_ILLUSION:-false}" == true || "$sql" != *"jsonb_build_object"* ]] || cat "$FIXTURE_DIR/ledger.json"
@@ -86,6 +94,13 @@ elif [[ "$args" == *" get deployment/carbonet-runtime -o json "* ]]; then
       mv "$FIXTURE_DIR/deployment.tmp" "$FIXTURE_DIR/deployment.json"
     fi
   fi
+  if [[ -n "${ANNOTATE_READY_AFTER:-}" && "$identity_count" -ge "$ANNOTATE_READY_AFTER" ]]; then
+    jq '.status.observedGeneration=.metadata.generation |
+        .status.updatedReplicas=.spec.replicas | .status.readyReplicas=.spec.replicas |
+        .status.availableReplicas=.spec.replicas | .status.unavailableReplicas=0' \
+      "$FIXTURE_DIR/deployment.json" >"$FIXTURE_DIR/deployment.tmp"
+    mv "$FIXTURE_DIR/deployment.tmp" "$FIXTURE_DIR/deployment.json"
+  fi
   if [[ -n "${DRIFT_AFTER_DEPLOYMENT_GET:-}" && "$identity_count" == "$DRIFT_AFTER_DEPLOYMENT_GET" ]]; then
     jq '.metadata.resourceVersion="rv-drift" | .metadata.generation+=1 | .status.observedGeneration+=1' "$FIXTURE_DIR/deployment.json"
   else
@@ -94,14 +109,22 @@ elif [[ "$args" == *" get deployment/carbonet-runtime -o json "* ]]; then
 elif [[ "$args" == *" annotate deployment/carbonet-runtime "* ]]; then
   printf '%s\n' "$*" >>"$FIXTURE_DIR/annotate.calls"
   [[ "${FAIL_ANNOTATE:-false}" != "true" ]] || exit 41
-  commit=""
+  commit="" template_hash=""
   for value in "$@"; do
     [[ "$value" == resonance.ai/target-commit=* ]] && commit="${value#*=}"
+    [[ "$value" == resonance.ai/runtime-template-sha256=* ]] && template_hash="${value#*=}"
   done
-  [[ -n "$commit" ]] || exit 42
-  jq --arg commit "$commit" '.metadata.annotations["resonance.ai/target-commit"]=$commit' \
+  [[ -n "$commit" && "$template_hash" =~ ^[0-9a-f]{64}$ ]] || exit 42
+  jq --arg commit "$commit" --arg templateHash "$template_hash" \
+    '.metadata.annotations["resonance.ai/target-commit"]=$commit |
+     .metadata.annotations["resonance.ai/runtime-template-sha256"]=$templateHash' \
     "$FIXTURE_DIR/deployment.json" >"$FIXTURE_DIR/deployment.tmp"
   mv "$FIXTURE_DIR/deployment.tmp" "$FIXTURE_DIR/deployment.json"
+  if [[ "${ANNOTATE_GENERATION_LAG:-false}" == true ]]; then
+    jq '.metadata.resourceVersion="rv-annotated" | .metadata.generation+=1' \
+      "$FIXTURE_DIR/deployment.json" >"$FIXTURE_DIR/deployment.tmp"
+    mv "$FIXTURE_DIR/deployment.tmp" "$FIXTURE_DIR/deployment.json"
+  fi
 elif [[ "$args" == *" get pods "* ]]; then
   cat "$FIXTURE_DIR/pods.json"
 elif [[ "$args" == *" exec runtime-"* && "$args" == *"/actuator/health "* ]]; then
@@ -129,9 +152,43 @@ export CARBONET_RUNTIME_LEDGER_READY_DELAY_SECONDS=0
 
 bash "$HELPER" "$target_commit" >/dev/null
 [[ "$(jq -r '.metadata.annotations["resonance.ai/target-commit"]' "$TMP/fixtures/deployment.json")" == "$target_commit" ]]
+[[ "$(jq -r '.metadata.annotations["resonance.ai/runtime-template-sha256"]' "$TMP/fixtures/deployment.json")" \
+   == "$(jq -cS '.spec.template' "$TMP/fixtures/deployment.json" | sha256sum | awk '{print $1}')" ]]
 [[ "$(jq -r '.sourceCommit' "$TMP/fixtures/ledger.json")" == "$target_commit" ]]
 [[ "$(jq -r '.desiredReplicas' "$TMP/fixtures/ledger.json")" == "2" ]]
 [[ "$(jq -r '.imageId' "$TMP/fixtures/ledger.json")" == "$image_id" ]]
+[[ "$(jq -r '.podTemplateSha256' "$TMP/fixtures/ledger.json")" == "$CARBONET_RUNTIME_EXPECTED_TEMPLATE_SHA256" ]]
+
+# The recorder cannot self-sign the already-live Deployment. Its expected hash
+# must come from the durable candidate/rollback evidence and the DB column must
+# already be installed by Flyway.
+write_deployment 2 "$old_commit"
+write_old_ledger
+set +e
+CARBONET_RUNTIME_EXPECTED_TEMPLATE_SHA256="$(printf changed-template | sha256sum | awk '{print $1}')" \
+  bash "$HELPER" "$target_commit" >/dev/null 2>&1
+external_anchor_status=$?
+MISSING_TEMPLATE_COLUMN=true bash "$HELPER" "$target_commit" >/dev/null 2>&1
+missing_column_status=$?
+set -e
+[[ "$external_anchor_status" -ne 0 && "$missing_column_status" -ne 0 ]]
+[[ "$(jq -r '.sourceCommit' "$TMP/fixtures/ledger.json")" == "$old_commit" ]]
+
+# A metadata annotation can advance Deployment generation before the
+# controller observes it. The helper waits in-process and publishes once the
+# exact UID/template/replicas become observed, avoiding another full backup.
+write_deployment 2 "$old_commit"
+write_old_ledger
+write_pods
+rm -f "$TMP/fixtures/identity-get-count"
+ANNOTATE_GENERATION_LAG=true ANNOTATE_READY_AFTER=3 \
+CARBONET_RUNTIME_LEDGER_ANNOTATION_READY_ATTEMPTS=3 \
+CARBONET_RUNTIME_LEDGER_ANNOTATION_READY_DELAY_SECONDS=0 \
+  bash "$HELPER" "$target_commit" >"$TMP/fixtures/annotation-lag.log"
+grep -Fq 'WAIT annotated deployment not ready attempt=1/3' "$TMP/fixtures/annotation-lag.log"
+[[ "$(jq -r '.metadata.generation' "$TMP/fixtures/deployment.json")" == 8 \
+   && "$(jq -r '.status.observedGeneration' "$TMP/fixtures/deployment.json")" == 8 \
+   && "$(jq -r '.sourceCommit' "$TMP/fixtures/ledger.json")" == "$target_commit" ]]
 
 
 write_deployment 1 "$old_commit"
@@ -265,6 +322,19 @@ set -e
 [[ "$unhealthy_status" -ne 0 && ! -e "$TMP/fixtures/annotate.calls" ]]
 [[ ! -s "$TMP/fixtures/ledger.json" ]] || { echo 'unhealthy second pod retained stale ledger' >&2; exit 1; }
 
+# Observe-only rollback publication never blesses same-image pod-template
+# drift under the old attestation annotation.
+write_deployment 2 "$target_commit"
+write_old_ledger
+jq '.spec.template.spec.containers[0].env=[{"name":"DRIFT","value":"1"}]' \
+  "$TMP/fixtures/deployment.json" >"$TMP/fixtures/deployment.tmp"
+mv "$TMP/fixtures/deployment.tmp" "$TMP/fixtures/deployment.json"
+set +e
+CARBONET_RUNTIME_LEDGER_OBSERVE_ONLY=true bash "$HELPER" "$target_commit" >/dev/null 2>&1
+observe_template_status=$?
+set -e
+[[ "$observe_template_status" -ne 0 && "$(jq -r '.sourceCommit' "$TMP/fixtures/ledger.json")" == "$old_commit" ]]
+
 write_deployment 2 "$old_commit"
 write_old_ledger
 set +e
@@ -275,4 +345,4 @@ set -e
 [[ "$(jq -r '.sourceCommit' "$TMP/fixtures/ledger.json")" == "$old_commit" ]] \
   || { echo 'observe-only annotation mismatch mutated the prior ledger' >&2; exit 1; }
 
-echo '[runtime-release-state-test] PASS ready=recorded transient-unready=retried replicas=exact imageID=all-nonempty-single-digest terminatingPod=rejected allPodHealth=required observeOnly=annotate0 transaction=commit-then-independent-reread postTransactionDrift=invalidated cleanupDeleteFailure=quarantined annotation-failure=invalidated unready=preserved explicit-invalidate=cleared'
+echo '[runtime-release-state-test] PASS ready=recorded transient-unready=retried annotationGenerationLag=boundedWait+publish replicas=exact imageID=all-nonempty-single-digest templateHash=externalCheckpoint+DB+annotated+observeDriftRejected missingMigration=blocked terminatingPod=rejected allPodHealth=required observeOnly=annotate0 transaction=commit-then-independent-reread postTransactionDrift=invalidated cleanupDeleteFailure=quarantined annotation-failure=invalidated unready=preserved explicit-invalidate=cleared'

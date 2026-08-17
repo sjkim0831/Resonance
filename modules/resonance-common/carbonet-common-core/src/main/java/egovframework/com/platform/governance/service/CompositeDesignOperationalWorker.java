@@ -439,12 +439,7 @@ public class CompositeDesignOperationalWorker {
     private static final String PROMOTE_EXACT_PHYSICAL_SQL="""
                 with current_runtime as materialized (
                   select runtime.source_commit,
-                         encode(sha256(convert_to(concat_ws('|',runtime.source_commit,
-                           runtime.deployment_namespace,runtime.deployment_name,
-                           runtime.deployment_uid,runtime.deployment_generation,
-                           runtime.observed_generation,runtime.desired_replicas,
-                           runtime.image_ref,runtime.image_id,runtime.health_status
-                         ),'UTF8')),'hex') runtime_identity_hash
+                         framework_runtime_release_identity_hash(runtime) runtime_identity_hash
                     from framework_runtime_release_state runtime
                    where runtime.release_key='CARBONET_RUNTIME'
                      and runtime.health_status='UP'
@@ -651,12 +646,7 @@ public class CompositeDesignOperationalWorker {
     private static final String MARK_LIVE_SMOKE_TEST_PENDING_SQL="""
                 with current_runtime as materialized (
                   select runtime.source_commit,
-                         encode(sha256(convert_to(concat_ws('|',runtime.source_commit,
-                           runtime.deployment_namespace,runtime.deployment_name,
-                           runtime.deployment_uid,runtime.deployment_generation,
-                           runtime.observed_generation,runtime.desired_replicas,
-                           runtime.image_ref,runtime.image_id,runtime.health_status
-                         ),'UTF8')),'hex') runtime_identity_hash
+                         framework_runtime_release_identity_hash(runtime) runtime_identity_hash
                     from framework_runtime_release_state runtime
                    where runtime.release_key='CARBONET_RUNTIME' and runtime.health_status='UP' for share of runtime
                 ), dispatch_contract as materialized (

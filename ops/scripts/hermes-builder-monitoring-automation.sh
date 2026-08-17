@@ -78,10 +78,15 @@ monitoring_smoke() {
 
 self_heal_probe() {
   if [[ "$APPLY_SELF_HEAL" == "true" ]]; then
-    (cd "$ROOT_DIR" && bash ops/scripts/resonance-k8s-self-heal.sh)
-  else
+    (cd "$ROOT_DIR" && REBUILD_ON_FAILURE=false \
+      bash ops/scripts/resonance-k8s-self-heal.sh)
+  elif [[ "$APPLY_SELF_HEAL" == "false" ]]; then
     printf 'dry-run: APPLY_SELF_HEAL=false\n'
-    (cd "$ROOT_DIR" && bash ops/scripts/resonance-k8s-self-heal.sh --dry-run 2>/dev/null || true)
+    (cd "$ROOT_DIR" && REBUILD_ON_FAILURE=false \
+      bash ops/scripts/resonance-k8s-self-heal.sh --dry-run)
+  else
+    printf 'invalid APPLY_SELF_HEAL value: %s\n' "$APPLY_SELF_HEAL" >&2
+    return 2
   fi
 }
 

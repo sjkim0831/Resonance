@@ -29,12 +29,19 @@ IMAGE_ID='sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
 cat >"$TMP/deployment.json" <<JSON
 {"metadata":{"namespace":"test-ns","name":"carbonet-runtime","uid":"runtime-uid","resourceVersion":"10","generation":7,"annotations":{"resonance.ai/target-commit":"$BASELINE"}},"spec":{"replicas":2,"selector":{"matchLabels":{"app":"carbonet-runtime"}},"template":{"spec":{"containers":[{"name":"carbonet-runtime","image":"$IMAGE_REF"}]}}},"status":{"observedGeneration":7,"updatedReplicas":2,"readyReplicas":2,"availableReplicas":2,"unavailableReplicas":0}}
 JSON
+TEMPLATE_SHA256="$(jq -cS '.spec.template' "$TMP/deployment.json" | sha256sum | awk '{print $1}')"
+jq --arg hash "$TEMPLATE_SHA256" '.metadata.annotations["resonance.ai/runtime-template-sha256"]=$hash' \
+  "$TMP/deployment.json" >"$TMP/deployment.bound.json"
+mv -f "$TMP/deployment.bound.json" "$TMP/deployment.json"
 cat >"$TMP/pods.json" <<JSON
 {"items":[{"metadata":{"name":"runtime-0"},"spec":{"containers":[{"name":"carbonet-runtime","image":"$IMAGE_REF"}]},"status":{"phase":"Running","conditions":[{"type":"Ready","status":"True"}],"containerStatuses":[{"name":"carbonet-runtime","ready":true,"imageID":"$IMAGE_ID"}]}},{"metadata":{"name":"runtime-1"},"spec":{"containers":[{"name":"carbonet-runtime","image":"$IMAGE_REF"}]},"status":{"phase":"Running","conditions":[{"type":"Ready","status":"True"}],"containerStatuses":[{"name":"carbonet-runtime","ready":true,"imageID":"$IMAGE_ID"}]}}]}
 JSON
 cat >"$TMP/ledger.json" <<JSON
-{"releaseKey":"CARBONET_RUNTIME","sourceCommit":"$BASELINE","deploymentNamespace":"test-ns","deploymentName":"carbonet-runtime","deploymentUid":"runtime-uid","deploymentGeneration":7,"observedGeneration":7,"desiredReplicas":2,"imageRef":"$IMAGE_REF","imageId":"$IMAGE_ID","healthStatus":"UP"}
+{"releaseKey":"CARBONET_RUNTIME","sourceCommit":"$BASELINE","deploymentNamespace":"test-ns","deploymentName":"carbonet-runtime","deploymentUid":"runtime-uid","deploymentGeneration":7,"observedGeneration":7,"desiredReplicas":2,"imageRef":"$IMAGE_REF","imageId":"$IMAGE_ID","podTemplateSha256":"$TEMPLATE_SHA256","healthStatus":"UP"}
 JSON
+cp "$TMP/deployment.json" "$TMP/deployment.good.json"
+cp "$TMP/pods.json" "$TMP/pods.good.json"
+cp "$TMP/ledger.json" "$TMP/ledger.good.json"
 
 cat >"$TMP/bin/kubectl" <<'SH'
 #!/usr/bin/env bash
@@ -119,6 +126,9 @@ LOCK="$TMP/deploy.lock"
 
 write_case() {
   local reason="${1:-MARKER_PENDING_RUNTIME_PROOF_FAILED}"
+  cp "$TMP/deployment.good.json" "$TMP/deployment.json"
+  cp "$TMP/pods.good.json" "$TMP/pods.json"
+  cp "$TMP/ledger.good.json" "$TMP/ledger.json"
   rm -rf -- "$RETIRED"
   rm -f -- "$QUARANTINE" "$JOURNAL" "$PENDING" "$CHECKPOINT" "$LOCK" "$TMP/db-counter"
   printf '%s\n' "$BASELINE" >"$APPLIED"
@@ -158,6 +168,30 @@ ARCHIVE="$RETIRED/${CANDIDATE}.legacy-orphan-runtime-quarantine.state"
 grep -Fq 'targetRows=0/0/0 liveLedger=1 health=UP' "$TMP/happy.log"
 run_helper >"$TMP/no-quarantine.log"
 [[ ! -s "$TMP/no-quarantine.log" && "$(sha256sum "$ARCHIVE" | awk '{print $1}')" == "$SOURCE_HASH" ]]
+
+# Same-image PodTemplate changes cannot be hidden by retaining or rewriting the
+# mutable Deployment annotation; the independent DB digest remains authority.
+write_case
+jq '.spec.template.spec.containers[0].env=[{"name":"UNAUTHORIZED_DRIFT","value":"1"}]' \
+  "$TMP/deployment.json" >"$TMP/deployment.drift.json"
+mv -f "$TMP/deployment.drift.json" "$TMP/deployment.json"
+status=0; run_helper >/dev/null 2>&1 || status=$?
+[[ "$status" == 79 && -f "$QUARANTINE" && ! -e "$RETIRED" ]]
+
+write_case
+jq '.spec.template.spec.containers[0].env=[{"name":"COUPLED_DRIFT","value":"1"}]' \
+  "$TMP/deployment.json" >"$TMP/deployment.drift.json"
+drift_hash="$(jq -cS '.spec.template' "$TMP/deployment.drift.json" | sha256sum | awk '{print $1}')"
+jq --arg hash "$drift_hash" '.metadata.annotations["resonance.ai/runtime-template-sha256"]=$hash' \
+  "$TMP/deployment.drift.json" >"$TMP/deployment.json"
+status=0; run_helper >/dev/null 2>&1 || status=$?
+[[ "$status" == 79 && -f "$QUARANTINE" && ! -e "$RETIRED" ]]
+
+write_case
+jq '.podTemplateSha256=null' "$TMP/ledger.json" >"$TMP/ledger.unbound.json"
+mv -f "$TMP/ledger.unbound.json" "$TMP/ledger.json"
+status=0; run_helper >/dev/null 2>&1 || status=$?
+[[ "$status" == 79 && -f "$QUARANTINE" && ! -e "$RETIRED" ]]
 
 # A quarantine left by a failed recovered-checkpoint disarm is eligible only
 # after the runtime candidate checkpoint itself is proven absent.
@@ -278,8 +312,10 @@ drop_before="$(grep -c '^drop$' "$FAKE_CALL_LOG")"
   terminate_runtime_screen_gate_group() { :; }
   cleanup_remote_backup() { :; }
   cleanup_local_schema_restore_container() { :; }
+  bounded_cleanup_kubectl() { kubectl "$@"; }
   runtime_asset_sync_pid=""; catalog_identity_sync_pid=""; backstage_visual_e2e_pid=""
   schema_restore_database=carbonet_schema_verify_empty; schema_backup_dir=""
+  flyway_cleanup_recovery_hold=false; FLYWAY_CLEANUP_HOLD_FILE="$TMP/no-flyway-hold"
   ROOT_DIR="$TMP/nonexistent-root"; persistent_build_worktree="$TMP/nonexistent-worktree"
   CARBONET_DEPLOY_SNAPSHOT_PATH=""; POSTDEPLOY_ATTEMPT_JOURNAL_FILE="$TMP/no-journal"
   postdeploy_candidate_promoted=false; postdeploy_candidate_initialized=false
@@ -289,4 +325,4 @@ drop_before="$(grep -c '^drop$' "$FAKE_CALL_LOG")"
 [[ "$(grep -c '^drop$' "$FAKE_CALL_LOG")" == "$((drop_before + 1))" ]]
 
 grep -Fq 'reconcile-exact-legacy-orphan-runtime-quarantine.sh' "$AUTO"
-printf '[legacy-orphan-quarantine-test] PASS exact6+mode600+owner reasons=markerPending+recoveredCheckpointDisarm checkpoint=absent+fileBlocked+symlinkBlocked hashPinned markers=stable+equal ancestry=baseline-orphan-next DB=attempt0+promotion0+runtime0 baseline=ledger1+healthUP archive=0400+samefs+fsync+sourceAbsent failClosed=rows+unknown+health+obligation+ancestry+postArchiveDrift concurrent=2 schemaRestore=full+flywayRows+objectParity+objectMismatch+failureCleanup elapsedMs=%s\n' "$elapsed_ms"
+printf '[legacy-orphan-quarantine-test] PASS exact6+mode600+owner reasons=markerPending+recoveredCheckpointDisarm checkpoint=absent+fileBlocked+symlinkBlocked hashPinned markers=stable+equal ancestry=baseline-orphan-next DB=attempt0+promotion0+runtime0 baseline=ledger1+healthUP+podTemplateDB archive=0400+samefs+fsync+sourceAbsent failClosed=rows+unknown+health+obligation+ancestry+templateDrift+coupledAnnotationDrift+unboundTemplate+postArchiveDrift concurrent=2 schemaRestore=full+flywayRows+objectParity+objectMismatch+failureCleanup elapsedMs=%s\n' "$elapsed_ms"

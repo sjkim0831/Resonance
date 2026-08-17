@@ -3,6 +3,11 @@ set -euo pipefail
 
 NAMESPACE="${1:-carbonet-prod}"
 DEPLOYMENT="${2:-carbonet-runtime}"
+
+if [[ "$NAMESPACE" == carbonet-prod && "$DEPLOYMENT" == carbonet-runtime ]]; then
+    echo '[autorecovery-watchdog] production runtime mutation entrypoint retired; use durable auto-deploy' >&2
+    exit 78
+fi
 LOGFILE="/var/log/resonance-watchdog.log"
 
 log() {

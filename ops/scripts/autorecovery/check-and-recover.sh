@@ -5,6 +5,11 @@ NAMESPACE="${1:-carbonet-prod}"
 DEPLOYMENT="${2:-carbonet-runtime}"
 LOGFILE="/var/log/resonance-autorecovery.log"
 
+if [[ "$NAMESPACE" == carbonet-prod && "$DEPLOYMENT" == carbonet-runtime ]]; then
+    echo '[autorecovery] production runtime mutation entrypoint retired; use durable auto-deploy' >&2
+    exit 78
+fi
+
 log() {
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" | tee -a "$LOGFILE"
 }

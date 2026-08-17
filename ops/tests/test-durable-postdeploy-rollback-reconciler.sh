@@ -686,6 +686,8 @@ elif [[ "$args" == *" psql "* ]]; then
   printf '%s\n--CALL--\n' "$sql" >>"$FAKE_SQL_LOG"
   if [[ "$sql" == *"to_regclass('public.framework_runtime_release_state')"* ]]; then
     printf 'framework_runtime_release_state\n'
+  elif [[ "$sql" == *"information_schema.columns"* && "$sql" == *"pod_template_sha256"* ]]; then
+    printf '1\n'
   elif [[ "$sql" == *"insert into framework_runtime_release_state"* ]]; then
     printf '1\n' >"$FAKE_LEDGER_STATE"
   elif [[ "$sql" == *"jsonb_build_object"* ]]; then
@@ -701,14 +703,15 @@ else
 fi
 SH
 chmod +x "$record_fixture/kubectl"
-cat >"$record_fixture/deployment.json" <<'JSON'
-{"metadata":{"resourceVersion":"rv-9","uid":"deployment-uid","generation":__GENERATION__,"annotations":{"resonance.ai/target-commit":"0000000000000000000000000000000000000000"}},"spec":{"replicas":2,"selector":{"matchLabels":{"app":"carbonet-runtime"}},"template":{"spec":{"containers":[{"name":"carbonet-runtime","image":"registry.invalid/carbonet:baseline"}]}}},"status":{"observedGeneration":__GENERATION__,"updatedReplicas":2,"readyReplicas":2,"availableReplicas":2,"unavailableReplicas":0}}
+record_template_hash="$(printf '%s\n' '{"spec":{"template":{"spec":{"containers":[{"name":"carbonet-runtime","image":"registry.invalid/carbonet:baseline"}]}}}}' | jq -cS '.spec.template' | sha256sum | awk '{print $1}')"
+cat >"$record_fixture/deployment.json" <<JSON
+{"metadata":{"resourceVersion":"rv-9","uid":"deployment-uid","generation":__GENERATION__,"annotations":{"resonance.ai/target-commit":"0000000000000000000000000000000000000000","resonance.ai/runtime-template-sha256":"$record_template_hash"}},"spec":{"replicas":2,"selector":{"matchLabels":{"app":"carbonet-runtime"}},"template":{"spec":{"containers":[{"name":"carbonet-runtime","image":"registry.invalid/carbonet:baseline"}]}}},"status":{"observedGeneration":__GENERATION__,"updatedReplicas":2,"readyReplicas":2,"availableReplicas":2,"unavailableReplicas":0}}
 JSON
 cat >"$record_fixture/pods.json" <<'JSON'
 {"items":[{"metadata":{"name":"runtime-0"},"status":{"phase":"Running","conditions":[{"type":"Ready","status":"True"}],"containerStatuses":[{"name":"carbonet-runtime","ready":true,"imageID":"docker-pullable://registry.invalid/carbonet@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}]},"spec":{"containers":[{"name":"carbonet-runtime","image":"registry.invalid/carbonet:baseline"}]}},{"metadata":{"name":"runtime-1"},"status":{"phase":"Running","conditions":[{"type":"Ready","status":"True"}],"containerStatuses":[{"name":"carbonet-runtime","ready":true,"imageID":"docker-pullable://registry.invalid/carbonet@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}]},"spec":{"containers":[{"name":"carbonet-runtime","image":"registry.invalid/carbonet:baseline"}]}}]}
 JSON
-cat >"$record_fixture/recorded.json" <<'JSON'
-{"releaseKey":"CARBONET_RUNTIME","sourceCommit":"0000000000000000000000000000000000000000","deploymentNamespace":"carbonet-prod","deploymentName":"carbonet-runtime","deploymentUid":"deployment-uid","deploymentGeneration":9,"observedGeneration":9,"desiredReplicas":2,"imageRef":"registry.invalid/carbonet:baseline","imageId":"docker-pullable://registry.invalid/carbonet@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","healthStatus":"UP"}
+cat >"$record_fixture/recorded.json" <<JSON
+{"releaseKey":"CARBONET_RUNTIME","sourceCommit":"0000000000000000000000000000000000000000","deploymentNamespace":"carbonet-prod","deploymentName":"carbonet-runtime","deploymentUid":"deployment-uid","deploymentGeneration":9,"observedGeneration":9,"desiredReplicas":2,"imageRef":"registry.invalid/carbonet:baseline","imageId":"docker-pullable://registry.invalid/carbonet@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","podTemplateSha256":"$record_template_hash","healthStatus":"UP"}
 JSON
 export FAKE_GET_COUNT="$record_fixture/get-count" FAKE_SQL_LOG="$record_fixture/sql.log"
 export FAKE_DEPLOYMENT_JSON="$record_fixture/deployment.json" FAKE_PODS_JSON="$record_fixture/pods.json" FAKE_RECORDED_JSON="$record_fixture/recorded.json"
@@ -716,6 +719,7 @@ export FAKE_LEDGER_STATE="$record_fixture/ledger-state"
 rm -f "$FAKE_GET_COUNT" "$FAKE_SQL_LOG" "$FAKE_LEDGER_STATE"
 CARBONET_RUNTIME_LEDGER_KUBECTL_BIN="$record_fixture/kubectl" \
 CARBONET_RUNTIME_LEDGER_OBSERVE_ONLY=true POSTGRES_POD=postgres-patroni-0 \
+CARBONET_RUNTIME_EXPECTED_TEMPLATE_SHA256="$record_template_hash" \
   bash "$RECORD_RUNTIME" 0000000000000000000000000000000000000000 >/dev/null
 grep -Fqi 'begin;' "$FAKE_SQL_LOG"
 grep -Fqi 'insert into framework_runtime_release_state' "$FAKE_SQL_LOG"
@@ -726,6 +730,7 @@ rm -f "$FAKE_GET_COUNT" "$FAKE_SQL_LOG"
 drift_status=0
 FAKE_DRIFT_AFTER=3 CARBONET_RUNTIME_LEDGER_KUBECTL_BIN="$record_fixture/kubectl" \
 CARBONET_RUNTIME_LEDGER_OBSERVE_ONLY=true POSTGRES_POD=postgres-patroni-0 \
+CARBONET_RUNTIME_EXPECTED_TEMPLATE_SHA256="$record_template_hash" \
   bash "$RECORD_RUNTIME" 0000000000000000000000000000000000000000 >/dev/null 2>&1 || drift_status=$?
 [[ "$drift_status" != 0 ]]
 python3 - "$FAKE_SQL_LOG" <<'PY'
@@ -739,8 +744,11 @@ PY
 # default-derived paths after the clean-worktree switch.
 grep -Fq 'rebind_default_postdeploy_helpers' "$AUTO"
 grep -Fq 'ROOT_DIR="$clean_worktree"' "$AUTO"
-grep -Fq '&& "$ledger_generation" == "$generation"' "$AUTO"
-grep -Fq '&& "$ledger_desired" == "$desired"' "$AUTO"
+grep -Fq 'ledger_coordinates_valid=false' "$AUTO"
+grep -Fq 'ledger_generation <= generation' "$AUTO"
+grep -Fq 'ledger_observed <= observed' "$AUTO"
+grep -Fq 'resonance.ai/runtime-template-sha256' "$AUTO"
+grep -Fq 'reason=TEMPLATE_MISMATCH' "$AUTO"
 grep -Fq 'BLOCKED deferred legacy false-discovery quarantine was not retired with its exact evidence pair' "$AUTO"
 
 # Dispatch reachability contract: an exact-shaped deferred quarantine is never
@@ -755,7 +763,7 @@ recovery=text[text.index('else\n  recovery_target_commit='):
 assert recovery.index("resolve_postdeploy_postgres_pod") < recovery.index('record_deploy_phase "recovery_identity"')
 dispatch=text.index("if recover_persistent_postdeploy_attempt; then")
 assert text.index("resolve_postdeploy_postgres_pod", text.index('else\n  recovery_target_commit=')) < dispatch
-assert "runtime identity proof has no writable PostgreSQL leader" in text
+assert "reason=DATA_UNAVAILABLE source=postgres-leader" in text
 guard=text.index("BLOCKED deferred legacy false-discovery quarantine")
 mutation=text.index('postdeploy_pending_recovery_status=1')
 assert guard < mutation

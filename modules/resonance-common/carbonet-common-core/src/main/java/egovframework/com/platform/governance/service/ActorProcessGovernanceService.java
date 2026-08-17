@@ -1017,7 +1017,8 @@ public class ActorProcessGovernanceService {
 
         List<Map<String,Object>> items=jdbc.queryForList("""
             with report_options as (select ?::boolean compact,?::int compact_limit_bytes), runtime_release as materialized (
-              select source_commit from framework_runtime_release_state
+              select source_commit,framework_runtime_release_identity_hash(runtime) runtime_identity_hash
+                from framework_runtime_release_state runtime
                where release_key='CARBONET_RUNTIME' and health_status='UP'
             ), scoped_step_inventory as materialized (
               select p.domain_code,p.process_name,p.process_status,p.process_version,p.development_order,
@@ -1386,11 +1387,14 @@ public class ActorProcessGovernanceService {
                    review.review_id as "reviewId",coalesce(review.review_status,'PENDING') as "reviewStatus",
                    coalesce(review.review_note,'') as "reviewNote",coalesce(review.reviewed_by,'') as "reviewedBy",
                    review.reviewed_at as "reviewedAt",coalesce(review.source_commit,'') as "reviewSourceCommit",
+                   coalesce(review.runtime_identity_hash,'') as "reviewRuntimeIdentityHash",
                    review.linked_job_id as "reviewLinkedJobId",review.screen_resource_id as "reviewScreenResourceId",
                    coalesce(review.capability_code,'ALL') as "reviewCapabilityCode",
                    (review.review_id is not null
                     and review.contract_fingerprint=operational.contract_fingerprint
-                    and review.source_commit=coalesce(runtime.source_commit,'')) as "reviewCurrentVersion",
+                    and review.source_commit=coalesce(runtime.source_commit,'')
+                    and review.runtime_identity_hash=runtime.runtime_identity_hash
+                    and runtime.runtime_identity_hash is not null) as "reviewCurrentVersion",
                    'HUMAN_REVIEW_ONLY' as "reviewEvidenceScope",
                    case when options.compact and octet_length(coalesce(scoped_reviews.inventory_json,'[]'))>options.compact_limit_bytes
                         then jsonb_build_object('compact',true,'omitted',true,'byteLength',octet_length(coalesce(scoped_reviews.inventory_json,'[]')))::text
@@ -1514,6 +1518,7 @@ public class ActorProcessGovernanceService {
               ) operational
               left join lateral (
                 select usage.review_id,usage.review_status,usage.review_note,usage.contract_fingerprint,usage.source_commit,
+                       usage.runtime_identity_hash,
                        usage.linked_job_id,usage.screen_resource_id,usage.capability_code,usage.reviewed_by,usage.reviewed_at
                   from framework_system_usage_review usage
                  where usage.process_code=p.process_code and usage.step_code=p.step_code
@@ -1525,14 +1530,17 @@ public class ActorProcessGovernanceService {
                          'reviewId',scoped.review_id,'screenResourceId',scoped.screen_resource_id,
                          'capabilityCode',scoped.capability_code,'reviewStatus',scoped.review_status,
                          'reviewNote',scoped.review_note,'reviewedBy',scoped.reviewed_by,'reviewedAt',scoped.reviewed_at,
-                         'reviewSourceCommit',scoped.source_commit,'linkedJobId',scoped.linked_job_id,
+                         'reviewSourceCommit',scoped.source_commit,'reviewRuntimeIdentityHash',scoped.runtime_identity_hash,
+                         'linkedJobId',scoped.linked_job_id,
                          'scopeType',case when scoped.screen_resource_id is null then 'STEP'
                                           when scoped.capability_code='ALL' then 'SCREEN' else 'FUNCTION' end,
                          'currentVersion',scoped.current_version)
                          order by scoped.screen_resource_id nulls first,scoped.capability_code),'[]'::jsonb)::text inventory_json
                   from (
                     select distinct on (usage.screen_resource_id,usage.capability_code) usage.*,
-                           (usage.source_commit=coalesce((select source_commit from runtime_release),'') and
+                           (usage.source_commit=coalesce((select source_commit from runtime_release),'')
+                            and usage.runtime_identity_hash=(select runtime_identity_hash from runtime_release)
+                            and (select runtime_identity_hash from runtime_release) is not null and
                             case when usage.screen_resource_id is null
                                  then usage.contract_fingerprint=operational.contract_fingerprint
                                  when usage.capability_code<>'ALL' then exists(
@@ -2010,10 +2018,14 @@ public class ActorProcessGovernanceService {
         }
         List<Map<String,Object>> contract=jdbc.queryForList("""
             select p.process_version as "processVersion",
-                   (select runtime.source_commit from framework_runtime_release_state runtime
-                     where runtime.release_key='CARBONET_RUNTIME' and runtime.health_status='UP') as "sourceCommit"
-              from framework_process_definition p join framework_process_step s using(process_code)
+                   runtime.source_commit as "sourceCommit",
+                   framework_runtime_release_identity_hash(runtime) as "runtimeIdentityHash"
+              from framework_process_definition p
+              join framework_process_step s using(process_code)
+              join framework_runtime_release_state runtime
+                on runtime.release_key='CARBONET_RUNTIME' and runtime.health_status='UP'
              where p.process_code=? and s.step_code=?
+             for share of runtime
             """,process,step);
         if(contract.size()!=1)throw new IllegalArgumentException("PROCESS_STEP_NOT_FOUND: "+process+" / "+step);
         String version=String.valueOf(contract.get(0).get("processVersion"));
@@ -2028,9 +2040,12 @@ public class ActorProcessGovernanceService {
         Object rawSourceCommit=contract.get(0).get("sourceCommit");
         if(rawSourceCommit==null||!String.valueOf(rawSourceCommit).matches("[0-9a-f]{40}"))
             throw new IllegalStateException("Current healthy runtime commit is unavailable; review was not recorded");
+        Object rawRuntimeIdentityHash=contract.get(0).get("runtimeIdentityHash");
+        if(rawRuntimeIdentityHash==null||!String.valueOf(rawRuntimeIdentityHash).matches("[0-9a-f]{64}"))
+            throw new IllegalStateException("Current healthy runtime identity is unavailable; review was not recorded");
         String idempotency=str(body,"idempotencyKey").trim();
         if(idempotency.isBlank())idempotency=sha256Hex(String.join("|",process,step,String.valueOf(screenId),capability,status,note,version,
-                String.valueOf(rawFingerprint),String.valueOf(rawSourceCommit),reviewer));
+                String.valueOf(rawFingerprint),String.valueOf(rawSourceCommit),String.valueOf(rawRuntimeIdentityHash),reviewer));
         if(idempotency.length()>128)throw new IllegalArgumentException("idempotencyKey must be 128 characters or less");
         jdbc.queryForObject("select count(*) from (select pg_advisory_xact_lock(hashtextextended(?,0))) lock",
                 Integer.class,idempotency);
@@ -2039,6 +2054,7 @@ public class ActorProcessGovernanceService {
                    screen_resource_id as "screenResourceId",capability_code as "capabilityCode",
                    review_status as "reviewStatus",review_note as "reviewNote",process_version as "processVersion",
                    contract_fingerprint as "contractFingerprint",source_commit as "reviewSourceCommit",
+                   runtime_identity_hash as "reviewRuntimeIdentityHash",
                    linked_job_id as "linkedJobId",reviewed_by as "reviewedBy",reviewed_at as "reviewedAt"
               from framework_system_usage_review where idempotency_key=?
             """,idempotency);
@@ -2052,10 +2068,12 @@ public class ActorProcessGovernanceService {
                     ||!version.equals(prior.get("processVersion"))
                     ||!String.valueOf(rawFingerprint).equals(prior.get("contractFingerprint"))
                     ||!String.valueOf(rawSourceCommit).equals(prior.get("reviewSourceCommit"))
+                    ||!String.valueOf(rawRuntimeIdentityHash).equals(prior.get("reviewRuntimeIdentityHash"))
                     ||!reviewer.equals(prior.get("reviewedBy")))
                 throw new IllegalArgumentException("IDEMPOTENCY_KEY_REUSE_MISMATCH");
             prior.put("reviewCurrentVersion",String.valueOf(rawFingerprint).equals(prior.get("contractFingerprint"))
-                    &&String.valueOf(rawSourceCommit).equals(prior.get("reviewSourceCommit")));
+                    &&String.valueOf(rawSourceCommit).equals(prior.get("reviewSourceCommit"))
+                    &&String.valueOf(rawRuntimeIdentityHash).equals(prior.get("reviewRuntimeIdentityHash")));
             prior.put("reviewScreenResourceId",prior.remove("screenResourceId"));
             prior.put("reviewCapabilityCode",prior.remove("capabilityCode"));
             prior.put("reviewEvidenceScope","HUMAN_REVIEW_ONLY");prior.put("idempotent",true);
@@ -2064,15 +2082,16 @@ public class ActorProcessGovernanceService {
         }
         Long reviewId=jdbc.queryForObject("""
             insert into framework_system_usage_review(process_code,step_code,screen_resource_id,capability_code,idempotency_key,review_status,review_note,
-                   process_version,contract_fingerprint,source_commit,reviewed_by)
-            values(?,?,?,?,?,?,?,?,?,?,?) returning review_id
-            """,Long.class,process,step,screenId,capability,idempotency,status,note,version,String.valueOf(rawFingerprint),String.valueOf(rawSourceCommit),reviewer);
+                   process_version,contract_fingerprint,source_commit,runtime_identity_hash,reviewed_by)
+            values(?,?,?,?,?,?,?,?,?,?,?,?) returning review_id
+            """,Long.class,process,step,screenId,capability,idempotency,status,note,version,String.valueOf(rawFingerprint),String.valueOf(rawSourceCommit),String.valueOf(rawRuntimeIdentityHash),reviewer);
         Long linkedJobId=null;
         if("CHANGE_REQUESTED".equals(status)){
             String targetPath="design-review/"+process.toLowerCase(Locale.ROOT)+"/"+step.toLowerCase(Locale.ROOT)+"/"+idempotency;
             String specification=toJson(Map.of(
                     "reviewId",reviewId,"reviewNote",note,"processVersion",version,
                     "contractFingerprint",String.valueOf(rawFingerprint),"sourceCommit",String.valueOf(rawSourceCommit),
+                    "runtimeIdentityHash",String.valueOf(rawRuntimeIdentityHash),
                     "screenResourceId",screenId==null?0L:screenId,"capabilityCode",capability,
                     "approvalPolicy","MANUAL_APPROVAL_REQUIRED","autoDeploy",false));
             linkedJobId=jdbc.queryForObject("""
@@ -2091,13 +2110,15 @@ public class ActorProcessGovernanceService {
             jdbc.update("update framework_system_usage_review set linked_job_id=? where review_id=?",linkedJobId,reviewId);
             event(linkedJobId,"REVIEW_CHANGE_REQUESTED",null,"PLANNED",reviewer,toJson(Map.of(
                     "reviewId",reviewId,"contractFingerprint",String.valueOf(rawFingerprint),
-                    "sourceCommit",String.valueOf(rawSourceCommit),"approvalStatus","PENDING")));
+                    "sourceCommit",String.valueOf(rawSourceCommit),"runtimeIdentityHash",String.valueOf(rawRuntimeIdentityHash),
+                    "approvalStatus","PENDING")));
         }
         Map<String,Object> review=new LinkedHashMap<>();
         review.put("reviewId",reviewId);review.put("processCode",process);review.put("stepCode",step);
         review.put("reviewStatus",status);review.put("reviewNote",note);review.put("processVersion",version);
         review.put("reviewScreenResourceId",screenId);review.put("reviewCapabilityCode",capability);
-        review.put("reviewedBy",reviewer);review.put("reviewSourceCommit",String.valueOf(rawSourceCommit));review.put("reviewCurrentVersion",true);
+        review.put("reviewedBy",reviewer);review.put("reviewSourceCommit",String.valueOf(rawSourceCommit));
+        review.put("reviewRuntimeIdentityHash",String.valueOf(rawRuntimeIdentityHash));review.put("reviewCurrentVersion",true);
         review.put("linkedJobId",linkedJobId);review.put("idempotent",false);
         review.put("nextAction","CHANGE_REQUESTED".equals(status)?"DEVELOPMENT_REVIEW_PENDING":"NONE");
         review.put("reviewEvidenceScope","HUMAN_REVIEW_ONLY");

@@ -100,6 +100,8 @@ fi
 
 deployment_json="$(kubectl -n "$NAMESPACE" get deployment carbonet-runtime -o json)"
 pods_json="$(kubectl -n "$NAMESPACE" get pods -l app=carbonet-runtime -o json)"
+live_pod_template_sha256="$(jq -cS '.spec.template' <<<"$deployment_json" | sha256sum | awk '{print $1}')"
+[[ "$live_pod_template_sha256" =~ ^[0-9a-f]{64}$ ]] || fail 'runtime PodTemplate hash is unavailable'
 
 db_report="$(carbonet_postgres_query "WITH
 process_summary AS (
@@ -111,8 +113,10 @@ process_summary AS (
   FROM framework_process_definition WHERE process_code='$PROCESS'
 ), runtime_summary AS (
   SELECT source_commit,deployment_namespace,deployment_name,deployment_uid,
-         deployment_generation,observed_generation,desired_replicas,image_ref,image_id,health_status
-  FROM framework_runtime_release_state WHERE release_key='$RUNTIME_RELEASE_KEY'
+         deployment_generation,observed_generation,desired_replicas,image_ref,image_id,health_status,
+         to_jsonb(runtime)->>'pod_template_sha256' AS pod_template_sha256,
+         framework_runtime_release_identity_hash(runtime) AS runtime_identity_hash
+  FROM framework_runtime_release_state runtime WHERE release_key='$RUNTIME_RELEASE_KEY'
 ), step_summary AS (
   SELECT count(*) AS total,
          count(*) FILTER (WHERE actor_code='MEMBER_USER' AND requires_user_page
@@ -283,6 +287,10 @@ process_summary AS (
                        WHERE r.case_code=c.case_code AND r.result='PASSED'
                          AND r.source_commit=(SELECT source_commit FROM runtime_summary)
                          AND r.process_version=(SELECT process_version FROM process_summary)
+                         AND r.evidence_json::jsonb->>'runtimeIdentityHash'=
+                           (SELECT runtime_identity_hash FROM runtime_summary)
+                         AND r.evidence_json::jsonb->>'podTemplateSha256'=
+                           (SELECT pod_template_sha256 FROM runtime_summary)
                          AND coalesce(r.evidence_hash,'')<>'')) AS passed_cases,
          count(DISTINCT case_type) FILTER (WHERE case_status='APPROVED') AS approved_types,
          count(DISTINCT case_type) FILTER (WHERE case_status='APPROVED' AND automated
@@ -290,6 +298,10 @@ process_summary AS (
                        WHERE r.case_code=c.case_code AND r.result='PASSED'
                          AND r.source_commit=(SELECT source_commit FROM runtime_summary)
                          AND r.process_version=(SELECT process_version FROM process_summary)
+                         AND r.evidence_json::jsonb->>'runtimeIdentityHash'=
+                           (SELECT runtime_identity_hash FROM runtime_summary)
+                         AND r.evidence_json::jsonb->>'podTemplateSha256'=
+                           (SELECT pod_template_sha256 FROM runtime_summary)
                          AND coalesce(r.evidence_hash,'')<>'')) AS passed_types
   FROM framework_simulation_case c WHERE process_code='$PROCESS'
 )
@@ -314,6 +326,7 @@ FROM process_summary p CROSS JOIN step_summary s CROSS JOIN contract_summary c C
 CROSS JOIN artifact_summary a CROSS JOIN e2e_summary e CROSS JOIN test_summary t;")"
 
 runtime_commit="$(jq -r '.runtime.source_commit // ""' <<<"$db_report")"
+runtime_identity_hash="$(jq -r '.runtime.runtime_identity_hash // ""' <<<"$db_report")"
 runtime_gap_safe=false
 if [[ "$runtime_commit" =~ ^[0-9a-f]{40}$ ]] \
   && git -C "$ROOT" merge-base --is-ancestor "$runtime_commit" "$validation_commit"; then
@@ -331,21 +344,30 @@ fi
 runtime_identity_current="$(jq -nr \
   --argjson deployment "$deployment_json" \
   --argjson pods "$pods_json" \
+  --arg livePodTemplateSha256 "$live_pod_template_sha256" \
   --argjson runtime "$(jq '.runtime // {}' <<<"$db_report")" '
   ((($deployment.metadata.annotations["resonance.ai/target-commit"] // "") == ($runtime.source_commit // ""))
   and (($deployment.metadata.namespace // "") == ($runtime.deployment_namespace // ""))
   and (($deployment.metadata.name // "") == ($runtime.deployment_name // ""))
   and (($deployment.metadata.uid // "") == ($runtime.deployment_uid // ""))
-  and (($deployment.metadata.generation // 0) == ($runtime.deployment_generation // -1))
-  and (($deployment.status.observedGeneration // 0) == ($runtime.observed_generation // -1))
-  and (($deployment.spec.replicas // 0) == ($runtime.desired_replicas // -1))
-  and (($deployment.status.updatedReplicas // 0) == ($runtime.desired_replicas // -1))
-  and (($deployment.status.readyReplicas // 0) == ($runtime.desired_replicas // -1))
-  and (($deployment.status.availableReplicas // 0) == ($runtime.desired_replicas // -1))
+  and (($runtime.deployment_generation // -1) >= 0)
+  and (($runtime.observed_generation // -1) >= ($runtime.deployment_generation // 0))
+  and (($runtime.deployment_generation // -1) <= ($deployment.metadata.generation // -2))
+  and (($runtime.observed_generation // -1) <= ($deployment.status.observedGeneration // -2))
+  and (($deployment.status.observedGeneration // -1) >= ($deployment.metadata.generation // 0))
+  and (($deployment.spec.replicas // 0) > 0)
+  and (($deployment.status.updatedReplicas // 0) == ($deployment.spec.replicas // -1))
+  and (($deployment.status.readyReplicas // 0) == ($deployment.spec.replicas // -1))
+  and (($deployment.status.availableReplicas // 0) == ($deployment.spec.replicas // -1))
+  and (($deployment.status.unavailableReplicas // 0) == 0)
+  and (($runtime.desired_replicas // 0) > 0)
+  and (($runtime.pod_template_sha256 // "") == $livePodTemplateSha256)
+  and (($runtime.runtime_identity_hash // "")|test("^[0-9a-f]{64}$"))
+  and (($deployment.metadata.annotations["resonance.ai/runtime-template-sha256"] // "") == $livePodTemplateSha256)
   and (([$deployment.spec.template.spec.containers[] | select(.name=="carbonet-runtime") | .image] | first // "") == ($runtime.image_ref // ""))
-  and (($pods.items | length) == ($runtime.desired_replicas // -1))
+  and (($pods.items | length) == ($deployment.spec.replicas // -1))
   and ([$pods.items[] | .status.containerStatuses[]? | select(.name=="carbonet-runtime")]
-       | length == ($runtime.desired_replicas // -1))
+       | length == ($deployment.spec.replicas // -1))
   and (all($pods.items[] | .status.containerStatuses[]? | select(.name=="carbonet-runtime");
        .ready==true and .imageID==($runtime.image_id // "")))
   and (($runtime.health_status // "") == "UP"))
@@ -361,6 +383,7 @@ report="$(jq -cn \
   --arg processCode "$PROCESS" \
   --arg validationCommit "$validation_commit" \
   --arg deployedCommit "$runtime_commit" \
+  --arg runtimeIdentityHash "$runtime_identity_hash" \
   --arg markerCommit "$marker_commit" \
   --argjson deployedCurrent "$deployed_current" \
   --argjson sourceCheckoutCurrent "$source_checkout_current" \
@@ -373,6 +396,7 @@ report="$(jq -cn \
     validationCommit:$validationCommit,
     deployedCommit:$deployedCommit,
     markerCommit:$markerCommit,
+    runtimeIdentityHash:$runtimeIdentityHash,
     deployedCurrent:$deployedCurrent,
     sourceCheckoutCurrent:$sourceCheckoutCurrent,
     runtimeIdentityCurrent:$runtimeIdentityCurrent,

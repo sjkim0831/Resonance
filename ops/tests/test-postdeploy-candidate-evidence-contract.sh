@@ -5,10 +5,18 @@ ROOT="${1:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
 MIGRATION="$ROOT/apps/carbonet-api/src/main/resources/db/migration/postgresql/V20260812023000__stage_and_atomically_promote_postdeploy_evidence.sql"
 SCOPE_AUDIT_MIGRATION="$ROOT/apps/carbonet-api/src/main/resources/db/migration/postgresql/V20260812033000__harden_scope_access_audit_append_only.sql"
 LIFECYCLE_MIGRATION="$ROOT/apps/carbonet-api/src/main/resources/db/migration/postgresql/V20260812080000__bind_postdeploy_attempt_lifecycle.sql"
+RUNTIME_TEMPLATE_MIGRATION="$ROOT/apps/carbonet-api/src/main/resources/db/migration/postgresql/V20260817235000__bind_runtime_identity_to_pod_template.sql"
 STAGER="$ROOT/ops/scripts/stage-postdeploy-evidence-candidate.sh"
 PROMOTER="$ROOT/ops/scripts/promote-postdeploy-candidate-evidence.sh"
 DEPLOY="$ROOT/ops/scripts/auto-deploy-main.sh"
 JOURNAL_HELPER="$ROOT/ops/scripts/postdeploy-attempt-journal.py"
+BUILD_DEPLOY="$ROOT/ops/scripts/resonance-k8s-build-deploy-80-v2.sh"
+V3_DEPLOY="$ROOT/ops/scripts/resonance-v3-deploy.sh"
+COMMAND_INDEX="$ROOT/ops/scripts/resonance-command-index.sh"
+FILE_WATCH="$ROOT/ops/scripts/resonance-file-watch.sh"
+PROJECT_CORE_DEPLOY="$ROOT/ops/scripts/resonance-project-core-deploy.sh"
+AI_FAST_DEV="$ROOT/ops/scripts/resonance-ai-fast-dev.sh"
+LEGACY_RUNTIME_HARDENER="$ROOT/ops/scripts/retire-legacy-runtime-mutation-automation.sh"
 
 files=(
   "$STAGER" "$PROMOTER" "$DEPLOY"
@@ -36,7 +44,13 @@ files=(
   "$ROOT/ops/tests/test-postdeploy-promotion-recovery.sh"
   "$ROOT/ops/scripts/abort-postdeploy-release-attempt.sh"
   "$ROOT/ops/scripts/stage-postdeploy-release-attempt.sh"
-  "$ROOT/ops/scripts/resonance-k8s-build-deploy-80-v2.sh"
+  "$BUILD_DEPLOY"
+  "$V3_DEPLOY"
+  "$COMMAND_INDEX"
+  "$FILE_WATCH"
+  "$PROJECT_CORE_DEPLOY"
+  "$AI_FAST_DEV"
+  "$LEGACY_RUNTIME_HARDENER"
   "$ROOT/ops/scripts/promote-runtime-startup-profile.sh"
   "$ROOT/ops/tests/test-postdeploy-attempt-journal.sh"
   "$ROOT/ops/tests/test-durable-postdeploy-rollback-reconciler.sh"
@@ -48,7 +62,7 @@ files=(
   "$ROOT/ops/scripts/test-auto-deploy-failure-handler.sh"
   "$ROOT/ops/tests/test-runtime-release-state.sh"
 )
-for file in "$MIGRATION" "$SCOPE_AUDIT_MIGRATION" "$LIFECYCLE_MIGRATION" "$JOURNAL_HELPER" "${files[@]}"; do [[ -s "$file" ]] || { echo "missing: $file" >&2; exit 1; }; done
+for file in "$MIGRATION" "$SCOPE_AUDIT_MIGRATION" "$LIFECYCLE_MIGRATION" "$RUNTIME_TEMPLATE_MIGRATION" "$JOURNAL_HELPER" "${files[@]}"; do [[ -s "$file" ]] || { echo "missing: $file" >&2; exit 1; }; done
 for file in "${files[@]}"; do bash -n "$file"; done
 python3 "$JOURNAL_HELPER" --help >/dev/null
 node --check "$ROOT/ops/scripts/validate-screen-contract-runtime-save.mjs"
@@ -124,11 +138,32 @@ unset STAGE_BUNDLE_CALLS
 # so every non-empty producer payload used to arrive at jq with one extra
 # closing brace. Validate all four failed producer shapes, then prove that a
 # helper mutated back to the ambiguous expansion is rejected.
+stager_fixture_tmp="$(mktemp -d)"
+stager_source='0000000000000000000000000000000000000000'
+stager_image='registry.invalid/carbonet@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
+stager_image_id='sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb'
+cat >"$stager_fixture_tmp/deployment.json" <<JSON
+{"metadata":{"namespace":"carbonet-prod","name":"carbonet-runtime","uid":"stager-runtime-uid","resourceVersion":"101","generation":7,"annotations":{"resonance.ai/target-commit":"$stager_source"}},"spec":{"replicas":1,"selector":{"matchLabels":{"app":"carbonet-runtime"}},"template":{"spec":{"containers":[{"name":"carbonet-runtime","image":"$stager_image"}]}}},"status":{"observedGeneration":7,"updatedReplicas":1,"readyReplicas":1,"availableReplicas":1,"unavailableReplicas":0}}
+JSON
+cat >"$stager_fixture_tmp/pods.json" <<JSON
+{"items":[{"metadata":{"name":"runtime-0"},"spec":{"containers":[{"name":"carbonet-runtime","image":"$stager_image"}]},"status":{"phase":"Running","conditions":[{"type":"Ready","status":"True"}],"containerStatuses":[{"name":"carbonet-runtime","ready":true,"imageID":"$stager_image_id"}]}}]}
+JSON
+stager_template_hash="$(jq -cS '.spec.template' "$stager_fixture_tmp/deployment.json" | sha256sum | awk '{print $1}')"
+jq -cn --arg source "$stager_source" --arg image "$stager_image" --arg imageId "$stager_image_id" \
+  --arg template "$stager_template_hash" '
+  {schemaVersion:1,stage:"RUNTIME_CANDIDATE_READY",targetCommit:$source,
+   deploymentUid:"stager-runtime-uid",deploymentGeneration:7,desiredReplicas:1,
+   imageRef:$image,imageIdDigest:$imageId,podTemplateSha256:$template}' \
+  >"$stager_fixture_tmp/checkpoint.json"
+chmod 0644 "$stager_fixture_tmp/checkpoint.json"
 run_stager_payload() {
-  local stager="$1" payload="$2"
+  local stager="$1" payload="$2" deployment_fixture="${3:-$stager_fixture_tmp/deployment.json}"
   (
     kubectl() {
       local arg payload_b64=""
+      if [[ "$*" == *" get deployment/"* ]]; then cat "$STAGER_FIXTURE_DEPLOYMENT"; return; fi
+      if [[ "$*" == *" get pods "* ]]; then cat "$STAGER_FIXTURE_PODS"; return; fi
+      if [[ "$*" == *" exec runtime-0 "* && "$*" == *" curl "* ]]; then printf '{"status":"UP"}\n'; return; fi
       cat >/dev/null
       for arg in "$@"; do
         case "$arg" in
@@ -150,6 +185,9 @@ run_stager_payload() {
     printf '%s' "$payload" | env \
       CARBONET_POSTDEPLOY_EVIDENCE_MODE=candidate \
       CARBONET_POSTDEPLOY_CANDIDATE_ID=stager-input-regression \
+      CARBONET_RUNTIME_CANDIDATE_CHECKPOINT_FILE="$stager_fixture_tmp/checkpoint.json" \
+      STAGER_FIXTURE_DEPLOYMENT="$deployment_fixture" \
+      STAGER_FIXTURE_PODS="$stager_fixture_tmp/pods.json" \
       RESONANCE_POSTGRES_LEADER_POD=fake-primary \
       bash "$stager" STAGER_INPUT_REGRESSION TEST_PROCESS RUNTIME \
         0000000000000000000000000000000000000000
@@ -167,6 +205,14 @@ for payload in "${producer_payloads[@]}"; do
   run_stager_payload "$STAGER" "$payload" | grep -Fq '[postdeploy-candidate] STAGED'
 done
 run_stager_payload "$STAGER" "" | grep -Fq '[postdeploy-candidate] STAGED'
+jq '.metadata.annotations["resonance.ai/target-commit"]="ffffffffffffffffffffffffffffffffffffffff"' \
+  "$stager_fixture_tmp/deployment.json" >"$stager_fixture_tmp/deployment-wrong-source.json"
+if run_stager_payload "$STAGER" "${producer_payloads[0]}" \
+    "$stager_fixture_tmp/deployment-wrong-source.json" >"$stager_fixture_tmp/wrong-source.log" 2>&1; then
+  echo '[postdeploy-candidate-contract] FAIL wrong live target annotation was accepted' >&2
+  exit 1
+fi
+grep -Fq 'candidate runtime deployment identity/readiness mismatch' "$stager_fixture_tmp/wrong-source.log"
 
 stager_mutation_tmp="$(mktemp)"
 trap 'rm -f "$stager_mutation_tmp"' EXIT
@@ -180,6 +226,130 @@ if run_stager_payload "$stager_mutation_tmp" "${producer_payloads[0]}" >/dev/nul
 fi
 rm -f "$stager_mutation_tmp"
 trap - EXIT
+rm -rf -- "$stager_fixture_tmp"
+
+# Direct build-v2 execution has no durable attempt/backup/recovery owner.  It
+# must retire before even loading build helpers; deleting the runtime ledger and
+# then mutating live state is not an admissible substitute for that owner.
+direct_retired_tmp="$(mktemp -d)"
+trap 'rm -rf -- "$direct_retired_tmp"' EXIT
+mkdir -p "$direct_retired_tmp/root/ops/scripts" "$direct_retired_tmp/bin"
+install -m 0755 "$BUILD_DEPLOY" \
+  "$direct_retired_tmp/root/ops/scripts/resonance-k8s-build-deploy-80-v2.sh"
+install -m 0755 "$COMMAND_INDEX" \
+  "$direct_retired_tmp/root/ops/scripts/resonance-command-index.sh"
+install -m 0755 "$PROJECT_CORE_DEPLOY" \
+  "$direct_retired_tmp/root/ops/scripts/resonance-project-core-deploy.sh"
+install -m 0755 "$AI_FAST_DEV" \
+  "$direct_retired_tmp/root/ops/scripts/resonance-ai-fast-dev.sh"
+printf '%s\n' '#!/usr/bin/env bash' \
+  'printf "UNSAFE:SOURCE:%s\n" "$(basename "$0")" >>"${DIRECT_UNSAFE_TRACE:?}"' \
+  'exit 96' >"$direct_retired_tmp/root/ops/scripts/build.sh"
+cp "$direct_retired_tmp/root/ops/scripts/build.sh" \
+  "$direct_retired_tmp/root/ops/scripts/docker-registry-cache.sh"
+printf '%s\n' '#!/usr/bin/env bash' \
+  'printf "%s\n" '\''{"mode":"project-core-build-deploy","buildRequired":true,"deployRequired":true}'\''' \
+  >"$direct_retired_tmp/root/ops/scripts/resonance-change-classifier.sh"
+chmod 0755 "$direct_retired_tmp/root/ops/scripts/"*.sh
+for direct_unsafe_tool in kubectl docker podman gradle mvn npm rsync sudo ssh psql curl; do
+  printf '%s\n' '#!/usr/bin/env bash' \
+    'printf "UNSAFE:TOOL:%s\n" "$(basename "$0")" >>"${DIRECT_UNSAFE_TRACE:?}"' \
+    'exit 97' >"$direct_retired_tmp/bin/$direct_unsafe_tool"
+  chmod 0755 "$direct_retired_tmp/bin/$direct_unsafe_tool"
+done
+printf '%s\n' 'runtime-authority-must-remain-byte-identical' >"$direct_retired_tmp/ledger"
+printf '%s\n' 'source-must-remain-byte-identical' >"$direct_retired_tmp/source"
+: >"$direct_retired_tmp/unsafe.trace"
+direct_ledger_before="$(sha256sum "$direct_retired_tmp/ledger" | awk '{print $1}')"
+direct_source_before="$(sha256sum "$direct_retired_tmp/source" | awk '{print $1}')"
+run_direct_retired() {
+  local name="$1" expected_message="$2" status=0
+  shift 2
+  : >"$direct_retired_tmp/unsafe.trace"
+  set +e
+  env DIRECT_UNSAFE_TRACE="$direct_retired_tmp/unsafe.trace" \
+    PATH="$direct_retired_tmp/bin:$PATH" "$@" \
+    >"$direct_retired_tmp/$name.stdout" 2>"$direct_retired_tmp/$name.stderr"
+  status=$?
+  set -e
+  [[ "$status" == 78 ]] || {
+    echo "[postdeploy-candidate-contract] FAIL $name expected rc78 got $status" >&2
+    cat "$direct_retired_tmp/$name.stderr" >&2
+    exit 1
+  }
+  grep -Fq "$expected_message" "$direct_retired_tmp/$name.stderr"
+  [[ ! -s "$direct_retired_tmp/unsafe.trace" ]]
+  [[ "$(sha256sum "$direct_retired_tmp/ledger" | awk '{print $1}')" == "$direct_ledger_before" ]]
+  [[ "$(sha256sum "$direct_retired_tmp/source" | awk '{print $1}')" == "$direct_source_before" ]]
+  [[ ! -e "$direct_retired_tmp/root/var" ]]
+}
+direct_message='[build-deploy-v2] RETIRED: direct execution requires the official durable auto-deploy pipeline'
+run_direct_retired raw-default "$direct_message" env -u CARBONET_DURABLE_ATTEMPT_REQUIRED \
+  /usr/bin/bash "$direct_retired_tmp/root/ops/scripts/resonance-k8s-build-deploy-80-v2.sh"
+run_direct_retired raw-false "$direct_message" env CARBONET_DURABLE_ATTEMPT_REQUIRED=false \
+  /usr/bin/bash "$direct_retired_tmp/root/ops/scripts/resonance-k8s-build-deploy-80-v2.sh"
+for direct_command in deploy-fe 10; do
+  run_direct_retired "command-$direct_command" "$direct_message" env \
+    ROOT_DIR="$direct_retired_tmp/root" /usr/bin/bash \
+    "$direct_retired_tmp/root/ops/scripts/resonance-command-index.sh" "$direct_command"
+done
+run_direct_retired project-core "$direct_message" /usr/bin/bash \
+  "$direct_retired_tmp/root/ops/scripts/resonance-project-core-deploy.sh"
+run_direct_retired ai-fast-dev "$direct_message" /usr/bin/bash \
+  "$direct_retired_tmp/root/ops/scripts/resonance-ai-fast-dev.sh"
+echo 'POSTDEPLOY_DIRECT_BUILD_RETIRED_PASS rc=78 callers=raw2+command-index2+project-core+ai-fast-dev ledger=unchanged source=unchanged mutation=0'
+trap - EXIT
+rm -rf -- "$direct_retired_tmp"
+
+v3_delegate_tmp="$(mktemp -d)"
+trap 'rm -rf -- "$v3_delegate_tmp"' EXIT
+mkdir -p "$v3_delegate_tmp/root/ops/scripts" "$v3_delegate_tmp/bin"
+install -m 0755 "$V3_DEPLOY" "$v3_delegate_tmp/root/ops/scripts/resonance-v3-deploy.sh"
+printf '%s\n' '#!/usr/bin/env bash' \
+  'printf "UNSAFE:BUILD\n" >>"${V3_UNSAFE_TRACE:?}"' \
+  >"$v3_delegate_tmp/root/ops/scripts/resonance-k8s-build-deploy-80-v2.sh"
+chmod 0755 "$v3_delegate_tmp/root/ops/scripts/resonance-k8s-build-deploy-80-v2.sh"
+for v3_unsafe_tool in kubectl docker mvn npm sudo; do
+  printf '%s\n' '#!/usr/bin/env bash' \
+    'printf "UNSAFE:%s\n" "$(basename "$0")" >>"${V3_UNSAFE_TRACE:?}"' \
+    >"$v3_delegate_tmp/bin/$v3_unsafe_tool"
+  chmod 0755 "$v3_delegate_tmp/bin/$v3_unsafe_tool"
+done
+: >"$v3_delegate_tmp/unsafe.trace"
+set +e
+V3_UNSAFE_TRACE="$v3_delegate_tmp/unsafe.trace" PATH="$v3_delegate_tmp/bin:$PATH" \
+  bash "$v3_delegate_tmp/root/ops/scripts/resonance-v3-deploy.sh" probe \
+  >"$v3_delegate_tmp/v3.stdout" 2>"$v3_delegate_tmp/v3.stderr"
+v3_retired_status=$?
+set -e
+[[ "$v3_retired_status" == 78 && ! -s "$v3_delegate_tmp/unsafe.trace" ]]
+grep -q '^\[v3-deploy\] RETIRED: use the official durable auto-deploy pipeline$' "$v3_delegate_tmp/v3.stderr"
+for v3_command in deploy deploy-safe v3-deploy; do
+  : >"$v3_delegate_tmp/unsafe.trace"
+  set +e
+  ROOT_DIR="$v3_delegate_tmp/root" V3_UNSAFE_TRACE="$v3_delegate_tmp/unsafe.trace" \
+    PATH="$v3_delegate_tmp/bin:$PATH" bash "$COMMAND_INDEX" "$v3_command" \
+    >"$v3_delegate_tmp/command.stdout" 2>"$v3_delegate_tmp/command.stderr"
+  v3_command_status=$?
+  set -e
+  [[ "$v3_command_status" == 78 && ! -s "$v3_delegate_tmp/unsafe.trace" ]]
+done
+watch_extract_function() { sed -n "/^$1() {$/,/^}$/p" "$FILE_WATCH"; }
+eval "$(watch_extract_function trigger_deploy)"
+ROOT_DIR="$v3_delegate_tmp/root"
+LOG_FILE="$v3_delegate_tmp/file-watch.log"
+log_warn() { printf 'WATCH:%s\n' "$*" >>"$v3_delegate_tmp/watch.trace"; }
+set +e
+trigger_deploy
+v3_watch_status=$?
+set -e
+[[ "$v3_watch_status" == 78 && ! -s "$v3_delegate_tmp/unsafe.trace" ]]
+grep -q '^WATCH:Legacy file-watch deployment is retired; use the official durable auto-deploy pipeline$' \
+  "$v3_delegate_tmp/watch.trace"
+! grep -q 'retry on next change' "$v3_delegate_tmp/watch.trace"
+echo 'POSTDEPLOY_V3_RETIRED_PASS rc=78 callers=command-index3+file-watch network=0 build=0 mutation=0'
+trap - EXIT
+rm -rf -- "$v3_delegate_tmp"
 
 python3 - "$ROOT" "$MIGRATION" "$STAGER" "$PROMOTER" "$DEPLOY" <<'PY'
 from pathlib import Path
@@ -250,7 +420,16 @@ assert "BEFORE UPDATE OR DELETE" in migration
 
 assert "ON CONFLICT (candidate_id,unit_code) DO NOTHING" in stager
 assert "immutable same-unit/different-payload retry fail" in stager
-assert "evidence_json=convert_from" in stager
+assert "evidence_json=(convert_from" in stager
+for token in (
+    'stage=="RUNTIME_CANDIDATE_READY"',
+    '.metadata.annotations["resonance.ai/target-commit"]==$source',
+    'candidate runtime resourceVersion/template changed during snapshot',
+    'framework_candidate_runtime_identity_hash_v2(',
+    'framework_bind_postdeploy_release_attempt_runtime(',
+    "jsonb_build_object('runtimeIdentityHash',:'candidate_runtime_identity_hash')",
+):
+    assert token in stager, f"candidate runtime-bound stager missing {token}"
 
 prepare = promoter.index("printf '%s\\n' \"$SOURCE_COMMIT\" >\"$MARKER_TMP\"")
 promotion = promoter.index("framework_promote_postdeploy_evidence_candidate")
@@ -261,7 +440,8 @@ assert ' -X -qAt -v ON_ERROR_STOP=1' in promoter
 assert "stat -c %d" in promoter
 assert "deployment marker target must be a regular non-symlink file" in promoter
 assert 'marker_name" != . && "$marker_name" != ..' in promoter
-assert "Do not add fallible gates after this point" in promoter
+assert "CARBONET_POSTDEPLOY_DEFER_MARKER_UNTIL_FINAL_VERIFY" in promoter
+assert "marker=DEFERRED_UNTIL_FINAL_LIVE_VERIFY" in promoter
 live = promoter.index("deployment_json=")
 ledger = promoter.index("runtime_ledger=")
 assert prepare < live < ledger < promotion < rename, "live/ledger/promotion ordering regressed"
@@ -319,6 +499,7 @@ assert 'outcomeCode:"DENIED"' not in actor
 assert "mutable_business_digest" in actor and "mutableBusinessHashBefore" in actor
 scope_migration = (root / "apps/carbonet-api/src/main/resources/db/migration/postgresql/V20260812033000__harden_scope_access_audit_append_only.sql").read_text(encoding="utf-8")
 lifecycle_migration = (root / "apps/carbonet-api/src/main/resources/db/migration/postgresql/V20260812080000__bind_postdeploy_attempt_lifecycle.sql").read_text(encoding="utf-8")
+runtime_template_migration = (root / "apps/carbonet-api/src/main/resources/db/migration/postgresql/V20260817235000__bind_runtime_identity_to_pod_template.sql").read_text(encoding="utf-8")
 for token in (
     "framework_postdeploy_release_attempt", "STAGED", "PROMOTED", "ABORTED",
     "framework_stage_postdeploy_release_attempt", "framework_abort_postdeploy_release_attempt",
@@ -336,6 +517,36 @@ abort_body = lifecycle_migration[abort_start:abort_end]
 assert abort_body.index("pg_advisory_xact_lock") < abort_body.index("UPDATE framework_postdeploy_release_attempt")
 assert "REVOKE ALL ON FUNCTION framework_promote_postdeploy_evidence_candidate_v1" in lifecycle_migration
 assert "aclexplode" in lifecycle_migration and "acl.grantee<>proc.proowner" in lifecycle_migration
+for token in (
+    "ADD COLUMN IF NOT EXISTS pod_template_sha256 varchar(64)",
+    "ck_framework_runtime_release_state_pod_template_sha256",
+    "framework_runtime_release_uses_legacy_identity_v1",
+    "framework_runtime_release_identity_hash",
+    "CARBONET_RUNTIME_IDENTITY_V2",
+    "jsonb_build_array(",
+    "framework_promote_postdeploy_evidence_candidate_v1(",
+    "framework_screen_workflow_current_runtime_identity()",
+    "framework_composite_verified_canary_dispatch_exact(",
+    "podTemplateSha256",
+    "ADD COLUMN IF NOT EXISTS candidate_runtime_identity_hash varchar(64)",
+    "framework_candidate_runtime_identity_hash_v2(",
+    "framework_bind_postdeploy_release_attempt_runtime(",
+    "candidate_runtime_identity_hash IS DISTINCT FROM p_runtime_identity_hash",
+    "evidence_json->>'runtimeIdentityHash' IS DISTINCT FROM p_runtime_identity_hash",
+    "p_source_commit||'|'||p_runtime_identity_hash||'|'",
+):
+    assert token in runtime_template_migration, f"runtime PodTemplate identity migration missing {token}"
+assert "runtime_identity_hash:=framework_runtime_release_identity_hash(runtime_state)" in runtime_template_migration
+assert "runtime ledger pod template identity is unavailable" in runtime_template_migration
+assert "REVOKE ALL ON FUNCTION framework_promote_postdeploy_evidence_candidate_v1" in runtime_template_migration
+assert "aclexplode" in runtime_template_migration and "acl.grantee<>proc.proowner" in runtime_template_migration
+for exact in (
+    "76a08e672ab7054914ec3b5aecb57bc8e7a298fa",
+    "5a9323d6-446c-49d2-ad3e-c300c18f5803",
+    "sha256:48311ffbb0396684021efc84811c73432263850ce18c4d4412eb81151749e160",
+    "3714b172fe60eed5d07658103aa5f51d6f9ef765f2cee2bd0ba304e71bfd9c1a",
+):
+    assert exact in runtime_template_migration, f"legacy backfill/bridge pin missing {exact}"
 journal_helper = (root / "ops/scripts/postdeploy-attempt-journal.py").read_text(encoding="utf-8")
 for token in ("SNAPSHOT_CAPTURED", "ARMED", "ABORT_AUTHORIZED", "PHYSICAL_RESTORED",
               "RESTORED_VERIFIED", "mark-db-staged", "cancel-pre-runtime", "advance-rollback"):
@@ -345,6 +556,116 @@ candidate_pg = (root / "ops/tests/test-postdeploy-candidate-evidence-postgres.sh
 assert "framework_scope_access_audit_hash" in scope_migration and "row_hash" in scope_migration
 assert 'cat "$MIGRATION"' in candidate_pg and 'cat "$SCOPE_AUDIT_MIGRATION"' in candidate_pg
 assert candidate_pg.index('cat "$MIGRATION"') < candidate_pg.index('cat "$SCOPE_AUDIT_MIGRATION"')
+assert 'cat "$RUNTIME_TEMPLATE_MIGRATION"' in candidate_pg
+assert candidate_pg.index('cat "$LIFECYCLE_MIGRATION"') < candidate_pg.index('cat "$RUNTIME_TEMPLATE_MIGRATION"')
+for token in ("postdeploy_runtime_identity_hash_v1", "legacy V1 runtime identity hash was accepted",
+              "exact audited legacy row was not backfilled",
+              "unknown unbound legacy-like row did not fail closed",
+              "unaudited Deployment UID inherited legacy V1 identity",
+              "canonical helper and shell V2 expression diverged",
+              "post-migration NULL template identity did not fail closed",
+              "template-only change did not alter V2 runtime identity",
+              "malformed PodTemplate SHA-256 was accepted"):
+    assert token in candidate_pg, f"runtime V2 PostgreSQL mutant missing {token}"
+record_runtime = (root / "ops/scripts/record-runtime-release-state.sh").read_text(encoding="utf-8")
+authority_check = (root / "ops/scripts/check-postdeploy-authoritative-promotion.sh").read_text(encoding="utf-8")
+account_audit = (root / "ops/scripts/audit-account-lock-recovery-assurance.sh").read_text(encoding="utf-8")
+deploy = deploy_path.read_text(encoding="utf-8")
+for token in ("CARBONET_RUNTIME_EXPECTED_TEMPLATE_SHA256", "pod_template_sha256=excluded.pod_template_sha256",
+              "'podTemplateSha256',pod_template_sha256", ".podTemplateSha256==$podTemplateSha256"):
+    assert token in record_runtime, f"runtime recorder DB template binding missing {token}"
+assert "framework_runtime_release_identity_hash(runtime)" in promoter
+assert "'podTemplateSha256',pod_template_sha256" in promoter
+assert "NOT (to_jsonb(runtime) ? 'pod_template_sha256')" in authority_check
+assert authority_check.count("CARBONET_RUNTIME_IDENTITY_V2") == 2
+assert "ELSE NULL" in authority_check
+assert "NOT (to_jsonb(runtime) ? 'pod_template_sha256')" in deploy
+assert "CARBONET_RUNTIME_IDENTITY_V2" in deploy and "ELSE NULL" in deploy
+assert "to_jsonb(runtime)->>'pod_template_sha256' AS pod_template_sha256" in account_audit
+assert '($runtime.deployment_generation // -1) <= ($deployment.metadata.generation // -2)' in account_audit
+assert '($runtime.pod_template_sha256 // "") == $livePodTemplateSha256' in account_audit
+java_runtime_consumers = [
+    "CompositeAutocompletionReadinessService.java",
+    "CompositeDesignOperationalWorker.java",
+    "CompositeLiveSmokeEvidenceService.java",
+    "CompositePhysicalEvidenceService.java",
+]
+java_dir = root / "modules/resonance-common/carbonet-common-core/src/main/java/egovframework/com/platform/governance/service"
+for name in java_runtime_consumers:
+    source = (java_dir / name).read_text(encoding="utf-8")
+    assert "framework_runtime_release_identity_hash(" in source, f"{name} does not use canonical runtime V2 hash"
+    assert "runtime.image_id,runtime.health_status" not in source
+actor_pg=(root / "modules/resonance-common/carbonet-common-core/src/test/java/egovframework/com/platform/governance/service/ActorProcessGovernanceMutationPropagationPostgresTest.java").read_text(encoding="utf-8")
+composite_apply='applyMigration(COMPOSITE_DESIGN_MIGRATION,false);'
+v2_fixture='installRuntimeIdentityV2CompositeDispatchFixture();'
+assert actor_pg.index(composite_apply) < actor_pg.index(v2_fixture)
+assert "dispatch.runtime_identity_hash=framework_runtime_release_identity_hash(runtime)" in actor_pg
+assert "set pod_template_sha256=repeat('e',64),recorded_at=clock_timestamp()" in actor_pg
+assert "set pod_template_sha256=repeat('f',64),recorded_at=clock_timestamp()" in actor_pg
+assert "check(pod_template_sha256 is null or pod_template_sha256~'^[0-9a-f]{64}$')" in actor_pg
+
+# The pre-schema bridge cannot call a function that does not exist yet, so its
+# SQL is necessarily duplicated in shell. Compare the actual producer bytes
+# semantically: exact V2 field order and the entire legacy eligibility tuple
+# must match the migration helper and both authority-check branches.
+import re
+
+expected_v2_fields = (
+    "source_commit", "deployment_namespace", "deployment_name", "deployment_uid",
+    "deployment_generation", "observed_generation", "desired_replicas",
+    "image_ref", "image_id", "health_status", "pod_template_sha256",
+)
+
+def v2_sequences(text):
+    found=[]
+    for body in re.findall(
+        r"jsonb_build_array\(\s*'CARBONET_RUNTIME_IDENTITY_V2'\s*,(.*?)\)\s*::text",
+        text,re.S,
+    ):
+        normalized=body.replace("(p_runtime).","")
+        normalized=normalized.replace("to_jsonb(runtime)->>'pod_template_sha256'","pod_template_sha256")
+        found.append(tuple(part.strip() for part in normalized.split(",")))
+    return found
+
+hash_helper = runtime_template_migration[
+    runtime_template_migration.index("CREATE OR REPLACE FUNCTION framework_runtime_release_identity_hash("):
+    runtime_template_migration.index("COMMENT ON FUNCTION framework_runtime_release_identity_hash",)
+]
+auto_hash = deploy[deploy.index("current_runtime_identity_hash() {"):
+                   deploy.index("transition_postdeploy_attempt_journal() {")]
+assert v2_sequences(hash_helper) == [expected_v2_fields]
+assert v2_sequences(auto_hash) == [expected_v2_fields]
+assert v2_sequences(authority_check) == [expected_v2_fields,expected_v2_fields]
+v2_order_mutant=list(expected_v2_fields)
+v2_order_mutant[7],v2_order_mutant[8]=v2_order_mutant[8],v2_order_mutant[7]
+assert tuple(v2_order_mutant) != expected_v2_fields
+
+def legacy_predicates(text, migration=False):
+    if migration:
+        start=text.index("CREATE OR REPLACE FUNCTION framework_runtime_release_uses_legacy_identity_v1(")
+        end=text.index("COMMENT ON FUNCTION framework_runtime_release_uses_legacy_identity_v1",start)
+        blocks=[text[start:end]]
+    else:
+        blocks=re.findall(
+            r"WHEN\s+release_key='CARBONET_RUNTIME'.*?\bTHEN",
+            text,re.S,
+        )
+    result=[]
+    for block in blocks:
+        normalized=block.replace("(p_runtime).","")
+        normalized=normalized.replace("to_jsonb(runtime)->>'pod_template_sha256'","pod_template_sha256")
+        result.append(tuple(re.findall(r"\b([a-z0-9_]+)\s*=\s*'([^']+)'",normalized)))
+    return result
+
+legacy_expected=legacy_predicates(runtime_template_migration,migration=True)[0]
+assert tuple(field for field,_ in legacy_expected) == (
+    "release_key","source_commit","deployment_namespace","deployment_name","deployment_uid",
+    "image_ref","image_id","health_status","pod_template_sha256",
+)
+assert legacy_predicates(auto_hash) == [legacy_expected]
+assert legacy_predicates(authority_check) == [legacy_expected,legacy_expected]
+legacy_drop_uid=tuple(pair for pair in legacy_expected if pair[0] != "deployment_uid")
+assert legacy_drop_uid != legacy_expected
 assert "p_reduced_hash" in candidate_pg and "candidate-test-reduced-hash" in candidate_pg
 assert "reduced/stale row hash mutation was not rejected" in candidate_pg
 assert "9000000000000000101" in candidate_pg and "9000000000000000102" in candidate_pg
@@ -562,10 +883,29 @@ if os.environ.get("CANDIDATE_EVIDENCE_SKIP_DEPLOY_WIRING") != "true":
     assert 'CARBONET_POSTDEPLOY_LEADER_RESOLVER="$POSTDEPLOY_LEADER_RESOLVER"' in stage_db
     assert 'CARBONET_POSTDEPLOY_LEADER_RESOLVER="$POSTDEPLOY_LEADER_RESOLVER"' in build_child
     assert 'RESONANCE_POSTGRES_LEADER_POD="${POSTGRES_POD:-}"' in build_child
+    assert "CARBONET_DURABLE_ATTEMPT_REQUIRED=true" in build_child
     enable = deploy[deploy.index("enable_postdeploy_candidate_mode() {"):
                     deploy.index("run_postdeploy_candidate_validation_groups() {")]
     assert "stage_postdeploy_release_attempt_db" not in enable
     assert "verify_postdeploy_release_attempt_db_staged" in enable
+    startup_branch = deploy[deploy.index("# A measured JVM profile changes only the Deployment environment."):
+                            deploy.index("# Test/deployment automation changes do not alter the running application.")]
+    assert startup_branch.count("enable_postdeploy_candidate_mode") == 1
+    assert startup_branch.index("enable_postdeploy_candidate_mode") < \
+        startup_branch.index("promote-runtime-startup-profile.sh")
+    assert startup_profile.index('kubectl -n "$namespace" set env') < \
+        startup_profile.index('kubectl -n "$namespace" rollout status')
+    for startup_mutant in (
+        startup_branch.replace("  enable_postdeploy_candidate_mode\n", "", 1),
+        startup_branch.replace(
+            "  enable_postdeploy_candidate_mode\n  CARBONET_DEPLOY_ROOT=",
+            "  CARBONET_DEPLOY_ROOT=", 1).replace(
+                "    bash ops/scripts/promote-runtime-startup-profile.sh\n",
+                "    bash ops/scripts/promote-runtime-startup-profile.sh\n  enable_postdeploy_candidate_mode\n", 1),
+    ):
+        assert startup_mutant.count("enable_postdeploy_candidate_mode") != 1 or \
+            startup_mutant.index("enable_postdeploy_candidate_mode") > \
+            startup_mutant.index("promote-runtime-startup-profile.sh")
     reconciler = deploy[deploy.index("recover_staged_postdeploy_attempt_after_failure() {"):
                         deploy.index("cleanup_deploy() {")]
     assert reconciler.index("postdeploy_authoritative_promotion_status") < reconciler.index("abort_postdeploy_release_attempt_db")
@@ -601,11 +941,103 @@ if os.environ.get("CANDIDATE_EVIDENCE_SKIP_DEPLOY_WIRING") != "true":
                            rollout.index("publish_pending_frontend_staging")]
     assert "CARBONET_POSTDEPLOY_ATTEMPT_JOURNAL_HELPER" in post_flyway
     arm = rollout.index("stage-postdeploy-release-attempt.sh")
+    ledger_invalidate = rollout.index("require_runtime_release_state_invalidation_before_live_mutation",arm)
+    assert arm < ledger_invalidate
+    invalidation_guard = build_deploy[
+        build_deploy.index("invalidate_runtime_release_state_before_live_mutation() {"):
+        build_deploy.index("sync_overlay() {")
+    ]
+    assert 'bash "$RUNTIME_RELEASE_STATE_RECORDER" --invalidate' in invalidation_guard
+    assert "return 79" not in invalidation_guard and "count=0" in invalidation_guard
+    assert 'rollback_and_fail "RUNTIME_LEDGER_INVALIDATION_FAILED"' in invalidation_guard
+    assert '[[ "$CARBONET_DURABLE_ATTEMPT_REQUIRED" == true ]] || return 0' not in invalidation_guard
+    assert 'if [[ "$CARBONET_DURABLE_ATTEMPT_REQUIRED" == true \\\n     && "$POSTDEPLOY_DB_ATTEMPT_STAGED" != true ]]' in invalidation_guard
     for mutation in ("publish_pending_frontend_staging", 'kubectl -n "$NAMESPACE" set env',
                      'kubectl apply -f -', 'kubectl -n "$NAMESPACE" patch'):
-        assert arm < rollout.index(mutation, arm), f"live mutation precedes durable DB arm: {mutation}"
+        assert arm < ledger_invalidate < rollout.index(mutation, ledger_invalidate), \
+            f"live mutation precedes DB arm/ledger invalidation: {mutation}"
+    def retired_direct_build_contract(text):
+        guard_value = 'CARBONET_DURABLE_ATTEMPT_REQUIRED="${CARBONET_DURABLE_ATTEMPT_REQUIRED:-false}"'
+        guard_if = 'if [[ "$CARBONET_DURABLE_ATTEMPT_REQUIRED" != true ]]; then'
+        message = "[build-deploy-v2] RETIRED: direct execution requires the official durable auto-deploy pipeline"
+        try:
+            strict = text.index("set -euo pipefail")
+            value = text.index(guard_value, strict)
+            condition = text.index(guard_if, value)
+            refusal = text.index(message, condition)
+            exit_78 = text.index("  exit 78", refusal)
+            end = text.index("\nfi", exit_78)
+            password = text.index("export RESONANCE_SUDO_PASSWORD")
+            helper = text.index('source "$ROOT_DIR/ops/scripts/build.sh"')
+        except ValueError:
+            return False
+        return (text.count(guard_value) == 1
+                and strict < value < condition < refusal < exit_78 < end
+                < password < helper)
+    assert retired_direct_build_contract(build_deploy)
+    for direct_retirement_mutant in (
+        build_deploy.replace("  exit 78", "  exit 0", 1),
+        build_deploy.replace('!= true', '== false', 1),
+        build_deploy.replace(
+            'if [[ "$CARBONET_DURABLE_ATTEMPT_REQUIRED" != true ]]; then',
+            'if [[ "$CARBONET_DURABLE_ATTEMPT_REQUIRED" == false ]]; then', 1),
+    ):
+        assert not retired_direct_build_contract(direct_retirement_mutant)
+    project_core = (root / "ops/scripts/resonance-project-core-deploy.sh").read_text(encoding="utf-8")
+    ai_fast_dev = (root / "ops/scripts/resonance-ai-fast-dev.sh").read_text(encoding="utf-8")
+    command_index = (root / "ops/scripts/resonance-command-index.sh").read_text(encoding="utf-8")
+    v3_deploy = (root / "ops/scripts/resonance-v3-deploy.sh").read_text(encoding="utf-8")
+    file_watch = (root / "ops/scripts/resonance-file-watch.sh").read_text(encoding="utf-8")
+    assert 'exec /usr/bin/bash "$ROOT_DIR/ops/scripts/resonance-k8s-build-deploy-80-v2.sh"' in project_core
+    assert "8  | deploy-v2  - retired (official auto-deploy only; no direct route)" in command_index
+    assert "resonance-k8s-build-deploy-80-v2.sh (병렬 빌드)" not in command_index
+    assert 'SKIP_IMAGE_BUILD=true exec /usr/bin/bash \\\n      "$ROOT_DIR/ops/scripts/resonance-k8s-build-deploy-80-v2.sh" "${@:2}"' in command_index
+    assert 'exec /usr/bin/bash "$ROOT_DIR/ops/scripts/resonance-project-core-deploy.sh"' in ai_fast_dev
+    assert 'write_status "applied" "project-core-rolling-deploy"' not in ai_fast_dev
+    def retired_v3_contract(text):
+        required = (
+            "[v3-deploy] RETIRED: use the official durable auto-deploy pipeline",
+            "exit 78",
+        )
+        forbidden = (
+            "RESONANCE_SUDO_PASSWORD", "CANONICAL_BUILD_DEPLOY", "kubectl ",
+            "sudo ", "sync_frontend() {", "rollout() {", "restart_pod() {",
+            "docker build", "ctr -n k8s.io", "resonance-k8s-build-deploy-80-v2.sh",
+        )
+        return all(token in text for token in required) and not any(
+            token in text for token in forbidden)
+    assert retired_v3_contract(v3_deploy)
+    assert not retired_v3_contract(v3_deploy.replace("exit 78", "exit 0", 1))
+    assert command_index.count('resonance-v3-deploy.sh') >= 3
+    assert command_index.count('exec /usr/bin/bash "$ROOT_DIR/ops/scripts/resonance-v3-deploy.sh"') == 3
+    assert "git-pre-deploy-backup.sh" not in command_index
+    assert file_watch.count('bash "$ROOT_DIR/ops/scripts/resonance-v3-deploy.sh"') == 1
+    assert file_watch.count("trigger_deploy || exit $?") == 2
+    watch_trigger = file_watch[file_watch.index("trigger_deploy() {"):
+                               file_watch.index("WATCH_PATHS=(")]
+    assert "status == 78" in watch_trigger and "return 78" in watch_trigger
+    assert watch_trigger.index("status == 78") < watch_trigger.index("retry on next change")
+    def v3_inventory_contract(text):
+        anchor = text.index(
+            "apps/carbonet-api/src/main/resources/db/migration/postgresql/"+
+            "V20260817235000__bind_runtime_identity_to_pod_template.sql")
+        start = text.rfind("if deploy_path_changed", 0, anchor)
+        end = text.index("; then", anchor)
+        inventory = text[start:end]
+        return all(path in inventory for path in (
+            "ops/scripts/resonance-v3-deploy.sh",
+            "ops/scripts/resonance-command-index.sh",
+            "ops/scripts/resonance-file-watch.sh",
+        ))
+    assert v3_inventory_contract(deploy)
+    for inventory_path in (
+        "ops/scripts/resonance-v3-deploy.sh",
+        "ops/scripts/resonance-command-index.sh",
+        "ops/scripts/resonance-file-watch.sh",
+    ):
+        assert not v3_inventory_contract(deploy.replace(inventory_path, "", 1))
     sync_overlay = build_deploy[build_deploy.index("sync_overlay() {"):
-                                build_deploy.index("build_maven() {")]
+                                 build_deploy.index("build_maven() {")]
     defer_guard = 'if [[ "$CARBONET_DEFER_LIVE_MUTATIONS_UNTIL_POST_FLYWAY" == true'
     assert defer_guard in sync_overlay
     assert sync_overlay.index(defer_guard) < sync_overlay.index("guard_frontend_overlay backup")
@@ -804,10 +1236,25 @@ esac
     authority = after_promoter.index("postdeploy_authoritative_promotion_status")
     snapshot_disarm = after_promoter.index("finalize-success", authority)
     runtime_marker_check = after_promoter.index('runtime_marker="$(tr -d', authority)
-    assert authority < snapshot_disarm < runtime_marker_check, "promoted snapshot remains armed across marker faults"
+    final_live_verify = after_promoter.index('verify_operational_usage_ledger_current_runtime_identity "$target_commit" proof-only', authority)
+    drift_compensation = after_promoter.index("invalidate_runtime_release_state", final_live_verify)
+    recovery_pending = after_promoter.index("return 75", drift_compensation)
+    assert authority < final_live_verify < drift_compensation < recovery_pending < snapshot_disarm < runtime_marker_check, \
+        "post-promotion verifier/compensation/disarm/marker order regressed"
+    assert "PROMOTED_FINAL_LIVE_IDENTITY_DRIFT" in after_promoter
+    defer_marker = finalizer.index("CARBONET_POSTDEPLOY_DEFER_MARKER_UNTIL_FINAL_VERIFY=true")
+    assert defer_marker < promote, "promoter was not placed in deferred-marker mode"
     assert after_promoter.index("clear-success", authority) > runtime_marker_check
     assert after_promoter.index('archive_postdeploy_attempt_journal_terminal "$attempt_terminal_status"', authority) > runtime_marker_check
     assert deploy.count("enable_postdeploy_candidate_mode") == 4  # definition + 3 runtime paths
+    bind_source = deploy[deploy.index("bind_postdeploy_candidate_live_source() {"):
+                         deploy.index("enable_postdeploy_candidate_mode() {")]
+    assert '--resource-version="$resource_version"' in bind_source
+    assert 'resonance.ai/target-commit=$target_commit' in bind_source
+    enable_body = deploy[deploy.index("enable_postdeploy_candidate_mode() {"):
+                         deploy.index("run_postdeploy_candidate_validation_groups() {")]
+    assert enable_body.index("invalidate_runtime_release_state") < enable_body.index("bind_postdeploy_candidate_live_source")
+    assert enable_body.index("bind_postdeploy_candidate_live_source") < enable_body.index("postdeploy_candidate_initialized=true")
     # One frontend-only path calls the base finalizer directly. The two runtime
     # paths must pass through the composite-gate cleanup wrapper, which itself
     # invokes the base finalizer exactly once. Count exact definitions/calls so
@@ -874,6 +1321,41 @@ pending_recovery_body = deploy[deploy.index("recover_authoritative_postdeploy_ma
                                deploy.index("run_operational_usage_ledger_current_runtime_e2e_if_required() {")]
 discovery_body = deploy[deploy.index("discover_postdeploy_current_runtime_source() {"):
                         deploy.index("recover_authoritative_postdeploy_marker_pending() {")]
+ledgerless_recovery = deploy[deploy.index("promoted_candidate_identity_with_ledger_absent() {"):
+                             deploy.index("# A DB COMMIT can outlive")]
+for token in (
+    "candidate_runtime_identity_hash=promotion.runtime_identity_hash",
+    "framework_candidate_runtime_identity_hash_v2",
+    "DB_PROMOTED_FINAL_LIVE_VERIFY_PENDING",
+    "PROMOTED_FINAL_LIVE_IDENTITY_DRIFT",
+    "pending_present=false",
+    "quarantine_present=false",
+    "missing files are recreated only after",
+    "Normal COMMIT->SIGKILL and marker-rename faults retain",
+    "Ordinary runtime/applied-marker recovery is owned",
+    'return 1',
+    'record_runtime_release_state "$source" recovery-promoted',
+    "RECOVERY_PENDING promoted live identity remains divergent",
+):
+    assert token in ledgerless_recovery, f"ledgerless promoted recovery missing {token}"
+db_recovery_anchor = ledgerless_recovery.index(
+    'db_hash="$(promoted_candidate_identity_with_ledger_absent')
+pending_reconstruction = ledgerless_recovery.index(
+    "write_postdeploy_marker_pending 'DB_PROMOTED_FINAL_LIVE_VERIFY_PENDING'", db_recovery_anchor)
+quarantine_reconstruction = ledgerless_recovery.index(
+    "write_postdeploy_promotion_quarantine 'PROMOTED_FINAL_LIVE_IDENTITY_DRIFT'",
+    pending_reconstruction)
+ledgerless_live_proof = ledgerless_recovery.index(
+    'verify_promoted_live_identity_without_runtime_ledger "$source" "$expected_hash"',
+    quarantine_reconstruction)
+assert db_recovery_anchor < pending_reconstruction < quarantine_reconstruction < ledgerless_live_proof
+recover_persistent_body = deploy[deploy.index("recover_persistent_postdeploy_attempt() {"):
+                                 deploy.index("archive_recovered_promoted_attempt_journal() {")]
+special_recovery = recover_persistent_body.index("recover_promoted_final_live_verify_pending")
+ordinary_authority = recover_persistent_body.index(
+    'postdeploy_authoritative_promotion_status "$source" "$candidate"', special_recovery)
+snapshot_after_recovery = recover_persistent_body.index("finalize-success", ordinary_authority)
+assert special_recovery < ordinary_authority < snapshot_after_recovery
 assert "reconcile_postdeploy_candidate_after_failure" in cleanup_body
 assert "LEDGER_INVALIDATION_UNVERIFIED" in recovery_body
 assert "PROMOTION_DB_CHECK_UNAVAILABLE" in recovery_body

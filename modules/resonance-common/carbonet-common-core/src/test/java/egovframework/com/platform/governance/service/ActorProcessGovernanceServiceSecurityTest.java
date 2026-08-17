@@ -468,6 +468,7 @@ class ActorProcessGovernanceServiceSecurityTest {
         assertEquals(91L,review.get("reviewId"));
         assertEquals("HUMAN_REVIEW_ONLY",review.get("reviewEvidenceScope"));
         assertEquals("0123456789abcdef0123456789abcdef01234567",review.get("reviewSourceCommit"));
+        assertEquals("a".repeat(64),review.get("reviewRuntimeIdentityHash"));
         verify(jdbc,never()).update(argThat(sql -> sql.contains("framework_process_qa_run")
                 ||sql.contains("framework_screen_workflow_test_run")),any(Object[].class));
     }
@@ -481,6 +482,7 @@ class ActorProcessGovernanceServiceSecurityTest {
                         Map.entry("stepCode","EMISSION_PROJECT_COLLECT"),Map.entry("reviewStatus","CHANGE_REQUESTED"),
                         Map.entry("reviewNote","수정"),Map.entry("processVersion","2.1.0"),Map.entry("capabilityCode","ALL"),
                         Map.entry("contractFingerprint","fingerprint-1"),Map.entry("reviewSourceCommit",commit),
+                        Map.entry("reviewRuntimeIdentityHash","a".repeat(64)),
                         Map.entry("linkedJobId",71L),Map.entry("reviewedBy","reviewer"))));
 
         Map<String,Object> result=service.saveSystemUsageReview(Map.of(
@@ -523,6 +525,44 @@ class ActorProcessGovernanceServiceSecurityTest {
                 org.mockito.ArgumentMatchers.eq(Long.class),any(Object[].class));
         verify(jdbc,never()).update(argThat(sql -> sql.contains("approval_status='APPROVED'")
                 ||sql.contains("framework_process_qa_run")||sql.contains("framework_screen_workflow_test_run")),any(Object[].class));
+    }
+
+    @Test
+    void humanReviewFailsClosedWhenCanonicalRuntimeIdentityIsUnavailable() {
+        when(jdbc.queryForList(argThat(sql -> sql!=null&&sql.contains("framework_runtime_release_identity_hash(runtime)")),
+                any(Object[].class))).thenReturn(List.of(Map.of(
+                    "processVersion","2.1.0","sourceCommit","0123456789abcdef0123456789abcdef01234567")));
+        doReturn(Map.of("success",true,"item",Map.of("contractFingerprint","fingerprint-1")))
+                .when(service).systemProcessTestReportStepDetail("EMISSION_PROJECT","EMISSION_PROJECT_COLLECT");
+
+        IllegalStateException failure=assertThrows(IllegalStateException.class,()->service.saveSystemUsageReview(Map.of(
+                "processCode","EMISSION_PROJECT","stepCode","EMISSION_PROJECT_COLLECT",
+                "reviewStatus","APPROVED","reviewNote","검토"),"reviewer"));
+
+        assertTrue(failure.getMessage().contains("runtime identity"));
+        verify(jdbc,never()).queryForObject(argThat(sql -> sql!=null&&sql.contains("insert into framework_system_usage_review")),
+                org.mockito.ArgumentMatchers.eq(Long.class),any(Object[].class));
+    }
+
+    @Test
+    void humanReviewReplayRejectsTemplateOnlyRuntimeIdentityDrift() {
+        String commit="0123456789abcdef0123456789abcdef01234567";
+        stubStepReviewContract(commit,"fingerprint-1");
+        when(jdbc.queryForList(argThat(sql -> sql!=null&&sql.contains("where idempotency_key=?")),any(Object[].class)))
+                .thenReturn(List.of(Map.ofEntries(Map.entry("reviewId",91L),Map.entry("processCode","EMISSION_PROJECT"),
+                        Map.entry("stepCode","EMISSION_PROJECT_COLLECT"),Map.entry("reviewStatus","APPROVED"),
+                        Map.entry("reviewNote","검토"),Map.entry("processVersion","2.1.0"),Map.entry("capabilityCode","ALL"),
+                        Map.entry("contractFingerprint","fingerprint-1"),Map.entry("reviewSourceCommit",commit),
+                        Map.entry("reviewRuntimeIdentityHash","b".repeat(64)),
+                        Map.entry("reviewedBy","reviewer"))));
+
+        IllegalArgumentException failure=assertThrows(IllegalArgumentException.class,()->service.saveSystemUsageReview(Map.of(
+                "processCode","EMISSION_PROJECT","stepCode","EMISSION_PROJECT_COLLECT",
+                "reviewStatus","APPROVED","reviewNote","검토","idempotencyKey","runtime-drift-retry"),"reviewer"));
+
+        assertEquals("IDEMPOTENCY_KEY_REUSE_MISMATCH",failure.getMessage());
+        verify(jdbc,never()).queryForObject(argThat(sql -> sql!=null&&sql.contains("insert into framework_system_usage_review")),
+                org.mockito.ArgumentMatchers.eq(Long.class),any(Object[].class));
     }
 
     @Test
@@ -1365,7 +1405,8 @@ class ActorProcessGovernanceServiceSecurityTest {
     private void stubStepReviewContract(String sourceCommit,String contractFingerprint){
         when(jdbc.queryForList(argThat(sql -> sql!=null&&sql.contains("select p.process_version as \"processVersion\"")
                         &&sql.contains("framework_runtime_release_state")),any(Object[].class)))
-                .thenReturn(List.of(Map.of("processVersion","2.1.0","sourceCommit",sourceCommit)));
+                .thenReturn(List.of(Map.of("processVersion","2.1.0","sourceCommit",sourceCommit,
+                        "runtimeIdentityHash","a".repeat(64))));
         doReturn(Map.of("success",true,"item",Map.of("contractFingerprint",contractFingerprint)))
                 .when(service).systemProcessTestReportStepDetail("EMISSION_PROJECT","EMISSION_PROJECT_COLLECT");
     }

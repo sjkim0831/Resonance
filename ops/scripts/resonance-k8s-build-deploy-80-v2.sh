@@ -7,6 +7,13 @@
 # - Better error recovery
 #===============================================================================
 set -euo pipefail
+
+CARBONET_DURABLE_ATTEMPT_REQUIRED="${CARBONET_DURABLE_ATTEMPT_REQUIRED:-false}"
+if [[ "$CARBONET_DURABLE_ATTEMPT_REQUIRED" != true ]]; then
+  echo '[build-deploy-v2] RETIRED: direct execution requires the official durable auto-deploy pipeline' >&2
+  exit 78
+fi
+
 export RESONANCE_SUDO_PASSWORD="${RESONANCE_SUDO_PASSWORD:-qwer1234}"
 
 SCRIPT_VERSION="2.1.0"
@@ -44,9 +51,9 @@ PRE_ROLLOUT_IMAGE="${PRE_ROLLOUT_IMAGE:-}"
 PRE_ROLLOUT_TARGET_COMMIT="${PRE_ROLLOUT_TARGET_COMMIT:-}"
 PRE_ROLLOUT_IDENTITY_CAPTURED="${PRE_ROLLOUT_IDENTITY_CAPTURED:-false}"
 DEFER_ROLLBACK_TO_ATTEMPT_RECONCILER="${DEFER_ROLLBACK_TO_ATTEMPT_RECONCILER:-false}"
-CARBONET_DURABLE_ATTEMPT_REQUIRED="${CARBONET_DURABLE_ATTEMPT_REQUIRED:-false}"
 CARBONET_DEFER_LIVE_MUTATIONS_UNTIL_POST_FLYWAY="${CARBONET_DEFER_LIVE_MUTATIONS_UNTIL_POST_FLYWAY:-false}"
 POSTDEPLOY_DB_ATTEMPT_STAGED="${POSTDEPLOY_DB_ATTEMPT_STAGED:-false}"
+RUNTIME_RELEASE_STATE_RECORDER="${CARBONET_RUNTIME_RELEASE_STATE_RECORDER:-$ROOT_DIR/ops/scripts/record-runtime-release-state.sh}"
 PENDING_FRONTEND_STAGING_DIR=""
 PENDING_FRONTEND_PREVIOUS_MANIFEST=""
 FRONTEND_EXPECTED_OVERLAY_PROVENANCE_SHA256=""
@@ -496,6 +503,7 @@ build_frontend() {
       log "Verified frontend staging retained until durable DB attempt is armed"
       return
     fi
+    require_runtime_release_state_invalidation_before_live_mutation
     root_cmd mkdir -p "$OVERLAY_HOST_PATH"
     root_cmd rsync -a --exclude='/index.html' "$staging_dir/" "$OVERLAY_HOST_PATH/"
     root_cmd cp "$staging_dir/index.html" "$OVERLAY_HOST_PATH/.index.html.next"
@@ -570,6 +578,41 @@ publish_pending_frontend_staging() {
   guard_frontend_overlay verify-source
 }
 
+invalidate_runtime_release_state_before_live_mutation() {
+  local status=0
+  if [[ "$CARBONET_DURABLE_ATTEMPT_REQUIRED" == true \
+     && "$POSTDEPLOY_DB_ATTEMPT_STAGED" != true ]]; then
+    log_error "Runtime ledger invalidation refused: durable DB attempt is not staged"
+    return 1
+  fi
+  if [[ ! -f "$RUNTIME_RELEASE_STATE_RECORDER" || -L "$RUNTIME_RELEASE_STATE_RECORDER" ]]; then
+    log_error "Runtime ledger invalidation helper is unavailable"
+    return 1
+  fi
+  CARBONET_DEPLOY_ROOT="$ROOT_DIR" \
+  CARBONET_K8S_NAMESPACE="$NAMESPACE" \
+  CARBONET_K8S_DEPLOYMENT="$DEPLOYMENT" \
+  CARBONET_K8S_CONTAINER="$CONTAINER" \
+  CARBONET_POSTGRES_CONTAINER="${CARBONET_POSTGRES_CONTAINER:-patroni}" \
+  CARBONET_POSTDEPLOY_LEADER_RESOLVER="${CARBONET_POSTDEPLOY_LEADER_RESOLVER:-}" \
+  POSTGRES_POD="${RESONANCE_POSTGRES_LEADER_POD:-${POSTGRES_POD:-}}" \
+  POSTGRES_DB="${POSTGRES_DB:-carbonet}" \
+  POSTGRES_ADMIN_USER="${POSTGRES_ADMIN_USER:-postgres}" \
+    bash "$RUNTIME_RELEASE_STATE_RECORDER" --invalidate || status=$?
+  if (( status != 0 )); then
+    log_error "Runtime ledger invalidation/count=0 proof failed before live mutation (status=$status)"
+    return 1
+  fi
+  log_success "Runtime release ledger invalidated with count=0 before live mutation"
+}
+
+require_runtime_release_state_invalidation_before_live_mutation() {
+  invalidate_runtime_release_state_before_live_mutation ||
+    rollback_and_fail "RUNTIME_LEDGER_INVALIDATION_FAILED" \
+      "Runtime release authority could not be removed with count=0 proof before live mutation" \
+      "Inspect framework_runtime_release_state and the runtime release recorder"
+}
+
 sync_overlay() {
   log_step "Sync Overlay"
 
@@ -597,6 +640,7 @@ sync_overlay() {
     return
   fi
 
+  require_runtime_release_state_invalidation_before_live_mutation
   guard_frontend_overlay backup
   guard_frontend_overlay verify-local
   guard_frontend_overlay verify-source
@@ -980,6 +1024,7 @@ rollout_image() {
   [[ "$CARBONET_DURABLE_ATTEMPT_REQUIRED" != true || "$POSTDEPLOY_DB_ATTEMPT_STAGED" == true ]] \
     || rollback_and_fail "ATTEMPT_NOT_ARMED" "Refusing live mutation before durable DB attempt stage" "Inspect the attempt lifecycle migration"
 
+  require_runtime_release_state_invalidation_before_live_mutation
   publish_pending_frontend_staging
 
   local -a runtime_env=(CARBONET_FLYWAY_ENABLED=false CARBONET_LIQUIBASE_ENABLED=false

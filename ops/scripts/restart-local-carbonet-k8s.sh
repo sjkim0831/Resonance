@@ -24,13 +24,26 @@ EOF
   exit 0
 fi
 
+# This legacy convenience entrypoint predates the durable release-attempt and
+# runtime-identity ledger. Its default target is the production runtime, so it
+# must refuse that target before loading build tooling or invoking any external
+# command. Production image/template changes belong to auto-deploy's durable
+# candidate pipeline; non-production local namespaces retain this helper.
+requested_namespace="${NAMESPACE:-carbonet-prod}"
+requested_deployment="${DEPLOYMENT:-carbonet-runtime}"
+if [[ "$requested_namespace" == carbonet-prod \
+   && "$requested_deployment" == carbonet-runtime ]]; then
+  echo "[local-k8s] retired for carbonet-prod/carbonet-runtime; use durable auto-deploy" >&2
+  exit 78
+fi
+
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 SCRIPTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=ops/scripts/build.sh
 source "$ROOT_DIR/ops/scripts/build.sh" 2>/dev/null || true
 init_build_tool
-NAMESPACE="${NAMESPACE:-carbonet-prod}"
-DEPLOYMENT="${DEPLOYMENT:-carbonet-runtime}"
+NAMESPACE="$requested_namespace"
+DEPLOYMENT="$requested_deployment"
 CONTAINER="${CONTAINER:-carbonet-runtime}"
 SERVICE="${SERVICE:-carbonet-runtime}"
 LOCAL_PORT="${LOCAL_PORT:-18080}"

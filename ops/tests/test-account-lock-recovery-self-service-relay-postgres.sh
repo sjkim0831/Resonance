@@ -117,6 +117,8 @@ DECLARE
   gate_value text;
   process_version_value text;
   source_commit_value text;
+  runtime_identity_hash_value text;
+  pod_template_sha256_value text;
   evidence_hash_value text := repeat('a',64);
   nonexistent_hash_value text := repeat('b',64);
   strong_ref text;
@@ -125,8 +127,9 @@ DECLARE
 BEGIN
   SELECT process_version INTO STRICT process_version_value
   FROM framework_process_definition WHERE process_code='ACCOUNT_LOCK_RECOVERY';
-  SELECT source_commit INTO STRICT source_commit_value
-  FROM framework_runtime_release_state WHERE release_key='CARBONET_RUNTIME';
+  SELECT source_commit,framework_runtime_release_identity_hash(runtime),pod_template_sha256
+  INTO STRICT source_commit_value,runtime_identity_hash_value,pod_template_sha256_value
+  FROM framework_runtime_release_state runtime WHERE release_key='CARBONET_RUNTIME';
   SELECT job_id INTO STRICT job_value FROM framework_development_job
   WHERE process_code='ACCOUNT_LOCK_RECOVERY' AND step_code='ACCOUNT_LOCK_RECOVERY_S1' AND required
   ORDER BY job_id LIMIT 1;
@@ -144,7 +147,9 @@ BEGIN
         'processVersion',process_version_value,
         'contractFingerprint',framework_current_process_step_contract_fingerprint(
           'ACCOUNT_LOCK_RECOVERY','ACCOUNT_LOCK_RECOVERY_S1'),
-        'sourceCommit',source_commit_value
+        'sourceCommit',source_commit_value,
+        'runtimeIdentityHash',runtime_identity_hash_value,
+        'podTemplateSha256',pod_template_sha256_value
       )
     ),
     'ACCOUNT_RECOVERY_CONTRACT_TEST','BUSINESS_E2E',process_version_value,source_commit_value,
@@ -229,12 +234,15 @@ DO \$\$
 DECLARE
   process_version_value text;
   source_commit_value text;
+  runtime_identity_hash_value text;
+  pod_template_sha256_value text;
 BEGIN
   PERFORM pg_advisory_xact_lock(hashtext('ACCOUNT_LOCK_RECOVERY:ASSURANCE'));
   SELECT process_version INTO STRICT process_version_value
   FROM framework_process_definition WHERE process_code='ACCOUNT_LOCK_RECOVERY' FOR SHARE;
-  SELECT source_commit INTO STRICT source_commit_value
-  FROM framework_runtime_release_state WHERE release_key='CARBONET_RUNTIME' FOR SHARE;
+  SELECT source_commit,framework_runtime_release_identity_hash(runtime),pod_template_sha256
+  INTO STRICT source_commit_value,runtime_identity_hash_value,pod_template_sha256_value
+  FROM framework_runtime_release_state runtime WHERE release_key='CARBONET_RUNTIME' FOR SHARE;
   PERFORM q.qa_run_id FROM framework_process_qa_run q
   WHERE q.process_code='ACCOUNT_LOCK_RECOVERY' AND q.evidence_type='BUSINESS_E2E'
     AND q.process_version=process_version_value AND q.source_commit=source_commit_value
@@ -243,6 +251,8 @@ BEGIN
   JOIN framework_simulation_case c ON c.case_code=r.case_code
   WHERE c.process_code='ACCOUNT_LOCK_RECOVERY' AND r.process_version=process_version_value
     AND r.source_commit=source_commit_value
+    AND r.evidence_json::jsonb->>'runtimeIdentityHash'=runtime_identity_hash_value
+    AND r.evidence_json::jsonb->>'podTemplateSha256'=pod_template_sha256_value
   FOR SHARE OF r;
   PERFORM g.result_id FROM framework_development_job_gate_result g
   JOIN framework_development_job j ON j.job_id=g.job_id

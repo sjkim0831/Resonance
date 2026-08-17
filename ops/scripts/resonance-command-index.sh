@@ -15,12 +15,12 @@ show_menu() {
     echo ""
     echo "  [실행/개발]"
     echo "    1  | up         - resonance-up.sh"
-    echo "    2  | deploy     - resonance-v3-deploy.sh (변경 감지 선별 배포)"
-    echo "    3  | deploy-safe - git-backup + deploy"
-    echo "    8  | deploy-v2  - resonance-k8s-build-deploy-80-v2.sh (병렬 빌드)"
+    echo "    2  | deploy     - retired (use auto-deploy)"
+    echo "    3  | deploy-safe - retired (use auto-deploy)"
+    echo "    8  | deploy-v2  - retired (official auto-deploy only; no direct route)"
     echo ""
     echo "  [v3 초고속 배포 (~20초~3분)]"
-    echo "   13  | v3-deploy  - 변경 감지 후 선별 배포"
+    echo "   13  | v3-deploy  - retired (use auto-deploy)"
     echo "   14  | auto-deploy - 감시后台 자동 배포 on/off"
     echo ""
     echo "  [Git 버전관리]"
@@ -54,20 +54,17 @@ case "$cmd" in
     exec "$0" "$sel"
     ;;
   up|start|켜줘|1)
-    exec "$ROOT_DIR/ops/scripts/resonance-up.sh" "${@:2}"
+    exec /usr/bin/bash "$ROOT_DIR/ops/scripts/resonance-up.sh" "${@:2}"
     ;;
   deploy|redeploy|배포|2)
-    exec "$ROOT_DIR/ops/scripts/resonance-v3-deploy.sh" "${@:2}"
+    exec /usr/bin/bash "$ROOT_DIR/ops/scripts/resonance-v3-deploy.sh" "${@:2}"
     ;;
   deploy-safe|배포안전|3)
-    echo "=== Pre-Deploy Git Backup ===" && \
-    bash "$ROOT_DIR/ops/scripts/git-pre-deploy-backup.sh" && \
-    echo "" && \
-    echo "=== Starting v3 Deployment ===" && \
-    bash "$ROOT_DIR/ops/scripts/resonance-v3-deploy.sh"
+    exec /usr/bin/bash "$ROOT_DIR/ops/scripts/resonance-v3-deploy.sh" "${@:2}"
     ;;
   deploy-fe|10)
-    SKIP_IMAGE_BUILD=true exec "$ROOT_DIR/ops/scripts/resonance-k8s-build-deploy-80-v2.sh"
+    SKIP_IMAGE_BUILD=true exec /usr/bin/bash \
+      "$ROOT_DIR/ops/scripts/resonance-k8s-build-deploy-80-v2.sh" "${@:2}"
     ;;
   fe-hot|frontend-hot|11)
     exec "$ROOT_DIR/ops/scripts/frontend-hot-reload.sh"
@@ -76,7 +73,7 @@ case "$cmd" in
     exec "$ROOT_DIR/ops/scripts/resonance-v3-build.sh" "${@:2}"
     ;;
   v3-deploy|13)
-    exec "$ROOT_DIR/ops/scripts/resonance-v3-deploy.sh"
+    exec /usr/bin/bash "$ROOT_DIR/ops/scripts/resonance-v3-deploy.sh"
     ;;
   auto-deploy|14)
     exec "$ROOT_DIR/ops/scripts/resonance-auto-deploy.sh" "${@:2}"

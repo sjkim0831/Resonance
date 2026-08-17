@@ -689,12 +689,7 @@ public class CompositeAutocompletionReadinessService {
         return jdbc.update("""
             with current_runtime as materialized (
               select runtime.source_commit,
-                     encode(sha256(convert_to(concat_ws('|',runtime.source_commit,
-                       runtime.deployment_namespace,runtime.deployment_name,
-                       runtime.deployment_uid,runtime.deployment_generation,
-                       runtime.observed_generation,runtime.desired_replicas,
-                       runtime.image_ref,runtime.image_id,runtime.health_status
-                     ),'UTF8')),'hex') runtime_identity_hash
+                     framework_runtime_release_identity_hash(runtime) runtime_identity_hash
                 from framework_runtime_release_state runtime
                where runtime.release_key='CARBONET_RUNTIME'
                  and runtime.health_status='UP'
@@ -870,12 +865,7 @@ public class CompositeAutocompletionReadinessService {
                 from target
             ), runtime as materialized (
               select state.source_commit,
-                     encode(sha256(convert_to(concat_ws('|',state.source_commit,
-                       state.deployment_namespace,state.deployment_name,
-                       state.deployment_uid,state.deployment_generation,
-                       state.observed_generation,state.desired_replicas,
-                       state.image_ref,state.image_id,state.health_status
-                     ),'UTF8')),'hex') runtime_identity_hash
+                     framework_runtime_release_identity_hash(state) runtime_identity_hash
                 from framework_runtime_release_state state,binding
                where state.release_key='CARBONET_RUNTIME' and state.health_status='UP'
                  and state.source_commit=binding.runtime_commit
@@ -976,12 +966,7 @@ public class CompositeAutocompletionReadinessService {
     private String currentRuntimeIdentityHash(String commit,boolean lock){
         if(!normalizeCommit(commit).matches("[0-9a-f]{40}"))return "";
         List<String> rows=jdbc.queryForList("""
-            select encode(sha256(convert_to(concat_ws('|',runtime.source_commit,
-                     runtime.deployment_namespace,runtime.deployment_name,
-                     runtime.deployment_uid,runtime.deployment_generation,
-                     runtime.observed_generation,runtime.desired_replicas,
-                     runtime.image_ref,runtime.image_id,runtime.health_status
-                   ),'UTF8')),'hex')
+            select framework_runtime_release_identity_hash(runtime)
               from framework_runtime_release_state runtime
              where runtime.release_key='CARBONET_RUNTIME' and runtime.health_status='UP'
                and runtime.source_commit=?
@@ -1177,12 +1162,7 @@ public class CompositeAutocompletionReadinessService {
               join framework_runtime_release_state runtime
                 on runtime.release_key='CARBONET_RUNTIME' and runtime.health_status='UP'
                and runtime.source_commit=dispatch.runtime_commit
-               and dispatch.runtime_identity_hash=encode(sha256(convert_to(concat_ws('|',
-                 runtime.source_commit,runtime.deployment_namespace,runtime.deployment_name,
-                 runtime.deployment_uid,runtime.deployment_generation,
-                 runtime.observed_generation,runtime.desired_replicas,
-                 runtime.image_ref,runtime.image_id,runtime.health_status
-               ),'UTF8')),'hex')
+               and dispatch.runtime_identity_hash=framework_runtime_release_identity_hash(runtime)
              where receipt.completion_status='PHYSICAL_GENERATED_VERIFIED'
                and receipt.duration_ms is not null
                and receipt.receipt_json#>>'{canary,status}'='VERIFIED'
@@ -1225,12 +1205,7 @@ public class CompositeAutocompletionReadinessService {
         Boolean promoted=jdbc.queryForObject("""
             with current_runtime as (
               select runtime.source_commit,runtime.health_status,
-                     encode(sha256(convert_to(concat_ws('|',runtime.source_commit,
-                       runtime.deployment_namespace,runtime.deployment_name,
-                       runtime.deployment_uid,runtime.deployment_generation,
-                       runtime.observed_generation,runtime.desired_replicas,
-                       runtime.image_ref,runtime.image_id,runtime.health_status
-                     ),'UTF8')),'hex') runtime_identity_hash
+                     framework_runtime_release_identity_hash(runtime) runtime_identity_hash
                 from framework_runtime_release_state runtime
                where runtime.release_key='CARBONET_RUNTIME'
                  and runtime.health_status='UP' and runtime.source_commit=?

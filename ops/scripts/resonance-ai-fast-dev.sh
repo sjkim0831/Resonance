@@ -121,9 +121,8 @@ case "$mode" in
       write_status "planned" "project-core-rolling-deploy"
       exit 0
     fi
-    bash ops/scripts/resonance-project-core-deploy.sh "${CLASSIFIER_ARGS[@]}"
-    write_status "applied" "project-core-rolling-deploy"
-    exit 0
+    exec /usr/bin/bash "$ROOT_DIR/ops/scripts/resonance-project-core-deploy.sh" \
+      "${CLASSIFIER_ARGS[@]}"
     ;;
 
   ops-review)
@@ -162,4 +161,3 @@ MESSAGE
     exit 5
     ;;
 esac
-

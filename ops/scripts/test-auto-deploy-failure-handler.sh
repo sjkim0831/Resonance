@@ -45,6 +45,7 @@ grep -q 'retry_allowed=true' "$handler"
 grep -q 'category=DATABASE' "$handler"
 grep -q 'category=DATABASE_DETERMINISTIC' "$handler"
 grep -q 'category=POSTDEPLOY_VALIDATION_DETERMINISTIC' "$handler"
+grep -q 'category=RUNTIME_IDENTITY_DETERMINISTIC' "$handler"
 grep -q 'category=DEPLOY_TERMINATED' "$handler"
 grep -q 'category=FLYWAY_CLEANUP_HOLD' "$handler"
 grep -Fq 'ExecMainStatus' "$handler"
@@ -109,7 +110,7 @@ def contract(d, h, a):
         clean_root_switch = d.index('ROOT_DIR="$clean_worktree"')
         clean_rebind = d.index(clean_rebind_call, clean_root_switch)
         clean_cd = d.index('cd "$ROOT_DIR"', clean_rebind)
-        return (d.count(tokens[0]) == 5 and d.count(tokens[1]) == 1
+        return (d.count(tokens[0]) == 6 and d.count(tokens[1]) == 1
                 and 'mv -fT -- "$authority_helper_install_tmp"' in d
                 and authority_explicit_flag in d and authority_default in d
                 and authority_rebind in rebind_body
@@ -295,6 +296,12 @@ SH
   run_classifier_mutant emission_workflow_invalid 1 \
     $'[validation-groups] FAIL name=emission-workflow\n[emission-workflow] invalid projects: 35\ntimed out waiting for sibling validation group' \
     POSTDEPLOY_VALIDATION_DETERMINISTIC FAILED false false 0
+  run_classifier_mutant runtime_identity_mismatch 1 \
+    $'[prebuild] timed out waiting for sibling test\n[auto-deploy] STATIC_ONLY_BLOCKED_RUNTIME_IDENTITY_MISMATCH reason=TEMPLATE_MISMATCH' \
+    RUNTIME_IDENTITY_DETERMINISTIC FAILED false false 0
+  run_classifier_mutant runtime_identity_readiness_transient 1 \
+    '[auto-deploy] STATIC_ONLY_BLOCKED_RUNTIME_IDENTITY_MISMATCH reason=READINESS_TRANSIENT' \
+    NETWORK_TRANSIENT RETRY_SCHEDULED true true 1
   run_classifier_mutant flyway_p0001 79 \
     $'error: timed out waiting for condition\nFLYWAY_JOB_FAILED\nSQL State  : P0001\nWORK_EXECUTION stage B precondition failed\nChanges successfully rolled back' \
     DATABASE_DETERMINISTIC FAILED false false 0
@@ -381,9 +388,10 @@ EOF
 #!/usr/bin/env bash
 if [[ "$*" == *InvocationID* ]]; then echo fixture-invocation; else echo 12345; fi
 SH
-  cat >"$handler_fixture/bin/journalctl" <<'SH'
+cat >"$handler_fixture/bin/journalctl" <<'SH'
 #!/usr/bin/env bash
 echo 'MARKER_PENDING DB promotion committed; next preflight will reconcile runtime marker'
+echo 'STATIC_ONLY_BLOCKED_RUNTIME_IDENTITY_MISMATCH reason=TEMPLATE_MISMATCH'
 SH
   cat >"$handler_fixture/bin/systemd-run" <<'SH'
 #!/usr/bin/env bash
@@ -447,9 +455,10 @@ if command -v jq >/dev/null 2>&1; then
 #!/usr/bin/env bash
 if [[ "$*" == *InvocationID* ]]; then echo attempt-invocation; else echo 54321; fi
 SH
-  cat >"$attempt_fixture/bin/journalctl" <<'SH'
+cat >"$attempt_fixture/bin/journalctl" <<'SH'
 #!/usr/bin/env bash
 echo 'durable attempt recovery pending'
+echo 'STATIC_ONLY_BLOCKED_RUNTIME_IDENTITY_MISMATCH reason=TEMPLATE_MISMATCH'
 SH
   cat >"$attempt_fixture/bin/systemd-run" <<'SH'
 #!/usr/bin/env bash
@@ -519,6 +528,43 @@ SH
   [[ "${#scheduled_units[@]}" == 3 \
      && "${scheduled_units[0]}" != "${scheduled_units[1]}" \
      && "${scheduled_units[1]}" != "${scheduled_units[2]}" ]]
+
+  # A DB-promoted journal whose final live verification is still pending must
+  # keep attempt recovery ahead of a generic runtime-identity failure. This is
+  # the ledgerless crash window: only the candidate-bound recovery unit may
+  # reconstruct secondary marker/quarantine state.
+  rm -f -- "$attempt_fixture/state"/postdeploy-recovery-schedule-*.json \
+    "$attempt_fixture/systemd-run.record"
+  python3 "$root/ops/scripts/postdeploy-attempt-journal.py" \
+    --file "$attempt_fixture/state/carbonet-postdeploy-attempt.json" \
+    mark-db-staged "$candidate" "$target" >/dev/null
+  python3 "$root/ops/scripts/postdeploy-attempt-journal.py" \
+    --file "$attempt_fixture/state/carbonet-postdeploy-attempt.json" \
+    transition PROMOTED "$candidate" "$target" "$sha" PROMOTION_COMMITTED >/dev/null
+  cat >"$attempt_fixture/state/postdeploy-marker-pending.state" <<EOF
+schemaVersion=1
+targetCommit=$target
+candidateId=$candidate
+reason=DB_PROMOTED_FINAL_LIVE_VERIFY_PENDING
+observedAppliedMarker=$base
+observedRuntimeMarker=$base
+EOF
+  chmod 0600 "$attempt_fixture/state/postdeploy-marker-pending.state"
+  FAKE_SYSTEMD_RUN_RECORD="$attempt_fixture/systemd-run.record" PATH="$attempt_fixture/bin:$PATH" \
+  CARBONET_DEPLOY_OWNER="$(id -un)" CARBONET_DEPLOY_ROOT="$root" \
+  CARBONET_DEPLOY_STATE_DIR="$attempt_fixture/state" \
+  CARBONET_POSTDEPLOY_ATTEMPT_JOURNAL_HELPER="$root/ops/scripts/postdeploy-attempt-journal.py" \
+  CARBONET_DEPLOY_NOTIFY_SCRIPT="$attempt_fixture/notify.sh" \
+    bash "$handler" >/dev/null
+  jq -e '.status=="RECOVERY_SCHEDULED" and .category=="ATTEMPT_RECOVERY_PENDING"
+    and .attemptRecoveryPending==true and .promotionAuthoritative==false
+    and .snapshotPreserved==true and .retryAllowed==true and .retryAttempted==true' \
+    "$attempt_fixture/state/deploy-status.json" >/dev/null
+  jq -e '.lifecycleStatus=="PROMOTED" and .terminalReason=="PROMOTION_COMMITTED"' \
+    "$attempt_fixture/state/carbonet-postdeploy-attempt.json" >/dev/null
+  [[ "$(find "$attempt_fixture/state" -maxdepth 1 -type f -name 'postdeploy-recovery-schedule-*.json' | wc -l | tr -d ' ')" == 1 ]]
+  [[ "$(wc -l <"$attempt_fixture/systemd-run.record")" == 1 ]]
+  grep -Fq 'CARBONET_RECOVERY_ONLY=true' "$attempt_fixture/systemd-run.record"
   rm -rf -- "$attempt_fixture"
 fi
 
@@ -662,6 +708,9 @@ fi
 
 deterministic_database_line="$(grep -n 'category=DATABASE_DETERMINISTIC' "$handler" | head -1 | cut -d: -f1)"
 deterministic_postdeploy_line="$(grep -n 'category=POSTDEPLOY_VALIDATION_DETERMINISTIC' "$handler" | head -1 | cut -d: -f1)"
+deterministic_runtime_identity_line="$(grep -n 'category=RUNTIME_IDENTITY_DETERMINISTIC' "$handler" | head -1 | cut -d: -f1)"
+attempt_recovery_line="$(grep -n 'category=ATTEMPT_RECOVERY_PENDING' "$handler" | head -1 | cut -d: -f1)"
+promotion_pending_line="$(grep -n 'category=PROMOTION_MARKER_PENDING' "$handler" | head -1 | cut -d: -f1)"
 cleanup_hold_line="$(grep -n 'category=FLYWAY_CLEANUP_HOLD' "$handler" | head -1 | cut -d: -f1)"
 terminated_line="$(grep -n 'category=DEPLOY_TERMINATED' "$handler" | head -1 | cut -d: -f1)"
 network_line="$(grep -n "category=NETWORK_TRANSIENT" "$handler" | head -1 | cut -d: -f1)"
@@ -671,8 +720,11 @@ database_line="$(grep -n '^[[:space:]]*category=DATABASE$' "$handler" | head -1 
 [[ "$deterministic_database_line" -lt "$terminated_line" ]]
 [[ "$terminated_line" -lt "$deterministic_postdeploy_line" ]]
 [[ "$deterministic_postdeploy_line" -lt "$network_line" ]]
+[[ "$attempt_recovery_line" -lt "$deterministic_runtime_identity_line" ]]
+[[ "$promotion_pending_line" -lt "$deterministic_runtime_identity_line" ]]
+[[ "$deterministic_runtime_identity_line" -lt "$network_line" ]]
 [[ "$terminated_line" -lt "$network_line" ]]
 [[ "$network_line" -lt "$e2e_line" ]]
 [[ "$e2e_line" -lt "$database_line" ]]
 
-echo "AUTO_DEPLOY_FAILURE_HANDLER_PASS promotionPending=DB-authoritative attemptRecovery=deploy-owner+hold-bypass+fetch0+candidateBound3x classifier=staleSuccess-write0+network503-retry1+emissionWorkflowInvalid-retry0+flywayP0001-retry0+term79-retry0+flywayCleanupHold-retry1+leaseBound+remote0+hangBound4s"
+echo "AUTO_DEPLOY_FAILURE_HANDLER_PASS promotionPending=DB-authoritative attemptRecovery=deploy-owner+hold-bypass+fetch0+candidateBound3x+promotedFinalLive identityPrecedence=attempt+promotion classifier=staleSuccess-write0+network503-retry1+emissionWorkflowInvalid-retry0+runtimeIdentityMismatch-retry0+runtimeIdentityReadiness-retry1+flywayP0001-retry0+term79-retry0+flywayCleanupHold-retry1+leaseBound+remote0+hangBound4s"

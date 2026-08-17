@@ -3,6 +3,7 @@ set -Eeuo pipefail
 
 ROOT="${RESONANCE_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
 MIGRATION="$ROOT/apps/carbonet-api/src/main/resources/db/migration/postgresql/V20260807052000__bind_business_e2e_evidence_to_current_contract.sql"
+RUNTIME_IDENTITY_MIGRATION="$ROOT/apps/carbonet-api/src/main/resources/db/migration/postgresql/V20260817235000__bind_runtime_identity_to_pod_template.sql"
 SERVICE="$ROOT/modules/resonance-common/carbonet-common-core/src/main/java/egovframework/com/platform/governance/service/ActorProcessGovernanceService.java"
 AUDIT="$ROOT/ops/scripts/resonance-all-process-contract-audit.mjs"
 GENERIC="$ROOT/ops/scripts/promote-screen-contract-after-e2e.sh"
@@ -13,7 +14,7 @@ RUNTIME_LEDGER="$ROOT/ops/scripts/record-runtime-release-state.sh"
 AUTO_DEPLOY="$ROOT/ops/scripts/auto-deploy-main.sh"
 BUILD_DEPLOY="$ROOT/ops/scripts/resonance-k8s-build-deploy-80-v2.sh"
 
-for file in "$MIGRATION" "$SERVICE" "$AUDIT" "$GENERIC" "$PORTFOLIO" "$EMISSION" "$CAPTURE" "$RUNTIME_LEDGER" "$AUTO_DEPLOY" "$BUILD_DEPLOY"; do
+for file in "$MIGRATION" "$RUNTIME_IDENTITY_MIGRATION" "$SERVICE" "$AUDIT" "$GENERIC" "$PORTFOLIO" "$EMISSION" "$CAPTURE" "$RUNTIME_LEDGER" "$AUTO_DEPLOY" "$BUILD_DEPLOY"; do
   [[ -f "$file" ]] || { echo "missing contract file: $file" >&2; exit 1; }
 done
 
@@ -38,6 +39,16 @@ grep -q 'RUNTIME_COMMIT_UNAVAILABLE' "$MIGRATION"
 grep -q 'evidence.source_commit=runtime.source_commit' "$MIGRATION"
 ! grep -q 'DROP CONSTRAINT' "$MIGRATION"
 
+grep -q 'ADD COLUMN IF NOT EXISTS runtime_identity_hash varchar(64)' "$RUNTIME_IDENTITY_MIGRATION"
+grep -q 'ck_framework_process_qa_run_runtime_identity_hash' "$RUNTIME_IDENTITY_MIGRATION"
+grep -q 'framework_runtime_release_identity_hash(runtime_state)' "$RUNTIME_IDENTITY_MIGRATION"
+grep -q "release_key='CARBONET_RUNTIME'" "$RUNTIME_IDENTITY_MIGRATION"
+grep -q 'FOR SHARE' "$RUNTIME_IDENTITY_MIGRATION"
+grep -q "captured->>'runtimeIdentityHash' IS DISTINCT FROM canonical_runtime_hash" "$RUNTIME_IDENTITY_MIGRATION"
+grep -q "captured->>'podTemplateSha256' IS DISTINCT FROM runtime_state.pod_template_sha256" "$RUNTIME_IDENTITY_MIGRATION"
+grep -q 'evidence.runtime_identity_hash=runtime_hash.runtime_identity_hash' "$RUNTIME_IDENTITY_MIGRATION"
+! grep -Eq 'UPDATE[[:space:]]+framework_process_qa_run[[:space:]]+SET[[:space:]]+runtime_identity_hash' "$RUNTIME_IDENTITY_MIGRATION"
+
 grep -q 'framework_current_business_e2e_evidence' "$SERVICE"
 grep -q 'framework_current_process_step_contract_fingerprint' "$SERVICE"
 grep -q "'QA_RUNTIME'" "$SERVICE"
@@ -54,9 +65,14 @@ for writer in "$GENERIC" "$PORTFOLIO" "$EMISSION"; do
   ! grep -Eq 'UPDATE[[:space:]]+framework_process_qa_run' "$writer"
 done
 
-grep -q 'resonance\\.ai/target-commit' "$CAPTURE"
+grep -q 'resonance.ai/target-commit' "$CAPTURE"
+grep -q 'resonance.ai/runtime-template-sha256' "$CAPTURE"
 grep -q 'framework_runtime_release_state' "$CAPTURE"
-grep -q 'runtime release ledger and deployment target-commit annotation differ' "$CAPTURE"
+grep -q 'framework_runtime_release_identity_hash(runtime)' "$CAPTURE"
+grep -q "jq -cS '.spec.template'" "$CAPTURE"
+grep -q 'runtime release ledger and deployment source/PodTemplate attestations differ' "$CAPTURE"
+grep -q -- '--arg runtimeIdentityHash "$RUNTIME_IDENTITY_HASH"' "$CAPTURE"
+grep -q -- '--arg podTemplateSha256 "$POD_TEMPLATE_SHA256"' "$CAPTURE"
 ! grep -q 'carbonet-main-success.commit' "$CAPTURE"
 ! grep -q 'E2E_ALLOW_LEGACY_DEPLOYMENT_WITHOUT_ANNOTATION' "$CAPTURE"
 grep -q 'framework_current_process_step_contract_fingerprint' "$CAPTURE"
@@ -103,8 +119,10 @@ const appliedMarker = finalizer.indexOf('write_applied_deploy_state "$target_com
 if (!(release >= 0 && promoter > release && runtimeMarker > promoter && authority > runtimeMarker && appliedMarker > authority)) {
   throw new Error('runtime publication must promote DB/runtime marker before the overall applied marker');
 }
-if ((deploy.match(/write_applied_deploy_state "\$target_commit"/g) || []).length !== 3) {
-  throw new Error('expected one runtime finalizer and two non-runtime applied-marker call sites');
+const allAppliedMarkers = (deploy.match(/write_applied_deploy_state "\$target_commit"/g) || []).length;
+const finalizerAppliedMarkers = (finalizer.match(/write_applied_deploy_state "\$target_commit"/g) || []).length;
+if (finalizerAppliedMarkers !== 1 || allAppliedMarkers < 3) {
+  throw new Error('expected exactly one runtime-finalizer marker and retained non-runtime/recovery marker paths');
 }
 const verifierStart = deploy.indexOf('verify_operational_usage_ledger_current_runtime_identity() {');
 const verifier = deploy.slice(verifierStart,
@@ -117,4 +135,39 @@ if (!deploy.includes('FULL_SCREEN_GATE_BASE_COMMIT="$runtime_deployed_commit"'))
 }
 NODE
 
-echo '[current-business-e2e-evidence-test] PASS legacy=excluded evidence=immutable binding=runtime-commit+process-version+fingerprint deploy-marker=ledger-guarded rollback=identity-restored'
+python3 - "$RUNTIME_IDENTITY_MIGRATION" "$CAPTURE" <<'PY'
+import pathlib
+import sys
+
+migration = pathlib.Path(sys.argv[1]).read_text(encoding="utf-8")
+capture = pathlib.Path(sys.argv[2]).read_text(encoding="utf-8")
+trigger = migration.split("CREATE OR REPLACE FUNCTION framework_validate_process_qa_evidence_insert()", 1)[1].split("CREATE OR REPLACE VIEW", 1)[0]
+view = migration.split("CREATE OR REPLACE VIEW framework_current_business_e2e_evidence AS", 1)[1].split("COMMENT ON COLUMN", 1)[0]
+for token in (
+    "FOR SHARE",
+    "runtimeIdentityHash",
+    "podTemplateSha256",
+    "canonical_runtime_hash IS NULL",
+):
+    if token not in trigger:
+        raise SystemExit(f"BUSINESS_E2E runtime trigger contract missing: {token}")
+for token in (
+    "evidence.runtime_identity_hash=runtime_hash.runtime_identity_hash",
+    "runtime_hash.runtime_identity_hash IS NOT NULL",
+):
+    if token not in view:
+        raise SystemExit(f"BUSINESS_E2E current view contract missing: {token}")
+
+snapshot = capture.index('DEPLOYMENT_JSON="$(kubectl')
+live_hash = capture.index("LIVE_TEMPLATE_SHA256=", snapshot)
+proof = capture.index('ANNOTATED_TEMPLATE_SHA256', live_hash)
+emit = capture.index('--arg runtimeIdentityHash', proof)
+if not snapshot < live_hash < proof < emit:
+    raise SystemExit("BUSINESS_E2E capture must prove one live Deployment snapshot before emitting identity")
+for removed in ("ANNOTATED_TEMPLATE_SHA256", "LIVE_TEMPLATE_SHA256", "DEPLOYMENT_UID"):
+    mutant = capture.replace(removed, "REMOVED", 1)
+    if mutant == capture:
+        raise SystemExit(f"capture mutant was ineffective: {removed}")
+PY
+
+echo '[current-business-e2e-evidence-test] PASS legacy=excluded evidence=immutable binding=runtime-identity-v2+pod-template+process-version+fingerprint live-snapshot=exact old-evidence=stale'

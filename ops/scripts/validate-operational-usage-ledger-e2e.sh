@@ -147,6 +147,8 @@ REVIEW_KEY="usage-ledger-e2e-$(date +%Y%m%d%H%M%S)-$$-${RANDOM}"
 REVIEW_NOTE="Operational usage ledger postdeploy ownership ${REVIEW_KEY}"
 REVIEW_CREATED=0
 POSTGRES_LEADER="${RESONANCE_POSTGRES_LEADER_POD:-}"
+RUNTIME_IDENTITY_HASH=""
+POD_TEMPLATE_SHA256=""
 
 require_cmd() {
   command -v "$1" >/dev/null 2>&1 || fail "required command not found: $1"
@@ -186,12 +188,12 @@ cleanup_owned_review() {
   count="$(db_scalar "select count(*) from framework_system_usage_review where idempotency_key='${REVIEW_KEY}'" 2>/dev/null || true)"
   [[ "$count" =~ ^[0-9]+$ ]] || return 1
   if [[ "$count" == "0" ]]; then REVIEW_CREATED=0; return 0; fi
-  ownership="$(db_scalar "select count(*) from framework_system_usage_review where idempotency_key='${REVIEW_KEY}' and review_status='APPROVED' and review_note='${REVIEW_NOTE}' and linked_job_id is null" 2>/dev/null || true)"
+  ownership="$(db_scalar "select count(*) from framework_system_usage_review where idempotency_key='${REVIEW_KEY}' and review_status='APPROVED' and review_note='${REVIEW_NOTE}' and source_commit='${EXPECTED_COMMIT}' and runtime_identity_hash='${RUNTIME_IDENTITY_HASH}' and linked_job_id is null" 2>/dev/null || true)"
   if [[ "$count" != "1" || "$ownership" != "1" ]]; then
     printf '[operational-usage-ledger-e2e] REFUSING CLEANUP: ownership mismatch count=%s owned=%s\n' "$count" "$ownership" >&2
     return 1
   fi
-  deleted="$(db_scalar "with deleted as (delete from framework_system_usage_review where idempotency_key='${REVIEW_KEY}' and review_status='APPROVED' and review_note='${REVIEW_NOTE}' and linked_job_id is null returning review_id) select count(*) from deleted" 2>/dev/null || true)"
+  deleted="$(db_scalar "with deleted as (delete from framework_system_usage_review where idempotency_key='${REVIEW_KEY}' and review_status='APPROVED' and review_note='${REVIEW_NOTE}' and source_commit='${EXPECTED_COMMIT}' and runtime_identity_hash='${RUNTIME_IDENTITY_HASH}' and linked_job_id is null returning review_id) select count(*) from deleted" 2>/dev/null || true)"
   after="$(db_scalar "select count(*) from framework_system_usage_review where idempotency_key='${REVIEW_KEY}'" 2>/dev/null || true)"
   [[ "$deleted" == "1" && "$after" == "0" ]] || return 1
   REVIEW_CREATED=0
@@ -387,8 +389,11 @@ health="$(curl "${CARBONET_CURL_ARGS[@]}" -fsS --max-time 10 "$BASE_URL/actuator
 [[ "$health" == *'"status":"UP"'* ]] || fail "runtime health is not UP"
 table_name="$(db_scalar "select to_regclass('public.framework_system_usage_review')::text")"
 [[ "$table_name" == "framework_system_usage_review" ]] || fail "review ledger migration is not deployed"
-runtime_commit="$(db_scalar "select source_commit from framework_runtime_release_state where release_key='CARBONET_RUNTIME' and health_status='UP'")"
+runtime_contract="$(db_scalar "select source_commit||'|'||coalesce(framework_runtime_release_identity_hash(runtime),'')||'|'||coalesce(pod_template_sha256,'') from framework_runtime_release_state runtime where release_key='CARBONET_RUNTIME' and health_status='UP'")"
+IFS='|' read -r runtime_commit RUNTIME_IDENTITY_HASH POD_TEMPLATE_SHA256 <<<"$runtime_contract"
 [[ "$runtime_commit" == "$EXPECTED_COMMIT" ]] || fail "healthy runtime release does not match expected commit"
+[[ "$RUNTIME_IDENTITY_HASH" =~ ^[0-9a-f]{64}$ ]] || fail "healthy runtime release has no canonical runtime identity"
+[[ "$POD_TEMPLATE_SHA256" =~ ^[0-9a-f]{64}$ ]] || fail "healthy runtime release has no bound PodTemplate identity"
 
 TOTAL_STEPS="$(db_scalar "select count(*) from framework_process_definition p join framework_process_step s using(process_code)")"
 [[ "$TOTAL_STEPS" =~ ^[1-9][0-9]*$ ]] || fail "current structural step total is invalid"
@@ -465,18 +470,18 @@ jq -n --arg process "$SELECTED_PROCESS" --arg step "$SELECTED_STEP" --arg key "$
 review_one="$TMP_DIR/review-one.json"
 status="$(api_status "$review_one" POST '/admin/api/system/actor-process/system-test-report/reviews' "$review_body")"
 [[ "$status" == "200" ]] || fail "APPROVED review create failed (http=$status)"
-jq -e '.success==true and .review.reviewStatus=="APPROVED" and .review.reviewEvidenceScope=="HUMAN_REVIEW_ONLY" and .review.idempotent==false and .review.linkedJobId==null and .review.reviewCurrentVersion==true' "$review_one" >/dev/null \
+jq -e --arg source "$runtime_commit" --arg runtimeHash "$RUNTIME_IDENTITY_HASH" '.success==true and .review.reviewStatus=="APPROVED" and .review.reviewEvidenceScope=="HUMAN_REVIEW_ONLY" and .review.idempotent==false and .review.linkedJobId==null and .review.reviewCurrentVersion==true and .review.reviewSourceCommit==$source and .review.reviewRuntimeIdentityHash==$runtimeHash' "$review_one" >/dev/null \
   || fail "created review response contract mismatch"
 REVIEW_CREATED=1
 review_id="$(jq -r '.review.reviewId' "$review_one")"
 [[ "$review_id" =~ ^[1-9][0-9]*$ ]] || fail "created review id is invalid"
-persisted="$(db_scalar "select count(*) from framework_system_usage_review where review_id=${review_id} and idempotency_key='${REVIEW_KEY}' and process_code='${SELECTED_PROCESS}' and step_code='${SELECTED_STEP}' and review_status='APPROVED' and linked_job_id is null")"
+persisted="$(db_scalar "select count(*) from framework_system_usage_review where review_id=${review_id} and idempotency_key='${REVIEW_KEY}' and process_code='${SELECTED_PROCESS}' and step_code='${SELECTED_STEP}' and review_status='APPROVED' and source_commit='${runtime_commit}' and runtime_identity_hash='${RUNTIME_IDENTITY_HASH}' and linked_job_id is null")"
 [[ "$persisted" == "1" ]] || fail "review row did not persist with exact ownership"
 
 review_two="$TMP_DIR/review-two.json"
 status="$(api_status "$review_two" POST '/admin/api/system/actor-process/system-test-report/reviews' "$review_body")"
 [[ "$status" == "200" ]] || fail "APPROVED review idempotent reload failed (http=$status)"
-jq -e --argjson reviewId "$review_id" '.success==true and .review.reviewId==$reviewId and .review.idempotent==true and .review.linkedJobId==null' "$review_two" >/dev/null \
+jq -e --argjson reviewId "$review_id" --arg source "$runtime_commit" --arg runtimeHash "$RUNTIME_IDENTITY_HASH" '.success==true and .review.reviewId==$reviewId and .review.idempotent==true and .review.linkedJobId==null and .review.reviewCurrentVersion==true and .review.reviewSourceCommit==$source and .review.reviewRuntimeIdentityHash==$runtimeHash' "$review_two" >/dev/null \
   || fail "review idempotency contract mismatch"
 [[ "$(db_scalar "select count(*) from framework_system_usage_review where idempotency_key='${REVIEW_KEY}'")" == "1" ]] || fail "idempotent retry created a duplicate row"
 
@@ -488,19 +493,19 @@ status="$(api_status "$review_mismatch" POST '/admin/api/system/actor-process/sy
 [[ "$status" == "409" ]] || fail "mismatched idempotency payload was not rejected (http=$status)"
 jq -e '.success==false and .message=="IDEMPOTENCY_KEY_REUSE_MISMATCH"' "$review_mismatch" >/dev/null \
   || fail "idempotency mismatch response contract mismatch"
-persisted_after_mismatch="$(db_scalar "select count(*) from framework_system_usage_review where review_id=${review_id} and idempotency_key='${REVIEW_KEY}' and review_note='${REVIEW_NOTE}' and review_status='APPROVED' and linked_job_id is null")"
+persisted_after_mismatch="$(db_scalar "select count(*) from framework_system_usage_review where review_id=${review_id} and idempotency_key='${REVIEW_KEY}' and review_note='${REVIEW_NOTE}' and review_status='APPROVED' and source_commit='${runtime_commit}' and runtime_identity_hash='${RUNTIME_IDENTITY_HASH}' and linked_job_id is null")"
 [[ "$persisted_after_mismatch" == "1" ]] || fail "idempotency mismatch mutated or duplicated the owned review"
 [[ "$(db_scalar "select count(*) from framework_system_usage_review where idempotency_key='${REVIEW_KEY}'")" == "1" ]] || fail "idempotency mismatch changed review row cardinality"
 
 detail_after_review="$TMP_DIR/detail-after-review.json"
 status="$(api_status "$detail_after_review" GET "/admin/api/system/actor-process/system-test-report/step-detail?processCode=${SELECTED_PROCESS}&stepCode=${SELECTED_STEP}")"
 [[ "$status" == "200" ]] || fail "review reload detail failed (http=$status)"
-jq -e --argjson reviewId "$review_id" '.item.reviewId==$reviewId and .item.reviewStatus=="APPROVED" and .item.reviewCurrentVersion==true and .item.reviewEvidenceScope=="HUMAN_REVIEW_ONLY"' "$detail_after_review" >/dev/null \
+jq -e --argjson reviewId "$review_id" --arg source "$runtime_commit" --arg runtimeHash "$RUNTIME_IDENTITY_HASH" '.item.reviewId==$reviewId and .item.reviewStatus=="APPROVED" and .item.reviewCurrentVersion==true and .item.reviewEvidenceScope=="HUMAN_REVIEW_ONLY" and .item.reviewSourceCommit==$source and .item.reviewRuntimeIdentityHash==$runtimeHash' "$detail_after_review" >/dev/null \
   || fail "saved review did not reload on exact step detail"
 
 cleanup_owned_review || fail "exact review cleanup failed"
 [[ "$(db_scalar "select count(*) from framework_system_usage_review where idempotency_key='${REVIEW_KEY}'")" == "0" ]] || fail "review cleanup after-count is not zero"
-info "review PASS before=0 persisted=1 idempotent=1 mismatch409=1 rowsAfterMismatch=1 linkedJobs=0 after=0"
+info "review PASS before=0 persisted=1 idempotent=1 mismatch409=1 rowsAfterMismatch=1 linkedJobs=0 runtimeIdentity=exact podTemplate=exact after=0"
 
 run_browser_contract "$COOKIE_JAR"
 carbonet_qa_logout "$COOKIE_JAR" "$BASE_URL" || fail "system administrator logout failed"

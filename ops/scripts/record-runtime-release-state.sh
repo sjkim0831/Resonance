@@ -13,7 +13,10 @@ RECORDED_BY="${CARBONET_RUNTIME_LEDGER_RECORDED_BY:-auto-deploy-main}"
 ACTION="${1:-}"
 ROLLOUT_READY_ATTEMPTS="${CARBONET_RUNTIME_LEDGER_READY_ATTEMPTS:-11}"
 ROLLOUT_READY_DELAY_SECONDS="${CARBONET_RUNTIME_LEDGER_READY_DELAY_SECONDS:-2}"
+ANNOTATION_READY_ATTEMPTS="${CARBONET_RUNTIME_LEDGER_ANNOTATION_READY_ATTEMPTS:-31}"
+ANNOTATION_READY_DELAY_SECONDS="${CARBONET_RUNTIME_LEDGER_ANNOTATION_READY_DELAY_SECONDS:-1}"
 OBSERVE_ONLY="${CARBONET_RUNTIME_LEDGER_OBSERVE_ONLY:-false}"
+EXPECTED_TEMPLATE_SHA256="${CARBONET_RUNTIME_EXPECTED_TEMPLATE_SHA256:-}"
 LEADER_RESOLVER="${CARBONET_POSTDEPLOY_LEADER_RESOLVER:-$ROOT/ops/scripts/resolve-patroni-primary-pod.sh}"
 
 log() { printf '[runtime-release-state] %s\n' "$*"; }
@@ -22,6 +25,10 @@ fail() { log "FAIL $*" >&2; exit 1; }
   fail "ready attempts must be a positive integer"
 [[ "$ROLLOUT_READY_DELAY_SECONDS" =~ ^[0-9]+$ ]] ||
   fail "ready delay seconds must be a non-negative integer"
+[[ "$ANNOTATION_READY_ATTEMPTS" =~ ^[1-9][0-9]*$ ]] ||
+  fail "annotation ready attempts must be a positive integer"
+[[ "$ANNOTATION_READY_DELAY_SECONDS" =~ ^[0-9]+$ ]] ||
+  fail "annotation ready delay seconds must be a non-negative integer"
 [[ "$OBSERVE_ONLY" == true || "$OBSERVE_ONLY" == false ]] ||
   fail "observe-only must be true or false"
 
@@ -75,6 +82,9 @@ fi
 
 TARGET_COMMIT="$ACTION"
 [[ "$TARGET_COMMIT" =~ ^[0-9a-f]{40}$ ]] || fail "target commit must be exactly 40 lowercase hexadecimal characters"
+[[ "$EXPECTED_TEMPLATE_SHA256" =~ ^[0-9a-f]{64}$ ]] || fail "expected runtime pod template hash is unavailable"
+template_column_count="$(printf '%s\n' "select count(*) from information_schema.columns where table_schema='public' and table_name='framework_runtime_release_state' and column_name='pod_template_sha256';" | db_psql | tr -d '[:space:]')"
+[[ "$template_column_count" == 1 ]] || fail "runtime pod template ledger migration is unavailable"
 
 
 rollout_ready() {
@@ -109,9 +119,14 @@ for ((rollout_attempt=1; rollout_attempt<=ROLLOUT_READY_ATTEMPTS; rollout_attemp
 done
 
 annotated_commit="$(jq -r '.metadata.annotations["resonance.ai/target-commit"] // empty' <<<"$deployment_json")"
+runtime_template_sha256="$(jq -cS '.spec.template' <<<"$deployment_json" | sha256sum | awk '{print $1}')"
+[[ "$runtime_template_sha256" =~ ^[0-9a-f]{64}$ ]] || fail "runtime pod template hash is unavailable"
+[[ "$runtime_template_sha256" == "$EXPECTED_TEMPLATE_SHA256" ]] || fail "live runtime pod template does not match the externally captured candidate or rollback hash"
 if [[ "$OBSERVE_ONLY" == true ]]; then
   [[ "$annotated_commit" == "$TARGET_COMMIT" ]] \
     || fail "observe-only deployment annotation does not exactly match target commit"
+  [[ "$(jq -r '.metadata.annotations["resonance.ai/runtime-template-sha256"] // empty' <<<"$deployment_json")" == "$runtime_template_sha256" ]] \
+    || fail "observe-only runtime pod template annotation does not match the live template"
   # The reconciler has already restored and verified the exact owned
   # annotations.  Re-annotating here would be a second Kubernetes writer and
   # could invalidate the captured deployment identity.
@@ -123,23 +138,52 @@ else
     exit 79
   }
   if ! "$KUBECTL_BIN" -n "$NAMESPACE" annotate "deployment/$DEPLOYMENT" \
-    "resonance.ai/target-commit=$TARGET_COMMIT" --overwrite >/dev/null; then
+    "resonance.ai/target-commit=$TARGET_COMMIT" \
+    "resonance.ai/runtime-template-sha256=$EXPECTED_TEMPLATE_SHA256" --overwrite >/dev/null; then
     fail "deployment target-commit annotation could not be updated; ledger remains invalidated"
   fi
-  deployment_json="$($KUBECTL_BIN -n "$NAMESPACE" get "deployment/$DEPLOYMENT" -o json)" ||
-    fail "annotated deployment cannot be reread; ledger remains invalidated"
-  validate_rollout "$deployment_json"
+  pre_annotation_uid="$(jq -r '.metadata.uid' <<<"$deployment_json")"
+  annotated_ready=false
+  for ((annotation_attempt=1; annotation_attempt<=ANNOTATION_READY_ATTEMPTS; annotation_attempt++)); do
+    if annotated_deployment_json="$($KUBECTL_BIN -n "$NAMESPACE" get "deployment/$DEPLOYMENT" -o json)"; then
+      annotated_uid="$(jq -r '.metadata.uid // empty' <<<"$annotated_deployment_json")"
+      annotated_template_hash="$(jq -cS '.spec.template' <<<"$annotated_deployment_json" | sha256sum | awk '{print $1}')"
+      annotated_target="$(jq -r '.metadata.annotations["resonance.ai/target-commit"] // empty' <<<"$annotated_deployment_json")"
+      annotated_attestation="$(jq -r '.metadata.annotations["resonance.ai/runtime-template-sha256"] // empty' <<<"$annotated_deployment_json")"
+      [[ "$annotated_uid" == "$pre_annotation_uid" \
+         && "$annotated_template_hash" == "$runtime_template_sha256" ]] \
+        || fail "deployment identity changed while publishing runtime template annotation; ledger remains invalidated"
+      if [[ "$annotated_target" == "$TARGET_COMMIT" \
+         && "$annotated_attestation" == "$runtime_template_sha256" ]] \
+         && rollout_ready "$annotated_deployment_json"; then
+        deployment_json="$annotated_deployment_json"
+        annotated_ready=true
+        break
+      fi
+    fi
+    if (( annotation_attempt == ANNOTATION_READY_ATTEMPTS )); then
+      fail "annotated deployment was not fully observed within ${ANNOTATION_READY_ATTEMPTS} bounded attempts; ledger remains invalidated"
+    fi
+    log "WAIT annotated deployment not ready attempt=${annotation_attempt}/${ANNOTATION_READY_ATTEMPTS} retry_in=${ANNOTATION_READY_DELAY_SECONDS}s"
+    sleep "$ANNOTATION_READY_DELAY_SECONDS"
+  done
+  [[ "$annotated_ready" == true ]] || fail "annotated deployment readiness proof is unavailable; ledger remains invalidated"
   annotated_commit="$(jq -r '.metadata.annotations["resonance.ai/target-commit"] // empty' <<<"$deployment_json")"
   [[ "$annotated_commit" == "$TARGET_COMMIT" ]] \
     || fail "deployment annotation does not exactly match target commit; ledger remains invalidated"
+  [[ "$(jq -r '.metadata.annotations["resonance.ai/runtime-template-sha256"] // empty' <<<"$deployment_json")" == "$runtime_template_sha256" \
+     && "$(jq -cS '.spec.template' <<<"$deployment_json" | sha256sum | awk '{print $1}')" == "$runtime_template_sha256" ]] \
+    || fail "runtime pod template annotation does not match the annotated deployment; ledger remains invalidated"
 fi
 
 deployment_identity_token() {
-  jq -cS --arg container "$CONTAINER" '
+  jq -cS --arg container "$CONTAINER" --arg podTemplateSha256 "$runtime_template_sha256" '
     {resourceVersion:.metadata.resourceVersion,uid:.metadata.uid,generation:.metadata.generation,
      observedGeneration:.status.observedGeneration,replicas:.spec.replicas,
      targetCommit:(.metadata.annotations["resonance.ai/target-commit"]//""),
-     image:(.spec.template.spec.containers[]|select(.name==$container)|.image)}
+     runtimeTemplateSha256:(.metadata.annotations["resonance.ai/runtime-template-sha256"]//""),
+     image:(.spec.template.spec.containers[]|select(.name==$container)|.image),
+     podTemplateSha256:$podTemplateSha256,template:.spec.template}
   ' <<<"$1"
 }
 deployment_token="$(deployment_identity_token "$deployment_json")"
@@ -211,14 +255,15 @@ if ! cat <<'SQL' | db_psql \
   -v desired_replicas="$desired_replicas" \
   -v image_ref="$image_ref" \
   -v image_id="$runtime_image_id" \
+  -v pod_template_sha256="$runtime_template_sha256" \
   -v recorded_by="$RECORDED_BY" >/dev/null
 begin;
 insert into framework_runtime_release_state(
   release_key,source_commit,deployment_namespace,deployment_name,deployment_uid,
-  deployment_generation,observed_generation,desired_replicas,image_ref,image_id,health_status,recorded_by,recorded_at
+  deployment_generation,observed_generation,desired_replicas,image_ref,image_id,pod_template_sha256,health_status,recorded_by,recorded_at
 ) values (
   'CARBONET_RUNTIME',:'source_commit',:'deployment_namespace',:'deployment_name',:'deployment_uid',
-  :'deployment_generation'::bigint,:'observed_generation'::bigint,:'desired_replicas'::integer,:'image_ref',:'image_id','UP',:'recorded_by',current_timestamp
+  :'deployment_generation'::bigint,:'observed_generation'::bigint,:'desired_replicas'::integer,:'image_ref',:'image_id',:'pod_template_sha256','UP',:'recorded_by',current_timestamp
 )
 on conflict (release_key) do update set
   source_commit=excluded.source_commit,
@@ -230,6 +275,7 @@ on conflict (release_key) do update set
   desired_replicas=excluded.desired_replicas,
   image_ref=excluded.image_ref,
   image_id=excluded.image_id,
+  pod_template_sha256=excluded.pod_template_sha256,
   health_status=excluded.health_status,
   recorded_by=excluded.recorded_by,
   recorded_at=excluded.recorded_at;
@@ -247,7 +293,7 @@ select jsonb_build_object(
   'deploymentNamespace',deployment_namespace,'deploymentName',deployment_name,
   'deploymentUid',deployment_uid,'deploymentGeneration',deployment_generation,
   'observedGeneration',observed_generation,'desiredReplicas',desired_replicas,
-  'imageRef',image_ref,'imageId',image_id,'healthStatus',health_status
+  'imageRef',image_ref,'imageId',image_id,'podTemplateSha256',pod_template_sha256,'healthStatus',health_status
 )::text from framework_runtime_release_state where release_key='CARBONET_RUNTIME';
 SQL
 )"; then
@@ -261,6 +307,7 @@ if ! jq -e \
   --arg uid "$deployment_uid" \
   --arg image "$image_ref" \
   --arg imageId "$runtime_image_id" \
+  --arg podTemplateSha256 "$runtime_template_sha256" \
   --argjson generation "$deployment_generation" \
   --argjson observed "$observed_generation" \
   --argjson desired "$desired_replicas" '
@@ -274,6 +321,7 @@ if ! jq -e \
     .desiredReplicas==$desired and
     .imageRef==$image and
     .imageId==$imageId and
+    .podTemplateSha256==$podTemplateSha256 and
     .healthStatus=="UP"
   ' <<<"$recorded_json" >/dev/null; then
   fail_after_ledger_publish "runtime release ledger post-commit reread did not match the healthy deployment"

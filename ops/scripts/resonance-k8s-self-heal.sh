@@ -6,12 +6,29 @@ NAMESPACE="${NAMESPACE:-carbonet-prod}"
 WEB_URL="${WEB_URL:-http://127.0.0.1:8080}"
 LOG_FILE="${LOG_FILE:-/var/log/resonance-k8s-self-heal.log}"
 LOCK_FILE="${LOCK_FILE:-/var/lock/resonance-k8s-self-heal.lock}"
-REBUILD_ON_FAILURE="${REBUILD_ON_FAILURE:-true}"
+REBUILD_ON_FAILURE="${REBUILD_ON_FAILURE:-false}"
 LATENCY_URL="${LATENCY_URL:-${WEB_URL}/admin/system/menu}"
 LATENCY_LIMIT_SECONDS="${LATENCY_LIMIT_SECONDS:-2.0}"
 LATENCY_FAILURE_FILE="${LATENCY_FAILURE_FILE:-/run/resonance-runtime-latency.failures}"
 RUNTIME_RESTART_STAMP="${RUNTIME_RESTART_STAMP:-/run/resonance-runtime-last-restart}"
 RUNTIME_RESTART_COOLDOWN="${RUNTIME_RESTART_COOLDOWN:-600}"
+POD_RECOVERY_HELPER="$ROOT_DIR/ops/scripts/reconcile-post-reboot-runtime.sh"
+DRY_RUN=false
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --dry-run) DRY_RUN=true ;;
+    *) echo "[resonance-self-heal] unsupported argument: $1" >&2; exit 2 ;;
+  esac
+  shift
+done
+
+[[ -r "$POD_RECOVERY_HELPER" && ! -L "$POD_RECOVERY_HELPER" ]] || {
+  echo "[resonance-self-heal] same-template pod recovery helper is unavailable" >&2
+  exit 2
+}
+# shellcheck source=ops/scripts/reconcile-post-reboot-runtime.sh
+source "$POD_RECOVERY_HELPER"
 
 mkdir -p "$(dirname "$LOG_FILE")" "$(dirname "$LOCK_FILE")"
 exec >>"$LOG_FILE" 2>&1
@@ -34,10 +51,10 @@ restart_runtime_for_latency() {
     log 'runtime latency recovery suppressed by cooldown'
     return 0
   fi
+  log 'runtime latency threshold exceeded twice; recycling exact owned pods without changing PodTemplate'
+  recycle_deployment_pods_preserving_template "$NAMESPACE" carbonet-runtime \
+    carbonet-runtime 300
   date +%s >"$RUNTIME_RESTART_STAMP"
-  log 'runtime latency threshold exceeded twice; restarting deployment'
-  kubectl -n "$NAMESPACE" rollout restart deployment/carbonet-runtime
-  kubectl -n "$NAMESPACE" rollout status deployment/carbonet-runtime --timeout=300s
 }
 
 ensure_runtime_latency() {
@@ -56,7 +73,7 @@ ensure_runtime_latency() {
   printf '%s\n' "$failures" >"$LATENCY_FAILURE_FILE"
   log "runtime latency warning code=$code ttfb=${seconds}s consecutive=$failures"
   if (( failures >= 2 )); then
-    restart_runtime_for_latency || true
+    restart_runtime_for_latency
     printf '0\n' >"$LATENCY_FAILURE_FILE"
   fi
 }
@@ -81,13 +98,9 @@ ensure_zero_downtime() {
     unavailable=$(kubectl -n "$NAMESPACE" get deployment "$name" -o jsonpath='{.spec.strategy.rollingUpdate.maxUnavailable}' 2>/dev/null || true)
     surge=$(kubectl -n "$NAMESPACE" get deployment "$name" -o jsonpath='{.spec.strategy.rollingUpdate.maxSurge}' 2>/dev/null || true)
     if [[ ! "$replicas" =~ ^[0-9]+$ || "$replicas" -lt 2 || ( "$unavailable" != "0" && "$unavailable" != "0%" ) || -z "$surge" || "$surge" == "0" || "$surge" == "0%" ]]; then
-      log "repairing zero-downtime policy for deployment/$name"
-      kubectl -n "$NAMESPACE" patch deployment "$name" --type=merge \
-        -p '{"spec":{"replicas":2,"strategy":{"type":"RollingUpdate","rollingUpdate":{"maxUnavailable":0,"maxSurge":1}}}}' || true
+      log "zero-downtime policy drift for deployment/$name; durable auto-deploy must reconcile replicas/strategy (mutation=0)"
     fi
   done
-  kubectl -n "$NAMESPACE" patch hpa carbonet-runtime-hpa --type=merge \
-    -p '{"spec":{"minReplicas":2,"maxReplicas":3}}' >/dev/null 2>&1 || true
 }
 
 kubectl_ok() {
@@ -193,9 +206,9 @@ ensure_db_compatibility() {
 
 ensure_runtime() {
   if ! kubectl -n "$NAMESPACE" rollout status deployment/carbonet-runtime --timeout=10s >/dev/null 2>&1; then
-    log 'runtime deployment not rolled out, restarting'
-    kubectl -n "$NAMESPACE" rollout restart deployment/carbonet-runtime || true
-    kubectl -n "$NAMESPACE" rollout status deployment/carbonet-runtime --timeout=300s || true
+    log 'runtime deployment not rolled out; recycling exact owned pods without changing PodTemplate'
+    recycle_deployment_pods_preserving_template "$NAMESPACE" carbonet-runtime \
+      carbonet-runtime 300
   fi
 
   ensure_endpoints || true
@@ -204,14 +217,14 @@ ensure_runtime() {
     log 'runtime health ok'
     return 0
   fi
-  log 'runtime health failed, restarting deployment'
-  kubectl -n "$NAMESPACE" rollout restart deployment/carbonet-runtime || true
-  kubectl -n "$NAMESPACE" rollout status deployment/carbonet-runtime --timeout=300s || true
+  log 'runtime health failed; recycling exact owned pods without changing PodTemplate'
+  recycle_deployment_pods_preserving_template "$NAMESPACE" carbonet-runtime \
+    carbonet-runtime 300
 
   ensure_endpoints || true
 
   if curl -fsS --max-time 10 "$WEB_URL/actuator/health" >/dev/null 2>&1; then
-    log 'runtime recovered after restart'
+    log 'runtime recovered after same-template pod recycle'
     return 0
   fi
   log 'runtime still unhealthy, attempting service recreation'
@@ -223,10 +236,10 @@ ensure_runtime() {
     log 'runtime recovered after service recreation'
     return 0
   fi
-  if [[ "$REBUILD_ON_FAILURE" == "true" && -x "$ROOT_DIR/ops/scripts/resonance-k8s-build-deploy-80.sh" ]]; then
-    log 'runtime still unhealthy, rebuilding and redeploying'
-    (cd "$ROOT_DIR" && SKIP_FRONTEND="${SELF_HEAL_SKIP_FRONTEND:-false}" SKIP_MAVEN_CLEAN=true RESONANCE_AUTO_GIT_COMMIT="${RESONANCE_AUTO_GIT_COMMIT:-false}" RESONANCE_AUTO_GIT_PUSH="${RESONANCE_AUTO_GIT_PUSH:-false}" bash ops/scripts/resonance-k8s-build-deploy-80.sh) || true
-  fi
+  [[ "$REBUILD_ON_FAILURE" == false ]] \
+    || log 'legacy self-heal rebuild request refused: runtime template mutation requires durable auto-deploy candidate promotion'
+  log 'runtime remains unhealthy; run the durable auto-deploy recovery path (mutation=0)'
+  return 1
 }
 
 ensure_endpoints() {
@@ -297,6 +310,13 @@ prune_images() {
 
 main() {
   log 'start'
+  if [[ "$DRY_RUN" == true ]]; then
+    CARBONET_POD_RECOVERY_DRY_RUN=true \
+      recycle_deployment_pods_preserving_template "$NAMESPACE" carbonet-runtime \
+        carbonet-runtime 300
+    log 'dry-run complete: exact target verified, mutation=0'
+    return 0
+  fi
   ensure_system_services
   ensure_cluster_addons
   ensure_postgres

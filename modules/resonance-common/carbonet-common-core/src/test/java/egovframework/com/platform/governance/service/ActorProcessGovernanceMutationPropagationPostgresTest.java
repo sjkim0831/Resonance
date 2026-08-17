@@ -44,6 +44,9 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class ActorProcessGovernanceMutationPropagationPostgresTest {
+    // The disposable PG suite can run on a 0.5 CPU container. Keep its fixture
+    // lease bounded but longer than the production runner's 480-second timeout.
+    private static final int TEST_LIVE_SMOKE_LEASE_SECONDS=900;
     private static final String MIGRATION=
         "apps/carbonet-api/src/main/resources/db/migration/postgresql/"+
         "V20260815121800__refresh_direct_process_execution_specs.sql";
@@ -108,6 +111,7 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
         applyMigration(INTEGRATED_DESIGN_REGISTRY_MIGRATION,false);
         installProjectRuntimeWriteFenceFixture();
         applyMigration(COMPOSITE_DESIGN_MIGRATION,false);
+        installRuntimeIdentityV2CompositeDispatchFixture();
     }
 
     @AfterAll
@@ -127,18 +131,19 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
         jdbc.update("""
             insert into framework_runtime_release_state(
               release_key,source_commit,deployment_namespace,deployment_name,deployment_uid,
-              deployment_generation,observed_generation,desired_replicas,image_ref,image_id,
+              deployment_generation,observed_generation,desired_replicas,image_ref,image_id,pod_template_sha256,
               health_status,recorded_by)
             values('CARBONET_RUNTIME',repeat('a',40),'carbonet-production','carbonet-runtime',
               'runtime-test-uid',1,1,2,'carbonet-runtime:test','sha256:'||repeat('b',64),
-              'UP','POSTGRES_TEST')
+              repeat('d',64),'UP','POSTGRES_TEST')
             on conflict(release_key) do update set source_commit=excluded.source_commit,
               deployment_namespace=excluded.deployment_namespace,
               deployment_name=excluded.deployment_name,deployment_uid=excluded.deployment_uid,
               deployment_generation=excluded.deployment_generation,
               observed_generation=excluded.observed_generation,
               desired_replicas=excluded.desired_replicas,image_ref=excluded.image_ref,
-              image_id=excluded.image_id,health_status=excluded.health_status,
+              image_id=excluded.image_id,pod_template_sha256=excluded.pod_template_sha256,
+              health_status=excluded.health_status,
               recorded_by=excluded.recorded_by,recorded_at=clock_timestamp()
             """);
         jdbc.execute("truncate integrated_design_notification_inbox,integrated_design_notification_outbox,"+
@@ -3385,10 +3390,10 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
         jdbc.update("""
             update integrated_design_live_smoke_dispatch
                set status='RUNNING',attempt_count=attempt_count+1,lease_token=gen_random_uuid(),
-                   lease_until=clock_timestamp()+interval '5 minutes',
-                   started_at=coalesce(started_at,clock_timestamp())
-             where dispatch_id=? and status in('QUEUED','RETRY_WAIT')
-            """,dispatchId);
+                    lease_until=clock_timestamp()+(? * interval '1 second'),
+                    started_at=coalesce(started_at,clock_timestamp())
+              where dispatch_id=? and status in('QUEUED','RETRY_WAIT')
+            """,TEST_LIVE_SMOKE_LEASE_SECONDS,dispatchId);
         Map<String,Object> claimed=jdbc.queryForMap(
             "select status,lease_token::text lease_token from integrated_design_live_smoke_dispatch where dispatch_id=?",
             dispatchId);
@@ -3940,13 +3945,13 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
             assertEquals(1,jdbc.update("""
             update integrated_design_live_smoke_dispatch dispatch
                set status='RUNNING',attempt_count=attempt_count+1,
-                   lease_token=?,lease_until=clock_timestamp()+interval '5 minutes',
-                   started_at=coalesce(started_at,clock_timestamp())
+                    lease_token=?,lease_until=clock_timestamp()+(? * interval '1 second'),
+                    started_at=coalesce(started_at,clock_timestamp())
              where dispatch.dispatch_id=? and dispatch.job_id=?
                and dispatch.authority_revision_set_hash=
                    framework_composite_authority_revision_set_hash(dispatch.job_id)
                and dispatch.status in('QUEUED','RETRY_WAIT')
-            """,leaseToken,dispatchId,jobId));
+            """,leaseToken,TEST_LIVE_SMOKE_LEASE_SECONDS,dispatchId,jobId));
         }
         assertEquals(1,jdbc.update("""
             with current_evidence as materialized (
@@ -4012,9 +4017,9 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
         assertEquals(1,jdbc.update("""
             update integrated_design_live_smoke_dispatch
                set status='RUNNING',attempt_count=attempt_count+1,lease_token=?,
-                   lease_until=clock_timestamp()+interval '5 minutes'
-             where dispatch_id=? and status='QUEUED'
-            """,leaseToken,dispatchId));
+                    lease_until=clock_timestamp()+(? * interval '1 second')
+              where dispatch_id=? and status='QUEUED'
+            """,leaseToken,TEST_LIVE_SMOKE_LEASE_SECONDS,dispatchId));
         int copied=jdbc.update("""
             insert into integrated_design_live_smoke_evidence(
               dispatch_id,job_id,authority_id,authority_revision,process_code,step_code,
@@ -5109,11 +5114,9 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
             String changedIdentity=transaction.execute(status->{
                 assertEquals(1,jdbc.update("""
                     update framework_runtime_release_state
-                       set deployment_uid=?,deployment_generation=deployment_generation+1,
-                           observed_generation=observed_generation+1,
-                           recorded_at=clock_timestamp()
+                       set pod_template_sha256=repeat('e',64),recorded_at=clock_timestamp()
                      where release_key='CARBONET_RUNTIME' and source_commit=?
-                    ""","runtime-i2-"+UUID.randomUUID(),campaign.newCommit()));
+                    """,campaign.newCommit()));
                 return currentRuntimeIdentityHash();
             });
             assertNotEquals(requestedIdentity,changedIdentity);
@@ -5288,11 +5291,9 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
             String identityH2=transaction.execute(status->{
                 assertEquals(1,jdbc.update("""
                     update framework_runtime_release_state
-                       set deployment_uid=?,deployment_generation=deployment_generation+1,
-                           observed_generation=observed_generation+1,
-                           recorded_at=clock_timestamp()
+                       set pod_template_sha256=repeat('f',64),recorded_at=clock_timestamp()
                      where release_key='CARBONET_RUNTIME' and source_commit=?
-                    ""","runtime-h2-"+UUID.randomUUID(),campaign.newCommit()));
+                    """,campaign.newCommit()));
                 return currentRuntimeIdentityHash();
             });
             assertNotEquals(identityH1,identityH2);
@@ -7814,11 +7815,8 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
 
     private String currentRuntimeIdentityHash(){
         return jdbc.queryForObject("""
-            select encode(sha256(convert_to(concat_ws('|',source_commit,
-              deployment_namespace,deployment_name,deployment_uid,deployment_generation,
-              observed_generation,desired_replicas,image_ref,image_id,health_status
-            ),'UTF8')),'hex')
-              from framework_runtime_release_state where release_key='CARBONET_RUNTIME'
+            select framework_runtime_release_identity_hash(runtime)
+              from framework_runtime_release_state runtime where release_key='CARBONET_RUNTIME'
             """,String.class);
     }
 
@@ -7939,6 +7937,62 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
         return ((Number)row.get(key)).intValue();
     }
 
+    private void installRuntimeIdentityV2CompositeDispatchFixture(){
+        // V20260816154000 is applied after createSchema and therefore replaces
+        // the fixture helper-backed predicate with its historical inline V1
+        // body. Reinstall the exact production V2 predicate for this suite.
+        jdbc.execute("""
+            create or replace function framework_composite_verified_canary_dispatch_exact(
+              p_process_code varchar,p_job_id bigint,p_receipt jsonb)
+            returns boolean language sql stable as $$
+              select exists(
+                select 1
+                  from integrated_design_live_smoke_dispatch dispatch
+                  join framework_development_job job on job.job_id=dispatch.job_id
+                   and job.process_code=dispatch.process_code
+                  join framework_runtime_release_state runtime
+                    on runtime.release_key='CARBONET_RUNTIME' and runtime.health_status='UP'
+                   and runtime.source_commit=dispatch.runtime_commit
+                   and dispatch.runtime_identity_hash=framework_runtime_release_identity_hash(runtime)
+                 where dispatch.dispatch_id=case when p_receipt->>'liveSmokeDispatchId'~'^[0-9]+$'
+                   then (p_receipt->>'liveSmokeDispatchId')::bigint end
+                   and dispatch.job_id=p_job_id and dispatch.process_code=p_process_code
+                   and dispatch.status='COMPLETED'
+                   and dispatch.runtime_commit=p_receipt#>>'{canary,runtimeCommit}'
+                   and dispatch.runtime_identity_hash=p_receipt#>>'{canary,requestedRuntimeIdentityHash}'
+                   and dispatch.canary_attempt=case when p_receipt#>>'{canary,attemptNumber}'~'^[1-3]$'
+                     then (p_receipt#>>'{canary,attemptNumber}')::integer end
+                   and dispatch.authority_revision_set_hash=
+                     framework_composite_authority_revision_set_hash(dispatch.job_id)
+                   and dispatch.artifact_manifest_hash=framework_try_jsonb(job.result_json)#>>
+                     '{canonicalGeneration,compositeArtifactManifestHash}'
+                   and dispatch.process_source_hash=framework_try_jsonb(job.specification_json)->>
+                     'processInputHash'
+                   and job.job_type='FULL_STACK_GENERATION'
+                   and job.job_group_code=p_process_code||'_CANONICAL_PUBLICATION'
+                   and job.job_status in('VERIFIED','COMPLETED') and job.quality_status='VERIFIED'
+                   and dispatch.submitted_evidence_count=dispatch.expected_evidence_count
+                   and (select count(*) from integrated_design_live_smoke_evidence evidence
+                         where evidence.dispatch_id=dispatch.dispatch_id)=dispatch.expected_evidence_count
+                   and p_receipt->>'liveSmokeEvidenceCount'~'^[0-9]+$'
+                   and (p_receipt->>'liveSmokeEvidenceCount')::integer=dispatch.expected_evidence_count
+                   and not exists(select 1 from integrated_design_live_smoke_evidence evidence
+                     where evidence.dispatch_id=dispatch.dispatch_id and(
+                       dispatch.started_at is null or evidence.observed_at<dispatch.started_at
+                       or evidence.observed_at>evidence.recorded_at
+                       or evidence.recorded_at>dispatch.completed_at))
+                   and p_receipt->>'liveSmokeEvidenceSetHash'=(select
+                     framework_composite_live_smoke_hash(coalesce(jsonb_agg(evidence.evidence_hash
+                       order by evidence.authority_id,evidence.authority_revision,
+                         evidence.command_code collate "C",evidence.scenario_code collate "C",
+                         evidence.status_case collate "C",evidence.lane collate "C"),'[]'::jsonb))
+                     from integrated_design_live_smoke_evidence evidence
+                    where evidence.dispatch_id=dispatch.dispatch_id)
+              )
+            $$
+            """);
+    }
+
     private void createSchema(){
         jdbc.execute("""
             create table framework_runtime_release_state(
@@ -7946,8 +8000,25 @@ class ActorProcessGovernanceMutationPropagationPostgresTest {
               deployment_namespace text not null,deployment_name text not null,
               deployment_uid text not null,deployment_generation bigint not null,
               observed_generation bigint not null,desired_replicas integer not null,
-              image_ref text not null,image_id text not null,health_status text not null,
+              image_ref text not null,image_id text not null,pod_template_sha256 text
+                check(pod_template_sha256 is null or pod_template_sha256~'^[0-9a-f]{64}$'),
+              health_status text not null,
               recorded_by text not null,recorded_at timestamptz default current_timestamp)
+            """);
+        jdbc.execute("""
+            create or replace function framework_runtime_release_identity_hash(
+              p_runtime framework_runtime_release_state) returns varchar(64)
+            language sql immutable parallel safe strict as $function$
+              select case when (p_runtime).pod_template_sha256~'^[0-9a-f]{64}$' then
+                encode(sha256(convert_to(jsonb_build_array(
+                  'CARBONET_RUNTIME_IDENTITY_V2',(p_runtime).source_commit,
+                  (p_runtime).deployment_namespace,(p_runtime).deployment_name,
+                  (p_runtime).deployment_uid,(p_runtime).deployment_generation,
+                  (p_runtime).observed_generation,(p_runtime).desired_replicas,
+                  (p_runtime).image_ref,(p_runtime).image_id,(p_runtime).health_status,
+                  (p_runtime).pod_template_sha256)::text,'UTF8')),'hex')::varchar(64)
+                else null end
+            $function$
             """);
         jdbc.execute("""
             create table framework_postdeploy_release_attempt(

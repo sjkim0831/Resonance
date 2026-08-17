@@ -147,7 +147,12 @@ elif grep -Eqi 'SQL State[[:space:]]*:[[:space:]]*P0001|SQLSTATE[[:space:]]*[:=]
   # kubectl wait emits a generic timeout. Never let that wrapper timeout turn
   # an already rolled-back migration into an automatic deployment retry.
   category=DATABASE_DETERMINISTIC
-elif grep -Eqi 'connection reset|connection refused|temporary failure|timed out|timeout|TLS handshake|unable to connect|i/o timeout|HTTP 50[234]|requested URL returned error: 50[234]|readiness returned 50[234]|concurrent token acquisition failed' "$evidence"; then
+elif grep -Eqi 'STATIC_ONLY_BLOCKED_RUNTIME_IDENTITY_MISMATCH reason=(AUTHORITY_MISMATCH|IMMUTABLE_MISMATCH|COORDINATE_CONTRADICTION|TEMPLATE_MISMATCH)' "$evidence"; then
+  # Durable authority, immutable image/template and monotonic-coordinate
+  # contradictions require reconciliation; an identical retry cannot repair
+  # them. Attempt/promotion recovery evidence above always takes precedence.
+  category=RUNTIME_IDENTITY_DETERMINISTIC
+elif grep -Eqi 'STATIC_ONLY_BLOCKED_RUNTIME_IDENTITY_MISMATCH reason=(DATA_UNAVAILABLE|READINESS_TRANSIENT)|connection reset|connection refused|temporary failure|timed out|timeout|TLS handshake|unable to connect|i/o timeout|HTTP 50[234]|requested URL returned error: 50[234]|readiness returned 50[234]|concurrent token acquisition failed' "$evidence"; then
   category=NETWORK_TRANSIENT
   retry_allowed=true
 elif grep -Eqi 'visual E2E|playwright|screenshot|browser regression' "$evidence"; then

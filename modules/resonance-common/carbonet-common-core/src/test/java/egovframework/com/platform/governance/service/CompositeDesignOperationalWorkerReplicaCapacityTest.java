@@ -26,6 +26,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.BooleanSupplier;
+import java.util.function.Supplier;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -116,11 +117,13 @@ class CompositeDesignOperationalWorkerReplicaCapacityTest {
         NoOpTransactions transactions=new NoOpTransactions(store);
         CompositeAutocompletionReadinessService readiness=
             new CompositeAutocompletionReadinessService(jdbc,governance,transactions,
-                1,1,1,store.runtimeCommit,"","");
+                1,1,1,store.runtimeCommit,"","",1,12_000,0);
         CompositeDesignOperationalWorker worker=new CompositeDesignOperationalWorker(jdbc,
             new ObjectMapper(),governance,readiness,transactions,true,1,1,false,600,30);
         try{
-            Map<String,Object> dispatch=worker.dispatchCanary();
+            Map<String,Object> dispatch=retryReadinessTransition(worker::dispatchCanary,
+                "CANARY_RUNTIME_BINDING_NOT_READY");
+            assertTrue(store.canonicalRuntimeIdentityHelperObserved);
             assertEquals(1,dispatch.get("canaryAttempt"));
             await(()->store.sourceWriteCount==1&&store.running==0,2_000);
             assertEquals(3,compilerAttempts.get());
@@ -447,10 +450,13 @@ class CompositeDesignOperationalWorkerReplicaCapacityTest {
         String candidate="postdeploy:test:20260817";
         CompositeAutocompletionReadinessService readiness=
             new CompositeAutocompletionReadinessService(new ReplicaJdbcTemplate(store),
-                readyGovernance(),new NoOpTransactions(store),8,8,2,store.runtimeCommit,"","");
+                readyGovernance(),new NoOpTransactions(store),8,8,2,store.runtimeCommit,"","",
+                1,12_000,0);
         try{
-            Map<String,Object> prepared=readiness.prepare(0L,store.runtimeCommit,
-                store.finalAuthorityHash,candidate,"SYSTEM_ADMIN",true,0);
+            Map<String,Object> prepared=retryReadinessTransition(()->readiness.prepare(0L,
+                store.runtimeCommit,store.finalAuthorityHash,candidate,"SYSTEM_ADMIN",true,0),
+                "AUTOCOMPLETION_APPROVAL_PREFLIGHT_STALE");
+            assertTrue(store.canonicalRuntimeIdentityHelperObserved);
             assertTrue(store.verifiedDispatchExactPredicateObserved);
             assertEquals("PREPARE",prepared.get("action"));
             assertEquals(false,prepared.get("effectiveWithoutRollout"));
@@ -458,8 +464,9 @@ class CompositeDesignOperationalWorkerReplicaCapacityTest {
             assertThrows(IllegalStateException.class,()->readiness.prepare(0L,
                 store.runtimeCommit,store.finalAuthorityHash,candidate,"SYSTEM_ADMIN",true,0));
 
-            Map<String,Object> activated=readiness.activate(1L,store.runtimeCommit,
-                store.sourceAuthorityHash,candidate,"SYSTEM_ADMIN",true,0);
+            Map<String,Object> activated=retryReadinessTransition(()->readiness.activate(1L,
+                store.runtimeCommit,store.sourceAuthorityHash,candidate,"SYSTEM_ADMIN",true,0),
+                "AUTOCOMPLETION_ACTIVATION_PREFLIGHT_STALE");
             assertEquals("ACTIVATE",activated.get("action"));
             assertEquals(true,activated.get("effectiveWithoutRollout"));
             assertEquals("ACTIVE",store.gateStatus);assertEquals(2L,store.gateRevision);
@@ -548,6 +555,38 @@ class CompositeDesignOperationalWorkerReplicaCapacityTest {
             assertThrows(IllegalStateException.class,()->worker.dispatchApproved(4));
             assertEquals(0,store.running);assertEquals(4,store.pending.size());
             assertEquals(0,store.sourceWriteCount);
+        }finally{worker.close();readiness.close();}
+    }
+
+    @Test
+    void unavailableCanonicalRuntimeIdentityBlocksCanaryAndActivationBeforeAnyClaim(){
+        SharedReceiptStore store=new SharedReceiptStore(1);
+        store.runtimeCommit="c".repeat(40);store.runtimeIdentityHash="";
+        store.sourceAuthorityHash="0".repeat(64);store.finalAuthorityHash="f".repeat(64);
+        store.sourceInputAuthorityHash="0".repeat(64);store.currentVerifiedCanary=true;
+        CompositeAutocompletionReadinessService readiness=
+            new CompositeAutocompletionReadinessService(new ReplicaJdbcTemplate(store),
+                readyGovernance(),new NoOpTransactions(store),8,8,2,store.runtimeCommit,"","",
+                1,12_000,0);
+        CompositeDesignOperationalWorker worker=new CompositeDesignOperationalWorker(
+            new ReplicaJdbcTemplate(store),new ObjectMapper(),readyGovernance(),readiness,
+            new NoOpTransactions(store),true,8,25,false,600,30);
+        try{
+            IllegalStateException canary=assertThrows(IllegalStateException.class,
+                worker::dispatchCanary);
+            assertEquals("CANARY_RUNTIME_BINDING_NOT_READY",canary.getMessage());
+            Map<String,Object> prepared=retryReadinessTransition(()->readiness.prepare(0L,
+                store.runtimeCommit,store.finalAuthorityHash,store.postdeployCandidateId,
+                "SYSTEM_ADMIN",true,0),"AUTOCOMPLETION_APPROVAL_PREFLIGHT_STALE");
+            assertEquals("PREPARE",prepared.get("action"));
+            IllegalStateException activation=assertThrows(IllegalStateException.class,()->
+                readiness.activate(1L,store.runtimeCommit,store.sourceAuthorityHash,
+                    store.postdeployCandidateId,"SYSTEM_ADMIN",true,0));
+            assertEquals("AUTOCOMPLETION_ACTIVATION_PREFLIGHT_STALE",activation.getMessage());
+            assertTrue(store.canonicalRuntimeIdentityHelperObserved);
+            assertEquals("PREPARED",store.gateStatus);assertEquals(0,store.running);
+            assertEquals(0,store.claimCount);assertEquals(0,store.sourceWriteCount);
+            assertEquals(1,store.pending.size());
         }finally{worker.close();readiness.close();}
     }
 
@@ -808,6 +847,20 @@ class CompositeDesignOperationalWorkerReplicaCapacityTest {
         assertTrue(completed.getAsBoolean(),"condition was not met within "+timeoutMs+"ms");
     }
 
+    private static Map<String,Object> retryReadinessTransition(
+            Supplier<Map<String,Object>> transition,String transientCode){
+        long deadline=System.nanoTime()+TimeUnit.SECONDS.toNanos(2);
+        IllegalStateException last=null;
+        do{
+            try{return transition.get();}
+            catch(IllegalStateException failure){
+                if(!transientCode.equals(failure.getMessage()))throw failure;
+                last=failure;Thread.yield();
+            }
+        }while(System.nanoTime()<deadline);
+        throw last==null?new IllegalStateException(transientCode):last;
+    }
+
     private static final class SharedReceiptStore {
         private final ArrayDeque<String> pending=new ArrayDeque<>();
         private final ReentrantLock transactionLeader=new ReentrantLock();
@@ -821,6 +874,7 @@ class CompositeDesignOperationalWorkerReplicaCapacityTest {
         private boolean currentVerifiedCanary;
         private String runtimeCommit="";
         private String runtimeIdentityHash="9".repeat(64);
+        private boolean canonicalRuntimeIdentityHelperObserved;
         private int runtimeIdentityReadCount;
         private int runtimeIdentityDriftAfterRead=Integer.MAX_VALUE;
         private final CountDownLatch runtimeIdentityDriftObserved=new CountDownLatch(1);
@@ -1023,8 +1077,14 @@ class CompositeDesignOperationalWorkerReplicaCapacityTest {
             if(sql.trim().equals("select framework_composite_dependency_fingerprint(?)"))
                 return type.cast("b".repeat(64));
             if(sql.contains("framework_runtime_release_state")
-                    &&sql.contains("framework_postdeploy_release_attempt"))
-                return type.cast(Boolean.TRUE);
+                    &&sql.contains("framework_postdeploy_release_attempt")){
+                if(!sql.contains("framework_runtime_release_identity_hash(runtime)"))
+                    throw new IllegalStateException(
+                        "POSTDEPLOY_FIXTURE_REQUIRES_CANONICAL_RUNTIME_IDENTITY_HELPER");
+                store.canonicalRuntimeIdentityHelperObserved=true;
+                return type.cast(Boolean.valueOf(store.runtimeIdentityHash!=null
+                    &&store.runtimeIdentityHash.matches("[0-9a-f]{64}")));
+            }
             if(sql.contains("completion_status='RUNNING'"))return type.cast(Integer.valueOf(
                 store.globalRunningOverride>=0?store.globalRunningOverride:store.running));
             if(sql.contains("coalesce(max(case when receipt_json#>>'{canary,attemptNumber}'"))
@@ -1055,6 +1115,10 @@ class CompositeDesignOperationalWorkerReplicaCapacityTest {
                 Object... arguments){
             if(sql.contains("from framework_runtime_release_state runtime")
                     &&sql.contains("runtime.source_commit=?")){
+                if(!sql.contains("framework_runtime_release_identity_hash(runtime)"))
+                    throw new IllegalStateException(
+                        "RUNTIME_IDENTITY_FIXTURE_REQUIRES_CANONICAL_HELPER");
+                store.canonicalRuntimeIdentityHelperObserved=true;
                 String commit=arguments.length==0?"":String.valueOf(arguments[0]);
                 if(!store.runtimeCommit.equals(commit))return List.of();
                 String identity;
@@ -1065,6 +1129,7 @@ class CompositeDesignOperationalWorkerReplicaCapacityTest {
                     identity=drifted?"8".repeat(64):store.runtimeIdentityHash;
                     if(drifted)store.runtimeIdentityDriftObserved.countDown();
                 }
+                if(identity==null||identity.isBlank())return List.of();
                 return List.of(type.cast(identity));
             }
             throw new IllegalStateException("UNEXPECTED_FAKE_JDBC_TYPED_LIST: "+sql);

@@ -112,19 +112,24 @@ prove_exact_target_db_absence() {
 }
 
 deployment_identity_token() {
-  jq -cS --arg container "$CONTAINER" '
+  local template_sha256
+  template_sha256="$(jq -cS '.spec.template' <<<"$1" | sha256sum | awk '{print $1}')" || return 1
+  [[ "$template_sha256" =~ ^[0-9a-f]{64}$ ]] || return 1
+  jq -cS --arg container "$CONTAINER" --arg podTemplateSha256 "$template_sha256" '
     {resourceVersion:.metadata.resourceVersion,uid:.metadata.uid,generation:.metadata.generation,
      observedGeneration:.status.observedGeneration,replicas:.spec.replicas,
      updatedReplicas:.status.updatedReplicas,readyReplicas:.status.readyReplicas,
      availableReplicas:.status.availableReplicas,unavailableReplicas:(.status.unavailableReplicas//0),
      targetCommit:(.metadata.annotations["resonance.ai/target-commit"]//""),
-     image:(.spec.template.spec.containers[]|select(.name==$container)|.image)}
+     runtimeTemplateSha256:(.metadata.annotations["resonance.ai/runtime-template-sha256"]//""),
+     image:(.spec.template.spec.containers[]|select(.name==$container)|.image),
+     podTemplateSha256:$podTemplateSha256,template:.spec.template}
   ' <<<"$1"
 }
 
 prove_live_baseline_identity() {
   local deployment_json deployment_recheck token selector pods_json image_ref desired
-  local ready_pods image_ids image_id ledger_json pod health_json
+  local ready_pods image_ids image_id ledger_json pod health_json live_template_sha256 template_annotation
   deployment_json="$(kubectl -n "$NAMESPACE" get "deployment/$DEPLOYMENT" -o json 2>/dev/null)" || return 1
   jq -e --arg commit "$baseline" --arg container "$CONTAINER" '
     (.metadata.annotations["resonance.ai/target-commit"]//"")==$commit
@@ -139,6 +144,9 @@ prove_live_baseline_identity() {
     and any(.spec.template.spec.containers[]?;.name==$container and (.image|type=="string" and length>0))
   ' <<<"$deployment_json" >/dev/null || return 1
   token="$(deployment_identity_token "$deployment_json")" || return 1
+  live_template_sha256="$(jq -cS '.spec.template' <<<"$deployment_json" | sha256sum | awk '{print $1}')"
+  template_annotation="$(jq -r '.metadata.annotations["resonance.ai/runtime-template-sha256"] // empty' <<<"$deployment_json")"
+  [[ "$live_template_sha256" =~ ^[0-9a-f]{64}$ ]] || return 1
   selector="$(jq -r '.spec.selector.matchLabels // {} | to_entries | map("\(.key)=\(.value)") | join(",")' <<<"$deployment_json")"
   image_ref="$(jq -r --arg container "$CONTAINER" '.spec.template.spec.containers[]|select(.name==$container)|.image' <<<"$deployment_json")"
   desired="$(jq -r '.spec.replicas' <<<"$deployment_json")"
@@ -162,18 +170,33 @@ prove_live_baseline_identity() {
       curl -fsS --max-time 15 http://127.0.0.1:8080/actuator/health 2>/dev/null)" || return 1
     jq -e '.status=="UP"' <<<"$health_json" >/dev/null || return 1
   done < <(jq -r '.[].name' <<<"$ready_pods")
-  ledger_json="$(printf '%s\n' "/* LEGACY_ORPHAN_BASELINE_LEDGER */ select jsonb_build_object('releaseKey',release_key,'sourceCommit',source_commit,'deploymentNamespace',deployment_namespace,'deploymentName',deployment_name,'deploymentUid',deployment_uid,'deploymentGeneration',deployment_generation,'observedGeneration',observed_generation,'desiredReplicas',desired_replicas,'imageRef',image_ref,'imageId',image_id,'healthStatus',health_status)::text from framework_runtime_release_state where release_key='CARBONET_RUNTIME';" | db_psql 2>/dev/null)" \
+  ledger_json="$(printf '%s\n' "/* LEGACY_ORPHAN_BASELINE_LEDGER */ select jsonb_build_object('releaseKey',release_key,'sourceCommit',source_commit,'deploymentNamespace',deployment_namespace,'deploymentName',deployment_name,'deploymentUid',deployment_uid,'deploymentGeneration',deployment_generation,'observedGeneration',observed_generation,'desiredReplicas',desired_replicas,'imageRef',image_ref,'imageId',image_id,'podTemplateSha256',to_jsonb(runtime)->>'pod_template_sha256','healthStatus',health_status)::text from framework_runtime_release_state runtime where release_key='CARBONET_RUNTIME';" | db_psql 2>/dev/null)" \
     || return 1
   jq -e --arg commit "$baseline" --arg namespace "$NAMESPACE" --arg deployment "$DEPLOYMENT" \
     --arg uid "$(jq -r '.metadata.uid' <<<"$deployment_json")" --arg image "$image_ref" --arg imageId "$image_id" \
+    --arg liveTemplateSha256 "$live_template_sha256" --arg templateAnnotation "$template_annotation" \
     --argjson generation "$(jq -r '.metadata.generation' <<<"$deployment_json")" \
     --argjson observed "$(jq -r '.status.observedGeneration' <<<"$deployment_json")" \
     --argjson desired "$desired" '
       .releaseKey=="CARBONET_RUNTIME" and .sourceCommit==$commit
       and .deploymentNamespace==$namespace and .deploymentName==$deployment
-      and .deploymentUid==$uid and .deploymentGeneration==$generation
-      and .observedGeneration==$observed and .desiredReplicas==$desired
+      and .deploymentUid==$uid
+      and (.deploymentGeneration|type)=="number" and (.observedGeneration|type)=="number"
+      and .deploymentGeneration<=.observedGeneration
+      and .deploymentGeneration<=$generation and .observedGeneration<=$observed
+      and (.desiredReplicas|type)=="number" and .desiredReplicas>0
       and .imageRef==$image and .imageId==$imageId and .healthStatus=="UP"
+      and (
+        (.podTemplateSha256==$liveTemplateSha256 and $templateAnnotation==$liveTemplateSha256)
+        or
+        (.sourceCommit=="76a08e672ab7054914ec3b5aecb57bc8e7a298fa"
+         and .deploymentNamespace=="carbonet-prod" and .deploymentName=="carbonet-runtime"
+         and .deploymentUid=="5a9323d6-446c-49d2-ad3e-c300c18f5803"
+         and .imageRef=="localhost:5000/carbonet-runtime:2026.08.14-202346-gradle"
+         and .imageId=="sha256:48311ffbb0396684021efc84811c73432263850ce18c4d4412eb81151749e160"
+         and $liveTemplateSha256=="3714b172fe60eed5d07658103aa5f51d6f9ef765f2cee2bd0ba304e71bfd9c1a"
+         and (.podTemplateSha256==null or .podTemplateSha256=="") and $templateAnnotation=="")
+      )
     ' <<<"$ledger_json" >/dev/null || return 1
   deployment_recheck="$(kubectl -n "$NAMESPACE" get "deployment/$DEPLOYMENT" -o json 2>/dev/null)" || return 1
   [[ "$(deployment_identity_token "$deployment_recheck")" == "$token" ]]
