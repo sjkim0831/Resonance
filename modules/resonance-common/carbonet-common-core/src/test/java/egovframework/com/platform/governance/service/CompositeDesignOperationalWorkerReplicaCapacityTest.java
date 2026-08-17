@@ -8,6 +8,7 @@ import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.TransactionStatus;
 import org.springframework.transaction.support.SimpleTransactionStatus;
 
+import java.lang.reflect.Modifier;
 import java.sql.SQLException;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -38,6 +39,17 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 class CompositeDesignOperationalWorkerReplicaCapacityTest {
+    @Test
+    void rawManualDispatchRemainsNonPublicAndApprovedFacadeIsPublic() throws Exception {
+        int rawModifiers=CompositeDesignOperationalWorker.class
+            .getDeclaredMethod("dispatch",int.class).getModifiers();
+        int approvedModifiers=CompositeDesignOperationalWorker.class
+            .getDeclaredMethod("dispatchApproved",int.class).getModifiers();
+
+        assertFalse(Modifier.isPublic(rawModifiers));
+        assertTrue(Modifier.isPublic(approvedModifiers));
+    }
+
     @Test
     void automaticSerializationFailuresRequeueTwiceThenCommitSourceExactlyOnce() throws Exception {
         SharedReceiptStore store=activeApprovalStore(1);

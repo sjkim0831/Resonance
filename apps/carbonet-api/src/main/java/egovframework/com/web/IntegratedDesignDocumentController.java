@@ -136,7 +136,7 @@ public class IntegratedDesignDocumentController {
                 "limit must be an integer",error);}
             if(limit<1||limit>25)throw new IllegalArgumentException(
                 "limit must be between 1 and 25");
-            return ResponseEntity.accepted().body(operationalWorker.dispatch(limit));
+            return ResponseEntity.accepted().body(operationalWorker.dispatchApproved(limit));
         }
         if("GENERATE_AXIS_TEMPLATES".equals(text(body,"action"))){
             String processCode=required(body,"processCode").trim().toUpperCase();
