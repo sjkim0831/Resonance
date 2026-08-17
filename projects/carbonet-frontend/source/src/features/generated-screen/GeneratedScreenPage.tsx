@@ -17,7 +17,7 @@ const items = (value: unknown, prefix: string): ContractItem[] => Array.isArray(
 const text = (value: unknown) => typeof value === "string" ? value : "";
 const liveSmokeStatuses = new Set(["SUCCESS","VALIDATION_ERROR","FORBIDDEN","CONFLICT","RECOVERY"]);
 const liveSmokeWatermarkBits = (runId: string) => {
-  const hex=runId.toLowerCase().replaceAll("-","");
+  const hex=runId.toLowerCase().split("-").join("");
   if(!/^[0-9a-f]{32}$/.test(hex))return [];
   return Array.from(hex).flatMap(value=>{
     const nibble=Number.parseInt(value,16);
